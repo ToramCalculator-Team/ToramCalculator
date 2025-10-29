@@ -11,8 +11,8 @@ import { parseMultiSchemaMap } from "./helpers/multiSchemaHelpers";
 
 // 导入新的工具类
 import { SchemaCollector } from "./utils/schemaCollector";
-import { DatabaseSchemaGenerator } from "./helpers/generateDatabaseSchema";
 import { ZodGenerator } from "./helpers/generateZod";
+import { DMMFUtilsGenerator } from "./helpers/generateDMMFUtils";
 import { QueryBuilderGenerator } from "./helpers/generateQueryBuilder";
 import { RepositoryGenerator } from "./helpers/generateRepository";
 import { SQLGenerator } from "./helpers/generateSQL";
@@ -66,26 +66,24 @@ generatorHandler({
         a.name.localeCompare(b.name),
       );
 
-      console.log("📊 并行生成所有文件...");
+      console.log("📊 开始生成文件（分阶段执行）...");
       const outputDir = options.generator.output?.value || "";
 
+      // 阶段1: 生成 Zod schemas (产出 DB 类型)
+      console.log("🔍 阶段1: 生成 Zod schemas...");
+      const zodGenerator = new ZodGenerator(options.dmmf, allModels);
+      const zodPath = PATHS.zodSchema;
+      await zodGenerator.generate(zodPath);
+
+      // 阶段2: 生成 DMMF 工具 (可以引用 DB 类型)
+      console.log("🔧 阶段2: 生成 DMMF 工具文件...");
+      const dmmfUtilsGenerator = new DMMFUtilsGenerator(options.dmmf, allModels);
+      const dmmfUtilsPath = PATHS.dmmfUtils;
+      await dmmfUtilsGenerator.generate(dmmfUtilsPath);
+
+      // 阶段3: 并行生成其他文件
+      console.log("📊 阶段3: 并行生成其他文件...");
       const generationResults = await Promise.allSettled([
-        // Generate database schema info
-        (async () => {
-          console.log("📊 生成数据库架构信息...");
-          const databaseSchemaGenerator = new DatabaseSchemaGenerator(options.dmmf, allModels);
-          const databaseSchemaPath = PATHS.dmmf;
-          await databaseSchemaGenerator.generate(databaseSchemaPath);
-        })(),
-
-        // Generate Zod schemas
-        (async () => {
-          console.log("🔍 生成 Zod schemas...");
-          const zodGenerator = new ZodGenerator(options.dmmf, allModels);
-          const zodPath = PATHS.zodSchema;
-          await zodGenerator.generate(zodPath);
-        })(),
-
         // Generate QueryBuilder rules
         (async () => {
           console.log("🔍 生成 QueryBuilder 规则...");

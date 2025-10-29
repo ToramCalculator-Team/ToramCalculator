@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { execSync, spawn, type ChildProcess } from "node:child_process";
 import dotenv from "dotenv";
 import readline from "node:readline";
-import { DATABASE_SCHEMA, type DatabaseSchemaInfo, type DependencyInfo } from "../generated/database-schema.js";
+import { MODEL_METADATA, RELATION_METADATA } from "../generated/dmmf-utils.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -252,13 +252,25 @@ export const disableForeignKeys = (config: Config): void => {
 
 /**
  * 使用拓扑排序获取表的导入顺序
- * @param schema - 数据库架构信息
  * @returns 表名数组
  */
-export const getTopologicalOrder = (schema: DatabaseSchemaInfo): string[] => {
+export const getTopologicalOrder = (): string[] => {
   const visited = new Set<string>();
   const visiting = new Set<string>();
   const result: string[] = [];
+  
+  // 构建依赖关系映射
+  const dependencyMap = new Map<string, Set<string>>();
+  
+  for (const relation of RELATION_METADATA) {
+    if (relation.type === "ManyToOne" || relation.type === "OneToOne") {
+      // from 表依赖 to 表
+      if (!dependencyMap.has(relation.from)) {
+        dependencyMap.set(relation.from, new Set());
+      }
+      dependencyMap.get(relation.from)!.add(relation.to);
+    }
+  }
   
   const visit = (tableName: string): void => {
     if (visiting.has(tableName)) {
@@ -271,9 +283,9 @@ export const getTopologicalOrder = (schema: DatabaseSchemaInfo): string[] => {
     visiting.add(tableName);
     
     // 获取此表的依赖
-    const dependency = schema.dependencies.find(dep => dep.table === tableName);
-    if (dependency) {
-      for (const depTable of dependency.dependsOn) {
+    const dependencies = dependencyMap.get(tableName);
+    if (dependencies) {
+      for (const depTable of dependencies) {
         visit(depTable);
       }
     }
@@ -284,8 +296,8 @@ export const getTopologicalOrder = (schema: DatabaseSchemaInfo): string[] => {
   };
   
   // 遍历所有表
-  for (const table of schema.tables) {
-    visit(table.name);
+  for (const model of MODEL_METADATA) {
+    visit(model.tableName);
   }
   
   return result;
@@ -293,15 +305,14 @@ export const getTopologicalOrder = (schema: DatabaseSchemaInfo): string[] => {
 
 /**
  * 获取表的正确导入顺序
- * @param schema - 数据库架构信息
  * @returns 表名数组
  */
-export const getTableOrder = (schema: DatabaseSchemaInfo): string[] => {
+export const getTableOrder = (): string[] => {
   console.log("📌 获取表的正确导入顺序...");
   
   try {
-    // 使用架构信息中的依赖关系进行拓扑排序
-    const importOrder = getTopologicalOrder(schema);
+    // 使用关系元数据中的依赖关系进行拓扑排序
+    const importOrder = getTopologicalOrder();
     
     console.log(`📋 找到 ${importOrder.length} 个表`);
     console.log(`📋 导入顺序: ${importOrder.slice(0, 5).join(' -> ')}${importOrder.length > 5 ? '...' : ''}`);
@@ -432,9 +443,8 @@ export const restoreForeignKeys = (config: Config): void => {
 /**
  * 执行完整的恢复流程
  * @param config - 配置对象
- * @param schema - 数据库架构信息
  */
-export const restore = async (config: Config, schema: DatabaseSchemaInfo): Promise<void> => {
+export const restore = async (config: Config): Promise<void> => {
   try {
     console.log("🔄 开始从 CSV 文件恢复数据库...");
     
@@ -445,7 +455,7 @@ export const restore = async (config: Config, schema: DatabaseSchemaInfo): Promi
     disableForeignKeys(config);
     
     // 2. 获取表的正确导入顺序
-    const tables = getTableOrder(schema);
+    const tables = getTableOrder();
     
     // 3. 按顺序导入 CSV 文件
     await importCsvFiles(tables, config);
@@ -475,7 +485,7 @@ export const main = async (): Promise<void> => {
     validateConfig(config);
     
     // 执行恢复
-    await restore(config, DATABASE_SCHEMA);
+    await restore(config);
   } catch (error) {
     console.error("❌ 初始化失败:", error);
     process.exit(1);

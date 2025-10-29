@@ -20,29 +20,28 @@ import { DB } from "@db/generated/zod/index";
 import {
   isForeignKeyField,
   getForeignKeyFields,
-  getPrimaryKeyFields,
+  getPrimaryKeys as getPrimaryKeyFields,
   isPrimaryKeyField,
   getForeignKeyReference,
-} from "@db/generated/database-schema";
+} from "@db/generated/dmmf-utils";
 
-export interface DBFormProps<T extends keyof DB> {
-  tableName: T;
-  initialValue: DB[T];
-  dataSchema: ZodObject<{ [K in keyof DB[T]]: ZodType }>;
-  dictionary: Dic<DB[T]>;
-  hiddenFields?: Array<keyof DB[T]>;
-  fieldGroupMap?: Record<string, Array<keyof DB[T]>>;
+export interface DBFormProps<TName extends keyof DB> {
+  tableName: TName;
+  initialValue: DB[TName];
+  dataSchema: ZodObject<{ [K in keyof DB[TName]]: ZodType }>;
+  hiddenFields?: Array<keyof DB[TName]>;
+  fieldGroupMap?: Record<string, Array<keyof DB[TName]>>;
   fieldGenerator?: Partial<{
-    [K in keyof DB[T]]: (
+    [K in keyof DB[TName]]: (
       field: Accessor<AnyFieldApi>,
-      dictionary: Dic<DB[T]>,
-      dataSchema: ZodObject<Record<keyof DB[T], ZodType>>,
+      dictionary: Dic<DB[TName]>,
+      dataSchema: ZodObject<Record<keyof DB[TName], ZodType>>,
     ) => JSX.Element;
   }>;
-  onSubmit?: (values: DB[T]) => void;
+  onSubmit?: (values: DB[TName]) => void;
 }
 
-export const DBForm = <T extends keyof DB>(props: DBFormProps<T>) => {
+export const DBForm = <TName extends keyof DB>(props: DBFormProps<TName>) => {
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
 
@@ -64,26 +63,26 @@ export const DBForm = <T extends keyof DB>(props: DBFormProps<T>) => {
   });
 
   // 字段组生成器
-  const fieldGroupGenerator = (fieldGroup: Array<keyof DB[T]>) => (
+  const fieldGroupGenerator = (fieldGroup: Array<keyof DB[TName]>) => (
     <For each={fieldGroup}>
       {(key) => {
         if (props.hiddenFields?.includes(key)) return null;
+
+        // 检查是否为外键字段
+        const isForeignKey = isForeignKeyField(props.tableName, key);
+        const isPrimaryKey = isPrimaryKeyField(props.tableName, key);
 
         const fieldName = String(key);
         const schemaFieldValue = props.dataSchema?.shape[key];
         const fieldGenerator = props.fieldGenerator?.[key];
         const hasGenerator = !!fieldGenerator;
 
-        // 检查是否为外键字段
-        const isForeignKey = isForeignKeyField(props.tableName, fieldName);
-        const isPrimaryKey = isPrimaryKeyField(props.tableName, fieldName);
-
         // 处理嵌套结构
         switch (schemaFieldValue.type) {
           case "array": {
             return (
               <form.Field
-                name={key as DeepKeys<DB[T]>}
+                name={key as DeepKeys<DB[TName]>}
                 validators={{
                   onChangeAsyncDebounceMs: 500,
                   onChangeAsync: props.dataSchema.shape[key] as any,
@@ -96,7 +95,7 @@ export const DBForm = <T extends keyof DB>(props: DBFormProps<T>) => {
                     <Input
                       title={fieldName}
                       description=""
-                      state={fieldInfo(field())}
+                      validationMessage={fieldInfo(field())}
                       class="border-dividing-color bg-primary-color w-full rounded-md border"
                     >
                       <div class="ArrayBox flex w-full flex-col gap-2">
@@ -140,7 +139,7 @@ export const DBForm = <T extends keyof DB>(props: DBFormProps<T>) => {
             );
           }
           default: {
-            const safeKey = key as DeepKeys<DB[T]>;
+            const safeKey = key as DeepKeys<DB[TName]>;
             return (
               <form.Field
                 name={safeKey}
@@ -151,10 +150,10 @@ export const DBForm = <T extends keyof DB>(props: DBFormProps<T>) => {
               >
                 {(field) => {
                   if (hasGenerator) {
-                    return fieldGenerator(field, props.dictionary, props.dataSchema);
+                    return fieldGenerator(field, dictionary().db[props.tableName], props.dataSchema);
                   } else if (isForeignKey) {
                     // 外键字段使用 AutoComplete
-                    const referencedTable = getForeignKeyReference(props.tableName, fieldName);
+                    const referencedTable = getForeignKeyReference(props.tableName, key);
                     console.log("referencedTable", referencedTable);
 
                     if (referencedTable) {
@@ -162,7 +161,7 @@ export const DBForm = <T extends keyof DB>(props: DBFormProps<T>) => {
                         <Input
                           title={referencedTable.table}
                           description={`选择 ${referencedTable.table} 记录`}
-                          state={fieldInfo(field())}
+                          validationMessage={fieldInfo(field())}
                           class="border-dividing-color bg-primary-color w-full rounded-md border"
                         >
                           <Autocomplete
@@ -177,7 +176,7 @@ export const DBForm = <T extends keyof DB>(props: DBFormProps<T>) => {
                     }
                   } else {
                     return (
-                      <DBFieldRenderer field={field} dictionary={props.dictionary} dataSchema={props.dataSchema} />
+                      <DBFieldRenderer field={field} dictionary={dictionary().db[props.tableName]} dataSchema={props.dataSchema} />
                     );
                   }
                 }}
@@ -192,7 +191,7 @@ export const DBForm = <T extends keyof DB>(props: DBFormProps<T>) => {
   return (
     <div class="FormBox flex w-full flex-col">
       <div class="Title flex items-center p-2 portrait:p-6">
-        <h1 class="FormTitle text-2xl font-black">{props.dictionary.selfName ?? `编辑 ${props.tableName}`}</h1>
+        <h1 class="FormTitle text-2xl font-black">{dictionary().db[props.tableName].selfName ?? `编辑 ${props.tableName}`}</h1>
       </div>
       <form
         onSubmit={(e) => {
@@ -204,7 +203,7 @@ export const DBForm = <T extends keyof DB>(props: DBFormProps<T>) => {
       >
         <Show
           when={props.fieldGroupMap}
-          fallback={fieldGroupGenerator(Object.keys(props.initialValue) as Array<keyof DB[T]>)}
+          fallback={fieldGroupGenerator(Object.keys(props.initialValue) as Array<keyof DB[TName]>)}
         >
           <For
             each={Object.entries(props.fieldGroupMap!).filter(([_, keys]) =>
@@ -285,7 +284,7 @@ export function DBFieldRenderer<T extends keyof DB>(props: {
   switch ((props.dataSchema.shape as any)[fieldName].type) {
     case "enum": {
       return (
-        <Input title={inputTitle} description={inputDescription} state={fieldInfo(props.field())} class={fieldClass}>
+        <Input title={inputTitle} description={inputDescription} validationMessage={fieldInfo(props.field())} class={fieldClass}>
           <EnumSelect
             value={props.field().state.value as string}
             setValue={(value) => props.field().setValue(value as DeepValue<DB[T], DeepKeys<DB[T]>>)}
@@ -312,7 +311,7 @@ export function DBFieldRenderer<T extends keyof DB>(props: {
           value={props.field().state.value as number}
           onBlur={props.field().handleBlur}
           onChange={(e) => props.field().handleChange(e.target.value)}
-          state={fieldInfo(props.field())}
+          validationMessage={fieldInfo(props.field())}
           class={fieldClass}
         />
       );
@@ -341,7 +340,7 @@ export function DBFieldRenderer<T extends keyof DB>(props: {
             const target = e.target;
             props.field().handleChange(target.value as DeepValue<DB[T], DeepKeys<DB[T]>>);
           }}
-          state={fieldInfo(props.field())}
+          validationMessage={fieldInfo(props.field())}
           class={fieldClass}
         >
           "逻辑编辑器，暂未处理"
@@ -351,7 +350,7 @@ export function DBFieldRenderer<T extends keyof DB>(props: {
 
     case "boolean": {
       return (
-        <Input title={inputTitle} description={inputDescription} state={fieldInfo(props.field())} class={fieldClass}>
+        <Input title={inputTitle} description={inputDescription} validationMessage={fieldInfo(props.field())} class={fieldClass}>
           <Toggle
             id={props.field().name}
             onClick={() => {
@@ -381,7 +380,7 @@ export function DBFieldRenderer<T extends keyof DB>(props: {
             const target = e.target;
             props.field().handleChange(target.value as DeepValue<DB[T], DeepKeys<DB[T]>>);
           }}
-          state={fieldInfo(props.field())}
+          validationMessage={fieldInfo(props.field())}
           class={fieldClass}
         />
       );

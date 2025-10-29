@@ -19,7 +19,7 @@ import {
 import Icons from "~/components/icons/index";
 import { DB } from "@db/generated/zod";
 import { setStore, store } from "~/store";
-import { getPrimaryKeyFields } from "@db/generated/database-schema";
+import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 import { repositoryMethods } from "@db/generated/repositories";
 import { Button } from "./button";
 
@@ -50,7 +50,7 @@ export function Autocomplete<K extends keyof DB, T extends DB[K], P extends Part
   const [displayField, setDisplayField] = createSignal<keyof DB[K]>("id" as keyof DB[K]);
 
   // 缓存主键字段，避免重复查找
-  const primaryKeys = createMemo(() => getPrimaryKeyFields(props.table));
+  const primaryKeys = createMemo(() => getPrimaryKeys(props.table));
 
   // 显示值，作为input的value
   const [inputValue, setInputValue] = createSignal("");
@@ -177,7 +177,7 @@ export function Autocomplete<K extends keyof DB, T extends DB[K], P extends Part
                   e.preventDefault();
                   e.stopPropagation();
                   handleSelect(option);
-                  console.log(props.table, option, getPrimaryKeyFields(props.table));
+                  console.log(props.table, option, getPrimaryKeys(props.table));
                 }}
               >
                 <span class="w-full">{option[displayField() as keyof T] as string}</span>

@@ -14,7 +14,7 @@ import { repositoryMethods } from "@db/generated/repositories";
 import { DBForm } from "./DBFormRenderer";
 import { Sheet } from "~/components/containers/sheet";
 import { FormSheet } from "./FormSheet";
-import { getPrimaryKeyFields } from "@db/generated/database-schema";
+import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 
 export const FormGroup = () => {
   // UI文本字典
@@ -47,7 +47,6 @@ export const FormGroup = () => {
                         tableName={formGroupItem.type}
                         initialValue={formData() as any}
                         dataSchema={DBSchema[formGroupItem.type]}
-                        dictionary={dictionary().db[formGroupItem.type]}
                         // @ts-ignore-next-line
                         // config 是联合类型（所有表配置的并集），TS 无法自动断言为与 DBForm<T> 的 T 匹配,
                         // Array<keyof DB[T]> 会将联合展开为 Array<keyof DB[表1]> | Array<keyof DB[表2]> | ...；Array<type1> 和 Array<type2> 不兼容。
@@ -57,8 +56,10 @@ export const FormGroup = () => {
                         fieldGenerator={config().form.fieldGenerator}
                         onSubmit={(values) => {
                           if (formData()) {
-                            const primaryKeyFields = getPrimaryKeyFields(formGroupItem.type);
-                            repositoryMethods[formGroupItem.type].update?.(values[primaryKeyFields[0] as keyof typeof values], values as any)
+                            const primaryKeyFields = getPrimaryKeys(formGroupItem.type);
+                            const primaryKeyValue = values[primaryKeyFields[0] as keyof typeof values];
+                            console.log("主键值：", primaryKeyValue);
+                            repositoryMethods[formGroupItem.type].update?.(String(primaryKeyValue), values as any)
                           } else {
                             repositoryMethods[formGroupItem.type].insert?.(values as any)
                           }

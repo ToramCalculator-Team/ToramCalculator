@@ -9,13 +9,11 @@
 
 import { createSignal } from "solid-js";
 import { findMemberWithRelations, type MemberWithRelations } from "@db/repositories/member";
-import { findSimulatorWithRelations } from "@db/repositories/simulator";
+import { findSimulatorWithRelations, SimulatorWithRelations } from "@db/repositories/simulator";
 import { type MemberSerializeData } from "../core/member/Member";
 import { FrameSnapshot } from "../core/GameEngine";
 import { createActor, waitFor } from "xstate";
 import { gameEngineSM, type EngineCommand } from "../core/GameEngineSM";
-import { type WorkerMessageEvent } from "~/lib/WorkerPool/type";
-import { type WorkerWrapper } from "~/lib/WorkerPool/WorkerPool";
 import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
 import { IntentMessage } from "../core/MessageRouter";
 
@@ -42,8 +40,8 @@ export class Controller {
 
   // ==================== 构造函数 - 简化初始化 ====================
 
-  constructor() {
-    // 创建状态机，直接使用 SimulatorPool
+  constructor(simulatorData: SimulatorWithRelations) {
+    // 使用 SimulatorPool 创建状态机
     this.engineActor = createActor(gameEngineSM, {
       input: {
         mirror: {
@@ -60,6 +58,9 @@ export class Controller {
 
     // 启动状态机（内部会处理所有初始化）
     this.engineActor.start();
+
+    // 自动初始化引擎
+    this.initializeEngine(simulatorData);
 
     // 设置数据同步
     this.setupDataSync();
@@ -205,45 +206,25 @@ export class Controller {
       // 渲染命令由 UI 层处理，这里可以忽略或转发
       console.log("Controller: 收到渲染命令:", data.event);
     });
-
-    // 自动初始化引擎
-    this.autoInitializeEngine();
   }
 
 
-  // 自动初始化引擎
-  private async autoInitializeEngine() {
-    try {
-      // 1. 加载默认配置
-      const simulatorData = await findSimulatorWithRelations("defaultSimulatorId");
-      if (!simulatorData) {
-        throw new Error("无法获取默认模拟器配置");
-      }
+  // 初始化引擎
+  private async initializeEngine(simulatorData: SimulatorWithRelations) {
+    // 2. 通过状态机进入ready状态（包含数据）
+    this.engineActor.send({ 
+      type: "INIT", 
+      data: simulatorData,
+      origin: "source"
+    });
 
-      // 2. 通过状态机进入ready状态（包含数据）
-      this.engineActor.send({ 
-        type: "INIT", 
-        data: {
-          ...simulatorData,
-          statistic: {
-            ...simulatorData.statistic,
-            usageTimestamps: simulatorData.statistic.usageTimestamps as unknown as Date[],
-            viewTimestamps: simulatorData.statistic.viewTimestamps as unknown as Date[]
-          }
-        } as any,
-        origin: "source"
-      });
+    // 3. 等待一下让状态机处理
+    await waitFor(this.engineActor, (state) => state.matches("ready"), { timeout: 5000 });
 
-      // 3. 等待一下让状态机处理
-      await waitFor(this.engineActor, (state) => state.matches("ready"), { timeout: 5000 });
+    // 4. 预加载成员数据
+    await this.refreshMembers();
 
-      // 4. 预加载成员数据
-      await this.refreshMembers();
-
-      console.log("✅ 引擎初始化完成，当前状态:", this.engineActor.getSnapshot().value);
-    } catch (error) {
-      console.error("❌ 引擎初始化失败:", error);
-    }
+    console.log("✅ 引擎初始化完成，当前状态:", this.engineActor.getSnapshot().value);
   }
 
   // ==================== 状态访问器 - 直接从状态机读取 ====================

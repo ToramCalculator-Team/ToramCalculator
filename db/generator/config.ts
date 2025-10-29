@@ -27,7 +27,7 @@ export const PATHS = {
   serverDBSQL: path.join(generatedFolder, "server.sql"),
   clientDBSQL: path.join(generatedFolder, "client.sql"),
   zodSchema: path.join(generatedFolder, "zod/index.ts"),
+  dmmfUtils: path.join(generatedFolder, "dmmf-utils.ts"),
   queryBuilderRules: path.join(generatedFolder, "queryBuilderRules.ts"),
   repositoriesOutput: path.join(generatedFolder, "repositories"),
-  dmmf: path.join(generatedFolder, "database-schema.ts"),
 };

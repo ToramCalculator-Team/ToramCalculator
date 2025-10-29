@@ -17,7 +17,7 @@ import { type DataConfig, DATA_CONFIG } from "~/components/business/data-config"
 import { setWikiStore, wikiStore } from "./store";
 import { repositoryMethods } from "@db/generated/repositories";
 import { wikiPageConfig } from "./wikiPage/wikiPageConfig";
-import { getPrimaryKeyFields } from "@db/generated/database-schema";
+import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 
 export default function WikiSubPage() {
   const media = useContext(MediaContext);
@@ -308,7 +308,7 @@ export default function WikiSubPage() {
                   when={wikiPageConfig[wikiStore.type]?.mainContent}
                   fallback={VirtualTable<DB[typeof wikiStore.type]>({
                     measure: validDataConfig().table.measure,
-                    primaryKeyField: getPrimaryKeyFields(wikiStore.type)[0],
+                    primaryKeyField: getPrimaryKeys(wikiStore.type)[0],
                     dataFetcher: async () => (await repositoryMethods[wikiStore.type].selectAll?.()) ?? [],
                     // @ts-ignore-next-line  数组联合类型问题，暂时忽略
                     columnsDef: validDataConfig().table.columnsDef,

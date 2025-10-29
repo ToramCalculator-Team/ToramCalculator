@@ -2,16 +2,18 @@ import { JSX, Match, Show, Switch } from "solid-js";
 import { createId } from "@paralleldrive/cuid2";
 import { Toggle } from "./toggle";
 
-type Size = "sm" | "md" | "lg";
+export type InputSizeType = "sm" | "md" | "lg";
 export type InputComponentType = "text" | "password" | "number" | "boolean" | "checkBox" | "radio";
+export type InputStateType = "default" | "error";
 
 // class属性将分配值label标签
 interface InputProps extends JSX.InputHTMLAttributes<HTMLInputElement> {
   title?: string;
   description?: string;
   type?: InputComponentType;
-  size?: Size;
-  state?: string | null;
+  size?: InputSizeType;
+  state?: InputStateType;
+  validationMessage?: string;
   inputWidth?: number;
 }
 
@@ -30,6 +32,14 @@ export const Input = (props: InputProps) => {
     return sizeMap[props.size ?? "default"];
   };
 
+  const getStateClass = () => {
+    const stateMap = {
+      default: "focus:outline-brand-color-1st",
+      error: "focus:outline-brand-color-2nd",
+    };
+    return stateMap[props.state ?? "default"];
+  }
+
   const getDisableClass = () => (props.disabled ? "pointer-events-none opacity-50" : "");
 
   return (
@@ -42,7 +52,7 @@ export const Input = (props: InputProps) => {
               <span class="p-1">
                 <span>{props.title}</span>
                 &nbsp;&nbsp;
-                <span class="text-brand-color-3rd">{props.state}</span>
+                <span class="text-brand-color-3rd">{props.validationMessage}</span>
               </span>
               <Show when={props.description}>
                 <span class="text-main-text-color p-1 text-sm">{props.description}</span>
@@ -54,7 +64,7 @@ export const Input = (props: InputProps) => {
             <span class="p-1">
               <span>{props.title}</span>
               &nbsp;&nbsp;
-              <span class="text-brand-color-3rd">{props.state}</span>
+              <span class="text-brand-color-3rd">{props.validationMessage}</span>
             </span>
             <Show when={props.description}>
               <span class="text-main-text-color p-1 text-sm">{props.description}</span>
@@ -70,7 +80,7 @@ export const Input = (props: InputProps) => {
               <input
                 {...props}
                 id={id}
-                class={`text-accent-color bg-area-color w-full rounded p-3 ${getDisableClass()}`}
+                class={`text-accent-color bg-area-color w-full rounded p-3 ${getDisableClass()} ${getStateClass()}`}
                 style={{
                   width: props.inputWidth + "px",
                 }}
@@ -80,7 +90,7 @@ export const Input = (props: InputProps) => {
               <input
                 {...props}
                 id={id}
-                class={`text-accent-color bg-area-color w-full rounded p-3 ${getDisableClass()}`}
+                class={`text-accent-color bg-area-color w-full rounded p-3 ${getDisableClass()} ${getStateClass()}`}
                 style={{
                   width: props.inputWidth + "px",
                 }}
@@ -90,7 +100,7 @@ export const Input = (props: InputProps) => {
               <input
                 {...props}
                 id={id}
-                class={`text-accent-color bg-area-color w-full rounded p-3 ${getDisableClass()}`}
+                class={`text-accent-color bg-area-color w-full rounded p-3 ${getDisableClass()} ${getStateClass()}`}
                 style={{
                   width: props.inputWidth + "px",
                 }}

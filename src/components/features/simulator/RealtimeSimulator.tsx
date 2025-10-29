@@ -13,10 +13,15 @@ import { Controller } from "./controller/controller";
 import { StatusBar, ControlPanel, MemberSelect, MemberStatus, SkillPanel, ActionPanel } from "./controller/components";
 import { Portal } from "solid-js/web";
 import { GameView } from "./render/Renderer";
+import { SimulatorWithRelations } from "@db/repositories/simulator";
 
-export default function RealtimeSimulator() {
+export interface RealtimeSimulatorProps {
+  simulatorData: SimulatorWithRelations;
+}
+
+export default function RealtimeSimulator(props: RealtimeSimulatorProps) {
   // 创建控制器实例（自动初始化）
-  const controller = new Controller();
+  const controller = new Controller(props.simulatorData);
 
   // 创建响应式状态信号
   const [isReady, setIsReady] = createSignal(false);

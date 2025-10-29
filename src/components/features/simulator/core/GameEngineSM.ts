@@ -1,7 +1,212 @@
 import { setup, createMachine } from "xstate";
 import GameEngine from "./GameEngine";
-import { SimulatorWithRelationsSchema } from "@db/repositories/simulator";
 import { z } from "zod/v4";
+import {
+  AvatarSchema,
+  CharacterSchema,
+  CharacterSkillSchema,
+  ComboSchema,
+  ComboStepSchema,
+  ConsumableSchema,
+  CrystalSchema,
+  MemberSchema,
+  MercenarySchema,
+  MobSchema,
+  PlayerArmorSchema,
+  PlayerOptionSchema,
+  PlayerSchema,
+  PlayerSpecialSchema,
+  PlayerWeaponSchema,
+  SimulatorSchema,
+  SkillEffectSchema,
+  SkillSchema,
+  StatisticSchema,
+  ItemSchema,
+  TeamSchema,
+} from "@db/generated/zod";
+
+export const SimulatorWithRelationsSchema = z.object({
+  ...SimulatorSchema.shape,
+  statistic: StatisticSchema.shape,
+  campA: z.array(
+    z.object({
+      ...TeamSchema.shape,
+      members: z.array(
+        z.object({
+          ...MemberSchema.shape,
+          player: z
+            .object({
+              ...PlayerSchema.shape,
+              character: z.object({
+                ...CharacterSchema.shape,
+                avatars: z.array(AvatarSchema),
+                consumables: z.array(ConsumableSchema),
+                combos: z.array(
+                  z.object({
+                    ...ComboSchema.shape,
+                    steps: z.array(ComboStepSchema),
+                  }),
+                ),
+                skills: z.array(
+                  z.object({
+                    ...CharacterSkillSchema.shape,
+                    template: z.object({
+                      ...SkillSchema.shape,
+                      effects: z.array(SkillEffectSchema),
+                      statistic: StatisticSchema,
+                    }),
+                  }),
+                ),
+                weapon: z
+                  .object({
+                    ...PlayerWeaponSchema.shape,
+                    crystalList: z.array(
+                      z.object({
+                        ...CrystalSchema.shape,
+                        backs: z.array(ItemSchema),
+                        fronts: z.array(ItemSchema),
+                      }),
+                    ),
+                  })
+                  .nullable(),
+                subWeapon: z
+                  .object({
+                    ...PlayerWeaponSchema.shape,
+                    crystalList: z.array(
+                      z.object({
+                        ...CrystalSchema.shape,
+                        backs: z.array(ItemSchema),
+                        fronts: z.array(ItemSchema),
+                      }),
+                    ),
+                  })
+                  .nullable(),
+                armor: z
+                  .object({
+                    ...PlayerArmorSchema.shape,
+                    crystalList: z.array(
+                      z.object({
+                        ...CrystalSchema.shape,
+                        backs: z.array(ItemSchema),
+                        fronts: z.array(ItemSchema),
+                      }),
+                    ),
+                  })
+                  .nullable(),
+                option: z
+                  .object({
+                    crystalList: z.array(
+                      z.object({
+                        ...CrystalSchema.shape,
+                        backs: z.array(ItemSchema),
+                        fronts: z.array(ItemSchema),
+                      }),
+                    ),
+                  })
+                  .nullable(),
+                special: PlayerSpecialSchema.nullable(),
+                statistic: StatisticSchema,
+              }),
+            })
+            .nullable(),
+          mob: MobSchema.nullable(),
+          mercenary: MercenarySchema.nullable(),
+          partner: MercenarySchema.nullable(),
+        }),
+      ),
+    }),
+  ),
+  campB: z.array(
+    z.object({
+      ...TeamSchema.shape,
+      members: z.array(
+        z.object({
+          ...MemberSchema.shape,
+          player: z
+            .object({
+              ...PlayerSchema.shape,
+              character: z.object({
+                ...CharacterSchema.shape,
+                avatars: z.array(AvatarSchema),
+                consumables: z.array(ConsumableSchema),
+                combos: z.array(
+                  z.object({
+                    ...ComboSchema.shape,
+                    steps: z.array(ComboStepSchema),
+                  }),
+                ),
+                skills: z.array(
+                  z.object({
+                    ...CharacterSkillSchema.shape,
+                    template: z.object({
+                      ...SkillSchema.shape,
+                      effects: z.array(SkillEffectSchema),
+                      statistic: StatisticSchema,
+                    }),
+                  }),
+                ),
+                weapon: z
+                  .object({
+                    ...PlayerWeaponSchema.shape,
+                    crystalList: z.array(
+                      z.object({
+                        ...CrystalSchema.shape,
+                        backs: z.array(ItemSchema),
+                        fronts: z.array(ItemSchema),
+                      }),
+                    ),
+                  })
+                  .nullable(),
+                subWeapon: z
+                  .object({
+                    ...PlayerWeaponSchema.shape,
+                    crystalList: z.array(
+                      z.object({
+                        ...CrystalSchema.shape,
+                        backs: z.array(ItemSchema),
+                        fronts: z.array(ItemSchema),
+                      }),
+                    ),
+                  })
+                  .nullable(),
+                armor: z
+                  .object({
+                    ...PlayerArmorSchema.shape,
+                    crystalList: z.array(
+                      z.object({
+                        ...CrystalSchema.shape,
+                        backs: z.array(ItemSchema),
+                        fronts: z.array(ItemSchema),
+                      }),
+                    ),
+                  })
+                  .nullable(),
+                option: z
+                  .object({
+                    crystalList: z.array(
+                      z.object({
+                        ...CrystalSchema.shape,
+                        backs: z.array(ItemSchema),
+                        fronts: z.array(ItemSchema),
+                      }),
+                    ),
+                  })
+                  .nullable(),
+                special: PlayerSpecialSchema.nullable(),
+                statistic: StatisticSchema,
+              }),
+            })
+            .nullable(),
+          mob: MobSchema.nullable(),
+          mercenary: MercenarySchema.nullable(),
+          partner: MercenarySchema.nullable(),
+        }),
+      ),
+    }),
+  ),
+});
+
+export type SimulatorWithRelations = z.output<typeof SimulatorWithRelationsSchema>;
 
 export const EngineCommandSchema = z.discriminatedUnion("type", [
   z.object({
@@ -45,7 +250,7 @@ export const EngineCommandSchema = z.discriminatedUnion("type", [
 export type EngineCommand = z.infer<typeof EngineCommandSchema>;
 
 // 指令事件类型
-// export type EngineCommand = 
+// export type EngineCommand =
 //   | { type: "INIT"; data: SimulatorWithRelations; origin?: "source" | "mirror" }
 //   | { type: "START"; origin?: "source" | "mirror" }
 //   | { type: "PAUSE"; origin?: "source" | "mirror" }

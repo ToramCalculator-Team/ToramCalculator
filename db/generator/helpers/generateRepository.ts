@@ -16,6 +16,7 @@ import {
   FileName,
   NamingRules 
 } from "../utils/namingRules";
+import { DMMFHelpers } from "../utils/dmmfHelpers";
 import path from "path";
 import fs from "fs";
 
@@ -26,10 +27,12 @@ export class RepositoryGenerator {
   private dmmf: DMMF.Document;
   private models: any[] = [];
   private allModels: readonly DMMF.Model[] = []; // 包含中间表的完整模型列表
+  private helpers: DMMFHelpers;
 
   constructor(dmmf: DMMF.Document, allModels: DMMF.Model[]) {
     this.dmmf = dmmf;
     this.allModels = allModels;
+    this.helpers = new DMMFHelpers(allModels);
   }
 
   /**
@@ -201,6 +204,9 @@ ${crudMethods}
     // 添加 subRelationFactory
     imports.push(`import { defineRelations, makeRelations } from "${relativePaths.subRelationFactory}";`);
 
+    // 添加 store（用于 canEdit 方法）
+    imports.push(`import { store } from "~/store";`);
+
     return imports.join("\n");
   }
 
@@ -328,6 +334,132 @@ export const ${pascalName}WithRelationsSchema = z.object({
 
 
   /**
+   * 生成 canEdit 方法
+   * 
+   * 生成逻辑说明：
+   * 1. 递归查找父表路径，直到找到包含 createdByAccountId 或 belongToAccountId 的表
+   * 2. 对于没有 accountId 字段的表，返回 false（不可编辑）
+   * 3. 对于有 accountId 字段的表，查询对应的 accountId 并与当前用户的 account.id 对比
+   * 4. 判断规则：
+   *    - Admin 类型的账号可以编辑任何内容
+   *    - 普通用户只能编辑自己创建的内容（accountId 匹配）
+   *    - 如果 accountId 为 null，返回 false（不可编辑）
+   */
+  private generateCanEdit(modelName: string): string {
+    const pascalName = TypeName(modelName, modelName);
+    const tableName = NamingRules.toLowerCase(modelName);
+    const primaryKeyField = this.getPrimaryKeyField(modelName);
+
+    // 查找父表路径和 accountId 字段名
+    const result = this.findParentPathToAccountId(modelName);
+
+    // 如果没有父表路径（可能不存在 accountId 字段），生成一个总是返回 false 的方法
+    if (result === null) {
+      return `// 判断当前用户是否可以编辑此数据
+// 注意：此表没有 accountId 字段，返回 false（不可编辑）
+export async function canEdit${pascalName}(id: string, trx?: Transaction<DB>): Promise<boolean> {
+  return false;
+}`;
+    }
+
+    const { path, accountIdField } = result;
+
+    // 如果 path 是空数组，表示当前表就有 accountId 字段
+    if (path.length === 0) {
+      // 生成简单的注释说明查找路径
+      let pathComment = `// 查找路径：直接读取 ${tableName}.${accountIdField}`;
+      if (accountIdField === 'createdByAccountId') {
+        pathComment += '（数据创建者）';
+      } else {
+        pathComment += '（所属账号）';
+      }
+
+      return `${pathComment}
+export async function canEdit${pascalName}(id: string, trx?: Transaction<DB>): Promise<boolean> {
+  const db = trx || await getDB();
+  const data = await db.selectFrom("${tableName}")
+    .where("${primaryKeyField}", "=", id)
+    .select("${accountIdField}")
+    .executeTakeFirst();
+  
+  if (!data) return false;
+  
+  const currentAccountId = store.session.account?.id;
+  const currentAccountType = store.session.account?.type;
+  
+  if (!currentAccountId) return false;
+  
+  // Admin 可以编辑任何内容
+  if (currentAccountType === "Admin") return true;
+  
+  // 创建者/所有者可以编辑
+  return data.${accountIdField} === currentAccountId;
+}`;
+    }
+
+    // 需要 JOIN 父表的情况
+    // 构建 JOIN 链
+    let joinChain = '';
+    let currentTable = tableName;
+    let pathDescription = `${tableName}`;
+
+    for (let i = 0; i < path.length; i++) {
+      const { foreignKey, parentTable } = path[i];
+      const prevTable = currentTable;
+      
+      // 获取父表的主键
+      const parentPK = this.getPrimaryKeyField(parentTable);
+      
+      if (i === 0) {
+        // 第一个 JOIN
+        joinChain = `    .innerJoin("${parentTable}", "${prevTable}.${foreignKey}", "${parentTable}.${parentPK}")`;
+        pathDescription += ` → ${parentTable}`;
+      } else {
+        // 后续的 JOIN：使用当前路径的外键字段
+        joinChain += `\n    .innerJoin("${parentTable}", "${prevTable}.${foreignKey}", "${parentTable}.${parentPK}")`;
+        pathDescription += ` → ${parentTable}`;
+      }
+      
+      currentTable = parentTable;
+    }
+
+    // 最后的表名（包含 accountId 字段）
+    const finalTable = currentTable;
+    pathDescription += `.${accountIdField}`;
+    
+    // 生成路径注释
+    let pathComment = `// 查找路径：${pathDescription}`;
+    if (accountIdField === 'createdByAccountId') {
+      pathComment += '（数据创建者）';
+    } else {
+      pathComment += '（所属账号）';
+    }
+
+    return `${pathComment}
+export async function canEdit${pascalName}(id: string, trx?: Transaction<DB>): Promise<boolean> {
+  const db = trx || await getDB();
+  const data = await db.selectFrom("${tableName}")
+${joinChain}
+    .where("${tableName}.${primaryKeyField}", "=", id)
+    .select("${finalTable}.${accountIdField}")
+    .executeTakeFirst();
+  
+  if (!data) return false;
+  
+  const currentAccountId = store.session.account?.id;
+  const currentAccountType = store.session.account?.type;
+  
+  if (!currentAccountId) return false;
+  
+  // Admin 可以编辑任何内容
+  if (currentAccountType === "Admin") return true;
+  
+  // 创建者/所有者可以编辑
+  return data.${accountIdField} === currentAccountId;
+}`;
+  }
+
+  /**
    * 生成 CRUD 方法
    */
   private generateCrudMethods(modelName: string): string {
@@ -368,7 +500,52 @@ export const ${pascalName}WithRelationsSchema = z.object({
       methods.push(this.generateDelete(modelName));
     }
 
+    // canEdit - 只有有主键的模型才生成
+    if (hasPK) {
+      methods.push(this.generateCanEdit(modelName));
+    }
+
+    // 生成按外键查询的复数查询方法（例如：selectAllDrop_itemsByBelongToMobId）
+    methods.push(this.generateSelectAllByForeignKeys(modelName));
+
     return `// 3. CRUD 方法\n${methods.join("\n\n")}`;
+  }
+
+  /**
+   * 生成按外键过滤的复数查询方法
+   * 对当前模型中所有拥有 relationFromFields 的关系（即本表持有外键）生成：
+   * export async function selectAll{PluralModel}By{ForeignKeyPascal}(id: string, trx?: Transaction<DB>)
+   */
+  private generateSelectAllByForeignKeys(modelName: string): string {
+    const model = this.allModels.find((m: DMMF.Model) => m.name === modelName);
+    if (!model) return '';
+
+    const tableName = NamingRules.toLowerCase(modelName);
+    const pascalName = TypeName(modelName, modelName);
+    const pluralName = this.pluralize(pascalName);
+
+    // 找到当前模型上“本表持有外键”的关系字段
+    const ownForeignKeyRelations = model.fields.filter((field: DMMF.Field) =>
+      field.kind === 'object' && Array.isArray(field.relationFromFields) && field.relationFromFields.length > 0
+    );
+
+    if (ownForeignKeyRelations.length === 0) return '';
+
+    const methods: string[] = ownForeignKeyRelations.map((rel: DMMF.Field) => {
+      const foreignKey = rel.relationFromFields![0];
+      const methodName = `selectAll${pluralName}By${NamingRules.toPascalCase(foreignKey)}`;
+      return `// 按外键查询：${tableName}.${foreignKey} → ${rel.type}.${this.getPrimaryKeyFieldFromModel(this.allModels.find(m => m.name === rel.type)!) }
+export async function ${methodName}(${foreignKey}: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await db
+    .selectFrom("${tableName}")
+    .where("${tableName}.${foreignKey}", "=", ${foreignKey})
+    .selectAll("${tableName}")
+    .execute();
+}`;
+    });
+
+    return methods.join("\n\n");
   }
 
   /**
@@ -424,7 +601,7 @@ export const ${pascalName}WithRelationsSchema = z.object({
       if (hasPK) {
         // 有主键的模型：标准 CRUD 方法
         crudImports.push(
-          `import { insert${pascalName}, update${pascalName}, delete${pascalName}, select${pascalName}ById, selectAll${this.pluralize(pascalName)} } from "./${fileName}";`
+          `import { insert${pascalName}, update${pascalName}, delete${pascalName}, select${pascalName}ById, selectAll${this.pluralize(pascalName)}, canEdit${pascalName} } from "./${fileName}";`
         );
 
         crudExports[tableName] = {
@@ -432,7 +609,8 @@ export const ${pascalName}WithRelationsSchema = z.object({
           update: `update${pascalName}`,
           delete: `delete${pascalName}`,
           select: `select${pascalName}ById`,
-          selectAll: `selectAll${this.pluralize(pascalName)}`
+          selectAll: `selectAll${this.pluralize(pascalName)}`,
+          canEdit: `canEdit${pascalName}`
         };
       } else {
         // 无主键的模型：只有 insert 和 findAll，以及特殊的查询/删除方法
@@ -493,6 +671,10 @@ ${this.generateCrudExports(crudExports)}
             buildCode = this.generateOneToOneCode(field, model, targetTable, targetPrimaryKey);
             schemaCode = this.generateSchemaCode(field, model, targetTable);
             break;
+          case 'MANY_TO_ONE':
+            buildCode = this.generateOneToOneCode(field, model, targetTable, targetPrimaryKey);
+            schemaCode = this.generateSchemaCode(field, model, targetTable);
+            break;
           case 'ONE_TO_MANY':
             buildCode = this.generateOneToManyCode(field, model, targetTable, targetPrimaryKey);
             schemaCode = this.generateSchemaCode(field, model, targetTable);
@@ -521,18 +703,20 @@ ${this.generateCrudExports(crudExports)}
    * 判断关系类型
    */
   private determineRelationType(field: DMMF.Field, model: DMMF.Model): string {
-    if (field.isList) {
-      // 检查是否有反向外键字段
-      const hasReverseForeignKey = this.hasReverseForeignKey(field.type, model.name);
-      
-      if (hasReverseForeignKey) {
-        return 'ONE_TO_MANY';
-      } else {
-      return 'MANY_TO_MANY';
-      }
-    }
+    const relationType = this.helpers.getRelationType(field, model);
     
-      return 'ONE_TO_ONE';
+    switch (relationType) {
+      case 'OneToOne':
+        return 'ONE_TO_ONE';
+      case 'OneToMany':
+        return 'ONE_TO_MANY';
+      case 'ManyToOne':
+        return 'MANY_TO_ONE';
+      case 'ManyToMany':
+        return 'MANY_TO_MANY';
+      default:
+        return 'ONE_TO_ONE';
+    }
   }
 
   /**
@@ -557,11 +741,11 @@ ${this.generateCrudExports(crudExports)}
    * 获取主键字段
    */
   private getPrimaryKeyFieldFromModel(model: DMMF.Model): string {
-    const idField = model.fields.find((field: DMMF.Field) => field.isId);
-    if (!idField) {
+    const primaryKey = this.helpers.getPrimaryKey(model.name);
+    if (!primaryKey) {
       throw new Error(`Model ${model.name} has no primary key field`);
     }
-    return idField.name;
+    return primaryKey;
   }
 
   /**
@@ -707,8 +891,11 @@ ${this.generateCrudExports(crudExports)}
    * 生成多对多关系代码
    */
   private generateManyToManyCode(field: DMMF.Field, model: DMMF.Model, targetTable: string, targetPrimaryKey: string): string {
-    const relationName = field.relationName;
-    const intermediateTable = `_${relationName}`;
+    // 使用 helpers 获取中间表名
+    const intermediateTable = this.helpers.getManyToManyTableName(field);
+    if (!intermediateTable) {
+      throw new Error(`Cannot determine intermediate table for many-to-many relation: ${field.relationName}`);
+    }
     
     // 检查是否是自关系
     const isSelfRelation = targetTable.toLowerCase() === model.name.toLowerCase();
@@ -765,6 +952,64 @@ ${this.generateCrudExports(crudExports)}
    */
   private hasPrimaryKey(model: any): boolean {
     return model.fields.some((field: any) => field.isId);
+  }
+
+  /**
+   * 递归查找父表路径，直到找到包含 createdByAccountId 或 belongToAccountId 的表
+   * @param modelName 模型名称
+   * @param visited 已访问的表（防止循环）
+   * @returns 父表路径和字段名，例如: { path: [{ foreignKey: 'itemId', parentTable: 'item' }], accountIdField: 'createdByAccountId' }
+   */
+  private findParentPathToAccountId(modelName: string, visited: Set<string> = new Set()): {path: Array<{foreignKey: string, parentTable: string}>, accountIdField: string} | null {
+    // 防止循环引用
+    if (visited.has(modelName)) {
+      return null;
+    }
+    visited.add(modelName);
+
+    const model = this.models.find(m => m.name === modelName);
+    if (!model) {
+      return null;
+    }
+
+    // 检查当前表是否有 createdByAccountId 或 belongToAccountId 字段
+    const hasCreatedByAccountId = model.fields.some((field: any) => field.name === 'createdByAccountId');
+    const hasBelongToAccountId = model.fields.some((field: any) => field.name === 'belongToAccountId');
+    
+    if (hasCreatedByAccountId) {
+      // 当前表就有 createdByAccountId，返回空路径和字段名
+      return { path: [], accountIdField: 'createdByAccountId' };
+    }
+    
+    if (hasBelongToAccountId) {
+      // 当前表就有 belongToAccountId，返回空路径和字段名
+      return { path: [], accountIdField: 'belongToAccountId' };
+    }
+
+    // 查找父关系字段（belongTo/createdBy/updatedBy 开头的关系）
+    const parentRelations = model.fields.filter((field: any) => 
+      field.kind === 'object' && 
+      this.isParentRelation(field.name)
+    );
+
+    for (const field of parentRelations) {
+      const foreignKey = field.relationFromFields?.[0];
+      if (!foreignKey) {
+        continue;
+      }
+
+      // 递归查找父表
+      const result = this.findParentPathToAccountId(field.type, new Set(visited));
+      if (result !== null) {
+        // 找到了路径，返回当前层级加上父级路径
+        return {
+          path: [{ foreignKey, parentTable: field.type }, ...result.path],
+          accountIdField: result.accountIdField
+        };
+      }
+    }
+
+    return null; // 没有找到路径
   }
 
   /**
@@ -1180,10 +1425,11 @@ ${this.generateCrudExports(crudExports)}
         methodLines.push(`    delete: ${crudMethods.delete || 'null'}`);
         methodLines.push(`    select: ${crudMethods.select || 'null'}`);
         methodLines.push(`    selectAll: ${crudMethods.selectAll || 'null'}`);
+        methodLines.push(`    canEdit: ${crudMethods.canEdit || 'null'}`);
         
         // 添加特殊方法
         Object.keys(crudMethods).forEach(key => {
-          if (!['insert', 'update', 'delete', 'select', 'selectAll'].includes(key)) {
+          if (!['insert', 'update', 'delete', 'select', 'selectAll', 'canEdit'].includes(key)) {
             methodLines.push(`    ${key}: ${crudMethods[key]}`);
           }
         });
@@ -1198,7 +1444,8 @@ ${methodLines.join(',\n')}
     update: null,
     delete: null,
     select: null,
-    selectAll: null
+    selectAll: null,
+    canEdit: null
   }`);
       }
     }

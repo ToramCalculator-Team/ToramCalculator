@@ -8,14 +8,10 @@ import { store } from "~/store";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 
 interface CardProps {
-  // 基础属性
   title: string;
   index: number;
   total: number;
-
-  // 子内容
   children: JSX.Element;
-
   display: boolean;
 }
 

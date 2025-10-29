@@ -431,11 +431,11 @@ export const DATA_CONFIG: DataConfig = {
       hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
       before: (data, setData, dataSchema, dictionary) => {
         const [difficulty, setDifficulty] = createSignal<MobDifficultyFlag>(MOB_DIFFICULTY_FLAG[1]);
-        
+
         createEffect(() => {
           setData(generateBossDataByFlag(data, difficulty()));
         });
-      
+
         return (
           <Show when={data.type === "Boss"}>
             <Select
@@ -494,6 +494,7 @@ export const DATA_CONFIG: DataConfig = {
           </Show>
         );
       },
+      fieldGenerator: {},
     },
   },
   player_weapon: {

@@ -64,11 +64,11 @@ export const generateBossDataByFlag = <T extends mob & unknown>(
   const resultMob = {
     ...baseMob,
     baseLv: baseMob.baseLv + rate.lv,
-    experience: Math.floor(Math.min(1,baseMob.experience * rate.experience)),
-    maxhp: Math.floor(Math.min(1,baseMob.maxhp * rate.maxhp)),
-    physicalDefense: Math.floor(Math.min(1,baseMob.physicalDefense * rate.physicalDefense)),
-    magicalDefense: Math.floor(Math.min(1,baseMob.magicalDefense * rate.magicalDefense)),
-    avoidance: Math.floor(Math.min(1,baseMob.avoidance * rate.avoidance)),
+    experience: Math.floor(Math.max(1,baseMob.experience * rate.experience)),
+    maxhp: Math.floor(Math.max(1,baseMob.maxhp * rate.maxhp)),
+    physicalDefense: Math.floor(Math.max(1,baseMob.physicalDefense * rate.physicalDefense)),
+    magicalDefense: Math.floor(Math.max(1,baseMob.magicalDefense * rate.magicalDefense)),
+    avoidance: Math.floor(Math.max(1,baseMob.avoidance * rate.avoidance)),
   };
   return resultMob;
 };

@@ -72,10 +72,10 @@ export const CardGroup = () => {
                     {(cardData) => {
                       const config = DATA_CONFIG[cardGroupItem.type];
                       return (
-                        <DBdataRenderer<keyof DB, DB[keyof DB]>
+                        <DBdataRenderer
+                          tableName={cardGroupItem.type}
                           data={cardData()}
                           dataSchema={DBSchema[cardGroupItem.type]}
-                          dictionary={dictionary().db[cardGroupItem.type]}
                           // @ts-expect-error 动态类型导致的类型推断问题：hiddenFields
                           hiddenFields={config?.card.hiddenFields}
                           // @ts-expect-error 动态类型导致的类型推断问题：fieldGroupMap 

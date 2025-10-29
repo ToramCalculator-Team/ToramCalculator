@@ -15,6 +15,7 @@ import { Dialog } from "../containers/dialog";
 import { syncControl } from "~/initialWorker";
 import { bindLocalAccountToUser, ensureLocalAccount } from "~/lib/localAccount";
 import { Radio } from "../controls/radio";
+import type { InputStateType } from "../controls/input";
 
 function fieldInfo(field: AnyFieldApi): string {
   const errors =
@@ -58,7 +59,11 @@ export const LoginDialog = () => {
 
       if (!response.ok) {
         console.error("登录失败", response.status, responseText);
-        alert(responseText);
+        setPasswordInputState("error");
+        const passwordInput = passwordInputRef();
+        if(passwordInput) {
+          passwordInput.focus();
+        }
       }
 
       // 从服务端获取用户信息
@@ -80,18 +85,22 @@ export const LoginDialog = () => {
 
         // 启动数据同步
         syncControl.start();
+        setStore("pages", "loginDialogState", false);
         console.log("登录成功，启动数据同步");
       }
-
-      setStore("pages", "loginDialogState", false);
     } catch (error) {
       console.error("请求错误:", error);
     }
   };
 
   const logOut = async () => {
+    // 删除 jwt cookie
     await fetch("/api/auth/logout");
-    setStore("session", {});
+    // 清空 session
+    setStore("session", "account", undefined);
+    setStore("session", "user", undefined);
+    // 关闭登录对话框
+    setStore("pages", "loginDialogState", false);
 
     // 停止数据同步
     syncControl.stop();
@@ -154,6 +163,9 @@ export const LoginDialog = () => {
     }
   };
 
+  const [passwordInputRef,setPasswordInputRef] = createSignal<HTMLInputElement | undefined>(undefined);
+  const [passwordInputState, setPasswordInputState] = createSignal<InputStateType>("default");
+
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
 
@@ -211,6 +223,7 @@ export const LoginDialog = () => {
       <Show
         when={!store.session.user?.id && store.pages.loginDialogState}
         fallback={
+          // 登出弹窗
           <div class="flex w-full flex-col items-center gap-4 lg:py-0">
             <div class="flex w-full items-center gap-1">
               <Button class="LoginOut flex-1" onClick={logOut}>
@@ -228,74 +241,71 @@ export const LoginDialog = () => {
           }}
           class="flex w-full flex-col"
         >
-          <div>
-            {/* A type-safe field component*/}
-            <form.Field
-              name="email"
-              asyncDebounceMs={500}
-              validators={{
-                onChange: ({ value }) => {
-                  const result = z.string().email().safeParse(value); // ✅ 使用 `safeParse` 避免抛出错误
-                  if (!result.success) {
-                    return "请输入正确的邮箱格式"; // ⬅️ 返回字符串，避免 `[object Object]`
-                  }
-                },
-                onChangeAsync: async ({ value }) => {
-                  const result = await emailExists(value);
-                  if (result) {
-                    setFormModule("logIn");
-                  } else {
-                    setFormModule("register");
-                  }
-                },
-              }}
-              children={(field) => {
-                return (
-                  <Input
-                    title="邮箱"
-                    // description="一定要填"
-                    autocomplete="email"
-                    type="text"
-                    id={field().name}
-                    name={field().name}
-                    value={field().state.value}
-                    onBlur={field().handleBlur}
-                    onInput={(e) => field().handleChange(e.target.value)}
-                    state={fieldInfo(field())}
-                    class="w-full"
-                  />
-                );
-              }}
-            />
-          </div>
-          <div>
-            <form.Field
-              name="password"
-              validators={{
-                onChange: ({ value }) => {
-                  const result = z.string().min(6).safeParse(value); // ✅ 使用 `safeParse` 避免抛出错误
-                  if (!result.success) {
-                    return "密码至少6位"; // ⬅️ 返回字符串，避免 `[object Object]`
-                  }
-                },
-              }}
-              children={(field) => (
+          <form.Field
+            name="email"
+            asyncDebounceMs={500}
+            validators={{
+              onChange: ({ value }) => {
+                const result = z.string().email().safeParse(value); // ✅ 使用 `safeParse` 避免抛出错误
+                if (!result.success) {
+                  return "请输入正确的邮箱格式"; // ⬅️ 返回字符串，避免 `[object Object]`
+                }
+              },
+              onChangeAsync: async ({ value }) => {
+                const result = await emailExists(value);
+                if (result) {
+                  setFormModule("logIn");
+                } else {
+                  setFormModule("register");
+                }
+              },
+            }}
+            children={(field) => {
+              return (
                 <Input
-                  title="密码"
-                  // description="也是个摆设"
-                  autocomplete="current-password"
-                  type="password"
+                  title="邮箱"
+                  // description="一定要填"
+                  autocomplete="email"
+                  type="text"
                   id={field().name}
                   name={field().name}
                   value={field().state.value}
                   onBlur={field().handleBlur}
                   onInput={(e) => field().handleChange(e.target.value)}
-                  state={fieldInfo(field())}
+                  validationMessage={fieldInfo(field())}
                   class="w-full"
                 />
-              )}
-            />
-          </div>
+              );
+            }}
+          />
+          <form.Field
+            name="password"
+            validators={{
+              onChange: ({ value }) => {
+                const result = z.string().min(6).safeParse(value); // ✅ 使用 `safeParse` 避免抛出错误
+                if (!result.success) {
+                  return "密码至少6位"; // ⬅️ 返回字符串，避免 `[object Object]`
+                }
+              },
+            }}
+            children={(field) => (
+              <Input
+                ref={setPasswordInputRef}
+                title="密码"
+                // description="也是个摆设"
+                state={passwordInputState()}
+                autocomplete="current-password"
+                type="password"
+                id={field().name}
+                name={field().name}
+                value={field().state.value}
+                onBlur={field().handleBlur}
+                onInput={(e) => field().handleChange(e.target.value)}
+                validationMessage={fieldInfo(field())}
+                class="w-full"
+              />
+            )}
+          />
           <Presence exitBeforeEnter>
             <Show when={formModule() === "register"}>
               <Motion.div
@@ -324,7 +334,7 @@ export const LoginDialog = () => {
                         value={field().state.value}
                         onBlur={field().handleBlur}
                         onInput={(e) => field().handleChange(e.target.value)}
-                        state={fieldInfo(field())}
+                        validationMessage={fieldInfo(field())}
                         class="w-full"
                       />
                     )}
@@ -344,7 +354,7 @@ export const LoginDialog = () => {
                           field().setValue(!field().state.value);
                         }}
                         checked={field().state.value}
-                        state={fieldInfo(field())}
+                        validationMessage={fieldInfo(field())}
                         class="w-full"
                       />
                     )}
