@@ -54,8 +54,8 @@ ToramCalculator 是一个为 Toram Online 游戏开发的辅助工具。通过�
 ├── backend/                   # 后端服务配置 (Docker)
 ├── db/                        # 数据库相关
 │   ├── backups/              # 数据库备份
-│   ├── generated/            # 自动生成的类型定义
-│   ├── generators/           # 代码生成器
+│   ├── generated/            # 自动生成产物（zod、repositories、dmmf-utils、SQL）
+│   ├── generator/            # 自定义 Prisma 生成器源码
 │   ├── repositories/         # 数据访问层
 │   ├── schema/               # 数据库架构定义
 │   └── scripts/              # 数据库脚本
@@ -173,8 +173,8 @@ pnpm dev
 ### 类型系统
 
 - 所有枚举类型定义在 `db/enums.ts`
-- 使用 `generator.js` 将枚举注入到数据库架构
-- 生成的类型定义在 `db/dataEnums.ts`
+- 使用 `db/generator/injectEnums.ts` 注入枚举到 Prisma 架构（`pnpm dev:init` 会自动执行）
+- 运行时类型与表结构：从 `@db/generated/zod/index` 导出（`export type DB = ...`）
 
 ### 模拟器架构
 
@@ -187,9 +187,9 @@ pnpm dev
 
 ### 开发命令
 
+- `pnpm dev:init` - 生成架构与代码（zod、dmmf-utils、repositories、SQL），不启动容器
+- `pnpm dev:setup` - 重置并启动后端容器并恢复数据（等价于 down → up → restore）  
 - `pnpm dev` - 启动开发服务器
-- `pnpm dev:setup` - 重置并启动开发环境  
-- `pnpm dev:init` - 初始化开发环境（生成数据库架构和类型）
 - `pnpm backend:up` - 启动后端服务（PostgreSQL + Electric）
 - `pnpm backend:stop` - 停止后端服务
 - `pnpm backend:down` - 停止并删除后端容器和数据卷

@@ -110,6 +110,7 @@ export class DMMFUtilsGenerator {
           fromField: field.name,
           toField: targetField?.name,
           joinTable,
+          fromHasForeignKey: !!(field.relationFromFields && field.relationFromFields.length > 0),
         });
       }
     }
@@ -169,6 +170,7 @@ export interface RelationMetadata {
   fromField?: string;
   toField?: string;
   joinTable?: string;
+  fromHasForeignKey?: boolean;
 }
 
 /**

@@ -260,11 +260,19 @@ export const getTopologicalOrder = (): string[] => {
   const result: string[] = [];
   
   // 构建依赖关系映射
+  // 只有拥有外键的表才依赖被引用的表
   const dependencyMap = new Map<string, Set<string>>();
   
   for (const relation of RELATION_METADATA) {
-    if (relation.type === "ManyToOne" || relation.type === "OneToOne") {
-      // from 表依赖 to 表
+    // ManyToMany 关系不产生直接依赖（通过中间表）
+    if (relation.type === "ManyToMany") {
+      continue;
+    }
+    
+    // 只有 from 表有外键时，from 表才依赖 to 表
+    // 对于 OneToMany，外键在 to 表中（从 to 的角度看是 ManyToOne），所以这里不处理
+    if (relation.fromHasForeignKey && (relation.type === "ManyToOne" || relation.type === "OneToOne")) {
+      // from 表有外键，依赖 to 表
       if (!dependencyMap.has(relation.from)) {
         dependencyMap.set(relation.from, new Set());
       }
@@ -274,7 +282,14 @@ export const getTopologicalOrder = (): string[] => {
   
   const visit = (tableName: string): void => {
     if (visiting.has(tableName)) {
-      throw new Error(`循环依赖检测到: ${tableName}`);
+      // 提供更详细的错误信息
+      const visitingList = Array.from(visiting);
+      const dependencies = dependencyMap.get(tableName);
+      throw new Error(
+        `循环依赖检测到: ${tableName}\n` +
+        `当前访问链: ${[...visitingList, tableName].join(' -> ')}\n` +
+        `表 ${tableName} 的依赖: ${dependencies ? Array.from(dependencies).join(', ') : '无'}`
+      );
     }
     if (visited.has(tableName)) {
       return;

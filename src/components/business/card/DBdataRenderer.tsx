@@ -1,4 +1,11 @@
-import { MODEL_METADATA, type FieldMetadata as FieldInfo, getPrimaryKeys as getPrimaryKeyFields } from "@db/generated/dmmf-utils";
+import {
+  MODEL_METADATA,
+  RELATION_METADATA,
+  getPrimaryKeys as getPrimaryKeyFields,
+  getChildRelationNames,
+  getRelationType,
+  getManyToManyTableName,
+} from "@db/generated/dmmf-utils";
 import { repositoryMethods } from "@db/generated/repositories";
 import { DB } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
@@ -95,78 +102,125 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
   const tableInfo = MODEL_METADATA.find((model) => model.tableName === props.tableName);
   if (!tableInfo) throw new Error(`Table ${props.tableName} not found in MODEL_METADATA`);
 
-  const hasRelation = tableInfo.fields.filter((field) => field.relationName)?.length > 0;
+  // 获取当前表的所有子关系表名（OneToMany 和 ManyToMany）
+  const childRelationTableNames = getChildRelationNames(props.tableName);
+  const currentPrimaryKey = getPrimaryKeyFields(props.tableName)[0];
+  const currentPrimaryKeyValue = props.data[currentPrimaryKey];
 
   const [relations, { refetch: refetchRelations }] = createResource(async () => {
-    const relations: JSX.Element[] = [];
-    if (hasRelation) {
-      const relationFields = tableInfo.fields.filter((field) => field.relationName);
-      if (relationFields.length > 0) {
-        for (const field of relationFields) {
-          console.log("==================", field.name, "==================");
-          // 关联表信息
-          const targetTableInfo = MODEL_METADATA.find((model) => model.name === field.type);
-          let relationType: "MANY_TO_MANY" | "ONE_TO_MANY" | "MANY_TO_ONE" = "ONE_TO_MANY";
-          // 在自身和目标表的relationFromFields字段上查找是否存在关联字段，没有的话则说明是多对多关系
-          const selfRelationFromFields = field.relationFromFields
-          const targetRelationFromFields = targetTableInfo?.fields.filter((targetField) => targetField.relationFromFields?.includes(field.name));
-          console.log("selfRelationFromFields", selfRelationFromFields, "targetRelationFromFields", targetRelationFromFields);
-          if (selfRelationFromFields?.length === 0 && targetRelationFromFields?.length === 0) { 
-            relationType = "MANY_TO_MANY";
-          }
-          console.log(field.relationName,field.relationFromFields)
-          console.log("relationType", relationType);
-          const targetTableName = field.type as keyof DB;
-          console.log("targetTableName", targetTableName);
-          const targetPrimaryKey = getPrimaryKeyFields(targetTableName)[0];
-          console.log("targetPrimaryKey", targetPrimaryKey);
-          const currentPrimaryKey = getPrimaryKeyFields(props.tableName)[0];
-          console.log("currentPrimaryKey", currentPrimaryKey);
-          const relationDataFetcher = async () => {
-            const targetFieldName = `${targetTableName}.${String(currentPrimaryKey)}`;
-            const targerFieldValue = props.data[currentPrimaryKey];
-            console.log("where clause", targetFieldName, "=", targerFieldValue);
-            const db = await getDB();
-            let relationData: DB[typeof targetTableName][] = []
-            switch (relationType) { 
-              case "MANY_TO_MANY":
-                const intermediateTableName = `_${field.relationName}`;
-                console.log("中间表名：", intermediateTableName);
-                relationData = await db
-                  .selectFrom(intermediateTableName as any)
-                  // @ts-ignore-next-line
-                  .innerJoin(targetTableName, `${intermediateTableName}.B`, `${targetTableName}.${String(targetPrimaryKey)}`)
-                  // @ts-ignore-next-line
-                  // @ts-ignore-next-line
-                  .where(targetFieldName, "=", targerFieldValue)
-                  .selectAll()
-                  .execute();
-                break;
-              case "ONE_TO_MANY":
-                break;
-              case "MANY_TO_ONE":
-                break;
-            }
-            return relationData;
-          };
-          const res = await relationDataFetcher();
-          relations.push(
-            <For each={res}>
-              {(val) => {
-                let detectedField: keyof DB[typeof targetTableName];
-                if ("name" in val && typeof val.name === "string") {
-                  detectedField = "name" as keyof DB[typeof targetTableName];
-                } else {
-                  detectedField = "id" as keyof DB[typeof targetTableName];
-                }
-                return <Button>{String(val[detectedField])}</Button>;
-              }}
-            </For>,
+    type RelationItem = { data: any; displayName: string };
+    type RelationGroup = { tableName: keyof DB; items: RelationItem[] };
+    const groupMap = new Map<keyof DB, RelationItem[]>();
+
+    if (childRelationTableNames.length === 0) return [] as RelationGroup[];
+
+    const db = await getDB();
+
+    // 遍历所有子关系表
+    for (const childTableName of childRelationTableNames) {
+      // 查找关系元数据
+      const relationMetadata = RELATION_METADATA.find(
+        (r) =>
+          ((r.from === props.tableName && r.to === childTableName) ||
+            (r.to === props.tableName && r.from === childTableName)) &&
+          (r.type === "OneToMany" || r.type === "ManyToMany"),
+      );
+
+      if (!relationMetadata) continue;
+
+      const relationType = relationMetadata.type;
+      const targetTableName = relationMetadata.to === props.tableName ? relationMetadata.from : relationMetadata.to;
+      const targetPrimaryKey = getPrimaryKeyFields(targetTableName as keyof DB)[0];
+
+      try {
+        let relationData: any[] = [];
+
+        if (relationType === "ManyToMany") {
+          // 多对多关系：通过中间表查询
+          const intermediateTableName =
+            relationMetadata.joinTable ||
+            getManyToManyTableName(props.tableName, targetTableName, relationMetadata.name);
+
+          if (!intermediateTableName) continue;
+
+          // 获取中间表的元数据以确定字段名
+          const intermediateTableInfo = MODEL_METADATA.find((m) => m.tableName === intermediateTableName);
+          if (!intermediateTableInfo) continue;
+
+          // 查找指向当前表和目标表的外键字段
+          // 中间表有两个外键字段，分别指向两个相关表
+          const currentTableModelName = tableInfo.name;
+          const targetTableModelName = MODEL_METADATA.find((m) => m.tableName === targetTableName)?.name;
+
+          // 查找指向当前表的字段（relationToFields 包含当前表的主键）
+          const currentTableField = intermediateTableInfo.fields.find(
+            (f) => f.relationName && f.relationToFields && f.type === currentTableModelName,
           );
+          // 查找指向目标表的字段
+          const targetTableField = intermediateTableInfo.fields.find(
+            (f) => f.relationName && f.relationToFields && f.type === targetTableModelName,
+          );
+
+          // 如果找不到，则使用默认的 A/B 字段名（Prisma 隐式多对多表的约定）
+          const currentTableFieldName =
+            currentTableField?.relationFromFields?.[0] || (relationMetadata.from === props.tableName ? "A" : "B");
+          const targetTableFieldName =
+            targetTableField?.relationFromFields?.[0] || (relationMetadata.from === props.tableName ? "B" : "A");
+
+          relationData = await (db as any)
+            .selectFrom(intermediateTableName)
+            .innerJoin(
+              targetTableName,
+              `${intermediateTableName}.${targetTableFieldName}`,
+              `${targetTableName}.${targetPrimaryKey}`,
+            )
+            .where(`${intermediateTableName}.${currentTableFieldName}`, "=", currentPrimaryKeyValue)
+            .selectAll(targetTableName)
+            .execute();
+        } else if (relationType === "OneToMany") {
+          // 一对多关系：在目标表中查找外键指向当前表主键的记录
+          const foreignKeyField =
+            relationMetadata.from === props.tableName ? relationMetadata.toField : relationMetadata.fromField;
+
+          if (!foreignKeyField) continue;
+
+          // 查找目标表中有外键字段的元数据
+          const targetTableInfo = MODEL_METADATA.find((m) => m.tableName === targetTableName);
+          const foreignKeyMetadata = targetTableInfo?.fields.find((f) => f.name === foreignKeyField);
+
+          if (!foreignKeyMetadata || !foreignKeyMetadata.relationFromFields) continue;
+
+          // 外键字段名（通常第一个）
+          const fkFieldName = foreignKeyMetadata.relationFromFields[0];
+
+          relationData = await db
+            .selectFrom(targetTableName as any)
+            .where(fkFieldName as any, "=", currentPrimaryKeyValue)
+            .selectAll()
+            .execute();
         }
+
+        // 处理查询到的关联数据
+        for (const item of relationData) {
+          // 确定显示名称：有 name 字段则用 name，否则用主键值
+          const displayName =
+            "name" in item && typeof (item as any).name === "string"
+              ? (item as any).name
+              : String(item[targetPrimaryKey as keyof typeof item]);
+
+          const key = targetTableName as keyof DB;
+          if (!groupMap.has(key)) groupMap.set(key, []);
+          groupMap.get(key)!.push({ data: item, displayName });
+        }
+      } catch (error) {
+        console.error(`查询关联表 ${targetTableName} 失败:`, error);
       }
     }
-    return relations;
+
+    // 转换为分组数组，按表名排序
+    return Array.from(groupMap.entries())
+      .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+      .map(([tableName, items]) => ({ tableName, items }));
   });
 
   return (
@@ -204,17 +258,39 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
         </For>
       </Show>
       {/* 关联内容 */}
-
-      <Show when={hasRelation && relations.latest}>
-        <section class="FieldGroup flex w-full flex-col gap-2">
-          <h3 class="text-accent-color flex items-center gap-2 font-bold">
-            关联内容
-            <div class="Divider bg-dividing-color h-px w-full flex-1" />
-          </h3>
-          <div class="Content flex flex-col gap-3 p-1">
-            <For each={relations()}>{(val) => val}</For>
-          </div>
-        </section>
+      <Show when={childRelationTableNames.length > 0 && relations.latest}>
+        <Show when={relations()}>
+          {(relationGroups) => (
+            <For each={relationGroups()}>
+              {(group) => (
+                <section class="FieldGroup flex w-full flex-col gap-2">
+                  <h3 class="text-accent-color flex items-center gap-2 font-bold">
+                    {dictionary().db[group.tableName].selfName}
+                    <div class="Divider bg-dividing-color h-px w-full flex-1" />
+                  </h3>
+                  <div class="Content flex flex-col gap-3 p-1">
+                    <For each={group.items}>
+                      {(item) => (
+                        <Button
+                          onclick={() => {
+                            const itemPrimaryKey = getPrimaryKeyFields(group.tableName)[0];
+                            const itemId = String(item.data[itemPrimaryKey as keyof typeof item.data]);
+                            setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+                              type: group.tableName,
+                              id: itemId,
+                            });
+                          }}
+                        >
+                          {item.displayName}
+                        </Button>
+                      )}
+                    </For>
+                  </div>
+                </section>
+              )}
+            </For>
+          )}
+        </Show>
       </Show>
       {/* 后置内容 */}
       <Show when={props.after}>
