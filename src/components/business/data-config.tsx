@@ -81,7 +81,7 @@ export const DATA_CONFIG: DataConfig = {
       fieldGenerator: {},
     },
     card: {
-      hiddenFields: [],
+      hiddenFields: ["id","createdByAccountId","updatedByAccountId","statisticId"],
       fieldGenerator: {},
     },
   },
@@ -107,7 +107,7 @@ export const DATA_CONFIG: DataConfig = {
       fieldGenerator: {},
     },
     card: {
-      hiddenFields: [],
+      hiddenFields: ["id","createdByAccountId","updatedByAccountId","statisticId"],
       fieldGenerator: {},
     },
   },
@@ -197,6 +197,28 @@ export const DATA_CONFIG: DataConfig = {
       },
     },
   },
+  drop_item: {
+    fieldGroupMap: {
+      基本信息: ["itemId", "belongToMobId"],
+      掉落概率: ["probability"],
+      掉落部位: ["relatedPartType", "relatedPartInfo"],
+      部位破坏奖励: ["breakRewardType"],
+    },
+    table: {
+      columnsDef: [],
+      hiddenColumnDef: [],
+      defaultSort: { id: "id", desc: false },
+      tdGenerator: {},
+    },
+    form: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+    card: {
+      hiddenFields: ["id"],
+      fieldGenerator: {},
+    },
+  },
   mob: {
     fieldGroupMap: {
       常规属性: ["name", "baseLv", "experience", "partsExperience", "maxhp"],
@@ -217,7 +239,6 @@ export const DATA_CONFIG: DataConfig = {
       额外说明: ["details"],
       怪物行为: ["actions"],
       词条信息: ["dataSources"],
-      关联数据: ["createdByAccountId", "updatedByAccountId"],
     },
     table: {
       columnsDef: [

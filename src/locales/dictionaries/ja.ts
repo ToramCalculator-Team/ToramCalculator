@@ -310,6 +310,14 @@ const dictionary: dictionary = {
       operation: "操作",
       searching: "検索中..."
     },
+    relationPrefix: {
+      belongsTo: "所属",
+      usedBy: "使用される",
+      updatedBy: "更新データ",
+      createdBy: "作成データ",
+      contains: "含まれる",
+      related: "関連",
+    },
     nav: {
       home: "ホーム",
       character: "キャラクター",

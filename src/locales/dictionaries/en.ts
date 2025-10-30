@@ -311,6 +311,14 @@ const dictionary: dictionary = {
       operation: "Operation",
       searching: "Searching...",
     },
+    relationPrefix: {
+      belongsTo: "Belongs to",
+      usedBy: "Used by",
+      updatedBy: "Update data",
+      createdBy: "Create data",
+      contains: "Contains",
+      related: "Related",
+    },
     nav: {
       home: "Home",
       character: "Character",
@@ -892,6 +900,11 @@ const dictionary: dictionary = {
     armor: {
       selfName: "Armor",
       fields: {
+        name: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
         baseAbi: {
           key: "",
           tableFieldDescription: "",
@@ -1205,6 +1218,11 @@ const dictionary: dictionary = {
     consumable: {
       selfName: "Consumable",
       fields: {
+        name: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
         type: {
           key: "",
           tableFieldDescription: "",
@@ -1245,6 +1263,11 @@ const dictionary: dictionary = {
     crystal: {
       selfName: "Crystal",
       fields: {
+        name: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
         type: {
           key: "",
           tableFieldDescription: "",
@@ -1431,6 +1454,11 @@ const dictionary: dictionary = {
     material: {
       selfName: "Material",
       fields: {
+        name: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
         type: {
           key: "",
           tableFieldDescription: "",
@@ -1784,6 +1812,11 @@ const dictionary: dictionary = {
     option: {
       selfName: "Option Equipment",
       fields: {
+        name: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
         baseAbi: {
           key: "",
           tableFieldDescription: "",
@@ -2624,6 +2657,11 @@ const dictionary: dictionary = {
     special: {
       selfName: "Special Equipment",
       fields: {
+        name: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
         baseAbi: {
           key: "",
           tableFieldDescription: "",
@@ -2904,6 +2942,11 @@ const dictionary: dictionary = {
     weapon: {
       selfName: "Weapon",
       fields: {
+        name: {
+          key: "",
+          tableFieldDescription: "",
+          formFieldDescription: "",
+        },
         type: {
           key: "",
           tableFieldDescription: "",

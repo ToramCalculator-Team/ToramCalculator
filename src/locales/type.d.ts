@@ -70,6 +70,14 @@ export interface dictionary {
       operation: string;
       searching: string;
     };
+    relationPrefix: {
+      belongsTo: string;
+      usedBy: string;
+      updatedBy: string;
+      createdBy: string;
+      contains: string;
+      related: string;
+    };
     nav: {
       home: string;
       character: string;

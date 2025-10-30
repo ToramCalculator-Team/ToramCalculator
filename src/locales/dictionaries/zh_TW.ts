@@ -310,6 +310,14 @@ const dictionary: dictionary = {
       operation: "操作",
       searching: "搜尋中...",
     },
+    relationPrefix: {
+      belongsTo: "所屬",
+      usedBy: "被用於",
+      updatedBy: "更新資料",
+      createdBy: "建立資料",
+      contains: "包含的",
+      related: "相關的",
+    },
     nav: {
       home: "首頁",
       character: "角色配置",
