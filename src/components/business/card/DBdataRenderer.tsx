@@ -67,46 +67,37 @@ function getRelationPrefixKey(
   relationType: "OneToMany" | "ManyToOne" | "OneToOne" | "ManyToMany"
 ): keyof dictionary["ui"]["relationPrefix"] {
   const currentModel = MODEL_METADATA.find((m) => m.tableName === currentTable);
-  const targetModelName = MODEL_METADATA.find((m) => m.tableName === targetTable)?.name || targetTable;
+  const targetModel = MODEL_METADATA.find((m) => m.tableName === targetTable);
+  const currentModelName = currentModel?.name || currentTable;
+  const targetModelName = targetModel?.name || targetTable;
 
-  // 尝试找到当前模型中的关系字段（优先使用字段名分类）
-  const field = currentModel?.fields.find(
+  // 尝试找到关系字段：先在当前模型中查找，如果找不到则在目标模型中查找
+  let field = currentModel?.fields.find(
     (f) => f.kind === "object" && f.relationName === relationName && f.type === targetModelName
   );
+  
+  // 如果当前模型中找不到，尝试在目标模型中查找（反向关系）
+  if (!field) {
+    field = targetModel?.fields.find(
+      (f) => f.kind === "object" && f.relationName === relationName && f.type === currentModelName
+    );
+  }
 
   const fieldName = field?.name?.toLowerCase() || "";
 
-  // 根据字段名前缀判断（明确的语义）
+  // 只根据字段名前缀判断（不依赖关系类型）
   if (fieldName.startsWith("belongto")) return "belongsTo";
   if (fieldName.startsWith("usedby")) return "usedBy";
   if (fieldName.startsWith("updatedby")) return "updatedBy";
   if (fieldName.startsWith("createdby")) return "createdBy";
   if (fieldName.startsWith("link") || fieldName.includes("related")) return "related";
-
-  // 根据关系类型和方向自动判断（优先于字段名匹配）
-  // 如果是 OneToMany 且当前表是父表（from === current），或字段是数组类型（isList），则是"包含的"
-  const isParentInOneToMany = relationType === "OneToMany" && relationName && 
-    RELATION_METADATA.some(r => r.name === relationName && r.from === currentTable);
-  const isListField = field?.isList === true;
   
-  if (isParentInOneToMany || isListField) {
-    return "contains";
-  }
+  // 检查是否包含表示"包含"含义的字段名（如 skills, drops, items 等）
+  const containsFields = ["drops", "images", "members", "kills", "requires", "rewards", "addresses", "zones", "mobs", "npcs", "tasks", "recipes", "actions", "effects", "weapons", "armors", "options", "specials", "crystals", "avatars", "consumables", "combos", "skills"];
+  if (containsFields.includes(fieldName)) return "contains";
 
-  // 根据关系类型兜底
-  switch (relationType) {
-    case "OneToMany":
-      // 当前表是子表 → 所属
-      return "belongsTo";
-    case "ManyToOne":
-      return "belongsTo";
-    case "ManyToMany":
-      return "related";
-    case "OneToOne":
-      return "related";
-    default:
-      return "related";
-  }
+  // 没有明确前缀的字段，不显示前缀
+  return "none";
 }
 
 // 辅助：关系是否被隐藏（根据当前表的 hiddenFields 判断关联字段是否隐藏）
@@ -182,6 +173,11 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
     ) {
       return null;
     }
+    // 如果该关系字段或对应的外键字段已在关联内容中显示，则隐藏主内容中的该字段
+    // （关系字段本身和对应的外键字段都已在 displayedRelationFieldNames 中）
+    if (displayedRelationFieldNames().has(key as string)) {
+      return null;
+    }
     const fieldName = dictionary().db[props.tableName].fields[key].key ?? key;
     const fieldValue = val;
     const hasGenerator = "fieldGenerator" in props && props.fieldGenerator?.[key];
@@ -239,9 +235,11 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
   const [relations, { refetch: refetchRelations }] = createResource(async () => {
     type RelationItem = { data: any; displayName: string };
     type RelationGroup = { tableName: keyof DB; prefixKey: keyof dictionary["ui"]["relationPrefix"]; items: RelationItem[] };
+    type RelationsResult = { groups: RelationGroup[]; displayedRelationFieldNames: Set<string> };
     const groupMap = new Map<keyof DB, { prefixKey: keyof dictionary["ui"]["relationPrefix"]; items: RelationItem[]; seen: Set<string> }>();
+    const displayedRelationFieldNames = new Set<string>();
 
-    if (relationCandidates.length === 0) return [] as RelationGroup[];
+    if (relationCandidates.length === 0) return { groups: [] as RelationGroup[], displayedRelationFieldNames };
 
     const db = await getDB();
 
@@ -286,6 +284,23 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
       if (isRelationHidden(props.tableName, { name: relationMetadata.name, to: relationMetadata.to, from: relationMetadata.from }, otherModelName, props.hiddenFields as any)) {
         // debug removed
         continue;
+      }
+      
+      // 记录该关系会在关联内容中显示，以便在主内容中隐藏对应的关系字段和外键字段
+      // 查找当前表中对应的关系字段名称
+      const currentModel = MODEL_METADATA.find((m) => m.tableName === props.tableName);
+      const relationField = currentModel?.fields.find(
+        (f) => f.kind === "object" && f.relationName === relationMetadata.name
+      );
+      if (relationField) {
+        // 隐藏关系字段本身
+        displayedRelationFieldNames.add(relationField.name);
+        // 同时隐藏对应的外键字段
+        if (relationField.relationFromFields && relationField.relationFromFields.length > 0) {
+          for (const fkField of relationField.relationFromFields) {
+            displayedRelationFieldNames.add(fkField);
+          }
+        }
       }
       const relationType = relationMetadata.type;
       // 从当前表视角确定目标表
@@ -428,33 +443,47 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
               if ("name" in item && typeof (item as any).name === "string" && (item as any).name) {
                 finalName = (item as any).name as string;
               } else {
-                // 次优：子表没有 name，尝试通过 nameSide + currentLabel 组合
+                // 次优：子表没有 name，先尝试使用 getReadableName（可能返回 id 或其他可读字段）
+                const readableName = getReadableName(childTableName, item);
+                const childPk = getPrimaryKeyFields(childTableName as keyof DB)[0];
+                const itemId = String(item[childPk as keyof typeof item]);
+                
+                // 如果 getReadableName 返回的是 id，且 id 看起来不可读（CUID2/UUID 格式），
+                // 才尝试通过关联表查找名称
                 let betterName: string | undefined;
-                const nameSide = findNameSideRelation(childTableName);
-                if (nameSide) {
-                  const childModel = MODEL_METADATA.find((m) => m.tableName === childTableName)!;
-                  const fkField = childModel.fields.find(
-                    (f) => f.kind === "object" && f.relationName === nameSide.name && f.relationFromFields && f.relationFromFields.length > 0
-                  );
-                  const fkColumn = fkField?.relationFromFields?.[0];
-                  if (fkColumn && item[fkColumn as keyof typeof item]) {
-                    const relatedId = item[fkColumn as keyof typeof item];
-                    const nameTablePk = getPrimaryKeyFields(nameSide.to as keyof DB)[0];
-                    const rows = await db
-                      .selectFrom(nameSide.to as any)
-                      .select(["name" as any])
-                      .where(nameTablePk as any, "=", relatedId as any)
-                      .limit(1)
-                      .execute();
-                    const relatedName = rows[0]?.name as string | undefined;
-                    if (relatedName) {
-                      betterName = currentLabel && !currentLabel.includes(relatedName) 
-                        ? `${currentLabel} - ${relatedName}` 
-                        : relatedName;
+                // 判断 id 是否可读：CUID2 通常是 24-30 个字符的小写字母和数字组合
+                // 或者以 "cuid_" 开头，或者长度 > 30（可能是 UUID）
+                const isUnreadableId = readableName === itemId && (
+                  itemId.length >= 24 && itemId.length <= 30 && /^[a-z0-9]+$/.test(itemId) && !itemId.includes("default") ||
+                  itemId.length > 30 ||
+                  itemId.startsWith("cuid_")
+                );
+                if (isUnreadableId) {
+                  // id 不可读，尝试通过 nameSide 关联查找名称
+                  const nameSide = findNameSideRelation(childTableName);
+                  if (nameSide) {
+                    const childModel = MODEL_METADATA.find((m) => m.tableName === childTableName)!;
+                    const fkField = childModel.fields.find(
+                      (f) => f.kind === "object" && f.relationName === nameSide.name && f.relationFromFields && f.relationFromFields.length > 0
+                    );
+                    const fkColumn = fkField?.relationFromFields?.[0];
+                    if (fkColumn && item[fkColumn as keyof typeof item]) {
+                      const relatedId = item[fkColumn as keyof typeof item];
+                      const nameTablePk = getPrimaryKeyFields(nameSide.to as keyof DB)[0];
+                      const rows = await db
+                        .selectFrom(nameSide.to as any)
+                        .select(["name" as any])
+                        .where(nameTablePk as any, "=", relatedId as any)
+                        .limit(1)
+                        .execute();
+                      const relatedName = rows[0]?.name as string | undefined;
+                      if (relatedName) {
+                        betterName = relatedName;
+                      }
                     }
                   }
                 }
-                finalName = betterName ?? getReadableName(childTableName, item);
+                finalName = betterName ?? readableName;
               }
 
               if (bucket.seen.has(id)) {
@@ -481,53 +510,53 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
           if ("name" in item && typeof (item as any).name === "string" && (item as any).name) {
             displayName = (item as any).name as string;
           } else {
-            // 次优：目标表没有 name，尝试通过 ManyToOne 关联获取“带 name 的表”的名称
-            const nameSide = findNameSideRelation(targetTableName);
-            if (nameSide) {
-              // 目标表（targetTableName）中，与 nameSide 关系对应的外键列名
-              const targetModel = MODEL_METADATA.find((m) => m.tableName === targetTableName)!;
-              const fkField = targetModel.fields.find(
-                (f) => f.kind === "object" && f.relationName === nameSide.name && f.relationFromFields && f.relationFromFields.length > 0
-              );
-              const fkColumn = fkField?.relationFromFields?.[0];
+            // 次优：目标表没有 name，先尝试使用 getReadableName（可能返回 id 或其他可读字段）
+            const readableName = getReadableName(targetTableName, item);
+            const targetPk = getPrimaryKeyFields(targetTableName as keyof DB)[0];
+            const itemId = String(item[targetPk as keyof typeof item]);
+            
+            // 如果 getReadableName 返回的是 id，且 id 看起来不可读（CUID2/UUID 格式），
+            // 才尝试通过关联表查找名称
+            // 判断 id 是否可读：CUID2 通常是 24-30 个字符的小写字母和数字组合
+            // 或者以 "cuid_" 开头，或者长度 > 30（可能是 UUID）
+            const isUnreadableId = readableName === itemId && (
+              itemId.length >= 24 && itemId.length <= 30 && /^[a-z0-9]+$/.test(itemId) && !itemId.includes("default") ||
+              itemId.length > 30 ||
+              itemId.startsWith("cuid_")
+            );
+            if (isUnreadableId) {
+              // id 不可读，尝试通过 nameSide 关联查找名称
+              const nameSide = findNameSideRelation(targetTableName);
+              if (nameSide) {
+                // 目标表（targetTableName）中，与 nameSide 关系对应的外键列名
+                const targetModel = MODEL_METADATA.find((m) => m.tableName === targetTableName)!;
+                const fkField = targetModel.fields.find(
+                  (f) => f.kind === "object" && f.relationName === nameSide.name && f.relationFromFields && f.relationFromFields.length > 0
+                );
+                const fkColumn = fkField?.relationFromFields?.[0];
 
-              if (fkColumn && item[fkColumn as keyof typeof item]) {
-                const relatedId = item[fkColumn as keyof typeof item];
-                const nameTablePk = getPrimaryKeyFields(nameSide.to as keyof DB)[0];
-                const rows = await db
-                  .selectFrom(nameSide.to as any)
-                  .select(["name" as any])
-                  .where(nameTablePk as any, "=", relatedId as any)
-                  .limit(1)
-                  .execute();
-                const relatedName = rows[0]?.name as string | undefined;
+                if (fkColumn && item[fkColumn as keyof typeof item]) {
+                  const relatedId = item[fkColumn as keyof typeof item];
+                  const nameTablePk = getPrimaryKeyFields(nameSide.to as keyof DB)[0];
+                  const rows = await db
+                    .selectFrom(nameSide.to as any)
+                    .select(["name" as any])
+                    .where(nameTablePk as any, "=", relatedId as any)
+                    .limit(1)
+                    .execute();
+                  const relatedName = rows[0]?.name as string | undefined;
 
-                if (relatedName) {
-                  // 对于没有 name 字段的表（如 drop_item），使用 currentLabel 拼接关联名
-                  // 但如果 relatedName 已经在 currentLabel 中，则不重复
-                  if (currentLabel && !currentLabel.includes(relatedName)) {
-                    displayName = `${currentLabel} - ${relatedName}`;
-                  } else if (currentLabel && currentLabel.includes(relatedName)) {
-                    // 如果 currentLabel 已经包含 relatedName，直接用 currentLabel
-                    displayName = currentLabel;
-                  } else if ("name" in props.data && typeof (props.data as any).name === "string") {
-                    displayName = `${(props.data as any).name} - ${relatedName}`;
-                  } else {
+                  if (relatedName) {
                     displayName = relatedName;
                   }
                 }
-              } else {
-                // debug removed
               }
-            } else {
-              // debug removed
             }
-
-            // 兜底：使用 getReadableName
+            
+            // 兜底：使用 getReadableName 的结果
             if (!displayName) {
-              displayName = getReadableName(targetTableName, item);
+              displayName = readableName;
             }
-            // debug removed
           }
 
           const key = targetTableName as keyof DB;
@@ -562,10 +591,18 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
     }
 
     // 转换为分组数组，按表名排序，并过滤空分组
-    return Array.from(groupMap.entries())
+    const groups = Array.from(groupMap.entries())
       .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
       .map(([tableName, bucket]) => ({ tableName, prefixKey: bucket.prefixKey, items: bucket.items }))
       .filter((g) => g.items.length > 0);
+    
+    return { groups, displayedRelationFieldNames };
+  });
+  
+  // 提取已显示的关系字段名称集合
+  const displayedRelationFieldNames = createMemo(() => {
+    const relationsData = relations();
+    return relationsData ? relationsData.displayedRelationFieldNames : new Set<string>();
   });
 
   return (
@@ -605,8 +642,8 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
       {/* 关联内容 */}
       <Show when={relationCandidates.length > 0 && relations.latest}>
         <Show when={relations()}>
-          {(relationGroups) => (
-            <For each={relationGroups()}>
+          {(relationsData) => (
+            <For each={relationsData().groups}>
               {(group) => (
                 <section class="FieldGroup flex w-full flex-col gap-2">
                   <h3 class="text-accent-color flex items-center gap-2 font-bold">

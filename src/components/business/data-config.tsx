@@ -1,5 +1,5 @@
 import { DB } from "@db/generated/zod";
-import { ElementType, MOB_DIFFICULTY_FLAG, MobDifficultyFlag, MobType } from "@db/schema/enums";
+import { ElementType, MOB_DIFFICULTY_FLAG, MobDifficultyFlag, MobType, SkillTreeType } from "@db/schema/enums";
 import { AnyFieldApi } from "@tanstack/solid-form";
 import { Cell, ColumnDef } from "@tanstack/solid-table";
 import { Accessor, createEffect, createSignal, JSX, Show } from "solid-js";
@@ -547,6 +547,98 @@ export const DATA_CONFIG: DataConfig = {
           </div>
         ),
       },
+    },
+  },
+  skill: {
+    fieldGroupMap: {
+      基本信息: ["name", "treeType", "tier", "posX", "posY"],
+      技能属性: ["chargingType", "distanceType", "targetType", "isPassive"],
+      其他信息: ["dataSources","details"],
+    },
+    table: {
+      columnsDef: [
+        {
+          id: "id",
+          accessorFn: (row) => row.id,
+          cell: (info) => info.getValue(),
+          size: 200,
+        },
+        {
+          id: "name",
+          accessorFn: (row) => row.name,
+          cell: (info) => info.getValue(),
+          size: 220,
+        },
+        {
+          id: "treeType",
+          accessorFn: (row) => row.treeType,
+          cell: (info) => info.getValue<SkillTreeType>(),
+          size: 120,
+        },
+        {
+          id: "tier",
+          accessorFn: (row) => row.tier,
+          cell: (info) => info.getValue<Boolean>().toString(),
+          size: 160,
+        },
+        {
+          id: "posX",
+          accessorFn: (row) => row.posX,
+          cell: (info) => info.getValue<Boolean>().toString(),
+          size: 160,
+        },
+        {
+          id: "posY",
+          accessorFn: (row) => row.posY,
+          cell: (info) => info.getValue<Boolean>().toString(),
+          size: 160,
+        },
+      ],
+      hiddenColumnDef: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
+      defaultSort: {
+        id: "name",
+        desc: false,
+      },
+      tdGenerator: {},
+    },
+    form: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+    card: {
+      hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
+      fieldGenerator: {},
+    },
+  },
+  weapon: {
+    fieldGroupMap: {
+      基本信息: ["name", "baseAbi", "stability", "elementType"],
+      其他属性: ["modifiers"],
+      颜色信息: ["colorA", "colorB", "colorC"],
+    },
+    table: {
+      columnsDef: [
+        { accessorKey: "id", cell: (info: any) => info.getValue(), size: 200 },
+        { accessorKey: "name", cell: (info: any) => info.getValue(), size: 200 },
+        { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
+        { accessorKey: "baseAbi", cell: (info: any) => info.getValue(), size: 100 },
+        { accessorKey: "stability", cell: (info: any) => info.getValue(), size: 100 },
+        { accessorKey: "elementType", cell: (info: any) => info.getValue(), size: 150 },
+      ],
+      hiddenColumnDef: ["itemId"],
+      defaultSort: {
+        id: "name",
+        desc: false,
+      },
+      tdGenerator: {},
+    },
+    form: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+    card: {
+      hiddenFields: [],
+      fieldGenerator: {},
     },
   },
 };

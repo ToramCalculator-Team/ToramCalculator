@@ -317,6 +317,7 @@ const dictionary: dictionary = {
       createdBy: "作成データ",
       contains: "含まれる",
       related: "関連",
+      none: "",
     },
     nav: {
       home: "ホーム",
