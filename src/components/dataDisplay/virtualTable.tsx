@@ -268,7 +268,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
           </Motion.div>
         </Show>
       </Presence>
-      <OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }}>
+      <OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }} defer>
         <div class="TableContainer flex h-full flex-col">
           <div class={`TableHead z-10 flex w-fit`}>
             <For each={table()?.getHeaderGroups()}>
