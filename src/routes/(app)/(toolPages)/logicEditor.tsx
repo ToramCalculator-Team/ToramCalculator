@@ -1,5 +1,5 @@
-import { findCharacterWithRelations } from "@db/repositories/character";
-import { findSkillWithRelations } from "@db/repositories/skill";
+import { selectCharacterByIdWithRelations } from "@db/generated/repositories/character";
+import { selectSkillByIdWithRelations } from "@db/generated/repositories/skill";
 import { createEffect, createMemo, createResource, createSignal, onMount, Show } from "solid-js";
 import { LogicEditor } from "~/components/features/logicEditor/LogicEditor";
 import { MemberBaseNestedSchema } from "~/components/features/simulator/core/member/MemberBaseSchema";
@@ -8,9 +8,9 @@ export default function LogicEditorTestPage() {
   const [data, setData] = createSignal<any>({});
   const [state, setState] = createSignal<any[]>([]);
   const [code, setCode] = createSignal<string>("");
-  const [skill, { refetch: refetchSkill }] = createResource(() => findSkillWithRelations("defaultSkillId"));
+  const [skill, { refetch: refetchSkill }] = createResource(() => selectSkillByIdWithRelations("defaultSkillId"));
   const [character, { refetch: refetchCharacter }] = createResource(() =>
-    findCharacterWithRelations("defaultCharacterId"),
+    selectCharacterByIdWithRelations("defaultCharacterId"),
   );
   const schema = createMemo(() => {
     const c = character();

@@ -16,12 +16,12 @@
 
 import type { Actor, AnyActorLogic, EventObject, ParameterizedObject } from "xstate";
 import type { MemberType } from "@db/schema/enums";
-import type { MemberWithRelations } from "@db/repositories/member";
+import type { MemberWithRelations } from "@db/generated/repositories/member";
 import type GameEngine from "../GameEngine";
 import { StatContainer } from "../dataSys/StatContainer";
 import { PlayerAttrSchema } from "./player/PlayerData";
 import { MobAttrSchema } from "./mob/MobData";
-import { Team } from "@db/repositories/team";
+import { Team, TeamWithRelations } from "@db/generated/repositories/team";
 import { Player } from "./player/Player";
 import { Member } from "./Member";
 import { Mob } from "./mob/Mob";
@@ -69,9 +69,9 @@ export class MemberManager {
   /** 所有成员的管理表 - 主存储（存储Actor与元数据） */
   private members: Map<string, AnyMemberEntry> = new Map();
   /** 阵营注册表（仅存基础信息） */
-  private camps: Map<string, Team[]> = new Map();
+  private camps: Map<string, TeamWithRelations[]> = new Map();
   /** 队伍注册表（仅存基础信息） */
-  private teams: Map<string, Team> = new Map();
+  private teams: Map<string, TeamWithRelations> = new Map();
   /** 阵营 -> 成员ID集合 索引 */
   private membersByCamp: Map<string, Set<string>> = new Map();
   /** 队伍 -> 成员ID集合 索引 */
@@ -111,7 +111,7 @@ export class MemberManager {
     switch (memberData.type) {
       case "Player":
         {
-          const schema = PlayerAttrSchema(memberData.player!.character);
+          const schema = PlayerAttrSchema(memberData.player!.characters?.[0]);
           const player = new Player(this.engine, memberData, campId, teamId, memberData.id, schema, position);
           const success = this.registerMember(player, campId, teamId, memberData);
           if (success) {
@@ -403,7 +403,7 @@ export class MemberManager {
   /**
    * 创建阵营（幂等）
    */
-  addCamp(campId: string): Team[] {
+  addCamp(campId: string): TeamWithRelations[] {
     if (!this.camps.has(campId)) {
       this.camps.set(campId, []);
       this.membersByCamp.set(campId, this.membersByCamp.get(campId) || new Set());
@@ -414,8 +414,8 @@ export class MemberManager {
   /** 添加队伍（幂等） */
   addTeam(
     campId: string,
-    team: Team,
-  ): Team {
+    team: TeamWithRelations,
+  ): TeamWithRelations {
     if (!this.camps.has(campId)) {
       // 若未注册阵营，先注册
       this.addCamp(campId);

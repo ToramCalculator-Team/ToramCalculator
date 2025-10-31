@@ -28,15 +28,15 @@ export class SchemaCollector {
    * @returns 合并后的完整 schema 内容
    */
   collectAndMerge(): string {
-    console.log("🔍 开始收集 schema 文件...");
+    console.log("开始收集 schema 文件...");
 
     // 1. 收集所有模型文件
     const modelFiles = this.collectModelFiles();
-    console.log(`✅ 收集到 ${modelFiles.length} 个模型文件`);
+    console.log(`收集到 ${modelFiles.length} 个模型文件`);
 
     // 2. 读取并合并模型内容
     const fullSchema = this.readModelFiles(modelFiles);
-    console.log("✅ 合并模型文件完成");
+    console.log("合并模型文件完成");
 
     return fullSchema;
   }
@@ -48,7 +48,7 @@ export class SchemaCollector {
     const modelFiles: string[] = [];
 
     if (!fs.existsSync(this.modelsDir)) {
-      console.log("⚠️  模型目录不存在，跳过模型文件收集");
+      console.warn("⚠️  模型目录不存在，跳过模型文件收集");
       return modelFiles;
     }
 
@@ -71,7 +71,7 @@ export class SchemaCollector {
       } else if (entry.isFile() && entry.name.endsWith(".prisma")) {
         // 收集 .prisma 文件
         files.push(fullPath);
-        console.log(`📄 发现模型文件: ${path.relative(this.schemaDir, fullPath)}`);
+        console.log(`发现模型文件: ${path.relative(this.schemaDir, fullPath)}`);
       }
     }
   }
@@ -110,7 +110,7 @@ export class SchemaCollector {
 
     fs.writeFileSync(tempSchemaPath, schemaContent, "utf-8");
     
-    console.log(`📝 临时 schema 文件已写入: ${path.relative(process.cwd(), tempSchemaPath)}`);
+    console.log(`临时 schema 文件已写入: ${path.relative(process.cwd(), tempSchemaPath)}`);
     return tempSchemaPath;
   }
 
@@ -133,7 +133,7 @@ export class SchemaCollector {
     
     if (fs.existsSync(tempSchemaPath)) {
       fs.unlinkSync(tempSchemaPath);
-      console.log("🗑️  临时 schema 文件已清理");
+      console.log("临时 schema 文件已清理");
     }
   }
 }

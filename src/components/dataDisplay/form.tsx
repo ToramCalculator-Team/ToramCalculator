@@ -66,7 +66,7 @@ export const Form = <T extends Record<string, unknown>>(props: {
                     <Input
                       title={field().name}
                       description={""}
-                      state={fieldInfo(field())}
+                      validationMessage={fieldInfo(field())}
                       class={`border-dividing-color bg-primary-color w-full rounded-md border`}
                     >
                       <div class="ArrayBox flex w-full flex-col gap-2">
@@ -246,7 +246,7 @@ export function FieldRenderer<T extends Record<string, unknown>>(props: {
   switch (props.dataSchema.shape[fieldName].type) {
     case "enum": {
       return (
-        <Input title={inputTitle} description={inputDescription} state={fieldInfo(props.field())} class={fieldCalss}>
+        <Input title={inputTitle} description={inputDescription} validationMessage={fieldInfo(props.field())} class={fieldCalss}>
           <EnumSelect
             value={props.field().state.value as string}
             setValue={(value) => props.field().setValue(value as DeepValue<T, DeepKeys<T>>)}
@@ -273,7 +273,7 @@ export function FieldRenderer<T extends Record<string, unknown>>(props: {
           value={props.field().state.value as number}
           onBlur={props.field().handleBlur}
           onChange={(e) => props.field().handleChange(e.target.value)}
-          state={fieldInfo(props.field())}
+          validationMessage={fieldInfo(props.field())}
           class={fieldCalss}
         />
       );
@@ -302,7 +302,7 @@ export function FieldRenderer<T extends Record<string, unknown>>(props: {
             const target = e.target;
             props.field().handleChange(target.value as DeepValue<T, DeepKeys<T>>);
           }}
-          state={fieldInfo(props.field())}
+          validationMessage={fieldInfo(props.field())}
           class={fieldCalss}
         >
           "逻辑编辑器，暂未处理"
@@ -312,7 +312,7 @@ export function FieldRenderer<T extends Record<string, unknown>>(props: {
 
     case "boolean": {
       return (
-        <Input title={inputTitle} description={inputDescription} state={fieldInfo(props.field())} class={fieldCalss}>
+        <Input title={inputTitle} description={inputDescription} validationMessage={fieldInfo(props.field())} class={fieldCalss}>
           <Toggle
             id={props.field().name}
             onClick={() => {
@@ -342,7 +342,7 @@ export function FieldRenderer<T extends Record<string, unknown>>(props: {
             const target = e.target;
             props.field().handleChange(target.value as DeepValue<T, DeepKeys<T>>);
           }}
-          state={fieldInfo(props.field())}
+          validationMessage={fieldInfo(props.field())}
           class={fieldCalss}
         />
       );

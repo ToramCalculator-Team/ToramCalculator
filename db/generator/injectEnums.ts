@@ -14,31 +14,31 @@ import { PATHS } from './config';
  * 第一阶段：合并枚举生成临时 Prisma schema
  */
 export async function injectEnumsToSchema(): Promise<string> {
-  console.log('🚀 开始枚举注入流程...');
+  console.log('开始枚举注入流程...');
   
   try {
     // 1. 收集和合并 schema 文件
     const schemaCollector = new SchemaCollector();
-    console.log('📋 收集 schema 文件...');
+    console.log('收集 schema 文件...');
     const mergedSchema = schemaCollector.collectAndMerge();
     
     // 2. 处理枚举
     const enumInjector = new EnumInjector();
-    console.log('🔍 解析枚举定义...');
+    console.log('解析枚举定义...');
     enumInjector.processEnums();
     
-    console.log('🔧 注入枚举定义...');
+    console.log('注入枚举定义...');
     const processedSchema = enumInjector.processSchema(mergedSchema);
     const finalSchema = enumInjector.injectEnumDefinitions(processedSchema);
     
     // 3. 写入临时 schema 文件
-    console.log('💾 写入临时 schema 文件...');
+    console.log('写入临时 schema 文件...');
     const tempSchemaPath = schemaCollector.writeTempSchema(finalSchema, PATHS.tempSchema);
     
-    console.log('✅ 枚举注入完成');
+    console.log('枚举注入完成');
     return tempSchemaPath;
   } catch (error) {
-    console.error('❌ 枚举注入失败:', error);
+    console.error('枚举注入失败:', error);
     throw error;
   }
 }

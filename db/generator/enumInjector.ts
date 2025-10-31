@@ -32,13 +32,13 @@ export class EnumInjector {
    */
   processEnums(): this {
     try {
-      console.log("🔍 开始解析枚举文件...");
+      console.log("开始解析枚举文件...");
       
       // 获取 enums.ts 文件路径
       const enumsPath = PATHS.enums;
       
       if (!fs.existsSync(enumsPath)) {
-        console.log("⚠️  枚举文件不存在，跳过枚举处理");
+        console.warn("⚠️  枚举文件不存在，跳过枚举处理");
         return this;
       }
 
@@ -60,11 +60,11 @@ export class EnumInjector {
         }
       }
       
-      console.log(`✅ 成功解析 ${this.extractedEnums.size} 个枚举`);
+      console.log(`成功解析 ${this.extractedEnums.size} 个枚举`);
       
       return this;
     } catch (error) {
-      console.error("❌ 枚举处理失败:", error);
+      console.error("枚举处理失败:", error);
       throw error;
     }
   }
@@ -74,7 +74,7 @@ export class EnumInjector {
    * 将枚举定义注入到 Prisma schema 中，并替换字段类型
    */
   processSchema(schemaContent: string): string {
-    console.log("🔧 开始注入枚举定义并替换字段类型...");
+    console.log("开始注入枚举定义并替换字段类型...");
     
     // 生成枚举定义并存储到实例变量中
     this.enumDefinitions = this.generateEnumDefinitions();
@@ -82,7 +82,7 @@ export class EnumInjector {
     // 处理 Schema 内容，替换枚举字段类型
     const updatedSchema = this.replaceEnumFieldTypes(schemaContent);
     
-    console.log("✅ Schema 处理完成");
+    console.log("Schema 处理完成");
     
     return updatedSchema;
   }

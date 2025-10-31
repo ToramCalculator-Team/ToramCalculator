@@ -79,6 +79,7 @@ export const DATA_CONFIG: DataConfig = {
     form: {
       hiddenFields: [],
       fieldGenerator: {},
+      
     },
     card: {
       hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
@@ -92,11 +93,11 @@ export const DATA_CONFIG: DataConfig = {
     },
     table: {
       columnsDef: [
-        { accessorKey: "id", cell: (info: any) => info.getValue(), size: 200 },
-        { accessorKey: "name", cell: (info: any) => info.getValue(), size: 200 },
-        { accessorKey: "type", cell: (info: any) => info.getValue(), size: 160 },
-        { accessorKey: "posX", cell: (info: any) => info.getValue(), size: 160 },
-        { accessorKey: "posY", cell: (info: any) => info.getValue(), size: 160 },
+        { accessorKey: "id", cell: (info) => info.getValue(), size: 200 },
+        { accessorKey: "name", cell: (info) => info.getValue(), size: 200 },
+        { accessorKey: "type", cell: (info) => info.getValue(), size: 160 },
+        { accessorKey: "posX", cell: (info) => info.getValue(), size: 160 },
+        { accessorKey: "posY", cell: (info) => info.getValue(), size: 160 },
       ],
       hiddenColumnDef: ["id"],
       defaultSort: { id: "name", desc: false },
@@ -119,9 +120,9 @@ export const DATA_CONFIG: DataConfig = {
     },
     table: {
       columnsDef: [
-        { accessorKey: "name", cell: (info: any) => info.getValue(), size: 200 },
-        { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
-        { accessorKey: "baseAbi", cell: (info: any) => info.getValue(), size: 100 },
+        { accessorKey: "name", cell: (info) => info.getValue(), size: 200 },
+        { accessorKey: "itemId", cell: (info) => info.getValue(), size: 200 },
+        { accessorKey: "baseAbi", cell: (info) => info.getValue(), size: 100 },
       ],
       hiddenColumnDef: [],
       defaultSort: { id: "itemId", desc: false },
@@ -140,11 +141,11 @@ export const DATA_CONFIG: DataConfig = {
     fieldGroupMap: {},
     table: {
       columnsDef: [
-        { accessorKey: "name", cell: (info: any) => info.getValue(), size: 200 },
-        { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
-        { accessorKey: "type", cell: (info: any) => info.getValue(), size: 150 },
-        { accessorKey: "effectDuration", cell: (info: any) => info.getValue(), size: 100 },
-        { accessorKey: "effects", cell: (info: any) => info.getValue(), size: 150 },
+        { accessorKey: "name", cell: (info) => info.getValue(), size: 200 },
+        { accessorKey: "itemId", cell: (info) => info.getValue(), size: 200 },
+        { accessorKey: "type", cell: (info) => info.getValue(), size: 150 },
+        { accessorKey: "effectDuration", cell: (info) => info.getValue(), size: 100 },
+        { accessorKey: "effects", cell: (info) => info.getValue(), size: 150 },
       ],
       hiddenColumnDef: [],
       defaultSort: { id: "itemId", desc: false },
@@ -165,13 +166,13 @@ export const DATA_CONFIG: DataConfig = {
     },
     table: {
       measure: {
-        estimateSize: 200,
+        estimateSize: 160,
       },
       columnsDef: [
-        { accessorKey: "name", cell: (info: any) => info.getValue(), size: 150 },
-        { accessorKey: "itemId", cell: (info: any) => info.getValue(), size: 200 },
-        { accessorKey: "modifiers", cell: (info: any) => info.getValue(), size: 480 },
-        { accessorKey: "type", cell: (info: any) => info.getValue(), size: 100 },
+        { accessorKey: "name", cell: (info) => info.getValue(), size: 150 },
+        { accessorKey: "itemId", cell: (info) => info.getValue(), size: 200 },
+        { accessorKey: "modifiers", cell: (info) => info.getValue(), size: 480 },
+        { accessorKey: "type", cell: (info) => info.getValue(), size: 100 },
       ],
       hiddenColumnDef: [],
       defaultSort: { id: "name", desc: false },
@@ -216,6 +217,31 @@ export const DATA_CONFIG: DataConfig = {
     },
     card: {
       hiddenFields: ["id"],
+      fieldGenerator: {},
+    },
+  },
+  material: {
+    fieldGroupMap: {
+      基本信息: ["name", "type", "price", "ptValue"],
+    },
+    table: {
+      columnsDef: [
+        { accessorKey: "name", cell: (info) => info.getValue(), size: 200 },
+        { accessorKey: "itemId", cell: (info) => info.getValue(), size: 200 },
+        { accessorKey: "type", cell: (info) => info.getValue(), size: 150 },
+        { accessorKey: "price", cell: (info) => info.getValue(), size: 100 },
+        { accessorKey: "ptValue", cell: (info) => info.getValue(), size: 100 },
+      ],
+      hiddenColumnDef: ["itemId"],
+      defaultSort: { id: "name", desc: false },
+      tdGenerator: {},
+    },
+    form: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+    card: {
+      hiddenFields: [],
       fieldGenerator: {},
     },
   },
@@ -518,6 +544,60 @@ export const DATA_CONFIG: DataConfig = {
       fieldGenerator: {},
     },
   },
+  npc: {
+    fieldGroupMap: {
+      基本信息: ["name"],
+    },
+    table: {
+      columnsDef: [
+        { accessorKey: "id", cell: (info) => info.getValue(), size: 200 },
+        { accessorKey: "name", cell: (info) => info.getValue(), size: 200 },
+      ],
+      hiddenColumnDef: [],
+      defaultSort: { id: "name", desc: false },
+      tdGenerator: {},
+    },
+    form: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+    card: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+  },
+  option: {
+    fieldGroupMap: {
+      基本信息: ["name", "baseAbi"],
+      其他属性: ["modifiers"],
+      颜色信息: ["colorA", "colorB", "colorC"],
+    },
+    table: {
+      columnsDef: [
+        { accessorKey: "name", cell: (info) => info.getValue(), size: 200 },
+        { accessorKey: "itemId", cell: (info) => info.getValue(), size: 200 },
+        { accessorKey: "baseAbi", cell: (info) => info.getValue(), size: 100 },
+        { accessorKey: "modifiers", cell: (info) => info.getValue(), size: 150 },
+        { accessorKey: "colorA", cell: (info) => info.getValue(), size: 150 },
+        { accessorKey: "colorB", cell: (info) => info.getValue(), size: 150 },
+        { accessorKey: "colorC", cell: (info) => info.getValue(), size: 150 },
+      ],
+      hiddenColumnDef: ["itemId"],
+      defaultSort: {
+        id: "name",
+        desc: false
+      },
+      tdGenerator: {},
+    },
+    form: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+    card: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    }
+  },
   player_weapon: {
     fieldGroupMap: {
       基础属性: ["type", "name", "baseAbi", "stability", "elementType"],
@@ -610,6 +690,81 @@ export const DATA_CONFIG: DataConfig = {
       fieldGenerator: {},
     },
   },
+  special: {
+    fieldGroupMap: {
+      基本信息: ["name", "baseAbi"],
+      其他属性: ["modifiers"],
+    },
+    table: {
+      columnsDef: [
+        { accessorKey: "name", cell: (info) => info.getValue(), size: 200 },
+        { accessorKey: "itemId", cell: (info) => info.getValue(), size: 200 },
+        { accessorKey: "baseAbi", cell: (info) => info.getValue(), size: 100 },
+        { accessorKey: "modifiers", cell: (info) => info.getValue(), size: 150 },
+      ],
+      hiddenColumnDef: ["itemId"],
+      defaultSort: { id: "name", desc: false },
+      tdGenerator: {},
+    },
+    form: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+    card: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+  },
+  task: {
+    fieldGroupMap: {
+      基本信息: ["name", "lv", "type", "description"],
+    },
+    table: {
+      columnsDef: [
+        {
+          id: "id",
+          accessorFn: (row) => row.id,
+          cell: (info) => info.getValue(),
+          size: 200,
+        },
+        {
+          id: "name",
+          accessorFn: (row) => row.name,
+          cell: (info) => info.getValue(),
+          size: 220,
+        },
+        {
+          id: "lv",
+          accessorFn: (row) => row.lv,
+          cell: (info) => info.getValue<number | null>(),
+          size: 120,
+        },
+        {
+          id: "type",
+          accessorFn: (row) => row.type,
+          cell: (info) => info.getValue<string | null>(),
+          size: 160,
+        },
+        {
+          id: "description",
+          accessorFn: (row) => row.description,
+          cell: (info) => info.getValue<string | null>(),
+          size: 160,
+        },
+      ],
+      hiddenColumnDef: ["id", "createdByAccountId", "updatedByAccountId", "statisticId","belongToNpcId"],
+      defaultSort: { id: "name", desc: false },
+      tdGenerator: {},
+    },
+    form: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+    card: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+  },
   weapon: {
     fieldGroupMap: {
       基本信息: ["name", "baseAbi", "stability", "elementType"],
@@ -645,6 +800,56 @@ export const DATA_CONFIG: DataConfig = {
             Normal: <Icons.Game.ElementNoElement class="h-12 w-12" />,
           })[props.cell.getValue<ElementType>()],
       },
+    },
+    form: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+    card: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+  },
+  zone: {
+    fieldGroupMap: {
+      基本信息: ["name", "rewardNodes"],
+    },
+    table: {
+      columnsDef: [
+        {
+          id: "id",
+          accessorFn: (row) => row.id,
+          cell: (info) => info.getValue(),
+          size: 200,
+        },
+        {
+          id: "name",
+          accessorFn: (row) => row.name,
+          cell: (info) => info.getValue(),
+          size: 220,
+        },
+        {
+          id: "rewardNodes",
+          accessorFn: (row) => row.rewardNodes,
+          cell: (info) => info.getValue<number | null>(),
+          size: 120,
+        },
+        {
+          id: "activityId",
+          accessorFn: (row) => row.activityId,
+          cell: (info) => info.getValue<string | null>(),
+          size: 160,
+        },
+        {
+          id: "addressId",
+          accessorFn: (row) => row.addressId,
+          cell: (info) => info.getValue<string>(),
+          size: 160,
+        },
+      ],
+      hiddenColumnDef: ["id", "activityId", "addressId", "createdByAccountId", "updatedByAccountId", "statisticId"],
+      defaultSort: { id: "name", desc: false },
+      tdGenerator: {},
     },
     form: {
       hiddenFields: [],

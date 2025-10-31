@@ -1,4 +1,4 @@
-import { MemberWithRelations } from "@db/repositories/member";
+import { MemberWithRelations } from "@db/generated/repositories/member";
 import { Member } from "../Member";
 import { ExtractAttrPaths, NestedSchema } from "../../dataSys/SchemaTypes";
 import GameEngine from "../../GameEngine";

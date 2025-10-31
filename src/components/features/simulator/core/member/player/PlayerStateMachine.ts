@@ -5,11 +5,11 @@ import { createId } from "@paralleldrive/cuid2";
 import { MemberEventType, MemberSerializeData, MemberStateMachine } from "../Member";
 import { Player, PlayerAttrType } from "./Player";
 import { ModifierType, StatContainer } from "../../dataSys/StatContainer";
-import { SkillEffectWithRelations } from "@db/repositories/skillEffect";
-import { CharacterSkillWithRelations } from "@db/repositories/characterSkill";
+import { SkillEffectWithRelations } from "@db/generated/repositories/skill_effect";
+import { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import { ExpressionContext, GameEngine } from "../../GameEngine";
 import { MemberType } from "@db/schema/enums";
-import { CharacterWithRelations } from "@db/repositories/character";
+import { CharacterWithRelations } from "@db/generated/repositories/character";
 import { PipelineManager } from "../../pipeline/PipelineManager";
 import { PlayerAction, playerPipDef, PlayerPipelineDef } from "./PlayerPipelines";
 
@@ -506,7 +506,7 @@ export const playerActions = {
   },
 } as const satisfies Record<
   string,
-  ActionFunction<PlayerStateContext, PlayerEventType, any, any, any, any, any, any, any>
+  ActionFunction<PlayerStateContext, PlayerEventType, any, any, any, any, any, any, never>
 >;
 
 export const playerGuards = {
@@ -767,8 +767,10 @@ export const playerStateMachine = (player: Player) => {
       currentSkillChargingFrames: 0,
       currentSkillChantingFrames: 0,
       currentSkillActionFrames: 0,
-      skillList: player.data.player?.character?.skills ?? [],
-      skillCooldowns: player.data.player?.character?.skills?.map((s) => 0) ?? [],
+      // 默认第一个机体
+      skillList: player.data.player?.characters?.[0]?.skills ?? [],
+      // 默认第一个机体
+      skillCooldowns: player.data.player?.characters?.[0]?.skills?.map((s) => 0) ?? [],
       currentSkillEffect: null,
       currentSkillIndex: 0,
       skillStartFrame: 0,
@@ -776,7 +778,8 @@ export const playerStateMachine = (player: Player) => {
       currentSkill: null,
       statusTags: [],
       aggro: 0,
-      character: player.data.player!.character,
+      // 默认第一个机体
+      character: player.data.player!.characters?.[0] ?? null,
     },
     id: machineId,
     initial: "存活",

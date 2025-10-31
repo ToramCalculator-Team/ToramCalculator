@@ -33,11 +33,11 @@ generatorHandler({
     const schemaCollector = new SchemaCollector();
 
     try {
-      console.log("🚀 开始 Prisma 生成器流程...");
+      console.log("开始 Prisma 生成器流程...");
 
       // Schema 准备阶段
       // 注意：此时临时 schema 文件应该已经由第一阶段的脚本生成
-      console.log("📋 Schema 准备完成（使用临时 schema 文件）");
+      console.log("Schema 准备完成（使用临时 schema 文件）");
 
       // 读取临时 schema 文件
       const finalSchema = schemaCollector.readTempSchema(PATHS.tempSchema);
@@ -66,27 +66,26 @@ generatorHandler({
         a.name.localeCompare(b.name),
       );
 
-      console.log("📊 开始生成文件（分阶段执行）...");
+      console.log("开始生成文件（分阶段执行）...");
       const outputDir = options.generator.output?.value || "";
 
       // 阶段1: 生成 Zod schemas (产出 DB 类型)
-      console.log("🔍 阶段1: 生成 Zod schemas...");
+      console.log("阶段1: 生成 Zod schemas...");
       const zodGenerator = new ZodGenerator(options.dmmf, allModels);
       const zodPath = PATHS.zodSchema;
       await zodGenerator.generate(zodPath);
 
       // 阶段2: 生成 DMMF 工具 (可以引用 DB 类型)
-      console.log("🔧 阶段2: 生成 DMMF 工具文件...");
+      console.log("阶段2: 生成 DMMF 工具文件...");
       const dmmfUtilsGenerator = new DMMFUtilsGenerator(options.dmmf, allModels);
       const dmmfUtilsPath = PATHS.dmmfUtils;
       await dmmfUtilsGenerator.generate(dmmfUtilsPath);
 
       // 阶段3: 并行生成其他文件
-      console.log("📊 阶段3: 并行生成其他文件...");
+      console.log("阶段3: 并行生成其他文件...");
       const generationResults = await Promise.allSettled([
         // Generate QueryBuilder rules
         (async () => {
-          console.log("🔍 生成 QueryBuilder 规则...");
           const queryBuilderGenerator = new QueryBuilderGenerator(options.dmmf, allModels);
           const queryBuilderPath = PATHS.queryBuilderRules;
           await queryBuilderGenerator.generate(queryBuilderPath);
@@ -94,7 +93,6 @@ generatorHandler({
 
         // Generate Repository
         (async () => {
-          console.log("🔍 生成 Repository 文件...");
           const repositoryGenerator = new RepositoryGenerator(options.dmmf, allModels);
           const repositoryPath = PATHS.repositoriesOutput;
           await repositoryGenerator.generate(repositoryPath);
@@ -111,7 +109,6 @@ generatorHandler({
       }
 
       // Generate SQL (需要 schema 内容，所以单独执行)
-      console.log("🔍 生成 SQL 初始化脚本...");
       try {
         const sqlGenerator = new SQLGenerator(outputDir);
         await sqlGenerator.generate(finalSchema);
@@ -120,11 +117,11 @@ generatorHandler({
       }
 
       // 跳过 types.ts 生成，因为类型应该从 zod 导出
-      console.log("ℹ️  跳过 types.ts 生成，类型从 zod/index.ts 导出");
+      console.log("跳过 types.ts 生成，类型从 zod/index.ts 导出");
 
-      console.log("✅ Prisma 生成器流程完成");
+      console.log("Prisma 生成器流程完成");
     } catch (error) {
-      console.error("❌ Prisma 生成器流程失败:", error);
+      console.error("Prisma 生成器流程失败:", error);
       throw error;
     } finally {
       // 确保临时文件被清理

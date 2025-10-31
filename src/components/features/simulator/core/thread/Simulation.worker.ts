@@ -4,7 +4,7 @@
  */
 
 import { EngineStats, GameEngine, EngineViewSchema, type EngineView } from "../GameEngine";
-import type { SimulatorWithRelations } from "@db/repositories/simulator";
+import type { SimulatorWithRelations } from "@db/generated/repositories/simulator";
 import type { IntentMessage } from "../MessageRouter";
 
 import { prepareForTransfer, sanitizeForPostMessage } from "~/lib/WorkerPool/MessageSerializer";

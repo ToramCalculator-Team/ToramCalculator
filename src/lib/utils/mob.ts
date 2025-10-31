@@ -1,4 +1,4 @@
-import { MobWithRelations, type Mob } from "@db/repositories/mob";
+import { MobWithRelations, type Mob } from "@db/generated/repositories/mob";
 import { MobDifficultyFlag } from "@db/schema/enums";
 import { mob } from "@db/generated/zod/index";
 /**

@@ -24,14 +24,14 @@ export class DMMFUtilsGenerator {
    */
   async generate(outputPath: string): Promise<void> {
     try {
-      console.log("🔧 生成 DMMF 工具文件...");
+      console.log("生成 DMMF 工具文件...");
 
       const content = this.generateContent();
       writeFileSafely(outputPath, content);
 
-      console.log("✅ DMMF 工具文件生成完成");
+      console.log("DMMF 工具文件生成完成");
     } catch (error) {
-      console.error("❌ DMMF 工具文件生成失败:", error);
+      console.error("DMMF 工具文件生成失败:", error);
       throw error;
     }
   }

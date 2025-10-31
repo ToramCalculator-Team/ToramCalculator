@@ -1,7 +1,7 @@
 /**
  * 玩家数据配置
  */
-import { CharacterWithRelations } from "@db/repositories/character";
+import { CharacterWithRelations } from "@db/generated/repositories/character";
 import { MainHandType, SubHandType } from "@db/schema/enums";
 import { ConvertToNestedSchema, ConvertToNestedSchemaDic, ConvertToSchema } from "../../dataSys/SchemaTypes";
 import { MemberBaseStructure } from "../MemberBaseSchema";

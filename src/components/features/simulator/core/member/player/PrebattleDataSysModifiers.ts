@@ -1,4 +1,4 @@
-import type { MemberWithRelations } from "@db/repositories/member";
+import type { MemberWithRelations } from "@db/generated/repositories/member";
 import { ModifierType, type StatContainer } from "../../dataSys/StatContainer";
 import { tokenizer, parse } from "acorn";
 import { create, all } from "mathjs";
@@ -325,7 +325,8 @@ export function applyPrebattleModifiers<T extends string>(
   rs: StatContainer<T>,
   memberData: MemberWithRelations,
 ): void {
-  const character = memberData.player!.character;
+  // 默认第一个机体
+  const character = memberData.player!.characters?.[0] ?? null;
 
   const all: NormalizedModifier<T>[] = [];
 

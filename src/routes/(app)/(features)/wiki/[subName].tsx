@@ -143,7 +143,6 @@ export default function WikiSubPage() {
   return (
     <Show when={dataConfig()}>
       {(validDataConfig) => {
-        console.log("validDataConfig", validDataConfig());
         return (
           <Show
             when={store.database.tableSyncState[wikiStore.type]}

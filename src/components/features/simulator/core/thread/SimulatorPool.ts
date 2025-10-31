@@ -1,6 +1,5 @@
 // ==================== 模拟器专用扩展 ====================
 
-import { SimulatorWithRelations } from "@db/repositories/simulator";
 import simulationWorker from "./Simulation.worker?worker&url";
 import { PoolConfig, WorkerPool, WorkerWrapper } from "~/lib/WorkerPool/WorkerPool";
 import { IntentMessage, IntentMessageSchema } from "../MessageRouter";

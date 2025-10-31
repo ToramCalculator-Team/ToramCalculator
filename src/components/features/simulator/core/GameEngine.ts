@@ -14,8 +14,8 @@
  * - 生命周期管理：管理引擎的启动、运行、停止
  */
 
-import type { Team } from "@db/repositories/team";
-import type { MemberWithRelations } from "@db/repositories/member";
+import type { Team, TeamWithRelations } from "@db/generated/repositories/team";
+import type { MemberWithRelations } from "@db/generated/repositories/member";
 import { MemberManager } from "./member/MemberManager";
 import { MessageRouter } from "./MessageRouter";
 import { FrameLoop, FrameLoopConfig, PerformanceStats } from "./FrameLoop";
@@ -29,7 +29,7 @@ import { JSProcessor, type CompilationContext } from "./astProcessor/JSProcessor
 import { z } from "zod/v4";
 import { createActor } from "xstate";
 import { gameEngineSM, type EngineCommand, type EngineSMContext } from "./GameEngineSM";
-import { SimulatorWithRelations } from "@db/repositories/simulator";
+import { SimulatorWithRelations } from "@db/generated/repositories/simulator";
 
 // ============================== 类型定义 ==============================
 
@@ -729,7 +729,7 @@ export class GameEngine {
    * @param campId 阵营ID
    * @param teamData 队伍数据
    */
-  addTeam(campId: string, teamData: Team): void {
+  addTeam(campId: string, teamData: TeamWithRelations): void {
     this.memberManager.addTeam(campId, teamData);
   }
 

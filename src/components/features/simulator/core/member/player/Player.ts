@@ -1,4 +1,4 @@
-import { MemberWithRelations } from "@db/repositories/member";
+import { MemberWithRelations } from "@db/generated/repositories/member";
 import { Member } from "../Member";
 import { applyPrebattleModifiers } from "./PrebattleDataSysModifiers";
 import { PlayerStateContext, playerStateMachine, PlayerEventType } from "./PlayerStateMachine";

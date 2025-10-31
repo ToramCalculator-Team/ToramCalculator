@@ -40,7 +40,6 @@ export default function FunctionPage(props: ParentProps) {
               tableName="character"
               initialValue={varCharacter()}
               dataSchema={CharacterSchema}
-              dictionary={dictionary().db.character}
             />
           )}
         </Show>

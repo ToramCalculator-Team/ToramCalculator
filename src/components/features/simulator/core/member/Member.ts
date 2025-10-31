@@ -1,4 +1,4 @@
-import { MemberWithRelations } from "@db/repositories/member";
+import { MemberWithRelations } from "@db/generated/repositories/member";
 import { Actor, createActor, EventObject, NonReducibleUnknown, ParameterizedObject, StateMachine } from "xstate";
 import { StatContainer } from "../dataSys/StatContainer";
 import { NestedSchema } from "../dataSys/SchemaTypes";

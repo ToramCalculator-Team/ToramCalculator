@@ -52,7 +52,7 @@ export class QueryBuilderGenerator {
    */
   async generate(outputPath: string): Promise<void> {
     try {
-      console.log("🔍 生成 QueryBuilder 规则...");
+      console.log("生成 QueryBuilder 规则...");
       
       const models = this.parseModelsFromDMMF();
       const enums = this.parseEnumsFromDMMF();
@@ -60,9 +60,9 @@ export class QueryBuilderGenerator {
       
       writeFileSafely(outputPath, rulesContent);
       
-      console.log("✅ QueryBuilder 规则生成完成");
+      console.log("QueryBuilder 规则生成完成");
     } catch (error) {
-      console.error("❌ QueryBuilder 规则生成失败:", error);
+      console.error("QueryBuilder 规则生成失败:", error);
       throw error;
     }
   }
@@ -154,7 +154,7 @@ export const OPERATORS = {
 
     // 生成枚举配置
     for (const [enumName, values] of Object.entries(enums)) {
-      const pascalEnumName = NamingRules.toPascalCase(enumName);
+      const pascalEnumName = NamingRules.TypeName(enumName);
       rulesContent += `export const ${pascalEnumName}Enum = [
   ${values.map(v => `{ label: "${v}", value: "${v}" }`).join(",\n  ")}
 ];
@@ -166,7 +166,7 @@ export const OPERATORS = {
     rulesContent += "// 字段配置\nexport const FIELDS: Record<string, any> = {\n";
 
     for (const model of models) {
-      const modelNameLower = model.name.toLowerCase();
+      const modelNameLower = NamingRules.ZodTypeName(model.name);
       rulesContent += `  ${modelNameLower}: {\n`;
       
       for (const field of model.fields) {

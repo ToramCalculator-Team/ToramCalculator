@@ -8,8 +8,8 @@
  */
 
 import { createSignal } from "solid-js";
-import { findMemberWithRelations, type MemberWithRelations } from "@db/repositories/member";
-import { findSimulatorWithRelations, SimulatorWithRelations } from "@db/repositories/simulator";
+import { selectMemberByIdWithRelations, type MemberWithRelations } from "@db/generated/repositories/member";
+import { selectSimulatorByIdWithRelations, SimulatorWithRelations } from "@db/generated/repositories/simulator";
 import { type MemberSerializeData } from "../core/member/Member";
 import { FrameSnapshot } from "../core/GameEngine";
 import { createActor, waitFor } from "xstate";
@@ -316,18 +316,21 @@ export class Controller {
     }
 
     try {
-      const member = await findMemberWithRelations(memberId);
+      const member = await selectMemberByIdWithRelations(memberId);
+      if (!member) {
+        this.selectedMember[1](null);
+        this.selectedMemberSkills[1]([]);
+        return;
+      }
       this.selectedMember[1](member);
 
-      if (member?.player?.character?.skills) {
-        const skills = member.player.character.skills.map((skill) => ({
+      if (member.player?.characters?.[0]?.skills) {
+        const skills = member.player.characters[0].skills.map((skill) => ({
           id: skill.id,
           name: skill.template?.name || "未知技能",
           level: skill.lv,
         }));
         this.selectedMemberSkills[1](skills);
-      } else {
-        this.selectedMemberSkills[1]([]);
       }
     } catch (error) {
       console.error("刷新选中成员失败:", error);

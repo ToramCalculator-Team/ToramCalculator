@@ -17,6 +17,7 @@ import {
   NamingRules 
 } from "../utils/namingRules";
 import { DMMFHelpers } from "../utils/dmmfHelpers";
+import { RELATION_BREAK_POINTS } from "../relationConfig";
 import path from "path";
 import fs from "fs";
 
@@ -28,6 +29,7 @@ export class RepositoryGenerator {
   private models: any[] = [];
   private allModels: readonly DMMF.Model[] = []; // 包含中间表的完整模型列表
   private helpers: DMMFHelpers;
+  private allDetectedCycles: Map<string, string[][]> = new Map(); // 收集所有检测到的循环
 
   constructor(dmmf: DMMF.Document, allModels: DMMF.Model[]) {
     this.dmmf = dmmf;
@@ -40,7 +42,7 @@ export class RepositoryGenerator {
    */
   async generate(outputPath: string): Promise<void> {
     try {
-      console.log("🔍 生成 Repository 文件...");
+      console.log("生成 Repository 文件...");
       
       // 初始化模型信息
       await this.initialize();
@@ -54,9 +56,9 @@ export class RepositoryGenerator {
       // 生成所有 repository 文件
       await this.generateAll();
       
-      console.log("✅ Repository 文件生成完成");
+      console.log("Repository 文件生成完成");
     } catch (error) {
-      console.error("❌ Repository 文件生成失败:", error);
+      console.error("Repository 文件生成失败:", error);
       throw error;
     }
   }
@@ -88,9 +90,9 @@ export class RepositoryGenerator {
         uniqueFields: model.uniqueFields || []
       }));
       
-      console.log(`✅ 成功初始化 ${this.models.length} 个模型（包含中间表）`);
+      console.log(`成功初始化 ${this.models.length} 个模型（包含中间表）`);
     } catch (error) {
-      console.error("❌ Repository 生成器初始化失败:", error);
+      console.error("Repository 生成器初始化失败:", error);
       throw error;
     }
   }
@@ -100,6 +102,9 @@ export class RepositoryGenerator {
    */
   private async generateAll(): Promise<void> {
     const generatedFiles: string[] = [];
+    
+    // 清空循环收集器
+    this.allDetectedCycles.clear();
 
     for (const model of this.models) {
       if (this.shouldSkipModel(model.name)) {
@@ -119,6 +124,9 @@ export class RepositoryGenerator {
 
     // 生成 index.ts
     await this.generateIndex(generatedFiles);
+
+    // 统一打印所有检测到的循环（去重后）
+    this.printAllCycles();
 
     console.log(`Repository 生成完成！共生成 ${generatedFiles.length} 个文件`);
   }
@@ -145,9 +153,9 @@ export class RepositoryGenerator {
    * 生成 repository 代码
    */
   private async generateRepositoryCode(modelName: string): Promise<string> {
-    const tableName = NamingRules.toLowerCase(modelName);
+    const tableName = NamingRules.ZodTypeName(modelName);
     const pascalName = TypeName(modelName, modelName);
-    const camelName = NamingRules.toCamelCase(modelName);
+    const camelName = NamingRules.VariableName(modelName);
 
     // 生成各个部分
     const imports = this.generateImports(modelName);
@@ -169,7 +177,7 @@ ${crudMethods}
    * 生成导入语句
    */
   private generateImports(modelName: string): string {
-    const tableName = NamingRules.toLowerCase(modelName);
+    const tableName = NamingRules.ZodTypeName(modelName);
     const pascalName = TypeName(modelName, modelName);
 
     // 计算相对路径
@@ -203,6 +211,14 @@ ${crudMethods}
 
     // 添加 subRelationFactory
     imports.push(`import { defineRelations, makeRelations } from "${relativePaths.subRelationFactory}";`);
+
+    // 添加子关系函数导入
+    const subRelationImports = this.getSubRelationImports(modelName);
+    if (subRelationImports.length > 0) {
+      for (const importStatement of subRelationImports) {
+        imports.push(importStatement);
+      }
+    }
 
     // 添加 store（用于 canEdit 方法）
     imports.push(`import { store } from "~/store";`);
@@ -249,10 +265,204 @@ ${crudMethods}
   }
 
   /**
+   * 检测循环引用并收集（不立即打印）
+   */
+  private detectAndWarnCycles(modelName: string): void {
+    try {
+      const cycles = this.findCycles(modelName);
+      
+      if (cycles.length > 0) {
+        // 收集循环，稍后统一打印
+        this.allDetectedCycles.set(modelName, cycles);
+      }
+    } catch (error) {
+      // 如果检测过程中出错，也输出错误信息
+      console.error(`检测 ${modelName} 表的循环引用时出错:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 检查循环是否已经在配置中有断点
+   * 只要循环中任意一条边有断点配置，循环就被解决
+   */
+  private isCycleResolvedByConfig(cycle: string[]): boolean {
+    // 检查循环路径中的每条边，只要有一条边有断点配置，循环就被解决
+    for (let i = 0; i < cycle.length; i++) {
+      const sourceModel = cycle[i];
+      const targetModel = cycle[(i + 1) % cycle.length]; // 循环回到起点
+      
+      // 找到源模型中指向目标模型的关系字段名
+      const sourceModelObj = this.allModels.find(m => m.name.toLowerCase() === sourceModel.toLowerCase());
+      if (!sourceModelObj) continue;
+      
+      const relationField = sourceModelObj.fields.find(field => 
+        field.kind === 'object' && 
+        field.type.toLowerCase() === targetModel.toLowerCase() &&
+        !this.isBusinessParentRelation(field.name)
+      );
+      
+      if (!relationField) continue;
+      
+      // 检查配置中是否有这个断点
+      // 配置格式：RELATION_BREAK_POINTS[sourceModel] 包含 [relationField.name]
+      const breakPoints = RELATION_BREAK_POINTS[sourceModel];
+      if (breakPoints && breakPoints.includes(relationField.name)) {
+        // 这条边有断点配置，循环已被解决
+        return true;
+      }
+    }
+    
+    // 所有边都没有断点配置，循环未解决
+    return false;
+  }
+
+  /**
+   * 统一打印所有检测到的循环引用（去重后，并与配置对比）
+   */
+  private printAllCycles(): void {
+    if (this.allDetectedCycles.size === 0) {
+      return;
+    }
+
+    // 收集所有唯一的循环（基于循环的节点集合去重）
+    const uniqueCycles = new Map<string, string[]>();
+    
+    for (const [modelName, cycles] of this.allDetectedCycles.entries()) {
+      for (const cycle of cycles) {
+        // 使用排序后的节点集合作为唯一键
+        const cycleKey = cycle.map((n: string) => n.toLowerCase()).sort().join('->');
+        if (!uniqueCycles.has(cycleKey)) {
+          uniqueCycles.set(cycleKey, cycle);
+        }
+      }
+    }
+
+    // 分离已解决和未解决的循环
+    const resolvedCycles: string[][] = [];
+    const unresolvedCycles: string[][] = [];
+    
+    for (const cycle of uniqueCycles.values()) {
+      if (this.isCycleResolvedByConfig(cycle)) {
+        resolvedCycles.push(cycle);
+      } else {
+        unresolvedCycles.push(cycle);
+      }
+    }
+
+    // 只输出未解决的循环
+    if (unresolvedCycles.length > 0) {
+      console.log(`⚠️  检测到循环引用（共 ${unresolvedCycles.length} 个未解决的循环）：`);
+      let index = 1;
+      for (const cycle of unresolvedCycles) {
+        console.log(`   循环 ${index}: ${cycle.join(" -> ")} -> ${cycle[0]}`);
+        index++;
+      }
+      console.log(`   建议在 relationConfig.ts 中配置 RELATION_BREAK_POINTS 来避免无限递归`);
+    }
+    
+    // 如果有已解决的循环，也输出信息（可选）
+    if (resolvedCycles.length > 0 && unresolvedCycles.length === 0) {
+      console.log(`✅ 所有循环引用已在 relationConfig.ts 中配置断点`);
+    }
+  }
+
+  /**
+   * 查找从指定模型开始的循环引用
+   * 使用 DFS 检测所有可能的循环路径
+   */
+  private findCycles(startModelName: string): string[][] {
+    const cycles: string[][] = [];
+    const path: string[] = [];
+    const visitedInCurrentPath = new Set<string>(); // 用于快速检查是否在路径中
+
+    const dfs = (currentModel: string) => {
+      // 先找到模型的实际名称（可能大小写不同）
+      const model = this.allModels.find(m => m.name.toLowerCase() === currentModel.toLowerCase());
+      if (!model) {
+        return;
+      }
+
+      const actualModelName = model.name;
+      const actualModelNameLower = actualModelName.toLowerCase();
+      
+      // 检查是否形成循环（当前模型已在路径中）
+      if (visitedInCurrentPath.has(actualModelNameLower)) {
+        // 找到循环：从路径中找到循环开始的索引
+        const cycleStartIndex = path.findIndex(name => name.toLowerCase() === actualModelNameLower);
+        if (cycleStartIndex !== -1) {
+          // 构建循环路径：从循环开始到当前路径的末尾
+          // 不添加当前节点，因为当前节点就是循环开始的节点
+          const cycle = path.slice(cycleStartIndex);
+          // 确保循环至少包含2个节点
+          if (cycle.length >= 2) {
+            // 去重：检查是否已经有相同的循环（顺序可能不同）
+            const cycleKey = cycle.map(n => n.toLowerCase()).sort().join('->');
+            const isDuplicate = cycles.some(c => {
+              const cKey = c.map(n => n.toLowerCase()).sort().join('->');
+              return cKey === cycleKey;
+            });
+            if (!isDuplicate) {
+              cycles.push(cycle);
+            }
+          }
+        }
+        return;
+      }
+
+      // 将当前模型加入路径
+      path.push(actualModelName);
+      visitedInCurrentPath.add(actualModelNameLower);
+
+      // 获取所有子关系（非父关系）
+      // 注意：这里的"子关系"是指会生成嵌套查询的关系，即非业务父关系的关系
+      // 即使外键在当前表中（如 account.user），只要不是业务父关系，也会生成嵌套查询
+      const childRelations = model.fields
+        .filter(field => {
+          if (field.kind !== 'object') return false;
+          // 跳过业务父关系（belongTo、usedBy、createdBy、updatedBy）
+          if (this.isBusinessParentRelation(field.name)) return false;
+          // 跳过自引用关系（已在生成代码时处理，避免无限递归）
+          // field.type 就是目标模型的名称，直接比较即可
+          if (field.type.toLowerCase() === actualModelNameLower) {
+            return false;
+          }
+          // 其他关系都认为是子关系，会生成嵌套查询
+          return true;
+        })
+        .map(field => {
+          // 确保返回的模型名称与 allModels 中的名称匹配
+          const targetModel = this.allModels.find(m => m.name.toLowerCase() === field.type.toLowerCase());
+          return targetModel?.name || field.type;
+        });
+
+      for (const targetType of childRelations) {
+        dfs(targetType);
+      }
+
+      // 回溯：移除当前模型
+      path.pop();
+      visitedInCurrentPath.delete(actualModelNameLower);
+    };
+
+    dfs(startModelName);
+    return cycles;
+  }
+
+  /**
+   * 检查是否应该跳过子关系查询（根据用户配置）
+   */
+  private shouldSkipSubRelation(sourceModelName: string, relationName: string): boolean {
+    const breakPoints = RELATION_BREAK_POINTS[sourceModelName];
+    if (!breakPoints) return false;
+    return breakPoints.includes(relationName);
+  }
+
+  /**
    * 生成类型定义
    */
   private generateTypes(modelName: string): string {
-    const tableName = NamingRules.toLowerCase(modelName);
+    const tableName = NamingRules.ZodTypeName(modelName);
     const pascalName = TypeName(modelName, modelName);
 
     return `// 1. 类型定义
@@ -265,12 +475,21 @@ export type ${pascalName}Update = Updateable<${tableName}>;`;
    * 生成关系定义
    */
   private generateRelations(modelName: string): string {
-    const tableName = NamingRules.toLowerCase(modelName);
+    const tableName = NamingRules.ZodTypeName(modelName);
     const schemaName = SchemaName(tableName); // 使用 SchemaName 规范
     const pascalName = TypeName(modelName, modelName);
-    const camelName = NamingRules.toCamelCase(modelName);
+    const camelName = NamingRules.VariableName(modelName);
 
     const generatedRelations = this.generateAllRelations(modelName);
+    
+    // 检测循环引用并发出警告
+    // 注意：使用实际的模型名称（从 allModels 中查找），而不是传入的 modelName（可能是 dbName）
+    const actualModel = this.allModels.find(m => 
+      m.name.toLowerCase() === modelName.toLowerCase() || 
+      (m.dbName && m.dbName.toLowerCase() === modelName.toLowerCase())
+    );
+    const actualModelName = actualModel?.name || modelName;
+    this.detectAndWarnCycles(actualModelName);
     
     // 过滤掉父级关系，只保留子级关系用于 SubRelationDefs
     const childRelations = generatedRelations.filter(rel => !this.isBusinessParentRelation(rel.name));
@@ -294,10 +513,15 @@ export const ${camelName}RelationsFactory = makeRelations(
   ${camelName}SubRelationDefs
 );
 
+// 导出子关系函数供其他 repository 使用
+export const ${camelName}SubRelations = ${camelName}RelationsFactory.subRelations;
+
 export const ${pascalName}WithRelationsSchema = z.object({
   ...${schemaName}.shape,
   ...${camelName}RelationsFactory.schema.shape,
-});`;
+});
+
+export type ${pascalName}WithRelations = z.output<typeof ${pascalName}WithRelationsSchema>;`;
 
     return relationCode;
   }
@@ -312,13 +536,14 @@ export const ${pascalName}WithRelationsSchema = z.object({
   /**
    * 获取需要导入的 schema
    * 使用 SchemaName 规范确保正确的 Schema 名称
+   * 注意：WithRelationsSchema 从 repository 文件导入，不在这里处理
    */
   private getSchemaImports(modelName: string): string[] {
-    const tableName = NamingRules.toLowerCase(modelName);
+    const tableName = NamingRules.ZodTypeName(modelName);
     // 使用 SchemaName 规范生成 schema 名称
     const schemas = new Set<string>([SchemaName(tableName)]);
 
-    // 添加关系的 schema
+    // 添加关系的 schema（仅基础 schema，WithRelations 版本从 repository 导入）
     const relations = this.getModelRelations(modelName);
     for (const relation of relations) {
       // 只添加有效的关系 schema，跳过枚举类型
@@ -330,6 +555,36 @@ export const ${pascalName}WithRelationsSchema = z.object({
     }
 
     return Array.from(schemas);
+  }
+
+  /**
+   * 获取需要导入的子关系函数和 WithRelations schema
+   * 为每个子关系的目标表生成导入语句
+   */
+  private getSubRelationImports(modelName: string): string[] {
+    const imports: string[] = [];
+    const relations = this.getModelRelations(modelName);
+    
+    // 只处理子关系（非父关系）
+    const childRelations = relations.filter(rel => !this.isBusinessParentRelation(rel.name));
+    
+    for (const relation of childRelations) {
+      if (relation.targetTable && !relation.targetTable.includes('//')) {
+        const targetTable = relation.targetTable;
+        const targetCamelName = NamingRules.VariableName(targetTable);
+        const targetPascalName = TypeName(targetTable, targetTable);
+        const targetFileName = NamingRules.TableNameLowerCase(targetTable);
+        
+        // 检查是否是自引用（避免导入自己）
+        if (targetTable.toLowerCase() !== modelName.toLowerCase()) {
+          // 同时导入 SubRelations 函数和 WithRelationsSchema
+          imports.push(`import { ${targetCamelName}SubRelations, ${targetPascalName}WithRelationsSchema } from "./${targetFileName}";`);
+        }
+      }
+    }
+    
+    // 去重
+    return Array.from(new Set(imports));
   }
 
 
@@ -347,7 +602,7 @@ export const ${pascalName}WithRelationsSchema = z.object({
    */
   private generateCanEdit(modelName: string): string {
     const pascalName = TypeName(modelName, modelName);
-    const tableName = NamingRules.toLowerCase(modelName);
+    const tableName = NamingRules.ZodTypeName(modelName);
     const primaryKeyField = this.getPrimaryKeyField(modelName);
 
     // 查找父表路径和 accountId 字段名
@@ -463,9 +718,9 @@ ${joinChain}
    * 生成 CRUD 方法
    */
   private generateCrudMethods(modelName: string): string {
-    const tableName = NamingRules.toLowerCase(modelName);
+    const tableName = NamingRules.ZodTypeName(modelName);
     const pascalName = TypeName(modelName, modelName);
-    const camelName = NamingRules.toCamelCase(modelName);
+    const camelName = NamingRules.VariableName(modelName);
 
     const methods: string[] = [];
     
@@ -476,6 +731,8 @@ ${joinChain}
     // selectById - 只有有主键的模型才生成
     if (hasPK) {
       methods.push(this.generateSelectById(modelName));
+      // selectByIdWithRelations - 查询包含所有关系的完整数据
+      methods.push(this.generateSelectByIdWithRelations(modelName));
     }
 
     // selectAll
@@ -520,7 +777,7 @@ ${joinChain}
     const model = this.allModels.find((m: DMMF.Model) => m.name === modelName);
     if (!model) return '';
 
-    const tableName = NamingRules.toLowerCase(modelName);
+    const tableName = NamingRules.ZodTypeName(modelName);
     const pascalName = TypeName(modelName, modelName);
     const pluralName = this.pluralize(pascalName);
 
@@ -533,7 +790,7 @@ ${joinChain}
 
     const methods: string[] = ownForeignKeyRelations.map((rel: DMMF.Field) => {
       const foreignKey = rel.relationFromFields![0];
-      const methodName = `selectAll${pluralName}By${NamingRules.toPascalCase(foreignKey)}`;
+      const methodName = `selectAll${pluralName}By${NamingRules.TypeName(foreignKey)}`;
       return `// 按外键查询：${tableName}.${foreignKey} → ${rel.type}.${this.getPrimaryKeyFieldFromModel(this.allModels.find(m => m.name === rel.type)!) }
 export async function ${methodName}(${foreignKey}: string, trx?: Transaction<DB>) {
   const db = trx || await getDB();
@@ -565,7 +822,7 @@ export async function ${methodName}(${foreignKey}: string, trx?: Transaction<DB>
       const tableName = model.dbName || model.name; // 使用真实表名
       const pascalName = TypeName(modelName, modelName);
       const hasPK = this.hasPrimaryKey(model);
-      const fileName = NamingRules.toSnakeCase(modelName); // 用于文件路径
+      const fileName = NamingRules.TableNameLowerCase(modelName); // 用于文件路径
       
       if (this.shouldSkipModel(modelName)) {
         // 跳过的模型从 zod 导入基础类型
@@ -591,12 +848,12 @@ export async function ${methodName}(${foreignKey}: string, trx?: Transaction<DB>
 
     // 只为实际生成的文件添加 CRUD 导入
     for (const modelName of generatedFiles) {
-      const camelName = NamingRules.toCamelCase(modelName);
+      const camelName = NamingRules.VariableName(modelName);
       const pascalName = TypeName(modelName, modelName);
       const model = this.models.find(m => m.name === modelName);
       const hasPK = model ? this.hasPrimaryKey(model) : true;
       const tableName = model ? (model.dbName || model.name) : modelName; // 使用真实表名
-      const fileName = NamingRules.toSnakeCase(modelName); // 用于文件路径
+      const fileName = NamingRules.TableNameLowerCase(modelName); // 用于文件路径
 
       if (hasPK) {
         // 有主键的模型：标准 CRUD 方法
@@ -645,7 +902,7 @@ ${this.generateCrudExports(crudExports)}
 
     const outputPath = path.join("db", "generated", "repositories", "index.ts");
     writeFileSafely(outputPath, indexCode);
-    console.log("✅ 生成 index.ts");
+    console.log("生成 index.ts");
   }
 
 
@@ -660,7 +917,7 @@ ${this.generateCrudExports(crudExports)}
       .filter((field: DMMF.Field) => field.kind === 'object')
       .map((field: DMMF.Field) => {
         const relationType = this.determineRelationType(field, model);
-        const targetTable = NamingRules.toLowerCase(field.type);
+        const targetTable = NamingRules.ZodTypeName(field.type);
         const targetPrimaryKey = this.getPrimaryKeyFieldFromModel(this.allModels.find((m: DMMF.Model) => m.name === field.type) || model);
         
         let buildCode = '';
@@ -751,9 +1008,19 @@ ${this.generateCrudExports(crudExports)}
   /**
    * 生成 Schema 代码
    * 使用 SchemaName 规范确保正确的 Schema 名称
+   * 对于子关系（非父关系），使用 WithRelations 版本的 schema
+   * 对于自引用关系，使用基础 schema 避免无限递归
    */
   private generateSchemaCode(field: DMMF.Field, model: DMMF.Model, targetTable: string): string {
-    const schemaName = SchemaName(targetTable); // 使用 SchemaName 规范
+    const isParentRelation = this.isBusinessParentRelation(field.name);
+    const isSelfRelation = targetTable.toLowerCase() === model.name.toLowerCase();
+    const isBreakPoint = this.shouldSkipSubRelation(model.name, field.name);
+    
+    // 对于子关系，使用 WithRelations schema（因为它们包含嵌套的子关系数据）
+    // 对于父关系、自引用关系或配置的断点关系，使用基础 schema
+    const baseSchemaName = SchemaName(targetTable);
+    const schemaName = (isParentRelation || isSelfRelation || isBreakPoint) ? baseSchemaName : `${TypeName(targetTable, targetTable)}WithRelationsSchema`;
+    
     if (field.isList) {
       return `z.array(${schemaName})`;
     } else {
@@ -779,7 +1046,7 @@ ${this.generateCrudExports(crudExports)}
     if (isParentRelation) {
       // 父关系：外键在当前模型中，指向目标模型
       const foreignKey = this.getRelationForeignKey(field, model, targetTable);
-      return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
+      return `(eb: ExpressionBuilder<DB, "${NamingRules.ZodTypeName(model.name)}">, id: Expression<string>) =>
         jsonObjectFrom(
           eb
             .selectFrom("${targetTable}")
@@ -791,8 +1058,11 @@ ${this.generateCrudExports(crudExports)}
       if (field.relationFromFields && field.relationFromFields.length > 0) {
         // 外键在当前模型中，指向目标模型
         const foreignKey = field.relationFromFields[0];
-        const subRelationCode = ''; // 强制使用一层关系，不包含子关系查询
-        return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
+        const targetCamelName = NamingRules.VariableName(targetTable);
+        // 自引用关系或配置的断点关系不生成嵌套子关系调用，避免无限递归
+        const shouldSkip = isSelfRelation || this.shouldSkipSubRelation(model.name, field.name);
+        const subRelationCode = shouldSkip ? '' : `\n              .select((eb) => ${targetCamelName}SubRelations(eb, eb.val("${targetTable}.${targetPrimaryKey}")))`;
+        return `(eb: ExpressionBuilder<DB, "${NamingRules.ZodTypeName(model.name)}">, id: Expression<string>) =>
           jsonObjectFrom(
             eb
               .selectFrom("${targetTable}")
@@ -801,9 +1071,12 @@ ${this.generateCrudExports(crudExports)}
           ).$notNull().as("${field.name}")`;
       } else {
         // 外键在目标表中，指向当前模型
-        const reverseForeignKey = `${model.name.toLowerCase()}Id`;
-        const subRelationCode = ''; // 强制使用一层关系，不包含子关系查询
-        return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
+        const reverseForeignKey = `${NamingRules.ZodTypeName(model.name)}Id`;
+        const targetCamelName = NamingRules.VariableName(targetTable);
+        // 自引用关系或配置的断点关系不生成嵌套子关系调用，避免无限递归
+        const shouldSkip = isSelfRelation || this.shouldSkipSubRelation(model.name, field.name);
+        const subRelationCode = shouldSkip ? '' : `\n              .select((eb) => ${targetCamelName}SubRelations(eb, eb.val("${targetTable}.${targetPrimaryKey}")))`;
+        return `(eb: ExpressionBuilder<DB, "${NamingRules.ZodTypeName(model.name)}">, id: Expression<string>) =>
           jsonObjectFrom(
             eb
               .selectFrom("${targetTable}")
@@ -849,7 +1122,7 @@ ${this.generateCrudExports(crudExports)}
       }
       
       const reverseForeignKey = reverseField.relationFromFields[0];
-      return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
+      return `(eb: ExpressionBuilder<DB, "${NamingRules.ZodTypeName(model.name)}">, id: Expression<string>) =>
         jsonArrayFrom(
           eb
             .selectFrom("${targetTable}")
@@ -876,8 +1149,11 @@ ${this.generateCrudExports(crudExports)}
       }
       
       const reverseForeignKey = reverseField.relationFromFields[0];
-      const subRelationCode = ''; // 强制使用一层关系，不包含子关系查询
-      return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
+      const targetCamelName = NamingRules.VariableName(targetTable);
+      // 自引用关系或配置的断点关系不生成嵌套子关系调用，避免无限递归
+      const shouldSkip = isSelfRelation || this.shouldSkipSubRelation(model.name, field.name);
+      const subRelationCode = shouldSkip ? '' : `\n            .select((eb) => ${targetCamelName}SubRelations(eb, eb.val("${targetTable}.${targetPrimaryKey}")))`;
+      return `(eb: ExpressionBuilder<DB, "${NamingRules.ZodTypeName(model.name)}">, id: Expression<string>) =>
         jsonArrayFrom(
           eb
             .selectFrom("${targetTable}")
@@ -906,9 +1182,12 @@ ${this.generateCrudExports(crudExports)}
     // 获取当前模型的主键
     const currentModelPrimaryKey = this.getPrimaryKeyFieldFromModel(model);
     
-    const subRelationCode = ''; // 强制使用一层关系，不包含子关系查询
+    const targetCamelName = NamingRules.VariableName(targetTable);
+    // 自引用关系或配置的断点关系不生成嵌套子关系调用，避免无限递归
+    const shouldSkip = isSelfRelation || this.shouldSkipSubRelation(model.name, field.name);
+    const subRelationCode = shouldSkip ? '' : `\n          .select((eb) => ${targetCamelName}SubRelations(eb, eb.val("${targetTable}.${targetPrimaryKey}")))`;
     
-    return `(eb: ExpressionBuilder<DB, "${model.name.toLowerCase()}">, id: Expression<string>) =>
+    return `(eb: ExpressionBuilder<DB, "${NamingRules.ZodTypeName(model.name)}">, id: Expression<string>) =>
       jsonArrayFrom(
         eb
           .selectFrom("${intermediateTable}")
@@ -1051,7 +1330,7 @@ ${this.generateCrudExports(crudExports)}
    * 生成基于唯一约束的查询方法（用于无主键表）
    */
   private generateFindByUniqueConstraint(modelName: string): string {
-    const tableName = NamingRules.toLowerCase(modelName);
+    const tableName = NamingRules.ZodTypeName(modelName);
     const pascalName = TypeName(modelName, modelName);
     
     // 获取模型的唯一约束字段
@@ -1070,7 +1349,7 @@ ${this.generateCrudExports(crudExports)}
       const index = uniqueIndexes[0]; // 取第一个复合唯一索引
       const fieldNames = index.fields; // fields 是字符串数组
       const fieldParams = fieldNames.map((f: any) => `${f}: string`).join(', ');
-      const pascalFieldNames = fieldNames.map((f: any) => NamingRules.toPascalCase(f)).join('And');
+      const pascalFieldNames = fieldNames.map((f: any) => NamingRules.TypeName(f)).join('And');
       
       const whereConditions = fieldNames.map((f: any) => `.where("${f}", "=", ${f})`).join('\n    ');
       
@@ -1085,7 +1364,7 @@ ${this.generateCrudExports(crudExports)}
       // 如果有多个唯一字段，生成基于所有唯一字段的查询方法
       const fieldNames = uniqueFields.map((f: any) => f.name);
       const fieldParams = fieldNames.map((f: any) => `${f.name}: string`).join(', ');
-      const pascalFieldNames = fieldNames.map((f: any) => NamingRules.toPascalCase(f.name)).join('And');
+      const pascalFieldNames = fieldNames.map((f: any) => NamingRules.TypeName(f.name)).join('And');
       
       const whereConditions = fieldNames.map((f: any) => `.where("${f.name}", "=", ${f.name})`).join('\n    ');
       
@@ -1099,7 +1378,7 @@ ${this.generateCrudExports(crudExports)}
     } else if (uniqueFields.length === 1) {
       // 如果只有一个唯一字段，生成基于该字段的查询方法
       const firstUniqueField = uniqueFields[0];
-      return `export async function select${pascalName}By${NamingRules.toPascalCase(firstUniqueField.name)}(${firstUniqueField.name}: string, trx?: Transaction<DB>) {
+      return `export async function select${pascalName}By${NamingRules.TypeName(firstUniqueField.name)}(${firstUniqueField.name}: string, trx?: Transaction<DB>) {
   const db = trx || await getDB();
   return await db.selectFrom("${tableName}")
     .where("${firstUniqueField.name}", "=", ${firstUniqueField.name})
@@ -1115,7 +1394,7 @@ ${this.generateCrudExports(crudExports)}
    * 生成基于唯一约束的删除方法（用于无主键表）
    */
   private generateDeleteByUniqueConstraint(modelName: string): string {
-    const tableName = NamingRules.toLowerCase(modelName);
+    const tableName = NamingRules.ZodTypeName(modelName);
     const pascalName = TypeName(modelName, modelName);
     
     // 查找模型
@@ -1134,7 +1413,7 @@ ${this.generateCrudExports(crudExports)}
       const index = uniqueIndexes[0]; // 取第一个复合唯一索引
       const fieldNames = index.fields; // fields 是字符串数组
       const fieldParams = fieldNames.map((f: any) => `${f}: string`).join(', ');
-      const pascalFieldNames = fieldNames.map((f: any) => NamingRules.toPascalCase(f)).join('And');
+      const pascalFieldNames = fieldNames.map((f: any) => NamingRules.TypeName(f)).join('And');
       
       const whereConditions = fieldNames.map((f: any) => `.where("${f}", "=", ${f})`).join('\n    ');
       
@@ -1149,7 +1428,7 @@ ${this.generateCrudExports(crudExports)}
       // 如果有多个唯一字段，生成基于所有唯一字段的删除方法
       const fieldNames = uniqueFields.map((f: any) => f.name);
       const fieldParams = fieldNames.map((f: any) => `${f.name}: string`).join(', ');
-      const pascalFieldNames = fieldNames.map((f: any) => NamingRules.toPascalCase(f.name)).join('And');
+      const pascalFieldNames = fieldNames.map((f: any) => NamingRules.TypeName(f.name)).join('And');
       
       const whereConditions = fieldNames.map((f: any) => `.where("${f.name}", "=", ${f.name})`).join('\n    ');
       
@@ -1163,7 +1442,7 @@ ${this.generateCrudExports(crudExports)}
     } else if (uniqueFields.length === 1) {
       // 如果只有一个唯一字段，生成基于该字段的删除方法
       const firstUniqueField = uniqueFields[0];
-      return `export async function delete${pascalName}By${NamingRules.toPascalCase(firstUniqueField.name)}(${firstUniqueField.name}: string, trx?: Transaction<DB>) {
+      return `export async function delete${pascalName}By${NamingRules.TypeName(firstUniqueField.name)}(${firstUniqueField.name}: string, trx?: Transaction<DB>) {
   const db = trx || await getDB();
   return await db.deleteFrom("${tableName}")
     .where("${firstUniqueField.name}", "=", ${firstUniqueField.name})
@@ -1179,7 +1458,7 @@ ${this.generateCrudExports(crudExports)}
    * 生成 selectById 方法
    */
   private generateSelectById(modelName: string): string {
-    const tableName = NamingRules.toLowerCase(modelName);
+    const tableName = NamingRules.ZodTypeName(modelName);
     const pascalName = TypeName(modelName, modelName);
     const primaryKeyField = this.getPrimaryKeyField(modelName);
 
@@ -1190,10 +1469,31 @@ ${this.generateCrudExports(crudExports)}
   }
 
   /**
+   * 生成 selectByIdWithRelations 方法
+   * 查询包含所有子关系的完整数据
+   */
+  private generateSelectByIdWithRelations(modelName: string): string {
+    const tableName = NamingRules.ZodTypeName(modelName);
+    const pascalName = TypeName(modelName, modelName);
+    const camelName = NamingRules.VariableName(modelName);
+    const primaryKeyField = this.getPrimaryKeyField(modelName);
+
+    return `export async function select${pascalName}ByIdWithRelations(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await db
+    .selectFrom("${tableName}")
+    .where("${primaryKeyField}", "=", id)
+    .selectAll("${tableName}")
+    .select((eb) => ${camelName}SubRelations(eb, eb.ref("${tableName}.${primaryKeyField}")))
+    .executeTakeFirst();
+}`;
+  }
+
+  /**
    * 生成 selectAll 方法
    */
   private generateSelectAll(modelName: string): string {
-    const tableName = NamingRules.toLowerCase(modelName);
+    const tableName = NamingRules.ZodTypeName(modelName);
     const pascalName = TypeName(modelName, modelName);
     const pluralName = this.pluralize(pascalName);
 
@@ -1207,7 +1507,7 @@ ${this.generateCrudExports(crudExports)}
    * 生成 insert 方法
    */
   private generateInsert(modelName: string): string {
-    const tableName = NamingRules.toLowerCase(modelName);
+    const tableName = NamingRules.ZodTypeName(modelName);
     const pascalName = TypeName(modelName, modelName);
 
     return `export async function insert${pascalName}(data: ${pascalName}Insert, trx?: Transaction<DB>) {
@@ -1220,7 +1520,7 @@ ${this.generateCrudExports(crudExports)}
    * 生成 update 方法
    */
   private generateUpdate(modelName: string): string {
-    const tableName = NamingRules.toLowerCase(modelName);
+    const tableName = NamingRules.ZodTypeName(modelName);
     const pascalName = TypeName(modelName, modelName);
     const primaryKeyField = this.getPrimaryKeyField(modelName);
 
@@ -1234,7 +1534,7 @@ ${this.generateCrudExports(crudExports)}
    * 生成 delete 方法
    */
   private generateDelete(modelName: string): string {
-    const tableName = NamingRules.toLowerCase(modelName);
+    const tableName = NamingRules.ZodTypeName(modelName);
     const pascalName = TypeName(modelName, modelName);
     const primaryKeyField = this.getPrimaryKeyField(modelName);
 
@@ -1322,14 +1622,14 @@ ${this.generateCrudExports(crudExports)}
     if (uniqueIndexes.length > 0) {
       const index = uniqueIndexes[0]; // 取第一个复合唯一索引
       const fieldNames = index.fields; // fields 是字符串数组
-      const pascalFieldNames = fieldNames.map((f: any) => NamingRules.toPascalCase(f)).join('And');
+      const pascalFieldNames = fieldNames.map((f: any) => NamingRules.TypeName(f)).join('And');
       return `, delete${pascalName}By${pascalFieldNames}`;
     } else if (uniqueFields.length >= 2) {
-      const pascalFieldNames = uniqueFields.map((f: any) => NamingRules.toPascalCase(f.name)).join('And');
+      const pascalFieldNames = uniqueFields.map((f: any) => NamingRules.TypeName(f.name)).join('And');
       return `, delete${pascalName}By${pascalFieldNames}`;
     } else if (uniqueFields.length === 1) {
       const firstUniqueField = uniqueFields[0];
-      return `, delete${pascalName}By${NamingRules.toPascalCase(firstUniqueField.name)}`;
+      return `, delete${pascalName}By${NamingRules.TypeName(firstUniqueField.name)}`;
     }
     
     return '';
@@ -1356,19 +1656,19 @@ ${this.generateCrudExports(crudExports)}
     if (uniqueIndexes.length > 0) {
       const index = uniqueIndexes[0]; // 取第一个复合唯一索引
       const fieldNames = index.fields; // fields 是字符串数组
-      const pascalFieldNames = fieldNames.map((f: any) => NamingRules.toPascalCase(f)).join('And');
+      const pascalFieldNames = fieldNames.map((f: any) => NamingRules.TypeName(f)).join('And');
       return {
         deleteByUniqueFields: `delete${pascalName}By${pascalFieldNames}`
       };
     } else if (uniqueFields.length >= 2) {
-      const pascalFieldNames = uniqueFields.map((f: any) => NamingRules.toPascalCase(f.name)).join('And');
+      const pascalFieldNames = uniqueFields.map((f: any) => NamingRules.TypeName(f.name)).join('And');
       return {
         deleteByUniqueFields: `delete${pascalName}By${pascalFieldNames}`
       };
     } else if (uniqueFields.length === 1) {
       const firstUniqueField = uniqueFields[0];
       return {
-        deleteByUniqueField: `delete${pascalName}By${NamingRules.toPascalCase(firstUniqueField.name)}`
+        deleteByUniqueField: `delete${pascalName}By${NamingRules.TypeName(firstUniqueField.name)}`
       };
     }
     

@@ -1,7 +1,6 @@
 import { useNavigate, useParams } from "@solidjs/router";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createEffect, createMemo, createResource, createSignal, on, onCleanup, onMount, Show } from "solid-js";
-import { findCharactersByPlayerId, findCharacterWithRelations } from "@db/repositories/character";
 import {
   EntityFactory,
   type CharacterEntityRuntime,
@@ -31,6 +30,7 @@ import Icons from "~/components/icons";
 import { Select } from "~/components/controls/select";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { DB } from "@db/generated/zod/index";
+import { selectAllCharactersByBelongtoplayerid, selectCharacterByIdWithRelations } from "@db/generated/repositories/character";
 
 export default function CharactePage() {
   // UI文本字典
@@ -39,10 +39,10 @@ export default function CharactePage() {
   const navigate = useNavigate();
 
   const params = useParams();
-  const characterFinder = (id: string) => findCharacterWithRelations(id);
+  const characterFinder = (id: string) => selectCharacterByIdWithRelations(id);
   const [character, { refetch: refetchCharacter }] = createResource(() => params.characterId, characterFinder);
 
-  const charactersFinder = (id: string) => findCharactersByPlayerId(id);
+  const charactersFinder = (id: string) => selectAllCharactersByBelongtoplayerid(id);
   const [characters, { refetch: refetchCharacters }] = createResource(
     () => store.session.account?.player?.id ?? "",
     charactersFinder,

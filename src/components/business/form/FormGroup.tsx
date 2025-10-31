@@ -8,11 +8,9 @@ import { createResource, Show, Index, createMemo } from "solid-js";
 import { Presence, Motion } from "solid-motionone";
 import { DATA_CONFIG } from "~/components/business/data-config";
 import { setStore, Store, store } from "~/store";
-import { Form } from "~/components/dataDisplay/form";
 import { getDictionary } from "~/locales/i18n";
 import { repositoryMethods } from "@db/generated/repositories";
 import { DBForm } from "./DBFormRenderer";
-import { Sheet } from "~/components/containers/sheet";
 import { FormSheet } from "./FormSheet";
 import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 

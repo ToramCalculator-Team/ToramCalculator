@@ -1,7 +1,7 @@
 /**
  * 玩家数据配置
  */
-import { MobWithRelations } from "@db/repositories/mob";
+import { MobWithRelations } from "@db/generated/repositories/mob";
 import { ConvertToNestedSchema, ConvertToNestedSchemaDic, ConvertToSchema } from "../../dataSys/SchemaTypes";
 import { MemberBaseStructure } from "../MemberBaseSchema";
 

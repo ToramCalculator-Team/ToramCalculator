@@ -114,7 +114,7 @@ export class SQLGenerator {
    */
   async generate(schemaContent: string): Promise<void> {
     try {
-      console.log("🔍 生成 SQL 初始化脚本...");
+      console.log("生成 SQL 初始化脚本...");
       
       // 1. 写入临时 schema 文件
       this.writeTempSchema(schemaContent);
@@ -135,9 +135,9 @@ export class SQLGenerator {
       // 5. 修复关系表名称
       this.fixRelationTableNames(schemaContent);
       
-      console.log("✅ SQL 初始化脚本生成完成");
+      console.log("SQL 初始化脚本生成完成");
     } catch (error) {
-      console.error("❌ SQL 初始化脚本生成失败:", error);
+      console.error("SQL 初始化脚本生成失败:", error);
       throw error;
     }
   }
@@ -153,7 +153,7 @@ export class SQLGenerator {
    * 生成服务端 SQL
    */
   private generateServerSQL(): string {
-    console.log("🔍 生成服务端 SQL...");
+    console.log("生成服务端 SQL...");
     try {
       // 确保临时 schema 文件存在
       if (!fs.existsSync(this.tempSchemaPath)) {
@@ -161,7 +161,7 @@ export class SQLGenerator {
       }
 
       const command = `npx prisma migrate diff --from-empty --to-schema-datamodel ${this.tempSchemaPath} --script`;
-      console.log(`🔍 执行命令: ${command}`);
+      console.log(`执行命令: ${command}`);
       
       const sql = execSync(command, { 
         encoding: 'utf-8',
@@ -169,7 +169,7 @@ export class SQLGenerator {
         stdio: 'pipe'
       });
       
-      console.log("✅ 服务端 SQL 生成成功");
+      console.log("服务端 SQL 生成成功");
       return sql;
     } catch (error) {
       console.warn("⚠️  服务端 SQL 生成失败，使用默认 SQL:", error);
@@ -181,7 +181,7 @@ export class SQLGenerator {
    * 生成客户端 SQL
    */
   private generateClientSQL(): string {
-    console.log("🔍 生成客户端 SQL...");
+    console.log("生成客户端 SQL...");
     try {
       // 先生成基础 SQL
       const baseSQL = this.generateServerSQL();
@@ -189,7 +189,7 @@ export class SQLGenerator {
       // 转换客户端 SQL
       const transformedSQL = this.transformClientSql(baseSQL);
       
-      console.log("✅ 客户端 SQL 生成成功");
+      console.log("客户端 SQL 生成成功");
       return transformedSQL;
     } catch (error) {
       console.warn("⚠️  客户端 SQL 生成失败，使用默认 SQL:", error);
@@ -201,7 +201,7 @@ export class SQLGenerator {
    * 转换客户端 SQL 为同步架构
    */
   private transformClientSql(initContent: string): string {
-    console.log("🔧 转换客户端 SQL 为同步架构...");
+    console.log("转换客户端 SQL 为同步架构...");
     
     // 删除外键约束和索引
     let content = initContent;
@@ -219,7 +219,7 @@ export class SQLGenerator {
     // 删除孤立的 `-- CreateIndex` 行
     content = content.replace(/-- CreateIndex\s*\n?/g, "");
     
-    console.log("✅ 外键约束及索引已删除");
+    console.log("外键约束及索引已删除");
     
     // 转换为同步架构
     return this.convertToSyncArchitecture(content);
@@ -284,7 +284,7 @@ FOR EACH ROW
 EXECUTE FUNCTION changes_notify_trigger();
 `;
 
-    console.log("✅ 已转换客户端 SQL 为同步架构");
+    console.log("已转换客户端 SQL 为同步架构");
     return output.join("\n") + "\n" + changesTable;
   }
 
@@ -692,7 +692,7 @@ FOR EACH ROW EXECUTE FUNCTION ${tableName}_delete_local_on_synced_delete_trigger
    * 修复关系表名称
    */
   private fixRelationTableNames(updatedSchema: string): void {
-    console.log("🔧 修复关系表名称...");
+    console.log("修复关系表名称...");
     
     // 从 schema 中提取关系表名称（以下划线开头的表）
     const relationTableMatches = updatedSchema.match(/model\s+_\w+/g);
@@ -725,7 +725,7 @@ FOR EACH ROW EXECUTE FUNCTION ${tableName}_delete_local_on_synced_delete_trigger
       fs.writeFileSync(clientSqlPath, fixTableNames(clientSql), "utf-8");
     }
     
-    console.log("✅ 关系表名称修复完成");
+    console.log("关系表名称修复完成");
   }
 
   /**

@@ -29,7 +29,7 @@ export class ZodGenerator {
    */
   async generate(outputPath: string): Promise<void> {
     try {
-      console.log("🔍 生成 Zod schemas...");
+      console.log("生成 Zod schemas...");
       
       const enumSchemas = this.generateEnumSchemas();
       const tableSchemas = this.generateTableSchemas();
@@ -41,9 +41,9 @@ export class ZodGenerator {
       
       writeFileSafely(outputPath, fullContent);
       
-      console.log("✅ Zod schemas 生成完成");
+      console.log("Zod schemas 生成完成");
     } catch (error) {
-      console.error("❌ Zod schemas 生成失败:", error);
+      console.error("Zod schemas 生成失败:", error);
       throw error;
     }
   }

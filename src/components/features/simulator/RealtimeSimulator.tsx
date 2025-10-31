@@ -13,7 +13,7 @@ import { Controller } from "./controller/controller";
 import { StatusBar, ControlPanel, MemberSelect, MemberStatus, SkillPanel, ActionPanel } from "./controller/components";
 import { Portal } from "solid-js/web";
 import { GameView } from "./render/Renderer";
-import { SimulatorWithRelations } from "@db/repositories/simulator";
+import { SimulatorWithRelations } from "@db/generated/repositories/simulator";
 
 export interface RealtimeSimulatorProps {
   simulatorData: SimulatorWithRelations;
