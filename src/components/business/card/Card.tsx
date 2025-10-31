@@ -9,6 +9,7 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 
 interface CardProps {
   title: string;
+  titleIcon?: JSX.Element;
   index: number;
   total: number;
   children: JSX.Element;
@@ -149,7 +150,8 @@ export const Card = (props: CardProps) => {
               </svg>
 
               <div class="bg-primary-color z-10 -mx-px py-[3px]">
-                <div class="border-boundary-color border-y py-[3px]">
+                <div class="border-boundary-color flex items-center border-y py-[3px]">
+                  <div class="TitleIcon bg-accent-color h-[34px] w-fit">{props.titleIcon}</div>
                   <h1 class="text-primary-color bg-accent-color py-[3px] text-xl font-bold">{props.title}</h1>
                 </div>
               </div>

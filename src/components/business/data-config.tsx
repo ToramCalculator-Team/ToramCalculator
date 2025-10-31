@@ -199,12 +199,7 @@ export const DATA_CONFIG: DataConfig = {
     },
   },
   drop_item: {
-    fieldGroupMap: {
-      基本信息: ["itemId", "belongToMobId"],
-      掉落概率: ["probability"],
-      掉落部位: ["relatedPartType", "relatedPartInfo"],
-      部位破坏奖励: ["breakRewardType"],
-    },
+    fieldGroupMap: {},
     table: {
       columnsDef: [],
       hiddenColumnDef: [],
@@ -217,6 +212,32 @@ export const DATA_CONFIG: DataConfig = {
     },
     card: {
       hiddenFields: ["id"],
+      fieldGenerator: {},
+    },
+  },
+  item: {
+    fieldGroupMap: {
+      基本信息: ["name", "itemType", "itemSourceType"],
+      其他属性: ["dataSources", "details"],
+    },
+    table: {
+      columnsDef: [
+        { accessorKey: "name", cell: (info) => info.getValue(), size: 200 },
+        { accessorKey: "itemType", cell: (info) => info.getValue(), size: 150 },
+        { accessorKey: "itemSourceType", cell: (info) => info.getValue(), size: 150 },
+        { accessorKey: "dataSources", cell: (info) => info.getValue(), size: 150 },
+        { accessorKey: "details", cell: (info) => info.getValue(), size: 150 },
+      ],
+      hiddenColumnDef: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
+      defaultSort: { id: "id", desc: false },
+      tdGenerator: {},
+    },
+    form: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+    card: {
+      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
       fieldGenerator: {},
     },
   },
@@ -459,7 +480,7 @@ export const DATA_CONFIG: DataConfig = {
       },
     },
     form: {
-      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
+      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId","statisticId"],
       fieldGenerator: {
         actions: (field, dictionary, dataSchema) => {
           return (
@@ -475,7 +496,7 @@ export const DATA_CONFIG: DataConfig = {
       },
     },
     card: {
-      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
+      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId","statisticId"],
       before: (data, setData, dataSchema, dictionary) => {
         const [difficulty, setDifficulty] = createSignal<MobDifficultyFlag>(MOB_DIFFICULTY_FLAG[1]);
 
@@ -627,6 +648,48 @@ export const DATA_CONFIG: DataConfig = {
           </div>
         ),
       },
+    },
+  },
+  recipe: {
+    fieldGroupMap: {
+      基本信息: ["id"],
+    },
+    table: {
+      columnsDef: [],
+      hiddenColumnDef: [],
+      defaultSort: { id: "id", desc: false },
+      tdGenerator: {},
+    },
+    form: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+    card: {
+      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId","statisticId"],
+      fieldGenerator: {},
+    },
+  },
+  recipe_ingredient: {
+    fieldGroupMap: {
+      基本信息: ["count", "type", "itemId"],
+    },
+    table: {
+      columnsDef: [
+        { accessorKey: "count", cell: (info) => info.getValue(), size: 100 },
+        { accessorKey: "type", cell: (info) => info.getValue(), size: 150 },
+        { accessorKey: "itemId", cell: (info) => info.getValue(), size: 200 },
+      ],
+      hiddenColumnDef: [],
+      defaultSort: { id: "id", desc: false },
+      tdGenerator: {},
+    },
+    form: {
+      hiddenFields: [],
+      fieldGenerator: {},
+    },
+    card: {
+      hiddenFields: ["id"],
+      fieldGenerator: {},
     },
   },
   skill: {
@@ -810,6 +873,27 @@ export const DATA_CONFIG: DataConfig = {
       fieldGenerator: {},
     },
   },
+  world: {
+    fieldGroupMap: {
+      基本信息: ["name"],
+    },
+    table: {
+      columnsDef: [
+        { accessorKey: "name", cell: (info) => info.getValue(), size: 200 },
+      ],
+      hiddenColumnDef: [],
+      defaultSort: { id: "name", desc: false },
+      tdGenerator: {},
+    },
+    form: {
+      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId","statisticId"],
+      fieldGenerator: {},
+    },
+    card: {
+      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId","statisticId"],
+      fieldGenerator: {},
+    },
+  },
   zone: {
     fieldGroupMap: {
       基本信息: ["name", "rewardNodes"],
@@ -852,11 +936,11 @@ export const DATA_CONFIG: DataConfig = {
       tdGenerator: {},
     },
     form: {
-      hiddenFields: [],
+      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId","statisticId"],
       fieldGenerator: {},
     },
     card: {
-      hiddenFields: [],
+      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId","statisticId"],
       fieldGenerator: {},
     },
   },

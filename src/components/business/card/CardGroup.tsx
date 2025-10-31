@@ -13,6 +13,7 @@ import { repositoryMethods } from "@db/generated/repositories";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { Card } from "./Card";
 import { DBdataRenderer } from "./DBdataRenderer";
+import Icons from "~/components/icons";
 
 const cardDataCache = new Map<string, any>();
 
@@ -64,9 +65,10 @@ export const CardGroup = () => {
               return (
                 <Card
                   display={cachedCardDatas()!.length - index < 5}
-                  title={cardData()?.name ?? dictionary().db[cardGroupItem.type].selfName}
                   index={index}
                   total={cachedCardDatas()!.length}
+                  titleIcon={<Icons.Spirits iconName={cardGroupItem.type} />}
+                  title={dictionary().db[cardGroupItem.type].selfName + "-" + (cardData()?.name ?? "")}
                 >
                   <Show when={cardData()} fallback={<pre>{JSON.stringify(cardData(), null, 2)}</pre>}>
                     {(cardData) => {

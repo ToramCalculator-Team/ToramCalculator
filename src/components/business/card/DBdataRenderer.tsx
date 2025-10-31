@@ -91,10 +91,6 @@ function getRelationPrefixKey(
   if (fieldName.startsWith("updatedby")) return "updatedBy";
   if (fieldName.startsWith("createdby")) return "createdBy";
   if (fieldName.startsWith("link") || fieldName.includes("related")) return "related";
-  
-  // 检查是否包含表示"包含"含义的字段名（如 skills, drops, items 等）
-  const containsFields = ["drops", "images", "members", "kills", "requires", "rewards", "addresses", "zones", "mobs", "npcs", "tasks", "recipes", "actions", "effects", "weapons", "armors", "options", "specials", "crystals", "avatars", "consumables", "combos", "skills"];
-  if (containsFields.includes(fieldName)) return "contains";
 
   // 没有明确前缀的字段，不显示前缀
   return "none";
@@ -234,9 +230,9 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
 
   const [relations, { refetch: refetchRelations }] = createResource(async () => {
     type RelationItem = { data: any; displayName: string };
-    type RelationGroup = { tableName: keyof DB; prefixKey: keyof dictionary["ui"]["relationPrefix"]; items: RelationItem[] };
+    type RelationGroup = { tableName: keyof DB; prefixKey: keyof dictionary["ui"]["relationPrefix"]; items: RelationItem[]; isParent: boolean };
     type RelationsResult = { groups: RelationGroup[]; displayedRelationFieldNames: Set<string> };
-    const groupMap = new Map<keyof DB, { prefixKey: keyof dictionary["ui"]["relationPrefix"]; items: RelationItem[]; seen: Set<string> }>();
+    const groupMap = new Map<keyof DB, { prefixKey: keyof dictionary["ui"]["relationPrefix"]; items: RelationItem[]; seen: Set<string>; isParent: boolean }>();
     const displayedRelationFieldNames = new Set<string>();
 
     if (relationCandidates.length === 0) return { groups: [] as RelationGroup[], displayedRelationFieldNames };
@@ -306,6 +302,11 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
       // 从当前表视角确定目标表
       const targetTableName = relationMetadata.from === props.tableName ? relationMetadata.to : relationMetadata.from;
       const targetPrimaryKey = getPrimaryKeyFields(targetTableName as keyof DB)[0];
+
+      // 判断是否是父关系：ManyToOne 且当前表有外键，或 OneToOne 且当前表有外键
+      const isParentRelation = 
+        (relationType === "ManyToOne" && relationMetadata.from === props.tableName && relationMetadata.fromHasForeignKey) ||
+        (relationType === "OneToOne" && relationMetadata.from === props.tableName && relationMetadata.fromHasForeignKey);
 
       try {
         let relationData: any[] = [];
@@ -430,8 +431,10 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
               relationMetadata.name,
               relationMetadata.type
             );
-            if (!groupMap.has(key)) groupMap.set(key, { prefixKey, items: [], seen: new Set() });
+            if (!groupMap.has(key)) groupMap.set(key, { prefixKey, items: [], seen: new Set(), isParent: false });
             const bucket = groupMap.get(key)!;
+            // 如果当前关系是父关系，更新标记
+            if (isParentRelation) bucket.isParent = true;
             // 如果已存在但 prefixKey 不同，优先保留更具体的（非 related）
             if (bucket.prefixKey === "related" && prefixKey !== "related") {
               bucket.prefixKey = prefixKey;
@@ -489,6 +492,135 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
               if (bucket.seen.has(id)) {
                 // 若已存在同 id 且旧名称等于 id，而新名称更可读，则升级显示名
                 const idx = bucket.items.findIndex((x) => String(x.data[childPk as keyof typeof x.data]) === id);
+                if (idx >= 0) {
+                  const oldIsId = bucket.items[idx].displayName === id;
+                  if (oldIsId && finalName !== id) bucket.items[idx].displayName = finalName;
+                }
+                continue;
+              }
+              bucket.seen.add(id);
+              bucket.items.push({ data: item, displayName: finalName });
+            }
+            continue;
+          }
+        } else if (relationType === "OneToOne") {
+          // OneToOne 关系处理
+          if (relationMetadata.from === props.tableName) {
+            // 当前表是 from 表
+            if (relationMetadata.fromHasForeignKey) {
+              // 当前表有外键字段：通过当前表的外键查询目标表
+              const currentModel = MODEL_METADATA.find((m) => m.tableName === props.tableName)!;
+              const currentFkField = currentModel.fields.find(
+                (f) => f.kind === "object" && f.relationName === relationMetadata.name && f.relationFromFields && f.relationFromFields.length > 0
+              );
+              const currentFkColumn = currentFkField?.relationFromFields?.[0];
+              if (!currentFkColumn) continue;
+
+              const targetId = props.data[currentFkColumn as keyof typeof props.data];
+              if (typeof targetId === "undefined") continue;
+
+              relationData = await db
+                .selectFrom(targetTableName as any)
+                .where(targetPrimaryKey as any, "=", targetId as any)
+                .selectAll()
+                .execute();
+            } else {
+              // 目标表（to）有外键字段：在目标表中查找外键指向当前主键的记录
+              const targetModel = MODEL_METADATA.find((m) => m.tableName === targetTableName);
+              if (!targetModel) continue;
+              
+              const targetFkField = targetModel.fields.find(
+                (f) => f.kind === "object" && f.relationName === relationMetadata.name && f.relationFromFields && f.relationFromFields.length > 0
+              );
+              const targetFkColumn = targetFkField?.relationFromFields?.[0];
+              if (!targetFkColumn) continue;
+
+              relationData = await db
+                .selectFrom(targetTableName as any)
+                .where(targetFkColumn as any, "=", currentPrimaryKeyValue)
+                .selectAll()
+                .execute();
+            }
+          } else {
+            // 当前表是 to 表，from 表有外键指向当前表
+            const fromTableName = relationMetadata.from;
+            const fromModel = MODEL_METADATA.find((m) => m.tableName === fromTableName);
+            if (!fromModel) continue;
+            
+            const fromFkField = fromModel.fields.find(
+              (f) => f.kind === "object" && f.relationName === relationMetadata.name && f.relationFromFields && f.relationFromFields.length > 0
+            );
+            const fromFkColumn = fromFkField?.relationFromFields?.[0];
+            if (!fromFkColumn) continue;
+
+            // 从 from 表中查找外键指向当前主键的记录
+            relationData = await db
+              .selectFrom(fromTableName as any)
+              .where(fromFkColumn as any, "=", currentPrimaryKeyValue)
+              .selectAll()
+              .execute();
+            
+            // 更新 targetTableName 为 from 表（因为我们要显示的是 from 表的数据）
+            const originalTargetTableName = targetTableName;
+            // 注意：这里 targetTableName 实际上已经是 from 表了（因为 relationMetadata.from !== props.tableName）
+            // 但为了保持一致性，我们使用 fromTableName
+            const fromPk = getPrimaryKeyFields(fromTableName as keyof DB)[0];
+            const prefixKey = getRelationPrefixKey(
+              props.tableName as string,
+              fromTableName,
+              relationMetadata.name,
+              relationMetadata.type
+            );
+            if (!groupMap.has(fromTableName as keyof DB)) {
+              groupMap.set(fromTableName as keyof DB, { prefixKey, items: [], seen: new Set(), isParent: false });
+            }
+            const bucket = groupMap.get(fromTableName as keyof DB)!;
+            // 如果当前关系是父关系，更新标记
+            if (isParentRelation) bucket.isParent = true;
+            if (bucket.prefixKey === "related" && prefixKey !== "related") {
+              bucket.prefixKey = prefixKey;
+            }
+            for (const item of relationData) {
+              const id = String(item[fromPk as keyof typeof item]);
+              let finalName: string | undefined;
+              if ("name" in item && typeof (item as any).name === "string" && (item as any).name) {
+                finalName = (item as any).name as string;
+              } else {
+                const readableName = getReadableName(fromTableName, item);
+                const itemId = String(item[fromPk as keyof typeof item]);
+                const isUnreadableId = readableName === itemId && (
+                  itemId.length >= 24 && itemId.length <= 30 && /^[a-z0-9]+$/.test(itemId) && !itemId.includes("default") ||
+                  itemId.length > 30 ||
+                  itemId.startsWith("cuid_")
+                );
+                if (isUnreadableId) {
+                  const nameSide = findNameSideRelation(fromTableName);
+                  if (nameSide) {
+                    const fkField = fromModel.fields.find(
+                      (f) => f.kind === "object" && f.relationName === nameSide.name && f.relationFromFields && f.relationFromFields.length > 0
+                    );
+                    const fkColumn = fkField?.relationFromFields?.[0];
+                    if (fkColumn && item[fkColumn as keyof typeof item]) {
+                      const relatedId = item[fkColumn as keyof typeof item];
+                      const nameTablePk = getPrimaryKeyFields(nameSide.to as keyof DB)[0];
+                      const rows = await db
+                        .selectFrom(nameSide.to as any)
+                        .select(["name" as any])
+                        .where(nameTablePk as any, "=", relatedId as any)
+                        .limit(1)
+                        .execute();
+                      const relatedName = rows[0]?.name as string | undefined;
+                      if (relatedName) {
+                        finalName = relatedName;
+                      }
+                    }
+                  }
+                }
+                finalName = finalName ?? readableName;
+              }
+
+              if (bucket.seen.has(id)) {
+                const idx = bucket.items.findIndex((x) => String(x.data[fromPk as keyof typeof x.data]) === id);
                 if (idx >= 0) {
                   const oldIsId = bucket.items[idx].displayName === id;
                   if (oldIsId && finalName !== id) bucket.items[idx].displayName = finalName;
@@ -566,8 +698,10 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
             relationMetadata.name,
             relationMetadata.type
           );
-          if (!groupMap.has(key)) groupMap.set(key, { prefixKey, items: [], seen: new Set() });
+          if (!groupMap.has(key)) groupMap.set(key, { prefixKey, items: [], seen: new Set(), isParent: false });
           const bucket = groupMap.get(key)!;
+          // 如果当前关系是父关系，更新标记
+          if (isParentRelation) bucket.isParent = true;
           // 如果已存在但 prefixKey 不同，优先保留更具体的（非 related）
           if (bucket.prefixKey === "related" && prefixKey !== "related") {
             bucket.prefixKey = prefixKey;
@@ -590,10 +724,17 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
       }
     }
 
-    // 转换为分组数组，按表名排序，并过滤空分组
+    // 转换为分组数组，先按是否是父关系排序（父关系在后），再按表名排序，并过滤空分组
     const groups = Array.from(groupMap.entries())
-      .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
-      .map(([tableName, bucket]) => ({ tableName, prefixKey: bucket.prefixKey, items: bucket.items }))
+      .sort((a, b) => {
+        // 先按是否是父关系排序：父关系（true）在后
+        if (a[1].isParent !== b[1].isParent) {
+          return a[1].isParent ? 1 : -1;
+        }
+        // 再按表名排序
+        return String(a[0]).localeCompare(String(b[0]));
+      })
+      .map(([tableName, bucket]) => ({ tableName, prefixKey: bucket.prefixKey, items: bucket.items, isParent: bucket.isParent }))
       .filter((g) => g.items.length > 0);
     
     return { groups, displayedRelationFieldNames };
@@ -654,6 +795,7 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
                     <For each={group.items}>
                       {(item) => (
                         <Button
+                          level={group.isParent ? "quaternary" : "default"}
                           onclick={() => {
                             const itemPrimaryKey = getPrimaryKeyFields(group.tableName)[0];
                             const itemId = String(item.data[itemPrimaryKey as keyof typeof item.data]);
