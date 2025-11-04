@@ -20,7 +20,7 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@babylonjs/inspector": "^7.32.5",
+    "@babylonjs/inspector": "8.34.1",
     "@prisma/generator-helper": "6.18.0",
     "@types/bcrypt": "^5.0.2",
     "@types/js-cookie": "^3.0.6",
@@ -41,9 +41,9 @@
     "@auth/core": "^0.38.0",
     "@auth/pg-adapter": "^1.8.0",
     "@auth/solid-start": "^0.16.0",
-    "@babylonjs/core": "^7.32.5",
-    "@babylonjs/loaders": "^7.32.5",
-    "@babylonjs/materials": "^7.32.5",
+    "@babylonjs/core": "8.34.1",
+    "@babylonjs/loaders": "8.34.1",
+    "@babylonjs/materials": "8.34.1",
     "@editorjs/editorjs": "^2.30.4",
     "@editorjs/header": "^2.8.8",
     "@editorjs/link": "^2.6.2",

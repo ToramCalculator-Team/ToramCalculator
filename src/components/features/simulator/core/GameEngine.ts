@@ -419,7 +419,11 @@ export class GameEngine {
             if (this.sendToMirror) {
               this.sendToMirror(command);
             } else {
-              console.warn("GameEngine: sendToMirror 未设置，忽略命令:", command);
+              console.warn("GameEngine: sendToMirror 未设置，忽略命令:", command, "当前状态:", this.stateMachine.getSnapshot().value);
+              // 如果是在初始化过程中，延迟重试
+              if (command.type === "RESULT" && command.command === "INIT") {
+                console.warn("GameEngine: RESULT(INIT) 命令被忽略，可能导致状态机超时");
+              }
             }
           }
         },

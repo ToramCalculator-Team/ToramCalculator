@@ -73,16 +73,37 @@ export const gameEngineSM = setup({
   },
   actions: {
     forwardToMirror: ({ context, event }) => {
+      console.log("GameEngineSM: forwardToMirror - event:", event);
       context.mirror.send({ ...event, origin: "mirror" });
     },
     doInit: ({ context, event }) => {
-      // worker 内部执行引擎初始化逻辑（不启动）
-      if (event.type === "INIT" && event.data) {
-        context.engine?.initialize(event.data);
-      } else {
-        throw new Error("INIT 命令必须提供数据");
+      try {
+        // worker 内部执行引擎初始化逻辑（不启动）
+        if (event.type === "INIT" && event.data) {
+          console.log("GameEngineSM: doInit - 开始初始化引擎", event.data);
+          context.engine?.initialize(event.data);
+          console.log("GameEngineSM: doInit - 引擎初始化完成");
+        } else {
+          throw new Error("INIT 命令必须提供数据");
+        }
+        // 发送成功结果
+        console.log("GameEngineSM: doInit - 发送 RESULT 事件");
+        context.mirror.send({ type: "RESULT", command: "INIT", success: true });
+      } catch (error) {
+        console.error("GameEngineSM: doInit - 初始化失败:", error);
+        // 即使失败也要发送结果，让状态机知道发生了错误
+        try {
+          context.mirror.send({ 
+            type: "RESULT", 
+            command: "INIT", 
+            success: false, 
+            error: error instanceof Error ? error.message : String(error) 
+          });
+        } catch (sendError) {
+          console.error("GameEngineSM: doInit - 发送 RESULT 失败:", sendError);
+        }
+        throw error; // 重新抛出以便 XState 记录
       }
-      context.mirror.send({ type: "RESULT", command: "INIT", success: true });
     },
     doStart: ({ context }) => {
       // worker 内部启动引擎
@@ -147,9 +168,24 @@ export const gameEngineSM = setup({
 
     initializing: {
       on: {
-        RESULT: {
-          guard: ({ event }) => event.command === "INIT" && event.success,
-          target: "ready",
+        RESULT: [
+          {
+            guard: ({ event }) => event.command === "INIT" && event.success,
+            target: "ready",
+          },
+          {
+            guard: ({ event }) => event.command === "INIT" && !event.success,
+            target: "idle",
+          },
+        ],
+      },
+      // 添加超时保护，如果长时间没有收到 RESULT，自动回到 idle
+      after: {
+        10000: {
+          target: "idle",
+          actions: () => {
+            console.warn("GameEngineSM: 初始化超时，返回 idle 状态");
+          },
         },
       },
     },

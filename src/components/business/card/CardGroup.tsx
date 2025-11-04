@@ -68,7 +68,8 @@ export const CardGroup = () => {
                   index={index}
                   total={cachedCardDatas()!.length}
                   titleIcon={<Icons.Spirits iconName={cardGroupItem.type} />}
-                  title={dictionary().db[cardGroupItem.type].selfName + "-" + (cardData()?.name ?? "")}
+                  // title={dictionary().db[cardGroupItem.type].selfName + "-" + (cardData()?.name ?? "")}
+                  title={cardData()?.name ?? ""}
                 >
                   <Show when={cardData()} fallback={<pre>{JSON.stringify(cardData(), null, 2)}</pre>}>
                     {(cardData) => {

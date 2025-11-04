@@ -46,9 +46,14 @@ export class Controller {
       input: {
         mirror: {
           send: (msg: EngineCommand) => {
-            realtimeSimulatorPool.executeTask("engine_command", msg, "high").catch((error) => {
-              console.error("Controller: 发送引擎命令失败:", error);
-            });
+            console.log("Controller: mirror.send - 发送命令到Worker:", msg);
+            realtimeSimulatorPool.executeTask("engine_command", msg, "high")
+              .then((result) => {
+                console.log("Controller: mirror.send - 任务执行完成:", result);
+              })
+              .catch((error) => {
+                console.error("Controller: 发送引擎命令失败:", error);
+              });
           },
         },
         engine: undefined,

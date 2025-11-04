@@ -466,7 +466,7 @@ export function BabylonBg(): JSX.Element {
       SPS.setParticles();
     });
 
-    await AppendSceneAsync("models/landscape.glb", scene);
+    await AppendSceneAsync("/models/landscape.glb", scene);
 
     // 加载model
     // void SceneLoader.AppendAsync("models/", "landscape.glb", scene, (event) => {

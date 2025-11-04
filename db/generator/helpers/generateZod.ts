@@ -132,7 +132,7 @@ export class ZodGenerator {
         zodType = "z.boolean()";
         break;
       case "DateTime":
-        zodType = "z.date()";
+        zodType = "z.string()";
         break;
       case "Json":
         zodType = "z.any()";
@@ -155,7 +155,7 @@ export class ZodGenerator {
 
     // 处理可选性
     if (!field.isRequired) {
-      zodType += ".optional()";
+      zodType += ".nullable()";
     }
 
     // 处理数组

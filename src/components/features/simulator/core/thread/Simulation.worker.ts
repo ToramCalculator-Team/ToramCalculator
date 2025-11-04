@@ -188,7 +188,9 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
               const dataQueryResult = DataQueryCommandSchema.safeParse(payload);
             if (engineCommandResult.success) {
               // 状态机命令直接转发给引擎
+              console.log("🔌 Worker: 收到状态机命令:", engineCommandResult.data);
               gameEngine.sendCommand(engineCommandResult.data);
+              console.log("🔌 Worker: 命令已发送到引擎状态机");
               portResult = { success: true };
             } else if(dataQueryResult.success) {
               // 数据查询命令处理
@@ -253,6 +255,10 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
             console.error("Worker: 发送系统消息失败:", error);
           }
         });
+
+        // 发送 Worker 初始化完成消息
+        console.log("✅ Worker: 初始化完成，发送 ready 消息");
+        postSystemMessage(messagePort, "system_event", { type: "worker_ready", workerId: "main" });
 
         return;
 

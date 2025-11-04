@@ -19,7 +19,7 @@
 // }
 
 import { selectSimulatorByIdWithRelations } from "@db/generated/repositories/simulator";
-import { createResource, Show } from "solid-js";
+import { createEffect, createResource, Show } from "solid-js";
 import RealtimeSimulator from "~/components/features/simulator/RealtimeSimulator";
 import { useParams } from "@solidjs/router";
 
@@ -31,6 +31,11 @@ export default function SimulatorPage() {
   const [simulatorData, { refetch: refetchSimulator }] = createResource(() =>
     selectSimulatorByIdWithRelations(params.simulatorId),
   );
+
+  // createEffect(() => {
+  //   console.log("simulatorData", simulatorData());
+  // });
+
   return (
     <Show when={simulatorData()} fallback={<div>Loading...</div>}>
       {(validSimulatorData) => <RealtimeSimulator simulatorData={validSimulatorData()} />}

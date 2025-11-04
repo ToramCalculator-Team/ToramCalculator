@@ -236,7 +236,7 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
     const wrapper: WorkerWrapper = {
       worker,
       port: channel.port2, // 主线程持有port2
-      busy: false, // 初始状态为空闲
+      busy: true, // 初始状态为忙碌，等待初始化完成
       id: createId(), // 生成唯一ID
       lastUsed: Date.now(), // 记录最后使用时间
       metrics: {
@@ -258,6 +258,16 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
       const parsed = WorkerSystemMessageSchema.safeParse(event.data);
       if (parsed.success) {
         const sys = parsed.data;
+        
+        // 检查是否是 Worker 初始化完成的消息
+        if (sys.type === "system_event" && sys.data?.type === "worker_ready") {
+          console.log(`✅ Worker ${wrapper.id} 初始化完成，标记为可用`);
+          wrapper.busy = false;
+          // 初始化完成后，处理队列中的任务
+          this.processNextTask();
+          return;
+        }
+        
         this.emit("worker-message", { worker: wrapper, event: { type: sys.type, data: sys.data, belongToTaskId: sys.belongToTaskId } });
         return;
       }
@@ -485,6 +495,9 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
       throw new Error("线程池已关闭");
     }
 
+    // 确保 Worker 已初始化
+    this.ensureWorkersInitialized();
+
     // 构建任务对象
     const task: Task<K, TTaskTypeMap[K], TPriority> = {
       id: createId(),
@@ -497,6 +510,7 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
       originalRetries: this.config.maxRetries,
     };
 
+    console.log("🔄 WorkerPool: executeTask - 任务已创建:", { type, taskId: task.id, priority });
     return await this.processTask(task);
   }
 

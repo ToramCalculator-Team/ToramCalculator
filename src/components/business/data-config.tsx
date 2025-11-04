@@ -639,15 +639,7 @@ export const DATA_CONFIG: DataConfig = {
     },
     card: {
       hiddenFields: [],
-      fieldGenerator: {
-        name: (data, key, dictionary) => (
-          <div class="text-accent-color flex flex-col gap-1">
-            <span>
-              {key}: {data[key]} --- {dictionary.fields[key].key}
-            </span>
-          </div>
-        ),
-      },
+      fieldGenerator: {},
     },
   },
   recipe: {

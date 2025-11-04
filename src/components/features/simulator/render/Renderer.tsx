@@ -185,7 +185,7 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
 
     // -----------------------------------------model--------------------------------------------
 
-    await AppendSceneAsync("models/landscape.glb", scene);  
+    await AppendSceneAsync("/models/landscape.glb", scene);  
     console.log("landscape.glb加载完成");
 
     // 先初始化渲染通信，确保能接收Worker的消息
@@ -226,7 +226,6 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
     camera.fov = 1;
 
     scene.executeWhenReady(() => {
-      console.log("🎭 Scene executeWhenReady 触发", new Date().toLocaleTimeString());
 
       // 注册循环渲染函数
       engine.runRenderLoop(() => {
