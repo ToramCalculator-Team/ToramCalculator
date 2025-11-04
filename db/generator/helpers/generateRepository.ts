@@ -1057,16 +1057,18 @@ ${this.generateCrudExports(crudExports)}
       // 子关系：检查是否有 relationFromFields
       if (field.relationFromFields && field.relationFromFields.length > 0) {
         // 外键在当前模型中，指向目标模型
+        // 使用 whereRef 引用当前查询上下文中的外键字段，而不是使用 id 参数
         const foreignKey = field.relationFromFields[0];
+        const currentTableName = NamingRules.ZodTypeName(model.name);
         const targetCamelName = NamingRules.VariableName(targetTable);
         // 自引用关系或配置的断点关系不生成嵌套子关系调用，避免无限递归
         const shouldSkip = isSelfRelation || this.shouldSkipSubRelation(model.name, field.name);
         const subRelationCode = shouldSkip ? '' : `\n              .select((eb) => ${targetCamelName}SubRelations(eb, eb.val("${targetTable}.${targetPrimaryKey}")))`;
-        return `(eb: ExpressionBuilder<DB, "${NamingRules.ZodTypeName(model.name)}">, id: Expression<string>) =>
+        return `(eb: ExpressionBuilder<DB, "${currentTableName}">, id: Expression<string>) =>
           jsonObjectFrom(
             eb
               .selectFrom("${targetTable}")
-              .where("${targetTable}.${targetPrimaryKey}", "=", id)
+              .whereRef("${targetTable}.${targetPrimaryKey}", "=", "${currentTableName}.${foreignKey}")
               .selectAll("${targetTable}")${subRelationCode}
           ).$notNull().as("${field.name}")`;
       } else {
