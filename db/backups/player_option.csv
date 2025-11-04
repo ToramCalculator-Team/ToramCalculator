@@ -1,2 +1,2 @@
 id,name,baseAbi,extraAbi,templateId,refinement,modifiers,belongToPlayerId
-defaultPlayerOptionId,defaultPlayerOption,0,0,defaultOptionItemId,15,"{""pie.m + 25%"",""cspd + 750"",""cspd + 50%"",""subWeapon.type == \""Ninjutsuscroll\"" && pie.p + 25%""}",defaultPlayerId
+defaultPlayerOptionId,马卡龙头套+15,0,0,defaultOptionItemId,15,"{""pie.m + 25%"",""cspd + 750"",""cspd + 50%"",""subWeapon.type == \""Ninjutsuscroll\"" && pie.p + 25%""}",defaultPlayerId

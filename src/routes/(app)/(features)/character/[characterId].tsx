@@ -48,47 +48,6 @@ export default function CharactePage() {
     charactersFinder,
   );
 
-  // ----------------------------------------预设内容-----------------------------------
-  // 主题色定义
-  const cssColors = {
-    white: [255, 255, 255],
-    geryWhite: [200, 200, 200],
-    grey: [55, 55, 55],
-    black: [0, 0, 0],
-    brown: [47, 26, 73],
-    navyBlue: [105, 145, 214],
-    greenBlue: [149, 207, 213],
-    yellow: [255, 166, 60],
-    orange: [253, 126, 80],
-    water: [0, 140, 229],
-    fire: [233, 62, 38],
-    earth: [255, 151, 54],
-    wind: [0, 143, 84],
-    light: [248, 193, 56],
-    dark: [141, 56, 240],
-  };
-  const rgb2Bcolor3 = (c: number[]) => new Color3(c[0] / 255, c[1] / 255, c[2] / 255);
-  const themeColors = createMemo(
-    () =>
-      ({
-        light: {
-          accent: rgb2Bcolor3(cssColors.brown),
-          primary: rgb2Bcolor3(cssColors.white),
-          transition: rgb2Bcolor3(cssColors.navyBlue),
-          brand_1st: rgb2Bcolor3(cssColors.greenBlue),
-          brand_2nd: rgb2Bcolor3(cssColors.yellow),
-          brand_3rd: rgb2Bcolor3(cssColors.orange),
-        },
-        dark: {
-          accent: rgb2Bcolor3(cssColors.white),
-          primary: rgb2Bcolor3(cssColors.grey),
-          transition: rgb2Bcolor3(cssColors.navyBlue),
-          brand_1st: rgb2Bcolor3(cssColors.greenBlue),
-          brand_2nd: rgb2Bcolor3(cssColors.yellow),
-          brand_3rd: rgb2Bcolor3(cssColors.orange),
-        },
-      })[store.settings.userInterface.theme],
-  );
   const [canvas, setCanvas] = createSignal<HTMLCanvasElement | null>(null);
   // 引擎定义
   let engine: AbstractEngine;
@@ -345,14 +304,14 @@ export default function CharactePage() {
                     if (character().weapon) {
                       setStore("pages", "cardGroup", store.pages.cardGroup.length, {
                         type: "player_weapon",
-                        id: character().weapon.id,
+                        id: character().weapon?.id,
                       });
                     }
                   }}
                   class="MainHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border landscape:w-full landscape:border-b"
                 >
                   <div class="Label px-4 py-3">主手</div>
-                  <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
+                  <div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
                     <Icons.Spirits iconName={character().weapon?.type ?? ""} size={36} />
                     {character().weapon?.name}
                   </div>
@@ -378,14 +337,14 @@ export default function CharactePage() {
                     if (character().subWeapon) {
                       setStore("pages", "cardGroup", store.pages.cardGroup.length, {
                         type: "player_weapon",
-                        id: character().subWeapon.id,
+                        id: character().subWeapon?.id,
                       });
                     }
                   }}
                   class="SubHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border landscape:w-full landscape:border-b"
                 >
                   <div class="Label px-4 py-3">副手</div>
-                  <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
+                  <div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
                     <Icons.Spirits iconName={character().subWeapon?.type ?? ""} size={36} />
                     {character().subWeapon?.name}
                   </div>
@@ -411,14 +370,14 @@ export default function CharactePage() {
                     if (character().armor) {
                       setStore("pages", "cardGroup", store.pages.cardGroup.length, {
                         type: "player_armor",
-                        id: character().armor.id,
+                        id: character().armor?.id,
                       });
                     }
                   }}
                   class="Armor  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
                 >
                   <div class="Label px-4 py-3 portrait:hidden">防具</div>
-                  <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
+                  <div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
                     <Icons.Spirits iconName={character().armor?.ability ?? ""} size={36} />
                     {character().armor?.name}
                   </div>
@@ -444,14 +403,14 @@ export default function CharactePage() {
                     if (character().option) {
                       setStore("pages", "cardGroup", store.pages.cardGroup.length, {
                         type: "player_option",
-                        id: character().option.id,
+                        id: character().option?.id,
                       });
                     }
                   }}
                   class="OptEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
                 >
                   <div class="Label px-4 py-3 portrait:hidden">追加</div>
-                  <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
+                  <div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
                     <Icons.Spirits iconName={"option"} size={36} />
                     {character().option?.name}
                   </div>
@@ -477,14 +436,14 @@ export default function CharactePage() {
                     if (character().special) {
                       setStore("pages", "cardGroup", store.pages.cardGroup.length, {
                         type: "player_special",
-                        id: character().special.id,
+                        id: character().special?.id,
                       });
                     }
                   }}
                   class="SpeEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
                 >
                   <div class="Label px-4 py-3 portrait:hidden">特殊</div>
-                  <div class="Selector flex w-full items-center gap-2 overflow-x-hidden px-4 text-ellipsis whitespace-nowrap">
+                  <div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
                     <Icons.Spirits iconName={"special"} size={36} />
                     {character().special?.name}
                   </div>

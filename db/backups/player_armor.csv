@@ -1,2 +1,2 @@
 id,name,baseAbi,extraAbi,ability,templateId,refinement,modifiers,belongToPlayerId
-defaultPlayerArmorId,defaultPlayerArmor,0,10,Light,defaultArmorItemId,0,"{""c.dmg.p + 23"",""c.dmg.p + 11%"",""c.rate.p + 29"",""amp.earth + 23%""}",defaultPlayerId
+defaultPlayerArmorId,对地三爆衣,0,10,Light,defaultArmorItemId,0,"{""c.dmg.p + 23"",""c.dmg.p + 11%"",""c.rate.p + 29"",""amp.earth + 23%""}",defaultPlayerId
