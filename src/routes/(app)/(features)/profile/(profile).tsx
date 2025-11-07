@@ -38,7 +38,7 @@ export default function ProfilePage() {
   return (
     <div class="Profile flex flex-col gap-4 p-3">
       <div class="Top flex flex-col items-center justify-center gap-3 p-6">
-        <div class="Avatar bg-accent-color h-32 w-32 flex-none overflow-hidden rounded-full"></div>
+        <div class="Avatar bg-area-color h-32 w-32 flex-none overflow-hidden rounded-full"></div>
         <span class="text-2xl">{store.session.user?.name}</span>
         <div class={`Config absolute top-3 right-3 flex gap-1`}>
           <For each={extraFunctionConfig()}>

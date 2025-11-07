@@ -13,7 +13,7 @@ type SelectProps = {
   optionsFetcher?: (name: string) => Promise<SelectOption[]>;
   optionGenerator?: (option: SelectOption, selected: boolean, onClick: () => void) => JSX.Element;
   placeholder?: string;
-  class?: string;
+  class?: HTMLDivElement["className"];
   textCenter?: boolean;
   styleLess?: boolean;
   disabled?: boolean;
@@ -82,8 +82,11 @@ export function Select(props: SelectProps) {
         <div
           class={`${!props.styleLess && "bg-area-color rounded-md"} flex h-12 w-full items-center justify-between px-2 ${props.textCenter ? "justify-center" : "justify-between"}`}
         >
-          {hasOptionGenerator ? (
-            props.optionGenerator!(
+          <Show
+            when={hasOptionGenerator}
+            fallback={<span class="truncate">{selectedOption()?.label ?? props.placeholder ?? "请选择"}</span>}
+          >
+            {props.optionGenerator!(
               selectedOption() ??
                 (initialOptions.latest
                   ? initialOptions.latest[0]
@@ -93,10 +96,8 @@ export function Select(props: SelectProps) {
                     }),
               false,
               () => handleSelect(selectedOption() ?? initialOptions.latest?.[0]!),
-            )
-          ) : (
-            <span class="truncate">{selectedOption()?.label ?? props.placeholder ?? "请选择"}</span>
-          )}
+            )}
+          </Show>
           <Show when={!props.styleLess}>
             <svg
               class={`h-4 w-4 transition-transform ${isOpen() ? "rotate-180" : ""}`}

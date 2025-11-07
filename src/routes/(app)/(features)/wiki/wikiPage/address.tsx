@@ -6,6 +6,8 @@ import { LoadingBar } from "~/components/controls/loadingBar";
 import { dictionary } from "~/locales/type";
 import Icons from "~/components/icons/index";
 import { Button } from "~/components/controls/button";
+import { Select } from "~/components/controls/select";
+import { selectAllWorlds } from "@db/generated/repositories/world";
 
 export const AddressPage = (dic: dictionary, itemHandleClick: (id: string) => void) => {
     const [expandedAddresses, setExpandedAddresses] = createSignal<Set<string>>(new Set());
@@ -78,8 +80,7 @@ export const AddressPage = (dic: dictionary, itemHandleClick: (id: string) => vo
             value={selectedWorldId()}
             setValue={setSelectedWorldId}
             optionsFetcher={async () => {
-              const db = await getDB();
-              const worlds = await db.selectFrom("world").selectAll("world").execute();
+              const worlds = await selectAllWorlds();
               return worlds.map((world) => ({
                 label: world.name,
                 value: world.id,

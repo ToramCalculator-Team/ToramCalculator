@@ -48,6 +48,8 @@ export default function CharactePage() {
     charactersFinder,
   );
 
+  const formPages = ["连击","装备","消耗品","料理","雷吉斯托环","技能","能力值","基本配置"];
+
   const [canvas, setCanvas] = createSignal<HTMLCanvasElement | null>(null);
   // 引擎定义
   let engine: AbstractEngine;

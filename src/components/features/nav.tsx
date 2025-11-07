@@ -194,7 +194,7 @@ export const Nav = () => {
                 config={{
                   btnName: dictionary().ui.nav.character,
                   icon: <Icons.Outline.Gamepad />,
-                  url: "/character/defaultCharacterId",
+                  url: "/character",
                 }}
                 active={active}
                 class={`w-[20dvw] landscape:w-auto`}
