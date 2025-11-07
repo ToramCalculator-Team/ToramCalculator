@@ -12,7 +12,7 @@ import { CardGroup } from "~/components/business/card/CardGroup";
 import { FormGroup } from "~/components/business/form/FormGroup";
 import { repositoryMethods } from "@db/generated/repositories";
 import { getDB } from "@db/repositories/database";
-import { getPrimaryKeys } from "@db/repositories/untils";
+import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 import { DB } from "@db/generated/zod/index";
 import { defaultData } from "@db/defaultData";
 
@@ -133,7 +133,7 @@ export default function AppMainContet(props: ParentProps) {
         if (!value.select?.name) {
           continue;
         }
-        const primaryKey = await getPrimaryKeys(trx, key as keyof DB);
+        const primaryKey = getPrimaryKeys(key as keyof DB);
         if (primaryKey.length === 0) {
           continue;
         }

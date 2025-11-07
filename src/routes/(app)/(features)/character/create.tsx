@@ -10,6 +10,7 @@ import { store, setStore } from "~/store";
 import { getDictionary } from "~/locales/i18n";
 import { useNavigate } from "@solidjs/router";
 import { ensureLocalAccount } from "~/lib/localAccount";
+import { insertStatistic } from "@db/generated/repositories/statistic";
 
 export default function CreateCharacterPage() {
   // UI文本字典
@@ -24,7 +25,7 @@ export default function CreateCharacterPage() {
       account = await ensureLocalAccount(trx);
       console.log("account", account);
       let player: Player;
-      if (store.session.account?.player?.id) {
+      if (store.session.account.player?.id) {
         // 从LocalStorage中获取PlayerID，并查询数据库中是否存在对应的Player
         const res = await selectPlayerById(store.session.account.player.id, trx);
         if (res) {
@@ -47,10 +48,15 @@ export default function CreateCharacterPage() {
         }
       }
       console.log("player", player);
+      const characterStatistic = await insertStatistic({
+        ...defaultData.statistic,
+        id: createId(),
+      }, trx);
       const character = await insertCharacter({
         ...defaultData.character,
         id: createId(),
         belongToPlayerId: player.id,
+        statisticId: characterStatistic.id,
       }, trx);
       console.log("character", character);
       setStore("session", "account", {

@@ -20,7 +20,7 @@ type SessionState = {
     name: string;
     avatar: string;
   };
-  account?: {
+  account: {
     id: string;
     type: AccountType;
     player?: {
@@ -139,6 +139,10 @@ const initialStore: Store = {
     },
   },
   session: {
+    account: { // 初始化页面时，ensureLocalAccount方法会覆盖此内容
+      id: "",
+      type: "User",
+    },
   },
   pages:{
     resourcesLoaded: false,

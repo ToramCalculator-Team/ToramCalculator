@@ -3,8 +3,12 @@ import { getCookie } from "vinxi/http";
 import { jwtVerify } from "jose";
 import { getDB } from "@db/repositories/database";
 import { findUserById } from "@db/repositories/user";
-import { getPrimaryKeys } from "@db/repositories/untils";
+import { getPrimaryKeys } from "@db/generated/dmmf-utils";
+import type { DB } from "@db/generated/zod/index";
+import type { SyncRequestBody, ChangeRecord } from "~/shared/types/sync";
 import { z } from "zod/v4";
+
+// ==================== API 处理函数 ====================
 
 export async function POST(event: APIEvent) {
   const token = getCookie("jwt");
@@ -26,7 +30,7 @@ export async function POST(event: APIEvent) {
     return new Response("JWT 无效", { status: 401 });
   }
 
-  const body = await event.request.json();
+  const body = await event.request.json() as SyncRequestBody;
 
   const user = await findUserById(jwtUser.sub);
 
@@ -63,29 +67,32 @@ export async function POST(event: APIEvent) {
   //   return new Response("当前用户无权限", { status: 403 });
   // }
 
-  // 在 changes.ts 中修改处理逻辑
+  // 处理变更记录
   try {
     const db = await getDB();
     await db.transaction().execute(async (trx) => {
       for (const transaction of body) {
         for (const change of transaction.changes) {
-          // 获取表的主键列
-          const primaryKeys = (await getPrimaryKeys(trx, change.table_name)) as string[];
-
-          // 如果没有主键，跳过这个变更
-          if (primaryKeys.length === 0) {
-            console.log(`表 ${change.table_name} 没有主键，跳过变更`);
-            continue;
-          }
-
           // 基础安全策略：禁止未授权操作 & 限制表名格式
           if (!SAFE_TABLE_NAME.test(change.table_name)) {
             throw new Error(`非法表名: ${change.table_name}`);
           }
 
-          if (!ALLOWED_OPS.has(change.operation)) {
+          if (!ALLOWED_OPS.has(change.operation as "insert" | "update")) {
             // 若需要允许删除，可在此添加细粒度白名单或软删除逻辑
             throw new Error(`禁止的操作: ${change.operation}`);
+          }
+
+          // 类型断言：已通过安全校验的表名
+          const tableName = change.table_name as keyof DB;
+
+          // 获取表的主键列
+          const primaryKeys = getPrimaryKeys(tableName);
+
+          // 如果没有主键，跳过这个变更
+          if (primaryKeys.length === 0) {
+            console.log(`表 ${change.table_name} 没有主键，跳过变更`);
+            continue;
           }
 
           // 值过滤：移除 undefined，避免覆盖为 null/undefined
@@ -96,11 +103,11 @@ export async function POST(event: APIEvent) {
 
           switch (change.operation) {
             case "insert":
-              await trx.insertInto(change.table_name).values(cleanValue).execute();
+              await trx.insertInto(tableName).values(cleanValue).execute();
               break;
 
             case "update": {
-              let query = trx.updateTable(change.table_name).set(cleanValue);
+              let query = trx.updateTable(tableName).set(cleanValue);
               // 添加所有主键条件
               for (const pk of primaryKeys) {
                 query = query.where(pk, "=", change.value[pk]);
@@ -110,7 +117,7 @@ export async function POST(event: APIEvent) {
             }
 
             case "delete": {
-              let query = trx.deleteFrom(change.table_name);
+              let query = trx.deleteFrom(tableName);
               // 添加所有主键条件
               for (const pk of primaryKeys) {
                 query = query.where(pk, "=", change.value[pk]);

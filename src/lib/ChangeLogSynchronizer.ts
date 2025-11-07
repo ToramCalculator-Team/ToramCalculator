@@ -1,4 +1,5 @@
 import { type PGliteWithLive } from "@electric-sql/pglite/live";
+import type { ChangeRecord, TransactionRecord, SyncResult } from "~/shared/types/sync";
 
 // API 服务器地址配置
 const API_URL =
@@ -85,23 +86,6 @@ async function request(
   return await resilientFetch(url, options, 0);
 }
 
-// 变更记录类型定义
-type Change = {
-  id: number;
-  operation: `insert` | `update` | `delete`;
-  value: {
-    id: string;
-    title?: string;
-    completed?: boolean;
-    created_at?: Date;
-  };
-  write_id: string;
-  transaction_id: string;
-};
-
-// 发送结果类型定义
-type SendResult = "accepted" | "rejected" | "retry";
-
 /*
  * 最小化的同步工具类，用于演示监听变更并将其发送到API服务器的模式
  * Minimal, naive synchronization utility, just to illustrate the pattern of
@@ -161,7 +145,7 @@ export class ChangeLogSynchronizer {
     const { changes, position } = await this.query();
 
     if (changes.length) {
-      const result: SendResult = await this.send(changes);
+      const result: SyncResult = await this.send(changes);
 
       switch (result) {
         case "accepted":
@@ -192,8 +176,8 @@ export class ChangeLogSynchronizer {
    * 获取当前批次的变更记录
    * Fetch the current batch of changes
    */
-  async query(): Promise<{ changes: Change[]; position: number }> {
-    const { rows } = await this.#db.sql<Change>`
+  async query(): Promise<{ changes: ChangeRecord[]; position: number }> {
+    const { rows } = await this.#db.sql<ChangeRecord>`
       SELECT * from changes
         WHERE id > ${this.#position}
         ORDER BY id asc
@@ -211,15 +195,15 @@ export class ChangeLogSynchronizer {
    * 将当前批次的变更发送到服务器，按事务分组
    * Send the current batch of changes to the server, grouped by transaction.
    */
-  async send(changes: Change[]): Promise<SendResult> {
+  async send(changes: ChangeRecord[]): Promise<SyncResult> {
     const path = "/changes";
 
     const groups = Object.groupBy(changes, (x) => x.transaction_id);
     const sorted = Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
-    const transactions = sorted.map(([transaction_id, changes]) => {
+    const transactions: TransactionRecord[] = sorted.map(([transaction_id, changes]) => {
       return {
         id: transaction_id,
-        changes: changes,
+        changes: changes || [],
       };
     });
 

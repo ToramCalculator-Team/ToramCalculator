@@ -2,7 +2,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { getDB } from "@db/repositories/database";
 import { setStore, store } from "~/store";
 import { Account, createAccount, findAccountById } from "@db/repositories/account";
-import { Transaction } from "kysely";
+import { Transaction, sql } from "kysely";
 import { DB } from "@db/generated/zod/index";
 
 /**
@@ -17,7 +17,7 @@ export async function ensureLocalAccount(trx?: Transaction<DB>): Promise<Account
   }
 
   // 检查 store 是否已有 accountId
-  let accountId = store.session.account?.id;
+  let accountId = store.session.account.id;
   let account: Account;
 
   if (!accountId) {
@@ -68,4 +68,14 @@ export async function bindLocalAccountToUser(accountId: string, userId: string):
   await db.updateTable("account").set({ userId }).where("id", "=", accountId).execute();
 
   console.log(`账户 ${accountId} 已绑定到用户 ${userId}`);
+}
+
+/**
+ * 清除changes内容
+ */
+export async function clearChangesContent(): Promise<void> {
+  const db = await getDB();
+  await sql`DELETE FROM changes`.execute(db);
+
+  console.log("清除changes内容");
 }

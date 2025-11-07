@@ -44,7 +44,7 @@ export default function CharactePage() {
 
   const charactersFinder = (id: string) => selectAllCharactersByBelongtoplayerid(id);
   const [characters, { refetch: refetchCharacters }] = createResource(
-    () => store.session.account?.player?.id ?? "",
+    () => store.session.account.player?.id ?? "",
     charactersFinder,
   );
 

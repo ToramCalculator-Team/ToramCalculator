@@ -639,8 +639,8 @@ export async function canEdit${pascalName}(id: string, trx?: Transaction<DB>): P
   
   if (!data) return false;
   
-  const currentAccountId = store.session.account?.id;
-  const currentAccountType = store.session.account?.type;
+  const currentAccountId = store.session.account.id;
+  const currentAccountType = store.session.account.type;
   
   if (!currentAccountId) return false;
   
@@ -701,8 +701,8 @@ ${joinChain}
   
   if (!data) return false;
   
-  const currentAccountId = store.session.account?.id;
-  const currentAccountType = store.session.account?.type;
+  const currentAccountId = store.session.account.id;
+  const currentAccountType = store.session.account.type;
   
   if (!currentAccountId) return false;
   

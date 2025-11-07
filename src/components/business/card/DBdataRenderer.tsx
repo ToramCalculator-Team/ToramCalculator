@@ -1,7 +1,7 @@
 import {
   MODEL_METADATA,
   RELATION_METADATA,
-  getPrimaryKeys as getPrimaryKeyFields,
+  getPrimaryKeys,
   getChildRelationNames,
   getRelationType,
   getManyToManyTableName,
@@ -55,7 +55,7 @@ function getReadableName(tableName: string, record: any): string {
   }
 
   // 4) 兜底主键值
-  const pk = getPrimaryKeyFields(tableName as keyof DB)[0];
+  const pk = getPrimaryKeys(tableName as keyof DB)[0];
   return String(record?.[pk as keyof typeof record] ?? "");
 }
 
@@ -149,7 +149,7 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
   const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
 
   const [data, setData] = createSignal<DB[TName]>(props.data);
-  const primaryKey = getPrimaryKeyFields(props.tableName)[0];
+  const primaryKey = getPrimaryKeys(props.tableName)[0];
   const [canEdit, { refetch: refetchCanEdit }] = createResource(async () => {
     // 主键字段的值总是 string 类型
     const canEdit = await repositoryMethods[props.tableName].canEdit?.(String(data()[primaryKey]));
@@ -225,7 +225,7 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
   const relationCandidates = RELATION_METADATA.filter(
     (r) => r.from === props.tableName || r.to === props.tableName
   );
-  const currentPrimaryKey = getPrimaryKeyFields(props.tableName)[0];
+  const currentPrimaryKey = getPrimaryKeys(props.tableName)[0];
   const currentPrimaryKeyValue = props.data[currentPrimaryKey];
 
   const [relations, { refetch: refetchRelations }] = createResource(async () => {
@@ -256,7 +256,7 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
         if (!fkColumn) continue;
         const relatedId = props.data[fkColumn as keyof typeof props.data];
         if (typeof relatedId === "undefined") continue;
-        const pk = getPrimaryKeyFields(rel.to as keyof DB)[0];
+        const pk = getPrimaryKeys(rel.to as keyof DB)[0];
         const rows = await db
           .selectFrom(rel.to as any)
           .select(["name" as any])
@@ -301,7 +301,7 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
       const relationType = relationMetadata.type;
       // 从当前表视角确定目标表
       const targetTableName = relationMetadata.from === props.tableName ? relationMetadata.to : relationMetadata.from;
-      const targetPrimaryKey = getPrimaryKeyFields(targetTableName as keyof DB)[0];
+      const targetPrimaryKey = getPrimaryKeys(targetTableName as keyof DB)[0];
 
       // 判断是否是父关系：ManyToOne 且当前表有外键，或 OneToOne 且当前表有外键
       const isParentRelation = 
@@ -424,7 +424,7 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
             // 覆盖 target 变量用于后续显示（本分支只有本地作用域，改用局部变量）
             // 为简化，直接将查询结果归到 child 表的分组
             const key = childTableName as keyof DB;
-            const childPk = getPrimaryKeyFields(key)[0];
+            const childPk = getPrimaryKeys(key)[0];
             const prefixKey = getRelationPrefixKey(
               props.tableName as string,
               childTableName,
@@ -448,7 +448,7 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
               } else {
                 // 次优：子表没有 name，先尝试使用 getReadableName（可能返回 id 或其他可读字段）
                 const readableName = getReadableName(childTableName, item);
-                const childPk = getPrimaryKeyFields(childTableName as keyof DB)[0];
+                const childPk = getPrimaryKeys(childTableName as keyof DB)[0];
                 const itemId = String(item[childPk as keyof typeof item]);
                 
                 // 如果 getReadableName 返回的是 id，且 id 看起来不可读（CUID2/UUID 格式），
@@ -472,7 +472,7 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
                     const fkColumn = fkField?.relationFromFields?.[0];
                     if (fkColumn && item[fkColumn as keyof typeof item]) {
                       const relatedId = item[fkColumn as keyof typeof item];
-                      const nameTablePk = getPrimaryKeyFields(nameSide.to as keyof DB)[0];
+                      const nameTablePk = getPrimaryKeys(nameSide.to as keyof DB)[0];
                       const rows = await db
                         .selectFrom(nameSide.to as any)
                         .select(["name" as any])
@@ -564,7 +564,7 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
             const originalTargetTableName = targetTableName;
             // 注意：这里 targetTableName 实际上已经是 from 表了（因为 relationMetadata.from !== props.tableName）
             // 但为了保持一致性，我们使用 fromTableName
-            const fromPk = getPrimaryKeyFields(fromTableName as keyof DB)[0];
+            const fromPk = getPrimaryKeys(fromTableName as keyof DB)[0];
             const prefixKey = getRelationPrefixKey(
               props.tableName as string,
               fromTableName,
@@ -602,7 +602,7 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
                     const fkColumn = fkField?.relationFromFields?.[0];
                     if (fkColumn && item[fkColumn as keyof typeof item]) {
                       const relatedId = item[fkColumn as keyof typeof item];
-                      const nameTablePk = getPrimaryKeyFields(nameSide.to as keyof DB)[0];
+                      const nameTablePk = getPrimaryKeys(nameSide.to as keyof DB)[0];
                       const rows = await db
                         .selectFrom(nameSide.to as any)
                         .select(["name" as any])
@@ -644,7 +644,7 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
           } else {
             // 次优：目标表没有 name，先尝试使用 getReadableName（可能返回 id 或其他可读字段）
             const readableName = getReadableName(targetTableName, item);
-            const targetPk = getPrimaryKeyFields(targetTableName as keyof DB)[0];
+            const targetPk = getPrimaryKeys(targetTableName as keyof DB)[0];
             const itemId = String(item[targetPk as keyof typeof item]);
             
             // 如果 getReadableName 返回的是 id，且 id 看起来不可读（CUID2/UUID 格式），
@@ -669,7 +669,7 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
 
                 if (fkColumn && item[fkColumn as keyof typeof item]) {
                   const relatedId = item[fkColumn as keyof typeof item];
-                  const nameTablePk = getPrimaryKeyFields(nameSide.to as keyof DB)[0];
+                  const nameTablePk = getPrimaryKeys(nameSide.to as keyof DB)[0];
                   const rows = await db
                     .selectFrom(nameSide.to as any)
                     .select(["name" as any])
@@ -797,7 +797,7 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
                         <Button
                           level={group.isParent ? "quaternary" : "default"}
                           onclick={() => {
-                            const itemPrimaryKey = getPrimaryKeyFields(group.tableName)[0];
+                            const itemPrimaryKey = getPrimaryKeys(group.tableName)[0];
                             const itemId = String(item.data[itemPrimaryKey as keyof typeof item.data]);
                             setStore("pages", "cardGroup", store.pages.cardGroup.length, {
                               type: group.tableName,

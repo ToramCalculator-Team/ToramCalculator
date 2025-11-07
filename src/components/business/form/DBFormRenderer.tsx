@@ -20,7 +20,7 @@ import { DB } from "@db/generated/zod/index";
 import {
   isForeignKeyField,
   getForeignKeyFields,
-  getPrimaryKeys as getPrimaryKeyFields,
+  getPrimaryKeys,
   isPrimaryKeyField,
   getForeignKeyReference,
 } from "@db/generated/dmmf-utils";
@@ -59,7 +59,7 @@ export const DBForm = <TName extends keyof DB>(props: DBFormProps<TName>) => {
 
   // 获取主键字段
   const primaryKeyFields = createMemo(() => {
-    return getPrimaryKeyFields(props.tableName);
+    return getPrimaryKeys(props.tableName);
   });
 
   // 字段组生成器

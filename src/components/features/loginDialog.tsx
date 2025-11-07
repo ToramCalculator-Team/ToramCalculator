@@ -44,6 +44,12 @@ const defaultValues: LoginFormProps = {
 };
 
 export const LoginDialog = () => {
+  const [passwordInputRef, setPasswordInputRef] = createSignal<HTMLInputElement | undefined>(undefined);
+  const [passwordInputState, setPasswordInputState] = createSignal<InputStateType>("default");
+
+  // UI文本字典
+  const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
+
   const logIn = async (value: LoginFormProps) => {
     try {
       const response = await fetch("/api/auth/login", {
@@ -60,7 +66,7 @@ export const LoginDialog = () => {
         console.error("登录失败", response.status, responseText);
         setPasswordInputState("error");
         const passwordInput = passwordInputRef();
-        if(passwordInput) {
+        if (passwordInput) {
           passwordInput.focus();
         }
       }
@@ -70,12 +76,16 @@ export const LoginDialog = () => {
       // console.log("获取到的用户信息:", user);
 
       if (user) {
+        console.log(value.bindLocalAccount);
+        if (value.bindLocalAccount) {
+          await bindLocalAccountToUser(store.session.account.id, user.id);
+        }
         setStore("session", "user", {
           id: user.id,
           name: user.name ?? "未命名用户",
           avatar: user.image ?? defaultUserAvatarUrl,
         });
-        if (user.accounts) {
+        if (user.accounts.length > 0) {
           setStore("session", "account", {
             id: user.accounts[0].id,
             type: user.accounts[0].type,
@@ -96,8 +106,12 @@ export const LoginDialog = () => {
     // 删除 jwt cookie
     await fetch("/api/auth/logout");
     // 清空 session
-    setStore("session", "account", undefined);
     setStore("session", "user", undefined);
+    setStore("session", "account", {
+      id: "",
+      type: "User",
+      player: undefined,
+    });
     // 关闭登录对话框
     setStore("pages", "loginDialogState", false);
 
@@ -136,19 +150,20 @@ export const LoginDialog = () => {
       // console.log("获取到的用户信息:", user);
 
       if (user) {
+        // 此时已知userId，将本地数据库内的匿名账号绑定到该userId
+        if (value.bindLocalAccount) {
+          await bindLocalAccountToUser(store.session.account.id, user.id);
+        }
         setStore("session", "user", {
           id: user.id,
           name: user.name ?? "未命名用户",
           avatar: user.image ?? defaultUserAvatarUrl,
         });
-        if (user.accounts) {
+        if (user.accounts.length > 0) {
           setStore("session", "account", {
             id: user.accounts[0].id,
             type: user.accounts[0].type,
           });
-        }
-        if (value.bindLocalAccount) {
-          await bindLocalAccountToUser(user.id, user.accounts[0].id);
         }
 
         // 启动数据同步
@@ -161,12 +176,6 @@ export const LoginDialog = () => {
       console.error("请求错误:", error);
     }
   };
-
-  const [passwordInputRef,setPasswordInputRef] = createSignal<HTMLInputElement | undefined>(undefined);
-  const [passwordInputState, setPasswordInputState] = createSignal<InputStateType>("default");
-
-  // UI文本字典
-  const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
 
   const [formModule, setFormModule] = createSignal<"logIn" | "register" | "unknown">("unknown");
 
@@ -187,7 +196,8 @@ export const LoginDialog = () => {
 
   const form = createForm(() => ({
     defaultValues: defaultValues,
-    onSubmit: (data) => {
+    onSubmit: async (data) => {
+      console.log(data.value);
       switch (formModule()) {
         case "logIn":
           logIn(data.value);
@@ -245,7 +255,7 @@ export const LoginDialog = () => {
             asyncDebounceMs={500}
             validators={{
               onChange: ({ value }) => {
-                const result = z.string().email().safeParse(value); // ✅ 使用 `safeParse` 避免抛出错误
+                const result = z.email().safeParse(value); // ✅ 使用 `safeParse` 避免抛出错误
                 if (!result.success) {
                   return "请输入正确的邮箱格式"; // ⬅️ 返回字符串，避免 `[object Object]`
                 }
@@ -362,6 +372,22 @@ export const LoginDialog = () => {
               </Motion.div>
             </Show>
           </Presence>
+          <form.Field
+            name="bindLocalAccount"
+            children={(field) => (
+              <Input
+                title="是否绑定本地数据"
+                type="boolean"
+                id={field().name}
+                name={field().name}
+                onBlur={field().handleBlur}
+                onClick={() => field().setValue((pre) => !pre)}
+                checked={field().state.value}
+                validationMessage={fieldInfo(field())}
+                class="w-full"
+              />
+            )}
+          />
           <form.Subscribe
             selector={(state) => ({
               canSubmit: state.canSubmit,

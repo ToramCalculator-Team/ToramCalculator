@@ -1,6 +1,6 @@
 import { Transaction } from "kysely";
 import { DB } from "@db/generated/zod/index";
-import { getPrimaryKeys } from "@db/repositories/untils";
+import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 import { Show } from "solid-js";
 import { dictionary } from "~/locales/type";
 import { setStore, store } from "~/store";
@@ -9,13 +9,12 @@ import Icons from "~/components/icons/index";
 import { getDB } from "@db/repositories/database";
 import { setWikiStore } from "../store";
 
-export const arrayDiff = async <T extends keyof DB>(props: {
-  trx: Transaction<DB>;
+export const arrayDiff = <T extends keyof DB>(props: {
   table: T;
   oldArray: DB[T][];
   newArray: DB[T][];
 }) => {
-  const primaryKeys = await getPrimaryKeys(props.trx, props.table);
+  const primaryKeys = getPrimaryKeys(props.table);
   if (primaryKeys.length === 0) {
     throw new Error("表没有主键");
   }
@@ -67,7 +66,7 @@ export const CardSharedSection = <T extends object>(props: {
   delete: (trx: Transaction<DB>, data: T) => Promise<void>;
 }) => {
   return (
-    <Show when={props.data.createdByAccountId === store.session.account?.id}>
+    <Show when={props.data.createdByAccountId === store.session.account.id}>
       <section class="FunFieldGroup flex w-full flex-col gap-2">
         <h3 class="text-accent-color flex items-center gap-2 font-bold">
           {props.dic.ui.actions.operation}

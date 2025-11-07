@@ -67,3 +67,42 @@ const testSkillEffect = {
   description: "帝王之光效果",
   details: "帝王之光效果",
 };
+
+type newMob = {
+  id: string;
+  name: string;
+  type: "Mob" | "MiniBoss" | "Boss";
+  initialElement: "Normal" | "Light" | "Dark" | "Water" | "Fire" | "Earth" | "Wind";
+  captureable: boolean;
+  radius: number;
+  // 随等级变化的属性
+  lvAttributes: {
+    lv: number;
+    experience: number;
+    partsExperience: number;
+    maxhp: number;
+    physicalDefense: number;
+    magicalDefense: number;
+    avoid: number;
+    hit: number;
+  }[];
+  physicalResistance: number;
+  magicalResistance: number;
+  criticalResistance: number;
+  dodge: number;
+  block: number;
+  normalDefExp: number;
+  physicDefExp: number;
+  magicDefExp: number;
+  parts: {
+    name: "A" | "B" | "C";
+    hp: number;
+    
+  }[];
+  actions: any;
+  details: string | null;
+  dataSources: string;
+  statisticId: string;
+  updatedByAccountId: string | null;
+  createdByAccountId: string | null;
+}

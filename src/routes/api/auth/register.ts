@@ -29,7 +29,7 @@ export async function POST(event: APIEvent) {
       });
     }
 
-    // 🛑 密码长度校验（至少 8 个字符）
+    // 🛑 密码长度校验（至少 6 个字符）
     if (password.length < 6) {
       return new Response(JSON.stringify({ error: "密码必须至少 6 个字符" }), {
         status: 400,
@@ -57,7 +57,7 @@ export async function POST(event: APIEvent) {
         name: userName || email.split("@")[0], // 默认用户名
         email,
         password: hashedPassword, // 存储加密后的密码
-        id: "",
+        id: createId(),
       });
     });
     console.log(userName + "注册成功", "id为:", user.id);

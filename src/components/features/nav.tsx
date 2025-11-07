@@ -33,7 +33,7 @@ const NavBtn = (props: {
       >
         {props.config.icon}
       </div>
-      <div class="hidden text-xs landscape:block">{props.config.btnName}</div>
+      <div class="hidden text-xs whitespace-nowrap landscape:block">{props.config.btnName}</div>
     </A>
   );
 };
@@ -51,6 +51,9 @@ export const Nav = () => {
   const navigate = useNavigate();
   const media = useContext(MediaContext);
   const location = useLocation();
+
+  const [activedTableName, setActivedTableName] = createSignal<keyof DB>("mob")
+
   const active = (path: string) => {
     let condition = false;
     if (path === "/") {
