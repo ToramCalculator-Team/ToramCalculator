@@ -13,7 +13,7 @@ import { selectSimulatorByIdWithRelations, SimulatorWithRelations } from "@db/ge
 import { type MemberSerializeData } from "../core/member/Member";
 import { FrameSnapshot } from "../core/GameEngine";
 import { createActor, waitFor } from "xstate";
-import { gameEngineSM, type EngineCommand } from "../core/GameEngineSM";
+import { GameEngineSM, type EngineCommand } from "../core/GameEngineSM";
 import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
 import { IntentMessage } from "../core/MessageRouter";
 
@@ -21,7 +21,7 @@ export class Controller {
   // ==================== 核心状态机 ====================
 
   // 唯一的状态源 - 引擎状态机
-  public engineActor: ReturnType<typeof createActor<typeof gameEngineSM>>;
+  public engineActor: ReturnType<typeof createActor<typeof GameEngineSM>>;
 
   // ==================== 数据状态 (非控制状态) ====================
 
@@ -42,11 +42,11 @@ export class Controller {
 
   constructor(simulatorData: SimulatorWithRelations) {
     // 使用 SimulatorPool 创建状态机
-    this.engineActor = createActor(gameEngineSM, {
+    this.engineActor = createActor(GameEngineSM, {
       input: {
+        threadName: 'main',  // 标识主线程
         mirror: {
           send: (msg: EngineCommand) => {
-            console.log("Controller: mirror.send - 发送命令到Worker:", msg);
             realtimeSimulatorPool.executeTask("engine_command", msg, "high")
               .then((result) => {
                 console.log("Controller: mirror.send - 任务执行完成:", result);

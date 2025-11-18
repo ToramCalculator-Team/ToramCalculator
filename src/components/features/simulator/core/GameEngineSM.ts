@@ -43,7 +43,7 @@ export const EngineCommandSchema = z.discriminatedUnion("type", [
   }),
 ]);
 
-export type EngineCommand = z.infer<typeof EngineCommandSchema>;
+export type EngineCommand = z.output<typeof EngineCommandSchema>;
 
 // 指令事件类型
 // export type EngineCommand =
@@ -56,41 +56,42 @@ export type EngineCommand = z.infer<typeof EngineCommandSchema>;
 //   | { type: "STEP"; origin?: "source" | "mirror" }
 //   | { type: "RESULT"; command: string; success: boolean; error?: string; origin?: "source" | "mirror" };
 
-type Command = EngineCommand;
-
 // 上下文类型
 export interface EngineSMContext {
-  mirror: { send: (msg: Command) => void | Promise<void> }; // 镜像状态机通信
+  mirror: { send: (msg: EngineCommand) => void | Promise<void> }; // 镜像状态机通信
   engine?: GameEngine; // 引擎执行器
   controller?: { showPaused?: () => void }; // 控制器UI（可选，不强依赖）
+  threadName?: string; // 线程标识：'main' 或 'worker'
 }
 
-export const gameEngineSM = setup({
+export const GameEngineSM = setup({
   types: {} as {
     context: EngineSMContext;
-    events: Command;
+    events: EngineCommand;
     input: EngineSMContext;
   },
   actions: {
     forwardToMirror: ({ context, event }) => {
-      console.log("GameEngineSM: forwardToMirror - event:", event);
+      const prefix = context.threadName || 'unknown';
+      console.log(`[${prefix}] GameEngineSM: 传递事件到镜像状态机:`, event);
       context.mirror.send({ ...event, origin: "mirror" });
     },
     doInit: ({ context, event }) => {
+      const prefix = context.threadName || 'unknown';
       try {
         // worker 内部执行引擎初始化逻辑（不启动）
         if (event.type === "INIT" && event.data) {
-          console.log("GameEngineSM: doInit - 开始初始化引擎", event.data);
+          console.log(`[${prefix}] GameEngineSM: doInit - 开始初始化引擎`, event.data);
           context.engine?.initialize(event.data);
-          console.log("GameEngineSM: doInit - 引擎初始化完成");
+          console.log(`[${prefix}] GameEngineSM: doInit - 引擎初始化完成`);
         } else {
           throw new Error("INIT 命令必须提供数据");
         }
         // 发送成功结果
-        console.log("GameEngineSM: doInit - 发送 RESULT 事件");
+        console.log(`[${prefix}] GameEngineSM: doInit - 发送 RESULT 事件`);
         context.mirror.send({ type: "RESULT", command: "INIT", success: true });
       } catch (error) {
-        console.error("GameEngineSM: doInit - 初始化失败:", error);
+        console.error(`[${prefix}] GameEngineSM: doInit - 初始化失败:`, error);
         // 即使失败也要发送结果，让状态机知道发生了错误
         try {
           context.mirror.send({ 
@@ -100,7 +101,7 @@ export const gameEngineSM = setup({
             error: error instanceof Error ? error.message : String(error) 
           });
         } catch (sendError) {
-          console.error("GameEngineSM: doInit - 发送 RESULT 失败:", sendError);
+          console.error(`[${prefix}] GameEngineSM: doInit - 发送 RESULT 失败:`, sendError);
         }
         throw error; // 重新抛出以便 XState 记录
       }
@@ -183,8 +184,9 @@ export const gameEngineSM = setup({
       after: {
         10000: {
           target: "idle",
-          actions: () => {
-            console.warn("GameEngineSM: 初始化超时，返回 idle 状态");
+          actions: ({ context }) => {
+            const prefix = context.threadName || 'unknown';
+            console.warn(`[${prefix}] GameEngineSM: 初始化超时，返回 idle 状态`);
           },
         },
       },
@@ -401,16 +403,18 @@ export const gameEngineSM = setup({
       on: {
         RESET: [
           {
-            guard: ({ event }) => {
-              console.log("GameEngineSM: RESET guard 1 - event.origin:", event.origin);
+            guard: ({ context, event }) => {
+              const prefix = context.threadName || 'unknown';
+              console.log(`[${prefix}] GameEngineSM: RESET guard 1 - event.origin:`, event.origin);
               return event.origin !== "mirror";
             },
             target: "idle",
             actions: ["forwardToMirror"],
           },
           {
-            guard: ({ event }) => {
-              console.log("GameEngineSM: RESET guard 2 - event.origin:", event.origin);
+            guard: ({ context, event }) => {
+              const prefix = context.threadName || 'unknown';
+              console.log(`[${prefix}] GameEngineSM: RESET guard 2 - event.origin:`, event.origin);
               return event.origin === "mirror";
             },
             target: "ready",

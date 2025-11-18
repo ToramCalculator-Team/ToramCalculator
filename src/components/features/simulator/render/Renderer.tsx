@@ -30,7 +30,7 @@ import {
 } from "./ThirdPersonCameraController";
 
 // ----------------------------------------预设内容-----------------------------------
-// 主题是定义
+// 主题色定义
 const cssColors = {
   white: [255, 255, 255],
   geryWhite: [200, 200, 200],
@@ -51,93 +51,64 @@ const cssColors = {
 const rgb2Bcolor3 = (c: number[]) => new Color3(c[0] / 255, c[1] / 255, c[2] / 255);
 
 export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
-  const themeColors = createMemo(
-    () =>
-      ({
-        light: {
-          accent: rgb2Bcolor3(cssColors.brown),
-          primary: rgb2Bcolor3(cssColors.white),
-          transition: rgb2Bcolor3(cssColors.navyBlue),
-          brand_1st: rgb2Bcolor3(cssColors.greenBlue),
-          brand_2nd: rgb2Bcolor3(cssColors.yellow),
-          brand_3rd: rgb2Bcolor3(cssColors.orange),
-        },
-        dark: {
-          accent: rgb2Bcolor3(cssColors.white),
-          primary: rgb2Bcolor3(cssColors.grey),
-          transition: rgb2Bcolor3(cssColors.navyBlue),
-          brand_1st: rgb2Bcolor3(cssColors.greenBlue),
-          brand_2nd: rgb2Bcolor3(cssColors.yellow),
-          brand_3rd: rgb2Bcolor3(cssColors.orange),
-        },
-      })[store.settings.userInterface.theme],
-  );
-
-  // ==================== 基础变量 ====================
+  // ==================== 响应式状态 ====================
   const [loaderState, setLoaderState] = createSignal(false);
-  let progress!: HTMLDivElement;
+  
+  const themeColors = createMemo(() => ({
+    light: {
+      accent: rgb2Bcolor3(cssColors.brown),
+      primary: rgb2Bcolor3(cssColors.white),
+      transition: rgb2Bcolor3(cssColors.navyBlue),
+      brand_1st: rgb2Bcolor3(cssColors.greenBlue),
+      brand_2nd: rgb2Bcolor3(cssColors.yellow),
+      brand_3rd: rgb2Bcolor3(cssColors.orange),
+    },
+    dark: {
+      accent: rgb2Bcolor3(cssColors.white),
+      primary: rgb2Bcolor3(cssColors.grey),
+      transition: rgb2Bcolor3(cssColors.navyBlue),
+      brand_1st: rgb2Bcolor3(cssColors.greenBlue),
+      brand_2nd: rgb2Bcolor3(cssColors.yellow),
+      brand_3rd: rgb2Bcolor3(cssColors.orange),
+    },
+  })[store.settings.userInterface.theme]);
+
+  // ==================== DOM 引用 ====================
   let canvas!: HTMLCanvasElement;
   let container!: HTMLDivElement;
+  
+  // ==================== Babylon.js 资源 ====================
   let engine: AbstractEngine;
   let scene: Scene;
   let camera: ArcRotateCamera;
-
-  // 第三人称控制器
   let thirdPersonController: TPSController;
-
-  // 渲染控制器实例
   let rendererController: ReturnType<typeof createRendererController>;
+  
+  // ==================== 清理函数集合 ====================
+  const cleanupFunctions: Array<() => void> = [];
 
-  // 测试模式配置函数
-  // async function testModelOpen() {
-  //   const AxesViewer = await import("@babylonjs/core/Debug/axesViewer").then((module) => module.AxesViewer);
-  //   // 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
-  //   Inspector.Show(scene, {});
-  //   // 世界坐标轴显示
-  //   new AxesViewer(scene, 0.1);
-  // }
+  // ==================== 辅助函数：注册清理 ====================
+  function registerCleanup(fn: () => void) {
+    cleanupFunctions.push(fn);
+  }
 
-  // 主场景内容
-
-  onMount(async () => {
-    engine = new Engine(canvas, true);
-    // 根据设备像素比设置缩放，确保清晰且不被拉伸
-    engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
-    //自定义加载动画
-    engine.loadingScreen = {
-      displayLoadingUI: (): void => {
-        // console.log('display')
-      },
-      hideLoadingUI: (): void => {
-        // console.log('hidden')
-      },
-      loadingUIBackgroundColor: "#000000",
-      loadingUIText: "Loading...",
-    };
-    scene = new Scene(engine);
-    scene.clearColor = new Color4(1, 1, 1, 1);
+  // ==================== 场景效果设置 ====================
+  function setupSceneEffects() {
     createEffect(() => {
       scene.ambientColor = themeColors().primary;
     });
-    // 雾
+    
     scene.fogMode = Scene.FOGMODE_EXP2;
     scene.fogDensity = 0.01;
     scene.fogStart = 16;
     scene.fogEnd = 22;
+    
     createEffect(() => {
-      if (store.settings.userInterface.theme === "light") {
-        scene.fogColor = new Color3(0.8, 0.8, 0.8);
-      } else {
-        scene.fogColor = new Color3(0.3, 0.3, 0.3);
-      }
+      scene.fogColor = store.settings.userInterface.theme === "light"
+        ? new Color3(0.8, 0.8, 0.8)
+        : new Color3(0.3, 0.3, 0.3);
     });
-    // await testModelOpen();
 
-    // 初始化渲染控制器
-    rendererController = createRendererController(scene);
-
-    // -----------------------------------光照设置------------------------------------
-    // 设置顶部锥形光
     const mainSpotLight = new SpotLight(
       "mainSpotLight",
       new Vector3(0, 8, 0),
@@ -148,117 +119,69 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
     );
     mainSpotLight.id = "mainSpotLight";
     mainSpotLight.radius = 10;
+    
     createEffect(() => {
-      switch (store.settings.userInterface.theme) {
-        case "light":
-          mainSpotLight.intensity = 200;
-          break;
-        case "dark":
-          mainSpotLight.intensity = 100;
-          break;
-      }
+      mainSpotLight.intensity = store.settings.userInterface.theme === "light" ? 200 : 100;
     });
-    // const mainSpotLight = new PointLight("mainSpotLight", new Vector3(0, 8, 0), scene);
-    // mainSpotLight.id = "mainSpotLight";
-    // mainSpotLight.radius = 10;
-    // createEffect(() => {
-    //   switch (store.settings.userInterface.theme) {
-    //     case "light":
-    //       mainSpotLight.intensity = 200;
-    //       break;
-    //     case "dark":
-    //       mainSpotLight.intensity = 100;
-    //       break;
-    //   }
-    // });
 
-    // 顶部锥形光的阴影发生器---------------------
-    const mainSpotLightShadowGenerator = new ShadowGenerator(1024, mainSpotLight);
-    mainSpotLightShadowGenerator.bias = 0.000001;
-    mainSpotLightShadowGenerator.darkness = 0.1;
-    mainSpotLightShadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
+    const shadowGenerator = new ShadowGenerator(1024, mainSpotLight);
+    shadowGenerator.bias = 0.000001;
+    shadowGenerator.darkness = 0.1;
+    shadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
 
     const skybox = MeshBuilder.CreateBox("skyBox", { size: 1000.0 }, scene);
     const skyboxMaterial = new StandardMaterial("skyBox", scene);
     skyboxMaterial.backFaceCulling = false;
     skybox.material = skyboxMaterial;
+  }
 
-    // -----------------------------------------model--------------------------------------------
-
-    await AppendSceneAsync("/models/landscape.glb", scene);  
-    console.log("landscape.glb加载完成");
-
-    // 先初始化渲染通信，确保能接收Worker的消息
-    console.log("🔧 提前初始化渲染通信", new Date().toLocaleTimeString());
-      rendererCommunication.setRenderHandler((payload: any) => {
-        try {
-          if (!payload) return;
-          if (Array.isArray(payload)) {
+  // ==================== 渲染通信设置 ====================
+  function setupRenderCommunication() {
+    rendererCommunication.setRenderHandler((payload: any) => {
+      try {
+        if (!payload) return;
+        if (Array.isArray(payload)) {
           rendererController.send(payload as any);
-            return;
-          }
-          // 支持 { type:'render:cmd', cmd } / { type:'render:cmds', cmds }
-          if (payload.type === "render:cmd" && payload.cmd) {
-          rendererController.send(payload.cmd);
-          } else if (payload.type === "render:cmds" && Array.isArray(payload.cmds)) {
-          rendererController.send(payload.cmds);
-          } else {
-            // 直接当作 RendererCmd 处理
-          rendererController.send(payload as any);
-          }
-        } catch (e) {
-          console.error("RendererCommunication: 处理渲染指令失败", e);
+          return;
         }
-      });
+        if (payload.type === "render:cmd" && payload.cmd) {
+          rendererController.send(payload.cmd);
+        } else if (payload.type === "render:cmds" && Array.isArray(payload.cmds)) {
+          rendererController.send(payload.cmds);
+        } else {
+          rendererController.send(payload as any);
+        }
+      } catch (e) {
+        console.error("RendererCommunication: 处理渲染指令失败", e);
+      }
+    });
     rendererCommunication.initialize();
+  }
 
-    // GLB加载完成后创建第三人称相机控制器
-    const thirdPersonSetup = createThirdPersonController(scene, canvas, rendererController, props.followEntityId, {
-      distance: 8,
-      smoothTransition: true,
-    });
-
-    camera = thirdPersonSetup.camera;
-    thirdPersonController = thirdPersonSetup.controller;
-
-    // 设置相机基础属性
-    camera.minZ = 0.1;
-    camera.fov = 1;
-
-    scene.executeWhenReady(() => {
-
-      // 注册循环渲染函数
-      engine.runRenderLoop(() => {
-        const dt = engine.getDeltaTime() / 1000;
-        rendererController.tick(dt);
-
-        // 更新第三人称相机控制器
-        thirdPersonController.update(dt);
-
-        scene.render();
-      });
-
-      // 通知loading
-      setLoaderState(true);
-    });
-
-    // 窗口大小调整事件
+  // ==================== 窗口调整设置 ====================
+  function setupResizeHandling() {
     const onWinResize = () => engine.resize();
     window.addEventListener("resize", onWinResize);
+    registerCleanup(() => {
+      window.removeEventListener("resize", onWinResize);
+    });
 
-    // 使用 ResizeObserver 自适应父容器尺寸，避免被 CSS 拉伸
     const ro = new ResizeObserver(() => {
       if (!container) return;
       const rect = container.getBoundingClientRect();
-      // 设置画布的实际像素尺寸与展示尺寸
       canvas.style.width = `${rect.width}px`;
       canvas.style.height = `${rect.height}px`;
       engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
       engine.setSize(rect.width, rect.height, true);
       engine.resize();
     });
+    
     ro.observe(container);
-    // 初始调整一次
+    registerCleanup(() => {
+      ro.disconnect();
+    });
+
+    // 初始调整
     queueMicrotask(() => {
       const rect = container.getBoundingClientRect();
       canvas.style.width = `${rect.width}px`;
@@ -266,37 +189,112 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
       engine.setSize(rect.width, rect.height, true);
       engine.resize();
     });
+  }
 
-    // 监听来自RealtimeSimulator的相机控制事件
+  // ==================== 相机控制事件设置 ====================
+  function setupCameraControlEvents() {
     const handleCameraControl = (event: CustomEvent) => {
       if (thirdPersonController && event.detail) {
-        // 检查事件结构，提取正确的命令对象
         const command = event.detail.cmd || event.detail;
-        
-        if (command && command.type === 'camera_control') {
+        if (command && command.type === "camera_control") {
           thirdPersonController.handleCameraCommand(command);
         } else {
-          console.warn('📹 相机控制事件格式不正确:', event.detail);
+          console.warn("📹 相机控制事件格式不正确:", event.detail);
         }
       }
     };
 
     window.addEventListener("cameraControl", handleCameraControl as EventListener);
-
-    // 清理函数：事件与观察器
-  onCleanup(() => {
-    // 清理渲染通信
-    rendererCommunication.dispose();
-    
-    // 清理Babylon.js资源
-    scene.dispose();
-    engine.dispose();
-    console.log("渲染器资源已清理");
-      ro.disconnect();
-      window.removeEventListener("resize", onWinResize);
+    registerCleanup(() => {
       window.removeEventListener("cameraControl", handleCameraControl as EventListener);
-      thirdPersonController?.dispose();
     });
+  }
+
+  // ==================== 主初始化 ====================
+  onMount(async () => {
+    // 1. 创建引擎（依赖 canvas）
+    engine = new Engine(canvas, true);
+    engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
+    engine.loadingScreen = {
+      displayLoadingUI: () => {},
+      hideLoadingUI: () => {},
+      loadingUIBackgroundColor: "#000000",
+      loadingUIText: "Loading...",
+    };
+
+    // 2. 创建场景
+    scene = new Scene(engine);
+    scene.clearColor = new Color4(1, 1, 1, 1);
+
+    // 3. 设置场景效果（雾、光照等）
+    setupSceneEffects();
+    
+    // 4. 初始化渲染控制器
+    rendererController = createRendererController(scene);
+
+    // 5. 加载模型
+    await AppendSceneAsync("/models/landscape.glb", scene);
+
+    // 6. 初始化渲染通信
+    setupRenderCommunication();
+
+    // 7. 创建相机和控制器
+    const thirdPersonSetup = createThirdPersonController(
+      scene, 
+      canvas, 
+      rendererController, 
+      props.followEntityId,
+      { distance: 8, smoothTransition: true }
+    );
+    camera = thirdPersonSetup.camera;
+    thirdPersonController = thirdPersonSetup.controller;
+
+    // 8. 设置相机属性
+    camera.minZ = 0.1;
+    camera.fov = 1;
+
+    // 9. 启动渲染循环
+    scene.executeWhenReady(() => {
+      engine.runRenderLoop(() => {
+        const dt = engine.getDeltaTime() / 1000;
+        rendererController.tick(dt);
+        thirdPersonController.update(dt);
+        scene.render();
+      });
+      setLoaderState(true);
+    });
+
+    // 10. 窗口调整
+    setupResizeHandling();
+    
+    // 11. 相机控制事件
+    setupCameraControlEvents();
+  });
+
+  // ==================== 统一清理（只在组件顶层调用一次）====================
+  onCleanup(() => {
+    console.log("开始清理渲染器资源...");
+    
+    // 执行所有注册的清理函数
+    cleanupFunctions.forEach(fn => {
+      try {
+        fn();
+      } catch (error) {
+        console.error("清理函数执行失败:", error);
+      }
+    });
+    
+    // 清理渲染通信
+    rendererCommunication?.dispose();
+    
+    // 清理第三人称控制器
+    thirdPersonController?.dispose();
+    
+    // 清理 Babylon.js 资源
+    scene?.dispose();
+    engine?.dispose();
+    
+    console.log("渲染器资源已清理");
   });
 
   return (
@@ -304,13 +302,11 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
       <canvas ref={canvas!} class="absolute inset-0 block bg-transparent">
         当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
       </canvas>
-
-      {/* 加载遮罩 */}
       <div
         class={`LoadingBG bg-primary-color pointer-events-none absolute inset-0 z-50 flex items-center justify-center transition-opacity ${
           !loaderState() ? "visible opacity-100" : "invisible opacity-0"
         }`}
-      ></div>
+      />
     </div>
   );
 }

@@ -28,7 +28,7 @@ export class RendererCommunication {
     realtimeSimulatorPool.on("render_cmd", this.handleRenderCommand.bind(this));
     
     this.isInitialized = true;
-    console.log("RendererCommunication: 初始化完成", new Date().toLocaleTimeString());
+    // console.log("RendererCommunication: 初始化完成", new Date().toLocaleTimeString());
   }
 
   /**
@@ -44,7 +44,7 @@ export class RendererCommunication {
     this.renderHandler = null;
     this.isInitialized = false;
     
-    console.log("RendererCommunication: 已清理", new Date().toLocaleTimeString());
+    // console.log("RendererCommunication: 已清理", new Date().toLocaleTimeString());
   }
 
   // ==================== 渲染指令处理 ====================
@@ -55,7 +55,7 @@ export class RendererCommunication {
    */
   setRenderHandler(handler: (payload: any) => void) {
     this.renderHandler = handler;
-    console.log("RendererCommunication: 渲染处理器已设置", new Date().toLocaleTimeString());
+    // console.log("RendererCommunication: 渲染处理器已设置", new Date().toLocaleTimeString());
   }
 
   /**
@@ -63,7 +63,7 @@ export class RendererCommunication {
    */
   clearRenderHandler() {
     this.renderHandler = null;
-    console.log("RendererCommunication: 渲染处理器已移除");
+    // console.log("RendererCommunication: 渲染处理器已移除");
   }
 
   /**

@@ -28,7 +28,7 @@ import { type MemberType } from "@db/schema/enums";
 import { JSProcessor, type CompilationContext } from "./astProcessor/JSProcessor";
 import { z } from "zod/v4";
 import { createActor } from "xstate";
-import { gameEngineSM, type EngineCommand, type EngineSMContext } from "./GameEngineSM";
+import { GameEngineSM, type EngineCommand, type EngineSMContext } from "./GameEngineSM";
 import { SimulatorWithRelations } from "@db/generated/repositories/simulator";
 
 // ============================== 类型定义 ==============================
@@ -239,7 +239,7 @@ export const EngineStatsFullSchema = z
   })
   .passthrough();
 
-export type EngineStatsFull = z.infer<typeof EngineStatsFullSchema>;
+export type EngineStatsFull = z.output<typeof EngineStatsFullSchema>;
 
 /**
  * 战斗快照接口
@@ -294,7 +294,7 @@ export class GameEngine {
   // ==================== 引擎状态 ====================
 
   /** 引擎状态机 */
-  private stateMachine: ReturnType<typeof createActor<typeof gameEngineSM>>;
+  private stateMachine: ReturnType<typeof createActor<typeof GameEngineSM>>;
 
   /** 获取当前引擎状态（通过状态机）*/
   public getState(): EngineState {
@@ -412,20 +412,26 @@ export class GameEngine {
     this.jsProcessor = new JSProcessor(); // 初始化JS表达式处理器
 
     // 创建状态机 - 使用动态获取mirror sender的方式
-    this.stateMachine = createActor(gameEngineSM, {
+    this.stateMachine = createActor(GameEngineSM, {
       input: {
-        mirror: { 
+        threadName: 'worker',  // 标识 Worker 线程
+        mirror: {
           send: (command: EngineCommand) => {
             if (this.sendToMirror) {
               this.sendToMirror(command);
             } else {
-              console.warn("GameEngine: sendToMirror 未设置，忽略命令:", command, "当前状态:", this.stateMachine.getSnapshot().value);
+              console.warn(
+                "GameEngine: sendToMirror 未设置，忽略命令:",
+                command,
+                "当前状态:",
+                this.stateMachine.getSnapshot().value,
+              );
               // 如果是在初始化过程中，延迟重试
               if (command.type === "RESULT" && command.command === "INIT") {
                 console.warn("GameEngine: RESULT(INIT) 命令被忽略，可能导致状态机超时");
               }
             }
-          }
+          },
         },
         engine: this,
         controller: undefined,
@@ -438,7 +444,7 @@ export class GameEngine {
   }
 
   // ==================== 生命周期管理 ====================
-  
+
   /** 存储初始化参数，用于重置时复用 */
   private initializationData: SimulatorWithRelations | null = null;
 
@@ -450,14 +456,14 @@ export class GameEngine {
       console.warn("GameEngine: 引擎已初始化");
       return;
     }
-    
+
     // 存储初始化参数
     this.initializationData = data;
-    
+
     // 设置基本状态
     this.startTime = performance.now();
     this.snapshots = [];
-    
+
     // 添加阵营A
     this.addCamp("campA");
     data.campA.forEach((team) => {
@@ -475,10 +481,7 @@ export class GameEngine {
         this.addMember("campB", team.id, member);
       });
     });
-    
-    // 自动选择主控目标
-    this.memberManager.autoSelectPrimaryTarget();
-    
+
     console.log("GameEngine: 数据初始化完成");
   }
 
@@ -529,14 +532,14 @@ export class GameEngine {
    */
   reset(): void {
     this.stop();
-    
+
     // 使用存储的初始化参数重新初始化
     if (this.initializationData) {
       this.initialize(this.initializationData);
     } else {
       console.warn("GameEngine: 没有存储的初始化参数，无法重置");
     }
-    
+
     console.log("GameEngine: 引擎已重置");
   }
 
@@ -565,8 +568,6 @@ export class GameEngine {
     // 恢复帧循环
     this.frameLoop.resume();
   }
-
-  
 
   /**
    * 单步执行

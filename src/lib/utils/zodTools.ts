@@ -11,7 +11,7 @@ export function getZodType(schema?: ZodType) {
   }
 
   // 在 Zod v4 中，直接使用 schema.type 属性
-  const type = schema._zod.def.type;
+  const type = schema.type;
   
   schemaTypeCache.set(schema, type);
   return type;

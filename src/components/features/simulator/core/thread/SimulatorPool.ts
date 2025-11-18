@@ -44,7 +44,7 @@ export const DataQueryCommandSchema = z.discriminatedUnion("type", [
 /**
  * 数据查询命令类型
  */
-export type DataQueryCommand = z.infer<typeof DataQueryCommandSchema>;
+export type DataQueryCommand = z.output<typeof DataQueryCommandSchema>;
 
 
 // ==================== 渲染指令类型 ====================

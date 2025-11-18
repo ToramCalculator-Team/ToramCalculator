@@ -86,7 +86,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
           {(field) => {
             const enumValue = zodValue as ZodEnum<any>;
             return (
-              <Input title={inputTitle} description={inputDescription} state={fieldInfo(field())} class={fieldCalss}>
+              <Input title={inputTitle} description={inputDescription} validationMessage={fieldInfo(field())} class={fieldCalss}>
                 <EnumSelect
                   value={field().state.value as string}
                   setValue={(value) => field().setValue(value as DeepValue<T, DeepKeys<T>>)}
@@ -126,7 +126,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
                 value={field().state.value as number}
                 onBlur={field().handleBlur}
                 onChange={(e) => field().handleChange(parseFloat(e.target.value) as DeepValue<T, DeepKeys<T>>)}
-                state={fieldInfo(field())}
+                validationMessage={fieldInfo(field())}
                 class={fieldCalss}
               />
             );
@@ -148,7 +148,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
             // 一般数组对象字段会单独处理，如果这里被调用，说明是简单的字符串数组
             const arrayValue = () => field().state.value as string[];
             return (
-              <Input title={inputTitle} description={""} state={fieldInfo(field())} class={fieldCalss}>
+              <Input title={inputTitle} description={""} validationMessage={fieldInfo(field())} class={fieldCalss}>
                 <div class="ArrayBox flex w-full flex-col gap-2">
                   <For each={arrayValue()}>
                     {(item, index) => (
@@ -221,7 +221,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
                   const target = e.target;
                   field().handleChange(target.value as DeepValue<T, DeepKeys<T>>);
                 }}
-                state={fieldInfo(field())}
+                validationMessage={fieldInfo(field())}
                 class={fieldCalss}
               >
                 "逻辑编辑器，暂未处理"
@@ -244,7 +244,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
         >
           {(field) => {
             return (
-              <Input title={inputTitle} description={inputDescription} state={fieldInfo(field())} class={fieldCalss}>
+              <Input title={inputTitle} description={inputDescription} validationMessage={fieldInfo(field())} class={fieldCalss}>
                 <Toggle
                   id={field().name}
                   onClick={() => {
@@ -287,7 +287,7 @@ export function renderField<T extends Record<string, unknown>, K extends DeepKey
                   const target = e.target;
                   field().handleChange(target.value as DeepValue<T, DeepKeys<T>>);
                 }}
-                state={fieldInfo(field())}
+                validationMessage={fieldInfo(field())}
                 class={fieldCalss}
               />
             );

@@ -7,7 +7,7 @@ export type staticStageTuple = readonly [string, ZodType];
 
 /* ----------------- 辅助类型 ----------------- */
 /** 从 Zod schema 推断输出类型 */
-export type OutputOfSchema<T extends ZodType> = z.infer<T>;
+export type OutputOfSchema<T extends ZodType> = z.output<T>;
 
 /** 管线定义，每个 action 对应静态阶段数组 */
 export type PipeLineDef<TActionName extends string> = {

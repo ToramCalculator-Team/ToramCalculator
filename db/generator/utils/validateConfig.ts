@@ -72,7 +72,7 @@ export const configValidator = z
       Required<Pick<typeof config, "enumFileName">>;
   });
 
-export type Config = z.infer<typeof configValidator>;
+export type Config = z.output<typeof configValidator>;
 
 export const validateConfig = (config: unknown) => {
   const parsed = configValidator.safeParse(config);

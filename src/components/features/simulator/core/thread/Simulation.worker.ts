@@ -9,8 +9,14 @@ import type { IntentMessage } from "../MessageRouter";
 
 import { prepareForTransfer, sanitizeForPostMessage } from "~/lib/WorkerPool/MessageSerializer";
 import { createActor } from "xstate";
-import { gameEngineSM, type EngineCommand, EngineCommandSchema } from "../GameEngineSM";
-import { DataQueryCommand, SimulatorTaskMap, SimulatorTaskTypeMapValue, SimulatorTaskPriority, DataQueryCommandSchema } from "./SimulatorPool";
+import { GameEngineSM, type EngineCommand, EngineCommandSchema } from "../GameEngineSM";
+import {
+  DataQueryCommand,
+  SimulatorTaskMap,
+  SimulatorTaskTypeMapValue,
+  SimulatorTaskPriority,
+  DataQueryCommandSchema,
+} from "./SimulatorPool";
 import { WorkerMessage, WorkerMessageEvent } from "~/lib/WorkerPool/type";
 
 // ==================== 沙盒环境初始化 ====================
@@ -163,14 +169,20 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
         // 设置引擎的镜像通信发送器
         gameEngine.setMirrorSender((msg: EngineCommand) => {
           try {
-            messagePort.postMessage({ belongToTaskId: "engine_state_machine", type: "engine_state_machine", data: msg });
+            messagePort.postMessage({
+              belongToTaskId: "engine_state_machine",
+              type: "engine_state_machine",
+              data: msg,
+            });
           } catch (error) {
             console.error("Worker: 发送镜像消息失败:", error);
           }
         });
 
         // 设置MessageChannel端口用于任务通信
-        messagePort.onmessage = async (portEvent: MessageEvent<WorkerMessage<SimulatorTaskTypeMapValue, SimulatorTaskPriority>>) => {
+        messagePort.onmessage = async (
+          portEvent: MessageEvent<WorkerMessage<SimulatorTaskTypeMapValue, SimulatorTaskPriority>>,
+        ) => {
           console.log("🔌 Worker: 收到消息", portEvent.data);
           const { belongToTaskId: portbelongToTaskId, payload, priority } = portEvent.data;
           const startTime = performance.now();
@@ -185,21 +197,23 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 
             // 使用 Zod Schema 验证命令类型
             const engineCommandResult = EngineCommandSchema.safeParse(payload);
-              const dataQueryResult = DataQueryCommandSchema.safeParse(payload);
+            const dataQueryResult = DataQueryCommandSchema.safeParse(payload);
             if (engineCommandResult.success) {
               // 状态机命令直接转发给引擎
-              console.log("🔌 Worker: 收到状态机命令:", engineCommandResult.data);
+              console.log("确认收到状态机命令:", engineCommandResult.data);
               gameEngine.sendCommand(engineCommandResult.data);
-              console.log("🔌 Worker: 命令已发送到引擎状态机");
+              console.log("命令已发送到引擎状态机");
               portResult = { success: true };
-            } else if(dataQueryResult.success) {
+            } else if (dataQueryResult.success) {
+              console.log("确认收到数据查询命令:", dataQueryResult.data);
               // 数据查询命令处理
               portResult = await handleDataQuery(dataQueryResult.data);
+              console.log("数据查询命令已处理:", portResult);
             } else {
-              console.error(payload)
-              console.error(engineCommandResult.error)
-              console.error(dataQueryResult.error)
-              throw new Error(`未知命令类型: ${(payload as any)?.type || 'undefined'}`);
+              console.error(payload);
+              console.error(engineCommandResult.error);
+              console.error(dataQueryResult.error);
+              throw new Error(`未知命令类型: ${(payload as any)?.type || "undefined"}`);
             }
 
             // 计算执行时间

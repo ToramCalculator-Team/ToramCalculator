@@ -26,7 +26,7 @@ import { sanitizeForPostMessage } from "../../../../lib/WorkerPool/MessageSerial
 
 /**
  * 意图消息类型枚举
- * 
+ *
  * 用户可输入的意图消息类型：
  * 1. 生命周期事件 - 复活
  * 2. 移动控制事件 - 移动、停止移动
@@ -37,27 +37,27 @@ import { sanitizeForPostMessage } from "../../../../lib/WorkerPool/MessageSerial
 export const IntentMessageTypeEnum = z.enum([
   // === 生命周期事件 ===
   "复活",
-  
+
   // === 移动控制事件 ===
   "移动",
   "停止移动",
-  
+
   // === 技能使用事件 ===
   "使用技能",
-  
+
   // === 防御操作事件 (Player 特有) ===
   "使用格挡",
-  "结束格挡", 
+  "结束格挡",
   "使用闪躲",
-  
+
   // === 目标管理事件 ===
   "切换目标",
-  
+
   // === 主控目标管理事件 ===
   "设置主控成员",
 ]);
 
-export type IntentMessageType = z.infer<typeof IntentMessageTypeEnum>;
+export type IntentMessageType = z.output<typeof IntentMessageTypeEnum>;
 
 /**
  * 意图消息Schema
@@ -67,10 +67,10 @@ export const IntentMessageSchema = z.object({
   type: IntentMessageTypeEnum,
   targetMemberId: z.string(),
   timestamp: z.number(),
-  data: z.record(z.any()),
+  data: z.any(),
 });
 
-export type IntentMessage = z.infer<typeof IntentMessageSchema>;
+export type IntentMessage = z.output<typeof IntentMessageSchema>;
 
 /**
  * 消息处理结果
@@ -94,10 +94,6 @@ export interface MessageRouterStats {
 
 // ==================== 扩展的消息路由统计 ====================
 
-
-
-
-
 // ============================== 消息路由器类 ==============================
 
 /**
@@ -109,8 +105,6 @@ export class MessageRouter {
 
   /** 游戏引擎引用 */
   private engine: GameEngine;
-
-
 
   /** 消息处理统计 */
   private stats = {
@@ -166,11 +160,11 @@ export class MessageRouter {
               error: "Missing member ID",
             };
           }
-          
+
           this.engine.getMemberManager().setPrimaryTarget(memberId);
-          
+
           this.stats.successfulMessages++;
-          
+
           return {
             success: true,
             message: `主控目标已设置为 ${memberId}`,
@@ -179,7 +173,7 @@ export class MessageRouter {
         } catch (error: any) {
           this.stats.failedMessages++;
           console.warn(`MessageRouter: 设置主控成员失败:`, error);
-          
+
           return {
             success: false,
             message: `设置主控成员失败: ${error.message}`,
@@ -204,9 +198,9 @@ export class MessageRouter {
         // 移除路由信息(id, timestamp, targetMemberId)，只保留业务数据
         const fsmEvent: { type: string; data?: any } = {
           type: message.type,
-          ...(message.data && Object.keys(message.data).length > 0 ? { data: message.data } : {})
+          ...(message.data && Object.keys(message.data).length > 0 ? { data: message.data } : {}),
         };
-        
+
         targetMember.actor.send(fsmEvent);
 
         this.stats.successfulMessages++;
@@ -270,7 +264,6 @@ export class MessageRouter {
         this.stats.totalMessagesProcessed > 0
           ? ((this.stats.successfulMessages / this.stats.totalMessagesProcessed) * 100).toFixed(2) + "%"
           : "0%",
-
     };
   }
 

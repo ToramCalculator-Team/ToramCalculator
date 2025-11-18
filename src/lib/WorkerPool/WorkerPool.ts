@@ -310,7 +310,7 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
     worker: WorkerWrapper,
     event: MessageEvent<WorkerMessageEvent<TResult, TTaskTypeMap, TData>>,
   ): void {
-    console.log("收到worker消息", event.data);
+    // console.log("收到worker消息", event.data);
     // 使用类型约束解析消息数据
     const messageData = event.data;
     const { belongToTaskId, result, error, metrics } = messageData;
@@ -492,7 +492,7 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
     priority: TPriority
   ): Promise<Result<TResult>> {
     if (!this.accepting) {
-      throw new Error("线程池已关闭");
+      throw new Error("WorkerPool已关闭");
     }
 
     // 确保 Worker 已初始化
@@ -649,7 +649,7 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
 
     try {
       // 通过MessageChannel发送任务到Worker
-      console.log("🔄 线程池: 发送任务到Worker", message);
+      console.log("🔄 WorkerPool: 发送任务到Worker", message);
       // 记录绑定关系
       this.taskToWorkerId.set(task.id, worker.id);
       worker.port.postMessage(message, transferables);

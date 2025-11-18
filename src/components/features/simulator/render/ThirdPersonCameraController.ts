@@ -130,7 +130,7 @@ export class ThirdPersonCameraController {
     // 设置无限地面逻辑
     this.setupInfiniteGround();
     
-    console.log("🎥 第三人称相机控制器已初始化");
+    // console.log("🎥 第三人称相机控制器已初始化");
   }
 
   // ==================== 公共API ====================
@@ -207,7 +207,7 @@ export class ThirdPersonCameraController {
     
     this.setCameraState(newState, true);
     
-    console.log(`🎥 相机开始跟随实体: ${followEntityId}，保持当前角度: H${this.state.horizontalAngle.toFixed(3)} V${this.state.verticalAngle.toFixed(3)}`);
+    // console.log(`🎥 相机开始跟随实体: ${followEntityId}，保持当前角度: H${this.state.horizontalAngle.toFixed(3)} V${this.state.verticalAngle.toFixed(3)}`);
   }
 
   private handleSetDistanceCommand(cmd: CameraSetDistanceCmd): void {
@@ -240,7 +240,7 @@ export class ThirdPersonCameraController {
       } else {
         // 绝对模式：直接设置角度
         newVerticalAngle = verticalAngle;
-        console.log(`🎥 垂直角度绝对: ${verticalAngle}`);
+        // console.log(`🎥 垂直角度绝对: ${verticalAngle}`);
       }
       
       // 限制垂直角度范围
@@ -332,7 +332,7 @@ export class ThirdPersonCameraController {
   dispose(): void {
     this.isTransitioning = false;
     this.targetState = {};
-    console.log("🎥 第三人称相机控制器已销毁");
+    // console.log("🎥 第三人称相机控制器已销毁");
   }
 
   // ==================== 私有方法 ====================
@@ -365,7 +365,7 @@ export class ThirdPersonCameraController {
       root.rotation.y = Math.round(rotationY / snapAngle) * snapAngle;
     });
     
-    console.log("🎥 无限地面已启用", this.infiniteGroundConfig);
+    // console.log("🎥 无限地面已启用", this.infiniteGroundConfig);
   }
 }
 
