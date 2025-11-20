@@ -1,12 +1,12 @@
 import { MemberWithRelations } from "@db/generated/repositories/member";
-import { Actor, createActor, EventObject, NonReducibleUnknown, ParameterizedObject, StateMachine } from "xstate";
+import { Actor, createActor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
 import { StatContainer } from "../dataSys/StatContainer";
 import { NestedSchema } from "../dataSys/SchemaTypes";
 import GameEngine from "../GameEngine";
 import { MemberType } from "@db/schema/enums";
 import { BuffManager } from "../buff/BuffManager";
 import { PipelineManager } from "../pipeline/PipelineManager";
-import { PipeLineDef, PipeStageFunDef } from "../pipeline/PipelineStageType";
+import { PipeLineDef, PipelineParams, PipeStageFunDef } from "../pipeline/PipelineStageType";
 
 /**
  * 成员数据接口 - 对应响应式系统的序列化数据返回类型
@@ -65,8 +65,8 @@ export type MemberEventType =
 export type MemberStateMachine<
   TAttrKey extends string = string,
   TEvent extends EventObject = MemberEventType,
-  TActionTypeAndParams extends ParameterizedObject = { type: string; params?: undefined },
-  TPipelineDef extends PipeLineDef<TActionTypeAndParams["type"]> = PipeLineDef<TActionTypeAndParams["type"]>,
+  TPipelineDef extends PipeLineDef = PipeLineDef,
+  TPipelineParams extends PipelineParams = PipelineParams,
   TExContext extends Record<string, any> = {},
 > = StateMachine<
   any, // TContext - 状态机上下文
@@ -79,7 +79,7 @@ export type MemberStateMachine<
   {}, // TStateValue - 状态值
   string, // TTag - 标签
   NonReducibleUnknown, // TInput - 输入类型
-  Member<TAttrKey, TEvent, TActionTypeAndParams, TPipelineDef, TExContext>, // TOutput - 输出类型（当状态机完成时）
+  Member<TAttrKey, TEvent, TPipelineDef, TPipelineParams, TExContext>, // TOutput - 输出类型（当状态机完成时）
   EventObject, // TEmitted - 发出的事件类型
   any, // TMeta - 元数据
   any // TStateSchema - 状态模式
@@ -95,16 +95,16 @@ export type MemberStateMachine<
 export type MemberActor<
   TAttrKey extends string = string,
   TEvent extends EventObject = MemberEventType,
-  TActionTypeAndParams extends ParameterizedObject = { type: string; params?: undefined },
-  TPipelineDef extends PipeLineDef<TActionTypeAndParams["type"]> = PipeLineDef<TActionTypeAndParams["type"]>,
+  TPipelineDef extends PipeLineDef = PipeLineDef,
+  TPipelineParams extends PipelineParams = PipelineParams,
   TExContext extends Record<string, any> = {},
-> = Actor<MemberStateMachine<TAttrKey, TEvent, TActionTypeAndParams, TPipelineDef, TExContext>>;
+> = Actor<MemberStateMachine<TAttrKey, TEvent, TPipelineDef, TPipelineParams, TExContext>>;
 
 export class Member<
   TAttrKey extends string,
   TEvent extends EventObject,
-  TActionTypeAndParams extends ParameterizedObject,
-  TPipelineDef extends PipeLineDef<TActionTypeAndParams["type"]>,
+  TPipelineDef extends PipeLineDef,
+  TPipelineParams extends PipelineParams,
   TExContext extends Record<string, any>,
 > {
   /** 成员ID */
@@ -128,9 +128,9 @@ export class Member<
   /** Buff 管理器（生命周期/钩子/机制状态） */
   buffManager: BuffManager;
   /** 管线管理器（固定+动态管线阶段管理） */
-  pipelineManager: PipelineManager<TActionTypeAndParams, TPipelineDef, TExContext>;
+  pipelineManager: PipelineManager<TPipelineDef, TPipelineParams, TExContext>;
   /** 成员Actor引用 */
-  actor: MemberActor<TAttrKey, TEvent, TActionTypeAndParams, TPipelineDef, TExContext>;
+  actor: MemberActor<TAttrKey, TEvent, TPipelineDef, TPipelineParams, TExContext>;
   /** 引擎引用 */
   engine: GameEngine;
   /** 成员数据 */
@@ -158,7 +158,7 @@ export class Member<
   }
 
   constructor(
-    stateMachine: (member: any) => MemberStateMachine<TAttrKey, TEvent, TActionTypeAndParams, TPipelineDef, TExContext>,
+    stateMachine: (member: any) => MemberStateMachine<TAttrKey, TEvent, TPipelineDef, TPipelineParams, TExContext>,
     engine: GameEngine,
     campId: string,
     teamId: string,
@@ -166,7 +166,7 @@ export class Member<
     memberData: MemberWithRelations,
     dataSchema: NestedSchema,
     pipelineDef: TPipelineDef,
-    pipeFunDef: PipeStageFunDef<TActionTypeAndParams, TPipelineDef, TExContext>,
+    pipeFunDef: PipeStageFunDef<TPipelineDef, TPipelineParams, TExContext>,
     position?: { x: number; y: number; z: number },
   ) {
     this.id = memberData.id;
