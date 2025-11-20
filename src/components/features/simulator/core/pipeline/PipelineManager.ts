@@ -7,8 +7,7 @@
  */
 
 import { ZodType } from "zod/v4";
-import { OutputOfSchema, PipeLineDef, PipeStageFunDef, staticStageTuple } from "./PipelineStageType";
-import { ParameterizedObject } from "xstate";
+import { OutputOfSchema, PipeLineDef, PipelineParams, PipeStageFunDef, staticStageTuple } from "./PipelineStageType";
 
 // ==================== 类型定义 ====================
 
@@ -59,38 +58,34 @@ type AccumulateStageOutputs<TDefs extends readonly staticStageTuple[]> = UnionTo
   OutputsUnionFromDefs<TDefs>
 >;
 
-/* ---------- 阶段名 / schema / 输出 提取 ---------- */
+/* ---------- 阶段名 / schema / 输出 提取（已解耦版本）---------- */
 type StageNamesOf<
-  TActionName extends string,
-  TDef extends PipeLineDef<TActionName>,
-  A extends TActionName,
-> = TDef[A][number] extends readonly [infer N extends string, any] ? N : never;
+  TDef extends PipeLineDef,
+  P extends keyof TDef,
+> = TDef[P][number] extends readonly [infer N extends string, any] ? N : never;
 
 type StageSchemaOf<
-  TActionName extends string,
-  TDef extends PipeLineDef<TActionName>,
-  A extends TActionName,
-  S extends StageNamesOf<TActionName, TDef, A>,
-> = Extract<TDef[A][number], readonly [S, any]>[1];
+  TDef extends PipeLineDef,
+  P extends keyof TDef,
+  S extends StageNamesOf<TDef, P>,
+> = Extract<TDef[P][number], readonly [S, any]>[1];
 
 type StageOutputOf<
-  TActionName extends string,
-  TDef extends PipeLineDef<TActionName>,
-  A extends TActionName,
-  S extends StageNamesOf<TActionName, TDef, A>,
+  TDef extends PipeLineDef,
+  P extends keyof TDef,
+  S extends StageNamesOf<TDef, P>,
 > =
-  StageSchemaOf<TActionName, TDef, A, S> extends ZodType
-    ? OutputOfSchema<StageSchemaOf<TActionName, TDef, A, S>>
+  StageSchemaOf<TDef, P, S> extends ZodType
+    ? OutputOfSchema<StageSchemaOf<TDef, P, S>>
     : never;
 
 /* ---------- 执行上下文到该阶段（含） ---------- */
 type StageExecutionContextAfter<
-  TActionName extends string,
-  TDef extends PipeLineDef<TActionName>,
-  A extends TActionName,
-  S extends StageNamesOf<TActionName, TDef, A>,
+  TDef extends PipeLineDef,
+  P extends keyof TDef,
+  S extends StageNamesOf<TDef, P>,
   TCtx extends Record<string, any>,
-> = TCtx & AccumulateStageOutputs<GetPreviousAndCurrentStageDefs<TDef[A], S>>;
+> = TCtx & AccumulateStageOutputs<GetPreviousAndCurrentStageDefs<TDef[P], S>>;
 
 /* ----------------- 动态阶段 handler 类型 ----------------- */
 /**
@@ -100,161 +95,117 @@ type StageExecutionContextAfter<
  *  - 返回值可以是该输出类型（替换/修改），也可以部分更新 ctx（Partial），或 void
  */
 type DynamicHandlerForStage<
-  TActionName extends string,
-  TDef extends PipeLineDef<TActionName>,
-  A extends TActionName,
-  S extends StageNamesOf<TActionName, TDef, A>,
+  TDef extends PipeLineDef,
+  P extends keyof TDef,
+  S extends StageNamesOf<TDef, P>,
   TCtx extends Record<string, any>,
 > = (
-  ctx: StageExecutionContextAfter<TActionName, TDef, A, S, TCtx>,
-  input: StageOutputOf<TActionName, TDef, A, S>,
-) => StageOutputOf<TActionName, TDef, A, S> | Partial<StageExecutionContextAfter<TActionName, TDef, A, S, TCtx>> | void;
+  ctx: StageExecutionContextAfter<TDef, P, S, TCtx>,
+  input: StageOutputOf<TDef, P, S>,
+) => StageOutputOf<TDef, P, S> | Partial<StageExecutionContextAfter<TDef, P, S, TCtx>> | void;
 
-/** 获取某 action 的每个阶段对应输出类型映射 */
-type StageOutputsOf<TActionName extends string, TDef extends PipeLineDef<TActionName>, A extends TActionName> = {
-  [S in StageNamesOf<TActionName, TDef, A>]: StageOutputOf<TActionName, TDef, A, S>;
+/** 获取某管线的每个阶段对应输出类型映射 */
+type StageOutputsOf<TDef extends PipeLineDef, P extends keyof TDef> = {
+  [S in StageNamesOf<TDef, P>]: StageOutputOf<TDef, P, S>;
 };
 
-/* ----------------- PipelineManager ----------------- */
+/* ----------------- PipelineManager（已解耦版本）----------------- */
+/**
+ * 管线管理器
+ * 
+ * 设计理念：
+ * 1. 管线不再依赖状态机的 Action 类型
+ * 2. 使用管线名称作为标识符
+ * 3. 与运行时上下文（TCtx）关联，由数据结构决定
+ * 
+ * @template TDef - 管线定义（管线名称 → 阶段数组）
+ * @template TParams - 管线输入参数定义（管线名称 → 参数类型）
+ * @template TCtx - 运行时上下文类型
+ */
 export class PipelineManager<
-  TActionTypeAndParams extends ParameterizedObject,
-  TDef extends PipeLineDef<TActionTypeAndParams["type"]>,
+  TDef extends PipeLineDef,
+  TParams extends PipelineParams,
   TCtx extends Record<string, any>,
-  TActionName extends string = TActionTypeAndParams["type"],
-  TParams = TActionTypeAndParams["params"],
 > {
-  /** 动态阶段存储：action -> stageName -> list of dynamic handlers */
+  /** 动态阶段存储：pipelineName -> stageName -> list of dynamic handlers */
   private dynamicStages: {
-    [A in TActionName]?: {
-      [S in StageNamesOf<TActionName, TDef, A>]?: DynamicHandlerForStage<TActionName, TDef, A, S, TCtx>[];
+    [P in keyof TDef]?: {
+      [S in StageNamesOf<TDef, P>]?: DynamicHandlerForStage<TDef, P, S, TCtx>[];
     };
   } = {} as any;
 
-  /** 缓存已编译的执行链：action -> compiled chain */
+  /** 缓存已编译的执行链：pipelineName -> compiled chain */
   private compiledChains: {
-    [A in TActionName]?: (ctx: TCtx, params?: TParams) => {
+    [P in keyof TDef]?: (ctx: TCtx, params?: TParams[P]) => {
       ctx: TCtx;
-      stageOutputs: StageOutputsOf<TActionName, TDef, A>;
+      stageOutputs: StageOutputsOf<TDef, P>;
     }
   } = {} as any;
 
   constructor(
-    /** 管线定义：每个 action 对应静态阶段数组 */
+    /** 管线定义：每个管线名称对应静态阶段数组 */
     public readonly pipelineDef: TDef,
     /** 静态阶段实际执行函数集合 */
-    public readonly pipeFunDef: PipeStageFunDef<{ type: TActionName; params: TParams }, TDef, TCtx>,
+    public readonly pipeFunDef: PipeStageFunDef<TDef, TParams, TCtx>,
   ) {}
 
   /**
    * 插入动态阶段
+   * - pipelineName: 管线名称
    * - afterStage: 该动态 handler 插入到哪个静态阶段之后
    * - handler: 动态 handler 函数（类型安全，可访问累积 ctx）
-   * - 插入后清空缓存 compiledChains[action]，保证下一次运行使用最新链
+   * - 插入后清空缓存 compiledChains[pipelineName]，保证下一次运行使用最新链
    */
-  insertDynamicStage<A extends TActionName, S extends StageNamesOf<TActionName, TDef, A>>(
-    action: A,
+  insertDynamicStage<P extends keyof TDef, S extends StageNamesOf<TDef, P>>(
+    pipelineName: P,
     afterStage: S,
-    handler: DynamicHandlerForStage<TActionName, TDef, A, S, TCtx>,
+    handler: DynamicHandlerForStage<TDef, P, S, TCtx>,
   ) {
-    const map = (this.dynamicStages[action] ??= {} as any);
-    const list = (map[afterStage] ??= [] as any) as DynamicHandlerForStage<TActionName, TDef, A, S, TCtx>[];
+    const map = (this.dynamicStages[pipelineName] ??= {} as any);
+    const list = (map[afterStage] ??= [] as any) as DynamicHandlerForStage<TDef, P, S, TCtx>[];
     list.push(handler);
 
     // 动态阶段变动时清空缓存
-    delete this.compiledChains[action];
+    delete this.compiledChains[pipelineName];
   }
 
-  /** 获取某 action 某静态阶段之后的动态 handler 列表 */
-  getDynamicHandlersForStage<A extends TActionName, S extends StageNamesOf<TActionName, TDef, A>>(action: A, stage: S) {
-    return (this.dynamicStages[action]?.[stage] ?? []) as DynamicHandlerForStage<TActionName, TDef, A, S, TCtx>[];
+  /** 获取某管线某静态阶段之后的动态 handler 列表 */
+  getDynamicHandlersForStage<P extends keyof TDef, S extends StageNamesOf<TDef, P>>(pipelineName: P, stage: S) {
+    return (this.dynamicStages[pipelineName]?.[stage] ?? []) as DynamicHandlerForStage<TDef, P, S, TCtx>[];
   }
 
   /* ---------------------- compile ---------------------- */
 /**
- * 编译某个 action 的同步执行链（支持两种静态实现：纯函数或 XState ActionFunction）
+ * 编译某个管线的同步执行链
  *
  * 返回值类型： (ctx, params?) => { ctx: TCtx, stageOutputs: StageOutputsOf<...> }
  */
-private compile<A extends TActionName>(
-  action: A
-): (ctx: TCtx, params?: TParams) => { ctx: TCtx; stageOutputs: StageOutputsOf<TActionName, TDef, A> } {
-  const staticStages = this.pipelineDef[action]; // readonly staticStageTuple[]
-  const pipeFnsForAction = (this.pipeFunDef as any)[action] as Record<string, Function> | undefined;
+private compile<P extends keyof TDef>(
+  pipelineName: P
+): (ctx: TCtx, params?: TParams[P]) => { ctx: TCtx; stageOutputs: StageOutputsOf<TDef, P> } {
+  const staticStages = this.pipelineDef[pipelineName]; // readonly staticStageTuple[]
+  const pipeFnsForPipeline = (this.pipeFunDef as any)[pipelineName] as Record<string, Function> | undefined;
 
-  return (ctx: TCtx, params?: TParams) => {
+  return (ctx: TCtx, params?: TParams[P]) => {
     // working copy of ctx so we don't mutate caller's object unexpectedly
     const currentCtx: any = Object.assign({}, ctx);
     let prevOutput: any = params ?? {};
-    const stageOutputs = {} as StageOutputsOf<TActionName, TDef, A>;
+    const stageOutputs = {} as StageOutputsOf<TDef, P>;
 
     // iterate each static stage in order
     for (const [stageName, schema] of staticStages) {
-      const typedStageName = stageName as StageNamesOf<TActionName, TDef, A>;
+      const typedStageName = stageName as StageNamesOf<TDef, P>;
 
-      // ---------- 静态实现：先当作纯函数调用 ----------
+      // ---------- 静态实现：纯函数调用 ----------
       let stageOut: any = prevOutput;
-      const staticImpl = pipeFnsForAction?.[stageName];
+      const staticImpl = pipeFnsForPipeline?.[stageName];
 
       if (staticImpl) {
-        // 1) 首先以纯函数签名尝试调用 (ctx, input) => out
-        //    这涵盖最常见的纯计算函数实现
+        // 以纯函数签名调用 (ctx, input) => out
         try {
-          const maybeOut = staticImpl(currentCtx, prevOutput);
-          stageOut = maybeOut;
+          stageOut = staticImpl(currentCtx, prevOutput);
         } catch (e) {
-          // 如果实现内部抛错，直接抛出（与之前行为一致）
           throw e;
-        }
-
-        // 2) 如果返回的是 undefined（常见于 action-style impl），
-        //    那么我们认为它可能是 XState 的 ActionFunction（enqueueActions 返回的函数）
-        //    我们构造简单的 ActionArgs 提供给它（enqueue.assign 等会同步修改 currentCtx）。
-        if (stageOut === undefined) {
-          // Minimal ActionArgs-like object for enqueueActions / ActionFunction compatibility
-          const actionArgs: any = {
-            // XState 的 ActionArgs 包含 context, event, and helpers like enqueue/assign/check
-            context: currentCtx,
-            event: { type: '__PIPE__' }, // synthetic event
-            // enqueue: provide helpers expected by enqueueActions: assign, maybe enqueue(...) - keep minimal
-            enqueue: {
-              // assign 支持传对象或 updater function (ctx => patch)
-              assign: (patchOrFn: any) => {
-                if (typeof patchOrFn === 'function') {
-                  // patch function: receives context-like arg
-                  const patch = patchOrFn({ context: currentCtx });
-                  if (patch && typeof patch === 'object') Object.assign(currentCtx, patch);
-                } else if (patchOrFn && typeof patchOrFn === 'object') {
-                  Object.assign(currentCtx, patchOrFn);
-                }
-                // return nothing (like xstate enqueue.assign)
-              },
-              // Allow enqueue(action) to be a no-op or store for later — for simplicity it's no-op
-              // If you need to actually enqueue actions, you'd provide a more complete implementation.
-              call: (action: any) => {
-                // no-op in this minimal shim
-              }
-            },
-            // check helper (used in your examples like if (check('someGuard')) ...)
-            check: (guardName: string) => {
-              // minimal; you can wire real guard lookup if desired
-              return false;
-            }
-          };
-
-          // Call as an action: actionFn(ActionArgs, params)
-          // For enqueueActions, the returned ActionFunction expects (args, params)
-          try {
-            const maybeVoid = (staticImpl as any)(actionArgs, prevOutput);
-            // if it returns object despite being action-style, use it as stageOut
-            if (maybeVoid !== undefined) {
-              stageOut = maybeVoid;
-            } else {
-              // action mutated currentCtx via enqueue.assign; we keep prevOutput as-is
-              stageOut = prevOutput;
-            }
-          } catch (e) {
-            throw e;
-          }
         }
       } // end if staticImpl
 
@@ -282,7 +233,7 @@ private compile<A extends TActionName>(
       (stageOutputs as any)[typedStageName] = prevOutput;
 
       // ---------- 执行该静态阶段之后注册的动态 handlers ----------
-      const dyns = this.dynamicStages[action]?.[typedStageName] ?? [];
+      const dyns = this.dynamicStages[pipelineName]?.[typedStageName] ?? [];
       for (const dyn of dyns) {
         const dynOut = (dyn as any)(currentCtx, prevOutput);
         if (!dynOut) continue;
@@ -307,16 +258,15 @@ private compile<A extends TActionName>(
  * 对外同步执行入口（使用缓存的已编译闭包）
  * 返回：{ ctx, stageOutputs }，其中 stageOutputs 类型由 StageOutputsOf 推导
  */
-run<A extends TActionName>(
-  action: A,
+run<P extends keyof TDef>(
+  pipelineName: P,
   ctx: TCtx,
-  params?: TParams
-): { ctx: TCtx; stageOutputs: StageOutputsOf<TActionName, TDef, A> } {
-  // ensure compiled chain exists for action (typed per-action)
-  if (!this.compiledChains[action]) {
-    // Note: compile(action) returns a function with exact return type that uses StageOutputsOf<A>
-    this.compiledChains[action] = this.compile(action);
+  params?: TParams[P]
+): { ctx: TCtx; stageOutputs: StageOutputsOf<TDef, P> } {
+  // ensure compiled chain exists for pipeline
+  if (!this.compiledChains[pipelineName]) {
+    this.compiledChains[pipelineName] = this.compile(pipelineName);
   }
-  return this.compiledChains[action](ctx, params);
+  return this.compiledChains[pipelineName](ctx, params);
 }
 }

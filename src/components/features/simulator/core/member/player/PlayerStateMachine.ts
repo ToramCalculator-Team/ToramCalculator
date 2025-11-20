@@ -11,7 +11,7 @@ import { ExpressionContext, GameEngine } from "../../GameEngine";
 import { MemberType } from "@db/schema/enums";
 import { CharacterWithRelations } from "@db/generated/repositories/character";
 import { PipelineManager } from "../../pipeline/PipelineManager";
-import { PlayerAction, playerPipDef, PlayerPipelineDef } from "./PlayerPipelines";
+import { playerPipDef, PlayerPipelineDef, PlayerPipelineParams } from "./PlayerPipelines";
 
 /**
  * Player特有的事件类型
@@ -160,7 +160,7 @@ export interface PlayerStateContext {
   /** 属性容器引用 */
   statContainer: StatContainer<PlayerAttrType>;
   /** 管线管理器引用 */
-  pipelineManager: PipelineManager<PlayerAction, PlayerPipelineDef, PlayerStateContext>;
+  pipelineManager: PipelineManager<PlayerPipelineDef, PlayerPipelineParams, PlayerStateContext>;
   /** 位置信息 */
   position: { x: number; y: number; z: number };
   /** 创建帧 */
@@ -308,7 +308,7 @@ export const playerActions = {
       const e = event as 收到目标快照;
       console.log(`👤 [${context.name}] 状态机上下文中的当前技能效果：`, context.currentSkillEffect);
       console.log(`👤 [${context.name}] 技能消耗扣除`, event);
-      const res = context.pipelineManager.run("技能消耗扣除", context, {});
+      const res = context.pipelineManager.run("skill.cost.calculate", context, {});
       enqueue.assign({
         aggro: context.aggro + res.stageOutputs.仇恨值计算.aggroResult,
       });
@@ -324,7 +324,7 @@ export const playerActions = {
   },
   计算前摇时长: enqueueActions(({ context, event, enqueue }) => {
     console.log(`👤 [${context.name}] 计算前摇时长`, event);
-    const res = context.pipelineManager.run("计算前摇时长", context, {});
+    const res = context.pipelineManager.run("skill.motion.calculate", context, {});
     console.log(`👤 [${context.name}] 计算前摇时长结果:`, res.stageOutputs.前摇帧数计算.startupFramesResult);
   }),
   创建前摇结束通知: function ({ context, event }) {
