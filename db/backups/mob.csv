@@ -2,7 +2,7 @@ id,name,type,captureable,baseLv,experience,partsExperience,initialElement,radius
 clv6uxjlm000xwv1fb3g0tjv4,薇芮娜·超柯尔连生体,Boss,f,195,57000,0,Fire,1,0,819,7,585,7,5,438,6,0,1,1,5,{},经验值包括柱子。一阶段受到翻覆后获得高额减伤；三阶段受到翻覆后会在自身脚下释放漩涡。,fengli,24,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
 clv6ubaz1000pwv1fgzxpbjxd,魔人库维扎,Boss,f,185,40500,0,Dark,1,0,925,7,925,7,25,415,5,0,5,5,5,{},无,fengli,2,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
 clv6wmh4w001rwv1f8aa3u6vh,护卫魔像,Boss,f,232,38000,0,Normal,1,0,1160,25,1160,25,20,418,0,25,0,0,0,{},血量低于50%以后切换形态；红色形态的回血期间受到麻痹会被打断。,fengli,13,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
-clv6y70u50025wv1fqyhsjcz9,多米纳雷多尔,Boss,f,253,32500,0,Dark,1,0,1265,50,1265,50,30,450,5,20,5,1,15,{},每失去一个球，双抗降低10%，并降低闪躲率和格挡率,fengli,6,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
+clv6y70u50025wv1fqyhsjcz9,多米纳雷多尔,Boss,f,253,32500,0,Dark,1,0,1265,50,1265,50,30,450,5,20,5,1,1,{},每失去一个球，双抗降低10%，并降低闪躲率和格挡率,fengli,6,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
 cluvhx0r9001hu048vx81qiei,薇芮娜·柯尔连生体,Boss,f,150,30000,0,Fire,1,0,300,6,200,6,0,75,0,7,0,10,5,{},无,fengli,43,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
 clv6y2u4t0023wv1f6o35glva,乐龙雷多尔基,Boss,f,250,28900,0,Normal,1,7000000,500,10,875,10,35,375,0,0,7,3,5,{},受到翻覆后会反击（即使翻覆由boss自身的技能施加）,fengli,7,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83
 clv6uoufi000twv1fal4xlw5j,魔晶鹫,Boss,f,190,27200,0,Dark,1,0,523,7,618,7,15,428,10,5,10,5,5,{},第二阶段属性会变为风属性,fengli,28,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83

@@ -7,7 +7,13 @@
  */
 
 import { ZodType } from "zod/v4";
-import { OutputOfSchema, PipeLineDef, PipelineParams, PipeStageFunDef, staticStageTuple } from "./PipelineStageType";
+import {
+  OutputOfSchema,
+  PipeLineDef,
+  PipelineParamsFromDef,
+  PipeStageFunDef,
+  staticStageTuple,
+} from "./PipelineStageType";
 
 // ==================== 类型定义 ====================
 
@@ -38,7 +44,11 @@ type GetPreviousAndCurrentStageDefs<
   StopStage extends string,
   Acc extends readonly staticStageTuple[] = [],
 > = TStages extends readonly [infer First, ...infer Rest]
-  ? First extends readonly [infer Name extends string, infer Schema extends ZodType] // ← 关键：约束 Schema 为 ZodType
+  ? First extends readonly [
+      infer Name extends string,
+      infer InputSchema extends ZodType,
+      infer OutputSchema extends ZodType,
+    ] // ← 三元组约束
     ? Rest extends readonly staticStageTuple[]
       ? Equal<Name, StopStage> extends true
         ? [...Acc, First] // include current
@@ -48,9 +58,13 @@ type GetPreviousAndCurrentStageDefs<
   : Acc;
 
 /* ---------- 累积输出为交叉类型 ---------- */
-type OutputsUnionFromDefs<TDefs extends readonly staticStageTuple[]> = TDefs[number] extends readonly [any, infer S]
-  ? S extends ZodType
-    ? OutputOfSchema<S>
+type OutputsUnionFromDefs<TDefs extends readonly staticStageTuple[]> = TDefs[number] extends readonly [
+  any,
+  any,
+  infer OutputSchema,
+]
+  ? OutputSchema extends ZodType
+    ? OutputOfSchema<OutputSchema>
     : never
   : never;
 
@@ -59,25 +73,29 @@ type AccumulateStageOutputs<TDefs extends readonly staticStageTuple[]> = UnionTo
 >;
 
 /* ---------- 阶段名 / schema / 输出 提取（已解耦版本）---------- */
-type StageNamesOf<
-  TDef extends PipeLineDef,
-  P extends keyof TDef,
-> = TDef[P][number] extends readonly [infer N extends string, any] ? N : never;
+type StageNamesOf<TDef extends PipeLineDef, P extends keyof TDef> = TDef[P][number] extends readonly [
+  infer N extends string,
+  any,
+  any,
+]
+  ? N
+  : never;
 
-type StageSchemaOf<
-  TDef extends PipeLineDef,
-  P extends keyof TDef,
-  S extends StageNamesOf<TDef, P>,
-> = Extract<TDef[P][number], readonly [S, any]>[1];
+type StageInputSchemaOf<TDef extends PipeLineDef, P extends keyof TDef, S extends StageNamesOf<TDef, P>> = Extract<
+  TDef[P][number],
+  readonly [S, any, any]
+>[1];
 
-type StageOutputOf<
-  TDef extends PipeLineDef,
-  P extends keyof TDef,
-  S extends StageNamesOf<TDef, P>,
-> =
-  StageSchemaOf<TDef, P, S> extends ZodType
-    ? OutputOfSchema<StageSchemaOf<TDef, P, S>>
-    : never;
+type StageOutputSchemaOf<TDef extends PipeLineDef, P extends keyof TDef, S extends StageNamesOf<TDef, P>> = Extract<
+  TDef[P][number],
+  readonly [S, any, any]
+>[2];
+
+type StageInputOf<TDef extends PipeLineDef, P extends keyof TDef, S extends StageNamesOf<TDef, P>> =
+  StageInputSchemaOf<TDef, P, S> extends ZodType ? OutputOfSchema<StageInputSchemaOf<TDef, P, S>> : never;
+
+type StageOutputOf<TDef extends PipeLineDef, P extends keyof TDef, S extends StageNamesOf<TDef, P>> =
+  StageOutputSchemaOf<TDef, P, S> extends ZodType ? OutputOfSchema<StageOutputSchemaOf<TDef, P, S>> : never;
 
 /* ---------- 执行上下文到该阶段（含） ---------- */
 type StageExecutionContextAfter<
@@ -92,41 +110,33 @@ type StageExecutionContextAfter<
  * 动态阶段通常期望：
  *  - ctx: 能看到基础 ctx + 到该阶段（含）的所有前序输出
  *  - input: 是所插入点对应静态阶段的输出类型（I = 输出类型）
- *  - 返回值可以是该输出类型（替换/修改），也可以部分更新 ctx（Partial），或 void
+ *  - 返回值可以是该输出类型（替换/修改）
  */
 type DynamicHandlerForStage<
   TDef extends PipeLineDef,
   P extends keyof TDef,
   S extends StageNamesOf<TDef, P>,
   TCtx extends Record<string, any>,
-> = (
-  ctx: StageExecutionContextAfter<TDef, P, S, TCtx>,
-  input: StageOutputOf<TDef, P, S>,
-) => StageOutputOf<TDef, P, S> | Partial<StageExecutionContextAfter<TDef, P, S, TCtx>> | void;
+> = (ctx: StageExecutionContextAfter<TDef, P, S, TCtx>, input: StageOutputOf<TDef, P, S>) => StageOutputOf<TDef, P, S>;
 
 /** 获取某管线的每个阶段对应输出类型映射 */
 type StageOutputsOf<TDef extends PipeLineDef, P extends keyof TDef> = {
   [S in StageNamesOf<TDef, P>]: StageOutputOf<TDef, P, S>;
 };
 
-/* ----------------- PipelineManager（已解耦版本）----------------- */
+/* ----------------- PipelineManager----------------- */
 /**
  * 管线管理器
- * 
+ *
  * 设计理念：
- * 1. 管线不再依赖状态机的 Action 类型
  * 2. 使用管线名称作为标识符
  * 3. 与运行时上下文（TCtx）关联，由数据结构决定
- * 
+ * 4. 管线的输入参数类型从第一个阶段的 InputSchema 自动推导
+ *
  * @template TDef - 管线定义（管线名称 → 阶段数组）
- * @template TParams - 管线输入参数定义（管线名称 → 参数类型）
  * @template TCtx - 运行时上下文类型
  */
-export class PipelineManager<
-  TDef extends PipeLineDef,
-  TParams extends PipelineParams,
-  TCtx extends Record<string, any>,
-> {
+export class PipelineManager<TDef extends PipeLineDef, TCtx extends Record<string, any>> {
   /** 动态阶段存储：pipelineName -> stageName -> list of dynamic handlers */
   private dynamicStages: {
     [P in keyof TDef]?: {
@@ -136,17 +146,20 @@ export class PipelineManager<
 
   /** 缓存已编译的执行链：pipelineName -> compiled chain */
   private compiledChains: {
-    [P in keyof TDef]?: (ctx: TCtx, params?: TParams[P]) => {
+    [P in keyof TDef]?: (
+      ctx: TCtx,
+      params?: PipelineParamsFromDef<TDef>[P],
+    ) => {
       ctx: TCtx;
       stageOutputs: StageOutputsOf<TDef, P>;
-    }
+    };
   } = {} as any;
 
   constructor(
     /** 管线定义：每个管线名称对应静态阶段数组 */
     public readonly pipelineDef: TDef,
     /** 静态阶段实际执行函数集合 */
-    public readonly pipeFunDef: PipeStageFunDef<TDef, TParams, TCtx>,
+    public readonly pipeFunDef: PipeStageFunDef<TDef, TCtx>,
   ) {}
 
   /**
@@ -175,98 +188,111 @@ export class PipelineManager<
   }
 
   /* ---------------------- compile ---------------------- */
-/**
- * 编译某个管线的同步执行链
- *
- * 返回值类型： (ctx, params?) => { ctx: TCtx, stageOutputs: StageOutputsOf<...> }
- */
-private compile<P extends keyof TDef>(
-  pipelineName: P
-): (ctx: TCtx, params?: TParams[P]) => { ctx: TCtx; stageOutputs: StageOutputsOf<TDef, P> } {
-  const staticStages = this.pipelineDef[pipelineName]; // readonly staticStageTuple[]
-  const pipeFnsForPipeline = (this.pipeFunDef as any)[pipelineName] as Record<string, Function> | undefined;
+  /**
+   * 编译某个管线的同步执行链
+   *
+   * 支持输入输出双重验证：
+   * - 调用静态实现前：验证 prevOutput 是否符合该阶段的 inputSchema
+   * - 调用静态实现后：验证 stageOut 是否符合该阶段的 outputSchema
+   *
+   * 返回值类型： (ctx, params?) => { ctx: TCtx, stageOutputs: StageOutputsOf<...> }
+   */
+  private compile<P extends keyof TDef>(
+    pipelineName: P,
+  ): (ctx: TCtx, params?: PipelineParamsFromDef<TDef>[P]) => { ctx: TCtx; stageOutputs: StageOutputsOf<TDef, P> } {
+    const staticStages = this.pipelineDef[pipelineName]; // readonly staticStageTuple[]
+    const pipeFnsForPipeline = (this.pipeFunDef as any)[pipelineName] as Record<string, Function> | undefined;
 
-  return (ctx: TCtx, params?: TParams[P]) => {
-    // working copy of ctx so we don't mutate caller's object unexpectedly
-    const currentCtx: any = Object.assign({}, ctx);
-    let prevOutput: any = params ?? {};
-    const stageOutputs = {} as StageOutputsOf<TDef, P>;
+    return (ctx: TCtx, params?: PipelineParamsFromDef<TDef>[P]) => {
+      // working copy of ctx so we don't mutate caller's object unexpectedly
+      const currentCtx: any = Object.assign({}, ctx);
+      let prevOutput: any = params ?? {};
+      const stageOutputs = {} as StageOutputsOf<TDef, P>;
 
-    // iterate each static stage in order
-    for (const [stageName, schema] of staticStages) {
-      const typedStageName = stageName as StageNamesOf<TDef, P>;
+      // iterate each static stage in order
+      for (const [stageName, inputSchema, outputSchema] of staticStages) {
+        const typedStageName = stageName as StageNamesOf<TDef, P>;
 
-      // ---------- 静态实现：纯函数调用 ----------
-      let stageOut: any = prevOutput;
-      const staticImpl = pipeFnsForPipeline?.[stageName];
-
-      if (staticImpl) {
-        // 以纯函数签名调用 (ctx, input) => out
-        try {
-          stageOut = staticImpl(currentCtx, prevOutput);
-        } catch (e) {
-          throw e;
+        // ---------- 输入验证 ----------
+        if (inputSchema) {
+          const inputParsed = (inputSchema as any).safeParse(prevOutput);
+          if (!inputParsed.success) {
+            throw new Error(`[${String(pipelineName)}.${stageName}] 输入验证失败: ${inputParsed.error.message}`);
+          }
+          // 使用验证后的数据
+          prevOutput = inputParsed.data;
         }
-      } // end if staticImpl
 
-      // ---------- 校验并合并静态阶段输出 ----------
-      if (schema) {
-        const parsed = (schema as any).safeParse(stageOut);
-        if (!parsed.success) {
-          // throw zod parse error
-          throw parsed.error;
-        }
-        // merge parsed data into context
-        Object.assign(currentCtx, parsed.data);
-        // set prevOutput to the structured parsed.data so next stage sees typed output
-        prevOutput = parsed.data;
-      } else {
-        // no schema: if stageOut is object, merge into ctx; otherwise keep primitive as prevOutput
-        if (stageOut && typeof stageOut === 'object') {
-          Object.assign(currentCtx, stageOut);
-        }
-        prevOutput = stageOut;
-      }
+        // ---------- 静态实现：纯函数调用 ----------
+        let stageOut: any = prevOutput;
+        const staticImpl = pipeFnsForPipeline?.[stageName];
 
-      // ---------- 保存阶段输出（类型断言为 StageOutputsOf） ----------
-      // TS 需要断言键类型，因为 stageName 是运行时字符串
-      (stageOutputs as any)[typedStageName] = prevOutput;
+        if (staticImpl) {
+          // 以纯函数签名调用 (ctx, input) => out
+          try {
+            stageOut = staticImpl(currentCtx, prevOutput);
+          } catch (e) {
+            throw e;
+          }
+        } // end if staticImpl
 
-      // ---------- 执行该静态阶段之后注册的动态 handlers ----------
-      const dyns = this.dynamicStages[pipelineName]?.[typedStageName] ?? [];
-      for (const dyn of dyns) {
-        const dynOut = (dyn as any)(currentCtx, prevOutput);
-        if (!dynOut) continue;
-        if (typeof dynOut === 'object') {
-          Object.assign(currentCtx, dynOut);
-          prevOutput = dynOut;
+        // ---------- 输出验证并合并 ----------
+        if (outputSchema) {
+          const outputParsed = (outputSchema as any).safeParse(stageOut);
+          if (!outputParsed.success) {
+            throw new Error(`[${String(pipelineName)}.${stageName}] 输出验证失败: ${outputParsed.error.message}`);
+          }
+          // merge parsed data into context
+          Object.assign(currentCtx, outputParsed.data);
+          // set prevOutput to the structured parsed.data so next stage sees typed output
+          prevOutput = outputParsed.data;
         } else {
-          prevOutput = dynOut;
+          // no schema: if stageOut is object, merge into ctx; otherwise keep primitive as prevOutput
+          if (stageOut && typeof stageOut === "object") {
+            Object.assign(currentCtx, stageOut);
+          }
+          prevOutput = stageOut;
         }
-        // 同样把动态阶段的结果视为该阶段最终输出（覆盖）
+
+        // ---------- 保存阶段输出（类型断言为 StageOutputsOf） ----------
+        // TS 需要断言键类型，因为 stageName 是运行时字符串
         (stageOutputs as any)[typedStageName] = prevOutput;
-      }
-    } // end for stages
 
-    // 返回最终 context 与每个阶段输出
-    return { ctx: currentCtx as TCtx, stageOutputs };
-  };
-}
+        // ---------- 执行该静态阶段之后注册的动态 handlers ----------
+        const dyns = this.dynamicStages[pipelineName]?.[typedStageName] ?? [];
+        for (const dyn of dyns) {
+          const dynOut = (dyn as any)(currentCtx, prevOutput);
+          if (!dynOut) continue;
+          if (typeof dynOut === "object") {
+            Object.assign(currentCtx, dynOut);
+            prevOutput = dynOut;
+          } else {
+            prevOutput = dynOut;
+          }
+          // 同样把动态阶段的结果视为该阶段最终输出（覆盖）
+          (stageOutputs as any)[typedStageName] = prevOutput;
+        }
+      } // end for stages
 
-/* ---------------------- run ---------------------- */
-/**
- * 对外同步执行入口（使用缓存的已编译闭包）
- * 返回：{ ctx, stageOutputs }，其中 stageOutputs 类型由 StageOutputsOf 推导
- */
-run<P extends keyof TDef>(
-  pipelineName: P,
-  ctx: TCtx,
-  params?: TParams[P]
-): { ctx: TCtx; stageOutputs: StageOutputsOf<TDef, P> } {
-  // ensure compiled chain exists for pipeline
-  if (!this.compiledChains[pipelineName]) {
-    this.compiledChains[pipelineName] = this.compile(pipelineName);
+      // 返回最终 context 与每个阶段输出
+      return { ctx: currentCtx as TCtx, stageOutputs };
+    };
   }
-  return this.compiledChains[pipelineName](ctx, params);
-}
+
+  /* ---------------------- run ---------------------- */
+  /**
+   * 对外同步执行入口（使用缓存的已编译闭包）
+   * 返回：{ ctx, stageOutputs }，其中 stageOutputs 类型由 StageOutputsOf 推导
+   */
+  run<P extends keyof TDef>(
+    pipelineName: P,
+    ctx: TCtx,
+    params?: PipelineParamsFromDef<TDef>[P],
+  ): { ctx: TCtx; stageOutputs: StageOutputsOf<TDef, P> } {
+    // ensure compiled chain exists for pipeline
+    if (!this.compiledChains[pipelineName]) {
+      this.compiledChains[pipelineName] = this.compile(pipelineName);
+    }
+    return this.compiledChains[pipelineName](ctx, params);
+  }
 }

@@ -102,10 +102,10 @@ export const Nav = () => {
       onMouseEnter={() => setDisplay(true)}
       onMouseLeave={() => setDisplay(false)}
       transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-      class={`Nav w-dvw py-2 landscape:h-dvh landscape:w-24 ${display() ? "lg:landscape:bg-area-color lg:landscape:w-24" : "lg:landscape:w-px lg:landscape:bg-transparent"} landscape:py-5`}
+      class={`Nav z-50 w-dvw py-2 landscape:h-dvh landscape:w-24 ${display() ? "lg:landscape:bg-area-color lg:landscape:w-24" : "lg:landscape:w-px lg:landscape:bg-transparent"} landscape:fixed landscape:top-0 landscape:left-0 landscape:py-5 lg:landscape:flex lg:landscape:flex-col lg:landscape:items-center`}
     >
       <div
-        class={`Content flex ${display() ? "lg:landscape:opacity-100" : "lg:landscape:opacity-0"} h-full w-full items-center landscape:flex-col landscape:gap-2 lg:landscape:gap-8`}
+        class={`Content flex ${display() ? "lg:landscape:opacity-100" : "lg:landscape:opacity-0"} h-full w-full items-center landscape:flex-col landscape:gap-2 lg:landscape:gap-8 lg:landscape:w-fit`}
       >
         <a href={"/"} class="Home hidden items-center justify-center landscape:flex" tabIndex={1}>
           <Icons.Outline.Logo />
@@ -116,7 +116,7 @@ export const Nav = () => {
           defer
           class="h-full w-full!"
         >
-          <div class="NavBtnGroup item-center flex shrink landscape:flex-col">
+          <div class={`NavBtnGroup item-center flex shrink landscape:flex-col ${display() ? "lg:landscape:opacity-100" : "lg:landscape:opacity-0"}`}>
             <NavBtn
               config={{
                 btnName: dictionary().ui.nav.home,

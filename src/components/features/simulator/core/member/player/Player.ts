@@ -5,12 +5,12 @@ import { PlayerStateContext, playerStateMachine, PlayerEventType } from "./Playe
 import GameEngine from "../../GameEngine";
 import { PlayerAttrSchema } from "./PlayerData";
 import { ExtractAttrPaths, NestedSchema } from "../../dataSys/SchemaTypes";
-import { PlayerPipelineDef, PlayerPipelineParams, playerPipDef, playerPipFunDef } from "./PlayerPipelines";
+import { PlayerPipelineDef, playerPipDef, playerPipFunDef } from "./PlayerPipelines";
 import { PipelineManager } from "../../pipeline/PipelineManager";
 
 export type PlayerAttrType = ExtractAttrPaths<ReturnType<typeof PlayerAttrSchema>>;
 
-export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerPipelineDef, PlayerPipelineParams, PlayerStateContext> {
+export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerPipelineDef, PlayerStateContext> {
   constructor(
     engine: GameEngine,
     memberData: MemberWithRelations,

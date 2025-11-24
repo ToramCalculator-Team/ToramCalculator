@@ -26,11 +26,10 @@ import { Player } from "./player/Player";
 import { Member } from "./Member";
 import { Mob } from "./mob/Mob";
 import { NestedSchema } from "../dataSys/SchemaTypes";
-import { PipeLineDef } from "../pipeline/PipelineStageType";
 
 // ============================== 类型定义 ==============================
 
-export type AnyMemberEntry = Member<string,any,any,PipeLineDef<string>,any>;
+export type AnyMemberEntry = Member<string, any, any, any>;
 
 /**
  * 成员管理条目

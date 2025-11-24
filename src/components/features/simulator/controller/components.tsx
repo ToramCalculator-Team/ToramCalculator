@@ -32,9 +32,9 @@ interface StatusBarProps {
  */
 export function StatusBar(props: StatusBarProps) {
   return (
-    <div class="col-span-12 flex h-[1fr] items-center justify-between rounded-lg p-4">
-      <div class="flex items-center gap-4">
-        <div class="flex items-center gap-2">
+    <div class="w-full flex items-center justify-between portrait:bg-area-color rounded p-4">
+      <div class="w-full flex items-center gap-4 portrait:justify-between">
+        <div class="flex items-center gap-2 portrait:hidden">
           <span class="text-sm font-medium">状态:</span>
           <div
             class={`h-2 w-2 rounded-full ${
@@ -232,7 +232,7 @@ interface MemberStatusProps {
  */
 export function MemberStatus(props: MemberStatusProps) {
   return (
-    <div class="col-span-12 row-span-1 flex flex-col items-center gap-2 portrait:row-span-1">
+    <div class="w-full flex flex-col items-center gap-2">
       <MemberStatusPanel member={props.member} />
     </div>
   );
@@ -251,7 +251,7 @@ interface SkillPanelProps {
  */
 export function SkillPanel(props: SkillPanelProps) {
   return (
-    <div class="bg-area-color col-span-6 row-span-2 flex flex-col rounded-lg p-3">
+    <div class="bg-area-color w-full flex flex-col rounded-lg p-3">
       <Show when={props.selectedMember()}>
         <h3 class="mb-2 text-lg font-semibold">技能</h3>
         <div class="grid flex-1 grid-cols-4 grid-rows-1 gap-2 overflow-y-auto">
@@ -297,7 +297,7 @@ interface ActionPanelProps {
  */
 export function ActionPanel(props: ActionPanelProps) {
   return (
-    <div class="bg-area-color col-span-6 row-span-2 rounded-lg p-3">
+    <div class="bg-area-color w-full rounded-lg p-3">
       <Show when={props.selectedEngineMember()}>
         <h3 class="mb-2 text-lg font-semibold">动作</h3>
         <div class="flex flex-col gap-2">

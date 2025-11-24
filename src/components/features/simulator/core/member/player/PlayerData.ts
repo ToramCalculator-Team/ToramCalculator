@@ -723,8 +723,8 @@ export type PlayerDataNestedSchemaDic = ConvertToNestedSchemaDic<PlayerDataStruc
  */
 export const PlayerAttrSchema = (character: CharacterWithRelations): PlayerDataNestedSchema => {
   if (!character) throw new Error("PlayerAttrSchema参数不能为空");
-  const mainWeaponType = character.weapon.type as MainHandType;
-  const subWeaponType = character.subWeapon.type as SubHandType;
+  const mainWeaponType = (character.weapon?.type ?? "None") as MainHandType;
+  const subWeaponType = (character.subWeapon?.type ?? "None") as SubHandType;
   return {
     // ============================== 基础信息 ==============================
     lv: {
@@ -781,19 +781,19 @@ export const PlayerAttrSchema = (character: CharacterWithRelations): PlayerDataN
       },
       baseAtk: {
         displayName: "主武器基础攻击",
-        expression: `${character.weapon.baseAbi}`,
+        expression: `${character.weapon?.baseAbi}`,
       },
       type: {
         displayName: "主武器类型",
-        expression: `${character.weapon.type}`,
+        expression: `${mainWeaponType}`,
       },
       ref: {
         displayName: "主武器精炼",
-        expression: `${character.weapon.refinement}`,
+        expression: `${character.weapon?.refinement}`,
       },
       stability: {
         displayName: "主武器稳定性",
-        expression: `${character.weapon.stability}`,
+        expression: `${character.weapon?.stability}`,
         noBaseValue: true,
       },
     },
@@ -809,15 +809,15 @@ export const PlayerAttrSchema = (character: CharacterWithRelations): PlayerDataN
       },
       type: {
         displayName: "副武器类型",
-        expression: `${character.subWeapon.type}`,
+        expression: `${character.subWeapon?.type ?? "None"}`,
       },
       ref: {
         displayName: "副武器精炼",
-        expression: `${character.subWeapon.refinement}`,
+        expression: `${character.subWeapon?.refinement ?? 0}`,
       },
       stability: {
         displayName: "副武器稳定性",
-        expression: `${character.subWeapon.stability}`,
+        expression: `${character.subWeapon?.stability ?? 5}`,
         noBaseValue: true,
       },
     },
@@ -825,33 +825,33 @@ export const PlayerAttrSchema = (character: CharacterWithRelations): PlayerDataN
     armor: {
       ability: {
         displayName: "身体装备类型",
-        expression: `${character.armor.ability}`,
+        expression: `${character.armor?.ability ?? "None"}`,
       },
       baseAbi: {
         displayName: "身体装备基础值",
-        expression: `${character.armor.baseAbi}`,
+        expression: `${character.armor?.baseAbi ?? 0}`,
       },
       ref: {
         displayName: "身体装备精炼",
-        expression: `${character.armor.refinement}`,
+        expression: `${character.armor?.refinement ?? 0}`,
       },
     },
 
     option: {
       baseAbi: {
         displayName: "追加装备基础值",
-        expression: `${character.option.baseAbi}`,
+        expression: `${character.option?.baseAbi ?? 0}`,
       },
       ref: {
         displayName: "追加装备精炼",
-        expression: `${character.option.refinement}`,
+        expression: `${character.option?.refinement ?? 0}`,
       },
     },
 
     special: {
       baseAbi: {
         displayName: "特殊装备基础值",
-        expression: `${character.special.baseAbi}`,
+        expression: `${character.special?.baseAbi ?? 0}`,
       },
     },
 
@@ -1038,7 +1038,7 @@ export const PlayerAttrSchema = (character: CharacterWithRelations): PlayerDataN
     stab: {
       p: {
         displayName: "物理稳定率",
-        expression: `${character.weapon.stability} + Math.floor(  str * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.str.pStabC} +   int * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.int.pStabC} +   agi * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.agi.pStabC} +   dex * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.dex.pStabC})`,
+        expression: `${character.weapon?.stability ?? 5} + Math.floor(  str * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.str.pStabC} +   int * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.int.pStabC} +   agi * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.agi.pStabC} +   dex * ${MainWeaponTypeMap[mainWeaponType].abi_Attr_Convert.dex.pStabC})`,
       },
       m: {
         displayName: "魔法稳定率",

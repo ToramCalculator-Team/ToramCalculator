@@ -178,7 +178,7 @@ export const mobPipDef = {
   反馈伤害结果给施法者: [],
   发送属性修改事件给自己: [],
   发送buff修改事件给自己: [],
-} as const satisfies PipeLineDef<MobActionsType>;
+} as const satisfies PipeLineDef;
 
 export type MobPipelineDef = typeof mobPipDef;
 

@@ -2,13 +2,13 @@ import { MemberWithRelations } from "@db/generated/repositories/member";
 import { Member } from "../Member";
 import { ExtractAttrPaths, NestedSchema } from "../../dataSys/SchemaTypes";
 import GameEngine from "../../GameEngine";
-import { createMobStateMachine, MobAction, MobStateContext, MobEventType } from "./MobStateMachine";
+import { createMobStateMachine, MobStateContext, MobEventType } from "./MobStateMachine";
 import { MobAttrSchema } from "./MobData";
 import { mobPipDef, MobPipelineDef, mobPipFunDef } from "./MobPipelines";
 
 export type MobAttrType = ExtractAttrPaths<ReturnType<typeof MobAttrSchema>>;
 
-export class Mob extends Member<MobAttrType, MobEventType, MobAction, MobPipelineDef, MobStateContext> {
+export class Mob extends Member<MobAttrType, MobEventType, MobPipelineDef, MobStateContext> {
   constructor(
     engine: GameEngine,
     memberData: MemberWithRelations,

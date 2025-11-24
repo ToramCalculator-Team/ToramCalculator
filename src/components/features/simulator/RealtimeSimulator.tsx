@@ -342,7 +342,7 @@ export default function RealtimeSimulator(props: RealtimeSimulatorProps) {
 
   // ==================== UI 渲染 ====================
   return (
-    <div class="grid h-full w-full auto-rows-min grid-cols-12 grid-rows-12 gap-4 overflow-y-auto p-4">
+    <div class="flex flex-col h-full w-full gap-4 overflow-y-auto p-4">
       {/* 状态栏 */}
       <StatusBar
         isReady={isReady}
@@ -355,7 +355,7 @@ export default function RealtimeSimulator(props: RealtimeSimulatorProps) {
       />
 
       {/* 可视区域 - 点击启用第三人称控制 */}
-      <div class="ViewArea col-span-12 row-span-7 flex flex-col items-center gap-2 portrait:row-span-6">
+      <div class="ViewArea w-full h-full flex flex-col items-center gap-2">
         <div
           class="group relative flex h-full w-full cursor-pointer flex-col overflow-hidden rounded"
           ref={(el) => {
@@ -427,22 +427,22 @@ export default function RealtimeSimulator(props: RealtimeSimulatorProps) {
         />
 
         {/* 热键帮助提示 */}
-        <div class="text-xs text-gray-500 opacity-75 transition-opacity hover:opacity-100">
+        <div class="text-xs text-main-text-color hidden lg:landscape:block">
           <div class="flex flex-wrap gap-x-4 gap-y-1">
             <span>
-              <kbd class="rounded bg-gray-200 px-1 text-gray-700">Ctrl+R</kbd> 开始
+              <kbd class="rounded bg-area-color px-1 text-main-text-color">Ctrl+R</kbd> 开始
             </span>
             <span>
-              <kbd class="rounded bg-gray-200 px-1 text-gray-700">Ctrl+P</kbd> 暂停
+              <kbd class="rounded bg-area-color px-1 text-main-text-color">Ctrl+P</kbd> 暂停
             </span>
             <span>
-              <kbd class="rounded bg-gray-200 px-1 text-gray-700">1-9</kbd> 选择成员
+              <kbd class="rounded bg-area-color px-1 text-main-text-color">1-9</kbd> 选择成员
             </span>
             <span>
-              <kbd class="rounded bg-gray-200 px-1 text-gray-700">Q/E/R/T</kbd> 技能
+              <kbd class="rounded bg-area-color px-1 text-main-text-color">Q/E/R/T</kbd> 技能
             </span>
             <span>
-              <kbd class="rounded bg-gray-200 px-1 text-gray-700">Space</kbd> 停止
+              <kbd class="rounded bg-area-color px-1 text-main-text-color">Space</kbd> 停止
             </span>
           </div>
         </div>

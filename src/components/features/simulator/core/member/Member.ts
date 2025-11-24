@@ -6,7 +6,7 @@ import GameEngine from "../GameEngine";
 import { MemberType } from "@db/schema/enums";
 import { BuffManager } from "../buff/BuffManager";
 import { PipelineManager } from "../pipeline/PipelineManager";
-import { PipeLineDef, PipelineParams, PipeStageFunDef } from "../pipeline/PipelineStageType";
+import { PipeLineDef, PipeStageFunDef } from "../pipeline/PipelineStageType";
 
 /**
  * 成员数据接口 - 对应响应式系统的序列化数据返回类型
@@ -66,7 +66,6 @@ export type MemberStateMachine<
   TAttrKey extends string = string,
   TEvent extends EventObject = MemberEventType,
   TPipelineDef extends PipeLineDef = PipeLineDef,
-  TPipelineParams extends PipelineParams = PipelineParams,
   TExContext extends Record<string, any> = {},
 > = StateMachine<
   any, // TContext - 状态机上下文
@@ -79,7 +78,7 @@ export type MemberStateMachine<
   {}, // TStateValue - 状态值
   string, // TTag - 标签
   NonReducibleUnknown, // TInput - 输入类型
-  Member<TAttrKey, TEvent, TPipelineDef, TPipelineParams, TExContext>, // TOutput - 输出类型（当状态机完成时）
+  Member<TAttrKey, TEvent, TPipelineDef, TExContext>, // TOutput - 输出类型（当状态机完成时）
   EventObject, // TEmitted - 发出的事件类型
   any, // TMeta - 元数据
   any // TStateSchema - 状态模式
@@ -96,15 +95,13 @@ export type MemberActor<
   TAttrKey extends string = string,
   TEvent extends EventObject = MemberEventType,
   TPipelineDef extends PipeLineDef = PipeLineDef,
-  TPipelineParams extends PipelineParams = PipelineParams,
   TExContext extends Record<string, any> = {},
-> = Actor<MemberStateMachine<TAttrKey, TEvent, TPipelineDef, TPipelineParams, TExContext>>;
+> = Actor<MemberStateMachine<TAttrKey, TEvent, TPipelineDef, TExContext>>;
 
 export class Member<
   TAttrKey extends string,
   TEvent extends EventObject,
   TPipelineDef extends PipeLineDef,
-  TPipelineParams extends PipelineParams,
   TExContext extends Record<string, any>,
 > {
   /** 成员ID */
@@ -128,9 +125,9 @@ export class Member<
   /** Buff 管理器（生命周期/钩子/机制状态） */
   buffManager: BuffManager;
   /** 管线管理器（固定+动态管线阶段管理） */
-  pipelineManager: PipelineManager<TPipelineDef, TPipelineParams, TExContext>;
+  pipelineManager: PipelineManager<TPipelineDef, TExContext>;
   /** 成员Actor引用 */
-  actor: MemberActor<TAttrKey, TEvent, TPipelineDef, TPipelineParams, TExContext>;
+  actor: MemberActor<TAttrKey, TEvent, TPipelineDef, TExContext>;
   /** 引擎引用 */
   engine: GameEngine;
   /** 成员数据 */
@@ -158,7 +155,7 @@ export class Member<
   }
 
   constructor(
-    stateMachine: (member: any) => MemberStateMachine<TAttrKey, TEvent, TPipelineDef, TPipelineParams, TExContext>,
+    stateMachine: (member: any) => MemberStateMachine<TAttrKey, TEvent, TPipelineDef, TExContext>,
     engine: GameEngine,
     campId: string,
     teamId: string,
@@ -166,7 +163,7 @@ export class Member<
     memberData: MemberWithRelations,
     dataSchema: NestedSchema,
     pipelineDef: TPipelineDef,
-    pipeFunDef: PipeStageFunDef<TPipelineDef, TPipelineParams, TExContext>,
+    pipeFunDef: PipeStageFunDef<TPipelineDef, TExContext>,
     position?: { x: number; y: number; z: number },
   ) {
     this.id = memberData.id;

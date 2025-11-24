@@ -11,7 +11,7 @@ import { ExpressionContext, GameEngine } from "../../GameEngine";
 import { MemberType } from "@db/schema/enums";
 import { CharacterWithRelations } from "@db/generated/repositories/character";
 import { PipelineManager } from "../../pipeline/PipelineManager";
-import { playerPipDef, PlayerPipelineDef, PlayerPipelineParams } from "./PlayerPipelines";
+import { playerPipDef, PlayerPipelineDef } from "./PlayerPipelines";
 
 /**
  * Player特有的事件类型
@@ -160,7 +160,7 @@ export interface PlayerStateContext {
   /** 属性容器引用 */
   statContainer: StatContainer<PlayerAttrType>;
   /** 管线管理器引用 */
-  pipelineManager: PipelineManager<PlayerPipelineDef, PlayerPipelineParams, PlayerStateContext>;
+  pipelineManager: PipelineManager<PlayerPipelineDef, PlayerStateContext>;
   /** 位置信息 */
   position: { x: number; y: number; z: number };
   /** 创建帧 */
@@ -197,546 +197,6 @@ export interface PlayerStateContext {
   character: CharacterWithRelations;
 }
 
-// 使用 XState 的 ActionFunction 类型定义 actions
-export const playerActions = {
-  根据角色配置生成初始状态: function ({ context, event }) {
-    console.log(`👤 [${context.name}] 根据角色配置生成初始状态`, context);
-    // 通过引擎消息通道发送渲染命令（走 Simulation.worker 的 MessageChannel）
-    const spawnCmd = {
-      type: "render:cmd" as const,
-      cmd: {
-        type: "spawn" as const,
-        entityId: context.id,
-        name: context.name,
-        position: { x: 0, y: 1, z: 0 },
-        seq: 0,
-        ts: Date.now(),
-      },
-    };
-    // 引擎统一出口：通过已建立的MessageChannel发送渲染指令
-    if (context.engine.postRenderMessage) {
-      // 首选方案：使用引擎提供的统一渲染消息接口
-      // 这个方法会通过 Simulation.worker 的 MessagePort 将指令发送到主线程
-      console.log(`👤 [${context.name}] 发送渲染指令`, spawnCmd);
-      context.engine.postRenderMessage(spawnCmd);
-    } else {
-      // 如果引擎的渲染消息接口不可用，记录错误但不使用fallback
-      // 这确保我们只使用正确的通信通道，避免依赖全局变量
-      console.error(`👤 [${context.name}] 无法发送渲染指令：引擎渲染消息接口不可用`);
-    }
-  },
-  更新玩家状态: enqueueActions(({ context, event, enqueue }) => {
-    enqueue.assign({
-      currentFrame: ({ context }) => context.currentFrame + 1,
-    });
-  }),
-  启用站立动画: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 启用站立动画`, event);
-  },
-  启用移动动画: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 启用移动动画`, event);
-  },
-  显示警告: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 显示警告`, event);
-  },
-  创建警告结束通知: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 创建警告结束通知`, event);
-  },
-  发送快照获取请求: function ({ context, event }) {
-    const e = event as 使用技能;
-    console.log(`👤 [${context.name}] 发送快照获取请求`, event);
-    const targetId = context.targetId;
-    const target = context.engine.getMember(targetId);
-    if (!target) {
-      console.error(`👤 [${context.name}] 目标不存在: ${targetId}`);
-      return;
-    }
-    target.actor.send({
-      type: "收到快照请求",
-      data: { senderId: context.id },
-    });
-  },
-  添加待处理技能: enqueueActions(({ context, event, enqueue }) => {
-    console.log(`👤 [${context.name}] 添加待处理技能`, event);
-    const e = event as 使用技能;
-    const skillId = e.data.skillId;
-    const skill = context.skillList.find((s) => s.id === skillId);
-    if (!skill) {
-      console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
-      return;
-    }
-    enqueue.assign({
-      currentSkill: skill,
-    });
-  }),
-  清空待处理技能: function ({ context, event }) {
-    console.log(`👤 [${context.name}] 清空待处理技能`, event);
-    context.currentSkill = null;
-  },
-  添加待处理技能效果: assign({
-    currentSkillEffect: ({ context }) => {
-      const skillEffect = context.currentSkill?.template?.effects.find((e) =>
-        context.engine.evaluateExpression(e.condition, {
-          currentFrame: context.currentFrame,
-          casterId: context.id,
-          skillLv: context.currentSkill?.lv ?? 0,
-        }),
-      );
-      if (!skillEffect) {
-        console.error(`🎮 [${context.name}] 使用的技能${context.currentSkill?.template?.name}没有可用的效果`);
-        return null;
-      }
-      return skillEffect;
-    },
-  }),
-  技能消耗扣除: enqueueActions(
-    (
-      { context, event, enqueue },
-      params: {
-        expressionEvaluator: (expression: string, context: ExpressionContext) => number;
-        statContainer: StatContainer<PlayerAttrType>;
-      },
-    ) => {
-      const e = event as 收到目标快照;
-      console.log(`👤 [${context.name}] 状态机上下文中的当前技能效果：`, context.currentSkillEffect);
-      console.log(`👤 [${context.name}] 技能消耗扣除`, event);
-      const res = context.pipelineManager.run("skill.cost.calculate", context, {});
-      enqueue.assign({
-        aggro: context.aggro + res.stageOutputs.仇恨值计算.aggroResult,
-      });
-      console.log(
-        `👤 [${context.name}] HP: ${context.statContainer.getValue("hp.current")}, MP: ${context.statContainer.getValue("mp.current")}`,
-      );
-    },
-  ),
-  启用前摇动画: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 启用前摇动画`, event);
-  },
-  计算前摇时长: enqueueActions(({ context, event, enqueue }) => {
-    console.log(`👤 [${context.name}] 计算前摇时长`, event);
-    const res = context.pipelineManager.run("skill.motion.calculate", context, {});
-    console.log(`👤 [${context.name}] 计算前摇时长结果:`, res.stageOutputs.前摇帧数计算.startupFramesResult);
-  }),
-  创建前摇结束通知: function ({ context, event }) {
-    console.log("🎮 创建前摇结束通知", event);
-
-    // 计算前摇结束的目标帧
-    const targetFrame = context.currentFrame + context.currentSkillStartupFrames;
-
-    // 向事件队列写入定时事件
-    // 使用 member_fsm_event 类型，由 CustomEventHandler 处理
-    context.engine.getEventQueue().insert({
-      id: createId(), // 生成唯一事件ID
-      type: "member_fsm_event",
-      executeFrame: targetFrame,
-      priority: "high",
-      payload: {
-        targetMemberId: context.id, // 目标成员ID
-        fsmEventType: "收到前摇结束通知", // 要发送给FSM的事件类型
-        skillId: context.currentSkill?.id ?? "无法获取技能ID", // 技能ID
-        source: "skill_front_swing", // 事件来源
-      },
-    });
-
-    console.log(
-      `👤 [${context.name}] 前摇开始，${context.currentSkillStartupFrames}帧后结束 (当前帧: ${context.currentFrame}, 目标帧: ${targetFrame})`,
-    );
-  },
-  启用蓄力动画: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 启用蓄力动画`, event);
-  },
-  计算蓄力时长: enqueueActions(({ context, event, enqueue }) => {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 计算蓄力时长`, event);
-  }),
-  创建蓄力结束通知: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 创建蓄力结束通知`, event);
-  },
-  启用咏唱动画: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 启用咏唱动画`, event);
-  },
-  计算咏唱时长: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 计算咏唱时长`, event);
-  },
-  创建咏唱结束通知: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 创建咏唱结束通知`, event);
-  },
-  启用技能发动动画: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 启用技能发动动画`, event);
-  },
-  计算发动时长: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 计算发动时长`, event);
-  },
-  创建发动结束通知: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 创建发动结束通知`, event);
-  },
-  技能效果管线: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 技能效果管线`, event);
-  },
-  重置控制抵抗时间: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 重置控制抵抗时间`, event);
-  },
-  中断当前行为: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 中断当前行为`, event);
-  },
-  启动受控动画: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 启动受控动画`, event);
-  },
-  重置到复活状态: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 重置到复活状态`, event);
-  },
-  发送快照到请求者: function ({ context, event }) {
-    const e = event as 收到快照请求;
-    const senderId = e.data.senderId;
-    const sender = context.engine.getMember(senderId);
-    if (!sender) {
-      console.error(`👹 [${context.name}] 请求者不存在: ${senderId}`);
-      return;
-    }
-    sender.actor.send({
-      type: "收到目标快照",
-      data: { senderId: context.id },
-    });
-  },
-  发送命中判定事件给自己: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 发送命中判定事件给自己`, event);
-  },
-  反馈命中结果给施法者: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 反馈命中结果给施法者`, event);
-  },
-  发送控制判定事件给自己: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 发送控制判定事件给自己`, event);
-  },
-  命中计算管线: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 命中计算管线`, event);
-  },
-  根据命中结果进行下一步: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 根据命中结果进行下一步`, event);
-  },
-  控制判定管线: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 控制判定管线`, event);
-  },
-  反馈控制结果给施法者: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 反馈控制结果给施法者`, event);
-  },
-  发送伤害计算事件给自己: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 发送伤害计算事件给自己`, event);
-  },
-  伤害计算管线: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 伤害计算管线`, event);
-  },
-  反馈伤害结果给施法者: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 反馈伤害结果给施法者`, event);
-  },
-  发送属性修改事件给自己: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 发送属性修改事件给自己`, event);
-  },
-  发送buff修改事件给自己: function ({ context, event }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 发送buff修改事件给自己`, event);
-  },
-  修改目标Id: function ({ context, event }, params: { targetId: string }) {
-    // Add your action code here
-    // ...
-    console.log(`👤 [${context.name}] 修改目标Id`, event);
-    context.targetId = params.targetId;
-  },
-  logEvent: function ({ context, event }) {
-    console.log(`👤 [${context.name}] 日志事件`, event);
-  },
-} as const satisfies Record<
-  string,
-  ActionFunction<PlayerStateContext, PlayerEventType, any, any, any, any, any, any, never>
->;
-
-export const playerGuards = {
-  存在蓄力阶段: function ({ context, event }) {
-    console.log(`👤 [${context.name}] 判断技能是否有蓄力阶段`, event);
-
-    const effect = context.currentSkillEffect;
-    if (!effect) {
-      console.error(`👤 [${context.name}] 技能效果不存在`);
-      return false;
-    }
-
-    const currentFrame = context.engine.getFrameLoop().getFrameNumber();
-
-    // 蓄力阶段相关属性（假设使用chargeFixed和chargeModified）
-    const reservoirFixed = context.engine.evaluateExpression(effect.reservoirFixed ?? "0", {
-      currentFrame,
-      casterId: context.id,
-    });
-    const reservoirModified = context.engine.evaluateExpression(effect.reservoirModified ?? "0", {
-      currentFrame,
-      casterId: context.id,
-    });
-
-    // 咏唱阶段相关属性
-    const chantingFixed = context.engine.evaluateExpression(effect.chantingFixed ?? "0", {
-      currentFrame,
-      casterId: context.id,
-    });
-    const chantingModified = context.engine.evaluateExpression(effect.chantingModified ?? "0", {
-      currentFrame,
-      casterId: context.id,
-    });
-
-    const chargeType = reservoirFixed + reservoirModified > 0 ? "有蓄力阶段" : "没有蓄力阶段";
-    const chantingType = chantingFixed + chantingModified > 0 ? "有咏唱阶段" : "没有咏唱阶段";
-
-    // 使用字符串拼接来创建唯一标识符
-    const actionType = `${chargeType}_${chantingType}`;
-
-    switch (actionType) {
-      case "有蓄力阶段_有咏唱阶段":
-        console.log(`👤 [${context.name}] 技能有蓄力阶段和咏唱阶段`);
-        return true;
-      case "有蓄力阶段_没有咏唱阶段":
-        console.log(`👤 [${context.name}] 技能有蓄力阶段，没有咏唱阶段`);
-        return true;
-      case "没有蓄力阶段_有咏唱阶段":
-        console.log(`👤 [${context.name}] 技能没有蓄力阶段，有咏唱阶段`);
-        return true;
-      case "没有蓄力动作_没有咏唱动作":
-        console.log(`👤 [${context.name}] 技能没有蓄力阶段，没有咏唱阶段`);
-        return false;
-      default:
-        console.log(`👤 [${context.name}] 技能没有蓄力阶段和没有咏唱阶段`);
-        return false;
-    }
-  },
-  存在咏唱阶段: function ({ context, event }) {
-    // Add your guard condition here
-    return true;
-  },
-  存在后续连击: function ({ context, event }) {
-    // Add your guard condition here
-    return true;
-  },
-  没有可用技能效果: function ({ context, event }) {
-    // Add your guard condition here
-    console.log(`👤 [${context.name}] 判断技能是否有可用效果`, event);
-    const e = event as 使用技能;
-    const skillId = e.data.skillId;
-    const currentFrame = context.engine.getFrameLoop().getFrameNumber();
-
-    const skill = context.skillList.find((s) => s.id === skillId);
-    if (!skill) {
-      console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
-      return true;
-    }
-    const effect = skill.template?.effects.find((e) => {
-      const result = context.engine.evaluateExpression(e.condition, {
-        currentFrame,
-        casterId: context.id,
-        skillLv: skill?.lv ?? 0,
-      });
-      console.log(`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`);
-      return !!result; // 明确返回布尔值进行比较
-    });
-    if (!effect) {
-      console.error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
-      return true;
-    }
-    console.log(`🎮 [${context.name}] 的技能 ${skill.template?.name} 可用`);
-    // 测试内容
-    //     context.engine.evaluateExpression(
-    //       `var _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97, _E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B, _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87, _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0, _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87;
-
-    // // 计算造成的伤害
-    // function damage() {
-    // _E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B = (self.statContainer.getValue("lv") + self.statContainer.getValue("lv")) * (1 - target.statContainer.getValue("red.p")) - target.statContainer.getValue("def.p") * (1 - self.statContainer.getValue("pie.p"));
-    // _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0 = 100;
-    // _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87 = 1.5;
-    // return (_E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B + _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0) * _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87;
-    // }
-
-    // function mathRandomInt(a, b) {
-    // if (a > b) {
-    // // Swap a and b to ensure a is smaller.
-    // var c = a;
-    // a = b;
-    // b = c;
-    // }
-    // return Math.floor(Math.random() * (b - a + 1) + a);
-    // }
-
-    // // 判断是否命中
-    // function isHit() {
-    // _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87 = 100 + ((self.statContainer.getValue("accuracy") - target.statContainer.getValue("avoid")) + _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) / 3;
-    // console.log("命中率",_E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87);
-    // return mathRandomInt(1, 100) < _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87;
-    // }
-
-    // // 描述该功能...
-    // function main() {
-    // if (self.statContainer.getValue("mp.current") > _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) {
-    // console.log("技能消耗",_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97);
-    // self.statContainer.addModifier("mp.current", 3, -_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97, { id: "blockly_subtract", name: "积木减少", type: "system" });
-    // console.log("技能消耗后当前MP",self.statContainer.getValue("mp.current"))
-    // if (isHit() == true) {
-    // console.log("命中成功, 伤害:",damage())
-    // console.log("命中前血量:",target.statContainer.getValue("hp.current"))
-    // target.statContainer.addModifier("hp.current", 3, -(damage()), { id: "blockly_subtract", name: "积木减少", type: "system" });
-    // console.log("命中后血量:",target.statContainer.getValue("hp.current"))
-    // } else {
-    // console.log("miss")
-    // }
-    // }
-    // }
-
-    // _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97 = 100;
-
-    // main();`,
-    //       {
-    //         currentFrame,
-    //         casterId: context.id,
-    //         skillLv: skill?.lv ?? 0,
-    //         targetId: "defaultMember2Id",
-    //       },
-    //     );
-    return false;
-  },
-  还未冷却: function ({ context, event }) {
-    const e = event as 使用技能;
-    const res = context.skillCooldowns[context.currentSkillIndex];
-    if (res == undefined) {
-      console.log(`- 该技能不存在冷却时间`);
-      return false;
-    }
-    if (res <= 0) {
-      console.log(`- 该技能处于冷却状态`);
-      return false;
-    }
-    console.log(`- 该技能未冷却，剩余冷却时间：${res}`);
-    return true;
-  },
-  施法条件不满足: function ({ context, event }) {
-    // 此守卫通过后说明技能可发动，则更新当前技能数据
-    const e = event as 使用技能;
-    const skillId = e.data.skillId;
-    const currentFrame = context.engine.getFrameLoop().getFrameNumber();
-
-    const skill = context.skillList.find((s) => s.id === skillId);
-    if (!skill) {
-      console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
-      return true;
-    }
-    const effect = skill.template?.effects.find((e) => {
-      const result = context.engine.evaluateExpression(e.condition, {
-        currentFrame,
-        casterId: context.id,
-        skillLv: skill?.lv ?? 0,
-      });
-      console.log(`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`);
-      return !!result; // 明确返回布尔值进行比较
-    });
-    if (!effect) {
-      console.error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
-      return true;
-    }
-    const hpCost = context.engine.evaluateExpression(effect.hpCost ?? "throw new Error('技能消耗表达式不存在')", {
-      currentFrame,
-      casterId: context.id,
-      skillLv: skill?.lv ?? 0,
-    });
-    const mpCost = context.engine.evaluateExpression(effect.mpCost ?? "throw new Error('技能消耗表达式不存在')", {
-      currentFrame,
-      casterId: context.id,
-      skillLv: skill?.lv ?? 0,
-    });
-    if (
-      hpCost > context.statContainer.getValue("hp.current") ||
-      mpCost > context.statContainer.getValue("mp.current")
-    ) {
-      console.log(`- 该技能不满足施法消耗，HP:${hpCost} MP:${mpCost}`);
-      // 这里需要撤回RS的修改
-      return true;
-    }
-    console.log(`- 该技能满足施法消耗，HP:${hpCost} MP:${mpCost}`);
-    return false;
-  },
-  技能带有心眼: function ({ context, event }) {
-    return true;
-  },
-  目标不抵抗此技能的控制效果: function ({ context, event }) {
-    // Add your guard condition here
-    return true;
-  },
-  目标抵抗此技能的控制效果: function ({ context, event }) {
-    // Add your guard condition here
-    return true;
-  },
-  是物理伤害: function ({ context, event }) {
-    // Add your guard condition here
-    return true;
-  },
-  满足存活条件: function ({ context, event }) {
-    // Add your guard condition here
-    return true;
-  },
-} as const satisfies Record<string, GuardPredicate<PlayerStateContext, PlayerEventType, any, any>>;
-
 export const playerStateMachine = (player: Player) => {
   const machineId = player.id;
 
@@ -746,8 +206,593 @@ export const playerStateMachine = (player: Player) => {
       events: {} as PlayerEventType,
       output: {} as Player,
     },
-    actions: playerActions,
-    guards: playerGuards,
+    actions: {
+      根据角色配置生成初始状态: enqueueActions(({ context, event, enqueue }) => {
+        console.log(`👤 [${context.name}] 根据角色配置生成初始状态`, context);
+        // 通过引擎消息通道发送渲染命令（走 Simulation.worker 的 MessageChannel）
+        const spawnCmd = {
+          type: "render:cmd" as const,
+          cmd: {
+            type: "spawn" as const,
+            entityId: context.id,
+            name: context.name,
+            position: { x: 0, y: 1, z: 0 },
+            seq: 0,
+            ts: Date.now(),
+          },
+        };
+        // 引擎统一出口：通过已建立的MessageChannel发送渲染指令
+        if (context.engine.postRenderMessage) {
+          // 首选方案：使用引擎提供的统一渲染消息接口
+          // 这个方法会通过 Simulation.worker 的 MessagePort 将指令发送到主线程
+          console.log(`👤 [${context.name}] 发送渲染指令`, spawnCmd);
+          context.engine.postRenderMessage(spawnCmd);
+        } else {
+          // 如果引擎的渲染消息接口不可用，记录错误但不使用fallback
+          // 这确保我们只使用正确的通信通道，避免依赖全局变量
+          console.error(`👤 [${context.name}] 无法发送渲染指令：引擎渲染消息接口不可用`);
+        }
+        
+        // 初始化所有技能冷却
+        const res = context.pipelineManager.run("skillCooldown.init", context, {});
+        enqueue.assign({
+          skillCooldowns: res.stageOutputs.技能冷却初始化.skillCooldownResult,
+        });
+        console.log(`👤 [${context.name}] 技能冷却初始化完成`, context.skillCooldowns);
+      }),
+      更新玩家状态: enqueueActions(({ context, event, enqueue }) => {
+        enqueue.assign({
+          currentFrame: ({ context }) => context.currentFrame + 1,
+        });
+      }),
+      启用站立动画: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 启用站立动画`, event);
+      },
+      启用移动动画: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 启用移动动画`, event);
+      },
+      显示警告: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 显示警告`, event);
+      },
+      创建警告结束通知: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 创建警告结束通知`, event);
+      },
+      发送快照获取请求: function ({ context, event }) {
+        const e = event as 使用技能;
+        console.log(`👤 [${context.name}] 发送快照获取请求`, event);
+        const targetId = context.targetId;
+        const target = context.engine.getMember(targetId);
+        if (!target) {
+          console.error(`👤 [${context.name}] 目标不存在: ${targetId}`);
+          return;
+        }
+        target.actor.send({
+          type: "收到快照请求",
+          data: { senderId: context.id },
+        });
+      },
+      添加待处理技能: enqueueActions(({ context, event, enqueue }) => {
+        console.log(`👤 [${context.name}] 添加待处理技能`, event);
+        const e = event as 使用技能;
+        const skillId = e.data.skillId;
+        const skill = context.skillList.find((s) => s.id === skillId);
+        if (!skill) {
+          console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
+          return;
+        }
+        enqueue.assign({
+          currentSkill: skill,
+        });
+      }),
+      清空待处理技能: function ({ context, event }) {
+        console.log(`👤 [${context.name}] 清空待处理技能`, event);
+        context.currentSkill = null;
+      },
+      添加待处理技能效果: assign({
+        currentSkillEffect: ({ context }) => {
+          const skillEffect = context.currentSkill?.template?.effects.find((e) =>
+            context.engine.evaluateExpression(e.condition, {
+              currentFrame: context.currentFrame,
+              casterId: context.id,
+              skillLv: context.currentSkill?.lv ?? 0,
+            }),
+          );
+          if (!skillEffect) {
+            console.error(`🎮 [${context.name}] 使用的技能${context.currentSkill?.template?.name}没有可用的效果`);
+            return null;
+          }
+          return skillEffect;
+        },
+      }),
+      技能消耗扣除: enqueueActions(
+        (
+          { context, event, enqueue },
+          params: {
+            expressionEvaluator: (expression: string, context: ExpressionContext) => number;
+            statContainer: StatContainer<PlayerAttrType>;
+          },
+        ) => {
+          const e = event as 收到目标快照;
+          console.log(`👤 [${context.name}] 状态机上下文中的当前技能效果：`, context.currentSkillEffect);
+          console.log(`👤 [${context.name}] 技能消耗扣除`, event);
+          const res = context.pipelineManager.run("skill.cost.calculate", context, {});
+          enqueue.assign({
+            aggro: context.aggro + res.stageOutputs.仇恨值计算.aggroResult,
+          });
+          console.log(
+            `👤 [${context.name}] HP: ${context.statContainer.getValue("hp.current")}, MP: ${context.statContainer.getValue("mp.current")}`,
+          );
+        },
+      ),
+      启用前摇动画: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 启用前摇动画`, event);
+      },
+      计算前摇时长: enqueueActions(({ context, event, enqueue }) => {
+        console.log(`👤 [${context.name}] 计算前摇时长`, event);
+        const res = context.pipelineManager.run("skill.motion.calculate", context, {});
+        console.log(`👤 [${context.name}] 计算前摇时长结果:`, res.stageOutputs.前摇帧数计算.startupFramesResult);
+        enqueue.assign({
+          currentSkillStartupFrames: res.stageOutputs.前摇帧数计算.startupFramesResult,
+        });
+      }),
+      创建前摇结束通知: function ({ context, event }) {
+        console.log("🎮 创建前摇结束通知", event);
+    
+        // 计算前摇结束的目标帧
+        const targetFrame = context.currentFrame + context.currentSkillStartupFrames;
+    
+        // 向事件队列写入定时事件
+        // 使用 member_fsm_event 类型，由 CustomEventHandler 处理
+        context.engine.getEventQueue().insert({
+          id: createId(), // 生成唯一事件ID
+          type: "member_fsm_event",
+          executeFrame: targetFrame,
+          priority: "high",
+          payload: {
+            targetMemberId: context.id, // 目标成员ID
+            fsmEventType: "收到前摇结束通知", // 要发送给FSM的事件类型
+            skillId: context.currentSkill?.id ?? "无法获取技能ID", // 技能ID
+            source: "skill_front_swing", // 事件来源
+          },
+        });
+    
+        console.log(
+          `👤 [${context.name}] 前摇开始，${context.currentSkillStartupFrames}帧后结束 (当前帧: ${context.currentFrame}, 目标帧: ${targetFrame})`,
+        );
+      },
+      启用蓄力动画: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 启用蓄力动画`, event);
+      },
+      计算蓄力时长: enqueueActions(({ context, event, enqueue }) => {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 计算蓄力时长`, event);
+      }),
+      创建蓄力结束通知: function ({ context, event }) {
+        console.log(`👤 [${context.name}] 创建蓄力结束通知`, event);
+
+        // 计算蓄力结束的目标帧
+        const targetFrame = context.currentFrame + context.currentSkillChargingFrames;
+
+        // 向事件队列写入定时事件
+        // 使用 member_fsm_event 类型，由 CustomEventHandler 处理
+        context.engine.getEventQueue().insert({
+          id: createId(), // 生成唯一事件ID
+          type: "member_fsm_event",
+          executeFrame: targetFrame,
+          priority: "high",
+          payload: {
+            targetMemberId: context.id, // 目标成员ID
+            fsmEventType: "收到蓄力结束通知", // 要发送给FSM的事件类型
+            skillId: context.currentSkill?.id ?? "无法获取技能ID", // 技能ID
+            source: "skill_charging", // 事件来源
+          },
+        });
+
+        console.log(
+          `👤 [${context.name}] 蓄力开始，${context.currentSkillChargingFrames}帧后结束 (当前帧: ${context.currentFrame}, 目标帧: ${targetFrame})`,
+        );
+      },
+      启用咏唱动画: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 启用咏唱动画`, event);
+      },
+      计算咏唱时长: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 计算咏唱时长`, event);
+      },
+      创建咏唱结束通知: function ({ context, event }) {
+        console.log(`👤 [${context.name}] 创建咏唱结束通知`, event);
+
+        // 计算咏唱结束的目标帧
+        const targetFrame = context.currentFrame + context.currentSkillChantingFrames;
+
+        // 向事件队列写入定时事件
+        // 使用 member_fsm_event 类型，由 CustomEventHandler 处理
+        context.engine.getEventQueue().insert({
+          id: createId(), // 生成唯一事件ID
+          type: "member_fsm_event",
+          executeFrame: targetFrame,
+          priority: "high",
+          payload: {
+            targetMemberId: context.id, // 目标成员ID
+            fsmEventType: "收到咏唱结束通知", // 要发送给FSM的事件类型
+            skillId: context.currentSkill?.id ?? "无法获取技能ID", // 技能ID
+            source: "skill_chanting", // 事件来源
+          },
+        });
+
+        console.log(
+          `👤 [${context.name}] 咏唱开始，${context.currentSkillChantingFrames}帧后结束 (当前帧: ${context.currentFrame}, 目标帧: ${targetFrame})`,
+        );
+      },
+      启用技能发动动画: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 启用技能发动动画`, event);
+      },
+      计算发动时长: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 计算发动时长`, event);
+      },
+      创建发动结束通知: function ({ context, event }) {
+        console.log(`👤 [${context.name}] 创建发动结束通知`, event);
+
+        // 计算发动结束的目标帧
+        const targetFrame = context.currentFrame + context.currentSkillActionFrames;
+
+        // 向事件队列写入定时事件
+        // 使用 member_fsm_event 类型，由 CustomEventHandler 处理
+        context.engine.getEventQueue().insert({
+          id: createId(), // 生成唯一事件ID
+          type: "member_fsm_event",
+          executeFrame: targetFrame,
+          priority: "high",
+          payload: {
+            targetMemberId: context.id, // 目标成员ID
+            fsmEventType: "收到发动结束通知", // 要发送给FSM的事件类型
+            skillId: context.currentSkill?.id ?? "无法获取技能ID", // 技能ID
+            source: "skill_action", // 事件来源
+          },
+        });
+
+        console.log(
+          `👤 [${context.name}] 发动开始，${context.currentSkillActionFrames}帧后结束 (当前帧: ${context.currentFrame}, 目标帧: ${targetFrame})`,
+        );
+      },
+      技能效果管线: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 技能效果管线`, event);
+      },
+      重置控制抵抗时间: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 重置控制抵抗时间`, event);
+      },
+      中断当前行为: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 中断当前行为`, event);
+      },
+      启动受控动画: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 启动受控动画`, event);
+      },
+      重置到复活状态: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 重置到复活状态`, event);
+      },
+      发送快照到请求者: function ({ context, event }) {
+        const e = event as 收到快照请求;
+        const senderId = e.data.senderId;
+        const sender = context.engine.getMember(senderId);
+        if (!sender) {
+          console.error(`👹 [${context.name}] 请求者不存在: ${senderId}`);
+          return;
+        }
+        sender.actor.send({
+          type: "收到目标快照",
+          data: { senderId: context.id },
+        });
+      },
+      发送命中判定事件给自己: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 发送命中判定事件给自己`, event);
+      },
+      反馈命中结果给施法者: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 反馈命中结果给施法者`, event);
+      },
+      发送控制判定事件给自己: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 发送控制判定事件给自己`, event);
+      },
+      命中计算管线: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 命中计算管线`, event);
+      },
+      根据命中结果进行下一步: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 根据命中结果进行下一步`, event);
+      },
+      控制判定管线: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 控制判定管线`, event);
+      },
+      反馈控制结果给施法者: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 反馈控制结果给施法者`, event);
+      },
+      发送伤害计算事件给自己: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 发送伤害计算事件给自己`, event);
+      },
+      伤害计算管线: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 伤害计算管线`, event);
+      },
+      反馈伤害结果给施法者: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 反馈伤害结果给施法者`, event);
+      },
+      发送属性修改事件给自己: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 发送属性修改事件给自己`, event);
+      },
+      发送buff修改事件给自己: function ({ context, event }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 发送buff修改事件给自己`, event);
+      },
+      修改目标Id: function ({ context, event }, params: { targetId: string }) {
+        // Add your action code here
+        // ...
+        console.log(`👤 [${context.name}] 修改目标Id`, event);
+        context.targetId = params.targetId;
+      },
+      logEvent: function ({ context, event }) {
+        console.log(`👤 [${context.name}] 日志事件`, event);
+      },
+    },
+    guards: {
+      存在蓄力阶段: function ({ context, event }) {
+        console.log(`👤 [${context.name}] 判断技能是否有蓄力阶段`, event);
+    
+        const effect = context.currentSkillEffect;
+        if (!effect) {
+          console.error(`👤 [${context.name}] 技能效果不存在`);
+          return false;
+        }
+    
+        const currentFrame = context.engine.getFrameLoop().getFrameNumber();
+    
+        // 蓄力阶段相关属性（假设使用chargeFixed和chargeModified）
+        const reservoirFixed = context.engine.evaluateExpression(effect.reservoirFixed ?? "0", {
+          currentFrame,
+          casterId: context.id,
+        });
+        const reservoirModified = context.engine.evaluateExpression(effect.reservoirModified ?? "0", {
+          currentFrame,
+          casterId: context.id,
+        });
+        console.log(reservoirFixed + reservoirModified > 0 ? "有蓄力阶段" : "没有蓄力阶段");
+        return reservoirFixed + reservoirModified > 0;
+      },
+      存在咏唱阶段: function ({ context, event }) {
+        console.log(`👤 [${context.name}] 判断技能是否有咏唱阶段`, event);
+        const effect = context.currentSkillEffect;
+        if (!effect) {
+          console.error(`👤 [${context.name}] 技能效果不存在`);
+          return false;
+        }
+        const currentFrame = context.engine.getFrameLoop().getFrameNumber();
+        const chantingFixed = context.engine.evaluateExpression(effect.chantingFixed ?? "0", {
+          currentFrame,
+          casterId: context.id,
+        });
+        const chantingModified = context.engine.evaluateExpression(effect.chantingModified ?? "0", {
+          currentFrame,
+          casterId: context.id,
+        });
+        console.log(chantingFixed + chantingModified > 0 ? "有咏唱阶段" : "没有咏唱阶段");
+        return chantingFixed + chantingModified > 0;
+      },
+      存在后续连击: function ({ context, event }) {
+        // Add your guard condition here
+        return false;
+      },
+      没有可用技能效果: function ({ context, event }) {
+        // Add your guard condition here
+        console.log(`👤 [${context.name}] 判断技能是否有可用效果`, event);
+        const e = event as 使用技能;
+        const skillId = e.data.skillId;
+        const currentFrame = context.engine.getFrameLoop().getFrameNumber();
+    
+        const skill = context.skillList.find((s) => s.id === skillId);
+        if (!skill) {
+          console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
+          return true;
+        }
+        const effect = skill.template?.effects.find((e) => {
+          const result = context.engine.evaluateExpression(e.condition, {
+            currentFrame,
+            casterId: context.id,
+            skillLv: skill?.lv ?? 0,
+          });
+          console.log(`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`);
+          return !!result; // 明确返回布尔值进行比较
+        });
+        if (!effect) {
+          console.error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
+          return true;
+        }
+        console.log(`🎮 [${context.name}] 的技能 ${skill.template?.name} 可用`);
+        // 测试内容
+        //     context.engine.evaluateExpression(
+        //       `var _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97, _E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B, _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87, _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0, _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87;
+    
+        // // 计算造成的伤害
+        // function damage() {
+        // _E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B = (self.statContainer.getValue("lv") + self.statContainer.getValue("lv")) * (1 - target.statContainer.getValue("red.p")) - target.statContainer.getValue("def.p") * (1 - self.statContainer.getValue("pie.p"));
+        // _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0 = 100;
+        // _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87 = 1.5;
+        // return (_E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B + _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0) * _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87;
+        // }
+    
+        // function mathRandomInt(a, b) {
+        // if (a > b) {
+        // // Swap a and b to ensure a is smaller.
+        // var c = a;
+        // a = b;
+        // b = c;
+        // }
+        // return Math.floor(Math.random() * (b - a + 1) + a);
+        // }
+    
+        // // 判断是否命中
+        // function isHit() {
+        // _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87 = 100 + ((self.statContainer.getValue("accuracy") - target.statContainer.getValue("avoid")) + _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) / 3;
+        // console.log("命中率",_E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87);
+        // return mathRandomInt(1, 100) < _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87;
+        // }
+    
+        // // 描述该功能...
+        // function main() {
+        // if (self.statContainer.getValue("mp.current") > _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) {
+        // console.log("技能消耗",_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97);
+        // self.statContainer.addModifier("mp.current", 3, -_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97, { id: "blockly_subtract", name: "积木减少", type: "system" });
+        // console.log("技能消耗后当前MP",self.statContainer.getValue("mp.current"))
+        // if (isHit() == true) {
+        // console.log("命中成功, 伤害:",damage())
+        // console.log("命中前血量:",target.statContainer.getValue("hp.current"))
+        // target.statContainer.addModifier("hp.current", 3, -(damage()), { id: "blockly_subtract", name: "积木减少", type: "system" });
+        // console.log("命中后血量:",target.statContainer.getValue("hp.current"))
+        // } else {
+        // console.log("miss")
+        // }
+        // }
+        // }
+    
+        // _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97 = 100;
+    
+        // main();`,
+        //       {
+        //         currentFrame,
+        //         casterId: context.id,
+        //         skillLv: skill?.lv ?? 0,
+        //         targetId: "defaultMember2Id",
+        //       },
+        //     );
+        return false;
+      },
+      还未冷却: function ({ context, event }) {
+        const e = event as 使用技能;
+        const res = context.skillCooldowns[context.currentSkillIndex];
+        if (res == undefined) {
+          console.log(`- 该技能不存在冷却时间`);
+          return false;
+        }
+        if (res <= 0) {
+          console.log(`- 该技能处于冷却状态`);
+          return false;
+        }
+        console.log(`- 该技能未冷却，剩余冷却时间：${res}`);
+        return true;
+      },
+      施法条件不满足: function ({ context, event }) {
+        // 此守卫通过后说明技能可发动，则更新当前技能数据
+        const e = event as 使用技能;
+        const skillId = e.data.skillId;
+        const currentFrame = context.engine.getFrameLoop().getFrameNumber();
+    
+        const skill = context.skillList.find((s) => s.id === skillId);
+        if (!skill) {
+          console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
+          return true;
+        }
+        const effect = skill.template?.effects.find((e) => {
+          const result = context.engine.evaluateExpression(e.condition, {
+            currentFrame,
+            casterId: context.id,
+            skillLv: skill?.lv ?? 0,
+          });
+          console.log(`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`);
+          return !!result; // 明确返回布尔值进行比较
+        });
+        if (!effect) {
+          console.error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
+          return true;
+        }
+        const hpCost = context.engine.evaluateExpression(effect.hpCost ?? "throw new Error('技能消耗表达式不存在')", {
+          currentFrame,
+          casterId: context.id,
+          skillLv: skill?.lv ?? 0,
+        });
+        const mpCost = context.engine.evaluateExpression(effect.mpCost ?? "throw new Error('技能消耗表达式不存在')", {
+          currentFrame,
+          casterId: context.id,
+          skillLv: skill?.lv ?? 0,
+        });
+        if (
+          hpCost > context.statContainer.getValue("hp.current") ||
+          mpCost > context.statContainer.getValue("mp.current")
+        ) {
+          console.log(`- 该技能不满足施法消耗，HP:${hpCost} MP:${mpCost}`);
+          // 这里需要撤回RS的修改
+          return true;
+        }
+        console.log(`- 该技能满足施法消耗，HP:${hpCost} MP:${mpCost}`);
+        return false;
+      },
+      技能带有心眼: function ({ context, event }) {
+        return true;
+      },
+      目标不抵抗此技能的控制效果: function ({ context, event }) {
+        // Add your guard condition here
+        return true;
+      },
+      目标抵抗此技能的控制效果: function ({ context, event }) {
+        // Add your guard condition here
+        return true;
+      },
+      是物理伤害: function ({ context, event }) {
+        // Add your guard condition here
+        return true;
+      },
+      满足存活条件: function ({ context, event }) {
+        // Add your guard condition here
+        return true;
+      },
+    },
   }).createMachine({
     context: {
       id: player.id,
