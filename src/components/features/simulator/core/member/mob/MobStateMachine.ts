@@ -6,7 +6,7 @@ import { Member, MemberEventType, MemberSerializeData, MemberStateMachine } from
 import { Mob, MobAttrType } from "./Mob";
 import { ModifierType } from "../../dataSys/StatContainer";
 import { GameEngine } from "../../GameEngine";
-import { mobPipDef } from "./MobPipelines";
+import { MobPipelineStages, mobPipDef } from "./MobPipelines";
 /**
  * Mob特有的事件类型
  * 扩展MemberEventType，包含Mob特有的状态机事件
@@ -340,7 +340,9 @@ export const mobGuards = {
   },
 } as const satisfies Record<string, GuardPredicate<MobStateContext, MobEventType, any, any>>;
 
-export const createMobStateMachine = (member: Mob): MemberStateMachine<MobAttrType, MobEventType, MobAction, typeof mobPipDef, MobStateContext> => {
+export const createMobStateMachine = (
+  member: Mob,
+): MemberStateMachine<MobAttrType, MobEventType, typeof mobPipDef, typeof MobPipelineStages, MobStateContext> => {
   const machineId = member.id;
 
   return setup({

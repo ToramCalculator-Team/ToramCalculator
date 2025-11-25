@@ -6,7 +6,7 @@ import GameEngine from "../GameEngine";
 import { MemberType } from "@db/schema/enums";
 import { BuffManager } from "../buff/BuffManager";
 import { PipelineManager } from "../pipeline/PipelineManager";
-import { PipeLineDef, PipeStageFunDef } from "../pipeline/PipelineStageType";
+import { PipeLineDef, StagePool } from "../pipeline/PipelineStageType";
 
 /**
  * 成员数据接口 - 对应响应式系统的序列化数据返回类型
@@ -65,7 +65,8 @@ export type MemberEventType =
 export type MemberStateMachine<
   TAttrKey extends string = string,
   TEvent extends EventObject = MemberEventType,
-  TPipelineDef extends PipeLineDef = PipeLineDef,
+  TPipelineDef extends PipeLineDef<TStagePool> = PipeLineDef,
+  TStagePool extends StagePool<TExContext> = StagePool<any>,
   TExContext extends Record<string, any> = {},
 > = StateMachine<
   any, // TContext - 状态机上下文
@@ -78,7 +79,7 @@ export type MemberStateMachine<
   {}, // TStateValue - 状态值
   string, // TTag - 标签
   NonReducibleUnknown, // TInput - 输入类型
-  Member<TAttrKey, TEvent, TPipelineDef, TExContext>, // TOutput - 输出类型（当状态机完成时）
+  Member<TAttrKey, TEvent, TPipelineDef, TStagePool, TExContext>, // TOutput - 输出类型（当状态机完成时）
   EventObject, // TEmitted - 发出的事件类型
   any, // TMeta - 元数据
   any // TStateSchema - 状态模式
@@ -94,14 +95,16 @@ export type MemberStateMachine<
 export type MemberActor<
   TAttrKey extends string = string,
   TEvent extends EventObject = MemberEventType,
-  TPipelineDef extends PipeLineDef = PipeLineDef,
+  TPipelineDef extends PipeLineDef<TStagePool> = PipeLineDef,
+  TStagePool extends StagePool<TExContext> = StagePool<any>,
   TExContext extends Record<string, any> = {},
-> = Actor<MemberStateMachine<TAttrKey, TEvent, TPipelineDef, TExContext>>;
+> = Actor<MemberStateMachine<TAttrKey, TEvent, TPipelineDef, TStagePool, TExContext>>;
 
 export class Member<
   TAttrKey extends string,
   TEvent extends EventObject,
-  TPipelineDef extends PipeLineDef,
+  TPipelineDef extends PipeLineDef<TStagePool>,
+  TStagePool extends StagePool<TExContext>,
   TExContext extends Record<string, any>,
 > {
   /** 成员ID */
@@ -125,9 +128,9 @@ export class Member<
   /** Buff 管理器（生命周期/钩子/机制状态） */
   buffManager: BuffManager;
   /** 管线管理器（固定+动态管线阶段管理） */
-  pipelineManager: PipelineManager<TPipelineDef, TExContext>;
+  pipelineManager: PipelineManager<TPipelineDef, TStagePool, TExContext>;
   /** 成员Actor引用 */
-  actor: MemberActor<TAttrKey, TEvent, TPipelineDef, TExContext>;
+  actor: MemberActor<TAttrKey, TEvent, TPipelineDef, TStagePool, TExContext>;
   /** 引擎引用 */
   engine: GameEngine;
   /** 成员数据 */
@@ -155,7 +158,9 @@ export class Member<
   }
 
   constructor(
-    stateMachine: (member: any) => MemberStateMachine<TAttrKey, TEvent, TPipelineDef, TExContext>,
+    stateMachine: (
+      member: any,
+    ) => MemberStateMachine<TAttrKey, TEvent, TPipelineDef, TStagePool, TExContext>,
     engine: GameEngine,
     campId: string,
     teamId: string,
@@ -163,7 +168,7 @@ export class Member<
     memberData: MemberWithRelations,
     dataSchema: NestedSchema,
     pipelineDef: TPipelineDef,
-    pipeFunDef: PipeStageFunDef<TPipelineDef, TExContext>,
+    stagePool: TStagePool,
     position?: { x: number; y: number; z: number },
   ) {
     this.id = memberData.id;
@@ -179,11 +184,10 @@ export class Member<
     this.statContainer = new StatContainer<TAttrKey>(dataSchema);
 
     // 使用传入的配置直接初始化管线管理器
-    this.pipelineManager = new PipelineManager(pipelineDef, pipeFunDef);
+    this.pipelineManager = new PipelineManager(pipelineDef, stagePool);
 
-    // 初始化Buff管理器并关联管线管理器
-    this.buffManager = new BuffManager();
-    this.buffManager.setPipelineManager(this.pipelineManager);
+    // 初始化Buff管理器
+    this.buffManager = new BuffManager(this.statContainer, this.pipelineManager);
 
     this.position = position ?? { x: 0, y: 0, z: 0 };
 

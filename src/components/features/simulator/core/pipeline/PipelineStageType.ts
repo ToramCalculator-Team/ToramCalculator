@@ -1,15 +1,79 @@
 import { z, ZodType } from "zod/v4";
 
-/* ----------------- 静态阶段元组 ----------------- */
+/* ----------------- 阶段定义 ----------------- */
 /**
- * 静态阶段三元组定义
- * [阶段名称, 输入参数Schema, 输出参数Schema]
- * 
- * zodSchema 的双重用途：
- * 1. 静态类型推导：通过 z.input<T> 和 z.output<T> 推导类型
- * 2. 值类型约束：用于节点编辑器的输入框类型判断
+ * 管线阶段定义
+ * [输入Schema, 输出Schema, 实现函数]
+ *
+ * 设计理念：
+ * 1. 阶段是独立的计算单元，包含完整的类型定义和实现
+ * 2. 阶段可被多个管线复用
+ * 3. Schema 用于类型推导和运行时验证
  */
-export type staticStageTuple = readonly [string, ZodType, ZodType];
+export type PipelineStage<
+  TInput extends ZodType,
+  TOutput extends ZodType,
+  TContext extends Record<string, any>,
+> = readonly [
+  TInput,
+  TOutput,
+  (context: TContext, stageInput: z.output<TInput>) => z.output<TOutput>,
+];
+
+/**
+ * 阶段池定义
+ * 阶段名称 → 阶段定义 的映射
+ */
+export type StagePool<TContext extends Record<string, any>> = {
+  readonly [stageName: string]: PipelineStage<any, any, TContext>;
+};
+
+/**
+ * 从阶段池提取阶段名称联合类型
+ */
+export type StageNamesFromPool<TPool extends StagePool<any>> = keyof TPool & string;
+
+/**
+ * 从阶段池提取特定阶段的输入Schema类型
+ */
+export type StageInputSchema<
+  TPool extends StagePool<any>,
+  TStageName extends StageNamesFromPool<TPool>,
+> = TPool[TStageName] extends PipelineStage<infer TInput, any, any> ? TInput : never;
+
+/**
+ * 从阶段池提取特定阶段的输出Schema类型
+ */
+export type StageOutputSchema<
+  TPool extends StagePool<any>,
+  TStageName extends StageNamesFromPool<TPool>,
+> = TPool[TStageName] extends PipelineStage<any, infer TOutput, any> ? TOutput : never;
+
+/**
+ * 辅助函数：创建类型安全的管线阶段
+ *
+ * 使用示例：
+ * ```ts
+ * const MyStages = {
+ *   阶段A: defineStage(
+ *     z.object({ input: z.number() }),
+ *     z.object({ output: z.string() }),
+ *     (context, input) => ({ output: String(input.input) })
+ *   ),
+ * } as const;
+ * ```
+ */
+export const defineStage = <
+  TInput extends ZodType,
+  TOutput extends ZodType,
+  TContext extends Record<string, any> = Record<string, any>,
+>(
+  inputSchema: TInput,
+  outputSchema: TOutput,
+  impl: (context: TContext, stageInput: z.output<TInput>) => z.output<TOutput>,
+): PipelineStage<TInput, TOutput, TContext> => {
+  return [inputSchema, outputSchema, impl] as const;
+};
 
 /* ----------------- 辅助类型 ----------------- */
 /** 从 Zod schema 推断输入类型 */
@@ -22,71 +86,30 @@ export type OutputOfSchema<T extends ZodType> = z.output<T>;
  * 管线定义
  * 从 XState Action 解耦，管线现在是独立的计算单元
  * 键名：管线名称（如 "skill.cost.calculate"）
- * 值：静态阶段数组
+ * 值：阶段名称数组（编排信息）
+ *
+ * 设计理念：
+ * 1. 管线只负责存储编排信息，不包含实现
+ * 2. 阶段实现定义在独立的阶段池中
+ * 3. 通过泛型参数约束可用的阶段名称
+ *
+ * @template TPool - 阶段池类型，用于约束阶段名
  */
-export type PipeLineDef = {
-  [pipelineName: string]: readonly staticStageTuple[];
+export type PipeLineDef<TPool extends StagePool<any> = StagePool<any>> = {
+  [pipelineName: string]: readonly (keyof TPool & string)[];
 };
 
 /**
  * 从管线定义推导每个管线的输入参数类型
  * 取第一个阶段的 InputSchema 作为管线输入类型
  */
-export type PipelineParamsFromDef<TDef extends PipeLineDef> = {
-  [P in keyof TDef]: TDef[P] extends readonly [
-    readonly [any, infer FirstInputSchema extends ZodType, any],
-    ...any[]
-  ]
-    ? OutputOfSchema<FirstInputSchema>
-    : Record<string, any>; // 空管线默认为空对象
-};
-
-/* ----------------- 内部递归类型 ----------------- */
-/**
- * 构建阶段函数签名：
- * - Stages: 静态阶段三元组数组
- * - PrevCtx: 累积的 context（前序阶段输出叠加）
- * 
- * 阶段函数签名：
- * - context: 累积Context & 当前阶段输出（可访问所有前序阶段的输出）
- * - stageInput: 该阶段的输入类型（从 InputSchema 推导）
- * - 返回值: 该阶段的输出类型（从 OutputSchema 推导）
- * 
- * 设计理念：
- * 每个阶段的输入/输出类型完全由其 Schema 定义，不依赖外部传递
- */
-type _BuildStageFns<Stages extends readonly staticStageTuple[], PrevCtx> = Stages extends readonly [
-  infer First,
-  ...infer Rest,
-]
-  ? First extends readonly [infer Name extends string, infer InputSchema extends ZodType, infer OutputSchema extends ZodType]
-    ? Rest extends readonly staticStageTuple[]
-      ? {
-          [K in Name]: (
-            context: PrevCtx & OutputOfSchema<OutputSchema>,
-            stageInput: OutputOfSchema<InputSchema>,
-          ) => OutputOfSchema<OutputSchema>;
-        } & _BuildStageFns<Rest, PrevCtx & OutputOfSchema<OutputSchema>>
-      : never
-    : never
-  : {};
-
-/* ----------------- 从 pipeline 定义生成阶段函数签名 ----------------- */
-/**
- * 管线阶段函数定义（已解耦版本）
- * 
- * @template TDef - 管线定义（管线名称 → 阶段数组）
- * @template TContext - 运行时上下文类型（由数据结构决定）
- * 
- * 设计理念：
- * 1. 管线不依赖状态机的 Action 类型
- * 2. 每个阶段的输入/输出类型完全由其 Schema 定义
- * 3. 管线只与数据结构（TContext）关联
- * 4. 管线的输入参数类型从第一个阶段的 InputSchema 推导
- */
-export type PipeStageFunDef<
-  TDef extends PipeLineDef,
-  TContext extends Record<string, any>,
+export type PipelineParamsFromDef<
+  TDef extends PipeLineDef<TPool>,
+  TPool extends StagePool<any>,
 > = {
-  [P in keyof TDef]: _BuildStageFns<TDef[P], TContext>;
+  [P in keyof TDef]: TDef[P] extends readonly [infer FirstStageName extends keyof TPool, ...any[]]
+    ? TPool[FirstStageName] extends PipelineStage<infer FirstInputSchema, any, any>
+      ? OutputOfSchema<FirstInputSchema>
+      : Record<string, any>
+    : Record<string, any>; // 空管线默认为空对象
 };

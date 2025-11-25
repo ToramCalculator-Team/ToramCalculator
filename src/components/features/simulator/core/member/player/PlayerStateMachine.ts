@@ -11,7 +11,7 @@ import { ExpressionContext, GameEngine } from "../../GameEngine";
 import { MemberType } from "@db/schema/enums";
 import { CharacterWithRelations } from "@db/generated/repositories/character";
 import { PipelineManager } from "../../pipeline/PipelineManager";
-import { playerPipDef, PlayerPipelineDef } from "./PlayerPipelines";
+import { playerPipDef, PlayerPipelineDef, PlayerStagePool } from "./PlayerPipelines";
 
 /**
  * Player特有的事件类型
@@ -160,7 +160,7 @@ export interface PlayerStateContext {
   /** 属性容器引用 */
   statContainer: StatContainer<PlayerAttrType>;
   /** 管线管理器引用 */
-  pipelineManager: PipelineManager<PlayerPipelineDef, PlayerStateContext>;
+  pipelineManager: PipelineManager<PlayerPipelineDef, PlayerStagePool, PlayerStateContext>;
   /** 位置信息 */
   position: { x: number; y: number; z: number };
   /** 创建帧 */

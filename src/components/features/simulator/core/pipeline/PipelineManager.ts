@@ -11,8 +11,9 @@ import {
   OutputOfSchema,
   PipeLineDef,
   PipelineParamsFromDef,
-  PipeStageFunDef,
-  staticStageTuple,
+  StagePool,
+  StageOutputSchema,
+  StageInputSchema,
 } from "./PipelineStageType";
 
 // ==================== 类型定义 ====================
@@ -36,74 +37,52 @@ export interface CustomPipelineStage {
 
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never;
 
-type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+/* ---------- 辅助类型 ---------- */
 
-/* ---------- 获取到某阶段（含当前）的前序定义 ---------- */
-type GetPreviousAndCurrentStageDefs<
-  TStages extends readonly staticStageTuple[],
+/** 获取 Stage 的输出类型 */
+type StageOutputOf<TPool extends StagePool<any>, S extends keyof TPool & string> = OutputOfSchema<
+  StageOutputSchema<TPool, S>
+>;
+
+/** 获取 Stage 的输入类型 */
+type StageInputOf<TPool extends StagePool<any>, S extends keyof TPool & string> = OutputOfSchema<
+  StageInputSchema<TPool, S>
+>;
+
+/* ---------- 获取到某阶段（含当前）的前序阶段名列表 ---------- */
+type GetPreviousAndCurrentStageNames<
+  Names extends readonly string[],
   StopStage extends string,
-  Acc extends readonly staticStageTuple[] = [],
-> = TStages extends readonly [infer First, ...infer Rest]
-  ? First extends readonly [
-      infer Name extends string,
-      infer InputSchema extends ZodType,
-      infer OutputSchema extends ZodType,
-    ] // ← 三元组约束
-    ? Rest extends readonly staticStageTuple[]
-      ? Equal<Name, StopStage> extends true
-        ? [...Acc, First] // include current
-        : GetPreviousAndCurrentStageDefs<Rest, StopStage, [...Acc, First]>
-      : Acc
-    : Acc
+  Acc extends readonly string[] = [],
+> = Names extends readonly [infer First extends string, ...infer Rest extends string[]]
+  ? First extends StopStage
+    ? [...Acc, First]
+    : GetPreviousAndCurrentStageNames<Rest, StopStage, [...Acc, First]>
   : Acc;
 
 /* ---------- 累积输出为交叉类型 ---------- */
-type OutputsUnionFromDefs<TDefs extends readonly staticStageTuple[]> = TDefs[number] extends readonly [
-  any,
-  any,
-  infer OutputSchema,
-]
-  ? OutputSchema extends ZodType
-    ? OutputOfSchema<OutputSchema>
+type OutputsUnionFromNames<
+  Names extends readonly string[],
+  TPool extends StagePool<any>,
+> = Names[number] extends infer N
+  ? N extends keyof TPool & string
+    ? StageOutputOf<TPool, N>
     : never
   : never;
 
-type AccumulateStageOutputs<TDefs extends readonly staticStageTuple[]> = UnionToIntersection<
-  OutputsUnionFromDefs<TDefs>
->;
-
-/* ---------- 阶段名 / schema / 输出 提取（已解耦版本）---------- */
-type StageNamesOf<TDef extends PipeLineDef, P extends keyof TDef> = TDef[P][number] extends readonly [
-  infer N extends string,
-  any,
-  any,
-]
-  ? N
-  : never;
-
-type StageInputSchemaOf<TDef extends PipeLineDef, P extends keyof TDef, S extends StageNamesOf<TDef, P>> = Extract<
-  TDef[P][number],
-  readonly [S, any, any]
->[1];
-
-type StageOutputSchemaOf<TDef extends PipeLineDef, P extends keyof TDef, S extends StageNamesOf<TDef, P>> = Extract<
-  TDef[P][number],
-  readonly [S, any, any]
->[2];
-
-type StageInputOf<TDef extends PipeLineDef, P extends keyof TDef, S extends StageNamesOf<TDef, P>> =
-  StageInputSchemaOf<TDef, P, S> extends ZodType ? OutputOfSchema<StageInputSchemaOf<TDef, P, S>> : never;
-
-type StageOutputOf<TDef extends PipeLineDef, P extends keyof TDef, S extends StageNamesOf<TDef, P>> =
-  StageOutputSchemaOf<TDef, P, S> extends ZodType ? OutputOfSchema<StageOutputSchemaOf<TDef, P, S>> : never;
+type AccumulateStageOutputs<
+  Names extends readonly string[],
+  TPool extends StagePool<any>,
+> = UnionToIntersection<OutputsUnionFromNames<Names, TPool>>;
 
 /* ---------- 执行上下文到该阶段（含） ---------- */
 type StageExecutionContextAfter<
-  TDef extends PipeLineDef,
+  TDef extends PipeLineDef<TPool>,
   P extends keyof TDef,
-  S extends StageNamesOf<TDef, P>,
+  S extends TDef[P][number] & string,
+  TPool extends StagePool<TCtx>,
   TCtx extends Record<string, any>,
-> = TCtx & AccumulateStageOutputs<GetPreviousAndCurrentStageDefs<TDef[P], S>>;
+> = TCtx & AccumulateStageOutputs<GetPreviousAndCurrentStageNames<TDef[P], S>, TPool>;
 
 /* ----------------- 动态阶段 handler 类型 ----------------- */
 /**
@@ -113,15 +92,38 @@ type StageExecutionContextAfter<
  *  - 返回值可以是该输出类型（替换/修改）
  */
 type DynamicHandlerForStage<
-  TDef extends PipeLineDef,
+  TDef extends PipeLineDef<TPool>,
   P extends keyof TDef,
-  S extends StageNamesOf<TDef, P>,
+  S extends TDef[P][number] & string,
+  TPool extends StagePool<TCtx>,
   TCtx extends Record<string, any>,
-> = (ctx: StageExecutionContextAfter<TDef, P, S, TCtx>, input: StageOutputOf<TDef, P, S>) => StageOutputOf<TDef, P, S>;
+> = (
+  ctx: StageExecutionContextAfter<TDef, P, S, TPool, TCtx>,
+  input: StageOutputOf<TPool, S>,
+) => StageOutputOf<TPool, S>;
+
+/**
+ * 动态阶段存储条目
+ */
+interface DynamicStageEntry<
+  TDef extends PipeLineDef<TPool>,
+  P extends keyof TDef,
+  S extends TDef[P][number] & string,
+  TPool extends StagePool<TCtx>,
+  TCtx extends Record<string, any>,
+> {
+  id: string;
+  source: string;
+  handler: DynamicHandlerForStage<TDef, P, S, TPool, TCtx>;
+}
 
 /** 获取某管线的每个阶段对应输出类型映射 */
-type StageOutputsOf<TDef extends PipeLineDef, P extends keyof TDef> = {
-  [S in StageNamesOf<TDef, P>]: StageOutputOf<TDef, P, S>;
+type StageOutputsOf<
+  TDef extends PipeLineDef<TPool>,
+  P extends keyof TDef,
+  TPool extends StagePool<any>,
+> = {
+  [S in TDef[P][number] & string]: StageOutputOf<TPool, S>;
 };
 
 /* ----------------- PipelineManager----------------- */
@@ -133,14 +135,19 @@ type StageOutputsOf<TDef extends PipeLineDef, P extends keyof TDef> = {
  * 3. 与运行时上下文（TCtx）关联，由数据结构决定
  * 4. 管线的输入参数类型从第一个阶段的 InputSchema 自动推导
  *
- * @template TDef - 管线定义（管线名称 → 阶段数组）
+ * @template TDef - 管线定义（管线名称 → 阶段名数组）
+ * @template TPool - 阶段池
  * @template TCtx - 运行时上下文类型
  */
-export class PipelineManager<TDef extends PipeLineDef, TCtx extends Record<string, any>> {
-  /** 动态阶段存储：pipelineName -> stageName -> list of dynamic handlers */
+export class PipelineManager<
+  TDef extends PipeLineDef<TPool>,
+  TPool extends StagePool<TCtx>,
+  TCtx extends Record<string, any>,
+> {
+  /** 动态阶段存储：pipelineName -> stageName -> list of dynamic entries */
   private dynamicStages: {
     [P in keyof TDef]?: {
-      [S in StageNamesOf<TDef, P>]?: DynamicHandlerForStage<TDef, P, S, TCtx>[];
+      [S in TDef[P][number] & string]?: DynamicStageEntry<TDef, P, S, TPool, TCtx>[];
     };
   } = {} as any;
 
@@ -148,43 +155,135 @@ export class PipelineManager<TDef extends PipeLineDef, TCtx extends Record<strin
   private compiledChains: {
     [P in keyof TDef]?: (
       ctx: TCtx,
-      params?: PipelineParamsFromDef<TDef>[P],
+      params?: PipelineParamsFromDef<TDef, TPool>[P],
     ) => {
       ctx: TCtx;
-      stageOutputs: StageOutputsOf<TDef, P>;
+      stageOutputs: StageOutputsOf<TDef, P, TPool>;
     };
   } = {} as any;
 
   constructor(
-    /** 管线定义：每个管线名称对应静态阶段数组 */
+    /** 管线定义：每个管线名称对应静态阶段名数组 */
     public readonly pipelineDef: TDef,
-    /** 静态阶段实际执行函数集合 */
-    public readonly pipeFunDef: PipeStageFunDef<TDef, TCtx>,
+    /** 阶段池：包含具体的实现 */
+    public readonly stagePool: TPool,
   ) {}
 
   /**
    * 插入动态阶段
-   * - pipelineName: 管线名称
-   * - afterStage: 该动态 handler 插入到哪个静态阶段之后
-   * - handler: 动态 handler 函数（类型安全，可访问累积 ctx）
-   * - 插入后清空缓存 compiledChains[pipelineName]，保证下一次运行使用最新链
+   * @param pipelineName 管线名称
+   * @param afterStage 该动态 handler 插入到哪个静态阶段之后
+   * @param handler 动态 handler 函数
+   * @param id 动态阶段唯一标识
+   * @param source 动态阶段来源标识
+   * @returns 移除该动态阶段的清理函数
    */
-  insertDynamicStage<P extends keyof TDef, S extends StageNamesOf<TDef, P>>(
+  insertDynamicStage<P extends keyof TDef, S extends TDef[P][number] & string>(
     pipelineName: P,
     afterStage: S,
-    handler: DynamicHandlerForStage<TDef, P, S, TCtx>,
-  ) {
+    handler: DynamicHandlerForStage<TDef, P, S, TPool, TCtx>,
+    id: string,
+    source: string,
+  ): () => void {
     const map = (this.dynamicStages[pipelineName] ??= {} as any);
-    const list = (map[afterStage] ??= [] as any) as DynamicHandlerForStage<TDef, P, S, TCtx>[];
-    list.push(handler);
+    const list = (map[afterStage] ??= [] as any) as DynamicStageEntry<TDef, P, S, TPool, TCtx>[];
+
+    // 如果已存在相同ID，先移除
+    const existingIndex = list.findIndex((e) => e.id === id);
+    if (existingIndex !== -1) {
+      list.splice(existingIndex, 1);
+    }
+
+    const entry: DynamicStageEntry<TDef, P, S, TPool, TCtx> = {
+      id,
+      source,
+      handler,
+    };
+    list.push(entry);
 
     // 动态阶段变动时清空缓存
     delete this.compiledChains[pipelineName];
+
+    // 返回清理函数
+    return () => {
+      const index = list.indexOf(entry);
+      if (index !== -1) {
+        list.splice(index, 1);
+        // 清空缓存以应用移除
+        delete this.compiledChains[pipelineName];
+      }
+    };
+  }
+
+  /**
+   * 根据来源移除所有动态阶段
+   * @param source 来源标识
+   */
+  removeStagesBySource(source: string): void {
+    let changed = false;
+    for (const pipelineName in this.dynamicStages) {
+      const stages = this.dynamicStages[pipelineName];
+      if (!stages) continue;
+
+      for (const stageName in stages) {
+        const list = stages[stageName] as DynamicStageEntry<TDef, any, any, TPool, TCtx>[];
+        if (!list) continue;
+
+        const initialLength = list.length;
+        // 过滤掉匹配 source 的条目
+        const filteredList = list.filter((entry) => entry.source !== source);
+
+        if (filteredList.length !== initialLength) {
+          stages[stageName] = filteredList as any;
+          changed = true;
+        }
+      }
+    }
+
+    if (changed) {
+      this.compiledChains = {} as any; // 清空所有缓存，简单粗暴
+    }
+  }
+
+  /**
+   * 根据ID移除动态阶段
+   * @param id 动态阶段唯一标识
+   */
+  removeStageById(id: string): void {
+    let changed = false;
+    for (const pipelineName in this.dynamicStages) {
+      const stages = this.dynamicStages[pipelineName];
+      if (!stages) continue;
+
+      for (const stageName in stages) {
+        const list = stages[stageName] as DynamicStageEntry<TDef, any, any, TPool, TCtx>[];
+        if (!list) continue;
+
+        const index = list.findIndex((entry) => entry.id === id);
+        if (index !== -1) {
+          list.splice(index, 1);
+          changed = true;
+          // ID 是唯一的，找到就可以退出了？不一定，也许不同管线有相同ID（虽然不推荐）
+          // 这里继续查找以防万一
+        }
+      }
+    }
+
+    if (changed) {
+      this.compiledChains = {} as any;
+    }
   }
 
   /** 获取某管线某静态阶段之后的动态 handler 列表 */
-  getDynamicHandlersForStage<P extends keyof TDef, S extends StageNamesOf<TDef, P>>(pipelineName: P, stage: S) {
-    return (this.dynamicStages[pipelineName]?.[stage] ?? []) as DynamicHandlerForStage<TDef, P, S, TCtx>[];
+  getDynamicHandlersForStage<P extends keyof TDef, S extends TDef[P][number] & string>(pipelineName: P, stage: S) {
+    const entries = (this.dynamicStages[pipelineName]?.[stage] ?? []) as DynamicStageEntry<
+      TDef,
+      P,
+      S,
+      TPool,
+      TCtx
+    >[];
+    return entries.map((e) => e.handler);
   }
 
   /* ---------------------- compile ---------------------- */
@@ -199,42 +298,63 @@ export class PipelineManager<TDef extends PipeLineDef, TCtx extends Record<strin
    */
   private compile<P extends keyof TDef>(
     pipelineName: P,
-  ): (ctx: TCtx, params?: PipelineParamsFromDef<TDef>[P]) => { ctx: TCtx; stageOutputs: StageOutputsOf<TDef, P> } {
-    const staticStages = this.pipelineDef[pipelineName]; // readonly staticStageTuple[]
-    const pipeFnsForPipeline = (this.pipeFunDef as any)[pipelineName] as Record<string, Function> | undefined;
+  ): (
+    ctx: TCtx,
+    params?: PipelineParamsFromDef<TDef, TPool>[P],
+  ) => { ctx: TCtx; stageOutputs: StageOutputsOf<TDef, P, TPool> } {
+    const stageNames = this.pipelineDef[pipelineName]; // readonly string[]
 
-    return (ctx: TCtx, params?: PipelineParamsFromDef<TDef>[P]) => {
+    const mergeOutputs = (base: any, addition: any) => {
+      if (addition && typeof addition === "object") {
+        if (base && typeof base === "object") {
+          return { ...base, ...addition };
+        }
+        return { ...addition };
+      }
+      return addition;
+    };
+
+    return (ctx: TCtx, params?: PipelineParamsFromDef<TDef, TPool>[P]) => {
       // working copy of ctx so we don't mutate caller's object unexpectedly
       const currentCtx: any = Object.assign({}, ctx);
       let prevOutput: any = params ?? {};
-      const stageOutputs = {} as StageOutputsOf<TDef, P>;
+      const stageOutputs = {} as StageOutputsOf<TDef, P, TPool>;
 
       // iterate each static stage in order
-      for (const [stageName, inputSchema, outputSchema] of staticStages) {
-        const typedStageName = stageName as StageNamesOf<TDef, P>;
+      for (const stageName of stageNames) {
+        const typedStageName = stageName as TDef[P][number] & string;
+
+        // 从池中获取阶段定义
+        const stageDef = this.stagePool[stageName];
+        if (!stageDef) {
+          throw new Error(
+            `[PipelineManager] Stage "${String(stageName)}" not found in pool for pipeline "${String(pipelineName)}"`,
+          );
+        }
+        const [inputSchema, outputSchema, staticImpl] = stageDef;
 
         // ---------- 输入验证 ----------
+        let stageInput = prevOutput;
         if (inputSchema) {
           const inputParsed = (inputSchema as any).safeParse(prevOutput);
           if (!inputParsed.success) {
             throw new Error(`[${String(pipelineName)}.${stageName}] 输入验证失败: ${inputParsed.error.message}`);
           }
-          // 使用验证后的数据
-          prevOutput = inputParsed.data;
+          // 使用验证后的数据作为本阶段输入
+          stageInput = inputParsed.data;
         }
 
         // ---------- 静态实现：纯函数调用 ----------
-        let stageOut: any = prevOutput;
-        const staticImpl = pipeFnsForPipeline?.[stageName];
+        let stageOut: any = stageInput;
 
         if (staticImpl) {
           // 以纯函数签名调用 (ctx, input) => out
           try {
-            stageOut = staticImpl(currentCtx, prevOutput);
+            stageOut = staticImpl(currentCtx, stageInput);
           } catch (e) {
             throw e;
           }
-        } // end if staticImpl
+        }
 
         // ---------- 输出验证并合并 ----------
         if (outputSchema) {
@@ -244,14 +364,14 @@ export class PipelineManager<TDef extends PipeLineDef, TCtx extends Record<strin
           }
           // merge parsed data into context
           Object.assign(currentCtx, outputParsed.data);
-          // set prevOutput to the structured parsed.data so next stage sees typed output
-          prevOutput = outputParsed.data;
+          // 累积输出给下一阶段
+          prevOutput = mergeOutputs(prevOutput, outputParsed.data);
         } else {
           // no schema: if stageOut is object, merge into ctx; otherwise keep primitive as prevOutput
           if (stageOut && typeof stageOut === "object") {
             Object.assign(currentCtx, stageOut);
           }
-          prevOutput = stageOut;
+          prevOutput = mergeOutputs(prevOutput, stageOut);
         }
 
         // ---------- 保存阶段输出（类型断言为 StageOutputsOf） ----------
@@ -259,16 +379,14 @@ export class PipelineManager<TDef extends PipeLineDef, TCtx extends Record<strin
         (stageOutputs as any)[typedStageName] = prevOutput;
 
         // ---------- 执行该静态阶段之后注册的动态 handlers ----------
-        const dyns = this.dynamicStages[pipelineName]?.[typedStageName] ?? [];
-        for (const dyn of dyns) {
-          const dynOut = (dyn as any)(currentCtx, prevOutput);
+        const dynEntries = this.dynamicStages[pipelineName]?.[typedStageName] ?? [];
+        for (const entry of dynEntries) {
+          const dynOut = (entry.handler as any)(currentCtx, prevOutput);
           if (!dynOut) continue;
           if (typeof dynOut === "object") {
             Object.assign(currentCtx, dynOut);
-            prevOutput = dynOut;
-          } else {
-            prevOutput = dynOut;
           }
+          prevOutput = mergeOutputs(prevOutput, dynOut);
           // 同样把动态阶段的结果视为该阶段最终输出（覆盖）
           (stageOutputs as any)[typedStageName] = prevOutput;
         }
@@ -287,8 +405,8 @@ export class PipelineManager<TDef extends PipeLineDef, TCtx extends Record<strin
   run<P extends keyof TDef>(
     pipelineName: P,
     ctx: TCtx,
-    params?: PipelineParamsFromDef<TDef>[P],
-  ): { ctx: TCtx; stageOutputs: StageOutputsOf<TDef, P> } {
+    params?: PipelineParamsFromDef<TDef, TPool>[P],
+  ): { ctx: TCtx; stageOutputs: StageOutputsOf<TDef, P, TPool> } {
     // ensure compiled chain exists for pipeline
     if (!this.compiledChains[pipelineName]) {
       this.compiledChains[pipelineName] = this.compile(pipelineName);
