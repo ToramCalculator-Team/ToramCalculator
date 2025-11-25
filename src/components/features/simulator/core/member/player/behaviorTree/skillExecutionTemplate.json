@@ -24,7 +24,7 @@
       },
       {
         "id": 6,
-        "name": "Sequence",
+        "name": "IfElse",
         "desc": "前摇阶段（如果存在）",
         "children": [
           {
@@ -37,37 +37,49 @@
           },
           {
             "id": 8,
-            "name": "RunPipeline",
-            "desc": "启动前摇动画",
-            "args": {
-              "pipelineName": "animation.startup.start"
-            }
+            "name": "Sequence",
+            "desc": "执行前摇阶段",
+            "children": [
+              {
+                "id": 9,
+                "name": "RunPipeline",
+                "desc": "启动前摇动画",
+                "args": {
+                  "pipelineName": "animation.startup.start"
+                }
+              },
+              {
+                "id": 10,
+                "name": "RunPipeline",
+                "desc": "调度前摇结束事件",
+                "args": {
+                  "pipelineName": "event.startup.schedule"
+                }
+              },
+              {
+                "id": 11,
+                "name": "WaitForEvent",
+                "desc": "等待前摇结束通知",
+                "args": {
+                  "event": "收到前摇结束通知"
+                }
+              }
+            ]
           },
           {
-            "id": 9,
-            "name": "RunPipeline",
-            "desc": "调度前摇结束事件",
-            "args": {
-              "pipelineName": "event.startup.schedule"
-            }
-          },
-          {
-            "id": 10,
-            "name": "WaitForEvent",
-            "desc": "等待前摇结束通知",
-            "args": {
-              "event": "收到前摇结束通知"
-            }
+            "id": 12,
+            "name": "JustSuccess",
+            "desc": "跳过前摇阶段"
           }
         ]
       },
       {
-        "id": 11,
-        "name": "Sequence",
+        "id": 13,
+        "name": "IfElse",
         "desc": "蓄力阶段（如果存在）",
         "children": [
           {
-            "id": 12,
+            "id": 14,
             "name": "Check",
             "desc": "检查是否存在蓄力",
             "args": {
@@ -75,38 +87,50 @@
             }
           },
           {
-            "id": 13,
-            "name": "RunPipeline",
-            "desc": "启动蓄力动画",
-            "args": {
-              "pipelineName": "animation.charging.start"
-            }
-          },
-          {
-            "id": 14,
-            "name": "RunPipeline",
-            "desc": "调度蓄力结束事件",
-            "args": {
-              "pipelineName": "event.charging.schedule"
-            }
-          },
-          {
             "id": 15,
-            "name": "WaitForEvent",
-            "desc": "等待蓄力结束通知",
-            "args": {
-              "event": "收到蓄力结束通知"
-            }
+            "name": "Sequence",
+            "desc": "执行蓄力阶段",
+            "children": [
+              {
+                "id": 16,
+                "name": "RunPipeline",
+                "desc": "启动蓄力动画",
+                "args": {
+                  "pipelineName": "animation.charging.start"
+                }
+              },
+              {
+                "id": 17,
+                "name": "RunPipeline",
+                "desc": "调度蓄力结束事件",
+                "args": {
+                  "pipelineName": "event.charging.schedule"
+                }
+              },
+              {
+                "id": 18,
+                "name": "WaitForEvent",
+                "desc": "等待蓄力结束通知",
+                "args": {
+                  "event": "收到蓄力结束通知"
+                }
+              }
+            ]
+          },
+          {
+            "id": 19,
+            "name": "JustSuccess",
+            "desc": "跳过蓄力阶段"
           }
         ]
       },
       {
-        "id": 16,
-        "name": "Sequence",
+        "id": 20,
+        "name": "IfElse",
         "desc": "咏唱阶段（如果存在）",
         "children": [
           {
-            "id": 17,
+            "id": 21,
             "name": "Check",
             "desc": "检查是否存在咏唱",
             "args": {
@@ -114,38 +138,50 @@
             }
           },
           {
-            "id": 18,
-            "name": "RunPipeline",
-            "desc": "启动咏唱动画",
-            "args": {
-              "pipelineName": "animation.chanting.start"
-            }
+            "id": 22,
+            "name": "Sequence",
+            "desc": "执行咏唱阶段",
+            "children": [
+              {
+                "id": 23,
+                "name": "RunPipeline",
+                "desc": "启动咏唱动画",
+                "args": {
+                  "pipelineName": "animation.chanting.start"
+                }
+              },
+              {
+                "id": 24,
+                "name": "RunPipeline",
+                "desc": "调度咏唱结束事件",
+                "args": {
+                  "pipelineName": "event.chanting.schedule"
+                }
+              },
+              {
+                "id": 25,
+                "name": "WaitForEvent",
+                "desc": "等待咏唱结束通知",
+                "args": {
+                  "event": "收到咏唱结束通知"
+                }
+              }
+            ]
           },
           {
-            "id": 19,
-            "name": "RunPipeline",
-            "desc": "调度咏唱结束事件",
-            "args": {
-              "pipelineName": "event.chanting.schedule"
-            }
-          },
-          {
-            "id": 20,
-            "name": "WaitForEvent",
-            "desc": "等待咏唱结束通知",
-            "args": {
-              "event": "收到咏唱结束通知"
-            }
+            "id": 26,
+            "name": "JustSuccess",
+            "desc": "跳过咏唱阶段"
           }
         ]
       },
       {
-        "id": 21,
+        "id": 27,
         "name": "Sequence",
         "desc": "发动阶段",
         "children": [
           {
-            "id": 22,
+            "id": 28,
             "name": "RunPipeline",
             "desc": "启动发动动画",
             "args": {
@@ -153,7 +189,7 @@
             }
           },
           {
-            "id": 23,
+            "id": 29,
             "name": "RunPipeline",
             "desc": "应用技能效果（执行技能 logic 行为树）",
             "args": {
@@ -161,7 +197,7 @@
             }
           },
           {
-            "id": 24,
+            "id": 30,
             "name": "RunPipeline",
             "desc": "调度发动结束事件",
             "args": {
@@ -169,7 +205,7 @@
             }
           },
           {
-            "id": 25,
+            "id": 31,
             "name": "WaitForEvent",
             "desc": "等待发动结束通知",
             "args": {

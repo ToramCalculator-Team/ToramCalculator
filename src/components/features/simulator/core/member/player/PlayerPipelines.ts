@@ -194,20 +194,17 @@ export const PlayerPipelineStages = {
     (context, input) => {
       console.log(`👤 [${context.name}] 技能效果应用阶段开始`);
 
-      // 如果已经有初始化的行为树，执行它
-      // 行为树的初始化应该在状态机的 entry 中完成
-      if (context.skillExecutionTree) {
-        const status = context.skillExecutionTree.tick();
-        console.log(`👤 [${context.name}] 技能效果应用阶段执行完成，状态: ${status}`);
-        return {
-          skillEffectApplied: status === "success" || status === "running",
-        };
-      }
+      // 注意：这个阶段不应该再次执行行为树，因为：
+      // 1. 这个阶段是在行为树内部通过 RunPipeline 节点调用的
+      // 2. 行为树已经在执行中，再次调用 tick() 会导致嵌套执行错误
+      // 3. 技能效果的应用逻辑应该在技能的逻辑行为树中定义（如果有的话）
+      // 
+      // 这里只是标记技能效果已应用，实际的效果计算应该在技能逻辑行为树中完成
+      // 或者通过其他管线阶段（如 combat.damage.calculate）来完成
 
-      // 如果没有行为树，说明还没有初始化，返回失败
-      console.warn(`⚠️ [${context.name}] 技能行为树未初始化`);
+      console.log(`👤 [${context.name}] 技能效果应用阶段完成（标记为已应用）`);
       return {
-        skillEffectApplied: false,
+        skillEffectApplied: true,
       };
     },
   ),

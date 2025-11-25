@@ -15,6 +15,7 @@ import { playerPipDef, PlayerPipelineDef, PlayerStagePool } from "./PlayerPipeli
 import { PlayerBehaviorContext } from "./PlayerBehaviorContext";
 import { Tree, type TreeData } from "~/lib/behavior3/tree";
 import skillExecutionTemplate from "./behaviorTree/skillExecutionTemplate.json";
+import { createTestSkillData } from "./testSkills";
 
 /**
  * Player特有的事件类型
@@ -492,7 +493,7 @@ export const playerStateMachine = (player: Player) => {
         // ...
         console.log(`👤 [${context.name}] 技能效果管线`, event);
       },
-      初始化技能行为树: async function ({ context, event }) {
+      初始化技能行为树: function ({ context, event }) {
         console.log(`👤 [${context.name}] 初始化技能行为树`);
 
         // 创建行为树上下文
@@ -518,7 +519,8 @@ export const playerStateMachine = (player: Player) => {
               } as TreeData;
               
               // 加载技能特定的行为树（会缓存到 skillLogicPath 键下）
-              await behaviorContext.loadTree(treeDataWithName);
+              // 注意：loadTree 虽然返回 Promise，但在传入 TreeData 时操作是同步的
+              behaviorContext.loadTree(treeDataWithName);
               // 创建 Tree 实例，构造函数会从缓存中获取
               skillLogicTree = new Tree(behaviorContext, context, skillLogicPath);
             }
@@ -540,7 +542,8 @@ export const playerStateMachine = (player: Player) => {
           } as unknown as TreeData;
           
           // 加载通用模板（会缓存到 templatePath 键下）
-          await behaviorContext.loadTree(templateData);
+          // 注意：loadTree 虽然返回 Promise，但在传入 TreeData 时操作是同步的
+          behaviorContext.loadTree(templateData);
           // 创建 Tree 实例，构造函数会从缓存中获取
           skillLogicTree = new Tree(behaviorContext, context, templatePath);
         }
@@ -549,7 +552,29 @@ export const playerStateMachine = (player: Player) => {
         // 注意：不需要单独保存 behaviorContext，可以通过 skillExecutionTree.context 访问
         context.skillExecutionTree = skillLogicTree;
 
+        // 将 context 的属性同步到 blackboard，让行为树的表达式可以访问
+        // Blackboard.eval() 只能访问 _values 中的值，不能直接访问 owner 的属性
+        const blackboard = context.skillExecutionTree.blackboard;
+        blackboard.set("currentFrame", context.currentFrame);
+        blackboard.set("currentSkillStartupFrames", context.currentSkillStartupFrames);
+        blackboard.set("currentSkillChargingFrames", context.currentSkillChargingFrames);
+        blackboard.set("currentSkillChantingFrames", context.currentSkillChantingFrames);
+        blackboard.set("currentSkillActionFrames", context.currentSkillActionFrames);
+
         console.log(`👤 [${context.name}] 技能行为树初始化完成`);
+
+        // 初始化完成后立即执行一次 tick，将状态从初始的 "success" 改为 "running"
+        // 这样后续的"更新"事件就能正常推进行为树了
+        try {
+          console.log(`🌳 [${context.name}] 初始化后立即执行首次 tick...`);
+          const initialStatus = context.skillExecutionTree.tick();
+          console.log(`🌳 [${context.name}] 首次 tick 完成，状态: ${initialStatus}`);
+        } catch (error) {
+          console.error(`❌ [${context.name}] 首次 tick 执行出错:`, error);
+          // 出错时中断行为树，避免无限循环
+          context.skillExecutionTree.interrupt();
+          throw error;
+        }
       },
       推进技能行为树: function ({ context, event }) {
         if (!context.skillExecutionTree) {
@@ -564,8 +589,24 @@ export const playerStateMachine = (player: Player) => {
           return;
         }
 
-        // 注意：不再需要手动同步 context 值到 blackboard
-        // Blackboard.eval() 现在会自动访问 owner（即 context）的属性
+        // 直接从引擎获取当前帧数，确保同步
+        // 注意：不能依赖 context.currentFrame，因为 assign 在 action 执行完成后才更新
+        const engineFrame = context.engine.getFrameLoop().getFrameNumber();
+        
+        // 同步更新 context.currentFrame 和行为树时间
+        // 这样确保三者（引擎帧、context帧、行为树时间）完全同步
+        context.currentFrame = engineFrame;
+        // 注意：PlayerBehaviorContext.time 是 getter，直接返回 owner.currentFrame
+        // 所以更新 context.currentFrame 后，行为树时间会自动同步
+
+        // 每帧推进行为树之前，同步 context 的属性到 blackboard
+        // Blackboard.eval() 只能访问 _values 中的值，不能直接访问 owner 的属性
+        const blackboard = context.skillExecutionTree.blackboard;
+        blackboard.set("currentFrame", engineFrame);
+        blackboard.set("currentSkillStartupFrames", context.currentSkillStartupFrames);
+        blackboard.set("currentSkillChargingFrames", context.currentSkillChargingFrames);
+        blackboard.set("currentSkillChantingFrames", context.currentSkillChantingFrames);
+        blackboard.set("currentSkillActionFrames", context.currentSkillActionFrames);
 
         // 每帧推进行为树
         try {
@@ -930,15 +971,30 @@ export const playerStateMachine = (player: Player) => {
       pipelineManager: player.pipelineManager,
       position: player.position,
       createdAtFrame: player.engine.getFrameLoop().getFrameNumber(),
-      currentFrame: 0,
+      currentFrame: player.engine.getFrameLoop().getFrameNumber(),
       currentSkillStartupFrames: 0,
       currentSkillChargingFrames: 0,
       currentSkillChantingFrames: 0,
       currentSkillActionFrames: 0,
-      // 默认第一个机体
-      skillList: player.data.player?.characters?.[0]?.skills ?? [],
-      // 默认第一个机体
-      skillCooldowns: player.data.player?.characters?.[0]?.skills?.map((s) => 0) ?? [],
+      // 默认第一个机体，如果没有技能则使用测试技能
+      skillList: (() => {
+        const skills = player.data.player?.characters?.[0]?.skills ?? [];
+        // 如果没有技能，注入测试技能
+        if (skills.length === 0) {
+          console.log(`🧪 [${player.name}] 未找到技能，注入测试技能：魔法炮`);
+          return [createTestSkillData()];
+        }
+        return skills;
+      })(),
+      // 默认第一个机体，如果没有技能则使用测试技能
+      skillCooldowns: (() => {
+        const skills = player.data.player?.characters?.[0]?.skills ?? [];
+        // 如果没有技能，注入测试技能
+        if (skills.length === 0) {
+          return [0]; // 测试技能冷却
+        }
+        return skills.map((s) => 0);
+      })(),
       currentSkillEffect: null,
       currentSkillIndex: 0,
       skillStartFrame: 0,
