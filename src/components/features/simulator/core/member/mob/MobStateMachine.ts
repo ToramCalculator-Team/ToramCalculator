@@ -6,7 +6,8 @@ import { Member, MemberEventType, MemberSerializeData, MemberStateMachine } from
 import { Mob, MobAttrType } from "./Mob";
 import { ModifierType } from "../../dataSys/StatContainer";
 import { GameEngine } from "../../GameEngine";
-import { MobPipelineStages, mobPipDef } from "./MobPipelines";
+import { MobPipelineStages, mobPipDef, MobPipelineDef, MobStagePool } from "./MobPipelines";
+import { PipelineManager } from "../../pipeline/PipelineManager";
 /**
  * Mob特有的事件类型
  * 扩展MemberEventType，包含Mob特有的状态机事件
@@ -103,9 +104,9 @@ export type MobEventType =
   | 收到快照请求
   | 收到目标快照;
 
-export interface MobStateContext {
-  /** 成员ID */
-  id: string;
+import type { MemberStateContextBase } from "../behaviorTree/MemberStateContext";
+
+export interface MobStateContext extends MemberStateContextBase {
   /** 成员类型 */
   type: "Mob";
   /** 成员名称 */
@@ -118,18 +119,16 @@ export interface MobStateContext {
   targetId: string;
   /** 是否存活 */
   isAlive: boolean;
-  /** 引擎引用 */
-  engine: GameEngine;
   /** 位置信息 */
   position: { x: number; y: number; z: number };
-  /** 当前帧 */
-  currentFrame: number;
   /** 技能列表 */
   skillList: [];
   /** 技能冷却 */
   skillCooldowns: number[];
   /** 正在施放的技能序号 */
   currentSkillIndex: number;
+  /** 管线管理器引用（从 MemberStateContextBase 继承，但需要明确类型） */
+  pipelineManager: PipelineManager<MobPipelineDef, MobStagePool, MobStateContext>;
 }
 
 // action的源定义，将用来约束状态机逻辑和管线树结构
@@ -364,6 +363,7 @@ export const createMobStateMachine = (
       targetId: member.targetId,
       isAlive: member.isAlive,
       engine: member.engine,
+      pipelineManager: member.pipelineManager,
       position: member.position,
       currentFrame: 0,
       skillList: [],

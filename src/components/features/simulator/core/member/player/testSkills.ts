@@ -4,9 +4,9 @@ import type { skill, skill_effect } from "@db/generated/zod";
  * 魔法炮（测试用技能）
  *
  * 约定：
- * - 同一 skill_effect 中通过 logic.phase 切换充能/释放阶段
- * - 状态机需要在施放时写入 context.magicCannon.phase = 'charge' | 'release'
- * - gauge、层数等运行时数据保存在 PlayerStateContext（例如 magicCannonGauge）
+ * - skill_effect.logic 存储行为树 JSON
+ * - 行为树使用 RunPipeline 调用管线，使用 ScheduleFSMEvent 发送状态机事件
+ * - 最后必须调用 ScheduleFSMEvent("收到发动结束通知") 来触发状态机转换
  */
 
 export const magicCannonSkill: skill = {
@@ -27,6 +27,10 @@ export const magicCannonSkill: skill = {
   createdByAccountId: null,
 };
 
+/**
+ * 魔法炮技能效果 - 使用行为树 JSON
+ * logic 字段存储完整的行为树定义
+ */
 export const magicCannonSkillEffect: skill_effect = {
   id: "test.magic_cannon.skill_effect",
   belongToskillId: magicCannonSkill.id,
@@ -34,82 +38,156 @@ export const magicCannonSkillEffect: skill_effect = {
   elementLogic: "return ctx.elementOverride ?? 'Light';",
   castingRange: "10m",
   effectiveRange: 10,
-  motionFixed: "ctx.magicCannon.phase === 'charge' ? 90 : 60",
+  motionFixed: "ctx.magicCannon?.phase === 'charge' ? 90 : 60",
   motionModified: "0",
-  chantingFixed: "ctx.magicCannon.phase === 'charge' ? 8000 : 0",
+  chantingFixed: "ctx.magicCannon?.phase === 'charge' ? 8000 : 0",
   chantingModified: "0",
   reservoirFixed: "0",
   reservoirModified: "0",
-  startupFrames: "ctx.magicCannon.phase === 'release' ? 30 : 0",
+  startupFrames: "ctx.magicCannon?.phase === 'release' ? 30 : 0",
   hpCost: null,
-  mpCost: "ctx.magicCannon.phase === 'charge' && ctx.magicCannon.hasGauge ? 700 : 0",
-  description: "魔法炮充能/释放逻辑，依赖 context.magicCannon 中的运行时状态。",
+  mpCost: "ctx.magicCannon?.phase === 'charge' && ctx.magicCannon?.hasGauge ? 700 : 0",
+  description: "魔法炮充能/释放逻辑，通过行为树实现。",
   logic: {
-    type: "magicCannon",
-    gaugeId: "magic_cannon_gauge",
-    phases: {
-      charge: {
-        autoFill: [
-          { until: 100, intervalMs: 1000, deltaPercent: 1 },
-          { from: 100, intervalMs: 2000, deltaPercent: 1 },
-        ],
-        contributors: [
-          {
-            skillIds: [
-              "skill.magic_arrow",
-              "skill.magic_lance",
-              "skill.magic_storm",
-              "skill.magic_burst",
-            ],
-            formula: "(castMs / 1000 + cspdBonus) * layerFactor",
-          },
-          {
-            skillIds: ["skill.magic_charge"],
-            formula: "baseFormula + (afterMagicCharge ? 40 * cspdBonus : 0)",
-          },
-        ],
-        maxGaugePercent: 200,
-        onEnter: [
-          { action: "ensureGauge", gaugeId: "magic_cannon_gauge" },
-          {
-            action: "ensureBuff",
-            buffId: "buff.magic_cannon_tracker",
-            durationMs: 60000,
-            data: {
-              decayAfterMs: 12000,
-              decayIntervalMs: 6000,
-              decayPercent: 1,
+    name: "magic-cannon-logic",
+    desc: "魔法炮技能逻辑行为树",
+    root: {
+      id: 1,
+      name: "Switch",
+      desc: "根据 phase 分支",
+      children: [
+        {
+          id: 2,
+          name: "Case",
+          children: [
+            {
+              id: 3,
+              name: "Check",
+              args: {
+                value: "magicCannon?.phase === 'charge'",
+              },
             },
-          },
-        ],
-        onDamageTaken: {
-          action: "maybeLoseGauge",
-          losePercent: 20,
+            {
+              id: 4,
+              name: "Sequence",
+              desc: "充能阶段",
+              children: [
+                {
+                  id: 5,
+                  name: "Log",
+                  args: {
+                    message: "魔法炮充能阶段开始",
+                    level: "log",
+                  },
+                },
+                {
+                  id: 6,
+                  name: "SetField",
+                  args: {
+                    field: "magicCannon.phase",
+                    value: "charge",
+                  },
+                },
+                {
+                  id: 7,
+                  name: "Log",
+                  args: {
+                    message: "充能完成，准备释放",
+                    level: "log",
+                  },
+                },
+              ],
+            },
+          ],
         },
-      },
-      release: {
-        requirementPercent: 20,
-        consumeGauge: true,
-        damageFormula:
-          "(matkEff + 700 + 10 * chantStacks) * (300 * chantStacks + baseInt * Math.min(chantStacks, 5))",
-        overloadBonus: {
-          condition: "percent > 100",
-          blockPenetrationBonus: "percent - 100",
+        {
+          id: 8,
+          name: "Case",
+          children: [
+            {
+              id: 9,
+              name: "Check",
+              args: {
+                value: "magicCannon?.phase === 'release'",
+              },
+            },
+            {
+              id: 10,
+              name: "Sequence",
+              desc: "释放阶段",
+              children: [
+                {
+                  id: 11,
+                  name: "Log",
+                  args: {
+                    message: "魔法炮释放阶段开始",
+                    level: "log",
+                  },
+                },
+                {
+                  id: 12,
+                  name: "Calculate",
+                  args: {
+                    value: "(matkEff + 700 + 10 * (magicCannon?.stacks ?? 0)) * (300 * (magicCannon?.stacks ?? 0) + baseInt * Math.min(magicCannon?.stacks ?? 0, 5))",
+                  },
+                  output: ["damage"],
+                },
+                {
+                  id: 13,
+                  name: "Log",
+                  args: {
+                    message: "计算伤害完成",
+                    level: "log",
+                  },
+                  input: ["damage"],
+                },
+                {
+                  id: 14,
+                  name: "ScheduleFSMEvent",
+                  args: {
+                    eventType: "收到发动结束通知",
+                    delayFrames: 0,
+                  },
+                },
+              ],
+            },
+          ],
         },
-        onCast: [
-          { action: "ensureMpCost", value: 700, onlyWhenGaugePaid: false },
-          { action: "spawnProjectile", speed: 25, radius: 1.5, element: "Light" },
-        ],
-      },
+        {
+          id: 15,
+          name: "Case",
+          children: [
+            {
+              id: 16,
+              name: "AlwaysSuccess",
+              children: [
+                {
+                  id: 17,
+                  name: "Log",
+                  args: {
+                    message: "魔法炮：phase 未设置，使用默认逻辑",
+                    level: "warn",
+                  },
+                },
+                {
+                  id: 18,
+                  name: "ScheduleFSMEvent",
+                  args: {
+                    eventType: "收到发动结束通知",
+                    delayFrames: 0,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
     },
-  },
-  details:
-    "logic.phases.charge/rls 供状态机调用：phase 由 context.magicCannon.phase 控制，" +
-    "gauge 数据在 PlayerStateContext 中维护。",
+  } as any,
+  details: "logic 字段包含完整的行为树 JSON，使用 Switch 根据 magicCannon.phase 分支执行充能或释放逻辑。",
 };
 
 export const testSkills = {
   magicCannonSkill,
   magicCannonSkillEffect,
 };
-

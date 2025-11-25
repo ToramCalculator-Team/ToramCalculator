@@ -12,6 +12,9 @@ import { MemberType } from "@db/schema/enums";
 import { CharacterWithRelations } from "@db/generated/repositories/character";
 import { PipelineManager } from "../../pipeline/PipelineManager";
 import { playerPipDef, PlayerPipelineDef, PlayerStagePool } from "./PlayerPipelines";
+import { PlayerBehaviorContext } from "./PlayerBehaviorContext";
+import { Tree, type TreeData } from "~/lib/behavior3/tree";
+import skillExecutionTemplate from "./behaviorTree/skillExecutionTemplate.json";
 
 /**
  * Player特有的事件类型
@@ -109,6 +112,10 @@ interface 切换目标 extends EventObject {
   type: "切换目标";
   data: { targetId: string };
 }
+interface 更新 extends EventObject {
+  type: "更新";
+  timestamp?: number;
+}
 
 export type PlayerEventType =
   | MemberEventType
@@ -137,10 +144,13 @@ export type PlayerEventType =
   | 收到buff增删事件
   | 收到快照请求
   | 收到目标快照
-  | 切换目标;
+  | 切换目标
+  | 更新;
+
+import type { MemberStateContextBase } from "../behaviorTree/MemberStateContext";
 
 // 定义 PlayerStateContext 类型（提前声明）
-export interface PlayerStateContext {
+export interface PlayerStateContext extends MemberStateContextBase {
   /** 成员ID */
   id: string;
   /** 成员类型 */
@@ -195,6 +205,8 @@ export interface PlayerStateContext {
   aggro: number;
   /** 机体配置信息 */
   character: CharacterWithRelations;
+  /** 当前执行的技能行为树 */
+  skillExecutionTree: Tree<PlayerBehaviorContext, PlayerStateContext> | null;
 }
 
 export const playerStateMachine = (player: Player) => {
@@ -479,6 +491,117 @@ export const playerStateMachine = (player: Player) => {
         // Add your action code here
         // ...
         console.log(`👤 [${context.name}] 技能效果管线`, event);
+      },
+      初始化技能行为树: async function ({ context, event }) {
+        console.log(`👤 [${context.name}] 初始化技能行为树`);
+
+        // 创建行为树上下文
+        const behaviorContext = new PlayerBehaviorContext(context);
+
+        // 尝试从 skill_effect.logic 加载技能特定的行为树
+        let skillLogicTree: Tree<PlayerBehaviorContext, PlayerStateContext> | null = null;
+
+        if (context.currentSkillEffect?.logic) {
+          try {
+            // logic 可能是 JSON 对象或字符串
+            const logicData =
+              typeof context.currentSkillEffect.logic === "string"
+                ? JSON.parse(context.currentSkillEffect.logic)
+                : context.currentSkillEffect.logic;
+
+            if (logicData && typeof logicData === "object" && logicData.root) {
+              // 使用固定的路径标识符，确保缓存键匹配
+              const skillLogicPath = "skill_logic";
+              const treeDataWithName = {
+                ...logicData,
+                name: skillLogicPath, // 确保 name 与路径一致
+              } as TreeData;
+              
+              // 加载技能特定的行为树（会缓存到 skillLogicPath 键下）
+              await behaviorContext.loadTree(treeDataWithName);
+              // 创建 Tree 实例，构造函数会从缓存中获取
+              skillLogicTree = new Tree(behaviorContext, context, skillLogicPath);
+            }
+          } catch (error) {
+            console.warn(
+              `⚠️ [${context.name}] 加载技能逻辑行为树失败，使用默认模板:`,
+              error,
+            );
+          }
+        }
+
+        // 如果没有技能特定逻辑，使用通用模板
+        if (!skillLogicTree) {
+          // 使用固定的路径标识符，确保缓存键匹配
+          const templatePath = "skill_execution_template";
+          const templateData = {
+            ...skillExecutionTemplate,
+            name: templatePath, // 确保 name 与路径一致
+          } as unknown as TreeData;
+          
+          // 加载通用模板（会缓存到 templatePath 键下）
+          await behaviorContext.loadTree(templateData);
+          // 创建 Tree 实例，构造函数会从缓存中获取
+          skillLogicTree = new Tree(behaviorContext, context, templatePath);
+        }
+
+        // 将行为树保存到 context
+        // 注意：不需要单独保存 behaviorContext，可以通过 skillExecutionTree.context 访问
+        context.skillExecutionTree = skillLogicTree;
+
+        console.log(`👤 [${context.name}] 技能行为树初始化完成`);
+      },
+      推进技能行为树: function ({ context, event }) {
+        if (!context.skillExecutionTree) {
+          console.warn(`⚠️ [${context.name}] 技能行为树未初始化，无法推进`);
+          return;
+        }
+
+        // 如果行为树已经完成或中断，不再推进
+        const treeStatus = context.skillExecutionTree.status;
+        if (treeStatus === "success" || treeStatus === "failure" || treeStatus === "interrupted") {
+          // 行为树已完成或中断，不再推进
+          return;
+        }
+
+        // 注意：不再需要手动同步 context 值到 blackboard
+        // Blackboard.eval() 现在会自动访问 owner（即 context）的属性
+
+        // 每帧推进行为树
+        try {
+          console.log(`🌳 [${context.name}] 推进行为树 tick...`);
+          const status = context.skillExecutionTree.tick();
+          console.log(`🌳 [${context.name}] 行为树 tick 完成，状态: ${status}`);
+          
+          // 如果行为树完成，记录最终状态
+          if (status === "success" || status === "failure") {
+            console.log(`👤 [${context.name}] 技能行为树执行完成，状态: ${status}`);
+          } else if (status === "interrupted") {
+            console.warn(`⚠️ [${context.name}] 技能行为树被中断`);
+          }
+        } catch (error) {
+          console.error(`❌ [${context.name}] 技能行为树执行出错:`, error);
+          // 出错时中断行为树，避免无限循环
+          context.skillExecutionTree.interrupt();
+          throw error;
+        }
+      },
+      清理技能行为树: function ({ context, event }) {
+        if (context.skillExecutionTree) {
+          context.skillExecutionTree.clear();
+          context.skillExecutionTree = null;
+          console.log(`👤 [${context.name}] 技能行为树已清理`);
+        }
+      },
+      转发行为树事件: function ({ context, event }) {
+        // 通过 skillExecutionTree.context 访问行为树上下文，避免循环引用
+        if (context.skillExecutionTree && event?.type) {
+          const behaviorContext = context.skillExecutionTree.context;
+          console.log(`🔁 [${context.name}] 转发行为树事件: ${event.type}`);
+          // WaitForEvent 注册监听器时，target 是 context（默认），所以 dispatch 时不需要传 target
+          // 或者传入 context 作为 target（但默认就是它自己，所以不传也可以）
+          behaviorContext.dispatch(event.type);
+        }
       },
       重置控制抵抗时间: function ({ context, event }) {
         // Add your action code here
@@ -825,6 +948,8 @@ export const playerStateMachine = (player: Player) => {
       aggro: 0,
       // 默认第一个机体
       character: player.data.player!.characters?.[0] ?? null,
+      // 技能执行行为树
+      skillExecutionTree: null,
     },
     id: machineId,
     initial: "存活",
@@ -832,6 +957,21 @@ export const playerStateMachine = (player: Player) => {
       更新: {
         actions: {
           type: "更新玩家状态",
+        },
+      },
+      收到前摇结束通知: {
+        actions: {
+          type: "转发行为树事件",
+        },
+      },
+      收到蓄力结束通知: {
+        actions: {
+          type: "转发行为树事件",
+        },
+      },
+      收到咏唱结束事件: {
+        actions: {
+          type: "转发行为树事件",
         },
       },
     },
@@ -1081,126 +1221,42 @@ export const playerStateMachine = (player: Player) => {
                     ],
                   },
                   执行技能中: {
-                    initial: "前摇中",
                     entry: [
                       { type: "添加待处理技能效果" },
-                      {
-                        type: "技能消耗扣除",
-                        params: ({ context }) => {
-                          return {
-                            expressionEvaluator: context.engine.evaluateExpression,
-                            statContainer: context.statContainer,
-                          };
-                        },
+                      { type: "初始化技能行为树" },
+                      function ({ context }) {
+                        console.log(`🎮 [${context.name}] 进入"执行技能中"状态`);
                       },
                     ],
-                    states: {
-                      前摇中: {
-                        on: {
-                          收到前摇结束通知: [
-                            {
-                              target: "蓄力中",
-                              guard: {
-                                type: "存在蓄力阶段",
-                              },
-                            },
-                            {
-                              target: "咏唱中",
-                              guard: {
-                                type: "存在咏唱阶段",
-                              },
-                            },
-                            {
-                              target: "发动中",
-                            },
-                          ],
+                    on: {
+                      更新: {
+                        actions: {
+                          type: "推进技能行为树",
                         },
-                        entry: [
-                          {
-                            type: "启用前摇动画",
-                          },
-                          {
-                            type: "计算前摇时长",
-                          },
-                          {
-                            type: "创建前摇结束通知",
-                          },
-                        ],
                       },
-                      蓄力中: {
-                        on: {
-                          收到蓄力结束通知: [
-                            {
-                              target: "咏唱中",
-                              guard: {
-                                type: "存在咏唱阶段",
-                              },
-                            },
-                            {
-                              target: "发动中",
-                            },
-                          ],
-                        },
-                        entry: [
-                          {
-                            type: "启用蓄力动画",
+                      收到发动结束通知: [
+                        {
+                          target: `#${machineId}.存活.可操作状态.技能处理状态`,
+                          guard: {
+                            type: "存在后续连击",
                           },
-                          {
-                            type: "计算蓄力时长",
-                          },
-                          {
-                            type: "创建蓄力结束通知",
-                          },
-                        ],
-                      },
-                      咏唱中: {
-                        on: {
-                          收到咏唱结束通知: {
-                            target: "发动中",
+                          actions: {
+                            type: "转发行为树事件",
                           },
                         },
-                        entry: [
-                          {
-                            type: "启用咏唱动画",
+                        {
+                          target: `#${machineId}.存活.可操作状态.空闲状态`,
+                          actions: {
+                            type: "转发行为树事件",
                           },
-                          {
-                            type: "计算咏唱时长",
-                          },
-                          {
-                            type: "创建咏唱结束通知",
-                          },
-                        ],
-                      },
-                      发动中: {
-                        on: {
-                          收到发动结束通知: [
-                            {
-                              target: `#${machineId}.存活.可操作状态.技能处理状态`,
-                              guard: {
-                                type: "存在后续连击",
-                              },
-                            },
-                            {
-                              target: `#${machineId}.存活.可操作状态.空闲状态`,
-                            },
-                          ],
                         },
-                        entry: [
-                          {
-                            type: "启用技能发动动画",
-                          },
-                          {
-                            type: "计算发动时长",
-                          },
-                          {
-                            type: "创建发动结束通知",
-                          },
-                          {
-                            type: "技能效果管线",
-                          },
-                        ],
-                      },
+                      ],
                     },
+                    exit: [
+                      {
+                        type: "清理技能行为树",
+                      },
+                    ],
                   },
                 },
               },

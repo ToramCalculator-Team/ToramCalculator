@@ -154,7 +154,8 @@ export class Member<
   }
 
   update(): void {
-    this.actor.send({ type: "update", timestamp: Date.now() } as unknown as TEvent);
+    // 发送"更新"事件（中文），与状态机监听的事件类型匹配
+    this.actor.send({ type: "更新", timestamp: Date.now() } as unknown as TEvent);
   }
 
   constructor(

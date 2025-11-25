@@ -1,0 +1,184 @@
+{
+  "name": "skill-execution-template",
+  "desc": "通用技能执行行为树模板",
+  "root": {
+    "id": 1,
+    "name": "Sequence",
+    "desc": "技能执行主流程",
+    "children": [
+      {
+        "id": 2,
+        "name": "RunPipeline",
+        "desc": "计算技能消耗",
+        "args": {
+          "pipelineName": "skill.cost.calculate"
+        }
+      },
+      {
+        "id": 4,
+        "name": "RunPipeline",
+        "desc": "计算技能动作时长",
+        "args": {
+          "pipelineName": "skill.motion.calculate"
+        }
+      },
+      {
+        "id": 6,
+        "name": "Sequence",
+        "desc": "前摇阶段（如果存在）",
+        "children": [
+          {
+            "id": 7,
+            "name": "Check",
+            "desc": "检查是否存在前摇",
+            "args": {
+              "value": "currentSkillStartupFrames > 0"
+            }
+          },
+          {
+            "id": 8,
+            "name": "RunPipeline",
+            "desc": "启动前摇动画",
+            "args": {
+              "pipelineName": "animation.startup.start"
+            }
+          },
+          {
+            "id": 9,
+            "name": "RunPipeline",
+            "desc": "调度前摇结束事件",
+            "args": {
+              "pipelineName": "event.startup.schedule"
+            }
+          },
+          {
+            "id": 10,
+            "name": "WaitForEvent",
+            "desc": "等待前摇结束通知",
+            "args": {
+              "event": "收到前摇结束通知"
+            }
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "name": "Sequence",
+        "desc": "蓄力阶段（如果存在）",
+        "children": [
+          {
+            "id": 12,
+            "name": "Check",
+            "desc": "检查是否存在蓄力",
+            "args": {
+              "value": "currentSkillChargingFrames > 0"
+            }
+          },
+          {
+            "id": 13,
+            "name": "RunPipeline",
+            "desc": "启动蓄力动画",
+            "args": {
+              "pipelineName": "animation.charging.start"
+            }
+          },
+          {
+            "id": 14,
+            "name": "RunPipeline",
+            "desc": "调度蓄力结束事件",
+            "args": {
+              "pipelineName": "event.charging.schedule"
+            }
+          },
+          {
+            "id": 15,
+            "name": "WaitForEvent",
+            "desc": "等待蓄力结束通知",
+            "args": {
+              "event": "收到蓄力结束通知"
+            }
+          }
+        ]
+      },
+      {
+        "id": 16,
+        "name": "Sequence",
+        "desc": "咏唱阶段（如果存在）",
+        "children": [
+          {
+            "id": 17,
+            "name": "Check",
+            "desc": "检查是否存在咏唱",
+            "args": {
+              "value": "currentSkillChantingFrames > 0"
+            }
+          },
+          {
+            "id": 18,
+            "name": "RunPipeline",
+            "desc": "启动咏唱动画",
+            "args": {
+              "pipelineName": "animation.chanting.start"
+            }
+          },
+          {
+            "id": 19,
+            "name": "RunPipeline",
+            "desc": "调度咏唱结束事件",
+            "args": {
+              "pipelineName": "event.chanting.schedule"
+            }
+          },
+          {
+            "id": 20,
+            "name": "WaitForEvent",
+            "desc": "等待咏唱结束通知",
+            "args": {
+              "event": "收到咏唱结束通知"
+            }
+          }
+        ]
+      },
+      {
+        "id": 21,
+        "name": "Sequence",
+        "desc": "发动阶段",
+        "children": [
+          {
+            "id": 22,
+            "name": "RunPipeline",
+            "desc": "启动发动动画",
+            "args": {
+              "pipelineName": "animation.action.start"
+            }
+          },
+          {
+            "id": 23,
+            "name": "RunPipeline",
+            "desc": "应用技能效果（执行技能 logic 行为树）",
+            "args": {
+              "pipelineName": "skill.effect.apply"
+            }
+          },
+          {
+            "id": 24,
+            "name": "RunPipeline",
+            "desc": "调度发动结束事件",
+            "args": {
+              "pipelineName": "event.action.schedule"
+            }
+          },
+          {
+            "id": 25,
+            "name": "WaitForEvent",
+            "desc": "等待发动结束通知",
+            "args": {
+              "event": "收到发动结束通知"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
+

@@ -1,6 +1,36 @@
 import { z, ZodType } from "zod/v4";
+import { createId } from "@paralleldrive/cuid2";
 import { PlayerStateContext } from "./PlayerStateMachine";
-import { PipeLineDef, PipelineStage, StagePool, defineStage } from "../../pipeline/PipelineStageType";
+import { PipeLineDef, StagePool, defineStage } from "../../pipeline/PipelineStageType";
+import { PlayerBehaviorContext } from "./PlayerBehaviorContext";
+import { Tree, type TreeData } from "~/lib/behavior3/tree";
+import skillExecutionTemplate from "./behaviorTree/skillExecutionTemplate.json";
+
+const scheduleFsmEvent = (
+  context: PlayerStateContext,
+  delayFrames: number,
+  eventType: string,
+  source: string,
+) => {
+  const engineQueue = context.engine.getEventQueue?.();
+  if (!engineQueue) {
+    console.warn(`⚠️ [${context.name}] 无法获取事件队列，无法调度 ${eventType}`);
+    return;
+  }
+  const executeFrame = context.currentFrame + Math.max(1, delayFrames);
+  engineQueue.insert({
+    id: createId(),
+    type: "member_fsm_event",
+    executeFrame,
+    priority: "high",
+    payload: {
+      targetMemberId: context.id,
+      fsmEventType: eventType,
+      skillId: context.currentSkill?.id ?? "unknown_skill",
+      source,
+    },
+  });
+};
 
 /**
  * ==================== 玩家管线定义 ====================
@@ -133,13 +163,17 @@ export const PlayerPipelineStages = {
       mspdResult: z.number(),
       startupProportion: z.number(),
     }),
-    z.object({ startupFramesResult: z.number() }),
+    z.object({
+      startupFramesResult: z.number(),
+      currentSkillStartupFrames: z.number(),
+    }),
     (context, input) => {
       const startupFrames =
         (input.skillFixedMotionResult + input.skillModifiedMotionResult * input.mspdResult) *
         input.startupProportion;
       return {
         startupFramesResult: startupFrames,
+        currentSkillStartupFrames: startupFrames,
       };
     },
   ),
@@ -151,6 +185,106 @@ export const PlayerPipelineStages = {
       return {
         skillCooldownResult: context.skillList.map((s) => 0),
       };
+    },
+  ),
+
+  技能效果应用: defineStage(
+    z.object({}),
+    z.object({ skillEffectApplied: z.boolean() }),
+    (context, input) => {
+      console.log(`👤 [${context.name}] 技能效果应用阶段开始`);
+
+      // 如果已经有初始化的行为树，执行它
+      // 行为树的初始化应该在状态机的 entry 中完成
+      if (context.skillExecutionTree) {
+        const status = context.skillExecutionTree.tick();
+        console.log(`👤 [${context.name}] 技能效果应用阶段执行完成，状态: ${status}`);
+        return {
+          skillEffectApplied: status === "success" || status === "running",
+        };
+      }
+
+      // 如果没有行为树，说明还没有初始化，返回失败
+      console.warn(`⚠️ [${context.name}] 技能行为树未初始化`);
+      return {
+        skillEffectApplied: false,
+      };
+    },
+  ),
+
+  启动前摇动画: defineStage(
+    z.object({}),
+    z.object({ startupAnimationStarted: z.boolean() }),
+    (context) => {
+      console.log(`🎬 [${context.name}] 启动前摇动画`);
+      return { startupAnimationStarted: true };
+    },
+  ),
+
+  启动蓄力动画: defineStage(
+    z.object({}),
+    z.object({ chargingAnimationStarted: z.boolean() }),
+    (context) => {
+      console.log(`🎬 [${context.name}] 启动蓄力动画`);
+      return { chargingAnimationStarted: true };
+    },
+  ),
+
+  启动咏唱动画: defineStage(
+    z.object({}),
+    z.object({ chantingAnimationStarted: z.boolean() }),
+    (context) => {
+      console.log(`🎬 [${context.name}] 启动咏唱动画`);
+      return { chantingAnimationStarted: true };
+    },
+  ),
+
+  启动发动动画: defineStage(
+    z.object({}),
+    z.object({ actionAnimationStarted: z.boolean() }),
+    (context) => {
+      console.log(`🎬 [${context.name}] 启动发动动画`);
+      return { actionAnimationStarted: true };
+    },
+  ),
+
+  调度前摇结束事件: defineStage(
+    z.object({}),
+    z.object({ startupEventScheduled: z.boolean() }),
+    (context) => {
+      const frames = Math.max(1, Math.ceil(context.currentSkillStartupFrames ?? 0));
+      scheduleFsmEvent(context, frames, "收到前摇结束通知", "event.startup.schedule");
+      return { startupEventScheduled: true };
+    },
+  ),
+
+  调度蓄力结束事件: defineStage(
+    z.object({}),
+    z.object({ chargingEventScheduled: z.boolean() }),
+    (context) => {
+      const frames = Math.max(1, Math.ceil(context.currentSkillChargingFrames ?? 0));
+      scheduleFsmEvent(context, frames, "收到蓄力结束通知", "event.charging.schedule");
+      return { chargingEventScheduled: true };
+    },
+  ),
+
+  调度咏唱结束事件: defineStage(
+    z.object({}),
+    z.object({ chantingEventScheduled: z.boolean() }),
+    (context) => {
+      const frames = Math.max(1, Math.ceil(context.currentSkillChantingFrames ?? 0));
+      scheduleFsmEvent(context, frames, "收到咏唱结束通知", "event.chanting.schedule");
+      return { chantingEventScheduled: true };
+    },
+  ),
+
+  调度发动结束事件: defineStage(
+    z.object({}),
+    z.object({ actionEventScheduled: z.boolean() }),
+    (context) => {
+      const frames = Math.max(1, Math.ceil(context.currentSkillActionFrames ?? 0));
+      scheduleFsmEvent(context, frames, "收到发动结束通知", "event.action.schedule");
+      return { actionEventScheduled: true };
     },
   ),
 } as const satisfies StagePool<PlayerStateContext>;
@@ -175,7 +309,7 @@ export const playerPipDef = {
     "前摇比例计算",
     "前摇帧数计算",
   ],
-  "skill.effect.apply": [],
+  "skill.effect.apply": ["技能效果应用"],
 
   // ============ 战斗相关管线 ============
   "combat.hit.calculate": [],
@@ -185,19 +319,19 @@ export const playerPipDef = {
   // ============ 动画和状态管理（无阶段，纯副作用）============
   "animation.idle.start": [],
   "animation.move.start": [],
-  "animation.startup.start": [],
-  "animation.charging.start": [],
-  "animation.chanting.start": [],
-  "animation.action.start": [],
+  "animation.startup.start": ["启动前摇动画"],
+  "animation.charging.start": ["启动蓄力动画"],
+  "animation.chanting.start": ["启动咏唱动画"],
+  "animation.action.start": ["启动发动动画"],
   "animation.controlled.start": [],
 
   // ============ 事件和通知管理 ============
   "event.warning.show": [],
   "event.warning.schedule": [],
-  "event.startup.schedule": [],
-  "event.charging.schedule": [],
-  "event.chanting.schedule": [],
-  "event.action.schedule": [],
+  "event.startup.schedule": ["调度前摇结束事件"],
+  "event.charging.schedule": ["调度蓄力结束事件"],
+  "event.chanting.schedule": ["调度咏唱结束事件"],
+  "event.action.schedule": ["调度发动结束事件"],
   "event.snapshot.request": [],
   "event.snapshot.respond": [],
   "event.hit.notify": [],
