@@ -56,7 +56,7 @@ export class RunPipeline extends Node {
       // 更新 context（因为管线可能修改了 context）
       Object.assign(owner, result.ctx);
 
-      console.log(`✅ [RunPipeline] 管线执行成功: ${pipelineName}`);
+      // console.log(`✅ [RunPipeline] 管线执行成功: ${pipelineName}`);
       return "success";
     } catch (error) {
       console.error(`❌ [RunPipeline] 管线执行失败: ${pipelineName}`, error);

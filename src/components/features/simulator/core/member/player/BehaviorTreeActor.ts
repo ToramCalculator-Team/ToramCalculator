@@ -57,7 +57,7 @@ function createSkillExecutionTree(
   // 🔧 开发调试：强制使用测试技能
   let effectiveSkillEffect = skillEffect;
   if (FORCE_TEST_SKILL) {
-    console.log(`🧪 [${owner.name}] 强制使用测试技能：魔法炮`);
+    console.log(`🧪 [${owner.name}] 强制使用测试技能`);
     effectiveSkillEffect = magicCannonSkillEffect as typeof skillEffect;
   }
 
@@ -72,10 +72,6 @@ function createSkillExecutionTree(
         typeof effectiveSkillEffect.logic === "string"
           ? JSON.parse(effectiveSkillEffect.logic)
           : effectiveSkillEffect.logic;
-
-      console.log(`🔍 [${owner.name}] logic 字段类型:`, typeof effectiveSkillEffect.logic);
-      console.log(`🔍 [${owner.name}] logicData 类型:`, typeof logicData);
-      console.log(`🔍 [${owner.name}] logicData 是否有 root:`, logicData && typeof logicData === "object" && "root" in logicData);
 
       if (logicData && typeof logicData === "object" && logicData.root) {
         // 使用固定的路径标识符，确保缓存键匹配
@@ -146,9 +142,7 @@ export const behaviorTreeActor = fromCallback(({ input, sendBack, receive }: {
 
   // 2. 初始化完成后立即执行一次 tick，将状态从初始的 "success" 改为 "running"
   try {
-    console.log(`🌳 [${input.owner.name}] 初始化后立即执行首次 tick...`);
     const initialStatus = tree.tick();
-    console.log(`🌳 [${input.owner.name}] 首次 tick 完成，状态: ${initialStatus}`);
   } catch (error) {
     console.error(`❌ [${input.owner.name}] 首次 tick 执行出错:`, error);
     tree.interrupt();

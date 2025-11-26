@@ -234,25 +234,16 @@ export const playerStateMachine = (player: Player) => {
         if (context.engine.postRenderMessage) {
           // 首选方案：使用引擎提供的统一渲染消息接口
           // 这个方法会通过 Simulation.worker 的 MessagePort 将指令发送到主线程
-          console.log(`👤 [${context.name}] 发送渲染指令`, spawnCmd);
           context.engine.postRenderMessage(spawnCmd);
         } else {
           // 如果引擎的渲染消息接口不可用，记录错误但不使用fallback
           // 这确保我们只使用正确的通信通道，避免依赖全局变量
           console.error(`👤 [${context.name}] 无法发送渲染指令：引擎渲染消息接口不可用`);
         }
-        
-        // 初始化所有技能冷却
-        const res = context.pipelineManager.run("skillCooldown.init", context, {});
-        const skillCooldowns = res.stageOutputs.技能冷却初始化.skillCooldownResult;
-        enqueue.assign({
-          skillCooldowns: () => skillCooldowns,
-        });
-        console.log(`👤 [${context.name}] 技能冷却初始化完成`, skillCooldowns);
       }),
       更新玩家状态: enqueueActions(({ context, event, enqueue }) => {
         enqueue.assign({
-          currentFrame: ({ context }) => context.currentFrame + 1,
+          currentFrame: context.currentFrame + 1,
         });
       }),
       启用站立动画: function ({ context, event }) {
@@ -787,25 +778,8 @@ export const playerStateMachine = (player: Player) => {
       currentSkillChargingFrames: 0,
       currentSkillChantingFrames: 0,
       currentSkillActionFrames: 0,
-      // 默认第一个机体，如果没有技能则使用测试技能
-      skillList: (() => {
-        const skills = player.data.player?.characters?.[0]?.skills ?? [];
-        // 如果没有技能，注入测试技能
-        if (skills.length === 0) {
-          console.log(`🧪 [${player.name}] 未找到技能，注入测试技能：魔法炮`);
-          return [createTestSkillData()];
-        }
-        return skills;
-      })(),
-      // 默认第一个机体，如果没有技能则使用测试技能
-      skillCooldowns: (() => {
-        const skills = player.data.player?.characters?.[0]?.skills ?? [];
-        // 如果没有技能，注入测试技能
-        if (skills.length === 0) {
-          return [0]; // 测试技能冷却
-        }
-        return skills.map((s) => 0);
-      })(),
+      skillList: player.data.player?.characters?.[0]?.skills ?? [],
+      skillCooldowns: player.data.player?.characters?.[0]?.skills.map((s) => 0) ?? [],
       currentSkillEffect: null,
       currentSkillIndex: 0,
       skillStartFrame: 0,
