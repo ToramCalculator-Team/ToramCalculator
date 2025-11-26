@@ -19,7 +19,6 @@ export const FormGroup = () => {
   const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
 
   const formDatas = createMemo(() => {
-    console.log(store.pages.formGroup.length);
     return store.pages.formGroup.map(({ data }) => data);
   });
 

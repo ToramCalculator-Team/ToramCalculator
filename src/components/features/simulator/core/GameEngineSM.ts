@@ -81,7 +81,6 @@ export const GameEngineSM = setup({
       try {
         // worker 内部执行引擎初始化逻辑（不启动）
         if (event.type === "INIT" && event.data) {
-          console.log(`[${prefix}] GameEngineSM: doInit - 开始初始化引擎`, event.data);
           context.engine?.initialize(event.data);
           console.log(`[${prefix}] GameEngineSM: doInit - 引擎初始化完成`);
         } else {

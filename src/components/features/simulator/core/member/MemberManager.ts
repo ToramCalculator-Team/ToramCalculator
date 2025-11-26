@@ -29,7 +29,7 @@ import { NestedSchema } from "../dataSys/SchemaTypes";
 
 // ============================== 类型定义 ==============================
 
-export type AnyMemberEntry = Member<string, any, any, any>;
+export type AnyMemberEntry = Member<string, any, any, any, any>;
 
 /**
  * 成员管理条目
@@ -114,7 +114,7 @@ export class MemberManager {
           const player = new Player(this.engine, memberData, campId, teamId, memberData.id, schema, position);
           const success = this.registerMember(player, campId, teamId, memberData);
           if (success) {
-            // console.log(`✅ 创建并注册玩家成功: ${memberData.name} (${memberData.type})`);
+            console.log(`✅ 创建并注册玩家成功: ${memberData.name} (${memberData.type})`);
             return player.actor;
           } else {
             // 注册失败：不与 actor 交互，直接返回
@@ -128,7 +128,7 @@ export class MemberManager {
           const mob = new Mob(this.engine, memberData, campId, teamId, memberData.id, schema, position);
           const success = this.registerMember(mob, campId, teamId, memberData);
             if (success) {
-              // console.log(`✅ 创建并注册怪物成功: ${memberData.name} (${memberData.type})`);
+              console.log(`✅ 创建并注册怪物成功: ${memberData.name} (${memberData.type})`);
               return mob.actor;
             } else {
               // 注册失败：不与 actor 交互，直接返回
@@ -163,7 +163,7 @@ export class MemberManager {
     memberData: MemberWithRelations,
   ): boolean {
     this.members.set(memberData.id, member);
-    console.log(`📝 注册成员: ${memberData.name} (${memberData.type}) -> ${campId}/${teamId}`);
+    // console.log(`📝 注册成员: ${memberData.name} (${memberData.type}) -> ${campId}/${teamId}`);
 
     // 维护阵营/队伍索引
     if (!this.membersByCamp.has(campId)) {

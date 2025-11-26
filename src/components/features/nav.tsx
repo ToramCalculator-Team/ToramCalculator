@@ -102,7 +102,7 @@ export const Nav = () => {
       onMouseEnter={() => setDisplay(true)}
       onMouseLeave={() => setDisplay(false)}
       transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-      class={`Nav z-50 w-dvw py-2 landscape:h-dvh landscape:w-24 ${display() ? "lg:landscape:bg-area-color lg:landscape:w-24" : "lg:landscape:w-px lg:landscape:bg-transparent"} landscape:fixed landscape:top-0 landscape:left-0 landscape:py-5 lg:landscape:flex lg:landscape:flex-col lg:landscape:items-center`}
+      class={`Nav z-50 w-dvw py-2 landscape:h-dvh landscape:w-24 ${display() ? "lg:landscape:bg-area-color lg:landscape:w-24" : "lg:landscape:w-px lg:landscape:bg-transparent"} landscape:fixed lg:landscape:static landscape:top-0 landscape:left-0 landscape:py-5 lg:landscape:flex lg:landscape:flex-col lg:landscape:items-center`}
     >
       <div
         class={`Content flex ${display() ? "lg:landscape:opacity-100" : "lg:landscape:opacity-0"} h-full w-full items-center landscape:flex-col landscape:gap-2 lg:landscape:gap-8 lg:landscape:w-fit`}

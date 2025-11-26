@@ -1,2 +1,222 @@
 id,condition,elementLogic,castingRange,effectiveRange,motionFixed,motionModified,chantingFixed,chantingModified,reservoirFixed,reservoirModified,startupFrames,hpCost,mpCost,description,logic,details,belongToskillId
 defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.3,0,100,null,"{""blocks"": {""blocks"": [{""x"": -862, ""y"": -362, ""id"": ""BsFK8,PgtaH0SXb489F8"", ""type"": ""procedures_defreturn"", ""icons"": {""comment"": {""text"": ""计算造成的伤害"", ""width"": 160, ""height"": 80, ""pinned"": false}}, ""fields"": {""NAME"": ""damage""}, ""inputs"": {""STACK"": {""block"": {""id"": ""d/bYO7aebJS*d7.6v2a,"", ""next"": {""block"": {""id"": ""xymw`J-y{BC:D_5Zub5o"", ""next"": {""block"": {""id"": ""S0X^|[.-I(c(`q+V?p28"", ""type"": ""variables_set"", ""fields"": {""VAR"": {""id"": ""pR-IaEy4u/vWANDxMJ7y""}}, ""inputs"": {""VALUE"": {""block"": {""id"": ""Pd;UdKH+e}75;gyCz3Se"", ""type"": ""math_number"", ""fields"": {""NUM"": 1.5}}}}}}, ""type"": ""variables_set"", ""fields"": {""VAR"": {""id"": ""J$32)pec.ld]-pBeF}6p""}}, ""inputs"": {""VALUE"": {""block"": {""id"": ""#*h~8~TrncsmYL9ulnj4"", ""type"": ""math_number"", ""fields"": {""NUM"": 100}}}}}}, ""type"": ""variables_set"", ""fields"": {""VAR"": {""id"": ""kO;W!3)w+UcU(lzFWG7$""}}, ""inputs"": {""VALUE"": {""block"": {""id"": ""X2a^WWS=bs^%4T2rnu!V"", ""type"": ""math_arithmetic"", ""fields"": {""OP"": ""MINUS""}, ""inputs"": {""A"": {""block"": {""id"": ""{*s0Hct/FYP/$E?*$*g~"", ""type"": ""math_arithmetic"", ""fields"": {""OP"": ""MULTIPLY""}, ""inputs"": {""A"": {""block"": {""id"": ""preD1=76yFA?M*zGxi.*"", ""type"": ""math_arithmetic"", ""fields"": {""OP"": ""ADD""}, ""inputs"": {""A"": {""block"": {""id"": ""%jxOwJE`rim?}{jbBiR%"", ""type"": ""self_attribute_get"", ""fields"": {""ATTRIBUTE_PATH"": ""lv""}}, ""shadow"": {""id"": ""4D;1EzrIJMsje)BNWl`z"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}, ""B"": {""block"": {""id"": ""^ea1qsj:^;9ICv%pW[lL"", ""type"": ""self_attribute_get"", ""fields"": {""ATTRIBUTE_PATH"": ""lv""}}, ""shadow"": {""id"": ""MZ^XP1q^Iu*!3qHQ`W(6"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}}}, ""shadow"": {""id"": ""SngsU_N`wxr)]%=~pIH;"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}, ""B"": {""block"": {""id"": ""o]MWU6[DSr^ZTwA1k,ZB"", ""type"": ""math_arithmetic"", ""fields"": {""OP"": ""MINUS""}, ""inputs"": {""A"": {""shadow"": {""id"": ""E**I@~p=!ec-nk+^mX*m"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}, ""B"": {""block"": {""id"": ""9HW?59Wu=oc#;0XKyFUI"", ""type"": ""target_attribute_get"", ""fields"": {""ATTRIBUTE_PATH"": ""red.p""}}, ""shadow"": {""id"": ""t^$#PTs4@OV.o#NTOe{Y"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}}}, ""shadow"": {""id"": ""D~_~349~Y6=E7H4.Qi=X"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}}}, ""shadow"": {""id"": ""ac4D1.z4mL^DWJ5T|V]z"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}, ""B"": {""block"": {""id"": ""3*_o:]t).b=-gNrNv;if"", ""type"": ""math_arithmetic"", ""fields"": {""OP"": ""MULTIPLY""}, ""inputs"": {""A"": {""block"": {""id"": ""WflYRG(MwZMtKmsH(A@+"", ""type"": ""target_attribute_get"", ""fields"": {""ATTRIBUTE_PATH"": ""def.p""}}, ""shadow"": {""id"": ""*T^@olOCxW:ZL$}b}-|`"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}, ""B"": {""block"": {""id"": ""yrPfne,W-J1A4$o7?%Oh"", ""type"": ""math_arithmetic"", ""fields"": {""OP"": ""MINUS""}, ""inputs"": {""A"": {""shadow"": {""id"": ""+W}:0eBpJnShUNssZx,L"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}, ""B"": {""block"": {""id"": ""5grY9W3gy.@(nc[-BKeo"", ""type"": ""self_attribute_get"", ""fields"": {""ATTRIBUTE_PATH"": ""pie.p""}}, ""shadow"": {""id"": ""Kq~CywB+F$}w{}-=_b[C"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}}}, ""shadow"": {""id"": ""0m[1AGtLp%:A6a:wbW5h"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}}}, ""shadow"": {""id"": ""TL1-%.[z3.YPU_:A`,Ut"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}}}}}}}, ""RETURN"": {""block"": {""id"": ""GWrJf;Ni=LAXngY}B;*g"", ""type"": ""math_arithmetic"", ""fields"": {""OP"": ""MULTIPLY""}, ""inputs"": {""A"": {""block"": {""id"": ""|nhzW~H)FssK~+?Y`^rv"", ""type"": ""math_arithmetic"", ""fields"": {""OP"": ""ADD""}, ""inputs"": {""A"": {""block"": {""id"": ""t1UJX{xUatZpB@g,O1(|"", ""type"": ""variables_get"", ""fields"": {""VAR"": {""id"": ""kO;W!3)w+UcU(lzFWG7$""}}}, ""shadow"": {""id"": ""Tp6mO+qw=m.]B667.9;^"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}, ""B"": {""block"": {""id"": ""(GM$$R;M{3U@sl2s|#Gg"", ""type"": ""variables_get"", ""fields"": {""VAR"": {""id"": ""J$32)pec.ld]-pBeF}6p""}}}, ""shadow"": {""id"": ""qA_g0)L/Z!9l7UR_eyH$"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}}}, ""shadow"": {""id"": ""MhqU(4({s+P|jl2l-uH^"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}, ""B"": {""block"": {""id"": ""qh}$fVg.XemQik|xfa:9"", ""type"": ""variables_get"", ""fields"": {""VAR"": {""id"": ""pR-IaEy4u/vWANDxMJ7y""}}}, ""shadow"": {""id"": ""yk({j-.lFWCxg%hGtBPc"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}}}}}}, {""x"": -862, ""y"": -137, ""id"": ""0wT{TqcDskB[2_Ono6*}"", ""type"": ""procedures_defreturn"", ""icons"": {""comment"": {""text"": ""判断是否命中"", ""width"": 160, ""height"": 80, ""pinned"": false}}, ""fields"": {""NAME"": ""isHit""}, ""inputs"": {""STACK"": {""block"": {""id"": ""My=KQr4.cs[o1wmSkPX!"", ""type"": ""variables_set"", ""fields"": {""VAR"": {""id"": "")dzOA60J@jO+kK}nMBnY""}}, ""inputs"": {""VALUE"": {""block"": {""id"": ""Hnf|9zs+t_;$Z,]a[5^c"", ""type"": ""math_arithmetic"", ""fields"": {""OP"": ""ADD""}, ""inputs"": {""A"": {""shadow"": {""id"": ""u#dL^vmObMy!t_avbqzc"", ""type"": ""math_number"", ""fields"": {""NUM"": 100}}}, ""B"": {""block"": {""id"": ""nC,eYM{-$l[/E]3ty3PZ"", ""type"": ""math_arithmetic"", ""fields"": {""OP"": ""DIVIDE""}, ""inputs"": {""A"": {""block"": {""id"": ""~z+cx?pDx`O=2sD.#wN."", ""type"": ""math_arithmetic"", ""fields"": {""OP"": ""ADD""}, ""inputs"": {""A"": {""block"": {""id"": ""R_p%Fe}[BYu7JqvvGs]5"", ""type"": ""math_arithmetic"", ""fields"": {""OP"": ""MINUS""}, ""inputs"": {""A"": {""block"": {""id"": ""InRj[4^YXXC172+X{T|}"", ""type"": ""self_attribute_get"", ""fields"": {""ATTRIBUTE_PATH"": ""accuracy""}}, ""shadow"": {""id"": ""?Ff:($/+iC|6hRVZhX#)"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}, ""B"": {""block"": {""id"": ""cJRIc[BvH6F1);(TV3xS"", ""type"": ""target_attribute_get"", ""fields"": {""ATTRIBUTE_PATH"": ""avoid""}}, ""shadow"": {""id"": ""=(3FacAw56/ziw__}[VF"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}}}, ""shadow"": {""id"": ""yv^6[.5(6=gcW,I7t!gy"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}, ""B"": {""block"": {""id"": ""xOi%wbrHo1)}#e-tAX`,"", ""type"": ""variables_get"", ""fields"": {""VAR"": {""id"": ""TK@G4W;!TLu3We:/}flf""}}}, ""shadow"": {""id"": ""c(cKFgUUCO-p]WRp%u`l"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}}}, ""shadow"": {""id"": ""5[FfW;+iAw]V/}K3F*kh"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}, ""B"": {""shadow"": {""id"": ""bDf?Z*UcJIYV}IF?7m^h"", ""type"": ""math_number"", ""fields"": {""NUM"": 3}}}}}, ""shadow"": {""id"": ""oi`2*QiXe|kK2i%Uk,:2"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}}}}}}}, ""RETURN"": {""block"": {""id"": ""T,(VO]3s*_;OGGPg7[~z"", ""type"": ""logic_compare"", ""fields"": {""OP"": ""GT""}, ""inputs"": {""A"": {""block"": {""id"": ""$U0-L1xA]9O13m2,.+O]"", ""type"": ""math_random_int"", ""inputs"": {""TO"": {""shadow"": {""id"": ""qRoz7V33N/)$k[ebZh!L"", ""type"": ""math_number"", ""fields"": {""NUM"": 100}}}, ""FROM"": {""shadow"": {""id"": ""m:_JD15%Y7$wRy}sZ2dR"", ""type"": ""math_number"", ""fields"": {""NUM"": 1}}}}}}, ""B"": {""block"": {""id"": ""|p/j]zZ28V_xbj`vcB[6"", ""type"": ""variables_get"", ""fields"": {""VAR"": {""id"": "")dzOA60J@jO+kK}nMBnY""}}}}}}}}}, {""x"": -862, ""y"": 38, ""id"": ""39FakA;Z=QWG])gI#AhB"", ""type"": ""procedures_defnoreturn"", ""icons"": {""comment"": {""text"": ""描述该功能..."", ""width"": 160, ""height"": 80, ""pinned"": false}}, ""fields"": {""NAME"": ""main""}, ""inputs"": {""STACK"": {""block"": {""id"": ""OM]x4`yeI2:+sAf|8{zZ"", ""type"": ""controls_if"", ""inputs"": {""DO0"": {""block"": {""id"": ""j{[yAku{oN0zUBi0.$6}"", ""type"": ""controls_if"", ""inputs"": {""DO0"": {""block"": {""id"": ""{l]B)^@ny2VOA;T)ACfZ"", ""type"": ""target_attribute_fixed"", ""fields"": {""OPERATION"": ""SUBTRACT"", ""ATTRIBUTE_PATH"": ""hp.current""}, ""inputs"": {""VALUE"": {""block"": {""id"": ""p:GkKW0n7TK.j!UXNnv0"", ""type"": ""procedures_callreturn"", ""extraState"": {""name"": ""damage""}}}}}}, ""IF0"": {""block"": {""id"": ""3_%+376ozzFk;iqIc/|F"", ""type"": ""logic_compare"", ""fields"": {""OP"": ""EQ""}, ""inputs"": {""A"": {""block"": {""id"": ""KWVH;*nO,OW|CP{l^CFt"", ""type"": ""procedures_callreturn"", ""extraState"": {""name"": ""isHit""}}}, ""B"": {""block"": {""id"": ""qqz;)I@y5{L5GO,yj$$y"", ""type"": ""logic_boolean"", ""fields"": {""BOOL"": ""TRUE""}}}}}}}}}, ""IF0"": {""block"": {""id"": ""`%{SVyvl,5cN$uI#utoN"", ""type"": ""logic_compare"", ""fields"": {""OP"": ""GT""}, ""inputs"": {""A"": {""block"": {""id"": ""X%W(4h:!6QnQB7B.q}"", ""type"": ""self_attribute_get"", ""fields"": {""ATTRIBUTE_PATH"": ""hp.current""}}}, ""B"": {""block"": {""id"": ""x==XqRuLFY0W0A7Q]D1x"", ""type"": ""variables_get"", ""fields"": {""VAR"": {""id"": ""TK@G4W;!TLu3We:/}flf""}}}}}}}}}}}}, {""x"": -1137, ""y"": -362, ""id"": ""CQCS{{D=_gdcW`5FOf8A"", ""type"": ""variables_set"", ""fields"": {""VAR"": {""id"": ""TK@G4W;!TLu3We:/}flf""}}, ""inputs"": {""VALUE"": {""block"": {""id"": ""mQ2ZY1A/x|_jx-uUSd8N"", ""type"": ""math_number"", ""fields"": {""NUM"": 100}}}}}, {""x"": -1287, ""y"": -137, ""id"": ""~hPsT=gLSi_F#1*xh?I*"", ""type"": ""procedures_callnoreturn"", ""extraState"": {""name"": ""main""}}], ""languageVersion"": 0}, ""variables"": [{""id"": ""kO;W!3)w+UcU(lzFWG7$"", ""name"": ""有效攻击力""}, {""id"": ""J$32)pec.ld]-pBeF}6p"", ""name"": ""技能常数""}, {""id"": ""pR-IaEy4u/vWANDxMJ7y"", ""name"": ""技能倍率""}, {""id"": "")dzOA60J@jO+kK}nMBnY"", ""name"": ""实际命中率""}, {""id"": ""TK@G4W;!TLu3We:/}flf"", ""name"": ""技能MP消耗""}, {""id"": ""M$MiLF!ZK+//D#C%!C7m"", ""name"": ""伤害量""}]}",null,defaultSkillId
+MagicCannonEffect1Id,true,mainWeapon.element,999,3,13,48,0,0,0,0,0.3,0,0,魔法炮充能/释放逻辑，通过行为树实现。,"{
+  ""name"": ""skill-execution-template"",
+  ""desc"": ""通用技能执行行为树模板"",
+  ""root"": {
+    ""id"": 1,
+    ""name"": ""Sequence"",
+    ""desc"": ""技能执行主流程"",
+    ""children"": [
+      {
+        ""id"": 2,
+        ""name"": ""RunPipeline"",
+        ""desc"": ""计算技能消耗"",
+        ""args"": {
+          ""pipelineName"": ""skill.cost.calculate""
+        }
+      },
+      {
+        ""id"": 4,
+        ""name"": ""RunPipeline"",
+        ""desc"": ""计算技能动作时长"",
+        ""args"": {
+          ""pipelineName"": ""skill.motion.calculate""
+        }
+      },
+      {
+        ""id"": 6,
+        ""name"": ""IfElse"",
+        ""desc"": ""前摇阶段（如果存在）"",
+        ""children"": [
+          {
+            ""id"": 7,
+            ""name"": ""Check"",
+            ""desc"": ""检查是否存在前摇"",
+            ""args"": {
+              ""value"": ""currentSkillStartupFrames > 0""
+            }
+          },
+          {
+            ""id"": 8,
+            ""name"": ""Sequence"",
+            ""desc"": ""执行前摇阶段"",
+            ""children"": [
+              {
+                ""id"": 9,
+                ""name"": ""RunPipeline"",
+                ""desc"": ""启动前摇动画"",
+                ""args"": {
+                  ""pipelineName"": ""animation.startup.start""
+                }
+              },
+              {
+                ""id"": 10,
+                ""name"": ""RunPipeline"",
+                ""desc"": ""调度前摇结束事件"",
+                ""args"": {
+                  ""pipelineName"": ""event.startup.schedule""
+                }
+              },
+              {
+                ""id"": 11,
+                ""name"": ""WaitForEvent"",
+                ""desc"": ""等待前摇结束通知"",
+                ""args"": {
+                  ""event"": ""收到前摇结束通知""
+                }
+              }
+            ]
+          },
+          {
+            ""id"": 12,
+            ""name"": ""JustSuccess"",
+            ""desc"": ""跳过前摇阶段""
+          }
+        ]
+      },
+      {
+        ""id"": 13,
+        ""name"": ""IfElse"",
+        ""desc"": ""蓄力阶段（如果存在）"",
+        ""children"": [
+          {
+            ""id"": 14,
+            ""name"": ""Check"",
+            ""desc"": ""检查是否存在蓄力"",
+            ""args"": {
+              ""value"": ""currentSkillChargingFrames > 0""
+            }
+          },
+          {
+            ""id"": 15,
+            ""name"": ""Sequence"",
+            ""desc"": ""执行蓄力阶段"",
+            ""children"": [
+              {
+                ""id"": 16,
+                ""name"": ""RunPipeline"",
+                ""desc"": ""启动蓄力动画"",
+                ""args"": {
+                  ""pipelineName"": ""animation.charging.start""
+                }
+              },
+              {
+                ""id"": 17,
+                ""name"": ""RunPipeline"",
+                ""desc"": ""调度蓄力结束事件"",
+                ""args"": {
+                  ""pipelineName"": ""event.charging.schedule""
+                }
+              },
+              {
+                ""id"": 18,
+                ""name"": ""WaitForEvent"",
+                ""desc"": ""等待蓄力结束通知"",
+                ""args"": {
+                  ""event"": ""收到蓄力结束通知""
+                }
+              }
+            ]
+          },
+          {
+            ""id"": 19,
+            ""name"": ""JustSuccess"",
+            ""desc"": ""跳过蓄力阶段""
+          }
+        ]
+      },
+      {
+        ""id"": 20,
+        ""name"": ""IfElse"",
+        ""desc"": ""咏唱阶段（如果存在）"",
+        ""children"": [
+          {
+            ""id"": 21,
+            ""name"": ""Check"",
+            ""desc"": ""检查是否存在咏唱"",
+            ""args"": {
+              ""value"": ""currentSkillChantingFrames > 0""
+            }
+          },
+          {
+            ""id"": 22,
+            ""name"": ""Sequence"",
+            ""desc"": ""执行咏唱阶段"",
+            ""children"": [
+              {
+                ""id"": 23,
+                ""name"": ""RunPipeline"",
+                ""desc"": ""启动咏唱动画"",
+                ""args"": {
+                  ""pipelineName"": ""animation.chanting.start""
+                }
+              },
+              {
+                ""id"": 24,
+                ""name"": ""RunPipeline"",
+                ""desc"": ""调度咏唱结束事件"",
+                ""args"": {
+                  ""pipelineName"": ""event.chanting.schedule""
+                }
+              },
+              {
+                ""id"": 25,
+                ""name"": ""WaitForEvent"",
+                ""desc"": ""等待咏唱结束通知"",
+                ""args"": {
+                  ""event"": ""收到咏唱结束通知""
+                }
+              }
+            ]
+          },
+          {
+            ""id"": 26,
+            ""name"": ""JustSuccess"",
+            ""desc"": ""跳过咏唱阶段""
+          }
+        ]
+      },
+      {
+        ""id"": 27,
+        ""name"": ""Sequence"",
+        ""desc"": ""发动阶段"",
+        ""children"": [
+          {
+            ""id"": 28,
+            ""name"": ""RunPipeline"",
+            ""desc"": ""启动发动动画"",
+            ""args"": {
+              ""pipelineName"": ""animation.action.start""
+            }
+          },
+          {
+            ""id"": 29,
+            ""name"": ""RunPipeline"",
+            ""desc"": ""应用技能效果（执行技能 logic 行为树）"",
+            ""args"": {
+              ""pipelineName"": ""skill.effect.apply""
+            }
+          },
+          {
+            ""id"": 30,
+            ""name"": ""RunPipeline"",
+            ""desc"": ""调度发动结束事件"",
+            ""args"": {
+              ""pipelineName"": ""event.action.schedule""
+            }
+          },
+          {
+            ""id"": 31,
+            ""name"": ""WaitForEvent"",
+            ""desc"": ""等待发动结束通知"",
+            ""args"": {
+              ""event"": ""收到发动结束通知""
+            }
+          }
+        ]
+      }
+    ]
+  }
+}","logic 字段包含完整的行为树 JSON，使用数值枚举 (0=未设置, 1=charge, 2=release)",MagicCannonId
+test.magic_cannon.skill_effect,true,return ctx.elementOverride ?? 'Light';,10m,10,ctx.magicCannon?.phase == 1 ? 90 : 60,0,ctx.magicCannon?.phase == 1 ? 8000 : 0,0,0,0,ctx.magicCannon?.phase == 2 ? 30 : 0,,ctx.magicCannon?.phase == 1 && ctx.magicCannon?.hasGauge ? 700 : 0,魔法炮充能/释放逻辑，通过行为树实现。,"{""name"":""magic-cannon-logic"",""desc"":""魔法炮技能执行行为树（基于通用模板，在发动阶段使用 Switch 分支）"",""root"":{""id"":1,""name"":""Sequence"",""desc"":""技能执行主流程"",""children"":[{""id"":1,""name"":""Let"",""desc"":""初始化 magicCannon 对象"",""args"":{""value"":{""phase"":0,""stacks"":0,""hasGauge"":false}},""output"":[""magicCannon""]},{""id"":2,""name"":""RunPipeline"",""desc"":""计算技能消耗"",""args"":{""pipelineName"":""skill.cost.calculate""}},{""id"":4,""name"":""RunPipeline"",""desc"":""计算技能动作时长"",""args"":{""pipelineName"":""skill.motion.calculate""}},{""id"":6,""name"":""IfElse"",""desc"":""前摇阶段（如果存在）"",""children"":[{""id"":7,""name"":""Check"",""desc"":""检查是否存在前摇"",""args"":{""value"":""currentSkillStartupFrames > 0""}},{""id"":8,""name"":""Sequence"",""desc"":""执行前摇阶段"",""children"":[{""id"":9,""name"":""RunPipeline"",""desc"":""启动前摇动画"",""args"":{""pipelineName"":""animation.startup.start""}},{""id"":10,""name"":""RunPipeline"",""desc"":""调度前摇结束事件"",""args"":{""pipelineName"":""event.startup.schedule""}},{""id"":11,""name"":""WaitForEvent"",""desc"":""等待前摇结束通知"",""args"":{""event"":""收到前摇结束通知""}}]},{""id"":12,""name"":""JustSuccess"",""desc"":""跳过前摇阶段""}]},{""id"":13,""name"":""IfElse"",""desc"":""蓄力阶段（如果存在）"",""children"":[{""id"":14,""name"":""Check"",""desc"":""检查是否存在蓄力"",""args"":{""value"":""currentSkillChargingFrames > 0""}},{""id"":15,""name"":""Sequence"",""desc"":""执行蓄力阶段"",""children"":[{""id"":16,""name"":""RunPipeline"",""desc"":""启动蓄力动画"",""args"":{""pipelineName"":""animation.charging.start""}},{""id"":17,""name"":""RunPipeline"",""desc"":""调度蓄力结束事件"",""args"":{""pipelineName"":""event.charging.schedule""}},{""id"":18,""name"":""WaitForEvent"",""desc"":""等待蓄力结束通知"",""args"":{""event"":""收到蓄力结束通知""}}]},{""id"":19,""name"":""JustSuccess"",""desc"":""跳过蓄力阶段""}]},{""id"":20,""name"":""IfElse"",""desc"":""咏唱阶段（如果存在）"",""children"":[{""id"":21,""name"":""Check"",""desc"":""检查是否存在咏唱"",""args"":{""value"":""currentSkillChantingFrames > 0""}},{""id"":22,""name"":""Sequence"",""desc"":""执行咏唱阶段"",""children"":[{""id"":23,""name"":""RunPipeline"",""desc"":""启动咏唱动画"",""args"":{""pipelineName"":""animation.chanting.start""}},{""id"":24,""name"":""RunPipeline"",""desc"":""调度咏唱结束事件"",""args"":{""pipelineName"":""event.chanting.schedule""}},{""id"":25,""name"":""WaitForEvent"",""desc"":""等待咏唱结束事件"",""args"":{""event"":""收到咏唱结束事件""}}]},{""id"":26,""name"":""JustSuccess"",""desc"":""跳过咏唱阶段""}]},{""id"":27,""name"":""Sequence"",""desc"":""发动阶段"",""children"":[{""id"":28,""name"":""RunPipeline"",""desc"":""启动发动动画"",""args"":{""pipelineName"":""animation.action.start""}},{""id"":29,""name"":""RunPipeline"",""desc"":""应用技能效果"",""args"":{""pipelineName"":""skill.effect.apply""}},{""id"":30,""name"":""Sequence"",""desc"":""调试：显示当前 magicCannon 状态和 phase 值"",""children"":[{""id"":291,""name"":""GetField"",""args"":{""field"":""magicCannon""},""output"":[""magicCannonDebug""]},{""id"":292,""name"":""Log"",""args"":{""message"":""Switch 前：当前 magicCannon 状态"",""level"":""log""},""input"":[""magicCannonDebug""]},{""id"":293,""name"":""Calculate"",""args"":{""value"":""magicCannon?.phase != null ? magicCannon.phase : -1""},""output"":[""currentPhase""]},{""id"":294,""name"":""Log"",""args"":{""message"":""当前 phase 值（0=未设置, 1=charge, 2=release）"",""level"":""log""},""input"":[""currentPhase""]}]},{""id"":31,""name"":""Switch"",""desc"":""根据 phase 分支执行不同逻辑"",""children"":[{""id"":32,""name"":""Case"",""children"":[{""id"":33,""name"":""Check"",""args"":{""value"":""magicCannon?.phase == 1""}},{""id"":34,""name"":""Sequence"",""desc"":""充能阶段逻辑"",""children"":[{""id"":35,""name"":""Log"",""args"":{""message"":""魔法炮充能阶段开始"",""level"":""log""}},{""id"":36,""name"":""Sequence"",""desc"":""设置充能阶段"",""children"":[{""id"":361,""name"":""GetField"",""args"":{""field"":""magicCannon""},""output"":[""magicCannonObj""]},{""id"":362,""name"":""SetField"",""args"":{""field"":""phase"",""value"":1},""input"":[""magicCannonObj""]},{""id"":363,""name"":""SetField"",""args"":{""field"":""hasGauge"",""value"":true},""input"":[""magicCannonObj""]},{""id"":364,""name"":""Let"",""args"":{""value"":null},""input"":[""magicCannonObj""],""output"":[""magicCannon""]}]},{""id"":37,""name"":""Log"",""args"":{""message"":""充能完成，准备释放"",""level"":""log""}},{""id"":38,""name"":""Sequence"",""desc"":""调试：显示充能后的 magicCannon 状态"",""children"":[{""id"":381,""name"":""GetField"",""args"":{""field"":""magicCannon""},""output"":[""magicCannonAfterCharge""]},{""id"":382,""name"":""Log"",""args"":{""message"":""充能后 magicCannon 状态"",""level"":""log""},""input"":[""magicCannonAfterCharge""]}]}]}]},{""id"":39,""name"":""Case"",""children"":[{""id"":40,""name"":""Check"",""args"":{""value"":""magicCannon?.phase == 2""}},{""id"":41,""name"":""Sequence"",""desc"":""释放阶段逻辑"",""children"":[{""id"":42,""name"":""Log"",""args"":{""message"":""魔法炮释放阶段开始"",""level"":""log""}},{""id"":43,""name"":""Calculate"",""args"":{""value"":""(matkEff + 700 + 10 * (magicCannon?.stacks != null ? magicCannon.stacks : 0)) * (300 * (magicCannon?.stacks != null ? magicCannon.stacks : 0) + baseInt * Math.min(magicCannon?.stacks != null ? magicCannon.stacks : 0, 5))""},""output"":[""damage""]},{""id"":44,""name"":""Log"",""args"":{""message"":""计算伤害完成，伤害值"",""level"":""log""},""input"":[""damage""]},{""id"":45,""name"":""Sequence"",""desc"":""调试：显示释放时的 magicCannon 状态"",""children"":[{""id"":451,""name"":""GetField"",""args"":{""field"":""magicCannon""},""output"":[""magicCannonRelease""]},{""id"":452,""name"":""Log"",""args"":{""message"":""释放时 magicCannon 状态（stacks, phase）"",""level"":""log""},""input"":[""magicCannonRelease""]}]}]}]},{""id"":46,""name"":""Case"",""children"":[{""id"":47,""name"":""AlwaysSuccess"",""children"":[{""id"":48,""name"":""Sequence"",""desc"":""调试：显示默认分支的 magicCannon 状态"",""children"":[{""id"":481,""name"":""GetField"",""args"":{""field"":""magicCannon""},""output"":[""magicCannonDefault""]},{""id"":482,""name"":""Log"",""args"":{""message"":""魔法炮：phase 未设置，使用默认逻辑。当前 magicCannon 状态"",""level"":""warn""},""input"":[""magicCannonDefault""]}]}]}]}]},{""id"":49,""name"":""RunPipeline"",""desc"":""调度发动结束事件"",""args"":{""pipelineName"":""event.action.schedule""}},{""id"":50,""name"":""WaitForEvent"",""desc"":""等待发动结束通知"",""args"":{""event"":""收到发动结束通知""}}]}]}}","logic 字段包含完整的行为树 JSON，使用数值枚举 (0=未设置, 1=charge, 2=release)，包含调试日志",test.magic_cannon.skill

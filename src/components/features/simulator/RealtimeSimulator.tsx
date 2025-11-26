@@ -411,7 +411,7 @@ export default function RealtimeSimulator(props: RealtimeSimulatorProps) {
         <ControlPanel
           engineActor={controller.engineActor}
           onStart={() => {
-            allowMouseControl();
+            // allowMouseControl();
             controller.startSimulation()
           }}
           onReset={() => controller.resetSimulation()}
@@ -451,7 +451,7 @@ export default function RealtimeSimulator(props: RealtimeSimulatorProps) {
       {/* 背景游戏视图显示 */}
       <Portal>
         <div class="fixed top-0 left-0 -z-1 h-dvh w-dvw">
-          <GameView followEntityId={controller.selectedMemberId[0]() || undefined} />
+          {/* <GameView followEntityId={controller.selectedMemberId[0]() || undefined} /> */}
         </div>
       </Portal>
     </div>

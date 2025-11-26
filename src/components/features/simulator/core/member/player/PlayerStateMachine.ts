@@ -1,4 +1,4 @@
-import { assign, enqueueActions, EventObject, setup } from "xstate";
+import { assign, enqueueActions, EventObject, setup, sendTo } from "xstate";
 import type { ActionFunction } from "xstate";
 import type { GuardPredicate } from "xstate/guards";
 import { createId } from "@paralleldrive/cuid2";
@@ -12,9 +12,7 @@ import { MemberType } from "@db/schema/enums";
 import { CharacterWithRelations } from "@db/generated/repositories/character";
 import { PipelineManager } from "../../pipeline/PipelineManager";
 import { playerPipDef, PlayerPipelineDef, PlayerStagePool } from "./PlayerPipelines";
-import { PlayerBehaviorContext } from "./PlayerBehaviorContext";
-import { Tree, type TreeData } from "~/lib/behavior3/tree";
-import skillExecutionTemplate from "./behaviorTree/skillExecutionTemplate.json";
+import { behaviorTreeActor, type BehaviorTreeInput } from "./BehaviorTreeActor";
 import { createTestSkillData } from "./testSkills";
 
 /**
@@ -206,8 +204,6 @@ export interface PlayerStateContext extends MemberStateContextBase {
   aggro: number;
   /** 机体配置信息 */
   character: CharacterWithRelations;
-  /** 当前执行的技能行为树 */
-  skillExecutionTree: Tree<PlayerBehaviorContext, PlayerStateContext> | null;
 }
 
 export const playerStateMachine = (player: Player) => {
@@ -248,10 +244,11 @@ export const playerStateMachine = (player: Player) => {
         
         // 初始化所有技能冷却
         const res = context.pipelineManager.run("skillCooldown.init", context, {});
+        const skillCooldowns = res.stageOutputs.技能冷却初始化.skillCooldownResult;
         enqueue.assign({
-          skillCooldowns: res.stageOutputs.技能冷却初始化.skillCooldownResult,
+          skillCooldowns: () => skillCooldowns,
         });
-        console.log(`👤 [${context.name}] 技能冷却初始化完成`, context.skillCooldowns);
+        console.log(`👤 [${context.name}] 技能冷却初始化完成`, skillCooldowns);
       }),
       更新玩家状态: enqueueActions(({ context, event, enqueue }) => {
         enqueue.assign({
@@ -309,21 +306,21 @@ export const playerStateMachine = (player: Player) => {
         console.log(`👤 [${context.name}] 清空待处理技能`, event);
         context.currentSkill = null;
       },
-      添加待处理技能效果: assign({
-        currentSkillEffect: ({ context }) => {
-          const skillEffect = context.currentSkill?.template?.effects.find((e) =>
-            context.engine.evaluateExpression(e.condition, {
-              currentFrame: context.currentFrame,
-              casterId: context.id,
-              skillLv: context.currentSkill?.lv ?? 0,
-            }),
-          );
-          if (!skillEffect) {
-            console.error(`🎮 [${context.name}] 使用的技能${context.currentSkill?.template?.name}没有可用的效果`);
-            return null;
-          }
-          return skillEffect;
-        },
+      添加待处理技能效果: enqueueActions(({ context, enqueue }) => {
+        const skillEffect = context.currentSkill?.template?.effects.find((e) =>
+          context.engine.evaluateExpression(e.condition, {
+            currentFrame: context.currentFrame,
+            casterId: context.id,
+            skillLv: context.currentSkill?.lv ?? 0,
+          }),
+        );
+        if (!skillEffect) {
+          console.error(`🎮 [${context.name}] 使用的技能${context.currentSkill?.template?.name}没有可用的效果`);
+          return;
+        }
+        enqueue.assign({
+          currentSkillEffect: skillEffect,
+        });
       }),
       技能消耗扣除: enqueueActions(
         (
@@ -493,157 +490,6 @@ export const playerStateMachine = (player: Player) => {
         // ...
         console.log(`👤 [${context.name}] 技能效果管线`, event);
       },
-      初始化技能行为树: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 初始化技能行为树`);
-
-        // 创建行为树上下文
-        const behaviorContext = new PlayerBehaviorContext(context);
-
-        // 尝试从 skill_effect.logic 加载技能特定的行为树
-        let skillLogicTree: Tree<PlayerBehaviorContext, PlayerStateContext> | null = null;
-
-        if (context.currentSkillEffect?.logic) {
-          try {
-            // logic 可能是 JSON 对象或字符串
-            const logicData =
-              typeof context.currentSkillEffect.logic === "string"
-                ? JSON.parse(context.currentSkillEffect.logic)
-                : context.currentSkillEffect.logic;
-
-            if (logicData && typeof logicData === "object" && logicData.root) {
-              // 使用固定的路径标识符，确保缓存键匹配
-              const skillLogicPath = "skill_logic";
-              const treeDataWithName = {
-                ...logicData,
-                name: skillLogicPath, // 确保 name 与路径一致
-              } as TreeData;
-              
-              // 加载技能特定的行为树（会缓存到 skillLogicPath 键下）
-              // 注意：loadTree 虽然返回 Promise，但在传入 TreeData 时操作是同步的
-              behaviorContext.loadTree(treeDataWithName);
-              // 创建 Tree 实例，构造函数会从缓存中获取
-              skillLogicTree = new Tree(behaviorContext, context, skillLogicPath);
-            }
-          } catch (error) {
-            console.warn(
-              `⚠️ [${context.name}] 加载技能逻辑行为树失败，使用默认模板:`,
-              error,
-            );
-          }
-        }
-
-        // 如果没有技能特定逻辑，使用通用模板
-        if (!skillLogicTree) {
-          // 使用固定的路径标识符，确保缓存键匹配
-          const templatePath = "skill_execution_template";
-          const templateData = {
-            ...skillExecutionTemplate,
-            name: templatePath, // 确保 name 与路径一致
-          } as unknown as TreeData;
-          
-          // 加载通用模板（会缓存到 templatePath 键下）
-          // 注意：loadTree 虽然返回 Promise，但在传入 TreeData 时操作是同步的
-          behaviorContext.loadTree(templateData);
-          // 创建 Tree 实例，构造函数会从缓存中获取
-          skillLogicTree = new Tree(behaviorContext, context, templatePath);
-        }
-
-        // 将行为树保存到 context
-        // 注意：不需要单独保存 behaviorContext，可以通过 skillExecutionTree.context 访问
-        context.skillExecutionTree = skillLogicTree;
-
-        // 将 context 的属性同步到 blackboard，让行为树的表达式可以访问
-        // Blackboard.eval() 只能访问 _values 中的值，不能直接访问 owner 的属性
-        const blackboard = context.skillExecutionTree.blackboard;
-        blackboard.set("currentFrame", context.currentFrame);
-        blackboard.set("currentSkillStartupFrames", context.currentSkillStartupFrames);
-        blackboard.set("currentSkillChargingFrames", context.currentSkillChargingFrames);
-        blackboard.set("currentSkillChantingFrames", context.currentSkillChantingFrames);
-        blackboard.set("currentSkillActionFrames", context.currentSkillActionFrames);
-
-        console.log(`👤 [${context.name}] 技能行为树初始化完成`);
-
-        // 初始化完成后立即执行一次 tick，将状态从初始的 "success" 改为 "running"
-        // 这样后续的"更新"事件就能正常推进行为树了
-        try {
-          console.log(`🌳 [${context.name}] 初始化后立即执行首次 tick...`);
-          const initialStatus = context.skillExecutionTree.tick();
-          console.log(`🌳 [${context.name}] 首次 tick 完成，状态: ${initialStatus}`);
-        } catch (error) {
-          console.error(`❌ [${context.name}] 首次 tick 执行出错:`, error);
-          // 出错时中断行为树，避免无限循环
-          context.skillExecutionTree.interrupt();
-          throw error;
-        }
-      },
-      推进技能行为树: function ({ context, event }) {
-        if (!context.skillExecutionTree) {
-          console.warn(`⚠️ [${context.name}] 技能行为树未初始化，无法推进`);
-          return;
-        }
-
-        // 如果行为树已经完成或中断，不再推进
-        const treeStatus = context.skillExecutionTree.status;
-        if (treeStatus === "success" || treeStatus === "failure" || treeStatus === "interrupted") {
-          // 行为树已完成或中断，不再推进
-          return;
-        }
-
-        // 直接从引擎获取当前帧数，确保同步
-        // 注意：不能依赖 context.currentFrame，因为 assign 在 action 执行完成后才更新
-        const engineFrame = context.engine.getFrameLoop().getFrameNumber();
-        
-        // 同步更新 context.currentFrame 和行为树时间
-        // 这样确保三者（引擎帧、context帧、行为树时间）完全同步
-        context.currentFrame = engineFrame;
-        // 注意：PlayerBehaviorContext.time 是 getter，直接返回 owner.currentFrame
-        // 所以更新 context.currentFrame 后，行为树时间会自动同步
-
-        // 每帧推进行为树之前，同步 context 的属性到 blackboard
-        // Blackboard.eval() 只能访问 _values 中的值，不能直接访问 owner 的属性
-        const blackboard = context.skillExecutionTree.blackboard;
-        blackboard.set("currentFrame", engineFrame);
-        blackboard.set("currentSkillStartupFrames", context.currentSkillStartupFrames);
-        blackboard.set("currentSkillChargingFrames", context.currentSkillChargingFrames);
-        blackboard.set("currentSkillChantingFrames", context.currentSkillChantingFrames);
-        blackboard.set("currentSkillActionFrames", context.currentSkillActionFrames);
-
-        // 每帧推进行为树
-        try {
-          console.log(`🌳 [${context.name}] 推进行为树 tick...`);
-          const status = context.skillExecutionTree.tick();
-          console.log(`🌳 [${context.name}] 行为树 tick 完成，状态: ${status}`);
-          
-          // 如果行为树完成，记录最终状态
-          if (status === "success" || status === "failure") {
-            console.log(`👤 [${context.name}] 技能行为树执行完成，状态: ${status}`);
-          } else if (status === "interrupted") {
-            console.warn(`⚠️ [${context.name}] 技能行为树被中断`);
-          }
-        } catch (error) {
-          console.error(`❌ [${context.name}] 技能行为树执行出错:`, error);
-          // 出错时中断行为树，避免无限循环
-          context.skillExecutionTree.interrupt();
-          throw error;
-        }
-      },
-      清理技能行为树: function ({ context, event }) {
-        if (context.skillExecutionTree) {
-          context.skillExecutionTree.clear();
-          context.skillExecutionTree = null;
-          console.log(`👤 [${context.name}] 技能行为树已清理`);
-        }
-      },
-      转发行为树事件: function ({ context, event }) {
-        // 通过 skillExecutionTree.context 访问行为树上下文，避免循环引用
-        if (context.skillExecutionTree && event?.type) {
-          const behaviorContext = context.skillExecutionTree.context;
-          console.log(`🔁 [${context.name}] 转发行为树事件: ${event.type}`);
-          // WaitForEvent 注册监听器时，target 是 context（默认），所以 dispatch 时不需要传 target
-          // 或者传入 context 作为 target（但默认就是它自己，所以不传也可以）
-          behaviorContext.dispatch(event.type);
-        }
-      },
       重置控制抵抗时间: function ({ context, event }) {
         // Add your action code here
         // ...
@@ -746,6 +592,24 @@ export const playerStateMachine = (player: Player) => {
       logEvent: function ({ context, event }) {
         console.log(`👤 [${context.name}] 日志事件`, event);
       },
+      记录进入执行技能中状态: function ({ context }) {
+        console.log(`🎮 [${context.name}] 进入"执行技能中"状态`);
+      },
+      发送TICK到行为树: enqueueActions(({ enqueue }) => {
+        enqueue.sendTo("skillExecution", { type: "TICK" });
+      }),
+      转发前摇结束通知到行为树: enqueueActions(({ enqueue }) => {
+        enqueue.sendTo("skillExecution", { type: "FSM_EVENT", fsmEventType: "收到前摇结束通知" });
+      }),
+      转发蓄力结束通知到行为树: enqueueActions(({ enqueue }) => {
+        enqueue.sendTo("skillExecution", { type: "FSM_EVENT", fsmEventType: "收到蓄力结束通知" });
+      }),
+      转发咏唱结束事件到行为树: enqueueActions(({ enqueue }) => {
+        enqueue.sendTo("skillExecution", { type: "FSM_EVENT", fsmEventType: "收到咏唱结束事件" });
+      }),
+      转发发动结束通知到行为树: enqueueActions(({ enqueue }) => {
+        enqueue.sendTo("skillExecution", { type: "FSM_EVENT", fsmEventType: "收到发动结束通知" });
+      }),
     },
     guards: {
       存在蓄力阶段: function ({ context, event }) {
@@ -820,62 +684,6 @@ export const playerStateMachine = (player: Player) => {
           return true;
         }
         console.log(`🎮 [${context.name}] 的技能 ${skill.template?.name} 可用`);
-        // 测试内容
-        //     context.engine.evaluateExpression(
-        //       `var _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97, _E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B, _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87, _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0, _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87;
-    
-        // // 计算造成的伤害
-        // function damage() {
-        // _E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B = (self.statContainer.getValue("lv") + self.statContainer.getValue("lv")) * (1 - target.statContainer.getValue("red.p")) - target.statContainer.getValue("def.p") * (1 - self.statContainer.getValue("pie.p"));
-        // _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0 = 100;
-        // _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87 = 1.5;
-        // return (_E6_9C_89_E6_95_88_E6_94_BB_E5_87_BB_E5_8A_9B + _E6_8A_80_E8_83_BD_E5_B8_B8_E6_95_B0) * _E6_8A_80_E8_83_BD_E5_80_8D_E7_8E_87;
-        // }
-    
-        // function mathRandomInt(a, b) {
-        // if (a > b) {
-        // // Swap a and b to ensure a is smaller.
-        // var c = a;
-        // a = b;
-        // b = c;
-        // }
-        // return Math.floor(Math.random() * (b - a + 1) + a);
-        // }
-    
-        // // 判断是否命中
-        // function isHit() {
-        // _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87 = 100 + ((self.statContainer.getValue("accuracy") - target.statContainer.getValue("avoid")) + _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) / 3;
-        // console.log("命中率",_E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87);
-        // return mathRandomInt(1, 100) < _E5_AE_9E_E9_99_85_E5_91_BD_E4_B8_AD_E7_8E_87;
-        // }
-    
-        // // 描述该功能...
-        // function main() {
-        // if (self.statContainer.getValue("mp.current") > _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97) {
-        // console.log("技能消耗",_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97);
-        // self.statContainer.addModifier("mp.current", 3, -_E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97, { id: "blockly_subtract", name: "积木减少", type: "system" });
-        // console.log("技能消耗后当前MP",self.statContainer.getValue("mp.current"))
-        // if (isHit() == true) {
-        // console.log("命中成功, 伤害:",damage())
-        // console.log("命中前血量:",target.statContainer.getValue("hp.current"))
-        // target.statContainer.addModifier("hp.current", 3, -(damage()), { id: "blockly_subtract", name: "积木减少", type: "system" });
-        // console.log("命中后血量:",target.statContainer.getValue("hp.current"))
-        // } else {
-        // console.log("miss")
-        // }
-        // }
-        // }
-    
-        // _E6_8A_80_E8_83_BDMP_E6_B6_88_E8_80_97 = 100;
-    
-        // main();`,
-        //       {
-        //         currentFrame,
-        //         casterId: context.id,
-        //         skillLv: skill?.lv ?? 0,
-        //         targetId: "defaultMember2Id",
-        //       },
-        //     );
         return false;
       },
       还未冷却: function ({ context, event }) {
@@ -957,6 +765,9 @@ export const playerStateMachine = (player: Player) => {
         return true;
       },
     },
+    actors: {
+      behaviorTreeActor,
+    },
   }).createMachine({
     context: {
       id: player.id,
@@ -1004,8 +815,6 @@ export const playerStateMachine = (player: Player) => {
       aggro: 0,
       // 默认第一个机体
       character: player.data.player!.characters?.[0] ?? null,
-      // 技能执行行为树
-      skillExecutionTree: null,
     },
     id: machineId,
     initial: "存活",
@@ -1013,21 +822,6 @@ export const playerStateMachine = (player: Player) => {
       更新: {
         actions: {
           type: "更新玩家状态",
-        },
-      },
-      收到前摇结束通知: {
-        actions: {
-          type: "转发行为树事件",
-        },
-      },
-      收到蓄力结束通知: {
-        actions: {
-          type: "转发行为树事件",
-        },
-      },
-      收到咏唱结束事件: {
-        actions: {
-          type: "转发行为树事件",
         },
       },
     },
@@ -1045,14 +839,13 @@ export const playerStateMachine = (player: Player) => {
           },
           受到攻击: [
             {
+              guard: "是物理伤害",
               actions: {
                 type: "发送命中判定事件给自己",
               },
-              guard: {
-                type: "是物理伤害",
-              },
             },
             {
+              guard: "是物理伤害",
               actions: [
                 {
                   type: "反馈命中结果给施法者",
@@ -1211,27 +1004,19 @@ export const playerStateMachine = (player: Player) => {
                     always: [
                       {
                         target: "警告状态",
-                        guard: {
-                          type: "没有可用技能效果",
-                        },
+                        guard: "没有可用技能效果",
                       },
                       {
                         target: "警告状态",
-                        guard: {
-                          type: "还未冷却",
-                        },
+                        guard: "还未冷却",
                       },
                       {
                         target: "警告状态",
-                        guard: {
-                          type: "施法条件不满足",
-                        },
+                        guard: "施法条件不满足",
                       },
                       {
                         target: "目标数据检查状态",
-                        guard: {
-                          type: "技能带有心眼",
-                        },
+                        guard: "技能带有心眼",
                       },
                       {
                         target: "执行技能中",
@@ -1258,15 +1043,11 @@ export const playerStateMachine = (player: Player) => {
                       收到目标快照: [
                         {
                           target: "执行技能中",
-                          guard: {
-                            type: "目标不抵抗此技能的控制效果",
-                          },
+                          guard: "目标不抵抗此技能的控制效果",
                         },
                         {
                           target: "警告状态",
-                          guard: {
-                            type: "目标抵抗此技能的控制效果",
-                          },
+                          guard: "目标抵抗此技能的控制效果",
                         },
                       ],
                     },
@@ -1279,40 +1060,42 @@ export const playerStateMachine = (player: Player) => {
                   执行技能中: {
                     entry: [
                       { type: "添加待处理技能效果" },
-                      { type: "初始化技能行为树" },
-                      function ({ context }) {
-                        console.log(`🎮 [${context.name}] 进入"执行技能中"状态`);
-                      },
+                      { type: "记录进入执行技能中状态" },
                     ],
+                    invoke: {
+                      id: "skillExecution",
+                      src: "behaviorTreeActor",
+                      input: ({ context }): BehaviorTreeInput => ({
+                        skillEffect: context.currentSkillEffect,
+                        owner: context,
+                      }),
+                    },
                     on: {
                       更新: {
-                        actions: {
-                          type: "推进技能行为树",
-                        },
+                        actions: { type: "发送TICK到行为树" },
                       },
-                      收到发动结束通知: [
+                      收到前摇结束通知: {
+                        actions: { type: "转发前摇结束通知到行为树" },
+                      },
+                      收到蓄力结束通知: {
+                        actions: { type: "转发蓄力结束通知到行为树" },
+                      },
+                      收到咏唱结束事件: {
+                        actions: { type: "转发咏唱结束事件到行为树" },
+                      },
+                      收到发动结束通知: {
+                        actions: { type: "转发发动结束通知到行为树" },
+                      },
+                      行为树执行完成: [
                         {
                           target: `#${machineId}.存活.可操作状态.技能处理状态`,
-                          guard: {
-                            type: "存在后续连击",
-                          },
-                          actions: {
-                            type: "转发行为树事件",
-                          },
+                          guard: "存在后续连击",
                         },
                         {
                           target: `#${machineId}.存活.可操作状态.空闲状态`,
-                          actions: {
-                            type: "转发行为树事件",
-                          },
                         },
                       ],
                     },
-                    exit: [
-                      {
-                        type: "清理技能行为树",
-                      },
-                    ],
                   },
                 },
               },

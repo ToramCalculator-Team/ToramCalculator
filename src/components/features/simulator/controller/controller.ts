@@ -11,7 +11,7 @@ import { createSignal } from "solid-js";
 import { selectMemberByIdWithRelations, type MemberWithRelations } from "@db/generated/repositories/member";
 import { selectSimulatorByIdWithRelations, SimulatorWithRelations } from "@db/generated/repositories/simulator";
 import { type MemberSerializeData } from "../core/member/Member";
-import { FrameSnapshot } from "../core/GameEngine";
+import { FrameSnapshot, ComputedSkillInfo } from "../core/GameEngine";
 import { createActor, waitFor } from "xstate";
 import { GameEngineSM, type EngineCommand } from "../core/GameEngineSM";
 import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
@@ -29,7 +29,8 @@ export class Controller {
   members = createSignal<MemberSerializeData[]>([]);
   selectedMemberId = createSignal<string | null>(null);
   selectedMember = createSignal<MemberWithRelations | null>(null);
-  selectedMemberSkills = createSignal<Array<{ id: string; name: string; level: number }>>([]);
+  /** 技能数据 - 包含预计算的 MP/HP 消耗等动态值 */
+  selectedMemberSkills = createSignal<ComputedSkillInfo[]>([]);
 
   // 引擎数据快照
   engineView = createSignal<FrameSnapshot | null>(null);
@@ -189,7 +190,17 @@ export class Controller {
     realtimeSimulatorPool.on("frame_snapshot", (data: { workerId: string; event: any }) => {
       // 更新引擎视图数据
       if (data.event && typeof data.event === "object" && "frameNumber" in data.event) {
-        this.engineView[1](data.event as FrameSnapshot);
+        const snapshot = data.event as FrameSnapshot;
+        this.engineView[1](snapshot);
+        
+        // 从快照中更新选中成员的技能数据（包含计算后的 MP/HP 消耗等）
+        const selectedId = this.selectedMemberId[0]();
+        if (selectedId) {
+          const memberData = snapshot.members.find(m => m.id === selectedId);
+          if (memberData?.skills) {
+            this.selectedMemberSkills[1](memberData.skills);
+          }
+        }
       }
     });
 
@@ -329,11 +340,19 @@ export class Controller {
       }
       this.selectedMember[1](member);
 
+      // 初始化技能列表（静态数据，计算值会在 frame_snapshot 中更新）
       if (member.player?.characters?.[0]?.skills) {
-        const skills = member.player.characters[0].skills.map((skill) => ({
+        const skills: ComputedSkillInfo[] = member.player.characters[0].skills.map((skill) => ({
           id: skill.id,
           name: skill.template?.name || "未知技能",
           level: skill.lv,
+          computed: {
+            mpCost: 0,      // 初始值，会在 frame_snapshot 中更新
+            hpCost: 0,
+            castingRange: null,
+            cooldownRemaining: 0,
+            isAvailable: true,
+          },
         }));
         this.selectedMemberSkills[1](skills);
       }

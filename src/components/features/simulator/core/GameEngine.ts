@@ -119,6 +119,23 @@ export interface EngineView {
 }
 
 /**
+ * 技能计算数据 - 预计算的动态值，用于UI显示
+ */
+export interface ComputedSkillInfo {
+  id: string;
+  name: string;
+  level: number;
+  /** 预计算的动态值 */
+  computed: {
+    mpCost: number;
+    hpCost: number;
+    castingRange: string | null;
+    cooldownRemaining: number;
+    isAvailable: boolean; // 是否可用（MP够、不在冷却等）
+  };
+}
+
+/**
  * 帧快照接口 - 包含引擎和所有成员的完整状态
  */
 export interface FrameSnapshot {
@@ -156,6 +173,8 @@ export interface FrameSnapshot {
     campId: string;
     teamId: string;
     targetId: string;
+    /** 技能计算数据（仅Player类型有） */
+    skills?: ComputedSkillInfo[];
   }>;
 }
 
@@ -179,6 +198,22 @@ export const EngineViewSchema = z.object({
     totalProcessed: z.number(),
     totalInserted: z.number(),
     overflowCount: z.number(),
+  }),
+});
+
+/**
+ * 技能计算数据Schema
+ */
+export const ComputedSkillInfoSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  level: z.number(),
+  computed: z.object({
+    mpCost: z.number(),
+    hpCost: z.number(),
+    castingRange: z.string().nullable(),
+    cooldownRemaining: z.number(),
+    isAvailable: z.boolean(),
   }),
 });
 
@@ -225,6 +260,7 @@ export const FrameSnapshotSchema = z.object({
       campId: z.string(),
       teamId: z.string(),
       targetId: z.string(),
+      skills: z.array(ComputedSkillInfoSchema).optional(),
     }),
   ),
 });
@@ -1143,7 +1179,8 @@ export class GameEngine {
       const actorSnapshot = member.actor.getSnapshot();
       const memberData = member.serialize();
 
-      return {
+      // 基础成员数据
+      const baseMemberData = {
         id: member.id,
         type: member.type,
         name: member.name,
@@ -1155,6 +1192,14 @@ export class GameEngine {
         teamId: member.teamId,
         targetId: member.targetId,
       };
+
+      // 为 Player 类型计算技能数据
+      if (member.type === "Player") {
+        const skills = this.computePlayerSkills(member, actorSnapshot, currentFrame);
+        return { ...baseMemberData, skills };
+      }
+
+      return baseMemberData;
     });
 
     return {
@@ -1170,6 +1215,99 @@ export class GameEngine {
       },
       members,
     };
+  }
+
+  /**
+   * 计算 Player 的技能数据
+   * 为每个技能计算当前的消耗值和可用性
+   */
+  private computePlayerSkills(
+    member: any,
+    actorSnapshot: any,
+    currentFrame: number,
+  ): ComputedSkillInfo[] {
+    try {
+      const context = actorSnapshot.context;
+      if (!context) return [];
+
+      const skillList = context.skillList ?? [];
+      const skillCooldowns = context.skillCooldowns ?? [];
+      const currentMp = member.statContainer?.getValue("mp.current") ?? 0;
+      const currentHp = member.statContainer?.getValue("hp.current") ?? 0;
+
+      return skillList.map((skill: any, index: number) => {
+        const skillName = skill.template?.name ?? "未知技能";
+        const skillLevel = skill.lv ?? 0;
+
+        // 查找适用的技能效果
+        const effect = skill.template?.effects?.find((e: any) => {
+          try {
+            const result = this.evaluateExpression(e.condition ?? "true", {
+              currentFrame,
+              casterId: member.id,
+              skillLv: skillLevel,
+            });
+            return !!result;
+          } catch {
+            return false;
+          }
+        });
+
+        // 计算消耗
+        let mpCost = 0;
+        let hpCost = 0;
+        let castingRange: string | null = null;
+
+        if (effect) {
+          try {
+            mpCost = this.evaluateExpression(effect.mpCost ?? "0", {
+              currentFrame,
+              casterId: member.id,
+              skillLv: skillLevel,
+            });
+          } catch {
+            mpCost = 0;
+          }
+
+          try {
+            hpCost = this.evaluateExpression(effect.hpCost ?? "0", {
+              currentFrame,
+              casterId: member.id,
+              skillLv: skillLevel,
+            });
+          } catch {
+            hpCost = 0;
+          }
+
+          castingRange = effect.castingRange ?? null;
+        }
+
+        // 获取冷却状态
+        const cooldownRemaining = skillCooldowns[index] ?? 0;
+
+        // 判断是否可用
+        const isAvailable =
+          cooldownRemaining <= 0 &&
+          currentMp >= mpCost &&
+          currentHp >= hpCost;
+
+        return {
+          id: skill.id,
+          name: skillName,
+          level: skillLevel,
+          computed: {
+            mpCost,
+            hpCost,
+            castingRange,
+            cooldownRemaining,
+            isAvailable,
+          },
+        };
+      });
+    } catch (error) {
+      console.warn("计算玩家技能数据失败:", error);
+      return [];
+    }
   }
 
   /**

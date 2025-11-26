@@ -1,2 +1,3 @@
 id,lv,isStarGem,templateId,belongToCharacterId
 defaultCharacterSkill,10,f,defaultSkillId,defaultCharacterId
+magicCannon,10,f,MagicCannonId,defaultCharacterId

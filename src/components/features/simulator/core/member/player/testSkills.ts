@@ -40,15 +40,19 @@ export const magicCannonSkillEffect: skill_effect = {
   elementLogic: "return ctx.elementOverride ?? 'Light';",
   castingRange: "10m",
   effectiveRange: 10,
-  motionFixed: "ctx.magicCannon?.phase === 'charge' ? 90 : 60",
+  // phase: 0=未设置/已释放, 1=charging(充能中), stacks=充能百分比(0-200)
+  // hasGauge: true=已使用过魔法炮（下次使用消耗700MP），false=未使用过（消耗0MP）
+  // 注意：ExpressionEvaluator 不支持可选链 ?.，需要使用 != null 检查
+  motionFixed: "ctx.magicCannon != null && ctx.magicCannon.phase == 1 ? 90 : 60",
   motionModified: "0",
-  chantingFixed: "ctx.magicCannon?.phase === 'charge' ? 8000 : 0",
+  chantingFixed: "ctx.magicCannon != null && ctx.magicCannon.phase == 1 ? 8000 : 0",
   chantingModified: "0",
   reservoirFixed: "0",
   reservoirModified: "0",
-  startupFrames: "ctx.magicCannon?.phase === 'release' ? 30 : 0",
+  startupFrames: "0",
   hpCost: null,
-  mpCost: "ctx.magicCannon?.phase === 'charge' && ctx.magicCannon?.hasGauge ? 700 : 0",
+  // 如果已使用过（hasGauge=true）且处于充能状态（phase=1），则消耗700MP；否则消耗0MP
+  mpCost: "ctx.magicCannon != null && ctx.magicCannon.phase == 1 && ctx.magicCannon.hasGauge == true ? 700 : 0",
   description: "魔法炮充能/释放逻辑，通过行为树实现。",
   logic: {
     name: "magic-cannon-logic",
@@ -59,7 +63,24 @@ export const magicCannonSkillEffect: skill_effect = {
       desc: "技能执行主流程",
       children: [
         {
-          id: 2,
+          id: 1,
+          name: "Let",
+          desc: "初始化 magicCannon 对象（仅在第一次使用时初始化）",
+          args: {
+            // phase: 0=未设置/已释放, 1=charging(充能中)
+            // stacks: 充能百分比（0-200），通过其他魔法技能增加
+            // hasGauge: true=已使用过（下次消耗700MP），false=未使用过（消耗0MP）
+            // 注意：由于 ExpressionEvaluator 不支持变量存在性检查，我们总是初始化
+            // 如果 magicCannon 已存在（比如在充能状态），这个初始化会覆盖它
+            // 但后续的 Switch 逻辑会根据实际状态正确处理，因为充能状态会在管线中更新
+            // 实际上，magicCannon 应该存储在持久化的地方（如 owner 的某个属性），
+            // 而不是每次技能执行时都重新初始化。但当前架构下，我们只能这样做。
+            value: { phase: 0, stacks: 0, hasGauge: false },
+          },
+          output: ["magicCannon"],
+        },
+        {
+          id: 5,
           name: "RunPipeline",
           desc: "计算技能消耗",
           args: {
@@ -67,7 +88,7 @@ export const magicCannonSkillEffect: skill_effect = {
           },
         },
         {
-          id: 4,
+          id: 6,
           name: "RunPipeline",
           desc: "计算技能动作时长",
           args: {
@@ -75,12 +96,12 @@ export const magicCannonSkillEffect: skill_effect = {
           },
         },
         {
-          id: 6,
+          id: 7,
           name: "IfElse",
           desc: "前摇阶段（如果存在）",
           children: [
             {
-              id: 7,
+              id: 8,
               name: "Check",
               desc: "检查是否存在前摇",
               args: {
@@ -88,12 +109,12 @@ export const magicCannonSkillEffect: skill_effect = {
               },
             },
             {
-              id: 8,
+              id: 9,
               name: "Sequence",
               desc: "执行前摇阶段",
               children: [
                 {
-                  id: 9,
+                  id: 10,
                   name: "RunPipeline",
                   desc: "启动前摇动画",
                   args: {
@@ -101,7 +122,7 @@ export const magicCannonSkillEffect: skill_effect = {
                   },
                 },
                 {
-                  id: 10,
+                  id: 11,
                   name: "RunPipeline",
                   desc: "调度前摇结束事件",
                   args: {
@@ -109,7 +130,7 @@ export const magicCannonSkillEffect: skill_effect = {
                   },
                 },
                 {
-                  id: 11,
+                  id: 12,
                   name: "WaitForEvent",
                   desc: "等待前摇结束通知",
                   args: {
@@ -119,19 +140,19 @@ export const magicCannonSkillEffect: skill_effect = {
               ],
             },
             {
-              id: 12,
+              id: 13,
               name: "JustSuccess",
               desc: "跳过前摇阶段",
             },
           ],
         },
         {
-          id: 13,
+          id: 14,
           name: "IfElse",
           desc: "蓄力阶段（如果存在）",
           children: [
             {
-              id: 14,
+              id: 15,
               name: "Check",
               desc: "检查是否存在蓄力",
               args: {
@@ -139,12 +160,12 @@ export const magicCannonSkillEffect: skill_effect = {
               },
             },
             {
-              id: 15,
+              id: 16,
               name: "Sequence",
               desc: "执行蓄力阶段",
               children: [
                 {
-                  id: 16,
+                  id: 17,
                   name: "RunPipeline",
                   desc: "启动蓄力动画",
                   args: {
@@ -152,7 +173,7 @@ export const magicCannonSkillEffect: skill_effect = {
                   },
                 },
                 {
-                  id: 17,
+                  id: 18,
                   name: "RunPipeline",
                   desc: "调度蓄力结束事件",
                   args: {
@@ -160,7 +181,7 @@ export const magicCannonSkillEffect: skill_effect = {
                   },
                 },
                 {
-                  id: 18,
+                  id: 19,
                   name: "WaitForEvent",
                   desc: "等待蓄力结束通知",
                   args: {
@@ -170,19 +191,19 @@ export const magicCannonSkillEffect: skill_effect = {
               ],
             },
             {
-              id: 19,
+              id: 20,
               name: "JustSuccess",
               desc: "跳过蓄力阶段",
             },
           ],
         },
         {
-          id: 20,
+          id: 21,
           name: "IfElse",
           desc: "咏唱阶段（如果存在）",
           children: [
             {
-              id: 21,
+              id: 22,
               name: "Check",
               desc: "检查是否存在咏唱",
               args: {
@@ -190,12 +211,12 @@ export const magicCannonSkillEffect: skill_effect = {
               },
             },
             {
-              id: 22,
+              id: 23,
               name: "Sequence",
               desc: "执行咏唱阶段",
               children: [
                 {
-                  id: 23,
+                  id: 24,
                   name: "RunPipeline",
                   desc: "启动咏唱动画",
                   args: {
@@ -203,7 +224,7 @@ export const magicCannonSkillEffect: skill_effect = {
                   },
                 },
                 {
-                  id: 24,
+                  id: 25,
                   name: "RunPipeline",
                   desc: "调度咏唱结束事件",
                   args: {
@@ -211,17 +232,17 @@ export const magicCannonSkillEffect: skill_effect = {
                   },
                 },
                 {
-                  id: 25,
+                  id: 26,
                   name: "WaitForEvent",
-                  desc: "等待咏唱结束通知",
+                  desc: "等待咏唱结束事件",
                   args: {
-                    event: "收到咏唱结束通知",
+                    event: "收到咏唱结束事件",
                   },
                 },
               ],
             },
             {
-              id: 26,
+              id: 27,
               name: "JustSuccess",
               desc: "跳过咏唱阶段",
             },
@@ -249,6 +270,48 @@ export const magicCannonSkillEffect: skill_effect = {
               },
             },
             {
+              id: 29,
+              name: "Sequence",
+              desc: "调试：显示当前 magicCannon 状态和充能百分比",
+              children: [
+                {
+                  id: 293,
+                  name: "Calculate",
+                  args: {
+                    // 注意：ExpressionEvaluator 不支持 null 字面量，使用 truthy 检查
+                    value: "magicCannon ? (magicCannon.phase ? magicCannon.phase : 0) : 0",
+                  },
+                  output: ["currentPhase"],
+                },
+                {
+                  id: 294,
+                  name: "Log",
+                  args: {
+                    message: "Switch 前：当前 phase 值（0=未设置, 1=充能中）",
+                    level: "log",
+                  },
+                  input: ["currentPhase"],
+                },
+                {
+                  id: 295,
+                  name: "Calculate",
+                  args: {
+                    value: "magicCannon && magicCannon.stacks ? magicCannon.stacks : 0",
+                  },
+                  output: ["currentStacks"],
+                },
+                {
+                  id: 296,
+                  name: "Log",
+                  args: {
+                    message: "当前充能百分比（stacks，上限200）",
+                    level: "log",
+                  },
+                  input: ["currentStacks"],
+                },
+              ],
+            },
+            {
               id: 30,
               name: "Switch",
               desc: "根据 phase 分支执行不同逻辑",
@@ -261,7 +324,10 @@ export const magicCannonSkillEffect: skill_effect = {
                       id: 32,
                       name: "Check",
                       args: {
-                        value: "magicCannon?.phase === 'charge'",
+                        // phase == 0 或未设置 表示需要充能（第一次使用，充能）
+                        // 注意：ExpressionEvaluator 不支持 null 字面量，使用 truthy 检查
+                        // !magicCannon 表示未初始化，magicCannon.phase == 0 表示已初始化但未充能
+                        value: "!magicCannon || (magicCannon.phase == 0)",
                       },
                     },
                     {
@@ -279,19 +345,134 @@ export const magicCannonSkillEffect: skill_effect = {
                         },
                         {
                           id: 35,
-                          name: "SetField",
-                          args: {
-                            field: "magicCannon.phase",
-                            value: "charge",
-                          },
+                          name: "Sequence",
+                          desc: "进入充能状态并记录充能百分比变化",
+                          children: [
+                            {
+                              id: 351,
+                              name: "Calculate",
+                              args: {
+                                // 获取旧的充能百分比
+                                value: "magicCannon && magicCannon.stacks ? magicCannon.stacks : 0",
+                              },
+                              output: ["oldStacks"],
+                            },
+                            {
+                              id: 352,
+                              name: "Let",
+                              desc: "进入充能状态（phase=1, hasGauge=true, stacks=0）",
+                              args: {
+                                // 充能阶段：第一次使用魔法炮，进入充能状态
+                                // phase=1: 充能中（等待其他魔法技能增加充能百分比）
+                                // hasGauge=true: 标记已使用过，下次使用消耗700MP
+                                // stacks=0: 充能百分比初始为0，上限200，通过其他魔法技能增加
+                                // 注意：充能百分比会在管线中自动增长，或通过其他魔法技能增加
+                                value: { phase: 1, stacks: 0, hasGauge: true },
+                              },
+                              output: ["magicCannon"],
+                            },
+                            {
+                              id: 353,
+                              name: "Calculate",
+                              args: {
+                                // 计算充能百分比变化（新值 - 旧值）
+                                value: "0 - oldStacks",
+                              },
+                              output: ["stacksChange"],
+                            },
+                            {
+                              id: 354,
+                              name: "Log",
+                              args: {
+                                message: "🔋 魔法炮充能计数器变化",
+                                level: "log",
+                              },
+                            },
+                            {
+                              id: 355,
+                              name: "Log",
+                              args: {
+                                message: "  旧值：",
+                                level: "log",
+                              },
+                              input: ["oldStacks"],
+                            },
+                            {
+                              id: 356,
+                              name: "Calculate",
+                              args: {
+                                value: "0",
+                              },
+                              output: ["newStacks"],
+                            },
+                            {
+                              id: 357,
+                              name: "Log",
+                              args: {
+                                message: "  新值：",
+                                level: "log",
+                              },
+                              input: ["newStacks"],
+                            },
+                            {
+                              id: 358,
+                              name: "Log",
+                              args: {
+                                message: "  变化量：",
+                                level: "log",
+                              },
+                              input: ["stacksChange"],
+                            },
+                          ],
                         },
                         {
                           id: 36,
                           name: "Log",
                           args: {
-                            message: "充能完成，准备释放",
+                            message: "魔法炮进入充能状态（充能百分比将通过其他魔法技能增加，上限200）",
                             level: "log",
                           },
+                        },
+                        {
+                          id: 37,
+                          name: "Sequence",
+                          desc: "调试：显示充能后的 magicCannon 状态和充能百分比",
+                          children: [
+                            {
+                              id: 371,
+                              name: "Calculate",
+                              args: {
+                                value: "magicCannon ? magicCannon.phase : -1",
+                              },
+                              output: ["phaseAfterCharge"],
+                            },
+                            {
+                              id: 372,
+                              name: "Log",
+                              args: {
+                                message: "充能后 magicCannon.phase",
+                                level: "log",
+                              },
+                              input: ["phaseAfterCharge"],
+                            },
+                            {
+                              id: 373,
+                              name: "Calculate",
+                              args: {
+                                value: "magicCannon && magicCannon.stacks ? magicCannon.stacks : 0",
+                              },
+                              output: ["stacksAfterCharge"],
+                            },
+                            {
+                              id: 374,
+                              name: "Log",
+                              args: {
+                                message: "🔋 当前充能百分比（stacks，上限200）",
+                                level: "log",
+                              },
+                              input: ["stacksAfterCharge"],
+                            },
+                          ],
                         },
                       ],
                     },
@@ -305,7 +486,9 @@ export const magicCannonSkillEffect: skill_effect = {
                       id: 38,
                       name: "Check",
                       args: {
-                        value: "magicCannon?.phase === 'release'",
+                        // phase == 1 表示已充能，进入释放阶段（第二次使用，释放伤害）
+                        // 注意：ExpressionEvaluator 不支持 null 字面量，使用 truthy 检查
+                        value: "magicCannon && magicCannon.phase == 1",
                       },
                     },
                     {
@@ -317,7 +500,7 @@ export const magicCannonSkillEffect: skill_effect = {
                           id: 40,
                           name: "Log",
                           args: {
-                            message: "魔法炮释放阶段开始",
+                            message: "魔法炮释放阶段：消耗充能造成伤害",
                             level: "log",
                           },
                         },
@@ -325,38 +508,94 @@ export const magicCannonSkillEffect: skill_effect = {
                           id: 41,
                           name: "Calculate",
                           args: {
-                            value: "(matkEff + 700 + 10 * (magicCannon?.stacks ?? 0)) * (300 * (magicCannon?.stacks ?? 0) + baseInt * Math.min(magicCannon?.stacks ?? 0, 5))",
+                            // 计算伤害：(matkEff + 700 + 10 * stacks) * (300 * stacks + baseInt * min(stacks, 5))
+                            // Math.min(a, b) 替换为 a < b ? a : b
+                            // 注意：ExpressionEvaluator 不支持 null 字面量，使用 truthy 检查
+                            // stacks = magicCannon && magicCannon.stacks ? magicCannon.stacks : 0（充能百分比，0-200）
+                            // minStacks = stacks < 5 ? stacks : 5
+                            value: "(matkEff + 700 + 10 * (magicCannon && magicCannon.stacks ? magicCannon.stacks : 0)) * (300 * (magicCannon && magicCannon.stacks ? magicCannon.stacks : 0) + baseInt * (magicCannon && magicCannon.stacks ? (magicCannon.stacks < 5 ? magicCannon.stacks : 5) : 0))",
                           },
                           output: ["damage"],
+                        },
+                        {
+                          id: 44,
+                          name: "Let",
+                          desc: "释放后重置 magicCannon（清空充能状态）",
+                          args: {
+                            // 释放后重置：phase=0（未设置），stacks=0（清空充能百分比），hasGauge=false（下次使用消耗0MP）
+                            // 下次使用魔法炮时，会重新进入充能状态
+                            value: { phase: 0, stacks: 0, hasGauge: false },
+                          },
+                          output: ["magicCannon"],
                         },
                         {
                           id: 42,
                           name: "Log",
                           args: {
-                            message: "计算伤害完成",
+                            message: "计算伤害完成，伤害值",
                             level: "log",
                           },
                           input: ["damage"],
+                        },
+                        {
+                          id: 43,
+                          name: "Sequence",
+                          desc: "调试：显示释放时的充能百分比",
+                          children: [
+                            {
+                              id: 431,
+                              name: "Calculate",
+                              args: {
+                                value: "magicCannon && magicCannon.stacks ? magicCannon.stacks : 0",
+                              },
+                              output: ["stacksOnRelease"],
+                            },
+                            {
+                              id: 432,
+                              name: "Log",
+                              args: {
+                                message: "释放时充能百分比（stacks）",
+                                level: "log",
+                              },
+                              input: ["stacksOnRelease"],
+                            },
+                          ],
                         },
                       ],
                     },
                   ],
                 },
                 {
-                  id: 43,
+                  id: 44,
                   name: "Case",
                   children: [
                     {
-                      id: 44,
-                      name: "AlwaysSuccess",
+                      id: 45,
+                      name: "JustSuccess",
+                      desc: "默认分支条件（总是成功）",
+                    },
+                    {
+                      id: 46,
+                      name: "Sequence",
+                      desc: "默认分支：phase 未设置或为 0，进入充能状态",
                       children: [
                         {
-                          id: 45,
+                          id: 461,
                           name: "Log",
                           args: {
-                            message: "魔法炮：phase 未设置，使用默认逻辑",
-                            level: "warn",
+                            message: "魔法炮：首次使用，进入充能状态",
+                            level: "log",
                           },
+                        },
+                        {
+                          id: 462,
+                          name: "Let",
+                          desc: "进入充能状态",
+                          args: {
+                            // 首次使用：进入充能状态
+                            value: { phase: 1, stacks: 0, hasGauge: true },
+                          },
+                          output: ["magicCannon"],
                         },
                       ],
                     },
@@ -365,7 +604,7 @@ export const magicCannonSkillEffect: skill_effect = {
               ],
             },
             {
-              id: 46,
+              id: 48,
               name: "RunPipeline",
               desc: "调度发动结束事件",
               args: {
@@ -373,7 +612,7 @@ export const magicCannonSkillEffect: skill_effect = {
               },
             },
             {
-              id: 47,
+              id: 49,
               name: "WaitForEvent",
               desc: "等待发动结束通知",
               args: {
@@ -385,7 +624,7 @@ export const magicCannonSkillEffect: skill_effect = {
       ],
     },
   } as any,
-  details: "logic 字段包含完整的行为树 JSON，使用 Switch 根据 magicCannon.phase 分支执行充能或释放逻辑。",
+  details: "logic 字段包含完整的行为树 JSON，使用 Switch 根据 magicCannon.phase (0=未设置, 1=charge, 2=release) 分支执行逻辑。",
 };
 
 export const testSkills = {

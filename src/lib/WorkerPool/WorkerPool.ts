@@ -261,7 +261,7 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
         
         // 检查是否是 Worker 初始化完成的消息
         if (sys.type === "system_event" && sys.data?.type === "worker_ready") {
-          console.log(`✅ Worker ${wrapper.id} 初始化完成，标记为可用`);
+          // console.log(`✅ Worker ${wrapper.id} 初始化完成，标记为可用`);
           wrapper.busy = false;
           // 初始化完成后，处理队列中的任务
           this.processNextTask();
@@ -510,7 +510,7 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
       originalRetries: this.config.maxRetries,
     };
 
-    console.log("🔄 WorkerPool: executeTask - 任务已创建:", { type, taskId: task.id, priority });
+    // console.log("🔄 WorkerPool: executeTask - 任务已创建:", { type, taskId: task.id, priority });
     return await this.processTask(task);
   }
 
@@ -649,7 +649,7 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
 
     try {
       // 通过MessageChannel发送任务到Worker
-      console.log("🔄 WorkerPool: 发送任务到Worker", message);
+      // console.log("🔄 WorkerPool: 发送任务到Worker", message);
       // 记录绑定关系
       this.taskToWorkerId.set(task.id, worker.id);
       worker.port.postMessage(message, transferables);

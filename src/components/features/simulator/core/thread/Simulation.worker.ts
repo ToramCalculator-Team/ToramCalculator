@@ -183,7 +183,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
         messagePort.onmessage = async (
           portEvent: MessageEvent<WorkerMessage<SimulatorTaskTypeMapValue, SimulatorTaskPriority>>,
         ) => {
-          console.log("🔌 Worker: 收到消息", portEvent.data);
+          // console.log("🔌 Worker: 收到消息", portEvent.data);
           const { belongToTaskId: portbelongToTaskId, payload, priority } = portEvent.data;
           const startTime = performance.now();
 
@@ -200,7 +200,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
             const dataQueryResult = DataQueryCommandSchema.safeParse(payload);
             if (engineCommandResult.success) {
               // 状态机命令直接转发给引擎
-              console.log("确认收到状态机命令:", engineCommandResult.data);
+              // console.log("确认收到状态机命令:", engineCommandResult.data);
               gameEngine.sendCommand(engineCommandResult.data);
               console.log("命令已发送到引擎状态机");
               portResult = { success: true };
@@ -253,7 +253,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
         // 设置渲染消息发送器：用于FSM发送渲染指令（通过系统消息格式）
         gameEngine.setRenderMessageSender((payload: any) => {
           try {
-            console.log("🔌 Worker: 发送渲染消息到主线程", payload);
+            // console.log("🔌 Worker: 发送渲染消息到主线程", payload);
             postSystemMessage(messagePort, "render_cmd", payload);
           } catch (error) {
             console.error("Worker: 发送渲染消息失败:", error);
@@ -271,7 +271,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
         });
 
         // 发送 Worker 初始化完成消息
-        console.log("✅ Worker: 初始化完成，发送 ready 消息");
+        // console.log("✅ Worker: 初始化完成，发送 ready 消息");
         postSystemMessage(messagePort, "system_event", { type: "worker_ready", workerId: "main" });
 
         return;

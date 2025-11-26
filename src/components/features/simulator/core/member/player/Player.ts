@@ -43,8 +43,6 @@ export class Player extends Member<
     
     // 应用战前修饰器
     applyPrebattleModifiers(this.statContainer, memberData);
-    
-    console.log(`🎮 Player [${this.name}] 初始化完成`);
   }
 
 
@@ -53,7 +51,6 @@ export class Player extends Member<
    * 遍历技能树，向管线管理器添加初始化时的技能效果
    */
   private initializePassiveSkills(memberData: MemberWithRelations): void {
-    console.log(`✨ Player [${this.name}] 开始初始化被动技能...`);
     
     // TODO: 与实际的技能系统集成
     // 1. 获取Player的角色配置 (memberData.player?.characters)
@@ -61,6 +58,5 @@ export class Player extends Member<
     // 3. 查询技能效果，找到insertTime === "engine_init"的效果
     // 4. 通过buffManager.addBuff()应用这些被动效果
     
-    console.log(`✅ Player [${this.name}] 被动技能初始化完成`);
   }
 }

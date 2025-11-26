@@ -13,7 +13,7 @@ import { Select } from "~/components/controls/select";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import MemberStatusPanel from "../core/member/MemberStatusPanel";
 import type { MemberSerializeData } from "../core/member/Member";
-import type { FrameSnapshot } from "../core/GameEngine";
+import type { FrameSnapshot, ComputedSkillInfo } from "../core/GameEngine";
 
 // ============================== 状态栏组件 ==============================
 
@@ -242,7 +242,7 @@ export function MemberStatus(props: MemberStatusProps) {
 
 interface SkillPanelProps {
   selectedMember: Accessor<MemberSerializeData | null>;
-  selectedMemberSkills: Accessor<Array<{ id: string; name: string; level: number }>>;
+  selectedMemberSkills: Accessor<ComputedSkillInfo[]>;
   onCastSkill: (skillId: string) => void;
 }
 
@@ -262,11 +262,20 @@ export function SkillPanel(props: SkillPanelProps) {
                 {(skill) => (
                   <Button
                     onClick={() => props.onCastSkill(skill.id)}
+                    disabled={!skill.computed.isAvailable}
                     class="col-span-1 row-span-1 flex-col items-start"
                     size="sm"
                   >
                     <span class="text-sm">{skill.name}</span>
-                    <span class="text-xs text-gray-500">Lv.{skill.level}</span>
+                    <div class="flex w-full items-center justify-between text-xs text-gray-500">
+                      <span>Lv.{skill.level}</span>
+                      <Show when={skill.computed.mpCost > 0}>
+                        <span class="text-blue-400">MP:{skill.computed.mpCost}</span>
+                      </Show>
+                    </div>
+                    <Show when={skill.computed.cooldownRemaining > 0}>
+                      <span class="text-xs text-orange-400">CD:{skill.computed.cooldownRemaining}f</span>
+                    </Show>
                   </Button>
                 )}
               </For>
