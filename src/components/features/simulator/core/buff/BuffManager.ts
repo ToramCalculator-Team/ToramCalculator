@@ -9,6 +9,7 @@
 
 import { ModifierSource, ModifierType, StatContainer } from "../dataSys/StatContainer";
 import { PipelineManager } from "../pipeline/PipelineManager";
+import type GameEngine from "../GameEngine";
 
 // ==================== 类型定义 ====================
 
@@ -34,8 +35,8 @@ export interface PipelineBuffEffect {
   pipeline: string;
   /** 插入点阶段名称 (在此阶段后执行) */
   stage: string;
-  /** 动态逻辑函数 */
-  logic: (context: any, input: any) => any;
+  /** 动态逻辑：字符串（表达式）或函数 */
+  logic: string | ((context: any, input: any) => any);
   /** 优先级 */
   priority?: number;
 }
@@ -68,6 +69,10 @@ export interface BuffInstance {
   // 运行时状态记录（用于移除时回滚）
   /** 记录已应用的属性修改，用于移除时反向操作 */
   _appliedStats?: { target: string; modifierType: ModifierType }[];
+  
+  // 临时变量存储（用于 Buff 内部的自定义计数器等）
+  /** 临时变量（如充能计数器） */
+  variables?: Record<string, number>;
 }
 
 // ==================== BuffManager 实现 ====================
@@ -78,6 +83,8 @@ export class BuffManager {
   constructor(
     private statContainer: StatContainer<any>,
     private pipelineManager: PipelineManager<any, any, any>,
+    private engine: GameEngine,
+    private memberId: string,
   ) {}
 
   /**
@@ -169,13 +176,54 @@ export class BuffManager {
         // 管线效果：仅在非叠加（首次）时添加
         if (!isStacking) {
           const stageId = `${buff.id}_${effect.pipeline}_${effect.stage}`;
+          
+          // 创建包装函数，支持字符串表达式或函数
+          const wrappedLogic = (context: any, input: any) => {
+            if (typeof effect.logic === 'function') {
+              // 函数形式：直接调用
+              return effect.logic(context, input);
+            } else if (typeof effect.logic === 'string' && effect.logic.trim()) {
+              // 字符串表达式：执行副作用后返回 input
+              try {
+                // 构建表达式上下文，包含 Buff 变量和辅助函数
+                // 约定：对由 JSProcessor 编译的代码，ctx 满足 ExpressionRuntimeContext 基本形状
+                const evalContext = {
+                  ...context,
+                  // 统一的基础标识字段
+                  casterId: (context as any).id ?? this.memberId,
+                  targetId: (context as any).targetId,
+                  ...(buff.variables || {}),
+                  // 注入辅助函数
+                  getBuffVar: (buffId: string, name: string) => this.getVariable(buffId, name),
+                  setBuffVar: (buffId: string, name: string, value: number) => this.setVariable(buffId, name, value),
+                  hasBuff: (buffId: string) => this.hasBuff(buffId),
+                };
+                
+                // 编译并执行表达式（由 GameEngine + JSProcessor 负责）
+                const compiledCode = this.engine.compileScript(effect.logic, context.id || '', context.targetId);
+                const runner = this.engine.createExpressionRunner(compiledCode);
+                runner(evalContext);
+                
+                // 返回 input，保持数据流一致
+                return input;
+              } catch (error) {
+                console.error(`❌ Buff 表达式执行失败 (${buff.id}):`, error);
+                return input;
+              }
+            } else {
+              console.warn(`⚠️ Buff 效果 logic 类型无效 (${buff.id}):`, typeof effect.logic);
+              return input;
+            }
+          };
+          
           // 使用 any 绕过泛型检查
           (this.pipelineManager as any).insertDynamicStage(
             effect.pipeline,
             effect.stage,
-            effect.logic,
+            wrappedLogic,
             stageId,
-            buff.id // source = buff.id
+            buff.id, // source = buff.id
+            effect.priority // 传递优先级
           );
         }
       }
@@ -244,6 +292,97 @@ export class BuffManager {
     const ids = Array.from(this.buffs.keys());
     for (const id of ids) {
       this.removeBuff(id);
+    }
+  }
+
+  /**
+   * 更新 Buff（处理 frame.update 效果和过期检查）
+   * @param currentFrame 当前帧数
+   */
+  update(currentFrame: number): void {
+    // 1. 处理 frame.update 管线的效果（特殊处理，因为这不是真正的管线）
+    for (const buff of this.buffs.values()) {
+      for (const effect of buff.effects) {
+        if (effect.type === "pipeline" && effect.pipeline === "frame.update") {
+          // 创建临时上下文执行 frame.update 效果
+          const context = {
+            currentFrame,
+            id: this.memberId,
+            buffManager: this,
+            engine: this.engine, // 添加 engine 引用，供编译后的代码使用
+          };
+          
+          const wrappedLogic = (ctx: any, input: any) => {
+            if (typeof effect.logic === 'function') {
+              return effect.logic(ctx, input);
+            } else if (typeof effect.logic === 'string' && effect.logic.trim()) {
+              try {
+                const evalContext = {
+                  ...ctx,
+                  // 统一基础标识：帧更新始终作用在自身成员上
+                  casterId: this.memberId,
+                  targetId: undefined,
+                  ...(buff.variables || {}),
+                  getBuffVar: (buffId: string, name: string) => this.getVariable(buffId, name),
+                  setBuffVar: (buffId: string, name: string, value: number) => this.setVariable(buffId, name, value),
+                  hasBuff: (buffId: string) => this.hasBuff(buffId),
+                };
+                const compiledCode = this.engine.compileScript(effect.logic, this.memberId, undefined);
+                const runner = this.engine.createExpressionRunner(compiledCode);
+                runner(evalContext);
+                return input;
+              } catch (error) {
+                console.error(`❌ Buff frame.update 表达式执行失败 (${buff.id}):`, error);
+                return input;
+              }
+            } else {
+              console.warn(`⚠️ Buff frame.update 效果 logic 类型无效 (${buff.id}):`, typeof effect.logic);
+              return input;
+            }
+          };
+          
+          wrappedLogic(context, {});
+        }
+      }
+    }
+    
+    // 2. 检查过期 Buff
+    this.tick(Date.now());
+  }
+
+  /**
+   * 检查 Buff 是否存在
+   */
+  hasBuff(buffId: string): boolean {
+    return this.buffs.has(buffId);
+  }
+
+  /**
+   * 获取 Buff 变量值
+   */
+  getVariable(buffId: string, name: string): number {
+    const buff = this.buffs.get(buffId);
+    if (!buff) return 0;
+    return buff.variables?.[name] ?? 0;
+  }
+
+  /**
+   * 设置 Buff 变量值
+   */
+  setVariable(buffId: string, name: string, value: number): void {
+    const buff = this.buffs.get(buffId);
+    if (!buff) return;
+    
+    if (!buff.variables) {
+      buff.variables = {};
+    }
+    
+    const oldValue = buff.variables[name] ?? 0;
+    buff.variables[name] = value;
+    
+    // 输出日志（仅在值变化时）
+    if (oldValue !== value) {
+      console.log(`🔋 ${buff.name}.${name}: ${oldValue} -> ${value}`);
     }
   }
 }

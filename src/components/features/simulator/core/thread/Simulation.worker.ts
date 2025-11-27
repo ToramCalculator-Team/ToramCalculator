@@ -208,7 +208,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
               console.log("确认收到数据查询命令:", dataQueryResult.data);
               // 数据查询命令处理
               portResult = await handleDataQuery(dataQueryResult.data);
-              console.log("数据查询命令已处理:", portResult);
+              // console.log("数据查询命令已处理:", portResult);
             } else {
               console.error(payload);
               console.error(engineCommandResult.error);

@@ -1,6 +1,4 @@
 import type { skill, skill_effect } from "@db/generated/zod";
-import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
-import { createId } from "@paralleldrive/cuid2";
 
 /**
  * 魔法炮（测试用技能）
@@ -12,19 +10,19 @@ import { createId } from "@paralleldrive/cuid2";
  */
 
 export const magicCannonSkill: skill = {
-  id: "test.magic_cannon.skill",
+  id: "MagicCannonId",
   treeType: "MagicSkill",
   posX: 3,
   posY: 2,
   tier: 4,
-  name: "魔法炮（测试）",
+  name: "魔法炮",
   isPassive: false,
   chargingType: "Reservoir",
-  distanceType: "Long",
+  distanceType: "Both",
   targetType: "Enemy",
   details: "测试用魔法炮，包含充能与释放两个阶段。",
-  dataSources: "core/member/player/testSkills.ts",
-  statisticId: "stat.skill.magic_cannon.test",
+  dataSources: "system",
+  statisticId: "MagicCannonStatisticId",
   updatedByAccountId: null,
   createdByAccountId: null,
 };
@@ -34,25 +32,22 @@ export const magicCannonSkill: skill = {
  * logic 字段存储完整的行为树定义
  */
 export const magicCannonSkillEffect: skill_effect = {
-  id: "test.magic_cannon.skill_effect",
+  id: "MagicCannonEffect1Id",
   belongToskillId: magicCannonSkill.id,
   condition: "true",
-  elementLogic: "return ctx.elementOverride ?? 'Light';",
-  castingRange: "10m",
+  elementLogic: "mainWeapon.element",
+  castingRange: "10",
   effectiveRange: 10,
-  // phase: 0=未设置/已释放, 1=charging(充能中), stacks=充能百分比(0-200)
-  // hasGauge: true=已使用过魔法炮（下次使用消耗700MP），false=未使用过（消耗0MP）
-  // 注意：ExpressionEvaluator 不支持可选链 ?.，需要使用 != null 检查
-  motionFixed: "ctx.magicCannon != null && ctx.magicCannon.phase == 1 ? 90 : 60",
-  motionModified: "0",
-  chantingFixed: "ctx.magicCannon != null && ctx.magicCannon.phase == 1 ? 8000 : 0",
+  motionFixed: "ctx.magicCannon?.phase == 1 ? 12 : 18",
+  motionModified: "ctx.magicCannon?.phase == 1 ? 170 : 31",
+  chantingFixed: "0",
   chantingModified: "0",
   reservoirFixed: "0",
   reservoirModified: "0",
   startupFrames: "0",
   hpCost: null,
-  // 如果已使用过（hasGauge=true）且处于充能状态（phase=1），则消耗700MP；否则消耗0MP
-  mpCost: "ctx.magicCannon != null && ctx.magicCannon.phase == 1 && ctx.magicCannon.hasGauge == true ? 700 : 0",
+  // 如果已存在魔法炮充能 Buff，则消耗700MP；否则消耗0MP
+  mpCost: "self.buffManager.hasBuff('magic_cannon_charge') ? 700 : 0",
   description: "魔法炮充能/释放逻辑，通过行为树实现。",
   logic: {
     name: "magic-cannon-logic",
@@ -271,50 +266,28 @@ export const magicCannonSkillEffect: skill_effect = {
             },
             {
               id: 29,
-              name: "Sequence",
-              desc: "调试：显示当前 magicCannon 状态和充能百分比",
-              children: [
-                {
-                  id: 293,
-                  name: "Calculate",
-                  args: {
-                    // 注意：ExpressionEvaluator 不支持 null 字面量，使用 truthy 检查
-                    value: "magicCannon ? (magicCannon.phase ? magicCannon.phase : 0) : 0",
-                  },
-                  output: ["currentPhase"],
+              name: "RunPipeline",
+              desc: "检查魔法炮充能 Buff 状态，获取 buffExists 变量",
+              args: {
+                pipelineName: "buff.check",
+                params: {
+                  buffId: "magic_cannon_charge",
                 },
-                {
-                  id: 294,
-                  name: "Log",
-                  args: {
-                    message: "Switch 前：当前 phase 值（0=未设置, 1=充能中）",
-                    level: "log",
-                  },
-                  input: ["currentPhase"],
-                },
-                {
-                  id: 295,
-                  name: "Calculate",
-                  args: {
-                    value: "magicCannon && magicCannon.stacks ? magicCannon.stacks : 0",
-                  },
-                  output: ["currentStacks"],
-                },
-                {
-                  id: 296,
-                  name: "Log",
-                  args: {
-                    message: "当前充能百分比（stacks，上限200）",
-                    level: "log",
-                  },
-                  input: ["currentStacks"],
-                },
-              ],
+              },
+            },
+            {
+              id: 291,
+              name: "Log",
+              args: {
+                message: "Switch 前：魔法炮充能 Buff 是否存在",
+                level: "log",
+              },
+              input: ["buffExists"],
             },
             {
               id: 30,
               name: "Switch",
-              desc: "根据 phase 分支执行不同逻辑",
+              desc: "根据 Buff 状态分支执行不同逻辑",
               children: [
                 {
                   id: 31,
@@ -324,10 +297,9 @@ export const magicCannonSkillEffect: skill_effect = {
                       id: 32,
                       name: "Check",
                       args: {
-                        // phase == 0 或未设置 表示需要充能（第一次使用，充能）
-                        // 注意：ExpressionEvaluator 不支持 null 字面量，使用 truthy 检查
-                        // !magicCannon 表示未初始化，magicCannon.phase == 0 表示已初始化但未充能
-                        value: "!magicCannon || (magicCannon.phase == 0)",
+                        // 检查 Buff 是否不存在，不存在则进入充能阶段（第一次使用，充能）
+                        // buffExists 来自上方 buff.check 管线的输出
+                        value: "!buffExists",
                       },
                     },
                     {
@@ -417,12 +389,12 @@ export const magicCannonSkillEffect: skill_effect = {
                             {
                               id: 358,
                               name: "Log",
-                              args: {
+                          args: {
                                 message: "  变化量：",
                                 level: "log",
                               },
                               input: ["stacksChange"],
-                            },
+                          },
                           ],
                         },
                         {
@@ -431,6 +403,58 @@ export const magicCannonSkillEffect: skill_effect = {
                           args: {
                             message: "魔法炮进入充能状态（充能百分比将通过其他魔法技能增加，上限200）",
                             level: "log",
+                          },
+                        },
+                        {
+                          id: 37,
+                          name: "RunPipeline",
+                          desc: "添加魔法炮充能 Buff",
+                          args: {
+                            pipelineName: "buff.add",
+                            params: {
+                              buffId: "magic_cannon_charge",
+                              buffName: "魔法炮充能",
+                              duration: -1,
+                              variables: { chargeCounter: 0 },
+                              effects: [
+                                {
+                                  type: "pipeline",
+                                  pipeline: "frame.update",
+                                  stage: "",
+                                  logic: `
+                                    const current = ctx.getBuffVar('magic_cannon_charge', 'chargeCounter');
+                                    const initialFrame = ctx.getBuffVar('magic_cannon_charge', 'initialFrame') || ctx.currentFrame;
+                                    const frameInterval = current < 100 ? 60 : 120; // 100%以下每60帧，100%以上每120帧
+                                    const framesSinceInitial = ctx.currentFrame - initialFrame;
+                                    
+                                    // 每帧判断：当前帧与初始帧的差值是否为帧间隔的整数倍
+                                    if (framesSinceInitial > 0 && framesSinceInitial % frameInterval === 0) {
+                                      const increment = 1;
+                                      ctx.setBuffVar('magic_cannon_charge', 'chargeCounter', Math.min(current + increment, 200));
+                                    }
+                                  `,
+                                  priority: 0
+                                },
+                                {
+                                  type: "pipeline",
+                                  pipeline: "skill.effect.apply",
+                                  stage: "技能效果应用",
+                                  logic: `
+                                    const chargeSkills = ['法术/飞箭', '法术/长枪', '法术/魔法枪', '牵引/引爆', '障壁', '法术/暴风', '法术/毁灭', '法术/终结', '法术/爆能', '祈祷', '神圣光辉', '空灵障壁', '运用结界', '空灵闪焰', '复苏', '反击势力', '天外长枪'];
+                                    if (chargeSkills.includes(ctx.currentSkillName)) {
+                                      const current = ctx.getBuffVar('magic_cannon_charge', 'chargeCounter');
+                                      const castTime = ctx.currentSkillChantingFrames || 0;
+                                      const skillLv = ctx.currentSkill?.lv || 0;
+                                      const castSpeedBoost = 0;
+                                      const increment = castTime * skillLv + 80 * castSpeedBoost;
+                                      ctx.setBuffVar('magic_cannon_charge', 'chargeCounter', Math.min(current + increment, 200));
+                                      console.log('🔋 魔法炮充能:', current, '->', Math.min(current + increment, 200));
+                                    }
+                                  `,
+                                  priority: 0
+                                }
+                              ]
+                            }
                           },
                         },
                         {
@@ -486,9 +510,9 @@ export const magicCannonSkillEffect: skill_effect = {
                       id: 38,
                       name: "Check",
                       args: {
-                        // phase == 1 表示已充能，进入释放阶段（第二次使用，释放伤害）
-                        // 注意：ExpressionEvaluator 不支持 null 字面量，使用 truthy 检查
-                        value: "magicCannon && magicCannon.phase == 1",
+                        // 检查 Buff 是否存在，存在则进入释放阶段（第二次使用，释放伤害）
+                        // buffExists 来自上方 buff.check 管线的输出
+                        value: "buffExists",
                       },
                     },
                     {
@@ -506,30 +530,40 @@ export const magicCannonSkillEffect: skill_effect = {
                         },
                         {
                           id: 41,
+                          name: "RunPipeline",
+                          desc: "检查 Buff 并获取充能计数器",
+                          args: {
+                            pipelineName: "buff.check",
+                            params: {
+                              buffId: "magic_cannon_charge",
+                            },
+                          },
+                        },
+                        {
+                          id: 42,
                           name: "Calculate",
                           args: {
-                            // 计算伤害：(matkEff + 700 + 10 * stacks) * (300 * stacks + baseInt * min(stacks, 5))
-                            // Math.min(a, b) 替换为 a < b ? a : b
-                            // 注意：ExpressionEvaluator 不支持 null 字面量，使用 truthy 检查
-                            // stacks = magicCannon && magicCannon.stacks ? magicCannon.stacks : 0（充能百分比，0-200）
-                            // minStacks = stacks < 5 ? stacks : 5
-                            value: "(matkEff + 700 + 10 * (magicCannon && magicCannon.stacks ? magicCannon.stacks : 0)) * (300 * (magicCannon && magicCannon.stacks ? magicCannon.stacks : 0) + baseInt * (magicCannon && magicCannon.stacks ? (magicCannon.stacks < 5 ? magicCannon.stacks : 5) : 0))",
+                            // 伤害计算公式：(matkEff + 700 + 10 * chargeCounter) * (300 * chargeCounter + baseInt * min(chargeCounter, 5))
+                            // 使用 statContainer 访问属性：
+                            // self.statContainer.getValue(\"atk.m\") 是魔法攻击，self.statContainer.getValue(\"int\") 是智力
+                            // 现在支持完整 JS 语法，可以使用 Math.min
+                            value: "(self.statContainer.getValue(\"atk.m\") + 700 + 10 * chargeCounter) * (300 * chargeCounter + self.statContainer.getValue(\"int\") * Math.min(chargeCounter, 5))",
                           },
                           output: ["damage"],
                         },
                         {
-                          id: 44,
-                          name: "Let",
-                          desc: "释放后重置 magicCannon（清空充能状态）",
+                          id: 43,
+                          name: "RunPipeline",
+                          desc: "移除 Buff 并获取充能计数器",
                           args: {
-                            // 释放后重置：phase=0（未设置），stacks=0（清空充能百分比），hasGauge=false（下次使用消耗0MP）
-                            // 下次使用魔法炮时，会重新进入充能状态
-                            value: { phase: 0, stacks: 0, hasGauge: false },
+                            pipelineName: "buff.remove",
+                            params: {
+                              buffId: "magic_cannon_charge",
+                            },
                           },
-                          output: ["magicCannon"],
                         },
                         {
-                          id: 42,
+                          id: 44,
                           name: "Log",
                           args: {
                             message: "计算伤害完成，伤害值",
@@ -538,28 +572,13 @@ export const magicCannonSkillEffect: skill_effect = {
                           input: ["damage"],
                         },
                         {
-                          id: 43,
-                          name: "Sequence",
-                          desc: "调试：显示释放时的充能百分比",
-                          children: [
-                            {
-                              id: 431,
-                              name: "Calculate",
-                              args: {
-                                value: "magicCannon && magicCannon.stacks ? magicCannon.stacks : 0",
-                              },
-                              output: ["stacksOnRelease"],
-                            },
-                            {
-                              id: 432,
-                              name: "Log",
-                              args: {
-                                message: "释放时充能百分比（stacks）",
-                                level: "log",
-                              },
-                              input: ["stacksOnRelease"],
-                            },
-                          ],
+                          id: 45,
+                          name: "Log",
+                          args: {
+                            message: "释放时充能百分比（chargeCounter）",
+                            level: "log",
+                          },
+                          input: ["chargeCounter"],
                         },
                       ],
                     },
@@ -626,26 +645,3 @@ export const magicCannonSkillEffect: skill_effect = {
   } as any,
   details: "logic 字段包含完整的行为树 JSON，使用 Switch 根据 magicCannon.phase (0=未设置, 1=charge, 2=release) 分支执行逻辑。",
 };
-
-export const testSkills = {
-  magicCannonSkill,
-  magicCannonSkillEffect,
-};
-
-/**
- * 创建测试技能数据（CharacterSkillWithRelations 格式）
- * 用于在 PlayerStateMachine 初始化时注入测试技能
- */
-export function createTestSkillData(): CharacterSkillWithRelations {
-  return {
-    id: createId(),
-    lv: 1,
-    isStarGem: false,
-    templateId: magicCannonSkill.id,
-    belongToCharacterId: "",
-    template: {
-      ...magicCannonSkill,
-      effects: [magicCannonSkillEffect],
-    },
-  } as CharacterSkillWithRelations;
-}

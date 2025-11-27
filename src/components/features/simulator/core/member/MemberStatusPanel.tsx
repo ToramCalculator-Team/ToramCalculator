@@ -13,6 +13,7 @@ import { DataStorage, isDataStorageType } from "../dataSys/StatContainer";
 import { Button } from "~/components/controls/button";
 import Icons from "~/components/icons";
 import { Dialog } from "~/components/containers/dialog";
+import BuffTab from "./BuffTab";
 
 // ============================== 组件实现 ==============================
 
@@ -501,6 +502,7 @@ export default function MemberStatusPanel(props: { member: Accessor<MemberSerial
     return props.member()?.attrs;
   });
   const [displayDetail, setDisplayDetail] = createSignal(false);
+  const [activeTab, setActiveTab] = createSignal<"attrs" | "buffs">("attrs");
 
   return (
     <Show
@@ -541,11 +543,42 @@ export default function MemberStatusPanel(props: { member: Accessor<MemberSerial
         </div>
       </Button>
 
-      <Dialog state={displayDetail()} setState={setDisplayDetail} title="属性详情">
+      <Dialog state={displayDetail()} setState={setDisplayDetail} title="成员详情">
         <div class="flex w-full flex-1 flex-col gap-1">
-          {/* 属性详情（从 attrs 构建的嵌套对象） */}
-          <div class="flex-1 rounded">
-            <StatsRenderer data={selectedMemberData()} />
+          {/* Tab 切换 */}
+          <div class="border-dividing-color flex gap-2 border-b">
+            <button
+              onClick={() => setActiveTab("attrs")}
+              class={`px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab() === "attrs"
+                  ? "text-main-text-color border-b-2 border-brand-color-1st"
+                  : "text-accent-color-70 hover:text-main-text-color"
+              }`}
+            >
+              属性
+            </button>
+            <button
+              onClick={() => setActiveTab("buffs")}
+              class={`px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab() === "buffs"
+                  ? "text-main-text-color border-b-2 border-brand-color-1st"
+                  : "text-accent-color-70 hover:text-main-text-color"
+              }`}
+            >
+              Buff
+            </button>
+          </div>
+
+          {/* Tab 内容 */}
+          <div class="flex-1 overflow-auto">
+            <Show when={activeTab() === "attrs"}>
+              <div class="flex-1 rounded">
+                <StatsRenderer data={selectedMemberData()} />
+              </div>
+            </Show>
+            <Show when={activeTab() === "buffs"}>
+              <BuffTab buffs={props.member()?.buffs} />
+            </Show>
           </div>
 
           {/* 调试信息 */}

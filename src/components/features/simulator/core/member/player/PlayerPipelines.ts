@@ -6,6 +6,9 @@ import { PlayerBehaviorContext } from "./PlayerBehaviorContext";
 import { Tree, type TreeData } from "~/lib/behavior3/tree";
 import skillExecutionTemplate from "./behaviorTree/skillExecutionTemplate.json";
 
+
+const logLv = 0; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
+
 const scheduleFsmEvent = (
   context: PlayerStateContext,
   delayFrames: number,
@@ -50,7 +53,7 @@ export const PlayerPipelineStages = {
     z.object({}),
     z.object({ skillHpCostResult: z.number() }),
     (context, input) => {
-      console.log(`👤 [${context.name}][Pip] 技能HP消耗计算`)
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能HP消耗计算`)
       const hpCostExpression = context.currentSkillEffect?.hpCost;
       if (!hpCostExpression) {
         throw new Error(`🎮 [${context.name}] 的当前技能效果不存在`);
@@ -68,7 +71,7 @@ export const PlayerPipelineStages = {
     z.object({}),
     z.object({ skillMpCostResult: z.number() }),
     (context, input) => {
-      console.log(`👤 [${context.name}][Pip] 技能MP消耗计算`)
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能MP消耗计算`)
       const mpCostExpression = context.currentSkillEffect?.mpCost;
       if (!mpCostExpression) {
         throw new Error(`技能效果不存在`);
@@ -86,9 +89,66 @@ export const PlayerPipelineStages = {
     z.object({ skillMpCostResult: z.number() }),
     z.object({ aggroResult: z.number() }),
     (context, input) => {
-      console.log(`👤 [${context.name}][Pip] 仇恨值计算`)
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 仇恨值计算`)
       const aggro = input.skillMpCostResult * context.statContainer.getValue("aggro.rate");
       return { aggroResult: aggro };
+    },
+  ),
+
+  添加Buff: defineStage(
+    z.object({
+      buffId: z.string(),
+      buffName: z.string(),
+      duration: z.number(),
+      variables: z.record(z.string(), z.number()).optional(),
+      effects: z.array(z.any()).optional(),
+    }),
+    z.object({ buffAdded: z.boolean() }),
+    (context, input) => {
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 添加Buff: ${input.buffName}`);
+      
+      const buff: any = {
+        id: input.buffId,
+        name: input.buffName,
+        duration: input.duration,
+        startTime: Date.now(),
+        source: `skill.${context.currentSkill?.id || 'unknown'}`,
+        effects: input.effects || [],
+        variables: {
+          ...(input.variables || {}),
+          // 如果变量中没有 initialFrame，初始化为当前帧数（用于 frame.update 效果的帧数检查）
+          initialFrame: input.variables?.initialFrame ?? context.currentFrame,
+        },
+      };
+      
+      context.buffManager.addBuff(buff);
+      return { buffAdded: true };
+    },
+  ),
+
+  移除Buff: defineStage(
+    z.object({
+      buffId: z.string(),
+    }),
+    z.object({ buffRemoved: z.boolean(), chargeCounter: z.number().optional() }),
+    (context, input) => {
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 移除Buff: ${input.buffId}`);
+      
+      const chargeCounter = context.buffManager.getVariable(input.buffId, 'chargeCounter');
+      context.buffManager.removeBuff(input.buffId);
+      return { buffRemoved: true, chargeCounter };
+    },
+  ),
+
+  检查Buff: defineStage(
+    z.object({
+      buffId: z.string(),
+    }),
+    z.object({ buffExists: z.boolean(), chargeCounter: z.number().optional() }),
+    (context, input) => {
+      const buffExists = context.buffManager.hasBuff(input.buffId);
+      const chargeCounter = buffExists ? context.buffManager.getVariable(input.buffId, 'chargeCounter') : undefined;
+      return { buffExists, chargeCounter };
     },
   ),
 
@@ -96,7 +156,7 @@ export const PlayerPipelineStages = {
     z.object({}),
     z.object({ skillFixedMotionResult: z.number() }),
     (context, input) => {
-      console.log(`👤 [${context.name}][Pip] 技能固定动作时长计算`)
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能固定动作时长计算`)
       const fixedMotionExpression = context.currentSkillEffect?.motionFixed;
       const skill = context.currentSkill;
       if (!skill || !fixedMotionExpression) {
@@ -117,7 +177,7 @@ export const PlayerPipelineStages = {
     z.object({ skillFixedMotionResult: z.number() }),
     z.object({ skillModifiedMotionResult: z.number() }),
     (context, input) => {
-      console.log(`👤 [${context.name}][Pip] 技能可变动作时长计算`)
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能可变动作时长计算`)
       const modifiedMotionExpression = context.currentSkillEffect?.motionModified;
       const skill = context.currentSkill;
       if (!skill || !modifiedMotionExpression) {
@@ -138,7 +198,7 @@ export const PlayerPipelineStages = {
     z.object({}),
     z.object({ mspdResult: z.number() }),
     (context, input) => {
-      console.log(`👤 [${context.name}][Pip] 行动速度计算`)
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 行动速度计算`)
       const mspd = context.statContainer.getValue("mspd");
       return {
         mspdResult: mspd,
@@ -150,7 +210,7 @@ export const PlayerPipelineStages = {
     z.object({}),
     z.object({ startupProportion: z.number() }),
     (context, input) => {
-      console.log(`👤 [${context.name}][Pip] 前摇比例计算`)
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 前摇比例计算`)
       const startupProportion = 0.5;
       if (!startupProportion) {
         throw new Error(`🎮 [${context.name}] 的当前技能前摇比例数据不存在`);
@@ -173,7 +233,7 @@ export const PlayerPipelineStages = {
       currentSkillStartupFrames: z.number(),
     }),
     (context, input) => {
-      console.log(`👤 [${context.name}][Pip] 前摇帧数计算`)
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 前摇帧数计算`)
       const startupFrames =
         (input.skillFixedMotionResult + input.skillModifiedMotionResult * input.mspdResult) *
         input.startupProportion;
@@ -188,10 +248,10 @@ export const PlayerPipelineStages = {
     z.object({}),
     z.object({ skillEffectApplied: z.boolean() }),
     (context, input) => {
-      console.log(`👤 [${context.name}][Pip] 技能效果应用`)
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能效果应用`)
 
 
-      console.log(`👤 [${context.name}][Pip] 技能效果应用阶段完成（标记为已应用）`);
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能效果应用阶段完成（标记为已应用）`);
       return {
         skillEffectApplied: true,
       };
@@ -202,7 +262,7 @@ export const PlayerPipelineStages = {
     z.object({}),
     z.object({ startupAnimationStarted: z.boolean() }),
     (context) => {
-      console.log(`👤 [${context.name}][Pip] 启动前摇动画`);
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动前摇动画`);
       return { startupAnimationStarted: true };
     },
   ),
@@ -211,7 +271,7 @@ export const PlayerPipelineStages = {
     z.object({}),
     z.object({ chargingAnimationStarted: z.boolean() }),
     (context) => {
-      console.log(`👤 [${context.name}][Pip] 启动蓄力动画`)
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动蓄力动画`)
       return { chargingAnimationStarted: true };
     },
   ),
@@ -220,7 +280,7 @@ export const PlayerPipelineStages = {
     z.object({}),
     z.object({ chantingAnimationStarted: z.boolean() }),
     (context) => {
-      console.log(`👤 [${context.name}][Pip] 启动咏唱动画`);
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动咏唱动画`);
       return { chantingAnimationStarted: true };
     },
   ),
@@ -229,7 +289,7 @@ export const PlayerPipelineStages = {
     z.object({}),
     z.object({ actionAnimationStarted: z.boolean() }),
     (context) => {
-      console.log(`👤 [${context.name}][Pip] 启动发动动画`);
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动发动动画`);
       return { actionAnimationStarted: true };
     },
   ),
@@ -238,7 +298,7 @@ export const PlayerPipelineStages = {
     z.object({}),
     z.object({ startupEventScheduled: z.boolean() }),
     (context) => {
-      console.log(`👤 [${context.name}][Pip] 调度前摇结束事件`)
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度前摇结束事件`)
       const frames = Math.max(1, Math.ceil(context.currentSkillStartupFrames ?? 0));
       scheduleFsmEvent(context, frames, "收到前摇结束通知", "event.startup.schedule");
       return { startupEventScheduled: true };
@@ -249,7 +309,7 @@ export const PlayerPipelineStages = {
     z.object({}),
     z.object({ chargingEventScheduled: z.boolean() }),
     (context) => {
-      console.log(`👤 [${context.name}][Pip] 调度蓄力结束事件`)
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度蓄力结束事件`)
       const frames = Math.max(1, Math.ceil(context.currentSkillChargingFrames ?? 0));
       scheduleFsmEvent(context, frames, "收到蓄力结束通知", "event.charging.schedule");
       return { chargingEventScheduled: true };
@@ -260,7 +320,7 @@ export const PlayerPipelineStages = {
     z.object({}),
     z.object({ chantingEventScheduled: z.boolean() }),
     (context) => {
-      console.log(`👤 [${context.name}][Pip] 调度咏唱结束事件`)
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度咏唱结束事件`)
       const frames = Math.max(1, Math.ceil(context.currentSkillChantingFrames ?? 0));
       scheduleFsmEvent(context, frames, "收到咏唱结束通知", "event.chanting.schedule");
       return { chantingEventScheduled: true };
@@ -271,7 +331,7 @@ export const PlayerPipelineStages = {
     z.object({}),
     z.object({ actionEventScheduled: z.boolean() }),
     (context) => {
-      console.log(`👤 [${context.name}][Pip] 调度发动结束事件`)
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度发动结束事件`)
       const frames = Math.max(1, Math.ceil(context.currentSkillActionFrames ?? 0));
       scheduleFsmEvent(context, frames, "收到发动结束通知", "event.action.schedule");
       return { actionEventScheduled: true };
@@ -300,6 +360,11 @@ export const playerPipDef = {
     "前摇帧数计算",
   ],
   "skill.effect.apply": ["技能效果应用"],
+
+  // ============ Buff 相关管线 ============
+  "buff.add": ["添加Buff"],
+  "buff.remove": ["移除Buff"],
+  "buff.check": ["检查Buff"],
 
   // ============ 战斗相关管线 ============
   "combat.hit.calculate": [],

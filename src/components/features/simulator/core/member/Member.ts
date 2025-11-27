@@ -13,6 +13,27 @@ import { PipeLineDef, StagePool } from "../pipeline/PipelineStageType";
  *
  * @template TAttrKey 属性键的字符串联合类型，与 MemberContext 保持一致
  */
+/**
+ * Buff 视图数据 - 用于 UI 展示
+ */
+export interface BuffViewData {
+  id: string;
+  name: string;
+  duration: number; // -1 表示永久
+  startTime: number;
+  currentStacks?: number;
+  maxStacks?: number;
+  source?: string;
+  description?: string;
+  variables?: Record<string, number>; // 如 chargeCounter 等
+  // 动态管线效果信息（简要描述）
+  dynamicEffects?: Array<{
+    pipeline: string;
+    stage: string;
+    priority?: number;
+  }>;
+}
+
 export interface MemberSerializeData {
   attrs: Record<string, unknown>;
   id: string;
@@ -27,8 +48,9 @@ export interface MemberSerializeData {
     y: number;
     z: number;
   };
-  // 状态机状态信息（可选，用于实时同步）
-  state?: any;
+  // Buff 列表（用于 UI 展示）
+  buffs?: BuffViewData[];
+
 }
 
 /**
@@ -140,6 +162,34 @@ export class Member<
 
   /** 序列化方法 */
   serialize(): MemberSerializeData {
+    // 序列化 Buff 数据
+    const buffs: BuffViewData[] = this.buffManager.getBuffs().map((buff) => {
+      // 提取动态管线效果信息
+      const dynamicEffects = buff.effects
+        .filter((effect) => effect.type === "pipeline")
+        .map((effect) => {
+          const pipelineEffect = effect as any; // PipelineBuffEffect
+          return {
+            pipeline: pipelineEffect.pipeline,
+            stage: pipelineEffect.stage || "",
+            priority: pipelineEffect.priority,
+          };
+        });
+
+      return {
+        id: buff.id,
+        name: buff.name,
+        duration: buff.duration,
+        startTime: buff.startTime,
+        currentStacks: buff.currentStacks ?? 1,
+        maxStacks: buff.maxStacks ?? 1,
+        source: buff.source,
+        description: buff.description,
+        variables: buff.variables ? { ...buff.variables } : undefined,
+        dynamicEffects: dynamicEffects.length > 0 ? dynamicEffects : undefined,
+      };
+    });
+
     return {
       attrs: this.statContainer.exportNestedValues(),
       id: this.id,
@@ -150,10 +200,17 @@ export class Member<
       targetId: this.targetId,
       isAlive: this.isAlive,
       position: this.position,
+      buffs: buffs.length > 0 ? buffs : undefined,
     };
   }
 
   update(): void {
+    // 获取当前帧数（从引擎的 frameLoop 获取）
+    const currentFrame = this.engine.getFrameLoop().getFrameNumber();
+    
+    // 更新 Buff（处理 frame.update 效果和过期检查）
+    this.buffManager.update(currentFrame);
+    
     // 发送"更新"事件（中文），与状态机监听的事件类型匹配
     this.actor.send({ type: "更新", timestamp: Date.now() } as unknown as TEvent);
   }
@@ -187,8 +244,8 @@ export class Member<
     // 使用传入的配置直接初始化管线管理器
     this.pipelineManager = new PipelineManager(pipelineDef, stagePool);
 
-    // 初始化Buff管理器
-    this.buffManager = new BuffManager(this.statContainer, this.pipelineManager);
+    // 初始化Buff管理器（需要在 this.id 赋值后）
+    this.buffManager = new BuffManager(this.statContainer, this.pipelineManager, this.engine, memberData.id);
 
     this.position = position ?? { x: 0, y: 0, z: 0 };
 

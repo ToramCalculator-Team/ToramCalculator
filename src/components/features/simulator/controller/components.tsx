@@ -183,8 +183,8 @@ export function ControlPanel(props: ControlPanelProps) {
 // ============================== 成员管理组件 ==============================
 
 interface MemberSelectProps {
-  members: MemberSerializeData[];
-  selectedId: string | null;
+  members: Accessor<MemberSerializeData[]>;
+  selectedId: Accessor<string | null>;
   onSelect: (memberId: string) => void;
   placeholder?: string;
 }
@@ -196,7 +196,7 @@ export function MemberSelect(props: MemberSelectProps) {
   return (
     <div class="MemberSelect w-full flex flex-1 items-center gap-2">
       <Show
-        when={props.members.length > 0}
+        when={props.members().length > 0}
         fallback={
           <div class="bg-area-color flex h-12 w-full items-center justify-center rounded">
             <LoadingBar />
@@ -204,13 +204,13 @@ export function MemberSelect(props: MemberSelectProps) {
         }
       >
         <Select
-          value={props.selectedId || ""}
+          value={props.selectedId() || ""}
           setValue={(v) => {
-            if (!v && props.members.length > 0) return;
+            if (!v && props.members().length > 0) return;
             props.onSelect(v);
           }}
           options={[
-            ...props.members.map((member) => ({
+            ...props.members().map((member) => ({
               label: `${member.name || member.id} (${member.type || "unknown"})`,
               value: member.id,
             })),
@@ -269,9 +269,8 @@ export function SkillPanel(props: SkillPanelProps) {
                     <span class="text-sm">{skill.name}</span>
                     <div class="flex w-full items-center justify-between text-xs text-gray-500">
                       <span>Lv.{skill.level}</span>
-                      <Show when={skill.computed.mpCost > 0}>
-                        <span class="text-blue-400">MP:{skill.computed.mpCost}</span>
-                      </Show>
+                      {/* 始终展示 MP 消耗，包括 0，方便调试动态消耗（如魔法炮） */}
+                      <span class="text-blue-400">MP:{skill.computed.mpCost}</span>
                     </div>
                     <Show when={skill.computed.cooldownRemaining > 0}>
                       <span class="text-xs text-orange-400">CD:{skill.computed.cooldownRemaining}f</span>
@@ -313,8 +312,8 @@ export function ActionPanel(props: ActionPanelProps) {
           <div class="flex gap-2 items-center">
             <span class="text-sm text-gray-600">选择目标:</span>
             <MemberSelect
-              members={props.members()}
-              selectedId={null} // 目标选择不需要保持状态
+              members={props.members}
+              selectedId={() => null} // 目标选择不需要保持状态
               onSelect={props.onSelectTarget}
               placeholder="选择目标成员"
             />

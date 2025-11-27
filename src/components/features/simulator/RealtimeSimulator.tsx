@@ -371,10 +371,37 @@ export default function RealtimeSimulator(props: RealtimeSimulatorProps) {
       <MemberStatus
         member={createMemo(() => {
           const memberId = controller.selectedMemberId[0]();
+          if (!memberId) return null;
+
+          // 1. 优先从引擎快照中读取（包含实时 Buff）
+          const snapshot = controller.engineView[0]();
+          if (snapshot) {
+            const m = snapshot.members.find((m) => m.id === memberId) as
+              | (typeof snapshot.members[number] & { buffs?: any[] })
+              | undefined;
+
+            if (m) {
+              // 映射为 MemberSerializeData 结构，确保包含 buffs 字段
+              return {
+                attrs: m.attrs,
+                id: m.id,
+                type: m.type,
+                name: m.name,
+                campId: m.campId,
+                teamId: m.teamId,
+                targetId: m.targetId,
+                isAlive: m.isAlive,
+                position: m.position,
+                buffs: m.buffs,
+              } as any;
+            }
+          }
+
+          // 2. 回退到初始化时拉取的静态成员数据（通常不含 Buff）
           const memberList = controller.members[0]();
-          if (!memberId || !memberList) return null;
-          const foundMember = memberList.find((m) => m.id === memberId);
-          return foundMember || null;
+          if (!memberList) return null;
+          const fallback = memberList.find((m) => m.id === memberId) || null;
+          return fallback;
         })}
       />
 
@@ -421,8 +448,8 @@ export default function RealtimeSimulator(props: RealtimeSimulatorProps) {
         />
 
         <MemberSelect
-          members={controller.members[0]() || []}
-          selectedId={controller.selectedMemberId[0]()}
+          members={controller.members[0]}
+          selectedId={controller.selectedMemberId[0]}
           onSelect={(memberId) => controller.selectMember(memberId)}
         />
 

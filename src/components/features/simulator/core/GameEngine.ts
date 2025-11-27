@@ -34,22 +34,43 @@ import { SimulatorWithRelations } from "@db/generated/repositories/simulator";
 // ============================== 类型定义 ==============================
 
 /**
- * 表达式计算上下文
+ * 表达式计算基础上下文
+ *
+ * 说明：
+ * - 这是所有“字符串表达式”在运行时可见的最小公共字段集合
+ * - 行为树 / 管线 / Buff 相关的表达式都应基于这套结构扩展，而不是各自定义一套 shape
  */
 export interface ExpressionContext {
-  /** 当前帧号 */
+  /** 当前帧号（必填，用于基于帧的逻辑判断） */
   currentFrame: number;
-  /** 施法者属性 */
+  /** 施法者成员ID（通常等于 self.id） */
   casterId: string;
-  /** 目标属性 */
+  /** 目标成员ID（可选） */
   targetId?: string;
-  /** 技能数据 */
+  /** 技能等级（可选，用于技能表达式） */
   skillLv?: number;
-  /** 环境变量 */
+  /** 环境变量（如天气、地形等） */
   environment?: any;
-  /** 自定义变量 */
+  /** 其他自定义变量 */
   [key: string]: any;
 }
+
+/**
+ * 统一的表达式运行时上下文
+ *
+ * 约定：
+ * - 所有通过 JSProcessor 编译的代码，都以 (ctx) 作为入口参数
+ * - ctx 至少包含：
+ *   - 引擎实例：engine
+ *   - 基础表达式上下文字段：ExpressionContext
+ *   - 自定义扩展字段：任意键值（黑板变量、Buff变量等）
+ *
+ * 注意：
+ * - 这里使用 type 而不是 interface，避免与其他模块中的 ExpressionContext 产生命名冲突
+ */
+export type ExpressionRuntimeContext = ExpressionContext & {
+  engine: GameEngine;
+};
 
 /**
  * 引擎状态枚举
@@ -996,10 +1017,16 @@ export class GameEngine {
       },
     };
 
-    // 检查缓存
+    // 先编译获取 cacheKey（JSProcessor 内部可能有缓存）
     const result = this.jsProcessor.compile(code, context);
     if (!result.success) {
       throw new Error(`编译失败: ${result.error}`);
+    }
+
+    // 检查缓存（使用 JSProcessor 返回的 cacheKey）
+    const cached = this.compiledScripts.get(result.cacheKey);
+    if (cached) {
+      return cached;
     }
 
     // 缓存编译结果
@@ -1026,16 +1053,15 @@ export class GameEngine {
         throw new Error("缺少成员ID");
       }
 
-      // 在安全的沙盒环境中执行编译后的代码
-      const runner = new Function("ctx", compiledCode);
-
       // 确保 context 包含 engine 引用，供生成的代码使用
-      const executionContext = {
+      const executionContext: ExpressionRuntimeContext = {
         ...context,
         engine: this,
       };
 
-      const result = runner.call(null, executionContext);
+      // 在统一的运行时包装下执行（使用 with(ctx) 暴露字段）
+      const runner = this.createExpressionRunner(compiledCode);
+      const result = runner(executionContext);
 
       // console.log(`✅ JS脚本执行成功: ${memberId}, 结果:`, result);
       return result;
@@ -1045,6 +1071,25 @@ export class GameEngine {
       console.error("执行上下文:", context);
       throw new Error(`脚本执行失败: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
+  }
+
+  /**
+   * 为编译后的 JS 代码创建统一的执行函数
+   *
+   * 约定：
+   * - 所有由 JSProcessor 编译得到的代码，签名均为 (ctx) => any
+   * - 这里统一使用 `with (ctx) { ... }` 将 ctx 的字段暴露为“局部变量”
+   *   这样表达式既可以写 `ctx.currentFrame`，也可以直接写 `currentFrame`
+   */
+  createExpressionRunner(compiledCode: string): (ctx: ExpressionRuntimeContext) => any {
+    const wrappedCode = `
+      with (ctx) {
+        ${compiledCode}
+      }
+    `;
+    // new Function 用于在 Worker 沙盒中执行已编译代码，受 JSProcessor 约束
+    // eslint-disable-next-line no-new-func
+    return new Function("ctx", wrappedCode) as (ctx: ExpressionRuntimeContext) => any;
   }
 
   /**
@@ -1079,6 +1124,7 @@ export class GameEngine {
       }
 
       // 执行编译后的表达式，确保 context 包含 engine 引用
+      // 注意：self 对象已由 JSProcessor 在编译时注入，可直接使用 self.buffManager
       const executionContext = {
         ...context,
         engine: this,
@@ -1191,6 +1237,7 @@ export class GameEngine {
         campId: member.campId,
         teamId: member.teamId,
         targetId: member.targetId,
+        buffs: memberData.buffs, // Buff 列表
       };
 
       // 为 Player 类型计算技能数据

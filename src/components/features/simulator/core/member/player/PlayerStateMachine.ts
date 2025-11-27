@@ -13,7 +13,7 @@ import { CharacterWithRelations } from "@db/generated/repositories/character";
 import { PipelineManager } from "../../pipeline/PipelineManager";
 import { playerPipDef, PlayerPipelineDef, PlayerStagePool } from "./PlayerPipelines";
 import { behaviorTreeActor, type BehaviorTreeInput } from "./BehaviorTreeActor";
-import { createTestSkillData } from "./testSkills";
+import { BuffManager } from "../../buff/BuffManager";
 
 /**
  * Player特有的事件类型
@@ -166,6 +166,8 @@ export interface PlayerStateContext extends MemberStateContextBase {
   isAlive: boolean;
   /** 引擎引用 */
   engine: GameEngine;
+  /** Buff管理器引用 */
+  buffManager: BuffManager;
   /** 属性容器引用 */
   statContainer: StatContainer<PlayerAttrType>;
   /** 管线管理器引用 */
@@ -297,7 +299,8 @@ export const playerStateMachine = (player: Player) => {
         console.log(`👤 [${context.name}] 清空待处理技能`, event);
         context.currentSkill = null;
       },
-      添加待处理技能效果: enqueueActions(({ context, enqueue }) => {
+      添加待处理技能效果: enqueueActions(({ context, event, enqueue }) => {
+        console.log(`👤 [${context.name}] 添加待处理技能效果`, event);
         const skillEffect = context.currentSkill?.template?.effects.find((e) =>
           context.engine.evaluateExpression(e.condition, {
             currentFrame: context.currentFrame,
@@ -313,26 +316,41 @@ export const playerStateMachine = (player: Player) => {
           currentSkillEffect: skillEffect,
         });
       }),
-      技能消耗扣除: enqueueActions(
-        (
-          { context, event, enqueue },
-          params: {
-            expressionEvaluator: (expression: string, context: ExpressionContext) => number;
-            statContainer: StatContainer<PlayerAttrType>;
-          },
-        ) => {
-          const e = event as 收到目标快照;
-          console.log(`👤 [${context.name}] 状态机上下文中的当前技能效果：`, context.currentSkillEffect);
-          console.log(`👤 [${context.name}] 技能消耗扣除`, event);
-          const res = context.pipelineManager.run("skill.cost.calculate", context, {});
-          enqueue.assign({
-            aggro: context.aggro + res.stageOutputs.仇恨值计算.aggroResult,
+      技能消耗扣除: enqueueActions(({ context, event, enqueue }) => {
+        const e = event as 收到目标快照;
+        console.log(`👤 [${context.name}] 状态机上下文中的当前技能效果：`, context.currentSkillEffect);
+        console.log(`👤 [${context.name}] 技能消耗扣除`, event);
+        const res = context.pipelineManager.run("skill.cost.calculate", context, {});
+
+        // 实际扣除MP和HP
+        const mpCost = res.stageOutputs.技能MP消耗计算.skillMpCostResult;
+        const hpCost = res.stageOutputs.技能HP消耗计算.skillHpCostResult;
+
+        if (mpCost > 0) {
+          context.statContainer.addModifier("mp.current", ModifierType.STATIC_FIXED, -mpCost, {
+            id: `skill_cost_${context.currentSkill?.id || "unknown"}_${context.currentFrame}`,
+            name: "skill_mp_cost",
+            type: "skill",
           });
-          console.log(
-            `👤 [${context.name}] HP: ${context.statContainer.getValue("hp.current")}, MP: ${context.statContainer.getValue("mp.current")}`,
-          );
-        },
-      ),
+          console.log(`💙 [${context.name}] 扣除MP: ${mpCost}, 剩余: ${context.statContainer.getValue("mp.current")}`);
+        }
+
+        if (hpCost > 0) {
+          context.statContainer.addModifier("hp.current", ModifierType.STATIC_FIXED, -hpCost, {
+            id: `skill_cost_${context.currentSkill?.id || "unknown"}_${context.currentFrame}`,
+            name: "skill_hp_cost",
+            type: "skill",
+          });
+          console.log(`❤️ [${context.name}] 扣除HP: ${hpCost}, 剩余: ${context.statContainer.getValue("hp.current")}`);
+        }
+
+        enqueue.assign({
+          aggro: context.aggro + res.stageOutputs.仇恨值计算.aggroResult,
+        });
+        console.log(
+          `👤 [${context.name}] HP: ${context.statContainer.getValue("hp.current")}, MP: ${context.statContainer.getValue("mp.current")}`,
+        );
+      }),
       启用前摇动画: function ({ context, event }) {
         // Add your action code here
         // ...
@@ -348,10 +366,10 @@ export const playerStateMachine = (player: Player) => {
       }),
       创建前摇结束通知: function ({ context, event }) {
         console.log("🎮 创建前摇结束通知", event);
-    
+
         // 计算前摇结束的目标帧
         const targetFrame = context.currentFrame + context.currentSkillStartupFrames;
-    
+
         // 向事件队列写入定时事件
         // 使用 member_fsm_event 类型，由 CustomEventHandler 处理
         context.engine.getEventQueue().insert({
@@ -366,7 +384,7 @@ export const playerStateMachine = (player: Player) => {
             source: "skill_front_swing", // 事件来源
           },
         });
-    
+
         console.log(
           `👤 [${context.name}] 前摇开始，${context.currentSkillStartupFrames}帧后结束 (当前帧: ${context.currentFrame}, 目标帧: ${targetFrame})`,
         );
@@ -583,9 +601,6 @@ export const playerStateMachine = (player: Player) => {
       logEvent: function ({ context, event }) {
         console.log(`👤 [${context.name}] 日志事件`, event);
       },
-      记录进入执行技能中状态: function ({ context }) {
-        console.log(`🎮 [${context.name}] 进入"执行技能中"状态`);
-      },
       发送TICK到行为树: enqueueActions(({ enqueue }) => {
         enqueue.sendTo("skillExecution", { type: "TICK" });
       }),
@@ -605,15 +620,15 @@ export const playerStateMachine = (player: Player) => {
     guards: {
       存在蓄力阶段: function ({ context, event }) {
         console.log(`👤 [${context.name}] 判断技能是否有蓄力阶段`, event);
-    
+
         const effect = context.currentSkillEffect;
         if (!effect) {
           console.error(`👤 [${context.name}] 技能效果不存在`);
           return false;
         }
-    
+
         const currentFrame = context.engine.getFrameLoop().getFrameNumber();
-    
+
         // 蓄力阶段相关属性（假设使用chargeFixed和chargeModified）
         const reservoirFixed = context.engine.evaluateExpression(effect.reservoirFixed ?? "0", {
           currentFrame,
@@ -655,7 +670,7 @@ export const playerStateMachine = (player: Player) => {
         const e = event as 使用技能;
         const skillId = e.data.skillId;
         const currentFrame = context.engine.getFrameLoop().getFrameNumber();
-    
+
         const skill = context.skillList.find((s) => s.id === skillId);
         if (!skill) {
           console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
@@ -696,7 +711,7 @@ export const playerStateMachine = (player: Player) => {
         const e = event as 使用技能;
         const skillId = e.data.skillId;
         const currentFrame = context.engine.getFrameLoop().getFrameNumber();
-    
+
         const skill = context.skillList.find((s) => s.id === skillId);
         if (!skill) {
           console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
@@ -715,25 +730,30 @@ export const playerStateMachine = (player: Player) => {
           console.error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
           return true;
         }
-        const hpCost = context.engine.evaluateExpression(effect.hpCost ?? "throw new Error('技能消耗表达式不存在')", {
-          currentFrame,
-          casterId: context.id,
-          skillLv: skill?.lv ?? 0,
-        });
-        const mpCost = context.engine.evaluateExpression(effect.mpCost ?? "throw new Error('技能消耗表达式不存在')", {
-          currentFrame,
-          casterId: context.id,
-          skillLv: skill?.lv ?? 0,
-        });
-        if (
-          hpCost > context.statContainer.getValue("hp.current") ||
-          mpCost > context.statContainer.getValue("mp.current")
-        ) {
-          console.log(`- 该技能不满足施法消耗，HP:${hpCost} MP:${mpCost}`);
-          // 这里需要撤回RS的修改
-          return true;
+        if (effect.hpCost && effect.mpCost) {
+          const hpCost = context.engine.evaluateExpression(effect.hpCost, {
+            currentFrame,
+            casterId: context.id,
+            skillLv: skill?.lv ?? 0,
+          });
+          const mpCost = context.engine.evaluateExpression(effect.mpCost, {
+            currentFrame,
+            casterId: context.id,
+            skillLv: skill?.lv ?? 0,
+          });
+          if (
+            hpCost > context.statContainer.getValue("hp.current") ||
+            mpCost > context.statContainer.getValue("mp.current")
+          ) {
+            console.log(`- 该技能不满足施法消耗，HP:${hpCost} MP:${mpCost}`);
+            // 这里需要撤回RS的修改
+            return true;
+          }
+          console.log(`- 该技能满足施法消耗，HP:${hpCost} MP:${mpCost}`);
+        } else {
+          console.error(`🎮 [${context.name}] 技能消耗表达式不存在`);
+          return true; // 视为不满足施法条件
         }
-        console.log(`- 该技能满足施法消耗，HP:${hpCost} MP:${mpCost}`);
         return false;
       },
       技能带有心眼: function ({ context, event }) {
@@ -769,6 +789,7 @@ export const playerStateMachine = (player: Player) => {
       targetId: player.targetId,
       isAlive: player.isAlive,
       engine: player.engine,
+      buffManager: player.buffManager,
       statContainer: player.statContainer,
       pipelineManager: player.pipelineManager,
       position: player.position,
@@ -1032,10 +1053,7 @@ export const playerStateMachine = (player: Player) => {
                     ],
                   },
                   执行技能中: {
-                    entry: [
-                      { type: "添加待处理技能效果" },
-                      { type: "记录进入执行技能中状态" },
-                    ],
+                    entry: [{ type: "添加待处理技能效果" }, { type: "技能消耗扣除" }],
                     invoke: {
                       id: "skillExecution",
                       src: "behaviorTreeActor",

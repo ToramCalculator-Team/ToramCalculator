@@ -5,7 +5,6 @@ import type { PlayerStateContext } from "./PlayerStateMachine";
 import { RunPipeline } from "../behaviorTree/nodes/RunPipeline";
 import { ScheduleFSMEvent } from "../behaviorTree/nodes/ScheduleFSMEvent";
 import type { Evaluator } from "~/lib/behavior3/evaluator";
-import { ExpressionEvaluator } from "~/lib/behavior3/evaluator";
 import type { ObjectType } from "~/lib/behavior3/context";
 
 /**
@@ -19,6 +18,9 @@ import type { ObjectType } from "~/lib/behavior3/context";
  * - 表达式求值可以直接访问 owner 的属性，无需手动同步到 blackboard
  */
 export class PlayerBehaviorContext extends Context {
+  // 编译后的函数缓存，避免重复编译
+  private readonly _compiledFunctions: Map<string, Function> = new Map();
+
   constructor(public owner: PlayerStateContext) {
     super();
     
@@ -38,53 +40,44 @@ export class PlayerBehaviorContext extends Context {
   }
 
   /**
-   * 重写 compileCode 方法，增强表达式求值
+   * 重写 compileCode 方法，使用 JSProcessor 编译表达式
    * 
-   * 让表达式可以直接访问 owner 的属性（如 currentFrame、currentSkillStartupFrames）
-   * 这样 Check 节点的条件表达式可以直接工作，无需手动同步 context → blackboard
-   * 
-   * 合并策略：blackboard 的值优先（运行时显式设置），owner 属性作为后备
-   * 这样既支持动态值，又能直接访问 owner 属性，无需手动同步
+   * 优势：
+   * - 支持完整 JS 语法（Math.min、方法调用等）
+   * - 编译时路径验证
+   * - 统一的编译逻辑（与管线使用同一套）
+   * - 编译结果缓存
    */
   override compileCode(code: string): Evaluator {
-    // 先检查是否已经注册过这个表达式
-    const existingEvaluator = (this as any)._evaluators?.[code];
-    if (existingEvaluator) {
-      // 返回一个包装的求值函数，合并 owner 属性和 blackboard 值
-      return (values: ObjectType) => {
-        // 合并策略：先使用 owner 属性作为基础，blackboard 的值会覆盖同名属性
-        // 这样 blackboard 中显式设置的值优先，但表达式可以直接访问 owner 的属性
-        // 为 magicCannon 提供默认值，避免 ExpressionEvaluator 在变量不存在时抛出错误
-        const merged = { 
-          ...this.owner, 
-          magicCannon: values.magicCannon ?? { phase: 0, stacks: 0, hasGauge: false },
-          ...values 
-        };
-        return existingEvaluator(merged);
-      };
+    // 检查缓存
+    let compiledFn = this._compiledFunctions.get(code);
+    
+    if (!compiledFn) {
+      // 获取 member 实例以访问 dataSchema
+      const member = this.owner.engine.getMemberManager().getMember(this.owner.id);
+      if (!member) {
+        throw new Error(`无法获取成员实例: ${this.owner.id}`);
+      }
+
+      // 使用 JSProcessor 编译表达式（通过 GameEngine 统一入口）
+      // JSProcessor 会将 self.xxx 转换为 self.statContainer.getValue('xxx')
+      const compiledCode = this.owner.engine.compileScript(code, this.owner.id);
+
+      // 通过 GameEngine 提供的统一 helper 创建执行函数
+      // 内部使用 with(ctx) 暴露字段，表达式可以直接访问 currentSkillStartupFrames 等变量
+      compiledFn = this.owner.engine.createExpressionRunner(compiledCode);
+      this._compiledFunctions.set(code, compiledFn);
     }
-
-    // 如果没有注册过，创建新的表达式求值器
-    const expr = new ExpressionEvaluator(code);
-    if (!expr.dryRun()) {
-      throw new Error(`invalid expression: ${code}`);
-    }
-
-    // 注册求值器（使用原始版本，不包装）
-    const evaluator = (envars: ObjectType) => expr.evaluate(envars);
-    (this as any)._evaluators = (this as any)._evaluators || {};
-    (this as any)._evaluators[code] = evaluator;
-
-    // 返回包装后的求值函数，合并 owner 属性
+    
+    // 返回求值函数
     return (values: ObjectType) => {
-      // 合并策略：先使用 owner 属性作为基础，blackboard 的值会覆盖同名属性
-      // 为 magicCannon 提供默认值，避免 ExpressionEvaluator 在变量不存在时抛出错误
-      const merged = { 
-        ...this.owner, 
-        magicCannon: values.magicCannon ?? { phase: 0, stacks: 0, hasGauge: false },
-        ...values 
+      // 构建执行上下文：合并 blackboard 变量和 owner 属性
+      // JSProcessor 编译后的代码会注入 self 对象，可以直接访问 member 的所有属性和方法
+      const execCtx = {
+        ...this.owner,  // currentFrame, currentSkillName, engine 等
+        ...values       // blackboard 变量（如 chargeCounter, damage 等）
       };
-      return evaluator(merged);
+      return compiledFn(execCtx);
     };
   }
 

@@ -41,7 +41,8 @@ export type BehaviorTreeOutput = {
  * 是否强制使用测试技能（开发调试用）
  * 设置为 true 时，无论数据库中的技能是什么，都会使用魔法炮测试技能
  */
-const FORCE_TEST_SKILL = true;
+// const FORCE_TEST_SKILL = true;
+const FORCE_TEST_SKILL = false;
 
 /**
  * 创建技能执行行为树
@@ -168,9 +169,9 @@ export const behaviorTreeActor = fromCallback(({ input, sendBack, receive }: {
 
       // 推进行为树
       try {
-        console.log(`🌳 [${input.owner.name}] 推进行为树 tick...`);
+        // console.log(`🌳 [${input.owner.name}] 推进行为树 tick...`);
         const status = tree.tick();
-        console.log(`🌳 [${input.owner.name}] 行为树 tick 完成，状态: ${status}`);
+        // console.log(`🌳 [${input.owner.name}] 行为树 tick 完成，状态: ${status}`);
 
         // 如果行为树完成，发送完成事件给父状态机
         if (status === "success" || status === "failure") {
