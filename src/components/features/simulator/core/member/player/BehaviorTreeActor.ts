@@ -41,8 +41,8 @@ export type BehaviorTreeOutput = {
  * 是否强制使用测试技能（开发调试用）
  * 设置为 true 时，无论数据库中的技能是什么，都会使用魔法炮测试技能
  */
-// const FORCE_TEST_SKILL = true;
-const FORCE_TEST_SKILL = false;
+const FORCE_TEST_SKILL = true;
+// const FORCE_TEST_SKILL = false;
 
 /**
  * 创建技能执行行为树

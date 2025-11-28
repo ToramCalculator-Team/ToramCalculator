@@ -541,15 +541,16 @@ export const magicCannonSkillEffect: skill_effect = {
                         },
                         {
                           id: 42,
-                          name: "Calculate",
+                          name: "RunPipeline",
+                          desc: "请求一次魔法炮伤害结算",
                           args: {
-                            // 伤害计算公式：(matkEff + 700 + 10 * chargeCounter) * (300 * chargeCounter + baseInt * min(chargeCounter, 5))
-                            // 使用 statContainer 访问属性：
-                            // self.statContainer.getValue(\"atk.m\") 是魔法攻击，self.statContainer.getValue(\"int\") 是智力
-                            // 现在支持完整 JS 语法，可以使用 Math.min
-                            value: "(self.statContainer.getValue(\"atk.m\") + 700 + 10 * chargeCounter) * (300 * chargeCounter + self.statContainer.getValue(\"int\") * Math.min(chargeCounter, 5))",
+                            pipelineName: "combat.damage.request",
+                            params: {
+                              // 完整的魔法炮伤害计算公式
+                              damageFormula:
+                                "(((self.statContainer.getValue(\"atk.m\") + self.lv - target.lv) * (1 - target.statContainer.getValue(\"red.m\")) - (1 - self.statContainer.getValue(\"pip.m\")) * target.statContainer.getValue(\"def.m\")) + 700 + 10 * chargeCounter) * (300 * chargeCounter + self.statContainer.getValue(\"int\") * Math.min(chargeCounter, 5))",
+                            },
                           },
-                          output: ["damage"],
                         },
                         {
                           id: 43,
@@ -561,15 +562,6 @@ export const magicCannonSkillEffect: skill_effect = {
                               buffId: "magic_cannon_charge",
                             },
                           },
-                        },
-                        {
-                          id: 44,
-                          name: "Log",
-                          args: {
-                            message: "计算伤害完成，伤害值",
-                            level: "log",
-                          },
-                          input: ["damage"],
                         },
                         {
                           id: 45,

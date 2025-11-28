@@ -86,10 +86,20 @@ interface 进行命中判定 extends EventObject {
 interface 进行控制判定 extends EventObject {
   type: "进行控制判定";
 }
-
 interface 受到攻击 extends EventObject {
   type: "受到攻击";
-  data: { origin: string; skillId: string };
+  data: {
+    origin: string;
+    skillId: string;
+    damageRequest?: {
+      sourceId: string;
+      targetId: string;
+      skillId: string;
+      damageFormula: string;
+      extraVars?: Record<string, any>;
+      sourceSnapshot?: any;
+    };
+  };
 }
 interface 受到治疗 extends EventObject {
   type: "受到治疗";
@@ -206,6 +216,15 @@ export interface PlayerStateContext extends MemberStateContextBase {
   aggro: number;
   /** 机体配置信息 */
   character: CharacterWithRelations;
+  /** 当前处理的伤害请求（受击者侧使用） */
+  currentDamageRequest?: {
+    sourceId: string;
+    targetId: string;
+    skillId: string;
+    damageFormula: string;
+    extraVars?: Record<string, any>;
+    sourceSnapshot?: any;
+  };
 }
 
 export const playerStateMachine = (player: Player) => {
@@ -533,9 +552,13 @@ export const playerStateMachine = (player: Player) => {
         });
       },
       发送命中判定事件给自己: function ({ context, event }) {
-        // Add your action code here
-        // ...
         console.log(`👤 [${context.name}] 发送命中判定事件给自己`, event);
+        const selfMember = context.engine.getMember(context.id);
+        if (!selfMember) {
+          console.error(`👤 [${context.name}] 自身成员不存在，无法发送命中判定事件`);
+          return;
+        }
+        selfMember.actor.send({ type: "进行命中判定" });
       },
       反馈命中结果给施法者: function ({ context, event }) {
         // Add your action code here
@@ -543,14 +566,21 @@ export const playerStateMachine = (player: Player) => {
         console.log(`👤 [${context.name}] 反馈命中结果给施法者`, event);
       },
       发送控制判定事件给自己: function ({ context, event }) {
-        // Add your action code here
-        // ...
         console.log(`👤 [${context.name}] 发送控制判定事件给自己`, event);
+        const selfMember = context.engine.getMember(context.id);
+        if (!selfMember) {
+          console.error(`👤 [${context.name}] 自身成员不存在，无法发送控制判定事件`);
+          return;
+        }
+        selfMember.actor.send({ type: "进行控制判定" });
       },
       命中计算管线: function ({ context, event }) {
-        // Add your action code here
-        // ...
         console.log(`👤 [${context.name}] 命中计算管线`, event);
+        try {
+          context.pipelineManager.run("combat.hit.calculate" as any, context, {});
+        } catch (error) {
+          console.error(`❌ [${context.name}] 命中计算管线执行失败`, error);
+        }
       },
       根据命中结果进行下一步: function ({ context, event }) {
         // Add your action code here
@@ -558,9 +588,12 @@ export const playerStateMachine = (player: Player) => {
         console.log(`👤 [${context.name}] 根据命中结果进行下一步`, event);
       },
       控制判定管线: function ({ context, event }) {
-        // Add your action code here
-        // ...
         console.log(`👤 [${context.name}] 控制判定管线`, event);
+        try {
+          context.pipelineManager.run("combat.control.calculate" as any, context, {});
+        } catch (error) {
+          console.error(`❌ [${context.name}] 控制判定管线执行失败`, error);
+        }
       },
       反馈控制结果给施法者: function ({ context, event }) {
         // Add your action code here
@@ -568,14 +601,21 @@ export const playerStateMachine = (player: Player) => {
         console.log(`👤 [${context.name}] 反馈控制结果给施法者`, event);
       },
       发送伤害计算事件给自己: function ({ context, event }) {
-        // Add your action code here
-        // ...
         console.log(`👤 [${context.name}] 发送伤害计算事件给自己`, event);
+        const selfMember = context.engine.getMember(context.id);
+        if (!selfMember) {
+          console.error(`👤 [${context.name}] 自身成员不存在，无法发送伤害计算事件`);
+          return;
+        }
+        selfMember.actor.send({ type: "进行伤害计算" });
       },
       伤害计算管线: function ({ context, event }) {
-        // Add your action code here
-        // ...
         console.log(`👤 [${context.name}] 伤害计算管线`, event);
+        try {
+          context.pipelineManager.run("combat.damage.calculate", context, {});
+        } catch (error) {
+          console.error(`❌ [${context.name}] 伤害计算管线执行失败`, error);
+        }
       },
       反馈伤害结果给施法者: function ({ context, event }) {
         // Add your action code here
@@ -591,6 +631,16 @@ export const playerStateMachine = (player: Player) => {
         // Add your action code here
         // ...
         console.log(`👤 [${context.name}] 发送buff修改事件给自己`, event);
+      },
+      记录伤害请求: function ({ context, event }) {
+        console.log(`👤 [${context.name}] 记录伤害请求`, event);
+        const e = event as 受到攻击;
+        const damageRequest = e.data?.damageRequest;
+        if (damageRequest) {
+          context.currentDamageRequest = damageRequest;
+        } else {
+          context.currentDamageRequest = undefined;
+        }
       },
       修改目标Id: function ({ context, event }, params: { targetId: string }) {
         // Add your action code here
@@ -835,13 +885,21 @@ export const playerStateMachine = (player: Player) => {
           受到攻击: [
             {
               guard: "是物理伤害",
-              actions: {
-                type: "发送命中判定事件给自己",
-              },
+              actions: [
+                {
+                  type: "记录伤害请求",
+                },
+                {
+                  type: "发送命中判定事件给自己",
+                },
+              ],
             },
             {
               guard: "是物理伤害",
               actions: [
+                {
+                  type: "记录伤害请求",
+                },
                 {
                   type: "反馈命中结果给施法者",
                 },

@@ -5,9 +5,15 @@ import { PipeLineDef, StagePool, defineStage } from "../../pipeline/PipelineStag
 import { PlayerBehaviorContext } from "./PlayerBehaviorContext";
 import { Tree, type TreeData } from "~/lib/behavior3/tree";
 import skillExecutionTemplate from "./behaviorTree/skillExecutionTemplate.json";
+import { ModifierType } from "../../dataSys/StatContainer";
 
 
 const logLv = 0; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
+
+// 阈值描述函数
+const maxMin = (min: number, value: number, max: number) => {
+  return Math.max(min, Math.min(value, max));
+}
 
 const scheduleFsmEvent = (
   context: PlayerStateContext,
@@ -33,6 +39,30 @@ const scheduleFsmEvent = (
       source,
     },
   });
+};
+
+const sendRenderCommand = (
+  context: PlayerStateContext,
+  actionName: string,
+  params?: Record<string, unknown>,
+) => {
+  if (!context.engine.postRenderMessage) {
+    console.warn(`⚠️ [${context.name}] 无法获取渲染消息接口，无法发送渲染指令: ${actionName}`);
+    return;
+  }
+  const now = Date.now();
+  const renderCmd = {
+    type: "render:cmd" as const,
+    cmd: {
+      type: "action" as const,
+      entityId: context.id,
+      name: actionName,
+      seq: now,
+      ts: now,
+      params,
+    },
+  };
+  context.engine.postRenderMessage(renderCmd);
 };
 
 /**
@@ -249,9 +279,6 @@ export const PlayerPipelineStages = {
     z.object({ skillEffectApplied: z.boolean() }),
     (context, input) => {
       logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能效果应用`)
-
-
-      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能效果应用阶段完成（标记为已应用）`);
       return {
         skillEffectApplied: true,
       };
@@ -263,6 +290,7 @@ export const PlayerPipelineStages = {
     z.object({ startupAnimationStarted: z.boolean() }),
     (context) => {
       logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动前摇动画`);
+      sendRenderCommand(context, "startup");
       return { startupAnimationStarted: true };
     },
   ),
@@ -272,6 +300,7 @@ export const PlayerPipelineStages = {
     z.object({ chargingAnimationStarted: z.boolean() }),
     (context) => {
       logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动蓄力动画`)
+      sendRenderCommand(context, "charging");
       return { chargingAnimationStarted: true };
     },
   ),
@@ -281,6 +310,7 @@ export const PlayerPipelineStages = {
     z.object({ chantingAnimationStarted: z.boolean() }),
     (context) => {
       logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动咏唱动画`);
+      sendRenderCommand(context, "chanting");
       return { chantingAnimationStarted: true };
     },
   ),
@@ -290,6 +320,7 @@ export const PlayerPipelineStages = {
     z.object({ actionAnimationStarted: z.boolean() }),
     (context) => {
       logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动发动动画`);
+      sendRenderCommand(context, "action");
       return { actionAnimationStarted: true };
     },
   ),
@@ -299,8 +330,7 @@ export const PlayerPipelineStages = {
     z.object({ startupEventScheduled: z.boolean() }),
     (context) => {
       logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度前摇结束事件`)
-      const frames = Math.max(1, Math.ceil(context.currentSkillStartupFrames ?? 0));
-      scheduleFsmEvent(context, frames, "收到前摇结束通知", "event.startup.schedule");
+      scheduleFsmEvent(context, context.currentSkillStartupFrames, "收到前摇结束通知", "event.startup.schedule");
       return { startupEventScheduled: true };
     },
   ),
@@ -310,8 +340,7 @@ export const PlayerPipelineStages = {
     z.object({ chargingEventScheduled: z.boolean() }),
     (context) => {
       logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度蓄力结束事件`)
-      const frames = Math.max(1, Math.ceil(context.currentSkillChargingFrames ?? 0));
-      scheduleFsmEvent(context, frames, "收到蓄力结束通知", "event.charging.schedule");
+      scheduleFsmEvent(context, context.currentSkillChargingFrames, "收到蓄力结束通知", "event.charging.schedule");
       return { chargingEventScheduled: true };
     },
   ),
@@ -321,8 +350,7 @@ export const PlayerPipelineStages = {
     z.object({ chantingEventScheduled: z.boolean() }),
     (context) => {
       logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度咏唱结束事件`)
-      const frames = Math.max(1, Math.ceil(context.currentSkillChantingFrames ?? 0));
-      scheduleFsmEvent(context, frames, "收到咏唱结束通知", "event.chanting.schedule");
+      scheduleFsmEvent(context, context.currentSkillChantingFrames, "收到咏唱结束通知", "event.chanting.schedule");
       return { chantingEventScheduled: true };
     },
   ),
@@ -332,9 +360,258 @@ export const PlayerPipelineStages = {
     z.object({ actionEventScheduled: z.boolean() }),
     (context) => {
       logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度发动结束事件`)
-      const frames = Math.max(1, Math.ceil(context.currentSkillActionFrames ?? 0));
-      scheduleFsmEvent(context, frames, "收到发动结束通知", "event.action.schedule");
+      scheduleFsmEvent(context, context.currentSkillActionFrames, "收到发动结束通知", "event.action.schedule");
       return { actionEventScheduled: true };
+    },
+  ),
+
+  // ============ 伤害相关阶段（施法者侧）============
+  构造伤害请求: defineStage(
+    z.object({
+      damageFormula: z.string(),
+      extraVars: z.record(z.string(), z.any()).optional(),
+      targetId: z.string().optional(),
+    }),
+    z.object({
+      damageRequest: z.object({
+        sourceId: z.string(),
+        targetId: z.string(),
+        skillId: z.string(),
+        damageFormula: z.string(),
+        extraVars: z.record(z.string(), z.any()).optional(),
+        sourceSnapshot: z.any().optional(),
+      }),
+    }),
+    (context, input) => {
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 构造伤害请求`);
+      
+      const sourceId = context.id;
+      const targetId = input.targetId || context.targetId;
+      if (!targetId) {
+        throw new Error(`🎮 [${context.name}] 当前没有目标，无法构造伤害请求`);
+      }
+
+      const skillId = context.currentSkill?.id ?? "unknown_skill";
+
+      // 获取施法者快照（可选，用于调试或后续扩展）
+      const sourceSnapshot = context.engine.getMemberData(sourceId);
+
+      const damageRequest = {
+        sourceId,
+        targetId,
+        skillId,
+        damageFormula: input.damageFormula,
+        extraVars: input.extraVars,
+        sourceSnapshot,
+      };
+
+      return { damageRequest };
+    },
+  ),
+
+  发送伤害请求事件: defineStage(
+    z.object({
+      damageRequest: z.object({
+        sourceId: z.string(),
+        targetId: z.string(),
+        skillId: z.string(),
+        damageFormula: z.string(),
+        extraVars: z.record(z.string(), z.any()).optional(),
+        sourceSnapshot: z.any().optional(),
+      }),
+    }),
+    z.object({ attackEventSent: z.boolean() }),
+    (context, input) => {
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 发送攻击事件给目标`);
+
+      const { damageRequest } = input;
+      const targetMember = context.engine.getMember(damageRequest.targetId);
+      if (!targetMember) {
+        console.warn(`⚠️ [${context.name}] 目标成员不存在，无法发送攻击事件: ${damageRequest.targetId}`);
+        return { attackEventSent: false };
+      }
+
+      // 直接向目标成员的状态机发送“受到攻击”事件
+      targetMember.actor.send({
+        type: "受到攻击",
+        data: {
+          origin: damageRequest.sourceId,
+          skillId: damageRequest.skillId,
+          damageRequest,
+        },
+      });
+
+      return { attackEventSent: true };
+    },
+  ),
+
+  // ============ 命中相关阶段（施法者侧）============
+  获取命中值: defineStage(
+    z.object({}),
+    z.object({ accuracyValue: z.number() }),
+    (context, input) => {
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 获取命中值`);
+      const accuracyValue = context.statContainer.getValue("accuracy");
+      return { accuracyValue };
+    },
+  ),
+
+  // ============ 伤害相关阶段（受击者侧）============
+  获取回避值: defineStage(
+    z.object({}),
+    z.object({ avoidValue: z.number() }),
+    (context, input) => {
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 获取回避值`);
+      const avoidValue = context.statContainer.getValue("avoid");
+      return { avoidValue };
+    },
+  ),
+
+  获取格挡率: defineStage(
+    z.object({}),
+    z.object({ guardRate: z.number() }),
+    (context, input) => {
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 获取格挡率`);
+      const guardRate = context.statContainer.getValue("guardRate");
+      return { guardRate };
+    },
+  ),
+
+  获取闪躲率: defineStage(
+    z.object({}),
+    z.object({ dodgeRate: z.number() }),
+    (context, input) => {
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 获取闪躲率`);
+      const dodgeRate = context.statContainer.getValue("dodgeRate");
+      return { dodgeRate };
+    },
+  ),
+
+  闪躲判定: defineStage(
+    z.object({}),
+    z.object({ dodgeResult: z.boolean() }),
+    (context, input) => {
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 闪躲判定`);
+      const dodgeRate = context.statContainer.getValue("dodgeRate");
+      const dodgeResult = dodgeRate > (Math.random() * 100);
+      return { dodgeResult };
+    },
+  ),
+
+  计算命中判定: defineStage(
+    z.object({
+      accuracyValue: z.number(),
+      avoidValue: z.number(),
+    }),
+    z.object({ hitResult: z.boolean() }),
+    (context, input) => {
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 计算命中判定`);
+      const hitRate = maxMin(0, 100 - ((input.avoidValue - input.accuracyValue) / 3), 100);
+      const hitResult = hitRate > (Math.random() * 100);
+      return { hitResult };
+    },
+  ),
+
+  格挡判定: defineStage(
+    z.object({}),
+    z.object({ guardResult: z.boolean() }),
+    (context, input) => {
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 格挡判定`);
+      const guardRate = context.statContainer.getValue("guardRate");
+      const guardResult = guardRate > (Math.random() * 100);
+      return { guardResult };
+    },
+  ),
+
+  解析伤害请求: defineStage(
+    z.object({}),
+    z.object({
+      damageExpression: z.string(),
+      damageExpressionContext: z.object({
+        casterId: z.string(),
+        targetId: z.string(),
+        extraVars: z.record(z.string(), z.any()).optional(),
+      }),
+    }),
+    (context) => {
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 解析伤害请求`);
+      
+      const damageRequest = (context as any).currentDamageRequest;
+      if (!damageRequest) {
+        throw new Error(`🎮 [${context.name}] 当前没有 damageRequest`);
+      }
+
+      const damageExpression = damageRequest.damageFormula;
+      const damageExpressionContext = {
+        casterId: damageRequest.sourceId,
+        targetId: context.id,
+        extraVars: damageRequest.extraVars,
+      };
+
+      return { damageExpression, damageExpressionContext };
+    },
+  ),
+
+  执行伤害表达式: defineStage(
+    z.object({
+      damageExpression: z.string(),
+      damageExpressionContext: z.object({
+        casterId: z.string(),
+        targetId: z.string(),
+        extraVars: z.record(z.string(), z.any()).optional(),
+      }),
+    }),
+    z.object({ damageValue: z.number() }),
+    (context, input) => {
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 执行伤害表达式`);
+      
+      const { damageExpression, damageExpressionContext } = input;
+
+      // 构造表达式执行上下文
+      const exprCtx = {
+        currentFrame: context.currentFrame,
+        casterId: damageExpressionContext.casterId,
+        targetId: damageExpressionContext.targetId,
+        ...(damageExpressionContext.extraVars || {}),
+      };
+
+      const damageValue = context.engine.evaluateExpression(damageExpression, exprCtx);
+
+      return { damageValue };
+    },
+  ),
+
+  应用伤害结果: defineStage(
+    z.object({ damageValue: z.number() }),
+    z.object({
+      finalDamage: z.number(),
+      targetHpAfter: z.number().optional(),
+    }),
+    (context, input) => {
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 应用伤害结果`);
+      
+      const { damageValue } = input;
+      const finalDamage = Math.max(0, Math.floor(damageValue));
+
+      // 获取当前HP并扣除伤害
+      const currentHp = context.statContainer.getValue("hp.current");
+      const newHp = Math.max(0, currentHp - finalDamage);
+      
+      // 更新HP（使用 addModifier 或直接 setValue，根据你的 StatContainer 实现）
+      context.statContainer.addModifier("hp.current", ModifierType.STATIC_FIXED, -finalDamage, {
+        id: `damage_${context.currentFrame}_${createId()}`,
+        name: "damage",
+        type: "system",
+      });
+
+      logLv >= 1 && console.log(`💔 [${context.name}] 受到伤害: ${finalDamage}, HP: ${currentHp} -> ${newHp}`);
+
+      // 如果HP归零，可以在这里调度死亡事件（后续扩展）
+      // if (newHp <= 0) {
+      //   scheduleFsmEvent(context, 0, "死亡", "combat.damage");
+      // }
+
+      return { finalDamage, targetHpAfter: newHp };
     },
   ),
 } as const satisfies StagePool<PlayerStateContext>;
@@ -369,7 +646,15 @@ export const playerPipDef = {
   // ============ 战斗相关管线 ============
   "combat.hit.calculate": [],
   "combat.control.calculate": [],
-  "combat.damage.calculate": [],
+  "combat.damage.calculate": [
+    "解析伤害请求",
+    "执行伤害表达式",
+    "应用伤害结果",
+  ],
+  "combat.damage.request": [
+    "构造伤害请求",
+    "发送伤害请求事件",
+  ],
 
   // ============ 动画和状态管理（无阶段，纯副作用）============
   "animation.idle.start": [],
@@ -410,3 +695,4 @@ export const playerPipDef = {
 } as const satisfies PipeLineDef<PlayerStagePool>;
 
 export type PlayerPipelineDef = typeof playerPipDef;
+
