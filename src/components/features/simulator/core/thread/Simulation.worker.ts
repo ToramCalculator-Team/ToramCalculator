@@ -200,12 +200,12 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
             const dataQueryResult = DataQueryCommandSchema.safeParse(payload);
             if (engineCommandResult.success) {
               // 状态机命令直接转发给引擎
-              // console.log("确认收到状态机命令:", engineCommandResult.data);
+              // console.log("收到状态机命令:", engineCommandResult.data);
               gameEngine.sendCommand(engineCommandResult.data);
               console.log("命令已发送到引擎状态机");
               portResult = { success: true };
             } else if (dataQueryResult.success) {
-              console.log("确认收到数据查询命令:", dataQueryResult.data);
+              console.log("收到意图:", dataQueryResult.data);
               // 数据查询命令处理
               portResult = await handleDataQuery(dataQueryResult.data);
               // console.log("数据查询命令已处理:", portResult);

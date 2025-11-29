@@ -156,38 +156,14 @@ export type PlayerEventType =
   | 切换目标
   | 更新;
 
-import type { MemberStateContextBase } from "../behaviorTree/MemberStateContext";
+import type { MemberStateContext } from "../behaviorTree/MemberStateContext";
 
 // 定义 PlayerStateContext 类型（提前声明）
-export interface PlayerStateContext extends MemberStateContextBase {
-  /** 成员ID */
-  id: string;
-  /** 成员类型 */
-  type: "Player";
-  /** 成员名称 */
-  name: string;
-  /** 所属阵营ID */
-  campId: string;
-  /** 所属队伍ID */
-  teamId: string;
-  /** 成员目标ID */
-  targetId: string;
-  /** 是否存活 */
-  isAlive: boolean;
-  /** 引擎引用 */
-  engine: GameEngine;
-  /** Buff管理器引用 */
-  buffManager: BuffManager;
+export interface PlayerStateContext extends MemberStateContext {
   /** 属性容器引用 */
   statContainer: StatContainer<PlayerAttrType>;
   /** 管线管理器引用 */
   pipelineManager: PipelineManager<PlayerPipelineDef, PlayerStagePool, PlayerStateContext>;
-  /** 位置信息 */
-  position: { x: number; y: number; z: number };
-  /** 创建帧 */
-  createdAtFrame: number;
-  /** 当前帧 */
-  currentFrame: number;
   /** 技能冷却 */
   skillCooldowns: number[];
   /** 正在施放的技能序号 */
@@ -210,8 +186,6 @@ export interface PlayerStateContext extends MemberStateContextBase {
   currentSkillChantingFrames: number;
   /** 发动长度帧 */
   currentSkillActionFrames: number;
-  /** 状态标签组 */
-  statusTags: string[];
   /** 仇恨值 */
   aggro: number;
   /** 机体配置信息 */

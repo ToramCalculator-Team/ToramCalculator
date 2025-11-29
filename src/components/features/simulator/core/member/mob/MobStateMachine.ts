@@ -104,9 +104,9 @@ export type MobEventType =
   | 收到快照请求
   | 收到目标快照;
 
-import type { MemberStateContextBase } from "../behaviorTree/MemberStateContext";
+import type { MemberStateContext } from "../behaviorTree/MemberStateContext";
 
-export interface MobStateContext extends MemberStateContextBase {
+export interface MobStateContext extends MemberStateContext {
   /** 成员类型 */
   type: "Mob";
   /** 成员名称 */
@@ -127,7 +127,7 @@ export interface MobStateContext extends MemberStateContextBase {
   skillCooldowns: number[];
   /** 正在施放的技能序号 */
   currentSkillIndex: number;
-  /** 管线管理器引用（从 MemberStateContextBase 继承，但需要明确类型） */
+  /** 管线管理器引用（从 MemberStateContext 继承，但需要明确类型） */
   pipelineManager: PipelineManager<MobPipelineDef, MobStagePool, MobStateContext>;
 }
 
@@ -340,9 +340,9 @@ export const mobGuards = {
 } as const satisfies Record<string, GuardPredicate<MobStateContext, MobEventType, any, any>>;
 
 export const createMobStateMachine = (
-  member: Mob,
+  mob: Mob,
 ): MemberStateMachine<MobAttrType, MobEventType, typeof mobPipDef, typeof MobPipelineStages, MobStateContext> => {
-  const machineId = member.id;
+  const machineId = mob.id;
 
   return setup({
     types: {
@@ -355,20 +355,24 @@ export const createMobStateMachine = (
   }).createMachine({
     id: machineId,
     context: {
-      id: member.id,
+      id: mob.id,
       type: "Mob",
-      name: member.name,
-      campId: member.campId,
-      teamId: member.teamId,
-      targetId: member.targetId,
-      isAlive: member.isAlive,
-      engine: member.engine,
-      pipelineManager: member.pipelineManager,
-      position: member.position,
-      currentFrame: 0,
+      name: mob.name,
+      campId: mob.campId,
+      teamId: mob.teamId,
+      targetId: mob.targetId,
+      isAlive: mob.isAlive,
+      engine: mob.engine,
+      buffManager: mob.buffManager,
+      statContainer: mob.statContainer,
+      pipelineManager: mob.pipelineManager,
+      position: mob.position,
+      createdAtFrame: mob.engine.getFrameLoop().getFrameNumber(),
+      currentFrame: mob.engine.getFrameLoop().getFrameNumber(),
       skillList: [],
       skillCooldowns: [],
       currentSkillIndex: 0,
+      statusTags: [],
     },
     initial: "存活",
     entry: {

@@ -2,9 +2,6 @@ import { z, ZodType } from "zod/v4";
 import { createId } from "@paralleldrive/cuid2";
 import { PlayerStateContext } from "./PlayerStateMachine";
 import { PipeLineDef, StagePool, defineStage } from "../../pipeline/PipelineStageType";
-import { PlayerBehaviorContext } from "./PlayerBehaviorContext";
-import { Tree, type TreeData } from "~/lib/behavior3/tree";
-import skillExecutionTemplate from "./behaviorTree/skillExecutionTemplate.json";
 import { ModifierType } from "../../dataSys/StatContainer";
 
 
@@ -79,6 +76,59 @@ const sendRenderCommand = (
  * 玩家可用的管线阶段池
  */
 export const PlayerPipelineStages = {
+  添加Buff: defineStage(
+    z.object({
+      buffId: z.string(),
+      buffName: z.string(),
+      duration: z.number(),
+      variables: z.record(z.string(), z.number()).optional(),
+      effects: z.array(z.any()).optional(),
+    }),
+    z.object({ buffAdded: z.boolean() }),
+    (context, input) => {
+        logLv >= 1 && console.log(`👤 [${context.name}][Pip] 添加Buff`);
+
+      const buff: any = {
+        id: input.buffId,
+        name: input.buffName,
+        duration: input.duration,
+        startTime: Date.now(),
+        source: `skill.${context.currentSkill?.id || "unknown"}`,
+        effects: input.effects || [],
+        variables: {
+          ...(input.variables || {}),
+          initialFrame: input.variables?.initialFrame ?? context.currentFrame,
+        },
+      };
+
+      context.buffManager.addBuff(buff);
+      return { buffAdded: true };
+    },
+  ),
+  移除Buff: defineStage(
+    z.object({
+      buffId: z.string(),
+    }),
+    z.object({ buffRemoved: z.boolean(), chargeCounter: z.number().optional() }),
+    (context, input) => {
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 移除Buff`);
+
+      const chargeCounter = context.buffManager.getVariable(input.buffId, "chargeCounter");
+      context.buffManager.removeBuff(input.buffId);
+      return { buffRemoved: true, chargeCounter };
+    },
+  ),
+  检查Buff: defineStage(
+    z.object({
+      buffId: z.string(),
+    }),
+    z.object({ buffExists: z.boolean(), chargeCounter: z.number().optional() }),
+    (context, input) => {
+      const buffExists = context.buffManager.hasBuff(input.buffId);
+      const chargeCounter = buffExists ? context.buffManager.getVariable(input.buffId, "chargeCounter") : undefined;
+      return { buffExists, chargeCounter };
+    },
+  ),
   技能HP消耗计算: defineStage(
     z.object({}),
     z.object({ skillHpCostResult: z.number() }),
@@ -122,63 +172,6 @@ export const PlayerPipelineStages = {
       logLv >= 1 && console.log(`👤 [${context.name}][Pip] 仇恨值计算`)
       const aggro = input.skillMpCostResult * context.statContainer.getValue("aggro.rate");
       return { aggroResult: aggro };
-    },
-  ),
-
-  添加Buff: defineStage(
-    z.object({
-      buffId: z.string(),
-      buffName: z.string(),
-      duration: z.number(),
-      variables: z.record(z.string(), z.number()).optional(),
-      effects: z.array(z.any()).optional(),
-    }),
-    z.object({ buffAdded: z.boolean() }),
-    (context, input) => {
-      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 添加Buff: ${input.buffName}`);
-      
-      const buff: any = {
-        id: input.buffId,
-        name: input.buffName,
-        duration: input.duration,
-        startTime: Date.now(),
-        source: `skill.${context.currentSkill?.id || 'unknown'}`,
-        effects: input.effects || [],
-        variables: {
-          ...(input.variables || {}),
-          // 如果变量中没有 initialFrame，初始化为当前帧数（用于 frame.update 效果的帧数检查）
-          initialFrame: input.variables?.initialFrame ?? context.currentFrame,
-        },
-      };
-      
-      context.buffManager.addBuff(buff);
-      return { buffAdded: true };
-    },
-  ),
-
-  移除Buff: defineStage(
-    z.object({
-      buffId: z.string(),
-    }),
-    z.object({ buffRemoved: z.boolean(), chargeCounter: z.number().optional() }),
-    (context, input) => {
-      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 移除Buff: ${input.buffId}`);
-      
-      const chargeCounter = context.buffManager.getVariable(input.buffId, 'chargeCounter');
-      context.buffManager.removeBuff(input.buffId);
-      return { buffRemoved: true, chargeCounter };
-    },
-  ),
-
-  检查Buff: defineStage(
-    z.object({
-      buffId: z.string(),
-    }),
-    z.object({ buffExists: z.boolean(), chargeCounter: z.number().optional() }),
-    (context, input) => {
-      const buffExists = context.buffManager.hasBuff(input.buffId);
-      const chargeCounter = buffExists ? context.buffManager.getVariable(input.buffId, 'chargeCounter') : undefined;
-      return { buffExists, chargeCounter };
     },
   ),
 

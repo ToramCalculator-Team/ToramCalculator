@@ -1,7 +1,7 @@
 import type { Context } from "~/lib/behavior3/context";
 import { Node, NodeDef, Status } from "~/lib/behavior3/node";
 import type { Tree } from "~/lib/behavior3/tree";
-import type { MemberStateContextBase } from "../MemberStateContext";
+import type { MemberStateContext } from "../MemberStateContext";
 
 /**
  * RunPipeline 节点（通用）
@@ -15,13 +15,13 @@ export class RunPipeline extends Node {
     readonly params?: Record<string, unknown>;
   };
 
-  override onTick<TContext extends MemberStateContextBase>(
+  override onTick<TContext extends MemberStateContext>(
     tree: Tree<Context, TContext>,
     status: Status,
   ): Status {
     const owner = tree.owner;
     if (!owner) {
-      this.error("RunPipeline: owner (MemberStateContextBase) is required");
+      this.error("RunPipeline: owner (MemberStateContext) is required");
       return "failure";
     }
 

@@ -1,6 +1,6 @@
 import { fromCallback } from "xstate";
 import type { PlayerStateContext } from "./PlayerStateMachine";
-import { PlayerBehaviorContext } from "./PlayerBehaviorContext";
+import { PlayerBehaviorTreeRuntime } from "./PlayerBehaviorTreeRuntime";
 import { Tree, type TreeData, type TreeStatus } from "~/lib/behavior3/tree";
 import skillExecutionTemplate from "./behaviorTree/skillExecutionTemplate.json";
 import { magicCannonSkillEffect } from "./testSkills";
@@ -49,11 +49,11 @@ const FORCE_TEST_SKILL = true;
  */
 function createSkillExecutionTree(
   input: BehaviorTreeInput,
-): Tree<PlayerBehaviorContext, PlayerStateContext> {
+): Tree<PlayerBehaviorTreeRuntime, PlayerStateContext> {
   const { skillEffect, owner } = input;
 
   // 创建行为树上下文
-  const behaviorContext = new PlayerBehaviorContext(owner);
+  const behaviorTreeContext = new PlayerBehaviorTreeRuntime(owner);
 
   // 🔧 开发调试：强制使用测试技能
   let effectiveSkillEffect = skillEffect;
@@ -63,7 +63,7 @@ function createSkillExecutionTree(
   }
 
   // 尝试从 skill_effect.logic 加载技能特定的行为树
-  let skillLogicTree: Tree<PlayerBehaviorContext, PlayerStateContext> | null = null;
+  let skillLogicTree: Tree<PlayerBehaviorTreeRuntime, PlayerStateContext> | null = null;
 
   if (effectiveSkillEffect?.logic) {
     try {
@@ -84,9 +84,9 @@ function createSkillExecutionTree(
 
         console.log(`✅ [${owner.name}] 使用技能特定的行为树逻辑`);
         // 加载技能特定的行为树（会缓存到 skillLogicPath 键下）
-        behaviorContext.loadTree(treeDataWithName);
+        behaviorTreeContext.loadTree(treeDataWithName);
         // 创建 Tree 实例，构造函数会从缓存中获取
-        skillLogicTree = new Tree(behaviorContext, owner, skillLogicPath);
+        skillLogicTree = new Tree(behaviorTreeContext, owner, skillLogicPath);
       } else {
         console.log(`⚠️ [${owner.name}] logic 字段存在但格式不正确（缺少 root），将使用默认模板`);
       }
@@ -111,9 +111,9 @@ function createSkillExecutionTree(
     } as unknown as TreeData;
 
     // 加载通用模板（会缓存到 templatePath 键下）
-    behaviorContext.loadTree(templateData);
+    behaviorTreeContext.loadTree(templateData);
     // 创建 Tree 实例，构造函数会从缓存中获取
-    skillLogicTree = new Tree(behaviorContext, owner, templatePath);
+    skillLogicTree = new Tree(behaviorTreeContext, owner, templatePath);
   }
 
   return skillLogicTree;
@@ -164,7 +164,7 @@ export const behaviorTreeActor = fromCallback(({ input, sendBack, receive }: {
       // 同步当前帧（从引擎获取，确保同步）
       const engineFrame = input.owner.engine.getFrameLoop().getFrameNumber();
       input.owner.currentFrame = engineFrame;
-      // 注意：PlayerBehaviorContext.time 是 getter，直接返回 owner.currentFrame
+      // 注意：PlayerBehaviorTreeRuntime.time 是 getter，直接返回 owner.currentFrame
       // 所以更新 owner.currentFrame 后，行为树时间会自动同步
 
       // 推进行为树
@@ -188,9 +188,9 @@ export const behaviorTreeActor = fromCallback(({ input, sendBack, receive }: {
       }
     } else if (event.type === "FSM_EVENT") {
       // 转发状态机事件到行为树
-      const behaviorContext = tree.context;
+      const behaviorTreeContext = tree.context;
       console.log(`🔁 [${input.owner.name}] 转发行为树事件: ${event.fsmEventType}`);
-      behaviorContext.dispatch(event.fsmEventType);
+      behaviorTreeContext.dispatch(event.fsmEventType);
     }
   });
 

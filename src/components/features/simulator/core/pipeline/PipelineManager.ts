@@ -115,6 +115,15 @@ interface DynamicStageEntry<
   id: string;
   source: string;
   handler: DynamicHandlerForStage<TDef, P, S, TPool, TCtx>;
+  priority: number;
+}
+
+export interface PipelineDynamicStageInfo {
+  pipelineName: string;
+  stageName: string;
+  id: string;
+  source: string;
+  priority: number;
 }
 
 /** 获取某管线的每个阶段对应输出类型映射 */
@@ -184,6 +193,7 @@ export class PipelineManager<
     handler: DynamicHandlerForStage<TDef, P, S, TPool, TCtx>,
     id: string,
     source: string,
+    priority = 0,
   ): () => void {
     const map = (this.dynamicStages[pipelineName] ??= {} as any);
     const list = (map[afterStage] ??= [] as any) as DynamicStageEntry<TDef, P, S, TPool, TCtx>[];
@@ -198,8 +208,14 @@ export class PipelineManager<
       id,
       source,
       handler,
+      priority,
     };
-    list.push(entry);
+    const insertIndex = list.findIndex((item) => priority < item.priority);
+    if (insertIndex === -1) {
+      list.push(entry);
+    } else {
+      list.splice(insertIndex, 0, entry);
+    }
 
     // 动态阶段变动时清空缓存
     delete this.compiledChains[pipelineName];
@@ -379,7 +395,7 @@ export class PipelineManager<
         (stageOutputs as any)[typedStageName] = prevOutput;
 
         // ---------- 执行该静态阶段之后注册的动态 handlers ----------
-        const dynEntries = this.dynamicStages[pipelineName]?.[typedStageName] ?? [];
+    const dynEntries = this.dynamicStages[pipelineName]?.[typedStageName] ?? [];
         for (const entry of dynEntries) {
           const dynOut = (entry.handler as any)(currentCtx, prevOutput);
           if (!dynOut) continue;
@@ -395,6 +411,42 @@ export class PipelineManager<
       // 返回最终 context 与每个阶段输出
       return { ctx: currentCtx as TCtx, stageOutputs };
     };
+  }
+
+  /**
+   * 获取当前动态阶段的快照，可用于调试和 UI 展示
+   */
+  getDynamicStageInfos(filter?: { source?: string; pipelineName?: string; stageName?: string }): PipelineDynamicStageInfo[] {
+    const result: PipelineDynamicStageInfo[] = [];
+    for (const pipelineName of Object.keys(this.dynamicStages)) {
+      const stages = this.dynamicStages[pipelineName as keyof TDef];
+      if (!stages) continue;
+      if (filter?.pipelineName && filter.pipelineName !== pipelineName) continue;
+
+      for (const stageName of Object.keys(stages)) {
+        if (filter?.stageName && filter.stageName !== stageName) continue;
+        const entries = (stages as Record<string, DynamicStageEntry<any, any, any, any, any>[] | undefined>)[stageName];
+        if (!entries) continue;
+
+        for (const entry of entries as DynamicStageEntry<any, any, any, any, any>[]) {
+          if (filter?.source && filter.source !== entry.source) continue;
+          result.push({
+            pipelineName,
+            stageName,
+            id: entry.id,
+            source: entry.source,
+            priority: entry.priority,
+          });
+        }
+      }
+    }
+
+    return result.sort((a, b) => {
+      if (a.pipelineName !== b.pipelineName) return a.pipelineName.localeCompare(b.pipelineName);
+      if (a.stageName !== b.stageName) return a.stageName.localeCompare(b.stageName);
+      if (a.priority !== b.priority) return a.priority - b.priority;
+      return a.id.localeCompare(b.id);
+    });
   }
 
   /* ---------------------- run ---------------------- */

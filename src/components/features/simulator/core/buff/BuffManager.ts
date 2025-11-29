@@ -69,6 +69,8 @@ export interface BuffInstance {
   // 运行时状态记录（用于移除时回滚）
   /** 记录已应用的属性修改，用于移除时反向操作 */
   _appliedStats?: { target: string; modifierType: ModifierType }[];
+  /** 动态管线阶段对应的清理函数 */
+  _pipelineStageCleanups?: Array<() => void>;
   
   // 临时变量存储（用于 Buff 内部的自定义计数器等）
   /** 临时变量（如充能计数器） */
@@ -216,15 +218,19 @@ export class BuffManager {
             }
           };
           
-          // 使用 any 绕过泛型检查
-          (this.pipelineManager as any).insertDynamicStage(
+          const cleanup = this.pipelineManager.insertDynamicStage(
             effect.pipeline,
             effect.stage,
             wrappedLogic,
             stageId,
             buff.id, // source = buff.id
-            effect.priority // 传递优先级
+            effect.priority ?? 0,
           );
+
+          if (!buff._pipelineStageCleanups) {
+            buff._pipelineStageCleanups = [];
+          }
+          buff._pipelineStageCleanups.push(cleanup);
         }
       }
     });
@@ -250,8 +256,12 @@ export class BuffManager {
       buff._appliedStats = [];
     }
 
-    // 2. 移除管线效果 (使用 Source 批量移除)
-    (this.pipelineManager as any).removeStagesBySource(buff.id);
+    // 2. 移除管线效果
+    if (buff._pipelineStageCleanups) {
+      buff._pipelineStageCleanups.forEach((dispose) => dispose());
+      buff._pipelineStageCleanups = [];
+    }
+    this.pipelineManager.removeStagesBySource(buff.id);
 
     this.buffs.delete(buffId);
     console.log(`🗑️ Buff Removed: ${buff.name} (${buffId})`);
@@ -262,6 +272,13 @@ export class BuffManager {
    */
   getBuffs(): BuffInstance[] {
     return Array.from(this.buffs.values());
+  }
+
+  /**
+   * 查询指定来源的动态管线阶段
+   */
+  getPipelineStagesBySource(source: string) {
+    return this.pipelineManager.getDynamicStageInfos({ source });
   }
 
   /**

@@ -5,7 +5,7 @@ import { NestedSchema } from "../dataSys/SchemaTypes";
 import GameEngine from "../GameEngine";
 import { MemberType } from "@db/schema/enums";
 import { BuffManager } from "../buff/BuffManager";
-import { PipelineManager } from "../pipeline/PipelineManager";
+import { PipelineManager, type PipelineDynamicStageInfo } from "../pipeline/PipelineManager";
 import { PipeLineDef, StagePool } from "../pipeline/PipelineStageType";
 
 /**
@@ -32,6 +32,8 @@ export interface BuffViewData {
     stage: string;
     priority?: number;
   }>;
+  /** 实时动态阶段快照 */
+  activePipelineStages?: PipelineDynamicStageInfo[];
 }
 
 export interface MemberSerializeData {
@@ -187,6 +189,7 @@ export class Member<
         description: buff.description,
         variables: buff.variables ? { ...buff.variables } : undefined,
         dynamicEffects: dynamicEffects.length > 0 ? dynamicEffects : undefined,
+        activePipelineStages: this.pipelineManager.getDynamicStageInfos({ source: buff.id }),
       };
     });
 
