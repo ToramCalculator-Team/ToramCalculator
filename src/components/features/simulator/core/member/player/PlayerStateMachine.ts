@@ -270,10 +270,7 @@ export const playerStateMachine = (player: Player) => {
           console.error(`👤 [${context.name}] 目标不存在: ${targetId}`);
           return;
         }
-        target.actor.send({
-          type: "收到快照请求",
-          data: { senderId: context.id },
-        });
+        context.engine.dispatchMemberEvent(target.id, "收到快照请求", { senderId: context.id });
       },
       添加待处理技能: enqueueActions(({ context, event, enqueue }) => {
         console.log(`👤 [${context.name}] 添加待处理技能`, event);
@@ -520,19 +517,11 @@ export const playerStateMachine = (player: Player) => {
           console.error(`👹 [${context.name}] 请求者不存在: ${senderId}`);
           return;
         }
-        sender.actor.send({
-          type: "收到目标快照",
-          data: { senderId: context.id },
-        });
+        context.engine.dispatchMemberEvent(sender.id, "收到目标快照", { senderId: context.id });
       },
       发送命中判定事件给自己: function ({ context, event }) {
         console.log(`👤 [${context.name}] 发送命中判定事件给自己`, event);
-        const selfMember = context.engine.getMember(context.id);
-        if (!selfMember) {
-          console.error(`👤 [${context.name}] 自身成员不存在，无法发送命中判定事件`);
-          return;
-        }
-        selfMember.actor.send({ type: "进行命中判定" });
+        context.engine.dispatchMemberEvent(context.id, "进行命中判定");
       },
       反馈命中结果给施法者: function ({ context, event }) {
         // Add your action code here
@@ -541,12 +530,7 @@ export const playerStateMachine = (player: Player) => {
       },
       发送控制判定事件给自己: function ({ context, event }) {
         console.log(`👤 [${context.name}] 发送控制判定事件给自己`, event);
-        const selfMember = context.engine.getMember(context.id);
-        if (!selfMember) {
-          console.error(`👤 [${context.name}] 自身成员不存在，无法发送控制判定事件`);
-          return;
-        }
-        selfMember.actor.send({ type: "进行控制判定" });
+        context.engine.dispatchMemberEvent(context.id, "进行控制判定");
       },
       命中计算管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 命中计算管线`, event);
@@ -576,12 +560,7 @@ export const playerStateMachine = (player: Player) => {
       },
       发送伤害计算事件给自己: function ({ context, event }) {
         console.log(`👤 [${context.name}] 发送伤害计算事件给自己`, event);
-        const selfMember = context.engine.getMember(context.id);
-        if (!selfMember) {
-          console.error(`👤 [${context.name}] 自身成员不存在，无法发送伤害计算事件`);
-          return;
-        }
-        selfMember.actor.send({ type: "进行伤害计算" });
+        context.engine.dispatchMemberEvent(context.id, "进行伤害计算");
       },
       伤害计算管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 伤害计算管线`, event);
@@ -651,7 +630,7 @@ export const playerStateMachine = (player: Player) => {
           return false;
         }
 
-        const currentFrame = context.engine.getFrameLoop().getFrameNumber();
+        const currentFrame = context.engine.getCurrentFrame();
 
         // 蓄力阶段相关属性（假设使用chargeFixed和chargeModified）
         const reservoirFixed = context.engine.evaluateExpression(effect.reservoirFixed ?? "0", {
@@ -672,7 +651,7 @@ export const playerStateMachine = (player: Player) => {
           console.error(`👤 [${context.name}] 技能效果不存在`);
           return false;
         }
-        const currentFrame = context.engine.getFrameLoop().getFrameNumber();
+        const currentFrame = context.engine.getCurrentFrame();
         const chantingFixed = context.engine.evaluateExpression(effect.chantingFixed ?? "0", {
           currentFrame,
           casterId: context.id,
@@ -693,7 +672,7 @@ export const playerStateMachine = (player: Player) => {
         console.log(`👤 [${context.name}] 判断技能是否有可用效果`, event);
         const e = event as 使用技能;
         const skillId = e.data.skillId;
-        const currentFrame = context.engine.getFrameLoop().getFrameNumber();
+        const currentFrame = context.engine.getCurrentFrame();
 
         const skill = context.skillList.find((s) => s.id === skillId);
         if (!skill) {
@@ -734,7 +713,7 @@ export const playerStateMachine = (player: Player) => {
         // 此守卫通过后说明技能可发动，则更新当前技能数据
         const e = event as 使用技能;
         const skillId = e.data.skillId;
-        const currentFrame = context.engine.getFrameLoop().getFrameNumber();
+        const currentFrame = context.engine.getCurrentFrame();
 
         const skill = context.skillList.find((s) => s.id === skillId);
         if (!skill) {
@@ -817,8 +796,8 @@ export const playerStateMachine = (player: Player) => {
       statContainer: player.statContainer,
       pipelineManager: player.pipelineManager,
       position: player.position,
-      createdAtFrame: player.engine.getFrameLoop().getFrameNumber(),
-      currentFrame: player.engine.getFrameLoop().getFrameNumber(),
+      createdAtFrame: player.engine.getCurrentFrame(),
+      currentFrame: player.engine.getCurrentFrame(),
       currentSkillStartupFrames: 0,
       currentSkillChargingFrames: 0,
       currentSkillChantingFrames: 0,

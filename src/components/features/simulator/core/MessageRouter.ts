@@ -192,34 +192,16 @@ export class MessageRouter {
         };
       }
 
-      // 将消息发送到成员的FSM - 保持简洁的FSM驱动架构
-      try {
-        // 转换 IntentMessage 为 FSM 事件格式
-        // 移除路由信息(id, timestamp, targetMemberId)，只保留业务数据
-        const fsmEvent: { type: string; data?: any } = {
-          type: message.type,
-          ...(message.data && Object.keys(message.data).length > 0 ? { data: message.data } : {}),
-        };
+      this.engine.dispatchMemberEvent(targetMember.id, message.type, message.data, 0, undefined, {
+        source: `message:${message.type}`,
+      });
+      this.stats.successfulMessages++;
 
-        targetMember.actor.send(fsmEvent);
-
-        this.stats.successfulMessages++;
-
-        return {
-          success: true,
-          message: `消息已分发到 ${targetMember.id}`,
-          error: undefined,
-        };
-      } catch (fsmError: any) {
-        this.stats.failedMessages++;
-        console.warn(`MessageRouter: 分发消息失败: ${message.type} -> ${targetMember.id}`, fsmError);
-
-        return {
-          success: false,
-          message: `FSM处理失败: ${targetMember.id}`,
-          error: fsmError.message,
-        };
-      }
+      return {
+        success: true,
+        message: `消息已分发到 ${targetMember.id}`,
+        error: undefined,
+      };
     } catch (error: any) {
       this.stats.failedMessages++;
       console.error("MessageRouter: 分发消息时发生错误:", error);

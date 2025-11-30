@@ -212,7 +212,7 @@ export class PipelineManager<
     };
     const insertIndex = list.findIndex((item) => priority < item.priority);
     if (insertIndex === -1) {
-      list.push(entry);
+    list.push(entry);
     } else {
       list.splice(insertIndex, 0, entry);
     }
@@ -395,7 +395,7 @@ export class PipelineManager<
         (stageOutputs as any)[typedStageName] = prevOutput;
 
         // ---------- 执行该静态阶段之后注册的动态 handlers ----------
-    const dynEntries = this.dynamicStages[pipelineName]?.[typedStageName] ?? [];
+        const dynEntries = this.dynamicStages[pipelineName]?.[typedStageName] ?? [];
         for (const entry of dynEntries) {
           const dynOut = (entry.handler as any)(currentCtx, prevOutput);
           if (!dynOut) continue;

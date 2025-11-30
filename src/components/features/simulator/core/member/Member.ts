@@ -209,13 +209,18 @@ export class Member<
 
   update(): void {
     // 获取当前帧数（从引擎的 frameLoop 获取）
-    const currentFrame = this.engine.getFrameLoop().getFrameNumber();
+    const currentFrame = this.engine.getCurrentFrame();
     
     // 更新 Buff（处理 frame.update 效果和过期检查）
     this.buffManager.update(currentFrame);
     
     // 发送"更新"事件（中文），与状态机监听的事件类型匹配
-    this.actor.send({ type: "更新", timestamp: Date.now() } as unknown as TEvent);
+    const taskId = this.engine.beginFrameTask(undefined, { source: `member:${this.id}:update` });
+    try {
+      this.actor.send({ type: "更新", timestamp: Date.now() } as unknown as TEvent);
+    } finally {
+      this.engine.endFrameTask(taskId);
+    }
   }
 
   constructor(

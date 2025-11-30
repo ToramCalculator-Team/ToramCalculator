@@ -15,9 +15,7 @@
  */
 
 import type GameEngine from "./GameEngine";
-import type { EventQueue, QueueEvent, BaseEvent, EventHandler, ExecutionContext, EventResult } from "./EventQueue";
-import { Member } from "./member/Member";
-
+import type { FrameStepResult } from "./GameEngine";
 // ============================== 类型定义 ==============================
 
 /**
@@ -44,7 +42,11 @@ export interface FrameLoopConfig {
   timeScale: number;
   /** 最大事件处理数（每帧） */
   maxEventsPerFrame: number;
+  /** 帧循环模式 */
+  mode?: "realtime" | "fastForward";
 }
+
+type FrameLoopMode = "realtime" | "fastForward";
 
 /**
  * 帧信息接口
@@ -112,11 +114,6 @@ export class FrameLoop {
   /** 游戏引擎引用 */
   private engine: GameEngine;
 
-  /** 事件处理器注册表 */
-  private eventHandlers: Map<string, EventHandler> = new Map();
-
-
-
   /** 帧循环定时器ID（rAF 或 setTimeout） */
   private frameTimer: number | null = null;
 
@@ -135,9 +132,11 @@ export class FrameLoop {
   /** 时间倍率（用于变速播放） */
   private timeScale: number = 1.0;
 
-  /** 帧率控制相关 */
-  private frameAccumulator: number = 0;
-  private frameSkipCount: number = 0;
+  private mode: FrameLoopMode = "realtime";
+
+  private frameIntervalMs: number;
+  private frameAccumulator = 0;
+  private frameSkipCount = 0;
 
   /** 性能统计 */
   private performanceStats: PerformanceStats = {
@@ -178,13 +177,16 @@ export class FrameLoop {
       enablePerformanceMonitoring: true,
       timeScale: 1.0,
       maxEventsPerFrame: 100,
+      mode: "realtime",
       ...config,
     };
 
     this.timeScale = this.config.timeScale;
+    this.mode = this.config.mode ?? "realtime";
+    this.frameIntervalMs = 1000 / this.config.targetFPS;
 
     // 根据目标帧率计算帧间隔
-    this.performanceStats.frameBudgetMs = 1000 / this.config.targetFPS;
+    this.performanceStats.frameBudgetMs = this.frameIntervalMs;
 
     // console.log("FrameLoop: 初始化完成", this.config, config);
   }
@@ -205,7 +207,6 @@ export class FrameLoop {
     this.lastFrameTime = this.startTime;
     this.frameNumber = 0;
     this.frameAccumulator = 0;
-    this.frameSkipCount = 0;
 
     // 重置性能统计
     this.resetPerformanceStats();
@@ -296,13 +297,32 @@ export class FrameLoop {
       return;
     }
 
-    // 允许在 paused 或 stopped 状态下执行单步
-    const currentTime = performance.now();
-    const deltaTime = currentTime - this.lastFrameTime;
-    this.lastFrameTime = currentTime;
+    const startFrame = this.engine.getCurrentFrame();
+    const targetFrame = startFrame + 1;
+    let iterations = 0;
+    let result: FrameStepResult | null = null;
 
-    this.processFrame(deltaTime);
-    console.log(`👆 单步执行完成 - 帧号: ${this.frameNumber}`);
+    while (this.engine.getCurrentFrame() < targetFrame) {
+      result = this.engine.stepFrame({ maxEvents: this.config.maxEventsPerFrame });
+      iterations++;
+      if (!result.hasPendingEvents && result.pendingFrameTasks === 0) {
+        break;
+      }
+      if (iterations > 1000) {
+        console.warn("⚠️ 单步执行在同一帧内迭代次数过多，可能存在事件循环");
+        break;
+      }
+    }
+
+    if (!result) {
+      console.warn("⚠️ 单步执行未产生结果");
+      return;
+    }
+
+    this.frameNumber = result.frameNumber;
+    this.recordFrameInfo(0, result.duration, result.eventsProcessed, result.membersUpdated);
+    this.emitFrameSnapshot();
+    console.log(`👆 单步执行完成 - 帧号: ${this.frameNumber}, 迭代次数: ${iterations}`);
   }
 
   /**
@@ -340,31 +360,28 @@ export class FrameLoop {
     }
 
     this.config.targetFPS = fps;
+    this.frameIntervalMs = 1000 / fps;
     console.log(`⏱️ 目标帧率已更新: ${fps} FPS`);
   }
 
-  /**
-   * 注册事件处理器
-   *
-   * @param eventType 事件类型
-   * @param handler 事件处理器
-   */
-  registerEventHandler(eventType: string, handler: EventHandler): void {
-    this.eventHandlers.set(eventType, handler);
-    // console.log(`📝 注册事件处理器: ${eventType}`);
+  setMode(mode: FrameLoopMode): void {
+    if (this.mode === mode) {
+      return;
+    }
+    this.mode = mode;
+    this.config.mode = mode;
+    if (this.state === "running") {
+      if (this.frameTimer !== null) {
+        if (this.clockKind === "raf" && typeof globalThis.cancelAnimationFrame === "function") {
+          globalThis.cancelAnimationFrame(this.frameTimer);
+        } else if (this.clockKind === "timeout") {
+          clearTimeout(this.frameTimer as unknown as number);
+        }
+        this.frameTimer = null;
+      }
+      this.scheduleNextFrame();
+    }
   }
-
-  /**
-   * 注销事件处理器
-   *
-   * @param eventType 事件类型
-   */
-  unregisterEventHandler(eventType: string): void {
-    this.eventHandlers.delete(eventType);
-    console.log(`🗑️ 注销事件处理器: ${eventType}`);
-  }
-
-
 
   /**
    * 获取当前状态
@@ -381,7 +398,7 @@ export class FrameLoop {
    * @returns 当前帧号
    */
   getFrameNumber(): number {
-    return this.frameNumber;
+    return this.engine.getCurrentFrame();
   }
 
   /**
@@ -429,6 +446,14 @@ export class FrameLoop {
     if (this.state !== "running") {
       return;
     }
+    if (this.mode === "fastForward") {
+      Promise.resolve().then(() => {
+        if (this.state === "running") {
+          this.processFrameLoop(performance.now());
+        }
+      });
+      return;
+    }
     if (this.clockKind === "raf" && typeof globalThis.requestAnimationFrame === "function") {
       this.frameTimer = globalThis.requestAnimationFrame((timestamp: number) => {
         this.processFrameLoop(timestamp);
@@ -455,201 +480,46 @@ export class FrameLoop {
     const deltaTime = timestamp - this.lastFrameTime;
     this.lastFrameTime = timestamp;
 
-    // 应用时间倍率
-    const scaledDeltaTime = deltaTime * this.timeScale;
-
-    // 帧率控制
-    this.frameAccumulator += scaledDeltaTime;
-
-    // 处理帧跳跃
-    if (this.config.enableFrameSkip && this.frameAccumulator > (1000 / this.config.targetFPS) * this.config.maxFrameSkip) {
-      this.frameSkipCount++;
-      this.performanceStats.skippedFrames = (this.performanceStats.skippedFrames || 0) + this.config.maxFrameSkip;
-      this.frameAccumulator = 1000 / this.config.targetFPS;
-      console.log(`⏭️ 帧跳跃 - 跳过 ${this.config.maxFrameSkip} 帧`);
+    let effectiveDelta = deltaTime * this.timeScale;
+    if (this.mode === "fastForward") {
+      effectiveDelta = this.frameIntervalMs;
     }
 
-    // 处理帧
-    while (this.frameAccumulator >= 1000 / this.config.targetFPS) {
-      this.processFrame(1000 / this.config.targetFPS);
-      this.frameAccumulator -= 1000 / this.config.targetFPS;
+    this.frameAccumulator += effectiveDelta;
+
+    if (this.config.enableFrameSkip) {
+      const maxAccum = this.frameIntervalMs * Math.max(1, this.config.maxFrameSkip);
+      if (this.frameAccumulator > maxAccum) {
+        this.frameAccumulator = this.frameIntervalMs;
+        this.frameSkipCount++;
+        this.performanceStats.skippedFrames = (this.performanceStats.skippedFrames || 0) + 1;
+      }
+    }
+
+    let framesExecuted = 0;
+
+    while (this.frameAccumulator >= this.frameIntervalMs) {
+      const stepResult = this.engine.stepFrame({ maxEvents: this.config.maxEventsPerFrame });
+      framesExecuted++;
+      this.frameNumber = stepResult.frameNumber;
+      this.recordFrameInfo(
+        this.frameIntervalMs,
+        stepResult.duration,
+        stepResult.eventsProcessed,
+        stepResult.membersUpdated,
+      );
+      this.emitFrameSnapshot();
+      this.frameAccumulator -= this.frameIntervalMs;
+
+      if (this.mode === "fastForward" && !stepResult.hasPendingEvents && stepResult.pendingFrameTasks === 0) {
+        break;
+      }
     }
 
     // 调度下一帧
     this.scheduleNextFrame();
   }
 
-  /**
-   * 处理单帧逻辑
-   *
-   * @param deltaTime 帧间隔时间
-   */
-  private processFrame(deltaTime: number): void {
-    const frameStartTime = performance.now();
-
-    // 增加帧计数
-    this.frameNumber++;
-
-    let eventsProcessed = 0;
-    let membersUpdated = 0;
-
-    try {
-      // 1. 处理事件队列
-      const engineEventQueue = this.engine.getEventQueue();
-      if (engineEventQueue) {
-        eventsProcessed = this.processEvents();
-      }
-
-      // 2. 更新成员状态
-      const members = this.engine.getMemberManager().getAllMembers();
-      for (const m of members) {
-        m.update()
-        membersUpdated++;
-      }
-
-      // 3. 更新性能统计
-      const processingTime = performance.now() - frameStartTime;
-      this.recordFrameInfo(deltaTime, processingTime, eventsProcessed, membersUpdated);
-
-
-
-      // 🔥 帧处理完成，发送帧快照到主线程
-      try {
-        const snapshot = this.engine.createFrameSnapshot();
-        // 直接通过引擎发送帧快照
-        this.engine.sendFrameSnapshot(snapshot);
-      } catch (error) {
-        console.error("❌ 帧快照创建失败:", error);
-      }
-    } catch (error) {
-      console.error("❌ 帧处理错误:", error);
-      // 可以选择停止帧循环或继续运行
-    }
-  }
-
-  /**
-   * 处理事件队列
-   *
-   * @returns 处理的事件数量
-   */
-  private processEvents(): number {
-    const engineEventQueue = this.engine.getEventQueue();
-    if (!engineEventQueue) {
-      return 0;
-    }
-
-    const eventsToProcess = engineEventQueue.getEventsToProcess(this.frameNumber, this.config.maxEventsPerFrame);
-    let processedCount = 0;
-
-    for (const event of eventsToProcess) {
-      const startTime = performance.now();
-
-      try {
-        // 同步处理事件，确保帧内完成
-        const success = this.executeEventSync(event);
-
-        const processingTime = performance.now() - startTime;
-        engineEventQueue.markAsProcessed(event.id, processingTime);
-
-        if (success) {
-          processedCount++;
-        }
-      } catch (error) {
-        console.error(`❌ 事件处理失败: ${event.id}`, error);
-        engineEventQueue.markAsProcessed(event.id);
-      }
-    }
-
-    // 清理已处理的事件
-    if (processedCount > 0) {
-      engineEventQueue.cleanup();
-    }
-
-    return processedCount;
-  }
-
-  /**
-   * 同步执行单个事件
-   *
-   * @param event 事件对象
-   * @returns 执行是否成功
-   */
-  private executeEventSync(event: QueueEvent): boolean {
-    // 查找对应的事件处理器
-    const handler = this.eventHandlers.get(event.type);
-
-    if (!handler) {
-      console.warn(`⚠️ 未找到事件处理器: ${event.type}`);
-      return false;
-    }
-
-    // 检查处理器是否能处理此事件
-    if (!handler.canHandle(event)) {
-      console.log(`⚠️ 事件处理器拒绝处理: ${event.type}`);
-      return false;
-    }
-
-    // 创建执行上下文
-    const context: ExecutionContext = {
-      currentFrame: this.frameNumber,
-      timeScale: this.timeScale,
-      engineState: {
-        frameNumber: this.frameNumber,
-        memberManager: this.engine.getMemberManager(),
-        eventQueue: this.engine.getEventQueue(),
-      },
-    };
-
-    try {
-      // 同步执行事件处理
-      const result = this.executeHandlerSync(handler, event, context);
-      const engineEventQueue = this.engine.getEventQueue();
-
-      if (result.success) {
-        // 如果产生了新事件，插入到事件队列
-        if (result.newEvents && result.newEvents.length > 0) {
-          for (const newEvent of result.newEvents) {
-            engineEventQueue?.insert(newEvent);
-          }
-        }
-
-        console.log(`✅ 事件处理成功: ${event.type}`);
-        return true;
-      } else {
-        console.warn(`⚠️ 事件处理失败: ${event.type} - ${result.error}`);
-        return false;
-      }
-    } catch (error) {
-      console.error(`❌ 事件处理异常: ${event.type}`, error);
-      return false;
-    }
-  }
-
-  /**
-   * 同步执行事件处理器
-   *
-   * @param handler 事件处理器
-   * @param event 事件对象
-   * @param context 执行上下文
-   * @returns 执行结果
-   */
-  private executeHandlerSync(handler: EventHandler, event: BaseEvent, context: ExecutionContext): EventResult {
-    // 如果处理器返回Promise，我们需要同步等待
-    console.log("executeHandlerSync", handler, event, context);
-    const result = handler.execute(event, context);
-
-    if (result instanceof Promise) {
-      // 在帧循环中，我们不能等待异步操作
-      // 记录警告并返回失败
-      console.warn(`⚠️ 事件处理器 ${event.type} 返回Promise，帧循环需要同步处理`);
-      return {
-        success: false,
-        error: "Async handler not supported in frame loop",
-      };
-    }
-
-    return result;
-  }
 
   /**
    * 记录帧信息
@@ -684,6 +554,15 @@ export class FrameLoop {
     // 更新性能统计
     if (this.config.enablePerformanceMonitoring) {
       this.updatePerformanceStats(frameInfo);
+    }
+  }
+
+  private emitFrameSnapshot(): void {
+    try {
+      const snapshot = this.engine.createFrameSnapshot();
+      this.engine.sendFrameSnapshot(snapshot);
+    } catch (error) {
+      console.error("❌ 帧快照创建失败:", error);
     }
   }
 

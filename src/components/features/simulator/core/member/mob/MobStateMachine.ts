@@ -256,10 +256,7 @@ export const mobActions = {
       console.error(`👹 [${context.name}] 请求者不存在: ${senderId}`);
       return;
     }
-    sender.actor.send({
-      type: "收到目标快照",
-      data: { senderId: context.id },
-    });
+    context.engine.dispatchMemberEvent(sender.id, "收到目标快照", { senderId: context.id });
   },
   发送命中判定事件给自己: function ({ context, event }) {
     // Add your action code here
@@ -367,8 +364,8 @@ export const createMobStateMachine = (
       statContainer: mob.statContainer,
       pipelineManager: mob.pipelineManager,
       position: mob.position,
-      createdAtFrame: mob.engine.getFrameLoop().getFrameNumber(),
-      currentFrame: mob.engine.getFrameLoop().getFrameNumber(),
+      createdAtFrame: mob.engine.getCurrentFrame(),
+      currentFrame: mob.engine.getCurrentFrame(),
       skillList: [],
       skillCooldowns: [],
       currentSkillIndex: 0,

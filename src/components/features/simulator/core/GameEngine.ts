@@ -16,13 +16,23 @@
 
 import type { Team, TeamWithRelations } from "@db/generated/repositories/team";
 import type { MemberWithRelations } from "@db/generated/repositories/member";
+import { createId } from "@paralleldrive/cuid2";
 import { MemberManager } from "./member/MemberManager";
 import { MessageRouter } from "./MessageRouter";
 import { FrameLoop, FrameLoopConfig, PerformanceStats } from "./FrameLoop";
 import { EventQueue } from "./EventQueue";
 import { EventHandlerFactory } from "./handlers/EventHandlerFactory";
 import type { IntentMessage, MessageProcessResult, MessageRouterStats } from "./MessageRouter";
-import type { EventPriority, EventHandler, BaseEvent, QueueStats, EventQueueConfig } from "./EventQueue";
+import type {
+  EventPriority,
+  EventHandler,
+  BaseEvent,
+  QueueStats,
+  EventQueueConfig,
+  QueueEvent,
+  ExecutionContext,
+  EventResult,
+} from "./EventQueue";
 import { type MemberSerializeData } from "./member/Member";
 import { type MemberType } from "@db/schema/enums";
 import { JSProcessor, type CompilationContext } from "./astProcessor/JSProcessor";
@@ -112,6 +122,15 @@ export interface EngineStats {
   frameLoopStats: PerformanceStats;
   /** 消息路由统计 */
   messageRouterStats: MessageRouterStats;
+}
+
+export interface FrameStepResult {
+  frameNumber: number;
+  duration: number;
+  eventsProcessed: number;
+  membersUpdated: number;
+  hasPendingEvents: boolean;
+  pendingFrameTasks: number;
 }
 
 /**
@@ -399,6 +418,15 @@ export class GameEngine {
     totalEventsProcessed: 0,
     totalMessagesProcessed: 0,
   };
+
+  /** 当前帧号（由 stepFrame 维护） */
+  private currentFrameNumber = 0;
+  /** 当前帧待完成任务的计数 */
+  private pendingFrameTasksCount = 0;
+  /** 帧任务来源记录（用于调试） */
+  private frameTaskSources: Map<string, { count: number; source: string }> = new Map();
+  /** 事件处理器注册表 */
+  private eventHandlers: Map<string, EventHandler> = new Map();
 
   // ==================== 渲染通信 ====================
 
@@ -742,7 +770,7 @@ export class GameEngine {
 
     return {
       state: this.getState(),
-      currentFrame: this.frameLoop.getFrameNumber(),
+      currentFrame: this.getCurrentFrame(),
       runTime,
       members: this.getAllMemberData(),
       eventQueueStats: this.eventQueue.getStats(),
@@ -771,7 +799,7 @@ export class GameEngine {
    * @param handler 事件处理器
    */
   registerEventHandler(eventType: string, handler: EventHandler): void {
-    this.frameLoop.registerEventHandler(eventType, handler);
+    this.eventHandlers.set(eventType, handler);
   }
 
   // ==================== 成员管理 ====================
@@ -987,6 +1015,250 @@ export class GameEngine {
    */
   getFrameLoop(): FrameLoop {
     return this.frameLoop;
+  }
+
+  /**
+   * 获取当前帧号（由 stepFrame 推进）
+   */
+  getCurrentFrame(): number {
+    return this.currentFrameNumber;
+  }
+
+  /**
+   * 开始一个帧内任务，返回任务ID
+   *
+   * @param taskId 可选：自定义任务ID（用于链式传递）
+   * @param meta   可选：调试信息（source）
+   */
+  beginFrameTask(taskId?: string, meta: { source?: string } = {}): string {
+    const id = taskId ?? createId();
+    const source = meta.source ?? "unknown";
+    const entry = this.frameTaskSources.get(id) ?? { count: 0, source };
+    entry.count += 1;
+    entry.source = source;
+    this.frameTaskSources.set(id, entry);
+    this.pendingFrameTasksCount++;
+    return id;
+  }
+
+  /**
+   * 标记帧内任务完成
+   */
+  endFrameTask(taskId: string): void {
+    const entry = this.frameTaskSources.get(taskId);
+    if (!entry) {
+      return;
+    }
+    entry.count -= 1;
+    if (entry.count <= 0) {
+      this.frameTaskSources.delete(taskId);
+    } else {
+      this.frameTaskSources.set(taskId, entry);
+    }
+    if (this.pendingFrameTasksCount > 0) {
+      this.pendingFrameTasksCount--;
+    }
+  }
+
+  hasPendingFrameTasks(): boolean {
+    return this.pendingFrameTasksCount > 0;
+  }
+
+  /**
+   * 以 RAII 方式执行同步任务，自动在 finally 中回收
+   */
+  withFrameTask<T>(meta: { taskId?: string; source?: string } | string, fn: (taskId: string) => T): T {
+    const options = typeof meta === "string" ? { source: meta } : meta;
+    const id = this.beginFrameTask(options.taskId, { source: options.source });
+    try {
+      return fn(id);
+    } finally {
+      this.endFrameTask(id);
+    }
+  }
+
+  /**
+   * 获取当前挂起的帧任务快照（用于调试）
+   */
+  getPendingFrameTasks(): Array<{ id: string; source: string; count: number }> {
+    return Array.from(this.frameTaskSources.entries()).map(([id, entry]) => ({
+      id,
+      source: entry.source,
+      count: entry.count,
+    }));
+  }
+
+  dispatchMemberEvent(
+    targetMemberId: string,
+    eventType: string,
+    payload?: Record<string, unknown>,
+    delayFrames = 0,
+    taskId?: string,
+    options?: { source?: string },
+  ): string {
+    const sourceLabel = options?.source ?? `member:${targetMemberId}:${eventType}`;
+    const effectiveTaskId = taskId ?? createId();
+    const shouldBeginNow = delayFrames === 0;
+    if (shouldBeginNow) {
+      this.beginFrameTask(effectiveTaskId, { source: sourceLabel });
+    }
+    const event: BaseEvent = {
+      id: createId(),
+      type: "member_fsm_event",
+      priority: "high",
+      executeFrame: this.currentFrameNumber + delayFrames,
+      payload: {
+        targetMemberId,
+        fsmEventType: eventType,
+        data: payload,
+        taskId: effectiveTaskId,
+        taskSource: sourceLabel,
+        taskBeginOnExecute: !shouldBeginNow,
+      },
+    };
+    this.eventQueue.insert(event);
+    return effectiveTaskId;
+  }
+
+  setFrameLoopMode(mode: "realtime" | "fastForward"): void {
+    this.frameLoop.setMode(mode);
+  }
+
+  /**
+   * 在当前线程内快速推进，直到达到目标帧或没有待处理事件
+   */
+  runFastForward(targetFrame?: number): void {
+    this.setFrameLoopMode("fastForward");
+    let safetyCounter = 0;
+    const maxSteps = targetFrame ? Math.max(targetFrame - this.currentFrameNumber, 0) : Number.MAX_SAFE_INTEGER;
+    while (
+      safetyCounter < maxSteps &&
+      (this.hasSimulationWork() || (typeof targetFrame === "number" && this.currentFrameNumber < targetFrame))
+    ) {
+      this.stepFrame({ maxEvents: this.config.frameLoopConfig.maxEventsPerFrame });
+      safetyCounter++;
+      if (safetyCounter > 100000) {
+        console.warn("⚠️ runFastForward 达到安全上限，终止循环");
+        break;
+      }
+    }
+  }
+
+  private hasSimulationWork(): boolean {
+    const queueStats = this.eventQueue.getStats();
+    return queueStats.currentSize > 0 || this.pendingFrameTasksCount > 0;
+  }
+
+  /**
+   * 执行一帧逻辑：事件 -> 成员更新 -> 行为树
+   */
+  stepFrame(options?: { maxEvents?: number }): FrameStepResult {
+    const frameNumber = this.currentFrameNumber;
+    const frameStartTime = performance.now();
+    const maxEvents = options?.maxEvents ?? Number.MAX_SAFE_INTEGER;
+
+    const eventsProcessed = this.processQueueEvents(frameNumber, maxEvents);
+
+    let membersUpdated = 0;
+    const members = this.memberManager.getAllMembers();
+    for (const member of members) {
+      member.update();
+      membersUpdated++;
+    }
+
+    const duration = performance.now() - frameStartTime;
+    const hasPendingEvents = this.eventQueue.hasReadyEvents(frameNumber);
+    const pendingFrameTasks = this.pendingFrameTasksCount;
+
+    if (!hasPendingEvents && pendingFrameTasks === 0) {
+      this.currentFrameNumber = frameNumber + 1;
+    }
+
+    return {
+      frameNumber,
+      duration,
+      eventsProcessed,
+      membersUpdated,
+      hasPendingEvents,
+      pendingFrameTasks,
+    };
+  }
+
+  private processQueueEvents(frameNumber: number, maxEvents: number): number {
+    let processedCount = 0;
+
+    while (true) {
+      const events = this.eventQueue.getEventsToProcess(frameNumber, maxEvents);
+      if (events.length === 0) {
+        break;
+      }
+
+      for (const event of events) {
+        if (this.executeQueueEvent(event, frameNumber)) {
+          processedCount++;
+        }
+      }
+
+      this.eventQueue.cleanup();
+
+      if (events.length < maxEvents) {
+        break;
+      }
+    }
+
+    return processedCount;
+  }
+
+  private executeQueueEvent(event: QueueEvent, frameNumber: number): boolean {
+    const handler = this.eventHandlers.get(event.type);
+    if (!handler) {
+      console.warn(`⚠️ 未找到事件处理器: ${event.type}`);
+      return false;
+    }
+
+    if (!handler.canHandle(event)) {
+      console.warn(`⚠️ 事件处理器拒绝处理: ${event.type}`);
+      return false;
+    }
+
+    const context: ExecutionContext = {
+      currentFrame: frameNumber,
+      timeScale: this.config.frameLoopConfig.timeScale ?? 1,
+      engineState: {
+        frameNumber,
+        memberManager: this.memberManager,
+        eventQueue: this.eventQueue,
+      },
+    };
+
+    const payloadTaskId = (event.payload as any)?.taskId as string | undefined;
+
+    try {
+      const result = this.executeEventHandler(handler, event, context);
+      if (result.success && result.newEvents?.length) {
+        for (const newEvent of result.newEvents) {
+          this.eventQueue.insert(newEvent);
+        }
+      }
+      return result.success;
+    } catch (error) {
+      console.error(`❌ 事件处理异常: ${event.type}`, error);
+      return false;
+    } finally {
+      if (payloadTaskId) {
+        this.endFrameTask(payloadTaskId);
+      }
+      this.eventQueue.markAsProcessed(event.id);
+    }
+  }
+
+  private executeEventHandler(handler: EventHandler, event: BaseEvent, context: ExecutionContext): EventResult {
+    const result = handler.execute(event, context);
+    if (result instanceof Promise) {
+      console.warn(`⚠️ 事件处理器 ${event.type} 返回 Promise，当前帧循环暂不支持异步事件`);
+      return { success: false, error: "Async handler not supported" };
+    }
+    return result;
   }
 
   // ==================== JS编译和执行 ====================

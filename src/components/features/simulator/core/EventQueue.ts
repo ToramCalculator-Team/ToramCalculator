@@ -292,6 +292,29 @@ export class EventQueue {
   }
 
   /**
+   * 检查是否存在需要在指定帧执行的事件
+   */
+  hasReadyEvents(frameNumber: number): boolean {
+    for (const event of this.events) {
+      if (event.processed) continue;
+      if (event.executeFrame <= frameNumber) {
+        return true;
+      }
+      if (event.executeFrame > frameNumber) {
+        break;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * 获取并返回所有需要在指定帧执行的事件
+   */
+  drainReadyEvents(frameNumber: number, maxEvents: number = Number.MAX_SAFE_INTEGER): QueueEvent[] {
+    return this.getEventsToProcess(frameNumber, maxEvents);
+  }
+
+  /**
    * 标记事件为已处理
    * 
    * @param eventId 事件ID

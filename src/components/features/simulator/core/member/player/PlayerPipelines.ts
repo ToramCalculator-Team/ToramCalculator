@@ -418,20 +418,10 @@ export const PlayerPipelineStages = {
       logLv >= 1 && console.log(`👤 [${context.name}][Pip] 发送攻击事件给目标`);
 
       const { damageRequest } = input;
-      const targetMember = context.engine.getMember(damageRequest.targetId);
-      if (!targetMember) {
-        console.warn(`⚠️ [${context.name}] 目标成员不存在，无法发送攻击事件: ${damageRequest.targetId}`);
-        return { attackEventSent: false };
-      }
-
-      // 直接向目标成员的状态机发送“受到攻击”事件
-      targetMember.actor.send({
-        type: "受到攻击",
-        data: {
-          origin: damageRequest.sourceId,
-          skillId: damageRequest.skillId,
-          damageRequest,
-        },
+      context.engine.dispatchMemberEvent(damageRequest.targetId, "受到攻击", {
+        origin: damageRequest.sourceId,
+        skillId: damageRequest.skillId,
+        damageRequest,
       });
 
       return { attackEventSent: true };

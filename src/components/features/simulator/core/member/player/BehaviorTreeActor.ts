@@ -162,7 +162,7 @@ export const behaviorTreeActor = fromCallback(({ input, sendBack, receive }: {
       }
 
       // 同步当前帧（从引擎获取，确保同步）
-      const engineFrame = input.owner.engine.getFrameLoop().getFrameNumber();
+      const engineFrame = input.owner.engine.getCurrentFrame();
       input.owner.currentFrame = engineFrame;
       // 注意：PlayerBehaviorTreeRuntime.time 是 getter，直接返回 owner.currentFrame
       // 所以更新 owner.currentFrame 后，行为树时间会自动同步

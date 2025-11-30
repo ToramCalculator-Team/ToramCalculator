@@ -43,23 +43,24 @@ export class CustomEventHandler implements EventHandler {
           return { success: false, error: `目标成员不存在: ${targetMemberId}` };
         }
         try {
-          // 构造发送给状态机的事件，包含类型和可能的额外数据
           const fsmEvent: any = { type: payload.fsmEventType };
-          
-          // 如果 payload 中有 data 字段，直接使用
           if (payload.data) {
             fsmEvent.data = payload.data;
           } else {
-            // 否则，将 payload 中除了 targetMemberId 和 fsmEventType 之外的其他字段作为 data
             const { targetMemberId: _, fsmEventType: __, ...rest } = payload;
             if (Object.keys(rest).length > 0) {
               fsmEvent.data = rest;
             }
           }
-          
+          if (payload.taskId) {
+            this.gameEngine.endFrameTask(payload.taskId);
+          }
           member.actor.send(fsmEvent);
           return { success: true, data: { forwarded: true, to: targetMemberId, eventType: payload.fsmEventType } };
         } catch (err) {
+          if (payload.taskId) {
+            this.gameEngine.endFrameTask(payload.taskId);
+          }
           return { success: false, error: err instanceof Error ? err.message : "FSM send failed" };
         }
       }
