@@ -1,109 +1,20 @@
 /**
- * 时间推进器 - 推进帧循环和事件调度
+ * 帧推进器 - 推进帧循环和事件调度
  *
- * 核心职责（根据架构文档）：
- * 1. 推进帧（如每 16ms）
- * 2. 调度事件执行、状态推进等
- * 3. 可按需加速或暂停
- *
- * 设计理念：
- * - 时间驱动：以固定帧率推进游戏时间
- * - 事件调度：每帧处理事件队列中的事件
- * - 状态推进：调用成员更新和状态机推进
- * - 可控制：支持暂停、加速、减速等控制
- * - 低耦合：通过接口与EventQueue和memberManager交互
  */
 
-import type GameEngine from "./GameEngine";
-import type { FrameStepResult } from "./GameEngine";
-// ============================== 类型定义 ==============================
-
-/**
- * 帧循环状态枚举
- */
-export type FrameLoopState =
-  | "stopped" // 已停止
-  | "running" // 运行中
-  | "paused"; // 已暂停
-
-/**
- * 帧循环配置接口
- */
-export interface FrameLoopConfig {
-  /** 目标帧率（FPS） */
-  targetFPS: number;
-  /** 是否启用帧跳跃 */
-  enableFrameSkip: boolean;
-  /** 最大帧跳跃数 */
-  maxFrameSkip: number;
-  /** 是否启用性能监控 */
-  enablePerformanceMonitoring: boolean;
-  /** 时间倍率（用于变速播放） */
-  timeScale: number;
-  /** 最大事件处理数（每帧） */
-  maxEventsPerFrame: number;
-  /** 帧循环模式 */
-  mode?: "realtime" | "fastForward";
-}
-
-type FrameLoopMode = "realtime" | "fastForward";
-
-/**
- * 帧信息接口
- */
-export interface FrameInfo {
-  /** 帧号 */
-  frameNumber: number;
-  /** 当前时间戳 */
-  timestamp: number;
-  /** 帧间隔（实际） */
-  deltaTime: number;
-  /** 帧处理时间 */
-  processingTime: number;
-  /** 事件处理数量 */
-  eventsProcessed: number;
-  /** 成员更新数量 */
-  membersUpdated: number;
-}
-
-/**
- * 性能统计接口
- */
-export interface PerformanceStats {
-  /** 平均帧率 */
-  averageFPS: number;
-  /** 平均帧处理时间 */
-  averageFrameTime: number;
-  /** 总帧数 */
-  totalFrames: number;
-  /** 总运行时间 */
-  totalRunTime: number;
-  /** 帧率历史（最近100帧） */
-  fpsHistory: number[];
-  /** 帧时间历史（最近100帧） */
-  frameTimeHistory: number[];
-  /** 事件处理统计 */
-  eventStats: {
-    totalEventsProcessed: number;
-    averageEventsPerFrame: number;
-    maxEventsPerFrame: number;
-  };
-  /** 调度时钟类型（可观测） */
-  clockKind?: "raf" | "timeout";
-  /** 配置帧预算（毫秒） */
-  frameBudgetMs?: number;
-  /** 累积跳帧次数（由于帧堆积被压缩） */
-  skippedFrames?: number;
-}
-
-// ============================== 帧循环类 ==============================
+import type GameEngine from "../GameEngine";
+import type { FrameStepResult } from "../GameEngineTypes";
+import { FrameLoopConfig, FrameLoopMode, FrameLoopState, FrameLoopStats, FrameSnapshot } from "./types";
 
 /**
  * 帧循环类
  * 负责推进游戏时间和调度事件
  */
 export class FrameLoop {
-  // ==================== 私有属性 ====================
+
+  /** 游戏引擎引用 */
+  private engine: GameEngine;
 
   /** 帧循环状态 */
   private state: FrameLoopState = "stopped";
@@ -111,52 +22,37 @@ export class FrameLoop {
   /** 帧循环配置 */
   private config: FrameLoopConfig;
 
-  /** 游戏引擎引用 */
-  private engine: GameEngine;
-
   /** 帧循环定时器ID（rAF 或 setTimeout） */
   private frameTimer: number | null = null;
 
   /** 当前使用的调度时钟类型 */
   private clockKind: "raf" | "timeout" = "raf";
 
-  /** 帧计数器 */
-  private frameNumber: number = 0;
+  /** 当前帧号 */
+  private currentFrame: number = 0;
 
   /** 开始时间戳 */
   private startTime: number = 0;
 
-  /** 上一帧时间戳 */
+  /** 上一帧结束时的时间戳 */
   private lastFrameTime: number = 0;
 
   /** 时间倍率（用于变速播放） */
   private timeScale: number = 1.0;
 
+  /** 帧循环模式 */
   private mode: FrameLoopMode = "realtime";
 
-  private frameIntervalMs: number;
-  private frameAccumulator = 0;
-  private frameSkipCount = 0;
-
   /** 性能统计 */
-  private performanceStats: PerformanceStats = {
+  private performanceStats: FrameLoopStats = {
     averageFPS: 0,
-    averageFrameTime: 0,
     totalFrames: 0,
     totalRunTime: 0,
-    fpsHistory: [],
-    frameTimeHistory: [],
-    eventStats: {
-      totalEventsProcessed: 0,
-      averageEventsPerFrame: 0,
-      maxEventsPerFrame: 0,
-    },
-    frameBudgetMs: undefined,
+    clockKind: "raf",
     skippedFrames: 0,
+    timeoutFrames: 0,
   };
 
-  /** 帧信息历史 */
-  private frameHistory: FrameInfo[] = [];
 
   // ==================== 构造函数 ====================
 
@@ -183,12 +79,6 @@ export class FrameLoop {
 
     this.timeScale = this.config.timeScale;
     this.mode = this.config.mode ?? "realtime";
-    this.frameIntervalMs = 1000 / this.config.targetFPS;
-
-    // 根据目标帧率计算帧间隔
-    this.performanceStats.frameBudgetMs = this.frameIntervalMs;
-
-    // console.log("FrameLoop: 初始化完成", this.config, config);
   }
 
   // ==================== 公共接口 ====================
@@ -202,14 +92,14 @@ export class FrameLoop {
       return;
     }
 
+    const now = performance.now();
+
     this.state = "running";
-    this.startTime = performance.now();
-    this.lastFrameTime = this.startTime;
-    this.frameNumber = 0;
-    this.frameAccumulator = 0;
+    this.startTime = now;
+    this.lastFrameTime = now;
 
     // 重置性能统计
-    this.resetPerformanceStats();
+    this.resetFrameLoopStats();
 
     // 选择调度时钟：Worker 中可能没有 rAF
     const hasRAF =
@@ -236,16 +126,16 @@ export class FrameLoop {
       if (this.clockKind === "raf" && typeof globalThis.cancelAnimationFrame === "function") {
         globalThis.cancelAnimationFrame(this.frameTimer);
       } else {
-        clearTimeout(this.frameTimer as unknown as number);
+        clearTimeout(this.frameTimer);
       }
       this.frameTimer = null;
     }
 
     // 更新性能统计
-    this.updatePerformanceStats();
+    this.updateFrameLoopStats();
 
     console.log(
-      `⏹️ 停止帧循环 - 总帧数: ${this.frameNumber}, 运行时间: ${(performance.now() - this.startTime).toFixed(2)}ms`,
+      `⏹️ 停止帧循环 - 总帧数: ${this.currentFrame}, 运行时间: ${(performance.now() - this.startTime).toFixed(2)}ms`,
     );
   }
 
@@ -264,7 +154,7 @@ export class FrameLoop {
       if (this.clockKind === "raf" && typeof globalThis.cancelAnimationFrame === "function") {
         globalThis.cancelAnimationFrame(this.frameTimer);
       } else {
-        clearTimeout(this.frameTimer as unknown as number);
+        clearTimeout(this.frameTimer);
       }
       this.frameTimer = null;
     }
@@ -297,29 +187,11 @@ export class FrameLoop {
       return;
     }
 
-    const startFrame = this.engine.getCurrentFrame();
-    const targetFrame = startFrame + 1;
     let iterations = 0;
-    let result: FrameStepResult | null = null;
+    // 记录开始时间戳
+    const startTime = performance.now();
 
-    while (this.engine.getCurrentFrame() < targetFrame) {
-      result = this.engine.stepFrame({ maxEvents: this.config.maxEventsPerFrame });
-      iterations++;
-      if (!result.hasPendingEvents && result.pendingFrameTasks === 0) {
-        break;
-      }
-      if (iterations > 1000) {
-        console.warn("⚠️ 单步执行在同一帧内迭代次数过多，可能存在事件循环");
-        break;
-      }
-    }
-
-    if (!result) {
-      console.warn("⚠️ 单步执行未产生结果");
-      return;
-    }
-
-    this.frameNumber = result.frameNumber;
+    this.currentFrame = this.currentFrame + 1;
     this.recordFrameInfo(0, result.duration, result.eventsProcessed, result.membersUpdated);
     this.emitFrameSnapshot();
     console.log(`👆 单步执行完成 - 帧号: ${this.frameNumber}, 迭代次数: ${iterations}`);
@@ -354,13 +226,12 @@ export class FrameLoop {
    * @param fps 目标帧率
    */
   setTargetFPS(fps: number): void {
-    if (fps <= 0 || fps > 1000) {
+    if (fps <= 0 || fps > 60) {
       console.warn("⚠️ 无效的帧率设置:", fps);
       return;
     }
 
     this.config.targetFPS = fps;
-    this.frameIntervalMs = 1000 / fps;
     console.log(`⏱️ 目标帧率已更新: ${fps} FPS`);
   }
 
@@ -393,6 +264,18 @@ export class FrameLoop {
   }
 
   /**
+   * 获取帧循环快照
+   *
+   * @returns 帧循环快照
+   */
+  getSnapshot(): FrameSnapshot {
+    return {
+      currentFrame: this.currentFrame,
+      fps: this.performanceStats.averageFPS,
+    };
+  }
+
+  /**
    * 获取当前帧号
    *
    * @returns 当前帧号
@@ -406,7 +289,7 @@ export class FrameLoop {
    *
    * @returns 性能统计信息
    */
-  getPerformanceStats(): PerformanceStats {
+  getFrameLoopStats(): FrameLoopStats {
     return { ...this.performanceStats };
   }
 
@@ -553,7 +436,7 @@ export class FrameLoop {
 
     // 更新性能统计
     if (this.config.enablePerformanceMonitoring) {
-      this.updatePerformanceStats(frameInfo);
+      this.updateFrameLoopStats(frameInfo);
     }
   }
 
@@ -571,7 +454,7 @@ export class FrameLoop {
    *
    * @param frameInfo 帧信息
    */
-  private updatePerformanceStats(frameInfo?: FrameInfo): void {
+  private updateFrameLoopStats(frameInfo?: FrameInfo): void {
     if (!this.config.enablePerformanceMonitoring) {
       return;
     }
@@ -618,7 +501,7 @@ export class FrameLoop {
   /**
    * 重置性能统计
    */
-  private resetPerformanceStats(): void {
+  private resetFrameLoopStats(): void {
     this.performanceStats = {
       averageFPS: 0,
       averageFrameTime: 0,

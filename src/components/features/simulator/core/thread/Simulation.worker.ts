@@ -2,14 +2,8 @@
  * 沙盒化的模拟器Worker
  * 将GameEngine运行在安全沙盒环境中
  */
-
-import { EngineStats, GameEngine, EngineViewSchema, type EngineView } from "../GameEngine";
-import type { SimulatorWithRelations } from "@db/generated/repositories/simulator";
-import type { IntentMessage } from "../MessageRouter";
-
 import { prepareForTransfer, sanitizeForPostMessage } from "~/lib/WorkerPool/MessageSerializer";
-import { createActor } from "xstate";
-import { GameEngineSM, type EngineCommand, EngineCommandSchema } from "../GameEngineSM";
+import { type EngineCommand, EngineCommandSchema } from "../GameEngineSM";
 import {
   DataQueryCommand,
   SimulatorTaskMap,
@@ -18,6 +12,7 @@ import {
   DataQueryCommandSchema,
 } from "./SimulatorPool";
 import { WorkerMessage, WorkerMessageEvent } from "~/lib/WorkerPool/type";
+import GameEngine from "../GameEngine";
 
 // ==================== 沙盒环境初始化 ====================
 
@@ -70,14 +65,25 @@ initializeWorkerSandbox();
 
 // 在沙盒环境中创建GameEngine实例
 const gameEngine = new GameEngine({
+  enableRealtimeControl: true,
+  eventQueueConfig: {
+    maxQueueSize: 1000,
+    enablePerformanceMonitoring: false,
+  },
   frameLoopConfig: {
     targetFPS: 60,
-    enablePerformanceMonitoring: true,
-  },
+    enableFrameSkip: true,
+    maxFrameSkip: 5,
+    enablePerformanceMonitoring: false,
+    timeScale: 1,
+    maxEventsPerFrame: 10,
+    mode: "realtime"
+  }
 });
 
 // 全局变量存储messagePort，供事件发射器回调使用
 let globalMessagePort: MessagePort | null = null;
+
 
 // 帧快照发送函数 - 直接在帧循环中调用
 function sendFrameSnapshot(snapshot: any) {

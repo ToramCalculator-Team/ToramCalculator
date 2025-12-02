@@ -133,7 +133,7 @@ export const GameEngineSM = setup({
       context.engine?.reset?.();
       context.mirror.send({ type: "RESULT", command: "RESET", success: true });
       // 重置后自动转换到 ready 状态
-      const initData = context.engine?.getInitializationData?.();
+      const initData = context.engine?.getInitializationData();
       if (initData) {
         context.mirror.send({ type: "INIT", data: initData });
       }
