@@ -27,9 +27,16 @@ import { JSProcessor, type CompilationContext } from "./astProcessor/JSProcessor
 import { createActor } from "xstate";
 import { GameEngineSM, type EngineCommand, type EngineSMContext } from "./GameEngineSM";
 import { SimulatorWithRelations } from "@db/generated/repositories/simulator";
-import { ComputedSkillInfo, EngineConfig, EngineState, EngineStats, GameEngineSnapshot } from "./GameEngineTypes";
+import {
+  ComputedSkillInfo,
+  EngineConfig,
+  EngineState,
+  EngineStats,
+  FrameStepResult,
+  GameEngineSnapshot,
+  RealtimeFrameSnapshot,
+} from "./GameEngineTypes";
 import { QueueEvent } from "./EventQueue/types";
-import { FrameSnapshot } from "./FrameLoop/types";
 import { ExpressionContext } from "./EventExecutor/types";
 
 /**
@@ -81,6 +88,12 @@ export class GameEngine {
 
   /** 镜像通信发送器 - 用于向镜像状态机发送消息 */
   private sendToMirror?: (command: EngineCommand) => void;
+
+  /** 当前逻辑帧号（由引擎维护，FrameLoop 通过 stepFrame 驱动） */
+  private currentFrame: number = 0;
+
+  /** 当前挂起的帧内任务数量（用于防止跨帧未完成任务） */
+  private pendingFrameTasksCount: number = 0;
 
   // ==================== 静态方法 ====================
 
@@ -270,6 +283,104 @@ export class GameEngine {
   }
 
   // ===============================  外部方法 ===============================
+
+  /**
+   * 创建当前帧的高频快照
+   * 用于 frame_snapshot 通道（UI 实时渲染 & 技能栏状态）
+   */
+  public createFrameSnapshot(): RealtimeFrameSnapshot {
+    const frameNumber = this.getCurrentFrame();
+    const timestamp = performance.now();
+
+    const primaryTargetId = this.memberManager.getPrimaryTarget();
+
+    // 引擎级状态
+    const frameLoopStats = this.frameLoop.getFrameLoopStats();
+
+    // 所有成员的高频视图
+    const members = this.memberManager.getAllMembers().map((member) => {
+      const hpCurrent = member.statContainer?.getValue("hp.current") ?? 0;
+      const hpMax = member.statContainer?.getValue("hp.max") ?? 0;
+      const mpCurrent = member.statContainer?.getValue("mp.current") ?? 0;
+      const mpMax = member.statContainer?.getValue("mp.max") ?? 0;
+
+      return {
+        id: member.id,
+        type: member.type,
+        name: member.name,
+        isAlive: member.isAlive,
+        position: member.position,
+        campId: member.campId,
+        teamId: member.teamId,
+        targetId: member.targetId ?? null,
+        hp: {
+          current: hpCurrent,
+          max: hpMax,
+        },
+        mp: {
+          current: mpCurrent,
+          max: mpMax,
+        },
+      };
+    });
+
+    // 当前选中成员详细视图（属性 + Buff）
+    let selectedMemberDetail: { attrs: Record<string, unknown>; buffs?: any[] } | null = null;
+    if (primaryTargetId) {
+      const selectedMember = this.memberManager.getMember(primaryTargetId);
+      if (selectedMember) {
+        try {
+          const serialized = selectedMember.serialize();
+          selectedMemberDetail = {
+            attrs: serialized.attrs,
+            buffs: serialized.buffs,
+          };
+        } catch (error) {
+          console.warn("创建选中成员详细快照失败:", error);
+        }
+      }
+    }
+
+    let selectedMemberSkills: ComputedSkillInfo[] = [];
+
+    if (primaryTargetId) {
+      const member = this.memberManager.getMember(primaryTargetId);
+      if (member && member.type === "Player") {
+        try {
+          const actorSnapshot = member.actor.getSnapshot();
+          selectedMemberSkills = this.computePlayerSkills(member as any, actorSnapshot, frameNumber);
+        } catch (error) {
+          console.warn("计算选中成员技能数据失败:", error);
+          selectedMemberSkills = [];
+        }
+      }
+    }
+
+    return {
+      frameNumber,
+      timestamp,
+      engine: {
+        frameNumber,
+        runTime: performance.now() - this.startTime,
+        fps: frameLoopStats.averageFPS,
+      },
+      members,
+      selectedMemberId: primaryTargetId ?? null,
+      selectedMemberSkills,
+      selectedMemberDetail,
+    };
+  }
+
+  /**
+   * 发送帧快照到主线程
+   * 直接通过Worker线程发送，不需要回调
+   */
+  public sendFrameSnapshot(snapshot: RealtimeFrameSnapshot): void {
+    // 通过全局变量发送帧快照
+    if (typeof (globalThis as any).sendFrameSnapshot === "function") {
+      (globalThis as any).sendFrameSnapshot(snapshot);
+    }
+  }
   /**
    * 发送命令到引擎状态机
    */
@@ -451,7 +562,7 @@ export class GameEngine {
    * 获取当前帧号
    */
   getCurrentFrame(): number {
-    return this.frameLoop.getFrameNumber();
+    return this.currentFrame;
   }
 
   // ==================== 子组件功能封装：成员管理 ====================
@@ -553,6 +664,34 @@ export class GameEngine {
   // ==================== 子组件功能封装：JS编译和执行 ====================
 
   /**
+   * 编译脚本代码为可执行的 JS 片段（仅负责编译，不执行）
+   *
+   * 用于 EventExecutor 等场景：
+   * - 输入原始 JS 片段和成员/目标信息
+   * - 基于成员的 dataSchema 进行属性访问重写与验证
+   * - 返回可直接在运行时执行的 compiledCode 字符串
+   */
+  compileScript(code: string, memberId: string, targetId?: string): string {
+    const member = this.memberManager.getMember(memberId);
+    if (!member) {
+      throw new Error(`成员不存在: ${memberId}`);
+    }
+
+    const compiledResult = this.jsProcessor.compileWithCache(code, {
+      memberId,
+      targetId,
+      schema: member.dataSchema,
+      options: { enableValidation: true },
+    });
+
+    if (!compiledResult.success) {
+      throw new Error(`脚本编译失败: ${compiledResult.error}`);
+    }
+
+    return compiledResult.compiledCode;
+  }
+
+  /**
    * 执行JS代码，若未缓存，则先编译再执行
    *
    * @param code 编译后的代码
@@ -619,8 +758,8 @@ export class GameEngine {
         throw new Error(`成员不存在: ${memberId}`);
       }
 
-      // 使用 JSExpressionProcessor 编译表达式
-      const compiledResult = this.jsProcessor.compile(expression, {
+      // 使用 JSProcessor 编译表达式（带内部缓存）
+      const compiledResult = this.jsProcessor.compileWithCache(expression, {
         memberId,
         targetId: context.targetId,
         schema: member.dataSchema,
@@ -653,9 +792,11 @@ export class GameEngine {
    * 用于调试和监控
    */
   getCompilationStats(): { cacheSize: number; cacheKeys: string[] } {
+    const stats = this.jsProcessor.getCacheStats();
+    // 目前只暴露 cacheSize，cacheKeys 保持为空列表以兼容旧接口
     return {
-      cacheSize: this.compiledScripts.size,
-      cacheKeys: Array.from(this.compiledScripts.keys()),
+      cacheSize: stats.cacheSize,
+      cacheKeys: [],
     };
   }
 
@@ -664,8 +805,145 @@ export class GameEngine {
    * 用于内存管理
    */
   clearCompilationCache(): void {
-    this.compiledScripts.clear();
+    this.jsProcessor.clearCache();
     console.log("🧹 JS编译缓存已清理");
+  }
+
+  /**
+   * 开始一个帧内任务，返回任务ID
+   *
+   * 目前作为简单计数器实现，用于防止跨帧未完成任务；后续可按需扩展来源追踪等调试信息。
+   */
+  beginFrameTask(taskId?: string, _meta: { source?: string } = {}): string {
+    const id = taskId ?? createId();
+    this.pendingFrameTasksCount += 1;
+    return id;
+  }
+
+  /**
+   * 标记帧内任务完成
+   */
+  endFrameTask(_taskId: string): void {
+    if (this.pendingFrameTasksCount > 0) {
+      this.pendingFrameTasksCount -= 1;
+    }
+  }
+
+  /**
+   * 分发成员状态机事件
+   *
+   * 说明：
+   * - 这是从主线程 / 行为树等地方向成员 FSM 发送事件的统一入口
+   * - 实际上是往 EventQueue 写入一条 `member_fsm_event`，由 `stepFrame` 在对应帧消费
+   *
+   * @param memberId      目标成员ID
+   * @param eventType     FSM 事件类型（需与状态机定义保持一致）
+   * @param payload       附加数据（可选）
+   * @param delayFrames   延迟帧数（默认 0，表示当前帧）
+   * @param skillId       关联技能ID（可选，用于调试）
+   * @param meta          调试元信息（例如 source）
+   */
+  dispatchMemberEvent(
+    memberId: string,
+    eventType: string,
+    payload?: any,
+    delayFrames: number = 0,
+    skillId?: string,
+    meta?: { source?: string },
+  ): void {
+    const currentFrame = this.getCurrentFrame();
+    const executeFrame = currentFrame + Math.max(0, delayFrames);
+
+    this.eventQueue.insert({
+      id: createId(),
+      type: "member_fsm_event",
+      executeFrame,
+      insertFrame: currentFrame,
+      processed: false,
+      payload: {
+        targetMemberId: memberId,
+        fsmEventType: eventType,
+        skillId,
+        source: meta?.source ?? "engine.dispatchMemberEvent",
+        ...payload,
+      },
+    });
+  }
+
+  // ==================== 单帧执行核心逻辑 ====================
+
+  /**
+   * 执行一帧逻辑：事件处理 + 成员更新
+   *
+   * 由 FrameLoop 调度调用，是引擎级的单帧入口。
+   */
+  stepFrame(options?: { maxEvents?: number }): FrameStepResult {
+    const frameNumber = this.getCurrentFrame();
+    const frameStartTime = performance.now();
+    const maxEvents = options?.maxEvents ?? Number.MAX_SAFE_INTEGER;
+
+    // 1. 处理当前帧需要执行的事件（目前统一为 member_fsm_event）
+    const eventsForFrame = this.eventQueue.getByFrame(frameNumber);
+    let eventsProcessed = 0;
+
+    for (const event of eventsForFrame) {
+      if (eventsProcessed >= maxEvents) {
+        break;
+      }
+
+      if (event.type === "member_fsm_event") {
+        const payload = (event.payload ?? {}) as any;
+        const targetMemberId = payload.targetMemberId as string | undefined;
+        const fsmEventType = payload.fsmEventType as string | undefined;
+
+        if (targetMemberId && fsmEventType) {
+          const member = this.memberManager.getMember(targetMemberId);
+          if (member) {
+            // 将队列事件转发为 FSM 事件，由成员自己的状态机处理
+            member.actor.send({ type: fsmEventType, data: payload } as any);
+          } else {
+            console.warn(`⚠️ stepFrame: 目标成员不存在: ${targetMemberId}`);
+          }
+        } else {
+          console.warn("⚠️ stepFrame: member_fsm_event 缺少 targetMemberId 或 fsmEventType", event);
+        }
+      } else {
+        console.warn(`⚠️ stepFrame: 未知事件类型: ${event.type}`);
+      }
+
+      this.eventQueue.markAsProcessed(event.id);
+      eventsProcessed++;
+    }
+
+    // 2. 成员更新（驱动 buff / FSM / 行为树 等）
+    let membersUpdated = 0;
+    const members = this.memberManager.getAllMembers();
+    for (const member of members) {
+      member.update();
+      membersUpdated++;
+    }
+
+    const duration = performance.now() - frameStartTime;
+
+    // 3. 检查是否还有本帧待处理事件
+    const remainingEvents = this.eventQueue.getByFrame(frameNumber).filter((event) => !event.processed);
+    const hasPendingEvents = remainingEvents.length > 0;
+
+    const pendingFrameTasks = this.pendingFrameTasksCount;
+
+    // 4. 如果当前帧事件和帧内任务都处理完毕，推进逻辑帧号
+    if (!hasPendingEvents && pendingFrameTasks === 0) {
+      this.currentFrame = frameNumber + 1;
+    }
+
+    return {
+      frameNumber,
+      duration,
+      eventsProcessed,
+      membersUpdated,
+      hasPendingEvents,
+      pendingFrameTasks,
+    };
   }
 
   // ==================== 快照管理 ====================
@@ -839,62 +1117,6 @@ export class GameEngine {
   }
 
   /**
-   * 创建当前帧的完整快照
-   * 包含引擎状态和所有成员的完整信息
-   */
-  private createFrameSnapshot(): FrameSnapshot {
-    const currentFrame = this.frameLoop.getFrameNumber();
-    const currentTime = performance.now();
-
-    // 获取引擎状态
-    const frameLoopStats = this.frameLoop.getFrameLoopStats();
-    const eventQueueStats = this.eventQueue.getStats();
-
-    // 获取所有成员数据
-    const members = this.memberManager.getAllMembers().map((member) => {
-      const actorSnapshot = member.actor.getSnapshot();
-      const memberData = member.serialize();
-
-      // 基础成员数据
-      const baseMemberData = {
-        id: member.id,
-        type: member.type,
-        name: member.name,
-        state: actorSnapshot, // 状态机状态
-        attrs: memberData.attrs, // rs数据
-        isAlive: member.isAlive,
-        position: member.position,
-        campId: member.campId,
-        teamId: member.teamId,
-        targetId: member.targetId,
-        buffs: memberData.buffs, // Buff 列表
-      };
-
-      // 为 Player 类型计算技能数据
-      if (member.type === "Player") {
-        const skills = this.computePlayerSkills(member, actorSnapshot, currentFrame);
-        return { ...baseMemberData, skills };
-      }
-
-      return baseMemberData;
-    });
-
-    return {
-      frameNumber: currentFrame,
-      timestamp: currentTime,
-      engine: {
-        frameNumber: currentFrame,
-        runTime: frameLoopStats.totalRunTime / 1000, // 使用frameLoop的总运行时间（秒）
-        frameLoop: frameLoopStats,
-        eventQueue: eventQueueStats,
-        memberCount: members.length,
-        activeMemberCount: members.filter((m) => m.isAlive).length,
-      },
-      members,
-    };
-  }
-
-  /**
    * 计算 Player 的技能数据
    * 为每个技能计算当前的消耗值和可用性
    */
@@ -979,19 +1201,11 @@ export class GameEngine {
       return [];
     }
   }
-
-  /**
-   * 发送帧快照到主线程
-   * 直接通过Worker线程发送，不需要回调
-   */
-  private sendFrameSnapshot(snapshot: FrameSnapshot): void {
-    // 通过全局变量发送帧快照
-    if (typeof (globalThis as any).sendFrameSnapshot === "function") {
-      (globalThis as any).sendFrameSnapshot(snapshot);
-    }
-  }
 }
 
 // ============================== 导出 ==============================
 
 export default GameEngine;
+
+// 透出类型给主线程 UI 使用
+export type { RealtimeFrameSnapshot as FrameSnapshot, ComputedSkillInfo } from "./GameEngineTypes";

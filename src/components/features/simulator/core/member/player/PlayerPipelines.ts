@@ -3,6 +3,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { PlayerStateContext } from "./PlayerStateMachine";
 import { PipeLineDef, StagePool, defineStage } from "../../pipeline/PipelineStageType";
 import { ModifierType } from "../../dataSys/StatContainer";
+import { sendTo } from "xstate";
 
 
 const logLv = 0; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
@@ -28,7 +29,8 @@ const scheduleFsmEvent = (
     id: createId(),
     type: "member_fsm_event",
     executeFrame,
-    priority: "high",
+    insertFrame: context.currentFrame,
+    processed: false,
     payload: {
       targetMemberId: context.id,
       fsmEventType: eventType,
@@ -418,11 +420,6 @@ export const PlayerPipelineStages = {
       logLv >= 1 && console.log(`👤 [${context.name}][Pip] 发送攻击事件给目标`);
 
       const { damageRequest } = input;
-      context.engine.dispatchMemberEvent(damageRequest.targetId, "受到攻击", {
-        origin: damageRequest.sourceId,
-        skillId: damageRequest.skillId,
-        damageRequest,
-      });
 
       return { attackEventSent: true };
     },

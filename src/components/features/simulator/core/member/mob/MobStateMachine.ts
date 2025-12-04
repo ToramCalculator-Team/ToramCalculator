@@ -171,140 +171,162 @@ export const mobActions = {
   根据配置生成初始状态: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 根据配置生成初始状态`, event);
   },
   启用站立动画: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 启用站立动画`, event);
   },
   启用移动动画: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 启用移动动画`, event);
   },
   启用前摇动画: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 启用前摇动画`, event);
   },
   计算前摇时长: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 计算前摇时长`, event);
   },
   创建前摇结束通知: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 创建前摇结束通知`, event);
   },
   启用蓄力动画: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 启用蓄力动画`, event);
   },
   计算蓄力时长: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 计算蓄力时长`, event);
   },
   创建蓄力结束通知: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 创建蓄力结束通知`, event);
   },
   启用咏唱动画: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 启用咏唱动画`, event);
   },
   计算咏唱时长: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 计算咏唱时长`, event);
   },
   创建咏唱结束通知: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 创建咏唱结束通知`, event);
   },
   启用技能发动动画: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 启用技能发动动画`, event);
   },
   计算发动时长: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 计算发动时长`, event);
   },
   创建发动结束通知: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 创建发动结束通知`, event);
   },
   技能效果管线: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 技能效果管线`, event);
   },
   重置控制抵抗时间: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 重置控制抵抗时间`, event);
   },
   中断当前行为: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 中断当前行为`, event);
   },
   启动受控动画: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 启动受控动画`, event);
   },
   重置到复活状态: function ({ context, event }) {
     // Add your action code here
     // ...
-  },
-  发送快照到请求者: function ({ context, event }) {
-    const e = event as 收到快照请求;
-    const senderId = e.data.senderId;
-    const sender = context.engine.getMember(senderId);
-    if (!sender) {
-      console.error(`👹 [${context.name}] 请求者不存在: ${senderId}`);
-      return;
-    }
-    context.engine.dispatchMemberEvent(sender.id, "收到目标快照", { senderId: context.id });
+    console.log(`👹 [${context.name}] 重置到复活状态`, event);
   },
   发送命中判定事件给自己: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 发送命中判定事件给自己`, event);
   },
   反馈命中结果给施法者: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 反馈命中结果给施法者`, event);
   },
   发送控制判定事件给自己: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 发送控制判定事件给自己`, event);
   },
   命中计算管线: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 命中计算管线`, event);
   },
   根据命中结果进行下一步: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 根据命中结果进行下一步`, event);
   },
   控制判定管线: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 控制判定管线`, event);
   },
   反馈控制结果给施法者: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 反馈控制结果给施法者`, event);
   },
   发送伤害计算事件给自己: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 发送伤害计算事件给自己`, event);
   },
   伤害计算管线: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 伤害计算管线`, event);
   },
   反馈伤害结果给施法者: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 反馈伤害结果给施法者`, event);
   },
   发送属性修改事件给自己: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 发送属性修改事件给自己`, event);
   },
   发送buff修改事件给自己: function ({ context, event }) {
     // Add your action code here
     // ...
+    console.log(`👹 [${context.name}] 发送buff修改事件给自己`, event);
   },
   logEvent: function ({ context, event }) {
     // Add your action code here
@@ -379,11 +401,6 @@ export const createMobStateMachine = (
       存活: {
         initial: "可操作状态",
         on: {
-          收到快照请求: {
-            actions: {
-              type: "发送快照到请求者",
-            },
-          },
           受到攻击: [
             {
               actions: {

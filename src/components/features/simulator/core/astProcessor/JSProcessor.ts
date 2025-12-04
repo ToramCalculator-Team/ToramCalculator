@@ -55,11 +55,32 @@ export interface CompileResult {
 export class JSProcessor {
   private schemaResolver: SchemaPathResolver | null = null;
 
+  /**
+   * 源码级编译结果缓存
+   *
+   * - 只缓存编译结果（compiledCode + dependencies）
+   * - 不缓存执行结果
+   * - 当前 key 使用 (memberId + hash(code))，即“按成员 + 源码”维度缓存
+   *   后续如需按 schema 维度细化，可在不改调用方的前提下调整 generateCacheKey 实现
+   */
+  private readonly compilationCache: Map<
+    string,
+    {
+      compiledCode: string;
+      dependencies: string[];
+    }
+  > = new Map();
+
+  private readonly cacheStats = {
+    hits: 0,
+    misses: 0,
+  };
+
   // ==================== 核心编译功能 ====================
 
   /**
    * 编译JS代码 - 核心功能
-   * 将self.xxx转换为_self.getValue('xxx')格式
+   * 将self.xxx转换为_statContainer.getValue('xxx')格式
    */
   compile(code: string, context: CompilationContext): CompileResult {
     // console.log("🔧 编译代码: ", code);
@@ -121,6 +142,60 @@ export class JSProcessor {
         error: error instanceof Error ? error.message : "Unknown compilation error",
       };
     }
+  }
+
+  // ==================== 编译缓存 API ====================
+
+  /**
+   * 使用内部缓存的编译接口
+   *
+   * 约定：
+   * - 仅缓存编译结果（compiledCode + dependencies）
+   * - key 当前使用 (memberId + hash(code))，即“按成员 + 源码”维度缓存
+   */
+  compileWithCache(code: string, context: CompilationContext): CompileResult {
+    const cacheKey = this.generateCacheKey(code, context.memberId);
+    const cached = this.compilationCache.get(cacheKey);
+
+    if (cached) {
+      this.cacheStats.hits += 1;
+      return {
+        success: true,
+        compiledCode: cached.compiledCode,
+        dependencies: cached.dependencies,
+        cacheKey,
+      };
+    }
+
+    this.cacheStats.misses += 1;
+    const result = this.compile(code, context);
+    if (result.success) {
+      this.compilationCache.set(cacheKey, {
+        compiledCode: result.compiledCode,
+        dependencies: result.dependencies,
+      });
+    }
+    return result;
+  }
+
+  /**
+   * 获取编译缓存统计信息
+   */
+  getCacheStats(): { cacheSize: number; hits: number; misses: number } {
+    return {
+      cacheSize: this.compilationCache.size,
+      hits: this.cacheStats.hits,
+      misses: this.cacheStats.misses,
+    };
+  }
+
+  /**
+   * 清空编译缓存
+   */
+  clearCache(): void {
+    this.compilationCache.clear();
+    this.cacheStats.hits = 0;
+    this.cacheStats.misses = 0;
   }
 
   // ==================== 私有方法 ====================

@@ -14,6 +14,7 @@ import { StatusBar, ControlPanel, MemberSelect, MemberStatus, SkillPanel, Action
 import { Portal } from "solid-js/web";
 import { GameView } from "./render/Renderer";
 import { SimulatorWithRelations } from "@db/generated/repositories/simulator";
+import { MemberSerializeData } from "./core/member/Member";
 
 export interface RealtimeSimulatorProps {
   simulatorData: SimulatorWithRelations;
@@ -294,6 +295,14 @@ export default function RealtimeSimulator(props: RealtimeSimulatorProps) {
     });
   });
 
+  onMount(() => {
+    console.log(`--RealtimeSimulator Page Mount`);
+  });
+
+  onCleanup(() => {
+    console.log(`--RealtimeSimulator Page Unmount`);
+  });
+
   // 启用鼠标控制
   const allowMouseControl = async () => {
     console.log("🎮 ViewArea 被点击了！");
@@ -373,31 +382,31 @@ export default function RealtimeSimulator(props: RealtimeSimulatorProps) {
           const memberId = controller.selectedMemberId[0]();
           if (!memberId) return null;
 
-          // 1. 优先从引擎快照中读取（包含实时 Buff）
+          // 1. 优先从引擎快照中读取（包含实时 attrs/buffs）
           const snapshot = controller.engineView[0]();
-          if (snapshot) {
-            const m = snapshot.members.find((m) => m.id === memberId) as
-              | (typeof snapshot.members[number] & { buffs?: any[] })
-              | undefined;
+          if (snapshot && snapshot.selectedMemberId === memberId && snapshot.selectedMemberDetail) {
+            const detail = snapshot.selectedMemberDetail;
+            const memberBasic = snapshot.members.find((m) => m.id === memberId);
 
-            if (m) {
-              // 映射为 MemberSerializeData 结构，确保包含 buffs 字段
-              return {
-                attrs: m.attrs,
-                id: m.id,
-                type: m.type,
-                name: m.name,
-                campId: m.campId,
-                teamId: m.teamId,
-                targetId: m.targetId,
-                isAlive: m.isAlive,
-                position: m.position,
-                buffs: m.buffs,
-              } as any;
-            }
+            // 回退到初始化成员列表以补齐类型等静态信息
+            const memberList = controller.members[0]();
+            const fallback = memberList?.find((mm) => mm.id === memberId) || null;
+
+            return {
+              attrs: detail.attrs ?? fallback?.attrs ?? {},
+              id: memberId,
+              type: (fallback?.type as any) ?? (memberBasic as any)?.type ?? "Player",
+              name: fallback?.name ?? memberBasic?.name ?? "",
+              campId: fallback?.campId ?? memberBasic?.campId ?? "",
+              teamId: fallback?.teamId ?? memberBasic?.teamId ?? "",
+              targetId: fallback?.targetId ?? (memberBasic?.targetId ?? ""),
+              isAlive: memberBasic?.isAlive ?? fallback?.isAlive ?? true,
+              position: memberBasic?.position ?? fallback?.position ?? { x: 0, y: 0, z: 0 },
+              buffs: detail.buffs ?? fallback?.buffs,
+            } satisfies MemberSerializeData;
           }
 
-          // 2. 回退到初始化时拉取的静态成员数据（通常不含 Buff）
+          // 2. 回退到初始化时拉取的静态成员数据（通常不含 Buff/实时属性）
           const memberList = controller.members[0]();
           if (!memberList) return null;
           const fallback = memberList.find((m) => m.id === memberId) || null;

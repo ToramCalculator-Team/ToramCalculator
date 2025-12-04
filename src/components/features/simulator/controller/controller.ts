@@ -192,14 +192,11 @@ export class Controller {
       if (data.event && typeof data.event === "object" && "frameNumber" in data.event) {
         const snapshot = data.event as FrameSnapshot;
         this.engineView[1](snapshot);
-        
+
         // 从快照中更新选中成员的技能数据（包含计算后的 MP/HP 消耗等）
         const selectedId = this.selectedMemberId[0]();
-        if (selectedId) {
-          const memberData = snapshot.members.find((m) => m.id === selectedId);
-          if (memberData?.skills) {
-            this.selectedMemberSkills[1](memberData.skills);
-          }
+        if (selectedId && snapshot.selectedMemberId === selectedId) {
+          this.selectedMemberSkills[1](snapshot.selectedMemberSkills);
         }
       }
     });

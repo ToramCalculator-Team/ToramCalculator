@@ -32,8 +32,8 @@ interface StatusBarProps {
  */
 export function StatusBar(props: StatusBarProps) {
   return (
-    <div class="w-full flex items-center justify-between portrait:bg-area-color rounded p-4">
-      <div class="w-full flex items-center gap-4 portrait:justify-between">
+    <div class="portrait:bg-area-color flex w-full items-center justify-between rounded p-4">
+      <div class="flex w-full items-center gap-4 portrait:justify-between">
         <div class="flex items-center gap-2 portrait:hidden">
           <span class="text-sm font-medium">状态:</span>
           <div
@@ -68,7 +68,7 @@ export function StatusBar(props: StatusBarProps) {
           </div>
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium">运行时间</span>
-            <span class="text-sm">{(props.engineView()?.engine.runTime || 0).toFixed(1)}s</span>
+            <span class="text-sm">{((props.engineView()?.engine.runTime ?? 0) / 1000).toFixed(1)}s</span>
           </div>
           <div class="flex items-center gap-2 portrait:hidden">
             <span class="text-sm font-medium">连接</span>
@@ -76,7 +76,7 @@ export function StatusBar(props: StatusBarProps) {
           </div>
           <div class="flex items-center gap-2">
             <span class="text-sm font-medium">成员</span>
-            <span class="text-sm">{props.engineView()?.engine.memberCount || 0}</span>
+            <span class="text-sm">{props.engineView()?.members.length || 0}</span>
           </div>
         </Show>
       </div>
@@ -131,49 +131,31 @@ export function ControlPanel(props: ControlPanelProps) {
   });
 
   return (
-    <div class="ControlPanel w-full flex flex-1 gap-2">
+    <div class="ControlPanel flex w-full flex-1 gap-2">
       {/* 启动/暂停/恢复按钮 - 互斥 */}
       <Show when={!canPause() && !canResume()}>
-        <Button
-          onClick={props.onStart}
-          disabled={!canStart()}
-          class="w-full"
-        >
+        <Button onClick={props.onStart} disabled={!canStart()} class="w-full">
           启动模拟
         </Button>
       </Show>
       <Show when={canPause()}>
-        <Button
-          onClick={props.onPause}
-          class="bg-brand-color-1st w-full"
-        >
+        <Button onClick={props.onPause} class="bg-brand-color-1st w-full">
           暂停
         </Button>
       </Show>
       <Show when={canResume()}>
-        <Button 
-          onClick={props.onResume} 
-          class="w-full"
-        >
+        <Button onClick={props.onResume} class="w-full">
           恢复
         </Button>
       </Show>
-      
+
       {/* 重置按钮 - 启动后才可用 */}
-      <Button 
-        onClick={props.onReset} 
-        disabled={!canReset()} 
-        class="w-full"
-      >
+      <Button onClick={props.onReset} disabled={!canReset()} class="w-full">
         重置模拟
       </Button>
-      
+
       {/* 单步按钮 - 仅在暂停状态下可用 */}
-      <Button
-        onClick={props.onStep}
-        disabled={!canStep()}
-        class="w-full"
-      >
+      <Button onClick={props.onStep} disabled={!canStep()} class="w-full">
         单步推进
       </Button>
     </div>
@@ -194,7 +176,7 @@ interface MemberSelectProps {
  */
 export function MemberSelect(props: MemberSelectProps) {
   return (
-    <div class="MemberSelect w-full flex flex-1 items-center gap-2">
+    <div class="MemberSelect flex w-full flex-1 items-center gap-2">
       <Show
         when={props.members().length > 0}
         fallback={
@@ -232,7 +214,7 @@ interface MemberStatusProps {
  */
 export function MemberStatus(props: MemberStatusProps) {
   return (
-    <div class="w-full flex flex-col items-center gap-2">
+    <div class="flex w-full flex-col items-center gap-2">
       <MemberStatusPanel member={props.member} />
     </div>
   );
@@ -251,7 +233,7 @@ interface SkillPanelProps {
  */
 export function SkillPanel(props: SkillPanelProps) {
   return (
-    <div class="bg-area-color w-full flex flex-col rounded-lg p-3">
+    <div class="bg-area-color flex w-full flex-col rounded-lg p-3">
       <Show when={props.selectedMember()}>
         <h3 class="mb-2 text-lg font-semibold">技能</h3>
         <div class="grid flex-1 grid-cols-4 grid-rows-1 gap-2 overflow-y-auto">
@@ -309,7 +291,7 @@ export function ActionPanel(props: ActionPanelProps) {
       <Show when={props.selectedEngineMember()}>
         <h3 class="mb-2 text-lg font-semibold">动作</h3>
         <div class="flex flex-col gap-2">
-          <div class="flex gap-2 items-center">
+          <div class="flex items-center gap-2">
             <span class="text-sm text-gray-600">选择目标:</span>
             <MemberSelect
               members={props.members}

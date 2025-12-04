@@ -65,7 +65,7 @@ export class EventQueue {
       this.stats.currentSize = this.events.length;
       this.stats.totalInserted++;
 
-      console.log(`📋 插入事件: ${event.type} - 队列大小: ${this.events.length}`);
+      console.log(`📋 插入事件: ${event.type} - 队列大小: ${this.events.length}`, event);
       return true;
     } catch (error) {
       console.error("❌ 插入事件失败:", error);
@@ -107,7 +107,7 @@ export class EventQueue {
     this.events.splice(eventIndex, 1);
 
     this.stats.currentSize = this.events.length;
-    console.log(`🗑️ 移除事件: ${eventId}`);
+    console.log(`🗑️ 移除事件: ${eventId}`, this.events);
 
     return true;
   }

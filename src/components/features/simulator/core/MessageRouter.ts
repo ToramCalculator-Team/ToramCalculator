@@ -17,7 +17,7 @@
 
 import type GameEngine from "./GameEngine";
 import { z } from "zod/v4";
-import type { EventPriority, EventHandler, BaseEvent } from "./EventQueue/EventQueue";
+import type { QueueEvent } from "./EventQueue/types";
 import type { Member } from "./member/Member";
 // 类型定义已移动到本文件，不再需要从messages.ts导入
 import { sanitizeForPostMessage } from "../../../../lib/WorkerPool/MessageSerializer";

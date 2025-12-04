@@ -19,7 +19,7 @@
 // }
 
 import { selectSimulatorByIdWithRelations } from "@db/generated/repositories/simulator";
-import { createEffect, createResource, Show } from "solid-js";
+import { createEffect, createResource, onCleanup, onMount, Show } from "solid-js";
 import RealtimeSimulator from "~/components/features/simulator/RealtimeSimulator";
 import { useParams } from "@solidjs/router";
 
@@ -36,10 +36,17 @@ export default function SimulatorPage() {
   //   console.log("simulatorData", simulatorData());
   // });
 
+  onMount(() => {
+    console.log(`--Simulator Page Mount`);
+  });
+
+  onCleanup(() => {
+    console.log(`--Simulator Page Unmount`);
+  });
+  
   return (
     <Show when={simulatorData()} fallback={<div>Loading...</div>}>
       {(validSimulatorData) => <RealtimeSimulator simulatorData={validSimulatorData()} />}
     </Show>
   );
 }
-

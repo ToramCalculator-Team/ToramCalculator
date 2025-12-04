@@ -1,4 +1,4 @@
-import { assign, enqueueActions, EventObject, setup, sendTo } from "xstate";
+import { assign, enqueueActions, EventObject, setup, sendTo, raise } from "xstate";
 import type { ActionFunction } from "xstate";
 import type { GuardPredicate } from "xstate/guards";
 import { createId } from "@paralleldrive/cuid2";
@@ -7,7 +7,6 @@ import { Player, PlayerAttrType } from "./Player";
 import { ModifierType, StatContainer } from "../../dataSys/StatContainer";
 import { SkillEffectWithRelations } from "@db/generated/repositories/skill_effect";
 import { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
-import { ExpressionContext, GameEngine } from "../../GameEngine";
 import { MemberType } from "@db/schema/enums";
 import { CharacterWithRelations } from "@db/generated/repositories/character";
 import { PipelineManager } from "../../pipeline/PipelineManager";
@@ -261,17 +260,6 @@ export const playerStateMachine = (player: Player) => {
         // ...
         console.log(`👤 [${context.name}] 创建警告结束通知`, event);
       },
-      发送快照获取请求: function ({ context, event }) {
-        const e = event as 使用技能;
-        console.log(`👤 [${context.name}] 发送快照获取请求`, event);
-        const targetId = context.targetId;
-        const target = context.engine.getMember(targetId);
-        if (!target) {
-          console.error(`👤 [${context.name}] 目标不存在: ${targetId}`);
-          return;
-        }
-        context.engine.dispatchMemberEvent(target.id, "收到快照请求", { senderId: context.id });
-      },
       添加待处理技能: enqueueActions(({ context, event, enqueue }) => {
         console.log(`👤 [${context.name}] 添加待处理技能`, event);
         const e = event as 使用技能;
@@ -366,7 +354,8 @@ export const playerStateMachine = (player: Player) => {
           id: createId(), // 生成唯一事件ID
           type: "member_fsm_event",
           executeFrame: targetFrame,
-          priority: "high",
+          insertFrame: context.currentFrame,
+          processed: false,
           payload: {
             targetMemberId: context.id, // 目标成员ID
             fsmEventType: "收到前摇结束通知", // 要发送给FSM的事件类型
@@ -401,7 +390,8 @@ export const playerStateMachine = (player: Player) => {
           id: createId(), // 生成唯一事件ID
           type: "member_fsm_event",
           executeFrame: targetFrame,
-          priority: "high",
+          insertFrame: context.currentFrame,
+          processed: false,
           payload: {
             targetMemberId: context.id, // 目标成员ID
             fsmEventType: "收到蓄力结束通知", // 要发送给FSM的事件类型
@@ -436,7 +426,8 @@ export const playerStateMachine = (player: Player) => {
           id: createId(), // 生成唯一事件ID
           type: "member_fsm_event",
           executeFrame: targetFrame,
-          priority: "high",
+          insertFrame: context.currentFrame,
+          processed: false,
           payload: {
             targetMemberId: context.id, // 目标成员ID
             fsmEventType: "收到咏唱结束通知", // 要发送给FSM的事件类型
@@ -471,7 +462,8 @@ export const playerStateMachine = (player: Player) => {
           id: createId(), // 生成唯一事件ID
           type: "member_fsm_event",
           executeFrame: targetFrame,
-          priority: "high",
+          insertFrame: context.currentFrame,
+          processed: false,
           payload: {
             targetMemberId: context.id, // 目标成员ID
             fsmEventType: "收到发动结束通知", // 要发送给FSM的事件类型
@@ -509,19 +501,9 @@ export const playerStateMachine = (player: Player) => {
         // ...
         console.log(`👤 [${context.name}] 重置到复活状态`, event);
       },
-      发送快照到请求者: function ({ context, event }) {
-        const e = event as 收到快照请求;
-        const senderId = e.data.senderId;
-        const sender = context.engine.getMember(senderId);
-        if (!sender) {
-          console.error(`👹 [${context.name}] 请求者不存在: ${senderId}`);
-          return;
-        }
-        context.engine.dispatchMemberEvent(sender.id, "收到目标快照", { senderId: context.id });
-      },
       发送命中判定事件给自己: function ({ context, event }) {
         console.log(`👤 [${context.name}] 发送命中判定事件给自己`, event);
-        context.engine.dispatchMemberEvent(context.id, "进行命中判定");
+        raise({ type: "进行命中判定" });
       },
       反馈命中结果给施法者: function ({ context, event }) {
         // Add your action code here
@@ -530,7 +512,7 @@ export const playerStateMachine = (player: Player) => {
       },
       发送控制判定事件给自己: function ({ context, event }) {
         console.log(`👤 [${context.name}] 发送控制判定事件给自己`, event);
-        context.engine.dispatchMemberEvent(context.id, "进行控制判定");
+        raise({ type: "进行控制判定" });
       },
       命中计算管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 命中计算管线`, event);
@@ -560,7 +542,7 @@ export const playerStateMachine = (player: Player) => {
       },
       发送伤害计算事件给自己: function ({ context, event }) {
         console.log(`👤 [${context.name}] 发送伤害计算事件给自己`, event);
-        context.engine.dispatchMemberEvent(context.id, "进行伤害计算");
+        raise({ type: "进行伤害计算" });
       },
       伤害计算管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 伤害计算管线`, event);
@@ -830,11 +812,6 @@ export const playerStateMachine = (player: Player) => {
       存活: {
         initial: "可操作状态",
         on: {
-          收到快照请求: {
-            actions: {
-              type: "发送快照到请求者",
-            },
-          },
           受到攻击: [
             {
               guard: "是物理伤害",
@@ -1021,10 +998,6 @@ export const playerStateMachine = (player: Player) => {
                         guard: "施法条件不满足",
                       },
                       {
-                        target: "目标数据检查状态",
-                        guard: "技能带有心眼",
-                      },
-                      {
                         target: "执行技能中",
                       },
                     ],
@@ -1041,25 +1014,6 @@ export const playerStateMachine = (player: Player) => {
                       },
                       {
                         type: "创建警告结束通知",
-                      },
-                    ],
-                  },
-                  目标数据检查状态: {
-                    on: {
-                      收到目标快照: [
-                        {
-                          target: "执行技能中",
-                          guard: "目标不抵抗此技能的控制效果",
-                        },
-                        {
-                          target: "警告状态",
-                          guard: "目标抵抗此技能的控制效果",
-                        },
-                      ],
-                    },
-                    entry: [
-                      {
-                        type: "发送快照获取请求",
                       },
                     ],
                   },

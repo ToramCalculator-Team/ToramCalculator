@@ -28,8 +28,17 @@ export class FrameLoop {
   /** 当前使用的调度时钟类型 */
   private clockKind: "raf" | "timeout" = "raf";
 
-  /** 当前帧号 */
-  private currentFrame: number = 0;
+  /** 已执行的逻辑帧数（用于统计），逻辑帧号以 GameEngine 为准 */
+  private frameNumber: number = 0;
+
+  /** 固定逻辑帧间隔（毫秒），由 targetFPS 推导 */
+  private frameIntervalMs: number = 1000 / 60;
+
+  /** 时间累积器（毫秒） */
+  private frameAccumulator: number = 0;
+
+  /** 累计跳帧次数（基于累积器上限） */
+  private frameSkipCount: number = 0;
 
   /** 开始时间戳 */
   private startTime: number = 0;
@@ -79,6 +88,9 @@ export class FrameLoop {
 
     this.timeScale = this.config.timeScale;
     this.mode = this.config.mode ?? "realtime";
+
+    // 根据目标帧率计算逻辑帧间隔
+    this.frameIntervalMs = 1000 / this.config.targetFPS;
   }
 
   // ==================== 公共接口 ====================
@@ -134,9 +146,7 @@ export class FrameLoop {
     // 更新性能统计
     this.updateFrameLoopStats();
 
-    console.log(
-      `⏹️ 停止帧循环 - 总帧数: ${this.currentFrame}, 运行时间: ${(performance.now() - this.startTime).toFixed(2)}ms`,
-    );
+    console.log(`⏹️ 停止帧循环 - 总帧数: ${this.frameNumber}, 运行时间: ${(performance.now() - this.startTime).toFixed(2)}ms`);
   }
 
   /**
@@ -187,14 +197,23 @@ export class FrameLoop {
       return;
     }
 
-    let iterations = 0;
-    // 记录开始时间戳
-    const startTime = performance.now();
+    // 单步模式：忽略时间累积，直接执行一帧逻辑
+    const stepResult: FrameStepResult = this.engine.stepFrame({
+      maxEvents: this.config.maxEventsPerFrame,
+    });
 
-    this.currentFrame = this.currentFrame + 1;
-    this.recordFrameInfo(0, result.duration, result.eventsProcessed, result.membersUpdated);
+    // 同步统计用的帧计数
+    this.frameNumber = stepResult.frameNumber;
+
+    // 记录本次逻辑帧的信息（deltaTime 使用标准帧间隔）
+    this.recordFrameInfo(
+      this.frameIntervalMs,
+      stepResult.duration,
+      stepResult.eventsProcessed,
+      stepResult.membersUpdated,
+    );
     this.emitFrameSnapshot();
-    console.log(`👆 单步执行完成 - 帧号: ${this.frameNumber}, 迭代次数: ${iterations}`);
+    console.log(`👆 单步执行完成 - 帧号: ${stepResult.frameNumber}`);
   }
 
   /**
@@ -270,7 +289,7 @@ export class FrameLoop {
    */
   getSnapshot(): FrameSnapshot {
     return {
-      currentFrame: this.currentFrame,
+      currentFrame: this.engine.getCurrentFrame(),
       fps: this.performanceStats.averageFPS,
     };
   }
@@ -291,15 +310,6 @@ export class FrameLoop {
    */
   getFrameLoopStats(): FrameLoopStats {
     return { ...this.performanceStats };
-  }
-
-  /**
-   * 获取帧历史
-   *
-   * @returns 帧信息历史
-   */
-  getFrameHistory(): FrameInfo[] {
-    return [...this.frameHistory];
   }
 
   /**
@@ -418,25 +428,9 @@ export class FrameLoop {
     eventsProcessed: number,
     membersUpdated: number,
   ): void {
-    const frameInfo: FrameInfo = {
-      frameNumber: this.frameNumber,
-      timestamp: performance.now(),
-      deltaTime,
-      processingTime,
-      eventsProcessed,
-      membersUpdated,
-    };
-
-    this.frameHistory.push(frameInfo);
-
-    // 限制历史记录数量
-    if (this.frameHistory.length > 1000) {
-      this.frameHistory = this.frameHistory.slice(-500);
-    }
-
-    // 更新性能统计
+    // 当前实现仅用于更新性能统计，必要时可在此扩展帧历史记录
     if (this.config.enablePerformanceMonitoring) {
-      this.updateFrameLoopStats(frameInfo);
+      this.updateFrameLoopStats();
     }
   }
 
@@ -454,7 +448,7 @@ export class FrameLoop {
    *
    * @param frameInfo 帧信息
    */
-  private updateFrameLoopStats(frameInfo?: FrameInfo): void {
+  private updateFrameLoopStats(): void {
     if (!this.config.enablePerformanceMonitoring) {
       return;
     }
@@ -465,37 +459,8 @@ export class FrameLoop {
     // 更新基本统计
     this.performanceStats.totalFrames = this.frameNumber;
     this.performanceStats.totalRunTime = totalRunTime;
-    this.performanceStats.averageFPS = this.frameNumber / (totalRunTime / 1000);
-
-    if (frameInfo) {
-      // 更新帧时间历史
-      this.performanceStats.frameTimeHistory.push(frameInfo.processingTime);
-      if (this.performanceStats.frameTimeHistory.length > 100) {
-        this.performanceStats.frameTimeHistory = this.performanceStats.frameTimeHistory.slice(-100);
-      }
-
-      // 更新帧率历史
-      const fps = 1000 / frameInfo.deltaTime;
-      this.performanceStats.fpsHistory.push(fps);
-      if (this.performanceStats.fpsHistory.length > 100) {
-        this.performanceStats.fpsHistory = this.performanceStats.fpsHistory.slice(-100);
-      }
-
-      // 计算平均帧处理时间
-      const avgFrameTime =
-        this.performanceStats.frameTimeHistory.reduce((sum, time) => sum + time, 0) /
-        this.performanceStats.frameTimeHistory.length;
-      this.performanceStats.averageFrameTime = avgFrameTime;
-
-      // 更新事件统计
-      this.performanceStats.eventStats.totalEventsProcessed += frameInfo.eventsProcessed;
-      this.performanceStats.eventStats.averageEventsPerFrame =
-        this.performanceStats.eventStats.totalEventsProcessed / this.frameNumber;
-      this.performanceStats.eventStats.maxEventsPerFrame = Math.max(
-        this.performanceStats.eventStats.maxEventsPerFrame,
-        frameInfo.eventsProcessed,
-      );
-    }
+    const seconds = totalRunTime / 1000;
+    this.performanceStats.averageFPS = seconds > 0 ? this.frameNumber / seconds : 0;
   }
 
   /**
@@ -504,18 +469,14 @@ export class FrameLoop {
   private resetFrameLoopStats(): void {
     this.performanceStats = {
       averageFPS: 0,
-      averageFrameTime: 0,
       totalFrames: 0,
       totalRunTime: 0,
-      fpsHistory: [],
-      frameTimeHistory: [],
-      eventStats: {
-        totalEventsProcessed: 0,
-        averageEventsPerFrame: 0,
-        maxEventsPerFrame: 0,
-      },
+      clockKind: this.clockKind,
+      skippedFrames: 0,
+      timeoutFrames: 0,
     };
-    this.frameHistory = [];
+    this.frameAccumulator = 0;
+    this.frameSkipCount = 0;
   }
 }
 
