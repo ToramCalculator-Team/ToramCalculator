@@ -2,12 +2,12 @@
 
 import simulationWorker from "./Simulation.worker?worker&url";
 import { PoolConfig, WorkerPool, WorkerWrapper } from "~/lib/WorkerPool/WorkerPool";
-import { IntentMessage, IntentMessageSchema } from "../MessageRouter";
-import { MemberSerializeData } from "../member/Member";
-import { EngineStats } from "../GameEngine";
-import { EngineCommand, EngineCommandSchema } from "../GameEngineSM";
+import { IntentMessage, IntentMessageSchema } from "../MessageRouter/MessageRouter";
+import { MemberSerializeData } from "../Member/Member";
+import { EngineStats } from "../types";
+import { EngineCommand } from "../GameEngineSM";
 import { RendererCmd } from "../../render/RendererProtocol";
-import { Result, WorkerMessageEvent, WorkerSystemMessageSchema } from "~/lib/WorkerPool/type";
+import { WorkerMessageEvent, WorkerSystemMessageSchema } from "~/lib/WorkerPool/type";
 import { z } from "zod/v4";
 
 /**

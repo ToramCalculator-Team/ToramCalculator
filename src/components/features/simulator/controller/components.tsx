@@ -11,8 +11,8 @@ import { Show, For, Switch, Match, type Accessor, type Setter, createEffect, cre
 import { Button } from "~/components/controls/button";
 import { Select } from "~/components/controls/select";
 import { LoadingBar } from "~/components/controls/loadingBar";
-import MemberStatusPanel from "../core/member/MemberStatusPanel";
-import type { MemberSerializeData } from "../core/member/Member";
+import MemberStatusPanel from "../core/Member/MemberStatusPanel";
+import type { MemberSerializeData } from "../core/Member/Member";
 import type { FrameSnapshot, ComputedSkillInfo } from "../core/GameEngine";
 
 // ============================== 状态栏组件 ==============================

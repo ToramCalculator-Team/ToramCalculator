@@ -9,7 +9,7 @@ import Icons from "~/components/icons";
 import { Dic, FieldDict } from "~/locales/type";
 import { store } from "~/store";
 import { LogicEditor } from "../features/logicEditor/LogicEditor";
-import { MemberBaseNestedSchema } from "../features/simulator/core/member/MemberBaseSchema";
+import { MemberBaseNestedSchema } from "../features/simulator/core/Member/MemberBaseSchema";
 import { Select } from "../controls/select";
 import { generateBossDataByFlag } from "~/lib/utils/mob";
 

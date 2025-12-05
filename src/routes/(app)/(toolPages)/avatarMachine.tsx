@@ -2,7 +2,7 @@ import { createSignal, For, Index, Show } from "solid-js";
 import { Motion } from "solid-motionone";
 import { Dialog } from "~/components/containers/dialog";
 import { Button } from "~/components/controls/button";
-import { PlayerAttrType } from "~/components/features/simulator/core/member/player/Player";
+import { PlayerAttrType } from "~/components/features/simulator/core/Member/types/Player/Player";
 import Icons from "~/components/icons";
 import { store } from "~/store";
 

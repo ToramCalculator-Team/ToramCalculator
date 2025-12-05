@@ -25,7 +25,7 @@ export const FrameLoopConfigSchema = z.object({
 });
 export type FrameLoopConfig = z.output<typeof FrameLoopConfigSchema>;
 
-export interface FrameSnapshot {
+export interface FrameLoopSnapshot {
   currentFrame: number;
   fps: number;
 }

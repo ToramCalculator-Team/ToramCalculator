@@ -2,8 +2,8 @@ import { selectCharacterByIdWithRelations } from "@db/generated/repositories/cha
 import { selectSkillByIdWithRelations } from "@db/generated/repositories/skill";
 import { createEffect, createMemo, createResource, createSignal, onMount, Show } from "solid-js";
 import { LogicEditor } from "~/components/features/logicEditor/LogicEditor";
-import { MemberBaseNestedSchema } from "~/components/features/simulator/core/member/MemberBaseSchema";
-import { PlayerAttrSchema } from "~/components/features/simulator/core/member/player/PlayerData";
+import { MemberBaseNestedSchema } from "~/components/features/simulator/core/Member/MemberBaseSchema";
+import { PlayerAttrSchema } from "~/components/features/simulator/core/Member/types/Player/PlayerAttrSchema";
 export default function LogicEditorTestPage() {
   const [data, setData] = createSignal<any>({});
   const [state, setState] = createSignal<any[]>([]);

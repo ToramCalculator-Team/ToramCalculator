@@ -10,11 +10,11 @@
 
 import { Blocks, FieldDropdown, FieldNumber, FieldTextInput } from "blockly/core";
 import { javascriptGenerator, Order } from "blockly/javascript";
-import type { NestedSchema, SchemaAttribute } from "../simulator/core/dataSys/SchemaTypes";
+import type { NestedSchema, SchemaAttribute } from "../simulator/core/Member/runtime/StatContainer/SchemaTypes";
 
 // ============================== 类型定义 ==============================
 
-import { ModifierType } from "../simulator/core/dataSys/StatContainer";
+import { ModifierType } from "../simulator/core/Member/runtime/StatContainer/StatContainer";
 
 /**
  * 积木类型枚举

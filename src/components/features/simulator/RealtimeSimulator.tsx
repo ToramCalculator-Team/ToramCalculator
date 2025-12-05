@@ -14,7 +14,7 @@ import { StatusBar, ControlPanel, MemberSelect, MemberStatus, SkillPanel, Action
 import { Portal } from "solid-js/web";
 import { GameView } from "./render/Renderer";
 import { SimulatorWithRelations } from "@db/generated/repositories/simulator";
-import { MemberSerializeData } from "./core/member/Member";
+import { MemberSerializeData } from "./core/Member/Member";
 
 export interface RealtimeSimulatorProps {
   simulatorData: SimulatorWithRelations;

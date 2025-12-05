@@ -17,13 +17,13 @@
 import type { Team, TeamWithRelations } from "@db/generated/repositories/team";
 import type { MemberWithRelations } from "@db/generated/repositories/member";
 import { createId } from "@paralleldrive/cuid2";
-import { MemberManager } from "./member/MemberManager";
-import { MessageRouter } from "./MessageRouter";
+import { MemberManager } from "./Member/MemberManager";
+import { MessageRouter } from "./MessageRouter/MessageRouter";
 import { FrameLoop } from "./FrameLoop/FrameLoop";
 import { EventQueue } from "./EventQueue/EventQueue";
-import type { IntentMessage, MessageProcessResult } from "./MessageRouter";
-import { type MemberSerializeData } from "./member/Member";
-import { JSProcessor, type CompilationContext } from "./astProcessor/JSProcessor";
+import type { IntentMessage, MessageProcessResult } from "./MessageRouter/MessageRouter";
+import { type MemberSerializeData } from "./Member/Member";
+import { JSProcessor, type CompilationContext } from "./JSProcessor/JSProcessor";
 import { createActor } from "xstate";
 import { GameEngineSM, type EngineCommand, type EngineSMContext } from "./GameEngineSM";
 import { SimulatorWithRelations } from "@db/generated/repositories/simulator";
@@ -34,8 +34,8 @@ import {
   EngineStats,
   FrameStepResult,
   GameEngineSnapshot,
-  RealtimeFrameSnapshot,
-} from "./GameEngineTypes";
+  FrameSnapshot,
+} from "./types";
 import { QueueEvent } from "./EventQueue/types";
 import { ExpressionContext } from "./EventExecutor/types";
 
@@ -288,7 +288,7 @@ export class GameEngine {
    * 创建当前帧的高频快照
    * 用于 frame_snapshot 通道（UI 实时渲染 & 技能栏状态）
    */
-  public createFrameSnapshot(): RealtimeFrameSnapshot {
+  public createFrameSnapshot(): FrameSnapshot {
     const frameNumber = this.getCurrentFrame();
     const timestamp = performance.now();
 
@@ -375,7 +375,7 @@ export class GameEngine {
    * 发送帧快照到主线程
    * 直接通过Worker线程发送，不需要回调
    */
-  public sendFrameSnapshot(snapshot: RealtimeFrameSnapshot): void {
+  public sendFrameSnapshot(snapshot: FrameSnapshot): void {
     // 通过全局变量发送帧快照
     if (typeof (globalThis as any).sendFrameSnapshot === "function") {
       (globalThis as any).sendFrameSnapshot(snapshot);
@@ -1208,4 +1208,4 @@ export class GameEngine {
 export default GameEngine;
 
 // 透出类型给主线程 UI 使用
-export type { RealtimeFrameSnapshot as FrameSnapshot, ComputedSkillInfo } from "./GameEngineTypes";
+export type { FrameSnapshot as FrameSnapshot, ComputedSkillInfo } from "./types";

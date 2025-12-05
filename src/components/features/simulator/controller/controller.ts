@@ -10,12 +10,12 @@
 import { createSignal } from "solid-js";
 import { selectMemberByIdWithRelations, type MemberWithRelations } from "@db/generated/repositories/member";
 import { selectSimulatorByIdWithRelations, SimulatorWithRelations } from "@db/generated/repositories/simulator";
-import { type MemberSerializeData } from "../core/member/Member";
+import { type MemberSerializeData } from "../core/Member/Member";
 import { FrameSnapshot, ComputedSkillInfo } from "../core/GameEngine";
 import { createActor, waitFor } from "xstate";
 import { GameEngineSM, type EngineCommand } from "../core/GameEngineSM";
 import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
-import { IntentMessage } from "../core/MessageRouter";
+import { IntentMessage } from "../core/MessageRouter/MessageRouter";
 
 export class Controller {
   // ==================== 核心状态机 ====================

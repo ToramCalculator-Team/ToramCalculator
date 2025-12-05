@@ -30,7 +30,7 @@ import "blockly/blocks";
 import { SchemaBlockGenerator } from "./gameAttributeBlocks";
 import { store } from "~/store";
 import { MediaContext } from "~/lib/contexts/Media";
-import { NestedSchema, Schema } from "../simulator/core/dataSys/SchemaTypes";
+import { NestedSchema, Schema } from "../simulator/core/Member/runtime/StatContainer/SchemaTypes";
 
 // class CustomCategory extends ToolboxCategory {
 //   /**

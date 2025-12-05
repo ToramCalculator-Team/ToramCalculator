@@ -4,8 +4,8 @@
  */
 
 import type GameEngine from "../GameEngine";
-import type { FrameStepResult } from "../GameEngineTypes";
-import { FrameLoopConfig, FrameLoopMode, FrameLoopState, FrameLoopStats, FrameSnapshot } from "./types";
+import type { FrameStepResult } from "../types";
+import { FrameLoopConfig, FrameLoopMode, FrameLoopState, FrameLoopStats, FrameLoopSnapshot } from "./types";
 
 /**
  * 帧循环类
@@ -287,7 +287,7 @@ export class FrameLoop {
    *
    * @returns 帧循环快照
    */
-  getSnapshot(): FrameSnapshot {
+  getSnapshot(): FrameLoopSnapshot {
     return {
       currentFrame: this.engine.getCurrentFrame(),
       fps: this.performanceStats.averageFPS,
