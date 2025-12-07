@@ -91,6 +91,9 @@ interface 受到攻击 extends EventObject {
       sourceId: string;
       targetId: string;
       skillId: string;
+      damageType: "physical" | "magic";
+      canBeDodged: boolean;
+      canBeGuarded: boolean;
       damageFormula: string;
       extraVars?: Record<string, any>;
       sourceSnapshot?: any;
@@ -154,10 +157,6 @@ export type PlayerEventType =
 
 // 定义 PlayerStateContext 类型（提前声明）
 export interface PlayerStateContext extends MemberStateContext {
-  /** 属性容器引用 */
-  statContainer: StatContainer<PlayerAttrType>;
-  /** 管线管理器引用 */
-  pipelineManager: PipelineManager<PlayerPipelineDef, PlayerStagePool, PlayerStateContext>;
   /** 技能冷却 */
   skillCooldowns: number[];
   /** 正在施放的技能序号 */
@@ -189,9 +188,18 @@ export interface PlayerStateContext extends MemberStateContext {
     sourceId: string;
     targetId: string;
     skillId: string;
+    damageType: "physical" | "magic";
+    canBeDodged: boolean;
+    canBeGuarded: boolean;
     damageFormula: string;
     extraVars?: Record<string, any>;
     sourceSnapshot?: any;
+  };
+  /** 最近一次命中判定结果（受击者侧使用） */
+  lastHitResult?: {
+    hit: boolean;
+    dodge: boolean;
+    guard: boolean;
   };
 }
 
@@ -293,35 +301,35 @@ export const playerStateMachine = (player: Player) => {
         const e = event as 收到目标快照;
         console.log(`👤 [${context.name}] 状态机上下文中的当前技能效果：`, context.currentSkillEffect);
         console.log(`👤 [${context.name}] 技能消耗扣除`, event);
-        const res = context.pipelineManager.run("skill.cost.calculate", context, {});
+        const res = player.pipelineManager.run("skill.cost.calculate", context, {});
 
         // 实际扣除MP和HP
         const mpCost = res.stageOutputs.技能MP消耗计算.skillMpCostResult;
         const hpCost = res.stageOutputs.技能HP消耗计算.skillHpCostResult;
 
         if (mpCost > 0) {
-          context.statContainer.addModifier("mp.current", ModifierType.STATIC_FIXED, -mpCost, {
+          player.statContainer.addModifier("mp.current", ModifierType.STATIC_FIXED, -mpCost, {
             id: `skill_cost_${context.currentSkill?.id || "unknown"}_${context.currentFrame}`,
             name: "skill_mp_cost",
             type: "skill",
           });
-          console.log(`💙 [${context.name}] 扣除MP: ${mpCost}, 剩余: ${context.statContainer.getValue("mp.current")}`);
+          console.log(`💙 [${context.name}] 扣除MP: ${mpCost}, 剩余: ${player.statContainer.getValue("mp.current")}`);
         }
 
         if (hpCost > 0) {
-          context.statContainer.addModifier("hp.current", ModifierType.STATIC_FIXED, -hpCost, {
+          player.statContainer.addModifier("hp.current", ModifierType.STATIC_FIXED, -hpCost, {
             id: `skill_cost_${context.currentSkill?.id || "unknown"}_${context.currentFrame}`,
             name: "skill_hp_cost",
             type: "skill",
           });
-          console.log(`❤️ [${context.name}] 扣除HP: ${hpCost}, 剩余: ${context.statContainer.getValue("hp.current")}`);
+          console.log(`❤️ [${context.name}] 扣除HP: ${hpCost}, 剩余: ${player.statContainer.getValue("hp.current")}`);
         }
 
         enqueue.assign({
           aggro: context.aggro + res.stageOutputs.仇恨值计算.aggroResult,
         });
         console.log(
-          `👤 [${context.name}] HP: ${context.statContainer.getValue("hp.current")}, MP: ${context.statContainer.getValue("mp.current")}`,
+          `👤 [${context.name}] HP: ${player.statContainer.getValue("hp.current")}, MP: ${player.statContainer.getValue("mp.current")}`,
         );
       }),
       启用前摇动画: function ({ context, event }) {
@@ -331,7 +339,7 @@ export const playerStateMachine = (player: Player) => {
       },
       计算前摇时长: enqueueActions(({ context, event, enqueue }) => {
         console.log(`👤 [${context.name}] 计算前摇时长`, event);
-        const res = context.pipelineManager.run("skill.motion.calculate", context, {});
+        const res = player.pipelineManager.run("skill.motion.calculate", context, {});
         console.log(`👤 [${context.name}] 计算前摇时长结果:`, res.stageOutputs.前摇帧数计算.startupFramesResult);
         enqueue.assign({
           currentSkillStartupFrames: res.stageOutputs.前摇帧数计算.startupFramesResult,
@@ -496,10 +504,7 @@ export const playerStateMachine = (player: Player) => {
         // ...
         console.log(`👤 [${context.name}] 重置到复活状态`, event);
       },
-      发送命中判定事件给自己: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 发送命中判定事件给自己`, event);
-        raise({ type: "进行命中判定" });
-      },
+      发送命中判定事件给自己: raise({ type: "进行命中判定" }),
       反馈命中结果给施法者: function ({ context, event }) {
         // Add your action code here
         // ...
@@ -512,20 +517,48 @@ export const playerStateMachine = (player: Player) => {
       命中计算管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 命中计算管线`, event);
         try {
-          context.pipelineManager.run("combat.hit.calculate" as any, context, {});
+          const res = player.pipelineManager.run("combat.hit.calculate" as any, context, {});
+          const finalOutput = (res.stageOutputs as any)["格挡判定"] as
+            | {
+                hitResult?: boolean;
+                dodgeResult?: boolean;
+                guardResult?: boolean;
+              }
+            | undefined;
+
+          context.lastHitResult = {
+            hit: !!finalOutput?.hitResult,
+            dodge: !!finalOutput?.dodgeResult,
+            guard: !!finalOutput?.guardResult,
+          };
         } catch (error) {
           console.error(`❌ [${context.name}] 命中计算管线执行失败`, error);
         }
       },
       根据命中结果进行下一步: function ({ context, event }) {
-        // Add your action code here
-        // ...
         console.log(`👤 [${context.name}] 根据命中结果进行下一步`, event);
+        const result = context.lastHitResult;
+
+        if (!result) {
+          console.warn(`⚠️ [${context.name}] 没有命中结果，终止后续流程`);
+          return;
+        }
+
+        // 未命中或被闪躲：不再进入控制/伤害流程
+        if (!result.hit || result.dodge) {
+          console.log(
+            `👤 [${context.name}] 本次攻击未命中或被闪躲，hit=${result.hit}, dodge=${result.dodge}`,
+          );
+          return;
+        }
+
+        // 命中后再进入控制判定
+        raise({ type: "进行控制判定" });
       },
       控制判定管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 控制判定管线`, event);
         try {
-          context.pipelineManager.run("combat.control.calculate" as any, context, {});
+          player.pipelineManager.run("combat.control.calculate" as any, context, {});
         } catch (error) {
           console.error(`❌ [${context.name}] 控制判定管线执行失败`, error);
         }
@@ -542,7 +575,7 @@ export const playerStateMachine = (player: Player) => {
       伤害计算管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 伤害计算管线`, event);
         try {
-          context.pipelineManager.run("combat.damage.calculate", context, {});
+          player.pipelineManager.run("combat.damage.calculate", context, {});
         } catch (error) {
           console.error(`❌ [${context.name}] 伤害计算管线执行失败`, error);
         }
@@ -553,9 +586,9 @@ export const playerStateMachine = (player: Player) => {
         console.log(`👤 [${context.name}] 反馈伤害结果给施法者`, event);
       },
       发送属性修改事件给自己: function ({ context, event }) {
-        // Add your action code here
-        // ...
         console.log(`👤 [${context.name}] 发送属性修改事件给自己`, event);
+        const currentHp = player.statContainer.getValue("hp.current");
+        raise({ type: "修改属性", data: { attr: "hp.current", value: currentHp } } as any);
       },
       发送buff修改事件给自己: function ({ context, event }) {
         // Add your action code here
@@ -722,8 +755,8 @@ export const playerStateMachine = (player: Player) => {
             skillLv: skill?.lv ?? 0,
           });
           if (
-            hpCost > context.statContainer.getValue("hp.current") ||
-            mpCost > context.statContainer.getValue("mp.current")
+            hpCost > player.statContainer.getValue("hp.current") ||
+            mpCost > player.statContainer.getValue("mp.current")
           ) {
             console.log(`- 该技能不满足施法消耗，HP:${hpCost} MP:${mpCost}`);
             // 这里需要撤回RS的修改
@@ -752,8 +785,10 @@ export const playerStateMachine = (player: Player) => {
         return true;
       },
       满足存活条件: function ({ context, event }) {
-        // Add your guard condition here
-        return true;
+        const hp = player.statContainer.getValue("hp.current");
+        const isAlive = hp > 0;
+        context.isAlive = isAlive;
+        return isAlive;
       },
     },
     actors: {
@@ -807,33 +842,16 @@ export const playerStateMachine = (player: Player) => {
       存活: {
         initial: "可操作状态",
         on: {
-          受到攻击: [
-            {
-              guard: "是物理伤害",
-              actions: [
-                {
-                  type: "记录伤害请求",
-                },
-                {
-                  type: "发送命中判定事件给自己",
-                },
-              ],
-            },
-            {
-              guard: "是物理伤害",
-              actions: [
-                {
-                  type: "记录伤害请求",
-                },
-                {
-                  type: "反馈命中结果给施法者",
-                },
-                {
-                  type: "发送控制判定事件给自己",
-                },
-              ],
-            },
-          ],
+          受到攻击: {
+            actions: [
+              {
+                type: "记录伤害请求",
+              },
+              {
+                type: "发送命中判定事件给自己",
+              },
+            ],
+          },
           进行命中判定: {
             actions: [
               {

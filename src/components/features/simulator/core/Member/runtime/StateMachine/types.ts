@@ -102,8 +102,6 @@ export interface MemberStateContext {
   buffManager: BuffManager;
   /** 属性容器引用 */
   statContainer: StatContainer<string>;
-  /** 管线管理器引用 */
-  pipelineManager: PipelineManager<any, any, any>;
   /** 位置信息 */
   position: { x: number; y: number; z: number };
   /** 创建帧 */

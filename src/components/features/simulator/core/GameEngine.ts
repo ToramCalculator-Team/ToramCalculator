@@ -830,10 +830,10 @@ export class GameEngine {
   }
 
   /**
-   * 分发成员状态机事件
+   * 分发成员跨帧调度事件
    *
    * 说明：
-   * - 这是从主线程 / 行为树等地方向成员 FSM 发送事件的统一入口
+   * - 这是从主线程 / 行为树等地方向成员 FSM 发送跨帧调度事件的统一入口
    * - 实际上是往 EventQueue 写入一条 `member_fsm_event`，由 `stepFrame` 在对应帧消费
    *
    * @param memberId      目标成员ID
