@@ -3,7 +3,12 @@
  */
 import { CharacterWithRelations } from "@db/generated/repositories/character";
 import { MainHandType, SubHandType } from "@db/schema/enums";
-import { ConvertToNestedSchema, ConvertToNestedSchemaDic, ConvertToSchema } from "../../runtime/StatContainer/SchemaTypes";
+import {
+  ConvertToNestedSchema,
+  ConvertToNestedSchemaDic,
+  ConvertToSchema,
+  NestedSchema,
+} from "../../runtime/StatContainer/SchemaTypes";
 import { MemberBaseStructure } from "../../MemberBaseSchema";
 
 // ============================== 其他玩家数据 ==============================
@@ -695,6 +700,820 @@ export type PlayerAttrNestedSchema = ConvertToNestedSchema<PlayerAttrStructure>;
  * 递归地将null值转换为多语言对象，需要提供多语言工厂类型
  */
 export type PlayerAttrNestedSchemaDic = ConvertToNestedSchemaDic<PlayerAttrStructure>;
+
+// ============================== 默认实现 ==============================
+
+/**
+ * 默认的成员基础结构实例
+ *
+ * 可以直接使用，也可以通过类型推导生成其他类型
+ */
+export const PlayerAttrStructure: PlayerAttrStructure= {
+  lv: null,
+  str: null,
+  int: null,
+  vit: null,
+  agi: null,
+  dex: null,
+  luk: null,
+  tec: null,
+  men: null,
+  cri: null,
+  mainWeapon: {
+    range: null,
+    element: null,
+    baseAtk: null,
+    type: null,
+    ref: null,
+    stability: null
+  },
+  subWeapon: {
+    range: null,
+    element: null,
+    type: null,
+    ref: null,
+    stability: null
+  },
+  armor: {
+    ability: null,
+    baseAbi: null,
+    ref: null
+  },
+  option: {
+    baseAbi: null,
+    ref: null
+  },
+  special: {
+    baseAbi: null
+  },
+  conv: {
+    strToPatk: null,
+    intToPatk: null,
+    agiToPatk: null,
+    dexToPatk: null,
+    strToMatk: null,
+    intToMatk: null,
+    agiToMatk: null,
+    dexToMatk: null,
+    strToAspd: null,
+    intToAspd: null,
+    agiToAspd: null,
+    dexToAspd: null,
+    strToStab: null,
+    intToStab: null,
+    agiToStab: null,
+    dexToStab: null,
+    pcrToMcr: null,
+    pcdToMcd: null
+  },
+  hp: {
+    max: null,
+    current: null,
+    recovery: null
+  },
+  mp: {
+    max: null,
+    current: null,
+    recovery: null,
+    atkRegen: null
+  },
+  weaponAtk: {
+    p: null,
+    m: null
+  },
+  atk: {
+    p: null,
+    m: null
+  },
+  pie: {
+    p: null,
+    m: null
+  },
+  def: {
+    p: null,
+    m: null
+  },
+  c: {
+    rate: {
+      p: null,
+      m: null
+    },
+    dmg: {
+      p: null,
+      m: null
+    }
+  },
+  stab: {
+    p: null,
+    m: null
+  },
+  red: {
+    p: null,
+    m: null,
+    rate: null,
+    water: null,
+    fire: null,
+    earth: null,
+    wind: null,
+    light: null,
+    dark: null,
+    normal: null,
+    floor: null,
+    meteor: null,
+    playerEpicenter: null,
+    foeEpicenter: null,
+    bowling: null,
+    bullet: null,
+    straightLine: null,
+    charge: null
+  },
+  amp: {
+    water: null,
+    fire: null,
+    earth: null,
+    wind: null,
+    light: null,
+    dark: null,
+    normal: null
+  },
+  barrier: {
+    p: null,
+    m: null,
+    rate: null,
+    recharge: null
+  },
+  antiVirus: null,
+  pursuit: {
+    rate: {
+      p: null,
+      m: null
+    },
+    dmg: {
+      p: null,
+      m: null
+    }
+  },
+  mUpper: null,
+  mLower: null,
+  unsheatheAtk: null,
+  distanceDmg: {
+    short: null,
+    long: null
+  },
+  totalDmg: null,
+  finalDmg: null,
+  accuracy: null,
+  absAccuracy: null,
+  avoid: null,
+  absAvoid: null,
+  dodge: {
+    recharge: null
+  },
+  guard: {
+    power: null,
+    recharge: null
+  },
+  anticipate: null,
+  guardBreak: null,
+  reflect: null,
+  aspd: null,
+  mspd: null,
+  cspd: null,
+  cspr: null,
+  aggro: {
+    current: null,
+    rate: null
+  },
+  drop: {
+    rate: null,
+    gemPowder: null
+  },
+  exp: {
+    rate: null,
+    pet: null
+  },
+  revival: {
+    time: null
+  },
+  flinchUnavailable: null,
+  tumbleUnavailable: null,
+  stunUnavailable: null,
+  invincibleAid: null,
+  itemCooldown: null,
+  recoilDmg: null,
+  guardRate: null,
+  dodgeRate: null
+}
+
+/**
+ * 默认的NestedSchema实例
+ *
+ * 类型：MemberBaseNestedSchema
+ */
+export const PlayerAttrNestedSchema: PlayerAttrNestedSchema = {
+  lv: {
+    displayName: "等级",
+    expression: "0",
+  },
+  str: {
+    displayName: "力量",
+    expression: "0",
+  },
+  int: {
+    displayName: "智力",
+    expression: "0",
+  },
+  vit: {
+    displayName: "体力",
+    expression: "0",
+  },
+  agi: {
+    displayName: "敏捷",
+    expression: "0",
+  },
+  dex: {
+    displayName: "灵巧",
+    expression: "0",
+  },
+  luk: {
+    displayName: "幸运",
+    expression: "0",
+  },
+  tec: {
+    displayName: "技巧",
+    expression: "0",
+  },
+  men: {
+    displayName: "异抗",
+    expression: "0",
+  },
+  cri: {
+    displayName: "暴击",
+    expression: "0",
+  },
+  mainWeapon: {
+    range: {
+      displayName: "主武器射程",
+      expression: "0",
+    },
+    element: {
+      displayName: "属性觉醒",
+      expression: "Normal",
+    },
+    baseAtk: {
+      displayName: "主武器基础攻击",
+      expression: "0",
+    },
+    type: {
+      displayName: "主武器类型",
+      expression: "None",
+    },
+    ref: {
+      displayName: "主武器精炼",
+      expression: "0",
+    },
+    stability: {
+      displayName: "主武器稳定性",
+      expression: "0",
+    },
+  },
+  subWeapon: {
+    range: {
+      displayName: "副武器射程",
+      expression: "0",
+    },
+    element: {
+      displayName: "属性觉醒",
+      expression: "Normal",
+    },
+    type: {
+      displayName: "副武器类型",
+      expression: "None",
+    },
+    ref: {
+      displayName: "副武器精炼",
+      expression: "0",
+    },
+    stability: {
+      displayName: "副武器稳定性",
+      expression: "0",
+    },
+  },
+  armor: {
+    ability: {
+      displayName: "身体装备类型",
+      expression: "None",
+    },
+    baseAbi: {
+      displayName: "身体装备基础值",
+      expression: "0",
+    },
+    ref: {
+      displayName: "身体装备精炼",
+      expression: "0",
+    }
+  },
+  option: {
+    baseAbi: {
+      displayName: "追加装备基础值",
+      expression: "0",
+    },
+    ref: {
+      displayName: "追加装备精炼",
+      expression: "0",
+    }
+  },
+  special: {
+    baseAbi: {
+      displayName: "特殊装备基础值",
+      expression: "0",
+    }
+  },
+  conv: {
+    strToPatk: {
+      displayName: "力量转物理攻击",
+      expression: "0",
+    },
+    intToPatk: {
+      displayName: "智力转物理攻击",
+      expression: "0",
+    },
+    agiToPatk: {
+      displayName: "敏捷转物理攻击",
+      expression: "0",
+    },
+    dexToPatk: {
+      displayName: "灵巧转物理攻击",
+      expression: "0",
+    },
+    strToMatk: {
+      displayName: "力量转魔法攻击",
+      expression: "0",
+    },
+    intToMatk: {
+      displayName: "智力转魔法攻击",
+      expression: "0",
+    },
+    agiToMatk: {
+      displayName: "敏捷转魔法攻击",
+      expression: "0",
+    },
+    dexToMatk: {
+      displayName: "灵巧转魔法攻击",
+      expression: "0",
+    },
+    strToAspd: {
+      displayName: "力量转攻速",
+      expression: "0",
+    },
+    intToAspd: {
+      displayName: "智力转攻速",
+      expression: "0",
+    },
+    agiToAspd: {
+      displayName: "敏捷转攻速",
+      expression: "0",
+    },
+    dexToAspd: {
+      displayName: "灵巧转攻速",
+      expression: "0",
+    },
+    strToStab: {
+      displayName: "力量转稳定率",
+      expression: "0",
+    },
+    intToStab: {
+      displayName: "智力转稳定率",
+      expression: "0",
+    },
+    agiToStab: {
+      displayName: "敏捷转稳定率",
+      expression: "0",
+    },
+    dexToStab: {
+      displayName: "灵巧转稳定率",
+      expression: "0",
+    },
+    pcrToMcr: {
+      displayName: "魔法暴击转化率",
+      expression: "0",
+    },
+    pcdToMcd: {
+      displayName: "魔法暴击率",
+      expression: "0",
+    }
+  },
+  hp: {
+    max: {
+      displayName: "最大生命值",
+      expression: "0",
+    },
+    current: {
+      displayName: "当前生命值",
+      expression: "0",
+    },
+    recovery: {
+      displayName: "生命值自然回复",
+      expression: "0",
+    }
+  },
+  mp: {
+    max: {
+      displayName: "最大魔法值",
+      expression: "0",
+    },
+    current: {
+      displayName: "当前魔法值",
+      expression: "0",
+    },
+    recovery: {
+      displayName: "魔法值自然回复",
+      expression: "0",
+    },
+    atkRegen: {
+      displayName: "魔法攻击回复",
+      expression: "0",
+    }
+  },
+  weaponAtk: {
+    p: {
+      displayName: "物理攻击力",
+      expression: "0",
+    },
+    m: {
+      displayName: "魔法攻击力",
+      expression: "0",
+    }
+  },
+  atk: {
+    p: {
+      displayName: "物理攻击力",
+      expression: "0",
+    },
+    m: {
+      displayName: "魔法攻击力",
+      expression: "0",
+    }
+  },
+  pie: {
+    p: {
+      displayName: "物理穿透",
+      expression: "0",
+    },
+    m: {
+      displayName: "魔法穿透",
+      expression: "0",
+    }
+  },
+  def: {
+    p: {
+      displayName: "物理防御力",
+      expression: "0",
+    },
+    m: {
+      displayName: "魔法防御力",
+      expression: "0",
+    }
+  },
+  c: {
+    rate: {
+      p: {
+        displayName: "物理暴击率",
+        expression: "0",
+      },
+      m: {
+        displayName: "魔法暴击率",
+        expression: "0",
+      }
+    },
+    dmg: {
+      p: {
+        displayName: "物理暴击伤害",
+        expression: "0",
+      },
+      m: {
+        displayName: "魔法暴击伤害",
+        expression: "0",
+      }
+    }
+  },
+  stab: {
+    p: {
+      displayName: "物理穿透",
+      expression: "0",
+    },
+    m: {
+      displayName: "魔法穿透",
+      expression: "0",
+    },
+  },
+  red: {
+    p: {
+      displayName: "物理抗性",
+      expression: "0",
+    },
+    m: {
+      displayName: "魔法抗性",
+      expression: "0",
+    },
+    rate: {
+      displayName: "百分比抗性",
+      expression: "0",
+    },
+    water: {
+      displayName: "水属性抗性",
+      expression: "0",
+    },
+    fire: {
+      displayName: "火属性抗性",
+      expression: "0",
+    },
+    earth: {
+      displayName: "地属性抗性",
+      expression: "0",
+    },
+    wind: {
+      displayName: "风属性抗性",
+      expression: "0",
+    },
+    light: {
+      displayName: "光属性抗性",
+      expression: "0",
+    },
+    dark: {
+      displayName: "暗属性抗性",
+      expression: "0",
+    },
+    normal: {
+      displayName: "无属性抗性",
+      expression: "0",
+    },
+    floor: {
+      displayName: "地刺伤害减轻",
+      expression: "0",
+    },
+    meteor: {
+      displayName: "天火伤害减轻",
+      expression: "0",
+    },
+    playerEpicenter: {
+      displayName: "以玩家为中心范围伤害减轻",
+      expression: "0",
+    },
+    foeEpicenter: {
+      displayName: "以怪物为中心范围伤害减轻",
+      expression: "0",
+    },
+    bowling: {
+      displayName: "贴地伤害减轻",
+      expression: "0",
+    },
+    bullet: {
+      displayName: "子弹伤害减轻",
+      expression: "0",
+    },
+    straightLine: {
+      displayName: "直线伤害减轻",
+      expression: "0",
+    },
+    charge: {
+      displayName: "冲撞伤害减轻",
+      expression: "0",
+    },
+  },
+  amp: {
+    water: {
+      displayName: "对水属性增强",
+      expression: "0",
+    },
+    fire: {
+      displayName: "对火属性增强",
+      expression: "0",
+    },
+    earth: {
+      displayName: "对地属性增强",
+      expression: "0",
+    },
+    wind: {
+      displayName: "对风属性增强",
+      expression: "0",
+    },
+    light: {
+      displayName: "对光属性增强",
+      expression: "0",
+    },
+    dark: {
+      displayName: "对暗属性增强",
+      expression: "0",
+    },
+    normal: {
+      displayName: "对无属性增强",
+      expression: "0",
+    },
+  },
+  barrier: {
+    p: {
+      displayName: "物理屏障",
+      expression: "0",
+    },
+    m: {
+      displayName: "魔法屏障",
+      expression: "0",
+    },
+    rate: {
+      displayName: "百分比屏障",
+      expression: "0",
+    },
+    recharge: {
+      displayName: "屏障回复速度",
+      expression: "0",
+    },
+  },
+  antiVirus: {
+    displayName: "异常抗性",
+    expression: "0",
+  },
+  pursuit: {
+    rate: {
+      p: {
+        displayName: "物理追击概率",
+        expression: "0",
+      },
+      m: {
+        displayName: "魔法追击概率",
+        expression: "0",
+      },
+    },
+    dmg: {
+      p: {
+        displayName: "物理追击伤害",
+        expression: "0",
+      },
+      m: {
+        displayName: "魔法追击伤害",
+        expression: "0",
+      },
+    },
+  },
+  mUpper: {
+    displayName: "魔法伤害上限",
+    expression: "0",
+  },
+  mLower: {
+    displayName: "魔法伤害下限",
+    expression: "0",
+  },
+  unsheatheAtk: {
+    displayName: "拔刀攻击",
+    expression: "0",
+  },
+  distanceDmg: {
+    short: {
+      displayName: "近距离伤害",
+      expression: "0",
+    },
+    long: {
+      displayName: "远距离伤害",
+      expression: "0",
+    },
+  },
+  totalDmg: {
+    displayName: "总伤害",
+    expression: "0",
+  },
+  finalDmg: {
+    displayName: "最终伤害",
+    expression: "0",
+  },
+  accuracy: {
+    displayName: "命中",
+    expression: "0",
+  },
+  absAccuracy: {
+    displayName: "绝对命中",
+    expression: "0",
+  },
+  avoid: {
+    displayName: "回避",
+    expression: "0",
+  },
+  absAvoid: {
+    displayName: "绝对回避",
+    expression: "0",
+  },
+  dodge: {
+    recharge: {
+      displayName: "闪躲回复",
+      expression: "0",
+    },
+  },
+  guard: {
+    power: {
+      displayName: "格挡力",
+      expression: "0",
+    },
+    recharge: {
+      displayName: "格挡回复",
+      expression: "0",
+    },
+  },
+  anticipate: {
+    displayName: "识破",
+    expression: "0",
+  },
+  guardBreak: {
+    displayName: "破防",
+    expression: "0",
+  },
+  reflect: {
+    displayName: "反弹伤害",
+    expression: "0",
+  },
+  aspd: {
+    displayName: "攻击速度",
+    expression: "0",
+  },
+  mspd: {
+    displayName: "行动速度",
+    expression: "0",
+  },
+  cspd: {
+    displayName: "咏唱速度",
+    expression: "0",
+  },
+  cspr: {
+    displayName: "咏唱缩减",
+    expression: "0",
+  },
+  aggro: {
+    current: {
+      displayName: "当前仇恨值",
+      expression: "0",
+    },
+    rate: {
+      displayName: "仇恨值倍率",
+      expression: "0",
+    },
+  },
+  drop: {
+    rate: {
+      displayName: "掉宝率",
+      expression: "0",
+    },
+    gemPowder: {
+      displayName: "晶石粉末掉落",
+      expression: "0",
+    },
+  },
+  exp: {
+    rate: {
+      displayName: "经验加成",
+      expression: "0",
+    },
+    pet: {
+      displayName: "宠物经验",
+      expression: "0",
+    },
+  },
+  revival: {
+    time: {
+      displayName: "复活时间",
+      expression: "0",
+    },
+  },
+  flinchUnavailable: {
+    displayName: "封印胆怯",
+    expression: "0",
+  },
+  tumbleUnavailable: {
+    displayName: "封印翻覆",
+    expression: "0",
+  },
+  stunUnavailable: {
+    displayName: "封印昏厥",
+    expression: "0",
+  },
+  invincibleAid: {
+    displayName: "无敌急救",
+    expression: "0",
+  },
+  itemCooldown: {
+    displayName: "道具冷却",
+    expression: "0",
+  },
+  recoilDmg: {
+    displayName: "反作用伤害",
+    expression: "0",
+  },
+  guardRate: {
+    displayName: "格挡率",
+    expression: "0",
+  },
+  dodgeRate: {
+    displayName: "闪躲率",
+    expression: "0",
+  }
+}
 
 // ============================== 属性Schema ==============================
 

@@ -1,0 +1,504 @@
+import { Blocks, FieldDropdown } from "blockly/core";
+import { javascriptGenerator, Order } from "blockly/javascript";
+import { ZodBoolean, ZodEnum, ZodNumber, ZodObject, ZodString, ZodTypeAny } from "zod/v4";
+import {
+  PlayerPipelineStages,
+  PlayerPipelineDef,
+  type PlayerStagePool,
+} from "../simulator/core/Member/types/Player/PlayerPipelines";
+import type { PipelineStage } from "../simulator/core/Member/runtime/Pipeline/PipelineStageType";
+
+/**
+ * 管线参数类型
+ */
+export type PipelineParamKind = "number" | "boolean" | "string" | "enum" | "json";
+
+export interface PipelineParamMeta {
+  name: string;
+  kind: PipelineParamKind;
+  required: boolean;
+  enumOptions?: string[];
+  displayName?: string;
+  desc?: string;
+}
+
+export interface PipelineMeta {
+  /** 管线名称，如 技能.动作.计算 */
+  name: string;
+  /** 逻辑分组，基于名称前缀的简单分类 */
+  category: string;
+  displayName?: string;
+  desc?: string;
+  params: PipelineParamMeta[];
+}
+
+/**
+ * 根据管线名称生成唯一的积木 ID
+ * 规则：前缀 pipeline_，非 ASCII 字符转换为 Unicode 编码，避免中文重名冲突
+ */
+export const makePipelineBlockId = (pipelineName: string): string => {
+  const safeName = pipelineName
+    .split("")
+    .map((char) => {
+      if (/[a-zA-Z0-9_]/.test(char)) return char;
+      return `u${char.charCodeAt(0).toString(16)}`;
+    })
+    .join("");
+  return `pipeline_${safeName}`;
+};
+
+type AnyStage = PipelineStage<ZodTypeAny, ZodTypeAny, Record<string, unknown>>;
+
+/**
+ * 从 zod schema 中解析参数元数据
+ */
+const extractParamsFromSchema = (schema: ZodTypeAny | undefined): PipelineParamMeta[] => {
+  if (!schema) return [];
+
+  const unwrapped = unwrapEffectsAndOptionals(schema);
+  if (!(unwrapped instanceof ZodObject)) {
+    // 暂时只处理 object，其它类型先视为无显式参数或由调用方自行处理
+    return [];
+  }
+
+  const shape = (unwrapped as ZodObject<Record<string, ZodTypeAny>>).shape;
+  const metas: PipelineParamMeta[] = [];
+
+  for (const key of Object.keys(shape)) {
+    const fieldSchema = shape[key];
+    const { base, required } = unwrapOptional(fieldSchema);
+
+    let kind: PipelineParamKind = "json";
+    let enumOptions: string[] | undefined;
+
+    if (base instanceof ZodNumber) {
+      kind = "number";
+    } else if (base instanceof ZodBoolean) {
+      kind = "boolean";
+    } else if (base instanceof ZodString) {
+      kind = "string";
+    } else if (base instanceof ZodEnum) {
+      const values = (base as unknown as { _def: { values: readonly string[] } })._def?.values;
+      if (Array.isArray(values)) {
+        kind = "enum";
+        enumOptions = values.slice();
+      } else {
+        kind = "json";
+      }
+    } else {
+      kind = "json";
+    }
+
+    metas.push({
+      name: key,
+      kind,
+      required,
+      enumOptions,
+    });
+  }
+
+  return metas;
+};
+
+/**
+ * 去掉 optional/default/effects 外壳，获得基础 schema
+ */
+const unwrapEffectsAndOptionals = (schema: ZodTypeAny): ZodTypeAny => {
+  // 这里不做精细类型判断，只是尽量剥掉一层 effects/optional/default
+  // 以便拿到内部的 ZodObject / ZodNumber 等
+  // zod 内部 def.typeName 是稳定标识
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const inner = (s: ZodTypeAny): ZodTypeAny => {
+    const def: any = (s as any)._def;
+    const typeName: string | undefined = def?.typeName;
+    if (typeName === "ZodEffects" && def?.schema) {
+      return inner(def.schema as ZodTypeAny);
+    }
+    if (typeName === "ZodOptional" && def?.innerType) {
+      return inner(def.innerType as ZodTypeAny);
+    }
+    if (typeName === "ZodDefault" && def?.innerType) {
+      return inner(def.innerType as ZodTypeAny);
+    }
+    return s;
+  };
+
+  return inner(schema);
+};
+
+/**
+ * 拆出 required 信息：optional/default 视为非必填
+ */
+const unwrapOptional = (schema: ZodTypeAny): { base: ZodTypeAny; required: boolean } => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const def: any = (schema as any)._def;
+  const typeName: string | undefined = def?.typeName;
+  if (typeName === "ZodOptional" || typeName === "ZodDefault") {
+    return { base: unwrapEffectsAndOptionals(schema), required: false };
+  }
+  return { base: unwrapEffectsAndOptionals(schema), required: true };
+};
+
+/**
+ * 根据 player 管线定义与阶段池构造元数据
+ */
+export const buildPlayerPipelineMetas = (): PipelineMeta[] => {
+  const metas: PipelineMeta[] = [];
+
+  const def: PlayerPipelineDef = PlayerPipelineDef;
+  const stagePool: PlayerStagePool = PlayerPipelineStages;
+
+  for (const pipelineName of Object.keys(def) as (keyof PlayerPipelineDef)[]) {
+    const stageNames = def[pipelineName];
+    let inputSchema: ZodTypeAny | undefined;
+
+    if (stageNames && stageNames.length > 0) {
+      const firstStageName = stageNames[0];
+      const stage = stagePool[firstStageName as keyof PlayerStagePool] as unknown as AnyStage | undefined;
+      if (stage) {
+        inputSchema = stage[0];
+      }
+    }
+
+    const params = extractParamsFromSchema(inputSchema);
+
+    metas.push({
+      name: pipelineName,
+      category: inferCategoryFromName(pipelineName),
+      displayName: pipelineName,
+      params,
+    });
+  }
+
+  return metas;
+};
+
+const inferCategoryFromName = (name: string): string => {
+  const prefix = name.split(".")[0];
+  switch (prefix) {
+    case "技能":
+      return "skill";
+    case "Buff":
+    case "增益":
+      return "buff";
+    case "战斗":
+      return "combat";
+    case "动画":
+      return "animation";
+    case "事件":
+      return "event";
+    case "状态":
+      return "state";
+    default:
+      return "misc";
+  }
+};
+
+/**
+ * 阶段元数据
+ */
+export interface StageMeta {
+  name: string;
+  category: string;
+  params: PipelineParamMeta[];
+  /** 若阶段有“单一标量”输出，则标记其类型，便于生成值积木 */
+  outputKind?: PipelineParamKind;
+  /** 若输出是 object 且只有一个字段，则记录字段名，生成访问表达式 */
+  outputField?: string;
+}
+
+export const makeStageBlockId = (stageName: string): string => {
+  // 将阶段名转换为安全的 blockId：保留 ASCII 字符，非 ASCII 字符转换为 Unicode 编码
+  const safeName = stageName
+    .split("")
+    .map((char) => {
+      if (/[a-zA-Z0-9_]/.test(char)) {
+        return char;
+      }
+      // 非 ASCII 字符转换为 Unicode 编码（如 "构造" -> "u6784u36896"）
+      return `u${char.charCodeAt(0).toString(16)}`;
+    })
+    .join("");
+  return `stage_${safeName}`;
+};
+
+/**
+ * 从 Player 阶段池构造阶段元数据
+ */
+export const buildPlayerStageMetas = (): StageMeta[] => {
+  const metas: StageMeta[] = [];
+
+  const stagePool: PlayerStagePool = PlayerPipelineStages;
+
+  for (const stageName of Object.keys(stagePool) as (keyof PlayerStagePool)[]) {
+    const stage = stagePool[stageName] as unknown as AnyStage;
+    const inputSchema = stage[0];
+    const outputSchema = stage[1];
+    const params = extractParamsFromSchema(inputSchema);
+
+    const { kind: outputKind, field: outputField } = inferOutputFromSchema(outputSchema);
+
+    metas.push({
+      name: stageName,
+      category: "playerStage",
+      params,
+      outputKind,
+      outputField,
+    });
+  }
+
+  return metas;
+};
+
+/**
+ * 从阶段的输出 schema 推导“是否可以作为标量值积木使用”
+ * 规则：
+ * - 直接的 number/boolean/string
+ * - 或仅包含一个字段，且该字段为 number/boolean/string
+ */
+const inferOutputFromSchema = (
+  schema: ZodTypeAny | undefined,
+): { kind?: PipelineParamKind; field?: string } => {
+  if (!schema) return {};
+
+  const unwrapped = unwrapEffectsAndOptionals(schema);
+
+  // 直接标量
+  if (unwrapped instanceof ZodNumber) {
+    return { kind: "number" };
+  }
+  if (unwrapped instanceof ZodBoolean) {
+    return { kind: "boolean" };
+  }
+  if (unwrapped instanceof ZodString) {
+    return { kind: "string" };
+  }
+
+  // 单字段 object，且字段为标量
+  if (unwrapped instanceof ZodObject) {
+    const shape = (unwrapped as ZodObject<Record<string, ZodTypeAny>>).shape;
+    const keys = Object.keys(shape);
+    if (keys.length === 1) {
+      const fieldName = keys[0];
+      const fieldSchema = shape[fieldName];
+      const { base } = unwrapOptional(fieldSchema);
+
+      if (base instanceof ZodNumber) {
+        return { kind: "number", field: fieldName };
+      }
+      if (base instanceof ZodBoolean) {
+        return { kind: "boolean", field: fieldName };
+      }
+      if (base instanceof ZodString) {
+        return { kind: "string", field: fieldName };
+      }
+    }
+  }
+
+  return {};
+};
+
+/**
+ * 基于 PipelineMeta 生成 Blockly 积木定义与 JS 代码
+ */
+export class PipelineBlockGenerator {
+  private metas: PipelineMeta[];
+  private blockIds: string[] = [];
+
+  constructor(metas: PipelineMeta[]) {
+    this.metas = metas;
+    this.generateBlocks();
+  }
+
+  private generateBlocks() {
+    for (const meta of this.metas) {
+      this.createPipelineBlock(meta);
+    }
+  }
+
+  private createPipelineBlock(meta: PipelineMeta) {
+    const blockId = makePipelineBlockId(meta.name);
+    const params = meta.params;
+
+    Blocks[blockId] = {
+      init: function () {
+        this.appendDummyInput().appendField(meta.displayName ?? meta.name);
+
+        for (const p of params) {
+          if (p.kind === "enum" && p.enumOptions && p.enumOptions.length > 0) {
+            this.appendDummyInput()
+              .appendField(p.displayName ?? p.name)
+              .appendField(
+                new FieldDropdown(() => p.enumOptions!.map((opt) => [opt, opt])),
+                p.name,
+              );
+          } else {
+            const input = this.appendValueInput(p.name).appendField(p.displayName ?? p.name);
+            if (p.kind === "number") {
+              input.setCheck("Number");
+            } else if (p.kind === "boolean") {
+              input.setCheck("Boolean");
+            } else if (p.kind === "string") {
+              input.setCheck("String");
+            }
+          }
+        }
+
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(260);
+        this.setTooltip(meta.desc ?? meta.name);
+        this.setHelpUrl("");
+      },
+    };
+
+    javascriptGenerator.forBlock[blockId] = function (block, generator) {
+      const args: Record<string, unknown> = {};
+
+      for (const p of params) {
+        if (p.kind === "enum" && p.enumOptions && p.enumOptions.length > 0) {
+          const value = block.getFieldValue(p.name);
+          args[p.name] = value;
+        } else {
+          const code = generator.valueToCode(block, p.name, Order.NONE) || (p.kind === "string" ? '""' : "0");
+          args[p.name] = code;
+        }
+      }
+
+      const argsPairs: string[] = [];
+      for (const p of params) {
+        const v = args[p.name];
+        if (typeof v === "string" && !p.kind.startsWith("enum")) {
+          argsPairs.push(`${p.name}: ${v}`);
+        } else {
+          argsPairs.push(`${p.name}: ${JSON.stringify(v)}`);
+        }
+      }
+
+      const argsCode = params.length > 0 ? `{ ${argsPairs.join(", ")} }` : "{}";
+      const code = `ctx.runPipeline("${meta.name}", ${argsCode});\n`;
+      return code;
+    };
+
+    this.blockIds.push(blockId);
+  }
+
+  getBlockIds(): string[] {
+    return this.blockIds.slice();
+  }
+}
+
+/**
+ * 基于 StageMeta 生成“阶段调用”积木
+ * 语义：在运行时通过 ctx.runStage(stageName, params) 调用单个阶段，
+ * 由阶段自身将输出合并进上下文。
+ */
+export class StageBlockGenerator {
+  private metas: StageMeta[];
+  private blockIds: string[] = [];
+
+  constructor(metas: StageMeta[]) {
+    this.metas = metas;
+    this.generateBlocks();
+  }
+
+  private generateBlocks() {
+    for (const meta of this.metas) {
+      this.createStageBlock(meta);
+    }
+  }
+
+  private createStageBlock(meta: StageMeta) {
+    const blockId = makeStageBlockId(meta.name);
+    const params = meta.params;
+
+    Blocks[blockId] = {
+      init: function () {
+        this.appendDummyInput().appendField(meta.name);
+
+        for (const p of params) {
+          if (p.kind === "enum" && p.enumOptions && p.enumOptions.length > 0) {
+            this.appendDummyInput()
+              .appendField(p.displayName ?? p.name)
+              .appendField(
+                new FieldDropdown(() => p.enumOptions!.map((opt) => [opt, opt])),
+                p.name,
+              );
+          } else {
+            const input = this.appendValueInput(p.name).appendField(p.displayName ?? p.name);
+            if (p.kind === "number") {
+              input.setCheck("Number");
+            } else if (p.kind === "boolean") {
+              input.setCheck("Boolean");
+            } else if (p.kind === "string") {
+              input.setCheck("String");
+            }
+          }
+        }
+
+        // 若阶段有“标量输出”，则作为值积木，否则作为语句积木
+        if (meta.outputKind && meta.outputKind !== "json") {
+          if (meta.outputKind === "number") {
+            this.setOutput(true, "Number");
+          } else if (meta.outputKind === "boolean") {
+            this.setOutput(true, "Boolean");
+          } else if (meta.outputKind === "string") {
+            this.setOutput(true, "String");
+          } else {
+            this.setOutput(true, null);
+          }
+        } else {
+          this.setPreviousStatement(true, null);
+          this.setNextStatement(true, null);
+        }
+        this.setColour(210);
+        this.setTooltip(meta.name);
+        this.setHelpUrl("");
+      },
+    };
+
+    javascriptGenerator.forBlock[blockId] = function (block, generator) {
+      const args: Record<string, unknown> = {};
+
+      for (const p of params) {
+        if (p.kind === "enum" && p.enumOptions && p.enumOptions.length > 0) {
+          const value = block.getFieldValue(p.name);
+          args[p.name] = value;
+        } else {
+          const code = generator.valueToCode(block, p.name, Order.NONE) || (p.kind === "string" ? '""' : "0");
+          args[p.name] = code;
+        }
+      }
+
+      const argsPairs: string[] = [];
+      for (const p of params) {
+        const v = args[p.name];
+        if (typeof v === "string" && !p.kind.startsWith("enum")) {
+          argsPairs.push(`${p.name}: ${v}`);
+        } else {
+          argsPairs.push(`${p.name}: ${JSON.stringify(v)}`);
+        }
+      }
+
+      const argsCode = params.length > 0 ? `{ ${argsPairs.join(", ")} }` : "{}";
+      // 根据是否有标量输出，生成表达式或语句
+      if (meta.outputKind && meta.outputKind !== "json") {
+        const access = meta.outputField ? `.${meta.outputField}` : "";
+        const code = `ctx.runStage("${meta.name}", ${argsCode})${access}`;
+        return [code, Order.NONE] as [string, number];
+      } else {
+        const code = `ctx.runStage("${meta.name}", ${argsCode});\n`;
+        return code;
+      }
+    };
+
+    this.blockIds.push(blockId);
+  }
+
+  getBlockIds(): string[] {
+    return this.blockIds.slice();
+  }
+}
+
+
+

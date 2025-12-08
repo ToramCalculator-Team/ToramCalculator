@@ -17,7 +17,7 @@ const maxMin = (min: number, value: number, max: number) => {
  * - 受击者侧通过 context.currentDamageRequest 提供本次伤害请求
  * - 命中结果写回 context.lastHitResult，供状态机或后续阶段使用
  */
-export const CombatStages = {
+export const CommonStages = {
   计算命中判定: defineStage(
     z.object({}),
     z.object({
@@ -108,7 +108,7 @@ export const CombatStages = {
       }),
     }),
     (context: MemberStateContext & Record<string, any>) => {
-      logLv >= 1 && console.log(`⚔️ [${context.name}][Combat] 解析伤害请求`);
+      logLv >= 1 && console.log(`⚔️ [${context.name}][Common] 解析伤害请求`);
 
       const damageRequest = context.currentDamageRequest as
         | {
@@ -145,7 +145,7 @@ export const CombatStages = {
     }),
     z.object({ damageValue: z.number() }),
     (context: MemberStateContext & Record<string, any>, input) => {
-      logLv >= 1 && console.log(`⚔️ [${context.name}][Combat] 执行伤害表达式`);
+      logLv >= 1 && console.log(`⚔️ [${context.name}][Common] 执行伤害表达式`);
 
       const { damageExpression, damageExpressionContext } = input;
 
@@ -169,7 +169,7 @@ export const CombatStages = {
       targetHpAfter: z.number().optional(),
     }),
     (context: MemberStateContext & Record<string, any>, input) => {
-      logLv >= 1 && console.log(`⚔️ [${context.name}][Combat] 应用伤害结果`);
+      logLv >= 1 && console.log(`⚔️ [${context.name}][Common] 应用伤害结果`);
 
       const { damageValue } = input;
       const lastHit =
@@ -208,13 +208,13 @@ export const CombatStages = {
   ),
 } as const satisfies StagePool<MemberStateContext>;
 
-export type CombatStagePool = typeof CombatStages;
+export type CommonStagePool = typeof CommonStages;
 
-export const combatPipDef = {
-  "combat.hit.calculate": ["计算命中判定"],
-  "combat.damage.calculate": ["解析伤害请求", "执行伤害表达式", "应用伤害结果"],
-} as const satisfies PipeLineDef<CombatStagePool>;
+export const CommonPipelineDef = {
+  "命中计算": ["计算命中判定"],
+  "伤害计算": ["解析伤害请求", "执行伤害表达式", "应用伤害结果"],
+} as const satisfies PipeLineDef<CommonStagePool>;
 
-export type CombatPipelineDef = typeof combatPipDef;
+export type CommonPipelineDef = typeof CommonPipelineDef;
 
 

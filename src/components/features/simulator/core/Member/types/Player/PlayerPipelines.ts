@@ -3,7 +3,8 @@ import { createId } from "@paralleldrive/cuid2";
 import { PlayerStateContext } from "./PlayerStateMachine";
 import { PipeLineDef, StagePool, defineStage } from "../../runtime/Pipeline/PipelineStageType";
 import { ModifierType } from "../../runtime/StatContainer/StatContainer";
-import { CombatStages, combatPipDef } from "../../runtime/Pipeline/CombatPipelines";
+import { CommonStages, CommonPipelineDef } from "../../runtime/Pipeline/CommonPipelines";
+import { BuffInstance } from "../../runtime/Buff/BuffManager";
 
 const logLv = 1; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
 
@@ -12,24 +13,31 @@ const maxMin = (min: number, value: number, max: number) => {
   return Math.max(min, Math.min(value, max));
 };
 
-const scheduleFsmEvent = (context: PlayerStateContext, delayFrames: number, eventType: string, source: string) => {
+const schedulePipeline = (
+  context: PlayerStateContext,
+  delayFrames: number,
+  pipelineName: keyof PlayerPipelineDef,
+  params?: Record<string, unknown>,
+  source?: string,
+) => {
   const engineQueue = context.engine.getEventQueue?.();
   if (!engineQueue) {
-    console.warn(`⚠️ [${context.name}] 无法获取事件队列，无法调度 ${eventType}`);
+    console.warn(`⚠️ [${context.name}] 无法获取事件队列，无法调度管线 ${pipelineName}`);
     return;
   }
   const executeFrame = context.currentFrame + Math.max(1, delayFrames);
   engineQueue.insert({
     id: createId(),
-    type: "member_fsm_event",
+    type: "member_pipeline_event",
     executeFrame,
     insertFrame: context.currentFrame,
     processed: false,
     payload: {
       targetMemberId: context.id,
-      fsmEventType: eventType,
+      pipelineName,
+      params,
       skillId: context.currentSkill?.id ?? "unknown_skill",
-      source,
+      source: source ?? "schedulePipeline",
     },
   });
 };
@@ -68,7 +76,7 @@ const sendRenderCommand = (context: PlayerStateContext, actionName: string, para
  * 玩家可用的管线阶段池
  */
 export const PlayerPipelineStages = {
-  ...CombatStages,
+  ...CommonStages,
   添加Buff: defineStage(
     z.object({
       buffId: z.string(),
@@ -81,7 +89,7 @@ export const PlayerPipelineStages = {
     (context, input) => {
       logLv >= 1 && console.log(`👤 [${context.name}][Pip] 添加Buff`);
 
-      const buff: any = {
+      const buff: BuffInstance = {
         id: input.buffId,
         name: input.buffName,
         duration: input.duration,
@@ -122,7 +130,7 @@ export const PlayerPipelineStages = {
       return { buffExists, chargeCounter };
     },
   ),
-  技能HP消耗计算: defineStage(z.object({}), z.object({ skillHpCostResult: z.number() }), (context, input) => {
+  技能HP消耗: defineStage(z.object({}), z.object({ skillHpCostResult: z.number() }), (context, input) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能HP消耗计算`);
     const hpCostExpression = context.currentSkillEffect?.hpCost;
     if (!hpCostExpression) {
@@ -136,7 +144,7 @@ export const PlayerPipelineStages = {
     return { skillHpCostResult: hpCost };
   }),
 
-  技能MP消耗计算: defineStage(z.object({}), z.object({ skillMpCostResult: z.number() }), (context, input) => {
+  技能MP消耗: defineStage(z.object({}), z.object({ skillMpCostResult: z.number() }), (context, input) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能MP消耗计算`);
     const mpCostExpression = context.currentSkillEffect?.mpCost;
     if (!mpCostExpression) {
@@ -149,6 +157,32 @@ export const PlayerPipelineStages = {
     });
     return { skillMpCostResult: mpCost };
   }),
+
+  技能消耗扣除: defineStage(
+    z.object({
+      mpCost: z.number(),
+      hpCost: z.number(),
+    }),
+    z.object({}),
+    (context, input) => {
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能消耗扣除`);
+      if (input.mpCost > 0) {
+        context.statContainer.addModifier("mp.current", ModifierType.STATIC_FIXED, -input.mpCost, {
+          id: `skill_cost_${context.currentSkill?.template?.name ?? "unknown"}_${context.currentFrame}`,
+          name: "skill_mp_cost",
+          type: "skill",
+        });
+      }
+      if (input.hpCost > 0) {
+        context.statContainer.addModifier("hp.current", ModifierType.STATIC_FIXED, -input.hpCost, {
+          id: `skill_cost_${context.currentSkill?.template?.name ?? "unknown"}_${context.currentFrame}`,
+          name: "skill_hp_cost",
+          type: "skill",
+        });
+      }
+      return {};
+    },
+  ),
 
   仇恨值计算: defineStage(
     z.object({ skillMpCostResult: z.number() }),
@@ -276,25 +310,25 @@ export const PlayerPipelineStages = {
 
   调度前摇结束事件: defineStage(z.object({}), z.object({ startupEventScheduled: z.boolean() }), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度前摇结束事件`);
-    scheduleFsmEvent(context, context.currentSkillStartupFrames, "收到前摇结束通知", "event.startup.schedule");
+    schedulePipeline(context, context.currentSkillStartupFrames, "前摇", undefined, context.currentSkill?.template?.name ?? "unknown");
     return { startupEventScheduled: true };
   }),
 
   调度蓄力结束事件: defineStage(z.object({}), z.object({ chargingEventScheduled: z.boolean() }), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度蓄力结束事件`);
-    scheduleFsmEvent(context, context.currentSkillChargingFrames, "收到蓄力结束通知", "event.charging.schedule");
+    schedulePipeline(context, context.currentSkillChargingFrames, "蓄力", undefined, context.currentSkill?.template?.name ?? "unknown");
     return { chargingEventScheduled: true };
   }),
 
   调度咏唱结束事件: defineStage(z.object({}), z.object({ chantingEventScheduled: z.boolean() }), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度咏唱结束事件`);
-    scheduleFsmEvent(context, context.currentSkillChantingFrames, "收到咏唱结束通知", "event.chanting.schedule");
+    schedulePipeline(context, context.currentSkillChantingFrames, "咏唱", undefined, context.currentSkill?.template?.name ?? "unknown");
     return { chantingEventScheduled: true };
   }),
 
   调度发动结束事件: defineStage(z.object({}), z.object({ actionEventScheduled: z.boolean() }), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度发动结束事件`);
-    scheduleFsmEvent(context, context.currentSkillActionFrames, "收到发动结束通知", "event.action.schedule");
+    schedulePipeline(context, context.currentSkillActionFrames, "发动", undefined, context.currentSkill?.template?.name ?? "unknown");
     return { actionEventScheduled: true };
   }),
 
@@ -355,29 +389,25 @@ export const PlayerPipelineStages = {
 
   发送伤害请求事件: defineStage(
     z.object({
-      damageRequest: z.object({
-        sourceId: z.string(),
-        targetId: z.string(),
-        skillId: z.string(),
-        damageType: z.enum(["physical", "magic"]),
-        canBeDodged: z.boolean(),
-        canBeGuarded: z.boolean(),
-        damageFormula: z.string(),
-        extraVars: z.record(z.string(), z.any()).optional(),
-        sourceSnapshot: z.any().optional(),
-      }),
+      sourceId: z.string(),
+      targetId: z.string(),
+      skillId: z.string(),
+      damageType: z.enum(["physical", "magic"]),
+      canBeDodged: z.boolean(),
+      canBeGuarded: z.boolean(),
+      damageFormula: z.string(),
+      extraVars: z.record(z.string(), z.any()).optional(),
+      sourceSnapshot: z.any().optional(),
     }),
     z.object({ attackEventSent: z.boolean() }),
     (context, input) => {
       logLv >= 1 && console.log(`👤 [${context.name}][Pip] 发送攻击事件给目标`);
 
-      const { damageRequest } = input;
-
       const memberManager = context.engine.getMemberManager();
-      const targetMember = memberManager.getMember(damageRequest.targetId);
+      const targetMember = memberManager.getMember(input.targetId);
 
       if (!targetMember) {
-        console.warn(`⚠️ [${context.name}][Pip] 找不到目标成员 ${damageRequest.targetId}，无法发送伤害事件`);
+        console.warn(`⚠️ [${context.name}][Pip] 找不到目标成员 ${input.targetId}，无法发送伤害事件`);
         return { attackEventSent: false };
       }
 
@@ -386,15 +416,14 @@ export const PlayerPipelineStages = {
         type: "受到攻击",
         data: {
           origin: context.id,
-          skillId: damageRequest.skillId,
-          damageRequest,
+          skillId: input.skillId,
+          damageRequest: input,
         },
       });
 
       return { attackEventSent: true };
     },
   ),
-
 } as const satisfies StagePool<PlayerStateContext>;
 
 export type PlayerStagePool = typeof PlayerPipelineStages;
@@ -403,65 +432,12 @@ export type PlayerStagePool = typeof PlayerPipelineStages;
  * 管线定义
  * 每个管线包含一系列阶段名称
  */
-export const playerPipDef = {
-  // ============ 技能相关管线 ============
-  "skill.cost.calculate": ["技能HP消耗计算", "技能MP消耗计算", "仇恨值计算"],
-  "skill.motion.calculate": [
-    "技能固定动作时长计算",
-    "技能可变动作时长计算",
-    "行动速度计算",
-    "前摇比例计算",
-    "前摇帧数计算",
-  ],
-  "skill.effect.apply": ["技能效果应用"],
-
-  // ============ Buff 相关管线 ============
-  "buff.add": ["添加Buff"],
-  "buff.remove": ["移除Buff"],
-  "buff.check": ["检查Buff"],
-
-  // ============ 战斗相关管线 ============
-  "combat.hit.calculate": ["计算命中判定"],
-  "combat.control.calculate": [],
-  "combat.damage.calculate": ["解析伤害请求", "执行伤害表达式", "应用伤害结果"],
-  "combat.damage.request": ["构造伤害请求", "发送伤害请求事件"],
-
-  // ============ 动画和状态管理（无阶段，纯副作用）============
-  "animation.idle.start": [],
-  "animation.move.start": [],
-  "animation.startup.start": ["启动前摇动画"],
-  "animation.charging.start": ["启动蓄力动画"],
-  "animation.chanting.start": ["启动咏唱动画"],
-  "animation.action.start": ["启动发动动画"],
-  "animation.controlled.start": [],
-
-  // ============ 事件和通知管理 ============
-  "event.warning.show": [],
-  "event.warning.schedule": [],
-  "event.startup.schedule": ["调度前摇结束事件"],
-  "event.charging.schedule": ["调度蓄力结束事件"],
-  "event.chanting.schedule": ["调度咏唱结束事件"],
-  "event.action.schedule": ["调度发动结束事件"],
-  "event.snapshot.request": [],
-  "event.snapshot.respond": [],
-  "event.hit.notify": [],
-  "event.hit.feedback": [],
-  "event.control.notify": [],
-  "event.control.feedback": [],
-  "event.damage.notify": [],
-  "event.damage.feedback": [],
-  "event.attr.modify": [],
-  "event.buff.modify": [],
-
-  // ============ 状态管理 ============
-  "state.update": [],
-  "state.revive": [],
-  "state.interrupt": [],
-  "state.control.reset": [],
-  "state.target.change": [],
-  "state.skill.add": [],
-  "state.skill.clear": [],
-  "state.hit.process": [],
+export const PlayerPipelineDef = {
+  ...CommonPipelineDef,
+  前摇: ["技能消耗扣除", "启动前摇动画"],
+  蓄力: ["启动蓄力动画"],
+  咏唱: ["启动咏唱动画"],
+  发动: ["启动发动动画"],
 } as const satisfies PipeLineDef<PlayerStagePool>;
 
-export type PlayerPipelineDef = typeof playerPipDef;
+export type PlayerPipelineDef = typeof PlayerPipelineDef;

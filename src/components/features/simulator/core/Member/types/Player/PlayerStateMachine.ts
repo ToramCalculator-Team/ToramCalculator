@@ -297,192 +297,14 @@ export const playerStateMachine = (player: Player) => {
           currentSkillEffect: skillEffect,
         });
       }),
-      技能消耗扣除: enqueueActions(({ context, event, enqueue }) => {
-        const e = event as 收到目标快照;
-        console.log(`👤 [${context.name}] 状态机上下文中的当前技能效果：`, context.currentSkillEffect);
-        console.log(`👤 [${context.name}] 技能消耗扣除`, event);
-        const res = player.pipelineManager.run("skill.cost.calculate", context, {});
-
-        // 实际扣除MP和HP
-        const mpCost = res.stageOutputs.技能MP消耗计算.skillMpCostResult;
-        const hpCost = res.stageOutputs.技能HP消耗计算.skillHpCostResult;
-
-        if (mpCost > 0) {
-          player.statContainer.addModifier("mp.current", ModifierType.STATIC_FIXED, -mpCost, {
-            id: `skill_cost_${context.currentSkill?.id || "unknown"}_${context.currentFrame}`,
-            name: "skill_mp_cost",
-            type: "skill",
-          });
-          console.log(`💙 [${context.name}] 扣除MP: ${mpCost}, 剩余: ${player.statContainer.getValue("mp.current")}`);
+      执行技能: function ({ context, event }) {
+        console.log(`👤 [${context.name}] 执行技能`, event);
+        const skill = context.currentSkill;
+        if (!skill) {
+          console.error(`🎮 [${context.name}] 技能不存在`);
+          return;
         }
-
-        if (hpCost > 0) {
-          player.statContainer.addModifier("hp.current", ModifierType.STATIC_FIXED, -hpCost, {
-            id: `skill_cost_${context.currentSkill?.id || "unknown"}_${context.currentFrame}`,
-            name: "skill_hp_cost",
-            type: "skill",
-          });
-          console.log(`❤️ [${context.name}] 扣除HP: ${hpCost}, 剩余: ${player.statContainer.getValue("hp.current")}`);
-        }
-
-        enqueue.assign({
-          aggro: context.aggro + res.stageOutputs.仇恨值计算.aggroResult,
-        });
-        console.log(
-          `👤 [${context.name}] HP: ${player.statContainer.getValue("hp.current")}, MP: ${player.statContainer.getValue("mp.current")}`,
-        );
-      }),
-      启用前摇动画: function ({ context, event }) {
-        // Add your action code here
-        // ...
-        console.log(`👤 [${context.name}] 启用前摇动画`, event);
-      },
-      计算前摇时长: enqueueActions(({ context, event, enqueue }) => {
-        console.log(`👤 [${context.name}] 计算前摇时长`, event);
-        const res = player.pipelineManager.run("skill.motion.calculate", context, {});
-        console.log(`👤 [${context.name}] 计算前摇时长结果:`, res.stageOutputs.前摇帧数计算.startupFramesResult);
-        enqueue.assign({
-          currentSkillStartupFrames: res.stageOutputs.前摇帧数计算.startupFramesResult,
-        });
-      }),
-      创建前摇结束通知: function ({ context, event }) {
-        console.log("🎮 创建前摇结束通知", event);
-
-        // 计算前摇结束的目标帧
-        const targetFrame = context.currentFrame + context.currentSkillStartupFrames;
-
-        // 向事件队列写入定时事件
-        // 使用 member_fsm_event 类型，由 CustomEventHandler 处理
-        context.engine.getEventQueue().insert({
-          id: createId(), // 生成唯一事件ID
-          type: "member_fsm_event",
-          executeFrame: targetFrame,
-          insertFrame: context.currentFrame,
-          processed: false,
-          payload: {
-            targetMemberId: context.id, // 目标成员ID
-            fsmEventType: "收到前摇结束通知", // 要发送给FSM的事件类型
-            skillId: context.currentSkill?.id ?? "无法获取技能ID", // 技能ID
-            source: "skill_front_swing", // 事件来源
-          },
-        });
-
-        console.log(
-          `👤 [${context.name}] 前摇开始，${context.currentSkillStartupFrames}帧后结束 (当前帧: ${context.currentFrame}, 目标帧: ${targetFrame})`,
-        );
-      },
-      启用蓄力动画: function ({ context, event }) {
-        // Add your action code here
-        // ...
-        console.log(`👤 [${context.name}] 启用蓄力动画`, event);
-      },
-      计算蓄力时长: enqueueActions(({ context, event, enqueue }) => {
-        // Add your action code here
-        // ...
-        console.log(`👤 [${context.name}] 计算蓄力时长`, event);
-      }),
-      创建蓄力结束通知: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 创建蓄力结束通知`, event);
-
-        // 计算蓄力结束的目标帧
-        const targetFrame = context.currentFrame + context.currentSkillChargingFrames;
-
-        // 向事件队列写入定时事件
-        // 使用 member_fsm_event 类型，由 CustomEventHandler 处理
-        context.engine.getEventQueue().insert({
-          id: createId(), // 生成唯一事件ID
-          type: "member_fsm_event",
-          executeFrame: targetFrame,
-          insertFrame: context.currentFrame,
-          processed: false,
-          payload: {
-            targetMemberId: context.id, // 目标成员ID
-            fsmEventType: "收到蓄力结束通知", // 要发送给FSM的事件类型
-            skillId: context.currentSkill?.id ?? "无法获取技能ID", // 技能ID
-            source: "skill_charging", // 事件来源
-          },
-        });
-
-        console.log(
-          `👤 [${context.name}] 蓄力开始，${context.currentSkillChargingFrames}帧后结束 (当前帧: ${context.currentFrame}, 目标帧: ${targetFrame})`,
-        );
-      },
-      启用咏唱动画: function ({ context, event }) {
-        // Add your action code here
-        // ...
-        console.log(`👤 [${context.name}] 启用咏唱动画`, event);
-      },
-      计算咏唱时长: function ({ context, event }) {
-        // Add your action code here
-        // ...
-        console.log(`👤 [${context.name}] 计算咏唱时长`, event);
-      },
-      创建咏唱结束通知: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 创建咏唱结束通知`, event);
-
-        // 计算咏唱结束的目标帧
-        const targetFrame = context.currentFrame + context.currentSkillChantingFrames;
-
-        // 向事件队列写入定时事件
-        // 使用 member_fsm_event 类型，由 CustomEventHandler 处理
-        context.engine.getEventQueue().insert({
-          id: createId(), // 生成唯一事件ID
-          type: "member_fsm_event",
-          executeFrame: targetFrame,
-          insertFrame: context.currentFrame,
-          processed: false,
-          payload: {
-            targetMemberId: context.id, // 目标成员ID
-            fsmEventType: "收到咏唱结束通知", // 要发送给FSM的事件类型
-            skillId: context.currentSkill?.id ?? "无法获取技能ID", // 技能ID
-            source: "skill_chanting", // 事件来源
-          },
-        });
-
-        console.log(
-          `👤 [${context.name}] 咏唱开始，${context.currentSkillChantingFrames}帧后结束 (当前帧: ${context.currentFrame}, 目标帧: ${targetFrame})`,
-        );
-      },
-      启用技能发动动画: function ({ context, event }) {
-        // Add your action code here
-        // ...
-        console.log(`👤 [${context.name}] 启用技能发动动画`, event);
-      },
-      计算发动时长: function ({ context, event }) {
-        // Add your action code here
-        // ...
-        console.log(`👤 [${context.name}] 计算发动时长`, event);
-      },
-      创建发动结束通知: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 创建发动结束通知`, event);
-
-        // 计算发动结束的目标帧
-        const targetFrame = context.currentFrame + context.currentSkillActionFrames;
-
-        // 向事件队列写入定时事件
-        // 使用 member_fsm_event 类型，由 CustomEventHandler 处理
-        context.engine.getEventQueue().insert({
-          id: createId(), // 生成唯一事件ID
-          type: "member_fsm_event",
-          executeFrame: targetFrame,
-          insertFrame: context.currentFrame,
-          processed: false,
-          payload: {
-            targetMemberId: context.id, // 目标成员ID
-            fsmEventType: "收到发动结束通知", // 要发送给FSM的事件类型
-            skillId: context.currentSkill?.id ?? "无法获取技能ID", // 技能ID
-            source: "skill_action", // 事件来源
-          },
-        });
-
-        console.log(
-          `👤 [${context.name}] 发动开始，${context.currentSkillActionFrames}帧后结束 (当前帧: ${context.currentFrame}, 目标帧: ${targetFrame})`,
-        );
-      },
-      技能效果管线: function ({ context, event }) {
-        // Add your action code here
-        // ...
-        console.log(`👤 [${context.name}] 技能效果管线`, event);
+        // 执行技能逻辑代码
       },
       重置控制抵抗时间: function ({ context, event }) {
         // Add your action code here
@@ -517,7 +339,7 @@ export const playerStateMachine = (player: Player) => {
       命中计算管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 命中计算管线`, event);
         try {
-          const res = player.pipelineManager.run("combat.hit.calculate" as any, context, {});
+          const res = player.pipelineManager.run("战斗.命中.计算" as any, context, {});
           const finalOutput = (res.stageOutputs as any)["格挡判定"] as
             | {
                 hitResult?: boolean;
@@ -558,7 +380,7 @@ export const playerStateMachine = (player: Player) => {
       控制判定管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 控制判定管线`, event);
         try {
-          player.pipelineManager.run("combat.control.calculate" as any, context, {});
+          player.pipelineManager.run("战斗.控制.计算" as any, context, {});
         } catch (error) {
           console.error(`❌ [${context.name}] 控制判定管线执行失败`, error);
         }
@@ -575,7 +397,7 @@ export const playerStateMachine = (player: Player) => {
       伤害计算管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 伤害计算管线`, event);
         try {
-          player.pipelineManager.run("combat.damage.calculate", context, {});
+          player.pipelineManager.run("伤害计算", context, {});
         } catch (error) {
           console.error(`❌ [${context.name}] 伤害计算管线执行失败`, error);
         }
@@ -614,21 +436,6 @@ export const playerStateMachine = (player: Player) => {
       logEvent: function ({ context, event }) {
         console.log(`👤 [${context.name}] 日志事件`, event);
       },
-      发送TICK到行为树: enqueueActions(({ enqueue }) => {
-        enqueue.sendTo("skillExecution", { type: "TICK" });
-      }),
-      转发前摇结束通知到行为树: enqueueActions(({ enqueue }) => {
-        enqueue.sendTo("skillExecution", { type: "FSM_EVENT", fsmEventType: "收到前摇结束通知" });
-      }),
-      转发蓄力结束通知到行为树: enqueueActions(({ enqueue }) => {
-        enqueue.sendTo("skillExecution", { type: "FSM_EVENT", fsmEventType: "收到蓄力结束通知" });
-      }),
-      转发咏唱结束事件到行为树: enqueueActions(({ enqueue }) => {
-        enqueue.sendTo("skillExecution", { type: "FSM_EVENT", fsmEventType: "收到咏唱结束事件" });
-      }),
-      转发发动结束通知到行为树: enqueueActions(({ enqueue }) => {
-        enqueue.sendTo("skillExecution", { type: "FSM_EVENT", fsmEventType: "收到发动结束通知" });
-      }),
     },
     guards: {
       存在蓄力阶段: function ({ context, event }) {
@@ -806,7 +613,6 @@ export const playerStateMachine = (player: Player) => {
       engine: player.engine,
       buffManager: player.buffManager,
       statContainer: player.statContainer,
-      pipelineManager: player.pipelineManager,
       position: player.position,
       createdAtFrame: player.engine.getCurrentFrame(),
       currentFrame: player.engine.getCurrentFrame(),
@@ -1031,32 +837,9 @@ export const playerStateMachine = (player: Player) => {
                     ],
                   },
                   执行技能中: {
-                    entry: [{ type: "添加待处理技能效果" }, { type: "技能消耗扣除" }],
-                    invoke: {
-                      id: "skillExecution",
-                      src: "behaviorTreeActor",
-                      input: ({ context }): BehaviorTreeInput => ({
-                        skillEffect: context.currentSkillEffect,
-                        owner: context,
-                      }),
-                    },
+                    entry: [{ type: "添加待处理技能效果" }, { type: "执行技能" }],
                     on: {
-                      更新: {
-                        actions: { type: "发送TICK到行为树" },
-                      },
-                      收到前摇结束通知: {
-                        actions: { type: "转发前摇结束通知到行为树" },
-                      },
-                      收到蓄力结束通知: {
-                        actions: { type: "转发蓄力结束通知到行为树" },
-                      },
-                      收到咏唱结束事件: {
-                        actions: { type: "转发咏唱结束事件到行为树" },
-                      },
-                      收到发动结束通知: {
-                        actions: { type: "转发发动结束通知到行为树" },
-                      },
-                      行为树执行完成: [
+                      技能执行完成: [
                         {
                           target: `#${machineId}.存活.可操作状态.技能处理状态`,
                           guard: "存在后续连击",

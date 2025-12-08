@@ -907,6 +907,26 @@ export class GameEngine {
         } else {
           console.warn("⚠️ stepFrame: member_fsm_event 缺少 targetMemberId 或 fsmEventType", event);
         }
+      } else if (event.type === "member_pipeline_event") {
+        const payload = (event.payload ?? {}) as any;
+        const targetMemberId = payload.targetMemberId as string | undefined;
+        const pipelineName = payload.pipelineName as string | undefined;
+        const params = payload.params as Record<string, unknown> | undefined;
+
+        if (targetMemberId && pipelineName) {
+          const member = this.memberManager.getMember(targetMemberId);
+          if (member && (member as any).pipelineManager) {
+            try {
+              (member as any).pipelineManager.run(pipelineName as any, (member as any).actor.getSnapshot().context, params ?? {});
+            } catch (error) {
+              console.error(`❌ stepFrame: 运行管线失败 ${pipelineName} for member ${targetMemberId}`, error);
+            }
+          } else {
+            console.warn(`⚠️ stepFrame: 目标成员不存在或缺少 pipelineManager: ${targetMemberId}`);
+          }
+        } else {
+          console.warn("⚠️ stepFrame: member_pipeline_event 缺少 targetMemberId 或 pipelineName", event);
+        }
       } else {
         console.warn(`⚠️ stepFrame: 未知事件类型: ${event.type}`);
       }

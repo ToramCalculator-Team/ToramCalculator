@@ -1,15 +1,15 @@
 import { PipeLineDef, StagePool } from "../../runtime/Pipeline/PipelineStageType";
 import { MobStateContext } from "./MobStateMachine";
-import { CombatStages, combatPipDef } from "../../runtime/Pipeline/CombatPipelines";
+import { CommonStages, CommonPipelineDef } from "../../runtime/Pipeline/CommonPipelines";
 
 export const MobPipelineStages = {
-  ...CombatStages,
+  ...CommonStages,
 } as const satisfies StagePool<MobStateContext>;
 
 export type MobStagePool = typeof MobPipelineStages;
 
-export const mobPipDef = {
-  ...combatPipDef,
+export const MobPipelineDef = {
+  ...CommonPipelineDef,
 } as const satisfies PipeLineDef<MobStagePool>;
 
-export type MobPipelineDef = typeof mobPipDef;
+export type MobPipelineDef = typeof MobPipelineDef;

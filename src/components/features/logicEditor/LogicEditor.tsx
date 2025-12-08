@@ -5,9 +5,7 @@ import {
   createSignal,
   JSX,
   on,
-  onCleanup,
   onMount,
-  Signal,
   useContext,
 } from "solid-js";
 import {
@@ -15,8 +13,6 @@ import {
   inject,
   Theme,
   Themes,
-  ToolboxCategory,
-  registry,
   serialization,
   WorkspaceSvg,
   svgResize,
@@ -28,9 +24,20 @@ import * as ZhTw from "blockly/msg/zh-hant";
 import { javascriptGenerator } from "blockly/javascript";
 import "blockly/blocks";
 import { SchemaBlockGenerator } from "./gameAttributeBlocks";
+import {
+  PipelineBlockGenerator,
+  StageBlockGenerator,
+  buildPlayerPipelineMetas,
+  buildPlayerStageMetas,
+  makePipelineBlockId,
+  makeStageBlockId,
+} from "./pipelineBlocks";
 import { store } from "~/store";
 import { MediaContext } from "~/lib/contexts/Media";
-import { NestedSchema, Schema } from "../simulator/core/Member/runtime/StatContainer/SchemaTypes";
+import { MemberType } from "@db/schema/enums";
+import { PlayerAttrNestedSchema } from "../simulator/core/Member/types/Player/PlayerAttrSchema";
+import { MobAttrNestedSchema } from "../simulator/core/Member/types/Mob/MobAttrSchema";
+import { MemberBaseNestedSchema } from "../simulator/core/Member/MemberBaseSchema";
 
 // class CustomCategory extends ToolboxCategory {
 //   /**
@@ -44,8 +51,8 @@ import { NestedSchema, Schema } from "../simulator/core/Member/runtime/StatConta
 
 interface LogicEditorProps extends JSX.InputHTMLAttributes<HTMLDivElement> {
   data: unknown;
-  schema: NestedSchema; // 自身属性 schema
-  targetSchema: NestedSchema; // 目标属性 schema
+  /** 逻辑执行者的类型（Player 或 Mob） */
+  memberType: MemberType;
   setData: (data: unknown) => void;
   code?: Accessor<string>;
   setCode?: (code: string) => void;
@@ -57,6 +64,33 @@ interface LogicEditorProps extends JSX.InputHTMLAttributes<HTMLDivElement> {
 export function LogicEditor(props: LogicEditorProps) {
   const media = useContext(MediaContext);
   const [ref, setRef] = createSignal<HTMLDivElement>();
+
+  // ---------- 根据 memberType 生成对应的 schema ----------
+  const selfSchema = createMemo(() => {
+    // 积木生成仅依赖静态属性结构，无需具体成员数据
+    switch (props.memberType) {
+      case "Player":
+        return PlayerAttrNestedSchema;
+      case "Mob":
+        return MobAttrNestedSchema;
+      default:
+        return MemberBaseNestedSchema;
+    }
+  });
+
+  // 目标属性统一使用基础 schema
+  const targetSchema = MemberBaseNestedSchema;
+
+  // ---------- 基于当前管线与阶段定义生成相关积木（组件挂载期间只执行一次） ----------
+  const pipelineMetasRaw = buildPlayerPipelineMetas();
+  const pipelineMetas = Array.from(new Map(pipelineMetasRaw.map((m) => [m.name, m])).values());
+  // 注册管线调用积木
+  const _pipelineBlockGenerator = new PipelineBlockGenerator(pipelineMetas);
+
+  const stageMetasRaw = buildPlayerStageMetas();
+  const stageMetas = Array.from(new Map(stageMetasRaw.map((m) => [m.name, m])).values());
+  // 注册阶段调用积木
+  const _stageBlockGenerator = new StageBlockGenerator(stageMetas);
 
   // 使用内置方法进行初始居中（不做额外偏差计算）
   const centerInitialView = (ws: WorkspaceSvg) => {
@@ -150,7 +184,7 @@ export function LogicEditor(props: LogicEditorProps) {
           contents: [
             {
               kind: "category",
-              name: "Logic",
+              name: "逻辑",
               categorystyle: "logic_category",
               contents: [
                 {
@@ -195,7 +229,7 @@ export function LogicEditor(props: LogicEditorProps) {
             },
             {
               kind: "category",
-              name: "Loops",
+              name: "循环",
               categorystyle: "loop_category",
               contents: [
                 {
@@ -283,7 +317,7 @@ export function LogicEditor(props: LogicEditorProps) {
             },
             {
               kind: "category",
-              name: "Math",
+              name: "数学",
               categorystyle: "math_category",
               contents: [
                 {
@@ -502,416 +536,237 @@ export function LogicEditor(props: LogicEditorProps) {
                 },
               ],
             },
-            // {
-            //   kind: "category",
-            //   name: "Text",
-            //   categorystyle: "text_category",
-            //   contents: [
-            //     {
-            //       type: "text",
-            //       kind: "block",
-            //       fields: {
-            //         TEXT: "",
-            //       },
-            //     },
-            //     {
-            //       type: "text_join",
-            //       kind: "block",
-            //     },
-            //     // {
-            //     //   type: "text_append",
-            //     //   kind: "block",
-            //     //   fields: {
-            //     //     name: "item",
-            //     //   },
-            //     //   inputs: {
-            //     //     TEXT: {
-            //     //       shadow: {
-            //     //         type: "text",
-            //     //         fields: {
-            //     //           TEXT: "",
-            //     //         },
-            //     //       },
-            //     //     },
-            //     //   },
-            //     // },
-            //     {
-            //       type: "text_length",
-            //       kind: "block",
-            //       inputs: {
-            //         VALUE: {
-            //           shadow: {
-            //             type: "text",
-            //             fields: {
-            //               TEXT: "abc",
-            //             },
-            //           },
-            //         },
-            //       },
-            //     },
-            //     {
-            //       type: "text_isEmpty",
-            //       kind: "block",
-            //       inputs: {
-            //         VALUE: {
-            //           shadow: {
-            //             type: "text",
-            //             fields: {
-            //               TEXT: "",
-            //             },
-            //           },
-            //         },
-            //       },
-            //     },
-            //     {
-            //       type: "text_indexOf",
-            //       kind: "block",
-            //       fields: {
-            //         END: "FIRST",
-            //       },
-            //       inputs: {
-            //         VALUE: {
-            //           block: {
-            //             type: "variables_get",
-            //             fields: {
-            //               VAR: {
-            //                 name: "text",
-            //               },
-            //             },
-            //           },
-            //         },
-            //         FIND: {
-            //           shadow: {
-            //             type: "text",
-            //             fields: {
-            //               TEXT: "abc",
-            //             },
-            //           },
-            //         },
-            //       },
-            //     },
-            //     {
-            //       type: "text_charAt",
-            //       kind: "block",
-            //       fields: {
-            //         WHERE: "FROM_START",
-            //       },
-            //       inputs: {
-            //         VALUE: {
-            //           block: {
-            //             type: "variables_get",
-            //             fields: {
-            //               VAR: {
-            //                 name: "text",
-            //               },
-            //             },
-            //           },
-            //         },
-            //       },
-            //     },
-            //     {
-            //       type: "text_getSubstring",
-            //       kind: "block",
-            //       fields: {
-            //         WHERE1: "FROM_START",
-            //         WHERE2: "FROM_START",
-            //       },
-            //       inputs: {
-            //         STRING: {
-            //           block: {
-            //             type: "variables_get",
-            //             fields: {
-            //               VAR: {
-            //                 name: "text",
-            //               },
-            //             },
-            //           },
-            //         },
-            //       },
-            //     },
-            //     {
-            //       type: "text_changeCase",
-            //       kind: "block",
-            //       fields: {
-            //         CASE: "UPPERCASE",
-            //       },
-            //       inputs: {
-            //         TEXT: {
-            //           shadow: {
-            //             type: "text",
-            //             fields: {
-            //               TEXT: "abc",
-            //             },
-            //           },
-            //         },
-            //       },
-            //     },
-            //     {
-            //       type: "text_trim",
-            //       kind: "block",
-            //       fields: {
-            //         MODE: "BOTH",
-            //       },
-            //       inputs: {
-            //         TEXT: {
-            //           shadow: {
-            //             type: "text",
-            //             fields: {
-            //               TEXT: "abc",
-            //             },
-            //           },
-            //         },
-            //       },
-            //     },
-            //     {
-            //       type: "text_count",
-            //       kind: "block",
-            //       inputs: {
-            //         SUB: {
-            //           shadow: {
-            //             type: "text",
-            //             fields: {
-            //               TEXT: "",
-            //             },
-            //           },
-            //         },
-            //         TEXT: {
-            //           shadow: {
-            //             type: "text",
-            //             fields: {
-            //               TEXT: "",
-            //             },
-            //           },
-            //         },
-            //       },
-            //     },
-            //     {
-            //       type: "text_replace",
-            //       kind: "block",
-            //       inputs: {
-            //         FROM: {
-            //           shadow: {
-            //             type: "text",
-            //             fields: {
-            //               TEXT: "",
-            //             },
-            //           },
-            //         },
-            //         TO: {
-            //           shadow: {
-            //             type: "text",
-            //             fields: {
-            //               TEXT: "",
-            //             },
-            //           },
-            //         },
-            //         TEXT: {
-            //           shadow: {
-            //             type: "text",
-            //             fields: {
-            //               TEXT: "",
-            //             },
-            //           },
-            //         },
-            //       },
-            //     },
-            //     {
-            //       type: "text_reverse",
-            //       kind: "block",
-            //       inputs: {
-            //         TEXT: {
-            //           shadow: {
-            //             type: "text",
-            //             fields: {
-            //               TEXT: "",
-            //             },
-            //           },
-            //         },
-            //       },
-            //     },
-            //     {
-            //       type: "text_print",
-            //       kind: "block",
-            //       inputs: {
-            //         TEXT: {
-            //           shadow: {
-            //             type: "text",
-            //             fields: {
-            //               TEXT: "abc",
-            //             },
-            //           },
-            //         },
-            //       },
-            //     },
-            //     {
-            //       type: "text_prompt_ext",
-            //       kind: "block",
-            //       fields: {
-            //         TYPE: "TEXT",
-            //       },
-            //       inputs: {
-            //         TEXT: {
-            //           shadow: {
-            //             type: "text",
-            //             fields: {
-            //               TEXT: "abc",
-            //             },
-            //           },
-            //         },
-            //       },
-            //     },
-            //   ],
-            // },
-            // {
-            //   kind: "category",
-            //   name: "Lists",
-            //   categorystyle: "list_category",
-            //   contents: [
-            //     {
-            //       type: "lists_create_with",
-            //       kind: "block",
-            //     },
-            //     {
-            //       type: "lists_create_with",
-            //       kind: "block",
-            //     },
-            //     {
-            //       type: "lists_repeat",
-            //       kind: "block",
-            //       inputs: {
-            //         NUM: {
-            //           shadow: {
-            //             type: "math_number",
-            //             fields: {
-            //               NUM: 5,
-            //             },
-            //           },
-            //         },
-            //       },
-            //     },
-            //     {
-            //       type: "lists_length",
-            //       kind: "block",
-            //     },
-            //     {
-            //       type: "lists_isEmpty",
-            //       kind: "block",
-            //     },
-            //     {
-            //       type: "lists_indexOf",
-            //       kind: "block",
-            //       fields: {
-            //         END: "FIRST",
-            //       },
-            //       inputs: {
-            //         VALUE: {
-            //           block: {
-            //             type: "variables_get",
-            //             fields: {
-            //               VAR: {
-            //                 name: "list",
-            //               },
-            //             },
-            //           },
-            //         },
-            //       },
-            //     },
-            //     {
-            //       type: "lists_getIndex",
-            //       kind: "block",
-            //       fields: {
-            //         MODE: "GET",
-            //         WHERE: "FROM_START",
-            //       },
-            //       inputs: {
-            //         VALUE: {
-            //           block: {
-            //             type: "variables_get",
-            //             fields: {
-            //               VAR: {
-            //                 name: "list",
-            //               },
-            //             },
-            //           },
-            //         },
-            //       },
-            //     },
-            //     {
-            //       type: "lists_setIndex",
-            //       kind: "block",
-            //       fields: {
-            //         MODE: "SET",
-            //         WHERE: "FROM_START",
-            //       },
-            //       inputs: {
-            //         LIST: {
-            //           block: {
-            //             type: "variables_get",
-            //             fields: {
-            //               VAR: {
-            //                 name: "list",
-            //               },
-            //             },
-            //           },
-            //         },
-            //       },
-            //     },
-            //     {
-            //       type: "lists_getSublist",
-            //       kind: "block",
-            //       fields: {
-            //         WHERE1: "FROM_START",
-            //         WHERE2: "FROM_START",
-            //       },
-            //       inputs: {
-            //         LIST: {
-            //           block: {
-            //             type: "variables_get",
-            //             fields: {
-            //               VAR: {
-            //                 name: "list",
-            //               },
-            //             },
-            //           },
-            //         },
-            //       },
-            //     },
-            //     {
-            //       type: "lists_split",
-            //       kind: "block",
-            //       fields: {
-            //         MODE: "SPLIT",
-            //       },
-            //       inputs: {
-            //         DELIM: {
-            //           shadow: {
-            //             type: "text",
-            //             fields: {
-            //               TEXT: ",",
-            //             },
-            //           },
-            //         },
-            //       },
-            //     },
-            //     {
-            //       type: "lists_sort",
-            //       kind: "block",
-            //       fields: {
-            //         TYPE: "NUMERIC",
-            //         DIRECTION: "1",
-            //       },
-            //     },
-            //     {
-            //       type: "lists_reverse",
-            //       kind: "block",
-            //     },
-            //   ],
-            // },
             {
               kind: "category",
-              name: "目标属性",
-              categorystyle: "logic_category",
+              name: "文本",
+              categorystyle: "text_category",
               contents: [
+                {
+                  type: "text",
+                  kind: "block",
+                  fields: {
+                    TEXT: "",
+                  },
+                },
+                {
+                  type: "text_join",
+                  kind: "block",
+                },
+                {
+                  type: "text_length",
+                  kind: "block",
+                  inputs: {
+                    VALUE: {
+                      shadow: {
+                        type: "text",
+                        fields: {
+                          TEXT: "abc",
+                        },
+                      },
+                    },
+                  },
+                },
+                {
+                  type: "text_isEmpty",
+                  kind: "block",
+                  inputs: {
+                    VALUE: {
+                      shadow: {
+                        type: "text",
+                        fields: {
+                          TEXT: "",
+                        },
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+            {
+              kind: "category",
+              name: "列表",
+              categorystyle: "list_category",
+              contents: [
+                {
+                  type: "lists_create_with",
+                  kind: "block",
+                },
+                {
+                  type: "lists_create_with",
+                  kind: "block",
+                },
+                {
+                  type: "lists_repeat",
+                  kind: "block",
+                  inputs: {
+                    NUM: {
+                      shadow: {
+                        type: "math_number",
+                        fields: {
+                          NUM: 5,
+                        },
+                      },
+                    },
+                  },
+                },
+                {
+                  type: "lists_length",
+                  kind: "block",
+                },
+                {
+                  type: "lists_isEmpty",
+                  kind: "block",
+                },
+                {
+                  type: "lists_indexOf",
+                  kind: "block",
+                  fields: {
+                    END: "FIRST",
+                  },
+                  inputs: {
+                    VALUE: {
+                      block: {
+                        type: "variables_get",
+                        fields: {
+                          VAR: {
+                            name: "list",
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                {
+                  type: "lists_getIndex",
+                  kind: "block",
+                  fields: {
+                    MODE: "GET",
+                    WHERE: "FROM_START",
+                  },
+                  inputs: {
+                    VALUE: {
+                      block: {
+                        type: "variables_get",
+                        fields: {
+                          VAR: {
+                            name: "list",
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                {
+                  type: "lists_setIndex",
+                  kind: "block",
+                  fields: {
+                    MODE: "SET",
+                    WHERE: "FROM_START",
+                  },
+                  inputs: {
+                    LIST: {
+                      block: {
+                        type: "variables_get",
+                        fields: {
+                          VAR: {
+                            name: "list",
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                {
+                  type: "lists_getSublist",
+                  kind: "block",
+                  fields: {
+                    WHERE1: "FROM_START",
+                    WHERE2: "FROM_START",
+                  },
+                  inputs: {
+                    LIST: {
+                      block: {
+                        type: "variables_get",
+                        fields: {
+                          VAR: {
+                            name: "list",
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                {
+                  type: "lists_split",
+                  kind: "block",
+                  fields: {
+                    MODE: "SPLIT",
+                  },
+                  inputs: {
+                    DELIM: {
+                      shadow: {
+                        type: "text",
+                        fields: {
+                          TEXT: ",",
+                        },
+                      },
+                    },
+                  },
+                },
+                {
+                  type: "lists_sort",
+                  kind: "block",
+                  fields: {
+                    TYPE: "NUMERIC",
+                    DIRECTION: "1",
+                  },
+                },
+                {
+                  type: "lists_reverse",
+                  kind: "block",
+                },
+              ],
+            },
+            {
+              kind: "category",
+              name: "阶段模板",
+              categorystyle: "math_category",
+              contents: pipelineMetas
+                .filter((m) => m.category === "skill")
+                .map((m) => ({
+                  type: makePipelineBlockId(m.name),
+                  kind: "block" as const,
+                })),
+            },
+            {
+              kind: "category",
+              name: "基础节点",
+              categorystyle: "logic_category",
+              contents: stageMetas.map((m) => ({
+                type: makeStageBlockId(m.name),
+                kind: "block" as const,
+              })),
+            },
+            {
+              kind: "category",
+              name: "成员属性",
+              categorystyle: "variable_category",
+              contents: [
+                // 自身属性读取积木
+                {
+                  type: "self_attribute_get",
+                  kind: "block",
+                },
+                // 自身属性百分比修改积木
+                {
+                  type: "self_attribute_percentage",
+                  kind: "block",
+                },
+                // 自身属性固定值修改积木
+                {
+                  type: "self_attribute_fixed",
+                  kind: "block",
+                },
                 // 目标属性读取积木
                 {
                   type: "target_attribute_get",
@@ -931,35 +786,13 @@ export function LogicEditor(props: LogicEditorProps) {
             },
             {
               kind: "category",
-              name: "自身属性",
-              categorystyle: "math_category",
-              contents: [
-                // 自身属性读取积木
-                {
-                  type: "self_attribute_get",
-                  kind: "block",
-                },
-                // 自身属性百分比修改积木
-                {
-                  type: "self_attribute_percentage",
-                  kind: "block",
-                },
-                // 自身属性固定值修改积木
-                {
-                  type: "self_attribute_fixed",
-                  kind: "block",
-                },
-              ],
-            },
-            {
-              kind: "category",
-              name: "Variables",
+              name: "自定义变量",
               custom: "VARIABLE",
               categorystyle: "variable_category",
             },
             {
               kind: "category",
-              name: "Functions",
+              name: "函数",
               custom: "PROCEDURE",
               categorystyle: "procedure_category",
             },
@@ -988,8 +821,8 @@ export function LogicEditor(props: LogicEditorProps) {
           },
         };
         // 初始化 Schema 积木生成器
-        // 创建积木生成器并注册积木
-        const schemaBlockGenerator = new SchemaBlockGenerator(props.schema, props.targetSchema);
+        // 创建积木生成器并注册积木（使用从 memberType/memberData 计算出的 schema）
+        const schemaBlockGenerator = new SchemaBlockGenerator(selfSchema(), targetSchema);
         // console.log("✅ Schema 积木已生成:", schemaBlockGenerator.getBlockIds());
         
         let workerSpace = inject(div, injectionOptions);

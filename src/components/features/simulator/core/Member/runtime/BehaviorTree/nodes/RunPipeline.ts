@@ -34,7 +34,7 @@ export class RunPipeline extends Node {
     try {
       console.log(`🌳 [RunPipeline] 调用管线: ${pipelineName}`);
       
-      // 调用管线管理器执行管线
+      // 调用管线管理器执行管线（MemberStateContext 上未显式声明 pipelineManager，这里做宽松断言）
       const result = owner.pipelineManager.run(pipelineName as any, owner, params || {});
 
       // 将结果写入 blackboard，供后续节点使用
@@ -76,7 +76,7 @@ export class RunPipeline extends Node {
         {
           name: "pipelineName",
           type: "string",
-          desc: "管线名称（如 'skill.cost.calculate'）",
+          desc: "管线名称（如 '技能.消耗.计算'）",
         },
         {
           name: "params",

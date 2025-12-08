@@ -85,7 +85,7 @@ export type OutputOfSchema<T extends ZodType> = z.output<T>;
 /**
  * 管线定义
  * 从 XState Action 解耦，管线现在是独立的计算单元
- * 键名：管线名称（如 "skill.cost.calculate"）
+ * 键名：管线名称（如 "技能.消耗计算"）
  * 值：阶段名称数组（编排信息）
  *
  * 设计理念：

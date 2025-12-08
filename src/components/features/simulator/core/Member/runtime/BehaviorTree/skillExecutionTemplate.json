@@ -11,7 +11,7 @@
         "name": "RunPipeline",
         "desc": "计算技能消耗",
         "args": {
-          "pipelineName": "skill.cost.calculate"
+          "pipelineName": "技能.消耗.计算"
         }
       },
       {
@@ -19,7 +19,7 @@
         "name": "RunPipeline",
         "desc": "计算技能动作时长",
         "args": {
-          "pipelineName": "skill.motion.calculate"
+          "pipelineName": "技能.动作.计算"
         }
       },
       {
@@ -45,7 +45,7 @@
                 "name": "RunPipeline",
                 "desc": "启动前摇动画",
                 "args": {
-                  "pipelineName": "animation.startup.start"
+                  "pipelineName": "动画.前摇.开始"
                 }
               },
               {
@@ -53,7 +53,7 @@
                 "name": "RunPipeline",
                 "desc": "调度前摇结束事件",
                 "args": {
-                  "pipelineName": "event.startup.schedule"
+                  "pipelineName": "事件.前摇.调度"
                 }
               },
               {
@@ -96,7 +96,7 @@
                 "name": "RunPipeline",
                 "desc": "启动蓄力动画",
                 "args": {
-                  "pipelineName": "animation.charging.start"
+                  "pipelineName": "动画.蓄力.开始"
                 }
               },
               {
@@ -104,7 +104,7 @@
                 "name": "RunPipeline",
                 "desc": "调度蓄力结束事件",
                 "args": {
-                  "pipelineName": "event.charging.schedule"
+                  "pipelineName": "事件.蓄力.调度"
                 }
               },
               {
@@ -147,7 +147,7 @@
                 "name": "RunPipeline",
                 "desc": "启动咏唱动画",
                 "args": {
-                  "pipelineName": "animation.chanting.start"
+                  "pipelineName": "动画.咏唱.开始"
                 }
               },
               {
@@ -155,7 +155,7 @@
                 "name": "RunPipeline",
                 "desc": "调度咏唱结束事件",
                 "args": {
-                  "pipelineName": "event.chanting.schedule"
+                  "pipelineName": "事件.咏唱.调度"
                 }
               },
               {
@@ -185,7 +185,7 @@
             "name": "RunPipeline",
             "desc": "启动发动动画",
             "args": {
-              "pipelineName": "animation.action.start"
+              "pipelineName": "动画.发动.开始"
             }
           },
           {
@@ -193,7 +193,7 @@
             "name": "RunPipeline",
             "desc": "应用技能效果（执行技能 logic 行为树）",
             "args": {
-              "pipelineName": "skill.effect.apply"
+              "pipelineName": "技能.效果.应用"
             }
           },
           {
@@ -201,7 +201,7 @@
             "name": "RunPipeline",
             "desc": "调度发动结束事件",
             "args": {
-              "pipelineName": "event.action.schedule"
+              "pipelineName": "事件.发动.调度"
             }
           },
           {

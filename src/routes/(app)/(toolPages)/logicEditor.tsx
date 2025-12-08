@@ -2,53 +2,37 @@ import { selectCharacterByIdWithRelations } from "@db/generated/repositories/cha
 import { selectSkillByIdWithRelations } from "@db/generated/repositories/skill";
 import { createEffect, createMemo, createResource, createSignal, onMount, Show } from "solid-js";
 import { LogicEditor } from "~/components/features/logicEditor/LogicEditor";
-import { MemberBaseNestedSchema } from "~/components/features/simulator/core/Member/MemberBaseSchema";
-import { PlayerAttrSchema } from "~/components/features/simulator/core/Member/types/Player/PlayerAttrSchema";
+import defaultData from "~/components/features/logicEditor/defaultData.json";
+
 export default function LogicEditorTestPage() {
+  // 是否显示调试布局
+  const [debugLayout, setDebugLayout] = createSignal<boolean>(true);
   const [data, setData] = createSignal<any>({});
   const [state, setState] = createSignal<any[]>([]);
   const [code, setCode] = createSignal<string>("");
-  const [skill, { refetch: refetchSkill }] = createResource(() => selectSkillByIdWithRelations("defaultSkillId"));
-  const [character, { refetch: refetchCharacter }] = createResource(() =>
-    selectCharacterByIdWithRelations("defaultCharacterId"),
-  );
-  const schema = createMemo(() => {
-    const c = character();
-    if (!c) {
-      return {};
-    }
-    return PlayerAttrSchema(c);
-  });
 
-  createEffect(() => {
-    const skillEffect = skill()?.effects[0];
-    if (skillEffect) {
-      setData(skillEffect.logic);
-    }
+  onMount(() => {
+    setData(defaultData);
   });
 
   return (
     <div class="grid h-full grid-cols-12 grid-rows-12 gap-2 p-3">
       <div class="col-span-12 row-span-8">
-        <Show when={skill() && character()}>
-          <LogicEditor
-            data={data()}
-            setData={setData}
-            state={state()}
-            code={code}
-            setCode={setCode}
-            schema={schema()}
-            targetSchema={MemberBaseNestedSchema}
-          />
-        </Show>
+        <LogicEditor
+          data={data()}
+          setData={setData}
+          state={state()}
+          code={code}
+          setCode={setCode}
+          memberType={"Player"}
+        />
       </div>
-      <pre class="col-span-12 row-span-4 overflow-y-auto">{code()}</pre>
-
-      {/* 调试信息 */}
-      {/* <div class="col-span-12 row-span-4 flex overflow-y-auto">
-        <pre class="basis-1/2 overflow-y-auto">{JSON.stringify(data(), null, 2)}</pre>
-        <pre class="basis-1/2 overflow-y-auto text-xs">{code()}</pre>
-      </div> */}
+      <Show when={debugLayout()} fallback={<pre class="col-span-12 row-span-4 overflow-y-auto">{code()}</pre>}>
+        <div class="col-span-12 row-span-4 flex overflow-y-auto">
+          <pre class="basis-1/2 overflow-y-auto">{JSON.stringify(data(), null, 2)}</pre>
+          <pre class="basis-1/2 overflow-y-auto text-xs">{code()}</pre>
+        </div>
+      </Show>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { DB } from "@db/generated/zod";
-import { ElementType, MOB_DIFFICULTY_FLAG, MobDifficultyFlag, MobType, SkillTreeType } from "@db/schema/enums";
+import { ElementType, MOB_DIFFICULTY_FLAG, MobDifficultyFlag, MobType, SkillTreeType, MemberType } from "@db/schema/enums";
 import { AnyFieldApi } from "@tanstack/solid-form";
 import { Cell, ColumnDef } from "@tanstack/solid-table";
 import { Accessor, createEffect, createSignal, JSX, Show } from "solid-js";
@@ -9,7 +9,6 @@ import Icons from "~/components/icons";
 import { Dic, FieldDict } from "~/locales/type";
 import { store } from "~/store";
 import { LogicEditor } from "../features/logicEditor/LogicEditor";
-import { MemberBaseNestedSchema } from "../features/simulator/core/Member/MemberBaseSchema";
 import { Select } from "../controls/select";
 import { generateBossDataByFlag } from "~/lib/utils/mob";
 
@@ -486,8 +485,7 @@ export const DATA_CONFIG: DataConfig = {
           return (
             <LogicEditor
               data={field().state.value}
-              schema={MemberBaseNestedSchema}
-              targetSchema={MemberBaseNestedSchema}
+              memberType={"Mob"}
               setData={(data) => field().setValue(data)}
               state={true}
             />
