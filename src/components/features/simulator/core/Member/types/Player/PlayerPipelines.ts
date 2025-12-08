@@ -310,25 +310,49 @@ export const PlayerPipelineStages = {
 
   调度前摇结束事件: defineStage(z.object({}), z.object({ startupEventScheduled: z.boolean() }), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度前摇结束事件`);
-    schedulePipeline(context, context.currentSkillStartupFrames, "前摇", undefined, context.currentSkill?.template?.name ?? "unknown");
+    schedulePipeline(
+      context,
+      context.currentSkillStartupFrames,
+      "前摇",
+      undefined,
+      context.currentSkill?.template?.name ?? "unknown",
+    );
     return { startupEventScheduled: true };
   }),
 
   调度蓄力结束事件: defineStage(z.object({}), z.object({ chargingEventScheduled: z.boolean() }), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度蓄力结束事件`);
-    schedulePipeline(context, context.currentSkillChargingFrames, "蓄力", undefined, context.currentSkill?.template?.name ?? "unknown");
+    schedulePipeline(
+      context,
+      context.currentSkillChargingFrames,
+      "蓄力",
+      undefined,
+      context.currentSkill?.template?.name ?? "unknown",
+    );
     return { chargingEventScheduled: true };
   }),
 
   调度咏唱结束事件: defineStage(z.object({}), z.object({ chantingEventScheduled: z.boolean() }), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度咏唱结束事件`);
-    schedulePipeline(context, context.currentSkillChantingFrames, "咏唱", undefined, context.currentSkill?.template?.name ?? "unknown");
+    schedulePipeline(
+      context,
+      context.currentSkillChantingFrames,
+      "咏唱",
+      undefined,
+      context.currentSkill?.template?.name ?? "unknown",
+    );
     return { chantingEventScheduled: true };
   }),
 
   调度发动结束事件: defineStage(z.object({}), z.object({ actionEventScheduled: z.boolean() }), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度发动结束事件`);
-    schedulePipeline(context, context.currentSkillActionFrames, "发动", undefined, context.currentSkill?.template?.name ?? "unknown");
+    schedulePipeline(
+      context,
+      context.currentSkillActionFrames,
+      "发动",
+      undefined,
+      context.currentSkill?.template?.name ?? "unknown",
+    );
     return { actionEventScheduled: true };
   }),
 

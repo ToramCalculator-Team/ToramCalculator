@@ -4,7 +4,7 @@ import { ExtractAttrPaths, NestedSchema } from "../../runtime/StatContainer/Sche
 import GameEngine from "../../../GameEngine";
 import { createMobStateMachine, MobStateContext, MobEventType } from "./MobStateMachine";
 import { MobAttrSchema } from "./MobAttrSchema";
-import { mobPipDef, MobPipelineDef, MobPipelineStages, MobStagePool } from "./MobPipelines";
+import { MobPipelineDef, MobPipelineStages, MobStagePool } from "./MobPipelines";
 
 export type MobAttrType = ExtractAttrPaths<ReturnType<typeof MobAttrSchema>>;
 
@@ -25,7 +25,7 @@ export class Mob extends Member<MobAttrType, MobEventType, MobPipelineDef, MobSt
       targetId, 
       memberData, 
       schema, 
-      mobPipDef,
+      MobPipelineDef,
       MobPipelineStages,
       position);
   }

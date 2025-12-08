@@ -5,7 +5,7 @@ import { PlayerStateContext, playerStateMachine, PlayerEventType } from "./Playe
 import GameEngine from "../../../GameEngine";
 import { PlayerAttrSchema } from "./PlayerAttrSchema";
 import { ExtractAttrPaths, NestedSchema } from "../../runtime/StatContainer/SchemaTypes";
-import { PlayerPipelineDef, playerPipDef, PlayerStagePool, PlayerPipelineStages } from "./PlayerPipelines";
+import { PlayerPipelineDef, PlayerStagePool, PlayerPipelineStages } from "./PlayerPipelines";
 
 export type PlayerAttrType = ExtractAttrPaths<ReturnType<typeof PlayerAttrSchema>>;
 
@@ -33,7 +33,7 @@ export class Player extends Member<
       targetId, 
       memberData, 
       schema, 
-      playerPipDef,
+      PlayerPipelineDef,
       PlayerPipelineStages,
       position
     );
