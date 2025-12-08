@@ -7,8 +7,16 @@
       {
         "type": "procedures_defnoreturn",
         "id": "39FakA;Z=QWG])gI#AhB",
-        "x": -862,
-        "y": 38,
+        "x": -1237,
+        "y": 163,
+        "extraState": {
+          "params": [
+            {
+              "name": "x",
+              "id": "nRmi3UCF)4o^e|ythig#"
+            }
+          ]
+        },
         "icons": {
           "comment": {
             "text": "描述该功能...",
@@ -38,11 +46,72 @@
                     "id": "V?o74%-P6$s0S`Qz*l[8"
                   }
                 }
+              },
+              "next": {
+                "block": {
+                  "type": "stage_u542fu52a8u524du6447u52a8u753b",
+                  "id": "+l#j%GAgs6s7#2hz-:O%",
+                  "next": {
+                    "block": {
+                      "type": "schedule_pipeline",
+                      "id": "InHd;=L0k#]:by2,[m4r",
+                      "fields": {
+                        "pipelineName": "蓄力"
+                      },
+                      "inputs": {
+                        "delayFrames": {
+                          "block": {
+                            "type": "stage_u524du6447u5e27u6570",
+                            "id": "5JbZ;p$@#rTn@Cmoz6HC",
+                            "inputs": {
+                              "skillFixedMotionResult": {
+                                "block": {
+                                  "type": "stage_u6280u80fdu56fau5b9au52a8u4f5cu65f6u957f",
+                                  "id": "cB1Xiz?yzs}xQuh/$~Wp"
+                                }
+                              },
+                              "skillModifiedMotionResult": {
+                                "block": {
+                                  "type": "stage_u6280u80fdu53efu53d8u52a8u4f5cu65f6u957f",
+                                  "id": "J5;LyqdXX]TgKxCj#hIn"
+                                }
+                              },
+                              "mspdResult": {
+                                "block": {
+                                  "type": "self_attribute_get",
+                                  "id": "ws`hxM6[g#p!t34e!TVm",
+                                  "fields": {
+                                    "ATTRIBUTE_PATH": "mspd"
+                                  }
+                                }
+                              },
+                              "startupProportion": {
+                                "block": {
+                                  "type": "math_number",
+                                  "id": "^Y;%zmYJISZ~WVsM3N)S",
+                                  "fields": {
+                                    "NUM": 0.5
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
               }
             }
           }
         }
       }
     ]
-  }
+  },
+  "variables": [
+    {
+      "name": "x",
+      "id": "nRmi3UCF)4o^e|ythig#"
+    }
+  ]
 }

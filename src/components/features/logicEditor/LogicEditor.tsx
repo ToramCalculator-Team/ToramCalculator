@@ -31,6 +31,7 @@ import {
   buildPlayerStageMetas,
   makePipelineBlockId,
   makeStageBlockId,
+  createSchedulePipelineBlock,
 } from "./pipelineBlocks";
 import { store } from "~/store";
 import { MediaContext } from "~/lib/contexts/Media";
@@ -91,6 +92,8 @@ export function LogicEditor(props: LogicEditorProps) {
   const stageMetas = Array.from(new Map(stageMetasRaw.map((m) => [m.name, m])).values());
   // 注册阶段调用积木
   const _stageBlockGenerator = new StageBlockGenerator(stageMetas);
+  // 注册 schedulePipeline 积木
+  const schedulePipelineBlockId = createSchedulePipelineBlock();
 
   // 使用内置方法进行初始居中（不做额外偏差计算）
   const centerInitialView = (ws: WorkspaceSvg) => {
@@ -742,10 +745,16 @@ export function LogicEditor(props: LogicEditorProps) {
               kind: "category",
               name: "基础节点",
               categorystyle: "logic_category",
-              contents: stageMetas.map((m) => ({
-                type: makeStageBlockId(m.name),
-                kind: "block" as const,
-              })),
+              contents: [
+                ...stageMetas.map((m) => ({
+                  type: makeStageBlockId(m.name),
+                  kind: "block" as const,
+                })),
+                {
+                  type: schedulePipelineBlockId,
+                  kind: "block" as const,
+                },
+              ],
             },
             {
               kind: "category",

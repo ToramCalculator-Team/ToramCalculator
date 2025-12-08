@@ -1,6 +1,6 @@
 import { Blocks, FieldDropdown } from "blockly/core";
 import { javascriptGenerator, Order } from "blockly/javascript";
-import { ZodBoolean, ZodEnum, ZodNumber, ZodObject, ZodString, ZodTypeAny } from "zod/v4";
+import { ZodBoolean, ZodEnum, ZodNumber, ZodObject, ZodString, ZodType } from "zod/v4";
 import {
   PlayerPipelineStages,
   PlayerPipelineDef,
@@ -47,12 +47,12 @@ export const makePipelineBlockId = (pipelineName: string): string => {
   return `pipeline_${safeName}`;
 };
 
-type AnyStage = PipelineStage<ZodTypeAny, ZodTypeAny, Record<string, unknown>>;
+type AnyStage = PipelineStage<ZodType, ZodType, Record<string, unknown>>;
 
 /**
  * 从 zod schema 中解析参数元数据
  */
-const extractParamsFromSchema = (schema: ZodTypeAny | undefined): PipelineParamMeta[] => {
+const extractParamsFromSchema = (schema: ZodType | undefined): PipelineParamMeta[] => {
   if (!schema) return [];
 
   const unwrapped = unwrapEffectsAndOptionals(schema);
@@ -61,7 +61,7 @@ const extractParamsFromSchema = (schema: ZodTypeAny | undefined): PipelineParamM
     return [];
   }
 
-  const shape = (unwrapped as ZodObject<Record<string, ZodTypeAny>>).shape;
+  const shape = (unwrapped as ZodObject<Record<string, ZodType>>).shape;
   const metas: PipelineParamMeta[] = [];
 
   for (const key of Object.keys(shape)) {
@@ -103,22 +103,22 @@ const extractParamsFromSchema = (schema: ZodTypeAny | undefined): PipelineParamM
 /**
  * 去掉 optional/default/effects 外壳，获得基础 schema
  */
-const unwrapEffectsAndOptionals = (schema: ZodTypeAny): ZodTypeAny => {
+const unwrapEffectsAndOptionals = (schema: ZodType): ZodType => {
   // 这里不做精细类型判断，只是尽量剥掉一层 effects/optional/default
   // 以便拿到内部的 ZodObject / ZodNumber 等
   // zod 内部 def.typeName 是稳定标识
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const inner = (s: ZodTypeAny): ZodTypeAny => {
+  const inner = (s: ZodType): ZodType => {
     const def: any = (s as any)._def;
     const typeName: string | undefined = def?.typeName;
     if (typeName === "ZodEffects" && def?.schema) {
-      return inner(def.schema as ZodTypeAny);
+      return inner(def.schema as ZodType);
     }
     if (typeName === "ZodOptional" && def?.innerType) {
-      return inner(def.innerType as ZodTypeAny);
+      return inner(def.innerType as ZodType);
     }
     if (typeName === "ZodDefault" && def?.innerType) {
-      return inner(def.innerType as ZodTypeAny);
+      return inner(def.innerType as ZodType);
     }
     return s;
   };
@@ -129,7 +129,7 @@ const unwrapEffectsAndOptionals = (schema: ZodTypeAny): ZodTypeAny => {
 /**
  * 拆出 required 信息：optional/default 视为非必填
  */
-const unwrapOptional = (schema: ZodTypeAny): { base: ZodTypeAny; required: boolean } => {
+const unwrapOptional = (schema: ZodType): { base: ZodType; required: boolean } => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const def: any = (schema as any)._def;
   const typeName: string | undefined = def?.typeName;
@@ -150,7 +150,7 @@ export const buildPlayerPipelineMetas = (): PipelineMeta[] => {
 
   for (const pipelineName of Object.keys(def) as (keyof PlayerPipelineDef)[]) {
     const stageNames = def[pipelineName];
-    let inputSchema: ZodTypeAny | undefined;
+    let inputSchema: ZodType | undefined;
 
     if (stageNames && stageNames.length > 0) {
       const firstStageName = stageNames[0];
@@ -257,7 +257,7 @@ export const buildPlayerStageMetas = (): StageMeta[] => {
  * - 或仅包含一个字段，且该字段为 number/boolean/string
  */
 const inferOutputFromSchema = (
-  schema: ZodTypeAny | undefined,
+  schema: ZodType | undefined,
 ): { kind?: PipelineParamKind; field?: string } => {
   if (!schema) return {};
 
@@ -276,7 +276,7 @@ const inferOutputFromSchema = (
 
   // 单字段 object，且字段为标量
   if (unwrapped instanceof ZodObject) {
-    const shape = (unwrapped as ZodObject<Record<string, ZodTypeAny>>).shape;
+    const shape = (unwrapped as ZodObject<Record<string, ZodType>>).shape;
     const keys = Object.keys(shape);
     if (keys.length === 1) {
       const fieldName = keys[0];
@@ -498,6 +498,78 @@ export class StageBlockGenerator {
   getBlockIds(): string[] {
     return this.blockIds.slice();
   }
+}
+
+/**
+ * 为 schedulePipeline 函数创建积木
+ * 参数：delayFrames (number), pipelineName (enum), params (可选 json), source (可选 string)
+ */
+export function createSchedulePipelineBlock() {
+  const blockId = "schedule_pipeline";
+  const pipelineNames = Object.keys(PlayerPipelineDef) as (keyof typeof PlayerPipelineDef)[];
+
+  Blocks[blockId] = {
+    init: function () {
+      this.appendDummyInput().appendField("延迟执行管线");
+      
+      // delayFrames: number
+      this.appendValueInput("delayFrames")
+        .appendField("延迟帧数")
+        .setCheck("Number");
+      
+      // pipelineName: enum
+      this.appendDummyInput()
+        .appendField("管线名称")
+        .appendField(
+          new FieldDropdown(() => pipelineNames.map((name) => [name, name])),
+          "pipelineName",
+        );
+      
+      // params: optional json (使用文本输入，用户输入 JSON)
+      this.appendValueInput("params")
+        .appendField("参数(可选)")
+        .setCheck(null);
+      
+      // source: optional string
+      this.appendValueInput("source")
+        .appendField("来源(可选)")
+        .setCheck("String");
+
+      this.setPreviousStatement(true, null);
+      this.setNextStatement(true, null);
+      this.setColour(210);
+      this.setTooltip("延迟执行指定的管线");
+      this.setHelpUrl("");
+    },
+  };
+
+  javascriptGenerator.forBlock[blockId] = function (block, generator) {
+    const delayFramesCode = generator.valueToCode(block, "delayFrames", Order.NONE) || "0";
+    const pipelineName = block.getFieldValue("pipelineName") || pipelineNames[0];
+    const paramsCode = generator.valueToCode(block, "params", Order.NONE);
+    const sourceCode = generator.valueToCode(block, "source", Order.NONE);
+
+    // schedulePipeline 函数签名: (context, delayFrames, pipelineName, params?, source?)
+    // 在积木代码中，ctx 就是 context
+    const args: string[] = [];
+    args.push(delayFramesCode);
+    args.push(`"${pipelineName}"`);
+    if (paramsCode) {
+      args.push(paramsCode);
+    } else {
+      args.push("undefined");
+    }
+    if (sourceCode) {
+      args.push(sourceCode);
+    } else {
+      args.push("undefined");
+    }
+
+    const code = `ctx.schedulePipeline(${args.join(", ")});\n`;
+    return code;
+  };
+
+  return blockId;
 }
 
 

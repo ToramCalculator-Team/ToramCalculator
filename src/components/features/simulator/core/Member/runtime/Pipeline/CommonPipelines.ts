@@ -57,8 +57,7 @@ export const CommonStages = {
       const memberManager = context.engine.getMemberManager();
       const caster = memberManager.getMember(sourceId);
 
-      const accuracyValue =
-        (caster?.statContainer.getValue("accuracy") as number | undefined) ?? 0;
+      const accuracyValue = (caster?.statContainer.getValue("accuracy") as number | undefined) ?? 0;
       const avoidValue = context.statContainer.getValue("avoid") as number;
       const dodgeRate = context.statContainer.getValue("dodgeRate") as number;
       const guardRate = context.statContainer.getValue("guardRate") as number;
@@ -172,14 +171,13 @@ export const CommonStages = {
       logLv >= 1 && console.log(`⚔️ [${context.name}][Common] 应用伤害结果`);
 
       const { damageValue } = input;
-      const lastHit =
-        context.lastHitResult as
-          | {
-              hit: boolean;
-              dodge: boolean;
-              guard: boolean;
-            }
-          | undefined;
+      const lastHit = context.lastHitResult as
+        | {
+            hit: boolean;
+            dodge: boolean;
+            guard: boolean;
+          }
+        | undefined;
 
       let finalDamage = Math.max(0, Math.floor(damageValue));
 
@@ -211,10 +209,8 @@ export const CommonStages = {
 export type CommonStagePool = typeof CommonStages;
 
 export const CommonPipelineDef = {
-  "命中计算": ["计算命中判定"],
-  "伤害计算": ["解析伤害请求", "执行伤害表达式", "应用伤害结果"],
+  命中计算: ["计算命中判定"],
+  伤害计算: ["解析伤害请求", "执行伤害表达式", "应用伤害结果"],
 } as const satisfies PipeLineDef<CommonStagePool>;
 
 export type CommonPipelineDef = typeof CommonPipelineDef;
-
-
