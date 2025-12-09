@@ -1,22 +1,5 @@
-import {
-  Accessor,
-  createEffect,
-  createMemo,
-  createSignal,
-  JSX,
-  on,
-  onMount,
-  useContext,
-} from "solid-js";
-import {
-  setLocale,
-  inject,
-  Theme,
-  Themes,
-  serialization,
-  WorkspaceSvg,
-  svgResize,
-} from "blockly/core";
+import { Accessor, createEffect, createMemo, createSignal, JSX, on, onMount, useContext } from "solid-js";
+import { setLocale, inject, Theme, Themes, serialization, WorkspaceSvg, svgResize, BlocklyOptions } from "blockly/core";
 import * as Zh from "blockly/msg/zh-hans";
 import * as En from "blockly/msg/en";
 import * as Ja from "blockly/msg/ja";
@@ -24,31 +7,15 @@ import * as ZhTw from "blockly/msg/zh-hant";
 import { javascriptGenerator } from "blockly/javascript";
 import "blockly/blocks";
 import { SchemaBlockGenerator } from "./gameAttributeBlocks";
-import {
-  PipelineBlockGenerator,
-  StageBlockGenerator,
-  buildPlayerPipelineMetas,
-  buildPlayerStageMetas,
-  makePipelineBlockId,
-  makeStageBlockId,
-  createSchedulePipelineBlock,
-} from "./pipelineBlocks";
+import { buildPlayerPipelineMetas, buildPlayerStageMetas, collectCustomPipelines, type CustomPipelineMeta } from "./blocks";
+import { createBlocksRegistry } from "./blocksRegistry";
 import { store } from "~/store";
 import { MediaContext } from "~/lib/contexts/Media";
 import { MemberType } from "@db/schema/enums";
 import { PlayerAttrNestedSchema } from "../simulator/core/Member/types/Player/PlayerAttrSchema";
 import { MobAttrNestedSchema } from "../simulator/core/Member/types/Mob/MobAttrSchema";
 import { MemberBaseNestedSchema } from "../simulator/core/Member/MemberBaseSchema";
-
-// class CustomCategory extends ToolboxCategory {
-//   /**
-//    * Constructor for a custom category.
-//    * @override
-//    */
-//   constructor(categoryDef, toolbox, opt_parent) {
-//     super(categoryDef, toolbox, opt_parent);
-//   }
-// }
+import defaultData from "~/components/features/logicEditor/defaultData.json";
 
 interface LogicEditorProps extends JSX.InputHTMLAttributes<HTMLDivElement> {
   data: unknown;
@@ -66,7 +33,7 @@ export function LogicEditor(props: LogicEditorProps) {
   const media = useContext(MediaContext);
   const [ref, setRef] = createSignal<HTMLDivElement>();
 
-  // ---------- 根据 memberType 生成对应的 schema ----------
+  // 1.角色属性积木
   const selfSchema = createMemo(() => {
     // 积木生成仅依赖静态属性结构，无需具体成员数据
     switch (props.memberType) {
@@ -78,40 +45,33 @@ export function LogicEditor(props: LogicEditorProps) {
         return MemberBaseNestedSchema;
     }
   });
-
   // 目标属性统一使用基础 schema
   const targetSchema = MemberBaseNestedSchema;
+  // 初始化 Schema 积木生成器
+  const schemaBlockGenerator = new SchemaBlockGenerator(selfSchema(), targetSchema);
 
-  // ---------- 基于当前管线与阶段定义生成相关积木（组件挂载期间只执行一次） ----------
+  // 2.管线/阶段元数据与积木注册集中入口
   const pipelineMetasRaw = buildPlayerPipelineMetas();
-  const pipelineMetas = Array.from(new Map(pipelineMetasRaw.map((m) => [m.name, m])).values());
-  // 注册管线调用积木
-  const _pipelineBlockGenerator = new PipelineBlockGenerator(pipelineMetas);
-
   const stageMetasRaw = buildPlayerStageMetas();
-  const stageMetas = Array.from(new Map(stageMetasRaw.map((m) => [m.name, m])).values());
-  // 注册阶段调用积木
-  const _stageBlockGenerator = new StageBlockGenerator(stageMetas);
-  // 注册 schedulePipeline 积木
-  const schedulePipelineBlockId = createSchedulePipelineBlock();
-
-  // 使用内置方法进行初始居中（不做额外偏差计算）
-  const centerInitialView = (ws: WorkspaceSvg) => {
-    if (!ws) return;
-    try {
-      const blocks = ws.getTopBlocks(false);
-      svgResize(ws);
-      if (blocks && blocks.length > 0) {
-        ws.centerOnBlock(blocks[0].id);
-        return;
-      }
-      if (typeof ws.scrollCenter === "function") {
-        ws.scrollCenter();
-      }
-    } catch {
-      // ignore
-    }
+  const parseCustomPipelines = (): CustomPipelineMeta[] => {
+    const data = props.data as any;
+    const cps = data?.customPipelines;
+    if (!Array.isArray(cps)) return [];
+    return cps
+      .filter((cp) => typeof cp?.name === "string" && Array.isArray(cp?.stages))
+      .map((cp) => ({
+        name: cp.name as string,
+        stages: cp.stages as string[],
+        category: cp.category ?? "custom",
+        desc: cp.desc,
+        displayName: cp.displayName,
+      }));
   };
+  const blocksRegistry = createBlocksRegistry({
+    builtinPipelineMetas: pipelineMetasRaw,
+    builtinStageMetas: stageMetasRaw,
+    initialCustomPipelines: parseCustomPipelines(),
+  });
 
   // 读取 Tailwind 类实际颜色，便于与系统主题一致
   const resolveColorFromClass = (
@@ -157,10 +117,10 @@ export function LogicEditor(props: LogicEditorProps) {
         cursorColour: cursorColor,
       },
       fontStyle: {
-        family:
-          "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji'",
-        weight: "500",
-        size: 12,
+        family: `ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji", "Noto Color Emoji"`,
+        weight: "400",
+        size: 11,
       },
       name: "toram",
     });
@@ -172,9 +132,6 @@ export function LogicEditor(props: LogicEditorProps) {
     ja: Ja,
     en: En,
   }[store.settings.userInterface.language];
-
-  onMount(() => {
-  });
 
   createEffect(
     on(
@@ -730,32 +687,7 @@ export function LogicEditor(props: LogicEditorProps) {
                 },
               ],
             },
-            {
-              kind: "category",
-              name: "阶段模板",
-              categorystyle: "math_category",
-              contents: pipelineMetas
-                .filter((m) => m.category === "skill")
-                .map((m) => ({
-                  type: makePipelineBlockId(m.name),
-                  kind: "block" as const,
-                })),
-            },
-            {
-              kind: "category",
-              name: "基础节点",
-              categorystyle: "logic_category",
-              contents: [
-                ...stageMetas.map((m) => ({
-                  type: makeStageBlockId(m.name),
-                  kind: "block" as const,
-                })),
-                {
-                  type: schedulePipelineBlockId,
-                  kind: "block" as const,
-                },
-              ],
-            },
+            ...blocksRegistry.buildEngineCategories(),
             {
               kind: "category",
               name: "成员属性",
@@ -809,9 +741,9 @@ export function LogicEditor(props: LogicEditorProps) {
         };
         setLocale(location);
         const isReadOnly = !!props.readOnly;
-        const injectionOptions: any = {
+        const injectionOptions: BlocklyOptions = {
           horizontalLayout: media.orientation === "portrait",
-          // renderer: "geras",
+          renderer: "Zelos",
           toolboxPosition: media.orientation === "landscape" ? "start" : "end",
           theme: createToramTheme(div),
           toolbox,
@@ -829,26 +761,61 @@ export function LogicEditor(props: LogicEditorProps) {
             snap: true,
           },
         };
-        // 初始化 Schema 积木生成器
-        // 创建积木生成器并注册积木（使用从 memberType/memberData 计算出的 schema）
-        const schemaBlockGenerator = new SchemaBlockGenerator(selfSchema(), targetSchema);
-        // console.log("✅ Schema 积木已生成:", schemaBlockGenerator.getBlockIds());
-        
-        let workerSpace = inject(div, injectionOptions);
-        const data = props.data;
-        serialization.workspaces.load(data ?? {}, workerSpace);
-        workerSpace.addChangeListener(() => {
-          props.setCode?.(javascriptGenerator.workspaceToCode(workerSpace))
-          props.setData(serialization.workspaces.save(workerSpace));
-        });
-        
-        // registry.register(registry.Type.TOOLBOX_ITEM, ToolboxCategory.registrationName, CustomCategory, true);
 
-        // 使用内置方法进行初始居中（双 rAF 确保度量稳定）
-        requestAnimationFrame(() => requestAnimationFrame(() => centerInitialView(workerSpace)));
+        const workerSpace = inject(div, injectionOptions);
+        serialization.workspaces.load(props.data ?? defaultData, workerSpace);
+        workerSpace.addChangeListener(() => {
+          // 仅从 start_skill 入口生成代码；若无入口则回退全量
+          javascriptGenerator.init(workerSpace);
+          const startBlocks = workerSpace.getBlocksByType("start_skill", false);
+          let codeBody = "";
+          const parts: string[] = [];
+          const emitCode = (blk: any) => {
+            const gen = javascriptGenerator.blockToCode(blk);
+            if (Array.isArray(gen)) {
+              if (gen[0]) parts.push(gen[0]);
+            } else if (gen) {
+              parts.push(gen as string);
+            }
+          };
+
+          if (startBlocks && startBlocks.length > 0) {
+            startBlocks.forEach(emitCode);
+            // 追加其他未挂载到 start_skill 的顶层语句块，避免遗漏
+            const topBlocks = workerSpace
+              .getTopBlocks(true)
+              .filter((b) => b.type !== "start_skill" && !b.getParent());
+            topBlocks.forEach(emitCode);
+            codeBody = parts.join("\n");
+          } else {
+            codeBody = javascriptGenerator.workspaceToCode(workerSpace);
+          }
+
+          const code = javascriptGenerator.finish(codeBody);
+
+          // 从生成的代码里提取 skill_config 片段（约定：/*skill_config*/({ ... });）
+          let skillLogicConfig: any = null;
+          const configMatch = code.match(/\/\*skill_config\*\/\s*\((\{[\s\S]*?\})\);/);
+          if (configMatch && configMatch[1]) {
+            try {
+              skillLogicConfig = JSON.parse(configMatch[1]);
+            } catch {
+              // ignore
+            }
+          }
+
+          const saved = serialization.workspaces.save(workerSpace) as any;
+          const custom = collectCustomPipelines(workerSpace);
+          blocksRegistry.updateCustomPipelines(custom);
+          saved.customPipelines = custom;
+          if (skillLogicConfig) saved.skillLogicConfig = skillLogicConfig;
+          props.setCode?.(code);
+          props.setData(saved);
+        });
+        workerSpace.scrollCenter();
       },
     ),
   );
 
-  return <div id="blocklyDiv" ref={setRef} class={props.class ? ` ` + " " + props.class : `h-full w-full min-h-24`} />;
+  return <div id="blocklyDiv" ref={setRef} class={props.class ? ` ` + " " + props.class : `h-full min-h-24 w-full`} />;
 }

@@ -1,4 +1,4 @@
-import { Blocks, FieldDropdown } from "blockly/core";
+import { Blocks, FieldDropdown, FieldTextInput, Workspace, WorkspaceSvg } from "blockly/core";
 import { javascriptGenerator, Order } from "blockly/javascript";
 import { ZodBoolean, ZodEnum, ZodNumber, ZodObject, ZodString, ZodType } from "zod/v4";
 import {
@@ -32,6 +32,17 @@ export interface PipelineMeta {
   params: PipelineParamMeta[];
 }
 
+export interface CustomPipelineMeta {
+  /** 管线名称（唯一标识） */
+  name: string;
+  /** 展示名 */
+  displayName?: string;
+  /** 描述 */
+  desc?: string;
+  /** 阶段列表（按顺序执行） */
+  stages: string[];
+}
+
 /**
  * 根据管线名称生成唯一的积木 ID
  * 规则：前缀 pipeline_，非 ASCII 字符转换为 Unicode 编码，避免中文重名冲突
@@ -45,6 +56,40 @@ export const makePipelineBlockId = (pipelineName: string): string => {
     })
     .join("");
   return `pipeline_${safeName}`;
+};
+
+/**
+ * 将函数名编码为 Blockly JavaScript 生成器使用的格式
+ * Blockly 对非 ASCII 字符使用下划线 + UTF-8 字节的十六进制编码（大写）
+ * 例如：蓄力 -> _E8_93_84_E5_8A_9B
+ * 
+ * 规则：
+ * - ASCII 字符（字母、数字、下划线）保持不变
+ * - 非 ASCII 字符转换为 UTF-8 字节序列，每个字节用两位十六进制表示，用下划线分隔
+ */
+export const encodeFunctionName = (functionName: string): string => {
+  let result = "";
+  for (let i = 0; i < functionName.length; i++) {
+    const char = functionName[i];
+    const code = char.charCodeAt(0);
+    
+    // ASCII 字符（字母、数字、下划线）保持不变
+    if ((code >= 0x30 && code <= 0x39) || // 0-9
+        (code >= 0x41 && code <= 0x5A) || // A-Z
+        (code >= 0x61 && code <= 0x7A) || // a-z
+        code === 0x5F) { // _
+      result += char;
+    } else {
+      // 非 ASCII 字符：转换为 UTF-8 字节序列
+      // 使用 TextEncoder 获取 UTF-8 字节
+      const utf8Bytes = new TextEncoder().encode(char);
+      // 每个字节转换为两位十六进制（大写），用下划线分隔
+      result += "_" + Array.from(utf8Bytes)
+        .map((byte) => byte.toString(16).toUpperCase().padStart(2, "0"))
+        .join("_");
+    }
+  }
+  return result;
 };
 
 type AnyStage = PipelineStage<ZodType, ZodType, Record<string, unknown>>;
@@ -220,6 +265,13 @@ export const makeStageBlockId = (stageName: string): string => {
     })
     .join("");
   return `stage_${safeName}`;
+};
+
+const decodeStageBlockId = (blockType: string): string | null => {
+  if (!blockType.startsWith("stage_")) return null;
+  const encoded = blockType.replace(/^stage_/, "");
+  // 反向还原 makeStageBlockId：uXXXX -> 对应字符，其余 ASCII 保留
+  return encoded.replace(/u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 };
 
 /**
@@ -501,16 +553,83 @@ export class StageBlockGenerator {
 }
 
 /**
+ * 管线定义积木（仅用于收集元数据，不生成运行时代码）
+ */
+export function createPipelineDefinitionBlock() {
+  const blockId = "pipeline_definition";
+
+  Blocks[blockId] = {
+    init: function () {
+      this.appendDummyInput().appendField("定义管线");
+      this.appendDummyInput()
+        .appendField("名称")
+        .appendField(new FieldTextInput("自定义管线"), "pipelineName");
+      this.appendDummyInput()
+        .appendField("描述(可选)")
+        .appendField(new FieldTextInput(""), "desc");
+
+      this.appendStatementInput("STAGES").setCheck(null).appendField("阶段顺序");
+
+      this.setColour(260);
+      this.setTooltip("定义一个自定义管线（仅收集元数据）");
+      this.setHelpUrl("");
+    },
+  };
+
+  javascriptGenerator.forBlock[blockId] = function (_block, _generator) {
+    // 仅作为元数据收集，不生成运行时代码
+    return "";
+  };
+
+  return blockId;
+}
+
+/**
+ * 从 workspace 中收集自定义管线定义
+ */
+export const collectCustomPipelines = (workspace: Workspace | WorkspaceSvg): CustomPipelineMeta[] => {
+  const blocks = workspace.getBlocksByType("pipeline_definition", false);
+  const pipelines: CustomPipelineMeta[] = [];
+
+  for (const block of blocks) {
+    const name = block.getFieldValue("pipelineName")?.trim();
+    if (!name) continue;
+    const desc = block.getFieldValue("desc")?.trim() || undefined;
+
+    const stages: string[] = [];
+    let current = block.getInputTargetBlock("STAGES");
+    while (current) {
+      const stageName = decodeStageBlockId(current.type);
+      if (stageName) {
+        stages.push(stageName);
+      }
+      current = current.getNextBlock();
+    }
+
+    pipelines.push({
+      name,
+      desc,
+      stages,
+    });
+  }
+
+  return pipelines;
+};
+
+/**
  * 为 schedulePipeline 函数创建积木
  * 参数：delayFrames (number), pipelineName (enum), params (可选 json), source (可选 string)
  */
-export function createSchedulePipelineBlock() {
+export function createSchedulePipelineBlock(getPipelineNames?: () => string[], pipelineNames?: string[]) {
   const blockId = "schedule_pipeline";
-  const pipelineNames = Object.keys(PlayerPipelineDef) as (keyof typeof PlayerPipelineDef)[];
+  const fallbackNames = (Object.keys(PlayerPipelineDef) as (keyof typeof PlayerPipelineDef)[]).slice();
 
   Blocks[blockId] = {
     init: function () {
       this.appendDummyInput().appendField("延迟执行管线");
+  
+      // 强制竖排显示各个输入
+      this.setInputsInline(false);
       
       // delayFrames: number
       this.appendValueInput("delayFrames")
@@ -521,7 +640,16 @@ export function createSchedulePipelineBlock() {
       this.appendDummyInput()
         .appendField("管线名称")
         .appendField(
-          new FieldDropdown(() => pipelineNames.map((name) => [name, name])),
+          new FieldDropdown(() => {
+            const names = getPipelineNames ? getPipelineNames() : pipelineNames;
+            const list =
+              names && names.length > 0
+                ? names
+                : pipelineNames && pipelineNames.length > 0
+                  ? pipelineNames
+                  : fallbackNames;
+            return list.map((name) => [name, name]);
+          }),
           "pipelineName",
         );
       
@@ -534,7 +662,7 @@ export function createSchedulePipelineBlock() {
       this.appendValueInput("source")
         .appendField("来源(可选)")
         .setCheck("String");
-
+  
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(210);
@@ -545,7 +673,13 @@ export function createSchedulePipelineBlock() {
 
   javascriptGenerator.forBlock[blockId] = function (block, generator) {
     const delayFramesCode = generator.valueToCode(block, "delayFrames", Order.NONE) || "0";
-    const pipelineName = block.getFieldValue("pipelineName") || pipelineNames[0];
+    const names =
+      (getPipelineNames ? getPipelineNames() : pipelineNames) && (getPipelineNames ? getPipelineNames() : pipelineNames)!.length > 0
+        ? getPipelineNames
+          ? getPipelineNames()!
+          : (pipelineNames as string[])
+        : fallbackNames;
+    const pipelineName = block.getFieldValue("pipelineName") || names[0];
     const paramsCode = generator.valueToCode(block, "params", Order.NONE);
     const sourceCode = generator.valueToCode(block, "source", Order.NONE);
 
@@ -554,6 +688,116 @@ export function createSchedulePipelineBlock() {
     const args: string[] = [];
     args.push(delayFramesCode);
     args.push(`"${pipelineName}"`);
+    if (paramsCode) {
+      args.push(paramsCode);
+    } else {
+      args.push("undefined");
+    }
+    if (sourceCode) {
+      args.push(sourceCode);
+    } else {
+      args.push("undefined");
+    }
+
+    const code = `ctx.schedulePipeline(${args.join(", ")});\n`;
+    return code;
+  };
+
+  return blockId;
+}
+
+/**
+ * 为 schedulePipeline 函数创建积木（用于延迟调用自定义函数）
+ * 参数：delayFrames (number), functionName (string), params (可选 json), source (可选 string)
+ */
+export function createScheduleFunctionBlock() {
+  const blockId = "schedule_function";
+
+  Blocks[blockId] = {
+    init: function () {
+      this.appendDummyInput().appendField("延迟执行函数");
+  
+      // 强制竖排显示各个输入
+      this.setInputsInline(false);
+      
+      // delayFrames: number
+      this.appendValueInput("delayFrames")
+        .appendField("延迟帧数")
+        .setCheck("Number");
+      
+      // functionName: string (使用文本输入)
+      this.appendValueInput("functionName")
+        .appendField("函数名称")
+        .setCheck("String");
+      
+      // params: optional json (使用文本输入，用户输入 JSON)
+      this.appendValueInput("params")
+        .appendField("参数(可选)")
+        .setCheck(null);
+      
+      // source: optional string
+      this.appendValueInput("source")
+        .appendField("来源(可选)")
+        .setCheck("String");
+  
+      this.setPreviousStatement(true, null);
+      this.setNextStatement(true, null);
+      this.setColour(230);
+      this.setTooltip("延迟执行指定的自定义函数（函数名会自动编码）");
+      this.setHelpUrl("");
+    },
+  };
+
+  javascriptGenerator.forBlock[blockId] = function (block, generator) {
+    const delayFramesCode = generator.valueToCode(block, "delayFrames", Order.NONE) || "0";
+    const functionNameCode = generator.valueToCode(block, "functionName", Order.NONE) || '""';
+    const paramsCode = generator.valueToCode(block, "params", Order.NONE);
+    const sourceCode = generator.valueToCode(block, "source", Order.NONE);
+
+    // 获取函数名字符串，并编码为 Blockly 格式
+    // functionNameCode 可能是字符串字面量（如 "蓄力"）或变量
+    // 如果是字符串字面量，在生成时编码；否则使用运行时编码函数
+    let encodedFunctionName: string;
+    
+    // 检查是否是字符串字面量（以引号开头和结尾）
+    const stringLiteralMatch = functionNameCode.match(/^["'](.+)["']$/);
+    if (stringLiteralMatch) {
+      // 字符串字面量：在生成时编码
+      const functionName = stringLiteralMatch[1];
+      encodedFunctionName = `"${encodeFunctionName(functionName)}"`;
+    } else {
+      // 变量或表达式：使用运行时编码
+      // 创建一个内联的编码函数
+      encodedFunctionName = `(function(name) {
+        if (typeof name !== 'string') return name;
+        var result = '';
+        for (var i = 0; i < name.length; i++) {
+          var char = name[i];
+          var code = char.charCodeAt(0);
+          if ((code >= 0x30 && code <= 0x39) || (code >= 0x41 && code <= 0x5A) || (code >= 0x61 && code <= 0x7A) || code === 0x5F) {
+            result += char;
+          } else {
+            // 使用 TextEncoder 编码 UTF-8（如果可用）
+            try {
+              var encoder = new TextEncoder();
+              var utf8 = encoder.encode(char);
+              result += '_' + Array.from(utf8).map(function(b) {
+                return b.toString(16).toUpperCase().padStart(2, '0');
+              }).join('_');
+            } catch (e) {
+              // 降级方案：使用 charCodeAt（不准确，但可用）
+              var hex = code.toString(16).toUpperCase();
+              result += '_' + (hex.length === 1 ? '0' : '') + hex;
+            }
+          }
+        }
+        return result;
+      })(${functionNameCode})`;
+    }
+
+    const args: string[] = [];
+    args.push(delayFramesCode);
+    args.push(encodedFunctionName);
     if (paramsCode) {
       args.push(paramsCode);
     } else {

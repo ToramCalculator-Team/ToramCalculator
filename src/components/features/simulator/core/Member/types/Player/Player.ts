@@ -6,13 +6,14 @@ import GameEngine from "../../../GameEngine";
 import { PlayerAttrSchema } from "./PlayerAttrSchema";
 import { ExtractAttrPaths, NestedSchema } from "../../runtime/StatContainer/SchemaTypes";
 import { PlayerPipelineDef, PlayerStagePool, PlayerPipelineStages } from "./PlayerPipelines";
+import type { PipeLineDef } from "../../runtime/Pipeline/PipelineStageType";
 
 export type PlayerAttrType = ExtractAttrPaths<ReturnType<typeof PlayerAttrSchema>>;
 
 export class Player extends Member<
   PlayerAttrType,
   PlayerEventType,
-  PlayerPipelineDef,
+  PipeLineDef<PlayerStagePool>,
   PlayerStagePool,
   PlayerStateContext
 > {
@@ -25,6 +26,22 @@ export class Player extends Member<
     schema: NestedSchema,
     position?: { x: number; y: number; z: number },
   ) {
+    const customPipelineDef =
+      Array.isArray((memberData as any)?.customPipelines) &&
+      (memberData as any)?.customPipelines.every((cp: any) => typeof cp?.name === "string" && Array.isArray(cp?.stages))
+        ? Object.fromEntries(
+            ((memberData as any).customPipelines as Array<{ name: string; stages: string[] }>).map((cp) => [
+              cp.name,
+              cp.stages ?? [],
+            ]),
+          )
+        : {};
+
+    const runtimePipelineDef = {
+      ...PlayerPipelineDef,
+      ...customPipelineDef,
+    } as PipeLineDef<PlayerStagePool>;
+
     super(
       playerStateMachine, 
       engine, 
@@ -33,7 +50,7 @@ export class Player extends Member<
       targetId, 
       memberData, 
       schema, 
-      PlayerPipelineDef,
+      runtimePipelineDef,
       PlayerPipelineStages,
       position
     );

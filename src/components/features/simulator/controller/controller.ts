@@ -32,7 +32,7 @@ export class Controller {
   /** 技能数据 - 包含预计算的 MP/HP 消耗等动态值 */
   selectedMemberSkills = createSignal<ComputedSkillInfo[]>([]);
 
-  // 引擎数据快照
+  // 引擎数据快照（节流+等值检查后再写入）
   engineView = createSignal<FrameSnapshot | null>(null);
   engineStats = createSignal<any | null>(null);
 
@@ -179,6 +179,79 @@ export class Controller {
   // ==================== 数据同步设置 ====================
 
   private setupDataSync() {
+    // ====== 节流与等值工具 ======
+    const shallowEqual = (a: any, b: any) => {
+      if (a === b) return true;
+      if (!a || !b) return false;
+      const ka = Object.keys(a);
+      const kb = Object.keys(b);
+      if (ka.length !== kb.length) return false;
+      for (const k of ka) {
+        if (a[k] !== b[k]) return false;
+      }
+      return true;
+    };
+
+    let latestSnapshot: FrameSnapshot | null = null;
+    let lastPushTs = 0;
+    const throttleMs = 120; // 推送节流窗口，约 8Hz
+
+    const pushSnapshotIfNeeded = (snap: FrameSnapshot) => {
+      const now = performance.now();
+      latestSnapshot = snap;
+      if (now - lastPushTs < throttleMs) return;
+      lastPushTs = now;
+
+      const prev = this.engineView[0]();
+      // 只更新关心字段，避免无谓重渲染
+      const slim: FrameSnapshot = {
+        ...snap,
+        engine: {
+          frameNumber: snap.engine.frameNumber,
+          runTime: snap.engine.runTime,
+          fps: snap.engine.fps,
+        },
+        members: snap.members,
+        selectedMemberId: snap.selectedMemberId,
+        selectedMemberSkills: snap.selectedMemberSkills,
+      };
+
+      if (
+        prev &&
+        shallowEqual(prev.engine, slim.engine) &&
+        prev.members === slim.members &&
+        prev.selectedMemberId === slim.selectedMemberId &&
+        prev.selectedMemberSkills === slim.selectedMemberSkills
+      ) {
+        return;
+      }
+
+      this.engineView[1](slim);
+
+      // 仅当选中成员技能变化时再更新 selectedMemberSkills 信号
+      const selectedId = this.selectedMemberId[0]();
+      if (selectedId && slim.selectedMemberId === selectedId) {
+        const prevSkills = this.selectedMemberSkills[0]();
+        const nextSkills = slim.selectedMemberSkills ?? [];
+        const sameLen = prevSkills.length === nextSkills.length;
+        const sameItems =
+          sameLen &&
+          prevSkills.every((s, i) => {
+            const n = nextSkills[i];
+            return (
+              s.id === n.id &&
+              s.level === n.level &&
+              s.computed?.mpCost === n.computed?.mpCost &&
+              s.computed?.hpCost === n.computed?.hpCost &&
+              s.computed?.cooldownRemaining === n.computed?.cooldownRemaining &&
+              s.computed?.isAvailable === n.computed?.isAvailable
+            );
+          });
+        if (!sameItems) {
+          this.selectedMemberSkills[1](nextSkills);
+        }
+      }
+    };
     // 监听 SimulatorPool 分发的业务消息
     realtimeSimulatorPool.on("engine_state_machine", (data: { workerId: string; event: any }) => {
       // 转发状态机消息 - data.event 应该是 EngineCommand
@@ -188,16 +261,9 @@ export class Controller {
     });
 
     realtimeSimulatorPool.on("frame_snapshot", (data: { workerId: string; event: any }) => {
-      // 更新引擎视图数据
       if (data.event && typeof data.event === "object" && "frameNumber" in data.event) {
         const snapshot = data.event as FrameSnapshot;
-        this.engineView[1](snapshot);
-
-        // 从快照中更新选中成员的技能数据（包含计算后的 MP/HP 消耗等）
-        const selectedId = this.selectedMemberId[0]();
-        if (selectedId && snapshot.selectedMemberId === selectedId) {
-          this.selectedMemberSkills[1](snapshot.selectedMemberSkills);
-        }
+        pushSnapshotIfNeeded(snapshot);
       }
     });
 

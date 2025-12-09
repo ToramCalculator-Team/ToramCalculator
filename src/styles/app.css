@@ -101,8 +101,7 @@
   --radius-none: 0px;
   --radius-full: 9999px;
 
-  --font-sans:
-    var(--font-sans), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+  --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
     "Noto Color Emoji", "Noto Color Emoji";
 
   --background-image-aeskl: url("/app-image/bg.jpg");

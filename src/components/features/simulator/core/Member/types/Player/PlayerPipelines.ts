@@ -69,7 +69,7 @@ const sendRenderCommand = (context: PlayerStateContext, actionName: string, para
  * 1. 管线定义独立于状态机
  * 2. 使用语义化的管线名称（点分命名）
  * 3. 管线只与数据结构（PlayerStateContext）关联
- * 4. 可被状态机和行为树共享调用
+ * 4. 可被状态机和技能逻辑共享调用
  */
 
 /**
@@ -77,6 +77,7 @@ const sendRenderCommand = (context: PlayerStateContext, actionName: string, para
  */
 export const PlayerPipelineStages = {
   ...CommonStages,
+
   添加Buff: defineStage(
     z.object({
       buffId: z.string(),
@@ -85,7 +86,7 @@ export const PlayerPipelineStages = {
       variables: z.record(z.string(), z.number()).optional(),
       effects: z.array(z.any()).optional(),
     }),
-    z.object({ }),
+    z.object({}),
     (context, input) => {
       logLv >= 1 && console.log(`👤 [${context.name}][Pip] 添加Buff`);
 
@@ -103,9 +104,10 @@ export const PlayerPipelineStages = {
       };
 
       context.buffManager.addBuff(buff);
-      return { };
+      return {};
     },
   ),
+
   移除Buff: defineStage(
     z.object({
       buffId: z.string(),
@@ -117,6 +119,7 @@ export const PlayerPipelineStages = {
       return {};
     },
   ),
+
   检查Buff是否存在: defineStage(
     z.object({
       buffId: z.string(),
@@ -127,7 +130,8 @@ export const PlayerPipelineStages = {
       return { buffExists };
     },
   ),
-  获取buff计数器: defineStage(
+
+  获取buff计数器值: defineStage(
     z.object({
       buffId: z.string(),
     }),
@@ -137,7 +141,8 @@ export const PlayerPipelineStages = {
       return { chargeCounter };
     },
   ),
-  技能HP消耗: defineStage(z.object({}), z.object({ skillHpCostResult: z.number() }), (context, input) => {
+
+  技能HP消耗计算: defineStage(z.object({}), z.object({ skillHpCost: z.number() }), (context, input) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能HP消耗计算`);
     const hpCostExpression = context.currentSkillEffect?.hpCost;
     if (!hpCostExpression) {
@@ -148,10 +153,10 @@ export const PlayerPipelineStages = {
       casterId: context.id,
       skillLv: context.currentSkill?.lv ?? 0,
     });
-    return { skillHpCostResult: hpCost };
+    return { skillHpCost: hpCost };
   }),
 
-  技能MP消耗: defineStage(z.object({}), z.object({ skillMpCostResult: z.number() }), (context, input) => {
+  技能MP消耗计算: defineStage(z.object({}), z.object({ skillMpCost: z.number() }), (context, input) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能MP消耗计算`);
     const mpCostExpression = context.currentSkillEffect?.mpCost;
     if (!mpCostExpression) {
@@ -162,26 +167,26 @@ export const PlayerPipelineStages = {
       casterId: context.id,
       skillLv: context.currentSkill?.lv ?? 0,
     });
-    return { skillMpCostResult: mpCost };
+    return { skillMpCost: mpCost };
   }),
 
   技能消耗扣除: defineStage(
     z.object({
-      mpCost: z.number(),
-      hpCost: z.number(),
+      skillMpCost: z.number(),
+      skillHpCost: z.number(),
     }),
     z.object({}),
     (context, input) => {
       logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能消耗扣除`);
-      if (input.mpCost > 0) {
-        context.statContainer.addModifier("mp.current", ModifierType.STATIC_FIXED, -input.mpCost, {
+      if (input.skillMpCost > 0) {
+        context.statContainer.addModifier("mp.current", ModifierType.STATIC_FIXED, -input.skillMpCost, {
           id: `skill_cost_${context.currentSkill?.template?.name ?? "unknown"}_${context.currentFrame}`,
           name: "skill_mp_cost",
           type: "skill",
         });
       }
-      if (input.hpCost > 0) {
-        context.statContainer.addModifier("hp.current", ModifierType.STATIC_FIXED, -input.hpCost, {
+      if (input.skillHpCost > 0) {
+        context.statContainer.addModifier("hp.current", ModifierType.STATIC_FIXED, -input.skillHpCost, {
           id: `skill_cost_${context.currentSkill?.template?.name ?? "unknown"}_${context.currentFrame}`,
           name: "skill_hp_cost",
           type: "skill",
@@ -191,70 +196,32 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  仇恨值计算: defineStage(
-    z.object({ skillMpCostResult: z.number() }),
-    z.object({ aggroResult: z.number() }),
-    (context, input) => {
-      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 仇恨值计算`);
-      const aggro = input.skillMpCostResult * context.statContainer.getValue("aggro.rate");
-      return { aggroResult: aggro };
-    },
-  ),
-
-  技能固定动作时长: defineStage(z.object({}), z.object({ skillFixedMotionResult: z.number() }), (context, input) => {
-    logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能固定动作时长计算`);
-    const fixedMotionExpression = context.currentSkillEffect?.motionFixed;
-    const skill = context.currentSkill;
-    if (!skill || !fixedMotionExpression) {
-      throw new Error(`🎮 [${context.name}] 的当前技能不存在`);
-    }
-    const fixedMotion = context.engine.evaluateExpression(fixedMotionExpression, {
-      currentFrame: context.currentFrame,
-      casterId: context.id,
-      skillLv: skill.lv ?? 0,
-    });
-    return {
-      skillFixedMotionResult: fixedMotion,
-    };
-  }),
-
-  技能可变动作时长: defineStage(
+  前摇帧数计算: defineStage(
     z.object({}),
-    z.object({ skillModifiedMotionResult: z.number() }),
+    z.object({
+      startupFrames: z.number(),
+    }),
     (context, input) => {
-      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能可变动作时长计算`);
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 前摇帧数计算`);
+      const fixedMotionExpression = context.currentSkillEffect?.motionFixed;
       const modifiedMotionExpression = context.currentSkillEffect?.motionModified;
       const skill = context.currentSkill;
-      if (!skill || !modifiedMotionExpression) {
+      if (!skill || !fixedMotionExpression || !modifiedMotionExpression) {
         throw new Error(`🎮 [${context.name}] 的当前技能不存在`);
       }
+      const fixedMotion = context.engine.evaluateExpression(fixedMotionExpression, {
+        currentFrame: context.currentFrame,
+        casterId: context.id,
+        skillLv: skill.lv ?? 0,
+      });
       const modifiedMotion = context.engine.evaluateExpression(modifiedMotionExpression, {
         currentFrame: context.currentFrame,
         casterId: context.id,
         skillLv: skill.lv ?? 0,
       });
+      const startupFrames = (fixedMotion + modifiedMotion * context.statContainer.getValue("mspd")) * 0.5;
       return {
-        skillModifiedMotionResult: modifiedMotion,
-      };
-    },
-  ),
-
-  前摇帧数: defineStage(
-    z.object({
-      skillFixedMotionResult: z.number(),
-      skillModifiedMotionResult: z.number(),
-      mspdResult: z.number(),
-      startupProportion: z.number(),
-    }),
-    z.object({
-      startupFramesResult: z.number(),
-    }),
-    (context, input) => {
-      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 前摇帧数计算`);
-      const startupFrames =
-        (input.skillFixedMotionResult + input.skillModifiedMotionResult * input.mspdResult) * input.startupProportion;
-      return {
-        startupFramesResult: startupFrames,
+        startupFrames,
       };
     },
   ),
@@ -265,15 +232,87 @@ export const PlayerPipelineStages = {
     return {};
   }),
 
+  调度蓄力管线: defineStage(z.object({ startupFrames: z.number() }), z.object({}), (context, input) => {
+    logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度蓄力管线`);
+    schedulePipeline(context, input.startupFrames, "蓄力");
+    return {};
+  }),
+
+  蓄力帧数计算: defineStage(
+    z.object({ }),
+    z.object({ chargeFrames: z.number() }),
+    (context, input) => {
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 蓄力帧数计算`);
+      const mspd = context.statContainer.getValue("mspd");
+      if (!mspd) {
+        throw new Error(`🎮 [${context.name}] 的行动速度不存在`);
+      }
+      const reservoirFixedExpression = context.currentSkillEffect?.reservoirFixed;
+      const reservoirModifiedExpression = context.currentSkillEffect?.reservoirModified;
+      if (!reservoirFixedExpression || !reservoirModifiedExpression) {
+        throw new Error(`🎮 [${context.name}] 的当前技能不存在`);
+      }
+      const reservoirFixed = context.engine.evaluateExpression(reservoirFixedExpression, {
+        currentFrame: context.currentFrame,
+        casterId: context.id,
+      });
+      const reservoirModified = context.engine.evaluateExpression(reservoirModifiedExpression, {
+        currentFrame: context.currentFrame,
+        casterId: context.id,
+      });
+      const chargeFrames = reservoirFixed + reservoirModified * mspd;
+      return { chargeFrames: chargeFrames };
+    },
+  ),
+
   启动蓄力动画: defineStage(z.object({}), z.object({}), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动蓄力动画`);
     sendRenderCommand(context, "charging");
     return {};
   }),
 
+  调度咏唱管线: defineStage(z.object({ chargeFrames: z.number() }), z.object({}), (context, input) => {
+    logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度咏唱管线`);
+    schedulePipeline(context, input.chargeFrames, "咏唱");
+    return {};
+  }),
+
+  咏唱帧数计算: defineStage(
+    z.object({ }),
+    z.object({ chantingFrames: z.number() }),
+    (context, input) => {
+      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 咏唱帧数计算`);
+      const cspd = context.statContainer.getValue("cspd");
+      if (!cspd) {
+        throw new Error(`🎮 [${context.name}] 的咏唱速度不存在`);
+      }
+      const chantingFixedExpression = context.currentSkillEffect?.chantingFixed;
+      const chantingModifiedExpression = context.currentSkillEffect?.chantingModified;
+      if (!chantingFixedExpression || !chantingModifiedExpression) {
+        throw new Error(`🎮 [${context.name}] 的当前技能不存在`);
+      }
+      const chantingFixed = context.engine.evaluateExpression(chantingFixedExpression, {
+        currentFrame: context.currentFrame,
+        casterId: context.id,
+      });
+      const chantingModified = context.engine.evaluateExpression(chantingModifiedExpression, {
+        currentFrame: context.currentFrame,
+        casterId: context.id,
+      });
+      const chantingFrames = chantingFixed + chantingModified * cspd;
+      return { chantingFrames: chantingFrames };
+    },
+  ),
+
   启动咏唱动画: defineStage(z.object({}), z.object({}), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动咏唱动画`);
     sendRenderCommand(context, "chanting");
+    return {};
+  }),
+
+  调度发动管线: defineStage(z.object({ chantingFrames: z.number() }), z.object({}), (context, input) => {
+    logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度发动管线`);
+    schedulePipeline(context, input.chantingFrames, "发动");
     return {};
   }),
 
@@ -288,14 +327,13 @@ export const PlayerPipelineStages = {
     z.object({
       damageFormula: z.string(),
       extraVars: z.record(z.string(), z.any()).optional(),
-      targetId: z.string().optional(),
     }),
     z.object({}),
     (context, input) => {
       logLv >= 1 && console.log(`👤 [${context.name}][Pip] 对目标造成伤害`);
 
       const sourceId = context.id;
-      const targetId = input.targetId || context.targetId;
+      const targetId = context.targetId;
       if (!targetId) {
         throw new Error(`🎮 [${context.name}] 当前没有目标，无法构造伤害请求`);
       }
@@ -355,10 +393,10 @@ export type PlayerStagePool = typeof PlayerPipelineStages;
  */
 export const PlayerPipelineDef = {
   ...CommonPipelineDef,
-  前摇: ["技能消耗扣除", "启动前摇动画"],
-  蓄力: ["启动蓄力动画"],
-  咏唱: ["启动咏唱动画"],
-  发动: ["启动发动动画"],
+  前摇: ["技能HP消耗计算", "技能MP消耗计算", "技能消耗扣除", "前摇帧数计算", "启动前摇动画", "调度蓄力管线"],
+  蓄力: ["蓄力帧数计算", "启动蓄力动画", "调度咏唱管线"],
+  咏唱: ["咏唱帧数计算", "启动咏唱动画", "调度发动管线"],
+  发动: ["启动发动动画", "对目标造成伤害"],
 } as const satisfies PipeLineDef<PlayerStagePool>;
 
 export type PlayerPipelineDef = typeof PlayerPipelineDef;

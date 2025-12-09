@@ -98,18 +98,3 @@ export type OutputOfSchema<T extends ZodType> = z.output<T>;
 export type PipeLineDef<TPool extends StagePool<any> = StagePool<any>> = {
   [pipelineName: string]: readonly (keyof TPool & string)[];
 };
-
-/**
- * 从管线定义推导每个管线的输入参数类型
- * 取第一个阶段的 InputSchema 作为管线输入类型
- */
-export type PipelineParamsFromDef<
-  TDef extends PipeLineDef<TPool>,
-  TPool extends StagePool<any>,
-> = {
-  [P in keyof TDef]: TDef[P] extends readonly [infer FirstStageName extends keyof TPool, ...any[]]
-    ? TPool[FirstStageName] extends PipelineStage<infer FirstInputSchema, any, any>
-      ? OutputOfSchema<FirstInputSchema>
-      : Record<string, any>
-    : Record<string, any>; // 空管线默认为空对象
-};

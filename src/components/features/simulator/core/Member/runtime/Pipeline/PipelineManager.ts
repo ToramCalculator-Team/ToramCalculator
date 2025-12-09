@@ -7,14 +7,7 @@
  */
 
 import { ZodType } from "zod/v4";
-import {
-  OutputOfSchema,
-  PipeLineDef,
-  PipelineParamsFromDef,
-  StagePool,
-  StageOutputSchema,
-  StageInputSchema,
-} from "./PipelineStageType";
+import { OutputOfSchema, PipeLineDef, StagePool, StageOutputSchema, StageInputSchema } from "./PipelineStageType";
 
 // ==================== 类型定义 ====================
 
@@ -142,7 +135,7 @@ type StageOutputsOf<
  * 设计理念：
  * 2. 使用管线名称作为标识符
  * 3. 与运行时上下文（TCtx）关联，由数据结构决定
- * 4. 管线的输入参数类型从第一个阶段的 InputSchema 自动推导
+ * 4. 管线输入通过运行时校验（zod），不再依赖第一个阶段类型推导
  *
  * @template TDef - 管线定义（管线名称 → 阶段名数组）
  * @template TPool - 阶段池
@@ -164,7 +157,7 @@ export class PipelineManager<
   private compiledChains: {
     [P in keyof TDef]?: (
       ctx: TCtx,
-      params?: PipelineParamsFromDef<TDef, TPool>[P],
+      params?: Record<string, any>,
     ) => {
       ctx: TCtx;
       stageOutputs: StageOutputsOf<TDef, P, TPool>;
@@ -177,6 +170,25 @@ export class PipelineManager<
     /** 阶段池：包含具体的实现 */
     public readonly stagePool: TPool,
   ) {}
+
+  /**
+   * 动态注册自定义管线，返回清理函数
+   */
+  registerPipelines(custom: { name: string; stages: string[] }[], source = "dynamic"): () => void {
+    const added: string[] = [];
+    for (const cp of custom ?? []) {
+      if (!cp?.name || !Array.isArray(cp.stages)) continue;
+      (this.pipelineDef as any)[cp.name] = cp.stages as any;
+      delete this.compiledChains[cp.name as keyof TDef];
+      added.push(cp.name);
+    }
+    return () => {
+      for (const name of added) {
+        delete (this.pipelineDef as any)[name];
+        delete this.compiledChains[name as keyof TDef];
+      }
+    };
+  }
 
   /**
    * 插入动态阶段
@@ -316,7 +328,7 @@ export class PipelineManager<
     pipelineName: P,
   ): (
     ctx: TCtx,
-    params?: PipelineParamsFromDef<TDef, TPool>[P],
+    params?: Record<string, any>,
   ) => { ctx: TCtx; stageOutputs: StageOutputsOf<TDef, P, TPool> } {
     const stageNames = this.pipelineDef[pipelineName]; // readonly string[]
 
@@ -330,10 +342,12 @@ export class PipelineManager<
       return addition;
     };
 
-    return (ctx: TCtx, params?: PipelineParamsFromDef<TDef, TPool>[P]) => {
+    return (ctx: TCtx, params?: Record<string, any>) => {
       // working copy of ctx so we don't mutate caller's object unexpectedly
       const currentCtx: any = Object.assign({}, ctx);
-      let prevOutput: any = params ?? {};
+      const initialParams = params ?? {};
+      Object.assign(currentCtx, initialParams);
+      let prevOutput: any = initialParams;
       const stageOutputs = {} as StageOutputsOf<TDef, P, TPool>;
 
       // iterate each static stage in order
@@ -457,7 +471,7 @@ export class PipelineManager<
   run<P extends keyof TDef>(
     pipelineName: P,
     ctx: TCtx,
-    params?: PipelineParamsFromDef<TDef, TPool>[P],
+    params?: Record<string, any>,
   ): { ctx: TCtx; stageOutputs: StageOutputsOf<TDef, P, TPool> } {
     // ensure compiled chain exists for pipeline
     if (!this.compiledChains[pipelineName]) {

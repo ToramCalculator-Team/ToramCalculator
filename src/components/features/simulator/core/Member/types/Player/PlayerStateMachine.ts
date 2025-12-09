@@ -8,7 +8,8 @@ import { CharacterSkillWithRelations } from "@db/generated/repositories/characte
 import { CharacterWithRelations } from "@db/generated/repositories/character";
 import { PipelineManager } from "../../runtime/Pipeline/PipelineManager";
 import { PlayerPipelineDef, PlayerStagePool } from "./PlayerPipelines";
-import { behaviorTreeActor, type BehaviorTreeInput } from "../../runtime/BehaviorTree/BehaviorTreeActor";
+import { skillLogicActor, type SkillLogicActorInput } from "../../runtime/SkillLogic/skillLogicActor";
+import { runSkillLogic } from "../../runtime/SkillLogic/skillLogicExecutor";
 import type { MemberStateContext } from "../../runtime/StateMachine/types";
 
 /**
@@ -297,15 +298,31 @@ export const playerStateMachine = (player: Player) => {
           currentSkillEffect: skillEffect,
         });
       }),
-      执行技能: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 执行技能`, event);
-        const skill = context.currentSkill;
-        if (!skill) {
-          console.error(`🎮 [${context.name}] 技能不存在`);
+      执行技能: enqueueActions(({ context, enqueue }) => {
+        console.log(`👤 [${context.name}] 执行技能`, { skill: context.currentSkill?.template?.name });
+
+        const skillEffect = context.currentSkillEffect;
+        if (!skillEffect) {
+          console.warn(`🎮 [${context.name}] 当前技能缺少有效效果，跳过执行`);
+          enqueue.raise({ type: "技能执行完成" });
           return;
         }
-        // 执行技能逻辑代码
-      },
+
+        try {
+          const result = runSkillLogic({
+            owner: context,
+            logic: skillEffect.logic,
+            skillId: skillEffect.id ?? context.currentSkill?.id ?? "unknown_skill",
+          });
+          // runSkillLogic 已在内部调度“技能执行完成”事件到引擎队列
+          if (result.status === "failure") {
+            enqueue.raise({ type: "技能执行完成" });
+          }
+        } catch (error) {
+          console.error(`❌ [${context.name}] 技能执行失败`, error);
+          enqueue.raise({ type: "技能执行完成" });
+        }
+      }),
       重置控制抵抗时间: function ({ context, event }) {
         // Add your action code here
         // ...
@@ -599,7 +616,7 @@ export const playerStateMachine = (player: Player) => {
       },
     },
     actors: {
-      behaviorTreeActor,
+      skillLogicActor,
     },
   }).createMachine({
     context: {
