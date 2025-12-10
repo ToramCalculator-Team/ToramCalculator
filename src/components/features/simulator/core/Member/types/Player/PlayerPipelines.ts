@@ -13,6 +13,34 @@ const maxMin = (min: number, value: number, max: number) => {
   return Math.max(min, Math.min(value, max));
 };
 
+const getPathValue = (obj: any, path: string | undefined) => {
+  if (!obj || !path) return undefined;
+  return path.split(".").reduce((acc, key) => {
+    if (acc && typeof acc === "object" && key in acc) {
+      return (acc as any)[key];
+    }
+    return undefined;
+  }, obj);
+};
+
+const setPathValue = (obj: any, path: string, value: any) => {
+  if (!path) return obj;
+  const parts = path.split(".");
+  let cursor = obj as any;
+  for (let i = 0; i < parts.length; i++) {
+    const key = parts[i];
+    if (i === parts.length - 1) {
+      cursor[key] = value;
+      return obj;
+    }
+    if (!cursor[key] || typeof cursor[key] !== "object") {
+      cursor[key] = {};
+    }
+    cursor = cursor[key];
+  }
+  return obj;
+};
+
 const schedulePipeline = (
   context: PlayerStateContext,
   delayFrames: number,
@@ -83,7 +111,7 @@ export const PlayerPipelineStages = {
       buffId: z.string(),
       buffName: z.string(),
       duration: z.number(),
-      variables: z.record(z.string(), z.number()).optional(),
+      variables: z.record(z.string(), z.union([z.number(), z.boolean()])).optional(),
       effects: z.array(z.any()).optional(),
     }),
     z.object({}),
@@ -137,8 +165,36 @@ export const PlayerPipelineStages = {
     }),
     z.object({ chargeCounter: z.number() }),
     (context, input) => {
-      const chargeCounter = context.buffManager.getVariable(input.buffId, "chargeCounter");
+      const chargeCounter = context.buffManager.getVariable(input.buffId, "chargeCounter", 0);
       return { chargeCounter };
+    },
+  ),
+
+  应用数值表达式: defineStage(
+    z.object({
+      targetPath: z.string(),
+      expression: z.string(),
+      vars: z.record(z.string(), z.any()).optional(),
+    }),
+    z.object({ newValue: z.union([z.number(), z.boolean()]).optional() }),
+    (context, input) => {
+      const { targetPath, expression, vars } = input;
+      const currentValue = getPathValue(context, targetPath);
+      try {
+        const evalCtx = {
+          currentFrame: context.currentFrame,
+          casterId: context.id,
+          x: currentValue,
+          ctx: context,
+          ...vars,
+        };
+        const newValue = context.engine.evaluateExpression(expression, evalCtx);
+        setPathValue(context, targetPath, newValue);
+        return { newValue };
+      } catch (error) {
+        console.error(`❌ [${context.name}][Pip] 应用数值表达式失败:`, error);
+        return { newValue: currentValue };
+      }
     },
   ),
 
@@ -232,11 +288,24 @@ export const PlayerPipelineStages = {
     return {};
   }),
 
-  调度蓄力管线: defineStage(z.object({ startupFrames: z.number() }), z.object({}), (context, input) => {
-    logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度蓄力管线`);
-    schedulePipeline(context, input.startupFrames, "蓄力");
-    return {};
-  }),
+  调度前摇结束事件: defineStage(
+    z.object({
+      startupFrames: z.number().optional(),
+    }),
+    z.object({}),
+    (context, input) => {
+      const delay = Math.max(1, Math.round(input.startupFrames ?? (context as any).startupFrames ?? 0));
+      context.engine.dispatchMemberEvent(
+        context.id,
+        "收到前摇结束通知",
+        {},
+        delay,
+        context.currentSkill?.id ?? "unknown_skill",
+        { source: "pipeline.event.startup" },
+      );
+      return {};
+    },
+  ),
 
   蓄力帧数计算: defineStage(
     z.object({ }),
@@ -271,11 +340,24 @@ export const PlayerPipelineStages = {
     return {};
   }),
 
-  调度咏唱管线: defineStage(z.object({ chargeFrames: z.number() }), z.object({}), (context, input) => {
-    logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度咏唱管线`);
-    schedulePipeline(context, input.chargeFrames, "咏唱");
-    return {};
-  }),
+  调度蓄力结束事件: defineStage(
+    z.object({
+      chargeFrames: z.number().optional(),
+    }),
+    z.object({}),
+    (context, input) => {
+      const delay = Math.max(1, Math.round(input.chargeFrames ?? (context as any).chargeFrames ?? 0));
+      context.engine.dispatchMemberEvent(
+        context.id,
+        "收到蓄力结束通知",
+        {},
+        delay,
+        context.currentSkill?.id ?? "unknown_skill",
+        { source: "pipeline.event.charging" },
+      );
+      return {};
+    },
+  ),
 
   咏唱帧数计算: defineStage(
     z.object({ }),
@@ -310,15 +392,53 @@ export const PlayerPipelineStages = {
     return {};
   }),
 
-  调度发动管线: defineStage(z.object({ chantingFrames: z.number() }), z.object({}), (context, input) => {
-    logLv >= 1 && console.log(`👤 [${context.name}][Pip] 调度发动管线`);
-    schedulePipeline(context, input.chantingFrames, "发动");
-    return {};
-  }),
+  调度咏唱结束事件: defineStage(
+    z.object({
+      chantingFrames: z.number().optional(),
+    }),
+    z.object({}),
+    (context, input) => {
+      const delay = Math.max(1, Math.round(input.chantingFrames ?? (context as any).chantingFrames ?? 0));
+      context.engine.dispatchMemberEvent(
+        context.id,
+        "收到咏唱结束事件",
+        {},
+        delay,
+        context.currentSkill?.id ?? "unknown_skill",
+        { source: "pipeline.event.chanting" },
+      );
+      return {};
+    },
+  ),
 
   启动发动动画: defineStage(z.object({}), z.object({}), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动发动动画`);
     sendRenderCommand(context, "action");
+    return {};
+  }),
+
+  调度发动结束事件: defineStage(
+    z.object({
+      actionFrames: z.number().optional(),
+    }),
+    z.object({}),
+    (context, input) => {
+      const delay = Math.max(1, Math.round(input.actionFrames ?? (context as any).actionFrames ?? 0));
+      context.engine.dispatchMemberEvent(
+        context.id,
+        "收到发动结束通知",
+        {},
+        delay,
+        context.currentSkill?.id ?? "unknown_skill",
+        { source: "pipeline.event.action" },
+      );
+      return {};
+    },
+  ),
+
+  应用当前技能效果: defineStage(z.object({}), z.object({}), (context) => {
+    logLv >= 1 && console.log(`👤 [${context.name}][Pip] 应用当前技能效果 (占位)`);
+    // TODO: 在正式实现时，调用具体的技能效果终端管线
     return {};
   }),
 
@@ -393,10 +513,10 @@ export type PlayerStagePool = typeof PlayerPipelineStages;
  */
 export const PlayerPipelineDef = {
   ...CommonPipelineDef,
-  前摇: ["技能HP消耗计算", "技能MP消耗计算", "技能消耗扣除", "前摇帧数计算", "启动前摇动画", "调度蓄力管线"],
-  蓄力: ["蓄力帧数计算", "启动蓄力动画", "调度咏唱管线"],
-  咏唱: ["咏唱帧数计算", "启动咏唱动画", "调度发动管线"],
-  发动: ["启动发动动画", "对目标造成伤害"],
+  // 前摇: ["技能HP消耗计算", "技能MP消耗计算", "技能消耗扣除", "前摇帧数计算", "启动前摇动画", "调度蓄力管线"],
+  // 蓄力: ["蓄力帧数计算", "启动蓄力动画", "调度咏唱管线"],
+  // 咏唱: ["咏唱帧数计算", "启动咏唱动画", "调度发动管线"],
+  // 发动: ["启动发动动画", "对目标造成伤害"],
 } as const satisfies PipeLineDef<PlayerStagePool>;
 
 export type PlayerPipelineDef = typeof PlayerPipelineDef;

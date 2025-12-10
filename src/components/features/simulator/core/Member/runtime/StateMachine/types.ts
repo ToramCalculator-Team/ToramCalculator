@@ -6,6 +6,7 @@ import { MemberType } from "@db/schema/enums";
 import GameEngine from "../../../GameEngine";
 import { BuffManager } from "../Buff/BuffManager";
 import { StatContainer } from "../StatContainer/StatContainer";
+import type { BehaviorTreeHost } from "../BehaviorTree/BehaviorTreeHost";
 
 /**
  * 成员事件类型枚举
@@ -110,4 +111,12 @@ export interface MemberStateContext {
   currentFrame: number;
   /** 状态标签组 */
   statusTags: string[];
+  /** 通用黑板（行为树/管线共享） */
+  blackboard?: Record<string, unknown>;
+  /** 技能相关的共享状态，如魔法炮充能 */
+  skillState?: Record<string, unknown>;
+  /** Buff 相关的共享状态 */
+  buffState?: Record<string, unknown>;
+  /** 行为树宿主（统一管理 skill/buff/ai 树实例） */
+  behaviorTreeHost?: BehaviorTreeHost;
 }

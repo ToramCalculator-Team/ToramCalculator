@@ -72,9 +72,11 @@ export interface BuffInstance {
   /** 动态管线阶段对应的清理函数 */
   _pipelineStageCleanups?: Array<() => void>;
   
-  // 临时变量存储（用于 Buff 内部的自定义计数器等）
-  /** 临时变量（如充能计数器） */
-  variables?: Record<string, number>;
+  /**
+   * 临时变量存储（用于 Buff 内部的自定义计数器等）
+   * 例如：魔法炮充能计数、阶段标记等
+   */
+  variables?: Record<string, number | boolean>;
 }
 
 // ==================== BuffManager 实现 ====================
@@ -375,18 +377,22 @@ export class BuffManager {
   }
 
   /**
-   * 获取 Buff 变量值
+   * 获取 Buff 变量值（不存在则返回 defaultValue 或 0）
    */
-  getVariable(buffId: string, name: string): number {
+  getVariable<T extends number | boolean = number>(buffId: string, name: string, defaultValue?: T): T {
     const buff = this.buffs.get(buffId);
-    if (!buff) return 0;
-    return buff.variables?.[name] ?? 0;
+    if (!buff) return (defaultValue ?? (0 as T));
+    const value = buff.variables?.[name];
+    if (value === undefined || value === null) {
+      return (defaultValue ?? (0 as T));
+    }
+    return value as T;
   }
 
   /**
    * 设置 Buff 变量值
    */
-  setVariable(buffId: string, name: string, value: number): void {
+  setVariable(buffId: string, name: string, value: number | boolean): void {
     const buff = this.buffs.get(buffId);
     if (!buff) return;
     

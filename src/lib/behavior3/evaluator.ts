@@ -181,10 +181,10 @@ export class ExpressionEvaluator {
                         stack.push(this._toValue(a) ^ this._toValue(b));
                         break;
                     case TokenType.AND:
-                        stack.push(this._toValue(a, false) && this._toValue(b, false));
+                        stack.push(this._toValue(a) && this._toValue(b));
                         break;
                     case TokenType.OR:
-                        stack.push(this._toValue(a, false) || this._toValue(b, false));
+                        stack.push(this._toValue(a) || this._toValue(b));
                         break;
                     default:
                         throw new Error(`unsupport operator: ${token.value}`);

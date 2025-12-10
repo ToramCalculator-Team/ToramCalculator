@@ -209,8 +209,8 @@ export const CommonStages = {
 export type CommonStagePool = typeof CommonStages;
 
 export const CommonPipelineDef = {
-  命中计算: ["计算命中判定"],
-  伤害计算: ["解析伤害请求", "执行伤害表达式", "应用伤害结果"],
+  // 命中计算: ["计算命中判定"],
+  // 伤害计算: ["解析伤害请求", "执行伤害表达式", "应用伤害结果"],
 } as const satisfies PipeLineDef<CommonStagePool>;
 
 export type CommonPipelineDef = typeof CommonPipelineDef;

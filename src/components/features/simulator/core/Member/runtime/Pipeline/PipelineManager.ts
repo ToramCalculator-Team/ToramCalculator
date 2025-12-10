@@ -146,6 +146,9 @@ export class PipelineManager<
   TPool extends StagePool<TCtx>,
   TCtx extends Record<string, any>,
 > {
+  /** 按作用域的管线覆盖：member、skill */
+  private memberOverrides?: Partial<TDef>;
+  private skillOverrides?: Partial<TDef>;
   /** 动态阶段存储：pipelineName -> stageName -> list of dynamic entries */
   private dynamicStages: {
     [P in keyof TDef]?: {
@@ -154,15 +157,10 @@ export class PipelineManager<
   } = {} as any;
 
   /** 缓存已编译的执行链：pipelineName -> compiled chain */
-  private compiledChains: {
-    [P in keyof TDef]?: (
-      ctx: TCtx,
-      params?: Record<string, any>,
-    ) => {
-      ctx: TCtx;
-      stageOutputs: StageOutputsOf<TDef, P, TPool>;
-    };
-  } = {} as any;
+  private compiledChains: Record<
+    string,
+    (ctx: TCtx, params?: Record<string, any>) => { ctx: TCtx; stageOutputs: Record<string, any> }
+  > = {};
 
   constructor(
     /** 管线定义：每个管线名称对应静态阶段名数组 */
@@ -179,15 +177,36 @@ export class PipelineManager<
     for (const cp of custom ?? []) {
       if (!cp?.name || !Array.isArray(cp.stages)) continue;
       (this.pipelineDef as any)[cp.name] = cp.stages as any;
-      delete this.compiledChains[cp.name as keyof TDef];
+      delete this.compiledChains[String(cp.name)];
       added.push(cp.name);
     }
     return () => {
       for (const name of added) {
         delete (this.pipelineDef as any)[name];
-        delete this.compiledChains[name as keyof TDef];
       }
+      this.compiledChains = {};
     };
+  }
+
+  /**
+   * 设置角色级覆盖（作用于当前 PipelineManager 实例）
+   */
+  setMemberOverrides(overrides?: Partial<TDef>) {
+    this.memberOverrides = overrides;
+    this.compiledChains = {};
+  }
+
+  /**
+   * 设置技能级覆盖（一次技能作用域，优先级最高）
+   */
+  setSkillOverrides(overrides?: Partial<TDef>) {
+    this.skillOverrides = overrides;
+    this.compiledChains = {};
+  }
+
+  clearSkillOverrides() {
+    this.skillOverrides = undefined;
+    this.compiledChains = {};
   }
 
   /**
@@ -230,7 +249,7 @@ export class PipelineManager<
     }
 
     // 动态阶段变动时清空缓存
-    delete this.compiledChains[pipelineName];
+    this.compiledChains = {};
 
     // 返回清理函数
     return () => {
@@ -238,7 +257,7 @@ export class PipelineManager<
       if (index !== -1) {
         list.splice(index, 1);
         // 清空缓存以应用移除
-        delete this.compiledChains[pipelineName];
+        this.compiledChains = {};
       }
     };
   }
@@ -271,6 +290,16 @@ export class PipelineManager<
     if (changed) {
       this.compiledChains = {} as any; // 清空所有缓存，简单粗暴
     }
+  }
+
+  private mergeOutputs(base: any, addition: any) {
+    if (addition && typeof addition === "object") {
+      if (base && typeof base === "object") {
+        return { ...base, ...addition };
+      }
+      return { ...addition };
+    }
+    return addition;
   }
 
   /**
@@ -326,21 +355,11 @@ export class PipelineManager<
    */
   private compile<P extends keyof TDef>(
     pipelineName: P,
+    stageNames: readonly string[],
   ): (
     ctx: TCtx,
     params?: Record<string, any>,
   ) => { ctx: TCtx; stageOutputs: StageOutputsOf<TDef, P, TPool> } {
-    const stageNames = this.pipelineDef[pipelineName]; // readonly string[]
-
-    const mergeOutputs = (base: any, addition: any) => {
-      if (addition && typeof addition === "object") {
-        if (base && typeof base === "object") {
-          return { ...base, ...addition };
-        }
-        return { ...addition };
-      }
-      return addition;
-    };
 
     return (ctx: TCtx, params?: Record<string, any>) => {
       // working copy of ctx so we don't mutate caller's object unexpectedly
@@ -395,13 +414,13 @@ export class PipelineManager<
           // merge parsed data into context
           Object.assign(currentCtx, outputParsed.data);
           // 累积输出给下一阶段
-          prevOutput = mergeOutputs(prevOutput, outputParsed.data);
+          prevOutput = this.mergeOutputs(prevOutput, outputParsed.data);
         } else {
           // no schema: if stageOut is object, merge into ctx; otherwise keep primitive as prevOutput
           if (stageOut && typeof stageOut === "object") {
             Object.assign(currentCtx, stageOut);
           }
-          prevOutput = mergeOutputs(prevOutput, stageOut);
+          prevOutput = this.mergeOutputs(prevOutput, stageOut);
         }
 
         // ---------- 保存阶段输出（类型断言为 StageOutputsOf） ----------
@@ -416,7 +435,7 @@ export class PipelineManager<
           if (typeof dynOut === "object") {
             Object.assign(currentCtx, dynOut);
           }
-          prevOutput = mergeOutputs(prevOutput, dynOut);
+          prevOutput = this.mergeOutputs(prevOutput, dynOut);
           // 同样把动态阶段的结果视为该阶段最终输出（覆盖）
           (stageOutputs as any)[typedStageName] = prevOutput;
         }
@@ -473,10 +492,22 @@ export class PipelineManager<
     ctx: TCtx,
     params?: Record<string, any>,
   ): { ctx: TCtx; stageOutputs: StageOutputsOf<TDef, P, TPool> } {
-    // ensure compiled chain exists for pipeline
-    if (!this.compiledChains[pipelineName]) {
-      this.compiledChains[pipelineName] = this.compile(pipelineName);
+    // 按优先级解析管线定义：skill > member > global
+    const stageNames =
+      (this.skillOverrides?.[pipelineName] as unknown as readonly string[] | undefined) ??
+      (this.memberOverrides?.[pipelineName] as unknown as readonly string[] | undefined) ??
+      this.pipelineDef[pipelineName];
+
+    if (!stageNames) {
+      throw new Error(`[PipelineManager] 找不到管线定义: ${String(pipelineName)}`);
     }
-    return this.compiledChains[pipelineName](ctx, params);
+
+    const cacheKey = `${String(pipelineName)}::${stageNames.join("|")}`;
+    if (!this.compiledChains[cacheKey]) {
+      this.compiledChains[cacheKey] = this.compile(pipelineName, stageNames) as any;
+    }
+
+    const result = this.compiledChains[cacheKey](ctx as any, params) as any;
+    return result as { ctx: TCtx; stageOutputs: StageOutputsOf<TDef, P, TPool> };
   }
 }

@@ -11,6 +11,7 @@ import { PlayerPipelineDef, PlayerStagePool } from "./PlayerPipelines";
 import { skillLogicActor, type SkillLogicActorInput } from "../../runtime/SkillLogic/skillLogicActor";
 import { runSkillLogic } from "../../runtime/SkillLogic/skillLogicExecutor";
 import type { MemberStateContext } from "../../runtime/StateMachine/types";
+import { BehaviorTreeHost } from "../../runtime/BehaviorTree/BehaviorTreeHost";
 
 /**
  * Player特有的事件类型
@@ -184,6 +185,8 @@ export interface PlayerStateContext extends MemberStateContext {
   aggro: number;
   /** 机体配置信息 */
   character: CharacterWithRelations;
+  /** 行为树宿主 */
+  behaviorTreeHost?: BehaviorTreeHost;
   /** 当前处理的伤害请求（受击者侧使用） */
   currentDamageRequest?: {
     sourceId: string;
@@ -243,6 +246,11 @@ export const playerStateMachine = (player: Player) => {
         enqueue.assign({
           currentFrame: context.currentFrame + 1,
         });
+        // 每帧驱动当前成员的行为树
+        if (!context.behaviorTreeHost) {
+          (context as any).behaviorTreeHost = new BehaviorTreeHost(context);
+        }
+        context.behaviorTreeHost?.tickAll();
       }),
       启用站立动画: function ({ context, event }) {
         // Add your action code here
@@ -280,6 +288,10 @@ export const playerStateMachine = (player: Player) => {
       清空待处理技能: function ({ context, event }) {
         console.log(`👤 [${context.name}] 清空待处理技能`, event);
         context.currentSkill = null;
+        context.behaviorTreeHost?.clear();
+      },
+      清理行为树: function ({ context }) {
+        context.behaviorTreeHost?.clear();
       },
       添加待处理技能效果: enqueueActions(({ context, event, enqueue }) => {
         console.log(`👤 [${context.name}] 添加待处理技能效果`, event);
@@ -314,10 +326,7 @@ export const playerStateMachine = (player: Player) => {
             logic: skillEffect.logic,
             skillId: skillEffect.id ?? context.currentSkill?.id ?? "unknown_skill",
           });
-          // runSkillLogic 已在内部调度“技能执行完成”事件到引擎队列
-          if (result.status === "failure") {
-            enqueue.raise({ type: "技能执行完成" });
-          }
+          enqueue.raise({ type: "技能执行完成", data: { status: result.status } } as any);
         } catch (error) {
           console.error(`❌ [${context.name}] 技能执行失败`, error);
           enqueue.raise({ type: "技能执行完成" });
@@ -633,6 +642,7 @@ export const playerStateMachine = (player: Player) => {
       position: player.position,
       createdAtFrame: player.engine.getCurrentFrame(),
       currentFrame: player.engine.getCurrentFrame(),
+      behaviorTreeHost: new BehaviorTreeHost(player as any as MemberStateContext),
       currentSkillStartupFrames: 0,
       currentSkillChargingFrames: 0,
       currentSkillChantingFrames: 0,
@@ -892,6 +902,9 @@ export const playerStateMachine = (player: Player) => {
         },
       },
       死亡: {
+        entry: {
+          type: "清理行为树",
+        },
         on: {
           复活: {
             target: `#${machineId}.存活.可操作状态`,

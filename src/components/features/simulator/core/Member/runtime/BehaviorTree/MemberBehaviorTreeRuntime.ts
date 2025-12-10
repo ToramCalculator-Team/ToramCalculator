@@ -4,6 +4,9 @@ import type { Node } from "~/lib/behavior3/node";
 import type { TreeData } from "~/lib/behavior3/tree";
 import { RunPipeline } from "./nodes/RunPipeline";
 import { ScheduleFSMEvent } from "./nodes/ScheduleFSMEvent";
+import { RunStage } from "./nodes/RunStage";
+import { SchedulePipeline } from "./nodes/SchedulePipeline";
+import { InsertDynamicStage } from "./nodes/InsertDynamicStage";
 import type { MemberStateContext } from "../StateMachine/types";
 
 type CustomNodeCtor = NodeContructor<Node>;
@@ -32,6 +35,9 @@ export class MemberBehaviorTreeRuntime<TOwner extends MemberStateContext> extend
 
     this.registerNode(RunPipeline);
     this.registerNode(ScheduleFSMEvent);
+    this.registerNode(RunStage);
+    this.registerNode(SchedulePipeline);
+    this.registerNode(InsertDynamicStage);
     options?.customNodes?.forEach((node) => this.registerNode(node as any));
   }
 
