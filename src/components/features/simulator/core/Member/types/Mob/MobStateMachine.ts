@@ -6,7 +6,7 @@ import { Mob, MobAttrType } from "./Mob";
 import { ModifierType } from "../../runtime/StatContainer/StatContainer";
 import { GameEngine } from "../../../GameEngine";
 import { MobPipelineStages, MobPipelineDef, MobStagePool } from "./MobPipelines";
-import { PipelineManager } from "../../runtime/Pipeline/PipelineManager";
+import { PipelineManager } from "../../runtime/Action/ActionManager";
 import type { MemberStateContext, MemberStateMachine } from "../../runtime/StateMachine/types";
 
 /**

@@ -1,6 +1,6 @@
 import { Actor, createActor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
-import { PipelineManager, type PipelineDynamicStageInfo } from "../Pipeline/PipelineManager";
-import { PipeLineDef, StagePool } from "../Pipeline/PipelineStageType";
+import { PipelineManager, type PipelineDynamicStageInfo } from "../Action/ActionManager";
+import { PipeLineDef, StagePool } from "../Action/type";
 import { Member } from "../../Member";
 import { MemberType } from "@db/schema/enums";
 import GameEngine from "../../../GameEngine";

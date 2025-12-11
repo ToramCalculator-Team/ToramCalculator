@@ -4,7 +4,7 @@ import {
   PlayerPipelineDef,
   type PlayerStagePool,
 } from "../../simulator/core/Member/types/Player/PlayerPipelines";
-import type { PipelineStage } from "../../simulator/core/Member/runtime/Pipeline/PipelineStageType";
+import type { PipelineStage } from "../../simulator/core/Member/runtime/Action/type";
 
 export type PipelineParamKind = "number" | "boolean" | "string" | "enum" | "json";
 

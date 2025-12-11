@@ -1,6 +1,6 @@
-import { PipeLineDef, StagePool } from "../../runtime/Pipeline/PipelineStageType";
+import { PipeLineDef, StagePool } from "../../runtime/Action/type";
 import { MobStateContext } from "./MobStateMachine";
-import { CommonStages, CommonPipelineDef } from "../../runtime/Pipeline/CommonPipelines";
+import { CommonStages, CommonPipelineDef } from "../../runtime/Action/CommonActions";
 
 export const MobPipelineStages = {
   ...CommonStages,

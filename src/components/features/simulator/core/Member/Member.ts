@@ -5,8 +5,8 @@ import { NestedSchema } from "./runtime/StatContainer/SchemaTypes";
 import GameEngine from "../GameEngine";
 import { MemberType } from "@db/schema/enums";
 import { BuffManager } from "./runtime/Buff/BuffManager";
-import { PipelineManager, type PipelineDynamicStageInfo } from "./runtime/Pipeline/PipelineManager";
-import { PipeLineDef, StagePool } from "./runtime/Pipeline/PipelineStageType";
+import { ActionManager, type ActionDynamicStageInfo } from "./runtime/Action/ActionManager";
+import { ActionPool } from "./runtime/Action/type";
 import { MemberActor, MemberStateMachine } from "./runtime/StateMachine/types";
 
 /**
@@ -26,7 +26,7 @@ export interface BuffViewData {
   maxStacks?: number;
   source?: string;
   description?: string;
-  variables?: Record<string, number>; // 如 chargeCounter 等
+  variables?: Record<string, number | boolean>; // 如 chargeCounter 等
   // 动态管线效果信息（简要描述）
   dynamicEffects?: Array<{
     pipeline: string;
@@ -34,7 +34,7 @@ export interface BuffViewData {
     priority?: number;
   }>;
   /** 实时动态阶段快照 */
-  activePipelineStages?: PipelineDynamicStageInfo[];
+  activePipelineStages?: ActionDynamicStageInfo[];
 }
 
 export interface MemberSerializeData {
@@ -59,8 +59,7 @@ export interface MemberSerializeData {
 export class Member<
   TAttrKey extends string,
   TEvent extends EventObject,
-  TPipelineDef extends PipeLineDef<TStagePool>,
-  TStagePool extends StagePool<TExContext>,
+  TActionPool extends ActionPool<TExContext>,
   TExContext extends Record<string, any>,
 > {
   /** 成员ID */
@@ -83,10 +82,12 @@ export class Member<
   statContainer: StatContainer<TAttrKey>;
   /** Buff 管理器（生命周期/钩子/机制状态） */
   buffManager: BuffManager;
-  /** 管线管理器（固定+动态管线阶段管理） */
-  pipelineManager: PipelineManager<TPipelineDef, TStagePool, TExContext>;
+  /** 动作管理器（固定+动态动作组管理） */
+  actionManager: ActionManager<any, TActionPool, TExContext>;
+  /** 兼容旧命名，保留 pipelineManager 引用 */
+  pipelineManager: ActionManager<any, TActionPool, TExContext>;
   /** 成员Actor引用 */
-  actor: MemberActor<TAttrKey, TEvent, TPipelineDef, TStagePool, TExContext>;
+  actor: MemberActor<TAttrKey, TEvent, TActionPool, TExContext>;
   /** 引擎引用 */
   engine: GameEngine;
   /** 成员数据 */
@@ -158,15 +159,15 @@ export class Member<
   constructor(
     stateMachine: (
       member: any,
-    ) => MemberStateMachine<TAttrKey, TEvent, TPipelineDef, TStagePool, TExContext>,
+    ) => MemberStateMachine<TAttrKey, TEvent, TActionPool, TExContext>,
     engine: GameEngine,
     campId: string,
     teamId: string,
     targetId: string,
     memberData: MemberWithRelations,
     dataSchema: NestedSchema,
-    pipelineDef: TPipelineDef,
-    stagePool: TStagePool,
+    actionPool: TActionPool,
+    actionGroupDef: Record<string, string[]> = {},
     position?: { x: number; y: number; z: number },
   ) {
     this.id = memberData.id;
@@ -181,8 +182,9 @@ export class Member<
     this.data = memberData;
     this.statContainer = new StatContainer<TAttrKey>(dataSchema);
 
-    // 使用传入的配置直接初始化管线管理器
-    this.pipelineManager = new PipelineManager(pipelineDef, stagePool);
+    // 初始化动作管理器（动作组定义可被后续覆盖/注册）
+    this.actionManager = new ActionManager(actionGroupDef as any, actionPool as any);
+    this.pipelineManager = this.actionManager;
 
     // 初始化Buff管理器（需要在 this.id 赋值后）
     this.buffManager = new BuffManager(this.statContainer, this.pipelineManager, this.engine, memberData.id);

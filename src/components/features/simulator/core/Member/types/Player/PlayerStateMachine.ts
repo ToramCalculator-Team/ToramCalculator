@@ -6,7 +6,7 @@ import { ModifierType, StatContainer } from "../../runtime/StatContainer/StatCon
 import { SkillEffectWithRelations } from "@db/generated/repositories/skill_effect";
 import { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import { CharacterWithRelations } from "@db/generated/repositories/character";
-import { PipelineManager } from "../../runtime/Pipeline/PipelineManager";
+import { PipelineManager } from "../../runtime/Action/ActionManager";
 import { PlayerPipelineDef, PlayerStagePool } from "./PlayerPipelines";
 import { skillLogicActor, type SkillLogicActorInput } from "../../runtime/SkillLogic/skillLogicActor";
 import { runSkillLogic } from "../../runtime/SkillLogic/skillLogicExecutor";

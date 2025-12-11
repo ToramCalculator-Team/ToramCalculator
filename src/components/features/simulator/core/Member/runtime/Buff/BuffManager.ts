@@ -8,7 +8,7 @@
  */
 
 import { ModifierSource, ModifierType, StatContainer } from "../StatContainer/StatContainer";
-import { PipelineManager } from "../Pipeline/PipelineManager";
+import { PipelineManager } from "../Action/ActionManager";
 import type GameEngine from "../../../GameEngine";
 
 // ==================== 类型定义 ====================

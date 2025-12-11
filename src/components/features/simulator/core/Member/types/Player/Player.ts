@@ -6,7 +6,7 @@ import GameEngine from "../../../GameEngine";
 import { PlayerAttrSchema } from "./PlayerAttrSchema";
 import { ExtractAttrPaths, NestedSchema } from "../../runtime/StatContainer/SchemaTypes";
 import { PlayerPipelineDef, PlayerStagePool, PlayerPipelineStages } from "./PlayerPipelines";
-import type { PipeLineDef } from "../../runtime/Pipeline/PipelineStageType";
+import type { PipeLineDef } from "../../runtime/Action/type";
 
 export type PlayerAttrType = ExtractAttrPaths<ReturnType<typeof PlayerAttrSchema>>;
 

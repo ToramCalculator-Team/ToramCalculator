@@ -1,9 +1,9 @@
 import { z } from "zod/v4";
 import { createId } from "@paralleldrive/cuid2";
 import { PlayerStateContext } from "./PlayerStateMachine";
-import { PipeLineDef, StagePool, defineStage } from "../../runtime/Pipeline/PipelineStageType";
+import { PipeLineDef, StagePool, defineStage } from "../../runtime/Action/type";
 import { ModifierType } from "../../runtime/StatContainer/StatContainer";
-import { CommonStages, CommonPipelineDef } from "../../runtime/Pipeline/CommonPipelines";
+import { CommonStages, CommonPipelineDef } from "../../runtime/Action/CommonActions";
 import { BuffInstance } from "../../runtime/Buff/BuffManager";
 
 const logLv = 1; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志

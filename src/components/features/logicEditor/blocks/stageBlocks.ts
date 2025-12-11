@@ -1,6 +1,6 @@
 import { Blocks, FieldDropdown } from "blockly/core";
 import { javascriptGenerator, Order } from "blockly/javascript";
-import { type PipelineStage } from "../../simulator/core/Member/runtime/Pipeline/PipelineStageType";
+import { type PipelineStage } from "../../simulator/core/Member/runtime/Action/type";
 import { makeStageBlockId, type StageMeta, type PipelineParamMeta, type PipelineParamKind } from "./meta";
 
 type AnyStage = PipelineStage<any, any, Record<string, unknown>>;

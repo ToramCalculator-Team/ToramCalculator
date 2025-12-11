@@ -1,7 +1,7 @@
 import type { Context } from "~/lib/behavior3/context";
 import { Node, type NodeDef, type Status } from "~/lib/behavior3/node";
 import type { Tree } from "~/lib/behavior3/tree";
-import type { PipelineStage } from "../../Pipeline/PipelineStageType";
+import type { PipelineStage } from "../../Action/type";
 import type { MemberStateContext } from "../../StateMachine/types";
 
 const execStage = (

@@ -2,7 +2,7 @@ import { z } from "zod/v4";
 import { createId } from "@paralleldrive/cuid2";
 import { ModifierType } from "../StatContainer/StatContainer";
 import type { MemberStateContext } from "../StateMachine/types";
-import { PipeLineDef, StagePool, defineStage } from "./PipelineStageType";
+import { ActionGroupDef, ActionPool, defineAction } from "./type";
 
 const logLv = 1; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
 
@@ -11,14 +11,14 @@ const maxMin = (min: number, value: number, max: number) => {
 };
 
 /**
- * 通用战斗阶段池（命中 / 伤害相关）
+ * 通用战斗动作池（命中 / 伤害相关）
  * 约定：
  * - context 至少满足 MemberStateContext
  * - 受击者侧通过 context.currentDamageRequest 提供本次伤害请求
- * - 命中结果写回 context.lastHitResult，供状态机或后续阶段使用
+ * - 命中结果写回 context.lastHitResult，供状态机或后续动作使用
  */
-export const CommonStages = {
-  计算命中判定: defineStage(
+export const CommonActions = {
+  计算命中判定: defineAction(
     z.object({}),
     z.object({
       hitResult: z.boolean(),
@@ -96,7 +96,7 @@ export const CommonStages = {
     },
   ),
 
-  解析伤害请求: defineStage(
+  解析伤害请求: defineAction(
     z.object({}),
     z.object({
       damageExpression: z.string(),
@@ -133,7 +133,7 @@ export const CommonStages = {
     },
   ),
 
-  执行伤害表达式: defineStage(
+  执行伤害表达式: defineAction(
     z.object({
       damageExpression: z.string(),
       damageExpressionContext: z.object({
@@ -161,7 +161,7 @@ export const CommonStages = {
     },
   ),
 
-  应用伤害结果: defineStage(
+  应用伤害结果: defineAction(
     z.object({ damageValue: z.number() }),
     z.object({
       finalDamage: z.number(),
@@ -204,13 +204,6 @@ export const CommonStages = {
       return { finalDamage, targetHpAfter: newHp };
     },
   ),
-} as const satisfies StagePool<MemberStateContext>;
+} as const satisfies ActionPool<MemberStateContext>;
 
-export type CommonStagePool = typeof CommonStages;
-
-export const CommonPipelineDef = {
-  // 命中计算: ["计算命中判定"],
-  // 伤害计算: ["解析伤害请求", "执行伤害表达式", "应用伤害结果"],
-} as const satisfies PipeLineDef<CommonStagePool>;
-
-export type CommonPipelineDef = typeof CommonPipelineDef;
+export type CommonActionPool = typeof CommonActions;
