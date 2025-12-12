@@ -1,6 +1,6 @@
 import { Actor, createActor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
-import { PipelineManager, type PipelineDynamicStageInfo } from "../Action/ActionManager";
-import { PipeLineDef, StagePool } from "../Action/type";
+import type { ActionManager, ActionDynamicStageInfo } from "../Action/ActionManager";
+import type { ActionGroupDef, ActionPool } from "../Action/type";
 import { Member } from "../../Member";
 import { MemberType } from "@db/schema/enums";
 import GameEngine from "../../../GameEngine";
@@ -42,8 +42,8 @@ export type MemberEventType =
 export type MemberStateMachine<
   TAttrKey extends string = string,
   TEvent extends EventObject = MemberEventType,
-  TPipelineDef extends PipeLineDef<TStagePool> = PipeLineDef,
-  TStagePool extends StagePool<TExContext> = StagePool<any>,
+  TActionGroupDef extends ActionGroupDef<TActionPool> = ActionGroupDef,
+  TActionPool extends ActionPool<TExContext> = ActionPool<any>,
   TExContext extends Record<string, any> = {},
 > = StateMachine<
   any, // TContext - 状态机上下文
@@ -56,7 +56,7 @@ export type MemberStateMachine<
   {}, // TStateValue - 状态值
   string, // TTag - 标签
   NonReducibleUnknown, // TInput - 输入类型
-  Member<TAttrKey, TEvent, TPipelineDef, TStagePool, TExContext>, // TOutput - 输出类型（当状态机完成时）
+  Member<TAttrKey, TEvent, TActionPool, TExContext>, // TOutput - 输出类型（当状态机完成时）
   EventObject, // TEmitted - 发出的事件类型
   any, // TMeta - 元数据
   any // TStateSchema - 状态模式
@@ -72,10 +72,10 @@ export type MemberStateMachine<
 export type MemberActor<
   TAttrKey extends string = string,
   TEvent extends EventObject = MemberEventType,
-  TPipelineDef extends PipeLineDef<TStagePool> = PipeLineDef,
-  TStagePool extends StagePool<TExContext> = StagePool<any>,
+  TActionGroupDef extends ActionGroupDef<TActionPool> = ActionGroupDef,
+  TActionPool extends ActionPool<TExContext> = ActionPool<any>,
   TExContext extends Record<string, any> = {},
-> = Actor<MemberStateMachine<TAttrKey, TEvent, TPipelineDef, TStagePool, TExContext>>;
+> = Actor<MemberStateMachine<TAttrKey, TEvent, TActionGroupDef, TActionPool, TExContext>>;
 
 /**
  * 成员状态上下文通用接口
@@ -119,4 +119,6 @@ export interface MemberStateContext {
   buffState?: Record<string, unknown>;
   /** 行为树宿主（统一管理 skill/buff/ai 树实例） */
   behaviorTreeHost?: BehaviorTreeHost;
+  /** 动作管理器（ActionGroup/Action 统一入口） */
+  actionManager?: ActionManager<any, any>;
 }

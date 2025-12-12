@@ -5,16 +5,15 @@ import type { Tree } from "~/lib/behavior3/tree";
 import type { MemberStateContext } from "../../StateMachine/types";
 
 type TargetConfig = {
-  pipelineName: string;
-  afterStage: string;
+  /** 动作组名称 */
+  actionGroupName: string;
+  /** 插入点：在哪个动作之后插入 */
+  afterActionName: string;
   priority?: number;
-  /**
-   * 可选：对当前阶段输出做 T⇒T 数值变换的表达式
-   * - targetPath: 需要写回的字段路径（优先从阶段输出读取）
-   * - expression: 受限表达式，默认可用变量：x（原值）、input（阶段输出）、ctx（上下文）
-   */
-  targetPath?: string;
-  expression?: string;
+  /** 插入的动作名称（actionName 视为唯一ID） */
+  insertActionName: string;
+  /** 插入动作的额外参数（会与 actionOutput 合并后作为输入） */
+  params?: Record<string, unknown>;
   description?: string;
 };
 
@@ -48,7 +47,7 @@ const setByPath = (obj: any, path: string, value: any) => {
 
 /**
  * InsertDynamicStage
- * 仅作用于当前成员的 pipelineManager，在指定阶段后插入动态阶段（T⇒T 转换）
+ * 仅作用于当前成员的 actionManager，在指定动作后插入动态动作
  */
 export class InsertDynamicStage extends Node {
   declare args: {
@@ -62,15 +61,21 @@ export class InsertDynamicStage extends Node {
     status: Status,
   ): Status {
     const owner = tree.owner as TContext & {
-      pipelineManager?: {
+      actionManager?: {
         insertDynamicStage?: Function;
-        pipelineDef?: Record<string, readonly string[]>;
+        actionGroupDef?: Record<string, readonly string[]>;
+        actionPool?: Record<string, readonly [any, any, Function]>;
       };
     };
 
-    const pipelineManager = owner?.pipelineManager as any;
-    if (!pipelineManager?.insertDynamicStage) {
-      this.error("InsertDynamicStage: 缺少 pipelineManager.insertDynamicStage");
+    if (!owner.intentBuffer) {
+      this.error("InsertDynamicStage: owner.intentBuffer is required to push Intent");
+      return "failure";
+    }
+
+    const actionManager = owner?.actionManager as any;
+    if (!actionManager?.actionPool) {
+      this.error("InsertDynamicStage: 缺少 owner.actionManager.actionPool");
       return "failure";
     }
 
@@ -88,62 +93,37 @@ export class InsertDynamicStage extends Node {
       "bt_dynamic_stage";
 
     for (const target of targets) {
-      if (!target?.pipelineName || !target.afterStage) {
-        console.warn("[InsertDynamicStage] 缺少 pipelineName/afterStage，已跳过", target);
+      const { actionGroupName, afterActionName } = target;
+      if (!actionGroupName || !afterActionName || !target.insertActionName) {
+        console.warn("[InsertDynamicStage] 缺少 actionGroupName/afterActionName/insertActionName，已跳过", target);
         continue;
       }
 
       // 校验插入点是否存在（如果能找到静态定义）
-      const stageList = pipelineManager.pipelineDef?.[target.pipelineName];
-      if (Array.isArray(stageList) && !stageList.includes(target.afterStage)) {
+      const actionList = actionManager.actionGroupDef?.[actionGroupName];
+      if (Array.isArray(actionList) && !actionList.includes(afterActionName)) {
         console.warn(
-          `[InsertDynamicStage] 管线 ${String(target.pipelineName)} 不包含阶段 ${String(target.afterStage)}，已跳过`,
+          `[InsertDynamicStage] 动作组 ${String(actionGroupName)} 不包含动作 ${String(afterActionName)}，已跳过`,
         );
         continue;
       }
 
-      const handler = (ctx: any, stageOutput: any) => {
-        let nextOutput = stageOutput ?? {};
+      const stageId = `${source}_${String(actionGroupName)}_${String(afterActionName)}_${createId()}`;
+      const insertStageName = target.insertActionName;
 
-        // 可选：对阶段输出做一次受限表达式变换
-        if (target.expression && target.targetPath) {
-          const currentValue = getByPath(nextOutput, target.targetPath) ?? getByPath(ctx, target.targetPath);
-          try {
-            const evalCtx = {
-              x: currentValue,
-              input: stageOutput,
-              ctx,
-              ...ctx,
-            };
-            const newValue =
-              typeof ctx.engine?.evaluateExpression === "function"
-                ? ctx.engine.evaluateExpression(target.expression, evalCtx)
-                : currentValue;
-
-            // 写回到输出副本
-            const cloned = typeof nextOutput === "object" && nextOutput !== null ? { ...nextOutput } : {};
-            setByPath(cloned, target.targetPath, newValue);
-            nextOutput = cloned;
-          } catch (error) {
-            console.error(
-              `[InsertDynamicStage] 表达式执行失败 (${target.pipelineName}/${target.afterStage}):`,
-              error,
-            );
-          }
-        }
-
-        return nextOutput;
-      };
-
-      const stageId = `${source}_${String(target.pipelineName)}_${String(target.afterStage)}_${createId()}`;
-      pipelineManager.insertDynamicStage(
-        target.pipelineName,
-        target.afterStage,
-        handler,
-        stageId,
+      // 只存 stageName，不存 handler；params 作为纯数据交给 ActionManager 在执行前合并
+      owner.intentBuffer.push({
+        type: "insertPipelineStage",
         source,
-        target.priority ?? 0,
-      );
+        actorId: owner.id,
+        targetId: owner.id,
+        pipeline: actionGroupName,
+        afterStage: afterActionName,
+        insertStage: insertStageName,
+        params: target.params ?? undefined,
+        stageId,
+        priority: target.priority ?? 0,
+      } as any);
     }
 
     return "success";
@@ -155,12 +135,12 @@ export class InsertDynamicStage extends Node {
       type: "Action",
       children: 0,
       status: ["success", "failure"],
-      desc: "在指定管线阶段后插入动态阶段（仅作用当前成员）",
+      desc: "在指定动作后插入动态动作（仅作用当前成员）",
       args: [
         {
           name: "targets",
           type: "json",
-          desc: "目标数组：{ pipelineName, afterStage, priority?, targetPath?, expression? }[]",
+          desc: "目标数组：{ actionGroupName, afterActionName, insertActionName, params?, priority? }[]",
         },
         {
           name: "source",
@@ -169,9 +149,8 @@ export class InsertDynamicStage extends Node {
         },
       ],
       doc: `
-        + 仅作用当前成员的 pipelineManager
-        + 对每个 target 在 afterStage 后插入一个动态阶段
-        + 如果提供 targetPath + expression，则对阶段输出做一次 T⇒T 数值变换
+        + 仅作用当前成员的 actionManager
+        + 仅支持插入 action（insertActionName + params）
         + 阶段来源统一使用 source，便于 removeStagesBySource 清理
       `,
     };

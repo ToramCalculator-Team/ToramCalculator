@@ -145,13 +145,13 @@ export const BuffViewDataSchema = z.object({
   dynamicEffects: z
     .array(
       z.object({
-        pipeline: z.string(),
-        stage: z.string(),
+        actionGroupName: z.string(),
+        afterActionName: z.string(),
         priority: z.number().optional(),
       }),
     )
     .optional(),
-  activePipelineStages: z.any().optional(),
+  activeDynamicActions: z.any().optional(),
 });
 
 export type BuffViewDataSnapshot = z.output<typeof BuffViewDataSchema>;

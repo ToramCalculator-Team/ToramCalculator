@@ -5,7 +5,6 @@ import type { TreeData } from "~/lib/behavior3/tree";
 import { RunPipeline } from "./nodes/RunPipeline";
 import { ScheduleFSMEvent } from "./nodes/ScheduleFSMEvent";
 import { RunStage } from "./nodes/RunStage";
-import { SchedulePipeline } from "./nodes/SchedulePipeline";
 import { InsertDynamicStage } from "./nodes/InsertDynamicStage";
 import type { MemberStateContext } from "../StateMachine/types";
 
@@ -36,7 +35,6 @@ export class MemberBehaviorTreeRuntime<TOwner extends MemberStateContext> extend
     this.registerNode(RunPipeline);
     this.registerNode(ScheduleFSMEvent);
     this.registerNode(RunStage);
-    this.registerNode(SchedulePipeline);
     this.registerNode(InsertDynamicStage);
     options?.customNodes?.forEach((node) => this.registerNode(node as any));
   }
@@ -115,26 +113,14 @@ export class MemberBehaviorTreeRuntime<TOwner extends MemberStateContext> extend
 export interface MemberBehaviorOwnerContext {
   /** 成员ID */
   id: string;
-  /** 引擎引用 */
-  engine: {
-    getEventQueue(): {
-      insert(event: {
-        id: string;
-        type: string;
-        executeFrame: number;
-        priority: string;
-        payload: Record<string, unknown>;
-      }): void;
-    };
-  };
+  /** 引擎引用（行为树节点会用到 dispatchMemberEvent 等能力） */
+  engine: any;
   /** 当前帧 */
   currentFrame: number;
-  /** 管线管理器引用 */
-  pipelineManager: {
-    run<P extends string>(
-      pipelineName: P,
-      ctx: any,
-      params?: Record<string, unknown>,
-    ): { ctx: any; stageOutputs: Record<string, any> };
+  /** IntentBuffer 引用：用于 BT 节点推送 Intent */
+  intentBuffer?: { push(intent: any): void };
+  /** 动作管理器引用（仍需兼容 RunStage 等节点） */
+  actionManager?: {
+    run(actionGroupName: string, ctx: any, params?: Record<string, unknown>): { ctx: any; actionOutputs: Record<string, any> };
   };
 }

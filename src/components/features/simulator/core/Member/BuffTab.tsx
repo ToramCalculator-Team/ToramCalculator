@@ -101,7 +101,7 @@ export default function BuffTab(props: BuffTabProps) {
                   </div>
                 )}
 
-                {/* 动态管线效果 */}
+                {/* 动态动作组效果 */}
                 {buff.dynamicEffects && buff.dynamicEffects.length > 0 && (
                   <div class="border-dividing-color border-t pt-2">
                     <div class="text-accent-color-70 mb-1 text-xs font-medium">动态效果:</div>
@@ -109,8 +109,8 @@ export default function BuffTab(props: BuffTabProps) {
                       <For each={buff.dynamicEffects}>
                         {(effect) => (
                           <div class="text-accent-color-70 text-xs">
-                            • {effect.pipeline}
-                            {effect.stage && ` → ${effect.stage}`}
+                            • {effect.actionGroupName}
+                            {effect.afterActionName && ` → ${effect.afterActionName}`}
                             {effect.priority !== undefined && ` (优先级: ${effect.priority})`}
                           </div>
                         )}

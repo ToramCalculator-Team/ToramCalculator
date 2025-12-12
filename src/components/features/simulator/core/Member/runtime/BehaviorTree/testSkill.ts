@@ -5,7 +5,7 @@ import type { skill, skill_effect } from "@db/generated/zod";
  *
  * 约定：
  * - skill_effect.logic 存储行为树 JSON
- * - 行为树使用 RunPipeline 调用管线，使用 ScheduleFSMEvent 发送状态机事件
+ * - 行为树使用 RunPipeline 调用动作组，使用 ScheduleFSMEvent 发送状态机事件
  * - 最后必须调用 ScheduleFSMEvent("收到发动结束通知") 来触发状态机转换
  */
 
@@ -72,8 +72,8 @@ export const magicCannonSkillEffect: skill_effect = {
             },
             output: ["magicCannon"],
           },
-          { id: 5, name: "RunPipeline", desc: "计算技能消耗", args: { pipelineName: "skill.cost.calculate" } },
-          { id: 6, name: "RunPipeline", desc: "计算技能动作时长", args: { pipelineName: "skill.motion.calculate" } },
+          { id: 5, name: "RunPipeline", desc: "计算技能消耗", args: { actionGroupName: "skill.cost.calculate" } },
+          { id: 6, name: "RunPipeline", desc: "计算技能动作时长", args: { actionGroupName: "skill.motion.calculate" } },
           {
             id: 7,
             name: "IfElse",
@@ -84,8 +84,8 @@ export const magicCannonSkillEffect: skill_effect = {
                 id: 9,
                 name: "Sequence",
                 children: [
-                  { id: 10, name: "RunPipeline", args: { pipelineName: "animation.startup.start" } },
-                  { id: 11, name: "RunPipeline", args: { pipelineName: "event.startup.schedule" } },
+                  { id: 10, name: "RunPipeline", args: { actionGroupName: "animation.startup.start" } },
+                  { id: 11, name: "RunPipeline", args: { actionGroupName: "event.startup.schedule" } },
                   { id: 12, name: "WaitForEvent", args: { event: "收到前摇结束通知" } },
                 ],
               },
@@ -102,8 +102,8 @@ export const magicCannonSkillEffect: skill_effect = {
                 id: 16,
                 name: "Sequence",
                 children: [
-                  { id: 17, name: "RunPipeline", args: { pipelineName: "animation.charging.start" } },
-                  { id: 18, name: "RunPipeline", args: { pipelineName: "event.charging.schedule" } },
+                  { id: 17, name: "RunPipeline", args: { actionGroupName: "animation.charging.start" } },
+                  { id: 18, name: "RunPipeline", args: { actionGroupName: "event.charging.schedule" } },
                   { id: 19, name: "WaitForEvent", args: { event: "收到蓄力结束通知" } },
                 ],
               },
@@ -120,8 +120,8 @@ export const magicCannonSkillEffect: skill_effect = {
                 id: 23,
                 name: "Sequence",
                 children: [
-                  { id: 24, name: "RunPipeline", args: { pipelineName: "animation.chanting.start" } },
-                  { id: 25, name: "RunPipeline", args: { pipelineName: "event.chanting.schedule" } },
+                  { id: 24, name: "RunPipeline", args: { actionGroupName: "animation.chanting.start" } },
+                  { id: 25, name: "RunPipeline", args: { actionGroupName: "event.chanting.schedule" } },
                   { id: 26, name: "WaitForEvent", args: { event: "收到咏唱结束事件" } },
                 ],
               },
@@ -133,13 +133,13 @@ export const magicCannonSkillEffect: skill_effect = {
             name: "Sequence",
             desc: "发动阶段",
             children: [
-              { id: 28, name: "RunPipeline", args: { pipelineName: "animation.action.start" } },
-              { id: 29, name: "RunPipeline", args: { pipelineName: "skill.effect.apply" } },
+              { id: 28, name: "RunPipeline", args: { actionGroupName: "animation.action.start" } },
+              { id: 29, name: "RunPipeline", args: { actionGroupName: "skill.effect.apply" } },
               {
                 id: 29.1,
                 name: "RunPipeline",
                 desc: "检查魔法炮充能 Buff 状态，获取 buffExists 变量",
-                args: { pipelineName: "buff.check", params: { buffId: "magic_cannon_charge" } },
+                args: { actionGroupName: "buff.check", params: { buffId: "magic_cannon_charge" } },
               },
               {
                 id: 30,
@@ -161,7 +161,7 @@ export const magicCannonSkillEffect: skill_effect = {
                             name: "RunPipeline",
                             desc: "添加魔法炮充能 Buff",
                             args: {
-                              pipelineName: "buff.add",
+                              actionGroupName: "buff.add",
                               params: {
                                 buffId: "magic_cannon_charge",
                                 buffName: "魔法炮充能",
@@ -188,21 +188,21 @@ export const magicCannonSkillEffect: skill_effect = {
                             id: 41,
                             name: "RunPipeline",
                             desc: "获取充能计数器（buff.check 已写入 chargeCounter）",
-                            args: { pipelineName: "buff.check", params: { buffId: "magic_cannon_charge" } },
+                            args: { actionGroupName: "buff.check", params: { buffId: "magic_cannon_charge" } },
                           },
                           {
                             id: 42,
                             name: "RunPipeline",
                             desc: "请求魔法炮伤害结算（依赖 chargeCounter）",
                             args: {
-                              pipelineName: "combat.damage.request",
+                              actionGroupName: "combat.damage.request",
                               params: {
                                 damageFormula:
                                   "(((self.statContainer.getValue(\"atk.m\") + self.lv - target.lv) * (1 - target.statContainer.getValue(\"red.m\")) - (1 - self.statContainer.getValue(\"pip.m\")) * target.statContainer.getValue(\"def.m\")) + 700 + 10 * chargeCounter) * (300 * chargeCounter + self.statContainer.getValue(\"int\") * Math.min(chargeCounter, 5))",
                               },
                             },
                           },
-                          { id: 43, name: "RunPipeline", desc: "移除充能 Buff", args: { pipelineName: "buff.remove", params: { buffId: "magic_cannon_charge" } } },
+                          { id: 43, name: "RunPipeline", desc: "移除充能 Buff", args: { actionGroupName: "buff.remove", params: { buffId: "magic_cannon_charge" } } },
                         ],
                       },
                     ],
@@ -210,7 +210,7 @@ export const magicCannonSkillEffect: skill_effect = {
                   { id: 44, name: "Case", children: [{ id: 45, name: "JustSuccess" }] },
                 ],
               },
-              { id: 48, name: "RunPipeline", desc: "调度发动结束事件", args: { pipelineName: "event.action.schedule" } },
+              { id: 48, name: "RunPipeline", desc: "调度发动结束事件", args: { actionGroupName: "event.action.schedule" } },
               { id: 49, name: "WaitForEvent", desc: "等待发动结束通知", args: { event: "收到发动结束通知" } },
             ],
           },
@@ -238,12 +238,16 @@ export const magicCannonSkillEffect: skill_effect = {
                 targets: [
                   {
                     // 将充能逻辑插到“应用技能效果”之后（默认 skill.effect.apply 管线里只有占位阶段）
-                    pipelineName: "skill.effect.apply",
-                    afterStage: "应用当前技能效果",
+                    actionGroupName: "skill.effect.apply",
+                    afterActionName: "应用当前技能效果",
                     priority: 100,
-                    // 直接调用专用管线
-                    targetPath: "",
-                    expression: "",
+                    // 推荐：只插入动作（例如“应用数值表达式”/“修改Buff变量”等）
+                    insertActionName: "应用数值表达式",
+                    params: {
+                      targetPath: "buffState.magic_cannon_charge.chargeCounter",
+                      expression: "x + chantingFrames",
+                      vars: { chantingFrames: "chantingFrames" },
+                    },
                   },
                 ],
               },
@@ -289,7 +293,7 @@ export const magicCannonSkillEffect: skill_effect = {
      */
     customDynamicStages: [
       {
-        id: "magic_cannon.charge_from_skill.stage",
+        id: "magic_cannon.charge_from_skill.action",
         kind: "expression",
         config: {
           // 可用变量映射：在 handler 中从 ctx 取值

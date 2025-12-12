@@ -1,53 +1,53 @@
 import type { Context } from "~/lib/behavior3/context";
 import { Node, type NodeDef, type Status } from "~/lib/behavior3/node";
 import type { Tree } from "~/lib/behavior3/tree";
-import type { PipelineStage } from "../../Action/type";
+import type { Action } from "../../Action/type";
 import type { MemberStateContext } from "../../StateMachine/types";
 
 const execStage = (
-  stageName: string,
-  stagePool: Record<string, PipelineStage<any, any, any>>,
+  actionName: string,
+  actionPool: Record<string, Action<any, any, any>>,
   owner: MemberStateContext,
   input: any,
 ) => {
-  const stage = stagePool[stageName];
-  if (!stage) {
-    throw new Error(`阶段不存在: ${stageName}`);
+  const action = actionPool[actionName];
+  if (!action) {
+    throw new Error(`动作不存在: ${actionName}`);
   }
 
-  const [inputSchema, outputSchema, impl] = stage;
-  let stageInput = input ?? {};
+  const [inputSchema, outputSchema, impl] = action;
+  let actionInput = input ?? {};
 
   if (inputSchema) {
-    const parsed = (inputSchema as any).safeParse(stageInput);
+    const parsed = (inputSchema as any).safeParse(actionInput);
     if (!parsed.success) {
-      throw new Error(`[${stageName}] 输入验证失败: ${parsed.error.message}`);
+      throw new Error(`[${actionName}] 输入验证失败: ${parsed.error.message}`);
     }
-    stageInput = parsed.data;
+    actionInput = parsed.data;
   }
 
-  let stageOut = impl ? impl(owner as any, stageInput) : stageInput;
+  let actionOut = impl ? impl(owner as any, actionInput) : actionInput;
 
   if (outputSchema) {
-    const parsed = (outputSchema as any).safeParse(stageOut);
+    const parsed = (outputSchema as any).safeParse(actionOut);
     if (!parsed.success) {
-      throw new Error(`[${stageName}] 输出验证失败: ${parsed.error.message}`);
+      throw new Error(`[${actionName}] 输出验证失败: ${parsed.error.message}`);
     }
-    stageOut = parsed.data;
-    Object.assign(owner, stageOut);
-  } else if (stageOut && typeof stageOut === "object") {
-    Object.assign(owner, stageOut);
+    actionOut = parsed.data;
+    Object.assign(owner, actionOut);
+  } else if (actionOut && typeof actionOut === "object") {
+    Object.assign(owner, actionOut);
   }
 
-  return stageOut;
+  return actionOut;
 };
 
 /**
- * 直接执行单个 Stage
+ * 直接执行单个 Action
  */
 export class RunStage extends Node {
   declare args: {
-    readonly stageName: string;
+    readonly actionName: string;
     readonly params?: Record<string, unknown>;
   };
 
@@ -55,23 +55,22 @@ export class RunStage extends Node {
     tree: Tree<Context, TContext>,
     status: Status,
   ): Status {
-    const owner = tree.owner as TContext & {
-      pipelineManager?: { stagePool: Record<string, PipelineStage<any, any, any>> };
-    };
-
-    if (!owner.pipelineManager?.stagePool) {
-      this.error("RunStage: 缺少 pipelineManager.stagePool");
+    const owner = tree.owner as TContext & { actionManager?: { actionPool?: Record<string, Action<any, any, any>> } };
+    const actionPool = owner.actionManager?.actionPool;
+    if (!actionPool) {
+      this.error("RunStage: 缺少 owner.actionManager.actionPool");
       return "failure";
     }
 
-    const { stageName, params } = this.args;
-    if (!stageName) {
-      this.error("RunStage: stageName is required");
+    const { params } = this.args;
+    const { actionName } = this.args;
+    if (!actionName) {
+      this.error("RunStage: actionName is required");
       return "failure";
     }
 
     try {
-      const result = execStage(stageName, owner.pipelineManager.stagePool as any, owner, params ?? {});
+      const result = execStage(actionName, actionPool as any, owner, params ?? {});
       if (result && typeof result === "object") {
         for (const [k, v] of Object.entries(result)) {
           tree.blackboard.set(k, v);
@@ -90,9 +89,9 @@ export class RunStage extends Node {
       type: "Action",
       children: 0,
       status: ["success", "failure"],
-      desc: "执行单个 Stage",
+      desc: "执行单个 Action（兼容旧名：Stage）",
       args: [
-        { name: "stageName", type: "string", desc: "阶段名（stagePool key）" },
+        { name: "actionName", type: "string", desc: "动作名（actionPool key）" },
         { name: "params", type: "json?", desc: "输入参数，可选" },
       ],
     };

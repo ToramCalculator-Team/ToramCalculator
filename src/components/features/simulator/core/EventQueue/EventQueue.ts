@@ -13,8 +13,18 @@ export class EventQueue {
   /** 事件队列配置 */
   private config: EventQueueConfig;
 
-  /** 主事件队列（按入队帧号排序） */
-  private events: QueueEvent[] = [];
+  /**
+   * 按执行帧分桶存储事件：
+   * - 避免每帧对全量 events 做 filter（长时/快进模拟的结构性瓶颈）
+   * - bucket 内保持插入顺序
+   */
+  private readonly buckets: Map<number, QueueEvent[]> = new Map();
+
+  /** 事件索引（id -> event），用于 O(1) 查询/标记 */
+  private readonly byId: Map<string, QueueEvent> = new Map();
+
+  /** 当前事件总数（用于 size/限流） */
+  private totalSize: number = 0;
 
   /** 队列统计信息 */
   private stats: QueueStats = {
@@ -53,19 +63,28 @@ export class EventQueue {
   insert(event: QueueEvent): boolean {
     try {
       // 检查队列大小限制
-      if (this.events.length >= this.config.maxQueueSize) {
+      if (this.totalSize >= this.config.maxQueueSize) {
         console.warn("⚠️ 事件队列已满，丢弃事件:", event.id);
         return false;
       }
 
-      // 插入到主队列（按执行帧号排序）
-      this.insertSorted(this.events, event, (a, b) => a.executeFrame - b.executeFrame);
+      // 去重：若已存在相同 id，先移除旧事件（保持幂等）
+      if (this.byId.has(event.id)) {
+        this.remove(event.id);
+      }
+
+      // 写入分桶
+      const list = this.buckets.get(event.executeFrame) ?? [];
+      list.push(event);
+      this.buckets.set(event.executeFrame, list);
+      this.byId.set(event.id, event);
+      this.totalSize += 1;
 
       // 更新状态
-      this.stats.currentSize = this.events.length;
+      this.stats.currentSize = this.totalSize;
       this.stats.totalInserted++;
 
-      console.log(`📋 插入事件: ${event.type} - 队列大小: ${this.events.length}`, event);
+      // 高频路径：默认不输出日志（避免污染性能/控制台）
       return true;
     } catch (error) {
       console.error("❌ 插入事件失败:", error);
@@ -98,16 +117,29 @@ export class EventQueue {
    * @returns 移除是否成功
    */
   remove(eventId: string): boolean {
-    const eventIndex = this.events.findIndex((event) => event.id === eventId);
-    if (eventIndex === -1) {
+    const event = this.byId.get(eventId);
+    if (!event) {
       return false;
     }
 
-    // 从主队列移除
-    this.events.splice(eventIndex, 1);
+    const frame = event.executeFrame;
+    const list = this.buckets.get(frame);
+    if (list) {
+      const idx = list.findIndex((e) => e.id === eventId);
+      if (idx !== -1) {
+        list.splice(idx, 1);
+        if (list.length === 0) {
+          this.buckets.delete(frame);
+        } else {
+          this.buckets.set(frame, list);
+        }
+      }
+    }
 
-    this.stats.currentSize = this.events.length;
-    console.log(`🗑️ 移除事件: ${eventId}`, this.events);
+    this.byId.delete(eventId);
+    if (this.totalSize > 0) this.totalSize -= 1;
+
+    this.stats.currentSize = this.totalSize;
 
     return true;
   }
@@ -120,8 +152,10 @@ export class EventQueue {
   markAsProcessed(eventId: string): void {
     const event = this.get(eventId);
     if (event) {
-      event.processed = true;
-      this.stats.totalProcessed++;
+      if (!event.processed) {
+        event.processed = true;
+        this.stats.totalProcessed++;
+      }
     }
   }
 
@@ -129,7 +163,9 @@ export class EventQueue {
    * 清空队列
    */
   clear(): void {
-    this.events = [];
+    this.buckets.clear();
+    this.byId.clear();
+    this.totalSize = 0;
     this.stats.currentSize = 0;
     console.log("🧹 清空事件队列");
   }
@@ -143,7 +179,7 @@ export class EventQueue {
    * @returns 事件对象，如果不存在则返回null
    */
   get(eventId: string): QueueEvent | null {
-    return this.events.find((event) => event.id === eventId) || null;
+    return this.byId.get(eventId) ?? null;
   }
 
   /**
@@ -153,7 +189,7 @@ export class EventQueue {
    * @returns 需要执行的事件数组
    */
   getByFrame(frameNumber: number): QueueEvent[] {
-    return this.events.filter((event) => event.executeFrame === frameNumber);
+    return this.buckets.get(frameNumber) ?? [];
   }
 
   // ==================== 队列状态 ====================
@@ -164,7 +200,7 @@ export class EventQueue {
    * @returns 当前队列大小
    */
   size(): number {
-    return this.events.length;
+    return this.totalSize;
   }
 
   /**
@@ -173,7 +209,7 @@ export class EventQueue {
    * @returns 是否为空
    */
   isEmpty(): boolean {
-    return this.events.length === 0;
+    return this.totalSize === 0;
   }
 
   /**
@@ -200,10 +236,14 @@ export class EventQueue {
    * @returns 最早帧号，如果队列为空则返回Infinity
    */
   getEarliestFrame(): number {
-    if (this.events.length === 0) {
+    if (this.totalSize === 0) {
       return Infinity;
     }
-    return this.events[0].executeFrame;
+    let min = Infinity;
+    for (const f of this.buckets.keys()) {
+      if (f < min) min = f;
+    }
+    return min;
   }
 
   /**
@@ -212,10 +252,14 @@ export class EventQueue {
    * @returns 最晚帧号，如果队列为空则返回-Infinity
    */
   getLatestFrame(): number {
-    if (this.events.length === 0) {
+    if (this.totalSize === 0) {
       return -Infinity;
     }
-    return this.events[this.events.length - 1].executeFrame;
+    let max = -Infinity;
+    for (const f of this.buckets.keys()) {
+      if (f > max) max = f;
+    }
+    return max;
   }
 
   // ==================== 快照管理 ====================
@@ -225,7 +269,17 @@ export class EventQueue {
    */
   createSnapshot(): void {
     const snapshot: QueueSnapshot = {
-      events: this.events.map((event) => ({ ...event })),
+      events: (() => {
+        const all: QueueEvent[] = [];
+        for (const [, list] of this.buckets) {
+          for (const e of list) {
+            all.push({ ...e });
+          }
+        }
+        // 与旧实现保持一致：快照按 executeFrame 升序
+        all.sort((a, b) => a.executeFrame - b.executeFrame);
+        return all;
+      })(),
       currentFrame: this.engine.getCurrentFrame(),
       stats: { ...this.stats },
     };
@@ -247,10 +301,21 @@ export class EventQueue {
     }
 
     try {
-      this.events = snapshot.events.map((event) => ({ ...event }));
+      // 重建分桶与索引
+      this.buckets.clear();
+      this.byId.clear();
+      this.totalSize = 0;
+      for (const e of snapshot.events) {
+        const copied = { ...e };
+        const list = this.buckets.get(copied.executeFrame) ?? [];
+        list.push(copied);
+        this.buckets.set(copied.executeFrame, list);
+        this.byId.set(copied.id, copied);
+        this.totalSize += 1;
+      }
       this.stats = { ...snapshot.stats };
 
-      console.log(`🔄 恢复到指定帧快照: ${frameNumber} - 事件数: ${this.events.length}`);
+      console.log(`🔄 恢复到指定帧快照: ${frameNumber} - 事件数: ${this.totalSize}`);
       return true;
     } catch (error) {
       console.error("❌ 恢复快照失败:", error);
@@ -267,30 +332,7 @@ export class EventQueue {
     return structuredClone(this.snapshots);
   }
 
-  // ==================== 私有方法 ====================
-
-  /**
-   * 插入排序（保持数组有序）
-   *
-   * @param array 目标数组
-   * @param item 要插入的项目
-   * @param compare 比较函数
-   */
-  private insertSorted<T>(array: T[], item: T, compare: (a: T, b: T) => number): void {
-    let insertIndex = 0;
-
-    // 找到插入位置
-    for (let i = 0; i < array.length; i++) {
-      if (compare(array[i], item) > 0) {
-        insertIndex = i;
-        break;
-      }
-      insertIndex = i + 1;
-    }
-
-    // 插入项目
-    array.splice(insertIndex, 0, item);
-  }
+  // 无私有排序插入：按帧分桶后不再需要
 }
 
 // ============================== 导出 ==============================

@@ -6,12 +6,10 @@ import { ModifierType, StatContainer } from "../../runtime/StatContainer/StatCon
 import { SkillEffectWithRelations } from "@db/generated/repositories/skill_effect";
 import { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import { CharacterWithRelations } from "@db/generated/repositories/character";
-import { PipelineManager } from "../../runtime/Action/ActionManager";
-import { PlayerPipelineDef, PlayerStagePool } from "./PlayerPipelines";
-import { skillLogicActor, type SkillLogicActorInput } from "../../runtime/SkillLogic/skillLogicActor";
-import { runSkillLogic } from "../../runtime/SkillLogic/skillLogicExecutor";
+import type { ActionManager } from "../../runtime/Action/ActionManager";
 import type { MemberStateContext } from "../../runtime/StateMachine/types";
 import { BehaviorTreeHost } from "../../runtime/BehaviorTree/BehaviorTreeHost";
+import type { TreeData } from "~/lib/behavior3/tree";
 
 /**
  * Player特有的事件类型
@@ -187,6 +185,10 @@ export interface PlayerStateContext extends MemberStateContext {
   character: CharacterWithRelations;
   /** 行为树宿主 */
   behaviorTreeHost?: BehaviorTreeHost;
+  /** 当前技能行为树实例ID（用于仅移除技能树，不影响 buff/ai 树） */
+  currentSkillTreeId?: string;
+  /** 动作管理器（ActionGroup/Action） */
+  actionManager: ActionManager<any, any>;
   /** 当前处理的伤害请求（受击者侧使用） */
   currentDamageRequest?: {
     sourceId: string;
@@ -288,7 +290,10 @@ export const playerStateMachine = (player: Player) => {
       清空待处理技能: function ({ context, event }) {
         console.log(`👤 [${context.name}] 清空待处理技能`, event);
         context.currentSkill = null;
-        context.behaviorTreeHost?.clear();
+        if (context.currentSkillTreeId) {
+          context.behaviorTreeHost?.removeTree(context.currentSkillTreeId);
+          context.currentSkillTreeId = undefined;
+        }
       },
       清理行为树: function ({ context }) {
         context.behaviorTreeHost?.clear();
@@ -320,15 +325,49 @@ export const playerStateMachine = (player: Player) => {
           return;
         }
 
+        const ensureHost = () => {
+          if (!context.behaviorTreeHost) {
+            (context as any).behaviorTreeHost = new BehaviorTreeHost(context as any);
+          }
+          return context.behaviorTreeHost!;
+        };
+
+        // 兼容两种存储：
+        // - 直接 TreeData（推荐）
+        // - { skillTree: TreeData, ... }（历史/测试数据）
+        const resolveSkillTree = (logic: unknown): TreeData | null => {
+          if (!logic || typeof logic !== "object") return null;
+          if ("root" in (logic as any)) return logic as TreeData;
+          const skillTree = (logic as any).skillTree;
+          if (skillTree && typeof skillTree === "object" && "root" in skillTree) return skillTree as TreeData;
+          return null;
+        };
+
+        const treeData = resolveSkillTree(skillEffect.logic);
+        if (!treeData) {
+          console.error(`🎮 [${context.name}] 技能逻辑不是有效的行为树 TreeData，已跳过执行`, skillEffect.logic);
+          enqueue.raise({ type: "技能执行完成" });
+          return;
+        }
+
         try {
-          const result = runSkillLogic({
-            owner: context,
-            logic: skillEffect.logic,
-            skillId: skillEffect.id ?? context.currentSkill?.id ?? "unknown_skill",
-          });
-          enqueue.raise({ type: "技能执行完成", data: { status: result.status } } as any);
+          const host = ensureHost();
+          const treeId = `skill:${String(skillEffect.id ?? context.currentSkill?.id ?? "unknown_skill")}`;
+          // 若上一次技能树仍存在，先移除，避免堆积
+          if (context.currentSkillTreeId) {
+            host.removeTree(context.currentSkillTreeId);
+          }
+          context.currentSkillTreeId = treeId;
+          const inst = host.addTree(treeData, "skill", treeId);
+
+          // 先 tick 一次让树进入 running/触发初始调度
+          const status = inst.tree.tick();
+          // 若该技能树是纯同步逻辑，立即完成；否则应由 BT 内部通过 ScheduleFSMEvent 发送“技能执行完成”
+          if (status === "success" || status === "failure") {
+            enqueue.raise({ type: "技能执行完成", data: { status } } as any);
+          }
         } catch (error) {
-          console.error(`❌ [${context.name}] 技能执行失败`, error);
+          console.error(`❌ [${context.name}] 挂载/执行技能行为树失败`, error);
           enqueue.raise({ type: "技能执行完成" });
         }
       }),
@@ -365,8 +404,8 @@ export const playerStateMachine = (player: Player) => {
       命中计算管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 命中计算管线`, event);
         try {
-          const res = player.pipelineManager.run("战斗.命中.计算" as any, context, {});
-          const finalOutput = (res.stageOutputs as any)["格挡判定"] as
+          const res = player.actionManager.run("战斗.命中.计算" as any, context, {});
+          const finalOutput = (res.actionOutputs as any)["计算命中判定"] as
             | {
                 hitResult?: boolean;
                 dodgeResult?: boolean;
@@ -406,7 +445,7 @@ export const playerStateMachine = (player: Player) => {
       控制判定管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 控制判定管线`, event);
         try {
-          player.pipelineManager.run("战斗.控制.计算" as any, context, {});
+          player.actionManager.run("战斗.控制.计算" as any, context, {});
         } catch (error) {
           console.error(`❌ [${context.name}] 控制判定管线执行失败`, error);
         }
@@ -423,7 +462,7 @@ export const playerStateMachine = (player: Player) => {
       伤害计算管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 伤害计算管线`, event);
         try {
-          player.pipelineManager.run("伤害计算", context, {});
+          player.actionManager.run("伤害计算", context, {});
         } catch (error) {
           console.error(`❌ [${context.name}] 伤害计算管线执行失败`, error);
         }
@@ -624,9 +663,6 @@ export const playerStateMachine = (player: Player) => {
         return isAlive;
       },
     },
-    actors: {
-      skillLogicActor,
-    },
   }).createMachine({
     context: {
       id: player.id,
@@ -639,6 +675,7 @@ export const playerStateMachine = (player: Player) => {
       engine: player.engine,
       buffManager: player.buffManager,
       statContainer: player.statContainer,
+      actionManager: player.actionManager,
       position: player.position,
       createdAtFrame: player.engine.getCurrentFrame(),
       currentFrame: player.engine.getCurrentFrame(),

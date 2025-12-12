@@ -5,7 +5,6 @@
  * - TypedArray存储：使用Float64Array和Uint32Array提供最高性能
  * - 位标志优化：使用位运算管理属性状态
  * - 批量更新：支持一次性更新多个属性
- * - API兼容：保持与原ReactiveDataManager相同的接口
  * - 内存优化：连续内存布局，减少GC压力
  */
 import * as Enums from "@db/schema/enums";
@@ -825,25 +824,27 @@ export class StatContainer<T extends string> {
 
         // 创建计算函数
         const code = compiled.code;
+        // 预编译表达式函数（避免每次计算都 new Function）
+        const fn = new Function("ctx", `with (ctx) { return ${code}; }`) as (ctx: {
+          _get: (k: string) => number;
+        }) => unknown;
+        // 仅注入取值函数，避免对 Member 的强耦合
+        const executionContext = { _get: (k: string) => this.getValue(k as T) };
         this.computationFunctions.set(index, () => {
+          if (this.isComputing.has(index)) {
+            console.warn(`⚠️ 检测到递归计算 ${attrName}，返回默认值`);
+            return 0;
+          }
+          this.isComputing.add(index);
           try {
-            if (this.isComputing.has(index)) {
-              console.warn(`⚠️ 检测到递归计算 ${attrName}，返回默认值`);
-              return 0;
-            }
-            this.isComputing.add(index);
-            // 仅注入取值函数，避免对 Member 的强耦合
-            const executionContext = { _get: (k: string) => this.getValue(k as T) };
-            const fn = new Function("ctx", `with (ctx) { return ${code}; }`);
-            const result = fn.call(null, executionContext);
-            const finalResult = typeof result === "number" ? result : 0;
-            this.isComputing.delete(index);
-            return finalResult;
+            const result = fn(executionContext);
+            return typeof result === "number" ? result : 0;
           } catch (error) {
-            this.isComputing.delete(index);
             console.error(`❌ 属性 ${attrName} 表达式执行失败:`, error);
             console.error(`❌ 失败的编译代码: ${code}`);
             return 0;
+          } finally {
+            this.isComputing.delete(index);
           }
         });
 

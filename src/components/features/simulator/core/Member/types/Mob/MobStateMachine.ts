@@ -5,8 +5,7 @@ import { MemberEventType } from "../../runtime/StateMachine/types";
 import { Mob, MobAttrType } from "./Mob";
 import { ModifierType } from "../../runtime/StatContainer/StatContainer";
 import { GameEngine } from "../../../GameEngine";
-import { MobPipelineStages, MobPipelineDef, MobStagePool } from "./MobPipelines";
-import { PipelineManager } from "../../runtime/Action/ActionManager";
+import type { ActionManager } from "../../runtime/Action/ActionManager";
 import type { MemberStateContext, MemberStateMachine } from "../../runtime/StateMachine/types";
 
 /**
@@ -127,7 +126,7 @@ export interface MobStateContext extends MemberStateContext {
   /** 正在施放的技能序号 */
   currentSkillIndex: number;
   /** 管线管理器引用（从 MemberStateContext 继承，但需要明确类型） */
-  pipelineManager: PipelineManager<MobPipelineDef, MobStagePool, MobStateContext>;
+  actionManager: ActionManager<any, any, any>;
 }
 
 // action的源定义，将用来约束状态机逻辑和管线树结构
@@ -359,7 +358,7 @@ export const mobGuards = {
 
 export const createMobStateMachine = (
   mob: Mob,
-): MemberStateMachine<MobAttrType, MobEventType, MobPipelineDef, typeof MobPipelineStages, MobStateContext> => {
+): MemberStateMachine<MobAttrType, MobEventType, any, any, MobStateContext> => {
   const machineId = mob.id;
 
   return setup({
@@ -383,7 +382,7 @@ export const createMobStateMachine = (
       engine: mob.engine,
       buffManager: mob.buffManager,
       statContainer: mob.statContainer,
-      pipelineManager: mob.pipelineManager,
+      actionManager: mob.actionManager as any,
       position: mob.position,
       createdAtFrame: mob.engine.getCurrentFrame(),
       currentFrame: mob.engine.getCurrentFrame(),

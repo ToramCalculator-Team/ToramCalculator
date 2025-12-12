@@ -34,22 +34,22 @@ export class ScheduleFSMEvent extends Node {
     }
 
     try {
-      // 计算目标帧
+      if (!owner.intentBuffer) {
+        this.error("ScheduleFSMEvent: owner.intentBuffer is required to push Intent");
+        return "failure";
+      }
+
+      // 计算目标帧（如需跨帧，可在 Resolver/上层做延迟处理；当前仅记录 frame）
       const targetFrame = owner.currentFrame + delayFrames;
 
-      // 向事件队列插入 member_fsm_event
-      owner.engine.getEventQueue().insert({
-        id: createId(),
-        type: "member_fsm_event",
-        executeFrame: targetFrame,
-        insertFrame: owner.currentFrame,
-        processed: false,
-        payload: {
-          targetMemberId: owner.id,
-          fsmEventType: eventType,
-          ...payload,
-        },
-      });
+      owner.intentBuffer.push({
+        type: "sendFsmEvent",
+        source: this.name,
+        actorId: owner.id,
+        targetId: owner.id,
+        frame: targetFrame,
+        event: { type: eventType, ...(payload ?? {}) },
+      } as any);
 
       return "success";
     } catch (error) {

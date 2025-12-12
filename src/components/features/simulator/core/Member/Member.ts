@@ -5,9 +5,12 @@ import { NestedSchema } from "./runtime/StatContainer/SchemaTypes";
 import GameEngine from "../GameEngine";
 import { MemberType } from "@db/schema/enums";
 import { BuffManager } from "./runtime/Buff/BuffManager";
+import type { ActionGroupBuffEffect } from "./runtime/Buff/BuffManager";
 import { ActionManager, type ActionDynamicStageInfo } from "./runtime/Action/ActionManager";
-import { ActionPool } from "./runtime/Action/type";
+import { ActionGroupDef, ActionPool } from "./runtime/Action/type";
 import { MemberActor, MemberStateMachine } from "./runtime/StateMachine/types";
+import IntentBuffer from "../IntentSystem/IntentBuffer";
+import type { SendFsmEventIntent } from "../IntentSystem/Intent";
 
 /**
  * 成员数据接口 - 对应响应式系统的序列化数据返回类型
@@ -27,14 +30,14 @@ export interface BuffViewData {
   source?: string;
   description?: string;
   variables?: Record<string, number | boolean>; // 如 chargeCounter 等
-  // 动态管线效果信息（简要描述）
+  // 动态动作组效果信息（简要描述）
   dynamicEffects?: Array<{
-    pipeline: string;
-    stage: string;
+    actionGroupName: string;
+    afterActionName: string;
     priority?: number;
   }>;
-  /** 实时动态阶段快照 */
-  activePipelineStages?: ActionDynamicStageInfo[];
+  /** 实时动态插入快照 */
+  activeDynamicActions?: ActionDynamicStageInfo[];
 }
 
 export interface MemberSerializeData {
@@ -53,7 +56,6 @@ export interface MemberSerializeData {
   };
   // Buff 列表（用于 UI 展示）
   buffs?: BuffViewData[];
-
 }
 
 export class Member<
@@ -83,33 +85,69 @@ export class Member<
   /** Buff 管理器（生命周期/钩子/机制状态） */
   buffManager: BuffManager;
   /** 动作管理器（固定+动态动作组管理） */
-  actionManager: ActionManager<any, TActionPool, TExContext>;
-  /** 兼容旧命名，保留 pipelineManager 引用 */
-  pipelineManager: ActionManager<any, TActionPool, TExContext>;
+  actionManager: ActionManager<TActionPool, TExContext>;
   /** 成员Actor引用 */
-  actor: MemberActor<TAttrKey, TEvent, TActionPool, TExContext>;
+  actor: MemberActor<TAttrKey, TEvent, ActionGroupDef<TActionPool>, TActionPool, TExContext>;
   /** 引擎引用 */
   engine: GameEngine;
   /** 成员数据 */
   data: MemberWithRelations;
   /** 位置信息 */
   position: { x: number; y: number; z: number };
+  /** 跨技能/跨树共享的运行时内存 */
+  memory: Record<string, unknown> = {};
+
+  constructor(
+    stateMachine: (member: any) => MemberStateMachine<TAttrKey, TEvent, ActionGroupDef<TActionPool>, TActionPool, TExContext>,
+    engine: GameEngine,
+    campId: string,
+    teamId: string,
+    targetId: string,
+    memberData: MemberWithRelations,
+    dataSchema: NestedSchema,
+    actionPool: TActionPool,
+    position?: { x: number; y: number; z: number },
+  ) {
+    this.id = memberData.id;
+    this.type = memberData.type;
+    this.name = memberData.name;
+    this.engine = engine;
+    this.campId = campId;
+    this.teamId = teamId;
+    this.targetId = targetId;
+    this.isAlive = true;
+    this.dataSchema = dataSchema;
+    this.data = memberData;
+    this.statContainer = new StatContainer<TAttrKey>(dataSchema);
+
+    // 初始化动作管理器（动作组定义可被后续覆盖/注册）
+    this.actionManager = new ActionManager(actionPool);
+
+    // 初始化Buff管理器（需要在 this.id 赋值后）
+    this.buffManager = new BuffManager(this.statContainer, this.actionManager, this.engine, memberData.id);
+
+    this.position = position ?? { x: 0, y: 0, z: 0 };
+    this.memory = {};
+
+    // 创建并启动状态机
+    this.actor = createActor(stateMachine(this), {
+      id: memberData.id,
+    });
+    this.actor.start();
+  }
 
   /** 序列化方法 */
   serialize(): MemberSerializeData {
     // 序列化 Buff 数据
     const buffs: BuffViewData[] = this.buffManager.getBuffs().map((buff) => {
-      // 提取动态管线效果信息
+      // 提取动态动作组效果信息
       const dynamicEffects = buff.effects
-        .filter((effect) => effect.type === "pipeline")
-        .map((effect) => {
-          const pipelineEffect = effect as any; // PipelineBuffEffect
-          return {
-            pipeline: pipelineEffect.pipeline,
-            stage: pipelineEffect.stage || "",
-            priority: pipelineEffect.priority,
-          };
-        });
+        .filter((effect): effect is ActionGroupBuffEffect => effect.type === "actionGroup")
+        .map((effect) => ({
+          actionGroupName: effect.actionGroupName,
+          afterActionName: effect.afterActionName,
+          priority: effect.priority,
+        }));
 
       return {
         id: buff.id,
@@ -122,7 +160,7 @@ export class Member<
         description: buff.description,
         variables: buff.variables ? { ...buff.variables } : undefined,
         dynamicEffects: dynamicEffects.length > 0 ? dynamicEffects : undefined,
-        activePipelineStages: this.pipelineManager.getDynamicStageInfos({ source: buff.id }),
+        activeDynamicActions: this.actionManager.getDynamicStageInfos({ source: buff.id }),
       };
     });
 
@@ -141,60 +179,32 @@ export class Member<
   }
 
   update(): void {
-    // 获取当前帧数（从引擎的 frameLoop 获取）
-    const currentFrame = this.engine.getCurrentFrame();
-    
-    // 更新 Buff（处理 frame.update 效果和过期检查）
-    this.buffManager.update(currentFrame);
-    
-    // 发送"更新"事件（中文），与状态机监听的事件类型匹配
-    const taskId = this.engine.beginFrameTask(undefined, { source: `member:${this.id}:update` });
-    try {
-      this.actor.send({ type: "更新", timestamp: Date.now() } as unknown as TEvent);
-    } finally {
-      this.engine.endFrameTask(taskId);
+    // 保持向后兼容：直接执行一次 tick 并立即发送更新事件
+    const buffer = new IntentBuffer();
+    this.tick(this.engine.getCurrentFrame(), buffer);
+    const intents = buffer.drain();
+    for (const intent of intents) {
+      if (intent.type === "sendFsmEvent") {
+        this.actor.send((intent as SendFsmEventIntent).event as any);
+      }
     }
   }
 
-  constructor(
-    stateMachine: (
-      member: any,
-    ) => MemberStateMachine<TAttrKey, TEvent, TActionPool, TExContext>,
-    engine: GameEngine,
-    campId: string,
-    teamId: string,
-    targetId: string,
-    memberData: MemberWithRelations,
-    dataSchema: NestedSchema,
-    actionPool: TActionPool,
-    actionGroupDef: Record<string, string[]> = {},
-    position?: { x: number; y: number; z: number },
-  ) {
-    this.id = memberData.id;
-    this.type = memberData.type;
-    this.name = memberData.name;
-    this.engine = engine;
-    this.campId = campId;
-    this.teamId = teamId;
-    this.targetId = targetId;
-    this.isAlive = true;
-    this.dataSchema = dataSchema;
-    this.data = memberData;
-    this.statContainer = new StatContainer<TAttrKey>(dataSchema);
+  /**
+   * 新的执行入口：每帧 tick，产出 Intent，由上层 Resolver 统一落地
+   */
+  tick(frame: number, intentBuffer: IntentBuffer): void {
+    // 更新 Buff（处理 frame.update 效果和过期检查）
+    this.buffManager.update(frame);
 
-    // 初始化动作管理器（动作组定义可被后续覆盖/注册）
-    this.actionManager = new ActionManager(actionGroupDef as any, actionPool as any);
-    this.pipelineManager = this.actionManager;
-
-    // 初始化Buff管理器（需要在 this.id 赋值后）
-    this.buffManager = new BuffManager(this.statContainer, this.pipelineManager, this.engine, memberData.id);
-
-    this.position = position ?? { x: 0, y: 0, z: 0 };
-
-    // 创建并启动状态机
-    this.actor = createActor(stateMachine(this), {
-      id: memberData.id,
-    });
-    this.actor.start();
+    // 产出“更新”事件给状态机
+    intentBuffer.push({
+      type: "sendFsmEvent",
+      source: `member:${this.id}`,
+      actorId: this.id,
+      targetId: this.id,
+      frame,
+      event: { type: "更新", timestamp: Date.now() },
+    } as SendFsmEventIntent);
   }
 }

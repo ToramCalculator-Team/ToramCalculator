@@ -3,12 +3,12 @@
  *
  * 核心职责：
  * 1. 管理buff的基本生命周期（添加、移除、更新）
- * 2. 通知PipelineManager进行管线插入/移除
+ * 2. 通知 ActionManager 进行动作组动态插入/移除
  * 3. 通知Member的StateContainer进行状态修改
  */
 
 import { ModifierSource, ModifierType, StatContainer } from "../StatContainer/StatContainer";
-import { PipelineManager } from "../Action/ActionManager";
+import type { ActionManager } from "../Action/ActionManager";
 import type GameEngine from "../../../GameEngine";
 
 // ==================== 类型定义 ====================
@@ -27,21 +27,23 @@ export interface StatBuffEffect {
 }
 
 /**
- * 管线修改效果
+ * 动作组修改效果（动态插入）
  */
-export interface PipelineBuffEffect {
-  type: "pipeline";
-  /** 目标管线名称 */
-  pipeline: string;
-  /** 插入点阶段名称 (在此阶段后执行) */
-  stage: string;
-  /** 动态逻辑：字符串（表达式）或函数 */
-  logic: string | ((context: any, input: any) => any);
+export interface ActionGroupBuffEffect {
+  type: "actionGroup";
+  /** 目标动作组名称 */
+  actionGroupName: string;
+  /** 插入点动作名称（在此动作后执行） */
+  afterActionName: string;
+  /** 插入的阶段名称（必须在 actionPool 中存在） */
+  insertStageName: string;
+  /** 可选：执行该 stage 前额外合并到输入的 params（纯数据） */
+  params?: Record<string, unknown>;
   /** 优先级 */
   priority?: number;
 }
 
-export type BuffEffect = StatBuffEffect | PipelineBuffEffect;
+export type BuffEffect = StatBuffEffect | ActionGroupBuffEffect;
 
 /**
  * Buff 实例
@@ -86,7 +88,7 @@ export class BuffManager {
 
   constructor(
     private statContainer: StatContainer<any>,
-    private pipelineManager: PipelineManager<any, any, any>,
+    private actionManager: ActionManager<any, any>,
     private engine: GameEngine,
     private memberId: string,
   ) {}
@@ -176,56 +178,18 @@ export class BuffManager {
           });
         }
 
-      } else if (effect.type === "pipeline") {
-        // 管线效果：仅在非叠加（首次）时添加
+      } else if (effect.type === "actionGroup") {
+        // 动作组效果：仅在非叠加（首次）时添加
         if (!isStacking) {
-          const stageId = `${buff.id}_${effect.pipeline}_${effect.stage}`;
-          
-          // 创建包装函数，支持字符串表达式或函数
-          const wrappedLogic = (context: any, input: any) => {
-            if (typeof effect.logic === 'function') {
-              // 函数形式：直接调用
-              return effect.logic(context, input);
-            } else if (typeof effect.logic === 'string' && effect.logic.trim()) {
-              // 字符串表达式：执行副作用后返回 input
-              try {
-                // 构建表达式上下文，包含 Buff 变量和辅助函数
-                // 约定：对由 JSProcessor 编译的代码，ctx 满足 ExpressionRuntimeContext 基本形状
-                const evalContext = {
-                  ...context,
-                  // 统一的基础标识字段
-                  casterId: (context as any).id ?? this.memberId,
-                  targetId: (context as any).targetId,
-                  ...(buff.variables || {}),
-                  // 注入辅助函数
-                  getBuffVar: (buffId: string, name: string) => this.getVariable(buffId, name),
-                  setBuffVar: (buffId: string, name: string, value: number) => this.setVariable(buffId, name, value),
-                  hasBuff: (buffId: string) => this.hasBuff(buffId),
-                };
-                
-                // 编译并执行表达式（由 GameEngine + JSProcessor 负责）
-                const compiledCode = this.engine.compileScript(effect.logic, context.id || '', context.targetId);
-                const runner = this.engine.createExpressionRunner(compiledCode);
-                runner(evalContext);
-                
-                // 返回 input，保持数据流一致
-                return input;
-              } catch (error) {
-                console.error(`❌ Buff 表达式执行失败 (${buff.id}):`, error);
-                return input;
-              }
-            } else {
-              console.warn(`⚠️ Buff 效果 logic 类型无效 (${buff.id}):`, typeof effect.logic);
-              return input;
-            }
-          };
-          
-          const cleanup = this.pipelineManager.insertDynamicStage(
-            effect.pipeline,
-            effect.stage,
-            wrappedLogic,
+          const stageId = `${buff.id}_${effect.actionGroupName}_${effect.afterActionName}`;
+
+          const cleanup = this.actionManager.insertPipelineStage(
+            effect.actionGroupName,
+            effect.afterActionName as any,
+            effect.insertStageName as any,
             stageId,
-            buff.id, // source = buff.id
+            buff.id,
+            effect.params ?? undefined,
             effect.priority ?? 0,
           );
 
@@ -258,12 +222,12 @@ export class BuffManager {
       buff._appliedStats = [];
     }
 
-    // 2. 移除管线效果
+    // 2. 移除动作组效果
     if (buff._pipelineStageCleanups) {
       buff._pipelineStageCleanups.forEach((dispose) => dispose());
       buff._pipelineStageCleanups = [];
     }
-    this.pipelineManager.removeStagesBySource(buff.id);
+    this.actionManager.removeStagesBySource(buff.id);
 
     this.buffs.delete(buffId);
     console.log(`🗑️ Buff Removed: ${buff.name} (${buffId})`);
@@ -279,8 +243,8 @@ export class BuffManager {
   /**
    * 查询指定来源的动态管线阶段
    */
-  getPipelineStagesBySource(source: string) {
-    return this.pipelineManager.getDynamicStageInfos({ source });
+  getDynamicActionsBySource(source: string) {
+    return this.actionManager.getDynamicStageInfos({ source });
   }
 
   /**
@@ -319,49 +283,12 @@ export class BuffManager {
    * @param currentFrame 当前帧数
    */
   update(currentFrame: number): void {
-    // 1. 处理 frame.update 管线的效果（特殊处理，因为这不是真正的管线）
+    // 1. 处理 frame.update 动作组的效果（特殊处理：每帧执行一次）
     for (const buff of this.buffs.values()) {
       for (const effect of buff.effects) {
-        if (effect.type === "pipeline" && effect.pipeline === "frame.update") {
-          // 创建临时上下文执行 frame.update 效果
-          const context = {
-            currentFrame,
-            id: this.memberId,
-            buffManager: this,
-            engine: this.engine, // 添加 engine 引用，供编译后的代码使用
-          };
-          
-          const wrappedLogic = (ctx: any, input: any) => {
-            if (typeof effect.logic === 'function') {
-              return effect.logic(ctx, input);
-            } else if (typeof effect.logic === 'string' && effect.logic.trim()) {
-              try {
-                const evalContext = {
-                  ...ctx,
-                  // 统一基础标识：帧更新始终作用在自身成员上
-                  casterId: this.memberId,
-                  targetId: undefined,
-                  ...(buff.variables || {}),
-                  getBuffVar: (buffId: string, name: string) => this.getVariable(buffId, name),
-                  setBuffVar: (buffId: string, name: string, value: number) => this.setVariable(buffId, name, value),
-                  hasBuff: (buffId: string) => this.hasBuff(buffId),
-                };
-                const compiledCode = this.engine.compileScript(effect.logic, this.memberId, undefined);
-                const runner = this.engine.createExpressionRunner(compiledCode);
-                runner(evalContext);
-                return input;
-              } catch (error) {
-                console.error(`❌ Buff frame.update 表达式执行失败 (${buff.id}):`, error);
-                return input;
-              }
-            } else {
-              console.warn(`⚠️ Buff frame.update 效果 logic 类型无效 (${buff.id}):`, typeof effect.logic);
-              return input;
-            }
-          };
-          
-          wrappedLogic(context, {});
-        }
+        // 旧版 frame.update（logic 字符串/函数）已移除：在当前架构中应由 buff 行为树产出 Intent 驱动
+        // 若确实需要每帧效果，请改为：插入一个静态 stage（insertStageName）到某条 per-frame pipeline 上。
+        void effect;
       }
     }
     

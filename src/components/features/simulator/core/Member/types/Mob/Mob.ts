@@ -4,11 +4,11 @@ import { ExtractAttrPaths, NestedSchema } from "../../runtime/StatContainer/Sche
 import GameEngine from "../../../GameEngine";
 import { createMobStateMachine, MobStateContext, MobEventType } from "./MobStateMachine";
 import { MobAttrSchema } from "./MobAttrSchema";
-import { MobPipelineDef, MobPipelineStages, MobStagePool } from "./MobPipelines";
+import { MobActions } from "./MobPipelines";
 
 export type MobAttrType = ExtractAttrPaths<ReturnType<typeof MobAttrSchema>>;
 
-export class Mob extends Member<MobAttrType, MobEventType, MobPipelineDef, MobStagePool, MobStateContext> {
+export class Mob extends Member<MobAttrType, MobEventType, typeof MobActions, MobStateContext> {
   constructor(
     engine: GameEngine,
     memberData: MemberWithRelations,
@@ -25,8 +25,7 @@ export class Mob extends Member<MobAttrType, MobEventType, MobPipelineDef, MobSt
       targetId, 
       memberData, 
       schema, 
-      MobPipelineDef,
-      MobPipelineStages,
+      MobActions,
       position);
   }
 }

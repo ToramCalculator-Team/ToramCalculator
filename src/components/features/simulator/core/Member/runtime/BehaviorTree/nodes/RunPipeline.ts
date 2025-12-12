@@ -5,13 +5,14 @@ import type { MemberStateContext } from "../../StateMachine/types";
 
 /**
  * RunPipeline 节点（通用）
- * 调用成员管线定义中定义的管线
+ * 调用成员动作组（actionGroup）定义
  * 
  * 适用于所有成员类型（Player、Mob等）
  */
 export class RunPipeline extends Node {
   declare args: {
-    readonly pipelineName: string;
+    /** 动作组名称 */
+    readonly actionGroupName: string;
     readonly params?: Record<string, unknown>;
   };
 
@@ -25,41 +26,28 @@ export class RunPipeline extends Node {
       return "failure";
     }
 
-    const { pipelineName, params } = this.args;
-    if (!pipelineName) {
-      this.error("RunPipeline: pipelineName is required");
+    const { params } = this.args;
+    const { actionGroupName } = this.args;
+    if (!actionGroupName) {
+      this.error("RunPipeline: actionGroupName is required");
       return "failure";
     }
 
     try {
-      console.log(`🌳 [RunPipeline] 调用管线: ${pipelineName}`);
-      
-      // 调用管线管理器执行管线（MemberStateContext 上未显式声明 pipelineManager，这里做宽松断言）
-      const result = owner.pipelineManager.run(pipelineName as any, owner, params || {});
-
-      // 将结果写入 blackboard，供后续节点使用
-      // result 包含 { ctx, stageOutputs }
-      // 将 stageOutputs 合并到 blackboard
-      if (result.stageOutputs) {
-        for (const [stageName, stageOutput] of Object.entries(result.stageOutputs)) {
-          if (stageOutput && typeof stageOutput === "object") {
-            // 将阶段输出的每个字段写入 blackboard
-            for (const [key, value] of Object.entries(stageOutput)) {
-              tree.blackboard.set(key, value);
-            }
-          } else {
-            tree.blackboard.set(stageName, stageOutput);
-          }
-        }
+      if (!owner.intentBuffer) {
+        this.error("RunPipeline: owner.intentBuffer is required to push Intent");
+        return "failure";
       }
-
-      // 更新 context（因为管线可能修改了 context）
-      Object.assign(owner, result.ctx);
-
-      // console.log(`✅ [RunPipeline] 管线执行成功: ${pipelineName}`);
+      owner.intentBuffer.push({
+        type: "runPipeline",
+        source: this.name,
+        actorId: owner.id,
+        pipeline: actionGroupName,
+        params: params ?? {},
+      });
       return "success";
     } catch (error) {
-      console.error(`❌ [RunPipeline] 管线执行失败: ${pipelineName}`, error);
+      console.error(`❌ [RunPipeline] push Intent 失败: ${actionGroupName}`, error);
       this.error(`RunPipeline failed: ${error instanceof Error ? error.message : String(error)}`);
       return "failure";
     }
@@ -71,24 +59,23 @@ export class RunPipeline extends Node {
       type: "Action",
       children: 0,
       status: ["success", "failure"],
-      desc: "调用成员管线",
+      desc: "调用成员动作组（兼容旧名：管线）",
       args: [
         {
-          name: "pipelineName",
+          name: "actionGroupName",
           type: "string",
-          desc: "管线名称（如 '技能.消耗.计算'）",
+          desc: "动作组名称（如 '技能.消耗.计算'）",
         },
         {
           name: "params",
           type: "json?",
-          desc: "管线输入参数（可选）",
+          desc: "动作组输入参数（可选）",
         },
       ],
-      output: ["管线执行结果（自动写入 blackboard）"],
+      output: ["动作组执行结果（自动写入 blackboard）"],
       doc: `
-        + 调用成员管线定义中定义的管线
-        + 管线执行结果会自动写入 blackboard，供后续节点使用
-        + 如果管线执行失败，返回 failure
+        + 调用成员动作组（ActionGroup）定义
+        + 执行结果会自动写入 blackboard，供后续节点使用
       `,
     };
   }

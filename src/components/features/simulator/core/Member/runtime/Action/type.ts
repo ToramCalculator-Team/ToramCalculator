@@ -94,5 +94,5 @@ export type OutputOfSchema<T extends ZodType> = z.output<T>;
  * @template TPool - 动作池类型，用于约束动作名
  */
 export type ActionGroupDef<TPool extends ActionPool<any> = ActionPool<any>> = {
-  [actionGroupName: string]: readonly (keyof TPool & string)[];
+  [actionGroupName: string]: readonly (keyof TPool)[];
 };

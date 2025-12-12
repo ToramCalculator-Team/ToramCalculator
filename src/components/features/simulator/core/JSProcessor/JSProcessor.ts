@@ -50,6 +50,29 @@ export interface CompileResult {
   warnings?: string[];
 }
 
+/**
+ * 表达式/脚本执行基础上下文
+ *
+ * 说明：
+ * - JSProcessor 只负责“编译”，但引擎与行为树需要一个统一的运行时上下文类型
+ * - 该类型不做强约束（允许扩展字段），仅提供最小公共字段集合
+ */
+export interface ExpressionContext {
+  /** 当前帧号（必填，用于基于帧的逻辑判断） */
+  currentFrame: number;
+  /** 施法者成员ID（通常等于 self.id） */
+  casterId: string;
+  /** 目标成员ID（可选） */
+  targetId?: string;
+  /** 技能等级（可选，用于技能表达式） */
+  skillLv?: number;
+  /** 环境变量（如天气、地形等） */
+  environment?: unknown;
+  /** 其他自定义变量 */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
 // ============================== 核心处理器 ==============================
 
 export class JSProcessor {

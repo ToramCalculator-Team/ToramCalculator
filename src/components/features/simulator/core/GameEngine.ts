@@ -37,7 +37,12 @@ import {
   FrameSnapshot,
 } from "./types";
 import { QueueEvent } from "./EventQueue/types";
-import { ExpressionContext } from "./EventExecutor/types";
+import type { ExpressionContext } from "./JSProcessor/JSProcessor";
+import IntentBuffer from "./IntentSystem/IntentBuffer";
+import Resolver from "./IntentSystem/Resolver";
+import World from "./World/World";
+import SpaceManager from "./World/SpaceManager";
+import AreaManager from "./World/AreaManager";
 
 /**
  * 游戏引擎类
@@ -79,6 +84,13 @@ export class GameEngine {
     totalEventsProcessed: 0,
     totalMessagesProcessed: 0,
   };
+
+  // ==================== Intent/Resolver/World 层 ====================
+  private intentBuffer: IntentBuffer;
+  private resolver: Resolver;
+  private spaceManager: SpaceManager;
+  private areaManager: AreaManager;
+  private world: World;
 
   // ==================== 渲染通信 ====================
 
@@ -133,6 +145,13 @@ export class GameEngine {
     this.messageRouter = new MessageRouter(this); // 注入引擎
     this.frameLoop = new FrameLoop(this, this.config.frameLoopConfig); // 注入引擎
     this.jsProcessor = new JSProcessor(); // 初始化JS表达式处理器
+
+    // Intent/Resolver/World 相关
+    this.intentBuffer = new IntentBuffer();
+    this.resolver = new Resolver();
+    this.spaceManager = new SpaceManager();
+    this.areaManager = new AreaManager(this.spaceManager, this.memberManager);
+    this.world = new World(this.memberManager, this.spaceManager, this.areaManager, this.intentBuffer, this.resolver);
 
     // 创建状态机 - 使用动态获取mirror sender的方式
     this.stateMachine = createActor(GameEngineSM, {
@@ -666,7 +685,7 @@ export class GameEngine {
   /**
    * 编译脚本代码为可执行的 JS 片段（仅负责编译，不执行）
    *
-   * 用于 EventExecutor 等场景：
+   * 用于引擎内部脚本执行场景：
    * - 输入原始 JS 片段和成员/目标信息
    * - 基于成员的 dataSchema 进行属性访问重写与验证
    * - 返回可直接在运行时执行的 compiledCode 字符串
@@ -907,26 +926,6 @@ export class GameEngine {
         } else {
           console.warn("⚠️ stepFrame: member_fsm_event 缺少 targetMemberId 或 fsmEventType", event);
         }
-      } else if (event.type === "member_pipeline_event") {
-        const payload = (event.payload ?? {}) as any;
-        const targetMemberId = payload.targetMemberId as string | undefined;
-        const pipelineName = payload.pipelineName as string | undefined;
-        const params = payload.params as Record<string, unknown> | undefined;
-
-        if (targetMemberId && pipelineName) {
-          const member = this.memberManager.getMember(targetMemberId);
-          if (member && (member as any).pipelineManager) {
-            try {
-              (member as any).pipelineManager.run(pipelineName as any, (member as any).actor.getSnapshot().context, params ?? {});
-            } catch (error) {
-              console.error(`❌ stepFrame: 运行管线失败 ${pipelineName} for member ${targetMemberId}`, error);
-            }
-          } else {
-            console.warn(`⚠️ stepFrame: 目标成员不存在或缺少 pipelineManager: ${targetMemberId}`);
-          }
-        } else {
-          console.warn("⚠️ stepFrame: member_pipeline_event 缺少 targetMemberId 或 pipelineName", event);
-        }
       } else {
         console.warn(`⚠️ stepFrame: 未知事件类型: ${event.type}`);
       }
@@ -935,19 +934,15 @@ export class GameEngine {
       eventsProcessed++;
     }
 
-    // 2. 成员更新（驱动 buff / FSM / 行为树 等）
-    let membersUpdated = 0;
-    const members = this.memberManager.getAllMembers();
-    for (const member of members) {
-      member.update();
-      membersUpdated++;
-    }
+    // 2. 成员/区域更新（驱动 BT/SM/Buff 等），统一产出 Intent 并执行
+    this.world.tick(frameNumber);
+    const membersUpdated = this.memberManager.getAllMembers().length;
 
     const duration = performance.now() - frameStartTime;
 
     // 3. 检查是否还有本帧待处理事件
-    const remainingEvents = this.eventQueue.getByFrame(frameNumber).filter((event) => !event.processed);
-    const hasPendingEvents = remainingEvents.length > 0;
+    // eventsForFrame 已是当前帧分桶，避免重复取队列
+    const hasPendingEvents = eventsForFrame.some((event) => !event.processed);
 
     const pendingFrameTasks = this.pendingFrameTasksCount;
 
