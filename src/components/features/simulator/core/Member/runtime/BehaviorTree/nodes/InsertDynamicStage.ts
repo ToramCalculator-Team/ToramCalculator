@@ -63,9 +63,10 @@ export class InsertDynamicStage extends Node {
     const owner = tree.owner as TContext & {
       actionManager?: {
         insertDynamicStage?: Function;
-        actionGroupDef?: Record<string, readonly string[]>;
+        pipelineDef?: Record<string, readonly string[]>;
         actionPool?: Record<string, readonly [any, any, Function]>;
       };
+      intentBuffer?: { push: (intent: any) => void };
     };
 
     if (!owner.intentBuffer) {
@@ -100,7 +101,7 @@ export class InsertDynamicStage extends Node {
       }
 
       // 校验插入点是否存在（如果能找到静态定义）
-      const actionList = actionManager.actionGroupDef?.[actionGroupName];
+      const actionList = actionManager.pipelineDef?.[actionGroupName];
       if (Array.isArray(actionList) && !actionList.includes(afterActionName)) {
         console.warn(
           `[InsertDynamicStage] 动作组 ${String(actionGroupName)} 不包含动作 ${String(afterActionName)}，已跳过`,
@@ -111,7 +112,7 @@ export class InsertDynamicStage extends Node {
       const stageId = `${source}_${String(actionGroupName)}_${String(afterActionName)}_${createId()}`;
       const insertStageName = target.insertActionName;
 
-      // 只存 stageName，不存 handler；params 作为纯数据交给 ActionManager 在执行前合并
+      // 只存 stageName，不存 handler；params 作为纯数据交给 PipelineManager 在执行前合并
       owner.intentBuffer.push({
         type: "insertPipelineStage",
         source,

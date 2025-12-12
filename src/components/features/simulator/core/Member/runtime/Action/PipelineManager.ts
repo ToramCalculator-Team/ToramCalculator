@@ -1,14 +1,14 @@
 /**
- * 动作管理器（运行时）
- * - 动作组定义（ActionGroup）来自运行时 JSON/数据库。
- * - 管理粒度在动作组上（插入/覆盖），执行粒度在动作上。
+ * 管线管理器（运行时）
+ * - 管线定义（Pipeline）来自运行时 JSON/数据库。
+ * - 管理粒度在管线编排上（插入/覆盖），执行粒度在阶段上。
  */
 
 import { ZodType } from "zod/v4";
-import { ActionGroupDef, ActionPool } from "./type";
+import { PipelineDef, StagePool } from "./type";
 
-export interface ActionDynamicStageInfo {
-  actionGroupName: string;
+export interface PipelineDynamicStageInfo {
+  pipelineName: string;
   /** 插入点（在哪个 stage 之后插入） */
   afterStageName: string;
   /** 被插入的 stage 名称 */
@@ -19,11 +19,11 @@ export interface ActionDynamicStageInfo {
   insertedAt: number;
 }
 
-interface DynamicStageEntry<TPool extends ActionPool<any>> {
+interface DynamicStageEntry<TPool extends StagePool<any>> {
   id: string;
   source: string;
   priority: number;
-  /** 插入的 stage 名称（必须在 actionPool 中存在） */
+  /** 插入的 stage 名称（必须在 stagePool 中存在） */
   insertStageName: keyof TPool ;
   /** 可选：执行该 stage 前额外合并到输入的 params（纯数据） */
   params?: Record<string, unknown>;
@@ -32,25 +32,25 @@ interface DynamicStageEntry<TPool extends ActionPool<any>> {
 }
 
 /**
- * 动作管理器（ActionGroup 执行器）
+ * 管线管理器（Pipeline 执行器）
  *
- * @template TPool 动作池
+ * @template TPool 阶段池
  * @template TCtx  上下文类型
  */
-export class ActionManager<
-  TPool extends ActionPool<TCtx> = ActionPool<any>,
+export class PipelineManager<
+  TPool extends StagePool<TCtx> = StagePool<any>,
   TCtx extends Record<string, any> = Record<string, any>,
 > {
   /**
-   * PipelineDef（动作组编排定义）
+   * PipelineDef（管线编排定义）
    * - 不再使用代码常量固定注入
    * - 由技能效果 JSON 在初始化/挂载时动态注册
    */
-  public readonly actionGroupDef: ActionGroupDef<TPool> = {};
+  public readonly pipelineDef: PipelineDef<TPool> = {};
 
-  /** 按作用域的动作组覆盖：member、skill */
-  private memberOverrides?: ActionGroupDef<TPool>;
-  private skillOverrides?: ActionGroupDef<TPool>;
+  /** 按作用域的管线覆盖：member、skill */
+  private memberOverrides?: PipelineDef<TPool>;
+  private skillOverrides?: PipelineDef<TPool>;
 
   /**
    * 动态管线补丁（仅存 stageName + params，不存 handler）
@@ -71,19 +71,19 @@ export class ActionManager<
   ) {}
 
   /**
-   * 动态注册自定义动作组，返回清理函数
+   * 动态注册管线，返回清理函数
    */
   registerActionGroups(custom: { name: string; actions: string[] }[]): () => void {
     const added: string[] = [];
     for (const cp of custom ?? []) {
       if (!cp?.name || !Array.isArray(cp.actions)) continue;
-      (this.actionGroupDef as any)[cp.name] = cp.actions;
+      (this.pipelineDef as any)[cp.name] = cp.actions;
       delete this.compiledChains[String(cp.name)];
       added.push(cp.name);
     }
     return () => {
       for (const name of added) {
-        delete this.actionGroupDef[name];
+        delete this.pipelineDef[name];
       }
       this.compiledChains = {};
     };
@@ -97,20 +97,20 @@ export class ActionManager<
     const added: string[] = [];
     for (const [name, stages] of Object.entries(def ?? {})) {
       if (!name || !Array.isArray(stages)) continue;
-      (this.actionGroupDef as any)[name] = stages;
+      this.pipelineDef[name] = stages;
       added.push(name);
     }
     this.compiledChains = {};
     return () => {
-      for (const name of added) delete (this.actionGroupDef as any)[name];
+      for (const name of added) delete this.pipelineDef[name];
       this.compiledChains = {};
     };
   }
 
   /**
-   * 设置角色级覆盖（作用于当前 ActionManager 实例）
+   * 设置角色级覆盖（作用于当前 PipelineManager 实例）
    */
-  setMemberOverrides(overrides?: ActionGroupDef<TPool>) {
+  setMemberOverrides(overrides?: PipelineDef<TPool>) {
     this.memberOverrides = overrides;
     this.compiledChains = {};
   }
@@ -118,7 +118,7 @@ export class ActionManager<
   /**
    * 设置技能级覆盖（一次技能作用域，优先级最高）
    */
-  setSkillOverrides(overrides?: ActionGroupDef<TPool>) {
+  setSkillOverrides(overrides?: PipelineDef<TPool>) {
     this.skillOverrides = overrides;
     this.compiledChains = {};
   }
@@ -309,7 +309,7 @@ export class ActionManager<
         const stageDef = this.actionPool[actionName];
         if (!stageDef) {
           throw new Error(
-            `[ActionManager] Action "${String(actionName)}" not found in pool for actionGroup "${String(actionGroupName)}"`,
+            `[PipelineManager] Stage "${String(actionName)}" not found in pool for pipeline "${String(actionGroupName)}"`,
           );
         }
         const [inputSchema, outputSchema, staticImpl] = stageDef as unknown as [
@@ -386,15 +386,15 @@ export class ActionManager<
    */
   getDynamicStageInfos(filter?: {
     source?: string;
-    actionGroupName?: string;
+    pipelineName?: string;
     afterStageName?: string;
-  }): ActionDynamicStageInfo[] {
-    const result: ActionDynamicStageInfo[] = [];
-    for (const actionGroupName of Object.keys(this.dynamicStages)) {
-      const stages = this.dynamicStages[actionGroupName];
+  }): PipelineDynamicStageInfo[] {
+    const result: PipelineDynamicStageInfo[] = [];
+    for (const pipelineName of Object.keys(this.dynamicStages)) {
+      const stages = this.dynamicStages[pipelineName];
       if (!stages) continue;
-      const filterGroup = filter?.actionGroupName;
-      if (filterGroup && filterGroup !== actionGroupName) continue;
+      const filterGroup = filter?.pipelineName;
+      if (filterGroup && filterGroup !== pipelineName) continue;
 
       for (const actionName of Object.keys(stages)) {
         const filterAction = filter?.afterStageName;
@@ -405,7 +405,7 @@ export class ActionManager<
         for (const entry of entries) {
           if (filter?.source && filter.source !== entry.source) continue;
           result.push({
-            actionGroupName,
+            pipelineName,
             afterStageName: actionName,
             insertStageName: String(entry.insertStageName),
             id: entry.id,
@@ -418,7 +418,7 @@ export class ActionManager<
     }
 
     return result.sort((a, b) => {
-      if (a.actionGroupName !== b.actionGroupName) return a.actionGroupName.localeCompare(b.actionGroupName);
+      if (a.pipelineName !== b.pipelineName) return a.pipelineName.localeCompare(b.pipelineName);
       if (a.afterStageName !== b.afterStageName) return a.afterStageName.localeCompare(b.afterStageName);
       return a.insertedAt - b.insertedAt;
     });
@@ -430,24 +430,24 @@ export class ActionManager<
    * 返回：{ ctx, actionOutputs }，actionOutputs 为各动作最终输出
    */
   run(
-    actionGroupName: string,
+    pipelineName: string,
     ctx: TCtx,
     params?: Record<string, any>,
   ): { ctx: TCtx; actionOutputs: Record<string, any> } {
     // 按优先级解析管线定义：skill > member > global
-    const actionNames =
-      (this.skillOverrides?.[actionGroupName] as unknown as readonly string[] | undefined) ??
-      (this.memberOverrides?.[actionGroupName] as unknown as readonly string[] | undefined) ??
-      this.actionGroupDef[actionGroupName];
+    const stageNames =
+      (this.skillOverrides?.[pipelineName] as unknown as readonly string[] | undefined) ??
+      (this.memberOverrides?.[pipelineName] as unknown as readonly string[] | undefined) ??
+      this.pipelineDef[pipelineName];
 
-    if (!actionNames) {
-      throw new Error(`[ActionManager] 找不到动作组定义: ${String(actionGroupName)}`);
+    if (!stageNames) {
+      throw new Error(`[PipelineManager] 找不到管线定义: ${String(pipelineName)}`);
     }
 
-    const effectiveStages = this.resolveEffectiveStages(actionGroupName, actionNames as any);
-    const cacheKey = `${String(actionGroupName)}::${effectiveStages.join("|")}`;
+    const effectiveStages = this.resolveEffectiveStages(pipelineName, stageNames as any);
+    const cacheKey = `${String(pipelineName)}::${effectiveStages.join("|")}`;
     if (!this.compiledChains[cacheKey]) {
-      this.compiledChains[cacheKey] = this.compile(actionGroupName, effectiveStages as any);
+      this.compiledChains[cacheKey] = this.compile(pipelineName, effectiveStages as any);
     }
 
     const result = this.compiledChains[cacheKey](ctx, params);

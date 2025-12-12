@@ -1,10 +1,9 @@
 import { ZodBoolean, ZodEnum, ZodNumber, ZodObject, ZodString, ZodType } from "zod/v4";
 import {
-  PlayerPipelineStages,
   PlayerPipelineDef,
-  type PlayerStagePool,
+  PlayerPipelineStages,
 } from "../../simulator/core/Member/types/Player/PlayerPipelines";
-import type { PipelineStage } from "../../simulator/core/Member/runtime/Action/type";
+import type { Stage } from "../../simulator/core/Member/runtime/Action/type";
 
 export type PipelineParamKind = "number" | "boolean" | "string" | "enum" | "json";
 
@@ -33,7 +32,7 @@ export interface CustomPipelineMeta {
   stages: string[];
 }
 
-type AnyStage = PipelineStage<ZodType, ZodType, Record<string, unknown>>;
+type AnyStage = Stage<ZodType, ZodType, Record<string, unknown>>;
 
 export const makePipelineBlockId = (pipelineName: string): string => {
   const safeName = pipelineName
@@ -152,8 +151,8 @@ const extractOutputKeys = (schema: ZodType | undefined): string[] => {
 export const buildPlayerPipelineMetas = (): PipelineMeta[] => {
   const metas: PipelineMeta[] = [];
 
-  const def: PlayerPipelineDef = PlayerPipelineDef;
-  const stagePool: PlayerStagePool = PlayerPipelineStages;
+  const def: PlayerPipelineDef = [] as unknown as PlayerPipelineDef;
+  const stagePool: PlayerPipelineStages = PlayerPipelineStages;
 
   for (const pipelineName of Object.keys(def) as (keyof PlayerPipelineDef)[]) {
     const stageNames = def[pipelineName];
@@ -162,7 +161,7 @@ export const buildPlayerPipelineMetas = (): PipelineMeta[] => {
     const required = new Map<string, PipelineParamMeta>(); // 需要入口提供的参数
 
     for (const stageName of stageNames) {
-      const stageDef = stagePool[stageName] as unknown as AnyStage | undefined;
+      const stageDef = stagePool[stageName as keyof PlayerPipelineStages] as unknown as AnyStage | undefined;
       if (!stageDef) continue;
       const [inputSchema, outputSchema] = stageDef;
 
@@ -197,9 +196,9 @@ export const buildPlayerPipelineMetas = (): PipelineMeta[] => {
 
 export const buildPlayerStageMetas = () => {
   const metas: StageMeta[] = [];
-  const stagePool: PlayerStagePool = PlayerPipelineStages;
+  const stagePool: PlayerPipelineStages = PlayerPipelineStages;
 
-  for (const stageName of Object.keys(stagePool) as (keyof PlayerStagePool)[]) {
+  for (const stageName of Object.keys(stagePool) as (keyof PlayerPipelineStages)[]) {
     const stageDef = stagePool[stageName] as unknown as AnyStage;
     const [inputSchema, outputSchema] = stageDef;
 

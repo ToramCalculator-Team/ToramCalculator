@@ -1,39 +1,13 @@
 import type { skill, skill_effect } from "@db/generated/zod";
-
-/**
- * 魔法炮（测试用技能）
- *
- * 约定：
- * - skill_effect.logic 存储行为树 JSON
- * - 行为树使用 RunPipeline 调用动作组，使用 ScheduleFSMEvent 发送状态机事件
- * - 最后必须调用 ScheduleFSMEvent("收到发动结束通知") 来触发状态机转换
- */
-
-export const magicCannonSkill: skill = {
-  id: "MagicCannonId",
-  treeType: "MagicSkill",
-  posX: 3,
-  posY: 2,
-  tier: 4,
-  name: "魔法炮",
-  isPassive: false,
-  chargingType: "Reservoir",
-  distanceType: "Both",
-  targetType: "Enemy",
-  details: "测试用魔法炮，包含充能与释放两个阶段。",
-  dataSources: "system",
-  statisticId: "MagicCannonStatisticId",
-  updatedByAccountId: null,
-  createdByAccountId: null,
-};
+import { SkillEffectLogicV1 } from "./SkillEffectLogic";
 
 /**
  * 魔法炮技能效果 - 使用行为树 JSON
  * logic 字段存储完整的行为树定义
  */
-export const magicCannonSkillEffect: skill_effect = {
+export const magicCannonSkillEffect: skill_effect & { logic: SkillEffectLogicV1 } = {
   id: "MagicCannonEffect1Id",
-  belongToskillId: magicCannonSkill.id,
+  belongToskillId: "MagicCannonId",
   condition: "true",
   elementLogic: "mainWeapon.element",
   castingRange: "10",
@@ -315,4 +289,8 @@ export const magicCannonSkillEffect: skill_effect = {
   },
   details:
     "logic 包含四部分：skillTree / buffTrees / customPipelines / customDynamicStages。魔法炮充能通过 buff 行为树在其他技能的发动管线后插入动态阶段，并用表达式型阶段基于咏唱帧数更新充能。",
+};
+
+export const testSkillEffect: Record<string, skill_effect & { logic: SkillEffectLogicV1 }> = {
+  MagicCannon: magicCannonSkillEffect,
 };

@@ -5,14 +5,14 @@ import { PlayerStateContext, playerStateMachine, PlayerEventType } from "./Playe
 import GameEngine from "../../../GameEngine";
 import { PlayerAttrSchema } from "./PlayerAttrSchema";
 import { ExtractAttrPaths, NestedSchema } from "../../runtime/StatContainer/SchemaTypes";
-import { PlayerActionPool, PlayerPipelineStages } from "./PlayerPipelines";
+import { PlayerPipelineStages } from "./PlayerPipelines";
 
 export type PlayerAttrType = ExtractAttrPaths<ReturnType<typeof PlayerAttrSchema>>;
 
 export class Player extends Member<
   PlayerAttrType,
   PlayerEventType,
-  PlayerActionPool,
+  PlayerPipelineStages,
   PlayerStateContext
 > {
   constructor(

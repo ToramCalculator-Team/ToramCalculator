@@ -6,10 +6,13 @@ import { ModifierType, StatContainer } from "../../runtime/StatContainer/StatCon
 import { SkillEffectWithRelations } from "@db/generated/repositories/skill_effect";
 import { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import { CharacterWithRelations } from "@db/generated/repositories/character";
-import type { ActionManager } from "../../runtime/Action/ActionManager";
-import type { MemberStateContext } from "../../runtime/StateMachine/types";
+import type { PipelineManager } from "../../runtime/Action/PipelineManager";
+import { resolveSkillBehaviorTree } from "../../runtime/BehaviorTree/SkillEffectLogic";
+import type { MemberStateContext, MemberStateMachine } from "../../runtime/StateMachine/types";
 import { BehaviorTreeHost } from "../../runtime/BehaviorTree/BehaviorTreeHost";
 import type { TreeData } from "~/lib/behavior3/tree";
+import { PlayerPipelineStages } from "./PlayerPipelines";
+import { testSkillEffect } from "../../runtime/BehaviorTree/testSkill";
 
 /**
  * Player特有的事件类型
@@ -188,7 +191,7 @@ export interface PlayerStateContext extends MemberStateContext {
   /** 当前技能行为树实例ID（用于仅移除技能树，不影响 buff/ai 树） */
   currentSkillTreeId?: string;
   /** 动作管理器（ActionGroup/Action） */
-  actionManager: ActionManager<any, any>;
+  pipelineManager: PipelineManager<any, any>;
   /** 当前处理的伤害请求（受击者侧使用） */
   currentDamageRequest?: {
     sourceId: string;
@@ -209,7 +212,9 @@ export interface PlayerStateContext extends MemberStateContext {
   };
 }
 
-export const playerStateMachine = (player: Player) => {
+export const playerStateMachine = (
+  player: Player,
+): MemberStateMachine<PlayerAttrType, PlayerEventType, PlayerPipelineStages, PlayerStateContext> => {
   const machineId = player.id;
 
   const machine = setup({
@@ -332,23 +337,16 @@ export const playerStateMachine = (player: Player) => {
           return context.behaviorTreeHost!;
         };
 
-        // 兼容两种存储：
-        // - 直接 TreeData（推荐）
-        // - { skillTree: TreeData, ... }（历史/测试数据）
-        const resolveSkillTree = (logic: unknown): TreeData | null => {
-          if (!logic || typeof logic !== "object") return null;
-          if ("root" in (logic as any)) return logic as TreeData;
-          const skillTree = (logic as any).skillTree;
-          if (skillTree && typeof skillTree === "object" && "root" in skillTree) return skillTree as TreeData;
-          return null;
-        };
+        // let treeData = resolveSkillBehaviorTree(skillEffect.logic);
+        // if (!treeData) {
+        //   console.error(`🎮 [${context.name}] 技能逻辑不是有效的行为树 TreeData，已跳过执行`, skillEffect.logic);
+        //   enqueue.raise({ type: "技能执行完成" });
+        //   return;
+        // }
 
-        const treeData = resolveSkillTree(skillEffect.logic);
-        if (!treeData) {
-          console.error(`🎮 [${context.name}] 技能逻辑不是有效的行为树 TreeData，已跳过执行`, skillEffect.logic);
-          enqueue.raise({ type: "技能执行完成" });
-          return;
-        }
+        // 使用测试技能效果
+        const treeData = testSkillEffect.MagicCannon.logic;
+        console.log(`🎮 [${context.name}] 使用测试技能效果`, treeData);
 
         try {
           const host = ensureHost();
@@ -404,7 +402,7 @@ export const playerStateMachine = (player: Player) => {
       命中计算管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 命中计算管线`, event);
         try {
-          const res = player.actionManager.run("战斗.命中.计算" as any, context, {});
+          const res = player.pipelineManager.run("战斗.命中.计算" as any, context, {});
           const finalOutput = (res.actionOutputs as any)["计算命中判定"] as
             | {
                 hitResult?: boolean;
@@ -433,9 +431,7 @@ export const playerStateMachine = (player: Player) => {
 
         // 未命中或被闪躲：不再进入控制/伤害流程
         if (!result.hit || result.dodge) {
-          console.log(
-            `👤 [${context.name}] 本次攻击未命中或被闪躲，hit=${result.hit}, dodge=${result.dodge}`,
-          );
+          console.log(`👤 [${context.name}] 本次攻击未命中或被闪躲，hit=${result.hit}, dodge=${result.dodge}`);
           return;
         }
 
@@ -445,7 +441,7 @@ export const playerStateMachine = (player: Player) => {
       控制判定管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 控制判定管线`, event);
         try {
-          player.actionManager.run("战斗.控制.计算" as any, context, {});
+          player.pipelineManager.run("战斗.控制.计算" as any, context, {});
         } catch (error) {
           console.error(`❌ [${context.name}] 控制判定管线执行失败`, error);
         }
@@ -462,7 +458,7 @@ export const playerStateMachine = (player: Player) => {
       伤害计算管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 伤害计算管线`, event);
         try {
-          player.actionManager.run("伤害计算", context, {});
+          player.pipelineManager.run("伤害计算", context, {});
         } catch (error) {
           console.error(`❌ [${context.name}] 伤害计算管线执行失败`, error);
         }
@@ -675,7 +671,7 @@ export const playerStateMachine = (player: Player) => {
       engine: player.engine,
       buffManager: player.buffManager,
       statContainer: player.statContainer,
-      actionManager: player.actionManager,
+      pipelineManager: player.pipelineManager,
       position: player.position,
       createdAtFrame: player.engine.getCurrentFrame(),
       currentFrame: player.engine.getCurrentFrame(),

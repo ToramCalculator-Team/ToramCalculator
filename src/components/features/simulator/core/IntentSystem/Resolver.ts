@@ -45,9 +45,9 @@ export class Resolver {
     }
   }
 
-  private getMember(world: World, memberId?: string): Member | null {
+  private getMember(world: World, memberId?: string): Member<any, any, any, any> | null {
     if (!memberId) return null;
-    return (world.memberManager.getMember(memberId) as Member | null) ?? null;
+    return (world.memberManager.getMember(memberId) as Member<any, any, any, any> | null) ?? null;
   }
 
   private execSendFsmEvent(intent: Intent, world: World) {
@@ -58,11 +58,11 @@ export class Resolver {
 
   private execRunPipeline(intent: Intent, world: World) {
     const member = this.getMember(world, intent.actorId);
-    if (!member?.actionManager || !member?.actor) return;
+    if (!member?.pipelineManager || !member?.actor) return;
     const pipelineIntent = intent as any;
     const snapshot = member.actor.getSnapshot();
     const ctx = (snapshot as any)?.context ?? {};
-    member.actionManager.run(pipelineIntent.pipeline, ctx, pipelineIntent.params ?? {});
+    member.pipelineManager.run(pipelineIntent.pipeline, ctx, pipelineIntent.params ?? {});
   }
 
   private execAddBuff(intent: Intent, world: World) {
@@ -90,15 +90,15 @@ export class Resolver {
       member.statContainer.addModifier(change.path, change.modifierType, change.value, {
         id: intent.source,
         name: intent.source,
-        type: "effect",
+        type: "skill",
       });
     }
   }
 
   private execInsertPipelineStage(intent: InsertPipelineStageIntent, world: World) {
     const member = this.getMember(world, intent.targetId ?? intent.actorId);
-    if (!member?.actionManager) return;
-    const manager: any = member.actionManager;
+    if (!member?.pipelineManager) return;
+    const manager: any = member.pipelineManager;
     if (typeof manager.insertPipelineStage === "function") {
       manager.insertPipelineStage(
         intent.pipeline,
@@ -111,15 +111,15 @@ export class Resolver {
       );
       return;
     }
-    throw new Error("ActionManager missing insertPipelineStage API");
+    throw new Error("PipelineManager missing insertPipelineStage API");
   }
 
   private execRemovePipelineStagesBySource(intent: RemovePipelineStagesBySourceIntent, world: World) {
     const member = this.getMember(world, intent.targetId ?? intent.actorId);
-    if (!member?.actionManager) return;
-    const manager: any = member.actionManager;
+    if (!member?.pipelineManager) return;
+    const manager: any = member.pipelineManager;
     if (typeof manager.removeStagesBySource === "function") {
-      manager.removeStagesBySource(intent.removeSource);
+      manager.removePipelineStagesBySource(intent.removeSource);
       return;
     }
   }

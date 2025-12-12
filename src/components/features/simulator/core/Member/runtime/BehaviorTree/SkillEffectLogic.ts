@@ -8,7 +8,7 @@ import type { TreeData } from "~/lib/behavior3/tree";
  * - 行为树（behavior3 JSON）由用户自定义，作为 skillEffect.logic 的主要载体
  * - 行为树节点只产出 Intent，由 Resolver 统一执行
  * - 允许“属性修改”类积木通过表达式修改上下文（属于节点参数），但不允许注入自定义计算 stage（不允许 script stage）
- * - Pipeline 仅允许 override 编排（actionGroupDef），Stage 实现必须来自内置 actionPool
+ * - Pipeline 仅允许 override 编排（actionGroupDef），Stage 实现必须来自内置 stagePool
  * - Buff/Area 在技能 JSON 内声明；Area 先用简化结构，后续可演进为关键帧/更复杂描述
  */
 
@@ -137,4 +137,58 @@ export type SkillEffectLogicV1 = z.output<typeof SkillEffectLogicV1Schema>;
 /** 未来多版本兼容入口（当前只有 v1） */
 export const SkillEffectLogicSchema = SkillEffectLogicV1Schema;
 export type SkillEffectLogic = SkillEffectLogicV1;
+
+/**
+ * 提取技能执行行为树（严格按 SkillEffectLogic v1）
+ */
+export const resolveSkillBehaviorTree = (logic: SkillEffectLogic | null | undefined): TreeData | null => {
+  if (!logic) return null;
+  return logic.trees?.skillBT ?? null;
+};
+
+/**
+ * 提取技能内声明的 Buff 行为树映射
+ */
+export const resolveBuffBehaviorTrees = (
+  logic: SkillEffectLogic | null | undefined,
+): Record<string, TreeData> | null => {
+  if (!logic) return null;
+  return logic.trees?.buffBTs ?? null;
+};
+
+/**
+ * 提取技能内声明的 Area 行为树映射
+ */
+export const resolveAreaBehaviorTrees = (
+  logic: SkillEffectLogic | null | undefined,
+): Record<string, TreeData> | null => {
+  if (!logic) return null;
+  return logic.trees?.areaBTs ?? null;
+};
+
+/**
+ * 提取管线编排覆盖表
+ */
+export const resolvePipelineOverrides = (
+  logic: SkillEffectLogic | null | undefined,
+): Record<string, string[]> | null => {
+  if (!logic) return null;
+  return logic.pipelines?.overrides ?? null;
+};
+
+/**
+ * 提取技能声明的 Buff 定义列表
+ */
+export const resolveSkillBuffDefs = (logic: SkillEffectLogic | null | undefined): SkillBuffDef[] => {
+  if (!logic?.buffs) return [];
+  return logic.buffs;
+};
+
+/**
+ * 提取技能声明的 Area 定义列表
+ */
+export const resolveSkillAreaDefs = (logic: SkillEffectLogic | null | undefined): SkillAreaDef[] => {
+  if (!logic?.areas) return [];
+  return logic.areas;
+};
 

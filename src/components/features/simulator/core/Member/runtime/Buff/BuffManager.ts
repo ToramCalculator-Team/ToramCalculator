@@ -3,12 +3,12 @@
  *
  * 核心职责：
  * 1. 管理buff的基本生命周期（添加、移除、更新）
- * 2. 通知 ActionManager 进行动作组动态插入/移除
+ * 2. 通知 PipelineManager 进行管线动态插入/移除
  * 3. 通知Member的StateContainer进行状态修改
  */
 
 import { ModifierSource, ModifierType, StatContainer } from "../StatContainer/StatContainer";
-import type { ActionManager } from "../Action/ActionManager";
+import type { PipelineManager } from "../Action/PipelineManager";
 import type GameEngine from "../../../GameEngine";
 
 // ==================== 类型定义 ====================
@@ -27,15 +27,15 @@ export interface StatBuffEffect {
 }
 
 /**
- * 动作组修改效果（动态插入）
+ * 管线修改效果（动态插入）
  */
-export interface ActionGroupBuffEffect {
-  type: "actionGroup";
-  /** 目标动作组名称 */
-  actionGroupName: string;
-  /** 插入点动作名称（在此动作后执行） */
-  afterActionName: string;
-  /** 插入的阶段名称（必须在 actionPool 中存在） */
+export interface PipelineBuffEffect {
+  type: "pipeline" | "actionGroup";
+  /** 目标管线名称 */
+  pipelineName: string;
+  /** 插入点阶段名称（在此 stage 后执行） */
+  afterStageName: string;
+  /** 插入的阶段名称（必须在 stagePool 中存在） */
   insertStageName: string;
   /** 可选：执行该 stage 前额外合并到输入的 params（纯数据） */
   params?: Record<string, unknown>;
@@ -43,7 +43,10 @@ export interface ActionGroupBuffEffect {
   priority?: number;
 }
 
-export type BuffEffect = StatBuffEffect | ActionGroupBuffEffect;
+/** @deprecated 兼容旧名 */
+export type ActionGroupBuffEffect = PipelineBuffEffect;
+
+export type BuffEffect = StatBuffEffect | PipelineBuffEffect;
 
 /**
  * Buff 实例
@@ -88,7 +91,7 @@ export class BuffManager {
 
   constructor(
     private statContainer: StatContainer<any>,
-    private actionManager: ActionManager<any, any>,
+    private pipelineManager: PipelineManager<any, any>,
     private engine: GameEngine,
     private memberId: string,
   ) {}
@@ -178,14 +181,16 @@ export class BuffManager {
           });
         }
 
-      } else if (effect.type === "actionGroup") {
-        // 动作组效果：仅在非叠加（首次）时添加
+      } else if (effect.type === "pipeline" || effect.type === "actionGroup") {
+        // 管线插入效果：仅在非叠加（首次）时添加
         if (!isStacking) {
-          const stageId = `${buff.id}_${effect.actionGroupName}_${effect.afterActionName}`;
+          const pipelineName = (effect as any).pipelineName ?? (effect as any).actionGroupName;
+          const afterStageName = (effect as any).afterStageName ?? (effect as any).afterActionName;
+          const stageId = `${buff.id}_${pipelineName}_${afterStageName}`;
 
-          const cleanup = this.actionManager.insertPipelineStage(
-            effect.actionGroupName,
-            effect.afterActionName as any,
+          const cleanup = this.pipelineManager.insertPipelineStage(
+            pipelineName,
+            afterStageName as any,
             effect.insertStageName as any,
             stageId,
             buff.id,
@@ -227,7 +232,7 @@ export class BuffManager {
       buff._pipelineStageCleanups.forEach((dispose) => dispose());
       buff._pipelineStageCleanups = [];
     }
-    this.actionManager.removeStagesBySource(buff.id);
+    this.pipelineManager.removeStagesBySource(buff.id);
 
     this.buffs.delete(buffId);
     console.log(`🗑️ Buff Removed: ${buff.name} (${buffId})`);
@@ -244,7 +249,7 @@ export class BuffManager {
    * 查询指定来源的动态管线阶段
    */
   getDynamicActionsBySource(source: string) {
-    return this.actionManager.getDynamicStageInfos({ source });
+    return this.pipelineManager.getDynamicStageInfos({ source });
   }
 
   /**

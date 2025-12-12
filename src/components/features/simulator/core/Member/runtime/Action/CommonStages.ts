@@ -2,7 +2,7 @@ import { z } from "zod/v4";
 import { createId } from "@paralleldrive/cuid2";
 import { ModifierType } from "../StatContainer/StatContainer";
 import type { MemberStateContext } from "../StateMachine/types";
-import { ActionGroupDef, ActionPool, defineAction } from "./type";
+import { PipelineDef, StagePool, defineStage } from "./type";
 
 const logLv = 1; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
 
@@ -17,8 +17,8 @@ const maxMin = (min: number, value: number, max: number) => {
  * - 受击者侧通过 context.currentDamageRequest 提供本次伤害请求
  * - 命中结果写回 context.lastHitResult，供状态机或后续动作使用
  */
-export const CommonActions = {
-  计算命中判定: defineAction(
+export const CommonStages = {
+  计算命中判定: defineStage(
     z.object({}),
     z.object({
       hitResult: z.boolean(),
@@ -96,7 +96,7 @@ export const CommonActions = {
     },
   ),
 
-  解析伤害请求: defineAction(
+  解析伤害请求: defineStage(
     z.object({}),
     z.object({
       damageExpression: z.string(),
@@ -133,7 +133,7 @@ export const CommonActions = {
     },
   ),
 
-  执行伤害表达式: defineAction(
+  执行伤害表达式: defineStage(
     z.object({
       damageExpression: z.string(),
       damageExpressionContext: z.object({
@@ -161,7 +161,7 @@ export const CommonActions = {
     },
   ),
 
-  应用伤害结果: defineAction(
+  应用伤害结果: defineStage(
     z.object({ damageValue: z.number() }),
     z.object({
       finalDamage: z.number(),
@@ -204,6 +204,6 @@ export const CommonActions = {
       return { finalDamage, targetHpAfter: newHp };
     },
   ),
-} as const satisfies ActionPool<MemberStateContext>;
+} as const satisfies StagePool<MemberStateContext>;
 
-export type CommonActionPool = typeof CommonActions;
+export type CommonStagePool = typeof CommonStages;

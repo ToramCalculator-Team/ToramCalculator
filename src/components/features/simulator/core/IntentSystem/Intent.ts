@@ -3,8 +3,8 @@
  *
  * 命名约定：
  * - Intent：描述“要发生什么副作用”
- * - Pipeline：结算流程编排（actionGroup）
- * - Stage：Pipeline 内的计算/结算步骤（actionPool 内的 action）
+ * - Pipeline：结算流程编排
+ * - Stage：Pipeline 内的计算/结算步骤
  * - FsmAction：XState 内部副作用描述（推荐仅产出 Intent，不直接改世界）
  */
 

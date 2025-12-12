@@ -5,9 +5,9 @@ import { NestedSchema } from "./runtime/StatContainer/SchemaTypes";
 import GameEngine from "../GameEngine";
 import { MemberType } from "@db/schema/enums";
 import { BuffManager } from "./runtime/Buff/BuffManager";
-import type { ActionGroupBuffEffect } from "./runtime/Buff/BuffManager";
-import { ActionManager, type ActionDynamicStageInfo } from "./runtime/Action/ActionManager";
-import { ActionGroupDef, ActionPool } from "./runtime/Action/type";
+import type { PipelineBuffEffect } from "./runtime/Buff/BuffManager";
+import { PipelineManager, type PipelineDynamicStageInfo } from "./runtime/Action/PipelineManager";
+import { PipelineDef, StagePool } from "./runtime/Action/type";
 import { MemberActor, MemberStateMachine } from "./runtime/StateMachine/types";
 import IntentBuffer from "../IntentSystem/IntentBuffer";
 import type { SendFsmEventIntent } from "../IntentSystem/Intent";
@@ -32,12 +32,12 @@ export interface BuffViewData {
   variables?: Record<string, number | boolean>; // 如 chargeCounter 等
   // 动态动作组效果信息（简要描述）
   dynamicEffects?: Array<{
-    actionGroupName: string;
-    afterActionName: string;
+    pipelineName: string;
+    afterStageName: string;
     priority?: number;
   }>;
   /** 实时动态插入快照 */
-  activeDynamicActions?: ActionDynamicStageInfo[];
+  activeDynamicActions?: PipelineDynamicStageInfo[];
 }
 
 export interface MemberSerializeData {
@@ -61,7 +61,7 @@ export interface MemberSerializeData {
 export class Member<
   TAttrKey extends string,
   TEvent extends EventObject,
-  TActionPool extends ActionPool<TExContext>,
+  TActionPool extends StagePool<TExContext>,
   TExContext extends Record<string, any>,
 > {
   /** 成员ID */
@@ -85,9 +85,9 @@ export class Member<
   /** Buff 管理器（生命周期/钩子/机制状态） */
   buffManager: BuffManager;
   /** 动作管理器（固定+动态动作组管理） */
-  actionManager: ActionManager<TActionPool, TExContext>;
+  pipelineManager: PipelineManager<TActionPool, TExContext>;
   /** 成员Actor引用 */
-  actor: MemberActor<TAttrKey, TEvent, ActionGroupDef<TActionPool>, TActionPool, TExContext>;
+  actor: MemberActor<TAttrKey, TEvent, TActionPool, TExContext>;
   /** 引擎引用 */
   engine: GameEngine;
   /** 成员数据 */
@@ -98,7 +98,7 @@ export class Member<
   memory: Record<string, unknown> = {};
 
   constructor(
-    stateMachine: (member: any) => MemberStateMachine<TAttrKey, TEvent, ActionGroupDef<TActionPool>, TActionPool, TExContext>,
+    stateMachine: (member: any) => MemberStateMachine<TAttrKey, TEvent, TActionPool, TExContext>,
     engine: GameEngine,
     campId: string,
     teamId: string,
@@ -121,10 +121,10 @@ export class Member<
     this.statContainer = new StatContainer<TAttrKey>(dataSchema);
 
     // 初始化动作管理器（动作组定义可被后续覆盖/注册）
-    this.actionManager = new ActionManager(actionPool);
+    this.pipelineManager = new PipelineManager<TActionPool, TExContext>(actionPool);
 
     // 初始化Buff管理器（需要在 this.id 赋值后）
-    this.buffManager = new BuffManager(this.statContainer, this.actionManager, this.engine, memberData.id);
+    this.buffManager = new BuffManager(this.statContainer, this.pipelineManager, this.engine, memberData.id);
 
     this.position = position ?? { x: 0, y: 0, z: 0 };
     this.memory = {};
@@ -142,12 +142,16 @@ export class Member<
     const buffs: BuffViewData[] = this.buffManager.getBuffs().map((buff) => {
       // 提取动态动作组效果信息
       const dynamicEffects = buff.effects
-        .filter((effect): effect is ActionGroupBuffEffect => effect.type === "actionGroup")
-        .map((effect) => ({
-          actionGroupName: effect.actionGroupName,
-          afterActionName: effect.afterActionName,
-          priority: effect.priority,
-        }));
+        .filter((effect): effect is PipelineBuffEffect => effect.type === "pipeline")
+        .map((effect) => {
+          const pipelineName = (effect as any).pipelineName ?? (effect as any).actionGroupName;
+          const afterStageName = (effect as any).afterStageName ?? (effect as any).afterActionName;
+          return {
+            pipelineName,
+            afterStageName,
+            priority: effect.priority,
+          };
+        });
 
       return {
         id: buff.id,
@@ -160,7 +164,7 @@ export class Member<
         description: buff.description,
         variables: buff.variables ? { ...buff.variables } : undefined,
         dynamicEffects: dynamicEffects.length > 0 ? dynamicEffects : undefined,
-        activeDynamicActions: this.actionManager.getDynamicStageInfos({ source: buff.id }),
+        activeDynamicActions: this.pipelineManager.getDynamicStageInfos({ source: buff.id }),
       };
     });
 

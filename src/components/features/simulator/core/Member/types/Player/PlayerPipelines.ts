@@ -1,10 +1,10 @@
 import { z } from "zod/v4";
 import { createId } from "@paralleldrive/cuid2";
 import { PlayerStateContext } from "./PlayerStateMachine";
-import { ActionGroupDef, ActionPool, defineAction } from "../../runtime/Action/type";
+import { defineStage, PipelineDef, StagePool } from "../../runtime/Action/type";
 import { ModifierType } from "../../runtime/StatContainer/StatContainer";
-import { CommonActions } from "../../runtime/Action/CommonActions";
 import { BuffInstance } from "../../runtime/Buff/BuffManager";
+import { CommonStages } from "../../runtime/Action/CommonStages";
 
 const logLv = 1; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
 
@@ -78,9 +78,9 @@ const sendRenderCommand = (context: PlayerStateContext, actionName: string, para
  * 玩家可用的管线阶段池
  */
 export const PlayerPipelineStages = {
-  ...CommonActions,
+  ...CommonStages,
 
-  添加Buff: defineAction(
+  添加Buff: defineStage(
     z.object({
       buffId: z.string(),
       buffName: z.string(),
@@ -110,7 +110,7 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  移除Buff: defineAction(
+  移除Buff: defineStage(
     z.object({
       buffId: z.string(),
     }),
@@ -122,7 +122,7 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  检查Buff是否存在: defineAction(
+  检查Buff是否存在: defineStage(
     z.object({
       buffId: z.string(),
     }),
@@ -133,7 +133,7 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  获取buff计数器值: defineAction(
+  获取buff计数器值: defineStage(
     z.object({
       buffId: z.string(),
     }),
@@ -144,7 +144,7 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  应用数值表达式: defineAction(
+  应用数值表达式: defineStage(
     z.object({
       targetPath: z.string(),
       expression: z.string(),
@@ -172,7 +172,7 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  技能HP消耗计算: defineAction(z.object({}), z.object({ skillHpCost: z.number() }), (context, input) => {
+  技能HP消耗计算: defineStage(z.object({}), z.object({ skillHpCost: z.number() }), (context, input) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能HP消耗计算`);
     const hpCostExpression = context.currentSkillEffect?.hpCost;
     if (!hpCostExpression) {
@@ -186,7 +186,7 @@ export const PlayerPipelineStages = {
     return { skillHpCost: hpCost };
   }),
 
-  技能MP消耗计算: defineAction(z.object({}), z.object({ skillMpCost: z.number() }), (context, input) => {
+  技能MP消耗计算: defineStage(z.object({}), z.object({ skillMpCost: z.number() }), (context, input) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能MP消耗计算`);
     const mpCostExpression = context.currentSkillEffect?.mpCost;
     if (!mpCostExpression) {
@@ -200,7 +200,7 @@ export const PlayerPipelineStages = {
     return { skillMpCost: mpCost };
   }),
 
-  技能消耗扣除: defineAction(
+  技能消耗扣除: defineStage(
     z.object({
       skillMpCost: z.number(),
       skillHpCost: z.number(),
@@ -226,7 +226,7 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  前摇帧数计算: defineAction(
+  前摇帧数计算: defineStage(
     z.object({}),
     z.object({
       startupFrames: z.number(),
@@ -256,13 +256,13 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  启动前摇动画: defineAction(z.object({}), z.object({}), (context) => {
+  启动前摇动画: defineStage(z.object({}), z.object({}), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动前摇动画`);
     sendRenderCommand(context, "startup");
     return {};
   }),
 
-  调度前摇结束事件: defineAction(
+  调度前摇结束事件: defineStage(
     z.object({
       startupFrames: z.number().optional(),
     }),
@@ -281,7 +281,7 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  蓄力帧数计算: defineAction(
+  蓄力帧数计算: defineStage(
     z.object({ }),
     z.object({ chargeFrames: z.number() }),
     (context, input) => {
@@ -308,13 +308,13 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  启动蓄力动画: defineAction(z.object({}), z.object({}), (context) => {
+  启动蓄力动画: defineStage(z.object({}), z.object({}), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动蓄力动画`);
     sendRenderCommand(context, "charging");
     return {};
   }),
 
-  调度蓄力结束事件: defineAction(
+  调度蓄力结束事件: defineStage(
     z.object({
       chargeFrames: z.number().optional(),
     }),
@@ -333,7 +333,7 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  咏唱帧数计算: defineAction(
+  咏唱帧数计算: defineStage(
     z.object({ }),
     z.object({ chantingFrames: z.number() }),
     (context, input) => {
@@ -360,13 +360,13 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  启动咏唱动画: defineAction(z.object({}), z.object({}), (context) => {
+  启动咏唱动画: defineStage(z.object({}), z.object({}), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动咏唱动画`);
     sendRenderCommand(context, "chanting");
     return {};
   }),
 
-  调度咏唱结束事件: defineAction(
+  调度咏唱结束事件: defineStage(
     z.object({
       chantingFrames: z.number().optional(),
     }),
@@ -385,13 +385,13 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  启动发动动画: defineAction(z.object({}), z.object({}), (context) => {
+  启动发动动画: defineStage(z.object({}), z.object({}), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动发动动画`);
     sendRenderCommand(context, "action");
     return {};
   }),
 
-  调度发动结束事件: defineAction(
+  调度发动结束事件: defineStage(
     z.object({
       actionFrames: z.number().optional(),
     }),
@@ -410,14 +410,14 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  应用当前技能效果: defineAction(z.object({}), z.object({}), (context) => {
+  应用当前技能效果: defineStage(z.object({}), z.object({}), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 应用当前技能效果 (占位)`);
     // TODO: 在正式实现时，调用具体的技能效果终端管线
     return {};
   }),
 
   // ============ 伤害相关阶段（施法者侧）============
-  对目标造成伤害: defineAction(
+  对目标造成伤害: defineStage(
     z.object({
       damageFormula: z.string(),
       extraVars: z.record(z.string(), z.any()).optional(),
@@ -477,6 +477,8 @@ export const PlayerPipelineStages = {
       return {};
     },
   ),
-} as const satisfies ActionPool<PlayerStateContext>;
+} as const satisfies StagePool<PlayerStateContext>;
 
-export type PlayerActionPool = typeof PlayerPipelineStages;
+export type PlayerPipelineStages = typeof PlayerPipelineStages;
+
+export type PlayerPipelineDef = PipelineDef<PlayerPipelineStages>;

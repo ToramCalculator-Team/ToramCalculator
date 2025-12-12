@@ -1,13 +1,13 @@
 import { Blocks, FieldDropdown } from "blockly/core";
 import { javascriptGenerator, Order } from "blockly/javascript";
-import { PlayerPipelineDef } from "../../simulator/core/Member/types/Player/PlayerPipelines";
+import { PlayerPipelineStages } from "../../simulator/core/Member/types/Player/PlayerPipelines";
 
 /**
  * 延迟执行管线积木
  */
 export function createSchedulePipelineBlock(getPipelineNames?: () => string[], pipelineNames?: string[]) {
   const blockId = "schedule_pipeline";
-  const fallbackNames = (Object.keys(PlayerPipelineDef) as (keyof typeof PlayerPipelineDef)[]).slice();
+  const fallbackNames = (Object.keys(PlayerPipelineStages) as (keyof PlayerPipelineStages)[]).slice();
 
   Blocks[blockId] = {
     init: function () {

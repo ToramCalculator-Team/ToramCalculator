@@ -2,11 +2,10 @@ import { Blocks, FieldDropdown, FieldTextInput, Workspace, WorkspaceSvg } from "
 import { javascriptGenerator, Order } from "blockly/javascript";
 import { ZodBoolean, ZodEnum, ZodNumber, ZodObject, ZodString, ZodType } from "zod/v4";
 import {
-  PlayerPipelineStages,
   PlayerPipelineDef,
-  type PlayerStagePool,
+  PlayerPipelineStages,
 } from "../simulator/core/Member/types/Player/PlayerPipelines";
-import type { PipelineStage } from "../simulator/core/Member/runtime/Action/type";
+import type { PipelineDef, Stage } from "../simulator/core/Member/runtime/Action/type";  
 
 /**
  * 管线参数类型
@@ -92,7 +91,7 @@ export const encodeFunctionName = (functionName: string): string => {
   return result;
 };
 
-type AnyStage = PipelineStage<ZodType, ZodType, Record<string, unknown>>;
+type AnyStage = Stage<ZodType, ZodType, Record<string, unknown>>;
 
 /**
  * 从 zod schema 中解析参数元数据
@@ -190,8 +189,8 @@ const unwrapOptional = (schema: ZodType): { base: ZodType; required: boolean } =
 export const buildPlayerPipelineMetas = (): PipelineMeta[] => {
   const metas: PipelineMeta[] = [];
 
-  const def: PlayerPipelineDef = PlayerPipelineDef;
-  const stagePool: PlayerStagePool = PlayerPipelineStages;
+  const def: PlayerPipelineDef = [] as unknown as PlayerPipelineDef ;
+  const stagePool: PlayerPipelineStages = PlayerPipelineStages;
 
   for (const pipelineName of Object.keys(def) as (keyof PlayerPipelineDef)[]) {
     const stageNames = def[pipelineName];
@@ -199,7 +198,7 @@ export const buildPlayerPipelineMetas = (): PipelineMeta[] => {
 
     if (stageNames && stageNames.length > 0) {
       const firstStageName = stageNames[0];
-      const stage = stagePool[firstStageName as keyof PlayerStagePool] as unknown as AnyStage | undefined;
+      const stage = stagePool[firstStageName as keyof PlayerPipelineStages] as unknown as AnyStage | undefined;
       if (stage) {
         inputSchema = stage[0];
       }
@@ -208,9 +207,9 @@ export const buildPlayerPipelineMetas = (): PipelineMeta[] => {
     const params = extractParamsFromSchema(inputSchema);
 
     metas.push({
-      name: pipelineName,
-      category: inferCategoryFromName(pipelineName),
-      displayName: pipelineName,
+      name: String(pipelineName),
+      category: inferCategoryFromName(String(pipelineName)),
+      displayName: String(pipelineName),
       params,
     });
   }
@@ -280,9 +279,9 @@ const decodeStageBlockId = (blockType: string): string | null => {
 export const buildPlayerStageMetas = (): StageMeta[] => {
   const metas: StageMeta[] = [];
 
-  const stagePool: PlayerStagePool = PlayerPipelineStages;
+  const stagePool: PlayerPipelineStages = PlayerPipelineStages;
 
-  for (const stageName of Object.keys(stagePool) as (keyof PlayerStagePool)[]) {
+  for (const stageName of Object.keys(stagePool) as (keyof PlayerPipelineStages)[]) {
     const stage = stagePool[stageName] as unknown as AnyStage;
     const inputSchema = stage[0];
     const outputSchema = stage[1];
@@ -622,7 +621,7 @@ export const collectCustomPipelines = (workspace: Workspace | WorkspaceSvg): Cus
  */
 export function createSchedulePipelineBlock(getPipelineNames?: () => string[], pipelineNames?: string[]) {
   const blockId = "schedule_pipeline";
-  const fallbackNames = (Object.keys(PlayerPipelineDef) as (keyof typeof PlayerPipelineDef)[]).slice();
+  const fallbackNames = (Object.keys(PlayerPipelineStages) as (keyof PlayerPipelineStages)[]).slice();
 
   Blocks[blockId] = {
     init: function () {
