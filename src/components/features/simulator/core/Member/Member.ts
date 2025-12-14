@@ -7,10 +7,12 @@ import { MemberType } from "@db/schema/enums";
 import { BuffManager } from "./runtime/Buff/BuffManager";
 import type { PipelineBuffEffect } from "./runtime/Buff/BuffManager";
 import { PipelineManager, type PipelineDynamicStageInfo } from "./runtime/Action/PipelineManager";
-import { PipelineDef, StagePool } from "./runtime/Action/type";
-import { MemberActor, MemberStateMachine } from "./runtime/StateMachine/types";
+import { PipelineDef, ActionPool } from "./runtime/Action/type";
+import { MemberActor, MemberStateContext, MemberStateMachine } from "./runtime/StateMachine/types";
 import IntentBuffer from "../IntentSystem/IntentBuffer";
 import type { SendFsmEventIntent } from "../IntentSystem/Intent";
+import type { ActionContext } from "./runtime/Action/ActionContext";
+import { BTManger } from "./runtime/BehaviorTree/BTManager";
 
 /**
  * 成员数据接口 - 对应响应式系统的序列化数据返回类型
@@ -60,9 +62,10 @@ export interface MemberSerializeData {
 
 export class Member<
   TAttrKey extends string,
-  TEvent extends EventObject,
-  TActionPool extends StagePool<TExContext>,
-  TExContext extends Record<string, any>,
+  TStateEvent extends EventObject,
+  TStateContext extends MemberStateContext,
+  TActionContext extends ActionContext,
+  TActionPool extends ActionPool<TActionContext>,
 > {
   /** 成员ID */
   id: string;
@@ -85,9 +88,11 @@ export class Member<
   /** Buff 管理器（生命周期/钩子/机制状态） */
   buffManager: BuffManager;
   /** 动作管理器（固定+动态动作组管理） */
-  pipelineManager: PipelineManager<TActionPool, TExContext>;
+  pipelineManager: PipelineManager<TActionContext, TActionPool>;
+  /** 行为树管理器（技能行为树管理） */
+  behaviorTreeManager: BTManger;
   /** 成员Actor引用 */
-  actor: MemberActor<TAttrKey, TEvent, TActionPool, TExContext>;
+  actor: MemberActor<TStateEvent, TStateContext>;
   /** 引擎引用 */
   engine: GameEngine;
   /** 成员数据 */
@@ -96,9 +101,11 @@ export class Member<
   position: { x: number; y: number; z: number };
   /** 跨技能/跨树共享的运行时内存 */
   memory: Record<string, unknown> = {};
+  /** 稳定的运行时上下文（ActionContext），供 Action/Pipeline 统一使用 */
+  actionContext: TActionContext;
 
   constructor(
-    stateMachine: (member: any) => MemberStateMachine<TAttrKey, TEvent, TActionPool, TExContext>,
+    stateMachine: (member: any) => MemberStateMachine<TStateEvent, TStateContext>,
     engine: GameEngine,
     campId: string,
     teamId: string,
@@ -106,6 +113,7 @@ export class Member<
     memberData: MemberWithRelations,
     dataSchema: NestedSchema,
     actionPool: TActionPool,
+    actionContext: TActionContext,
     position?: { x: number; y: number; z: number },
   ) {
     this.id = memberData.id;
@@ -118,16 +126,44 @@ export class Member<
     this.isAlive = true;
     this.dataSchema = dataSchema;
     this.data = memberData;
-    this.statContainer = new StatContainer<TAttrKey>(dataSchema);
+    const statContainer = new StatContainer<TAttrKey>(dataSchema);
+    const pipelineManager = new PipelineManager<TActionContext, TActionPool>(actionPool);
+    const buffManager = new BuffManager(statContainer, pipelineManager, this.engine, memberData.id);
+    const behaviorTreeManager = new BTManger(actionContext);
+
+    // 初始化响应式系统
+    this.statContainer = statContainer;
 
     // 初始化动作管理器（动作组定义可被后续覆盖/注册）
-    this.pipelineManager = new PipelineManager<TActionPool, TExContext>(actionPool);
+    this.pipelineManager = pipelineManager;
 
     // 初始化Buff管理器（需要在 this.id 赋值后）
-    this.buffManager = new BuffManager(this.statContainer, this.pipelineManager, this.engine, memberData.id);
+    this.buffManager = buffManager;
+
+    // 初始化行为树管理器
+    this.behaviorTreeManager = behaviorTreeManager;
 
     this.position = position ?? { x: 0, y: 0, z: 0 };
     this.memory = {};
+
+    this.actionContext = {
+      id: memberData.id,
+      type: memberData.type,
+      name: memberData.name,
+      engine: engine,
+      currentFrame: 0,
+      buffManager: buffManager,
+      statContainer: statContainer,
+      pipelineManager: pipelineManager,
+      position: position ?? { x: 0, y: 0, z: 0 },
+      targetId: targetId,
+      blackboard: {},
+      skillState: {},
+      buffState: {},
+      currentSkill: null,
+      currentSkillEffect: null,
+      currentSkillLogic: null,
+    };
 
     // 创建并启动状态机
     this.actor = createActor(stateMachine(this), {
@@ -198,10 +234,16 @@ export class Member<
    * 新的执行入口：每帧 tick，产出 Intent，由上层 Resolver 统一落地
    */
   tick(frame: number, intentBuffer: IntentBuffer): void {
+    // 更新运行时上下文的当前帧（保持同步）
+    this.actionContext.currentFrame = frame;
+    
     // 更新 Buff（处理 frame.update 效果和过期检查）
     this.buffManager.update(frame);
 
-    // 产出“更新”事件给状态机
+    // 更新行为树
+    this.behaviorTreeManager.tickAll();
+
+    // 产出"更新"事件给状态机
     intentBuffer.push({
       type: "sendFsmEvent",
       source: `member:${this.id}`,

@@ -1,12 +1,68 @@
 import { z } from "zod/v4";
 import { createId } from "@paralleldrive/cuid2";
-import { PlayerStateContext } from "./PlayerStateMachine";
-import { defineStage, PipelineDef, StagePool } from "../../runtime/Action/type";
+import { defineAction, PipelineDef, ActionPool } from "../../runtime/Action/type";
 import { ModifierType } from "../../runtime/StatContainer/StatContainer";
 import { BuffInstance } from "../../runtime/Buff/BuffManager";
-import { CommonStages } from "../../runtime/Action/CommonStages";
+import { CommonActions } from "../../runtime/Action/CommonActions";
+import type { BTManger } from "../../runtime/BehaviorTree/BTManager";
+import {
+  resolveBuffBehaviorTrees,
+  resolveSkillBuffDefs,
+  type SkillEffectLogicV1,
+} from "../../runtime/BehaviorTree/SkillEffectLogicType";
+import type { ActionContext } from "../../runtime/Action/ActionContext";
+import type { SkillEffectWithRelations } from "@db/generated/repositories/skill_effect";
+import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
+import type { CharacterWithRelations } from "@db/generated/repositories/character";
+import { Player } from "./Player";
 
 const logLv = 1; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
+
+/**
+ * PlayerRuntimeContext
+ * Player 专用的运行时上下文，扩展 ActionContext
+ */
+export interface PlayerActionContext extends ActionContext {
+  /** 技能列表 */
+  skillList?: CharacterSkillWithRelations[];
+  /** 技能冷却 */
+  skillCooldowns?: number[];
+  /** 正在施放的技能序号 */
+  currentSkillIndex?: number;
+  /** 技能开始帧 */
+  skillStartFrame?: number;
+  /** 技能结束帧 */
+  skillEndFrame?: number;
+  /** 前摇长度帧 */
+  currentSkillStartupFrames?: number;
+  /** 蓄力长度帧 */
+  currentSkillChargingFrames?: number;
+  /** 咏唱长度帧 */
+  currentSkillChantingFrames?: number;
+  /** 发动长度帧 */
+  currentSkillActionFrames?: number;
+  /** 行为树宿主 */
+  behaviorTreeHost?: BTManger;
+  /** 当前技能行为树实例ID */
+  currentSkillTreeId?: string;
+  /** 机体配置信息 */
+  character?: CharacterWithRelations;
+}
+
+export const PlayerActionContextGenerator = (player: Player): PlayerActionContext => {
+  return {
+    id: player.id,
+    type: player.type,
+    name: player.name,
+    engine: player.engine,
+    currentFrame: 0,
+    buffManager: player.buffManager,
+    statContainer: player.statContainer,
+    pipelineManager: player.pipelineManager,
+    position: player.position,
+    targetId: player.targetId,
+  };
+}
 
 // 阈值描述函数
 const maxMin = (min: number, value: number, max: number) => {
@@ -41,10 +97,10 @@ const setPathValue = (obj: any, path: string, value: any) => {
   return obj;
 };
 
-// 注意：不再支持通过 EventQueue 延迟“执行动作组”。
+// 注意：不再支持通过 EventQueue 延迟"执行动作组"。
 // 跨帧逻辑应由行为树（Wait/WaitForEvent）或引擎的 dispatchMemberEvent（member_fsm_event）完成。
 
-const sendRenderCommand = (context: PlayerStateContext, actionName: string, params?: Record<string, unknown>) => {
+const sendRenderCommand = (context: PlayerActionContext, actionName: string, params?: Record<string, unknown>) => {
   if (!context.engine.postRenderMessage) {
     console.warn(`⚠️ [${context.name}] 无法获取渲染消息接口，无法发送渲染指令: ${actionName}`);
     return;
@@ -70,23 +126,25 @@ const sendRenderCommand = (context: PlayerStateContext, actionName: string, para
  * 设计理念：
  * 1. 管线定义独立于状态机
  * 2. 使用语义化的管线名称（点分命名）
- * 3. 管线只与数据结构（PlayerStateContext）关联
+ * 3. 管线只与数据结构（PlayerRuntimeContext）关联
  * 4. 可被状态机和技能逻辑共享调用
  */
 
 /**
  * 玩家可用的管线阶段池
  */
-export const PlayerPipelineStages = {
-  ...CommonStages,
+export const PlayerActionPool = {
+  ...CommonActions,
 
-  添加Buff: defineStage(
+  添加Buff: defineAction(
     z.object({
       buffId: z.string(),
       buffName: z.string(),
       duration: z.number(),
       variables: z.record(z.string(), z.union([z.number(), z.boolean()])).optional(),
       effects: z.array(z.any()).optional(),
+      /** 可选：绑定的 buffTreeId（在 currentSkillLogic.trees.buffBTs 中查找） */
+      treeId: z.string().optional(),
     }),
     z.object({}),
     (context, input) => {
@@ -106,11 +164,27 @@ export const PlayerPipelineStages = {
       };
 
       context.buffManager.addBuff(buff);
+
+      // 若技能逻辑中声明了该 buff 的 buffBT，则挂载一棵 buff 行为树
+      const host = (context as any).behaviorTreeHost as BTManger | undefined;
+      const logic = (context as any).currentSkillLogic as SkillEffectLogicV1 | null | undefined;
+      if (host && logic) {
+        const buffDefs = resolveSkillBuffDefs(logic);
+        const def = buffDefs.find((b) => b.id === input.buffId);
+        const treeKey = input.treeId ?? def?.treeId;
+        if (treeKey) {
+          const trees = resolveBuffBehaviorTrees(logic);
+          const treeData = trees?.[treeKey];
+          if (treeData) {
+            host.addTree(treeData, "buff", `buff:${input.buffId}`);
+          }
+        }
+      }
       return {};
     },
   ),
 
-  移除Buff: defineStage(
+  移除Buff: defineAction(
     z.object({
       buffId: z.string(),
     }),
@@ -122,7 +196,7 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  检查Buff是否存在: defineStage(
+  检查Buff是否存在: defineAction(
     z.object({
       buffId: z.string(),
     }),
@@ -133,7 +207,7 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  获取buff计数器值: defineStage(
+  获取buff计数器值: defineAction(
     z.object({
       buffId: z.string(),
     }),
@@ -144,7 +218,7 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  应用数值表达式: defineStage(
+  应用数值表达式: defineAction(
     z.object({
       targetPath: z.string(),
       expression: z.string(),
@@ -153,6 +227,31 @@ export const PlayerPipelineStages = {
     z.object({ newValue: z.union([z.number(), z.boolean()]).optional() }),
     (context, input) => {
       const { targetPath, expression, vars } = input;
+      // 特殊路径：buffVar.<buffId>.<varName> —— 直接读写 BuffManager.variables（UI 也从这里读）
+      if (targetPath.startsWith("buffVar.")) {
+        const [, buffId, varName] = targetPath.split(".");
+        if (!buffId || !varName) {
+          console.error(`❌ [${context.name}][Pip] 应用数值表达式失败: buffVar 路径不合法: ${targetPath}`);
+          return { newValue: undefined };
+        }
+        const currentValue = context.buffManager.getVariable(buffId, varName, 0);
+        try {
+          const evalCtx = {
+            currentFrame: context.currentFrame,
+            casterId: context.id,
+            x: currentValue,
+            ctx: context,
+            ...vars,
+          };
+          const newValue = context.engine.evaluateExpression(expression, evalCtx);
+          context.buffManager.setVariable(buffId, varName, newValue);
+          return { newValue };
+        } catch (error) {
+          console.error(`❌ [${context.name}][Pip] 应用数值表达式失败:`, error);
+          return { newValue: currentValue };
+        }
+      }
+
       const currentValue = getPathValue(context, targetPath);
       try {
         const evalCtx = {
@@ -172,7 +271,7 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  技能HP消耗计算: defineStage(z.object({}), z.object({ skillHpCost: z.number() }), (context, input) => {
+  技能HP消耗计算: defineAction(z.object({}), z.object({ skillHpCost: z.number() }), (context, input) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能HP消耗计算`);
     const hpCostExpression = context.currentSkillEffect?.hpCost;
     if (!hpCostExpression) {
@@ -186,7 +285,7 @@ export const PlayerPipelineStages = {
     return { skillHpCost: hpCost };
   }),
 
-  技能MP消耗计算: defineStage(z.object({}), z.object({ skillMpCost: z.number() }), (context, input) => {
+  技能MP消耗计算: defineAction(z.object({}), z.object({ skillMpCost: z.number() }), (context, input) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能MP消耗计算`);
     const mpCostExpression = context.currentSkillEffect?.mpCost;
     if (!mpCostExpression) {
@@ -200,7 +299,7 @@ export const PlayerPipelineStages = {
     return { skillMpCost: mpCost };
   }),
 
-  技能消耗扣除: defineStage(
+  技能消耗扣除: defineAction(
     z.object({
       skillMpCost: z.number(),
       skillHpCost: z.number(),
@@ -226,7 +325,7 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  前摇帧数计算: defineStage(
+  前摇帧数计算: defineAction(
     z.object({}),
     z.object({
       startupFrames: z.number(),
@@ -256,13 +355,13 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  启动前摇动画: defineStage(z.object({}), z.object({}), (context) => {
+  启动前摇动画: defineAction(z.object({}), z.object({}), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动前摇动画`);
     sendRenderCommand(context, "startup");
     return {};
   }),
 
-  调度前摇结束事件: defineStage(
+  调度前摇结束事件: defineAction(
     z.object({
       startupFrames: z.number().optional(),
     }),
@@ -281,15 +380,12 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  蓄力帧数计算: defineStage(
+  蓄力帧数计算: defineAction(
     z.object({ }),
     z.object({ chargeFrames: z.number() }),
     (context, input) => {
       logLv >= 1 && console.log(`👤 [${context.name}][Pip] 蓄力帧数计算`);
       const mspd = context.statContainer.getValue("mspd");
-      if (!mspd) {
-        throw new Error(`🎮 [${context.name}] 的行动速度不存在`);
-      }
       const reservoirFixedExpression = context.currentSkillEffect?.reservoirFixed;
       const reservoirModifiedExpression = context.currentSkillEffect?.reservoirModified;
       if (!reservoirFixedExpression || !reservoirModifiedExpression) {
@@ -308,13 +404,13 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  启动蓄力动画: defineStage(z.object({}), z.object({}), (context) => {
+  启动蓄力动画: defineAction(z.object({}), z.object({}), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动蓄力动画`);
     sendRenderCommand(context, "charging");
     return {};
   }),
 
-  调度蓄力结束事件: defineStage(
+  调度蓄力结束事件: defineAction(
     z.object({
       chargeFrames: z.number().optional(),
     }),
@@ -333,7 +429,7 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  咏唱帧数计算: defineStage(
+  咏唱帧数计算: defineAction(
     z.object({ }),
     z.object({ chantingFrames: z.number() }),
     (context, input) => {
@@ -360,13 +456,13 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  启动咏唱动画: defineStage(z.object({}), z.object({}), (context) => {
+  启动咏唱动画: defineAction(z.object({}), z.object({}), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动咏唱动画`);
     sendRenderCommand(context, "chanting");
     return {};
   }),
 
-  调度咏唱结束事件: defineStage(
+  调度咏唱结束事件: defineAction(
     z.object({
       chantingFrames: z.number().optional(),
     }),
@@ -385,13 +481,13 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  启动发动动画: defineStage(z.object({}), z.object({}), (context) => {
+  启动发动动画: defineAction(z.object({}), z.object({}), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动发动动画`);
     sendRenderCommand(context, "action");
     return {};
   }),
 
-  调度发动结束事件: defineStage(
+  调度发动结束事件: defineAction(
     z.object({
       actionFrames: z.number().optional(),
     }),
@@ -410,14 +506,14 @@ export const PlayerPipelineStages = {
     },
   ),
 
-  应用当前技能效果: defineStage(z.object({}), z.object({}), (context) => {
+  应用当前技能效果: defineAction(z.object({}), z.object({}), (context) => {
     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 应用当前技能效果 (占位)`);
     // TODO: 在正式实现时，调用具体的技能效果终端管线
     return {};
   }),
 
   // ============ 伤害相关阶段（施法者侧）============
-  对目标造成伤害: defineStage(
+  对目标造成伤害: defineAction(
     z.object({
       damageFormula: z.string(),
       extraVars: z.record(z.string(), z.any()).optional(),
@@ -477,8 +573,8 @@ export const PlayerPipelineStages = {
       return {};
     },
   ),
-} as const satisfies StagePool<PlayerStateContext>;
+} as const satisfies ActionPool<PlayerActionContext>;
 
-export type PlayerPipelineStages = typeof PlayerPipelineStages;
+export type PlayerActionPool = typeof PlayerActionPool;
 
-export type PlayerPipelineDef = PipelineDef<PlayerPipelineStages>;
+export type PlayerActionDef = PipelineDef<PlayerActionPool>;

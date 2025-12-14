@@ -1,7 +1,7 @@
 import type { Context } from "~/lib/behavior3/context";
 import { Node, NodeDef, Status } from "~/lib/behavior3/node";
 import type { Tree } from "~/lib/behavior3/tree";
-import type { MemberStateContext } from "../../StateMachine/types";
+import type { ActionContext } from "../../Action/ActionContext";
 import { createId } from "@paralleldrive/cuid2";
 
 /**
@@ -17,13 +17,13 @@ export class ScheduleFSMEvent extends Node {
     readonly payload?: Record<string, unknown>;
   };
 
-  override onTick<TContext extends MemberStateContext>(
+  override onTick<TContext extends ActionContext>(
     tree: Tree<Context, TContext>,
     status: Status,
   ): Status {
     const owner = tree.owner;
     if (!owner) {
-      this.error("ScheduleFSMEvent: owner (MemberStateContext) is required");
+      this.error("ScheduleFSMEvent: owner (ActionContext) is required");
       return "failure";
     }
 

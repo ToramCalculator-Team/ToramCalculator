@@ -111,7 +111,7 @@ export class MemberManager {
       case "Player":
         {
           const schema = PlayerAttrSchema(memberData.player!.characters?.[0]);
-          const player = new Player(this.engine, memberData, campId, teamId, memberData.id, schema, position);
+          const player = new Player(this.engine, memberData, campId, teamId, memberData.id, schema, {}, position);
           const success = this.registerMember(player, campId, teamId, memberData);
           if (success) {
             console.log(`✅ 创建并注册玩家成功: ${memberData.name} (${memberData.type})`);
@@ -125,7 +125,7 @@ export class MemberManager {
       case "Mob":
         {
           const schema = MobAttrSchema(memberData.mob!);
-          const mob = new Mob(this.engine, memberData, campId, teamId, memberData.id, schema, position);
+          const mob = new Mob(this.engine, memberData, campId, teamId, memberData.id, schema, {}, position);
           const success = this.registerMember(mob, campId, teamId, memberData);
             if (success) {
               console.log(`✅ 创建并注册怪物成功: ${memberData.name} (${memberData.type})`);

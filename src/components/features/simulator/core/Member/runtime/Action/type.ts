@@ -1,55 +1,55 @@
 import { z, ZodType } from "zod/v4";
 
 /**
- * 阶段定义（Stage）
+ * 动作定义（Action）
  * [输入Schema, 输出Schema, 实现函数]
  *
  * 设计理念：
- * 1. 阶段是独立的计算单元，包含完整的类型定义和实现
- * 2. 阶段可被多个管线复用
+ * 1. 动作是独立的计算单元，包含完整的类型定义和实现
+ * 2. 动作可被多个管线复用
  * 3. Schema 用于类型推导和运行时验证
  */
-export type Stage<
+export type Action<
   TInput extends ZodType,
   TOutput extends ZodType,
   TContext extends Record<string, any>,
 > = readonly [
   TInput,
   TOutput,
-  (context: TContext, stageInput: z.output<TInput>) => z.output<TOutput>,
+  (context: TContext, actionInput: z.output<TInput>) => z.output<TOutput>,
 ];
 
 /**
- * 阶段池定义
- * 阶段名称 → 阶段定义 的映射
+ * 动作池定义
+ * 动作名称 → 动作定义 的映射
  */
-export type StagePool<TContext extends Record<string, any>> = {
-  readonly [stageName: string]: Stage<any, any, TContext>;
+export type ActionPool<TContext extends Record<string, any>> = {
+  readonly [actionName: string]: Action<any, any, TContext>;
 };
 
 /**
- * 从阶段池提取阶段名称联合类型
+ * 从动作池提取动作名称联合类型
  */
-export type StageNamesFromPool<TPool extends StagePool<any>> = keyof TPool & string;
+export type ActionNamesFromPool<TPool extends ActionPool<any>> = keyof TPool & string;
 
 /**
- * 从阶段池提取特定阶段的输入Schema类型
+ * 从动作池提取特定动作的输入Schema类型
  */
-export type StageInputSchema<
-  TPool extends StagePool<any>,
-  TStageName extends StageNamesFromPool<TPool>,
-> = TPool[TStageName] extends Stage<infer TInput, any, any> ? TInput : never;
+export type ActionInputSchema<
+  TPool extends ActionPool<any>,
+  TActionName extends ActionNamesFromPool<TPool>,
+> = TPool[TActionName] extends Action<infer TInput, any, any> ? TInput : never;
 
 /**
- * 从阶段池提取特定阶段的输出Schema类型
+ * 从动作池提取特定动作的输出Schema类型
  */
-export type StageOutputSchema<
-  TPool extends StagePool<any>,
-  TStageName extends StageNamesFromPool<TPool>,
-> = TPool[TStageName] extends Stage<any, infer TOutput, any> ? TOutput : never;
+export type ActionOutputSchema<
+  TPool extends ActionPool<any>,
+  TActionName extends ActionNamesFromPool<TPool>,
+> = TPool[TActionName] extends Action<any, infer TOutput, any> ? TOutput : never;
 
 /**
- * 辅助函数：创建类型安全的阶段
+ * 辅助函数：创建类型安全的动作
  *
  * 使用示例：
  * ```ts
@@ -62,7 +62,7 @@ export type StageOutputSchema<
  * } as const;
  * ```
  */
-export const defineStage = <
+export const defineAction = <
   TInput extends ZodType,
   TOutput extends ZodType,
   TContext extends Record<string, any> = Record<string, any>,
@@ -70,7 +70,7 @@ export const defineStage = <
   inputSchema: TInput,
   outputSchema: TOutput,
   impl: (context: TContext, actionInput: z.output<TInput>) => z.output<TOutput>,
-): Stage<TInput, TOutput, TContext> => {
+): Action<TInput, TOutput, TContext> => {
   return [inputSchema, outputSchema, impl] as const;
 };
 
@@ -84,41 +84,15 @@ export type OutputOfSchema<T extends ZodType> = z.output<T>;
 /**
  * 管线定义（Pipeline）
  * 键名：管线名称（如 "技能.消耗计算"）
- * 值：阶段名称数组（编排信息）
+ * 值：动作名称数组（编排信息）
  *
  * 设计理念：
  * 1. 管线只负责存储编排信息，不包含实现
- * 2. 阶段实现定义在独立的阶段池中
- * 3. 通过泛型参数约束可用的阶段名称
+ * 2. 动作实现定义在独立的动作池中
+ * 3. 通过泛型参数约束可用的动作名称
  *
- * @template TPool - 阶段池类型，用于约束阶段名
+ * @template TPool - 动作池类型，用于约束动作名
  */
-export type PipelineDef<TPool extends StagePool<any> = StagePool<any>> = {
+export type PipelineDef<TPool extends ActionPool<any> = ActionPool<any>> = {
   [pipelineName: string]: readonly (keyof TPool & string)[];
 };
-
-/* ----------------- 兼容别名（Deprecated） ----------------- */
-/** @deprecated 请使用 Stage */
-export type Action<
-  TInput extends ZodType,
-  TOutput extends ZodType,
-  TContext extends Record<string, any>,
-> = Stage<TInput, TOutput, TContext>;
-/** @deprecated 请使用 StagePool */
-export type ActionPool<TContext extends Record<string, any>> = StagePool<TContext>;
-/** @deprecated 请使用 PipelineDef */
-export type ActionGroupDef<TPool extends StagePool<any> = StagePool<any>> = PipelineDef<TPool>;
-/** @deprecated 请使用 StageNamesFromPool */
-export type ActionNamesFromPool<TPool extends StagePool<any>> = StageNamesFromPool<TPool>;
-/** @deprecated 请使用 StageInputSchema */
-export type ActionInputSchema<
-  TPool extends StagePool<any>,
-  TStageName extends StageNamesFromPool<TPool>,
-> = StageInputSchema<TPool, TStageName>;
-/** @deprecated 请使用 StageOutputSchema */
-export type ActionOutputSchema<
-  TPool extends StagePool<any>,
-  TStageName extends StageNamesFromPool<TPool>,
-> = StageOutputSchema<TPool, TStageName>;
-/** @deprecated 请使用 defineStage */
-export const defineAction = defineStage;

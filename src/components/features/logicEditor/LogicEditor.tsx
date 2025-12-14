@@ -12,7 +12,7 @@ import { createBlocksRegistry } from "./blocksRegistry";
 import { store } from "~/store";
 import { MediaContext } from "~/lib/contexts/Media";
 import { MemberType } from "@db/schema/enums";
-import { PlayerAttrNestedSchema } from "../simulator/core/Member/types/Player/PlayerAttrSchema";
+import { PlayerAttrNestedSchema } from "../simulator/core/Member/types/Player/PlayerAttrSchemaGenerator";
 import { MobAttrNestedSchema } from "../simulator/core/Member/types/Mob/MobAttrSchema";
 import { MemberBaseNestedSchema } from "../simulator/core/Member/MemberBaseSchema";
 import defaultData from "~/components/features/logicEditor/defaultData.json";

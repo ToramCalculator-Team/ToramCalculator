@@ -1,17 +1,8 @@
-import { assign, enqueueActions, EventObject, setup, sendTo, raise } from "xstate";
-import { createId } from "@paralleldrive/cuid2";
+import { assign, EventObject, setup, sendTo, raise } from "xstate";
 import { MemberEventType } from "../../runtime/StateMachine/types";
 import { Player, PlayerAttrType } from "./Player";
-import { ModifierType, StatContainer } from "../../runtime/StatContainer/StatContainer";
-import { SkillEffectWithRelations } from "@db/generated/repositories/skill_effect";
-import { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
-import { CharacterWithRelations } from "@db/generated/repositories/character";
-import type { PipelineManager } from "../../runtime/Action/PipelineManager";
-import { resolveSkillBehaviorTree } from "../../runtime/BehaviorTree/SkillEffectLogic";
+import { resolvePipelineOverrides, resolveSkillBehaviorTree } from "../../runtime/BehaviorTree/SkillEffectLogicType";
 import type { MemberStateContext, MemberStateMachine } from "../../runtime/StateMachine/types";
-import { BehaviorTreeHost } from "../../runtime/BehaviorTree/BehaviorTreeHost";
-import type { TreeData } from "~/lib/behavior3/tree";
-import { PlayerPipelineStages } from "./PlayerPipelines";
 import { testSkillEffect } from "../../runtime/BehaviorTree/testSkill";
 
 /**
@@ -160,62 +151,13 @@ export type PlayerEventType =
 
 // 定义 PlayerStateContext 类型（提前声明）
 export interface PlayerStateContext extends MemberStateContext {
-  /** 技能冷却 */
-  skillCooldowns: number[];
-  /** 正在施放的技能序号 */
-  currentSkillIndex: number;
-  /** 技能开始帧 */
-  skillStartFrame: number;
-  /** 技能结束帧 */
-  skillEndFrame: number;
-  /** 技能列表 */
-  skillList: CharacterSkillWithRelations[];
-  /** 正在执行的技能 */
-  currentSkill: CharacterSkillWithRelations | null;
-  /** 正在施放的技能效果 */
-  currentSkillEffect: SkillEffectWithRelations | null;
-  /** 前摇长度帧 */
-  currentSkillStartupFrames: number;
-  /** 蓄力长度帧 */
-  currentSkillChargingFrames: number;
-  /** 咏唱长度帧 */
-  currentSkillChantingFrames: number;
-  /** 发动长度帧 */
-  currentSkillActionFrames: number;
-  /** 仇恨值 */
-  aggro: number;
-  /** 机体配置信息 */
-  character: CharacterWithRelations;
-  /** 行为树宿主 */
-  behaviorTreeHost?: BehaviorTreeHost;
-  /** 当前技能行为树实例ID（用于仅移除技能树，不影响 buff/ai 树） */
-  currentSkillTreeId?: string;
-  /** 动作管理器（ActionGroup/Action） */
-  pipelineManager: PipelineManager<any, any>;
-  /** 当前处理的伤害请求（受击者侧使用） */
-  currentDamageRequest?: {
-    sourceId: string;
-    targetId: string;
-    skillId: string;
-    damageType: "physical" | "magic";
-    canBeDodged: boolean;
-    canBeGuarded: boolean;
-    damageFormula: string;
-    extraVars?: Record<string, any>;
-    sourceSnapshot?: any;
-  };
-  /** 最近一次命中判定结果（受击者侧使用） */
-  lastHitResult?: {
-    hit: boolean;
-    dodge: boolean;
-    guard: boolean;
-  };
 }
 
 export const playerStateMachine = (
   player: Player,
-): MemberStateMachine<PlayerAttrType, PlayerEventType, PlayerPipelineStages, PlayerStateContext> => {
+): MemberStateMachine<PlayerEventType, PlayerStateContext> => {
   const machineId = player.id;
+  const actionContext = player.actionContext;
 
   const machine = setup({
     types: {
@@ -224,40 +166,12 @@ export const playerStateMachine = (
       output: {} as Player,
     },
     actions: {
-      根据角色配置生成初始状态: enqueueActions(({ context, event, enqueue }) => {
+      根据角色配置生成初始状态: function ({ context, event }) {
         console.log(`👤 [${context.name}] 根据角色配置生成初始状态`, context);
-        // 通过引擎消息通道发送渲染命令（走 Simulation.worker 的 MessageChannel）
-        const spawnCmd = {
-          type: "render:cmd" as const,
-          cmd: {
-            type: "spawn" as const,
-            entityId: context.id,
-            name: context.name,
-            position: { x: 0, y: 1, z: 0 },
-            seq: 0,
-            ts: Date.now(),
-          },
-        };
-        // 引擎统一出口：通过已建立的MessageChannel发送渲染指令
-        if (context.engine.postRenderMessage) {
-          // 首选方案：使用引擎提供的统一渲染消息接口
-          // 这个方法会通过 Simulation.worker 的 MessagePort 将指令发送到主线程
-          context.engine.postRenderMessage(spawnCmd);
-        } else {
-          // 如果引擎的渲染消息接口不可用，记录错误但不使用fallback
-          // 这确保我们只使用正确的通信通道，避免依赖全局变量
-          console.error(`👤 [${context.name}] 无法发送渲染指令：引擎渲染消息接口不可用`);
-        }
-      }),
-      更新玩家状态: enqueueActions(({ context, event, enqueue }) => {
-        enqueue.assign({
-          currentFrame: context.currentFrame + 1,
-        });
-        // 每帧驱动当前成员的行为树
-        if (!context.behaviorTreeHost) {
-          (context as any).behaviorTreeHost = new BehaviorTreeHost(context);
-        }
-        context.behaviorTreeHost?.tickAll();
+        return {}
+      },
+      更新玩家状态: assign({
+        currentFrame: ({context}) => context.currentFrame + 1,
       }),
       启用站立动画: function ({ context, event }) {
         // Add your action code here
@@ -279,63 +193,44 @@ export const playerStateMachine = (
         // ...
         console.log(`👤 [${context.name}] 创建警告结束通知`, event);
       },
-      添加待处理技能: enqueueActions(({ context, event, enqueue }) => {
+      添加待处理技能: function ({ context, event }) {
         console.log(`👤 [${context.name}] 添加待处理技能`, event);
         const e = event as 使用技能;
         const skillId = e.data.skillId;
-        const skill = context.skillList.find((s) => s.id === skillId);
+        const skill = actionContext.skillList?.find((s) => s.id === skillId);
         if (!skill) {
-          console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
-          return;
+          throw new Error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
         }
-        enqueue.assign({
+        return {
           currentSkill: skill,
-        });
-      }),
+        };
+      },
       清空待处理技能: function ({ context, event }) {
         console.log(`👤 [${context.name}] 清空待处理技能`, event);
-        context.currentSkill = null;
-        if (context.currentSkillTreeId) {
-          context.behaviorTreeHost?.removeTree(context.currentSkillTreeId);
-          context.currentSkillTreeId = undefined;
+        actionContext.currentSkill = null;
+        // 清理技能级管线覆盖，避免影响后续技能
+        player.pipelineManager?.clearSkillOverrides?.();
+        if (actionContext.currentSkillTreeId) {
+          actionContext.behaviorTreeHost?.removeTree(actionContext.currentSkillTreeId);
+          actionContext.currentSkillTreeId = undefined;
         }
       },
       清理行为树: function ({ context }) {
-        context.behaviorTreeHost?.clear();
+        actionContext.behaviorTreeHost?.clear();
       },
-      添加待处理技能效果: enqueueActions(({ context, event, enqueue }) => {
-        console.log(`👤 [${context.name}] 添加待处理技能效果`, event);
-        const skillEffect = context.currentSkill?.template?.effects.find((e) =>
-          context.engine.evaluateExpression(e.condition, {
-            currentFrame: context.currentFrame,
-            casterId: context.id,
-            skillLv: context.currentSkill?.lv ?? 0,
-          }),
+      添加待处理技能效果: function ({ context, event }) {
+        const skillEffect = actionContext.currentSkill?.template?.effects.find((e) =>
+          actionContext.engine.evaluateExpression(e.condition, {
+            currentFrame: actionContext.currentFrame,
+            casterId: actionContext.id,
+            skillLv: actionContext.currentSkill?.lv ?? 0,
+          })
         );
-        if (!skillEffect) {
-          console.error(`🎮 [${context.name}] 使用的技能${context.currentSkill?.template?.name}没有可用的效果`);
-          return;
-        }
-        enqueue.assign({
-          currentSkillEffect: skillEffect,
-        });
-      }),
-      执行技能: enqueueActions(({ context, enqueue }) => {
-        console.log(`👤 [${context.name}] 执行技能`, { skill: context.currentSkill?.template?.name });
-
-        const skillEffect = context.currentSkillEffect;
-        if (!skillEffect) {
-          console.warn(`🎮 [${context.name}] 当前技能缺少有效效果，跳过执行`);
-          enqueue.raise({ type: "技能执行完成" });
-          return;
-        }
-
-        const ensureHost = () => {
-          if (!context.behaviorTreeHost) {
-            (context as any).behaviorTreeHost = new BehaviorTreeHost(context as any);
-          }
-          return context.behaviorTreeHost!;
-        };
+        console.log(`👤 [${context.name}] 添加待处理技能效果`, skillEffect);
+        actionContext.currentSkillEffect = skillEffect;
+      },
+      执行技能: function ({ context, event }) {
+        console.log(`👤 [${context.name}] 执行技能`, actionContext.currentSkill?.template?.name);
 
         // let treeData = resolveSkillBehaviorTree(skillEffect.logic);
         // if (!treeData) {
@@ -345,30 +240,37 @@ export const playerStateMachine = (
         // }
 
         // 使用测试技能效果
-        const treeData = testSkillEffect.MagicCannon.logic;
-        console.log(`🎮 [${context.name}] 使用测试技能效果`, treeData);
+        const logic = testSkillEffect.MagicCannon.logic;
+        actionContext.currentSkillLogic = logic;
+        const treeData = resolveSkillBehaviorTree(logic)!;
+        console.log(`🎮 [${context.name}] 使用测试技能效果行为树`, treeData);
 
         try {
-          const host = ensureHost();
-          const treeId = `skill:${String(skillEffect.id ?? context.currentSkill?.id ?? "unknown_skill")}`;
+          // 将技能逻辑中的 pipelines.overrides 注册为“技能级覆盖”
+          // 这样 RunPipelineSync/RunPipeline 都可以按该技能定义的管线编排执行
+          const overrides = resolvePipelineOverrides(logic)!;
+          actionContext.pipelineManager?.setSkillOverrides?.(overrides);
+
+          const treeId = `skill:${String(actionContext.currentSkillEffect?.id ?? "unknown_skill")}`;
           // 若上一次技能树仍存在，先移除，避免堆积
-          if (context.currentSkillTreeId) {
-            host.removeTree(context.currentSkillTreeId);
+          if (actionContext.currentSkillTreeId) {
+            console.log(`🎮 [${context.name}] 移除技能树`, actionContext.currentSkillTreeId);
+            actionContext.behaviorTreeManager?.removeTree(actionContext.currentSkillTreeId);
           }
-          context.currentSkillTreeId = treeId;
-          const inst = host.addTree(treeData, "skill", treeId);
+          actionContext.currentSkillTreeId = treeId;
+          const inst = actionContext.behaviorTreeManager?.addTree(treeData, "skill", treeId);
 
           // 先 tick 一次让树进入 running/触发初始调度
-          const status = inst.tree.tick();
+          const status = inst?.tree.tick();
           // 若该技能树是纯同步逻辑，立即完成；否则应由 BT 内部通过 ScheduleFSMEvent 发送“技能执行完成”
           if (status === "success" || status === "failure") {
-            enqueue.raise({ type: "技能执行完成", data: { status } } as any);
+            raise({ type: "技能执行完成", data: { status } } as any);
           }
         } catch (error) {
           console.error(`❌ [${context.name}] 挂载/执行技能行为树失败`, error);
-          enqueue.raise({ type: "技能执行完成" });
+          raise({ type: "技能执行完成" });
         }
-      }),
+      },
       重置控制抵抗时间: function ({ context, event }) {
         // Add your action code here
         // ...
@@ -402,7 +304,9 @@ export const playerStateMachine = (
       命中计算管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 命中计算管线`, event);
         try {
-          const res = player.pipelineManager.run("战斗.命中.计算" as any, context, {});
+          const res = player.pipelineManager.run("战斗.命中.计算" as any, actionContext, {});
+          // PipelineManager.run 返回 working copy，需要合并回 context 才能生效
+          Object.assign(actionContext as any, res.ctx ?? {});
           const finalOutput = (res.actionOutputs as any)["计算命中判定"] as
             | {
                 hitResult?: boolean;
@@ -411,7 +315,7 @@ export const playerStateMachine = (
               }
             | undefined;
 
-          context.lastHitResult = {
+          actionContext.lastHitResult = {
             hit: !!finalOutput?.hitResult,
             dodge: !!finalOutput?.dodgeResult,
             guard: !!finalOutput?.guardResult,
@@ -422,7 +326,7 @@ export const playerStateMachine = (
       },
       根据命中结果进行下一步: function ({ context, event }) {
         console.log(`👤 [${context.name}] 根据命中结果进行下一步`, event);
-        const result = context.lastHitResult;
+        const result = actionContext.lastHitResult;
 
         if (!result) {
           console.warn(`⚠️ [${context.name}] 没有命中结果，终止后续流程`);
@@ -441,7 +345,8 @@ export const playerStateMachine = (
       控制判定管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 控制判定管线`, event);
         try {
-          player.pipelineManager.run("战斗.控制.计算" as any, context, {});
+          const res = player.pipelineManager.run("战斗.控制.计算" as any, actionContext, {});
+          Object.assign(context as any, res.ctx ?? {});
         } catch (error) {
           console.error(`❌ [${context.name}] 控制判定管线执行失败`, error);
         }
@@ -458,7 +363,8 @@ export const playerStateMachine = (
       伤害计算管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 伤害计算管线`, event);
         try {
-          player.pipelineManager.run("伤害计算", context, {});
+          const res = player.pipelineManager.run("伤害计算", actionContext, {});
+          Object.assign(actionContext as any, res.ctx ?? {});
         } catch (error) {
           console.error(`❌ [${context.name}] 伤害计算管线执行失败`, error);
         }
@@ -483,9 +389,9 @@ export const playerStateMachine = (
         const e = event as 受到攻击;
         const damageRequest = e.data?.damageRequest;
         if (damageRequest) {
-          context.currentDamageRequest = damageRequest;
+          actionContext.currentDamageRequest = damageRequest;
         } else {
-          context.currentDamageRequest = undefined;
+          actionContext.currentDamageRequest = undefined;
         }
       },
       修改目标Id: function ({ context, event }, params: { targetId: string }) {
@@ -502,20 +408,20 @@ export const playerStateMachine = (
       存在蓄力阶段: function ({ context, event }) {
         console.log(`👤 [${context.name}] 判断技能是否有蓄力阶段`, event);
 
-        const effect = context.currentSkillEffect;
+        const effect = actionContext.currentSkillEffect;
         if (!effect) {
           console.error(`👤 [${context.name}] 技能效果不存在`);
           return false;
         }
 
-        const currentFrame = context.engine.getCurrentFrame();
+        const currentFrame = actionContext.engine.getCurrentFrame();
 
         // 蓄力阶段相关属性（假设使用chargeFixed和chargeModified）
-        const reservoirFixed = context.engine.evaluateExpression(effect.reservoirFixed ?? "0", {
+        const reservoirFixed = actionContext.engine.evaluateExpression(effect.reservoirFixed ?? "0", {
           currentFrame,
           casterId: context.id,
         });
-        const reservoirModified = context.engine.evaluateExpression(effect.reservoirModified ?? "0", {
+        const reservoirModified = actionContext.engine.evaluateExpression(effect.reservoirModified ?? "0", {
           currentFrame,
           casterId: context.id,
         });
@@ -524,17 +430,17 @@ export const playerStateMachine = (
       },
       存在咏唱阶段: function ({ context, event }) {
         console.log(`👤 [${context.name}] 判断技能是否有咏唱阶段`, event);
-        const effect = context.currentSkillEffect;
+        const effect = actionContext.currentSkillEffect;
         if (!effect) {
           console.error(`👤 [${context.name}] 技能效果不存在`);
           return false;
         }
-        const currentFrame = context.engine.getCurrentFrame();
-        const chantingFixed = context.engine.evaluateExpression(effect.chantingFixed ?? "0", {
+        const currentFrame = actionContext.engine.getCurrentFrame();
+        const chantingFixed = actionContext.engine.evaluateExpression(effect.chantingFixed ?? "0", {
           currentFrame,
           casterId: context.id,
         });
-        const chantingModified = context.engine.evaluateExpression(effect.chantingModified ?? "0", {
+        const chantingModified = actionContext.engine.evaluateExpression(effect.chantingModified ?? "0", {
           currentFrame,
           casterId: context.id,
         });
@@ -550,15 +456,15 @@ export const playerStateMachine = (
         console.log(`👤 [${context.name}] 判断技能是否有可用效果`, event);
         const e = event as 使用技能;
         const skillId = e.data.skillId;
-        const currentFrame = context.engine.getCurrentFrame();
+        const currentFrame = actionContext.engine.getCurrentFrame();
 
-        const skill = context.skillList.find((s) => s.id === skillId);
+        const skill = actionContext.skillList?.find((s) => s.id === skillId);
         if (!skill) {
           console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
           return true;
         }
         const effect = skill.template?.effects.find((e) => {
-          const result = context.engine.evaluateExpression(e.condition, {
+          const result = actionContext.engine.evaluateExpression(e.condition, {
             currentFrame,
             casterId: context.id,
             skillLv: skill?.lv ?? 0,
@@ -575,7 +481,7 @@ export const playerStateMachine = (
       },
       还未冷却: function ({ context, event }) {
         const e = event as 使用技能;
-        const res = context.skillCooldowns[context.currentSkillIndex];
+        const res = actionContext.skillCooldowns?.[actionContext.currentSkillIndex ?? 0];
         if (res == undefined) {
           console.log(`- 该技能不存在冷却时间`);
           return false;
@@ -591,15 +497,15 @@ export const playerStateMachine = (
         // 此守卫通过后说明技能可发动，则更新当前技能数据
         const e = event as 使用技能;
         const skillId = e.data.skillId;
-        const currentFrame = context.engine.getCurrentFrame();
+        const currentFrame = actionContext.engine.getCurrentFrame();
 
-        const skill = context.skillList.find((s) => s.id === skillId);
+        const skill = actionContext.skillList?.find((s) => s.id === skillId);
         if (!skill) {
           console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
           return true;
         }
         const effect = skill.template?.effects.find((e) => {
-          const result = context.engine.evaluateExpression(e.condition, {
+          const result = actionContext.engine.evaluateExpression(e.condition, {
             currentFrame,
             casterId: context.id,
             skillLv: skill?.lv ?? 0,
@@ -612,12 +518,12 @@ export const playerStateMachine = (
           return true;
         }
         if (effect.hpCost && effect.mpCost) {
-          const hpCost = context.engine.evaluateExpression(effect.hpCost, {
+          const hpCost = actionContext.engine.evaluateExpression(effect.hpCost, {
             currentFrame,
             casterId: context.id,
             skillLv: skill?.lv ?? 0,
           });
-          const mpCost = context.engine.evaluateExpression(effect.mpCost, {
+          const mpCost = actionContext.engine.evaluateExpression(effect.mpCost, {
             currentFrame,
             casterId: context.id,
             skillLv: skill?.lv ?? 0,
@@ -668,29 +574,10 @@ export const playerStateMachine = (
       teamId: player.teamId,
       targetId: player.targetId,
       isAlive: player.isAlive,
-      engine: player.engine,
-      buffManager: player.buffManager,
-      statContainer: player.statContainer,
-      pipelineManager: player.pipelineManager,
       position: player.position,
-      createdAtFrame: player.engine.getCurrentFrame(),
-      currentFrame: player.engine.getCurrentFrame(),
-      behaviorTreeHost: new BehaviorTreeHost(player as any as MemberStateContext),
-      currentSkillStartupFrames: 0,
-      currentSkillChargingFrames: 0,
-      currentSkillChantingFrames: 0,
-      currentSkillActionFrames: 0,
-      skillList: player.data.player?.characters?.[0]?.skills ?? [],
-      skillCooldowns: player.data.player?.characters?.[0]?.skills.map((s) => 0) ?? [],
-      currentSkillEffect: null,
-      currentSkillIndex: 0,
-      skillStartFrame: 0,
-      skillEndFrame: 0,
-      currentSkill: null,
+      createdAtFrame: 0,
+      currentFrame: 0,
       statusTags: [],
-      aggro: 0,
-      // 默认第一个机体
-      character: player.data.player!.characters?.[0] ?? null,
     },
     id: machineId,
     initial: "存活",

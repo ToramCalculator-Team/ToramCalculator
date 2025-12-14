@@ -2,7 +2,7 @@ import { createId } from "@paralleldrive/cuid2";
 import type { Context } from "~/lib/behavior3/context";
 import { Node, type NodeDef, type Status } from "~/lib/behavior3/node";
 import type { Tree } from "~/lib/behavior3/tree";
-import type { MemberStateContext } from "../../StateMachine/types";
+import type { ActionContext } from "../../Action/ActionContext";
 
 type TargetConfig = {
   /** 动作组名称 */
@@ -56,27 +56,20 @@ export class InsertDynamicStage extends Node {
     readonly source?: string;
   };
 
-  override onTick<TContext extends MemberStateContext>(
+  override onTick<TContext extends ActionContext>(
     tree: Tree<Context, TContext>,
     status: Status,
   ): Status {
-    const owner = tree.owner as TContext & {
-      actionManager?: {
-        insertDynamicStage?: Function;
-        pipelineDef?: Record<string, readonly string[]>;
-        actionPool?: Record<string, readonly [any, any, Function]>;
-      };
-      intentBuffer?: { push: (intent: any) => void };
-    };
+    const owner = tree.owner;
 
     if (!owner.intentBuffer) {
       this.error("InsertDynamicStage: owner.intentBuffer is required to push Intent");
       return "failure";
     }
 
-    const actionManager = owner?.actionManager as any;
-    if (!actionManager?.actionPool) {
-      this.error("InsertDynamicStage: 缺少 owner.actionManager.actionPool");
+    const pipelineManager = owner?.pipelineManager as any;
+    if (!pipelineManager?.actionPool) {
+      this.error("InsertDynamicStage: 缺少 owner.pipelineManager.actionPool");
       return "failure";
     }
 
@@ -101,7 +94,7 @@ export class InsertDynamicStage extends Node {
       }
 
       // 校验插入点是否存在（如果能找到静态定义）
-      const actionList = actionManager.pipelineDef?.[actionGroupName];
+      const actionList = pipelineManager.pipelineDef?.[actionGroupName];
       if (Array.isArray(actionList) && !actionList.includes(afterActionName)) {
         console.warn(
           `[InsertDynamicStage] 动作组 ${String(actionGroupName)} 不包含动作 ${String(afterActionName)}，已跳过`,

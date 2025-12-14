@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+import { NodeData } from "~/lib/behavior3/node";
 import type { TreeData } from "~/lib/behavior3/tree";
 
 /**
@@ -16,8 +17,7 @@ import type { TreeData } from "~/lib/behavior3/tree";
 
 const Behavior3NodeDataSchema: z.ZodType<any> = z.lazy(() =>
   z.object({
-    // behavior3 的 NodeData.id 在类型里是 string；为兼容历史/测试数据，也允许 number
-    id: z.union([z.string(), z.number()]),
+    id: z.string(),
     name: z.string(),
     desc: z.string().optional().default(""),
     args: z.record(z.string(), z.unknown()).optional().default({}),
@@ -36,7 +36,7 @@ export const Behavior3TreeDataSchema: z.ZodType<TreeData> = z.object({
   desc: z.string().optional().default(""),
   root: Behavior3NodeDataSchema,
   group: z.array(z.string()).optional().default([]),
-}) as unknown as z.ZodType<TreeData>;
+});
 
 /* ---------------------------------- Pipeline ---------------------------------- */
 
@@ -191,4 +191,3 @@ export const resolveSkillAreaDefs = (logic: SkillEffectLogic | null | undefined)
   if (!logic?.areas) return [];
   return logic.areas;
 };
-

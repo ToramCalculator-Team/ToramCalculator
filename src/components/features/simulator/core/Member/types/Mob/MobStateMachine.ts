@@ -7,7 +7,7 @@ import { ModifierType } from "../../runtime/StatContainer/StatContainer";
 import { GameEngine } from "../../../GameEngine";
 import type { PipelineManager } from "../../runtime/Action/PipelineManager";
 import type { MemberStateContext, MemberStateMachine } from "../../runtime/StateMachine/types";
-import { MobPipelineStages } from "./MobPipelines";
+import { MobActionPool } from "./MobPipelines";
 
 /**
  * Mob特有的事件类型
@@ -359,7 +359,7 @@ export const mobGuards = {
 
 export const createMobStateMachine = (
   mob: Mob,
-): MemberStateMachine<MobAttrType, MobEventType, MobPipelineStages, MobStateContext> => {
+): MemberStateMachine<MobEventType, MobStateContext> => {
   const machineId = mob.id;
 
   return setup({
@@ -380,17 +380,14 @@ export const createMobStateMachine = (
       teamId: mob.teamId,
       targetId: mob.targetId,
       isAlive: mob.isAlive,
-      engine: mob.engine,
-      buffManager: mob.buffManager,
-      statContainer: mob.statContainer,
-      pipelineManager: mob.pipelineManager,
       position: mob.position,
-      createdAtFrame: mob.engine.getCurrentFrame(),
-      currentFrame: mob.engine.getCurrentFrame(),
+      createdAtFrame: mob.runtime.currentFrame,
+      currentFrame: mob.runtime.currentFrame,
+      statusTags: [],
       skillList: [],
       skillCooldowns: [],
       currentSkillIndex: 0,
-      statusTags: [],
+      pipelineManager: mob.pipelineManager,
     },
     initial: "存活",
     entry: {

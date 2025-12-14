@@ -109,8 +109,8 @@ export default function BuffTab(props: BuffTabProps) {
                       <For each={buff.dynamicEffects}>
                         {(effect) => (
                           <div class="text-accent-color-70 text-xs">
-                            • {effect.actionGroupName}
-                            {effect.afterActionName && ` → ${effect.afterActionName}`}
+                            • {effect.pipelineName}
+                            {effect.afterStageName && ` → ${effect.afterStageName}`}
                             {effect.priority !== undefined && ` (优先级: ${effect.priority})`}
                           </div>
                         )}

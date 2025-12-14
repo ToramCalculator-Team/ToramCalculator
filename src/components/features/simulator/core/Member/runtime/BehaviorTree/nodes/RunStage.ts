@@ -2,12 +2,12 @@ import type { Context } from "~/lib/behavior3/context";
 import { Node, type NodeDef, type Status } from "~/lib/behavior3/node";
 import type { Tree } from "~/lib/behavior3/tree";
 import type { Action } from "../../Action/type";
-import type { MemberStateContext } from "../../StateMachine/types";
+import type { ActionContext } from "../../Action/ActionContext";
 
 const execStage = (
   actionName: string,
   actionPool: Record<string, Action<any, any, any>>,
-  owner: MemberStateContext,
+  owner: ActionContext,
   input: any,
 ) => {
   const action = actionPool[actionName];
@@ -51,14 +51,15 @@ export class RunStage extends Node {
     readonly params?: Record<string, unknown>;
   };
 
-  override onTick<TContext extends MemberStateContext>(
+  override onTick<TContext extends ActionContext>(
     tree: Tree<Context, TContext>,
     status: Status,
   ): Status {
-    const owner = tree.owner as TContext & { actionManager?: { actionPool?: Record<string, Action<any, any, any>> } };
-    const actionPool = owner.actionManager?.actionPool;
+    const owner = tree.owner;
+    // 使用 pipelineManager.actionPool（新架构）
+    const actionPool = owner.pipelineManager?.actionPool;
     if (!actionPool) {
-      this.error("RunStage: 缺少 owner.actionManager.actionPool");
+      this.error("RunStage: 缺少 owner.pipelineManager.actionPool");
       return "failure";
     }
 

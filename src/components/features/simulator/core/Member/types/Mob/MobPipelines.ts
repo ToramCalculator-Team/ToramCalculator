@@ -1,14 +1,11 @@
-import { PipelineDef, StagePool } from "../../runtime/Action/type";
-import { MobStateContext } from "./MobStateMachine";
-import { CommonStages } from "../../runtime/Action/CommonStages";
+import { PipelineDef, ActionPool } from "../../runtime/Action/type";
+import { CommonActions } from "../../runtime/Action/CommonActions";
+import { ActionContext } from "../../runtime/Action/ActionContext";
 
-export const MobPipelineStages = {
-  ...CommonStages,
-} as const satisfies StagePool<MobStateContext>;
+export interface MobActionContext extends ActionContext {
+}
 
-export type MobPipelineStages = typeof MobPipelineStages;
-
-/**
- * Mob 的 PipelineDef 类型（不再提供代码常量定义）
- */
-export type MobPipelineDef = PipelineDef<MobPipelineStages>;
+export const MobActionPool = {
+  ...CommonActions,
+} as const satisfies ActionPool<MobActionContext>;
+export type MobActionPool = typeof MobActionPool;

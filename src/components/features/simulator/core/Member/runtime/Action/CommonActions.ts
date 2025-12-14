@@ -1,8 +1,8 @@
 import { z } from "zod/v4";
 import { createId } from "@paralleldrive/cuid2";
 import { ModifierType } from "../StatContainer/StatContainer";
-import type { MemberStateContext } from "../StateMachine/types";
-import { PipelineDef, StagePool, defineStage } from "./type";
+import type { ActionContext } from "./ActionContext";
+import { ActionPool, defineAction } from "./type";
 
 const logLv = 1; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
 
@@ -13,19 +13,19 @@ const maxMin = (min: number, value: number, max: number) => {
 /**
  * 通用战斗动作池（命中 / 伤害相关）
  * 约定：
- * - context 至少满足 MemberStateContext
+ * - context 至少满足 ActionContext
  * - 受击者侧通过 context.currentDamageRequest 提供本次伤害请求
  * - 命中结果写回 context.lastHitResult，供状态机或后续动作使用
  */
-export const CommonStages = {
-  计算命中判定: defineStage(
+export const CommonActions = {
+  计算命中判定: defineAction(
     z.object({}),
     z.object({
       hitResult: z.boolean(),
       dodgeResult: z.boolean(),
       guardResult: z.boolean(),
     }),
-    (context: MemberStateContext & Record<string, any>) => {
+    (context) => {
       logLv >= 1 && console.log(`⚔️ [${context.name}][Combat] 计算命中/闪躲/格挡结果`);
 
       const damageRequest = context.currentDamageRequest as
@@ -96,7 +96,7 @@ export const CommonStages = {
     },
   ),
 
-  解析伤害请求: defineStage(
+  解析伤害请求: defineAction(
     z.object({}),
     z.object({
       damageExpression: z.string(),
@@ -106,7 +106,7 @@ export const CommonStages = {
         extraVars: z.record(z.string(), z.any()).optional(),
       }),
     }),
-    (context: MemberStateContext & Record<string, any>) => {
+    (context) => {
       logLv >= 1 && console.log(`⚔️ [${context.name}][Common] 解析伤害请求`);
 
       const damageRequest = context.currentDamageRequest as
@@ -133,7 +133,7 @@ export const CommonStages = {
     },
   ),
 
-  执行伤害表达式: defineStage(
+  执行伤害表达式: defineAction(
     z.object({
       damageExpression: z.string(),
       damageExpressionContext: z.object({
@@ -143,7 +143,7 @@ export const CommonStages = {
       }),
     }),
     z.object({ damageValue: z.number() }),
-    (context: MemberStateContext & Record<string, any>, input) => {
+    (context, input) => {
       logLv >= 1 && console.log(`⚔️ [${context.name}][Common] 执行伤害表达式`);
 
       const { damageExpression, damageExpressionContext } = input;
@@ -161,13 +161,13 @@ export const CommonStages = {
     },
   ),
 
-  应用伤害结果: defineStage(
+  应用伤害结果: defineAction(
     z.object({ damageValue: z.number() }),
     z.object({
       finalDamage: z.number(),
       targetHpAfter: z.number().optional(),
     }),
-    (context: MemberStateContext & Record<string, any>, input) => {
+    (context, input) => {
       logLv >= 1 && console.log(`⚔️ [${context.name}][Common] 应用伤害结果`);
 
       const { damageValue } = input;
@@ -204,6 +204,6 @@ export const CommonStages = {
       return { finalDamage, targetHpAfter: newHp };
     },
   ),
-} as const satisfies StagePool<MemberStateContext>;
+} as const satisfies ActionPool<ActionContext>;
 
-export type CommonStagePool = typeof CommonStages;
+export type CommonActionPool = typeof CommonActions;

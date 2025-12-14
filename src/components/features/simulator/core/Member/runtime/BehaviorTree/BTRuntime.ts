@@ -3,10 +3,12 @@ import type { Evaluator } from "~/lib/behavior3/evaluator";
 import type { Node } from "~/lib/behavior3/node";
 import type { TreeData } from "~/lib/behavior3/tree";
 import { RunPipeline } from "./nodes/RunPipeline";
+import { RunPipelineSync } from "./nodes/RunPipelineSync";
+import { HasBuff } from "./nodes/HasBuff";
 import { ScheduleFSMEvent } from "./nodes/ScheduleFSMEvent";
 import { RunStage } from "./nodes/RunStage";
 import { InsertDynamicStage } from "./nodes/InsertDynamicStage";
-import type { MemberStateContext } from "../StateMachine/types";
+import type { ActionContext } from "../Action/ActionContext";
 
 type CustomNodeCtor = NodeContructor<Node>;
 
@@ -22,17 +24,19 @@ export interface MemberBehaviorTreeRuntimeOptions {
  * - 与 GameEngine 的 JSProcessor 集成
  * - 统一的行为树加载与表达式缓存
  */
-export class MemberBehaviorTreeRuntime<TOwner extends MemberStateContext> extends Context {
+export class MemberBehaviorTreeRuntime<TOwner extends ActionContext> extends Context {
   /** JS 编译缓存，避免重复编译 */
   private readonly compiledFunctions = new Map<string, Function>();
 
   constructor(
-    public readonly owner: TOwner,
+    public owner: TOwner,
     options?: MemberBehaviorTreeRuntimeOptions,
   ) {
     super();
 
     this.registerNode(RunPipeline);
+    this.registerNode(RunPipelineSync);
+    this.registerNode(HasBuff);
     this.registerNode(ScheduleFSMEvent);
     this.registerNode(RunStage);
     this.registerNode(InsertDynamicStage);
@@ -103,24 +107,3 @@ export class MemberBehaviorTreeRuntime<TOwner extends MemberStateContext> extend
   }
 }
 
-/**
- * MemberBehaviorOwnerContext
- * 成员行为树 owner（状态机上下文）的最小接口
- *
- * 所有成员类型（Player, Mob）的状态上下文都应该实现这个接口
- * 以便行为树节点可以通用地访问必要的字段
- */
-export interface MemberBehaviorOwnerContext {
-  /** 成员ID */
-  id: string;
-  /** 引擎引用（行为树节点会用到 dispatchMemberEvent 等能力） */
-  engine: any;
-  /** 当前帧 */
-  currentFrame: number;
-  /** IntentBuffer 引用：用于 BT 节点推送 Intent */
-  intentBuffer?: { push(intent: any): void };
-  /** 动作管理器引用（仍需兼容 RunStage 等节点） */
-  actionManager?: {
-    run(actionGroupName: string, ctx: any, params?: Record<string, unknown>): { ctx: any; actionOutputs: Record<string, any> };
-  };
-}

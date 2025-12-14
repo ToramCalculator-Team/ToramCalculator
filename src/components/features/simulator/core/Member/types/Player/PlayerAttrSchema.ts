@@ -1540,8 +1540,8 @@ export const PlayerAttrNestedSchema: PlayerAttrNestedSchema = {
  * 转换率相关：conversionRate → conv
  * 基础值相关：baseValue → base
  */
-export const PlayerAttrSchema = (character: CharacterWithRelations): PlayerAttrNestedSchema => {
-  if (!character) throw new Error("PlayerAttrSchema参数不能为空");
+export const PlayerAttrSchemaGenerator = (character: CharacterWithRelations): PlayerAttrNestedSchema => {
+  if (!character) throw new Error("PlayerAttrSchemaGenerator参数不能为空");
   const mainWeaponType = (character.weapon?.type ?? "None") as MainHandType;
   const subWeaponType = (character.subWeapon?.type ?? "None") as SubHandType;
   return {

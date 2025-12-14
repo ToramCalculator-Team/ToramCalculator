@@ -62,7 +62,12 @@ export class Resolver {
     const pipelineIntent = intent as any;
     const snapshot = member.actor.getSnapshot();
     const ctx = (snapshot as any)?.context ?? {};
-    member.pipelineManager.run(pipelineIntent.pipeline, ctx, pipelineIntent.params ?? {});
+    // PipelineManager.run 会基于 ctx 生成 working copy 并返回 { ctx: newCtx, actionOutputs }。
+    // 如果不把 newCtx 合并回状态机 context，后续行为树表达式（如 buffExists / currentSkillStartupFrames）将读不到这些计算结果。
+    const { ctx: newCtx } = member.pipelineManager.run(pipelineIntent.pipeline, ctx, pipelineIntent.params ?? {});
+    if (newCtx && typeof newCtx === "object") {
+      Object.assign(ctx, newCtx);
+    }
   }
 
   private execAddBuff(intent: Intent, world: World) {

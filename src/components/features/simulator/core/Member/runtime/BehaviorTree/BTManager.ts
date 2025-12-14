@@ -1,6 +1,6 @@
 import { Tree } from "~/lib/behavior3/tree";
-import { MemberBehaviorTreeRuntime } from "./MemberBehaviorTreeRuntime";
-import type { MemberStateContext } from "../StateMachine/types";
+import { MemberBehaviorTreeRuntime } from "./BTRuntime";
+import type { ActionContext } from "../Action/ActionContext";
 import type { TreeData } from "~/lib/behavior3/tree";
 
 export type BehaviorTreeKind = "skill" | "buff" | "ai";
@@ -9,20 +9,20 @@ export interface BehaviorTreeInstance {
   id: string;
   name: string;
   kind: BehaviorTreeKind;
-  tree: Tree<MemberBehaviorTreeRuntime<MemberStateContext>, MemberStateContext>;
+  tree: Tree<MemberBehaviorTreeRuntime<ActionContext>, ActionContext>;
 }
 
-export class BehaviorTreeHost {
-  private readonly runtime: MemberBehaviorTreeRuntime<MemberStateContext>;
+export class BTManger {
+  private readonly runtime: MemberBehaviorTreeRuntime<ActionContext>;
   private readonly instances = new Map<string, BehaviorTreeInstance>();
 
-  constructor(private readonly owner: MemberStateContext) {
+  constructor(private owner: ActionContext) {
     // 共享 runtime，内部已绑定 owner 与 engine 编译器
     this.runtime = new MemberBehaviorTreeRuntime(owner);
     // 确保共享黑板存在
-    if (!(owner as any).skillState) (owner as any).skillState = {};
-    if (!(owner as any).buffState) (owner as any).buffState = {};
-    if (!(owner as any).blackboard) (owner as any).blackboard = {};
+    if (!owner.skillState) owner.skillState = {};
+    if (!owner.buffState) owner.buffState = {};
+    if (!owner.blackboard) owner.blackboard = {};
   }
 
   /**
@@ -55,8 +55,13 @@ export class BehaviorTreeHost {
    * 遍历并驱动所有激活的行为树
    */
   tickAll() {
-    for (const [, inst] of this.instances) {
-      inst.tree.tick();
+    for (const [id, inst] of [...this.instances.entries()]) {
+      const status = inst.tree.tick();
+      // buff 行为树通常是“挂载时执行一次 + 长期 running（周期效果）”
+      // 若已结束（success/failure/interrupted），自动回收实例，避免无意义 tick。
+      if (inst.kind === "buff" && status !== "running") {
+        this.removeTree(id);
+      }
     }
   }
 

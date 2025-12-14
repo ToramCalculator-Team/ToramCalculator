@@ -1,12 +1,13 @@
 import { Actor, createActor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
 import type { PipelineManager, PipelineDynamicStageInfo } from "../Action/PipelineManager";
-import type { PipelineDef, StagePool } from "../Action/type";
+import type { PipelineDef, ActionPool } from "../Action/type";
 import { Member } from "../../Member";
 import { MemberType } from "@db/schema/enums";
 import GameEngine from "../../../GameEngine";
 import { BuffManager } from "../Buff/BuffManager";
 import { StatContainer } from "../StatContainer/StatContainer";
-import type { BehaviorTreeHost } from "../BehaviorTree/BehaviorTreeHost";
+import type { BTManger } from "../BehaviorTree/BTManager";
+import { ActionContext } from "../Action/ActionContext";
 
 /**
  * 成员事件类型枚举
@@ -40,13 +41,11 @@ export type MemberEventType =
  * @template TAttrKey 属性键的字符串联合类型
  */
 export type MemberStateMachine<
-  TAttrKey extends string = string,
-  TEvent extends EventObject = MemberEventType,
-  TActionPool extends StagePool<TExContext> = StagePool<any>,
-  TExContext extends Record<string, any> = {},
+  TStateEvent extends EventObject = MemberEventType, // 状态机事件类型
+  TStateContext extends MemberStateContext = MemberStateContext, // 状态机上下文类型
 > = StateMachine<
-  any, // TContext - 状态机上下文
-  TEvent, // TEvent - 事件类型（可扩展）
+  TStateContext, // TContext - 状态机上下文
+  TStateEvent, // TEvent - 事件类型（可扩展）
   Record<string, any>, // TChildren - 子状态机
   any, // TActor - Actor配置
   any, // TAction - 动作配置
@@ -55,7 +54,7 @@ export type MemberStateMachine<
   {}, // TStateValue - 状态值
   string, // TTag - 标签
   NonReducibleUnknown, // TInput - 输入类型
-  Member<TAttrKey, TEvent, TActionPool, TExContext>, // TOutput - 输出类型（当状态机完成时）
+  any, // TOutput - 输出类型（当状态机完成时）
   EventObject, // TEmitted - 发出的事件类型
   any, // TMeta - 元数据
   any // TStateSchema - 状态模式
@@ -66,14 +65,13 @@ export type MemberStateMachine<
  * 基于 XState Actor 类型，提供完整的类型推断
  * 使用泛型参数允许子类扩展事件类型
  *
- * @template TAttrKey 属性键的字符串联合类型
+ * @template TStateEvent 状态机事件类型
+ * @template TStateContext 状态机上下文类型
  */
 export type MemberActor<
-  TAttrKey extends string = string,
-  TEvent extends EventObject = MemberEventType,
-  TActionPool extends StagePool<TExContext> = StagePool<any>,
-  TExContext extends Record<string, any> = {},
-> = Actor<MemberStateMachine<TAttrKey, TEvent, TActionPool, TExContext>>;
+  TStateEvent extends EventObject = MemberEventType,
+  TStateContext extends MemberStateContext = MemberStateContext,
+> = Actor<MemberStateMachine<TStateEvent, TStateContext>>;
 
 /**
  * 成员状态上下文通用接口
@@ -95,12 +93,6 @@ export interface MemberStateContext {
   targetId: string;
   /** 是否存活 */
   isAlive: boolean;
-  /** 引擎引用 */
-  engine: GameEngine;
-  /** Buff管理器引用 */
-  buffManager: BuffManager;
-  /** 属性容器引用 */
-  statContainer: StatContainer<string>;
   /** 位置信息 */
   position: { x: number; y: number; z: number };
   /** 创建帧 */
@@ -109,14 +101,4 @@ export interface MemberStateContext {
   currentFrame: number;
   /** 状态标签组 */
   statusTags: string[];
-  /** 通用黑板（行为树/管线共享） */
-  blackboard?: Record<string, unknown>;
-  /** 技能相关的共享状态，如魔法炮充能 */
-  skillState?: Record<string, unknown>;
-  /** Buff 相关的共享状态 */
-  buffState?: Record<string, unknown>;
-  /** 行为树宿主（统一管理 skill/buff/ai 树实例） */
-  behaviorTreeHost?: BehaviorTreeHost;
-  /** 管线管理器（Pipeline/Stage 统一入口） */
-  pipelineManager?: PipelineManager<any, any>;
 }

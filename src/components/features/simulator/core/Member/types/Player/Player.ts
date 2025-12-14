@@ -3,17 +3,18 @@ import { Member } from "../../Member";
 import { applyPrebattleModifiers } from "./PrebattleDataSysModifiers";
 import { PlayerStateContext, playerStateMachine, PlayerEventType } from "./PlayerStateMachine";
 import GameEngine from "../../../GameEngine";
-import { PlayerAttrSchema } from "./PlayerAttrSchema";
+import { PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
 import { ExtractAttrPaths, NestedSchema } from "../../runtime/StatContainer/SchemaTypes";
-import { PlayerPipelineStages } from "./PlayerPipelines";
+import { PlayerActionPool, type PlayerActionContext } from "./PlayerPipelines";
 
-export type PlayerAttrType = ExtractAttrPaths<ReturnType<typeof PlayerAttrSchema>>;
+export type PlayerAttrType = ExtractAttrPaths<ReturnType<typeof PlayerAttrSchemaGenerator>>;
 
 export class Player extends Member<
   PlayerAttrType,
   PlayerEventType,
-  PlayerPipelineStages,
-  PlayerStateContext
+  PlayerStateContext,
+  PlayerActionContext,
+  PlayerActionPool
 > {
   constructor(
     engine: GameEngine,
@@ -22,6 +23,7 @@ export class Player extends Member<
     teamId: string,
     targetId: string,
     schema: NestedSchema,
+    actionContext: PlayerActionContext,
     position?: { x: number; y: number; z: number },
   ) {
     super(
@@ -32,9 +34,32 @@ export class Player extends Member<
       targetId, 
       memberData, 
       schema, 
-      PlayerPipelineStages,
+      PlayerActionPool,
+      actionContext,
       position
     );
+    // 通过引擎消息通道发送渲染命令（走 Simulation.worker 的 MessageChannel）
+    const spawnCmd = {
+      type: "render:cmd" as const,
+      cmd: {
+        type: "spawn" as const,
+        entityId: this.id,
+        name: this.name,
+        position: { x: 0, y: 1, z: 0 },
+        seq: 0,
+        ts: Date.now(),
+      },
+    };
+    // 引擎统一出口：通过已建立的MessageChannel发送渲染指令
+    if (this.engine.postRenderMessage) {
+      // 首选方案：使用引擎提供的统一渲染消息接口
+      // 这个方法会通过 Simulation.worker 的 MessagePort 将指令发送到主线程
+      this.engine.postRenderMessage(spawnCmd);
+    } else {
+      // 如果引擎的渲染消息接口不可用，记录错误但不使用fallback
+      // 这确保我们只使用正确的通信通道，避免依赖全局变量
+      console.error(`👤 [${this.name}] 无法发送渲染指令：引擎渲染消息接口不可用`);
+    }
     
     // Player特有的被动技能初始化
     this.initializePassiveSkills(memberData);
