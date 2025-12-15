@@ -50,6 +50,7 @@ export interface PlayerActionContext extends ActionContext {
   character: CharacterWithRelations;
 }
 
+// Member里需要子类传递actionContext生成器时才会用到，由于心智模型复杂，暂时没用它
 export const PlayerActionContextGenerator = (
   buffManager: BuffManager,
   statContainer: StatContainer<PlayerAttrType>,

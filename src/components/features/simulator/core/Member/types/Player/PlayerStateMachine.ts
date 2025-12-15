@@ -150,12 +150,9 @@ export type PlayerEventType =
   | 更新;
 
 // 定义 PlayerStateContext 类型（提前声明）
-export interface PlayerStateContext extends MemberStateContext {
-}
+export interface PlayerStateContext extends MemberStateContext {}
 
-export const playerStateMachine = (
-  player: Player,
-): MemberStateMachine<PlayerEventType, PlayerStateContext> => {
+export const playerStateMachine = (player: Player): MemberStateMachine<PlayerEventType, PlayerStateContext> => {
   const machineId = player.id;
   const actionContext = player.actionContext;
 
@@ -168,10 +165,9 @@ export const playerStateMachine = (
     actions: {
       根据角色配置生成初始状态: function ({ context, event }) {
         console.log(`👤 [${context.name}] 根据角色配置生成初始状态`, context);
-        return {}
       },
       更新玩家状态: assign({
-        currentFrame: ({context}) => context.currentFrame + 1,
+        currentFrame: ({ context }) => context.currentFrame + 1,
       }),
       启用站立动画: function ({ context, event }) {
         // Add your action code here
@@ -222,7 +218,7 @@ export const playerStateMachine = (
             currentFrame: actionContext.currentFrame,
             casterId: actionContext.id,
             skillLv: actionContext.currentSkill?.lv ?? 0,
-          })
+          }),
         );
         console.log(`👤 [${context.name}] 添加待处理技能效果`, skillEffect);
         actionContext.currentSkillEffect = skillEffect;
@@ -259,7 +255,7 @@ export const playerStateMachine = (
           actionContext.behaviorTreeManager?.addTree(treeData, "skill", treeId);
         } catch (error) {
           console.error(`❌ [${context.name}] 挂载/执行技能行为树失败`, error);
-          raise({ type: "技能执行完成" });
+          sendTo(context.id, { type: "技能执行完成" });
         }
       },
       重置控制抵抗时间: function ({ context, event }) {
@@ -282,7 +278,10 @@ export const playerStateMachine = (
         // ...
         console.log(`👤 [${context.name}] 重置到复活状态`, event);
       },
-      发送命中判定事件给自己: raise({ type: "进行命中判定" }),
+      发送命中判定事件给自己: function ({ context, event }) {
+        // 不使用 raise(...)，直接向自身发送事件（命令式），避免 XState dev build 警告
+        player.actor.send({ type: "进行命中判定" });
+      },
       反馈命中结果给施法者: function ({ context, event }) {
         // Add your action code here
         // ...
@@ -290,15 +289,16 @@ export const playerStateMachine = (
       },
       发送控制判定事件给自己: function ({ context, event }) {
         console.log(`👤 [${context.name}] 发送控制判定事件给自己`, event);
-        raise({ type: "进行控制判定" });
+        // 不要在自定义 action 中调用 raise(...)（非命令式），这里直接向自身发送事件即可
+        player.actor.send({ type: "进行控制判定" });
       },
       命中计算管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 命中计算管线`, event);
         try {
           const res = player.pipelineManager.run("计算命中判定", actionContext, {});
           // PipelineManager.run 返回 working copy，需要合并回 context 才能生效
-          Object.assign(actionContext as any, res.ctx ?? {});
-          const finalOutput = (res.actionOutputs as any)["计算命中判定"] as
+          Object.assign(actionContext, res.ctx ?? {});
+          const finalOutput = res.actionOutputs["计算命中判定"] as
             | {
                 hitResult?: boolean;
                 dodgeResult?: boolean;
@@ -331,13 +331,13 @@ export const playerStateMachine = (
         }
 
         // 命中后再进入控制判定
-        raise({ type: "进行控制判定" });
+        player.actor.send({ type: "进行控制判定" });
       },
       控制判定管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 控制判定管线`, event);
         try {
-          const res = player.pipelineManager.run("战斗.控制.计算" as any, actionContext, {});
-          Object.assign(context as any, res.ctx ?? {});
+          const res = player.pipelineManager.run("战斗.控制.计算", actionContext, {});
+          Object.assign(context, res.ctx ?? {});
         } catch (error) {
           console.error(`❌ [${context.name}] 控制判定管线执行失败`, error);
         }
@@ -349,13 +349,13 @@ export const playerStateMachine = (
       },
       发送伤害计算事件给自己: function ({ context, event }) {
         console.log(`👤 [${context.name}] 发送伤害计算事件给自己`, event);
-        raise({ type: "进行伤害计算" });
+        player.actor.send({ type: "进行伤害计算" });
       },
       伤害计算管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 伤害计算管线`, event);
         try {
           const res = player.pipelineManager.run("伤害计算", actionContext, {});
-          Object.assign(actionContext as any, res.ctx ?? {});
+          Object.assign(actionContext, res.ctx ?? {});
         } catch (error) {
           console.error(`❌ [${context.name}] 伤害计算管线执行失败`, error);
         }
@@ -368,7 +368,7 @@ export const playerStateMachine = (
       发送属性修改事件给自己: function ({ context, event }) {
         console.log(`👤 [${context.name}] 发送属性修改事件给自己`, event);
         const currentHp = player.statContainer.getValue("hp.current");
-        raise({ type: "修改属性", data: { attr: "hp.current", value: currentHp } } as any);
+        player.actor.send({ type: "修改属性", data: { attr: "hp.current", value: currentHp } });
       },
       发送buff修改事件给自己: function ({ context, event }) {
         // Add your action code here
@@ -573,9 +573,11 @@ export const playerStateMachine = (
     initial: "存活",
     on: {
       更新: {
-        actions: {
-          type: "更新玩家状态",
-        },
+        actions: [
+          {
+            type: "更新玩家状态",
+          },
+        ],
       },
     },
     entry: {
