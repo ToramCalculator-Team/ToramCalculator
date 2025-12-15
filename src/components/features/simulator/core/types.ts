@@ -145,7 +145,7 @@ export const BuffViewDataSchema = z.object({
   dynamicEffects: z
     .array(
       z.object({
-        actionGroupName: z.string(),
+        pipelineName: z.string(),
         afterActionName: z.string(),
         priority: z.number().optional(),
       }),

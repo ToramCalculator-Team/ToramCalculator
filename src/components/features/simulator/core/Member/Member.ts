@@ -35,7 +35,7 @@ export interface BuffViewData {
   // 动态动作组效果信息（简要描述）
   dynamicEffects?: Array<{
     pipelineName: string;
-    afterStageName: string;
+    afterActionName: string;
     priority?: number;
   }>;
   /** 实时动态插入快照 */
@@ -87,10 +87,12 @@ export class Member<
   statContainer: StatContainer<TAttrKey>;
   /** Buff 管理器（生命周期/钩子/机制状态） */
   buffManager: BuffManager;
+  /** 动作上下文 */
+  actionContext: TActionContext;
   /** 动作管理器（固定+动态动作组管理） */
   pipelineManager: PipelineManager<TActionContext, TActionPool>;
   /** 行为树管理器（技能行为树管理） */
-  behaviorTreeManager: BTManger;
+  behaviorTreeManager: BTManger<TActionContext>;
   /** 成员Actor引用 */
   actor: MemberActor<TStateEvent, TStateContext>;
   /** 引擎引用 */
@@ -99,10 +101,6 @@ export class Member<
   data: MemberWithRelations;
   /** 位置信息 */
   position: { x: number; y: number; z: number };
-  /** 跨技能/跨树共享的运行时内存 */
-  memory: Record<string, unknown> = {};
-  /** 稳定的运行时上下文（ActionContext），供 Action/Pipeline 统一使用 */
-  actionContext: TActionContext;
 
   constructor(
     stateMachine: (member: any) => MemberStateMachine<TStateEvent, TStateContext>,
@@ -112,8 +110,13 @@ export class Member<
     targetId: string,
     memberData: MemberWithRelations,
     dataSchema: NestedSchema,
-    actionPool: TActionPool,
-    actionContext: TActionContext,
+    components: {
+      statContainer: StatContainer<TAttrKey>,
+      actionContext: TActionContext,
+      pipelineManager: PipelineManager<TActionContext, TActionPool>,
+      buffManager: BuffManager,
+      behaviorTreeManager: BTManger<TActionContext>,
+    },
     position?: { x: number; y: number; z: number },
   ) {
     this.id = memberData.id;
@@ -126,44 +129,23 @@ export class Member<
     this.isAlive = true;
     this.dataSchema = dataSchema;
     this.data = memberData;
-    const statContainer = new StatContainer<TAttrKey>(dataSchema);
-    const pipelineManager = new PipelineManager<TActionContext, TActionPool>(actionPool);
-    const buffManager = new BuffManager(statContainer, pipelineManager, this.engine, memberData.id);
-    const behaviorTreeManager = new BTManger(actionContext);
 
     // 初始化响应式系统
-    this.statContainer = statContainer;
+    this.statContainer = components.statContainer;
 
+    // 初始化动作上下文
+    this.actionContext = components.actionContext;
+    
     // 初始化动作管理器（动作组定义可被后续覆盖/注册）
-    this.pipelineManager = pipelineManager;
+    this.pipelineManager = components.pipelineManager;
 
     // 初始化Buff管理器（需要在 this.id 赋值后）
-    this.buffManager = buffManager;
+    this.buffManager = components.buffManager;
 
     // 初始化行为树管理器
-    this.behaviorTreeManager = behaviorTreeManager;
+    this.behaviorTreeManager = components.behaviorTreeManager;
 
     this.position = position ?? { x: 0, y: 0, z: 0 };
-    this.memory = {};
-
-    this.actionContext = {
-      id: memberData.id,
-      type: memberData.type,
-      name: memberData.name,
-      engine: engine,
-      currentFrame: 0,
-      buffManager: buffManager,
-      statContainer: statContainer,
-      pipelineManager: pipelineManager,
-      position: position ?? { x: 0, y: 0, z: 0 },
-      targetId: targetId,
-      blackboard: {},
-      skillState: {},
-      buffState: {},
-      currentSkill: null,
-      currentSkillEffect: null,
-      currentSkillLogic: null,
-    };
 
     // 创建并启动状态机
     this.actor = createActor(stateMachine(this), {
@@ -180,11 +162,11 @@ export class Member<
       const dynamicEffects = buff.effects
         .filter((effect): effect is PipelineBuffEffect => effect.type === "pipeline")
         .map((effect) => {
-          const pipelineName = (effect as any).pipelineName ?? (effect as any).actionGroupName;
-          const afterStageName = (effect as any).afterStageName ?? (effect as any).afterActionName;
+          const pipelineName = effect.pipelineName;
+          const afterActionName = effect.afterActionName;
           return {
             pipelineName,
-            afterStageName,
+            afterActionName,
             priority: effect.priority,
           };
         });
@@ -218,30 +200,24 @@ export class Member<
     };
   }
 
-  update(): void {
-    // 保持向后兼容：直接执行一次 tick 并立即发送更新事件
-    const buffer = new IntentBuffer();
-    this.tick(this.engine.getCurrentFrame(), buffer);
-    const intents = buffer.drain();
-    for (const intent of intents) {
-      if (intent.type === "sendFsmEvent") {
-        this.actor.send((intent as SendFsmEventIntent).event as any);
-      }
-    }
-  }
-
   /**
    * 新的执行入口：每帧 tick，产出 Intent，由上层 Resolver 统一落地
    */
   tick(frame: number, intentBuffer: IntentBuffer): void {
-    // 更新运行时上下文的当前帧（保持同步）
+    // 同步引擎帧号到运行时上下文（BT / 管线表达式都依赖它）
     this.actionContext.currentFrame = frame;
     
     // 更新 Buff（处理 frame.update 效果和过期检查）
     this.buffManager.update(frame);
 
+    // 设置 intentBuffer 供行为树使用（RunPipeline 节点需要它来产出 Intent）
+    this.actionContext.intentBuffer = intentBuffer;
+
     // 更新行为树
     this.behaviorTreeManager.tickAll();
+    
+    // 清理 intentBuffer 引用（避免跨帧污染）
+    this.actionContext.intentBuffer = undefined;
 
     // 产出"更新"事件给状态机
     intentBuffer.push({

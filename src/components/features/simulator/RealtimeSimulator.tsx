@@ -421,6 +421,7 @@ export default function RealtimeSimulator(props: RealtimeSimulatorProps) {
           const memberList = controller.members[0]();
           if (!memberId || !memberList) return null;
           const foundMember = memberList.find((m) => m.id === memberId);
+          console.log("🎮 选中的成员:", foundMember);
           return foundMember || null;
         })}
         selectedMemberSkills={controller.selectedMemberSkills[0]}

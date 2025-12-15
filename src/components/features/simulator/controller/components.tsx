@@ -232,9 +232,18 @@ interface SkillPanelProps {
  * 技能面板组件
  */
 export function SkillPanel(props: SkillPanelProps) {
+
+  createEffect(() => {
+    console.log("🎮 选中的成员:", props.selectedMember());
+  });
+
+  createEffect(() => {
+    console.log("🎮 选中的成员技能:", props.selectedMemberSkills());
+  });
+
   return (
     <div class="bg-area-color flex w-full flex-col rounded-lg p-3">
-      <Show when={props.selectedMember()}>
+      <Show when={props.selectedMember()} fallback={<div class="text-sm text-brand-color-1st">暂无成员</div>}>
         <h3 class="mb-2 text-lg font-semibold">技能</h3>
         <div class="grid flex-1 grid-cols-4 grid-rows-1 gap-2 overflow-y-auto">
           <Switch fallback={<div class="text-sm text-gray-500">暂无技能</div>}>

@@ -43,6 +43,7 @@ import Resolver from "./IntentSystem/Resolver";
 import World from "./World/World";
 import SpaceManager from "./World/SpaceManager";
 import AreaManager from "./World/AreaManager";
+import { Player } from "./Member/types/Player/Player";
 
 /**
  * 游戏引擎类
@@ -208,7 +209,7 @@ export class GameEngine {
     data.campA.forEach((team) => {
       this.addTeam("campA", team);
       team.members.forEach((member) => {
-        this.addMember("campA", team.id, member);
+        this.addMember("campA", team.id, member, 0);
       });
     });
 
@@ -217,7 +218,7 @@ export class GameEngine {
     data.campB.forEach((team) => {
       this.addTeam("campB", team);
       team.members.forEach((member) => {
-        this.addMember("campB", team.id, member);
+        this.addMember("campB", team.id, member, 0);
       });
     });
 
@@ -365,9 +366,9 @@ export class GameEngine {
     if (primaryTargetId) {
       const member = this.memberManager.getMember(primaryTargetId);
       if (member && member.type === "Player") {
+        const player = member as Player;
         try {
-          const actorSnapshot = member.actor.getSnapshot();
-          selectedMemberSkills = this.computePlayerSkills(member as any, actorSnapshot, frameNumber);
+          selectedMemberSkills = this.computePlayerSkills(player, frameNumber);
         } catch (error) {
           console.warn("计算选中成员技能数据失败:", error);
           selectedMemberSkills = [];
@@ -611,10 +612,11 @@ export class GameEngine {
    * @param campId 阵营ID
    * @param teamId 队伍ID
    * @param memberData 成员数据
+   * @param characterIndex 角色索引
    */
-  addMember(campId: string, teamId: string, memberData: MemberWithRelations): void {
+  addMember(campId: string, teamId: string, memberData: MemberWithRelations, characterIndex: number): void {
     // 容器只负责委托，不处理具体创建逻辑
-    const member = this.memberManager.createAndRegister(memberData, campId, teamId);
+    const member = this.memberManager.createAndRegister(memberData, campId, teamId, characterIndex);
   }
 
   /**
@@ -1135,15 +1137,12 @@ export class GameEngine {
    * 计算 Player 的技能数据
    * 为每个技能计算当前的消耗值和可用性
    */
-  private computePlayerSkills(member: any, actorSnapshot: any, currentFrame: number): ComputedSkillInfo[] {
+  private computePlayerSkills(player: Player, currentFrame: number): ComputedSkillInfo[] {
     try {
-      const context = actorSnapshot.context;
-      if (!context) return [];
-
-      const skillList = context.skillList ?? [];
-      const skillCooldowns = context.skillCooldowns ?? [];
-      const currentMp = member.statContainer?.getValue("mp.current") ?? 0;
-      const currentHp = member.statContainer?.getValue("hp.current") ?? 0;
+      const skillList = player.actionContext.skillList ?? [];
+      const skillCooldowns = player.actionContext.skillCooldowns ?? [];
+      const currentMp = player.statContainer?.getValue("mp.current") ?? 0;
+      const currentHp = player.statContainer?.getValue("hp.current") ?? 0;
 
       return skillList.map((skill: any, index: number) => {
         const skillName = skill.template?.name ?? "未知技能";
@@ -1154,7 +1153,7 @@ export class GameEngine {
           try {
             const result = this.evaluateExpression(e.condition ?? "true", {
               currentFrame,
-              casterId: member.id,
+              casterId: player.id,
               skillLv: skillLevel,
             });
             return !!result;
@@ -1172,7 +1171,7 @@ export class GameEngine {
           try {
             mpCost = this.evaluateExpression(effect.mpCost ?? "0", {
               currentFrame,
-              casterId: member.id,
+              casterId: player.id,
               skillLv: skillLevel,
             });
           } catch {
@@ -1182,7 +1181,7 @@ export class GameEngine {
           try {
             hpCost = this.evaluateExpression(effect.hpCost ?? "0", {
               currentFrame,
-              casterId: member.id,
+              casterId: player.id,
               skillLv: skillLevel,
             });
           } catch {

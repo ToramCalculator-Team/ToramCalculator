@@ -8,6 +8,7 @@ import { HasBuff } from "./nodes/HasBuff";
 import { ScheduleFSMEvent } from "./nodes/ScheduleFSMEvent";
 import { RunStage } from "./nodes/RunStage";
 import { InsertDynamicStage } from "./nodes/InsertDynamicStage";
+import { WaitFrames } from "./nodes/WaitFrames";
 import type { ActionContext } from "../Action/ActionContext";
 
 type CustomNodeCtor = NodeContructor<Node>;
@@ -40,6 +41,7 @@ export class MemberBehaviorTreeRuntime<TOwner extends ActionContext> extends Con
     this.registerNode(ScheduleFSMEvent);
     this.registerNode(RunStage);
     this.registerNode(InsertDynamicStage);
+    this.registerNode(WaitFrames);
     options?.customNodes?.forEach((node) => this.registerNode(node as any));
   }
 

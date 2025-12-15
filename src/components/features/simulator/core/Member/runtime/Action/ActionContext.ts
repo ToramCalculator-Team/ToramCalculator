@@ -34,7 +34,7 @@ export interface ActionContext {
   /** 管线管理器引用 */
   pipelineManager: PipelineManager<any, any>;
   /** 行为树管理器引用 */
-  behaviorTreeManager?: BTManger;
+  behaviorTreeManager?: BTManger<any>;
   /** 位置信息 */
   position: { x: number; y: number; z: number };
   /** 成员目标ID */

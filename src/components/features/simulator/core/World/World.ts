@@ -20,27 +20,14 @@ export class World {
    * 每帧 tick：成员 → 区域 → 统一执行 Intent
    */
   tick(frame: number): void {
+    // console.log(`🌍 [World] tick: ${frame}`);
     const members = this.memberManager.getAllMembers();
     for (const member of members) {
-      const maybeTick = (member as any)?.tick;
-      // 将 intentBuffer 注入 owner（MemberStateContext）以供 BT 节点使用
-      if ((member as any)?.actor?.getSnapshot) {
-        const snapshot = (member as any).actor.getSnapshot();
-        const ctx = (snapshot as any)?.context;
-        if (ctx && typeof ctx === "object") {
-          (ctx as any).intentBuffer = this.intentBuffer;
-        }
-      }
-      if (typeof maybeTick === "function") {
-        maybeTick.call(member, frame, this.intentBuffer);
-      }
+      member.tick(frame, this.intentBuffer);
     }
 
     // 区域更新（当前占位实现）
-    const maybeAreaTick = (this.areaManager as any)?.tick;
-    if (typeof maybeAreaTick === "function") {
-      maybeAreaTick.call(this.areaManager, frame, this.intentBuffer);
-    }
+    this.areaManager.tick(frame, this.intentBuffer);
 
     // 统一执行 Intent
     // 重要：在 commit 过程中（例如 sendFsmEvent -> 状态机 action -> 行为树节点），可能会继续向 intentBuffer push 新 intent。
@@ -59,4 +46,3 @@ export class World {
 }
 
 export default World;
-

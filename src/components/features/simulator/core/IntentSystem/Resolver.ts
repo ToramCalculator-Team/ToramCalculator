@@ -45,9 +45,9 @@ export class Resolver {
     }
   }
 
-  private getMember(world: World, memberId?: string): Member<any, any, any, any> | null {
+  private getMember(world: World, memberId?: string) {
     if (!memberId) return null;
-    return (world.memberManager.getMember(memberId) as Member<any, any, any, any> | null) ?? null;
+    return world.memberManager.getMember(memberId);
   }
 
   private execSendFsmEvent(intent: Intent, world: World) {

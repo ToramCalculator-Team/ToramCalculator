@@ -5,18 +5,18 @@ import type { TreeData } from "~/lib/behavior3/tree";
 
 export type BehaviorTreeKind = "skill" | "buff" | "ai";
 
-export interface BehaviorTreeInstance {
+export interface BehaviorTreeInstance<TActionContext extends ActionContext> {
   id: string;
   name: string;
   kind: BehaviorTreeKind;
-  tree: Tree<MemberBehaviorTreeRuntime<ActionContext>, ActionContext>;
+  tree: Tree<MemberBehaviorTreeRuntime<TActionContext>, TActionContext>;
 }
 
-export class BTManger {
-  private readonly runtime: MemberBehaviorTreeRuntime<ActionContext>;
-  private readonly instances = new Map<string, BehaviorTreeInstance>();
+export class BTManger<TActionContext extends ActionContext> {
+  private readonly runtime: MemberBehaviorTreeRuntime<TActionContext>;
+  private readonly instances = new Map<string, BehaviorTreeInstance<TActionContext>>();
 
-  constructor(private owner: ActionContext) {
+  constructor(private owner: TActionContext) {
     // 共享 runtime，内部已绑定 owner 与 engine 编译器
     this.runtime = new MemberBehaviorTreeRuntime(owner);
     // 确保共享黑板存在
@@ -28,7 +28,7 @@ export class BTManger {
   /**
    * 挂载一棵行为树实例
    */
-  addTree(definition: TreeData, kind: BehaviorTreeKind, id?: string): BehaviorTreeInstance {
+  addTree(definition: TreeData, kind: BehaviorTreeKind, id?: string): BehaviorTreeInstance<TActionContext> {
     const treeName = definition.name || "behavior_tree";
     const treeId = id ?? `${kind}:${treeName}:${Date.now()}`;
 
@@ -36,7 +36,7 @@ export class BTManger {
     void this.runtime.loadTree(definition);
     const tree = new Tree(this.runtime, this.owner, treeName);
 
-    const instance: BehaviorTreeInstance = { id: treeId, name: treeName, kind, tree };
+    const instance: BehaviorTreeInstance<TActionContext> = { id: treeId, name: treeName, kind, tree };
     this.instances.set(treeId, instance);
     return instance;
   }
@@ -56,10 +56,11 @@ export class BTManger {
    */
   tickAll() {
     for (const [id, inst] of [...this.instances.entries()]) {
+      // console.log(`🎮 [${this.owner.name}] 驱动行为树`, inst.name, inst.kind);
       const status = inst.tree.tick();
       // buff 行为树通常是“挂载时执行一次 + 长期 running（周期效果）”
       // 若已结束（success/failure/interrupted），自动回收实例，避免无意义 tick。
-      if (inst.kind === "buff" && status !== "running") {
+      if (status !== "running") {
         this.removeTree(id);
       }
     }
@@ -74,4 +75,3 @@ export class BTManger {
     }
   }
 }
-

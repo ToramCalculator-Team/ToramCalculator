@@ -33,11 +33,11 @@ export interface PipelineBuffEffect {
   type: "pipeline" | "actionGroup";
   /** 目标管线名称 */
   pipelineName: string;
-  /** 插入点阶段名称（在此 stage 后执行） */
-  afterStageName: string;
-  /** 插入的阶段名称（必须在 stagePool 中存在） */
-  insertStageName: string;
-  /** 可选：执行该 stage 前额外合并到输入的 params（纯数据） */
+  /** 插入点动作名称（在此 action 后执行） */
+  afterActionName: string;
+  /** 插入的动作名称（必须在 actionPool 中存在） */
+  insertActionName: string;
+  /** 可选：执行该 action 前额外合并到输入的 params（纯数据） */
   params?: Record<string, unknown>;
   /** 优先级 */
   priority?: number;
@@ -184,14 +184,14 @@ export class BuffManager {
       } else if (effect.type === "pipeline" || effect.type === "actionGroup") {
         // 管线插入效果：仅在非叠加（首次）时添加
         if (!isStacking) {
-          const pipelineName = (effect as any).pipelineName ?? (effect as any).actionGroupName;
-          const afterStageName = (effect as any).afterStageName ?? (effect as any).afterActionName;
-          const stageId = `${buff.id}_${pipelineName}_${afterStageName}`;
+          const pipelineName = effect.pipelineName;
+          const afterActionName = effect.afterActionName;
+          const stageId = `${buff.id}_${pipelineName}_${afterActionName}`;
 
           const cleanup = this.pipelineManager.insertPipelineStage(
             pipelineName,
-            afterStageName as any,
-            effect.insertStageName as any,
+            afterActionName,
+            effect.insertActionName,
             stageId,
             buff.id,
             effect.params ?? undefined,

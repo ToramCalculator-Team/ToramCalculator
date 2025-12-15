@@ -19,8 +19,6 @@ import type { MemberType } from "@db/schema/enums";
 import type { MemberWithRelations } from "@db/generated/repositories/member";
 import type GameEngine from "../GameEngine";
 import { StatContainer } from "./runtime/StatContainer/StatContainer";
-import { PlayerAttrSchema } from "./types/Player/PlayerAttrSchema";
-import { MobAttrSchema } from "./types/Mob/MobAttrSchema";
 import { Team, TeamWithRelations } from "@db/generated/repositories/team";
 import { Player } from "./types/Player/Player";
 import { Member } from "./Member";
@@ -75,9 +73,9 @@ export class MemberManager {
   private membersByCamp: Map<string, Set<string>> = new Map();
   /** 队伍 -> 成员ID集合 索引 */
   private membersByTeam: Map<string, Set<string>> = new Map();
-  
+
   // ==================== 主控目标系统 ====================
-  
+
   /** 当前主控目标ID - 用户操作的成员，相机跟随的目标 */
   private primaryTargetId: string | null = null;
 
@@ -98,20 +96,21 @@ export class MemberManager {
    * @param memberData 成员数据库数据
    * @param campId 阵营ID
    * @param teamId 队伍ID
-   * @param initialState 初始状态配置
+   * @param characterIndex 角色索引
+   * @param position 位置
    * @returns 创建的成员实例，失败则返回null
    */
   createAndRegister<T extends string>(
     memberData: MemberWithRelations,
     campId: string,
     teamId: string,
+    characterIndex: number,
     position?: { x: number; y: number; z: number },
   ): Actor<AnyActorLogic> | null {
     switch (memberData.type) {
       case "Player":
         {
-          const schema = PlayerAttrSchema(memberData.player!.characters?.[0]);
-          const player = new Player(this.engine, memberData, campId, teamId, memberData.id, schema, {}, position);
+          const player = new Player(this.engine, memberData, campId, teamId, characterIndex, memberData.id, position);
           const success = this.registerMember(player, campId, teamId, memberData);
           if (success) {
             console.log(`✅ 创建并注册玩家成功: ${memberData.name} (${memberData.type})`);
@@ -124,16 +123,15 @@ export class MemberManager {
         break;
       case "Mob":
         {
-          const schema = MobAttrSchema(memberData.mob!);
-          const mob = new Mob(this.engine, memberData, campId, teamId, memberData.id, schema, {}, position);
+          const mob = new Mob(this.engine, memberData, campId, teamId, memberData.id, position);
           const success = this.registerMember(mob, campId, teamId, memberData);
-            if (success) {
-              console.log(`✅ 创建并注册怪物成功: ${memberData.name} (${memberData.type})`);
-              return mob.actor;
-            } else {
-              // 注册失败：不与 actor 交互，直接返回
-              return null;
-            }
+          if (success) {
+            console.log(`✅ 创建并注册怪物成功: ${memberData.name} (${memberData.type})`);
+            return mob.actor;
+          } else {
+            // 注册失败：不与 actor 交互，直接返回
+            return null;
+          }
         }
         break;
       // case "Mercenary":
@@ -156,12 +154,7 @@ export class MemberManager {
    * @param teamId 队伍ID
    * @returns 注册是否成功
    */
-  registerMember(
-    member: AnyMemberEntry,
-    campId: string,
-    teamId: string,
-    memberData: MemberWithRelations,
-  ): boolean {
+  registerMember(member: AnyMemberEntry, campId: string, teamId: string, memberData: MemberWithRelations): boolean {
     this.members.set(memberData.id, member);
     // console.log(`📝 注册成员: ${memberData.name} (${memberData.type}) -> ${campId}/${teamId}`);
 
@@ -411,10 +404,7 @@ export class MemberManager {
   }
 
   /** 添加队伍（幂等） */
-  addTeam(
-    campId: string,
-    team: TeamWithRelations,
-  ): TeamWithRelations {
+  addTeam(campId: string, team: TeamWithRelations): TeamWithRelations {
     if (!this.camps.has(campId)) {
       // 若未注册阵营，先注册
       this.addCamp(campId);
@@ -442,27 +432,27 @@ export class MemberManager {
   }
 
   // ==================== 主控目标管理 ====================
-  
+
   /** 获取当前主控目标 */
   getPrimaryTarget(): string | null {
     return this.primaryTargetId;
   }
-  
+
   /** 设置主控目标 */
   setPrimaryTarget(memberId: string | null): void {
     const oldTarget = this.primaryTargetId;
-    
+
     // 验证目标成员是否存在
     if (memberId && !this.members.has(memberId)) {
       console.warn(`🎯 主控目标设置失败: 成员 ${memberId} 不存在`);
       return;
     }
-    
+
     this.primaryTargetId = memberId;
-    
+
     if (oldTarget !== memberId) {
       console.log(`🎯 主控目标切换: ${oldTarget} -> ${memberId}`);
-      
+
       // 通知渲染层相机跟随新目标
       if (memberId) {
         this.engine.postRenderMessage({
@@ -477,7 +467,7 @@ export class MemberManager {
           },
         });
       }
-      
+
       // 通知控制器主控目标变化
       this.engine.postSystemMessage({
         type: "primary_target_changed",
@@ -489,29 +479,29 @@ export class MemberManager {
       });
     }
   }
-  
+
   /** 自动选择主控目标：优先Player，其次第一个成员 */
   autoSelectPrimaryTarget(): void {
     const allMembers = Array.from(this.members.values());
-    
+
     // 优先选择Player类型的成员
-    const playerMember = allMembers.find(member => member.type === 'Player');
+    const playerMember = allMembers.find((member) => member.type === "Player");
     if (playerMember) {
       this.setPrimaryTarget(playerMember.id);
       return;
     }
-    
+
     // 如果没有Player，选择第一个成员
     const firstMember = allMembers[0];
     if (firstMember) {
       this.setPrimaryTarget(firstMember.id);
       return;
     }
-    
+
     // 没有成员时清空目标
     this.setPrimaryTarget(null);
   }
-  
+
   /** 获取主控目标的成员信息 */
   getPrimaryTargetMember(): AnyMemberEntry | null {
     if (!this.primaryTargetId) return null;

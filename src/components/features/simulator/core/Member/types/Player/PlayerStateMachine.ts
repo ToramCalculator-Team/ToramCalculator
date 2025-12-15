@@ -197,13 +197,11 @@ export const playerStateMachine = (
         console.log(`👤 [${context.name}] 添加待处理技能`, event);
         const e = event as 使用技能;
         const skillId = e.data.skillId;
-        const skill = actionContext.skillList?.find((s) => s.id === skillId);
+        const skill = player.activeCharacter.skills?.find((s) => s.id === skillId);
         if (!skill) {
-          throw new Error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
+          console.error(`🎮 [${context.name}] 的当前技能不存在`);
         }
-        return {
-          currentSkill: skill,
-        };
+        actionContext.currentSkill = skill;
       },
       清空待处理技能: function ({ context, event }) {
         console.log(`👤 [${context.name}] 清空待处理技能`, event);
@@ -211,12 +209,12 @@ export const playerStateMachine = (
         // 清理技能级管线覆盖，避免影响后续技能
         player.pipelineManager?.clearSkillOverrides?.();
         if (actionContext.currentSkillTreeId) {
-          actionContext.behaviorTreeHost?.removeTree(actionContext.currentSkillTreeId);
-          actionContext.currentSkillTreeId = undefined;
+          actionContext.behaviorTreeManager?.removeTree(actionContext.currentSkillTreeId);
+          actionContext.currentSkillTreeId = "unknown_skill";
         }
       },
       清理行为树: function ({ context }) {
-        actionContext.behaviorTreeHost?.clear();
+        actionContext.behaviorTreeManager?.clear();
       },
       添加待处理技能效果: function ({ context, event }) {
         const skillEffect = actionContext.currentSkill?.template?.effects.find((e) =>
@@ -258,14 +256,7 @@ export const playerStateMachine = (
             actionContext.behaviorTreeManager?.removeTree(actionContext.currentSkillTreeId);
           }
           actionContext.currentSkillTreeId = treeId;
-          const inst = actionContext.behaviorTreeManager?.addTree(treeData, "skill", treeId);
-
-          // 先 tick 一次让树进入 running/触发初始调度
-          const status = inst?.tree.tick();
-          // 若该技能树是纯同步逻辑，立即完成；否则应由 BT 内部通过 ScheduleFSMEvent 发送“技能执行完成”
-          if (status === "success" || status === "failure") {
-            raise({ type: "技能执行完成", data: { status } } as any);
-          }
+          actionContext.behaviorTreeManager?.addTree(treeData, "skill", treeId);
         } catch (error) {
           console.error(`❌ [${context.name}] 挂载/执行技能行为树失败`, error);
           raise({ type: "技能执行完成" });
@@ -304,7 +295,7 @@ export const playerStateMachine = (
       命中计算管线: function ({ context, event }) {
         console.log(`👤 [${context.name}] 命中计算管线`, event);
         try {
-          const res = player.pipelineManager.run("战斗.命中.计算" as any, actionContext, {});
+          const res = player.pipelineManager.run("计算命中判定", actionContext, {});
           // PipelineManager.run 返回 working copy，需要合并回 context 才能生效
           Object.assign(actionContext as any, res.ctx ?? {});
           const finalOutput = (res.actionOutputs as any)["计算命中判定"] as
@@ -456,9 +447,8 @@ export const playerStateMachine = (
         console.log(`👤 [${context.name}] 判断技能是否有可用效果`, event);
         const e = event as 使用技能;
         const skillId = e.data.skillId;
-        const currentFrame = actionContext.engine.getCurrentFrame();
-
-        const skill = actionContext.skillList?.find((s) => s.id === skillId);
+        const currentFrame = actionContext.currentFrame;
+        const skill = actionContext.currentSkill;
         if (!skill) {
           console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
           return true;
@@ -499,7 +489,7 @@ export const playerStateMachine = (
         const skillId = e.data.skillId;
         const currentFrame = actionContext.engine.getCurrentFrame();
 
-        const skill = actionContext.skillList?.find((s) => s.id === skillId);
+        const skill = actionContext.currentSkill;
         if (!skill) {
           console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
           return true;

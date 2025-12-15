@@ -51,221 +51,127 @@ export const magicCannonSkillEffect = {
               input: [],
             output: ["magicCannon"],
           },
-            { id: 5, name: "RunPipelineSync", desc: "计算技能消耗", args: { actionGroupName: "skill.cost.calculate" }, input: [], output: [] },
-            {
-              id: 6,
-              name: "RunPipelineSync",
-              desc: "计算技能动作时长",
-              args: { actionGroupName: "skill.motion.calculate" },
+          {
+            id: 4,
+            name: "HasBuff",
+            desc: "决定魔法炮：充能/释放分支",
+            args: { buffId: "magic_cannon_charge", outputVar: "buffExists" },
               input: [],
               output: [],
-            },
+          },
           {
             id: 7,
-            name: "IfElse",
-            desc: "前摇阶段（如果存在）",
+            name: "Switch",
+            desc: "魔法炮：按是否存在充能 Buff 分支执行（语义化管线：前摇/动作）",
               args: {},
               input: [],
               output: [],
             children: [
-                { id: 8, name: "Check", args: { value: "currentSkillStartupFrames > 0" }, input: [], output: [] },
               {
-                id: 9,
-                name: "Sequence",
+                id: 8,
+                name: "Case",
+                desc: "充能分支（无充能 Buff）：充能前摇 -> 等待 -> 充能动作 -> 等待后摇 -> 技能完成",
                   args: {},
                   input: [],
                   output: [],
                 children: [
-                    { id: 10, name: "RunPipeline", args: { actionGroupName: "animation.startup.start" }, input: [], output: [] },
-                    { id: 11, name: "RunPipeline", args: { actionGroupName: "event.startup.schedule" }, input: [], output: [] },
-                    { id: 12, name: "WaitForEvent", args: { event: "收到前摇结束通知" }, input: [], output: [] },
-                ],
-              },
-                { id: 13, name: "JustSuccess", args: {}, input: [], output: [] },
-            ],
-          },
-          {
-            id: 14,
-            name: "IfElse",
-            desc: "蓄力阶段（如果存在）",
-              args: {},
-              input: [],
-              output: [],
-            children: [
-                { id: 15, name: "Check", args: { value: "currentSkillChargingFrames > 0" }, input: [], output: [] },
-              {
-                id: 16,
-                name: "Sequence",
-                  args: {},
-                  input: [],
-                  output: [],
-                children: [
-                    { id: 17, name: "RunPipeline", args: { actionGroupName: "animation.charging.start" }, input: [], output: [] },
-                    { id: 18, name: "RunPipeline", args: { actionGroupName: "event.charging.schedule" }, input: [], output: [] },
-                    { id: 19, name: "WaitForEvent", args: { event: "收到蓄力结束通知" }, input: [], output: [] },
-                ],
-              },
-                { id: 20, name: "JustSuccess", args: {}, input: [], output: [] },
-            ],
-          },
-          {
-            id: 21,
-            name: "IfElse",
-            desc: "咏唱阶段（如果存在）",
-              args: {},
-              input: [],
-              output: [],
-            children: [
-                { id: 22, name: "Check", args: { value: "currentSkillChantingFrames > 0" }, input: [], output: [] },
-              {
-                id: 23,
-                name: "Sequence",
-                  args: {},
-                  input: [],
-                  output: [],
-                children: [
-                    { id: 24, name: "RunPipeline", args: { actionGroupName: "animation.chanting.start" }, input: [], output: [] },
-                    { id: 25, name: "RunPipeline", args: { actionGroupName: "event.chanting.schedule" }, input: [], output: [] },
-                    { id: 26, name: "WaitForEvent", args: { event: "收到咏唱结束事件" }, input: [], output: [] },
-                ],
-              },
-                { id: 27, name: "JustSuccess", args: {}, input: [], output: [] },
-            ],
-          },
-          {
-            id: 27,
-            name: "Sequence",
-            desc: "发动阶段",
-              args: {},
-              input: [],
-              output: [],
-            children: [
-                { id: 28, name: "RunPipeline", args: { actionGroupName: "animation.action.start" }, input: [], output: [] },
-                { id: 29, name: "RunPipeline", args: { actionGroupName: "skill.effect.apply" }, input: [], output: [] },
-              {
-                id: 29.1,
-                name: "HasBuff",
-                desc: "检查魔法炮充能 Buff 状态，获取 buffExists 变量",
-                args: { buffId: "magic_cannon_charge", outputVar: "buffExists" },
-                  input: [],
-                  output: [],
-              },
-              {
-                id: 30,
-                name: "Switch",
-                desc: "根据 Buff 状态分支执行不同逻辑（充能 / 释放）",
-                  args: {},
-                  input: [],
-                  output: [],
-                children: [
+                  { id: 8.1, name: "Check", args: { value: "!buffExists" }, input: [], output: [] },
                   {
-                    id: 31,
-                    name: "Case",
-                        args: {},
-                        input: [],
-                        output: [],
-                    children: [
-                          { id: 32, name: "Check", args: { value: "!buffExists" }, input: [], output: [] },
-                      {
-                        id: 33,
-                        name: "Sequence",
-                        desc: "充能阶段：添加 Buff，等待其他魔法技能充能",
-                            args: {},
-                            input: [],
-                            output: [],
-                        children: [
-                          {
-                            id: 37,
-                            name: "RunPipeline",
-                            desc: "添加魔法炮充能 Buff",
-                            args: {
-                              actionGroupName: "buff.add",
-                              params: {
-                                buffId: "magic_cannon_charge",
-                                buffName: "魔法炮充能",
-                                duration: -1,
-                                variables: { chargeCounter: 0, initialFrame: 0 },
-                              },
-                            },
-                              input: [],
-                              output: [],
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                  {
-                    id: 37,
-                    name: "Case",
+                    id: 8.2,
+                    name: "Sequence",
                       args: {},
                       input: [],
                       output: [],
                     children: [
-                        { id: 38, name: "Check", args: { value: "buffExists" }, input: [], output: [] },
                       {
-                        id: 39,
-                        name: "Sequence",
-                        desc: "释放阶段：消耗充能造成伤害并移除 Buff",
-                          args: {},
+                        id: 8.2_1,
+                        name: "RunPipelineSync",
+                        desc: "充能前摇（语义管线）",
+                        args: { actionGroupName: "魔法炮.充能.前摇" },
                           input: [],
                           output: [],
-                        children: [
-                          {
-                            id: 41,
-                            name: "RunPipelineSync",
-                            desc: "获取充能计数器（写入 chargeCounter）",
-                            args: { actionGroupName: "获取buff计数器值", params: { buffId: "magic_cannon_charge" } },
-                              input: [],
-                              output: [],
-                          },
-                          {
-                            id: 42,
-                            name: "RunPipeline",
-                            desc: "请求魔法炮伤害结算（依赖 chargeCounter）",
-                            args: {
-                              actionGroupName: "combat.damage.request",
-                              params: {
-                                damageFormula:
-                                    '(((self.statContainer.getValue("atk.m") + self.lv - target.lv) * (1 - target.statContainer.getValue("red.m")) - (1 - self.statContainer.getValue("pip.m")) * target.statContainer.getValue("def.m")) + 700 + 10 * chargeCounter) * (300 * chargeCounter + self.statContainer.getValue("int") * Math.min(chargeCounter, 5))',
-                              },
-                            },
-                              input: [],
-                              output: [],
-                          },
-                            {
-                              id: 43,
-                              name: "RunPipeline",
-                              desc: "移除充能 Buff",
-                              args: { actionGroupName: "buff.remove", params: { buffId: "magic_cannon_charge" } },
-                              input: [],
-                              output: [],
-                            },
-                        ],
                       },
+                      { id: 8.2_2, name: "WaitFrames", args: { field: "currentSkillStartupFrames", min: 1 }, input: [], output: [] },
+                      {
+                        id: 8.2_3,
+                        name: "RunPipelineSync",
+                        desc: "充能动作（语义管线）",
+                        args: {
+                          actionGroupName: "魔法炮.充能.动作",
+                          params: {
+                            buffId: "magic_cannon_charge",
+                            buffName: "魔法炮充能",
+                            duration: -1,
+                            variables: { chargeCounter: 0, initialFrame: 0 },
+                            treeId: "magic_cannon_charge",
+                          },
+                        },
+                          input: [],
+                          output: [],
+                      },
+                      { id: 8.2_4, name: "WaitFrames", args: { field: "currentSkillActionFrames", min: 1 }, input: [], output: [] },
+                      { id: 8.2_5, name: "ScheduleFSMEvent", desc: "通知状态机：技能执行完成", args: { eventType: "技能执行完成" }, input: [], output: [] },
                     ],
                   },
-                    {
-                      id: 44,
-                      name: "Case",
+                ],
+              },
+              {
+                id: 9,
+                name: "Case",
+                desc: "释放分支（有充能 Buff）：发动前摇 -> 等待 -> 发动动作(伤害/清 buff) -> 等待后摇 -> 技能完成",
+                  args: {},
+                  input: [],
+                  output: [],
+                children: [
+                  { id: 9.1, name: "Check", args: { value: "buffExists" }, input: [], output: [] },
+                  {
+                    id: 9.2,
+                    name: "Sequence",
                       args: {},
                       input: [],
                       output: [],
-                      children: [
-                        { id: 45, name: "Check", args: { value: "true" }, input: [], output: [] },
-                        { id: 46, name: "JustSuccess", args: {}, input: [], output: [] },
-                      ],
-                    },
+                    children: [
+                      {
+                        id: 9.2_1,
+                        name: "RunPipelineSync",
+                        desc: "发动前摇（语义管线）",
+                        args: { actionGroupName: "魔法炮.释放.前摇" },
+                          input: [],
+                          output: [],
+                      },
+                      { id: 9.2_2, name: "WaitFrames", args: { field: "currentSkillStartupFrames", min: 1 }, input: [], output: [] },
+                      {
+                        id: 9.2_3,
+                        name: "RunPipelineSync",
+                        desc: "发动动作（语义管线）",
+                        args: {
+                          actionGroupName: "魔法炮.释放.动作",
+                          params: {
+                            buffId: "magic_cannon_charge",
+                            damageFormula:
+                              '(((self.statContainer.getValue("atk.m") + self.lv - target.lv) * (1 - target.statContainer.getValue("red.m")) - (1 - self.statContainer.getValue("pip.m")) * target.statContainer.getValue("def.m")) + 700 + 10 * chargeCounter) * (300 * chargeCounter + self.statContainer.getValue("int") * Math.min(chargeCounter, 5))',
+                          },
+                        },
+                          input: [],
+                          output: [],
+                      },
+                      { id: 9.2_4, name: "WaitFrames", args: { field: "currentSkillActionFrames", min: 1 }, input: [], output: [] },
+                      { id: 9.2_5, name: "ScheduleFSMEvent", desc: "通知状态机：技能执行完成", args: { eventType: "技能执行完成" }, input: [], output: [] },
+                    ],
+                  },
                 ],
               },
-                {
-                  id: 48,
-                  name: "RunPipeline",
-                  desc: "调度发动结束事件",
-                  args: { actionGroupName: "event.action.schedule" },
+              {
+                id: 10,
+                name: "Case",
+                  args: {},
                   input: [],
                   output: [],
-                },
-                { id: 49, name: "WaitForEvent", desc: "等待发动结束通知", args: { event: "收到发动结束通知" }, input: [], output: [] },
+                children: [
+                  { id: 10.1, name: "Check", args: { value: "true" }, input: [], output: [] },
+                  { id: 10.2, name: "JustSuccess", args: {}, input: [], output: [] },
+                ],
+              },
             ],
           },
         ],
@@ -361,29 +267,25 @@ export const magicCannonSkillEffect = {
      */
     pipelines: {
       overrides: {
-        // --- 计算/查询类（同步节点 RunPipelineSync 会用到） ---
-        "skill.cost.calculate": ["技能HP消耗计算", "技能MP消耗计算", "技能消耗扣除"],
-        "skill.motion.calculate": ["前摇帧数计算", "蓄力帧数计算", "咏唱帧数计算"],
-        "获取buff计数器值": ["获取buff计数器值"],
+        /**
+         * 说明（读这个区块就能理解分组依据）：
+         * - 本 overrides 只做“可用管线列表（pipelineName -> stages）”的声明，不表达控制流；
+         * - 控制流（分支/顺序/等待）由 trees.skillBT 负责；
+         * - 分组按“阶段/用途”组织：先算（消耗/动作时长）→ 再做（动画/效果）→ 最后做（魔法炮分支副作用）。
+         */
 
-        // --- 动画/事件（intent 节点 RunPipeline 会用到） ---
-        "animation.startup.start": ["启动前摇动画"],
-        "event.startup.schedule": ["调度前摇结束事件"],
-        "animation.charging.start": ["启动蓄力动画"],
-        "event.charging.schedule": ["调度蓄力结束事件"],
-        "animation.chanting.start": ["启动咏唱动画"],
-        "event.chanting.schedule": ["调度咏唱结束事件"],
-        "animation.action.start": ["启动发动动画"],
-        "event.action.schedule": ["调度发动结束事件"],
+        // ===================== 0) 魔法炮：语义化阶段管线（推荐在 skillBT 中调用） =====================
+        // 充能：前摇
+        "魔法炮.充能.前摇": ["技能HP消耗计算", "技能MP消耗计算", "技能消耗扣除", "前摇帧数计算", "启动前摇动画"],
+        // 充能：动作（注意：这里的“动作帧数/后摇等待”由 skillBT 的 WaitFrames 负责）
+        "魔法炮.充能.动作": ["发动帧数计算", "启动发动动画", "添加Buff"],
+        // 释放：前摇
+        "魔法炮.释放.前摇": ["技能HP消耗计算", "技能MP消耗计算", "技能消耗扣除", "前摇帧数计算", "启动前摇动画"],
+        // 释放：动作（包含伤害/清除buff，避免一个动作一个管线）
+        "魔法炮.释放.动作": ["发动帧数计算", "启动发动动画", "应用当前技能效果", "获取buff计数器值", "对目标造成伤害", "移除Buff"],
 
-        // --- 技能效果/外部副作用 ---
+        // ===================== 1) 技能效果应用（buffBT 插入点依赖该管线名） =====================
         "skill.effect.apply": ["应用当前技能效果"],
-        "buff.add": ["添加Buff"],
-        "buff.remove": ["移除Buff"],
-        "combat.damage.request": ["对目标造成伤害"],
-
-        // --- 预留：由其它技能触发的魔法炮充能流程 ---
-        "magic_cannon.charge_from_skill": ["咏唱帧数计算", "应用数值表达式"],
       },
     },
 
