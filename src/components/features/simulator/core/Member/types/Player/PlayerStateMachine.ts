@@ -4,6 +4,8 @@ import { Player, PlayerAttrType } from "./Player";
 import { resolvePipelineOverrides, resolveSkillBehaviorTree } from "../../runtime/BehaviorTree/SkillEffectLogicType";
 import type { MemberStateContext, MemberStateMachine } from "../../runtime/StateMachine/types";
 import { testSkillEffect } from "../../runtime/BehaviorTree/testSkill";
+import { compileWorkspaceJsonWithCache } from "../../runtime/SkillEffect/compileCache";
+import type { SkillEffectLogicV1 } from "../../runtime/BehaviorTree/SkillEffectLogicType";
 
 /**
  * Player特有的事件类型
@@ -226,26 +228,67 @@ export const playerStateMachine = (player: Player): MemberStateMachine<PlayerEve
       执行技能: function ({ context, event }) {
         console.log(`👤 [${context.name}] 执行技能`, actionContext.currentSkill?.template?.name);
 
-        // let treeData = resolveSkillBehaviorTree(skillEffect.logic);
-        // if (!treeData) {
-        //   console.error(`🎮 [${context.name}] 技能逻辑不是有效的行为树 TreeData，已跳过执行`, skillEffect.logic);
-        //   enqueue.raise({ type: "技能执行完成" });
-        //   return;
-        // }
+        const skillEffect = actionContext.currentSkillEffect;
+        if (!skillEffect) {
+          console.error(`🎮 [${context.name}] 当前技能效果不存在`);
+          sendTo(context.id, { type: "技能执行完成" });
+          return;
+        }
 
-        // 使用测试技能效果
-        const logic = testSkillEffect.MagicCannon.logic;
+        let logic: SkillEffectLogicV1 | null = null;
+
+        // 1) 优先使用“角色创建时预编译”的缓存
+        const precompiled = actionContext.compiledSkillEffectLogicByEffectId?.[String(skillEffect.id)];
+        if (precompiled) {
+          logic = precompiled;
+        }
+
+        // 2) 若未命中缓存，检查 logic 是否是 workspaceJson（Blockly 编辑器保存的格式）
+        if (!logic && skillEffect.logic && typeof skillEffect.logic === "object" && "blocks" in skillEffect.logic) {
+          // 是 workspaceJson，需要编译
+          console.log(`🎮 [${context.name}] 检测到 workspaceJson，开始编译...`);
+          const compileResult = compileWorkspaceJsonWithCache(skillEffect.logic);
+          if (compileResult.errors.length > 0) {
+            console.error(`❌ [${context.name}] 编译 workspaceJson 失败:`, compileResult.errors);
+            sendTo(context.id, { type: "技能执行完成" });
+            return;
+          }
+          if (!compileResult.logic) {
+            console.error(`❌ [${context.name}] 编译 workspaceJson 返回空逻辑`);
+            sendTo(context.id, { type: "技能执行完成" });
+            return;
+          }
+          logic = compileResult.logic;
+          // 回写到预编译缓存，后续施放复用
+          (actionContext.compiledSkillEffectLogicByEffectId ??= {})[String(skillEffect.id)] = logic;
+          console.log(`✅ [${context.name}] workspaceJson 编译成功${compileResult.cacheHit ? " (缓存命中)" : ""}`);
+        } else if (skillEffect.logic && typeof skillEffect.logic === "object" && "schemaVersion" in skillEffect.logic) {
+          // 已经是 SkillEffectLogicV1 格式
+          logic = skillEffect.logic as SkillEffectLogicV1;
+        } else {
+          // 回退到测试技能效果（临时）
+          console.warn(`⚠️ [${context.name}] skillEffect.logic 格式未知，使用测试技能效果`);
+          logic = testSkillEffect.MagicCannon.logic;
+        }
+
         actionContext.currentSkillLogic = logic;
-        const treeData = resolveSkillBehaviorTree(logic)!;
-        console.log(`🎮 [${context.name}] 使用测试技能效果行为树`, treeData);
+        const treeData = resolveSkillBehaviorTree(logic);
+        if (!treeData) {
+          console.error(`🎮 [${context.name}] 技能逻辑不是有效的行为树 TreeData，已跳过执行`, logic);
+          sendTo(context.id, { type: "技能执行完成" });
+          return;
+        }
+        console.log(`🎮 [${context.name}] 使用技能效果行为树`, treeData);
 
         try {
           // 将技能逻辑中的 pipelines.overrides 注册为“技能级覆盖”
           // 这样 RunPipelineSync/RunPipeline 都可以按该技能定义的管线编排执行
-          const overrides = resolvePipelineOverrides(logic)!;
-          actionContext.pipelineManager?.setSkillOverrides?.(overrides);
+          const overrides = resolvePipelineOverrides(logic);
+          if (overrides) {
+            actionContext.pipelineManager?.setSkillOverrides?.(overrides);
+          }
 
-          const treeId = `skill:${String(actionContext.currentSkillEffect?.id ?? "unknown_skill")}`;
+          const treeId = `skill:${String(skillEffect.id ?? "unknown_skill")}`;
           // 若上一次技能树仍存在，先移除，避免堆积
           if (actionContext.currentSkillTreeId) {
             console.log(`🎮 [${context.name}] 移除技能树`, actionContext.currentSkillTreeId);

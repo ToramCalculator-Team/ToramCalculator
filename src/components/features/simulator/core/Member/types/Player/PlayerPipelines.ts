@@ -48,6 +48,12 @@ export interface PlayerActionContext extends ActionContext {
   currentSkillTreeId: string;
   /** 机体配置信息 */
   character: CharacterWithRelations;
+
+  /**
+   * 预编译的技能效果逻辑缓存（effectId -> SkillEffectLogicV1）
+   * - 用于把 workspaceJson 的编译从“施放时”前移到“角色创建时”
+   */
+  compiledSkillEffectLogicByEffectId?: Record<string, SkillEffectLogicV1>;
 }
 
 // Member里需要子类传递actionContext生成器时才会用到，由于心智模型复杂，暂时没用它

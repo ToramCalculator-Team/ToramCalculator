@@ -1,16 +1,13 @@
 import {
-  PipelineBlockGenerator,
-  StageBlockGenerator,
   createPipelineDefinitionBlock,
-  createSchedulePipelineBlock,
-  createFinishSkillBlock,
-  createStartSkillBlock,
   type PipelineMeta,
   type StageMeta,
   type CustomPipelineMeta,
-  makePipelineBlockId,
   makeStageBlockId,
 } from "./blocks";
+import { ActionBlockGenerator } from "./blocks/actionBlockGenerator";
+import { registerBehavior3Blocks } from "./blocks/behavior3/behavior3Blocks";
+import { registerInputsRefsBlocks } from "./blocks/inputsRefsBlocks";
 
 export interface BlocksRegistryOptions {
   builtinPipelineMetas: PipelineMeta[];
@@ -21,8 +18,8 @@ export interface BlocksRegistryOptions {
 export interface BlocksRegistry {
   updateCustomPipelines: (custom: CustomPipelineMeta[]) => void;
   getPipelineNames: () => string[];
-  /** 引擎类分类（管线/动作） */
-  buildEngineCategories: () => any[];
+  /** 构建工具箱分类（BT / Pipeline / Action / Inputs-Refs） */
+  buildToolboxCategories: () => any[];
 }
 
 const mergePipelineMetas = (builtin: PipelineMeta[], custom: CustomPipelineMeta[]) => {
@@ -42,54 +39,64 @@ export function createBlocksRegistry(options: BlocksRegistryOptions): BlocksRegi
   const getPipelineMetas = () => mergePipelineMetas(options.builtinPipelineMetas, customPipelines);
   const getPipelineNames = () => getPipelineMetas().map((m) => m.name);
 
-  // 注册积木（注册行为发生在构造函数和辅助函数内部）
-  const pipelineBlockGenerator = new PipelineBlockGenerator(getPipelineMetas());
-  const stageBlockGenerator = new StageBlockGenerator(options.builtinStageMetas);
-  const pipelineDefinitionBlockId = createPipelineDefinitionBlock();
-  const schedulePipelineBlockId = createSchedulePipelineBlock(() => getPipelineNames());
-  const finishSkillBlockId = createFinishSkillBlock();
-  const startSkillBlockId = createStartSkillBlock();
+  // 注册积木
+  // 1. Behavior3 BT 块（不包括 bt_root，它由系统自动管理）
+  const btBlockIds = registerBehavior3Blocks(getPipelineNames).filter((id) => id !== "bt_root");
 
-  const buildEngineCategories = () => {
-    const metas = getPipelineMetas();
+  // 2. Pipeline 定义块
+  const pipelineDefinitionBlockId = createPipelineDefinitionBlock();
+
+  // 3. Action 块（动态生成）
+  const actionBlockGenerator = new ActionBlockGenerator(options.builtinStageMetas);
+  const actionBlockIds = actionBlockGenerator.getBlockIds();
+
+  // 4. 参数与引用（Inputs/Refs）块
+  const inputsRefsBlockIds = registerInputsRefsBlocks();
+
+  const buildToolboxCategories = () => {
     return [
+      // 1. 行为树（BT）- 不包含 bt_root
+      {
+        kind: "category",
+        name: "行为树",
+        categorystyle: "logic_category",
+        contents: btBlockIds.map((id) => ({
+          type: id,
+          kind: "block" as const,
+        })),
+      },
+      // 2. 管线（Pipeline）
       {
         kind: "category",
         name: "管线",
         categorystyle: "math_category",
         contents: [
-          ...metas.map((m) => ({
-            type: makePipelineBlockId(m.name),
-            kind: "block" as const,
-          })),
           {
             type: pipelineDefinitionBlockId,
             kind: "block" as const,
           },
         ],
       },
+      // 3. 动作（Action）
       {
         kind: "category",
         name: "动作",
         categorystyle: "logic_category",
-        contents: [
-          {
-            type: startSkillBlockId,
-            kind: "block" as const,
-          },
-          ...options.builtinStageMetas.map((m) => ({
-            type: makeStageBlockId(m.name),
-            kind: "block" as const,
-          })),
-          {
-            type: schedulePipelineBlockId,
-            kind: "block" as const,
-          },
-          {
-            type: finishSkillBlockId,
-            kind: "block" as const,
-          },
-        ],
+        contents: actionBlockIds.map((id) => ({
+          type: id,
+          kind: "block" as const,
+        })),
+      },
+      // 4. 参数与引用（Inputs/Refs）- 暂时为空，后续添加表达式、字段名选择等
+      {
+        kind: "category",
+        name: "参数与引用",
+        // 统一色系：本分组块使用绿色（120），因此用 logic_category
+        categorystyle: "logic_category",
+        contents: inputsRefsBlockIds.map((id) => ({
+          type: id,
+          kind: "block" as const,
+        })),
       },
     ];
   };
@@ -99,8 +106,6 @@ export function createBlocksRegistry(options: BlocksRegistryOptions): BlocksRegi
       customPipelines = custom;
     },
     getPipelineNames,
-    buildEngineCategories,
+    buildToolboxCategories,
   };
 }
-
-

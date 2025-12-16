@@ -39,7 +39,7 @@ export interface CustomPipelineMeta {
   /** 描述 */
   desc?: string;
   /** 阶段列表（按顺序执行） */
-  stages: string[];
+  actions: string[];
 }
 
 /**
@@ -91,7 +91,7 @@ export const encodeFunctionName = (functionName: string): string => {
   return result;
 };
 
-type AnyStage = Action<ZodType, ZodType, Record<string, unknown>>;
+type AnyAction = Action<ZodType, ZodType, Record<string, unknown>>;
 
 /**
  * 从 zod schema 中解析参数元数据
@@ -190,17 +190,17 @@ export const buildPlayerPipelineMetas = (): PipelineMeta[] => {
   const metas: PipelineMeta[] = [];
 
   const def: PlayerActionDef = [] as unknown as PlayerActionDef ;
-  const stagePool: PlayerActionPool = PlayerActionPool;
+  const actionPool: PlayerActionPool = PlayerActionPool;
 
   for (const pipelineName of Object.keys(def) as (keyof PlayerActionDef)[]) {
-    const stageNames = def[pipelineName];
+    const actionNames = def[pipelineName];
     let inputSchema: ZodType | undefined;
 
-    if (stageNames && stageNames.length > 0) {
-      const firstStageName = stageNames[0];
-      const stage = stagePool[firstStageName as keyof PlayerActionPool] as unknown as AnyStage | undefined;
-      if (stage) {
-        inputSchema = stage[0];
+    if (actionNames && actionNames.length > 0) {
+      const firstActionName = actionNames[0];
+      const action = actionPool[firstActionName as keyof PlayerActionPool] as unknown as AnyAction | undefined;
+      if (action) {
+        inputSchema = action[0];
       }
     }
 
@@ -241,7 +241,7 @@ const inferCategoryFromName = (name: string): string => {
 /**
  * 阶段元数据
  */
-export interface StageMeta {
+export interface ActionMeta {
   name: string;
   category: string;
   params: PipelineParamMeta[];
@@ -251,9 +251,9 @@ export interface StageMeta {
   outputField?: string;
 }
 
-export const makeStageBlockId = (stageName: string): string => {
+export const makeActionBlockId = (actionName: string): string => {
   // 将阶段名转换为安全的 blockId：保留 ASCII 字符，非 ASCII 字符转换为 Unicode 编码
-  const safeName = stageName
+  const safeName = actionName
     .split("")
     .map((char) => {
       if (/[a-zA-Z0-9_]/.test(char)) {
@@ -263,35 +263,35 @@ export const makeStageBlockId = (stageName: string): string => {
       return `u${char.charCodeAt(0).toString(16)}`;
     })
     .join("");
-  return `stage_${safeName}`;
+  return `action_${safeName}`;
 };
 
-const decodeStageBlockId = (blockType: string): string | null => {
-  if (!blockType.startsWith("stage_")) return null;
-  const encoded = blockType.replace(/^stage_/, "");
-  // 反向还原 makeStageBlockId：uXXXX -> 对应字符，其余 ASCII 保留
+const decodeActionBlockId = (blockType: string): string | null => {
+  if (!blockType.startsWith("action_")) return null;
+  const encoded = blockType.replace(/^action_/, "");
+  // 反向还原 makeActionBlockId：uXXXX -> 对应字符，其余 ASCII 保留
   return encoded.replace(/u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 };
 
 /**
  * 从 Player 阶段池构造阶段元数据
  */
-export const buildPlayerStageMetas = (): StageMeta[] => {
-  const metas: StageMeta[] = [];
+export const buildPlayerActionMetas = (): ActionMeta[] => {
+  const metas: ActionMeta[] = [];
 
-  const stagePool: PlayerActionPool = PlayerActionPool;
+  const actionPool: PlayerActionPool = PlayerActionPool;
 
-  for (const stageName of Object.keys(stagePool) as (keyof PlayerActionPool)[]) {
-    const stage = stagePool[stageName] as unknown as AnyStage;
-    const inputSchema = stage[0];
-    const outputSchema = stage[1];
+  for (const actionName of Object.keys(actionPool) as (keyof PlayerActionPool)[]) {
+    const action = actionPool[actionName] as unknown as AnyAction;
+    const inputSchema = action[0];
+    const outputSchema = action[1];
     const params = extractParamsFromSchema(inputSchema);
 
     const { kind: outputKind, field: outputField } = inferOutputFromSchema(outputSchema);
 
     metas.push({
-      name: stageName,
-      category: "playerStage",
+      name: actionName,
+      category: "playerAction",
       params,
       outputKind,
       outputField,
@@ -440,27 +440,27 @@ export class PipelineBlockGenerator {
 }
 
 /**
- * 基于 StageMeta 生成“阶段调用”积木
- * 语义：在运行时通过 ctx.runStage(stageName, params) 调用单个阶段，
+ * 基于 ActionMeta 生成“阶段调用”积木
+ * 语义：在运行时通过 ctx.runAction(actionName, params) 调用单个阶段，
  * 由阶段自身将输出合并进上下文。
  */
-export class StageBlockGenerator {
-  private metas: StageMeta[];
+export class ActionBlockGenerator {
+  private metas: ActionMeta[];
   private blockIds: string[] = [];
 
-  constructor(metas: StageMeta[]) {
+  constructor(metas: ActionMeta[]) {
     this.metas = metas;
     this.generateBlocks();
   }
 
   private generateBlocks() {
     for (const meta of this.metas) {
-      this.createStageBlock(meta);
+      this.createActionBlock(meta);
     }
   }
 
-  private createStageBlock(meta: StageMeta) {
-    const blockId = makeStageBlockId(meta.name);
+  private createActionBlock(meta: ActionMeta) {
+    const blockId = makeActionBlockId(meta.name);
     const params = meta.params;
 
     Blocks[blockId] = {
@@ -535,10 +535,10 @@ export class StageBlockGenerator {
       // 根据是否有标量输出，生成表达式或语句
       if (meta.outputKind && meta.outputKind !== "json") {
         const access = meta.outputField ? `.${meta.outputField}` : "";
-        const code = `ctx.runStage("${meta.name}", ${argsCode})${access}`;
+        const code = `ctx.runAction("${meta.name}", ${argsCode})${access}`;
         return [code, Order.NONE] as [string, number];
       } else {
-        const code = `ctx.runStage("${meta.name}", ${argsCode});\n`;
+        const code = `ctx.runAction("${meta.name}", ${argsCode});\n`;
         return code;
       }
     };
@@ -567,7 +567,7 @@ export function createPipelineDefinitionBlock() {
         .appendField("描述(可选)")
         .appendField(new FieldTextInput(""), "desc");
 
-      this.appendStatementInput("STAGES").setCheck(null).appendField("阶段顺序");
+      this.appendStatementInput("ACTIONS").setCheck(null).appendField("阶段顺序");
 
       this.setColour(260);
       this.setTooltip("定义一个自定义管线（仅收集元数据）");
@@ -595,12 +595,12 @@ export const collectCustomPipelines = (workspace: Workspace | WorkspaceSvg): Cus
     if (!name) continue;
     const desc = block.getFieldValue("desc")?.trim() || undefined;
 
-    const stages: string[] = [];
-    let current = block.getInputTargetBlock("STAGES");
+    const actions: string[] = [];
+    let current = block.getInputTargetBlock("ACTIONS");
     while (current) {
-      const stageName = decodeStageBlockId(current.type);
-      if (stageName) {
-        stages.push(stageName);
+      const actionName = decodeActionBlockId(current.type);
+      if (actionName) {
+        actions.push(actionName);
       }
       current = current.getNextBlock();
     }
@@ -608,7 +608,7 @@ export const collectCustomPipelines = (workspace: Workspace | WorkspaceSvg): Cus
     pipelines.push({
       name,
       desc,
-      stages,
+      actions,
     });
   }
 

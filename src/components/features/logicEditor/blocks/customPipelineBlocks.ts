@@ -1,6 +1,6 @@
 import { Blocks, FieldTextInput, Workspace, WorkspaceSvg } from "blockly/core";
 import { javascriptGenerator } from "blockly/javascript";
-import { decodeStageBlockId, type CustomPipelineMeta } from "./meta";
+import { decodeActionBlockId, type CustomPipelineMeta } from "./meta";
 
 /**
  * 管线定义积木（仅用于收集元数据，不生成运行时代码）
@@ -14,7 +14,8 @@ export function createPipelineDefinitionBlock() {
       this.appendDummyInput().appendField("名称").appendField(new FieldTextInput("自定义管线"), "pipelineName");
       this.appendDummyInput().appendField("描述(可选)").appendField(new FieldTextInput(""), "desc");
 
-      this.appendStatementInput("STAGES").setCheck(null).appendField("阶段顺序");
+      // 仅允许 action_<name> 类型的“动作块”接入
+      this.appendStatementInput("ACTIONS").setCheck("PIPELINE_ACTION").appendField("动作顺序");
 
       this.setColour(230); // 对齐管线分类色系
       this.setTooltip("定义一个自定义管线（仅收集元数据）");
@@ -41,20 +42,21 @@ export const collectCustomPipelines = (workspace: Workspace | WorkspaceSvg): Cus
     if (!name) continue;
     const desc = block.getFieldValue("desc")?.trim() || undefined;
 
-    const stages: string[] = [];
-    let current = block.getInputTargetBlock("STAGES");
+    const actions: string[] = [];
+    let current = block.getInputTargetBlock("ACTIONS");
     while (current) {
-      const stageName = decodeStageBlockId(current.type);
-      if (stageName) {
-        stages.push(stageName);
+      const actionName = decodeActionBlockId(current.type);
+      if (actionName) {
+        actions.push(actionName);
       }
       current = current.getNextBlock();
     }
 
     pipelines.push({
+      sourceBlockId: block.id,
       name,
       desc,
-      stages,
+      actions,
     });
   }
 

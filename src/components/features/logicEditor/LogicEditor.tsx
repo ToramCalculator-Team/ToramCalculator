@@ -4,10 +4,10 @@ import * as Zh from "blockly/msg/zh-hans";
 import * as En from "blockly/msg/en";
 import * as Ja from "blockly/msg/ja";
 import * as ZhTw from "blockly/msg/zh-hant";
-import { javascriptGenerator } from "blockly/javascript";
 import "blockly/blocks";
-import { SchemaBlockGenerator } from "./gameAttributeBlocks";
-import { buildPlayerPipelineMetas, buildPlayerStageMetas, collectCustomPipelines, type CustomPipelineMeta } from "./blocks";
+import { SchemaBlockGenerator } from "./blocks/gameAttributeBlocks";
+import { collectCustomPipelines, type CustomPipelineMeta } from "./blocks";
+import { buildPlayerPipelineMetas, buildPlayerStageMetas } from "./metaSources/player";
 import { createBlocksRegistry } from "./blocksRegistry";
 import { store } from "~/store";
 import { MediaContext } from "~/lib/contexts/Media";
@@ -22,8 +22,6 @@ interface LogicEditorProps extends JSX.InputHTMLAttributes<HTMLDivElement> {
   /** 逻辑执行者的类型（Player 或 Mob） */
   memberType: MemberType;
   setData: (data: unknown) => void;
-  code?: Accessor<string>;
-  setCode?: (code: string) => void;
   state: unknown;
   // 仅展示模式：禁用所有编辑能力（无工具箱、不可拖拽/连线/删除）
   readOnly?: boolean;
@@ -58,10 +56,10 @@ export function LogicEditor(props: LogicEditorProps) {
     const cps = data?.customPipelines;
     if (!Array.isArray(cps)) return [];
     return cps
-      .filter((cp) => typeof cp?.name === "string" && Array.isArray(cp?.stages))
+      .filter((cp) => typeof cp?.name === "string" && Array.isArray(cp?.actions))
       .map((cp) => ({
         name: cp.name as string,
-        stages: cp.stages as string[],
+        actions: cp.actions as string[],
         category: cp.category ?? "custom",
         desc: cp.desc,
         displayName: cp.displayName,
@@ -72,6 +70,8 @@ export function LogicEditor(props: LogicEditorProps) {
     builtinStageMetas: stageMetasRaw,
     initialCustomPipelines: parseCustomPipelines(),
   });
+  // 用于追踪 pipeline_definition 重命名（blockId -> pipelineName）
+  let lastPipelineNameByDefId: Record<string, string> = {};
 
   // 读取 Tailwind 类实际颜色，便于与系统主题一致
   const resolveColorFromClass = (
@@ -142,552 +142,7 @@ export function LogicEditor(props: LogicEditorProps) {
         const toolbox = {
           kind: "categoryToolbox",
           contents: [
-            {
-              kind: "category",
-              name: "逻辑",
-              categorystyle: "logic_category",
-              contents: [
-                {
-                  type: "controls_if",
-                  kind: "block",
-                },
-                {
-                  type: "logic_compare",
-                  kind: "block",
-                  fields: {
-                    OP: "EQ",
-                  },
-                },
-                {
-                  type: "logic_operation",
-                  kind: "block",
-                  fields: {
-                    OP: "AND",
-                  },
-                },
-                {
-                  type: "logic_negate",
-                  kind: "block",
-                },
-                {
-                  type: "logic_boolean",
-                  kind: "block",
-                  fields: {
-                    BOOL: "TRUE",
-                  },
-                },
-                {
-                  type: "logic_null",
-                  kind: "block",
-                  enabled: false,
-                },
-                {
-                  type: "logic_ternary",
-                  kind: "block",
-                },
-              ],
-            },
-            {
-              kind: "category",
-              name: "循环",
-              categorystyle: "loop_category",
-              contents: [
-                {
-                  type: "controls_repeat_ext",
-                  kind: "block",
-                  inputs: {
-                    TIMES: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 10,
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "controls_repeat",
-                  kind: "block",
-                  enabled: false,
-                  fields: {
-                    TIMES: 10,
-                  },
-                },
-                {
-                  type: "controls_whileUntil",
-                  kind: "block",
-                  fields: {
-                    MODE: "WHILE",
-                  },
-                },
-                {
-                  type: "controls_for",
-                  kind: "block",
-                  fields: {
-                    VAR: {
-                      name: "i",
-                    },
-                  },
-                  inputs: {
-                    FROM: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 1,
-                        },
-                      },
-                    },
-                    TO: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 10,
-                        },
-                      },
-                    },
-                    BY: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 1,
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "controls_forEach",
-                  kind: "block",
-                  fields: {
-                    VAR: {
-                      name: "j",
-                    },
-                  },
-                },
-                {
-                  type: "controls_flow_statements",
-                  kind: "block",
-                  enabled: false,
-                  fields: {
-                    FLOW: "BREAK",
-                  },
-                },
-              ],
-            },
-            {
-              kind: "category",
-              name: "数学",
-              categorystyle: "math_category",
-              contents: [
-                {
-                  type: "math_number",
-                  kind: "block",
-                  fields: {
-                    NUM: 123,
-                  },
-                },
-                {
-                  type: "math_arithmetic",
-                  kind: "block",
-                  fields: {
-                    OP: "ADD",
-                  },
-                  inputs: {
-                    A: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 1,
-                        },
-                      },
-                    },
-                    B: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 1,
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "math_single",
-                  kind: "block",
-                  fields: {
-                    OP: "ROOT",
-                  },
-                  inputs: {
-                    NUM: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 9,
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "math_trig",
-                  kind: "block",
-                  fields: {
-                    OP: "SIN",
-                  },
-                  inputs: {
-                    NUM: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 45,
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "math_constant",
-                  kind: "block",
-                  fields: {
-                    CONSTANT: "PI",
-                  },
-                },
-                {
-                  type: "math_number_property",
-                  kind: "block",
-                  fields: {
-                    PROPERTY: "EVEN",
-                  },
-                  inputs: {
-                    NUMBER_TO_CHECK: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 0,
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "math_round",
-                  kind: "block",
-                  fields: {
-                    OP: "ROUND",
-                  },
-                  inputs: {
-                    NUM: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 3.1,
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "math_on_list",
-                  kind: "block",
-                  fields: {
-                    OP: "SUM",
-                  },
-                },
-                {
-                  type: "math_modulo",
-                  kind: "block",
-                  inputs: {
-                    DIVIDEND: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 64,
-                        },
-                      },
-                    },
-                    DIVISOR: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 10,
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "math_constrain",
-                  kind: "block",
-                  inputs: {
-                    VALUE: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 50,
-                        },
-                      },
-                    },
-                    LOW: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 1,
-                        },
-                      },
-                    },
-                    HIGH: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 100,
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "math_random_int",
-                  kind: "block",
-                  inputs: {
-                    FROM: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 1,
-                        },
-                      },
-                    },
-                    TO: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 100,
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "math_random_float",
-                  kind: "block",
-                },
-                {
-                  type: "math_atan2",
-                  kind: "block",
-                  inputs: {
-                    X: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 1,
-                        },
-                      },
-                    },
-                    Y: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 1,
-                        },
-                      },
-                    },
-                  },
-                },
-              ],
-            },
-            {
-              kind: "category",
-              name: "文本",
-              categorystyle: "text_category",
-              contents: [
-                {
-                  type: "text",
-                  kind: "block",
-                  fields: {
-                    TEXT: "",
-                  },
-                },
-                {
-                  type: "text_join",
-                  kind: "block",
-                },
-                {
-                  type: "text_length",
-                  kind: "block",
-                  inputs: {
-                    VALUE: {
-                      shadow: {
-                        type: "text",
-                        fields: {
-                          TEXT: "abc",
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "text_isEmpty",
-                  kind: "block",
-                  inputs: {
-                    VALUE: {
-                      shadow: {
-                        type: "text",
-                        fields: {
-                          TEXT: "",
-                        },
-                      },
-                    },
-                  },
-                },
-              ],
-            },
-            {
-              kind: "category",
-              name: "列表",
-              categorystyle: "list_category",
-              contents: [
-                {
-                  type: "lists_create_with",
-                  kind: "block",
-                },
-                {
-                  type: "lists_create_with",
-                  kind: "block",
-                },
-                {
-                  type: "lists_repeat",
-                  kind: "block",
-                  inputs: {
-                    NUM: {
-                      shadow: {
-                        type: "math_number",
-                        fields: {
-                          NUM: 5,
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "lists_length",
-                  kind: "block",
-                },
-                {
-                  type: "lists_isEmpty",
-                  kind: "block",
-                },
-                {
-                  type: "lists_indexOf",
-                  kind: "block",
-                  fields: {
-                    END: "FIRST",
-                  },
-                  inputs: {
-                    VALUE: {
-                      block: {
-                        type: "variables_get",
-                        fields: {
-                          VAR: {
-                            name: "list",
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "lists_getIndex",
-                  kind: "block",
-                  fields: {
-                    MODE: "GET",
-                    WHERE: "FROM_START",
-                  },
-                  inputs: {
-                    VALUE: {
-                      block: {
-                        type: "variables_get",
-                        fields: {
-                          VAR: {
-                            name: "list",
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "lists_setIndex",
-                  kind: "block",
-                  fields: {
-                    MODE: "SET",
-                    WHERE: "FROM_START",
-                  },
-                  inputs: {
-                    LIST: {
-                      block: {
-                        type: "variables_get",
-                        fields: {
-                          VAR: {
-                            name: "list",
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "lists_getSublist",
-                  kind: "block",
-                  fields: {
-                    WHERE1: "FROM_START",
-                    WHERE2: "FROM_START",
-                  },
-                  inputs: {
-                    LIST: {
-                      block: {
-                        type: "variables_get",
-                        fields: {
-                          VAR: {
-                            name: "list",
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "lists_split",
-                  kind: "block",
-                  fields: {
-                    MODE: "SPLIT",
-                  },
-                  inputs: {
-                    DELIM: {
-                      shadow: {
-                        type: "text",
-                        fields: {
-                          TEXT: ",",
-                        },
-                      },
-                    },
-                  },
-                },
-                {
-                  type: "lists_sort",
-                  kind: "block",
-                  fields: {
-                    TYPE: "NUMERIC",
-                    DIRECTION: "1",
-                  },
-                },
-                {
-                  type: "lists_reverse",
-                  kind: "block",
-                },
-              ],
-            },
-            ...blocksRegistry.buildEngineCategories(),
+            ...blocksRegistry.buildToolboxCategories(),
             {
               kind: "category",
               name: "成员属性",
@@ -725,18 +180,6 @@ export function LogicEditor(props: LogicEditorProps) {
                 },
               ],
             },
-            {
-              kind: "category",
-              name: "自定义变量",
-              custom: "VARIABLE",
-              categorystyle: "variable_category",
-            },
-            {
-              kind: "category",
-              name: "函数",
-              custom: "PROCEDURE",
-              categorystyle: "procedure_category",
-            },
           ],
         };
         setLocale(location);
@@ -764,52 +207,82 @@ export function LogicEditor(props: LogicEditorProps) {
 
         const workerSpace = inject(div, injectionOptions);
         serialization.workspaces.load(props.data ?? defaultData, workerSpace);
+        
+        // 确保存在唯一的 bt_root（系统自动管理）
+        const existingRoots = workerSpace.getBlocksByType("bt_root", false);
+        if (existingRoots.length === 0) {
+          // 创建 bt_root 块
+          const rootBlock = workerSpace.newBlock("bt_root");
+          rootBlock.initSvg();
+          rootBlock.render();
+          rootBlock.moveBy(20, 20);
+        } else if (existingRoots.length > 1) {
+          // 如果存在多个，只保留第一个，删除其他的
+          for (let i = 1; i < existingRoots.length; i++) {
+            existingRoots[i].dispose();
+          }
+        }
+
+        // 兜底：若用户/旧数据导致 action_<name> 被吸附到 bt_ 节点下，给出警告并自动断开
+        const sanitizeIllegalConnections = () => {
+          const all = workerSpace.getAllBlocks(false);
+          for (const b of all) {
+            if (!b?.type) continue;
+            if (!String(b.type).startsWith("action_")) continue;
+            const parent = b.getParent();
+            if (parent && String(parent.type).startsWith("bt_")) {
+              console.warn(
+                `[LogicEditor] action 块不允许放入行为树内，已自动断开。action=${b.type}, parent=${parent.type}`,
+              );
+              // unplug(true) 会把它从连接中拔出并保持坐标
+              b.unplug(true);
+            }
+          }
+        };
+        sanitizeIllegalConnections();
+
+        // 初始化：建立 pipeline_definition 的 blockId -> name 映射
+        {
+          const custom0 = collectCustomPipelines(workerSpace);
+          const m: Record<string, string> = {};
+          for (const cp of custom0) {
+            if (cp.sourceBlockId && cp.name) m[cp.sourceBlockId] = cp.name;
+          }
+          lastPipelineNameByDefId = m;
+          blocksRegistry.updateCustomPipelines(custom0);
+        }
+        
         workerSpace.addChangeListener(() => {
-          // 仅从 start_skill 入口生成代码；若无入口则回退全量
-          javascriptGenerator.init(workerSpace);
-          const startBlocks = workerSpace.getBlocksByType("start_skill", false);
-          let codeBody = "";
-          const parts: string[] = [];
-          const emitCode = (blk: any) => {
-            const gen = javascriptGenerator.blockToCode(blk);
-            if (Array.isArray(gen)) {
-              if (gen[0]) parts.push(gen[0]);
-            } else if (gen) {
-              parts.push(gen as string);
-            }
-          };
-
-          if (startBlocks && startBlocks.length > 0) {
-            startBlocks.forEach(emitCode);
-            // 追加其他未挂载到 start_skill 的顶层语句块，避免遗漏
-            const topBlocks = workerSpace
-              .getTopBlocks(true)
-              .filter((b) => b.type !== "start_skill" && !b.getParent());
-            topBlocks.forEach(emitCode);
-            codeBody = parts.join("\n");
-          } else {
-            codeBody = javascriptGenerator.workspaceToCode(workerSpace);
-          }
-
-          const code = javascriptGenerator.finish(codeBody);
-
-          // 从生成的代码里提取 skill_config 片段（约定：/*skill_config*/({ ... });）
-          let skillLogicConfig: any = null;
-          const configMatch = code.match(/\/\*skill_config\*\/\s*\((\{[\s\S]*?\})\);/);
-          if (configMatch && configMatch[1]) {
-            try {
-              skillLogicConfig = JSON.parse(configMatch[1]);
-            } catch {
-              // ignore
-            }
-          }
-
-          const saved = serialization.workspaces.save(workerSpace) as any;
+          sanitizeIllegalConnections();
+          // 仅保存 workspaceJson，不再生成 JS 代码
+          const saved = serialization.workspaces.save(workerSpace);
           const custom = collectCustomPipelines(workerSpace);
+
+          // 先更新 registry，保证 dropdown 的 options 已含最新管线名
           blocksRegistry.updateCustomPipelines(custom);
+
+          // 若 pipeline_definition 被重命名，则同步更新 bt_runPipelineSync 的选择值（old -> new）
+          const currentMap: Record<string, string> = {};
+          for (const cp of custom) {
+            if (cp.sourceBlockId && cp.name) currentMap[cp.sourceBlockId] = cp.name;
+          }
+          for (const [defId, newName] of Object.entries(currentMap)) {
+            const oldName = lastPipelineNameByDefId[defId];
+            if (oldName && oldName !== newName) {
+              const all = workerSpace.getAllBlocks(false);
+              for (const b of all) {
+                if (b?.type === "bt_runPipelineSync") {
+                  const v = b.getFieldValue("pipeline");
+                  if (v === oldName) {
+                    b.setFieldValue(newName, "pipeline");
+                  }
+                }
+              }
+            }
+          }
+          lastPipelineNameByDefId = currentMap;
+
           saved.customPipelines = custom;
-          if (skillLogicConfig) saved.skillLogicConfig = skillLogicConfig;
-          props.setCode?.(code);
           props.setData(saved);
         });
         workerSpace.scrollCenter();

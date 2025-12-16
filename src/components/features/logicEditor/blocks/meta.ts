@@ -1,9 +1,4 @@
 import { ZodBoolean, ZodEnum, ZodNumber, ZodObject, ZodString, ZodType } from "zod/v4";
-import {
-  PlayerActionDef,
-  PlayerActionPool,
-} from "../../simulator/core/Member/types/Player/PlayerPipelines";
-import type { Action } from "../../simulator/core/Member/runtime/Action/type";
 
 export type PipelineParamKind = "number" | "boolean" | "string" | "enum" | "json";
 
@@ -25,14 +20,20 @@ export interface PipelineMeta {
 }
 
 export interface CustomPipelineMeta {
+  /** 对应 pipeline_definition 块 id（用于识别 rename 并同步引用） */
+  sourceBlockId?: string;
   name: string;
   category?: string;
   displayName?: string;
   desc?: string;
-  stages: string[];
+  actions: string[];
 }
 
-type AnyStage = Action<ZodType, ZodType, Record<string, unknown>>;
+/**
+ * 编辑器侧对“动作(stage)”的最小抽象：
+ * - 不依赖运行时 Action 类型定义（避免 logicEditor/blocks 层与 simulator runtime 强耦合）
+ */
+export type AnyAction = readonly [ZodType<any> | undefined, ZodType<any> | undefined, unknown];
 
 export const makePipelineBlockId = (pipelineName: string): string => {
   const safeName = pipelineName
@@ -45,8 +46,8 @@ export const makePipelineBlockId = (pipelineName: string): string => {
   return `pipeline_${safeName}`;
 };
 
-export const makeStageBlockId = (stageName: string): string => {
-  const safeName = stageName
+export const makeActionBlockId = (actionName: string): string => {
+  const safeName = actionName
     .split("")
     .map((char) => {
       if (/[a-zA-Z0-9_]/.test(char)) {
@@ -55,14 +56,25 @@ export const makeStageBlockId = (stageName: string): string => {
       return `u${char.charCodeAt(0).toString(16)}`;
     })
     .join("");
-  return `stage_${safeName}`;
+  return `action_${safeName}`;
 };
 
-export const decodeStageBlockId = (blockType: string): string | null => {
-  if (!blockType.startsWith("stage_")) return null;
-  const encoded = blockType.replace(/^stage_/, "");
+export const decodeActionBlockId = (blockType: string): string | null => {
+  if (!blockType.startsWith("action_")) return null;
+  const encoded = blockType.replace(/^action_/, "");
   return encoded.replace(/u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 };
+
+// 兼容：stageBlocks.ts 使用 stage_ 前缀命名（历史原因），这里与 action_ 统一同一套编码/解码。
+export const makeStageBlockId = (stageName: string): string => makeActionBlockId(stageName);
+export const decodeStageBlockId = (blockType: string): string | null => decodeActionBlockId(blockType);
+
+export interface StageMeta {
+  name: string;
+  params: PipelineParamMeta[];
+  outputKind?: "number" | "boolean" | "string" | "json";
+  outputField?: string;
+}
 
 const unwrapEffectsAndOptionals = (schema: ZodType): ZodType => {
   const inner = (s: ZodType): ZodType => {
@@ -148,82 +160,14 @@ const extractOutputKeys = (schema: ZodType | undefined): string[] => {
   return Object.keys((unwrapped as ZodObject<Record<string, ZodType>>).shape);
 };
 
-export const buildPlayerPipelineMetas = (): PipelineMeta[] => {
-  const metas: PipelineMeta[] = [];
-
-  const def: PlayerActionDef = [] as unknown as PlayerActionDef;
-  const stagePool: PlayerActionPool = PlayerActionPool;
-
-  for (const pipelineName of Object.keys(def) as (keyof PlayerActionDef)[]) {
-    const stageNames = def[pipelineName];
-
-    const available = new Set<string>(); // 已有的上下文字段（前序输出或入口）
-    const required = new Map<string, PipelineParamMeta>(); // 需要入口提供的参数
-
-    for (const stageName of stageNames) {
-      const stageDef = stagePool[stageName as keyof PlayerActionPool] as unknown as AnyStage | undefined;
-      if (!stageDef) continue;
-      const [inputSchema, outputSchema] = stageDef;
-
-      // 输入需要的字段
-      const params = extractParamsFromSchema(inputSchema);
-      for (const p of params) {
-        if (!available.has(p.name) && !required.has(p.name)) {
-          required.set(p.name, p);
-          available.add(p.name); // 入口提供后视为可用
-        }
-      }
-
-      // 输出字段加入可用集合
-      const outputKeys = extractOutputKeys(outputSchema);
-      for (const key of outputKeys) {
-        available.add(key);
-      }
-    }
-
-    const category = pipelineName.toString().split(".")[0] || "pipeline";
-
-    metas.push({
-      name: pipelineName as string,
-      category,
-      displayName: pipelineName as string,
-      params: Array.from(required.values()),
-    });
-  }
-
-  return metas;
-};
-
-export const buildPlayerStageMetas = () => {
-  const metas: StageMeta[] = [];
-  const stagePool: PlayerActionPool = PlayerActionPool;
-
-  for (const stageName of Object.keys(stagePool) as (keyof PlayerActionPool)[]) {
-    const stageDef = stagePool[stageName] as unknown as AnyStage;
-    const [inputSchema, outputSchema] = stageDef;
-
-    const params = extractParamsFromSchema(inputSchema);
-    const outputKind = inferOutputFromSchema(outputSchema);
-
-    metas.push({
-      name: stageName as string,
-      params,
-      outputKind: outputKind.kind,
-      outputField: outputKind.field,
-    });
-  }
-
-  return metas;
-};
-
-export interface StageMeta {
+export interface ActionMeta {
   name: string;
   params: PipelineParamMeta[];
   outputKind?: "number" | "boolean" | "string" | "json";
   outputField?: string;
 }
 
-const inferOutputFromSchema = (schema: ZodType | undefined): { kind?: StageMeta["outputKind"]; field?: string } => {
+export const inferOutputFromSchema = (schema: ZodType | undefined): { kind?: ActionMeta["outputKind"]; field?: string } => {
   if (!schema) return { kind: undefined };
   const unwrapped = unwrapEffectsAndOptionals(schema);
 
@@ -243,6 +187,30 @@ const inferOutputFromSchema = (schema: ZodType | undefined): { kind?: StageMeta[
   }
 
   return { kind: "json" };
+};
+
+export const buildActionMetas = (actionPool: Record<string, AnyAction>): ActionMeta[] => {
+  const metas: ActionMeta[] = [];
+  for (const actionName of Object.keys(actionPool)) {
+    const def = actionPool[actionName] as AnyAction;
+    const [inputSchema, outputSchema] = def;
+    metas.push({
+      name: actionName,
+      params: extractParamsFromSchema(inputSchema),
+      outputKind: inferOutputFromSchema(outputSchema).kind,
+      outputField: inferOutputFromSchema(outputSchema).field,
+    });
+  }
+  return metas;
+};
+
+export const buildStageMetas = (actionPool: Record<string, AnyAction>): StageMeta[] => {
+  return buildActionMetas(actionPool).map((m) => ({
+    name: m.name,
+    params: m.params,
+    outputKind: m.outputKind,
+    outputField: m.outputField,
+  }));
 };
 
 

@@ -10,6 +10,8 @@ import { BTManger } from "../../runtime/BehaviorTree/BTManager";
 import { PipelineManager } from "../../runtime/Action/PipelineManager";
 import { BuffManager } from "../../runtime/Buff/BuffManager";
 import { StatContainer } from "../../runtime/StatContainer/StatContainer";
+import { compileWorkspaceJsonWithCache } from "../../runtime/SkillEffect/compileCache";
+import type { SkillEffectLogicV1 } from "../../runtime/BehaviorTree/SkillEffectLogicType";
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import { PlayerWithRelations } from "@db/generated/repositories/player";
 
@@ -77,6 +79,7 @@ export class Player extends Member<
       currentSkillActionFrames: 0,
       currentSkillTreeId: "",
       character: memberData.player.characters[characterIndex],
+      compiledSkillEffectLogicByEffectId: {},
     };
     const behaviorTreeManager = new BTManger<PlayerActionContext>(actionContext);
     // 将 behaviorTreeManager 赋值给 actionContext，供后续使用
@@ -131,6 +134,35 @@ export class Player extends Member<
 
     // 应用战前修饰器
     applyPrebattleModifiers(this.statContainer, memberData);
+
+    // 预编译：在角色创建时编译其技能效果 logic（workspaceJson -> SkillEffectLogicV1）
+    // 施放时优先从 compiledSkillEffectLogicByEffectId 读取，避免每次施放编译。
+    this.precompileSkillEffects(actionContext);
+  }
+
+  private precompileSkillEffects(actionContext: PlayerActionContext): void {
+    const cache = (actionContext.compiledSkillEffectLogicByEffectId ??= {});
+    const skills: any[] = Array.isArray(actionContext.skillList) ? actionContext.skillList : [];
+
+    for (const s of skills) {
+      const tpl = s?.template;
+      const effects: any[] = Array.isArray(tpl?.effects) ? tpl.effects : [];
+      for (const effect of effects) {
+        const effectId = String(effect?.id ?? "");
+        if (!effectId || cache[effectId]) continue;
+
+        const logic = effect?.logic;
+        // workspaceJson 的特征：包含 blocks 字段
+        if (logic && typeof logic === "object" && "blocks" in logic) {
+          const res = compileWorkspaceJsonWithCache(logic);
+          if (res.logic) {
+            cache[effectId] = res.logic as SkillEffectLogicV1;
+          } else if (res.errors?.length) {
+            console.error(`❌ [${actionContext.name}] 预编译技能效果失败 effect=${effectId}`, res.errors);
+          }
+        }
+      }
+    }
   }
 
   /**
