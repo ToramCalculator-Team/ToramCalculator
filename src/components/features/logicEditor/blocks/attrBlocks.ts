@@ -8,32 +8,17 @@
  * 4. 支持嵌套属性路径（如 hp.current, atk.physical）
  */
 
-import { Blocks, FieldDropdown, FieldNumber, FieldTextInput } from "blockly/core";
+import { Blocks, FieldDropdown } from "blockly/core";
 import { javascriptGenerator, Order } from "blockly/javascript";
 import type { NestedSchema, SchemaAttribute } from "../../simulator/core/Member/runtime/StatContainer/SchemaTypes";
-
-// ============================== 类型定义 ==============================
-
 import { ModifierType } from "../../simulator/core/Member/runtime/StatContainer/StatContainer";
-
-/**
- * 积木类型枚举
- */
-enum BlockType {
-  ATTRIBUTE_GET = "attribute_get",           // 属性获取
-  ATTRIBUTE_SET = "attribute_set",           // 属性设置
-  ATTRIBUTE_MODIFY = "attribute_modify",     // 属性修改
-  CONDITION_CHECK = "condition_check",       // 条件检查
-  COMPARISON = "comparison",                 // 比较操作
-  MATH_OPERATION = "math_operation",         // 数学运算
-}
 
 // ============================== Schema 驱动的积木生成器 ==============================
 
 /**
  * 从 Schema 生成积木定义
  */
-class SchemaBlockGenerator {
+export class SchemaBlockGenerator {
   private selfSchema: NestedSchema; // 自身属性 schema
   private targetSchema: NestedSchema; // 通用目标属性 schema
   private blockDefinitions: Map<string, any> = new Map();
@@ -588,89 +573,3 @@ class SchemaBlockGenerator {
     return Array.from(this.blockDefinitions.keys());
   }
 }
-
-// ============================== 默认积木定义（确保基本积木可用） ==============================
-
-
-
-// ============================== 传统积木定义（向后兼容） ==============================
-
-// 目标HP变量获取块
-Blocks['target_hp_get'] = {
-  init: function() {
-    this.appendDummyInput()
-        .appendField("目标HP");
-    this.setOutput(true, "Number");
-    this.setColour(120);
-    this.setTooltip("获取目标的HP值");
-    this.setHelpUrl("");
-  }
-};
-
-javascriptGenerator.forBlock['target_hp_get'] = function(block, generator) {
-  const code = 'target.statContainer.getValue("hp")';
-  return [code, Order.MEMBER];
-};
-
-// 目标HP变量设置块
-Blocks['target_hp_set'] = {
-  init: function() {
-    this.appendValueInput("VALUE")
-        .setCheck("Number")
-        .appendField("设置目标HP为");
-    this.setPreviousStatement(true, null);
-    this.setNextStatement(true, null);
-    this.setColour(120);
-    this.setTooltip("设置目标的HP值");
-    this.setHelpUrl("");
-  }
-};
-
-javascriptGenerator.forBlock['target_hp_set'] = function(block, generator) {
-  const value = generator.valueToCode(block, 'VALUE', Order.ASSIGNMENT) || '0';
-  // 使用 addModifier 的 BASE_VALUE 类型来设置值
-  return `target.statContainer.addModifier("hp", ${ModifierType.BASE_VALUE}, ${value}, { id: "blockly_set", name: "积木设置", type: "system" });\n`;
-};
-
-// 自己攻击力变量获取块
-Blocks['self_attack_get'] = {
-  init: function() {
-    this.appendDummyInput()
-        .appendField("自己攻击力");
-    this.setOutput(true, "Number");
-    this.setColour(230);
-    this.setTooltip("获取自己的攻击力值");
-    this.setHelpUrl("");
-  }
-};
-
-javascriptGenerator.forBlock['self_attack_get'] = function(block, generator) {
-  const code = 'self.statContainer.getValue("atk")';
-  return [code, Order.MEMBER];
-};
-
-// 自己MP变量获取块
-Blocks['self_mp_get'] = {
-  init: function() {
-    this.appendDummyInput()
-        .appendField("自己MP");
-    this.setOutput(true, "Number");
-    this.setColour(230);
-    this.setTooltip("获取自己的MP值");
-    this.setHelpUrl("");
-  }
-};
-
-javascriptGenerator.forBlock['self_mp_get'] = function(block, generator) {
-  const code = 'self.statContainer.getValue("mp")';
-  return [code, Order.MEMBER];
-};
-
-// ============================== 导出 ==============================
-
-export {
-  SchemaBlockGenerator,
-  ModifierType,
-  BlockType,
-  // 导出所有自定义块，确保它们被注册
-};

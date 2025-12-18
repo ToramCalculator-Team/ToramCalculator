@@ -10,6 +10,8 @@ export default function LogicEditorTestPage() {
   const [data, setData] = createSignal<any>({});
   const [state, setState] = createSignal<any[]>([]);
   const [code, setCode] = createSignal<string>("");
+  const [mdslDefinition, setMdslDefinition] = createSignal<string>("");
+  const [functions, setFunctions] = createSignal<string>("");
 
   onMount(() => {
     setData(defaultData);
@@ -22,15 +24,32 @@ export default function LogicEditorTestPage() {
           data={data()}
           setData={setData}
           state={state()}
-          code={code}
           setCode={setCode}
+          setMdslDefinition={setMdslDefinition}
+          setFunctions={setFunctions}
           memberType={"Player"}
         />
       </div>
       <Show when={debugLayout()} fallback={<pre class="col-span-12 row-span-4 overflow-y-auto">{code()}</pre>}>
-        <div class="col-span-12 row-span-4 flex overflow-y-auto">
-          <pre class="basis-1/2 overflow-y-auto">{JSON.stringify(data(), null, 2)}</pre>
-          <pre class="basis-1/2 overflow-y-auto text-xs">{code()}</pre>
+        <div class="col-span-12 row-span-4 flex flex-col overflow-y-auto gap-2">
+          <div class="flex gap-2 flex-1 min-h-0">
+            <div class="basis-1/3 overflow-y-auto">
+              <h3 class="font-bold mb-1">Workspace JSON</h3>
+              <pre class="text-xs">{JSON.stringify(data(), null, 2)}</pre>
+            </div>
+            <div class="basis-1/3 overflow-y-auto">
+              <h3 class="font-bold mb-1">MDSL Definition</h3>
+              <pre class="text-xs whitespace-pre-wrap">{mdslDefinition() || "(空)"}</pre>
+            </div>
+            <div class="basis-1/3 overflow-y-auto">
+              <h3 class="font-bold mb-1">Functions</h3>
+              <pre class="text-xs whitespace-pre-wrap">{functions() || "(空)"}</pre>
+            </div>
+          </div>
+          {/* <div class="flex-1 overflow-y-auto">
+            <h3 class="font-bold mb-1">JS Code (Legacy)</h3>
+            <pre class="text-xs">{code()}</pre>
+          </div> */}
         </div>
       </Show>
     </div>

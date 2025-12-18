@@ -2,59 +2,66 @@ import { Blocks, FieldDropdown, FieldTextInput, Workspace, WorkspaceSvg } from "
 import { javascriptGenerator, Order } from "blockly/javascript";
 import { ZodBoolean, ZodEnum, ZodNumber, ZodObject, ZodString, ZodType } from "zod/v4";
 import {
-  PlayerActionDef,
   PlayerActionPool,
-} from "../simulator/core/Member/types/Player/PlayerPipelines";
-import type { Action, PipelineDef } from "../simulator/core/Member/runtime/Action/type";  
+} from "../../simulator/core/Member/types/Player/PlayerPipelines";
+import type { Action } from "../../simulator/core/Member/runtime/Action/type";  
 
 /**
- * 管线参数类型
+ * 动作参数类型
  */
-export type PipelineParamKind = "number" | "boolean" | "string" | "enum" | "json";
+export type ActionParamKind = "number" | "boolean" | "string" | "enum" | "json";
 
-export interface PipelineParamMeta {
+export interface ActionParamMeta {
   name: string;
-  kind: PipelineParamKind;
+  kind: ActionParamKind;
   required: boolean;
   enumOptions?: string[];
   displayName?: string;
   desc?: string;
 }
 
-export interface PipelineMeta {
-  /** 管线名称，如 技能.动作.计算 */
+export interface ActionMeta {
+  /** 动作名称，如 技能.动作.计算 */
   name: string;
   /** 逻辑分组，基于名称前缀的简单分类 */
   category: string;
   displayName?: string;
   desc?: string;
-  params: PipelineParamMeta[];
+  params: ActionParamMeta[];
 }
 
-export interface CustomPipelineMeta {
-  /** 管线名称（唯一标识） */
+export interface CustomActionMeta {
+  /** 动作名称（唯一标识） */
   name: string;
   /** 展示名 */
   displayName?: string;
   /** 描述 */
   desc?: string;
-  /** 阶段列表（按顺序执行） */
+  /** 动作列表（按顺序执行） */
   actions: string[];
 }
 
 /**
- * 根据管线名称生成唯一的积木 ID
- * 规则：前缀 pipeline_，非 ASCII 字符转换为 Unicode 编码，避免中文重名冲突
+ * 根据动作名称生成唯一的积木 ID
+ * 规则：前缀 action_，非 ASCII 字符转换为 Unicode 编码，避免中文重名冲突
  */
-export const makePipelineBlockId = (pipelineName: string): string => {
-  const safeName = pipelineName
+export const makeActionBlockId = (actionName: string): string => {
+  // 将动作名转换为安全的 blockId：保留 ASCII 字符，非 ASCII 字符转换为 Unicode 编码
+  const safeName = actionName
     .split("")
     .map((char) => {
       if (/[a-zA-Z0-9_]/.test(char)) return char;
       return `u${char.charCodeAt(0).toString(16)}`;
     })
     .join("");
-  return `pipeline_${safeName}`;
+  return `action_${safeName}`;
+};
+
+const decodeActionBlockId = (blockType: string): string | null => {
+  if (!blockType.startsWith("action_")) return null;
+  const encoded = blockType.replace(/^action_/, "");
+  // 反向还原 makeActionBlockId：uXXXX -> 对应字符，其余 ASCII 保留
+  return encoded.replace(/u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 };
 
 /**
@@ -96,7 +103,7 @@ type AnyAction = Action<ZodType, ZodType, Record<string, unknown>>;
 /**
  * 从 zod schema 中解析参数元数据
  */
-const extractParamsFromSchema = (schema: ZodType | undefined): PipelineParamMeta[] => {
+const extractParamsFromSchema = (schema: ZodType | undefined): ActionParamMeta[] => {
   if (!schema) return [];
 
   const unwrapped = unwrapEffectsAndOptionals(schema);
@@ -106,13 +113,13 @@ const extractParamsFromSchema = (schema: ZodType | undefined): PipelineParamMeta
   }
 
   const shape = (unwrapped as ZodObject<Record<string, ZodType>>).shape;
-  const metas: PipelineParamMeta[] = [];
+  const metas: ActionParamMeta[] = [];
 
   for (const key of Object.keys(shape)) {
     const fieldSchema = shape[key];
     const { base, required } = unwrapOptional(fieldSchema);
 
-    let kind: PipelineParamKind = "json";
+    let kind: ActionParamKind = "json";
     let enumOptions: string[] | undefined;
 
     if (base instanceof ZodNumber) {
@@ -184,97 +191,20 @@ const unwrapOptional = (schema: ZodType): { base: ZodType; required: boolean } =
 };
 
 /**
- * 根据 player 管线定义与阶段池构造元数据
- */
-export const buildPlayerPipelineMetas = (): PipelineMeta[] => {
-  const metas: PipelineMeta[] = [];
-
-  const def: PlayerActionDef = [] as unknown as PlayerActionDef ;
-  const actionPool: PlayerActionPool = PlayerActionPool;
-
-  for (const pipelineName of Object.keys(def) as (keyof PlayerActionDef)[]) {
-    const actionNames = def[pipelineName];
-    let inputSchema: ZodType | undefined;
-
-    if (actionNames && actionNames.length > 0) {
-      const firstActionName = actionNames[0];
-      const action = actionPool[firstActionName as keyof PlayerActionPool] as unknown as AnyAction | undefined;
-      if (action) {
-        inputSchema = action[0];
-      }
-    }
-
-    const params = extractParamsFromSchema(inputSchema);
-
-    metas.push({
-      name: String(pipelineName),
-      category: inferCategoryFromName(String(pipelineName)),
-      displayName: String(pipelineName),
-      params,
-    });
-  }
-
-  return metas;
-};
-
-const inferCategoryFromName = (name: string): string => {
-  const prefix = name.split(".")[0];
-  switch (prefix) {
-    case "技能":
-      return "skill";
-    case "Buff":
-    case "增益":
-      return "buff";
-    case "战斗":
-      return "combat";
-    case "动画":
-      return "animation";
-    case "事件":
-      return "event";
-    case "状态":
-      return "state";
-    default:
-      return "misc";
-  }
-};
-
-/**
- * 阶段元数据
+ * 动作元数据
  */
 export interface ActionMeta {
   name: string;
   category: string;
-  params: PipelineParamMeta[];
-  /** 若阶段有“单一标量”输出，则标记其类型，便于生成值积木 */
-  outputKind?: PipelineParamKind;
+  params: ActionParamMeta[];
+  /** 若动作有“单一标量”输出，则标记其类型，便于生成值积木 */
+  outputKind?: ActionParamKind;
   /** 若输出是 object 且只有一个字段，则记录字段名，生成访问表达式 */
   outputField?: string;
 }
 
-export const makeActionBlockId = (actionName: string): string => {
-  // 将阶段名转换为安全的 blockId：保留 ASCII 字符，非 ASCII 字符转换为 Unicode 编码
-  const safeName = actionName
-    .split("")
-    .map((char) => {
-      if (/[a-zA-Z0-9_]/.test(char)) {
-        return char;
-      }
-      // 非 ASCII 字符转换为 Unicode 编码（如 "构造" -> "u6784u36896"）
-      return `u${char.charCodeAt(0).toString(16)}`;
-    })
-    .join("");
-  return `action_${safeName}`;
-};
-
-const decodeActionBlockId = (blockType: string): string | null => {
-  if (!blockType.startsWith("action_")) return null;
-  const encoded = blockType.replace(/^action_/, "");
-  // 反向还原 makeActionBlockId：uXXXX -> 对应字符，其余 ASCII 保留
-  return encoded.replace(/u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
-};
-
 /**
- * 从 Player 阶段池构造阶段元数据
+ * 从 Player 动作池构造动作元数据
  */
 export const buildPlayerActionMetas = (): ActionMeta[] => {
   const metas: ActionMeta[] = [];
@@ -302,14 +232,14 @@ export const buildPlayerActionMetas = (): ActionMeta[] => {
 };
 
 /**
- * 从阶段的输出 schema 推导“是否可以作为标量值积木使用”
+ * 从动作的输出 schema 推导“是否可以作为标量值积木使用”
  * 规则：
  * - 直接的 number/boolean/string
  * - 或仅包含一个字段，且该字段为 number/boolean/string
  */
 const inferOutputFromSchema = (
   schema: ZodType | undefined,
-): { kind?: PipelineParamKind; field?: string } => {
+): { kind?: ActionParamKind; field?: string } => {
   if (!schema) return {};
 
   const unwrapped = unwrapEffectsAndOptionals(schema);
@@ -350,25 +280,25 @@ const inferOutputFromSchema = (
 };
 
 /**
- * 基于 PipelineMeta 生成 Blockly 积木定义与 JS 代码
+ * 基于 ActionMeta 生成 Blockly 积木定义与 JS 代码
  */
 export class PipelineBlockGenerator {
-  private metas: PipelineMeta[];
+  private metas: ActionMeta[];
   private blockIds: string[] = [];
 
-  constructor(metas: PipelineMeta[]) {
+  constructor(metas: ActionMeta[]) {
     this.metas = metas;
     this.generateBlocks();
   }
 
   private generateBlocks() {
     for (const meta of this.metas) {
-      this.createPipelineBlock(meta);
+      this.createActionBlock(meta);
     }
   }
 
-  private createPipelineBlock(meta: PipelineMeta) {
-    const blockId = makePipelineBlockId(meta.name);
+  private createActionBlock(meta: ActionMeta) {
+    const blockId = makeActionBlockId(meta.name);
     const params = meta.params;
 
     Blocks[blockId] = {
@@ -427,7 +357,7 @@ export class PipelineBlockGenerator {
       }
 
       const argsCode = params.length > 0 ? `{ ${argsPairs.join(", ")} }` : "{}";
-      const code = `ctx.runPipeline("${meta.name}", ${argsCode});\n`;
+      const code = `ctx.runAction("${meta.name}", ${argsCode});\n`;
       return code;
     };
 
@@ -440,9 +370,9 @@ export class PipelineBlockGenerator {
 }
 
 /**
- * 基于 ActionMeta 生成“阶段调用”积木
- * 语义：在运行时通过 ctx.runAction(actionName, params) 调用单个阶段，
- * 由阶段自身将输出合并进上下文。
+ * 基于 ActionMeta 生成“动作调用”积木
+ * 语义：在运行时通过 ctx.runAction(actionName, params) 调用单个动作，
+ * 由动作自身将输出合并进上下文。
  */
 export class ActionBlockGenerator {
   private metas: ActionMeta[];
@@ -487,7 +417,7 @@ export class ActionBlockGenerator {
           }
         }
 
-        // 若阶段有“标量输出”，则作为值积木，否则作为语句积木
+        // 若动作有“标量输出”，则作为值积木，否则作为语句积木
         if (meta.outputKind && meta.outputKind !== "json") {
           if (meta.outputKind === "number") {
             this.setOutput(true, "Number");
@@ -552,25 +482,25 @@ export class ActionBlockGenerator {
 }
 
 /**
- * 管线定义积木（仅用于收集元数据，不生成运行时代码）
+ * 动作定义积木（仅用于收集元数据，不生成运行时代码）
  */
-export function createPipelineDefinitionBlock() {
-  const blockId = "pipeline_definition";
+export function createActionDefinitionBlock() {
+  const blockId = "action_definition";
 
   Blocks[blockId] = {
     init: function () {
-      this.appendDummyInput().appendField("定义管线");
+      this.appendDummyInput().appendField("定义动作");
       this.appendDummyInput()
         .appendField("名称")
-        .appendField(new FieldTextInput("自定义管线"), "pipelineName");
+        .appendField(new FieldTextInput("自定义动作"), "actionName");
       this.appendDummyInput()
         .appendField("描述(可选)")
         .appendField(new FieldTextInput(""), "desc");
 
-      this.appendStatementInput("ACTIONS").setCheck(null).appendField("阶段顺序");
+      this.appendStatementInput("ACTIONS").setCheck(null).appendField("动作顺序");
 
       this.setColour(260);
-      this.setTooltip("定义一个自定义管线（仅收集元数据）");
+      this.setTooltip("定义一个自定义动作（仅收集元数据）");
       this.setHelpUrl("");
     },
   };
@@ -584,14 +514,14 @@ export function createPipelineDefinitionBlock() {
 }
 
 /**
- * 从 workspace 中收集自定义管线定义
+ * 从 workspace 中收集自定义动作定义
  */
-export const collectCustomPipelines = (workspace: Workspace | WorkspaceSvg): CustomPipelineMeta[] => {
-  const blocks = workspace.getBlocksByType("pipeline_definition", false);
-  const pipelines: CustomPipelineMeta[] = [];
+export const collectCustomActions = (workspace: Workspace | WorkspaceSvg): CustomActionMeta[] => {
+  const blocks = workspace.getBlocksByType("action_definition", false);
+  const customActions: CustomActionMeta[] = [];
 
   for (const block of blocks) {
-    const name = block.getFieldValue("pipelineName")?.trim();
+    const name = block.getFieldValue("actionName")?.trim();
     if (!name) continue;
     const desc = block.getFieldValue("desc")?.trim() || undefined;
 
@@ -605,27 +535,27 @@ export const collectCustomPipelines = (workspace: Workspace | WorkspaceSvg): Cus
       current = current.getNextBlock();
     }
 
-    pipelines.push({
+    customActions.push({
       name,
       desc,
       actions,
     });
   }
 
-  return pipelines;
+  return customActions;
 };
 
 /**
- * 为 schedulePipeline 函数创建积木
- * 参数：delayFrames (number), pipelineName (enum), params (可选 json), source (可选 string)
+ * 为 scheduleAction 函数创建积木
+ * 参数：delayFrames (number), actionName (enum), params (可选 json), source (可选 string)
  */
-export function createSchedulePipelineBlock(getPipelineNames?: () => string[], pipelineNames?: string[]) {
-  const blockId = "schedule_pipeline";
+export function createScheduleActionBlock(getActionNames?: () => string[], actionNames?: string[]) {
+  const blockId = "schedule_action";
   const fallbackNames = (Object.keys(PlayerActionPool) as (keyof PlayerActionPool)[]).slice();
 
   Blocks[blockId] = {
     init: function () {
-      this.appendDummyInput().appendField("延迟执行管线");
+      this.appendDummyInput().appendField("延迟执行动作");
   
       // 强制竖排显示各个输入
       this.setInputsInline(false);
@@ -635,21 +565,21 @@ export function createSchedulePipelineBlock(getPipelineNames?: () => string[], p
         .appendField("延迟帧数")
         .setCheck("Number");
       
-      // pipelineName: enum
+      // actionName: enum
       this.appendDummyInput()
-        .appendField("管线名称")
+        .appendField("动作名称")
         .appendField(
           new FieldDropdown(() => {
-            const names = getPipelineNames ? getPipelineNames() : pipelineNames;
+            const names = getActionNames ? getActionNames() : actionNames;
             const list =
               names && names.length > 0
                 ? names
-                : pipelineNames && pipelineNames.length > 0
-                  ? pipelineNames
+                : actionNames && actionNames.length > 0
+                  ? actionNames
                   : fallbackNames;
             return list.map((name) => [name, name]);
           }),
-          "pipelineName",
+          "actionName",
         );
       
       // params: optional json (使用文本输入，用户输入 JSON)
@@ -665,7 +595,7 @@ export function createSchedulePipelineBlock(getPipelineNames?: () => string[], p
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(210);
-      this.setTooltip("延迟执行指定的管线");
+      this.setTooltip("延迟执行指定的动作");
       this.setHelpUrl("");
     },
   };
@@ -673,20 +603,20 @@ export function createSchedulePipelineBlock(getPipelineNames?: () => string[], p
   javascriptGenerator.forBlock[blockId] = function (block, generator) {
     const delayFramesCode = generator.valueToCode(block, "delayFrames", Order.NONE) || "0";
     const names =
-      (getPipelineNames ? getPipelineNames() : pipelineNames) && (getPipelineNames ? getPipelineNames() : pipelineNames)!.length > 0
-        ? getPipelineNames
-          ? getPipelineNames()!
-          : (pipelineNames as string[])
+      (getActionNames ? getActionNames() : actionNames) && (getActionNames ? getActionNames() : actionNames)!.length > 0
+        ? getActionNames
+          ? getActionNames()!
+          : (actionNames as string[])
         : fallbackNames;
-    const pipelineName = block.getFieldValue("pipelineName") || names[0];
+    const actionName = block.getFieldValue("actionName") || names[0];
     const paramsCode = generator.valueToCode(block, "params", Order.NONE);
     const sourceCode = generator.valueToCode(block, "source", Order.NONE);
 
-    // schedulePipeline 函数签名: (context, delayFrames, pipelineName, params?, source?)
+    // scheduleAction 函数签名: (context, delayFrames, actionName, params?, source?)
     // 在积木代码中，ctx 就是 context
     const args: string[] = [];
     args.push(delayFramesCode);
-    args.push(`"${pipelineName}"`);
+    args.push(`"${actionName}"`);
     if (paramsCode) {
       args.push(paramsCode);
     } else {
@@ -698,7 +628,7 @@ export function createSchedulePipelineBlock(getPipelineNames?: () => string[], p
       args.push("undefined");
     }
 
-    const code = `ctx.schedulePipeline(${args.join(", ")});\n`;
+    const code = `ctx.scheduleAction(${args.join(", ")});\n`;
     return code;
   };
 
@@ -706,7 +636,7 @@ export function createSchedulePipelineBlock(getPipelineNames?: () => string[], p
 }
 
 /**
- * 为 schedulePipeline 函数创建积木（用于延迟调用自定义函数）
+ * 为 scheduleAction 函数创建积木（用于延迟调用自定义函数）
  * 参数：delayFrames (number), functionName (string), params (可选 json), source (可选 string)
  */
 export function createScheduleFunctionBlock() {
@@ -808,7 +738,7 @@ export function createScheduleFunctionBlock() {
       args.push("undefined");
     }
 
-    const code = `ctx.schedulePipeline(${args.join(", ")});\n`;
+    const code = `ctx.scheduleAction(${args.join(", ")});\n`;
     return code;
   };
 

@@ -5,10 +5,12 @@ import * as En from "blockly/msg/en";
 import * as Ja from "blockly/msg/ja";
 import * as ZhTw from "blockly/msg/zh-hant";
 import "blockly/blocks";
-import { SchemaBlockGenerator } from "./blocks/gameAttributeBlocks";
-import { collectCustomPipelines, type CustomPipelineMeta } from "./blocks";
-import { buildPlayerPipelineMetas, buildPlayerStageMetas } from "./metaSources/player";
-import { createBlocksRegistry } from "./blocksRegistry";
+import { SchemaBlockGenerator } from "./blocks/attrBlocks";
+import "./blocks/mistreevousBlocks"; // 注册 mistreevous 参数积木
+import "./blocks/mistreevousBTBlocks"; // 注册 BT 节点积木
+import "./blocks/functionCallBlocks"; // 注册函数调用块生成器
+import "./blocks/procedureBlocksPatch"; // 限制函数体 STACK 输入，禁止 BT 节点
+import { functionCallBlockManager } from "./blocks/functionCallBlocks";
 import { store } from "~/store";
 import { MediaContext } from "~/lib/contexts/Media";
 import { MemberType } from "@db/schema/enums";
@@ -16,6 +18,10 @@ import { PlayerAttrNestedSchema } from "../simulator/core/Member/types/Player/Pl
 import { MobAttrNestedSchema } from "../simulator/core/Member/types/Mob/MobAttrSchema";
 import { MemberBaseNestedSchema } from "../simulator/core/Member/MemberBaseSchema";
 import defaultData from "~/components/features/logicEditor/defaultData.json";
+import { toobox } from "./toolBoxConfig";
+import { javascriptGenerator } from "blockly/javascript";
+import { mdslGenerator } from "./generators/mdslGenerator";
+import { functionRegisterGenerator } from "./generators/functionRegisterGenerator";
 
 interface LogicEditorProps extends JSX.InputHTMLAttributes<HTMLDivElement> {
   data: unknown;
@@ -23,6 +29,11 @@ interface LogicEditorProps extends JSX.InputHTMLAttributes<HTMLDivElement> {
   memberType: MemberType;
   setData: (data: unknown) => void;
   state: unknown;
+  setCode: (code: string) => void;
+  /** MDSL definition 文本 */
+  setMdslDefinition?: (mdsl: string) => void;
+  /** 自定义函数集文本 */
+  setFunctions?: (functions: string) => void;
   // 仅展示模式：禁用所有编辑能力（无工具箱、不可拖拽/连线/删除）
   readOnly?: boolean;
 }
@@ -47,31 +58,6 @@ export function LogicEditor(props: LogicEditorProps) {
   const targetSchema = MemberBaseNestedSchema;
   // 初始化 Schema 积木生成器
   const schemaBlockGenerator = new SchemaBlockGenerator(selfSchema(), targetSchema);
-
-  // 2.管线/阶段元数据与积木注册集中入口
-  const pipelineMetasRaw = buildPlayerPipelineMetas();
-  const stageMetasRaw = buildPlayerStageMetas();
-  const parseCustomPipelines = (): CustomPipelineMeta[] => {
-    const data = props.data as any;
-    const cps = data?.customPipelines;
-    if (!Array.isArray(cps)) return [];
-    return cps
-      .filter((cp) => typeof cp?.name === "string" && Array.isArray(cp?.actions))
-      .map((cp) => ({
-        name: cp.name as string,
-        actions: cp.actions as string[],
-        category: cp.category ?? "custom",
-        desc: cp.desc,
-        displayName: cp.displayName,
-      }));
-  };
-  const blocksRegistry = createBlocksRegistry({
-    builtinPipelineMetas: pipelineMetasRaw,
-    builtinStageMetas: stageMetasRaw,
-    initialCustomPipelines: parseCustomPipelines(),
-  });
-  // 用于追踪 pipeline_definition 重命名（blockId -> pipelineName）
-  let lastPipelineNameByDefId: Record<string, string> = {};
 
   // 读取 Tailwind 类实际颜色，便于与系统主题一致
   const resolveColorFromClass = (
@@ -139,10 +125,14 @@ export function LogicEditor(props: LogicEditorProps) {
       () => {
         const div = ref();
         if (!div || !document.body.contains(div)) return;
+
+        // 注册预置函数调用块（fn_*）
+        functionCallBlockManager.registerBuiltinFunctionCallBlocks();
+
         const toolbox = {
           kind: "categoryToolbox",
           contents: [
-            ...blocksRegistry.buildToolboxCategories(),
+            ...toobox.contents,
             {
               kind: "category",
               name: "成员属性",
@@ -153,29 +143,9 @@ export function LogicEditor(props: LogicEditorProps) {
                   type: "self_attribute_get",
                   kind: "block",
                 },
-                // 自身属性百分比修改积木
-                {
-                  type: "self_attribute_percentage",
-                  kind: "block",
-                },
-                // 自身属性固定值修改积木
-                {
-                  type: "self_attribute_fixed",
-                  kind: "block",
-                },
                 // 目标属性读取积木
                 {
                   type: "target_attribute_get",
-                  kind: "block",
-                },
-                // 目标属性百分比修改积木
-                {
-                  type: "target_attribute_percentage",
-                  kind: "block",
-                },
-                // 目标属性固定值修改积木
-                {
-                  type: "target_attribute_fixed",
                   kind: "block",
                 },
               ],
@@ -207,83 +177,83 @@ export function LogicEditor(props: LogicEditorProps) {
 
         const workerSpace = inject(div, injectionOptions);
         serialization.workspaces.load(props.data ?? defaultData, workerSpace);
-        
-        // 确保存在唯一的 bt_root（系统自动管理）
-        const existingRoots = workerSpace.getBlocksByType("bt_root", false);
-        if (existingRoots.length === 0) {
-          // 创建 bt_root 块
-          const rootBlock = workerSpace.newBlock("bt_root");
-          rootBlock.initSvg();
-          rootBlock.render();
-          rootBlock.moveBy(20, 20);
-        } else if (existingRoots.length > 1) {
-          // 如果存在多个，只保留第一个，删除其他的
-          for (let i = 1; i < existingRoots.length; i++) {
-            existingRoots[i].dispose();
-          }
-        }
 
-        // 兜底：若用户/旧数据导致 action_<name> 被吸附到 bt_ 节点下，给出警告并自动断开
-        const sanitizeIllegalConnections = () => {
-          const all = workerSpace.getAllBlocks(false);
-          for (const b of all) {
-            if (!b?.type) continue;
-            if (!String(b.type).startsWith("action_")) continue;
-            const parent = b.getParent();
-            if (parent && String(parent.type).startsWith("bt_")) {
-              console.warn(
-                `[LogicEditor] action 块不允许放入行为树内，已自动断开。action=${b.type}, parent=${parent.type}`,
-              );
-              // unplug(true) 会把它从连接中拔出并保持坐标
-              b.unplug(true);
-            }
-          }
-        };
-        sanitizeIllegalConnections();
+        // 初次同步自定义函数调用块（fn_*）
+        functionCallBlockManager.syncCustomFunctionCallBlocks(workerSpace);
 
-        // 初始化：建立 pipeline_definition 的 blockId -> name 映射
-        {
-          const custom0 = collectCustomPipelines(workerSpace);
-          const m: Record<string, string> = {};
-          for (const cp of custom0) {
-            if (cp.sourceBlockId && cp.name) m[cp.sourceBlockId] = cp.name;
-          }
-          lastPipelineNameByDefId = m;
-          blocksRegistry.updateCustomPipelines(custom0);
-        }
-        
-        workerSpace.addChangeListener(() => {
-          sanitizeIllegalConnections();
-          // 仅保存 workspaceJson，不再生成 JS 代码
-          const saved = serialization.workspaces.save(workerSpace);
-          const custom = collectCustomPipelines(workerSpace);
+        // 注册 PROCEDURE_DEFS 回调：
+        // - 展示“函数定义”相关块
+        // - 同时在该分类中展示“自定义函数调用（MDSL_CALL）”块（fn_<name>），用于接到 bt_action/bt_condition
+        // 注意：回调应返回 FlyoutItemInfoArray（数组），而不是 {kind, contents} 对象
+        (workerSpace as any).registerToolboxCategoryCallback("PROCEDURE_DEFS", (workspace: any) => {
+          // 每次打开 flyout 时同步一次，保证新建/改名/改参后能出现对应调用块
+          functionCallBlockManager.syncCustomFunctionCallBlocks(workspace);
 
-          // 先更新 registry，保证 dropdown 的 options 已含最新管线名
-          blocksRegistry.updateCustomPipelines(custom);
+          const customCallBlocks = functionCallBlockManager.buildCustomFunctionToolboxContents();
 
-          // 若 pipeline_definition 被重命名，则同步更新 bt_runPipelineSync 的选择值（old -> new）
-          const currentMap: Record<string, string> = {};
-          for (const cp of custom) {
-            if (cp.sourceBlockId && cp.name) currentMap[cp.sourceBlockId] = cp.name;
-          }
-          for (const [defId, newName] of Object.entries(currentMap)) {
-            const oldName = lastPipelineNameByDefId[defId];
-            if (oldName && oldName !== newName) {
-              const all = workerSpace.getAllBlocks(false);
-              for (const b of all) {
-                if (b?.type === "bt_runPipelineSync") {
-                  const v = b.getFieldValue("pipeline");
-                  if (v === oldName) {
-                    b.setFieldValue(newName, "pipeline");
-                  }
-                }
+          return [
+            { type: "procedures_defnoreturn", kind: "block" as const },
+            { type: "procedures_defreturn", kind: "block" as const },
+            { type: "procedures_ifreturn", kind: "block" as const },
+            ...(customCallBlocks.length > 0
+              ? [
+                  { kind: "label" as const, text: "自定义函数调用" },
+                  ...customCallBlocks,
+                ]
+              : []),
+          ];
+        });
+
+        // 注册 BUILTIN_FUNCTIONS 回调：只返回内置函数调用块（fn_<name>）
+        // 注意：回调应返回 FlyoutItemInfoArray（数组），而不是 {kind, contents} 对象
+        (workerSpace as any).registerToolboxCategoryCallback("BUILTIN_FUNCTIONS", () => {
+          return functionCallBlockManager.buildBuiltinFunctionToolboxContents();
+        });
+
+        // 用于防抖的定时器
+        let syncTimeout: ReturnType<typeof setTimeout> | null = null;
+
+        workerSpace.addChangeListener((e: any) => {
+          // 检测 procedure 相关变化，同步自定义函数调用块
+          const isProcedureBlock =
+            e.blockId &&
+            (workerSpace.getBlockById(e.blockId)?.type === "procedures_defnoreturn" ||
+              workerSpace.getBlockById(e.blockId)?.type === "procedures_defreturn");
+
+          // 检测 procedure 相关事件类型
+          const isProcedureEvent =
+            e.type === "create" ||
+            e.type === "delete" ||
+            (e.type === "change" && isProcedureBlock) ||
+            e.type === "finished_loading";
+
+          if (isProcedureEvent || isProcedureBlock) {
+            // 防抖：延迟同步，避免频繁更新
+            if (syncTimeout) clearTimeout(syncTimeout);
+            syncTimeout = setTimeout(() => {
+              functionCallBlockManager.syncCustomFunctionCallBlocks(workerSpace);
+              // 刷新 toolbox（如果 Blockly 支持）
+              try {
+                (workerSpace as any).refreshToolbox?.();
+              } catch {
+                // 忽略
               }
-            }
+            }, 100);
           }
-          lastPipelineNameByDefId = currentMap;
 
-          saved.customPipelines = custom;
+          const saved = serialization.workspaces.save(workerSpace);
+          const code = javascriptGenerator.workspaceToCode(workerSpace);
+
+          // 生成 MDSL definition
+          const mdsl = mdslGenerator.workspaceToCode(workerSpace);
+          props.setMdslDefinition?.(mdsl);
+
+          // 生成自定义函数集
+          const functions = functionRegisterGenerator.workspaceToCode(workerSpace);
+          props.setFunctions?.(functions);
+
           props.setData(saved);
+          props.setCode(code);
         });
         workerSpace.scrollCenter();
       },

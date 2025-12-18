@@ -18,6 +18,48 @@ const maxMin = (min: number, value: number, max: number) => {
  * - 命中结果写回 context.lastHitResult，供状态机或后续动作使用
  */
 export const CommonActions = {
+  获取属性值: defineAction(
+    z.object({
+      attrPath: z.string().describe("属性路径"),
+    }),
+    z.object({
+      attrValue: z.number().describe("属性值"),
+    }),
+    (context, input) => {
+      logLv >= 1 && console.log(`⚔️ [${context.name}][Common] 获取属性值`);
+
+      const { attrPath } = input;
+      const attrValue = context.statContainer.getValue(attrPath);
+
+      return { attrValue };
+    },
+  ),
+
+  修改属性值: defineAction(
+    z.object({
+      attrPath: z.string(),
+      modifierType: z.enum(["Fixed", "Percentage"]),
+      attrValue: z.number(),
+    }),
+    z.object({}),
+    (context, input) => {
+      logLv >= 1 && console.log(`⚔️ [${context.name}][Common] 设置属性值`);
+
+      context.statContainer.addModifier(
+        input.attrPath,
+        input.modifierType === "Fixed" ? ModifierType.STATIC_FIXED : ModifierType.STATIC_PERCENTAGE,
+        input.attrValue,
+        {
+          id: `modify_attr_${context.currentFrame}_${createId()}`,
+          name: "modify_attr",
+          type: "system",
+        },
+      );
+
+      return {};
+    },
+  ),
+
   计算命中判定: defineAction(
     z.object({}),
     z.object({
