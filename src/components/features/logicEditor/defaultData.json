@@ -2,78 +2,89 @@
     "blocks": {
         "languageVersion": 0,
         "blocks": [
-            {
-                "type": "bt_root",
-                "id": "L*{n,hSSgc!dzHXd)ZY$",
-                "x": -543,
-                "y": -296,
-                "deletable": false,
-                "movable": false,
-                "fields": {
-                    "NAME": "skill_bt",
-                    "DESC": ""
-                },
-                "inputs": {
-                    "ROOT": {
-                        "block": {
-                            "type": "bt_sequence",
-                            "id": "Dy6X8B83y_,zN[RdhBa[",
-                            "inputs": {
-                                "CHILDREN": {
-                                    "block": {
-                                        "type": "bt_sequence",
-                                        "id": "AKJkk2xqZO$T]Lo/gHF^",
-                                        "inputs": {
-                                            "CHILDREN": {
-                                                "block": {
-                                                    "type": "bt_condition",
-                                                    "id": "U%BoKw$ev_C%5,=jq^K^",
-                                                    "next": {
-                                                        "block": {
-                                                            "type": "bt_action",
-                                                            "id": "U]KT(DToVCf2W9!{zFMl"
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        "next": {
-                                            "block": {
-                                                "type": "bt_sequence",
-                                                "id": "F$p%Fp_c[(BfCOjr7P5h",
-                                                "inputs": {
-                                                    "CHILDREN": {
-                                                        "block": {
-                                                            "type": "bt_condition",
-                                                            "id": "7O8b@L9eR8[t*{![K(Vd",
-                                                            "next": {
-                                                                "block": {
-                                                                    "type": "bt_action",
-                                                                    "id": "M#Rz9CQ:m|%r,r]`:k4`"
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+          {
+            "type": "bt_root",
+            "id": "L*{n,hSSgc!dzHXd)ZY$",
+            "x": -543,
+            "y": -296,
+            "deletable": false,
+            "movable": false,
+            "fields": {
+              "NAME": "skill_bt",
+              "DESC": ""
             },
-            {
-                "type": "mdsl_literal",
-                "id": "Y^$`2%Y-TGHk[r~R*)M/",
-                "x": -162,
-                "y": -262,
-                "fields": {
-                    "TYPE": "string",
-                    "VALUE": ""
+            "inputs": {
+              "ROOT": {
+                "block": {
+                  "type": "bt_selector",
+                  "id": "*Ev!m:T(|N0]xh,A;+ue",
+                  "inputs": {
+                    "CHILDREN": {
+                      "block": {
+                        "type": "bt_sequence",
+                        "id": "AKJkk2xqZO$T]Lo/gHF^",
+                        "inputs": {
+                          "CHILDREN": {
+                            "block": {
+                              "type": "bt_condition",
+                              "id": "U%BoKw$ev_C%5,=jq^K^",
+                              "inputs": {
+                                "FUNCTION_CALL": {
+                                  "block": {
+                                    "type": "fn_u68c0u67e5Buffu662fu5426u5b58u5728",
+                                    "id": "9?vLL]G,l`Wv]P:;#~A=",
+                                    "extraState": "<mutation functionName=\"检查Buff是否存在\" paramNames=\"[&quot;buffId&quot;]\"></mutation>",
+                                    "inputs": {
+                                      "buffId": {
+                                        "block": {
+                                          "type": "mdsl_literal",
+                                          "id": "Y^$`2%Y-TGHk[r~R*)M/",
+                                          "fields": {
+                                            "TYPE": "string",
+                                            "VALUE": "migic_cannon_charge"
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              "next": {
+                                "block": {
+                                  "type": "bt_action",
+                                  "id": "U]KT(DToVCf2W9!{zFMl"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": {
+                            "type": "bt_sequence",
+                            "id": "F$p%Fp_c[(BfCOjr7P5h",
+                            "inputs": {
+                              "CHILDREN": {
+                                "block": {
+                                  "type": "bt_condition",
+                                  "id": "7O8b@L9eR8[t*{![K(Vd",
+                                  "next": {
+                                    "block": {
+                                      "type": "bt_action",
+                                      "id": "M#Rz9CQ:m|%r,r]`:k4`"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
+              }
             }
+          }
         ]
+      }
     }
-}

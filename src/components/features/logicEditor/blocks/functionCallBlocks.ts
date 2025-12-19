@@ -237,57 +237,162 @@ export class FunctionCallBlockManager {
   }
 
   /**
-   * 同步自定义函数调用块（从 workspace 的 procedureMap）
+   * 同步自定义函数调用块（从 workspace 的 procedureMap 或直接查找 procedure 定义块）
    */
   syncCustomFunctionCallBlocks(workspace: any): void {
+    // 先刷新 procedureMap，确保新创建的 procedure 定义块已注册
+    if (typeof workspace.refreshProcedureMap === "function") {
+      workspace.refreshProcedureMap();
+    }
+
     const procedureMap = workspace.getProcedureMap();
-    const procedures = Array.from(procedureMap.values());
+    let procedures = Array.from(procedureMap.values());
     const currentBlockIds = new Set<string>();
 
-    // 为每个 procedure 创建/更新调用块
-    for (const procModel of procedures) {
-      if (!procModel) continue;
+    // 如果 procedureMap 为空，尝试直接从 workspace 中查找 procedure 定义块
+    if (procedures.length === 0) {
+      // console.log("[functionCallBlocks] procedureMap 为空，尝试直接从 workspace 查找 procedure 定义块");
+      const allBlocks = workspace.getAllBlocks(false);
+      const procedureDefs: Array<{ name: string; params: string[]; hasReturn: boolean }> = [];
 
-      const model = procModel as any;
-      if (
-        typeof model.getName !== "function" ||
-        typeof model.getParameters !== "function" ||
-        typeof model.getReturnTypes !== "function"
-      ) {
-        continue;
+      for (const block of allBlocks) {
+        if (block.type === "procedures_defnoreturn" || block.type === "procedures_defreturn") {
+          try {
+            // 从块的字段中获取 procedure 名称
+            const name = block.getFieldValue("NAME");
+            if (!name || typeof name !== "string") {
+              continue;
+            }
+
+            // 尝试从 mutation 中获取参数
+            const params: string[] = [];
+            try {
+              const mutation = (block as any).mutationToDom?.();
+              if (mutation) {
+                const paramNodes = mutation.querySelectorAll("arg");
+                for (let i = 0; i < paramNodes.length; i++) {
+                  const paramName = paramNodes[i].getAttribute("name");
+                  if (paramName) {
+                    params.push(paramName);
+                  }
+                }
+              }
+            } catch (mutationError) {
+              console.warn("[functionCallBlocks] 获取参数列表失败", mutationError);
+            }
+
+            procedureDefs.push({
+              name,
+              params,
+              hasReturn: block.type === "procedures_defreturn",
+            });
+          } catch (error) {
+            console.warn("[functionCallBlocks] 获取 procedure 信息失败", block, error);
+          }
+        }
       }
 
-      const functionName = model.getName();
-      const paramNames = model.getParameters().map((p: any) => p.getName());
-      const hasReturn = model.getReturnTypes().length > 0;
+      // console.log("[functionCallBlocks] 从 workspace 直接查找到的 procedure 定义", procedureDefs);
 
-      const blockId = makeFunctionCallBlockId(functionName);
-      currentBlockIds.add(blockId);
+      // 将找到的 procedure 定义转换为类似 procedureMap 的格式进行处理
+      for (const def of procedureDefs) {
+        if (!def.name) continue;
 
-      // 如果块不存在，创建它
-      if (!Blocks[blockId]) {
-        createCustomFunctionCallBlock(functionName, paramNames, hasReturn);
-        this.customBlockIds.add(blockId);
-      } else {
-        // 如果块已存在，检查是否需要更新（参数列表变化）
-        const existingBlock = Blocks[blockId] as any;
-        const existingParamNames = existingBlock.paramNames || [];
-        if (JSON.stringify(existingParamNames) !== JSON.stringify(paramNames)) {
-          // 参数列表变化，重新创建块（Blockly 会自动处理已存在实例的更新）
+        const functionName = def.name;
+        const paramNames = def.params;
+        const hasReturn = def.hasReturn;
+
+        // console.log("[functionCallBlocks] 处理 procedure（从 workspace 直接查找）", {
+        //   functionName,
+        //   paramNames,
+        //   hasReturn,
+        // });
+
+        const blockId = makeFunctionCallBlockId(functionName);
+        currentBlockIds.add(blockId);
+
+        // 如果块不存在，创建它
+        if (!Blocks[blockId]) {
+          // console.log("[functionCallBlocks] 创建新的自定义函数调用块", blockId);
           createCustomFunctionCallBlock(functionName, paramNames, hasReturn);
+          this.customBlockIds.add(blockId);
+        } else {
+          // 如果块已存在，检查是否需要更新（参数列表变化）
+          const existingBlock = Blocks[blockId] as any;
+          const existingParamNames = existingBlock.paramNames || [];
+          if (JSON.stringify(existingParamNames) !== JSON.stringify(paramNames)) {
+            // 参数列表变化，重新创建块（Blockly 会自动处理已存在实例的更新）
+            createCustomFunctionCallBlock(functionName, paramNames, hasReturn);
+          }
+          this.customBlockIds.add(blockId);
         }
-        this.customBlockIds.add(blockId);
+      }
+    } else {
+      // 使用 procedureMap 中的信息
+      // 为每个 procedure 创建/更新调用块
+      for (const procModel of procedures) {
+        if (!procModel) continue;
+
+        const model = procModel as any;
+        if (
+          typeof model.getName !== "function" ||
+          typeof model.getParameters !== "function" ||
+          typeof model.getReturnTypes !== "function"
+        ) {
+          continue;
+        }
+
+        const functionName = model.getName();
+        const paramNames = model.getParameters().map((p: any) => p.getName());
+        const hasReturn = model.getReturnTypes().length > 0;
+
+        // console.log("[functionCallBlocks] 处理 procedure", {
+        //   functionName,
+        //   paramNames,
+        //   hasReturn,
+        // });
+
+        const blockId = makeFunctionCallBlockId(functionName);
+        currentBlockIds.add(blockId);
+
+        // 如果块不存在，创建它
+        if (!Blocks[blockId]) {
+          // console.log("[functionCallBlocks] 创建新的自定义函数调用块", blockId);
+          createCustomFunctionCallBlock(functionName, paramNames, hasReturn);
+          this.customBlockIds.add(blockId);
+        } else {
+          // 如果块已存在，检查是否需要更新（参数列表变化）
+          const existingBlock = Blocks[blockId] as any;
+          const existingParamNames = existingBlock.paramNames || [];
+          if (JSON.stringify(existingParamNames) !== JSON.stringify(paramNames)) {
+            // 参数列表变化，重新创建块（Blockly 会自动处理已存在实例的更新）
+            createCustomFunctionCallBlock(functionName, paramNames, hasReturn);
+          }
+          this.customBlockIds.add(blockId);
+        }
       }
     }
+
+    // 调试：打印 procedureMap 信息
+    // console.log("[functionCallBlocks] 同步自定义函数调用块", {
+    //   procedureMapSize: procedureMap.size,
+    //   proceduresCount: procedures.length,
+    //   currentCustomBlockIds: Array.from(this.customBlockIds),
+    // });
 
     // 移除已删除的 procedure 对应的块
     for (const blockId of this.customBlockIds) {
       if (!currentBlockIds.has(blockId)) {
+        // console.log("[functionCallBlocks] 移除已删除的自定义函数调用块", blockId);
         // 注意：不能直接删除 Blocks[blockId]，因为可能还有实例在使用
         // 这里只从跟踪列表中移除，实际的块会在下次同步时被覆盖
         this.customBlockIds.delete(blockId);
       }
     }
+
+    // console.log("[functionCallBlocks] 同步完成", {
+    //   finalCustomBlockIds: Array.from(this.customBlockIds),
+    // });
   }
 
 
@@ -349,13 +454,24 @@ export class FunctionCallBlockManager {
   buildCustomFunctionToolboxContents(): any[] {
     const contents: any[] = [];
 
+    // console.log("[functionCallBlocks] 构建自定义函数调用块 toolbox contents", {
+    //   customBlockIds: Array.from(this.customBlockIds),
+    //   customBlockIdsSize: this.customBlockIds.size,
+    // });
+
     for (const blockId of this.customBlockIds) {
+      // 验证块是否已注册
+      if (!Blocks[blockId]) {
+        console.warn("[functionCallBlocks] 自定义函数调用块未注册", blockId);
+        continue;
+      }
       contents.push({
         type: blockId,
         kind: "block" as const,
       });
     }
 
+    // console.log("[functionCallBlocks] 返回的自定义函数调用块数量", contents.length);
     return contents;
   }
 

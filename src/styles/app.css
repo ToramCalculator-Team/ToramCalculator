@@ -6,7 +6,7 @@
 @import url(babylonjs.css);
 @import url(resourseLoadedAnimation.css);
 @import url(queryBuilder.css);
-
+@import url(mistreevousEditor.css);
 @import "tailwindcss";
 
 @layer base {

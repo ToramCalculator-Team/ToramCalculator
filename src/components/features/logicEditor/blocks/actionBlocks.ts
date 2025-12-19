@@ -320,7 +320,8 @@ export class PipelineBlockGenerator {
             } else if (p.kind === "boolean") {
               input.setCheck("Boolean");
             } else if (p.kind === "string") {
-              input.setCheck("String");
+              // 允许 String 类型或 null（任何类型），以便 Blockly 的 text 积木可以连接
+              input.setCheck(["String", null]);
             }
           }
         }
@@ -412,7 +413,8 @@ export class ActionBlockGenerator {
             } else if (p.kind === "boolean") {
               input.setCheck("Boolean");
             } else if (p.kind === "string") {
-              input.setCheck("String");
+              // 允许 String 类型或 null（任何类型），以便 Blockly 的 text 积木可以连接
+              input.setCheck(["String", null]);
             }
           }
         }
@@ -590,7 +592,7 @@ export function createScheduleActionBlock(getActionNames?: () => string[], actio
       // source: optional string
       this.appendValueInput("source")
         .appendField("来源(可选)")
-        .setCheck("String");
+        .setCheck(["String", null]);
   
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
@@ -657,7 +659,7 @@ export function createScheduleFunctionBlock() {
       // functionName: string (使用文本输入)
       this.appendValueInput("functionName")
         .appendField("函数名称")
-        .setCheck("String");
+        .setCheck(["String", null]);
       
       // params: optional json (使用文本输入，用户输入 JSON)
       this.appendValueInput("params")
@@ -667,7 +669,7 @@ export function createScheduleFunctionBlock() {
       // source: optional string
       this.appendValueInput("source")
         .appendField("来源(可选)")
-        .setCheck("String");
+        .setCheck(["String", null]);
   
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);

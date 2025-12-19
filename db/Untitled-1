@@ -1,0 +1,30 @@
+{
+    名称: string,
+    是否可捕捉: string,
+    等级: number[],
+    经验值: number,
+    元素属性: string,
+    最大生命值: number,
+    物理防御: number,
+    物理抗性: number,
+    魔法防御: number,
+    魔法抗性: number,
+    暴击抵抗: number,
+    回避: number,
+    闪躲率: number,
+    格挡率: number,
+    一般惯性变动率: number,
+    物理惯性变动率: number,
+    魔法惯性变动率: number,
+    额外说明: string,
+    所属活动: string,
+    所属地图: string[],
+    掉落物: {
+        道具名称: string,
+        道具类型: string,
+        破位情况?: {
+            部位: string,
+            奖励："可掉落" | "掉落提升"
+        }
+    }[]
+}[]

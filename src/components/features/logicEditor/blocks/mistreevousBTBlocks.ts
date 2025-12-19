@@ -19,8 +19,7 @@ Blocks["bt_root"] = {
       .appendField(new FieldTextInput(""), "DESC");
 
     this.appendStatementInput("ROOT")
-      .setCheck(BT_NODE_TYPE)
-      .appendField("根节点");
+      .setCheck(BT_NODE_TYPE);
 
     this.setColour(230);
     this.setTooltip("行为树根节点");

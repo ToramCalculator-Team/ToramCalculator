@@ -215,20 +215,29 @@ export function LogicEditor(props: LogicEditorProps) {
 
         workerSpace.addChangeListener((e: any) => {
           // 检测 procedure 相关变化，同步自定义函数调用块
+          const block = e.blockId ? workerSpace.getBlockById(e.blockId) : null;
           const isProcedureBlock =
-            e.blockId &&
-            (workerSpace.getBlockById(e.blockId)?.type === "procedures_defnoreturn" ||
-              workerSpace.getBlockById(e.blockId)?.type === "procedures_defreturn");
+            block &&
+            (block.type === "procedures_defnoreturn" ||
+              block.type === "procedures_defreturn");
 
           // 检测 procedure 相关事件类型
           const isProcedureEvent =
             e.type === "create" ||
             e.type === "delete" ||
-            (e.type === "change" && isProcedureBlock) ||
-            e.type === "finished_loading";
+            e.type === "move" ||
+            (e.type === "change" &&
+              (isProcedureBlock ||
+                e.name === "NAME" ||
+                e.name === "PARAMS" ||
+                e.name === "RETURN" ||
+                e.name === "STATEMENTS")) ||
+            e.type === "finished_loading" ||
+            (e.type === "ui" && e.element === "selected");
 
           if (isProcedureEvent || isProcedureBlock) {
             // 防抖：延迟同步，避免频繁更新
+            // 增加延迟时间，确保 procedure 完全注册到 procedureMap
             if (syncTimeout) clearTimeout(syncTimeout);
             syncTimeout = setTimeout(() => {
               functionCallBlockManager.syncCustomFunctionCallBlocks(workerSpace);
@@ -238,7 +247,7 @@ export function LogicEditor(props: LogicEditorProps) {
               } catch {
                 // 忽略
               }
-            }, 100);
+            }, 200);
           }
 
           const saved = serialization.workspaces.save(workerSpace);

@@ -4,13 +4,13 @@
   overflow: hidden;
 }
 
-.blocklyTooltipDiv,
+.blocklyToolbox,
 #blocklyDiv * {
   transition: transform 0s;
 }
 
 @media (max-width: 1024px) {
-  .blocklyToolboxDiv {
+  .blocklyToolbox {
     bottom: 4px !important;
     left: 4px !important;
     height: auto !important;
@@ -42,29 +42,53 @@
 }
 
 @media (min-width: 1025px) {
-  .blocklyToolboxDiv {
+  .blocklyToolbox {
     border-radius: 12px;
     top: 4px !important;
     left: 4px !important;
     height: calc(100% - 8px) !important;
-    width: auto !important;
+    width: 128px;
     overflow-x: auto;
   }
 }
 
-.blocklyToolboxCategory {
+/* 工具箱条目组 */
+.blocklyToolboxCategoryGroup {
   display: flex;
   flex-direction: column;
+  gap: 0px;
 }
 
-.blocklyTreeRow {
+/* 单个分组容器 */
+.blocklyToolboxCategoryContainer {
+  display: flex;
+  flex-direction: column;
   cursor: pointer;
   height: auto;
-  padding: 12px 12px 12px 0;
+  /* padding: 12px 12px 12px 0; */
 }
+
+/* 单个分组 */
+.blocklyToolboxCategory {
+  height: 48px;
+  display: flex;
+  align-items: center;
+}
+
+.blocklyToolboxCategoryIcon{
+  width: 12px;
+}
+
 
 .blocklyFlyoutScrollbar {
   display: none;
+}
+
+.blocklyToolboxFlyout {
+  border-radius: 12px;
+  top: 4px !important;
+  left: 4px !important;
+  height: calc(100% - 8px) !important;
 }
 
 .blocklyDropDownDiv,
