@@ -61,10 +61,10 @@ export default function IndexPage() {
   >([
     {
       onClick: () => {
-        navigate("logicEditor");
+        navigate("btEditor");
       },
       icon: <Icons.Outline.Box2 />,
-      name: "逻辑编辑器",
+      name: "行为树编辑器",
     },
     {
       onClick: () => {

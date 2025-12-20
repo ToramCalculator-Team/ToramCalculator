@@ -16,7 +16,6 @@ export class BtManager {
     if (this.skillBt) {
       // 如果技能行为树已完成（SUCCEEDED 或 FAILED），自动清理
       const state = this.skillBt.getState();
-      console.log(`🎮 [${this.owner.name}] 技能行为树状态: ${state}`);
       if (state === State.SUCCEEDED || state === State.FAILED) {
         console.log(`🎮 [${this.owner.name}] 技能行为树已完成 (${state})，自动清理`);
         this.skillBt = undefined;

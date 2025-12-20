@@ -1,5 +1,5 @@
 import { createSignal, onMount } from "solid-js";
-import { BtEditor } from "~/components/features/BtEditor/App";
+import { BtEditor } from "~/components/features/BtEditor/BtEditor";
 
 export default function BtEditorPage() {
   // 是否显示调试布局

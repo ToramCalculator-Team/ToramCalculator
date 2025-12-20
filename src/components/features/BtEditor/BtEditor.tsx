@@ -266,7 +266,7 @@ export const BtEditor: Component = () => {
 
         // 根据行为树生成画布元素（节点和连接线）
         elements = createCanvasElements(tree!.getTreeNodeDetails());
-        // console.log("onDefinitionChange", def); 可以在此处插入保存MDSL和Agent的逻辑
+        console.log("onDefinitionChange", def); // 可以在此处插入保存MDSL和Agent的逻辑
       } catch (error) {
         // 创建行为树实例失败
         exceptionMessage = `${error}`;
