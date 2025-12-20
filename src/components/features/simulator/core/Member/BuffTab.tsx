@@ -110,7 +110,7 @@ export default function BuffTab(props: BuffTabProps) {
                         {(effect) => (
                           <div class="text-accent-color-70 text-xs">
                             • {effect.pipelineName}
-                            {effect.afterStageName && ` → ${effect.afterStageName}`}
+                            {effect.afterActionName && ` → ${effect.afterActionName}`}
                             {effect.priority !== undefined && ` (优先级: ${effect.priority})`}
                           </div>
                         )}

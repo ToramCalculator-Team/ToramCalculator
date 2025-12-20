@@ -399,10 +399,7 @@ export default function RealtimeSimulator(props: RealtimeSimulatorProps) {
               name: fallback?.name ?? memberBasic?.name ?? "",
               campId: fallback?.campId ?? memberBasic?.campId ?? "",
               teamId: fallback?.teamId ?? memberBasic?.teamId ?? "",
-              targetId: fallback?.targetId ?? (memberBasic?.targetId ?? ""),
-              isAlive: memberBasic?.isAlive ?? fallback?.isAlive ?? true,
               position: memberBasic?.position ?? fallback?.position ?? { x: 0, y: 0, z: 0 },
-              buffs: detail.buffs ?? fallback?.buffs,
             } satisfies MemberSerializeData;
           }
 

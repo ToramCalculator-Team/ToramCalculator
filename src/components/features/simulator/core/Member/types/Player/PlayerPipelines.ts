@@ -2,15 +2,8 @@ import { z } from "zod/v4";
 import { createId } from "@paralleldrive/cuid2";
 import { defineAction, PipelineDef, ActionPool } from "../../runtime/Action/type";
 import { ModifierType, StatContainer } from "../../runtime/StatContainer/StatContainer";
-import { BuffInstance, BuffManager } from "../../runtime/Buff/BuffManager";
-import { CommonActions } from "../../runtime/Action/CommonActions";
-import type { BTManger } from "../../runtime/BehaviorTree/BTManager";
-import {
-  resolveBuffBehaviorTrees,
-  resolveSkillBuffDefs,
-  type SkillEffectLogicV1,
-} from "../../runtime/BehaviorTree/SkillEffectLogicType";
-import type { ActionContext } from "../../runtime/Action/ActionContext";
+import { CommonActions, logLv } from "../../runtime/Action/CommonActions";
+import type { RuntimeContext } from "../../runtime/Action/ActionContext";
 import type { SkillEffectWithRelations } from "@db/generated/repositories/skill_effect";
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
@@ -19,13 +12,11 @@ import { PipelineManager } from "../../runtime/Action/PipelineManager";
 import { MemberWithRelations } from "@db/generated/repositories/member";
 import GameEngine from "../../../GameEngine";
 
-const logLv = 1; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
-
 /**
  * PlayerRuntimeContext
- * Player 专用的运行时上下文，扩展 ActionContext
+ * Player 专用的运行时上下文，扩展 RuntimeContext
  */
-export interface PlayerActionContext extends ActionContext {
+export interface PlayerRuntimeContext extends RuntimeContext {
   /** 技能列表 */
   skillList: CharacterSkillWithRelations[];
   /** 技能冷却 */
@@ -50,41 +41,11 @@ export interface PlayerActionContext extends ActionContext {
   character: CharacterWithRelations;
 
   /**
-   * 预编译的技能效果逻辑缓存（effectId -> SkillEffectLogicV1）
+   * 预编译的技能效果逻辑缓存（effectId -> string）
    * - 用于把 workspaceJson 的编译从“施放时”前移到“角色创建时”
    */
-  compiledSkillEffectLogicByEffectId?: Record<string, SkillEffectLogicV1>;
+  compiledSkillEffectLogicByEffectId?: Record<string, string>;
 }
-
-// Member里需要子类传递actionContext生成器时才会用到，由于心智模型复杂，暂时没用它
-export const PlayerActionContextGenerator = (
-  buffManager: BuffManager,
-  statContainer: StatContainer<PlayerAttrType>,
-  pipelineManager: PipelineManager<PlayerActionContext, PlayerActionPool>,
-  memberData: MemberWithRelations,
-  engine: GameEngine,
-  position: { x: number; y: number; z: number },
-  targetId: string,
-) => {
-  return {
-    id: memberData.id,
-    type: memberData.type,
-    name: memberData.name,
-    engine: engine,
-    currentFrame: 0,
-    buffManager: buffManager,
-    statContainer: statContainer,
-    pipelineManager: pipelineManager,
-    position: position ?? { x: 0, y: 0, z: 0 },
-    targetId: targetId,
-    blackboard: {},
-    skillState: {},
-    buffState: {},
-    currentSkill: null,
-    currentSkillEffect: null,
-    currentSkillLogic: null,
-  };
-};
 
 // 阈值描述函数
 const maxMin = (min: number, value: number, max: number) => {
@@ -122,9 +83,9 @@ const setPathValue = (obj: any, path: string, value: any) => {
 // 注意：不再支持通过 EventQueue 延迟"执行动作组"。
 // 跨帧逻辑应由行为树（Wait/WaitForEvent）或引擎的 dispatchMemberEvent（member_fsm_event）完成。
 
-const sendRenderCommand = (context: PlayerActionContext, actionName: string, params?: Record<string, unknown>) => {
-  if (!context.engine.postRenderMessage) {
-    console.warn(`⚠️ [${context.name}] 无法获取渲染消息接口，无法发送渲染指令: ${actionName}`);
+const sendRenderCommand = (context: PlayerRuntimeContext, actionName: string, params?: Record<string, unknown>) => {
+  if (!context.owner?.engine.postRenderMessage) {
+    console.warn(`⚠️ [${context.owner?.name}] 无法获取渲染消息接口，无法发送渲染指令: ${actionName}`);
     return;
   }
   const now = Date.now();
@@ -132,14 +93,14 @@ const sendRenderCommand = (context: PlayerActionContext, actionName: string, par
     type: "render:cmd" as const,
     cmd: {
       type: "action" as const,
-      entityId: context.id,
+      entityId: context.owner?.id,
       name: actionName,
       seq: now,
       ts: now,
       params,
     },
   };
-  context.engine.postRenderMessage(renderCmd);
+  context.owner?.engine.postRenderMessage(renderCmd);
 };
 
 /**
@@ -158,463 +119,421 @@ const sendRenderCommand = (context: PlayerActionContext, actionName: string, par
 export const PlayerActionPool = {
   ...CommonActions,
 
-  添加Buff: defineAction(
+  addBuff: defineAction(
     z.object({
-      buffId: z.string(),
-      buffName: z.string(),
-      duration: z.number(),
-      variables: z.record(z.string(), z.union([z.number(), z.boolean()])).optional(),
-      effects: z.array(z.any()).optional(),
-      /** 可选：绑定的 buffTreeId（在 currentSkillLogic.trees.buffBTs 中查找） */
-      treeId: z.string().optional(),
+      id: z.string(),
+      definition: z.string(),
     }),
     z.object({}),
     (context, input) => {
-      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 添加Buff`);
-
-      const buff: BuffInstance = {
-        id: input.buffId,
-        name: input.buffName,
-        duration: input.duration,
-        startTime: Date.now(),
-        source: `skill.${context.currentSkill?.id || "unknown"}`,
-        effects: input.effects || [],
-        variables: {
-          ...(input.variables || {}),
-          initialFrame: input.variables?.initialFrame ?? context.currentFrame,
-        },
-      };
-
-      context.buffManager.addBuff(buff);
-
-      const buffDefs = resolveSkillBuffDefs(context.currentSkillLogic);
-      const def = buffDefs.find((b) => b.id === input.buffId);
-      const treeKey = input.treeId ?? def?.treeId;
-      if (treeKey) {
-        const trees = resolveBuffBehaviorTrees(context.currentSkillLogic);
-        const treeData = trees?.[treeKey];
-        if (treeData) {
-          console.log(`🎮 [${context.name}] 添加Buff行为树`, treeData);
-          context.behaviorTreeManager?.addTree(treeData, "buff", `buff:${input.buffId}`);
-        }
-      }
+      logLv >= 1 && console.log(`👤 [${context.owner?.name}][Pip] 添加Buff`);
+      context.owner?.btManager.registerBuffBt(input.id, input.definition);
       return {};
     },
   ),
 
-  移除Buff: defineAction(
+  removeBuff: defineAction(
     z.object({
-      buffId: z.string(),
+      id: z.string(),
     }),
     z.object({}),
     (context, input) => {
-      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 移除Buff`);
-      context.buffManager.removeBuff(input.buffId);
+      logLv >= 1 && console.log(`👤 [${context.owner?.name}][Pip] 移除Buff`);
+      context.owner?.btManager.unregisterBuffBt(input.id);
       return {};
     },
   ),
 
-  检查Buff是否存在: defineAction(
+  checkBuffExists: defineAction(
     z.object({
-      buffId: z.string(),
+      id: z.string(),
     }),
     z.object({ buffExists: z.boolean() }),
     (context, input) => {
-      const buffExists = context.buffManager.hasBuff(input.buffId);
+      const buffExists = context.owner?.btManager.getBuffBt(input.id) !== undefined;
       return { buffExists };
     },
   ),
 
-  获取buff计数器值: defineAction(
-    z.object({
-      buffId: z.string(),
-    }),
-    z.object({ chargeCounter: z.number() }),
-    (context, input) => {
-      const chargeCounter = context.buffManager.getVariable(input.buffId, "chargeCounter", 0);
-      return { chargeCounter };
-    },
-  ),
+  // 应用数值表达式: defineAction(
+  //   z.object({
+  //     targetPath: z.string(),
+  //     expression: z.string(),
+  //     vars: z.record(z.string(), z.any()).optional(),
+  //   }),
+  //   z.object({ newValue: z.union([z.number(), z.boolean()]).optional() }),
+  //   (context, input) => {
+  //     const { targetPath, expression, vars } = input;
+  //     // 特殊路径：buffVar.<buffId>.<varName> —— 直接读写 BuffManager.variables（UI 也从这里读）
+  //     if (targetPath.startsWith("buffVar.")) {
+  //       const [, buffId, varName] = targetPath.split(".");
+  //       if (!buffId || !varName) {
+  //         console.error(`❌ [${context.name}][Pip] 应用数值表达式失败: buffVar 路径不合法: ${targetPath}`);
+  //         return { newValue: undefined };
+  //       }
+  //       const currentValue = context.buffManager.getVariable(buffId, varName, 0);
+  //       try {
+  //         const evalCtx = {
+  //           currentFrame: context.currentFrame,
+  //           casterId: context.id,
+  //           x: currentValue,
+  //           ctx: context,
+  //           ...vars,
+  //         };
+  //         const newValue = context.engine.evaluateExpression(expression, evalCtx);
+  //         context.buffManager.setVariable(buffId, varName, newValue);
+  //         return { newValue };
+  //       } catch (error) {
+  //         console.error(`❌ [${context.name}][Pip] 应用数值表达式失败:`, error);
+  //         return { newValue: currentValue };
+  //       }
+  //     }
 
-  应用数值表达式: defineAction(
-    z.object({
-      targetPath: z.string(),
-      expression: z.string(),
-      vars: z.record(z.string(), z.any()).optional(),
-    }),
-    z.object({ newValue: z.union([z.number(), z.boolean()]).optional() }),
-    (context, input) => {
-      const { targetPath, expression, vars } = input;
-      // 特殊路径：buffVar.<buffId>.<varName> —— 直接读写 BuffManager.variables（UI 也从这里读）
-      if (targetPath.startsWith("buffVar.")) {
-        const [, buffId, varName] = targetPath.split(".");
-        if (!buffId || !varName) {
-          console.error(`❌ [${context.name}][Pip] 应用数值表达式失败: buffVar 路径不合法: ${targetPath}`);
-          return { newValue: undefined };
-        }
-        const currentValue = context.buffManager.getVariable(buffId, varName, 0);
-        try {
-          const evalCtx = {
-            currentFrame: context.currentFrame,
-            casterId: context.id,
-            x: currentValue,
-            ctx: context,
-            ...vars,
-          };
-          const newValue = context.engine.evaluateExpression(expression, evalCtx);
-          context.buffManager.setVariable(buffId, varName, newValue);
-          return { newValue };
-        } catch (error) {
-          console.error(`❌ [${context.name}][Pip] 应用数值表达式失败:`, error);
-          return { newValue: currentValue };
-        }
-      }
+  //     const currentValue = getPathValue(context, targetPath);
+  //     try {
+  //       const evalCtx = {
+  //         currentFrame: context.currentFrame,
+  //         casterId: context.id,
+  //         x: currentValue,
+  //         ctx: context,
+  //         ...vars,
+  //       };
+  //       const newValue = context.engine.evaluateExpression(expression, evalCtx);
+  //       setPathValue(context, targetPath, newValue);
+  //       return { newValue };
+  //     } catch (error) {
+  //       console.error(`❌ [${context.name}][Pip] 应用数值表达式失败:`, error);
+  //       return { newValue: currentValue };
+  //     }
+  //   },
+  // ),
 
-      const currentValue = getPathValue(context, targetPath);
-      try {
-        const evalCtx = {
-          currentFrame: context.currentFrame,
-          casterId: context.id,
-          x: currentValue,
-          ctx: context,
-          ...vars,
-        };
-        const newValue = context.engine.evaluateExpression(expression, evalCtx);
-        setPathValue(context, targetPath, newValue);
-        return { newValue };
-      } catch (error) {
-        console.error(`❌ [${context.name}][Pip] 应用数值表达式失败:`, error);
-        return { newValue: currentValue };
-      }
-    },
-  ),
+  // 技能HP消耗计算: defineAction(z.object({}), z.object({ skillHpCost: z.number() }), (context, input) => {
+  //   logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能HP消耗计算`);
+  //   const hpCostExpression = context.currentSkillEffect?.hpCost;
+  //   if (!hpCostExpression) {
+  //     throw new Error(`🎮 [${context.name}] 的当前技能效果不存在`);
+  //   }
+  //   const hpCost = context.engine.evaluateExpression(hpCostExpression, {
+  //     currentFrame: context.currentFrame,
+  //     casterId: context.id,
+  //     skillLv: context.currentSkill?.lv ?? 0,
+  //   });
+  //   return { skillHpCost: hpCost };
+  // }),
 
-  技能HP消耗计算: defineAction(z.object({}), z.object({ skillHpCost: z.number() }), (context, input) => {
-    logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能HP消耗计算`);
-    const hpCostExpression = context.currentSkillEffect?.hpCost;
-    if (!hpCostExpression) {
-      throw new Error(`🎮 [${context.name}] 的当前技能效果不存在`);
-    }
-    const hpCost = context.engine.evaluateExpression(hpCostExpression, {
-      currentFrame: context.currentFrame,
-      casterId: context.id,
-      skillLv: context.currentSkill?.lv ?? 0,
-    });
-    return { skillHpCost: hpCost };
-  }),
+  // 技能MP消耗计算: defineAction(z.object({}), z.object({ skillMpCost: z.number() }), (context, input) => {
+  //   logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能MP消耗计算`);
+  //   const mpCostExpression = context.currentSkillEffect?.mpCost;
+  //   if (!mpCostExpression) {
+  //     throw new Error(`技能效果不存在`);
+  //   }
+  //   const mpCost = context.engine.evaluateExpression(mpCostExpression, {
+  //     currentFrame: context.currentFrame,
+  //     casterId: context.id,
+  //     skillLv: context.currentSkill?.lv ?? 0,
+  //   });
+  //   return { skillMpCost: mpCost };
+  // }),
 
-  技能MP消耗计算: defineAction(z.object({}), z.object({ skillMpCost: z.number() }), (context, input) => {
-    logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能MP消耗计算`);
-    const mpCostExpression = context.currentSkillEffect?.mpCost;
-    if (!mpCostExpression) {
-      throw new Error(`技能效果不存在`);
-    }
-    const mpCost = context.engine.evaluateExpression(mpCostExpression, {
-      currentFrame: context.currentFrame,
-      casterId: context.id,
-      skillLv: context.currentSkill?.lv ?? 0,
-    });
-    return { skillMpCost: mpCost };
-  }),
+  // 技能消耗扣除: defineAction(
+  //   z.object({
+  //     skillMpCost: z.number(),
+  //     skillHpCost: z.number(),
+  //   }),
+  //   z.object({}),
+  //   (context, input) => {
+  //     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能消耗扣除`);
+  //     if (input.skillMpCost > 0) {
+  //       context.statContainer.addModifier("mp.current", ModifierType.STATIC_FIXED, -input.skillMpCost, {
+  //         id: `skill_cost_${context.currentSkill?.template?.name ?? "unknown"}_${context.currentFrame}`,
+  //         name: "skill_mp_cost",
+  //         type: "skill",
+  //       });
+  //     }
+  //     if (input.skillHpCost > 0) {
+  //       context.statContainer.addModifier("hp.current", ModifierType.STATIC_FIXED, -input.skillHpCost, {
+  //         id: `skill_cost_${context.currentSkill?.template?.name ?? "unknown"}_${context.currentFrame}`,
+  //         name: "skill_hp_cost",
+  //         type: "skill",
+  //       });
+  //     }
+  //     return {};
+  //   },
+  // ),
 
-  技能消耗扣除: defineAction(
-    z.object({
-      skillMpCost: z.number(),
-      skillHpCost: z.number(),
-    }),
-    z.object({}),
-    (context, input) => {
-      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 技能消耗扣除`);
-      if (input.skillMpCost > 0) {
-        context.statContainer.addModifier("mp.current", ModifierType.STATIC_FIXED, -input.skillMpCost, {
-          id: `skill_cost_${context.currentSkill?.template?.name ?? "unknown"}_${context.currentFrame}`,
-          name: "skill_mp_cost",
-          type: "skill",
-        });
-      }
-      if (input.skillHpCost > 0) {
-        context.statContainer.addModifier("hp.current", ModifierType.STATIC_FIXED, -input.skillHpCost, {
-          id: `skill_cost_${context.currentSkill?.template?.name ?? "unknown"}_${context.currentFrame}`,
-          name: "skill_hp_cost",
-          type: "skill",
-        });
-      }
-      return {};
-    },
-  ),
+  // 前摇帧数计算: defineAction(
+  //   z.object({}),
+  //   z.object({
+  //     currentSkillStartupFrames: z.number(),
+  //   }),
+  //   (context, input) => {
+  //     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 前摇帧数计算`);
+  //     const fixedMotionExpression = context.currentSkillEffect?.motionFixed;
+  //     const modifiedMotionExpression = context.currentSkillEffect?.motionModified;
+  //     const skill = context.currentSkill;
+  //     if (!skill || !fixedMotionExpression || !modifiedMotionExpression) {
+  //       console.error(`🎮 [${context.name}] 的当前技能不存在`);
+  //       throw new Error(`🎮 [${context.name}] 的当前技能不存在`);
+  //     }
+  //     const fixedMotion = context.engine.evaluateExpression(fixedMotionExpression, {
+  //       currentFrame: context.currentFrame,
+  //       casterId: context.id,
+  //       skillLv: skill.lv ?? 0,
+  //     });
+  //     const modifiedMotion = context.engine.evaluateExpression(modifiedMotionExpression, {
+  //       currentFrame: context.currentFrame,
+  //       casterId: context.id,
+  //       skillLv: skill.lv ?? 0,
+  //     });
+  //     const currentSkillStartupFrames = (fixedMotion + modifiedMotion * context.statContainer.getValue("mspd")) * 0.4;
+  //     console.log(`👤 [${context.name}][Pip] 前摇帧数: ${currentSkillStartupFrames}`);
+  //     return {
+  //       currentSkillStartupFrames,
+  //     };
+  //   },
+  // ),
 
-  前摇帧数计算: defineAction(
-    z.object({}),
-    z.object({
-      currentSkillStartupFrames: z.number(),
-    }),
-    (context, input) => {
-      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 前摇帧数计算`);
-      const fixedMotionExpression = context.currentSkillEffect?.motionFixed;
-      const modifiedMotionExpression = context.currentSkillEffect?.motionModified;
-      const skill = context.currentSkill;
-      if (!skill || !fixedMotionExpression || !modifiedMotionExpression) {
-        console.error(`🎮 [${context.name}] 的当前技能不存在`);
-        throw new Error(`🎮 [${context.name}] 的当前技能不存在`);
-      }
-      const fixedMotion = context.engine.evaluateExpression(fixedMotionExpression, {
-        currentFrame: context.currentFrame,
-        casterId: context.id,
-        skillLv: skill.lv ?? 0,
-      });
-      const modifiedMotion = context.engine.evaluateExpression(modifiedMotionExpression, {
-        currentFrame: context.currentFrame,
-        casterId: context.id,
-        skillLv: skill.lv ?? 0,
-      });
-      const currentSkillStartupFrames = (fixedMotion + modifiedMotion * context.statContainer.getValue("mspd")) * 0.4;
-      console.log(`👤 [${context.name}][Pip] 前摇帧数: ${currentSkillStartupFrames}`);
-      return {
-        currentSkillStartupFrames,
-      };
-    },
-  ),
+  // 启动前摇动画: defineAction(z.object({}), z.object({}), (context) => {
+  //   logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动前摇动画`);
+  //   sendRenderCommand(context, "startup");
+  //   return {};
+  // }),
 
-  启动前摇动画: defineAction(z.object({}), z.object({}), (context) => {
-    logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动前摇动画`);
-    sendRenderCommand(context, "startup");
-    return {};
-  }),
+  // 调度前摇结束事件: defineAction(
+  //   z.object({
+  //     startupFrames: z.number().optional(),
+  //   }),
+  //   z.object({}),
+  //   (context, input) => {
+  //     const delay = Math.max(1, Math.round(input.startupFrames ?? (context as any).startupFrames ?? 0));
+  //     context.engine.dispatchMemberEvent(
+  //       context.id,
+  //       "收到前摇结束通知",
+  //       {},
+  //       delay,
+  //       context.currentSkill?.id ?? "unknown_skill",
+  //       { source: "actionGroup.event.startup" },
+  //     );
+  //     return {};
+  //   },
+  // ),
 
-  调度前摇结束事件: defineAction(
-    z.object({
-      startupFrames: z.number().optional(),
-    }),
-    z.object({}),
-    (context, input) => {
-      const delay = Math.max(1, Math.round(input.startupFrames ?? (context as any).startupFrames ?? 0));
-      context.engine.dispatchMemberEvent(
-        context.id,
-        "收到前摇结束通知",
-        {},
-        delay,
-        context.currentSkill?.id ?? "unknown_skill",
-        { source: "actionGroup.event.startup" },
-      );
-      return {};
-    },
-  ),
+  // 蓄力帧数计算: defineAction(z.object({}), z.object({ currentSkillChargingFrames: z.number() }), (context, input) => {
+  //   logLv >= 1 && console.log(`👤 [${context.name}][Pip] 蓄力帧数计算`);
+  //   const mspd = context.statContainer.getValue("mspd");
+  //   const reservoirFixedExpression = context.currentSkillEffect?.reservoirFixed;
+  //   const reservoirModifiedExpression = context.currentSkillEffect?.reservoirModified;
+  //   if (!reservoirFixedExpression || !reservoirModifiedExpression) {
+  //     console.error(`🎮 [${context.name}] 的当前技能不存在`);
+  //     throw new Error(`🎮 [${context.name}] 的当前技能不存在`);
+  //   }
+  //   const reservoirFixed = context.engine.evaluateExpression(reservoirFixedExpression, {
+  //     currentFrame: context.currentFrame,
+  //     casterId: context.id,
+  //   });
+  //   const reservoirModified = context.engine.evaluateExpression(reservoirModifiedExpression, {
+  //     currentFrame: context.currentFrame,
+  //     casterId: context.id,
+  //   });
+  //   const currentSkillChargingFrames = reservoirFixed + reservoirModified * mspd;
+  //   console.log(`👤 [${context.name}][Pip] 蓄力帧数: ${currentSkillChargingFrames}`);
+  //   return { currentSkillChargingFrames };
+  // }),
 
-  蓄力帧数计算: defineAction(z.object({}), z.object({ currentSkillChargingFrames: z.number() }), (context, input) => {
-    logLv >= 1 && console.log(`👤 [${context.name}][Pip] 蓄力帧数计算`);
-    const mspd = context.statContainer.getValue("mspd");
-    const reservoirFixedExpression = context.currentSkillEffect?.reservoirFixed;
-    const reservoirModifiedExpression = context.currentSkillEffect?.reservoirModified;
-    if (!reservoirFixedExpression || !reservoirModifiedExpression) {
-      console.error(`🎮 [${context.name}] 的当前技能不存在`);
-      throw new Error(`🎮 [${context.name}] 的当前技能不存在`);
-    }
-    const reservoirFixed = context.engine.evaluateExpression(reservoirFixedExpression, {
-      currentFrame: context.currentFrame,
-      casterId: context.id,
-    });
-    const reservoirModified = context.engine.evaluateExpression(reservoirModifiedExpression, {
-      currentFrame: context.currentFrame,
-      casterId: context.id,
-    });
-    const currentSkillChargingFrames = reservoirFixed + reservoirModified * mspd;
-    console.log(`👤 [${context.name}][Pip] 蓄力帧数: ${currentSkillChargingFrames}`);
-    return { currentSkillChargingFrames };
-  }),
+  // 启动蓄力动画: defineAction(z.object({}), z.object({}), (context) => {
+  //   logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动蓄力动画`);
+  //   sendRenderCommand(context, "charging");
+  //   return {};
+  // }),
 
-  启动蓄力动画: defineAction(z.object({}), z.object({}), (context) => {
-    logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动蓄力动画`);
-    sendRenderCommand(context, "charging");
-    return {};
-  }),
+  // 调度蓄力结束事件: defineAction(
+  //   z.object({
+  //     chargeFrames: z.number().optional(),
+  //   }),
+  //   z.object({}),
+  //   (context, input) => {
+  //     const delay = Math.max(1, Math.round(input.chargeFrames ?? (context as any).chargeFrames ?? 0));
+  //     context.engine.dispatchMemberEvent(
+  //       context.id,
+  //       "收到蓄力结束通知",
+  //       {},
+  //       delay,
+  //       context.currentSkill?.id ?? "unknown_skill",
+  //       { source: "actionGroup.event.charging" },
+  //     );
+  //     return {};
+  //   },
+  // ),
 
-  调度蓄力结束事件: defineAction(
-    z.object({
-      chargeFrames: z.number().optional(),
-    }),
-    z.object({}),
-    (context, input) => {
-      const delay = Math.max(1, Math.round(input.chargeFrames ?? (context as any).chargeFrames ?? 0));
-      context.engine.dispatchMemberEvent(
-        context.id,
-        "收到蓄力结束通知",
-        {},
-        delay,
-        context.currentSkill?.id ?? "unknown_skill",
-        { source: "actionGroup.event.charging" },
-      );
-      return {};
-    },
-  ),
+  // 咏唱帧数计算: defineAction(z.object({}), z.object({ currentSkillChantingFrames: z.number() }), (context, input) => {
+  //   logLv >= 1 && console.log(`👤 [${context.name}][Pip] 咏唱帧数计算`);
+  //   const cspd = context.statContainer.getValue("cspd");
+  //   if (!cspd) {
+  //     throw new Error(`🎮 [${context.name}] 的咏唱速度不存在`);
+  //   }
+  //   const chantingFixedExpression = context.currentSkillEffect?.chantingFixed;
+  //   const chantingModifiedExpression = context.currentSkillEffect?.chantingModified;
+  //   if (!chantingFixedExpression || !chantingModifiedExpression) {
+  //     console.error(`🎮 [${context.name}] 的当前技能不存在`);
+  //     throw new Error(`🎮 [${context.name}] 的当前技能不存在`);
+  //   }
+  //   const chantingFixed = context.engine.evaluateExpression(chantingFixedExpression, {
+  //     currentFrame: context.currentFrame,
+  //     casterId: context.id,
+  //   });
+  //   const chantingModified = context.engine.evaluateExpression(chantingModifiedExpression, {
+  //     currentFrame: context.currentFrame,
+  //     casterId: context.id,
+  //   });
+  //   const currentSkillChantingFrames = chantingFixed + chantingModified * cspd;
+  //   console.log(`👤 [${context.name}][Pip] 咏唱帧数: ${currentSkillChantingFrames}`);
+  //   return { currentSkillChantingFrames };
+  // }),
 
-  咏唱帧数计算: defineAction(z.object({}), z.object({ currentSkillChantingFrames: z.number() }), (context, input) => {
-    logLv >= 1 && console.log(`👤 [${context.name}][Pip] 咏唱帧数计算`);
-    const cspd = context.statContainer.getValue("cspd");
-    if (!cspd) {
-      throw new Error(`🎮 [${context.name}] 的咏唱速度不存在`);
-    }
-    const chantingFixedExpression = context.currentSkillEffect?.chantingFixed;
-    const chantingModifiedExpression = context.currentSkillEffect?.chantingModified;
-    if (!chantingFixedExpression || !chantingModifiedExpression) {
-      console.error(`🎮 [${context.name}] 的当前技能不存在`);
-      throw new Error(`🎮 [${context.name}] 的当前技能不存在`);
-    }
-    const chantingFixed = context.engine.evaluateExpression(chantingFixedExpression, {
-      currentFrame: context.currentFrame,
-      casterId: context.id,
-    });
-    const chantingModified = context.engine.evaluateExpression(chantingModifiedExpression, {
-      currentFrame: context.currentFrame,
-      casterId: context.id,
-    });
-    const currentSkillChantingFrames = chantingFixed + chantingModified * cspd;
-    console.log(`👤 [${context.name}][Pip] 咏唱帧数: ${currentSkillChantingFrames}`);
-    return { currentSkillChantingFrames };
-  }),
+  // 启动咏唱动画: defineAction(z.object({}), z.object({}), (context) => {
+  //   logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动咏唱动画`);
+  //   sendRenderCommand(context, "chanting");
+  //   return {};
+  // }),
 
-  启动咏唱动画: defineAction(z.object({}), z.object({}), (context) => {
-    logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动咏唱动画`);
-    sendRenderCommand(context, "chanting");
-    return {};
-  }),
+  // 调度咏唱结束事件: defineAction(
+  //   z.object({
+  //     chantingFrames: z.number().optional(),
+  //   }),
+  //   z.object({}),
+  //   (context, input) => {
+  //     const delay = Math.max(1, Math.round(input.chantingFrames ?? (context as any).chantingFrames ?? 0));
+  //     context.engine.dispatchMemberEvent(
+  //       context.id,
+  //       "收到咏唱结束事件",
+  //       {},
+  //       delay,
+  //       context.currentSkill?.id ?? "unknown_skill",
+  //       { source: "actionGroup.event.chanting" },
+  //     );
+  //     return {};
+  //   },
+  // ),
 
-  调度咏唱结束事件: defineAction(
-    z.object({
-      chantingFrames: z.number().optional(),
-    }),
-    z.object({}),
-    (context, input) => {
-      const delay = Math.max(1, Math.round(input.chantingFrames ?? (context as any).chantingFrames ?? 0));
-      context.engine.dispatchMemberEvent(
-        context.id,
-        "收到咏唱结束事件",
-        {},
-        delay,
-        context.currentSkill?.id ?? "unknown_skill",
-        { source: "actionGroup.event.chanting" },
-      );
-      return {};
-    },
-  ),
+  // 发动帧数计算: defineAction(z.object({}), z.object({ currentSkillActionFrames: z.number() }), (context, input) => {
+  //   logLv >= 1 && console.log(`👤 [${context.name}][Pip] 发动帧数计算`);
+  //   const fixedMotionExpression = context.currentSkillEffect?.motionFixed;
+  //   const modifiedMotionExpression = context.currentSkillEffect?.motionModified;
+  //   const skill = context.currentSkill;
+  //   if (!skill || !fixedMotionExpression || !modifiedMotionExpression) {
+  //     console.error(`🎮 [${context.name}] 的当前技能不存在`);
+  //     throw new Error(`🎮 [${context.name}] 的当前技能不存在`);
+  //   }
+  //   const fixedMotion = context.engine.evaluateExpression(fixedMotionExpression, {
+  //     currentFrame: context.currentFrame,
+  //     casterId: context.id,
+  //     skillLv: skill.lv ?? 0,
+  //   });
+  //   const modifiedMotion = context.engine.evaluateExpression(modifiedMotionExpression, {
+  //     currentFrame: context.currentFrame,
+  //     casterId: context.id,
+  //     skillLv: skill.lv ?? 0,
+  //   });
+  //   // 前摇0.4比例，后摇0.6比例
+  //   const currentSkillActionFrames = (fixedMotion + modifiedMotion * context.statContainer.getValue("mspd")) * 0.6;
+  //   console.log(`👤 [${context.name}][Pip] 发动帧数: ${currentSkillActionFrames}`);
+  //   return { currentSkillActionFrames };
+  // }),
 
-  发动帧数计算: defineAction(z.object({}), z.object({ currentSkillActionFrames: z.number() }), (context, input) => {
-    logLv >= 1 && console.log(`👤 [${context.name}][Pip] 发动帧数计算`);
-    const fixedMotionExpression = context.currentSkillEffect?.motionFixed;
-    const modifiedMotionExpression = context.currentSkillEffect?.motionModified;
-    const skill = context.currentSkill;
-    if (!skill || !fixedMotionExpression || !modifiedMotionExpression) {
-      console.error(`🎮 [${context.name}] 的当前技能不存在`);
-      throw new Error(`🎮 [${context.name}] 的当前技能不存在`);
-    }
-    const fixedMotion = context.engine.evaluateExpression(fixedMotionExpression, {
-      currentFrame: context.currentFrame,
-      casterId: context.id,
-      skillLv: skill.lv ?? 0,
-    });
-    const modifiedMotion = context.engine.evaluateExpression(modifiedMotionExpression, {
-      currentFrame: context.currentFrame,
-      casterId: context.id,
-      skillLv: skill.lv ?? 0,
-    });
-    // 前摇0.4比例，后摇0.6比例
-    const currentSkillActionFrames = (fixedMotion + modifiedMotion * context.statContainer.getValue("mspd")) * 0.6;
-    console.log(`👤 [${context.name}][Pip] 发动帧数: ${currentSkillActionFrames}`);
-    return { currentSkillActionFrames };
-  }),
+  // 启动发动动画: defineAction(z.object({}), z.object({}), (context) => {
+  //   logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动发动动画`);
+  //   sendRenderCommand(context, "action");
+  //   return {};
+  // }),
 
-  启动发动动画: defineAction(z.object({}), z.object({}), (context) => {
-    logLv >= 1 && console.log(`👤 [${context.name}][Pip] 启动发动动画`);
-    sendRenderCommand(context, "action");
-    return {};
-  }),
+  // 调度发动结束事件: defineAction(
+  //   z.object({
+  //     actionFrames: z.number().optional(),
+  //   }),
+  //   z.object({}),
+  //   (context, input) => {
+  //     const delay = Math.max(1, Math.round(input.actionFrames ?? (context as any).actionFrames ?? 0));
+  //     context.engine.dispatchMemberEvent(
+  //       context.id,
+  //       "收到发动结束通知",
+  //       {},
+  //       delay,
+  //       context.currentSkill?.id ?? "unknown_skill",
+  //       { source: "actionGroup.event.action" },
+  //     );
+  //     return {};
+  //   },
+  // ),
 
-  调度发动结束事件: defineAction(
-    z.object({
-      actionFrames: z.number().optional(),
-    }),
-    z.object({}),
-    (context, input) => {
-      const delay = Math.max(1, Math.round(input.actionFrames ?? (context as any).actionFrames ?? 0));
-      context.engine.dispatchMemberEvent(
-        context.id,
-        "收到发动结束通知",
-        {},
-        delay,
-        context.currentSkill?.id ?? "unknown_skill",
-        { source: "actionGroup.event.action" },
-      );
-      return {};
-    },
-  ),
-
-  应用当前技能效果: defineAction(z.object({}), z.object({}), (context) => {
-    logLv >= 1 && console.log(`👤 [${context.name}][Pip] 应用当前技能效果 (占位)`);
-    // TODO: 在正式实现时，调用具体的技能效果终端管线
-    return {};
-  }),
+  // 应用当前技能效果: defineAction(z.object({}), z.object({}), (context) => {
+  //   logLv >= 1 && console.log(`👤 [${context.name}][Pip] 应用当前技能效果 (占位)`);
+  //   // TODO: 在正式实现时，调用具体的技能效果终端管线
+  //   return {};
+  // }),
 
   // ============ 伤害相关阶段（施法者侧）============
-  对目标造成伤害: defineAction(
-    z.object({
-      damageFormula: z.string(),
-      extraVars: z.record(z.string(), z.any()).optional(),
-    }),
-    z.object({}),
-    (context, input) => {
-      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 对目标造成伤害`);
+  // 对目标造成伤害: defineAction(
+  //   z.object({
+  //     damageFormula: z.string(),
+  //     extraVars: z.record(z.string(), z.any()).optional(),
+  //   }),
+  //   z.object({}),
+  //   (context, input) => {
+  //     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 对目标造成伤害`);
 
-      const sourceId = context.id;
-      const targetId = context.targetId;
-      if (!targetId) {
-        throw new Error(`🎮 [${context.name}] 当前没有目标，无法构造伤害请求`);
-      }
+  //     const sourceId = context.id;
+  //     const targetId = context.targetId;
+  //     if (!targetId) {
+  //       throw new Error(`🎮 [${context.name}] 当前没有目标，无法构造伤害请求`);
+  //     }
 
-      const skillId = context.currentSkill?.id ?? "unknown_skill";
+  //     const skillId = context.currentSkill?.id ?? "unknown_skill";
 
-      // 获取施法者快照（可选，用于调试或后续扩展）
-      const sourceSnapshot = context.engine.getMemberData(sourceId);
+  //     // 获取施法者快照（可选，用于调试或后续扩展）
+  //     const sourceSnapshot = context.engine.getMemberData(sourceId);
 
-      // TODO: 根据技能/武器类型区分物理与魔法，这里暂时默认物理伤害
-      const damageType = "physical" as const;
-      const canBeDodged = damageType === "physical";
-      const canBeGuarded = true;
+  //     // TODO: 根据技能/武器类型区分物理与魔法，这里暂时默认物理伤害
+  //     const damageType = "physical" as const;
+  //     const canBeDodged = damageType === "physical";
+  //     const canBeGuarded = true;
 
-      const damageRequest = {
-        sourceId,
-        targetId,
-        skillId,
-        damageType,
-        canBeDodged,
-        canBeGuarded,
-        damageFormula: input.damageFormula,
-        extraVars: input.extraVars,
-        sourceSnapshot,
-      };
+  //     const damageRequest = {
+  //       sourceId,
+  //       targetId,
+  //       skillId,
+  //       damageType,
+  //       canBeDodged,
+  //       canBeGuarded,
+  //       damageFormula: input.damageFormula,
+  //       extraVars: input.extraVars,
+  //       sourceSnapshot,
+  //     };
 
-      logLv >= 1 && console.log(`👤 [${context.name}][Pip] 构造伤害请求:`, damageRequest);
+  //     logLv >= 1 && console.log(`👤 [${context.name}][Pip] 构造伤害请求:`, damageRequest);
 
-      const memberManager = context.engine.getMemberManager();
-      const targetMember = memberManager.getMember(targetId);
+  //     const memberManager = context.engine.getMemberManager();
+  //     const targetMember = memberManager.getMember(targetId);
 
-      if (!targetMember) {
-        console.warn(`⚠️ [${context.name}][Pip] 找不到目标成员 ${targetId}，无法发送伤害事件`);
-        return {};
-      }
+  //     if (!targetMember) {
+  //       console.warn(`⚠️ [${context.name}][Pip] 找不到目标成员 ${targetId}，无法发送伤害事件`);
+  //       return {};
+  //     }
 
-      // 即时事件：直接发送到目标 Actor，而不是通过 EventQueue / dispatchMemberEvent
-      targetMember.actor.send({
-        type: "受到攻击",
-        data: {
-          origin: sourceId,
-          skillId,
-          damageRequest,
-        },
-      });
+  //     // 即时事件：直接发送到目标 Actor，而不是通过 EventQueue / dispatchMemberEvent
+  //     targetMember.actor.send({
+  //       type: "受到攻击",
+  //       data: {
+  //         origin: sourceId,
+  //         skillId,
+  //         damageRequest,
+  //       },
+  //     });
 
-      return {};
-    },
-  ),
-} as const satisfies ActionPool<PlayerActionContext>;
+  //     return {};
+  //   },
+  // ),
+} as const satisfies ActionPool<PlayerRuntimeContext>;
 
 export type PlayerActionPool = typeof PlayerActionPool;
 

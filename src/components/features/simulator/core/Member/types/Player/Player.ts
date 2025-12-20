@@ -5,15 +5,11 @@ import { PlayerStateContext, playerStateMachine, PlayerEventType } from "./Playe
 import GameEngine from "../../../GameEngine";
 import { PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
 import { ExtractAttrPaths, NestedSchema } from "../../runtime/StatContainer/SchemaTypes";
-import { PlayerActionPool, type PlayerActionContext } from "./PlayerPipelines";
-import { BTManger } from "../../runtime/BehaviorTree/BTManager";
-import { PipelineManager } from "../../runtime/Action/PipelineManager";
-import { BuffManager } from "../../runtime/Buff/BuffManager";
+import { PlayerActionPool, type PlayerRuntimeContext } from "./PlayerPipelines";
 import { StatContainer } from "../../runtime/StatContainer/StatContainer";
-import { compileWorkspaceJsonWithCache } from "../../runtime/SkillEffect/compileCache";
-import type { SkillEffectLogicV1 } from "../../runtime/BehaviorTree/SkillEffectLogicType";
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import { PlayerWithRelations } from "@db/generated/repositories/player";
+import { BtManager } from "../../runtime/BehaviourTree/BtManager";
 
 export type PlayerAttrType = ExtractAttrPaths<ReturnType<typeof PlayerAttrSchemaGenerator>>;
 
@@ -21,11 +17,8 @@ export class Player extends Member<
   PlayerAttrType,
   PlayerEventType,
   PlayerStateContext,
-  PlayerActionContext,
-  PlayerActionPool
+  PlayerRuntimeContext
   > {
-  
-  player: PlayerWithRelations;
   characterIndex: number;
   activeCharacter: CharacterWithRelations;
   
@@ -35,7 +28,6 @@ export class Player extends Member<
     campId: string,
     teamId: string,
     characterIndex: number,
-    targetId: string,
     position?: { x: number; y: number; z: number },
   ) {
     if (!memberData.player) {
@@ -46,20 +38,13 @@ export class Player extends Member<
     }
     const attrSchema = PlayerAttrSchemaGenerator(memberData.player.characters[characterIndex]);
     const statContainer = new StatContainer<PlayerAttrType>(attrSchema);
-    const pipelineManager = new PipelineManager<PlayerActionContext, PlayerActionPool>(PlayerActionPool);
-    const buffManager = new BuffManager(statContainer, pipelineManager, engine, memberData.id);
     const initialSkillList = memberData.player.characters[characterIndex].skills ?? [];
-    const actionContext: PlayerActionContext = {
-      id: memberData.id,
-      type: memberData.type,
-      name: memberData.name,
-      engine: engine,
+
+    const runtimeContext: PlayerRuntimeContext = {
+      owner: undefined,
       currentFrame: 0,
-      buffManager: buffManager,
-      statContainer: statContainer,
-      pipelineManager: pipelineManager,
       position: position ?? { x: 0, y: 0, z: 0 },
-      targetId: targetId,
+      targetId: "",
       blackboard: {},
       skillState: {},
       buffState: {},
@@ -81,27 +66,22 @@ export class Player extends Member<
       character: memberData.player.characters[characterIndex],
       compiledSkillEffectLogicByEffectId: {},
     };
-    const behaviorTreeManager = new BTManger<PlayerActionContext>(actionContext);
-    // 将 behaviorTreeManager 赋值给 actionContext，供后续使用
-    actionContext.behaviorTreeManager = behaviorTreeManager;
 
     super(
       playerStateMachine,
       engine,
       campId,
       teamId,
-      targetId,
       memberData,
       attrSchema,
-      {
-        statContainer: statContainer,
-        actionContext: actionContext,
-        pipelineManager: pipelineManager,
-        buffManager: buffManager,
-        behaviorTreeManager: behaviorTreeManager,
-      },
+      statContainer,
+      runtimeContext,
       position,
     );
+    
+    this.characterIndex = characterIndex;
+    this.activeCharacter = memberData.player.characters?.[characterIndex];
+
     // 通过引擎消息通道发送渲染命令（走 Simulation.worker 的 MessageChannel）
     const spawnCmd = {
       type: "render:cmd" as const,
@@ -124,45 +104,12 @@ export class Player extends Member<
       // 这确保我们只使用正确的通信通道，避免依赖全局变量
       console.error(`👤 [${this.name}] 无法发送渲染指令：引擎渲染消息接口不可用`);
     }
-    
-    this.player = memberData.player;
-    this.characterIndex = characterIndex;
-    this.activeCharacter = memberData.player.characters?.[characterIndex];
 
     // Player特有的被动技能初始化
     this.initializePassiveSkills(memberData);
 
     // 应用战前修饰器
     applyPrebattleModifiers(this.statContainer, memberData);
-
-    // 预编译：在角色创建时编译其技能效果 logic（workspaceJson -> SkillEffectLogicV1）
-    // 施放时优先从 compiledSkillEffectLogicByEffectId 读取，避免每次施放编译。
-    this.precompileSkillEffects(actionContext);
-  }
-
-  private precompileSkillEffects(actionContext: PlayerActionContext): void {
-    const cache = (actionContext.compiledSkillEffectLogicByEffectId ??= {});
-    const skills: any[] = Array.isArray(actionContext.skillList) ? actionContext.skillList : [];
-
-    for (const s of skills) {
-      const tpl = s?.template;
-      const effects: any[] = Array.isArray(tpl?.effects) ? tpl.effects : [];
-      for (const effect of effects) {
-        const effectId = String(effect?.id ?? "");
-        if (!effectId || cache[effectId]) continue;
-
-        const logic = effect?.logic;
-        // workspaceJson 的特征：包含 blocks 字段
-        if (logic && typeof logic === "object" && "blocks" in logic) {
-          const res = compileWorkspaceJsonWithCache(logic);
-          if (res.logic) {
-            cache[effectId] = res.logic as SkillEffectLogicV1;
-          } else if (res.errors?.length) {
-            console.error(`❌ [${actionContext.name}] 预编译技能效果失败 effect=${effectId}`, res.errors);
-          }
-        }
-      }
-    }
   }
 
   /**

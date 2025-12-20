@@ -1,11 +1,9 @@
 import { assign, EventObject, setup, sendTo, raise } from "xstate";
 import { MemberEventType } from "../../runtime/StateMachine/types";
 import { Player, PlayerAttrType } from "./Player";
-import { resolvePipelineOverrides, resolveSkillBehaviorTree } from "../../runtime/BehaviorTree/SkillEffectLogicType";
 import type { MemberStateContext, MemberStateMachine } from "../../runtime/StateMachine/types";
-import { testSkillEffect } from "../../runtime/BehaviorTree/testSkill";
-import { compileWorkspaceJsonWithCache } from "../../runtime/SkillEffect/compileCache";
-import type { SkillEffectLogicV1 } from "../../runtime/BehaviorTree/SkillEffectLogicType";
+import { State } from "mistreevous";
+import { defaultBt } from "../../runtime/BehaviourTree/defaultBt";
 
 /**
  * Player特有的事件类型
@@ -156,7 +154,7 @@ export interface PlayerStateContext extends MemberStateContext {}
 
 export const playerStateMachine = (player: Player): MemberStateMachine<PlayerEventType, PlayerStateContext> => {
   const machineId = player.id;
-  const actionContext = player.actionContext;
+  const runtimeContext = player.runtimeContext;
 
   const machine = setup({
     types: {
@@ -166,7 +164,7 @@ export const playerStateMachine = (player: Player): MemberStateMachine<PlayerEve
     },
     actions: {
       根据角色配置生成初始状态: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 根据角色配置生成初始状态`, context);
+        console.log(`👤 [${context.owner?.name}] 根据角色配置生成初始状态`, context);
       },
       更新玩家状态: assign({
         currentFrame: ({ context }) => context.currentFrame + 1,
@@ -174,152 +172,136 @@ export const playerStateMachine = (player: Player): MemberStateMachine<PlayerEve
       启用站立动画: function ({ context, event }) {
         // Add your action code here
         // ...
-        console.log(`👤 [${context.name}] 启用站立动画`, event);
+        console.log(`👤 [${context.owner?.name}] 启用站立动画`, event);
       },
       启用移动动画: function ({ context, event }) {
         // Add your action code here
         // ...
-        console.log(`👤 [${context.name}] 启用移动动画`, event);
+        console.log(`👤 [${context.owner?.name}] 启用移动动画`, event);
       },
       显示警告: function ({ context, event }) {
         // Add your action code here
         // ...
-        console.log(`👤 [${context.name}] 显示警告`, event);
+        console.log(`👤 [${context.owner?.name}] 显示警告`, event);
       },
       创建警告结束通知: function ({ context, event }) {
         // Add your action code here
         // ...
-        console.log(`👤 [${context.name}] 创建警告结束通知`, event);
+        console.log(`👤 [${context.owner?.name}] 创建警告结束通知`, event);
       },
       添加待处理技能: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 添加待处理技能`, event);
+        console.log(`👤 [${context.owner?.name}] 添加待处理技能`, event);
         const e = event as 使用技能;
         const skillId = e.data.skillId;
         const skill = player.activeCharacter.skills?.find((s) => s.id === skillId);
         if (!skill) {
-          console.error(`🎮 [${context.name}] 的当前技能不存在`);
+          console.error(`🎮 [${context.owner?.name}] 的当前技能不存在`);
         }
-        actionContext.currentSkill = skill;
+        runtimeContext.currentSkill = skill;
       },
       清空待处理技能: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 清空待处理技能`, event);
-        actionContext.currentSkill = null;
+        console.log(`👤 [${context.owner?.name}] 清空待处理技能`, event);
+        runtimeContext.currentSkill = null;
         // 清理技能级管线覆盖，避免影响后续技能
-        player.pipelineManager?.clearSkillOverrides?.();
-        if (actionContext.currentSkillTreeId) {
-          actionContext.behaviorTreeManager?.removeTree(actionContext.currentSkillTreeId);
-          actionContext.currentSkillTreeId = "unknown_skill";
+        // player.pipelineManager?.clearSkillOverrides?.();
+        if (runtimeContext.currentSkillTreeId) {
+          player.btManager.unregisterSkillBt();
+          runtimeContext.currentSkillTreeId = "unknown_skill";
         }
       },
       清理行为树: function ({ context }) {
-        actionContext.behaviorTreeManager?.clear();
+        player.btManager.clear();
       },
       添加待处理技能效果: function ({ context, event }) {
-        const skillEffect = actionContext.currentSkill?.template?.effects.find((e) =>
-          actionContext.engine.evaluateExpression(e.condition, {
-            currentFrame: actionContext.currentFrame,
-            casterId: actionContext.id,
-            skillLv: actionContext.currentSkill?.lv ?? 0,
+        const skillEffect = runtimeContext.currentSkill?.template?.effects.find((e) =>
+          player.engine.evaluateExpression(e.condition, {
+            currentFrame: runtimeContext.currentFrame,
+            casterId: player.id,
+            skillLv: runtimeContext.currentSkill?.lv ?? 0,
           }),
         );
-        console.log(`👤 [${context.name}] 添加待处理技能效果`, skillEffect);
-        actionContext.currentSkillEffect = skillEffect;
+        console.log(`👤 [${context.owner?.name}] 添加待处理技能效果`, skillEffect);
+        runtimeContext.currentSkillEffect = skillEffect;
       },
       执行技能: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 执行技能`, actionContext.currentSkill?.template?.name);
+        console.log(`👤 [${context.owner?.name}] 执行技能`, runtimeContext.currentSkill?.template?.name);
 
-        const skillEffect = actionContext.currentSkillEffect;
+        const skillEffect = runtimeContext.currentSkillEffect;
         if (!skillEffect) {
-          console.error(`🎮 [${context.name}] 当前技能效果不存在`);
-          sendTo(context.id, { type: "技能执行完成" });
+          console.error(`🎮 [${context.owner?.name}] 当前技能效果不存在`);
+          player.actor.send({ type: "技能执行完成" });
           return;
         }
 
-        let logic: SkillEffectLogicV1 | null = null;
-
-        // 1) 优先使用“角色创建时预编译”的缓存
-        const precompiled = actionContext.compiledSkillEffectLogicByEffectId?.[String(skillEffect.id)];
-        if (precompiled) {
-          logic = precompiled;
+        // 提取行为树定义
+        const treeDefinition = defaultBt.tree;
+        if (typeof treeDefinition !== "string" && typeof treeDefinition !== "object") {
+          console.error(`🎮 [${context.owner?.name}] 技能逻辑格式无效`, defaultBt);
+          player.actor.send({ type: "技能执行完成" });
+          return;
         }
 
-        // 2) 若未命中缓存，检查 logic 是否是 workspaceJson（Blockly 编辑器保存的格式）
-        if (!logic && skillEffect.logic && typeof skillEffect.logic === "object" && "blocks" in skillEffect.logic) {
-          // 是 workspaceJson，需要编译
-          console.log(`🎮 [${context.name}] 检测到 workspaceJson，开始编译...`);
-          const compileResult = compileWorkspaceJsonWithCache(skillEffect.logic);
-          if (compileResult.errors.length > 0) {
-            console.error(`❌ [${context.name}] 编译 workspaceJson 失败:`, compileResult.errors);
-            sendTo(context.id, { type: "技能执行完成" });
-            return;
+        // 提取并编译函数定义（如果有）
+        const functionCodeMap = defaultBt.functions;
+        const compiledFunctions: Record<string, any> = {};
+
+        for (const [name, code] of Object.entries(functionCodeMap)) {
+          if (typeof code === "string") {
+            // 编译函数代码字符串为函数对象
+            // 函数代码应该是完整的函数体，例如：
+            // "return State.SUCCEEDED;" 或
+            // "(agent, ...args) => { return State.SUCCEEDED; }"
+            try {
+              // 使用 Function 构造函数编译函数
+              // AgentFunction 类型：function(this: Agent, ...args: FunctionArg[]): ActionResult | boolean
+              // eslint-disable-next-line no-new-func
+              const func = new Function("State", "return " + code)(State);
+              if (typeof func === "function") {
+                compiledFunctions[name] = func;
+              } else {
+                console.error(`🎮 [${context.owner?.name}] 函数 ${name} 编译结果不是函数类型`);
+              }
+            } catch (error) {
+              console.error(`🎮 [${context.owner?.name}] 编译函数 ${name} 失败:`, error);
+            }
+          } else if (typeof code === "function") {
+            // 如果已经是函数对象，直接使用
+            compiledFunctions[name] = code;
           }
-          if (!compileResult.logic) {
-            console.error(`❌ [${context.name}] 编译 workspaceJson 返回空逻辑`);
-            sendTo(context.id, { type: "技能执行完成" });
-            return;
-          }
-          logic = compileResult.logic;
-          // 回写到预编译缓存，后续施放复用
-          (actionContext.compiledSkillEffectLogicByEffectId ??= {})[String(skillEffect.id)] = logic;
-          console.log(`✅ [${context.name}] workspaceJson 编译成功${compileResult.cacheHit ? " (缓存命中)" : ""}`);
-        } else if (skillEffect.logic && typeof skillEffect.logic === "object" && "schemaVersion" in skillEffect.logic) {
-          // 已经是 SkillEffectLogicV1 格式
-          logic = skillEffect.logic as SkillEffectLogicV1;
-        } else {
-          // 回退到测试技能效果（临时）
-          console.warn(`⚠️ [${context.name}] skillEffect.logic 格式未知，使用测试技能效果`);
-          logic = testSkillEffect.MagicCannon.logic;
         }
 
-        actionContext.currentSkillLogic = logic;
-        const treeData = resolveSkillBehaviorTree(logic);
+        // 注册行为树和函数
+        runtimeContext.currentSkillLogic =
+          typeof treeDefinition === "string" ? treeDefinition : JSON.stringify(treeDefinition);
+        const treeData = player.btManager.registerSkillBt(
+          treeDefinition,
+          Object.keys(compiledFunctions).length > 0 ? compiledFunctions : undefined,
+        );
         if (!treeData) {
-          console.error(`🎮 [${context.name}] 技能逻辑不是有效的行为树 TreeData，已跳过执行`, logic);
-          sendTo(context.id, { type: "技能执行完成" });
+          console.error(`🎮 [${context.owner?.name}] 技能逻辑不是有效的行为树 TreeData，已跳过执行`, treeDefinition);
+          player.actor.send({ type: "技能执行完成" });
           return;
-        }
-        console.log(`🎮 [${context.name}] 使用技能效果行为树`, treeData);
-
-        try {
-          // 将技能逻辑中的 pipelines.overrides 注册为“技能级覆盖”
-          // 这样 RunPipelineSync/RunPipeline 都可以按该技能定义的管线编排执行
-          const overrides = resolvePipelineOverrides(logic);
-          if (overrides) {
-            actionContext.pipelineManager?.setSkillOverrides?.(overrides);
-          }
-
-          const treeId = `skill:${String(skillEffect.id ?? "unknown_skill")}`;
-          // 若上一次技能树仍存在，先移除，避免堆积
-          if (actionContext.currentSkillTreeId) {
-            console.log(`🎮 [${context.name}] 移除技能树`, actionContext.currentSkillTreeId);
-            actionContext.behaviorTreeManager?.removeTree(actionContext.currentSkillTreeId);
-          }
-          actionContext.currentSkillTreeId = treeId;
-          actionContext.behaviorTreeManager?.addTree(treeData, "skill", treeId);
-        } catch (error) {
-          console.error(`❌ [${context.name}] 挂载/执行技能行为树失败`, error);
-          sendTo(context.id, { type: "技能执行完成" });
         }
       },
       重置控制抵抗时间: function ({ context, event }) {
         // Add your action code here
         // ...
-        console.log(`👤 [${context.name}] 重置控制抵抗时间`, event);
+        console.log(`👤 [${context.owner?.name}] 重置控制抵抗时间`, event);
       },
       中断当前行为: function ({ context, event }) {
         // Add your action code here
         // ...
-        console.log(`👤 [${context.name}] 中断当前行为`, event);
+        console.log(`👤 [${context.owner?.name}] 中断当前行为`, event);
       },
       启动受控动画: function ({ context, event }) {
         // Add your action code here
         // ...
-        console.log(`👤 [${context.name}] 启动受控动画`, event);
+        console.log(`👤 [${context.owner?.name}] 启动受控动画`, event);
       },
       重置到复活状态: function ({ context, event }) {
         // Add your action code here
         // ...
-        console.log(`👤 [${context.name}] 重置到复活状态`, event);
+        console.log(`👤 [${context.owner?.name}] 重置到复活状态`, event);
       },
       发送命中判定事件给自己: function ({ context, event }) {
         // 不使用 raise(...)，直接向自身发送事件（命令式），避免 XState dev build 警告
@@ -328,48 +310,28 @@ export const playerStateMachine = (player: Player): MemberStateMachine<PlayerEve
       反馈命中结果给施法者: function ({ context, event }) {
         // Add your action code here
         // ...
-        console.log(`👤 [${context.name}] 反馈命中结果给施法者`, event);
+        console.log(`👤 [${context.owner?.name}] 反馈命中结果给施法者`, event);
       },
       发送控制判定事件给自己: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 发送控制判定事件给自己`, event);
+        console.log(`👤 [${context.owner?.name}] 发送控制判定事件给自己`, event);
         // 不要在自定义 action 中调用 raise(...)（非命令式），这里直接向自身发送事件即可
         player.actor.send({ type: "进行控制判定" });
       },
       命中计算管线: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 命中计算管线`, event);
-        try {
-          const res = player.pipelineManager.run("计算命中判定", actionContext, {});
-          // PipelineManager.run 返回 working copy，需要合并回 context 才能生效
-          Object.assign(actionContext, res.ctx ?? {});
-          const finalOutput = res.actionOutputs["计算命中判定"] as
-            | {
-                hitResult?: boolean;
-                dodgeResult?: boolean;
-                guardResult?: boolean;
-              }
-            | undefined;
-
-          actionContext.lastHitResult = {
-            hit: !!finalOutput?.hitResult,
-            dodge: !!finalOutput?.dodgeResult,
-            guard: !!finalOutput?.guardResult,
-          };
-        } catch (error) {
-          console.error(`❌ [${context.name}] 命中计算管线执行失败`, error);
-        }
+        console.log(`👤 [${context.owner?.name}] 命中计算管线`, event);
       },
       根据命中结果进行下一步: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 根据命中结果进行下一步`, event);
-        const result = actionContext.lastHitResult;
+        console.log(`👤 [${context.owner?.name}] 根据命中结果进行下一步`, event);
+        const result = runtimeContext.lastHitResult;
 
         if (!result) {
-          console.warn(`⚠️ [${context.name}] 没有命中结果，终止后续流程`);
+          console.warn(`⚠️ [${context.owner?.name}] 没有命中结果，终止后续流程`);
           return;
         }
 
         // 未命中或被闪躲：不再进入控制/伤害流程
         if (!result.hit || result.dodge) {
-          console.log(`👤 [${context.name}] 本次攻击未命中或被闪躲，hit=${result.hit}, dodge=${result.dodge}`);
+          console.log(`👤 [${context.owner?.name}] 本次攻击未命中或被闪躲，hit=${result.hit}, dodge=${result.dodge}`);
           return;
         }
 
@@ -377,106 +339,94 @@ export const playerStateMachine = (player: Player): MemberStateMachine<PlayerEve
         player.actor.send({ type: "进行控制判定" });
       },
       控制判定管线: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 控制判定管线`, event);
-        try {
-          const res = player.pipelineManager.run("战斗.控制.计算", actionContext, {});
-          Object.assign(context, res.ctx ?? {});
-        } catch (error) {
-          console.error(`❌ [${context.name}] 控制判定管线执行失败`, error);
-        }
+        console.log(`👤 [${context.owner?.name}] 控制判定管线`, event);
       },
       反馈控制结果给施法者: function ({ context, event }) {
         // Add your action code here
         // ...
-        console.log(`👤 [${context.name}] 反馈控制结果给施法者`, event);
+        console.log(`👤 [${context.owner?.name}] 反馈控制结果给施法者`, event);
       },
       发送伤害计算事件给自己: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 发送伤害计算事件给自己`, event);
+        console.log(`👤 [${context.owner?.name}] 发送伤害计算事件给自己`, event);
         player.actor.send({ type: "进行伤害计算" });
       },
       伤害计算管线: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 伤害计算管线`, event);
-        try {
-          const res = player.pipelineManager.run("伤害计算", actionContext, {});
-          Object.assign(actionContext, res.ctx ?? {});
-        } catch (error) {
-          console.error(`❌ [${context.name}] 伤害计算管线执行失败`, error);
-        }
+        console.log(`👤 [${context.owner?.name}] 伤害计算管线`, event);
       },
       反馈伤害结果给施法者: function ({ context, event }) {
         // Add your action code here
         // ...
-        console.log(`👤 [${context.name}] 反馈伤害结果给施法者`, event);
+        console.log(`👤 [${context.owner?.name}] 反馈伤害结果给施法者`, event);
       },
       发送属性修改事件给自己: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 发送属性修改事件给自己`, event);
+        console.log(`👤 [${context.owner?.name}] 发送属性修改事件给自己`, event);
         const currentHp = player.statContainer.getValue("hp.current");
         player.actor.send({ type: "修改属性", data: { attr: "hp.current", value: currentHp } });
       },
       发送buff修改事件给自己: function ({ context, event }) {
         // Add your action code here
         // ...
-        console.log(`👤 [${context.name}] 发送buff修改事件给自己`, event);
+        console.log(`👤 [${context.owner?.name}] 发送buff修改事件给自己`, event);
       },
       记录伤害请求: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 记录伤害请求`, event);
+        console.log(`👤 [${context.owner?.name}] 记录伤害请求`, event);
         const e = event as 受到攻击;
         const damageRequest = e.data?.damageRequest;
         if (damageRequest) {
-          actionContext.currentDamageRequest = damageRequest;
+          runtimeContext.currentDamageRequest = damageRequest;
         } else {
-          actionContext.currentDamageRequest = undefined;
+          runtimeContext.currentDamageRequest = undefined;
         }
       },
       修改目标Id: function ({ context, event }, params: { targetId: string }) {
         // Add your action code here
         // ...
-        console.log(`👤 [${context.name}] 修改目标Id`, event);
+        console.log(`👤 [${context.owner?.name}] 修改目标Id`, event);
         context.targetId = params.targetId;
       },
       logEvent: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 日志事件`, event);
+        console.log(`👤 [${context.owner?.name}] 日志事件`, event);
       },
     },
     guards: {
       存在蓄力阶段: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 判断技能是否有蓄力阶段`, event);
+        console.log(`👤 [${context.owner?.name}] 判断技能是否有蓄力阶段`, event);
 
-        const effect = actionContext.currentSkillEffect;
+        const effect = runtimeContext.currentSkillEffect;
         if (!effect) {
-          console.error(`👤 [${context.name}] 技能效果不存在`);
+          console.error(`👤 [${context.owner?.name}] 技能效果不存在`);
           return false;
         }
 
-        const currentFrame = actionContext.engine.getCurrentFrame();
+        const currentFrame = player.engine.getCurrentFrame();
 
         // 蓄力阶段相关属性（假设使用chargeFixed和chargeModified）
-        const reservoirFixed = actionContext.engine.evaluateExpression(effect.reservoirFixed ?? "0", {
+        const reservoirFixed = player.engine.evaluateExpression(effect.reservoirFixed ?? "0", {
           currentFrame,
-          casterId: context.id,
+          casterId: player.id,
         });
-        const reservoirModified = actionContext.engine.evaluateExpression(effect.reservoirModified ?? "0", {
+        const reservoirModified = player.engine.evaluateExpression(effect.reservoirModified ?? "0", {
           currentFrame,
-          casterId: context.id,
+          casterId: player.id,
         });
         console.log(reservoirFixed + reservoirModified > 0 ? "有蓄力阶段" : "没有蓄力阶段");
         return reservoirFixed + reservoirModified > 0;
       },
       存在咏唱阶段: function ({ context, event }) {
-        console.log(`👤 [${context.name}] 判断技能是否有咏唱阶段`, event);
-        const effect = actionContext.currentSkillEffect;
+        console.log(`👤 [${context.owner?.name}] 判断技能是否有咏唱阶段`, event);
+        const effect = runtimeContext.currentSkillEffect;
         if (!effect) {
-          console.error(`👤 [${context.name}] 技能效果不存在`);
+          console.error(`👤 [${context.owner?.name}] 技能效果不存在`);
           return false;
         }
-        const currentFrame = actionContext.engine.getCurrentFrame();
-        const chantingFixed = actionContext.engine.evaluateExpression(effect.chantingFixed ?? "0", {
+        const currentFrame = player.engine.getCurrentFrame();
+        const chantingFixed = player.engine.evaluateExpression(effect.chantingFixed ?? "0", {
           currentFrame,
-          casterId: context.id,
+          casterId: player.id,
         });
-        const chantingModified = actionContext.engine.evaluateExpression(effect.chantingModified ?? "0", {
+        const chantingModified = player.engine.evaluateExpression(effect.chantingModified ?? "0", {
           currentFrame,
-          casterId: context.id,
+          casterId: player.id,
         });
         console.log(chantingFixed + chantingModified > 0 ? "有咏唱阶段" : "没有咏唱阶段");
         return chantingFixed + chantingModified > 0;
@@ -487,34 +437,34 @@ export const playerStateMachine = (player: Player): MemberStateMachine<PlayerEve
       },
       没有可用技能效果: function ({ context, event }) {
         // Add your guard condition here
-        console.log(`👤 [${context.name}] 判断技能是否有可用效果`, event);
+        console.log(`👤 [${context.owner?.name}] 判断技能是否有可用效果`, event);
         const e = event as 使用技能;
         const skillId = e.data.skillId;
-        const currentFrame = actionContext.currentFrame;
-        const skill = actionContext.currentSkill;
+        const currentFrame = player.engine.getCurrentFrame();
+        const skill = runtimeContext.currentSkill;
         if (!skill) {
-          console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
+          console.error(`🎮 [${context.owner?.name}] 技能不存在: ${skillId}`);
           return true;
         }
         const effect = skill.template?.effects.find((e) => {
-          const result = actionContext.engine.evaluateExpression(e.condition, {
+          const result = player.engine.evaluateExpression(e.condition, {
             currentFrame,
-            casterId: context.id,
+            casterId: player.id,
             skillLv: skill?.lv ?? 0,
           });
           console.log(`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`);
           return !!result; // 明确返回布尔值进行比较
         });
         if (!effect) {
-          console.error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
+          console.error(`🎮 [${context.owner?.name}] 技能效果不存在: ${skillId}`);
           return true;
         }
-        console.log(`🎮 [${context.name}] 的技能 ${skill.template?.name} 可用`);
+        console.log(`🎮 [${context.owner?.name}] 的技能 ${skill.template?.name} 可用`);
         return false;
       },
       还未冷却: function ({ context, event }) {
         const e = event as 使用技能;
-        const res = actionContext.skillCooldowns?.[actionContext.currentSkillIndex ?? 0];
+        const res = runtimeContext.skillCooldowns?.[runtimeContext.currentSkillIndex ?? 0];
         if (res == undefined) {
           console.log(`- 该技能不存在冷却时间`);
           return false;
@@ -530,35 +480,35 @@ export const playerStateMachine = (player: Player): MemberStateMachine<PlayerEve
         // 此守卫通过后说明技能可发动，则更新当前技能数据
         const e = event as 使用技能;
         const skillId = e.data.skillId;
-        const currentFrame = actionContext.engine.getCurrentFrame();
+        const currentFrame = player.engine.getCurrentFrame();
 
-        const skill = actionContext.currentSkill;
+        const skill = runtimeContext.currentSkill;
         if (!skill) {
-          console.error(`🎮 [${context.name}] 技能不存在: ${skillId}`);
+          console.error(`🎮 [${context.owner?.name}] 技能不存在: ${skillId}`);
           return true;
         }
         const effect = skill.template?.effects.find((e) => {
-          const result = actionContext.engine.evaluateExpression(e.condition, {
+          const result = player.engine.evaluateExpression(e.condition, {
             currentFrame,
-            casterId: context.id,
+            casterId: player.id,
             skillLv: skill?.lv ?? 0,
           });
           console.log(`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`);
           return !!result; // 明确返回布尔值进行比较
         });
         if (!effect) {
-          console.error(`🎮 [${context.name}] 技能效果不存在: ${skillId}`);
+          console.error(`🎮 [${context.owner?.name}] 技能效果不存在: ${skillId}`);
           return true;
         }
         if (effect.hpCost && effect.mpCost) {
-          const hpCost = actionContext.engine.evaluateExpression(effect.hpCost, {
+          const hpCost = player.engine.evaluateExpression(effect.hpCost, {
             currentFrame,
-            casterId: context.id,
+            casterId: player.id,
             skillLv: skill?.lv ?? 0,
           });
-          const mpCost = actionContext.engine.evaluateExpression(effect.mpCost, {
+          const mpCost = player.engine.evaluateExpression(effect.mpCost, {
             currentFrame,
-            casterId: context.id,
+            casterId: player.id,
             skillLv: skill?.lv ?? 0,
           });
           if (
@@ -571,7 +521,7 @@ export const playerStateMachine = (player: Player): MemberStateMachine<PlayerEve
           }
           console.log(`- 该技能满足施法消耗，HP:${hpCost} MP:${mpCost}`);
         } else {
-          console.error(`🎮 [${context.name}] 技能消耗表达式不存在`);
+          console.error(`🎮 [${context.owner?.name}] 技能消耗表达式不存在`);
           return true; // 视为不满足施法条件
         }
         return false;
@@ -600,17 +550,13 @@ export const playerStateMachine = (player: Player): MemberStateMachine<PlayerEve
     },
   }).createMachine({
     context: {
-      id: player.id,
-      type: "Player",
-      name: player.name,
-      campId: player.campId,
-      teamId: player.teamId,
-      targetId: player.targetId,
-      isAlive: player.isAlive,
+      targetId: player.id,
+      isAlive: true,
       position: player.position,
-      createdAtFrame: 0,
-      currentFrame: 0,
+      createdAtFrame: player.engine.getCurrentFrame(),
+      currentFrame: player.engine.getCurrentFrame(),
       statusTags: [],
+      owner: player,
     },
     id: machineId,
     initial: "存活",

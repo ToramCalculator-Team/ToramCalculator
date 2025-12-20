@@ -1,13 +1,6 @@
-import { Actor, createActor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
-import type { PipelineManager, PipelineDynamicStageInfo } from "../Action/PipelineManager";
-import type { PipelineDef, ActionPool } from "../Action/type";
+import { Actor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
 import { Member } from "../../Member";
 import { MemberType } from "@db/schema/enums";
-import GameEngine from "../../../GameEngine";
-import { BuffManager } from "../Buff/BuffManager";
-import { StatContainer } from "../StatContainer/StatContainer";
-import type { BTManger } from "../BehaviorTree/BTManager";
-import { ActionContext } from "../Action/ActionContext";
 
 /**
  * 成员事件类型枚举
@@ -79,16 +72,8 @@ export type MemberActor<
  * 用于行为树节点访问通用功能
  */
 export interface MemberStateContext {
-  /** 成员ID */
-  id: string;
-  /** 成员类型 */
-  type: MemberType;
-  /** 成员名称 */
-  name: string;
-  /** 所属阵营ID */
-  campId: string;
-  /** 所属队伍ID */
-  teamId: string;
+  /** 成员引用 */
+  owner: Member<any, any, any, any>;
   /** 成员目标ID */
   targetId: string;
   /** 是否存活 */

@@ -1,6 +1,6 @@
-import type { IntentBuffer } from "../IntentSystem/IntentBuffer";
+
 import type { MemberManager } from "../Member/MemberManager";
-import SpaceManager from "./SpaceManager";
+import { SpaceManager } from "./SpaceManager";
 
 /**
  * AreaManager
@@ -13,15 +13,13 @@ export class AreaManager {
   ) {}
 
   /**
-   * 每帧更新区域逻辑，向 intentBuffer 产出意图
+   * 每帧更新区域逻辑
    * 当前为占位实现
    */
-  tick(_frame: number, _intentBuffer: IntentBuffer): void {
+  tick(_frame: number): void {
     // TODO: 实际区域逻辑在后续补充
     void this.spaceManager;
     void this.memberManager;
   }
 }
-
-export default AreaManager;
 

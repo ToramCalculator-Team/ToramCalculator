@@ -11,44 +11,44 @@ import buildRootNode from "./BehaviourTreeBuilder";
 import { isNullOrUndefined } from "./BehaviourTreeDefinitionUtilities";
 
 /**
- * A representation of a behaviour tree.
+ * 行为树的表示。
  */
 export class BehaviourTree {
     /**
-     * The main root tree node.
+     * 主根树节点。
      */
     private readonly _rootNode: Root;
 
     /**
-     * Creates a new instance of the BehaviourTree class.
-     * @param definition The behaviour tree definition as either an MDSL string, root node definition object or array of root node definition objects.
-     * @param agent The agent instance that this behaviour tree is modelling behaviour for.
-     * @param options The behaviour tree options object.
+     * 创建 BehaviourTree 类的新实例。
+     * @param definition 行为树定义，可以是 MDSL 字符串、根节点定义对象或根节点定义对象数组。
+     * @param agent 此行为树为其建模行为的 agent 实例。
+     * @param options 行为树选项对象。
      */
     constructor(
         definition: string | RootNodeDefinition | RootNodeDefinition[],
         private agent: Agent,
         private options: BehaviourTreeOptions = {}
     ) {
-        // The tree definition must be defined.
+        // 树定义必须已定义。
         if (isNullOrUndefined(definition)) {
             throw new Error("tree definition not defined");
         }
 
-        // The agent must be defined and not null.
+        // agent 必须已定义且不为 null。
         if (typeof agent !== "object" || agent === null) {
             throw new Error("the agent must be an object and not null");
         }
 
-        // We should validate the definition before we try to build the tree nodes.
+        // 在尝试构建树节点之前，我们应该验证定义。
         const { succeeded, errorMessage, json } = validateDefinition(definition);
 
-        // Did our validation fail without error?
+        // 验证是否失败？
         if (!succeeded) {
             throw new Error(`invalid definition: ${errorMessage}`);
         }
 
-        // Double check that we did actually get our json definition as part of our definition validtion.
+        // 再次检查我们是否确实在定义验证过程中获得了 json 定义。
         if (!json) {
             throw new Error(
                 "expected json definition to be returned as part of successful definition validation response"
@@ -56,40 +56,40 @@ export class BehaviourTree {
         }
 
         try {
-            // Create the populated tree of behaviour tree nodes and get the root node.
+            // 创建填充的行为树节点树并获取根节点。
             this._rootNode = buildRootNode(json, options);
         } catch (exception) {
-            // There was an issue in trying build and populate the behaviour tree.
+            // 在尝试构建和填充行为树时出现问题。
             throw new Error(`error building tree: ${(exception as Error).message}`);
         }
     }
 
     /**
-     * Gets whether the tree is in the RUNNING state.
-     * @returns true if the tree is in the RUNNING state, otherwise false.
+     * 获取树是否处于 RUNNING 状态。
+     * @returns 如果树处于 RUNNING 状态则返回 true，否则返回 false。
      */
     public isRunning(): boolean {
         return this._rootNode.getState() === State.RUNNING;
     }
 
     /**
-     * Gets the current tree state of SUCCEEDED, FAILED, READY or RUNNING.
-     * @returns The current tree state.
+     * 获取当前树状态：SUCCEEDED、FAILED、READY 或 RUNNING。
+     * @returns 当前树状态。
      */
     public getState(): State {
         return this._rootNode.getState();
     }
 
     /**
-     * Step the tree.
-     * Carries out a node update that traverses the tree from the root node outwards to any child nodes, skipping those that are already in a resolved state of SUCCEEDED or FAILED.
-     * After being updated, leaf nodes will have a state of SUCCEEDED, FAILED or RUNNING. Leaf nodes that are left in the RUNNING state as part of a tree step will be revisited each
-     * subsequent step until they move into a resolved state of either SUCCEEDED or FAILED, after which execution will move through the tree to the next node with a state of READY.
+     * 执行树的一步。
+     * 执行节点更新，从根节点向外遍历到所有子节点，跳过那些已经处于已解决状态（SUCCEEDED 或 FAILED）的节点。
+     * 更新后，叶子节点将处于 SUCCEEDED、FAILED 或 RUNNING 状态。在树的一步中处于 RUNNING 状态的叶子节点将在每个
+     * 后续步骤中重新访问，直到它们移动到 SUCCEEDED 或 FAILED 的已解决状态，之后执行将移动到树中下一个处于 READY 状态的节点。
      *
-     * Calling this method when the tree is already in a resolved state of SUCCEEDED or FAILED will cause it to be reset before tree traversal begins.
+     * 当树已经处于已解决状态（SUCCEEDED 或 FAILED）时调用此方法，将在树遍历开始前重置树。
      */
     public step(): void {
-        // If the root node has already been stepped to completion then we need to reset it.
+        // 如果根节点已经执行完成，那么我们需要重置它。
         if (this._rootNode.getState() === State.SUCCEEDED || this._rootNode.getState() === State.FAILED) {
             this._rootNode.reset();
         }
@@ -102,53 +102,53 @@ export class BehaviourTree {
     }
 
     /**
-     * Resets the tree from the root node outwards to each nested node, giving each a state of READY.
+     * 从根节点向外重置树到每个嵌套节点，使每个节点处于 READY 状态。
      */
     public reset(): void {
         this._rootNode.reset();
     }
 
     /**
-     * Gets the details of every node in the tree, starting from the root.
-     * @returns The details of every node in the tree, starting from the root.
+     * 获取树中每个节点的详细信息，从根节点开始。
+     * @returns 树中每个节点的详细信息，从根节点开始。
      */
     public getTreeNodeDetails(): NodeDetails {
         return this._rootNode.getDetails();
     }
 
     /**
-     * Registers the action/condition/guard/callback function or subtree with the given name.
-     * @param name The name of the function or subtree to register.
-     * @param value The function or subtree definition to register.
+     * 注册具有给定名称的动作/条件/守卫/回调函数或子树。
+     * @param name 要注册的函数或子树的名称。
+     * @param value 要注册的函数或子树定义。
      */
     static register(name: string, value: GlobalFunction | string | RootNodeDefinition) {
-        // Are we going to register a action/condition/guard/callback function?
+        // 我们要注册一个动作/条件/守卫/回调函数吗？
         if (typeof value === "function") {
             Lookup.setFunc(name, value);
             return;
         }
 
-        // We are not registering an action/condition/guard/callback function, so we must be registering a subtree.
+        // 我们不是在注册动作/条件/守卫/回调函数，所以我们必须是在注册子树。
         if (typeof value === "string") {
             let rootNodeDefinitions: RootNodeDefinition[];
 
-            // We will assume that any string passed in will be a mdsl definition.
+            // 我们假设传入的任何字符串都是 mdsl 定义。
             try {
                 rootNodeDefinitions = convertMDSLToJSON(value);
             } catch (exception) {
                 throw new Error(`error registering definition, invalid MDSL: ${(exception as Error).message}`);
             }
 
-            // This function should only ever be called with a definition containing a single unnamed root node.
+            // 此函数应该只使用包含单个未命名根节点的定义来调用。
             if (rootNodeDefinitions.length != 1 || typeof rootNodeDefinitions[0].id !== "undefined") {
                 throw new Error("error registering definition: expected a single unnamed root node");
             }
 
             try {
-                // We should validate the subtree as we don't want invalid subtrees available via the lookup.
+                // 我们应该验证子树，因为我们不希望通过查找提供无效的子树。
                 const { succeeded, errorMessage } = validateJSONDefinition(rootNodeDefinitions[0]);
 
-                // Did our validation fail without error?
+                // 验证是否失败？
                 if (!succeeded) {
                     throw new Error(errorMessage);
                 }
@@ -156,16 +156,16 @@ export class BehaviourTree {
                 throw new Error(`error registering definition: ${(exception as Error).message}`);
             }
 
-            // Everything seems hunky-dory, register the subtree.
+            // 一切看起来都没问题，注册子树。
             Lookup.setSubtree(name, rootNodeDefinitions[0]);
         } else if (typeof value === "object" && !Array.isArray(value)) {
-            // We will assume that any object passed in is a root node definition.
+            // 我们假设传入的任何对象都是根节点定义。
 
             try {
-                // We should validate the subtree as we don't want invalid subtrees available via the lookup.
+                // 我们应该验证子树，因为我们不希望通过查找提供无效的子树。
                 const { succeeded, errorMessage } = validateJSONDefinition(value);
 
-                // Did our validation fail without error?
+                // 验证是否失败？
                 if (!succeeded) {
                     throw new Error(errorMessage);
                 }
@@ -173,7 +173,7 @@ export class BehaviourTree {
                 throw new Error(`error registering definition: ${(exception as Error).message}`);
             }
 
-            // Everything seems hunky-dory, register the subtree.
+            // 一切看起来都没问题，注册子树。
             Lookup.setSubtree(name, value);
         } else {
             throw new Error("unexpected value, expected string mdsl definition, root node json definition or function");
@@ -181,15 +181,15 @@ export class BehaviourTree {
     }
 
     /**
-     * Unregisters the registered action/condition/guard/callback function or subtree with the given name.
-     * @param name The name of the registered action/condition/guard/callback function or subtree to unregister.
+     * 注销具有给定名称的已注册动作/条件/守卫/回调函数或子树。
+     * @param name 要注销的已注册动作/条件/守卫/回调函数或子树的名称。
      */
     static unregister(name: string): void {
         Lookup.remove(name);
     }
 
     /**
-     * Unregister all registered action/condition/guard/callback functions and subtrees.
+     * 注销所有已注册的动作/条件/守卫/回调函数和子树。
      */
     static unregisterAll(): void {
         Lookup.empty();

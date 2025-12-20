@@ -13,5 +13,3 @@ export class SpaceManager {
   }
 }
 
-export default SpaceManager;
-

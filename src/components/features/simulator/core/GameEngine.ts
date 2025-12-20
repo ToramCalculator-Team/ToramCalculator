@@ -38,11 +38,9 @@ import {
 } from "./types";
 import { QueueEvent } from "./EventQueue/types";
 import type { ExpressionContext } from "./JSProcessor/JSProcessor";
-import IntentBuffer from "./IntentSystem/IntentBuffer";
-import Resolver from "./IntentSystem/Resolver";
-import World from "./World/World";
-import SpaceManager from "./World/SpaceManager";
-import AreaManager from "./World/AreaManager";
+import { World } from "./World/World";
+import { SpaceManager } from "./World/SpaceManager";
+import { AreaManager } from "./World/AreaManager";
 import { Player } from "./Member/types/Player/Player";
 
 /**
@@ -86,9 +84,7 @@ export class GameEngine {
     totalMessagesProcessed: 0,
   };
 
-  // ==================== Intent/Resolver/World 层 ====================
-  private intentBuffer: IntentBuffer;
-  private resolver: Resolver;
+  // ==================== World 层 ====================
   private spaceManager: SpaceManager;
   private areaManager: AreaManager;
   private world: World;
@@ -147,12 +143,10 @@ export class GameEngine {
     this.frameLoop = new FrameLoop(this, this.config.frameLoopConfig); // 注入引擎
     this.jsProcessor = new JSProcessor(); // 初始化JS表达式处理器
 
-    // Intent/Resolver/World 相关
-    this.intentBuffer = new IntentBuffer();
-    this.resolver = new Resolver();
+    // World 相关
     this.spaceManager = new SpaceManager();
     this.areaManager = new AreaManager(this.spaceManager, this.memberManager);
-    this.world = new World(this.memberManager, this.spaceManager, this.areaManager, this.intentBuffer, this.resolver);
+    this.world = new World(this.memberManager, this.spaceManager, this.areaManager);
 
     // 创建状态机 - 使用动态获取mirror sender的方式
     this.stateMachine = createActor(GameEngineSM, {
@@ -1139,8 +1133,8 @@ export class GameEngine {
    */
   private computePlayerSkills(player: Player, currentFrame: number): ComputedSkillInfo[] {
     try {
-      const skillList = player.actionContext.skillList ?? [];
-      const skillCooldowns = player.actionContext.skillCooldowns ?? [];
+      const skillList = player.runtimeContext.skillList ?? [];
+      const skillCooldowns = player.runtimeContext.skillCooldowns ?? [];
       const currentMp = player.statContainer?.getValue("mp.current") ?? 0;
       const currentHp = player.statContainer?.getValue("hp.current") ?? 0;
 

@@ -105,30 +105,7 @@ export type MobEventType =
   | 收到快照请求
   | 收到目标快照;
 
-export interface MobStateContext extends MemberStateContext {
-  /** 成员类型 */
-  type: "Mob";
-  /** 成员名称 */
-  name: string;
-  /** 所属阵营ID */
-  campId: string;
-  /** 所属队伍ID */
-  teamId: string;
-  /** 成员目标ID */
-  targetId: string;
-  /** 是否存活 */
-  isAlive: boolean;
-  /** 位置信息 */
-  position: { x: number; y: number; z: number };
-  /** 技能列表 */
-  skillList: [];
-  /** 技能冷却 */
-  skillCooldowns: number[];
-  /** 正在施放的技能序号 */
-  currentSkillIndex: number;
-  /** 管线管理器引用（从 MemberStateContext 继承，但需要明确类型） */
-  pipelineManager: PipelineManager<any, any>;
-}
+export interface MobStateContext extends MemberStateContext {}
 
 // action的源定义，将用来约束状态机逻辑和管线树结构
 export type MobAction =
@@ -170,167 +147,167 @@ export const mobActions = {
   根据配置生成初始状态: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 根据配置生成初始状态`, event);
+    console.log(`👹 [${context.owner?.name}] 根据配置生成初始状态`, event);
   },
   启用站立动画: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 启用站立动画`, event);
+    console.log(`👹 [${context.owner?.name}] 启用站立动画`, event);
   },
   启用移动动画: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 启用移动动画`, event);
+    console.log(`👹 [${context.owner?.name}] 启用移动动画`, event);
   },
   启用前摇动画: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 启用前摇动画`, event);
+    console.log(`👹 [${context.owner?.name}] 启用前摇动画`, event);
   },
   计算前摇时长: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 计算前摇时长`, event);
+    console.log(`👹 [${context.owner?.name}] 计算前摇时长`, event);
   },
   创建前摇结束通知: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 创建前摇结束通知`, event);
+    console.log(`👹 [${context.owner?.name}] 创建前摇结束通知`, event);
   },
   启用蓄力动画: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 启用蓄力动画`, event);
+    console.log(`👹 [${context.owner?.name}] 启用蓄力动画`, event);
   },
   计算蓄力时长: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 计算蓄力时长`, event);
+    console.log(`👹 [${context.owner?.name}] 计算蓄力时长`, event);
   },
   创建蓄力结束通知: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 创建蓄力结束通知`, event);
+    console.log(`👹 [${context.owner?.name}] 创建蓄力结束通知`, event);
   },
   启用咏唱动画: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 启用咏唱动画`, event);
+    console.log(`👹 [${context.owner?.name}] 启用咏唱动画`, event);
   },
   计算咏唱时长: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 计算咏唱时长`, event);
+    console.log(`👹 [${context.owner?.name}] 计算咏唱时长`, event);
   },
   创建咏唱结束通知: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 创建咏唱结束通知`, event);
+    console.log(`👹 [${context.owner?.name}] 创建咏唱结束通知`, event);
   },
   启用技能发动动画: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 启用技能发动动画`, event);
+    console.log(`👹 [${context.owner?.name}] 启用技能发动动画`, event);
   },
   计算发动时长: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 计算发动时长`, event);
+    console.log(`👹 [${context.owner?.name}] 计算发动时长`, event);
   },
   创建发动结束通知: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 创建发动结束通知`, event);
+    console.log(`👹 [${context.owner?.name}] 创建发动结束通知`, event);
   },
   技能效果管线: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 技能效果管线`, event);
+    console.log(`👹 [${context.owner?.name}] 技能效果管线`, event);
   },
   重置控制抵抗时间: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 重置控制抵抗时间`, event);
+    console.log(`👹 [${context.owner?.name}] 重置控制抵抗时间`, event);
   },
   中断当前行为: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 中断当前行为`, event);
+    console.log(`👹 [${context.owner?.name}] 中断当前行为`, event);
   },
   启动受控动画: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 启动受控动画`, event);
+    console.log(`👹 [${context.owner?.name}] 启动受控动画`, event);
   },
   重置到复活状态: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 重置到复活状态`, event);
+    console.log(`👹 [${context.owner?.name}] 重置到复活状态`, event);
   },
   发送命中判定事件给自己: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 发送命中判定事件给自己`, event);
+    console.log(`👹 [${context.owner?.name}] 发送命中判定事件给自己`, event);
   },
   反馈命中结果给施法者: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 反馈命中结果给施法者`, event);
+    console.log(`👹 [${context.owner?.name}] 反馈命中结果给施法者`, event);
   },
   发送控制判定事件给自己: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 发送控制判定事件给自己`, event);
+    console.log(`👹 [${context.owner?.name}] 发送控制判定事件给自己`, event);
   },
   命中计算管线: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 命中计算管线`, event);
+    console.log(`👹 [${context.owner?.name}] 命中计算管线`, event);
   },
   根据命中结果进行下一步: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 根据命中结果进行下一步`, event);
+    console.log(`👹 [${context.owner?.name}] 根据命中结果进行下一步`, event);
   },
   控制判定管线: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 控制判定管线`, event);
+    console.log(`👹 [${context.owner?.name}] 控制判定管线`, event);
   },
   反馈控制结果给施法者: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 反馈控制结果给施法者`, event);
+    console.log(`👹 [${context.owner?.name}] 反馈控制结果给施法者`, event);
   },
   发送伤害计算事件给自己: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 发送伤害计算事件给自己`, event);
+    console.log(`👹 [${context.owner?.name}] 发送伤害计算事件给自己`, event);
   },
   伤害计算管线: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 伤害计算管线`, event);
+    console.log(`👹 [${context.owner?.name}] 伤害计算管线`, event);
   },
   反馈伤害结果给施法者: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 反馈伤害结果给施法者`, event);
+    console.log(`👹 [${context.owner?.name}] 反馈伤害结果给施法者`, event);
   },
   发送属性修改事件给自己: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 发送属性修改事件给自己`, event);
+    console.log(`👹 [${context.owner?.name}] 发送属性修改事件给自己`, event);
   },
   发送buff修改事件给自己: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 发送buff修改事件给自己`, event);
+    console.log(`👹 [${context.owner?.name}] 发送buff修改事件给自己`, event);
   },
   logEvent: function ({ context, event }) {
     // Add your action code here
     // ...
-    console.log(`👹 [${context.name}] 日志事件`, event);
+    console.log(`👹 [${context.owner?.name}] 日志事件`, event);
   },
 } as const satisfies Record<string, ActionFunction<MobStateContext, MobEventType, any, any, any, any, any, any, any>>;
 
@@ -373,21 +350,13 @@ export const createMobStateMachine = (
   }).createMachine({
     id: machineId,
     context: {
-      id: mob.id,
-      type: "Mob",
-      name: mob.name,
-      campId: mob.campId,
-      teamId: mob.teamId,
-      targetId: mob.targetId,
-      isAlive: mob.isAlive,
-      position: mob.position,
-      createdAtFrame: mob.actionContext.currentFrame,
-      currentFrame: mob.actionContext.currentFrame,
+      targetId: mob.id,
+      isAlive: true,
+      position: { x: 0, y: 0, z: 0 },
+      createdAtFrame: mob.engine.getCurrentFrame(),
+      currentFrame: mob.engine.getCurrentFrame(),
       statusTags: [],
-      skillList: [],
-      skillCooldowns: [],
-      currentSkillIndex: 0,
-      pipelineManager: mob.pipelineManager,
+      owner: mob
     },
     initial: "存活",
     entry: {
