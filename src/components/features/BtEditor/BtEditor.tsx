@@ -156,7 +156,7 @@ export const BtEditor: Component = () => {
     // 配置行为树选项
     // 注意：我们每 60fps 调用一次 step()，所以 delta 设置为 1000 / 60 毫秒
     const options: BehaviourTreeOptions = {
-      getDeltaTime: () => 1000 / 60,
+      getDeltaTime: () => 1 / 60,
     };
 
     // 创建并返回行为树实例

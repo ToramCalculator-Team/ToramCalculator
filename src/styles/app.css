@@ -116,6 +116,7 @@
 :root {
   /* 背景色 */
   --white: 255 255 255;
+  --black: 0 0 0;
   --grey: 40 40 40;
   /* 对比度控制颜色 */
   --brown: 47 26 73;
@@ -148,7 +149,7 @@
 .dark {
   --accent: var(--white);
   --primary: var(--grey);
-  --transition: var(--white);
+  --transition: var(--black);
   --brand-1st: var(--greenBlue);
   --brand-2nd: var(--yellow);
   --brand-3rd: var(--orange);

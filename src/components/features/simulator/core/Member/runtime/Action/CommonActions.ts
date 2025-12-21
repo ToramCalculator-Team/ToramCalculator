@@ -24,7 +24,8 @@ export const CommonActions = {
       y: z.number(),
       z: z.number(),
     }),
-  }), z.object({}), (context) => {
+  }), z.object({}), (context, input) => {
+    console.log("moveTo",  input );
     return {};
   }),
 } as const satisfies ActionPool<RuntimeContext>;
