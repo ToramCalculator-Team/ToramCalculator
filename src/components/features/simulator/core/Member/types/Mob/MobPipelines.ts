@@ -1,6 +1,6 @@
-import { PipelineDef, ActionPool } from "../../runtime/Action/type";
-import { CommonActions } from "../../runtime/Action/CommonActions";
-import { RuntimeContext } from "../../runtime/Action/ActionContext";
+import { PipelineDef, ActionPool } from "../../runtime/Agent/type";
+import { CommonActions } from "../../runtime/Agent/GlobalActions";
+import { RuntimeContext } from "../../runtime/Agent/AgentContext";
 
 export interface MobActionContext extends RuntimeContext {
 }

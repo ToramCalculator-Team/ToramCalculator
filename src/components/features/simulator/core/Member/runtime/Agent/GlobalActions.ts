@@ -1,7 +1,7 @@
 import { z } from "zod/v4";
 import { createId } from "@paralleldrive/cuid2";
 import { ModifierType } from "../StatContainer/StatContainer";
-import type { RuntimeContext } from "./ActionContext";
+import type { RuntimeContext } from "./AgentContext";
 import { ActionPool, defineAction } from "./type";
 
 export const logLv = 1; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志

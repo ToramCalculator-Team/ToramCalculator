@@ -4,7 +4,7 @@ import { ZodBoolean, ZodEnum, ZodNumber, ZodObject, ZodString, ZodType } from "z
 import {
   PlayerActionPool,
 } from "../../simulator/core/Member/types/Player/PlayerPipelines";
-import type { Action } from "../../simulator/core/Member/runtime/Action/type";  
+import type { Action } from "../../simulator/core/Member/runtime/Agent/type";  
 
 /**
  * 动作参数类型

@@ -6,7 +6,7 @@ import GameEngine from "../GameEngine";
 import { MemberType } from "@db/schema/enums";
 import { MemberActor, MemberEventType, MemberStateContext, MemberStateMachine, MemberUpdateEvent } from "./runtime/StateMachine/types";
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
-import { RuntimeContext } from "./runtime/Action/ActionContext";
+import { RuntimeContext } from "./runtime/Agent/AgentContext";
 
 export interface MemberSerializeData {
   attrs: Record<string, unknown>;

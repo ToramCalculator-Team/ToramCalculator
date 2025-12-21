@@ -5,7 +5,7 @@ import GameEngine from "../../../GameEngine";
 import { createMobStateMachine, MobStateContext, MobEventType } from "./MobStateMachine";
 import { MobAttrSchema } from "./MobAttrSchema";
 import { StatContainer } from "../../runtime/StatContainer/StatContainer";
-import { RuntimeContext } from "../../runtime/Action/ActionContext";
+import { RuntimeContext } from "../../runtime/Agent/AgentContext";
 
 export type MobAttrType = ExtractAttrPaths<ReturnType<typeof MobAttrSchema>>;
 

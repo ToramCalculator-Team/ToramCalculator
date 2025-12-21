@@ -1,14 +1,14 @@
 import { z } from "zod/v4";
 import { createId } from "@paralleldrive/cuid2";
-import { defineAction, PipelineDef, ActionPool } from "../../runtime/Action/type";
+import { defineAction, PipelineDef, ActionPool } from "../../runtime/Agent/type";
 import { ModifierType, StatContainer } from "../../runtime/StatContainer/StatContainer";
-import { CommonActions, logLv } from "../../runtime/Action/CommonActions";
-import type { RuntimeContext } from "../../runtime/Action/ActionContext";
+import { CommonActions, logLv } from "../../runtime/Agent/GlobalActions";
+import type { RuntimeContext } from "../../runtime/Agent/AgentContext";
 import type { SkillEffectWithRelations } from "@db/generated/repositories/skill_effect";
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import { Player, PlayerAttrType } from "./Player";
-import { PipelineManager } from "../../runtime/Action/PipelineManager";
+import { PipelineManager } from "../../runtime/Agent/PipelineManager";
 import { MemberWithRelations } from "@db/generated/repositories/member";
 import GameEngine from "../../../GameEngine";
 
