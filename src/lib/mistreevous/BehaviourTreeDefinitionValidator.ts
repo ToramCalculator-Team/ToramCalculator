@@ -1,6 +1,7 @@
 import { RootNodeDefinition } from "./BehaviourTreeDefinition";
 import { flattenDefinition, isBranchNodeDefinition, isInteger } from "./BehaviourTreeDefinitionUtilities";
 import { convertMDSLToJSON } from "./mdsl/MDSLDefinitionParser";
+import { isAgentPropertyReference } from "./AgentPropertyReference";
 
 /**
  * An object representing the result of validating a tree definition.
@@ -672,25 +673,36 @@ function validateWaitNode(definition: any, depth: number): void {
     // Check whether a 'duration' property has been defined, it may not have been if this node is to wait indefinitely.
     if (typeof definition.duration !== "undefined") {
         if (Array.isArray(definition.duration)) {
-            // Check whether any elements of the array are not integer values.
-            const containsNonInteger = !!definition.duration.filter((value: unknown) => !isInteger(value)).length;
-
-            // If the 'duration' property is an array then it MUST contain two integer values.
-            if (definition.duration.length !== 2 || containsNonInteger) {
+            // If the 'duration' property is an array then it MUST contain two integer values (or property references).
+            if (definition.duration.length !== 2) {
                 throw new Error(
-                    `expected array containing two integer values for 'duration' property if defined for wait node at depth '${depth}'`
+                    `expected array containing two values for 'duration' property if defined for wait node at depth '${depth}'`
                 );
             }
 
-            // A wait node must have a positive min and max duration value if they are defined.
-            if (definition.duration[0] < 0 || definition.duration[1] < 0) {
+            const [minDuration, maxDuration] = definition.duration as [unknown, unknown];
+            const isValidDurationValue = (value: unknown) => isInteger(value) || isAgentPropertyReference(value);
+
+            if (!isValidDurationValue(minDuration) || !isValidDurationValue(maxDuration)) {
+                throw new Error(
+                    `expected integer value or agent property reference for 'duration' array values if defined for wait node at depth '${depth}'`
+                );
+            }
+
+            // A wait node must have a positive min and max duration value if they are defined as numbers.
+            if (isInteger(minDuration) && minDuration < 0) {
+                throw new Error(
+                    `expected positive minimum and maximum duration for 'duration' property if defined for wait node at depth '${depth}'`
+                );
+            }
+            if (isInteger(maxDuration) && maxDuration < 0) {
                 throw new Error(
                     `expected positive minimum and maximum duration for 'duration' property if defined for wait node at depth '${depth}'`
                 );
             }
 
-            // A wait node must not have a minimum duration value that exceeds the maximum duration value.
-            if (definition.duration[0] > definition.duration[1]) {
+            // A wait node must not have a minimum duration value that exceeds the maximum duration value (when both are numeric).
+            if (isInteger(minDuration) && isInteger(maxDuration) && minDuration > maxDuration) {
                 throw new Error(
                     `expected minimum duration value that does not exceed the maximum duration value for 'duration' property if defined for wait node at depth '${depth}'`
                 );
@@ -702,9 +714,11 @@ function validateWaitNode(definition: any, depth: number): void {
                     `expected positive duration value for 'duration' property if defined for wait node at depth '${depth}'`
                 );
             }
+        } else if (isAgentPropertyReference(definition.duration)) {
+            // ok - will be resolved at runtime
         } else {
             throw new Error(
-                `expected integer value or array containing two integer values for 'duration' property if defined for wait node at depth '${depth}'`
+                `expected integer value, agent property reference, or array containing two values for 'duration' property if defined for wait node at depth '${depth}'`
             );
         }
     }
@@ -846,15 +860,28 @@ function validateLottoNode(definition: any, depth: number): void {
 
     // Check whether a 'weights' property has been defined, if it has we expect it to be an array of weights.
     if (typeof definition.weights !== "undefined") {
-        // Check that the weights property is an array of positive integers with an element for each child node element.
+        // Check that the weights property is an array of non-negative integer values (or agent property references)
+        // with an element for each child node element.
         if (
             !Array.isArray(definition.weights) ||
-            definition.weights.length !== definition.children.length ||
-            definition.weights.filter((value: unknown) => !isInteger(value)).length ||
-            definition.weights.filter((value: number) => value < 0).length
+            definition.weights.length !== definition.children.length
         ) {
             throw new Error(
-                `expected an array of positive integer weight values with a length matching the number of child nodes for 'weights' property if defined for lotto node at depth '${depth}'`
+                `expected an array of non-negative integer weight values or agent property references with a length matching the number of child nodes for 'weights' property if defined for lotto node at depth '${depth}'`
+            );
+        }
+
+        const isValidWeightValue = (value: unknown) => isInteger(value) || isAgentPropertyReference(value);
+        if (definition.weights.filter((value: unknown) => !isValidWeightValue(value)).length) {
+            throw new Error(
+                `expected integer value or agent property reference for 'weights' array values if defined for lotto node at depth '${depth}'`
+            );
+        }
+
+        // Only validate non-negativity when numeric.
+        if (definition.weights.filter((value: unknown) => isInteger(value) && (value as number) < 0).length) {
+            throw new Error(
+                `expected non-negative integer weight values for 'weights' property if defined for lotto node at depth '${depth}'`
             );
         }
     }

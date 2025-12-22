@@ -6,6 +6,9 @@ import State from "../../State";
 import { Agent } from "../../Agent";
 import Attribute from "../../attributes/Attribute";
 import { BehaviourTreeOptions } from "../../BehaviourTreeOptions";
+import { AgentPropertyReference, isAgentPropertyReference, resolveAgentNonNegativeInteger } from "../../AgentPropertyReference";
+
+type LottoWeightArg = number | AgentPropertyReference;
 
 /**
  * A LOTTO node.
@@ -22,7 +25,7 @@ export default class Lotto extends Composite {
     constructor(
         attributes: Attribute[],
         options: BehaviourTreeOptions,
-        private weights: number[] | undefined,
+        private weights: LottoWeightArg[] | undefined,
         children: Node[]
     ) {
         super("lotto", attributes, options, children);
@@ -34,18 +37,36 @@ export default class Lotto extends Composite {
     private selectedChild: Node | undefined;
 
     /**
+     * Resolved weights for this run (resolved once when entering READY -> RUNNING).
+     */
+    private resolvedWeights: number[] | undefined;
+
+    /**
      * Called when the node is being updated.
      * @param agent The agent.
      */
     protected onUpdate(agent: Agent): void {
         // If this node is in the READY state then we need to pick a winning child node.
         if (this.is(State.READY)) {
+            // Resolve weights once per run.
+            this.resolvedWeights = this.weights?.map((weight, index) => {
+                if (typeof weight !== "number" && !isAgentPropertyReference(weight)) {
+                    throw new Error(`lotto 节点权重参数无效：${JSON.stringify(weight)}`);
+                }
+                // Default to 1 when not provided; allow 0 to mean "never selected".
+                return resolveAgentNonNegativeInteger(
+                    agent,
+                    weight,
+                    typeof weight === "number" ? `lotto 节点权重[${index}]` : `lotto 节点引用的 agent 属性 '${weight.$}'（权重）`
+                );
+            });
+
             // Create a lotto draw with which to randomly pick a child node to become the active one.
             const lottoDraw = createLotto<Node>({
                 // Hook up the optional 'random' behaviour tree function option to the one used by 'lotto-draw'.
                 random: this.options.random,
                 // Pass in each child node as a participant in the lotto draw with their respective ticket count.
-                participants: this.children.map((child, index) => [child, this.weights?.[index] || 1])
+                participants: this.children.map((child, index) => [child, this.resolvedWeights?.[index] ?? 1])
             });
 
             // Randomly pick a child based on ticket weighting, this will become the active child for this composite node.
@@ -69,5 +90,8 @@ export default class Lotto extends Composite {
     /**
      * Gets the name of the node.
      */
-    getName = () => (this.weights ? `随机执行 [${this.weights.join(",")}]` : "随机执行");
+    getName = () => {
+        const formatWeight = (w: LottoWeightArg) => (typeof w === "number" ? `${w}` : `$${w.$}`);
+        return this.weights ? `随机执行 [${this.weights.map(formatWeight).join(",")}]` : "随机执行";
+    };
 }

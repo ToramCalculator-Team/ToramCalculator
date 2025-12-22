@@ -1,5 +1,8 @@
 export type NodeArgument = string | number | boolean | null | { $: string };
 
+export type WaitDurationArgument = number | { $: string };
+export type LottoWeightArgument = number | { $: string };
+
 /**
  * An attribute for a node.
  */
@@ -133,9 +136,10 @@ export interface WaitNodeDefinition extends NodeDefinition {
      */
     type: "wait";
     /**
-     * The duration to wait in milliseconds if defined as a single integer, or the lower and upper duration bounds if defined as an array containing two integer values.
+     * The duration to wait in milliseconds if defined as a single integer (or an agent property reference),
+     * or the lower and upper duration bounds if defined as an array containing two integer values (or references).
      */
-    duration?: number | [number, number];
+    duration?: WaitDurationArgument | [WaitDurationArgument, WaitDurationArgument];
 }
 
 /**
@@ -169,7 +173,7 @@ export interface LottoNodeDefinition extends CompositeNodeDefinition {
     /**
      * The selection weights for child nodes that correspond to the child node position.
      */
-    weights?: number[];
+    weights?: LottoWeightArgument[];
 }
 
 /**

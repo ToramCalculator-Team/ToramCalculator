@@ -105,7 +105,8 @@ export const mdslLanguageDefinition: languages.IMonarchLanguage = {
       ],
 
       // 标识符
-      [/[a-zA-Z_$][a-zA-Z0-9_$]*/, 'identifier'],
+      // 允许 unicode（中文变量名），同时兼容 $变量引用（如 $等待时间）
+      [/[\\p{L}_$][\\p{L}\\p{N}_$]*/u, 'identifier'],
 
       // 空白字符
       [/\s+/, 'white'],

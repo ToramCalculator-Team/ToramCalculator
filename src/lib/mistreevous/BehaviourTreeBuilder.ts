@@ -30,6 +30,7 @@ import Entry from "./attributes/callbacks/Entry";
 import Step from "./attributes/callbacks/Step";
 import Exit from "./attributes/callbacks/Exit";
 import { BehaviourTreeOptions } from "./BehaviourTreeOptions";
+import { AgentPropertyReference, isAgentPropertyReference } from "./AgentPropertyReference";
 
 /**
  * A type representing any node instance in a behaviour tree.
@@ -215,15 +216,17 @@ function nodeFactory(
             return new Condition(attributes, options, definition.call, definition.args || []);
 
         case "wait": {
-            let duration: number | null = null;
-            let durationMin: number | null = null;
-            let durationMax: number | null = null;
+            let duration: number | AgentPropertyReference | null = null;
+            let durationMin: number | AgentPropertyReference | null = null;
+            let durationMax: number | AgentPropertyReference | null = null;
 
             if (Array.isArray(definition.duration)) {
                 durationMin = definition.duration[0];
                 durationMax = definition.duration[1];
             } else if (isInteger(definition.duration)) {
                 duration = definition.duration!;
+            } else if (isAgentPropertyReference(definition.duration)) {
+                duration = definition.duration;
             }
 
             return new Wait(attributes, options, duration, durationMin, durationMax);

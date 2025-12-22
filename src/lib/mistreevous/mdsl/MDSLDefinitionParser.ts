@@ -597,12 +597,19 @@ function createLottoNode(tokens: string[], stringLiteralPlaceholders: StringLite
     // 如果定义了任何节点参数，则它们必须是我们的权重。
     const nodeArguments = parseArgumentTokens(tokens, stringLiteralPlaceholders);
 
-    // 所有抽签节点参数必须是 number 类型且必须是正整数。
-    nodeArguments
-        .filter((arg) => arg.type !== "number" || !arg.isInteger || arg.value < 0)
-        .forEach(() => {
-            throw new Error(`lotto node weight arguments must be positive integer values`);
-        });
+    // 所有抽签节点参数必须是非负整数或 agent 属性引用（$xxx）。
+    nodeArguments.forEach((arg) => {
+        if (arg.type === "number") {
+            if (!arg.isInteger || arg.value < 0) {
+                throw new Error(`lotto node weight arguments must be non-negative integer values`);
+            }
+            return;
+        }
+        if (arg.type === "property_reference") {
+            return;
+        }
+        throw new Error(`lotto node weight arguments must be non-negative integer values or agent property references`);
+    });
 
     const node = {
         type: "lotto",
@@ -611,7 +618,7 @@ function createLottoNode(tokens: string[], stringLiteralPlaceholders: StringLite
 
     // 如果定义了权重，则应用它们。
     if (nodeArguments.length) {
-        node.weights = nodeArguments.map(({ value }) => value) as number[];
+        node.weights = nodeArguments.map(getArgumentJsonValue) as any;
     }
 
     // 这是一个组合节点，因此我们期望有一个开括号 '{'。
@@ -712,36 +719,50 @@ function createWaitNode(tokens: string[], stringLiteralPlaceholders: StringLiter
     // - 一个节点参数，这将是明确的等待持续时间。
     // - 两个节点参数，定义最小和最大持续时间边界，从中将随机选择持续时间。
     if (nodeArguments.length) {
-        // 所有等待节点参数必须是 number 类型且必须是整数。
-        nodeArguments
-            .filter((arg) => arg.type !== "number" || !arg.isInteger)
-            .forEach(() => {
-                throw new Error(`wait node durations must be integer values`);
-            });
+        // 所有等待节点参数必须是整数数字或 agent 属性引用（$xxx）。
+        nodeArguments.forEach((arg) => {
+            if (arg.type === "number") {
+                if (!arg.isInteger) {
+                    throw new Error(`wait node durations must be integer values`);
+                }
+                return;
+            }
+            if (arg.type === "property_reference") {
+                return;
+            }
+            throw new Error(`wait node durations must be integer values or agent property references`);
+        });
 
         // 我们可能有：
         // - 一个节点参数，这将是明确的等待持续时间。
         // - 两个节点参数，定义最小和最大持续时间边界，从中将随机选择持续时间。
         // - 太多参数，这是无效的。
         if (nodeArguments.length === 1) {
-            // 定义了明确的持续时间。
-            node.duration = nodeArguments[0].value as number;
+            // 定义了明确的持续时间（或 agent 属性引用）。
+            node.duration = getArgumentJsonValue(nodeArguments[0]);
 
-            // 如果定义了明确的持续时间，则它必须是正数。
-            if (node.duration < 0) {
+            // 如果定义了明确的持续时间且是数字，则它必须是正数。
+            if (nodeArguments[0].type === "number" && (nodeArguments[0].value as number) < 0) {
                 throw new Error("a wait node must have a positive duration");
             }
         } else if (nodeArguments.length === 2) {
             // 定义了最小和最大持续时间边界，从中将随机选择持续时间。
-            node.duration = [nodeArguments[0].value as number, nodeArguments[1].value as number];
+            node.duration = [getArgumentJsonValue(nodeArguments[0]), getArgumentJsonValue(nodeArguments[1])] as any;
 
-            // 等待节点必须具有正数的最小和最大持续时间。
-            if (node.duration[0] < 0 || node.duration[1] < 0) {
+            // 等待节点必须具有正数的最小和最大持续时间（如果它们是数字）。
+            if (nodeArguments[0].type === "number" && (nodeArguments[0].value as number) < 0) {
+                throw new Error("a wait node must have a positive minimum and maximum duration");
+            }
+            if (nodeArguments[1].type === "number" && (nodeArguments[1].value as number) < 0) {
                 throw new Error("a wait node must have a positive minimum and maximum duration");
             }
 
-            // 等待节点的最小持续时间不能超过最大持续时间。
-            if (node.duration[0] > node.duration[1]) {
+            // 等待节点的最小持续时间不能超过最大持续时间（当两者都是数字时）。
+            if (
+                nodeArguments[0].type === "number" &&
+                nodeArguments[1].type === "number" &&
+                (nodeArguments[0].value as number) > (nodeArguments[1].value as number)
+            ) {
                 throw new Error("a wait node must not have a minimum duration that exceeds the maximum duration");
             }
         } else if (nodeArguments.length > 2) {

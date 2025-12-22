@@ -145,10 +145,16 @@ export const Examples: Example[] = [
     sequence {
         wait [2000]
         wait [1000, 5000]
+        wait [$waitMs]
+        wait [$minWaitMs, $maxWaitMs]
         wait
     }
 }`,
-        board: `class Agent {}`
+        board: `class Agent {
+    get waitMs() { return 2000; }
+    get minWaitMs() { return 1000; }
+    get maxWaitMs() { return 5000; }
+}`
     },
 
     {

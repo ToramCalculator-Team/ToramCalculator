@@ -101,8 +101,9 @@ function getArgumentDefinition(token: string, stringArgumentPlaceholders: String
         };
     }
 
-    // Check whether the token is a valid javascript identifier with the '$' prefix (e.g. $someProperty, $another_Property_123) which references an agent property.
-    if (token.match(/^\$[_a-zA-Z][_a-zA-Z0-9]*/g)) {
+    // Check whether the token is an agent property reference with the '$' prefix (e.g. $someProperty, $等待时间).
+    // We intentionally allow unicode here because agent properties are accessed via bracket notation: agent[propName].
+    if (token.startsWith("$") && token.length > 1) {
         return {
             // The value is the identifier name with the '$' prefix removed.
             value: token.slice(1),
