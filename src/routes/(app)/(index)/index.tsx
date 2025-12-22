@@ -413,7 +413,7 @@ export default function IndexPage() {
                 tabIndex={1}
                 disabled={context().isSearching}
                 onInput={handleSearchInput}
-                class="focus:placeholder:text-accent-color bg-area-color placeholder:text-boundary-color w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-hidden! placeholder:text-base placeholder:font-normal focus-within:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 landscape:flex landscape:bg-transparent dark:mix-blend-normal"
+                class="focus:placeholder:text-accent-color bg-area-color placeholder:text-boundary-color w-full flex-1 rounded px-4 py-2 text-lg font-bold mix-blend-multiply outline-hidden! placeholder:text-base placeholder:font-normal focus-within:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 landscape:flex landscape:bg-transparent dark:mix-blend-normal text-center"
               />
               <Button
                 ref={(el) => (searchButtonRef = el)}

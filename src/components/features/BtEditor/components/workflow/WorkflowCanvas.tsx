@@ -1,4 +1,4 @@
-import { Component, createSignal, createEffect, onMount, createMemo, Index } from 'solid-js';
+import { Component, createSignal, createEffect, onMount, onCleanup, createMemo, Index } from 'solid-js';
 import { NodeContainer } from './NodeContainer';
 import { NodeType, ConnectorType, NodeWithChildren } from '../../types/workflow';
 
@@ -79,6 +79,23 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
   onMount(() => {
     props.onInitalise?.(instance);
     props.onUpdate?.();
+    
+    // 延迟执行，确保 DOM 元素已经渲染
+    setTimeout(() => {
+      fit();
+    }, 1);
+
+    // 使用 addEventListener 并设置 passive: false，因为需要 preventDefault
+    if (canvasWrapperRef) {
+      canvasWrapperRef.addEventListener('wheel', handleWheel, { passive: false });
+    }
+  });
+
+  onCleanup(() => {
+    // 清理事件监听器
+    if (canvasWrapperRef) {
+      canvasWrapperRef.removeEventListener('wheel', handleWheel);
+    }
   });
 
   createEffect(() => {
@@ -119,7 +136,6 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
     <div
       ref={canvasWrapperRef}
       class="relative w-full h-full overflow-hidden"
-      onWheel={handleWheel}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}

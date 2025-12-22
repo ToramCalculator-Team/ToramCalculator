@@ -1,5 +1,4 @@
 export { Icon } from './Icon/Icon';
-export { Button } from './Button/Button';
 export { Card } from './Card/Card';
 export { Chip } from './Chip/Chip';
 export { Divider } from './Divider/Divider';
@@ -17,7 +16,6 @@ export { Node } from './workflow/Node';
 export { DefaultNode } from './workflow/DefaultNode';
 
 export type { IconProps } from './Icon/Icon';
-export type { ButtonProps } from './Button/Button';
 export type { CardProps } from './Card/Card';
 export type { ChipProps } from './Chip/Chip';
 export type { DividerProps } from './Divider/Divider';

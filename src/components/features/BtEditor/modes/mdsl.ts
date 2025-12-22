@@ -1,87 +1,121 @@
-// MDSL mode for ace-editor
-// 迁移自原项目的 mode-mdsl.js，适配 ace-builds 原生版本
+import type { languages } from 'monaco-editor';
 
-// 注意：ace-builds 使用 AMD 模块系统
-// 这个函数将在 CodeEditor 组件中调用，传入 ace 对象
+/**
+ * MDSL 语言的 Monarch 定义
+ * 用于 Monaco Editor 的语法高亮
+ */
+export const mdslLanguageDefinition: languages.IMonarchLanguage = {
+  // 关键字
+  keywords: [
+    'action',
+    'condition',
+    'wait',
+    'branch',
+  ],
 
-// @ts-ignore - ace 对象的类型定义不完整
-export function defineMDSLMode(ace: any): void {
-  if (!ace || !ace.define) {
-    return;
-  }
+  // 支持函数
+  supportFunctions: [
+    'entry',
+    'exit',
+    'step',
+    'while',
+    'until',
+    'null',
+  ],
 
-  // 如果已经定义过，直接返回
-  if (ace.require && ace.require('ace/mode/mdsl')) {
-    return;
-  }
+  // 变量语言
+  variableLanguage: [
+    'root',
+    'selector',
+    'sequence',
+    'parallel',
+    'race',
+    'all',
+    'lotto',
+    'repeat',
+    'retry',
+    'flip',
+    'succeed',
+    'fail',
+  ],
 
-  ace.define('ace/mode/mdsl', function (require: any, exports: any, module: any) {
-    const oop = require("ace/lib/oop");
-    const TextMode = require("ace/mode/text").Mode;
-    const ExampleHighlightRules = require("ace/mode/mdsl_highlight_rules").ExampleHighlightRules;
+  // 常量
+  constants: [
+    'true',
+    'false',
+  ],
 
-    const Mode = function (this: any) {
-      this.HighlightRules = ExampleHighlightRules;
-    };
-    oop.inherits(Mode, TextMode);
+  // 操作符
+  operators: [
+    '+', '-', '/', '//', '%',
+    '<@>', '@>', '<@',
+    '&', '^', '~',
+    '<', '>', '<=', '=>', '==', '!=', '<>', '=',
+  ],
 
-    (function () {
-      // Extra logic goes here. (see below)
-    }).call(Mode.prototype);
+  // 词法分析规则
+  tokenizer: {
+    root: [
+      // 单行注释
+      [/--.*$/, 'comment'],
 
-    exports.Mode = Mode;
-  });
+      // 多行注释
+      [/\/\*/, 'comment', '@comment'],
 
-  ace.define('ace/mode/mdsl_highlight_rules', function (require: any, exports: any, module: any) {
-    const oop = require("ace/lib/oop");
-    const TextHighlightRules = require("ace/mode/text_highlight_rules").TextHighlightRules;
+      // 字符串：双引号
+      [/"[^"]*"/, 'string'],
 
-    const exampleHighlightRules = function (this: any) {    
-      const keywordMapper = this.createKeywordMapper({
-        "support.function": "entry|exit|step|while|until|null",
-        "keyword": "action|condition|wait|branch",
-        "variable.language": "root|selector|sequence|parallel|race|all|lotto|repeat|retry|flip|succeed|fail",
-        "constant.language": "true|false"
-      }, "identifier", true);
-    
-      this.$rules = {
-        "start" : [ {
-          token : "comment",
-          regex : "--.*$"
-        },  {
-          token : "comment",
-          start : "/\\*",
-          end : "\\*/"
-        }, {
-          token : "string",           // " string
-          regex : '".*?"'
-        }, {
-          token : "string",           // ' string
-          regex : "'.*?'"
-        }, {
-          token : "string",           // ` string (apache drill)
-          regex : "`.*?`"
-        }, {
-          token : "constant.numeric", // float
-          regex : "[+-]?\\d+(?:(?:\\.\\d*)?(?:[eE][+-]?\\d+)?)?\\b"
-        }, {
-          token : keywordMapper,
-          regex : "[a-zA-Z_$][a-zA-Z0-9_$]*\\b"
-        }, {
-          token : "keyword.operator",
-          regex : "\\+|\\-|\\/|\\/\\/|%|<@>|@>|<@|&|\\^|~|<|>|<=|=>|==|!=|<>|="
-        }, {
-          token : "text",
-          regex : "\\s+"
-        } ]
-      };
-        
-      this.normalizeRules();
-    };
+      // 字符串：单引号
+      [/'[^']*'/, 'string'],
 
-    oop.inherits(exampleHighlightRules, TextHighlightRules);
+      // 字符串：反引号
+      [/`[^`]*`/, 'string'],
 
-    exports.ExampleHighlightRules = exampleHighlightRules;
-  });
-}
+      // 数字（包括浮点数）
+      [/[+-]?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?\b/, 'number'],
 
+      // 关键字
+      [
+        /\b(action|condition|wait|branch)\b/,
+        'keyword',
+      ],
+
+      // 支持函数
+      [
+        /\b(entry|exit|step|while|until|null)\b/,
+        'support.function',
+      ],
+
+      // 变量语言
+      [
+        /\b(root|selector|sequence|parallel|race|all|lotto|repeat|retry|flip|succeed|fail)\b/,
+        'variable.language',
+      ],
+
+      // 常量
+      [
+        /\b(true|false)\b/,
+        'constant.language',
+      ],
+
+      // 操作符
+      [
+        /<@>|@>|<@|\/\/|<=|=>|==|!=|<>|[+\-/%&^~<>=\/]/,
+        'operator',
+      ],
+
+      // 标识符
+      [/[a-zA-Z_$][a-zA-Z0-9_$]*/, 'identifier'],
+
+      // 空白字符
+      [/\s+/, 'white'],
+    ],
+
+    comment: [
+      [/[^/*]+/, 'comment'],
+      [/\/\*/, 'comment', '@push'],
+      [/\*\//, 'comment', '@pop'],
+      [/[/*]/, 'comment'],
+    ],
+  },
+};

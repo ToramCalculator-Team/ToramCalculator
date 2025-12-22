@@ -319,8 +319,19 @@ export const OutlineIcons = {
           stroke-linecap="round"
         />
         <path d="M16 19H22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-        <path d="M19 16L19 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-        <path d="M14 2.5V6C14 7.10457 14.8954 8 16 8H18.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+        <path
+          d="M19 16L19 22"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <path
+          d="M14 2.5V6C14 7.10457 14.8954 8 16 8H18.5"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+        />
       </svg>
     );
   },
@@ -446,6 +457,52 @@ export const OutlineIcons = {
           stroke-linecap="round"
           stroke-linejoin="round"
         />
+      </svg>
+    );
+  },
+
+  Pause: (props: JSX.IntrinsicElements["svg"]) => {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" />
+        <path d="M10.3 9.5L10.3 14.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+        <path d="M13.8 9.5L13.8 14.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+      </svg>
+    );
+  },
+
+  Play: (props: JSX.IntrinsicElements["svg"]) => {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" />
+        <path
+          d="M10 10.0554C10 9.1768 10.9792 8.65277 11.7102 9.14011L14.6271 11.0847C15.2802 11.5201 15.2802 12.4799 14.6271 12.9153L11.7102 14.8599C10.9792 15.3472 10 14.8232 10 13.9446V10.0554Z"
+          stroke="currentColor"
+          stroke-width="1.5"
+        />
+      </svg>
+    );
+  },
+
+  Replay: (props: JSX.IntrinsicElements["svg"]) => {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" {...props}>
+        <path
+          d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    );
+  },
+
+  Stop: (props: JSX.IntrinsicElements["svg"]) => {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" />
+        <path d="M19.0713 4.92896L4.92915 19.0711" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
       </svg>
     );
   },
@@ -782,6 +839,19 @@ export const OutlineIcons = {
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
         <path
           d="M5 8L7.29289 5.70711C7.68342 5.31658 8.31658 5.31658 8.70711 5.70711L11 8M8 6L8 18M14 17L16.2929 19.2929C16.6834 19.6834 17.3166 19.6834 17.7071 19.2929L20 17M17 19V7"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+        />
+      </svg>
+    );
+  },
+
+  Swap3: (props: JSX.IntrinsicElements["svg"]) => {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+        <path
+          d="M18.9283 8C18.1906 6.72229 17.114 5.67345 15.8174 4.96947C14.5208 4.26548 13.0548 3.93375 11.5814 4.01097C10.1081 4.08818 8.68478 4.57133 7.46888 5.40699C6.25298 6.24266 5.29186 7.39829 4.69177 8.74611M20.7683 5.51537L20.0389 8.6749C19.9147 9.21303 19.3777 9.54856 18.8396 9.42433L15.68 8.69492M5.07189 15.9999C5.80958 17.2776 6.88623 18.3264 8.18282 19.0304C9.47941 19.7344 10.9454 20.0661 12.4188 19.9889C13.8921 19.9117 15.3154 19.4286 16.5313 18.5929C17.7472 17.7572 18.7084 16.6016 19.3085 15.2538M3.23191 18.4845L3.96133 15.325C4.08556 14.7869 4.62251 14.4513 5.16064 14.5756L8.32018 15.305"
           stroke="currentColor"
           stroke-width="1.5"
           stroke-linecap="round"
