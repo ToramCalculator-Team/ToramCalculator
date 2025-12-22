@@ -5,7 +5,7 @@ import { Toggle } from "~/components/controls/toggle";
 import * as swClient from "~/worker/sw/client";
 import { getDictionary } from "~/locales/i18n";
 import { store, setStore } from "~/store";
-import Icons from "~/components/icons/index";
+import { Icons } from "~/components/icons/index";
 import type { SWContext } from "~/worker/sw/types";
 
 // 默认安全的 SWContext，避免 undefined 访问

@@ -5,57 +5,57 @@ import Attribute from "../../attributes/Attribute";
 import { BehaviourTreeOptions } from "../../BehaviourTreeOptions";
 
 /**
- * A composite node that wraps child nodes.
+ * 包装子节点的复合节点。
  */
 export default abstract class Composite extends Node {
     /**
-     * @param type The node type.
-     * @param attributes The node attributes.
-     * @param options The behaviour tree options.
-     * @param children The child nodes.
+     * @param type 节点类型。
+     * @param attributes 节点属性。
+     * @param options 行为树选项。
+     * @param children 子节点。
      */
     constructor(type: string, attributes: Attribute[], options: BehaviourTreeOptions, protected children: Node[]) {
         super(type, attributes, options);
     }
 
     /**
-     * Gets the children of this node.
+     * 获取此节点的子节点。
      */
     getChildren = () => this.children;
 
     /**
-     * Reset the state of the node.
+     * 重置节点的状态。
      */
     reset = () => {
-        // Reset the state of this node.
+        // 重置此节点的状态。
         this.setState(State.READY);
 
-        // Reset the state of any child nodes.
+        // 重置所有子节点的状态。
         this.children.forEach((child) => child.reset());
     };
 
     /**
-     * Abort the running of this node.
-     * @param agent The agent.
+     * 中止此节点的运行。
+     * @param agent 代理对象。
      */
     abort = (agent: Agent) => {
-        // There is nothing to do if this node is not in the running state.
+        // 如果此节点不在运行状态，则无需执行任何操作。
         if (!this.is(State.RUNNING)) {
             return;
         }
 
-        // Abort any child nodes.
+        // 中止所有子节点。
         this.children.forEach((child) => child.abort(agent));
 
-        // Reset the state of this node.
+        // 重置此节点的状态。
         this.reset();
 
         this.attributes.exit?.callAgentFunction(agent, false, true);
     };
 
     /**
-     * Gets the details of this node instance.
-     * @returns The details of this node instance.
+     * 获取此节点实例的详细信息。
+     * @returns 此节点实例的详细信息。
      */
     public getDetails(): NodeDetails {
         return {

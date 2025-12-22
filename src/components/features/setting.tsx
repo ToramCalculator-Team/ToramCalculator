@@ -1,5 +1,5 @@
 import { Input, type InputComponentType } from "~/components/controls/input";
-import Icons from "~/components/icons/index";
+import { Icons } from "~/components/icons/index";
 import { getDictionary } from "~/locales/i18n";
 import { Button } from "~/components/controls/button";
 import { CheckBox } from "~/components/controls/checkBox";

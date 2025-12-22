@@ -43,7 +43,7 @@ const Menu: Component<MenuProps> = (props) => {
       <Portal>
         <div
           ref={menuRef}
-          class={`fixed z-50 mt-1 bg-primary-color rounded shadow-lg border border-dividing-color min-w-[200px] ${props.class || ''}`}
+          class={`fixed z-50 mt-1 bg-primary-color rounded shadow-lg border border-dividing-color min-w-[320px] max-h-[90vh] overflow-y-auto ${props.class || ''}`}
           style={{
             top: props.anchorEl ? `${props.anchorEl.getBoundingClientRect().bottom}px` : '0',
             left: props.anchorEl ? `${props.anchorEl.getBoundingClientRect().left}px` : '0',

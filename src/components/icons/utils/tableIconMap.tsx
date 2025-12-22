@@ -1,6 +1,6 @@
 import { DB } from "@db/generated/zod"
 import { JSX } from "solid-js"
-import Icons from ".."
+import { Icons } from ".."
 
 export const TableIconMap: Record<keyof DB, JSX.Element> ={
     account: <Icons.Filled.Category2 />,

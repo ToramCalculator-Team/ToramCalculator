@@ -13,7 +13,7 @@ import { repositoryMethods } from "@db/generated/repositories";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { Card } from "./Card";
 import { DBdataRenderer } from "./DBdataRenderer";
-import Icons from "~/components/icons";
+import { Icons } from "~/components/icons";
 
 const cardDataCache = new Map<string, any>();
 

@@ -5,16 +5,16 @@ import { Agent } from "../../Agent";
 import { BehaviourTreeOptions } from "../../BehaviourTreeOptions";
 
 /**
- * A WAIT node.
- * The state of this node will change to SUCCEEDED after a duration of time
+ * 等待节点。
+ * 此节点的状态将在经过一段时间后变为成功。
  */
 export default class Wait extends Leaf {
     /**
-     * @param attributes The node attributes.
-     * @param options The behaviour tree options.
-     * @param duration The duration that this node will wait to succeed in milliseconds.
-     * @param durationMin The minimum possible duration in milliseconds that this node will wait to succeed.
-     * @param durationMax The maximum possible duration in milliseconds that this node will wait to succeed.
+     * @param attributes 节点属性。
+     * @param options 行为树选项。
+     * @param duration 此节点等待成功的持续时间（毫秒）。
+     * @param durationMin 此节点等待成功的最小可能持续时间（毫秒）。
+     * @param durationMax 此节点等待成功的最大可能持续时间（毫秒）。
      */
     constructor(
         attributes: Attribute[],
@@ -27,42 +27,42 @@ export default class Wait extends Leaf {
     }
 
     /**
-     * The time in milliseconds at which this node was first updated.
+     * 此节点首次更新的时间（毫秒）。
      */
     private initialUpdateTime: number = 0;
 
     /**
-     * The total duration in milliseconds that this node will be waiting for.
+     * 此节点将等待的总持续时间（毫秒）。
      */
     private totalDuration: number | null = null;
 
     /**
-     * The duration in milliseconds that this node has been waiting for.
+     * 此节点已等待的持续时间（毫秒）。
      */
     private waitedDuration: number = 0;
 
     /**
-     * Called when the node is being updated.
-     * @param agent The agent.
+     * 当节点被更新时调用。
+     * @param agent 代理对象。
      */
     protected onUpdate(agent: Agent): void {
-        // If this node is in the READY state then we need to set the initial update time.
+        // 如果此节点处于 READY 状态，则需要设置初始更新时间。
         if (this.is(State.READY)) {
-            // Set the initial update time.
+            // 设置初始更新时间。
             this.initialUpdateTime = new Date().getTime();
 
-            // Set the initial waited duration.
+            // 设置初始等待持续时间。
             this.waitedDuration = 0;
 
-            // Are we dealing with an explicit duration or will we be randomly picking a duration between the min and max duration.
+            // 我们是在处理明确的持续时间，还是在最小和最大持续时间之间随机选择持续时间。
             if (this.duration !== null) {
                 this.totalDuration = this.duration;
             } else if (this.durationMin !== null && this.durationMax !== null) {
-                // We will be picking a random duration between a min and max duration, if the optional 'random' behaviour tree
-                // function option is defined then we will be using that, otherwise we will fall back to using Math.random.
+                // 我们将在最小和最大持续时间之间随机选择持续时间，如果定义了可选的 'random' 行为树
+                // 函数选项，则使用它，否则回退到使用 Math.random。
                 const random = typeof this.options.random === "function" ? this.options.random : Math.random;
 
-                // Pick a random duration between a min and max duration.
+                // 在最小和最大持续时间之间随机选择持续时间。
                 this.totalDuration = Math.floor(
                     random() * (this.durationMax - this.durationMin + 1) + this.durationMin
                 );
@@ -70,49 +70,49 @@ export default class Wait extends Leaf {
                 this.totalDuration = null;
             }
 
-            // The node is now running until we finish waiting.
+            // 节点现在正在运行，直到我们完成等待。
             this.setState(State.RUNNING);
         }
 
-        // If we have no total duration then this wait node will wait indefinitely until it is aborted.
+        // 如果我们没有总持续时间，则此等待节点将无限期等待，直到被中止。
         if (this.totalDuration === null) {
             return;
         }
 
-        // If we have a 'getDeltaTime' function defined as part of our options then we will use it to figure out how long we have waited for.
+        // 如果我们在选项中定义了 'getDeltaTime' 函数，则使用它来计算我们已经等待了多长时间。
         if (typeof this.options.getDeltaTime === "function") {
-            // Get the delta time.
+            // 获取增量时间。
             const deltaTime = this.options.getDeltaTime();
 
-            // Our delta time must be a valid number and cannot be NaN.
+            // 我们的增量时间必须是有效数字，不能是 NaN。
             if (typeof deltaTime !== "number" || isNaN(deltaTime)) {
                 throw new Error("The delta time must be a valid number and not NaN.");
             }
 
-            // Update the amount of time that this node has been waiting for based on the delta time.
+            // 根据增量时间更新此节点已等待的时间量。
             this.waitedDuration += deltaTime * 1000;
         } else {
-            // We are not using a delta time, so we will just work out hom much time has passed since the first update.
+            // 我们没有使用增量时间，因此只需计算自首次更新以来已经过去了多少时间。
             this.waitedDuration = new Date().getTime() - this.initialUpdateTime;
         }
 
-        // Have we waited long enough?
+        // 我们等待的时间是否足够长？
         if (this.waitedDuration >= this.totalDuration) {
-            // We have finished waiting!
+            // 我们已经完成等待！
             this.setState(State.SUCCEEDED);
         }
     }
 
     /**
-     * Gets the name of the node.
+     * 获取节点的名称。
      */
     getName = () => {
         if (this.duration !== null) {
-            return `WAIT ${this.duration}ms`;
+            return `等待 ${this.duration}ms`;
         } else if (this.durationMin !== null && this.durationMax !== null) {
-            return `WAIT ${this.durationMin}ms-${this.durationMax}ms`;
+            return `等待 ${this.durationMin}ms-${this.durationMax}ms`;
         } else {
-            return "WAIT";
+            return "等待";
         }
     };
 }

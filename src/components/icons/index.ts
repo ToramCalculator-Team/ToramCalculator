@@ -12,4 +12,4 @@ const Icons = {
   Spirits: getSpriteIcon,
 };
 
-export default Icons;
+export { Icons };

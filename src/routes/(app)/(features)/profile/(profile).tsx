@@ -2,7 +2,7 @@ import { createEffect, createMemo, createSignal, For, JSX, onMount } from "solid
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import { useNavigate } from "@solidjs/router";
-import Icons from "~/components/icons/index";
+import { Icons } from "~/components/icons/index";
 import { Button } from "~/components/controls/button";
 
 export default function ProfilePage() {

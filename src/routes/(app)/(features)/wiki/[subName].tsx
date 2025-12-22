@@ -3,7 +3,7 @@ import { createEffect, createMemo, createSignal, For, JSX, on, onCleanup, onMoun
 import { Motion, Presence } from "solid-motionone";
 import { setStore, store } from "~/store";
 import { getDictionary } from "~/locales/i18n";
-import Icons from "~/components/icons/index";
+import { Icons } from "~/components/icons/index";
 import { Button } from "~/components/controls/button";
 import { Portal } from "solid-js/web";
 import { Sheet } from "~/components/containers/sheet";

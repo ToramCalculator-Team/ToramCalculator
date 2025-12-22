@@ -14,7 +14,7 @@ import { createMemo, createResource, createSignal, For, JSX, Show } from "solid-
 import { ZodAny, ZodObject, ZodType } from "zod/v4";
 import { Button } from "~/components/controls/button";
 import { FieldGenMap } from "~/components/dataDisplay/objRender";
-import Icons from "~/components/icons";
+import { Icons } from "~/components/icons";
 import { getDictionary } from "~/locales/i18n";
 import { Dic, dictionary, EnumFieldDetail } from "~/locales/type";
 import { setStore, store } from "~/store";

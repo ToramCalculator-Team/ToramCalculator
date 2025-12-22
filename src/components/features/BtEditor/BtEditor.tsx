@@ -6,8 +6,8 @@ import {
   validateDefinition,
   BehaviourTreeOptions,
   NodeDetails,
-} from "mistreevous";
-import { ToastContainer, Card, ExamplesMenu, Icon } from "./components";
+} from "~/lib/mistreevous";
+import { ToastContainer, Card, ExamplesMenu, Icon, Divider } from "./components";
 import { DefinitionTab } from "./components/DefinitionTab/DefinitionTab";
 import { AgentTab } from "./components/AgentTab/AgentTab";
 import { MainPanel, CanvasElements } from "./components/MainPanel/MainPanel";
@@ -16,7 +16,7 @@ import { Examples } from "./data/Examples";
 import { toast } from "./stores/toastStore";
 import { ConnectorVariant } from "./types/workflow";
 import { Button } from "~/components/controls/button";
-import Icons from "~/components/icons";
+import { Icons } from "~/components/icons";
 
 export { DefinitionType, SidebarTab };
 
@@ -426,8 +426,8 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
   });
 
   return (
-    <div id="BtEditor" class="BtEditor bg-primary-color flex h-full w-full flex-col overflow-hidden">
-      <div class="Functions flex landscape:lg:h-full min-h-12 w-full items-center justify-between">
+    <div id="BtEditor" class="BtEditor bg-primary-color flex h-full w-full flex-col-reverse landscape:lg:flex-col overflow-hidden">
+      <div class="Functions border-b border-dividing-color relative flex landscape:lg:h-full min-h-[50px] w-full items-center justify-between basis-3/5">
         <div class="Canvas hidden h-full w-full flex-1 landscape:lg:block">
           <MainPanel
             layoutId={layoutId()}

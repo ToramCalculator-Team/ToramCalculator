@@ -3,7 +3,7 @@ import { Example, ExampleCategory } from "../../types";
 import { Examples } from "../../data/Examples";
 import { Button } from "~/components/controls/button";
 import { Menu, MenuList, MenuItem, Divider } from "../";
-import Icons from "~/components/icons";
+import { Icons } from "~/components/icons";
 
 export type ExamplesMenuProps = {
   /** MDSL 插入口：当用户选择 example 时，将对应的 MDSL 和 Agent 发送到此函数 */

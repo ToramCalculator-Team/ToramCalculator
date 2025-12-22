@@ -11,7 +11,7 @@ import { Accessor, Show, createMemo, createSignal } from "solid-js";
 import { MemberSerializeData } from "./Member";
 import { DataStorage, isDataStorageType } from "./runtime/StatContainer/StatContainer";
 import { Button } from "~/components/controls/button";
-import Icons from "~/components/icons";
+import { Icons } from "~/components/icons";
 import { Dialog } from "~/components/containers/dialog";
 import BuffTab from "./BuffTab";
 

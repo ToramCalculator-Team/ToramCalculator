@@ -1,8 +1,8 @@
 import { Component, For, Show } from "solid-js";
-import { State, NodeDetails } from "mistreevous";
+import { State, NodeDetails } from "~/lib/mistreevous";
 import { DefaultNodeGuardTag } from "./DefaultNodeGuardTag";
 import { DefaultNodeCallbackTag } from "./DefaultNodeCallbackTag";
-import Icons from "../../../../icons";
+import { Icons } from "../../../../icons";
 
 export type DefaultNodeArgument = string | number | boolean | null | { $: string };
 
@@ -23,13 +23,13 @@ export const DefaultNode: Component<DefaultNodeProps> = (props) => {
   const getStateClasses = () => {
     switch (props.state) {
       case State.RUNNING:
-        return "border-[#0388fc]";
+        return "bg-transtion-color font-bold"
       case State.SUCCEEDED:
-        return "border-[#02c93e] bg-[#d1ffde]";
+        return "bg-brand-color-1st text-primary-color";
       case State.FAILED:
-        return "border-[#e63b02] bg-[#ffe5e5]";
+        return "bg-brand-color-3rd text-primary-color";
       default:
-        return "border-[#868686]";
+        return "bg-primary-color";
     }
   };
 
@@ -94,12 +94,12 @@ export const DefaultNode: Component<DefaultNodeProps> = (props) => {
   };
   return (
     <div
-      class={`bg-primary-color shadow-dividing-color flex flex-row items-center rounded-md p-1 whitespace-nowrap shadow ${getStateClasses()}`}
+      class={`shadow-dividing-color flex flex-row items-start rounded-md p-1 whitespace-nowrap shadow ${getStateClasses()}`}
     >
       {getIcon(props.type)}
       <div class="flex flex-col">
         <div class="flex flex-row">
-          <p class="m-0 mx-1.5 ml-2 leading-[26px]">{props.caption}</p>
+          <p class="m-0 mx-1.5 ml-2 align-middle leading-[24px]">{props.caption}</p>
           <For each={props.args}>{(arg, index) => getArgument(arg, index())}</For>
         </div>
         <div class="flex flex-col items-start">

@@ -6,73 +6,73 @@ import Attribute from "../../attributes/Attribute";
 import { BehaviourTreeOptions } from "../../BehaviourTreeOptions";
 
 /**
- * A SELECTOR node.
- * The child nodes are executed in sequence until one succeeds or all fail.
+ * 选择器节点。
+ * 子节点按顺序执行，直到一个成功或全部失败。
  */
 export default class Selector extends Composite {
     /**
-     * @param attributes The node attributes.
-     * @param options The behaviour tree options.
-     * @param children The child nodes.
+     * @param attributes 节点属性。
+     * @param options 行为树选项。
+     * @param children 子节点。
      */
     constructor(attributes: Attribute[], options: BehaviourTreeOptions, protected children: Node[]) {
         super("selector", attributes, options, children);
     }
 
     /**
-     * Called when the node is being updated.
-     * @param agent The agent.
+     * 当节点被更新时调用。
+     * @param agent 代理对象。
      */
     protected onUpdate(agent: Agent): void {
-        // Iterate over all of the children of this node.
+        // 遍历此节点的所有子节点。
         for (const child of this.children) {
-            // If the child has never been updated or is running then we will need to update it now.
+            // 如果子节点从未被更新或正在运行，则需要立即更新它。
             if (child.getState() === State.READY || child.getState() === State.RUNNING) {
-                // Update the child of this node.
+                // 更新此节点的子节点。
                 child.update(agent);
             }
 
-            // If the current child has a state of 'SUCCEEDED' then this node is also a 'SUCCEEDED' node.
+            // 如果当前子节点的状态为"成功"，则此节点也是"成功"节点。
             if (child.getState() === State.SUCCEEDED) {
-                // This node is a 'SUCCEEDED' node.
+                // 此节点是一个"成功"节点。
                 this.setState(State.SUCCEEDED);
 
-                // There is no need to check the rest of the selector nodes.
+                // 无需检查选择器的其余节点。
                 return;
             }
 
-            // If the current child has a state of 'FAILED' then we should move on to the next child.
+            // 如果当前子节点的状态为"失败"，则应该继续下一个子节点。
             if (child.getState() === State.FAILED) {
-                // Find out if the current child is the last one in the selector.
-                // If it is then this sequence node has also failed.
+                // 检查当前子节点是否是选择器中的最后一个。
+                // 如果是，则此序列节点也已失败。
                 if (this.children.indexOf(child) === this.children.length - 1) {
-                    // This node is a 'FAILED' node.
+                    // 此节点是一个"失败"节点。
                     this.setState(State.FAILED);
 
-                    // There is no need to check the rest of the selector as we have completed it.
+                    // 无需检查选择器的其余部分，因为已经完成。
                     return;
                 } else {
-                    // The child node failed, try the next one.
+                    // 子节点失败，尝试下一个。
                     continue;
                 }
             }
 
-            // The node should be in the 'RUNNING' state.
+            // 节点应该处于"运行中"状态。
             if (child.getState() === State.RUNNING) {
-                // This node is a 'RUNNING' node.
+                // 此节点是一个"运行中"节点。
                 this.setState(State.RUNNING);
 
-                // There is no need to check the rest of the selector as the current child is still running.
+                // 无需检查选择器的其余部分，因为当前子节点仍在运行。
                 return;
             }
 
-            // The child node was not in an expected state.
+            // 子节点未处于预期状态。
             throw new Error("child node was not in an expected state.");
         }
     }
 
     /**
-     * Gets the name of the node.
+     * 获取节点的名称。
      */
-    getName = () => "SELECTOR";
+    getName = () => "选择执行";
 }

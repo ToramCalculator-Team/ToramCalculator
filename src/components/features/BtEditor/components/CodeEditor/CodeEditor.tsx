@@ -121,7 +121,6 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
     dark: [141, 56, 240],
   } as const satisfies Record<string, [number, number, number]>;
 
-
   const darkThemeTokens = {
     accent: colorTokens.white,
     primary: colorTokens.grey,
@@ -149,7 +148,7 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
     accent: rgbToBase16(darkThemeTokens.accent),
     transition: rgbToBase16(darkThemeTokens.transition),
     primary: rgbToBase16(darkThemeTokens.primary),
-  }
+  };
 
   const lightThemeBase16Colors = {
     brand1st: rgbToBase16(lightThemeTokens.brand1st),
@@ -158,7 +157,7 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
     accent: rgbToBase16(lightThemeTokens.accent),
     transition: rgbToBase16(lightThemeTokens.transition),
     primary: rgbToBase16(lightThemeTokens.primary),
-  }
+  };
 
   // 颜色值应该是base16的值
   monaco.editor.defineTheme(darkTheme, {
@@ -199,7 +198,7 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
       // // 注释、字符串、数字等使用 base 主题的默认颜色（会根据 vs/vs-dark 自动调整）
     ],
     colors: {
-      "editor.background": `${lightThemeBase16Colors.primary}`,
+      "editor.background": `#F3F7FD`,
       "editor.foreground": lightThemeBase16Colors.accent,
       // "editorLineNumber.foreground": lightThemeBase16Colors.transition,
       // "editor.selectionBackground": 'rgba(0, 0, 0, 0.5)',

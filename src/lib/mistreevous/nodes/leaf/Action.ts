@@ -7,30 +7,30 @@ import Lookup from "../../Lookup";
 import Attribute from "../../attributes/Attribute";
 
 /**
- * The type representing a resolved/rejected update promise.
+ * 表示已解决/已拒绝的更新 Promise 的类型。
  */
 type UpdatePromiseResult = {
     /**
-     * Whether the promise was resolved rather than rejected.
+     * Promise 是否已解决而非被拒绝。
      */
     isResolved: boolean;
 
     /**
-     * The promise resolved value or rejection reason.
+     * Promise 的解决值或拒绝原因。
      */
     value: any;
 };
 
 /**
- * An Action leaf node.
- * This represents an immediate or ongoing state of behaviour.
+ * 动作叶子节点。
+ * 这表示行为的即时或持续状态。
  */
 export default class Action extends Leaf {
     /**
-     * @param attributes The node attributes.
-     * @param options The behaviour tree options.
-     * @param actionName The action name.
-     * @param actionArguments The array of action arguments.
+     * @param attributes 节点属性。
+     * @param options 行为树选项。
+     * @param actionName 动作名称。
+     * @param actionArguments 动作参数数组。
      */
     constructor(
         attributes: Attribute[],
@@ -42,52 +42,52 @@ export default class Action extends Leaf {
     }
 
     /**
-     * Whether there is a pending update promise.
+     * 是否存在待处理的更新 Promise。
      */
     private isUsingUpdatePromise = false;
 
     /**
-     * The finished state result of an update promise.
+     * 更新 Promise 的完成状态结果。
      */
     private updatePromiseResult: UpdatePromiseResult | null = null;
 
     /**
-     * Called when the node is being updated.
-     * @param agent The agent.
+     * 当节点被更新时调用。
+     * @param agent 代理对象。
      */
     protected onUpdate(agent: Agent): void {
-        // If the result of this action depends on an update promise then there is nothing to do until it settles.
+        // 如果此动作的结果依赖于更新 Promise，则在它解决之前无事可做。
         if (this.isUsingUpdatePromise) {
-            // Are we still waiting for our update promise to settle?
+            // 我们是否仍在等待更新 Promise 解决？
             if (!this.updatePromiseResult) {
                 return;
             }
 
             const { isResolved, value } = this.updatePromiseResult;
 
-            // Our update promise settled, was it resolved or rejected?
+            // 我们的更新 Promise 已解决，它是被解决还是被拒绝？
             if (isResolved) {
-                // Our promise resolved so check to make sure the result is a valid finished state.
+                // 我们的 Promise 已解决，检查以确保结果是有效的完成状态。
                 if (value !== State.SUCCEEDED && value !== State.FAILED) {
                     throw new Error(
                         "action node promise resolved with an invalid value, expected a State.SUCCEEDED or State.FAILED value to be returned"
                     );
                 }
 
-                // Set the state of this node to match the state returned by the promise.
+                // 设置此节点的状态以匹配 Promise 返回的状态。
                 this.setState(value);
 
                 return;
             } else {
-                // The promise was rejected, which isn't great.
+                // Promise 被拒绝，这不太好。
                 throw new Error(`action function '${this.actionName}' promise rejected with '${value}'`);
             }
         }
 
-        // Attempt to get the invoker for the action function.
+        // 尝试获取动作函数的调用器。
         const actionFuncInvoker = Lookup.getFuncInvoker(agent, this.actionName);
 
-        // The action function should be defined.
+        // 动作函数应该已定义。
         if (actionFuncInvoker === null) {
             throw new Error(
                 `cannot update action node as the action '${this.actionName}' function is not defined on the agent and has not been registered`
@@ -97,13 +97,13 @@ export default class Action extends Leaf {
         let actionFunctionResult;
 
         try {
-            // Call the action function, the result of which may be:
-            // - The finished state of this action node.
-            // - A promise to return a finished node state.
-            // - Undefined if the node should remain in the running state.
+            // 调用动作函数，其结果可能是：
+            // - 此动作节点的完成状态。
+            // - 返回完成节点状态的 Promise。
+            // - 如果节点应保持运行状态，则为 undefined。
             actionFunctionResult = actionFuncInvoker(this.actionArguments) as CompleteState | Promise<CompleteState>;
         } catch (error) {
-            // An uncaught error was thrown.
+            // 抛出了未捕获的错误。
             if (error instanceof Error) {
                 throw new Error(`action function '${this.actionName}' threw: ${error.stack}`);
             } else {
@@ -114,24 +114,24 @@ export default class Action extends Leaf {
         if (actionFunctionResult instanceof Promise) {
             actionFunctionResult.then(
                 (result) => {
-                    // If 'isUpdatePromisePending' is not set then the promise was cleared as it was resolving, probably via an abort of reset.
+                    // 如果未设置 'isUpdatePromisePending'，则 Promise 在解决时被清除，可能是通过中止或重置。
                     if (!this.isUsingUpdatePromise) {
                         return;
                     }
 
-                    // Set the resolved update promise result so that it can be handled on the next update of this node.
+                    // 设置已解决的更新 Promise 结果，以便在下次更新此节点时处理。
                     this.updatePromiseResult = {
                         isResolved: true,
                         value: result
                     };
                 },
                 (reason) => {
-                    // If 'isUpdatePromisePending' is not set then the promise was cleared as it was resolving, probably via an abort or reset.
+                    // 如果未设置 'isUpdatePromisePending'，则 Promise 在解决时被清除，可能是通过中止或重置。
                     if (!this.isUsingUpdatePromise) {
                         return;
                     }
 
-                    // Set the rejected update promise result so that it can be handled on the next update of this node.
+                    // 设置被拒绝的更新 Promise 结果，以便在下次更新此节点时处理。
                     this.updatePromiseResult = {
                         isResolved: false,
                         value: reason
@@ -139,40 +139,40 @@ export default class Action extends Leaf {
                 }
             );
 
-            // This node will be in the 'RUNNING' state until the update promise resolves.
+            // 此节点将处于"运行中"状态，直到更新 Promise 解决。
             this.setState(State.RUNNING);
 
-            // We are now waiting for the promise returned by the use to resolve before we know what state this node is in.
+            // 我们现在等待用户返回的 Promise 解决，然后才能知道此节点的状态。
             this.isUsingUpdatePromise = true;
         } else {
-            // Validate the returned value.
+            // 验证返回值。
             this.validateUpdateResult(actionFunctionResult);
 
-            // Set the state of this node, this may be undefined, which just means that the node is still in the 'RUNNING' state.
+            // 设置此节点的状态，这可能为 undefined，仅表示节点仍处于"运行中"状态。
             this.setState(actionFunctionResult || State.RUNNING);
         }
     }
 
     /**
-     * Gets the name of the node.
+     * 获取节点的名称。
      */
-    getName = () => this.actionName;
+    getName = () => `动作 ${this.actionName}`;
 
     /**
-     * Reset the state of the node.
+     * 重置节点的状态。
      */
     reset = () => {
-        // Reset the state of this node.
+        // 重置此节点的状态。
         this.setState(State.READY);
 
-        // There is no longer an update promise that we care about.
+        // 不再有我们关心的更新 Promise。
         this.isUsingUpdatePromise = false;
         this.updatePromiseResult = null;
     };
 
     /**
-     * Gets the details of this node instance.
-     * @returns The details of this node instance.
+     * 获取此节点实例的详细信息。
+     * @returns 此节点实例的详细信息。
      */
     public getDetails(): NodeDetails {
         return {
@@ -182,8 +182,8 @@ export default class Action extends Leaf {
     }
 
     /**
-     * Called when the state of this node changes.
-     * @param previousState The previous node state.
+     * 当此节点的状态改变时调用。
+     * @param previousState 之前的节点状态。
      */
     protected onStateChanged(previousState: State): void {
         this.options.onNodeStateChange?.({
@@ -201,8 +201,8 @@ export default class Action extends Leaf {
     }
 
     /**
-     * Validate the result of an update function call.
-     * @param result The result of an update function call.
+     * 验证更新函数调用的结果。
+     * @param result 更新函数调用的结果。
      */
     private validateUpdateResult = (result: CompleteState | State.RUNNING) => {
         switch (result) {

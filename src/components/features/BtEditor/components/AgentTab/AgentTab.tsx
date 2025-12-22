@@ -10,7 +10,7 @@ export type AgentTabProps = {
 
 export const AgentTab: Component<AgentTabProps> = (props) => {
   return (
-    <div class="flex flex-col w-full h-full basis-1/2 overflow-hidden">
+    <div class="flex flex-col w-full h-full basis-2/5 overflow-hidden bg-area-color">
       <div class="px-3 py-2">
         <span class="font-bold text-accent-color">Agent</span>
       </div>

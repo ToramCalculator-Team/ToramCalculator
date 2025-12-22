@@ -74,5 +74,5 @@ export default class Sequence extends Composite {
     /**
      * Gets the name of the node.
      */
-    getName = () => "SEQUENCE";
+    getName = () => "顺序执行";
 }

@@ -5,12 +5,13 @@ import { Cell, ColumnDef } from "@tanstack/solid-table";
 import { Accessor, createEffect, createSignal, JSX, Show } from "solid-js";
 import { ZodObject, ZodType } from "zod/v4";
 import { FieldGenMap } from "~/components/dataDisplay/objRender";
-import Icons from "~/components/icons";
+import { Icons } from "~/components/icons";
 import { Dic, FieldDict } from "~/locales/type";
 import { store } from "~/store";
 import { LogicEditor } from "../features/logicEditor/LogicEditor";
 import { Select } from "../controls/select";
 import { generateBossDataByFlag } from "~/lib/utils/mob";
+import { BtEditor } from "../features/BtEditor/BtEditor";
 
 export type DataConfig = Partial<{
   [T in keyof DB]: {
@@ -482,13 +483,18 @@ export const DATA_CONFIG: DataConfig = {
       hiddenFields: ["id", "createdByAccountId", "updatedByAccountId","statisticId"],
       fieldGenerator: {
         actions: (field, dictionary, dataSchema) => {
-          return (
-            <LogicEditor
-              data={field().state.value}
-              memberType={"Mob"}
-              setData={(data) => field().setValue(data)}
-              state={true}
-            />
+          return (<BtEditor
+          initValues={{
+            definition: field().state.value.definition,
+            agent: field().state.value.agent,
+          }}
+          onSave={(mdsl, agent) => {
+              field().setValue({
+                definition: mdsl,
+                agent: agent,
+              });
+          }}
+          />
           );
         },
       },

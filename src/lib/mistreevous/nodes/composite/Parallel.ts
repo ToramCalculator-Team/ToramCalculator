@@ -63,5 +63,5 @@ export default class Parallel extends Composite {
     /**
      * Gets the name of the node.
      */
-    getName = () => "PARALLEL";
+    getName = () => "同时执行";
 }

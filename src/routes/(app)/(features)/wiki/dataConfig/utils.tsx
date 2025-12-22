@@ -5,7 +5,7 @@ import { Show } from "solid-js";
 import { dictionary } from "~/locales/type";
 import { setStore, store } from "~/store";
 import { Button } from "~/components/controls/button";
-import Icons from "~/components/icons/index";
+import { Icons } from "~/components/icons/index";
 import { getDB } from "@db/repositories/database";
 import { setWikiStore } from "../store";
 

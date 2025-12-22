@@ -16,7 +16,7 @@ import {
   onMount,
   Show,
 } from "solid-js";
-import Icons from "~/components/icons/index";
+import { Icons } from "~/components/icons/index";
 import { DB } from "@db/generated/zod";
 import { setStore, store } from "~/store";
 import { getPrimaryKeys } from "@db/generated/dmmf-utils";

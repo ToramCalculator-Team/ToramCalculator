@@ -26,7 +26,7 @@ import {
 import { Button } from "~/components/controls/button";
 import { getDictionary } from "~/locales/i18n";
 import { Motion } from "solid-motionone";
-import Icons from "~/components/icons";
+import { Icons } from "~/components/icons";
 import { Select } from "~/components/controls/select";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { DB } from "@db/generated/zod/index";

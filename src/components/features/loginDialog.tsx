@@ -7,7 +7,7 @@ import defaultUserAvatarUrl from "~/../public/icons/512.png?url";
 import { Accessor, createEffect, createMemo, createSignal, on, onMount, Show } from "solid-js";
 import { getDictionary } from "~/locales/i18n";
 import { Motion, Presence } from "solid-motionone";
-import Icons from "~/components/icons/index";
+import { Icons } from "~/components/icons/index";
 import { Input } from "../controls/input";
 import { z } from "zod/v4";
 import { Dialog } from "../containers/dialog";

@@ -1,5 +1,5 @@
 import { For, JSX } from "solid-js";
-import Icons from "~/components/icons/index";
+import { Icons } from "~/components/icons/index";
 import { AnyFieldApi, FieldState } from "@tanstack/solid-form";
 import { EnumFieldDetail } from "~/locales/type";
 

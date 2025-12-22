@@ -322,19 +322,6 @@ export const playerStateMachine = (player: Player): MemberStateMachine<PlayerEve
       },
       根据命中结果进行下一步: function ({ context, event }) {
         console.log(`👤 [${context.owner?.name}] 根据命中结果进行下一步`, event);
-        const result = runtimeContext.lastHitResult;
-
-        if (!result) {
-          console.warn(`⚠️ [${context.owner?.name}] 没有命中结果，终止后续流程`);
-          return;
-        }
-
-        // 未命中或被闪躲：不再进入控制/伤害流程
-        if (!result.hit || result.dodge) {
-          console.log(`👤 [${context.owner?.name}] 本次攻击未命中或被闪躲，hit=${result.hit}, dodge=${result.dodge}`);
-          return;
-        }
-
         // 命中后再进入控制判定
         player.actor.send({ type: "进行控制判定" });
       },

@@ -7,7 +7,7 @@ import { MediaContext } from "~/lib/contexts/Media";
 import { getDictionary } from "~/locales/i18n";
 import { store, setStore } from "~/store";
 import { Button } from "../controls/button";
-import Icons from "~/components/icons/index";
+import { Icons } from "~/components/icons/index";
 
 const NavBtn = (props: {
   config: {

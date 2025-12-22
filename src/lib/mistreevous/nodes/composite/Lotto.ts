@@ -69,5 +69,5 @@ export default class Lotto extends Composite {
     /**
      * Gets the name of the node.
      */
-    getName = () => (this.weights ? `LOTTO [${this.weights.join(",")}]` : "LOTTO");
+    getName = () => (this.weights ? `随机执行 [${this.weights.join(",")}]` : "随机执行");
 }

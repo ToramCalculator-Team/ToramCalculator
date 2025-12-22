@@ -2,7 +2,7 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createMemo, createResource, For, onMount, ParentProps, Show, useContext } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { setStore, store } from "~/store";
-import Icons from "~/components/icons/index";
+import { Icons } from "~/components/icons/index";
 import { getDictionary } from "~/locales/i18n";
 import { fieldInfo, Form } from "~/components/dataDisplay/form";
 import { LogicEditor } from "~/components/features/logicEditor/LogicEditor";

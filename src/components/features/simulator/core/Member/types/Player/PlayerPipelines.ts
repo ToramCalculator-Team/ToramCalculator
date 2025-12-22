@@ -8,7 +8,6 @@ import type { SkillEffectWithRelations } from "@db/generated/repositories/skill_
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import { Player, PlayerAttrType } from "./Player";
-import { PipelineManager } from "../../runtime/Agent/PipelineManager";
 import { MemberWithRelations } from "@db/generated/repositories/member";
 import GameEngine from "../../../GameEngine";
 

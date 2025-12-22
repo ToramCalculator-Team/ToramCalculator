@@ -13,7 +13,7 @@ const MenuItem: Component<MenuItemProps> = (props) => {
   return (
     <div
       class={`px-4 cursor-pointer hover:bg-area-color transition-colors ${
-        local.dense ? 'py-1 text-sm' : 'py-2'
+        local.dense ? 'py-1' : 'py-2'
       } ${local.class || ''}`}
       onClick={local.onClick}
       role="menuitem"

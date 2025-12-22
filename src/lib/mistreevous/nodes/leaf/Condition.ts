@@ -7,15 +7,15 @@ import Lookup from "../../Lookup";
 import Attribute from "../../attributes/Attribute";
 
 /**
- * A Condition leaf node.
- * This will succeed or fail immediately based on an agent predicate, without moving to the 'RUNNING' state.
+ * 条件叶子节点。
+ * 这将根据代理谓词立即成功或失败，而不会进入"运行中"状态。
  */
 export default class Condition extends Leaf {
     /**
-     * @param attributes The node attributes.
-     * @param options The behaviour tree options.
-     * @param conditionName The name of the condition function.
-     * @param conditionArguments The array of condition arguments.
+     * @param attributes 节点属性。
+     * @param options 行为树选项。
+     * @param conditionName 条件函数的名称。
+     * @param conditionArguments 条件参数数组。
      */
     constructor(
         attributes: Attribute[],
@@ -27,14 +27,14 @@ export default class Condition extends Leaf {
     }
 
     /**
-     * Called when the node is being updated.
-     * @param agent The agent.
+     * 当节点被更新时调用。
+     * @param agent 代理对象。
      */
     protected onUpdate(agent: Agent): void {
-        // Attempt to get the invoker for the condition function.
+        // 尝试获取条件函数的调用器。
         const conditionFuncInvoker = Lookup.getFuncInvoker(agent, this.conditionName);
 
-        // The condition function should be defined.
+        // 条件函数应该已定义。
         if (conditionFuncInvoker === null) {
             throw new Error(
                 `cannot update condition node as the condition '${this.conditionName}' function is not defined on the agent and has not been registered`
@@ -44,10 +44,10 @@ export default class Condition extends Leaf {
         let conditionFunctionResult;
 
         try {
-            // Call the condition function to determine the state of this node, the result of which should be a boolean.
+            // 调用条件函数以确定此节点的状态，其结果应该是布尔值。
             conditionFunctionResult = conditionFuncInvoker(this.conditionArguments);
         } catch (error) {
-            // An uncaught error was thrown.
+            // 抛出了未捕获的错误。
             if (error instanceof Error) {
                 throw new Error(`condition function '${this.conditionName}' threw: ${error.stack}`);
             } else {
@@ -55,25 +55,25 @@ export default class Condition extends Leaf {
             }
         }
 
-        // The result of calling the condition function must be a boolean value.
+        // 调用条件函数的结果必须是布尔值。
         if (typeof conditionFunctionResult !== "boolean") {
             throw new Error(
                 `expected condition function '${this.conditionName}' to return a boolean but returned '${conditionFunctionResult}'`
             );
         }
 
-        // Set the state of this node based on the result of calling the condition function.
+        // 根据调用条件函数的结果设置此节点的状态。
         this.setState(conditionFunctionResult ? State.SUCCEEDED : State.FAILED);
     }
 
     /**
-     * Gets the name of the node.
+     * 获取节点的名称。
      */
-    getName = () => this.conditionName;
+    getName = () => `条件 ${this.conditionName}`;
 
     /**
-     * Gets the details of this node instance.
-     * @returns The details of this node instance.
+     * 获取此节点实例的详细信息。
+     * @returns 此节点实例的详细信息。
      */
     public getDetails(): NodeDetails {
         return {
@@ -83,8 +83,8 @@ export default class Condition extends Leaf {
     }
 
     /**
-     * Called when the state of this node changes.
-     * @param previousState The previous node state.
+     * 当此节点的状态改变时调用。
+     * @param previousState 之前的节点状态。
      */
     protected onStateChanged(previousState: State): void {
         this.options.onNodeStateChange?.({

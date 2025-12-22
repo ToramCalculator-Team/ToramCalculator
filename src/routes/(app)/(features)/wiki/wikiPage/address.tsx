@@ -4,7 +4,7 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createSignal, createResource, createMemo, Show } from "solid-js";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { dictionary } from "~/locales/type";
-import Icons from "~/components/icons/index";
+import { Icons } from "~/components/icons/index";
 import { Button } from "~/components/controls/button";
 import { Select } from "~/components/controls/select";
 import { selectAllWorlds } from "@db/generated/repositories/world";

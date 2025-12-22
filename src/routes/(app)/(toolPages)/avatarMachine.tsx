@@ -3,7 +3,7 @@ import { Motion } from "solid-motionone";
 import { Dialog } from "~/components/containers/dialog";
 import { Button } from "~/components/controls/button";
 import { PlayerAttrType } from "~/components/features/simulator/core/Member/types/Player/Player";
-import Icons from "~/components/icons";
+import { Icons } from "~/components/icons";
 import { store } from "~/store";
 
 // 能力值【1~10】

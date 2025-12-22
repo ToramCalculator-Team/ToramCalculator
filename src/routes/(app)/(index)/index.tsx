@@ -18,7 +18,7 @@ import { useMachine } from "@xstate/solid";
 import { indexPageMachine } from "./indexPageMachine";
 
 import { getDictionary } from "~/locales/i18n";
-import Icons from "~/components/icons/index";
+import { Icons } from "~/components/icons/index";
 import { Button } from "~/components/controls/button";
 import { Filing } from "~/components/features/filing";
 

@@ -6,39 +6,39 @@ import Attribute from "../../attributes/Attribute";
 import { BehaviourTreeOptions } from "../../BehaviourTreeOptions";
 
 /**
- * A RACE node.
- * The child nodes are executed concurrently until one succeeds or all fail.
+ * 竞争执行节点。
+ * 子节点并发执行，直到一个成功或全部失败。
  */
 export default class Race extends Composite {
     /**
-     * @param attributes The node attributes.
-     * @param options The behaviour tree options.
-     * @param children The child nodes.
+     * @param attributes 节点属性。
+     * @param options 行为树选项。
+     * @param children 子节点。
      */
     constructor(attributes: Attribute[], options: BehaviourTreeOptions, children: Node[]) {
         super("race", attributes, options, children);
     }
 
     /**
-     * Called when the node is being updated.
-     * @param agent The agent.
+     * 当节点被更新时调用。
+     * @param agent 代理对象。
      */
     protected onUpdate(agent: Agent): void {
-        // Iterate over all of the children of this node, updating any that aren't in a settled state.
+        // 遍历此节点的所有子节点，更新任何未处于稳定状态的子节点。
         for (const child of this.children) {
-            // If the child has never been updated or is running then we will need to update it now.
+            // 如果子节点从未被更新或正在运行，则需要立即更新它。
             if (child.getState() === State.READY || child.getState() === State.RUNNING) {
-                // Update the child of this node.
+                // 更新此节点的子节点。
                 child.update(agent);
             }
         }
 
-        // If any of our child nodes have succeeded then this node has also succeeded.
+        // 如果任何子节点成功，则此节点也成功。
         if (this.children.find((child) => child.is(State.SUCCEEDED))) {
-            // This node is a 'SUCCEEDED' node.
+            // 此节点是一个"成功"节点。
             this.setState(State.SUCCEEDED);
 
-            // Abort every running child.
+            // 中止所有正在运行的子节点。
             for (const child of this.children) {
                 if (child.getState() === State.RUNNING) {
                     child.abort(agent);
@@ -48,20 +48,20 @@ export default class Race extends Composite {
             return;
         }
 
-        // A race node will move into the failed state if all child nodes move into the failed state as none can succeed.
+        // 如果所有子节点都进入失败状态，则竞争执行节点将进入失败状态，因为无法成功。
         if (this.children.every((child) => child.is(State.FAILED))) {
-            // This node is a 'FAILED' node.
+            // 此节点是一个"失败"节点。
             this.setState(State.FAILED);
 
             return;
         }
 
-        // If we didn't move to a succeeded or failed state then this node is still running.
+        // 如果没有进入成功或失败状态，则此节点仍在运行。
         this.setState(State.RUNNING);
     }
 
     /**
-     * Gets the name of the node.
+     * 获取节点的名称。
      */
-    getName = () => "RACE";
+    getName = () => "竞争执行";
 }

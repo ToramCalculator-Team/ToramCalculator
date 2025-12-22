@@ -3,7 +3,7 @@ import { WorkflowCanvas, WorkflowCanvasInstance } from "../workflow/WorkflowCanv
 import { DefaultNode } from "../workflow/DefaultNode";
 import { Button } from "~/components/controls/button";
 import { NodeType, ConnectorType } from "../../types/workflow";
-import Icons from "~/components/icons";
+import { Icons } from "~/components/icons";
 
 export type CanvasElements = {
   nodes: NodeType[];
