@@ -25,6 +25,7 @@ export type BtEditorProps = {
     definition: string;
     agent: string;
   };
+  readOnly?: boolean;
   onSave: (mdsl: string, agent: string) => void;
 };
 
@@ -427,7 +428,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 
   return (
     <div id="BtEditor" class="BtEditor bg-primary-color flex h-full w-full flex-col-reverse landscape:lg:flex-col overflow-hidden">
-      <div class="Functions border-b border-dividing-color relative flex landscape:lg:h-full min-h-[50px] w-full items-center justify-between basis-3/5">
+      <div class={`Functions border-b border-dividing-color relative flex landscape:lg:h-full min-h-[50px] w-full items-center justify-between ${props.readOnly ? "basis-full" : "basis-3/5"}`}>
         <div class="Canvas hidden h-full w-full flex-1 landscape:lg:block">
           <MainPanel
             layoutId={layoutId()}
@@ -441,20 +442,20 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
           />
           <ToastContainer />
         </div>
-        <div class="Left landscape:lg:shadow-card shadow-area-color bg-primary-color landscape:lg:absolute top-2 left-2 flex items-center gap-1 rounded">
+        <div class={`Left ${props.readOnly ? "hidden" : ""} landscape:lg:shadow-card shadow-area-color bg-primary-color landscape:lg:absolute top-2 left-2 flex items-center gap-1 rounded`}>
           <Button level="quaternary" onClick={() => props.onSave(definition(), agent())} class="p-1">
             <Icons.Outline.Save />
           </Button>
           <ExamplesMenu onMDSLInsert={handleMDSLInsert} />
         </div>
-        <div class="Right landscape:lg:shadow-card shadow-area-color bg-primary-color landscape:lg:absolute top-2 right-2 flex items-center gap-1 rounded">
+        <div class={`Right ${props.readOnly ? "hidden" : ""} landscape:lg:shadow-card shadow-area-color bg-primary-color landscape:lg:absolute top-2 right-2 flex items-center gap-1 rounded`}>
           <Button level="quaternary" class="p-1">
             <Icons.Outline.Close />
           </Button>
         </div>
       </div>
       <div
-        class={`Editor landscape:lg:shadow-card shadow-dividing-color flex h-full w-full flex-col overflow-hidden landscape:flex-row landscape:lg:basis-2/5 ${
+        class={`Editor ${props.readOnly ? "hidden" : ""} landscape:lg:shadow-card shadow-dividing-color flex h-full w-full flex-col overflow-hidden landscape:flex-row landscape:lg:basis-2/5 ${
           isSidebarReadOnly() ? "pointer-events-none opacity-70" : ""
         }`}
       >

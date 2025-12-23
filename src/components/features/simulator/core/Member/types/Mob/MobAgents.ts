@@ -1,4 +1,4 @@
-import { PipelineDef, ActionPool } from "../../runtime/Agent/type";
+import { ActionPool } from "../../runtime/Agent/type";
 import { CommonActions } from "../../runtime/Agent/GlobalActions";
 import { RuntimeContext } from "../../runtime/Agent/AgentContext";
 

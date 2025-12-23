@@ -97,11 +97,11 @@ export default class Repeat extends Decorator {
      */
     getName = () => {
         if (this.iterations !== null) {
-            return `REPEAT ${this.iterations}x`;
+            return `重复执行 ${this.iterations}次`;
         } else if (this.iterationsMin !== null && this.iterationsMax !== null) {
-            return `REPEAT ${this.iterationsMin}x-${this.iterationsMax}x`;
+            return `重复执行 ${this.iterationsMin}次-${this.iterationsMax}次`;
         } else {
-            return "REPEAT";
+            return "重复执行";
         }
     };
 

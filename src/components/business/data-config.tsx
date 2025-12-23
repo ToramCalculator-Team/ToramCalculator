@@ -1,5 +1,12 @@
 import { DB } from "@db/generated/zod";
-import { ElementType, MOB_DIFFICULTY_FLAG, MobDifficultyFlag, MobType, SkillTreeType, MemberType } from "@db/schema/enums";
+import {
+  ElementType,
+  MOB_DIFFICULTY_FLAG,
+  MobDifficultyFlag,
+  MobType,
+  SkillTreeType,
+  MemberType,
+} from "@db/schema/enums";
 import { AnyFieldApi } from "@tanstack/solid-form";
 import { Cell, ColumnDef } from "@tanstack/solid-table";
 import { Accessor, createEffect, createSignal, JSX, Show } from "solid-js";
@@ -79,7 +86,6 @@ export const DATA_CONFIG: DataConfig = {
     form: {
       hiddenFields: [],
       fieldGenerator: {},
-      
     },
     card: {
       hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
@@ -480,27 +486,28 @@ export const DATA_CONFIG: DataConfig = {
       },
     },
     form: {
-      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId","statisticId"],
+      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
       fieldGenerator: {
         actions: (field, dictionary, dataSchema) => {
-          return (<BtEditor
-          initValues={{
-            definition: field().state.value.definition,
-            agent: field().state.value.agent,
-          }}
-          onSave={(mdsl, agent) => {
-              field().setValue({
-                definition: mdsl,
-                agent: agent,
-              });
-          }}
-          />
+          return (
+            <BtEditor
+              initValues={{
+                definition: field().state.value.definition,
+                agent: field().state.value.agent,
+              }}
+              onSave={(mdsl, agent) => {
+                field().setValue({
+                  definition: mdsl,
+                  agent: agent,
+                });
+              }}
+            />
           );
         },
       },
     },
     card: {
-      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId","statisticId"],
+      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
       before: (data, setData, dataSchema, dictionary) => {
         const [difficulty, setDifficulty] = createSignal<MobDifficultyFlag>(MOB_DIFFICULTY_FLAG[1]);
 
@@ -610,7 +617,7 @@ export const DATA_CONFIG: DataConfig = {
       hiddenColumnDef: ["itemId"],
       defaultSort: {
         id: "name",
-        desc: false
+        desc: false,
       },
       tdGenerator: {},
     },
@@ -621,7 +628,7 @@ export const DATA_CONFIG: DataConfig = {
     card: {
       hiddenFields: [],
       fieldGenerator: {},
-    }
+    },
   },
   player_weapon: {
     fieldGroupMap: {
@@ -661,7 +668,7 @@ export const DATA_CONFIG: DataConfig = {
       fieldGenerator: {},
     },
     card: {
-      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId","statisticId"],
+      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
       fieldGenerator: {},
     },
   },
@@ -749,6 +756,61 @@ export const DATA_CONFIG: DataConfig = {
       fieldGenerator: {},
     },
   },
+  skill_effect: {
+    fieldGroupMap: {
+      启用条件: ["condition"],
+      基本信息: [
+        "hpCost",
+        "mpCost",
+        "startupFrames",
+        "castingRange",
+        "effectiveRange",
+        "motionFixed",
+        "motionModified",
+        "chantingFixed",
+        "chantingModified",
+        "reservoirFixed",
+        "reservoirModified",
+      ],
+      详细信息: ["description", "details"],
+      其他信息: ["elementLogic"],
+      技能逻辑: ["logic"],
+    },
+    table: {
+      columnsDef: [
+        { accessorKey: "castingRange", cell: (info) => info.getValue(), size: 100 },
+        { accessorKey: "effectiveRange", cell: (info) => info.getValue(), size: 100 },
+        { accessorKey: "motionFixed", cell: (info) => info.getValue(), size: 100 },
+        { accessorKey: "motionModified", cell: (info) => info.getValue(), size: 100 },
+        { accessorKey: "chantingFixed", cell: (info) => info.getValue(), size: 100 },
+        { accessorKey: "chantingModified", cell: (info) => info.getValue(), size: 100 },
+        { accessorKey: "reservoirFixed", cell: (info) => info.getValue(), size: 100 },
+        { accessorKey: "reservoirModified", cell: (info) => info.getValue(), size: 100 },
+      ],
+      hiddenColumnDef: ["id", "belongToskillId"],
+      defaultSort: { id: "id", desc: false },
+      tdGenerator: {},
+    },
+    form: {
+      hiddenFields: ["id", "belongToskillId"],
+      fieldGenerator: {},
+    },
+    card: {
+      hiddenFields: ["id", "belongToskillId"],
+      fieldGenerator: {
+        logic: (field, dictionary, dataSchema) => <div class="w-full h-[50vh] rounded overflow-hidden"><BtEditor
+        initValues={{
+          definition: field.logic.definition,
+          agent: field.logic.agent,
+        }}
+        readOnly={true}
+        onSave={(mdsl, agent) => {
+          console.log(mdsl, agent);
+        }}
+      /></div>
+      },
+    },
+  },
   special: {
     fieldGroupMap: {
       基本信息: ["name", "baseAbi"],
@@ -811,7 +873,7 @@ export const DATA_CONFIG: DataConfig = {
           size: 160,
         },
       ],
-      hiddenColumnDef: ["id", "createdByAccountId", "updatedByAccountId", "statisticId","belongToNpcId"],
+      hiddenColumnDef: ["id", "createdByAccountId", "updatedByAccountId", "statisticId", "belongToNpcId"],
       defaultSort: { id: "name", desc: false },
       tdGenerator: {},
     },
@@ -874,19 +936,17 @@ export const DATA_CONFIG: DataConfig = {
       基本信息: ["name"],
     },
     table: {
-      columnsDef: [
-        { accessorKey: "name", cell: (info) => info.getValue(), size: 200 },
-      ],
+      columnsDef: [{ accessorKey: "name", cell: (info) => info.getValue(), size: 200 }],
       hiddenColumnDef: [],
       defaultSort: { id: "name", desc: false },
       tdGenerator: {},
     },
     form: {
-      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId","statisticId"],
+      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
       fieldGenerator: {},
     },
     card: {
-      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId","statisticId"],
+      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
       fieldGenerator: {},
     },
   },
@@ -932,11 +992,11 @@ export const DATA_CONFIG: DataConfig = {
       tdGenerator: {},
     },
     form: {
-      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId","statisticId"],
+      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
       fieldGenerator: {},
     },
     card: {
-      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId","statisticId"],
+      hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
       fieldGenerator: {},
     },
   },

@@ -5,9 +5,8 @@ import { MemberEventType } from "../../runtime/StateMachine/types";
 import { Mob, MobAttrType } from "./Mob";
 import { ModifierType } from "../../runtime/StatContainer/StatContainer";
 import { GameEngine } from "../../../GameEngine";
-import type { PipelineManager } from "../../runtime/Agent/PipelineManager";
 import type { MemberStateContext, MemberStateMachine } from "../../runtime/StateMachine/types";
-import { MobActionPool } from "./MobPipelines";
+import { MobActionPool } from "./MobAgents";
 
 /**
  * Mob特有的事件类型

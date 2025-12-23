@@ -25,3 +25,13 @@ export interface RuntimeContext extends Record<string, unknown> {
   /** 当前技能逻辑 */
   currentSkillLogic?: string | null;
 }
+
+export const DefaultAgent: RuntimeContext = {
+  owner: undefined,
+  currentFrame: 0,
+  position: { x: 0, y: 0, z: 0 },
+  targetId: "",
+  currentSkill: undefined,
+  currentSkillEffect: undefined,
+  currentSkillLogic: undefined,
+};

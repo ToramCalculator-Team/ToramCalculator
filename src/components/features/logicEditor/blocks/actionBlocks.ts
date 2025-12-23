@@ -3,7 +3,7 @@ import { javascriptGenerator, Order } from "blockly/javascript";
 import { ZodBoolean, ZodEnum, ZodNumber, ZodObject, ZodString, ZodType } from "zod/v4";
 import {
   PlayerActionPool,
-} from "../../simulator/core/Member/types/Player/PlayerPipelines";
+} from "../../simulator/core/Member/types/Player/PlayerAgents";
 import type { Action } from "../../simulator/core/Member/runtime/Agent/type";  
 
 /**

@@ -5,7 +5,7 @@ import { PlayerStateContext, playerStateMachine, PlayerEventType } from "./Playe
 import GameEngine from "../../../GameEngine";
 import { PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
 import { ExtractAttrPaths, NestedSchema } from "../../runtime/StatContainer/SchemaTypes";
-import { PlayerActionPool, type PlayerRuntimeContext } from "./PlayerPipelines";
+import { PlayerActionPool, type PlayerRuntimeContext } from "./PlayerAgents";
 import { StatContainer } from "../../runtime/StatContainer/StatContainer";
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import { PlayerWithRelations } from "@db/generated/repositories/player";
