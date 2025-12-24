@@ -15,7 +15,7 @@
  * - 状态同步：统一管理所有对外通信
  */
 
-import type GameEngine from "../GameEngine";
+import type { GameEngine  } from "../GameEngine";
 import { z } from "zod/v4";
 
 // ==================== 消息路由核心类型定义 ====================

@@ -145,7 +145,7 @@ TRuntimeContext extends RuntimeContext,
 
 		// 注册新的函数到 runtimeContext
 		if (agent) {
-			this.registerAgent(agent);
+			this.registerAgent(agent.trim());
 		}
 
 		// 创建行为树实例

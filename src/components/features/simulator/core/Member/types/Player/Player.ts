@@ -1,17 +1,17 @@
+import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import type { MemberWithRelations } from "@db/generated/repositories/member";
+import type { GameEngine } from "../../../GameEngine";
 import { Member } from "../../Member";
-import { applyPrebattleModifiers } from "./PrebattleDataSysModifiers";
+import type { ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
+import { StatContainer } from "../../runtime/StatContainer/StatContainer";
+import type { PlayerRuntimeContext } from "./PlayerAgents";
+import { PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
 import {
+	type PlayerEventType,
 	type PlayerStateContext,
 	playerStateMachine,
-	type PlayerEventType,
 } from "./PlayerStateMachine";
-import type GameEngine from "../../../GameEngine";
-import { PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
-import type { ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
-import type { PlayerRuntimeContext } from "./PlayerAgents";
-import { StatContainer } from "../../runtime/StatContainer/StatContainer";
-import type { CharacterWithRelations } from "@db/generated/repositories/character";
+import { applyPrebattleModifiers } from "./PrebattleDataSysModifiers";
 
 export type PlayerAttrType = ExtractAttrPaths<
 	ReturnType<typeof PlayerAttrSchemaGenerator>

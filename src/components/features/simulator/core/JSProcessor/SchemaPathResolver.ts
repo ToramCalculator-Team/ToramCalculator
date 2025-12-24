@@ -12,7 +12,7 @@
  * - 提供详细的路径验证和错误信息
  */
 
-import { NestedSchema, SchemaAttribute } from "../Member/runtime/StatContainer/SchemaTypes";
+import type { NestedSchema, SchemaAttribute } from "../Member/runtime/StatContainer/SchemaTypes";
 
 // ============================== 类型定义 ==============================
 
@@ -119,8 +119,8 @@ export class SchemaPathResolver {
   ): void {
     const pattern = new RegExp(`\\b${accessor}\\.([a-zA-Z_][a-zA-Z0-9_.]*?)(?=\\s*[+\\-*/%^&|<>!=,;)\\]\\]]|\\s|$)`, 'g');
     
-    let match;
-    while ((match = pattern.exec(line)) !== null) {
+    const match = pattern.exec(line);
+    while (match !== null) {
       const [fullExpression, path] = match;
       const startIndex = lineOffset + match.index;
       
@@ -244,11 +244,11 @@ export class SchemaPathResolver {
    */
   getPathDisplayName(reactiveKey: string): string | null {
     const parts = reactiveKey.split('.');
-    let current: any = this.schema;
+    let current: NestedSchema = this.schema;
     
     for (const part of parts) {
       if (!current || typeof current !== 'object') return null;
-      current = current[part];
+      current = current[part] as NestedSchema;
     }
     
     if (this.isSchemaAttribute(current)) {
@@ -265,11 +265,11 @@ export class SchemaPathResolver {
    */
   private pathExistsInSchema(path: string): boolean {
     const parts = path.split('.');
-    let current: any = this.schema;
+    let current: NestedSchema = this.schema;
     
     for (const part of parts) {
       if (!current || typeof current !== 'object') return false;
-      current = current[part];
+      current = current[part] as NestedSchema;
     }
     
     return this.isSchemaAttribute(current);

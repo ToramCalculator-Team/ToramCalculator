@@ -1,11 +1,10 @@
-import { ActionPool } from "../../runtime/Agent/type";
+import type { RuntimeContext } from "../../runtime/Agent/AgentContext";
 import { CommonActions } from "../../runtime/Agent/GlobalActions";
-import { RuntimeContext } from "../../runtime/Agent/AgentContext";
+import type { ActionPool } from "../../runtime/Agent/type";
 
-export interface MobActionContext extends RuntimeContext {
-}
+export interface MobActionContext extends RuntimeContext {}
 
 export const MobActionPool = {
-  ...CommonActions,
+	...CommonActions,
 } as const satisfies ActionPool<RuntimeContext>;
 export type MobActionPool = typeof MobActionPool;

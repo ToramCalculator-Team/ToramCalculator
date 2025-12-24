@@ -1,15 +1,12 @@
 import { assign, type EventObject, setup } from "xstate";
-import type { ActionResult } from "~/lib/mistreevous/Agent";
-import { State } from "~/lib/mistreevous/State";
+import type { Member } from "../../Member";
 import { defaultBt } from "../../runtime/BehaviourTree/defaultBt";
 import type {
 	MemberEventType,
 	MemberStateContext,
 	MemberStateMachine,
 } from "../../runtime/StateMachine/types";
-import type { Member } from "../../Member";
-import type { Player } from "./Player";
-import type { PlayerAttrType } from "./Player";
+import type { Player, PlayerAttrType } from "./Player";
 import type { PlayerRuntimeContext } from "./PlayerAgents";
 
 /**
@@ -160,7 +157,12 @@ export type PlayerEventType =
 export interface PlayerStateContext extends MemberStateContext {}
 
 export const playerStateMachine = (
-	member: Member<PlayerAttrType, PlayerEventType, PlayerStateContext, PlayerRuntimeContext>,
+	member: Member<
+		PlayerAttrType,
+		PlayerEventType,
+		PlayerStateContext,
+		PlayerRuntimeContext
+	>,
 ): MemberStateMachine<PlayerEventType, PlayerStateContext> => {
 	// 类型断言：playerStateMachine 内部需要访问 Player 特有属性
 	const player = member as Player;

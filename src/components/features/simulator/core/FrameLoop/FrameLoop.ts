@@ -3,7 +3,7 @@
  *
  */
 
-import type GameEngine from "../GameEngine";
+import type { GameEngine  } from "../GameEngine";
 import type { FrameStepResult } from "../types";
 import { FrameLoopConfig, FrameLoopMode, FrameLoopState, FrameLoopStats, FrameLoopSnapshot } from "./types";
 

@@ -6,7 +6,7 @@ import type {
 // ============================== 逆向出来的BounsType参考数据类型 ==============================
 
 // 类型枚举
-enum BounsTypeEnum {
+enum _BounsTypeEnum {
   None, // 无
   Str, // 力量
   Int, // 智力
