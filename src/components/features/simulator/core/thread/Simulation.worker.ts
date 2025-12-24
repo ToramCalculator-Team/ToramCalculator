@@ -12,7 +12,7 @@ import {
   DataQueryCommandSchema,
 } from "./SimulatorPool";
 import { WorkerMessage, WorkerMessageEvent } from "~/lib/WorkerPool/type";
-import GameEngine from "../GameEngine";
+import { GameEngine  }from "../GameEngine";
 
 // ==================== 沙盒环境初始化 ====================
 

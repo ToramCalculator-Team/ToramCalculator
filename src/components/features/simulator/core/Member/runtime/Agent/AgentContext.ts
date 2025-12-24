@@ -1,15 +1,15 @@
-import { MemberType } from "@db/schema/enums";
-import type GameEngine from "../../../GameEngine";
 import type { SkillEffectWithRelations } from "@db/generated/repositories/skill_effect";
+import type { SkillEffectLogic } from "@db/schema/skillEffectLogicSchema";
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
-import { Member } from "../../Member";
+import type { Member } from "../../Member";
+import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
 
 /**
  * RuntimeContext
  */
 export interface RuntimeContext extends Record<string, unknown> {
   /** 成员引用 */
-  owner: Member<any, any, any, any> | undefined;
+  owner: Member<string, MemberEventType, MemberStateContext, RuntimeContext> | undefined;
   /** 当前帧 */
   currentFrame: number;
   /** 位置信息 */
@@ -23,7 +23,7 @@ export interface RuntimeContext extends Record<string, unknown> {
   /** 当前技能效果 */
   currentSkillEffect?: SkillEffectWithRelations | null;
   /** 当前技能逻辑 */
-  currentSkillLogic?: string | null;
+  currentSkillLogic?: SkillEffectLogic | null;
 }
 
 export const DefaultAgent: RuntimeContext = {

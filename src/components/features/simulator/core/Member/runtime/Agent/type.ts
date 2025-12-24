@@ -1,5 +1,5 @@
-import { z, ZodType } from "zod/v4";
-import { State } from "~/lib/mistreevous";
+import type { z, ZodType } from "zod/v4";
+import type { State } from "~/lib/mistreevous";
 
 /**
  * 动作定义（Action）

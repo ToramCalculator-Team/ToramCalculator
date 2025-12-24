@@ -1,0 +1,8 @@
+datasource db {
+  provider = "postgresql"
+}
+
+model Test {
+  id String @id
+  name String
+}

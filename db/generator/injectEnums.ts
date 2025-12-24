@@ -4,8 +4,6 @@
  * 将 enums.ts 中的枚举定义合并到 Prisma schema 中
  */
 
-import fs from 'fs';
-import path from 'path';
 import { EnumInjector } from './enumInjector';
 import { SchemaCollector } from './utils/schemaCollector';
 import { PATHS } from './config';

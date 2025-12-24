@@ -102,11 +102,15 @@ interface TableStructure {
 export class SQLGenerator {
   private tempSchemaPath: string;
   private outputDir: string;
+  private tempPrismaConfigPath: string;
+  private readonly migrateDiffDatabaseUrlFallback =
+    'postgresql://user:pass@localhost:5432/db?schema=public';
 
   constructor(outputDir: string) {
     this.outputDir = outputDir;
     // 使用与主生成器相同的临时文件路径
     this.tempSchemaPath = PATHS.tempSchema;
+    this.tempPrismaConfigPath = path.join(outputDir, "prisma.config.ts");
   }
 
   /**
@@ -117,20 +121,23 @@ export class SQLGenerator {
       console.log("生成 SQL 初始化脚本...");
       
       // 1. 写入临时 schema 文件
-      this.writeTempSchema(schemaContent);
+      await this.writeTempSchema(schemaContent);
+
+      // 1.1 写入临时 Prisma config（Prisma 7+ datasource url 不再写在 schema 中）
+      await this.writeTempPrismaConfig();
       
       // 2. 生成服务端 SQL
       const serverSQL = this.generateServerSQL();
       
       // 3. 生成客户端 SQL（带同步架构转换）
-      const clientSQL = this.generateClientSQL();
+      const clientSQL = this.generateClientSQL(serverSQL);
       
       // 4. 写入输出文件
       const serverSQLPath = path.join(this.outputDir, "server.sql");
       const clientSQLPath = path.join(this.outputDir, "client.sql");
       
-      writeFileSafely(serverSQLPath, serverSQL);
-      writeFileSafely(clientSQLPath, clientSQL);
+      await writeFileSafely(serverSQLPath, serverSQL);
+      await writeFileSafely(clientSQLPath, clientSQL);
       
       // 5. 修复关系表名称
       this.fixRelationTableNames(schemaContent);
@@ -139,14 +146,40 @@ export class SQLGenerator {
     } catch (error) {
       console.error("SQL 初始化脚本生成失败:", error);
       throw error;
+    } finally {
+      // 清理临时 Prisma config（schema 的清理由主生成器负责）
+      try {
+        if (fs.existsSync(this.tempPrismaConfigPath)) {
+          fs.unlinkSync(this.tempPrismaConfigPath);
+        }
+      } catch {
+        // 忽略清理失败
+      }
     }
   }
 
   /**
    * 写入临时 schema 文件
    */
-  private writeTempSchema(schemaContent: string): void {
-    writeFileSafely(this.tempSchemaPath, schemaContent);
+  private async writeTempSchema(schemaContent: string): Promise<void> {
+    await writeFileSafely(this.tempSchemaPath, schemaContent);
+  }
+
+  /**
+   * 写入临时 Prisma config（用于 Prisma 7+ 的 Migrate/Diff）
+   */
+  private async writeTempPrismaConfig(): Promise<void> {
+    const content = `import 'dotenv/config';
+import { defineConfig, env } from 'prisma/config';
+
+export default defineConfig({
+  schema: ${JSON.stringify(this.tempSchemaPath)},
+  datasource: {
+    url: env("DATABASE_URL"),
+  },
+});
+`;
+    await writeFileSafely(this.tempPrismaConfigPath, content);
   }
 
   /**
@@ -160,14 +193,24 @@ export class SQLGenerator {
         throw new Error(`临时 schema 文件不存在: ${this.tempSchemaPath}`);
       }
 
-      const command = `npx prisma migrate diff --from-empty --to-schema-datamodel ${this.tempSchemaPath} --script`;
+      const command = `npx --yes prisma migrate diff --from-empty --to-schema ${this.tempSchemaPath} --script --config ${this.tempPrismaConfigPath}`;
       console.log(`执行命令: ${command}`);
       
       const sql = execSync(command, { 
         encoding: 'utf-8',
         cwd: process.cwd(),
+        env: {
+          ...process.env,
+          // Prisma 7 的 Migrate/Diff 会校验 URL 格式（即使不连接 DB）
+          // 这里提供一个兜底值，避免因未配置/格式不正确导致生成空 SQL
+          DATABASE_URL: process.env.DATABASE_URL || this.migrateDiffDatabaseUrlFallback,
+        },
         stdio: 'pipe'
       });
+
+      if (sql.trim().length === 0) {
+        throw new Error("Prisma migrate diff 输出为空（请检查 DATABASE_URL 是否配置正确）");
+      }
       
       console.log("服务端 SQL 生成成功");
       return sql;
@@ -180,12 +223,9 @@ export class SQLGenerator {
   /**
    * 生成客户端 SQL
    */
-  private generateClientSQL(): string {
+  private generateClientSQL(baseSQL: string): string {
     console.log("生成客户端 SQL...");
     try {
-      // 先生成基础 SQL
-      const baseSQL = this.generateServerSQL();
-      
       // 转换客户端 SQL
       const transformedSQL = this.transformClientSql(baseSQL);
       

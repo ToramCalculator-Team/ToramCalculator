@@ -3,7 +3,7 @@
  * 主要事件处理逻辑在状态机中，事件队列只负责跨帧对状态机发送消息
  */
 
-import GameEngine from "../GameEngine";
+import { GameEngine  }from "../GameEngine";
 import { EventQueueConfig, QueueEvent, QueueSnapshot, QueueStats } from "./types";
 
 export class EventQueue {

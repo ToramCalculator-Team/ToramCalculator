@@ -6,11 +6,11 @@ import { electricSync } from "@electric-sql/pglite-sync";
 import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import { live } from "@electric-sql/pglite/live";
 import initSQL from "@db/generated/client.sql?raw";
-import { DB } from "@db/generated/zod/index";
+import type { DB } from "@db/generated/zod/index";
 import { ChangeLogSynchronizer } from "~/lib/ChangeLogSynchronizer";
 
 const ELECTRIC_HOST =
-  import.meta.env.VITE_SERVER_HOST == "localhost"
+  import.meta.env.VITE_SERVER_HOST === "localhost"
     ? "http://localhost:3000/v1/shape"
     : "https://test.kiaclouth.com/v1/shape";
 // console.log("VITE_SERVER_HOST:" + import.meta.env.VITE_SERVER_HOST);
@@ -109,70 +109,70 @@ worker({
     };
 
     // const userShape = await syncTable('user', ["id"]);
-    const accountShape = await syncTable("account", ["id"]);
-    const accountCreateDataShape = await syncTable("account_create_data", ["userId"]);
-    const accountUpdateDataShape = await syncTable("account_update_data", ["userId"]);
-    const playerShape = await syncTable("player", ["id"]);
-    const statisticShape = await syncTable("statistic", ["id"]);
-    const imageShape = await syncTable("image", ["id"]);
-    const worldShape = await syncTable("world", ["id"]);
-    const activityShape = await syncTable("activity", ["id"]);
-    const addressShape = await syncTable("address", ["id"]);
-    const zoneShape = await syncTable("zone", ["id"]);
-    const linkZoneShape = await syncTable("_linkZones", ["A", "B"], `"_linkZones"`);
-    const npcShape = await syncTable("npc", ["id"]);
-    const taskShape = await syncTable("task", ["id"]);
-    const taskKillRequirementShape = await syncTable("task_kill_requirement", ["id"]);
-    const taskCollectRequireShape = await syncTable("task_collect_require", ["id"]);
-    const taskRewardShape = await syncTable("task_reward", ["id"]);
-    const mobToZoneShape = await syncTable("_mobTozone", ["A", "B"], `"_mobTozone"`);
-    const mobShape = await syncTable("mob", ["id"]);
-    const dropItemShape = await syncTable("drop_item", ["id"]);
-    const itemShape = await syncTable("item", ["id"]);
-    const weaponShape = await syncTable("weapon", ["itemId"]);
-    const armorShape = await syncTable("armor", ["itemId"]);
-    const optionShape = await syncTable("option", ["itemId"]);
-    const specialShape = await syncTable("special", ["itemId"]);
-    const avatarShape = await syncTable("avatar", ["id"]);
-    const avatarToCharacterShape = await syncTable("_avatarTocharacter", ["A", "B"], `"_avatarTocharacter"`);
-    const crystalShape = await syncTable("crystal", ["itemId"]);
-    const crystalToPlayerWeaponShape = await syncTable(
+    const _accountShape = await syncTable("account", ["id"]);
+    const _accountCreateDataShape = await syncTable("account_create_data", ["userId"]);
+    const _accountUpdateDataShape = await syncTable("account_update_data", ["userId"]);
+    const _playerShape = await syncTable("player", ["id"]);
+    const _statisticShape = await syncTable("statistic", ["id"]);
+    const _imageShape = await syncTable("image", ["id"]);
+    const _worldShape = await syncTable("world", ["id"]);
+    const _activityShape = await syncTable("activity", ["id"]);
+    const _addressShape = await syncTable("address", ["id"]);
+    const _zoneShape = await syncTable("zone", ["id"]);
+    const _linkZoneShape = await syncTable("_linkZones", ["A", "B"], `"_linkZones"`);
+    const _npcShape = await syncTable("npc", ["id"]);
+    const _taskShape = await syncTable("task", ["id"]);
+    const _taskKillRequirementShape = await syncTable("task_kill_requirement", ["id"]);
+    const _taskCollectRequireShape = await syncTable("task_collect_require", ["id"]);
+    const _taskRewardShape = await syncTable("task_reward", ["id"]);
+    const _mobToZoneShape = await syncTable("_mobTozone", ["A", "B"], `"_mobTozone"`);
+    const _mobShape = await syncTable("mob", ["id"]);
+    const _dropItemShape = await syncTable("drop_item", ["id"]);
+    const _itemShape = await syncTable("item", ["id"]);
+    const _weaponShape = await syncTable("weapon", ["itemId"]);
+    const _armorShape = await syncTable("armor", ["itemId"]);
+    const _optionShape = await syncTable("option", ["itemId"]);
+    const _specialShape = await syncTable("special", ["itemId"]);
+    const _avatarShape = await syncTable("avatar", ["id"]);
+    const _avatarToCharacterShape = await syncTable("_avatarTocharacter", ["A", "B"], `"_avatarTocharacter"`);
+    const _crystalShape = await syncTable("crystal", ["itemId"]);
+    const _crystalToPlayerWeaponShape = await syncTable(
       "_crystalToplayer_weapon",
       ["A", "B"],
       `"_crystalToplayer_weapon"`,
     );
-    const crystalToPlayerArmorShape = await syncTable("_crystalToplayer_armor", ["A", "B"], `"_crystalToplayer_armor"`);
-    const crystalToPlayerOptionShape = await syncTable(
+    const _crystalToPlayerArmorShape = await syncTable("_crystalToplayer_armor", ["A", "B"], `"_crystalToplayer_armor"`);
+    const _crystalToPlayerOptionShape = await syncTable(
       "_crystalToplayer_option",
       ["A", "B"],
       `"_crystalToplayer_option"`,
     );
-    const crystalToPlayerSpecialShape = await syncTable(
+    const _crystalToPlayerSpecialShape = await syncTable(
       "_crystalToplayer_special",
       ["A", "B"],
       `"_crystalToplayer_special"`,
     );
-    const recipeShape = await syncTable("recipe", ["id"]);
-    const recipeIngredientShape = await syncTable("recipe_ingredient", ["id"]);
-    const skillShape = await syncTable("skill", ["id"]);
-    const skillEffectShape = await syncTable("skill_effect", ["id"]);
-    const playerWeponShape = await syncTable("player_weapon", ["id"]);
-    const playerArmorShape = await syncTable("player_armor", ["id"]);
-    const playerOptionShape = await syncTable("player_option", ["id"]);
-    const playerSpecialShape = await syncTable("player_special", ["id"]);
-    const customPetShape = await syncTable("player_pet", ["id"]);
-    const characterToConsumableShape = await syncTable("_characterToconsumable", ["A", "B"], `"_characterToconsumable"`);
-    const characterSkillShape = await syncTable("character_skill", ["id"]);
-    const consumableShape = await syncTable("consumable", ["itemId"]);
-    const materialShape = await syncTable("material", ["itemId"]);
-    const comboShape = await syncTable("combo", ["id"]);
-    const characterShape = await syncTable("character", ["id"]);
-    const mercenaryShape = await syncTable("mercenary", ["templateId"]);
-    const memberShape = await syncTable("member", ["id"]);
-    const teamShape = await syncTable("team", ["id"]);
-    const campASimulatorShape = await syncTable("_campA", ["A", "B"], `"_campA"`);
-    const campBSimulatorShape = await syncTable("_campB", ["A", "B"], `"_campB"`);
-    const simulatorShape = await syncTable("simulator", ["id"]);
+    const _recipeShape = await syncTable("recipe", ["id"]);
+    const _recipeIngredientShape = await syncTable("recipe_ingredient", ["id"]);
+    const _skillShape = await syncTable("skill", ["id"]);
+    const _skillEffectShape = await syncTable("skill_effect", ["id"]);
+    const _playerWeponShape = await syncTable("player_weapon", ["id"]);
+    const _playerArmorShape = await syncTable("player_armor", ["id"]);
+    const _playerOptionShape = await syncTable("player_option", ["id"]);
+    const _playerSpecialShape = await syncTable("player_special", ["id"]);
+    const _customPetShape = await syncTable("player_pet", ["id"]);
+    const _characterToConsumableShape = await syncTable("_characterToconsumable", ["A", "B"], `"_characterToconsumable"`);
+    const _characterSkillShape = await syncTable("character_skill", ["id"]);
+    const _consumableShape = await syncTable("consumable", ["itemId"]);
+    const _materialShape = await syncTable("material", ["itemId"]);
+    const _comboShape = await syncTable("combo", ["id"]);
+    const _characterShape = await syncTable("character", ["id"]);
+    const _mercenaryShape = await syncTable("mercenary", ["templateId"]);
+    const _memberShape = await syncTable("member", ["id"]);
+    const _teamShape = await syncTable("team", ["id"]);
+    const _campASimulatorShape = await syncTable("_campA", ["A", "B"], `"_campA"`);
+    const _campBSimulatorShape = await syncTable("_campB", ["A", "B"], `"_campB"`);
+    const _simulatorShape = await syncTable("simulator", ["id"]);
     // console.log("PGliteWorker初始化完成.....");
     console.log("已同步完成");
 

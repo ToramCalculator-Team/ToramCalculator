@@ -1,7 +1,7 @@
 import { MemberWithRelations } from "@db/generated/repositories/member";
 import { Member } from "../../Member";
 import { ExtractAttrPaths, NestedSchema } from "../../runtime/StatContainer/SchemaTypes";
-import GameEngine from "../../../GameEngine";
+import { GameEngine  }from "../../../GameEngine";
 import { createMobStateMachine, MobStateContext, MobEventType } from "./MobStateMachine";
 import { MobAttrSchema } from "./MobAttrSchema";
 import { StatContainer } from "../../runtime/StatContainer/StatContainer";

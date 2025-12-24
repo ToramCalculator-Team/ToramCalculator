@@ -1,18 +1,24 @@
-export const defaultBt = {
-  tree: `
-  root {
-    sequence {
-        action [SomeAction]
-        wait [2000]
-        action [SomeAction]
-        wait [2000]
-        action [SomeAction]
-        wait [2000]
-    }
+import type { EffectTree } from "@db/schema/skillEffectLogicSchema";
+
+export const defaultBt: EffectTree = {
+	name: "缺省值行为树",
+	definition: `
+root {
+  sequence {
+      action [SomeAction]
+      wait [2000]
+      action [SomeAction]
+      wait [2000]
+      action [SomeAction]
+      wait [2000]
   }
-  `, // MDSL 字符串或 JSON
-  functions: {
-    // 可选的函数定义
-    SomeAction: "function() { console.log(this); return State.SUCCEEDED; }", // 函数代码字符串
-  },
+}
+`,
+	agent: `
+class Agent {
+  SomeAction() {
+    console.log(this);
+    return State.SUCCEEDED;
+  }
+}`,
 };

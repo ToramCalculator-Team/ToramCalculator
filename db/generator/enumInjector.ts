@@ -6,7 +6,6 @@
 
 import { createRequire } from "module";
 import fs from "node:fs";
-import path from "node:path";
 import { PATHS } from "./config";
 
 const require = createRequire(import.meta.url);

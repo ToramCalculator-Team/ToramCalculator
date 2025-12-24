@@ -1,5 +1,5 @@
 import { setup, createMachine } from "xstate";
-import GameEngine from "./GameEngine";
+import { GameEngine  }from "./GameEngine";
 import { z } from "zod/v4";
 import { SimulatorWithRelationsSchema } from "@db/generated/repositories/simulator";
 
