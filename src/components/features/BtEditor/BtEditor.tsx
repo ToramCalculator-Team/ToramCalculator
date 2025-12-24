@@ -471,9 +471,11 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 			class="BtEditor bg-primary-color flex h-full w-full flex-col-reverse landscape:lg:flex-col overflow-hidden"
 		>
 			<div
-				class={`Functions border-b border-dividing-color relative flex landscape:lg:h-full min-h-[50px] w-full items-center justify-between ${props.readOnly ? "basis-full" : "basis-3/5"}`}
+				class={`Functions border-b border-dividing-color relative flex landscape:lg:h-full min-h-[50px] w-full items-center justify-between ${props.readOnly ? "basis-full" : "landscape:lg:basis-3/5"}`}
 			>
-				<div class="Canvas hidden h-full w-full flex-1 landscape:lg:block">
+				<div
+					class={`Canvas ${props.readOnly ? "" : "hidden"} h-full w-full flex-1 landscape:lg:block`}
+				>
 					<MainPanel
 						layoutId={layoutId()}
 						elements={canvasElements()}
