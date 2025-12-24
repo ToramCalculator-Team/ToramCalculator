@@ -29,10 +29,10 @@ export const PERIODIC_CHECK_CONFIG = {
 
 // 缓存策略配置
 export const CACHE_STRATEGIES = {
-  CORE: "core-" + VERSION,        // 核心资源（HTML、manifest、关键JS）
-  ASSETS: "assets-" + VERSION,    // 构建资源（JS、CSS、图片）
-  DATA: "data-" + VERSION,        // 数据资源（API响应等）
-  PAGES: "pages-" + VERSION,      // 页面缓存
+  CORE: `core-${VERSION}`,        // 核心资源（HTML、manifest、关键JS）
+  ASSETS: `assets-${VERSION}`,    // 构建资源（JS、CSS、图片）
+  DATA: `data-${VERSION}`,        // 数据资源（API响应等）
+  PAGES: `pages-${VERSION}`,      // 页面缓存
   VERSION_META: "version-meta",   // 版本元数据缓存（不包含版本号，用于跨版本比较）
 } as const;
 
@@ -42,5 +42,5 @@ export const VERSION_CHECK_CONFIG = {
   VERSION_META_KEY: 'sw-version-meta',
   CACHE_KEY_PREFIX: 'toram-sw-',
   // 检查哪些字段的变化来判断是否需要更新
-  CHECK_FIELDS: ['version', 'buildTime', 'bundleInfo'] as const,
+  CHECK_FIELDS: ['version', 'buildTime'] as const,
 } as const; 

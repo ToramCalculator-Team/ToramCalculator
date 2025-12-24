@@ -59,7 +59,8 @@ export async function checkVersionChange(): Promise<{ hasChanged: boolean }> {
   const manifest = await fetchManifest();
   if (!manifest) return { hasChanged: false };
 
-  const current = { version: manifest.version, buildTime: manifest.buildTime, raw: manifest };
+  // KISS：只比较 version/buildTime（避免把全量 manifest 存进 CacheStorage，减少内存与序列化开销）
+  const current = { version: manifest.version, buildTime: manifest.buildTime };
   const stored = await getStoredMeta();
 
   if (!stored) {
@@ -67,17 +68,9 @@ export async function checkVersionChange(): Promise<{ hasChanged: boolean }> {
     return { hasChanged: true };
   }
 
-  // 优先比较构建时间，其次整体内容
-  const sameBuild = stored.buildTime && current.buildTime && stored.buildTime === current.buildTime;
-  const sameVersion = stored.version && current.version && stored.version === current.version;
-
-  if (sameBuild && sameVersion) {
-    return { hasChanged: false };
-  }
-
-  // 兜底：字符串比较
-  const sameRaw = JSON.stringify(stored.raw) === JSON.stringify(current.raw);
-  if (sameRaw) return { hasChanged: false };
+  const sameBuild = stored.buildTime === current.buildTime;
+  const sameVersion = stored.version === current.version;
+  if (sameBuild && sameVersion) return { hasChanged: false };
 
   await putStoredMeta(current);
   return { hasChanged: true };
@@ -96,6 +89,6 @@ export async function getVersionStatus(): Promise<VersionStatus> {
 export async function updateStoredVersion(): Promise<void> {
   const manifest = await fetchManifest();
   if (manifest) {
-    await putStoredMeta({ version: manifest.version, buildTime: manifest.buildTime, raw: manifest });
+    await putStoredMeta({ version: manifest.version, buildTime: manifest.buildTime });
   }
 }

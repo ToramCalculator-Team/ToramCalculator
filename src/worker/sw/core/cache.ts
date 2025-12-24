@@ -24,12 +24,47 @@ export async function preCacheAll(): Promise<void> {
   const manifest = await resp.json();
 
   const core: string[] = ['/','/manifest.json','/chunk-manifest.json'];
-  if (manifest?.chunks?.core) core.push(...manifest.chunks.core.map((c: any) => `/${c.fileName}`));
+  const normalizeEntry = (v: any): string | null => {
+    if (!v) return null;
+    if (typeof v === 'string') return v;
+    if (typeof v.fileName === 'string') return v.fileName;
+    return null;
+  };
+
+  if (manifest?.chunks?.core) {
+    core.push(
+      ...manifest.chunks.core
+        .map((c: any) => normalizeEntry(c))
+        .filter((x: any): x is string => typeof x === 'string')
+        .map((fileName: string) => `/${fileName}`),
+    );
+  }
 
   const assets: string[] = [];
-  if (manifest?.assets?.images) assets.push(...manifest.assets.images.map((a: any) => `/${a.fileName}`));
-  if (manifest?.assets?.fonts) assets.push(...manifest.assets.fonts.map((a: any) => `/${a.fileName}`));
-  if (manifest?.assets?.others) assets.push(...manifest.assets.others.map((a: any) => `/${a.fileName}`));
+  if (manifest?.assets?.images) {
+    assets.push(
+      ...manifest.assets.images
+        .map((a: any) => normalizeEntry(a))
+        .filter((x: any): x is string => typeof x === 'string')
+        .map((fileName: string) => `/${fileName}`),
+    );
+  }
+  if (manifest?.assets?.fonts) {
+    assets.push(
+      ...manifest.assets.fonts
+        .map((a: any) => normalizeEntry(a))
+        .filter((x: any): x is string => typeof x === 'string')
+        .map((fileName: string) => `/${fileName}`),
+    );
+  }
+  if (manifest?.assets?.others) {
+    assets.push(
+      ...manifest.assets.others
+        .map((a: any) => normalizeEntry(a))
+        .filter((x: any): x is string => typeof x === 'string')
+        .map((fileName: string) => `/${fileName}`),
+    );
+  }
 
   // 核心
   const coreCache = await caches.open(CACHE_STRATEGIES.CORE);

@@ -61,14 +61,24 @@ class Agent {
 }`;
 
 export default function BtEditorPage() {
-  const [initValues, setInitValues] = createSignal<{ definition: string; agent: string }>({
-    definition: magic_cannon_buff1_definition.trim(),
-    agent: magic_cannon_buff1_agent.trim(),
-  });
+	const [initValues, setInitValues] = createSignal<{
+		definition: string;
+		agent: string;
+	}>({
+		definition: "",
+		agent: `class Agent {
+}`,
+	});
 
-  const onSave = (definition: string, agent: string) => {
-    console.log(definition, agent);
-  };
+	const onSave = (definition: string, agent: string) => {
+		console.log(definition, agent);
+	};
 
-  return <BtEditor initValues={initValues()} onSave={onSave} />;
+	onMount(() => {
+		const definition = magic_cannon_definition.trim();
+		const agent = magic_cannon_agent.trim();
+		setInitValues({ definition, agent });
+	});
+
+	return <BtEditor initValues={initValues()} onSave={onSave} />;
 }
