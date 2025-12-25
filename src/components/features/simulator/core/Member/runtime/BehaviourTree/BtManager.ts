@@ -1,6 +1,6 @@
 import { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
-import State from "~/lib/mistreevous/State";
+import { State } from "~/lib/mistreevous/State";
 import type { Member } from "../../Member";
 import type{ RuntimeContext } from "../Agent/AgentContext";
 import type { MemberEventType, MemberStateContext } from "../StateMachine/types";

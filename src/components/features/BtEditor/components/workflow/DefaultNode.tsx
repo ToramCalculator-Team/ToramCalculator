@@ -1,8 +1,9 @@
 import { type Component, For, Show } from "solid-js";
-import { State, type NodeDetails } from "~/lib/mistreevous";
-import { DefaultNodeGuardTag } from "./DefaultNodeGuardTag";
+import { Icons } from "~/components/icons";
+import { State } from "~/lib/mistreevous";
+import type { NodeType } from "../../types/workflow";
 import { DefaultNodeCallbackTag } from "./DefaultNodeCallbackTag";
-import { Icons } from "../../../../icons";
+import { DefaultNodeGuardTag } from "./DefaultNodeGuardTag";
 
 export type DefaultNodeArgument =
 	| string
@@ -11,20 +12,7 @@ export type DefaultNodeArgument =
 	| null
 	| { $: string };
 
-export type DefaultNodeProps = {
-	id: string;
-	caption: string;
-	type: string;
-	state: State;
-	args: DefaultNodeArgument[];
-	whileGuard?: NodeDetails["while"];
-	untilGuard?: NodeDetails["until"];
-	entryCallback?: NodeDetails["entry"];
-	stepCallback?: NodeDetails["step"];
-	exitCallback?: NodeDetails["exit"];
-};
-
-export const DefaultNode: Component<DefaultNodeProps> = (props) => {
+export const DefaultNode: Component<NodeType> = (props) => {
 	const getStateClasses = () => {
 		switch (props.state) {
 			case State.RUNNING:
@@ -143,9 +131,7 @@ export const DefaultNode: Component<DefaultNodeProps> = (props) => {
 					<p class="m-0 mx-1.5 ml-2 inline-flex h-6 items-center">
 						<span class="leading-[100%]">{props.caption}</span>
 					</p>
-					<For each={props.args}>
-						{(arg) => getArgument(arg)}
-					</For>
+					<For each={props.args}>{(arg) => getArgument(arg)}</For>
 				</div>
 				<div class="flex flex-col items-start">
 					<Show when={props.whileGuard}>

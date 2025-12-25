@@ -1,5 +1,5 @@
-import { Component, Show } from 'solid-js';
-import { CodeEditor, Divider, Alert } from '../';
+import { type Component, Show } from 'solid-js';
+import { Alert, CodeEditor, Divider } from '../';
 
 export type AgentTabProps = {
   value: string;

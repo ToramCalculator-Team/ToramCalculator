@@ -1,4 +1,4 @@
-import { Example } from '../types';
+import type { Example } from '../types';
 
 /**
  * An array of example definition and board combinations.

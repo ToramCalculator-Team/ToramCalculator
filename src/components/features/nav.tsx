@@ -1,13 +1,13 @@
-import { DB } from "@db/generated/zod";
-import { A, useNavigate, useLocation } from "@solidjs/router";
+import type { DB } from "@db/generated/zod";
+import { A, useLocation } from "@solidjs/router";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { JSX, createSignal, createMemo, useContext } from "solid-js";
+import { createMemo, createSignal, type JSX, useContext } from "solid-js";
 import { Motion } from "solid-motionone";
+import { Icons } from "~/components/icons/index";
 import { MediaContext } from "~/lib/contexts/Media";
 import { getDictionary } from "~/locales/i18n";
-import { store, setStore } from "~/store";
+import { setStore, store } from "~/store";
 import { Button } from "../controls/button";
-import { Icons } from "~/components/icons/index";
 
 const NavBtn = (props: {
   config: {
@@ -48,11 +48,8 @@ export const Nav = () => {
   const [display, setDisplay] = createSignal(false);
   // UI文本字典
   const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
-  const navigate = useNavigate();
   const media = useContext(MediaContext);
   const location = useLocation();
-
-  const [activedTableName, setActivedTableName] = createSignal<keyof DB>("mob")
 
   const active = (path: string) => {
     let condition = false;
@@ -62,7 +59,7 @@ export const Nav = () => {
     }
     return condition ? "bg-area-color lg:bg-brand-color-1st" : "";
   };
-  const navHiddenTables: (keyof DB)[] = [
+  const _navHiddenTables: (keyof DB)[] = [
     "verification_token",
     "account",
     "account_create_data",
@@ -107,7 +104,7 @@ export const Nav = () => {
       <div
         class={`Content flex ${display() ? "lg:landscape:opacity-100" : "lg:landscape:opacity-0"} h-full w-full items-center landscape:flex-col landscape:gap-2 lg:landscape:gap-8 lg:landscape:w-fit`}
       >
-        <a href={"/"} class="Home hidden items-center justify-center landscape:flex" tabIndex={1}>
+        <a href={"/"} class="Home hidden items-center justify-center landscape:flex">
           <Icons.Outline.Logo />
         </a>
         <OverlayScrollbarsComponent
@@ -180,7 +177,8 @@ export const Nav = () => {
             </div>
             <Divider />
             <div class="CalculatorGroup flex items-center landscape:flex-col landscape:gap-0">
-              <div
+              <button 
+              type="button"
                 class={`ModuleSwitcher flex w-[20dvw] items-center justify-center landscape:hidden`}
                 onClick={() => console.log("/simulator/defaultSimulatorId")}
               >
@@ -189,7 +187,7 @@ export const Nav = () => {
                     53
                   </div>
                 </div>
-              </div>
+              </button>
               <NavBtn
                 config={{
                   btnName: dictionary().ui.nav.character,

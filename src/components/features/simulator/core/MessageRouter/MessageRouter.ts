@@ -285,7 +285,3 @@ export class MessageRouter {
     return IntentMessageSchema.safeParse(message).success;
   }
 }
-
-// ============================== 导出 ==============================
-
-export default MessageRouter;

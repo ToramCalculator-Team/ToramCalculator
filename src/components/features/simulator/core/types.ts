@@ -1,10 +1,17 @@
-import { QueueSnapshot, QueueStats } from "./EventQueue/types";
-import { FrameLoopSnapshot, FrameLoopStats } from "./FrameLoop/types";
-import { MemberSerializeData } from "./Member/Member";
-import { MessageRouterStats } from "./MessageRouter/MessageRouter";
+import { MEMBER_TYPE } from "@db/schema/enums";
 import { z } from "zod/v4";
-import { EventQueueConfigSchema } from "./EventQueue/types";
-import { FrameLoopConfigSchema } from "./FrameLoop/types";
+import {
+	EventQueueConfigSchema,
+	type QueueSnapshot,
+	type QueueStats,
+} from "./EventQueue/types";
+import {
+	FrameLoopConfigSchema,
+	type FrameLoopSnapshot,
+	type FrameLoopStats,
+} from "./FrameLoop/types";
+import type { MemberSerializeData } from "./Member/Member";
+import type { MessageRouterStats } from "./MessageRouter/MessageRouter";
 
 /**
  * 引擎状态枚举
@@ -104,7 +111,7 @@ export interface GameEngineSnapshot {
  */
 export const RealtimeMemberSnapshotSchema = z.object({
 	id: z.string(),
-	type: z.string(),
+	type: z.enum(MEMBER_TYPE),
 	name: z.string(),
 	position: z.object({
 		x: z.number(),

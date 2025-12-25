@@ -1,10 +1,10 @@
-import {
-    NodeDefinition,
-    RootNodeDefinition,
-    DecoratorNodeDefinition,
-    CompositeNodeDefinition,
-    AnyNodeDefinition,
-    BranchNodeDefinition
+import type {
+	AnyNodeDefinition,
+	BranchNodeDefinition,
+	CompositeNodeDefinition,
+	DecoratorNodeDefinition,
+	NodeDefinition,
+	RootNodeDefinition,
 } from "./BehaviourTreeDefinition";
 
 /**
@@ -12,8 +12,10 @@ import {
  * @param node The node.
  * @returns A value of true if the specified node satisfies the RootNodeDefinition type.
  */
-export function isRootNodeDefinition(node: NodeDefinition): node is RootNodeDefinition {
-    return node.type === "root";
+export function isRootNodeDefinition(
+	node: NodeDefinition,
+): node is RootNodeDefinition {
+	return node.type === "root";
 }
 
 /**
@@ -21,8 +23,10 @@ export function isRootNodeDefinition(node: NodeDefinition): node is RootNodeDefi
  * @param node The node.
  * @returns A value of true if the specified node satisfies the BranchNodeDefinition type.
  */
-export function isBranchNodeDefinition(node: NodeDefinition): node is BranchNodeDefinition {
-    return node.type === "branch";
+export function isBranchNodeDefinition(
+	node: NodeDefinition,
+): node is BranchNodeDefinition {
+	return node.type === "branch";
 }
 
 /**
@@ -30,8 +34,10 @@ export function isBranchNodeDefinition(node: NodeDefinition): node is BranchNode
  * @param node The node.
  * @returns A value of true if the specified node satisfies the NodeDefinition type.
  */
-export function isLeafNodeDefinition(node: NodeDefinition): node is NodeDefinition {
-    return ["branch", "action", "condition", "wait"].includes(node.type);
+export function isLeafNodeDefinition(
+	node: NodeDefinition,
+): node is NodeDefinition {
+	return ["branch", "action", "condition", "wait"].includes(node.type);
 }
 
 /**
@@ -39,8 +45,12 @@ export function isLeafNodeDefinition(node: NodeDefinition): node is NodeDefiniti
  * @param node The node.
  * @returns A value of true if the specified node satisfies the DecoratorNodeDefinition type.
  */
-export function isDecoratorNodeDefinition(node: NodeDefinition): node is DecoratorNodeDefinition {
-    return ["root", "repeat", "retry", "flip", "succeed", "fail"].includes(node.type);
+export function isDecoratorNodeDefinition(
+	node: NodeDefinition,
+): node is DecoratorNodeDefinition {
+	return ["root", "repeat", "retry", "flip", "succeed", "fail"].includes(
+		node.type,
+	);
 }
 
 /**
@@ -48,8 +58,12 @@ export function isDecoratorNodeDefinition(node: NodeDefinition): node is Decorat
  * @param node The node.
  * @returns A value of true if the specified node satisfies the CompositeNodeDefinition type.
  */
-export function isCompositeNodeDefinition(node: NodeDefinition): node is CompositeNodeDefinition {
-    return ["sequence", "selector", "lotto", "parallel", "race", "all"].includes(node.type);
+export function isCompositeNodeDefinition(
+	node: NodeDefinition,
+): node is CompositeNodeDefinition {
+	return ["sequence", "selector", "lotto", "parallel", "race", "all"].includes(
+		node.type,
+	);
 }
 
 /**
@@ -57,22 +71,24 @@ export function isCompositeNodeDefinition(node: NodeDefinition): node is Composi
  * @param nodeDefinition The node definition to flatten.
  * @returns An array of all of nested node definitions.
  */
-export function flattenDefinition(nodeDefinition: AnyNodeDefinition): AnyNodeDefinition[] {
-    const nodes: AnyNodeDefinition[] = [];
+export function flattenDefinition(
+	nodeDefinition: AnyNodeDefinition,
+): AnyNodeDefinition[] {
+	const nodes: AnyNodeDefinition[] = [];
 
-    const processNode = (currentNodeDefinition: AnyNodeDefinition) => {
-        nodes.push(currentNodeDefinition);
+	const processNode = (currentNodeDefinition: AnyNodeDefinition) => {
+		nodes.push(currentNodeDefinition);
 
-        if (isCompositeNodeDefinition(currentNodeDefinition)) {
-            currentNodeDefinition.children.forEach(processNode);
-        } else if (isDecoratorNodeDefinition(currentNodeDefinition)) {
-            processNode(currentNodeDefinition.child);
-        }
-    };
+		if (isCompositeNodeDefinition(currentNodeDefinition)) {
+			currentNodeDefinition.children.forEach(processNode);
+		} else if (isDecoratorNodeDefinition(currentNodeDefinition)) {
+			processNode(currentNodeDefinition.child);
+		}
+	};
 
-    processNode(nodeDefinition);
+	processNode(nodeDefinition);
 
-    return nodes;
+	return nodes;
 }
 
 /**
@@ -81,7 +97,7 @@ export function flattenDefinition(nodeDefinition: AnyNodeDefinition): AnyNodeDef
  * @returns Whether the passed value is an integer.
  */
 export function isInteger(value: unknown): value is number {
-    return typeof value === "number" && Math.floor(value) === value;
+	return typeof value === "number" && Math.floor(value) === value;
 }
 
 /**
@@ -90,5 +106,5 @@ export function isInteger(value: unknown): value is number {
  * @returns Whether the passed value is null or undefined.
  */
 export function isNullOrUndefined(value: unknown): boolean {
-    return typeof value === "undefined" || value === null;
+	return typeof value === "undefined" || value === null;
 }

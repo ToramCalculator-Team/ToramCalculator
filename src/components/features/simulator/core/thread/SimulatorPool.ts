@@ -200,6 +200,3 @@ export const batchSimulatorPool = new SimulatorPool({
   maxQueueSize: 100, // 减少队列大小
   monitorInterval: 10000, // 增加监控间隔
 });
-
-// 导出通用线程池类
-export default WorkerPool;

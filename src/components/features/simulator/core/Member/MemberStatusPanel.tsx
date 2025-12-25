@@ -540,7 +540,7 @@ const StatsRenderer = (props: { data?: object }) => {
 //   );
 // };
 
-export default function MemberStatusPanel(props: {
+export function MemberStatusPanel(props: {
 	member: Accessor<MemberSerializeData | null>;
 }) {
 	const selectedMemberData = createMemo(() => {

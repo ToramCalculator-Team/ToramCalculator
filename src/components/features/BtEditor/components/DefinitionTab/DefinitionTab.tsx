@@ -1,6 +1,6 @@
-import { Component, Show } from 'solid-js';
-import { CodeEditor, Chip, Divider, Alert, ExamplesMenu } from '../';
+import { type Component, Show } from 'solid-js';
 import { DefinitionType } from '../../types/app';
+import { Alert, Chip, CodeEditor, Divider } from '../';
 
 export type DefinitionTabProps = {
   definition: string;

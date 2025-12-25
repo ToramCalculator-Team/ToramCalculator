@@ -1,6 +1,6 @@
 import { assign, type EventObject, setup } from "xstate";
+import { skillLogicExample } from "~/components/features/BtEditor/data/SkillExamples";
 import type { Member } from "../../Member";
-import { defaultBt } from "../../runtime/BehaviourTree/defaultBt";
 import type {
 	MemberEventType,
 	MemberStateContext,
@@ -248,8 +248,8 @@ export const playerStateMachine = (
 				}
 
 				// 提取行为树定义
-				const treeDefinition = defaultBt.definition;
-				const agentCode = defaultBt.agent;
+				const treeDefinition = skillLogicExample.default.definition;
+				const agentCode = skillLogicExample.default.agent;
 
 				const treeData = player.btManager.registerSkillBt(
 					treeDefinition,

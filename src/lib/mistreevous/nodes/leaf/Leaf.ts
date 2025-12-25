@@ -1,6 +1,6 @@
-import Node from "../Node";
+import { Node } from "../Node";
 
 /**
  * A leaf node.
  */
-export default abstract class Leaf extends Node {}
+export abstract class Leaf extends Node {}

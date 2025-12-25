@@ -3,8 +3,8 @@
  * 主要事件处理逻辑在状态机中，事件队列只负责跨帧对状态机发送消息
  */
 
-import { GameEngine  }from "../GameEngine";
-import { EventQueueConfig, QueueEvent, QueueSnapshot, QueueStats } from "./types";
+import type { GameEngine  }from "../GameEngine";
+import type { EventQueueConfig, QueueEvent, QueueSnapshot, QueueStats } from "./types";
 
 export class EventQueue {
   /** 引擎引用 */
@@ -334,7 +334,3 @@ export class EventQueue {
 
   // 无私有排序插入：按帧分桶后不再需要
 }
-
-// ============================== 导出 ==============================
-
-export default EventQueue;

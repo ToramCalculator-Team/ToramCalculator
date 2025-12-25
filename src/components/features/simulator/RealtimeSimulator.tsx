@@ -12,15 +12,14 @@ import hotkeys from "hotkeys-js";
 import { Controller } from "./controller/controller";
 import { StatusBar, ControlPanel, MemberSelect, MemberStatus, SkillPanel, ActionPanel } from "./controller/components";
 import { Portal } from "solid-js/web";
-import { GameView } from "./render/Renderer";
-import { SimulatorWithRelations } from "@db/generated/repositories/simulator";
-import { MemberSerializeData } from "./core/Member/Member";
+import type { SimulatorWithRelations } from "@db/generated/repositories/simulator";
+import type { MemberSerializeData } from "./core/Member/Member";
 
 export interface RealtimeSimulatorProps {
   simulatorData: SimulatorWithRelations;
 }
 
-export default function RealtimeSimulator(props: RealtimeSimulatorProps) {
+export function RealtimeSimulator(props: RealtimeSimulatorProps) {
   // 创建控制器实例（自动初始化）
   const controller = new Controller(props.simulatorData);
 
@@ -139,7 +138,7 @@ export default function RealtimeSimulator(props: RealtimeSimulatorProps) {
     for (let i = 1; i <= 9; i++) {
       hotkeys(`${i}`, (event) => {
         const members = controller.members[0]();
-        if (members && members[i - 1]) {
+        if (members?.[i - 1]) {
           controller.selectMember(members[i - 1].id);
           event.preventDefault();
         }
@@ -194,7 +193,7 @@ export default function RealtimeSimulator(props: RealtimeSimulatorProps) {
     });
 
     // WASD 角色移动控制（仅在第三人称模式下）
-    let movementKeys = { w: false, a: false, s: false, d: false };
+    const movementKeys = { w: false, a: false, s: false, d: false };
 
     const handleMovement = () => {
       const selectedMember = controller.selectedMemberId[0]();
@@ -365,7 +364,8 @@ export default function RealtimeSimulator(props: RealtimeSimulatorProps) {
 
       {/* 可视区域 - 点击启用第三人称控制 */}
       <div class="ViewArea w-full h-full flex flex-col items-center gap-2">
-        <div
+        <button
+          type="button"
           class="group relative flex h-full w-full cursor-pointer flex-col overflow-hidden rounded"
           ref={(el) => {
             // 保存canvas引用用于pointer lock
@@ -373,7 +373,7 @@ export default function RealtimeSimulator(props: RealtimeSimulatorProps) {
           }}
           onClick={allowMouseControl}
         >
-        </div>
+        </button>
       </div>
 
       {/* 成员状态 */}
@@ -395,7 +395,7 @@ export default function RealtimeSimulator(props: RealtimeSimulatorProps) {
             return {
               attrs: detail.attrs ?? fallback?.attrs ?? {},
               id: memberId,
-              type: (fallback?.type as any) ?? (memberBasic as any)?.type ?? "Player",
+              type: fallback?.type ?? memberBasic?.type ?? "Player",
               name: fallback?.name ?? memberBasic?.name ?? "",
               campId: fallback?.campId ?? memberBasic?.campId ?? "",
               teamId: fallback?.teamId ?? memberBasic?.teamId ?? "",

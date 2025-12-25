@@ -1,11 +1,11 @@
-import { Component, Index, Show, createEffect, createSignal, on, onMount, onCleanup } from "solid-js";
+import { type Component, createEffect, createSignal, Index, on, Show } from "solid-js";
+import type { ChildNode, ConnectorVariant, NodeType  } from "../../types/workflow";
 import { Node } from "./Node";
-import { NodeType, ChildNode, ConnectorVariant } from "../../types/workflow";
 
 export type NodeContainerProps = {
   parentNode: NodeType;
   childNodes: ChildNode[];
-  nodeComponents: { [key: string]: Component<any> };
+  nodeComponents: { [key: string]: Component<NodeType> };
 };
 
 // Get connector class based on variant
@@ -95,11 +95,12 @@ export const NodeContainer: Component<NodeContainerProps> = (props) => {
           <Show
             when={
               connectorTargetOffsets() &&
-              connectorTargetOffsets()!.length === props.childNodes.length &&
+              connectorTargetOffsets()?.length === props.childNodes.length &&
               nodeChildrenContainerHeight() > 0
             }
           >
             <svg class="absolute inset-0 w-full" style={{ height: `${nodeChildrenContainerHeight() || 1}px` }}>
+              <title>Connector Path</title>
             <Index each={props.childNodes}>
                 {(childNode, index) => {
                   const offsets = connectorTargetOffsets();

@@ -1,28 +1,33 @@
 /**
  * An example definition and board combination.
  */
- export type ExampleCategory = "advanced" | "leaf" | "composite" | "decorator" | "misc";
+export type ExampleCategory =
+	| "advanced"
+	| "leaf"
+	| "composite"
+	| "decorator"
+	| "misc";
 
 /**
  * An example definition and board combination.
  */
 export type Example = {
-    name: string;
-    caption: string;
-    category: ExampleCategory;
-    definition: string;
-    board: string;
+	name: string;
+	caption: string;
+	category: ExampleCategory;
+	definition: string;
+	board: string;
 };
 
 /**
  * An array of example definition and board combinations.
  */
-export const Examples: Example[] = [    
-    {
-        name: "sorting-lunch",
-        caption: "Sorting Lunch",
-        category: "advanced",
-        definition: `root {
+export const Examples: Example[] = [
+	{
+		name: "sorting-lunch",
+		caption: "Sorting Lunch",
+		category: "advanced",
+		definition: `root {
     selector while(IsHungry) {
         sequence {
             condition [HasDollars, 15]
@@ -48,7 +53,7 @@ export const Examples: Example[] = [
         action [Starve]
     }
 }`,
-        board: `class Agent {
+		board: `class Agent {
     IsHungry() {
         return true;
     }
@@ -70,49 +75,49 @@ export const Examples: Example[] = [
         showErrorToast(\`Oh no! We Starved!\`);
         return State.SUCCEEDED;
     }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "action",
-        caption: "Action",
-        category: "leaf",
-        definition: `root {
+	{
+		name: "action",
+		caption: "Action",
+		category: "leaf",
+		definition: `root {
     action [SomeAction]
 }`,
-        board: `class Agent {
+		board: `class Agent {
     SomeAction() {
         showInfoToast("Action Completed!");
         return State.SUCCEEDED;
     }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "action-with-args",
-        caption: "Action with arguments",
-        category: "leaf",
-        definition: `root {
+	{
+		name: "action-with-args",
+		caption: "Action with arguments",
+		category: "leaf",
+		definition: `root {
     action [Say, "hello world", 5, true]
 }`,
-        board: `class Agent {
+		board: `class Agent {
     Say(dialog, times = 1, shout = false) {
         for (var index = 0; index < times; index++) {
             showInfoToast(shout ? dialog.toUpperCase() + "!!!" : dialog);
         }
         return State.SUCCEEDED;
     }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "async-action",
-        caption: "Asynchronous Action",
-        category: "leaf",
-        definition: `root {
+	{
+		name: "async-action",
+		caption: "Asynchronous Action",
+		category: "leaf",
+		definition: `root {
     action [SomeAsyncAction]
 }`,
-        board: `class Agent {
+		board: `class Agent {
     SomeAsyncAction() {
         return new Promise(function(resolve, reject) {
             setTimeout(function() {
@@ -120,42 +125,42 @@ export const Examples: Example[] = [
             }, 3000);
         });
     }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "condition",
-        caption: "Condition",
-        category: "leaf",
-        definition: `root {
+	{
+		name: "condition",
+		caption: "Condition",
+		category: "leaf",
+		definition: `root {
     condition [SomeCondition]
 }`,
-        board: `class Agent {
+		board: `class Agent {
     SomeCondition() {
         return true;
     }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "condition-with-args",
-        caption: "Condition with arguments",
-        category: "leaf",
-        definition: `root {
+	{
+		name: "condition-with-args",
+		caption: "Condition with arguments",
+		category: "leaf",
+		definition: `root {
     condition [HasItem, "gold", 500]
 }`,
-        board: `class Agent {
+		board: `class Agent {
     HasItem(item, quantity = 1) {
         return getBooleanValue(\`Do we have \${quantity} \${item}?\`);
     }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "wait",
-        caption: "Wait",
-        category: "leaf",
-        definition: `root {
+	{
+		name: "wait",
+		caption: "Wait",
+		category: "leaf",
+		definition: `root {
     sequence {
         wait [2000]
         wait [1000, 5000]
@@ -164,18 +169,18 @@ export const Examples: Example[] = [
         wait
     }
 }`,
-        board: `class Agent {
+		board: `class Agent {
     get waitMs() { return 2000; }
     get minWaitMs() { return 1000; }
     get maxWaitMs() { return 5000; }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "branch",
-        caption: "Branch",
-        category: "leaf",
-        definition: `root {
+	{
+		name: "branch",
+		caption: "Branch",
+		category: "leaf",
+		definition: `root {
     branch [AttemptDance]
 }
 
@@ -185,7 +190,7 @@ root [AttemptDance] {
         action [Dance]
     }
 }`,
-        board: `class Agent {
+		board: `class Agent {
     CanDance() {
         return true;
     }
@@ -193,14 +198,14 @@ root [AttemptDance] {
         showInfoToast("Dancing!");
         return State.SUCCEEDED;
     }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "sequence",
-        caption: "Sequence",
-        category: "composite",
-        definition: `root {
+	{
+		name: "sequence",
+		caption: "Sequence",
+		category: "composite",
+		definition: `root {
     sequence {
         action [Walk]
         wait [1000]
@@ -209,7 +214,7 @@ root [AttemptDance] {
         action [Laugh]
     }
 }`,
-        board: `class Agent {
+		board: `class Agent {
     Walk() {
         showInfoToast("Walking!");
         return State.SUCCEEDED;
@@ -222,14 +227,14 @@ root [AttemptDance] {
         showInfoToast("Laughing!");
         return State.SUCCEEDED;
     }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "selector",
-        caption: "Selector",
-        category: "composite",
-        definition: `root {
+	{
+		name: "selector",
+		caption: "Selector",
+		category: "composite",
+		definition: `root {
     selector {
         action [TeleportHome]
         action [FlyHome]
@@ -237,7 +242,7 @@ root [AttemptDance] {
         action [WalkHome]
     }
 }`,
-        board: `class Agent {
+		board: `class Agent {
     TeleportHome() {
         showErrorToast("We cannot teleport home, the technology simply doesn't exist!");
         return State.FAILED;
@@ -254,32 +259,32 @@ root [AttemptDance] {
         showInfoToast("We walk home, it took ages!");
         return State.SUCCEEDED;
     }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "lotto",
-        caption: "Lotto",
-        category: "composite",
-        definition: `root {
+	{
+		name: "lotto",
+		caption: "Lotto",
+		category: "composite",
+		definition: `root {
     lotto {
         action [PickPath, "left"]
         action [PickPath, "right"]
     }
 }`,
-        board: `class Agent {
+		board: `class Agent {
     PickPath(direction) {
         showInfoToast(\`We picked the \${direction} path!\`);
         return State.SUCCEEDED;
     }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "weighted-lotto",
-        caption: "Weighted Lotto",
-        category: "composite",
-        definition: `root {
+	{
+		name: "weighted-lotto",
+		caption: "Weighted Lotto",
+		category: "composite",
+		definition: `root {
     lotto [20,10,3,1] {
         action [CommonAction]
         action [UncommonAction]
@@ -287,7 +292,7 @@ root [AttemptDance] {
         action [VeryRareAction]
     }
 }`,
-        board: `class Agent {
+		board: `class Agent {
     CommonAction() {
         showInfoToast("We very often do this action!");
         return State.SUCCEEDED;
@@ -304,14 +309,14 @@ root [AttemptDance] {
         showInfoToast("We hardly ever do this action!");
         return State.SUCCEEDED;
     }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "parallel",
-        caption: "Parallel",
-        category: "composite",
-        definition: `root {
+	{
+		name: "parallel",
+		caption: "Parallel",
+		category: "composite",
+		definition: `root {
     parallel {
         sequence {
             wait[500, 4000]
@@ -329,21 +334,21 @@ root [AttemptDance] {
         }
     }
 }`,
-        board: `class Agent {
+		board: `class Agent {
     Succeed() {
         return State.SUCCEEDED;
     }
     Fail() {
         return State.FAILED;
     }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "race",
-        caption: "Race",
-        category: "composite",
-        definition: `root {
+	{
+		name: "race",
+		caption: "Race",
+		category: "composite",
+		definition: `root {
     race {
         sequence {
             wait[500, 4000]
@@ -368,21 +373,21 @@ root [AttemptDance] {
         }
     }
 }`,
-        board: `class Agent {
+		board: `class Agent {
     Succeed() {
         return State.SUCCEEDED;
     }
     Fail() {
         return State.FAILED;
     }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "all",
-        caption: "All",
-        category: "composite",
-        definition: `root {
+	{
+		name: "all",
+		caption: "All",
+		category: "composite",
+		definition: `root {
     all {
         sequence {
             wait[500, 4000]
@@ -407,21 +412,21 @@ root [AttemptDance] {
         }
     }
 }`,
-        board: `class Agent {
+		board: `class Agent {
     Succeed() {
         return State.SUCCEEDED;
     }
     Fail() {
         return State.FAILED;
     }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "repeat",
-        caption: "Repeat",
-        category: "decorator",
-        definition: `root {
+	{
+		name: "repeat",
+		caption: "Repeat",
+		category: "decorator",
+		definition: `root {
     sequence {
         repeat [2] {
             action [Say, "We will do this twice"]
@@ -437,19 +442,19 @@ root [AttemptDance] {
         }
     }
 }`,
-        board: `class Agent {
+		board: `class Agent {
     Say(text) {
         showInfoToast(text);
         return State.SUCCEEDED;
     }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "retry",
-        caption: "Retry",
-        category: "decorator",
-        definition: `root {
+	{
+		name: "retry",
+		caption: "Retry",
+		category: "decorator",
+		definition: `root {
     selector {
         retry [2] {
             action [Say, "We will attempt this twice"]
@@ -465,19 +470,19 @@ root [AttemptDance] {
         }
     }
 }`,
-        board: `class Agent {
+		board: `class Agent {
     Say(text) {
         showInfoToast(text);
         return State.FAILED;
     }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "flip",
-        caption: "Flip",
-        category: "decorator",
-        definition: `root {
+	{
+		name: "flip",
+		caption: "Flip",
+		category: "decorator",
+		definition: `root {
     sequence {
         flip {
             action [Fail]
@@ -487,21 +492,21 @@ root [AttemptDance] {
         }
     }
 }`,
-        board: `class Agent {
+		board: `class Agent {
     Succeed() {
         return State.SUCCEEDED;
     }
     Fail() {
         return State.FAILED;
     }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "succeed",
-        caption: "Succeed",
-        category: "decorator",
-        definition: `root {
+	{
+		name: "succeed",
+		caption: "Succeed",
+		category: "decorator",
+		definition: `root {
     sequence {
         succeed {
             action [Fail]
@@ -511,21 +516,21 @@ root [AttemptDance] {
         }
     }
 }`,
-        board: `class Agent {
+		board: `class Agent {
     Succeed() {
         return State.SUCCEEDED;
     }
     Fail() {
         return State.FAILED;
     }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "fail",
-        caption: "Fail",
-        category: "decorator",
-        definition: `root {
+	{
+		name: "fail",
+		caption: "Fail",
+		category: "decorator",
+		definition: `root {
     selector {
         fail {
             action [Fail]
@@ -535,21 +540,21 @@ root [AttemptDance] {
         }
     }
 }`,
-        board: `class Agent {
+		board: `class Agent {
     Succeed() {
         return State.SUCCEEDED;
     }
     Fail() {
         return State.FAILED;
     }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "guards",
-        caption: "Guards",
-        category: "misc",
-        definition: `root {
+	{
+		name: "guards",
+		caption: "Guards",
+		category: "misc",
+		definition: `root {
     selector {
         action [IndefiniteAction] until(IsKeyDown, "Enter")
         action [IndefiniteAction] while(IsKeyDown, "Enter")
@@ -557,7 +562,7 @@ root [AttemptDance] {
         action [IndefiniteAction] while(IsKeyDown, "Backspace")
     }
 }`,
-        board: `class Agent {
+		board: `class Agent {
     constructor() {
         // We should keep track of which keys are currently down.
         // It's rather hacky to be doing this in the agent constructor
@@ -578,19 +583,19 @@ root [AttemptDance] {
         });
     }
     IndefiniteAction() { /** Do something indefinitely */ }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "callbacks",
-        caption: "Callbacks",
-        category: "misc",
-        definition: `root entry(OnRootStart) exit(OnRootFinish) {
+	{
+		name: "callbacks",
+		caption: "Callbacks",
+		category: "misc",
+		definition: `root entry(OnRootStart) exit(OnRootFinish) {
     sequence entry(OnSequenceStart) exit(OnSequenceFinish) {
         action [Succeed] entry(OnActionStart) exit(OnActionFinish) step(OnActionStep)
     }
 }`,
-        board: `class Agent {
+		board: `class Agent {
     Succeed() {
         return State.SUCCEEDED;
     }
@@ -615,20 +620,20 @@ root [AttemptDance] {
     OnActionFinish() {
         showInfoToast("On Action Finish!");
     }
-}`
-    },
+}`,
+	},
 
-    {
-        name: "global-subtrees",
-        caption: "Global Subtrees",
-        category: "misc",
-        definition: `root {
+	{
+		name: "global-subtrees",
+		caption: "Global Subtrees",
+		category: "misc",
+		definition: `root {
     sequence {
         action [AttemptDifficultTask]
         branch [Celebrate]
     }
 }`,
-        board: `class Agent {
+		board: `class Agent {
     constructor() {
         // Register the global subtree for some celebratory behaviour.
         // It's rather hacky to be doing this in the agent constructor
@@ -650,15 +655,14 @@ root [AttemptDance] {
         showInfoToast(text);
         return State.SUCCEEDED;
     }
-}`
-    },
+}`,
+	},
 
-
-    {
-        name: "global-functions",
-        caption: "Global Functions",
-        category: "misc",
-        definition: `root {
+	{
+		name: "global-functions",
+		caption: "Global Functions",
+		category: "misc",
+		definition: `root {
     repeat {
         selector {
             sequence {
@@ -669,7 +673,7 @@ root [AttemptDance] {
         }
     }
 }`,
-        board: `class Agent {
+		board: `class Agent {
     constructor() {
         // Register the global "Say" function. It's rather hacky 
         // to be doing this in the agent constructor but it's being
@@ -700,22 +704,21 @@ root [AttemptDance] {
     GetName() {
         return "Barry";
     }
-}`
-    },
+}`,
+	},
 
-
-    {
-        name: "agent-property-references",
-        caption: "Agent Property References",
-        category: "misc",
-        definition: `root {
+	{
+		name: "agent-property-references",
+		caption: "Agent Property References",
+		category: "misc",
+		definition: `root {
     sequence {
         condition [HasTarget]
         condition [CanSee, $target]
         action [MoveTowards, $target]
     }
 }`,
-        board: `class Agent {
+		board: `class Agent {
     get target() {
         return {
             name: "Enemy",
@@ -736,6 +739,6 @@ root [AttemptDance] {
         showInfoToast(\`Moving towards x:\${target.xPosition} y:\${target.yPosition}\`);
         return State.SUCCEEDED;
     }
-}`
-    }
+}`,
+	},
 ];

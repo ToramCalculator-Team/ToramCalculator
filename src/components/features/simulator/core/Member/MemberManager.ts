@@ -539,7 +539,3 @@ export class MemberManager {
 		return this.members.get(this.primaryTargetId) || null;
 	}
 }
-
-// ============================== 导出 ==============================
-
-export default MemberManager;

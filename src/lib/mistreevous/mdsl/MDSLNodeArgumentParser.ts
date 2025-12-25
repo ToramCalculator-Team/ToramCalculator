@@ -1,5 +1,5 @@
-import { AnyArgument } from "./MDSLArguments";
-import { StringLiteralPlaceholders, popAndCheck } from "./MDSLUtilities";
+import type { AnyArgument } from "./MDSLArguments";
+import { popAndCheck, type StringLiteralPlaceholders } from "./MDSLUtilities";
 
 /**
  * Parse an array of argument definitions from the specified tokens array.
@@ -10,53 +10,58 @@ import { StringLiteralPlaceholders, popAndCheck } from "./MDSLUtilities";
  * @returns An array of argument definitions parsed from the specified tokens array.
  */
 export function parseArgumentTokens(
-    tokens: string[],
-    stringArgumentPlaceholders: StringLiteralPlaceholders
+	tokens: string[],
+	stringArgumentPlaceholders: StringLiteralPlaceholders,
 ): AnyArgument[] {
-    const argumentList: AnyArgument[] = [];
+	const argumentList: AnyArgument[] = [];
 
-    // If the next token is not a '[' or '(' then we have no arguments to parse.
-    if (!["[", "("].includes(tokens[0])) {
-        return argumentList;
-    }
+	// If the next token is not a '[' or '(' then we have no arguments to parse.
+	if (!["[", "("].includes(tokens[0])) {
+		return argumentList;
+	}
 
-    // Any lists of arguments will always be wrapped in '[]' for node arguments or '()' for attribute arguments.
-    // We are looking for a '[' or '(' opener that wraps the argument tokens and the relevant closer.
-    const closingToken = popAndCheck(tokens, ["[", "("]) === "[" ? "]" : ")";
+	// Any lists of arguments will always be wrapped in '[]' for node arguments or '()' for attribute arguments.
+	// We are looking for a '[' or '(' opener that wraps the argument tokens and the relevant closer.
+	const closingToken = popAndCheck(tokens, ["[", "("]) === "[" ? "]" : ")";
 
-    const argumentListTokens: string[] = [];
+	const argumentListTokens: string[] = [];
 
-    // Grab all tokens between the '[' and ']' or '(' and ')'.
-    while (tokens.length && tokens[0] !== closingToken) {
-        // The next token is part of our arguments list.
-        argumentListTokens.push(tokens.shift()!);
-    }
+	// Grab all tokens between the '[' and ']' or '(' and ')'.
+	while (tokens.length && tokens[0] !== closingToken) {
+		// The next token is part of our arguments list.
+		argumentListTokens.push(tokens.shift() as string);
+	}
 
-    // Validate the order of the argument tokens. Each token must either be a ',' or a single argument that satisfies the validator.
-    argumentListTokens.forEach((token, index) => {
-        // Get whether this token should be an actual argument.
-        const shouldBeArgumentToken = !(index & 1);
+	// Validate the order of the argument tokens. Each token must either be a ',' or a single argument that satisfies the validator.
+	argumentListTokens.forEach((token, index) => {
+		// Get whether this token should be an actual argument.
+		const shouldBeArgumentToken = !(index & 1);
 
-        // If the current token should be an actual argument then validate it, otherwise it should be a ',' token.
-        if (shouldBeArgumentToken) {
-            // Get the argument definition.
-            const argumentDefinition = getArgumentDefinition(token, stringArgumentPlaceholders);
+		// If the current token should be an actual argument then validate it, otherwise it should be a ',' token.
+		if (shouldBeArgumentToken) {
+			// Get the argument definition.
+			const argumentDefinition = getArgumentDefinition(
+				token,
+				stringArgumentPlaceholders,
+			);
 
-            // This is a valid argument!
-            argumentList.push(argumentDefinition);
-        } else {
-            // The current token should be a ',' token.
-            if (token !== ",") {
-                throw new Error(`invalid argument list, expected ',' or ']' but got '${token}'`);
-            }
-        }
-    });
+			// This is a valid argument!
+			argumentList.push(argumentDefinition);
+		} else {
+			// The current token should be a ',' token.
+			if (token !== ",") {
+				throw new Error(
+					`invalid argument list, expected ',' or ']' but got '${token}'`,
+				);
+			}
+		}
+	});
 
-    // The arguments list should terminate with a ']' or ')' token, depending on the opener.
-    popAndCheck(tokens, closingToken);
+	// The arguments list should terminate with a ']' or ')' token, depending on the opener.
+	popAndCheck(tokens, closingToken);
 
-    // Return the arguments.
-    return argumentList;
+	// Return the arguments.
+	return argumentList;
 }
 
 /**
@@ -65,55 +70,56 @@ export function parseArgumentTokens(
  * @param stringArgumentPlaceholders The mapping of string literal node argument placeholders to original values.
  * @returns An argument value definition.
  */
-function getArgumentDefinition(token: string, stringArgumentPlaceholders: StringLiteralPlaceholders): AnyArgument {
-    // Check whether the token represents a null value.
-    if (token === "null") {
-        return {
-            value: null,
-            type: "null"
-        };
-    }
+function getArgumentDefinition(
+	token: string,
+	stringArgumentPlaceholders: StringLiteralPlaceholders,
+): AnyArgument {
+	// Check whether the token represents a null value.
+	if (token === "null") {
+		return {
+			value: null,
+			type: "null",
+		};
+	}
 
-    // Check whether the token represents a boolean value.
-    if (token === "true" || token === "false") {
-        return {
-            value: token === "true",
-            type: "boolean"
-        };
-    }
+	// Check whether the token represents a boolean value.
+	if (token === "true" || token === "false") {
+		return {
+			value: token === "true",
+			type: "boolean",
+		};
+	}
 
-    // Check whether the token represents a number value.
-    // TODO: Relies on broken isNaN - see MDN.
-    // if (!Number.isNaN(token)) {
-    if (!isNaN(token as any)) {
-        return {
-            value: parseFloat(token),
-            isInteger: parseFloat(token) === parseInt(token, 10),
-            type: "number"
-        };
-    }
+	// Check whether the token represents a number value.
+	if (!Number.isNaN(Number(token))) {
+		return {
+			value: parseFloat(token),
+			isInteger: parseFloat(token) === parseInt(token, 10),
+			type: "number",
+		};
+	}
 
-    // Check whether the token is a placeholder (e.g. @@0@@) representing a string literal.
-    if (token.match(/^@@\d+@@$/g)) {
-        return {
-            value: stringArgumentPlaceholders[token].replace('\\"', '"'),
-            type: "string"
-        };
-    }
+	// Check whether the token is a placeholder (e.g. @@0@@) representing a string literal.
+	if (token.match(/^@@\d+@@$/g)) {
+		return {
+			value: stringArgumentPlaceholders[token].replace('\\"', '"'),
+			type: "string",
+		};
+	}
 
-    // Check whether the token is an agent property reference with the '$' prefix (e.g. $someProperty, $等待时间).
-    // We intentionally allow unicode here because agent properties are accessed via bracket notation: agent[propName].
-    if (token.startsWith("$") && token.length > 1) {
-        return {
-            // The value is the identifier name with the '$' prefix removed.
-            value: token.slice(1),
-            type: "property_reference"
-        };
-    }
+	// Check whether the token is an agent property reference with the '$' prefix (e.g. $someProperty, $等待时间).
+	// We intentionally allow unicode here because agent properties are accessed via bracket notation: agent[propName].
+	if (token.startsWith("$") && token.length > 1) {
+		return {
+			// The value is the identifier name with the '$' prefix removed.
+			value: token.slice(1),
+			type: "property_reference",
+		};
+	}
 
-    // The only remaining option is that the argument value is an identifier.
-    return {
-        value: token,
-        type: "identifier"
-    };
+	// The only remaining option is that the argument value is an identifier.
+	return {
+		value: token,
+		type: "identifier",
+	};
 }

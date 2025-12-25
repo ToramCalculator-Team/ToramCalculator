@@ -1,28 +1,25 @@
-import { Component, createSignal, onMount, onCleanup } from "solid-js";
-import {
-	State,
-	BehaviourTree,
-	convertMDSLToJSON,
-	validateDefinition,
-	BehaviourTreeOptions,
-	NodeDetails,
-} from "~/lib/mistreevous";
-import {
-	ToastContainer,
-	Card,
-	ExamplesMenu,
-	Icon,
-	Divider,
-} from "./components";
-import { DefinitionTab } from "./components/DefinitionTab/DefinitionTab";
-import { AgentTab } from "./components/AgentTab/AgentTab";
-import { MainPanel, CanvasElements } from "./components/MainPanel/MainPanel";
-import { DefinitionType, SidebarTab } from "./types/app";
-import { Examples } from "./data/Examples";
-import { toast } from "./stores/toastStore";
-import { ConnectorVariant } from "./types/workflow";
+import { type Component, createSignal, onCleanup, onMount } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
+import {
+	BehaviourTree,
+	type BehaviourTreeOptions,
+	convertMDSLToJSON,
+	type NodeDetails,
+	State,
+	validateDefinition,
+} from "~/lib/mistreevous";
+import type { Agent } from "~/lib/mistreevous/Agent";
+import { ExamplesMenu, SkillLogicExmaplesMenu, ToastContainer } from "./components";
+import { AgentTab } from "./components/AgentTab/AgentTab";
+import { DefinitionTab } from "./components/DefinitionTab/DefinitionTab";
+import {
+	type CanvasElements,
+	MainPanel,
+} from "./components/MainPanel/MainPanel";
+import { toast } from "./stores/toastStore";
+import { DefinitionType, SidebarTab } from "./types/app";
+import type { ConnectorVariant } from "./types/workflow";
 
 export { DefinitionType, SidebarTab };
 
@@ -42,7 +39,7 @@ export type BtEditorProps = {
 export const BtEditor: Component<BtEditorProps> = (props) => {
 	// ==================== 状态管理 ====================
 	// 布局 ID：用于标识当前加载的示例
-	const [layoutId, setLayoutId] = createSignal<string | null>(null);
+	const [layoutId] = createSignal<string | null>(null);
 
 	// 行为树定义内容（MDSL 或 JSON 格式）
 	const [definition, setDefinition] = createSignal<string>(
@@ -121,7 +118,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	 * @param boardClassDefinition Agent 类定义代码字符串
 	 * @returns Agent 实例
 	 */
-	const createBoardInstance = (boardClassDefinition: string): any => {
+	const createBoardInstance = (boardClassDefinition: string): Agent => {
 		// 使用 Function 构造函数动态创建 Agent 类
 		const boardClassCreator = new Function(
 			"BehaviourTree",
@@ -169,7 +166,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	const createTreeInstance = (
 		def: string,
 		boardClassDefinition: string,
-	): BehaviourTree | null => {
+	): BehaviourTree => {
 		// 创建 Agent 实例
 		const board = createBoardInstance(boardClassDefinition);
 
@@ -214,7 +211,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 				stepCallback: node.step,
 				exitCallback: node.exit,
 				variant: "default",
-			} as any);
+			});
 
 			// 如果有父节点，创建连接线
 			if (parentId) {
@@ -285,14 +282,14 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 				);
 
 				// 根据行为树生成画布元素（节点和连接线）
-				elements = createCanvasElements(tree!.getTreeNodeDetails());
+				elements = createCanvasElements(tree.getTreeNodeDetails());
 			} catch (error) {
 				// 创建行为树实例失败
 				exceptionMessage = `${error}`;
 			}
 		} else {
 			// 定义验证失败
-			exceptionMessage = validationResult.errorMessage!;
+			exceptionMessage = validationResult.errorMessage ?? "";
 		}
 
 		// 更新所有相关状态
@@ -462,6 +459,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	onMount(() => {
 		if (props.initValues) {
 			onDefinitionChange(props.initValues.definition, props.initValues.agent);
+			onAgentChange(props.initValues.agent);
 		}
 	});
 
@@ -499,6 +497,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 						<Icons.Outline.Save />
 					</Button>
 					<ExamplesMenu onMDSLInsert={handleMDSLInsert} />
+					<SkillLogicExmaplesMenu onMDSLInsert={handleMDSLInsert} />
 				</div>
 				<div
 					class={`Right ${props.readOnly ? "hidden" : ""} landscape:lg:shadow-card shadow-area-color bg-primary-color landscape:lg:absolute top-2 right-2 flex items-center gap-1 rounded`}

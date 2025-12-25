@@ -1,20 +1,19 @@
-import { Component, onMount, onCleanup, createEffect, createMemo } from "solid-js";
-import * as monaco from "monaco-editor";
-import { mdslLanguageDefinition } from "../../modes/mdsl";
-import { store } from "~/store";
 
-// 使用 Vite 的 worker 导入方式，让 Vite 自动处理 worker 的打包和路径
+import * as monaco from "monaco-editor";
 import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker&url";
-import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker&url";
 import CssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker&url";
 import HtmlWorker from "monaco-editor/esm/vs/language/html/html.worker?worker&url";
+import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker&url";
 import TsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker&url";
+import { type Component, createEffect, onCleanup, onMount } from "solid-js";
 import { rgbToBase16 } from "~/lib/utils/color";
+import { store } from "~/store";
+import { mdslLanguageDefinition } from "../../modes/mdsl";
 
 // 配置 Monaco Editor 的 worker
-if (typeof window !== "undefined" && !(self as any).MonacoEnvironment) {
-  (self as any).MonacoEnvironment = {
-    getWorkerUrl: function (_moduleId: string, label: string) {
+if (typeof window !== "undefined" && !self.MonacoEnvironment) {
+  self.MonacoEnvironment = {
+    getWorkerUrl: (_moduleId: string, label: string) => {
       if (label === "json") {
         return JsonWorker;
       }

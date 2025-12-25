@@ -14,3 +14,12 @@ export type Example = {
   board: string;
 };
 
+export type SkillExampleCategory = "common" | "buff";
+
+export type SkillExample = {
+  name: string;
+  caption: string;
+  category: SkillExampleCategory;
+  definition: string;
+  board: string;
+};

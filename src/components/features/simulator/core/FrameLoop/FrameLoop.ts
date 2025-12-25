@@ -479,7 +479,3 @@ export class FrameLoop {
     this.frameSkipCount = 0;
   }
 }
-
-// ============================== 导出 ==============================
-
-export default FrameLoop;
