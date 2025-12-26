@@ -80,7 +80,6 @@
     "overlayscrollbars": "^2.13.0",
     "overlayscrollbars-solid": "^0.5.6",
     "pg": "^8.14.1",
-    "sequential-workflow-designer": "^0.27.0",
     "solid-js": "^1.9.10",
     "solid-motionone": "^1.0.4",
     "tailwindcss": "latest",
