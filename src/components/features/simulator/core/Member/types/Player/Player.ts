@@ -52,16 +52,18 @@ export class Player extends Member<
 			currentFrame: 0,
 			position: position ?? { x: 0, y: 0, z: 0 },
 			targetId: "",
+			statusTags: [],
 			blackboard: {},
 			skillState: {},
 			buffState: {},
-			// 技能栏的“静态技能列表”应该在初始化时就可用，动态计算（mp/cd 等）由引擎快照刷新。
+			// 技能栏的"静态技能列表"应该在初始化时就可用，动态计算（mp/cd 等）由引擎快照刷新。
 			skillList: initialSkillList,
 			// 冷却数组：与 skillList 对齐，初始为 0（可用）
 			skillCooldowns: initialSkillList.map(() => 0),
 			currentSkill: null,
 			currentSkillEffect: null,
 			currentSkillLogic: null,
+			previousSkill: null, // 确保接口定义的所有属性都被显式设置，避免用户自定义同名属性被注册
 			currentSkillIndex: 0,
 			skillStartFrame: 0,
 			skillEndFrame: 0,

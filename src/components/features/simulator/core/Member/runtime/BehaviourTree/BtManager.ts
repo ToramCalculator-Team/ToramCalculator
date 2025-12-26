@@ -2,26 +2,43 @@ import { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import { State } from "~/lib/mistreevous/State";
 import type { Member } from "../../Member";
-import type{ RuntimeContext } from "../Agent/AgentContext";
-import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
+import type { RuntimeContext } from "../Agent/AgentContext";
+import type {
+	MemberEventType,
+	MemberStateContext,
+} from "../StateMachine/types";
 
 export class BtManager<
-TAttrKey extends string,
-TStateEvent extends MemberEventType,
-TStateContext extends MemberStateContext,
-TRuntimeContext extends RuntimeContext,
+	TAttrKey extends string,
+	TStateEvent extends MemberEventType,
+	TStateContext extends MemberStateContext,
+	TRuntimeContext extends RuntimeContext,
 > {
 	skillBt: BehaviourTree | undefined = undefined;
 	buffBts: Map<string, BehaviourTree> = new Map<string, BehaviourTree>();
 	/** 当前技能注册的函数名称列表，用于清理 */
 	private skillFunNames: string[] = [];
 
-	constructor(private owner: Member<TAttrKey, TStateEvent, TStateContext, TRuntimeContext>) {}
+	constructor(
+		private owner: Member<
+			TAttrKey,
+			TStateEvent,
+			TStateContext,
+			TRuntimeContext
+		>,
+	) {}
 
-  /**
-   * 注册 Agent
-   * @param agent 
-   */
+	/**
+	 * 注册 Agent
+	 *
+	 * 注意：runtimeContext 在注册 agent 之前已经包含了所有引擎属性（如 owner、currentFrame、position 等）。
+	 * 如果用户自定义的 agent 中有同名属性，会被忽略，引擎属性优先。
+	 * 这样设计是为了：
+	 * 1. 编辑器测试时允许用户定义同名变量进行测试
+	 * 2. 实际运行时使用引擎提供的权威属性，确保一致性
+	 *
+	 * @param agent Agent 类定义代码（形如 `class Agent { ... }`）
+	 */
 	registerAgent(agent: string): void {
 		const runtimeContext = this.owner.runtimeContext;
 
@@ -61,13 +78,28 @@ TRuntimeContext extends RuntimeContext,
 			return;
 		}
 
-		const registerProperty = (name: string, descriptor: PropertyDescriptor): void => {
+		const registerProperty = (
+			name: string,
+			descriptor: PropertyDescriptor,
+		): void => {
 			if (!name || name === "constructor") return;
 
-			// 避免覆盖 runtimeContext 自带字段（例如 owner/currentFrame/...）
-			if (Object.hasOwn(runtimeContext, name)) {
+			// 引擎属性优先：runtimeContext 在注册 agent 之前已经包含了所有引擎属性
+			// 检查方式：
+			// 1. 检查对象自身是否有该属性（Object.hasOwn）
+			// 2. 检查属性描述符是否存在（即使值为 undefined，描述符也可能存在）
+			// 3. 检查属性是否可写（如果属性已存在但不可写，说明是引擎定义的只读属性）
+			const hasOwn = Object.hasOwn(runtimeContext, name);
+			const existingDescriptor = Object.getOwnPropertyDescriptor(
+				runtimeContext,
+				name,
+			);
+
+			// 如果属性已存在，不应该注册用户定义
+			// 注意：即使属性值为 undefined，只要属性描述符存在，就说明属性已经被定义
+			if (hasOwn || existingDescriptor) {
 				console.warn(
-					`🎮 [${this.owner.name}] Agent 注册跳过：runtimeContext 已存在同名属性「${name}」`,
+					`🎮 [${this.owner.name}] Agent 注册跳过：已忽略用户定义 「${name}」`,
 				);
 				return;
 			}
@@ -104,12 +136,13 @@ TRuntimeContext extends RuntimeContext,
 			// 如果技能行为树已完成（SUCCEEDED 或 FAILED），自动清理
 			const state = this.skillBt.getState();
 			if (state === State.SUCCEEDED || state === State.FAILED) {
+				this.skillBt = undefined;
+				// 暂时不清理相关函数
+				this.unregisterSkillFunctions();
 				console.log(
 					`🎮 [${this.owner.name}] 技能行为树已完成 (${state})，自动清理`,
 				);
-				this.skillBt = undefined;
-				// 暂时不清理相关函数
-				// this.unregisterSkillFunctions();
+				console.log("当前上下文", this.owner.runtimeContext);
 				this.owner.actor.send({ type: "技能执行完成" } as TStateEvent);
 			} else {
 				this.skillBt.step();
@@ -132,8 +165,14 @@ TRuntimeContext extends RuntimeContext,
 
 	/**
 	 * 注册技能行为树
+	 *
+	 * 注册顺序：
+	 * 1. runtimeContext 已经包含了所有引擎属性（owner、currentFrame、position 等）
+	 * 2. 然后注册技能自定义的 agent（如果提供）
+	 * 3. 如果 agent 中有与引擎属性同名的属性，会被忽略并提示
+	 *
 	 * @param definition 行为树定义（MDSL 字符串或 JSON）
-	 * @param functions 可选的函数定义对象，键为函数名，值为函数实现
+	 * @param agent 可选的 Agent 类定义代码（用户自定义的方法/getter/setter）
 	 * @returns 创建的行为树实例
 	 */
 	registerSkillBt(
@@ -143,12 +182,13 @@ TRuntimeContext extends RuntimeContext,
 		// 清理之前注册的函数
 		this.unregisterSkillFunctions();
 
-		// 注册新的函数到 runtimeContext
+		// 注册技能自定义的 agent 到 runtimeContext
+		// 注意：runtimeContext 已经包含了引擎属性，同名属性会被忽略
 		if (agent) {
 			this.registerAgent(agent.trim());
 		}
 
-		// 创建行为树实例
+		// 创建行为树实例（使用包含引擎属性和技能自定义属性的 runtimeContext）
 		this.skillBt = new BehaviourTree(definition, this.owner.runtimeContext);
 		return this.skillBt;
 	}

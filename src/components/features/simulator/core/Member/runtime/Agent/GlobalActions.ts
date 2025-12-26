@@ -1,5 +1,6 @@
 import { z } from "zod/v4";
 import { State } from "~/lib/mistreevous/State";
+import { ModifierType } from "../StatContainer/StatContainer";
 import type { RuntimeContext } from "./AgentContext";
 import { type ActionPool, defineAction } from "./type";
 
@@ -39,6 +40,7 @@ const sendRenderCommand = (
  * - 命中结果写回 context.lastHitResult，供状态机或后续动作使用
  */
 export const CommonActions = {
+	/** 移动到指定位置 */
 	moveTo: defineAction(
 		z.object({
 			target: z.object({
@@ -53,6 +55,7 @@ export const CommonActions = {
 		},
 	),
 
+	/** 播放动画 */
 	animation: defineAction(
 		z.object({
 			name: z.string(),
@@ -64,6 +67,7 @@ export const CommonActions = {
 		},
 	),
 
+	/** 构建伤害请求 */
 	buildDamageRequest: defineAction(
 		z.object({
 			sourceId: z.string(),
@@ -82,6 +86,7 @@ export const CommonActions = {
 		},
 	),
 
+	/** 添加buff */
 	addBuff: defineAction(
 		z.object({
 			id: z.string(),
@@ -101,6 +106,31 @@ export const CommonActions = {
 			}
 			// 注册buff
 			context.owner?.btManager.registerBuffBt(input.id, buff.definition);
+			return State.SUCCEEDED;
+		},
+	),
+
+	/** 属性修改 */
+	modifyAttribute: defineAction(
+		z.object({
+			attribute: z.string(),
+			value: z.number(),
+			type: z.enum(["fixed", "percentage"]),
+		}),
+		(context, input) => {
+			console.log(`👤 [${context.owner?.name}] modifyAttribute`, input);
+			context.owner?.statContainer.addModifier(
+				input.attribute,
+				input.type === "fixed"
+					? ModifierType.DYNAMIC_FIXED
+					: ModifierType.DYNAMIC_PERCENTAGE,
+				input.value,
+				{
+					id: context.currentSkill?.id ?? "",
+					name: context.currentSkill?.template.name ?? "",
+					type: "skill",
+				},
+			);
 			return State.SUCCEEDED;
 		},
 	),

@@ -207,13 +207,14 @@ export const playerStateMachine = (
 				if (!skill) {
 					console.error(`🎮 [${context.owner?.name}] 的当前技能不存在`);
 				}
-				runtimeContext.currentSkill = skill;
+				runtimeContext.currentSkill = skill ?? null;
 			},
 			清空待处理技能: ({ context, event }) => {
 				console.log(`👤 [${context.owner?.name}] 清空待处理技能`, event);
+				runtimeContext.previousSkill = runtimeContext.currentSkill;
 				runtimeContext.currentSkill = null;
-				// 清理技能级管线覆盖，避免影响后续技能
-				// player.pipelineManager?.clearSkillOverrides?.();
+				runtimeContext.currentSkillEffect = null;
+				runtimeContext.currentSkillLogic = null;
 				if (runtimeContext.currentSkillTreeId) {
 					player.btManager.unregisterSkillBt();
 					runtimeContext.currentSkillTreeId = "unknown_skill";
@@ -234,7 +235,7 @@ export const playerStateMachine = (
 						}),
 				);
 				console.log(`技能效果`, skillEffect);
-				runtimeContext.currentSkillEffect = skillEffect;
+				runtimeContext.currentSkillEffect = skillEffect ?? null;
 			},
 			执行技能: ({ context, event }) => {
 				console.log(`👤 [${context.owner?.name}] 执行技能`, event);

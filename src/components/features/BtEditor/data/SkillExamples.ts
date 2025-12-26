@@ -1,6 +1,7 @@
 import type { SkillExample } from "../types";
 
-const defaultSkillDefinition = `root {
+const defaultSkillDefinition = `
+root {
     sequence{
             action [动画,"施法前摇",$施法前摇时长]
             wait [$施法前摇时长]
@@ -8,12 +9,25 @@ const defaultSkillDefinition = `root {
             wait [$蓄力时长]
             action [动画, "咏唱动画",$咏唱时长]
             wait [$咏唱时长]
-            action [造成伤害,$伤害类型,$伤害计算公式,$伤害范围类型,$伤害区域公式]
+            branch [mainAction]
             action [动画, "施法后摇",$施法后摇时长]
             wait [$施法后摇时长]
         }
+}
+
+root [mainAction] {
+    selector {
+        sequence {
+            condition [是连续使用吗]
+            action [造成伤害,"一般惯性",$伤害计算公式,$伤害范围类型,$伤害区域公式]
+        }
+        sequence {
+            action [造成伤害,"物理惯性",$伤害计算公式,$伤害范围类型,$伤害区域公式]
+        }
+    }
 }`;
-const defaultSkillAgent = `class Agent {
+const defaultSkillAgent = `
+class Agent {
     get 施法前摇时长() {
         return 200;
     }
@@ -41,6 +55,18 @@ const defaultSkillAgent = `class Agent {
             y: "2"
         }
     }
+    get previousSkill() {
+        return {
+            id: "previousSkill",
+            name: "上一个技能"
+        }
+    }
+    get currentSkill() {
+        return {
+            id: "currentSkill",
+            name: "这个技能"
+        }
+    }
     动画(durtion){
         console.log(durtion)
         return State.SUCCEEDED
@@ -48,6 +74,15 @@ const defaultSkillAgent = `class Agent {
     造成伤害(dType,dFormula,dAreaType,dAreaFormula){
         console.log(\`对\${dAreaFormula}内的敌方目标造成\${dFormula}的\${dType}\`)
         return State.SUCCEEDED
+    }
+    是连续使用吗(){
+        if (!this.previousSkill) {
+            console.log("没有上一个技能");
+            return false
+        }
+        const res = this.previousSkill.id === this.currentSkill.id
+        console.log(res ? "连续使用" : "没有连续使用");
+        return res
     }
 }`;
 

@@ -36,7 +36,7 @@ export interface PlayerRuntimeContext extends RuntimeContext {
 	 * 预编译的技能效果逻辑缓存（effectId -> string）
 	 * - 用于把 workspaceJson 的编译从“施放时”前移到“角色创建时”
 	 */
-	compiledSkillEffectLogicByEffectId?: Record<string, string>;
+	compiledSkillEffectLogicByEffectId: Record<string, string>;
 }
 
 /**

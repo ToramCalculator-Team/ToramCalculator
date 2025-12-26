@@ -37,9 +37,11 @@ export class Mob extends Member<
 			currentFrame: 0,
 			position: position ?? { x: 0, y: 0, z: 0 },
 			targetId: targetId,
-			blackboard: {},
-			skillState: {},
-			buffState: {},
+			statusTags: [],
+			currentSkill: null,
+			currentSkillEffect: null,
+			currentSkillLogic: null,
+			previousSkill: null,
 		};
 
 		super(
