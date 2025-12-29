@@ -291,6 +291,22 @@ export type SkillTreeType = (typeof SKILL_TREE_TYPE)[number];
 export const SKILL_ATTACK_TYP = ["None", "Physical", "Magic", "SkillNormal"] as const;
 export type SkillAttackType = (typeof SKILL_ATTACK_TYP)[number];
 
+// 技能范围类型
+export const SKILL_RANGE_TYPE = [
+  "None", // 单体伤害,无法通过单纯的移动回避，可通过闪躲或部分防御技能将其无效化。
+  "Range", // 范围伤害,伤害中心点为敌方的技能，警告范围为红色。
+  "Enemy", // 周围伤害,伤害中心点为自身的技能，警告范围为红色。
+  "MoveAttack", // 冲撞伤害,直线状且自身会沿攻击范围移动的技能，警告范围为红色。
+  "Line", // 直线伤害,正面发出的直线状攻击，警告范围为红色。
+  "Ground", // 贴地伤害,贴地移动的伤害，会受地形阻挡，表现形式通常为剑气、射刃。警告范围为蓝色。
+  "Bullet", // 子弹伤害,向目标射出球状投射物之技能，路径中与着弹点处可以分别造成伤害，警告范围为蓝色。
+  "Ground", // 地面伤害,放置于地面上的固定伤害领域，表现形式为地刺，警告范围为蓝色。
+  "Meteor", // 陨石伤害,自空中垂直落下的技能，表现形式为陨石，警告范围为蓝色。
+  "Explosion", // 爆炸伤害,先在场上产生如光束落下般的区域，随后爆炸并消失的技能，警告范围为蓝色。
+  "Attraction", // 吸引伤害,在场上产生会持续造成伤害并把玩家吸引至中心区域的领域，表现形式为漩涡或龙卷风，警告范围为蓝色。
+] as const;
+export type SkillRangeType = (typeof SKILL_RANGE_TYPE)[number];
+
 // 连击效果类型
 export const COMBO_STEP_TYPE = [
   "None",
