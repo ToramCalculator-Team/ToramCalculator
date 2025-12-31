@@ -67,21 +67,78 @@ export const CommonActions = {
 		},
 	),
 
-	/** 构建伤害请求 */
-	buildDamageRequest: defineAction(
+	/** 单体攻击 */
+	singleAttack: defineAction(
 		z.object({
-			sourceId: z.string(),
 			targetId: z.string(),
-			skillId: z.string(),
 			damageType: z.enum(["physical", "magic"]),
-			damageValue: z.number(),
+			defExpType: z.enum(["physical", "magic", "normal"]),
+			attackCount: z.number(),
+			damageFormula: z.string(),
+			damageCount: z.number(),
 		}),
 		(context, input) => {
-			console.log(`👤 [${context.owner?.name}] buildDamageRequest`, input);
+			console.log(`👤 [${context.owner?.name}] generateSingleAttack`, input);
 			// 解析伤害表达式，将所需的self变量放入参数列表
 
 			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
+			return State.SUCCEEDED;
+		},
+	),
 
+	/** 范围攻击 */
+	rangeAttack: defineAction(
+		z.object({
+			targetId: z.string(),
+			damageType: z.enum(["physical", "magic"]),
+			defExpType: z.enum(["physical", "magic", "normal"]),
+			attackCount: z.number(),
+			damageFormula: z.string(),
+			damageCount: z.number(),
+			radius: z.number(),
+		}),
+		(context, input) => {
+			console.log(`👤 [${context.owner?.name}] generateRangeAttack`, input);
+			// 解析伤害表达式，将所需的self变量放入参数列表
+
+			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
+			return State.SUCCEEDED;
+		},
+	),
+
+	/** 周围攻击 */
+	enemyAttack: defineAction(
+		z.object({
+			damageType: z.enum(["physical", "magic"]),
+			defExpType: z.enum(["physical", "magic", "normal"]),
+			attackCount: z.number(),
+			damageFormula: z.string(),
+			damageCount: z.number(),
+			radius: z.number(),
+		}),
+		(context, input) => {
+			console.log(`👤 [${context.owner?.name}] generateEnemyAttack`, input);
+			// 解析伤害表达式，将所需的self变量放入参数列表
+
+			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
+			return State.SUCCEEDED;
+		},
+	),
+    
+	/** 冲撞攻击 */
+	moveAttack: defineAction(
+		z.object({
+			damageType: z.enum(["physical", "magic"]),
+			defExpType: z.enum(["physical", "magic", "normal"]),
+			damageFormula: z.string(),
+			width: z.number(),
+			speed: z.number(),
+		}),
+		(context, input) => {
+			console.log(`👤 [${context.owner?.name}] generateMoveAttack`, input);
+			// 解析伤害表达式，将所需的self变量放入参数列表
+
+			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
 			return State.SUCCEEDED;
 		},
 	),
