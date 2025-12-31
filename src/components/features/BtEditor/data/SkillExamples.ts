@@ -67,8 +67,8 @@ class Agent {
             name: "这个技能"
         }
     }
-    动画(durtion){
-        console.log(durtion)
+    动画(name, durtion){
+        console.log(name, durtion)
         return State.SUCCEEDED
     }
     造成伤害(dType,dFormula,dAreaType,dAreaFormula){

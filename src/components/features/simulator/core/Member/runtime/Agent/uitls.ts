@@ -1,3 +1,5 @@
+import type { RuntimeContext } from "./AgentContext";
+
 // 阈值描述函数
 export const maxMin = (min: number, value: number, max: number) => {
 	return Math.max(min, Math.min(value, max));
@@ -29,4 +31,36 @@ export const setPathValue = (obj: any, path: string, value: any) => {
 		cursor = cursor[key];
 	}
 	return obj;
+};
+
+/**
+ * 发送渲染指令
+ * @param context 运行时上下文
+ * @param actionName 动作名称
+ * @param params 参数
+ */
+export const sendRenderCommand = (
+	context: RuntimeContext,
+	actionName: string,
+	params?: Record<string, unknown>,
+) => {
+	if (!context.owner?.engine.postRenderMessage) {
+		console.warn(
+			`⚠️ [${context.owner?.name}] 无法获取渲染消息接口，无法发送渲染指令: ${actionName}`,
+		);
+		return;
+	}
+	const now = Date.now();
+	const renderCmd = {
+		type: "render:cmd" as const,
+		cmd: {
+			type: "action" as const,
+			entityId: context.owner?.id,
+			name: actionName,
+			seq: now,
+			ts: now,
+			params,
+		},
+	};
+	context.owner?.engine.postRenderMessage(renderCmd);
 };

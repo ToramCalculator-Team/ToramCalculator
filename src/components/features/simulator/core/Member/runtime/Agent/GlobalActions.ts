@@ -3,34 +3,9 @@ import { State } from "~/lib/mistreevous/State";
 import { ModifierType } from "../StatContainer/StatContainer";
 import type { RuntimeContext } from "./AgentContext";
 import { type ActionPool, defineAction } from "./type";
+import { sendRenderCommand } from "./uitls";
 
 export const logLv = 1; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
-
-const sendRenderCommand = (
-	context: RuntimeContext,
-	actionName: string,
-	params?: Record<string, unknown>,
-) => {
-	if (!context.owner?.engine.postRenderMessage) {
-		console.warn(
-			`⚠️ [${context.owner?.name}] 无法获取渲染消息接口，无法发送渲染指令: ${actionName}`,
-		);
-		return;
-	}
-	const now = Date.now();
-	const renderCmd = {
-		type: "render:cmd" as const,
-		cmd: {
-			type: "action" as const,
-			entityId: context.owner?.id,
-			name: actionName,
-			seq: now,
-			ts: now,
-			params,
-		},
-	};
-	context.owner?.engine.postRenderMessage(renderCmd);
-};
 
 /**
  * 通用战斗动作池（命中 / 伤害相关）
@@ -44,11 +19,11 @@ export const CommonActions = {
 	moveTo: defineAction(
 		z.object({
 			target: z.object({
-				x: z.number(),
-				y: z.number(),
-				z: z.number(),
+				x: z.number().meta({ description: "目标X坐标" }),
+				y: z.number().meta({ description: "目标Y坐标" }),
+				z: z.number().meta({ description: "目标Z坐标" }),
 			}),
-		}),
+		}).meta({ description: "移动到指定位置" }),
 		(context, input) => {
 			console.log(`👤 [${context.owner?.name}] moveTo`, input);
 			return State.SUCCEEDED;
@@ -58,8 +33,8 @@ export const CommonActions = {
 	/** 播放动画 */
 	animation: defineAction(
 		z.object({
-			name: z.string(),
-		}),
+			name: z.string().meta({ description: "动画名称" }),
+		}).meta({ description: "播放动画" }),
 		(context, input) => {
 			console.log(`👤 [${context.owner?.name}] animation`, input);
 			sendRenderCommand(context, input.name);
@@ -70,13 +45,13 @@ export const CommonActions = {
 	/** 单体攻击 */
 	singleAttack: defineAction(
 		z.object({
-			targetId: z.string(),
-			damageType: z.enum(["physical", "magic"]),
-			defExpType: z.enum(["physical", "magic", "normal"]),
-			attackCount: z.number(),
-			damageFormula: z.string(),
-			damageCount: z.number(),
-		}),
+			targetId: z.string().meta({ description: "目标ID" }),
+			expApplicationType: z.enum(["physical", "magic", "normal"]).meta({ description: "惯性施加类型" }),
+			expResolutionType: z.enum(["physical", "magic", "normal"]).meta({ description: "惯性结算类型" }),
+			attackCount: z.number().meta({ description: "攻击次数，多次造成伤害公式对应的伤害" }),
+			damageFormula: z.string().meta({ description: "伤害公式，伤害公式中可以包含self变量，self变量表示当前角色" }),
+			damageCount: z.number().meta({ description: "伤害数量，将伤害公式计算出的伤害平均分配到攻击次数" }),
+		}).meta({ description: "单体攻击" }),
 		(context, input) => {
 			console.log(`👤 [${context.owner?.name}] generateSingleAttack`, input);
 			// 解析伤害表达式，将所需的self变量放入参数列表
@@ -89,14 +64,14 @@ export const CommonActions = {
 	/** 范围攻击 */
 	rangeAttack: defineAction(
 		z.object({
-			targetId: z.string(),
-			damageType: z.enum(["physical", "magic"]),
-			defExpType: z.enum(["physical", "magic", "normal"]),
-			attackCount: z.number(),
-			damageFormula: z.string(),
-			damageCount: z.number(),
-			radius: z.number(),
-		}),
+			targetId: z.string().meta({ description: "目标ID" }),
+			expApplicationType: z.enum(["physical", "magic", "normal"]).meta({ description: "惯性施加类型" }),
+			expResolutionType: z.enum(["physical", "magic", "normal"]).meta({ description: "惯性结算类型" }),
+			attackCount: z.number().meta({ description: "攻击次数，多次造成伤害公式对应的伤害" }),
+			damageFormula: z.string().meta({ description: "伤害公式，伤害公式中可以包含self变量，self变量表示当前角色" }),
+			damageCount: z.number().meta({ description: "伤害数量，将伤害公式计算出的伤害平均分配到攻击次数" }),
+			radius: z.number().meta({ description: "伤害范围" }),
+		}).meta({ description: "范围攻击" }),
 		(context, input) => {
 			console.log(`👤 [${context.owner?.name}] generateRangeAttack`, input);
 			// 解析伤害表达式，将所需的self变量放入参数列表
@@ -109,13 +84,14 @@ export const CommonActions = {
 	/** 周围攻击 */
 	enemyAttack: defineAction(
 		z.object({
-			damageType: z.enum(["physical", "magic"]),
-			defExpType: z.enum(["physical", "magic", "normal"]),
-			attackCount: z.number(),
-			damageFormula: z.string(),
-			damageCount: z.number(),
-			radius: z.number(),
-		}),
+			targetId: z.string().meta({ description: "目标ID" }),
+			expApplicationType: z.enum(["physical", "magic", "normal"]).meta({ description: "惯性施加类型" }),
+			expResolutionType: z.enum(["physical", "magic", "normal"]).meta({ description: "惯性结算类型" }),
+			attackCount: z.number().meta({ description: "攻击次数，多次造成伤害公式对应的伤害" }),
+			damageFormula: z.string().meta({ description: "伤害公式，伤害公式中可以包含self变量，self变量表示当前角色" }),
+			damageCount: z.number().meta({ description: "伤害数量，将伤害公式计算出的伤害平均分配到攻击次数" }),
+			radius: z.number().meta({ description: "伤害半径" }),
+		}).meta({ description: "周围攻击" }),
 		(context, input) => {
 			console.log(`👤 [${context.owner?.name}] generateEnemyAttack`, input);
 			// 解析伤害表达式，将所需的self变量放入参数列表
@@ -128,12 +104,15 @@ export const CommonActions = {
 	/** 冲撞攻击 */
 	moveAttack: defineAction(
 		z.object({
-			damageType: z.enum(["physical", "magic"]),
-			defExpType: z.enum(["physical", "magic", "normal"]),
-			damageFormula: z.string(),
-			width: z.number(),
-			speed: z.number(),
-		}),
+			targetId: z.string().meta({ description: "目标ID" }),
+			expApplicationType: z.enum(["physical", "magic", "normal"]).meta({ description: "惯性施加类型" }),
+			expResolutionType: z.enum(["physical", "magic", "normal"]).meta({ description: "惯性结算类型" }),
+			attackCount: z.number().meta({ description: "攻击次数，多次造成伤害公式对应的伤害" }),
+			damageFormula: z.string().meta({ description: "伤害公式，伤害公式中可以包含self变量，self变量表示当前角色" }),
+			damageCount: z.number().meta({ description: "伤害数量，将伤害公式计算出的伤害平均分配到攻击次数" }),
+			width: z.number().meta({ description: "攻击宽度" }),
+			speed: z.number().meta({ description: "冲撞速度" }),
+		}).meta({ description: "冲撞攻击" }),
 		(context, input) => {
 			console.log(`👤 [${context.owner?.name}] generateMoveAttack`, input);
 			// 解析伤害表达式，将所需的self变量放入参数列表
@@ -146,9 +125,9 @@ export const CommonActions = {
 	/** 添加buff */
 	addBuff: defineAction(
 		z.object({
-			id: z.string(),
-			treeName: z.string(),
-		}),
+			id: z.string().meta({ description: "buffID" }),
+			treeName: z.string().meta({ description: "buff树名称" }),
+		}).meta({ description: "添加buff" }),
 		(context, input) => {
 			console.log(`👤 [${context.owner?.name}] addBuff`, input);
 			// buff逻辑所需的定义应该会被加载到上下文中，找到他并注册即可
@@ -170,10 +149,10 @@ export const CommonActions = {
 	/** 属性修改 */
 	modifyAttribute: defineAction(
 		z.object({
-			attribute: z.string(),
-			value: z.number(),
-			type: z.enum(["fixed", "percentage"]),
-		}),
+			attribute: z.string().meta({ description: "属性名称" }),
+			value: z.number().meta({ description: "属性值" }),
+			type: z.enum(["fixed", "percentage"]).meta({ description: "属性类型" }),
+		}).meta({ description: "属性修改" }),
 		(context, input) => {
 			console.log(`👤 [${context.owner?.name}] modifyAttribute`, input);
 			context.owner?.statContainer.addModifier(

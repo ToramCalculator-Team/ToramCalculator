@@ -1,4 +1,10 @@
-import { type Component, createSignal, onCleanup, onMount } from "solid-js";
+import {
+	type Component,
+	createMemo,
+	createSignal,
+	onCleanup,
+	onMount,
+} from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import {
@@ -10,13 +16,21 @@ import {
 	validateDefinition,
 } from "~/lib/mistreevous";
 import type { Agent } from "~/lib/mistreevous/Agent";
-import { ExamplesMenu, SkillLogicExmaplesMenu, ToastContainer } from "./components";
+import {
+	ExamplesMenu,
+	SkillLogicExmaplesMenu,
+	ToastContainer,
+} from "./components";
 import { AgentTab } from "./components/AgentTab/AgentTab";
 import { DefinitionTab } from "./components/DefinitionTab/DefinitionTab";
 import {
 	type CanvasElements,
 	MainPanel,
 } from "./components/MainPanel/MainPanel";
+import {
+	defaultMdslIntellisenseRegistry,
+	mergeMdslRegistryWithAgentSource,
+} from "./modes/mdslIntellisense";
 import { toast } from "./stores/toastStore";
 import { DefinitionType, SidebarTab } from "./types/app";
 import type { ConnectorVariant } from "./types/workflow";
@@ -81,6 +95,11 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 
 	// 侧边栏是否只读：当行为树正在播放时，侧边栏变为只读
 	const isSidebarReadOnly = () => !!behaviourTreePlayInterval();
+
+	const mdslIntellisense = createMemo(() => {
+		const base = defaultMdslIntellisenseRegistry();
+		return mergeMdslRegistryWithAgentSource(base, agent());
+	});
 
 	// ==================== 工具函数 ====================
 
@@ -469,7 +488,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 			class="BtEditor bg-primary-color flex h-full w-full flex-col-reverse landscape:lg:flex-col overflow-hidden"
 		>
 			<div
-				class={`Functions border-b border-dividing-color relative flex landscape:lg:h-full min-h-[50px] w-full items-center justify-between ${props.readOnly ? "basis-full" : "landscape:lg:basis-3/5"}`}
+				class={`Functions border-b border-dividing-color relative flex landscape:lg:h-full min-h-[50px] w-full items-center justify-between ${props.readOnly ? "basis-full" : "landscape:lg:basis-2/5"}`}
 			>
 				<div
 					class={`Canvas ${props.readOnly ? "" : "hidden"} h-full w-full flex-1 landscape:lg:block`}
@@ -508,7 +527,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 				</div>
 			</div>
 			<div
-				class={`Editor ${props.readOnly ? "hidden" : ""} landscape:lg:shadow-card shadow-dividing-color flex h-full w-full flex-col overflow-hidden landscape:flex-row landscape:lg:basis-2/5 ${
+				class={`Editor ${props.readOnly ? "hidden" : ""} landscape:lg:shadow-card shadow-dividing-color flex h-full w-full flex-col overflow-hidden landscape:flex-row landscape:lg:basis-3/5 ${
 					isSidebarReadOnly() ? "pointer-events-none opacity-70" : ""
 				}`}
 			>
@@ -518,6 +537,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 					onChange={onDefinitionChange}
 					errorMessage={behaviourTreeExceptionMessage()}
 					readOnly={isSidebarReadOnly()}
+					mdslIntellisense={mdslIntellisense()}
 				/>
 				<div class="Line bg-dividing-color h-px w-full landscape:h-full landscape:w-px"></div>
 				<AgentTab
