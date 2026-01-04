@@ -1,5 +1,11 @@
 import { z } from "zod/v4";
 
+/** 队列事件类型枚举 */
+export const QueueEventTypeEnum = z.enum([
+  "member_fsm_event",
+]);
+export type QueueEventType = z.output<typeof QueueEventTypeEnum>;
+
 /**
  * 队列事件接口
  */
@@ -11,9 +17,15 @@ export interface QueueEvent {
   /** 执行帧号 */
   executeFrame: number;
   /** 事件类型 */
-  type: string;
+  type: QueueEventType;
   /** 是否已处理 */
   processed: boolean;
+  /** 目标成员ID */
+  targetMemberId: string;
+  /** FSM事件类型 */
+  fsmEventType: string;
+  /** 事件来源 */
+  source: string;
   /** 事件数据（完全开放） */
   payload?: unknown;
 }

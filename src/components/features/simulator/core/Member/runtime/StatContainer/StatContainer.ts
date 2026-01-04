@@ -503,6 +503,7 @@ export class StatContainer<T extends string> {
 		this.markAllDirty();
 
 		// console.log(`🚀 StatContainer 初始化完成:`, this);
+		console.log(`🚀 StatContainer 初始化完成:`, this.exportFlatValues());
 	}
 
 	// ==================== 公共API - 属性访问 ====================

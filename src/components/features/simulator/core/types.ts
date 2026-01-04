@@ -82,7 +82,7 @@ export const ComputedSkillInfoSchema = z.object({
 	computed: z.object({
 		mpCost: z.number(),
 		hpCost: z.number(),
-		castingRange: z.string().nullable(),
+		castingRange: z.number(),
 		cooldownRemaining: z.number(),
 		isAvailable: z.boolean(),
 	}),

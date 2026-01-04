@@ -2,20 +2,18 @@
  * 沙盒化的模拟器Worker
  * 将GameEngine运行在安全沙盒环境中
  */
-import {
-	prepareForTransfer,
-	sanitizeForPostMessage,
-} from "~/lib/WorkerPool/MessageSerializer";
-import { type EngineCommand, EngineCommandSchema } from "../GameEngineSM";
-import {
-	DataQueryCommand,
-	SimulatorTaskMap,
-	SimulatorTaskTypeMapValue,
-	SimulatorTaskPriority,
-	DataQueryCommandSchema,
-} from "./SimulatorPool";
-import { WorkerMessage, WorkerMessageEvent } from "~/lib/WorkerPool/type";
+import { prepareForTransfer, sanitizeForPostMessage } from "~/lib/WorkerPool/MessageSerializer";
+import type { WorkerMessage, WorkerMessageEvent } from "~/lib/WorkerPool/type";
 import { GameEngine } from "../GameEngine";
+import { type EngineCommand, EngineCommandSchema } from "../GameEngineSM";
+import type { SimulatorSafeAPI } from "../sandboxGlobals";
+import {
+	type DataQueryCommand,
+	DataQueryCommandSchema,
+	type SimulatorTaskMap,
+	type SimulatorTaskPriority,
+	type SimulatorTaskTypeMapValue,
+} from "./SimulatorPool";
 
 // ==================== 沙盒环境初始化 ====================
 
@@ -24,20 +22,30 @@ import { GameEngine } from "../GameEngine";
  * 屏蔽危险的全局对象，确保JS片段执行安全
  */
 function initializeWorkerSandbox() {
-	// 屏蔽危险的全局对象
-	(globalThis as any).global = undefined;
-	(globalThis as any).process = undefined;
-	(globalThis as any).require = undefined;
-	(globalThis as any).module = undefined;
-	(globalThis as any).exports = undefined;
-	(globalThis as any).Buffer = undefined;
-	(globalThis as any).eval = undefined;
-	// (globalThis as any).Function = undefined;
-	(globalThis as any).importScripts = undefined;
-	(globalThis as any).this = undefined;
+	// 2. 屏蔽危险的全局对象
+	// 使用 Reflect.set(target, prop, value) 可以避免类型不兼容报错，无需 as any
+	// 注意：'this' 是保留关键字，必须使用字符串索引访问
 
-	// 提供安全的API
-	(globalThis as any).safeAPI = {
+	const propsToUndefine = [
+		"global",
+		"process",
+		"require",
+		"module",
+		"exports",
+		"Buffer",
+		"eval",
+		"importScripts",
+		"this",
+	];
+
+	propsToUndefine.forEach((key) => {
+		Reflect.set(globalThis, key, undefined);
+	});
+
+	// 3. 提供安全的 API
+	// 现在 globalThis.safeAPI 拥有完整的类型推断
+	const sandboxGlobal = globalThis as typeof globalThis & { safeAPI: SimulatorSafeAPI };
+	sandboxGlobal.safeAPI = {
 		console,
 		setTimeout,
 		clearTimeout,
@@ -84,19 +92,6 @@ const gameEngine = new GameEngine({
 	},
 });
 
-// 全局变量存储messagePort，供事件发射器回调使用
-let globalMessagePort: MessagePort | null = null;
-
-// 帧快照发送函数 - 直接在帧循环中调用
-function sendFrameSnapshot(snapshot: any) {
-	if (globalMessagePort && typeof postSystemMessage === "function") {
-		postSystemMessage(globalMessagePort, "frame_snapshot", snapshot);
-	}
-}
-
-// 将发送函数挂载到引擎上，供FrameLoop调用
-(gameEngine as any).sendFrameSnapshot = sendFrameSnapshot;
-
 // 注释：引擎状态机现在已集成到 GameEngine 内部，不再需要单独的 Actor
 
 // ==================== 数据查询处理函数 ====================
@@ -106,7 +101,7 @@ function sendFrameSnapshot(snapshot: any) {
  */
 async function handleDataQuery(
 	command: DataQueryCommand,
-): Promise<{ success: boolean; data?: any; error?: string }> {
+): Promise<{ success: boolean; data?: unknown; error?: string }> {
 	try {
 		switch (command.type) {
 			case "get_members": {
@@ -159,12 +154,6 @@ async function handleDataQuery(
 					};
 				}
 			}
-
-			default:
-				return {
-					success: false,
-					error: `未知数据查询类型: ${(command as any).type}`,
-				};
 		}
 	} catch (error) {
 		return {
@@ -175,9 +164,7 @@ async function handleDataQuery(
 }
 
 // 处理主线程消息 - 只处理初始化
-self.onmessage = async (
-	event: MessageEvent<{ type: "init"; port?: MessagePort }>,
-) => {
+self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }>) => {
 	const { type, port } = event.data;
 
 	try {
@@ -188,9 +175,6 @@ self.onmessage = async (
 					throw new Error("初始化失败，缺少MessagePort");
 				}
 				const messagePort: MessagePort = port;
-
-				// 设置全局messagePort供事件发射器使用
-				globalMessagePort = messagePort;
 
 				// 设置引擎的镜像通信发送器
 				gameEngine.setMirrorSender((msg: EngineCommand) => {
@@ -207,16 +191,10 @@ self.onmessage = async (
 
 				// 设置MessageChannel端口用于任务通信
 				messagePort.onmessage = async (
-					portEvent: MessageEvent<
-						WorkerMessage<SimulatorTaskTypeMapValue, SimulatorTaskPriority>
-					>,
+					portEvent: MessageEvent<WorkerMessage<SimulatorTaskTypeMapValue, SimulatorTaskPriority>>,
 				) => {
 					// console.log("🔌 Worker: 收到消息", portEvent.data);
-					const {
-						belongToTaskId: portbelongToTaskId,
-						payload,
-						priority,
-					} = portEvent.data;
+					const { belongToTaskId: portbelongToTaskId, payload } = portEvent.data;
 					const startTime = performance.now();
 
 					try {
@@ -225,7 +203,7 @@ self.onmessage = async (
 							throw new Error("命令不能为空");
 						}
 
-						let portResult: { success: boolean; data?: any; error?: string };
+						let portResult: { success: boolean; data?: unknown; error?: string };
 
 						// 使用 Zod Schema 验证命令类型
 						const engineCommandResult = EngineCommandSchema.safeParse(payload);
@@ -245,9 +223,11 @@ self.onmessage = async (
 							console.error(payload);
 							console.error(engineCommandResult.error);
 							console.error(dataQueryResult.error);
-							throw new Error(
-								`未知命令类型: ${(payload as any)?.type || "undefined"}`,
-							);
+							const maybeType =
+								typeof payload === "object" && payload !== null && "type" in payload
+									? String((payload as { type?: unknown }).type)
+									: "undefined";
+							throw new Error(`未知命令类型: ${maybeType}`);
 						}
 
 						// 计算执行时间
@@ -255,7 +235,11 @@ self.onmessage = async (
 						const duration = endTime - startTime;
 
 						// 返回结果给SimulatorPool
-						const response: WorkerMessageEvent<any, SimulatorTaskMap, any> = {
+						const response: WorkerMessageEvent<
+							unknown,
+							SimulatorTaskMap,
+							unknown
+						> = {
 							belongToTaskId: portbelongToTaskId,
 							result: portResult,
 							error: null,
@@ -272,9 +256,9 @@ self.onmessage = async (
 
 						// 返回错误给SimulatorPool
 						const errorResponse: WorkerMessageEvent<
-							any,
+							unknown,
 							SimulatorTaskMap,
-							any
+							unknown
 						> = {
 							belongToTaskId: portbelongToTaskId,
 							result: null,
@@ -289,7 +273,7 @@ self.onmessage = async (
 				};
 
 				// 设置渲染消息发送器：用于FSM发送渲染指令（通过系统消息格式）
-				gameEngine.setRenderMessageSender((payload: any) => {
+				gameEngine.setRenderMessageSender((payload: unknown) => {
 					try {
 						// console.log("🔌 Worker: 发送渲染消息到主线程", payload);
 						postSystemMessage(messagePort, "render_cmd", payload);
@@ -299,12 +283,21 @@ self.onmessage = async (
 				});
 
 				// 设置系统消息发送器：用于发送系统级事件到控制器
-				gameEngine.setSystemMessageSender((payload: any) => {
+				gameEngine.setSystemMessageSender((payload: unknown) => {
 					try {
 						console.log("🔌 Worker: 发送系统消息到主线程", payload);
 						postSystemMessage(messagePort, "system_event", payload);
 					} catch (error) {
 						console.error("Worker: 发送系统消息失败:", error);
+					}
+				});
+
+				// 设置帧快照发送器：用于发送帧快照到主线程
+				gameEngine.setFrameSnapshotSender((snapshot) => {
+					try {
+						postSystemMessage(messagePort, "frame_snapshot", snapshot);
+					} catch (error) {
+						console.error("Worker: 发送帧快照失败:", error);
 					}
 				});
 
@@ -339,7 +332,7 @@ self.onmessage = async (
 function postSystemMessage(
 	port: MessagePort,
 	type: "system_event" | "frame_snapshot" | "render_cmd",
-	data: any,
+	data: unknown,
 ) {
 	// 使用共享的MessageSerializer确保数据可以安全地通过postMessage传递
 	const sanitizedData = sanitizeForPostMessage(data);

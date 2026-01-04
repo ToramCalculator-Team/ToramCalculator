@@ -1,25 +1,36 @@
-
 import type { MemberManager } from "../Member/MemberManager";
-import { SpaceManager } from "./SpaceManager";
+import { BuffAreaSystem } from "./BuffAreaSystem";
+import { DamageAreaSystem } from "./DamageAreaSystem";
+import type { SpaceManager } from "./SpaceManager";
+import { TrapAreaSystem } from "./TrapAreaSystem";
 
 /**
  * AreaManager
- * 区域实例的生命周期与规则调度（当前为占位实现）
+ * 区域实例的生命周期与规则调度
+ * 作为调度壳，组合三个子系统并统一调度
  */
 export class AreaManager {
-  constructor(
-    private readonly spaceManager: SpaceManager,
-    private readonly memberManager: MemberManager,
-  ) {}
+	public readonly damageAreaSystem: DamageAreaSystem;
+	public readonly buffAreaSystem: BuffAreaSystem;
+	public readonly trapAreaSystem: TrapAreaSystem;
 
-  /**
-   * 每帧更新区域逻辑
-   * 当前为占位实现
-   */
-  tick(_frame: number): void {
-    // TODO: 实际区域逻辑在后续补充
-    void this.spaceManager;
-    void this.memberManager;
-  }
+	constructor(
+		private readonly spaceManager: SpaceManager,
+		private readonly memberManager: MemberManager,
+	) {
+		this.damageAreaSystem = new DamageAreaSystem(spaceManager, memberManager);
+		this.buffAreaSystem = new BuffAreaSystem(spaceManager, memberManager);
+		this.trapAreaSystem = new TrapAreaSystem(spaceManager, memberManager);
+	}
+
+	/**
+	 * 每帧更新区域逻辑
+	 * 顺序调度三个子系统
+	 */
+	tick(frame: number): void {
+		this.damageAreaSystem.tick(frame);
+		this.trapAreaSystem.tick(frame);
+		this.buffAreaSystem.tick(frame);
+	}
 }
 

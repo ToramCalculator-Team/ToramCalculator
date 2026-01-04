@@ -22,23 +22,15 @@ import { createActor } from "xstate";
 import { EventQueue } from "./EventQueue/EventQueue";
 import type { QueueEvent } from "./EventQueue/types";
 import { FrameLoop } from "./FrameLoop/FrameLoop";
-import {
-	type EngineCommand,
-	GameEngineSM,
-} from "./GameEngineSM";
-import type { ExpressionContext } from "./JSProcessor/JSProcessor";
-import {
-	JSProcessor,
-} from "./JSProcessor/JSProcessor";
+import { type EngineCommand, GameEngineSM } from "./GameEngineSM";
+import { JSProcessor } from "./JSProcessor/JSProcessor";
+import type { ExpressionContext } from "./JSProcessor/types";
 import type { MemberSerializeData } from "./Member/Member";
 import { MemberManager } from "./Member/MemberManager";
 import type { Player } from "./Member/types/Player/Player";
-import {
-	type IntentMessage,
-	type MessageProcessResult,
-	MessageRouter,
-} from "./MessageRouter/MessageRouter";
+import { type IntentMessage, type MessageProcessResult, MessageRouter } from "./MessageRouter/MessageRouter";
 import type {
+	BuffViewDataSnapshot,
 	ComputedSkillInfo,
 	EngineConfig,
 	EngineState,
@@ -49,8 +41,14 @@ import type {
 } from "./types";
 import { AreaManager } from "./World/AreaManager";
 import { SpaceManager } from "./World/SpaceManager";
-import { World } from "./World/World";;
+import { World } from "./World/World";
 
+/**
+ * 扩展 globalThis 类型，添加测试环境标记
+ */
+declare global {
+	var __ALLOW_GAMEENGINE_IN_MAIN_THREAD: boolean | undefined;
+}
 /**
  * 游戏引擎类
  * 核心运行时容器，集成所有模块
@@ -102,6 +100,8 @@ export class GameEngine {
 	/** 渲染消息发送器 - 用于发送渲染指令到主线程 */
 	private renderMessageSender: ((payload: unknown) => void) | null = null;
 	private systemMessageSender: ((payload: unknown) => void) | null = null;
+	/** 帧快照发送器 - 用于发送帧快照到主线程 */
+	private frameSnapshotSender: ((snapshot: FrameSnapshot) => void) | null = null;
 
 	/** 镜像通信发送器 - 用于向镜像状态机发送消息 */
 	private sendToMirror?: (command: EngineCommand) => void;
@@ -119,7 +119,7 @@ export class GameEngine {
 	 * ⚠️ 警告：这会绕过安全检查，仅在测试中使用
 	 */
 	static enableForTesting(): void {
-		(globalThis as any).__ALLOW_GAMEENGINE_IN_MAIN_THREAD = true;
+		globalThis.__ALLOW_GAMEENGINE_IN_MAIN_THREAD = true;
 		console.warn("⚠️ GameEngine测试模式已启用 - 仅用于测试环境！");
 	}
 
@@ -127,7 +127,7 @@ export class GameEngine {
 	 * 禁用测试环境的GameEngine（恢复安全检查）
 	 */
 	static disableForTesting(): void {
-		delete (globalThis as any).__ALLOW_GAMEENGINE_IN_MAIN_THREAD;
+		delete globalThis.__ALLOW_GAMEENGINE_IN_MAIN_THREAD;
 		console.log("✅ GameEngine安全检查已恢复");
 	}
 
@@ -152,13 +152,9 @@ export class GameEngine {
 		this.jsProcessor = new JSProcessor(); // 初始化JS表达式处理器
 
 		// World 相关
-		this.spaceManager = new SpaceManager();
+		this.spaceManager = new SpaceManager(this.memberManager);
 		this.areaManager = new AreaManager(this.spaceManager, this.memberManager);
-		this.world = new World(
-			this.memberManager,
-			this.spaceManager,
-			this.areaManager,
-		);
+		this.world = new World(this.memberManager, this.spaceManager, this.areaManager);
 
 		// 创建状态机 - 使用动态获取mirror sender的方式
 		this.stateMachine = createActor(GameEngineSM, {
@@ -177,9 +173,7 @@ export class GameEngine {
 							);
 							// 如果是在初始化过程中，延迟重试
 							if (command.type === "RESULT" && command.command === "INIT") {
-								console.warn(
-									"GameEngine: RESULT(INIT) 命令被忽略，可能导致状态机超时",
-								);
+								console.warn("GameEngine: RESULT(INIT) 命令被忽略，可能导致状态机超时");
 							}
 						}
 					},
@@ -265,6 +259,7 @@ export class GameEngine {
 		// 清理渲染消息发送器
 		this.renderMessageSender = null;
 		this.systemMessageSender = null;
+		this.frameSnapshotSender = null;
 
 		// 重置统计
 		this.stats = {
@@ -353,7 +348,7 @@ export class GameEngine {
 		// 当前选中成员详细视图（属性 + Buff）
 		let selectedMemberDetail: {
 			attrs: Record<string, unknown>;
-			buffs?: any[];
+			buffs?: BuffViewDataSnapshot[];
 		} | null = null;
 		if (primaryTargetId) {
 			const selectedMember = this.memberManager.getMember(primaryTargetId);
@@ -375,12 +370,7 @@ export class GameEngine {
 			const member = this.memberManager.getMember(primaryTargetId);
 			if (member && member.type === "Player") {
 				const player = member as Player;
-				try {
-					selectedMemberSkills = this.computePlayerSkills(player, frameNumber);
-				} catch (error) {
-					console.warn("计算选中成员技能数据失败:", error);
-					selectedMemberSkills = [];
-				}
+				selectedMemberSkills = this.computePlayerSkills(player, frameNumber);
 			}
 		}
 
@@ -401,14 +391,21 @@ export class GameEngine {
 
 	/**
 	 * 发送帧快照到主线程
-	 * 直接通过Worker线程发送，不需要回调
+	 * 通过注入的发送器发送帧快照
 	 */
 	public sendFrameSnapshot(snapshot: FrameSnapshot): void {
-		// 通过全局变量发送帧快照
-		if (typeof (globalThis as any).sendFrameSnapshot === "function") {
-			(globalThis as any).sendFrameSnapshot(snapshot);
+		if (!this.frameSnapshotSender) {
+			console.warn("GameEngine: 帧快照发送器未设置，无法发送帧快照");
+			return;
+		}
+
+		try {
+			this.frameSnapshotSender(snapshot);
+		} catch (error) {
+			console.error("GameEngine: 发送帧快照失败:", error);
 		}
 	}
+
 	/**
 	 * 发送命令到引擎状态机
 	 */
@@ -428,7 +425,7 @@ export class GameEngine {
 	 *
 	 * @param sender 渲染消息发送函数，通常由Worker环境中的MessagePort提供
 	 */
-	setRenderMessageSender(sender: (payload: any) => void): void {
+	setRenderMessageSender(sender: (payload: unknown) => void): void {
 		this.renderMessageSender = sender;
 	}
 
@@ -437,8 +434,17 @@ export class GameEngine {
 	 *
 	 * @param sender 系统消息发送函数，用于发送系统级事件到控制器
 	 */
-	setSystemMessageSender(sender: (payload: any) => void): void {
+	setSystemMessageSender(sender: (payload: unknown) => void): void {
 		this.systemMessageSender = sender;
+	}
+
+	/**
+	 * 设置帧快照发送器
+	 *
+	 * @param sender 帧快照发送函数，用于发送帧快照到主线程
+	 */
+	setFrameSnapshotSender(sender: (snapshot: FrameSnapshot) => void): void {
+		this.frameSnapshotSender = sender;
 	}
 
 	/**
@@ -446,7 +452,7 @@ export class GameEngine {
 	 *
 	 * @param payload 渲染指令负载，可以是单个指令或指令数组
 	 */
-	postRenderMessage(payload: any): void {
+	postRenderMessage(payload: unknown): void {
 		if (!this.renderMessageSender) {
 			console.warn("GameEngine: 渲染消息发送器未设置，无法发送渲染指令");
 			return;
@@ -464,7 +470,7 @@ export class GameEngine {
 	 *
 	 * @param payload 系统消息负载
 	 */
-	postSystemMessage(payload: any): void {
+	postSystemMessage(payload: unknown): void {
 		if (!this.systemMessageSender) {
 			console.warn("GameEngine: 系统消息发送器未设置，无法发送系统消息");
 			return;
@@ -622,19 +628,9 @@ export class GameEngine {
 	 * @param memberData 成员数据
 	 * @param characterIndex 角色索引
 	 */
-	addMember(
-		campId: string,
-		teamId: string,
-		memberData: MemberWithRelations,
-		characterIndex: number,
-	): void {
+	addMember(campId: string, teamId: string, memberData: MemberWithRelations, characterIndex: number): void {
 		// 容器只负责委托，不处理具体创建逻辑
-		const member = this.memberManager.createAndRegister(
-			memberData,
-			campId,
-			teamId,
-			characterIndex,
-		);
+		this.memberManager.createAndRegister(memberData, campId, teamId, characterIndex);
 	}
 
 	/**
@@ -685,9 +681,7 @@ export class GameEngine {
 	 * @param messages 消息数组
 	 * @returns 处理结果数组
 	 */
-	async processIntents(
-		messages: IntentMessage[],
-	): Promise<MessageProcessResult[]> {
+	async processIntents(messages: IntentMessage[]): Promise<MessageProcessResult[]> {
 		if (!this.config.enableRealtimeControl) {
 			return messages.map(() => ({
 				success: false,
@@ -705,132 +699,81 @@ export class GameEngine {
 	// ==================== 子组件功能封装：JS编译和执行 ====================
 
 	/**
-	 * 编译脚本代码为可执行的 JS 片段（仅负责编译，不执行）
-	 *
-	 * 用于引擎内部脚本执行场景：
-	 * - 输入原始 JS 片段和成员/目标信息
-	 * - 基于成员的 dataSchema 进行属性访问重写与验证
-	 * - 返回可直接在运行时执行的 compiledCode 字符串
-	 */
-	compileScript(code: string, memberId: string, targetId?: string): string {
-		const member = this.memberManager.getMember(memberId);
-		if (!member) {
-			throw new Error(`成员不存在: ${memberId}`);
-		}
-
-		const compiledResult = this.jsProcessor.compileWithCache(code, {
-			memberId,
-			targetId,
-			schema: member.dataSchema,
-			options: { enableValidation: true },
-		});
-
-		if (!compiledResult.success) {
-			throw new Error(`脚本编译失败: ${compiledResult.error}`);
-		}
-
-		return compiledResult.compiledCode;
-	}
-
-	/**
-	 * 执行JS代码，若未缓存，则先编译再执行
-	 *
-	 * @param code 编译后的代码
-	 * @param context 执行上下文
-	 * @returns 执行结果
-	 */
-	executeScript(code: string, context: ExpressionContext): any {
-		try {
-			const memberId = context.casterId;
-			const targetId = context.targetId;
-
-			if (!memberId) {
-				throw new Error("缺少成员ID");
-			}
-
-			// 在统一的运行时包装下执行（使用 with(ctx) 暴露字段）
-			const runner = this.createExpressionRunner(code);
-			const result = runner(context);
-
-			// console.log(`✅ JS脚本执行成功: ${memberId}, 结果:`, result);
-			return result;
-		} catch (error) {
-			console.error("JS脚本执行失败:", error);
-			console.error("编译后的代码:", code);
-			console.error("执行上下文:", context);
-			throw new Error(
-				`脚本执行失败: ${error instanceof Error ? error.message : "Unknown error"}`,
-			);
-		}
-	}
-
-	/**
-	 * 为编译后的 JS 代码创建统一的执行函数
-	 *
-	 * 约定：
-	 * - 所有由 JSProcessor 编译得到的代码，签名均为 (ctx) => any
-	 * - 这里统一使用 `with (ctx) { ... }` 将 ctx 的字段暴露为“局部变量”
-	 *   这样表达式既可以写 `ctx.currentFrame`，也可以直接写 `currentFrame`
-	 */
-	createExpressionRunner(
-		compiledCode: string,
-	): (ctx: ExpressionContext) => any {
-		const wrappedCode = `
-      with (ctx) {
-        ${compiledCode}
-      }
-    `;
-		// new Function 用于在 Worker 沙盒中执行已编译代码，受 JSProcessor 约束
-		return new Function("ctx", wrappedCode) as (ctx: ExpressionContext) => any;
-	}
-
-	/**
 	 * 计算表达式
 	 *
-	 * @param expression 表达式字符串
+	 * @param expression 表达式字符串（可以是 transform 后的，也可以包含 self/target 访问）
 	 * @param context 计算上下文
 	 * @returns 计算结果
 	 */
-	evaluateExpression(expression: string, context: ExpressionContext): number {
+	evaluateExpression(expression: string, context: ExpressionContext): number | boolean {
 		try {
 			const memberId = context.casterId;
 			if (!memberId) {
 				throw new Error("缺少成员ID");
 			}
 
-			const member = this.memberManager.getMember(memberId);
-			if (!member) {
+			const self = this.memberManager.getMember(memberId);
+			if (!self) {
 				throw new Error(`成员不存在: ${memberId}`);
 			}
 
-			// 使用 JSProcessor 编译表达式（带内部缓存）
-			const compiledResult = this.jsProcessor.compileWithCache(expression, {
-				memberId,
-				targetId: context.targetId,
-				schema: member.dataSchema,
-				options: { enableValidation: true },
-			});
+			const target = context.targetId
+				? this.memberManager.getMember(context.targetId)
+				: undefined;
 
-			if (!compiledResult.success) {
-				throw new Error(`表达式编译失败: ${compiledResult.error}`);
+			// 表达式用的对象包装：避免直接污染 Member 实例，同时保留原型链/方法
+			const selfExpr = Object.create(self) as typeof self & {
+				hasBuff?: (id: string) => boolean;
+				hasDebuff?: (id: string) => boolean;
+			};
+			selfExpr.hasBuff = (id: string) => self.btManager.hasBuff(id);
+			selfExpr.hasDebuff = (_id: string) => false;
+
+			const targetExpr = target
+				? (Object.create(target) as typeof target & {
+						hasBuff?: (id: string) => boolean;
+						hasDebuff?: (id: string) => boolean;
+					})
+				: undefined;
+			if (targetExpr && target) {
+				targetExpr.hasBuff = (id: string) => target.btManager.hasBuff(id);
+				targetExpr.hasDebuff = (_id: string) => false;
 			}
 
-			// 执行编译后的表达式，确保 context 包含 engine 引用
-			// 注意：self 对象已由 JSProcessor 在编译时注入，可直接使用 self.buffManager
-			const executionContext = {
+			// 确保 context 包含 engine/self/target 引用（表达式里可直接使用 self/target）
+			const executionContext: ExpressionContext = {
 				...context,
 				engine: this,
+				self: selfExpr,
+				target: targetExpr,
+				/**
+				 * 表达式运行时 API：查询 Buff 状态
+				 *
+				 * 约定：
+				 * - `hasBuff('id')` 默认查询 self（施法者/当前计算主体）
+				 * - `self.hasBuff('id')` / `target.hasBuff('id')` 也可用（向后兼容写法）
+				 */
+				hasBuff: (id: string): boolean => self.btManager.hasBuff(id),
+				hasDebuff: (_id: string): boolean => false,
 			};
 
-			const result = this.executeScript(
-				compiledResult.compiledCode,
+			const evalResult = this.jsProcessor.evaluateNumberOrBoolean(
+				expression,
 				executionContext,
+				{
+					cacheScope: `${memberId}_${context.targetId ?? "-"}`,
+					schemas: {
+						self: self.dataSchema,
+						target: target?.dataSchema,
+					},
+				},
 			);
-			// console.log(`🔧 GameEngine.evaluateExpression: 执行结果: ${result} (类型: ${typeof result})`);
-
-			return result;
+			if (!evalResult.success) {
+				throw new Error(evalResult.error ?? "表达式求值失败");
+			}
+			return evalResult.result ?? 0;
 		} catch (error) {
-			console.error("表达式计算失败:", error);
+			console.error(`表达式计算失败: ${expression}`, error);
 			return 0;
 		}
 	}
@@ -894,9 +837,8 @@ export class GameEngine {
 	dispatchMemberEvent(
 		memberId: string,
 		eventType: string,
-		payload?: any,
+		payload?: Record<string, unknown>,
 		delayFrames: number = 0,
-		skillId?: string,
 		meta?: { source?: string },
 	): void {
 		const currentFrame = this.getCurrentFrame();
@@ -908,13 +850,10 @@ export class GameEngine {
 			executeFrame,
 			insertFrame: currentFrame,
 			processed: false,
-			payload: {
-				targetMemberId: memberId,
-				fsmEventType: eventType,
-				skillId,
-				source: meta?.source ?? "engine.dispatchMemberEvent",
-				...payload,
-			},
+			targetMemberId: memberId,
+			fsmEventType: eventType,
+			source: meta?.source ?? "未知来源",
+			payload,
 		});
 	}
 
@@ -928,7 +867,7 @@ export class GameEngine {
 	stepFrame(options?: { maxEvents?: number }): FrameStepResult {
 		const frameNumber = this.getCurrentFrame();
 		const frameStartTime = performance.now();
-		const maxEvents = options?.maxEvents ?? Number.MAX_SAFE_INTEGER;
+		const maxEvents = options?.maxEvents ?? 100;
 
 		// 1. 处理当前帧需要执行的事件（目前统一为 member_fsm_event）
 		const eventsForFrame = this.eventQueue.getByFrame(frameNumber);
@@ -939,40 +878,38 @@ export class GameEngine {
 				break;
 			}
 
-			if (event.type === "member_fsm_event") {
-				const payload = (event.payload ?? {}) as any;
-				const targetMemberId = payload.targetMemberId as string | undefined;
-				const fsmEventType = payload.fsmEventType as string | undefined;
+			switch (event.type) {
+				case "member_fsm_event":
+					{
+						const payload = event.payload;
+						const targetMemberId = event.targetMemberId;
+						const fsmEventType = event.fsmEventType;
 
-				if (targetMemberId && fsmEventType) {
-					const member = this.memberManager.getMember(targetMemberId);
-					if (member) {
-						// 将队列事件转发为 FSM 事件，由成员自己的状态机处理
-						member.actor.send({ type: fsmEventType, data: payload } as any);
-					} else {
-						console.warn(`⚠️ stepFrame: 目标成员不存在: ${targetMemberId}`);
+						const member = this.memberManager.getMember(targetMemberId);
+						if (member) {
+							// 将队列事件转发为 FSM 事件，由成员自己的状态机处理
+							member.actor.send({ type: fsmEventType, data: payload });
+						} else {
+							console.warn(`⚠️ stepFrame: 目标成员不存在: ${targetMemberId}`);
+						}
 					}
-				} else {
-					console.warn(
-						"⚠️ stepFrame: member_fsm_event 缺少 targetMemberId 或 fsmEventType",
-						event,
-					);
-				}
-			} else {
-				console.warn(`⚠️ stepFrame: 未知事件类型: ${event.type}`);
+					break;
+				default:
+					console.warn(`⚠️ stepFrame: 未知事件类型: ${event.type}`);
+					break;
 			}
 
 			this.eventQueue.markAsProcessed(event.id);
 			eventsProcessed++;
 		}
 
-		// 2. 成员/区域更新（驱动 BT/SM/Buff 等），统一产出 Intent 并执行
+		// 2. 成员/区域更新（驱动 BT/SM/Buff 等）
 		this.world.tick(frameNumber);
 		const membersUpdated = this.memberManager.getAllMembers().length;
 
 		const duration = performance.now() - frameStartTime;
 
-		// 3. 检查是否还有本帧待处理事件
+		// 3. 检查是否还有本帧待处理事件，禁止往当前帧插入事件的情况下，目前只需要考虑maxEvents限流
 		// eventsForFrame 已是当前帧分桶，避免重复取队列
 		const hasPendingEvents = eventsForFrame.some((event) => !event.processed);
 
@@ -1031,9 +968,7 @@ export class GameEngine {
 			this.snapshots = this.snapshots.slice(-500);
 		}
 
-		console.log(
-			`📸 生成快照 #${this.stats.totalSnapshots} - 帧: ${snapshot.frameNumber}`,
-		);
+		console.log(`📸 生成快照 #${this.stats.totalSnapshots} - 帧: ${snapshot.frameNumber}`);
 	}
 
 	/**
@@ -1063,9 +998,7 @@ export class GameEngine {
 	 * @returns 所有成员数据数组
 	 */
 	getAllMemberData(): MemberSerializeData[] {
-		return this.memberManager
-			.getAllMembers()
-			.map((member) => member.serialize());
+		return this.memberManager.getAllMembers().map((member) => member.serialize());
 	}
 
 	/**
@@ -1075,9 +1008,7 @@ export class GameEngine {
 	 * @returns 指定阵营的成员数据数组
 	 */
 	getMembersByCamp(campId: string): MemberSerializeData[] {
-		return this.memberManager
-			.getMembersByCamp(campId)
-			.map((member) => member.serialize());
+		return this.memberManager.getMembersByCamp(campId).map((member) => member.serialize());
 	}
 
 	/**
@@ -1087,9 +1018,7 @@ export class GameEngine {
 	 * @returns 指定队伍的成员数据数组
 	 */
 	getMembersByTeam(teamId: string): MemberSerializeData[] {
-		return this.memberManager
-			.getMembersByTeam(teamId)
-			.map((member) => member.serialize());
+		return this.memberManager.getMembersByTeam(teamId).map((member) => member.serialize());
 	}
 
 	// ==================== 依赖注入支持 ====================
@@ -1133,19 +1062,14 @@ export class GameEngine {
 		const isMainThread = typeof window !== "undefined";
 
 		// 检查是否在Node.js环境中（用于测试）
-		const isNode =
-			typeof process !== "undefined" &&
-			process.versions &&
-			process.versions.node;
+		const isNode = typeof process !== "undefined" && process.versions && process.versions.node;
 
 		// 检查是否有特殊的测试标记（用于单元测试等）
 		const isTestEnvironment =
-			typeof globalThis !== "undefined" &&
-			(globalThis as any).__ALLOW_GAMEENGINE_IN_MAIN_THREAD;
+			typeof globalThis !== "undefined" && globalThis.__ALLOW_GAMEENGINE_IN_MAIN_THREAD === true;
 
 		// 检查是否在沙盒Worker中（有safeAPI标记）
-		const isSandboxWorker =
-			typeof globalThis !== "undefined" && (globalThis as any).safeAPI;
+		const isSandboxWorker = typeof globalThis !== "undefined" && globalThis.safeAPI;
 
 		// 检查是否在Worker环境中（有self但没有window）
 		const isWorkerEnvironment = typeof self !== "undefined" && !isMainThread;
@@ -1179,87 +1103,84 @@ export class GameEngine {
 	 * 计算 Player 的技能数据
 	 * 为每个技能计算当前的消耗值和可用性
 	 */
-	private computePlayerSkills(
-		player: Player,
-		currentFrame: number,
-	): ComputedSkillInfo[] {
-		try {
-			const skillList = player.runtimeContext.skillList ?? [];
-			const skillCooldowns = player.runtimeContext.skillCooldowns ?? [];
-			const currentMp = player.statContainer?.getValue("mp.current") ?? 0;
-			const currentHp = player.statContainer?.getValue("hp.current") ?? 0;
+	private computePlayerSkills(player: Player, currentFrame: number): ComputedSkillInfo[] {
+		const skillList = player.runtimeContext.skillList ?? [];
+		const skillCooldowns = player.runtimeContext.skillCooldowns ?? [];
+		const currentMp = player.statContainer?.getValue("mp.current") ?? 0;
+		const currentHp = player.statContainer?.getValue("hp.current") ?? 0;
 
-			return skillList.map((skill: any, index: number) => {
-				const skillName = skill.template?.name ?? "未知技能";
-				const skillLevel = skill.lv ?? 0;
+		return skillList.map((skill, index) => {
+			const skillName = skill.template?.name ?? "未知技能";
+			const skillLevel = skill.lv ?? 0;
 
-				// 查找适用的技能效果
-				const effect = skill.template?.effects?.find((e: any) => {
-					try {
-						const result = this.evaluateExpression(e.condition ?? "true", {
-							currentFrame,
-							casterId: player.id,
-							skillLv: skillLevel,
-						});
-						return !!result;
-					} catch {
-						return false;
-					}
-				});
-
-				// 计算消耗
-				let mpCost = 0;
-				let hpCost = 0;
-				let castingRange: string | null = null;
-
-				if (effect) {
-					try {
-						mpCost = this.evaluateExpression(effect.mpCost ?? "0", {
-							currentFrame,
-							casterId: player.id,
-							skillLv: skillLevel,
-						});
-					} catch {
-						mpCost = 0;
-					}
-
-					try {
-						hpCost = this.evaluateExpression(effect.hpCost ?? "0", {
-							currentFrame,
-							casterId: player.id,
-							skillLv: skillLevel,
-						});
-					} catch {
-						hpCost = 0;
-					}
-
-					castingRange = effect.castingRange ?? null;
+			// 查找适用的技能效果
+			const effect = skill.template?.effects?.find((e) => {
+				try {
+					const result = this.evaluateExpression(e.condition, {
+						currentFrame,
+						casterId: player.id,
+						skillLv: skillLevel,
+					});
+					return !!result;
+				} catch {
+					return false;
 				}
-
-				// 获取冷却状态
-				const cooldownRemaining = skillCooldowns[index] ?? 0;
-
-				// 判断是否可用
-				const isAvailable =
-					cooldownRemaining <= 0 && currentMp >= mpCost && currentHp >= hpCost;
-
-				return {
-					id: skill.id,
-					name: skillName,
-					level: skillLevel,
-					computed: {
-						mpCost,
-						hpCost,
-						castingRange,
-						cooldownRemaining,
-						isAvailable,
-					},
-				};
 			});
-		} catch (error) {
-			console.warn("计算玩家技能数据失败:", error);
-			return [];
-		}
+
+			// 计算消耗
+			let mpCost = 0;
+			let hpCost = 0;
+			let castingRange = 0;
+
+			if (effect) {
+				const mpCostResult = this.evaluateExpression(effect.mpCost ?? "0", {
+					currentFrame,
+					casterId: player.id,
+					skillLv: skillLevel,
+				});
+				if (typeof mpCostResult !== "number") {
+					throw new Error(`表达式: ${effect.mpCost} 执行结果不是数字`);
+				}
+				mpCost = mpCostResult;
+				const hpCostResult = this.evaluateExpression(effect.hpCost ?? "0", {
+					currentFrame,
+					casterId: player.id,
+					skillLv: skillLevel,
+				});
+				if (typeof hpCostResult !== "number") {
+					throw new Error(`表达式: ${effect.hpCost} 执行结果不是数字`);
+				}
+				hpCost = hpCostResult;
+				const castingRangeResult = this.evaluateExpression(effect.castingRange ?? "0", {
+					currentFrame,
+					casterId: player.id,
+					skillLv: skillLevel,
+				});
+				if (typeof castingRangeResult !== "number") {
+					throw new Error(`表达式: ${effect.castingRange} 执行结果不是数字`);
+				}
+				castingRange = castingRangeResult;
+			}
+
+			// 获取冷却状态
+			const cooldownRemaining = skillCooldowns[index] ?? 0;
+
+			// 判断是否可用
+			const isAvailable = cooldownRemaining <= 0 && currentMp >= mpCost && currentHp >= hpCost;
+
+			return {
+				id: skill.id,
+				name: skillName,
+				level: skillLevel,
+				computed: {
+					mpCost,
+					hpCost,
+					castingRange,
+					cooldownRemaining,
+					isAvailable,
+				},
+			};
+		});
 	}
 }
 

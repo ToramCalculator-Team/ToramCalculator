@@ -1,6 +1,6 @@
 import type { MemberManager } from "../Member/MemberManager";
-import { AreaManager } from "./AreaManager";
-import { SpaceManager } from "./SpaceManager";
+import type { AreaManager } from "./AreaManager";
+import type { SpaceManager } from "./SpaceManager";
 
 /**
  * World/Scene 容器：聚合成员/区域/空间系统 + Intent/Resolver
@@ -22,7 +22,7 @@ export class World {
       member.tick(frame);
     }
 
-    // 区域更新（当前占位实现）
+    // 区域更新（AreaManager 调度三个子系统）
     this.areaManager.tick(frame);
   }
 }

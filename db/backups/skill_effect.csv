@@ -1,3 +1,3 @@
 id,condition,elementLogic,castingRange,effectiveRange,motionFixed,motionModified,chantingFixed,chantingModified,reservoirFixed,reservoirModified,startupFrames,hpCost,mpCost,description,logic,details,belongToskillId
-defaultSkillEffectId,true,mainWeapon.element,mainWeapon.range,3,13,48,0,0,0,0,0.3,0,100,null,"{}",null,defaultSkillId
-MagicCannonEffect1Id,true,mainWeapon.element,10,10,ctx.magicCannon?.phase == 1 ? 12 : 18,ctx.magicCannon?.phase == 1 ? 170 : 31,0,0,0,0,0,0,self.btManager.hasBuff('magic_cannon_charge') ? 700 : 0,魔法炮充能/释放逻辑，通过行为树实现。,{},null,MagicCannonId
+defaultSkillEffectId,true,self.mainWeapon.element,self.mainWeapon.range,3,13,48,0,0,0,0,0.3,0,100,null,"{}",null,defaultSkillId
+MagicCannonEffect1Id,true,self.mainWeapon.element,10,10,ctx.magicCannon?.phase == 1 ? 12 : 18,ctx.magicCannon?.phase == 1 ? 170 : 31,0,0,0,0,0,0,hasBuff('magic_cannon_charge') ? 700 : 0,魔法炮充能/释放逻辑，通过行为树实现。,{},null,MagicCannonId

@@ -5,14 +5,9 @@
  * 支持：abi.vit, weapon.attack.physical, lv, str 等属性路径
  */
 
-import type {
-	Identifier,
-	MemberExpression,
-	Node,
-	Program,
-} from "acorn";
+import type { Identifier, MemberExpression, Node, Program } from "acorn";
 import { parse } from "acorn";
-import { JSProcessor } from "../../../JSProcessor/JSProcessor";
+import { ExpressionTransformer } from "../../../JSProcessor/ExpressionTransformer";
 
 export interface ASTCompileResult {
 	success: boolean;
@@ -73,9 +68,7 @@ export class StatContainerASTCompiler {
 			const compiledCode = this.applyReplacements(expression, replacements);
 
 			// 5. 收集依赖
-			const dependencies = [
-				...new Set(replacements.map((r) => r.attributeKey)),
-			];
+			const dependencies = [...new Set(replacements.map((r) => r.attributeKey))];
 
 			result.success = true;
 			result.compiledCode = compiledCode;
@@ -104,10 +97,7 @@ export class StatContainerASTCompiler {
 		}
 
 		// 字符串字面量
-		if (
-			(trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-			(trimmed.startsWith("'") && trimmed.endsWith("'"))
-		) {
+		if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
 			return true;
 		}
 
@@ -147,7 +137,7 @@ export class StatContainerASTCompiler {
 			nodeType: "member-expression" | "identifier";
 		}> = [];
 
-		JSProcessor.walkAST(ast, (node: Node) => {
+		ExpressionTransformer.walkAST(ast, (node: Node) => {
 			// 处理所有成员表达式（如 abi.vit, weapon.attack.physical 等）
 			if (node.type === "MemberExpression") {
 				const memberExpr = node as MemberExpression;
@@ -236,7 +226,7 @@ export class StatContainerASTCompiler {
 	private isInMemberExpression(targetNode: Node, ast: Program): boolean {
 		let isInMember = false;
 
-		JSProcessor.walkAST(ast, (node: Node) => {
+		ExpressionTransformer.walkAST(ast, (node: Node) => {
 			if (node.type === "MemberExpression") {
 				const memberExpr = node as MemberExpression;
 				if (memberExpr.property === targetNode) {
@@ -295,16 +285,11 @@ export class StatContainerASTCompiler {
 		}>,
 	): string {
 		// 按位置从后向前排序
-		const sortedReplacements = [...replacements].sort(
-			(a, b) => b.start - a.start,
-		);
+		const sortedReplacements = [...replacements].sort((a, b) => b.start - a.start);
 
 		let result = expression;
 		for (const replacement of sortedReplacements) {
-			result =
-				result.substring(0, replacement.start) +
-				replacement.replacement +
-				result.substring(replacement.end);
+			result = result.substring(0, replacement.start) + replacement.replacement + result.substring(replacement.end);
 		}
 
 		return result;
