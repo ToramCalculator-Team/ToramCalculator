@@ -134,7 +134,6 @@ export class MemberManager {
 					memberData,
 					campId,
 					teamId,
-					memberData.id,
 					position,
 				);
 				const success = this.registerMember(mob, campId, teamId, memberData);

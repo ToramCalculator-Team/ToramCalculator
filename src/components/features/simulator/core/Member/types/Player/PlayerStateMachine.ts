@@ -1,13 +1,9 @@
 import { assign, type EventObject, setup } from "xstate";
 import { skillLogicExample } from "~/components/features/BtEditor/data/SkillExamples";
 import type { Member } from "../../Member";
-import type {
-	MemberEventType,
-	MemberStateContext,
-	MemberStateMachine,
-} from "../../runtime/StateMachine/types";
+import type { MemberEventType, MemberStateContext, MemberStateMachine } from "../../runtime/StateMachine/types";
+import type { PlayerRuntimeContext } from "./Agents/RuntimeContext";
 import type { Player, PlayerAttrType } from "./Player";
-import type { PlayerRuntimeContext } from "./PlayerAgents";
 
 /**
  * Player特有的事件类型
@@ -157,12 +153,7 @@ export type PlayerEventType =
 export interface PlayerStateContext extends MemberStateContext {}
 
 export const playerStateMachine = (
-	member: Member<
-		PlayerAttrType,
-		PlayerEventType,
-		PlayerStateContext,
-		PlayerRuntimeContext
-	>,
+	member: Member<PlayerAttrType, PlayerEventType, PlayerStateContext, PlayerRuntimeContext>,
 ): MemberStateMachine<PlayerEventType, PlayerStateContext> => {
 	// 类型断言：playerStateMachine 内部需要访问 Player 特有属性
 	const player = member as Player;
@@ -177,10 +168,7 @@ export const playerStateMachine = (
 		},
 		actions: {
 			根据角色配置生成初始状态: ({ context, event }) => {
-				console.log(
-					`👤 [${context.owner?.name}] 根据角色配置生成初始状态`,
-					event,
-				);
+				console.log(`👤 [${context.owner?.name}] 根据角色配置生成初始状态`, event);
 			},
 			更新玩家状态: assign({
 				currentFrame: ({ context }) => context.currentFrame + 1,
@@ -201,9 +189,7 @@ export const playerStateMachine = (
 				console.log(`👤 [${context.owner?.name}] 添加待处理技能`, event);
 				const e = event as 使用技能;
 				const skillId = e.data.skillId;
-				const skill = player.activeCharacter.skills?.find(
-					(s) => s.id === skillId,
-				);
+				const skill = player.activeCharacter.skills?.find((s) => s.id === skillId);
 				if (!skill) {
 					console.error(`🎮 [${context.owner?.name}] 的当前技能不存在`);
 				}
@@ -226,13 +212,12 @@ export const playerStateMachine = (
 			},
 			添加待处理技能效果: ({ context, event }) => {
 				console.log(`👤 [${context.owner?.name}] 添加待处理技能效果`, event);
-				const skillEffect = runtimeContext.currentSkill?.template?.effects.find(
-					(e) =>
-						player.engine.evaluateExpression(e.condition, {
-							currentFrame: runtimeContext.currentFrame,
-							casterId: player.id,
-							skillLv: runtimeContext.currentSkill?.lv ?? 0,
-						}),
+				const skillEffect = runtimeContext.currentSkill?.template?.effects.find((e) =>
+					player.engine.evaluateExpression(e.condition, {
+						currentFrame: runtimeContext.currentFrame,
+						casterId: player.id,
+						skillLv: runtimeContext.currentSkill?.lv ?? 0,
+					}),
 				);
 				console.log(`技能效果`, skillEffect);
 				runtimeContext.currentSkillEffect = skillEffect ?? null;
@@ -252,15 +237,9 @@ export const playerStateMachine = (
 				const treeDefinition = skillLogicExample.default.definition;
 				const agentCode = skillLogicExample.default.agent;
 
-				const treeData = player.btManager.registerSkillBt(
-					treeDefinition,
-					agentCode,
-				);
+				const treeData = player.btManager.registerSkillBt(treeDefinition, agentCode);
 				if (!treeData) {
-					console.error(
-						`🎮 [${context.owner?.name}] 技能逻辑不是有效的行为树 TreeData，已跳过执行`,
-						treeDefinition,
-					);
+					console.error(`🎮 [${context.owner?.name}] 技能逻辑不是有效的行为树 TreeData，已跳过执行`, treeDefinition);
 					player.actor.send({ type: "技能执行完成" });
 					return;
 				}
@@ -278,10 +257,7 @@ export const playerStateMachine = (
 				console.log(`👤 [${context.owner?.name}] 重置到复活状态`, event);
 			},
 			发送命中判定事件给自己: ({ context, event }) => {
-				console.log(
-					`👤 [${context.owner?.name}] 发送命中判定事件给自己`,
-					event,
-				);
+				console.log(`👤 [${context.owner?.name}] 发送命中判定事件给自己`, event);
 				// 不使用 raise(...)，直接向自身发送事件（命令式），避免 XState dev build 警告
 				player.actor.send({ type: "进行命中判定" });
 			},
@@ -289,10 +265,7 @@ export const playerStateMachine = (
 				console.log(`👤 [${context.owner?.name}] 反馈命中结果给施法者`, event);
 			},
 			发送控制判定事件给自己: ({ context, event }) => {
-				console.log(
-					`👤 [${context.owner?.name}] 发送控制判定事件给自己`,
-					event,
-				);
+				console.log(`👤 [${context.owner?.name}] 发送控制判定事件给自己`, event);
 				// 不要在自定义 action 中调用 raise(...)（非命令式），这里直接向自身发送事件即可
 				player.actor.send({ type: "进行控制判定" });
 			},
@@ -300,10 +273,7 @@ export const playerStateMachine = (
 				console.log(`👤 [${context.owner?.name}] 命中计算管线`, event);
 			},
 			根据命中结果进行下一步: ({ context, event }) => {
-				console.log(
-					`👤 [${context.owner?.name}] 根据命中结果进行下一步`,
-					event,
-				);
+				console.log(`👤 [${context.owner?.name}] 根据命中结果进行下一步`, event);
 				// 命中后再进入控制判定
 				player.actor.send({ type: "进行控制判定" });
 			},
@@ -314,10 +284,7 @@ export const playerStateMachine = (
 				console.log(`👤 [${context.owner?.name}] 反馈控制结果给施法者`, event);
 			},
 			发送伤害计算事件给自己: ({ context, event }) => {
-				console.log(
-					`👤 [${context.owner?.name}] 发送伤害计算事件给自己`,
-					event,
-				);
+				console.log(`👤 [${context.owner?.name}] 发送伤害计算事件给自己`, event);
 				player.actor.send({ type: "进行伤害计算" });
 			},
 			伤害计算管线: ({ context, event }) => {
@@ -327,10 +294,7 @@ export const playerStateMachine = (
 				console.log(`👤 [${context.owner?.name}] 反馈伤害结果给施法者`, event);
 			},
 			发送属性修改事件给自己: ({ context, event }) => {
-				console.log(
-					`👤 [${context.owner?.name}] 发送属性修改事件给自己`,
-					event,
-				);
+				console.log(`👤 [${context.owner?.name}] 发送属性修改事件给自己`, event);
 				const currentHp = player.statContainer.getValue("hp.current");
 				player.actor.send({
 					type: "修改属性",
@@ -338,10 +302,7 @@ export const playerStateMachine = (
 				});
 			},
 			发送buff修改事件给自己: ({ context, event }) => {
-				console.log(
-					`👤 [${context.owner?.name}] 发送buff修改事件给自己`,
-					event,
-				);
+				console.log(`👤 [${context.owner?.name}] 发送buff修改事件给自己`, event);
 			},
 			记录伤害请求: ({ context, event }) => {
 				console.log(`👤 [${context.owner?.name}] 记录伤害请求`, event);
@@ -363,10 +324,7 @@ export const playerStateMachine = (
 		},
 		guards: {
 			存在蓄力阶段: ({ context, event }) => {
-				console.log(
-					`👤 [${context.owner?.name}] 判断技能是否有蓄力阶段`,
-					event,
-				);
+				console.log(`👤 [${context.owner?.name}] 判断技能是否有蓄力阶段`, event);
 
 				const effect = runtimeContext.currentSkillEffect;
 				if (!effect) {
@@ -377,71 +335,60 @@ export const playerStateMachine = (
 				const currentFrame = player.engine.getCurrentFrame();
 
 				// 蓄力阶段相关属性（假设使用chargeFixed和chargeModified）
-				const reservoirFixed = player.engine.evaluateExpression(
-					effect.reservoirFixed ?? "0",
-					{
-						currentFrame,
-						casterId: player.id,
-					},
-				);
-				const reservoirModified = player.engine.evaluateExpression(
-					effect.reservoirModified ?? "0",
-					{
-						currentFrame,
-						casterId: player.id,
-					},
-				);
-				console.log(
-					reservoirFixed + reservoirModified > 0
-						? "有蓄力阶段"
-						: "没有蓄力阶段",
-				);
+				const reservoirFixed = player.engine.evaluateExpression(effect.reservoirFixed ?? "0", {
+					currentFrame,
+					casterId: player.id,
+				});
+				if (typeof reservoirFixed !== "number") {
+					console.error(`👤 [${context.owner?.name}] 蓄力阶段固定值不是数字`);
+					return false;
+				}
+				const reservoirModified = player.engine.evaluateExpression(effect.reservoirModified ?? "0", {
+					currentFrame,
+					casterId: player.id,
+				});
+				if (typeof reservoirModified !== "number") {
+					console.error(`👤 [${context.owner?.name}] 蓄力阶段可加速值不是数字`);
+					return false;
+				}
+				console.log(reservoirFixed + reservoirModified > 0 ? "有蓄力阶段" : "没有蓄力阶段");
 				return reservoirFixed + reservoirModified > 0;
 			},
 			存在咏唱阶段: ({ context, event }) => {
-				console.log(
-					`👤 [${context.owner?.name}] 判断技能是否有咏唱阶段`,
-					event,
-				);
+				console.log(`👤 [${context.owner?.name}] 判断技能是否有咏唱阶段`, event);
 				const effect = runtimeContext.currentSkillEffect;
 				if (!effect) {
 					console.error(`👤 [${context.owner?.name}] 技能效果不存在`);
 					return false;
 				}
 				const currentFrame = player.engine.getCurrentFrame();
-				const chantingFixed = player.engine.evaluateExpression(
-					effect.chantingFixed ?? "0",
-					{
-						currentFrame,
-						casterId: player.id,
-					},
-				);
-				const chantingModified = player.engine.evaluateExpression(
-					effect.chantingModified ?? "0",
-					{
-						currentFrame,
-						casterId: player.id,
-					},
-				);
-				console.log(
-					chantingFixed + chantingModified > 0 ? "有咏唱阶段" : "没有咏唱阶段",
-				);
+				const chantingFixed = player.engine.evaluateExpression(effect.chantingFixed ?? "0", {
+					currentFrame,
+					casterId: player.id,
+				});
+				if (typeof chantingFixed !== "number") {
+					console.error(`👤 [${context.owner?.name}] 咏唱阶段固定值不是数字`);
+					return false;
+				}
+				const chantingModified = player.engine.evaluateExpression(effect.chantingModified ?? "0", {
+					currentFrame,
+					casterId: player.id,
+				});
+				if (typeof chantingModified !== "number") {
+					console.error(`👤 [${context.owner?.name}] 咏唱阶段可加速值不是数字`);
+					return false;
+				}
+				console.log(chantingFixed + chantingModified > 0 ? "有咏唱阶段" : "没有咏唱阶段");
 				return chantingFixed + chantingModified > 0;
 			},
 			存在后续连击: ({ context, event }) => {
-				console.log(
-					`👤 [${context.owner?.name}] 判断技能是否有后续连击`,
-					event,
-				);
+				console.log(`👤 [${context.owner?.name}] 判断技能是否有后续连击`, event);
 				// Add your guard condition here
 				return false;
 			},
 			没有可用技能效果: ({ context, event }) => {
 				// Add your guard condition here
-				console.log(
-					`👤 [${context.owner?.name}] 判断技能是否有可用效果`,
-					event,
-				);
+				console.log(`👤 [${context.owner?.name}] 判断技能是否有可用效果`, event);
 				const e = event as 使用技能;
 				const skillId = e.data.skillId;
 				const currentFrame = player.engine.getCurrentFrame();
@@ -456,28 +403,19 @@ export const playerStateMachine = (
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,
 					});
-					console.log(
-						`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`,
-					);
+					console.log(`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`);
 					return !!result; // 明确返回布尔值进行比较
 				});
 				if (!effect) {
-					console.error(
-						`🎮 [${context.owner?.name}] 技能效果不存在: ${skillId}`,
-					);
+					console.error(`🎮 [${context.owner?.name}] 技能效果不存在: ${skillId}`);
 					return true;
 				}
-				console.log(
-					`🎮 [${context.owner?.name}] 的技能 ${skill.template?.name} 可用`,
-				);
+				console.log(`🎮 [${context.owner?.name}] 的技能 ${skill.template?.name} 可用`);
 				return false;
 			},
 			还未冷却: ({ context, event }) => {
 				console.log(`👤 [${context.owner?.name}] 判断技能是否还未冷却`, event);
-				const res =
-					runtimeContext.skillCooldowns?.[
-						runtimeContext.currentSkillIndex ?? 0
-					];
+				const res = runtimeContext.skillCooldowns?.[runtimeContext.currentSkillIndex ?? 0];
 				if (res === undefined) {
 					console.log(`- 该技能不存在冷却时间`);
 					return false;
@@ -506,15 +444,11 @@ export const playerStateMachine = (
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,
 					});
-					console.log(
-						`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`,
-					);
+					console.log(`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`);
 					return !!result; // 明确返回布尔值进行比较
 				});
 				if (!effect) {
-					console.error(
-						`🎮 [${context.owner?.name}] 技能效果不存在: ${skillId}`,
-					);
+					console.error(`🎮 [${context.owner?.name}] 技能效果不存在: ${skillId}`);
 					return true;
 				}
 				if (effect.hpCost && effect.mpCost) {
@@ -523,11 +457,19 @@ export const playerStateMachine = (
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,
 					});
+					if (typeof hpCost !== "number") {
+						console.error(`👤 [${context.owner?.name}] 技能HP消耗不是数字`);
+						return true;
+					}
 					const mpCost = player.engine.evaluateExpression(effect.mpCost, {
 						currentFrame,
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,
 					});
+					if (typeof mpCost !== "number") {
+						console.error(`👤 [${context.owner?.name}] 技能MP消耗不是数字`);
+						return true;
+					}
 					if (
 						hpCost > player.statContainer.getValue("hp.current") ||
 						mpCost > player.statContainer.getValue("mp.current")
@@ -548,31 +490,19 @@ export const playerStateMachine = (
 				return true;
 			},
 			目标不抵抗此技能的控制效果: ({ context, event }) => {
-				console.log(
-					`👤 [${context.owner?.name}] 判断目标是否不抵抗此技能的控制效果`,
-					event,
-				);
+				console.log(`👤 [${context.owner?.name}] 判断目标是否不抵抗此技能的控制效果`, event);
 				return true;
 			},
 			目标抵抗此技能的控制效果: ({ context, event }) => {
-				console.log(
-					`👤 [${context.owner?.name}] 判断目标是否抵抗此技能的控制效果`,
-					event,
-				);
+				console.log(`👤 [${context.owner?.name}] 判断目标是否抵抗此技能的控制效果`, event);
 				return true;
 			},
 			是物理伤害: ({ context, event }) => {
-				console.log(
-					`👤 [${context.owner?.name}] 判断技能是否是物理伤害`,
-					event,
-				);
+				console.log(`👤 [${context.owner?.name}] 判断技能是否是物理伤害`, event);
 				return true;
 			},
 			满足存活条件: ({ context, event }) => {
-				console.log(
-					`👤 [${context.owner?.name}] 判断玩家是否满足存活条件`,
-					event,
-				);
+				console.log(`👤 [${context.owner?.name}] 判断玩家是否满足存活条件`, event);
 				const hp = player.statContainer.getValue("hp.current");
 				const isAlive = hp > 0;
 				context.isAlive = isAlive;
@@ -796,10 +726,7 @@ export const playerStateMachine = (
 										],
 									},
 									执行技能中: {
-										entry: [
-											{ type: "添加待处理技能效果" },
-											{ type: "执行技能" },
-										],
+										entry: [{ type: "添加待处理技能效果" }, { type: "执行技能" }],
 										on: {
 											技能执行完成: [
 												{

@@ -1,10 +1,4 @@
-import {
-	type Component,
-	createMemo,
-	createSignal,
-	onCleanup,
-	onMount,
-} from "solid-js";
+import { type Component, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import {
@@ -16,24 +10,15 @@ import {
 	validateDefinition,
 } from "~/lib/mistreevous";
 import type { Agent } from "~/lib/mistreevous/Agent";
-import {
-	ExamplesMenu,
-	SkillLogicExmaplesMenu,
-	ToastContainer,
-} from "./components";
+import { ExamplesMenu, SkillLogicExmaplesMenu, ToastContainer } from "./components";
 import { AgentTab } from "./components/AgentTab/AgentTab";
 import { DefinitionTab } from "./components/DefinitionTab/DefinitionTab";
-import {
-	type CanvasElements,
-	MainPanel,
-} from "./components/MainPanel/MainPanel";
-import {
-	defaultMdslIntellisenseRegistry,
-	mergeMdslRegistryWithAgentSource,
-} from "./modes/mdslIntellisense";
+import { type CanvasElements, MainPanel } from "./components/MainPanel/MainPanel";
+import { defaultMdslIntellisenseRegistry, mergeMdslRegistryWithAgentSource } from "./modes/mdslIntellisense";
 import { toast } from "./stores/toastStore";
 import { DefinitionType, SidebarTab } from "./types/app";
 import type { ConnectorVariant } from "./types/workflow";
+import { DefaultAgent } from "~/components/features/simulator/core/Member/runtime/Agent/RuntimeContext";
 
 export { DefinitionType, SidebarTab };
 
@@ -56,36 +41,25 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	const [layoutId] = createSignal<string | null>(null);
 
 	// 行为树定义内容（MDSL 或 JSON 格式）
-	const [definition, setDefinition] = createSignal<string>(
-		props.initValues?.definition ?? "",
-	);
+	const [definition, setDefinition] = createSignal<string>(props.initValues?.definition ?? "");
 
 	// 定义类型：None、MDSL 或 JSON
-	const [definitionType, setDefinitionType] = createSignal<DefinitionType>(
-		DefinitionType.None,
-	);
+	const [definitionType, setDefinitionType] = createSignal<DefinitionType>(DefinitionType.None);
 
 	// Agent 类定义代码
-	const [agent, setAgent] = createSignal<string>(
-		props.initValues?.agent ?? "class Agent {}",
-	);
+	const [agent, setAgent] = createSignal<string>(props.initValues?.agent ?? "class Agent {}");
 
 	// Agent 代码错误信息
-	const [agentExceptionMessage, setAgentExceptionMessage] =
-		createSignal<string>("");
+	const [agentExceptionMessage, setAgentExceptionMessage] = createSignal<string>("");
 
 	// 行为树实例
-	const [behaviourTree, setBehaviourTree] = createSignal<BehaviourTree | null>(
-		null,
-	);
+	const [behaviourTree, setBehaviourTree] = createSignal<BehaviourTree | null>(null);
 
 	// 行为树定义错误信息
-	const [behaviourTreeExceptionMessage, setBehaviourTreeExceptionMessage] =
-		createSignal<string>("");
+	const [behaviourTreeExceptionMessage, setBehaviourTreeExceptionMessage] = createSignal<string>("");
 
 	// 行为树播放定时器 ID
-	const [behaviourTreePlayInterval, setBehaviourTreePlayInterval] =
-		createSignal<number | null>(null);
+	const [behaviourTreePlayInterval, setBehaviourTreePlayInterval] = createSignal<number | null>(null);
 
 	// 画布元素：节点和连接线数据
 	const [canvasElements, setCanvasElements] = createSignal<CanvasElements>({
@@ -152,10 +126,8 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 
 		// 提供给 Agent 的辅助函数
 		const getStringValue = (message: string) => window.prompt(message);
-		const getNumberValue = (message: string) =>
-			parseFloat(window.prompt(message) as string);
-		const getBooleanValue = (message: string) =>
-			window.confirm(`${message}. (Ok=true Cancel=false)`);
+		const getNumberValue = (message: string) => parseFloat(window.prompt(message) as string);
+		const getBooleanValue = (message: string) => window.confirm(`${message}. (Ok=true Cancel=false)`);
 		const showErrorToast = (message: string) => toast.error(message);
 		const showInfoToast = (message: string) => toast.info(message);
 
@@ -177,17 +149,75 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	};
 
 	/**
+	 * 兜底：把 simulator 的 DefaultAgent 注入到编辑器 Agent 上（仅在缺失时注入），
+	 * 让 `$targetId/$currentFrame/$vAtkP` 这类属性引用在编辑器里也能取到“占位值”。
+	 */
+	const injectDefaultAgentIntoBoard = (board: Agent): Agent => {
+		const asRecord = board as unknown as Record<string, unknown>;
+		for (const [k, v] of Object.entries(DefaultAgent)) {
+			if (!(k in asRecord)) {
+				asRecord[k] = v;
+			}
+		}
+		return board;
+	};
+
+	/**
+	 * 兜底：当用户在 Agent 里没实现某个 action/condition 时，不抛错中断，而是：
+	 * - 输出调用名与参数
+	 * - condition 返回 false
+	 * - action 返回 State.SUCCEEDED
+	 *
+	 * 说明：mistreevous 的调用解析顺序是 “agent[name] 优先，其次 BehaviourTree.register 的全局函数”。
+	 * 这个 Proxy 只解决“没实现导致直接报错”的体验问题，不会影响用户自定义同名函数的优先级。
+	 */
+	const wrapAgentWithFallback = (board: Agent, def: string): Agent => {
+		const actionNames = new Set<string>();
+		const conditionNames = new Set<string>();
+
+		// 轻量扫描 MDSL：取 action/condition 的第一个参数作为函数名
+		const scan = (kw: "action" | "condition", set: Set<string>) => {
+			const re = new RegExp(`\\b${kw}\\b\\s*\\[\\s*([^,\\]\\s]+)`, "g");
+			for (;;) {
+				const m = re.exec(def);
+				if (!m) break;
+				const raw = m[1] ?? "";
+				const name = raw.replace(/^"+|"+$/g, "");
+				if (name) set.add(name);
+			}
+		};
+		scan("action", actionNames);
+		scan("condition", conditionNames);
+
+		return new Proxy(board as unknown as Record<string, unknown>, {
+			get(target, prop, receiver) {
+				const v = Reflect.get(target, prop, receiver);
+				if (typeof prop !== "string") return v;
+				// 已存在就按原来走（含 getter/字段）
+				if (typeof v === "function" || v !== undefined) return v;
+
+				// 缺失函数：返回兜底实现
+				return (...args: unknown[]) => {
+					console.warn(`🧩 未实现函数「${prop}」，参数:`, args);
+					if (conditionNames.has(prop)) return false;
+					if (actionNames.has(prop)) return State.SUCCEEDED;
+					// 不确定就当 action
+					return State.SUCCEEDED;
+				};
+			},
+		}) as unknown as Agent;
+	};
+
+	/**
 	 * 创建行为树实例
 	 * @param def 行为树定义（MDSL 或 JSON 格式）
 	 * @param boardClassDefinition Agent 类定义代码
 	 * @returns 行为树实例，创建失败返回 null
 	 */
-	const createTreeInstance = (
-		def: string,
-		boardClassDefinition: string,
-	): BehaviourTree => {
+	const createTreeInstance = (def: string, boardClassDefinition: string): BehaviourTree => {
 		// 创建 Agent 实例
-		const board = createBoardInstance(boardClassDefinition);
+		const board = injectDefaultAgentIntoBoard(createBoardInstance(boardClassDefinition));
+		const boardWithFallback = wrapAgentWithFallback(board, def);
 
 		// 配置行为树选项
 		// 注意：我们每 60fps 调用一次 step()，所以 delta 设置为 1000 / 60 毫秒
@@ -196,7 +226,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		};
 
 		// 创建并返回行为树实例
-		const tree = new BehaviourTree(def, board, options);
+		const tree = new BehaviourTree(def, boardWithFallback, options);
 
 		return tree;
 	};
@@ -206,9 +236,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	 * @param rootNodeDetails 根节点详情
 	 * @returns 画布元素数据
 	 */
-	const createCanvasElements = (
-		rootNodeDetails: NodeDetails,
-	): CanvasElements => {
+	const createCanvasElements = (rootNodeDetails: NodeDetails): CanvasElements => {
 		const result: CanvasElements = { nodes: [], edges: [] };
 
 		/**
@@ -288,17 +316,12 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		const defType = getDefinitionType(def);
 
 		// 验证定义是否有效
-		const validationResult = validateDefinition(
-			defType === DefinitionType.JSON ? JSON.parse(def) : def,
-		);
+		const validationResult = validateDefinition(defType === DefinitionType.JSON ? JSON.parse(def) : def);
 
 		if (validationResult.succeeded) {
 			try {
 				// 创建行为树实例
-				tree = createTreeInstance(
-					defType === DefinitionType.JSON ? JSON.parse(def) : def,
-					agentDef ?? agent(),
-				);
+				tree = createTreeInstance(defType === DefinitionType.JSON ? JSON.parse(def) : def, agentDef ?? agent());
 
 				// 根据行为树生成画布元素（节点和连接线）
 				elements = createCanvasElements(tree.getTreeNodeDetails());
@@ -390,9 +413,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		 */
 		const getNodesStateSignature = (node: NodeDetails): string => {
 			const stateStr = `${node.id}:${node.state}`;
-			const childrenStr = (node.children ?? [])
-				.map((child) => getNodesStateSignature(child))
-				.join(",");
+			const childrenStr = (node.children ?? []).map((child) => getNodesStateSignature(child)).join(",");
 			return childrenStr ? `${stateStr}[${childrenStr}]` : stateStr;
 		};
 
@@ -420,9 +441,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 			}
 
 			// 获取当前所有节点的状态签名
-			const currentSignature = getNodesStateSignature(
-				tree.getTreeNodeDetails(),
-			);
+			const currentSignature = getNodesStateSignature(tree.getTreeNodeDetails());
 
 			// 只有当状态真正变化时才更新 canvasElements
 			// 这样可以避免在状态未变化时创建新对象，减少不必要的重新渲染
@@ -455,11 +474,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		// 更新状态
 		setBehaviourTreePlayInterval(null);
 		// 更新画布元素为重置后的状态
-		setCanvasElements(
-			tree
-				? createCanvasElements(tree.getTreeNodeDetails())
-				: { nodes: [], edges: [] },
-		);
+		setCanvasElements(tree ? createCanvasElements(tree.getTreeNodeDetails()) : { nodes: [], edges: [] });
 	};
 
 	// ==================== 生命周期钩子 ====================
@@ -490,9 +505,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 			<div
 				class={`Functions border-b border-dividing-color relative flex landscape:lg:h-full min-h-[50px] w-full items-center justify-between ${props.readOnly ? "basis-full" : "landscape:lg:basis-2/5"}`}
 			>
-				<div
-					class={`Canvas ${props.readOnly ? "" : "hidden"} h-full w-full flex-1 landscape:lg:block`}
-				>
+				<div class={`Canvas ${props.readOnly ? "" : "hidden"} h-full w-full flex-1 landscape:lg:block`}>
 					<MainPanel
 						layoutId={layoutId()}
 						elements={canvasElements()}
@@ -508,11 +521,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 				<div
 					class={`Left ${props.readOnly ? "hidden" : ""} landscape:lg:shadow-card shadow-area-color bg-primary-color landscape:lg:absolute top-2 left-2 flex items-center gap-1 rounded`}
 				>
-					<Button
-						level="quaternary"
-						onClick={() => props.onSave(definition(), agent())}
-						class="p-1"
-					>
+					<Button level="quaternary" onClick={() => props.onSave(definition(), agent())} class="p-1">
 						<Icons.Outline.Save />
 					</Button>
 					<ExamplesMenu onMDSLInsert={handleMDSLInsert} />

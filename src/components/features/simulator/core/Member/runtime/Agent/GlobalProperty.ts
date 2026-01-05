@@ -2,19 +2,13 @@ import type { CharacterSkillWithRelations } from "@db/generated/repositories/cha
 import type { SkillEffectWithRelations } from "@db/generated/repositories/skill_effect";
 import type { SkillEffectLogic } from "@db/schema/skillEffectLogicSchema";
 import type { Member } from "../../Member";
-import type {
-	MemberEventType,
-	MemberStateContext,
-} from "../StateMachine/types";
+import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
+import type { RuntimeContext } from "./RuntimeContext";
 
-/**
- * RuntimeContext
- */
-export interface RuntimeContext extends Record<string, unknown> {
+
+export interface CommonProperty {
 	/** 成员引用 */
-	owner:
-		| Member<string, MemberEventType, MemberStateContext, RuntimeContext>
-		| undefined;
+	owner: Member<string, MemberEventType, MemberStateContext, any> | undefined;
 	/** 当前帧 */
 	currentFrame: number;
 	/** 位置信息 */
@@ -32,12 +26,16 @@ export interface RuntimeContext extends Record<string, unknown> {
 	/** 当前技能逻辑 */
 	currentSkillLogic: SkillEffectLogic | null;
 
-  // 每次技能执行完更新
-  /** 上一个技能数据 */
-  previousSkill: CharacterSkillWithRelations | null;
+	// 每次技能执行完更新
+	/** 上一个技能数据 */
+	previousSkill: CharacterSkillWithRelations | null;
+
+	// 常用计算值
+	vAtkP: string;
+	vAtkM: string;
 }
 
-export const DefaultAgent: RuntimeContext = {
+export const CommonProperty: CommonProperty = {
 	owner: undefined,
 	currentFrame: 0,
 	position: { x: 0, y: 0, z: 0 },
@@ -47,4 +45,6 @@ export const DefaultAgent: RuntimeContext = {
 	currentSkillEffect: null,
 	currentSkillLogic: null,
 	previousSkill: null,
+	vAtkP: "((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - (1 - self.pie.p) * target.def.p)",
+	vAtkM: "((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - (1 - self.pie.m) * target.def.m)",
 };

@@ -2,10 +2,7 @@ import type { MemberWithRelations } from "@db/generated/repositories/member";
 import * as Enums from "@db/schema/enums";
 import { parse, tokenizer } from "acorn";
 import { all, create } from "mathjs";
-import {
-	ModifierType,
-	type StatContainer,
-} from "../../runtime/StatContainer/StatContainer";
+import { ModifierType, type StatContainer } from "../../runtime/StatContainer/StatContainer";
 
 /**
  * PrebattleModifiers
@@ -52,12 +49,7 @@ function buildEnumMap(): Map<string, number> {
 const ENUM_MAP = buildEnumMap();
 
 /** 在表达式中作为对象根引用的标识符（不应当被枚举替换） */
-const VARIABLE_ROOTS = new Set<string>([
-	"armor",
-	"mainWeapon",
-	"subWeapon",
-	"skill",
-]);
+const VARIABLE_ROOTS = new Set<string>(["armor", "mainWeapon", "subWeapon", "skill"]);
 
 function mapEnumValueToIndex(value: unknown): number {
 	if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -74,11 +66,7 @@ function mapEnumValueToIndex(value: unknown): number {
  */
 export function evalAstExpression(code: string, ctx: EvalContext): number {
 	const ast = parse(code, { ecmaVersion: 2020, sourceType: "script" });
-	if (
-		!ast.body ||
-		ast.body.length !== 1 ||
-		ast.body[0].type !== "ExpressionStatement"
-	) {
+	if (!ast.body || ast.body.length !== 1 || ast.body[0].type !== "ExpressionStatement") {
 		throw new Error("invalid expression");
 	}
 	const node: any = ast.body[0].expression;
@@ -86,8 +74,7 @@ export function evalAstExpression(code: string, ctx: EvalContext): number {
 	const math = create(all, { number: "number", matrix: "Array" });
 	const scope: Record<string, unknown> = {
 		skill: ctx.skill || { lv: 0 },
-		nullish: (a: unknown, b: unknown) =>
-			a === null || a === undefined ? b : a,
+		nullish: (a: unknown, b: unknown) => (a === null || a === undefined ? b : a),
 		ternary: (c: unknown, t: unknown, f: unknown) => (c ? t : f),
 		bool: (x: unknown) => (x ? 1 : 0),
 	};
@@ -112,17 +99,12 @@ export function evalAstExpression(code: string, ctx: EvalContext): number {
 				// 作为根对象名时，不做枚举替换
 				if (VARIABLE_ROOTS.has(n.name)) return n.name;
 				// 裸标识按枚举常量解析（例如：element = light）
-				const mapped =
-					ENUM_MAP.get(n.name) ??
-					ENUM_MAP.get((n.name as string).toLowerCase());
+				const mapped = ENUM_MAP.get(n.name) ?? ENUM_MAP.get((n.name as string).toLowerCase());
 				if (mapped !== undefined) return String(mapped);
 				throw new Error(`unknown identifier: ${n.name}`);
 			}
 			case "MemberExpression": {
-				if (
-					n.object.type === "Identifier" &&
-					n.property.type === "Identifier"
-				) {
+				if (n.object.type === "Identifier" && n.property.type === "Identifier") {
 					return `${toExpr(n.object)}.${n.property.name}`;
 				}
 				throw new Error("unsupported member expr");
@@ -135,12 +117,9 @@ export function evalAstExpression(code: string, ctx: EvalContext): number {
 				return `(${toExpr(n.left)} ${op} ${toExpr(n.right)})`;
 			}
 			case "LogicalExpression": {
-				if (n.operator === "&&")
-					return `ternary(bool(${toExpr(n.left)}), ${toExpr(n.right)}, 0)`;
-				if (n.operator === "||")
-					return `ternary(bool(${toExpr(n.left)}), ${toExpr(n.left)}, ${toExpr(n.right)})`;
-				if (n.operator === "??")
-					return `nullish(${toExpr(n.left)}, ${toExpr(n.right)})`;
+				if (n.operator === "&&") return `ternary(bool(${toExpr(n.left)}), ${toExpr(n.right)}, 0)`;
+				if (n.operator === "||") return `ternary(bool(${toExpr(n.left)}), ${toExpr(n.left)}, ${toExpr(n.right)})`;
+				if (n.operator === "??") return `nullish(${toExpr(n.left)}, ${toExpr(n.right)})`;
 				throw new Error("unsupported logical op");
 			}
 			case "ConditionalExpression": {
@@ -212,8 +191,7 @@ function parseModifierLine<T extends string>(
 	}
 
 	let i = 0;
-	const expect = (label: string) =>
-		tokens[i] && tokens[i].type?.label === label;
+	const expect = (label: string) => tokens[i] && tokens[i].type?.label === label;
 	const take = () => tokens[i++];
 
 	if (!expect("name")) throw new Error("attr expected");
@@ -303,9 +281,7 @@ function parseModifierLine<T extends string>(
 	const signed = op === "-" ? -value : value;
 	return {
 		attr,
-		targetType: isPercentage
-			? ModifierType.STATIC_PERCENTAGE
-			: ModifierType.STATIC_FIXED,
+		targetType: isPercentage ? ModifierType.STATIC_PERCENTAGE : ModifierType.STATIC_FIXED,
 		value: signed,
 		source,
 	};
@@ -337,13 +313,7 @@ function formatPathSegments(segments: string[]): string {
 function formatRootedPathFromCharacter(segments: string[]): string {
 	const formatted = formatPathSegments(segments);
 	const root = segments[0];
-	const equipmentRoots = new Set([
-		"weapon",
-		"subWeapon",
-		"armor",
-		"option",
-		"special",
-	]);
+	const equipmentRoots = new Set(["weapon", "subWeapon", "armor", "option", "special"]);
 	if (root && equipmentRoots.has(root)) {
 		return `equipment.${formatted}`;
 	}
@@ -356,10 +326,7 @@ function formatRootedPathFromCharacter(segments: string[]): string {
  * - 被动技能模板下的 `logic: string[]` 与 `modifiers: string[]`
  * 语法支持见 parseModifierLine
  */
-export function applyPrebattleModifiers<T extends string>(
-	rs: StatContainer<T>,
-	memberData: MemberWithRelations,
-): void {
+export function applyPrebattleModifiers<T extends string>(rs: StatContainer<T>, memberData: MemberWithRelations): void {
 	// 默认第一个机体
 	const character = memberData.player?.characters?.[0] ?? null;
 
@@ -412,9 +379,7 @@ export function applyPrebattleModifiers<T extends string>(
 	visit(character);
 
 	// 被动技能：logic / modifiers 都可能是 string[]，且允许使用 skill.lv
-	const skills: any[] = Array.isArray(character?.skills)
-		? character.skills
-		: [];
+	const skills: any[] = Array.isArray(character?.skills) ? character.skills : [];
 	for (const s of skills) {
 		const tpl = s?.template;
 		const isPassive = Boolean(tpl?.isPassive ?? tpl?.passive);
@@ -426,10 +391,7 @@ export function applyPrebattleModifiers<T extends string>(
 			name: String(tpl.name ?? "passive"),
 			type: "skill" as const,
 		};
-		for (const line of [
-			...toStringArray(tpl.logic),
-			...toStringArray(tpl.modifiers),
-		]) {
+		for (const line of [...toStringArray(tpl.logic), ...toStringArray(tpl.modifiers)]) {
 			const parsed = parseModifierLine<T>(line, ctx, source);
 			if (parsed) all.push(parsed);
 		}

@@ -256,6 +256,7 @@ model crystal {
 model weapon {
     name            String
     type            String // Enum WEAPON_TYPE
+    elementType     String // Enum ELEMENT_TYPE
     baseAbi         Int
     stability       Int
     defaultCrystals crystal[]
@@ -264,7 +265,6 @@ model weapon {
     colorB          Int
     colorC          Int
     images          image[]
-    elementType     String // Enum ELEMENT_TYPE
 
     usedByPlayerWeapons player_weapon[]
 

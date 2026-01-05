@@ -1,7 +1,7 @@
 import { z } from "zod/v4";
 import { State } from "~/lib/mistreevous/State";
 import { ModifierType } from "../StatContainer/StatContainer";
-import type { RuntimeContext } from "./AgentContext";
+import type { CommonProperty } from "./GlobalProperty";
 import { type ActionPool, defineAction } from "./type";
 import { sendRenderCommand } from "./uitls";
 
@@ -30,12 +30,13 @@ const commonAttackSchema = z.object({
  * - 受击者侧通过 context.currentDamageRequest 提供本次伤害请求
  * - 命中结果写回 context.lastHitResult，供状态机或后续动作使用
  */
-export const CommonActions = {
+export const CommonActionPool = {
 	/** 移动到指定位置 */
 	moveTo: defineAction(
-		z.object({
-			target: vec2Schema,
-		})
+		z
+			.object({
+				target: vec2Schema,
+			})
 			.meta({ description: "移动到指定位置" }),
 		(context, input) => {
 			console.log(`👤 [${context.owner?.name}] moveTo`, input);
@@ -45,9 +46,10 @@ export const CommonActions = {
 
 	/** 播放动画 */
 	animation: defineAction(
-		z.object({
-			name: z.string().meta({ description: "动画名称" }),
-		})
+		z
+			.object({
+				name: z.string().meta({ description: "动画名称" }),
+			})
 			.meta({ description: "播放动画" }),
 		(context, input) => {
 			console.log(`👤 [${context.owner?.name}] animation`, input);
@@ -67,10 +69,11 @@ export const CommonActions = {
 
 	/** 范围攻击 */
 	rangeAttack: defineAction(
-		z.object({
-			...commonAttackSchema.shape,
-			radius: z.number().meta({ description: "伤害范围" }),
-		})
+		z
+			.object({
+				...commonAttackSchema.shape,
+				radius: z.number().meta({ description: "伤害范围" }),
+			})
 			.meta({ description: "范围攻击" }),
 		(context, input) => {
 			console.log(`👤 [${context.owner?.name}] generateRangeAttack`, input);
@@ -83,7 +86,8 @@ export const CommonActions = {
 
 	/** 周围攻击 */
 	surroundingsAttack: defineAction(
-		z.object({
+		z
+			.object({
 				...commonAttackSchema.shape,
 				radius: z.number().meta({ description: "伤害半径" }),
 			})
@@ -99,11 +103,12 @@ export const CommonActions = {
 
 	/** 冲撞攻击 */
 	moveAttack: defineAction(
-		z.object({
-			...commonAttackSchema.shape,
-			width: z.number().meta({ description: "攻击宽度" }),
-			speed: z.number().meta({ description: "冲撞速度" }),
-		})
+		z
+			.object({
+				...commonAttackSchema.shape,
+				width: z.number().meta({ description: "攻击宽度" }),
+				speed: z.number().meta({ description: "冲撞速度" }),
+			})
 			.meta({ description: "冲撞攻击" }),
 		(context, input) => {
 			console.log(`👤 [${context.owner?.name}] generateMoveAttack`, input);
@@ -116,9 +121,10 @@ export const CommonActions = {
 
 	/** 陨石伤害 */
 	verticalAttack: defineAction(
-		z.object({
-			radius: z.number().meta({ description: "伤害半径" }),
-		})
+		z
+			.object({
+				radius: z.number().meta({ description: "伤害半径" }),
+			})
 			.meta({ description: "陨石伤害" }),
 		(context, input) => {
 			console.log(`👤 [${context.owner?.name}] generateVerticalAttack`, input);
@@ -131,12 +137,12 @@ export const CommonActions = {
 
 	/** 贴地伤害 */
 
-
 	/** 地面伤害 */
 	groundAttack: defineAction(
-		z.object({
-			...commonAttackSchema.shape,
-		})
+		z
+			.object({
+				...commonAttackSchema.shape,
+			})
 			.meta({ description: "地面伤害" }),
 		(context, input) => {
 			console.log(`👤 [${context.owner?.name}] generateGroundAttack`, input);
@@ -149,10 +155,11 @@ export const CommonActions = {
 
 	/** 添加buff */
 	addBuff: defineAction(
-		z.object({
-			id: z.string().meta({ description: "buffID" }),
-			treeName: z.string().meta({ description: "buff树名称" }),
-		})
+		z
+			.object({
+				id: z.string().meta({ description: "buffID" }),
+				treeName: z.string().meta({ description: "buff树名称" }),
+			})
 			.meta({ description: "添加buff" }),
 		(context, input) => {
 			console.log(`👤 [${context.owner?.name}] addBuff`, input);
@@ -170,11 +177,12 @@ export const CommonActions = {
 
 	/** 属性修改 */
 	modifyAttribute: defineAction(
-		z.object({
-			attribute: z.string().meta({ description: "属性名称" }),
-			value: z.number().meta({ description: "属性值" }),
-			type: z.enum(["fixed", "percentage"]).meta({ description: "属性类型" }),
-		})
+		z
+			.object({
+				attribute: z.string().meta({ description: "属性名称" }),
+				value: z.number().meta({ description: "属性值" }),
+				type: z.enum(["fixed", "percentage"]).meta({ description: "属性类型" }),
+			})
 			.meta({ description: "属性修改" }),
 		(context, input) => {
 			console.log(`👤 [${context.owner?.name}] modifyAttribute`, input);
@@ -191,6 +199,6 @@ export const CommonActions = {
 			return State.SUCCEEDED;
 		},
 	),
-} as const satisfies ActionPool<RuntimeContext>;
+} as const satisfies ActionPool<CommonProperty>;
 
-export type CommonActionPool = typeof CommonActions;
+export type CommonActionPool = typeof CommonActionPool;

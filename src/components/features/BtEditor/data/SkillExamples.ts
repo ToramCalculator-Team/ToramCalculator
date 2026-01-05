@@ -19,10 +19,10 @@ root [mainAction] {
     selector {
         sequence {
             condition [是连续使用吗]
-            action [造成伤害,"一般惯性",$伤害计算公式,$伤害范围类型,$伤害区域公式]
+            action [rangeAttack, $targetId,"normal","physical",1,$伤害计算公式,1,3]
         }
         sequence {
-            action [造成伤害,"物理惯性",$伤害计算公式,$伤害范围类型,$伤害区域公式]
+            action [rangeAttack, $targetId,"physical","physical",1,$伤害计算公式,1,3]
         }
     }
 }`;
@@ -44,7 +44,8 @@ class Agent {
         return "魔法伤害"
     }
     get 伤害计算公式() {
-        return \`(owner.vPatk + 300) * 2\`
+        // 伤害公式本身是“字符串表达式”，这里把通用片段 vAtkP 直接嵌入，避免在 MDSL 参数里写字符串拼接
+        return \`(\${this.vAtkP} + 100) * (100 + skill.lv * 5 + self.vit + self.str) / 100\`
     }
     get 伤害范围类型() {
         return "直线伤害"
@@ -55,24 +56,8 @@ class Agent {
             y: "2"
         }
     }
-    get previousSkill() {
-        return {
-            id: "previousSkill",
-            name: "上一个技能"
-        }
-    }
-    get currentSkill() {
-        return {
-            id: "currentSkill",
-            name: "这个技能"
-        }
-    }
     动画(name, durtion){
         console.log(name, durtion)
-        return State.SUCCEEDED
-    }
-    造成伤害(dType,dFormula,dAreaType,dAreaFormula){
-        console.log(\`对\${dAreaFormula}内的敌方目标造成\${dFormula}的\${dType}\`)
         return State.SUCCEEDED
     }
     是连续使用吗(){

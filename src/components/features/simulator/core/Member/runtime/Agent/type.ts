@@ -1,6 +1,8 @@
 import type { ZodType, z } from "zod/v4";
 import type { State } from "~/lib/mistreevous";
 
+// ================================ Action ================================
+
 /**
  * 动作定义（Action）
  * [输入Schema, 实现函数]
@@ -60,6 +62,8 @@ export const defineAction = <
 	return [inputSchema, impl] as const;
 };
 
+
+// ================================ Condition ================================
 /**
  * 条件定义
  * [输入Schema, 实现函数]

@@ -1,14 +1,14 @@
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
-import type { RuntimeContext } from "../../runtime/Agent/AgentContext";
-import { CommonActions } from "../../runtime/Agent/GlobalActions";
-import type { ActionPool } from "../../runtime/Agent/type";
 
 /**
- * PlayerRuntimeContext
- * Player 专用的运行时上下文，扩展 RuntimeContext
+ * PlayerRuntimeProperty
+ * Player 专用的运行时属性
  */
-export interface PlayerRuntimeContext extends RuntimeContext {
+export interface PlayerRuntimeProperty {
+	blackboard: Record<string, unknown>;
+	skillState: Record<string, unknown>;
+	buffState: Record<string, unknown>;
 	/** 技能列表 */
 	skillList: CharacterSkillWithRelations[];
 	/** 技能冷却 */
@@ -30,7 +30,7 @@ export interface PlayerRuntimeContext extends RuntimeContext {
 	/** 当前技能行为树实例ID */
 	currentSkillTreeId: string;
 	/** 机体配置信息 */
-	character: CharacterWithRelations;
+	character: CharacterWithRelations | null;
 
 	/**
 	 * 预编译的技能效果逻辑缓存（effectId -> string）
@@ -38,22 +38,20 @@ export interface PlayerRuntimeContext extends RuntimeContext {
 	 */
 	compiledSkillEffectLogicByEffectId: Record<string, string>;
 }
-
-/**
- * ==================== 玩家管线定义 ====================
- *
- * 设计理念：
- * 1. 管线定义独立于状态机
- * 2. 使用语义化的管线名称（点分命名）
- * 3. 管线只与数据结构（PlayerRuntimeContext）关联
- * 4. 可被状态机和技能逻辑共享调用
- */
-
-/**
- * 玩家可用的管线阶段池
- */
-export const PlayerActionPool = {
-	...CommonActions,
-} as const satisfies ActionPool<PlayerRuntimeContext>;
-
-export type PlayerActionPool = typeof PlayerActionPool;
+export const PlayerRuntimeProperty: PlayerRuntimeProperty = {
+	blackboard: {},
+	skillState: {},
+	buffState: {},
+	skillList: [],
+	skillCooldowns: [],
+	currentSkillIndex: 0,
+	skillStartFrame: 0,
+	skillEndFrame: 0,
+	currentSkillStartupFrames: 0,
+	currentSkillChargingFrames: 0,
+	currentSkillChantingFrames: 0,
+	currentSkillActionFrames: 0,
+	currentSkillTreeId: "",
+	character: null,
+	compiledSkillEffectLogicByEffectId: {},
+};

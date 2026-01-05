@@ -2,7 +2,7 @@ import type { MemberWithRelations } from "@db/generated/repositories/member";
 import type { MemberType } from "@db/schema/enums";
 import { createActor } from "xstate";
 import type { GameEngine } from "../GameEngine";
-import type { RuntimeContext } from "./runtime/Agent/AgentContext";
+import type { RuntimeContext } from "./runtime/Agent/RuntimeContext";
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
 import type { NestedSchema } from "./runtime/StatContainer/SchemaTypes";
 import type { StatContainer } from "./runtime/StatContainer/StatContainer";

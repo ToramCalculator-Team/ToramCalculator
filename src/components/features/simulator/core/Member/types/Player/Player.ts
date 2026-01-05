@@ -4,25 +4,14 @@ import type { GameEngine } from "../../../GameEngine";
 import { Member } from "../../Member";
 import type { ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
 import { StatContainer } from "../../runtime/StatContainer/StatContainer";
-import type { PlayerRuntimeContext } from "./PlayerAgents";
+import { DefaultPlayerRuntimeContext, type PlayerRuntimeContext } from "./Agents/RuntimeContext";
 import { PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
-import {
-	type PlayerEventType,
-	type PlayerStateContext,
-	playerStateMachine,
-} from "./PlayerStateMachine";
+import { type PlayerEventType, type PlayerStateContext, playerStateMachine } from "./PlayerStateMachine";
 import { applyPrebattleModifiers } from "./PrebattleDataSysModifiers";
 
-export type PlayerAttrType = ExtractAttrPaths<
-	ReturnType<typeof PlayerAttrSchemaGenerator>
->;
+export type PlayerAttrType = ExtractAttrPaths<ReturnType<typeof PlayerAttrSchemaGenerator>>;
 
-export class Player extends Member<
-	PlayerAttrType,
-	PlayerEventType,
-	PlayerStateContext,
-	PlayerRuntimeContext
-> {
+export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateContext, PlayerRuntimeContext> {
 	characterIndex: number;
 	activeCharacter: CharacterWithRelations;
 
@@ -40,53 +29,21 @@ export class Player extends Member<
 		if (!memberData.player.characters[characterIndex]) {
 			throw new Error("Character数据缺失");
 		}
-		const attrSchema = PlayerAttrSchemaGenerator(
-			memberData.player.characters[characterIndex],
-		);
+		const attrSchema = PlayerAttrSchemaGenerator(memberData.player.characters[characterIndex]);
 		const statContainer = new StatContainer<PlayerAttrType>(attrSchema);
-		const initialSkillList =
-			memberData.player.characters[characterIndex].skills ?? [];
+		const initialSkillList = memberData.player.characters[characterIndex].skills ?? [];
 
 		const runtimeContext: PlayerRuntimeContext = {
-			owner: undefined,
-			currentFrame: 0,
+			...DefaultPlayerRuntimeContext,
 			position: position ?? { x: 0, y: 0, z: 0 },
-			targetId: "",
-			statusTags: [],
-			blackboard: {},
-			skillState: {},
-			buffState: {},
 			// 技能栏的"静态技能列表"应该在初始化时就可用，动态计算（mp/cd 等）由引擎快照刷新。
 			skillList: initialSkillList,
 			// 冷却数组：与 skillList 对齐，初始为 0（可用）
 			skillCooldowns: initialSkillList.map(() => 0),
-			currentSkill: null,
-			currentSkillEffect: null,
-			currentSkillLogic: null,
-			previousSkill: null, // 确保接口定义的所有属性都被显式设置，避免用户自定义同名属性被注册
-			currentSkillIndex: 0,
-			skillStartFrame: 0,
-			skillEndFrame: 0,
-			currentSkillStartupFrames: 0,
-			currentSkillChargingFrames: 0,
-			currentSkillChantingFrames: 0,
-			currentSkillActionFrames: 0,
-			currentSkillTreeId: "",
 			character: memberData.player.characters[characterIndex],
-			compiledSkillEffectLogicByEffectId: {},
 		};
 
-		super(
-			playerStateMachine,
-			engine,
-			campId,
-			teamId,
-			memberData,
-			attrSchema,
-			statContainer,
-			runtimeContext,
-			position,
-		);
+		super(playerStateMachine, engine, campId, teamId, memberData, attrSchema, statContainer, runtimeContext, position);
 
 		this.characterIndex = characterIndex;
 		this.activeCharacter = memberData.player.characters?.[characterIndex];
@@ -111,9 +68,7 @@ export class Player extends Member<
 		} else {
 			// 如果引擎的渲染消息接口不可用，记录错误但不使用fallback
 			// 这确保我们只使用正确的通信通道，避免依赖全局变量
-			console.error(
-				`👤 [${this.name}] 无法发送渲染指令：引擎渲染消息接口不可用`,
-			);
+			console.error(`👤 [${this.name}] 无法发送渲染指令：引擎渲染消息接口不可用`);
 		}
 
 		// Player特有的被动技能初始化

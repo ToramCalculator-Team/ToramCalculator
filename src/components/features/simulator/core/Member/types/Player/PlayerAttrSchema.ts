@@ -4,10 +4,7 @@
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import type { MainHandType, SubHandType } from "@db/schema/enums";
 import type { MemberBaseStructure } from "../../MemberBaseSchema";
-import type {
-	ConvertToNestedSchema,
-	ConvertToNestedSchemaDic,
-} from "../../runtime/StatContainer/SchemaTypes";
+import type { ConvertToNestedSchema, ConvertToNestedSchemaDic } from "../../runtime/StatContainer/SchemaTypes";
 
 // ============================== 其他玩家数据 ==============================
 
@@ -697,8 +694,7 @@ export type PlayerAttrNestedSchema = ConvertToNestedSchema<PlayerAttrStructure>;
  *
  * 递归地将null值转换为多语言对象，需要提供多语言工厂类型
  */
-export type PlayerAttrNestedSchemaDic =
-	ConvertToNestedSchemaDic<PlayerAttrStructure>;
+export type PlayerAttrNestedSchemaDic = ConvertToNestedSchemaDic<PlayerAttrStructure>;
 
 // ============================== 默认实现 ==============================
 
@@ -1539,9 +1535,7 @@ export const PlayerAttrNestedSchema: PlayerAttrNestedSchema = {
  * 转换率相关：conversionRate → conv
  * 基础值相关：baseValue → base
  */
-export const PlayerAttrSchemaGenerator = (
-	character: CharacterWithRelations,
-): PlayerAttrNestedSchema => {
+export const PlayerAttrSchemaGenerator = (character: CharacterWithRelations): PlayerAttrNestedSchema => {
 	if (!character) throw new Error("PlayerAttrSchemaGenerator参数不能为空");
 	const mainWeaponType = (character.weapon?.type ?? "None") as MainHandType;
 	const subWeaponType = (character.subWeapon?.type ?? "None") as SubHandType;

@@ -1,8 +1,8 @@
 import z from "zod/v4";
-import type { RuntimeContext } from "./AgentContext";
+import type { CommonProperty } from "./GlobalProperty";
 import { type ConditionPool, defineCondition } from "./type";
 
-export const GlobalCondition = {
+export const CommonConditionPool = {
 	/** 是否拥有指定名称的buff 
 	 *  @param treeName - 技能树名称
 	 *  @returns 是否拥有指定名称的buff
@@ -48,6 +48,6 @@ export const GlobalCondition = {
 			return exceptionNames.some(name => context.owner?.runtimeContext.statusTags.includes(name)) ?? false;
 		},
 	),
-} as const satisfies ConditionPool<RuntimeContext>;
+} as const satisfies ConditionPool<CommonProperty>;
 
-export type GlobalConditionPool = typeof GlobalCondition;
+export type CommonConditionPool = typeof CommonConditionPool;

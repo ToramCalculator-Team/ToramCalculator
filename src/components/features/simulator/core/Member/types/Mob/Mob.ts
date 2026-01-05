@@ -1,7 +1,7 @@
 import type { MemberWithRelations } from "@db/generated/repositories/member";
 import type { GameEngine } from "../../../GameEngine";
 import { Member } from "../../Member";
-import type { RuntimeContext } from "../../runtime/Agent/AgentContext";
+import { DefaultAgent, type RuntimeContext } from "../../runtime/Agent/RuntimeContext";
 import type { ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
 import { StatContainer } from "../../runtime/StatContainer/StatContainer";
 import { MobAttrSchema } from "./MobAttrSchema";
@@ -24,7 +24,6 @@ export class Mob extends Member<
 		memberData: MemberWithRelations,
 		campId: string,
 		teamId: string,
-		targetId: string,
 		position?: { x: number; y: number; z: number },
 	) {
 		if (!memberData.mob) {
@@ -33,15 +32,7 @@ export class Mob extends Member<
 		const attrSchema = MobAttrSchema(memberData.mob);
 		const statContainer = new StatContainer<MobAttrType>(attrSchema);
 		const runtimeContext: RuntimeContext = {
-			owner: undefined,
-			currentFrame: 0,
-			position: position ?? { x: 0, y: 0, z: 0 },
-			targetId: targetId,
-			statusTags: [],
-			currentSkill: null,
-			currentSkillEffect: null,
-			currentSkillLogic: null,
-			previousSkill: null,
+			...DefaultAgent,
 		};
 
 		super(

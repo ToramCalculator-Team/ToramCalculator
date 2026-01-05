@@ -45,7 +45,7 @@ export type CodeEditorProps = {
 	onChange?: (value: string) => void;
 	class?: string;
 	style?: string | Record<string, string>;
-	/** MDSL 的补全/诊断配置；不传则使用 simulator 默认注册表（CommonActions/GlobalCondition + DefaultAgent） */
+	/** MDSL 的补全/诊断配置；不传则使用 simulator 默认注册表（CommonActions/CommonCondition + DefaultAgent） */
 	mdslIntellisense?: MdslIntellisenseRegistry;
 };
 

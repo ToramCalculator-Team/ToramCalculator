@@ -1,4 +1,4 @@
-import type { RuntimeContext } from "./AgentContext";
+import type { CommonProperty } from "./GlobalProperty";
 
 // 阈值描述函数
 export const maxMin = (min: number, value: number, max: number) => {
@@ -40,7 +40,7 @@ export const setPathValue = (obj: any, path: string, value: any) => {
  * @param params 参数
  */
 export const sendRenderCommand = (
-	context: RuntimeContext,
+	context: CommonProperty,
 	actionName: string,
 	params?: Record<string, unknown>,
 ) => {

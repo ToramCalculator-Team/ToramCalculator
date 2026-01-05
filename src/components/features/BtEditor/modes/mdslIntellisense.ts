@@ -1,7 +1,7 @@
 import { type ZodType, z } from "zod/v4";
-import { DefaultAgent } from "~/components/features/simulator/core/Member/runtime/Agent/AgentContext";
+import { DefaultAgent } from "~/components/features/simulator/core/Member/runtime/Agent/RuntimeContext";
 import { CommonActions } from "~/components/features/simulator/core/Member/runtime/Agent/GlobalActions";
-import { GlobalCondition } from "~/components/features/simulator/core/Member/runtime/Agent/GlobalCondition";
+import { CommonCondition } from "~/components/features/simulator/core/Member/runtime/Agent/CommonCondition";
 
 export type MdslPrimitiveType =
 	| "string"
@@ -200,7 +200,7 @@ export const defaultMdslIntellisenseRegistry = (): MdslIntellisenseRegistry => {
 	}
 
 	const conditions: Record<string, MdslCallableSpec> = {};
-	for (const [name, cond] of Object.entries(GlobalCondition)) {
+	for (const [name, cond] of Object.entries(CommonCondition)) {
 		const inputSchema = cond[0] as ZodType;
 		conditions[name] = buildCallableSpec("condition", name, inputSchema);
 	}

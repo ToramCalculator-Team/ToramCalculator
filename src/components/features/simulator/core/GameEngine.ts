@@ -370,7 +370,7 @@ export class GameEngine {
 			const member = this.memberManager.getMember(primaryTargetId);
 			if (member && member.type === "Player") {
 				const player = member as Player;
-				selectedMemberSkills = this.computePlayerSkills(player, frameNumber);
+					selectedMemberSkills = this.computePlayerSkills(player, frameNumber);
 			}
 		}
 
@@ -850,8 +850,8 @@ export class GameEngine {
 			executeFrame,
 			insertFrame: currentFrame,
 			processed: false,
-			targetMemberId: memberId,
-			fsmEventType: eventType,
+				targetMemberId: memberId,
+				fsmEventType: eventType,
 			source: meta?.source ?? "未知来源",
 			payload,
 		});
@@ -885,17 +885,17 @@ export class GameEngine {
 						const targetMemberId = event.targetMemberId;
 						const fsmEventType = event.fsmEventType;
 
-						const member = this.memberManager.getMember(targetMemberId);
-						if (member) {
-							// 将队列事件转发为 FSM 事件，由成员自己的状态机处理
+					const member = this.memberManager.getMember(targetMemberId);
+					if (member) {
+						// 将队列事件转发为 FSM 事件，由成员自己的状态机处理
 							member.actor.send({ type: fsmEventType, data: payload });
-						} else {
-							console.warn(`⚠️ stepFrame: 目标成员不存在: ${targetMemberId}`);
-						}
+					} else {
+						console.warn(`⚠️ stepFrame: 目标成员不存在: ${targetMemberId}`);
 					}
+				}
 					break;
 				default:
-					console.warn(`⚠️ stepFrame: 未知事件类型: ${event.type}`);
+				console.warn(`⚠️ stepFrame: 未知事件类型: ${event.type}`);
 					break;
 			}
 
@@ -1104,49 +1104,49 @@ export class GameEngine {
 	 * 为每个技能计算当前的消耗值和可用性
 	 */
 	private computePlayerSkills(player: Player, currentFrame: number): ComputedSkillInfo[] {
-		const skillList = player.runtimeContext.skillList ?? [];
-		const skillCooldowns = player.runtimeContext.skillCooldowns ?? [];
-		const currentMp = player.statContainer?.getValue("mp.current") ?? 0;
-		const currentHp = player.statContainer?.getValue("hp.current") ?? 0;
+			const skillList = player.runtimeContext.skillList ?? [];
+			const skillCooldowns = player.runtimeContext.skillCooldowns ?? [];
+			const currentMp = player.statContainer?.getValue("mp.current") ?? 0;
+			const currentHp = player.statContainer?.getValue("hp.current") ?? 0;
 
 		return skillList.map((skill, index) => {
-			const skillName = skill.template?.name ?? "未知技能";
-			const skillLevel = skill.lv ?? 0;
+				const skillName = skill.template?.name ?? "未知技能";
+				const skillLevel = skill.lv ?? 0;
 
-			// 查找适用的技能效果
+				// 查找适用的技能效果
 			const effect = skill.template?.effects?.find((e) => {
-				try {
+					try {
 					const result = this.evaluateExpression(e.condition, {
-						currentFrame,
-						casterId: player.id,
-						skillLv: skillLevel,
-					});
-					return !!result;
-				} catch {
-					return false;
-				}
-			});
+							currentFrame,
+							casterId: player.id,
+							skillLv: skillLevel,
+						});
+						return !!result;
+					} catch {
+						return false;
+					}
+				});
 
-			// 计算消耗
-			let mpCost = 0;
-			let hpCost = 0;
+				// 计算消耗
+				let mpCost = 0;
+				let hpCost = 0;
 			let castingRange = 0;
 
-			if (effect) {
+				if (effect) {
 				const mpCostResult = this.evaluateExpression(effect.mpCost ?? "0", {
-					currentFrame,
-					casterId: player.id,
-					skillLv: skillLevel,
-				});
+							currentFrame,
+							casterId: player.id,
+							skillLv: skillLevel,
+						});
 				if (typeof mpCostResult !== "number") {
 					throw new Error(`表达式: ${effect.mpCost} 执行结果不是数字`);
-				}
+					}
 				mpCost = mpCostResult;
 				const hpCostResult = this.evaluateExpression(effect.hpCost ?? "0", {
-					currentFrame,
-					casterId: player.id,
-					skillLv: skillLevel,
-				});
+							currentFrame,
+							casterId: player.id,
+							skillLv: skillLevel,
+						});
 				if (typeof hpCostResult !== "number") {
 					throw new Error(`表达式: ${effect.hpCost} 执行结果不是数字`);
 				}
@@ -1160,27 +1160,27 @@ export class GameEngine {
 					throw new Error(`表达式: ${effect.castingRange} 执行结果不是数字`);
 				}
 				castingRange = castingRangeResult;
-			}
+				}
 
-			// 获取冷却状态
-			const cooldownRemaining = skillCooldowns[index] ?? 0;
+				// 获取冷却状态
+				const cooldownRemaining = skillCooldowns[index] ?? 0;
 
-			// 判断是否可用
+				// 判断是否可用
 			const isAvailable = cooldownRemaining <= 0 && currentMp >= mpCost && currentHp >= hpCost;
 
-			return {
-				id: skill.id,
-				name: skillName,
-				level: skillLevel,
-				computed: {
-					mpCost,
-					hpCost,
-					castingRange,
-					cooldownRemaining,
-					isAvailable,
-				},
-			};
-		});
+				return {
+					id: skill.id,
+					name: skillName,
+					level: skillLevel,
+					computed: {
+						mpCost,
+						hpCost,
+						castingRange,
+						cooldownRemaining,
+						isAvailable,
+					},
+				};
+			});
 	}
 }
 
