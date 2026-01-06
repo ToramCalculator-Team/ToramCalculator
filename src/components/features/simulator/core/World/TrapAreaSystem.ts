@@ -45,5 +45,9 @@ export class TrapAreaSystem {
 		// - 激活延迟
 		// - 触发次数限制
 	}
+
+	clear(): void {
+		// TODO: 实现陷阱区域清理逻辑
+	}
 }
 

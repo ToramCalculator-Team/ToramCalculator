@@ -45,5 +45,9 @@ export class BuffAreaSystem {
 		// - enter/exit 或持续刷新
 		// - 派发 buff 添加/移除事件
 	}
+
+	clear(): void {
+		// TODO: 实现 Buff 区域清理逻辑
+	}
 }
 

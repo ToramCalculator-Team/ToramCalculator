@@ -32,5 +32,11 @@ export class AreaManager {
 		this.trapAreaSystem.tick(frame);
 		this.buffAreaSystem.tick(frame);
 	}
+
+	clear(): void {
+		this.damageAreaSystem.clear();
+		this.trapAreaSystem.clear();
+		this.buffAreaSystem.clear();
+	}
 }
 

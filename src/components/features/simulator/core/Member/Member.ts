@@ -1,7 +1,6 @@
 import type { MemberWithRelations } from "@db/generated/repositories/member";
 import type { MemberType } from "@db/schema/enums";
 import { createActor } from "xstate";
-import type { GameEngine } from "../GameEngine";
 import type { CommonRuntimeContext } from "./runtime/Agent/CommonRuntimeContext";
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
 import type { NestedSchema } from "./runtime/StatContainer/SchemaTypes";
@@ -53,30 +52,29 @@ export class Member<
 	btManager: BtManager<TAttrKey, TStateEvent, TStateContext>;
 	/** 成员Actor引用 */
 	actor: MemberActor<TStateEvent, TStateContext>;
-	/** 引擎引用 */
-	engine: GameEngine;
 	/** 成员数据 */
 	data: MemberWithRelations;
 	/** 位置信息 */
 	position: { x: number; y: number; z: number };
+	/** 渲染消息发射器 */
+	private renderMessageSender: ((payload: unknown) => void) | null = null;
 
 	constructor(
 		stateMachine: (
 			member: Member<TAttrKey, TStateEvent, TStateContext, TRuntimeContext>,
 		) => MemberStateMachine<TStateEvent, TStateContext>,
-		engine: GameEngine,
 		campId: string,
 		teamId: string,
 		memberData: MemberWithRelations,
 		dataSchema: NestedSchema,
 		statContainer: StatContainer<TAttrKey>,
 		runtimeContext: TRuntimeContext,
+		renderMessageSender: ((payload: unknown) => void) | null,
 		position?: { x: number; y: number; z: number },
 	) {
 		this.id = memberData.id;
 		this.type = memberData.type;
 		this.name = memberData.name;
-		this.engine = engine;
 		this.campId = campId;
 		this.teamId = teamId;
 		this.runtimeContext = runtimeContext;
@@ -89,6 +87,10 @@ export class Member<
 		// 初始化行为树管理器
 		this.btManager = new BtManager(this);
 
+		// 初始化渲染消息发射器
+		this.renderMessageSender = renderMessageSender;
+
+		// 初始化位置
 		this.position = position ?? { x: 0, y: 0, z: 0 };
 
 		// 创建并启动状态机
@@ -96,6 +98,31 @@ export class Member<
 			id: memberData.id,
 		});
 		this.actor.start();
+
+		// 渲染成员
+		
+		// 通过引擎消息通道发送渲染命令（走 Simulation.worker 的 MessageChannel）
+		const spawnCmd = {
+			type: "render:cmd" as const,
+			cmd: {
+				type: "spawn" as const,
+				entityId: this.id,
+				name: this.name,
+				position: position ?? { x: 0, y: 0, z: 0 },
+				seq: 0,
+				ts: Date.now(),
+			},
+		};
+		// 引擎统一出口：通过已建立的MessageChannel发送渲染指令
+		if (this.renderMessageSender !== null) {
+			// 首选方案：使用引擎提供的统一渲染消息接口
+			// 这个方法会通过 Simulation.worker 的 MessagePort 将指令发送到主线程
+			this.renderMessageSender(spawnCmd);
+		} else {
+			// 如果引擎的渲染消息接口不可用，记录错误但不使用fallback
+			// 这确保我们只使用正确的通信通道，避免依赖全局变量
+			console.error(`👤 [${this.name}] 无法发送渲染指令：引擎渲染消息接口不可用`);
+		}
 	}
 
 	/** 序列化方法 */

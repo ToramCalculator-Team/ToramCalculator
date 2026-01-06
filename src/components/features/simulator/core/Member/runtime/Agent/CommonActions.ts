@@ -4,6 +4,7 @@ import { ModifierType } from "../StatContainer/StatContainer";
 import type { CommonProperty } from "./CommonProperty";
 import { type ActionPool, defineAction } from "./type";
 import { sendRenderCommand } from "./uitls";
+import { ExpressionTransformer } from "../../../JSProcessor/ExpressionTransformer";
 
 export const logLv = 1; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
 
@@ -73,10 +74,31 @@ export const CommonActionPool = {
 			})
 			.meta({ description: "范围攻击" }),
 		(context, input) => {
-			console.log(`👤 [${context.owner?.name}] generateRangeAttack`, input);
+			console.log(`👤 [${context.owner?.name}] 范围攻击`, input);
 			// 解析伤害表达式，将所需的self变量放入参数列表
+			const owner = context.owner;
+			if (!owner) {
+				console.warn(`⚠️ [${context.owner?.name}] 无法找到owner`);
+				return State.FAILED;
+			}
+			const valueProvider = (key: string) => owner.statContainer.getValue(key);
+			const res = ExpressionTransformer.transform(input.damageFormula,{
+				replaceAccessor: "self",
+				valueProvider,
+			});
+			if (!res.success) {
+				console.warn(`⚠️ [${context.owner?.name}] 伤害表达式解析失败: ${res.error}`);
+				return State.FAILED;
+			}
+			let damageExpr = res.compiledExpression;
+			// 替换skill.lv为技能等级
+			const skillLv = context.currentSkill?.lv ?? 0;
+			damageExpr = damageExpr.replace("skill.lv", String(skillLv));
+			console.log(`👤 [${context.owner?.name}] 解析后表达式: ${damageExpr}`);
 
 			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
+            
+			
 			return State.SUCCEEDED;
 		},
 	),

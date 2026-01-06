@@ -1,19 +1,3 @@
-/**
- * 游戏引擎 - 核心运行时容器
- *
- * 核心职责（根据架构文档）：
- * 1. 作为核心运行时容器，集成所有模块
- * 2. 协调memberManager、MessageRouter、FrameLoop、EventQueue等模块
- * 3. 提供统一的引擎接口
- * 4. 管理引擎生命周期
- *
- * 设计理念：
- * - 容器模式：引擎是容器，不直接处理业务逻辑
- * - 模块集成：协调各个模块的协作
- * - 统一接口：提供简洁的引擎API
- * - 生命周期管理：管理引擎的启动、运行、停止
- */
-
 import type { MemberWithRelations } from "@db/generated/repositories/member";
 import type { SimulatorWithRelations } from "@db/generated/repositories/simulator";
 import type { TeamWithRelations } from "@db/generated/repositories/team";
@@ -51,7 +35,6 @@ declare global {
 }
 /**
  * 游戏引擎类
- * 核心运行时容器，集成所有模块
  */
 export class GameEngine {
 	// ==================== 核心模块 ====================
@@ -59,8 +42,8 @@ export class GameEngine {
 	/** 引擎状态机 */
 	private stateMachine: ReturnType<typeof createActor<typeof GameEngineSM>>;
 
-	/** 成员管理器 - 管理所有成员的生命周期 */
-	private memberManager: MemberManager;
+	/** 世界 - 资产管理 */
+	private world: World;
 
 	/** 事件队列 - 管理时间片段事件 */
 	private eventQueue: EventQueue;
@@ -80,6 +63,9 @@ export class GameEngine {
 	/** 开始时间戳 */
 	private startTime: number = 0;
 
+	/** 当前逻辑帧号 */
+	private currentFrame: number = 0;
+
 	/** 快照历史 */
 	private snapshots: GameEngineSnapshot[] = [];
 
@@ -90,24 +76,16 @@ export class GameEngine {
 		totalMessagesProcessed: 0,
 	};
 
-	// ==================== World 层 ====================
-	private spaceManager: SpaceManager;
-	private areaManager: AreaManager;
-	private world: World;
-
-	// ==================== 渲染通信 ====================
-
+	// ==================== 通信 ====================
+	
 	/** 渲染消息发送器 - 用于发送渲染指令到主线程 */
 	private renderMessageSender: ((payload: unknown) => void) | null = null;
+	/** 系统消息发送器 - 用于发送系统指令到主线程 */
 	private systemMessageSender: ((payload: unknown) => void) | null = null;
 	/** 帧快照发送器 - 用于发送帧快照到主线程 */
 	private frameSnapshotSender: ((snapshot: FrameSnapshot) => void) | null = null;
-
 	/** 镜像通信发送器 - 用于向镜像状态机发送消息 */
 	private sendToMirror?: (command: EngineCommand) => void;
-
-	/** 当前逻辑帧号（由引擎维护，FrameLoop 通过 stepFrame 驱动） */
-	private currentFrame: number = 0;
 
 	/** 当前挂起的帧内任务数量（用于防止跨帧未完成任务） */
 	private pendingFrameTasksCount: number = 0;
@@ -145,16 +123,14 @@ export class GameEngine {
 		this.config = config;
 
 		// 初始化核心模块 - 按依赖顺序
-		this.eventQueue = new EventQueue(this, config.eventQueueConfig);
-		this.memberManager = new MemberManager(this); // 注入自身引用
+		this.eventQueue = new EventQueue(config.eventQueueConfig, () => this.currentFrame);
 		this.messageRouter = new MessageRouter(this); // 注入引擎
 		this.frameLoop = new FrameLoop(this, this.config.frameLoopConfig); // 注入引擎
 		this.jsProcessor = new JSProcessor(); // 初始化JS表达式处理器
 
 		// World 相关
-		this.spaceManager = new SpaceManager(this.memberManager);
-		this.areaManager = new AreaManager(this.spaceManager, this.memberManager);
-		this.world = new World(this.memberManager, this.spaceManager, this.areaManager);
+
+		this.world = new World(this.renderMessageSender);
 
 		// 创建状态机 - 使用动态获取mirror sender的方式
 		this.stateMachine = createActor(GameEngineSM, {
@@ -251,7 +227,7 @@ export class GameEngine {
 		this.stop();
 
 		// 清理成员注册表
-		this.memberManager.clear();
+		this.world.clear();
 
 		// 清理事件队列
 		this.eventQueue.clear();
@@ -281,9 +257,8 @@ export class GameEngine {
 		// 映射状态机状态到引擎状态
 		switch (machineState) {
 			case "idle":
+				case "initializing":
 				return "unInitialized";
-			case "initializing":
-				return "initialized";
 			case "running":
 				return "running";
 			case "paused":
@@ -315,13 +290,13 @@ export class GameEngine {
 		const frameNumber = this.getCurrentFrame();
 		const timestamp = performance.now();
 
-		const primaryTargetId = this.memberManager.getPrimaryTarget();
+		const primaryTargetId = this.world.memberManager.getPrimaryMemberId();
 
 		// 引擎级状态
 		const frameLoopStats = this.frameLoop.getFrameLoopStats();
 
 		// 所有成员的高频视图
-		const members = this.memberManager.getAllMembers().map((member) => {
+		const members = this.world.memberManager.getAllMembers().map((member) => {
 			const hpCurrent = member.statContainer?.getValue("hp.current") ?? 0;
 			const hpMax = member.statContainer?.getValue("hp.max") ?? 0;
 			const mpCurrent = member.statContainer?.getValue("mp.current") ?? 0;
@@ -351,7 +326,7 @@ export class GameEngine {
 			buffs?: BuffViewDataSnapshot[];
 		} | null = null;
 		if (primaryTargetId) {
-			const selectedMember = this.memberManager.getMember(primaryTargetId);
+			const selectedMember = this.world.memberManager.getMember(primaryTargetId);
 			if (selectedMember) {
 				try {
 					const serialized = selectedMember.serialize();
@@ -367,7 +342,7 @@ export class GameEngine {
 		let selectedMemberSkills: ComputedSkillInfo[] = [];
 
 		if (primaryTargetId) {
-			const member = this.memberManager.getMember(primaryTargetId);
+			const member = this.world.memberManager.getMember(primaryTargetId);
 			if (member && member.type === "Player") {
 				const player = member as Player;
 					selectedMemberSkills = this.computePlayerSkills(player, frameNumber);
@@ -607,7 +582,7 @@ export class GameEngine {
 	 * @param campId 阵营ID
 	 */
 	addCamp(campId: string): void {
-		this.memberManager.addCamp(campId);
+		this.world.memberManager.addCamp(campId);
 	}
 
 	/**
@@ -617,7 +592,7 @@ export class GameEngine {
 	 * @param teamData 队伍数据
 	 */
 	addTeam(campId: string, teamData: TeamWithRelations): void {
-		this.memberManager.addTeam(campId, teamData);
+		this.world.memberManager.addTeam(campId, teamData);
 	}
 
 	/**
@@ -630,7 +605,7 @@ export class GameEngine {
 	 */
 	addMember(campId: string, teamId: string, memberData: MemberWithRelations, characterIndex: number): void {
 		// 容器只负责委托，不处理具体创建逻辑
-		this.memberManager.createAndRegister(memberData, campId, teamId, characterIndex);
+		this.world.memberManager.createAndRegister(memberData, campId, teamId, characterIndex);
 	}
 
 	/**
@@ -639,7 +614,7 @@ export class GameEngine {
 	 * @returns 成员数组
 	 */
 	getAllMembers() {
-		return this.memberManager.getAllMembers();
+		return this.world.memberManager.getAllMembers();
 	}
 
 	/**
@@ -649,7 +624,7 @@ export class GameEngine {
 	 * @returns 成员实例
 	 */
 	getMember(memberId: string) {
-		return this.memberManager.getMember(memberId);
+		return this.world.memberManager.getMember(memberId);
 	}
 
 	// ==================== 子组件功能封装：消息路由 ====================
@@ -712,13 +687,13 @@ export class GameEngine {
 				throw new Error("缺少成员ID");
 			}
 
-			const self = this.memberManager.getMember(memberId);
+			const self = this.world.memberManager.getMember(memberId);
 			if (!self) {
 				throw new Error(`成员不存在: ${memberId}`);
 			}
 
 			const target = context.targetId
-				? this.memberManager.getMember(context.targetId)
+				? this.world.memberManager.getMember(context.targetId)
 				: undefined;
 
 			// 表达式用的对象包装：避免直接污染 Member 实例，同时保留原型链/方法
@@ -885,7 +860,7 @@ export class GameEngine {
 						const targetMemberId = event.targetMemberId;
 						const fsmEventType = event.fsmEventType;
 
-					const member = this.memberManager.getMember(targetMemberId);
+					const member = this.world.memberManager.getMember(targetMemberId);
 					if (member) {
 						// 将队列事件转发为 FSM 事件，由成员自己的状态机处理
 							member.actor.send({ type: fsmEventType, data: payload });
@@ -905,7 +880,7 @@ export class GameEngine {
 
 		// 2. 成员/区域更新（驱动 BT/SM/Buff 等）
 		this.world.tick(frameNumber);
-		const membersUpdated = this.memberManager.getAllMembers().length;
+		const membersUpdated = this.world.memberManager.getAllMembers().length;
 
 		const duration = performance.now() - frameStartTime;
 
@@ -938,7 +913,7 @@ export class GameEngine {
 	 * @returns 当前战斗快照
 	 */
 	getCurrentSnapshot(): GameEngineSnapshot {
-		const members = this.memberManager.getAllMembers();
+		const members = this.world.memberManager.getAllMembers();
 		const currentFrame = this.frameLoop.getFrameNumber();
 
 		return {
@@ -989,7 +964,7 @@ export class GameEngine {
 	 * @returns 成员数据，如果不存在则返回null
 	 */
 	getMemberData(memberId: string) {
-		return this.memberManager.getMember(memberId)?.serialize();
+		return this.world.memberManager.getMember(memberId)?.serialize();
 	}
 
 	/**
@@ -998,7 +973,7 @@ export class GameEngine {
 	 * @returns 所有成员数据数组
 	 */
 	getAllMemberData(): MemberSerializeData[] {
-		return this.memberManager.getAllMembers().map((member) => member.serialize());
+		return this.world.memberManager.getAllMembers().map((member) => member.serialize());
 	}
 
 	/**
@@ -1008,7 +983,7 @@ export class GameEngine {
 	 * @returns 指定阵营的成员数据数组
 	 */
 	getMembersByCamp(campId: string): MemberSerializeData[] {
-		return this.memberManager.getMembersByCamp(campId).map((member) => member.serialize());
+		return this.world.memberManager.getMembersByCamp(campId).map((member) => member.serialize());
 	}
 
 	/**
@@ -1018,7 +993,7 @@ export class GameEngine {
 	 * @returns 指定队伍的成员数据数组
 	 */
 	getMembersByTeam(teamId: string): MemberSerializeData[] {
-		return this.memberManager.getMembersByTeam(teamId).map((member) => member.serialize());
+		return this.world.memberManager.getMembersByTeam(teamId).map((member) => member.serialize());
 	}
 
 	// ==================== 依赖注入支持 ====================
@@ -1034,7 +1009,7 @@ export class GameEngine {
 	 * 获取成员管理器实例
 	 */
 	getMemberManager(): MemberManager {
-		return this.memberManager;
+		return this.world.memberManager;
 	}
 
 	/**

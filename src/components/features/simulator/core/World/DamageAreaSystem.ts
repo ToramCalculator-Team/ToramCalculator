@@ -267,5 +267,9 @@ export class DamageAreaSystem {
 		const dz = a.z - b.z;
 		return Math.sqrt(dx * dx + dy * dy + dz * dz);
 	}
+
+	clear(): void {
+		this.instances.clear();
+	}
 }
 
