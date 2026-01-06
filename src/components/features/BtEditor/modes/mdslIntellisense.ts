@@ -1,18 +1,12 @@
 import { type ZodType, z } from "zod/v4";
-import { DefaultAgent } from "~/components/features/simulator/core/Member/runtime/Agent/RuntimeContext";
-import { CommonActions } from "~/components/features/simulator/core/Member/runtime/Agent/GlobalActions";
-import { CommonCondition } from "~/components/features/simulator/core/Member/runtime/Agent/CommonCondition";
+import { CommonActionPool } from "~/components/features/simulator/core/Member/runtime/Agent/CommonActions";
+import { CommonConditionPool } from "~/components/features/simulator/core/Member/runtime/Agent/CommonCondition";
+import { CommonProperty } from "~/components/features/simulator/core/Member/runtime/Agent/CommonProperty";
+import type { ActionPool, ConditionPool } from "~/components/features/simulator/core/Member/runtime/Agent/type";
 
-export type MdslPrimitiveType =
-	| "string"
-	| "number"
-	| "boolean"
-	| "null"
-	| "unknown";
+export type MdslPrimitiveType = "string" | "number" | "boolean" | "null" | "unknown";
 
-export type MdslTypeSpec =
-	| { kind: "primitive"; type: MdslPrimitiveType }
-	| { kind: "enum"; values: readonly string[] };
+export type MdslTypeSpec = { kind: "primitive"; type: MdslPrimitiveType } | { kind: "enum"; values: readonly string[] };
 
 export type MdslParamSpec = {
 	/** 仅用于提示/报错信息（MDSL 本身是位置参数） */
@@ -61,8 +55,7 @@ const getSchemaDescription = (schema: ZodType): string | undefined => {
 	return undefined;
 };
 
-const isZodObject = (schema: ZodType): schema is z.ZodObject =>
-	schema instanceof z.ZodObject;
+const isZodObject = (schema: ZodType): schema is z.ZodObject => schema instanceof z.ZodObject;
 
 /**
  * 去掉 optional/nullable/default/pipe 外壳，获得“最贴近输入侧”的基础 schema。
@@ -104,9 +97,7 @@ const getEnumValues = (schema: ZodType): readonly string[] | null => {
 	}
 	if (unwrapped instanceof z.ZodLiteral) {
 		// v4: 使用 `.values`（Set）；`.value` 是 legacy 且多值会抛错
-		const values = Array.from(unwrapped.values).filter(
-			(v): v is string => typeof v === "string",
-		);
+		const values = Array.from(unwrapped.values).filter((v): v is string => typeof v === "string");
 		return values.length ? values : null;
 	}
 	if (unwrapped instanceof z.ZodUnion) {
@@ -139,10 +130,7 @@ const getZodObjectShape = (schema: z.ZodObject): Record<string, ZodType> => {
 	return schema.shape as unknown as Record<string, ZodType>;
 };
 
-const flattenObjectSchemaToParams = (
-	schema: ZodType,
-	prefix = "",
-): MdslParamSpec[] => {
+const flattenObjectSchemaToParams = (schema: ZodType, prefix = ""): MdslParamSpec[] => {
 	const unwrapped = unwrapSchema(schema);
 	if (!isZodObject(unwrapped)) {
 		// 非 object：在 MDSL 里仍然只能用位置参数表示，先给一个 unknown 占位提示
@@ -167,11 +155,7 @@ const flattenObjectSchemaToParams = (
 	return result;
 };
 
-const buildCallableSpec = (
-	kind: MdslCallableKind,
-	name: string,
-	inputSchema: ZodType,
-): MdslCallableSpec => {
+const buildCallableSpec = (kind: MdslCallableKind, name: string, inputSchema: ZodType): MdslCallableSpec => {
 	return {
 		kind,
 		name,
@@ -180,30 +164,63 @@ const buildCallableSpec = (
 	};
 };
 
-const inferPropertyTypesFromDefaultAgent = (): Record<string, MdslTypeSpec> => {
+/**
+ * 从 propertyObject 推断 $xxx 属性的类型
+ * 只把非函数的 key 纳入 $（避免把 action/condition 的实现函数误当成属性）
+ */
+const inferPropertyTypesFromObject = (propertyObject: Record<string, unknown>): Record<string, MdslTypeSpec> => {
 	const props: Record<string, MdslTypeSpec> = {};
-	for (const [key, value] of Object.entries(DefaultAgent)) {
+	for (const [key, value] of Object.entries(propertyObject)) {
+		// 跳过函数（action/condition 的实现）
+		if (typeof value === "function") continue;
 		if (typeof value === "string") props[key] = PRIMITIVE("string");
 		else if (typeof value === "number") props[key] = PRIMITIVE("number");
 		else if (typeof value === "boolean") props[key] = PRIMITIVE("boolean");
-		else if (value === null) props[key] = PRIMITIVE("unknown");
+		else if (value === null) props[key] = PRIMITIVE("null");
+		else if (Array.isArray(value)) props[key] = PRIMITIVE("unknown");
+		else if (typeof value === "object") props[key] = PRIMITIVE("unknown");
 		else props[key] = PRIMITIVE("unknown");
 	}
 	return props;
 };
 
-export const defaultMdslIntellisenseRegistry = (): MdslIntellisenseRegistry => {
+/**
+ * 从 actionPool 和 conditionPool 构建 actions/conditions specs
+ */
+const buildCallableSpecsFromPools = (
+	actionPool: ActionPool<any>,
+	conditionPool: ConditionPool<any>,
+): {
+	actions: Record<string, MdslCallableSpec>;
+	conditions: Record<string, MdslCallableSpec>;
+} => {
 	const actions: Record<string, MdslCallableSpec> = {};
-	for (const [name, action] of Object.entries(CommonActions)) {
+	for (const [name, action] of Object.entries(actionPool)) {
 		const inputSchema = action[0] as ZodType;
 		actions[name] = buildCallableSpec("action", name, inputSchema);
 	}
 
 	const conditions: Record<string, MdslCallableSpec> = {};
-	for (const [name, cond] of Object.entries(CommonCondition)) {
+	for (const [name, cond] of Object.entries(conditionPool)) {
 		const inputSchema = cond[0] as ZodType;
 		conditions[name] = buildCallableSpec("condition", name, inputSchema);
 	}
+
+	return { actions, conditions };
+};
+
+/**
+ * 参数化构建 MDSL IntelliSense Registry
+ */
+export const buildMdslIntellisenseRegistry = (
+	config: {
+		actionPool: ActionPool<any>;
+		conditionPool: ConditionPool<any>;
+		propertyObject: Record<string, unknown>;
+	},
+	agentSource?: string,
+): MdslIntellisenseRegistry => {
+	const { actions, conditions } = buildCallableSpecsFromPools(config.actionPool, config.conditionPool);
 
 	// 轻量策略：callback = action ∪ condition；guard = condition
 	const callbacks: Record<string, MdslCallableSpec> = {
@@ -212,13 +229,32 @@ export const defaultMdslIntellisenseRegistry = (): MdslIntellisenseRegistry => {
 	};
 	const guards: Record<string, MdslCallableSpec> = { ...conditions };
 
-	return {
+	const base: MdslIntellisenseRegistry = {
 		actions,
 		conditions,
 		callbacks,
 		guards,
-		properties: inferPropertyTypesFromDefaultAgent(),
+		properties: inferPropertyTypesFromObject(config.propertyObject),
 	};
+
+	// 如果提供了 agentSource，则合并用户定义的 Agent 源码
+	if (agentSource) {
+		return mergeMdslRegistryWithAgentSource(base, agentSource);
+	}
+
+	return base;
+};
+
+/**
+ * 向后兼容：默认 registry（使用 Common 三件套）
+ * @deprecated 建议使用 buildMdslIntellisenseRegistry 并传入具体配置
+ */
+export const defaultMdslIntellisenseRegistry = (): MdslIntellisenseRegistry => {
+	return buildMdslIntellisenseRegistry({
+		actionPool: CommonActionPool,
+		conditionPool: CommonConditionPool,
+		propertyObject: CommonProperty,
+	});
 };
 
 /**
@@ -266,17 +302,7 @@ export const mergeMdslRegistryWithAgentSource = (
 		return c;
 	};
 
-	const blockedNames = new Set([
-		"if",
-		"for",
-		"while",
-		"switch",
-		"catch",
-		"try",
-		"else",
-		"return",
-		"function",
-	]);
+	const blockedNames = new Set(["if", "for", "while", "switch", "catch", "try", "else", "return", "function"]);
 
 	let pendingDoc: string | undefined;
 	let inDoc = false;
@@ -319,9 +345,7 @@ export const mergeMdslRegistryWithAgentSource = (
 		if (depth === 0 && !inDoc) {
 			// getter/setter
 			{
-				const m = trimmed.match(
-					new RegExp(`^(get|set)\\s+(${IDENT})\\s*\\(`, "u"),
-				);
+				const m = trimmed.match(new RegExp(`^(get|set)\\s+(${IDENT})\\s*\\(`, "u"));
 				if (m) {
 					const name = m[2] ?? "";
 					if (name && !blockedNames.has(name)) {
@@ -332,9 +356,7 @@ export const mergeMdslRegistryWithAgentSource = (
 
 			// 字段：foo = ... 或 foo: type = ...
 			{
-				const m = trimmed.match(
-					new RegExp(`^(${IDENT})\\s*(?::[^=;\\n]+)?=\\s*`, "u"),
-				);
+				const m = trimmed.match(new RegExp(`^(${IDENT})\\s*(?::[^=;\\n]+)?=\\s*`, "u"));
 				if (m) {
 					const name = m[1] ?? "";
 					if (name && name !== "constructor" && !blockedNames.has(name)) {
@@ -346,10 +368,7 @@ export const mergeMdslRegistryWithAgentSource = (
 			// 方法（含 async / 访问修饰符），排除 constructor/关键字
 			{
 				const m = trimmed.match(
-					new RegExp(
-						`^(?:public|private|protected)?\\s*(?:async\\s+)?(${IDENT})\\s*\\(([^)]*)\\)\\s*\\{`,
-						"u",
-					),
+					new RegExp(`^(?:public|private|protected)?\\s*(?:async\\s+)?(${IDENT})\\s*\\(([^)]*)\\)\\s*\\{`, "u"),
 				);
 				if (m) {
 					const name = (m[1] ?? "").trim();

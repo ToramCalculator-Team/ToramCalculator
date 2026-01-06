@@ -1,42 +1,36 @@
+import type { DB } from "@db/generated/zod/index";
+import { MetaProvider, Title } from "@solidjs/meta";
+import { useNavigate } from "@solidjs/router";
+import { useMachine } from "@xstate/solid";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import {
-	type JSX,
 	createEffect,
 	createMemo,
 	createSignal,
 	For,
+	Index,
+	type JSX,
+	on,
 	onCleanup,
 	onMount,
 	Show,
 	useContext,
-	on,
-	Index,
 } from "solid-js";
-import { MetaProvider, Title } from "@solidjs/meta";
-import { useMachine } from "@xstate/solid";
+import { Motion, Presence } from "solid-motionone";
+import { Sheet } from "~/components/containers/sheet";
+import { Button } from "~/components/controls/button";
+import { LoadingBar } from "~/components/controls/loadingBar";
+import { Filing } from "~/components/features/filing";
+import { Icons } from "~/components/icons/index";
+import { MediaContext } from "~/lib/contexts/Media";
+import { getDictionary } from "~/locales/i18n";
+import type { dictionary } from "~/locales/type";
+import { setStore, store } from "~/store";
 import { indexPageMachine } from "./indexPageMachine";
 
-import { getDictionary } from "~/locales/i18n";
-import { Icons } from "~/components/icons/index";
-import { Button } from "~/components/controls/button";
-import { Filing } from "~/components/features/filing";
-
-import { Motion, Presence } from "solid-motionone";
-import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { useNavigate } from "@solidjs/router";
-import type { dictionary } from "~/locales/type";
-import type { DB } from "@db/generated/zod/index";
-import { MediaContext } from "~/lib/contexts/Media";
-import { setStore, store } from "~/store";
-import { LoadingBar } from "~/components/controls/loadingBar";
-import { Sheet } from "~/components/containers/sheet";
-
 export default function IndexPage() {
-	const [searchButtonRef, setSearchButtonRef] = createSignal<
-		HTMLButtonElement | undefined
-	>(undefined);
-	const [searchInputRef, setSearchInputRef] = createSignal<
-		HTMLInputElement | undefined
-	>(undefined);
+	const [searchButtonRef, setSearchButtonRef] = createSignal<HTMLButtonElement | undefined>(undefined);
+	const [searchInputRef, setSearchInputRef] = createSignal<HTMLInputElement | undefined>(undefined);
 
 	const navigate = useNavigate();
 
@@ -47,9 +41,7 @@ export default function IndexPage() {
 	const media = useContext(MediaContext);
 
 	// UI文本字典
-	const dictionary = createMemo(() =>
-		getDictionary(store.settings.userInterface.language),
-	);
+	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
 
 	// 小工具菜单配置
 	const [toolMenuConfig] = createSignal<
@@ -100,12 +92,7 @@ export default function IndexPage() {
 			icon: <Icons.Outline.Light />,
 		},
 		{
-			onClick: () =>
-				setStore(
-					"pages",
-					"settingsDialogState",
-					!store.pages.settingsDialogState,
-				),
+			onClick: () => setStore("pages", "settingsDialogState", !store.pages.settingsDialogState),
 			icon: <Icons.Outline.Settings />,
 		},
 	]);
@@ -349,11 +336,7 @@ export default function IndexPage() {
 									opacity: [0, 1],
 									paddingBottom: [
 										0,
-										media.orientation === "landscape"
-											? media.width > 1024
-												? "3rem"
-												: "1rem"
-											: "0rem",
+										media.orientation === "landscape" ? (media.width > 1024 ? "3rem" : "1rem") : "0rem",
 									],
 									height: ["0px", "120px"], // 临时数值
 									filter: ["blur(20px)", "blur(0px)"],
@@ -365,9 +348,7 @@ export default function IndexPage() {
 									filter: ["blur(0px)", "blur(20px)"],
 								}}
 								transition={{
-									duration: store.settings.userInterface.isAnimationEnabled
-										? 0.7
-										: 0,
+									duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
 								}}
 								class={`Greetings grid flex-1 justify-items-center gap-2 overflow-hidden landscape:flex-none`}
 							>
@@ -378,9 +359,7 @@ export default function IndexPage() {
 								>
 									<Icons.Brand.LogoText class="h-12 landscape:h-auto" />
 								</button>
-								<h1
-									class={`text-main-text-color self-start py-4 landscape:hidden`}
-								>
+								<h1 class={`text-main-text-color self-start py-4 landscape:hidden`}>
 									{`${getGreetings()},  ${userName()}`}
 								</h1>
 							</Motion.div>
@@ -396,9 +375,7 @@ export default function IndexPage() {
 							filter: ["blur(0px)", "blur(20px)"],
 						}}
 						transition={{
-							duration: store.settings.userInterface.isAnimationEnabled
-								? 0.7
-								: 0,
+							duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
 							delay: 0.3,
 						}}
 						class={`FunctionBox flex w-full flex-col justify-center landscape:flex-row landscape:justify-between`}
@@ -416,9 +393,7 @@ export default function IndexPage() {
 								class="w-full outline-hidden focus-within:outline-hidden"
 							>
 								<Icons.Outline.Back />
-								<span class="w-full text-left">
-									{dictionary().ui.actions.back}
-								</span>
+								<span class="w-full text-left">{dictionary().ui.actions.back}</span>
 							</Button>
 						</div>
 						<div
@@ -454,10 +429,7 @@ export default function IndexPage() {
 						<Show when={context().searchResultOpened}>
 							<Motion.div
 								animate={{
-									clipPath: [
-										"inset(10% 10% 90% 10% round 12px)",
-										"inset(0% 0% 0% 0% round 12px)",
-									],
+									clipPath: ["inset(10% 10% 90% 10% round 12px)", "inset(0% 0% 0% 0% round 12px)"],
 									opacity: [0, 1],
 									flexBasis: ["0%", "100%"],
 									flexGrow: [0, 1],
@@ -474,9 +446,7 @@ export default function IndexPage() {
 									flexGrow: [1, 0],
 								}}
 								transition={{
-									duration: store.settings.userInterface.isAnimationEnabled
-										? 0.7
-										: 0,
+									duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
 								}}
 								class={`Result mt-1 flex h-full gap-1 overflow-y-hidden`}
 							>
@@ -485,9 +455,7 @@ export default function IndexPage() {
 									fallback={
 										<Motion.div class="flex flex-1 flex-col items-center justify-center gap-4">
 											<LoadingBar class="w-1/2 min-w-[320px]" />
-											<span class="text-lg font-bold">
-												{dictionary().ui.actions.searching}
-											</span>
+											<span class="text-lg font-bold">{dictionary().ui.actions.searching}</span>
 										</Motion.div>
 									}
 								>
@@ -499,24 +467,16 @@ export default function IndexPage() {
 												animate={{
 													opacity: [0, 1],
 													marginTop: ["0", "calc(50vh - 54px)"],
-													transform: [
-														"translateY(0) scale(0.8)",
-														"translateY(-50%) scale(1)",
-													],
+													transform: ["translateY(0) scale(0.8)", "translateY(-50%) scale(1)"],
 												}}
 												transition={{
-													duration: store.settings.userInterface
-														.isAnimationEnabled
-														? 0.7
-														: 0,
+													duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
 												}}
 											>
 												<span class="NullResultWarring text-center text-xl leading-loose font-bold landscape:text-2xl">
 													{dictionary().ui.index.nullSearchResultWarring}
 												</span>
-												<p
-													class={`NullResultTips text-main-text-color text-center leading-loose`}
-												>
+												<p class={`NullResultTips text-main-text-color text-center leading-loose`}>
 													{dictionary()
 														.ui.index.nullSearchResultTips.split("\n")
 														.map((line) => (
@@ -545,16 +505,11 @@ export default function IndexPage() {
 
 															return (
 																<Show when={groupResultValue.length > 0}>
-																	<div
-																		class={`ResultGroup flex flex-col gap-[2px]`}
-																	>
+																	<div class={`ResultGroup flex flex-col gap-[2px]`}>
 																		<Motion.button
 																			onClick={() => {
-																				const newResultListState = [
-																					...context().resultListState,
-																				];
-																				newResultListState[groupIndex()] =
-																					!newResultListState[groupIndex()];
+																				const newResultListState = [...context().resultListState];
+																				newResultListState[groupIndex()] = !newResultListState[groupIndex()];
 																				send({
 																					type: "UPDATE_RESULT_LIST_STATE",
 																					resultListState: newResultListState,
@@ -563,30 +518,18 @@ export default function IndexPage() {
 																			class={`Group bg-primary-color flex cursor-pointer justify-center gap-2 outline-hidden focus-within:outline-hidden ${context().resultListState[groupIndex()] ? "" : ""} rounded px-3 py-4`}
 																			animate={{
 																				opacity: [0, 1],
-																				transform: [
-																					"translateY(30px)",
-																					"translateY(0)",
-																				],
+																				transform: ["translateY(30px)", "translateY(0)"],
 																			}}
 																			transition={{
-																				duration: store.settings.userInterface
-																					.isAnimationEnabled
-																					? 0.7
-																					: 0,
-																				delay: store.settings.userInterface
-																					.isAnimationEnabled
-																					? groupIndex() * 0.3
-																					: 0,
+																				duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+																				delay: store.settings.userInterface.isAnimationEnabled ? groupIndex() * 0.3 : 0,
 																			}}
 																		>
 																			<Icons.Outline.Basketball />
 																			<span class="w-full text-left font-bold">
-																				{dictionary().db[groupType].selfName} [
-																				{groupResultValue.length}]
+																				{dictionary().db[groupType].selfName} [{groupResultValue.length}]
 																			</span>
-																			{context().resultListState[
-																				groupIndex()
-																			] ? (
+																			{context().resultListState[groupIndex()] ? (
 																				<Icons.Outline.Left class="rotate-360" />
 																			) : (
 																				<Icons.Outline.Left class="rotate-270" />
@@ -600,47 +543,31 @@ export default function IndexPage() {
 																							class={`Item group flex flex-col gap-1 ${context().resultListState[groupIndex()] ? "" : "hidden"} bg-primary-color focus-within:bg-area-color rounded p-3 outline-hidden focus-within:outline-hidden`}
 																							animate={{
 																								opacity: [0, 1],
-																								transform: [
-																									"translateY(30px)",
-																									"translateY(0)",
-																								],
+																								transform: ["translateY(30px)", "translateY(0)"],
 																							}}
 																							transition={{
-																								duration: store.settings
-																									.userInterface
-																									.isAnimationEnabled
-																									? 0.7
-																									: 0,
-																								delay: store.settings
-																									.userInterface
-																									.isAnimationEnabled
+																								duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+																								delay: store.settings.userInterface.isAnimationEnabled
 																									? index() < 15
-																										? groupIndex() * 0.3 +
-																											index() * 0.07
+																										? groupIndex() * 0.3 + index() * 0.07
 																										: 0
 																									: 0,
 																							}}
 																							onClick={async () => {
 																								// 设置卡片类型和ID
 																								"id" in resultItem
-																									? setStore(
-																											"pages",
-																											"cardGroup",
-																											(pre) => [
-																												...pre,
-																												{
-																													type: groupType,
-																													id: resultItem.id,
-																												},
-																											],
-																										)
+																									? setStore("pages", "cardGroup", (pre) => [
+																											...pre,
+																											{
+																												type: groupType,
+																												id: resultItem.id,
+																											},
+																										])
 																									: null;
 																							}}
 																						>
 																							<div class="Name group-hover:border-accent-color border-b-2 border-transparent p-1 text-left">
-																								{"name" in resultItem
-																									? resultItem.name
-																									: "此条目没有名称"}
+																								{"name" in resultItem ? resultItem.name : "此条目没有名称"}
 																							</div>
 																							{/* <div class="Value text-main-text-color group-hover:text-accent-color flex w-full flex-col flex-wrap p-1 text-sm">
                                               {resultItem?.relateds.map((related, index) => {
@@ -682,19 +609,11 @@ export default function IndexPage() {
 								gridTemplateRows: ["0fr", "1fr"],
 								paddingBlockStart: [
 									"0rem",
-									media.orientation === "landscape"
-										? media.width > 1024
-											? "5rem"
-											: "2.5rem"
-										: "2.75rem",
+									media.orientation === "landscape" ? (media.width > 1024 ? "5rem" : "2.5rem") : "2.75rem",
 								],
 								paddingBlockEnd: [
 									"0rem",
-									media.orientation === "landscape"
-										? media.width > 1024
-											? "5rem"
-											: "2.5rem"
-										: "1.5rem",
+									media.orientation === "landscape" ? (media.width > 1024 ? "5rem" : "2.5rem") : "1.5rem",
 								],
 								filter: ["blur(20px)", "blur(0px)"],
 							}}
@@ -705,9 +624,7 @@ export default function IndexPage() {
 								filter: ["blur(0px)", "blur(20px)"],
 							}}
 							transition={{
-								duration: store.settings.userInterface.isAnimationEnabled
-									? 0.7
-									: 0,
+								duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
 							}}
 							class={`Bottom bg-accent-color portrait:dark:bg-area-color grid w-full shrink-0 self-center px-6 portrait:rounded-t-[24px] landscape:grid landscape:w-fit landscape:bg-transparent`}
 						>
@@ -715,18 +632,13 @@ export default function IndexPage() {
 							<Motion.div
 								class={`Content landscape:bg-area-color flex flex-wrap gap-3 overflow-hidden rounded landscape:flex-1 landscape:justify-center landscape:px-3 landscape:backdrop-blur-sm`}
 								animate={{
-									paddingBlock: [
-										"0rem",
-										media.orientation === "landscape" ? "0.75rem" : "0",
-									],
+									paddingBlock: ["0rem", media.orientation === "landscape" ? "0.75rem" : "0"],
 								}}
 								exit={{
 									paddingBlock: "0rem",
 								}}
 								transition={{
-									duration: store.settings.userInterface.isAnimationEnabled
-										? 0.7
-										: 0,
+									duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
 								}}
 							>
 								<For each={customMenuConfig().top}>
@@ -742,11 +654,7 @@ export default function IndexPage() {
 											<Presence exitBeforeEnter>
 												<Show when={!context().searchResultOpened}>
 													<Motion.a
-														href={
-															menuItem.groupType === "wiki"
-																? `/wiki/${menuItem.title}`
-																: menuItem.title
-														}
+														href={menuItem.groupType === "wiki" ? `/wiki/${menuItem.title}` : menuItem.title}
 														class={`flex-none basis-[calc(33.33%-8px)] overflow-hidden rounded landscape:basis-auto`}
 														animate={{
 															opacity: [0, 1],
@@ -757,10 +665,7 @@ export default function IndexPage() {
 															transform: ["scale(1)", "scale(0.1)"],
 														}}
 														transition={{
-															duration: store.settings.userInterface
-																.isAnimationEnabled
-																? 0.7
-																: 0,
+															duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
 															delay: index() * 0.05,
 														}}
 													>
@@ -773,11 +678,8 @@ export default function IndexPage() {
 															/>
 															<span class="text-sm text-nowrap text-ellipsis landscape:hidden landscape:text-xl lg:landscape:block">
 																{menuItem.groupType === "wiki"
-																	? dictionary().db[menuItem.title as keyof DB]
-																			.selfName
-																	: dictionary().ui.nav[
-																			menuItem.title as keyof dictionary["ui"]["nav"]
-																		]}
+																	? dictionary().db[menuItem.title as keyof DB].selfName
+																	: dictionary().ui.nav[menuItem.title as keyof dictionary["ui"]["nav"]]}
 															</span>
 														</Button>
 													</Motion.a>
@@ -793,10 +695,7 @@ export default function IndexPage() {
 			</Motion.div>
 
 			{/* 小工具菜单 */}
-			<Sheet
-				state={context().toolMenuIsOpen}
-				setState={() => send({ type: "TOGGLE_TOOL_MENU" })}
-			>
+			<Sheet state={context().toolMenuIsOpen} setState={() => send({ type: "TOGGLE_TOOL_MENU" })}>
 				<div class="grid h-[90dvh] w-full grid-cols-3 grid-rows-6 gap-2 p-6">
 					<Index each={toolMenuConfig()}>
 						{(config) => {
@@ -808,9 +707,7 @@ export default function IndexPage() {
 										onClick={config().onClick}
 										icon={config().icon}
 									>
-										<span class="text-sm text-nowrap text-ellipsis">
-											{config().name}
-										</span>
+										<span class="text-sm text-nowrap text-ellipsis">{config().name}</span>
 									</Button>
 								</div>
 							);

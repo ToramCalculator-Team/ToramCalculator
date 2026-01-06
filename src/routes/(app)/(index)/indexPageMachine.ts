@@ -1,4 +1,4 @@
-import { createMachine, assign, fromPromise } from "xstate";
+import { assign, createMachine, fromPromise } from "xstate";
 
 /**
  * XState 状态机 - 首页状态管理
@@ -377,75 +377,62 @@ export const indexPageMachine = createMachine(
 		 */
 		actors: {
 			// 执行搜索的异步服务
-			performSearch: fromPromise(
-				async ({ input }: { input: { searchValue: string } }) => {
-					const serviceStartTime = performance.now();
+			performSearch: fromPromise(async ({ input }: { input: { searchValue: string } }) => {
+				const serviceStartTime = performance.now();
+				console.log(`🚀 [状态机] 开始执行搜索服务，关键词: "${input.searchValue}"`);
+
+				// 动态导入性能分析
+				const importStartTime = performance.now();
+				const { searchAllTables } = await import("./search");
+				const importTime = performance.now() - importStartTime;
+				console.log(`📦 [状态机] 动态导入耗时: ${importTime.toFixed(2)}ms`);
+
+				// 输入验证
+				if (!input.searchValue || input.searchValue.trim() === "") {
+					console.log(`⚠️ [状态机] 搜索关键词为空，跳过搜索`);
+					return {
+						result: {},
+						isNullResult: true,
+						resultListState: [],
+					};
+				}
+
+				try {
+					// 执行实际的搜索
+					const searchStartTime = performance.now();
+					console.log(`🔍 [状态机] 开始调用 searchAllTables`);
+					const finalResult = await searchAllTables(input.searchValue);
+					const searchTime = performance.now() - searchStartTime;
+					console.log(`✅ [状态机] searchAllTables 执行完成，耗时: ${searchTime.toFixed(2)}ms`);
+
+					// 结果处理性能分析
+					const processStartTime = performance.now();
+
+					// 计算是否为空结果
+					const isNullResult = Object.values(finalResult).every((arr) => arr.length === 0);
+					const resultListState = Object.keys(finalResult).map(() => true);
+
+					const processTime = performance.now() - processStartTime;
+					console.log(`⚙️ [状态机] 结果处理耗时: ${processTime.toFixed(2)}ms`);
+
+					const totalServiceTime = performance.now() - serviceStartTime;
 					console.log(
-						`🚀 [状态机] 开始执行搜索服务，关键词: "${input.searchValue}"`,
+						`🎯 [状态机] 搜索服务总耗时: ${totalServiceTime.toFixed(2)}ms (导入: ${importTime.toFixed(2)}ms, 搜索: ${searchTime.toFixed(2)}ms, 处理: ${processTime.toFixed(2)}ms)`,
 					);
 
-					// 动态导入性能分析
-					const importStartTime = performance.now();
-					const { searchAllTables } = await import("./search");
-					const importTime = performance.now() - importStartTime;
-					console.log(`📦 [状态机] 动态导入耗时: ${importTime.toFixed(2)}ms`);
-
-					// 输入验证
-					if (!input.searchValue || input.searchValue.trim() === "") {
-						console.log(`⚠️ [状态机] 搜索关键词为空，跳过搜索`);
-						return {
-							result: {},
-							isNullResult: true,
-							resultListState: [],
-						};
-					}
-
-					try {
-						// 执行实际的搜索
-						const searchStartTime = performance.now();
-						console.log(`🔍 [状态机] 开始调用 searchAllTables`);
-						const finalResult = await searchAllTables(input.searchValue);
-						const searchTime = performance.now() - searchStartTime;
-						console.log(
-							`✅ [状态机] searchAllTables 执行完成，耗时: ${searchTime.toFixed(2)}ms`,
-						);
-
-						// 结果处理性能分析
-						const processStartTime = performance.now();
-
-						// 计算是否为空结果
-						const isNullResult = Object.values(finalResult).every(
-							(arr) => arr.length === 0,
-						);
-						const resultListState = Object.keys(finalResult).map(() => true);
-
-						const processTime = performance.now() - processStartTime;
-						console.log(`⚙️ [状态机] 结果处理耗时: ${processTime.toFixed(2)}ms`);
-
-						const totalServiceTime = performance.now() - serviceStartTime;
-						console.log(
-							`🎯 [状态机] 搜索服务总耗时: ${totalServiceTime.toFixed(2)}ms (导入: ${importTime.toFixed(2)}ms, 搜索: ${searchTime.toFixed(2)}ms, 处理: ${processTime.toFixed(2)}ms)`,
-						);
-
-						// 返回搜索结果
-						return {
-							result: finalResult,
-							isNullResult,
-							resultListState,
-						};
-					} catch (error) {
-						const errorTime = performance.now() - serviceStartTime;
-						console.error(
-							`❌ [状态机] 搜索服务出错，总耗时: ${errorTime.toFixed(2)}ms`,
-							error,
-						);
-						// 抛出错误，会被 onError 处理器捕获
-						throw new Error(
-							error instanceof Error ? error.message : "搜索失败",
-						);
-					}
-				},
-			),
+					// 返回搜索结果
+					return {
+						result: finalResult,
+						isNullResult,
+						resultListState,
+					};
+				} catch (error) {
+					const errorTime = performance.now() - serviceStartTime;
+					console.error(`❌ [状态机] 搜索服务出错，总耗时: ${errorTime.toFixed(2)}ms`, error);
+					// 抛出错误，会被 onError 处理器捕获
+					throw new Error(error instanceof Error ? error.message : "搜索失败");
+				}
+			}),
 		},
 	},
 );

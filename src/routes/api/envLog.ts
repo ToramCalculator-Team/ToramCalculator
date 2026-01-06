@@ -2,16 +2,16 @@ import type { APIEvent } from "@solidjs/start/server";
 import { deleteCookie } from "vinxi/http";
 
 export async function GET({ params }: APIEvent) {
-  deleteCookie("jwt");
-  const API_URL =
-    import.meta.env.VITE_SERVER_HOST == "localhost" ? "http://localhost:3001/api" : "https://app.kiaclouth.com/api";
+	deleteCookie("jwt");
+	const API_URL =
+		import.meta.env.VITE_SERVER_HOST === "localhost" ? "http://localhost:3001/api" : "https://app.kiaclouth.com/api";
 
-  const ELECTRIC_HOST =
-    import.meta.env.VITE_SERVER_HOST == "localhost"
-      ? "http://localhost:3000/v1/shape"
-      : "https://test.kiaclouth.com/v1/shape";
+	const ELECTRIC_HOST =
+		import.meta.env.VITE_SERVER_HOST === "localhost"
+			? "http://localhost:3000/v1/shape"
+			: "https://test.kiaclouth.com/v1/shape";
 
-  return new Response(`env: 
+	return new Response(`env: 
 # 中央数据库配置
 PG_HOST=${process.env.PG_HOST}
 PG_PORT=${process.env.PG_PORT}

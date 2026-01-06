@@ -1,13 +1,17 @@
-import { DefaultRuntimeContext } from "../../../runtime/Agent/RuntimeContext";
+import { CommonRuntimeContext } from "../../../runtime/Agent/CommonRuntimeContext";
+import { actionPoolToInvokers, conditionPoolToInvokers } from "../../../runtime/Agent/poolToInvokers";
 import { PlayerActionPool } from "./Actions";
 import { PlayerConditionPool } from "./Condition";
-import { PlayerRuntimeProperty } from "./Property";
+import { PlayerProperty } from "./Property";
 
-export const DefaultPlayerRuntimeContext = {
-	...DefaultRuntimeContext,
-	...PlayerActionPool,
-	...PlayerConditionPool,
-	...PlayerRuntimeProperty,
+const playerActions = actionPoolToInvokers(PlayerProperty,PlayerActionPool);
+const playerConditions = conditionPoolToInvokers(PlayerProperty,PlayerConditionPool);
+
+export const PlayerRuntimeContext = {
+	...CommonRuntimeContext,
+	...PlayerProperty,
+	...playerActions,
+	...playerConditions,
 };
 
-export type PlayerRuntimeContext = typeof DefaultPlayerRuntimeContext;
+export type PlayerRuntimeContext = typeof PlayerRuntimeContext;

@@ -1,5 +1,8 @@
+import type { MemberType } from "@db/schema/enums";
+import { MEMBER_TYPE } from "@db/schema/enums";
 import { type Component, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import { Button } from "~/components/controls/button";
+import { Select } from "~/components/controls/select";
 import { Icons } from "~/components/icons";
 import {
 	BehaviourTree,
@@ -14,11 +17,11 @@ import { ExamplesMenu, SkillLogicExmaplesMenu, ToastContainer } from "./componen
 import { AgentTab } from "./components/AgentTab/AgentTab";
 import { DefinitionTab } from "./components/DefinitionTab/DefinitionTab";
 import { type CanvasElements, MainPanel } from "./components/MainPanel/MainPanel";
-import { defaultMdslIntellisenseRegistry, mergeMdslRegistryWithAgentSource } from "./modes/mdslIntellisense";
+import { buildMdslIntellisenseRegistry } from "./modes/mdslIntellisense";
+import { getMdslProfileConfig } from "./modes/mdslMemberTypeProfiles";
 import { toast } from "./stores/toastStore";
 import { DefinitionType, SidebarTab } from "./types/app";
 import type { ConnectorVariant } from "./types/workflow";
-import { DefaultAgent } from "~/components/features/simulator/core/Member/runtime/Agent/RuntimeContext";
 
 export { DefinitionType, SidebarTab };
 
@@ -26,9 +29,10 @@ export type BtEditorProps = {
 	initValues?: {
 		definition: string;
 		agent: string;
+		memberType?: MemberType;
 	};
 	readOnly?: boolean;
-	onSave: (mdsl: string, agent: string) => void;
+	onSave: (mdsl: string, agent: string, memberType: MemberType) => void;
 };
 
 /**
@@ -48,6 +52,9 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 
 	// Agent 类定义代码
 	const [agent, setAgent] = createSignal<string>(props.initValues?.agent ?? "class Agent {}");
+
+	// MemberType：用于确定 IntelliSense 配置
+	const [memberType, setMemberType] = createSignal<MemberType>(props.initValues?.memberType ?? "Player");
 
 	// Agent 代码错误信息
 	const [agentExceptionMessage, setAgentExceptionMessage] = createSignal<string>("");
@@ -71,8 +78,8 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	const isSidebarReadOnly = () => !!behaviourTreePlayInterval();
 
 	const mdslIntellisense = createMemo(() => {
-		const base = defaultMdslIntellisenseRegistry();
-		return mergeMdslRegistryWithAgentSource(base, agent());
+		const config = getMdslProfileConfig(memberType());
+		return buildMdslIntellisenseRegistry(config, agent());
 	});
 
 	// ==================== 工具函数 ====================
@@ -149,12 +156,16 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	};
 
 	/**
-	 * 兜底：把 simulator 的 DefaultAgent 注入到编辑器 Agent 上（仅在缺失时注入），
+	 * 兜底：把对应 MemberType 的 Property 对象注入到编辑器 Agent 上（仅在缺失时注入），
 	 * 让 `$targetId/$currentFrame/$vAtkP` 这类属性引用在编辑器里也能取到“占位值”。
+	 * 注意：只注入 propertyObject，不注入 action/condition（避免破坏 invoker 查找）。
 	 */
-	const injectDefaultAgentIntoBoard = (board: Agent): Agent => {
+	const injectDefaultPropertiesIntoBoard = (board: Agent): Agent => {
+		const config = getMdslProfileConfig(memberType());
 		const asRecord = board as unknown as Record<string, unknown>;
-		for (const [k, v] of Object.entries(DefaultAgent)) {
+		for (const [k, v] of Object.entries(config.propertyObject)) {
+			// 跳过函数（action/condition 的实现）
+			if (typeof v === "function") continue;
 			if (!(k in asRecord)) {
 				asRecord[k] = v;
 			}
@@ -216,7 +227,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	 */
 	const createTreeInstance = (def: string, boardClassDefinition: string): BehaviourTree => {
 		// 创建 Agent 实例
-		const board = injectDefaultAgentIntoBoard(createBoardInstance(boardClassDefinition));
+		const board = injectDefaultPropertiesIntoBoard(createBoardInstance(boardClassDefinition));
 		const boardWithFallback = wrapAgentWithFallback(board, def);
 
 		// 配置行为树选项
@@ -521,9 +532,18 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 				<div
 					class={`Left ${props.readOnly ? "hidden" : ""} landscape:lg:shadow-card shadow-area-color bg-primary-color landscape:lg:absolute top-2 left-2 flex items-center gap-1 rounded`}
 				>
-					<Button level="quaternary" onClick={() => props.onSave(definition(), agent())} class="p-1">
+					<Button level="quaternary" onClick={() => props.onSave(definition(), agent(), memberType())} class="p-1">
 						<Icons.Outline.Save />
 					</Button>
+					<div class="flex items-center gap-1">
+						<Select
+							value={memberType()}
+							setValue={(value) => setMemberType(value as MemberType)}
+							options={MEMBER_TYPE.map((type) => ({ label: type, value: type }))}
+							class="w-24"
+							styleLess
+						/>
+					</div>
 					<ExamplesMenu onMDSLInsert={handleMDSLInsert} />
 					<SkillLogicExmaplesMenu onMDSLInsert={handleMDSLInsert} />
 				</div>

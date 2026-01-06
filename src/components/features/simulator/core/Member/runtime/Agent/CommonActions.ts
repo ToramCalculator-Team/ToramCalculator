@@ -1,7 +1,7 @@
 import { z } from "zod/v4";
 import { State } from "~/lib/mistreevous/State";
 import { ModifierType } from "../StatContainer/StatContainer";
-import type { CommonProperty } from "./GlobalProperty";
+import type { CommonProperty } from "./CommonProperty";
 import { type ActionPool, defineAction } from "./type";
 import { sendRenderCommand } from "./uitls";
 
@@ -24,11 +24,8 @@ const commonAttackSchema = z.object({
 });
 
 /**
- * 通用战斗动作池（命中 / 伤害相关）
- * 约定：
- * - context 至少满足 ActionContext
- * - 受击者侧通过 context.currentDamageRequest 提供本次伤害请求
- * - 命中结果写回 context.lastHitResult，供状态机或后续动作使用
+ * 通用动作池
+ * Lookup.getFuncInvoker 会用 apply(agent, args) 调用
  */
 export const CommonActionPool = {
 	/** 移动到指定位置 */

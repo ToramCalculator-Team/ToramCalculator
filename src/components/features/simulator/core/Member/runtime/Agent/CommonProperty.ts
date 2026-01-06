@@ -3,10 +3,9 @@ import type { SkillEffectWithRelations } from "@db/generated/repositories/skill_
 import type { SkillEffectLogic } from "@db/schema/skillEffectLogicSchema";
 import type { Member } from "../../Member";
 import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
-import type { RuntimeContext } from "./RuntimeContext";
 
 
-export interface CommonProperty {
+export interface CommonProperty extends Record<string, unknown> {
 	/** 成员引用 */
 	owner: Member<string, MemberEventType, MemberStateContext, any> | undefined;
 	/** 当前帧 */

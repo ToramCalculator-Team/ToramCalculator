@@ -31,27 +31,7 @@ export const mdslLanguageDefinition: languages.IMonarchLanguage = {
 	constants: ["true", "false"],
 
 	// 操作符
-	operators: [
-		"+",
-		"-",
-		"/",
-		"//",
-		"%",
-		"<@>",
-		"@>",
-		"<@",
-		"&",
-		"^",
-		"~",
-		"<",
-		">",
-		"<=",
-		"=>",
-		"==",
-		"!=",
-		"<>",
-		"=",
-	],
+	operators: ["+", "-", "/", "//", "%", "<@>", "@>", "<@", "&", "^", "~", "<", ">", "<=", "=>", "==", "!=", "<>", "="],
 
 	// 词法分析规则
 	tokenizer: {
@@ -81,10 +61,7 @@ export const mdslLanguageDefinition: languages.IMonarchLanguage = {
 			[/\b(entry|exit|step|while|until|null)\b/, "support.function"],
 
 			// 变量语言
-			[
-				/\b(root|selector|sequence|parallel|race|all|lotto|repeat|retry|flip|succeed|fail)\b/,
-				"variable.language",
-			],
+			[/\b(root|selector|sequence|parallel|race|all|lotto|repeat|retry|flip|succeed|fail)\b/, "variable.language"],
 
 			// 常量
 			[/\b(true|false)\b/, "constant.language"],

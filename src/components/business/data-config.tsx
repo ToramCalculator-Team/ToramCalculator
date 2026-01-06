@@ -489,16 +489,20 @@ export const DATA_CONFIG: DataConfig = {
       hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
       fieldGenerator: {
         actions: (field, dictionary, dataSchema) => {
+          const value = field().state.value;
           return (
             <BtEditor
               initValues={{
-                definition: field().state.value.definition,
-                agent: field().state.value.agent,
+                definition: value.definition ?? "",
+                agent: value.agent ?? "",
+                memberType: (value.memberType as MemberType) ?? "Mob",
               }}
-              onSave={(mdsl, agent) => {
+              onSave={(mdsl, agent, memberType) => {
                 field().setValue({
+                  ...value,
                   definition: mdsl,
                   agent: agent,
+                  memberType: memberType,
                 });
               }}
             />
@@ -528,7 +532,8 @@ export const DATA_CONFIG: DataConfig = {
               }))}
               optionGenerator={(option, selected, handleSelect) => {
                 return (
-                  <div
+                  <button
+                    type="button"
                     class={`hover:bg-area-color flex cursor-pointer gap-3 px-3 py-2 ${selected ? "bg-area-color" : ""}`}
                     onClick={handleSelect}
                   >
@@ -566,7 +571,7 @@ export const DATA_CONFIG: DataConfig = {
                         }[option.value] ?? 0) *
                           10}
                     </span>
-                  </div>
+                  </button>
                 );
               }}
             />
@@ -798,16 +803,24 @@ export const DATA_CONFIG: DataConfig = {
     card: {
       hiddenFields: ["id", "belongToskillId"],
       fieldGenerator: {
-        logic: (field, dictionary, dataSchema) => <div class="w-full h-[50vh] rounded overflow-hidden"><BtEditor
-        initValues={{
-          definition: field.logic.definition,
-          agent: field.logic.agent,
-        }}
-        readOnly={true}
-        onSave={(mdsl, agent) => {
-          console.log(mdsl, agent);
-        }}
-      /></div>
+        logic: (field, dictionary, dataSchema) => {
+          
+          return (
+            <div class="w-full h-[50vh] rounded overflow-hidden">
+              <BtEditor
+                initValues={{
+                  definition: field.logic.definition ?? "",
+                  agent: field.logic.agent ?? "",
+                  memberType: field.logic.memberType ?? "Player",
+                }}
+                readOnly={true}
+                onSave={(mdsl, agent, memberType) => {
+                  console.log(mdsl, agent, memberType);
+                }}
+              />
+            </div>
+          );
+        }
       },
     },
   },

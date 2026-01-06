@@ -1,5 +1,5 @@
 import z from "zod/v4";
-import type { CommonProperty } from "./GlobalProperty";
+import type { CommonProperty } from "./CommonProperty";
 import { type ConditionPool, defineCondition } from "./type";
 
 export const CommonConditionPool = {

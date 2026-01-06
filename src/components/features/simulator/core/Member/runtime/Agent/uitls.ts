@@ -1,4 +1,4 @@
-import type { CommonProperty } from "./GlobalProperty";
+import type { CommonProperty } from "./CommonProperty";
 
 // 阈值描述函数
 export const maxMin = (min: number, value: number, max: number) => {

@@ -2,7 +2,7 @@ import type { MemberWithRelations } from "@db/generated/repositories/member";
 import type { MemberType } from "@db/schema/enums";
 import { createActor } from "xstate";
 import type { GameEngine } from "../GameEngine";
-import type { RuntimeContext } from "./runtime/Agent/RuntimeContext";
+import type { CommonRuntimeContext } from "./runtime/Agent/CommonRuntimeContext";
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
 import type { NestedSchema } from "./runtime/StatContainer/SchemaTypes";
 import type { StatContainer } from "./runtime/StatContainer/StatContainer";
@@ -31,7 +31,7 @@ export class Member<
 	TAttrKey extends string,
 	TStateEvent extends MemberEventType,
 	TStateContext extends MemberStateContext,
-	TRuntimeContext extends RuntimeContext,
+	TRuntimeContext extends CommonRuntimeContext & Record<string, unknown>,
 > {
 	/** 成员ID */
 	id: string;
@@ -50,7 +50,7 @@ export class Member<
 	/** 运行时上下文 */
 	runtimeContext: TRuntimeContext;
 	/** 行为树管理器 */
-	btManager: BtManager<TAttrKey, TStateEvent, TStateContext, TRuntimeContext>;
+	btManager: BtManager<TAttrKey, TStateEvent, TStateContext>;
 	/** 成员Actor引用 */
 	actor: MemberActor<TStateEvent, TStateContext>;
 	/** 引擎引用 */
@@ -62,13 +62,8 @@ export class Member<
 
 	constructor(
 		stateMachine: (
-			member: Member<
-      TAttrKey,
-      TStateEvent,
-      TStateContext,
-      TRuntimeContext
-    >
-) => MemberStateMachine<TStateEvent, TStateContext>,
+			member: Member<TAttrKey, TStateEvent, TStateContext, TRuntimeContext>,
+		) => MemberStateMachine<TStateEvent, TStateContext>,
 		engine: GameEngine,
 		campId: string,
 		teamId: string,

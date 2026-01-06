@@ -2,17 +2,12 @@ import type { CharacterWithRelations } from "@db/generated/repositories/characte
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 
 /**
- * PlayerProperty
- * Player 专用的运行时属性
+ * MobProperty
+ * Mob 专用的运行时属性
  */
-export interface PlayerProperty extends Record<string, unknown> {
-	/** 标识符 */
-	type: "Player";
-	/** 黑板 */
+export interface MobProperty extends Record<string, unknown> {
 	blackboard: Record<string, unknown>;
-	/** 技能状态 */
 	skillState: Record<string, unknown>;
-	/** 状态 */
 	buffState: Record<string, unknown>;
 	/** 技能列表 */
 	skillList: CharacterSkillWithRelations[];
@@ -43,8 +38,7 @@ export interface PlayerProperty extends Record<string, unknown> {
 	 */
 	compiledSkillEffectLogicByEffectId: Record<string, string>;
 }
-export const PlayerProperty: PlayerProperty = {
-	type: "Player",
+export const MobProperty: MobProperty = {
 	blackboard: {},
 	skillState: {},
 	buffState: {},

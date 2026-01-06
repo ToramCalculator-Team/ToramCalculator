@@ -4,125 +4,112 @@ import type { RootNodeDefinition } from "./BehaviourTreeDefinition";
 export type InvokerFunction = (args: any[]) => ActionResult | boolean;
 
 /**
- * A singleton used to store and lookup registered functions and subtrees.
+ * 单例，用于存储和查找已注册的函数和子树。
  */
-export class Lookup {
+export const Lookup = {
 	/**
-	 * The object holding any registered functions keyed on function name.
+	 * 存储所有已注册函数的对象，以函数名作为键。
 	 */
-	private static registeredFunctions: { [key: string]: GlobalFunction } = {};
+	registeredFunctions: {} as { [key: string]: GlobalFunction },
 	/**
-	 * The object holding any registered subtree root node definitions keyed on tree name.
+	 * 存储所有已注册子树根节点定义的对象，以树名作为键。
 	 */
-	private static registeredSubtrees: { [key: string]: RootNodeDefinition } = {};
+	registeredSubtrees: {} as { [key: string]: RootNodeDefinition },
 
 	/**
-	 * Gets the function with the specified name.
-	 * @param name The name of the function.
-	 * @returns The function with the specified name.
+	 * 获取指定名称的函数。
+	 * @param name 函数名称。
+	 * @returns 指定名称的函数。
 	 */
-	public static getFunc(name: string): GlobalFunction {
+	getFunc(name: string): GlobalFunction {
 		return Lookup.registeredFunctions[name];
-	}
+	},
 
 	/**
-	 * Sets the function with the specified name for later lookup.
-	 * @param name The name of the function.
-	 * @param func The function.
+	 * 设置指定名称的函数以供后续查找。
+	 * @param name 函数名称。
+	 * @param func 函数。
 	 */
-	public static setFunc(name: string, func: GlobalFunction): void {
+	setFunc(name: string, func: GlobalFunction): void {
 		Lookup.registeredFunctions[name] = func;
-	}
+	},
 
 	/**
-	 * Gets the function invoker for the specified agent and function name.
-	 * If a function with the specified name exists on the agent object then it will
-	 * be returned, otherwise we will then check the registered functions for a match.
-	 * @param agent The agent instance that this behaviour tree is modelling behaviour for.
-	 * @param name The function name.
-	 * @returns The function invoker for the specified agent and function name.
+	 * 获取指定 agent 和函数名的函数调用器。
+	 * 如果 agent 对象上存在指定名称的函数，则返回该函数；
+	 * 否则检查已注册的函数中是否有匹配项。
+	 * @param agent 行为树为其建模行为的 agent 实例。
+	 * @param name 函数名称。
+	 * @returns 指定 agent 和函数名的函数调用器。
 	 */
-	static getFuncInvoker(agent: Agent, name: string): InvokerFunction | null {
-		// A function to process any arguments that will be passed to an agent or registered function.
+	getFuncInvoker(agent: Agent, name: string): InvokerFunction | null {
+		// 处理传递给 agent 或已注册函数的参数的函数。
 		const processFunctionArguments = (args: any[]) =>
 			args.map((arg) => {
-				// This argument may be an agent property reference. If it is we should substitute it for the value of the agent property it references.
-				// An agent property reference will be an object with a single "$" property with a string value representing the agent property name.
-				if (
-					typeof arg === "object" &&
-					arg !== null &&
-					Object.keys(arg).length === 1 &&
-					Object.hasOwn(arg, "$")
-				) {
-					// Get the agent property name from the object representing the agent property reference.
-					const agentPropertyName = arg["$"];
+				// 该参数可能是 agent 属性引用。如果是，应将其替换为所引用的 agent 属性的值。
+				// agent 属性引用是一个对象，具有单个 "$" 属性，其值为表示 agent 属性名的字符串。
+				if (typeof arg === "object" && arg !== null && Object.keys(arg).length === 1 && Object.hasOwn(arg, "$")) {
+					// 从表示 agent 属性引用的对象中获取 agent 属性名。
+					const agentPropertyName = arg.$;
 
-					// The agent property name must be a valid string.
-					if (
-						typeof agentPropertyName !== "string" ||
-						agentPropertyName.length === 0
-					) {
+					// agent 属性名必须是有效的字符串。
+					if (typeof agentPropertyName !== "string" || agentPropertyName.length === 0) {
 						throw new Error("Agent property reference must be a string?");
 					}
 
 					return agent[agentPropertyName];
 				}
 
-				// The argument can be passed to the function as-is.
+				// 参数可以原样传递给函数。
 				return arg;
 			});
 
-		// Check whether the agent contains the specified function.
+		// 检查 agent 是否包含指定的函数。
 		const agentFunction = agent[name];
 		if (agentFunction && typeof agentFunction === "function") {
-			return (args: any[]) =>
-				agentFunction.apply(agent, processFunctionArguments(args));
+			return (args: any[]) => agentFunction.apply(agent, processFunctionArguments(args));
 		}
 
-		// The agent does not contain the specified function but it may have been registered at some point.
-		if (
-			Lookup.registeredFunctions[name] &&
-			typeof Lookup.registeredFunctions[name] === "function"
-		) {
+		// agent 不包含指定的函数，但可能已在某个时刻注册过。
+		if (Lookup.registeredFunctions[name] && typeof Lookup.registeredFunctions[name] === "function") {
 			const registeredFunction = Lookup.registeredFunctions[name];
-			return (args: any[]) =>
-				registeredFunction(agent, ...processFunctionArguments(args));
+			return (args: any[]) => registeredFunction(agent, ...processFunctionArguments(args));
 		}
 
-		// We have no function to invoke.
+		// 没有可调用的函数。
 		return null;
-	}
+	},
 
 	/**
-	 * Gets all registered subtree root node definitions.
+	 * 获取所有已注册的子树根节点定义。
 	 */
-	static getSubtrees(): { [key: string]: RootNodeDefinition } {
+	getSubtrees(): { [key: string]: RootNodeDefinition } {
 		return Lookup.registeredSubtrees;
-	}
+	},
 
 	/**
-	 * Sets the subtree with the specified name for later lookup.
-	 * @param name The name of the subtree.
-	 * @param subtree The subtree.
+	 * 设置指定名称的子树以供后续查找。
+	 * @param name 子树名称。
+	 * @param subtree 子树。
 	 */
-	static setSubtree(name: string, subtree: RootNodeDefinition) {
+	setSubtree(name: string, subtree: RootNodeDefinition) {
 		Lookup.registeredSubtrees[name] = subtree;
-	}
+	},
 
 	/**
-	 * Removes the registered function or subtree with the specified name.
-	 * @param name The name of the registered function or subtree.
+	 * 移除已注册的函数或子树。
+	 * @param name 已注册的函数或子树的名称。
 	 */
-	static remove(name: string) {
+	remove(name: string) {
 		delete Lookup.registeredFunctions[name];
 		delete Lookup.registeredSubtrees[name];
-	}
+	},
 
 	/**
-	 * Remove all registered functions and subtrees.
+	 * 移除所有已注册的函数和子树。
 	 */
-	static empty() {
+	empty() {
 		Lookup.registeredFunctions = {};
 		Lookup.registeredSubtrees = {};
-	}
-}
+	},
+};

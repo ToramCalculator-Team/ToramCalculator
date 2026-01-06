@@ -1,9 +1,9 @@
 import type { MemberWithRelations } from "@db/generated/repositories/member";
 import type { GameEngine } from "../../../GameEngine";
 import { Member } from "../../Member";
-import { DefaultAgent, type RuntimeContext } from "../../runtime/Agent/RuntimeContext";
 import type { ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
 import { StatContainer } from "../../runtime/StatContainer/StatContainer";
+import { MobRuntimeContext } from "./Agents/RuntimeContext";
 import { MobAttrSchema } from "./MobAttrSchema";
 import {
 	createMobStateMachine,
@@ -17,7 +17,7 @@ export class Mob extends Member<
 	MobAttrType,
 	MobEventType,
 	MobStateContext,
-	RuntimeContext
+	MobRuntimeContext
 > {
 	constructor(
 		engine: GameEngine,
@@ -31,9 +31,6 @@ export class Mob extends Member<
 		}
 		const attrSchema = MobAttrSchema(memberData.mob);
 		const statContainer = new StatContainer<MobAttrType>(attrSchema);
-		const runtimeContext: RuntimeContext = {
-			...DefaultAgent,
-		};
 
 		super(
 			createMobStateMachine,
@@ -43,9 +40,16 @@ export class Mob extends Member<
 			memberData,
 			attrSchema,
 			statContainer,
-			runtimeContext,
+			MobRuntimeContext,
 			position,
 		);
+
+		// 初始化运行时上下文
+		this.runtimeContext = {
+			...MobRuntimeContext,
+			owner: this,
+			position: position ?? { x: 0, y: 0, z: 0 },
+		}
 
 		// 通过引擎消息通道发送渲染命令（走 Simulation.worker 的 MessageChannel）
 		const spawnCmd = {

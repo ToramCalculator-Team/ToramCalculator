@@ -4,7 +4,7 @@ import type { GameEngine } from "../../../GameEngine";
 import { Member } from "../../Member";
 import type { ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
 import { StatContainer } from "../../runtime/StatContainer/StatContainer";
-import { DefaultPlayerRuntimeContext, type PlayerRuntimeContext } from "./Agents/RuntimeContext";
+import { PlayerRuntimeContext } from "./Agents/RuntimeContext";
 import { PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
 import { type PlayerEventType, type PlayerStateContext, playerStateMachine } from "./PlayerStateMachine";
 import { applyPrebattleModifiers } from "./PrebattleDataSysModifiers";
@@ -33,18 +33,19 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 		const statContainer = new StatContainer<PlayerAttrType>(attrSchema);
 		const initialSkillList = memberData.player.characters[characterIndex].skills ?? [];
 
-		const runtimeContext: PlayerRuntimeContext = {
-			...DefaultPlayerRuntimeContext,
+		super(playerStateMachine, engine, campId, teamId, memberData, attrSchema, statContainer, PlayerRuntimeContext, position);
+
+		// 初始化运行时上下文
+		this.runtimeContext = {
+			...PlayerRuntimeContext,
+			owner: this,
 			position: position ?? { x: 0, y: 0, z: 0 },
 			// 技能栏的"静态技能列表"应该在初始化时就可用，动态计算（mp/cd 等）由引擎快照刷新。
 			skillList: initialSkillList,
 			// 冷却数组：与 skillList 对齐，初始为 0（可用）
 			skillCooldowns: initialSkillList.map(() => 0),
 			character: memberData.player.characters[characterIndex],
-		};
-
-		super(playerStateMachine, engine, campId, teamId, memberData, attrSchema, statContainer, runtimeContext, position);
-
+		}
 		this.characterIndex = characterIndex;
 		this.activeCharacter = memberData.player.characters?.[characterIndex];
 
