@@ -351,7 +351,8 @@ export class MemberManager {
 		if (oldMemberId !== memberId) {
 			console.log(`🎯 主控目标切换: ${oldMemberId} -> ${memberId}`);
 
-			// 通知渲染层相机跟随新目标
+			// 通知渲染层相机跟随新目标（仅用于渲染层，不用于控制器层）
+			// 注意：多控制器架构下，主控目标概念仅用于渲染层（相机跟随），不再通知控制器层
 			if (memberId) {
 				this.renderMessageSender?.({
 					type: "render:cmd",
@@ -366,15 +367,9 @@ export class MemberManager {
 				});
 			}
 
-			// 通知控制器主控目标变化
-			this.renderMessageSender?.({
-				type: "primary_target_changed",
-				data: {
-					memberId: memberId,
-					oldMemberId: oldMemberId,
-					timestamp: Date.now(),
-				},
-			});
+			// 已移除：primary_target_changed 系统事件发送
+			// 原因：多控制器架构下，每个控制器独立绑定成员，不存在"主控目标"概念
+			// 控制器层应通过 byController[controllerId] 获取绑定成员数据
 		}
 	}
 

@@ -5,7 +5,7 @@
 import { prepareForTransfer, sanitizeForPostMessage } from "~/lib/WorkerPool/MessageSerializer";
 import type { WorkerMessage, WorkerMessageEvent } from "~/lib/WorkerPool/type";
 import { GameEngine } from "../GameEngine";
-import { type EngineCommand, EngineCommandSchema } from "../GameEngineSM";
+import { type EngineControlMessage, EngineControlMessageSchema } from "../GameEngineSM";
 import type { SimulatorSafeAPI } from "../sandboxGlobals";
 import {
 	type DataQueryCommand,
@@ -176,16 +176,31 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 				}
 				const messagePort: MessagePort = port;
 
-				// 设置引擎的镜像通信发送器
-				gameEngine.setMirrorSender((msg: EngineCommand) => {
+				// 设置引擎的对端通信发送器（executor → controller）
+				gameEngine.setMirrorSender((msg: EngineControlMessage) => {
 					try {
-						messagePort.postMessage({
-							belongToTaskId: "engine_state_machine",
-							type: "engine_state_machine",
-							data: msg,
-						});
+						// 使用 postSystemMessage 的格式发送 engine_state_machine 消息
+						const sanitizedData = sanitizeForPostMessage(msg);
+						const message = {
+							belongToTaskId: "engine_state_machine" as const,
+							type: "engine_state_machine" as const,
+							data: sanitizedData,
+						};
+						const { message: finalMessage, transferables } = prepareForTransfer(message);
+						messagePort.postMessage(finalMessage, transferables);
 					} catch (error) {
-						console.error("Worker: 发送镜像消息失败:", error);
+						console.error("Worker: 发送对端消息失败:", error);
+						// 备用方案：直接发送
+						try {
+							const sanitizedData = sanitizeForPostMessage(msg);
+							messagePort.postMessage({
+								belongToTaskId: "engine_state_machine",
+								type: "engine_state_machine",
+								data: sanitizedData,
+							});
+						} catch (fallbackError) {
+							console.error("Worker: 备用消息发送也失败:", fallbackError);
+						}
 					}
 				});
 
@@ -206,13 +221,13 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 						let portResult: { success: boolean; data?: unknown; error?: string };
 
 						// 使用 Zod Schema 验证命令类型
-						const engineCommandResult = EngineCommandSchema.safeParse(payload);
+						const engineCommandResult = EngineControlMessageSchema.safeParse(payload);
 						const dataQueryResult = DataQueryCommandSchema.safeParse(payload);
 						if (engineCommandResult.success) {
-							// 状态机命令直接转发给引擎
-							// console.log("收到状态机命令:", engineCommandResult.data);
+							// 状态机命令直接转发给引擎（controller → executor）
+							console.log("收到状态机命令:", engineCommandResult.data);
 							gameEngine.sendCommand(engineCommandResult.data);
-							console.log("命令已发送到引擎状态机");
+							// console.log("命令已发送到引擎状态机");
 							portResult = { success: true };
 						} else if (dataQueryResult.success) {
 							console.log("收到意图:", dataQueryResult.data);
@@ -292,7 +307,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 					}
 				});
 
-				// 设置帧快照发送器：用于发送帧快照到主线程
+				// 设置帧快照发送器：用于发送帧快照到主线程（向后兼容）
 				gameEngine.setFrameSnapshotSender((snapshot) => {
 					try {
 						postSystemMessage(messagePort, "frame_snapshot", snapshot);

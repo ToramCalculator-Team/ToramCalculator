@@ -177,14 +177,30 @@ export const FrameSnapshotSchema = z.object({
 	}),
 	/** 所有成员的高频视图 */
 	members: z.array(RealtimeMemberSnapshotSchema),
-	/** 当前选中成员ID（主控目标），用于技能栏绑定 */
-	selectedMemberId: z.string().nullable(),
-	/** 仅当前选中成员的技能计算结果 */
-	selectedMemberSkills: z.array(ComputedSkillInfoSchema),
 	/**
-	 * 当前选中成员的详细视图（属性 + Buff）
-	 * 仅在 selectedMemberId 不为 null 时提供
+	 * 按控制器分组的快照（多控制器）
+	 * - key: controllerId
+	 * - value: 该控制器绑定成员的视图
 	 */
+	byController: z
+		.record(
+			z.string(),
+			z.object({
+				/** 绑定的成员ID */
+				boundMemberId: z.string().nullable(),
+				/** 绑定的成员详细视图（属性 + Buff） */
+				boundMemberDetail: z
+					.object({
+						attrs: z.record(z.string(), z.unknown()),
+						buffs: z.array(BuffViewDataSchema).optional(),
+					})
+					.nullable()
+					.optional(),
+				/** 绑定的成员技能计算结果 */
+				boundMemberSkills: z.array(ComputedSkillInfoSchema),
+			}),
+		)
+		.optional(),
 	selectedMemberDetail: z
 		.object({
 			attrs: z.record(z.string(), z.unknown()),

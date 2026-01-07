@@ -332,11 +332,9 @@ export const playerStateMachine = (
 					return false;
 				}
 
-				const currentFrame = player.engine.getCurrentFrame();
-
 				// 蓄力阶段相关属性（假设使用chargeFixed和chargeModified）
 				const reservoirFixed = player.engine.evaluateExpression(effect.reservoirFixed ?? "0", {
-					currentFrame,
+					currentFrame: context.currentFrame,
 					casterId: player.id,
 				});
 				if (typeof reservoirFixed !== "number") {
@@ -344,7 +342,7 @@ export const playerStateMachine = (
 					return false;
 				}
 				const reservoirModified = player.engine.evaluateExpression(effect.reservoirModified ?? "0", {
-					currentFrame,
+					currentFrame: context.currentFrame,
 					casterId: player.id,
 				});
 				if (typeof reservoirModified !== "number") {
@@ -361,9 +359,8 @@ export const playerStateMachine = (
 					console.error(`👤 [${context.owner?.name}] 技能效果不存在`);
 					return false;
 				}
-				const currentFrame = player.engine.getCurrentFrame();
 				const chantingFixed = player.engine.evaluateExpression(effect.chantingFixed ?? "0", {
-					currentFrame,
+					currentFrame: context.currentFrame,
 					casterId: player.id,
 				});
 				if (typeof chantingFixed !== "number") {
@@ -371,7 +368,7 @@ export const playerStateMachine = (
 					return false;
 				}
 				const chantingModified = player.engine.evaluateExpression(effect.chantingModified ?? "0", {
-					currentFrame,
+					currentFrame: context.currentFrame,
 					casterId: player.id,
 				});
 				if (typeof chantingModified !== "number") {
@@ -391,7 +388,6 @@ export const playerStateMachine = (
 				console.log(`👤 [${context.owner?.name}] 判断技能是否有可用效果`, event);
 				const e = event as 使用技能;
 				const skillId = e.data.skillId;
-				const currentFrame = player.engine.getCurrentFrame();
 				const skill = runtimeContext.currentSkill;
 				if (!skill) {
 					console.error(`🎮 [${context.owner?.name}] 技能不存在: ${skillId}`);
@@ -399,7 +395,7 @@ export const playerStateMachine = (
 				}
 				const effect = skill.template?.effects.find((e) => {
 					const result = player.engine.evaluateExpression(e.condition, {
-						currentFrame,
+						currentFrame: context.currentFrame,
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,
 					});
@@ -431,7 +427,6 @@ export const playerStateMachine = (
 				// 此守卫通过后说明技能可发动，则更新当前技能数据
 				const e = event as 使用技能;
 				const skillId = e.data.skillId;
-				const currentFrame = player.engine.getCurrentFrame();
 
 				const skill = runtimeContext.currentSkill;
 				if (!skill) {
@@ -440,7 +435,7 @@ export const playerStateMachine = (
 				}
 				const effect = skill.template?.effects.find((e) => {
 					const result = player.engine.evaluateExpression(e.condition, {
-						currentFrame,
+						currentFrame: context.currentFrame,
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,
 					});
@@ -453,7 +448,7 @@ export const playerStateMachine = (
 				}
 				if (effect.hpCost && effect.mpCost) {
 					const hpCost = player.engine.evaluateExpression(effect.hpCost, {
-						currentFrame,
+						currentFrame: context.currentFrame,
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,
 					});
@@ -462,7 +457,7 @@ export const playerStateMachine = (
 						return true;
 					}
 					const mpCost = player.engine.evaluateExpression(effect.mpCost, {
-						currentFrame,
+						currentFrame: context.currentFrame,
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,
 					});
@@ -514,8 +509,8 @@ export const playerStateMachine = (
 			targetId: player.id,
 			isAlive: true,
 			position: player.position,
-			createdAtFrame: player.engine.getCurrentFrame(),
-			currentFrame: player.engine.getCurrentFrame(),
+			createdAtFrame: 0,
+			currentFrame: 0,
 			statusTags: [],
 			owner: player,
 		},

@@ -15,7 +15,8 @@
  * - 状态同步：统一管理所有对外通信
  */
 
-import type { GameEngine  } from "../GameEngine";
+import type { GameEngine } from "../GameEngine";
+import { ControlBindingManager } from "../Controller/ControlBindingManager";
 import { z } from "zod/v4";
 
 // ==================== 消息路由核心类型定义 ====================
@@ -49,8 +50,9 @@ export const IntentMessageTypeEnum = z.enum([
   // === 目标管理事件 ===
   "切换目标",
 
-  // === 主控目标管理事件 ===
-  "设置主控成员",
+  // === 控制器绑定管理事件 ===
+  "绑定控制对象",
+  "解绑控制对象",
 ]);
 
 export type IntentMessageType = z.output<typeof IntentMessageTypeEnum>;
@@ -61,7 +63,8 @@ export type IntentMessageType = z.output<typeof IntentMessageTypeEnum>;
 export const IntentMessageSchema = z.object({
   id: z.string(),
   type: IntentMessageTypeEnum,
-  targetMemberId: z.string(),
+  controllerId: z.string(), // 控制器ID，通过 binding 解析到 memberId
+  targetMemberId: z.string().optional(), // 可选，用于向后兼容或直接指定目标
   timestamp: z.number(),
   data: z.any(),
 });
@@ -100,6 +103,9 @@ export class MessageRouter {
   /** 游戏引擎引用 */
   private engine: GameEngine;
 
+  /** 控制绑定管理器 */
+  private bindingManager: ControlBindingManager;
+
   /** 消息处理统计 */
   private stats = {
     totalMessagesProcessed: 0,
@@ -115,9 +121,11 @@ export class MessageRouter {
    * 构造函数
    *
    * @param engine 游戏引擎实例
+   * @param bindingManager 控制绑定管理器
    */
-  constructor(engine: GameEngine) {
+  constructor(engine: GameEngine, bindingManager: ControlBindingManager) {
     this.engine = engine;
+    this.bindingManager = bindingManager;
   }
 
   // ==================== 公共接口 ====================
@@ -143,50 +151,87 @@ export class MessageRouter {
         };
       }
 
-      // 处理系统级意图（不需要发送到特定成员）
-      if (message.type === "设置主控成员") {
+      // 处理控制器绑定管理意图
+      if (message.type === "绑定控制对象") {
         try {
           const memberId = message.data?.memberId;
           if (!memberId) {
             return {
               success: false,
-              message: "设置主控成员失败: 缺少成员ID",
+              message: "绑定控制对象失败: 缺少成员ID",
               error: "Missing member ID",
             };
           }
 
-          this.engine.getMemberManager().setPrimaryTarget(memberId);
+          this.bindingManager.bind(message.controllerId, memberId);
 
           this.stats.successfulMessages++;
 
           return {
             success: true,
-            message: `主控目标已设置为 ${memberId}`,
+            message: `控制器 ${message.controllerId} 已绑定到成员 ${memberId}`,
             error: undefined,
           };
         } catch (error: any) {
           this.stats.failedMessages++;
-          console.warn(`MessageRouter: 设置主控成员失败:`, error);
+          console.warn(`MessageRouter: 绑定控制对象失败:`, error);
 
           return {
             success: false,
-            message: `设置主控成员失败: ${error.message}`,
+            message: `绑定控制对象失败: ${error.message}`,
             error: error.message,
           };
         }
       }
 
-      // 获取目标成员
-      const targetMember = this.engine.getMemberManager().getMember(message.targetMemberId);
-      if (!targetMember) {
+      if (message.type === "解绑控制对象") {
+        try {
+          this.bindingManager.unbind(message.controllerId);
+
+          this.stats.successfulMessages++;
+
+          return {
+            success: true,
+            message: `控制器 ${message.controllerId} 已解绑`,
+            error: undefined,
+          };
+        } catch (error: any) {
+          this.stats.failedMessages++;
+          console.warn(`MessageRouter: 解绑控制对象失败:`, error);
+
+          return {
+            success: false,
+            message: `解绑控制对象失败: ${error.message}`,
+            error: error.message,
+          };
+        }
+      }
+
+      // 解析目标成员：优先使用 binding，其次使用 targetMemberId（向后兼容）
+      let targetMemberId = message.targetMemberId;
+      if (!targetMemberId) {
+        targetMemberId = this.bindingManager.getBoundMemberId(message.controllerId);
+      }
+
+      if (!targetMemberId) {
         return {
           success: false,
-          message: `目标成员不存在: ${message.targetMemberId}`,
+          message: `无法确定目标成员: 控制器 ${message.controllerId} 未绑定成员，且未指定 targetMemberId`,
           error: "Target member not found",
         };
       }
 
-      this.engine.dispatchMemberEvent(targetMember.id, message.type, message.data, 0, undefined, {
+      // 获取目标成员
+      const targetMember = this.engine.getWorld().memberManager.getMember(targetMemberId);
+      if (!targetMember) {
+        return {
+          success: false,
+          message: `目标成员不存在: ${targetMemberId}`,
+          error: "Target member not found",
+        };
+      }
+
+      this.engine.dispatchMemberEvent(targetMember.id, message.type, message.data, 0, {
         source: `message:${message.type}`,
       });
       this.stats.successfulMessages++;

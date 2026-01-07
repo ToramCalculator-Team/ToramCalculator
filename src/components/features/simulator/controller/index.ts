@@ -1,19 +1,25 @@
 /**
- * 简化的控制器模块入口文件
+ * 控制器模块入口文件
  *
- * 只保留核心功能：
- * - 简化的控制器
+ * 导出多控制器架构的核心组件：
+ * - 引擎生命周期控制器
+ * - 成员控制器
  * - UI组件
  */
 
+// 引擎生命周期控制器
+export { EngineLifecycleController } from "./EngineLifecycleController";
+
+// 成员控制器
+export { MemberController } from "./MemberController";
+
 // UI组件
 export {
-	ActionPanel,
 	ControlPanel,
 	MemberSelect,
-	MemberStatus,
-	SkillPanel,
-	StatusBar,
+	EngineStatusBar,
 } from "./components";
-// 简化的控制器
-export { Controller } from "./controller";
+
+// 成员控制器UI组件
+export { AddMemberControllerButton } from "./AddMemberControllerButton";
+export { MemberControllerPanel } from "./MemberControllerPanel";

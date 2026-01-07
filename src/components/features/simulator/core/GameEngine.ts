@@ -6,12 +6,13 @@ import { createActor } from "xstate";
 import { EventQueue } from "./EventQueue/EventQueue";
 import type { QueueEvent } from "./EventQueue/types";
 import { FrameLoop } from "./FrameLoop/FrameLoop";
-import { type EngineCommand, GameEngineSM } from "./GameEngineSM";
+import { type EngineControlMessage, GameEngineSM } from "./GameEngineSM";
 import { JSProcessor } from "./JSProcessor/JSProcessor";
 import type { ExpressionContext } from "./JSProcessor/types";
 import type { MemberSerializeData } from "./Member/Member";
-import { MemberManager } from "./Member/MemberManager";
 import type { Player } from "./Member/types/Player/Player";
+import { ControlBindingManager } from "./Controller/ControlBindingManager";
+import { ControllerRegistry } from "./Controller/ControllerEndpoint";
 import { type IntentMessage, type MessageProcessResult, MessageRouter } from "./MessageRouter/MessageRouter";
 import type {
 	BuffViewDataSnapshot,
@@ -23,8 +24,6 @@ import type {
 	FrameStepResult,
 	GameEngineSnapshot,
 } from "./types";
-import { AreaManager } from "./World/AreaManager";
-import { SpaceManager } from "./World/SpaceManager";
 import { World } from "./World/World";
 
 /**
@@ -50,6 +49,12 @@ export class GameEngine {
 
 	/** 消息路由器 - 分发外部指令 */
 	private messageRouter: MessageRouter;
+
+	/** 控制绑定管理器 */
+	private bindingManager: ControlBindingManager;
+
+	/** 控制器注册表 */
+	private controllerRegistry: ControllerRegistry;
 
 	/** 帧循环 - 推进时间和调度事件 */
 	private frameLoop: FrameLoop;
@@ -77,15 +82,15 @@ export class GameEngine {
 	};
 
 	// ==================== 通信 ====================
-	
+
 	/** 渲染消息发送器 - 用于发送渲染指令到主线程 */
 	private renderMessageSender: ((payload: unknown) => void) | null = null;
 	/** 系统消息发送器 - 用于发送系统指令到主线程 */
 	private systemMessageSender: ((payload: unknown) => void) | null = null;
 	/** 帧快照发送器 - 用于发送帧快照到主线程 */
 	private frameSnapshotSender: ((snapshot: FrameSnapshot) => void) | null = null;
-	/** 镜像通信发送器 - 用于向镜像状态机发送消息 */
-	private sendToMirror?: (command: EngineCommand) => void;
+	/** 对端通信发送器 - 用于向 controller 状态机发送消息 */
+	private sendToPeer?: (command: EngineControlMessage) => void;
 
 	/** 当前挂起的帧内任务数量（用于防止跨帧未完成任务） */
 	private pendingFrameTasksCount: number = 0;
@@ -124,7 +129,13 @@ export class GameEngine {
 
 		// 初始化核心模块 - 按依赖顺序
 		this.eventQueue = new EventQueue(config.eventQueueConfig, () => this.currentFrame);
-		this.messageRouter = new MessageRouter(this); // 注入引擎
+		
+		// 初始化控制器相关组件
+		this.bindingManager = new ControlBindingManager();
+		this.controllerRegistry = new ControllerRegistry();
+		
+		// 注入引擎和绑定管理器到消息路由器
+		this.messageRouter = new MessageRouter(this, this.bindingManager);
 		this.frameLoop = new FrameLoop(this, this.config.frameLoopConfig); // 注入引擎
 		this.jsProcessor = new JSProcessor(); // 初始化JS表达式处理器
 
@@ -132,30 +143,30 @@ export class GameEngine {
 
 		this.world = new World(this.renderMessageSender);
 
-		// 创建状态机 - 使用动态获取mirror sender的方式
+		// 创建状态机 - executor 角色
+		let seqCounter = 0;
 		this.stateMachine = createActor(GameEngineSM, {
 			input: {
+				role: "executor",
 				threadName: "worker", // 标识 Worker 线程
-				mirror: {
-					send: (command: EngineCommand) => {
-						if (this.sendToMirror) {
-							this.sendToMirror(command);
+				peer: {
+					send: (command: EngineControlMessage) => {
+						if (this.sendToPeer) {
+							this.sendToPeer(command);
 						} else {
 							console.warn(
-								"GameEngine: sendToMirror 未设置，忽略命令:",
+								"GameEngine: sendToPeer 未设置，忽略命令:",
 								command,
 								"当前状态:",
 								this.stateMachine.getSnapshot().value,
-							);
-							// 如果是在初始化过程中，延迟重试
-							if (command.type === "RESULT" && command.command === "INIT") {
-								console.warn("GameEngine: RESULT(INIT) 命令被忽略，可能导致状态机超时");
-							}
+								);
 						}
 					},
 				},
 				engine: this,
 				controller: undefined,
+				nextSeq: () => ++seqCounter,
+				newCorrelationId: () => createId(),
 			},
 		});
 		this.stateMachine.start();
@@ -257,7 +268,7 @@ export class GameEngine {
 		// 映射状态机状态到引擎状态
 		switch (machineState) {
 			case "idle":
-				case "initializing":
+			case "initializing":
 				return "unInitialized";
 			case "running":
 				return "running";
@@ -290,8 +301,6 @@ export class GameEngine {
 		const frameNumber = this.getCurrentFrame();
 		const timestamp = performance.now();
 
-		const primaryTargetId = this.world.memberManager.getPrimaryMemberId();
-
 		// 引擎级状态
 		const frameLoopStats = this.frameLoop.getFrameLoopStats();
 
@@ -320,33 +329,44 @@ export class GameEngine {
 			};
 		});
 
-		// 当前选中成员详细视图（属性 + Buff）
-		let selectedMemberDetail: {
-			attrs: Record<string, unknown>;
-			buffs?: BuffViewDataSnapshot[];
-		} | null = null;
-		if (primaryTargetId) {
-			const selectedMember = this.world.memberManager.getMember(primaryTargetId);
-			if (selectedMember) {
-				try {
-					const serialized = selectedMember.serialize();
-					selectedMemberDetail = {
-						attrs: serialized.attrs,
-					};
-				} catch (error) {
-					console.warn("创建选中成员详细快照失败:", error);
+		// 多控制器：按 controller 生成绑定成员视图（挂到同一个 FrameSnapshot 上，作为可选字段）
+		// 注意：controllerId 的来源必须以 binding 为准（绑定即存在），而不是 ControllerRegistry（那是 endpoint 注册表）
+		const controllerIds = this.bindingManager.getAllControllerIds();
+		const byController: NonNullable<FrameSnapshot["byController"]> = {};
+		for (const controllerId of controllerIds) {
+			const boundMemberId = this.bindingManager.getBoundMemberId(controllerId) ?? null;
+
+			let boundMemberDetail:
+				| {
+						attrs: Record<string, unknown>;
+						buffs?: BuffViewDataSnapshot[];
+				  }
+				| null = null;
+			let boundMemberSkills: ComputedSkillInfo[] = [];
+
+			if (boundMemberId) {
+				const boundMember = this.world.memberManager.getMember(boundMemberId);
+				if (boundMember) {
+					try {
+						const serialized = boundMember.serialize();
+						boundMemberDetail = { attrs: serialized.attrs };
+					} catch (error) {
+						console.warn(`创建控制器 ${controllerId} 绑定成员详细快照失败:`, error);
+					}
+
+					// 计算技能（仅 Player 类型）
+					if (boundMember.type === "Player") {
+						const player = boundMember as Player;
+						boundMemberSkills = this.computePlayerSkills(player, frameNumber);
+					}
 				}
 			}
-		}
 
-		let selectedMemberSkills: ComputedSkillInfo[] = [];
-
-		if (primaryTargetId) {
-			const member = this.world.memberManager.getMember(primaryTargetId);
-			if (member && member.type === "Player") {
-				const player = member as Player;
-					selectedMemberSkills = this.computePlayerSkills(player, frameNumber);
-			}
+			byController[controllerId] = {
+				boundMemberId,
+				boundMemberDetail,
+				boundMemberSkills,
+			};
 		}
 
 		return {
@@ -358,9 +378,7 @@ export class GameEngine {
 				fps: frameLoopStats.averageFPS,
 			},
 			members,
-			selectedMemberId: primaryTargetId ?? null,
-			selectedMemberSkills,
-			selectedMemberDetail,
+			byController: controllerIds.length > 0 ? byController : undefined,
 		};
 	}
 
@@ -381,18 +399,19 @@ export class GameEngine {
 		}
 	}
 
+
 	/**
 	 * 发送命令到引擎状态机
 	 */
-	sendCommand(command: EngineCommand): void {
+	sendCommand(command: EngineControlMessage): void {
 		this.stateMachine.send(command);
 	}
 
 	/**
-	 * 设置镜像通信发送器
+	 * 设置对端通信发送器
 	 */
-	setMirrorSender(sender: (command: EngineCommand) => void): void {
-		this.sendToMirror = sender;
+	setMirrorSender(sender: (command: EngineControlMessage) => void): void {
+		this.sendToPeer = sender;
 	}
 
 	/**
@@ -806,7 +825,6 @@ export class GameEngine {
 	 * @param eventType     FSM 事件类型（需与状态机定义保持一致）
 	 * @param payload       附加数据（可选）
 	 * @param delayFrames   延迟帧数（默认 0，表示当前帧）
-	 * @param skillId       关联技能ID（可选，用于调试）
 	 * @param meta          调试元信息（例如 source）
 	 */
 	dispatchMemberEvent(
@@ -1006,10 +1024,24 @@ export class GameEngine {
 	}
 
 	/**
-	 * 获取成员管理器实例
+	 * 获取世界实例
 	 */
-	getMemberManager(): MemberManager {
-		return this.world.memberManager;
+	getWorld(): World {
+		return this.world;
+	}
+
+	/**
+	 * 获取控制绑定管理器
+	 */
+	getBindingManager(): ControlBindingManager {
+		return this.bindingManager;
+	}
+
+	/**
+	 * 获取控制器注册表
+	 */
+	getControllerRegistry(): ControllerRegistry {
+		return this.controllerRegistry;
 	}
 
 	/**

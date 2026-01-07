@@ -12,21 +12,14 @@ import { Dialog } from "~/components/containers/dialog";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import type { MemberSerializeData } from "./Member";
-import {
-	type DataStorage,
-	isDataStorageType,
-} from "./runtime/StatContainer/StatContainer";
+import { type DataStorage, isDataStorageType } from "./runtime/StatContainer/StatContainer";
 
 // ============================== 组件实现 ==============================
 
-const actualValueClass =
-	"Value text-nowrap rounded-sm px-1 flex-1 flex items-center ";
-const baseValueClass =
-	" Value text-nowrap rounded-sm px-1 text-accent-color-70 flex-1 flex items-center ";
-const modifierStaticClass =
-	" Value text-nowrap rounded-sm px-1 text-accent-color-70 ";
-const modifierDynamicClass =
-	" Value text-nowrap rounded-sm px-1 text-accent-color-70 ";
+const actualValueClass = "Value text-nowrap rounded-sm px-1 flex-1 flex items-center ";
+const baseValueClass = " Value text-nowrap rounded-sm px-1 text-accent-color-70 flex-1 flex items-center ";
+const modifierStaticClass = " Value text-nowrap rounded-sm px-1 text-accent-color-70 ";
+const modifierDynamicClass = " Value text-nowrap rounded-sm px-1 text-accent-color-70 ";
 const originClass =
 	"Origin buttom-full absolute left-0 z-10 hidden rounded-sm bg-primary-color p-2 text-sm text-accent-color-70 shadow-xl shadow-transition-color-8 group-hover:flex pointer-events-none";
 // 由于tailwind编译时生成对应class，此处class将不会生效
@@ -59,13 +52,7 @@ const StatsRenderer = (props: { data?: object }) => {
 									{key}
 								</span>
 								<div class="flex w-full flex-col gap-1">
-									{renderObject(
-										value,
-										[...path, key],
-										d[key] as
-											| Record<string, string | number | object>
-											| undefined,
-									)}
+									{renderObject(value, [...path, key], d[key] as Record<string, string | number | object> | undefined)}
 								</div>
 							</div>
 							<div class="bg-boundary-color h-px w-full"></div>
@@ -91,22 +78,15 @@ const StatsRenderer = (props: { data?: object }) => {
 									<div class={` ${actualValueClass}`}>{value.actValue}</div>
 								</div>
 								<div class="BaseVlaue flex w-[25%] flex-col rounded-sm p-1 lg:w-[10%]">
-									<span class="BaseValueName text-accent-color-70 text-sm">
-										{"基础值"}
-									</span>
+									<span class="BaseValueName text-accent-color-70 text-sm">{"基础值"}</span>
 									<span class={` ${baseValueClass}`}>{value.baseValue}</span>
 								</div>
 								<div class="ModifierVlaue flex w-full flex-1 flex-col rounded-sm p-1">
-									<span class="ModifierValueName text-accent-color-70 px-1 text-sm">
-										{"修正值"}
-									</span>
+									<span class="ModifierValueName text-accent-color-70 px-1 text-sm">{"修正值"}</span>
 									<div class="ModifierValueContent flex gap-1">
-										{(value.static.fixed.length > 0 ||
-											value.static.percentage.length > 0) && (
+										{(value.static.fixed.length > 0 || value.static.percentage.length > 0) && (
 											<div class="ModifierStaticBox flex flex-1 items-center px-1">
-												<span class="ModifierStaticName text-accent-color-70 text-sm">
-													{"静态修正值"}
-												</span>
+												<span class="ModifierStaticName text-accent-color-70 text-sm">{"静态修正值"}</span>
 												<div class="ModifierStaticContent flex flex-wrap gap-1 rounded-sm p-1 text-nowrap">
 													{value.static.fixed.length > 0 && (
 														<div class="ModifierStaticFixedBox flex gap-2">
@@ -114,12 +94,8 @@ const StatsRenderer = (props: { data?: object }) => {
 																<div
 																	class={`key=${`ModifierStaticFixed${index}`} ModifierStaticFixed group bg-transition-color-20 relative flex items-center gap-1 rounded-sm px-1 py-0.5`}
 																>
-																	<span class={` ${modifierStaticClass}`}>
-																		{mod.value}
-																	</span>
-																	<span class={` ${originClass}`}>
-																		来源：{mod.sourceId}
-																	</span>
+																	<span class={` ${modifierStaticClass}`}>{mod.value}</span>
+																	<span class={` ${originClass}`}>来源：{mod.sourceId}</span>
 																</div>
 															))}
 														</div>
@@ -130,12 +106,8 @@ const StatsRenderer = (props: { data?: object }) => {
 																<div
 																	class={`key=${`ModifierStaticPercentage${index}`} ModifierStaticPercentage group bg-transition-color-20 relative flex items-center gap-1 rounded-sm px-1 py-0.5`}
 																>
-																	<span class={` ${modifierStaticClass}`}>
-																		{mod.value}%
-																	</span>
-																	<span class={` ${originClass}`}>
-																		来源：{mod.sourceId}
-																	</span>
+																	<span class={` ${modifierStaticClass}`}>{mod.value}%</span>
+																	<span class={` ${originClass}`}>来源：{mod.sourceId}</span>
 																</div>
 															))}
 														</div>
@@ -143,12 +115,9 @@ const StatsRenderer = (props: { data?: object }) => {
 												</div>
 											</div>
 										)}
-										{(value.dynamic.fixed.length > 0 ||
-											value.dynamic.percentage.length > 0) && (
+										{(value.dynamic.fixed.length > 0 || value.dynamic.percentage.length > 0) && (
 											<div class="ModifierDynamicBox flex flex-1 items-center px-1">
-												<span class="ModifierDynamicName text-accent-color-70 text-sm">
-													{"动态修正值"}
-												</span>
+												<span class="ModifierDynamicName text-accent-color-70 text-sm">{"动态修正值"}</span>
 												<div class="ModifierDynamicContent flex flex-wrap gap-1 rounded-sm p-1 text-nowrap">
 													{value.dynamic.fixed.length > 0 && (
 														<div class="ModifierDynamicFixedBox flex flex-1 flex-wrap gap-1">
@@ -156,12 +125,8 @@ const StatsRenderer = (props: { data?: object }) => {
 																<div
 																	class={`key=${`ModifierDynamicFixed${index}`} ModifierDynamicFixed group bg-transition-color-20 relative flex items-center gap-1 rounded-sm px-1 py-0.5`}
 																>
-																	<span class={` ${modifierDynamicClass}`}>
-																		{mod.value}
-																	</span>
-																	<span class={` ${originClass}`}>
-																		来源：{mod.sourceId}
-																	</span>
+																	<span class={` ${modifierDynamicClass}`}>{mod.value}</span>
+																	<span class={` ${originClass}`}>来源：{mod.sourceId}</span>
 																</div>
 															))}
 														</div>
@@ -172,12 +137,8 @@ const StatsRenderer = (props: { data?: object }) => {
 																<div
 																	class={`key=${`ModifierDynamicPercentage${index}`} ModifierDynamicPercentage group bg-transition-color-20 relative flex items-center gap-1 rounded-sm px-1 py-0.5`}
 																>
-																	<span class={` ${modifierDynamicClass}`}>
-																		{mod.value}%
-																	</span>
-																	<span class={` ${originClass}`}>
-																		来源：{mod.sourceId}
-																	</span>
+																	<span class={` ${modifierDynamicClass}`}>{mod.value}%</span>
+																	<span class={` ${originClass}`}>来源：{mod.sourceId}</span>
 																</div>
 															))}
 														</div>
@@ -198,9 +159,7 @@ const StatsRenderer = (props: { data?: object }) => {
 				<div
 					class={`String bg-area-color flex w-full flex-none flex-col gap-1 rounded-sm p-1 lg:gap-4 ${!currentPath.includes(".") && columnsWidth}`}
 				>
-					<div class="Key w-full p-1 text-sm font-bold">
-						{(d[key] as string | number) ?? key}：
-					</div>
+					<div class="Key w-full p-1 text-sm font-bold">{(d[key] as string | number) ?? key}：</div>
 					<div class={` ${actualValueClass}`}>{String(value)}</div>
 				</div>
 			);
@@ -540,9 +499,7 @@ const StatsRenderer = (props: { data?: object }) => {
 //   );
 // };
 
-export function MemberStatusPanel(props: {
-	member: Accessor<MemberSerializeData | null>;
-}) {
+export function MemberStatusPanel(props: { member: Accessor<MemberSerializeData | null> }) {
 	const selectedMemberData = createMemo(() => {
 		return props.member()?.attrs;
 	});
@@ -562,33 +519,11 @@ export function MemberStatusPanel(props: {
 			}
 		>
 			{/* 基础信息 */}
-			<Button onClick={() => setDisplayDetail(!displayDetail())} class="w-full">
-				<div class="flex w-full items-center justify-between gap-2 text-sm portrait:flex-wrap landscape:p-2">
-					{displayDetail() ? <Icons.Outline.Close /> : <Icons.Outline.Expand />}
-					<div class="flex gap-2">
-						<span class="text-main-text-color text-nowrap">名称:</span>
-						<span class="">{props.member()?.name}</span>
-					</div>
-					<div class="flex gap-2 portrait:hidden">
-						<span class="text-main-text-color text-nowrap">类型:</span>
-						<span class="">{props.member()?.type}</span>
-					</div>
-					<div class="flex gap-2 portrait:hidden">
-						<span class="text-main-text-color text-nowrap">阵营:</span>
-						<span class="">{props.member()?.campId || "-"}</span>
-					</div>
-					<div class="flex gap-2 portrait:hidden">
-						<span class="text-main-text-color text-nowrap">队伍:</span>
-						<span class="">{props.member()?.teamId || "-"}</span>
-					</div>
-				</div>
+			<Button onClick={() => setDisplayDetail(!displayDetail())} level="secondary" class="w-fit h-fit">
+				{props.member()?.name || "未知成员"}
 			</Button>
 
-			<Dialog
-				state={displayDetail()}
-				setState={setDisplayDetail}
-				title="成员详情"
-			>
+			<Dialog state={displayDetail()} setState={setDisplayDetail} title="成员详情">
 				<div class="flex w-full flex-1 flex-col gap-1">
 					{/* Tab 切换 */}
 					<div class="border-dividing-color flex gap-2 border-b">
@@ -630,13 +565,9 @@ export function MemberStatusPanel(props: {
 
 					{/* 调试信息 */}
 					<div class="bg-area-color rounded p-2">
-						<h4 class="text-md text-main-text-color mb-3 font-semibold">
-							调试信息
-						</h4>
+						<h4 class="text-md text-main-text-color mb-3 font-semibold">调试信息</h4>
 						<details class="text-xs">
-							<summary class="text-dividing-color hover:text-main-text-color cursor-pointer">
-								查看原始数据
-							</summary>
+							<summary class="text-dividing-color hover:text-main-text-color cursor-pointer">查看原始数据</summary>
 							<pre class="bg-primary-color text-main-text-color mt-2 rounded p-2">
 								{JSON.stringify(props.member(), null, 2)}
 							</pre>
