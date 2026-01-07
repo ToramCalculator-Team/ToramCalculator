@@ -13,7 +13,7 @@ import { EngineLifecycleController } from "./controller/EngineLifecycleControlle
 import { MemberController } from "./controller/MemberController";
 import { realtimeSimulatorPool } from "./core/thread/SimulatorPool";
 import type { EngineControlMessage } from "./core/GameEngineSM";
-import type { FrameSnapshot } from "./core/GameEngine";
+import type { ControllerDomainEvent, FrameSnapshot } from "./core/types";
 import type { SimulatorWithRelations } from "@db/generated/repositories/simulator";
 import type { MemberSerializeData } from "./core/Member/Member";
 import { EngineStatusBar, ControlPanel } from "./controller/components";
@@ -43,6 +43,19 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 
 	/** 最新帧快照（包含 byController） */
 	const [latestFrameSnapshot, setLatestFrameSnapshot] = createSignal<FrameSnapshot | null>(null);
+
+	/** 控制器域事件聚合状态（按 controller 投影） */
+	const [controllerEventState, setControllerEventState] = createSignal<
+		Record<
+			string,
+			{
+				skillAvailability?: Record<string, boolean>;
+				hp?: number | null;
+				mp?: number | null;
+				position?: { x: number; y: number; z: number };
+			}
+		>
+	>({});
 
 	/** 引擎统计（暂时保留，后续可能用于显示） */
 	// const [engineStats, setEngineStats] = createSignal<unknown | null>(null);
@@ -116,10 +129,57 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 		});
 
 		// 监听系统事件
-		realtimeSimulatorPool.on("system_event", (_data: { workerId: string; event: unknown }) => {
-			// 系统事件处理
-			// primary_target_changed 等事件不再影响 UI（多控制器架构下不再有单主控概念）
-			// 这些事件可能仍用于渲染层等其他用途，但终端层不再处理
+		realtimeSimulatorPool.on("system_event", (data: { workerId: string; event: unknown }) => {
+			if (data.event && typeof data.event === "object" && "type" in data.event) {
+				const evt = data.event as { type: string; events?: ControllerDomainEvent[] };
+				// 控制器域事件批处理
+				if (evt.type === "controller_domain_event_batch" && Array.isArray(evt.events)) {
+					setControllerEventState((prev) => {
+						const next = { ...prev };
+						for (const e of evt.events as ControllerDomainEvent[]) {
+							const bucket =
+								next[e.controllerId] ?? {
+									skillAvailability: {},
+									hp: null,
+									mp: null,
+									position: undefined,
+								};
+
+							switch (e.type) {
+								case "state_changed":
+									bucket.hp = e.hp;
+									bucket.mp = e.mp;
+									if (e.position) bucket.position = e.position;
+									break;
+								case "hit":
+									if (e.hp !== undefined) bucket.hp = e.hp;
+									break;
+								case "death":
+									bucket.hp = 0;
+									break;
+								case "move_started":
+								case "move_stopped":
+									if (e.position) bucket.position = e.position;
+									break;
+								case "skill_availability_changed":
+									bucket.skillAvailability = {
+										...(bucket.skillAvailability ?? {}),
+										[e.skillId]: e.available,
+									};
+									break;
+								case "cast_progress":
+									// 可扩展：如果 UI 需要展示施法进度，可在此存储
+									break;
+								case "camera_follow":
+									// 相机事件交由渲染层处理
+									break;
+							}
+							next[e.controllerId] = bucket;
+						}
+						return next;
+					});
+				}
+			}
 		});
 
 		// 监听渲染命令
@@ -203,6 +263,7 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 							boundMemberId={item.boundMemberId}
 							latestSnapshot={latestFrameSnapshot}
 							members={members}
+							controllerEventState={controllerEventState}
 							onRemove={() => removeMemberController(item.id)}
 						/>
 					)}

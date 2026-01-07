@@ -3,6 +3,7 @@ import type { TeamWithRelations } from "@db/generated/repositories/team";
 import type { MemberType } from "@db/schema/enums";
 import type { Actor, AnyActorLogic } from "xstate";
 import type { Member } from "./Member";
+import type { MemberDomainEvent } from "../types";
 import { Mob } from "./types/Mob/Mob";
 import { Player } from "./types/Player/Player";
 
@@ -30,6 +31,8 @@ export class MemberManager {
 
 	/** 渲染消息发射器 */
 	private renderMessageSender: ((payload: unknown) => void) | null = null;
+	/** 域事件发射器 */
+	private emitDomainEvent: ((event: MemberDomainEvent) => void) | null = null;
 
 	// ==================== 主控目标系统 ====================
 
@@ -39,6 +42,17 @@ export class MemberManager {
 	// ==================== 构造函数 ====================
 	constructor(renderMessageSender: ((payload: unknown) => void) | null) {
 		this.renderMessageSender = renderMessageSender;
+	}
+
+	/**
+	 * 设置域事件发射器
+	 */
+	setEmitDomainEvent(emitDomainEvent: ((event: MemberDomainEvent) => void) | null): void {
+		this.emitDomainEvent = emitDomainEvent;
+		// 为所有已存在的成员设置
+		for (const member of this.members.values()) {
+			member.setEmitDomainEvent(emitDomainEvent);
+		}
 	}
 
 	// ==================== 公共接口 ====================
@@ -62,6 +76,8 @@ export class MemberManager {
 		switch (memberData.type) {
 			case "Player": {
 				const player = new Player(memberData, campId, teamId, characterIndex, this.renderMessageSender, position);
+				// 设置域事件发射器
+				player.setEmitDomainEvent(this.emitDomainEvent);
 				const success = this.registerMember(player, campId, teamId, memberData);
 				if (success) {
 					console.log(`✅ 创建并注册玩家成功: ${memberData.name} (${memberData.type})`);
@@ -73,6 +89,8 @@ export class MemberManager {
 			}
 			case "Mob": {
 				const mob = new Mob(memberData, campId, teamId, this.renderMessageSender, position);
+				// 设置域事件发射器
+				mob.setEmitDomainEvent(this.emitDomainEvent);
 				const success = this.registerMember(mob, campId, teamId, memberData);
 				if (success) {
 					console.log(`✅ 创建并注册怪物成功: ${memberData.name} (${memberData.type})`);

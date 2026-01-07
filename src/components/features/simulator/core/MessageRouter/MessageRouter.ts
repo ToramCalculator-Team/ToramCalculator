@@ -165,6 +165,9 @@ export class MessageRouter {
 
           this.bindingManager.bind(message.controllerId, memberId);
 
+          // 发出相机跟随事件
+          this.engine.emitCameraFollowEvent(message.controllerId, memberId);
+
           this.stats.successfulMessages++;
 
           return {

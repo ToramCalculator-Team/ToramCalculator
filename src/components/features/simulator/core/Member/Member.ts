@@ -1,6 +1,7 @@
 import type { MemberWithRelations } from "@db/generated/repositories/member";
 import type { MemberType } from "@db/schema/enums";
 import { createActor } from "xstate";
+import type { MemberDomainEvent } from "../types";
 import type { CommonRuntimeContext } from "./runtime/Agent/CommonRuntimeContext";
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
 import type { NestedSchema } from "./runtime/StatContainer/SchemaTypes";
@@ -58,6 +59,8 @@ export class Member<
 	position: { x: number; y: number; z: number };
 	/** 渲染消息发射器 */
 	private renderMessageSender: ((payload: unknown) => void) | null = null;
+	/** 域事件发射器 */
+	private emitDomainEvent: ((event: MemberDomainEvent) => void) | null = null;
 
 	constructor(
 		stateMachine: (
@@ -136,6 +139,26 @@ export class Member<
 			teamId: this.teamId,
 			position: this.position,
 		};
+	}
+
+	/**
+	 * 设置域事件发射器
+	 */
+	setEmitDomainEvent(emitDomainEvent: ((event: MemberDomainEvent) => void) | null): void {
+		this.emitDomainEvent = emitDomainEvent;
+		// 同时注入到 runtimeContext 中
+		if (this.runtimeContext) {
+			(this.runtimeContext as Record<string, unknown>).emitDomainEvent = emitDomainEvent;
+		}
+	}
+
+	/**
+	 * 发出域事件（供成员内部调用）
+	 */
+	notifyDomainEvent(event: MemberDomainEvent): void {
+		if (this.emitDomainEvent) {
+			this.emitDomainEvent(event);
+		}
 	}
 
 	/**

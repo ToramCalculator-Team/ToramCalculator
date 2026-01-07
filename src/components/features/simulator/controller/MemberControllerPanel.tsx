@@ -9,23 +9,29 @@
 
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
-import { Select } from "~/components/controls/select";
 import { MemberStatusPanel } from "../core/Member/MemberStatusPanel";
 import type { MemberController } from "./MemberController";
 import type { ComputedSkillInfo, FrameSnapshot } from "../core/GameEngine";
 import type { MemberSerializeData } from "../core/Member/Member";
 import { Icons } from "~/components/icons";
 
+type ControllerEventState = {
+	skillAvailability?: Record<string, boolean>;
+	hp?: number | null;
+	mp?: number | null;
+	position?: { x: number; y: number; z: number };
+};
+
 interface MemberControllerPanelProps {
 	controller: MemberController;
 	boundMemberId: string;
 	latestSnapshot: () => FrameSnapshot | null;
 	members: () => MemberSerializeData[];
+	controllerEventState: () => Record<string, ControllerEventState>;
 	onRemove: () => Promise<void>;
 }
 
 export function MemberControllerPanel(props: MemberControllerPanelProps) {
-	const [selectedTargetId, setSelectedTargetId] = createSignal<string>("");
 	const [stableSkills, setStableSkills] = createSignal<ComputedSkillInfo[]>([]);
 
 	// 从快照中提取该控制器的视图
@@ -38,11 +44,6 @@ export function MemberControllerPanel(props: MemberControllerPanelProps) {
 	// 获取绑定成员的完整信息
 	const boundMember = createMemo(() => {
 		return props.members().find((m) => m.id === props.boundMemberId);
-	});
-
-	// 获取可选择的目标（其他成员）
-	const availableTargets = createMemo(() => {
-		return props.members().filter((m) => m.id !== props.boundMemberId);
 	});
 
 	// 获取绑定成员的实时状态（从快照投影）
@@ -64,6 +65,9 @@ export function MemberControllerPanel(props: MemberControllerPanelProps) {
 
 	// 获取技能列表
 	const skills = createMemo(() => controllerView()?.boundMemberSkills ?? []);
+	const controllerEvents = createMemo<ControllerEventState>(() => {
+		return props.controllerEventState()[props.controller.controllerId] ?? {};
+	});
 
 	/**
 	 * 技能列表稳定化：
@@ -90,7 +94,9 @@ export function MemberControllerPanel(props: MemberControllerPanelProps) {
 		if (prev.length === next.length) {
 			let allSame = true;
 			for (let i = 0; i < next.length; i += 1) {
-				if (!isSameSkill(prev[i]!, next[i]!)) {
+				const prevItem = prev[i];
+				const nextItem = next[i];
+				if (!prevItem || !nextItem || !isSameSkill(prevItem, nextItem)) {
 					allSame = false;
 					break;
 				}
@@ -101,31 +107,22 @@ export function MemberControllerPanel(props: MemberControllerPanelProps) {
 		// 尽量复用旧引用（按 id）
 		const prevById = new Map(prev.map((s) => [s.id, s]));
 		const stabilized = next.map((s) => {
+			// 应用事件流的技能可用性覆写
+			const overrideAvailable = controllerEvents().skillAvailability?.[s.id];
+			const merged: ComputedSkillInfo = overrideAvailable === undefined ? s : { ...s, computed: { ...s.computed, isAvailable: overrideAvailable } };
+
 			const old = prevById.get(s.id);
-			return old && isSameSkill(old, s) ? old : s;
+			return old && isSameSkill(old, merged) ? old : merged;
 		});
 		setStableSkills(stabilized);
 	});
-
-	const handleSelectTarget = (targetId: string) => {
-		setSelectedTargetId(targetId);
-		props.controller.selectTarget(targetId).catch(console.error);
-	};
 
 	const handleCastSkill = (skillId: string) => {
 		props.controller.castSkill(skillId).catch(console.error);
 	};
 
-	const handleMove = (x: number, y: number) => {
-		props.controller.move(x, y).catch(console.error);
-	};
-
-	const handleStop = () => {
-		props.controller.stopMove().catch(console.error);
-	};
-
 	return (
-		<div class="MemberControllerPanel grid grid-cols-8 grid-rows-8 gap-2 p-2 bg-accent-color rounded overflow-hidden">
+		<div class="MemberControllerPanel w-full h-full grid grid-cols-8 grid-rows-8 gap-2 p-2 bg-accent-color rounded overflow-hidden">
 			<div class="col-span-8 row-span-1 grid grid-cols-8 grid-rows-1 gap-2 items-center justify-between">
 				<div class="col-span-1 row-span-1 flex w-full h-full">
 					{/* 成员状态：优先用 byController 投影；否则用成员静态数据兜底（避免“只有壳”） */}

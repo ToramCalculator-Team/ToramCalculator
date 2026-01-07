@@ -213,6 +213,153 @@ export const FrameSnapshotSchema = z.object({
 export type FrameSnapshot = z.output<typeof FrameSnapshotSchema>;
 
 /**
+ * 成员域事件（引擎内部）
+ */
+export const MemberDomainEventSchema = z.discriminatedUnion("type", [
+	z.object({
+		type: z.literal("state_changed"),
+		memberId: z.string(),
+		hp: z.number().nullable(),
+		mp: z.number().nullable(),
+		position: z
+			.object({
+				x: z.number(),
+				y: z.number(),
+				z: z.number(),
+			})
+			.optional(),
+	}),
+	z.object({
+		type: z.literal("hit"),
+		memberId: z.string(),
+		damage: z.number(),
+		hp: z.number().nullable(),
+	}),
+	z.object({
+		type: z.literal("death"),
+		memberId: z.string(),
+	}),
+	z.object({
+		type: z.literal("move_started"),
+		memberId: z.string(),
+		position: z.object({
+			x: z.number(),
+			y: z.number(),
+			z: z.number(),
+		}),
+	}),
+	z.object({
+		type: z.literal("move_stopped"),
+		memberId: z.string(),
+		position: z.object({
+			x: z.number(),
+			y: z.number(),
+			z: z.number(),
+		}),
+	}),
+	z.object({
+		type: z.literal("cast_progress"),
+		memberId: z.string(),
+		skillId: z.string(),
+		progress: z.number(), // 0~1
+	}),
+	z.object({
+		type: z.literal("skill_availability_changed"),
+		memberId: z.string(),
+		skillId: z.string(),
+		available: z.boolean(),
+	}),
+	z.object({
+		type: z.literal("skill_cast_denied"),
+		memberId: z.string(),
+		skillId: z.string(),
+		reason: z.string(),
+	}),
+]);
+
+export type MemberDomainEvent = z.output<typeof MemberDomainEventSchema>;
+
+/**
+ * 控制器域事件（已投影到 controllerId）
+ */
+export const ControllerDomainEventSchema = z.discriminatedUnion("type", [
+	z.object({
+		type: z.literal("state_changed"),
+		controllerId: z.string(),
+		memberId: z.string(),
+		hp: z.number().nullable(),
+		mp: z.number().nullable(),
+		position: z
+			.object({
+				x: z.number(),
+				y: z.number(),
+				z: z.number(),
+			})
+			.optional(),
+	}),
+	z.object({
+		type: z.literal("hit"),
+		controllerId: z.string(),
+		memberId: z.string(),
+		damage: z.number(),
+		hp: z.number().nullable(),
+	}),
+	z.object({
+		type: z.literal("death"),
+		controllerId: z.string(),
+		memberId: z.string(),
+	}),
+	z.object({
+		type: z.literal("move_started"),
+		controllerId: z.string(),
+		memberId: z.string(),
+		position: z.object({
+			x: z.number(),
+			y: z.number(),
+			z: z.number(),
+		}),
+	}),
+	z.object({
+		type: z.literal("move_stopped"),
+		controllerId: z.string(),
+		memberId: z.string(),
+		position: z.object({
+			x: z.number(),
+			y: z.number(),
+			z: z.number(),
+		}),
+	}),
+	z.object({
+		type: z.literal("cast_progress"),
+		controllerId: z.string(),
+		memberId: z.string(),
+		skillId: z.string(),
+		progress: z.number(),
+	}),
+	z.object({
+		type: z.literal("skill_availability_changed"),
+		controllerId: z.string(),
+		memberId: z.string(),
+		skillId: z.string(),
+		available: z.boolean(),
+	}),
+	z.object({
+		type: z.literal("skill_cast_denied"),
+		controllerId: z.string(),
+		memberId: z.string(),
+		skillId: z.string(),
+		reason: z.string(),
+	}),
+	z.object({
+		type: z.literal("camera_follow"),
+		controllerId: z.string(),
+		entityId: z.string(),
+	}),
+]);
+
+export type ControllerDomainEvent = z.output<typeof ControllerDomainEventSchema>;
+
+/**
  * 引擎统计完整类型
  * 扩展的引擎统计信息，支持动态属性
  */

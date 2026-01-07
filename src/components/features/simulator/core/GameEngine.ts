@@ -13,6 +13,8 @@ import type { MemberSerializeData } from "./Member/Member";
 import type { Player } from "./Member/types/Player/Player";
 import { ControlBindingManager } from "./Controller/ControlBindingManager";
 import { ControllerRegistry } from "./Controller/ControllerEndpoint";
+import { DomainEventBus } from "./DomainEvents/DomainEventBus";
+import { ControllerEventProjector } from "./DomainEvents/ControllerEventProjector";
 import { type IntentMessage, type MessageProcessResult, MessageRouter } from "./MessageRouter/MessageRouter";
 import type {
 	BuffViewDataSnapshot,
@@ -23,6 +25,7 @@ import type {
 	FrameSnapshot,
 	FrameStepResult,
 	GameEngineSnapshot,
+	MemberDomainEvent,
 } from "./types";
 import { World } from "./World/World";
 
@@ -56,6 +59,12 @@ export class GameEngine {
 	/** 控制器注册表 */
 	private controllerRegistry: ControllerRegistry;
 
+	/** 域事件总线 */
+	private domainEventBus: DomainEventBus;
+
+	/** 控制器事件投影器 */
+	private controllerEventProjector: ControllerEventProjector;
+
 	/** 帧循环 - 推进时间和调度事件 */
 	private frameLoop: FrameLoop;
 
@@ -80,6 +89,7 @@ export class GameEngine {
 		totalEventsProcessed: 0,
 		totalMessagesProcessed: 0,
 	};
+
 
 	// ==================== 通信 ====================
 
@@ -134,6 +144,15 @@ export class GameEngine {
 		this.bindingManager = new ControlBindingManager();
 		this.controllerRegistry = new ControllerRegistry();
 		
+		// 初始化域事件系统
+		this.domainEventBus = new DomainEventBus();
+		this.controllerEventProjector = new ControllerEventProjector(this.bindingManager);
+		
+		// 订阅域事件总线，将事件投影为控制器事件
+		this.domainEventBus.subscribe((event) => {
+			this.controllerEventProjector.project(event);
+		});
+		
 		// 注入引擎和绑定管理器到消息路由器
 		this.messageRouter = new MessageRouter(this, this.bindingManager);
 		this.frameLoop = new FrameLoop(this, this.config.frameLoopConfig); // 注入引擎
@@ -142,6 +161,11 @@ export class GameEngine {
 		// World 相关
 
 		this.world = new World(this.renderMessageSender);
+		
+		// 设置域事件发射器到 MemberManager
+		this.world.memberManager.setEmitDomainEvent((event) => {
+			this.emitDomainEvent(event);
+		});
 
 		// 创建状态机 - executor 角色
 		let seqCounter = 0;
@@ -369,7 +393,7 @@ export class GameEngine {
 			};
 		}
 
-		return {
+		const snapshot: FrameSnapshot = {
 			frameNumber,
 			timestamp,
 			engine: {
@@ -380,6 +404,8 @@ export class GameEngine {
 			members,
 			byController: controllerIds.length > 0 ? byController : undefined,
 		};
+
+		return snapshot;
 	}
 
 	/**
@@ -428,8 +454,10 @@ export class GameEngine {
 	 *
 	 * @param sender 系统消息发送函数，用于发送系统级事件到控制器
 	 */
-	setSystemMessageSender(sender: (payload: unknown) => void): void {
+	setSystemMessageSender(sender: ((payload: unknown) => void) | null): void {
 		this.systemMessageSender = sender;
+		// 同时设置投影器的发送器
+		this.controllerEventProjector.setSystemMessageSender(sender);
 	}
 
 	/**
@@ -850,6 +878,29 @@ export class GameEngine {
 		});
 	}
 
+	/**
+	 * 发出域事件
+	 * 
+	 * 供成员/系统在状态变化时调用，事件会被投影到对应的控制器
+	 * 
+	 * @param event 域事件
+	 */
+	emitDomainEvent(event: MemberDomainEvent): void {
+		this.domainEventBus.emit(event);
+	}
+
+	/**
+	 * 发出相机跟随事件
+	 * 
+	 * 供绑定管理器在绑定/解绑时调用
+	 * 
+	 * @param controllerId 控制器ID
+	 * @param memberId 成员ID
+	 */
+	emitCameraFollowEvent(controllerId: string, memberId: string): void {
+		this.controllerEventProjector.emitCameraFollow(controllerId, memberId);
+	}
+
 	// ==================== 单帧执行核心逻辑 ====================
 
 	/**
@@ -902,13 +953,17 @@ export class GameEngine {
 
 		const duration = performance.now() - frameStartTime;
 
-		// 3. 检查是否还有本帧待处理事件，禁止往当前帧插入事件的情况下，目前只需要考虑maxEvents限流
+		// 3. 刷新域事件总线（分发事件并投影到控制器）
+		this.domainEventBus.flush(frameNumber);
+		this.controllerEventProjector.flush(frameNumber);
+
+		// 4. 检查是否还有本帧待处理事件，禁止往当前帧插入事件的情况下，目前只需要考虑maxEvents限流
 		// eventsForFrame 已是当前帧分桶，避免重复取队列
 		const hasPendingEvents = eventsForFrame.some((event) => !event.processed);
 
 		const pendingFrameTasks = this.pendingFrameTasksCount;
 
-		// 4. 如果当前帧事件和帧内任务都处理完毕，推进逻辑帧号
+		// 5. 如果当前帧事件和帧内任务都处理完毕，推进逻辑帧号
 		if (!hasPendingEvents && pendingFrameTasks === 0) {
 			this.currentFrame = frameNumber + 1;
 		}

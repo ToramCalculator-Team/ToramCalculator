@@ -181,6 +181,19 @@ export const playerStateMachine = (
 			},
 			显示警告: ({ context, event }) => {
 				console.log(`👤 [${context.owner?.name}] 显示警告`, event);
+				// 发出技能施放被拒绝事件
+				const owner = context.owner;
+				if (owner && (owner.runtimeContext as Record<string, unknown>).emitDomainEvent) {
+					const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as (event: import("../../../types").MemberDomainEvent) => void;
+					// 从事件中获取技能ID（如果有）
+					const skillId = (event as { data?: { skillId?: string } }).data?.skillId ?? "";
+					emitDomainEvent({
+						type: "skill_cast_denied",
+						memberId: owner.id,
+						skillId,
+						reason: "技能可用性检查失败",
+					});
+				}
 			},
 			创建警告结束通知: ({ context, event }) => {
 				console.log(`👤 [${context.owner?.name}] 创建警告结束通知`, event);
@@ -299,6 +312,68 @@ export const playerStateMachine = (
 				player.actor.send({
 					type: "修改属性",
 					data: { attr: "hp.current", value: currentHp },
+				});
+			},
+			发出属性变化域事件: ({ context, event }) => {
+				const owner = context.owner;
+				if (!owner) return;
+				
+				const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as ((event: import("../../../types").MemberDomainEvent) => void) | undefined;
+				if (!emitDomainEvent) return;
+				
+				const e = event as 修改属性;
+				const attr = e.data?.attr;
+				const newValue = e.data?.value ?? 0;
+				
+				// 获取当前属性值
+				const hp = owner.statContainer.getValue("hp.current");
+				const mp = owner.statContainer.getValue("mp.current");
+				const position = owner.position;
+				
+				// 发出 state_changed 事件
+				emitDomainEvent({
+					type: "state_changed",
+					memberId: owner.id,
+					hp: attr === "hp.current" ? newValue : hp,
+					mp: attr === "mp.current" ? newValue : mp,
+					position,
+				});
+				
+				// 如果是 HP 变化，检查是否受击/死亡
+				// 注意：这里无法准确判断受击，因为不知道修改前的值
+				// 受击/死亡事件应该由伤害系统直接发出
+				if (attr === "hp.current" && newValue <= 0 && hp > 0) {
+					// 死亡事件
+					emitDomainEvent({
+						type: "death",
+						memberId: owner.id,
+					});
+				}
+			},
+			发出移动开始域事件: ({ context, event }) => {
+				const owner = context.owner;
+				if (!owner) return;
+				
+				const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as ((event: import("../../../types").MemberDomainEvent) => void) | undefined;
+				if (!emitDomainEvent) return;
+				
+				emitDomainEvent({
+					type: "move_started",
+					memberId: owner.id,
+					position: owner.position,
+				});
+			},
+			发出移动停止域事件: ({ context, event }) => {
+				const owner = context.owner;
+				if (!owner) return;
+				
+				const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as ((event: import("../../../types").MemberDomainEvent) => void) | undefined;
+				if (!emitDomainEvent) return;
+				
+				emitDomainEvent({
+					type: "move_stopped",
+					memberId: owner.id,
+					position: owner.position,
 				});
 			},
 			发送buff修改事件给自己: ({ context, event }) => {
@@ -600,9 +675,15 @@ export const playerStateMachine = (
 							guard: {
 								type: "满足存活条件",
 							},
+							actions: {
+								type: "发出属性变化域事件",
+							},
 						},
 						{
 							target: "死亡",
+							actions: {
+								type: "发出属性变化域事件",
+							},
 						},
 					],
 					修改buff: {},
