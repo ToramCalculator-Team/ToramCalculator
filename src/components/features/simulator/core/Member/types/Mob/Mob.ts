@@ -31,6 +31,13 @@ export class Mob extends Member<
 		const attrSchema = MobAttrSchema(memberData.mob);
 		const statContainer = new StatContainer<MobAttrType>(attrSchema);
 
+		// 重要：runtimeContext 必须是每个成员独立的对象，且引用在构造后不可再被替换
+		const runtimeContext: MobRuntimeContext = {
+			...MobRuntimeContext,
+			owner: undefined,
+			position: position ?? { x: 0, y: 0, z: 0 },
+		};
+
 		super(
 			createMobStateMachine,
 			campId,
@@ -38,16 +45,12 @@ export class Mob extends Member<
 			memberData,
 			attrSchema,
 			statContainer,
-			MobRuntimeContext,
+			runtimeContext,
 			renderMessageSender,
 			position,
 		);
 
-		// 初始化运行时上下文
-		this.runtimeContext = {
-			...MobRuntimeContext,
-			owner: this,
-			position: position ?? { x: 0, y: 0, z: 0 },
-		}
+		// 完成 owner 回填
+		this.runtimeContext.owner = this;
 	}
 }

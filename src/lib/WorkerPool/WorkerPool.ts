@@ -1,7 +1,14 @@
 import { createId } from "@paralleldrive/cuid2";
 import { prepareForTransfer } from "./MessageSerializer";
 import { PriorityTaskQueue } from "~/lib/WorkerPool/PriorityTaskQueue";
-import { Result, Task, WorkerMessage, WorkerMessageEvent, WorkerSystemMessageSchema } from "~/lib/WorkerPool/type";
+import { WorkerSystemMessageEnvelopeSchema } from "~/lib/WorkerPool/type";
+import type {
+	Result,
+	Task,
+	WorkerMessage,
+	WorkerMessageEvent,
+	WorkerSystemMessageEnvelope,
+} from "~/lib/WorkerPool/type";
 import { EventEmitter } from "~/lib/WorkerPool/EventEmitter";
 
 // Worker性能指标
@@ -18,6 +25,8 @@ export interface WorkerWrapper {
   worker: Worker; // Web Worker实例
   port: MessagePort; // 通信端口
   busy: boolean; // 是否忙碌
+  /** 是否已完成初始化握手（ready） */
+  ready: boolean;
   id: string; // Worker唯一标识
   lastUsed: number; // 最后使用时间
   metrics: WorkerMetrics; // 性能指标
@@ -48,6 +57,18 @@ export interface PoolConfig<TPriority extends string> {
   maxRetries?: number; // 最大重试次数
   maxQueueSize?: number; // 最大队列大小
   monitorInterval?: number; // 监控间隔
+  /**
+   * 系统消息信封 schema（用于识别 worker 主动 push 的消息）
+   *
+   * lib 层默认使用 WorkerSystemMessageEnvelopeSchema（只校验形状）
+   */
+  systemMessageEnvelopeSchema?: typeof WorkerSystemMessageEnvelopeSchema;
+  /**
+   * 判定某条系统消息是否代表“worker ready”（业务层注入）
+   *
+   * 如果不提供，默认不做 ready 判定（worker 将保持不可用）
+   */
+  isWorkerReadyMessage?: (sys: WorkerSystemMessageEnvelope) => boolean;
 }
 
 /**
@@ -142,6 +163,10 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
       maxQueueSize: config.maxQueueSize || 1000, // 队列上限1000
       monitorInterval: config.monitorInterval || 5000, // 5秒监控间隔
       ...config, // 用户配置覆盖默认值
+			// 系统消息信封 schema：默认使用库层通用 schema（只校验形状）
+			systemMessageEnvelopeSchema: config.systemMessageEnvelopeSchema ?? WorkerSystemMessageEnvelopeSchema,
+			// ready 判定：默认不做判定（业务层应注入）
+			isWorkerReadyMessage: config.isWorkerReadyMessage ?? (() => false),
     };
 
     // 启动后台服务（不依赖Worker初始化）
@@ -236,7 +261,8 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
     const wrapper: WorkerWrapper = {
       worker,
       port: channel.port2, // 主线程持有port2
-      busy: true, // 初始状态为忙碌，等待初始化完成
+      busy: true, // 初始状态为忙碌（不可分配任务），等待 ready 握手
+      ready: false,
       id: createId(), // 生成唯一ID
       lastUsed: Date.now(), // 记录最后使用时间
       metrics: {
@@ -255,13 +281,14 @@ export class WorkerPool<TTaskType extends string,TTaskTypeMap extends Record<TTa
     // 设置MessageChannel消息处理 - 用于任务相关消息
     channel.port2.onmessage = (event) => {
       // 尝试根据系统消息 schema 进行解析（若匹配则直接透传系统事件）
-      const parsed = WorkerSystemMessageSchema.safeParse(event.data);
+      const parsed = this.config.systemMessageEnvelopeSchema.safeParse(event.data);
       if (parsed.success) {
         const sys = parsed.data;
         
-        // 检查是否是 Worker 初始化完成的消息
-        if (sys.type === "system_event" && sys.data?.type === "worker_ready") {
+        // 检查是否是 Worker 初始化完成的消息（由业务层注入判定规则）
+        if (!wrapper.ready && this.config.isWorkerReadyMessage(sys)) {
           // console.log(`✅ Worker ${wrapper.id} 初始化完成，标记为可用`);
+          wrapper.ready = true;
           wrapper.busy = false;
           // 初始化完成后，处理队列中的任务
           this.processNextTask();

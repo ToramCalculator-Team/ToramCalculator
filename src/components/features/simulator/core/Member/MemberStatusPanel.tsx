@@ -7,12 +7,13 @@
  * - 展示成员属性、位置、状态等数据
  */
 
-import { type Accessor, createMemo, createSignal, Show } from "solid-js";
+import { type Accessor, createEffect, createMemo, createSignal, onCleanup, Show } from "solid-js";
 import { Dialog } from "~/components/containers/dialog";
 import { Button } from "~/components/controls/button";
-import { Icons } from "~/components/icons";
 import type { MemberSerializeData } from "./Member";
 import { type DataStorage, isDataStorageType } from "./runtime/StatContainer/StatContainer";
+import { realtimeSimulatorPool } from "../thread/SimulatorPool";
+import type { DataQueryCommand } from "../thread/SimulatorPool";
 
 // ============================== 组件实现 ==============================
 
@@ -499,12 +500,84 @@ const StatsRenderer = (props: { data?: object }) => {
 //   );
 // };
 
-export function MemberStatusPanel(props: { member: Accessor<MemberSerializeData | null> }) {
+export function MemberStatusPanel(props: { controllerId?: string; member: Accessor<MemberSerializeData | null> }) {
+	const [liveAttrs, setLiveAttrs] = createSignal<object | undefined>(undefined);
+	const [subViewId, setSubViewId] = createSignal<string | null>(null);
+
 	const selectedMemberData = createMemo(() => {
-		return props.member()?.attrs;
+		return liveAttrs() ?? props.member()?.attrs;
 	});
 	const [displayDetail, setDisplayDetail] = createSignal(false);
 	const [activeTab, setActiveTab] = createSignal<"attrs" | "buffs">("attrs");
+
+	// 监听 debug_view_frame（井盖式通道）
+	const handleDebugViewFrame = (data: { workerId: string; event: unknown }) => {
+		const currentViewId = subViewId();
+		if (!currentViewId) return;
+		const evt = data.event as { viewId?: unknown; data?: unknown };
+		if (evt && evt.viewId === currentViewId && evt.data && typeof evt.data === "object") {
+			setLiveAttrs(evt.data as object);
+		}
+	};
+
+	createEffect(() => {
+		realtimeSimulatorPool.on("debug_view_frame", handleDebugViewFrame);
+		onCleanup(() => {
+			realtimeSimulatorPool.off("debug_view_frame", handleDebugViewFrame);
+		});
+	});
+
+	// 当成员详情对话框打开且处于 attrs tab 时，订阅 StatContainer 导出
+	createEffect(() => {
+		const member = props.member();
+		const memberId = member?.id;
+		const controllerId = props.controllerId ?? "ui";
+		const shouldSubscribe = displayDetail() && activeTab() === "attrs" && typeof memberId === "string" && memberId.length > 0;
+
+		const current = subViewId();
+		if (!shouldSubscribe) {
+			// 不需要订阅：如果当前有订阅则取消
+			if (current) {
+				const cmd: DataQueryCommand = { type: "unsubscribe_debug_view", viewId: current };
+				realtimeSimulatorPool.executeTask("data_query", cmd, "low")
+					.catch(console.error);
+				setSubViewId(null);
+				setLiveAttrs(undefined);
+			}
+			return;
+		}
+
+		// 需要订阅但还未订阅
+		if (!current) {
+			const cmd: DataQueryCommand = {
+				type: "subscribe_debug_view",
+				controllerId,
+				memberId,
+				viewType: "stat_container_export",
+				hz: 10,
+			};
+			realtimeSimulatorPool
+				.executeTask("data_query", cmd, "low")
+				.then((res) => {
+					const task = res.data as { success?: boolean; data?: { viewId?: string }; error?: string } | undefined;
+					if (res.success && task?.success && task.data?.viewId) {
+						setSubViewId(task.data.viewId);
+					} else {
+						console.warn("订阅成员属性面板失败:", task?.error ?? res.error);
+					}
+				})
+				.catch(console.error);
+		}
+	});
+
+	onCleanup(() => {
+		// 组件卸载时确保取消订阅
+		const current = subViewId();
+		if (current) {
+			const cmd: DataQueryCommand = { type: "unsubscribe_debug_view", viewId: current };
+			realtimeSimulatorPool.executeTask("data_query", cmd, "low").catch(console.error);
+		}
+	});
 
 	return (
 		<Show

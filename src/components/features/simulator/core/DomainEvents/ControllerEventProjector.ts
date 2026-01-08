@@ -12,7 +12,8 @@ import type { MemberDomainEvent, ControllerDomainEvent } from "../types";
 
 export class ControllerEventProjector {
 	private bindingManager: ControlBindingManager;
-	private systemMessageSender: ((payload: unknown) => void) | null = null;
+	/** 领域事件批发送器（直接发送 domain_event_batch 顶层消息） */
+	private domainEventBatchSender: ((payload: { type: "controller_domain_event_batch"; frameNumber: number; events: ControllerDomainEvent[] }) => void) | null = null;
 	
 	/** 当前帧收集的控制器事件 */
 	private currentFrameEvents: ControllerDomainEvent[] = [];
@@ -22,10 +23,28 @@ export class ControllerEventProjector {
 	}
 
 	/**
-	 * 设置系统消息发送器
+	 * 设置领域事件批发送器
+	 * 
+	 * 注意：现在直接发送 domain_event_batch 顶层消息，不再嵌套在 system_event 中
+	 */
+	setDomainEventBatchSender(sender: ((payload: { type: "controller_domain_event_batch"; frameNumber: number; events: ControllerDomainEvent[] }) => void) | null): void {
+		this.domainEventBatchSender = sender;
+	}
+
+	/**
+	 * @deprecated 使用 setDomainEventBatchSender 代替
+	 * 保留此方法以向后兼容，但会转发到新的发送器
 	 */
 	setSystemMessageSender(sender: ((payload: unknown) => void) | null): void {
-		this.systemMessageSender = sender;
+		if (sender) {
+			// 包装为 domain_event_batch 发送器
+			this.domainEventBatchSender = (payload) => {
+				// 直接发送 payload，worker 侧会识别为 domain_event_batch
+				sender(payload);
+			};
+		} else {
+			this.domainEventBatchSender = null;
+		}
 	}
 
 	/**
@@ -67,6 +86,8 @@ export class ControllerEventProjector {
 
 	/**
 	 * 刷新帧（发送所有收集的事件到主线程）
+	 * 
+	 * 现在直接发送 domain_event_batch 顶层消息，不再嵌套在 system_event 中
 	 * @param frameNumber 当前帧号
 	 */
 	flush(frameNumber: number): void {
@@ -74,15 +95,15 @@ export class ControllerEventProjector {
 			return;
 		}
 
-		if (!this.systemMessageSender) {
-			console.warn("ControllerEventProjector: 系统消息发送器未设置，无法发送事件");
+		if (!this.domainEventBatchSender) {
+			console.warn("ControllerEventProjector: 领域事件批发送器未设置，无法发送事件");
 			this.currentFrameEvents = [];
 			return;
 		}
 
-		// 批量发送
+		// 批量发送（直接作为 domain_event_batch 顶层消息）
 		try {
-			this.systemMessageSender({
+			this.domainEventBatchSender({
 				type: "controller_domain_event_batch",
 				frameNumber,
 				events: this.currentFrameEvents,

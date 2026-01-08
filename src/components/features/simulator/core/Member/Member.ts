@@ -6,6 +6,7 @@ import type { CommonRuntimeContext } from "./runtime/Agent/CommonRuntimeContext"
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
 import type { NestedSchema } from "./runtime/StatContainer/SchemaTypes";
 import type { StatContainer } from "./runtime/StatContainer/StatContainer";
+import type { ExpressionContext } from "../JSProcessor/types";
 import type {
 	MemberActor,
 	MemberEventType,
@@ -53,6 +54,8 @@ export class Member<
 	btManager: BtManager<TAttrKey, TStateEvent, TStateContext>;
 	/** 成员Actor引用 */
 	actor: MemberActor<TStateEvent, TStateContext>;
+	/** Actor 是否已启动 */
+	private actorStarted = false;
 	/** 成员数据 */
 	data: MemberWithRelations;
 	/** 位置信息 */
@@ -100,7 +103,8 @@ export class Member<
 		this.actor = createActor(stateMachine(this), {
 			id: memberData.id,
 		});
-		this.actor.start();
+		// 注意：不要在构造函数里 start actor
+		// start 必须在依赖注入（evaluateExpression/emitDomainEvent 等）完成后由 MemberManager 统一触发
 
 		// 渲染成员
 		
@@ -128,6 +132,15 @@ export class Member<
 		}
 	}
 
+	/**
+	 * 启动成员状态机（由 MemberManager 在注入完成后调用）
+	 */
+	start(): void {
+		if (this.actorStarted) return;
+		this.actor.start();
+		this.actorStarted = true;
+	}
+
 	/** 序列化方法 */
 	serialize(): MemberSerializeData {
 		return {
@@ -153,6 +166,18 @@ export class Member<
 	}
 
 	/**
+	 * 设置表达式求值器
+	 */
+	setEvaluateExpression(
+		evaluateExpression: ((expression: string, context: ExpressionContext) => number | boolean) | null,
+	): void {
+		if (this.runtimeContext && evaluateExpression) {
+			// runtimeContext 已有默认实现，这里覆盖为引擎注入版本
+			(this.runtimeContext as Record<string, unknown>).evaluateExpression = evaluateExpression;
+		}
+	}
+
+	/**
 	 * 发出域事件（供成员内部调用）
 	 */
 	notifyDomainEvent(event: MemberDomainEvent): void {
@@ -165,6 +190,9 @@ export class Member<
 	 * 新的执行入口：每帧 tick
 	 */
 	tick(frame: number): void {
+		if (!this.actorStarted) {
+			throw new Error(`成员 Actor 未启动：${this.id}（构造顺序错误：必须先注入后 start）`);
+		}
 		// 更新状态机
 		// 由于 TStateEvent extends MemberEventType，而 MemberEventType 包含 MemberUpdateEvent，
 		// 所以 MemberUpdateEvent 总是 TStateEvent 的子类型，这里使用类型断言是安全的

@@ -1,7 +1,7 @@
 // ==================== 模拟器专用扩展 ====================
 
 import { z } from "zod/v4";
-import { type WorkerMessageEvent, WorkerSystemMessageSchema } from "~/lib/WorkerPool/type";
+import type { WorkerMessageEvent } from "~/lib/WorkerPool/type";
 import { type PoolConfig, WorkerPool, type WorkerWrapper } from "~/lib/WorkerPool/WorkerPool";
 import type { RendererCmd } from "../../render/RendererProtocol";
 import type { EngineCommand } from "../GameEngineSM";
@@ -9,6 +9,7 @@ import type { MemberSerializeData } from "../Member/Member";
 import { type IntentMessage, IntentMessageSchema } from "../MessageRouter/MessageRouter";
 import type { EngineStats } from "../types";
 import simulationWorker from "./Simulation.worker?worker&url";
+import { WorkerSystemMessageSchema } from "./protocol";
 
 /**
  * 通用任务优先级
@@ -26,6 +27,10 @@ export const DataQueryCommandSchema = z.discriminatedUnion("type", [
 		type: z.literal("get_members"),
 	}),
 	z.object({
+		type: z.literal("get_member_skill_list"),
+		memberId: z.string(),
+	}),
+	z.object({
 		type: z.literal("get_stats"),
 	}),
 	z.object({
@@ -38,6 +43,18 @@ export const DataQueryCommandSchema = z.discriminatedUnion("type", [
 	z.object({
 		type: z.literal("send_intent"),
 		intent: IntentMessageSchema,
+	}),
+	z.object({
+		type: z.literal("subscribe_debug_view"),
+		controllerId: z.string(),
+		memberId: z.string(),
+		viewType: z.enum(["stat_container_export"]),
+		hz: z.number().optional(),
+		fields: z.array(z.string()).optional(),
+	}),
+	z.object({
+		type: z.literal("unsubscribe_debug_view"),
+		viewId: z.string(),
 	}),
 ]);
 
@@ -72,11 +89,6 @@ export type SimulatorTaskTypeMapKey = keyof SimulatorTaskMap;
 export type SimulatorTaskTypeMapValue = SimulatorTaskMap[SimulatorTaskTypeMapKey];
 
 /**
- * Worker 主动发送回主线程的系统消息类型
- */
-type SystemMessageType = "system_event" | "frame_snapshot" | "render_cmd" | "engine_state_machine";
-
-/**
  * 模拟器线程池 - 基于通用 WorkerPool 的模拟器专用实现
  *
  * 提供模拟器业务特定的 API，同时保持通用线程池的核心功能
@@ -88,17 +100,22 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 		// 设置模拟器专用的事件处理器
 		this.on(
 			"worker-message",
-			(data: { worker: WorkerWrapper; event: WorkerMessageEvent<any, SimulatorTaskMap, any> }) => {
+			(
+				data: {
+					worker: WorkerWrapper;
+					event: WorkerMessageEvent<unknown, SimulatorTaskMap, unknown>;
+				},
+			) => {
 				// 检查是否是系统消息（通过 schema 验证）
 				const parsed = WorkerSystemMessageSchema.safeParse(data.event);
 				if (parsed.success) {
 					const { type, data: eventData } = parsed.data;
 
-					// 处理系统事件
+					// 处理系统事件（worker_ready/error/日志等杂项）
 					if (type === "system_event") {
 						this.emit("system_event", { workerId: data.worker.id, event: eventData });
 					}
-					// 帧快照事件 - 每帧包含完整的引擎和成员状态
+					// 帧快照事件 - 每帧包含完整的引擎和成员状态（向后兼容，默认关闭或降频）
 					else if (type === "frame_snapshot") {
 						this.emit("frame_snapshot", { workerId: data.worker.id, event: eventData });
 					}
@@ -109,6 +126,18 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 					// 引擎状态机消息 - 镜像通信
 					else if (type === "engine_state_machine") {
 						this.emit("engine_state_machine", { workerId: data.worker.id, event: eventData });
+					}
+					// 引擎遥测 - 轻量运行指标（帧号/运行时间/FPS/成员数）
+					else if (type === "engine_telemetry") {
+						this.emit("engine_telemetry", { workerId: data.worker.id, event: eventData });
+					}
+					// 领域事件批 - 控制器领域事件（从 system_event 提升为顶层消息）
+					else if (type === "domain_event_batch") {
+						this.emit("domain_event_batch", { workerId: data.worker.id, event: eventData });
+					}
+					// 调试视图数据帧 - 订阅制高频数据（井盖）
+					else if (type === "debug_view_frame") {
+						this.emit("debug_view_frame", { workerId: data.worker.id, event: eventData });
 					}
 				}
 				// 其他消息（如任务结果）不需要特殊处理，由 WorkerPool 处理
@@ -141,6 +170,23 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 		}
 
 		console.log("🔍 SimulatorPool.getMembers: 解析失败，返回空数组");
+		return [];
+	}
+
+	/**
+	 * 获取成员技能静态列表（绑定时拉取一次）
+	 */
+	async getMemberSkillList(memberId: string): Promise<Array<{ id: string; name: string; level: number }>> {
+		const command: DataQueryCommand = { type: "get_member_skill_list", memberId };
+		const result = await this.executeTask("data_query", command, "low");
+		const task = result.data as { success: boolean; data?: unknown; error?: string } | undefined;
+		if (result.success && task?.success && Array.isArray(task.data)) {
+			return (task.data as Array<{ id: unknown; name: unknown; level: unknown }>).map((x) => ({
+				id: String(x.id ?? ""),
+				name: String(x.name ?? ""),
+				level: Number(x.level ?? 0),
+			}));
+		}
 		return [];
 	}
 
@@ -179,6 +225,12 @@ export const realtimeSimulatorPool = new SimulatorPool({
 	maxRetries: 1, // 实时模拟减少重试次数
 	maxQueueSize: 10, // 实时模拟减少队列大小
 	monitorInterval: 5000, // 实时模拟更频繁的监控
+	isWorkerReadyMessage: (sys) => {
+		if (sys.type !== "system_event") return false;
+		if (typeof sys.data !== "object" || sys.data === null) return false;
+		const data = sys.data as { type?: unknown };
+		return data.type === "worker_ready";
+	},
 });
 
 // 批量计算实例 - 多Worker，适合并行计算
@@ -190,4 +242,10 @@ export const batchSimulatorPool = new SimulatorPool({
 	maxRetries: 2, // 减少重试次数
 	maxQueueSize: 100, // 减少队列大小
 	monitorInterval: 10000, // 增加监控间隔
+	isWorkerReadyMessage: (sys) => {
+		if (sys.type !== "system_event") return false;
+		if (typeof sys.data !== "object" || sys.data === null) return false;
+		const data = sys.data as { type?: unknown };
+		return data.type === "worker_ready";
+	},
 });

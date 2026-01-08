@@ -3,6 +3,7 @@ import type { SkillEffectWithRelations } from "@db/generated/repositories/skill_
 import type { SkillEffectLogic } from "@db/schema/skillEffectLogicSchema";
 import type { Member } from "../../Member";
 import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
+import type { ExpressionContext } from "../../../JSProcessor/types";
 
 
 export interface CommonProperty extends Record<string, unknown> {
@@ -32,6 +33,12 @@ export interface CommonProperty extends Record<string, unknown> {
 	// 常用计算值
 	vAtkP: string;
 	vAtkM: string;
+
+	/**
+	 * 表达式求值（由引擎注入）
+	 * - FSM / 行为树只依赖这个函数，不直接依赖 GameEngine
+	 */
+	evaluateExpression: (expression: string, context: ExpressionContext) => number | boolean;
 }
 
 export const CommonProperty: CommonProperty = {
@@ -46,4 +53,7 @@ export const CommonProperty: CommonProperty = {
 	previousSkill: null,
 	vAtkP: "((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - (1 - self.pie.p) * target.def.p)",
 	vAtkM: "((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - (1 - self.pie.m) * target.def.m)",
+	evaluateExpression: (expression: string) => {
+		throw new Error(`evaluateExpression 未注入：${expression}`);
+	},
 };

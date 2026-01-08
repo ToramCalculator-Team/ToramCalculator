@@ -12,6 +12,8 @@ import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
 export class RendererCommunication {
   private renderHandler: ((payload: any) => void) | null = null;
   private isInitialized = false;
+  /** 保存 handler 引用，确保 on/off 使用同一个函数引用 */
+  private boundHandleRenderCommand: ((data: { workerId: string; event: any }) => void) | null = null;
 
   // ==================== 生命周期管理 ====================
   
@@ -24,8 +26,10 @@ export class RendererCommunication {
       return;
     }
 
+    // 保存 bound handler 引用，确保 on/off 使用同一个函数引用
+    this.boundHandleRenderCommand = this.handleRenderCommand.bind(this);
     // 监听Worker发出的渲染指令
-    realtimeSimulatorPool.on("render_cmd", this.handleRenderCommand.bind(this));
+    realtimeSimulatorPool.on("render_cmd", this.boundHandleRenderCommand);
     
     this.isInitialized = true;
     // console.log("RendererCommunication: 初始化完成", new Date().toLocaleTimeString());
@@ -37,8 +41,11 @@ export class RendererCommunication {
   dispose() {
     if (!this.isInitialized) return;
 
-    // 移除事件监听
-    realtimeSimulatorPool.off("render_cmd", this.handleRenderCommand.bind(this));
+    // 移除事件监听（使用保存的引用）
+    if (this.boundHandleRenderCommand) {
+      realtimeSimulatorPool.off("render_cmd", this.boundHandleRenderCommand);
+      this.boundHandleRenderCommand = null;
+    }
     
     // 清理渲染处理器
     this.renderHandler = null;

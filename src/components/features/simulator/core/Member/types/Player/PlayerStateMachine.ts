@@ -4,6 +4,7 @@ import type { Member } from "../../Member";
 import type { MemberEventType, MemberStateContext, MemberStateMachine } from "../../runtime/StateMachine/types";
 import type { PlayerRuntimeContext } from "./Agents/RuntimeContext";
 import type { Player, PlayerAttrType } from "./Player";
+import { MemberDomainEvent } from "../../../types";
 
 /**
  * Player特有的事件类型
@@ -226,7 +227,7 @@ export const playerStateMachine = (
 			添加待处理技能效果: ({ context, event }) => {
 				console.log(`👤 [${context.owner?.name}] 添加待处理技能效果`, event);
 				const skillEffect = runtimeContext.currentSkill?.template?.effects.find((e) =>
-					player.engine.evaluateExpression(e.condition, {
+					runtimeContext.evaluateExpression(e.condition, {
 						currentFrame: runtimeContext.currentFrame,
 						casterId: player.id,
 						skillLv: runtimeContext.currentSkill?.lv ?? 0,
@@ -350,7 +351,7 @@ export const playerStateMachine = (
 					});
 				}
 			},
-			发出移动开始域事件: ({ context, event }) => {
+			发出移动开始域事件: ({ context, event: _event }) => {
 				const owner = context.owner;
 				if (!owner) return;
 				
@@ -363,7 +364,7 @@ export const playerStateMachine = (
 					position: owner.position,
 				});
 			},
-			发出移动停止域事件: ({ context, event }) => {
+			发出移动停止域事件: ({ context, event: _event }) => {
 				const owner = context.owner;
 				if (!owner) return;
 				
@@ -374,6 +375,44 @@ export const playerStateMachine = (
 					type: "move_stopped",
 					memberId: owner.id,
 					position: owner.position,
+				});
+			},
+			发出施法进度开始事件: ({ context, event: _event }) => {
+				const owner = context.owner;
+				if (!owner) return;
+
+				const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as
+					| ((event: MemberDomainEvent) => void)
+					| undefined;
+				if (!emitDomainEvent) return;
+
+				const skillId = runtimeContext.currentSkill?.id ?? "";
+				if (!skillId) return;
+
+				emitDomainEvent({
+					type: "cast_progress",
+					memberId: owner.id,
+					skillId,
+					progress: 0,
+				});
+			},
+			发出施法进度结束事件: ({ context, event: _event }) => {
+				const owner = context.owner;
+				if (!owner) return;
+
+				const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as
+					| ((event: MemberDomainEvent) => void)
+					| undefined;
+				if (!emitDomainEvent) return;
+
+				const skillId = runtimeContext.currentSkill?.id ?? "";
+				if (!skillId) return;
+
+				emitDomainEvent({
+					type: "cast_progress",
+					memberId: owner.id,
+					skillId,
+					progress: 1,
 				});
 			},
 			发送buff修改事件给自己: ({ context, event }) => {
@@ -408,7 +447,7 @@ export const playerStateMachine = (
 				}
 
 				// 蓄力阶段相关属性（假设使用chargeFixed和chargeModified）
-				const reservoirFixed = player.engine.evaluateExpression(effect.reservoirFixed ?? "0", {
+				const reservoirFixed = runtimeContext.evaluateExpression(effect.reservoirFixed ?? "0", {
 					currentFrame: context.currentFrame,
 					casterId: player.id,
 				});
@@ -416,7 +455,7 @@ export const playerStateMachine = (
 					console.error(`👤 [${context.owner?.name}] 蓄力阶段固定值不是数字`);
 					return false;
 				}
-				const reservoirModified = player.engine.evaluateExpression(effect.reservoirModified ?? "0", {
+				const reservoirModified = runtimeContext.evaluateExpression(effect.reservoirModified ?? "0", {
 					currentFrame: context.currentFrame,
 					casterId: player.id,
 				});
@@ -434,7 +473,7 @@ export const playerStateMachine = (
 					console.error(`👤 [${context.owner?.name}] 技能效果不存在`);
 					return false;
 				}
-				const chantingFixed = player.engine.evaluateExpression(effect.chantingFixed ?? "0", {
+				const chantingFixed = runtimeContext.evaluateExpression(effect.chantingFixed ?? "0", {
 					currentFrame: context.currentFrame,
 					casterId: player.id,
 				});
@@ -442,7 +481,7 @@ export const playerStateMachine = (
 					console.error(`👤 [${context.owner?.name}] 咏唱阶段固定值不是数字`);
 					return false;
 				}
-				const chantingModified = player.engine.evaluateExpression(effect.chantingModified ?? "0", {
+				const chantingModified = runtimeContext.evaluateExpression(effect.chantingModified ?? "0", {
 					currentFrame: context.currentFrame,
 					casterId: player.id,
 				});
@@ -469,7 +508,7 @@ export const playerStateMachine = (
 					return true;
 				}
 				const effect = skill.template?.effects.find((e) => {
-					const result = player.engine.evaluateExpression(e.condition, {
+					const result = runtimeContext.evaluateExpression(e.condition, {
 						currentFrame: context.currentFrame,
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,
@@ -509,7 +548,7 @@ export const playerStateMachine = (
 					return true;
 				}
 				const effect = skill.template?.effects.find((e) => {
-					const result = player.engine.evaluateExpression(e.condition, {
+					const result = runtimeContext.evaluateExpression(e.condition, {
 						currentFrame: context.currentFrame,
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,
@@ -522,7 +561,7 @@ export const playerStateMachine = (
 					return true;
 				}
 				if (effect.hpCost && effect.mpCost) {
-					const hpCost = player.engine.evaluateExpression(effect.hpCost, {
+					const hpCost = runtimeContext.evaluateExpression(effect.hpCost, {
 						currentFrame: context.currentFrame,
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,
@@ -531,7 +570,7 @@ export const playerStateMachine = (
 						console.error(`👤 [${context.owner?.name}] 技能HP消耗不是数字`);
 						return true;
 					}
-					const mpCost = player.engine.evaluateExpression(effect.mpCost, {
+					const mpCost = runtimeContext.evaluateExpression(effect.mpCost, {
 						currentFrame: context.currentFrame,
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,
@@ -802,15 +841,21 @@ export const playerStateMachine = (
 										],
 									},
 									执行技能中: {
-										entry: [{ type: "添加待处理技能效果" }, { type: "执行技能" }],
+										entry: [
+											{ type: "发出施法进度开始事件" },
+											{ type: "添加待处理技能效果" },
+											{ type: "执行技能" },
+										],
 										on: {
 											技能执行完成: [
 												{
 													target: `#${machineId}.存活.可操作状态.技能处理状态`,
 													guard: "存在后续连击",
+													actions: [{ type: "发出施法进度结束事件" }],
 												},
 												{
 													target: `#${machineId}.存活.可操作状态.空闲状态`,
+													actions: [{ type: "发出施法进度结束事件" }],
 												},
 											],
 										},

@@ -1,11 +1,28 @@
 import { z } from "zod/v4";
 
 /**
+ * Worker 系统消息“信封”Schema（库层通用）
+ *
+ * 设计原则：
+ * - lib 层只识别“这是一个系统消息信封”，不关心业务级 type 枚举（例如 simulator 的 domain_event_batch）
+ * - 业务层（如 simulator）应在各自的 protocol 文件里做更严格的 type/schema 校验
+ */
+export const WorkerSystemMessageEnvelopeSchema = z.object({
+	type: z.string(),
+	data: z.unknown(),
+	belongToTaskId: z.string().optional(),
+});
+
+export type WorkerSystemMessageEnvelope = z.output<
+	typeof WorkerSystemMessageEnvelopeSchema
+>;
+
+/**
  * 通用任务结果接口
  */
 export interface TaskResult {
   success: boolean; // 任务是否成功
-  data?: any; // 任务返回的数据
+  data?: unknown; // 任务返回的数据
   error?: string; // 错误信息
 }
 
@@ -14,7 +31,7 @@ export interface TaskResult {
  */
 export interface TaskExecutionResult {
   success: boolean; // 任务是否成功
-  data?: any; // 任务返回的数据
+  data?: unknown; // 任务返回的数据
   error?: string; // 错误信息
   metrics?: {
     duration: number; // 执行时长（毫秒）
@@ -63,7 +80,7 @@ export interface Result<T> {
  */
 export type WorkerMessageEvent<
   TResult,
-  TTaskTypeMap extends Record<string, any>,
+  TTaskTypeMap extends object,
   TData
 > = {
   [K in keyof TTaskTypeMap]: {
@@ -92,12 +109,3 @@ export interface WorkerMessage<TPayload, TPriority extends string> {
   payload: TPayload;
   priority: TPriority;
 }
-
-/**
- * Worker系统消息Schema - 用于解析系统消息
- */
-export const WorkerSystemMessageSchema = z.object({
-    type: z.enum(["system_event", "frame_snapshot", "render_cmd", "engine_state_machine"]),
-    data: z.any(),
-    belongToTaskId: z.string().optional(),
-  });

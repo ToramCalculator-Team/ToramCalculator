@@ -42,6 +42,21 @@ export interface PlayerProperty extends Record<string, unknown> {
 	 * - 用于把 workspaceJson 的编译从“施放时”前移到“角色创建时”
 	 */
 	compiledSkillEffectLogicByEffectId: Record<string, string>;
+
+	/** 当前伤害请求（用于调试/管线暂存） */
+	currentDamageRequest:
+		| {
+				sourceId: string;
+				targetId: string;
+				skillId: string;
+				damageType: "physical" | "magic";
+				canBeDodged: boolean;
+				canBeGuarded: boolean;
+				damageFormula: string;
+				extraVars?: Record<string, unknown>;
+				sourceSnapshot?: Record<string, unknown>;
+		  }
+		| undefined;
 }
 export const PlayerProperty: PlayerProperty = {
 	type: "Player",
@@ -60,4 +75,5 @@ export const PlayerProperty: PlayerProperty = {
 	currentSkillTreeId: "",
 	character: null,
 	compiledSkillEffectLogicByEffectId: {},
+	currentDamageRequest: undefined,
 };

@@ -15,10 +15,12 @@ import { ControlBindingManager } from "./Controller/ControlBindingManager";
 import { ControllerRegistry } from "./Controller/ControllerEndpoint";
 import { DomainEventBus } from "./DomainEvents/DomainEventBus";
 import { ControllerEventProjector } from "./DomainEvents/ControllerEventProjector";
+import { ExpressionEvaluator } from "./Expression/ExpressionEvaluator";
 import { type IntentMessage, type MessageProcessResult, MessageRouter } from "./MessageRouter/MessageRouter";
 import type {
 	BuffViewDataSnapshot,
 	ComputedSkillInfo,
+	ControllerDomainEvent,
 	EngineConfig,
 	EngineState,
 	EngineStats,
@@ -70,6 +72,8 @@ export class GameEngine {
 
 	/** JS表达式处理器 - 负责编译JS代码 */
 	private jsProcessor: JSProcessor;
+	/** 表达式求值器 - 负责 self/target/world 绑定 */
+	private expressionEvaluator: ExpressionEvaluator;
 
 	/** 引擎配置 */
 	private config: EngineConfig;
@@ -161,11 +165,22 @@ export class GameEngine {
 		// World 相关
 
 		this.world = new World(this.renderMessageSender);
+
+		// 初始化表达式求值器（把 world/self/target 绑定收敛到一个服务）
+		this.expressionEvaluator = new ExpressionEvaluator({
+			jsProcessor: this.jsProcessor,
+			getMemberById: (id) => this.world.memberManager.getMember(id),
+			engine: this, // 向后兼容：表达式里可能访问 engine
+		});
 		
 		// 设置域事件发射器到 MemberManager
 		this.world.memberManager.setEmitDomainEvent((event) => {
 			this.emitDomainEvent(event);
 		});
+		// 设置表达式求值器到 MemberManager（成员创建时会注入到 runtimeContext.evaluateExpression）
+		this.world.memberManager.setEvaluateExpression((expression, context) =>
+			this.expressionEvaluator.evaluateNumberOrBoolean(expression, context),
+		);
 
 		// 创建状态机 - executor 角色
 		let seqCounter = 0;
@@ -456,8 +471,20 @@ export class GameEngine {
 	 */
 	setSystemMessageSender(sender: ((payload: unknown) => void) | null): void {
 		this.systemMessageSender = sender;
-		// 同时设置投影器的发送器
+		// 向后兼容：仍通过 setSystemMessageSender 设置投影器（内部会转发到新的发送器）
 		this.controllerEventProjector.setSystemMessageSender(sender);
+	}
+
+	/**
+	 * 设置领域事件批发送器
+	 * 
+	 * 用于直接发送 domain_event_batch 顶层消息（不再嵌套在 system_event 中）
+	 * @param sender 领域事件批发送函数
+	 */
+	setDomainEventBatchSender(
+		sender: ((payload: { type: "controller_domain_event_batch"; frameNumber: number; events: ControllerDomainEvent[] }) => void) | null,
+	): void {
+		this.controllerEventProjector.setDomainEventBatchSender(sender);
 	}
 
 	/**
@@ -533,6 +560,41 @@ export class GameEngine {
 			frameLoopStats: this.frameLoop.getFrameLoopStats(),
 			messageRouterStats: this.messageRouter.getStats(),
 		};
+	}
+
+	/**
+	 * 获取引擎运行时间（毫秒）
+	 * 轻量：不触发成员序列化
+	 */
+	getRunTimeMs(): number {
+		return performance.now() - this.startTime;
+	}
+
+	/**
+	 * 获取成员数量（轻量）
+	 */
+	getMemberCount(): number {
+		return this.world.memberManager.getAllMembers().length;
+	}
+
+	/**
+	 * 获取成员技能静态列表（轻量，用于技能栏按钮渲染）
+	 * 只用于 UI 的“列表展示”，不做可用性/条件计算
+	 */
+	getMemberSkillList(memberId: string): Array<{ id: string; name: string; level: number }> {
+		const member = this.getMember(memberId);
+		if (!member || member.type !== "Player") return [];
+
+		const runtimeContext = (member as { runtimeContext?: { skillList?: unknown } }).runtimeContext;
+		const skillList = Array.isArray(runtimeContext?.skillList) ? runtimeContext?.skillList : [];
+		return skillList.map((s) => {
+			const skill = s as { id?: unknown; lv?: unknown; template?: { name?: unknown } };
+			return {
+				id: String(skill.id ?? ""),
+				name: String(skill.template?.name ?? skill.id ?? "未知技能"),
+				level: Number(skill.lv ?? 0),
+			};
+		});
 	}
 
 	/**
@@ -728,76 +790,7 @@ export class GameEngine {
 	 * @returns 计算结果
 	 */
 	evaluateExpression(expression: string, context: ExpressionContext): number | boolean {
-		try {
-			const memberId = context.casterId;
-			if (!memberId) {
-				throw new Error("缺少成员ID");
-			}
-
-			const self = this.world.memberManager.getMember(memberId);
-			if (!self) {
-				throw new Error(`成员不存在: ${memberId}`);
-			}
-
-			const target = context.targetId
-				? this.world.memberManager.getMember(context.targetId)
-				: undefined;
-
-			// 表达式用的对象包装：避免直接污染 Member 实例，同时保留原型链/方法
-			const selfExpr = Object.create(self) as typeof self & {
-				hasBuff?: (id: string) => boolean;
-				hasDebuff?: (id: string) => boolean;
-			};
-			selfExpr.hasBuff = (id: string) => self.btManager.hasBuff(id);
-			selfExpr.hasDebuff = (_id: string) => false;
-
-			const targetExpr = target
-				? (Object.create(target) as typeof target & {
-						hasBuff?: (id: string) => boolean;
-						hasDebuff?: (id: string) => boolean;
-					})
-				: undefined;
-			if (targetExpr && target) {
-				targetExpr.hasBuff = (id: string) => target.btManager.hasBuff(id);
-				targetExpr.hasDebuff = (_id: string) => false;
-			}
-
-			// 确保 context 包含 engine/self/target 引用（表达式里可直接使用 self/target）
-			const executionContext: ExpressionContext = {
-				...context,
-				engine: this,
-				self: selfExpr,
-				target: targetExpr,
-				/**
-				 * 表达式运行时 API：查询 Buff 状态
-				 *
-				 * 约定：
-				 * - `hasBuff('id')` 默认查询 self（施法者/当前计算主体）
-				 * - `self.hasBuff('id')` / `target.hasBuff('id')` 也可用（向后兼容写法）
-				 */
-				hasBuff: (id: string): boolean => self.btManager.hasBuff(id),
-				hasDebuff: (_id: string): boolean => false,
-			};
-
-			const evalResult = this.jsProcessor.evaluateNumberOrBoolean(
-				expression,
-				executionContext,
-				{
-					cacheScope: `${memberId}_${context.targetId ?? "-"}`,
-					schemas: {
-						self: self.dataSchema,
-						target: target?.dataSchema,
-					},
-				},
-			);
-			if (!evalResult.success) {
-				throw new Error(evalResult.error ?? "表达式求值失败");
-			}
-			return evalResult.result ?? 0;
-		} catch (error) {
-			console.error(`表达式计算失败: ${expression}`, error);
-			return 0;
-		}
+		return this.expressionEvaluator.evaluateNumberOrBoolean(expression, context);
 	}
 
 	/**

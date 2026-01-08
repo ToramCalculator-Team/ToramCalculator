@@ -14,6 +14,7 @@ import {
 	type SimulatorTaskPriority,
 	type SimulatorTaskTypeMapValue,
 } from "./SimulatorPool";
+import { DebugViewRegistry } from "./DebugViewRegistry";
 
 // ==================== 沙盒环境初始化 ====================
 
@@ -92,6 +93,10 @@ const gameEngine = new GameEngine({
 	},
 });
 
+// 创建调试视图注册表（井盖模式）
+const debugViewRegistry = new DebugViewRegistry();
+debugViewRegistry.setGameEngine(gameEngine);
+
 // 注释：引擎状态机现在已集成到 GameEngine 内部，不再需要单独的 Actor
 
 // ==================== 数据查询处理函数 ====================
@@ -107,6 +112,20 @@ async function handleDataQuery(
 			case "get_members": {
 				const members = gameEngine.getAllMemberData();
 				return { success: true, data: members };
+			}
+			case "get_member_skill_list": {
+				const memberId = command.memberId;
+				if (!memberId) {
+					return { success: false, error: "memberId required" };
+				}
+				try {
+					return { success: true, data: gameEngine.getMemberSkillList(memberId) };
+				} catch (error) {
+					return {
+						success: false,
+						error: error instanceof Error ? error.message : "Unknown error",
+					};
+				}
 			}
 
 			case "get_stats": {
@@ -154,6 +173,36 @@ async function handleDataQuery(
 					};
 				}
 			}
+
+			case "subscribe_debug_view": {
+				try {
+					const viewId = debugViewRegistry.subscribe({
+						controllerId: command.controllerId,
+						memberId: command.memberId,
+						viewType: command.viewType,
+						hz: command.hz ?? 10,
+						fields: command.fields,
+					});
+					return { success: true, data: { viewId } };
+				} catch (error) {
+					return {
+						success: false,
+						error: error instanceof Error ? error.message : "Unknown error",
+					};
+				}
+			}
+
+			case "unsubscribe_debug_view": {
+				try {
+					const removed = debugViewRegistry.unsubscribe(command.viewId);
+					return { success: removed, error: removed ? undefined : "订阅不存在" };
+				} catch (error) {
+					return {
+						success: false,
+						error: error instanceof Error ? error.message : "Unknown error",
+					};
+				}
+			}
 		}
 	} catch (error) {
 		return {
@@ -177,30 +226,12 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 				const messagePort: MessagePort = port;
 
 				// 设置引擎的对端通信发送器（executor → controller）
+				// 统一使用 postSystemMessage 发送 engine_state_machine
 				gameEngine.setMirrorSender((msg: EngineControlMessage) => {
 					try {
-						// 使用 postSystemMessage 的格式发送 engine_state_machine 消息
-						const sanitizedData = sanitizeForPostMessage(msg);
-						const message = {
-							belongToTaskId: "engine_state_machine" as const,
-							type: "engine_state_machine" as const,
-							data: sanitizedData,
-						};
-						const { message: finalMessage, transferables } = prepareForTransfer(message);
-						messagePort.postMessage(finalMessage, transferables);
+						postSystemMessage(messagePort, "engine_state_machine", msg);
 					} catch (error) {
 						console.error("Worker: 发送对端消息失败:", error);
-						// 备用方案：直接发送
-						try {
-							const sanitizedData = sanitizeForPostMessage(msg);
-							messagePort.postMessage({
-								belongToTaskId: "engine_state_machine",
-								type: "engine_state_machine",
-								data: sanitizedData,
-							});
-						} catch (fallbackError) {
-							console.error("Worker: 备用消息发送也失败:", fallbackError);
-						}
 					}
 				});
 
@@ -297,13 +328,32 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 					}
 				});
 
-				// 设置系统消息发送器：用于发送系统级事件到控制器
+				// 设置系统消息发送器：用于发送系统级事件到控制器（worker_ready/error/日志等）
 				gameEngine.setSystemMessageSender((payload: unknown) => {
 					try {
 						console.log("🔌 Worker: 发送系统消息到主线程", payload);
 						postSystemMessage(messagePort, "system_event", payload);
 					} catch (error) {
 						console.error("Worker: 发送系统消息失败:", error);
+					}
+				});
+
+				// 设置领域事件批发送器：直接发送 domain_event_batch 顶层消息
+				gameEngine.setDomainEventBatchSender((payload) => {
+					try {
+						// console.log("🔌 Worker: 发送领域事件批到主线程", payload);
+						postSystemMessage(messagePort, "domain_event_batch", payload);
+					} catch (error) {
+						console.error("Worker: 发送领域事件批失败:", error);
+					}
+				});
+
+				// 设置调试视图数据帧发送器
+				debugViewRegistry.setDebugFrameSender((frame) => {
+					try {
+						postSystemMessage(messagePort, "debug_view_frame", frame);
+					} catch (error) {
+						console.error("Worker: 发送调试视图数据帧失败:", error);
 					}
 				});
 
@@ -315,6 +365,9 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 						console.error("Worker: 发送帧快照失败:", error);
 					}
 				});
+
+				// 启动引擎遥测推送（轻量指标，独立于 frame_snapshot）
+				startTelemetryLoop(messagePort);
 
 				// 发送 Worker 初始化完成消息
 				// console.log("✅ Worker: 初始化完成，发送 ready 消息");
@@ -344,9 +397,27 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 };
 
 // ==================== 统一系统消息出口 ====================
+/**
+ * 统一的 Push/Stream 消息发送函数
+ * 
+ * 支持所有顶层 push 消息类型：
+ * - engine_state_machine: 引擎状态机镜像
+ * - render_cmd: 渲染指令
+ * - domain_event_batch: 控制器领域事件批
+ * - system_event: 系统事件（worker_ready/error/日志等）
+ * - frame_snapshot: 帧快照（向后兼容）
+ * - debug_view_frame: 调试视图数据帧（订阅制）
+ */
 function postSystemMessage(
 	port: MessagePort,
-	type: "system_event" | "frame_snapshot" | "render_cmd",
+	type:
+		| "system_event"
+		| "frame_snapshot"
+		| "render_cmd"
+		| "engine_state_machine"
+		| "engine_telemetry"
+		| "domain_event_batch"
+		| "debug_view_frame",
 	data: unknown,
 ) {
 	// 使用共享的MessageSerializer确保数据可以安全地通过postMessage传递
@@ -366,3 +437,27 @@ function postSystemMessage(
 		}
 	}
 }
+
+// ==================== 引擎遥测（轻量指标） ====================
+const TELEMETRY_INTERVAL_MS = 200;
+let telemetryTimer: number | null = null;
+
+function startTelemetryLoop(port: MessagePort) {
+	if (telemetryTimer !== null) return;
+	telemetryTimer = setInterval(() => {
+		try {
+			// 仅在运行/暂停阶段推送遥测（避免 idle 时噪音）
+			if (!gameEngine.isRunning() && gameEngine.getSMState() !== "paused") return;
+			const frameLoopStats = gameEngine.getFrameLoop().getFrameLoopStats();
+			postSystemMessage(port, "engine_telemetry", {
+				frameNumber: gameEngine.getCurrentFrame(),
+				runTime: gameEngine.getRunTimeMs(),
+				fps: frameLoopStats.averageFPS,
+				memberCount: gameEngine.getMemberCount(),
+			});
+		} catch {
+			// 遥测失败不应影响主流程
+		}
+	}, TELEMETRY_INTERVAL_MS) as unknown as number;
+}
+

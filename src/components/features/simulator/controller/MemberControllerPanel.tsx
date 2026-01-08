@@ -11,9 +11,10 @@ import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { MemberStatusPanel } from "../core/Member/MemberStatusPanel";
 import type { MemberController } from "./MemberController";
-import type { ComputedSkillInfo, FrameSnapshot } from "../core/GameEngine";
+import type { FrameSnapshot } from "../core/GameEngine";
 import type { MemberSerializeData } from "../core/Member/Member";
 import { Icons } from "~/components/icons";
+import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
 
 type ControllerEventState = {
 	skillAvailability?: Record<string, boolean>;
@@ -32,7 +33,7 @@ interface MemberControllerPanelProps {
 }
 
 export function MemberControllerPanel(props: MemberControllerPanelProps) {
-	const [stableSkills, setStableSkills] = createSignal<ComputedSkillInfo[]>([]);
+	const [skillList, setSkillList] = createSignal<Array<{ id: string; name: string; level: number }>>([]);
 
 	// 从快照中提取该控制器的视图
 	const controllerView = createMemo(() => {
@@ -63,58 +64,15 @@ export function MemberControllerPanel(props: MemberControllerPanelProps) {
 		} satisfies MemberSerializeData;
 	});
 
-	// 获取技能列表
-	const skills = createMemo(() => controllerView()?.boundMemberSkills ?? []);
 	const controllerEvents = createMemo<ControllerEventState>(() => {
 		return props.controllerEventState()[props.controller.controllerId] ?? {};
 	});
 
-	/**
-	 * 技能列表稳定化：
-	 * - 快照每帧都会生成新对象，Solid 列表会被当作“全量变更”导致按钮 DOM 反复重建（视觉上像闪烁）
-	 * - 这里做一次 diff：只有技能状态变化时才更新，并尽量复用旧对象引用
-	 */
-	const isSameSkill = (a: ComputedSkillInfo, b: ComputedSkillInfo): boolean => {
-		return (
-			a.id === b.id &&
-			a.name === b.name &&
-			a.level === b.level &&
-			a.computed.mpCost === b.computed.mpCost &&
-			a.computed.hpCost === b.computed.hpCost &&
-			a.computed.castingRange === b.computed.castingRange &&
-			a.computed.cooldownRemaining === b.computed.cooldownRemaining &&
-			a.computed.isAvailable === b.computed.isAvailable
-		);
-	};
-
 	createEffect(() => {
-		const next = skills();
-		const prev = stableSkills();
-
-		if (prev.length === next.length) {
-			let allSame = true;
-			for (let i = 0; i < next.length; i += 1) {
-				const prevItem = prev[i];
-				const nextItem = next[i];
-				if (!prevItem || !nextItem || !isSameSkill(prevItem, nextItem)) {
-					allSame = false;
-					break;
-				}
-			}
-			if (allSame) return; // 不更新，避免无意义重渲染
-		}
-
-		// 尽量复用旧引用（按 id）
-		const prevById = new Map(prev.map((s) => [s.id, s]));
-		const stabilized = next.map((s) => {
-			// 应用事件流的技能可用性覆写
-			const overrideAvailable = controllerEvents().skillAvailability?.[s.id];
-			const merged: ComputedSkillInfo = overrideAvailable === undefined ? s : { ...s, computed: { ...s.computed, isAvailable: overrideAvailable } };
-
-			const old = prevById.get(s.id);
-			return old && isSameSkill(old, merged) ? old : merged;
-		});
-		setStableSkills(stabilized);
+		const memberId = props.boundMemberId;
+		if (!memberId) return;
+		// 绑定时拉一次静态技能列表（不依赖 frame_snapshot）
+		realtimeSimulatorPool.getMemberSkillList(memberId).then(setSkillList).catch(console.error);
 	});
 
 	const handleCastSkill = (skillId: string) => {
@@ -126,8 +84,13 @@ export function MemberControllerPanel(props: MemberControllerPanelProps) {
 			<div class="col-span-8 row-span-1 grid grid-cols-8 grid-rows-1 gap-2 items-center justify-between">
 				<div class="col-span-1 row-span-1 flex w-full h-full">
 					{/* 成员状态：优先用 byController 投影；否则用成员静态数据兜底（避免“只有壳”） */}
-					<Show when={memberStatus()} fallback={<MemberStatusPanel member={() => boundMember() ?? null} />}>
-						{(status) => <MemberStatusPanel member={status} />}
+					<Show
+						when={memberStatus()}
+						fallback={
+							<MemberStatusPanel controllerId={props.controller.controllerId} member={() => boundMember() ?? null} />
+						}
+					>
+						{(status) => <MemberStatusPanel controllerId={props.controller.controllerId} member={status} />}
 					</Show>
 				</div>
 				<div class="StatusPanel col-start-3 col-span-4 h-full row-span-1 flex flex-col gap-0.5 w-full">
@@ -153,13 +116,13 @@ export function MemberControllerPanel(props: MemberControllerPanelProps) {
 
 			<div class="row-start-8 col-start-3 col-span-4 row-span-1 flex flex-col gap-2">
 				{/* 技能面板 */}
-				<Show when={stableSkills().length > 0} fallback={<div class="text-xs">暂无技能/等待快照...</div>}>
+				<Show when={skillList().length > 0} fallback={<div class="text-xs">暂无技能</div>}>
 					<div class="grid grid-rows-1 grid-cols-10 gap-2">
-						<For each={stableSkills()}>
+						<For each={skillList()}>
 							{(skill) => (
 								<Button
 									onClick={() => handleCastSkill(skill.id)}
-									disabled={!skill.computed?.isAvailable}
+									disabled={controllerEvents().skillAvailability?.[skill.id] === false}
 									class="text-xs col-span-1 row-span-1 shadow-card shadow-brand-color-1st"
 								>
 									<Icons.Spirits iconName={skill.name} />

@@ -4,12 +4,21 @@ import type { MemberType } from "@db/schema/enums";
 import type { Actor, AnyActorLogic } from "xstate";
 import type { Member } from "./Member";
 import type { MemberDomainEvent } from "../types";
+import type { ExpressionContext } from "../JSProcessor/types";
+import type { CommonRuntimeContext } from "./runtime/Agent/CommonRuntimeContext";
+import type { MemberEventType, MemberStateContext } from "./runtime/StateMachine/types";
 import { Mob } from "./types/Mob/Mob";
 import { Player } from "./types/Player/Player";
 
 // ============================== 类型定义 ==============================
 
-export type AnyMemberEntry = Member<string, any, any, any>;
+// 避免 any：用通用基类型承载不同成员实现
+export type AnyMemberEntry = Member<
+	string,
+	MemberEventType,
+	MemberStateContext,
+	CommonRuntimeContext & Record<string, unknown>
+>;
 
 // ============================== 成员管理器类 ==============================
 
@@ -33,6 +42,10 @@ export class MemberManager {
 	private renderMessageSender: ((payload: unknown) => void) | null = null;
 	/** 域事件发射器 */
 	private emitDomainEvent: ((event: MemberDomainEvent) => void) | null = null;
+	/** 表达式求值器（由引擎注入） */
+	private evaluateExpression:
+		| ((expression: string, context: ExpressionContext) => number | boolean)
+		| null = null;
 
 	// ==================== 主控目标系统 ====================
 
@@ -52,6 +65,18 @@ export class MemberManager {
 		// 为所有已存在的成员设置
 		for (const member of this.members.values()) {
 			member.setEmitDomainEvent(emitDomainEvent);
+		}
+	}
+
+	/**
+	 * 设置表达式求值器（由引擎注入）
+	 */
+	setEvaluateExpression(
+		evaluateExpression: ((expression: string, context: ExpressionContext) => number | boolean) | null,
+	): void {
+		this.evaluateExpression = evaluateExpression;
+		for (const member of this.members.values()) {
+			member.setEvaluateExpression(evaluateExpression);
 		}
 	}
 
@@ -78,8 +103,14 @@ export class MemberManager {
 				const player = new Player(memberData, campId, teamId, characterIndex, this.renderMessageSender, position);
 				// 设置域事件发射器
 				player.setEmitDomainEvent(this.emitDomainEvent);
+				// 设置表达式求值器
+				if (!this.evaluateExpression) {
+					throw new Error(`MemberManager: evaluateExpression 未设置，无法创建成员 ${memberData.id}`);
+				}
+				player.setEvaluateExpression(this.evaluateExpression);
 				const success = this.registerMember(player, campId, teamId, memberData);
 				if (success) {
+					player.start();
 					console.log(`✅ 创建并注册玩家成功: ${memberData.name} (${memberData.type})`);
 					return player.actor;
 				} else {
@@ -91,8 +122,14 @@ export class MemberManager {
 				const mob = new Mob(memberData, campId, teamId, this.renderMessageSender, position);
 				// 设置域事件发射器
 				mob.setEmitDomainEvent(this.emitDomainEvent);
+				// 设置表达式求值器
+				if (!this.evaluateExpression) {
+					throw new Error(`MemberManager: evaluateExpression 未设置，无法创建成员 ${memberData.id}`);
+				}
+				mob.setEvaluateExpression(this.evaluateExpression);
 				const success = this.registerMember(mob, campId, teamId, memberData);
 				if (success) {
+					mob.start();
 					console.log(`✅ 创建并注册怪物成功: ${memberData.name} (${memberData.type})`);
 					return mob.actor;
 				} else {
@@ -316,7 +353,13 @@ export class MemberManager {
 			this.camps.set(campId, []);
 			this.membersByCamp.set(campId, this.membersByCamp.get(campId) || new Set());
 		}
-		return this.camps.get(campId)!;
+		const camp = this.camps.get(campId);
+		if (!camp) {
+			const empty: TeamWithRelations[] = [];
+			this.camps.set(campId, empty);
+			return empty;
+		}
+		return camp;
 	}
 
 	/** 添加队伍（幂等） */
@@ -327,15 +370,16 @@ export class MemberManager {
 		}
 		this.teams.set(team.id, team);
 		this.membersByTeam.set(team.id, this.membersByTeam.get(team.id) || new Set());
-		return this.teams.get(team.id)!;
+		return team;
 	}
 
 	/**
 	 * 发送事件到指定成员
 	 */
-	sendTo(memberId: string, event: any): void {
+	sendTo(memberId: string, event: unknown): void {
 		const member = this.members.get(memberId);
-		member?.actor.send?.(event);
+		// Member 实例内部的 actor event type 取决于具体成员类型，这里保持 unknown 并在 send 时做收敛
+		member?.actor.send?.(event as never);
 	}
 
 	/** 查询阵营是否存在 */

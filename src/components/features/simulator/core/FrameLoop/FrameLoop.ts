@@ -51,6 +51,15 @@ export class FrameLoop {
 	/** 帧循环模式 */
 	private mode: FrameLoopMode = "realtime";
 
+	/** 快照发送频率（Hz），0 表示关闭，默认 0（关闭） */
+	private snapshotFPS: number = 0;
+
+	/** 快照发送间隔（毫秒），由 snapshotFPS 推导 */
+	private snapshotIntervalMs: number = Infinity;
+
+	/** 上次发送快照的时间戳 */
+	private lastSnapshotTime: number = 0;
+
 	/** 性能统计 */
 	private performanceStats: FrameLoopStats = {
 		averageFPS: 0,
@@ -89,6 +98,12 @@ export class FrameLoop {
 
 		// 根据目标帧率计算逻辑帧间隔
 		this.frameIntervalMs = 1000 / this.config.targetFPS;
+
+		// 快照发送频率（默认 0 = 关闭，避免高频负载）
+		// 如果需要观测/校正，可以设置为 2-5 Hz
+		this.snapshotFPS = (config as any).snapshotFPS ?? 0;
+		this.snapshotIntervalMs = this.snapshotFPS > 0 ? 1000 / this.snapshotFPS : Infinity;
+		this.lastSnapshotTime = 0;
 	}
 
 	// ==================== 公共接口 ====================
@@ -433,9 +448,28 @@ export class FrameLoop {
 		}
 	}
 
+	/**
+	 * 发送帧快照（带降频控制）
+	 * 
+	 * 默认关闭（snapshotFPS = 0），避免高频负载
+	 * 如果需要观测/校正，可以通过配置设置 snapshotFPS（例如 2-5 Hz）
+	 */
 	private emitFrameSnapshot(): void {
+		// 如果快照发送已关闭，直接返回
+		if (this.snapshotFPS <= 0) {
+			return;
+		}
+
+		// 检查是否达到发送间隔
+		const now = performance.now();
+		if (now - this.lastSnapshotTime < this.snapshotIntervalMs) {
+			return;
+		}
+
+		// 发送快照
 		const snapshot = this.engine.createFrameSnapshot();
 		this.engine.sendFrameSnapshot(snapshot);
+		this.lastSnapshotTime = now;
 	}
 
 	/**

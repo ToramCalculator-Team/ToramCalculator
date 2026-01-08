@@ -11,16 +11,17 @@ import { type Accessor, createEffect, createSignal, For, Match, Show, Switch } f
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Select } from "~/components/controls/select";
-import type { ComputedSkillInfo, FrameSnapshot } from "../core/GameEngine";
+import type { ComputedSkillInfo } from "../core/GameEngine";
 import type { MemberSerializeData } from "../core/Member/Member";
 import { MemberStatusPanel } from "../core/Member/MemberStatusPanel";
+import type { EngineTelemetry } from "../core/thread/protocol";
 
 // ============================== 状态栏组件 ==============================
 
 interface StatusBarProps {
 	isRunning: Accessor<boolean>;
 	isPaused: Accessor<boolean>;
-	engineView: Accessor<FrameSnapshot | null>;
+	telemetry: Accessor<EngineTelemetry | null>;
 }
 
 /**
@@ -33,11 +34,15 @@ export function EngineStatusBar(props: StatusBarProps) {
 				<Show when={props.isRunning() || props.isPaused()}>
 					<div class="flex items-center gap-2">
 						<span class="text-sm font-medium">运行时间：</span>
-						<span class="text-sm">{((props.engineView()?.engine.runTime ?? 0) / 1000).toFixed(1)}s</span>
+						<span class="text-sm">{((props.telemetry()?.runTime ?? 0) / 1000).toFixed(1)}s</span>
 					</div>
 					<div class="flex items-center gap-2">
 						<span class="text-sm font-medium">成员数：</span>
-						<span class="text-sm">{props.engineView()?.members.length || 0}</span>
+						<span class="text-sm">{props.telemetry()?.memberCount ?? 0}</span>
+					</div>
+					<div class="flex items-center gap-2">
+						<span class="text-sm font-medium">帧号：</span>
+						<span class="text-sm">{props.telemetry()?.frameNumber ?? 0}</span>
 					</div>
 				</Show>
 			</div>

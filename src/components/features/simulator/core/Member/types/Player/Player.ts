@@ -32,19 +32,33 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 		const statContainer = new StatContainer<PlayerAttrType>(attrSchema);
 		const initialSkillList = memberData.player.characters[characterIndex].skills ?? [];
 
-		super(playerStateMachine, campId, teamId, memberData, attrSchema, statContainer, PlayerRuntimeContext, renderMessageSender, position);
-
-		// 初始化运行时上下文
-		this.runtimeContext = {
+		// 重要：runtimeContext 必须是每个成员独立的对象，且引用在构造后不可再被替换
+		// 否则 MemberManager 注入 evaluateExpression 后会被覆盖掉，导致 “evaluateExpression 未注入”
+		const runtimeContext: PlayerRuntimeContext = {
 			...PlayerRuntimeContext,
-			owner: this,
+			owner: undefined,
 			position: position ?? { x: 0, y: 0, z: 0 },
-			// 技能栏的"静态技能列表"应该在初始化时就可用，动态计算（mp/cd 等）由引擎快照刷新。
+			// 技能栏的"静态技能列表"应该在初始化时就可用，动态计算（mp/cd 等）由事件流/订阅面板驱动
 			skillList: initialSkillList,
 			// 冷却数组：与 skillList 对齐，初始为 0（可用）
 			skillCooldowns: initialSkillList.map(() => 0),
 			character: memberData.player.characters[characterIndex],
-		}
+		};
+
+		super(
+			playerStateMachine,
+			campId,
+			teamId,
+			memberData,
+			attrSchema,
+			statContainer,
+			runtimeContext,
+			renderMessageSender,
+			position,
+		);
+
+		// 完成 owner 回填
+		this.runtimeContext.owner = this;
 		this.characterIndex = characterIndex;
 		this.activeCharacter = memberData.player.characters?.[characterIndex];
 
