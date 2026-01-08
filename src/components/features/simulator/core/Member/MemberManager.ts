@@ -2,9 +2,10 @@ import type { MemberWithRelations } from "@db/generated/repositories/member";
 import type { TeamWithRelations } from "@db/generated/repositories/team";
 import type { MemberType } from "@db/schema/enums";
 import type { Actor, AnyActorLogic } from "xstate";
-import type { Member } from "./Member";
-import type { MemberDomainEvent } from "../types";
 import type { ExpressionContext } from "../JSProcessor/types";
+import type { MemberDomainEvent } from "../types";
+import type { DamageAreaRequest } from "../World/types";
+import type { Member } from "./Member";
 import type { CommonRuntimeContext } from "./runtime/Agent/CommonRuntimeContext";
 import type { MemberEventType, MemberStateContext } from "./runtime/StateMachine/types";
 import { Mob } from "./types/Mob/Mob";
@@ -46,6 +47,10 @@ export class MemberManager {
 	private evaluateExpression:
 		| ((expression: string, context: ExpressionContext) => number | boolean)
 		| null = null;
+	/** 伤害请求处理器（由引擎注入） */
+	private damageRequestHandler: ((damageRequest: DamageAreaRequest) => void) | null = null;
+	/** 引擎帧号读取函数（由引擎注入） */
+	private getCurrentFrame: (() => number) | null = null;
 
 	// ==================== 主控目标系统 ====================
 
@@ -80,6 +85,26 @@ export class MemberManager {
 		}
 	}
 
+	/**
+	 * 设置伤害请求处理器（由引擎注入）
+	 */
+	setDamageRequestHandler(damageRequestHandler: ((damageRequest: DamageAreaRequest) => void) | null): void {
+		this.damageRequestHandler = damageRequestHandler;
+		for (const member of this.members.values()) {
+			member.setDamageRequestHandler(damageRequestHandler);
+		}
+	}
+
+	/**
+	 * 设置引擎帧号读取函数（由引擎注入）
+	 */
+	setGetCurrentFrame(getCurrentFrame: (() => number) | null): void {
+		this.getCurrentFrame = getCurrentFrame;
+		for (const member of this.members.values()) {
+			member.setGetCurrentFrame(getCurrentFrame);
+		}
+	}
+
 	// ==================== 公共接口 ====================
 	/**
 	 * 创建并注册新成员
@@ -100,14 +125,13 @@ export class MemberManager {
 	): Actor<AnyActorLogic> | null {
 		switch (memberData.type) {
 			case "Player": {
-				const player = new Player(memberData, campId, teamId, characterIndex, this.renderMessageSender, position);
+				const player = new Player(memberData, campId, teamId, characterIndex, position);
 				// 设置域事件发射器
 				player.setEmitDomainEvent(this.emitDomainEvent);
-				// 设置表达式求值器
-				if (!this.evaluateExpression) {
-					throw new Error(`MemberManager: evaluateExpression 未设置，无法创建成员 ${memberData.id}`);
-				}
 				player.setEvaluateExpression(this.evaluateExpression);
+				player.setDamageRequestHandler(this.damageRequestHandler);
+				player.setGetCurrentFrame(this.getCurrentFrame);
+				player.setRenderMessageSender(this.renderMessageSender);
 				const success = this.registerMember(player, campId, teamId, memberData);
 				if (success) {
 					player.start();
@@ -119,14 +143,13 @@ export class MemberManager {
 				}
 			}
 			case "Mob": {
-				const mob = new Mob(memberData, campId, teamId, this.renderMessageSender, position);
+				const mob = new Mob(memberData, campId, teamId, position);
 				// 设置域事件发射器
-				mob.setEmitDomainEvent(this.emitDomainEvent);
-				// 设置表达式求值器
-				if (!this.evaluateExpression) {
-					throw new Error(`MemberManager: evaluateExpression 未设置，无法创建成员 ${memberData.id}`);
-				}
+				mob.setEmitDomainEvent(this.emitDomainEvent)
 				mob.setEvaluateExpression(this.evaluateExpression);
+				mob.setDamageRequestHandler(this.damageRequestHandler);
+				mob.setGetCurrentFrame(this.getCurrentFrame);
+				mob.setRenderMessageSender(this.renderMessageSender);
 				const success = this.registerMember(mob, campId, teamId, memberData);
 				if (success) {
 					mob.start();

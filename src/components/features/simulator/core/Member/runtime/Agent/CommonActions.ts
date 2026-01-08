@@ -1,10 +1,11 @@
 import { z } from "zod/v4";
 import { State } from "~/lib/mistreevous/State";
+import { ExpressionTransformer } from "../../../JSProcessor/ExpressionTransformer";
+import type { DamageAreaRequest } from "../../../World/types";
 import { ModifierType } from "../StatContainer/StatContainer";
 import type { CommonProperty } from "./CommonProperty";
 import { type ActionPool, defineAction } from "./type";
 import { sendRenderCommand } from "./uitls";
-import { ExpressionTransformer } from "../../../JSProcessor/ExpressionTransformer";
 
 export const logLv = 1; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
 
@@ -82,23 +83,52 @@ export const CommonActionPool = {
 				return State.FAILED;
 			}
 			const valueProvider = (key: string) => owner.statContainer.getValue(key);
-			const res = ExpressionTransformer.transform(input.damageFormula,{
+			const res = ExpressionTransformer.transform(input.damageFormula, {
 				replaceAccessor: "self",
 				valueProvider,
 			});
 			if (!res.success) {
-				console.warn(`⚠️ [${context.owner?.name}] 伤害表达式解析失败: ${res.error}`);
+				console.warn(`⚠️ [${owner.name}] 伤害表达式解析失败: ${res.error}`);
 				return State.FAILED;
 			}
 			let damageExpr = res.compiledExpression;
 			// 替换skill.lv为技能等级
 			const skillLv = context.currentSkill?.lv ?? 0;
 			damageExpr = damageExpr.replace("skill.lv", String(skillLv));
-			console.log(`👤 [${context.owner?.name}] 解析后表达式: ${damageExpr}`);
+			console.log(`👤 [${owner.name}] 解析后表达式: ${damageExpr}`);
 
 			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
-            
-			
+			const startFrame = context.getCurrentFrame();
+			const damageRequest: DamageAreaRequest = {
+				identity: {
+					sourceId: owner.id,
+					sourceCampId: owner.campId,
+				},
+				lifetime: {
+					startFrame,
+					durationFrames: 1,
+				},
+				hitPolicy: {
+					hitIntervalFrames: 1,
+				},
+				attackSemantics: {
+					attackCount: input.attackCount,
+					damageCount: input.damageCount,
+				},
+				range: {
+					rangeKind: "Range",
+					rangeParams: {
+						radius: input.radius,
+					},
+				},
+				payload: {
+					compiledDamageExpr: damageExpr,
+				},
+				casterId: owner.id,
+				targetId: input.targetId,
+			};
+			context.damageRequestHandler?.(damageRequest);
+
 			return State.SUCCEEDED;
 		},
 	),

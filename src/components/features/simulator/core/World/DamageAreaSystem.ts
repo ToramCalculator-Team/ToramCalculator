@@ -1,10 +1,6 @@
 import type { AnyMemberEntry, MemberManager } from "../Member/MemberManager";
 import type { SpaceManager } from "./SpaceManager";
-import type {
-	DamageAreaRequest,
-	DamageDispatchPayload,
-	Vec3,
-} from "./types";
+import type { DamageAreaRequest, DamageDispatchPayload, Vec3 } from "./types";
 
 /**
  * 伤害区域实例
@@ -59,6 +55,13 @@ export class DamageAreaSystem {
 		let shape: DamageAreaInstance["shape"];
 		let trajectory: DamageAreaInstance["trajectory"];
 
+		const caster = this.memberManager.getMember(request.identity.sourceId);
+		const target = request.targetId ? this.memberManager.getMember(request.targetId) : caster;
+
+		if (!caster || !target) {
+			throw new Error(`DamageAreaSystem: 施法者不存在: ${request.identity.sourceId}`);
+		}
+
 		switch (rangeKind) {
 			case "Enemy": {
 				// 以施法者当前位置为中心的圆
@@ -68,7 +71,7 @@ export class DamageAreaSystem {
 				};
 				trajectory = {
 					type: "static",
-					center: request.castPosition,
+					center: caster.position,
 				};
 				break;
 			}
@@ -80,7 +83,7 @@ export class DamageAreaSystem {
 				};
 				trajectory = {
 					type: "static",
-					center: request.targetPosition ?? request.castPosition,
+					center: target.position,
 				};
 				break;
 			}
@@ -92,7 +95,7 @@ export class DamageAreaSystem {
 				};
 				trajectory = {
 					type: "linear",
-					start: request.castPosition,
+					start: caster.position,
 					dir: rangeParams.dir ?? { x: 1, y: 0, z: 0 },
 					speed: rangeParams.speed ?? 0,
 				};
@@ -106,7 +109,7 @@ export class DamageAreaSystem {
 				};
 				trajectory = {
 					type: "static",
-					center: request.targetPosition ?? request.castPosition,
+					center: target.position,
 				};
 				break;
 			}
@@ -118,7 +121,7 @@ export class DamageAreaSystem {
 				};
 				trajectory = {
 					type: "static",
-					center: request.castPosition,
+					center: caster.position,
 				};
 				break;
 			}
@@ -133,6 +136,7 @@ export class DamageAreaSystem {
 		};
 
 		this.instances.set(areaId, instance);
+		console.log(`DamageAreaSystem: 添加伤害区域: ${areaId}`);
 		return areaId;
 	}
 
@@ -177,10 +181,7 @@ export class DamageAreaSystem {
 			const currentCenter = this.computeCurrentCenter(instance, frame);
 
 			// 查询范围内的候选目标
-			const candidates = this.spaceManager.queryCircle<AnyMemberEntry>(
-				currentCenter,
-				shape.radius,
-			);
+			const candidates = this.spaceManager.queryCircle<AnyMemberEntry>(currentCenter, shape.radius);
 
 			// 过滤：仅敌方阵营
 			const enemyTargets = candidates.members.filter((member) => {
@@ -237,9 +238,13 @@ export class DamageAreaSystem {
 	private computeCurrentCenter(instance: DamageAreaInstance, frame: number): Vec3 {
 		const { trajectory, request } = instance;
 		const { startFrame } = request.lifetime;
+		const caster = this.memberManager.getMember(request.identity.sourceId);
+		if (!caster) {
+			throw new Error(`DamageAreaSystem: 施法者不存在: ${request.identity.sourceId}`);
+		}
 
 		if (trajectory.type === "static") {
-			return trajectory.center ?? request.castPosition;
+			return trajectory.center ?? caster.position;
 		}
 
 		// linear
@@ -248,7 +253,7 @@ export class DamageAreaSystem {
 		const { start, dir, speed } = trajectory;
 
 		if (!start || !dir || speed === undefined) {
-			return request.castPosition;
+			return caster.position;
 		}
 
 		return {
@@ -272,4 +277,3 @@ export class DamageAreaSystem {
 		this.instances.clear();
 	}
 }
-

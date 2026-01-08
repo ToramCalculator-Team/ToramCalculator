@@ -227,7 +227,7 @@ export const playerStateMachine = (
 			添加待处理技能效果: ({ context, event }) => {
 				console.log(`👤 [${context.owner?.name}] 添加待处理技能效果`, event);
 				const skillEffect = runtimeContext.currentSkill?.template?.effects.find((e) =>
-					runtimeContext.evaluateExpression(e.condition, {
+					runtimeContext.expressionEvaluator?.(e.condition, {
 						currentFrame: runtimeContext.currentFrame,
 						casterId: player.id,
 						skillLv: runtimeContext.currentSkill?.lv ?? 0,
@@ -447,7 +447,7 @@ export const playerStateMachine = (
 				}
 
 				// 蓄力阶段相关属性（假设使用chargeFixed和chargeModified）
-				const reservoirFixed = runtimeContext.evaluateExpression(effect.reservoirFixed ?? "0", {
+				const reservoirFixed = runtimeContext.expressionEvaluator?.(effect.reservoirFixed ?? "0", {
 					currentFrame: context.currentFrame,
 					casterId: player.id,
 				});
@@ -455,7 +455,7 @@ export const playerStateMachine = (
 					console.error(`👤 [${context.owner?.name}] 蓄力阶段固定值不是数字`);
 					return false;
 				}
-				const reservoirModified = runtimeContext.evaluateExpression(effect.reservoirModified ?? "0", {
+				const reservoirModified = runtimeContext.expressionEvaluator?.(effect.reservoirModified ?? "0", {
 					currentFrame: context.currentFrame,
 					casterId: player.id,
 				});
@@ -473,7 +473,7 @@ export const playerStateMachine = (
 					console.error(`👤 [${context.owner?.name}] 技能效果不存在`);
 					return false;
 				}
-				const chantingFixed = runtimeContext.evaluateExpression(effect.chantingFixed ?? "0", {
+				const chantingFixed = runtimeContext.expressionEvaluator?.(effect.chantingFixed ?? "0", {
 					currentFrame: context.currentFrame,
 					casterId: player.id,
 				});
@@ -481,7 +481,7 @@ export const playerStateMachine = (
 					console.error(`👤 [${context.owner?.name}] 咏唱阶段固定值不是数字`);
 					return false;
 				}
-				const chantingModified = runtimeContext.evaluateExpression(effect.chantingModified ?? "0", {
+				const chantingModified = runtimeContext.expressionEvaluator?.(effect.chantingModified ?? "0", {
 					currentFrame: context.currentFrame,
 					casterId: player.id,
 				});
@@ -508,7 +508,7 @@ export const playerStateMachine = (
 					return true;
 				}
 				const effect = skill.template?.effects.find((e) => {
-					const result = runtimeContext.evaluateExpression(e.condition, {
+					const result = runtimeContext.expressionEvaluator?.(e.condition, {
 						currentFrame: context.currentFrame,
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,
@@ -548,7 +548,7 @@ export const playerStateMachine = (
 					return true;
 				}
 				const effect = skill.template?.effects.find((e) => {
-					const result = runtimeContext.evaluateExpression(e.condition, {
+					const result = runtimeContext.expressionEvaluator?.(e.condition, {
 						currentFrame: context.currentFrame,
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,
@@ -561,7 +561,7 @@ export const playerStateMachine = (
 					return true;
 				}
 				if (effect.hpCost && effect.mpCost) {
-					const hpCost = runtimeContext.evaluateExpression(effect.hpCost, {
+					const hpCost = runtimeContext.expressionEvaluator?.(effect.hpCost, {
 						currentFrame: context.currentFrame,
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,
@@ -570,7 +570,7 @@ export const playerStateMachine = (
 						console.error(`👤 [${context.owner?.name}] 技能HP消耗不是数字`);
 						return true;
 					}
-					const mpCost = runtimeContext.evaluateExpression(effect.mpCost, {
+					const mpCost = runtimeContext.expressionEvaluator?.(effect.mpCost, {
 						currentFrame: context.currentFrame,
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,

@@ -94,7 +94,6 @@ export class GameEngine {
 		totalMessagesProcessed: 0,
 	};
 
-
 	// ==================== 通信 ====================
 
 	/** 渲染消息发送器 - 用于发送渲染指令到主线程 */
@@ -143,20 +142,20 @@ export class GameEngine {
 
 		// 初始化核心模块 - 按依赖顺序
 		this.eventQueue = new EventQueue(config.eventQueueConfig, () => this.currentFrame);
-		
+
 		// 初始化控制器相关组件
 		this.bindingManager = new ControlBindingManager();
 		this.controllerRegistry = new ControllerRegistry();
-		
+
 		// 初始化域事件系统
 		this.domainEventBus = new DomainEventBus();
 		this.controllerEventProjector = new ControllerEventProjector(this.bindingManager);
-		
+
 		// 订阅域事件总线，将事件投影为控制器事件
 		this.domainEventBus.subscribe((event) => {
 			this.controllerEventProjector.project(event);
 		});
-		
+
 		// 注入引擎和绑定管理器到消息路由器
 		this.messageRouter = new MessageRouter(this, this.bindingManager);
 		this.frameLoop = new FrameLoop(this, this.config.frameLoopConfig); // 注入引擎
@@ -172,15 +171,21 @@ export class GameEngine {
 			getMemberById: (id) => this.world.memberManager.getMember(id),
 			engine: this, // 向后兼容：表达式里可能访问 engine
 		});
-		
+
 		// 设置域事件发射器到 MemberManager
 		this.world.memberManager.setEmitDomainEvent((event) => {
 			this.emitDomainEvent(event);
 		});
-		// 设置表达式求值器到 MemberManager（成员创建时会注入到 runtimeContext.evaluateExpression）
+		// 设置表达式求值器到 MemberManager（成员创建时会注入到 runtimeContext.expressionEvaluator）
 		this.world.memberManager.setEvaluateExpression((expression, context) =>
 			this.expressionEvaluator.evaluateNumberOrBoolean(expression, context),
 		);
+		// 设置引擎帧号读取函数到 MemberManager（引擎帧号为唯一真相）
+		this.world.memberManager.setGetCurrentFrame(() => this.getCurrentFrame());
+		// 设置伤害请求处理器到 MemberManager（成员创建时会注入到 runtimeContext.damageRequestHandler）
+		this.world.memberManager.setDamageRequestHandler((damageRequest) => {
+			this.world.areaManager.damageAreaSystem.add(damageRequest);
+		});
 
 		// 创建状态机 - executor 角色
 		let seqCounter = 0;
@@ -198,7 +203,7 @@ export class GameEngine {
 								command,
 								"当前状态:",
 								this.stateMachine.getSnapshot().value,
-								);
+							);
 						}
 					},
 				},
@@ -375,12 +380,10 @@ export class GameEngine {
 		for (const controllerId of controllerIds) {
 			const boundMemberId = this.bindingManager.getBoundMemberId(controllerId) ?? null;
 
-			let boundMemberDetail:
-				| {
-						attrs: Record<string, unknown>;
-						buffs?: BuffViewDataSnapshot[];
-				  }
-				| null = null;
+			let boundMemberDetail: {
+				attrs: Record<string, unknown>;
+				buffs?: BuffViewDataSnapshot[];
+			} | null = null;
 			let boundMemberSkills: ComputedSkillInfo[] = [];
 
 			if (boundMemberId) {
@@ -440,7 +443,6 @@ export class GameEngine {
 		}
 	}
 
-
 	/**
 	 * 发送命令到引擎状态机
 	 */
@@ -477,12 +479,18 @@ export class GameEngine {
 
 	/**
 	 * 设置领域事件批发送器
-	 * 
+	 *
 	 * 用于直接发送 domain_event_batch 顶层消息（不再嵌套在 system_event 中）
 	 * @param sender 领域事件批发送函数
 	 */
 	setDomainEventBatchSender(
-		sender: ((payload: { type: "controller_domain_event_batch"; frameNumber: number; events: ControllerDomainEvent[] }) => void) | null,
+		sender:
+			| ((payload: {
+					type: "controller_domain_event_batch";
+					frameNumber: number;
+					events: ControllerDomainEvent[];
+			  }) => void)
+			| null,
 	): void {
 		this.controllerEventProjector.setDomainEventBatchSender(sender);
 	}
@@ -864,8 +872,8 @@ export class GameEngine {
 			executeFrame,
 			insertFrame: currentFrame,
 			processed: false,
-				targetMemberId: memberId,
-				fsmEventType: eventType,
+			targetMemberId: memberId,
+			fsmEventType: eventType,
 			source: meta?.source ?? "未知来源",
 			payload,
 		});
@@ -873,9 +881,9 @@ export class GameEngine {
 
 	/**
 	 * 发出域事件
-	 * 
+	 *
 	 * 供成员/系统在状态变化时调用，事件会被投影到对应的控制器
-	 * 
+	 *
 	 * @param event 域事件
 	 */
 	emitDomainEvent(event: MemberDomainEvent): void {
@@ -884,9 +892,9 @@ export class GameEngine {
 
 	/**
 	 * 发出相机跟随事件
-	 * 
+	 *
 	 * 供绑定管理器在绑定/解绑时调用
-	 * 
+	 *
 	 * @param controllerId 控制器ID
 	 * @param memberId 成员ID
 	 */
@@ -922,17 +930,17 @@ export class GameEngine {
 						const targetMemberId = event.targetMemberId;
 						const fsmEventType = event.fsmEventType;
 
-					const member = this.world.memberManager.getMember(targetMemberId);
-					if (member) {
-						// 将队列事件转发为 FSM 事件，由成员自己的状态机处理
-							member.actor.send({ type: fsmEventType, data: payload });
-					} else {
-						console.warn(`⚠️ stepFrame: 目标成员不存在: ${targetMemberId}`);
+						const member = this.world.memberManager.getMember(targetMemberId);
+						if (member) {
+							// 将队列事件转发为 FSM 事件，由成员自己的状态机处理
+							member.actor.send({ type: fsmEventType, data: payload as Record<string, unknown> });
+						} else {
+							console.warn(`⚠️ stepFrame: 目标成员不存在: ${targetMemberId}`);
+						}
 					}
-				}
 					break;
 				default:
-				console.warn(`⚠️ stepFrame: 未知事件类型: ${event.type}`);
+					console.warn(`⚠️ stepFrame: 未知事件类型: ${event.type}`);
 					break;
 			}
 
@@ -1159,54 +1167,60 @@ export class GameEngine {
 	 * 为每个技能计算当前的消耗值和可用性
 	 */
 	private computePlayerSkills(player: Player, currentFrame: number): ComputedSkillInfo[] {
-			const skillList = player.runtimeContext.skillList ?? [];
-			const skillCooldowns = player.runtimeContext.skillCooldowns ?? [];
-			const currentMp = player.statContainer?.getValue("mp.current") ?? 0;
-			const currentHp = player.statContainer?.getValue("hp.current") ?? 0;
+		const skillList = (player.runtimeContext as { skillList?: unknown }).skillList ?? [];
+		const skillCooldowns = player.runtimeContext.skillCooldowns ?? [];
+		const currentMp = player.statContainer?.getValue("mp.current") ?? 0;
+		const currentHp = player.statContainer?.getValue("hp.current") ?? 0;
 
-		return skillList.map((skill, index) => {
-				const skillName = skill.template?.name ?? "未知技能";
-				const skillLevel = skill.lv ?? 0;
+		return (Array.isArray(skillList) ? skillList : []).map((skill: unknown, index: number) => {
+			const s = skill as { id?: unknown; lv?: unknown; template?: { name?: unknown; effects?: unknown[] } };
+			const template = s.template as { name?: unknown; effects?: unknown[] } | undefined;
+			const skillName = String(template?.name ?? "未知技能");
+			const skillLevel = Number(s.lv ?? 0);
 
-				// 查找适用的技能效果
-			const effect = skill.template?.effects?.find((e) => {
-					try {
-					const result = this.evaluateExpression(e.condition, {
-							currentFrame,
-							casterId: player.id,
-							skillLv: skillLevel,
-						});
-						return !!result;
-					} catch {
-						return false;
-					}
-				});
+			// 查找适用的技能效果
+			const effect = (
+				template?.effects as
+					| Array<{ condition?: string; mpCost?: string; hpCost?: string; castingRange?: number }>
+					| undefined
+			)?.find((e: { condition?: string }) => {
+				try {
+					const result = this.evaluateExpression(e.condition ?? "false", {
+						currentFrame,
+						casterId: player.id,
+						skillLv: skillLevel,
+					});
+					return !!result;
+				} catch {
+					return false;
+				}
+			});
 
-				// 计算消耗
-				let mpCost = 0;
-				let hpCost = 0;
+			// 计算消耗
+			let mpCost = 0;
+			let hpCost = 0;
 			let castingRange = 0;
 
-				if (effect) {
+			if (effect) {
 				const mpCostResult = this.evaluateExpression(effect.mpCost ?? "0", {
-							currentFrame,
-							casterId: player.id,
-							skillLv: skillLevel,
-						});
+					currentFrame,
+					casterId: player.id,
+					skillLv: skillLevel,
+				});
 				if (typeof mpCostResult !== "number") {
 					throw new Error(`表达式: ${effect.mpCost} 执行结果不是数字`);
-					}
+				}
 				mpCost = mpCostResult;
 				const hpCostResult = this.evaluateExpression(effect.hpCost ?? "0", {
-							currentFrame,
-							casterId: player.id,
-							skillLv: skillLevel,
-						});
+					currentFrame,
+					casterId: player.id,
+					skillLv: skillLevel,
+				});
 				if (typeof hpCostResult !== "number") {
 					throw new Error(`表达式: ${effect.hpCost} 执行结果不是数字`);
 				}
 				hpCost = hpCostResult;
-				const castingRangeResult = this.evaluateExpression(effect.castingRange ?? "0", {
+				const castingRangeResult = this.evaluateExpression(String(effect.castingRange ?? "0"), {
 					currentFrame,
 					casterId: player.id,
 					skillLv: skillLevel,
@@ -1215,27 +1229,27 @@ export class GameEngine {
 					throw new Error(`表达式: ${effect.castingRange} 执行结果不是数字`);
 				}
 				castingRange = castingRangeResult;
-				}
+			}
 
-				// 获取冷却状态
-				const cooldownRemaining = skillCooldowns[index] ?? 0;
+			// 获取冷却状态
+			const cooldownRemaining = skillCooldowns[index] ?? 0;
 
-				// 判断是否可用
+			// 判断是否可用
 			const isAvailable = cooldownRemaining <= 0 && currentMp >= mpCost && currentHp >= hpCost;
 
-				return {
-					id: skill.id,
-					name: skillName,
-					level: skillLevel,
-					computed: {
-						mpCost,
-						hpCost,
-						castingRange,
-						cooldownRemaining,
-						isAvailable,
-					},
-				};
-			});
+			return {
+				id: String((skill as { id?: unknown }).id ?? ""),
+				name: skillName,
+				level: skillLevel,
+				computed: {
+					mpCost,
+					hpCost,
+					castingRange,
+					cooldownRemaining,
+					isAvailable,
+				},
+			};
+		});
 	}
 }
 

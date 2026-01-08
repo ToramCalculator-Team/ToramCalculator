@@ -2,7 +2,6 @@ import type { MemberWithRelations } from "@db/generated/repositories/member";
 import type { MemberType } from "@db/schema/enums";
 import { createActor } from "xstate";
 import type { MemberDomainEvent } from "../types";
-import type { CommonRuntimeContext } from "./runtime/Agent/CommonRuntimeContext";
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
 import type { NestedSchema } from "./runtime/StatContainer/SchemaTypes";
 import type { StatContainer } from "./runtime/StatContainer/StatContainer";
@@ -13,6 +12,8 @@ import type {
 	MemberStateContext,
 	MemberStateMachine,
 } from "./runtime/StateMachine/types";
+import type { DamageAreaRequest } from "../World/types";
+import type { CommonRuntimeContext } from "./runtime/Agent/CommonRuntimeContext";
 
 export interface MemberSerializeData {
 	attrs: Record<string, unknown>;
@@ -75,7 +76,6 @@ export class Member<
 		dataSchema: NestedSchema,
 		statContainer: StatContainer<TAttrKey>,
 		runtimeContext: TRuntimeContext,
-		renderMessageSender: ((payload: unknown) => void) | null,
 		position?: { x: number; y: number; z: number },
 	) {
 		this.id = memberData.id;
@@ -93,9 +93,6 @@ export class Member<
 		// 初始化行为树管理器
 		this.btManager = new BtManager(this);
 
-		// 初始化渲染消息发射器
-		this.renderMessageSender = renderMessageSender;
-
 		// 初始化位置
 		this.position = position ?? { x: 0, y: 0, z: 0 };
 
@@ -107,7 +104,7 @@ export class Member<
 		// start 必须在依赖注入（evaluateExpression/emitDomainEvent 等）完成后由 MemberManager 统一触发
 
 		// 渲染成员
-		
+
 		// 通过引擎消息通道发送渲染命令（走 Simulation.worker 的 MessageChannel）
 		const spawnCmd = {
 			type: "render:cmd" as const,
@@ -155,13 +152,23 @@ export class Member<
 	}
 
 	/**
+	 * 设置渲染消息发射器
+	 */
+	setRenderMessageSender(renderMessageSender: ((payload: unknown) => void) | null): void {
+		this.renderMessageSender = renderMessageSender;
+		if (this.runtimeContext) {
+			this.runtimeContext.renderMessageSender = renderMessageSender;
+		}
+	}
+
+	/**
 	 * 设置域事件发射器
 	 */
 	setEmitDomainEvent(emitDomainEvent: ((event: MemberDomainEvent) => void) | null): void {
 		this.emitDomainEvent = emitDomainEvent;
 		// 同时注入到 runtimeContext 中
 		if (this.runtimeContext) {
-			(this.runtimeContext as Record<string, unknown>).emitDomainEvent = emitDomainEvent;
+			this.runtimeContext.domainEventSender = emitDomainEvent;
 		}
 	}
 
@@ -173,7 +180,25 @@ export class Member<
 	): void {
 		if (this.runtimeContext && evaluateExpression) {
 			// runtimeContext 已有默认实现，这里覆盖为引擎注入版本
-			(this.runtimeContext as Record<string, unknown>).evaluateExpression = evaluateExpression;
+			this.runtimeContext.expressionEvaluator = evaluateExpression;
+		}
+	}
+
+	/**
+	 * 设置伤害请求处理器
+	 */
+	setDamageRequestHandler(damageRequestHandler: ((damageRequest: DamageAreaRequest) => void) | null): void {
+		if (this.runtimeContext) {
+			this.runtimeContext.damageRequestHandler = damageRequestHandler;
+		}
+	}
+
+	/**
+	 * 设置引擎帧号读取函数（引擎唯一真相）
+	 */
+	setGetCurrentFrame(getCurrentFrame: (() => number) | null): void {
+		if (this.runtimeContext) {
+			(this.runtimeContext as Record<string, unknown>).getCurrentFrame = getCurrentFrame;
 		}
 	}
 

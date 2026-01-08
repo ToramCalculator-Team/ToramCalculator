@@ -2,20 +2,20 @@ import { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import { State } from "~/lib/mistreevous/State";
 import type { Member } from "../../Member";
-import type { CommonRuntimeContext } from "../Agent/CommonRuntimeContext";
 import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
 
 export class BtManager<
 	TAttrKey extends string,
 	TStateEvent extends MemberEventType,
 	TStateContext extends MemberStateContext,
+	TRuntimeContext extends Record<string, unknown> = Record<string, unknown>,
 > {
 	skillBt: BehaviourTree | undefined = undefined;
 	buffBts: Map<string, BehaviourTree> = new Map<string, BehaviourTree>();
 	/** 当前技能注册的函数名称列表，用于清理 */
 	private skillFunNames: string[] = [];
 
-	constructor(private owner: Member<TAttrKey, TStateEvent, TStateContext, CommonRuntimeContext>) {
+	constructor(private owner: Member<TAttrKey, TStateEvent, TStateContext, TRuntimeContext>) {
 	}
 
 	/**
@@ -42,7 +42,7 @@ export class BtManager<
 			const agentClassCreator = new Function("BehaviourTree", "State", "owner", `return ${agent};`) as unknown as (
 				bt: typeof BehaviourTree,
 				state: typeof State,
-				owner: Member<TAttrKey, TStateEvent, TStateContext, CommonRuntimeContext>,
+				owner: Member<TAttrKey, TStateEvent, TStateContext, TRuntimeContext>,
 			) => AgentCtor;
 
 			AgentClass = agentClassCreator(BehaviourTree, State, this.owner);

@@ -1,7 +1,7 @@
 import { CommonActionPool } from "./CommonActions";
 import { CommonConditionPool } from "./CommonCondition";
 import { CommonProperty } from "./CommonProperty";
-import { actionPoolToInvokers, conditionPoolToInvokers } from "./poolToInvokers";
+import { actionPoolToInvokers, conditionPoolToInvokers } from "./uitls";
 
 const commonActions = actionPoolToInvokers(CommonProperty,CommonActionPool);
 const commonConditions = conditionPoolToInvokers(CommonProperty,CommonConditionPool);

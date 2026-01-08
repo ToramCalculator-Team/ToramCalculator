@@ -1,9 +1,11 @@
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import type { SkillEffectWithRelations } from "@db/generated/repositories/skill_effect";
 import type { SkillEffectLogic } from "@db/schema/skillEffectLogicSchema";
+import type { ExpressionContext } from "../../../JSProcessor/types";
+import type { MemberDomainEvent } from "../../../types";
+import type { DamageAreaRequest } from "../../../World/types";
 import type { Member } from "../../Member";
 import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
-import type { ExpressionContext } from "../../../JSProcessor/types";
 
 
 export interface CommonProperty extends Record<string, unknown> {
@@ -11,6 +13,8 @@ export interface CommonProperty extends Record<string, unknown> {
 	owner: Member<string, MemberEventType, MemberStateContext, any> | undefined;
 	/** 当前帧 */
 	currentFrame: number;
+	/** 当前帧号（由引擎注入）*/
+	getCurrentFrame: () => number;
 	/** 位置信息 */
 	position: { x: number; y: number; z: number };
 	/** 成员目标ID */
@@ -38,12 +42,21 @@ export interface CommonProperty extends Record<string, unknown> {
 	 * 表达式求值（由引擎注入）
 	 * - FSM / 行为树只依赖这个函数，不直接依赖 GameEngine
 	 */
-	evaluateExpression: (expression: string, context: ExpressionContext) => number | boolean;
+	expressionEvaluator: ((expression: string, context: ExpressionContext) => number | boolean) | null;
+	/** 伤害请求处理器 */
+	damageRequestHandler: ((damageRequest: DamageAreaRequest) => void) | null;
+	/** 渲染消息发射器 */
+	renderMessageSender: ((payload: unknown) => void) | null;
+	/** 域事件发射器 */
+	domainEventSender: ((event: MemberDomainEvent) => void) | null;
 }
 
 export const CommonProperty: CommonProperty = {
 	owner: undefined,
 	currentFrame: 0,
+	getCurrentFrame: () => {
+		throw new Error("getCurrentFrame 未注入");
+	},
 	position: { x: 0, y: 0, z: 0 },
 	targetId: "",
 	statusTags: [],
@@ -53,7 +66,16 @@ export const CommonProperty: CommonProperty = {
 	previousSkill: null,
 	vAtkP: "((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - (1 - self.pie.p) * target.def.p)",
 	vAtkM: "((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - (1 - self.pie.m) * target.def.m)",
-	evaluateExpression: (expression: string) => {
-		throw new Error(`evaluateExpression 未注入：${expression}`);
+	expressionEvaluator: (expression: string) => {
+		throw new Error(`expressionEvaluator 未注入：${expression}`);
+	},
+	damageRequestHandler: (damageRequest: DamageAreaRequest) => {
+		throw new Error(`damageRequestHandler 未注入：${damageRequest}`);
+	},
+	renderMessageSender: (payload: unknown) => {
+		throw new Error(`renderMessageSender 未注入：${payload}`);
+	},
+	domainEventSender: (event: MemberDomainEvent) => {
+		throw new Error(`domainEventSender 未注入：${event}`);
 	},
 };

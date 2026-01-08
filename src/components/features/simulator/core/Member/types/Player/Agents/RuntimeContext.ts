@@ -1,5 +1,5 @@
 import { CommonRuntimeContext } from "../../../runtime/Agent/CommonRuntimeContext";
-import { actionPoolToInvokers, conditionPoolToInvokers } from "../../../runtime/Agent/poolToInvokers";
+import { actionPoolToInvokers, conditionPoolToInvokers } from "../../../runtime/Agent/uitls";
 import { PlayerActionPool } from "./Actions";
 import { PlayerConditionPool } from "./Condition";
 import { PlayerProperty } from "./Property";

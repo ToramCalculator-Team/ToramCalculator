@@ -22,7 +22,6 @@ export class Mob extends Member<
 		memberData: MemberWithRelations,
 		campId: string,
 		teamId: string,
-		renderMessageSender: ((payload: unknown) => void) | null,
 		position?: { x: number; y: number; z: number },
 	) {
 		if (!memberData.mob) {
@@ -46,7 +45,6 @@ export class Mob extends Member<
 			attrSchema,
 			statContainer,
 			runtimeContext,
-			renderMessageSender,
 			position,
 		);
 

@@ -84,9 +84,9 @@ export interface DamageAreaRequest {
 		selfBindings?: Record<string, number | string | boolean>;
 	};
 	/** 施法时的位置（用于计算轨迹） */
-	castPosition: Vec3;
+	casterId: string;
 	/** 目标位置（用于 rangeAttack 锁定中心） */
-	targetPosition?: Vec3;
+	targetId?: string;
 }
 
 /**

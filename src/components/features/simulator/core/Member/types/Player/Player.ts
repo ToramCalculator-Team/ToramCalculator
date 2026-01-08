@@ -19,7 +19,6 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 		campId: string,
 		teamId: string,
 		characterIndex: number,
-		renderMessageSender: ((payload: unknown) => void) | null,
 		position?: { x: number; y: number; z: number },
 	) {
 		if (!memberData.player) {
@@ -53,7 +52,6 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 			attrSchema,
 			statContainer,
 			runtimeContext,
-			renderMessageSender,
 			position,
 		);
 

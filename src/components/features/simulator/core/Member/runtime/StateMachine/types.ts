@@ -18,7 +18,7 @@ export interface MemberUpdateEvent extends EventObject {
 }
 export interface MemberCustomEvent extends EventObject {
   type: string;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
 }
 export type MemberEventType =
   | MemberCreateEvent // 创建事件
