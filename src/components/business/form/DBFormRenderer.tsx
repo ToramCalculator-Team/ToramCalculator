@@ -24,25 +24,25 @@ import { Toggle } from "~/components/controls/toggle";
 import { fieldInfo } from "~/components/dataDisplay/utils";
 import { getDictionary } from "~/locales/i18n";
 import type { Dic, EnumFieldDetail } from "~/locales/type";
-import { store } from "~/store";
+import { setStore, store } from "~/store";
 
-export interface DBFormProps<TName extends keyof DB> {
-	tableName: TName;
-	initialValue: DB[TName];
-	dataSchema: ZodObject<{ [K in keyof DB[TName]]: ZodType }>;
-	hiddenFields?: Array<keyof DB[TName]>;
-	fieldGroupMap?: Record<string, Array<keyof DB[TName]>>;
+export interface DBFormProps<TTableName extends keyof DB> {
+	tableName: TTableName;
+	initialValue: DB[TTableName];
+	dataSchema: ZodObject<{ [K in keyof DB[TTableName]]: ZodType }>;
+	hiddenFields?: Array<keyof DB[TTableName]>;
+	fieldGroupMap?: Record<string, Array<keyof DB[TTableName]>>;
 	fieldGenerator?: Partial<{
-		[K in keyof DB[TName]]: (
+		[K in keyof DB[TTableName]]: (
 			field: Accessor<AnyFieldApi>,
-			dictionary: Dic<DB[TName]>,
-			dataSchema: ZodObject<Record<keyof DB[TName], ZodType>>,
+			dictionary: Dic<DB[TTableName]>,
+			dataSchema: ZodObject<Record<keyof DB[TTableName], ZodType>>,
 		) => JSX.Element;
 	}>;
-	onSubmit?: (values: DB[TName]) => void;
+	onSubmit?: (values: DB[TTableName]) => void;
 }
 
-export const DBForm = <TName extends keyof DB>(props: DBFormProps<TName>) => {
+export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableName>) => {
 	// UI文本字典
 	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
 
@@ -64,7 +64,7 @@ export const DBForm = <TName extends keyof DB>(props: DBFormProps<TName>) => {
 	});
 
 	// 字段组生成器
-	const fieldGroupGenerator = (fieldGroup: Array<keyof DB[TName]>) => (
+	const fieldGroupGenerator = (fieldGroup: Array<keyof DB[TTableName]>) => (
 		<For each={fieldGroup}>
 			{(key) => {
 				if (props.hiddenFields?.includes(key)) return null;
@@ -83,7 +83,7 @@ export const DBForm = <TName extends keyof DB>(props: DBFormProps<TName>) => {
 					case "array": {
 						return (
 							<form.Field
-								name={key as DeepKeys<DB[TName]>}
+								name={key as DeepKeys<DB[TTableName]>}
 								validators={{
 									onChangeAsyncDebounceMs: 500,
 									onChangeAsync: props.dataSchema.shape[key] as any,
@@ -140,7 +140,7 @@ export const DBForm = <TName extends keyof DB>(props: DBFormProps<TName>) => {
 						);
 					}
 					default: {
-						const safeKey = key as DeepKeys<DB[TName]>;
+						const safeKey = key as DeepKeys<DB[TTableName]>;
 						return (
 							<form.Field
 								name={safeKey}
@@ -210,7 +210,7 @@ export const DBForm = <TName extends keyof DB>(props: DBFormProps<TName>) => {
 			>
 				<Show
 					when={props.fieldGroupMap}
-					fallback={fieldGroupGenerator(Object.keys(props.initialValue) as Array<keyof DB[TName]>)}
+					fallback={fieldGroupGenerator(Object.keys(props.initialValue) as Array<keyof DB[TTableName]>)}
 				>
 					<For
 						each={Object.entries(props.fieldGroupMap!).filter(([_, keys]) =>
@@ -228,6 +228,26 @@ export const DBForm = <TName extends keyof DB>(props: DBFormProps<TName>) => {
 						)}
 					</For>
 				</Show>
+
+				{/* 外键字段渲染器 */}
+				<For each={foreignKeyFields()}>
+					{(field) => (
+						<div class="Field flex flex-col gap-2">
+							<Button
+								level="secondary"
+								onClick={() => {
+                  console.log(getForeignKeyReference(props.tableName, field));
+									//   setStore("pages", "formGroup", store.pages.formGroup.length, {
+									// 	type: getForeignKeyReference(props.tableName, field)?.table,
+									// 	data: {},
+									// })
+								}}
+							>
+								{props.tableName}
+							</Button>
+						</div>
+					)}
+				</For>
 
 				<form.Subscribe
 					selector={(state) => ({
