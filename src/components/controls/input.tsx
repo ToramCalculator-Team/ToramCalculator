@@ -82,7 +82,7 @@ export const Input = (props: InputProps) => {
                 id={id}
                 class={`text-accent-color bg-area-color w-full rounded p-3 ${getDisableClass()} ${getStateClass()}`}
                 style={{
-                  width: props.inputWidth + "px",
+                  width: `${props.inputWidth}px`,
                 }}
               />
             </Match>
@@ -92,7 +92,7 @@ export const Input = (props: InputProps) => {
                 id={id}
                 class={`text-accent-color bg-area-color w-full rounded p-3 ${getDisableClass()} ${getStateClass()}`}
                 style={{
-                  width: props.inputWidth + "px",
+                  width: `${props.inputWidth}px`,
                 }}
               />
             </Match>
@@ -102,7 +102,7 @@ export const Input = (props: InputProps) => {
                 id={id}
                 class={`text-accent-color bg-area-color w-full rounded p-3 ${getDisableClass()} ${getStateClass()}`}
                 style={{
-                  width: props.inputWidth + "px",
+                  width: `${props.inputWidth}px`,
                 }}
               />
             </Match>

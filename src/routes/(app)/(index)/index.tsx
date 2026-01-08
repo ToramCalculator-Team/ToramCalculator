@@ -60,17 +60,24 @@ export default function IndexPage() {
 		},
 		{
 			onClick: () => {
-				navigate("queryBuilder");
-			},
-			icon: <Icons.Outline.Basketball />,
-			name: "查询构建器",
-		},
-		{
-			onClick: () => {
 				navigate("avatarMachine");
 			},
 			icon: <Icons.Outline.Flag />,
 			name: "非酋测试机",
+		},
+		{
+			onClick: () => {
+				navigate("logicEditor");
+			},
+			icon: <Icons.Outline.Gamepad />,
+			name: "逻辑编辑器",
+		},
+		{
+			onClick: () => {
+				navigate("queryBuilder");
+			},
+			icon: <Icons.Outline.Basketball />,
+			name: "查询构建器",
 		},
 	]);
 

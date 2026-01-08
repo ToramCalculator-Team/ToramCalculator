@@ -19,10 +19,6 @@ interface LogicEditorProps extends JSX.InputHTMLAttributes<HTMLDivElement> {
 	setData: (data: unknown) => void;
 	state: unknown;
 	setCode: (code: string) => void;
-	/** MDSL definition 文本 */
-	setMdslDefinition?: (mdsl: string) => void;
-	/** 自定义函数集文本 */
-	setFunctions?: (functions: string) => void;
 	// 仅展示模式：禁用所有编辑能力（无工具箱、不可拖拽/连线/删除）
 	readOnly?: boolean;
 }
@@ -102,23 +98,6 @@ export function LogicEditor(props: LogicEditorProps) {
 					kind: "categoryToolbox",
 					contents: [
 						...baseToolBoxConfig.contents,
-						{
-							kind: "category",
-							name: "成员属性",
-							categorystyle: "variable_category",
-							contents: [
-								// 自身属性读取积木
-								{
-									type: "self_attribute_get",
-									kind: "block",
-								},
-								// 目标属性读取积木
-								{
-									type: "target_attribute_get",
-									kind: "block",
-								},
-							],
-						},
 					],
 				};
 				setLocale(location);
@@ -147,7 +126,7 @@ export function LogicEditor(props: LogicEditorProps) {
 				const workerSpace = inject(div, injectionOptions);
 				serialization.workspaces.load(props.data ?? defaultData, workerSpace);
 
-				workerSpace.addChangeListener((e: any) => {
+				workerSpace.addChangeListener(() => {
 					const saved = serialization.workspaces.save(workerSpace);
 					const code = javascriptGenerator.workspaceToCode(workerSpace);
 					props.setData(saved);
@@ -158,5 +137,5 @@ export function LogicEditor(props: LogicEditorProps) {
 		),
 	);
 
-	return <div id="blocklyDiv" ref={setRef} class={props.class ? ` ` + " " + props.class : `h-full min-h-24 w-full`} />;
+	return <div id="blocklyDiv" ref={setRef} class={props.class ? `  ${props.class}` : `h-full min-h-24 w-full`} />;
 }

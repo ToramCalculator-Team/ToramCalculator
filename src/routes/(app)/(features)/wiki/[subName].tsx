@@ -15,11 +15,9 @@ import {
 	Show,
 	useContext,
 } from "solid-js";
-import { Portal } from "solid-js/web";
 import { Motion, Presence } from "solid-motionone";
 import { DATA_CONFIG, type DataConfig } from "~/components/business/data-config";
 import { Dialog } from "~/components/containers/dialog";
-import { Sheet } from "~/components/containers/sheet";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { VirtualTable } from "~/components/dataDisplay/virtualTable";
@@ -52,7 +50,7 @@ export default function WikiSubPage() {
 			() => params.subName,
 			() => {
 				console.log("Url参数：", params.subName);
-				if (params.subName in defaultData) {
+				if (params.subName && params.subName in defaultData) {
 					const tabkeName = params.subName as keyof DB;
 					// 初始化页面状态
 					setWikiStore("type", tabkeName);
@@ -429,7 +427,6 @@ export default function WikiSubPage() {
 										type="text"
 										placeholder={dictionary().ui.actions.filter}
 										value={wikiStore.table.globalFilterStr}
-										tabIndex={1}
 										onInput={(e) => {
 											setWikiStore("table", {
 												globalFilterStr: e.target.value,

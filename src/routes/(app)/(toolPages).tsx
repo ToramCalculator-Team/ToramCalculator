@@ -1,7 +1,7 @@
-import { createMemo, For, onMount, type ParentProps, Show, useContext } from "solid-js";
-import { Motion, Presence } from "solid-motionone";
+import { onMount, type ParentProps } from "solid-js";
+import { Motion } from "solid-motionone";
 import { Nav } from "~/components/features/nav";
-import { setStore, store } from "~/store";
+import { store } from "~/store";
 
 export default function ToolPage(props: ParentProps) {
 	onMount(() => {

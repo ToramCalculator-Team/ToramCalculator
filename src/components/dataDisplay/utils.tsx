@@ -1,11 +1,10 @@
 import { type AnyFieldApi, type DeepKeys, type DeepValue, Field } from "@tanstack/solid-form";
 import { For } from "solid-js";
-import { ZodAny, type ZodEnum, type ZodObject, type ZodType, z } from "zod/v4";
+import type { ZodEnum, ZodObject, ZodType } from "zod/v4";
 import { Button } from "~/components/controls/button";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import { Input } from "~/components/controls/input";
 import { Toggle } from "~/components/controls/toggle";
-import { LogicEditor } from "~/components/features/logicEditor/LogicEditor";
 import { getZodType } from "~/lib/utils/zodTools";
 import type { Dic, EnumFieldDetail } from "~/locales/type";
 
@@ -26,7 +25,6 @@ export type SimplifiedFieldApi<T extends Record<string, unknown>, K extends Deep
 };
 
 // 获取表单字段的错误信息
-// export function fieldInfo<T extends Record<string, unknown>, K extends DeepKeys<T>>(field: SimplifiedFieldApi<T, K>): string {
 export function fieldInfo(field: AnyFieldApi): string {
 	if (!field.state.meta) {
 		return "";

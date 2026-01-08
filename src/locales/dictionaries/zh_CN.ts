@@ -164,7 +164,7 @@ const skillTreeType: Record<Enums.SkillTreeType, string> = {
   NinjaSkill: "忍者技能",
   PartisanSkill: "游击队技能",
   //
-  LuckSkill: "",
+  LuckSkill: "幸运技能",
   MerchantSkill: "商人技能",
   PetSkill: "宠物技能",
 };

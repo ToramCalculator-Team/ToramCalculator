@@ -86,7 +86,7 @@ export function Select(props: SelectProps) {
             when={hasOptionGenerator}
             fallback={<span class="truncate">{selectedOption()?.label ?? props.placeholder ?? "请选择"}</span>}
           >
-            {props.optionGenerator!(
+            {props.optionGenerator?.(
               selectedOption() ??
                 (initialOptions.latest
                   ? initialOptions.latest[0]
@@ -95,7 +95,7 @@ export function Select(props: SelectProps) {
                       value: "",
                     }),
               false,
-              () => handleSelect(selectedOption() ?? initialOptions.latest?.[0]!),
+              () => handleSelect(selectedOption() ?? initialOptions.latest?.[0] ?? { label: "请选择", value: "" }),
             )}
           </Show>
           <Show when={!props.styleLess}>
@@ -105,6 +105,7 @@ export function Select(props: SelectProps) {
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
+              <title>选择</title>
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
           </Show>
@@ -124,12 +125,13 @@ export function Select(props: SelectProps) {
                 const optionItem = optionGenerator ? (
                   optionGenerator(option, selected, () => handleSelect(option))
                 ) : (
-                  <div
-                    class={`hover:bg-area-color flex h-12 cursor-pointer items-center px-3 text-nowrap ${selected ? "bg-area-color" : ""}`}
-                    onClick={(e) => handleSelect(option)}
+                  <button
+                    type="button"
+                    class={`hover:bg-area-color w-full flex h-12 cursor-pointer items-center px-3 text-nowrap ${selected ? "bg-area-color" : ""}`}
+                    onClick={() => handleSelect(option)}
                   >
                     {option.label}
-                  </div>
+                  </button>
                 );
                 return (
                   <>

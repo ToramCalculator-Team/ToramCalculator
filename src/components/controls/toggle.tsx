@@ -42,9 +42,9 @@ export const Toggle = (props: SwitchProps) => {
   });
 
   return (
-    <label class={"Track flex items-center cursor-pointer " + config().sizeClass.track + " " + config().stateClass.track}>
-      <div class={"Thumb " + config().sizeClass.thumb + " " + config().stateClass.thumb}></div>
-      <input {...props} type="radio" class={"hidden"} />
+    <label class={`Track flex items-center cursor-pointer ${config().sizeClass.track} ${config().stateClass.track}`}>
+      <div class={`Thumb ${config().sizeClass.thumb} ${config().stateClass.thumb}`}></div>
+      <input {...props} type="radio" class="sr-only" />
     </label>
   );
 };

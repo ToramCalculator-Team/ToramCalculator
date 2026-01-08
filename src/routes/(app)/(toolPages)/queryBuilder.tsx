@@ -29,7 +29,7 @@ export default function Repl() {
 
 		if (dictionary()) {
 			// 从字典中获取表信息
-			Object.entries(dictionary()!.db).forEach(([tableKey, tableInfo]) => {
+			Object.entries(dictionary().db).forEach(([tableKey, tableInfo]) => {
 				tables.push({
 					key: tableKey,
 					name: tableInfo.selfName,

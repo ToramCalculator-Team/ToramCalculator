@@ -233,17 +233,15 @@ export default function PetPage() {
 	}
 
 	return (
-		<>
-			<div class="Content flex flex-col gap-4 p-3">
-				<div id="title">
-					<div id="mianTitle">Pet</div>
-					<div id="subTitle">宠物相关计算</div>
-				</div>
-				<div id="content">
-					<div id="inputModule"></div>
-					<pre class="outModule flex flex-col gap-4">{completeDisplay()}</pre>
-				</div>
+		<div class="Content flex flex-col gap-4 p-3">
+			<div id="title">
+				<div id="mianTitle">Pet</div>
+				<div id="subTitle">宠物相关计算</div>
 			</div>
-		</>
+			<div id="content">
+				<div id="inputModule"></div>
+				<pre class="outModule flex flex-col gap-4">{completeDisplay()}</pre>
+			</div>
+		</div>
 	);
 }
