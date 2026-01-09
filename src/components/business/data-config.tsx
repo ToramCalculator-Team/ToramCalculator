@@ -362,10 +362,10 @@ export const DATA_CONFIG: DataConfig = {
 					accessorFn: (row) => row.captureable,
 					cell: (info) => info.getValue<boolean>().toString(),
 					size: {
-						"zh-CN": 100,
-						"zh-TW": 100,
-						ja: 100,
-						en: 100,
+						"zh-CN": 120,
+						"zh-TW": 120,
+						ja: 120,
+						en: 120,
 					}[store.settings.userInterface.language],
 				},
 				{
@@ -480,7 +480,7 @@ export const DATA_CONFIG: DataConfig = {
 					}[store.settings.userInterface.language],
 				},
 			],
-			hiddenColumnDef: ["id", "captureable", "actions", "createdByAccountId", "updatedByAccountId"],
+			hiddenColumnDef: ["id", "type", "actions", "createdByAccountId", "updatedByAccountId"],
 			defaultSort: { id: "experience", desc: true },
 			tdGenerator: {
 				initialElement: (props) =>
@@ -493,12 +493,10 @@ export const DATA_CONFIG: DataConfig = {
 						Dark: <Icons.Game.ElementDark class="h-12 w-12" />,
 						Normal: <Icons.Game.ElementNoElement class="h-12 w-12" />,
 					})[props.cell.getValue<ElementType>()],
-				name: (props) => (
-					<div class="text-accent-color flex flex-col gap-1">
-						<span>{props.cell.getValue<string>()}</span>
-						<Show when={props.cell.row.original.type === "Mob"}>
-							<span class="text-main-text-color text-xs">{props.cell.row.original.captureable ? "√" : "×"}</span>
-						</Show>
+				name: ({ cell, dic }) => (
+					<div class="text-accent-color flex flex-col items-start  justify-start gap-1">
+						<span>{cell.getValue<string>()}</span>
+						<span class="text-main-text-color text-xs">{dic.fields.type.enumMap[cell.row.original.type]}</span>
 					</div>
 				),
 			},

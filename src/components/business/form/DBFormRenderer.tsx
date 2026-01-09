@@ -4,6 +4,7 @@
  * @version 1.0.0
  */
 
+import { defaultData } from "@db/defaultData";
 import {
 	getForeignKeyFields,
 	getForeignKeyReference,
@@ -11,19 +12,21 @@ import {
 	isForeignKeyField,
 	isPrimaryKeyField,
 } from "@db/generated/dmmf-utils";
+import { repositoryMethods } from "@db/generated/repositories";
 import type { DB } from "@db/generated/zod/index";
 import { type AnyFieldApi, createForm, type DeepKeys, type DeepValue } from "@tanstack/solid-form";
-import { type Accessor, createMemo, For, Index, Show } from "solid-js";
+import { type Accessor, createMemo, createResource, For, Index, onMount, Show } from "solid-js";
 import type { JSX } from "solid-js/jsx-runtime";
 import type { ZodEnum, ZodObject, ZodType } from "zod/v4";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { Button } from "~/components/controls/button";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import { Input } from "~/components/controls/input";
+import { Select } from "~/components/controls/select";
 import { Toggle } from "~/components/controls/toggle";
 import { fieldInfo } from "~/components/dataDisplay/utils";
 import { getDictionary } from "~/locales/i18n";
-import type { Dic, EnumFieldDetail } from "~/locales/type";
+import type { Dic, EnumFieldDetail, FieldDict } from "~/locales/type";
 import { setStore, store } from "~/store";
 
 export interface DBFormProps<TTableName extends keyof DB> {
@@ -193,6 +196,10 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 		</For>
 	);
 
+	onMount(() => {
+		console.log("DBFormRenderer mounted", props.tableName, props.initialValue);
+	});
+
 	return (
 		<div class="FormBox flex w-full flex-col">
 			<div class="Title flex items-center p-2 portrait:p-6">
@@ -212,41 +219,50 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 					when={props.fieldGroupMap}
 					fallback={fieldGroupGenerator(Object.keys(props.initialValue) as Array<keyof DB[TTableName]>)}
 				>
-					<For
-						each={Object.entries(props.fieldGroupMap!).filter(([_, keys]) =>
-							keys.some((key) => !props.hiddenFields?.includes(key)),
-						)}
-					>
-						{([groupName, keys]) => (
-							<section class="FieldGroup flex w-full flex-col gap-2">
-								<h3 class="text-accent-color flex items-center gap-2 px-3 py-2">
-									{groupName}
-									<div class="Divider bg-dividing-color h-px w-full flex-1" />
-								</h3>
-								<div class="Content flex flex-col gap-3">{fieldGroupGenerator(keys)}</div>
-							</section>
-						)}
-					</For>
+					{(fieldGroupMap) => (
+						<For
+							each={Object.entries(fieldGroupMap()).filter(([_, keys]) =>
+								keys.some((key) => !props.hiddenFields?.includes(key)),
+							)}
+						>
+							{([groupName, keys]) => (
+								<section class="FieldGroup flex w-full flex-col gap-2">
+									<h3 class="text-accent-color flex items-center gap-2 px-3 py-2">
+										{groupName}
+										<div class="Divider bg-dividing-color h-px w-full flex-1" />
+									</h3>
+									<div class="Content flex flex-col gap-3">{fieldGroupGenerator(keys)}</div>
+								</section>
+							)}
+						</For>
+					)}
 				</Show>
 
 				{/* 外键字段渲染器 */}
 				<For each={foreignKeyFields()}>
-					{(field) => (
-						<div class="Field flex flex-col gap-2">
-							<Button
-								level="secondary"
-								onClick={() => {
-                  console.log(getForeignKeyReference(props.tableName, field));
-									//   setStore("pages", "formGroup", store.pages.formGroup.length, {
-									// 	type: getForeignKeyReference(props.tableName, field)?.table,
-									// 	data: {},
-									// })
-								}}
-							>
-								{props.tableName}
-							</Button>
-						</div>
-					)}
+					{(field) => {
+						const foreignKeyReference = getForeignKeyReference(props.tableName, field);
+						if (!foreignKeyReference) return null;
+						// 根据外键表查询对应关联数据
+						const [relatedData] = createResource(async () => {
+							return await repositoryMethods[foreignKeyReference.table].select?.(foreignKeyReference.field);
+						});
+						return (
+							<div class="Field flex flex-col gap-2">
+								<Button
+									level="secondary"
+									onClick={() => {
+										setStore("pages", "formGroup", store.pages.formGroup.length, {
+											type: getForeignKeyReference(props.tableName, field)?.table,
+											data: relatedData() ?? defaultData[foreignKeyReference.table],
+										});
+									}}
+								>
+									{dictionary().db[foreignKeyReference.table].selfName}
+								</Button>
+							</div>
+						);
+					}}
 				</For>
 
 				<form.Subscribe
@@ -274,24 +290,27 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 };
 
 // 数据库字段渲染器
-export function DBFieldRenderer<T extends keyof DB>(props: {
+export function DBFieldRenderer<TTableName extends keyof DB>(props: {
 	field: Accessor<AnyFieldApi>;
-	dictionary: Dic<DB[T]>;
-	dataSchema: ZodObject<Record<keyof DB[T], ZodType>>;
+	dictionary: Dic<DB[TTableName]>;
+	dataSchema: ZodObject<Record<keyof DB[TTableName], ZodType>>;
 }) {
 	// 获取字段名
-	const fieldName = props.field().name;
+	const fieldName = props.field().name as keyof DB[TTableName];
+	console.log("fieldName", fieldName);
 	let inputTitle = props.dictionary.selfName;
 	let inputDescription = "";
 
 	try {
-		inputTitle = (props.dictionary.fields as any)[fieldName].key;
-		inputDescription = (props.dictionary.fields as any)[fieldName].formFieldDescription;
-	} catch (error) {}
+		inputTitle = (props.dictionary.fields as FieldDict<DB[TTableName]>)[fieldName].key;
+		inputDescription = (props.dictionary.fields as FieldDict<DB[TTableName]>)[fieldName].formFieldDescription;
+	} catch (error) {
+		console.log("字典中不存在字段：", fieldName, error);
+	}
 
 	const fieldClass = "border-dividing-color bg-primary-color rounded-md border w-full";
 
-	switch ((props.dataSchema.shape as any)[fieldName].type) {
+	switch (props.dataSchema.shape[fieldName].type) {
 		case "enum": {
 			return (
 				<Input
@@ -300,16 +319,43 @@ export function DBFieldRenderer<T extends keyof DB>(props: {
 					validationMessage={fieldInfo(props.field())}
 					class={fieldClass}
 				>
-					<EnumSelect
-						value={props.field().state.value as string}
-						setValue={(value) => props.field().setValue(value as DeepValue<DB[T], DeepKeys<DB[T]>>)}
-						options={((props.dataSchema.shape as any)[fieldName] as ZodEnum<any>).options.map((i) => i.toString())}
-						dic={((props.dictionary.fields as any)[fieldName] as EnumFieldDetail<string>).enumMap}
-						field={{
-							id: props.field().name,
-							name: props.field().name,
-						}}
-					/>
+					<Show
+						when={(props.dataSchema.shape[fieldName] as ZodEnum<any>).options.length > 6}
+						fallback={
+							<EnumSelect
+								value={props.field().state.value as string}
+								setValue={(value) =>
+									props.field().setValue(value as DeepValue<DB[TTableName], DeepKeys<DB[TTableName]>>)
+								}
+								options={(props.dataSchema.shape[fieldName] as ZodEnum<any>).options.map((i) => i.toString())}
+								dic={(props.dictionary.fields[fieldName] as EnumFieldDetail<string>).enumMap}
+								field={{
+									id: props.field().name,
+									name: props.field().name,
+								}}
+							/>
+						}
+					>
+						<Select
+							value={props.field().state.value as string}
+							setValue={(v) => {
+								props.field().setValue(v);
+							}}
+							options={(props.dataSchema.shape[fieldName] as ZodEnum<any>).options.map((type) => {
+								console.log(
+									"type",
+									type,
+									(props.dictionary.fields[fieldName] as EnumFieldDetail<string>).enumMap[type],
+								);
+								return {
+									label: (props.dictionary.fields[fieldName] as EnumFieldDetail<string>).enumMap[type],
+									value: type,
+								};
+							})}
+							placeholder={props.field().state.value as string}
+							// optionPosition="top"
+						/>
+					</Show>
 				</Input>
 			);
 		}
@@ -353,7 +399,7 @@ export function DBFieldRenderer<T extends keyof DB>(props: {
 					onBlur={props.field().handleBlur}
 					onChange={(e) => {
 						const target = e.target;
-						props.field().handleChange(target.value as DeepValue<DB[T], DeepKeys<DB[T]>>);
+						props.field().handleChange(target.value as DeepValue<DB[TTableName], DeepKeys<DB[TTableName]>>);
 					}}
 					validationMessage={fieldInfo(props.field())}
 					class={fieldClass}
@@ -374,7 +420,7 @@ export function DBFieldRenderer<T extends keyof DB>(props: {
 					<Toggle
 						id={props.field().name}
 						onClick={() => {
-							props.field().setValue(!props.field().state.value as DeepValue<DB[T], DeepKeys<DB[T]>>);
+							props.field().setValue(!props.field().state.value as DeepValue<DB[TTableName], DeepKeys<DB[TTableName]>>);
 						}}
 						onBlur={props.field().handleBlur}
 						name={props.field().name}
@@ -398,7 +444,7 @@ export function DBFieldRenderer<T extends keyof DB>(props: {
 					onBlur={props.field().handleBlur}
 					onChange={(e) => {
 						const target = e.target;
-						props.field().handleChange(target.value as DeepValue<DB[T], DeepKeys<DB[T]>>);
+						props.field().handleChange(target.value as DeepValue<DB[TTableName], DeepKeys<DB[TTableName]>>);
 					}}
 					validationMessage={fieldInfo(props.field())}
 					class={fieldClass}

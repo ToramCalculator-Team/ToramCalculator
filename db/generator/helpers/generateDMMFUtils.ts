@@ -548,12 +548,6 @@ export function getForeignKeyReference<T extends keyof DB>(
     field: referencedField
   };
 }
-
-/**
- * 兼容旧 API: getPrimaryKeyFields (别名)
- * @deprecated 请使用 getPrimaryKeys
- */
-export const getPrimaryKeyFields = getPrimaryKeys;
 `;
   }
 }

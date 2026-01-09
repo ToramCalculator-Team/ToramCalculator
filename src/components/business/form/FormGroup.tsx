@@ -8,39 +8,36 @@ import { defaultData } from "@db/defaultData";
 import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 import { repositoryMethods } from "@db/generated/repositories";
 import { type DB, DBSchema } from "@db/generated/zod/index";
-import { createMemo, Index, Show } from "solid-js";
+import { Index, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { DATA_CONFIG } from "~/components/business/data-config";
-import { setStore, store } from "~/store";
+import { store } from "~/store";
 import { DBForm } from "./DBFormRenderer";
 import { FormSheet } from "./FormSheet";
 
 export const FormGroup = () => {
-	const formDatas = createMemo(() => {
-		return store.pages.formGroup.map(({ data }) => data);
-	});
-
 	return (
 		<Presence exitBeforeEnter>
-			<Show when={formDatas()?.length}>
+			{/* 此处包装是为了最后一层消失时先展示动画 */}
+			<Show when={store.pages.formGroup.length > 0}>
 				<Motion.div
 					animate={{ opacity: [0, 1] }}
 					exit={{ opacity: [1, 0] }}
 					transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-					class={`SheetBox bg-primary-color-90 fixed top-0 left-0 z-50 flex h-dvh w-dvw flex-row-reverse portrait:flex-col-reverse`}
-					onClick={() => setStore("pages", "formGroup", (pre) => pre.slice(0, -1))}
+					class={`SheetBox fixed top-0 left-0 z-50 h-dvh w-dvw`}
 				>
-					<Index each={formDatas()}>
+					<Index each={store.pages.formGroup}>
 						{(formData, index) => {
 							const formGroupItem = store.pages.formGroup[index];
 							const config = DATA_CONFIG[formGroupItem.type];
+							const initialValue = formData().data as DB[typeof formGroupItem.type];
 							return (
-								<FormSheet display={true} index={index} total={formDatas()?.length}>
+								<FormSheet display={true} index={index} total={store.pages.formGroup.length}>
 									<Show when={config}>
 										{(config) => (
 											<DBForm
 												tableName={formGroupItem.type}
-												initialValue={formData() as DB[typeof formGroupItem.type]}
+												initialValue={initialValue}
 												dataSchema={DBSchema[formGroupItem.type]}
 												// @ts-expect-error-next-line
 												// config 是联合类型（所有表配置的并集），TS 无法自动断言为与 DBForm<T> 的 T 匹配,

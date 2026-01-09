@@ -6,12 +6,10 @@
 
 import { repositoryMethods } from "@db/generated/repositories";
 import { type DB, DBSchema } from "@db/generated/zod/index";
-import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createEffect, createMemo, createResource, createSignal, Index, JSX, on, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { DATA_CONFIG, type DataConfig } from "~/components/business/data-config";
 import { Icons } from "~/components/icons";
-import { getDictionary } from "~/locales/i18n";
 import { type Store, setStore, store } from "~/store";
 import { Card } from "./Card";
 import { DBdataRenderer } from "./DBdataRenderer";
@@ -39,10 +37,7 @@ async function getCardDatas(cardGroup: Store["pages"]["cardGroup"], forceRefresh
 }
 
 export const CardGroup = () => {
-	// UI文本字典
-	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
-
-	const [cachedCardDatas, { refetch }] = createResource(
+	const [cachedCardDatas] = createResource(
 		() => store.pages.cardGroup.length, // 不添加length的话，似乎不会追踪到素组元素新增，只会追踪数组本身是否变化
 		() => {
 			return getCardDatas(store.pages.cardGroup);
