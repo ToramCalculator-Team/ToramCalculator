@@ -163,68 +163,64 @@ export default function WikiSubPage() {
 						}
 					>
 						{/* 标题 */}
-						<Presence exitBeforeEnter>
-							<Show when={!isMainContentFullscreen()}>
-								<Motion.div
-									class="Title flex flex-col landscape:p-3 lg:landscape:pt-12"
-									animate={{ opacity: [0, 1] }}
-									exit={{ opacity: 0 }}
-									transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-								>
-									<div class="Content flex flex-row items-center justify-between gap-4 px-6 py-0 lg:px-0 lg:py-3">
-										<h1 class="Text flex cursor-pointer items-center gap-3 text-left text-2xl font-black lg:bg-transparent lg:text-[2.5rem] lg:leading-[48px] lg:font-normal">
-											{dictionary().db[wikiStore.type].selfName}
-										</h1>
-										<input
-											id="DataSearchBox"
-											type="search"
-											placeholder={dictionary().ui.searchPlaceholder}
-											class="border-b-boundary-color placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color hidden h-[50px] w-full flex-1 rounded-none border-b bg-transparent px-3 py-2 backdrop-blur-xl focus:outline-hidden lg:block lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
-											onInput={(e) => {
-												setWikiStore("table", {
-													globalFilterStr: e.target.value,
+						<Motion.div
+							class={`Title portrait:flex flex-col ${isMainContentFullscreen() ? "landscape:hidden" : "landscape:flex" } landscape:p-3 lg:landscape:pt-12`}
+							animate={{ opacity: [0, 1] }}
+							exit={{ opacity: 0 }}
+							transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+						>
+							<div class="Content flex flex-row items-center justify-between gap-4 px-6 py-0 lg:px-0 lg:py-3">
+								<h1 class="Text flex cursor-pointer items-center gap-3 text-left text-2xl font-black lg:bg-transparent lg:text-[2.5rem] lg:leading-[48px] lg:font-normal">
+									{dictionary().db[wikiStore.type].selfName}
+								</h1>
+								<input
+									id="DataSearchBox"
+									type="search"
+									placeholder={dictionary().ui.searchPlaceholder}
+									class="border-b-boundary-color placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color hidden h-[50px] w-full flex-1 rounded-none border-b bg-transparent px-3 py-2 backdrop-blur-xl focus:outline-hidden lg:block lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
+									onInput={(e) => {
+										setWikiStore("table", {
+											globalFilterStr: e.target.value,
+										});
+									}}
+								/>
+								<div class="FunctionGroup flex">
+									<Show when={store.session.user?.id}>
+										<Button // 仅移动端显示
+											size="sm"
+											icon={<Icons.Outline.CloudUpload />}
+											class="flex bg-transparent lg:hidden"
+											onClick={() =>
+												setStore("pages", "formGroup", store.pages.formGroup.length, {
+													type: wikiStore.type,
+													data: defaultData[wikiStore.type],
+												})
+											}
+										></Button>
+									</Show>
+									<Button // 仅移动端显示
+										size="sm"
+										icon={<Icons.Outline.InfoCircle />}
+										class="flex bg-transparent lg:hidden"
+										onClick={() => {}}
+									></Button>
+									<Show when={store.session.user?.id}>
+										<Button // 仅PC端显示
+											icon={<Icons.Outline.CloudUpload />}
+											class="hidden lg:flex"
+											onClick={() => {
+												setStore("pages", "formGroup", store.pages.formGroup.length, {
+													type: wikiStore.type,
+													data: defaultData[wikiStore.type],
 												});
 											}}
-										/>
-										<div class="FunctionGroup flex">
-											<Show when={store.session.user?.id}>
-												<Button // 仅移动端显示
-													size="sm"
-													icon={<Icons.Outline.CloudUpload />}
-													class="flex bg-transparent lg:hidden"
-													onClick={() =>
-														setStore("pages", "formGroup", store.pages.formGroup.length, {
-															type: wikiStore.type,
-															data: defaultData[wikiStore.type],
-														})
-													}
-												></Button>
-											</Show>
-											<Button // 仅移动端显示
-												size="sm"
-												icon={<Icons.Outline.InfoCircle />}
-												class="flex bg-transparent lg:hidden"
-												onClick={() => {}}
-											></Button>
-											<Show when={store.session.user?.id}>
-												<Button // 仅PC端显示
-													icon={<Icons.Outline.CloudUpload />}
-													class="hidden lg:flex"
-													onClick={() => {
-														setStore("pages", "formGroup", store.pages.formGroup.length, {
-															type: wikiStore.type,
-															data: defaultData[wikiStore.type],
-														});
-													}}
-												>
-													{dictionary().ui.actions.add}
-												</Button>
-											</Show>
-										</div>
-									</div>
-								</Motion.div>
-							</Show>
-						</Presence>
+										>
+											{dictionary().ui.actions.add}
+										</Button>
+									</Show>
+								</div>
+							</div>
+						</Motion.div>
 
 						{/* 轮播图 */}
 						<Presence exitBeforeEnter>
