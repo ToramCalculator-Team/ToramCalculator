@@ -255,14 +255,6 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 									}}
 								</For>
 							</div>
-							{/* <div class="module flex flex-col gap-3">
-                  <div class="title">{dictionary.ui.monster.augmented}</div>
-                  <div class="content flex flex-wrap gap-2">
-                    <Button level="tertiary" onClick={() => setAugmented(!augmented)}>
-                      {augmented ? "Yes" : "No"}
-                    </Button>
-                  </div>
-                </div> */}
 						</div>
 					</Motion.div>
 				</Show>
@@ -272,7 +264,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 					<div class={`TableHead z-10 flex w-fit`}>
 						<For each={table()?.getHeaderGroups()}>
 							{(headerGroup) => (
-								<div class="TableHeadGroup border-dividing-color flex min-w-full gap-0 border-b lg:border-b-2">
+								<div class="TableHeadGroup border-dividing-color flex min-w-full gap-0 border-t lg:border-b-2 lg:border-t-0">
 									<For each={headerGroup.headers}>
 										{(header) => {
 											const { column } = header;

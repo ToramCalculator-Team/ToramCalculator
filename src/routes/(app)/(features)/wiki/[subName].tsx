@@ -37,7 +37,7 @@ export default function WikiSubPage() {
 	const navigate = useNavigate();
 
 	// 状态管理参数
-	const [isMainContentFullscreen, setIsMainContentFullscreen] = createSignal(false);
+	const [isMainContentFullscreen, setIsMainContentFullscreen] = createSignal(true);
 	const [activeBannerIndex, setActiveBannerIndex] = createSignal(0);
 
 	const [wikiSelectorIsOpen, setWikiSelectorIsOpen] = createSignal(false);
@@ -54,7 +54,7 @@ export default function WikiSubPage() {
 					const tabkeName = params.subName as keyof DB;
 					// 初始化页面状态
 					setWikiStore("type", tabkeName);
-					setIsMainContentFullscreen(false);
+					setIsMainContentFullscreen(true);
 					setActiveBannerIndex(0);
 					setDataConfig(DATA_CONFIG[wikiStore.type]);
 				} else {
@@ -418,10 +418,24 @@ export default function WikiSubPage() {
 								>
 									<Button
 										size="sm"
-										class="bg-transparent"
+										level="quaternary"
 										icon={<Icons.Outline.Swap />}
 										onClick={() => setWikiSelectorIsOpen((pre) => !pre)}
 									></Button>
+									<Show when={store.session.user?.id}>
+										<Button // 仅PC端显示
+											size="sm"
+											level="quaternary"
+											icon={<Icons.Outline.CloudUpload />}
+											class="hidden lg:flex"
+											onClick={() => {
+												setStore("pages", "formGroup", store.pages.formGroup.length, {
+													type: wikiStore.type,
+													data: defaultData[wikiStore.type],
+												});
+											}}
+										></Button>
+									</Show>
 									<input
 										id="filterInput"
 										type="text"
