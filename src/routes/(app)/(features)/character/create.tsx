@@ -89,23 +89,21 @@ export default function CreateCharacterPage() {
 	};
 
 	return (
-		<>
-			<div class="flex h-full w-full flex-col gap-3 p-6">
-				<Button class="h-full w-full border-2 border-dashed" onClick={handleCreateCharacter}>
-					{dictionary().ui.actions.create}
-					<Show when={!store.session.user?.id}>在本地</Show>
+		<div class="flex h-full w-full flex-col gap-3 p-6">
+			<Button class="h-full w-full border-2 border-dashed" onClick={handleCreateCharacter}>
+				{dictionary().ui.actions.create}
+				<Show when={!store.session.user?.id}>在本地</Show>
+			</Button>
+			<Show when={!store.session.user?.id}>
+				<Button
+					class="h-full w-full border-2 border-dashed"
+					onClick={() => {
+						setStore("pages", "loginDialogState", true);
+					}}
+				>
+					{dictionary().ui.actions.logIn}
 				</Button>
-				<Show when={!store.session.user?.id}>
-					<Button
-						class="h-full w-full border-2 border-dashed"
-						onClick={() => {
-							setStore("pages", "loginDialogState", true);
-						}}
-					>
-						{dictionary().ui.actions.logIn}
-					</Button>
-				</Show>
-			</div>
-		</>
+			</Show>
+		</div>
 	);
 }

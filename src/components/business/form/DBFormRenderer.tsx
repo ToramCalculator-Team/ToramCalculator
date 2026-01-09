@@ -6,6 +6,7 @@
 
 import { defaultData } from "@db/defaultData";
 import {
+	getChildRelations,
 	getForeignKeyFields,
 	getForeignKeyReference,
 	getPrimaryKeys,
@@ -14,8 +15,10 @@ import {
 } from "@db/generated/dmmf-utils";
 import { repositoryMethods } from "@db/generated/repositories";
 import type { DB } from "@db/generated/zod/index";
+import { getDB } from "@db/repositories/database";
+import { createId } from "@paralleldrive/cuid2";
 import { type AnyFieldApi, createForm, type DeepKeys, type DeepValue } from "@tanstack/solid-form";
-import { type Accessor, createMemo, createResource, For, Index, onMount, Show } from "solid-js";
+import { type Accessor, createMemo, createResource, createSignal, For, Index, onMount, Show } from "solid-js";
 import type { JSX } from "solid-js/jsx-runtime";
 import type { ZodEnum, ZodObject, ZodType } from "zod/v4";
 import { Autocomplete } from "~/components/controls/autoComplete";
@@ -49,22 +52,42 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 	// UI文本字典
 	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
 
+	// 获取子表关系
+	const [childRelations] = createResource(async () => {
+		const db = await getDB();
+		const primaryKey = getPrimaryKeys(props.tableName)[0];
+		return await getChildRelations(db, props.tableName, primaryKey as string);
+	});
+
+	// 判断传入值主键是否和缺省值主键相同，是的则说明是新建，否则是编辑
+	const [isNew, setIsNew] = createSignal(false);
+	const initialValue = () => {
+		const primaryKey = getPrimaryKeys(props.tableName)[0];
+		const currentPrimaryKeyValue = props.initialValue[primaryKey];
+		const defaultPrimaryKeyValue = defaultData[props.tableName][primaryKey];
+		if (currentPrimaryKeyValue === defaultPrimaryKeyValue) {
+			// 是新建的话，需要创建新的主键
+			console.log("当前值主键和缺省值主键相同", currentPrimaryKeyValue, defaultPrimaryKeyValue);
+			const newPrimaryKeyValue = createId();
+			setIsNew(true);
+			return {
+				...props.initialValue,
+				[primaryKey]: newPrimaryKeyValue,
+			};
+		} else {
+			// 是编辑的话，直接返回传入值
+			setIsNew(false);
+			return props.initialValue;
+		}
+	};
+
+	// 创建表单
 	const form = createForm(() => ({
-		defaultValues: props.initialValue,
+		defaultValues: initialValue(),
 		onSubmit: async ({ value: newValues }) => {
 			props.onSubmit?.(newValues);
 		},
 	}));
-
-	// 获取外键字段
-	const foreignKeyFields = createMemo(() => {
-		return getForeignKeyFields(props.tableName);
-	});
-
-	// 获取主键字段
-	const primaryKeyFields = createMemo(() => {
-		return getPrimaryKeys(props.tableName);
-	});
 
 	// 字段组生成器
 	const fieldGroupGenerator = (fieldGroup: Array<keyof DB[TTableName]>) => (
@@ -197,7 +220,7 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 	);
 
 	onMount(() => {
-		console.log("DBFormRenderer mounted", props.tableName, props.initialValue);
+		console.log("DBFormRenderer mounted", JSON.stringify(props.initialValue, null, 2));
 	});
 
 	return (
@@ -238,32 +261,41 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 					)}
 				</Show>
 
-				{/* 外键字段渲染器 */}
-				<For each={foreignKeyFields()}>
-					{(field) => {
-						const foreignKeyReference = getForeignKeyReference(props.tableName, field);
-						if (!foreignKeyReference) return null;
-						// 根据外键表查询对应关联数据
-						const [relatedData] = createResource(async () => {
-							return await repositoryMethods[foreignKeyReference.table].select?.(foreignKeyReference.field);
-						});
-						return (
-							<div class="Field flex flex-col gap-2">
-								<Button
-									level="secondary"
-									onClick={() => {
-										setStore("pages", "formGroup", store.pages.formGroup.length, {
-											type: getForeignKeyReference(props.tableName, field)?.table,
-											data: relatedData() ?? defaultData[foreignKeyReference.table],
-										});
-									}}
-								>
-									{dictionary().db[foreignKeyReference.table].selfName}
-								</Button>
-							</div>
-						);
-					}}
-				</For>
+				{/* 子表关系按钮渲染器 */}
+				<Show when={childRelations()}>
+					{(relations) => (
+						<For each={Object.entries(relations())}>
+							{([tableName, data]) => {
+								return (
+									<div class="Field flex flex-col gap-2">
+										<Button
+											level="secondary"
+											onClick={() => {
+												// 这里需要根据data数量打开复数个表单，如果data为空，则用默认值渲染表单
+												if (data.length === 0) {
+													setStore("pages", "formGroup", store.pages.formGroup.length, {
+														type: tableName as keyof DB,
+														data: defaultData[tableName as keyof DB],
+													});
+												} else {
+													for (const item of data) {
+														setStore("pages", "formGroup", store.pages.formGroup.length, {
+															type: tableName as keyof DB,
+															// store里的类型更宽泛，但要求是Record<string, unknown>
+															data: (item as unknown as Record<string, unknown>) ?? defaultData[tableName as keyof DB],
+														});
+													}
+												}
+											}}
+										>
+											{dictionary().db[tableName as keyof DB].selfName}
+										</Button>
+									</div>
+								);
+							}}
+						</For>
+					)}
+				</Show>
 
 				<form.Subscribe
 					selector={(state) => ({
@@ -276,9 +308,9 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 								<Button level="primary" class="SubmitBtn flex-1" type="submit" disabled={!state().canSubmit}>
 									{state().isSubmitting
 										? "..."
-										: props.initialValue
-											? dictionary().ui.actions.update
-											: dictionary().ui.actions.add}
+										: isNew()
+											? dictionary().ui.actions.add
+											: dictionary().ui.actions.update}
 								</Button>
 							</div>
 						);
@@ -297,7 +329,6 @@ export function DBFieldRenderer<TTableName extends keyof DB>(props: {
 }) {
 	// 获取字段名
 	const fieldName = props.field().name as keyof DB[TTableName];
-	console.log("fieldName", fieldName);
 	let inputTitle = props.dictionary.selfName;
 	let inputDescription = "";
 
