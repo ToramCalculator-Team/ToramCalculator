@@ -3,19 +3,7 @@ import { MetaProvider, Title } from "@solidjs/meta";
 import { useNavigate } from "@solidjs/router";
 import { useMachine } from "@xstate/solid";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import {
-	createEffect,
-	createMemo,
-	createSignal,
-	For,
-	Index,
-	type JSX,
-	on,
-	onCleanup,
-	onMount,
-	Show,
-	useContext,
-} from "solid-js";
+import { createMemo, createSignal, For, Index, type JSX, onCleanup, onMount, Show, useContext } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { Sheet } from "~/components/containers/sheet";
 import { Button } from "~/components/controls/button";
@@ -32,16 +20,30 @@ export default function IndexPage() {
 	const [searchButtonRef, setSearchButtonRef] = createSignal<HTMLButtonElement | undefined>(undefined);
 	const [searchInputRef, setSearchInputRef] = createSignal<HTMLInputElement | undefined>(undefined);
 
+	// 导航
 	const navigate = useNavigate();
+	// UI文本字典
+	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
+	// 媒体查询
+	const media = useContext(MediaContext);
 
-	// 使用 @xstate/solid 的 useMachine 管理状态
+	// 使用状态机管理此页面状态
 	const [state, send] = useMachine(indexPageMachine);
 	const context = () => state.context;
 
-	const media = useContext(MediaContext);
-
-	// UI文本字典
-	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
+	// 事件分发函数，调用状态机处理事件
+	const handleSearchInput = (e: Event & { target: HTMLInputElement }) => {
+		send({ type: "SEARCH_INPUT_CHANGE", value: e.target.value });
+	};
+	const handleSearch = () => {
+		send({ type: "SEARCH_SUBMIT" });
+	};
+	const handleClearSearch = () => {
+		send({ type: "SEARCH_CLEAR" });
+	};
+	const handleToggleSearchResults = () => {
+		send({ type: "TOGGLE_SEARCH_RESULTS" });
+	};
 
 	// 小工具菜单配置
 	const [toolMenuConfig] = createSignal<
@@ -191,23 +193,6 @@ export default function IndexPage() {
 		],
 	});
 
-	// 事件分发函数
-	const handleSearchInput = (e: Event & { target: HTMLInputElement }) => {
-		send({ type: "SEARCH_INPUT_CHANGE", value: e.target.value });
-	};
-
-	const handleSearch = () => {
-		send({ type: "SEARCH_SUBMIT" });
-	};
-
-	const handleClearSearch = () => {
-		send({ type: "SEARCH_CLEAR" });
-	};
-
-	const handleToggleSearchResults = () => {
-		send({ type: "TOGGLE_SEARCH_RESULTS" });
-	};
-
 	// 问候语计算方法
 	const getGreetings = () => {
 		const now = new Date().getHours();
@@ -219,19 +204,6 @@ export default function IndexPage() {
 			return dictionary().ui.index.goodMorning;
 		}
 	};
-
-	// userName
-	const [userName, setUserName] = createSignal(store.session.user?.name);
-
-	createEffect(
-		on(
-			() => store.session.user?.name,
-			() => {
-				if (store.session.user?.name) setUserName(store.session.user?.name);
-				else setUserName(dictionary().ui.index.adventurer);
-			},
-		),
-	);
 
 	onMount(() => {
 		// console.log("Index loaded");
@@ -367,7 +339,7 @@ export default function IndexPage() {
 									<Icons.Brand.LogoText class="h-12 landscape:h-auto" />
 								</button>
 								<h1 class={`text-main-text-color self-start py-4 landscape:hidden`}>
-									{`${getGreetings()},  ${userName()}`}
+									{`${getGreetings()},  ${store.session.user?.name ?? dictionary().ui.index.adventurer}`}
 								</h1>
 							</Motion.div>
 						</Show>
@@ -412,7 +384,7 @@ export default function IndexPage() {
 								type="text"
 								placeholder={
 									media.orientation === "landscape"
-										? `${getGreetings()},${userName()}`
+										? `${getGreetings()},${store.session.user?.name ?? dictionary().ui.index.adventurer}`
 										: dictionary().ui.searchPlaceholder
 								}
 								value={context().searchInputValue}

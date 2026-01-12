@@ -11,123 +11,121 @@ import { writeFileSafely } from "../utils/writeFileSafely";
  * DMMF 工具生成器
  */
 export class DMMFUtilsGenerator {
-  private dmmf: DMMF.Document;
-  private allModels: readonly DMMF.Model[];
+	private dmmf: DMMF.Document;
+	private allModels: readonly DMMF.Model[];
 
-  constructor(dmmf: DMMF.Document, allModels: DMMF.Model[]) {
-    this.dmmf = dmmf;
-    this.allModels = allModels;
-  }
+	constructor(dmmf: DMMF.Document, allModels: DMMF.Model[]) {
+		this.dmmf = dmmf;
+		this.allModels = allModels;
+	}
 
-  /**
-   * 生成 DMMF 工具文件
-   */
-  async generate(outputPath: string): Promise<void> {
-    try {
-      console.log("生成 DMMF 工具文件...");
+	/**
+	 * 生成 DMMF 工具文件
+	 */
+	async generate(outputPath: string): Promise<void> {
+		try {
+			console.log("生成 DMMF 工具文件...");
 
-      const content = this.generateContent();
-      writeFileSafely(outputPath, content);
+			const content = this.generateContent();
+			writeFileSafely(outputPath, content);
 
-      console.log("DMMF 工具文件生成完成");
-    } catch (error) {
-      console.error("DMMF 工具文件生成失败:", error);
-      throw error;
-    }
-  }
+			console.log("DMMF 工具文件生成完成");
+		} catch (error) {
+			console.error("DMMF 工具文件生成失败:", error);
+			throw error;
+		}
+	}
 
-  /**
-   * 构建模型元数据
-   */
-  private buildMetadata() {
-    return this.allModels.map(model => ({
-      name: model.name,
-      tableName: model.dbName || model.name,
-      primaryKeys: model.fields
-        .filter(f => f.isId)
-        .map(f => f.name),
-      fields: model.fields.map(field => ({
-        name: field.name,
-        kind: field.kind,
-        type: field.type,
-        isList: field.isList || false,
-        isRequired: field.isRequired || false,
-        isId: field.isId || false,
-        isUnique: field.isUnique || false,
-        relationName: field.relationName || undefined,
-        relationFromFields: field.relationFromFields || undefined,
-        relationToFields: field.relationToFields || undefined,
-      }))
-    }));
-  }
+	/**
+	 * 构建模型元数据
+	 */
+	private buildMetadata() {
+		return this.allModels.map((model) => ({
+			name: model.name,
+			tableName: model.dbName || model.name,
+			primaryKeys: model.fields.filter((f) => f.isId).map((f) => f.name),
+			fields: model.fields.map((field) => ({
+				name: field.name,
+				kind: field.kind,
+				type: field.type,
+				isList: field.isList || false,
+				isRequired: field.isRequired || false,
+				isId: field.isId || false,
+				isUnique: field.isUnique || false,
+				relationName: field.relationName || undefined,
+				relationFromFields: field.relationFromFields || undefined,
+				relationToFields: field.relationToFields || undefined,
+			})),
+		}));
+	}
 
-  /**
-   * 构建关系元数据
-   */
-  private buildRelations() {
-    const relations: any[] = [];
-    const processed = new Set<string>();
+	/**
+	 * 构建关系元数据
+	 */
+	private buildRelations() {
+		const relations: any[] = [];
+		const processed = new Set<string>();
 
-    for (const model of this.allModels) {
-      for (const field of model.fields) {
-        if (field.kind !== "object") continue;
-        
-        const relationKey = `${field.relationName}_${model.name}_${field.type}`;
-        if (processed.has(relationKey)) continue;
-        processed.add(relationKey);
+		for (const model of this.allModels) {
+			for (const field of model.fields) {
+				if (field.kind !== "object") continue;
 
-        const targetModel = this.allModels.find(m => m.name === field.type);
-        if (!targetModel) continue;
+				const relationKey = `${field.relationName}_${model.name}_${field.type}`;
+				if (processed.has(relationKey)) continue;
+				processed.add(relationKey);
 
-        const targetField = targetModel.fields.find(
-          f => f.kind === "object" && f.relationName === field.relationName
-        );
+				const targetModel = this.allModels.find((m) => m.name === field.type);
+				if (!targetModel) continue;
 
-        const fromTableName = model.dbName || model.name;
-        const toTableName = targetModel.dbName || targetModel.name;
+				const targetField = targetModel.fields.find(
+					(f) => f.kind === "object" && f.relationName === field.relationName,
+				);
 
-        let relationType: string;
-        let joinTable: string | undefined;
+				const fromTableName = model.dbName || model.name;
+				const toTableName = targetModel.dbName || targetModel.name;
 
-        if (field.isList && targetField?.isList) {
-          relationType = "ManyToMany";
-          // 生成中间表名
-          const [first, second] = [model.name, targetModel.name].sort();
-          joinTable = `_${first}To${second}`;
-        } else if (field.isList) {
-          relationType = "OneToMany";
-        } else if (targetField?.isList) {
-          relationType = "ManyToOne";
-        } else {
-          relationType = "OneToOne";
-        }
+				let relationType: string;
+				let joinTable: string | undefined;
 
-        relations.push({
-          name: field.relationName || `${model.name}_${targetModel.name}`,
-          from: fromTableName,
-          to: toTableName,
-          type: relationType,
-          fromField: field.name,
-          toField: targetField?.name,
-          joinTable,
-          fromHasForeignKey: !!(field.relationFromFields && field.relationFromFields.length > 0),
-        });
-      }
-    }
+				if (field.isList && targetField?.isList) {
+					relationType = "ManyToMany";
+					// 生成中间表名
+					const [first, second] = [model.name, targetModel.name].sort();
+					joinTable = `_${first}To${second}`;
+				} else if (field.isList) {
+					relationType = "OneToMany";
+				} else if (targetField?.isList) {
+					relationType = "ManyToOne";
+				} else {
+					relationType = "OneToOne";
+				}
 
-    return relations;
-  }
+				relations.push({
+					name: field.relationName || `${model.name}_${targetModel.name}`,
+					from: fromTableName,
+					to: toTableName,
+					type: relationType,
+					fromField: field.name,
+					toField: targetField?.name,
+					joinTable,
+					fromHasForeignKey: !!(field.relationFromFields && field.relationFromFields.length > 0),
+				});
+			}
+		}
 
-  /**
-   * 生成文件内容
-   */
-  private generateContent(): string {
-    const metadata = this.buildMetadata();
-    const relations = this.buildRelations();
-    const metadataJson = JSON.stringify(metadata, null, 2);
-    const relationsJson = JSON.stringify(relations, null, 2);
+		return relations;
+	}
 
-    return `/**
+	/**
+	 * 生成文件内容
+	 */
+	private generateContent(): string {
+		const metadata = this.buildMetadata();
+		const relations = this.buildRelations();
+		const metadataJson = JSON.stringify(metadata, null, 2);
+		const relationsJson = JSON.stringify(relations, null, 2);
+
+		return `/**
  * @file dmmf-utils.ts
  * @description DMMF 工具和关系查询方法
  * @generated 自动生成，请勿手动修改
@@ -549,6 +547,5 @@ export function getForeignKeyReference<T extends keyof DB>(
   };
 }
 `;
-  }
+	}
 }
-

@@ -1,7 +1,7 @@
 import type { DB } from "@db/generated/zod/index";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
-import { sql } from "kysely";
+import { Kysely, sql } from "kysely";
 import { Performance } from "~/lib/utils/performance";
 
 // 定义可搜索的表和字段
@@ -192,9 +192,9 @@ export const searchAllTables = Performance.monitor(
 				const conditions = config.fields.map((field) => {
 					if (field === "itemType") {
 						// 对于枚举类型，只搜索非空值
-						return sql<boolean>`${sql.ref(`${config.table}.${field}`)}::text LIKE ${"%" + searchString + "%"}`;
+						return sql<boolean>`${sql.ref(`${config.table}.${field}`)}::text LIKE ${`%${searchString}%`}`;
 					}
-					return sql<boolean>`COALESCE(${sql.ref(`${config.table}.${field}`)}, '')::text LIKE ${"%" + searchString + "%"}`;
+					return sql<boolean>`COALESCE(${sql.ref(`${config.table}.${field}`)}, '')::text LIKE ${`%${searchString}%`}`;
 				});
 				query = query.where((eb) => eb.or(conditions));
 			}
@@ -214,7 +214,7 @@ export const searchAllTables = Performance.monitor(
 							}
 						}),
 					);
-					results[table] = fullResults.filter(Boolean);
+					(results as any)[table] = fullResults.filter(Boolean);
 				} else if (table === "item") {
 					// 对于 item 表，使用批量查询优化性能
 					await processItemResults(db, tableResults, results);
@@ -236,7 +236,7 @@ export const searchAllTables = Performance.monitor(
  */
 const processItemResults = Performance.monitor(
 	"process_item_results",
-	async (db: any, tableResults: any[], results: SearchResults) => {
+	async (db: Kysely<DB>, tableResults: any[], results: SearchResults) => {
 		const itemResults = tableResults as { id: string; name: string; itemType: string }[];
 
 		// 按itemType分组
@@ -260,11 +260,11 @@ const processItemResults = Performance.monitor(
 				const items = await db.selectFrom("item").where("id", "in", itemIds).selectAll("item").execute();
 
 				// 批量查询子表数据
-				const subData = await db.selectFrom(tableType).where("itemId", "in", itemIds).selectAll().execute();
+				const subData = await db.selectFrom(tableType as keyof DB).where("itemId", "in", itemIds).selectAll().execute();
 
 				// 合并数据
-				const itemMap = new Map(items.map((item: any) => [item.id, item]));
-				const subDataMap = new Map(subData.map((data: any) => [data.itemId, data]));
+				const itemMap = new Map(items.map((item) => [item.id, item]));
+				const subDataMap = new Map(subData.map((data) => [data.itemId, data]));
 
 				const fullResults = itemIds
 					.map((id) => {
@@ -294,7 +294,7 @@ const processItemResults = Performance.monitor(
  */
 const getSimplifiedItemData = Performance.monitor(
 	"get_simplified_item_data",
-	async (db: any, itemId: string, tableType: string) => {
+	async (db: Kysely<DB>, itemId: string, tableType: keyof DB) => {
 		// 获取基础物品信息
 		const item = await db.selectFrom("item").where("id", "=", itemId).selectAll("item").executeTakeFirstOrThrow();
 

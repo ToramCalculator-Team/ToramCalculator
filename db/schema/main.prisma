@@ -1,3 +1,8 @@
+/**
+ * @file main.prisma
+ * @description 数据库架构文件
+ */
+
 generator custom {
     provider = "tsx ./db/generator/generator.ts"
     output   = "../generated/"

@@ -1,14 +1,14 @@
 /**
  * @file restore.ts
- * @description 从 CSV 文件恢复数据库的 TypeScript 版本
+ * @description 从 CSV 文件恢复数据库
  */
 
+import { type ChildProcess, execSync, spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { execSync, spawn, type ChildProcess } from "node:child_process";
-import dotenv from "dotenv";
 import readline from "node:readline";
+import { fileURLToPath } from "node:url";
+import dotenv from "dotenv";
 import { MODEL_METADATA, RELATION_METADATA } from "../generated/dmmf-utils.js";
 
 const __filename = fileURLToPath(import.meta.url);

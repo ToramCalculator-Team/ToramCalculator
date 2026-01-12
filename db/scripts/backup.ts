@@ -1,12 +1,12 @@
 /**
  * @file backup.ts
- * @description 数据库备份脚本的 TypeScript 版本
+ * @description 数据库备份到csv脚本
  */
 
+import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { execSync } from "node:child_process";
 import dotenv from "dotenv";
 
 const __filename = fileURLToPath(import.meta.url);

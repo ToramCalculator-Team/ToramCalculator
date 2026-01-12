@@ -1,23 +1,5 @@
 import { assign, createMachine, fromPromise } from "xstate";
 
-/**
- * XState 状态机 - 首页状态管理
- *
- * XState 是一个基于状态机理论的状态管理库，它帮助我们：
- * 1. 将复杂的 UI 状态逻辑可视化
- * 2. 确保状态转换的可预测性
- * 3. 避免状态不一致的问题
- * 4. 便于测试和调试
- *
- * 核心概念：
- * - State（状态）：应用在某个时刻的完整快照
- * - Event（事件）：触发状态转换的动作
- * - Context（上下文）：状态机中存储的数据
- * - Transition（转换）：从一个状态到另一个状态的规则
- * - Action（动作）：状态转换时执行的副作用
- * - Guard（守卫）：决定是否允许状态转换的条件
- */
-
 // 定义状态机的上下文类型 - 存储所有状态数据
 export interface IndexPageContext {
 	// 搜索相关状态
@@ -45,13 +27,6 @@ export interface IndexPageContext {
 	error: string | null; // 错误信息
 }
 
-/**
- * 定义事件类型 - 所有可能触发状态转换的事件
- *
- * 事件是状态机的输入，每个事件都有：
- * - type: 事件类型（必需）
- * - 其他数据：根据事件类型携带的额外信息
- */
 export type IndexPageEvent =
 	| { type: "SEARCH_INPUT_CHANGE"; value: string } // 搜索输入变化
 	| { type: "SEARCH_SUBMIT" } // 提交搜索
@@ -62,16 +37,6 @@ export type IndexPageEvent =
 	| { type: "TOGGLE_ANIMATION" } // 切换动画开关
 	| { type: "RESET" }; // 重置所有状态
 
-/**
- * 创建状态机
- *
- * 状态机由以下部分组成：
- * - id: 状态机的唯一标识
- * - initial: 初始状态
- * - context: 初始上下文数据
- * - states: 所有可能的状态定义
- * - on: 全局事件处理器（所有状态都能响应的事件）
- */
 export const indexPageMachine = createMachine(
 	{
 		id: "indexPage", // 状态机标识

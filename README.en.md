@@ -6,15 +6,10 @@ ToramCalculator is an auxiliary tool developed for the Toram Online game. It hel
 
 ### ✨ Core Features
 
-- 🎮 Team configuration optimization
+- 📚 Game Wiki library
+- 🎮 Team configuration optimization + sharing
 - ⚔️ Combat process simulation
-- 📊 Frame-by-frame data analysis
-- 📈 Data visualization
-- 🔗 Configuration sharing
-- 📚 Built-in game Wiki library
-- 🎯 Real-time battle simulator
-- 🔄 Workflow editor
-- 🎨 3D scene rendering
+- 📊 Frame-by-frame data analysis + visualization
 
 ### 🌐 Application URL
 

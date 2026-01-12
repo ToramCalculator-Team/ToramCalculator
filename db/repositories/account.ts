@@ -1,10 +1,15 @@
-import { Expression, ExpressionBuilder, Insertable, Transaction, Updateable, Selectable } from "kysely";
-import { getDB } from "./database";
-import { jsonObjectFrom } from "kysely/helpers/postgres";
-import { account, DB } from "@db/generated/zod/index";
+import type { account, DB } from "@db/generated/zod/index";
 import { createId } from "@paralleldrive/cuid2";
-import { AccountSchema, AccountCreateDataSchema, AccountUpdateDataSchema } from "../generated/zod/index";
+import type {
+	Insertable,
+	Selectable,
+	Transaction,
+	Updateable,
+} from "kysely";
+import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { z } from "zod/v4";
+import { AccountCreateDataSchema, AccountSchema, AccountUpdateDataSchema } from "../generated/zod/index";
+import { getDB } from "./database";
 import { defineRelations, makeRelations } from "./subRelationFactory";
 
 // 1. 类型定义
@@ -14,30 +19,30 @@ export type AccountUpdate = Updateable<account>;
 
 // 子关系定义
 const accountSubRelationDefs = defineRelations({
-  create: {
-    build: (eb, accountId) =>
-      jsonObjectFrom(
-        eb
-          .selectFrom("account_create_data")
-          .where("account_create_data.accountId", "=", accountId)
-          .selectAll("account_create_data"),
-      )
-        .$notNull()
-        .as("create"),
-    schema: AccountCreateDataSchema.describe("账户创建数据"),
-  },
-  update: {
-    build: (eb, accountId) =>
-      jsonObjectFrom(
-        eb
-          .selectFrom("account_update_data")
-          .where("account_update_data.accountId", "=", accountId)
-          .selectAll("account_update_data"),
-      )
-        .$notNull()
-        .as("update"),
-    schema: AccountUpdateDataSchema.describe("账户更新数据"),
-  },
+	create: {
+		build: (eb, accountId) =>
+			jsonObjectFrom(
+				eb
+					.selectFrom("account_create_data")
+					.where("account_create_data.accountId", "=", accountId)
+					.selectAll("account_create_data"),
+			)
+				.$notNull()
+				.as("create"),
+		schema: AccountCreateDataSchema.describe("账户创建数据"),
+	},
+	update: {
+		build: (eb, accountId) =>
+			jsonObjectFrom(
+				eb
+					.selectFrom("account_update_data")
+					.where("account_update_data.accountId", "=", accountId)
+					.selectAll("account_update_data"),
+			)
+				.$notNull()
+				.as("update"),
+		schema: AccountUpdateDataSchema.describe("账户更新数据"),
+	},
 });
 
 // 生成 factory
@@ -45,8 +50,8 @@ export const accountRelationsFactory = makeRelations(accountSubRelationDefs);
 
 // 构造关系Schema
 export const AccountWithRelationsSchema = z.object({
-  ...AccountSchema.shape,
-  ...accountRelationsFactory.schema.shape,
+	...AccountSchema.shape,
+	...accountRelationsFactory.schema.shape,
 });
 
 // 构造子关系查询器
@@ -54,57 +59,57 @@ export const accountSubRelations = accountRelationsFactory.subRelations;
 
 // 3. 基础 CRUD 方法
 export async function findAccountById(id: string, trx?: Transaction<DB>) {
-  const db = trx || (await getDB());
-  return (await db.selectFrom("account").where("id", "=", id).selectAll().executeTakeFirst()) || null;
+	const db = trx || (await getDB());
+	return (await db.selectFrom("account").where("id", "=", id).selectAll().executeTakeFirst()) || null;
 }
 
 export async function findAccounts(trx?: Transaction<DB>) {
-  const db = trx || (await getDB());
-  return await db.selectFrom("account").selectAll().execute();
+	const db = trx || (await getDB());
+	return await db.selectFrom("account").selectAll().execute();
 }
 
 export async function insertAccount(data: AccountInsert, trx?: Transaction<DB>) {
-  const db = trx || (await getDB());
-  return await db.insertInto("account").values(data).returningAll().executeTakeFirstOrThrow();
+	const db = trx || (await getDB());
+	return await db.insertInto("account").values(data).returningAll().executeTakeFirstOrThrow();
 }
 
 export async function createAccount(data: AccountInsert, trx?: Transaction<DB>) {
-  const db = trx || (await getDB());
-  const account = await db
-    .insertInto("account")
-    .values({
-      ...data,
-      id: data.id ?? createId(),
-    })
-    .returningAll()
-    .executeTakeFirstOrThrow();
+	const db = trx || (await getDB());
+	const account = await db
+		.insertInto("account")
+		.values({
+			...data,
+			id: data.id ?? createId(),
+		})
+		.returningAll()
+		.executeTakeFirstOrThrow();
 
-  // 创建关联的账户数据
-  await db.insertInto("account_create_data").values({ accountId: account.id }).returningAll().executeTakeFirstOrThrow();
-  await db.insertInto("account_update_data").values({ accountId: account.id }).returningAll().executeTakeFirstOrThrow();
+	// 创建关联的账户数据
+	await db.insertInto("account_create_data").values({ accountId: account.id }).returningAll().executeTakeFirstOrThrow();
+	await db.insertInto("account_update_data").values({ accountId: account.id }).returningAll().executeTakeFirstOrThrow();
 
-  return account;
+	return account;
 }
 
 export async function updateAccount(id: string, data: AccountUpdate, trx?: Transaction<DB>) {
-  const db = trx || (await getDB());
-  return await db.updateTable("account").set(data).where("id", "=", id).returningAll().executeTakeFirstOrThrow();
+	const db = trx || (await getDB());
+	return await db.updateTable("account").set(data).where("id", "=", id).returningAll().executeTakeFirstOrThrow();
 }
 
 export async function deleteAccount(id: string, trx?: Transaction<DB>) {
-  const db = trx || (await getDB());
-  return (await db.deleteFrom("account").where("id", "=", id).returningAll().executeTakeFirst()) || null;
+	const db = trx || (await getDB());
+	return (await db.deleteFrom("account").where("id", "=", id).returningAll().executeTakeFirst()) || null;
 }
 
 // 特殊查询方法
 export async function findAccountWithRelations(id: string, trx?: Transaction<DB>) {
-  const db = trx || (await getDB());
-  return await db
-    .selectFrom("account")
-    .where("id", "=", id)
-    .selectAll("account")
-    .select((eb) => accountSubRelations(eb, eb.val(id)))
-    .executeTakeFirstOrThrow();
+	const db = trx || (await getDB());
+	return await db
+		.selectFrom("account")
+		.where("id", "=", id)
+		.selectAll("account")
+		.select((eb) => accountSubRelations(eb, eb.val(id)))
+		.executeTakeFirstOrThrow();
 }
 
 // 关联查询类型

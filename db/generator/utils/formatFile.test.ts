@@ -3,11 +3,11 @@ import { afterEach, expect, test, vi } from "vitest";
 import { formatFile } from "~/utils/formatFile";
 
 afterEach(() => {
-  vi.clearAllMocks();
+	vi.clearAllMocks();
 });
 
 test("formats a file!", () => {
-  expect(() => {
-    formatFile("");
-  }).not.toThrow();
+	expect(() => {
+		formatFile("");
+	}).not.toThrow();
 });

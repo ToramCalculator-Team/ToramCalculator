@@ -1,1 +1,1 @@
-export * from "./dialect"
+export * from "./dialect";

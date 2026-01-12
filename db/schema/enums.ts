@@ -1,3 +1,11 @@
+/**
+ * @file enums.ts
+ * @description 枚举定义文件
+ * 
+ * 此文件主要用于定义数据库中出现的枚举类型，生成器会将这里的内容和main.prisma合并成完整的prisma文件。
+ * 此文件也为作为开发中数据库枚举的唯一事实来源
+ */
+
 // 用户角色
 export const ACCOUNT_TYPE = ["User", "Admin"] as const;
 export type AccountType = (typeof ACCOUNT_TYPE)[number];
