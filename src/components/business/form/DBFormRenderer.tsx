@@ -1,19 +1,19 @@
 /**
  * @file DBForm.tsx
- * @description 特化的数据库表单组件，支持嵌套表单功能
+ * @description 特化的数据库表单组件，支持嵌套表单功能。
  * @version 1.0.0
+ *
+ * 表单只能编辑自身和自身的下级，上级只能选择，不提供编辑入口。
  */
 
 import { defaultData } from "@db/defaultData";
 import {
 	getChildRelations,
-	getForeignKeyFields,
 	getForeignKeyReference,
+	getModelFields,
 	getPrimaryKeys,
 	isForeignKeyField,
-	isPrimaryKeyField,
 } from "@db/generated/dmmf-utils";
-import { repositoryMethods } from "@db/generated/repositories";
 import type { DB } from "@db/generated/zod/index";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -48,9 +48,50 @@ export interface DBFormProps<TTableName extends keyof DB> {
 	onSubmit?: (values: DB[TTableName]) => void;
 }
 
+type ForeignKeyRenderInfo = {
+	referencedTable: keyof DB;
+	referencedField: string;
+};
+
 export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableName>) => {
 	// UI文本字典
 	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
+
+	/**
+	 * 外键标量字段 -> 引用信息
+	 *
+	 * Prisma/DMMF 中外键信息挂在 relation field（kind: "object"）上，
+	 * 但表单默认渲染的是标量字段（如 worldId）。因此这里做一次映射，
+	 * 用于把 worldId 这类字段渲染成“选择 world 的 Autocomplete”。
+	 */
+	const foreignKeyFieldMap = createMemo(() => {
+		type ModelFieldMeta = {
+			name: string;
+			kind: "scalar" | "object" | "enum";
+			type: string;
+			isList: boolean;
+			relationFromFields?: string[];
+		};
+
+		const map = new Map<string, ForeignKeyRenderInfo>();
+		const modelFields = getModelFields(props.tableName as string) as ModelFieldMeta[];
+
+		for (const field of modelFields) {
+			if (field.kind !== "object" || field.isList) continue;
+			if (!field.relationFromFields || field.relationFromFields.length === 0) continue;
+
+			const fkFieldName = field.relationFromFields[0];
+			const referenced = getForeignKeyReference(props.tableName, field.name as keyof DB[TTableName]);
+			if (!referenced) continue;
+
+			map.set(fkFieldName, {
+				referencedTable: referenced.table,
+				referencedField: referenced.field,
+			});
+		}
+
+		return map;
+	});
 
 	// 获取子表关系
 	const [childRelations] = createResource(async () => {
@@ -95,11 +136,10 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 			{(key) => {
 				if (props.hiddenFields?.includes(key)) return null;
 
-				// 检查是否为外键字段
-				const isForeignKey = isForeignKeyField(props.tableName, key);
-				const isPrimaryKey = isPrimaryKeyField(props.tableName, key);
-
 				const fieldName = String(key);
+				const fkInfo = foreignKeyFieldMap().get(fieldName);
+				// 兼容：如果 fieldGroupMap 里传入的是 relation field 名（object 字段），仍可走旧逻辑
+				const isForeignKeyRelationField = isForeignKeyField(props.tableName, key);
 				const schemaFieldValue = props.dataSchema?.shape[key];
 				const fieldGenerator = props.fieldGenerator?.[key];
 				const hasGenerator = !!fieldGenerator;
@@ -176,14 +216,39 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 								}}
 							>
 								{(field) => {
+									console.log("字段：", key, "值：", field().state.value);
+									// 如果有字段生成器，则使用字段生成器
 									if (hasGenerator) {
 										return fieldGenerator(field, dictionary().db[props.tableName], props.dataSchema);
-									} else if (isForeignKey) {
-										// 外键字段使用 AutoComplete
+									}
+
+									// 外键标量字段（如 worldId）优先：用 DMMF 的 relationFromFields 映射渲染
+									if (fkInfo) {
+										const initialValue = { [fkInfo.referencedField]: field().state.value } as Record<string, unknown>;
+										return (
+											<Input
+												title={fkInfo.referencedTable}
+												description={`选择 ${fkInfo.referencedTable} 记录`}
+												validationMessage={fieldInfo(field())}
+												class="border-dividing-color bg-primary-color w-full rounded-md border"
+											>
+												<Autocomplete
+													id={fieldName}
+													initialValue={initialValue as any}
+													setValue={(value) => field().setValue(value[fkInfo.referencedField] as any)}
+													tableName={fkInfo.referencedTable}
+												/>
+											</Input>
+										);
+									}
+
+									// 兼容：relation field（object 字段）被直接渲染的情况
+									if (isForeignKeyRelationField) {
 										const referencedTable = getForeignKeyReference(props.tableName, key);
-										console.log("referencedTable", referencedTable);
+										console.log("此字段为外键关系字段,关联表：", referencedTable);
 
 										if (referencedTable) {
+											const initialValue = { [referencedTable.field]: field().state.value } as Record<string, unknown>;
 											return (
 												<Input
 													title={referencedTable.table}
@@ -193,23 +258,22 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 												>
 													<Autocomplete
 														id={fieldName}
-														initialValue={{ id: field().state.value }}
-														setValue={(value: any) => field().setValue(value.id)}
-														table={referencedTable.table}
-														valueMap={(value: any) => ({ id: value.id })}
+														initialValue={initialValue as any}
+														setValue={(value) => field().setValue(value[referencedTable.field] as any)}
+														tableName={referencedTable.table}
 													/>
 												</Input>
 											);
 										}
-									} else {
-										return (
-											<DBFieldRenderer
-												field={field}
-												dictionary={dictionary().db[props.tableName]}
-												dataSchema={props.dataSchema}
-											/>
-										);
 									}
+									// 否则使用默认字段渲染器
+									return (
+										<DBFieldRenderer
+											field={field}
+											dictionary={dictionary().db[props.tableName]}
+											dataSchema={props.dataSchema}
+										/>
+									);
 								}}
 							</form.Field>
 						);
@@ -220,7 +284,7 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 	);
 
 	onMount(() => {
-		console.log("DBFormRenderer mounted", JSON.stringify(props.initialValue, null, 2));
+		console.log("DBFormRenderer mounted", JSON.stringify(initialValue(), null, 2));
 	});
 
 	return (

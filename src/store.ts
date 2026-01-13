@@ -1,6 +1,5 @@
 import type { DB } from "@db/generated/zod/index";
 import type { AccountType } from "@db/schema/enums";
-import * as _ from "lodash-es";
 import { createStore } from "solid-js/store";
 import type { Locale } from "~/locales/i18n";
 
@@ -100,7 +99,7 @@ type PageState = {
 				hiddenColumns: Partial<Record<keyof DB[T], boolean>>;
 			};
 			/** 表单 */
-			form: {};
+			form: Record<string, unknown>;
 			/** 卡片 */
 			card: {
 				hiddenFields: Array<keyof DB[T]>;
@@ -210,6 +209,73 @@ const safeParse = (data: string) => {
 	}
 };
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+	if (value === null || typeof value !== "object") {
+		return false;
+	}
+	const prototype = Object.getPrototypeOf(value);
+	return prototype === Object.prototype || prototype === null;
+};
+
+const cloneDeep = (value: unknown): unknown => {
+	if (Array.isArray(value)) {
+		return value.map(cloneDeep);
+	}
+	if (isPlainObject(value)) {
+		const out: Record<string, unknown> = {};
+		for (const [key, child] of Object.entries(value)) {
+			out[key] = cloneDeep(child);
+		}
+		return out;
+	}
+	return value;
+};
+
+/**
+ * 用于本地 store 升级的深合并：
+ * - 对象：递归合并
+ * - 数组：按下标递归合并（行为贴近 lodash merge）
+ * - 其他类型：后者覆盖前者
+ */
+const mergeDeep = <T,>(...sources: unknown[]): T => {
+	const mergeTwo = (target: unknown, source: unknown): unknown => {
+		if (source === undefined) {
+			return target;
+		}
+		if (Array.isArray(source)) {
+			const targetArray = Array.isArray(target) ? target : [];
+			const maxLength = Math.max(targetArray.length, source.length);
+			const out = new Array<unknown>(maxLength);
+
+			for (let i = 0; i < maxLength; i += 1) {
+				const sourceValue = source[i];
+				if (sourceValue === undefined) {
+					out[i] = cloneDeep(targetArray[i]);
+				} else {
+					out[i] = mergeTwo(targetArray[i], sourceValue);
+				}
+			}
+			return out;
+		}
+		if (isPlainObject(source)) {
+			const out: Record<string, unknown> = isPlainObject(target)
+				? { ...target }
+				: {};
+			for (const [key, sourceValue] of Object.entries(source)) {
+				out[key] = mergeTwo(out[key], sourceValue);
+			}
+			return out;
+		}
+		return source;
+	};
+
+	let acc: unknown = {};
+	for (const source of sources) {
+		acc = mergeTwo(acc, source);
+	}
+	return acc as T;
+};
+
 export const getActStore = () => {
 	const isBrowser = typeof window !== "undefined";
 	if (isBrowser) {
@@ -224,9 +290,9 @@ export const getActStore = () => {
 
 			let mergedStore: Store;
 			if (oldVersion && oldVersion === newVersion) {
-				mergedStore = _.merge({}, newStore, oldStore);
+				mergedStore = mergeDeep<Store>({}, newStore, oldStore);
 			} else {
-				mergedStore = _.merge({}, newStoreWithoutVersion, oldStoreWithoutVersion);
+				mergedStore = mergeDeep<Store>({}, newStoreWithoutVersion, oldStoreWithoutVersion);
 				mergedStore.version = newVersion;
 				localStorage.setItem("store", JSON.stringify(mergedStore));
 			}

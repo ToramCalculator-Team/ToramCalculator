@@ -15,7 +15,6 @@ type EnumSelectProps<T extends Record<string, string>> = {
 };
 
 export function EnumSelect<T extends Record<string, string>>(props: EnumSelectProps<T>) {
-
 	return (
 		<div class="EnumsBox flex flex-wrap gap-1">
 			<For each={props.options}>

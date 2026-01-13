@@ -1,8 +1,8 @@
 // 导入所有生成的字段规则
 import * as QueryBuilderRules from "@db/generated/queryBuilderRules";
 import { getDB } from "@db/repositories/database";
+import { createId } from "@paralleldrive/cuid2";
 import { type Fields, QueryBuilder, type RuleGroupType } from "@query-builder/solid-query-builder";
-import { uniqueId } from "lodash-es";
 import { createMemo, createSignal, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Select } from "~/components/controls/select";
@@ -18,7 +18,7 @@ export default function Repl() {
 
 	// 查询数据
 	const [queryData, setQueryData] = createSignal<RuleGroupType>({
-		id: uniqueId(),
+		id: createId(),
 		combinator: "OR",
 		rules: [],
 	});
@@ -58,7 +58,7 @@ export default function Repl() {
 
 		// 重置查询数据
 		setQueryData({
-			id: uniqueId(),
+			id: createId(),
 			combinator: "OR",
 			rules: [],
 		});

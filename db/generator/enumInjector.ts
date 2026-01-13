@@ -116,7 +116,8 @@ export class EnumInjector {
 			let newLine = line;
 			const enumMatch = line.match(/(\w+)\s+\w+\s+\/\/ Enum (\w+)/);
 			if (enumMatch && currentModel) {
-				const [, originalEnumName] = enumMatch;
+				// 从第2组开始提取枚举名
+				const [,, originalEnumName] = enumMatch;
 				const pascalCaseEnum = this.toPascalCase(originalEnumName);
 
 				if (this.extractedEnums.has(pascalCaseEnum)) {

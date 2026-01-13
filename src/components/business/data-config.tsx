@@ -67,7 +67,12 @@ export type DataConfig = Partial<{
 
 export const DATA_CONFIG: DataConfig = {
 	activity: {
-		fieldGroupMap: {},
+		fieldGroupMap: {
+			ID: ["id"],
+			基本信息: ["name"],
+			统计信息: ["statisticId"],
+			创建和更新信息: ["createdByAccountId", "updatedByAccountId"],
+		},
 		table: {
 			columnsDef: [
 				{
@@ -86,7 +91,7 @@ export const DATA_CONFIG: DataConfig = {
 			tdGenerator: {},
 		},
 		form: {
-			hiddenFields: [],
+			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {},
 		},
 		card: {
@@ -96,8 +101,12 @@ export const DATA_CONFIG: DataConfig = {
 	},
 	address: {
 		fieldGroupMap: {
+			ID: ["id"],
 			基本信息: ["name", "type"],
 			坐标信息: ["posX", "posY"],
+			所属世界: ["worldId"],
+			统计信息: ["statisticId"],
+			创建和更新信息: ["createdByAccountId", "updatedByAccountId"],
 		},
 		table: {
 			columnsDef: [
@@ -112,7 +121,7 @@ export const DATA_CONFIG: DataConfig = {
 			tdGenerator: {},
 		},
 		form: {
-			hiddenFields: [],
+			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {},
 		},
 		card: {
@@ -122,6 +131,7 @@ export const DATA_CONFIG: DataConfig = {
 	},
 	armor: {
 		fieldGroupMap: {
+			所属道具: ["itemId"],
 			基本信息: ["name", "baseAbi"],
 			其他属性: ["modifiers"],
 			颜色信息: ["colorA", "colorB", "colorC"],
@@ -146,7 +156,11 @@ export const DATA_CONFIG: DataConfig = {
 		},
 	},
 	consumable: {
-		fieldGroupMap: {},
+		fieldGroupMap: {
+			所属道具: ["itemId"],
+			基本信息: ["name", "type"],
+			效果信息: ["effects", "effectDuration"],
+		},
 		table: {
 			columnsDef: [
 				{ accessorKey: "name", cell: (info) => info.getValue(), size: 200 },
@@ -174,6 +188,7 @@ export const DATA_CONFIG: DataConfig = {
 	},
 	crystal: {
 		fieldGroupMap: {
+			所属道具: ["itemId"],
 			基本信息: ["name", "type", "modifiers"],
 		},
 		table: {
@@ -215,7 +230,12 @@ export const DATA_CONFIG: DataConfig = {
 		},
 	},
 	drop_item: {
-		fieldGroupMap: {},
+		fieldGroupMap: {
+			ID: ["id"],
+			基本信息: ["probability", "relatedPartType", "relatedPartInfo", "breakRewardType"],
+			对应道具: ["itemId"],
+			所属怪物: ["belongToMobId"],
+		},
 		table: {
 			columnsDef: [],
 			hiddenColumnDef: [],
@@ -223,7 +243,7 @@ export const DATA_CONFIG: DataConfig = {
 			tdGenerator: {},
 		},
 		form: {
-			hiddenFields: [],
+			hiddenFields: ["id"],
 			fieldGenerator: {},
 		},
 		card: {
@@ -233,8 +253,11 @@ export const DATA_CONFIG: DataConfig = {
 	},
 	item: {
 		fieldGroupMap: {
+			ID: ["id"],
 			基本信息: ["name", "itemType", "itemSourceType"],
 			其他属性: ["dataSources", "details"],
+			统计信息: ["statisticId"],
+			创建和更新信息: ["createdByAccountId", "updatedByAccountId"],
 		},
 		table: {
 			columnsDef: [
@@ -257,7 +280,7 @@ export const DATA_CONFIG: DataConfig = {
 			tdGenerator: {},
 		},
 		form: {
-			hiddenFields: [],
+			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {},
 		},
 		card: {
@@ -267,6 +290,7 @@ export const DATA_CONFIG: DataConfig = {
 	},
 	material: {
 		fieldGroupMap: {
+			所属道具: ["itemId"],
 			基本信息: ["name", "type", "price", "ptValue"],
 		},
 		table: {
@@ -292,6 +316,7 @@ export const DATA_CONFIG: DataConfig = {
 	},
 	mob: {
 		fieldGroupMap: {
+			ID: ["id"],
 			常规属性: ["name", "baseLv", "experience", "partsExperience", "maxhp"],
 			战斗属性: [
 				"initialElement",
@@ -310,6 +335,8 @@ export const DATA_CONFIG: DataConfig = {
 			额外说明: ["details"],
 			怪物行为: ["actions"],
 			词条信息: ["dataSources"],
+			统计信息: ["statisticId"],
+			创建和更新信息: ["createdByAccountId", "updatedByAccountId"],
 		},
 		table: {
 			columnsDef: [
@@ -599,7 +626,11 @@ export const DATA_CONFIG: DataConfig = {
 	},
 	npc: {
 		fieldGroupMap: {
+			ID: ["id"],
 			基本信息: ["name"],
+			所属区域: ["zoneId"],
+			统计信息: ["statisticId"],
+			创建和更新信息: ["createdByAccountId", "updatedByAccountId"],
 		},
 		table: {
 			columnsDef: [
@@ -611,16 +642,17 @@ export const DATA_CONFIG: DataConfig = {
 			tdGenerator: {},
 		},
 		form: {
-			hiddenFields: [],
+			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {},
 		},
 		card: {
-			hiddenFields: [],
+			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {},
 		},
 	},
 	option: {
 		fieldGroupMap: {
+			所属道具: ["itemId"],
 			基本信息: ["name", "baseAbi"],
 			其他属性: ["modifiers"],
 			颜色信息: ["colorA", "colorB", "colorC"],
@@ -657,8 +689,10 @@ export const DATA_CONFIG: DataConfig = {
 	},
 	player_weapon: {
 		fieldGroupMap: {
+			ID: ["id"],
 			基础属性: ["type", "name", "baseAbi", "stability", "elementType"],
 			附加属性: ["extraAbi", "refinement", "modifiers"],
+			所属玩家: ["belongToPlayerId"],
 		},
 		table: {
 			columnsDef: [],
@@ -670,17 +704,21 @@ export const DATA_CONFIG: DataConfig = {
 			tdGenerator: {},
 		},
 		form: {
-			hiddenFields: [],
+			hiddenFields: ["id"],
 			fieldGenerator: {},
 		},
 		card: {
-			hiddenFields: [],
+			hiddenFields: ["id"],
 			fieldGenerator: {},
 		},
 	},
 	recipe: {
 		fieldGroupMap: {
-			基本信息: ["id"],
+			ID: ["id"],
+			所属道具: ["itemId"],
+			所属活动: ["activityId"],
+			统计信息: ["statisticId"],
+			创建和更新信息: ["createdByAccountId", "updatedByAccountId"],
 		},
 		table: {
 			columnsDef: [],
@@ -689,7 +727,7 @@ export const DATA_CONFIG: DataConfig = {
 			tdGenerator: {},
 		},
 		form: {
-			hiddenFields: [],
+			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {},
 		},
 		card: {
@@ -699,7 +737,9 @@ export const DATA_CONFIG: DataConfig = {
 	},
 	recipe_ingredient: {
 		fieldGroupMap: {
+			ID: ["id"],
 			基本信息: ["count", "type", "itemId"],
+			所属配方: ["recipeId"],
 		},
 		table: {
 			columnsDef: [
@@ -712,7 +752,7 @@ export const DATA_CONFIG: DataConfig = {
 			tdGenerator: {},
 		},
 		form: {
-			hiddenFields: [],
+			hiddenFields: ["id"],
 			fieldGenerator: {},
 		},
 		card: {
@@ -722,9 +762,12 @@ export const DATA_CONFIG: DataConfig = {
 	},
 	skill: {
 		fieldGroupMap: {
+			ID: ["id"],
 			基本信息: ["name", "treeType", "tier", "posX", "posY"],
 			技能属性: ["chargingType", "distanceType", "targetType", "isPassive"],
 			其他信息: ["dataSources", "details"],
+			统计信息: ["statisticId"],
+			创建和更新信息: ["createdByAccountId", "updatedByAccountId"],
 		},
 		table: {
 			columnsDef: [
@@ -773,7 +816,7 @@ export const DATA_CONFIG: DataConfig = {
 			tdGenerator: {},
 		},
 		form: {
-			hiddenFields: [],
+			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {
 				treeType: (field, dictionary) => {
 					return (
@@ -809,7 +852,9 @@ export const DATA_CONFIG: DataConfig = {
 	},
 	skill_effect: {
 		fieldGroupMap: {
+			ID: ["id"],
 			启用条件: ["condition"],
+			所属技能: ["belongToskillId"],
 			基本信息: [
 				"hpCost",
 				"mpCost",
@@ -875,11 +920,11 @@ export const DATA_CONFIG: DataConfig = {
 			tdGenerator: {},
 		},
 		form: {
-			hiddenFields: ["id", "belongToskillId"],
+			hiddenFields: ["id"],
 			fieldGenerator: {},
 		},
 		card: {
-			hiddenFields: ["id", "belongToskillId"],
+			hiddenFields: ["id"],
 			fieldGenerator: {
 				logic: (field) => {
 					return (
@@ -903,6 +948,7 @@ export const DATA_CONFIG: DataConfig = {
 	},
 	special: {
 		fieldGroupMap: {
+			所属道具: ["itemId"],
 			基本信息: ["name", "baseAbi"],
 			其他属性: ["modifiers"],
 		},
@@ -932,7 +978,10 @@ export const DATA_CONFIG: DataConfig = {
 	},
 	task: {
 		fieldGroupMap: {
+			ID: ["id"],
 			基本信息: ["name", "lv", "type", "description"],
+			统计信息: ["statisticId"],
+			创建和更新信息: ["createdByAccountId", "updatedByAccountId"],
 		},
 		table: {
 			columnsDef: [
@@ -972,16 +1021,17 @@ export const DATA_CONFIG: DataConfig = {
 			tdGenerator: {},
 		},
 		form: {
-			hiddenFields: [],
+			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {},
 		},
 		card: {
-			hiddenFields: [],
+			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {},
 		},
 	},
 	weapon: {
 		fieldGroupMap: {
+			所属道具: ["itemId"],
 			基本信息: ["name", "baseAbi", "stability", "elementType"],
 			其他属性: ["modifiers"],
 			颜色信息: ["colorA", "colorB", "colorC"],
@@ -1035,7 +1085,10 @@ export const DATA_CONFIG: DataConfig = {
 	},
 	world: {
 		fieldGroupMap: {
+			ID: ["id"],
 			基本信息: ["name"],
+			统计信息: ["statisticId"],
+			创建和更新信息: ["createdByAccountId", "updatedByAccountId"],
 		},
 		table: {
 			columnsDef: [{ accessorKey: "name", cell: (info) => info.getValue(), size: 200 }],
@@ -1054,7 +1107,12 @@ export const DATA_CONFIG: DataConfig = {
 	},
 	zone: {
 		fieldGroupMap: {
+			ID: ["id"],
 			基本信息: ["name", "rewardNodes"],
+			所属活动: ["activityId"],
+			所属地点: ["addressId"],
+			统计信息: ["statisticId"],
+			创建和更新信息: ["createdByAccountId", "updatedByAccountId"],
 		},
 		table: {
 			columnsDef: [

@@ -45,7 +45,7 @@ export function FormSheet(props: FormSheetProps) {
 					transition={{
 						duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0,
 					}}
-					class={`SheetBG bg-primary-color-30 backdrop-blur fixed top-0 left-0 z-50 h-dvh w-dvw`}
+					class={`SheetBG bg-primary-color-30 backdrop-blur fixed top-0 left-0 h-dvh w-dvw`}
 					onClick={(e) => {
 						e.stopPropagation();
 						// 由于此处直接删除store内容，上层也没有缓存处理，上层的Index会直接剔除数据，导致目前的退出动画全部无效

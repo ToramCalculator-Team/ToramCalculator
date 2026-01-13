@@ -24,7 +24,7 @@ export const FormGroup = () => {
 					animate={{ opacity: [0, 1] }}
 					exit={{ opacity: [1, 0] }}
 					transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-					class={`SheetBox fixed top-0 left-0 z-50 h-dvh w-dvw`}
+					class={`FormGroup fixed top-0 left-0 z-50 h-dvh w-dvw`}
 				>
 					<Index each={store.pages.formGroup}>
 						{(formData, index) => {

@@ -1,6 +1,13 @@
 /**
  * @file main.prisma
  * @description 数据库架构文件
+ * 表命名规范：
+ * 1.小写字母 + 下划线
+ * 关系字段外键前缀规则：
+ * 1.OneToOne: XXX（子关系直接使用子表名）/belongToXXX（父关系使用belongTo前缀+父表名）
+ * 2.OneToMany: XXX（子关系直接使用子表名）/usedByXXX（父关系使用usedBy前缀+父表名）
+ * 3.ManyToOne: XXX（子关系直接使用子表名）/belongToXXX（父关系使用belongTo前缀+父表名）
+ * 4.ManyToMany: XXX（子关系直接使用子表名）/usedByXXX（父关系使用usedBy前缀+父表名）
  */
 
 generator custom {
@@ -11,4 +18,3 @@ generator custom {
 datasource db {
     provider = "postgresql"
 }
-

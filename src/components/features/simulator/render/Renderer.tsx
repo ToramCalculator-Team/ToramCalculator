@@ -1,6 +1,5 @@
 import { createEffect, createMemo, createSignal, JSX, onCleanup, onMount } from "solid-js";
 import { AbstractEngine } from "@babylonjs/core/Engines/abstractEngine";
-import { LoadingBar } from "~/components/controls/loadingBar";
 import { store } from "~/store";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { Scene } from "@babylonjs/core/scene";
@@ -12,15 +11,12 @@ import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator"
 import { AppendSceneAsync } from "@babylonjs/core/Loading/sceneLoader";
 import "@babylonjs/loaders/glTF/2.0/glTFLoader";
 import "@babylonjs/loaders/glTF/2.0/Extensions/KHR_draco_mesh_compression";
-import * as _ from "lodash-es";
 import { SpotLight } from "@babylonjs/core/Lights/spotLight";
-import { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { createRendererController } from "./RendererController";
 import type { EntityId } from "./RendererProtocol";
 import { rendererCommunication } from "./RendererCommunication";
-import { Portal } from "solid-js/web";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { Inspector } from "@babylonjs/inspector";

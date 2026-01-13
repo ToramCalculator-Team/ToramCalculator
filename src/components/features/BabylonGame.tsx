@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createSignal, JSX, onCleanup, onMount } from "solid-js";
-import { AbstractEngine } from "@babylonjs/core/Engines/abstractEngine";
+import type { AbstractEngine } from "@babylonjs/core/Engines/abstractEngine";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { store } from "~/store";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
@@ -9,10 +9,9 @@ import { Color3, Color4 } from "@babylonjs/core/Maths/math";
 import "@babylonjs/core/Rendering/depthRendererSceneComponent";
 import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
 import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
-import { AppendSceneAsync, SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
+import { AppendSceneAsync } from "@babylonjs/core/Loading/sceneLoader";
 import "@babylonjs/loaders/glTF/2.0/glTFLoader";
 import "@babylonjs/loaders/glTF/2.0/Extensions/KHR_draco_mesh_compression";
-import * as _ from "lodash-es";
 import "@babylonjs/core/Debug/debugLayer"; // Augments the scene with the debug methods
 import "@babylonjs/inspector"; // Injects a local ES6 version of the inspector to prevent automatically relying on the none compatible version
 import { SpotLight } from "@babylonjs/core/Lights/spotLight";
@@ -23,10 +22,10 @@ import { Scalar } from "@babylonjs/core/Maths/math.scalar";
 import { SolidParticleSystem } from "@babylonjs/core/Particles/solidParticleSystem";
 import { AxesViewer } from "@babylonjs/core/Debug/axesViewer";
 import { MaterialPluginBase } from "@babylonjs/core/Materials/materialPluginBase";
-import { Material } from "@babylonjs/core/Materials/material";
-import { Mesh } from "@babylonjs/core/Meshes/mesh";
-import { SubMesh } from "@babylonjs/core/Meshes/subMesh";
-import { Nullable } from "@babylonjs/core/types";
+import type { Material } from "@babylonjs/core/Materials/material";
+import type { Mesh } from "@babylonjs/core/Meshes/mesh";
+import type { SubMesh } from "@babylonjs/core/Meshes/subMesh";
+import type { Nullable } from "@babylonjs/core/types";
 import { CubeTexture } from "@babylonjs/core/Materials/Textures/cubeTexture";
 
 // 模拟无限宽平面
@@ -608,7 +607,9 @@ export function BabylonBg(): JSX.Element {
       <canvas
         ref={canvas!}
         class="fixed top-0 left-0 h-dvh w-dvw bg-transparent"
-        onClick={() => (isMouseControl = !isMouseControl)}
+        onClick={() => {
+          isMouseControl = !isMouseControl;
+        }}
       >
         当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
       </canvas>
