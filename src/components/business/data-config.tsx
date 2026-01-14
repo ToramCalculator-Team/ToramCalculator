@@ -921,7 +921,28 @@ export const DATA_CONFIG: DataConfig = {
 		},
 		form: {
 			hiddenFields: ["id"],
-			fieldGenerator: {},
+			fieldGenerator: {
+				logic: (field) => {
+					const value = field().state.value;
+					return (
+						<BtEditor
+							initValues={{
+								definition: value.definition ?? "",
+								agent: value.agent ?? "",
+								memberType: (value.memberType as MemberType) ?? "Player",
+							}}
+							onSave={(mdsl, agent, memberType) => {
+								field().setValue({
+									...value,
+									definition: mdsl,
+									agent: agent,
+									memberType: memberType,
+								});
+							}}
+						/>
+					);
+				},
+			},
 		},
 		card: {
 			hiddenFields: ["id"],

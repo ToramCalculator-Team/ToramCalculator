@@ -7,18 +7,14 @@
  */
 
 import { defaultData } from "@db/defaultData";
-import {
-	getChildRelations,
-	getForeignKeyReference,
-	getModelFields,
-	getPrimaryKeys,
-	isForeignKeyField,
-} from "@db/generated/dmmf-utils";
+import { getChildRelations, getForeignKeyReference, getModelFields, getPrimaryKeys } from "@db/generated/dmmf-utils";
+import { repositoryMethods } from "@db/generated/repositories";
 import type { DB } from "@db/generated/zod/index";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
 import { type AnyFieldApi, createForm, type DeepKeys, type DeepValue } from "@tanstack/solid-form";
-import { type Accessor, createMemo, createResource, createSignal, For, Index, onMount, Show } from "solid-js";
+import type { Transaction } from "kysely";
+import { type Accessor, createMemo, createResource, For, Index, Show } from "solid-js";
 import type { JSX } from "solid-js/jsx-runtime";
 import type { ZodEnum, ZodObject, ZodType } from "zod/v4";
 import { Autocomplete } from "~/components/controls/autoComplete";
@@ -45,7 +41,8 @@ export interface DBFormProps<TTableName extends keyof DB> {
 			dataSchema: ZodObject<Record<keyof DB[TTableName], ZodType>>,
 		) => JSX.Element;
 	}>;
-	onSubmit?: (values: DB[TTableName]) => void;
+	onInsert: (values: DB[TTableName], trx?: Transaction<DB>) => Promise<void>;
+	onUpdate: (primaryKeyValue: string, values: DB[TTableName], trx?: Transaction<DB>) => Promise<void>;
 }
 
 type ForeignKeyRenderInfo = {
@@ -56,6 +53,38 @@ type ForeignKeyRenderInfo = {
 export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableName>) => {
 	// UI文本字典
 	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
+
+	// 主键字段名
+	const primaryKey = getPrimaryKeys(props.tableName)[0];
+
+	// 获取子表关系
+	const [childRelations] = createResource(async () => {
+		const db = await getDB();
+		return await getChildRelations(db, props.tableName, props.initialValue[primaryKey] as string);
+	});
+
+	// 判断传入值主键是否和缺省值主键相同
+	const isNew = createMemo(() => {
+		const currentPrimaryKeyValue = props.initialValue[primaryKey];
+		const defaultPrimaryKeyValue = defaultData[props.tableName][primaryKey];
+		if (currentPrimaryKeyValue === defaultPrimaryKeyValue) {
+			return true;
+		} else {
+			return false;
+		}
+	});
+
+	// 根据主键是否为缺省值(是的则说明是新建，否则是编辑)和是否被隐藏，决定是否自动生成主键
+	const initialValue = createMemo(() => {
+		// 如果是新建，且主键在表单内被隐藏，则自动生成主键
+		if (isNew() && props.hiddenFields?.includes(primaryKey)) {
+			return {
+				...props.initialValue,
+				[primaryKey]: createId(),
+			};
+		}
+		return props.initialValue;
+	});
 
 	/**
 	 * 外键标量字段 -> 引用信息
@@ -93,40 +122,47 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 		return map;
 	});
 
-	// 获取子表关系
-	const [childRelations] = createResource(async () => {
-		const db = await getDB();
-		const primaryKey = getPrimaryKeys(props.tableName)[0];
-		return await getChildRelations(db, props.tableName, primaryKey as string);
+	// 外键/关系字段可能引用到的表：预拉取 options，避免在渲染闭包里创建资源导致泄漏
+	const referencedTables = createMemo(() => {
+		const tables = new Set<keyof DB>();
+		for (const info of foreignKeyFieldMap().values()) {
+			tables.add(info.referencedTable);
+		}
+		// 兼容：直接渲染 relation field（object 字段）时，也要纳入引用表
+		for (const key of Object.keys(initialValue()) as Array<keyof DB[TTableName]>) {
+			const ref = getForeignKeyReference(props.tableName, key);
+			if (ref) tables.add(ref.table);
+		}
+		return Array.from(tables);
 	});
 
-	// 判断传入值主键是否和缺省值主键相同，是的则说明是新建，否则是编辑
-	const [isNew, setIsNew] = createSignal(false);
-	const initialValue = () => {
-		const primaryKey = getPrimaryKeys(props.tableName)[0];
-		const currentPrimaryKeyValue = props.initialValue[primaryKey];
-		const defaultPrimaryKeyValue = defaultData[props.tableName][primaryKey];
-		if (currentPrimaryKeyValue === defaultPrimaryKeyValue) {
-			// 是新建的话，需要创建新的主键
-			console.log("当前值主键和缺省值主键相同", currentPrimaryKeyValue, defaultPrimaryKeyValue);
-			const newPrimaryKeyValue = createId();
-			setIsNew(true);
-			return {
-				...props.initialValue,
-				[primaryKey]: newPrimaryKeyValue,
-			};
-		} else {
-			// 是编辑的话，直接返回传入值
-			setIsNew(false);
-			return props.initialValue;
-		}
-	};
+	// 获取外键选项列表
+	const [fkOptionsByTable] = createResource(referencedTables, async (tables) => {
+		const entries = await Promise.all(
+			tables.map(async (table) => {
+				const options = (await repositoryMethods[table].selectAll?.()) ?? [];
+				return [table, options] as const;
+			}),
+		);
+		return Object.fromEntries(entries) as Partial<Record<keyof DB, unknown[]>>;
+	});
 
 	// 创建表单
 	const form = createForm(() => ({
 		defaultValues: initialValue(),
 		onSubmit: async ({ value: newValues }) => {
-			props.onSubmit?.(newValues);
+			// 当数据中存在账号关联信息时，绑定当前账号
+			if ("updatedByAccountId" in newValues) {
+				newValues.updatedByAccountId = store.session.account.id;
+			}
+			if (isNew()) {
+				if ("createdByAccountId" in newValues) {
+					newValues.createdByAccountId = store.session.account.id;
+				}
+				await props.onInsert?.(newValues);
+			} else {
+				await props.onUpdate?.(newValues[primaryKey] as string, newValues);
+			}
 		},
 	}));
 
@@ -138,8 +174,6 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 
 				const fieldName = String(key);
 				const fkInfo = foreignKeyFieldMap().get(fieldName);
-				// 兼容：如果 fieldGroupMap 里传入的是 relation field 名（object 字段），仍可走旧逻辑
-				const isForeignKeyRelationField = isForeignKeyField(props.tableName, key);
 				const schemaFieldValue = props.dataSchema?.shape[key];
 				const fieldGenerator = props.fieldGenerator?.[key];
 				const hasGenerator = !!fieldGenerator;
@@ -216,15 +250,14 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 								}}
 							>
 								{(field) => {
-									console.log("字段：", key, "值：", field().state.value);
 									// 如果有字段生成器，则使用字段生成器
 									if (hasGenerator) {
 										return fieldGenerator(field, dictionary().db[props.tableName], props.dataSchema);
 									}
 
-									// 外键标量字段（如 worldId）优先：用 DMMF 的 relationFromFields 映射渲染
+									// 外键标量字段用 DMMF 的 relationFromFields 映射渲染
 									if (fkInfo) {
-										const initialValue = { [fkInfo.referencedField]: field().state.value } as Record<string, unknown>;
+										console.log("fkInfo", fkInfo, fkOptionsByTable.latest);
 										return (
 											<Input
 												title={fkInfo.referencedTable}
@@ -234,37 +267,25 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 											>
 												<Autocomplete
 													id={fieldName}
-													initialValue={initialValue as any}
-													setValue={(value) => field().setValue(value[fkInfo.referencedField] as any)}
-													tableName={fkInfo.referencedTable}
+													options={
+														(fkOptionsByTable()?.[fkInfo.referencedTable] ?? []) as Array<Record<string, unknown>>
+													}
+													value={field().state.value}
+													onChange={(value) =>
+														field().setValue(value as DeepValue<DB[TTableName], DeepKeys<DB[TTableName]>>)
+													}
+													getOptionValue={(option: Record<string, unknown>) => option[fkInfo.referencedField]}
+													getOptionLabel={(option: Record<string, unknown>) => {
+														const name = option.name;
+														if (typeof name === "string") return name;
+														const byField = option[fkInfo.referencedField];
+														if (byField !== null && byField !== undefined) return String(byField);
+														const id = option.id;
+														return id !== null && id !== undefined ? String(id) : "";
+													}}
 												/>
 											</Input>
 										);
-									}
-
-									// 兼容：relation field（object 字段）被直接渲染的情况
-									if (isForeignKeyRelationField) {
-										const referencedTable = getForeignKeyReference(props.tableName, key);
-										console.log("此字段为外键关系字段,关联表：", referencedTable);
-
-										if (referencedTable) {
-											const initialValue = { [referencedTable.field]: field().state.value } as Record<string, unknown>;
-											return (
-												<Input
-													title={referencedTable.table}
-													description={`选择 ${referencedTable.table} 记录`}
-													validationMessage={fieldInfo(field())}
-													class="border-dividing-color bg-primary-color w-full rounded-md border"
-												>
-													<Autocomplete
-														id={fieldName}
-														initialValue={initialValue as any}
-														setValue={(value) => field().setValue(value[referencedTable.field] as any)}
-														tableName={referencedTable.table}
-													/>
-												</Input>
-											);
-										}
 									}
 									// 否则使用默认字段渲染器
 									return (
@@ -282,10 +303,6 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 			}}
 		</For>
 	);
-
-	onMount(() => {
-		console.log("DBFormRenderer mounted", JSON.stringify(initialValue(), null, 2));
-	});
 
 	return (
 		<div class="FormBox flex w-full flex-col">
@@ -437,11 +454,11 @@ export function DBFieldRenderer<TTableName extends keyof DB>(props: {
 								props.field().setValue(v);
 							}}
 							options={(props.dataSchema.shape[fieldName] as ZodEnum<any>).options.map((type) => {
-								console.log(
-									"type",
-									type,
-									(props.dictionary.fields[fieldName] as EnumFieldDetail<string>).enumMap[type],
-								);
+								// console.log(
+								// 	"type",
+								// 	type,
+								// 	(props.dictionary.fields[fieldName] as EnumFieldDetail<string>).enumMap[type],
+								// );
 								return {
 									label: (props.dictionary.fields[fieldName] as EnumFieldDetail<string>).enumMap[type],
 									value: type,

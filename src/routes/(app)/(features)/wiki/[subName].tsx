@@ -156,15 +156,20 @@ export default function WikiSubPage() {
 					<Show
 						when={store.database.tableSyncState[wikiStore.type]}
 						fallback={
-							<div class="LoadingState flex h-full w-full flex-col items-center justify-center gap-3">
+							<Motion.div
+								animate={{ opacity: [0, 1] }}
+								exit={{ opacity: 0 }}
+								transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+								class="LoadingState flex h-full w-full flex-col items-center justify-center gap-3"
+							>
 								<LoadingBar class="w-1/2 min-w-[320px]" />
 								<h1 class="animate-pulse">awaiting DB-{wikiStore.type} sync...</h1>
-							</div>
+							</Motion.div>
 						}
 					>
 						{/* 标题 */}
 						<Motion.div
-							class={`Title portrait:flex flex-col ${isMainContentFullscreen() ? "landscape:hidden" : "landscape:flex" } landscape:p-3 lg:landscape:pt-12`}
+							class={`Title portrait:flex flex-col ${isMainContentFullscreen() ? "landscape:hidden" : "landscape:flex"} landscape:p-3 lg:landscape:pt-12`}
 							animate={{ opacity: [0, 1] }}
 							exit={{ opacity: 0 }}
 							transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}

@@ -8,19 +8,21 @@
  * 4. 接收并分发快照/事件到 UI
  */
 
-import { createSignal, createMemo, onCleanup, onMount, For, Show } from "solid-js";
+import type { SimulatorWithRelations } from "@db/generated/repositories/simulator";
+import { createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import { Icons } from "~/components/icons";
+import { AddMemberControllerButton } from "./controller/AddMemberControllerButton";
+import { ControlPanel, EngineStatusBar } from "./controller/components";
 import { EngineLifecycleController } from "./controller/EngineLifecycleController";
 import { MemberController } from "./controller/MemberController";
-import { realtimeSimulatorPool } from "./core/thread/SimulatorPool";
-import type { EngineControlMessage } from "./core/GameEngineSM";
-import type { ControllerDomainEvent, FrameSnapshot } from "./core/types";
-import { ControllerDomainEventBatchSchema, type EngineTelemetry } from "./core/thread/protocol";
-import type { SimulatorWithRelations } from "@db/generated/repositories/simulator";
-import type { MemberSerializeData } from "./core/Member/Member";
-import { EngineStatusBar, ControlPanel } from "./controller/components";
-import { AddMemberControllerButton } from "./controller/AddMemberControllerButton";
 import { MemberControllerPanel } from "./controller/MemberControllerPanel";
-import { Icons } from "~/components/icons";
+import type { EngineControlMessage } from "./core/GameEngineSM";
+import type { MemberSerializeData } from "./core/Member/Member";
+import { ControllerDomainEventBatchSchema, type EngineTelemetry } from "./core/thread/protocol";
+import { realtimeSimulatorPool } from "./core/thread/SimulatorPool";
+import type { ControllerDomainEvent, FrameSnapshot } from "./core/types";
+import { Motion, Presence } from "solid-motionone";
+import { store } from "~/store";
 
 export interface RealtimeSimulatorProps {
 	simulatorData: SimulatorWithRelations;
@@ -63,6 +65,7 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 
 	// ==================== 状态信号 ====================
 
+	const [isInitialized, setIsInitialized] = createSignal(false);
 	const [isRunning, setIsRunning] = createSignal(false);
 	const [isPaused, setIsPaused] = createSignal(false);
 	const [engineTelemetry, setEngineTelemetry] = createSignal<EngineTelemetry | null>(null);
@@ -86,6 +89,7 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 		if (firstMember && memberControllers().length === 0) {
 			console.log("自动创建默认成员控制器，绑定到:", firstMember.name);
 			await addMemberController(firstMember.id);
+			setIsInitialized(true);
 		}
 
 		// 定期检查状态变化
@@ -99,7 +103,6 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 			clearInterval(interval);
 		});
 	});
-
 
 	onCleanup(() => {
 		console.log(`--RealtimeSimulator Page Unmount`);
@@ -295,49 +298,129 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 
 	// ==================== UI 渲染 ====================
 	return (
-		<div class="RealtimeSimulator flex flex-col h-full w-full overflow-y-auto p-2 gap-2">
-			{/* 成员控制器面板列表 */}
-			<div class="flex w-full h-full gap-2">
-				{/* 成员控制器面板列表 */}
-				<For each={memberControllers()}>
-					{(item) => (
-						<MemberControllerPanel
-							controller={item.controller}
-							boundMemberId={item.boundMemberId}
-							latestSnapshot={latestFrameSnapshot}
-							members={members}
-							controllerEventState={controllerEventState}
-							onRemove={() => removeMemberController(item.id)}
-						/>
-					)}
-				</For>
-			</div>
+		<Presence exitBeforeEnter>
+			<Show
+				when={isInitialized()}
+				fallback={
+					<Motion.div
+						animate={{
+							opacity: [0, 1],
+						}}
+						exit={{
+							opacity: [1, 0],
+						}}
+						transition={{
+							duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+						}}
+						class="AnimationArea flex h-full w-full items-center justify-center"
+					>
+						<div
+							id="loadingBox"
+							style={{
+								transform: "none",
+								position: "relative",
+								left: "unset",
+								bottom: "unset",
+							}}
+						>
+							<div class="Shadow shadow-none">
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+							</div>
+							<div id="maskElement2"></div>
+							<div id="maskElement3"></div>
+							<div class="line">
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+								<div class="Circle"></div>
+							</div>
+						</div>
+					</Motion.div>
+				}
+			>
+				<Motion.div
+					animate={{
+						opacity: [0, 1],
+					}}
+					exit={{
+						opacity: [1, 0],
+					}}
+					transition={{
+						duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+					}}
+					class="RealtimeSimulator flex flex-col h-full w-full overflow-y-auto p-2 gap-2"
+				>
+					{/* 成员控制器面板列表 */}
+					<div class="flex w-full h-full gap-2">
+						{/* 成员控制器面板列表 */}
+						<For each={memberControllers()}>
+							{(item) => (
+								<MemberControllerPanel
+									controller={item.controller}
+									boundMemberId={item.boundMemberId}
+									latestSnapshot={latestFrameSnapshot}
+									members={members}
+									controllerEventState={controllerEventState}
+									onRemove={() => removeMemberController(item.id)}
+								/>
+							)}
+						</For>
+					</div>
 
-			{/* 引擎控制栏 */}
-			<div class="flex gap-1">
-				<div class="Left flex gap-1 p-3 items-center w-fit">
-					<Icons.Brand.NoPaddingLogoText class="w-[160px] h-6" />
-				</div>
+					{/* 引擎控制栏 */}
+					<div class="flex gap-1">
+						<div class="Left flex gap-1 p-3 items-center w-fit">
+							<Icons.Brand.NoPaddingLogoText class="w-[160px] h-6" />
+						</div>
 
-				<div class="flex gap-2 w-full">
-					<EngineStatusBar isRunning={isRunning} isPaused={isPaused} telemetry={engineTelemetry} />
-					<ControlPanel
-						engineActor={lifecycle.engineActor}
-						onStart={() => lifecycle.start()}
-						onReset={() => lifecycle.reset()}
-						onPause={() => lifecycle.pause()}
-						onResume={() => lifecycle.resume()}
-						onStep={() => lifecycle.step()}
-					/>
-				</div>
+						<div class="flex gap-2 w-full">
+							<EngineStatusBar isRunning={isRunning} isPaused={isPaused} telemetry={engineTelemetry} />
+							<ControlPanel
+								engineActor={lifecycle.engineActor}
+								onStart={() => lifecycle.start()}
+								onReset={() => lifecycle.reset()}
+								onPause={() => lifecycle.pause()}
+								onResume={() => lifecycle.resume()}
+								onStep={() => lifecycle.step()}
+							/>
+						</div>
 
-				<div class="Right flex items-center gap-1 w-fit">
-					{/* 添加控制器按钮 */}
-					<Show when={canAddMemberController()}>
-						<AddMemberControllerButton unboundMembers={unboundMembers} onAdd={addMemberController} />
-					</Show>
-				</div>
-			</div>
-		</div>
+						<div class="Right flex items-center gap-1 w-fit">
+							{/* 添加控制器按钮 */}
+							<Show when={canAddMemberController()}>
+								<AddMemberControllerButton unboundMembers={unboundMembers} onAdd={addMemberController} />
+							</Show>
+						</div>
+					</div>
+				</Motion.div>
+			</Show>
+		</Presence>
 	);
 }

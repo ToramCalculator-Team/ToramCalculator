@@ -1,6 +1,7 @@
 import { selectSimulatorByIdWithRelations } from "@db/generated/repositories/simulator";
 import { useParams } from "@solidjs/router";
 import { createResource, onCleanup, onMount, Show } from "solid-js";
+import { LoadingBar } from "~/components/controls/loadingBar";
 import { RealtimeSimulator } from "~/components/features/simulator/RealtimeSimulator";
 
 /**
@@ -25,7 +26,15 @@ export default function SimulatorPage() {
 	});
 
 	return (
-		<Show when={simulatorData()} fallback={<div>Loading...</div>}>
+		<Show
+			when={simulatorData()}
+			fallback={
+				<div class="LoadingState flex h-full w-full flex-col items-center justify-center gap-3">
+					<LoadingBar class="w-1/2 min-w-[320px]" />
+					<h1 class="animate-pulse">Loading Simulator Data...</h1>
+				</div>
+			}
+		>
 			{(validSimulatorData) => <RealtimeSimulator simulatorData={validSimulatorData()} />}
 		</Show>
 	);

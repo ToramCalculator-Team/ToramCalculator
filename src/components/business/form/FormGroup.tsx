@@ -3,15 +3,12 @@
  *
  * 用于展示DB内的数据，form是特化的form
  */
-
-import { defaultData } from "@db/defaultData";
-import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 import { repositoryMethods } from "@db/generated/repositories";
 import { type DB, DBSchema } from "@db/generated/zod/index";
 import { Index, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { DATA_CONFIG } from "~/components/business/data-config";
-import { store } from "~/store";
+import { setStore, store } from "~/store";
 import { DBForm } from "./DBFormRenderer";
 import { FormSheet } from "./FormSheet";
 
@@ -46,19 +43,20 @@ export const FormGroup = () => {
 												// @ts-expect-error-next-line  问题同上，暂时忽略
 												fieldGroupMap={config().fieldGroupMap}
 												fieldGenerator={config().form.fieldGenerator}
-												onSubmit={(value) => {
-													if (formData()) {
-														const primaryKeyFields = getPrimaryKeys(formGroupItem.type);
-														const primaryKeyValue = value[primaryKeyFields[0] as keyof typeof value];
-														console.log("主键值：", primaryKeyValue);
-														if (primaryKeyValue === defaultData[primaryKeyFields[0] as keyof typeof defaultData]) {
-															repositoryMethods[formGroupItem.type].insert?.(value as any);
-														} else {
-															repositoryMethods[formGroupItem.type].update?.(String(primaryKeyValue), value as any);
-														}
-													} else {
-														repositoryMethods[formGroupItem.type].insert?.(value as any);
-													}
+												onInsert={async (value) => {
+													const result = await repositoryMethods[formGroupItem.type].insert?.(value as any);
+													// 打印结果并关闭表单
+													console.log("插入结果：", result);
+													setStore("pages", "formGroup", (pre) => pre.slice(0, -1));
+												}}
+												onUpdate={async (primaryKeyValue, value) => {
+													const result = await repositoryMethods[formGroupItem.type].update?.(
+														primaryKeyValue,
+														value as any,
+													);
+													// 打印结果并关闭表单
+													console.log("更新结果：", result);
+													setStore("pages", "formGroup", (pre) => pre.slice(0, -1));
 												}}
 											></DBForm>
 										)}

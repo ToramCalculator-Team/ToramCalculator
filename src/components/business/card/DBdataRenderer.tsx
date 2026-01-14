@@ -8,7 +8,7 @@ import { repositoryMethods } from "@db/generated/repositories";
 import type { DB } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createMemo, createResource, createSignal, For, type JSX, Show } from "solid-js";
-import { type ZodObject, type ZodType } from "zod/v4";
+import type { ZodObject, ZodType } from "zod/v4";
 import { Button } from "~/components/controls/button";
 import type { FieldGenMap } from "~/components/dataDisplay/objRender";
 import { Icons } from "~/components/icons";
