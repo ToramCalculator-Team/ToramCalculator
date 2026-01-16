@@ -1,3 +1,4 @@
+import type { ChildTableOf } from "@db/generated/dmmf-utils";
 import type { DB } from "@db/generated/zod";
 import {
 	type ElementType,
@@ -62,6 +63,7 @@ export type DataConfig = Partial<{
 				dictionary: Dic<DB[T]>,
 			) => JSX.Element;
 		};
+		childrenRelations?: Array<ChildTableOf<T>>;
 	};
 }>;
 

@@ -1,6 +1,9 @@
 import {
-	getManyToManyTableName,
+	DB_RELATION,
+	getChildrenDatas,
+	getParentDatas,
 	getPrimaryKeys,
+	isFkColumn,
 	MODEL_METADATA,
 	RELATION_METADATA,
 } from "@db/generated/dmmf-utils";
@@ -152,24 +155,34 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
 		return canEdit;
 	});
 
+	const isFieldHidden = (fieldName: keyof DB[TName]) => {
+		let isHidden = false;
+		// 规则0：配置直接隐藏
+		if (props.hiddenFields?.some((hiddenField) => hiddenField === fieldName)) {
+			console.log("配置中规定隐藏此字段", fieldName);
+			isHidden = true;
+		}
+
+		// 规则2：如果此字段是关系字段则隐藏
+		if (isFkColumn(props.tableName, fieldName)) {
+			console.log("关联内容中将显示此字段", fieldName);
+			isHidden = true;
+		}
+		console.log("字段可见性", fieldName, !isHidden);
+		return isHidden;
+	};
+
+	const isGroupdHidden = (groupName: string) => {
+		let isHidden = false;
+		// 当group内的field都被隐藏时，group也隐藏
+		const fields = props.fieldGroupMap?.[groupName];
+		isHidden = fields?.every((fieldName) => isFieldHidden(fieldName)) ?? false;
+		console.log("组可见性", groupName, !isHidden);
+		return isHidden;
+	};
+
 	const fieldRenderer = (key: keyof DB[TName], val: DB[TName][typeof key]) => {
-		// 跳过需要隐藏的字段（直接命中或通过其关联外键命中）
-		if (props.hiddenFields?.some((hiddenField) => hiddenField === key)) return null;
-		// 如果该字段是关系对象，且其 relationFromFields 中任意外键在 hiddenFields 中，也隐藏
-		const model = MODEL_METADATA.find((m) => m.tableName === props.tableName);
-		const relFieldMeta = model?.fields.find((f) => f.name === (key as string));
-		if (
-			relFieldMeta?.kind === "object" &&
-			Array.isArray(relFieldMeta.relationFromFields) &&
-			props.hiddenFields?.some((hf) => relFieldMeta.relationFromFields!.includes(hf as any))
-		) {
-			return null;
-		}
-		// 如果该关系字段或对应的外键字段已在关联内容中显示，则隐藏主内容中的该字段
-		// （关系字段本身和对应的外键字段都已在 displayedRelationFieldNames 中）
-		if (displayedRelationFieldNames().has(key as string)) {
-			return null;
-		}
+		if (isFieldHidden(key)) return null;
 		const fieldName = dictionary().db[props.tableName].fields[key].key ?? key;
 		const fieldValue = val;
 		const hasGenerator = "fieldGenerator" in props && props.fieldGenerator?.[key];
@@ -214,11 +227,6 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
 		);
 	};
 
-	const tableInfo = MODEL_METADATA.find((model) => model.tableName === props.tableName);
-	if (!tableInfo) throw new Error(`Table ${props.tableName} not found in MODEL_METADATA`);
-
-	// 关系候选：包含当前表作为 from 或 to 的所有关系，用于同时展示子关系与父关系
-	const relationCandidates = RELATION_METADATA.filter((r) => r.from === props.tableName || r.to === props.tableName);
 	const currentPrimaryKey = getPrimaryKeys(props.tableName)[0];
 	const currentPrimaryKeyValue = props.data[currentPrimaryKey];
 
@@ -239,11 +247,15 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
 				isParent: boolean;
 			}
 		>();
-		const displayedRelationFieldNames = new Set<string>();
-
-		if (relationCandidates.length === 0) return { groups: [] as RelationGroup[], displayedRelationFieldNames };
 
 		const db = await getDB();
+		const primaryKeyValue = String(currentPrimaryKeyValue);
+
+		// 统一通过生成的关系 API 获取父/子关系数据，避免在组件里手写关系查询
+		const [parentDatas, childrenDatas] = await Promise.all([
+			getParentDatas(db, props.tableName, primaryKeyValue),
+			getChildrenDatas(db, props.tableName, primaryKeyValue),
+		]);
 
 		// 关联内容辅助：本次 relations 计算周期内的名称缓存（减少重复 select name）
 		const nameByPkCache = new Map<string, string>();
@@ -254,12 +266,9 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
 			// 判断 id 是否可读：CUID2 通常是 24-30 个字符的小写字母和数字组合
 			// 或者以 "cuid_" 开头，或者长度 > 30（可能是 UUID）
 			return (
-				((itemId.length >= 24 &&
-					itemId.length <= 30 &&
-					/^[a-z0-9]+$/.test(itemId) &&
-					!itemId.includes("default")) ||
-					itemId.length > 30 ||
-					itemId.startsWith("cuid_"))
+				(itemId.length >= 24 && itemId.length <= 30 && /^[a-z0-9]+$/.test(itemId) && !itemId.includes("default")) ||
+				itemId.length > 30 ||
+				itemId.startsWith("cuid_")
 			);
 		};
 
@@ -313,6 +322,27 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
 			return readableName;
 		};
 
+		const ensureBucket = (args: {
+			tableName: keyof DB;
+			prefixKey: keyof dictionary["ui"]["relationPrefix"];
+			isParentRelation: boolean;
+		}) => {
+			if (!groupMap.has(args.tableName)) {
+				groupMap.set(args.tableName, {
+					prefixKey: args.prefixKey,
+					items: [],
+					seen: new Set(),
+					isParent: false,
+				});
+			}
+			const bucket = groupMap.get(args.tableName);
+			if (!bucket) return;
+			if (args.isParentRelation) bucket.isParent = true;
+			if (bucket.prefixKey === "related" && args.prefixKey !== "related") {
+				bucket.prefixKey = args.prefixKey;
+			}
+		};
+
 		const upsertRelationItem = (args: {
 			tableName: keyof DB;
 			prefixKey: keyof dictionary["ui"]["relationPrefix"];
@@ -324,14 +354,9 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
 			const id = String(args.item?.[args.primaryKey as keyof typeof args.item] ?? "");
 			if (!id) return;
 
-			if (!groupMap.has(args.tableName)) {
-				groupMap.set(args.tableName, { prefixKey: args.prefixKey, items: [], seen: new Set(), isParent: false });
-			}
-			const bucket = groupMap.get(args.tableName)!;
-			if (args.isParentRelation) bucket.isParent = true;
-			if (bucket.prefixKey === "related" && args.prefixKey !== "related") {
-				bucket.prefixKey = args.prefixKey;
-			}
+			ensureBucket(args);
+			const bucket = groupMap.get(args.tableName);
+			if (!bucket) return;
 
 			if (bucket.seen.has(id)) {
 				const idx = bucket.items.findIndex(
@@ -348,275 +373,76 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
 			bucket.items.push({ data: args.item, displayName: args.displayName });
 		};
 
-		// 遍历所有涉及当前表的关系（包含 OneToMany/ManyToOne/ManyToMany）
-		for (const relationMetadata of relationCandidates) {
-			// 若该关系对应字段被隐藏，则跳过
-			const otherTable = relationMetadata.from === props.tableName ? relationMetadata.to : relationMetadata.from;
-			const otherModelName = MODEL_METADATA.find((m) => m.tableName === otherTable)?.name || otherTable;
-			if (
-				isRelationHidden(
-					props.tableName,
-					{ name: relationMetadata.name, to: relationMetadata.to, from: relationMetadata.from },
-					otherModelName,
-					props.hiddenFields as any,
-				)
-			) {
-				// debug removed
-				continue;
-			}
-
-			// 记录该关系会在关联内容中显示，以便在主内容中隐藏对应的关系字段和外键字段
-			// 查找当前表中对应的关系字段名称
-			const currentModel = MODEL_METADATA.find((m) => m.tableName === props.tableName);
-			const relationField = currentModel?.fields.find(
-				(f) => f.kind === "object" && f.relationName === relationMetadata.name,
+		// 父关系
+		for (const [tableName, items] of Object.entries(parentDatas) as Array<[keyof DB, any[]]>) {
+			const relationEntries = DB_RELATION[props.tableName]?.parents?.[tableName] ?? [];
+			const otherModelName = MODEL_METADATA.find((m) => m.tableName === tableName)?.name || String(tableName);
+			const visibleEntries = relationEntries.filter(
+				(entry) =>
+					!isRelationHidden(
+						props.tableName,
+						{ name: entry.relationName, to: String(tableName), from: props.tableName as string },
+						otherModelName,
+						props.hiddenFields as any,
+					),
 			);
-			if (relationField) {
-				// 隐藏关系字段本身
-				displayedRelationFieldNames.add(relationField.name);
-				// 同时隐藏对应的外键字段
-				if (relationField.relationFromFields && relationField.relationFromFields.length > 0) {
-					for (const fkField of relationField.relationFromFields) {
-						displayedRelationFieldNames.add(fkField);
-					}
-				}
+			// 全部被隐藏则不展示该表的关联内容
+			if (visibleEntries.length === 0) continue;
+
+			const targetPrimaryKey = getPrimaryKeys(tableName)[0];
+			for (const item of items ?? []) {
+				const displayName = await resolveDisplayName(String(tableName), item);
+				const prefixKey =
+					visibleEntries.length > 0
+						? getRelationPrefixKey(props.tableName as string, String(tableName), visibleEntries[0].relationName)
+						: "none";
+				upsertRelationItem({
+					tableName,
+					prefixKey,
+					isParentRelation: true,
+					item,
+					primaryKey: String(targetPrimaryKey),
+					displayName,
+				});
 			}
-			const relationType = relationMetadata.type;
-			// 从当前表视角确定目标表
-			const targetTableName = relationMetadata.from === props.tableName ? relationMetadata.to : relationMetadata.from;
-			const targetPrimaryKey = getPrimaryKeys(targetTableName as keyof DB)[0];
+		}
 
-			// 判断是否是父关系：ManyToOne 且当前表有外键，或 OneToOne 且当前表有外键
-			const isParentRelation: boolean = !!(
-				(relationType === "ManyToOne" &&
-					relationMetadata.from === props.tableName &&
-					relationMetadata.fromHasForeignKey) ||
-					(relationType === "OneToOne" &&
-						relationMetadata.from === props.tableName &&
-						relationMetadata.fromHasForeignKey)
+		// 子关系
+		for (const [tableName, items] of Object.entries(childrenDatas) as Array<[keyof DB, any[]]>) {
+			const relationEntries = DB_RELATION[props.tableName]?.children?.[tableName] ?? [];
+			const otherModelName = MODEL_METADATA.find((m) => m.tableName === tableName)?.name || String(tableName);
+			const visibleEntries = relationEntries.filter(
+				(entry) =>
+					!isRelationHidden(
+						props.tableName,
+						{ name: entry.relationName, to: String(tableName), from: props.tableName as string },
+						otherModelName,
+						props.hiddenFields as any,
+					),
 			);
+			// 全部被隐藏则不展示该表的关联内容
+			if (visibleEntries.length === 0) continue;
 
-			try {
-				let relationData: any[] = [];
-
-				if (relationType === "ManyToMany") {
-					// 多对多关系：通过中间表查询
-					const intermediateTableName =
-						relationMetadata.joinTable ||
-						getManyToManyTableName(props.tableName, targetTableName, relationMetadata.name);
-
-					if (!intermediateTableName) continue;
-
-					// 获取中间表的元数据以确定字段名
-					const intermediateTableInfo = MODEL_METADATA.find((m) => m.tableName === intermediateTableName);
-					if (!intermediateTableInfo) continue;
-
-					// 查找指向当前表和目标表的外键字段
-					// 中间表有两个外键字段，分别指向两个相关表
-					const currentTableModelName = tableInfo.name;
-					const targetTableModelName = MODEL_METADATA.find((m) => m.tableName === targetTableName)?.name;
-
-					// 查找指向当前表的字段（relationToFields 包含当前表的主键）
-					const currentTableField = intermediateTableInfo.fields.find(
-						(f) => f.relationName && f.relationToFields && f.type === currentTableModelName,
-					);
-					// 查找指向目标表的字段
-					const targetTableField = intermediateTableInfo.fields.find(
-						(f) => f.relationName && f.relationToFields && f.type === targetTableModelName,
-					);
-
-					// 如果找不到，则使用默认的 A/B 字段名（Prisma 隐式多对多表的约定）
-					const currentTableFieldName =
-						currentTableField?.relationFromFields?.[0] || (relationMetadata.from === props.tableName ? "A" : "B");
-					const targetTableFieldName =
-						targetTableField?.relationFromFields?.[0] || (relationMetadata.from === props.tableName ? "B" : "A");
-
-					relationData = await (db as any)
-						.selectFrom(intermediateTableName)
-						.innerJoin(
-							targetTableName,
-							`${intermediateTableName}.${targetTableFieldName}`,
-							`${targetTableName}.${targetPrimaryKey}`,
-						)
-						.where(`${intermediateTableName}.${currentTableFieldName}`, "=", currentPrimaryKeyValue)
-						.selectAll(targetTableName)
-						.execute();
-				} else if (relationType === "OneToMany") {
-					if (relationMetadata.from === props.tableName) {
-						// 当前为父表：在目标表中查找外键指向当前主键
-						const foreignKeyField = relationMetadata.toField;
-						if (!foreignKeyField) continue;
-
-						const targetTableInfo = MODEL_METADATA.find((m) => m.tableName === targetTableName);
-						const foreignKeyMetadata = targetTableInfo?.fields.find((f) => f.name === foreignKeyField);
-						if (!foreignKeyMetadata || !foreignKeyMetadata.relationFromFields) continue;
-
-						const fkFieldName = foreignKeyMetadata.relationFromFields[0];
-						relationData = await db
-							.selectFrom(targetTableName as any)
-							.where(fkFieldName as any, "=", currentPrimaryKeyValue)
-							.selectAll()
-							.execute();
-					} else {
-						// 当前为子表：查找父表单条记录（相当于 ManyToOne 查询父）
-						const currentModel = MODEL_METADATA.find((m) => m.tableName === props.tableName)!;
-						const currentFkField = currentModel.fields.find(
-							(f) =>
-								f.kind === "object" &&
-								f.relationName === relationMetadata.name &&
-								f.relationFromFields &&
-								f.relationFromFields.length > 0,
-						);
-						const currentFkColumn = currentFkField?.relationFromFields?.[0];
-						if (!currentFkColumn) continue;
-
-						const parentId = props.data[currentFkColumn as keyof typeof props.data];
-						if (typeof parentId === "undefined") continue;
-
-						relationData = await db
-							.selectFrom(targetTableName as any)
-							.where(targetPrimaryKey as any, "=", parentId as any)
-							.selectAll()
-							.execute();
-					}
-				} else if (relationType === "ManyToOne") {
-					if (relationMetadata.from === props.tableName) {
-						// 当前为子表：通过本表外键查父表单条记录
-						const currentModel = MODEL_METADATA.find((m) => m.tableName === props.tableName)!;
-						const currentFkField = currentModel.fields.find(
-							(f) =>
-								f.kind === "object" &&
-								f.relationName === relationMetadata.name &&
-								f.relationFromFields &&
-								f.relationFromFields.length > 0,
-						);
-						const currentFkColumn = currentFkField?.relationFromFields?.[0];
-						if (!currentFkColumn) continue;
-
-						const parentId = props.data[currentFkColumn as keyof typeof props.data];
-						if (typeof parentId === "undefined") continue;
-
-						relationData = await db
-							.selectFrom(targetTableName as any)
-							.where(targetPrimaryKey as any, "=", parentId as any)
-							.selectAll()
-							.execute();
-					} else {
-						// 当前为父表：在对侧（from 表）中查找引用当前主键的行
-						const childTableName = relationMetadata.from;
-						const childModel = MODEL_METADATA.find((m) => m.tableName === childTableName)!;
-						const childFkField = childModel.fields.find(
-							(f) =>
-								f.kind === "object" &&
-								f.relationName === relationMetadata.name &&
-								f.relationFromFields &&
-								f.relationFromFields.length > 0,
-						);
-						const childFkColumn = childFkField?.relationFromFields?.[0];
-						if (!childFkColumn) continue;
-
-						relationData = await db
-							.selectFrom(childTableName as any)
-							.where(childFkColumn as any, "=", currentPrimaryKeyValue)
-							.selectAll()
-							.execute();
-					}
-				} else if (relationType === "OneToOne") {
-					// OneToOne 关系处理
-					if (relationMetadata.from === props.tableName) {
-						// 当前表是 from 表
-						if (relationMetadata.fromHasForeignKey) {
-							// 当前表有外键字段：通过当前表的外键查询目标表
-							const currentModel = MODEL_METADATA.find((m) => m.tableName === props.tableName)!;
-							const currentFkField = currentModel.fields.find(
-								(f) =>
-									f.kind === "object" &&
-									f.relationName === relationMetadata.name &&
-									f.relationFromFields &&
-									f.relationFromFields.length > 0,
-							);
-							const currentFkColumn = currentFkField?.relationFromFields?.[0];
-							if (!currentFkColumn) continue;
-
-							const targetId = props.data[currentFkColumn as keyof typeof props.data];
-							if (typeof targetId === "undefined") continue;
-
-							relationData = await db
-								.selectFrom(targetTableName as any)
-								.where(targetPrimaryKey as any, "=", targetId as any)
-								.selectAll()
-								.execute();
-						} else {
-							// 目标表（to）有外键字段：在目标表中查找外键指向当前主键的记录
-							const targetModel = MODEL_METADATA.find((m) => m.tableName === targetTableName);
-							if (!targetModel) continue;
-
-							const targetFkField = targetModel.fields.find(
-								(f) =>
-									f.kind === "object" &&
-									f.relationName === relationMetadata.name &&
-									f.relationFromFields &&
-									f.relationFromFields.length > 0,
-							);
-							const targetFkColumn = targetFkField?.relationFromFields?.[0];
-							if (!targetFkColumn) continue;
-
-							relationData = await db
-								.selectFrom(targetTableName as any)
-								.where(targetFkColumn as any, "=", currentPrimaryKeyValue)
-								.selectAll()
-								.execute();
-						}
-					} else {
-						// 当前表是 to 表，from 表有外键指向当前表
-						const fromTableName = relationMetadata.from;
-						const fromModel = MODEL_METADATA.find((m) => m.tableName === fromTableName);
-						if (!fromModel) continue;
-
-						const fromFkField = fromModel.fields.find(
-							(f) =>
-								f.kind === "object" &&
-								f.relationName === relationMetadata.name &&
-								f.relationFromFields &&
-								f.relationFromFields.length > 0,
-						);
-						const fromFkColumn = fromFkField?.relationFromFields?.[0];
-						if (!fromFkColumn) continue;
-
-						// 从 from 表中查找外键指向当前主键的记录
-						relationData = await db
-							.selectFrom(fromTableName as any)
-							.where(fromFkColumn as any, "=", currentPrimaryKeyValue)
-							.selectAll()
-							.execute();
-					}
-				}
-
-				// 处理查询到的关联数据
-				for (const item of relationData) {
-					const displayName = await resolveDisplayName(targetTableName, item);
-					const key = targetTableName as keyof DB;
-					const prefixKey = getRelationPrefixKey(
-						props.tableName as string,
-						targetTableName,
-						relationMetadata.name,
-					);
-					upsertRelationItem({
-						tableName: key,
-						prefixKey,
-						isParentRelation,
-						item,
-						primaryKey: String(targetPrimaryKey),
-						displayName,
-					});
-				}
-			} catch (error) {
-				console.error(`查询关联表 ${targetTableName} 失败:`, error);
+			const targetPrimaryKey = getPrimaryKeys(tableName)[0];
+			for (const item of items ?? []) {
+				const displayName = await resolveDisplayName(String(tableName), item);
+				const prefixKey =
+					visibleEntries.length > 0
+						? getRelationPrefixKey(props.tableName as string, String(tableName), visibleEntries[0].relationName)
+						: "none";
+				upsertRelationItem({
+					tableName,
+					prefixKey,
+					isParentRelation: false,
+					item,
+					primaryKey: String(targetPrimaryKey),
+					displayName,
+				});
 			}
 		}
 
 		// 转换为分组数组，先按是否是父关系排序（父关系在后），再按表名排序，并过滤空分组
-		const groups = Array.from(groupMap.entries())
+		const groups: RelationGroup[] = Array.from(groupMap.entries())
 			.sort((a, b) => {
 				// 先按是否是父关系排序：父关系（true）在后
 				if (a[1].isParent !== b[1].isParent) {
@@ -633,13 +459,7 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
 			}))
 			.filter((g) => g.items.length > 0);
 
-		return { groups, displayedRelationFieldNames };
-	});
-
-	// 提取已显示的关系字段名称集合
-	const displayedRelationFieldNames = createMemo(() => {
-		const relationsData = relations();
-		return relationsData ? relationsData.displayedRelationFieldNames : new Set<string>();
+		return { groups };
 	});
 
 	return (
@@ -658,26 +478,26 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
 					</For>
 				}
 			>
-				<For
-					each={Object.entries(props.fieldGroupMap!).filter(([_, keys]) =>
-						keys.some((key) => !props.hiddenFields?.includes(key)),
-					)}
-				>
-					{([groupName, keys]) => (
-						<section class="FieldGroup flex w-full flex-col gap-2">
-							<h3 class="text-accent-color flex items-center gap-2 font-bold">
-								{groupName}
-								<div class="Divider bg-dividing-color h-px w-full flex-1" />
-							</h3>
-							<div class="Content flex flex-col gap-3 p-1">
-								<For each={keys}>{(key) => <>{fieldRenderer(key, data()[key])}</>}</For>
-							</div>
-						</section>
-					)}
+				<For each={Object.entries(props.fieldGroupMap ?? {})}>
+					{([groupName, keys]) => {
+						console.log("------------当前组:", groupName);
+						if (isGroupdHidden(groupName)) return null;
+						return (
+							<section class="FieldGroup flex w-full flex-col gap-2">
+								<h3 class="text-accent-color flex items-center gap-2 font-bold">
+									{groupName}
+									<div class="Divider bg-dividing-color h-px w-full flex-1" />
+								</h3>
+								<div class="Content flex flex-col gap-3 p-1">
+									<For each={keys}>{(key) => <>{fieldRenderer(key, data()[key])}</>}</For>
+								</div>
+							</section>
+						);
+					}}
 				</For>
 			</Show>
 			{/* 关联内容 */}
-			<Show when={relationCandidates.length > 0 && relations.latest}>
+			<Show when={(relations.latest && (relations()?.groups?.length ?? 0) > 0) as boolean}>
 				<Show when={relations()}>
 					{(relationsData) => (
 						<For each={relationsData().groups}>

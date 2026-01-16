@@ -7,7 +7,15 @@
  */
 
 import { defaultData } from "@db/defaultData";
-import { getChildRelations, getForeignKeyReference, getModelFields, getPrimaryKeys } from "@db/generated/dmmf-utils";
+import {
+	type ChildTableOf,
+	DB_RELATION,
+	getChildrenDatas,
+	getFkRefByColumn,
+	getFkRefByRelationField,
+	getPrimaryKeys,
+	listFkColumns,
+} from "@db/generated/dmmf-utils";
 import { repositoryMethods } from "@db/generated/repositories";
 import type { DB } from "@db/generated/zod/index";
 import { getDB } from "@db/repositories/database";
@@ -34,6 +42,11 @@ export interface DBFormProps<TTableName extends keyof DB> {
 	dataSchema: ZodObject<{ [K in keyof DB[TTableName]]: ZodType }>;
 	hiddenFields?: Array<keyof DB[TTableName]>;
 	fieldGroupMap?: Record<string, Array<keyof DB[TTableName]>>;
+	/**
+	 * 配置需要展示的子关系表名（类型安全）
+	 * 如果未指定，则展示所有子关系
+	 */
+	childrenRelations?: Array<ChildTableOf<TTableName>>;
 	fieldGenerator?: Partial<{
 		[K in keyof DB[TTableName]]: (
 			field: Accessor<AnyFieldApi>,
@@ -56,12 +69,6 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 
 	// 主键字段名
 	const primaryKey = getPrimaryKeys(props.tableName)[0];
-
-	// 获取子表关系
-	const [childRelations] = createResource(async () => {
-		const db = await getDB();
-		return await getChildRelations(db, props.tableName, props.initialValue[primaryKey] as string);
-	});
 
 	// 判断传入值主键是否和缺省值主键相同
 	const isNew = createMemo(() => {
@@ -86,6 +93,25 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 		return props.initialValue;
 	});
 
+	// 子关系查询使用 initialValue() 的主键（确保新建时已自动生成的 id 也能被使用）
+	const primaryKeyValue = createMemo(() => String(initialValue()[primaryKey] ?? ""));
+
+	// 需要展示的子关系表名：来自 DB_RELATION（结构），再叠加 childrenRelations 白名单过滤
+	const childRelationTableNames = createMemo(() => {
+		const all = Object.keys(DB_RELATION[props.tableName]?.children ?? {}) as Array<keyof DB>;
+		const allow = props.childrenRelations;
+		if (!allow || allow.length === 0) return all;
+		const allowSet = new Set<string>(allow as unknown as string[]);
+		return all.filter((t) => allowSet.has(String(t)));
+	});
+
+	// 获取子表关系数据（基于 DB_RELATION 的 children，内部已处理多边/去重）
+	const [childRelations] = createResource(primaryKeyValue, async (pk) => {
+		if (!pk) return {};
+		const db = await getDB();
+		return await getChildrenDatas(db, props.tableName, pk);
+	});
+
 	/**
 	 * 外键标量字段 -> 引用信息
 	 *
@@ -94,28 +120,13 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 	 * 用于把 worldId 这类字段渲染成“选择 world 的 Autocomplete”。
 	 */
 	const foreignKeyFieldMap = createMemo(() => {
-		type ModelFieldMeta = {
-			name: string;
-			kind: "scalar" | "object" | "enum";
-			type: string;
-			isList: boolean;
-			relationFromFields?: string[];
-		};
-
 		const map = new Map<string, ForeignKeyRenderInfo>();
-		const modelFields = getModelFields(props.tableName as string) as ModelFieldMeta[];
-
-		for (const field of modelFields) {
-			if (field.kind !== "object" || field.isList) continue;
-			if (!field.relationFromFields || field.relationFromFields.length === 0) continue;
-
-			const fkFieldName = field.relationFromFields[0];
-			const referenced = getForeignKeyReference(props.tableName, field.name as keyof DB[TTableName]);
-			if (!referenced) continue;
-
-			map.set(fkFieldName, {
-				referencedTable: referenced.table,
-				referencedField: referenced.field,
+		for (const fkColumn of listFkColumns(props.tableName)) {
+			const ref = getFkRefByColumn(props.tableName, fkColumn);
+			if (!ref) continue;
+			map.set(String(fkColumn), {
+				referencedTable: ref.table,
+				referencedField: ref.field,
 			});
 		}
 
@@ -130,8 +141,8 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 		}
 		// 兼容：直接渲染 relation field（object 字段）时，也要纳入引用表
 		for (const key of Object.keys(initialValue()) as Array<keyof DB[TTableName]>) {
-			const ref = getForeignKeyReference(props.tableName, key);
-			if (ref) tables.add(ref.table);
+			const refByRelation = getFkRefByRelationField(props.tableName, key);
+			if (refByRelation) tables.add(refByRelation.table);
 		}
 		return Array.from(tables);
 	});
@@ -225,7 +236,7 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 													)}
 												</Index>
 												<Button
-													onClick={(e) => {
+													onClick={() => {
 														field().pushValue("" as any);
 													}}
 													class="w-full"
@@ -343,39 +354,48 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 				</Show>
 
 				{/* 子表关系按钮渲染器 */}
-				<Show when={childRelations()}>
-					{(relations) => (
-						<For each={Object.entries(relations())}>
-							{([tableName, data]) => {
-								return (
-									<div class="Field flex flex-col gap-2">
-										<Button
-											level="secondary"
-											onClick={() => {
-												// 这里需要根据data数量打开复数个表单，如果data为空，则用默认值渲染表单
-												if (data.length === 0) {
-													setStore("pages", "formGroup", store.pages.formGroup.length, {
-														type: tableName as keyof DB,
-														data: defaultData[tableName as keyof DB],
-													});
-												} else {
-													for (const item of data) {
-														setStore("pages", "formGroup", store.pages.formGroup.length, {
-															type: tableName as keyof DB,
-															// store里的类型更宽泛，但要求是Record<string, unknown>
-															data: (item as unknown as Record<string, unknown>) ?? defaultData[tableName as keyof DB],
-														});
+				<Show when={childRelationTableNames().length > 0}>
+					<For each={childRelationTableNames()}>
+						{(tableName) => {
+							const data = () => (childRelations()?.[tableName] ?? []) as unknown[];
+							return (
+								<div class="Field flex flex-col gap-2">
+									<Button
+										level="secondary"
+										onClick={() => {
+											// 这里需要根据data数量打开复数个表单，如果data为空，则用默认值渲染表单
+											if (data().length === 0) {
+												// 依据 DB_RELATION 回填子表外键（仅 fkOn=other 的一对多场景）
+												const defaultValue = {
+													...((defaultData[tableName as keyof DB] ?? {}) as Record<string, unknown>),
+												};
+												const relationEntries = DB_RELATION[props.tableName]?.children?.[tableName as keyof DB] ?? [];
+												for (const entry of relationEntries) {
+													if (entry.query.kind === "fk" && entry.query.fkOn === "other") {
+														defaultValue[entry.query.fkField] = primaryKeyValue();
 													}
 												}
-											}}
-										>
-											{dictionary().db[tableName as keyof DB].selfName}
-										</Button>
-									</div>
-								);
-							}}
-						</For>
-					)}
+												setStore("pages", "formGroup", store.pages.formGroup.length, {
+													type: tableName as keyof DB,
+													data: defaultValue,
+												});
+											} else {
+												for (const item of data()) {
+													setStore("pages", "formGroup", store.pages.formGroup.length, {
+														type: tableName as keyof DB,
+														// store里的类型更宽泛，但要求是Record<string, unknown>
+														data: (item as unknown as Record<string, unknown>) ?? defaultData[tableName as keyof DB],
+													});
+												}
+											}
+										}}
+									>
+										{dictionary().db[tableName as keyof DB].selfName}
+									</Button>
+								</div>
+							);
+						}}
+					</For>
 				</Show>
 
 				<form.Subscribe
