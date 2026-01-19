@@ -44,19 +44,30 @@ export default function AppMainContet(props: ParentProps) {
 		}
 	});
 
+	// 关闭过渡动画
+	const disableTransition = () => {
+		document.documentElement.classList.add("transitionColorNone");
+		// 防止过渡效果
+		setStore("settings", "userInterface", "isAnimationEnabled", false);
+	};
+
+	// 打开过渡动画
+	const enableTransition = () => {
+		document.documentElement.classList.remove("transitionColorNone");
+		setStore("settings", "userInterface", "isAnimationEnabled", true);
+	};
+
 	// 主题切换时
 	createEffect(
 		on(
 			() => store.settings.userInterface.theme,
 			() => {
 				console.log("主题切换");
-				document.documentElement.classList.add("transitionColorNone");
-				setStore("settings", "userInterface", "isAnimationEnabled", false);
+				disableTransition();
 				document.documentElement.classList.remove("light", "dark");
 				document.documentElement.classList.add(store.settings.userInterface.theme);
 				setTimeout(() => {
-					document.documentElement.classList.remove("transitionColorNone");
-					setStore("settings", "userInterface", "isAnimationEnabled", true);
+					enableTransition();
 				}, 1);
 			},
 			{
@@ -85,8 +96,12 @@ export default function AppMainContet(props: ParentProps) {
 			() => store.settings.userInterface.language,
 			() => {
 				console.log("语言切换");
+				disableTransition();
 				document.documentElement.lang = store.settings.userInterface.language;
 				document.cookie = `lang=${store.settings.userInterface.language}; path=/; max-age=31536000;`;
+				setTimeout(() => {
+					enableTransition();
+				}, 1);
 			},
 			{
 				defer: true,

@@ -2,7 +2,7 @@ import { selectSimulatorByIdWithRelations } from "@db/generated/repositories/sim
 import { useParams } from "@solidjs/router";
 import { createResource, onCleanup, onMount, Show } from "solid-js";
 import { LoadingBar } from "~/components/controls/loadingBar";
-import { RealtimeSimulator } from "~/components/features/simulator/RealtimeSimulator";
+import { RealtimeSimulator } from "~/routes/(app)/simulator/RealtimeSimulator";
 
 /**
  * 模拟器主页面组件

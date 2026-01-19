@@ -9,12 +9,12 @@
 
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
-import { MemberStatusPanel } from "../core/Member/MemberStatusPanel";
-import type { MemberController } from "./MemberController";
+import { Icons } from "~/components/icons";
 import type { FrameSnapshot } from "../core/GameEngine";
 import type { MemberSerializeData } from "../core/Member/Member";
-import { Icons } from "~/components/icons";
+import { MemberStatusPanel } from "../core/Member/MemberStatusPanel";
 import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
+import type { MemberController } from "./MemberController";
 
 type ControllerEventState = {
 	skillAvailability?: Record<string, boolean>;
@@ -116,16 +116,17 @@ export function MemberControllerPanel(props: MemberControllerPanelProps) {
 			<div class="row-start-8 col-start-3 col-span-4 row-span-1 flex flex-col gap-2">
 				{/* 技能面板 */}
 				<Show when={skillList().length > 0} fallback={<div class="text-xs">暂无技能</div>}>
-					<div class="grid grid-rows-1 grid-cols-10 gap-2">
+					<div class="grid grid-rows-1 grid-cols-14 gap-2">
 						<For each={skillList()}>
 							{(skill) => (
 								<Button
 									onClick={() => handleCastSkill(skill.id)}
 									disabled={controllerEvents().skillAvailability?.[skill.id] === false}
-									class="text-xs col-span-1 row-span-1 shadow-card shadow-brand-color-1st"
+									class="w-full h-full col-span-2 row-span-1 shadow-card shadow-brand-color-1st hover:shadow-brand-color-2nd"
+									level="secondary"
 								>
 									<Icons.Spirits iconName={skill.name} />
-									{/* {skill.name} (Lv.{skill.level}) */}
+									<span class="whitespace-nowrap text-xs text-ellipsis overflow-hidden">{skill.name}</span>
 								</Button>
 							)}
 						</For>

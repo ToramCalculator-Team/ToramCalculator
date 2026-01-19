@@ -9,20 +9,21 @@
  */
 
 import type { SimulatorWithRelations } from "@db/generated/repositories/simulator";
+import { A } from "@solidjs/router";
 import { createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
-import { Icons } from "~/components/icons";
-import { AddMemberControllerButton } from "./controller/AddMemberControllerButton";
-import { ControlPanel, EngineStatusBar } from "./controller/components";
-import { EngineLifecycleController } from "./controller/EngineLifecycleController";
-import { MemberController } from "./controller/MemberController";
-import { MemberControllerPanel } from "./controller/MemberControllerPanel";
-import type { EngineControlMessage } from "./core/GameEngineSM";
-import type { MemberSerializeData } from "./core/Member/Member";
-import { ControllerDomainEventBatchSchema, type EngineTelemetry } from "./core/thread/protocol";
-import { realtimeSimulatorPool } from "./core/thread/SimulatorPool";
-import type { ControllerDomainEvent, FrameSnapshot } from "./core/types";
 import { Motion, Presence } from "solid-motionone";
+import { Icons } from "~/components/icons";
 import { store } from "~/store";
+import { AddMemberControllerButton } from "../../../components/features/simulator/controller/AddMemberControllerButton";
+import { ControlPanel, EngineStatusBar } from "../../../components/features/simulator/controller/components";
+import { EngineLifecycleController } from "../../../components/features/simulator/controller/EngineLifecycleController";
+import { MemberController } from "../../../components/features/simulator/controller/MemberController";
+import { MemberControllerPanel } from "../../../components/features/simulator/controller/MemberControllerPanel";
+import type { EngineControlMessage } from "../../../components/features/simulator/core/GameEngineSM";
+import type { MemberSerializeData } from "../../../components/features/simulator/core/Member/Member";
+import { ControllerDomainEventBatchSchema, type EngineTelemetry } from "../../../components/features/simulator/core/thread/protocol";
+import { realtimeSimulatorPool } from "../../../components/features/simulator/core/thread/SimulatorPool";
+import type { ControllerDomainEvent, FrameSnapshot } from "../../../components/features/simulator/core/types";
 
 export interface RealtimeSimulatorProps {
 	simulatorData: SimulatorWithRelations;
@@ -312,7 +313,7 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 						transition={{
 							duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
 						}}
-						class="AnimationArea flex h-full w-full items-center justify-center"
+						class="AnimationArea flex h-full w-full items-center justify-center backdrop-blur"
 					>
 						<div
 							id="loadingBox"
@@ -396,9 +397,9 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 
 					{/* 引擎控制栏 */}
 					<div class="flex gap-1">
-						<div class="Left flex gap-1 p-3 items-center w-fit">
+						<A href="/" class="Left flex gap-1 p-3 items-center w-fit">
 							<Icons.Brand.NoPaddingLogoText class="w-[160px] h-6" />
-						</div>
+						</A>
 
 						<div class="flex gap-2 w-full">
 							<EngineStatusBar isRunning={isRunning} isPaused={isPaused} telemetry={engineTelemetry} />
