@@ -32,22 +32,6 @@ export class ControllerEventProjector {
 	}
 
 	/**
-	 * @deprecated 使用 setDomainEventBatchSender 代替
-	 * 保留此方法以向后兼容，但会转发到新的发送器
-	 */
-	setSystemMessageSender(sender: ((payload: unknown) => void) | null): void {
-		if (sender) {
-			// 包装为 domain_event_batch 发送器
-			this.domainEventBatchSender = (payload) => {
-				// 直接发送 payload，worker 侧会识别为 domain_event_batch
-				sender(payload);
-			};
-		} else {
-			this.domainEventBatchSender = null;
-		}
-	}
-
-	/**
 	 * 投影 MemberDomainEvent 为 ControllerDomainEvent
 	 * @param event 成员域事件
 	 */

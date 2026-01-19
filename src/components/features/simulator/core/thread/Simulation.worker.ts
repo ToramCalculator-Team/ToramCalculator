@@ -405,7 +405,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
  * - render_cmd: 渲染指令
  * - domain_event_batch: 控制器领域事件批
  * - system_event: 系统事件（worker_ready/error/日志等）
- * - frame_snapshot: 帧快照（向后兼容）
+ * - frame_snapshot: 帧快照
  * - debug_view_frame: 调试视图数据帧（订阅制）
  */
 function postSystemMessage(

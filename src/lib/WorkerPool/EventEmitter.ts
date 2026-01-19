@@ -37,7 +37,7 @@ export class EventEmitter {
         // console.log(`📡 EventEmitter: 发射事件 "${event}"，监听器数量: ${this.events[event]?.length || 0}`);
       }
       if (this.events[event]) {
-        this.events[event].forEach((listener) => listener(...args));
+        this.events[event].forEach((listener) => {listener(...args)});
       }
     }
   

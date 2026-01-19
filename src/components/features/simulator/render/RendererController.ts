@@ -195,8 +195,8 @@ class CharacterAnimationController {
 
   /** 停止所有动画 */
   stopAllAnimations(): void {
-    this.entity.builtinAnimations.forEach((group) => group.stop());
-    this.entity.customAnimations.forEach((group) => group.stop());
+    this.entity.builtinAnimations.forEach((group) => {group.stop()});
+    this.entity.customAnimations.forEach((group) => {group.stop()});
     this.entity.animationState.current = null;
     this.entity.animationState.queue = [];
   }

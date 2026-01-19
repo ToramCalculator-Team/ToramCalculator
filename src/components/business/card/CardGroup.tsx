@@ -6,9 +6,9 @@
 
 import { repositoryMethods } from "@db/generated/repositories";
 import { type DB, DBSchema } from "@db/generated/zod/index";
-import { createEffect, createMemo, createResource, createSignal, Index, JSX, on, Show } from "solid-js";
+import { createResource, Index, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { DATA_CONFIG, type DataConfig } from "~/components/business/data-config";
+import { DATA_CONFIG } from "~/components/business/data-config";
 import { Icons } from "~/components/icons";
 import { type Store, setStore, store } from "~/store";
 import { Card } from "./Card";

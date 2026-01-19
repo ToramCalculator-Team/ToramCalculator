@@ -6,7 +6,7 @@ import type { APIEvent } from "@solidjs/start/server";
 import { jwtVerify } from "jose";
 import { getCookie } from "vinxi/http";
 import { z } from "zod/v4";
-import type { ChangeRecord, SyncRequestBody } from "~/shared/types/sync";
+import type { SyncRequestBody } from "~/shared/types/sync";
 
 // ==================== API 处理函数 ====================
 
@@ -39,7 +39,7 @@ export async function POST(event: APIEvent) {
 		return new Response("未认证用户，终止数据写入", { status: 401 });
 	}
 
-	console.log("用户:" + user.name + " 变更数据,body:", body);
+	console.log(`用户:${user.name} 变更数据,body:`, body);
 
 	// -------- 安全校验与约束 --------
 	// 1) 允许的操作（默认禁用删除）

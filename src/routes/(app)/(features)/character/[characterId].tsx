@@ -9,13 +9,10 @@ import "@babylonjs/loaders/glTF/2.0/Extensions/KHR_draco_mesh_compression";
 import {
 	type AbstractEngine,
 	ArcRotateCamera,
-	AxesViewer,
 	Color3,
-	Color4,
 	Scene,
 	ShadowGenerator,
 	SpotLight,
-	UniversalCamera,
 	Vector3,
 } from "@babylonjs/core";
 import { Engine } from "@babylonjs/core/Engines/engine";
@@ -23,7 +20,6 @@ import {
 	selectAllCharactersByBelongtoplayerid,
 	selectCharacterByIdWithRelations,
 } from "@db/generated/repositories/character";
-import { DB } from "@db/generated/zod/index";
 import { Motion } from "solid-motionone";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
@@ -301,13 +297,21 @@ export default function CharactePage() {
 						>
 							<div class={`flex w-full flex-none gap-3 portrait:flex-wrap landscape:flex-col`}>
 								{/* 主手 */}
-								<div
+								<section
+									role="button"
+									tabIndex={0}
 									onClick={() => {
 										if (character().weapon) {
 											setStore("pages", "cardGroup", store.pages.cardGroup.length, {
 												type: "player_weapon",
 												id: character().weapon?.id,
 											});
+										}
+									}}
+									onKeyUp={(e) => {
+										if (e.key === "Enter" || e.key === " ") {
+											e.preventDefault();
+											e.stopPropagation();
 										}
 									}}
 									class="MainHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border landscape:w-full landscape:border-b"
@@ -317,7 +321,7 @@ export default function CharactePage() {
 										<Icons.Spirits iconName={character().weapon?.type ?? ""} size={36} />
 										{character().weapon?.name}
 									</div>
-									<div onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
+									<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
 										<Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
 										<Show
 											when={character().weapon}
@@ -331,16 +335,24 @@ export default function CharactePage() {
 										>
 											<Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
 										</Show>
-									</div>
-								</div>
+									</button>
+								</section>
 								{/* 副手 */}
-								<div
+								<section
+									role="button"
+									tabIndex={0}
 									onClick={() => {
 										if (character().subWeapon) {
 											setStore("pages", "cardGroup", store.pages.cardGroup.length, {
 												type: "player_weapon",
 												id: character().subWeapon?.id,
 											});
+										}
+									}}
+									onKeyUp={(e) => {
+										if (e.key === "Enter" || e.key === " ") {
+											e.preventDefault();
+											e.stopPropagation();
 										}
 									}}
 									class="SubHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border landscape:w-full landscape:border-b"
@@ -350,7 +362,7 @@ export default function CharactePage() {
 										<Icons.Spirits iconName={character().subWeapon?.type ?? ""} size={36} />
 										{character().subWeapon?.name}
 									</div>
-									<div onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
+									<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
 										<Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
 										<Show
 											when={character().weapon}
@@ -364,16 +376,24 @@ export default function CharactePage() {
 										>
 											<Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
 										</Show>
-									</div>
-								</div>
+									</button>
+								</section>
 								{/* 防具 */}
-								<div
+								<section
+									role="button"
+									tabIndex={0}
 									onClick={() => {
 										if (character().armor) {
 											setStore("pages", "cardGroup", store.pages.cardGroup.length, {
 												type: "player_armor",
 												id: character().armor?.id,
 											});
+										}
+									}}
+									onKeyUp={(e) => {
+										if (e.key === "Enter" || e.key === " ") {
+											e.preventDefault();
+											e.stopPropagation();
 										}
 									}}
 									class="Armor  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
@@ -383,7 +403,7 @@ export default function CharactePage() {
 										<Icons.Spirits iconName={character().armor?.ability ?? ""} size={36} />
 										{character().armor?.name}
 									</div>
-									<div onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
+									<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
 										<Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
 										<Show
 											when={character().armor}
@@ -397,16 +417,24 @@ export default function CharactePage() {
 										>
 											<Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
 										</Show>
-									</div>
-								</div>
+									</button>
+								</section>
 								{/* 追加 */}
-								<div
+								<section
+									role="button"
+									tabIndex={0}
 									onClick={() => {
 										if (character().option) {
 											setStore("pages", "cardGroup", store.pages.cardGroup.length, {
 												type: "player_option",
 												id: character().option?.id,
 											});
+										}
+									}}
+									onKeyUp={(e) => {
+										if (e.key === "Enter" || e.key === " ") {
+											e.preventDefault();
+											e.stopPropagation();
 										}
 									}}
 									class="OptEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
@@ -416,7 +444,7 @@ export default function CharactePage() {
 										<Icons.Spirits iconName={"option"} size={36} />
 										{character().option?.name}
 									</div>
-									<div onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
+									<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
 										<Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
 										<Show
 											when={character().option}
@@ -430,16 +458,24 @@ export default function CharactePage() {
 										>
 											<Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
 										</Show>
-									</div>
-								</div>
+									</button>
+								</section>
 								{/* 特殊 */}
-								<div
+								<section
+									role="button"
+									tabIndex={0}
 									onClick={() => {
 										if (character().special) {
 											setStore("pages", "cardGroup", store.pages.cardGroup.length, {
 												type: "player_special",
 												id: character().special?.id,
 											});
+										}
+									}}
+									onKeyUp={(e) => {
+										if (e.key === "Enter" || e.key === " ") {
+											e.preventDefault();
+											e.stopPropagation();
 										}
 									}}
 									class="SpeEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
@@ -449,7 +485,7 @@ export default function CharactePage() {
 										<Icons.Spirits iconName={"special"} size={36} />
 										{character().special?.name}
 									</div>
-									<div onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
+									<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
 										<Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
 										<Show
 											when={character().special}
@@ -463,8 +499,8 @@ export default function CharactePage() {
 										>
 											<Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
 										</Show>
-									</div>
-								</div>
+									</button>
+								</section>
 							</div>
 						</OverlayScrollbarsComponent>
 					</div>

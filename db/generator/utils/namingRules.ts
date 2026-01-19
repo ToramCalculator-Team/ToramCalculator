@@ -9,6 +9,8 @@
  * 提供统一的命名转换方法
  * 基础转换方法是私有的，只通过具体的命名方法（TypeName、SchemaName 等）对外暴露
  */
+
+// biome-ignore lint/complexity/noStaticOnlyClass: <NamingRules>
 export class NamingRules {
 	/**
 	 * 将下划线命名转换为 PascalCase（私有方法）
@@ -147,16 +149,3 @@ export class NamingRules {
 		return tableName.startsWith("_");
 	}
 }
-
-// 为了向后兼容，导出这些方法作为独立的函数
-// 但这些函数内部调用 NamingRules 类的静态方法
-export const TypeName = (tableName: string, modelName?: string) => NamingRules.TypeName(tableName, modelName);
-export const SchemaName = (name: string) => NamingRules.SchemaName(name);
-export const TableName = (name: string) => NamingRules.TableName(name);
-export const TableNameLowerCase = (name: string) => NamingRules.TableNameLowerCase(name);
-export const ModelName = (tableName: string, modelName?: string) => NamingRules.ModelName(tableName, modelName);
-export const ZodTypeName = (name: string) => NamingRules.ZodTypeName(name);
-export const VariableName = (name: string) => NamingRules.VariableName(name);
-export const FunctionName = (name: string) => NamingRules.FunctionName(name);
-export const FileName = (name: string) => NamingRules.FileName(name);
-export const IsIntermediateTable = (tableName: string) => NamingRules.IsIntermediateTable(tableName);

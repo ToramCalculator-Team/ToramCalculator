@@ -24,11 +24,6 @@ export class ExpressionEvaluator {
 		private deps: {
 			jsProcessor: JSProcessor;
 			getMemberById: GetMemberById;
-			/**
-			 * 透传到 expression context 的 engine 引用（可选，保留向后兼容）
-			 * 注意：表达式层不应依赖复杂引擎对象；后续可替换为更小的 EngineApi。
-			 */
-			engine?: unknown;
 		},
 	) {}
 
@@ -72,10 +67,9 @@ export class ExpressionEvaluator {
 				targetExpr.hasDebuff = (_id: string) => false;
 			}
 
-			// 确保 context 包含 engine/self/target 引用（表达式里可直接使用 self/target）
+			// 确保 context 包含 self/target 引用（表达式里可直接使用 self/target）
 			const executionContext: ExpressionContext = {
 				...context,
-				engine: this.deps.engine,
 				self: selfExpr,
 				target: targetExpr,
 				/**
@@ -83,10 +77,8 @@ export class ExpressionEvaluator {
 				 *
 				 * 约定：
 				 * - `hasBuff('id')` 默认查询 self（施法者/当前计算主体）
-				 * - `self.hasBuff('id')` / `target.hasBuff('id')` 也可用（向后兼容写法）
 				 */
 				hasBuff: (id: string): boolean => self.btManager.hasBuff(id),
-				hasDebuff: (_id: string): boolean => false,
 			};
 
 			console.log(`🔍 表达式求值: ${expression}`, executionContext);

@@ -12,7 +12,6 @@ import {
 	DB_RELATION,
 	getChildrenDatas,
 	getFkRefByColumn,
-	getFkRefByRelationField,
 	getPrimaryKeys,
 	listFkColumns,
 } from "@db/generated/dmmf-utils";
@@ -138,11 +137,6 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 		const tables = new Set<keyof DB>();
 		for (const info of foreignKeyFieldMap().values()) {
 			tables.add(info.referencedTable);
-		}
-		// 兼容：直接渲染 relation field（object 字段）时，也要纳入引用表
-		for (const key of Object.keys(initialValue()) as Array<keyof DB[TTableName]>) {
-			const refByRelation = getFkRefByRelationField(props.tableName, key);
-			if (refByRelation) tables.add(refByRelation.table);
 		}
 		return Array.from(tables);
 	});

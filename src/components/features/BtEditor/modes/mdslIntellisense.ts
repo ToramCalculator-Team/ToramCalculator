@@ -246,18 +246,6 @@ export const buildMdslIntellisenseRegistry = (
 };
 
 /**
- * 向后兼容：默认 registry（使用 Common 三件套）
- * @deprecated 建议使用 buildMdslIntellisenseRegistry 并传入具体配置
- */
-export const defaultMdslIntellisenseRegistry = (): MdslIntellisenseRegistry => {
-	return buildMdslIntellisenseRegistry({
-		actionPool: CommonActionPool,
-		conditionPool: CommonConditionPool,
-		propertyObject: CommonProperty,
-	});
-};
-
-/**
  * 轻量解析用户 Agent（class Agent { ... }）：
  * - 提取方法名 + 参数名（用于补全与 signature help）
  * - 提取字段 / getter / setter 名（用于 $xxx 补全）

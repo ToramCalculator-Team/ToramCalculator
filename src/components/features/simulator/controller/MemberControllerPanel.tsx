@@ -71,7 +71,6 @@ export function MemberControllerPanel(props: MemberControllerPanelProps) {
 	createEffect(() => {
 		const memberId = props.boundMemberId;
 		if (!memberId) return;
-		// 绑定时拉一次静态技能列表（不依赖 frame_snapshot）
 		realtimeSimulatorPool.getMemberSkillList(memberId).then(setSkillList).catch(console.error);
 	});
 

@@ -19,7 +19,7 @@ export default function ProfilePage() {
 	>([
 		{
 			onClick: () =>
-				setStore("settings", "userInterface", "theme", store.settings.userInterface.theme == "dark" ? "light" : "dark"),
+				setStore("settings", "userInterface", "theme", store.settings.userInterface.theme === "dark" ? "light" : "dark"),
 			icon: <Icons.Outline.Light />,
 		},
 		{

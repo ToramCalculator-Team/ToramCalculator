@@ -20,7 +20,7 @@ export const PushMessageType = [
 	"render_cmd", // 渲染指令
 	"domain_event_batch", // 控制器领域事件批
 	"system_event", // 系统事件（worker_ready/error/日志等杂项）
-	"frame_snapshot", // 帧快照（向后兼容，默认关闭或降频）
+	"frame_snapshot", // 帧快照（默认关闭或降频）
 	"debug_view_frame", // 调试视图数据帧（订阅制，井盖）
 ] as const;
 

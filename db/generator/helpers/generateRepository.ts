@@ -7,13 +7,13 @@
  * 可以参考 db/generators/generators/RepositoryGenerator.ts 的实现
  */
 
+import fs from "node:fs";
+import path from "node:path";
 import type { DMMF } from "@prisma/generator-helper";
-import fs from "fs";
-import path from "path";
 import { RELATION_BREAK_POINTS } from "../relationConfig";
-import { DMMFHelpers } from "../utils/dmmfHelpers";
-import { FileName, NamingRules, SchemaName, TypeName, ZodTypeName } from "../utils/namingRules";
+import { NamingRules } from "../utils/namingRules";
 import { writeFileSafely } from "../utils/writeFileSafely";
+import { DMMFHelpers } from "./dmmfHelpers";
 
 /**
  * Repository 生成器
@@ -131,7 +131,7 @@ export class RepositoryGenerator {
 	private async generateRepository(modelName: string): Promise<void> {
 		const code = await this.generateRepositoryCode(modelName);
 		// 使用 FileName 规范生成文件名
-		const fileName = FileName(modelName);
+		const fileName = NamingRules.FileName(modelName);
 		const outputPath = path.join("db", "generated", "repositories", fileName);
 
 		// 确保目录存在
@@ -148,7 +148,7 @@ export class RepositoryGenerator {
 	 */
 	private async generateRepositoryCode(modelName: string): Promise<string> {
 		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = TypeName(modelName, modelName);
+		const pascalName = NamingRules.TypeName(modelName, modelName);
 		const camelName = NamingRules.VariableName(modelName);
 
 		// 生成各个部分
@@ -172,13 +172,13 @@ ${crudMethods}
 	 */
 	private generateImports(modelName: string): string {
 		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = TypeName(modelName, modelName);
+		const pascalName = NamingRules.TypeName(modelName, modelName);
 
 		// 计算相对路径
 		const relativePaths = this.calculateRelativePaths();
 
 		// 使用 ZodTypeName 规范（从 zod 导入的 snake_case 类型）
-		const typeName = ZodTypeName(modelName);
+		const typeName = NamingRules.ZodTypeName(modelName);
 
 		const imports: string[] = [
 			`import { type Expression, type ExpressionBuilder, type Transaction, type Selectable, type Insertable, type Updateable } from "kysely";`,
@@ -469,7 +469,7 @@ ${crudMethods}
 	 */
 	private generateTypes(modelName: string): string {
 		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = TypeName(modelName, modelName);
+		const pascalName = NamingRules.TypeName(modelName, modelName);
 
 		return `// 1. 类型定义
 export type ${pascalName} = Selectable<${tableName}>;
@@ -482,8 +482,8 @@ export type ${pascalName}Update = Updateable<${tableName}>;`;
 	 */
 	private generateRelations(modelName: string): string {
 		const tableName = NamingRules.ZodTypeName(modelName);
-		const schemaName = SchemaName(tableName); // 使用 SchemaName 规范
-		const pascalName = TypeName(modelName, modelName);
+		const schemaName = NamingRules.SchemaName(tableName); // 使用 SchemaName 规范
+		const pascalName = NamingRules.TypeName(modelName, modelName);
 		const camelName = NamingRules.VariableName(modelName);
 
 		const generatedRelations = this.generateAllRelations(modelName);
@@ -548,7 +548,7 @@ export type ${pascalName}WithRelations = z.output<typeof ${pascalName}WithRelati
 	private getSchemaImports(modelName: string): string[] {
 		const tableName = NamingRules.ZodTypeName(modelName);
 		// 使用 SchemaName 规范生成 schema 名称
-		const schemas = new Set<string>([SchemaName(tableName)]);
+		const schemas = new Set<string>([NamingRules.SchemaName(tableName)]);
 
 		// 添加关系的 schema（仅基础 schema，WithRelations 版本从 repository 导入）
 		const relations = this.getModelRelations(modelName);
@@ -556,7 +556,7 @@ export type ${pascalName}WithRelations = z.output<typeof ${pascalName}WithRelati
 			// 只添加有效的关系 schema，跳过枚举类型
 			if (relation.targetTable && !relation.targetTable.includes("//")) {
 				// 使用 SchemaName 规范确保一致性
-				const targetSchema = SchemaName(relation.targetTable);
+				const targetSchema = NamingRules.SchemaName(relation.targetTable);
 				schemas.add(targetSchema);
 			}
 		}
@@ -579,7 +579,7 @@ export type ${pascalName}WithRelations = z.output<typeof ${pascalName}WithRelati
 			if (relation.targetTable && !relation.targetTable.includes("//")) {
 				const targetTable = relation.targetTable;
 				const targetCamelName = NamingRules.VariableName(targetTable);
-				const targetPascalName = TypeName(targetTable, targetTable);
+				const targetPascalName = NamingRules.TypeName(targetTable, targetTable);
 				const targetFileName = NamingRules.TableNameLowerCase(targetTable);
 
 				// 检查是否是自引用（避免导入自己）
@@ -609,7 +609,7 @@ export type ${pascalName}WithRelations = z.output<typeof ${pascalName}WithRelati
 	 *    - 如果 accountId 为 null，返回 false（不可编辑）
 	 */
 	private generateCanEdit(modelName: string): string {
-		const pascalName = TypeName(modelName, modelName);
+		const pascalName = NamingRules.TypeName(modelName, modelName);
 		const tableName = NamingRules.ZodTypeName(modelName);
 		const primaryKeyField = this.getPrimaryKeyField(modelName);
 
@@ -727,7 +727,7 @@ ${joinChain}
 	 */
 	private generateCrudMethods(modelName: string): string {
 		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = TypeName(modelName, modelName);
+		const pascalName = NamingRules.TypeName(modelName, modelName);
 		const camelName = NamingRules.VariableName(modelName);
 
 		const methods: string[] = [];
@@ -786,7 +786,7 @@ ${joinChain}
 		if (!model) return "";
 
 		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = TypeName(modelName, modelName);
+		const pascalName = NamingRules.TypeName(modelName, modelName);
 		const pluralName = this.pluralize(pascalName);
 
 		// 找到当前模型上“本表持有外键”的关系字段
@@ -829,7 +829,7 @@ export async function ${methodName}(${foreignKey}: string, trx?: Transaction<DB>
 		for (const model of this.models) {
 			const modelName = model.name;
 			const tableName = model.dbName || model.name; // 使用真实表名
-			const pascalName = TypeName(modelName, modelName);
+			const pascalName = NamingRules.TypeName(modelName, modelName);
 			const hasPK = this.hasPrimaryKey(model);
 			const fileName = NamingRules.TableNameLowerCase(modelName); // 用于文件路径
 
@@ -845,14 +845,14 @@ export async function ${methodName}(${foreignKey}: string, trx?: Transaction<DB>
 		// 添加中间表的类型导入
 		const intermediateTables = this.getIntermediateTables();
 		for (const tableName of intermediateTables) {
-			const pascalName = TypeName(tableName, tableName);
+			const pascalName = NamingRules.TypeName(tableName, tableName);
 			typeImports.push(`import { type ${pascalName} } from "${relativePaths.zod}";`);
 		}
 
 		// 只为实际生成的文件添加 CRUD 导入
 		for (const modelName of generatedFiles) {
 			const camelName = NamingRules.VariableName(modelName);
-			const pascalName = TypeName(modelName, modelName);
+			const pascalName = NamingRules.TypeName(modelName, modelName);
 			const model = this.models.find((m) => m.name === modelName);
 			const hasPK = model ? this.hasPrimaryKey(model) : true;
 			const tableName = model ? model.dbName || model.name : modelName; // 使用真实表名
@@ -1024,11 +1024,11 @@ ${this.generateCrudExports(crudExports)}
 
 		// 对于子关系，使用 WithRelations schema（因为它们包含嵌套的子关系数据）
 		// 对于父关系、自引用关系或配置的断点关系，使用基础 schema
-		const baseSchemaName = SchemaName(targetTable);
+		const baseSchemaName = NamingRules.SchemaName(targetTable);
 		const schemaName =
 			isParentRelation || isSelfRelation || isBreakPoint
 				? baseSchemaName
-				: `${TypeName(targetTable, targetTable)}WithRelationsSchema`;
+				: `${NamingRules.TypeName(targetTable, targetTable)}WithRelationsSchema`;
 
 		let result = field.isList ? `z.array(${schemaName})` : schemaName;
 
@@ -1369,11 +1369,11 @@ ${this.generateCrudExports(crudExports)}
 	private pluralize(str: string): string {
 		// 简单的复数化规则
 		if (str.endsWith("y")) {
-			return str.slice(0, -1) + "ies";
+			return `${str.slice(0, -1)}ies`;
 		} else if (str.endsWith("s") || str.endsWith("sh") || str.endsWith("ch")) {
-			return str + "es";
+			return `${str}es`;
 		} else {
-			return str + "s";
+			return `${str}s`;
 		}
 	}
 
@@ -1394,7 +1394,7 @@ ${this.generateCrudExports(crudExports)}
 	 */
 	private generateFindByUniqueConstraint(modelName: string): string {
 		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = TypeName(modelName, modelName);
+		const pascalName = NamingRules.TypeName(modelName, modelName);
 
 		// 获取模型的唯一约束字段
 		const model = this.models.find((m) => m.name === modelName);
@@ -1458,7 +1458,7 @@ ${this.generateCrudExports(crudExports)}
 	 */
 	private generateDeleteByUniqueConstraint(modelName: string): string {
 		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = TypeName(modelName, modelName);
+		const pascalName = NamingRules.TypeName(modelName, modelName);
 
 		// 查找模型
 		const model = this.models.find((m) => m.name === modelName);
@@ -1522,7 +1522,7 @@ ${this.generateCrudExports(crudExports)}
 	 */
 	private generateSelectById(modelName: string): string {
 		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = TypeName(modelName, modelName);
+		const pascalName = NamingRules.TypeName(modelName, modelName);
 		const primaryKeyField = this.getPrimaryKeyField(modelName);
 
 		return `export async function select${pascalName}ById(id: string, trx?: Transaction<DB>) {
@@ -1537,7 +1537,7 @@ ${this.generateCrudExports(crudExports)}
 	 */
 	private generateSelectByIdWithRelations(modelName: string): string {
 		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = TypeName(modelName, modelName);
+		const pascalName = NamingRules.TypeName(modelName, modelName);
 		const camelName = NamingRules.VariableName(modelName);
 		const primaryKeyField = this.getPrimaryKeyField(modelName);
 
@@ -1557,7 +1557,7 @@ ${this.generateCrudExports(crudExports)}
 	 */
 	private generateSelectAll(modelName: string): string {
 		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = TypeName(modelName, modelName);
+		const pascalName = NamingRules.TypeName(modelName, modelName);
 		const pluralName = this.pluralize(pascalName);
 
 		return `export async function selectAll${pluralName}(trx?: Transaction<DB>) {
@@ -1571,7 +1571,7 @@ ${this.generateCrudExports(crudExports)}
 	 */
 	private generateInsert(modelName: string): string {
 		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = TypeName(modelName, modelName);
+		const pascalName = NamingRules.TypeName(modelName, modelName);
 
 		return `export async function insert${pascalName}(data: ${pascalName}Insert, trx?: Transaction<DB>) {
   const db = trx || await getDB();
@@ -1584,7 +1584,7 @@ ${this.generateCrudExports(crudExports)}
 	 */
 	private generateUpdate(modelName: string): string {
 		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = TypeName(modelName, modelName);
+		const pascalName = NamingRules.TypeName(modelName, modelName);
 		const primaryKeyField = this.getPrimaryKeyField(modelName);
 
 		return `export async function update${pascalName}(id: string, data: ${pascalName}Update, trx?: Transaction<DB>) {
@@ -1598,7 +1598,7 @@ ${this.generateCrudExports(crudExports)}
 	 */
 	private generateDelete(modelName: string): string {
 		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = TypeName(modelName, modelName);
+		const pascalName = NamingRules.TypeName(modelName, modelName);
 		const primaryKeyField = this.getPrimaryKeyField(modelName);
 
 		return `export async function delete${pascalName}(id: string, trx?: Transaction<DB>) {
@@ -1667,7 +1667,7 @@ ${this.generateCrudExports(crudExports)}
 	 * 获取无主键模型的特殊方法导入字符串
 	 */
 	private getSpecialMethodsForNoPKModel(modelName: string): string {
-		const pascalName = TypeName(modelName, modelName);
+		const pascalName = NamingRules.TypeName(modelName, modelName);
 
 		// 查找模型
 		const model = this.models.find((m) => m.name === modelName);
@@ -1701,7 +1701,7 @@ ${this.generateCrudExports(crudExports)}
 	 * 获取无主键模型的特殊导出对象
 	 */
 	private getSpecialExportsForNoPKModel(modelName: string): Record<string, string> {
-		const pascalName = TypeName(modelName, modelName);
+		const pascalName = NamingRules.TypeName(modelName, modelName);
 
 		// 查找模型
 		const model = this.models.find((m) => m.name === modelName);
@@ -1747,7 +1747,7 @@ ${this.generateCrudExports(crudExports)}
 		for (const model of this.models) {
 			const modelName = model.name;
 			const tableName = model.dbName || model.name; // 使用真实表名，与 DB 接口一致
-			const pascalName = TypeName(modelName, modelName);
+			const pascalName = NamingRules.TypeName(modelName, modelName);
 			const hasPK = this.hasPrimaryKey(model);
 
 			if (this.shouldSkipModel(modelName)) {
@@ -1762,7 +1762,7 @@ ${this.generateCrudExports(crudExports)}
 		// 添加中间表（已经是真实的表名）
 		const intermediateTables = this.getIntermediateTables();
 		for (const tableName of intermediateTables) {
-			const pascalName = TypeName(tableName, tableName);
+			const pascalName = NamingRules.TypeName(tableName, tableName);
 			lines.push(`  ${tableName}: ${pascalName};`);
 		}
 

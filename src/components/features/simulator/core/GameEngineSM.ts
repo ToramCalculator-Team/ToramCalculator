@@ -122,21 +122,6 @@ const ResultSchema = z.discriminatedUnion("type", [
 export const EngineControlMessageSchema = z.union([CommandSchema, ResultSchema]);
 export type EngineControlMessage = z.output<typeof EngineControlMessageSchema>;
 
-// 向后兼容的导出（用于过渡期）
-export const EngineCommandSchema = EngineControlMessageSchema;
-export type EngineCommand = EngineControlMessage;
-
-// 指令事件类型
-// export type EngineCommand =
-//   | { type: "INIT"; data: SimulatorWithRelations; origin?: "source" | "mirror" }
-//   | { type: "START"; origin?: "source" | "mirror" }
-//   | { type: "PAUSE"; origin?: "source" | "mirror" }
-//   | { type: "RESUME"; origin?: "source" | "mirror" }
-//   | { type: "STOP"; origin?: "source" | "mirror" }
-//   | { type: "RESET"; origin?: "source" | "mirror" }
-//   | { type: "STEP"; origin?: "source" | "mirror" }
-//   | { type: "RESULT"; command: string; success: boolean; error?: string; origin?: "source" | "mirror" };
-
 // 上下文类型
 export interface EngineSMContext {
 	role: "controller" | "executor"; // 角色：控制器或执行器

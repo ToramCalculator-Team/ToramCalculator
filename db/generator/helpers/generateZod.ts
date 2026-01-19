@@ -6,7 +6,7 @@
 
 import type { DMMF } from "@prisma/generator-helper";
 import { EnumInjector } from "../enumInjector";
-import { IsIntermediateTable, NamingRules, SchemaName, TypeName, ZodTypeName } from "../utils/namingRules";
+import { NamingRules } from "../utils/namingRules";
 import { writeFileSafely } from "../utils/writeFileSafely";
 
 /**
@@ -59,8 +59,8 @@ export class ZodGenerator {
 
 		if (extractedEnums && extractedEnums.size > 0) {
 			for (const [enumName, enumValues] of extractedEnums) {
-				const enumSchemaName = SchemaName(enumName); // 使用 SchemaName 规范
-				const enumTypeName = ZodTypeName(enumName); // 使用 ZodTypeName 规范（snake_case）
+				const enumSchemaName = NamingRules.SchemaName(enumName); // 使用 SchemaName 规范
+				const enumTypeName = NamingRules.ZodTypeName(enumName); // 使用 ZodTypeName 规范（snake_case）
 				enumSchemas += `export const ${enumSchemaName} = z.enum([${enumValues.map((v: string) => `"${v}"`).join(", ")}]);\n`;
 				enumSchemas += `export type ${enumTypeName} = z.output<typeof ${enumSchemaName}>;\n\n`;
 			}
@@ -79,12 +79,12 @@ export class ZodGenerator {
 		// 从完整的模型列表中提取所有表信息
 		for (const model of this.allModels) {
 			const tableName = model.dbName || model.name;
-			const isIntermediateTable = IsIntermediateTable(tableName);
+			const isIntermediateTable = NamingRules.IsIntermediateTable(tableName);
 
 			// Schema 名称：PascalCase + Schema
-			const schemaName = SchemaName(tableName);
+			const schemaName = NamingRules.SchemaName(tableName);
 			// 中间类型名称：snake_case（用于之后转换成 Selectable/Insertable/Updateable）
-			const typeName = ZodTypeName(tableName);
+			const typeName = NamingRules.ZodTypeName(tableName);
 
 			const fieldsStr = model.fields
 				.filter((field: DMMF.Field) => {
@@ -108,7 +108,7 @@ export class ZodGenerator {
 			}
 		}
 
-		return regularTableSchemas + "\n// ===== 中间表 Schemas =====\n" + intermediateTableSchemas;
+		return `${regularTableSchemas}\n// ===== 中间表 Schemas =====\n${intermediateTableSchemas}`;
 	}
 
 	/**
@@ -146,7 +146,7 @@ export class ZodGenerator {
 				const isEnum = extractedEnums && extractedEnums.has(field.type);
 				if (isEnum) {
 					// 使用 SchemaName 规范生成枚举 schema 名称
-					zodType = SchemaName(field.type);
+					zodType = NamingRules.SchemaName(field.type);
 				} else {
 					zodType = "z.string()"; // 默认为字符串
 				}
@@ -190,7 +190,7 @@ export type Whereable<T> = Partial<T>;
 		// DB 接口中的类型应该是 snake_case（Zod 导出的类型）
 		for (const model of this.allModels) {
 			const tableName = model.dbName || model.name;
-			const typeName = ZodTypeName(tableName);
+			const typeName = NamingRules.ZodTypeName(tableName);
 
 			dbInterface += `  ${tableName}: ${typeName};\n`;
 		}
@@ -209,7 +209,7 @@ export type Whereable<T> = Partial<T>;
 
 		for (const model of this.allModels) {
 			const tableName = model.dbName || model.name;
-			const schemaName = SchemaName(tableName);
+			const schemaName = NamingRules.SchemaName(tableName);
 
 			dbSchema += `  ${tableName}: ${schemaName},\n`;
 		}

@@ -4,7 +4,7 @@ import { z } from "zod/v4";
 import type { WorkerMessageEvent } from "~/lib/WorkerPool/type";
 import { type PoolConfig, WorkerPool, type WorkerWrapper } from "~/lib/WorkerPool/WorkerPool";
 import type { RendererCmd } from "../../render/RendererProtocol";
-import type { EngineCommand } from "../GameEngineSM";
+import type { EngineControlMessage } from "../GameEngineSM";
 import type { MemberSerializeData } from "../Member/Member";
 import { type IntentMessage, IntentMessageSchema } from "../MessageRouter/MessageRouter";
 import type { EngineStats } from "../types";
@@ -81,7 +81,7 @@ export type RenderCommand = { type: "render:cmd"; cmd: RendererCmd } | { type: "
  * - 易于扩展：新增任务类型只需添加一行
  */
 export interface SimulatorTaskMap {
-	engine_command: EngineCommand;
+	engine_command: EngineControlMessage;
 	data_query: DataQueryCommand;
 }
 
@@ -115,7 +115,7 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 					if (type === "system_event") {
 						this.emit("system_event", { workerId: data.worker.id, event: eventData });
 					}
-					// 帧快照事件 - 每帧包含完整的引擎和成员状态（向后兼容，默认关闭或降频）
+					// 帧快照事件 - 每帧包含完整的引擎和成员状态（默认关闭或降频）
 					else if (type === "frame_snapshot") {
 						this.emit("frame_snapshot", { workerId: data.worker.id, event: eventData });
 					}

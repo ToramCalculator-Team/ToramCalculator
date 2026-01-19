@@ -35,7 +35,7 @@ export function createSnakeCaseMapper({
 			// before digits :). Only the first digit gets an underscore if
 			// there are multiple.
 			if (underscoreBeforeDigits && isDigit(char) && !isDigit(prevChar)) {
-				out += "_" + char;
+				out += `_${char}`;
 				continue;
 			}
 
@@ -48,7 +48,7 @@ export function createSnakeCaseMapper({
 				// before consecutive uppercase letters (e.g. "fooBAR" becomes "foo_b_a_r").
 				// Otherwise, we don't (e.g. "fooBAR" becomes "foo_bar").
 				if (underscoreBetweenUppercaseLetters || !prevCharacterIsUppercase) {
-					out += "_" + lowerChar;
+					out += `_${lowerChar}`;
 				} else {
 					out += lowerChar;
 				}

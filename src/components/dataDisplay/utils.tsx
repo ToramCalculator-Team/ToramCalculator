@@ -5,7 +5,7 @@ import { Button } from "~/components/controls/button";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import { Input } from "~/components/controls/input";
 import { Toggle } from "~/components/controls/toggle";
-import { getZodType } from "~/lib/utils/zodTools";
+import { getZodType } from "~/lib/utils/zod";
 import type { Dic, EnumFieldDetail } from "~/locales/type";
 
 // 简化后的表单字段

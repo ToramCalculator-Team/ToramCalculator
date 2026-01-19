@@ -1,6 +1,6 @@
 import { For, type JSX, Show } from "solid-js";
-import { ZodAny, type ZodObject, type ZodType } from "zod/v4";
-import { getZodType } from "~/lib/utils/zodTools";
+import type { ZodObject, ZodType } from "zod/v4";
+import { getZodType } from "~/lib/utils/zod";
 import type { Dic, EnumFieldDetail } from "~/locales/type";
 
 export type FieldGenMap<T> = Partial<{

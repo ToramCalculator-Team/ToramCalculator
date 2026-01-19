@@ -159,16 +159,16 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
 		let isHidden = false;
 		// 规则0：配置直接隐藏
 		if (props.hiddenFields?.some((hiddenField) => hiddenField === fieldName)) {
-			console.log("配置中规定隐藏此字段", fieldName);
+			// console.log("配置中规定隐藏此字段", fieldName);
 			isHidden = true;
 		}
 
 		// 规则2：如果此字段是关系字段则隐藏
 		if (isFkColumn(props.tableName, fieldName)) {
-			console.log("关联内容中将显示此字段", fieldName);
+			// console.log("关联内容中将显示此字段", fieldName);
 			isHidden = true;
 		}
-		console.log("字段可见性", fieldName, !isHidden);
+		// console.log("字段可见性", fieldName, !isHidden);
 		return isHidden;
 	};
 
@@ -177,7 +177,7 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
 		// 当group内的field都被隐藏时，group也隐藏
 		const fields = props.fieldGroupMap?.[groupName];
 		isHidden = fields?.every((fieldName) => isFieldHidden(fieldName)) ?? false;
-		console.log("组可见性", groupName, !isHidden);
+		// console.log("组可见性", groupName, !isHidden);
 		return isHidden;
 	};
 
@@ -480,7 +480,7 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
 			>
 				<For each={Object.entries(props.fieldGroupMap ?? {})}>
 					{([groupName, keys]) => {
-						console.log("------------当前组:", groupName);
+						// console.log("------------当前组:", groupName);
 						if (isGroupdHidden(groupName)) return null;
 						return (
 							<section class="FieldGroup flex w-full flex-col gap-2">

@@ -1,8 +1,6 @@
 import type { DMMF } from "@prisma/generator-helper";
 import ts from "typescript";
 
-import isValidTSIdentifier from "../utils/isValidTSIdentifier";
-
 import { generateStringLiteralUnion } from "./generateStringLiteralUnion";
 import { generateTypedReferenceNode } from "./generateTypedReferenceNode";
 
@@ -31,9 +29,10 @@ export const generateEnumType = (name: string, values: readonly DMMF.EnumValue[]
 					ts.factory.createAsExpression(
 						ts.factory.createObjectLiteralExpression(
 							values.map((v) => {
-								const identifier = isValidTSIdentifier(v.name)
-									? ts.factory.createIdentifier(v.name)
-									: ts.factory.createStringLiteral(v.name);
+								const identifier =
+									!!v.name && /^[a-zA-Z_$][a-zA-Z_$0-9]*$/.test(v.name)
+										? ts.factory.createIdentifier(v.name)
+										: ts.factory.createStringLiteral(v.name);
 
 								return ts.factory.createPropertyAssignment(
 									identifier,

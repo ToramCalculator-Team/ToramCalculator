@@ -1,3 +1,5 @@
+import { JSX } from "solid-js";
+
 type abi = {
 	str: number;
 	int: number;
@@ -212,6 +214,7 @@ export default function PetPage() {
 	const childEducationMainAbi = "int";
 	const childSubAbi = "";
 	const completeDisplay = () => {
+		const display: JSX.Element = [];
 		for (let i = 0; i < NumberOfSacrificialPets; i++) {
 			mainPet = mainPet.synthesisWith(sacrificialPet, {
 				childType: "天才",
@@ -219,8 +222,9 @@ export default function PetPage() {
 				childeCharacter: 1,
 			});
 			console.table(mainPet.display());
-			return <p>{JSON.stringify(mainPet.display(), null, 2)}</p>;
+			display.push(<p>{JSON.stringify(mainPet.display(), null, 2)}</p>);
 		}
+		return display;
 	};
 
 	for (let i = 0; i < NumberOfSacrificialPets; i++) {

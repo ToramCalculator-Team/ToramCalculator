@@ -5,11 +5,14 @@ import HtmlWorker from "monaco-editor/esm/vs/language/html/html.worker?worker&ur
 import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker&url";
 import TsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker&url";
 import { type Component, createEffect, onCleanup, onMount } from "solid-js";
+import { CommonActionPool } from "~/components/features/simulator/core/Member/runtime/Agent/CommonActions";
+import { CommonConditionPool } from "~/components/features/simulator/core/Member/runtime/Agent/CommonCondition";
+import { CommonProperty } from "~/components/features/simulator/core/Member/runtime/Agent/CommonProperty";
 import { rgbToBase16 } from "~/lib/utils/color";
 import { store } from "~/store";
 import { mdslLanguageDefinition } from "../../modes/mdsl";
 import {
-	defaultMdslIntellisenseRegistry,
+	buildMdslIntellisenseRegistry,
 	type MdslCallableSpec,
 	type MdslIntellisenseRegistry,
 	type MdslTypeSpec,
@@ -56,22 +59,18 @@ let currentMdslRegistry: MdslIntellisenseRegistry | null = null;
 
 const getMdslRegistry = () => {
 	if (!currentMdslRegistry) {
-		currentMdslRegistry = defaultMdslIntellisenseRegistry();
+		currentMdslRegistry = buildMdslIntellisenseRegistry({
+			actionPool: CommonActionPool,
+			conditionPool: CommonConditionPool,
+			propertyObject: CommonProperty,
+		});
 	}
 	return currentMdslRegistry;
 };
 
-const getDefaultCompletionRange = (
-	model: monaco.editor.ITextModel,
-	position: monaco.Position,
-) => {
+const getDefaultCompletionRange = (model: monaco.editor.ITextModel, position: monaco.Position) => {
 	const word = model.getWordUntilPosition(position);
-	return new monaco.Range(
-		position.lineNumber,
-		word.startColumn,
-		position.lineNumber,
-		word.endColumn,
-	);
+	return new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn);
 };
 
 type ParsedArg = {
@@ -83,10 +82,7 @@ type ParsedArg = {
 
 const hasTrailingComma = (text: string) => text.trimEnd().endsWith(",");
 
-const parseSimpleArgList = (
-	text: string,
-	absoluteStartOffset: number,
-): ParsedArg[] => {
+const parseSimpleArgList = (text: string, absoluteStartOffset: number): ParsedArg[] => {
 	const args: ParsedArg[] = [];
 	let i = 0;
 	let current = "";
@@ -99,8 +95,7 @@ const parseSimpleArgList = (
 			current = "";
 			return;
 		}
-		const rawStartInLocal =
-			currentStart + (current.length - current.trimStart().length);
+		const rawStartInLocal = currentStart + (current.length - current.trimStart().length);
 		const startOffset = absoluteStartOffset + rawStartInLocal;
 		const endOffset = absoluteStartOffset + endIndexExclusive;
 
@@ -108,8 +103,7 @@ const parseSimpleArgList = (
 		if (raw.startsWith("$") && raw.length > 1) kind = "property";
 		else if (raw === "true" || raw === "false") kind = "boolean";
 		else if (raw === "null") kind = "null";
-		else if (raw.startsWith('"') && raw.endsWith('"') && raw.length >= 2)
-			kind = "string";
+		else if (raw.startsWith('"') && raw.endsWith('"') && raw.length >= 2) kind = "string";
 		else if (!Number.isNaN(Number(raw))) kind = "number";
 		else kind = "identifier";
 
@@ -153,15 +147,11 @@ const typeSpecLabel = (spec: MdslTypeSpec): string => {
 };
 
 const callableSignatureLabel = (spec: MdslCallableSpec): string => {
-	const params = spec.params
-		.map((p) => `${p.label}: ${typeSpecLabel(p.type)}`)
-		.join(", ");
+	const params = spec.params.map((p) => `${p.label}: ${typeSpecLabel(p.type)}`).join(", ");
 	return `${spec.name}(${params})`;
 };
 
-const callableDocumentation = (
-	spec: MdslCallableSpec,
-): monaco.IMarkdownString => {
+const callableDocumentation = (spec: MdslCallableSpec): monaco.IMarkdownString => {
 	const lines: string[] = [];
 	lines.push(`**${spec.name}**`);
 	if (spec.description) lines.push(`\n${spec.description}`);
@@ -175,11 +165,7 @@ const callableDocumentation = (
 	return { value: lines.join("\n") };
 };
 
-const isValueCompatible = (
-	arg: ParsedArg,
-	expected: MdslTypeSpec,
-	registry: MdslIntellisenseRegistry,
-): boolean => {
+const isValueCompatible = (arg: ParsedArg, expected: MdslTypeSpec, registry: MdslIntellisenseRegistry): boolean => {
 	if (arg.kind === "property") {
 		const propName = arg.raw.slice(1);
 		const propType = registry.properties[propName];
@@ -187,28 +173,19 @@ const isValueCompatible = (
 		if (!propType) return true;
 		// enum 要求 property 至少是 string/enum 才算兼容
 		if (expected.kind === "enum") {
-			return (
-				propType.kind === "enum" ||
-				(propType.kind === "primitive" && propType.type === "string")
-			);
+			return propType.kind === "enum" || (propType.kind === "primitive" && propType.type === "string");
 		}
 		// primitive：严格匹配
 		if (expected.kind === "primitive") {
 			if (expected.type === "unknown") return true;
-			return (
-				propType.kind === "primitive" &&
-				(propType.type === expected.type || propType.type === "unknown")
-			);
+			return propType.kind === "primitive" && (propType.type === expected.type || propType.type === "unknown");
 		}
 		return true;
 	}
 
 	if (expected.kind === "enum") {
 		// MDSL 里 enum 通常会写成 identifier（physical）或 string（"physical"）
-		const v =
-			arg.raw.startsWith('"') && arg.raw.endsWith('"')
-				? arg.raw.slice(1, -1)
-				: arg.raw;
+		const v = arg.raw.startsWith('"') && arg.raw.endsWith('"') ? arg.raw.slice(1, -1) : arg.raw;
 		// 但在 mistreevous 的 MDSL 解析器里，除 action/condition 名称外，不允许 identifier 作为参数值
 		return arg.kind === "string" ? expected.values.includes(v) : false;
 	}
@@ -257,9 +234,7 @@ const getEnclosingByKeyword = (
 	const last = !a ? c : !c ? a : a.index > c.index ? a : c;
 	if (!last) return null;
 
-	const keyword = last[0].toLowerCase().includes("condition")
-		? "condition"
-		: "action";
+	const keyword = last[0].toLowerCase().includes("condition") ? "condition" : "action";
 	const openOffset = windowStart + last.index + last[0].lastIndexOf("[");
 
 	// 确认未闭合：从 openOffset 到 offset 之间不能出现 ']'
@@ -288,8 +263,7 @@ const getEnclosingAttributeCall = (
 	const slice = text.slice(windowStart, offset);
 
 	const kws = ["entry", "exit", "step", "while", "until"] as const;
-	let best: { kw: (typeof kws)[number]; idx: number; len: number } | null =
-		null;
+	let best: { kw: (typeof kws)[number]; idx: number; len: number } | null = null;
 	for (const kw of kws) {
 		const re = new RegExp(`\\b${kw}\\b\\s*\\(`, "gi");
 		let last: RegExpExecArray | null = null;
@@ -319,12 +293,7 @@ const validateMdslModel = (model: monaco.editor.ITextModel) => {
 	const text = model.getValue();
 	const markers: monaco.editor.IMarkerData[] = [];
 
-	const pushMarker = (
-		severity: monaco.MarkerSeverity,
-		message: string,
-		startOffset: number,
-		endOffset: number,
-	) => {
+	const pushMarker = (severity: monaco.MarkerSeverity, message: string, startOffset: number, endOffset: number) => {
 		const start = model.getPositionAt(startOffset);
 		const end = model.getPositionAt(endOffset);
 		markers.push({
@@ -351,8 +320,7 @@ const validateMdslModel = (model: monaco.editor.ITextModel) => {
 
 			const nameArg = args[0];
 			const name = nameArg.raw.replace(/^"+|"+$/g, "");
-			const specMap =
-				kind === "action" ? registry.actions : registry.conditions;
+			const specMap = kind === "action" ? registry.actions : registry.conditions;
 			const spec = specMap[name];
 
 			if (!spec) {
@@ -405,8 +373,7 @@ const validateMdslModel = (model: monaco.editor.ITextModel) => {
 
 			const nameArg = args[0];
 			const name = nameArg.raw.replace(/^"+|"+$/g, "");
-			const specMap =
-				kw === "while" || kw === "until" ? registry.guards : registry.callbacks;
+			const specMap = kw === "while" || kw === "until" ? registry.guards : registry.callbacks;
 			const spec = specMap[name];
 
 			if (!spec) {
@@ -517,12 +484,7 @@ const initializeMDSLProviders = () => {
 								kind: monaco.languages.CompletionItemKind.Variable,
 								insertText: `$${k}`,
 								detail: `属性 (${typeSpecLabel(registry.properties[k])})`,
-								range: new monaco.Range(
-									position.lineNumber,
-									startColumn,
-									position.lineNumber,
-									position.column,
-								),
+								range: new monaco.Range(position.lineNumber, startColumn, position.lineNumber, position.column),
 							}),
 						);
 					if (suggestions.length) return { suggestions };
@@ -541,30 +503,24 @@ const initializeMDSLProviders = () => {
 					),
 				);
 				const args = parseSimpleArgList(argsText, call.openOffset + 1);
-				const isPickingName =
-					args.length === 0 || (args.length === 1 && !argsText.includes(","));
+				const isPickingName = args.length === 0 || (args.length === 1 && !argsText.includes(","));
 				const comma = hasTrailingComma(argsText);
 
-				const specMap =
-					call.keyword === "action" ? registry.actions : registry.conditions;
+				const specMap = call.keyword === "action" ? registry.actions : registry.conditions;
 
 				if (isPickingName) {
-					const suggestions = Object.keys(specMap).map(
-						(name): monaco.languages.CompletionItem => {
-							const spec = specMap[name];
-							const kindLabel = call.keyword === "action" ? "动作" : "条件";
-							return {
-								label: name,
-								kind: monaco.languages.CompletionItemKind.Function,
-								insertText: name,
-								detail: spec?.description
-									? `${kindLabel} · ${spec.description}`
-									: kindLabel,
-								documentation: spec ? callableDocumentation(spec) : undefined,
-								range: defaultRange,
-							};
-						},
-					);
+					const suggestions = Object.keys(specMap).map((name): monaco.languages.CompletionItem => {
+						const spec = specMap[name];
+						const kindLabel = call.keyword === "action" ? "动作" : "条件";
+						return {
+							label: name,
+							kind: monaco.languages.CompletionItemKind.Function,
+							insertText: name,
+							detail: spec?.description ? `${kindLabel} · ${spec.description}` : kindLabel,
+							documentation: spec ? callableDocumentation(spec) : undefined,
+							range: defaultRange,
+						};
+					});
 					return { suggestions };
 				}
 
@@ -575,9 +531,7 @@ const initializeMDSLProviders = () => {
 				// args: [name, arg1, arg2, ...]（parse 不包含空参数）
 				// 逗号结尾表示正在输入“下一个”参数
 				const providedCount = Math.max(0, args.length - 1);
-				const paramIndex = comma
-					? Math.max(0, providedCount - 1 + 1)
-					: Math.max(0, providedCount - 1);
+				const paramIndex = comma ? Math.max(0, providedCount - 1 + 1) : Math.max(0, providedCount - 1);
 				const expected = spec.params[paramIndex];
 				if (!expected) return { suggestions: [] };
 
@@ -592,9 +546,7 @@ const initializeMDSLProviders = () => {
 							detail: expected.description
 								? `枚举值（${expected.label}）· ${expected.description}`
 								: `枚举值（${expected.label}）`,
-							documentation: expected.description
-								? { value: expected.description }
-								: undefined,
+							documentation: expected.description ? { value: expected.description } : undefined,
 							range: defaultRange,
 						}),
 					);
@@ -614,35 +566,24 @@ const initializeMDSLProviders = () => {
 					),
 				);
 				const args = parseSimpleArgList(argsText, attr.openOffset + 1);
-				const isPickingName =
-					args.length === 0 || (args.length === 1 && !argsText.includes(","));
+				const isPickingName = args.length === 0 || (args.length === 1 && !argsText.includes(","));
 				const comma = hasTrailingComma(argsText);
 
-				const specMap =
-					attr.keyword === "while" || attr.keyword === "until"
-						? registry.guards
-						: registry.callbacks;
+				const specMap = attr.keyword === "while" || attr.keyword === "until" ? registry.guards : registry.callbacks;
 
 				if (isPickingName) {
-					const suggestions = Object.keys(specMap).map(
-						(name): monaco.languages.CompletionItem => {
-							const spec = specMap[name];
-							const kindLabel =
-								attr.keyword === "while" || attr.keyword === "until"
-									? "守卫"
-									: "回调";
-							return {
-								label: name,
-								kind: monaco.languages.CompletionItemKind.Function,
-								insertText: name,
-								detail: spec?.description
-									? `${kindLabel} · ${spec.description}`
-									: kindLabel,
-								documentation: spec ? callableDocumentation(spec) : undefined,
-								range: defaultRange,
-							};
-						},
-					);
+					const suggestions = Object.keys(specMap).map((name): monaco.languages.CompletionItem => {
+						const spec = specMap[name];
+						const kindLabel = attr.keyword === "while" || attr.keyword === "until" ? "守卫" : "回调";
+						return {
+							label: name,
+							kind: monaco.languages.CompletionItemKind.Function,
+							insertText: name,
+							detail: spec?.description ? `${kindLabel} · ${spec.description}` : kindLabel,
+							documentation: spec ? callableDocumentation(spec) : undefined,
+							range: defaultRange,
+						};
+					});
 					return { suggestions };
 				}
 
@@ -651,9 +592,7 @@ const initializeMDSLProviders = () => {
 				if (!spec) return { suggestions: [] };
 
 				const providedCount = Math.max(0, args.length - 1);
-				const paramIndex = comma
-					? Math.max(0, providedCount - 1 + 1)
-					: Math.max(0, providedCount - 1);
+				const paramIndex = comma ? Math.max(0, providedCount - 1 + 1) : Math.max(0, providedCount - 1);
 				const expected = spec.params[paramIndex];
 				if (!expected) return { suggestions: [] };
 				if (expected.type.kind === "enum") {
@@ -665,9 +604,7 @@ const initializeMDSLProviders = () => {
 							detail: expected.description
 								? `枚举值（${expected.label}）· ${expected.description}`
 								: `枚举值（${expected.label}）`,
-							documentation: expected.description
-								? { value: expected.description }
-								: undefined,
+							documentation: expected.description ? { value: expected.description } : undefined,
 							range: defaultRange,
 						}),
 					);
@@ -704,8 +641,7 @@ const initializeMDSLProviders = () => {
 					};
 
 				const name = args[0]?.raw?.replace(/^"+|"+$/g, "") ?? "";
-				const specMap =
-					call.keyword === "action" ? registry.actions : registry.conditions;
+				const specMap = call.keyword === "action" ? registry.actions : registry.conditions;
 				const spec = specMap[name];
 				if (!spec)
 					return {
@@ -714,30 +650,21 @@ const initializeMDSLProviders = () => {
 					};
 
 				const providedCount = Math.max(0, args.length - 1);
-				const activeParameter = comma
-					? Math.max(0, providedCount - 1 + 1)
-					: Math.max(0, providedCount - 1);
+				const activeParameter = comma ? Math.max(0, providedCount - 1 + 1) : Math.max(0, providedCount - 1);
 				return {
 					value: {
 						signatures: [
 							{
 								label: callableSignatureLabel(spec),
-								documentation: spec.description
-									? { value: spec.description }
-									: undefined,
+								documentation: spec.description ? { value: spec.description } : undefined,
 								parameters: spec.params.map((p) => ({
 									label: `${p.label}: ${typeSpecLabel(p.type)}`,
-									documentation: p.description
-										? { value: p.description }
-										: undefined,
+									documentation: p.description ? { value: p.description } : undefined,
 								})),
 							},
 						],
 						activeSignature: 0,
-						activeParameter: Math.min(
-							activeParameter,
-							Math.max(0, spec.params.length - 1),
-						),
+						activeParameter: Math.min(activeParameter, Math.max(0, spec.params.length - 1)),
 					},
 					dispose() {},
 				};
@@ -762,10 +689,7 @@ const initializeMDSLProviders = () => {
 					};
 
 				const name = args[0]?.raw?.replace(/^"+|"+$/g, "") ?? "";
-				const specMap =
-					attr.keyword === "while" || attr.keyword === "until"
-						? registry.guards
-						: registry.callbacks;
+				const specMap = attr.keyword === "while" || attr.keyword === "until" ? registry.guards : registry.callbacks;
 				const spec = specMap[name];
 				if (!spec)
 					return {
@@ -774,30 +698,21 @@ const initializeMDSLProviders = () => {
 					};
 
 				const providedCount = Math.max(0, args.length - 1);
-				const activeParameter = comma
-					? Math.max(0, providedCount - 1 + 1)
-					: Math.max(0, providedCount - 1);
+				const activeParameter = comma ? Math.max(0, providedCount - 1 + 1) : Math.max(0, providedCount - 1);
 				return {
 					value: {
 						signatures: [
 							{
 								label: callableSignatureLabel(spec),
-								documentation: spec.description
-									? { value: spec.description }
-									: undefined,
+								documentation: spec.description ? { value: spec.description } : undefined,
 								parameters: spec.params.map((p) => ({
 									label: `${p.label}: ${typeSpecLabel(p.type)}`,
-									documentation: p.description
-										? { value: p.description }
-										: undefined,
+									documentation: p.description ? { value: p.description } : undefined,
 								})),
 							},
 						],
 						activeSignature: 0,
-						activeParameter: Math.min(
-							activeParameter,
-							Math.max(0, spec.params.length - 1),
-						),
+						activeParameter: Math.min(activeParameter, Math.max(0, spec.params.length - 1)),
 					},
 					dispose() {},
 				};
@@ -949,8 +864,7 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
 		editor = monaco.editor.create(editorRef, {
 			value: props.value || "",
 			language: props.mode || "javascript",
-			theme:
-				store.settings.userInterface.theme === "dark" ? darkTheme : lightTheme,
+			theme: store.settings.userInterface.theme === "dark" ? darkTheme : lightTheme,
 			readOnly: props.readOnly || false,
 			fontSize: 16,
 			minimap: { enabled: false },
@@ -1006,9 +920,7 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
 
 	createEffect(() => {
 		// 设置主题
-		monaco.editor.setTheme(
-			store.settings.userInterface.theme === "dark" ? darkTheme : lightTheme,
-		);
+		monaco.editor.setTheme(store.settings.userInterface.theme === "dark" ? darkTheme : lightTheme);
 	});
 
 	// 响应 props.value 变化
@@ -1075,13 +987,7 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
 		return { style: props.style };
 	};
 
-	return (
-		<div
-			ref={editorRef}
-			class={`h-full min-h-[200px] w-full ${props.class || ""}`}
-			{...styleProps()}
-		/>
-	);
+	return <div ref={editorRef} class={`h-full min-h-[200px] w-full ${props.class || ""}`} {...styleProps()} />;
 };
 
 export { CodeEditor };

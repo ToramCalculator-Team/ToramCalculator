@@ -1,11 +1,9 @@
-import { selectAllWorlds } from "@db/generated/repositories/world";
 import { getDB } from "@db/repositories/database";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createMemo, createResource, createSignal, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
-import { Select } from "~/components/controls/select";
 import { Icons } from "~/components/icons/index";
 import type { dictionary } from "~/locales/type";
 
@@ -48,11 +46,11 @@ export const AddressPage = (dic: dictionary, itemHandleClick: (id: string) => vo
 		const maxY = Math.max(...posY) + 1;
 		const width = maxX - minX + 1;
 		const height = maxY - minY + 1;
-		const addressMap = new Map(addressesData.map((a) => [a.posX + "," + a.posY, a]));
+		const addressMap = new Map(addressesData.map((a) => [`${a.posX},${a.posY}`, a]));
 		const gridItems = [];
 		for (let y = minY; y <= maxY; y++) {
 			for (let x = minX; x <= maxX; x++) {
-				const key = x + "," + y;
+				const key = `${x},${y}`;
 				const address = addressMap.get(key);
 				gridItems.push({ x, y, address });
 			}
@@ -118,6 +116,7 @@ export const AddressPage = (dic: dictionary, itemHandleClick: (id: string) => vo
 								{gridInfo().gridItems.map(({ x, y, address }) =>
 									address ? (
 										<button
+											type="button"
 											class="bg-primary-color shadow-dividing-color relative flex cursor-pointer flex-col items-start justify-start gap-1 rounded p-2 shadow-md hover:shadow-xl"
 											style={{
 												"grid-column": x - gridInfo().minX + 1,

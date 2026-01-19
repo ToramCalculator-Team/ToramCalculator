@@ -169,7 +169,6 @@ export class GameEngine {
 		this.expressionEvaluator = new ExpressionEvaluator({
 			jsProcessor: this.jsProcessor,
 			getMemberById: (id) => this.world.memberManager.getMember(id),
-			engine: this, // 向后兼容：表达式里可能访问 engine
 		});
 
 		// 设置域事件发射器到 MemberManager
@@ -473,8 +472,6 @@ export class GameEngine {
 	 */
 	setSystemMessageSender(sender: ((payload: unknown) => void) | null): void {
 		this.systemMessageSender = sender;
-		// 向后兼容：仍通过 setSystemMessageSender 设置投影器（内部会转发到新的发送器）
-		this.controllerEventProjector.setSystemMessageSender(sender);
 	}
 
 	/**

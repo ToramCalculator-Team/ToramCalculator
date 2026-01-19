@@ -84,9 +84,9 @@
  * - 示例实现: https://github.com/electric-sql/electric/tree/main/examples/write-patterns/patterns/4-through-the-db
  */
 
-import { execSync } from "child_process";
-import fs from "fs";
-import path from "path";
+import { execSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 import { PATHS } from "../config";
 import { writeFileSafely } from "../utils/writeFileSafely";
 
@@ -324,7 +324,7 @@ EXECUTE FUNCTION changes_notify_trigger();
 `;
 
 		console.log("已转换客户端 SQL 为同步架构");
-		return output.join("\n") + "\n" + changesTable;
+		return `${output.join("\n")}\n${changesTable}`;
 	}
 
 	/**
@@ -480,7 +480,7 @@ CREATE OR REPLACE VIEW "${tableName}" AS
 		// 生成触发器函数和触发器
 		const triggers = this.generateTriggers(tableName, colNames, pkCols);
 
-		return view + "\n" + triggers;
+		return `${view}\n${triggers}`;
 	}
 
 	/**

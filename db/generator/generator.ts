@@ -7,16 +7,13 @@ import type { GeneratorOptions } from "@prisma/generator-helper";
 import pkg from "@prisma/generator-helper";
 import { PATHS } from "./config";
 import { DMMFUtilsGenerator } from "./helpers/generateDMMFUtils";
-import { type EnumType, generateEnumType } from "./helpers/generateEnumType";
 import { generateImplicitManyToManyModels } from "./helpers/generateImplicitManyToManyModels";
 import { QueryBuilderGenerator } from "./helpers/generateQueryBuilder";
 import { RepositoryGenerator } from "./helpers/generateRepository";
 import { SQLGenerator } from "./helpers/generateSQL";
 import { ZodGenerator } from "./helpers/generateZod";
-import { parseMultiSchemaMap } from "./helpers/multiSchemaHelpers";
 import { SchemaCollector } from "./utils/schemaCollector";
 import { sorted } from "./utils/sorted";
-import { validateConfig } from "./utils/validateConfig";
 
 const { generatorHandler } = pkg;
 
@@ -41,24 +38,9 @@ generatorHandler({
 			// 读取临时 schema 文件
 			const finalSchema = schemaCollector.readTempSchema(PATHS.tempSchema);
 
-			// Parse the config
-			const config = validateConfig({
-				...options.generator.config,
-				databaseProvider: options.datasources[0].provider,
-			});
-
-			// Generate enum types
-			const enums = options.dmmf.datamodel.enums
-				.map(({ name, values }) => generateEnumType(name, values))
-				.filter((e): e is EnumType => !!e);
-
-			// Generate DMMF models for implicit many to many tables
+			// 生成隐式多对多模型
 			const implicitManyToManyModels = generateImplicitManyToManyModels(options.dmmf.datamodel.models);
 
-			const hasMultiSchema = options.datasources.some((d) => d.schemas.length > 0);
-
-			const multiSchemaMap =
-				config.groupBySchema || hasMultiSchema ? parseMultiSchemaMap(options.datamodel) : undefined;
 
 			// 包含中间表的完整模型列表
 			const allModels = sorted([...options.dmmf.datamodel.models, ...implicitManyToManyModels], (a, b) =>
