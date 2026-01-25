@@ -480,11 +480,17 @@ model skill {
     createdByAccountId String?
 }
 
-// 技能效果
-model skill_effect {
+// 技能变体(适配特定装备组合的技能实际效果)
+model variant {
     id String @id
 
-    condition         String
+    equipPattern      String
+    hpCost            String?
+    mpCost            String?
+    description       String
+    activeEffect      Json /// ZOD EffectTreeSchema
+    passiveEffects    Json[] /// ZOD EffectTreeSchema
+    buffs             Json[] /// ZOD EffectTreeSchema
     elementLogic      String
     castingRange      String
     effectiveRange    Int
@@ -495,10 +501,7 @@ model skill_effect {
     reservoirFixed    String
     reservoirModified String
     startupFrames     String
-    hpCost            String?
-    mpCost            String?
-    description       String
-    logic             Json
+    logic             Json /// ZOD SkillEffectLogicSchema
     details           String?
 
     belongToSkill   skill  @relation(fields: [belongToskillId], references: [id], onDelete: Cascade)

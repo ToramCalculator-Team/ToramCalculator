@@ -1,6 +1,6 @@
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import type { SkillEffectWithRelations } from "@db/generated/repositories/skill_effect";
-import type { SkillEffectLogic } from "@db/schema/skillEffectLogicSchema";
+import type { SkillEffectLogic } from "@db/schema/jsons";
 import type { ExpressionContext } from "../../../JSProcessor/types";
 import type { MemberDomainEvent } from "../../../types";
 import type { DamageAreaRequest } from "../../../World/types";

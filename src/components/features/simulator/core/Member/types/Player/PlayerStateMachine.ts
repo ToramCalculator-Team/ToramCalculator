@@ -248,8 +248,11 @@ export const playerStateMachine = (
 				}
 
 				// 提取行为树定义
-				const treeDefinition = skillLogicExample.default.definition;
-				const agentCode = skillLogicExample.default.agent;
+				// const treeDefinition = skillLogicExample.default.definition;
+				// const agentCode = skillLogicExample.default.agent;
+
+				const treeDefinition = skillEffect.logic.activeEffect.definition;
+				const agentCode = skillEffect.logic.activeEffect.agent;
 
 				const treeData = player.btManager.registerSkillBt(treeDefinition, agentCode);
 				if (!treeData) {

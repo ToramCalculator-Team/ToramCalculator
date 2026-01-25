@@ -48,11 +48,12 @@ export const CommonActionPool = {
 		z
 			.object({
 				name: z.string().meta({ description: "动画名称" }),
+				duration: z.number().meta({ description: "动画时长" }),
 			})
 			.meta({ description: "播放动画" }),
 		(context, input) => {
 			console.log(`👤 [${context.owner?.name}] animation`, input);
-			sendRenderCommand(context, input.name);
+			sendRenderCommand(context, input.name, { duration: input.duration });
 			return State.SUCCEEDED;
 		},
 	),

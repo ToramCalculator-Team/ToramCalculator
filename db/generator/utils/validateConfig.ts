@@ -1,4 +1,4 @@
-import z from "zod/v4";
+import { z } from "zod/v4";
 
 const booleanStringLiteral = z.union([z.boolean(), z.literal("true"), z.literal("false")]).transform((arg) => {
 	if (typeof arg === "boolean") return arg;

@@ -1,3 +1,4 @@
+import { SkillEffectLogic } from "@db/schema/jsons";
 import type { SkillExample } from "../types";
 
 const defaultSkillDefinition = `
@@ -130,7 +131,7 @@ class Agent {
   }
 }`;
 
-export const skillLogicExample = {
+export const skillLogicExample: Record<string, SkillEffectLogic> = {
 	default: {
 		definition: defaultSkillDefinition,
 		agent: defaultSkillAgent,
