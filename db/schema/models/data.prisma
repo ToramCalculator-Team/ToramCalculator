@@ -486,9 +486,9 @@ model skill {
 model skill_variant {
     id String @id
 
-    targetMainWeaponType   String // Enum MAIN_HAND_TYPE
-    targetSubWeaponType    String // Enum SUB_HAND_TYPE
-    targetArmorAbilityType String // Enum PLAYER_ARMOR_ABILITY_TYPE
+    targetMainWeaponType   String? // Enum MAIN_HAND_TYPE
+    targetSubWeaponType    String? // Enum SUB_HAND_TYPE
+    targetArmorAbilityType String? // Enum PLAYER_ARMOR_ABILITY_TYPE
     hpCost                 String?
     mpCost                 String?
     description            String

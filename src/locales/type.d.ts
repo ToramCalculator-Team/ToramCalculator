@@ -1,4 +1,4 @@
-import { DB } from "@db/generated/zod/index";
+import type { DB } from "@db/generated/zod/index";
 
 export type FieldDetail = {
 	key: string;
@@ -13,7 +13,11 @@ type EnumFieldDetail<Enum extends string> = FieldDetail & {
 /**
  * 判断 T 是否是 string literal union（不是 string 自身）
  */
-type IsStringLiteralUnionOnly<T> = [T] extends [string] ? (string extends T ? false : true) : false;
+type IsStringLiteralUnionOnly<T> = [NonNullable<T>] extends [string]
+	? string extends NonNullable<T>
+		? false
+		: true
+	: false;
 
 /**
  * 字段字典结构：对 string literal union 字段加 enumMap

@@ -114,14 +114,22 @@ export class EnumInjector {
 
 			// 处理枚举字段
 			let newLine = line;
-			const enumMatch = line.match(/(\w+)\s+\w+\s+\/\/ Enum (\w+)/);
+			// 支持 String / String? 这类字段（可选字段会带 '?'）
+			const enumMatch = line.match(/^\s*(\w+)\s+(\w+)(\?)?\s+\/\/\s*Enum\s+(\w+)\s*$/);
 			if (enumMatch && currentModel) {
-				// 从第2组开始提取枚举名
-				const [,, originalEnumName] = enumMatch;
+				const fieldType = enumMatch[2];
+				const originalEnumName = enumMatch[4];
+
+				// 仅处理仍然是 String / String? 的枚举注释字段
+				if (fieldType !== "String") {
+					updatedSchema += `${newLine}\n`;
+					continue;
+				}
 				const pascalCaseEnum = this.toPascalCase(originalEnumName);
 
 				if (this.extractedEnums.has(pascalCaseEnum)) {
-					newLine = line.replace("String", pascalCaseEnum);
+					// 只替换字段类型位置的 String，保留 '?' 等后缀
+					newLine = line.replace(/\bString\b/, pascalCaseEnum);
 
 					// 建立枚举类型名到枚举名的映射
 					this.enumTypeToNameMap.set(originalEnumName, pascalCaseEnum);
