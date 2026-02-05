@@ -4,6 +4,7 @@
  * @version 1.0.0
  */
 // import type { Selectable } from "kysely";
+import { skillLogicExample } from "~/components/features/BtEditor/data/SkillExamples";
 import type { DB } from "./generated/zod/index";
 
 // type SelectDB<T> = {
@@ -427,20 +428,20 @@ export const defaultData: DB = {
 		activeEffect: {
 			memberType: "Player",
 			name: "default",
-			definition: "",
-			agent: "",
+			definition: skillLogicExample.default.definition,
+			agent: skillLogicExample.default.agent,
 		},
 		passiveEffects: [{
 			memberType: "Player",
 			name: "default",
-			definition: "",
-			agent: "",
+			definition: skillLogicExample.default.definition,
+			agent: skillLogicExample.default.agent,
 		}],
 		buffs: [{
 			memberType: "Player",
 			name: "default",
-			definition: "",
-			agent: "",
+			definition: skillLogicExample.default.definition,
+			agent: skillLogicExample.default.agent,
 		}],
 		elementLogic: "",
 		castingRange: "",

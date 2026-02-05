@@ -25,5 +25,5 @@ export default function BtEditorPage() {
 		setInitValues({ definition, agent, memberType: "Player" });
 	});
 
-	return <BtEditor initValues={initValues()} onSave={onSave} />;
+	return <BtEditor title="行为树编辑器" initValues={initValues()} onSave={onSave} />;
 }

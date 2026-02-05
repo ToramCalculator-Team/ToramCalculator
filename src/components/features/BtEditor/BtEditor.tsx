@@ -1,6 +1,6 @@
 import type { MemberType } from "@db/schema/enums";
 import { MEMBER_TYPE } from "@db/schema/enums";
-import { type Component, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import { type Component, createMemo, createSignal, onCleanup, onMount, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Select } from "~/components/controls/select";
 import { Icons } from "~/components/icons";
@@ -26,6 +26,7 @@ import type { ConnectorVariant } from "./types/workflow";
 export { DefinitionType, SidebarTab };
 
 export type BtEditorProps = {
+	title: string;
 	initValues?: {
 		definition: string;
 		agent: string;
@@ -33,6 +34,7 @@ export type BtEditorProps = {
 	};
 	readOnly?: boolean;
 	onSave: (mdsl: string, agent: string, memberType: MemberType) => void;
+	onClose?: () => void;
 };
 
 /**
@@ -119,6 +121,11 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	 * @returns Agent 实例
 	 */
 	const createBoardInstance = (boardClassDefinition: string): Agent => {
+		// 允许用户在代码前添加任意空行/空白；但如果完全为空则给出更友好的错误
+		if (!boardClassDefinition || boardClassDefinition.trim().length === 0) {
+			throw new Error("Agent 定义为空");
+		}
+
 		// 使用 Function 构造函数动态创建 Agent 类
 		const boardClassCreator = new Function(
 			"BehaviourTree",
@@ -128,7 +135,9 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 			"getBooleanValue",
 			"showErrorToast",
 			"showInfoToast",
-			`return ${boardClassDefinition};`,
+			// 注意：如果 boardClassDefinition 以换行开头，`return \n ...` 会触发 ASI 变成 `return;`
+			// 用括号包裹，保证 return 后面立即跟 `(`，并允许用户代码前有任意空行。
+			`return (${boardClassDefinition});`,
 		);
 
 		// 提供给 Agent 的辅助函数
@@ -365,7 +374,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		try {
 			createBoardInstance(agentClassDefinition);
 		} catch (error) {
-			boardExceptionMessage = `${(error as any).message}`;
+			boardExceptionMessage = error instanceof Error ? error.message : String(error);
 		}
 
 		// 如果 Agent 代码有效，尝试用新的 Agent 重新创建行为树
@@ -433,7 +442,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 			// 执行行为树的一步
 			try {
 				tree.step();
-			} catch (exception: any) {
+			} catch (exception: unknown) {
 				// 执行出错，停止播放
 				clearInterval(playInterval);
 				setBehaviourTreePlayInterval(null);
@@ -442,7 +451,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 				tree.reset();
 
 				// 通过 toast 通知用户错误信息
-				toast.error(exception.toString());
+				toast.error(exception instanceof Error ? exception.message : String(exception));
 			}
 
 			// 如果行为树已经完成（不再运行），停止定时器
@@ -532,6 +541,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 				<div
 					class={`Left ${props.readOnly ? "hidden" : ""} landscape:lg:shadow-card shadow-area-color bg-primary-color landscape:lg:absolute top-2 left-2 flex items-center gap-1 rounded`}
 				>
+					<h1 class="text-lg font-bold p-3">{props.title}</h1>
 					<Button level="quaternary" onClick={() => props.onSave(definition(), agent(), memberType())} class="p-1">
 						<Icons.Outline.Save />
 					</Button>
@@ -550,9 +560,11 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 				<div
 					class={`Right ${props.readOnly ? "hidden" : ""} landscape:lg:shadow-card shadow-area-color bg-primary-color landscape:lg:absolute top-2 right-2 flex items-center gap-1 rounded`}
 				>
-					<Button level="quaternary" class="p-1">
-						<Icons.Outline.Close />
-					</Button>
+					<Show when={props.onClose}>
+						<Button level="quaternary" class="p-1" onClick={() => props.onClose?.()}>
+							<Icons.Outline.Close />
+						</Button>
+					</Show>
 				</div>
 			</div>
 			<div

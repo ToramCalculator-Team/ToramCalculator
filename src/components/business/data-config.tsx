@@ -21,6 +21,10 @@ import { Input } from "../controls/input";
 import { Select } from "../controls/select";
 import { BtEditor } from "../features/BtEditor/BtEditor";
 import type { DBFormProps } from "./form/DBFormRenderer";
+import { Portal } from "solid-js/web";
+import { Dialog } from "../containers/dialog";
+import { Button } from "../controls/button";
+import { Motion, Presence } from "solid-motionone";
 
 export type DataConfig = Partial<{
 	[T in keyof DB]: {
@@ -526,9 +530,10 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {
-				actions: (value, setValue) => {
+				actions: (value, setValue, _, dictionary) => {
 					return (
 						<BtEditor
+							title={dictionary.fields.actions.key}
 							initValues={{
 								definition: value.definition ?? "",
 								agent: value.agent ?? "",
@@ -916,24 +921,58 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: ["id"],
 			fieldGenerator: {
-				activeEffect: (value, setValue) => {
-					console.log(value);
+				activeEffect: (value, setValue, _, dictionary) => {
+					const [editorDisplay, setEditorDisplay] = createSignal(false);
 					return (
-						<BtEditor
-							initValues={{
-								definition: value.definition ?? "",
-								agent: value.agent ?? "",
-								memberType: (value.memberType as MemberType) ?? "Player",
-							}}
-							onSave={(mdsl, agent, memberType) => {
-								setValue({
-									...value,
-									definition: mdsl,
-									agent: agent,
-									memberType: memberType,
-								});
-							}}
-						/>
+						<>
+							<Button onClick={() => setEditorDisplay(true)}>编辑主动效果</Button>
+							<Portal>
+								<Presence exitBeforeEnter>
+									<Show when={editorDisplay()}>
+										<Motion.div
+											animate={{ transform: ["scale(1.05)", "scale(1)"], opacity: [0, 1] }}
+											exit={{ transform: ["scale(1)", "scale(1.05)"], opacity: [1, 0] }}
+											transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+											class={`DialogBG bg-primary-color-10 fixed top-0 left-0 z-40 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
+											onClick={() => setEditorDisplay(false)}
+											style={{
+												"z-index": 51,
+											}}
+										>
+											<div
+												role="application"
+												class="DialogBox bg-primary-color shadow-dividing-color shadow-dialog relative flex h-[90vh] w-[90vw] flex-col items-center gap-3 rounded p-2"
+												onClick={(e) => e.stopPropagation()}
+												onKeyDown={(e) => {
+													if (e.key === "Escape") {
+														setEditorDisplay(false);
+													}
+												}}
+											>
+												<BtEditor
+													title={dictionary.fields.activeEffect.key}
+													initValues={{
+														definition: value.definition ?? "",
+														agent: value.agent ?? "",
+														memberType: (value.memberType as MemberType) ?? "Player",
+													}}
+													onSave={(mdsl, agent, memberType) => {
+														setValue({
+															...value,
+															definition: mdsl,
+															agent: agent,
+															memberType: memberType,
+														});
+														setEditorDisplay(false);
+													}}
+													onClose={() => setEditorDisplay(false)}
+												/>
+											</div>
+										</Motion.div>
+									</Show>
+								</Presence>
+							</Portal>
+						</>
 					);
 				},
 			},
@@ -941,10 +980,11 @@ export const DATA_CONFIG: DataConfig = {
 		card: {
 			hiddenFields: ["id"],
 			fieldGenerator: {
-				activeEffect: (field) => {
+				activeEffect: (field, key, dictionary) => {
 					return (
 						<div class="w-full h-[50vh] rounded overflow-hidden">
 							<BtEditor
+								title={dictionary.fields[key].key}
 								initValues={{
 									definition: field.activeEffect.definition ?? "",
 									agent: field.activeEffect.agent ?? "",

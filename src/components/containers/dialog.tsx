@@ -94,6 +94,7 @@ export function Dialog(props: {
   setState: (state: boolean) => void;
   title: string;
   maxWith?: string;
+  zIndex?: number;
 }) {
   const handleClose = (): void => {
     props.setState(false);
@@ -116,10 +117,19 @@ export function Dialog(props: {
           transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
           class={`DialogBG bg-primary-color-10 fixed top-0 left-0 z-40 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
           onClick={handleClose}
+          style={{
+            "z-index": props.zIndex ?? 40,
+          }}
         >
           <div 
+            role="application"
             class={`DialogBox bg-primary-color shadow-dividing-color shadow-dialog relative flex max-h-[70vh] w-full max-w-[50vw] portrait:max-w-[90vw] flex-col items-center gap-3 rounded p-2`}
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                handleClose();
+              }
+            }}
           >
             <div class="DialogTitle z-10 drop-shadow-dividing-color absolute -top-3 flex items-center drop-shadow-xl">
               <svg width="30" height="48" viewBox="0 0 30 48" fill="none" xmlns="http://www.w3.org/2000/svg">
