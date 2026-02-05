@@ -18,13 +18,3 @@ export const EffectTreeSchema = z.object({
 	memberType: z.enum(MEMBER_TYPE).default("Player"),
 });
 export type EffectTree = z.output<typeof EffectTreeSchema>;
-
-export const SkillEffectLogicSchema = z.object({
-	// 主动效果
-	activeEffect: EffectTreeSchema,
-	// 被动效果
-	passiveEffects: z.array(EffectTreeSchema),
-	// buff效果
-	buffs: z.array(EffectTreeSchema),
-});
-export type SkillEffectLogic = z.output<typeof SkillEffectLogicSchema>;

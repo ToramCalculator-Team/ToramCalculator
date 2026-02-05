@@ -158,7 +158,7 @@ worker({
 		const _recipeShape = await syncTable("recipe", ["id"]);
 		const _recipeIngredientShape = await syncTable("recipe_ingredient", ["id"]);
 		const _skillShape = await syncTable("skill", ["id"]);
-		const _skillEffectShape = await syncTable("skill_effect", ["id"]);
+		const _skillVariantShape = await syncTable("skill_variant", ["id"]);
 		const _playerWeponShape = await syncTable("player_weapon", ["id"]);
 		const _playerArmorShape = await syncTable("player_armor", ["id"]);
 		const _playerOptionShape = await syncTable("player_option", ["id"]);

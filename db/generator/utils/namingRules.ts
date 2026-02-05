@@ -14,7 +14,7 @@
 export class NamingRules {
 	/**
 	 * 将下划线命名转换为 PascalCase（私有方法）
-	 * 例如: "user_post" -> "UserPost", "_user_post" -> "UserPost", "skill_effect" -> "SkillEffect"
+	 * 例如: "user_post" -> "UserPost", "_user_post" -> "UserPost", "skill_variant" -> "SkillEffect"
 	 */
 	private static toPascalCase(name: string): string {
 		return name
@@ -26,7 +26,7 @@ export class NamingRules {
 
 	/**
 	 * 转换为 camelCase（私有方法）
-	 * 例如: "UserPost" -> "userPost", "skill_effect" -> "skillEffect"
+	 * 例如: "UserPost" -> "userPost", "skill_variant" -> "skillVariant"
 	 */
 	private static toCamelCase(name: string): string {
 		const pascal = NamingRules.toPascalCase(name);
@@ -35,7 +35,7 @@ export class NamingRules {
 
 	/**
 	 * 转换为小写（私有方法）
-	 * 例如: "UserPost" -> "userpost", "Skill_Effect" -> "skill_effect"
+	 * 例如: "UserPost" -> "userpost", "Skill_Effect" -> "skill_variant"
 	 */
 	private static toLowerCase(name: string): string {
 		return name.toLowerCase();
@@ -65,7 +65,7 @@ export class NamingRules {
 	/**
 	 * 类型名称（用于 TypeScript 类型）
 	 * - 所有表名都转换为 PascalCase，去除下划线
-	 * - 例如: "user" -> "User", "skill_effect" -> "SkillEffect", "_user_post" -> "UserPost"
+	 * - 例如: "user" -> "User", "skill_variant" -> "SkillEffect", "_user_post" -> "UserPost"
 	 */
 	static TypeName(tableName: string, modelName?: string): string {
 		const name = modelName || tableName;
@@ -76,7 +76,7 @@ export class NamingRules {
 	/**
 	 * Zod Schema 名称（PascalCase + Schema）
 	 * - 使用大驼峰 + "Schema"
-	 * - 例如: "user" -> "UserSchema", "skill_effect" -> "SkillEffectSchema", "_user_post" -> "UserPostSchema"
+	 * - 例如: "user" -> "UserSchema", "skill_variant" -> "SkillEffectSchema", "_user_post" -> "UserPostSchema"
 	 */
 	static SchemaName(name: string): string {
 		return `${NamingRules.toPascalCase(name)}Schema`;
@@ -120,7 +120,7 @@ export class NamingRules {
 
 	/**
 	 * 变量名（camelCase）
-	 * - 例如: "UserPost" -> "userPost", "SkillEffect" -> "skillEffect"
+	 * - 例如: "UserPost" -> "userPost", "SkillEffect" -> "skillVariant"
 	 */
 	static VariableName(name: string): string {
 		return NamingRules.toCamelCase(name);
@@ -128,7 +128,7 @@ export class NamingRules {
 
 	/**
 	 * 函数名（PascalCase，用于导出函数）
-	 * - 例如: "user" -> "User", "skill_effect" -> "SkillEffect", "_user_post" -> "UserPost"
+	 * - 例如: "user" -> "User", "skill_variant" -> "SkillEffect", "_user_post" -> "UserPost"
 	 */
 	static FunctionName(name: string): string {
 		return NamingRules.TypeName(name);

@@ -1170,14 +1170,14 @@ export class GameEngine {
 		const currentHp = player.statContainer?.getValue("hp.current") ?? 0;
 
 		return (Array.isArray(skillList) ? skillList : []).map((skill: unknown, index: number) => {
-			const s = skill as { id?: unknown; lv?: unknown; template?: { name?: unknown; effects?: unknown[] } };
-			const template = s.template as { name?: unknown; effects?: unknown[] } | undefined;
+			const s = skill as { id?: unknown; lv?: unknown; template?: { name?: unknown; variants?: unknown[] } };
+			const template = s.template as { name?: unknown; variants?: unknown[] } | undefined;
 			const skillName = String(template?.name ?? "未知技能");
 			const skillLevel = Number(s.lv ?? 0);
 
 			// 查找适用的技能效果
 			const effect = (
-				template?.effects as
+				template?.variants as
 					| Array<{ condition?: string; mpCost?: string; hpCost?: string; castingRange?: number }>
 					| undefined
 			)?.find((e: { condition?: string }) => {

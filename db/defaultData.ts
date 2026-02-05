@@ -178,7 +178,7 @@ export const defaultData: SelectDB<DB> = {
 		name: "默认消耗品",
 		type: "MaxHp",
 		effectDuration: 0,
-		effects: [],
+		variants: [],
 		itemId: "defaultConsumableItemId",
 	},
 	crystal: {
@@ -414,7 +414,7 @@ export const defaultData: SelectDB<DB> = {
 		updatedByAccountId: null,
 		createdByAccountId: null,
 	},
-	skill_effect: {
+	skill_variant: {
 		id: "defaultSkillEffectId",
 		condition: "",
 		elementLogic: "",

@@ -852,10 +852,10 @@ export const DATA_CONFIG: DataConfig = {
 			fieldGenerator: {},
 		},
 	},
-	skill_effect: {
+	skill_variant: {
 		fieldGroupMap: {
 			ID: ["id"],
-			启用条件: ["condition"],
+			启用条件: ["targetMainWeaponType", "targetSubWeaponType", "targetArmorAbilityType"],
 			所属技能: ["belongToskillId"],
 			基本信息: [
 				"hpCost",
@@ -870,9 +870,11 @@ export const DATA_CONFIG: DataConfig = {
 				"reservoirFixed",
 				"reservoirModified",
 			],
+			主动效果: ["activeEffect"],
+			被动效果: ["passiveEffects"],
+			Buff效果: ["buffs"],
 			详细信息: ["description", "details"],
 			其他信息: ["elementLogic"],
-			技能逻辑: ["logic"],
 		},
 		table: {
 			columnsDef: [
@@ -924,7 +926,7 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: ["id"],
 			fieldGenerator: {
-				logic: (field) => {
+				activeEffect: (field) => {
 					const value = field().state.value;
 					return (
 						<BtEditor
@@ -949,14 +951,14 @@ export const DATA_CONFIG: DataConfig = {
 		card: {
 			hiddenFields: ["id"],
 			fieldGenerator: {
-				logic: (field) => {
+				activeEffect: (field) => {
 					return (
 						<div class="w-full h-[50vh] rounded overflow-hidden">
 							<BtEditor
 								initValues={{
-									definition: field.logic.definition ?? "",
-									agent: field.logic.agent ?? "",
-									memberType: field.logic.memberType ?? "Player",
+									definition: field.activeEffect.definition ?? "",
+									agent: field.activeEffect.agent ?? "",
+									memberType: field.activeEffect.memberType ?? "Player",
 								}}
 								readOnly={true}
 								onSave={(mdsl, agent, memberType) => {

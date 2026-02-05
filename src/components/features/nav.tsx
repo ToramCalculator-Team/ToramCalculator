@@ -82,7 +82,7 @@ export const Nav = () => {
 		"post",
 		"recipe_ingredient",
 		"session",
-		"skill_effect",
+		"skill_variant",
 		"statistic",
 		"task_collect_require",
 		"task_kill_requirement",

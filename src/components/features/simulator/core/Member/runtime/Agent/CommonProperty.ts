@@ -1,6 +1,6 @@
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
-import type { SkillEffectWithRelations } from "@db/generated/repositories/skill_effect";
-import type { SkillEffectLogic } from "@db/schema/jsons";
+import type { SkillVariantWithRelations } from "@db/generated/repositories/skill_variant";
+import type { EffectTree } from "@db/schema/jsons";
 import type { ExpressionContext } from "../../../JSProcessor/types";
 import type { MemberDomainEvent } from "../../../types";
 import type { DamageAreaRequest } from "../../../World/types";
@@ -26,9 +26,9 @@ export interface CommonProperty extends Record<string, unknown> {
 	/** 当前技能数据 */
 	currentSkill: CharacterSkillWithRelations | null;
 	/** 当前技能效果 */
-	currentSkillEffect: SkillEffectWithRelations | null;
-	/** 当前技能逻辑 */
-	currentSkillLogic: SkillEffectLogic | null;
+	currentSkillVariant: SkillVariantWithRelations | null;
+	/** 当前技能主动效果行为树 */
+	currentSkillActiveEffectLogic: EffectTree | null;
 
 	// 每次技能执行完更新
 	/** 上一个技能数据 */
@@ -61,8 +61,8 @@ export const CommonProperty: CommonProperty = {
 	targetId: "",
 	statusTags: [],
 	currentSkill: null,
-	currentSkillEffect: null,
-	currentSkillLogic: null,
+	currentSkillVariant: null,
+	currentSkillActiveEffectLogic: null,
 	previousSkill: null,
 	vAtkP: "((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - (1 - self.pie.p) * target.def.p)",
 	vAtkM: "((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - (1 - self.pie.m) * target.def.m)",

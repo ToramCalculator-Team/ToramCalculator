@@ -452,6 +452,8 @@ model task_reward {
     belongToTaskId String
 }
 
+// 技能
+// 基本上只用来定位技能位置和显示名称，还记录一些不随变体变化的基本信息
 model skill {
     id String @id
 
@@ -464,7 +466,7 @@ model skill {
     chargingType String // Enum SKILL_CHARGING_TYPE
     distanceType String // Enum SKILL_DISTANCE_TYPE
     targetType   String // Enum SKILL_TARGET_TYPE
-    effects      skill_effect[]
+    variants     skill_variant[]
 
     details     String
     dataSources String
@@ -481,28 +483,29 @@ model skill {
 }
 
 // 技能变体(适配特定装备组合的技能实际效果)
-model variant {
+model skill_variant {
     id String @id
 
-    equipPattern      String
-    hpCost            String?
-    mpCost            String?
-    description       String
-    activeEffect      Json /// ZOD EffectTreeSchema
-    passiveEffects    Json[] /// ZOD EffectTreeSchema
-    buffs             Json[] /// ZOD EffectTreeSchema
-    elementLogic      String
-    castingRange      String
-    effectiveRange    Int
-    motionFixed       String
-    motionModified    String
-    chantingFixed     String
-    chantingModified  String
-    reservoirFixed    String
-    reservoirModified String
-    startupFrames     String
-    logic             Json /// ZOD SkillEffectLogicSchema
-    details           String?
+    targetMainWeaponType   String // Enum MAIN_HAND_TYPE
+    targetSubWeaponType    String // Enum SUB_HAND_TYPE
+    targetArmorAbilityType String // Enum PLAYER_ARMOR_ABILITY_TYPE
+    hpCost                 String?
+    mpCost                 String?
+    description            String
+    activeEffect           Json /// ZOD EffectTreeSchema
+    passiveEffects         Json[] /// ZOD EffectTreeSchema
+    buffs                  Json[] /// ZOD EffectTreeSchema
+    elementLogic           String
+    castingRange           String
+    effectiveRange         Int
+    motionFixed            String
+    motionModified         String
+    chantingFixed          String
+    chantingModified       String
+    reservoirFixed         String
+    reservoirModified      String
+    startupFrames          String
+    details                String?
 
     belongToSkill   skill  @relation(fields: [belongToskillId], references: [id], onDelete: Cascade)
     belongToskillId String

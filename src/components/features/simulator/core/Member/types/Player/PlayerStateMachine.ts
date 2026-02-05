@@ -1,10 +1,11 @@
+import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import { assign, type EventObject, setup } from "xstate";
 import { skillLogicExample } from "~/components/features/BtEditor/data/SkillExamples";
+import type { MemberDomainEvent } from "../../../types";
 import type { Member } from "../../Member";
 import type { MemberEventType, MemberStateContext, MemberStateMachine } from "../../runtime/StateMachine/types";
 import type { PlayerRuntimeContext } from "./Agents/RuntimeContext";
 import type { Player, PlayerAttrType } from "./Player";
-import { MemberDomainEvent } from "../../../types";
 
 /**
  * Player特有的事件类型
@@ -185,7 +186,9 @@ export const playerStateMachine = (
 				// 发出技能施放被拒绝事件
 				const owner = context.owner;
 				if (owner && (owner.runtimeContext as Record<string, unknown>).emitDomainEvent) {
-					const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as (event: import("../../../types").MemberDomainEvent) => void;
+					const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as (
+						event: import("../../../types").MemberDomainEvent,
+					) => void;
 					// 从事件中获取技能ID（如果有）
 					const skillId = (event as { data?: { skillId?: string } }).data?.skillId ?? "";
 					emitDomainEvent({
@@ -213,8 +216,8 @@ export const playerStateMachine = (
 				console.log(`👤 [${context.owner?.name}] 清空待处理技能`, event);
 				runtimeContext.previousSkill = runtimeContext.currentSkill;
 				runtimeContext.currentSkill = null;
-				runtimeContext.currentSkillEffect = null;
-				runtimeContext.currentSkillLogic = null;
+				runtimeContext.currentSkillVariant = null;
+				runtimeContext.currentSkillActiveEffectLogic = null;
 				if (runtimeContext.currentSkillTreeId) {
 					player.btManager.unregisterSkillBt();
 					runtimeContext.currentSkillTreeId = "unknown_skill";
@@ -224,24 +227,22 @@ export const playerStateMachine = (
 				console.log(`👤 [${context.owner?.name}] 清理行为树`, event);
 				player.btManager.clear();
 			},
-			添加待处理技能效果: ({ context, event }) => {
-				console.log(`👤 [${context.owner?.name}] 添加待处理技能效果`, event);
-				const skillEffect = runtimeContext.currentSkill?.template?.effects.find((e) =>
-					runtimeContext.expressionEvaluator?.(e.condition, {
-						currentFrame: runtimeContext.currentFrame,
-						casterId: player.id,
-						skillLv: runtimeContext.currentSkill?.lv ?? 0,
-					}),
-				);
-				console.log(`技能效果`, skillEffect);
-				runtimeContext.currentSkillEffect = skillEffect ?? null;
+			添加待处理技能变体: ({ context, event }) => {
+				console.log(`👤 [${context.owner?.name}] 添加待处理技能变体`, event);
+				if (!runtimeContext.currentSkill) {
+					console.error(`🎮 [${context.owner?.name}] 当前技能不存在`);
+					return;
+				}
+				const variant = getSkillVariant(runtimeContext.currentSkill, player);
+				console.log(`技能变体`, variant);
+				runtimeContext.currentSkillVariant = variant ?? null;
 			},
 			执行技能: ({ context, event }) => {
 				console.log(`👤 [${context.owner?.name}] 执行技能`, event);
 				console.log(`技能名称`, runtimeContext.currentSkill?.template?.name);
 
-				const skillEffect = runtimeContext.currentSkillEffect;
-				if (!skillEffect) {
+				const skillVariant = runtimeContext.currentSkillVariant;
+				if (!skillVariant) {
 					console.error(`🎮 [${context.owner?.name}] 当前技能效果不存在`);
 					player.actor.send({ type: "技能执行完成" });
 					return;
@@ -251,8 +252,8 @@ export const playerStateMachine = (
 				// const treeDefinition = skillLogicExample.default.definition;
 				// const agentCode = skillLogicExample.default.agent;
 
-				const treeDefinition = skillEffect.logic.activeEffect.definition;
-				const agentCode = skillEffect.logic.activeEffect.agent;
+				const treeDefinition = skillVariant.activeEffect.definition;
+				const agentCode = skillVariant.activeEffect.agent;
 
 				const treeData = player.btManager.registerSkillBt(treeDefinition, agentCode);
 				if (!treeData) {
@@ -321,19 +322,21 @@ export const playerStateMachine = (
 			发出属性变化域事件: ({ context, event }) => {
 				const owner = context.owner;
 				if (!owner) return;
-				
-				const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as ((event: import("../../../types").MemberDomainEvent) => void) | undefined;
+
+				const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as
+					| ((event: import("../../../types").MemberDomainEvent) => void)
+					| undefined;
 				if (!emitDomainEvent) return;
-				
+
 				const e = event as 修改属性;
 				const attr = e.data?.attr;
 				const newValue = e.data?.value ?? 0;
-				
+
 				// 获取当前属性值
 				const hp = owner.statContainer.getValue("hp.current");
 				const mp = owner.statContainer.getValue("mp.current");
 				const position = owner.position;
-				
+
 				// 发出 state_changed 事件
 				emitDomainEvent({
 					type: "state_changed",
@@ -342,7 +345,7 @@ export const playerStateMachine = (
 					mp: attr === "mp.current" ? newValue : mp,
 					position,
 				});
-				
+
 				// 如果是 HP 变化，检查是否受击/死亡
 				// 注意：这里无法准确判断受击，因为不知道修改前的值
 				// 受击/死亡事件应该由伤害系统直接发出
@@ -357,10 +360,12 @@ export const playerStateMachine = (
 			发出移动开始域事件: ({ context, event: _event }) => {
 				const owner = context.owner;
 				if (!owner) return;
-				
-				const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as ((event: import("../../../types").MemberDomainEvent) => void) | undefined;
+
+				const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as
+					| ((event: import("../../../types").MemberDomainEvent) => void)
+					| undefined;
 				if (!emitDomainEvent) return;
-				
+
 				emitDomainEvent({
 					type: "move_started",
 					memberId: owner.id,
@@ -370,10 +375,12 @@ export const playerStateMachine = (
 			发出移动停止域事件: ({ context, event: _event }) => {
 				const owner = context.owner;
 				if (!owner) return;
-				
-				const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as ((event: import("../../../types").MemberDomainEvent) => void) | undefined;
+
+				const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as
+					| ((event: import("../../../types").MemberDomainEvent) => void)
+					| undefined;
 				if (!emitDomainEvent) return;
-				
+
 				emitDomainEvent({
 					type: "move_stopped",
 					memberId: owner.id,
@@ -443,14 +450,14 @@ export const playerStateMachine = (
 			存在蓄力阶段: ({ context, event }) => {
 				console.log(`👤 [${context.owner?.name}] 判断技能是否有蓄力阶段`, event);
 
-				const effect = runtimeContext.currentSkillEffect;
-				if (!effect) {
+				const variant = runtimeContext.currentSkillVariant;
+				if (!variant) {
 					console.error(`👤 [${context.owner?.name}] 技能效果不存在`);
 					return false;
 				}
 
 				// 蓄力阶段相关属性（假设使用chargeFixed和chargeModified）
-				const reservoirFixed = runtimeContext.expressionEvaluator?.(effect.reservoirFixed ?? "0", {
+				const reservoirFixed = runtimeContext.expressionEvaluator?.(variant.reservoirFixed ?? "0", {
 					currentFrame: context.currentFrame,
 					casterId: player.id,
 				});
@@ -458,7 +465,7 @@ export const playerStateMachine = (
 					console.error(`👤 [${context.owner?.name}] 蓄力阶段固定值不是数字`);
 					return false;
 				}
-				const reservoirModified = runtimeContext.expressionEvaluator?.(effect.reservoirModified ?? "0", {
+				const reservoirModified = runtimeContext.expressionEvaluator?.(variant.reservoirModified ?? "0", {
 					currentFrame: context.currentFrame,
 					casterId: player.id,
 				});
@@ -471,12 +478,12 @@ export const playerStateMachine = (
 			},
 			存在咏唱阶段: ({ context, event }) => {
 				console.log(`👤 [${context.owner?.name}] 判断技能是否有咏唱阶段`, event);
-				const effect = runtimeContext.currentSkillEffect;
-				if (!effect) {
+				const variant = runtimeContext.currentSkillVariant;
+				if (!variant) {
 					console.error(`👤 [${context.owner?.name}] 技能效果不存在`);
 					return false;
 				}
-				const chantingFixed = runtimeContext.expressionEvaluator?.(effect.chantingFixed ?? "0", {
+				const chantingFixed = runtimeContext.expressionEvaluator?.(variant.chantingFixed ?? "0", {
 					currentFrame: context.currentFrame,
 					casterId: player.id,
 				});
@@ -484,7 +491,7 @@ export const playerStateMachine = (
 					console.error(`👤 [${context.owner?.name}] 咏唱阶段固定值不是数字`);
 					return false;
 				}
-				const chantingModified = runtimeContext.expressionEvaluator?.(effect.chantingModified ?? "0", {
+				const chantingModified = runtimeContext.expressionEvaluator?.(variant.chantingModified ?? "0", {
 					currentFrame: context.currentFrame,
 					casterId: player.id,
 				});
@@ -510,17 +517,9 @@ export const playerStateMachine = (
 					console.error(`🎮 [${context.owner?.name}] 技能不存在: ${skillId}`);
 					return true;
 				}
-				const effect = skill.template?.effects.find((e) => {
-					const result = runtimeContext.expressionEvaluator?.(e.condition, {
-						currentFrame: context.currentFrame,
-						casterId: player.id,
-						skillLv: skill?.lv ?? 0,
-					});
-					console.log(`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`);
-					return !!result; // 明确返回布尔值进行比较
-				});
-				if (!effect) {
-					console.error(`🎮 [${context.owner?.name}] 技能效果不存在: ${skillId}`);
+				const variant = getSkillVariant(skill, player);
+				if (!variant) {
+					console.error(`🎮 [${context.owner?.name}] 技能变体不存在: ${skillId}`);
 					return true;
 				}
 				console.log(`🎮 [${context.owner?.name}] 的技能 ${skill.template?.name} 可用`);
@@ -550,21 +549,13 @@ export const playerStateMachine = (
 					console.error(`🎮 [${context.owner?.name}] 技能不存在: ${skillId}`);
 					return true;
 				}
-				const effect = skill.template?.effects.find((e) => {
-					const result = runtimeContext.expressionEvaluator?.(e.condition, {
-						currentFrame: context.currentFrame,
-						casterId: player.id,
-						skillLv: skill?.lv ?? 0,
-					});
-					console.log(`🔍 技能效果条件检查: ${e.condition} = ${result} (类型: ${typeof result})`);
-					return !!result; // 明确返回布尔值进行比较
-				});
-				if (!effect) {
+				const variant = getSkillVariant(skill, player);
+				if (!variant) {
 					console.error(`🎮 [${context.owner?.name}] 技能效果不存在: ${skillId}`);
 					return true;
 				}
-				if (effect.hpCost && effect.mpCost) {
-					const hpCost = runtimeContext.expressionEvaluator?.(effect.hpCost, {
+				if (variant.hpCost && variant.mpCost) {
+					const hpCost = runtimeContext.expressionEvaluator?.(variant.hpCost, {
 						currentFrame: context.currentFrame,
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,
@@ -573,7 +564,7 @@ export const playerStateMachine = (
 						console.error(`👤 [${context.owner?.name}] 技能HP消耗不是数字`);
 						return true;
 					}
-					const mpCost = runtimeContext.expressionEvaluator?.(effect.mpCost, {
+					const mpCost = runtimeContext.expressionEvaluator?.(variant.mpCost, {
 						currentFrame: context.currentFrame,
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,
@@ -844,11 +835,7 @@ export const playerStateMachine = (
 										],
 									},
 									执行技能中: {
-										entry: [
-											{ type: "发出施法进度开始事件" },
-											{ type: "添加待处理技能效果" },
-											{ type: "执行技能" },
-										],
+										entry: [{ type: "发出施法进度开始事件" }, { type: "添加待处理技能变体" }, { type: "执行技能" }],
 										on: {
 											技能执行完成: [
 												{
@@ -905,4 +892,20 @@ export const playerStateMachine = (
 	});
 
 	return machine;
+};
+
+const getSkillVariant = (skill: CharacterSkillWithRelations, player: Player) => {
+	return skill.template?.variants.find((e) => {
+		const result =
+			e.targetMainWeaponType === player.activeCharacter.weapon?.type &&
+			e.targetSubWeaponType === player.activeCharacter.subWeapon?.type &&
+			e.targetArmorAbilityType === player.activeCharacter.armor?.ability;
+		console.log(
+			`🔍 技能变体条件检查: 
+			${e.targetMainWeaponType} = ${player.activeCharacter.weapon?.type} 
+			${e.targetSubWeaponType} = ${player.activeCharacter.subWeapon?.type} 
+			${e.targetArmorAbilityType} = ${player.activeCharacter.armor?.ability}`,
+		);
+		return result;
+	})
 };

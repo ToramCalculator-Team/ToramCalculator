@@ -1,0 +1,1 @@
+id,targetMainWeaponType,targetSubWeaponType,targetArmorAbilityType,hpCost,mpCost,description,activeEffect,passiveEffects,buffs,elementLogic,castingRange,effectiveRange,motionFixed,motionModified,chantingFixed,chantingModified,reservoirFixed,reservoirModified,startupFrames,details,belongToskillId

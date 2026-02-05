@@ -53,7 +53,7 @@ export const TableIconMap: Record<keyof DB, JSX.Element> ={
     session: undefined,
     simulator: undefined,
     skill: undefined,
-    skill_effect: undefined,
+    skill_variant: undefined,
     special: undefined,
     statistic: undefined,
     task: undefined,
