@@ -144,7 +144,7 @@ model mob {
     normalDefExp       Int
     physicDefExp       Int
     magicDefExp        Int
-    actions            Json
+    actions            Json /// ZOD MemberBTSchema
 
     drops drop_item[]
 
@@ -492,9 +492,9 @@ model skill_variant {
     hpCost                 String?
     mpCost                 String?
     description            String
-    activeEffect           Json /// ZOD EffectTreeSchema
-    passiveEffects         Json[] /// ZOD EffectTreeSchema
-    buffs                  Json[] /// ZOD EffectTreeSchema
+    activeEffect           Json /// ZOD MemberBTSchema
+    passiveEffects         Json[] /// ZOD MemberBTSchema
+    buffs                  Json[] /// ZOD MemberBTSchema
     elementLogic           String
     castingRange           String
     effectiveRange         Int

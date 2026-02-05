@@ -1,5 +1,5 @@
 import { A } from "@solidjs/router";
-import { JSX } from "solid-js";
+import type { JSX } from "solid-js";
 
 export function Filing(): JSX.Element {
 

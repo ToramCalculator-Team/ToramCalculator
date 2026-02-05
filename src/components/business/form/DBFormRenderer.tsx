@@ -48,7 +48,9 @@ export interface DBFormProps<TTableName extends keyof DB> {
 	childrenRelations?: Array<ChildTableOf<TTableName>>;
 	fieldGenerator?: Partial<{
 		[K in keyof DB[TTableName]]: (
-			field: Accessor<AnyFieldApi>,
+			value: DB[TTableName][K],
+			setValue: (value: DB[TTableName][K]) => void,
+			validationMessage: string,
 			dictionary: Dic<DB[TTableName]>,
 			dataSchema: ZodObject<Record<keyof DB[TTableName], ZodType>>,
 		) => JSX.Element;
@@ -257,7 +259,14 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 								{(field) => {
 									// 如果有字段生成器，则使用字段生成器
 									if (hasGenerator) {
-										return fieldGenerator(field, dictionary().db[props.tableName], props.dataSchema);
+										console.log(field());
+										return fieldGenerator(
+											field().state.value as DB[TTableName][typeof key],
+											(value) => field().setValue(value as DeepValue<DB[TTableName], DeepKeys<DB[TTableName]>>),
+											fieldInfo(field()),
+											dictionary().db[props.tableName],
+											props.dataSchema,
+										);
 									}
 
 									// 外键标量字段用 DMMF 的 relationFromFields 映射渲染

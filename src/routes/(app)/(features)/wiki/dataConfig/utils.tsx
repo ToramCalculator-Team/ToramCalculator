@@ -5,7 +5,7 @@ import type { Transaction } from "kysely";
 import { Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons/index";
-import type { dictionary } from "~/locales/type";
+import type { Dictionary } from "~/locales/type";
 import { setStore, store } from "~/store";
 import { setWikiStore } from "../store";
 
@@ -55,7 +55,7 @@ export const arrayDiff = <T extends keyof DB>(props: { table: T; oldArray: DB[T]
 };
 
 export const CardSharedSection = <T extends object>(props: {
-	dic: dictionary;
+	dic: Dictionary;
 	data: T & {
 		createdByAccountId: string | null;
 	};

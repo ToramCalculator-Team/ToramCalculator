@@ -12,7 +12,7 @@ import { Filing } from "~/components/features/filing";
 import { Icons } from "~/components/icons/index";
 import { MediaContext } from "~/lib/contexts/Media";
 import { getDictionary } from "~/locales/i18n";
-import type { dictionary } from "~/locales/type";
+import type { Dictionary } from "~/locales/type";
 import { setStore, store } from "~/store";
 import { indexPageMachine } from "./indexPageMachine";
 
@@ -108,7 +108,7 @@ export default function IndexPage() {
 
 	type CustomMenuConfig = {
 		groupType: "wiki" | "appPages";
-		title: keyof dictionary["db"] | keyof dictionary["ui"]["nav"];
+		title: keyof Dictionary["db"] | keyof Dictionary["ui"]["nav"];
 		icon: keyof typeof Icons.Filled;
 	};
 
@@ -658,7 +658,7 @@ export default function IndexPage() {
 															<span class="text-sm text-nowrap text-ellipsis landscape:hidden landscape:text-xl lg:landscape:block">
 																{menuItem.groupType === "wiki"
 																	? dictionary().db[menuItem.title as keyof DB].selfName
-																	: dictionary().ui.nav[menuItem.title as keyof dictionary["ui"]["nav"]]}
+																	: dictionary().ui.nav[menuItem.title as keyof Dictionary["ui"]["nav"]]}
 															</span>
 														</Button>
 													</Motion.a>

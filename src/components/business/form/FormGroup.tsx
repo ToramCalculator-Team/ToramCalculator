@@ -37,11 +37,7 @@ export const FormGroup = () => {
 												initialValue={initialValue}
 												dataSchema={DBSchema[formGroupItem.type]}
 												childrenRelations={config().childrenRelations}
-												// @ts-expect-error-next-line
-												// config 是联合类型（所有表配置的并集），TS 无法自动断言为与 DBForm<T> 的 T 匹配,
-												// Array<keyof DB[T]> 会将联合展开为 Array<keyof DB[表1]> | Array<keyof DB[表2]> | ...；Array<type1> 和 Array<type2> 不兼容。
 												hiddenFields={config()?.form.hiddenFields}
-												// @ts-expect-error-next-line  问题同上，暂时忽略
 												fieldGroupMap={config().fieldGroupMap}
 												fieldGenerator={config().form.fieldGenerator}
 												onInsert={async (value) => {

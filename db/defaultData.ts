@@ -3,14 +3,14 @@
  * @description 数据库数据的缺省值数据
  * @version 1.0.0
  */
-import type { Selectable } from "kysely";
+// import type { Selectable } from "kysely";
 import type { DB } from "./generated/zod/index";
 
-type SelectDB<T> = {
-	[K in keyof T]: Selectable<T[K]>;
-};
+// type SelectDB<T> = {
+// 	[K in keyof T]: Selectable<T[K]>;
+// };
 
-export const defaultData: SelectDB<DB> = {
+export const defaultData: DB = {
 	_armorTocrystal: {
 		A: "",
 		B: "",
@@ -178,7 +178,7 @@ export const defaultData: SelectDB<DB> = {
 		name: "默认消耗品",
 		type: "MaxHp",
 		effectDuration: 0,
-		variants: [],
+		effects: [],
 		itemId: "defaultConsumableItemId",
 	},
 	crystal: {
@@ -266,7 +266,12 @@ export const defaultData: SelectDB<DB> = {
 		normalDefExp: 0,
 		physicDefExp: 0,
 		magicDefExp: 0,
-		actions: {},
+		actions: {
+			memberType: "Mob",
+			name: "default",
+			definition: "",
+			agent: "",
+		},
 		details: "",
 		dataSources: "",
 		statisticId: "",
@@ -416,7 +421,27 @@ export const defaultData: SelectDB<DB> = {
 	},
 	skill_variant: {
 		id: "defaultSkillEffectId",
-		condition: "",
+		targetMainWeaponType: null,
+		targetSubWeaponType: null,
+		targetArmorAbilityType: "Normal",
+		activeEffect: {
+			memberType: "Player",
+			name: "default",
+			definition: "",
+			agent: "",
+		},
+		passiveEffects: [{
+			memberType: "Player",
+			name: "default",
+			definition: "",
+			agent: "",
+		}],
+		buffs: [{
+			memberType: "Player",
+			name: "default",
+			definition: "",
+			agent: "",
+		}],
 		elementLogic: "",
 		castingRange: "",
 		effectiveRange: 0,
@@ -430,7 +455,6 @@ export const defaultData: SelectDB<DB> = {
 		hpCost: null,
 		mpCost: "100",
 		description: "",
-		logic: [],
 		details: null,
 		belongToskillId: "",
 	},

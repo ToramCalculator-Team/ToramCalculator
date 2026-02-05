@@ -9,12 +9,10 @@ import {
 	SKILL_TREE_TYPE,
 	type SkillTreeType,
 } from "@db/schema/enums";
-import type { AnyFieldApi } from "@tanstack/solid-form";
 import type { Cell, ColumnDef } from "@tanstack/solid-table";
-import { type Accessor, createEffect, createSignal, type JSX, Show } from "solid-js";
+import { createEffect, createSignal, type JSX, Show } from "solid-js";
 import type { ZodObject, ZodType } from "zod/v4";
 import type { FieldGenMap } from "~/components/dataDisplay/objRender";
-import { fieldInfo } from "~/components/dataDisplay/utils";
 import { Icons } from "~/components/icons";
 import { generateBossDataByFlag } from "~/lib/utils/mob";
 import type { Dic } from "~/locales/type";
@@ -22,6 +20,7 @@ import { store } from "~/store";
 import { Input } from "../controls/input";
 import { Select } from "../controls/select";
 import { BtEditor } from "../features/BtEditor/BtEditor";
+import type { DBFormProps } from "./form/DBFormRenderer";
 
 export type DataConfig = Partial<{
 	[T in keyof DB]: {
@@ -39,13 +38,7 @@ export type DataConfig = Partial<{
 		};
 		form: {
 			hiddenFields: Array<keyof DB[T]>;
-			fieldGenerator?: Partial<{
-				[K in keyof DB[T]]: (
-					field: Accessor<AnyFieldApi>,
-					dictionary: Dic<DB[T]>,
-					dataSchema: ZodObject<Record<keyof DB[T], ZodType>>,
-				) => JSX.Element;
-			}>;
+			fieldGenerator: DBFormProps<T>["fieldGenerator"];
 		};
 		card: {
 			hiddenFields: Array<keyof DB[T]>;
@@ -533,8 +526,7 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {
-				actions: (field) => {
-					const value = field().state.value;
+				actions: (value, setValue) => {
 					return (
 						<BtEditor
 							initValues={{
@@ -543,7 +535,7 @@ export const DATA_CONFIG: DataConfig = {
 								memberType: (value.memberType as MemberType) ?? "Mob",
 							}}
 							onSave={(mdsl, agent, memberType) => {
-								field().setValue({
+								setValue({
 									...value,
 									definition: mdsl,
 									agent: agent,
@@ -820,26 +812,24 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {
-				treeType: (field, dictionary) => {
+				treeType: (value, setValue, validationMessage, dictionary) => {
 					return (
 						<Input
 							title={dictionary.fields.treeType.key}
 							description={dictionary.fields.treeType.formFieldDescription}
-							validationMessage={fieldInfo(field())}
+							validationMessage={validationMessage}
 							class="border-dividing-color bg-primary-color rounded-md border w-full"
 						>
 							<Select
-								value={field().state.value.treeType || ""}
-								setValue={(v) => {
-									field().setValue(v);
-								}}
+								value={value}
+								setValue={(v) => setValue(v as SkillTreeType)}
 								options={[
 									...SKILL_TREE_TYPE.map((type) => ({
 										label: dictionary.fields.treeType.enumMap[type],
 										value: type,
 									})),
 								]}
-								placeholder={field().state.value.treeType}
+								placeholder={value}
 								// optionPosition="top"
 							/>
 						</Input>
@@ -926,8 +916,8 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: ["id"],
 			fieldGenerator: {
-				activeEffect: (field) => {
-					const value = field().state.value;
+				activeEffect: (value, setValue) => {
+					console.log(value);
 					return (
 						<BtEditor
 							initValues={{
@@ -936,7 +926,7 @@ export const DATA_CONFIG: DataConfig = {
 								memberType: (value.memberType as MemberType) ?? "Player",
 							}}
 							onSave={(mdsl, agent, memberType) => {
-								field().setValue({
+								setValue({
 									...value,
 									definition: mdsl,
 									agent: agent,

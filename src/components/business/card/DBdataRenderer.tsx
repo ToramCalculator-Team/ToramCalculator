@@ -16,7 +16,7 @@ import { Button } from "~/components/controls/button";
 import type { FieldGenMap } from "~/components/dataDisplay/objRender";
 import { Icons } from "~/components/icons";
 import { getDictionary } from "~/locales/i18n";
-import type { Dic, dictionary, EnumFieldDetail } from "~/locales/type";
+import type { Dic, Dictionary, EnumFieldDetail } from "~/locales/type";
 import { setStore, store } from "~/store";
 
 // 辅助：判断某表是否包含 name 字段
@@ -64,7 +64,7 @@ function getRelationPrefixKey(
 	currentTable: string,
 	targetTable: string,
 	relationName: string,
-): keyof dictionary["ui"]["relationPrefix"] {
+): keyof Dictionary["ui"]["relationPrefix"] {
 	const currentModel = MODEL_METADATA.find((m) => m.tableName === currentTable);
 	const targetModel = MODEL_METADATA.find((m) => m.tableName === targetTable);
 	const currentModelName = currentModel?.name || currentTable;
@@ -234,14 +234,14 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
 		type RelationItem = { data: any; displayName: string };
 		type RelationGroup = {
 			tableName: keyof DB;
-			prefixKey: keyof dictionary["ui"]["relationPrefix"];
+			prefixKey: keyof Dictionary["ui"]["relationPrefix"];
 			items: RelationItem[];
 			isParent: boolean;
 		};
 		const groupMap = new Map<
 			keyof DB,
 			{
-				prefixKey: keyof dictionary["ui"]["relationPrefix"];
+				prefixKey: keyof Dictionary["ui"]["relationPrefix"];
 				items: RelationItem[];
 				seen: Set<string>;
 				isParent: boolean;
@@ -324,7 +324,7 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
 
 		const ensureBucket = (args: {
 			tableName: keyof DB;
-			prefixKey: keyof dictionary["ui"]["relationPrefix"];
+			prefixKey: keyof Dictionary["ui"]["relationPrefix"];
 			isParentRelation: boolean;
 		}) => {
 			if (!groupMap.has(args.tableName)) {
@@ -345,7 +345,7 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
 
 		const upsertRelationItem = (args: {
 			tableName: keyof DB;
-			prefixKey: keyof dictionary["ui"]["relationPrefix"];
+			prefixKey: keyof Dictionary["ui"]["relationPrefix"];
 			isParentRelation: boolean;
 			item: any;
 			primaryKey: string;

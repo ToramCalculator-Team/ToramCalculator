@@ -5,9 +5,9 @@ import { createMemo, createResource, createSignal, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Icons } from "~/components/icons/index";
-import type { dictionary } from "~/locales/type";
+import type { Dictionary } from "~/locales/type";
 
-export const AddressPage = (dic: dictionary, itemHandleClick: (id: string) => void) => {
+export const AddressPage = (dic: Dictionary, itemHandleClick: (id: string) => void) => {
 	const [expandedAddresses, setExpandedAddresses] = createSignal<Set<string>>(new Set());
 	const [selectedWorldId, setSelectedWorldId] = createSignal<string>("");
 

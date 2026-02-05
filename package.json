@@ -10,7 +10,7 @@
     "backend:up": "docker compose --env-file .env -f ./backend/docker-compose.yaml up",
     "backend:stop": "docker compose --env-file .env -f ./backend/docker-compose.yaml stop",
     "backend:down": "docker compose --env-file .env -f ./backend/docker-compose.yaml down --volumes",
-    "db:studio": "prisma studio --schema=db/generated/schema.prisma",
+    "db:studio": "prisma studio --config=db/studio.config.ts",
     "db:backup": "tsx db/scripts/backup.ts",
     "db:restore": "tsx db/scripts/restore.ts",
     "build": "node src/worker/sw/build.mjs && NODE_OPTIONS=--max-old-space-size=4096 vinxi build",

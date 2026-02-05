@@ -1,4 +1,4 @@
-import { Task } from "./type";
+import type { Task } from "./type";
 
 /**
  * 优先级任务队列

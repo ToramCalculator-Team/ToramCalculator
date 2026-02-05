@@ -1,1 +1,13 @@
 id,targetMainWeaponType,targetSubWeaponType,targetArmorAbilityType,hpCost,mpCost,description,activeEffect,passiveEffects,buffs,elementLogic,castingRange,effectiveRange,motionFixed,motionModified,chantingFixed,chantingModified,reservoirFixed,reservoirModified,startupFrames,details,belongToskillId
+defaultSkillEffectId,Magictool,,,0,100,null,"{
+   ""memberType"": ""Player"",
+   ""name"": ""缺省值"",
+   ""definition"": """",
+   ""agent"": """"
+}",{},{},self.mainWeapon.element,self.mainWeapon.range,3,13,48,0,0,0,0,0.3,null,defaultSkillId
+MagicCannonVariant1Id,Magictool,,,0,hasBuff('magic_cannon_charge') ? 700 : 0	,魔法炮充能/释放逻辑，通过行为树实现。,"{
+   ""memberType"": ""Player"",
+   ""name"": ""魔法炮"",
+   ""definition"": """",
+   ""agent"": """"
+}",{},{},self.mainWeapon.element	,24,4,hasBuff('magic_cannon_charge') ?  12 : 18,hasBuff('magic_cannon_charge') ?  170 : 31,0,0,0,0,0.3,null,MagicCannonId

@@ -6,6 +6,7 @@ import { store } from "~/store";
 const Decorate = (props: JSX.IntrinsicElements["svg"]) => {
   return (
     <svg width="44" height="47" viewBox="0 0 44 47" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <title>Dialog Decorate</title>
       <path
         d="M9.42128 12.4651C9.31564 12.4651 9.24522 12.4299 9.1748 12.3242C9.10438 12.1834 9.13959 12.0073 9.28043 11.9369C11.9213 10.3524 15.1255 9.82425 18.1185 10.4933C18.2593 10.5285 18.3649 10.6693 18.3297 10.8454C18.2945 10.9862 18.1537 11.0919 17.9776 11.0566C15.1255 10.4228 12.0621 10.951 9.52691 12.4299C9.52691 12.4651 9.45649 12.4651 9.42128 12.4651Z"
         fill="currentColor"
@@ -122,6 +123,7 @@ export function Dialog(props: {
           >
             <div class="DialogTitle z-10 drop-shadow-dividing-color absolute -top-3 flex items-center drop-shadow-xl">
               <svg width="30" height="48" viewBox="0 0 30 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <title>Dialog Title Decorate</title>
                 <path
                   d="M13.8958 -6.07406e-07L-1.04907e-06 24L13.8958 48L29 48L29 -1.26763e-06L13.8958 -6.07406e-07Z"
                   fill="rgb(var(--primary))"
@@ -140,6 +142,7 @@ export function Dialog(props: {
                 </div>
               </div>
               <svg width="30" height="48" viewBox="0 0 30 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <title>Dialog Title Decorate</title>
                 <path
                   d="M16.1042 -6.07406e-07L30 24L16.1042 48L0.999998 48L1 -1.26763e-06L16.1042 -6.07406e-07Z"
                   fill="rgb(var(--primary))"

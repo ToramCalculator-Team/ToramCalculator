@@ -1,4 +1,4 @@
-import { createSignal, JSX, onCleanup, onMount, Show } from "solid-js";
+import { type JSX, onCleanup, onMount, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { useMedia } from "~/lib/contexts/Media-component";
 import { store } from "~/store";
@@ -28,7 +28,7 @@ export function Sheet(props: { children: JSX.Element; state: boolean; setState: 
           class={`SheetBox bg-primary-color-90 fixed flex top-0 left-0 w-dvw h-dvh z-50`}
         >
           <div class="SheetBg bg-area-color flex h-full w-full flex-col justify-center landscape:flex-row">
-            <div class={`SheetCloseBtn block flex-1 cursor-pointer backdrop-blur-xl`} onClick={handleClose}></div>
+            <button type="button" class={`SheetCloseBtn block flex-1 cursor-pointer backdrop-blur-xl`} onClick={handleClose}></button>
             <Motion.div
               animate={{
                 transform: [media.orientation === "landscape" ? "translateX(10%)" : "translateY(5%)", "translateY(0)"],
@@ -43,7 +43,7 @@ export function Sheet(props: { children: JSX.Element; state: boolean; setState: 
             >
               {props.children}
             </Motion.div>
-            <div class={`SheetCloseBtn hidden flex-1 cursor-pointer backdrop-blur-xl`} onClick={handleClose}></div>
+            <button type="button" class={`SheetCloseBtn hidden flex-1 cursor-pointer backdrop-blur-xl`} onClick={handleClose}></button>
           </div>
         </Motion.div>
       </Show>

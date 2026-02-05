@@ -106,7 +106,7 @@ generatorHandler({
 			throw error;
 		} finally {
 			// 确保临时文件被清理
-			schemaCollector.cleanupTempSchema();
+			// schemaCollector.cleanupTempSchema();
 		}
 	},
 });

@@ -75,9 +75,7 @@ export const CardGroup = () => {
 													tableName={cardGroupItem.type}
 													data={cardData()}
 													dataSchema={DBSchema[cardGroupItem.type]}
-													// @ts-expect-error 动态类型导致的类型推断问题：hiddenFields
 													hiddenFields={config?.card.hiddenFields}
-													// @ts-expect-error 动态类型导致的类型推断问题：fieldGroupMap
 													fieldGroupMap={config?.fieldGroupMap}
 													fieldGenerator={config?.card.fieldGenerator}
 													// @ts-expect-error 函数逆变性问题：after

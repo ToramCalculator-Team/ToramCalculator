@@ -144,15 +144,22 @@ export default function AppMainContet(props: ParentProps) {
 		// 数据库查询测试
 		const db = await getDB();
 		db.transaction().execute(async (trx) => {
-			for (const [key, value] of Object.entries(repositoryMethods)) {
+			const getFirstPrimaryKeyValue = <TTableName extends keyof DB>(tableName: TTableName) => {
+				const pk = getPrimaryKeys(tableName)[0];
+				// 生成器约定：主键通常是 string（例如 id），这里显式收敛成 string，避免联合表名导致的索引类型发散
+				return String(defaultData[tableName][pk as keyof typeof defaultData[TTableName]] ?? "");
+			};
+
+			for (const key of Object.keys(repositoryMethods) as Array<keyof DB>) {
+				const value = repositoryMethods[key];
 				if (!value.select?.name) {
 					continue;
 				}
-				const primaryKey = getPrimaryKeys(key as keyof DB);
+				const primaryKey = getPrimaryKeys(key);
 				if (primaryKey.length === 0) {
 					continue;
 				}
-				const data = await value.select(defaultData[key as keyof DB][primaryKey[0]], trx);
+				const data = await value.select(getFirstPrimaryKeyValue(key), trx);
 				// console.log(
 				//   "表名：",
 				//   key,
