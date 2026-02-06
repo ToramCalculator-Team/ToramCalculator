@@ -1,5 +1,9 @@
+import { defaultData } from "@db/defaultData";
 import type { ChildTableOf } from "@db/generated/dmmf-utils";
+import { repositoryMethods } from "@db/generated/repositories";
+import { insertStatistic } from "@db/generated/repositories/statistic";
 import type { DB } from "@db/generated/zod";
+import { getDB } from "@db/repositories/database";
 import {
 	type ElementType,
 	type MemberType,
@@ -9,57 +13,36 @@ import {
 	SKILL_TREE_TYPE,
 	type SkillTreeType,
 } from "@db/schema/enums";
-import type { Cell, ColumnDef } from "@tanstack/solid-table";
-import { createEffect, createSignal, type JSX, Show } from "solid-js";
-import type { ZodObject, ZodType } from "zod/v4";
-import type { FieldGenMap } from "~/components/dataDisplay/objRender";
+import { createId } from "@paralleldrive/cuid2";
+import { createEffect, createSignal, Show } from "solid-js";
+import { Portal } from "solid-js/web";
+import { Motion, Presence } from "solid-motionone";
 import { Icons } from "~/components/icons";
 import { generateBossDataByFlag } from "~/lib/utils/mob";
-import type { Dic } from "~/locales/type";
 import { store } from "~/store";
+import { Button } from "../controls/button";
 import { Input } from "../controls/input";
 import { Select } from "../controls/select";
+import type { VirtualTableProps } from "../dataDisplay/virtualTable";
 import { BtEditor } from "../features/BtEditor/BtEditor";
+import type { DBdataRendererProps } from "./card/DBdataRenderer";
 import type { DBFormProps } from "./form/DBFormRenderer";
-import { Portal } from "solid-js/web";
-import { Dialog } from "../containers/dialog";
-import { Button } from "../controls/button";
-import { Motion, Presence } from "solid-motionone";
 
 export type DataConfig = Partial<{
 	[T in keyof DB]: {
 		fieldGroupMap: Record<string, Array<keyof DB[T]>>;
-		table: {
-			measure?: {
-				estimateSize: number;
-			};
-			columnsDef: ColumnDef<DB[T]>[];
-			hiddenColumnDef: Array<keyof DB[T]>;
-			defaultSort: { id: keyof DB[T]; desc: boolean };
-			tdGenerator: Partial<{
-				[K in keyof DB[T]]: (props: { cell: Cell<DB[T], unknown>; dic: Dic<DB[T]> }) => JSX.Element;
-			}>;
-		};
-		form: {
-			hiddenFields: Array<keyof DB[T]>;
-			fieldGenerator: DBFormProps<T>["fieldGenerator"];
-		};
-		card: {
-			hiddenFields: Array<keyof DB[T]>;
-			fieldGenerator?: FieldGenMap<DB[T]>;
-			before?: (
-				data: DB[T],
-				setData: (data: DB[T]) => void,
-				dataSchema: ZodObject<Record<keyof DB[T], ZodType>>,
-				dictionary: Dic<DB[T]>,
-			) => JSX.Element;
-			after?: (
-				data: DB[T],
-				setData: (data: DB[T]) => void,
-				dataSchema: ZodObject<Record<keyof DB[T], ZodType>>,
-				dictionary: Dic<DB[T]>,
-			) => JSX.Element;
-		};
+		table: Omit<
+			VirtualTableProps<DB[T]>,
+			| "dataFetcher"
+			| "dictionary"
+			| "columnHandleClick"
+			| "onColumnVisibilityChange"
+			| "onRefetch"
+			| "globalFilterStr"
+			| "primaryKeyField"
+		>;
+		form: Omit<DBFormProps<T>, "initialValue" | "dataSchema" | "tableName">;
+		card: Omit<DBdataRendererProps<T>, "data" | "dictionary" | "dataSchema" | "tableName">;
 		childrenRelations?: Array<ChildTableOf<T>>;
 	};
 }>;
@@ -92,6 +75,8 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {},
+			onInsert: repositoryMethods.activity.insert,
+			onUpdate: repositoryMethods.activity.update,
 		},
 		card: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
@@ -122,6 +107,8 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {},
+			onInsert: repositoryMethods.address.insert,
+			onUpdate: repositoryMethods.address.update,
 		},
 		card: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
@@ -148,6 +135,8 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: [],
 			fieldGenerator: {},
+			onInsert: repositoryMethods.armor.insert,
+			onUpdate: repositoryMethods.armor.update,
 		},
 		card: {
 			hiddenFields: [],
@@ -179,6 +168,8 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: [],
 			fieldGenerator: {},
+			onInsert: repositoryMethods.consumable.insert,
+			onUpdate: repositoryMethods.consumable.update,
 		},
 		card: {
 			hiddenFields: [],
@@ -211,6 +202,8 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: [],
 			fieldGenerator: {},
+			onInsert: repositoryMethods.crystal.insert,
+			onUpdate: repositoryMethods.crystal.update,
 		},
 		card: {
 			hiddenFields: [],
@@ -244,6 +237,8 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: ["id"],
 			fieldGenerator: {},
+			onInsert: repositoryMethods.drop_item.insert,
+			onUpdate: repositoryMethods.drop_item.update,
 		},
 		card: {
 			hiddenFields: ["id"],
@@ -281,6 +276,8 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {},
+			onInsert: repositoryMethods.item.insert,
+			onUpdate: repositoryMethods.item.update,
 		},
 		card: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
@@ -307,6 +304,8 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: [],
 			fieldGenerator: {},
+			onInsert: repositoryMethods.material.insert,
+			onUpdate: repositoryMethods.material.update,
 		},
 		card: {
 			hiddenFields: [],
@@ -535,13 +534,13 @@ export const DATA_CONFIG: DataConfig = {
 						<BtEditor
 							title={dictionary.fields.actions.key}
 							initValues={{
-								definition: value.definition ?? "",
-								agent: value.agent ?? "",
-								memberType: (value.memberType as MemberType) ?? "Mob",
+								definition: value().definition ?? "",
+								agent: value().agent ?? "",
+								memberType: (value().memberType as MemberType) ?? "Mob",
 							}}
 							onSave={(mdsl, agent, memberType) => {
 								setValue({
-									...value,
+									...value(),
 									definition: mdsl,
 									agent: agent,
 									memberType: memberType,
@@ -551,6 +550,8 @@ export const DATA_CONFIG: DataConfig = {
 					);
 				},
 			},
+			onInsert: repositoryMethods.mob.insert,
+			onUpdate: repositoryMethods.mob.update,
 		},
 		card: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
@@ -643,6 +644,8 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {},
+			onInsert: repositoryMethods.npc.insert,
+			onUpdate: repositoryMethods.npc.update,
 		},
 		card: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
@@ -680,6 +683,8 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: [],
 			fieldGenerator: {},
+			onInsert: repositoryMethods.option.insert,
+			onUpdate: repositoryMethods.option.update,
 		},
 		card: {
 			hiddenFields: [],
@@ -705,6 +710,8 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: ["id"],
 			fieldGenerator: {},
+			onInsert: repositoryMethods.player_weapon.insert,
+			onUpdate: repositoryMethods.player_weapon.update,
 		},
 		card: {
 			hiddenFields: ["id"],
@@ -728,6 +735,8 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {},
+			onInsert: repositoryMethods.recipe.insert,
+			onUpdate: repositoryMethods.recipe.update,
 		},
 		card: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
@@ -753,6 +762,8 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: ["id"],
 			fieldGenerator: {},
+			onInsert: repositoryMethods.recipe_ingredient.insert,
+			onUpdate: repositoryMethods.recipe_ingredient.update,
 		},
 		card: {
 			hiddenFields: ["id"],
@@ -826,7 +837,7 @@ export const DATA_CONFIG: DataConfig = {
 							class="border-dividing-color bg-primary-color rounded-md border w-full"
 						>
 							<Select
-								value={value}
+								value={value()}
 								setValue={(v) => setValue(v as SkillTreeType)}
 								options={[
 									...SKILL_TREE_TYPE.map((type) => ({
@@ -834,13 +845,28 @@ export const DATA_CONFIG: DataConfig = {
 										value: type,
 									})),
 								]}
-								placeholder={value}
+								placeholder={value()}
 								// optionPosition="top"
 							/>
 						</Input>
 					);
 				},
 			},
+			onInsert: async (skill) => {
+				const db = await getDB();
+				return await db.transaction().execute(async (trx) => {
+					const statistic = await insertStatistic(
+						{
+							...defaultData.statistic,
+							id: createId(),
+						},
+						trx,
+					);
+					skill.statisticId = statistic.id;
+					return await repositoryMethods.skill.insert(skill, trx);
+				});
+			},
+			onUpdate: repositoryMethods.skill.update,
 		},
 		card: {
 			hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
@@ -952,18 +978,20 @@ export const DATA_CONFIG: DataConfig = {
 												<BtEditor
 													title={dictionary.fields.activeEffect.key}
 													initValues={{
-														definition: value.definition ?? "",
-														agent: value.agent ?? "",
-														memberType: (value.memberType as MemberType) ?? "Player",
+														definition: value().definition ?? "",
+														agent: value().agent ?? "",
+														memberType: (value().memberType as MemberType) ?? "Player",
 													}}
 													onSave={(mdsl, agent, memberType) => {
-														setValue({
-															...value,
+														const newValue = {
+															...value(),
 															definition: mdsl,
 															agent: agent,
 															memberType: memberType,
-														});
-														setEditorDisplay(false);
+														};
+														console.log(newValue);
+														setValue(newValue);
+														// setEditorDisplay(false);
 													}}
 													onClose={() => setEditorDisplay(false)}
 												/>
@@ -976,6 +1004,8 @@ export const DATA_CONFIG: DataConfig = {
 					);
 				},
 			},
+			onInsert: repositoryMethods.skill_variant.insert,
+			onUpdate: repositoryMethods.skill_variant.update,
 		},
 		card: {
 			hiddenFields: ["id"],
@@ -1025,6 +1055,8 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: [],
 			fieldGenerator: {},
+			onInsert: repositoryMethods.special.insert,
+			onUpdate: repositoryMethods.special.update,
 		},
 		card: {
 			hiddenFields: [],
@@ -1078,6 +1110,8 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {},
+			onInsert: repositoryMethods.task.insert,
+			onUpdate: repositoryMethods.task.update,
 		},
 		card: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
@@ -1132,6 +1166,8 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: [],
 			fieldGenerator: {},
+			onInsert: repositoryMethods.weapon.insert,
+			onUpdate: repositoryMethods.weapon.update,
 		},
 		card: {
 			hiddenFields: [],
@@ -1154,6 +1190,8 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {},
+			onInsert: repositoryMethods.world.insert,
+			onUpdate: repositoryMethods.world.update,
 		},
 		card: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
@@ -1209,6 +1247,8 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {},
+			onInsert: repositoryMethods.zone.insert,
+			onUpdate: repositoryMethods.zone.update,
 		},
 		card: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],

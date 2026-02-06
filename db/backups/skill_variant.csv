@@ -1,13 +1,3 @@
 id,targetMainWeaponType,targetSubWeaponType,targetArmorAbilityType,hpCost,mpCost,description,activeEffect,passiveEffects,buffs,elementLogic,castingRange,effectiveRange,motionFixed,motionModified,chantingFixed,chantingModified,reservoirFixed,reservoirModified,startupFrames,details,belongToskillId
-defaultSkillEffectId,Magictool,,,0,100,null,"{
-   ""memberType"": ""Player"",
-   ""name"": ""缺省值"",
-   ""definition"": """",
-   ""agent"": """"
-}",{},{},self.mainWeapon.element,self.mainWeapon.range,3,13,48,0,0,0,0,0.3,null,defaultSkillId
-MagicCannonVariant1Id,Magictool,,,0,hasBuff('magic_cannon_charge') ? 700 : 0	,魔法炮充能/释放逻辑，通过行为树实现。,"{
-   ""memberType"": ""Player"",
-   ""name"": ""魔法炮"",
-   ""definition"": """",
-   ""agent"": """"
-}",{},{},self.mainWeapon.element	,24,4,hasBuff('magic_cannon_charge') ?  12 : 18,hasBuff('magic_cannon_charge') ?  170 : 31,0,0,0,0,0.3,null,MagicCannonId
+defaultSkillEffectId,Magictool,Any,Any,0,100,null,"{""name"": ""缺省值"", ""agent"": """", ""definition"": """", ""memberType"": ""Player""}",{},{},self.mainWeapon.element,self.mainWeapon.range,3,13,48,0,0,0,0,0.3,null,defaultSkillId
+MagicCannonVariant1Id,Magictool,Any,Any,0,hasBuff('magic_cannon_charge') ? 700 : 0	,魔法炮充能/释放逻辑，通过行为树实现。,"{""name"": ""魔法炮"", ""agent"": ""class Agent {\r\n    get 后摇帧数() {\r\n        const endFrames = this.currentSkillActionFrames - this.currentSkillStartupFrames\r\n        return endFrames\r\n    }\r\n    get 伤害计算公式() {\r\n        // 伤害公式本身是“字符串表达式”，这里把通用片段 vAtkP 直接嵌入，避免在 MDSL 参数里写字符串拼接\r\n        return `(${this.vAtkP} + 100) * (100 + skill.lv * 5 + self.vit + self.str) / 100`\r\n    }\r\n}"", ""definition"": ""root {\r\n\tsequence{\r\n\t\taction [animation,\""施法前摇\"",$currentSkillStartupFrames]\r\n\t\twait [$currentSkillStartupFrames]\r\n\t\taction [animation,\""蓄力动画\"",$currentSkillChargingFrames]\r\n\t\twait [$currentSkillChargingFrames]\r\n\t\taction [animation, \""咏唱动画\"",$currentSkillChantingFrames]\r\n\t\twait [$currentSkillChantingFrames]\r\n        branch [mainAction]\r\n\t\taction [animation, \""施法后摇\"", $后摇帧数]\r\n\t\twait [$后摇帧数]\r\n    }\r\n}   \r\n\r\nroot [mainAction] {\r\n    sequence {\r\n        action [rangeAttack, $targetId,\""physical\"",\""physical\"",1,$伤害计算公式,1,3]\r\n    }\r\n}"", ""memberType"": ""Player""}",{},{},self.mainWeapon.element	,24,4,hasBuff('magic_cannon_charge') ?  12 : 18,hasBuff('magic_cannon_charge') ?  170 : 31,0,0,0,0,0.3,null,MagicCannonId

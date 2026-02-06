@@ -298,8 +298,7 @@ export default function CharactePage() {
 							<div class={`flex w-full flex-none gap-3 portrait:flex-wrap landscape:flex-col`}>
 								{/* 主手 */}
 								<section
-									role="button"
-									tabIndex={0}
+									role="application"
 									onClick={() => {
 										if (character().weapon) {
 											setStore("pages", "cardGroup", store.pages.cardGroup.length, {
@@ -339,8 +338,7 @@ export default function CharactePage() {
 								</section>
 								{/* 副手 */}
 								<section
-									role="button"
-									tabIndex={0}
+									role="application"
 									onClick={() => {
 										if (character().subWeapon) {
 											setStore("pages", "cardGroup", store.pages.cardGroup.length, {
@@ -380,8 +378,7 @@ export default function CharactePage() {
 								</section>
 								{/* 防具 */}
 								<section
-									role="button"
-									tabIndex={0}
+									role="application"
 									onClick={() => {
 										if (character().armor) {
 											setStore("pages", "cardGroup", store.pages.cardGroup.length, {
@@ -421,8 +418,7 @@ export default function CharactePage() {
 								</section>
 								{/* 追加 */}
 								<section
-									role="button"
-									tabIndex={0}
+									role="application"
 									onClick={() => {
 										if (character().option) {
 											setStore("pages", "cardGroup", store.pages.cardGroup.length, {
@@ -462,8 +458,7 @@ export default function CharactePage() {
 								</section>
 								{/* 特殊 */}
 								<section
-									role="button"
-									tabIndex={0}
+									role="application"
 									onClick={() => {
 										if (character().special) {
 											setStore("pages", "cardGroup", store.pages.cardGroup.length, {

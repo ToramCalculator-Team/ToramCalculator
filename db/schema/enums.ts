@@ -42,8 +42,8 @@ export type SkillTargetType = (typeof SKILL_TARGET_TYPE)[number];
 export const SKILL_DISTANCE_TYPE = ["None", "Long", "Short", "Both"] as const;
 export type SkillDistanceType = (typeof SKILL_DISTANCE_TYPE)[number];
 
-// 技能充能类型枚举（咏唱、蓄力）
-export const SKILL_CHARGING_TYPE = ["Chanting", "Reservoir"] as const;
+// 技能读条类型枚举（咏唱、蓄力、无读条）
+export const SKILL_CHARGING_TYPE = ["Chanting", "Reservoir", "None"] as const;
 export type SkillChargingType = (typeof SKILL_CHARGING_TYPE)[number];
 
 // 技能效果标签类型枚举
@@ -130,6 +130,10 @@ export type MainWeaponType = (typeof MAIN_WEAPON_TYPE)[number];
 export const MAIN_HAND_TYPE = [...MAIN_WEAPON_TYPE, "None"] as const;
 export type MainHandType = (typeof MAIN_HAND_TYPE)[number];
 
+// 主手武器类型限制范围
+export const MAIN_HAND_TYPE_LIMIT = [...MAIN_HAND_TYPE, "Any"] as const;
+export type MainHandTypeLimit = (typeof MAIN_HAND_TYPE_LIMIT)[number];
+
 // 副武器
 export const SUB_WEAPON_TYPE = ["Arrow", "ShortSword", "NinjutsuScroll", "Shield"] as const;
 export type SubWeaponType = (typeof SUB_WEAPON_TYPE)[number];
@@ -138,6 +142,10 @@ export type SubWeaponType = (typeof SUB_WEAPON_TYPE)[number];
 export const SUB_HAND_TYPE = [...SUB_WEAPON_TYPE, MAIN_WEAPON_TYPE[0], MAIN_HAND_TYPE[5], MAIN_HAND_TYPE[6], MAIN_HAND_TYPE[8], "None"] as const;
 export type SubHandType = (typeof SUB_HAND_TYPE)[number];
 
+// 副手武器类型限制范围
+export const SUB_HAND_TYPE_LIMIT = [...SUB_HAND_TYPE, "Any"] as const;
+export type SubHandTypeLimit = (typeof SUB_HAND_TYPE_LIMIT)[number];
+
 // 武器
 export const WEAPON_TYPE = [...MAIN_WEAPON_TYPE, ...SUB_WEAPON_TYPE] as const;
 export type WeaponType = (typeof WEAPON_TYPE)[number];
@@ -145,6 +153,10 @@ export type WeaponType = (typeof WEAPON_TYPE)[number];
 // 用户防具类型
 export const PLAYER_ARMOR_ABILITY_TYPE = ["Normal", "Light", "Heavy"] as const;
 export type PlayerArmorAbilityType = (typeof PLAYER_ARMOR_ABILITY_TYPE)[number];
+
+// 用户防具类型限制范围
+export const PLAYER_ARMOR_ABILITY_TYPE_LIMIT = [...PLAYER_ARMOR_ABILITY_TYPE, "Any"] as const;
+export type PlayerArmorAbilityTypeLimit = (typeof PLAYER_ARMOR_ABILITY_TYPE_LIMIT)[number];
 
 // 装备
 export const EQUIP_TYPE = [...WEAPON_TYPE, "Armor", "Option", "Special"] as const;

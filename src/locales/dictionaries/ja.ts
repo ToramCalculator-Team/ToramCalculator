@@ -21,6 +21,11 @@ const mainHandType: Record<Enums.MainHandType, string> = {
 	None: "なし",
 };
 
+const mainHandTypeLimit: Record<Enums.MainHandTypeLimit, string> = {
+	...mainHandType,
+	Any: "なし",
+};
+
 const subWeaponType: Record<Enums.SubWeaponType, string> = {
 	Arrow: "矢",
 	ShortSword: "短剣",
@@ -35,6 +40,11 @@ const subHandType: Record<Enums.SubHandType, string> = {
 	Knuckle: mainHandType.Knuckle,
 	Katana: mainHandType.Katana,
 	None: "なし",
+};
+
+const subHandTypeLimit: Record<Enums.SubHandTypeLimit, string> = {
+	...subHandType,
+	Any: "なし",
 };
 
 // 実際のタイプ
@@ -187,6 +197,7 @@ const skillTreeType: Record<Enums.SkillTreeType, string> = {
 const skillChargingType: Record<Enums.SkillChargingType, string> = {
 	Chanting: "詠唱",
 	Reservoir: "チャージ",
+	None: "なし",
 };
 
 const skillDistanceType: Record<Enums.SkillDistanceType, string> = {
@@ -207,6 +218,11 @@ const playerArmorAbilityType: Record<Enums.PlayerArmorAbilityType, string> = {
 	Normal: "通常",
 	Light: "軽化",
 	Heavy: "重化",
+};
+
+const playerArmorAbilityTypeLimit: Record<Enums.PlayerArmorAbilityTypeLimit, string> = {
+	...playerArmorAbilityType,
+	Any: "なし",
 };
 
 const playerPetPersonaType: Record<Enums.PetPersonaType, string> = {
@@ -2474,19 +2490,19 @@ const dictionary: Dictionary = {
 					key: "",
 					tableFieldDescription: "",
 					formFieldDescription: "",
-					enumMap: mainHandType,
+					enumMap: mainHandTypeLimit,
 				},
 				targetSubWeaponType: {
 					key: "",
 					tableFieldDescription: "",
 					formFieldDescription: "",
-					enumMap: subHandType,
+					enumMap: subHandTypeLimit,
 				},
 				targetArmorAbilityType: {
 					key: "",
 					tableFieldDescription: "",
 					formFieldDescription: "",
-					enumMap: playerArmorAbilityType,
+					enumMap: playerArmorAbilityTypeLimit,
 				},
 				activeEffect: {
 					key: "",

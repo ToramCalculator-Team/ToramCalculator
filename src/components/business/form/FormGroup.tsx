@@ -3,7 +3,6 @@
  *
  * 用于展示DB内的数据，form是特化的form
  */
-import { repositoryMethods } from "@db/generated/repositories";
 import { type DB, DBSchema } from "@db/generated/zod/index";
 import { Index, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
@@ -37,23 +36,30 @@ export const FormGroup = () => {
 												initialValue={initialValue}
 												dataSchema={DBSchema[formGroupItem.type]}
 												childrenRelations={config().childrenRelations}
-												hiddenFields={config()?.form.hiddenFields}
+												hiddenFields={config().form.hiddenFields}
 												fieldGroupMap={config().fieldGroupMap}
 												fieldGenerator={config().form.fieldGenerator}
 												onInsert={async (value) => {
-													const result = await repositoryMethods[formGroupItem.type].insert?.(value as any);
+													const insertFun = DATA_CONFIG[formGroupItem.type]?.form.onInsert;
+													if (!insertFun) {
+														throw new Error(`${formGroupItem.type} 没有插入方法`);
+													}
+													const result = await insertFun(value as any);
 													// 打印结果并关闭表单
 													console.log("插入结果：", result);
 													setStore("pages", "formGroup", (pre) => pre.slice(0, -1));
+													return result;
 												}}
 												onUpdate={async (primaryKeyValue, value) => {
-													const result = await repositoryMethods[formGroupItem.type].update?.(
-														primaryKeyValue,
-														value as any,
-													);
+													const updateFun = DATA_CONFIG[formGroupItem.type]?.form.onUpdate;
+													if (!updateFun) {
+														throw new Error(`${formGroupItem.type} 没有更新方法`);
+													}
+													const result = await updateFun(primaryKeyValue, value as any);
 													// 打印结果并关闭表单
 													console.log("更新结果：", result);
 													setStore("pages", "formGroup", (pre) => pre.slice(0, -1));
+													return result;
 												}}
 											></DBForm>
 										)}

@@ -48,15 +48,15 @@ export interface DBFormProps<TTableName extends keyof DB> {
 	childrenRelations?: Array<ChildTableOf<TTableName>>;
 	fieldGenerator?: Partial<{
 		[K in keyof DB[TTableName]]: (
-			value: DB[TTableName][K],
+			value: () => DB[TTableName][K],
 			setValue: (value: DB[TTableName][K]) => void,
 			validationMessage: string,
 			dictionary: Dic<DB[TTableName]>,
 			dataSchema: ZodObject<Record<keyof DB[TTableName], ZodType>>,
 		) => JSX.Element;
 	}>;
-	onInsert: (values: DB[TTableName], trx?: Transaction<DB>) => Promise<void>;
-	onUpdate: (primaryKeyValue: string, values: DB[TTableName], trx?: Transaction<DB>) => Promise<void>;
+	onInsert: (values: DB[TTableName], trx?: Transaction<DB>) => Promise<DB[TTableName]>;
+	onUpdate: (primaryKeyValue: string, values: DB[TTableName], trx?: Transaction<DB>) => Promise<DB[TTableName]>;
 }
 
 type ForeignKeyRenderInfo = {
@@ -261,8 +261,12 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 									if (hasGenerator) {
 										console.log(field());
 										return fieldGenerator(
-											field().state.value as DB[TTableName][typeof key],
-											(value) => field().setValue(value as DeepValue<DB[TTableName], DeepKeys<DB[TTableName]>>),
+											() => field().state.value as DB[TTableName][typeof key],
+											(value) => {
+												console.log("value", value);
+												field().setValue(value as DeepValue<DB[TTableName], DeepKeys<DB[TTableName]>>)
+												console.log("field().state.value", field().state.value);
+											},
 											fieldInfo(field()),
 											dictionary().db[props.tableName],
 											props.dataSchema,
