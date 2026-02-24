@@ -1,6 +1,6 @@
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import type { SkillVariantWithRelations } from "@db/generated/repositories/skill_variant";
-import type { EffectTree } from "@db/schema/jsons";
+import type { MemberBTTree } from "@db/schema/jsons";
 import type { ExpressionContext } from "../../../JSProcessor/types";
 import type { MemberDomainEvent } from "../../../types";
 import type { DamageAreaRequest } from "../../../World/types";
@@ -28,7 +28,7 @@ export interface CommonProperty extends Record<string, unknown> {
 	/** 当前技能效果 */
 	currentSkillVariant: SkillVariantWithRelations | null;
 	/** 当前技能主动效果行为树 */
-	currentSkillActiveEffectLogic: EffectTree | null;
+	currentSkillActiveEffectLogic: MemberBTTree | null;
 
 	// 每次技能执行完更新
 	/** 上一个技能数据 */

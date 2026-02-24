@@ -6,7 +6,7 @@ import { z } from "zod/v4";
 import defaultUserAvatarUrl from "~/../public/icons/512.png?url";
 import { Button } from "~/components/controls/button";
 import { syncControl } from "~/initialWorker";
-import { bindLocalAccountToUser, ensureLocalAccount } from "~/lib/localAccount";
+import { bindLocalAccountToUser, clearChangesContent, ensureLocalAccount } from "~/lib/localAccount";
 import { emailExists, getUserByCookie } from "~/lib/utils/session";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
@@ -90,10 +90,15 @@ export const LoginDialog = () => {
 					});
 				}
 
+				// 登陆成功
+				// 如果bindLocalAccount是false，则清空本地数据库内的changes内容
+				if (!value.bindLocalAccount) {
+					await clearChangesContent();
+				}
 				// 启动数据同步
+				console.log("登录成功，启动数据同步");
 				syncControl.start();
 				setStore("pages", "loginDialogState", false);
-				console.log("登录成功，启动数据同步");
 			}
 		} catch (error) {
 			console.error("请求错误:", error);

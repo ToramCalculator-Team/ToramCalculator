@@ -2,40 +2,52 @@ import { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import { State } from "~/lib/mistreevous/State";
 import type { Member } from "../../Member";
+import type { CommonRuntimeContext } from "../Agent/CommonRuntimeContext";
 import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
+
+type BtEntry<TRuntimeContext extends CommonRuntimeContext & Record<string, unknown>> = {
+	bt: BehaviourTree;
+	board: TRuntimeContext & Record<string, unknown>;
+};
 
 export class BtManager<
 	TAttrKey extends string,
 	TStateEvent extends MemberEventType,
 	TStateContext extends MemberStateContext,
-	TRuntimeContext extends Record<string, unknown> = Record<string, unknown>,
+	TRuntimeContext extends CommonRuntimeContext & Record<string, unknown> = CommonRuntimeContext & Record<string, unknown>,
 > {
-	skillBt: BehaviourTree | undefined = undefined;
-	buffBts: Map<string, BehaviourTree> = new Map<string, BehaviourTree>();
-	/** 当前技能注册的函数名称列表，用于清理 */
-	private skillFunNames: string[] = [];
+	/** 主动效果行为树（不可并行，通常包括角色动画） */
+	private activeEffectEntry: BtEntry<TRuntimeContext> | undefined = undefined;
+
+	/** 可并行执行的行为树（如 buff / 常驻效果 / 召唤物 AI 等） */
+	private parallelEntries: Map<string, BtEntry<TRuntimeContext>> = new Map();
 
 	constructor(private owner: Member<TAttrKey, TStateEvent, TStateContext, TRuntimeContext>) {
 	}
 
 	/**
-	 * 注册 Agent
+	 * 为指定 effect 创建独立 board（继承 runtimeContext），并把 agent 注入到 board 上。
 	 *
 	 * 注意：runtimeContext 在注册 agent 之前已经包含了所有引擎属性（如 owner、currentFrame、position 等）。
-	 * 如果用户自定义的 agent 中有同名属性，会被忽略，引擎属性优先。
+	 * 如果用户自定义的 agent 中有同名属性，会被忽略，引擎属性优先（保持与旧实现一致）。
 	 * 这样设计是为了：
 	 * 1. 编辑器测试时允许用户定义同名变量进行测试
 	 * 2. 实际运行时使用引擎提供的权威属性，确保一致性
 	 *
 	 * @param agent Agent 类定义代码（形如 `class Agent { ... }`）
 	 */
-	registerAgent(agent: string): void {
+	private buildBoard(agent?: string): BtEntry<TRuntimeContext>["board"] {
 		const runtimeContext = this.owner.runtimeContext;
+		const board = Object.create(runtimeContext) as BtEntry<TRuntimeContext>["board"];
 
 		// 约定：agent 为形如 `class Agent { ... }` 的代码片段
 		// 为了和 BtEditor 保持一致，这里仍然注入 BehaviourTree/State/owner 作为可选依赖
 		type AgentInstance = Record<string, unknown>;
 		type AgentCtor = new () => AgentInstance;
+
+		if (!agent) {
+			return board;
+		}
 
 		let AgentClass: AgentCtor;
 		try {
@@ -48,7 +60,7 @@ export class BtManager<
 			AgentClass = agentClassCreator(BehaviourTree, State, this.owner);
 		} catch (error) {
 			console.warn(`🎮 [${this.owner.name}] Agent 编译失败：${error instanceof Error ? error.message : String(error)}`);
-			return;
+			return board;
 		}
 
 		let instance: AgentInstance;
@@ -58,7 +70,7 @@ export class BtManager<
 			console.warn(
 				`🎮 [${this.owner.name}] Agent 初始化失败：${error instanceof Error ? error.message : String(error)}`,
 			);
-			return;
+			return board;
 		}
 
 		const registerProperty = (name: string, descriptor: PropertyDescriptor): void => {
@@ -79,13 +91,11 @@ export class BtManager<
 				return;
 			}
 
-			Object.defineProperty(runtimeContext, name, {
+			Object.defineProperty(board, name, {
 				...descriptor,
 				// 确保可清理（delete）
 				configurable: true,
 			});
-
-			this.skillFunNames.push(name);
 		};
 
 		// 1) 注入实例字段（class field / 构造函数内赋值）
@@ -103,111 +113,98 @@ export class BtManager<
 			if (!descriptor) continue;
 			registerProperty(key, descriptor);
 		}
+
+		return board;
 	}
 
 	tickAll(): void {
-		// 更新技能行为树
-		if (this.skillBt) {
-			// 如果技能行为树已完成（SUCCEEDED 或 FAILED），自动清理
-			const state = this.skillBt.getState();
+		// 更新主动效果行为树（短期，不可并行）
+		if (this.activeEffectEntry) {
+			const state = this.activeEffectEntry.bt.getState();
 			if (state === State.SUCCEEDED || state === State.FAILED) {
-				this.skillBt = undefined;
-				// 暂时不清理相关函数
-				this.unregisterSkillFunctions();
-				console.log(`🎮 [${this.owner.name}] 技能行为树已完成 (${state})，自动清理`);
-				console.log("当前上下文", this.owner.runtimeContext);
+				this.activeEffectEntry = undefined;
+				console.log(`🎮 [${this.owner.name}] 主动效果行为树已完成 (${state})，自动清理`);
 				this.owner.actor.send({ type: "技能执行完成" } as TStateEvent);
 			} else {
-				this.skillBt.step();
+				this.activeEffectEntry.bt.step();
 			}
 		}
 
-		// 更新 Buff 行为树
-		this.buffBts.forEach((bt, id) => {
-			const state = bt.getState();
+		// 更新可并行行为树（buff 等）
+		this.parallelEntries.forEach((entry, name) => {
+			const state = entry.bt.getState();
 			if (state === State.SUCCEEDED || state === State.FAILED) {
-				console.log(`🎮 [${this.owner.name}] Buff 行为树 ${id} 已完成 (${state})，自动清理`);
-				this.buffBts.delete(id);
+				console.log(`🎮 [${this.owner.name}] 并行行为树 ${name} 已完成 (${state})，自动清理`);
+				this.parallelEntries.delete(name);
 			} else {
-				bt.step();
+				entry.bt.step();
 			}
 		});
 	}
 
 	/**
-	 * 注册技能行为树
+	 * 注册主动效果行为树（不可并行）
 	 *
 	 * 注册顺序：
 	 * 1. runtimeContext 已经包含了所有引擎属性（owner、currentFrame、position 等）
-	 * 2. 然后注册技能自定义的 agent（如果提供）
+	 * 2. 为本次 effect 创建独立 board，并注册自定义 agent（如果提供）
 	 * 3. 如果 agent 中有与引擎属性同名的属性，会被忽略并提示
 	 *
 	 * @param definition 行为树定义（MDSL 字符串或 JSON）
 	 * @param agent 可选的 Agent 类定义代码（用户自定义的方法/getter/setter）
 	 * @returns 创建的行为树实例
 	 */
-	registerSkillBt(
+	registerActiveEffectBt(
 		definition: string | RootNodeDefinition | RootNodeDefinition[],
 		agent?: string,
 	): BehaviourTree | undefined {
-		// 清理之前注册的函数
-		this.unregisterSkillFunctions();
-
-		// 注册技能自定义的 agent 到 runtimeContext
-		// 注意：runtimeContext 已经包含了引擎属性，同名属性会被忽略
-		if (agent) {
-			this.registerAgent(agent.trim());
-		}
-
-		// 创建行为树实例（使用包含引擎属性和技能自定义属性的 runtimeContext）
-		this.skillBt = new BehaviourTree(definition, this.owner.runtimeContext);
-		return this.skillBt;
-	}
-
-	registerBuffBt(
-		id: string,
-		definition: string | RootNodeDefinition | RootNodeDefinition[],
-	): BehaviourTree | undefined {
-		const bt = new BehaviourTree(definition, this.owner.runtimeContext);
-		this.buffBts.set(id, bt);
+		const board = this.buildBoard(agent?.trim());
+		const bt = new BehaviourTree(definition, board);
+		this.activeEffectEntry = { bt, board };
 		return bt;
 	}
 
 	/**
-	 * 清理技能注册的函数
+	 * 注册可并行行为树（buff 等）
+	 *
+	 * @param name        并行行为树实例名称（用于后续查找/移除/hasBuff）
+	 * @param definition  行为树定义（MDSL 或 JSON）
+	 * @param agent       可选的 Agent 类定义（用于该并行树的自定义动作/状态）
 	 */
-	private unregisterSkillFunctions(): void {
-		const runtimeContext = this.owner.runtimeContext;
-		for (const name of this.skillFunNames) {
-			delete (runtimeContext as Record<string, unknown>)[name];
-		}
-		this.skillFunNames = [];
+	registerParallelBt(
+		name: string,
+		definition: string | RootNodeDefinition | RootNodeDefinition[],
+		agent?: string,
+	): BehaviourTree | undefined {
+		const board = this.buildBoard(agent?.trim());
+		const bt = new BehaviourTree(definition, board);
+		this.parallelEntries.set(name, { bt, board });
+		return bt;
 	}
 
-	unregisterSkillBt(): void {
-		// 清理注册的函数
-		this.unregisterSkillFunctions();
-		this.skillBt = undefined;
+	/** 注销主动效果行为树 */
+	unregisterActiveEffectBt(): void {
+		this.activeEffectEntry = undefined;
 	}
 
-	unregisterBuffBt(id: string): void {
-		this.buffBts.delete(id);
+	unregisterParallelBt(name: string): void {
+		this.parallelEntries.delete(name);
 	}
 
-	getBuffBt(id: string): BehaviourTree | undefined {
-		return this.buffBts.get(id);
+	getParallelBt(name: string): BehaviourTree | undefined {
+		return this.parallelEntries.get(name)?.bt;
 	}
 
-	getSkillBt(): BehaviourTree | undefined {
-		return this.skillBt;
+	getActiveEffectBt(): BehaviourTree | undefined {
+		return this.activeEffectEntry?.bt;
 	}
 
-	hasBuff(id: string): boolean {
-		return this.buffBts.has(id);
+	hasBuff(name: string): boolean {
+		return this.parallelEntries.has(name);
 	}
 
 	clear(): void {
-		this.skillBt = undefined;
-		this.buffBts.clear();
+		this.activeEffectEntry = undefined;
+		this.parallelEntries.clear();
 	}
 }

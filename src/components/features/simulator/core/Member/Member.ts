@@ -52,7 +52,7 @@ export class Member<
 	/** 运行时上下文 */
 	runtimeContext: TRuntimeContext;
 	/** 行为树管理器 */
-	btManager: BtManager<TAttrKey, TStateEvent, TStateContext>;
+	btManager: BtManager<TAttrKey, TStateEvent, TStateContext, TRuntimeContext>;
 	/** 成员Actor引用 */
 	actor: MemberActor<TStateEvent, TStateContext>;
 	/** Actor 是否已启动 */

@@ -13,10 +13,9 @@ import {
 	SKILL_TREE_TYPE,
 	type SkillTreeType,
 } from "@db/schema/enums";
+import type { MemberBTTree } from "@db/schema/jsons";
 import { createId } from "@paralleldrive/cuid2";
-import { createEffect, createSignal, Show } from "solid-js";
-import { Portal } from "solid-js/web";
-import { Motion, Presence } from "solid-motionone";
+import { createEffect, createSignal, Index, Show } from "solid-js";
 import { Icons } from "~/components/icons";
 import { generateBossDataByFlag } from "~/lib/utils/mob";
 import { store } from "~/store";
@@ -25,6 +24,8 @@ import { Input } from "../controls/input";
 import { Select } from "../controls/select";
 import type { VirtualTableProps } from "../dataDisplay/virtualTable";
 import { BtEditor } from "../features/BtEditor/BtEditor";
+import { skillLogicExample } from "../features/BtEditor/data/SkillExamples";
+import { BtEditorWrapper } from "./btEditorWrapper";
 import type { DBdataRendererProps } from "./card/DBdataRenderer";
 import type { DBFormProps } from "./form/DBFormRenderer";
 
@@ -529,26 +530,44 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 			fieldGenerator: {
-				actions: (value, setValue, _, dictionary) => {
+				actions: (value, setValue, validationMessage, dictionary) => {
+					const [editorDisplay, setEditorDisplay] = createSignal(false);
 					return (
-						<BtEditor
+						<Input
 							title={dictionary.fields.actions.key}
-							initValues={{
-								definition: value().definition ?? "",
-								agent: value().agent ?? "",
-								memberType: (value().memberType as MemberType) ?? "Mob",
-							}}
-							onSave={(mdsl, agent, memberType) => {
-								setValue({
-									...value(),
-									definition: mdsl,
-									agent: agent,
-									memberType: memberType,
-								});
-							}}
-						/>
+							description={dictionary.fields.actions.formFieldDescription}
+							validationMessage={validationMessage}
+							class="border-dividing-color bg-primary-color w-full rounded-md border"
+						>
+							<BtEditorWrapper
+								title={dictionary.fields.actions.key}
+								editorDisplay={editorDisplay()}
+								setEditorDisplay={setEditorDisplay}
+							>
+								<BtEditor
+									title={dictionary.fields.actions.key}
+									initValues={{
+										definition: value().definition ?? "",
+										agent: value().agent ?? "",
+										memberType: (value().memberType as MemberType) ?? "Mob",
+									}}
+									onSave={(mdsl, agent, memberType) => {
+										const newValue = {
+											...value(),
+											definition: mdsl,
+											agent: agent,
+											memberType: memberType,
+										};
+										console.log(newValue);
+										setValue(newValue);
+										// setEditorDisplay(false);
+									}}
+									onClose={() => setEditorDisplay(false)}
+								/>
+							</BtEditorWrapper>
+						</Input>
 					);
-				},
+				}
 			},
 			onInsert: repositoryMethods.mob.insert,
 			onUpdate: repositoryMethods.mob.update,
@@ -891,9 +910,7 @@ export const DATA_CONFIG: DataConfig = {
 				"reservoirFixed",
 				"reservoirModified",
 			],
-			主动效果: ["activeEffect"],
-			被动效果: ["passiveEffects"],
-			Buff效果: ["buffs"],
+			技能效果: ["activeEffect", "passiveEffects", "buffs"],
 			详细信息: ["description", "details"],
 			其他信息: ["elementLogic"],
 		},
@@ -947,60 +964,224 @@ export const DATA_CONFIG: DataConfig = {
 		form: {
 			hiddenFields: ["id"],
 			fieldGenerator: {
-				activeEffect: (value, setValue, _, dictionary) => {
+				activeEffect: (value, setValue, validationMessage, dictionary) => {
 					const [editorDisplay, setEditorDisplay] = createSignal(false);
 					return (
-						<>
-							<Button onClick={() => setEditorDisplay(true)}>编辑主动效果</Button>
-							<Portal>
-								<Presence exitBeforeEnter>
-									<Show when={editorDisplay()}>
-										<Motion.div
-											animate={{ transform: ["scale(1.05)", "scale(1)"], opacity: [0, 1] }}
-											exit={{ transform: ["scale(1)", "scale(1.05)"], opacity: [1, 0] }}
-											transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-											class={`DialogBG bg-primary-color-10 fixed top-0 left-0 z-40 grid h-dvh w-dvw transform place-items-center backdrop-blur`}
-											onClick={() => setEditorDisplay(false)}
-											style={{
-												"z-index": 51,
-											}}
-										>
-											<div
-												role="application"
-												class="DialogBox bg-primary-color shadow-dividing-color shadow-dialog relative flex h-[90vh] w-[90vw] flex-col items-center gap-3 rounded p-2"
-												onClick={(e) => e.stopPropagation()}
-												onKeyDown={(e) => {
-													if (e.key === "Escape") {
-														setEditorDisplay(false);
-													}
+						<Input
+							title={dictionary.fields.activeEffect.key}
+							description={dictionary.fields.activeEffect.formFieldDescription}
+							validationMessage={validationMessage}
+							class="border-dividing-color bg-primary-color w-full rounded-md border"
+						>
+							<BtEditorWrapper
+								title={dictionary.fields.activeEffect.key}
+								editorDisplay={editorDisplay()}
+								setEditorDisplay={setEditorDisplay}
+							>
+								<BtEditor
+									title={dictionary.fields.activeEffect.key}
+									initValues={{
+										definition: value().definition ?? "",
+										agent: value().agent ?? "",
+										memberType: (value().memberType as MemberType) ?? "Player",
+									}}
+									onSave={(mdsl, agent, memberType) => {
+										const newValue = {
+											...value(),
+											definition: mdsl,
+											agent: agent,
+											memberType: memberType,
+										};
+										console.log(newValue);
+										setValue(newValue);
+										// setEditorDisplay(false);
+									}}
+									onClose={() => setEditorDisplay(false)}
+								/>
+							</BtEditorWrapper>
+						</Input>
+					);
+				},
+				passiveEffects: (value, setValue, validationMessage, dictionary) => {
+					const arrayValue = () => (value() as MemberBTTree[]) ?? [];
+					const [editorDisplay, setEditorDisplay] = createSignal<Array<boolean>>([]);
+
+					// 让 editorDisplay 的长度始终与数组长度对齐（新增项默认 false）
+					createEffect(() => {
+						const len = arrayValue().length;
+						setEditorDisplay((prev) => {
+							const next = Array.from({ length: len }, (_, i) => prev[i] ?? false);
+							if (prev.length === next.length && prev.every((v, i) => v === next[i])) return prev;
+							return next;
+						});
+					});
+
+					const setEditorDisplayAt = (i: number, v: boolean) => {
+						setEditorDisplay((prev) => {
+							const next = [...prev];
+							next[i] = v;
+							return next;
+						});
+					};
+					return (
+						<Input
+							title={dictionary.fields.passiveEffects.key}
+							description={dictionary.fields.passiveEffects.formFieldDescription}
+							validationMessage={validationMessage}
+							class="border-dividing-color bg-primary-color w-full rounded-md border"
+						>
+							<div class="ArrayBox flex w-full flex-col gap-2">
+								<Index each={arrayValue()}>
+									{(item, index) => (
+										<div class="flex gap-1">
+											<Input
+												type="text"
+												value={item().name}
+												onChange={(e) => {
+													const i = index;
+													const next = arrayValue().slice();
+													next[i] = { ...item(), name: e.target.value };
+													setValue(next);
 												}}
+												class="w-full p-0! min-w-64"
+											/>
+											<BtEditorWrapper
+												title={dictionary.fields.passiveEffects.key}
+												editorDisplay={editorDisplay()[index] ?? false}
+												setEditorDisplay={(v) => setEditorDisplayAt(index, v)}
 											>
 												<BtEditor
-													title={dictionary.fields.activeEffect.key}
-													initValues={{
-														definition: value().definition ?? "",
-														agent: value().agent ?? "",
-														memberType: (value().memberType as MemberType) ?? "Player",
-													}}
+													title={dictionary.fields.passiveEffects.key}
+													initValues={item()}
 													onSave={(mdsl, agent, memberType) => {
 														const newValue = {
-															...value(),
+															...item(),
 															definition: mdsl,
 															agent: agent,
 															memberType: memberType,
 														};
-														console.log(newValue);
-														setValue(newValue);
-														// setEditorDisplay(false);
+														const i = index;
+														const next = arrayValue().slice();
+														next[i] = newValue;
+														setValue(next);
 													}}
-													onClose={() => setEditorDisplay(false)}
+													onClose={() => setEditorDisplayAt(index, false)}
 												/>
-											</div>
-										</Motion.div>
-									</Show>
-								</Presence>
-							</Portal>
-						</>
+											</BtEditorWrapper>
+											<Button
+												onClick={(e) => {
+													const i = index;
+													setValue(arrayValue().filter((_, j) => j !== i));
+													setEditorDisplay((prev) => prev.filter((_, j) => j !== i));
+													e.stopPropagation();
+												}}
+											>
+												-
+											</Button>
+										</div>
+									)}
+								</Index>
+								<Button
+									onClick={() => {
+										setValue(arrayValue().concat(skillLogicExample.default));
+									}}
+									class="w-full"
+								>
+									+
+								</Button>
+							</div>
+						</Input>
+					);
+				},
+				buffs: (value, setValue, validationMessage, dictionary) => {
+					const arrayValue = () => (value() as MemberBTTree[]) ?? [];
+					const [editorDisplay, setEditorDisplay] = createSignal<Array<boolean>>([]);
+
+					// 让 editorDisplay 的长度始终与数组长度对齐（新增项默认 false）
+					createEffect(() => {
+						const len = arrayValue().length;
+						setEditorDisplay((prev) => {
+							const next = Array.from({ length: len }, (_, i) => prev[i] ?? false);
+							if (prev.length === next.length && prev.every((v, i) => v === next[i])) return prev;
+							return next;
+						});
+					});
+
+					const setEditorDisplayAt = (i: number, v: boolean) => {
+						setEditorDisplay((prev) => {
+							const next = [...prev];
+							next[i] = v;
+							return next;
+						});
+					};
+					return (
+						<Input
+							title={dictionary.fields.buffs.key}
+							description={dictionary.fields.buffs.formFieldDescription}
+							validationMessage={validationMessage}
+							class="border-dividing-color bg-primary-color w-full rounded-md border"
+						>
+							<div class="ArrayBox flex w-full flex-col gap-2">
+								<Index each={arrayValue()}>
+									{(item, index) => (
+										<div class="flex gap-1">
+											<Input
+												type="text"
+												value={item().name}
+												onChange={(e) => {
+													const i = index;
+													const next = arrayValue().slice();
+													next[i] = { ...item(), name: e.target.value };
+													setValue(next);
+												}}
+												class="w-full p-0! min-w-64"
+											/>
+											<BtEditorWrapper
+												title={dictionary.fields.buffs.key}
+												editorDisplay={editorDisplay()[index] ?? false}
+												setEditorDisplay={(v) => setEditorDisplayAt(index, v)}
+											>
+												<BtEditor
+													title={dictionary.fields.buffs.key}
+													initValues={item()}
+													onSave={(mdsl, agent, memberType) => {
+														const newValue = {
+															...item(),
+															definition: mdsl,
+															agent: agent,
+															memberType: memberType,
+														};
+														const i = index;
+														const next = arrayValue().slice();
+														next[i] = newValue;
+														setValue(next);
+													}}
+													onClose={() => setEditorDisplayAt(index, false)}
+												/>
+											</BtEditorWrapper>
+											<Button
+												onClick={(e) => {
+													const i = index;
+													setValue(arrayValue().filter((_, j) => j !== i));
+													setEditorDisplay((prev) => prev.filter((_, j) => j !== i));
+													e.stopPropagation();
+												}}
+											>
+												-
+											</Button>
+										</div>
+									)}
+								</Index>
+								<Button
+									onClick={() => {
+										setValue(arrayValue().concat(skillLogicExample.default));
+									}}
+									class="w-full"
+								>
+									+
+								</Button>
+							</div>
+						</Input>
 					);
 				},
 			},

@@ -818,32 +818,6 @@ export function listFkColumns<T extends keyof DB>(tableName: T): (keyof DB[T])[]
 }
 
 /**
- * @deprecated 请使用 isFkRelationField（旧名语义易误解：它判断的是 relationField，不是 fk column）
- */
-export function isForeignKeyField<T extends keyof DB>(tableName: T, fieldName: keyof DB[T]): boolean {
-  return isFkRelationField(tableName, fieldName);
-}
-
-/**
- * @deprecated 请使用 listFkRelationFields（旧名语义易误解：它返回的是 relationField，不是 fk column）
- */
-export function getForeignKeyFields<T extends keyof DB>(tableName: T): (keyof DB[T])[] {
-  return listFkRelationFields(tableName);
-}
-
-/**
- * @deprecated 请使用 getFkRefByRelationField（旧名语义易误解：入参是 relationField，不是 fk column）
- */
-export function getForeignKeyReference<T extends keyof DB>(
-  tableName: T,
-  fieldName: keyof DB[T]
-): { table: keyof DB; field: string } | undefined {
-  const ref = getFkRefByRelationField(tableName, fieldName);
-  if (!ref) return undefined;
-  return { table: ref.table, field: ref.field };
-}
-
-/**
  * 获取父关系数据
  * @param db Kysely 数据库实例
  * @param tableName 表名

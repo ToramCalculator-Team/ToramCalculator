@@ -185,7 +185,35 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 				const fieldGenerator = props.fieldGenerator?.[key];
 				const hasGenerator = !!fieldGenerator;
 
-				// 处理嵌套结构
+				// 如果有字段生成器，则使用字段生成器
+				if (hasGenerator) {
+					const safeKey = key as DeepKeys<DB[TTableName]>;
+					return (
+						<form.Field
+							name={safeKey}
+							validators={{
+								onChangeAsyncDebounceMs: 500,
+								onChangeAsync: props.dataSchema.shape[key] as any,
+							}}
+						>
+							{(field) => {
+								return fieldGenerator(
+									() => field().state.value as DB[TTableName][typeof key],
+									(value) => {
+										console.log("value", value);
+										field().setValue(value as DeepValue<DB[TTableName], DeepKeys<DB[TTableName]>>);
+										console.log("field().state.value", field().state.value);
+									},
+									fieldInfo(field()),
+									dictionary().db[props.tableName],
+									props.dataSchema,
+								);
+							}}
+						</form.Field>
+					);
+				}
+
+				// 没有则走默认处理逻辑
 				switch (schemaFieldValue.type) {
 					case "array": {
 						return (
@@ -257,22 +285,6 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 								}}
 							>
 								{(field) => {
-									// 如果有字段生成器，则使用字段生成器
-									if (hasGenerator) {
-										console.log(field());
-										return fieldGenerator(
-											() => field().state.value as DB[TTableName][typeof key],
-											(value) => {
-												console.log("value", value);
-												field().setValue(value as DeepValue<DB[TTableName], DeepKeys<DB[TTableName]>>)
-												console.log("field().state.value", field().state.value);
-											},
-											fieldInfo(field()),
-											dictionary().db[props.tableName],
-											props.dataSchema,
-										);
-									}
-
 									// 外键标量字段用 DMMF 的 relationFromFields 映射渲染
 									if (fkInfo) {
 										console.log("fkInfo", fkInfo, fkOptionsByTable.latest);

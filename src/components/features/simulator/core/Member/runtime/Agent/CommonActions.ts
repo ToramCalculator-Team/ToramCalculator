@@ -7,7 +7,7 @@ import type { CommonProperty } from "./CommonProperty";
 import { type ActionPool, defineAction } from "./type";
 import { sendRenderCommand } from "./uitls";
 
-export const logLv = 1; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
+export const logLv = 0; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
 
 /** 二维向量 */
 const vec2Schema = z.object({
@@ -30,6 +30,18 @@ const commonAttackSchema = z.object({
  * Lookup.getFuncInvoker 会用 apply(agent, args) 调用
  */
 export const CommonActionPool = {
+	/** 日志 */
+	log: defineAction(
+		z
+			.object({
+				message: z.string().meta({ description: "日志消息" }),
+			})
+			.meta({ description: "日志" }),
+		(context, input) => {
+			logLv > 0 && console.log(`👤 [${context.owner?.name}] log`, input.message);
+			return State.SUCCEEDED;
+		},
+	),
 	/** 移动到指定位置 */
 	moveTo: defineAction(
 		z
@@ -207,7 +219,6 @@ export const CommonActionPool = {
 	addBuff: defineAction(
 		z
 			.object({
-				id: z.string().meta({ description: "buffID" }),
 				treeName: z.string().meta({ description: "buff树名称" }),
 			})
 			.meta({ description: "添加buff" }),
@@ -220,7 +231,18 @@ export const CommonActionPool = {
 				return State.FAILED;
 			}
 			// 注册buff
-			context.owner?.btManager.registerBuffBt(input.id, buff.definition);
+			context.owner?.btManager.registerParallelBt(buff.name, buff.definition, buff.agent);
+			return State.SUCCEEDED;
+		},
+	),
+
+	/** 移除buff */
+	removeBuff: defineAction(
+		z.object({
+			treeName: z.string().meta({ description: "buff树名称" }),
+		}).meta({ description: "移除buff" }),
+		(context, input) => {
+			context.owner?.btManager.unregisterParallelBt(input.treeName);
 			return State.SUCCEEDED;
 		},
 	),

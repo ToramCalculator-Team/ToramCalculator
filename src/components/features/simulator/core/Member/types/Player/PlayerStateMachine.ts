@@ -1,6 +1,5 @@
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import { assign, type EventObject, setup } from "xstate";
-import { skillLogicExample } from "~/components/features/BtEditor/data/SkillExamples";
 import type { MemberDomainEvent } from "../../../types";
 import type { Member } from "../../Member";
 import type { MemberEventType, MemberStateContext, MemberStateMachine } from "../../runtime/StateMachine/types";
@@ -187,7 +186,7 @@ export const playerStateMachine = (
 				const owner = context.owner;
 				if (owner && (owner.runtimeContext as Record<string, unknown>).emitDomainEvent) {
 					const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as (
-						event: import("../../../types").MemberDomainEvent,
+						event: MemberDomainEvent,
 					) => void;
 					// 从事件中获取技能ID（如果有）
 					const skillId = (event as { data?: { skillId?: string } }).data?.skillId ?? "";
@@ -219,7 +218,7 @@ export const playerStateMachine = (
 				runtimeContext.currentSkillVariant = null;
 				runtimeContext.currentSkillActiveEffectLogic = null;
 				if (runtimeContext.currentSkillTreeId) {
-					player.btManager.unregisterSkillBt();
+					player.btManager.unregisterActiveEffectBt();
 					runtimeContext.currentSkillTreeId = "unknown_skill";
 				}
 			},
@@ -255,7 +254,7 @@ export const playerStateMachine = (
 				const treeDefinition = skillVariant.activeEffect.definition;
 				const agentCode = skillVariant.activeEffect.agent;
 
-				const treeData = player.btManager.registerSkillBt(treeDefinition, agentCode);
+				const treeData = player.btManager.registerActiveEffectBt(treeDefinition, agentCode);
 				if (!treeData) {
 					console.error(`🎮 [${context.owner?.name}] 技能逻辑不是有效的行为树 TreeData，已跳过执行`, treeDefinition);
 					player.actor.send({ type: "技能执行完成" });
@@ -324,7 +323,7 @@ export const playerStateMachine = (
 				if (!owner) return;
 
 				const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as
-					| ((event: import("../../../types").MemberDomainEvent) => void)
+					| ((event: MemberDomainEvent) => void)
 					| undefined;
 				if (!emitDomainEvent) return;
 
@@ -362,7 +361,7 @@ export const playerStateMachine = (
 				if (!owner) return;
 
 				const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as
-					| ((event: import("../../../types").MemberDomainEvent) => void)
+					| ((event: MemberDomainEvent) => void)
 					| undefined;
 				if (!emitDomainEvent) return;
 
@@ -377,7 +376,7 @@ export const playerStateMachine = (
 				if (!owner) return;
 
 				const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as
-					| ((event: import("../../../types").MemberDomainEvent) => void)
+					| ((event: MemberDomainEvent) => void)
 					| undefined;
 				if (!emitDomainEvent) return;
 
@@ -896,16 +895,10 @@ export const playerStateMachine = (
 
 const getSkillVariant = (skill: CharacterSkillWithRelations, player: Player) => {
 	return skill.template?.variants.find((e) => {
-		const result =
-			e.targetMainWeaponType === player.activeCharacter.weapon?.type &&
-			e.targetSubWeaponType === player.activeCharacter.subWeapon?.type &&
-			e.targetArmorAbilityType === player.activeCharacter.armor?.ability;
-		console.log(
-			`🔍 技能变体条件检查: 
-			${e.targetMainWeaponType} = ${player.activeCharacter.weapon?.type} 
-			${e.targetSubWeaponType} = ${player.activeCharacter.subWeapon?.type} 
-			${e.targetArmorAbilityType} = ${player.activeCharacter.armor?.ability}`,
-		);
+		const weaponCondition = e.targetMainWeaponType === player.activeCharacter.weapon?.type || e.targetMainWeaponType === "Any"
+		const subWeaponCondition = e.targetSubWeaponType === player.activeCharacter.subWeapon?.type || e.targetSubWeaponType === "Any"
+		const armorAbilityCondition = e.targetArmorAbilityType === player.activeCharacter.armor?.ability || e.targetArmorAbilityType === "Any"
+		const result = weaponCondition && subWeaponCondition && armorAbilityCondition
 		return result;
 	})
 };
