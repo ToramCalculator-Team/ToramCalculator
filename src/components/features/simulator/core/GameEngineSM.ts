@@ -172,6 +172,59 @@ export const GameEngineSM = setup({
 			}
 			return true;
 		},
+		// Executor 侧：从非idle状态重新初始化（先cleanup再init）
+		runIfExecutorReinit: ({ context, event }) => {
+			if (context.role !== "executor") {
+				console.warn(
+					`[${context.threadName || "unknown"}] GameEngineSM: runIfExecutorReinit 只能由 executor 调用`,
+				);
+				return;
+			}
+			const prefix = context.threadName || "unknown";
+			console.log(`[${prefix}] GameEngineSM: Executor 从非idle状态重新初始化`);
+
+			// 先清理旧引擎状态
+			try {
+				context.engine?.cleanup?.();
+			} catch (e) {
+				console.warn(`[${prefix}] GameEngineSM: 清理旧引擎失败（可忽略）:`, e);
+			}
+			// 清除旧host权限
+			(context as any).hostOperatorId = undefined;
+
+			// 然后执行正常的init流程
+			if (event.type === "CMD_INIT" && "operatorId" in event) {
+				(context as any).hostOperatorId = event.operatorId;
+				console.log(`[${prefix}] GameEngineSM: 设置新 hostOperatorId: ${event.operatorId}`);
+			}
+
+			try {
+				if (event.type === "CMD_INIT" && event.data) {
+					context.engine?.initialize(event.data);
+					console.log(`[${prefix}] GameEngineSM: Executor 重新 INIT 完成`);
+					context.peer.send({
+						type: "RESULT_INIT",
+						sourceSide: "executor",
+						seq: context.nextSeq(),
+						correlationId: event.correlationId,
+						success: true,
+					});
+				} else {
+					throw new Error("CMD_INIT 必须提供数据");
+				}
+			} catch (error) {
+				console.error(`[${prefix}] GameEngineSM: Executor 重新 INIT 失败:`, error);
+				context.peer.send({
+					type: "RESULT_INIT",
+					sourceSide: "executor",
+					seq: context.nextSeq(),
+					correlationId: event.correlationId,
+					success: false,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				throw error;
+			}
+		},
 		// Executor 侧：执行副作用并回传结果
 		runIfExecutorInit: ({ context, event }) => {
 			if (context.role !== "executor") {
@@ -382,7 +435,9 @@ export const GameEngineSM = setup({
 			}
 			
       context.engine?.reset?.();
-			console.log(`[${prefix}] GameEngineSM: Executor 执行 RESET 完成`);
+			// 重置host权限，允许下一个controller接管
+			(context as any).hostOperatorId = undefined;
+			console.log(`[${prefix}] GameEngineSM: Executor 执行 RESET 完成，hostOperatorId 已清除`);
 			context.peer.send({
 				type: "RESULT_RESET",
 				sourceSide: "executor",
@@ -413,7 +468,9 @@ export const GameEngineSM = setup({
 			}
 			
       context.engine?.reset?.();
-			console.log(`[${prefix}] GameEngineSM: Executor 执行 RESET 完成`);
+			// 重置host权限，允许下一个controller接管
+			(context as any).hostOperatorId = undefined;
+			console.log(`[${prefix}] GameEngineSM: Executor 执行 RESET 完成，hostOperatorId 已清除`);
 			context.peer.send({
 				type: "RESULT_RESET",
 				sourceSide: "executor",
@@ -515,6 +572,18 @@ export const GameEngineSM = setup({
 
     ready: {
       on: {
+				CMD_INIT: [
+          {
+						guard: ({ context }) => context.role === "controller",
+            target: "initializing",
+						actions: ["sendToExecutor"],
+          },
+          {
+						guard: ({ context }) => context.role === "executor",
+            target: "ready",
+						actions: ["runIfExecutorReinit"],
+          },
+        ],
 				CMD_START: [
           {
 						guard: ({ context }) => context.role === "controller",
@@ -566,6 +635,18 @@ export const GameEngineSM = setup({
 
     running: {
       on: {
+				CMD_INIT: [
+          {
+						guard: ({ context }) => context.role === "controller",
+            target: "initializing",
+						actions: ["sendToExecutor"],
+          },
+          {
+						guard: ({ context }) => context.role === "executor",
+            target: "ready",
+						actions: ["runIfExecutorReinit"],
+          },
+        ],
 				CMD_PAUSE: [
           {
 						guard: ({ context }) => context.role === "controller",
@@ -629,6 +710,18 @@ export const GameEngineSM = setup({
 
     paused: {
       on: {
+				CMD_INIT: [
+          {
+						guard: ({ context }) => context.role === "controller",
+            target: "initializing",
+						actions: ["sendToExecutor"],
+          },
+          {
+						guard: ({ context }) => context.role === "executor",
+            target: "ready",
+						actions: ["runIfExecutorReinit"],
+          },
+        ],
 				CMD_RESUME: [
           {
 						guard: ({ context }) => context.role === "controller",
@@ -726,6 +819,18 @@ export const GameEngineSM = setup({
 
     stopped: {
       on: {
+				CMD_INIT: [
+          {
+						guard: ({ context }) => context.role === "controller",
+            target: "initializing",
+						actions: ["sendToExecutor"],
+          },
+          {
+						guard: ({ context }) => context.role === "executor",
+            target: "ready",
+						actions: ["runIfExecutorReinit"],
+          },
+        ],
 				CMD_RESET: [
           {
 						guard: ({ context }) => context.role === "controller",

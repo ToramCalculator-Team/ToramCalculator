@@ -107,6 +107,8 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 
 	onCleanup(() => {
 		console.log(`--RealtimeSimulator Page Unmount`);
+		// 先重置引擎（将Worker侧状态机归位到idle），再销毁控制器
+		lifecycle.reset();
 		lifecycle.destroy();
 		// 清理所有成员控制器
 		memberControllers().forEach(({ controller }) => {
