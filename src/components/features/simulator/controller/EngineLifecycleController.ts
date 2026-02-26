@@ -1,6 +1,6 @@
 import type { SimulatorWithRelations } from "@db/generated/repositories/simulator";
 import { createId } from "@paralleldrive/cuid2";
-import { createActor, waitFor } from "xstate";
+import { type Actor, createActor, waitFor } from "xstate";
 import { type EngineControlMessage, GameEngineSM } from "../core/GameEngineSM";
 import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
 
@@ -11,7 +11,7 @@ import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
  * - 与成员控制器（controllerId/binding）解耦
  */
 export class EngineLifecycleController {
-	public readonly engineActor: ReturnType<typeof createActor<typeof GameEngineSM>>;
+	public readonly engineActor: Actor<typeof GameEngineSM>;
 	public readonly operatorId: string;
 
 	private seqCounter = 0;

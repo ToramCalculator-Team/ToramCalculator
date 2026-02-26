@@ -2,7 +2,7 @@ import type { MemberWithRelations } from "@db/generated/repositories/member";
 import type { SimulatorWithRelations } from "@db/generated/repositories/simulator";
 import type { TeamWithRelations } from "@db/generated/repositories/team";
 import { createId } from "@paralleldrive/cuid2";
-import { createActor } from "xstate";
+import { type Actor, createActor } from "xstate";
 import { EventQueue } from "./EventQueue/EventQueue";
 import type { QueueEvent } from "./EventQueue/types";
 import { FrameLoop } from "./FrameLoop/FrameLoop";
@@ -44,7 +44,7 @@ export class GameEngine {
 	// ==================== 核心模块 ====================
 
 	/** 引擎状态机 */
-	private stateMachine: ReturnType<typeof createActor<typeof GameEngineSM>>;
+	private stateMachine: Actor<typeof GameEngineSM>;
 
 	/** 世界 - 资产管理 */
 	private world: World;
@@ -135,6 +135,8 @@ export class GameEngine {
 	 * @param config 引擎配置
 	 */
 	constructor(config: EngineConfig) {
+		console.log("================= GameEngine constructor ==================");
+		
 		// 🛡️ 安全检查：只允许在Worker线程中创建GameEngine
 		this.validateWorkerContext();
 
