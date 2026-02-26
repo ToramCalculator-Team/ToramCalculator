@@ -635,18 +635,6 @@ export const GameEngineSM = setup({
 
     running: {
       on: {
-				CMD_INIT: [
-          {
-						guard: ({ context }) => context.role === "controller",
-            target: "initializing",
-						actions: ["sendToExecutor"],
-          },
-          {
-						guard: ({ context }) => context.role === "executor",
-            target: "ready",
-						actions: ["runIfExecutorReinit"],
-          },
-        ],
 				CMD_PAUSE: [
           {
 						guard: ({ context }) => context.role === "controller",
@@ -710,18 +698,6 @@ export const GameEngineSM = setup({
 
     paused: {
       on: {
-				CMD_INIT: [
-          {
-						guard: ({ context }) => context.role === "controller",
-            target: "initializing",
-						actions: ["sendToExecutor"],
-          },
-          {
-						guard: ({ context }) => context.role === "executor",
-            target: "ready",
-						actions: ["runIfExecutorReinit"],
-          },
-        ],
 				CMD_RESUME: [
           {
 						guard: ({ context }) => context.role === "controller",
@@ -819,18 +795,6 @@ export const GameEngineSM = setup({
 
     stopped: {
       on: {
-				CMD_INIT: [
-          {
-						guard: ({ context }) => context.role === "controller",
-            target: "initializing",
-						actions: ["sendToExecutor"],
-          },
-          {
-						guard: ({ context }) => context.role === "executor",
-            target: "ready",
-						actions: ["runIfExecutorReinit"],
-          },
-        ],
 				CMD_RESET: [
           {
 						guard: ({ context }) => context.role === "controller",
