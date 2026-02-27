@@ -17,6 +17,7 @@ import { store } from "~/store";
 import { AddMemberControllerButton } from "../../../components/features/simulator/controller/AddMemberControllerButton";
 import { ControlPanel, EngineStatusBar } from "../../../components/features/simulator/controller/components";
 import { EngineLifecycleController } from "../../../components/features/simulator/controller/EngineLifecycleController";
+import { GameView } from "../../../components/features/simulator/render/Renderer";
 import { MemberController } from "../../../components/features/simulator/controller/MemberController";
 import { MemberControllerPanel } from "../../../components/features/simulator/controller/MemberControllerPanel";
 import type { EngineControlMessage } from "../../../components/features/simulator/core/GameEngineSM";
@@ -378,11 +379,15 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 					transition={{
 						duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
 					}}
-					class="RealtimeSimulator flex flex-col h-full w-full overflow-y-auto p-2 gap-2"
+					class="RealtimeSimulator relative flex flex-col h-full w-full overflow-y-auto p-2 gap-2"
 				>
-					{/* 成员控制器面板列表 */}
-					<div class="flex w-full h-full gap-2">
-						{/* 成员控制器面板列表 */}
+					{/* 3D渲染层（背景） */}
+					<div class="absolute inset-0 z-0">
+						<GameView followEntityId={members()[0]?.id} />
+					</div>
+
+					{/* 成员控制器面板列表（前景覆盖） */}
+					<div class="relative z-10 flex w-full h-full gap-2">
 						<For each={memberControllers()}>
 							{(item) => (
 								<MemberControllerPanel
@@ -398,7 +403,7 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 					</div>
 
 					{/* 引擎控制栏 */}
-					<div class="flex gap-1">
+					<div class="relative z-10 flex gap-1">
 						<A href="/" class="Left flex gap-1 p-3 items-center w-fit">
 							<Icons.Brand.NoPaddingLogoText class="w-[160px] h-6" />
 						</A>
