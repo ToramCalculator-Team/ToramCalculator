@@ -542,6 +542,13 @@ export const GameEngineSM = setup({
 						actions: ["runIfExecutorInit"],
           },
         ],
+				RESULT_RESET: [
+          {
+						guard: ({ event, context }) =>
+							context.role === "controller" && event.sourceSide === "executor" && event.success,
+            target: "ready",
+          },
+        ],
       },
     },
 
@@ -606,8 +613,8 @@ export const GameEngineSM = setup({
           },
           {
 						guard: ({ context }) => context.role === "executor",
-            target: "idle",
-						actions: ["runIfExecutorReset"],
+            target: "ready",
+						actions: ["runIfExecutorResetAndReady"],
           },
         ],
       },
@@ -628,8 +635,8 @@ export const GameEngineSM = setup({
           },
           {
 						guard: ({ context }) => context.role === "executor",
-            target: "idle",
-						actions: ["runIfExecutorReset"],
+            target: "ready",
+						actions: ["runIfExecutorResetAndReady"],
           },
         ],
       },
@@ -669,8 +676,8 @@ export const GameEngineSM = setup({
           },
           {
 						guard: ({ context }) => context.role === "executor",
-            target: "idle",
-						actions: ["runIfExecutorReset"],
+            target: "ready",
+						actions: ["runIfExecutorResetAndReady"],
           },
         ],
       },
@@ -691,8 +698,8 @@ export const GameEngineSM = setup({
           },
           {
 						guard: ({ context }) => context.role === "executor",
-            target: "idle",
-						actions: ["runIfExecutorReset"],
+            target: "ready",
+						actions: ["runIfExecutorResetAndReady"],
           },
         ],
       },
@@ -744,8 +751,8 @@ export const GameEngineSM = setup({
           },
           {
 						guard: ({ context }) => context.role === "executor",
-            target: "idle",
-						actions: ["runIfExecutorReset"],
+            target: "ready",
+						actions: ["runIfExecutorResetAndReady"],
           },
         ],
       },
@@ -766,8 +773,8 @@ export const GameEngineSM = setup({
           },
           {
 						guard: ({ context }) => context.role === "executor",
-            target: "idle",
-						actions: ["runIfExecutorReset"],
+            target: "ready",
+						actions: ["runIfExecutorResetAndReady"],
           },
         ],
       },
@@ -788,8 +795,8 @@ export const GameEngineSM = setup({
           },
           {
 						guard: ({ context }) => context.role === "executor",
-            target: "idle",
-						actions: ["runIfExecutorReset"],
+            target: "ready",
+						actions: ["runIfExecutorResetAndReady"],
           },
         ],
       },
