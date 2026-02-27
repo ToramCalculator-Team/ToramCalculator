@@ -15,6 +15,8 @@ import {
 	type SimulatorTaskTypeMapValue,
 } from "./SimulatorPool";
 import { DebugViewRegistry } from "./DebugViewRegistry";
+import { createLogger } from "~/lib/Logger";
+const log = createLogger("SimWorker");
 
 // ==================== 沙盒环境初始化 ====================
 
@@ -231,7 +233,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 					try {
 						postSystemMessage(messagePort, "engine_state_machine", msg);
 					} catch (error) {
-						console.error("Worker: 发送对端消息失败:", error);
+						log.error("Worker: 发送对端消息失败:", error);
 					}
 				});
 
@@ -256,19 +258,19 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 						const dataQueryResult = DataQueryCommandSchema.safeParse(payload);
 						if (engineCommandResult.success) {
 							// 状态机命令直接转发给引擎（controller → executor）
-							console.log("收到状态机命令:", engineCommandResult.data);
+							log.debug("收到状态机命令:", engineCommandResult.data);
 							gameEngine.sendCommand(engineCommandResult.data);
 							// console.log("命令已发送到引擎状态机");
 							portResult = { success: true };
 						} else if (dataQueryResult.success) {
-							console.log("收到意图:", dataQueryResult.data);
+							log.debug("收到意图:", dataQueryResult.data);
 							// 数据查询命令处理
 							portResult = await handleDataQuery(dataQueryResult.data);
 							// console.log("数据查询命令已处理:", portResult);
 						} else {
-							console.error(payload);
-							console.error(engineCommandResult.error);
-							console.error(dataQueryResult.error);
+							log.error(payload);
+							log.error(engineCommandResult.error);
+							log.error(dataQueryResult.error);
 							const maybeType =
 								typeof payload === "object" && payload !== null && "type" in payload
 									? String((payload as { type?: unknown }).type)
@@ -324,17 +326,17 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 						// console.log("🔌 Worker: 发送渲染消息到主线程", payload);
 						postSystemMessage(messagePort, "render_cmd", payload);
 					} catch (error) {
-						console.error("Worker: 发送渲染消息失败:", error);
+						log.error("Worker: 发送渲染消息失败:", error);
 					}
 				});
 
 				// 设置系统消息发送器：用于发送系统级事件到控制器（worker_ready/error/日志等）
 				gameEngine.setSystemMessageSender((payload: unknown) => {
 					try {
-						console.log("🔌 Worker: 发送系统消息到主线程", payload);
+						log.info("🔌 Worker: 发送系统消息到主线程", payload);
 						postSystemMessage(messagePort, "system_event", payload);
 					} catch (error) {
-						console.error("Worker: 发送系统消息失败:", error);
+						log.error("Worker: 发送系统消息失败:", error);
 					}
 				});
 
@@ -344,7 +346,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 						// console.log("🔌 Worker: 发送领域事件批到主线程", payload);
 						postSystemMessage(messagePort, "domain_event_batch", payload);
 					} catch (error) {
-						console.error("Worker: 发送领域事件批失败:", error);
+						log.error("Worker: 发送领域事件批失败:", error);
 					}
 				});
 
@@ -353,7 +355,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 					try {
 						postSystemMessage(messagePort, "debug_view_frame", frame);
 					} catch (error) {
-						console.error("Worker: 发送调试视图数据帧失败:", error);
+						log.error("Worker: 发送调试视图数据帧失败:", error);
 					}
 				});
 
@@ -362,7 +364,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 					try {
 						postSystemMessage(messagePort, "frame_snapshot", snapshot);
 					} catch (error) {
-						console.error("Worker: 发送帧快照失败:", error);
+						log.error("Worker: 发送帧快照失败:", error);
 					}
 				});
 
@@ -384,7 +386,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 		}
 	} catch (error) {
 		// 初始化错误，通过MessageChannel返回
-		console.error("Worker初始化失败:", error);
+		log.error("Worker初始化失败:", error);
 		try {
 			if (typeof port !== "undefined" && port) {
 				postSystemMessage(port as MessagePort, "system_event", {
@@ -428,12 +430,12 @@ function postSystemMessage(
 		const { message, transferables } = prepareForTransfer(msg);
 		port?.postMessage(message, transferables);
 	} catch (error) {
-		console.error("Worker: 消息序列化失败:", error);
+		log.error("Worker: 消息序列化失败:", error);
 		// 如果序列化失败，尝试发送清理后的数据
 		try {
 			port?.postMessage({ belongToTaskId: type, type, data: sanitizedData });
 		} catch (fallbackError) {
-			console.error("Worker: 备用消息发送也失败:", fallbackError);
+			log.error("Worker: 备用消息发送也失败:", fallbackError);
 		}
 	}
 }
