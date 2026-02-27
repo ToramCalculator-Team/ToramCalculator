@@ -1,7 +1,10 @@
 import { type ZodType, z } from "zod/v4";
+import { createLogger } from "~/lib/Logger";
 import type { State } from "~/lib/mistreevous/State";
 import type { CommonProperty } from "./CommonProperty";
 import type { ActionPool, ConditionPool } from "./type";
+
+const log = createLogger("AgentUtils");
 
 const unwrapSchema = (schema: ZodType): ZodType => {
 	let current: ZodType = schema;
@@ -152,7 +155,7 @@ export const maxMin = (min: number, value: number, max: number) => {
  */
 export const sendRenderCommand = (context: CommonProperty, actionName: string, params?: Record<string, unknown>) => {
 	if (!context.renderMessageSender) {
-		console.warn(`⚠️ [${context.owner?.name}] 无法获取渲染消息接口，无法发送渲染指令: ${actionName}`);
+		log.warn(`⚠️ [${context.owner?.name}] 无法获取渲染消息接口，无法发送渲染指令: ${actionName}`);
 		return;
 	}
 	const now = Date.now();

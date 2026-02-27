@@ -1,9 +1,12 @@
+import { createLogger } from "~/lib/Logger";
 import { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import { State } from "~/lib/mistreevous/State";
 import type { Member } from "../../Member";
 import type { CommonRuntimeContext } from "../Agent/CommonRuntimeContext";
 import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
+
+const log = createLogger("BtManager");
 
 type BtEntry<TRuntimeContext extends CommonRuntimeContext & Record<string, unknown>> = {
 	bt: BehaviourTree;
@@ -59,7 +62,7 @@ export class BtManager<
 
 			AgentClass = agentClassCreator(BehaviourTree, State, this.owner);
 		} catch (error) {
-			console.warn(`🎮 [${this.owner.name}] Agent 编译失败：${error instanceof Error ? error.message : String(error)}`);
+			log.warn(`🎮 [${this.owner.name}] Agent 编译失败：${error instanceof Error ? error.message : String(error)}`);
 			return board;
 		}
 
@@ -67,9 +70,9 @@ export class BtManager<
 		try {
 			instance = new AgentClass();
 		} catch (error) {
-			console.warn(
-				`🎮 [${this.owner.name}] Agent 初始化失败：${error instanceof Error ? error.message : String(error)}`,
-			);
+		log.warn(
+			`🎮 [${this.owner.name}] Agent 初始化失败：${error instanceof Error ? error.message : String(error)}`,
+		);
 			return board;
 		}
 
@@ -87,7 +90,7 @@ export class BtManager<
 			// 如果属性已存在，不应该注册用户定义
 			// 注意：即使属性值为 undefined，只要属性描述符存在，就说明属性已经被定义
 			if (hasOwn || existingDescriptor) {
-				console.warn(`🎮 [${this.owner.name}] Agent 注册跳过：用户定义「${name}」与内置成员重名，已忽略（内置优先）`);
+				log.warn(`🎮 [${this.owner.name}] Agent 注册跳过：用户定义「${name}」与内置成员重名，已忽略（内置优先）`);
 				return;
 			}
 
@@ -123,7 +126,7 @@ export class BtManager<
 			const state = this.activeEffectEntry.bt.getState();
 			if (state === State.SUCCEEDED || state === State.FAILED) {
 				this.activeEffectEntry = undefined;
-				console.log(`🎮 [${this.owner.name}] 主动效果行为树已完成 (${state})，自动清理`);
+				log.debug(`🎮 [${this.owner.name}] 主动效果行为树已完成 (${state})，自动清理`);
 				this.owner.actor.send({ type: "技能执行完成" } as TStateEvent);
 			} else {
 				this.activeEffectEntry.bt.step();
@@ -134,7 +137,7 @@ export class BtManager<
 		this.parallelEntries.forEach((entry, name) => {
 			const state = entry.bt.getState();
 			if (state === State.SUCCEEDED || state === State.FAILED) {
-				console.log(`🎮 [${this.owner.name}] 并行行为树 ${name} 已完成 (${state})，自动清理`);
+				log.debug(`🎮 [${this.owner.name}] 并行行为树 ${name} 已完成 (${state})，自动清理`);
 				this.parallelEntries.delete(name);
 			} else {
 				entry.bt.step();

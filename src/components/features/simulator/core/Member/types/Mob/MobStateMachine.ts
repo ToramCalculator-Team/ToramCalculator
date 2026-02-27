@@ -222,7 +222,7 @@ export const createMobStateMachine = (
 			发送命中判定事件给自己: ({ context, event }) => {
 				// Add your action code here
 				// ...
-				console.log(
+				log.debug(
 					`👹 [${context.owner?.name}] 发送命中判定事件给自己`,
 					event,
 				);
@@ -235,7 +235,7 @@ export const createMobStateMachine = (
 			发送控制判定事件给自己: ({ context, event }) => {
 				// Add your action code here
 				// ...
-				console.log(
+				log.debug(
 					`👹 [${context.owner?.name}] 发送控制判定事件给自己`,
 					event,
 				);
@@ -248,7 +248,7 @@ export const createMobStateMachine = (
 			根据命中结果进行下一步: ({ context, event }) => {
 				// Add your action code here
 				// ...
-				console.log(
+				log.debug(
 					`👹 [${context.owner?.name}] 根据命中结果进行下一步`,
 					event,
 				);
@@ -266,7 +266,7 @@ export const createMobStateMachine = (
 			发送伤害计算事件给自己: ({ context, event }) => {
 				// Add your action code here
 				// ...
-				console.log(
+				log.debug(
 					`👹 [${context.owner?.name}] 发送伤害计算事件给自己`,
 					event,
 				);
@@ -284,7 +284,7 @@ export const createMobStateMachine = (
 			发送属性修改事件给自己: ({ context, event }) => {
 				// Add your action code here
 				// ...
-				console.log(
+				log.debug(
 					`👹 [${context.owner?.name}] 发送属性修改事件给自己`,
 					event,
 				);
@@ -292,7 +292,7 @@ export const createMobStateMachine = (
 			发送buff修改事件给自己: ({ context, event }) => {
 				// Add your action code here
 				// ...
-				console.log(
+				log.debug(
 					`👹 [${context.owner?.name}] 发送buff修改事件给自己`,
 					event,
 				);
