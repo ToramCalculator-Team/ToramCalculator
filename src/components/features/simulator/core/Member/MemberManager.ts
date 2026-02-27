@@ -437,7 +437,7 @@ export class MemberManager {
 		this.primaryMemberId = memberId;
 
 		if (oldMemberId !== memberId) {
-			console.log(`🎯 主控目标切换: ${oldMemberId} -> ${memberId}`);
+			log.info(`🎯 主控目标切换: ${oldMemberId} -> ${memberId}`);
 
 			// 通知渲染层相机跟随新目标（仅用于渲染层，不用于控制器层）
 			// 注意：多控制器架构下，主控目标概念仅用于渲染层（相机跟随），不再通知控制器层

@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+import { createLogger } from "~/lib/Logger";
 import { State } from "~/lib/mistreevous/State";
 import { ExpressionTransformer } from "../../../JSProcessor/ExpressionTransformer";
 import type { DamageAreaRequest } from "../../../World/types";
@@ -6,6 +7,8 @@ import { ModifierType } from "../StatContainer/StatContainer";
 import type { CommonProperty } from "./CommonProperty";
 import { type ActionPool, defineAction } from "./type";
 import { sendRenderCommand } from "./uitls";
+
+const log = createLogger("Actions");
 
 export const logLv = 0; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
 
@@ -38,7 +41,7 @@ export const CommonActionPool = {
 			})
 			.meta({ description: "日志" }),
 		(context, input) => {
-			logLv > 0 && console.log(`👤 [${context.owner?.name}] log`, input.message);
+			logLv > 0 && log.debug(`👤 [${context.owner?.name}] log`, input.message);
 			return State.SUCCEEDED;
 		},
 	),
@@ -50,7 +53,7 @@ export const CommonActionPool = {
 			})
 			.meta({ description: "移动到指定位置" }),
 		(context, input) => {
-			console.log(`👤 [${context.owner?.name}] moveTo`, input);
+			log.debug(`👤 [${context.owner?.name}] moveTo`, input);
 			return State.SUCCEEDED;
 		},
 	),
@@ -64,7 +67,7 @@ export const CommonActionPool = {
 			})
 			.meta({ description: "播放动画" }),
 		(context, input) => {
-			console.log(`👤 [${context.owner?.name}] animation`, input);
+			log.debug(`👤 [${context.owner?.name}] animation`, input);
 			sendRenderCommand(context, input.name, { duration: input.duration });
 			return State.SUCCEEDED;
 		},
@@ -72,7 +75,7 @@ export const CommonActionPool = {
 
 	/** 单体攻击 */
 	singleAttack: defineAction(commonAttackSchema.meta({ description: "单体攻击" }), (context, input) => {
-		console.log(`👤 [${context.owner?.name}] generateSingleAttack`, input);
+		log.debug(`👤 [${context.owner?.name}] generateSingleAttack`, input);
 		// 解析伤害表达式，将所需的self变量放入参数列表
 
 		// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
@@ -88,11 +91,11 @@ export const CommonActionPool = {
 			})
 			.meta({ description: "范围攻击" }),
 		(context, input) => {
-			console.log(`👤 [${context.owner?.name}] 范围攻击`, input);
+			log.debug(`👤 [${context.owner?.name}] 范围攻击`, input);
 			// 解析伤害表达式，将所需的self变量放入参数列表
 			const owner = context.owner;
 			if (!owner) {
-				console.warn(`⚠️ [${context.owner?.name}] 无法找到owner`);
+				log.warn(`⚠️ [${context.owner?.name}] 无法找到owner`);
 				return State.FAILED;
 			}
 			const valueProvider = (key: string) => owner.statContainer.getValue(key);
@@ -101,14 +104,14 @@ export const CommonActionPool = {
 				valueProvider,
 			});
 			if (!res.success) {
-				console.warn(`⚠️ [${owner.name}] 伤害表达式解析失败: ${res.error}`);
+				log.warn(`⚠️ [${owner.name}] 伤害表达式解析失败: ${res.error}`);
 				return State.FAILED;
 			}
 			let damageExpr = res.compiledExpression;
 			// 替换skill.lv为技能等级
 			const skillLv = context.currentSkill?.lv ?? 0;
 			damageExpr = damageExpr.replace("skill.lv", String(skillLv));
-			console.log(`👤 [${owner.name}] 解析后表达式: ${damageExpr}`);
+			log.debug(`👤 [${owner.name}] 解析后表达式: ${damageExpr}`);
 
 			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
 			const startFrame = context.getCurrentFrame();
@@ -155,7 +158,7 @@ export const CommonActionPool = {
 			})
 			.meta({ description: "周围攻击" }),
 		(context, input) => {
-			console.log(`👤 [${context.owner?.name}] generateEnemyAttack`, input);
+			log.debug(`👤 [${context.owner?.name}] generateEnemyAttack`, input);
 			// 解析伤害表达式，将所需的self变量放入参数列表
 
 			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
@@ -173,7 +176,7 @@ export const CommonActionPool = {
 			})
 			.meta({ description: "冲撞攻击" }),
 		(context, input) => {
-			console.log(`👤 [${context.owner?.name}] generateMoveAttack`, input);
+			log.debug(`👤 [${context.owner?.name}] generateMoveAttack`, input);
 			// 解析伤害表达式，将所需的self变量放入参数列表
 
 			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
@@ -189,7 +192,7 @@ export const CommonActionPool = {
 			})
 			.meta({ description: "陨石伤害" }),
 		(context, input) => {
-			console.log(`👤 [${context.owner?.name}] generateVerticalAttack`, input);
+			log.debug(`👤 [${context.owner?.name}] generateVerticalAttack`, input);
 			// 解析伤害表达式，将所需的self变量放入参数列表
 
 			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
@@ -207,7 +210,7 @@ export const CommonActionPool = {
 			})
 			.meta({ description: "地面伤害" }),
 		(context, input) => {
-			console.log(`👤 [${context.owner?.name}] generateGroundAttack`, input);
+			log.debug(`👤 [${context.owner?.name}] generateGroundAttack`, input);
 			// 解析伤害表达式，将所需的self变量放入参数列表
 
 			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
@@ -223,11 +226,11 @@ export const CommonActionPool = {
 			})
 			.meta({ description: "添加buff" }),
 		(context, input) => {
-			console.log(`👤 [${context.owner?.name}] addBuff`, input);
+			log.debug(`👤 [${context.owner?.name}] addBuff`, input);
 			// buff逻辑所需的定义应该会被加载到上下文中，找到他并注册即可
 			const buff = context.currentSkillVariant?.buffs.find((buff) => buff.name === input.treeName);
 			if (!buff) {
-				console.warn(`⚠️ [${context.owner?.name}] 无法找到buff: ${input.treeName}`);
+				log.warn(`⚠️ [${context.owner?.name}] 无法找到buff: ${input.treeName}`);
 				return State.FAILED;
 			}
 			// 注册buff
@@ -257,7 +260,7 @@ export const CommonActionPool = {
 			})
 			.meta({ description: "属性修改" }),
 		(context, input) => {
-			console.log(`👤 [${context.owner?.name}] modifyAttribute`, input);
+			log.debug(`👤 [${context.owner?.name}] modifyAttribute`, input);
 			context.owner?.statContainer.addModifier(
 				input.attribute,
 				input.type === "fixed" ? ModifierType.DYNAMIC_FIXED : ModifierType.DYNAMIC_PERCENTAGE,
