@@ -379,15 +379,10 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 					transition={{
 						duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
 					}}
-					class="RealtimeSimulator relative flex flex-col h-full w-full overflow-y-auto p-2 gap-2"
+					class="RealtimeSimulator flex flex-col h-full w-full overflow-y-auto p-2 gap-2"
 				>
-					{/* 3D渲染层（背景） */}
-					<div class="absolute inset-0 z-0">
-						<GameView followEntityId={members()[0]?.id} />
-					</div>
-
-					{/* 成员控制器面板列表（前景覆盖） */}
-					<div class="relative z-10 flex w-full h-full gap-2">
+					{/* 成员控制器面板列表 */}
+					<div class="flex w-full h-full gap-2">
 						<For each={memberControllers()}>
 							{(item) => (
 								<MemberControllerPanel
@@ -397,13 +392,14 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 									members={members}
 									controllerEventState={controllerEventState}
 									onRemove={() => removeMemberController(item.id)}
+									gameView={<GameView followEntityId={members()[0]?.id} />}
 								/>
 							)}
 						</For>
 					</div>
 
 					{/* 引擎控制栏 */}
-					<div class="relative z-10 flex gap-1">
+					<div class="flex gap-1">
 						<A href="/" class="Left flex gap-1 p-3 items-center w-fit">
 							<Icons.Brand.NoPaddingLogoText class="w-[160px] h-6" />
 						</A>
