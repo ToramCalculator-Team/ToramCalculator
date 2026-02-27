@@ -30,6 +30,7 @@ interface MemberControllerPanelProps {
 	members: () => MemberSerializeData[];
 	controllerEventState: () => Record<string, ControllerEventState>;
 	onRemove: () => Promise<void>;
+	gameView?: any;
 }
 
 export function MemberControllerPanel(props: MemberControllerPanelProps) {
@@ -112,6 +113,13 @@ export function MemberControllerPanel(props: MemberControllerPanelProps) {
 					</Button>
 				</div>
 			</div>
+
+			{/* 3D渲染区域（中间区域 rows 2-7） */}
+			<Show when={props.gameView}>
+				<div class="col-span-8 row-start-2 row-span-6 overflow-hidden rounded">
+					{props.gameView}
+				</div>
+			</Show>
 
 			<div class="row-start-8 col-start-3 col-span-4 row-span-1 flex flex-col gap-2">
 				{/* 技能面板 */}
