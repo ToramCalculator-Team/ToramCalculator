@@ -7,8 +7,11 @@
  * - 生成相机事件（绑定变更时）
  */
 
+import { createLogger } from "~/lib/Logger";
 import type { ControlBindingManager } from "../Controller/ControlBindingManager";
-import type { MemberDomainEvent, ControllerDomainEvent } from "../types";
+import type { ControllerDomainEvent, MemberDomainEvent } from "../types";
+
+const log = createLogger("EventProj");
 
 export class ControllerEventProjector {
 	private bindingManager: ControlBindingManager;
@@ -80,7 +83,7 @@ export class ControllerEventProjector {
 		}
 
 		if (!this.domainEventBatchSender) {
-			console.warn("ControllerEventProjector: 领域事件批发送器未设置，无法发送事件");
+			log.warn("ControllerEventProjector: 领域事件批发送器未设置，无法发送事件");
 			this.currentFrameEvents = [];
 			return;
 		}
@@ -93,7 +96,7 @@ export class ControllerEventProjector {
 				events: this.currentFrameEvents,
 			});
 		} catch (error) {
-			console.error("ControllerEventProjector: 发送事件失败:", error);
+			log.error("ControllerEventProjector: 发送事件失败:", error);
 		}
 
 		// 清空缓存

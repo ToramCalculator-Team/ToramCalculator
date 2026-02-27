@@ -1,6 +1,9 @@
-import type { NestedSchema } from "../Member/runtime/StatContainer/SchemaTypes";
+import { createLogger } from "~/lib/Logger";
 import type { JSProcessor } from "../JSProcessor/JSProcessor";
 import type { ExpressionContext } from "../JSProcessor/types";
+import type { NestedSchema } from "../Member/runtime/StatContainer/SchemaTypes";
+
+const log = createLogger("ExprEval");
 
 type ExpressionMember = {
 	id: string;
@@ -81,7 +84,7 @@ export class ExpressionEvaluator {
 				hasBuff: (id: string): boolean => self.btManager.hasBuff(id),
 			};
 
-			console.log(`🔍 表达式求值: ${expression}`, executionContext);
+			log.debug(`🔍 表达式求值: ${expression}`, executionContext);
 			const evalResult = this.deps.jsProcessor.evaluateNumberOrBoolean(expression, executionContext, {
 				cacheScope: `${memberId}_${context.targetId ?? "-"}`,
 				schemas: {
@@ -94,7 +97,7 @@ export class ExpressionEvaluator {
 			}
 			return evalResult.result ?? 0;
 		} catch (error) {
-			console.error(`表达式计算失败: ${expression}`, error);
+			log.error(`表达式计算失败: ${expression}`, error);
 			return 0;
 		}
 	}

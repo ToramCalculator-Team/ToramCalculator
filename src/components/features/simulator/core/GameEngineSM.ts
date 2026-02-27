@@ -3,6 +3,8 @@ import type { GameEngine } from "./GameEngine";
 import { z } from "zod/v4";
 import { SimulatorWithRelationsSchema } from "@db/generated/repositories/simulator";
 import { createId } from "@paralleldrive/cuid2";
+import { createLogger } from "~/lib/Logger";
+const log = createLogger("EngineSM");
 
 // 命令类型（controller → executor）
 const CommandSchema = z.discriminatedUnion("type", [
@@ -148,13 +150,13 @@ export const GameEngineSM = setup({
 		// Controller 侧：发送命令到 executor
 		sendToExecutor: ({ context, event }) => {
 			if (context.role !== "controller") {
-				console.warn(
+				log.warn(
 					`[${context.threadName || "unknown"}] GameEngineSM: sendToExecutor 只能由 controller 调用`,
 				);
 				return;
 			}
 			const prefix = context.threadName || "unknown";
-			console.log(`[${prefix}] GameEngineSM: Controller 发送命令到 Executor:`, event);
+			log.info(`[${prefix}] GameEngineSM: Controller 发送命令到 Executor:`, event);
 			context.peer.send(event);
 		},
 		// 权限校验：检查 operatorId 是否为 host
@@ -165,7 +167,7 @@ export const GameEngineSM = setup({
 			const operatorId = "operatorId" in event ? event.operatorId : undefined;
 			if (operatorId !== context.hostOperatorId) {
 				const prefix = context.threadName || "unknown";
-				console.warn(
+				log.warn(
 					`[${prefix}] GameEngineSM: 权限拒绝 - operatorId ${operatorId} 不是 host (${context.hostOperatorId})`,
 				);
 				return false;
@@ -175,19 +177,19 @@ export const GameEngineSM = setup({
 		// Executor 侧：从非idle状态重新初始化（先cleanup再init）
 		runIfExecutorReinit: ({ context, event }) => {
 			if (context.role !== "executor") {
-				console.warn(
+				log.warn(
 					`[${context.threadName || "unknown"}] GameEngineSM: runIfExecutorReinit 只能由 executor 调用`,
 				);
 				return;
 			}
 			const prefix = context.threadName || "unknown";
-			console.log(`[${prefix}] GameEngineSM: Executor 从非idle状态重新初始化`);
+			log.info(`[${prefix}] GameEngineSM: Executor 从非idle状态重新初始化`);
 
 			// 先清理旧引擎状态
 			try {
 				context.engine?.cleanup?.();
 			} catch (e) {
-				console.warn(`[${prefix}] GameEngineSM: 清理旧引擎失败（可忽略）:`, e);
+				log.warn(`[${prefix}] GameEngineSM: 清理旧引擎失败（可忽略）:`, e);
 			}
 			// 清除旧host权限
 			(context as any).hostOperatorId = undefined;
@@ -195,13 +197,13 @@ export const GameEngineSM = setup({
 			// 然后执行正常的init流程
 			if (event.type === "CMD_INIT" && "operatorId" in event) {
 				(context as any).hostOperatorId = event.operatorId;
-				console.log(`[${prefix}] GameEngineSM: 设置新 hostOperatorId: ${event.operatorId}`);
+				log.info(`[${prefix}] GameEngineSM: 设置新 hostOperatorId: ${event.operatorId}`);
 			}
 
 			try {
 				if (event.type === "CMD_INIT" && event.data) {
 					context.engine?.initialize(event.data);
-					console.log(`[${prefix}] GameEngineSM: Executor 重新 INIT 完成`);
+					log.info(`[${prefix}] GameEngineSM: Executor 重新 INIT 完成`);
 					context.peer.send({
 						type: "RESULT_INIT",
 						sourceSide: "executor",
@@ -213,7 +215,7 @@ export const GameEngineSM = setup({
 					throw new Error("CMD_INIT 必须提供数据");
 				}
 			} catch (error) {
-				console.error(`[${prefix}] GameEngineSM: Executor 重新 INIT 失败:`, error);
+				log.error(`[${prefix}] GameEngineSM: Executor 重新 INIT 失败:`, error);
 				context.peer.send({
 					type: "RESULT_INIT",
 					sourceSide: "executor",
@@ -228,7 +230,7 @@ export const GameEngineSM = setup({
 		// Executor 侧：执行副作用并回传结果
 		runIfExecutorInit: ({ context, event }) => {
 			if (context.role !== "executor") {
-				console.warn(
+				log.warn(
 					`[${context.threadName || "unknown"}] GameEngineSM: runIfExecutorInit 只能由 executor 调用`,
 				);
 				return;
@@ -240,13 +242,13 @@ export const GameEngineSM = setup({
 				// 首次初始化时，将第一个 operatorId 设为 host
 				if (event.type === "CMD_INIT" && "operatorId" in event) {
 					(context as any).hostOperatorId = event.operatorId;
-					console.log(`[${prefix}] GameEngineSM: 设置 hostOperatorId: ${event.operatorId}`);
+					log.info(`[${prefix}] GameEngineSM: 设置 hostOperatorId: ${event.operatorId}`);
 				}
 			} else {
 				// 检查权限
 				const operatorId = "operatorId" in event ? event.operatorId : undefined;
 				if (operatorId !== context.hostOperatorId) {
-					console.warn(
+					log.warn(
 						`[${prefix}] GameEngineSM: INIT 权限拒绝 - operatorId ${operatorId} 不是 host (${context.hostOperatorId})`,
 					);
 					context.peer.send({
@@ -264,7 +266,7 @@ export const GameEngineSM = setup({
       try {
 				if (event.type === "CMD_INIT" && event.data) {
           context.engine?.initialize(event.data);
-					console.log(`[${prefix}] GameEngineSM: Executor 执行 INIT 完成`);
+					log.info(`[${prefix}] GameEngineSM: Executor 执行 INIT 完成`);
 					context.peer.send({
 						type: "RESULT_INIT",
 						sourceSide: "executor",
@@ -276,7 +278,7 @@ export const GameEngineSM = setup({
 					throw new Error("CMD_INIT 必须提供数据");
         }
       } catch (error) {
-				console.error(`[${prefix}] GameEngineSM: Executor 执行 INIT 失败:`, error);
+				log.error(`[${prefix}] GameEngineSM: Executor 执行 INIT 失败:`, error);
 				context.peer.send({
 					type: "RESULT_INIT",
 					sourceSide: "executor",
@@ -295,7 +297,7 @@ export const GameEngineSM = setup({
 			// 权限校验
 			const operatorId = "operatorId" in event ? event.operatorId : undefined;
 			if (context.hostOperatorId && operatorId !== context.hostOperatorId) {
-				console.warn(
+				log.warn(
 					`[${prefix}] GameEngineSM: START 权限拒绝 - operatorId ${operatorId} 不是 host (${context.hostOperatorId})`,
 				);
 				context.peer.send({
@@ -310,7 +312,7 @@ export const GameEngineSM = setup({
 			}
 			
       context.engine?.start();
-			console.log(`[${prefix}] GameEngineSM: Executor 执行 START 完成`);
+			log.info(`[${prefix}] GameEngineSM: Executor 执行 START 完成`);
 			context.peer.send({
 				type: "RESULT_START",
 				sourceSide: "executor",
@@ -326,7 +328,7 @@ export const GameEngineSM = setup({
 			// 权限校验
 			const operatorId = "operatorId" in event ? event.operatorId : undefined;
 			if (context.hostOperatorId && operatorId !== context.hostOperatorId) {
-				console.warn(
+				log.warn(
 					`[${prefix}] GameEngineSM: PAUSE 权限拒绝 - operatorId ${operatorId} 不是 host (${context.hostOperatorId})`,
 				);
 				context.peer.send({
@@ -342,7 +344,7 @@ export const GameEngineSM = setup({
 			
       context.engine?.pause();
       context.controller?.showPaused?.();
-			console.log(`[${prefix}] GameEngineSM: Executor 执行 PAUSE 完成`);
+			log.info(`[${prefix}] GameEngineSM: Executor 执行 PAUSE 完成`);
 			context.peer.send({
 				type: "RESULT_PAUSE",
 				sourceSide: "executor",
