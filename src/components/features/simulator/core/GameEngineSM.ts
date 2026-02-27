@@ -360,7 +360,7 @@ export const GameEngineSM = setup({
 			// 权限校验
 			const operatorId = "operatorId" in event ? event.operatorId : undefined;
 			if (context.hostOperatorId && operatorId !== context.hostOperatorId) {
-				console.warn(
+				log.warn(
 					`[${prefix}] GameEngineSM: RESUME 权限拒绝 - operatorId ${operatorId} 不是 host (${context.hostOperatorId})`,
 				);
 				context.peer.send({
@@ -375,7 +375,7 @@ export const GameEngineSM = setup({
 			}
 			
       context.engine?.resume();
-			console.log(`[${prefix}] GameEngineSM: Executor 执行 RESUME 完成`);
+			log.info(`[${prefix}] GameEngineSM: Executor 执行 RESUME 完成`);
 			context.peer.send({
 				type: "RESULT_RESUME",
 				sourceSide: "executor",
@@ -391,7 +391,7 @@ export const GameEngineSM = setup({
 			// 权限校验
 			const operatorId = "operatorId" in event ? event.operatorId : undefined;
 			if (context.hostOperatorId && operatorId !== context.hostOperatorId) {
-				console.warn(
+				log.warn(
 					`[${prefix}] GameEngineSM: STOP 权限拒绝 - operatorId ${operatorId} 不是 host (${context.hostOperatorId})`,
 				);
 				context.peer.send({
@@ -406,7 +406,7 @@ export const GameEngineSM = setup({
 			}
 			
       context.engine?.stop();
-			console.log(`[${prefix}] GameEngineSM: Executor 执行 STOP 完成`);
+			log.info(`[${prefix}] GameEngineSM: Executor 执行 STOP 完成`);
 			context.peer.send({
 				type: "RESULT_STOP",
 				sourceSide: "executor",
@@ -422,7 +422,7 @@ export const GameEngineSM = setup({
 			// 权限校验
 			const operatorId = "operatorId" in event ? event.operatorId : undefined;
 			if (context.hostOperatorId && operatorId !== context.hostOperatorId) {
-				console.warn(
+				log.warn(
 					`[${prefix}] GameEngineSM: RESET 权限拒绝 - operatorId ${operatorId} 不是 host (${context.hostOperatorId})`,
 				);
 				context.peer.send({
@@ -439,7 +439,7 @@ export const GameEngineSM = setup({
       context.engine?.reset?.();
 			// 重置host权限，允许下一个controller接管
 			(context as any).hostOperatorId = undefined;
-			console.log(`[${prefix}] GameEngineSM: Executor 执行 RESET 完成，hostOperatorId 已清除`);
+			log.info(`[${prefix}] GameEngineSM: Executor 执行 RESET 完成，hostOperatorId 已清除`);
 			context.peer.send({
 				type: "RESULT_RESET",
 				sourceSide: "executor",
@@ -455,7 +455,7 @@ export const GameEngineSM = setup({
 			// 权限校验
 			const operatorId = "operatorId" in event ? event.operatorId : undefined;
 			if (context.hostOperatorId && operatorId !== context.hostOperatorId) {
-				console.warn(
+				log.warn(
 					`[${prefix}] GameEngineSM: RESET 权限拒绝 - operatorId ${operatorId} 不是 host (${context.hostOperatorId})`,
 				);
 				context.peer.send({
@@ -472,7 +472,7 @@ export const GameEngineSM = setup({
       context.engine?.reset?.();
 			// 重置host权限，允许下一个controller接管
 			(context as any).hostOperatorId = undefined;
-			console.log(`[${prefix}] GameEngineSM: Executor 执行 RESET 完成，hostOperatorId 已清除`);
+			log.info(`[${prefix}] GameEngineSM: Executor 执行 RESET 完成，hostOperatorId 已清除`);
 			context.peer.send({
 				type: "RESULT_RESET",
 				sourceSide: "executor",
@@ -490,7 +490,7 @@ export const GameEngineSM = setup({
 			// 权限校验
 			const operatorId = "operatorId" in event ? event.operatorId : undefined;
 			if (context.hostOperatorId && operatorId !== context.hostOperatorId) {
-				console.warn(
+				log.warn(
 					`[${prefix}] GameEngineSM: STEP 权限拒绝 - operatorId ${operatorId} 不是 host (${context.hostOperatorId})`,
 				);
 				context.peer.send({
@@ -505,7 +505,7 @@ export const GameEngineSM = setup({
 			}
 			
       context.engine?.step?.();
-			console.log(`[${prefix}] GameEngineSM: Executor 执行 STEP 完成`);
+			log.info(`[${prefix}] GameEngineSM: Executor 执行 STEP 完成`);
 			context.peer.send({
 				type: "RESULT_STEP",
 				sourceSide: "executor",
@@ -566,7 +566,7 @@ export const GameEngineSM = setup({
           target: "idle",
           actions: ({ context }) => {
 						const prefix = context.threadName || "unknown";
-            console.warn(`[${prefix}] GameEngineSM: 初始化超时，返回 idle 状态`);
+            log.warn(`[${prefix}] GameEngineSM: 初始化超时，返回 idle 状态`);
           },
         },
       },
