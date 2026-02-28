@@ -2,6 +2,7 @@ import type { MemberWithRelations } from "@db/generated/repositories/member";
 import type { TeamWithRelations } from "@db/generated/repositories/team";
 import type { MemberType } from "@db/schema/enums";
 import type { Actor, AnyActorLogic } from "xstate";
+import { createLogger } from "~/lib/Logger";
 import type { ExpressionContext } from "../JSProcessor/types";
 import type { MemberDomainEvent } from "../types";
 import type { DamageAreaRequest } from "../World/types";
@@ -10,6 +11,8 @@ import type { CommonRuntimeContext } from "./runtime/Agent/CommonRuntimeContext"
 import type { MemberEventType, MemberStateContext } from "./runtime/StateMachine/types";
 import { Mob } from "./types/Mob/Mob";
 import { Player } from "./types/Player/Player";
+
+const log = createLogger("MemberMgr");
 
 // ============================== 类型定义 ==============================
 
@@ -135,7 +138,7 @@ export class MemberManager {
 				const success = this.registerMember(player, campId, teamId, memberData);
 				if (success) {
 					player.start();
-					console.log(`✅ 创建并注册玩家成功: ${memberData.name} (${memberData.type})`);
+					log.info(`✅ 创建并注册玩家成功: ${memberData.name} (${memberData.type})`);
 					return player.actor;
 				} else {
 					// 注册失败：不与 actor 交互，直接返回
@@ -153,7 +156,7 @@ export class MemberManager {
 				const success = this.registerMember(mob, campId, teamId, memberData);
 				if (success) {
 					mob.start();
-					console.log(`✅ 创建并注册怪物成功: ${memberData.name} (${memberData.type})`);
+					log.info(`✅ 创建并注册怪物成功: ${memberData.name} (${memberData.type})`);
 					return mob.actor;
 				} else {
 					// 注册失败：不与 actor 交互，直接返回
@@ -167,7 +170,7 @@ export class MemberManager {
 			//   member = new Partner(memberData, this.engine, initialState);
 			//   break;
 			default:
-				console.error(`❌ 不支持的成员类型: ${memberData.type}`);
+				log.error(`❌ 不支持的成员类型: ${memberData.type}`);
 				return null;
 		}
 	}
@@ -212,7 +215,7 @@ export class MemberManager {
 	unregisterMember(memberId: string): boolean {
 		const member = this.members.get(memberId);
 		if (!member) {
-			console.warn(`⚠️ 成员不存在: ${memberId}`);
+			log.warn(`⚠️ 成员不存在: ${memberId}`);
 			return false;
 		}
 
@@ -226,7 +229,7 @@ export class MemberManager {
 
 		// 如果被删除的成员是当前主控目标，重新选择目标
 		if (this.primaryMemberId === memberId) {
-			console.log(`🎯 当前主控目标被删除，重新选择目标`);
+			log.info(`🎯 当前主控目标被删除，重新选择目标`);
 			this.autoSelectPrimaryMember();
 		}
 
@@ -323,7 +326,7 @@ export class MemberManager {
 	 * 移除所有成员并清理资源
 	 */
 	clear(): void {
-		console.log(`🗑️ 清空成员注册表，共 ${this.members.size} 个成员`);
+		log.info(`🗑️ 清空成员注册表，共 ${this.members.size} 个成员`);
 
 		// 不与 actor 交互，直接清空索引与引用，避免停止阶段的竞态
 
@@ -427,14 +430,14 @@ export class MemberManager {
 
 		// 验证目标成员是否存在
 		if (memberId && !this.members.has(memberId)) {
-			console.warn(`🎯 主控目标设置失败: 成员 ${memberId} 不存在`);
+			log.warn(`🎯 主控目标设置失败: 成员 ${memberId} 不存在`);
 			return;
 		}
 
 		this.primaryMemberId = memberId;
 
 		if (oldMemberId !== memberId) {
-			console.log(`🎯 主控目标切换: ${oldMemberId} -> ${memberId}`);
+			log.info(`🎯 主控目标切换: ${oldMemberId} -> ${memberId}`);
 
 			// 通知渲染层相机跟随新目标（仅用于渲染层，不用于控制器层）
 			// 注意：多控制器架构下，主控目标概念仅用于渲染层（相机跟随），不再通知控制器层

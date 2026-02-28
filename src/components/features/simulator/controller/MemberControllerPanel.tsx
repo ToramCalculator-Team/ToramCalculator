@@ -30,6 +30,7 @@ interface MemberControllerPanelProps {
 	members: () => MemberSerializeData[];
 	controllerEventState: () => Record<string, ControllerEventState>;
 	onRemove: () => Promise<void>;
+	gameView?: any;
 }
 
 export function MemberControllerPanel(props: MemberControllerPanelProps) {

@@ -1,6 +1,9 @@
+import { createLogger } from "~/lib/Logger";
 import type { AnyMemberEntry, MemberManager } from "../Member/MemberManager";
 import type { SpaceManager } from "./SpaceManager";
 import type { DamageAreaRequest, DamageDispatchPayload, Vec3 } from "./types";
+
+const log = createLogger("DmgArea");
 
 /**
  * 伤害区域实例
@@ -136,7 +139,7 @@ export class DamageAreaSystem {
 		};
 
 		this.instances.set(areaId, instance);
-		console.log(`DamageAreaSystem: 添加伤害区域: ${areaId}`);
+		log.debug(`DamageAreaSystem: 添加伤害区域: ${areaId}`);
 		return areaId;
 	}
 
@@ -144,7 +147,7 @@ export class DamageAreaSystem {
 	 * 移除伤害区域
 	 */
 	remove(areaId: string): void {
-		console.log(`DamageAreaSystem: 移除伤害区域: ${areaId}`);
+		log.debug(`DamageAreaSystem: 移除伤害区域: ${areaId}`);
 		this.instances.delete(areaId);
 	}
 
@@ -152,7 +155,7 @@ export class DamageAreaSystem {
 	 * 按施法者ID移除所有相关区域
 	 */
 	removeBySource(sourceId: string): void {
-		console.log(`DamageAreaSystem: 移除施法者: ${sourceId}的所有伤害区域`);
+		log.debug(`DamageAreaSystem: 移除施法者: ${sourceId}的所有伤害区域`);
 		for (const [areaId, instance] of this.instances.entries()) {
 			if (instance.request.identity.sourceId === sourceId) {
 				this.instances.delete(areaId);
@@ -230,7 +233,7 @@ export class DamageAreaSystem {
 
 		// 移除过期的实例
 		for (const areaId of instancesToRemove) {
-			console.log(`DamageAreaSystem: 移除过期的伤害区域: ${areaId}`);
+			log.debug(`DamageAreaSystem: 移除过期的伤害区域: ${areaId}`);
 			this.instances.delete(areaId);
 		}
 	}

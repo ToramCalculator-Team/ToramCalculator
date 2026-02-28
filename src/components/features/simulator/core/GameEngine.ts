@@ -30,6 +30,8 @@ import type {
 	MemberDomainEvent,
 } from "./types";
 import { World } from "./World/World";
+import { createLogger } from "~/lib/Logger";
+const log = createLogger("GameEngine");
 
 /**
  * 扩展 globalThis 类型，添加测试环境标记
@@ -116,7 +118,7 @@ export class GameEngine {
 	 */
 	static enableForTesting(): void {
 		globalThis.__ALLOW_GAMEENGINE_IN_MAIN_THREAD = true;
-		console.warn("⚠️ GameEngine测试模式已启用 - 仅用于测试环境！");
+		log.warn("⚠️ GameEngine测试模式已启用 - 仅用于测试环境！");
 	}
 
 	/**
@@ -124,7 +126,7 @@ export class GameEngine {
 	 */
 	static disableForTesting(): void {
 		delete globalThis.__ALLOW_GAMEENGINE_IN_MAIN_THREAD;
-		console.log("✅ GameEngine安全检查已恢复");
+		log.info("✅ GameEngine安全检查已恢复");
 	}
 
 	// ==================== 构造函数 ====================
@@ -199,7 +201,7 @@ export class GameEngine {
 						if (this.sendToPeer) {
 							this.sendToPeer(command);
 						} else {
-							console.warn(
+							log.warn(
 								"GameEngine: sendToPeer 未设置，忽略命令:",
 								command,
 								"当前状态:",
@@ -227,7 +229,7 @@ export class GameEngine {
 	 */
 	initialize(data: SimulatorWithRelations): void {
 		if (this.getSMState() === "initialized") {
-			console.warn("GameEngine: 引擎已初始化");
+			log.warn("GameEngine: 引擎已初始化");
 			return;
 		}
 
@@ -256,7 +258,7 @@ export class GameEngine {
 			});
 		});
 
-		console.log("GameEngine: 数据初始化完成");
+		log.info("GameEngine: 数据初始化完成");
 	}
 
 	/**
@@ -269,10 +271,10 @@ export class GameEngine {
 		if (this.initializationData) {
 			this.initialize(this.initializationData);
 		} else {
-			console.warn("GameEngine: 没有存储的初始化参数，无法重置");
+			log.warn("GameEngine: 没有存储的初始化参数，无法重置");
 		}
 
-		console.log("GameEngine: 引擎已重置");
+		log.info("GameEngine: 引擎已重置");
 	}
 
 	/**
@@ -300,7 +302,7 @@ export class GameEngine {
 			totalMessagesProcessed: 0,
 		};
 
-		console.log("🧹 引擎资源已清理");
+		log.info("🧹 引擎资源已清理");
 	}
 
 	/**
@@ -394,7 +396,7 @@ export class GameEngine {
 						const serialized = boundMember.serialize();
 						boundMemberDetail = { attrs: serialized.attrs };
 					} catch (error) {
-						console.warn(`创建控制器 ${controllerId} 绑定成员详细快照失败:`, error);
+						log.warn(`创建控制器 ${controllerId} 绑定成员详细快照失败:`, error);
 					}
 
 					// 计算技能（仅 Player 类型）
@@ -433,14 +435,14 @@ export class GameEngine {
 	 */
 	public sendFrameSnapshot(snapshot: FrameSnapshot): void {
 		if (!this.frameSnapshotSender) {
-			console.warn("GameEngine: 帧快照发送器未设置，无法发送帧快照");
+			log.warn("GameEngine: 帧快照发送器未设置，无法发送帧快照");
 			return;
 		}
 
 		try {
 			this.frameSnapshotSender(snapshot);
 		} catch (error) {
-			console.error("GameEngine: 发送帧快照失败:", error);
+			log.error("GameEngine: 发送帧快照失败:", error);
 		}
 	}
 
@@ -510,14 +512,14 @@ export class GameEngine {
 	 */
 	postRenderMessage(payload: unknown): void {
 		if (!this.renderMessageSender) {
-			console.warn("GameEngine: 渲染消息发送器未设置，无法发送渲染指令");
+			log.warn("GameEngine: 渲染消息发送器未设置，无法发送渲染指令");
 			return;
 		}
 
 		try {
 			this.renderMessageSender(payload);
 		} catch (error) {
-			console.error("GameEngine: 发送渲染指令失败:", error);
+			log.error("GameEngine: 发送渲染指令失败:", error);
 		}
 	}
 
@@ -528,14 +530,14 @@ export class GameEngine {
 	 */
 	postSystemMessage(payload: unknown): void {
 		if (!this.systemMessageSender) {
-			console.warn("GameEngine: 系统消息发送器未设置，无法发送系统消息");
+			log.warn("GameEngine: 系统消息发送器未设置，无法发送系统消息");
 			return;
 		}
 
 		try {
 			this.systemMessageSender(payload);
 		} catch (error) {
-			console.error("GameEngine: 发送系统消息失败:", error);
+			log.error("GameEngine: 发送系统消息失败:", error);
 		}
 	}
 
@@ -622,7 +624,7 @@ export class GameEngine {
 	 */
 	start(): void {
 		if (this.getSMState() === "running") {
-			console.warn("GameEngine: 引擎已在运行中");
+			log.warn("GameEngine: 引擎已在运行中");
 			return;
 		}
 
@@ -637,7 +639,7 @@ export class GameEngine {
 	 */
 	stop(): void {
 		if (this.getSMState() === "stopped") {
-			console.log("GameEngine: 引擎已停止");
+			log.info("GameEngine: 引擎已停止");
 			return;
 		}
 
@@ -650,7 +652,7 @@ export class GameEngine {
 	 */
 	pause(): void {
 		if (this.getSMState() === "paused") {
-			console.warn("GameEngine: 引擎已暂停");
+			log.warn("GameEngine: 引擎已暂停");
 			return;
 		}
 
@@ -663,7 +665,7 @@ export class GameEngine {
 	 */
 	resume(): void {
 		if (this.getSMState() === "running") {
-			console.warn("GameEngine: 引擎已在运行中");
+			log.warn("GameEngine: 引擎已在运行中");
 			return;
 		}
 
@@ -676,7 +678,7 @@ export class GameEngine {
 	 */
 	step(): void {
 		if (this.getSMState() === "running") {
-			console.warn("GameEngine: 引擎正在运行，无法单步执行");
+			log.warn("GameEngine: 引擎正在运行，无法单步执行");
 			return;
 		}
 
@@ -819,7 +821,7 @@ export class GameEngine {
 	 */
 	clearCompilationCache(): void {
 		this.jsProcessor.clearCache();
-		console.log("🧹 JS编译缓存已清理");
+		log.info("🧹 JS编译缓存已清理");
 	}
 
 	/**
@@ -934,12 +936,12 @@ export class GameEngine {
 							// 将队列事件转发为 FSM 事件，由成员自己的状态机处理
 							member.actor.send({ type: fsmEventType, data: payload as Record<string, unknown> });
 						} else {
-							console.warn(`⚠️ stepFrame: 目标成员不存在: ${targetMemberId}`);
+							log.warn(`⚠️ stepFrame: 目标成员不存在: ${targetMemberId}`);
 						}
 					}
 					break;
 				default:
-					console.warn(`⚠️ stepFrame: 未知事件类型: ${event.type}`);
+					log.warn(`⚠️ stepFrame: 未知事件类型: ${event.type}`);
 					break;
 			}
 
@@ -1016,7 +1018,7 @@ export class GameEngine {
 			this.snapshots = this.snapshots.slice(-500);
 		}
 
-		console.log(`📸 生成快照 #${this.stats.totalSnapshots} - 帧: ${snapshot.frameNumber}`);
+		log.info(`📸 生成快照 #${this.stats.totalSnapshots} - 帧: ${snapshot.frameNumber}`);
 	}
 
 	/**
@@ -1144,7 +1146,7 @@ export class GameEngine {
 					"这是为了确保JS片段执行的安全性。\n" +
 					"如需在测试中使用，请设置 globalThis.__ALLOW_GAMEENGINE_IN_MAIN_THREAD = true",
 			);
-			console.error(error.message);
+			log.error(error.message);
 			throw error;
 		}
 
@@ -1153,11 +1155,11 @@ export class GameEngine {
 			// 默认环境，不需要输出日志
 			// console.log("🛡️ GameEngine正在沙盒Worker线程中安全运行");
 		} else if (isWorkerEnvironment) {
-			console.log("🛡️ GameEngine正在Worker线程中运行");
+			log.info("🛡️ GameEngine正在Worker线程中运行");
 		} else if (isNode) {
-			console.log("🛡️ GameEngine在Node.js环境中运行（测试模式）");
+			log.info("🛡️ GameEngine在Node.js环境中运行（测试模式）");
 		} else if (isTestEnvironment) {
-			console.log("🛡️ GameEngine在测试环境中运行（已标记允许）");
+			log.info("🛡️ GameEngine在测试环境中运行（已标记允许）");
 		}
 	}
 

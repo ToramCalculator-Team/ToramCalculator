@@ -17,6 +17,7 @@ import { store } from "~/store";
 import { AddMemberControllerButton } from "../../../components/features/simulator/controller/AddMemberControllerButton";
 import { ControlPanel, EngineStatusBar } from "../../../components/features/simulator/controller/components";
 import { EngineLifecycleController } from "../../../components/features/simulator/controller/EngineLifecycleController";
+import { GameView } from "../../../components/features/simulator/render/Renderer";
 import { MemberController } from "../../../components/features/simulator/controller/MemberController";
 import { MemberControllerPanel } from "../../../components/features/simulator/controller/MemberControllerPanel";
 import type { EngineControlMessage } from "../../../components/features/simulator/core/GameEngineSM";
@@ -382,7 +383,6 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 				>
 					{/* 成员控制器面板列表 */}
 					<div class="flex w-full h-full gap-2">
-						{/* 成员控制器面板列表 */}
 						<For each={memberControllers()}>
 							{(item) => (
 								<MemberControllerPanel
@@ -392,6 +392,7 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 									members={members}
 									controllerEventState={controllerEventState}
 									onRemove={() => removeMemberController(item.id)}
+									gameView={<GameView followEntityId={members()[0]?.id} />}
 								/>
 							)}
 						</For>
