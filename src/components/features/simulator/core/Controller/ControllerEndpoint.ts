@@ -3,10 +3,6 @@
  * 用于向控制器发送反馈事件
  */
 
-import { createLogger } from "~/lib/Logger";
-
-const log = createLogger("CtrlEndpoint");
-
 /**
  * 控制器反馈事件类型
  */
@@ -51,7 +47,7 @@ export class ControllerRegistry {
 	 */
 	register(controllerId: string, endpoint: ControllerEndpoint): void {
 		this.endpoints.set(controllerId, endpoint);
-		log.info(`📝 注册控制器端点: ${controllerId}`);
+		console.log(`📝 注册控制器端点: ${controllerId}`);
 	}
 
 	/**
@@ -60,7 +56,7 @@ export class ControllerRegistry {
 	 */
 	unregister(controllerId: string): void {
 		if (this.endpoints.delete(controllerId)) {
-			log.info(`🗑️ 注销控制器端点: ${controllerId}`);
+			console.log(`🗑️ 注销控制器端点: ${controllerId}`);
 		}
 	}
 
@@ -95,7 +91,7 @@ export class ControllerRegistry {
 	 */
 	clear(): void {
 		this.endpoints.clear();
-		log.info("🧹 清空所有控制器注册");
+		console.log("🧹 清空所有控制器注册");
 	}
 }
 

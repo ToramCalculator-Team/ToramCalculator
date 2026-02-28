@@ -8,10 +8,7 @@
  */
 
 import { createId } from "@paralleldrive/cuid2";
-import { createLogger } from "~/lib/Logger";
 import type { GameEngine } from "../GameEngine";
-
-const log = createLogger("DebugView");
 
 /**
  * 调试视图类型
@@ -67,7 +64,7 @@ export class DebugViewRegistry {
 		};
 
 		this.subscriptions.set(viewId, subscription);
-		log.info(`🔍 DebugViewRegistry: 订阅调试视图 ${viewId} (${config.viewType}, ${config.hz}Hz)`);
+		console.log(`🔍 DebugViewRegistry: 订阅调试视图 ${viewId} (${config.viewType}, ${config.hz}Hz)`);
 
 		// 如果这是第一个订阅，启动帧循环
 		if (this.subscriptions.size === 1) {
@@ -86,7 +83,7 @@ export class DebugViewRegistry {
 		const removed = this.subscriptions.delete(viewId);
 		this.lastSentAt.delete(viewId);
 		if (removed) {
-			log.info(`🔍 DebugViewRegistry: 取消订阅调试视图 ${viewId}`);
+			console.log(`🔍 DebugViewRegistry: 取消订阅调试视图 ${viewId}`);
 		}
 
 		// 如果没有订阅了，停止帧循环
@@ -176,7 +173,7 @@ export class DebugViewRegistry {
 					break;
 				}
 				default:
-					log.warn(`🔍 DebugViewRegistry: 未知的视图类型: ${subscription.viewType}`);
+					console.warn(`🔍 DebugViewRegistry: 未知的视图类型: ${subscription.viewType}`);
 					continue;
 			}
 
@@ -211,7 +208,7 @@ export class DebugViewRegistry {
 		try {
 			return member.statContainer.exportNestedValues();
 		} catch (error) {
-			log.error("🔍 DebugViewRegistry: 导出 StatContainer 失败:", error);
+			console.error("🔍 DebugViewRegistry: 导出 StatContainer 失败:", error);
 			return {};
 		}
 	}

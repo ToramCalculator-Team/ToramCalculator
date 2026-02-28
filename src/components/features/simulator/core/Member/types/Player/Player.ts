@@ -1,6 +1,5 @@
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import type { MemberWithRelations } from "@db/generated/repositories/member";
-import { createLogger } from "~/lib/Logger";
 import { Member } from "../../Member";
 import type { ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
 import { StatContainer } from "../../runtime/StatContainer/StatContainer";
@@ -8,8 +7,6 @@ import { PlayerRuntimeContext } from "./Agents/RuntimeContext";
 import { PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
 import { type PlayerEventType, type PlayerStateContext, playerStateMachine } from "./PlayerStateMachine";
 import { applyPrebattleModifiers } from "./PrebattleDataSysModifiers";
-
-const log = createLogger("Player");
 
 export type PlayerAttrType = ExtractAttrPaths<ReturnType<typeof PlayerAttrSchemaGenerator>>;
 
@@ -75,7 +72,7 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 	 * 遍历技能树，向管线管理器添加初始化时的技能效果
 	 */
 	private initializePassiveSkills(memberData: MemberWithRelations): void {
-		log.debug("initializePassiveSkills", memberData);
+		console.log("initializePassiveSkills", memberData);
 		// TODO: 与实际的技能系统集成
 		// 1. 获取Player的角色配置 (memberData.player?.characters)
 		// 2. 遍历角色的技能树 (character.skills)

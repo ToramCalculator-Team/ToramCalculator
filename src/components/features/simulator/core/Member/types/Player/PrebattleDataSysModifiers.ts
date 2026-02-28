@@ -2,10 +2,7 @@ import type { MemberWithRelations } from "@db/generated/repositories/member";
 import * as Enums from "@db/schema/enums";
 import { parse, tokenizer } from "acorn";
 import { all, create } from "mathjs";
-import { createLogger } from "~/lib/Logger";
 import { ModifierType, type StatContainer } from "../../runtime/StatContainer/StatContainer";
-
-const log = createLogger("Prebattle");
 
 /**
  * PrebattleModifiers
@@ -247,7 +244,7 @@ function parseModifierLine<T extends string>(
 			opValue === "="
 		)
 	) {
-		log.warn("[PrebattleModifiers] operator expected after attr", {
+		console.warn("[PrebattleModifiers] operator expected after attr", {
 			line: s,
 			attr,
 			next: tokens[i]?.type?.label,

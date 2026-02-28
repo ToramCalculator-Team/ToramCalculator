@@ -1,11 +1,8 @@
 import type { SimulatorWithRelations } from "@db/generated/repositories/simulator";
 import { createId } from "@paralleldrive/cuid2";
-import { createActor, waitFor } from "xstate";
-import { createLogger } from "~/lib/Logger";
+import { type Actor, createActor, waitFor } from "xstate";
 import { type EngineControlMessage, GameEngineSM } from "../core/GameEngineSM";
 import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
-
-const log = createLogger("Lifecycle");
 
 /**
  * 引擎生命周期控制器
@@ -14,7 +11,7 @@ const log = createLogger("Lifecycle");
  * - 与成员控制器（controllerId/binding）解耦
  */
 export class EngineLifecycleController {
-	public readonly engineActor: ReturnType<typeof createActor<typeof GameEngineSM>>;
+	public readonly engineActor: Actor<typeof GameEngineSM>;
 	public readonly operatorId: string;
 
 	private seqCounter = 0;
@@ -31,7 +28,7 @@ export class EngineLifecycleController {
 						realtimeSimulatorPool
 							.executeTask("engine_command", msg, "high")
 							.catch((error) => {
-								log.error("EngineLifecycleController: 发送引擎命令失败:", error);
+								console.error("EngineLifecycleController: 发送引擎命令失败:", error);
 							});
 					},
 				},

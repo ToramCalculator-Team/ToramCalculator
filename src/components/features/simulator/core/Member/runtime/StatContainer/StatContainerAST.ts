@@ -7,10 +7,7 @@
 
 import type { Identifier, MemberExpression, Node, Program } from "acorn";
 import { parse } from "acorn";
-import { createLogger } from "~/lib/Logger";
 import { ExpressionTransformer } from "../../../JSProcessor/ExpressionTransformer";
-
-const log = createLogger("StatAST");
 
 export interface ASTCompileResult {
 	success: boolean;
@@ -47,7 +44,7 @@ export class StatContainerASTCompiler {
 			if (this.isSimpleValue(expression)) {
 				result.success = true;
 				result.compiledCode = expression;
-				log.debug(`📝 简单值，无需处理: "${expression}"`);
+				console.log(`📝 简单值，无需处理: "${expression}"`);
 				return result;
 			}
 
@@ -60,7 +57,7 @@ export class StatContainerASTCompiler {
 				});
 			} catch (parseError) {
 				result.error = `AST解析失败: ${parseError instanceof Error ? parseError.message : "Unknown error"}`;
-				log.error(`❌ ${result.error}`);
+				console.error(`❌ ${result.error}`);
 				return result;
 			}
 
@@ -83,7 +80,7 @@ export class StatContainerASTCompiler {
 			return result;
 		} catch (error) {
 			result.error = `编译错误: ${error instanceof Error ? error.message : "Unknown error"}`;
-			log.error(`❌ ${result.error}`);
+			console.error(`❌ ${result.error}`);
 			return result;
 		}
 	}

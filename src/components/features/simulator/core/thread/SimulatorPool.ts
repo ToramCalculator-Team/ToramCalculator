@@ -1,18 +1,15 @@
 // ==================== 模拟器专用扩展 ====================
 
 import { z } from "zod/v4";
-import { createLogger } from "~/lib/Logger";
 import type { WorkerMessageEvent } from "~/lib/WorkerPool/type";
 import { type PoolConfig, WorkerPool, type WorkerWrapper } from "~/lib/WorkerPool/WorkerPool";
-
-const log = createLogger("SimPool");
 import type { RendererCmd } from "../../render/RendererProtocol";
 import type { EngineControlMessage } from "../GameEngineSM";
 import type { MemberSerializeData } from "../Member/Member";
 import { type IntentMessage, IntentMessageSchema } from "../MessageRouter/MessageRouter";
 import type { EngineStats } from "../types";
-import { WorkerSystemMessageSchema } from "./protocol";
 import simulationWorker from "./Simulation.worker?worker&url";
+import { WorkerSystemMessageSchema } from "./protocol";
 
 /**
  * 通用任务优先级
@@ -172,7 +169,7 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 			return task.data;
 		}
 
-		log.warn("🔍 SimulatorPool.getMembers: 解析失败，返回空数组");
+		console.log("🔍 SimulatorPool.getMembers: 解析失败，返回空数组");
 		return [];
 	}
 

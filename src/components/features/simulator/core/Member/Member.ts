@@ -1,7 +1,6 @@
 import type { MemberWithRelations } from "@db/generated/repositories/member";
 import type { MemberType } from "@db/schema/enums";
 import { createActor } from "xstate";
-import { createLogger } from "~/lib/Logger";
 import type { MemberDomainEvent } from "../types";
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
 import type { NestedSchema } from "./runtime/StatContainer/SchemaTypes";
@@ -15,8 +14,6 @@ import type {
 } from "./runtime/StateMachine/types";
 import type { DamageAreaRequest } from "../World/types";
 import type { CommonRuntimeContext } from "./runtime/Agent/CommonRuntimeContext";
-
-const log = createLogger("Member");
 
 export interface MemberSerializeData {
 	attrs: Record<string, unknown>;
@@ -128,7 +125,7 @@ export class Member<
 		} else {
 			// 如果引擎的渲染消息接口不可用，记录错误但不使用fallback
 			// 这确保我们只使用正确的通信通道，避免依赖全局变量
-			log.error(`👤 [${this.name}] 无法发送渲染指令：引擎渲染消息接口不可用`);
+			console.error(`👤 [${this.name}] 无法发送渲染指令：引擎渲染消息接口不可用`);
 		}
 	}
 

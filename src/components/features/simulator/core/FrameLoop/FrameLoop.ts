@@ -6,8 +6,6 @@
 import type { GameEngine } from "../GameEngine";
 import type { FrameStepResult } from "../types";
 import { FrameLoopConfig, FrameLoopMode, FrameLoopState, FrameLoopStats, FrameLoopSnapshot } from "./types";
-import { createLogger } from "~/lib/Logger";
-const log = createLogger("FrameLoop");
 
 /**
  * 帧循环类
@@ -115,7 +113,7 @@ export class FrameLoop {
 	 */
 	start(): void {
 		if (this.state === "running") {
-			log.warn("⚠️ 帧循环已在运行中");
+			console.warn("⚠️ 帧循环已在运行中");
 			return;
 		}
 
@@ -134,7 +132,7 @@ export class FrameLoop {
 		this.clockKind = hasRAF ? "raf" : "timeout";
 		this.performanceStats.clockKind = this.clockKind;
 
-		log.info(`⏱️ 启动帧循环 - 目标帧率: ${this.config.targetFPS} FPS, 时钟: ${this.clockKind}`);
+		console.log(`⏱️ 启动帧循环 - 目标帧率: ${this.config.targetFPS} FPS, 时钟: ${this.clockKind}`);
 		this.scheduleNextFrame();
 	}
 
@@ -143,7 +141,7 @@ export class FrameLoop {
 	 */
 	stop(): void {
 		if (this.state === "stopped") {
-			log.warn("⚠️ 帧循环已停止");
+			console.warn("⚠️ 帧循环已停止");
 			return;
 		}
 
@@ -161,7 +159,7 @@ export class FrameLoop {
 		// 更新性能统计
 		this.updateFrameLoopStats();
 
-		log.info(
+		console.log(
 			`⏹️ 停止帧循环 - 总帧数: ${this.frameNumber}, 运行时间: ${(performance.now() - this.startTime).toFixed(2)}ms`,
 		);
 	}
@@ -171,7 +169,7 @@ export class FrameLoop {
 	 */
 	pause(): void {
 		if (this.state !== "running") {
-			log.warn("⚠️ 帧循环未运行，无法暂停");
+			console.warn("⚠️ 帧循环未运行，无法暂停");
 			return;
 		}
 
@@ -186,7 +184,7 @@ export class FrameLoop {
 			this.frameTimer = null;
 		}
 
-		log.info("⏸️ 帧循环已暂停");
+		console.log("⏸️ 帧循环已暂停");
 	}
 
 	/**
@@ -194,14 +192,14 @@ export class FrameLoop {
 	 */
 	resume(): void {
 		if (this.state !== "paused") {
-			log.warn("⚠️ 帧循环未暂停，无法恢复");
+			console.warn("⚠️ 帧循环未暂停，无法恢复");
 			return;
 		}
 
 		this.state = "running";
 		this.lastFrameTime = performance.now();
 
-		log.info("▶️ 帧循环已恢复");
+		console.log("▶️ 帧循环已恢复");
 		this.scheduleNextFrame();
 	}
 
@@ -210,7 +208,7 @@ export class FrameLoop {
 	 */
 	step(): void {
 		if (this.state === "running") {
-			log.warn("⚠️ 帧循环正在运行，无法单步执行");
+			console.warn("⚠️ 帧循环正在运行，无法单步执行");
 			return;
 		}
 
@@ -230,7 +228,7 @@ export class FrameLoop {
 			stepResult.membersUpdated,
 		);
 		this.emitFrameSnapshot();
-		log.info(`👆 单步执行完成 - 帧号: ${stepResult.frameNumber}`);
+		console.log(`👆 单步执行完成 - 帧号: ${stepResult.frameNumber}`);
 	}
 
 	/**
@@ -240,7 +238,7 @@ export class FrameLoop {
 	 */
 	setTimeScale(scale: number): void {
 		if (scale < 0) {
-			log.warn("⚠️ 时间倍率不能为负数");
+			console.warn("⚠️ 时间倍率不能为负数");
 			return;
 		}
 
@@ -253,7 +251,7 @@ export class FrameLoop {
 			this.resume();
 		}
 
-		log.info(`⏱️ 设置时间倍率: ${scale}x`);
+		console.log(`⏱️ 设置时间倍率: ${scale}x`);
 	}
 
 	/**
@@ -263,12 +261,12 @@ export class FrameLoop {
 	 */
 	setTargetFPS(fps: number): void {
 		if (fps <= 0 || fps > 60) {
-			log.warn("⚠️ 无效的帧率设置:", fps);
+			console.warn("⚠️ 无效的帧率设置:", fps);
 			return;
 		}
 
 		this.config.targetFPS = fps;
-		log.info(`⏱️ 目标帧率已更新: ${fps} FPS`);
+		console.log(`⏱️ 目标帧率已更新: ${fps} FPS`);
 	}
 
 	setMode(mode: FrameLoopMode): void {

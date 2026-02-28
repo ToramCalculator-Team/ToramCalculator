@@ -3,10 +3,6 @@
  * 管理 controllerId -> memberId 的绑定关系
  */
 
-import { createLogger } from "~/lib/Logger";
-
-const log = createLogger("BindingMgr");
-
 export class ControlBindingManager {
 	/** 绑定表：controllerId -> memberId */
 	private bindings: Map<string, string> = new Map();
@@ -36,7 +32,7 @@ export class ControlBindingManager {
 		this.bindings.set(controllerId, memberId);
 		this.reverseBindings.set(memberId, controllerId);
 
-		log.info(`🔗 绑定控制器: ${controllerId} -> ${memberId}`);
+		console.log(`🔗 绑定控制器: ${controllerId} -> ${memberId}`);
 	}
 
 	/**
@@ -48,7 +44,7 @@ export class ControlBindingManager {
 		if (memberId) {
 			this.bindings.delete(controllerId);
 			this.reverseBindings.delete(memberId);
-			log.info(`🔓 解绑控制器: ${controllerId} (原绑定: ${memberId})`);
+			console.log(`🔓 解绑控制器: ${controllerId} (原绑定: ${memberId})`);
 		}
 	}
 
@@ -107,7 +103,7 @@ export class ControlBindingManager {
 	clear(): void {
 		this.bindings.clear();
 		this.reverseBindings.clear();
-		log.info("🧹 清空所有控制器绑定");
+		console.log("🧹 清空所有控制器绑定");
 	}
 }
 

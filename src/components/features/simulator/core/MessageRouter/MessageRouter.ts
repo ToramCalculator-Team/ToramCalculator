@@ -18,8 +18,6 @@
 import { z } from "zod/v4";
 import type { ControlBindingManager } from "../Controller/ControlBindingManager";
 import type { GameEngine } from "../GameEngine";
-import { createLogger } from "~/lib/Logger";
-const log = createLogger("MsgRouter");
 
 // ==================== 消息路由核心类型定义 ====================
 
@@ -178,7 +176,7 @@ export class MessageRouter {
 					};
 				} catch (error: any) {
 					this.stats.failedMessages++;
-					log.warn(`MessageRouter: 绑定控制对象失败:`, error);
+					console.warn(`MessageRouter: 绑定控制对象失败:`, error);
 
 					return {
 						success: false,
@@ -201,7 +199,7 @@ export class MessageRouter {
 					};
 				} catch (error: any) {
 					this.stats.failedMessages++;
-					log.warn(`MessageRouter: 解绑控制对象失败:`, error);
+					console.warn(`MessageRouter: 解绑控制对象失败:`, error);
 
 					return {
 						success: false,
@@ -242,7 +240,7 @@ export class MessageRouter {
 			};
 		} catch (error: any) {
 			this.stats.failedMessages++;
-			log.error("MessageRouter: 分发消息时发生错误:", error);
+			console.error("MessageRouter: 分发消息时发生错误:", error);
 
 			return {
 				success: false,

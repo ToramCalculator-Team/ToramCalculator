@@ -7,10 +7,7 @@
  * - 提供事件订阅接口给投影器
  */
 
-import { createLogger } from "~/lib/Logger";
 import type { MemberDomainEvent } from "../types";
-
-const log = createLogger("EventBus");
 
 type EventListener = (event: MemberDomainEvent) => void;
 
@@ -59,7 +56,7 @@ export class DomainEventBus {
 					try {
 						listener(event);
 					} catch (error) {
-						log.error("DomainEventBus: 事件监听器执行失败:", error);
+						console.error("DomainEventBus: 事件监听器执行失败:", error);
 					}
 				}
 			}

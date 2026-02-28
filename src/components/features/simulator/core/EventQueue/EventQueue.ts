@@ -4,8 +4,6 @@
  */
 
 import type { EventQueueConfig, QueueEvent, QueueSnapshot, QueueStats } from "./types";
-import { createLogger } from "~/lib/Logger";
-const log = createLogger("EventQueue");
 
 export class EventQueue {
 	/** 事件队列配置 */
@@ -64,7 +62,7 @@ export class EventQueue {
 		try {
 			// 检查队列大小限制
 			if (this.totalSize >= this.config.maxQueueSize) {
-				log.warn("⚠️ 事件队列已满，丢弃事件:", event.id);
+				console.warn("⚠️ 事件队列已满，丢弃事件:", event.id);
 				return false;
 			}
 
@@ -87,7 +85,7 @@ export class EventQueue {
 			// 高频路径：默认不输出日志（避免污染性能/控制台）
 			return true;
 		} catch (error) {
-			log.error("❌ 插入事件失败:", error);
+			console.error("❌ 插入事件失败:", error);
 			return false;
 		}
 	}
@@ -167,7 +165,7 @@ export class EventQueue {
 		this.byId.clear();
 		this.totalSize = 0;
 		this.stats.currentSize = 0;
-		log.info("🧹 清空事件队列");
+		console.log("🧹 清空事件队列");
 	}
 
 	// ==================== 事件查询 ====================
@@ -296,7 +294,7 @@ export class EventQueue {
 	restoreSnapshot(frameNumber: number): boolean {
 		const snapshot = this.snapshots.find((s) => s.currentFrame === frameNumber);
 		if (!snapshot) {
-			log.warn("⚠️ 目标帧的事件队列快照不存在:", frameNumber);
+			console.warn("⚠️ 目标帧的事件队列快照不存在:", frameNumber);
 			return false;
 		}
 
@@ -315,10 +313,10 @@ export class EventQueue {
 			}
 			this.stats = { ...snapshot.stats };
 
-			log.info(`🔄 恢复到指定帧快照: ${frameNumber} - 事件数: ${this.totalSize}`);
+			console.log(`🔄 恢复到指定帧快照: ${frameNumber} - 事件数: ${this.totalSize}`);
 			return true;
 		} catch (error) {
-			log.error("❌ 恢复快照失败:", error);
+			console.error("❌ 恢复快照失败:", error);
 			return false;
 		}
 	}

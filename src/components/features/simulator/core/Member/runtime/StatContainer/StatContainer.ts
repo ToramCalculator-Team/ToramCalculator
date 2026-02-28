@@ -8,12 +8,9 @@
  * - 内存优化：连续内存布局，减少GC压力
  */
 import * as Enums from "@db/schema/enums";
-import { createLogger } from "~/lib/Logger";
 import type { AttributeExpression, NestedSchema } from "./SchemaTypes";
 import { SchemaFlattener } from "./SchemaTypes";
 import { StatContainerASTCompiler } from "./StatContainerAST";
-
-const log = createLogger("StatContainer");
 
 // ============================== 枚举映射生成 ==============================
 
@@ -506,7 +503,7 @@ export class StatContainer<T extends string> {
 		this.markAllDirty();
 
 		// console.log(`🚀 StatContainer 初始化完成:`, this);
-		log.info(`🚀 StatContainer 初始化完成:`, this.exportFlatValues());
+		console.log(`🚀 StatContainer 初始化完成:`, this.exportFlatValues());
 	}
 
 	// ==================== 公共API - 属性访问 ====================
@@ -517,7 +514,7 @@ export class StatContainer<T extends string> {
 	getValue(attr: T): number {
 		const index = this.keyToIndex.get(attr);
 		if (index === undefined) {
-			log.warn(`⚠️ 尝试获取不存在的属性值: ${attr}`);
+			console.warn(`⚠️ 尝试获取不存在的属性值: ${attr}`);
 			return 0;
 		}
 
@@ -585,7 +582,7 @@ export class StatContainer<T extends string> {
 		// 获取属性索引
 		const index = this.keyToIndex.get(attr);
 		if (index === undefined) {
-			log.warn(`⚠️ 尝试为不存在的属性添加修饰器: ${attr}`);
+			console.warn(`⚠️ 尝试为不存在的属性添加修饰器: ${attr}`);
 			return;
 		}
 		// 对 noBaseValue 属性：将百分比修饰符转为小数并落入 fixed 通道
@@ -644,7 +641,7 @@ export class StatContainer<T extends string> {
 	removeModifier(attr: T, targetType: ModifierType, sourceId: string): void {
 		const index = this.keyToIndex.get(attr);
 		if (index === undefined) {
-			log.warn(`⚠️ 尝试为不存在的属性移除修饰器: ${attr}`);
+			console.warn(`⚠️ 尝试为不存在的属性移除修饰器: ${attr}`);
 			return;
 		}
 		// 来源级移除：从来源聚合删除并从累加数组扣减
@@ -658,7 +655,7 @@ export class StatContainer<T extends string> {
 				perType?.delete(index);
 			}
 			this.markDirty(index);
-			log.debug(`✅ 成功移除修饰器: ${attr} -${amount} (来源: ${sourceId})`);
+			console.log(`✅ 成功移除修饰器: ${attr} -${amount} (来源: ${sourceId})`);
 		}
 	}
 
@@ -881,7 +878,7 @@ export class StatContainer<T extends string> {
 				const executionContext = { _get: (k: string) => this.getValue(k as T) };
 				this.computationFunctions.set(index, () => {
 					if (this.isComputing.has(index)) {
-						log.warn(`⚠️ 检测到递归计算 ${attrName}，返回默认值`);
+						console.warn(`⚠️ 检测到递归计算 ${attrName}，返回默认值`);
 						return 0;
 					}
 					this.isComputing.add(index);
@@ -889,8 +886,8 @@ export class StatContainer<T extends string> {
 						const result = fn(executionContext);
 						return typeof result === "number" ? result : 0;
 					} catch (error) {
-						log.error(`❌ 属性 ${attrName} 表达式执行失败:`, error);
-						log.error(`❌ 失败的编译代码: ${code}`);
+						console.error(`❌ 属性 ${attrName} 表达式执行失败:`, error);
+						console.error(`❌ 失败的编译代码: ${code}`);
 						return 0;
 					} finally {
 						this.isComputing.delete(index);
@@ -899,7 +896,7 @@ export class StatContainer<T extends string> {
 
 				BitFlags.set(this.flags, index, AttributeFlags.HAS_COMPUTATION);
 			} else {
-				log.error(
+				console.error(
 					`❌ 属性 ${attrName} 表达式编译失败: ${expressionData.expression}`,
 				);
 				this.computationFunctions.set(index, () => 0);
@@ -934,7 +931,7 @@ export class StatContainer<T extends string> {
 
 		// 3) 自引用保护
 		if (expression.trim() === String(currentAttr)) {
-			log.warn(`⚠️ 检测到自引用: ${expression}，返回0`);
+			console.warn(`⚠️ 检测到自引用: ${expression}，返回0`);
 			return { code: null, deps: [], constant: 0 };
 		}
 
@@ -949,7 +946,7 @@ export class StatContainer<T extends string> {
 			);
 			const result = compiler.compile(expression);
 			if (!result.success) {
-				log.error(`❌ AST编译失败: ${expression}`, result.error);
+				console.error(`❌ AST编译失败: ${expression}`, result.error);
 				return { code: null, deps: [], constant: null };
 			}
 			return {
@@ -958,7 +955,7 @@ export class StatContainer<T extends string> {
 				constant: null,
 			};
 		} catch (error) {
-			log.error(`❌ 表达式编译异常: ${expression}`, error);
+			console.error(`❌ 表达式编译异常: ${expression}`, error);
 			return { code: null, deps: [], constant: null };
 		}
 	}
@@ -1074,7 +1071,7 @@ export class StatContainer<T extends string> {
 			try {
 				order = this.dependencyGraph.getTopologicalOrder();
 			} catch (_err) {
-				log.warn("⚠️ 检测到循环依赖，采用降级刷新策略");
+				console.warn("⚠️ 检测到循环依赖，采用降级刷新策略");
 				// 降级：直接遍历所有索引，顺序计算一次
 				order = Array.from({ length: this.values.length }, (_, i) => i);
 			}
@@ -1122,7 +1119,7 @@ export class StatContainer<T extends string> {
 				const remainingDirtyAttrs = remainingDirtyIndices.map((i) =>
 					String(this.indexToKey[i]),
 				);
-				log.error(`⚠️ 更新后仍有脏属性:`, remainingDirtyAttrs);
+				console.error(`⚠️ 更新后仍有脏属性:`, remainingDirtyAttrs);
 			}
 
 			// 只在有实际更新时才输出日志
@@ -1293,9 +1290,9 @@ export class StatContainer<T extends string> {
 	 * @param memberType 成员类型
 	 */
 	outputDependencyGraph(memberName: string, memberType: string): void {
-		log.debug(`\n📊 === ${memberType} 响应式系统依赖关系图 ===`);
-		log.debug(`🏷️  成员: ${memberName} (${memberType})`);
-		log.debug(`📦 属性总数: ${this.indexToKey.length}`);
+		console.log(`\n📊 === ${memberType} 响应式系统依赖关系图 ===`);
+		console.log(`🏷️  成员: ${memberName} (${memberType})`);
+		console.log(`📦 属性总数: ${this.indexToKey.length}`);
 
 		// 分类属性
 		const baseAttrs: string[] = [];
@@ -1325,23 +1322,23 @@ export class StatContainer<T extends string> {
 		const currentValues = this.getValues(this.indexToKey as T[]);
 
 		// 输出基础属性
-		log.debug(`\n🔹 基础属性 (${baseAttrs.length}):`);
+		console.log(`\n🔹 基础属性 (${baseAttrs.length}):`);
 		baseAttrs.sort().forEach((attr) => {
 			const value = currentValues[attr as T];
-			log.debug(`  📌 ${attr}: ${value}`);
+			console.log(`  📌 ${attr}: ${value}`);
 		});
 
 		// 输出计算属性及其依赖
-		log.debug(`\n🔸 计算属性 (${computedAttrs.length}):`);
+		console.log(`\n🔸 计算属性 (${computedAttrs.length}):`);
 		computedAttrs.sort().forEach((attr) => {
 			const value = currentValues[attr as T];
 			const deps = dependencyMap.get(attr) || [];
 
-			log.debug(`  🧮 ${attr}: ${value}`);
+			console.log(`  🧮 ${attr}: ${value}`);
 			if (deps.length > 0) {
-				log.debug(`     🔗 依赖: ${deps.join(", ")}`);
+				console.log(`     🔗 依赖: ${deps.join(", ")}`);
 			}
-			log.debug("");
+			console.log("");
 		});
 
 		// 输出依赖关系统计
@@ -1352,26 +1349,26 @@ export class StatContainer<T extends string> {
 		const avgComplexity =
 			computedAttrs.length > 0 ? totalDeps / computedAttrs.length : 0;
 
-		log.debug(`📈 依赖关系统计:`);
-		log.debug(`   • 基础属性: ${baseAttrs.length}`);
-		log.debug(`   • 计算属性: ${computedAttrs.length}`);
-		log.debug(`   • 依赖关系: ${totalDeps}`);
-		log.debug(
+		console.log(`📈 依赖关系统计:`);
+		console.log(`   • 基础属性: ${baseAttrs.length}`);
+		console.log(`   • 计算属性: ${computedAttrs.length}`);
+		console.log(`   • 依赖关系: ${totalDeps}`);
+		console.log(
 			`   • 复杂度: ${avgComplexity.toFixed(2)} (平均每个计算属性的依赖数)`,
 		);
 
 		// 如果有循环依赖，输出警告
 		const hasCycles = this.dependencyGraph.detectCycles();
 		if (hasCycles.length > 0) {
-			log.warn(`\n⚠️  检测到循环依赖:`);
+			console.log(`\n⚠️  检测到循环依赖:`);
 			hasCycles.forEach((cycle, index) => {
 				const cycleNames = cycle.map((idx) => this.indexToKey[idx]);
-				log.warn(
+				console.log(
 					`   ${index + 1}. ${cycleNames.join(" → ")} → ${cycleNames[0]}`,
 				);
 			});
 		}
 
-		log.debug(`\n🎯 === 依赖关系图输出完成 ===\n`);
+		console.log(`\n🎯 === 依赖关系图输出完成 ===\n`);
 	}
 }
