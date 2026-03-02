@@ -15,8 +15,8 @@ export class AreaManager {
 	public readonly trapAreaSystem: TrapAreaSystem;
 
 	constructor(
-		private readonly spaceManager: SpaceManager,
-		private readonly memberManager: MemberManager,
+		spaceManager: SpaceManager,
+		memberManager: MemberManager,
 	) {
 		this.damageAreaSystem = new DamageAreaSystem(spaceManager, memberManager);
 		this.buffAreaSystem = new BuffAreaSystem(spaceManager, memberManager);

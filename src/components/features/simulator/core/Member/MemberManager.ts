@@ -108,6 +108,16 @@ export class MemberManager {
 		}
 	}
 
+	/**
+	 * 设置渲染消息发射器（由引擎注入）
+	 */
+	setRenderMessageSender(renderMessageSender: ((payload: unknown) => void) | null): void {
+		this.renderMessageSender = renderMessageSender;
+		for (const member of this.members.values()) {
+			member.setRenderMessageSender(renderMessageSender);
+		}
+	}
+
 	// ==================== 公共接口 ====================
 	/**
 	 * 创建并注册新成员

@@ -33,4 +33,8 @@ export class World {
 		this.memberManager.clear();
 		this.areaManager.clear();
 	}
+
+	setRenderMessageSender(renderMessageSender: ((payload: unknown) => void) | null): void {
+		this.memberManager.setRenderMessageSender(renderMessageSender);
+	}
 }

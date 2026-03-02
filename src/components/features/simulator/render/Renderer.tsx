@@ -14,9 +14,8 @@ import "@babylonjs/loaders/glTF/2.0/Extensions/KHR_draco_mesh_compression";
 import type { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
 import { SpotLight } from "@babylonjs/core/Lights/spotLight";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
-import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
-import { Inspector } from "@babylonjs/inspector";
+// import { Inspector } from "@babylonjs/inspector";
 import { rendererCommunication } from "./RendererCommunication";
 import { createRendererController } from "./RendererController";
 import type { EntityId } from "./RendererProtocol";
@@ -73,8 +72,8 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
 	);
 
 	// ==================== DOM 引用 ====================
-	let canvas!: HTMLCanvasElement;
-	let container!: HTMLDivElement;
+	const [canvasRef, setCanvasRef] = createSignal<HTMLCanvasElement | undefined>(undefined);
+	const [containerRef, setContainerRef] = createSignal<HTMLDivElement | undefined>(undefined);
 
 	// ==================== Babylon.js 资源 ====================
 	let engine: AbstractEngine;
@@ -164,6 +163,10 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
 			window.removeEventListener("resize", onWinResize);
 		});
 
+		const container = containerRef();
+		const canvas = canvasRef();
+		if (!container || !canvas) return;
+
 		const ro = new ResizeObserver(() => {
 			if (!container) return;
 			const rect = container.getBoundingClientRect();
@@ -210,6 +213,9 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
 
 	// ==================== 主初始化 ====================
 	onMount(async () => {
+		const canvas = canvasRef();
+		if (!canvas) return;
+
 		// 1. 创建引擎（依赖 canvas）
 		engine = new Engine(canvas, true);
 		engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
@@ -264,6 +270,12 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
 
 		// 11. 相机控制事件
 		setupCameraControlEvents();
+
+		// 12. 启动检查器
+		// Inspector.Show(scene, { embedMode: true });
+		// registerCleanup(() => {
+		// 	Inspector.Hide();
+		// });
 	});
 
 	// ==================== 统一清理（只在组件顶层调用一次）====================
@@ -293,8 +305,8 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
 	});
 
 	return (
-		<div ref={container!} class="relative h-full w-full">
-			<canvas ref={canvas!} class="absolute inset-0 block bg-transparent">
+		<div ref={setContainerRef} class="relative h-full w-full">
+			<canvas ref={setCanvasRef} class="absolute inset-0 block bg-transparent">
 				当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
 			</canvas>
 			<div

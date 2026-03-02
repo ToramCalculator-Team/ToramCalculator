@@ -12,19 +12,19 @@ import type { SimulatorWithRelations } from "@db/generated/repositories/simulato
 import { A } from "@solidjs/router";
 import { createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
+import { AddMemberControllerButton } from "~/components/features/simulator/controller/AddMemberControllerButton";
+import { ControlPanel, EngineStatusBar } from "~/components/features/simulator/controller/components";
+import { EngineLifecycleController } from "~/components/features/simulator/controller/EngineLifecycleController";
+import { MemberController } from "~/components/features/simulator/controller/MemberController";
+import { MemberControllerPanel } from "~/components/features/simulator/controller/MemberControllerPanel";
+import type { EngineControlMessage } from "~/components/features/simulator/core/GameEngineSM";
+import type { MemberSerializeData } from "~/components/features/simulator/core/Member/Member";
+import { ControllerDomainEventBatchSchema, type EngineTelemetry } from "~/components/features/simulator/core/thread/protocol";
+import { realtimeSimulatorPool } from "~/components/features/simulator/core/thread/SimulatorPool";
+import type { ControllerDomainEvent, FrameSnapshot } from "~/components/features/simulator/core/types";
+import { GameView } from "~/components/features/simulator/render/Renderer";
 import { Icons } from "~/components/icons";
 import { store } from "~/store";
-import { AddMemberControllerButton } from "../../../components/features/simulator/controller/AddMemberControllerButton";
-import { ControlPanel, EngineStatusBar } from "../../../components/features/simulator/controller/components";
-import { EngineLifecycleController } from "../../../components/features/simulator/controller/EngineLifecycleController";
-import { GameView } from "../../../components/features/simulator/render/Renderer";
-import { MemberController } from "../../../components/features/simulator/controller/MemberController";
-import { MemberControllerPanel } from "../../../components/features/simulator/controller/MemberControllerPanel";
-import type { EngineControlMessage } from "../../../components/features/simulator/core/GameEngineSM";
-import type { MemberSerializeData } from "../../../components/features/simulator/core/Member/Member";
-import { ControllerDomainEventBatchSchema, type EngineTelemetry } from "../../../components/features/simulator/core/thread/protocol";
-import { realtimeSimulatorPool } from "../../../components/features/simulator/core/thread/SimulatorPool";
-import type { ControllerDomainEvent, FrameSnapshot } from "../../../components/features/simulator/core/types";
 
 export interface RealtimeSimulatorProps {
 	simulatorData: SimulatorWithRelations;
