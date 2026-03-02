@@ -17,6 +17,7 @@ import { SpotLight } from "@babylonjs/core/Lights/spotLight";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 // import { Inspector } from "@babylonjs/inspector";
+import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
 import { rendererCommunication } from "./RendererCommunication";
 import { createRendererController } from "./RendererController";
 import type { EntityId } from "./RendererProtocol";
@@ -246,6 +247,13 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
 
 		// 6. 初始化渲染通信
 		setupRenderCommunication();
+
+		// 6b. 拉取当前世界渲染快照并应用（渲染层晚于引擎就绪，需首次全量同步），然后回放缓冲的渲染指令
+		const renderSnapshot = await realtimeSimulatorPool.getRenderSnapshot(true);
+		if (renderSnapshot && rendererController.applyRenderSnapshot) {
+			await rendererController.applyRenderSnapshot(renderSnapshot);
+		}
+		rendererCommunication.markRenderSnapshotApplied();
 
 		// 7. 创建相机和控制器
 		const thirdPersonSetup = createThirdPersonController(scene, canvas, rendererController, props.followEntityId, {

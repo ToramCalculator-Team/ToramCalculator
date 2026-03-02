@@ -205,6 +205,18 @@ async function handleDataQuery(
 					};
 				}
 			}
+
+			case "get_render_snapshot": {
+				try {
+					const renderSnapshot = gameEngine.getRenderSnapshot(command.includeAreas ?? false);
+					return { success: true, data: renderSnapshot };
+				} catch (error) {
+					return {
+						success: false,
+						error: error instanceof Error ? error.message : "Unknown error",
+					};
+				}
+			}
 		}
 	} catch (error) {
 		return {

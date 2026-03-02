@@ -171,4 +171,10 @@ export const sendRenderCommand = (context: CommonProperty, actionName: string, p
 		},
 	};
 	context.renderMessageSender?.(renderCmd);
+	// 记录最后一次渲染动作，供渲染快照推算 animation.progress
+	if (context.owner?.runtimeContext) {
+		const ctx = context.owner.runtimeContext as Record<string, unknown>;
+		if (!ctx.__render) ctx.__render = {};
+		(ctx.__render as Record<string, unknown>).lastAction = { name: actionName, ts: now, params };
+	}
 };

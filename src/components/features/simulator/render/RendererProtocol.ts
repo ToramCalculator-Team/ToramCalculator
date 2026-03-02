@@ -103,6 +103,37 @@ export interface RendererController {
   dispose: () => void;
   // 提供给外部的查询接口：用于相机跟随
   getEntityPose: (id: EntityId) => { pos: Vec3; yaw: number } | undefined;
+  // 首次同步时应用渲染快照（全量世界状态），与逻辑快照 getCurrentSnapshot 等区分
+  applyRenderSnapshot?: (renderSnapshot: RenderSnapshot) => void | Promise<void>;
+}
+
+// ==================== 渲染快照（全量状态同步） ====================
+
+/** 渲染快照中单条成员状态（仅视觉/位置/动画，与逻辑成员数据区分） */
+export interface RenderSnapshotMember {
+  id: string;
+  name: string;
+  position: Vec3;
+  yaw: number;
+  animation?: { name: string; progress: number };
+}
+
+/** 渲染快照中单条区域状态（仅视觉/形状/位置，与逻辑区域数据区分） */
+export interface RenderSnapshotArea {
+  id: string;
+  type: string;
+  position: Vec3;
+  shape: { radius?: number; width?: number; height?: number; [k: string]: unknown };
+  remainingTime: number;
+}
+
+/** 当前世界渲染状态（声明式，用于渲染层首次同步；与 FrameSnapshot / GameEngineSnapshot 等逻辑快照区分） */
+export interface RenderSnapshot {
+  frameNumber: number;
+  engineNowTs: number;
+  members: RenderSnapshotMember[];
+  areas?: RenderSnapshotArea[];
+  cameraFollowEntityId: string | null;
 }
 
 

@@ -170,7 +170,7 @@ export class DamageAreaSystem {
 		const instancesToRemove: string[] = [];
 
 		for (const instance of this.instances.values()) {
-			const { request, shape, trajectory } = instance;
+			const { request, shape } = instance;
 			const { startFrame, durationFrames } = request.lifetime;
 
 			// 检查生命周期
@@ -281,5 +281,28 @@ export class DamageAreaSystem {
 
 	clear(): void {
 		this.instances.clear();
+	}
+
+	/**
+	 * 导出当前存活区域状态（用于渲染快照）
+	 * @param frame 当前逻辑帧
+	 */
+	getAreaSnapshot(frame: number): Array<{ id: string; position: Vec3; shape: { radius: number }; remainingTime: number }> {
+		const result: Array<{ id: string; position: Vec3; shape: { radius: number }; remainingTime: number }> = [];
+		for (const instance of this.instances.values()) {
+			const { request } = instance;
+			const { startFrame, durationFrames } = request.lifetime;
+			if (frame < startFrame || frame >= startFrame + durationFrames) continue;
+			const position = this.computeCurrentCenter(instance, frame);
+			const remainingFrames = startFrame + durationFrames - frame;
+			const remainingTime = Math.max(0, remainingFrames / 60);
+			result.push({
+				id: instance.areaId,
+				position,
+				shape: { radius: instance.shape.radius },
+				remainingTime,
+			});
+		}
+		return result;
 	}
 }

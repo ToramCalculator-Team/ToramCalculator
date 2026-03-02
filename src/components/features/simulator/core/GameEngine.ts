@@ -3,19 +3,21 @@ import type { SimulatorWithRelations } from "@db/generated/repositories/simulato
 import type { TeamWithRelations } from "@db/generated/repositories/team";
 import { createId } from "@paralleldrive/cuid2";
 import { type Actor, createActor } from "xstate";
+import { createLogger } from "~/lib/Logger";
+import type { RenderSnapshot, RenderSnapshotArea } from "../render/RendererProtocol";
+import { ControlBindingManager } from "./Controller/ControlBindingManager";
+import { ControllerRegistry } from "./Controller/ControllerEndpoint";
+import { ControllerEventProjector } from "./DomainEvents/ControllerEventProjector";
+import { DomainEventBus } from "./DomainEvents/DomainEventBus";
 import { EventQueue } from "./EventQueue/EventQueue";
 import type { QueueEvent } from "./EventQueue/types";
+import { ExpressionEvaluator } from "./Expression/ExpressionEvaluator";
 import { FrameLoop } from "./FrameLoop/FrameLoop";
 import { type EngineControlMessage, GameEngineSM } from "./GameEngineSM";
 import { JSProcessor } from "./JSProcessor/JSProcessor";
 import type { ExpressionContext } from "./JSProcessor/types";
 import type { MemberSerializeData } from "./Member/Member";
 import type { Player } from "./Member/types/Player/Player";
-import { ControlBindingManager } from "./Controller/ControlBindingManager";
-import { ControllerRegistry } from "./Controller/ControllerEndpoint";
-import { DomainEventBus } from "./DomainEvents/DomainEventBus";
-import { ControllerEventProjector } from "./DomainEvents/ControllerEventProjector";
-import { ExpressionEvaluator } from "./Expression/ExpressionEvaluator";
 import { type IntentMessage, type MessageProcessResult, MessageRouter } from "./MessageRouter/MessageRouter";
 import type {
 	BuffViewDataSnapshot,
@@ -30,7 +32,7 @@ import type {
 	MemberDomainEvent,
 } from "./types";
 import { World } from "./World/World";
-import { createLogger } from "~/lib/Logger";
+
 const log = createLogger("GameEngine");
 
 /**
@@ -138,7 +140,7 @@ export class GameEngine {
 	 */
 	constructor(config: EngineConfig) {
 		console.log("================= GameEngine constructor ==================");
-		
+
 		// 🛡️ 安全检查：只允许在Worker线程中创建GameEngine
 		this.validateWorkerContext();
 
@@ -1049,6 +1051,59 @@ export class GameEngine {
 	 */
 	getAllMemberData(): MemberSerializeData[] {
 		return this.world.memberManager.getAllMembers().map((member) => member.serialize());
+	}
+
+	/**
+	 * 获取当前世界渲染快照（供渲染层首次同步用，与 getCurrentSnapshot / createFrameSnapshot 等逻辑快照区分）。
+	 * 渲染层晚于引擎就绪时拉取，用于首次全量状态同步。
+	 * @param includeAreas 是否包含区域状态，默认 false
+	 */
+	getRenderSnapshot(includeAreas = false): RenderSnapshot {
+		const frameNumber = this.getCurrentFrame();
+		const engineNowTs = Date.now();
+		const members = this.world.memberManager.getAllMembers().map((member) => {
+			const ctx = member.runtimeContext as Record<string, unknown>;
+			const __render = ctx.__render as
+				| { lastAction?: { name: string; ts: number; params?: Record<string, unknown> } }
+				| undefined;
+			const lastAction = __render?.lastAction;
+			let animation: { name: string; progress: number } | undefined;
+			if (lastAction) {
+				const elapsed = engineNowTs - lastAction.ts;
+				const durationMs = 1000;
+				const progress = Math.min(1, Math.max(0, elapsed / durationMs));
+				animation = { name: lastAction.name, progress };
+			}
+			return {
+				id: member.id,
+				name: member.name,
+				position: member.position,
+				yaw: 0,
+				...(animation && { animation }),
+			};
+		});
+		const areas = includeAreas ? this.collectRenderAreaSnapshot() : [];
+		const cameraFollowEntityId = this.world.memberManager.getPrimaryMemberId();
+		return {
+			frameNumber,
+			engineNowTs,
+			members,
+			areas,
+			cameraFollowEntityId,
+		};
+	}
+
+	/** 收集当前存活区域状态，用于构建渲染快照（供 getRenderSnapshot 使用，与逻辑快照区分） */
+	private collectRenderAreaSnapshot(): RenderSnapshotArea[] {
+		const frame = this.getCurrentFrame();
+		const damage = this.world.areaManager.damageAreaSystem.getAreaSnapshot(frame).map((a) => ({
+			id: a.id,
+			type: "damage",
+			position: a.position,
+			shape: a.shape,
+			remainingTime: a.remainingTime,
+		}));
+		return damage;
 	}
 
 	/**

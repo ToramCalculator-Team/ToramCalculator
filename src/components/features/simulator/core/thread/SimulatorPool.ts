@@ -4,15 +4,15 @@ import { z } from "zod/v4";
 import { createLogger } from "~/lib/Logger";
 import type { WorkerMessageEvent } from "~/lib/WorkerPool/type";
 import { type PoolConfig, WorkerPool, type WorkerWrapper } from "~/lib/WorkerPool/WorkerPool";
-
-const log = createLogger("SimPool");
-import type { RendererCmd } from "../../render/RendererProtocol";
+import type { RendererCmd, RenderSnapshot } from "../../render/RendererProtocol";
 import type { EngineControlMessage } from "../GameEngineSM";
 import type { MemberSerializeData } from "../Member/Member";
 import { type IntentMessage, IntentMessageSchema } from "../MessageRouter/MessageRouter";
 import type { EngineStats } from "../types";
 import { WorkerSystemMessageSchema } from "./protocol";
 import simulationWorker from "./Simulation.worker?worker&url";
+
+const log = createLogger("SimPool");
 
 /**
  * 通用任务优先级
@@ -58,6 +58,10 @@ export const DataQueryCommandSchema = z.discriminatedUnion("type", [
 	z.object({
 		type: z.literal("unsubscribe_debug_view"),
 		viewId: z.string(),
+	}),
+	z.object({
+		type: z.literal("get_render_snapshot"),
+		includeAreas: z.boolean().optional(),
 	}),
 ]);
 
@@ -214,6 +218,18 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 			return { success: true, value: result.data.data?.value };
 		}
 		return { success: false, error: result.data?.error || result.error };
+	}
+
+	/** 拉取当前世界渲染快照（供渲染层首次同步，与 get_snapshot 等逻辑快照区分；渲染层晚于引擎就绪时使用） */
+	async getRenderSnapshot(includeAreas = false): Promise<RenderSnapshot | null> {
+		const command: DataQueryCommand = { type: "get_render_snapshot", includeAreas };
+		const result = await this.executeTask("data_query", command, "high");
+		const task = result.data as { success: boolean; data?: RenderSnapshot } | undefined;
+		if (result.success && task?.success && task.data) {
+			return task.data;
+		}
+		log.warn("🔍 SimulatorPool.getRenderSnapshot: 渲染快照解析失败");
+		return null;
 	}
 }
 

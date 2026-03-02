@@ -21,6 +21,8 @@ import type {
 	ReconcileCmd,
 	RendererCmd,
 	RendererController,
+	RenderSnapshot,
+	RenderSnapshotArea,
 	SetNameCmd,
 	SetPropsCmd,
 	SpawnCmd,
@@ -614,6 +616,7 @@ class CommandHandler {
 	private entities: Map<EntityId, EntityRuntime>;
 	private factory: EntityFactory;
 	private scene: Scene;
+	private areaVisuals: Map<string, Mesh> = new Map();
 
 	constructor(entities: Map<EntityId, EntityRuntime>, factory: EntityFactory, scene: Scene) {
 		this.entities = entities;
@@ -666,6 +669,102 @@ class CommandHandler {
 				this.handleCameraFollow(cmd);
 				break;
 		}
+	}
+
+	/** 应用渲染快照（首次同步时按全量世界状态创建/更新实体与区域，与逻辑快照区分） */
+	async applyRenderSnapshot(renderSnapshot: RenderSnapshot): Promise<void> {
+		const seq = renderSnapshot.engineNowTs;
+		const ts = renderSnapshot.engineNowTs;
+		for (const member of renderSnapshot.members) {
+			if (!this.entities.has(member.id)) {
+				await this.handle({
+					type: "spawn",
+					entityId: member.id,
+					name: member.name,
+					position: member.position,
+					seq,
+					ts,
+				});
+			}
+			await this.handle({
+				type: "teleport",
+				entityId: member.id,
+				position: member.position,
+				seq,
+				ts,
+			});
+			await this.handle({
+				type: "face",
+				entityId: member.id,
+				yaw: member.yaw,
+				seq,
+				ts,
+			});
+			if (member.animation) {
+				await this.handle({
+					type: "action",
+					entityId: member.id,
+					name: member.animation.name,
+					params: { progress: member.animation.progress, engineNowTs: renderSnapshot.engineNowTs },
+					seq,
+					ts,
+				});
+			}
+		}
+		if (renderSnapshot.cameraFollowEntityId) {
+			await this.handle({
+				type: "camera_follow",
+				entityId: renderSnapshot.cameraFollowEntityId,
+				seq,
+				ts,
+			});
+		}
+		if (renderSnapshot.areas?.length) {
+			const areaIds = new Set(renderSnapshot.areas.map((a) => a.id));
+			for (const [id, mesh] of this.areaVisuals) {
+				if (!areaIds.has(id)) {
+					mesh.dispose();
+					this.areaVisuals.delete(id);
+				}
+			}
+			for (const area of renderSnapshot.areas) {
+				this.createOrUpdateAreaVisual(area);
+			}
+		}
+	}
+
+	private createOrUpdateAreaVisual(area: RenderSnapshotArea): void {
+		const radius = (area.shape?.radius as number) ?? 1;
+		const safeRadius = Math.max(0.1, radius);
+		let mesh = this.areaVisuals.get(area.id);
+		if (!mesh) {
+			mesh = MeshBuilder.CreateDisc(
+				`area:${area.id}`,
+				{ radius: safeRadius, tessellation: 32 },
+				this.scene,
+			);
+			mesh.rotation.x = Math.PI / 2;
+			(mesh as Mesh & { __baseRadius?: number }).__baseRadius = safeRadius;
+			const mat = new StandardMaterial(`areaMat:${area.id}`, this.scene);
+			mat.alpha = 0.35;
+			mat.diffuseColor = new Color3(1, 0.2, 0.2);
+			mat.backFaceCulling = false;
+			mesh.material = mat;
+			this.areaVisuals.set(area.id, mesh);
+		}
+		mesh.position.set(area.position.x, area.position.y, area.position.z);
+		const base = (mesh as Mesh & { __baseRadius?: number }).__baseRadius ?? safeRadius;
+		const scale = radius / base;
+		mesh.scaling.x = scale;
+		mesh.scaling.y = 1;
+		mesh.scaling.z = scale;
+	}
+
+	disposeAreaVisuals(): void {
+		for (const mesh of this.areaVisuals.values()) {
+			mesh.dispose();
+		}
+		this.areaVisuals.clear();
 	}
 
 	/** 生成实体 - 优先创建角色模型，失败则回退到球体 */
@@ -737,7 +836,7 @@ class CommandHandler {
 		}
 	}
 
-	/** 执行动作/技能 */
+	/** 执行动作/技能；支持 params.progress（0..1）用于渲染快照应用时按进度恢复动画 seek */
 	private handleAction(cmd: ActionCmd, entity?: EntityRuntime): void {
 		if (!entity || entity.lastSeq > cmd.seq) return;
 
@@ -746,8 +845,29 @@ class CommandHandler {
 		// 处理角色动作
 		if (entity.type === "character") {
 			const charEntity = entity as CharacterEntityRuntime;
+			const progress = typeof cmd.params?.progress === "number" ? cmd.params.progress : undefined;
 
-			// 根据动作名称映射到动画
+			const playWithSeek = (animationId: string, loop: boolean) => {
+				const group =
+					charEntity.builtinAnimations.get(animationId) || charEntity.customAnimations.get(animationId);
+				if (!group) return;
+				charEntity.animationController.stopAllAnimations();
+				if (progress !== undefined && progress >= 0 && progress < 1) {
+					try {
+						const keys = group.targetedAnimations?.flatMap(
+							(ta: { animation: { getKeys?: () => Array<{ frame: number }> } }) =>
+								ta.animation.getKeys?.() ?? [],
+						);
+						const maxFrame = keys.length ? Math.max(...keys.map((k) => k.frame)) : 60;
+						group.goToFrame(progress * maxFrame);
+					} catch {
+						// 无法 seek 时降级从头播
+					}
+				}
+				group.play(loop);
+				charEntity.animationState.current = animationId;
+			};
+
 			switch (cmd.name) {
 				case "jump":
 					charEntity.animationController.playBuiltinAnimation(BuiltinAnimationType.JUMP, {
@@ -756,6 +876,15 @@ class CommandHandler {
 							charEntity.animationController.playBuiltinAnimation(BuiltinAnimationType.IDLE);
 						},
 					});
+					break;
+				case "idle":
+					playWithSeek(BuiltinAnimationType.IDLE, true);
+					break;
+				case "walk":
+					playWithSeek(BuiltinAnimationType.WALK, true);
+					break;
+				case "run":
+					playWithSeek(BuiltinAnimationType.RUN, true);
 					break;
 				case "skill":
 					// 如果有自定义动画数据，播放自定义动画
@@ -769,7 +898,8 @@ class CommandHandler {
 					}
 					break;
 				default:
-					console.warn(`未知的动作类型: ${cmd.name}`);
+					// 尝试按名称作为 builtin/custom 动画 id 播放（含 seek）
+					playWithSeek(cmd.name, false);
 			}
 		}
 	}
@@ -1033,6 +1163,7 @@ export function createRendererController(scene: Scene): RendererController {
 
 	/** 销毁所有实体并清理资源 */
 	function dispose(): void {
+		commandHandler.disposeAreaVisuals();
 		// 为每个实体发送销毁命令，复用现有逻辑
 		entities.forEach((entity, id) => {
 			commandHandler.handle({
@@ -1058,7 +1189,11 @@ export function createRendererController(scene: Scene): RendererController {
 		};
 	}
 
-	return { send, tick, dispose, getEntityPose };
+	function applyRenderSnapshot(renderSnapshot: RenderSnapshot): Promise<void> {
+		return commandHandler.applyRenderSnapshot(renderSnapshot);
+	}
+
+	return { send, tick, dispose, getEntityPose, applyRenderSnapshot };
 }
 
 // ==================== 导出接口 ====================

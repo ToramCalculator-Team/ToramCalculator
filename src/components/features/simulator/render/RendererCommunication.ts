@@ -12,6 +12,18 @@ import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
 export class RendererCommunication {
   private renderHandler: ((payload: any) => void) | null = null;
   private isInitialized = false;
+  /**
+   * 是否已完成首次状态同步：渲染快照应用前为 false，应用后为 true。
+   * 为 true 后收到的 render_cmd 直接转发给 renderHandler；为 false 时入队缓冲。
+   */
+  private renderSnapshotApplied = false;
+  /**
+   * 同步前缓冲队列：渲染层必定晚于引擎就绪，在拉取并应用渲染快照完成之前，Worker 可能已发来多条 render_cmd。
+   * 若直接执行，可能因场景尚未用渲染快照对齐而乱序、重复或冲突。因此在此段时间内将
+   * 收到的指令全部 push 进 buffer，等 markRenderSnapshotApplied() 调用后按序回放给 renderHandler，
+   * 再清空，之后进入实时流，避免丢失或错序执行渲染指令。
+   */
+  private buffer: any[] = [];
   /** 保存 handler 引用，确保 on/off 使用同一个函数引用 */
   private boundHandleRenderCommand: ((data: { workerId: string; event: any }) => void) | null = null;
 
@@ -46,12 +58,12 @@ export class RendererCommunication {
       realtimeSimulatorPool.off("render_cmd", this.boundHandleRenderCommand);
       this.boundHandleRenderCommand = null;
     }
-    
+
+    this.buffer = [];
+    this.renderSnapshotApplied = false;
     // 清理渲染处理器
     this.renderHandler = null;
     this.isInitialized = false;
-    
-    // console.log("RendererCommunication: 已清理", new Date().toLocaleTimeString());
   }
 
   // ==================== 渲染指令处理 ====================
@@ -74,31 +86,51 @@ export class RendererCommunication {
   }
 
   /**
-   * 处理从Worker接收到的渲染指令
+   * 处理从 Worker 接收到的渲染指令。
+   * 渲染快照未应用时：只入队 buffer，不交给 renderHandler。
+   * 渲染快照已应用后：直接交给 renderHandler；缓冲队列在 markRenderSnapshotApplied() 中回放。
    */
   private handleRenderCommand(data: { workerId: string; event: any }) {
+    const renderData = data.event;
+    const payload =
+      renderData.type === "render:cmd" && renderData.cmd
+        ? renderData.cmd
+        : renderData.type === "render:cmds" && Array.isArray(renderData.cmds)
+          ? renderData.cmds
+          : renderData;
+
+    if (!this.renderSnapshotApplied) {
+      this.buffer.push(payload);
+      return;
+    }
+
     if (!this.renderHandler) {
       console.warn("RendererCommunication: 收到渲染指令但没有设置处理器");
       return;
     }
 
     try {
-      // 新的统一格式：渲染指令通过系统消息传递
-      // data.event 包含实际的渲染指令数据
-      const renderData = data.event;
-      console.log("RendererCommunication: 收到渲染指令", renderData);
-      // 解析不同格式的渲染指令
-      if (renderData.type === "render:cmd" && renderData.cmd) {
-        this.renderHandler(renderData.cmd);
-      } else if (renderData.type === "render:cmds" && Array.isArray(renderData.cmds)) {
-        this.renderHandler(renderData.cmds);
-      } else {
-        // 兼容直接传递的格式
-        this.renderHandler(renderData);
-      }
+      this.renderHandler(payload);
     } catch (error) {
       console.error("RendererCommunication: 渲染指令处理失败:", error);
     }
+  }
+
+  /**
+   * 标记渲染快照已应用。将缓冲队列中的 render_cmd 按序回放给 renderHandler，
+   * 然后清空 buffer，此后新到的指令直接实时转发，不再缓冲。
+   */
+  markRenderSnapshotApplied() {
+    this.renderSnapshotApplied = true;
+    if (!this.renderHandler) return;
+    try {
+      for (const payload of this.buffer) {
+        this.renderHandler(payload);
+      }
+    } catch (error) {
+      console.error("RendererCommunication: 回放缓冲指令失败:", error);
+    }
+    this.buffer = [];
   }
 
   // ==================== 状态查询 ====================
