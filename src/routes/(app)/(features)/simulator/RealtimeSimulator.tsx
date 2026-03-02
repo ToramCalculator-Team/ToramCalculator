@@ -19,7 +19,10 @@ import { MemberController } from "~/components/features/simulator/controller/Mem
 import { MemberControllerPanel } from "~/components/features/simulator/controller/MemberControllerPanel";
 import type { EngineControlMessage } from "~/components/features/simulator/core/GameEngineSM";
 import type { MemberSerializeData } from "~/components/features/simulator/core/Member/Member";
-import { ControllerDomainEventBatchSchema, type EngineTelemetry } from "~/components/features/simulator/core/thread/protocol";
+import {
+	ControllerDomainEventBatchSchema,
+	type EngineTelemetry,
+} from "~/components/features/simulator/core/thread/protocol";
 import { realtimeSimulatorPool } from "~/components/features/simulator/core/thread/SimulatorPool";
 import type { ControllerDomainEvent, FrameSnapshot } from "~/components/features/simulator/core/types";
 import { GameView } from "~/components/features/simulator/render/Renderer";
@@ -32,6 +35,14 @@ export interface RealtimeSimulatorProps {
 
 export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 	// ==================== 核心控制器 ====================
+
+	// ==================== 清理函数集合 ====================
+	const cleanupFunctions: Array<() => void> = [];
+
+	// ==================== 辅助函数：注册清理 ====================
+	function registerCleanup(fn: () => void) {
+		cleanupFunctions.push(fn);
+	}
 
 	/** 引擎生命周期控制器（单 operator） */
 	const lifecycle = new EngineLifecycleController();
@@ -101,13 +112,21 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 			setIsPaused(snapshot.matches("paused"));
 		}, 100);
 
-		onCleanup(() => {
+		registerCleanup(() => {
 			clearInterval(interval);
 		});
 	});
 
 	onCleanup(() => {
 		console.log(`--RealtimeSimulator Page Unmount`);
+		// 执行所有注册的清理函数
+		cleanupFunctions.forEach((fn) => {
+			try {
+				fn();
+			} catch (error) {
+				console.error("清理函数执行失败:", error);
+			}
+		});
 		// 先重置引擎（将Worker侧状态机归位到idle），再销毁控制器
 		lifecycle.reset();
 		lifecycle.destroy();

@@ -4,6 +4,7 @@ import { Color3, Color4 } from "@babylonjs/core/Maths/math";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { Scene } from "@babylonjs/core/scene";
 import { createEffect, createMemo, createSignal, type JSX, onCleanup, onMount } from "solid-js";
+import { createLogger } from "~/lib/Logger";
 import { store } from "~/store";
 import "@babylonjs/core/Rendering/depthRendererSceneComponent";
 import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
@@ -23,6 +24,8 @@ import {
 	createThirdPersonController,
 	type ThirdPersonCameraController as TPSController,
 } from "./ThirdPersonCameraController";
+
+const log = createLogger("Renderer");
 
 // ----------------------------------------预设内容-----------------------------------
 // 主题色定义
@@ -134,6 +137,7 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
 
 	// ==================== 渲染通信设置 ====================
 	function setupRenderCommunication() {
+		log.info("设置渲染通信");
 		rendererCommunication.setRenderHandler((payload: any) => {
 			try {
 				if (!payload) return;
@@ -213,6 +217,7 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
 
 	// ==================== 主初始化 ====================
 	onMount(async () => {
+		log.info("开始初始化渲染器");
 		const canvas = canvasRef();
 		if (!canvas) return;
 

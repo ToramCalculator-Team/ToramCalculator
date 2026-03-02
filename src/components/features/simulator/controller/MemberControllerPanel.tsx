@@ -7,7 +7,7 @@
  * - 提供移动、技能、目标选择、停止等操作
  */
 
-import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, type JSX, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import type { FrameSnapshot } from "../core/GameEngine";
@@ -30,7 +30,7 @@ interface MemberControllerPanelProps {
 	members: () => MemberSerializeData[];
 	controllerEventState: () => Record<string, ControllerEventState>;
 	onRemove: () => Promise<void>;
-	gameView?: any;
+	gameView?: JSX.Element;
 }
 
 export function MemberControllerPanel(props: MemberControllerPanelProps) {
@@ -115,11 +115,7 @@ export function MemberControllerPanel(props: MemberControllerPanelProps) {
 			</div>
 
 			{/* 3D渲染区域（中间区域 rows 2-7） */}
-			<Show when={props.gameView}>
-				<div class="absolute top-0 left-0 w-full h-full overflow-hidden rounded">
-					{props.gameView}
-				</div>
-			</Show>
+			<div class="absolute top-0 left-0 w-full h-full overflow-hidden rounded">{props.gameView}</div>
 
 			<div class="z-10 row-start-8 col-start-3 col-span-4 row-span-1 flex flex-col gap-2">
 				{/* 技能面板 */}
