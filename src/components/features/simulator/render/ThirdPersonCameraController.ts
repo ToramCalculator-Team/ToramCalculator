@@ -81,10 +81,10 @@ export interface CameraState {
 // ==================== 默认设置 ====================
 
 const defaultCameraState: CameraState = {
-	distance: 8,
-	horizontalAngle: 0,
-	verticalAngle: Math.PI / 6, // 30度俯视角
-	target: new Vector3(0, 0, 0),
+	distance: 3.12,
+	horizontalAngle: 1.58,
+	verticalAngle: 1.5,
+	target: new Vector3(0, 0.43, 0),
 	smoothTransition: false, // 暂时禁用平滑过渡，提高响应性
 	minDistance: 2,
 	maxDistance: 20,
@@ -128,7 +128,7 @@ export class ThirdPersonCameraController {
 		this.updateCameraAngle();
 
 		// 设置无限地面逻辑
-		this.setupInfiniteGround();
+		// this.setupInfiniteGround();
 
 		// console.log("🎥 第三人称相机控制器已初始化");
 	}
@@ -369,7 +369,7 @@ export class ThirdPersonCameraController {
 			root.rotation.y = Math.round(rotationY / snapAngle) * snapAngle;
 		});
 
-		// console.log("🎥 无限地面已启用", this.infiniteGroundConfig);
+		console.log("🎥 无限地面已启用", this.infiniteGroundConfig);
 	}
 }
 
@@ -394,7 +394,7 @@ export function createThirdPersonController(
 	);
 
 	// 禁用默认控制
-	camera.setTarget(Vector3.Zero());
+	camera.setTarget(new Vector3(0, 0, 0));
 	camera.attachControl(canvas, false);
 
 	// 创建控制器
