@@ -27,6 +27,7 @@ import { Select } from "~/components/controls/select";
 import { Icons } from "~/components/icons";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
+import { createCharacter } from "./createCharacter";
 
 export default function CharactePage() {
 	// UI文本字典
@@ -186,7 +187,7 @@ export default function CharactePage() {
 					transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
 					class="CharacterPage flex h-full w-full flex-col overflow-hidden"
 				>
-					<div class={`Title w-full`}>
+					<div class={`Title w-full flex gap-2`}>
 						<Select
 							value={character().name}
 							setValue={(value) => {
@@ -197,6 +198,10 @@ export default function CharactePage() {
 							styleLess
 							textCenter
 						/>
+						<Button icon={<Icons.Outline.AddUser />} level="quaternary" onClick={async () => {
+							const character = await createCharacter();
+							navigate(`/character/${character.id}`);
+						}} />
 					</div>
 					<div class="Content flex h-full w-full flex-1 flex-col overflow-hidden p-6 landscape:flex-row">
 						<div class="CharacterView hidden w-full flex-1 overflow-hidden portrait:block">
