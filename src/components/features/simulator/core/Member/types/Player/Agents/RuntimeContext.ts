@@ -3,17 +3,17 @@ import { CommonContext } from "../../../runtime/Agent/CommonContext";
 import { actionPoolToInvokers, conditionPoolToInvokers } from "../../../runtime/Agent/uitls";
 import { PlayerActionPool } from "./Actions";
 import { PlayerConditionPool } from "./Condition";
-import { PlayerProperty } from "./Property";
+import { PlayerRuntimeStateDefaults } from "./Property";
 
-const playerActions = actionPoolToInvokers(PlayerProperty, PlayerActionPool);
-const playerConditions = conditionPoolToInvokers(PlayerProperty, PlayerConditionPool);
+const playerActions = actionPoolToInvokers(PlayerRuntimeStateDefaults, PlayerActionPool);
+const playerConditions = conditionPoolToInvokers(PlayerRuntimeStateDefaults, PlayerConditionPool);
 
-/** 行为树黑板 = CommonContext + 公共 callables + 成员专属 property/actions/conditions */
+/** 行为树访问视图 = CommonContext + 公共 callables + 成员专属 runtime state/actions/conditions */
 export const PlayerRuntimeContext = {
 	...CommonContext,
 	...commonActions,
 	...commonConditions,
-	...PlayerProperty,
+	...PlayerRuntimeStateDefaults,
 	...playerActions,
 	...playerConditions,
 };

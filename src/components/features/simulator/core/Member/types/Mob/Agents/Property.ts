@@ -2,10 +2,13 @@ import type { CharacterWithRelations } from "@db/generated/repositories/characte
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 
 /**
- * MobProperty
- * Mob 专用的运行时属性
+ * MobRuntimeState
+ * Mob 专用的共享运行时状态
  */
-export interface MobProperty extends Record<string, unknown> {
+export interface MobRuntimeState extends Record<string, unknown> {
+	/** 行为树局部记忆 */
+	btMemory: Record<string, unknown>;
+	/** @deprecated 请使用 btMemory */
 	blackboard: Record<string, unknown>;
 	skillState: Record<string, unknown>;
 	buffState: Record<string, unknown>;
@@ -38,8 +41,12 @@ export interface MobProperty extends Record<string, unknown> {
 	 */
 	compiledSkillEffectLogicByEffectId: Record<string, string>;
 }
-export const MobProperty: MobProperty = {
-	blackboard: {},
+
+const mobBtMemory: Record<string, unknown> = {};
+
+export const MobRuntimeStateDefaults: MobRuntimeState = {
+	btMemory: mobBtMemory,
+	blackboard: mobBtMemory,
 	skillState: {},
 	buffState: {},
 	skillList: [],
@@ -55,3 +62,8 @@ export const MobProperty: MobProperty = {
 	character: null,
 	compiledSkillEffectLogicByEffectId: {},
 };
+
+/** @deprecated 兼容旧命名，请逐步迁移到 MobRuntimeState。 */
+export type MobProperty = MobRuntimeState;
+/** @deprecated 兼容旧命名，请逐步迁移到 MobRuntimeStateDefaults。 */
+export const MobProperty = MobRuntimeStateDefaults;

@@ -2,13 +2,15 @@ import type { CharacterWithRelations } from "@db/generated/repositories/characte
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 
 /**
- * PlayerProperty
- * Player 专用的运行时属性
+ * PlayerRuntimeState
+ * Player 专用的共享运行时状态
  */
-export interface PlayerProperty extends Record<string, unknown> {
+export interface PlayerRuntimeState extends Record<string, unknown> {
 	/** 标识符 */
 	type: "Player";
-	/** 黑板 */
+	/** 行为树局部记忆 */
+	btMemory: Record<string, unknown>;
+	/** @deprecated 请使用 btMemory */
 	blackboard: Record<string, unknown>;
 	/** 技能状态 */
 	skillState: Record<string, unknown>;
@@ -58,9 +60,13 @@ export interface PlayerProperty extends Record<string, unknown> {
 		  }
 		| undefined;
 }
-export const PlayerProperty: PlayerProperty = {
+
+const playerBtMemory: Record<string, unknown> = {};
+
+export const PlayerRuntimeStateDefaults: PlayerRuntimeState = {
 	type: "Player",
-	blackboard: {},
+	btMemory: playerBtMemory,
+	blackboard: playerBtMemory,
 	skillState: {},
 	buffState: {},
 	skillList: [],
@@ -77,3 +83,8 @@ export const PlayerProperty: PlayerProperty = {
 	compiledSkillEffectLogicByEffectId: {},
 	currentDamageRequest: undefined,
 };
+
+/** @deprecated 兼容旧命名，请逐步迁移到 PlayerRuntimeState。 */
+export type PlayerProperty = PlayerRuntimeState;
+/** @deprecated 兼容旧命名，请逐步迁移到 PlayerRuntimeStateDefaults。 */
+export const PlayerProperty = PlayerRuntimeStateDefaults;
