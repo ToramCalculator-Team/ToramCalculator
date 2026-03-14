@@ -3,9 +3,9 @@ import type { SkillVariantWithRelations } from "@db/generated/repositories/skill
 import type { MemberBTTree } from "@db/schema/jsons";
 import type { Member } from "../../Member";
 import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
+import type { CommonBoard } from "./CommonBoard";
 import type { MemberRuntimeServices } from "./RuntimeServices";
 import { MemberRuntimeServicesDefaults } from "./RuntimeServices";
-
 
 /**
  * 成员共享运行时上下文。
@@ -18,7 +18,7 @@ import { MemberRuntimeServicesDefaults } from "./RuntimeServices";
  */
 export interface CommonContext extends Record<string, unknown>, MemberRuntimeServices {
 	/** 成员引用 */
-	owner: Member<string, MemberEventType, MemberStateContext, any> | undefined;
+	owner: Member<string, MemberEventType, MemberStateContext, CommonBoard> | undefined;
 	/** 当前帧 */
 	currentFrame: number;
 	/** 位置信息 */
