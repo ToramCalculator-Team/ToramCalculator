@@ -1,5 +1,5 @@
 import { z } from "zod/v4";
-import type { CommonProperty } from "./CommonProperty";
+import type { CommonContext } from "./CommonContext";
 import { type ConditionPool, defineCondition } from "./type";
 
 export const CommonConditionPool = {
@@ -36,6 +36,6 @@ export const CommonConditionPool = {
 		const exceptionNames = ["cowering", "overturned", "dizzy"];
 		return exceptionNames.some((name) => context.statusTags.includes(name));
 	}),
-} as const satisfies ConditionPool<CommonProperty>;
+} as const satisfies ConditionPool<CommonContext>;
 
 export type CommonConditionPool = typeof CommonConditionPool;

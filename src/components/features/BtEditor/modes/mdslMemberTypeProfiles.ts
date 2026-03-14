@@ -1,7 +1,7 @@
 import type { MemberType } from "@db/schema/enums";
 import { CommonActionPool } from "~/components/features/simulator/core/Member/runtime/Agent/CommonActions";
 import { CommonConditionPool } from "~/components/features/simulator/core/Member/runtime/Agent/CommonCondition";
-import { CommonProperty } from "~/components/features/simulator/core/Member/runtime/Agent/CommonProperty";
+import { CommonContext } from "~/components/features/simulator/core/Member/runtime/Agent/CommonContext";
 import type { ActionPool, ConditionPool } from "~/components/features/simulator/core/Member/runtime/Agent/type";
 import { MobActionPool } from "~/components/features/simulator/core/Member/types/Mob/Agents/Actions";
 import { MobConditionPool } from "~/components/features/simulator/core/Member/types/Mob/Agents/Condition";
@@ -34,7 +34,7 @@ export const getMdslProfileConfig = (memberType: MemberType): MdslProfileConfig 
 					...PlayerConditionPool,
 				},
 				propertyObject: {
-					...CommonProperty,
+					...CommonContext,
 					...PlayerProperty,
 				},
 			};
@@ -50,7 +50,7 @@ export const getMdslProfileConfig = (memberType: MemberType): MdslProfileConfig 
 					...MobConditionPool,
 				},
 				propertyObject: {
-					...CommonProperty,
+					...CommonContext,
 					...MobProperty,
 				},
 			};
@@ -62,7 +62,7 @@ export const getMdslProfileConfig = (memberType: MemberType): MdslProfileConfig 
 				memberType,
 				actionPool: CommonActionPool,
 				conditionPool: CommonConditionPool,
-				propertyObject: CommonProperty,
+				propertyObject: CommonContext,
 			};
 	}
 };

@@ -8,7 +8,7 @@ import type { Member } from "../../Member";
 import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
 
 
-export interface CommonProperty extends Record<string, unknown> {
+export interface CommonContext extends Record<string, unknown> {
 	/** 成员引用 */
 	owner: Member<string, MemberEventType, MemberStateContext, any> | undefined;
 	/** 当前帧 */
@@ -51,7 +51,7 @@ export interface CommonProperty extends Record<string, unknown> {
 	domainEventSender: ((event: MemberDomainEvent) => void) | null;
 }
 
-export const CommonProperty: CommonProperty = {
+export const CommonContext: CommonContext = {
 	owner: undefined,
 	currentFrame: 0,
 	getCurrentFrame: () => {

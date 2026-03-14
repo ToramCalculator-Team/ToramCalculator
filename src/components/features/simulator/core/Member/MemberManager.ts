@@ -7,7 +7,7 @@ import type { ExpressionContext } from "../JSProcessor/types";
 import type { MemberDomainEvent } from "../types";
 import type { DamageAreaRequest } from "../World/types";
 import type { Member } from "./Member";
-import type { CommonRuntimeContext } from "./runtime/Agent/CommonRuntimeContext";
+import type { CommonBoard } from "./runtime/Agent/CommonBoard";
 import type { MemberEventType, MemberStateContext } from "./runtime/StateMachine/types";
 import { Mob } from "./types/Mob/Mob";
 import { Player } from "./types/Player/Player";
@@ -21,7 +21,7 @@ export type AnyMemberEntry = Member<
 	string,
 	MemberEventType,
 	MemberStateContext,
-	CommonRuntimeContext & Record<string, unknown>
+	CommonBoard & Record<string, unknown>
 >;
 
 // ============================== 成员管理器类 ==============================

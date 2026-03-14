@@ -3,12 +3,12 @@ import { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import { State } from "~/lib/mistreevous/State";
 import type { Member } from "../../Member";
-import type { CommonRuntimeContext } from "../Agent/CommonRuntimeContext";
+import type { CommonBoard } from "../Agent/CommonBoard";
 import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
 
 const log = createLogger("BtManager");
 
-type BtEntry<TRuntimeContext extends CommonRuntimeContext & Record<string, unknown>> = {
+type BtEntry<TRuntimeContext extends CommonBoard & Record<string, unknown>> = {
 	bt: BehaviourTree;
 	board: TRuntimeContext & Record<string, unknown>;
 };
@@ -17,7 +17,7 @@ export class BtManager<
 	TAttrKey extends string,
 	TStateEvent extends MemberEventType,
 	TStateContext extends MemberStateContext,
-	TRuntimeContext extends CommonRuntimeContext & Record<string, unknown> = CommonRuntimeContext & Record<string, unknown>,
+	TRuntimeContext extends CommonBoard & Record<string, unknown> = CommonBoard & Record<string, unknown>,
 > {
 	/** 主动效果行为树（不可并行，通常包括角色动画） */
 	private activeEffectEntry: BtEntry<TRuntimeContext> | undefined = undefined;

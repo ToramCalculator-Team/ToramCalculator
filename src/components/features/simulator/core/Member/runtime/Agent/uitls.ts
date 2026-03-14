@@ -1,7 +1,7 @@
 import { type ZodType, z } from "zod/v4";
 import { createLogger } from "~/lib/Logger";
 import type { State } from "~/lib/mistreevous/State";
-import type { CommonProperty } from "./CommonProperty";
+import type { CommonContext } from "./CommonContext";
 import type { ActionPool, ConditionPool } from "./type";
 
 const log = createLogger("AgentUtils");
@@ -153,7 +153,7 @@ export const maxMin = (min: number, value: number, max: number) => {
  * @param actionName 动作名称
  * @param params 参数
  */
-export const sendRenderCommand = (context: CommonProperty, actionName: string, params?: Record<string, unknown>) => {
+export const sendRenderCommand = (context: CommonContext, actionName: string, params?: Record<string, unknown>) => {
 	if (!context.renderMessageSender) {
 		log.warn(`⚠️ [${context.owner?.name}] 无法获取渲染消息接口，无法发送渲染指令: ${actionName}`);
 		return;

@@ -1,7 +1,4 @@
 import { type ZodType, z } from "zod/v4";
-import { CommonActionPool } from "~/components/features/simulator/core/Member/runtime/Agent/CommonActions";
-import { CommonConditionPool } from "~/components/features/simulator/core/Member/runtime/Agent/CommonCondition";
-import { CommonProperty } from "~/components/features/simulator/core/Member/runtime/Agent/CommonProperty";
 import type { ActionPool, ConditionPool } from "~/components/features/simulator/core/Member/runtime/Agent/type";
 
 export type MdslPrimitiveType = "string" | "number" | "boolean" | "null" | "unknown";

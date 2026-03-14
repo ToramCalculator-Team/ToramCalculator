@@ -14,7 +14,7 @@ import type {
 	MemberStateMachine,
 } from "./runtime/StateMachine/types";
 import type { DamageAreaRequest } from "../World/types";
-import type { CommonRuntimeContext } from "./runtime/Agent/CommonRuntimeContext";
+import type { CommonBoard } from "./runtime/Agent/CommonBoard";
 
 const log = createLogger("Member");
 
@@ -36,7 +36,7 @@ export class Member<
 	TAttrKey extends string,
 	TStateEvent extends MemberEventType,
 	TStateContext extends MemberStateContext,
-	TRuntimeContext extends CommonRuntimeContext & Record<string, unknown>,
+	TRuntimeContext extends CommonBoard & Record<string, unknown>,
 > {
 	/** 成员ID */
 	id: string;

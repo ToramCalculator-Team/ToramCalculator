@@ -4,7 +4,7 @@ import { State } from "~/lib/mistreevous/State";
 import { ExpressionTransformer } from "../../../JSProcessor/ExpressionTransformer";
 import type { DamageAreaRequest } from "../../../World/types";
 import { ModifierType } from "../StatContainer/StatContainer";
-import type { CommonProperty } from "./CommonProperty";
+import type { CommonContext } from "./CommonContext";
 import { type ActionPool, defineAction } from "./type";
 import { sendRenderCommand } from "./uitls";
 
@@ -274,6 +274,6 @@ export const CommonActionPool = {
 			return State.SUCCEEDED;
 		},
 	),
-} as const satisfies ActionPool<CommonProperty>;
+} as const satisfies ActionPool<CommonContext>;
 
 export type CommonActionPool = typeof CommonActionPool;
