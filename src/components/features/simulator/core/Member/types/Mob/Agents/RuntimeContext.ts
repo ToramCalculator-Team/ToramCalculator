@@ -18,4 +18,4 @@ export const MobRuntimeContext = {
 	...mobConditions,
 };
 
-export type MobRuntimeContext = typeof MobRuntimeContext;	
+export type MobRuntimeContext = typeof MobRuntimeContext;

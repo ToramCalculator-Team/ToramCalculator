@@ -1,10 +1,11 @@
 import type { Member } from "../../Member";
+import type { CommonBoard } from "../Agent/CommonBoard";
 import type { CommonContext } from "../Agent/CommonContext";
 import type { MemberRuntimeServices } from "../Agent/RuntimeServices";
-import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
 import type { StatContainer } from "../StatContainer/StatContainer";
+import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
 
-type AnyMemberRef = Member<string, MemberEventType, MemberStateContext, any>;
+type AnyMemberRef = Member<string, MemberEventType, MemberStateContext, CommonBoard>;
 
 export interface PipelineExecutionMeta {
 	pipelineName: string;
