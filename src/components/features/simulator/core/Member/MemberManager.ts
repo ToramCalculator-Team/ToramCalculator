@@ -10,8 +10,8 @@ import type { Member } from "./Member";
 import type { CommonBoard } from "./runtime/Agent/CommonBoard";
 import type { CommonContext } from "./runtime/Agent/CommonContext";
 import type { PipelineRegistry } from "./runtime/Pipline/PipelineRegistry";
-import type { MemberEventType, MemberStateContext } from "./runtime/StateMachine/types";
 import type { ActionPool } from "./runtime/Pipline/types";
+import type { MemberEventType, MemberStateContext } from "./runtime/StateMachine/types";
 import { Mob } from "./types/Mob/Mob";
 import { Player } from "./types/Player/Player";
 
@@ -20,12 +20,7 @@ const log = createLogger("MemberMgr");
 // ============================== 类型定义 ==============================
 
 // 避免 any：用通用基类型承载不同成员实现
-export type AnyMemberEntry = Member<
-	string,
-	MemberEventType,
-	MemberStateContext,
-	CommonBoard & Record<string, unknown>
->;
+export type AnyMemberEntry = Member<string, MemberEventType, MemberStateContext, CommonBoard & Record<string, unknown>>;
 
 // ============================== 成员管理器类 ==============================
 
@@ -50,9 +45,7 @@ export class MemberManager {
 	/** 域事件发射器 */
 	private emitDomainEvent: ((event: MemberDomainEvent) => void) | null = null;
 	/** 表达式求值器（由引擎注入） */
-	private evaluateExpression:
-		| ((expression: string, context: ExpressionContext) => number | boolean)
-		| null = null;
+	private evaluateExpression: ((expression: string, context: ExpressionContext) => number | boolean) | null = null;
 	/** 伤害请求处理器（由引擎注入） */
 	private damageRequestHandler: ((damageRequest: DamageAreaRequest) => void) | null = null;
 	/** 引擎帧号读取函数（由引擎注入） */
@@ -177,7 +170,7 @@ export class MemberManager {
 			case "Mob": {
 				const mob = new Mob(memberData, campId, teamId, position);
 				// 设置域事件发射器
-				mob.setEmitDomainEvent(this.emitDomainEvent)
+				mob.setEmitDomainEvent(this.emitDomainEvent);
 				mob.setEvaluateExpression(this.evaluateExpression);
 				mob.setDamageRequestHandler(this.damageRequestHandler);
 				mob.setGetCurrentFrame(this.getCurrentFrame);

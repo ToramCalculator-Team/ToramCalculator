@@ -3,8 +3,8 @@ import type { CommonBoard } from "../Agent/CommonBoard";
 import type { CommonContext } from "../Agent/CommonContext";
 import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
 import type { PipelineExecutionContext, PipelineExecutionMeta } from "./PipelineExecutionContext";
-import { PipelineManager } from "./PiplineManager";
 import type { PipelineRegistry } from "./PipelineRegistry";
+import { PipelineManager } from "./PiplineManager";
 import type { ActionPool, PipelineDef } from "./types";
 
 type PipelineRuntimeOwner<TRuntimeContext extends CommonContext> = Member<
