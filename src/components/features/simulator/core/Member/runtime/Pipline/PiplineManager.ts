@@ -5,8 +5,7 @@
  */
 
 import type { ZodType } from "zod/v4";
-import type { PipelineDef } from "./types";
-import type { ActionPool } from "../Agent/type";
+import type { ActionPool, PipelineDef } from "./types";
 import { CommonContext } from "../Agent/CommonContext";
 
 export interface PipelineDynamicStageInfo {
@@ -107,6 +106,24 @@ export class PipelineManager<
       for (const name of added) delete this.pipelineDef[name];
       this.compiledChains = {};
     };
+  }
+
+  /**
+   * 用新的基础定义替换当前 manager 上注册的全局 pipeline。
+   *
+   * 说明：
+   * - 仅替换基础定义，不影响 member/skill overrides
+   * - 仅替换基础定义，不影响动态插入的 stage
+   */
+  replacePipelines(def: Record<string, readonly (keyof TActionPool)[]> = {}): void {
+    for (const name of Object.keys(this.pipelineDef)) {
+      delete this.pipelineDef[name];
+    }
+    for (const [name, stages] of Object.entries(def)) {
+      if (!name || !Array.isArray(stages)) continue;
+      this.pipelineDef[name] = stages;
+    }
+    this.compiledChains = {};
   }
 
   /**

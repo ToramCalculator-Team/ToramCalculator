@@ -17,6 +17,9 @@ import { type EngineControlMessage, GameEngineSM } from "./GameEngineSM";
 import { JSProcessor } from "./JSProcessor/JSProcessor";
 import type { ExpressionContext } from "./JSProcessor/types";
 import type { MemberSerializeData } from "./Member/Member";
+import { createEmptyPipelineRegistry, type PipelineRegistry } from "./Member/runtime/Pipline/PipelineRegistry";
+import type { CommonContext } from "./Member/runtime/Agent/CommonContext";
+import type { ActionPool } from "./Member/runtime/Pipline/types";
 import type { Player } from "./Member/types/Player/Player";
 import { type IntentMessage, type MessageProcessResult, MessageRouter } from "./MessageRouter/MessageRouter";
 import type {
@@ -78,6 +81,8 @@ export class GameEngine {
 	private jsProcessor: JSProcessor;
 	/** 表达式求值器 - 负责 self/target/world 绑定 */
 	private expressionEvaluator: ExpressionEvaluator;
+	/** 引擎级管线定义仓库 */
+	private pipelineRegistry: PipelineRegistry<CommonContext, ActionPool<CommonContext>>;
 
 	/** 引擎配置 */
 	private config: EngineConfig;
@@ -170,6 +175,7 @@ export class GameEngine {
 		// World 相关
 
 		this.world = new World(this.renderMessageSender);
+		this.pipelineRegistry = createEmptyPipelineRegistry();
 
 		// 初始化表达式求值器（把 world/self/target 绑定收敛到一个服务）
 		this.expressionEvaluator = new ExpressionEvaluator({
@@ -191,6 +197,8 @@ export class GameEngine {
 		this.world.memberManager.setDamageRequestHandler((damageRequest) => {
 			this.world.areaManager.damageAreaSystem.add(damageRequest);
 		});
+		// 设置引擎级 pipeline registry 到 MemberManager（成员创建时会注入到成员级执行器）
+		this.world.memberManager.setPipelineRegistry(this.pipelineRegistry);
 
 		// 创建状态机 - executor 角色
 		let seqCounter = 0;
@@ -1168,6 +1176,13 @@ export class GameEngine {
 	 */
 	getFrameLoop(): FrameLoop {
 		return this.frameLoop;
+	}
+
+	/**
+	 * 获取引擎级 pipeline registry。
+	 */
+	getPipelineRegistry(): PipelineRegistry<CommonContext, ActionPool<CommonContext>> {
+		return this.pipelineRegistry;
 	}
 
 	// ==================== 私有方法 ====================

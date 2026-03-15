@@ -15,6 +15,11 @@ import type {
 } from "./runtime/StateMachine/types";
 import type { DamageAreaRequest } from "../World/types";
 import type { CommonBoard } from "./runtime/Agent/CommonBoard";
+import { MemberPipelineRuntime } from "./runtime/Pipline/MemberPipelineRuntime";
+import { createEmptyPipelineRegistry } from "./runtime/Pipline/PipelineRegistry";
+import type { PipelineRegistry } from "./runtime/Pipline/PipelineRegistry";
+import type { ActionPool } from "./runtime/Pipline/types";
+import type { CommonContext } from "./runtime/Agent/CommonContext";
 
 const log = createLogger("Member");
 
@@ -56,6 +61,8 @@ export class Member<
 	runtimeContext: TRuntimeContext;
 	/** 行为树管理器 */
 	btManager: BtManager<TAttrKey, TStateEvent, TStateContext, TRuntimeContext>;
+	/** 成员级管线执行器 */
+	pipelineRuntime: MemberPipelineRuntime<TRuntimeContext>;
 	/** 成员Actor引用 */
 	actor: MemberActor<TStateEvent, TStateContext>;
 	/** Actor 是否已启动 */
@@ -95,6 +102,12 @@ export class Member<
 
 		// 初始化行为树管理器
 		this.btManager = new BtManager(this);
+
+		// 初始化成员级管线执行器（先挂空 registry，后续由引擎注入正式 registry）
+		this.pipelineRuntime = new MemberPipelineRuntime(
+			this,
+			createEmptyPipelineRegistry() as PipelineRegistry<CommonContext, ActionPool<CommonContext>>,
+		);
 
 		// 初始化位置
 		this.position = position ?? { x: 0, y: 0, z: 0 };
@@ -194,6 +207,13 @@ export class Member<
 		if (this.runtimeContext) {
 			(this.runtimeContext as Record<string, unknown>).getCurrentFrame = getCurrentFrame;
 		}
+	}
+
+	/**
+	 * 设置成员级 pipeline registry。
+	 */
+	setPipelineRegistry(registry: PipelineRegistry<CommonContext, ActionPool<CommonContext>>): void {
+		this.pipelineRuntime.setRegistry(registry);
 	}
 
 	/**

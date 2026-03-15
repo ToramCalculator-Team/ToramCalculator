@@ -8,7 +8,10 @@ import type { MemberDomainEvent } from "../types";
 import type { DamageAreaRequest } from "../World/types";
 import type { Member } from "./Member";
 import type { CommonBoard } from "./runtime/Agent/CommonBoard";
+import type { CommonContext } from "./runtime/Agent/CommonContext";
+import type { PipelineRegistry } from "./runtime/Pipline/PipelineRegistry";
 import type { MemberEventType, MemberStateContext } from "./runtime/StateMachine/types";
+import type { ActionPool } from "./runtime/Pipline/types";
 import { Mob } from "./types/Mob/Mob";
 import { Player } from "./types/Player/Player";
 
@@ -54,6 +57,8 @@ export class MemberManager {
 	private damageRequestHandler: ((damageRequest: DamageAreaRequest) => void) | null = null;
 	/** 引擎帧号读取函数（由引擎注入） */
 	private getCurrentFrame: (() => number) | null = null;
+	/** 引擎级 pipeline registry（由引擎注入） */
+	private pipelineRegistry: PipelineRegistry<CommonContext, ActionPool<CommonContext>> | null = null;
 
 	// ==================== 主控目标系统 ====================
 
@@ -118,6 +123,17 @@ export class MemberManager {
 		}
 	}
 
+	/**
+	 * 设置引擎级 pipeline registry（由引擎注入）。
+	 */
+	setPipelineRegistry(registry: PipelineRegistry<CommonContext, ActionPool<CommonContext>> | null): void {
+		this.pipelineRegistry = registry;
+		if (!registry) return;
+		for (const member of this.members.values()) {
+			member.setPipelineRegistry(registry);
+		}
+	}
+
 	// ==================== 公共接口 ====================
 	/**
 	 * 创建并注册新成员
@@ -145,6 +161,9 @@ export class MemberManager {
 				player.setDamageRequestHandler(this.damageRequestHandler);
 				player.setGetCurrentFrame(this.getCurrentFrame);
 				player.setRenderMessageSender(this.renderMessageSender);
+				if (this.pipelineRegistry) {
+					player.setPipelineRegistry(this.pipelineRegistry);
+				}
 				const success = this.registerMember(player, campId, teamId, memberData);
 				if (success) {
 					player.start();
@@ -163,6 +182,9 @@ export class MemberManager {
 				mob.setDamageRequestHandler(this.damageRequestHandler);
 				mob.setGetCurrentFrame(this.getCurrentFrame);
 				mob.setRenderMessageSender(this.renderMessageSender);
+				if (this.pipelineRegistry) {
+					mob.setPipelineRegistry(this.pipelineRegistry);
+				}
 				const success = this.registerMember(mob, campId, teamId, memberData);
 				if (success) {
 					mob.start();
