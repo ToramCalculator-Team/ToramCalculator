@@ -297,6 +297,11 @@ export interface MemberBaseStructure {
   avoid: null;
   guardRate: null;
   dodgeRate: null;
+  status: {
+    sleep: {
+      durationRate: null;
+    };
+  };
 }
 
 // ============================== 静态类型推导 ==============================
@@ -370,6 +375,11 @@ export const MemberBaseStructure: MemberBaseStructure = {
   avoid: null,
   guardRate: null,
   dodgeRate: null,
+  status: {
+    sleep: {
+      durationRate: null,
+    },
+  },
 };
 
 /**

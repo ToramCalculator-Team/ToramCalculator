@@ -11,6 +11,11 @@ import { BtManager } from "./runtime/BehaviourTree/BtManager";
 import { MemberPipelineRuntime } from "./runtime/Pipline/MemberPipelineRuntime";
 import type { PipelineRegistry } from "./runtime/Pipline/PipelineRegistry";
 import { createEmptyPipelineRegistry } from "./runtime/Pipline/PipelineRegistry";
+import {
+	InMemoryStatusInstanceStore,
+	type MutableStatusInstanceStore,
+	type StatusInstance,
+} from "./runtime/Status/StatusInstanceStore";
 import type { ActionPool } from "./runtime/Pipline/types";
 import type { NestedSchema } from "./runtime/StatContainer/SchemaTypes";
 import type { StatContainer } from "./runtime/StatContainer/StatContainer";
@@ -63,6 +68,8 @@ export class Member<
 	btManager: BtManager<TAttrKey, TStateEvent, TStateContext, TRuntimeContext>;
 	/** 成员级管线执行器 */
 	pipelineRuntime: MemberPipelineRuntime<TRuntimeContext>;
+	/** 成员级状态实例仓库 */
+	statusStore: MutableStatusInstanceStore;
 	/** 成员Actor引用 */
 	actor: MemberActor<TStateEvent, TStateContext>;
 	/** Actor 是否已启动 */
@@ -108,6 +115,8 @@ export class Member<
 			this,
 			createEmptyPipelineRegistry() as PipelineRegistry<CommonContext, ActionPool<CommonContext>>,
 		);
+		this.statusStore = new InMemoryStatusInstanceStore(() => this.runtimeContext.getCurrentFrame());
+		this.runtimeContext.statusTags = [];
 
 		// 初始化位置
 		this.position = position ?? { x: 0, y: 0, z: 0 };
@@ -216,6 +225,26 @@ export class Member<
 		this.pipelineRuntime.setRegistry(registry);
 	}
 
+	applyStatusInstance(instance: StatusInstance): void {
+		this.statusStore.apply(instance);
+		this.syncStatusTags();
+	}
+
+	removeStatusByType(type: string): void {
+		this.statusStore.removeByType(type);
+		this.syncStatusTags();
+	}
+
+	private syncStatusTags(): void {
+		let currentFrame = this.runtimeContext.currentFrame;
+		try {
+			currentFrame = this.runtimeContext.getCurrentFrame();
+		} catch {
+			// 初始化注入前使用 runtimeContext.currentFrame 作为兜底值。
+		}
+		this.runtimeContext.statusTags = this.statusStore.getStatusTags(currentFrame);
+	}
+
 	/**
 	 * 发出域事件（供成员内部调用）
 	 */
@@ -236,6 +265,8 @@ export class Member<
 		// 由于 TStateEvent extends MemberEventType，而 MemberEventType 包含 MemberUpdateEvent，
 		// 所以 MemberUpdateEvent 总是 TStateEvent 的子类型，这里使用类型断言是安全的
 		this.actor.send({ type: "update", timestamp: frame } as TStateEvent);
+		this.statusStore.purgeExpired(frame);
+		this.syncStatusTags();
 
 		// 更新行为树
 		this.btManager.tickAll();

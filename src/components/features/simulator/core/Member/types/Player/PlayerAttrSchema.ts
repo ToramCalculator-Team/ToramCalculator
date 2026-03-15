@@ -605,6 +605,11 @@ export interface PlayerAttrStructure extends MemberBaseStructure {
 	};
 
 	antiVirus: null;
+	status: {
+		sleep: {
+			durationRate: null;
+		};
+	};
 
 	pursuit: {
 		rate: {
@@ -838,6 +843,11 @@ export const PlayerAttrStructure: PlayerAttrStructure = {
 		recharge: null,
 	},
 	antiVirus: null,
+	status: {
+		sleep: {
+			durationRate: null,
+		},
+	},
 	pursuit: {
 		rate: {
 			p: null,
@@ -1327,6 +1337,12 @@ export const PlayerAttrNestedSchema: PlayerAttrNestedSchema = {
 	antiVirus: {
 		displayName: "异常抗性",
 		expression: "0",
+	},
+	status: {
+		sleep: {
+			displayName: "睡眠持续时间倍率",
+			expression: "100",
+		},
 	},
 	pursuit: {
 		rate: {
@@ -2014,6 +2030,14 @@ export const PlayerAttrSchemaGenerator = (character: CharacterWithRelations): Pl
 			displayName: "异常抗性",
 			expression: "men / 3.4",
 			noBaseValue: true,
+		},
+		status: {
+			sleep: {
+				durationRate: {
+					displayName: "睡眠持续时间倍率",
+					expression: "100",
+				},
+			},
 		},
 
 		pursuit: {

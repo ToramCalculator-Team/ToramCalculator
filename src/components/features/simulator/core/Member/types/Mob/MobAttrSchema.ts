@@ -87,6 +87,11 @@ export const MobAttrStructure: MobAttrStructure = {
 	avoid: null,
 	guardRate: null,
 	dodgeRate: null,
+	status: {
+		sleep: {
+			durationRate: null,
+		},
+	},
 };
 
 /**
@@ -229,6 +234,14 @@ export const MobAttrNestedSchema: MobAttrNestedSchema = {
 		displayName: "闪躲率",
 		expression: "0",
 	},
+	status: {
+		sleep: {
+			durationRate: {
+				displayName: "睡眠持续时间倍率",
+				expression: "100",
+			},
+		},
+	},
 };
 
 // ============================== 属性Schema ==============================
@@ -370,5 +383,13 @@ export const MobAttrSchema = (mob: MobWithRelations): MobAttrNestedSchema => ({
 	dodgeRate: {
 		displayName: "闪躲率",
 		expression: `${0}`,
+	},
+	status: {
+		sleep: {
+			durationRate: {
+				displayName: "睡眠持续时间倍率",
+				expression: `${100}`,
+			},
+		},
 	},
 });

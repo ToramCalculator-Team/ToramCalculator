@@ -18,7 +18,8 @@ import { JSProcessor } from "./JSProcessor/JSProcessor";
 import type { ExpressionContext } from "./JSProcessor/types";
 import type { MemberSerializeData } from "./Member/Member";
 import type { CommonContext } from "./Member/runtime/Agent/CommonContext";
-import { createEmptyPipelineRegistry, type PipelineRegistry } from "./Member/runtime/Pipline/PipelineRegistry";
+import { createDefaultPipelineRegistry } from "./Member/runtime/Pipline/DefaultPipelineRegistry";
+import type { PipelineRegistry } from "./Member/runtime/Pipline/PipelineRegistry";
 import type { ActionPool } from "./Member/runtime/Pipline/types";
 import type { Player } from "./Member/types/Player/Player";
 import { type IntentMessage, type MessageProcessResult, MessageRouter } from "./MessageRouter/MessageRouter";
@@ -175,7 +176,7 @@ export class GameEngine {
 		// World 相关
 
 		this.world = new World(this.renderMessageSender);
-		this.pipelineRegistry = createEmptyPipelineRegistry();
+		this.pipelineRegistry = createDefaultPipelineRegistry();
 
 		// 初始化表达式求值器（把 world/self/target 绑定收敛到一个服务）
 		this.expressionEvaluator = new ExpressionEvaluator({
