@@ -3,7 +3,7 @@
  */
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import type { MainHandType, SubHandType } from "@db/schema/enums";
-import type { MemberBaseStructure } from "../../MemberBaseSchema";
+import { MemberBaseNestedSchema, MemberBaseStructure } from "../../MemberBaseSchema";
 import type { ConvertToNestedSchema, ConvertToNestedSchemaDic } from "../../runtime/StatContainer/SchemaTypes";
 
 // ============================== 其他玩家数据 ==============================
@@ -843,11 +843,7 @@ export const PlayerAttrStructure: PlayerAttrStructure = {
 		recharge: null,
 	},
 	antiVirus: null,
-	status: {
-		sleep: {
-			durationRate: null,
-		},
-	},
+	status: MemberBaseStructure.status,
 	pursuit: {
 		rate: {
 			p: null,
@@ -1338,12 +1334,7 @@ export const PlayerAttrNestedSchema: PlayerAttrNestedSchema = {
 		displayName: "异常抗性",
 		expression: "0",
 	},
-	status: {
-		sleep: {
-			displayName: "睡眠持续时间倍率",
-			expression: "100",
-		},
-	},
+	status: MemberBaseNestedSchema.status,
 	pursuit: {
 		rate: {
 			p: {
@@ -2031,14 +2022,7 @@ export const PlayerAttrSchemaGenerator = (character: CharacterWithRelations): Pl
 			expression: "men / 3.4",
 			noBaseValue: true,
 		},
-		status: {
-			sleep: {
-				durationRate: {
-					displayName: "睡眠持续时间倍率",
-					expression: "100",
-				},
-			},
-		},
+		status: MemberBaseNestedSchema.status,
 
 		pursuit: {
 			rate: {

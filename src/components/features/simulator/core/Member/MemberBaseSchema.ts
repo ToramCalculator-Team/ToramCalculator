@@ -519,6 +519,14 @@ export const MemberBaseNestedSchema: MemberBaseNestedSchema = {
 		displayName: "闪躲率",
 		expression: "0",
 	},
+	status: {
+		sleep: {
+			durationRate: {
+				displayName: "睡眠持续时间倍率",
+				expression: "100",
+			},
+		},
+	},
 };
 
 /**
@@ -574,4 +582,9 @@ export const MemberBaseNestedSchemaDic: MemberBaseNestedSchemaDic = {
 	avoid: "",
 	guardRate: "",
 	dodgeRate: "",
+	status: {
+		sleep: {
+			durationRate: "",
+		},
+	},
 };
