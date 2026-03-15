@@ -48,16 +48,7 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 			character: memberData.player.characters[characterIndex],
 		};
 
-		super(
-			playerStateMachine,
-			campId,
-			teamId,
-			memberData,
-			attrSchema,
-			statContainer,
-			runtimeContext,
-			position,
-		);
+		super(playerStateMachine, campId, teamId, memberData, attrSchema, statContainer, runtimeContext, position);
 
 		// 完成 owner 回填
 		this.runtimeContext.owner = this;
