@@ -9,14 +9,10 @@ import type { ZodType, z } from "zod/v4";
  * 2. 动作可被多个管线复用
  * 3. Schema 用于类型推导和运行时验证
  */
-export type Action<
-  TInput extends ZodType,
-  TOutput extends ZodType,
-  TContext extends Record<string, any>,
-> = readonly [
-  TInput,
-  TOutput,
-  (context: TContext, actionInput: z.output<TInput>) => z.output<TOutput>,
+export type Action<TInput extends ZodType, TOutput extends ZodType, TContext extends Record<string, any>> = readonly [
+	TInput,
+	TOutput,
+	(context: TContext, actionInput: z.output<TInput>) => z.output<TOutput>,
 ];
 
 /**
@@ -24,7 +20,7 @@ export type Action<
  * 动作名称 → 动作定义 的映射
  */
 export type ActionPool<TContext extends Record<string, any>> = {
-  readonly [actionName: string]: Action<any, any, TContext>;
+	readonly [actionName: string]: Action<any, any, TContext>;
 };
 
 /**
@@ -36,16 +32,16 @@ export type ActionNamesFromPool<TPool extends ActionPool<any>> = keyof TPool & s
  * 从动作池提取特定动作的输入Schema类型
  */
 export type ActionInputSchema<
-  TPool extends ActionPool<any>,
-  TActionName extends ActionNamesFromPool<TPool>,
+	TPool extends ActionPool<any>,
+	TActionName extends ActionNamesFromPool<TPool>,
 > = TPool[TActionName] extends Action<infer TInput, any, any> ? TInput : never;
 
 /**
  * 从动作池提取特定动作的输出Schema类型
  */
 export type ActionOutputSchema<
-  TPool extends ActionPool<any>,
-  TActionName extends ActionNamesFromPool<TPool>,
+	TPool extends ActionPool<any>,
+	TActionName extends ActionNamesFromPool<TPool>,
 > = TPool[TActionName] extends Action<any, infer TOutput, any> ? TOutput : never;
 
 /**
@@ -63,15 +59,15 @@ export type ActionOutputSchema<
  * ```
  */
 export const defineAction = <
-  TInput extends ZodType,
-  TOutput extends ZodType,
-  TContext extends Record<string, any> = Record<string, any>,
+	TInput extends ZodType,
+	TOutput extends ZodType,
+	TContext extends Record<string, any> = Record<string, any>,
 >(
-  inputSchema: TInput,
-  outputSchema: TOutput,
-  impl: (context: TContext, actionInput: z.output<TInput>) => z.output<TOutput>,
+	inputSchema: TInput,
+	outputSchema: TOutput,
+	impl: (context: TContext, actionInput: z.output<TInput>) => z.output<TOutput>,
 ): Action<TInput, TOutput, TContext> => {
-  return [inputSchema, outputSchema, impl] as const;
+	return [inputSchema, outputSchema, impl] as const;
 };
 
 /* ----------------- 辅助类型 ----------------- */
@@ -94,7 +90,7 @@ export type OutputOfSchema<T extends ZodType> = z.output<T>;
  * @template TPool - 动作池类型，用于约束动作名
  */
 export type PipelineDef<TPool extends ActionPool<any> = ActionPool<any>> = {
-  [pipelineName: string]: readonly (keyof TPool & string)[];
+	[pipelineName: string]: readonly (keyof TPool & string)[];
 };
 
 /**
@@ -109,11 +105,11 @@ export type PipelineDef<TPool extends ActionPool<any> = ActionPool<any>> = {
  * - PipeLineDef = PipelineDef
  * - defineStage = defineAction
  */
-export type Stage<
-  TInput extends ZodType,
-  TOutput extends ZodType,
-  TContext extends Record<string, any>,
-> = Action<TInput, TOutput, TContext>;
+export type Stage<TInput extends ZodType, TOutput extends ZodType, TContext extends Record<string, any>> = Action<
+	TInput,
+	TOutput,
+	TContext
+>;
 
 export type StagePool<TContext extends Record<string, any>> = ActionPool<TContext>;
 

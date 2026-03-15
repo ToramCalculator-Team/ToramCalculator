@@ -68,62 +68,46 @@ const resolveStatusDurationRate = (context: CommonContext, statusType: string): 
 
 export const StatusStages = {
 	/** 补全 tags 等输入缺省值。 */
-	状态施加_标准化输入: defineStage(
-		statusApplyRequestSchema,
-		statusApplyNormalizedSchema,
-		(_context, input) => ({
-			...input,
-			tags: input.tags?.length ? input.tags : [input.statusType],
-		}),
-	),
+	状态施加_标准化输入: defineStage(statusApplyRequestSchema, statusApplyNormalizedSchema, (_context, input) => ({
+		...input,
+		tags: input.tags?.length ? input.tags : [input.statusType],
+	})),
 	/** 读取成员 stat 并结算状态持续时间倍率。 */
-	状态施加_持续时间倍率计算: defineStage(
-		statusApplyNormalizedSchema,
-		statusApplyResolvedSchema,
-		(context, input) => {
-			const durationRate = resolveStatusDurationRate(context, input.statusType);
-			return {
-				...input,
-				durationRate,
-				resolvedDurationFrames: Math.max(0, Math.floor((input.baseDurationFrames * durationRate) / 100)),
-			};
-		},
-	),
+	状态施加_持续时间倍率计算: defineStage(statusApplyNormalizedSchema, statusApplyResolvedSchema, (context, input) => {
+		const durationRate = resolveStatusDurationRate(context, input.statusType);
+		return {
+			...input,
+			durationRate,
+			resolvedDurationFrames: Math.max(0, Math.floor((input.baseDurationFrames * durationRate) / 100)),
+		};
+	}),
 	/** 把结算结果转换成状态实例。 */
-	状态施加_状态实例创建: defineStage(
-		statusApplyResolvedSchema,
-		statusApplyInstanceSchema,
-		(context, input) => {
-			const appliedAtFrame = context.getCurrentFrame();
-			return {
-				...input,
-				instance: {
-					id: createId(),
-					type: input.statusType,
-					sourceId: input.sourceId,
-					sourceSkillId: input.sourceSkillId,
-					appliedAtFrame,
-					resolvedDurationFrames: input.resolvedDurationFrames,
-					expiresAtFrame: appliedAtFrame + input.resolvedDurationFrames,
-					tags: input.tags,
-					meta: input.meta,
-				},
-			};
-		},
-	),
+	状态施加_状态实例创建: defineStage(statusApplyResolvedSchema, statusApplyInstanceSchema, (context, input) => {
+		const appliedAtFrame = context.getCurrentFrame();
+		return {
+			...input,
+			instance: {
+				id: createId(),
+				type: input.statusType,
+				sourceId: input.sourceId,
+				sourceSkillId: input.sourceSkillId,
+				appliedAtFrame,
+				resolvedDurationFrames: input.resolvedDurationFrames,
+				expiresAtFrame: appliedAtFrame + input.resolvedDurationFrames,
+				tags: input.tags,
+				meta: input.meta,
+			},
+		};
+	}),
 	/** 将状态实例写回成员状态仓库。 */
-	状态施加_提交状态实例: defineStage(
-		statusApplyInstanceSchema,
-		statusApplyCommittedSchema,
-		(context, input) => {
-			context.owner?.applyStatusInstance(input.instance);
-			return {
-				...input,
-				applied: true,
-				instanceId: input.instance.id,
-			};
-		},
-	),
+	状态施加_提交状态实例: defineStage(statusApplyInstanceSchema, statusApplyCommittedSchema, (context, input) => {
+		context.owner?.applyStatusInstance(input.instance);
+		return {
+			...input,
+			applied: true,
+			instanceId: input.instance.id,
+		};
+	}),
 } as const satisfies StagePool<CommonContext>;
 
 export const StatusPipelineDef = {
