@@ -11,11 +11,6 @@ import { BtManager } from "./runtime/BehaviourTree/BtManager";
 import { MemberPipelineRuntime } from "./runtime/Pipline/MemberPipelineRuntime";
 import type { PipelineRegistry } from "./runtime/Pipline/PipelineRegistry";
 import { createEmptyPipelineRegistry } from "./runtime/Pipline/PipelineRegistry";
-import {
-	InMemoryStatusInstanceStore,
-	type MutableStatusInstanceStore,
-	type StatusInstance,
-} from "./runtime/Status/StatusInstanceStore";
 import type { ActionPool } from "./runtime/Pipline/types";
 import type { NestedSchema } from "./runtime/StatContainer/SchemaTypes";
 import type { StatContainer } from "./runtime/StatContainer/StatContainer";
@@ -25,6 +20,11 @@ import type {
 	MemberStateContext,
 	MemberStateMachine,
 } from "./runtime/StateMachine/types";
+import {
+	InMemoryStatusInstanceStore,
+	type MutableStatusInstanceStore,
+	type StatusInstance,
+} from "./runtime/Status/StatusInstanceStore";
 
 const log = createLogger("Member");
 

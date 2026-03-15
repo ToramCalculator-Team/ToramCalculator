@@ -1,8 +1,8 @@
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod/v4";
-import { PipelineRegistry } from "./PipelineRegistry";
-import { defineAction, type ActionPool, type PipelineDef } from "./types";
 import type { CommonContext } from "../Agent/CommonContext";
+import { PipelineRegistry } from "./PipelineRegistry";
+import { type ActionPool, defineAction, type PipelineDef } from "./types";
 
 const statusApplyRequestSchema = z.object({
 	statusType: z.string(),
@@ -67,51 +67,39 @@ export const DefaultPipelineActionPool = {
 			tags: input.tags?.length ? input.tags : [input.statusType],
 		}),
 	),
-	resolveStatusApplyDuration: defineAction(
-		statusApplyNormalizedSchema,
-		statusApplyResolvedSchema,
-		(context, input) => {
-			const durationRate = resolveStatusDurationRate(context, input.statusType);
-			return {
-				...input,
-				durationRate,
-				resolvedDurationFrames: Math.max(0, Math.floor((input.baseDurationFrames * durationRate) / 100)),
-			};
-		},
-	),
-	createStatusApplyInstance: defineAction(
-		statusApplyResolvedSchema,
-		statusApplyInstanceSchema,
-		(context, input) => {
-			const appliedAtFrame = context.getCurrentFrame();
-			return {
-				...input,
-				instance: {
-					id: createId(),
-					type: input.statusType,
-					sourceId: input.sourceId,
-					sourceSkillId: input.sourceSkillId,
-					appliedAtFrame,
-					resolvedDurationFrames: input.resolvedDurationFrames,
-					expiresAtFrame: appliedAtFrame + input.resolvedDurationFrames,
-					tags: input.tags,
-					meta: input.meta,
-				},
-			};
-		},
-	),
-	commitStatusApplyInstance: defineAction(
-		statusApplyInstanceSchema,
-		statusApplyCommittedSchema,
-		(context, input) => {
-			context.owner?.applyStatusInstance(input.instance);
-			return {
-				...input,
-				applied: true,
-				instanceId: input.instance.id,
-			};
-		},
-	),
+	resolveStatusApplyDuration: defineAction(statusApplyNormalizedSchema, statusApplyResolvedSchema, (context, input) => {
+		const durationRate = resolveStatusDurationRate(context, input.statusType);
+		return {
+			...input,
+			durationRate,
+			resolvedDurationFrames: Math.max(0, Math.floor((input.baseDurationFrames * durationRate) / 100)),
+		};
+	}),
+	createStatusApplyInstance: defineAction(statusApplyResolvedSchema, statusApplyInstanceSchema, (context, input) => {
+		const appliedAtFrame = context.getCurrentFrame();
+		return {
+			...input,
+			instance: {
+				id: createId(),
+				type: input.statusType,
+				sourceId: input.sourceId,
+				sourceSkillId: input.sourceSkillId,
+				appliedAtFrame,
+				resolvedDurationFrames: input.resolvedDurationFrames,
+				expiresAtFrame: appliedAtFrame + input.resolvedDurationFrames,
+				tags: input.tags,
+				meta: input.meta,
+			},
+		};
+	}),
+	commitStatusApplyInstance: defineAction(statusApplyInstanceSchema, statusApplyCommittedSchema, (context, input) => {
+		context.owner?.applyStatusInstance(input.instance);
+		return {
+			...input,
+			applied: true,
+			instanceId: input.instance.id,
+		};
+	}),
 } as const satisfies ActionPool<CommonContext>;
 
 export const DefaultPipelineDef = {
@@ -124,7 +112,4 @@ export const DefaultPipelineDef = {
 } as const satisfies PipelineDef<typeof DefaultPipelineActionPool>;
 
 export const createDefaultPipelineRegistry = () =>
-	new PipelineRegistry<CommonContext, typeof DefaultPipelineActionPool>(
-		DefaultPipelineActionPool,
-		DefaultPipelineDef,
-	);
+	new PipelineRegistry<CommonContext, typeof DefaultPipelineActionPool>(DefaultPipelineActionPool, DefaultPipelineDef);

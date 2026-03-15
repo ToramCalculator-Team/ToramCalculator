@@ -3,10 +3,7 @@
  */
 import type { MobWithRelations } from "@db/generated/repositories/mob";
 import type { MemberBaseStructure } from "../../MemberBaseSchema";
-import type {
-	ConvertToNestedSchema,
-	ConvertToNestedSchemaDic,
-} from "../../runtime/StatContainer/SchemaTypes";
+import type { ConvertToNestedSchema, ConvertToNestedSchemaDic } from "../../runtime/StatContainer/SchemaTypes";
 
 // ============================== 基础结构定义 ==============================
 
