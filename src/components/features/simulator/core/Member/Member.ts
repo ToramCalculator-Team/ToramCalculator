@@ -225,16 +225,25 @@ export class Member<
 		this.pipelineRuntime.setRegistry(registry);
 	}
 
+	/**
+	 * 应用一个状态实例并同步 `statusTags` 视图。
+	 *
+	 * 说明：
+	 * - `statusStore` 才是真相源
+	 * - `runtimeContext.statusTags` 只是兼容现有 BT/FSM 的派生视图
+	 */
 	applyStatusInstance(instance: StatusInstance): void {
 		this.statusStore.apply(instance);
 		this.syncStatusTags();
 	}
 
+	/** 按状态类型移除实例，并同步兼容标签视图。 */
 	removeStatusByType(type: string): void {
 		this.statusStore.removeByType(type);
 		this.syncStatusTags();
 	}
 
+	/** 从状态实例仓库刷新 `runtimeContext.statusTags`。 */
 	private syncStatusTags(): void {
 		let currentFrame = this.runtimeContext.currentFrame;
 		try {
