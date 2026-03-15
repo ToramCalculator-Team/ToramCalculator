@@ -25,26 +25,29 @@ const characterRuntimeAugmentSchema = z.object({
 
 type CharacterRuntimeAugmentConfig = z.output<typeof characterRuntimeAugmentSchema>;
 
+type RegisterRingStatModifierDef = {
+	type: "stat_modifier";
+	attr: PlayerAttrType;
+	modifierType: ModifierType;
+	valuePerLevel: number;
+};
+
 type RegisterRingEffectDef = {
 	maxLevel: number;
-	apply: (params: {
-		level: number;
-		statContainer: StatContainer<PlayerAttrType>;
-		sourceId: string;
-		sourceName: string;
-	}) => void;
+	effects: RegisterRingStatModifierDef[];
 };
 
 const BuiltinRegisterRingEffects: Record<string, RegisterRingEffectDef> = {
 	sleep_insufficient: {
 		maxLevel: 5,
-		apply: ({ level, statContainer, sourceId, sourceName }) => {
-			statContainer.addModifier("status.sleep.durationRate", ModifierType.STATIC_FIXED, -10 * level, {
-				id: sourceId,
-				name: sourceName,
-				type: "equipment",
-			});
-		},
+		effects: [
+			{
+				type: "stat_modifier",
+				attr: "status.sleep.durationRate",
+				modifierType: ModifierType.STATIC_FIXED,
+				valuePerLevel: -10,
+			},
+		],
 	},
 };
 
@@ -125,12 +128,14 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 
 			const level = Math.max(1, Math.min(ring.level, effect.maxLevel));
 			const sourceId = `register_ring.${normalizedId}`;
-			effect.apply({
-				level,
-				statContainer: this.statContainer,
-				sourceId,
-				sourceName: normalizedId,
-			});
+			for (const effectDef of effect.effects) {
+				if (effectDef.type !== "stat_modifier") continue;
+				this.statContainer.addModifier(effectDef.attr, effectDef.modifierType, effectDef.valuePerLevel * level, {
+					id: sourceId,
+					name: normalizedId,
+					type: "equipment",
+				});
+			}
 		}
 	}
 
