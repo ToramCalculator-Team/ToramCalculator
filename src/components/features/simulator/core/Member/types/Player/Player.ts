@@ -8,6 +8,7 @@ import { PlayerRuntimeContext } from "./Agents/RuntimeContext";
 import { PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
 import { type PlayerEventType, type PlayerStateContext, playerStateMachine } from "./PlayerStateMachine";
 import { applyPrebattleModifiers } from "./PrebattleDataSysModifiers";
+import { mountCharacterRegisterRings } from "./RegisterRingRuntime";
 
 const log = createLogger("Player");
 
@@ -68,6 +69,9 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 
 		// 应用战前修饰器
 		applyPrebattleModifiers(this.statContainer, memberData);
+
+		// 挂载角色运行时增强（当前先支持纯数据托环 -> stat modifier）
+		mountCharacterRegisterRings(this.activeCharacter, this.statContainer);
 	}
 
 	/**
