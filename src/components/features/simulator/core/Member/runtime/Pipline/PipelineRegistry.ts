@@ -6,12 +6,12 @@ type DefaultPipelineActionPool = ActionPool<CommonContext>;
 const EmptyPipelineActionPool = {} as DefaultPipelineActionPool;
 
 /**
- * 管线定义仓库。
+ * 管线定义仓库（引擎级）。
  *
  * 说明：
- * - 这里存放“定义”，不负责实际执行。
- * - 当前先冻结基础能力：动作池 + 基础 pipelineDef。
- * - 多级 scope patch 会在后续迭代继续接入。
+ * - 这里存放“默认阶段池 + 默认管线定义”
+ * - 它是成员级执行器的模板来源，不负责实际执行
+ * - member / team / skill 等运行时 patch 不应存放在这里
  */
 export class PipelineRegistry<
 	TActionContext extends CommonContext = CommonContext,

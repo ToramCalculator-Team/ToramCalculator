@@ -96,3 +96,27 @@ export type OutputOfSchema<T extends ZodType> = z.output<T>;
 export type PipelineDef<TPool extends ActionPool<any> = ActionPool<any>> = {
   [pipelineName: string]: readonly (keyof TPool & string)[];
 };
+
+/**
+ * ==================== 兼容旧命名：Stage ====================
+ *
+ * 为了让管线表达方式更贴近“阶段池 + 管线定义”的心智模型，
+ * 这里保留与旧设计一致的类型别名。
+ *
+ * 当前等价关系：
+ * - Stage = Action
+ * - StagePool = ActionPool
+ * - PipeLineDef = PipelineDef
+ * - defineStage = defineAction
+ */
+export type Stage<
+  TInput extends ZodType,
+  TOutput extends ZodType,
+  TContext extends Record<string, any>,
+> = Action<TInput, TOutput, TContext>;
+
+export type StagePool<TContext extends Record<string, any>> = ActionPool<TContext>;
+
+export type PipeLineDef<TPool extends StagePool<any> = StagePool<any>> = PipelineDef<TPool>;
+
+export const defineStage = defineAction;
