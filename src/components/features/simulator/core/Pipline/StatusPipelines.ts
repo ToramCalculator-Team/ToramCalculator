@@ -35,6 +35,10 @@ const statusApplyResolvedSchema = statusApplyNormalizedSchema.extend({
 	resolvedDurationFrames: z.number().int().nonnegative(),
 });
 
+const statusApplyOverrideSchema = statusApplyResolvedSchema.extend({
+	durationRateOverride: z.number(),
+});
+
 const statusInstanceSchema = z.object({
 	id: z.string(),
 	type: z.string(),
@@ -99,6 +103,17 @@ export const StatusStages = {
 			},
 		};
 	}),
+	/** 提供稳定插入点：允许额外逻辑直接覆盖持续时间倍率。 */
+	状态施加_覆写持续时间倍率: defineStage(statusApplyOverrideSchema, statusApplyResolvedSchema, (_context, input) => ({
+		statusType: input.statusType,
+		baseDurationFrames: input.baseDurationFrames,
+		sourceId: input.sourceId,
+		sourceSkillId: input.sourceSkillId,
+		tags: input.tags,
+		meta: input.meta,
+		durationRate: input.durationRateOverride,
+		resolvedDurationFrames: Math.max(0, Math.floor((input.baseDurationFrames * input.durationRateOverride) / 100)),
+	})),
 	/** 将状态实例写回成员状态仓库。 */
 	状态施加_提交状态实例: defineStage(statusApplyInstanceSchema, statusApplyCommittedSchema, (context, input) => {
 		context.owner?.applyStatusInstance(input.instance);
