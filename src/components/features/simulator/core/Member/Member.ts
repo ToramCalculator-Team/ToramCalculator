@@ -8,9 +8,8 @@ import type { DamageAreaRequest } from "../World/types";
 import type { CommonBoard } from "./runtime/Agent/CommonBoard";
 import type { CommonContext } from "./runtime/Agent/CommonContext";
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
-import { MemberPipelineRuntime } from "./runtime/Pipline/MemberPipelineRuntime";
+import { PipelineManager } from "./runtime/Pipline/PiplineManager";
 import type { PipelineRegistry } from "./runtime/Pipline/PipelineRegistry";
-import { createEmptyPipelineRegistry } from "./runtime/Pipline/PipelineRegistry";
 import type { ActionPool } from "./runtime/Pipline/types";
 import type { NestedSchema } from "./runtime/StatContainer/SchemaTypes";
 import type { StatContainer } from "./runtime/StatContainer/StatContainer";
@@ -66,8 +65,8 @@ export class Member<
 	runtimeContext: TRuntimeContext;
 	/** 行为树管理器 */
 	btManager: BtManager<TAttrKey, TStateEvent, TStateContext, TRuntimeContext>;
-	/** 成员级管线执行器 */
-	pipelineRuntime: MemberPipelineRuntime<TRuntimeContext>;
+	/** 成员级管线管理器（负责默认定义 + 成员侧覆盖/插桩的执行） */
+	pipelineManager: PipelineManager<CommonContext, ActionPool<CommonContext>>;
 	/** 成员级状态实例仓库 */
 	statusStore: MutableStatusInstanceStore;
 	/** 成员Actor引用 */
@@ -110,11 +109,8 @@ export class Member<
 		// 初始化行为树管理器
 		this.btManager = new BtManager(this);
 
-		// 初始化成员级管线执行器（先挂空 registry，后续由引擎注入正式 registry）
-		this.pipelineRuntime = new MemberPipelineRuntime(
-			this,
-			createEmptyPipelineRegistry() as PipelineRegistry<CommonContext, ActionPool<CommonContext>>,
-		);
+		// 初始化成员级管线管理器（默认定义与阶段池由引擎后续注入）
+		this.pipelineManager = new PipelineManager({} as ActionPool<CommonContext>);
 		this.statusStore = new InMemoryStatusInstanceStore(() => this.runtimeContext.getCurrentFrame());
 		this.runtimeContext.statusTags = [];
 
@@ -219,10 +215,19 @@ export class Member<
 	}
 
 	/**
-	 * 设置成员级 pipeline registry。
+	 * 设置成员级 pipeline 默认定义来源。
+	 *
+	 * 说明：
+	 * - registry 是引擎级的默认定义仓库
+	 * - member 上真正负责执行的是 pipelineManager
 	 */
 	setPipelineRegistry(registry: PipelineRegistry<CommonContext, ActionPool<CommonContext>>): void {
-		this.pipelineRuntime.setRegistry(registry);
+		this.pipelineManager.replaceActionPool(registry.actionPool);
+		this.pipelineManager.replacePipelines(registry.getPipelineDefSnapshot());
+	}
+
+	runPipeline(pipelineName: string, params?: Record<string, unknown>) {
+		return this.pipelineManager.run(pipelineName, this.runtimeContext as CommonContext, params);
 	}
 
 	/**

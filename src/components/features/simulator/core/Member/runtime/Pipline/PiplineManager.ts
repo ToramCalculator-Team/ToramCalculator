@@ -71,8 +71,20 @@ export class PipelineManager<
 
 	constructor(
 		/** 动作池：包含具体的实现 */
-		public readonly actionPool: TActionPool,
+		public actionPool: TActionPool,
 	) {}
+
+	/**
+	 * 替换当前执行器使用的阶段池。
+	 *
+	 * 说明：
+	 * - 该操作会清空已编译缓存
+	 * - member/skill override 与动态插桩会被保留
+	 */
+	replaceActionPool(actionPool: TActionPool): void {
+		this.actionPool = actionPool;
+		this.compiledChains = {};
+	}
 
 	/**
 	 * 动态注册管线，返回清理函数
