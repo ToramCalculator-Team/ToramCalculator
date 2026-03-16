@@ -1,6 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod/v4";
-import type { CommonContext } from "../Agent/CommonContext";
+import type { CommonContext } from "../Member/runtime/Agent/CommonContext";
 import { defineStage, type PipeLineDef, type StagePool } from "./types";
 
 /**

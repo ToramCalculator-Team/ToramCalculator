@@ -1,9 +1,9 @@
-import type { Member } from "../../Member";
-import type { CommonBoard } from "../Agent/CommonBoard";
-import type { CommonContext } from "../Agent/CommonContext";
-import type { MemberRuntimeServices } from "../Agent/RuntimeServices";
-import type { StatContainer } from "../StatContainer/StatContainer";
-import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
+import type { Member } from "../Member/Member";
+import type { CommonBoard } from "../Member/runtime/Agent/CommonBoard";
+import type { CommonContext } from "../Member/runtime/Agent/CommonContext";
+import type { MemberRuntimeServices } from "../Member/runtime/Agent/RuntimeServices";
+import type { StatContainer } from "../Member/runtime/StatContainer/StatContainer";
+import type { MemberEventType, MemberStateContext } from "../Member/runtime/StateMachine/types";
 
 type AnyMemberRef = Member<string, MemberEventType, MemberStateContext, CommonBoard>;
 

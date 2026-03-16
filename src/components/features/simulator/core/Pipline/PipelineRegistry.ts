@@ -1,4 +1,4 @@
-import type { CommonContext } from "../Agent/CommonContext";
+import type { CommonContext } from "../Member/runtime/Agent/CommonContext";
 import type { ActionPool, PipelineDef } from "./types";
 
 type DefaultPipelineActionPool = ActionPool<CommonContext>;

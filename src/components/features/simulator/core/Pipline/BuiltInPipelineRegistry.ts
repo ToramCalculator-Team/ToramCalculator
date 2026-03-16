@@ -1,4 +1,4 @@
-import type { CommonContext } from "../Agent/CommonContext";
+import type { CommonContext } from "../Member/runtime/Agent/CommonContext";
 import { CommonPipelineDef, CommonStages } from "./CommonPipelines";
 import { PipelineRegistry } from "./PipelineRegistry";
 import { StatusPipelineDef, StatusStages } from "./StatusPipelines";

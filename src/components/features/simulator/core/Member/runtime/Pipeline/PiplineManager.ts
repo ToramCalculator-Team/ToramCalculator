@@ -9,7 +9,7 @@
 
 import type { ZodType } from "zod/v4";
 import type { CommonContext } from "../Agent/CommonContext";
-import type { ActionPool, PipelineDef } from "./types";
+import type { ActionPool, PipelineDef } from "../../../Pipline/types";
 
 export interface PipelineDynamicStageInfo {
 	pipelineName: string;

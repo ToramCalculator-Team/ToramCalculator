@@ -18,9 +18,9 @@ import { JSProcessor } from "./JSProcessor/JSProcessor";
 import type { ExpressionContext } from "./JSProcessor/types";
 import type { MemberSerializeData } from "./Member/Member";
 import type { CommonContext } from "./Member/runtime/Agent/CommonContext";
-import { createBuiltInPipelineRegistry } from "./Member/runtime/Pipline/BuiltInPipelineRegistry";
-import type { PipelineRegistry } from "./Member/runtime/Pipline/PipelineRegistry";
-import type { ActionPool } from "./Member/runtime/Pipline/types";
+import { createBuiltInPipelineRegistry } from "./Pipline/BuiltInPipelineRegistry";
+import type { PipelineRegistry } from "./Pipline/PipelineRegistry";
+import type { ActionPool } from "./Pipline/types";
 import type { Player } from "./Member/types/Player/Player";
 import { type IntentMessage, type MessageProcessResult, MessageRouter } from "./MessageRouter/MessageRouter";
 import type {

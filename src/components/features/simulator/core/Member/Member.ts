@@ -8,9 +8,9 @@ import type { DamageAreaRequest } from "../World/types";
 import type { CommonBoard } from "./runtime/Agent/CommonBoard";
 import type { CommonContext } from "./runtime/Agent/CommonContext";
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
-import type { PipelineRegistry } from "./runtime/Pipline/PipelineRegistry";
-import { PipelineManager } from "./runtime/Pipline/PiplineManager";
-import type { ActionPool } from "./runtime/Pipline/types";
+import type { PipelineRegistry } from "../Pipline/PipelineRegistry";
+import { PipelineManager } from "./runtime/Pipeline/PiplineManager";
+import type { ActionPool } from "../Pipline/types";
 import type { NestedSchema } from "./runtime/StatContainer/SchemaTypes";
 import type { StatContainer } from "./runtime/StatContainer/StatContainer";
 import type {
