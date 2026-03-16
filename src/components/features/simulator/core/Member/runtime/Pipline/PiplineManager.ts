@@ -35,6 +35,11 @@ interface DynamicStageEntry<TActionPool extends ActionPool<any>> {
 	insertedAt: number;
 }
 
+interface ExecutionStageSpec<TActionPool extends ActionPool<any>> {
+	stageName: keyof TActionPool;
+	injectedParams?: Record<string, unknown>;
+}
+
 /**
  * 管线管理器（Pipeline 执行器）
  *
@@ -301,21 +306,24 @@ export class PipelineManager<
 		}
 	}
 
-	/** 内部：计算某条管线的最终 stage 列表（含动态插入） */
+	/** 内部：计算某条管线的最终执行阶段列表（含动态插入及其参数） */
 	private resolveEffectiveStages(
 		actionGroupName: string,
 		baseStages: readonly (keyof TActionPool)[],
-	): readonly (keyof TActionPool)[] {
+	): readonly ExecutionStageSpec<TActionPool>[] {
 		const dyn = this.dynamicStages[actionGroupName];
-		if (!dyn) return baseStages;
-		const out: (keyof TActionPool)[] = [];
+		if (!dyn) return baseStages.map((stageName) => ({ stageName }));
+		const out: ExecutionStageSpec<TActionPool>[] = [];
 		for (const stageName of baseStages) {
-			out.push(stageName);
+			out.push({ stageName });
 			const entries = dyn[stageName] ?? [];
 			// 按插入时间顺序
 			entries.sort((a, b) => a.insertedAt - b.insertedAt);
 			for (const entry of entries) {
-				out.push(entry.insertActionName as keyof TActionPool);
+				out.push({
+					stageName: entry.insertActionName as keyof TActionPool,
+					injectedParams: entry.params,
+				});
 			}
 		}
 		return out;
@@ -333,7 +341,7 @@ export class PipelineManager<
 	 */
 	private compile(
 		actionGroupName: string,
-		actionNames: readonly (keyof TActionPool)[],
+		stageSpecs: readonly ExecutionStageSpec<TActionPool>[],
 	): (
 		ctx: TActionContext,
 		params?: Record<string, any>,
@@ -347,7 +355,8 @@ export class PipelineManager<
 			const actionOutputs: Record<string, any> = {};
 
 			// iterate each stage in order (after dynamic insertion resolved)
-			for (const actionName of actionNames) {
+			for (const stageSpec of stageSpecs) {
+				const actionName = stageSpec.stageName;
 				const typedStageName = actionName as string;
 
 				// 从池中获取阶段定义
@@ -365,12 +374,7 @@ export class PipelineManager<
 
 				// ---------- 输入（动态插入 stage 可带 params 合并） ----------
 				let stageInput = prevOutput;
-				const dynEntries = this.dynamicStages[actionGroupName]?.[typedStageName] ?? [];
-				// 如果本 stage 是“插入进来的 stage”，可能需要合并 params。
-				// 由于本实现只存 insertStageName，不存来源映射，这里采用简化策略：
-				// - 若存在同名 insertStageName 的动态条目，则使用“最后一次插入”的 params 合并
-				// （后续若需要更精确，可在 resolveEffectiveStages 生成带 meta 的执行列表）
-				const dynParams = dynEntries.length > 0 ? dynEntries[dynEntries.length - 1]?.params : undefined;
+				const dynParams = stageSpec.injectedParams;
 				if (dynParams && stageInput && typeof stageInput === "object") {
 					stageInput = { ...stageInput, ...dynParams };
 				} else if (dynParams && (!stageInput || typeof stageInput !== "object")) {
@@ -378,7 +382,7 @@ export class PipelineManager<
 				}
 
 				if (inputSchema) {
-					const inputParsed = inputSchema.safeParse(prevOutput);
+					const inputParsed = inputSchema.safeParse(stageInput);
 					if (!inputParsed.success) {
 						throw new Error(
 							`[${String(actionGroupName)}.${String(actionName)}] 输入验证失败: ${inputParsed.error.message}`,
@@ -489,9 +493,9 @@ export class PipelineManager<
 		}
 
 		const effectiveStages = this.resolveEffectiveStages(pipelineName, stageNames as any);
-		const cacheKey = `${String(pipelineName)}::${effectiveStages.join("|")}`;
+		const cacheKey = `${String(pipelineName)}::${effectiveStages.map((stage) => String(stage.stageName)).join("|")}`;
 		if (!this.compiledChains[cacheKey]) {
-			this.compiledChains[cacheKey] = this.compile(pipelineName, effectiveStages as any);
+			this.compiledChains[cacheKey] = this.compile(pipelineName, effectiveStages);
 		}
 
 		const result = this.compiledChains[cacheKey](ctx, params);

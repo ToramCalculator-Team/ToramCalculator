@@ -32,9 +32,17 @@ type RegisterRingStatModifierDef = {
 	valuePerLevel: number;
 };
 
+type RegisterRingPipelinePatchDef = {
+	type: "pipeline_patch";
+	pipelineName: string;
+	afterStageName: string;
+	insertStageName: string;
+	params?: Record<string, unknown>;
+};
+
 type RegisterRingEffectDef = {
 	maxLevel: number;
-	effects: RegisterRingStatModifierDef[];
+	effects: Array<RegisterRingStatModifierDef | RegisterRingPipelinePatchDef>;
 };
 
 const BuiltinRegisterRingEffects: Record<string, RegisterRingEffectDef> = {
@@ -129,12 +137,25 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 			const level = Math.max(1, Math.min(ring.level, effect.maxLevel));
 			const sourceId = `register_ring.${normalizedId}`;
 			for (const effectDef of effect.effects) {
-				if (effectDef.type !== "stat_modifier") continue;
-				this.statContainer.addModifier(effectDef.attr, effectDef.modifierType, effectDef.valuePerLevel * level, {
-					id: sourceId,
-					name: normalizedId,
-					type: "equipment",
-				});
+				if (effectDef.type === "stat_modifier") {
+					this.statContainer.addModifier(effectDef.attr, effectDef.modifierType, effectDef.valuePerLevel * level, {
+						id: sourceId,
+						name: normalizedId,
+						type: "equipment",
+					});
+					continue;
+				}
+
+				if (effectDef.type === "pipeline_patch") {
+					this.pipelineManager.insertPipelineStage(
+						effectDef.pipelineName,
+						effectDef.afterStageName as never,
+						effectDef.insertStageName as never,
+						`${sourceId}.${effectDef.insertStageName}`,
+						sourceId,
+						effectDef.params,
+					);
+				}
 			}
 		}
 	}
