@@ -25,3 +25,12 @@ export const MemberBTSchema = z.object({
 	memberType: z.enum(MEMBER_TYPE).default("Player"),
 });
 export type MemberBTTree = z.output<typeof MemberBTSchema>;
+
+// 管线补丁
+export const PipelinePatchSchema = z.object({
+	// 补丁名称
+	name: z.string(),
+	// 补丁定义
+	definition: z.string(),
+});
+export type PipelinePatch = z.output<typeof PipelinePatchSchema>;
