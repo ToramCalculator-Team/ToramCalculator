@@ -1,24 +1,23 @@
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import type { SkillVariantWithRelations } from "@db/generated/repositories/skill_variant";
 import type { MemberBTTree } from "@db/schema/jsons";
-import type { Member } from "../../Member";
-import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
-import type { CommonBoard } from "./CommonBoard";
-import type { MemberRuntimeServices } from "./RuntimeServices";
-import { MemberRuntimeServicesDefaults } from "./RuntimeServices";
+import type { Member } from "./Member";
+import type { MemberEventType, MemberStateContext } from "./runtime/StateMachine/types";
+import type { MemberRuntimeServices } from "./runtime/Agent/RuntimeServices";
+import { MemberRuntimeServicesDefaults } from "./runtime/Agent/RuntimeServices";
 
 /**
- * 成员共享运行时上下文。
+ * 成员公共上下文。
  *
  * 当前它仍同时承载：
  * - 共享运行时状态
  * - 引擎注入服务
  *
- * 这是一个过渡层，后续会继续拆分为 runtime state 与 runtime services。
+ * 这是一个过渡层，后续会继续拆分为更细的 runtime state 与 runtime services。
  */
-export interface CommonContext extends Record<string, unknown>, MemberRuntimeServices {
+export interface MemberContext extends Record<string, unknown>, MemberRuntimeServices {
 	/** 成员引用 */
-	owner: Member<string, MemberEventType, MemberStateContext, CommonBoard> | undefined;
+	owner: Member<string, MemberEventType, MemberStateContext, MemberContext & Record<string, unknown>> | undefined;
 	/** 当前帧 */
 	currentFrame: number;
 	/** 位置信息 */
@@ -45,7 +44,7 @@ export interface CommonContext extends Record<string, unknown>, MemberRuntimeSer
 	vAtkM: string;
 }
 
-export const CommonContext: CommonContext = {
+export const MemberContext: MemberContext = {
 	...MemberRuntimeServicesDefaults,
 	owner: undefined,
 	currentFrame: 0,
@@ -59,6 +58,3 @@ export const CommonContext: CommonContext = {
 	vAtkP: "((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - (1 - self.pie.p) * target.def.p)",
 	vAtkM: "((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - (1 - self.pie.m) * target.def.m)",
 };
-
-/** 兼容命名：共享 runtime state + services 的合并视图。 */
-export type MemberSharedRuntimeState = CommonContext;

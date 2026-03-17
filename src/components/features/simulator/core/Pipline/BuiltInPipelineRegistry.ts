@@ -1,8 +1,8 @@
-import type { CommonContext } from "../Member/runtime/Agent/CommonContext";
+import type { MemberContext } from "../Member/MemberContext";
 import { CommonPipelineDef, CommonStages } from "./CommonPipelines";
 import { PipelineRegistry } from "./PipelineRegistry";
 import { StatusPipelineDef, StatusStages } from "./StatusPipelines";
-import type { ActionPool, PipeLineDef, StagePool } from "./types";
+import type { PipelineDef, StagePool } from "./types";
 
 /**
  * 引擎内建阶段池。
@@ -14,7 +14,7 @@ import type { ActionPool, PipeLineDef, StagePool } from "./types";
 export const BuiltInStages = {
 	...CommonStages,
 	...StatusStages,
-} as const satisfies StagePool<CommonContext>;
+} as const satisfies StagePool<MemberContext>;
 
 /**
  * 引擎内建默认管线定义。
@@ -26,7 +26,7 @@ export const BuiltInStages = {
 export const BuiltInPipelineDef = {
 	...CommonPipelineDef,
 	...StatusPipelineDef,
-} as const satisfies PipeLineDef<typeof BuiltInStages>;
+} as const satisfies PipelineDef<typeof BuiltInStages>;
 
 export const createBuiltInPipelineRegistry = () =>
-	new PipelineRegistry<CommonContext, ActionPool<CommonContext>>(BuiltInStages, BuiltInPipelineDef);
+	new PipelineRegistry<MemberContext, StagePool<MemberContext>>(BuiltInStages, BuiltInPipelineDef);

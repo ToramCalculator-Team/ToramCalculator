@@ -1,14 +1,14 @@
 import type { MemberType } from "@db/schema/enums";
 import { CommonActionPool } from "~/components/features/simulator/core/Member/runtime/Agent/CommonActions";
 import { CommonConditionPool } from "~/components/features/simulator/core/Member/runtime/Agent/CommonCondition";
-import { CommonContext } from "~/components/features/simulator/core/Member/runtime/Agent/CommonContext";
+import { MemberContext } from "~/components/features/simulator/core/Member/MemberContext";
 import type { ActionPool, ConditionPool } from "~/components/features/simulator/core/Member/runtime/Agent/type";
 import { MobActionPool } from "~/components/features/simulator/core/Member/types/Mob/Agents/Actions";
 import { MobConditionPool } from "~/components/features/simulator/core/Member/types/Mob/Agents/Condition";
-import { MobProperty } from "~/components/features/simulator/core/Member/types/Mob/Agents/Property";
+import { MobContext } from "~/components/features/simulator/core/Member/types/Mob/Agents/Context";
 import { PlayerActionPool } from "~/components/features/simulator/core/Member/types/Player/Agents/Actions";
 import { PlayerConditionPool } from "~/components/features/simulator/core/Member/types/Player/Agents/Condition";
-import { PlayerProperty } from "~/components/features/simulator/core/Member/types/Player/Agents/Property";
+import { PlayerContext } from "~/components/features/simulator/core/Member/types/Player/Agents/Context";
 
 export type MdslProfileConfig = {
 	memberType: MemberType;
@@ -34,8 +34,8 @@ export const getMdslProfileConfig = (memberType: MemberType): MdslProfileConfig 
 					...PlayerConditionPool,
 				},
 				propertyObject: {
-					...CommonContext,
-					...PlayerProperty,
+					...MemberContext,
+					...PlayerContext,
 				},
 			};
 		case "Mob":
@@ -50,8 +50,8 @@ export const getMdslProfileConfig = (memberType: MemberType): MdslProfileConfig 
 					...MobConditionPool,
 				},
 				propertyObject: {
-					...CommonContext,
-					...MobProperty,
+					...MemberContext,
+					...MobContext,
 				},
 			};
 		case "Partner":
@@ -62,7 +62,7 @@ export const getMdslProfileConfig = (memberType: MemberType): MdslProfileConfig 
 				memberType,
 				actionPool: CommonActionPool,
 				conditionPool: CommonConditionPool,
-				propertyObject: CommonContext,
+				propertyObject: MemberContext,
 			};
 	}
 };

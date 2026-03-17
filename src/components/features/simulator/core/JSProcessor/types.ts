@@ -4,7 +4,7 @@ import type { NestedSchema } from "../Member/runtime/StatContainer/SchemaTypes";
  * 表达式/脚本执行基础上下文
  *
  * 说明：
- * - JSProcessor 只负责“编译”，但引擎与行为树需要一个统一的运行时上下文类型
+ * - JSProcessor 只负责“编译”，但引擎与行为树需要一个统一的运行时对象类型
  * - 该类型不做强约束（允许扩展字段），仅提供最小公共字段集合
  */
 export interface ExpressionContext {

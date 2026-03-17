@@ -8,8 +8,6 @@ import type { CharacterSkillWithRelations } from "@db/generated/repositories/cha
 export interface MobRuntimeState extends Record<string, unknown> {
 	/** 行为树局部记忆 */
 	btMemory: Record<string, unknown>;
-	/** @deprecated 请使用 btMemory */
-	blackboard: Record<string, unknown>;
 	skillState: Record<string, unknown>;
 	buffState: Record<string, unknown>;
 	/** 技能列表 */
@@ -46,7 +44,6 @@ const mobBtMemory: Record<string, unknown> = {};
 
 export const MobRuntimeStateDefaults: MobRuntimeState = {
 	btMemory: mobBtMemory,
-	blackboard: mobBtMemory,
 	skillState: {},
 	buffState: {},
 	skillList: [],
@@ -62,8 +59,3 @@ export const MobRuntimeStateDefaults: MobRuntimeState = {
 	character: null,
 	compiledSkillEffectLogicByEffectId: {},
 };
-
-/** @deprecated 兼容旧命名，请逐步迁移到 MobRuntimeState。 */
-export type MobProperty = MobRuntimeState;
-/** @deprecated 兼容旧命名，请逐步迁移到 MobRuntimeStateDefaults。 */
-export const MobProperty = MobRuntimeStateDefaults;

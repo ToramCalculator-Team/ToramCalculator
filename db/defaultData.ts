@@ -540,4 +540,20 @@ export const defaultData: DB = {
 		updatedByAccountId: null,
 		createdByAccountId: null,
 	},
+	character_registlet: {
+		id: "defaultCharacterRegistletId",
+		level: 0,
+		templateId: "defaultRegistletId",
+		belongToCharacterId: "defaultCharacterId",
+	},
+	registlet: {
+		id: "defaultRegistletId",
+		name: "默认托环",
+		maxLevel: 0,
+		attrModifiers: [],
+		pipelinePatches: [],
+		skillBranchActivators: [],
+		updatedByAccountId: null,
+		createdByAccountId: null
+	},
 };

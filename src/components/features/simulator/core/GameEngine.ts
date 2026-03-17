@@ -17,10 +17,10 @@ import { type EngineControlMessage, GameEngineSM } from "./GameEngineSM";
 import { JSProcessor } from "./JSProcessor/JSProcessor";
 import type { ExpressionContext } from "./JSProcessor/types";
 import type { MemberSerializeData } from "./Member/Member";
-import type { CommonContext } from "./Member/runtime/Agent/CommonContext";
+import type { MemberContext } from "./Member/MemberContext";
 import { createBuiltInPipelineRegistry } from "./Pipline/BuiltInPipelineRegistry";
 import type { PipelineRegistry } from "./Pipline/PipelineRegistry";
-import type { ActionPool } from "./Pipline/types";
+import type { StagePool } from "./Pipline/types";
 import type { Player } from "./Member/types/Player/Player";
 import { type IntentMessage, type MessageProcessResult, MessageRouter } from "./MessageRouter/MessageRouter";
 import type {
@@ -83,7 +83,7 @@ export class GameEngine {
 	/** 表达式求值器 - 负责 self/target/world 绑定 */
 	private expressionEvaluator: ExpressionEvaluator;
 	/** 引擎级管线定义仓库 */
-	private pipelineRegistry: PipelineRegistry<CommonContext, ActionPool<CommonContext>>;
+	private pipelineRegistry: PipelineRegistry<MemberContext, StagePool<MemberContext>>;
 
 	/** 引擎配置 */
 	private config: EngineConfig;
@@ -185,16 +185,16 @@ export class GameEngine {
 		});
 
 		// 设置域事件发射器到 MemberManager
-		this.world.memberManager.setEmitDomainEvent((event) => {
+		this.world.memberManager.setDomainEventSender((event) => {
 			this.emitDomainEvent(event);
 		});
-		// 设置表达式求值器到 MemberManager（成员创建时会注入到 runtimeContext.expressionEvaluator）
+		// 设置表达式求值器到 MemberManager（成员创建时会注入到成员 context.expressionEvaluator）
 		this.world.memberManager.setEvaluateExpression((expression, context) =>
 			this.expressionEvaluator.evaluateNumberOrBoolean(expression, context),
 		);
 		// 设置引擎帧号读取函数到 MemberManager（引擎帧号为唯一真相）
 		this.world.memberManager.setGetCurrentFrame(() => this.getCurrentFrame());
-		// 设置伤害请求处理器到 MemberManager（成员创建时会注入到 runtimeContext.damageRequestHandler）
+		// 设置伤害请求处理器到 MemberManager（成员创建时会注入到成员 context.damageRequestHandler）
 		this.world.memberManager.setDamageRequestHandler((damageRequest) => {
 			this.world.areaManager.damageAreaSystem.add(damageRequest);
 		});
@@ -605,8 +605,8 @@ export class GameEngine {
 		const member = this.getMember(memberId);
 		if (!member || member.type !== "Player") return [];
 
-		const runtimeContext = (member as { runtimeContext?: { skillList?: unknown } }).runtimeContext;
-		const skillList = Array.isArray(runtimeContext?.skillList) ? runtimeContext?.skillList : [];
+		const context = (member as { context?: { skillList?: unknown } }).context;
+		const skillList = Array.isArray(context?.skillList) ? context?.skillList : [];
 		return skillList.map((s) => {
 			const skill = s as { id?: unknown; lv?: unknown; template?: { name?: unknown } };
 			return {
@@ -1071,7 +1071,7 @@ export class GameEngine {
 		const frameNumber = this.getCurrentFrame();
 		const engineNowTs = Date.now();
 		const members = this.world.memberManager.getAllMembers().map((member) => {
-			const ctx = member.runtimeContext as Record<string, unknown>;
+			const ctx = member.context as Record<string, unknown>;
 			const __render = ctx.__render as
 				| { lastAction?: { name: string; ts: number; params?: Record<string, unknown> } }
 				| undefined;
@@ -1182,7 +1182,7 @@ export class GameEngine {
 	/**
 	 * 获取引擎级 pipeline registry。
 	 */
-	getPipelineRegistry(): PipelineRegistry<CommonContext, ActionPool<CommonContext>> {
+	getPipelineRegistry(): PipelineRegistry<MemberContext, StagePool<MemberContext>> {
 		return this.pipelineRegistry;
 	}
 
@@ -1239,8 +1239,8 @@ export class GameEngine {
 	 * 为每个技能计算当前的消耗值和可用性
 	 */
 	private computePlayerSkills(player: Player, currentFrame: number): ComputedSkillInfo[] {
-		const skillList = (player.runtimeContext as { skillList?: unknown }).skillList ?? [];
-		const skillCooldowns = player.runtimeContext.skillCooldowns ?? [];
+		const skillList = (player.context as { skillList?: unknown }).skillList ?? [];
+		const skillCooldowns = player.context.skillCooldowns ?? [];
 		const currentMp = player.statContainer?.getValue("mp.current") ?? 0;
 		const currentHp = player.statContainer?.getValue("hp.current") ?? 0;
 

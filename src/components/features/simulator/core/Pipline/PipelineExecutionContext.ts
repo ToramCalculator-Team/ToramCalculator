@@ -1,11 +1,10 @@
 import type { Member } from "../Member/Member";
-import type { CommonBoard } from "../Member/runtime/Agent/CommonBoard";
-import type { CommonContext } from "../Member/runtime/Agent/CommonContext";
+import type { MemberContext } from "../Member/MemberContext";
 import type { MemberRuntimeServices } from "../Member/runtime/Agent/RuntimeServices";
 import type { StatContainer } from "../Member/runtime/StatContainer/StatContainer";
 import type { MemberEventType, MemberStateContext } from "../Member/runtime/StateMachine/types";
 
-type AnyMemberRef = Member<string, MemberEventType, MemberStateContext, CommonBoard>;
+type AnyMemberRef = Member<string, MemberEventType, MemberStateContext, MemberContext & Record<string, unknown>>;
 
 export interface PipelineExecutionMeta {
 	pipelineName: string;
@@ -23,11 +22,11 @@ export interface PipelineExecutionMeta {
  *
  * 设计目标：
  * - 以“引用共享 runtime + 持有本次 scratch/output”为主
- * - 避免把中间值直接污染到成员共享 runtimeContext
+ * - 避免把中间值直接污染到成员共享 member.context
  * - 为后续把 pipeline 从 BT/FSM 中解耦提供稳定类型边界
  */
 export interface PipelineExecutionContext<
-	TRuntimeState extends CommonContext = CommonContext,
+	TRuntimeState extends MemberContext = MemberContext,
 	TAttrKey extends string = string,
 	TInput = Record<string, unknown>,
 	TScratch extends Record<string, unknown> = Record<string, unknown>,
@@ -40,7 +39,7 @@ export interface PipelineExecutionContext<
 	/** 可选目标成员。 */
 	target?: AnyMemberRef;
 	/** 主体共享运行时状态视图（长期对象引用）。 */
-	runtime: TRuntimeState;
+	memberContext: TRuntimeState;
 	/** 主体数值属性容器。 */
 	stats?: StatContainer<TAttrKey>;
 	/** 引擎注入服务引用。 */

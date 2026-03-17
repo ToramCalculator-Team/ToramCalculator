@@ -1,7 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod/v4";
-import type { CommonContext } from "../Member/runtime/Agent/CommonContext";
-import { defineStage, type PipeLineDef, type StagePool } from "./types";
+import type { MemberContext } from "../Member/MemberContext";
+import { defineStage, type PipelineDef, type StagePool } from "./types";
 
 /**
  * 状态施加相关阶段池。
@@ -60,7 +60,7 @@ const statusApplyCommittedSchema = statusApplyInstanceSchema.extend({
 	instanceId: z.string(),
 });
 
-const resolveStatusDurationRate = (context: CommonContext, statusType: string): number => {
+const resolveStatusDurationRate = (context: MemberContext, statusType: string): number => {
 	const owner = context.owner;
 	if (!owner) return 100;
 	if (statusType === "sleep") {
@@ -123,7 +123,7 @@ export const StatusStages = {
 			instanceId: input.instance.id,
 		};
 	}),
-} as const satisfies StagePool<CommonContext>;
+} as const satisfies StagePool<MemberContext>;
 
 export const StatusPipelineDef = {
 	"status.apply": [
@@ -132,4 +132,4 @@ export const StatusPipelineDef = {
 		"状态施加_状态实例创建",
 		"状态施加_提交状态实例",
 	],
-} as const satisfies PipeLineDef<typeof StatusStages>;
+} as const satisfies PipelineDef<typeof StatusStages>;

@@ -467,7 +467,6 @@ model skill {
     distanceType String // Enum SKILL_DISTANCE_TYPE
     targetType   String // Enum SKILL_TARGET_TYPE
     variants     skill_variant[]
-    registlets   registlet[]
 
     details     String
     dataSources String
@@ -519,9 +518,8 @@ model registlet {
     name String
     maxLevel Int
     attrModifiers String[]
-    pipelinePatches Json /// ZOD PipelinePatchSchema
-
-    belongToSkill   skill[]
+    pipelinePatches Json[] /// ZOD PipelinePatchEffectSchema
+    skillBranchActivators Json[] /// ZOD SkillBranchActivatorEffectSchema
 
     usedByCharacterRegistlets character_registlet[]
 

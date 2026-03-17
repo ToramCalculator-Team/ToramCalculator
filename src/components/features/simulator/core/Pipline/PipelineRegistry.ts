@@ -1,9 +1,9 @@
-import type { CommonContext } from "../Member/runtime/Agent/CommonContext";
-import type { ActionPool, PipelineDef } from "./types";
+import type { MemberContext } from "../Member/MemberContext";
+import type { PipelineDef, StagePool } from "./types";
 
-type DefaultPipelineActionPool = ActionPool<CommonContext>;
+type DefaultPipelineStagePool = StagePool<MemberContext>;
 
-const EmptyPipelineActionPool = {} as DefaultPipelineActionPool;
+const EmptyPipelineStagePool = {} as DefaultPipelineStagePool;
 
 /**
  * 管线定义仓库（引擎级）。
@@ -14,41 +14,41 @@ const EmptyPipelineActionPool = {} as DefaultPipelineActionPool;
  * - member / team / skill 等运行时 patch 不应存放在这里
  */
 export class PipelineRegistry<
-	TActionContext extends CommonContext = CommonContext,
-	TActionPool extends ActionPool<TActionContext> = ActionPool<TActionContext>,
+	TStageContext extends MemberContext = MemberContext,
+	TStagePool extends StagePool<TStageContext> = StagePool<TStageContext>,
 > {
-	private readonly pipelineDef: PipelineDef<TActionPool> = {};
+	private readonly pipelineDef: PipelineDef<TStagePool> = {};
 
 	constructor(
-		public readonly actionPool: TActionPool,
-		initialPipelines: PipelineDef<TActionPool> = {},
+		public readonly stagePool: TStagePool,
+		initialPipelines: PipelineDef<TStagePool> = {},
 	) {
 		this.replacePipelines(initialPipelines);
 	}
 
-	getPipelineDefSnapshot(): PipelineDef<TActionPool> {
-		const snapshot: PipelineDef<TActionPool> = {};
+	getPipelineDefSnapshot(): PipelineDef<TStagePool> {
+		const snapshot: PipelineDef<TStagePool> = {};
 		for (const [name, stages] of Object.entries(this.pipelineDef)) {
-			snapshot[name] = [...stages] as PipelineDef<TActionPool>[string];
+			snapshot[name] = [...stages] as PipelineDef<TStagePool>[string];
 		}
 		return snapshot;
 	}
 
-	replacePipelines(def: PipelineDef<TActionPool> = {}): void {
+	replacePipelines(def: PipelineDef<TStagePool> = {}): void {
 		for (const name of Object.keys(this.pipelineDef)) {
 			delete this.pipelineDef[name];
 		}
 		for (const [name, stages] of Object.entries(def)) {
 			if (!name || !Array.isArray(stages)) continue;
-			this.pipelineDef[name] = [...stages] as PipelineDef<TActionPool>[string];
+			this.pipelineDef[name] = [...stages] as PipelineDef<TStagePool>[string];
 		}
 	}
 
-	registerPipelines(def: PipelineDef<TActionPool>): () => void {
+	registerPipelines(def: PipelineDef<TStagePool>): () => void {
 		const added = Object.keys(def);
 		for (const [name, stages] of Object.entries(def)) {
 			if (!name || !Array.isArray(stages)) continue;
-			this.pipelineDef[name] = [...stages] as PipelineDef<TActionPool>[string];
+			this.pipelineDef[name] = [...stages] as PipelineDef<TStagePool>[string];
 		}
 		return () => {
 			for (const name of added) {
@@ -67,4 +67,4 @@ export class PipelineRegistry<
 }
 
 export const createEmptyPipelineRegistry = () =>
-	new PipelineRegistry<CommonContext, DefaultPipelineActionPool>(EmptyPipelineActionPool, {});
+	new PipelineRegistry<MemberContext, DefaultPipelineStagePool>(EmptyPipelineStagePool, {});

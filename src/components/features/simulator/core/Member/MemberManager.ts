@@ -7,10 +7,9 @@ import type { ExpressionContext } from "../JSProcessor/types";
 import type { MemberDomainEvent } from "../types";
 import type { DamageAreaRequest } from "../World/types";
 import type { Member } from "./Member";
-import type { CommonBoard } from "./runtime/Agent/CommonBoard";
-import type { CommonContext } from "./runtime/Agent/CommonContext";
+import type { MemberContext } from "./MemberContext";
 import type { PipelineRegistry } from "../Pipline/PipelineRegistry";
-import type { ActionPool } from "../Pipline/types";
+import type { StagePool } from "../Pipline/types";
 import type { MemberEventType, MemberStateContext } from "./runtime/StateMachine/types";
 import { Mob } from "./types/Mob/Mob";
 import { Player } from "./types/Player/Player";
@@ -20,7 +19,7 @@ const log = createLogger("MemberMgr");
 // ============================== 类型定义 ==============================
 
 // 避免 any：用通用基类型承载不同成员实现
-export type AnyMemberEntry = Member<string, MemberEventType, MemberStateContext, CommonBoard & Record<string, unknown>>;
+export type AnyMemberEntry = Member<string, MemberEventType, MemberStateContext, MemberContext & Record<string, unknown>>;
 
 // ============================== 成员管理器类 ==============================
 
@@ -43,7 +42,7 @@ export class MemberManager {
 	/** 渲染消息发射器 */
 	private renderMessageSender: ((payload: unknown) => void) | null = null;
 	/** 域事件发射器 */
-	private emitDomainEvent: ((event: MemberDomainEvent) => void) | null = null;
+	private domainEventSender: ((event: MemberDomainEvent) => void) | null = null;
 	/** 表达式求值器（由引擎注入） */
 	private evaluateExpression: ((expression: string, context: ExpressionContext) => number | boolean) | null = null;
 	/** 伤害请求处理器（由引擎注入） */
@@ -51,7 +50,7 @@ export class MemberManager {
 	/** 引擎帧号读取函数（由引擎注入） */
 	private getCurrentFrame: (() => number) | null = null;
 	/** 引擎级 pipeline registry（由引擎注入） */
-	private pipelineRegistry: PipelineRegistry<CommonContext, ActionPool<CommonContext>> | null = null;
+	private pipelineRegistry: PipelineRegistry<MemberContext, StagePool<MemberContext>> | null = null;
 
 	// ==================== 主控目标系统 ====================
 
@@ -66,11 +65,10 @@ export class MemberManager {
 	/**
 	 * 设置域事件发射器
 	 */
-	setEmitDomainEvent(emitDomainEvent: ((event: MemberDomainEvent) => void) | null): void {
-		this.emitDomainEvent = emitDomainEvent;
-		// 为所有已存在的成员设置
+	setDomainEventSender(domainEventSender: ((event: MemberDomainEvent) => void) | null): void {
+		this.domainEventSender = domainEventSender;
 		for (const member of this.members.values()) {
-			member.setEmitDomainEvent(emitDomainEvent);
+			member.setDomainEventSender(domainEventSender);
 		}
 	}
 
@@ -119,7 +117,7 @@ export class MemberManager {
 	/**
 	 * 设置引擎级 pipeline registry（由引擎注入）。
 	 */
-	setPipelineRegistry(registry: PipelineRegistry<CommonContext, ActionPool<CommonContext>> | null): void {
+	setPipelineRegistry(registry: PipelineRegistry<MemberContext, StagePool<MemberContext>> | null): void {
 		this.pipelineRegistry = registry;
 		if (!registry) return;
 		for (const member of this.members.values()) {
@@ -149,7 +147,7 @@ export class MemberManager {
 			case "Player": {
 				const player = new Player(memberData, campId, teamId, characterIndex, position);
 				// 设置域事件发射器
-				player.setEmitDomainEvent(this.emitDomainEvent);
+				player.setDomainEventSender(this.domainEventSender);
 				player.setEvaluateExpression(this.evaluateExpression);
 				player.setDamageRequestHandler(this.damageRequestHandler);
 				player.setGetCurrentFrame(this.getCurrentFrame);
@@ -170,7 +168,7 @@ export class MemberManager {
 			case "Mob": {
 				const mob = new Mob(memberData, campId, teamId, position);
 				// 设置域事件发射器
-				mob.setEmitDomainEvent(this.emitDomainEvent);
+				mob.setDomainEventSender(this.domainEventSender);
 				mob.setEvaluateExpression(this.evaluateExpression);
 				mob.setDamageRequestHandler(this.damageRequestHandler);
 				mob.setGetCurrentFrame(this.getCurrentFrame);

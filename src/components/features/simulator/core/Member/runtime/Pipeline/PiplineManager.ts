@@ -8,75 +8,75 @@
  */
 
 import type { ZodType } from "zod/v4";
-import type { CommonContext } from "../Agent/CommonContext";
-import type { ActionPool, PipelineDef } from "../../../Pipline/types";
+import type { MemberContext } from "../../MemberContext";
+import type { PipelineDef, StagePool } from "../../../Pipline/types";
 
 export interface PipelineDynamicStageInfo {
 	pipelineName: string;
 	/** 插入点（在哪个 stage 之后插入） */
-	afterActionName: string;
+	afterStageName: string;
 	/** 被插入的 stage 名称 */
-	insertActionName: string;
+	insertStageName: string;
 	id: string;
 	source: string;
 	priority: number;
 	insertedAt: number;
 }
 
-interface DynamicStageEntry<TActionPool extends ActionPool<any>> {
+interface DynamicStageEntry<TStagePool extends StagePool<any>> {
 	id: string;
 	source: string;
 	priority: number;
 	/** 插入的 stage 名称（必须在 stagePool 中存在） */
-	insertActionName: keyof TActionPool;
+	insertStageName: keyof TStagePool;
 	/** 可选：执行该 stage 前额外合并到输入的 params（纯数据） */
 	params?: Record<string, unknown>;
 	/** 插入时间戳序号（用于按时间顺序执行） */
 	insertedAt: number;
 }
 
-interface ExecutionStageSpec<TActionPool extends ActionPool<any>> {
-	stageName: keyof TActionPool;
+interface ExecutionStageSpec<TStagePool extends StagePool<any>> {
+	stageName: keyof TStagePool;
 	injectedParams?: Record<string, unknown>;
 }
 
 /**
  * 管线管理器（Pipeline 执行器）
  *
- * @template TActionPool 动作池
- * @template TActionContext  上下文类型
+ * @template TStagePool 阶段池
+ * @template TStageContext 上下文类型
  */
 export class PipelineManager<
-	TActionContext extends CommonContext,
-	TActionPool extends ActionPool<TActionContext> = ActionPool<TActionContext>,
+	TStageContext extends MemberContext,
+	TStagePool extends StagePool<TStageContext> = StagePool<TStageContext>,
 > {
 	/**
 	 * PipelineDef（管线编排定义）
 	 * - 不再使用代码常量固定注入
 	 * - 由技能效果 JSON 在初始化/挂载时动态注册
 	 */
-	public readonly pipelineDef: PipelineDef<TActionPool> = {};
+	public readonly pipelineDef: PipelineDef<TStagePool> = {};
 
 	/** 按作用域的管线覆盖：member、skill */
-	private memberOverrides?: PipelineDef<TActionPool>;
-	private skillOverrides?: PipelineDef<TActionPool>;
+	private memberOverrides?: PipelineDef<TStagePool>;
+	private skillOverrides?: PipelineDef<TStagePool>;
 
 	/**
-	 * 动态管线补丁（仅存 actionName + params，不存 handler）
-	 * - actionGroupName -> afterActionName -> entries
+	 * 动态管线补丁（仅存 stageName + params，不存 handler）
+	 * - pipelineName -> afterStageName -> entries
 	 */
-	private dynamicStages: Record<string, Record<keyof TActionPool, DynamicStageEntry<TActionPool>[]>> = {};
+	private dynamicStages: Record<string, Record<keyof TStagePool, DynamicStageEntry<TStagePool>[]>> = {};
 	private insertedSeq = 0;
 
 	/** 缓存已编译的执行链：actionGroup -> compiled chain */
 	private compiledChains: Record<
 		string,
-		(ctx: TActionContext, params?: Record<string, any>) => { ctx: TActionContext; actionOutputs: Record<string, any> }
+		(ctx: TStageContext, params?: Record<string, any>) => { ctx: TStageContext; stageOutputs: Record<string, any> }
 	> = {};
 
 	constructor(
-		/** 动作池：包含具体的实现 */
-		public actionPool: TActionPool,
+		/** 阶段池：包含具体的实现 */
+		public stagePool: TStagePool,
 	) {}
 
 	/**
@@ -86,19 +86,19 @@ export class PipelineManager<
 	 * - 该操作会清空已编译缓存
 	 * - member/skill override 与动态插桩会被保留
 	 */
-	replaceActionPool(actionPool: TActionPool): void {
-		this.actionPool = actionPool;
+	replaceStagePool(stagePool: TStagePool): void {
+		this.stagePool = stagePool;
 		this.compiledChains = {};
 	}
 
 	/**
 	 * 动态注册管线，返回清理函数
 	 */
-	registerActionGroups(custom: { name: string; actions: string[] }[]): () => void {
+	registerStageGroups(custom: { name: string; stages: string[] }[]): () => void {
 		const added: string[] = [];
 		for (const cp of custom ?? []) {
-			if (!cp?.name || !Array.isArray(cp.actions)) continue;
-			(this.pipelineDef as any)[cp.name] = cp.actions;
+			if (!cp?.name || !Array.isArray(cp.stages)) continue;
+			(this.pipelineDef as any)[cp.name] = cp.stages;
 			delete this.compiledChains[String(cp.name)];
 			added.push(cp.name);
 		}
@@ -114,7 +114,7 @@ export class PipelineManager<
 	 * 注册/覆盖管线定义（来自技能效果 JSON）
 	 * - 同名 pipeline 会被覆盖
 	 */
-	registerPipelines(def: Record<string, readonly (keyof TActionPool)[]>): () => void {
+	registerPipelines(def: Record<string, readonly (keyof TStagePool)[]>): () => void {
 		const added: string[] = [];
 		for (const [name, stages] of Object.entries(def ?? {})) {
 			if (!name || !Array.isArray(stages)) continue;
@@ -135,7 +135,7 @@ export class PipelineManager<
 	 * - 仅替换基础定义，不影响 member/skill overrides
 	 * - 仅替换基础定义，不影响动态插入的 stage
 	 */
-	replacePipelines(def: Record<string, readonly (keyof TActionPool)[]> = {}): void {
+	replacePipelines(def: Record<string, readonly (keyof TStagePool)[]> = {}): void {
 		for (const name of Object.keys(this.pipelineDef)) {
 			delete this.pipelineDef[name];
 		}
@@ -149,7 +149,7 @@ export class PipelineManager<
 	/**
 	 * 设置角色级覆盖（作用于当前 PipelineManager 实例）
 	 */
-	setMemberOverrides(overrides?: PipelineDef<TActionPool>) {
+	setMemberOverrides(overrides?: PipelineDef<TStagePool>) {
 		this.memberOverrides = overrides;
 		this.compiledChains = {};
 	}
@@ -157,7 +157,7 @@ export class PipelineManager<
 	/**
 	 * 设置技能级覆盖（一次技能作用域，优先级最高）
 	 */
-	setSkillOverrides(overrides?: PipelineDef<TActionPool>) {
+	setSkillOverrides(overrides?: PipelineDef<TStagePool>) {
 		this.skillOverrides = overrides;
 		this.compiledChains = {};
 	}
@@ -180,26 +180,26 @@ export class PipelineManager<
 
 	/**
 	 * 插入动态阶段（按时间顺序生效）
-	 * - 仅存 insertActionName 与 params，不存 handler
+	 * - 仅存 insertStageName 与 params，不存 handler
 	 */
 	insertPipelineStage(
-		actionGroupName: string,
-		afterActionName: keyof TActionPool,
-		insertActionName: keyof TActionPool,
+		pipelineName: string,
+		afterStageName: keyof TStagePool,
+		insertStageName: keyof TStagePool,
 		id: string,
 		source: string,
 		params?: Record<string, unknown>,
 		priority = 0,
 	): () => void {
-		let map = this.dynamicStages[actionGroupName];
+		let map = this.dynamicStages[pipelineName];
 		if (!map) {
-			map = {} as Record<keyof TActionPool, DynamicStageEntry<TActionPool>[]>;
-			this.dynamicStages[actionGroupName] = map;
+			map = {} as Record<keyof TStagePool, DynamicStageEntry<TStagePool>[]>;
+			this.dynamicStages[pipelineName] = map;
 		}
-		let list = map[afterActionName];
+		let list = map[afterStageName];
 		if (!list) {
 			list = [];
-			map[afterActionName] = list;
+			map[afterStageName] = list;
 		}
 
 		// 如果已存在相同ID，先移除
@@ -208,11 +208,11 @@ export class PipelineManager<
 			list.splice(existingIndex, 1);
 		}
 
-		const entry: DynamicStageEntry<TActionPool> = {
+		const entry: DynamicStageEntry<TStagePool> = {
 			id,
 			source,
 			priority,
-			insertActionName,
+			insertStageName,
 			params,
 			insertedAt: ++this.insertedSeq,
 		};
@@ -239,18 +239,18 @@ export class PipelineManager<
 	 */
 	removeStagesBySource(source: string): void {
 		let changed = false;
-		for (const actionGroupName of Object.keys(this.dynamicStages)) {
-			const actionGroup = this.dynamicStages[actionGroupName];
-			if (!actionGroup) continue;
+		for (const pipelineName of Object.keys(this.dynamicStages)) {
+			const stageGroup = this.dynamicStages[pipelineName];
+			if (!stageGroup) continue;
 
-			for (const actionName of Object.keys(actionGroup)) {
-				const list = actionGroup[actionName];
+			for (const stageName of Object.keys(stageGroup)) {
+				const list = stageGroup[stageName];
 				if (!list) continue;
 				const initialLength = list.length;
 				const filteredList = list.filter((entry) => entry.source !== source);
 
 				if (filteredList.length !== initialLength) {
-					actionGroup[actionName as keyof TActionPool] = filteredList;
+					stageGroup[stageName as keyof TStagePool] = filteredList;
 					changed = true;
 				}
 			}
@@ -283,12 +283,12 @@ export class PipelineManager<
 	 */
 	removeStageById(id: string): void {
 		let changed = false;
-		for (const actionGroupName of Object.keys(this.dynamicStages)) {
-			const actions = this.dynamicStages[actionGroupName];
-			if (!actions) continue;
+		for (const pipelineName of Object.keys(this.dynamicStages)) {
+			const stages = this.dynamicStages[pipelineName];
+			if (!stages) continue;
 
-			for (const actionName of Object.keys(actions)) {
-				const list = actions[actionName];
+			for (const stageName of Object.keys(stages)) {
+				const list = stages[stageName];
 				if (!list) continue;
 
 				const index = list.findIndex((entry) => entry.id === id);
@@ -308,12 +308,12 @@ export class PipelineManager<
 
 	/** 内部：计算某条管线的最终执行阶段列表（含动态插入及其参数） */
 	private resolveEffectiveStages(
-		actionGroupName: string,
-		baseStages: readonly (keyof TActionPool)[],
-	): readonly ExecutionStageSpec<TActionPool>[] {
-		const dyn = this.dynamicStages[actionGroupName];
+		pipelineName: string,
+		baseStages: readonly (keyof TStagePool)[],
+	): readonly ExecutionStageSpec<TStagePool>[] {
+		const dyn = this.dynamicStages[pipelineName];
 		if (!dyn) return baseStages.map((stageName) => ({ stageName }));
-		const out: ExecutionStageSpec<TActionPool>[] = [];
+		const out: ExecutionStageSpec<TStagePool>[] = [];
 		for (const stageName of baseStages) {
 			out.push({ stageName });
 			const entries = dyn[stageName] ?? [];
@@ -321,7 +321,7 @@ export class PipelineManager<
 			entries.sort((a, b) => a.insertedAt - b.insertedAt);
 			for (const entry of entries) {
 				out.push({
-					stageName: entry.insertActionName as keyof TActionPool,
+					stageName: entry.insertStageName as keyof TStagePool,
 					injectedParams: entry.params,
 				});
 			}
@@ -331,45 +331,45 @@ export class PipelineManager<
 
 	/* ---------------------- compile ---------------------- */
 	/**
-	 * 编译某个动作组的同步执行链
+	 * 编译某条管线的同步执行链
 	 *
 	 * 支持输入输出双重验证：
 	 * - 调用静态实现前：验证 prevOutput 是否符合该阶段的 inputSchema
 	 * - 调用静态实现后：验证 stageOut 是否符合该阶段的 outputSchema
 	 *
-	 * 返回值类型： (ctx, params?) => { ctx: TActionContext, actionOutputs: Record<string, any> }
+	 * 返回值类型： (ctx, params?) => { ctx: TStageContext, stageOutputs: Record<string, any> }
 	 */
 	private compile(
-		actionGroupName: string,
-		stageSpecs: readonly ExecutionStageSpec<TActionPool>[],
+		pipelineName: string,
+		stageSpecs: readonly ExecutionStageSpec<TStagePool>[],
 	): (
-		ctx: TActionContext,
+		ctx: TStageContext,
 		params?: Record<string, any>,
-	) => { ctx: TActionContext; actionOutputs: Record<string, any> } {
-		return (ctx: TActionContext, params?: Record<string, any>) => {
+	) => { ctx: TStageContext; stageOutputs: Record<string, any> } {
+		return (ctx: TStageContext, params?: Record<string, any>) => {
 			// working copy of ctx so we don't mutate caller's object unexpectedly
-			const currenTActionContext: any = Object.assign({}, ctx);
+			const currentStageContext: any = Object.assign({}, ctx);
 			const initialParams = params ?? {};
-			Object.assign(currenTActionContext, initialParams);
+			Object.assign(currentStageContext, initialParams);
 			let prevOutput: any = initialParams;
-			const actionOutputs: Record<string, any> = {};
+			const stageOutputs: Record<string, any> = {};
 
 			// iterate each stage in order (after dynamic insertion resolved)
 			for (const stageSpec of stageSpecs) {
-				const actionName = stageSpec.stageName;
-				const typedStageName = actionName as string;
+				const stageName = stageSpec.stageName;
+				const typedStageName = stageName as string;
 
 				// 从池中获取阶段定义
-				const stageDef = this.actionPool[actionName];
+				const stageDef = this.stagePool[stageName];
 				if (!stageDef) {
 					throw new Error(
-						`[PipelineManager] Stage "${String(actionName)}" not found in pool for pipeline "${String(actionGroupName)}"`,
+						`[PipelineManager] Stage "${String(stageName)}" not found in pool for pipeline "${String(pipelineName)}"`,
 					);
 				}
 				const [inputSchema, outputSchema, staticImpl] = stageDef as unknown as [
 					ZodType<any>,
 					ZodType<any>,
-					(ctx: TActionContext, input: any) => any,
+					(ctx: TStageContext, input: any) => any,
 				];
 
 				// ---------- 输入（动态插入 stage 可带 params 合并） ----------
@@ -385,7 +385,7 @@ export class PipelineManager<
 					const inputParsed = inputSchema.safeParse(stageInput);
 					if (!inputParsed.success) {
 						throw new Error(
-							`[${String(actionGroupName)}.${String(actionName)}] 输入验证失败: ${inputParsed.error.message}`,
+							`[${String(pipelineName)}.${String(stageName)}] 输入验证失败: ${inputParsed.error.message}`,
 						);
 					}
 					// 使用验证后的数据作为本阶段输入
@@ -396,7 +396,7 @@ export class PipelineManager<
 				let stageOut: any = stageInput;
 
 				if (staticImpl) {
-					stageOut = staticImpl(currenTActionContext, stageInput);
+					stageOut = staticImpl(currentStageContext, stageInput);
 				}
 
 				// ---------- 输出验证并合并 ----------
@@ -404,28 +404,28 @@ export class PipelineManager<
 					const outputParsed = outputSchema.safeParse(stageOut);
 					if (!outputParsed.success) {
 						throw new Error(
-							`[${String(actionGroupName)}.${String(actionName)}] 输出验证失败: ${outputParsed.error.message}`,
+							`[${String(pipelineName)}.${String(stageName)}] 输出验证失败: ${outputParsed.error.message}`,
 						);
 					}
 					// merge parsed data into context
-					Object.assign(currenTActionContext, outputParsed.data);
+					Object.assign(currentStageContext, outputParsed.data);
 					// 累积输出给下一阶段
 					prevOutput = this.mergeOutputs(prevOutput, outputParsed.data);
 				} else {
 					// no schema: if stageOut is object, merge into ctx; otherwise keep primitive as prevOutput
 					if (stageOut && typeof stageOut === "object") {
-						Object.assign(currenTActionContext, stageOut);
+						Object.assign(currentStageContext, stageOut);
 					}
 					prevOutput = this.mergeOutputs(prevOutput, stageOut);
 				}
 
-				// ---------- 保存动作输出 ----------
-				// TS 需要断言键类型，因为 actionName 是运行时字符串
-				actionOutputs[typedStageName] = prevOutput;
+				// ---------- 保存阶段输出 ----------
+				// TS 需要断言键类型，因为 stageName 是运行时字符串
+				stageOutputs[typedStageName] = prevOutput;
 			} // end for stages
 
 			// 返回最终 context 与每个阶段输出
-			return { ctx: currenTActionContext as TActionContext, actionOutputs };
+			return { ctx: currentStageContext as TStageContext, stageOutputs };
 		};
 	}
 
@@ -435,7 +435,7 @@ export class PipelineManager<
 	getDynamicStageInfos(filter?: {
 		source?: string;
 		pipelineName?: string;
-		afterActionName?: string;
+		afterStageName?: string;
 	}): PipelineDynamicStageInfo[] {
 		const result: PipelineDynamicStageInfo[] = [];
 		for (const pipelineName of Object.keys(this.dynamicStages)) {
@@ -444,18 +444,18 @@ export class PipelineManager<
 			const filterGroup = filter?.pipelineName;
 			if (filterGroup && filterGroup !== pipelineName) continue;
 
-			for (const actionName of Object.keys(stages)) {
-				const filterAction = filter?.afterActionName;
-				if (filterAction && filterAction !== actionName) continue;
-				const entries = stages[actionName];
+			for (const stageName of Object.keys(stages)) {
+				const filterStage = filter?.afterStageName;
+				if (filterStage && filterStage !== stageName) continue;
+				const entries = stages[stageName];
 				if (!entries) continue;
 
 				for (const entry of entries) {
 					if (filter?.source && filter.source !== entry.source) continue;
 					result.push({
 						pipelineName,
-						afterActionName: actionName,
-						insertActionName: String(entry.insertActionName),
+						afterStageName: stageName,
+						insertStageName: String(entry.insertStageName),
 						id: entry.id,
 						source: entry.source,
 						priority: entry.priority,
@@ -467,7 +467,7 @@ export class PipelineManager<
 
 		return result.sort((a, b) => {
 			if (a.pipelineName !== b.pipelineName) return a.pipelineName.localeCompare(b.pipelineName);
-			if (a.afterActionName !== b.afterActionName) return a.afterActionName.localeCompare(b.afterActionName);
+			if (a.afterStageName !== b.afterStageName) return a.afterStageName.localeCompare(b.afterStageName);
 			return a.insertedAt - b.insertedAt;
 		});
 	}
@@ -475,13 +475,13 @@ export class PipelineManager<
 	/* ---------------------- run ---------------------- */
 	/**
 	 * 对外同步执行入口（使用缓存的已编译闭包）
-	 * 返回：{ ctx, actionOutputs }，actionOutputs 为各动作最终输出
+	 * 返回：{ ctx, stageOutputs }，stageOutputs 为各阶段最终输出
 	 */
 	run(
 		pipelineName: string,
-		ctx: TActionContext,
+		ctx: TStageContext,
 		params?: Record<string, any>,
-	): { ctx: TActionContext; actionOutputs: Record<string, any> } {
+	): { ctx: TStageContext; stageOutputs: Record<string, any> } {
 		// 按优先级解析管线定义：skill > member > global
 		const stageNames =
 			(this.skillOverrides?.[pipelineName] as unknown as readonly string[] | undefined) ??
@@ -499,6 +499,6 @@ export class PipelineManager<
 		}
 
 		const result = this.compiledChains[cacheKey](ctx, params);
-		return result as { ctx: TActionContext; actionOutputs: Record<string, any> };
+		return result as { ctx: TStageContext; stageOutputs: Record<string, any> };
 	}
 }
