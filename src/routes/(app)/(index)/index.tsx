@@ -38,9 +38,6 @@ export default function IndexPage() {
 	const handleSearch = () => {
 		send({ type: "SEARCH_SUBMIT" });
 	};
-	const handleClearSearch = () => {
-		send({ type: "SEARCH_CLEAR" });
-	};
 	const handleToggleSearchResults = () => {
 		send({ type: "TOGGLE_SEARCH_RESULTS" });
 	};
@@ -368,7 +365,7 @@ export default function IndexPage() {
 						>
 							<Button
 								level="quaternary"
-								onClick={handleClearSearch}
+								onClick={handleToggleSearchResults}
 								class="w-full outline-hidden focus-within:outline-hidden"
 							>
 								<Icons.Outline.Back />
@@ -501,7 +498,9 @@ export default function IndexPage() {
 																			}}
 																			transition={{
 																				duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
-																				delay: store.settings.userInterface.isAnimationEnabled ? groupIndex() * 0.3 : 0,
+																				delay: store.settings.userInterface.isAnimationEnabled
+																					? groupIndex() * 0.1
+																					: 0,
 																			}}
 																		>
 																			<Icons.Outline.Basketball />
@@ -528,7 +527,7 @@ export default function IndexPage() {
 																								duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
 																								delay: store.settings.userInterface.isAnimationEnabled
 																									? index() < 15
-																										? groupIndex() * 0.3 + index() * 0.07
+																										? groupIndex() * 0.1 + index() * 0.07
 																										: 0
 																									: 0,
 																							}}
@@ -548,17 +547,6 @@ export default function IndexPage() {
 																							<div class="Name group-hover:border-accent-color border-b-2 border-transparent p-1 text-left">
 																								{"name" in resultItem ? resultItem.name : "此条目没有名称"}
 																							</div>
-																							{/* <div class="Value text-main-text-color group-hover:text-accent-color flex w-full flex-col flex-wrap p-1 text-sm">
-                                              {resultItem?.relateds.map((related, index) => {
-                                                return (
-                                                  <div class="Related w-fit pr-2 text-left">
-                                                    <span>
-                                                      {related?.key}: {related?.value}
-                                                    </span>
-                                                  </div>
-                                                );
-                                              })}
-                                            </div> */}
 																						</Motion.button>
 																					);
 																				}}
