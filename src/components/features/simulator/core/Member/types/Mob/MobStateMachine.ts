@@ -1,4 +1,4 @@
-import { type EventObject, setup } from "xstate";
+import { assign, type EventObject, setup } from "xstate";
 import { createLogger } from "~/lib/Logger";
 import type {
 	MemberEventType,
@@ -111,6 +111,7 @@ export const createMobStateMachine = (
 	mob: Mob,
 ): MemberStateMachine<MobEventType, MobStateContext> => {
 	const machineId = mob.id;
+	const memberContext = mob.context;
 
 	return setup({
 		types: {
@@ -124,6 +125,18 @@ export const createMobStateMachine = (
 				// ...
 				log.debug(`👹 [${context.owner?.name}] 根据配置生成初始状态`, event);
 			},
+			同步公共上下文镜像: assign({
+				// Responsibility: keep the Mob FSM's compatibility fields aligned with
+				// the shared member context.
+				// Purpose: Mob follows the same public/private context rule as Player.
+				currentFrame: ({ event }) =>
+					typeof (event as { timestamp?: number }).timestamp === "number"
+						? (event as { timestamp: number }).timestamp
+						: memberContext.currentFrame,
+				targetId: () => memberContext.targetId,
+				position: () => ({ ...memberContext.position }),
+				statusTags: () => [...memberContext.statusTags],
+			}),
 			启用站立动画: ({ context, event }) => {
 				// Add your action code here
 				// ...
@@ -333,15 +346,22 @@ export const createMobStateMachine = (
 	}).createMachine({
 		id: machineId,
 		context: {
-			targetId: mob.id,
+			targetId: memberContext.targetId,
 			isAlive: true,
-			position: { x: 0, y: 0, z: 0 },
-			createdAtFrame: 0,
-			currentFrame: 0,
-			statusTags: [],
+			position: { ...memberContext.position },
+			createdAtFrame: memberContext.currentFrame,
+			currentFrame: memberContext.currentFrame,
+			statusTags: [...memberContext.statusTags],
 			owner: mob,
 		},
 		initial: "存活",
+		on: {
+			update: {
+				actions: {
+					type: "同步公共上下文镜像",
+				},
+			},
+		},
 		entry: {
 			type: "根据配置生成初始状态",
 		},

@@ -1,7 +1,7 @@
 import type { DB } from "@db/generated/zod/index";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
-import { Kysely, sql } from "kysely";
+import { type Kysely, sql } from "kysely";
 import { Performance } from "~/lib/utils/performance";
 
 // 定义可搜索的表和字段
@@ -260,7 +260,11 @@ const processItemResults = Performance.monitor(
 				const items = await db.selectFrom("item").where("id", "in", itemIds).selectAll("item").execute();
 
 				// 批量查询子表数据
-				const subData = await db.selectFrom(tableType as keyof DB).where("itemId", "in", itemIds).selectAll().execute();
+				const subData = await db
+					.selectFrom(tableType as keyof DB)
+					.where("itemId", "in", itemIds)
+					.selectAll()
+					.execute();
 
 				// 合并数据
 				const itemMap = new Map(items.map((item) => [item.id, item]));
@@ -276,6 +280,10 @@ const processItemResults = Performance.monitor(
 						return null;
 					})
 					.filter(Boolean);
+
+				if (fullResults.length === 0) {
+					continue;
+				}
 
 				if (!results[tableType as keyof SearchResults]) {
 					results[tableType as keyof SearchResults] = [];

@@ -11,7 +11,7 @@ import type {
  * JS 表达式处理器（单行表达式）
  *
  * 设计目标：
- * - 下放“是否需要编译/替换”的判断：调用方只管给表达式与运行时上下文
+ * - 下放“是否需要编译/替换”的判断：调用方只管给表达式与运行时对象
  * - 彻底移除正则解析（SchemaPathResolver），统一使用 AST（acorn）驱动转换
  * - 清晰分层：transform（字面量替换） 与 evaluate（编译/执行）两类 API
  */
@@ -229,5 +229,4 @@ export class JSProcessor {
 		return Math.abs(hash).toString(36);
 	}
 }
-
 

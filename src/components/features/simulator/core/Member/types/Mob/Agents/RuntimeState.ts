@@ -2,11 +2,12 @@ import type { CharacterWithRelations } from "@db/generated/repositories/characte
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 
 /**
- * MobProperty
- * Mob 专用的运行时属性
+ * MobRuntimeState
+ * Mob 专用的共享运行时状态
  */
-export interface MobProperty extends Record<string, unknown> {
-	blackboard: Record<string, unknown>;
+export interface MobRuntimeState extends Record<string, unknown> {
+	/** 行为树局部记忆 */
+	btMemory: Record<string, unknown>;
 	skillState: Record<string, unknown>;
 	buffState: Record<string, unknown>;
 	/** 技能列表 */
@@ -38,8 +39,11 @@ export interface MobProperty extends Record<string, unknown> {
 	 */
 	compiledSkillEffectLogicByEffectId: Record<string, string>;
 }
-export const MobProperty: MobProperty = {
-	blackboard: {},
+
+const mobBtMemory: Record<string, unknown> = {};
+
+export const MobRuntimeStateDefaults: MobRuntimeState = {
+	btMemory: mobBtMemory,
 	skillState: {},
 	buffState: {},
 	skillList: [],

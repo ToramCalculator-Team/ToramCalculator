@@ -514,6 +514,19 @@ model skill_variant {
 // 雷吉斯托环
 model registlet {
     id String @id
+
+    name String
+    maxLevel Int
+    attrModifiers String[]
+    pipelinePatches Json[] /// ZOD PipelinePatchEffectSchema
+    skillBranchActivators Json[] /// ZOD SkillBranchActivatorEffectSchema
+
+    usedByCharacterRegistlets character_registlet[]
+
+    updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
+    updatedByAccountId String?
+    createdBy          account_create_data? @relation(fields: [createdByAccountId], references: [accountId], onDelete: Cascade)
+    createdByAccountId String?
 }
 
 // 模拟器内容 ----------------------------------------------------------------------------------------------
@@ -688,6 +701,7 @@ model character {
     cooking           String[]
     modifiers         String[]
     skills            character_skill[]
+    registlets        character_registlet[]
     partnerSkillAId   String?
     partnerSkillAType String // Enum PARTNER_SKILL_TYPE
     partnerSkillBId   String?
@@ -715,6 +729,18 @@ model character_skill {
     templateId String
 
     usedByComboSteps combo_step[]
+
+    belongToCharacter   character @relation(fields: [belongToCharacterId], references: [id], onDelete: Cascade)
+    belongToCharacterId String
+}
+
+// 角色持有的雷吉斯
+model character_registlet {
+    id String @id
+
+    level Int
+    template   registlet @relation(fields: [templateId], references: [id])
+    templateId String
 
     belongToCharacter   character @relation(fields: [belongToCharacterId], references: [id], onDelete: Cascade)
     belongToCharacterId String

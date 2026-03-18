@@ -1,6 +1,6 @@
 import type { ActionPool } from "../../../runtime/Agent/type";
-import type { MobProperty } from "./Property";
+import type { MobRuntimeState } from "./RuntimeState";
 
-export const MobActionPool = {} as const satisfies ActionPool<MobProperty>;
+export const MobActionPool = {} as const satisfies ActionPool<MobRuntimeState>;
 
 export type MobActionPool = typeof MobActionPool;

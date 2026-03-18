@@ -64,7 +64,12 @@ export const createCharacter = async (): Promise<Character> => {
 			trx,
 		);
 		console.log("character", character);
-		setStore("session", "account", "player", "character", "id", character.id);
+		setStore("session", "account", "player", {
+			id: player.id,
+			character: {
+				id: character.id,
+			},
+		});
 		return character;
 	});
 };

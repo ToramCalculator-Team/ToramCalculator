@@ -4,7 +4,7 @@ import { createLogger } from "~/lib/Logger";
 import type { MemberDomainEvent } from "../../../types";
 import type { Member } from "../../Member";
 import type { MemberEventType, MemberStateContext, MemberStateMachine } from "../../runtime/StateMachine/types";
-import type { PlayerRuntimeContext } from "./Agents/RuntimeContext";
+import type { PlayerContext } from "./Agents/Context";
 import type { Player, PlayerAttrType } from "./Player";
 
 const log = createLogger("PlayerSM");
@@ -118,10 +118,6 @@ interface 切换目标 extends EventObject {
 	type: "切换目标";
 	data: { targetId: string };
 }
-interface 更新 extends EventObject {
-	type: "更新";
-	timestamp?: number;
-}
 
 export type PlayerEventType =
 	| MemberEventType
@@ -150,19 +146,18 @@ export type PlayerEventType =
 	| 收到buff增删事件
 	| 收到快照请求
 	| 收到目标快照
-	| 切换目标
-	| 更新;
+	| 切换目标;
 
 // 定义 PlayerStateContext 类型（提前声明）
 export interface PlayerStateContext extends MemberStateContext {}
 
 export const playerStateMachine = (
-	member: Member<PlayerAttrType, PlayerEventType, PlayerStateContext, PlayerRuntimeContext>,
+	member: Member<PlayerAttrType, PlayerEventType, PlayerStateContext, PlayerContext>,
 ): MemberStateMachine<PlayerEventType, PlayerStateContext> => {
 	// 类型断言：playerStateMachine 内部需要访问 Player 特有属性
 	const player = member as Player;
 	const machineId = player.id;
-	const runtimeContext = player.runtimeContext;
+	const memberContext = player.context;
 
 	const machine = setup({
 		types: {
@@ -175,7 +170,17 @@ export const playerStateMachine = (
 				log.debug(`👤 [${context.owner?.name}] 根据角色配置生成初始状态`, event);
 			},
 			更新玩家状态: assign({
-				currentFrame: ({ context }) => context.currentFrame + 1,
+				// Responsibility: keep the legacy FSM-local fields in sync with the
+				// shared member context.
+				// Purpose: FSM remains a consumer of member.context instead of owning a
+				// second source of truth for frame, target, position, or statuses.
+				currentFrame: ({ event }) =>
+					typeof (event as { timestamp?: number }).timestamp === "number"
+						? (event as { timestamp: number }).timestamp
+						: memberContext.currentFrame,
+				targetId: () => memberContext.targetId,
+				position: () => ({ ...memberContext.position }),
+				statusTags: () => [...memberContext.statusTags],
 			}),
 			启用站立动画: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 启用站立动画`, event);
@@ -187,13 +192,13 @@ export const playerStateMachine = (
 				log.debug(`👤 [${context.owner?.name}] 显示警告`, event);
 				// 发出技能施放被拒绝事件
 				const owner = context.owner;
-				if (owner && (owner.runtimeContext as Record<string, unknown>).emitDomainEvent) {
-					const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as (
+				if (owner && owner.context.domainEventSender) {
+					const domainEventSender = owner.context.domainEventSender as (
 						event: MemberDomainEvent,
 					) => void;
 					// 从事件中获取技能ID（如果有）
 					const skillId = (event as { data?: { skillId?: string } }).data?.skillId ?? "";
-					emitDomainEvent({
+					domainEventSender({
 						type: "skill_cast_denied",
 						memberId: owner.id,
 						skillId,
@@ -212,17 +217,27 @@ export const playerStateMachine = (
 				if (!skill) {
 					log.error(`🎮 [${context.owner?.name}] 的当前技能不存在`);
 				}
-				runtimeContext.currentSkill = skill ?? null;
+				memberContext.currentSkill = skill ?? null;
+				// Responsibility: resolve registlet-provided skill parameters as soon as the
+				// pending skill slot is assigned.
+				// Purpose: let guards, pipelines, and BT read one shared snapshot instead of
+				// repeatedly rescanning every equipped registlets.
+				memberContext.currentSkillParams = player.resolveSkillParams(memberContext.currentSkill);
 			},
 			清空待处理技能: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 清空待处理技能`, event);
-				runtimeContext.previousSkill = runtimeContext.currentSkill;
-				runtimeContext.currentSkill = null;
-				runtimeContext.currentSkillVariant = null;
-				runtimeContext.currentSkillActiveEffectLogic = null;
-				if (runtimeContext.currentSkillTreeId) {
+				memberContext.previousSkill = memberContext.currentSkill;
+				memberContext.currentSkill = null;
+				memberContext.currentSkillVariant = null;
+				memberContext.currentSkillActiveEffectLogic = null;
+				// Responsibility: clear the transient skill param snapshot after the current
+				// skill lifecycle ends.
+				// Purpose: avoid leaking the previous skill's registlet parameters into the
+				// next pending skill.
+				memberContext.currentSkillParams = {};
+				if (memberContext.currentSkillTreeId) {
 					player.btManager.unregisterActiveEffectBt();
-					runtimeContext.currentSkillTreeId = "unknown_skill";
+					memberContext.currentSkillTreeId = "unknown_skill";
 				}
 			},
 			清理行为树: ({ context, event }) => {
@@ -231,19 +246,24 @@ export const playerStateMachine = (
 			},
 			添加待处理技能变体: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 添加待处理技能变体`, event);
-				if (!runtimeContext.currentSkill) {
+				if (!memberContext.currentSkill) {
 					log.error(`🎮 [${context.owner?.name}] 当前技能不存在`);
 					return;
 				}
-				const variant = getSkillVariant(runtimeContext.currentSkill, player);
+				// Responsibility: re-resolve the skill param snapshot before choosing the
+				// final variant.
+				// Purpose: keep the snapshot aligned when a pre-skill pipeline rewrites the
+				// pending skill.
+				memberContext.currentSkillParams = player.resolveSkillParams(memberContext.currentSkill);
+				const variant = getSkillVariant(memberContext.currentSkill, player);
 				log.debug(`技能变体`, variant);
-				runtimeContext.currentSkillVariant = variant ?? null;
+				memberContext.currentSkillVariant = variant ?? null;
 			},
 			执行技能: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 执行技能`, event);
-				log.debug(`技能名称`, runtimeContext.currentSkill?.template?.name);
+				log.debug(`技能名称`, memberContext.currentSkill?.template?.name);
 
-				const skillVariant = runtimeContext.currentSkillVariant;
+				const skillVariant = memberContext.currentSkillVariant;
 				if (!skillVariant) {
 					log.error(`🎮 [${context.owner?.name}] 当前技能效果不存在`);
 					player.actor.send({ type: "技能执行完成" });
@@ -325,10 +345,10 @@ export const playerStateMachine = (
 				const owner = context.owner;
 				if (!owner) return;
 
-				const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as
+				const domainEventSender = owner.context.domainEventSender as
 					| ((event: MemberDomainEvent) => void)
 					| undefined;
-				if (!emitDomainEvent) return;
+				if (!domainEventSender) return;
 
 				const e = event as 修改属性;
 				const attr = e.data?.attr;
@@ -340,7 +360,7 @@ export const playerStateMachine = (
 				const position = owner.position;
 
 				// 发出 state_changed 事件
-				emitDomainEvent({
+				domainEventSender({
 					type: "state_changed",
 					memberId: owner.id,
 					hp: attr === "hp.current" ? newValue : hp,
@@ -353,7 +373,7 @@ export const playerStateMachine = (
 				// 受击/死亡事件应该由伤害系统直接发出
 				if (attr === "hp.current" && newValue <= 0 && hp > 0) {
 					// 死亡事件
-					emitDomainEvent({
+					domainEventSender({
 						type: "death",
 						memberId: owner.id,
 					});
@@ -363,12 +383,12 @@ export const playerStateMachine = (
 				const owner = context.owner;
 				if (!owner) return;
 
-				const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as
+				const domainEventSender = owner.context.domainEventSender as
 					| ((event: MemberDomainEvent) => void)
 					| undefined;
-				if (!emitDomainEvent) return;
+				if (!domainEventSender) return;
 
-				emitDomainEvent({
+				domainEventSender({
 					type: "move_started",
 					memberId: owner.id,
 					position: owner.position,
@@ -378,12 +398,12 @@ export const playerStateMachine = (
 				const owner = context.owner;
 				if (!owner) return;
 
-				const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as
+				const domainEventSender = owner.context.domainEventSender as
 					| ((event: MemberDomainEvent) => void)
 					| undefined;
-				if (!emitDomainEvent) return;
+				if (!domainEventSender) return;
 
-				emitDomainEvent({
+				domainEventSender({
 					type: "move_stopped",
 					memberId: owner.id,
 					position: owner.position,
@@ -393,15 +413,15 @@ export const playerStateMachine = (
 				const owner = context.owner;
 				if (!owner) return;
 
-				const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as
+				const domainEventSender = owner.context.domainEventSender as
 					| ((event: MemberDomainEvent) => void)
 					| undefined;
-				if (!emitDomainEvent) return;
+				if (!domainEventSender) return;
 
-				const skillId = runtimeContext.currentSkill?.id ?? "";
+				const skillId = memberContext.currentSkill?.id ?? "";
 				if (!skillId) return;
 
-				emitDomainEvent({
+				domainEventSender({
 					type: "cast_progress",
 					memberId: owner.id,
 					skillId,
@@ -412,15 +432,15 @@ export const playerStateMachine = (
 				const owner = context.owner;
 				if (!owner) return;
 
-				const emitDomainEvent = (owner.runtimeContext as Record<string, unknown>).emitDomainEvent as
+				const domainEventSender = owner.context.domainEventSender as
 					| ((event: MemberDomainEvent) => void)
 					| undefined;
-				if (!emitDomainEvent) return;
+				if (!domainEventSender) return;
 
-				const skillId = runtimeContext.currentSkill?.id ?? "";
+				const skillId = memberContext.currentSkill?.id ?? "";
 				if (!skillId) return;
 
-				emitDomainEvent({
+				domainEventSender({
 					type: "cast_progress",
 					memberId: owner.id,
 					skillId,
@@ -435,14 +455,18 @@ export const playerStateMachine = (
 				const e = event as 受到攻击;
 				const damageRequest = e.data?.damageRequest;
 				if (damageRequest) {
-					runtimeContext.currentDamageRequest = damageRequest;
+					memberContext.currentDamageRequest = damageRequest;
 				} else {
-					runtimeContext.currentDamageRequest = undefined;
+					memberContext.currentDamageRequest = undefined;
 				}
 			},
 			修改目标Id: ({ context, event }, params: { targetId: string }) => {
 				log.debug(`👤 [${context.owner?.name}] 修改目标Id`, event);
-				context.targetId = params.targetId;
+				// Responsibility: shared member context owns the target snapshot.
+				// Purpose: expression evaluation, pipeline execution, and FSM all read
+				// one targetId value.
+				memberContext.targetId = params.targetId;
+				context.targetId = memberContext.targetId;
 			},
 			logEvent: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 日志事件`, event);
@@ -452,23 +476,23 @@ export const playerStateMachine = (
 			存在蓄力阶段: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 判断技能是否有蓄力阶段`, event);
 
-				const variant = runtimeContext.currentSkillVariant;
+				const variant = memberContext.currentSkillVariant;
 				if (!variant) {
 					log.error(`👤 [${context.owner?.name}] 技能效果不存在`);
 					return false;
 				}
 
 				// 蓄力阶段相关属性（假设使用chargeFixed和chargeModified）
-				const reservoirFixed = runtimeContext.expressionEvaluator?.(variant.reservoirFixed ?? "0", {
-					currentFrame: context.currentFrame,
+				const reservoirFixed = memberContext.expressionEvaluator?.(variant.reservoirFixed ?? "0", {
+					currentFrame: memberContext.currentFrame,
 					casterId: player.id,
 				});
 				if (typeof reservoirFixed !== "number") {
 					log.error(`👤 [${context.owner?.name}] 蓄力阶段固定值不是数字`);
 					return false;
 				}
-				const reservoirModified = runtimeContext.expressionEvaluator?.(variant.reservoirModified ?? "0", {
-					currentFrame: context.currentFrame,
+				const reservoirModified = memberContext.expressionEvaluator?.(variant.reservoirModified ?? "0", {
+					currentFrame: memberContext.currentFrame,
 					casterId: player.id,
 				});
 				if (typeof reservoirModified !== "number") {
@@ -480,21 +504,21 @@ export const playerStateMachine = (
 			},
 			存在咏唱阶段: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 判断技能是否有咏唱阶段`, event);
-				const variant = runtimeContext.currentSkillVariant;
+				const variant = memberContext.currentSkillVariant;
 				if (!variant) {
 					log.error(`👤 [${context.owner?.name}] 技能效果不存在`);
 					return false;
 				}
-				const chantingFixed = runtimeContext.expressionEvaluator?.(variant.chantingFixed ?? "0", {
-					currentFrame: context.currentFrame,
+				const chantingFixed = memberContext.expressionEvaluator?.(variant.chantingFixed ?? "0", {
+					currentFrame: memberContext.currentFrame,
 					casterId: player.id,
 				});
 				if (typeof chantingFixed !== "number") {
 					log.error(`👤 [${context.owner?.name}] 咏唱阶段固定值不是数字`);
 					return false;
 				}
-				const chantingModified = runtimeContext.expressionEvaluator?.(variant.chantingModified ?? "0", {
-					currentFrame: context.currentFrame,
+				const chantingModified = memberContext.expressionEvaluator?.(variant.chantingModified ?? "0", {
+					currentFrame: memberContext.currentFrame,
 					casterId: player.id,
 				});
 				if (typeof chantingModified !== "number") {
@@ -514,7 +538,7 @@ export const playerStateMachine = (
 				log.debug(`👤 [${context.owner?.name}] 判断技能是否有可用效果`, event);
 				const e = event as 使用技能;
 				const skillId = e.data.skillId;
-				const skill = runtimeContext.currentSkill;
+				const skill = memberContext.currentSkill;
 				if (!skill) {
 					log.error(`🎮 [${context.owner?.name}] 技能不存在: ${skillId}`);
 					return true;
@@ -529,7 +553,7 @@ export const playerStateMachine = (
 			},
 			还未冷却: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 判断技能是否还未冷却`, event);
-				const res = runtimeContext.skillCooldowns?.[runtimeContext.currentSkillIndex ?? 0];
+				const res = memberContext.skillCooldowns?.[memberContext.currentSkillIndex ?? 0];
 				if (res === undefined) {
 					log.debug(`- 该技能不存在冷却时间`);
 					return false;
@@ -546,7 +570,7 @@ export const playerStateMachine = (
 				const e = event as 使用技能;
 				const skillId = e.data.skillId;
 
-				const skill = runtimeContext.currentSkill;
+				const skill = memberContext.currentSkill;
 				if (!skill) {
 					log.error(`🎮 [${context.owner?.name}] 技能不存在: ${skillId}`);
 					return true;
@@ -557,8 +581,8 @@ export const playerStateMachine = (
 					return true;
 				}
 				if (variant.hpCost && variant.mpCost) {
-					const hpCost = runtimeContext.expressionEvaluator?.(variant.hpCost, {
-						currentFrame: context.currentFrame,
+					const hpCost = memberContext.expressionEvaluator?.(variant.hpCost, {
+						currentFrame: memberContext.currentFrame,
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,
 					});
@@ -566,8 +590,8 @@ export const playerStateMachine = (
 						log.error(`👤 [${context.owner?.name}] 技能HP消耗不是数字`);
 						return true;
 					}
-					const mpCost = runtimeContext.expressionEvaluator?.(variant.mpCost, {
-						currentFrame: context.currentFrame,
+					const mpCost = memberContext.expressionEvaluator?.(variant.mpCost, {
+						currentFrame: memberContext.currentFrame,
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,
 					});
@@ -616,18 +640,18 @@ export const playerStateMachine = (
 		},
 	}).createMachine({
 		context: {
-			targetId: player.id,
+			targetId: memberContext.targetId,
 			isAlive: true,
-			position: player.position,
-			createdAtFrame: 0,
-			currentFrame: 0,
-			statusTags: [],
+			position: { ...memberContext.position },
+			createdAtFrame: memberContext.currentFrame,
+			currentFrame: memberContext.currentFrame,
+			statusTags: [...memberContext.statusTags],
 			owner: player,
 		},
 		id: machineId,
 		initial: "存活",
 		on: {
-			更新: {
+			update: {
 				actions: [
 					{
 						type: "更新玩家状态",

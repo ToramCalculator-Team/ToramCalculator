@@ -373,9 +373,18 @@ export const indexPageMachine = createMachine(
 					// 结果处理性能分析
 					const processStartTime = performance.now();
 
-					// 计算是否为空结果
-					const isNullResult = Object.values(finalResult).every((arr) => arr.length === 0);
-					const resultListState = Object.keys(finalResult).map(() => true);
+					// 进入展示前剔除空组，保证列表状态和动画延迟只基于实际可见内容
+					const filteredResult = Object.entries(finalResult).reduce<IndexPageContext["searchResult"]>(
+						(acc, [key, groupResult]) => {
+							if (groupResult.length > 0) {
+								acc[key] = groupResult as IndexPageContext["searchResult"][string];
+							}
+							return acc;
+						},
+						{},
+					);
+					const isNullResult = Object.keys(filteredResult).length === 0;
+					const resultListState = Object.keys(filteredResult).map(() => true);
 
 					const processTime = performance.now() - processStartTime;
 					console.log(`⚙️ [状态机] 结果处理耗时: ${processTime.toFixed(2)}ms`);
@@ -387,7 +396,7 @@ export const indexPageMachine = createMachine(
 
 					// 返回搜索结果
 					return {
-						result: finalResult,
+						result: filteredResult,
 						isNullResult,
 						resultListState,
 					};

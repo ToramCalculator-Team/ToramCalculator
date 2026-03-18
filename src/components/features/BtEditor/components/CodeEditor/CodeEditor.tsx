@@ -6,8 +6,8 @@ import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker&ur
 import TsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker&url";
 import { type Component, createEffect, onCleanup, onMount } from "solid-js";
 import { CommonActionPool } from "~/components/features/simulator/core/Member/runtime/Agent/CommonActions";
+import { CommonBtBindings } from "~/components/features/simulator/core/Member/runtime/Agent/CommonBtContext";
 import { CommonConditionPool } from "~/components/features/simulator/core/Member/runtime/Agent/CommonCondition";
-import { CommonContext } from "~/components/features/simulator/core/Member/runtime/Agent/CommonContext";
 import { rgbToBase16 } from "~/lib/utils/color";
 import { store } from "~/store";
 import { mdslLanguageDefinition } from "../../modes/mdsl";
@@ -62,7 +62,7 @@ const getMdslRegistry = () => {
 		currentMdslRegistry = buildMdslIntellisenseRegistry({
 			actionPool: CommonActionPool,
 			conditionPool: CommonConditionPool,
-			propertyObject: CommonContext,
+			propertyObject: CommonBtBindings,
 		});
 	}
 	return currentMdslRegistry;

@@ -21,13 +21,18 @@ root [mainAction] {
     }
 }`;
 const defaultSkillAgent = `class Agent {
+    get 有效攻击力() {
+        return this.vAtkP;
+    }
+    get 技能常数() {
+        return 500;
+    }
+    get 技能倍率() {
+        return 100 + skill.lv * 5 + self.vit + self.str;
+    }
     get 后摇帧数() {
         const endFrames = this.currentSkillActionFrames - this.currentSkillStartupFrames
         return endFrames
-    }
-    get 伤害计算公式() {
-        // 伤害公式本身是“字符串表达式”，这里把通用片段 vAtkP 直接嵌入，避免在 MDSL 参数里写字符串拼接
-        return \`(\${this.vAtkP} + 100) * (100 + skill.lv * 5 + self.vit + self.str) / 100\`
     }
 }`;
 

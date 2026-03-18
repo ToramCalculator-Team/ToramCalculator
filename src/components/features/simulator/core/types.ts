@@ -151,7 +151,7 @@ export const BuffViewDataSchema = z.object({
 		.array(
 			z.object({
 				pipelineName: z.string(),
-				afterActionName: z.string(),
+				afterStageName: z.string(),
 				priority: z.number().optional(),
 			}),
 		)

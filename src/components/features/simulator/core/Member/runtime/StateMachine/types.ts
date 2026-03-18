@@ -71,6 +71,16 @@ export type MemberActor<
  * 所有成员类型（Player、Mob）的状态上下文都应实现此接口
  * 用于行为树节点访问通用功能
  */
+/**
+ * FSM-private compatibility context.
+ *
+ * Responsibility:
+ * - keep legacy FSM guards/actions type-safe while the refactor is in progress
+ *
+ * Purpose:
+ * - owner / targetId / position / currentFrame / statusTags are mirrors
+ *   of member.context, not independent sources of truth
+ */
 export interface MemberStateContext {
   /** 成员引用 */
   owner: Member<any, any, any, any>;

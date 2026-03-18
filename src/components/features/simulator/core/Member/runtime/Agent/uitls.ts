@@ -1,7 +1,7 @@
 import { type ZodType, z } from "zod/v4";
 import { createLogger } from "~/lib/Logger";
 import type { State } from "~/lib/mistreevous/State";
-import type { CommonContext } from "./CommonContext";
+import type { MemberContext } from "../../MemberContext";
 import type { ActionPool, ConditionPool } from "./type";
 
 const log = createLogger("AgentUtils");
@@ -88,7 +88,7 @@ const buildInputObject = (schema: ZodType, args: unknown[]): unknown => {
 };
 
 /**
- * 将 ActionPool（[schema, impl]）转换为可直接注入 runtimeContext 的 invoker 函数表。
+ * 将 ActionPool（[schema, impl]）转换为可直接注入 BT 上下文的 invoker 函数表。
  *
  * 注意：
  * - 运行时不做 zod 校验
@@ -106,7 +106,7 @@ export const actionPoolToInvokers = <TPool extends ActionPool<TContext>, TContex
 		const schema = entry[0] as unknown as ZodType;
 		const impl = entry[1] as unknown as (context: TContext, actionInput: unknown) => State;
 
-		// 必须使用 function 声明，以便拿到 `this === runtimeContext`
+		// 必须使用 function 声明，以便拿到 `this === btContext`
 		invokers[name as keyof TPool] = function (this: TContext, ...args: unknown[]) {
 			const inputObj = buildInputObject(schema, args);
 			return impl(this, inputObj);
@@ -116,7 +116,7 @@ export const actionPoolToInvokers = <TPool extends ActionPool<TContext>, TContex
 };
 
 /**
- * 将 ConditionPool（[schema, impl]）转换为可直接注入 runtimeContext 的 invoker 函数表。
+ * 将 ConditionPool（[schema, impl]）转换为可直接注入 BT 上下文的 invoker 函数表。
  */
 export const conditionPoolToInvokers = <
 	TPool extends ConditionPool<TContext>,
@@ -133,7 +133,7 @@ export const conditionPoolToInvokers = <
 		const schema = entry[0] as unknown as ZodType;
 		const impl = entry[1] as unknown as (context: TContext, actionInput: unknown) => boolean;
 
-		// 必须使用 function 声明，以便拿到 `this === runtimeContext`
+		// 必须使用 function 声明，以便拿到 `this === btContext`
 		invokers[name as keyof TPool] = function (this: TContext, ...args: unknown[]) {
 			const inputObj = buildInputObject(schema, args);
 			return impl(this, inputObj);
@@ -149,11 +149,11 @@ export const maxMin = (min: number, value: number, max: number) => {
 
 /**
  * 发送渲染指令
- * @param context 运行时上下文
+ * @param context 成员共享 runtime
  * @param actionName 动作名称
  * @param params 参数
  */
-export const sendRenderCommand = (context: CommonContext, actionName: string, params?: Record<string, unknown>) => {
+export const sendRenderCommand = (context: MemberContext, actionName: string, params?: Record<string, unknown>) => {
 	if (!context.renderMessageSender) {
 		log.warn(`⚠️ [${context.owner?.name}] 无法获取渲染消息接口，无法发送渲染指令: ${actionName}`);
 		return;
@@ -172,8 +172,8 @@ export const sendRenderCommand = (context: CommonContext, actionName: string, pa
 	};
 	context.renderMessageSender?.(renderCmd);
 	// 记录最后一次渲染动作，供渲染快照推算 animation.progress
-	if (context.owner?.runtimeContext) {
-		const ctx = context.owner.runtimeContext as Record<string, unknown>;
+	if (context.owner?.context) {
+		const ctx = context.owner.context as Record<string, unknown>;
 		if (!ctx.__render) ctx.__render = {};
 		(ctx.__render as Record<string, unknown>).lastAction = { name: actionName, ts: now, params };
 	}
