@@ -340,6 +340,8 @@ const dictionary: Dictionary = {
 			unInstall: "UnInstall",
 			operation: "Operation",
 			searching: "Searching...",
+			enterFullscreen: "Enter Fullscreen",
+			exitFullscreen: "Exit Fullscreen",
 		},
 		relationPrefix: {
 			belongsTo: "Belongs to",

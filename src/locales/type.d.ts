@@ -70,6 +70,8 @@ export interface Dictionary {
 			unInstall: string;
 			operation: string;
 			searching: string;
+			enterFullscreen: string;
+			exitFullscreen: string;
 		};
 		relationPrefix: {
 			belongsTo: string;

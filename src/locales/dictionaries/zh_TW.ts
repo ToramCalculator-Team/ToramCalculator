@@ -340,6 +340,8 @@ const dictionary: Dictionary = {
 			unInstall: "解除安裝",
 			operation: "操作",
 			searching: "搜尋中...",
+			enterFullscreen: "進入全螢幕",
+			exitFullscreen: "退出全螢幕",
 		},
 		relationPrefix: {
 			belongsTo: "所屬",
