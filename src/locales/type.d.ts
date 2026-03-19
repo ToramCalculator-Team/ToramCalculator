@@ -33,7 +33,6 @@ export type Dic<T> = {
 	selfName: string;
 	description: string;
 	fields: FieldDict<T>;
-	cardFields?: Record<string, string>;
 };
 
 export interface Dictionary {
@@ -218,6 +217,23 @@ export interface Dictionary {
 		character: {
 			pageTitle: string;
 			description: string;
+			tabs: {
+				combo: string;
+				equipment: {
+					selfName: string;
+					mainHand: string;
+					subHand: string;
+					armor: string;
+					option: string;
+					special: string;
+				};
+				consumable: string;
+				cooking: string;
+				registlet: string;
+				skill: string;
+				ability: string;
+				base: string;
+			};
 		};
 	};
 	db: { [K in keyof DB]: Dic<DB[K]> };

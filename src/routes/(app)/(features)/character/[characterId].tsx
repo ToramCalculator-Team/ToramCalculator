@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from "@solidjs/router";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createEffect, createMemo, createResource, createSignal, on, onCleanup, onMount, Show } from "solid-js";
+import type { JSX } from "solid-js/jsx-runtime";
 import { type CharacterEntityRuntime, EntityFactory } from "~/components/features/simulator/render/RendererController";
 // import "@babylonjs/core/Debug/debugLayer"; // Augments the scene with the debug methods
 // import "@babylonjs/inspector"; // Injects a local ES6 version of the inspector to prevent automatically relying on the none compatible version
@@ -21,13 +22,19 @@ import {
 	selectCharacterByIdWithRelations,
 } from "@db/generated/repositories/character";
 import { Motion } from "solid-motionone";
+import { Dialog } from "~/components/containers/dialog";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Select } from "~/components/controls/select";
+import { VirtualTable } from "~/components/dataDisplay/virtualTable";
 import { Icons } from "~/components/icons";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import { createCharacter } from "./createCharacter";
+import { DB } from "@db/generated/zod";
+import { DATA_CONFIG } from "~/components/business/data-config";
+import { getPrimaryKeys } from "@db/generated/dmmf-utils";
+import { repositoryMethods } from "@db/generated/repositories";
 
 export default function CharactePage() {
 	// UI文本字典
@@ -45,7 +52,22 @@ export default function CharactePage() {
 		charactersFinder,
 	);
 
-	const formPages = ["连击", "装备", "消耗品", "料理", "雷吉斯托环", "技能", "能力值", "基本配置"];
+	const [dialogIsOpen, setDialogIsOpen] = createSignal(false);
+	const [dialogTitle, setDialogTitle] = createSignal("");
+	let dialogVistualTableType: keyof DB = "player_weapon";
+	const [globalFilterStr, setGlobalFilterStr] = createSignal("");
+
+	const tabs = {
+		combo: { label: dictionary().ui.character.tabs.combo, value: "combo" },
+		equipment: { label: dictionary().ui.character.tabs.equipment.selfName, value: "equipment" },
+		consumable: { label: dictionary().ui.character.tabs.consumable, value: "consumable" },
+		cooking: { label: dictionary().ui.character.tabs.cooking, value: "cooking" },
+		registlet: { label: dictionary().ui.character.tabs.registlet, value: "registlet" },
+		skill: { label: dictionary().ui.character.tabs.skill, value: "skill" },
+		ability: { label: dictionary().ui.character.tabs.ability, value: "ability" },
+		base: { label: dictionary().ui.character.tabs.base, value: "base" },
+	};
+	const [activeTab, setActiveTab] = createSignal<keyof typeof tabs>("equipment");
 
 	const [canvas, setCanvas] = createSignal<HTMLCanvasElement | null>(null);
 	// 引擎定义
@@ -138,11 +160,11 @@ export default function CharactePage() {
 		return scene;
 	};
 
+	// new Engine会重设canvas尺寸，这会导致布局重绘，然后引起视觉抖动。这里通过延迟渲染解决
 	createEffect(
 		on(
 			() => canvas(),
 			(c) => {
-				// new Engine会重设canvas尺寸，这会导致布局重绘，然后引起视觉抖动。这里通过延迟渲染解决
 				if (c)
 					setTimeout(async () => {
 						const scene = createBabylonScene(c);
@@ -198,18 +220,25 @@ export default function CharactePage() {
 							styleLess
 							textCenter
 						/>
-						<Button icon={<Icons.Outline.AddUser />} level="quaternary" onClick={async () => {
-							const character = await createCharacter();
-							navigate(`/character/${character.id}`);
-						}} />
+						<Button
+							icon={<Icons.Outline.AddUser />}
+							level="quaternary"
+							onClick={async () => {
+								const character = await createCharacter();
+								navigate(`/character/${character.id}`);
+							}}
+						/>
 					</div>
 					<div class="Content flex h-full w-full flex-1 flex-col overflow-hidden p-6 landscape:flex-row">
+						{/* 角色视图 */}
 						<div class="CharacterView hidden w-full flex-1 overflow-hidden portrait:block">
 							<canvas ref={setCanvas} class="border-dividing-color block h-full w-full rounded-md border">
 								当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
 							</canvas>
 						</div>
 						<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:hidden landscape:h-full landscape:w-px"></div>
+
+						{/* 标签栏 */}
 						<OverlayScrollbarsComponent
 							element="div"
 							options={{ scrollbars: { visibility: "hidden" } }}
@@ -218,292 +247,328 @@ export default function CharactePage() {
 						>
 							<div class={`flex flex-row items-start gap-2 landscape:flex-col`}>
 								<Button
-									onClick={() => console.log("连击")}
-									level="quaternary"
+									onClick={() => setActiveTab("combo")}
+									level={activeTab() === "combo" ? "primary" : "quaternary"}
 									icon={<Icons.Outline.Gamepad />}
 									textAlign="left"
 									class="flex-none landscape:w-full"
 								>
-									{dictionary().db.combo.selfName}
+									{dictionary().ui.character.tabs.combo}
 								</Button>
 								<Button
-									onClick={() => console.log("装备")}
-									level="quaternary"
+									onClick={() => setActiveTab("equipment")}
+									level={activeTab() === "equipment" ? "primary" : "quaternary"}
 									icon={<Icons.Outline.Category />}
 									textAlign="left"
 									class="flex-none landscape:w-full"
 								>
-									装备
+									{dictionary().ui.character.tabs.equipment.selfName}
 								</Button>
 								<Button
-									onClick={() => console.log("消耗品")}
-									level="quaternary"
+									onClick={() => setActiveTab("consumable")}
+									level={activeTab() === "consumable" ? "primary" : "quaternary"}
 									icon={<Icons.Outline.Sale />}
 									textAlign="left"
 									class="flex-none landscape:w-full"
 								>
-									{dictionary().db.consumable.selfName}
+									{dictionary().ui.character.tabs.consumable}
 								</Button>
 								<Button
-									onClick={() => console.log("料理")}
-									level="quaternary"
+									onClick={() => setActiveTab("cooking")}
+									level={activeTab() === "cooking" ? "primary" : "quaternary"}
 									icon={<Icons.Outline.Coupon2 />}
 									textAlign="left"
 									class="flex-none landscape:w-full"
 								>
-									料理
+									{dictionary().ui.character.tabs.cooking}
 								</Button>
 								<Button
-									onClick={() => console.log("雷吉斯托环")}
-									level="quaternary"
+									onClick={() => setActiveTab("registlet")}
+									level={activeTab() === "registlet" ? "primary" : "quaternary"}
 									icon={<Icons.Outline.CreditCard />}
 									textAlign="left"
 									class="flex-none landscape:w-full"
 								>
-									雷吉斯托环
+									{dictionary().ui.character.tabs.registlet}
 								</Button>
 								<Button
-									onClick={() => console.log("技能")}
-									level="quaternary"
+									onClick={() => setActiveTab("skill")}
+									level={activeTab() === "skill" ? "primary" : "quaternary"}
 									icon={<Icons.Outline.Scale />}
 									textAlign="left"
 									class="flex-none landscape:w-full"
 								>
-									技能
+									{dictionary().ui.character.tabs.skill}
 								</Button>
 								<Button
-									onClick={() => console.log("能力值")}
-									level="quaternary"
+									onClick={() => setActiveTab("ability")}
+									level={activeTab() === "ability" ? "primary" : "quaternary"}
 									icon={<Icons.Outline.Filter />}
 									textAlign="left"
 									class="flex-none landscape:w-full"
 								>
-									能力值
+									{dictionary().ui.character.tabs.ability}
 								</Button>
 								<Button
-									onClick={() => console.log("基本配置")}
-									level="quaternary"
+									onClick={() => setActiveTab("base")}
+									level={activeTab() === "base" ? "primary" : "quaternary"}
 									icon={<Icons.Outline.Edit />}
 									textAlign="left"
 									class="flex-none landscape:w-full"
 								>
-									基本配置
+									{dictionary().ui.character.tabs.base}
 								</Button>
 							</div>
 						</OverlayScrollbarsComponent>
 						<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:h-full landscape:w-px"></div>
 
 						{/* 装备 */}
-						<OverlayScrollbarsComponent
-							element="div"
-							options={{ scrollbars: { autoHide: "scroll" } }}
-							defer
-							class="flex flex-none portrait:w-full landscape:w-1/2"
-						>
-							<div class={`flex w-full flex-none gap-3 portrait:flex-wrap landscape:flex-col`}>
-								{/* 主手 */}
-								<section
-									role="application"
-									onClick={() => {
-										if (character().weapon) {
-											setStore("pages", "cardGroup", store.pages.cardGroup.length, {
-												type: "player_weapon",
-												id: character().weapon?.id,
-											});
-										}
-									}}
-									onKeyUp={(e) => {
-										if (e.key === "Enter" || e.key === " ") {
-											e.preventDefault();
-											e.stopPropagation();
-										}
-									}}
-									class="MainHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border landscape:w-full landscape:border-b"
-								>
-									<div class="Label px-4 py-3">主手</div>
-									<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
-										<Icons.Spirits iconName={character().weapon?.type ?? ""} size={36} />
-										{character().weapon?.name}
-									</div>
-									<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
-										<Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
-										<Show
-											when={character().weapon}
-											fallback={
-												<Button
-													icon={<Icons.Outline.DocmentAdd />}
-													level="quaternary"
-													class="rounded-none rounded-tr"
-												/>
+						<Show when={activeTab() === "equipment"}>
+							<OverlayScrollbarsComponent
+								element="div"
+								options={{ scrollbars: { autoHide: "scroll" } }}
+								defer
+								class="flex flex-none portrait:w-full landscape:w-1/2"
+							>
+								<div class={`flex w-full flex-none gap-3 portrait:flex-wrap landscape:flex-col`}>
+									{/* 主手 */}
+									<section
+										role="application"
+										onClick={() => {
+											if (character().weapon) {
+												setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+													type: "player_weapon",
+													id: character().weapon?.id,
+												});
 											}
-										>
-											<Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
-										</Show>
-									</button>
-								</section>
-								{/* 副手 */}
-								<section
-									role="application"
-									onClick={() => {
-										if (character().subWeapon) {
-											setStore("pages", "cardGroup", store.pages.cardGroup.length, {
-												type: "player_weapon",
-												id: character().subWeapon?.id,
-											});
-										}
-									}}
-									onKeyUp={(e) => {
-										if (e.key === "Enter" || e.key === " ") {
-											e.preventDefault();
-											e.stopPropagation();
-										}
-									}}
-									class="SubHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border landscape:w-full landscape:border-b"
-								>
-									<div class="Label px-4 py-3">副手</div>
-									<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
-										<Icons.Spirits iconName={character().subWeapon?.type ?? ""} size={36} />
-										{character().subWeapon?.name}
-									</div>
-									<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
-										<Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
-										<Show
-											when={character().weapon}
-											fallback={
-												<Button
-													icon={<Icons.Outline.DocmentAdd />}
-													level="quaternary"
-													class="rounded-none rounded-tr"
-												/>
+										}}
+										onKeyUp={(e) => {
+											if (e.key === "Enter" || e.key === " ") {
+												e.preventDefault();
+												e.stopPropagation();
 											}
-										>
-											<Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
-										</Show>
-									</button>
-								</section>
-								{/* 防具 */}
-								<section
-									role="application"
-									onClick={() => {
-										if (character().armor) {
-											setStore("pages", "cardGroup", store.pages.cardGroup.length, {
-												type: "player_armor",
-												id: character().armor?.id,
-											});
-										}
-									}}
-									onKeyUp={(e) => {
-										if (e.key === "Enter" || e.key === " ") {
-											e.preventDefault();
-											e.stopPropagation();
-										}
-									}}
-									class="Armor  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
-								>
-									<div class="Label px-4 py-3 portrait:hidden">防具</div>
-									<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
-										<Icons.Spirits iconName={character().armor?.ability ?? ""} size={36} />
-										{character().armor?.name}
-									</div>
-									<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
-										<Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
-										<Show
-											when={character().armor}
-											fallback={
-												<Button
-													icon={<Icons.Outline.DocmentAdd />}
-													level="quaternary"
-													class="rounded-none rounded-tr"
-												/>
+										}}
+										class="MainHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border landscape:w-full landscape:border-b"
+									>
+										<div class="Label px-4 py-3">{dictionary().ui.character.tabs.equipment.mainHand}</div>
+										<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
+											<Icons.Spirits iconName={character().weapon?.type ?? ""} size={36} />
+											{character().weapon?.name}
+										</div>
+										<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
+											<Button
+												icon={<Icons.Outline.Category />}
+												level="quaternary"
+												class="rounded-none"
+												onClick={() => {
+													// 打开装备选择器
+													setDialogIsOpen(true);
+													dialogVistualTableType = "player_weapon";
+													setDialogTitle(dictionary().ui.character.tabs.equipment.mainHand);
+												}}
+											/>
+											<Show
+												when={character().weapon}
+												fallback={
+													<Button
+														icon={<Icons.Outline.DocmentAdd />}
+														level="quaternary"
+														class="rounded-none rounded-tr"
+													/>
+												}
+											>
+												<Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
+											</Show>
+										</button>
+									</section>
+									{/* 副手 */}
+									<section
+										role="application"
+										onClick={() => {
+											if (character().subWeapon) {
+												setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+													type: "player_weapon",
+													id: character().subWeapon?.id,
+												});
 											}
-										>
-											<Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
-										</Show>
-									</button>
-								</section>
-								{/* 追加 */}
-								<section
-									role="application"
-									onClick={() => {
-										if (character().option) {
-											setStore("pages", "cardGroup", store.pages.cardGroup.length, {
-												type: "player_option",
-												id: character().option?.id,
-											});
-										}
-									}}
-									onKeyUp={(e) => {
-										if (e.key === "Enter" || e.key === " ") {
-											e.preventDefault();
-											e.stopPropagation();
-										}
-									}}
-									class="OptEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
-								>
-									<div class="Label px-4 py-3 portrait:hidden">追加</div>
-									<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
-										<Icons.Spirits iconName={"option"} size={36} />
-										{character().option?.name}
-									</div>
-									<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
-										<Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
-										<Show
-											when={character().option}
-											fallback={
-												<Button
-													icon={<Icons.Outline.DocmentAdd />}
-													level="quaternary"
-													class="rounded-none rounded-tr"
-												/>
+										}}
+										onKeyUp={(e) => {
+											if (e.key === "Enter" || e.key === " ") {
+												e.preventDefault();
+												e.stopPropagation();
 											}
-										>
-											<Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
-										</Show>
-									</button>
-								</section>
-								{/* 特殊 */}
-								<section
-									role="application"
-									onClick={() => {
-										if (character().special) {
-											setStore("pages", "cardGroup", store.pages.cardGroup.length, {
-												type: "player_special",
-												id: character().special?.id,
-											});
-										}
-									}}
-									onKeyUp={(e) => {
-										if (e.key === "Enter" || e.key === " ") {
-											e.preventDefault();
-											e.stopPropagation();
-										}
-									}}
-									class="SpeEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
-								>
-									<div class="Label px-4 py-3 portrait:hidden">特殊</div>
-									<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
-										<Icons.Spirits iconName={"special"} size={36} />
-										{character().special?.name}
-									</div>
-									<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
-										<Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
-										<Show
-											when={character().special}
-											fallback={
-												<Button
-													icon={<Icons.Outline.DocmentAdd />}
-													level="quaternary"
-													class="rounded-none rounded-tr"
-												/>
+										}}
+										class="SubHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border landscape:w-full landscape:border-b"
+									>
+										<div class="Label px-4 py-3">{dictionary().ui.character.tabs.equipment.subHand}</div>
+										<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
+											<Icons.Spirits iconName={character().subWeapon?.type ?? ""} size={36} />
+											{character().subWeapon?.name}
+										</div>
+										<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
+											<Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
+											<Show
+												when={character().weapon}
+												fallback={
+													<Button
+														icon={<Icons.Outline.DocmentAdd />}
+														level="quaternary"
+														class="rounded-none rounded-tr"
+													/>
+												}
+											>
+												<Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
+											</Show>
+										</button>
+									</section>
+									{/* 防具 */}
+									<section
+										role="application"
+										onClick={() => {
+											if (character().armor) {
+												setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+													type: "player_armor",
+													id: character().armor?.id,
+												});
 											}
-										>
-											<Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
-										</Show>
-									</button>
-								</section>
-							</div>
-						</OverlayScrollbarsComponent>
+										}}
+										onKeyUp={(e) => {
+											if (e.key === "Enter" || e.key === " ") {
+												e.preventDefault();
+												e.stopPropagation();
+											}
+										}}
+										class="Armor  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
+									>
+										<div class="Label px-4 py-3 portrait:hidden">{dictionary().ui.character.tabs.equipment.armor}</div>
+										<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
+											<Icons.Spirits iconName={character().armor?.ability ?? ""} size={36} />
+											{character().armor?.name}
+										</div>
+										<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
+											<Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
+											<Show
+												when={character().armor}
+												fallback={
+													<Button
+														icon={<Icons.Outline.DocmentAdd />}
+														level="quaternary"
+														class="rounded-none rounded-tr"
+													/>
+												}
+											>
+												<Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
+											</Show>
+										</button>
+									</section>
+									{/* 追加 */}
+									<section
+										role="application"
+										onClick={() => {
+											if (character().option) {
+												setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+													type: "player_option",
+													id: character().option?.id,
+												});
+											}
+										}}
+										onKeyUp={(e) => {
+											if (e.key === "Enter" || e.key === " ") {
+												e.preventDefault();
+												e.stopPropagation();
+											}
+										}}
+										class="OptEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
+									>
+										<div class="Label px-4 py-3 portrait:hidden">{dictionary().ui.character.tabs.equipment.option}</div>
+										<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
+											<Icons.Spirits iconName={"option"} size={36} />
+											{character().option?.name}
+										</div>
+										<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
+											<Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
+											<Show
+												when={character().option}
+												fallback={
+													<Button
+														icon={<Icons.Outline.DocmentAdd />}
+														level="quaternary"
+														class="rounded-none rounded-tr"
+													/>
+												}
+											>
+												<Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
+											</Show>
+										</button>
+									</section>
+									{/* 特殊 */}
+									<section
+										role="application"
+										onClick={() => {
+											if (character().special) {
+												setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+													type: "player_special",
+													id: character().special?.id,
+												});
+											}
+										}}
+										onKeyUp={(e) => {
+											if (e.key === "Enter" || e.key === " ") {
+												e.preventDefault();
+												e.stopPropagation();
+											}
+										}}
+										class="SpeEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
+									>
+										<div class="Label px-4 py-3 portrait:hidden">
+											{dictionary().ui.character.tabs.equipment.special}
+										</div>
+										<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
+											<Icons.Spirits iconName={"special"} size={36} />
+											{character().special?.name}
+										</div>
+										<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
+											<Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
+											<Show
+												when={character().special}
+												fallback={
+													<Button
+														icon={<Icons.Outline.DocmentAdd />}
+														level="quaternary"
+														class="rounded-none rounded-tr"
+													/>
+												}
+											>
+												<Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
+											</Show>
+										</button>
+									</section>
+								</div>
+							</OverlayScrollbarsComponent>
+						</Show>
 					</div>
+
+					{/* 弹窗 */}
+					<Dialog state={dialogIsOpen()} setState={(state) => setDialogIsOpen(state)} title={dialogTitle()}>
+						{VirtualTable<DB[typeof dialogVistualTableType]> ({
+							measure: DATA_CONFIG[dialogVistualTableType]?.table.measure,
+							primaryKeyField: getPrimaryKeys(dialogVistualTableType)[0],
+							dataFetcher: async () => (await repositoryMethods[dialogVistualTableType].selectAll?.()) ?? [],
+							// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
+							columnsDef: DATA_CONFIG[dialogVistualTableType]?.table.columnsDef,
+							// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
+							hiddenColumnDef: DATA_CONFIG[dialogVistualTableType]?.table.hiddenColumnDef,
+							// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
+							tdGenerator: DATA_CONFIG[dialogVistualTableType]?.table.tdGenerator,
+							// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
+							defaultSort: DATA_CONFIG[dialogVistualTableType]?.table.defaultSort,
+							dictionary: dictionary().db[dialogVistualTableType],
+							globalFilterStr,
+							rowHandleClick: (id) => console.log("CharacterId:", id,"attr:"),
+							columnVisibility: {},
+							onColumnVisibilityChange: () => {},
+						})}
+					</Dialog>
 				</Motion.div>
 			)}
 		</Show>

@@ -583,6 +583,23 @@ const dictionary: Dictionary = {
 		character: {
 			pageTitle: "機體表",
 			description: "此頁面正在開發中，請勿使用",
+			tabs: {
+				combo: "連擊",
+				equipment: {
+					selfName: "裝備",
+					mainHand: "主手",
+					subHand: "副手",
+					armor: "身體裝備",
+					option: "追加裝備",
+					special: "特殊裝備",
+				},
+				consumable: "消耗品",
+				cooking: "料理",
+				registlet: "雷吉斯托環",
+				skill: "技能",
+				ability: "能力值",
+				base: "基本配置",
+			}
 		},
 	},
 	db: {
@@ -825,7 +842,6 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			cardFields: undefined,
 		},
 		_mobTozone: {
 			selfName: "",
@@ -1092,127 +1108,127 @@ const dictionary: Dictionary = {
 			selfName: "機體",
 			fields: {
 				id: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "ID",
+					tableFieldDescription: "機體的唯一標識符",
+					formFieldDescription: "機體的唯一標識符",
 				},
 				name: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "名稱",
+					tableFieldDescription: "機體的名稱",
+					formFieldDescription: "請輸入機體名稱",
 				},
 				lv: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "等級",
+					tableFieldDescription: "機體的等級",
+					formFieldDescription: "請輸入機體等級",
 				},
 				str: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "力量",
+					tableFieldDescription: "機體的力量值",
+					formFieldDescription: "請輸入機體力量值",
 				},
 				int: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "智力",
+					tableFieldDescription: "機體的智力值",
+					formFieldDescription: "請輸入機體智力值",
 				},
 				vit: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "體質",
+					tableFieldDescription: "機體的體質值",
+					formFieldDescription: "請輸入機體體質值",
 				},
 				agi: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "敏捷",
+					tableFieldDescription: "機體的敏捷值",
+					formFieldDescription: "請輸入機體敏捷值",
 				},
 				dex: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "靈巧",
+					tableFieldDescription: "機體的靈巧值",
+					formFieldDescription: "請輸入機體靈巧值",
 				},
 				personalityType: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "性格類型",
+					tableFieldDescription: "機體的性格類型",
+					formFieldDescription: "請選擇機體的性格類型",
 					enumMap: characterPersonalityType,
 				},
 				personalityValue: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "性格值",
+					tableFieldDescription: "機體的性格值",
+					formFieldDescription: "請輸入機體性格值",
 				},
 				weaponId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "武器ID",
+					tableFieldDescription: "裝備的武器ID",
+					formFieldDescription: "請選擇裝備的武器",
 				},
 				subWeaponId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "副武器ID",
+					tableFieldDescription: "裝備的副武器ID",
+					formFieldDescription: "請選擇裝備的副武器",
 				},
 				armorId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "防具ID",
+					tableFieldDescription: "裝備的防具ID",
+					formFieldDescription: "請選擇裝備的防具",
 				},
 				optionId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "追加裝備ID",
+					tableFieldDescription: "裝備的追加裝備ID",
+					formFieldDescription: "請選擇裝備的追加裝備",
 				},
 				specialId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "特殊裝備ID",
+					tableFieldDescription: "裝備的特殊裝備ID",
+					formFieldDescription: "請選擇裝備的特殊裝備",
 				},
 				cooking: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "烹飪",
+					tableFieldDescription: "機體的烹飪技能",
+					formFieldDescription: "請輸入烹飪技能等級",
 				},
 				modifiers: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "修正值",
+					tableFieldDescription: "機體的屬性修正值",
+					formFieldDescription: "請輸入機體的屬性修正值",
 				},
 				partnerSkillAId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "伙伴技能A ID",
+					tableFieldDescription: "伙伴技能A的ID",
+					formFieldDescription: "請選擇伙伴技能A",
 				},
 				partnerSkillAType: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "伙伴技能A类型",
+					tableFieldDescription: "伙伴技能A的类型",
+					formFieldDescription: "請選擇伙伴技能A类型",
 					enumMap: partnerSkillType,
 				},
 				partnerSkillBId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "伙伴技能B ID",
+					tableFieldDescription: "伙伴技能B的ID",
+					formFieldDescription: "請選擇伙伴技能B",
 				},
 				partnerSkillBType: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "伙伴技能B类型",
+					tableFieldDescription: "伙伴技能B的类型",
+					formFieldDescription: "請選擇伙伴技能B类型",
 					enumMap: partnerSkillType,
 				},
 				belongToPlayerId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "主人ID",
+					tableFieldDescription: "機體的主人ID",
+					formFieldDescription: "請選擇機體的主人",
 				},
 				details: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "詳細資料",
+					tableFieldDescription: "機體的詳細資料",
+					formFieldDescription: "請輸入機體的詳細資料",
 				},
 				statisticId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "統計ID",
+					tableFieldDescription: "機體的統計ID",
+					formFieldDescription: "請選擇機體的統計",
 				},
 			},
 			description: "",
@@ -1662,10 +1678,8 @@ const dictionary: Dictionary = {
 				},
 				type: {
 					key: "怪物類型",
-					tableFieldDescription:
-						"目前支援的類型只有這些，雖然實際上解包可以看到有很多種，但是對於咱這個應用沒啥用，因此忽略了很多種類。",
-					formFieldDescription:
-						"目前支援的類型只有這些，雖然實際上解包可以看到有很多種，但是對於咱這個應用沒啥用，因此忽略了很多種類。",
+					tableFieldDescription: "目前支援的類型只有這些，雖然實際上解包可以看到有很多種，但是對於咱這個應用沒啥用，因此忽略了很多種類。",
+					formFieldDescription: "目前支援的類型只有這些，雖然實際上解包可以看到有很多種，但是對於咱這個應用沒啥用，因此忽略了很多種類。",
 					enumMap: mobType,
 				},
 				captureable: {
@@ -1690,16 +1704,14 @@ const dictionary: Dictionary = {
 				},
 				initialElement: {
 					key: "元素屬性",
-					tableFieldDescription:
-						"這是初始屬性，怪物在戰鬥時可能會改變其屬性，詳細情況將取決於怪物行為中的描述，要查看怪物行為，請點擊具體怪物",
+					tableFieldDescription: "這是初始屬性，怪物在戰鬥時可能會改變其屬性，詳細情況將取決於怪物行為中的描述，要查看怪物行為，請點擊具體怪物",
 					formFieldDescription: "這裡填寫怪物的初始屬性即可，有關屬性變化的描述請在怪物行為中編輯",
 					enumMap: elementType,
 				},
 				radius: {
 					key: "半徑",
 					tableFieldDescription: "怪物的模型尺寸，主要是用來計算技能是否命中",
-					formFieldDescription:
-						"怪物的模型尺寸，主要是用來計算技能是否命中，從遠處按下聖拳之裁後，技能發動瞬間螢幕上顯示的距離-1就可以測出這個值。",
+					formFieldDescription: "怪物的模型尺寸，主要是用來計算技能是否命中，從遠處按下聖拳之裁後，技能發動瞬間螢幕上顯示的距離-1就可以測出這個值。",
 				},
 				maxhp: {
 					key: "最大生命值",
@@ -1779,20 +1791,17 @@ const dictionary: Dictionary = {
 				statisticId: {
 					key: "統計信息ID",
 					tableFieldDescription: "這是怪物的統計信息欄位資料庫id，一般來說，你應該不可能看到這個",
-					formFieldDescription:
-						"這是怪物的統計信息欄位資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
+					formFieldDescription: "這是怪物的統計信息欄位資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
 				},
 				updatedByAccountId: {
 					key: "更新者ID",
 					tableFieldDescription: "這是怪物的更新者資料庫id，一般來說，你應該不可能看到這個",
-					formFieldDescription:
-						"這是怪物的更新者資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
+					formFieldDescription: "這是怪物的更新者資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
 				},
 				createdByAccountId: {
 					key: "創建者ID",
 					tableFieldDescription: "這是怪物的創建者資料庫id，一般來說，你應該不可能看到這個",
-					formFieldDescription:
-						"這是怪物的創建者資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
+					formFieldDescription: "這是怪物的創建者資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
 				},
 			},
 			description: "",
@@ -2985,12 +2994,80 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			cardFields: {
-				mobs: "出現的怪物",
-				npcs: "出現的NPC",
-			},
 			description: "遊戲中的區域資訊，包含名稱、連結區域、獎勵節點等",
 		},
+		character_registlet: {
+			selfName: "",
+			description: "",
+			fields: {
+				id: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				level: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				templateId: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				belongToCharacterId: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				}
+			}
+		},
+		registlet: {
+			selfName: "",
+			description: "",
+			fields: {
+				id: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				name: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				maxLevel: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				attrModifiers: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				pipelinePatches: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				skillBranchActivators: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				updatedByAccountId: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				createdByAccountId: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				}
+			}
+		}
 	},
 };
 

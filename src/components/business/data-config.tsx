@@ -36,7 +36,7 @@ export type DataConfig = Partial<{
 			VirtualTableProps<DB[T]>,
 			| "dataFetcher"
 			| "dictionary"
-			| "columnHandleClick"
+			| "rowHandleClick"
 			| "onColumnVisibilityChange"
 			| "onRefetch"
 			| "globalFilterStr"
@@ -138,6 +138,53 @@ export const DATA_CONFIG: DataConfig = {
 			fieldGenerator: {},
 			onInsert: repositoryMethods.armor.insert,
 			onUpdate: repositoryMethods.armor.update,
+		},
+		card: {
+			hiddenFields: [],
+			fieldGenerator: {},
+		},
+	},
+	character: {
+		fieldGroupMap: {
+			ID: ["id"],
+			基本信息: ["name", "lv", "str", "int", "vit", "agi", "dex", "personalityType", "personalityValue"],
+			装备信息: ["weaponId", "subWeaponId", "armorId", "optionId", "specialId"],
+			其他信息: ["modifiers", "cooking"],
+			统计信息: ["statisticId"]
+		},
+		table: {
+			columnsDef: [
+				{ accessorKey: "id", cell: (info) => info.getValue(), size: 200 },
+				{ accessorKey: "name", cell: (info) => info.getValue(), size: 200 },
+				{ accessorKey: "lv", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "str", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "int", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "vit", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "agi", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "dex", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "personalityType", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "personalityValue", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "weaponId", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "subWeaponId", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "armorId", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "optionId", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "specialId", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "modifiers", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "cooking", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "statisticId", cell: (info) => info.getValue(), size: 100 },
+			],
+			hiddenColumnDef: ["id", "statisticId"],
+			tdGenerator: {},
+			defaultSort: {
+				id: "name",
+				desc: false
+			}
+		},
+		form: {
+			hiddenFields: [],
+			fieldGenerator: {},
+			onInsert: repositoryMethods.character.insert,
+			onUpdate: repositoryMethods.character.update,
 		},
 		card: {
 			hiddenFields: [],
@@ -718,7 +765,18 @@ export const DATA_CONFIG: DataConfig = {
 			所属玩家: ["belongToPlayerId"],
 		},
 		table: {
-			columnsDef: [],
+			columnsDef: [
+				{ accessorKey: "id", cell: (info) => info.getValue(), size: 200 },
+				{ accessorKey: "type", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "name", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "baseAbi", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "stability", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "elementType", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "extraAbi", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "refinement", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "modifiers", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "belongToPlayerId", cell: (info) => info.getValue(), size: 100 },
+			],
 			hiddenColumnDef: [],
 			defaultSort: {
 				id: "type",

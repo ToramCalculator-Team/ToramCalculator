@@ -489,6 +489,23 @@ const dictionary: Dictionary = {
 		character: {
 			pageTitle: "Skill",
 			description: "Emmm..............",
+			tabs: {
+				combo: "Combo",
+				equipment: {
+					selfName: "Equipment",
+					mainHand: "Main Hand",
+					subHand: "Sub Hand",
+					armor: "Armor",
+					option: "Option",
+					special: "Special",
+				},
+				consumable: "Consumable",
+				cooking: "Cooking",
+				registlet: "Registlet",
+				skill: "Skill",
+				ability: "Ability",
+				base: "Base",
+			}
 		},
 	},
 	db: {
@@ -731,7 +748,6 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			cardFields: undefined,
 		},
 		_mobTozone: {
 			selfName: "",
@@ -999,127 +1015,127 @@ const dictionary: Dictionary = {
 			selfName: "Character",
 			fields: {
 				id: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "ID",
+					tableFieldDescription: "The database ID of the character. Usually not displayed.",
+					formFieldDescription: "The database ID of the character. If you are asked to input this, please report it to the developers.",
 				},
 				name: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Name",
+					tableFieldDescription: "The name of the character, usually consistent with the in-game name.",
+					formFieldDescription: "Please enter the name of the character.",
 				},
 				lv: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Level",
+					tableFieldDescription: "The level of the character.",
+					formFieldDescription: "Please enter the level of the character.",
 				},
 				str: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Strength",
+					tableFieldDescription: "The strength of the character.",
+					formFieldDescription: "Please enter the strength of the character.",
 				},
 				int: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Intelligence",
+					tableFieldDescription: "The intelligence of the character.",
+					formFieldDescription: "Please enter the intelligence of the character.",
 				},
 				vit: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Vitality",
+					tableFieldDescription: "The vitality of the character.",
+					formFieldDescription: "Please enter the vitality of the character.",
 				},
 				agi: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Agility",
+					tableFieldDescription: "The agility of the character.",
+					formFieldDescription: "Please enter the agility of the character.",
 				},
 				dex: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Dexterity",
+					tableFieldDescription: "The dexterity of the character.",
+					formFieldDescription: "Please enter the dexterity of the character.",
 				},
 				personalityType: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Personality Type",
+					tableFieldDescription: "The personality type of the character.",
+					formFieldDescription: "Please select the personality type of the character.",
 					enumMap: characterPersonalityType,
 				},
 				personalityValue: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Personality Value",
+					tableFieldDescription: "The personality value of the character.",
+					formFieldDescription: "Please enter the personality value of the character.",
 				},
 				weaponId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Weapon ID",
+					tableFieldDescription: "The ID of the weapon the character is equipped with.",
+					formFieldDescription: "Please select the weapon the character is equipped with.",
 				},
 				subWeaponId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Sub-Weapon ID",
+					tableFieldDescription: "The ID of the sub-weapon the character is equipped with.",
+					formFieldDescription: "Please select the sub-weapon the character is equipped with.",
 				},
 				armorId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Armor ID",
+					tableFieldDescription: "The ID of the armor the character is equipped with.",
+					formFieldDescription: "Please select the armor the character is equipped with.",
 				},
 				optionId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Option ID",
+					tableFieldDescription: "The ID of the option the character is equipped with.",
+					formFieldDescription: "Please select the option the character is equipped with.",
 				},
 				specialId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Special ID",
+					tableFieldDescription: "The ID of the special the character is equipped with.",
+					formFieldDescription: "Please select the special the character is equipped with.",
 				},
 				cooking: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Cooking",
+					tableFieldDescription: "The cooking of the character.",
+					formFieldDescription: "Please enter the cooking of the character.",
 				},
 				modifiers: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Modifiers",
+					tableFieldDescription: "The modifiers of the character.",
+					formFieldDescription: "Please enter the modifiers of the character.",
 				},
 				partnerSkillAId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Partner Skill A ID",
+					tableFieldDescription: "The ID of the partner skill A the character is equipped with.",
+					formFieldDescription: "Please select the partner skill A the character is equipped with.",
 				},
 				partnerSkillAType: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Partner Skill A Type",
+					tableFieldDescription: "The type of the partner skill A the character is equipped with.",
+					formFieldDescription: "Please select the type of the partner skill A the character is equipped with.",
 					enumMap: partnerSkillType,
 				},
 				partnerSkillBId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Partner Skill B ID",
+					tableFieldDescription: "The ID of the partner skill B the character is equipped with.",
+					formFieldDescription: "Please select the partner skill B the character is equipped with.",
 				},
 				partnerSkillBType: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Partner Skill B Type",
+					tableFieldDescription: "The type of the partner skill B the character is equipped with.",
+					formFieldDescription: "Please select the type of the partner skill B the character is equipped with.",
 					enumMap: partnerSkillType,
 				},
 				belongToPlayerId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Owner ID",
+					tableFieldDescription: "The ID of the owner of the character.",
+					formFieldDescription: "Please select the owner of the character.",
 				},
 				details: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Details",
+					tableFieldDescription: "The details of the character.",
+					formFieldDescription: "Please enter the details of the character.",
 				},
 				statisticId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "Statistic ID",
+					tableFieldDescription: "The ID of the statistic of the character.",
+					formFieldDescription: "Please select the statistic of the character.",
 				},
 			},
 			description: "",
@@ -2910,12 +2926,80 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			cardFields: {
-				mobs: "Appearing Monsters",
-				npcs: "Appearing NPCs",
-			},
 			description: "Information about zones in the game, including name, linked zones, reward nodes, etc.",
 		},
+		character_registlet: {
+			selfName: "",
+			description: "",
+			fields: {
+				id: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				level: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				templateId: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				belongToCharacterId: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				}
+			}
+		},
+		registlet: {
+			selfName: "",
+			description: "",
+			fields: {
+				id: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				name: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				maxLevel: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				attrModifiers: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				pipelinePatches: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				skillBranchActivators: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				updatedByAccountId: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				createdByAccountId: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				}
+			}
+		}
 	},
 };
 

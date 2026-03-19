@@ -328,7 +328,7 @@ export default function WikiSubPage() {
 										defaultSort: validDataConfig().table.defaultSort,
 										dictionary: dictionary().db[wikiStore.type],
 										globalFilterStr: () => wikiStore.table.globalFilterStr,
-										columnHandleClick: (id) =>
+										rowHandleClick: (id) =>
 											setStore("pages", "cardGroup", (pre) => [...pre, { type: wikiStore.type, id }]),
 										columnVisibility: wikiStore.table.columnVisibility,
 										onColumnVisibilityChange: (updater) => {
@@ -350,7 +350,7 @@ export default function WikiSubPage() {
 									//     defaultSort={validDataConfig().table.defaultSort}
 									//     dictionary={dictionary().db[wikiStore.type]}
 									//     globalFilterStr={() => wikiStore.table.globalFilterStr}
-									//     columnHandleClick={(id) =>
+									//     rowHandleClick={(id) =>
 									//       setStore("pages", "cardGroup", (pre) => [...pre, { type: wikiStore.type, id }])
 									//     }
 									//     columnVisibility={wikiStore.table.columnVisibility}

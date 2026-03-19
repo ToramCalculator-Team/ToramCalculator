@@ -586,6 +586,23 @@ const dictionary: Dictionary = {
 		character: {
 			pageTitle: "キャラクターテーブル",
 			description: "このページは開発中です。使用しないでください。",
+			tabs: {
+				combo: "コンボ",
+				equipment: {
+					selfName: "アイテム",
+					mainHand: "メインハンド",
+					subHand: "サブハンド",
+					armor: "ボディアーマー",
+					option: "オプション",
+					special: "スペシャル",
+				},
+				consumable: "コンシューム",
+				cooking: "コック",
+				registlet: "レジストルト",
+				skill: "スキル",
+				ability: "ステータス",
+				base: "ベース",
+			}
 		},
 	},
 	db: {
@@ -828,7 +845,6 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			cardFields: undefined,
 		},
 		_mobTozone: {
 			selfName: "",
@@ -1017,9 +1033,6 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			cardFields: {
-				zones: "包含する区域",
-			},
 		},
 		armor: {
 			selfName: "防具",
@@ -1095,130 +1108,130 @@ const dictionary: Dictionary = {
 			description: "",
 		},
 		character: {
-			selfName: "機体",
+			selfName: "キャラクター",
 			fields: {
 				id: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "ID",
+					tableFieldDescription: "キャラクターのデータベースIDです。通常は表示されません。",
+					formFieldDescription: "キャラクターのデータベースIDです。入力が必要な場合は開発者に報告してください。",
 				},
 				name: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "名前",
+					tableFieldDescription: "キャラクターの名前",
+					formFieldDescription: "キャラクターの名前を入力してください。",
 				},
 				lv: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "レベル",
+					tableFieldDescription: "キャラクターのレベル",
+					formFieldDescription: "キャラクターのレベルを入力してください。",
 				},
 				str: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "力",
+					tableFieldDescription: "キャラクターの力の値",
+					formFieldDescription: "キャラクターの力の値を入力してください。",
 				},
 				int: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "知力",
+					tableFieldDescription: "キャラクターの知力の値",
+					formFieldDescription: "キャラクターの知力の値を入力してください。",
 				},
 				vit: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "体力",
+					tableFieldDescription: "キャラクターの体力の値",
+					formFieldDescription: "キャラクターの体力の値を入力してください。",
 				},
 				agi: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "敏捷",
+					tableFieldDescription: "キャラクターの敏捷の値",
+					formFieldDescription: "キャラクターの敏捷の値を入力してください。",
 				},
 				dex: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "器用",
+					tableFieldDescription: "キャラクターの器用の値",
+					formFieldDescription: "キャラクターの器用の値を入力してください。",
 				},
 				personalityType: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "性格タイプ",
+					tableFieldDescription: "キャラクターの性格タイプ",
+					formFieldDescription: "キャラクターの性格タイプを選択してください。",
 					enumMap: characterPersonalityType,
 				},
 				personalityValue: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "性格値",
+					tableFieldDescription: "キャラクターの性格値",
+					formFieldDescription: "キャラクターの性格値を入力してください。",
 				},
 				weaponId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "武器ID",
+					tableFieldDescription: "キャラクターの武器ID",
+					formFieldDescription: "キャラクターの武器を選択してください。",
 				},
 				subWeaponId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "サブ武器ID",
+					tableFieldDescription: "キャラクターのサブ武器ID",
+					formFieldDescription: "キャラクターのサブ武器を選択してください。",
 				},
 				armorId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "防具ID",
+					tableFieldDescription: "キャラクターの防具ID",
+					formFieldDescription: "キャラクターの防具を選択してください。",
 				},
 				optionId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "オプションID",
+					tableFieldDescription: "キャラクターのオプションID",
+					formFieldDescription: "キャラクターのオプションを選択してください。",
 				},
 				specialId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "特殊ID",
+					tableFieldDescription: "キャラクターの特殊ID",
+					formFieldDescription: "キャラクターの特殊を選択してください。",
 				},
 				cooking: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "料理",
+					tableFieldDescription: "キャラクターの料理",
+					formFieldDescription: "キャラクターの料理を入力してください。",
 				},
 				modifiers: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "修正値",
+					tableFieldDescription: "キャラクターの修正値",
+					formFieldDescription: "キャラクターの修正値を入力してください。",
 				},
 				partnerSkillAId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "パートナー技能A ID",
+					tableFieldDescription: "キャラクターのパートナー技能A ID",
+					formFieldDescription: "キャラクターのパートナー技能Aを選択してください。",
 				},
 				partnerSkillAType: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "パートナー技能Aタイプ",
+					tableFieldDescription: "キャラクターのパートナー技能Aタイプ",
+					formFieldDescription: "キャラクターのパートナー技能Aタイプを選択してください。",
 					enumMap: partnerSkillType,
 				},
 				partnerSkillBId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "パートナー技能B ID",
+					tableFieldDescription: "キャラクターのパートナー技能B ID",
+					formFieldDescription: "キャラクターのパートナー技能Bを選択してください。",
 				},
 				partnerSkillBType: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "パートナー技能Bタイプ",
+					tableFieldDescription: "キャラクターのパートナー技能Bタイプ",
+					formFieldDescription: "キャラクターのパートナー技能Bタイプを選択してください。",
 					enumMap: partnerSkillType,
 				},
 				belongToPlayerId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "主人ID",
+					tableFieldDescription: "キャラクターの主人ID",
+					formFieldDescription: "キャラクターの主人を選択してください。",
 				},
 				details: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "詳細情報",
+					tableFieldDescription: "キャラクターの詳細情報",
+					formFieldDescription: "キャラクターの詳細情報を入力してください。",
 				},
 				statisticId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "統計ID",
+					tableFieldDescription: "キャラクターの統計ID",
+					formFieldDescription: "キャラクターの統計を選択してください。",
 				},
 			},
 			description: "",
@@ -1845,9 +1858,6 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "",
 					formFieldDescription: "",
 				},
-			},
-			cardFields: {
-				tasks: "提供するクエスト",
 			},
 		},
 		option: {
@@ -3006,12 +3016,80 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			cardFields: {
-				mobs: "出現するモンスター",
-				npcs: "出現するNPC",
-			},
 			description: "ゲーム内のゾーン情報、名前、リンクゾーン、報酬ノードなどを含みます",
 		},
+		character_registlet: {
+			selfName: "",
+			description: "",
+			fields: {
+				id: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				level: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				templateId: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				belongToCharacterId: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				}
+			}
+		},
+		registlet: {
+			selfName: "",
+			description: "",
+			fields: {
+				id: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				name: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				maxLevel: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				attrModifiers: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				pipelinePatches: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				skillBranchActivators: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				updatedByAccountId: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				createdByAccountId: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				}
+			}
+		}
 	},
 };
 

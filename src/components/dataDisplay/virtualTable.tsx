@@ -51,13 +51,14 @@ export interface VirtualTableProps<T extends Record<string, unknown>> {
 	defaultSort: { id: keyof T; desc: boolean };
 	globalFilterStr: Accessor<string>;
 	dictionary: Dic<T>;
-	columnHandleClick: (id: string) => void;
+	rowHandleClick: (id: string) => void;
 	columnVisibility?: VisibilityState;
 	onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
 	onRefetch?: (refetch: () => void) => void;
 }
 
 export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTableProps<T>) {
+	const ROW_DRAG_THRESHOLD = 3;
 	//   const start = performance.now();
 	//   console.log("virtualTable start", start);
 	const media = useContext(MediaContext);
@@ -139,47 +140,93 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 		),
 	);
 
-	const handleMouseDown = (primaryKey: string, e: MouseEvent) => {
-		if (e.button !== 0) return;
-		const startX = e.pageX;
-		const startY = e.pageY;
+	let cleanupRowDragListeners: (() => void) | undefined;
+	let resetSuppressedClickTimer: ReturnType<typeof setTimeout> | undefined;
+	let suppressNextRowClick = false;
+
+	const clearSuppressedClickReset = () => {
+		if (!resetSuppressedClickTimer) return;
+		clearTimeout(resetSuppressedClickTimer);
+		resetSuppressedClickTimer = undefined;
+	};
+
+	const scheduleSuppressedClickReset = () => {
+		clearSuppressedClickReset();
+		resetSuppressedClickTimer = setTimeout(() => {
+			suppressNextRowClick = false;
+			resetSuppressedClickTimer = undefined;
+		}, 0);
+	};
+
+	const clearRowDragListeners = () => {
+		cleanupRowDragListeners?.();
+		cleanupRowDragListeners = undefined;
+	};
+
+	const getHorizontalScrollElement = () => {
+		const viewport = virtualScrollRef()?.osInstance()?.elements().viewport;
+		return viewport?.parentElement ?? viewport ?? null;
+	};
+
+	const handleRowPointerDown = (e: PointerEvent) => {
+		if (e.button !== 0 || !e.isPrimary) return;
+		const scrollElement = getHorizontalScrollElement();
+		if (!scrollElement) return;
+
+		clearRowDragListeners();
+		const startX = e.clientX;
+		const startY = e.clientY;
+		const startScrollLeft = scrollElement.scrollLeft;
 		let isDragging = false;
-		let offsetX = 0;
-		let offsetY = 0;
 
-		const handleMouseMove = (e: MouseEvent) => {
-			offsetX = e.pageX - startX;
-			offsetY = e.pageY - startY;
-			if (!isDragging) {
-				// 判断是否开始拖动
-				isDragging = Math.abs(offsetX) > 3 || Math.abs(offsetY) > 3;
+		const handlePointerMove = (event: PointerEvent) => {
+			const deltaX = event.clientX - startX;
+			const deltaY = event.clientY - startY;
+			if (!isDragging && Math.hypot(deltaX, deltaY) > ROW_DRAG_THRESHOLD) {
+				isDragging = true;
+				suppressNextRowClick = true;
+				clearSuppressedClickReset();
 			}
+			if (!isDragging) return;
+
+			event.preventDefault();
+			event.stopPropagation();
+			scrollElement.scrollLeft = startScrollLeft - deltaX;
+		};
+
+		const finishPointerInteraction = () => {
+			clearRowDragListeners();
 			if (isDragging) {
-				e.preventDefault();
-				e.stopPropagation();
-				const parent = virtualScrollRef()?.osInstance()?.elements().viewport?.parentElement;
-				if (parent) {
-					parent.style.transition = "none";
-					parent.style.transition = "none";
-					// parent.scrollTop -= offsetY / 100;
-					parent.scrollLeft += offsetX / 100;
-				}
+				scheduleSuppressedClickReset();
 			}
 		};
 
-		const handleMouseUp = () => {
-			document.removeEventListener("mousemove", handleMouseMove);
-			document.removeEventListener("mouseup", handleMouseUp);
-			if (!isDragging) {
-				props.columnHandleClick(primaryKey);
-			}
-		};
+		document.addEventListener("pointermove", handlePointerMove, { passive: false });
+		document.addEventListener("pointerup", finishPointerInteraction);
+		document.addEventListener("pointercancel", finishPointerInteraction);
 
-		document.addEventListener("mousemove", handleMouseMove);
-		document.addEventListener("mouseup", handleMouseUp);
+		cleanupRowDragListeners = () => {
+			document.removeEventListener("pointermove", handlePointerMove);
+			document.removeEventListener("pointerup", finishPointerInteraction);
+			document.removeEventListener("pointercancel", finishPointerInteraction);
+		};
+	};
+
+	const handleRowClick = (primaryKey: string, e: MouseEvent) => {
+		if (suppressNextRowClick) {
+			suppressNextRowClick = false;
+			clearSuppressedClickReset();
+			e.preventDefault();
+			e.stopPropagation();
+			return;
+		}
+
+		props.rowHandleClick(primaryKey);
 	};
 
 	onCleanup(() => {
+		clearRowDragListeners();
+		clearSuppressedClickReset();
 		console.log("VirtualTable onCleanup");
 	});
 
@@ -337,6 +384,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 										if (!row) {
 											return null;
 										}
+										const primaryKey = String(row.getValue(props.primaryKeyField));
 										return (
 											<button
 												type="button"
@@ -350,7 +398,8 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 													position: "absolute",
 													transform: `translateY(${virtualRow.start}px)`,
 												}}
-												onMouseDown={(e) => handleMouseDown(row.getValue(props.primaryKeyField), e)}
+												onPointerDown={handleRowPointerDown}
+												onClick={(e) => handleRowClick(primaryKey, e)}
 												class={`group border-dividing-color hover:bg-area-color flex cursor-pointer transition-none hover:rounded hover:border-transparent landscape:border-b`}
 											>
 												<For
