@@ -777,8 +777,11 @@ ${joinChain}
 	}
 
 	/**
-	 * 生成按外键过滤的复数查询方法
-	 * 对当前模型中所有拥有 relationFromFields 的关系（即本表持有外键）生成：
+	 * 生成按关系过滤的复数查询方法
+	 * 对当前模型中：
+	 * 1. 本表持有外键的关系
+	 * 2. 隐式多对多关系
+	 * 生成可直接按关联主键查询当前模型列表的方法。
 	 * export async function selectAll{PluralModel}By{ForeignKeyPascal}(id: string, trx?: Transaction<DB>)
 	 */
 	private generateSelectAllByForeignKeys(modelName: string): string {
@@ -788,6 +791,7 @@ ${joinChain}
 		const tableName = NamingRules.ZodTypeName(modelName);
 		const pascalName = NamingRules.TypeName(modelName, modelName);
 		const pluralName = this.pluralize(pascalName);
+		const currentPrimaryKey = this.getPrimaryKeyFieldFromModel(model);
 
 		// 找到当前模型上“本表持有外键”的关系字段
 		const ownForeignKeyRelations = model.fields.filter(
@@ -795,12 +799,34 @@ ${joinChain}
 				field.kind === "object" && Array.isArray(field.relationFromFields) && field.relationFromFields.length > 0,
 		);
 
-		if (ownForeignKeyRelations.length === 0) return "";
+		// 找到当前模型上的隐式多对多关系字段
+		const manyToManyRelations = model.fields.filter(
+			(field: DMMF.Field) =>
+				field.kind === "object" && field.isList && this.determineRelationType(field, model) === "MANY_TO_MANY",
+		);
+		const manyToManyTargetTypeCounts = manyToManyRelations.reduce(
+			(acc, rel) => acc.set(rel.type, (acc.get(rel.type) || 0) + 1),
+			new Map<string, number>(),
+		);
 
-		const methods: string[] = ownForeignKeyRelations.map((rel: DMMF.Field) => {
-			const foreignKey = rel.relationFromFields![0];
-			const methodName = `selectAll${pluralName}By${NamingRules.TypeName(foreignKey)}`;
-			return `// 按外键查询：${tableName}.${foreignKey} → ${rel.type}.${this.getPrimaryKeyFieldFromModel(this.allModels.find((m) => m.name === rel.type)!)}
+		if (ownForeignKeyRelations.length === 0 && manyToManyRelations.length === 0) return "";
+
+		const methods: string[] = [];
+
+		methods.push(
+			...ownForeignKeyRelations.map((rel: DMMF.Field) => {
+				const foreignKey = rel.relationFromFields?.[0];
+				if (!foreignKey) {
+					throw new Error(`Cannot determine foreign key for relation ${rel.name} in model ${modelName}`);
+				}
+
+				const targetModel = this.allModels.find((m) => m.name === rel.type);
+				if (!targetModel) {
+					throw new Error(`Target model ${rel.type} not found`);
+				}
+
+				const methodName = `selectAll${pluralName}By${NamingRules.TypeName(foreignKey)}`;
+				return `// 按外键查询：${tableName}.${foreignKey} → ${rel.type}.${this.getPrimaryKeyFieldFromModel(targetModel)}
 export async function ${methodName}(${foreignKey}: string, trx?: Transaction<DB>) {
   const db = trx || await getDB();
   return await db
@@ -809,7 +835,43 @@ export async function ${methodName}(${foreignKey}: string, trx?: Transaction<DB>
     .selectAll("${tableName}")
     .execute();
 }`;
-		});
+			}),
+		);
+
+		methods.push(
+			...manyToManyRelations.map((rel: DMMF.Field) => {
+				const intermediateTable = this.helpers.getManyToManyTableName(rel);
+				if (!intermediateTable) {
+					throw new Error(`Cannot determine intermediate table for many-to-many relation: ${rel.relationName}`);
+				}
+
+				const targetModel = this.allModels.find((m: DMMF.Model) => m.name === rel.type);
+				if (!targetModel) {
+					throw new Error(`Target model ${rel.type} not found`);
+				}
+
+				const targetPrimaryKey = this.getPrimaryKeyFieldFromModel(targetModel);
+				const { selfJoinColumn, targetJoinColumn } = this.getManyToManyJoinColumns(rel, model);
+				const shouldDisambiguate = (manyToManyTargetTypeCounts.get(rel.type) || 0) > 1;
+				const targetParamName = shouldDisambiguate
+					? `${NamingRules.VariableName(rel.name)}${NamingRules.TypeName(rel.type)}Id`
+					: `${NamingRules.VariableName(rel.type)}Id`;
+				const methodName = shouldDisambiguate
+					? `selectAll${pluralName}By${NamingRules.TypeName(rel.name)}${NamingRules.TypeName(rel.type)}Id`
+					: `selectAll${pluralName}By${NamingRules.TypeName(rel.type)}Id`;
+
+				return `// 按多对多关系查询：${rel.type}.${targetPrimaryKey} ↔ ${intermediateTable} ↔ ${tableName}.${currentPrimaryKey}
+export async function ${methodName}(${targetParamName}: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await db
+    .selectFrom("${intermediateTable}")
+    .innerJoin("${tableName}", "${intermediateTable}.${selfJoinColumn}", "${tableName}.${currentPrimaryKey}")
+    .where("${intermediateTable}.${targetJoinColumn}", "=", ${targetParamName})
+    .selectAll("${tableName}")
+    .execute();
+}`;
+			}),
+		);
 
 		return methods.join("\n\n");
 	}
@@ -1220,6 +1282,7 @@ ${this.generateCrudExports(crudExports)}
 
 		// 获取当前模型的主键
 		const currentModelPrimaryKey = this.getPrimaryKeyFieldFromModel(model);
+		const { selfJoinColumn, targetJoinColumn } = this.getManyToManyJoinColumns(field, model);
 
 		const currentTableName = NamingRules.ZodTypeName(model.name);
 		const targetCamelName = NamingRules.VariableName(targetTable);
@@ -1233,10 +1296,45 @@ ${this.generateCrudExports(crudExports)}
       jsonArrayFrom(
         eb
           .selectFrom("${intermediateTable}")
-          .innerJoin("${targetTable}", "${intermediateTable}.B", "${targetTable}.${targetPrimaryKey}")
-          .whereRef("${intermediateTable}.A", "=", "${currentTableName}.${currentModelPrimaryKey}")
+          .innerJoin("${targetTable}", "${intermediateTable}.${targetJoinColumn}", "${targetTable}.${targetPrimaryKey}")
+          .whereRef("${intermediateTable}.${selfJoinColumn}", "=", "${currentTableName}.${currentModelPrimaryKey}")
           .selectAll("${targetTable}")${subRelationCode}
       ).as("${field.name}")`;
+	}
+
+	/**
+	 * 获取隐式多对多中间表中当前字段对应的 join 列。
+	 * 非自关联时，generateImplicitManyToManyModels 会按模型名排序后固定映射为 A/B。
+	 * 自关联时，同一 relation 的两个字段类型相同，排序结果依赖原字段顺序；这里复用该顺序来判断方向。
+	 */
+	private getManyToManyJoinColumns(
+		field: DMMF.Field,
+		model: DMMF.Model,
+	): { selfJoinColumn: "A" | "B"; targetJoinColumn: "A" | "B" } {
+		const currentModelName = model.name;
+		const targetModelName = field.type;
+
+		if (currentModelName === targetModelName) {
+			const selfRelationFields = model.fields.filter(
+				(candidate: DMMF.Field) =>
+					candidate.kind === "object" &&
+					candidate.type === model.name &&
+					candidate.relationName === field.relationName,
+			);
+			const firstField = selfRelationFields[0];
+
+			if (firstField?.name === field.name) {
+				return { selfJoinColumn: "A", targetJoinColumn: "B" };
+			}
+
+			return { selfJoinColumn: "B", targetJoinColumn: "A" };
+		}
+
+		if (currentModelName.localeCompare(targetModelName) <= 0) {
+			return { selfJoinColumn: "A", targetJoinColumn: "B" };
+		}
+
+		return { selfJoinColumn: "B", targetJoinColumn: "A" };
 	}
 
 	/**

@@ -131,7 +131,9 @@ export const DATA_CONFIG: DataConfig = {
 			],
 			hiddenColumnDef: [],
 			defaultSort: { id: "itemId", desc: false },
-			tdGenerator: {},
+			tdGenerator: {
+				modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
+			},
 		},
 		form: {
 			hiddenFields: [],
@@ -150,7 +152,7 @@ export const DATA_CONFIG: DataConfig = {
 			基本信息: ["name", "lv", "str", "int", "vit", "agi", "dex", "personalityType", "personalityValue"],
 			装备信息: ["weaponId", "subWeaponId", "armorId", "optionId", "specialId"],
 			其他信息: ["modifiers", "cooking"],
-			统计信息: ["statisticId"]
+			统计信息: ["statisticId"],
 		},
 		table: {
 			columnsDef: [
@@ -169,16 +171,18 @@ export const DATA_CONFIG: DataConfig = {
 				{ accessorKey: "armorId", cell: (info) => info.getValue(), size: 100 },
 				{ accessorKey: "optionId", cell: (info) => info.getValue(), size: 100 },
 				{ accessorKey: "specialId", cell: (info) => info.getValue(), size: 100 },
-				{ accessorKey: "modifiers", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "modifiers", cell: (info) => info.getValue(), size: 360 },
 				{ accessorKey: "cooking", cell: (info) => info.getValue(), size: 100 },
 				{ accessorKey: "statisticId", cell: (info) => info.getValue(), size: 100 },
 			],
 			hiddenColumnDef: ["id", "statisticId"],
-			tdGenerator: {},
+			tdGenerator: {
+				modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
+			},
 			defaultSort: {
 				id: "name",
-				desc: false
-			}
+				desc: false,
+			},
 		},
 		form: {
 			hiddenFields: [],
@@ -245,7 +249,9 @@ export const DATA_CONFIG: DataConfig = {
 			],
 			hiddenColumnDef: [],
 			defaultSort: { id: "name", desc: false },
-			tdGenerator: {},
+			tdGenerator: {
+				modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
+			},
 		},
 		form: {
 			hiddenFields: [],
@@ -614,7 +620,7 @@ export const DATA_CONFIG: DataConfig = {
 							</BtEditorWrapper>
 						</Input>
 					);
-				}
+				},
 			},
 			onInsert: repositoryMethods.mob.insert,
 			onUpdate: repositoryMethods.mob.update,
@@ -744,7 +750,9 @@ export const DATA_CONFIG: DataConfig = {
 				id: "name",
 				desc: false,
 			},
-			tdGenerator: {},
+			tdGenerator: {
+				modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
+			},
 		},
 		form: {
 			hiddenFields: [],
@@ -765,30 +773,140 @@ export const DATA_CONFIG: DataConfig = {
 			所属玩家: ["belongToPlayerId"],
 		},
 		table: {
+			measure: {
+				estimateSize: 120,
+			},
 			columnsDef: [
 				{ accessorKey: "id", cell: (info) => info.getValue(), size: 200 },
-				{ accessorKey: "type", cell: (info) => info.getValue(), size: 100 },
-				{ accessorKey: "name", cell: (info) => info.getValue(), size: 100 },
-				{ accessorKey: "baseAbi", cell: (info) => info.getValue(), size: 100 },
-				{ accessorKey: "stability", cell: (info) => info.getValue(), size: 100 },
-				{ accessorKey: "elementType", cell: (info) => info.getValue(), size: 100 },
-				{ accessorKey: "extraAbi", cell: (info) => info.getValue(), size: 100 },
-				{ accessorKey: "refinement", cell: (info) => info.getValue(), size: 100 },
-				{ accessorKey: "modifiers", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "type", cell: (info) => info.getValue(), size: 120 },
+				{ accessorKey: "name", cell: (info) => info.getValue(), size: 160 },
+				{ accessorKey: "baseAbi", cell: (info) => info.getValue(), size: 80 },
+				{ accessorKey: "stability", cell: (info) => info.getValue(), size: 80 },
+				{ accessorKey: "elementType", cell: (info) => info.getValue(), size: 120 },
+				{ accessorKey: "extraAbi", cell: (info) => info.getValue(), size: 80 },
+				{ accessorKey: "refinement", cell: (info) => info.getValue(), size: 80 },
+				{ accessorKey: "modifiers", cell: (info) => info.getValue(), size: 360 },
 				{ accessorKey: "belongToPlayerId", cell: (info) => info.getValue(), size: 100 },
 			],
-			hiddenColumnDef: [],
+			hiddenColumnDef: ["id", "belongToPlayerId"],
 			defaultSort: {
 				id: "type",
 				desc: false,
 			},
-			tdGenerator: {},
+			tdGenerator: {
+				modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
+			},
 		},
 		form: {
 			hiddenFields: ["id"],
 			fieldGenerator: {},
 			onInsert: repositoryMethods.player_weapon.insert,
 			onUpdate: repositoryMethods.player_weapon.update,
+		},
+		card: {
+			hiddenFields: ["id"],
+			fieldGenerator: {},
+		},
+	},
+	player_armor: {
+		fieldGroupMap: {
+			ID: ["id"],
+			基础属性: ["name", "baseAbi", "ability"],
+			附加属性: ["extraAbi", "templateId", "refinement", "modifiers"],
+			所属玩家: ["belongToPlayerId"],
+		},
+		table: {
+			columnsDef: [
+				{ accessorKey: "id", cell: (info) => info.getValue(), size: 200 },
+				{ accessorKey: "name", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "baseAbi", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "ability", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "extraAbi", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "templateId", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "refinement", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "modifiers", cell: (info) => info.getValue(), size: 360 },
+				{ accessorKey: "belongToPlayerId", cell: (info) => info.getValue(), size: 100 },
+			],
+			hiddenColumnDef: ["id", "belongToPlayerId", "templateId"],
+			defaultSort: { id: "name", desc: false },
+			tdGenerator: {
+				modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
+			},
+		},
+		form: {
+			hiddenFields: ["id"],
+			fieldGenerator: {},
+			onInsert: repositoryMethods.player_armor.insert,
+			onUpdate: repositoryMethods.player_armor.update,
+		},
+		card: {
+			hiddenFields: ["id"],
+			fieldGenerator: {},
+		},
+	},
+	player_option: {
+		fieldGroupMap: {
+			ID: ["id"],
+			基础属性: ["name", "baseAbi"],
+			附加属性: ["extraAbi", "templateId", "refinement", "modifiers"],
+			所属玩家: ["belongToPlayerId"],
+		},
+		table: {
+			columnsDef: [
+				{ accessorKey: "id", cell: (info) => info.getValue(), size: 200 },
+				{ accessorKey: "name", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "baseAbi", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "extraAbi", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "templateId", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "refinement", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "modifiers", cell: (info) => info.getValue(), size: 360 },
+				{ accessorKey: "belongToPlayerId", cell: (info) => info.getValue(), size: 100 },
+			],
+			hiddenColumnDef: ["id", "belongToPlayerId", "templateId"],
+			defaultSort: { id: "name", desc: false },
+			tdGenerator: {
+				modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
+			},
+		},
+		form: {
+			hiddenFields: ["id"],
+			fieldGenerator: {},
+			onInsert: repositoryMethods.player_option.insert,
+			onUpdate: repositoryMethods.player_option.update,
+		},
+		card: {
+			hiddenFields: ["id"],
+			fieldGenerator: {},
+		},
+	},
+	player_special: {
+		fieldGroupMap: {
+			ID: ["id"],
+			基础属性: ["name", "baseAbi"],
+			附加属性: ["extraAbi", "templateId", "modifiers"],
+			所属玩家: ["belongToPlayerId"],
+		},
+		table: {
+			columnsDef: [
+				{ accessorKey: "id", cell: (info) => info.getValue(), size: 200 },
+				{ accessorKey: "name", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "baseAbi", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "extraAbi", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "templateId", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "modifiers", cell: (info) => info.getValue(), size: 360 },
+				{ accessorKey: "belongToPlayerId", cell: (info) => info.getValue(), size: 100 },
+			],
+			hiddenColumnDef: ["id", "belongToPlayerId", "templateId"],
+			defaultSort: { id: "name", desc: false },
+			tdGenerator: {
+				modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
+			},
+		},
+		form: {
+			hiddenFields: ["id"],
+			fieldGenerator: {},
+			onInsert: repositoryMethods.player_special.insert,
+			onUpdate: repositoryMethods.player_special.update,
 		},
 		card: {
 			hiddenFields: ["id"],
@@ -1289,7 +1407,9 @@ export const DATA_CONFIG: DataConfig = {
 			],
 			hiddenColumnDef: ["itemId"],
 			defaultSort: { id: "name", desc: false },
-			tdGenerator: {},
+			tdGenerator: {
+				modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
+			},
 		},
 		form: {
 			hiddenFields: [],
@@ -1379,7 +1499,7 @@ export const DATA_CONFIG: DataConfig = {
 					cell: (info) => info.getValue<ElementType>(),
 					size: 150,
 				},
-				// { accessorKey: "modifiers", cell: (info) => info.getValue(), size: 400 },
+				{ accessorKey: "modifiers", cell: (info) => info.getValue(), size: 360 },
 				{ accessorKey: "colorA", cell: (info) => info.getValue(), size: 150 },
 				{ accessorKey: "colorB", cell: (info) => info.getValue(), size: 150 },
 				{ accessorKey: "colorC", cell: (info) => info.getValue(), size: 150 },
@@ -1390,6 +1510,7 @@ export const DATA_CONFIG: DataConfig = {
 				desc: false,
 			},
 			tdGenerator: {
+				modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
 				elementType: (props) =>
 					({
 						Water: <Icons.Game.ElementWater class="h-12 w-12" />,
@@ -1495,3 +1616,5 @@ export const DATA_CONFIG: DataConfig = {
 		},
 	},
 };
+
+const stringArrayCellRenderer = (data:string[]) => <div class="flex flex-wrap gap-2">{data.map((item) => <span class="text-sm text-nowrap">{item}</span>)}</div>;

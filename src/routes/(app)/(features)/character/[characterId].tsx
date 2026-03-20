@@ -19,7 +19,9 @@ import {
 import { Engine } from "@babylonjs/core/Engines/engine";
 import {
 	selectAllCharactersByBelongtoplayerid,
+	selectCharacterById,
 	selectCharacterByIdWithRelations,
+	updateCharacter,
 } from "@db/generated/repositories/character";
 import { Motion } from "solid-motionone";
 import { Dialog } from "~/components/containers/dialog";
@@ -31,11 +33,22 @@ import { Icons } from "~/components/icons";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import { createCharacter } from "./createCharacter";
-import { DB } from "@db/generated/zod";
+import { character, DB } from "@db/generated/zod";
 import { DATA_CONFIG } from "~/components/business/data-config";
 import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 import { repositoryMethods } from "@db/generated/repositories";
-
+import { createForm } from "@tanstack/solid-form";
+import { selectPlayerWeaponById } from "@db/generated/repositories/player_weapon";
+import { selectPlayerArmorById } from "@db/generated/repositories/player_armor";
+import { selectPlayerOptionById } from "@db/generated/repositories/player_option";
+import { selectPlayerSpecialById } from "@db/generated/repositories/player_special";
+import { selectAllCharacterSkillsByBelongtocharacterid } from "@db/generated/repositories/character_skill";
+import { selectAllCharacterRegistletsByBelongtocharacterid } from "@db/generated/repositories/character_registlet";
+import { selectAllCombosByBelongtocharacterid } from "@db/generated/repositories/combo";
+import { selectAllConsumablesByCharacterId } from "@db/generated/repositories/consumable";
+import { Sheet } from "~/components/containers/sheet";
+import { Portal } from "solid-js/web";
+import { Input } from "~/components/controls/input";
 export default function CharactePage() {
 	// UI文本字典
 	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
@@ -43,8 +56,46 @@ export default function CharactePage() {
 	const navigate = useNavigate();
 
 	const params = useParams();
-	const characterFinder = (id: string) => selectCharacterByIdWithRelations(id);
-	const [character, { refetch: refetchCharacter }] = createResource(() => params.characterId, characterFinder);
+	const [character, { refetch: refetchCharacter }] = createResource(
+		() => params.characterId,
+		(id) => selectCharacterById(id),
+	);
+	const [mainWeapon, { refetch: refetchMainWeapon }] = createResource(
+		() => character()?.weaponId,
+		(id) => selectPlayerWeaponById(id),
+	);
+	const [subWeapon, { refetch: refetchSubWeapon }] = createResource(
+		() => character()?.subWeaponId,
+		(id) => selectPlayerWeaponById(id),
+	);
+	const [armor, { refetch: refetchArmor }] = createResource(
+		() => character()?.armorId,
+		(id) => selectPlayerArmorById(id),
+	);
+	const [option, { refetch: refetchOption }] = createResource(
+		() => character()?.optionId,
+		(id) => selectPlayerOptionById(id),
+	);
+	const [special, { refetch: refetchSpecial }] = createResource(
+		() => character()?.specialId,
+		(id) => selectPlayerSpecialById(id),
+	);
+	const [skills, { refetch: refetchSkills }] = createResource(
+		() => character()?.id,
+		(id) => selectAllCharacterSkillsByBelongtocharacterid(id),
+	);
+	const [registlets, { refetch: refetchRegistlets }] = createResource(
+		() => character()?.id,
+		(id) => selectAllCharacterRegistletsByBelongtocharacterid(id),
+	);
+	const [consumables, { refetch: refetchConsumables }] = createResource(
+		() => character()?.id,
+		(id) => selectAllConsumablesByCharacterId(id),
+	);
+	const [combos, { refetch: refetchCombos }] = createResource(
+		() => character()?.id,
+		(id) => selectAllCombosByBelongtocharacterid(id),
+	);
 
 	const charactersFinder = (id: string) => selectAllCharactersByBelongtoplayerid(id);
 	const [characters, { refetch: refetchCharacters }] = createResource(
@@ -54,7 +105,8 @@ export default function CharactePage() {
 
 	const [dialogIsOpen, setDialogIsOpen] = createSignal(false);
 	const [dialogTitle, setDialogTitle] = createSignal("");
-	let dialogVistualTableType: keyof DB = "player_weapon";
+	const [dialogVistualTableType, setDialogVistualTableType] = createSignal<keyof DB>("player_weapon");
+	const [operateTarget, setOperateTarget] = createSignal<keyof character>("weaponId");
 	const [globalFilterStr, setGlobalFilterStr] = createSignal("");
 
 	const tabs = {
@@ -195,7 +247,7 @@ export default function CharactePage() {
 
 	return (
 		<Show
-			when={character.latest}
+			when={character()}
 			fallback={
 				<div class="LoadingState flex h-full w-full flex-col items-center justify-center gap-3">
 					<LoadingBar center class="h-12 w-1/2 min-w-[320px]" />
@@ -335,10 +387,11 @@ export default function CharactePage() {
 									<section
 										role="application"
 										onClick={() => {
-											if (character().weapon) {
+											const weaponId = character().weaponId;
+											if (weaponId) {
 												setStore("pages", "cardGroup", store.pages.cardGroup.length, {
 													type: "player_weapon",
-													id: character().weapon?.id,
+													id: weaponId,
 												});
 											}
 										}}
@@ -352,8 +405,14 @@ export default function CharactePage() {
 									>
 										<div class="Label px-4 py-3">{dictionary().ui.character.tabs.equipment.mainHand}</div>
 										<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
-											<Icons.Spirits iconName={character().weapon?.type ?? ""} size={36} />
-											{character().weapon?.name}
+											<Show when={mainWeapon()} fallback={<Icons.Spirits iconName="unknown" size={36} />}>
+												{(mainWeapon) => (
+													<>
+														<Icons.Spirits iconName={mainWeapon().type ?? ""} size={36} />
+														{mainWeapon().name}
+													</>
+												)}
+											</Show>
 										</div>
 										<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
 											<Button
@@ -363,12 +422,13 @@ export default function CharactePage() {
 												onClick={() => {
 													// 打开装备选择器
 													setDialogIsOpen(true);
-													dialogVistualTableType = "player_weapon";
+													setDialogVistualTableType("player_weapon");
+													setOperateTarget("weaponId");
 													setDialogTitle(dictionary().ui.character.tabs.equipment.mainHand);
 												}}
 											/>
 											<Show
-												when={character().weapon}
+												when={character().weaponId}
 												fallback={
 													<Button
 														icon={<Icons.Outline.DocmentAdd />}
@@ -385,10 +445,11 @@ export default function CharactePage() {
 									<section
 										role="application"
 										onClick={() => {
-											if (character().subWeapon) {
+											const subWeaponId = character().subWeaponId;
+											if (subWeaponId) {
 												setStore("pages", "cardGroup", store.pages.cardGroup.length, {
 													type: "player_weapon",
-													id: character().subWeapon?.id,
+													id: subWeaponId,
 												});
 											}
 										}}
@@ -402,13 +463,30 @@ export default function CharactePage() {
 									>
 										<div class="Label px-4 py-3">{dictionary().ui.character.tabs.equipment.subHand}</div>
 										<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
-											<Icons.Spirits iconName={character().subWeapon?.type ?? ""} size={36} />
-											{character().subWeapon?.name}
+											<Show when={subWeapon()} fallback={<Icons.Spirits iconName="unknown" size={36} />}>
+												{(subWeapon) => (
+													<>
+														<Icons.Spirits iconName={subWeapon().type ?? ""} size={36} />
+														{subWeapon().name}
+													</>
+												)}
+											</Show>
 										</div>
 										<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
-											<Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
+											<Button
+												icon={<Icons.Outline.Category />}
+												level="quaternary"
+												class="rounded-none"
+												onClick={() => {
+													// 打开装备选择器
+													setDialogIsOpen(true);
+													setDialogVistualTableType("player_weapon");
+													setOperateTarget("subWeaponId");
+													setDialogTitle(dictionary().ui.character.tabs.equipment.subHand);
+												}}
+											/>
 											<Show
-												when={character().weapon}
+												when={character().subWeaponId}
 												fallback={
 													<Button
 														icon={<Icons.Outline.DocmentAdd />}
@@ -425,10 +503,11 @@ export default function CharactePage() {
 									<section
 										role="application"
 										onClick={() => {
-											if (character().armor) {
+											const armorId = character().armorId;
+											if (armorId) {
 												setStore("pages", "cardGroup", store.pages.cardGroup.length, {
 													type: "player_armor",
-													id: character().armor?.id,
+													id: armorId,
 												});
 											}
 										}}
@@ -442,13 +521,30 @@ export default function CharactePage() {
 									>
 										<div class="Label px-4 py-3 portrait:hidden">{dictionary().ui.character.tabs.equipment.armor}</div>
 										<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
-											<Icons.Spirits iconName={character().armor?.ability ?? ""} size={36} />
-											{character().armor?.name}
+											<Show when={armor()} fallback={<Icons.Spirits iconName="unknown" size={36} />}>
+												{(armor) => (
+													<>
+														<Icons.Spirits iconName={armor().ability ?? ""} size={36} />
+														{armor().name}
+													</>
+												)}
+											</Show>
 										</div>
 										<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
-											<Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
+											<Button
+												icon={<Icons.Outline.Category />}
+												level="quaternary"
+												class="rounded-none"
+												onClick={() => {
+													// 打开装备选择器
+													setDialogIsOpen(true);
+													setDialogVistualTableType("player_armor");
+													setOperateTarget("armorId");
+													setDialogTitle(dictionary().ui.character.tabs.equipment.armor);
+												}}
+											/>
 											<Show
-												when={character().armor}
+												when={character().armorId}
 												fallback={
 													<Button
 														icon={<Icons.Outline.DocmentAdd />}
@@ -465,10 +561,11 @@ export default function CharactePage() {
 									<section
 										role="application"
 										onClick={() => {
-											if (character().option) {
+											const optionId = character().optionId;
+											if (optionId) {
 												setStore("pages", "cardGroup", store.pages.cardGroup.length, {
 													type: "player_option",
-													id: character().option?.id,
+													id: optionId,
 												});
 											}
 										}}
@@ -482,13 +579,30 @@ export default function CharactePage() {
 									>
 										<div class="Label px-4 py-3 portrait:hidden">{dictionary().ui.character.tabs.equipment.option}</div>
 										<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
-											<Icons.Spirits iconName={"option"} size={36} />
-											{character().option?.name}
+											<Show when={option()} fallback={<Icons.Spirits iconName="unknown" size={36} />}>
+												{(option) => (
+													<>
+														<Icons.Spirits iconName={"option"} size={36} />
+														{option().name}
+													</>
+												)}
+											</Show>
 										</div>
 										<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
-											<Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
+											<Button
+												icon={<Icons.Outline.Category />}
+												level="quaternary"
+												class="rounded-none"
+												onClick={() => {
+													// 打开装备选择器
+													setDialogIsOpen(true);
+													setDialogVistualTableType("player_option");
+													setOperateTarget("optionId");
+													setDialogTitle(dictionary().ui.character.tabs.equipment.option);
+												}}
+											/>
 											<Show
-												when={character().option}
+												when={character().optionId}
 												fallback={
 													<Button
 														icon={<Icons.Outline.DocmentAdd />}
@@ -505,10 +619,11 @@ export default function CharactePage() {
 									<section
 										role="application"
 										onClick={() => {
-											if (character().special) {
+											const specialId = character().specialId;
+											if (specialId) {
 												setStore("pages", "cardGroup", store.pages.cardGroup.length, {
 													type: "player_special",
-													id: character().special?.id,
+													id: specialId,
 												});
 											}
 										}}
@@ -524,13 +639,30 @@ export default function CharactePage() {
 											{dictionary().ui.character.tabs.equipment.special}
 										</div>
 										<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
-											<Icons.Spirits iconName={"special"} size={36} />
-											{character().special?.name}
+											<Show when={special()} fallback={<Icons.Spirits iconName="unknown" size={36} />}>
+												{(special) => (
+													<>
+														<Icons.Spirits iconName={"special"} size={36} />
+														{special().name}
+													</>
+												)}
+											</Show>
 										</div>
 										<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
-											<Button icon={<Icons.Outline.Category />} level="quaternary" class="rounded-none" />
+											<Button
+												icon={<Icons.Outline.Category />}
+												level="quaternary"
+												class="rounded-none"
+												onClick={() => {
+													// 打开装备选择器
+													setDialogIsOpen(true);
+													setDialogVistualTableType("player_special");
+													setOperateTarget("specialId");
+													setDialogTitle(dictionary().ui.character.tabs.equipment.special);
+												}}
+											/>
 											<Show
-												when={character().special}
+												when={character().specialId}
 												fallback={
 													<Button
 														icon={<Icons.Outline.DocmentAdd />}
@@ -549,26 +681,45 @@ export default function CharactePage() {
 					</div>
 
 					{/* 弹窗 */}
-					<Dialog state={dialogIsOpen()} setState={(state) => setDialogIsOpen(state)} title={dialogTitle()}>
-						{VirtualTable<DB[typeof dialogVistualTableType]> ({
-							measure: DATA_CONFIG[dialogVistualTableType]?.table.measure,
-							primaryKeyField: getPrimaryKeys(dialogVistualTableType)[0],
-							dataFetcher: async () => (await repositoryMethods[dialogVistualTableType].selectAll?.()) ?? [],
-							// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
-							columnsDef: DATA_CONFIG[dialogVistualTableType]?.table.columnsDef,
-							// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
-							hiddenColumnDef: DATA_CONFIG[dialogVistualTableType]?.table.hiddenColumnDef,
-							// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
-							tdGenerator: DATA_CONFIG[dialogVistualTableType]?.table.tdGenerator,
-							// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
-							defaultSort: DATA_CONFIG[dialogVistualTableType]?.table.defaultSort,
-							dictionary: dictionary().db[dialogVistualTableType],
-							globalFilterStr,
-							rowHandleClick: (id) => console.log("CharacterId:", id,"attr:"),
-							columnVisibility: {},
-							onColumnVisibilityChange: () => {},
-						})}
-					</Dialog>
+					<Portal>
+						<Sheet
+							state={dialogIsOpen()}
+							setState={(state) => {
+								setDialogIsOpen(state);
+								setGlobalFilterStr("");
+							}}
+						>
+							<div class="flex h-[90dvh] w-full flex-col gap-2 p-6">
+								<Input type="text" value={globalFilterStr()} onInput={(e) => setGlobalFilterStr(e.target.value)} />
+								{VirtualTable<DB[keyof DB]>({
+									measure: DATA_CONFIG[dialogVistualTableType()]?.table.measure,
+									primaryKeyField: getPrimaryKeys(dialogVistualTableType())[0],
+									dataFetcher: async () => (await repositoryMethods[dialogVistualTableType()]?.selectAll?.()) ?? [],
+									// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
+									columnsDef: DATA_CONFIG[dialogVistualTableType()]?.table.columnsDef,
+									// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
+									hiddenColumnDef: DATA_CONFIG[dialogVistualTableType()]?.table.hiddenColumnDef,
+									// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
+									tdGenerator: DATA_CONFIG[dialogVistualTableType()]?.table.tdGenerator,
+									// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
+									defaultSort: DATA_CONFIG[dialogVistualTableType()]?.table.defaultSort,
+									dictionary: dictionary().db[dialogVistualTableType()],
+									globalFilterStr,
+									rowHandleClick: async (id) => {
+										// 使用列表选择的值应该是外键，因此一定不会发生类型变化，所以这里使用类型断言
+										await updateCharacter(character().id, {
+											[operateTarget()]: id,
+										});
+										setGlobalFilterStr("");
+										refetchCharacter();
+										setDialogIsOpen(false);
+									},
+									columnVisibility: {},
+									onColumnVisibilityChange: () => {},
+								})}
+							</div>
+						</Sheet>
+					</Portal>
 				</Motion.div>
 			)}
 		</Show>

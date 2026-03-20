@@ -306,7 +306,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 					</Motion.div>
 				</Show>
 			</Presence>
-			<OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }} defer>
+			<OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }} class="w-full h-full" defer>
 				<div class="TableContainer flex h-full flex-col">
 					<div class={`TableHead z-10 flex w-fit`}>
 						<For each={table()?.getHeaderGroups()}>
@@ -397,10 +397,12 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 												style={{
 													position: "absolute",
 													transform: `translateY(${virtualRow.start}px)`,
+													"border-bottom": "1px solid transparent",
+													"border-image": "repeating-linear-gradient(to right, var(--color-dividing-color) 0 6px, transparent 6px 12px) 1",
 												}}
 												onPointerDown={handleRowPointerDown}
 												onClick={(e) => handleRowClick(primaryKey, e)}
-												class={`group border-dividing-color hover:bg-area-color flex cursor-pointer transition-none hover:rounded hover:border-transparent landscape:border-b`}
+												class={`Row group border-dividing-color hover:bg-area-color flex cursor-pointer transition-none hover:rounded hover:border-transparent`}
 											>
 												<For
 													each={row.getVisibleCells().filter((cell) => !props.hiddenColumnDef.includes(cell.column.id))}

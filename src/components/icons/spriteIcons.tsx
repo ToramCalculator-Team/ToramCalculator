@@ -1,20 +1,22 @@
-import { Show } from "solid-js";
+import { createMemo, Show } from "solid-js";
 import spritesUrl from "~/../public/app-image/icon-sprites.png?url";
 import sprites from "~/../public/app-image/sprites.json";
 
 export const getSpriteIcon = (props: { iconName: string; size?: number; outline?: boolean }) => {
-	// 不区分大小写查找精灵图
-	const sprite = sprites.find((sprite) => sprite.name.toLowerCase() === props.iconName.toLowerCase());
-	const actSize = props.size ?? 24;
+	const sprite = createMemo(() =>
+		sprites.find((sprite) => sprite.name.toLowerCase() === (props.iconName ?? "").toLowerCase()),
+	);
+	const actSize = createMemo(() => props.size ?? 24);
+
 	return (
 		<Show
-			when={sprite}
+			when={sprite()}
 			fallback={
 				<div
 					class={`DefaultIcon rounded-full ${props.outline ? "outline-dividing-color bg-[radial-gradient(ellipse_50.00%_50.00%_at_50.00%_50.00%,#2F1A49_0%,rgba(47,26,73,0)_100%)] outline-1 outline-offset-1" : ""}`}
 					style={{
-						width: `${actSize}px`,
-						height: `${actSize}px`,
+						width: `${actSize()}px`,
+						height: `${actSize()}px`,
 					}}
 				></div>
 			}
@@ -24,8 +26,8 @@ export const getSpriteIcon = (props: { iconName: string; size?: number; outline?
 					<div
 						class={`relative grid flex-none rounded-full ${props.outline ? "outline-dividing-color bg-[radial-gradient(ellipse_50.00%_50.00%_at_50.00%_50.00%,#2F1A49_0%,rgba(47,26,73,0)_100%)] outline-1 outline-offset-1" : ""}`}
 						style={{
-							width: `${actSize}px`,
-							height: `${actSize}px`,
+							width: `${actSize()}px`,
+							height: `${actSize()}px`,
 						}}
 					>
 						<img
@@ -34,7 +36,7 @@ export const getSpriteIcon = (props: { iconName: string; size?: number; outline?
 								position: "absolute",
 								top: "50%",
 								left: "50%",
-								transform: `translate(-50%, -50%) scale(${actSize / sprite().width})`,
+								transform: `translate(-50%, -50%) scale(${actSize() / sprite().width})`,
 								width: `${sprite().width}px`,
 								height: `${sprite().height}px`,
 								"object-position": `${-sprite().x}px ${-sprite().y}px`,
