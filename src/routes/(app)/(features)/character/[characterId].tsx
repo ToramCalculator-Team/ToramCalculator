@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from "@solidjs/router";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createEffect, createMemo, createResource, createSignal, on, onCleanup, onMount, Show } from "solid-js";
-import type { JSX } from "solid-js/jsx-runtime";
+import { Portal } from "solid-js/web";
 import { type CharacterEntityRuntime, EntityFactory } from "~/components/features/simulator/render/RendererController";
 // import "@babylonjs/core/Debug/debugLayer"; // Augments the scene with the debug methods
 // import "@babylonjs/inspector"; // Injects a local ES6 version of the inspector to prevent automatically relying on the none compatible version
@@ -17,15 +17,27 @@ import {
 	Vector3,
 } from "@babylonjs/core";
 import { Engine } from "@babylonjs/core/Engines/engine";
+import { getPrimaryKeys } from "@db/generated/dmmf-utils";
+import { repositoryMethods } from "@db/generated/repositories";
 import {
 	selectAllCharactersByBelongtoplayerid,
 	selectCharacterById,
-	selectCharacterByIdWithRelations,
 	updateCharacter,
 } from "@db/generated/repositories/character";
+import { selectAllCharacterRegistletsByBelongtocharacterid } from "@db/generated/repositories/character_registlet";
+import { selectAllCharacterSkillsByBelongtocharacterid } from "@db/generated/repositories/character_skill";
+import { selectAllCombosByBelongtocharacterid } from "@db/generated/repositories/combo";
+import { selectAllConsumablesByCharacterId } from "@db/generated/repositories/consumable";
+import { selectPlayerArmorById } from "@db/generated/repositories/player_armor";
+import { selectPlayerOptionById } from "@db/generated/repositories/player_option";
+import { selectPlayerSpecialById } from "@db/generated/repositories/player_special";
+import { selectPlayerWeaponById } from "@db/generated/repositories/player_weapon";
+import type { character, DB } from "@db/generated/zod";
 import { Motion } from "solid-motionone";
-import { Dialog } from "~/components/containers/dialog";
+import { DATA_CONFIG } from "~/components/business/data-config";
+import { Sheet } from "~/components/containers/sheet";
 import { Button } from "~/components/controls/button";
+import { Input } from "~/components/controls/input";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Select } from "~/components/controls/select";
 import { VirtualTable } from "~/components/dataDisplay/virtualTable";
@@ -33,22 +45,7 @@ import { Icons } from "~/components/icons";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import { createCharacter } from "./createCharacter";
-import { character, DB } from "@db/generated/zod";
-import { DATA_CONFIG } from "~/components/business/data-config";
-import { getPrimaryKeys } from "@db/generated/dmmf-utils";
-import { repositoryMethods } from "@db/generated/repositories";
-import { createForm } from "@tanstack/solid-form";
-import { selectPlayerWeaponById } from "@db/generated/repositories/player_weapon";
-import { selectPlayerArmorById } from "@db/generated/repositories/player_armor";
-import { selectPlayerOptionById } from "@db/generated/repositories/player_option";
-import { selectPlayerSpecialById } from "@db/generated/repositories/player_special";
-import { selectAllCharacterSkillsByBelongtocharacterid } from "@db/generated/repositories/character_skill";
-import { selectAllCharacterRegistletsByBelongtocharacterid } from "@db/generated/repositories/character_registlet";
-import { selectAllCombosByBelongtocharacterid } from "@db/generated/repositories/combo";
-import { selectAllConsumablesByCharacterId } from "@db/generated/repositories/consumable";
-import { Sheet } from "~/components/containers/sheet";
-import { Portal } from "solid-js/web";
-import { Input } from "~/components/controls/input";
+
 export default function CharactePage() {
 	// UI文本字典
 	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
@@ -103,8 +100,8 @@ export default function CharactePage() {
 		charactersFinder,
 	);
 
-	const [dialogIsOpen, setDialogIsOpen] = createSignal(false);
-	const [dialogTitle, setDialogTitle] = createSignal("");
+	const [selectSheetIsOpen, setSelectSheetIsOpen] = createSignal(false);
+	const [selectSheetTitle, setSelectSheetTitle] = createSignal("");
 	const [dialogVistualTableType, setDialogVistualTableType] = createSignal<keyof DB>("player_weapon");
 	const [operateTarget, setOperateTarget] = createSignal<keyof character>("weaponId");
 	const [globalFilterStr, setGlobalFilterStr] = createSignal("");
@@ -129,6 +126,7 @@ export default function CharactePage() {
 	// 相机定义
 	let camera: ArcRotateCamera;
 
+	// 创建Babylon场景
 	const createBabylonScene = (canvas: HTMLCanvasElement): Scene => {
 		engine = new Engine(canvas, true);
 		//自定义加载动画
@@ -421,10 +419,10 @@ export default function CharactePage() {
 												class="rounded-none"
 												onClick={() => {
 													// 打开装备选择器
-													setDialogIsOpen(true);
+													setSelectSheetIsOpen(true);
 													setDialogVistualTableType("player_weapon");
 													setOperateTarget("weaponId");
-													setDialogTitle(dictionary().ui.character.tabs.equipment.mainHand);
+													setSelectSheetTitle(dictionary().ui.character.tabs.equipment.mainHand);
 												}}
 											/>
 											<Show
@@ -437,7 +435,17 @@ export default function CharactePage() {
 													/>
 												}
 											>
-												<Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
+												<Button
+													icon={<Icons.Outline.Trash />}
+													level="quaternary"
+													class="rounded-none rounded-tr"
+													onClick={async () => {
+														await updateCharacter(character().id, {
+															weaponId: "",
+														});
+														await refetchCharacter();
+													}}
+												/>
 											</Show>
 										</button>
 									</section>
@@ -479,10 +487,10 @@ export default function CharactePage() {
 												class="rounded-none"
 												onClick={() => {
 													// 打开装备选择器
-													setDialogIsOpen(true);
+													setSelectSheetIsOpen(true);
 													setDialogVistualTableType("player_weapon");
 													setOperateTarget("subWeaponId");
-													setDialogTitle(dictionary().ui.character.tabs.equipment.subHand);
+													setSelectSheetTitle(dictionary().ui.character.tabs.equipment.subHand);
 												}}
 											/>
 											<Show
@@ -495,7 +503,17 @@ export default function CharactePage() {
 													/>
 												}
 											>
-												<Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
+												<Button
+													icon={<Icons.Outline.Trash />}
+													level="quaternary"
+													class="rounded-none rounded-tr"
+													onClick={async () => {
+														await updateCharacter(character().id, {
+															subWeaponId: "",
+														});
+														await refetchCharacter();
+													}}
+												/>
 											</Show>
 										</button>
 									</section>
@@ -537,10 +555,10 @@ export default function CharactePage() {
 												class="rounded-none"
 												onClick={() => {
 													// 打开装备选择器
-													setDialogIsOpen(true);
+													setSelectSheetIsOpen(true);
 													setDialogVistualTableType("player_armor");
 													setOperateTarget("armorId");
-													setDialogTitle(dictionary().ui.character.tabs.equipment.armor);
+													setSelectSheetTitle(dictionary().ui.character.tabs.equipment.armor);
 												}}
 											/>
 											<Show
@@ -553,7 +571,17 @@ export default function CharactePage() {
 													/>
 												}
 											>
-												<Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
+												<Button
+													icon={<Icons.Outline.Trash />}
+													level="quaternary"
+													class="rounded-none rounded-tr"
+													onClick={async () => {
+														await updateCharacter(character().id, {
+															armorId: "",
+														});
+														await refetchCharacter();
+													}}
+												/>
 											</Show>
 										</button>
 									</section>
@@ -595,10 +623,10 @@ export default function CharactePage() {
 												class="rounded-none"
 												onClick={() => {
 													// 打开装备选择器
-													setDialogIsOpen(true);
+													setSelectSheetIsOpen(true);
 													setDialogVistualTableType("player_option");
 													setOperateTarget("optionId");
-													setDialogTitle(dictionary().ui.character.tabs.equipment.option);
+													setSelectSheetTitle(dictionary().ui.character.tabs.equipment.option);
 												}}
 											/>
 											<Show
@@ -611,7 +639,17 @@ export default function CharactePage() {
 													/>
 												}
 											>
-												<Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
+												<Button
+													icon={<Icons.Outline.Trash />}
+													level="quaternary"
+													class="rounded-none rounded-tr"
+													onClick={async () => {
+														await updateCharacter(character().id, {
+															optionId: "",
+														});
+														await refetchCharacter();
+													}}
+												/>
 											</Show>
 										</button>
 									</section>
@@ -655,10 +693,10 @@ export default function CharactePage() {
 												class="rounded-none"
 												onClick={() => {
 													// 打开装备选择器
-													setDialogIsOpen(true);
+													setSelectSheetIsOpen(true);
 													setDialogVistualTableType("player_special");
 													setOperateTarget("specialId");
-													setDialogTitle(dictionary().ui.character.tabs.equipment.special);
+													setSelectSheetTitle(dictionary().ui.character.tabs.equipment.special);
 												}}
 											/>
 											<Show
@@ -671,7 +709,17 @@ export default function CharactePage() {
 													/>
 												}
 											>
-												<Button icon={<Icons.Outline.Trash />} level="quaternary" class="rounded-none rounded-tr" />
+												<Button
+													icon={<Icons.Outline.Trash />}
+													level="quaternary"
+													class="rounded-none rounded-tr"
+													onClick={async () => {
+														await updateCharacter(character().id, {
+															specialId: "",
+														});
+														await refetchCharacter();
+													}}
+												/>
 											</Show>
 										</button>
 									</section>
@@ -683,13 +731,25 @@ export default function CharactePage() {
 					{/* 弹窗 */}
 					<Portal>
 						<Sheet
-							state={dialogIsOpen()}
+							state={selectSheetIsOpen()}
 							setState={(state) => {
-								setDialogIsOpen(state);
+								setSelectSheetIsOpen(state);
 								setGlobalFilterStr("");
 							}}
 						>
 							<div class="flex h-[90dvh] w-full flex-col gap-2 p-6">
+								<div class="SheetTitle w-full text-xl font-bold flex items-center justify-between">
+									{selectSheetTitle()}
+									<Button
+										icon={<Icons.Outline.Close />}
+										level="quaternary"
+										class="rounded-none rounded-tr"
+										onClick={() => {
+											setSelectSheetIsOpen(false);
+											setGlobalFilterStr("");
+										}}
+									/>
+								</div>
 								<Input type="text" value={globalFilterStr()} onInput={(e) => setGlobalFilterStr(e.target.value)} />
 								{VirtualTable<DB[keyof DB]>({
 									measure: DATA_CONFIG[dialogVistualTableType()]?.table.measure,
@@ -706,13 +766,14 @@ export default function CharactePage() {
 									dictionary: dictionary().db[dialogVistualTableType()],
 									globalFilterStr,
 									rowHandleClick: async (id) => {
+										console.log("目标数据外键id", id);
 										// 使用列表选择的值应该是外键，因此一定不会发生类型变化，所以这里使用类型断言
 										await updateCharacter(character().id, {
 											[operateTarget()]: id,
 										});
 										setGlobalFilterStr("");
 										refetchCharacter();
-										setDialogIsOpen(false);
+										setSelectSheetIsOpen(false);
 									},
 									columnVisibility: {},
 									onColumnVisibilityChange: () => {},
