@@ -780,11 +780,11 @@ export const DATA_CONFIG: DataConfig = {
 				{ accessorKey: "id", cell: (info) => info.getValue(), size: 200 },
 				{ accessorKey: "type", cell: (info) => info.getValue(), size: 120 },
 				{ accessorKey: "name", cell: (info) => info.getValue(), size: 160 },
-				{ accessorKey: "baseAbi", cell: (info) => info.getValue(), size: 80 },
-				{ accessorKey: "stability", cell: (info) => info.getValue(), size: 80 },
+				{ accessorKey: "baseAbi", cell: (info) => info.getValue(), size: 120 },
+				{ accessorKey: "stability", cell: (info) => info.getValue(), size: 120 },
 				{ accessorKey: "elementType", cell: (info) => info.getValue(), size: 120 },
-				{ accessorKey: "extraAbi", cell: (info) => info.getValue(), size: 80 },
-				{ accessorKey: "refinement", cell: (info) => info.getValue(), size: 80 },
+				{ accessorKey: "extraAbi", cell: (info) => info.getValue(), size: 150 },
+				{ accessorKey: "refinement", cell: (info) => info.getValue(), size: 120 },
 				{ accessorKey: "modifiers", cell: (info) => info.getValue(), size: 360 },
 				{ accessorKey: "belongToPlayerId", cell: (info) => info.getValue(), size: 100 },
 			],
@@ -818,7 +818,7 @@ export const DATA_CONFIG: DataConfig = {
 		table: {
 			columnsDef: [
 				{ accessorKey: "id", cell: (info) => info.getValue(), size: 200 },
-				{ accessorKey: "name", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "name", cell: (info) => info.getValue(), size: 180 },
 				{ accessorKey: "baseAbi", cell: (info) => info.getValue(), size: 100 },
 				{ accessorKey: "ability", cell: (info) => info.getValue(), size: 100 },
 				{ accessorKey: "extraAbi", cell: (info) => info.getValue(), size: 100 },
@@ -854,7 +854,7 @@ export const DATA_CONFIG: DataConfig = {
 		table: {
 			columnsDef: [
 				{ accessorKey: "id", cell: (info) => info.getValue(), size: 200 },
-				{ accessorKey: "name", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "name", cell: (info) => info.getValue(), size: 180 },
 				{ accessorKey: "baseAbi", cell: (info) => info.getValue(), size: 100 },
 				{ accessorKey: "extraAbi", cell: (info) => info.getValue(), size: 100 },
 				{ accessorKey: "templateId", cell: (info) => info.getValue(), size: 100 },
@@ -889,7 +889,7 @@ export const DATA_CONFIG: DataConfig = {
 		table: {
 			columnsDef: [
 				{ accessorKey: "id", cell: (info) => info.getValue(), size: 200 },
-				{ accessorKey: "name", cell: (info) => info.getValue(), size: 100 },
+				{ accessorKey: "name", cell: (info) => info.getValue(), size: 180 },
 				{ accessorKey: "baseAbi", cell: (info) => info.getValue(), size: 100 },
 				{ accessorKey: "extraAbi", cell: (info) => info.getValue(), size: 100 },
 				{ accessorKey: "templateId", cell: (info) => info.getValue(), size: 100 },

@@ -2,10 +2,20 @@ import { createMemo, Show } from "solid-js";
 import spritesUrl from "~/../public/app-image/icon-sprites.png?url";
 import sprites from "~/../public/app-image/sprites.json";
 
+const spriteIconMap = {
+	player_armor: "Armor",
+	player_option: "Option",
+	player_special: "Special",
+	player_weapon: "Weapon",
+	player_pet: "Pet",
+	player_skill: "Skill",
+};
+
 export const getSpriteIcon = (props: { iconName: string; size?: number; outline?: boolean }) => {
-	const sprite = createMemo(() =>
-		sprites.find((sprite) => sprite.name.toLowerCase() === (props.iconName ?? "").toLowerCase()),
-	);
+	const sprite = createMemo(() =>{
+		const iconName = props.iconName in spriteIconMap ? spriteIconMap[props.iconName as keyof typeof spriteIconMap] : props.iconName;
+		return sprites.find((sprite) => sprite.name.toLowerCase() === (iconName ?? "").toLowerCase())
+	});
 	const actSize = createMemo(() => props.size ?? 24);
 
 	return (

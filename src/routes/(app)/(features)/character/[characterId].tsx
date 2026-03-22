@@ -281,7 +281,7 @@ export default function CharactePage() {
 					</div>
 					<div class="Content flex h-full w-full flex-1 flex-col overflow-hidden p-6 landscape:flex-row">
 						{/* 角色视图 */}
-						<div class="CharacterView hidden w-full flex-1 overflow-hidden portrait:block">
+						<div class="CharacterView hidden w-full flex-1 max-h-48 overflow-hidden portrait:block">
 							<canvas ref={setCanvas} class="border-dividing-color block h-full w-full rounded-md border">
 								当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
 							</canvas>
@@ -723,8 +723,29 @@ export default function CharactePage() {
 											</Show>
 										</button>
 									</section>
+									{/* 时装 */}
 								</div>
 							</OverlayScrollbarsComponent>
+						</Show>
+
+						{/* 基本配置 */}
+						<Show when={activeTab() === "base"}>
+							<div class="BasicConfig flex flex-col gap-2">
+								<div class="BasicConfigItem flex flex-col gap-2">
+									<div class="BasicConfigItemLabel">角色名称</div>
+									<Input
+										type="text"
+										value={character().name}
+										onChange={async (e) => {
+											await updateCharacter(character().id, {
+												name: e.target.value,
+											});
+											await refetchCharacter();
+										}}
+										description="请输入角色名称"
+									/>
+								</div>
+							</div>
 						</Show>
 					</div>
 

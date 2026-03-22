@@ -154,7 +154,11 @@ export const Card = (props: CardProps) => {
 
 							<div class="bg-primary-color z-10 -mx-px py-[3px]">
 								<div class="border-boundary-color flex items-center border-y py-[3px]">
-									<div class="TitleIcon bg-accent-color h-[34px] w-fit">{props.titleIcon}</div>
+									<Show when={props.titleIcon}>
+										<div class="TitleIcon bg-accent-color flex items-center w-[34px] h-[34px]">
+											{props.titleIcon}
+										</div>
+									</Show>
 									<h1 class="text-primary-color bg-accent-color py-[3px] text-xl font-bold">{props.title}</h1>
 								</div>
 							</div>
