@@ -354,6 +354,19 @@ export const main = async (): Promise<void> => {
 };
 
 // 如果直接运行此文件，则执行主函数
-if (import.meta.url === `file://${process.argv[1]}`) {
+// NOTE: ESM + tsx 在不同 OS 下对 process.argv[1] / import.meta.url 的格式可能不一致，
+// 这里统一转成“规范化后的绝对文件路径”再比较，避免 Windows 上 main() 不触发。
+const argv1 = process.argv[1];
+let argv1Path = argv1 ?? "";
+
+// process.argv[1] 可能是 file:// URL（或普通路径）。统一都转成本地文件路径。
+if (argv1Path.startsWith("file://")) {
+  argv1Path = fileURLToPath(argv1Path);
+}
+
+const selfPath = path.resolve(__filename);
+const normalizedArgv1Path = argv1Path ? path.resolve(argv1Path) : "";
+
+if (normalizedArgv1Path && normalizedArgv1Path === selfPath) {
   main();
 }
