@@ -25,23 +25,10 @@ ToramCalculator is an auxiliary tool developed for the Toram Online game. It hel
 - 🐳 Docker
 - 📦 Node.js >= 24
 - 🔧 pnpm >= 9.15.2
-- ⚡ tsx (global installation)
 
-### Global tsx Installation
+### Install Dependencies
 
-Before starting development, you need to install tsx globally:
-
-```bash
-# Using npm
-npm install -g tsx
-
-# Or using pnpm
-pnpm add -g tsx
-```
-
-### Initialization Process
-
-For first-time development or data architecture changes, execute the following commands:
+For first-time development, run:
 
 ```bash
 # 1. Install dependencies
@@ -49,8 +36,14 @@ pnpm install
 
 # 2. Copy environment variables file
 cp .env.example .env
+```
 
-# 3. Execute complete initialization
+### Initialization Process
+
+For first-time development or data architecture changes, execute the following commands:
+
+```bash
+# 1. Execute complete initialization
 pnpm dev:init
 ```
 
