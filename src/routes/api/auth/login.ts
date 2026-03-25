@@ -1,6 +1,6 @@
 import { findUserByEmail } from "@db/repositories/user";
 import type { APIEvent } from "@solidjs/start/server";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
 import { setCookie } from "vinxi/http";
 
