@@ -36,7 +36,7 @@ export interface SchemaAttribute {
 	displayName: string;
 	/** 属性的计算表达式，支持DSL语法 */
 	expression: string;
-	/** 标记属性是否不包含基础值（百分比应转换为小数fixed累加） */
+	/** 标记属性是否为 noBaseValue（百分比修正不参与乘法，仅做加法累加） */
 	noBaseValue?: boolean;
 	/** 标记属性是否只包含基础值 */
 	onlyBaseValue?: boolean;

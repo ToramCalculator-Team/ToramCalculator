@@ -403,6 +403,9 @@ export class StatContainer<T extends string> {
 		Map<number, Map<string, number>>
 	>;
 
+	/** sourceId 反向索引：sourceId -> (type * keyCount + attrIndex) 集合 */
+	private readonly sourceIndex: Map<string, Set<number>>;
+
 	/** 依赖图 */
 	private readonly dependencyGraph: DependencyGraph;
 
@@ -422,7 +425,7 @@ export class StatContainer<T extends string> {
 	/** 表达式原文映射（用于导出展示） */
 	private readonly expressionStrings: Map<T, string> = new Map();
 
-	/** 标记属性是否为 noBaseValue（百分比应转换为小数fixed累加） */
+	/** 标记属性是否为 noBaseValue（百分比修正不参与乘法，仅做加法累加） */
 	private readonly isNoBaseValue: boolean[] = [];
 
 	/** 正在计算的属性集合（防止递归） */
@@ -466,6 +469,7 @@ export class StatContainer<T extends string> {
 
 		// 初始化修饰符来源聚合结构
 		this.modifierSources = new Map();
+		this.sourceIndex = new Map();
 
 		// 初始化映射关系
 		this.keyToIndex = new Map();
@@ -573,6 +577,28 @@ export class StatContainer<T extends string> {
 
 	// ==================== 公共API - 修饰符管理 ====================
 
+	private getSourceEntryKey(type: ModifierType, attrIndex: number): number {
+		return type * this.values.length + attrIndex;
+	}
+
+	private addSourceIndexEntry(sourceId: string, entryKey: number): void {
+		let set = this.sourceIndex.get(sourceId);
+		if (!set) {
+			set = new Set();
+			this.sourceIndex.set(sourceId, set);
+		}
+		set.add(entryKey);
+	}
+
+	private removeSourceIndexEntry(sourceId: string, entryKey: number): void {
+		const set = this.sourceIndex.get(sourceId);
+		if (!set) return;
+		set.delete(entryKey);
+		if (set.size === 0) {
+			this.sourceIndex.delete(sourceId);
+		}
+	}
+
 	/**
 	 * 添加修饰符
 	 */
@@ -588,18 +614,13 @@ export class StatContainer<T extends string> {
 			log.warn(`⚠️ 尝试为不存在的属性添加修饰器: ${attr}`);
 			return;
 		}
-		// 对 noBaseValue 属性：将百分比修饰符转为小数并落入 fixed 通道
-		let type = targetType;
-		let amount = value;
-		if (this.isNoBaseValue[index]) {
-			if (targetType === ModifierType.STATIC_PERCENTAGE) {
-				type = ModifierType.STATIC_FIXED;
-				amount = value; // 按百分数字面量存储（避免被整型取整为0）
-			} else if (targetType === ModifierType.DYNAMIC_PERCENTAGE) {
-				type = ModifierType.DYNAMIC_FIXED;
-				amount = value; // 按百分数字面量存储
-			}
-		}
+		const type = targetType;
+		const amount = value;
+		if (amount === 0) return;
+
+		const entryKey = this.getSourceEntryKey(type, index);
+		const sourceId = source.id;
+
 		// 来源聚合：记录 sourceId 的值并同步到累加数组
 		let perType = this.modifierSources.get(type);
 		if (!perType) {
@@ -611,12 +632,26 @@ export class StatContainer<T extends string> {
 			perAttr = new Map();
 			perType.set(index, perAttr);
 		}
-		const prev = perAttr.get(source.id) ?? 0;
+		const prev = perAttr.get(sourceId) ?? 0;
 		const next = prev + amount;
-		perAttr.set(source.id, next);
 		const delta = next - prev;
-		this.modifierArrays[type][index] += delta;
-		this.markDirty(index);
+		if (delta !== 0) {
+			this.modifierArrays[type][index] += delta;
+			this.markDirty(index);
+		}
+		if (next === 0) {
+			perAttr.delete(sourceId);
+			if (perAttr.size === 0) {
+				perType.delete(index);
+				if (perType.size === 0) {
+					this.modifierSources.delete(type);
+				}
+			}
+			this.removeSourceIndexEntry(sourceId, entryKey);
+		} else {
+			perAttr.set(sourceId, next);
+			this.addSourceIndexEntry(sourceId, entryKey);
+		}
 
 		// console.log(`✅ 成功添加修饰器: ${attr} ,位置${targetType.toString()} ,值${value} (来源: ${source.name})`);
 	}
@@ -647,19 +682,133 @@ export class StatContainer<T extends string> {
 			log.warn(`⚠️ 尝试为不存在的属性移除修饰器: ${attr}`);
 			return;
 		}
+
+		const entryKey = this.getSourceEntryKey(targetType, index);
 		// 来源级移除：从来源聚合删除并从累加数组扣减
 		const perType = this.modifierSources.get(targetType);
 		const perAttr = perType?.get(index);
-		const amount = perAttr?.get(sourceId) ?? 0;
-		if (amount !== 0) {
-			this.modifierArrays[targetType][index] -= amount;
-			perAttr?.delete(sourceId);
-			if (perAttr?.size === 0) {
-				perType?.delete(index);
+		if (!perType || !perAttr || !perAttr.has(sourceId)) return;
+		const amount = perAttr.get(sourceId) ?? 0;
+		this.modifierArrays[targetType][index] -= amount;
+		perAttr.delete(sourceId);
+		if (perAttr.size === 0) {
+			perType.delete(index);
+			if (perType.size === 0) {
+				this.modifierSources.delete(targetType);
 			}
-			this.markDirty(index);
-			log.debug(`✅ 成功移除修饰器: ${attr} -${amount} (来源: ${sourceId})`);
 		}
+		this.removeSourceIndexEntry(sourceId, entryKey);
+		this.markDirty(index);
+		log.debug(`✅ 成功移除修饰器: ${attr} -${amount} (来源: ${sourceId})`);
+	}
+
+	/**
+	 * 按 sourceId 查询其影响的所有修饰条目
+	 */
+	getModifiersBySourceId(
+		sourceId: string,
+	): Array<{ attr: T; targetType: ModifierType; value: number }> {
+		const keys = this.sourceIndex.get(sourceId);
+		if (!keys || keys.size === 0) return [];
+
+		const result: Array<{ attr: T; targetType: ModifierType; value: number }> =
+			[];
+		const keyCount = this.values.length;
+
+		for (const entryKey of keys) {
+			const type = Math.floor(entryKey / keyCount) as ModifierType;
+			const attrIndex = entryKey - type * keyCount;
+			const value = this.modifierSources
+				.get(type)
+				?.get(attrIndex)
+				?.get(sourceId);
+			if (value === undefined || value === 0) continue;
+			result.push({ attr: this.indexToKey[attrIndex], targetType: type, value });
+		}
+
+		return result;
+	}
+
+	/**
+	 * 按 sourceId 覆盖更新一组修饰条目（会移除该 sourceId 旧的所有条目）
+	 *
+	 * 注意：暂不考虑同一 sourceId 下出现同 (attr, targetType) 的重复条目。
+	 */
+	updateModifiersBySourceId(
+		sourceId: string,
+		items: Array<{ attr: T; targetType: ModifierType; value: number }>,
+	): void {
+		const desired = new Map<number, number>();
+		const keyCount = this.values.length;
+
+		for (const item of items) {
+			const attrIndex = this.keyToIndex.get(item.attr);
+			if (attrIndex === undefined) {
+				log.warn(`⚠️ 尝试为不存在的属性更新修饰器: ${item.attr}`);
+				continue;
+			}
+			const entryKey = this.getSourceEntryKey(item.targetType, attrIndex);
+			if (desired.has(entryKey)) {
+				log.warn(
+					`⚠️ updateModifiersBySourceId 收到重复条目: ${String(item.attr)} ${ModifierType[item.targetType]}`,
+				);
+			}
+			desired.set(entryKey, item.value);
+		}
+
+		const prevKeys = this.sourceIndex.get(sourceId);
+		const allKeys = new Set<number>();
+		if (prevKeys) {
+			for (const k of prevKeys) allKeys.add(k);
+		}
+		for (const k of desired.keys()) allKeys.add(k);
+
+		for (const entryKey of allKeys) {
+			const type = Math.floor(entryKey / keyCount) as ModifierType;
+			const attrIndex = entryKey - type * keyCount;
+			const perType = this.modifierSources.get(type);
+			const perAttr = perType?.get(attrIndex);
+			const prev = perAttr?.get(sourceId) ?? 0;
+			const next = desired.get(entryKey) ?? 0;
+			if (prev === next) continue;
+
+			if (next === 0) {
+				if (perType && perAttr && perAttr.has(sourceId)) {
+					this.modifierArrays[type][attrIndex] -= prev;
+					perAttr.delete(sourceId);
+					if (perAttr.size === 0) {
+						perType.delete(attrIndex);
+						if (perType.size === 0) this.modifierSources.delete(type);
+					}
+				}
+				this.removeSourceIndexEntry(sourceId, entryKey);
+			} else {
+				let ensuredPerType = perType;
+				if (!ensuredPerType) {
+					ensuredPerType = new Map();
+					this.modifierSources.set(type, ensuredPerType);
+				}
+				let ensuredPerAttr = ensuredPerType.get(attrIndex);
+				if (!ensuredPerAttr) {
+					ensuredPerAttr = new Map();
+					ensuredPerType.set(attrIndex, ensuredPerAttr);
+				}
+				ensuredPerAttr.set(sourceId, next);
+				this.addSourceIndexEntry(sourceId, entryKey);
+				this.modifierArrays[type][attrIndex] += next - prev;
+			}
+
+			this.markDirty(attrIndex);
+		}
+
+		this.stats.batchUpdates++;
+	}
+
+	/**
+	 * 按 sourceId 移除其全部修饰条目
+	 */
+	removeModifiersBySourceId(sourceId: string): void {
+		this.updateModifiersBySourceId(sourceId, []);
 	}
 
 	// ==================== 公共API - 数据导出 ====================
@@ -1025,15 +1174,13 @@ export class StatContainer<T extends string> {
 		const totalPercentage = staticPercentage + dynamicPercentage;
 		const totalFixed = staticFixed + dynamicFixed;
 
-		// noBaseValue 属性：实际值 = 基础值 + (加成总量/100)
+		// noBaseValue 属性：不做“基础值 * (1 + %)”的乘法，只对修正值做加法累加
 		if (this.isNoBaseValue[index]) {
 			const computationFn = this.computationFunctions.get(index);
 			const baseValue = computationFn
 				? computationFn()
 				: this.modifierArrays[ModifierType.BASE_VALUE][index];
-			const additions = totalFixed; // 百分数点累加
-			const value = baseValue + additions / 100;
-			return value;
+			return baseValue + totalFixed + totalPercentage;
 		}
 
 		// 如果有计算函数，先计算基础值，然后应用修饰符
