@@ -6,7 +6,7 @@ import { createLogger } from "~/lib/Logger";
 import type { ExpressionContext } from "../../JSProcessor/types";
 import type { PipelineRegistry } from "../../Pipline/PipelineRegistry";
 import type { StagePool } from "../../Pipline/types";
-import type { MemberDomainEvent } from "../../types";
+import type { MemberCheckpoint, MemberDomainEvent } from "../../types";
 import type { DamageAreaRequest } from "../Area/types";
 import type { Member } from "./Member";
 import type { MemberContext } from "./MemberContext";
@@ -510,5 +510,24 @@ export class MemberManager {
 	getPrimaryMemberInfo(): AnyMemberEntry | null {
 		if (!this.primaryMemberId) return null;
 		return this.members.get(this.primaryMemberId) || null;
+	}
+
+	// ==================== Checkpoint ====================
+
+	captureMemberCheckpoints(): MemberCheckpoint[] {
+		const checkpoints: MemberCheckpoint[] = [];
+		for (const member of this.members.values()) {
+			checkpoints.push(member.captureCheckpoint());
+		}
+		return checkpoints;
+	}
+
+	restoreMemberCheckpoints(checkpoints: MemberCheckpoint[]): void {
+		for (const cp of checkpoints) {
+			const member = this.members.get(cp.memberId);
+			if (member) {
+				member.restoreCheckpoint(cp);
+			}
+		}
 	}
 }

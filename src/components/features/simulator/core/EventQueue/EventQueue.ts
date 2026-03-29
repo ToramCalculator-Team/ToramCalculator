@@ -3,11 +3,13 @@
  * 主要事件处理逻辑在状态机中，事件队列只负责跨帧对状态机发送消息
  */
 
-import type { EventQueueConfig, QueueEvent, QueueSnapshot, QueueStats } from "./types";
 import { createLogger } from "~/lib/Logger";
+import type { Checkpointable, EventQueueCheckpoint } from "../types";
+import type { EventQueueConfig, QueueEvent, QueueEventType, QueueSnapshot, QueueStats } from "./types";
+
 const log = createLogger("EventQueue");
 
-export class EventQueue {
+export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 	/** 事件队列配置 */
 	private config: EventQueueConfig;
 	/** 帧号获取器 */
@@ -330,6 +332,71 @@ export class EventQueue {
 	 */
 	getSnapshots(): QueueSnapshot[] {
 		return structuredClone(this.snapshots);
+	}
+
+	// ==================== 引擎回滚检查点（与 snapshots 独立，可 postMessage） ====================
+
+	captureCheckpoint(): EventQueueCheckpoint {
+		const events: EventQueueCheckpoint["events"] = [];
+		const frames = [...this.buckets.keys()].sort((a, b) => a - b);
+		for (const frame of frames) {
+			const list = this.buckets.get(frame);
+			if (!list) continue;
+			for (const e of list) {
+				const row: EventQueueCheckpoint["events"][number] = {
+					id: e.id,
+					insertFrame: e.insertFrame,
+					executeFrame: e.executeFrame,
+					type: e.type,
+					processed: e.processed,
+					targetMemberId: e.targetMemberId,
+					fsmEventType: e.fsmEventType,
+				};
+				if (e.payload !== undefined) {
+					row.payload = structuredClone(e.payload);
+				}
+				events.push(row);
+			}
+		}
+		return {
+			events,
+			totalSize: this.totalSize,
+			stats: {
+				currentSize: this.stats.currentSize,
+				totalProcessed: this.stats.totalProcessed,
+				totalInserted: this.stats.totalInserted,
+			},
+		};
+	}
+
+	restoreCheckpoint(checkpoint: EventQueueCheckpoint): void {
+		this.buckets.clear();
+		this.byId.clear();
+		for (const row of checkpoint.events) {
+			const e: QueueEvent = {
+				id: row.id,
+				insertFrame: row.insertFrame,
+				executeFrame: row.executeFrame,
+				type: row.type as QueueEventType,
+				processed: row.processed,
+				targetMemberId: row.targetMemberId,
+				fsmEventType: row.fsmEventType,
+				source: "未知来源",
+			};
+			if (row.payload !== undefined) {
+				e.payload = structuredClone(row.payload);
+			}
+			const list = this.buckets.get(e.executeFrame) ?? [];
+			list.push(e);
+			this.buckets.set(e.executeFrame, list);
+			this.byId.set(e.id, e);
+		}
+		this.totalSize = checkpoint.totalSize;
+		this.stats = {
+			currentSize: checkpoint.stats.currentSize,
+			totalProcessed: checkpoint.stats.totalProcessed,
+			totalInserted: checkpoint.stats.totalInserted,
+		};
 	}
 
 	// 无私有排序插入：按帧分桶后不再需要

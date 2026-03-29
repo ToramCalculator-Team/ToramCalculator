@@ -1,3 +1,4 @@
+import { SimulatorWithRelationsSchema } from "@db/generated/repositories/simulator";
 import { MEMBER_TYPE } from "@db/schema/enums";
 import { z } from "zod/v4";
 import {
@@ -10,8 +11,21 @@ import {
 	type FrameLoopSnapshot,
 	type FrameLoopStats,
 } from "./FrameLoop/types";
+import type { JSProcessor } from "./JSProcessor/JSProcessor";
 import type { MessageRouterStats } from "./MessageRouter/MessageRouter";
+import type { PipelineRegistry } from "./Pipline/PipelineRegistry";
+import type { StagePool } from "./Pipline/types";
 import type { MemberSerializeData } from "./World/Member/Member";
+import type { MemberContext } from "./World/Member/MemberContext";
+
+/**
+ * 引擎基础设施 -- 长期驻留的编译缓存和管线定义。
+ * 在 Worker 级别持有，跨 GameEngine reset/cleanup 存活。
+ */
+export interface EngineInfrastructure {
+	jsProcessor: JSProcessor;
+	pipelineRegistry: PipelineRegistry<MemberContext, StagePool<MemberContext>>;
+}
 
 /**
  * 引擎状态枚举
@@ -23,11 +37,114 @@ export type EngineState =
 	| "paused" // 已暂停
 	| "stopped"; // 已停止
 
+// ==================== SimulationProfile ====================
+
+/** 帧驱动方式 */
+export type DriveMode = "clocked" | "unclocked";
+
+/** 执行语义 */
+export type ExecutionSemantics = "full" | "previewSafe";
+
+/** 停止策略 */
+export type StopPolicy =
+	| { kind: "manual" }
+	| { kind: "untilFrame"; targetFrame: number }
+	| { kind: "untilBattleEnd" }
+	| { kind: "untilSequencesDone" };
+
+/** 输出策略 */
+export type OutputPolicy =
+	| "streamRealtime"
+	| "collectFrameSnapshots"
+	| "returnPreviewReport";
+
+/** 探针策略 */
+export type ProbePolicy =
+	| "disabled"
+	| "rollbackAfterSkillProbe";
+
+/**
+ * 仿真配置描述符。
+ * 多维度配置替代旧的 EngineMode / FrameLoopMode / enableIntentInput。
+ */
+export interface SimulationProfile {
+	driveMode: DriveMode;
+	executionSemantics: ExecutionSemantics;
+	stopPolicy: StopPolicy;
+	outputPolicy: OutputPolicy;
+	probePolicy: ProbePolicy;
+	acceptExternalIntents: boolean;
+	targetFPS: number;
+	timeScale: number;
+	maxFrameSkip: number;
+}
+
+export function createRealtimeProfile(overrides?: Partial<SimulationProfile>): SimulationProfile {
+	return {
+		driveMode: "clocked",
+		executionSemantics: "full",
+		stopPolicy: { kind: "manual" },
+		outputPolicy: "streamRealtime",
+		probePolicy: "disabled",
+		acceptExternalIntents: true,
+		targetFPS: 60,
+		timeScale: 1,
+		maxFrameSkip: 5,
+		...overrides,
+	};
+}
+
+export function createFastForwardProfile(
+	stopPolicy: StopPolicy = { kind: "untilBattleEnd" },
+	overrides?: Partial<SimulationProfile>,
+): SimulationProfile {
+	return {
+		driveMode: "unclocked",
+		executionSemantics: "full",
+		stopPolicy,
+		outputPolicy: "collectFrameSnapshots",
+		probePolicy: "disabled",
+		acceptExternalIntents: false,
+		targetFPS: 60,
+		timeScale: 1,
+		maxFrameSkip: 5,
+		...overrides,
+	};
+}
+
+export function createPreviewProfile(overrides?: Partial<SimulationProfile>): SimulationProfile {
+	return {
+		driveMode: "unclocked",
+		executionSemantics: "previewSafe",
+		stopPolicy: { kind: "untilSequencesDone" },
+		outputPolicy: "returnPreviewReport",
+		probePolicy: "rollbackAfterSkillProbe",
+		acceptExternalIntents: false,
+		targetFPS: 60,
+		timeScale: 1,
+		maxFrameSkip: 5,
+		...overrides,
+	};
+}
+
+// ==================== EngineInitializationData ====================
+
+export const EngineInitializationDataSchema = z.object({
+	simulator: SimulatorWithRelationsSchema,
+	runtimeSelection: z.object({
+		primaryMemberId: z.string(),
+		activeCharacterId: z.string(),
+	}),
+});
+
+export type EngineInitializationData = z.output<typeof EngineInitializationDataSchema>;
+
+// ==================== EngineConfig ====================
+
 /**
  * 引擎配置接口
  */
 export const EngineConfigSchema = z.object({
-	enableIntentInput: z.boolean(),
 	eventQueueConfig: EventQueueConfigSchema,
 	frameLoopConfig: FrameLoopConfigSchema,
 });
@@ -370,6 +487,150 @@ export const EngineStatsFullSchema = z
 	.passthrough();
 
 export type EngineStatsFull = z.output<typeof EngineStatsFullSchema>;
+
+// ==================== Checkpoint / Restore ====================
+
+/**
+ * 可检查点化接口。实现此接口的子系统支持状态捕获和恢复。
+ * T 必须为 plain data（无函数、无闭包），以支持 postMessage 跨 Worker 传输。
+ */
+export interface Checkpointable<T> {
+	captureCheckpoint(): T;
+	restoreCheckpoint(checkpoint: T): void;
+}
+
+/** EventQueue 检查点：当前队列事件 + 统计 */
+export interface EventQueueCheckpoint {
+	events: Array<{
+		id: string;
+		insertFrame: number;
+		executeFrame: number;
+		type: string;
+		processed: boolean;
+		targetMemberId: string;
+		fsmEventType: string;
+		payload?: unknown;
+	}>;
+	totalSize: number;
+	stats: {
+		currentSize: number;
+		totalProcessed: number;
+		totalInserted: number;
+	};
+}
+
+/** StatContainer 检查点：修饰符层 + 值 + 脏位 */
+export interface StatContainerCheckpoint {
+	values: Float64Array;
+	flags: Uint32Array;
+	dirtyBitmap: Uint32Array;
+	modifierArrays: Float64Array[];
+	modifierSources: Array<{
+		modifierType: number;
+		entries: Array<{
+			attrIndex: number;
+			sources: Array<{ sourceId: string; value: number }>;
+		}>;
+	}>;
+}
+
+/** StatusInstanceStore 检查点 */
+export interface StatusInstanceStoreCheckpoint {
+	instances: Array<{
+		id: string;
+		type: string;
+		sourceId?: string;
+		sourceSkillId?: string;
+		appliedAtFrame: number;
+		resolvedDurationFrames?: number;
+		expiresAtFrame?: number;
+		stacks?: number;
+		tags?: string[];
+		meta?: Record<string, unknown>;
+	}>;
+}
+
+/** Member FSM 检查点（XState persisted snapshot） */
+export type MemberFSMCheckpoint = unknown;
+
+/** BtManager 检查点 */
+export interface BtManagerCheckpoint {
+	hasActiveEffect: boolean;
+	activeEffectBtId?: string;
+	activeEffectContext?: Record<string, unknown>;
+	parallelEntries: Array<{
+		name: string;
+		btId: string;
+		context: Record<string, unknown>;
+	}>;
+}
+
+/** PipelineManager 检查点：动态 patch 状态（compiledChains 可从定义重建） */
+export interface PipelineManagerCheckpoint {
+	/** pipelineName -> afterStageName -> 插入条目（plain data） */
+	dynamicStages: Record<
+		string,
+		Record<
+			string,
+			Array<{
+				stageName: string;
+				params?: Record<string, unknown>;
+				insertedSeq: number;
+			}>
+		>
+	>;
+	insertedSeq: number;
+	hasMemberOverrides: boolean;
+	hasSkillOverrides: boolean;
+}
+
+/** DamageAreaSystem 检查点 */
+export interface DamageAreaSystemCheckpoint {
+	nextAreaId: number;
+	instances: Array<{
+		areaId: string;
+		requestPayload: unknown;
+		lastHitFrameByTargetId: Array<[string, number]>;
+	}>;
+}
+
+/** DomainEventBus 检查点 */
+export interface DomainEventBusCheckpoint {
+	currentFrame: number;
+	currentFrameEvents: Array<[string, MemberDomainEvent]>;
+}
+
+/** ControllerEventProjector 检查点 */
+export interface ControllerEventProjectorCheckpoint {
+	currentFrameEvents: Array<unknown>;
+}
+
+/** 单个成员的完整检查点 */
+export interface MemberCheckpoint {
+	memberId: string;
+	fsm: MemberFSMCheckpoint;
+	statContainer: StatContainerCheckpoint;
+	statusStore: StatusInstanceStoreCheckpoint;
+	btManager: BtManagerCheckpoint;
+	pipelineManager: PipelineManagerCheckpoint;
+	position: { x: number; y: number; z: number };
+}
+
+/** World 检查点 */
+export interface WorldCheckpoint {
+	members: MemberCheckpoint[];
+	damageAreaSystem: DamageAreaSystemCheckpoint;
+}
+
+/** 引擎完整检查点 */
+export interface EngineCheckpoint {
+	frameNumber: number;
+	timestamp: number;
+	eventQueue: EventQueueCheckpoint;
+	world: WorldCheckpoint;
+	domainEventBus: DomainEventBusCheckpoint;
+	controllerEventProjector: ControllerEventProjectorCheckpoint;
+}
 
 /**
  * 战斗快照接口

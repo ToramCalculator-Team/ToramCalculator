@@ -78,16 +78,22 @@ export class JSProcessor {
 
 			let expressionToRun = expression;
 			if (hasAccessor) {
-				const compiled = ExpressionTransformer.transformToGetValue(expression, {
-					schemas: options?.schemas,
-				});
-				if (!compiled.success) {
-					return {
-						success: false,
-						error: compiled.error ?? "表达式编译失败",
-					};
+				const cached = this.transformedExprDict.get(expression);
+				if (cached) {
+					expressionToRun = cached;
+				} else {
+					const compiled = ExpressionTransformer.transformToGetValue(expression, {
+						schemas: options?.schemas,
+					});
+					if (!compiled.success) {
+						return {
+							success: false,
+							error: compiled.error ?? "表达式编译失败",
+						};
+					}
+					expressionToRun = compiled.compiledExpression;
+					this.transformedExprDict.set(expression, expressionToRun);
 				}
-				expressionToRun = compiled.compiledExpression;
 			}
 
 			const cacheKey = this.generateRunnerCacheKey(
@@ -148,13 +154,38 @@ export class JSProcessor {
 
 	/**
 	 * 清空所有缓存
-	 *
-	 * 说明：清空 runner 缓存并重置统计信息，用于调试或内存管理
 	 */
 	clearCache(): void {
 		this.runnerCache.clear();
+		this.transformedExprDict.clear();
 		this.cacheStats.hits = 0;
 		this.cacheStats.misses = 0;
+	}
+
+	// ==================== 跨 Worker 表达式共享 ====================
+
+	/**
+	 * 已转换表达式字典：原始表达式 → 转换后表达式。
+	 * 记录所有经过 AST 转换的表达式字符串，供 batch worker 导入。
+	 * batch worker 导入后只需 `new Function()` 即可创建 runner，跳过 AST 解析开销。
+	 */
+	private readonly transformedExprDict = new Map<string, string>();
+
+	/**
+	 * 导出已转换表达式字典（plain data，可 postMessage）。
+	 */
+	exportTransformedExprDict(): Array<[string, string]> {
+		return Array.from(this.transformedExprDict.entries());
+	}
+
+	/**
+	 * 导入已转换表达式字典（batch worker 调用）。
+	 * 导入后，evaluate 遇到已知表达式时直接查表，跳过 AST 转换。
+	 */
+	importTransformedExprDict(entries: Array<[string, string]>): void {
+		for (const [original, transformed] of entries) {
+			this.transformedExprDict.set(original, transformed);
+		}
 	}
 
 	/**

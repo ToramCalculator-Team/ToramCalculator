@@ -28,10 +28,13 @@ import { selectAllCharacterRegistletsByBelongtocharacterid } from "@db/generated
 import { selectAllCharacterSkillsByBelongtocharacterid } from "@db/generated/repositories/character_skill";
 import { selectAllCombosByBelongtocharacterid } from "@db/generated/repositories/combo";
 import { selectAllConsumablesByCharacterId } from "@db/generated/repositories/consumable";
+import type { MemberWithRelations } from "@db/generated/repositories/member";
+import { selectPlayerByIdWithRelations } from "@db/generated/repositories/player";
 import { selectPlayerArmorById } from "@db/generated/repositories/player_armor";
 import { selectPlayerOptionById } from "@db/generated/repositories/player_option";
 import { selectPlayerSpecialById } from "@db/generated/repositories/player_special";
 import { selectPlayerWeaponById } from "@db/generated/repositories/player_weapon";
+import type { TeamWithRelations } from "@db/generated/repositories/team";
 import type { character, DB } from "@db/generated/zod";
 import { Motion } from "solid-motionone";
 import { DATA_CONFIG } from "~/components/business/data-config";
@@ -41,6 +44,9 @@ import { Input } from "~/components/controls/input";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Select } from "~/components/controls/select";
 import { VirtualTable } from "~/components/dataDisplay/virtualTable";
+import { useEngine } from "~/components/features/simulator/core/thread/EngineContext";
+import { createPreviewProfile, type EngineInitializationData } from "~/components/features/simulator/core/types";
+import { StatsRenderer } from "~/components/features/simulator/core/World/Member/MemberStatusPanel";
 import { Icons } from "~/components/icons";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
@@ -55,43 +61,83 @@ export default function CharactePage() {
 	const params = useParams();
 	const [character, { refetch: refetchCharacter }] = createResource(
 		() => params.characterId,
-		(id) => selectCharacterById(id),
+		async (id) => {
+			const result = await selectCharacterById(id);
+			// console.log("selected character", result);
+			return result;
+		},
 	);
 	const [mainWeapon, { refetch: refetchMainWeapon }] = createResource(
 		() => character()?.weaponId,
-		(id) => selectPlayerWeaponById(id),
+		async (id) => {
+			const result = await selectPlayerWeaponById(id);
+			// console.log("selected main weapon", result);
+			return result;
+		},
 	);
 	const [subWeapon, { refetch: refetchSubWeapon }] = createResource(
 		() => character()?.subWeaponId,
-		(id) => selectPlayerWeaponById(id),
+		async (id) => {
+			const result = await selectPlayerWeaponById(id);
+			// console.log("selected sub weapon", result);
+			return result;
+		},
 	);
 	const [armor, { refetch: refetchArmor }] = createResource(
 		() => character()?.armorId,
-		(id) => selectPlayerArmorById(id),
+		async (id) => {
+			const result = await selectPlayerArmorById(id);
+			// console.log("selected armor", result);
+			return result;
+		},
 	);
 	const [option, { refetch: refetchOption }] = createResource(
 		() => character()?.optionId,
-		(id) => selectPlayerOptionById(id),
+		async (id) => {
+			const result = await selectPlayerOptionById(id);
+			// console.log("selected option", result);
+			return result;
+		},
 	);
 	const [special, { refetch: refetchSpecial }] = createResource(
 		() => character()?.specialId,
-		(id) => selectPlayerSpecialById(id),
+		async (id) => {
+			const result = await selectPlayerSpecialById(id);
+			// console.log("selected special", result);
+			return result;
+		},
 	);
 	const [skills, { refetch: refetchSkills }] = createResource(
 		() => character()?.id,
-		(id) => selectAllCharacterSkillsByBelongtocharacterid(id),
+		async (id) => {
+			const result = await selectAllCharacterSkillsByBelongtocharacterid(id);
+			// console.log("selected skills", result);
+			return result;
+		},
 	);
 	const [registlets, { refetch: refetchRegistlets }] = createResource(
 		() => character()?.id,
-		(id) => selectAllCharacterRegistletsByBelongtocharacterid(id),
+		async (id) => {
+			const result = await selectAllCharacterRegistletsByBelongtocharacterid(id);
+			// console.log("selected registlets", result);
+			return result;
+		},
 	);
 	const [consumables, { refetch: refetchConsumables }] = createResource(
 		() => character()?.id,
-		(id) => selectAllConsumablesByCharacterId(id),
+		async (id) => {
+			const result = await selectAllConsumablesByCharacterId(id);
+			// console.log("selected consumables", result);
+			return result;
+		},
 	);
 	const [combos, { refetch: refetchCombos }] = createResource(
 		() => character()?.id,
-		(id) => selectAllCombosByBelongtocharacterid(id),
+		async (id) => {
+			const result = await selectAllCombosByBelongtocharacterid(id);
+			// console.log("selected combos", result);
+			return result;
+		},
 	);
 
 	const charactersFinder = (id: string) => selectAllCharactersByBelongtoplayerid(id);
@@ -99,6 +145,102 @@ export default function CharactePage() {
 		() => store.session.account.player?.id ?? "",
 		charactersFinder,
 	);
+
+	const [playerWithRelations, { refetch: refetchPlayerWithRelations }] = createResource(
+		() => character(),
+		async (char) => {
+			const player = await selectPlayerByIdWithRelations(char?.belongToPlayerId ?? "");
+			console.log("player", player);
+			return player;
+		},
+	);
+
+	// ==================== 引擎集成 ====================
+	const engine = useEngine();
+
+	createEffect(
+		on(
+			() =>  playerWithRelations(),
+			async () => {
+				console.log("玩家配置发生变化，将更新引擎初始化数据", playerWithRelations());
+				if (!engine.ready()) return;
+				const now = new Date().toISOString();
+				const teamAId = "CHARACTER_PREVIEW_TEAM_A";
+				const teamBId = "CHARACTER_PREVIEW_TEAM_B";
+				const memberId = "CHARACTER_PREVIEW_MEMBER";
+				const statisticId = "CHARACTER_PREVIEW_STATISTIC";
+
+				const member: MemberWithRelations = {
+					id: memberId,
+					name: character()?.name ?? "未命名角色",
+					sequence: 0,
+					type: "Player",
+					playerId: playerWithRelations()?.id ?? "",
+					partnerId: null,
+					mercenaryId: null,
+					mobId: null,
+					mobDifficultyFlag: "Normal",
+					actions: null,
+					belongToTeamId: teamAId,
+					player: playerWithRelations() ?? null,
+					partner: null,
+					mercenary: null,
+					mob: null,
+				};
+
+				const teamA: TeamWithRelations = {
+					id: teamAId,
+					name: "CharacterPreviewTeamA",
+					gems: [],
+					members: [member],
+				};
+				const teamB: TeamWithRelations = {
+					id: teamBId,
+					name: "CharacterPreviewTeamB",
+					gems: [],
+					members: [],
+				};
+
+				const simulator = {
+					id: "CHARACTER_PREVIEW_SIMULATOR",
+					name: "CharacterPreviewSimulator",
+					details: null,
+					statisticId,
+					updatedByAccountId: null,
+					createdByAccountId: null,
+					campA: [teamA],
+					campB: [teamB],
+					statistic: {
+						id: statisticId,
+						updatedAt: now,
+						createdAt: now,
+						usageTimestamps: [],
+						viewTimestamps: [],
+					},
+				};
+
+				const scenario: EngineInitializationData = {
+					simulator,
+					runtimeSelection: {
+						primaryMemberId: memberId,
+						activeCharacterId: character()?.id ?? "",
+					},
+				};
+
+				console.log("scenario", scenario);
+
+				await engine.loadScenario(scenario);
+				await engine.setProfile(createPreviewProfile());
+			},
+		),
+	);
+
+	const primaryMember = createMemo(() => {
+		const list = engine.members();
+		const primaryMember = list.find((member) => member.id === "CHARACTER_PREVIEW_MEMBER");
+		console.log("primaryMember", primaryMember);
+		return primaryMember;
+	});
 
 	const [selectSheetIsOpen, setSelectSheetIsOpen] = createSignal(false);
 	const [selectSheetTitle, setSelectSheetTitle] = createSignal("");
@@ -119,18 +261,13 @@ export default function CharactePage() {
 	const [activeTab, setActiveTab] = createSignal<keyof typeof tabs>("equipment");
 
 	const [canvas, setCanvas] = createSignal<HTMLCanvasElement | null>(null);
-	// 引擎定义
-	let engine: AbstractEngine;
-	// 场景定义
+	let babylonEngine: AbstractEngine;
 	let scene: Scene;
-	// 相机定义
 	let camera: ArcRotateCamera;
 
-	// 创建Babylon场景
 	const createBabylonScene = (canvas: HTMLCanvasElement): Scene => {
-		engine = new Engine(canvas, true);
-		//自定义加载动画
-		engine.loadingScreen = {
+		babylonEngine = new Engine(canvas, true);
+		babylonEngine.loadingScreen = {
 			displayLoadingUI: (): void => {
 				// console.log('display')
 			},
@@ -140,7 +277,7 @@ export default function CharactePage() {
 			loadingUIBackgroundColor: "#000000",
 			loadingUIText: "Loading...",
 		};
-		scene = new Scene(engine);
+		scene = new Scene(babylonEngine);
 		scene.autoClear = false;
 		// 雾
 		scene.fogMode = Scene.FOGMODE_EXP2;
@@ -200,12 +337,11 @@ export default function CharactePage() {
 		// -----------------------------------------角色模型--------------------------------------------
 
 		// 开始渲染循环
-		engine.runRenderLoop(() => {
+		babylonEngine.runRenderLoop(() => {
 			scene.render();
 		});
 
-		// 窗口大小调整
-		const onWinResize = () => engine.resize();
+		const onWinResize = () => babylonEngine.resize();
 		window.addEventListener("resize", onWinResize);
 		return scene;
 	};
@@ -747,6 +883,17 @@ export default function CharactePage() {
 								</div>
 							</div>
 						</Show>
+
+						{/* 属性面板 */}
+						<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:h-full landscape:w-px" />
+						<OverlayScrollbarsComponent
+							element="div"
+							options={{ scrollbars: { autoHide: "scroll" } }}
+							defer
+							class="MemberStats flex flex-col gap-2 w-full landscape:flex-none"
+						>
+							<StatsRenderer data={primaryMember()?.attrs} />
+						</OverlayScrollbarsComponent>
 					</div>
 
 					{/* 弹窗 */}
@@ -788,13 +935,12 @@ export default function CharactePage() {
 									globalFilterStr,
 									rowHandleClick: async (id) => {
 										console.log("目标数据外键id", id);
-										// 使用列表选择的值应该是外键，因此一定不会发生类型变化，所以这里使用类型断言
 										await updateCharacter(character().id, {
 											[operateTarget()]: id,
 										});
 										setGlobalFilterStr("");
-										refetchCharacter();
 										setSelectSheetIsOpen(false);
+										await refetchCharacter();
 									},
 									columnVisibility: {},
 									onColumnVisibilityChange: () => {},

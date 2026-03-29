@@ -1,69 +1,51 @@
 /**
- * 帧推进器 - 推进帧循环和事件调度
- *
+ * 薄时钟驱动器。
+ * 目标：
+ * - 只负责 wall-clock 调度、固定步长换算、补帧裁剪
+ * - 不再直接调用 GameEngine.stepFrame
+ * - 不再承载快照发送、运行模式语义、业务终止规则
  */
 
 import { createLogger } from "~/lib/Logger";
-import type { GameEngine } from "../GameEngine";
-import type { FrameStepResult } from "../types";
-import type { FrameLoopConfig, FrameLoopMode, FrameLoopSnapshot, FrameLoopState, FrameLoopStats } from "./types";
+import type { FrameLoopConfig, FrameLoopSnapshot, FrameLoopState, FrameLoopStats, FrameLoopTick } from "./types";
 
 const log = createLogger("FrameLoop");
 
-/**
- * 帧循环类
- * 负责推进游戏时间和调度事件
- */
 export class FrameLoop {
-	/** 游戏引擎引用 */
-	private engine: GameEngine;
-
-	/** 帧循环状态 */
+	/** 底层时钟驱动的当前状态 */
 	private state: FrameLoopState = "stopped";
 
-	/** 帧循环配置 */
+	/** 时钟层配置 */
 	private config: FrameLoopConfig;
 
-	/** 帧循环定时器ID（rAF 或 setTimeout） */
+	/** 当前挂起的计时器 ID（raf 或 timeout） */
 	private frameTimer: number | null = null;
 
-	/** 当前使用的调度时钟类型 */
+	/** 当前使用的底层时钟类型 */
 	private clockKind: "raf" | "timeout" = "raf";
 
-	/** 已执行的逻辑帧数（用于统计），逻辑帧号以 GameEngine 为准 */
-	private frameNumber: number = 0;
-
-	/** 固定逻辑帧间隔（毫秒），由 targetFPS 推导 */
+	/** 固定逻辑步长（毫秒） */
 	private frameIntervalMs: number = 1000 / 60;
 
-	/** 时间累积器（毫秒） */
+	/** 累积的 wall-clock 时间 */
 	private frameAccumulator: number = 0;
 
-	/** 累计跳帧次数（基于累积器上限） */
+	/** 因累积时间过大而被裁剪掉的补帧次数 */
 	private frameSkipCount: number = 0;
 
-	/** 开始时间戳 */
+	/** 本轮启动时间 */
 	private startTime: number = 0;
 
-	/** 上一帧结束时的时间戳 */
+	/** 上一次 tick 的时间戳 */
 	private lastFrameTime: number = 0;
 
-	/** 时间倍率（用于变速播放） */
+	/** 时间倍率，仅影响 realtime 驱动 */
 	private timeScale: number = 1.0;
 
-	/** 帧循环模式 */
-	private mode: FrameLoopMode = "realtime";
+	/** 由 GameEngine 注入的 tick 回调 */
+	private onTick: ((tick: FrameLoopTick) => void) | null = null;
 
-	/** 快照发送频率（Hz），0 表示关闭，默认 0（关闭） */
-	private snapshotFPS: number = 0;
-
-	/** 快照发送间隔（毫秒），由 snapshotFPS 推导 */
-	private snapshotIntervalMs: number = Infinity;
-
-	/** 上次发送快照的时间戳 */
-	private lastSnapshotTime: number = 0;
-
-	/** 性能统计 */
+	/** 时钟层可观测统计 */
 	private performanceStats: FrameLoopStats = {
 		averageFPS: 0,
 		totalFrames: 0,
@@ -73,18 +55,7 @@ export class FrameLoop {
 		timeoutFrames: 0,
 	};
 
-	// ==================== 构造函数 ====================
-
-	/**
-	 * 构造函数
-	 *
-	 * @param engine 游戏引擎实例
-	 * @param config 帧循环配置
-	 */
-	constructor(engine: GameEngine, config: Partial<FrameLoopConfig> = {}) {
-		this.engine = engine;
-
-		// 设置默认配置
+	constructor(config: Partial<FrameLoopConfig> = {}) {
 		this.config = {
 			targetFPS: 60,
 			enableFrameSkip: true,
@@ -92,156 +63,103 @@ export class FrameLoop {
 			enablePerformanceMonitoring: true,
 			timeScale: 1.0,
 			maxEventsPerFrame: 100,
-			mode: "realtime",
 			...config,
 		};
 
 		this.timeScale = this.config.timeScale;
-		this.mode = this.config.mode ?? "realtime";
-
-		// 根据目标帧率计算逻辑帧间隔
 		this.frameIntervalMs = 1000 / this.config.targetFPS;
-
-		// 快照发送频率（默认 0 = 关闭，避免高频负载）
-		// 如果需要观测/校正，可以设置为 2-5 Hz
-		this.snapshotFPS = 0;
-		this.snapshotIntervalMs = this.snapshotFPS > 0 ? 1000 / this.snapshotFPS : Infinity;
-		this.lastSnapshotTime = 0;
 	}
 
-	// ==================== 公共接口 ====================
-
 	/**
-	 * 启动帧循环
+	 * 启动底层时钟，并把每次 tick 的“推进建议”交给上层。
+	 * 这里不关心引擎到底跑几帧，只负责告诉上层“现在该推进多少逻辑步长”。
 	 */
-	start(): void {
+	start(onTick: (tick: FrameLoopTick) => void): void {
 		if (this.state === "running") {
-			log.warn("⚠️ 帧循环已在运行中");
+			log.warn("⏱️ 帧驱动已在运行中");
 			return;
 		}
 
 		const now = performance.now();
 
+		this.onTick = onTick;
 		this.state = "running";
 		this.startTime = now;
 		this.lastFrameTime = now;
-
-		// 重置性能统计
+		this.resolveClockKind();
 		this.resetFrameLoopStats();
 
-		// 选择调度时钟：Worker 中可能没有 rAF
-		const hasRAF =
-			typeof globalThis.requestAnimationFrame === "function" && typeof globalThis.cancelAnimationFrame === "function";
-		this.clockKind = hasRAF ? "raf" : "timeout";
-		this.performanceStats.clockKind = this.clockKind;
-
-		log.info(`⏱️ 启动帧循环 - 目标帧率: ${this.config.targetFPS} FPS, 时钟: ${this.clockKind}`);
+		log.info(`⏱️ 启动帧驱动 - 目标帧率: ${this.config.targetFPS} FPS, 时钟: ${this.clockKind}`);
 		this.scheduleNextFrame();
 	}
 
 	/**
-	 * 停止帧循环
+	 * 停止时钟驱动。
+	 * 说明：
+	 * - 这里只取消底层调度
+	 * - 不再承担“停止引擎运行语义”的职责
 	 */
 	stop(): void {
 		if (this.state === "stopped") {
-			log.warn("⚠️ 帧循环已停止");
+			log.warn("⏱️ 帧驱动已停止");
 			return;
 		}
 
 		this.state = "stopped";
-
-		if (this.frameTimer !== null) {
-			if (this.clockKind === "raf" && typeof globalThis.cancelAnimationFrame === "function") {
-				globalThis.cancelAnimationFrame(this.frameTimer);
-			} else {
-				clearTimeout(this.frameTimer);
-			}
-			this.frameTimer = null;
-		}
-
-		// 更新性能统计
+		this.cancelScheduledFrame();
 		this.updateFrameLoopStats();
+		this.onTick = null;
 
 		log.info(
-			`⏹️ 停止帧循环 - 总帧数: ${this.frameNumber}, 运行时间: ${(performance.now() - this.startTime).toFixed(2)}ms`,
+			`⏱️ 停止帧驱动 - 推进建议数: ${this.performanceStats.totalFrames}, 运行时间: ${(performance.now() - this.startTime).toFixed(2)}ms`,
 		);
 	}
 
 	/**
-	 * 暂停帧循环
+	 * 暂停底层时钟。
+	 * 暂停后不会再产生新的 tick 建议，但不会清空上层注入的回调。
 	 */
 	pause(): void {
 		if (this.state !== "running") {
-			log.warn("⚠️ 帧循环未运行，无法暂停");
+			log.warn("⏱️ 帧驱动未在运行，无法暂停");
 			return;
 		}
 
 		this.state = "paused";
+		this.cancelScheduledFrame();
 
-		if (this.frameTimer !== null) {
-			if (this.clockKind === "raf" && typeof globalThis.cancelAnimationFrame === "function") {
-				globalThis.cancelAnimationFrame(this.frameTimer);
-			} else {
-				clearTimeout(this.frameTimer);
-			}
-			this.frameTimer = null;
-		}
-
-		log.info("⏸️ 帧循环已暂停");
+		log.info("⏸️ 帧驱动已暂停");
 	}
 
 	/**
-	 * 恢复帧循环
+	 * 恢复底层时钟。
+	 * 恢复时会重置上一帧时间戳，避免把暂停期间的 wall-clock 时间一次性补回。
 	 */
 	resume(): void {
 		if (this.state !== "paused") {
-			log.warn("⚠️ 帧循环未暂停，无法恢复");
+			log.warn("⏱️ 帧驱动未暂停，无法恢复");
+			return;
+		}
+
+		if (!this.onTick) {
+			log.warn("⏱️ 帧驱动缺少 onTick 回调，无法恢复");
 			return;
 		}
 
 		this.state = "running";
 		this.lastFrameTime = performance.now();
 
-		log.info("▶️ 帧循环已恢复");
+		log.info("▶️ 帧驱动已恢复");
 		this.scheduleNextFrame();
 	}
 
 	/**
-	 * 单步执行
-	 */
-	step(): void {
-		if (this.state === "running") {
-			log.warn("⚠️ 帧循环正在运行，无法单步执行");
-			return;
-		}
-
-		// 单步模式：忽略时间累积，直接执行一帧逻辑
-		const stepResult: FrameStepResult = this.engine.stepFrame({
-			maxEvents: this.config.maxEventsPerFrame,
-		});
-
-		// 同步统计用的帧计数
-		this.frameNumber = stepResult.frameNumber;
-
-		// 记录本次逻辑帧的信息（deltaTime 使用标准帧间隔）
-		this.recordFrameInfo(
-			this.frameIntervalMs,
-			stepResult.duration,
-			stepResult.eventsProcessed,
-			stepResult.membersUpdated,
-		);
-		this.emitFrameSnapshot();
-		log.info(`👆 单步执行完成 - 帧号: ${stepResult.frameNumber}`);
-	}
-
-	/**
-	 * 设置时间倍率（变速播放）
-	 *
-	 * @param scale 时间倍率（1.0=正常，2.0=2倍速，0.5=半速）
+	 * 设置时间倍率。
+	 * 这里只影响 realtime 时钟换算，不决定引擎模式。
 	 */
 	setTimeScale(scale: number): void {
 		if (scale < 0) {
-			log.warn("⚠️ 时间倍率不能为负数");
+			log.warn("⏱️ 时间倍率不能为负数");
 			return;
 		}
 
@@ -258,246 +176,154 @@ export class FrameLoop {
 	}
 
 	/**
-	 * 设置目标帧率
-	 *
-	 * @param fps 目标帧率
+	 * 更新目标 FPS，并同步固定步长。
+	 * 这次重构顺手修正了“只改配置不改 frameIntervalMs”的脱节问题。
 	 */
 	setTargetFPS(fps: number): void {
 		if (fps <= 0 || fps > 60) {
-			log.warn("⚠️ 无效的帧率设置:", fps);
+			log.warn("⏱️ 无效的帧率设置:", fps);
 			return;
 		}
 
 		this.config.targetFPS = fps;
+		this.frameIntervalMs = 1000 / fps;
+
+		// 运行中切换 FPS 时，重新排一次时钟，避免旧 delay 继续生效。
+		if (this.state === "running") {
+			this.cancelScheduledFrame();
+			this.lastFrameTime = performance.now();
+			this.scheduleNextFrame();
+		}
+
 		log.info(`⏱️ 目标帧率已更新: ${fps} FPS`);
 	}
 
-	setMode(mode: FrameLoopMode): void {
-		if (this.mode === mode) {
-			return;
-		}
-		this.mode = mode;
-		this.config.mode = mode;
-		if (this.state === "running") {
-			if (this.frameTimer !== null) {
-				if (this.clockKind === "raf" && typeof globalThis.cancelAnimationFrame === "function") {
-					globalThis.cancelAnimationFrame(this.frameTimer);
-				} else if (this.clockKind === "timeout") {
-					clearTimeout(this.frameTimer as unknown as number);
-				}
-				this.frameTimer = null;
-			}
-			this.scheduleNextFrame();
-		}
-	}
-
-	/**
-	 * 获取当前状态
-	 *
-	 * @returns 当前帧循环状态
-	 */
 	getState(): FrameLoopState {
 		return this.state;
 	}
 
 	/**
-	 * 获取帧循环快照
-	 *
-	 * @returns 帧循环快照
+	 * 兼容保留的快照接口。
+	 * 它描述的是“驱动层观测值”，不是引擎语义快照。
 	 */
 	getSnapshot(): FrameLoopSnapshot {
 		return {
-			currentFrame: this.engine.getCurrentFrame(),
+			currentFrame: this.performanceStats.totalFrames,
 			fps: this.performanceStats.averageFPS,
 		};
 	}
 
-	/**
-	 * 获取当前帧号
-	 *
-	 * @returns 当前帧号
-	 */
-	getFrameNumber(): number {
-		return this.engine.getCurrentFrame();
-	}
-
-	/**
-	 * 获取性能统计
-	 *
-	 * @returns 性能统计信息
-	 */
 	getFrameLoopStats(): FrameLoopStats {
 		return { ...this.performanceStats };
 	}
 
-	/**
-	 * 检查是否正在运行
-	 *
-	 * @returns 是否正在运行
-	 */
 	isRunning(): boolean {
 		return this.state === "running";
 	}
 
-	/**
-	 * 检查是否已暂停
-	 *
-	 * @returns 是否已暂停
-	 */
 	isPaused(): boolean {
 		return this.state === "paused";
 	}
 
-	// ==================== 私有方法 ====================
+	private resolveClockKind(): void {
+		const hasRAF =
+			typeof globalThis.requestAnimationFrame === "function" && typeof globalThis.cancelAnimationFrame === "function";
 
-	/**
-	 * 调度下一帧
-	 */
+		this.clockKind = hasRAF ? "raf" : "timeout";
+		this.performanceStats.clockKind = this.clockKind;
+	}
+
+	private cancelScheduledFrame(): void {
+		if (this.frameTimer === null) {
+			return;
+		}
+
+		if (this.clockKind === "raf" && typeof globalThis.cancelAnimationFrame === "function") {
+			globalThis.cancelAnimationFrame(this.frameTimer);
+		} else {
+			clearTimeout(this.frameTimer);
+		}
+
+		this.frameTimer = null;
+	}
+
 	private scheduleNextFrame(): void {
 		if (this.state !== "running") {
 			return;
 		}
-		if (this.mode === "fastForward") {
-			Promise.resolve().then(() => {
-				if (this.state === "running") {
-					this.processFrameLoop(performance.now());
-				}
-			});
-			return;
-		}
+
 		if (this.clockKind === "raf" && typeof globalThis.requestAnimationFrame === "function") {
 			this.frameTimer = globalThis.requestAnimationFrame((timestamp: number) => {
 				this.processFrameLoop(timestamp);
 			});
-		} else {
-			const delay = 1000 / this.config.targetFPS;
-			this.frameTimer = setTimeout(() => {
-				const now = performance.now();
-				this.processFrameLoop(now);
-			}, delay) as unknown as number;
+			return;
 		}
+
+		this.frameTimer = setTimeout(() => {
+			this.processFrameLoop(performance.now());
+		}, this.frameIntervalMs) as unknown as number;
 	}
 
 	/**
-	 * 主帧循环
-	 *
-	 * @param timestamp 当前时间戳
+	 * 把真实时间换算成固定步长建议，并交给 GameEngine 自己决定怎么跑。
 	 */
 	private processFrameLoop(timestamp: number): void {
-		if (this.state !== "running") {
+		if (this.state !== "running" || !this.onTick) {
 			return;
 		}
 
 		const deltaTime = timestamp - this.lastFrameTime;
 		this.lastFrameTime = timestamp;
 
-		let effectiveDelta = deltaTime * this.timeScale;
-		if (this.mode === "fastForward") {
-			effectiveDelta = this.frameIntervalMs;
-		}
-
-		this.frameAccumulator += effectiveDelta;
+		this.frameAccumulator += deltaTime * this.timeScale;
 
 		if (this.config.enableFrameSkip) {
-			const maxAccum = this.frameIntervalMs * Math.max(1, this.config.maxFrameSkip);
-			if (this.frameAccumulator > maxAccum) {
+			const maxAccumulatedTime = this.frameIntervalMs * Math.max(1, this.config.maxFrameSkip);
+			if (this.frameAccumulator > maxAccumulatedTime) {
 				this.frameAccumulator = this.frameIntervalMs;
-				this.frameSkipCount++;
-				this.performanceStats.skippedFrames = (this.performanceStats.skippedFrames || 0) + 1;
+				this.frameSkipCount += 1;
 			}
 		}
 
-		let framesExecuted = 0;
-
-		while (this.frameAccumulator >= this.frameIntervalMs) {
-			const stepResult = this.engine.stepFrame({ maxEvents: this.config.maxEventsPerFrame });
-			framesExecuted++;
-			this.frameNumber = stepResult.frameNumber;
-			this.recordFrameInfo(
-				this.frameIntervalMs,
-				stepResult.duration,
-				stepResult.eventsProcessed,
-				stepResult.membersUpdated,
-			);
-			this.emitFrameSnapshot();
-			this.frameAccumulator -= this.frameIntervalMs;
-
-			if (this.mode === "fastForward" && !stepResult.hasPendingEvents && stepResult.pendingFrameTasks === 0) {
-				break;
+		const dueSteps = Math.floor(this.frameAccumulator / this.frameIntervalMs);
+		if (dueSteps > 0) {
+			this.frameAccumulator -= dueSteps * this.frameIntervalMs;
+			this.performanceStats.totalFrames += dueSteps;
+			if (this.clockKind === "timeout") {
+				this.performanceStats.timeoutFrames += dueSteps;
 			}
 		}
 
-		// 调度下一帧
+		this.updateFrameLoopStats();
+
+		if (dueSteps > 0) {
+			this.onTick({
+				timestamp,
+				deltaTime,
+				frameIntervalMs: this.frameIntervalMs,
+				dueSteps,
+				clockKind: this.clockKind,
+				skippedFrames: this.frameSkipCount,
+			});
+		}
+
 		this.scheduleNextFrame();
 	}
 
-	/**
-	 * 记录帧信息
-	 *
-	 * @param deltaTime 帧间隔时间
-	 * @param processingTime 处理时间
-	 * @param eventsProcessed 处理的事件数量
-	 * @param membersUpdated 更新的成员数量
-	 */
-	private recordFrameInfo(
-		deltaTime: number,
-		processingTime: number,
-		eventsProcessed: number,
-		membersUpdated: number,
-	): void {
-		// 当前实现仅用于更新性能统计，必要时可在此扩展帧历史记录
-		if (this.config.enablePerformanceMonitoring) {
-			this.updateFrameLoopStats();
-		}
-	}
-
-	/**
-	 * 发送帧快照（带降频控制）
-	 * 
-	 * 默认关闭（snapshotFPS = 0），避免高频负载
-	 * 如果需要观测/校正，可以通过配置设置 snapshotFPS（例如 2-5 Hz）
-	 */
-	private emitFrameSnapshot(): void {
-		// 如果快照发送已关闭，直接返回
-		if (this.snapshotFPS <= 0) {
-			return;
-		}
-
-		// 检查是否达到发送间隔
-		const now = performance.now();
-		if (now - this.lastSnapshotTime < this.snapshotIntervalMs) {
-			return;
-		}
-
-		// 发送快照
-		const snapshot = this.engine.createFrameSnapshot();
-		this.engine.sendFrameSnapshot(snapshot);
-		this.lastSnapshotTime = now;
-	}
-
-	/**
-	 * 更新性能统计
-	 *
-	 * @param frameInfo 帧信息
-	 */
 	private updateFrameLoopStats(): void {
 		if (!this.config.enablePerformanceMonitoring) {
 			return;
 		}
 
-		const currentTime = performance.now();
-		const totalRunTime = currentTime - this.startTime;
-
-		// 更新基本统计
-		this.performanceStats.totalFrames = this.frameNumber;
+		const totalRunTime = performance.now() - this.startTime;
 		this.performanceStats.totalRunTime = totalRunTime;
+		this.performanceStats.clockKind = this.clockKind;
+		this.performanceStats.skippedFrames = this.frameSkipCount;
+
 		const seconds = totalRunTime / 1000;
-		this.performanceStats.averageFPS = seconds > 0 ? this.frameNumber / seconds : 0;
+		this.performanceStats.averageFPS = seconds > 0 ? this.performanceStats.totalFrames / seconds : 0;
 	}
 
-	/**
-	 * 重置性能统计
-	 */
 	private resetFrameLoopStats(): void {
 		this.performanceStats = {
 			averageFPS: 0,

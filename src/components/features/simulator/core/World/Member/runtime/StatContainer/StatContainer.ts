@@ -9,6 +9,10 @@
  */
 import * as Enums from "@db/schema/enums";
 import { createLogger } from "~/lib/Logger";
+import type {
+	Checkpointable,
+	StatContainerCheckpoint,
+} from "../../../../types";
 import type { AttributeExpression, NestedSchema } from "./SchemaTypes";
 import { SchemaFlattener } from "./SchemaTypes";
 import { StatContainerASTCompiler } from "./StatContainerAST";
@@ -385,7 +389,9 @@ export class DependencyGraph {
 /**
  * 基于TypedArray的高性能响应式数据管理器
  */
-export class StatContainer<T extends string> {
+export class StatContainer<T extends string>
+	implements Checkpointable<StatContainerCheckpoint>
+{
 	// ==================== 核心数据结构 ====================
 
 	/** 主要属性值存储 - 连续内存布局 */
@@ -1520,5 +1526,65 @@ export class StatContainer<T extends string> {
 		}
 
 		log.debug(`\n🎯 === 依赖关系图输出完成 ===\n`);
+	}
+
+	// ==================== Checkpoint / Restore ====================
+
+	captureCheckpoint(): StatContainerCheckpoint {
+		const modifierSources: StatContainerCheckpoint["modifierSources"] = [];
+		for (const [modifierType, perType] of this.modifierSources) {
+			const entries: StatContainerCheckpoint["modifierSources"][number]["entries"] =
+				[];
+			for (const [attrIndex, perAttr] of perType) {
+				const sources: Array<{ sourceId: string; value: number }> = [];
+				for (const [sourceId, value] of perAttr) {
+					sources.push({ sourceId, value });
+				}
+				entries.push({ attrIndex, sources });
+			}
+			modifierSources.push({ modifierType, entries });
+		}
+
+		return {
+			values: this.values.slice(),
+			flags: this.flags.slice(),
+			dirtyBitmap: this.dirtyBitmap.slice(),
+			modifierArrays: this.modifierArrays.map((arr) => arr.slice()),
+			modifierSources,
+		};
+	}
+
+	restoreCheckpoint(checkpoint: StatContainerCheckpoint): void {
+		this.values.set(checkpoint.values);
+		this.flags.set(checkpoint.flags);
+		this.dirtyBitmap.set(checkpoint.dirtyBitmap);
+		for (let i = 0; i < this.modifierArrays.length; i++) {
+			this.modifierArrays[i].set(checkpoint.modifierArrays[i]);
+		}
+
+		this.modifierSources.clear();
+		this.sourceIndex.clear();
+
+		const keyCount = this.values.length;
+		for (const { modifierType, entries } of checkpoint.modifierSources) {
+			const perType = new Map<number, Map<string, number>>();
+			this.modifierSources.set(modifierType as ModifierType, perType);
+			for (const { attrIndex, sources } of entries) {
+				const perAttr = new Map<string, number>();
+				perType.set(attrIndex, perAttr);
+				for (const { sourceId, value } of sources) {
+					perAttr.set(sourceId, value);
+					const entryKey = modifierType * keyCount + attrIndex;
+					let set = this.sourceIndex.get(sourceId);
+					if (!set) {
+						set = new Set();
+						this.sourceIndex.set(sourceId, set);
+					}
+					set.add(entryKey);
+				}
+			}
+		}
+
+		this.isComputing.clear();
 	}
 }

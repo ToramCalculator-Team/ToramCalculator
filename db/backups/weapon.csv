@@ -1,1 +1,5 @@
 name,type,elementType,baseAbi,stability,modifiers,colorA,colorB,colorC,itemId
+风遁术,NinjutsuScroll,Normal,0,0,"{""cspd + 250""}",0,0,0,defaultSubWeaponItemId
+精丽魔导具,Magictool,Normal,462,70,"{""mainWeapon.element = light"",""amp.normal + 25%"",""atk.p + 6%"",""atk.m + 12%"",""c.rate.p + 60"",""anticipate + 60%"",""red.p + 30%"",""red.m + 30%"",""antiVirus + 15%"",""mainWeapon.range - 3""}",0,0,0,defaultWeaponItemId
+弓,Bow,Normal,6,60,{},0,0,0,mm17jw5kykup5dq4imvkhmpe
+短剑,OneHandSword,Normal,10,80,{},0,0,0,uexlb0x01symqc3oiytuiq74

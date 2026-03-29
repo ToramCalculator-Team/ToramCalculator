@@ -3,7 +3,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { type Actor, createActor, waitFor } from "xstate";
 import { createLogger } from "~/lib/Logger";
 import { type EngineControlMessage, GameEngineSM } from "../core/GameEngineSM";
-import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
+import type { SimulatorPool } from "../core/thread/SimulatorPool";
 
 const log = createLogger("Lifecycle");
 
@@ -19,7 +19,7 @@ export class EngineLifecycleController {
 
 	private seqCounter = 0;
 
-	constructor() {
+	constructor(private pool: SimulatorPool) {
 		this.operatorId = createId();
 
 		this.engineActor = createActor(GameEngineSM, {
@@ -28,7 +28,7 @@ export class EngineLifecycleController {
 				threadName: "main",
 				peer: {
 					send: (msg: EngineControlMessage) => {
-						realtimeSimulatorPool
+						this.pool
 							.executeTask("engine_command", msg, "high")
 							.catch((error) => {
 								log.error("EngineLifecycleController: 发送引擎命令失败:", error);

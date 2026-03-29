@@ -1,6 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { IntentMessage } from "../core/MessageRouter/MessageRouter";
-import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
+import type { SimulatorPool } from "../core/thread/SimulatorPool";
 
 /**
  * 成员控制器
@@ -11,7 +11,10 @@ import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
 export class MemberController {
 	public readonly controllerId: string;
 
-	constructor(controllerId?: string) {
+	constructor(
+		private pool: SimulatorPool,
+		controllerId?: string,
+	) {
 		this.controllerId = controllerId ?? createId();
 	}
 
@@ -23,7 +26,7 @@ export class MemberController {
 			controllerId: this.controllerId,
 			data: { memberId },
 		};
-		await realtimeSimulatorPool.sendIntent(intent);
+		await this.pool.sendIntent(intent);
 	}
 
 	async unbind() {
@@ -34,7 +37,7 @@ export class MemberController {
 			controllerId: this.controllerId,
 			data: {},
 		};
-		await realtimeSimulatorPool.sendIntent(intent);
+		await this.pool.sendIntent(intent);
 	}
 
 	async selectTarget(targetMemberId: string) {
@@ -45,7 +48,7 @@ export class MemberController {
 			controllerId: this.controllerId,
 			data: { targetId: targetMemberId },
 		};
-		await realtimeSimulatorPool.sendIntent(intent);
+		await this.pool.sendIntent(intent);
 	}
 
 	async castSkill(skillId: string) {
@@ -56,7 +59,7 @@ export class MemberController {
 			controllerId: this.controllerId,
 			data: { skillId },
 		};
-		await realtimeSimulatorPool.sendIntent(intent);
+		await this.pool.sendIntent(intent);
 	}
 
 	async move(x: number, y: number) {
@@ -67,7 +70,7 @@ export class MemberController {
 			controllerId: this.controllerId,
 			data: { position: { x, y } },
 		};
-		await realtimeSimulatorPool.sendIntent(intent);
+		await this.pool.sendIntent(intent);
 	}
 
 	async stopMove() {
@@ -78,7 +81,7 @@ export class MemberController {
 			controllerId: this.controllerId,
 			data: {},
 		};
-		await realtimeSimulatorPool.sendIntent(intent);
+		await this.pool.sendIntent(intent);
 	}
 }
 

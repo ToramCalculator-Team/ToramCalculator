@@ -8,13 +8,13 @@
  */
 
 import { createLogger } from "~/lib/Logger";
-import type { MemberDomainEvent } from "../types";
+import type { Checkpointable, DomainEventBusCheckpoint, MemberDomainEvent } from "../types";
 
 const log = createLogger("EventBus");
 
 type EventListener = (event: MemberDomainEvent) => void;
 
-export class DomainEventBus {
+export class DomainEventBus implements Checkpointable<DomainEventBusCheckpoint> {
 	private listeners: Set<EventListener> = new Set();
 	
 	/** 当前帧的事件缓存（用于合并） */
@@ -78,6 +78,23 @@ export class DomainEventBus {
 			return `${event.type}_${event.memberId}_${event.skillId}`;
 		}
 		return `${event.type}_${event.memberId}`;
+	}
+
+	captureCheckpoint(): DomainEventBusCheckpoint {
+		return {
+			currentFrame: this.currentFrame,
+			currentFrameEvents: Array.from(this.currentFrameEvents.entries()).map(
+				([key, event]) => [key, structuredClone(event)] as [string, MemberDomainEvent],
+			),
+		};
+	}
+
+	restoreCheckpoint(checkpoint: DomainEventBusCheckpoint): void {
+		this.currentFrame = checkpoint.currentFrame;
+		this.currentFrameEvents.clear();
+		for (const [key, event] of checkpoint.currentFrameEvents) {
+			this.currentFrameEvents.set(key, structuredClone(event));
+		}
 	}
 
 	/**

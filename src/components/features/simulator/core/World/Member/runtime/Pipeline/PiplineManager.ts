@@ -9,6 +9,7 @@
 
 import type { ZodType } from "zod/v4";
 import type { PipelineDef, StagePool } from "../../../../Pipline/types";
+import type { Checkpointable, PipelineManagerCheckpoint } from "../../../../types";
 import type { MemberContext } from "../../MemberContext";
 
 export interface PipelineDynamicStageInfo {
@@ -49,7 +50,8 @@ interface ExecutionStageSpec<TStagePool extends StagePool<any>> {
 export class PipelineManager<
 	TStageContext extends MemberContext,
 	TStagePool extends StagePool<TStageContext> = StagePool<TStageContext>,
-> {
+> implements Checkpointable<PipelineManagerCheckpoint>
+{
 	/**
 	 * PipelineDef（管线编排定义）
 	 * - 不再使用代码常量固定注入
@@ -500,5 +502,72 @@ export class PipelineManager<
 
 		const result = this.compiledChains[cacheKey](ctx, params);
 		return result as { ctx: TStageContext; stageOutputs: Record<string, any> };
+	}
+
+	captureCheckpoint(): PipelineManagerCheckpoint {
+		const dynamicStages: PipelineManagerCheckpoint["dynamicStages"] = {};
+		for (const pipelineName of Object.keys(this.dynamicStages)) {
+			const stageGroup = this.dynamicStages[pipelineName];
+			if (!stageGroup) continue;
+			const serializedAfter: Record<
+				string,
+				Array<{ stageName: string; params?: Record<string, unknown>; insertedSeq: number }>
+			> = {};
+			for (const afterStageName of Object.keys(stageGroup) as Array<keyof TStagePool>) {
+				const list = stageGroup[afterStageName];
+				if (!list?.length) continue;
+				serializedAfter[String(afterStageName)] = list.map((e) => ({
+					stageName: String(e.insertStageName),
+					params: e.params,
+					insertedSeq: e.insertedAt,
+				}));
+			}
+			if (Object.keys(serializedAfter).length > 0) {
+				dynamicStages[pipelineName] = serializedAfter;
+			}
+		}
+		return {
+			dynamicStages,
+			insertedSeq: this.insertedSeq,
+			hasMemberOverrides: this.memberOverrides !== undefined,
+			hasSkillOverrides: this.skillOverrides !== undefined,
+		};
+	}
+
+	restoreCheckpoint(checkpoint: PipelineManagerCheckpoint): void {
+		this.compiledChains = {};
+		this.dynamicStages = {};
+		for (const [pipelineName, afterMap] of Object.entries(checkpoint.dynamicStages)) {
+			const map = {} as Record<keyof TStagePool, DynamicStageEntry<TStagePool>[]>;
+			for (const [afterStageName, rows] of Object.entries(afterMap)) {
+				if (!rows?.length) continue;
+				const list: DynamicStageEntry<TStagePool>[] = rows.map((row) => ({
+					id: `__ckpt__:${pipelineName}:${afterStageName}:${row.insertedSeq}`,
+					source: "__checkpoint__",
+					priority: 0,
+					insertStageName: row.stageName as keyof TStagePool,
+					params: row.params,
+					insertedAt: row.insertedSeq,
+				}));
+				map[afterStageName as keyof TStagePool] = list;
+			}
+			if (Object.keys(map).length > 0) {
+				this.dynamicStages[pipelineName] = map;
+			}
+		}
+		this.insertedSeq = checkpoint.insertedSeq;
+
+		const hasMemberNow = this.memberOverrides !== undefined;
+		const hasSkillNow = this.skillOverrides !== undefined;
+		if (checkpoint.hasMemberOverrides !== hasMemberNow) {
+			console.warn(
+				"[PipelineManager] restoreCheckpoint: hasMemberOverrides mismatch between checkpoint and current instance; override definitions are not serialized (they contain stage functions).",
+			);
+		}
+		if (checkpoint.hasSkillOverrides !== hasSkillNow) {
+			console.warn(
+				"[PipelineManager] restoreCheckpoint: hasSkillOverrides mismatch between checkpoint and current instance; override definitions are not serialized (they contain stage functions).",
+			);
+		}
 	}
 }

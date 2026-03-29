@@ -7,9 +7,10 @@
  * - 处理渲染状态同步
  */
 
-import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
+import type { SimulatorPool } from "../core/thread/SimulatorPool";
 
 export class RendererCommunication {
+  private pool: SimulatorPool | null = null;
   private renderHandler: ((payload: any) => void) | null = null;
   private isInitialized = false;
   /**
@@ -32,16 +33,15 @@ export class RendererCommunication {
   /**
    * 初始化渲染通信
    */
-  initialize() {
+  initialize(pool: SimulatorPool) {
     if (this.isInitialized) {
       console.warn("RendererCommunication: 已经初始化过了", new Date().toLocaleTimeString());
       return;
     }
 
-    // 保存 bound handler 引用，确保 on/off 使用同一个函数引用
+    this.pool = pool;
     this.boundHandleRenderCommand = this.handleRenderCommand.bind(this);
-    // 监听Worker发出的渲染指令
-    realtimeSimulatorPool.on("render_cmd", this.boundHandleRenderCommand);
+    pool.on("render_cmd", this.boundHandleRenderCommand);
     
     this.isInitialized = true;
     // console.log("RendererCommunication: 初始化完成", new Date().toLocaleTimeString());
@@ -54,10 +54,11 @@ export class RendererCommunication {
     if (!this.isInitialized) return;
 
     // 移除事件监听（使用保存的引用）
-    if (this.boundHandleRenderCommand) {
-      realtimeSimulatorPool.off("render_cmd", this.boundHandleRenderCommand);
+    if (this.boundHandleRenderCommand && this.pool) {
+      this.pool.off("render_cmd", this.boundHandleRenderCommand);
       this.boundHandleRenderCommand = null;
     }
+    this.pool = null;
 
     this.buffer = [];
     this.renderSnapshotApplied = false;

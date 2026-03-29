@@ -8,7 +8,11 @@ import { prepareForTransfer, sanitizeForPostMessage } from "~/lib/WorkerPool/Mes
 import type { WorkerMessage, WorkerMessageEvent } from "~/lib/WorkerPool/type";
 import { GameEngine } from "../GameEngine";
 import { type EngineControlMessage, EngineControlMessageSchema } from "../GameEngineSM";
+import { JSProcessor } from "../JSProcessor/JSProcessor";
+import { createBuiltInPipelineRegistry } from "../Pipline/BuiltInPipelineRegistry";
+import { PreviewRunner } from "../Preview/PreviewRunner";
 import type { SimulatorSafeAPI } from "../sandboxGlobals";
+import type { EngineInfrastructure, SimulationProfile } from "../types";
 import { DebugViewRegistry } from "./DebugViewRegistry";
 import {
 	type DataQueryCommand,
@@ -79,23 +83,29 @@ function initializeWorkerSandbox() {
 // 初始化沙盒环境
 initializeWorkerSandbox();
 
-// 在沙盒环境中创建GameEngine实例
-const gameEngine = new GameEngine({
-	enableIntentInput: true,
-	eventQueueConfig: {
-		maxQueueSize: 1000,
-		enablePerformanceMonitoring: false,
+// Worker 级长期持有的基础设施 -- 跨 engine reset/cleanup 存活
+const infra: EngineInfrastructure = {
+	jsProcessor: new JSProcessor(),
+	pipelineRegistry: createBuiltInPipelineRegistry(),
+};
+
+const gameEngine = new GameEngine(
+	{
+		eventQueueConfig: {
+			maxQueueSize: 1000,
+			enablePerformanceMonitoring: false,
+		},
+		frameLoopConfig: {
+			targetFPS: 60,
+			enableFrameSkip: true,
+			maxFrameSkip: 5,
+			enablePerformanceMonitoring: false,
+			timeScale: 1,
+			maxEventsPerFrame: 10,
+		},
 	},
-	frameLoopConfig: {
-		targetFPS: 60,
-		enableFrameSkip: true,
-		maxFrameSkip: 5,
-		enablePerformanceMonitoring: false,
-		timeScale: 1,
-		maxEventsPerFrame: 10,
-		mode: "realtime",
-	},
-});
+	infra,
+);
 
 // 创建调试视图注册表（井盖模式）
 const debugViewRegistry = new DebugViewRegistry();
@@ -208,18 +218,105 @@ async function handleDataQuery(
 				}
 			}
 
-			case "get_render_snapshot": {
-				try {
-					const renderSnapshot = gameEngine.getRenderSnapshot(command.includeAreas ?? false);
-					return { success: true, data: renderSnapshot };
-				} catch (error) {
-					return {
-						success: false,
-						error: error instanceof Error ? error.message : "Unknown error",
-					};
-				}
+		case "get_render_snapshot": {
+			try {
+				const renderSnapshot = gameEngine.getRenderSnapshot(command.includeAreas ?? false);
+				return { success: true, data: renderSnapshot };
+			} catch (error) {
+				return {
+					success: false,
+					error: error instanceof Error ? error.message : "Unknown error",
+				};
 			}
 		}
+
+		case "load_scenario": {
+			try {
+				gameEngine.loadScenario(command.data as Parameters<typeof gameEngine.loadScenario>[0]);
+				return { success: true };
+			} catch (error) {
+				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+			}
+		}
+
+		case "set_profile": {
+			try {
+				gameEngine.setProfile(command.profile as SimulationProfile);
+				return { success: true };
+			} catch (error) {
+				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+			}
+		}
+
+		case "patch_member": {
+			try {
+				const ok = gameEngine.patchMemberConfig(
+					command.memberId,
+					command.memberData as Parameters<typeof gameEngine.patchMemberConfig>[1],
+				);
+				return { success: ok, error: ok ? undefined : "patchMemberConfig failed" };
+			} catch (error) {
+				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+			}
+		}
+
+		case "run_preview": {
+			try {
+				const runner = new PreviewRunner(gameEngine);
+				const report = runner.runPreview(command.memberId);
+				return { success: true, data: report };
+			} catch (error) {
+				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+			}
+		}
+
+		case "get_computed_skills": {
+			try {
+				const skills = gameEngine.getComputedSkillInfos(command.memberId);
+				return { success: true, data: skills };
+			} catch (error) {
+				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+			}
+		}
+
+		case "capture_checkpoint": {
+			try {
+				const checkpoint = gameEngine.captureCheckpoint();
+				return { success: true, data: checkpoint };
+			} catch (error) {
+				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+			}
+		}
+
+		case "restore_checkpoint": {
+			try {
+				gameEngine.restoreCheckpoint(
+					command.checkpoint as Parameters<typeof gameEngine.restoreCheckpoint>[0],
+				);
+				return { success: true };
+			} catch (error) {
+				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+			}
+		}
+
+		case "export_expr_dict": {
+			try {
+				const entries = infra.jsProcessor.exportTransformedExprDict();
+				return { success: true, data: entries };
+			} catch (error) {
+				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+			}
+		}
+
+		case "import_expr_dict": {
+			try {
+				infra.jsProcessor.importTransformedExprDict(command.entries as Array<[string, string]>);
+				return { success: true };
+			} catch (error) {
+				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+			}
+		}
+	}
 	} catch (error) {
 		return {
 			success: false,
@@ -464,7 +561,7 @@ function startTelemetryLoop(port: MessagePort) {
 		try {
 			// 仅在运行/暂停阶段推送遥测（避免 idle 时噪音）
 			if (!gameEngine.isRunning() && gameEngine.getSMState() !== "paused") return;
-			const frameLoopStats = gameEngine.getFrameLoop().getFrameLoopStats();
+			const frameLoopStats = gameEngine.getFrameLoopStats();
 			postSystemMessage(port, "engine_telemetry", {
 				frameNumber: gameEngine.getCurrentFrame(),
 				runTime: gameEngine.getRunTimeMs(),
@@ -476,4 +573,3 @@ function startTelemetryLoop(port: MessagePort) {
 		}
 	}, TELEMETRY_INTERVAL_MS) as unknown as number;
 }
-

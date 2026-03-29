@@ -18,11 +18,11 @@ import { EngineLifecycleController } from "~/components/features/simulator/contr
 import { MemberController } from "~/components/features/simulator/controller/MemberController";
 import { MemberControllerPanel } from "~/components/features/simulator/controller/MemberControllerPanel";
 import type { EngineControlMessage } from "~/components/features/simulator/core/GameEngineSM";
+import { useEngine } from "~/components/features/simulator/core/thread/EngineContext";
 import {
 	ControllerDomainEventBatchSchema,
 	type EngineTelemetry,
 } from "~/components/features/simulator/core/thread/protocol";
-import { realtimeSimulatorPool } from "~/components/features/simulator/core/thread/SimulatorPool";
 import type { ControllerDomainEvent, FrameSnapshot } from "~/components/features/simulator/core/types";
 import type { MemberSerializeData } from "~/components/features/simulator/core/World/Member/Member";
 import { GameView } from "~/components/features/simulator/render/Renderer";
@@ -34,18 +34,15 @@ export interface RealtimeSimulatorProps {
 }
 
 export function RealtimeSimulator(props: RealtimeSimulatorProps) {
-	// ==================== 核心控制器 ====================
+	const { realtimePool: pool } = useEngine();
 
-	// ==================== 清理函数集合 ====================
 	const cleanupFunctions: Array<() => void> = [];
 
-	// ==================== 辅助函数：注册清理 ====================
 	function registerCleanup(fn: () => void) {
 		cleanupFunctions.push(fn);
 	}
 
-	/** 引擎生命周期控制器（单 operator） */
-	const lifecycle = new EngineLifecycleController();
+	const lifecycle = new EngineLifecycleController(pool);
 
 	/** 成员控制器列表（可动态添加） */
 	const [memberControllers, setMemberControllers] = createSignal<
@@ -135,12 +132,12 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 			controller.unbind().catch(console.error);
 		});
 		// 卸载所有监听器
-		realtimeSimulatorPool.off("engine_state_machine", handleEngineStateMachine);
-		realtimeSimulatorPool.off("frame_snapshot", handleFrameSnapshot);
-		realtimeSimulatorPool.off("engine_telemetry", handleEngineTelemetry);
-		realtimeSimulatorPool.off("domain_event_batch", handleDomainEventBatch);
-		realtimeSimulatorPool.off("system_event", handleSystemEvent);
-		realtimeSimulatorPool.off("render_cmd", handleRenderCmd);
+		pool.off("engine_state_machine", handleEngineStateMachine);
+		pool.off("frame_snapshot", handleFrameSnapshot);
+		pool.off("engine_telemetry", handleEngineTelemetry);
+		pool.off("domain_event_batch", handleDomainEventBatch);
+		pool.off("system_event", handleSystemEvent);
+		pool.off("render_cmd", handleRenderCmd);
 	});
 
 	// ==================== 数据同步 ====================
@@ -240,29 +237,19 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 
 	const setupDataSync = () => {
 		// 监听引擎状态机消息
-		realtimeSimulatorPool.on("engine_state_machine", handleEngineStateMachine);
-
-		// 监听帧快照
-		realtimeSimulatorPool.on("frame_snapshot", handleFrameSnapshot);
-
-		// 监听引擎遥测（轻量指标）
-		realtimeSimulatorPool.on("engine_telemetry", handleEngineTelemetry);
-
-		// 监听领域事件批（从 system_event 提升为顶层消息）
-		realtimeSimulatorPool.on("domain_event_batch", handleDomainEventBatch);
-
-		// 监听系统事件（worker_ready/error/日志等杂项，不再包含领域事件）
-		realtimeSimulatorPool.on("system_event", handleSystemEvent);
-
-		// 监听渲染命令
-		realtimeSimulatorPool.on("render_cmd", handleRenderCmd);
+		pool.on("engine_state_machine", handleEngineStateMachine);
+		pool.on("frame_snapshot", handleFrameSnapshot);
+		pool.on("engine_telemetry", handleEngineTelemetry);
+		pool.on("domain_event_batch", handleDomainEventBatch);
+		pool.on("system_event", handleSystemEvent);
+		pool.on("render_cmd", handleRenderCmd);
 	};
 
 	// ==================== 成员管理 ====================
 
 	const refreshMembers = async () => {
 		try {
-			const result = await realtimeSimulatorPool.getMembers();
+			const result = await pool.getMembers();
 			if (Array.isArray(result)) {
 				const validMembers = result.filter(
 					(member) => member && typeof member === "object" && "id" in member && "type" in member && "name" in member,
@@ -304,7 +291,7 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 			return;
 		}
 
-		const controller = new MemberController();
+		const controller = new MemberController(pool);
 		await controller.bind(memberId);
 
 		setMemberControllers((prev) => [...prev, { id: controller.controllerId, controller, boundMemberId: memberId }]);

@@ -10,8 +10,8 @@
 import { type Accessor, createEffect, createMemo, createSignal, onCleanup, Show } from "solid-js";
 import { Dialog } from "~/components/containers/dialog";
 import { Button } from "~/components/controls/button";
+import { useEngine } from "../../thread/EngineContext";
 import type { DataQueryCommand } from "../../thread/SimulatorPool";
-import { realtimeSimulatorPool } from "../../thread/SimulatorPool";
 import type { MemberSerializeData } from "./Member";
 import { type DataStorage, isDataStorageType } from "./runtime/StatContainer/StatContainer";
 
@@ -27,7 +27,7 @@ const originClass =
 // const columns = 8;
 const columnsWidth = "";
 // 用于递归遍历对象并生成DOM结构的组件（响应式）
-const StatsRenderer = (props: { data?: object }) => {
+export const StatsRenderer = (props: { data?: object }) => {
 	const renderObject = (
 		obj: unknown,
 		path: string[] = [],
@@ -501,6 +501,9 @@ const StatsRenderer = (props: { data?: object }) => {
 // };
 
 export function MemberStatusPanel(props: { controllerId?: string; member: Accessor<MemberSerializeData | null> }) {
+	const engine = useEngine();
+	const pool = engine.realtimePool;
+
 	const [liveAttrs, setLiveAttrs] = createSignal<object | undefined>(undefined);
 	const [subViewId, setSubViewId] = createSignal<string | null>(null);
 
@@ -510,7 +513,6 @@ export function MemberStatusPanel(props: { controllerId?: string; member: Access
 	const [displayDetail, setDisplayDetail] = createSignal(false);
 	const [activeTab, setActiveTab] = createSignal<"attrs" | "buffs">("attrs");
 
-	// 监听 debug_view_frame（井盖式通道）
 	const handleDebugViewFrame = (data: { workerId: string; event: unknown }) => {
 		const currentViewId = subViewId();
 		if (!currentViewId) return;
@@ -521,13 +523,12 @@ export function MemberStatusPanel(props: { controllerId?: string; member: Access
 	};
 
 	createEffect(() => {
-		realtimeSimulatorPool.on("debug_view_frame", handleDebugViewFrame);
+		pool.on("debug_view_frame", handleDebugViewFrame);
 		onCleanup(() => {
-			realtimeSimulatorPool.off("debug_view_frame", handleDebugViewFrame);
+			pool.off("debug_view_frame", handleDebugViewFrame);
 		});
 	});
 
-	// 当成员详情对话框打开且处于 attrs tab 时，订阅 StatContainer 导出
 	createEffect(() => {
 		const member = props.member();
 		const memberId = member?.id;
@@ -536,18 +537,15 @@ export function MemberStatusPanel(props: { controllerId?: string; member: Access
 
 		const current = subViewId();
 		if (!shouldSubscribe) {
-			// 不需要订阅：如果当前有订阅则取消
 			if (current) {
 				const cmd: DataQueryCommand = { type: "unsubscribe_debug_view", viewId: current };
-				realtimeSimulatorPool.executeTask("data_query", cmd, "low")
-					.catch(console.error);
+				pool.executeTask("data_query", cmd, "low").catch(console.error);
 				setSubViewId(null);
 				setLiveAttrs(undefined);
 			}
 			return;
 		}
 
-		// 需要订阅但还未订阅
 		if (!current) {
 			const cmd: DataQueryCommand = {
 				type: "subscribe_debug_view",
@@ -556,7 +554,7 @@ export function MemberStatusPanel(props: { controllerId?: string; member: Access
 				viewType: "stat_container_export",
 				hz: 10,
 			};
-			realtimeSimulatorPool
+			pool
 				.executeTask("data_query", cmd, "low")
 				.then((res) => {
 					const task = res.data as { success?: boolean; data?: { viewId?: string }; error?: string } | undefined;
@@ -571,11 +569,10 @@ export function MemberStatusPanel(props: { controllerId?: string; member: Access
 	});
 
 	onCleanup(() => {
-		// 组件卸载时确保取消订阅
 		const current = subViewId();
 		if (current) {
 			const cmd: DataQueryCommand = { type: "unsubscribe_debug_view", viewId: current };
-			realtimeSimulatorPool.executeTask("data_query", cmd, "low").catch(console.error);
+			pool.executeTask("data_query", cmd, "low").catch(console.error);
 		}
 	});
 

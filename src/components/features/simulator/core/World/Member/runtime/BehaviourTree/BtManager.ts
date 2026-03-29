@@ -2,6 +2,7 @@ import { createLogger } from "~/lib/Logger";
 import { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import { State } from "~/lib/mistreevous/State";
+import type { BtManagerCheckpoint, Checkpointable } from "../../../../types";
 import type { Member } from "../../Member";
 import type { MemberContext } from "../../MemberContext";
 import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
@@ -18,7 +19,8 @@ export class BtManager<
 	TStateEvent extends MemberEventType,
 	TStateContext extends MemberStateContext,
 	TContext extends MemberContext & Record<string, unknown> = MemberContext & Record<string, unknown>,
-> {
+> implements Checkpointable<BtManagerCheckpoint>
+{
 	private activeEffectEntry: BtEntry | undefined;
 	private parallelEntries: Map<string, BtEntry> = new Map();
 
@@ -61,9 +63,7 @@ export class BtManager<
 			AgentClass = agentClassCreator(BehaviourTree, State, this.owner);
 		} catch (error) {
 			log.warn(
-				`[${this.owner.name}] failed to compile BT agent: ${
-					error instanceof Error ? error.message : String(error)
-				}`,
+				`[${this.owner.name}] failed to compile BT agent: ${error instanceof Error ? error.message : String(error)}`,
 			);
 			return btContext;
 		}
@@ -73,9 +73,7 @@ export class BtManager<
 			instance = new AgentClass();
 		} catch (error) {
 			log.warn(
-				`[${this.owner.name}] failed to initialize BT agent: ${
-					error instanceof Error ? error.message : String(error)
-				}`,
+				`[${this.owner.name}] failed to initialize BT agent: ${error instanceof Error ? error.message : String(error)}`,
 			);
 			return btContext;
 		}
@@ -85,8 +83,7 @@ export class BtManager<
 
 			const memberSlotExists =
 				Object.hasOwn(memberContext, name) || !!Object.getOwnPropertyDescriptor(memberContext, name);
-			const btSlotExists =
-				Object.hasOwn(btContext, name) || !!Object.getOwnPropertyDescriptor(btContext, name);
+			const btSlotExists = Object.hasOwn(btContext, name) || !!Object.getOwnPropertyDescriptor(btContext, name);
 
 			if (memberSlotExists || btSlotExists) {
 				log.warn(`[${this.owner.name}] skipped BT agent member "${name}" because the slot already exists`);
@@ -181,6 +178,57 @@ export class BtManager<
 	}
 
 	clear(): void {
+		this.activeEffectEntry = undefined;
+		this.parallelEntries.clear();
+	}
+
+	/**
+	 * Shallow snapshot of BT context own properties; skips functions (not postMessage-safe).
+	 */
+	private snapshotBtContext(ctx: Record<string, unknown>): Record<string, unknown> {
+		const out: Record<string, unknown> = {};
+		for (const key of Object.keys(ctx)) {
+			const v = ctx[key];
+			if (typeof v === "function") continue;
+			out[key] = v;
+		}
+		return out;
+	}
+
+	private deriveBtId(bt: BehaviourTree): string {
+		try {
+			const id = bt.getTreeNodeDetails()?.id;
+			if (typeof id === "string" && id.length > 0) return id;
+		} catch {
+			// mistreevous may throw on malformed trees
+		}
+		return "<unknown>";
+	}
+
+	captureCheckpoint(): BtManagerCheckpoint {
+		const parallelEntries: BtManagerCheckpoint["parallelEntries"] = [];
+		for (const [name, entry] of this.parallelEntries) {
+			parallelEntries.push({
+				name,
+				btId: this.deriveBtId(entry.bt),
+				context: this.snapshotBtContext(entry.btContext),
+			});
+		}
+
+		const active = this.activeEffectEntry;
+		if (!active) {
+			return { hasActiveEffect: false, parallelEntries };
+		}
+
+		return {
+			hasActiveEffect: true,
+			activeEffectBtId: this.deriveBtId(active.bt),
+			activeEffectContext: this.snapshotBtContext(active.btContext),
+			parallelEntries,
+		};
+	}
+
+	restoreCheckpoint(_checkpoint: BtManagerCheckpoint): void {
 		this.activeEffectEntry = undefined;
 		this.parallelEntries.clear();
 	}

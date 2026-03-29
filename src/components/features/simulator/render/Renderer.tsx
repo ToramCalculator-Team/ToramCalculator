@@ -28,7 +28,7 @@ import type { SubMesh } from "@babylonjs/core/Meshes/subMesh";
 import { SolidParticleSystem } from "@babylonjs/core/Particles/solidParticleSystem";
 import { LensRenderingPipeline } from "@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/lensRenderingPipeline";
 import type { Nullable } from "@babylonjs/core/types";
-import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
+import { useEngine } from "../core/thread/EngineContext";
 import { rendererCommunication } from "./RendererCommunication";
 import { createRendererController } from "./RendererController";
 import type { EntityId } from "./RendererProtocol";
@@ -255,7 +255,7 @@ const cssColors = {
 const rgb2Bcolor3 = (c: number[]) => new Color3(c[0] / 255, c[1] / 255, c[2] / 255);
 
 export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
-	// ==================== 响应式状态 ====================
+	const { realtimePool: pool } = useEngine();
 	const [loaderState, setLoaderState] = createSignal(false);
 
 	const themeColors = createMemo(
@@ -321,7 +321,7 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
 				console.error("RendererCommunication: 处理渲染指令失败", e);
 			}
 		});
-		rendererCommunication.initialize();
+		rendererCommunication.initialize(pool);
 	}
 
 	// ==================== 窗口调整设置 ====================
@@ -490,7 +490,7 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
 		setupRenderCommunication();
 
 		// 7. 拉取当前世界渲染快照并应用（渲染层晚于引擎就绪，需首次全量同步），然后回放缓冲的渲染指令
-		const renderSnapshot = await realtimeSimulatorPool.getRenderSnapshot(true);
+		const renderSnapshot = await pool.getRenderSnapshot(true);
 		if (renderSnapshot && rendererController.applyRenderSnapshot) {
 			await rendererController.applyRenderSnapshot(renderSnapshot);
 		}

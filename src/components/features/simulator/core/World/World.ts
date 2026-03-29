@@ -1,3 +1,4 @@
+import type { WorldCheckpoint } from "../types";
 import { AreaManager } from "./Area/AreaManager";
 import { MemberManager } from "./Member/MemberManager";
 import { SpaceManager } from "./SpaceManager";
@@ -36,5 +37,19 @@ export class World {
 
 	setRenderMessageSender(renderMessageSender: ((payload: unknown) => void) | null): void {
 		this.memberManager.setRenderMessageSender(renderMessageSender);
+	}
+
+	// ==================== Checkpoint ====================
+
+	captureCheckpoint(): WorldCheckpoint {
+		return {
+			members: this.memberManager.captureMemberCheckpoints(),
+			damageAreaSystem: this.areaManager.damageAreaSystem.captureCheckpoint(),
+		};
+	}
+
+	restoreCheckpoint(checkpoint: WorldCheckpoint): void {
+		this.memberManager.restoreMemberCheckpoints(checkpoint.members);
+		this.areaManager.damageAreaSystem.restoreCheckpoint(checkpoint.damageAreaSystem);
 	}
 }

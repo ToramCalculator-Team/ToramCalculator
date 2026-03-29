@@ -1,3 +1,5 @@
+import type { Checkpointable, StatusInstanceStoreCheckpoint } from "../../../../types";
+
 export type StatusType = string;
 
 export interface StatusInstance {
@@ -13,7 +15,8 @@ export interface StatusInstance {
 	meta?: Record<string, unknown>;
 }
 
-export interface MutableStatusInstanceStore extends StatusInstanceStore {
+export interface MutableStatusInstanceStore
+	extends StatusInstanceStore, Checkpointable<StatusInstanceStoreCheckpoint> {
 	apply(instance: StatusInstance): void;
 	removeById(id: string): void;
 	removeByType(type: StatusType): void;
@@ -43,7 +46,9 @@ export interface StatusInstanceStore {
  * - 过期实例在显式 purge 时移除
  * - `tags` 为空时，默认使用 `type` 作为单一 tag
  */
-export class InMemoryStatusInstanceStore implements MutableStatusInstanceStore {
+export class InMemoryStatusInstanceStore
+	implements MutableStatusInstanceStore, Checkpointable<StatusInstanceStoreCheckpoint>
+{
 	private readonly instances = new Map<string, StatusInstance>();
 
 	constructor(private readonly getCurrentFrame: () => number) {}
@@ -106,6 +111,35 @@ export class InMemoryStatusInstanceStore implements MutableStatusInstanceStore {
 			if (instance.expiresAtFrame !== undefined && instance.expiresAtFrame <= currentFrame) {
 				this.instances.delete(id);
 			}
+		}
+	}
+
+	captureCheckpoint(): StatusInstanceStoreCheckpoint {
+		const instances: StatusInstanceStoreCheckpoint["instances"] = [];
+		for (const inst of this.instances.values()) {
+			instances.push(
+				structuredClone({
+					id: inst.id,
+					type: inst.type,
+					sourceId: inst.sourceId,
+					sourceSkillId: inst.sourceSkillId,
+					appliedAtFrame: inst.appliedAtFrame,
+					resolvedDurationFrames: inst.resolvedDurationFrames,
+					expiresAtFrame: inst.expiresAtFrame,
+					stacks: inst.stacks,
+					tags: inst.tags,
+					meta: inst.meta,
+				}),
+			);
+		}
+		return { instances };
+	}
+
+	restoreCheckpoint(checkpoint: StatusInstanceStoreCheckpoint): void {
+		this.instances.clear();
+		for (const row of checkpoint.instances) {
+			const inst: StatusInstance = structuredClone(row);
+			this.instances.set(inst.id, inst);
 		}
 	}
 }

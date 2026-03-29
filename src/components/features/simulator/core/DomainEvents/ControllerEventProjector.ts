@@ -9,11 +9,11 @@
 
 import { createLogger } from "~/lib/Logger";
 import type { ControlBindingManager } from "../Controller/ControlBindingManager";
-import type { ControllerDomainEvent, MemberDomainEvent } from "../types";
+import type { Checkpointable, ControllerDomainEvent, ControllerEventProjectorCheckpoint, MemberDomainEvent } from "../types";
 
 const log = createLogger("EventProj");
 
-export class ControllerEventProjector {
+export class ControllerEventProjector implements Checkpointable<ControllerEventProjectorCheckpoint> {
 	private bindingManager: ControlBindingManager;
 	/** 领域事件批发送器（直接发送 domain_event_batch 顶层消息） */
 	private domainEventBatchSender: ((payload: { type: "controller_domain_event_batch"; frameNumber: number; events: ControllerDomainEvent[] }) => void) | null = null;
@@ -101,6 +101,16 @@ export class ControllerEventProjector {
 
 		// 清空缓存
 		this.currentFrameEvents = [];
+	}
+
+	captureCheckpoint(): ControllerEventProjectorCheckpoint {
+		return {
+			currentFrameEvents: structuredClone(this.currentFrameEvents),
+		};
+	}
+
+	restoreCheckpoint(checkpoint: ControllerEventProjectorCheckpoint): void {
+		this.currentFrameEvents = structuredClone(checkpoint.currentFrameEvents) as ControllerDomainEvent[];
 	}
 
 	/**

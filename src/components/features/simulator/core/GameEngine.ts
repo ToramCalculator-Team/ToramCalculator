@@ -1,5 +1,4 @@
 import type { MemberWithRelations } from "@db/generated/repositories/member";
-import type { SimulatorWithRelations } from "@db/generated/repositories/simulator";
 import type { TeamWithRelations } from "@db/generated/repositories/team";
 import { createId } from "@paralleldrive/cuid2";
 import { type Actor, createActor } from "xstate";
@@ -13,25 +12,30 @@ import { EventQueue } from "./EventQueue/EventQueue";
 import type { QueueEvent } from "./EventQueue/types";
 import { ExpressionEvaluator } from "./Expression/ExpressionEvaluator";
 import { FrameLoop } from "./FrameLoop/FrameLoop";
+import type { FrameLoopSnapshot, FrameLoopStats, FrameLoopTick } from "./FrameLoop/types";
 import { type EngineControlMessage, GameEngineSM } from "./GameEngineSM";
-import { JSProcessor } from "./JSProcessor/JSProcessor";
+import type { JSProcessor } from "./JSProcessor/JSProcessor";
 import type { ExpressionContext } from "./JSProcessor/types";
 import { type IntentMessage, type MessageProcessResult, MessageRouter } from "./MessageRouter/MessageRouter";
-import { createBuiltInPipelineRegistry } from "./Pipline/BuiltInPipelineRegistry";
 import type { PipelineRegistry } from "./Pipline/PipelineRegistry";
 import type { StagePool } from "./Pipline/types";
 import type {
 	BuffViewDataSnapshot,
 	ComputedSkillInfo,
 	ControllerDomainEvent,
+	EngineCheckpoint,
 	EngineConfig,
+	EngineInfrastructure,
+	EngineInitializationData,
 	EngineState,
 	EngineStats,
 	FrameSnapshot,
 	FrameStepResult,
 	GameEngineSnapshot,
 	MemberDomainEvent,
+	SimulationProfile,
 } from "./types";
+import { createRealtimeProfile } from "./types";
 import type { MemberSerializeData } from "./World/Member/Member";
 import type { MemberContext } from "./World/Member/MemberContext";
 import type { Player } from "./World/Member/types/Player/Player";
@@ -40,23 +44,19 @@ import { World } from "./World/World";
 const log = createLogger("GameEngine");
 
 /**
+ * FAST_FORWARD 使用分片推进，避免长时间独占 Worker 事件循环。
+ * 说明：
+ * - 每个 slice 最多推进固定数量的逻辑帧
+ * - 每个 slice 也受真实时间预算约束，保证 pause / stop 能尽快生效
+ */
+const FAST_FORWARD_MAX_FRAMES_PER_SLICE = 120;
+const FAST_FORWARD_MAX_SLICE_TIME_MS = 8;
+
+/**
  * 扩展 globalThis 类型，添加测试环境标记
  */
 declare global {
 	var __ALLOW_GAMEENGINE_IN_MAIN_THREAD: boolean | undefined;
-}
-
-/**
- * 引擎模式枚举	
- * 需要运行在3种模式下：
- * 1.实时模拟：模拟托拉姆物语的真实场景，即以相同时间间隔推进帧。
- * 2.快速流程模拟：用于对比不同配置、流程下战斗结果差异，当前帧事件处理完毕后立即进入下一帧，不需要等待，此模式中的成员都应持有行动BT/AI。
- * 3.预览模拟：用于机体静态配置，此模式下主要是观察机体数据变化，以及计算技能效果。buff类技能只应用效果，跳过计数器和其他副作用；伤害技能只计算伤害值而不应用效果等。
- */
-export enum EngineMode {
-	REALTIME = "realtime",
-	FAST_FORWARD = "fast_forward",
-	PREVIEW = "preview",
 }
 
 /**
@@ -102,11 +102,41 @@ export class GameEngine {
 	/** 引擎配置 */
 	private config: EngineConfig;
 
+	/**
+	 * 引擎语义模式。
+	 * 它决定“连续运行由谁驱动”，而不是简单透传给底层时钟。
+	 */
+	private profile: SimulationProfile = createRealtimeProfile();
+
+	/**
+	 * 引擎运行会话状态。
+	 * - idle: 已构造，Infrastructure 就绪，未加载仿真数据（可响应静态查询）
+	 * - ready: 已加载场景数据（loadScenario 完成），等待 start
+	 * - running: 正在运行仿真
+	 * - paused: 仿真暂停
+	 */
+	private runState: "idle" | "ready" | "running" | "paused" = "idle";
+
 	/** 开始时间戳 */
 	private startTime: number = 0;
 
 	/** 当前逻辑帧号 */
 	private currentFrame: number = 0;
+
+	/**
+	 * 引擎级循环统计。
+	 * 说明：
+	 * - 对外暴露“实际完成了多少逻辑帧”
+	 * - 与 FrameLoop 的底层时钟统计分离，但复用同一个结构以保持接口兼容
+	 */
+	private frameLoopStats: FrameLoopStats = {
+		averageFPS: 0,
+		totalFrames: 0,
+		totalRunTime: 0,
+		clockKind: "manual",
+		skippedFrames: 0,
+		timeoutFrames: 0,
+	};
 
 	/** 快照历史 */
 	private snapshots: GameEngineSnapshot[] = [];
@@ -131,6 +161,24 @@ export class GameEngine {
 
 	/** 当前挂起的帧内任务数量（用于防止跨帧未完成任务） */
 	private pendingFrameTasksCount: number = 0;
+
+	/**
+	 * 快照观察器。
+	 * 说明：
+	 * - 快照节流属于引擎观察职责，不再放在底层时钟里
+	 * - 第一轮仍保持默认关闭，避免引入额外高频负载
+	 */
+	private snapshotObserver = {
+		snapshotFPS: 0,
+		snapshotIntervalMs: Number.POSITIVE_INFINITY,
+		lastSnapshotTime: 0,
+	};
+
+	/**
+	 * fast-forward 使用的分片定时器。
+	 * 用 setTimeout(0) 而不是无限 while，是为了让 pause / stop 有机会插队生效。
+	 */
+	private fastForwardTimer: number | null = null;
 
 	// ==================== 静态方法 ====================
 
@@ -157,14 +205,19 @@ export class GameEngine {
 	 * 构造函数
 	 *
 	 * @param config 引擎配置
+	 * @param infra 长期驻留的基础设施（JSProcessor、PipelineRegistry），由 Worker 级持有
 	 */
-	constructor(config: EngineConfig) {
+	constructor(config: EngineConfig, infra: EngineInfrastructure) {
 		console.log("================= GameEngine constructor ==================");
 
 		// 🛡️ 安全检查：只允许在Worker线程中创建GameEngine
 		this.validateWorkerContext();
 
 		this.config = config;
+
+		// 接收外部注入的基础设施（跨 reset/cleanup 存活）
+		this.jsProcessor = infra.jsProcessor;
+		this.pipelineRegistry = infra.pipelineRegistry;
 
 		// 初始化核心模块 - 按依赖顺序
 		this.eventQueue = new EventQueue(config.eventQueueConfig, () => this.currentFrame);
@@ -184,13 +237,10 @@ export class GameEngine {
 
 		// 注入引擎和绑定管理器到消息路由器
 		this.messageRouter = new MessageRouter(this, this.bindingManager);
-		this.frameLoop = new FrameLoop(this, this.config.frameLoopConfig); // 注入引擎
-		this.jsProcessor = new JSProcessor(); // 初始化JS表达式处理器
+		this.frameLoop = new FrameLoop(this.config.frameLoopConfig);
 
 		// World 相关
-
 		this.world = new World(this.renderMessageSender);
-		this.pipelineRegistry = createBuiltInPipelineRegistry();
 
 		// 初始化表达式求值器（把 world/self/target 绑定收敛到一个服务）
 		this.expressionEvaluator = new ExpressionEvaluator({
@@ -247,27 +297,38 @@ export class GameEngine {
 	// ==================== 生命周期管理 ====================
 
 	/** 存储初始化参数，用于重置时复用 */
-	private initializationData: SimulatorWithRelations | null = null;
+	private initializationData: EngineInitializationData | null = null;
 
 	/**
-	 * 初始化引擎（必须提供数据）
+	 * 加载仿真场景数据，将引擎从 idle 转为 ready。
+	 * 重建仿真层（World、EventQueue 等），但复用 Infrastructure 的编译缓存。
 	 */
-	initialize(data: SimulatorWithRelations): void {
-		if (this.getSMState() === "initialized") {
-			log.warn("GameEngine: 引擎已初始化");
-			return;
+	loadScenario(data: EngineInitializationData): void {
+		if (this.runState === "running" || this.runState === "paused") {
+			this.stop();
 		}
 
-		// 存储初始化参数
 		this.initializationData = data;
 
-		// 设置基本状态
 		this.startTime = performance.now();
+		this.currentFrame = 0;
+		this.pendingFrameTasksCount = 0;
+		this.resetEngineFrameLoopStats("manual");
+		this.resetSnapshotObserver();
 		this.snapshots = [];
+		this.stats = {
+			totalSnapshots: 0,
+			totalEventsProcessed: 0,
+			totalMessagesProcessed: 0,
+		};
+
+		// 清理上一个场景的世界数据
+		this.world.clear();
+		this.eventQueue.clear();
 
 		// 添加阵营A
 		this.addCamp("campA");
-		data.campA.forEach((team) => {
+		data.simulator.campA.forEach((team) => {
 			this.addTeam("campA", team);
 			team.members.forEach((member) => {
 				this.addMember("campA", team.id, member, 0);
@@ -276,58 +337,86 @@ export class GameEngine {
 
 		// 添加阵营B
 		this.addCamp("campB");
-		data.campB.forEach((team) => {
+		data.simulator.campB.forEach((team) => {
 			this.addTeam("campB", team);
 			team.members.forEach((member) => {
 				this.addMember("campB", team.id, member, 0);
 			});
 		});
 
-		log.info("GameEngine: 数据初始化完成");
+		this.runState = "ready";
+		log.info("GameEngine: 场景数据已加载，引擎就绪");
 	}
 
 	/**
-	 * 重置引擎到初始状态
+	 * @deprecated 使用 loadScenario() 替代
+	 */
+	initialize(data: EngineInitializationData): void {
+		this.loadScenario(data);
+	}
+
+	/**
+	 * 重置引擎：清理仿真层，保留 Infrastructure 编译缓存。
+	 * 如果有存储的场景数据则重新加载（→ ready），否则回到 idle。
 	 */
 	reset(): void {
 		this.stop();
 
-		// 使用存储的初始化参数重新初始化
 		if (this.initializationData) {
-			this.initialize(this.initializationData);
+			this.loadScenario(this.initializationData);
 		} else {
-			log.warn("GameEngine: 没有存储的初始化参数，无法重置");
+			this.world.clear();
+			this.eventQueue.clear();
+			this.currentFrame = 0;
+			this.snapshots = [];
+			this.runState = "idle";
 		}
 
 		log.info("GameEngine: 引擎已重置");
 	}
 
 	/**
-	 * 清理引擎资源
+	 * 切换仿真配置描述符（mode/stop/output/probe 等）。
+	 * 仅在 idle / ready 状态下允许切换，运行中切换需先 stop。
+	 */
+	setProfile(profile: SimulationProfile): void {
+		if (this.runState === "running" || this.runState === "paused") {
+			log.warn("GameEngine: 运行中/暂停中无法切换 profile，请先 stop");
+			return;
+		}
+		this.profile = profile;
+		log.info(`GameEngine: profile 已切换 (driveMode=${profile.driveMode}, exec=${profile.executionSemantics})`);
+	}
+
+	getProfile(): SimulationProfile {
+		return { ...this.profile };
+	}
+
+	/**
+	 * 清理仿真层资源，保留 Infrastructure（JSProcessor、PipelineRegistry）。
+	 * 清理后引擎回到 idle 状态。
 	 */
 	cleanup(): void {
-		// 停止引擎
 		this.stop();
 
-		// 清理成员注册表
 		this.world.clear();
-
-		// 清理事件队列
 		this.eventQueue.clear();
 
-		// 清理渲染消息发送器
 		this.renderMessageSender = null;
 		this.systemMessageSender = null;
 		this.frameSnapshotSender = null;
 
-		// 重置统计
+		this.initializationData = null;
+		this.snapshots = [];
+		this.currentFrame = 0;
 		this.stats = {
 			totalSnapshots: 0,
 			totalEventsProcessed: 0,
 			totalMessagesProcessed: 0,
 		};
 
-		log.info("🧹 引擎资源已清理");
+		this.runState = "idle";
+		log.info("GameEngine: 仿真层资源已清理，Infrastructure 保留");
 	}
 
 	/**
@@ -359,7 +448,7 @@ export class GameEngine {
 	/**
 	 * 获取初始化数据
 	 */
-	public getInitializationData(): SimulatorWithRelations | null {
+	public getInitializationData(): EngineInitializationData | null {
 		return this.initializationData;
 	}
 
@@ -372,9 +461,10 @@ export class GameEngine {
 	public createFrameSnapshot(): FrameSnapshot {
 		const frameNumber = this.getCurrentFrame();
 		const timestamp = performance.now();
+		const frameLoopStats = this.getFrameLoopStats();
 
 		// 引擎级状态
-		const frameLoopStats = this.frameLoop.getFrameLoopStats();
+		// 引擎级循环统计：这里读取的是 GameEngine 汇总后的逻辑帧统计，而不是底层时钟回调次数。
 
 		// 所有成员的高频视图
 		const members = this.world.memberManager.getAllMembers().map((member) => {
@@ -568,13 +658,12 @@ export class GameEngine {
 
 	// ==================== 状态查询 ====================
 
-	/**
-	 * 检查引擎是否正在运行
-	 *
-	 * @returns 是否运行中
-	 */
 	isRunning(): boolean {
-		return this.getSMState() === "running";
+		return this.runState === "running";
+	}
+
+	getRunState(): "idle" | "ready" | "running" | "paused" {
+		return this.runState;
 	}
 
 	/**
@@ -591,9 +680,19 @@ export class GameEngine {
 			runTime,
 			members: this.getAllMemberData(),
 			eventQueueStats: this.eventQueue.getStats(),
-			frameLoopStats: this.frameLoop.getFrameLoopStats(),
+			frameLoopStats: this.getFrameLoopStats(),
 			messageRouterStats: this.messageRouter.getStats(),
 		};
+	}
+
+	/**
+	 * 获取引擎级循环统计（轻量）。
+	 * 目的：
+	 * - 给 worker 遥测、快照、调试接口提供统一入口
+	 * - 避免外部再深拿到底层 FrameLoop 的内部统计
+	 */
+	getFrameLoopStats(): FrameLoopStats {
+		return { ...this.frameLoopStats };
 	}
 
 	/**
@@ -632,6 +731,18 @@ export class GameEngine {
 	}
 
 	/**
+	 * 获取成员当前帧的预计算技能信息（动态消耗、冷却、可用性等）。
+	 * 仅 Player 有技能列表；其他类型返回空数组。
+	 */
+	getComputedSkillInfos(memberId: string): ComputedSkillInfo[] {
+		const member = this.getMember(memberId);
+		if (!member || member.type !== "Player") {
+			return [];
+		}
+		return this.computePlayerSkills(member as Player, this.getCurrentFrame());
+	}
+
+	/**
 	 * 插入事件到队列
 	 *
 	 * @param event 事件对象
@@ -645,69 +756,111 @@ export class GameEngine {
 	// ==================== 子组件功能封装：帧推进功能 ====================
 
 	/**
-	 * 启动帧循环
+	 * 启动帧循环。仅在 ready / paused 状态下可调用。
 	 */
 	start(): void {
-		if (this.getSMState() === "running") {
+		if (this.runState === "running") {
 			log.warn("GameEngine: 引擎已在运行中");
+			return;
+		}
+		if (this.runState === "idle") {
+			log.warn("GameEngine: 引擎未加载场景数据，无法启动。请先调用 loadScenario()");
 			return;
 		}
 
 		this.startTime = performance.now();
+		this.runState = "running";
 
-		// 启动帧循环
-		this.frameLoop.start();
+		if (this.profile.driveMode === "clocked") {
+			this.resetEngineFrameLoopStats("raf");
+			this.resetSnapshotObserver();
+			this.frameLoop.start((tick) => {
+				this.handleFrameLoopTick(tick);
+			});
+			this.syncFrameLoopDriverStats();
+		} else {
+			this.resetEngineFrameLoopStats("manual");
+			this.resetSnapshotObserver();
+			if (this.frameLoop.isRunning() || this.frameLoop.isPaused()) {
+				this.frameLoop.stop();
+			}
+			this.scheduleFastForwardSlice();
+		}
 	}
 
 	/**
-	 * 停止帧循环
+	 * 停止帧循环。运行态/暂停态 → ready（若已有场景）或 idle。
 	 */
 	stop(): void {
-		if (this.getSMState() === "stopped") {
-			log.info("GameEngine: 引擎已停止");
+		if (this.runState === "idle" || this.runState === "ready") {
 			return;
 		}
 
-		// 停止帧循环
-		this.frameLoop.stop();
+		this.cancelFastForwardSlice();
+		if (this.frameLoop.isRunning() || this.frameLoop.isPaused()) {
+			this.frameLoop.stop();
+		}
+		this.syncFrameLoopDriverStats();
+		this.runState = this.initializationData ? "ready" : "idle";
 	}
 
 	/**
 	 * 暂停帧循环
 	 */
 	pause(): void {
-		if (this.getSMState() === "paused") {
+		if (this.runState === "paused") {
 			log.warn("GameEngine: 引擎已暂停");
 			return;
 		}
-
-		// 暂停帧循环
-		this.frameLoop.pause();
-	}
-
-	/**
-	 * 恢复帧循环
-	 */
-	resume(): void {
-		if (this.getSMState() === "running") {
-			log.warn("GameEngine: 引擎已在运行中");
+		if (this.runState !== "running") {
+			log.warn("GameEngine: 寮曟搸鏈繍琛岋紝鏃犳硶鏆傚仠");
 			return;
 		}
 
-		// 恢复帧循环
-		this.frameLoop.resume();
+		this.runState = "paused";
+
+		if (this.profile.driveMode === "unclocked") {
+			this.cancelFastForwardSlice();
+		} else {
+			this.frameLoop.pause();
+			this.syncFrameLoopDriverStats();
+		}
+	}
+
+	resume(): void {
+		if (this.runState === "running") {
+			log.warn("GameEngine: 引擎已在运行中");
+			return;
+		}
+		if (this.runState !== "paused") {
+			log.warn("GameEngine: 寮曟搸鏈殏鍋滐紝鏃犳硶鎭㈠");
+			return;
+		}
+
+		this.runState = "running";
+
+		if (this.profile.driveMode === "unclocked") {
+			this.scheduleFastForwardSlice();
+		} else {
+			this.frameLoop.resume();
+			this.syncFrameLoopDriverStats();
+		}
 	}
 
 	/**
-	 * 单步推进帧
+	 * 单步推进帧。仅在 ready / paused 状态下可调用。
 	 */
 	step(): void {
-		if (this.getSMState() === "running") {
+		if (this.runState === "idle") {
+			log.warn("GameEngine: 引擎未加载场景数据，无法单步执行");
+			return;
+		}
+		if (this.runState === "running") {
 			log.warn("GameEngine: 引擎正在运行，无法单步执行");
 			return;
 		}
 
-		this.frameLoop.step();
+		this.runSingleFrame("manual");
 	}
 
 	/**
@@ -752,6 +905,53 @@ export class GameEngine {
 	}
 
 	/**
+	 * 增量更新成员配置（热替换）。
+	 * 销毁旧成员实例并以新数据重建，用于 Character 页面配置变更后快速刷新。
+	 * 仅在 idle / ready 状态下允许操作。
+	 */
+	patchMemberConfig(memberId: string, newData: MemberWithRelations): boolean {
+		if (this.runState === "running" || this.runState === "paused") {
+			log.warn("GameEngine: 运行中无法 patchMemberConfig，请先 stop");
+			return false;
+		}
+
+		const existing = this.getMember(memberId);
+		if (!existing) {
+			log.warn(`GameEngine: patchMemberConfig 未找到成员 ${memberId}`);
+			return false;
+		}
+
+		const { campId, teamId } = existing;
+
+		this.world.memberManager.unregisterMember(memberId);
+		this.world.memberManager.createAndRegister(newData, campId, teamId, 0);
+
+		if (this.initializationData) {
+			this.patchInitializationData(memberId, newData);
+		}
+
+		log.info(`GameEngine: 成员 ${memberId} 配置已热替换`);
+		return true;
+	}
+
+	/**
+	 * 同步更新存储的场景数据中对应成员，确保 reset 后使用最新配置。
+	 */
+	private patchInitializationData(memberId: string, newData: MemberWithRelations): void {
+		if (!this.initializationData) return;
+
+		for (const camp of [this.initializationData.simulator.campA, this.initializationData.simulator.campB]) {
+			for (const team of camp) {
+				const idx = team.members.findIndex((m) => m.id === memberId);
+				if (idx !== -1) {
+					team.members[idx] = newData;
+					return;
+				}
+			}
+		}
+	}
+
+	/**
 	 * 获取所有成员
 	 *
 	 * @returns 成员数组
@@ -779,11 +979,11 @@ export class GameEngine {
 	 * @returns 处理结果
 	 */
 	async processIntent(message: IntentMessage): Promise<MessageProcessResult> {
-		if (!this.config.enableIntentInput) {
+		if (!this.profile.acceptExternalIntents) {
 			return {
 				success: false,
 				message: "意图输入已禁用",
-				error: "Intent input disabled",
+				error: "Intent input disabled by profile.acceptExternalIntents",
 			};
 		}
 
@@ -800,11 +1000,11 @@ export class GameEngine {
 	 * @returns 处理结果数组
 	 */
 	async processIntents(messages: IntentMessage[]): Promise<MessageProcessResult[]> {
-		if (!this.config.enableIntentInput) {
+		if (!this.profile.acceptExternalIntents) {
 			return messages.map(() => ({
 				success: false,
 				message: "意图输入已禁用",
-				error: "Intent input disabled",
+				error: "Intent input disabled by profile.acceptExternalIntents",
 			}));
 		}
 
@@ -1014,7 +1214,7 @@ export class GameEngine {
 	 */
 	getCurrentSnapshot(): GameEngineSnapshot {
 		const members = this.world.memberManager.getAllMembers();
-		const currentFrame = this.frameLoop.getFrameNumber();
+		const currentFrame = this.getCurrentFrame();
 
 		return {
 			timestamp: performance.now(),
@@ -1023,7 +1223,7 @@ export class GameEngine {
 			engine: {
 				frameNumber: currentFrame,
 				runTime: performance.now() - this.startTime,
-				frameLoop: this.frameLoop.getSnapshot(),
+				frameLoop: this.createFrameLoopSnapshot(),
 				eventQueue: this.eventQueue.getSnapshot(),
 				memberCount: members.length,
 			},
@@ -1203,6 +1403,177 @@ export class GameEngine {
 	// ==================== 私有方法 ====================
 
 	/**
+	 * 重置引擎级循环统计。
+	 * 目的：
+	 * - 把“逻辑帧推进统计”收回到 GameEngine
+	 * - 让对外 FPS / totalFrames 反映真实 stepFrame 执行结果
+	 */
+	private resetEngineFrameLoopStats(clockKind: FrameLoopStats["clockKind"]): void {
+		this.frameLoopStats = {
+			averageFPS: 0,
+			totalFrames: 0,
+			totalRunTime: 0,
+			clockKind,
+			skippedFrames: 0,
+			timeoutFrames: 0,
+		};
+	}
+
+	/**
+	 * 重置快照观察器。
+	 * 第一轮仍默认关闭快照节流发送，但职责已经回到引擎侧。
+	 */
+	private resetSnapshotObserver(): void {
+		this.snapshotObserver.lastSnapshotTime = 0;
+		this.snapshotObserver.snapshotIntervalMs =
+			this.snapshotObserver.snapshotFPS > 0 ? 1000 / this.snapshotObserver.snapshotFPS : Number.POSITIVE_INFINITY;
+	}
+
+	/**
+	 * 把底层时钟驱动统计同步到引擎级统计里。
+	 * 说明：
+	 * - clockKind / skippedFrames / timeoutFrames 仍来自底层 FrameLoop
+	 * - totalFrames / averageFPS / totalRunTime 由引擎自己根据 stepFrame 结果维护
+	 */
+	private syncFrameLoopDriverStats(): void {
+		const driverStats = this.frameLoop.getFrameLoopStats();
+		this.frameLoopStats.clockKind = driverStats.clockKind;
+		this.frameLoopStats.skippedFrames = driverStats.skippedFrames;
+		this.frameLoopStats.timeoutFrames = driverStats.timeoutFrames;
+	}
+
+	/**
+	 * 基于引擎当前状态更新循环统计。
+	 */
+	private updateEngineFrameLoopStats(clockKind?: FrameLoopStats["clockKind"]): void {
+		if (clockKind) {
+			this.frameLoopStats.clockKind = clockKind;
+		}
+
+		const runTime = performance.now() - this.startTime;
+		this.frameLoopStats.totalRunTime = runTime;
+		this.frameLoopStats.totalFrames = this.currentFrame;
+
+		const seconds = runTime / 1000;
+		this.frameLoopStats.averageFPS = seconds > 0 ? this.currentFrame / seconds : 0;
+	}
+
+	/**
+	 * 统一组装兼容旧接口的循环快照。
+	 */
+	private createFrameLoopSnapshot(): FrameLoopSnapshot {
+		return {
+			currentFrame: this.getCurrentFrame(),
+			fps: this.frameLoopStats.averageFPS,
+		};
+	}
+
+	/**
+	 * realtime 驱动入口。
+	 * FrameLoop 只负责告诉我们“建议推进多少帧”，真正的循环控制在这里。
+	 */
+	private handleFrameLoopTick(tick: FrameLoopTick): void {
+		if (this.runState !== "running") {
+			return;
+		}
+
+		this.syncFrameLoopDriverStats();
+
+		for (let index = 0; index < tick.dueSteps; index++) {
+			this.runSingleFrame(tick.clockKind);
+		}
+
+		this.syncFrameLoopDriverStats();
+	}
+
+	/**
+	 * 执行一次引擎级单帧事务，并统一更新统计/快照。
+	 * 这样 manual step、realtime、fast-forward 就能复用一套收尾逻辑。
+	 */
+	private runSingleFrame(clockKind: FrameLoopStats["clockKind"]): FrameStepResult {
+		const stepResult = this.stepFrame({
+			maxEvents: this.config.frameLoopConfig.maxEventsPerFrame,
+		});
+
+		this.stats.totalEventsProcessed += stepResult.eventsProcessed;
+		this.updateEngineFrameLoopStats(clockKind);
+		this.emitFrameSnapshotIfNeeded();
+
+		return stepResult;
+	}
+
+	/**
+	 * 安排下一段 fast-forward 分片。
+	 * 使用 setTimeout(0) 是为了让 pause / stop / worker 消息有机会插入。
+	 */
+	private scheduleFastForwardSlice(): void {
+		if (this.runState !== "running" || this.fastForwardTimer !== null) {
+			return;
+		}
+
+		this.fastForwardTimer = setTimeout(() => {
+			this.fastForwardTimer = null;
+			this.processFastForwardSlice();
+		}, 0) as unknown as number;
+	}
+
+	private cancelFastForwardSlice(): void {
+		if (this.fastForwardTimer === null) {
+			return;
+		}
+
+		clearTimeout(this.fastForwardTimer);
+		this.fastForwardTimer = null;
+	}
+
+	/**
+	 * fast-forward 分片推进。
+	 * 说明：
+	 * - 不依赖底层 wall-clock
+	 * - 由引擎主动重复调用 stepFrame
+	 * - 通过帧数预算 + 时间预算避免长时间独占线程
+	 */
+	private processFastForwardSlice(): void {
+		if (this.runState !== "running") {
+			return;
+		}
+
+		const sliceStartTime = performance.now();
+		let framesExecuted = 0;
+
+		while (this.runState === "running" && framesExecuted < FAST_FORWARD_MAX_FRAMES_PER_SLICE) {
+			this.runSingleFrame("manual");
+			framesExecuted += 1;
+
+			if (performance.now() - sliceStartTime >= FAST_FORWARD_MAX_SLICE_TIME_MS) {
+				break;
+			}
+		}
+
+		if (this.runState === "running") {
+			this.scheduleFastForwardSlice();
+		}
+	}
+
+	/**
+	 * 引擎侧快照节流。
+	 * 这层负责决定“每完成一帧后是否需要对外发高频快照”。
+	 */
+	private emitFrameSnapshotIfNeeded(): void {
+		if (this.snapshotObserver.snapshotFPS <= 0 || !this.frameSnapshotSender) {
+			return;
+		}
+
+		const now = performance.now();
+		if (now - this.snapshotObserver.lastSnapshotTime < this.snapshotObserver.snapshotIntervalMs) {
+			return;
+		}
+
+		this.sendFrameSnapshot(this.createFrameSnapshot());
+		this.snapshotObserver.lastSnapshotTime = now;
+	}
+
+	/**
 	 * 验证当前执行环境是否为Worker线程
 	 * 防止在主线程意外创建GameEngine实例
 	 */
@@ -1336,6 +1707,36 @@ export class GameEngine {
 				},
 			};
 		});
+	}
+
+	// ==================== Checkpoint / Restore ====================
+
+	captureCheckpoint(): EngineCheckpoint {
+		return {
+			frameNumber: this.currentFrame,
+			timestamp: performance.now(),
+			eventQueue: this.eventQueue.captureCheckpoint(),
+			world: this.world.captureCheckpoint(),
+			domainEventBus: this.domainEventBus.captureCheckpoint(),
+			controllerEventProjector: this.controllerEventProjector.captureCheckpoint(),
+		};
+	}
+
+	restoreCheckpoint(checkpoint: EngineCheckpoint): void {
+		const wasRunning = this.runState === "running";
+		if (wasRunning) {
+			this.pause();
+		}
+
+		this.currentFrame = checkpoint.frameNumber;
+		this.eventQueue.restoreCheckpoint(checkpoint.eventQueue);
+		this.world.restoreCheckpoint(checkpoint.world);
+		this.domainEventBus.restoreCheckpoint(checkpoint.domainEventBus);
+		this.controllerEventProjector.restoreCheckpoint(checkpoint.controllerEventProjector);
+
+		if (wasRunning) {
+			this.resume();
+		}
 	}
 }
 

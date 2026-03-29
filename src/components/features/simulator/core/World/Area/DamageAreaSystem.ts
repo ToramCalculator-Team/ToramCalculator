@@ -1,4 +1,5 @@
 import { createLogger } from "~/lib/Logger";
+import type { Checkpointable, DamageAreaSystemCheckpoint } from "../../types";
 import type { AnyMemberEntry, MemberManager } from "../Member/MemberManager";
 import type { SpaceManager } from "../SpaceManager";
 import type { DamageAreaRequest, DamageDispatchPayload, Vec3 } from "./types";
@@ -38,7 +39,7 @@ interface DamageAreaInstance {
  * 伤害区域系统
  * 管理跨帧伤害区域实例，负责命中检测、节流、动态变量注入和事件派发
  */
-export class DamageAreaSystem {
+export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoint> {
 	private instances: Map<string, DamageAreaInstance> = new Map();
 	private nextAreaId = 1;
 
@@ -52,83 +53,7 @@ export class DamageAreaSystem {
 	 */
 	add(request: DamageAreaRequest): string {
 		const areaId = `damage_${this.nextAreaId++}`;
-		const { rangeKind, rangeParams } = request.range;
-
-		// 根据 rangeKind 确定 shape 和 trajectory
-		let shape: DamageAreaInstance["shape"];
-		let trajectory: DamageAreaInstance["trajectory"];
-
-		const caster = this.memberManager.getMember(request.identity.sourceId);
-		const target = request.targetId ? this.memberManager.getMember(request.targetId) : caster;
-
-		if (!caster || !target) {
-			throw new Error(`DamageAreaSystem: 施法者不存在: ${request.identity.sourceId}`);
-		}
-
-		switch (rangeKind) {
-			case "Enemy": {
-				// 以施法者当前位置为中心的圆
-				shape = {
-					type: "circle",
-					radius: rangeParams.radius ?? 0,
-				};
-				trajectory = {
-					type: "static",
-					center: caster.position,
-				};
-				break;
-			}
-			case "Range": {
-				// 以目标为中心的圆，落点锁定
-				shape = {
-					type: "circle",
-					radius: rangeParams.radius ?? 0,
-				};
-				trajectory = {
-					type: "static",
-					center: target.position,
-				};
-				break;
-			}
-			case "MoveAttack": {
-				// 圆在线段上移动
-				shape = {
-					type: "circle",
-					radius: rangeParams.width ? rangeParams.width / 2 : 0,
-				};
-				trajectory = {
-					type: "linear",
-					start: caster.position,
-					dir: rangeParams.dir ?? { x: 1, y: 0, z: 0 },
-					speed: rangeParams.speed ?? 0,
-				};
-				break;
-			}
-			case "None": {
-				// 单体攻击，视为 radius=0 的特殊 range
-				shape = {
-					type: "circle",
-					radius: 0,
-				};
-				trajectory = {
-					type: "static",
-					center: target.position,
-				};
-				break;
-			}
-			default: {
-				// custom 或其他，默认使用 static
-				shape = {
-					type: "circle",
-					radius: rangeParams.radius ?? 0,
-				};
-				trajectory = {
-					type: "static",
-					center: caster.position,
-				};
-				break;
-			}
-		}
+		const { shape, trajectory } = this.deriveShapeAndTrajectory(request);
 
 		const instance: DamageAreaInstance = {
 			areaId,
@@ -277,6 +202,82 @@ export class DamageAreaSystem {
 		const dy = a.y - b.y;
 		const dz = a.z - b.z;
 		return Math.sqrt(dx * dx + dy * dy + dz * dz);
+	}
+
+	captureCheckpoint(): DamageAreaSystemCheckpoint {
+		const instances: DamageAreaSystemCheckpoint["instances"] = [];
+		for (const instance of this.instances.values()) {
+			instances.push({
+				areaId: instance.areaId,
+				requestPayload: structuredClone(instance.request),
+				lastHitFrameByTargetId: Array.from(instance.lastHitFrameByTargetId.entries()),
+			});
+		}
+		return {
+			nextAreaId: this.nextAreaId,
+			instances,
+		};
+	}
+
+	restoreCheckpoint(checkpoint: DamageAreaSystemCheckpoint): void {
+		this.instances.clear();
+		this.nextAreaId = checkpoint.nextAreaId;
+
+		for (const entry of checkpoint.instances) {
+			const request = entry.requestPayload as DamageAreaRequest;
+			const { shape, trajectory } = this.deriveShapeAndTrajectory(request);
+			const instance: DamageAreaInstance = {
+				areaId: entry.areaId,
+				request,
+				shape,
+				trajectory,
+				lastHitFrameByTargetId: new Map(entry.lastHitFrameByTargetId),
+			};
+			this.instances.set(entry.areaId, instance);
+		}
+	}
+
+	private deriveShapeAndTrajectory(request: DamageAreaRequest): Pick<DamageAreaInstance, "shape" | "trajectory"> {
+		const { rangeKind, rangeParams } = request.range;
+		const caster = this.memberManager.getMember(request.identity.sourceId);
+		const target = request.targetId ? this.memberManager.getMember(request.targetId) : caster;
+
+		if (!caster || !target) {
+			throw new Error(`DamageAreaSystem: 施法者不存在: ${request.identity.sourceId}`);
+		}
+
+		switch (rangeKind) {
+			case "Enemy":
+				return {
+					shape: { type: "circle", radius: rangeParams.radius ?? 0 },
+					trajectory: { type: "static", center: caster.position },
+				};
+			case "Range":
+				return {
+					shape: { type: "circle", radius: rangeParams.radius ?? 0 },
+					trajectory: { type: "static", center: target.position },
+				};
+			case "MoveAttack":
+				return {
+					shape: { type: "circle", radius: rangeParams.width ? rangeParams.width / 2 : 0 },
+					trajectory: {
+						type: "linear",
+						start: caster.position,
+						dir: rangeParams.dir ?? { x: 1, y: 0, z: 0 },
+						speed: rangeParams.speed ?? 0,
+					},
+				};
+			case "None":
+				return {
+					shape: { type: "circle", radius: 0 },
+					trajectory: { type: "static", center: target.position },
+				};
+			default:
+				return {
+					shape: { type: "circle", radius: rangeParams.radius ?? 0 },
+					trajectory: { type: "static", center: caster.position },
+				};
+		}
 	}
 
 	clear(): void {

@@ -5,7 +5,7 @@ import { createLogger } from "~/lib/Logger";
 import type { ExpressionContext } from "../../JSProcessor/types";
 import type { PipelineRegistry } from "../../Pipline/PipelineRegistry";
 import type { StagePool } from "../../Pipline/types";
-import type { MemberDomainEvent } from "../../types";
+import type { MemberCheckpoint, MemberDomainEvent } from "../../types";
 import type { DamageAreaRequest } from "../Area/types";
 import type { MemberContext } from "./MemberContext";
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
@@ -211,15 +211,35 @@ export class Member<
 		if (!this.actorStarted) {
 			throw new Error(`member actor not started: ${this.id}`);
 		}
-		// Responsibility: refresh the shared member snapshot before any subsystem
-		// consumes this frame.
-		// Purpose: member.context stays the authoritative public runtime context,
-		// while FSM / BT only mirror or read from it.
 		this.context.currentFrame = frame;
 		this.context.position = this.position;
 		this.statusStore.purgeExpired(frame);
 		this.syncStatusTags();
 		this.actor.send({ type: "update", timestamp: frame } as TStateEvent);
 		this.btManager.tickAll();
+	}
+
+	// ==================== Checkpoint ====================
+
+	captureCheckpoint(): MemberCheckpoint {
+		return {
+			memberId: this.id,
+			fsm: this.actor.getPersistedSnapshot(),
+			statContainer: this.statContainer.captureCheckpoint(),
+			statusStore: this.statusStore.captureCheckpoint(),
+			btManager: this.btManager.captureCheckpoint(),
+			pipelineManager: this.pipelineManager.captureCheckpoint(),
+			position: { ...this.position },
+		};
+	}
+
+	restoreCheckpoint(checkpoint: MemberCheckpoint): void {
+		this.statContainer.restoreCheckpoint(checkpoint.statContainer);
+		this.statusStore.restoreCheckpoint(checkpoint.statusStore);
+		this.btManager.restoreCheckpoint(checkpoint.btManager);
+		this.pipelineManager.restoreCheckpoint(checkpoint.pipelineManager);
+		this.position = { ...checkpoint.position };
+		this.context.position = this.position;
+		this.syncStatusTags();
 	}
 }

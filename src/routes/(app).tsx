@@ -12,6 +12,7 @@ import { BabylonBg } from "~/components/effects/babylonBg";
 import { RandomBallBackground } from "~/components/effects/randomBg";
 import { LoginDialog } from "~/components/features/loginDialog";
 import { Setting } from "~/components/features/setting";
+import { EngineProvider } from "~/components/features/simulator/core/thread/EngineContext";
 import { MediaProvider } from "~/lib/contexts/Media-component";
 import { ensureLocalAccount } from "~/lib/localAccount";
 import { setStore, store } from "~/store";
@@ -176,20 +177,22 @@ export default function AppMainContet(props: ParentProps) {
 
 	return (
 		<MediaProvider>
-			<Show when={store.settings.userInterface.is3DbackgroundDisabled}>
-				<BabylonBg />
-			</Show>
-			<RandomBallBackground />
-			<Motion.div
-				id="AppMainContet"
-				class={`h-full w-full overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
-			>
-				{props.children}
-			</Motion.div>
-			<Setting />
-			<LoginDialog />
-			<CardGroup />
-			<FormGroup />
+			<EngineProvider>
+				<Show when={store.settings.userInterface.is3DbackgroundDisabled}>
+					<BabylonBg />
+				</Show>
+				<RandomBallBackground />
+				<Motion.div
+					id="AppMainContet"
+					class={`h-full w-full overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
+				>
+					{props.children}
+				</Motion.div>
+				<Setting />
+				<LoginDialog />
+				<CardGroup />
+				<FormGroup />
+			</EngineProvider>
 		</MediaProvider>
 	);
 }

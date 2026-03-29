@@ -1,5 +1,3 @@
-// ==================== 模拟器专用扩展 ====================
-
 import { z } from "zod/v4";
 import { createLogger } from "~/lib/Logger";
 import type { WorkerMessageEvent } from "~/lib/WorkerPool/type";
@@ -7,7 +5,8 @@ import { type PoolConfig, WorkerPool, type WorkerWrapper } from "~/lib/WorkerPoo
 import type { RendererCmd, RenderSnapshot } from "../../render/RendererProtocol";
 import type { EngineControlMessage } from "../GameEngineSM";
 import { type IntentMessage, IntentMessageSchema } from "../MessageRouter/MessageRouter";
-import type { EngineStats } from "../types";
+import type { PreviewReport } from "../Preview/types";
+import { type EngineInitializationData, EngineInitializationDataSchema, type EngineStats, type SimulationProfile } from "../types";
 import type { MemberSerializeData } from "../World/Member/Member";
 import { WorkerSystemMessageSchema } from "./protocol";
 import simulationWorker from "./Simulation.worker?worker&url";
@@ -63,6 +62,41 @@ export const DataQueryCommandSchema = z.discriminatedUnion("type", [
 		type: z.literal("get_render_snapshot"),
 		includeAreas: z.boolean().optional(),
 	}),
+	z.object({
+		type: z.literal("load_scenario"),
+		data: EngineInitializationDataSchema,
+	}),
+	z.object({
+		type: z.literal("set_profile"),
+		profile: z.unknown(),
+	}),
+	z.object({
+		type: z.literal("patch_member"),
+		memberId: z.string(),
+		memberData: z.unknown(),
+	}),
+	z.object({
+		type: z.literal("run_preview"),
+		memberId: z.string(),
+	}),
+	z.object({
+		type: z.literal("get_computed_skills"),
+		memberId: z.string(),
+	}),
+	z.object({
+		type: z.literal("capture_checkpoint"),
+	}),
+	z.object({
+		type: z.literal("restore_checkpoint"),
+		checkpoint: z.unknown(),
+	}),
+	z.object({
+		type: z.literal("export_expr_dict"),
+	}),
+	z.object({
+		type: z.literal("import_expr_dict"),
+		entries: z.unknown(),
+	}),
 ]);
 
 /**
@@ -107,12 +141,7 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 		// 设置模拟器专用的事件处理器
 		this.on(
 			"worker-message",
-			(
-				data: {
-					worker: WorkerWrapper;
-					event: WorkerMessageEvent<unknown, SimulatorTaskMap, unknown>;
-				},
-			) => {
+			(data: { worker: WorkerWrapper; event: WorkerMessageEvent<unknown, SimulatorTaskMap, unknown> }) => {
 				// 检查是否是系统消息（通过 schema 验证）
 				const parsed = WorkerSystemMessageSchema.safeParse(data.event);
 				if (parsed.success) {
@@ -230,6 +259,69 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 		}
 		log.warn("🔍 SimulatorPool.getRenderSnapshot: 渲染快照解析失败");
 		return null;
+	}
+
+	// ==================== 引擎生命周期命令 ====================
+
+	async loadScenario(data: EngineInitializationData): Promise<{ success: boolean; error?: string }> {
+		const command: DataQueryCommand = { type: "load_scenario", data };
+		const result = await this.executeTask("data_query", command, "high");
+		return { success: result.success, error: result.error };
+	}
+
+	async setProfile(profile: SimulationProfile): Promise<{ success: boolean; error?: string }> {
+		const command: DataQueryCommand = { type: "set_profile", profile };
+		const result = await this.executeTask("data_query", command, "high");
+		return { success: result.success, error: result.error };
+	}
+
+	async patchMember(memberId: string, memberData: unknown): Promise<{ success: boolean; error?: string }> {
+		const command: DataQueryCommand = { type: "patch_member", memberId, memberData };
+		const result = await this.executeTask("data_query", command, "high");
+		return { success: result.success, error: result.error };
+	}
+
+	async runPreview(memberId: string): Promise<PreviewReport | null> {
+		const command: DataQueryCommand = { type: "run_preview", memberId };
+		const result = await this.executeTask("data_query", command, "medium");
+		const task = result.data as { success: boolean; data?: PreviewReport } | undefined;
+		if (result.success && task?.success && task.data) {
+			return task.data;
+		}
+		return null;
+	}
+
+	async getComputedSkills(memberId: string): Promise<unknown[]> {
+		const command: DataQueryCommand = { type: "get_computed_skills", memberId };
+		const result = await this.executeTask("data_query", command, "low");
+		const task = result.data as { success: boolean; data?: unknown[] } | undefined;
+		return task?.success && Array.isArray(task.data) ? task.data : [];
+	}
+
+	async captureCheckpoint(): Promise<unknown | null> {
+		const command: DataQueryCommand = { type: "capture_checkpoint" };
+		const result = await this.executeTask("data_query", command, "high");
+		const task = result.data as { success: boolean; data?: unknown } | undefined;
+		return task?.success ? (task.data ?? null) : null;
+	}
+
+	async restoreCheckpoint(checkpoint: unknown): Promise<{ success: boolean; error?: string }> {
+		const command: DataQueryCommand = { type: "restore_checkpoint", checkpoint };
+		const result = await this.executeTask("data_query", command, "high");
+		return { success: result.success, error: result.error };
+	}
+
+	async exportExprDict(): Promise<Array<[string, string]>> {
+		const command: DataQueryCommand = { type: "export_expr_dict" };
+		const result = await this.executeTask("data_query", command, "low");
+		const task = result.data as { success: boolean; data?: Array<[string, string]> } | undefined;
+		return task?.success && Array.isArray(task.data) ? task.data : [];
+	}
+
+	async importExprDict(entries: Array<[string, string]>): Promise<{ success: boolean; error?: string }> {
+		const command: DataQueryCommand = { type: "import_expr_dict", entries };
+		const result = await this.executeTask("data_query", command, "high");
+		return { success: result.success, error: result.error };
 	}
 }
 
