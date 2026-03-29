@@ -1,5 +1,8 @@
 import { z } from "zod/v4";
 
+const FrameLoopModeSchema = z.enum(["realtime", "fastForward"]);
+export type FrameLoopMode = z.output<typeof FrameLoopModeSchema>;
+
 /**
  * 帧循环状态枚举
  */
@@ -9,7 +12,7 @@ export type FrameLoopState =
   | "paused"; // 已暂停
 
 /**
- * 帧循环配置接口（仅时钟与固定步长相关；运行语义模式见 EngineConfig.engineMode）
+ * 帧循环配置接口
  */
 export const FrameLoopConfigSchema = z.object({
   targetFPS: z.number(),
@@ -18,8 +21,7 @@ export const FrameLoopConfigSchema = z.object({
   enablePerformanceMonitoring: z.boolean(),
   timeScale: z.number(),
   maxEventsPerFrame: z.number(),
-  /** 向主线程发送 FrameSnapshot 的目标频率（Hz），0 表示关闭 */
-  snapshotFPS: z.number().default(0),
+  mode: FrameLoopModeSchema,
 });
 export type FrameLoopConfig = z.output<typeof FrameLoopConfigSchema>;
 
@@ -32,14 +34,14 @@ export interface FrameLoopSnapshot {
  * 性能统计接口
  */
 export interface FrameLoopStats {
-  /** 平均逻辑帧率（近似） */
+  /** 平均帧率 */
   averageFPS: number;
-  /** 最近一次已处理逻辑帧号（与历史实现一致，用于估算 FPS） */
+  /** 总帧数 */
   totalFrames: number;
   /** 总运行时间 */
   totalRunTime: number;
-  /** 调度时钟类型（可观测）；快进等非 wall-clock 模式为 synthetic */
-  clockKind: "raf" | "timeout" | "synthetic";
+  /** 调度时钟类型（可观测） */
+  clockKind: "raf" | "timeout";
   /** 累积跳帧次数 */
   skippedFrames: number;
   /** 累计超时帧数 */
