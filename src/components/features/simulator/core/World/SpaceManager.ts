@@ -1,6 +1,6 @@
 
-import type { AnyMemberEntry, MemberManager } from "../Member/MemberManager";
-import type { Vec3 } from "./types";
+import type { Vec3 } from "./Area/types";
+import type { AnyMemberEntry, MemberManager } from "./Member/MemberManager";
 
 /**
  * 计算两点之间的距离

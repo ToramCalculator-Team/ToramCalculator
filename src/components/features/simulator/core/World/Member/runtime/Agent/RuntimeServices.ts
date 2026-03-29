@@ -1,6 +1,6 @@
-import type { ExpressionContext } from "../../../JSProcessor/types";
-import type { MemberDomainEvent } from "../../../types";
-import type { DamageAreaRequest } from "../../../World/types";
+import type { ExpressionContext } from "../../../../JSProcessor/types";
+import type { MemberDomainEvent } from "../../../../types";
+import type { DamageAreaRequest } from "../../../Area/types";
 
 /**
  * 成员运行时服务接口。

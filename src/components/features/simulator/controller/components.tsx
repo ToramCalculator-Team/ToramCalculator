@@ -12,9 +12,9 @@ import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Select } from "~/components/controls/select";
 import type { ComputedSkillInfo } from "../core/GameEngine";
-import type { MemberSerializeData } from "../core/Member/Member";
-import { MemberStatusPanel } from "../core/Member/MemberStatusPanel";
 import type { EngineTelemetry } from "../core/thread/protocol";
+import type { MemberSerializeData } from "../core/World/Member/Member";
+import { MemberStatusPanel } from "../core/World/Member/MemberStatusPanel";
 
 // ============================== 状态栏组件 ==============================
 

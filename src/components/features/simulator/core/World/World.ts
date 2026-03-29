@@ -1,5 +1,5 @@
-import { MemberManager } from "../Member/MemberManager";
-import { AreaManager } from "./AreaManager";
+import { AreaManager } from "./Area/AreaManager";
+import { MemberManager } from "./Member/MemberManager";
 import { SpaceManager } from "./SpaceManager";
 
 /**

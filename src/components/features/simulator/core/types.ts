@@ -10,8 +10,20 @@ import {
 	type FrameLoopSnapshot,
 	type FrameLoopStats,
 } from "./FrameLoop/types";
-import type { MemberSerializeData } from "./Member/Member";
 import type { MessageRouterStats } from "./MessageRouter/MessageRouter";
+import type { MemberSerializeData } from "./World/Member/Member";
+
+/**
+ * 引擎运行语义 / 调度模式（与 FrameLoop 的 wall-clock 驱动解耦）
+ */
+export const EngineMode = {
+	REALTIME: "realtime",
+	FAST_FORWARD: "fast_forward",
+	PREVIEW: "preview",
+} as const;
+export type EngineMode = (typeof EngineMode)[keyof typeof EngineMode];
+
+const EngineModeSchema = z.enum([EngineMode.REALTIME, EngineMode.FAST_FORWARD, EngineMode.PREVIEW]);
 
 /**
  * 引擎状态枚举
@@ -27,7 +39,10 @@ export type EngineState =
  * 引擎配置接口
  */
 export const EngineConfigSchema = z.object({
-	enableRealtimeControl: z.boolean(),
+	/** 是否处理外部意图消息（如 send_intent）；与运行模式 engineMode 正交 */
+	enableIntentInput: z.boolean(),
+	/** 引擎运行模式：实时 / 快进 / 预览（预览的帧内语义后续在 stepFrame 中扩展） */
+	engineMode: EngineModeSchema.default(EngineMode.REALTIME),
 	eventQueueConfig: EventQueueConfigSchema,
 	frameLoopConfig: FrameLoopConfigSchema,
 });

@@ -16,13 +16,10 @@ import { FrameLoop } from "./FrameLoop/FrameLoop";
 import { type EngineControlMessage, GameEngineSM } from "./GameEngineSM";
 import { JSProcessor } from "./JSProcessor/JSProcessor";
 import type { ExpressionContext } from "./JSProcessor/types";
-import type { MemberSerializeData } from "./Member/Member";
-import type { MemberContext } from "./Member/MemberContext";
+import { type IntentMessage, type MessageProcessResult, MessageRouter } from "./MessageRouter/MessageRouter";
 import { createBuiltInPipelineRegistry } from "./Pipline/BuiltInPipelineRegistry";
 import type { PipelineRegistry } from "./Pipline/PipelineRegistry";
 import type { StagePool } from "./Pipline/types";
-import type { Player } from "./Member/types/Player/Player";
-import { type IntentMessage, type MessageProcessResult, MessageRouter } from "./MessageRouter/MessageRouter";
 import type {
 	BuffViewDataSnapshot,
 	ComputedSkillInfo,
@@ -35,6 +32,9 @@ import type {
 	GameEngineSnapshot,
 	MemberDomainEvent,
 } from "./types";
+import type { MemberSerializeData } from "./World/Member/Member";
+import type { MemberContext } from "./World/Member/MemberContext";
+import type { Player } from "./World/Member/types/Player/Player";
 import { World } from "./World/World";
 
 const log = createLogger("GameEngine");
@@ -45,6 +45,20 @@ const log = createLogger("GameEngine");
 declare global {
 	var __ALLOW_GAMEENGINE_IN_MAIN_THREAD: boolean | undefined;
 }
+
+/**
+ * 引擎模式枚举	
+ * 需要运行在3种模式下：
+ * 1.实时模拟：模拟托拉姆物语的真实场景，即以相同时间间隔推进帧。
+ * 2.快速流程模拟：用于对比不同配置、流程下战斗结果差异，当前帧事件处理完毕后立即进入下一帧，不需要等待，此模式中的成员都应持有行动BT/AI。
+ * 3.预览模拟：用于机体静态配置，此模式下主要是观察机体数据变化，以及计算技能效果。buff类技能只应用效果，跳过计数器和其他副作用；伤害技能只计算伤害值而不应用效果等。
+ */
+export enum EngineMode {
+	REALTIME = "realtime",
+	FAST_FORWARD = "fast_forward",
+	PREVIEW = "preview",
+}
+
 /**
  * 游戏引擎类
  */
@@ -765,11 +779,11 @@ export class GameEngine {
 	 * @returns 处理结果
 	 */
 	async processIntent(message: IntentMessage): Promise<MessageProcessResult> {
-		if (!this.config.enableRealtimeControl) {
+		if (!this.config.enableIntentInput) {
 			return {
 				success: false,
-				message: "实时控制已禁用",
-				error: "Realtime control disabled",
+				message: "意图输入已禁用",
+				error: "Intent input disabled",
 			};
 		}
 
@@ -786,11 +800,11 @@ export class GameEngine {
 	 * @returns 处理结果数组
 	 */
 	async processIntents(messages: IntentMessage[]): Promise<MessageProcessResult[]> {
-		if (!this.config.enableRealtimeControl) {
+		if (!this.config.enableIntentInput) {
 			return messages.map(() => ({
 				success: false,
-				message: "实时控制已禁用",
-				error: "Realtime control disabled",
+				message: "意图输入已禁用",
+				error: "Intent input disabled",
 			}));
 		}
 
@@ -1325,5 +1339,5 @@ export class GameEngine {
 	}
 }
 
-// // 透出类型给主线程 UI 使用
+// 透出类型给主线程 UI 使用
 export type { ComputedSkillInfo, FrameSnapshot } from "./types";

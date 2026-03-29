@@ -1,4 +1,4 @@
-import type { MemberContext } from "../Member/MemberContext";
+import type { MemberContext } from "../World/Member/MemberContext";
 import type { PipelineDef, StagePool } from "./types";
 
 type DefaultPipelineStagePool = StagePool<MemberContext>;

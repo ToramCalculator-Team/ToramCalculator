@@ -3,10 +3,11 @@
  *
  */
 
+import { createLogger } from "~/lib/Logger";
 import type { GameEngine } from "../GameEngine";
 import type { FrameStepResult } from "../types";
-import { FrameLoopConfig, FrameLoopMode, FrameLoopState, FrameLoopStats, FrameLoopSnapshot } from "./types";
-import { createLogger } from "~/lib/Logger";
+import type { FrameLoopConfig, FrameLoopMode, FrameLoopSnapshot, FrameLoopState, FrameLoopStats } from "./types";
+
 const log = createLogger("FrameLoop");
 
 /**
@@ -103,7 +104,7 @@ export class FrameLoop {
 
 		// 快照发送频率（默认 0 = 关闭，避免高频负载）
 		// 如果需要观测/校正，可以设置为 2-5 Hz
-		this.snapshotFPS = (config as any).snapshotFPS ?? 0;
+		this.snapshotFPS = 0;
 		this.snapshotIntervalMs = this.snapshotFPS > 0 ? 1000 / this.snapshotFPS : Infinity;
 		this.lastSnapshotTime = 0;
 	}

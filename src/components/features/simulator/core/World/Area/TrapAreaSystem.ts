@@ -1,5 +1,5 @@
 import type { MemberManager } from "../Member/MemberManager";
-import type { SpaceManager } from "./SpaceManager";
+import type { SpaceManager } from "../SpaceManager";
 import type { TrapAreaRequest } from "./types";
 
 /**

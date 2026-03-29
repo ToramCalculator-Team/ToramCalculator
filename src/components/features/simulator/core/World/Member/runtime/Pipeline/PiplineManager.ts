@@ -8,8 +8,8 @@
  */
 
 import type { ZodType } from "zod/v4";
+import type { PipelineDef, StagePool } from "../../../../Pipline/types";
 import type { MemberContext } from "../../MemberContext";
-import type { PipelineDef, StagePool } from "../../../Pipline/types";
 
 export interface PipelineDynamicStageInfo {
 	pipelineName: string;

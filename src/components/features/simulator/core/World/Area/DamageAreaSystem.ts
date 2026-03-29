@@ -1,6 +1,6 @@
 import { createLogger } from "~/lib/Logger";
 import type { AnyMemberEntry, MemberManager } from "../Member/MemberManager";
-import type { SpaceManager } from "./SpaceManager";
+import type { SpaceManager } from "../SpaceManager";
 import type { DamageAreaRequest, DamageDispatchPayload, Vec3 } from "./types";
 
 const log = createLogger("DmgArea");

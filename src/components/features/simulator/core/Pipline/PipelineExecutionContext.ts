@@ -1,8 +1,8 @@
-import type { Member } from "../Member/Member";
-import type { MemberContext } from "../Member/MemberContext";
-import type { MemberRuntimeServices } from "../Member/runtime/Agent/RuntimeServices";
-import type { StatContainer } from "../Member/runtime/StatContainer/StatContainer";
-import type { MemberEventType, MemberStateContext } from "../Member/runtime/StateMachine/types";
+import type { Member } from "../World/Member/Member";
+import type { MemberContext } from "../World/Member/MemberContext";
+import type { MemberRuntimeServices } from "../World/Member/runtime/Agent/RuntimeServices";
+import type { StatContainer } from "../World/Member/runtime/StatContainer/StatContainer";
+import type { MemberEventType, MemberStateContext } from "../World/Member/runtime/StateMachine/types";
 
 type AnyMemberRef = Member<string, MemberEventType, MemberStateContext, MemberContext & Record<string, unknown>>;
 

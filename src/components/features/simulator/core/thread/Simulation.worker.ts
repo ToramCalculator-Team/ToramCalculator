@@ -2,11 +2,14 @@
  * 沙盒化的模拟器Worker
  * 将GameEngine运行在安全沙盒环境中
  */
+
+import { createLogger } from "~/lib/Logger";
 import { prepareForTransfer, sanitizeForPostMessage } from "~/lib/WorkerPool/MessageSerializer";
 import type { WorkerMessage, WorkerMessageEvent } from "~/lib/WorkerPool/type";
 import { GameEngine } from "../GameEngine";
 import { type EngineControlMessage, EngineControlMessageSchema } from "../GameEngineSM";
 import type { SimulatorSafeAPI } from "../sandboxGlobals";
+import { DebugViewRegistry } from "./DebugViewRegistry";
 import {
 	type DataQueryCommand,
 	DataQueryCommandSchema,
@@ -14,8 +17,7 @@ import {
 	type SimulatorTaskPriority,
 	type SimulatorTaskTypeMapValue,
 } from "./SimulatorPool";
-import { DebugViewRegistry } from "./DebugViewRegistry";
-import { createLogger } from "~/lib/Logger";
+
 const log = createLogger("SimWorker");
 
 // ==================== 沙盒环境初始化 ====================
@@ -79,7 +81,7 @@ initializeWorkerSandbox();
 
 // 在沙盒环境中创建GameEngine实例
 const gameEngine = new GameEngine({
-	enableRealtimeControl: true,
+	enableIntentInput: true,
 	eventQueueConfig: {
 		maxQueueSize: 1000,
 		enablePerformanceMonitoring: false,

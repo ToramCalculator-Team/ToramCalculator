@@ -1,7 +1,7 @@
 import { createLogger } from "~/lib/Logger";
 import type { JSProcessor } from "../JSProcessor/JSProcessor";
 import type { ExpressionContext } from "../JSProcessor/types";
-import type { NestedSchema } from "../Member/runtime/StatContainer/SchemaTypes";
+import type { NestedSchema } from "../World/Member/runtime/StatContainer/SchemaTypes";
 
 const log = createLogger("ExprEval");
 

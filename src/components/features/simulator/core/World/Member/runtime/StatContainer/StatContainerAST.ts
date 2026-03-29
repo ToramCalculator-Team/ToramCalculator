@@ -8,7 +8,7 @@
 import type { Identifier, MemberExpression, Node, Program } from "acorn";
 import { parse } from "acorn";
 import { createLogger } from "~/lib/Logger";
-import { ExpressionTransformer } from "../../../JSProcessor/ExpressionTransformer";
+import { ExpressionTransformer } from "../../../../JSProcessor/ExpressionTransformer";
 
 const log = createLogger("StatAST");
 

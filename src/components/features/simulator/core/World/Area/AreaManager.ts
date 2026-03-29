@@ -1,7 +1,7 @@
 import type { MemberManager } from "../Member/MemberManager";
+import type { SpaceManager } from "../SpaceManager";
 import { BuffAreaSystem } from "./BuffAreaSystem";
 import { DamageAreaSystem } from "./DamageAreaSystem";
-import type { SpaceManager } from "./SpaceManager";
 import { TrapAreaSystem } from "./TrapAreaSystem";
 
 /**

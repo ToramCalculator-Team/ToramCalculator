@@ -1,10 +1,10 @@
 import { z } from "zod/v4";
 import { createLogger } from "~/lib/Logger";
 import { State } from "~/lib/mistreevous/State";
-import { ExpressionTransformer } from "../../../JSProcessor/ExpressionTransformer";
-import type { DamageAreaRequest } from "../../../World/types";
-import { ModifierType } from "../StatContainer/StatContainer";
+import { ExpressionTransformer } from "../../../../JSProcessor/ExpressionTransformer";
+import type { DamageAreaRequest } from "../../../Area/types";
 import type { MemberContext } from "../../MemberContext";
+import { ModifierType } from "../StatContainer/StatContainer";
 import { type ActionPool, defineAction } from "./type";
 import { sendRenderCommand } from "./uitls";
 

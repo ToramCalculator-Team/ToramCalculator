@@ -13,7 +13,7 @@
  */
 
 import { type Identifier, type MemberExpression, type Node, parse } from "acorn";
-import type { NestedSchema, SchemaAttribute } from "../Member/runtime/StatContainer/SchemaTypes";
+import type { NestedSchema, SchemaAttribute } from "../World/Member/runtime/StatContainer/SchemaTypes";
 
 export interface TransformOptions {
 	/** 要替换的访问器类型：self 或 target */

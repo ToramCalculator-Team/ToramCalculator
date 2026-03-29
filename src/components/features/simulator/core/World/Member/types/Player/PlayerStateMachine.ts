@@ -1,7 +1,7 @@
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import { assign, type EventObject, setup } from "xstate";
 import { createLogger } from "~/lib/Logger";
-import type { MemberDomainEvent } from "../../../types";
+import type { MemberDomainEvent } from "../../../../types";
 import type { Member } from "../../Member";
 import type { MemberEventType, MemberStateContext, MemberStateMachine } from "../../runtime/StateMachine/types";
 import type { PlayerContext } from "./Agents/Context";

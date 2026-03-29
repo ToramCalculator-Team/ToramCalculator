@@ -1,4 +1,4 @@
-import type { NestedSchema } from "../Member/runtime/StatContainer/SchemaTypes";
+import type { NestedSchema } from "../World/Member/runtime/StatContainer/SchemaTypes";
 
 /**
  * 表达式/脚本执行基础上下文

@@ -1,6 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod/v4";
-import type { MemberContext } from "../Member/MemberContext";
+import type { MemberContext } from "../World/Member/MemberContext";
 import { defineStage, type PipelineDef, type StagePool } from "./types";
 
 /**

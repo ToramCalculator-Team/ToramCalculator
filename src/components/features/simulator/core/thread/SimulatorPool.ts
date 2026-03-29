@@ -6,9 +6,9 @@ import type { WorkerMessageEvent } from "~/lib/WorkerPool/type";
 import { type PoolConfig, WorkerPool, type WorkerWrapper } from "~/lib/WorkerPool/WorkerPool";
 import type { RendererCmd, RenderSnapshot } from "../../render/RendererProtocol";
 import type { EngineControlMessage } from "../GameEngineSM";
-import type { MemberSerializeData } from "../Member/Member";
 import { type IntentMessage, IntentMessageSchema } from "../MessageRouter/MessageRouter";
 import type { EngineStats } from "../types";
+import type { MemberSerializeData } from "../World/Member/Member";
 import { WorkerSystemMessageSchema } from "./protocol";
 import simulationWorker from "./Simulation.worker?worker&url";
 

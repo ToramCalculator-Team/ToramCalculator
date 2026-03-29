@@ -1,4 +1,4 @@
-import type { MemberContext } from "../Member/MemberContext";
+import type { MemberContext } from "../World/Member/MemberContext";
 import { CommonPipelineDef, CommonStages } from "./CommonPipelines";
 import { PipelineRegistry } from "./PipelineRegistry";
 import { StatusPipelineDef, StatusStages } from "./StatusPipelines";

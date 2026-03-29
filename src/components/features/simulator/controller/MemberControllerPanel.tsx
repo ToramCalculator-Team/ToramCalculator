@@ -11,9 +11,9 @@ import { createEffect, createMemo, createSignal, For, type JSX, Show } from "sol
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import type { FrameSnapshot } from "../core/GameEngine";
-import type { MemberSerializeData } from "../core/Member/Member";
-import { MemberStatusPanel } from "../core/Member/MemberStatusPanel";
 import { realtimeSimulatorPool } from "../core/thread/SimulatorPool";
+import type { MemberSerializeData } from "../core/World/Member/Member";
+import { MemberStatusPanel } from "../core/World/Member/MemberStatusPanel";
 import type { MemberController } from "./MemberController";
 
 type ControllerEventState = {

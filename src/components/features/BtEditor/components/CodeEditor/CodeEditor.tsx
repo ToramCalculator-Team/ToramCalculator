@@ -5,9 +5,9 @@ import HtmlWorker from "monaco-editor/esm/vs/language/html/html.worker?worker&ur
 import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker&url";
 import TsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker&url";
 import { type Component, createEffect, onCleanup, onMount } from "solid-js";
-import { CommonActionPool } from "~/components/features/simulator/core/Member/runtime/Agent/CommonActions";
-import { CommonBtBindings } from "~/components/features/simulator/core/Member/runtime/Agent/CommonBtContext";
-import { CommonConditionPool } from "~/components/features/simulator/core/Member/runtime/Agent/CommonCondition";
+import { CommonActionPool } from "~/components/features/simulator/core/World/Member/runtime/Agent/CommonActions";
+import { CommonBtBindings } from "~/components/features/simulator/core/World/Member/runtime/Agent/CommonBtContext";
+import { CommonConditionPool } from "~/components/features/simulator/core/World/Member/runtime/Agent/CommonCondition";
 import { rgbToBase16 } from "~/lib/utils/color";
 import { store } from "~/store";
 import { mdslLanguageDefinition } from "../../modes/mdsl";
