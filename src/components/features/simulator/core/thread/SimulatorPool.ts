@@ -6,7 +6,7 @@ import type { RendererCmd, RenderSnapshot } from "../../render/RendererProtocol"
 import type { EngineControlMessage } from "../GameEngineSM";
 import { type IntentMessage, IntentMessageSchema } from "../MessageRouter/MessageRouter";
 import type { PreviewReport } from "../Preview/types";
-import { type EngineInitializationData, EngineInitializationDataSchema, type EngineStats, type SimulationProfile } from "../types";
+import { type EngineScenarioData, EngineScenarioDataSchema, type EngineStats, type SimulationProfile } from "../types";
 import type { MemberSerializeData } from "../World/Member/Member";
 import { WorkerSystemMessageSchema } from "./protocol";
 import simulationWorker from "./Simulation.worker?worker&url";
@@ -64,7 +64,7 @@ export const DataQueryCommandSchema = z.discriminatedUnion("type", [
 	}),
 	z.object({
 		type: z.literal("load_scenario"),
-		data: EngineInitializationDataSchema,
+		data: EngineScenarioDataSchema,
 	}),
 	z.object({
 		type: z.literal("set_profile"),
@@ -263,7 +263,7 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 
 	// ==================== 引擎生命周期命令 ====================
 
-	async loadScenario(data: EngineInitializationData): Promise<{ success: boolean; error?: string }> {
+	async loadScenario(data: EngineScenarioData): Promise<{ success: boolean; error?: string }> {
 		const command: DataQueryCommand = { type: "load_scenario", data };
 		const result = await this.executeTask("data_query", command, "high");
 		return { success: result.success, error: result.error };

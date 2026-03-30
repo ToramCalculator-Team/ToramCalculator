@@ -45,7 +45,7 @@ import { LoadingBar } from "~/components/controls/loadingBar";
 import { Select } from "~/components/controls/select";
 import { VirtualTable } from "~/components/dataDisplay/virtualTable";
 import { useEngine } from "~/components/features/simulator/core/thread/EngineContext";
-import { createPreviewProfile, type EngineInitializationData } from "~/components/features/simulator/core/types";
+import { createPreviewProfile, type EngineScenarioData } from "~/components/features/simulator/core/types";
 import { StatsRenderer } from "~/components/features/simulator/core/World/Member/MemberStatusPanel";
 import { Icons } from "~/components/icons";
 import { getDictionary } from "~/locales/i18n";
@@ -219,7 +219,7 @@ export default function CharactePage() {
 					},
 				};
 
-				const scenario: EngineInitializationData = {
+				const scenario: EngineScenarioData = {
 					simulator,
 					runtimeSelection: {
 						primaryMemberId: memberId,

@@ -127,9 +127,9 @@ export function createPreviewProfile(overrides?: Partial<SimulationProfile>): Si
 	};
 }
 
-// ==================== EngineInitializationData ====================
+// ==================== EngineScenarioData ====================
 
-export const EngineInitializationDataSchema = z.object({
+export const EngineScenarioDataSchema = z.object({
 	simulator: SimulatorWithRelationsSchema,
 	runtimeSelection: z.object({
 		primaryMemberId: z.string(),
@@ -137,7 +137,7 @@ export const EngineInitializationDataSchema = z.object({
 	}),
 });
 
-export type EngineInitializationData = z.output<typeof EngineInitializationDataSchema>;
+export type EngineScenarioData = z.output<typeof EngineScenarioDataSchema>;
 
 // ==================== EngineConfig ====================
 

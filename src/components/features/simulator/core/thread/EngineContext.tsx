@@ -8,7 +8,7 @@ import {
 } from "solid-js";
 import { createLogger } from "~/lib/Logger";
 import type { PreviewReport } from "../Preview/types";
-import type { EngineInitializationData, SimulationProfile } from "../types";
+import type { EngineScenarioData, SimulationProfile } from "../types";
 import type { MemberSerializeData } from "../World/Member/Member";
 import { EngineService } from "./EngineService";
 import {
@@ -41,7 +41,7 @@ export interface EngineContextValue {
 	previewReport: () => PreviewReport | null;
 
 	// ---- actions ----
-	loadScenario: (data: EngineInitializationData) => Promise<void>;
+	loadScenario: (data: EngineScenarioData) => Promise<void>;
 	setProfile: (profile: SimulationProfile) => Promise<void>;
 	patchMemberConfig: (memberId: string, memberData: unknown) => Promise<void>;
 	runSkillPreview: (memberId: string) => Promise<PreviewReport>;
@@ -61,11 +61,11 @@ export function EngineProvider(props: ParentProps) {
 		service.attachRealtimePool(realtimeSimulatorPool);
 		service.attachBatchPool(batchSimulatorPool);
 		setReady(true);
-		log.info("EngineProvider: pools attached, ready");
+		log.info("pools attached, ready");
 	});
 
 	onCleanup(() => {
-		log.info("EngineProvider: cleanup");
+		log.info("cleanup");
 	});
 
 	const refreshMembers = async (): Promise<MemberSerializeData[]> => {
@@ -76,7 +76,7 @@ export function EngineProvider(props: ParentProps) {
 		return list;
 	};
 
-	const loadScenario = async (data: EngineInitializationData): Promise<void> => {
+	const loadScenario = async (data: EngineScenarioData): Promise<void> => {
 		await service.loadScenario(data);
 		await refreshMembers();
 	};

@@ -1,6 +1,6 @@
 import { createLogger } from "~/lib/Logger";
 import type { DPSImpactResult, PreviewReport, SkillProbeResult } from "../Preview/types";
-import type { EngineInitializationData, SimulationProfile } from "../types";
+import type { EngineScenarioData, SimulationProfile } from "../types";
 import type { SimulatorPool } from "./SimulatorPool";
 
 const log = createLogger("EngineService");
@@ -36,17 +36,17 @@ export class EngineService {
 	private batchPool: SimulatorPool | null = null;
 
 	private constructor() {
-		log.info("EngineService: 初始化");
+		log.info("初始化");
 	}
 
 	attachRealtimePool(pool: SimulatorPool): void {
 		this.realtimePool = pool;
-		log.info("EngineService: realtime pool attached");
+		log.info("realtime pool 已附加");
 	}
 
 	attachBatchPool(pool: SimulatorPool): void {
 		this.batchPool = pool;
-		log.info("EngineService: batch pool attached");
+		log.info("batch pool 已附加");
 	}
 
 	getRealtimePool(): SimulatorPool | null {
@@ -54,48 +54,48 @@ export class EngineService {
 	}
 
 	private requireRealtimePool(): SimulatorPool {
-		if (!this.realtimePool) throw new Error("EngineService: realtime pool not attached");
+		if (!this.realtimePool) throw new Error("realtime pool not attached");
 		return this.realtimePool;
 	}
 
 	// ==================== 生命周期 ====================
 
-	async loadScenario(data: EngineInitializationData): Promise<void> {
+	async loadScenario(data: EngineScenarioData): Promise<void> {
 		const pool = this.requireRealtimePool();
 		const res = await pool.loadScenario(data);
 		if (!res.success) throw new Error(`loadScenario failed: ${res.error}`);
-		log.info("EngineService: loadScenario complete");
+		log.info("初始化数据加载完成");
 	}
 
 	async setProfile(profile: SimulationProfile): Promise<void> {
 		const pool = this.requireRealtimePool();
 		const res = await pool.setProfile(profile);
 		if (!res.success) throw new Error(`setProfile failed: ${res.error}`);
-		log.info("EngineService: setProfile complete");
+		log.info("运行模式设置完成");
 	}
 
 	async start(): Promise<void> {
 		const pool = this.requireRealtimePool();
 		await pool.executeTask("engine_command", { type: "START" } as never, "high");
-		log.info("EngineService: start");
+		log.info("启动");
 	}
 
 	async stop(): Promise<void> {
 		const pool = this.requireRealtimePool();
 		await pool.executeTask("engine_command", { type: "STOP" } as never, "high");
-		log.info("EngineService: stop");
+		log.info("停止");
 	}
 
 	async pause(): Promise<void> {
 		const pool = this.requireRealtimePool();
 		await pool.executeTask("engine_command", { type: "PAUSE" } as never, "high");
-		log.info("EngineService: pause");
+		log.info("暂停");
 	}
 
 	async resume(): Promise<void> {
 		const pool = this.requireRealtimePool();
 		await pool.executeTask("engine_command", { type: "RESUME" } as never, "high");
-		log.info("EngineService: resume");
+		log.info("恢复");
 	}
 
 	/**
@@ -106,7 +106,7 @@ export class EngineService {
 		const pool = this.requireRealtimePool();
 		const res = await pool.patchMember(memberId, memberData);
 		if (!res.success) throw new Error(`patchMemberConfig failed: ${res.error}`);
-		log.info(`EngineService: patchMemberConfig for ${memberId} complete`);
+		log.info(`成员配置更新完成: ${memberId}`);
 	}
 
 	// ==================== 预览 API ====================
@@ -135,13 +135,13 @@ export class EngineService {
 
 		if (shouldParallelize) {
 			log.info(
-				`EngineService: runBatchPreview PARALLEL for member ${memberId}, ${skillIds.length} skills across batch workers`,
+				`批量预览并行执行: 成员 ${memberId}, ${skillIds.length} 技能，通过 batchPool 并行执行`,
 			);
 			return this.runBatchPreviewParallel(memberId, skillIds);
 		}
 
 		log.info(
-			`EngineService: runBatchPreview SEQUENTIAL for member ${memberId}, ${skillIds.length} skills on realtime worker`,
+			`批量预览顺序执行: 成员 ${memberId}, ${skillIds.length} 技能，通过 realtimePool 顺序执行`,
 		);
 		return this.runSkillPreview(memberId);
 	}
@@ -156,13 +156,13 @@ export class EngineService {
 
 		if (shouldParallelize) {
 			log.info(
-				`EngineService: runBatchDPSCompare PARALLEL for ${itemIds.length} items across batch workers`,
+				`DPS 对比并行执行: ${itemIds.length} 道具，通过 batchPool 并行执行`,
 			);
 			return this.runBatchDPSParallel(itemIds, memberId);
 		}
 
 		log.info(
-			`EngineService: runBatchDPSCompare SEQUENTIAL for ${itemIds.length} items on realtime worker`,
+			`DPS 对比顺序执行: ${itemIds.length} 道具，通过 realtimePool 顺序执行`,
 		);
 		return this.runBatchDPSSequential(itemIds, memberId);
 	}
@@ -198,7 +198,7 @@ export class EngineService {
 	 */
 	private async runBatchPreviewParallel(memberId: string, skillIds: string[]): Promise<PreviewReport> {
 		const rtPool = this.requireRealtimePool();
-		if (!this.batchPool) throw new Error("EngineService: batch pool not attached");
+		if (!this.batchPool) throw new Error("batch pool not attached");
 		const batchPool = this.batchPool;
 
 		const [checkpoint, exprDict] = await Promise.all([
@@ -213,7 +213,7 @@ export class EngineService {
 			chunks.push(skillIds.slice(i, i + chunkSize));
 		}
 
-		log.info(`EngineService: distributing ${skillIds.length} skill probes across ${chunks.length} workers`);
+		log.info(`技能探测分发: ${skillIds.length} 技能，通过 ${chunks.length} 个 worker 并行执行`);
 
 		// Each batch worker: import state → run preview → return partial results
 		const tasks = chunks.map(async (_chunk) => {

@@ -26,7 +26,7 @@ import type {
 	EngineCheckpoint,
 	EngineConfig,
 	EngineInfrastructure,
-	EngineInitializationData,
+	EngineScenarioData,
 	EngineState,
 	EngineStats,
 	FrameSnapshot,
@@ -101,6 +101,9 @@ export class GameEngine {
 
 	/** 引擎配置 */
 	private config: EngineConfig;
+
+	/** 存储场景配置参数，用于重置时复用 */
+	private scenarioData: EngineScenarioData | null = null;
 
 	/**
 	 * 引擎语义模式。
@@ -296,19 +299,16 @@ export class GameEngine {
 
 	// ==================== 生命周期管理 ====================
 
-	/** 存储初始化参数，用于重置时复用 */
-	private initializationData: EngineInitializationData | null = null;
-
 	/**
 	 * 加载仿真场景数据，将引擎从 idle 转为 ready。
 	 * 重建仿真层（World、EventQueue 等），但复用 Infrastructure 的编译缓存。
 	 */
-	loadScenario(data: EngineInitializationData): void {
+	loadScenario(data: EngineScenarioData): void {
 		if (this.runState === "running" || this.runState === "paused") {
 			this.stop();
 		}
 
-		this.initializationData = data;
+		this.scenarioData = data;
 
 		this.startTime = performance.now();
 		this.currentFrame = 0;
@@ -349,21 +349,14 @@ export class GameEngine {
 	}
 
 	/**
-	 * @deprecated 使用 loadScenario() 替代
-	 */
-	initialize(data: EngineInitializationData): void {
-		this.loadScenario(data);
-	}
-
-	/**
 	 * 重置引擎：清理仿真层，保留 Infrastructure 编译缓存。
 	 * 如果有存储的场景数据则重新加载（→ ready），否则回到 idle。
 	 */
 	reset(): void {
 		this.stop();
 
-		if (this.initializationData) {
-			this.loadScenario(this.initializationData);
+		if (this.scenarioData) {
+			this.loadScenario(this.scenarioData);
 		} else {
 			this.world.clear();
 			this.eventQueue.clear();
@@ -406,7 +399,7 @@ export class GameEngine {
 		this.systemMessageSender = null;
 		this.frameSnapshotSender = null;
 
-		this.initializationData = null;
+		this.scenarioData = null;
 		this.snapshots = [];
 		this.currentFrame = 0;
 		this.stats = {
@@ -448,8 +441,8 @@ export class GameEngine {
 	/**
 	 * 获取初始化数据
 	 */
-	public getInitializationData(): EngineInitializationData | null {
-		return this.initializationData;
+	public getInitializationData(): EngineScenarioData | null {
+		return this.scenarioData;
 	}
 
 	// ===============================  外部方法 ===============================
@@ -801,7 +794,7 @@ export class GameEngine {
 			this.frameLoop.stop();
 		}
 		this.syncFrameLoopDriverStats();
-		this.runState = this.initializationData ? "ready" : "idle";
+		this.runState = this.scenarioData ? "ready" : "idle";
 	}
 
 	/**
@@ -926,7 +919,7 @@ export class GameEngine {
 		this.world.memberManager.unregisterMember(memberId);
 		this.world.memberManager.createAndRegister(newData, campId, teamId, 0);
 
-		if (this.initializationData) {
+		if (this.scenarioData) {
 			this.patchInitializationData(memberId, newData);
 		}
 
@@ -938,9 +931,9 @@ export class GameEngine {
 	 * 同步更新存储的场景数据中对应成员，确保 reset 后使用最新配置。
 	 */
 	private patchInitializationData(memberId: string, newData: MemberWithRelations): void {
-		if (!this.initializationData) return;
+		if (!this.scenarioData) return;
 
-		for (const camp of [this.initializationData.simulator.campA, this.initializationData.simulator.campB]) {
+		for (const camp of [this.scenarioData.simulator.campA, this.scenarioData.simulator.campB]) {
 			for (const team of camp) {
 				const idx = team.members.findIndex((m) => m.id === memberId);
 				if (idx !== -1) {
