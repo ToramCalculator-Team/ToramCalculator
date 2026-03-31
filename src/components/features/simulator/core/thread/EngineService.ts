@@ -1,9 +1,10 @@
 import { createLogger } from "~/lib/Logger";
 import type { DPSImpactResult, PreviewReport, SkillProbeResult } from "../Preview/types";
 import type { EngineScenarioData, SimulationProfile } from "../types";
-import { SimulatorPool, SimulatorTaskPriority } from "./SimulatorPool";
+import { SimulatorPool } from "./SimulatorPool";
 import { SimulationEngineImpl, type SimulationEngine } from "./SimulationEngine";
 import simulationWorker from "./Simulation.worker?worker&url";
+import { SimulatorTaskPriority } from "./protocol";
 
 const log = createLogger("EngineService");
 

@@ -59,14 +59,25 @@ export default function CharactePage() {
 	const navigate = useNavigate();
 
 	const params = useParams();
-	const [character, { refetch: refetchCharacter }] = createResource(
+
+	const [playerWithRelations, { refetch: refetchPlayerWithRelations }] = createResource(
 		() => params.characterId,
-		async (id) => {
-			const result = await selectCharacterById(id);
-			// console.log("selected character", result);
-			return result;
+		async (characterId) => {
+			const playerId = store.session.account.player?.id;
+			if (!playerId) return null;
+			const player = await selectPlayerByIdWithRelations(playerId);
+			console.log("player", player);
+			return player;
 		},
 	);
+	const character = createMemo(() => {
+		const player = playerWithRelations();
+		if (!player) return null;
+		const character = player.characters.find((c) => c.id === params.characterId);
+		if (!character) return null;
+		console.log("character", character);
+		return character;
+	});
 	const [mainWeapon, { refetch: refetchMainWeapon }] = createResource(
 		() => character()?.weaponId,
 		async (id) => {
@@ -146,98 +157,86 @@ export default function CharactePage() {
 		charactersFinder,
 	);
 
-	const [playerWithRelations, { refetch: refetchPlayerWithRelations }] = createResource(
-		() => character()?.belongToPlayerId ?? null,
-		async (playerId) => {
-			if (!playerId) return null;
-			const player = await selectPlayerByIdWithRelations(playerId);
-			console.log("player", player);
-			return player;
-		},
-	);
-
 	// ==================== 引擎集成 ====================
 	const engine = useEngine();
-
-	const previewScenario = createMemo<EngineScenarioData | null>(() => {
-		const currentCharacter = character();
-		const player = playerWithRelations();
-		if (!currentCharacter || !player) return null;
-		if (!player.id) return null;
-		if (!Array.isArray(player.characters) || player.characters.length === 0) return null;
-
-		const now = new Date().toISOString();
-		const teamAId = "CHARACTER_PREVIEW_TEAM_A";
-		const teamBId = "CHARACTER_PREVIEW_TEAM_B";
-		const memberId = "CHARACTER_PREVIEW_MEMBER";
-		const statisticId = "CHARACTER_PREVIEW_STATISTIC";
-
-		const member: MemberWithRelations = {
-			id: memberId,
-			name: currentCharacter.name ?? "未命名角色",
-			sequence: 0,
-			type: "Player",
-			playerId: player.id,
-			partnerId: null,
-			mercenaryId: null,
-			mobId: null,
-			mobDifficultyFlag: "Normal",
-			actions: null,
-			belongToTeamId: teamAId,
-			player,
-			partner: null,
-			mercenary: null,
-			mob: null,
-		};
-
-		const teamA: TeamWithRelations = {
-			id: teamAId,
-			name: "CharacterPreviewTeamA",
-			gems: [],
-			members: [member],
-		};
-		const teamB: TeamWithRelations = {
-			id: teamBId,
-			name: "CharacterPreviewTeamB",
-			gems: [],
-			members: [],
-		};
-
-		return {
-			simulator: {
-				id: "CHARACTER_PREVIEW_SIMULATOR",
-				name: "CharacterPreviewSimulator",
-				details: null,
-				statisticId,
-				updatedByAccountId: null,
-				createdByAccountId: null,
-				campA: [teamA],
-				campB: [teamB],
-				statistic: {
-					id: statisticId,
-					updatedAt: now,
-					createdAt: now,
-					usageTimestamps: [],
-					viewTimestamps: [],
-				},
-			},
-			runtimeSelection: {
-				primaryMemberId: memberId,
-				activeCharacterId: currentCharacter.id ?? "",
-			},
-		};
-	});
 
 	createEffect(
 		on(
 			() => ({
 				ready: engine.ready(),
-				scenario: previewScenario(),
+				playerWithRelations: playerWithRelations(),
 			}),
-			async ({ ready, scenario }) => {
-				if (!ready || !scenario) return;
-				console.log("玩家配置发生变化，将更新引擎初始化数据", scenario);
+			async () => {
+				console.log("玩家配置发生变化，将更新引擎初始化数据");
+
+				const currentCharacter = character();
+				const player = playerWithRelations();
+				if (!currentCharacter || !player) return null;
+				if (!player.id) return null;
+				if (!Array.isArray(player.characters) || player.characters.length === 0) return null;
+
+				const now = new Date().toISOString();
+				const teamAId = "CHARACTER_PREVIEW_TEAM_A";
+				const teamBId = "CHARACTER_PREVIEW_TEAM_B";
+				const memberId = "CHARACTER_PREVIEW_MEMBER";
+				const statisticId = "CHARACTER_PREVIEW_STATISTIC";
+
+				const member: MemberWithRelations = {
+					id: memberId,
+					name: currentCharacter.name ?? "未命名角色",
+					sequence: 0,
+					type: "Player",
+					playerId: player.id,
+					partnerId: null,
+					mercenaryId: null,
+					mobId: null,
+					mobDifficultyFlag: "Normal",
+					actions: null,
+					belongToTeamId: teamAId,
+					player,
+					partner: null,
+					mercenary: null,
+					mob: null,
+				};
+
+				const teamA: TeamWithRelations = {
+					id: teamAId,
+					name: "CharacterPreviewTeamA",
+					gems: [],
+					members: [member],
+				};
+				const teamB: TeamWithRelations = {
+					id: teamBId,
+					name: "CharacterPreviewTeamB",
+					gems: [],
+					members: [],
+				};
+
+				const scenario: EngineScenarioData = {
+					simulator: {
+						id: "CHARACTER_PREVIEW_SIMULATOR",
+						name: "CharacterPreviewSimulator",
+						details: null,
+						statisticId,
+						updatedByAccountId: null,
+						createdByAccountId: null,
+						campA: [teamA],
+						campB: [teamB],
+						statistic: {
+							id: statisticId,
+							updatedAt: now,
+							createdAt: now,
+							usageTimestamps: [],
+							viewTimestamps: [],
+						},
+					},
+					runtimeSelection: {
+						primaryMemberId: memberId,
+						activeCharacterId: currentCharacter.id ?? "",
+					},
+				};
 				try {
+					console.log("loading scenario", scenario);
 					await engine.loadScenario(scenario);
 					await engine.setProfile(createPreviewProfile());
 				} catch (error) {
@@ -591,7 +590,7 @@ export default function CharactePage() {
 														await updateCharacter(character().id, {
 															weaponId: "",
 														});
-														await refetchCharacter();
+														await refetchPlayerWithRelations();
 													}}
 												/>
 											</Show>
@@ -659,7 +658,7 @@ export default function CharactePage() {
 														await updateCharacter(character().id, {
 															subWeaponId: "",
 														});
-														await refetchCharacter();
+														await refetchPlayerWithRelations();
 													}}
 												/>
 											</Show>
@@ -727,7 +726,7 @@ export default function CharactePage() {
 														await updateCharacter(character().id, {
 															armorId: "",
 														});
-														await refetchCharacter();
+														await refetchPlayerWithRelations();
 													}}
 												/>
 											</Show>
@@ -795,7 +794,7 @@ export default function CharactePage() {
 														await updateCharacter(character().id, {
 															optionId: "",
 														});
-														await refetchCharacter();
+														await refetchPlayerWithRelations();
 													}}
 												/>
 											</Show>
@@ -865,7 +864,7 @@ export default function CharactePage() {
 														await updateCharacter(character().id, {
 															specialId: "",
 														});
-														await refetchCharacter();
+														await refetchPlayerWithRelations();
 													}}
 												/>
 											</Show>
@@ -888,7 +887,7 @@ export default function CharactePage() {
 											await updateCharacter(character().id, {
 												name: e.target.value,
 											});
-											await refetchCharacter();
+											await refetchPlayerWithRelations();
 										}}
 										description="请输入角色名称"
 									/>
@@ -952,7 +951,7 @@ export default function CharactePage() {
 										});
 										setGlobalFilterStr("");
 										setSelectSheetIsOpen(false);
-										await refetchCharacter();
+										await refetchPlayerWithRelations();
 									},
 									columnVisibility: {},
 									onColumnVisibilityChange: () => {},

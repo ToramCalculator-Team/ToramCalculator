@@ -76,7 +76,7 @@ export interface Result<T> {
  * type SimulatorEvent = WorkerMessageEvent<any, SimulatorTaskTypeMap, any>;
  * // 展开为：
  * // | { belongToTaskId: string, type: "engine_command", cmd: EngineControlMessage, ... }
- * // | { belongToTaskId: string, type: "data_query", cmd: DataQueryCommand, ... }
+ * // | { belongToTaskId: string, type: "engine_rpc", cmd: EngineRPC, ... }
  */
 export type WorkerMessageEvent<
   TResult,

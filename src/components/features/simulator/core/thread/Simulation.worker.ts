@@ -15,12 +15,13 @@ import type { SimulatorSafeAPI } from "../sandboxGlobals";
 import type { EngineInfrastructure, SimulationProfile } from "../types";
 import { DebugViewRegistry } from "./DebugViewRegistry";
 import {
-	type DataQueryCommand,
-	DataQueryCommandSchema,
+	type EngineRPC,
+	EngineRPCSchema,
+	type PushMessageType,
 	type SimulatorTaskMap,
 	type SimulatorTaskPriority,
 	type SimulatorTaskTypeMapValue,
-} from "./SimulatorPool";
+} from "./protocol";
 
 const log = createLogger("SimWorker");
 
@@ -113,22 +114,22 @@ debugViewRegistry.setGameEngine(gameEngine);
 
 // 注释：引擎状态机现在已集成到 GameEngine 内部，不再需要单独的 Actor
 
-// ==================== 数据查询处理函数 ====================
+// ==================== Engine RPC 处理函数 ====================
 
 /**
- * 处理数据查询命令
+ * 处理引擎 RPC 请求
  */
-async function handleDataQuery(
-	command: DataQueryCommand,
+async function handleEngineRPC(
+	rpc: EngineRPC,
 ): Promise<{ success: boolean; data?: unknown; error?: string }> {
 	try {
-		switch (command.type) {
+		switch (rpc.type) {
 			case "get_members": {
 				const members = gameEngine.getAllMemberData();
 				return { success: true, data: members };
 			}
 			case "get_member_skill_list": {
-				const memberId = command.memberId;
+				const memberId = rpc.memberId;
 				if (!memberId) {
 					return { success: false, error: "memberId required" };
 				}
@@ -152,7 +153,7 @@ async function handleDataQuery(
 				return { success: true, data: snapshot };
 			}
 			case "get_member_state": {
-				const memberId = command.memberId;
+				const memberId = rpc.memberId;
 				if (!memberId) {
 					return { success: false, error: "memberId required" };
 				}
@@ -173,7 +174,7 @@ async function handleDataQuery(
 			}
 
 			case "send_intent": {
-				const intent = command.intent;
+				const intent = rpc.intent;
 				if (!intent || !intent.type) {
 					return { success: false, error: "Invalid intent data" };
 				}
@@ -191,11 +192,11 @@ async function handleDataQuery(
 			case "subscribe_debug_view": {
 				try {
 					const viewId = debugViewRegistry.subscribe({
-						controllerId: command.controllerId,
-						memberId: command.memberId,
-						viewType: command.viewType,
-						hz: command.hz ?? 10,
-						fields: command.fields,
+						controllerId: rpc.controllerId,
+						memberId: rpc.memberId,
+						viewType: rpc.viewType,
+						hz: rpc.hz ?? 10,
+						fields: rpc.fields,
 					});
 					return { success: true, data: { viewId } };
 				} catch (error) {
@@ -208,7 +209,7 @@ async function handleDataQuery(
 
 			case "unsubscribe_debug_view": {
 				try {
-					const removed = debugViewRegistry.unsubscribe(command.viewId);
+					const removed = debugViewRegistry.unsubscribe(rpc.viewId);
 					return { success: removed, error: removed ? undefined : "订阅不存在" };
 				} catch (error) {
 					return {
@@ -220,7 +221,7 @@ async function handleDataQuery(
 
 		case "get_render_snapshot": {
 			try {
-				const renderSnapshot = gameEngine.getRenderSnapshot(command.includeAreas ?? false);
+				const renderSnapshot = gameEngine.getRenderSnapshot(rpc.includeAreas ?? false);
 				return { success: true, data: renderSnapshot };
 			} catch (error) {
 				return {
@@ -232,7 +233,7 @@ async function handleDataQuery(
 
 		case "load_scenario": {
 			try {
-				gameEngine.loadScenario(command.data as Parameters<typeof gameEngine.loadScenario>[0]);
+				gameEngine.loadScenario(rpc.data as Parameters<typeof gameEngine.loadScenario>[0]);
 				return { success: true };
 			} catch (error) {
 				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
@@ -241,7 +242,7 @@ async function handleDataQuery(
 
 		case "set_profile": {
 			try {
-				gameEngine.setProfile(command.profile as SimulationProfile);
+				gameEngine.setProfile(rpc.profile as SimulationProfile);
 				return { success: true };
 			} catch (error) {
 				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
@@ -251,8 +252,8 @@ async function handleDataQuery(
 		case "patch_member": {
 			try {
 				const ok = gameEngine.patchMemberConfig(
-					command.memberId,
-					command.memberData as Parameters<typeof gameEngine.patchMemberConfig>[1],
+					rpc.memberId,
+					rpc.memberData as Parameters<typeof gameEngine.patchMemberConfig>[1],
 				);
 				return { success: ok, error: ok ? undefined : "patchMemberConfig failed" };
 			} catch (error) {
@@ -263,7 +264,7 @@ async function handleDataQuery(
 		case "run_preview": {
 			try {
 				const runner = new PreviewRunner(gameEngine);
-				const report = runner.runPreview(command.memberId);
+				const report = runner.runPreview(rpc.memberId);
 				return { success: true, data: report };
 			} catch (error) {
 				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
@@ -272,7 +273,7 @@ async function handleDataQuery(
 
 		case "get_computed_skills": {
 			try {
-				const skills = gameEngine.getComputedSkillInfos(command.memberId);
+				const skills = gameEngine.getComputedSkillInfos(rpc.memberId);
 				return { success: true, data: skills };
 			} catch (error) {
 				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
@@ -291,7 +292,7 @@ async function handleDataQuery(
 		case "restore_checkpoint": {
 			try {
 				gameEngine.restoreCheckpoint(
-					command.checkpoint as Parameters<typeof gameEngine.restoreCheckpoint>[0],
+					rpc.checkpoint as Parameters<typeof gameEngine.restoreCheckpoint>[0],
 				);
 				return { success: true };
 			} catch (error) {
@@ -310,7 +311,7 @@ async function handleDataQuery(
 
 		case "import_expr_dict": {
 			try {
-				infra.jsProcessor.importTransformedExprDict(command.entries as Array<[string, string]>);
+				infra.jsProcessor.importTransformedExprDict(rpc.entries as Array<[string, string]>);
 				return { success: true };
 			} catch (error) {
 				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
@@ -366,22 +367,22 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 
 						// 使用 Zod Schema 验证命令类型
 						const engineCommandResult = EngineControlMessageSchema.safeParse(payload);
-						const dataQueryResult = DataQueryCommandSchema.safeParse(payload);
+						const engineRPCResult = EngineRPCSchema.safeParse(payload);
 						if (engineCommandResult.success) {
 							// 状态机命令直接转发给引擎（controller → executor）
 							log.debug("收到状态机命令:", engineCommandResult.data);
 							gameEngine.sendCommand(engineCommandResult.data);
 							// console.log("命令已发送到引擎状态机");
 							portResult = { success: true };
-						} else if (dataQueryResult.success) {
-							log.debug("收到意图:", dataQueryResult.data);
-							// 数据查询命令处理
-							portResult = await handleDataQuery(dataQueryResult.data);
-							// console.log("数据查询命令已处理:", portResult);
+						} else if (engineRPCResult.success) {
+							log.debug("收到引擎 RPC:", engineRPCResult.data);
+							// Engine RPC 请求处理
+							portResult = await handleEngineRPC(engineRPCResult.data);
+							// console.log("Engine RPC 已处理:", portResult);
 						} else {
 							log.error(payload);
 							log.error(engineCommandResult.error);
-							log.error(dataQueryResult.error);
+							log.error(engineRPCResult.error);
 							const maybeType =
 								typeof payload === "object" && payload !== null && "type" in payload
 									? String((payload as { type?: unknown }).type)
@@ -523,14 +524,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
  */
 function postSystemMessage(
 	port: MessagePort,
-	type:
-		| "system_event"
-		| "frame_snapshot"
-		| "render_cmd"
-		| "engine_state_machine"
-		| "engine_telemetry"
-		| "domain_event_batch"
-		| "debug_view_frame",
+	type: PushMessageType,
 	data: unknown,
 ) {
 	// 使用共享的MessageSerializer确保数据可以安全地通过postMessage传递

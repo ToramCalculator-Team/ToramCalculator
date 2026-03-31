@@ -19,7 +19,7 @@ const log = createLogger("EngineCtx");
 export interface EngineContextValue {
 	/** EngineService 单例（可用于高级 / 命令式操作） */
 	service: EngineService;
-	defaultEngine: () => SimulationEngine | null;
+	defaultEngine: () => SimulationEngine;
 	createEngine: (id?: string) => SimulationEngine;
 	getEngine: (id: string) => SimulationEngine | null;
 	disposeEngine: (id: string) => Promise<void>;
@@ -81,6 +81,7 @@ export function EngineProvider(props: ParentProps) {
 
 	const setProfile = async (profile: SimulationProfile): Promise<void> => {
 		await service.setProfile(profile);
+		await refreshMembers();
 	};
 
 	const patchMemberConfig = async (memberId: string, memberData: unknown): Promise<void> => {

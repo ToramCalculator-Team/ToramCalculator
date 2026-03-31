@@ -12,7 +12,6 @@ import type { SimulatorWithRelations } from "@db/generated/repositories/simulato
 import { A } from "@solidjs/router";
 import { createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { waitFor } from "xstate";
 import { AddMemberControllerButton } from "~/components/features/simulator/controller/AddMemberControllerButton";
 import { ControlPanel, EngineStatusBar } from "~/components/features/simulator/controller/components";
 import { MemberController } from "~/components/features/simulator/controller/MemberController";
@@ -33,8 +32,8 @@ export interface RealtimeSimulatorProps {
 }
 
 export function RealtimeSimulator(props: RealtimeSimulatorProps) {
-	const { createEngine, disposeEngine } = useEngine();
-	const engine = createEngine("simulator");
+	const { defaultEngine } = useEngine();
+	const engine = defaultEngine();
 
 	const cleanupFunctions: Array<() => void> = [];
 
@@ -85,8 +84,13 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 
 		setupDataSync();
 
-		await engine.loadScenario(props.simulatorData as unknown as Parameters<typeof engine.loadScenario>[0]);
-		await waitFor(engine.lifecycleActor, (state) => state.matches("ready"), { timeout: 5000 });
+		await engine.loadScenario({
+			simulator: props.simulatorData,
+			runtimeSelection: {
+				primaryMemberId: props.simulatorData.campA[0].members[0].id,
+				activeCharacterId: props.simulatorData.campA[0].members[0].player?.characters[0]?.id ?? "",
+			},
+		});
 
 		// 预加载成员数据
 		await refreshMembers();
@@ -132,7 +136,6 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 		engine.off("domain_event_batch", handleDomainEventBatch);
 		engine.off("system_event", handleSystemEvent);
 		engine.off("render_cmd", handleRenderCmd);
-		void disposeEngine("simulator");
 	});
 
 	// ==================== 数据同步 ====================

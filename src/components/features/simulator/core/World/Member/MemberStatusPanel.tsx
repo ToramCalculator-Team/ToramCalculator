@@ -11,7 +11,7 @@ import { type Accessor, createEffect, createMemo, createSignal, onCleanup, Show 
 import { Dialog } from "~/components/containers/dialog";
 import { Button } from "~/components/controls/button";
 import { useEngine } from "../../thread/EngineContext";
-import type { DataQueryCommand } from "../../thread/SimulatorPool";
+import type { EngineRPC } from "../../thread/protocol";
 import type { MemberSerializeData } from "./Member";
 import { type DataStorage, isDataStorageType } from "./runtime/StatContainer/StatContainer";
 
@@ -539,8 +539,8 @@ export function MemberStatusPanel(props: { controllerId?: string; member: Access
 		const current = subViewId();
 		if (!shouldSubscribe) {
 			if (current) {
-				const cmd: DataQueryCommand = { type: "unsubscribe_debug_view", viewId: current };
-				runtimeEngine?.executeDataQuery(cmd, "low").catch(console.error);
+				const rpc: EngineRPC = { type: "unsubscribe_debug_view", viewId: current };
+				runtimeEngine?.executeEngineRPC(rpc, "low").catch(console.error);
 				setSubViewId(null);
 				setLiveAttrs(undefined);
 			}
@@ -548,7 +548,7 @@ export function MemberStatusPanel(props: { controllerId?: string; member: Access
 		}
 
 		if (!current) {
-			const cmd: DataQueryCommand = {
+			const rpc: EngineRPC = {
 				type: "subscribe_debug_view",
 				controllerId,
 				memberId,
@@ -556,7 +556,7 @@ export function MemberStatusPanel(props: { controllerId?: string; member: Access
 				hz: 10,
 			};
 			runtimeEngine
-				?.executeDataQuery(cmd, "low")
+				?.executeEngineRPC(rpc, "low")
 				.then((res) => {
 					if (res?.success && res.data && typeof res.data === "object" && "viewId" in res.data) {
 						setSubViewId((res.data as { viewId: string }).viewId);
@@ -571,8 +571,8 @@ export function MemberStatusPanel(props: { controllerId?: string; member: Access
 	onCleanup(() => {
 		const current = subViewId();
 		if (current) {
-			const cmd: DataQueryCommand = { type: "unsubscribe_debug_view", viewId: current };
-			runtimeEngine?.executeDataQuery(cmd, "low").catch(console.error);
+			const rpc: EngineRPC = { type: "unsubscribe_debug_view", viewId: current };
+			runtimeEngine?.executeEngineRPC(rpc, "low").catch(console.error);
 		}
 	});
 

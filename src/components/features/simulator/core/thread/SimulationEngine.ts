@@ -26,10 +26,10 @@ import { createLogger } from "~/lib/Logger";
 import { EventEmitter } from "~/lib/WorkerPool/EventEmitter";
 import type { WorkerMessage, WorkerMessageEvent, WorkerSystemMessageEnvelope } from "~/lib/WorkerPool/type";
 import { WorkerSystemMessageEnvelopeSchema } from "~/lib/WorkerPool/type";
+import type { RenderSnapshot } from "../../render/RendererProtocol";
 import { type EngineControlMessage, GameEngineSM } from "../GameEngineSM";
 import type { IntentMessage } from "../MessageRouter/MessageRouter";
 import type { PreviewReport } from "../Preview/types";
-import type { RenderSnapshot } from "../../render/RendererProtocol";
 import type {
 	EngineScenarioData,
 	EngineStats,
@@ -37,9 +37,13 @@ import type {
 	SimulationProfile,
 } from "../types";
 import type { MemberSerializeData } from "../World/Member/Member";
-import type { DataQueryCommand, SimulatorTaskPriority, SimulatorTaskTypeMapValue } from "./SimulatorPool";
+import {
+	type EngineRPC,
+	type SimulatorTaskPriority,
+	type SimulatorTaskTypeMapValue,
+	WorkerSystemMessageSchema,
+} from "./protocol";
 import simulationWorker from "./Simulation.worker?worker&url";
-import { WorkerSystemMessageSchema } from "./protocol";
 
 const log = createLogger("SimulationEngine");
 
@@ -78,7 +82,7 @@ type PendingTask = {
  * SimulationEngine 公共接口
  *
  * 对上层（EngineService / UI 组件）屏蔽 Worker 通信细节，
- * 提供引擎生命周期控制、数据查询、状态检查点、事件订阅等能力。
+ * 提供引擎生命周期控制、Engine RPC、状态检查点、事件订阅等能力。
  */
 export interface SimulationEngine {
 	/** 引擎唯一标识（由创建方指定，如 "simulator"、"wiki-dps-0"） */
@@ -108,7 +112,7 @@ export interface SimulationEngine {
 	// ── 意图下发（玩家操作指令） ──────────────────
 	sendIntent(intent: IntentMessage): Promise<{ success: boolean; error?: string }>;
 
-	// ── 数据查询 ──────────────────────────────────
+	// ── Engine RPC 封装 ──────────────────────────────────
 	getMembers(): Promise<MemberSerializeData[]>;
 	getMemberSkillList(memberId: string): Promise<Array<{ id: string; name: string; level: number }>>;
 	getMemberState(memberId: string): Promise<{ success: boolean; value?: string; error?: string }>;
@@ -125,8 +129,8 @@ export interface SimulationEngine {
 	exportExprDict(): Promise<Array<[string, string]>>;
 	importExprDict(entries: Array<[string, string]>): Promise<void>;
 
-	// ── 通用数据查询（低层 RPC） ─────────────────
-	executeDataQuery(command: DataQueryCommand, priority?: SimulatorTaskPriority): Promise<{ success: boolean; data?: unknown; error?: string }>;
+	// ── 通用引擎 RPC（低层请求-响应） ─────────────────
+	executeEngineRPC(rpc: EngineRPC, priority?: SimulatorTaskPriority): Promise<{ success: boolean; data?: unknown; error?: string }>;
 
 	// ── 事件订阅 ──────────────────────────────────
 	on<K extends keyof SimulationEngineEventMap>(event: K, listener: (payload: SimulationEngineEventMap[K]) => void): () => void;
@@ -304,9 +308,9 @@ export class SimulationEngineImpl implements SimulationEngine {
 		await this.executePayload(message as SimulatorTaskTypeMapValue, "high");
 	}
 
-	/** 通用数据查询 RPC，返回标准化 { success, data?, error? } */
-	async executeDataQuery(command: DataQueryCommand, priority: SimulatorTaskPriority = "high") {
-		const res = await this.executePayload(command, priority);
+	/** 通用引擎 RPC，返回标准化 { success, data?, error? } */
+	async executeEngineRPC(rpc: EngineRPC, priority: SimulatorTaskPriority = "high") {
+		const res = await this.executePayload(rpc, priority);
 		if (res.error) return { success: false, error: String(res.error) };
 		return (res.result as { success: boolean; data?: unknown; error?: string }) ?? { success: false, error: "empty result" };
 	}
@@ -319,9 +323,9 @@ export class SimulationEngineImpl implements SimulationEngine {
 		return this.ready;
 	}
 
-	/** 执行查询并断言成功，失败时直接抛异常 — 用于必须成功的写操作 */
-	private async mustSuccess(command: DataQueryCommand): Promise<void> {
-		const res = await this.executeDataQuery(command, "high");
+	/** 执行引擎 RPC 并断言成功，失败时直接抛异常 */
+	private async mustSuccess(rpc: EngineRPC): Promise<void> {
+		const res = await this.executeEngineRPC(rpc, "high");
 		if (!res.success) throw new Error(res.error ?? "command failed");
 	}
 
@@ -368,49 +372,49 @@ export class SimulationEngineImpl implements SimulationEngine {
 	}
 
 	sendIntent(intent: IntentMessage): Promise<{ success: boolean; error?: string }> {
-		return this.executeDataQuery({ type: "send_intent", intent }, "high");
+		return this.executeEngineRPC({ type: "send_intent", intent }, "high");
 	}
 	async getMembers(): Promise<MemberSerializeData[]> {
-		const res = await this.executeDataQuery({ type: "get_members" }, "low");
+		const res = await this.executeEngineRPC({ type: "get_members" }, "low");
 		return res.success && Array.isArray(res.data) ? (res.data as MemberSerializeData[]) : [];
 	}
 	async getMemberSkillList(memberId: string): Promise<Array<{ id: string; name: string; level: number }>> {
-		const res = await this.executeDataQuery({ type: "get_member_skill_list", memberId }, "low");
+		const res = await this.executeEngineRPC({ type: "get_member_skill_list", memberId }, "low");
 		return res.success && Array.isArray(res.data) ? (res.data as Array<{ id: string; name: string; level: number }>) : [];
 	}
 	async getMemberState(memberId: string): Promise<{ success: boolean; value?: string; error?: string }> {
-		const res = await this.executeDataQuery({ type: "get_member_state", memberId }, "low");
+		const res = await this.executeEngineRPC({ type: "get_member_state", memberId }, "low");
 		const data = res.data as { value?: string } | undefined;
 		return { success: res.success, value: data?.value, error: res.error };
 	}
 	async getRenderSnapshot(includeAreas = false): Promise<RenderSnapshot | null> {
-		const res = await this.executeDataQuery({ type: "get_render_snapshot", includeAreas }, "high");
+		const res = await this.executeEngineRPC({ type: "get_render_snapshot", includeAreas }, "high");
 		return res.success ? ((res.data as RenderSnapshot | undefined) ?? null) : null;
 	}
 	async getEngineStats(): Promise<{ success: boolean; data?: EngineStats; error?: string }> {
-		const res = await this.executeDataQuery({ type: "get_stats" }, "low");
+		const res = await this.executeEngineRPC({ type: "get_stats" }, "low");
 		return { success: res.success, data: res.data as EngineStats | undefined, error: res.error };
 	}
 	async getComputedSkills(memberId: string): Promise<unknown[]> {
-		const res = await this.executeDataQuery({ type: "get_computed_skills", memberId }, "low");
+		const res = await this.executeEngineRPC({ type: "get_computed_skills", memberId }, "low");
 		return res.success && Array.isArray(res.data) ? (res.data as unknown[]) : [];
 	}
 	async patchMemberConfig(memberId: string, data: unknown): Promise<void> {
 		await this.mustSuccess({ type: "patch_member", memberId, memberData: data });
 	}
 	async runPreview(memberId: string): Promise<PreviewReport | null> {
-		const res = await this.executeDataQuery({ type: "run_preview", memberId }, "medium");
+		const res = await this.executeEngineRPC({ type: "run_preview", memberId }, "medium");
 		return res.success ? ((res.data as PreviewReport | undefined) ?? null) : null;
 	}
 	async captureCheckpoint(): Promise<unknown | null> {
-		const res = await this.executeDataQuery({ type: "capture_checkpoint" }, "high");
+		const res = await this.executeEngineRPC({ type: "capture_checkpoint" }, "high");
 		return res.success ? (res.data ?? null) : null;
 	}
 	async restoreCheckpoint(checkpoint: unknown): Promise<void> {
 		await this.mustSuccess({ type: "restore_checkpoint", checkpoint });
 	}
 	async exportExprDict(): Promise<Array<[string, string]>> {
-		const res = await this.executeDataQuery({ type: "export_expr_dict" }, "low");
+		const res = await this.executeEngineRPC({ type: "export_expr_dict" }, "low");
 		return res.success && Array.isArray(res.data) ? (res.data as Array<[string, string]>) : [];
 	}
 	async importExprDict(entries: Array<[string, string]>): Promise<void> {
@@ -446,4 +450,3 @@ export class SimulationEngineImpl implements SimulationEngine {
 		return this.disposed;
 	}
 }
-

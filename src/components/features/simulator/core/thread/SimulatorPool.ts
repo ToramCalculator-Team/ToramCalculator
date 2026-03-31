@@ -1,107 +1,20 @@
-import { z } from "zod/v4";
 import { createLogger } from "~/lib/Logger";
 import type { WorkerMessageEvent } from "~/lib/WorkerPool/type";
 import { type PoolConfig, WorkerPool, type WorkerWrapper } from "~/lib/WorkerPool/WorkerPool";
 import type { RendererCmd, RenderSnapshot } from "../../render/RendererProtocol";
-import type { EngineControlMessage } from "../GameEngineSM";
-import { type IntentMessage, IntentMessageSchema } from "../MessageRouter/MessageRouter";
+import type { IntentMessage } from "../MessageRouter/MessageRouter";
 import type { PreviewReport } from "../Preview/types";
-import { type EngineScenarioData, EngineScenarioDataSchema, type EngineStats, type SimulationProfile } from "../types";
+import type { EngineScenarioData, EngineStats, SimulationProfile } from "../types";
 import type { MemberSerializeData } from "../World/Member/Member";
-import { WorkerSystemMessageSchema } from "./protocol";
+import {
+	type EngineRPC,
+	type SimulatorTaskMap,
+	type SimulatorTaskPriority,
+	type SimulatorTaskTypeMapKey,
+	WorkerSystemMessageSchema,
+} from "./protocol";
 
 const log = createLogger("SimPool");
-
-/**
- * 通用任务优先级
- */
-export const SimulatorTaskPriority = ["high", "medium", "low"] as const;
-export type SimulatorTaskPriority = (typeof SimulatorTaskPriority)[number];
-
-// ==================== 数据查询命令 ====================
-
-/**
- * 数据查询命令 Schema
- */
-export const DataQueryCommandSchema = z.discriminatedUnion("type", [
-	z.object({
-		type: z.literal("get_members"),
-	}),
-	z.object({
-		type: z.literal("get_member_skill_list"),
-		memberId: z.string(),
-	}),
-	z.object({
-		type: z.literal("get_stats"),
-	}),
-	z.object({
-		type: z.literal("get_snapshot"),
-	}),
-	z.object({
-		type: z.literal("get_member_state"),
-		memberId: z.string(),
-	}),
-	z.object({
-		type: z.literal("send_intent"),
-		intent: IntentMessageSchema,
-	}),
-	z.object({
-		type: z.literal("subscribe_debug_view"),
-		controllerId: z.string(),
-		memberId: z.string(),
-		viewType: z.enum(["stat_container_export"]),
-		hz: z.number().optional(),
-		fields: z.array(z.string()).optional(),
-	}),
-	z.object({
-		type: z.literal("unsubscribe_debug_view"),
-		viewId: z.string(),
-	}),
-	z.object({
-		type: z.literal("get_render_snapshot"),
-		includeAreas: z.boolean().optional(),
-	}),
-	z.object({
-		type: z.literal("load_scenario"),
-		data: EngineScenarioDataSchema,
-	}),
-	z.object({
-		type: z.literal("set_profile"),
-		profile: z.unknown(),
-	}),
-	z.object({
-		type: z.literal("patch_member"),
-		memberId: z.string(),
-		memberData: z.unknown(),
-	}),
-	z.object({
-		type: z.literal("run_preview"),
-		memberId: z.string(),
-	}),
-	z.object({
-		type: z.literal("get_computed_skills"),
-		memberId: z.string(),
-	}),
-	z.object({
-		type: z.literal("capture_checkpoint"),
-	}),
-	z.object({
-		type: z.literal("restore_checkpoint"),
-		checkpoint: z.unknown(),
-	}),
-	z.object({
-		type: z.literal("export_expr_dict"),
-	}),
-	z.object({
-		type: z.literal("import_expr_dict"),
-		entries: z.unknown(),
-	}),
-]);
-
-/**
- * 数据查询命令类型
- */
-export type DataQueryCommand = z.output<typeof DataQueryCommandSchema>;
 
 // ==================== 渲染指令类型 ====================
 
@@ -109,24 +22,6 @@ export type DataQueryCommand = z.output<typeof DataQueryCommandSchema>;
  * 渲染指令包装类型
  */
 export type RenderCommand = { type: "render:cmd"; cmd: RendererCmd } | { type: "render:cmds"; cmds: RendererCmd[] };
-
-// ===================== 任务类型映射 ====================
-
-/**
- * 任务类型映射表 - 建立任务类型和 Payload 的一一对应关系
- *
- * 设计原则：
- * - 类型安全：编译时确保 type 和 payload 匹配
- * - 集中管理：所有任务类型在一处定义
- * - 易于扩展：新增任务类型只需添加一行
- */
-export interface SimulatorTaskMap {
-	engine_command: EngineControlMessage;
-	data_query: DataQueryCommand;
-}
-
-export type SimulatorTaskTypeMapKey = keyof SimulatorTaskMap;
-export type SimulatorTaskTypeMapValue = SimulatorTaskMap[SimulatorTaskTypeMapKey];
 
 /**
  * 模拟器线程池 - 基于通用 WorkerPool 的模拟器专用实现
@@ -181,11 +76,11 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 	}
 
 	/**
-	 * 发送意图消息
+	 * 通过 `engine_rpc` 通道发送意图。
 	 */
 	async sendIntent(intent: IntentMessage): Promise<{ success: boolean; error?: string }> {
-		const command: DataQueryCommand = { type: "send_intent", intent };
-		const result = await this.executeTask("data_query", command, "high");
+		const rpc: EngineRPC = { type: "send_intent", intent };
+		const result = await this.executeTask("engine_rpc", rpc, "high");
 		return {
 			success: result.success,
 			error: result.error,
@@ -196,8 +91,8 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 	 * 获取成员信息
 	 */
 	async getMembers(): Promise<MemberSerializeData[]> {
-		const command: DataQueryCommand = { type: "get_members" };
-		const result = await this.executeTask("data_query", command, "low");
+		const rpc: EngineRPC = { type: "get_members" };
+		const result = await this.executeTask("engine_rpc", rpc, "low");
 
 		const task = result.data as { success: boolean; data?: MemberSerializeData[] } | undefined;
 		if (result.success && task?.success && Array.isArray(task.data)) {
@@ -212,8 +107,8 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 	 * 获取成员技能静态列表（绑定时拉取一次）
 	 */
 	async getMemberSkillList(memberId: string): Promise<Array<{ id: string; name: string; level: number }>> {
-		const command: DataQueryCommand = { type: "get_member_skill_list", memberId };
-		const result = await this.executeTask("data_query", command, "low");
+		const rpc: EngineRPC = { type: "get_member_skill_list", memberId };
+		const result = await this.executeTask("engine_rpc", rpc, "low");
 		const task = result.data as { success: boolean; data?: unknown; error?: string } | undefined;
 		if (result.success && task?.success && Array.isArray(task.data)) {
 			return (task.data as Array<{ id: unknown; name: unknown; level: unknown }>).map((x) => ({
@@ -229,8 +124,8 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 	 * 获取引擎统计信息
 	 */
 	async getEngineStats(): Promise<{ success: boolean; data?: EngineStats; error?: string }> {
-		const command: DataQueryCommand = { type: "get_stats" };
-		const result = await this.executeTask("data_query", command, "low");
+		const rpc: EngineRPC = { type: "get_stats" };
+		const result = await this.executeTask("engine_rpc", rpc, "low");
 		return {
 			success: result.success,
 			data: result.data,
@@ -240,8 +135,8 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 
 	/** 拉取单个成员的当前 FSM 状态（即时同步一次） */
 	async getMemberState(memberId: string): Promise<{ success: boolean; value?: string; error?: string }> {
-		const command: DataQueryCommand = { type: "get_member_state", memberId };
-		const result = await this.executeTask("data_query", command, "low");
+		const rpc: EngineRPC = { type: "get_member_state", memberId };
+		const result = await this.executeTask("engine_rpc", rpc, "low");
 		if (result.success && result.data?.success) {
 			return { success: true, value: result.data.data?.value };
 		}
@@ -250,8 +145,8 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 
 	/** 拉取当前世界渲染快照（供渲染层首次同步，与 get_snapshot 等逻辑快照区分；渲染层晚于引擎就绪时使用） */
 	async getRenderSnapshot(includeAreas = false): Promise<RenderSnapshot | null> {
-		const command: DataQueryCommand = { type: "get_render_snapshot", includeAreas };
-		const result = await this.executeTask("data_query", command, "high");
+		const rpc: EngineRPC = { type: "get_render_snapshot", includeAreas };
+		const result = await this.executeTask("engine_rpc", rpc, "high");
 		const task = result.data as { success: boolean; data?: RenderSnapshot } | undefined;
 		if (result.success && task?.success && task.data) {
 			return task.data;
@@ -260,29 +155,29 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 		return null;
 	}
 
-	// ==================== 引擎生命周期命令 ====================
+	// ==================== 引擎 RPC 封装 ====================
 
 	async loadScenario(data: EngineScenarioData): Promise<{ success: boolean; error?: string }> {
-		const command: DataQueryCommand = { type: "load_scenario", data };
-		const result = await this.executeTask("data_query", command, "high");
+		const rpc: EngineRPC = { type: "load_scenario", data };
+		const result = await this.executeTask("engine_rpc", rpc, "high");
 		return { success: result.success, error: result.error };
 	}
 
 	async setProfile(profile: SimulationProfile): Promise<{ success: boolean; error?: string }> {
-		const command: DataQueryCommand = { type: "set_profile", profile };
-		const result = await this.executeTask("data_query", command, "high");
+		const rpc: EngineRPC = { type: "set_profile", profile };
+		const result = await this.executeTask("engine_rpc", rpc, "high");
 		return { success: result.success, error: result.error };
 	}
 
 	async patchMember(memberId: string, memberData: unknown): Promise<{ success: boolean; error?: string }> {
-		const command: DataQueryCommand = { type: "patch_member", memberId, memberData };
-		const result = await this.executeTask("data_query", command, "high");
+		const rpc: EngineRPC = { type: "patch_member", memberId, memberData };
+		const result = await this.executeTask("engine_rpc", rpc, "high");
 		return { success: result.success, error: result.error };
 	}
 
 	async runPreview(memberId: string): Promise<PreviewReport | null> {
-		const command: DataQueryCommand = { type: "run_preview", memberId };
-		const result = await this.executeTask("data_query", command, "medium");
+		const rpc: EngineRPC = { type: "run_preview", memberId };
+		const result = await this.executeTask("engine_rpc", rpc, "medium");
 		const task = result.data as { success: boolean; data?: PreviewReport } | undefined;
 		if (result.success && task?.success && task.data) {
 			return task.data;
@@ -291,35 +186,35 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 	}
 
 	async getComputedSkills(memberId: string): Promise<unknown[]> {
-		const command: DataQueryCommand = { type: "get_computed_skills", memberId };
-		const result = await this.executeTask("data_query", command, "low");
+		const rpc: EngineRPC = { type: "get_computed_skills", memberId };
+		const result = await this.executeTask("engine_rpc", rpc, "low");
 		const task = result.data as { success: boolean; data?: unknown[] } | undefined;
 		return task?.success && Array.isArray(task.data) ? task.data : [];
 	}
 
 	async captureCheckpoint(): Promise<unknown | null> {
-		const command: DataQueryCommand = { type: "capture_checkpoint" };
-		const result = await this.executeTask("data_query", command, "high");
+		const rpc: EngineRPC = { type: "capture_checkpoint" };
+		const result = await this.executeTask("engine_rpc", rpc, "high");
 		const task = result.data as { success: boolean; data?: unknown } | undefined;
 		return task?.success ? (task.data ?? null) : null;
 	}
 
 	async restoreCheckpoint(checkpoint: unknown): Promise<{ success: boolean; error?: string }> {
-		const command: DataQueryCommand = { type: "restore_checkpoint", checkpoint };
-		const result = await this.executeTask("data_query", command, "high");
+		const rpc: EngineRPC = { type: "restore_checkpoint", checkpoint };
+		const result = await this.executeTask("engine_rpc", rpc, "high");
 		return { success: result.success, error: result.error };
 	}
 
 	async exportExprDict(): Promise<Array<[string, string]>> {
-		const command: DataQueryCommand = { type: "export_expr_dict" };
-		const result = await this.executeTask("data_query", command, "low");
+		const rpc: EngineRPC = { type: "export_expr_dict" };
+		const result = await this.executeTask("engine_rpc", rpc, "low");
 		const task = result.data as { success: boolean; data?: Array<[string, string]> } | undefined;
 		return task?.success && Array.isArray(task.data) ? task.data : [];
 	}
 
 	async importExprDict(entries: Array<[string, string]>): Promise<{ success: boolean; error?: string }> {
-		const command: DataQueryCommand = { type: "import_expr_dict", entries };
-		const result = await this.executeTask("data_query", command, "high");
+		const rpc: EngineRPC = { type: "import_expr_dict", entries };
+		const result = await this.executeTask("engine_rpc", rpc, "high");
 		return { success: result.success, error: result.error };
 	}
 }
