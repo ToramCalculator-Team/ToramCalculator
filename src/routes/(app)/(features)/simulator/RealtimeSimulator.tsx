@@ -21,7 +21,7 @@ import {
 	ControllerDomainEventBatchSchema,
 	type EngineTelemetry,
 } from "~/components/features/simulator/core/thread/protocol";
-import type { ControllerDomainEvent, FrameSnapshot } from "~/components/features/simulator/core/types";
+import { createRealtimeProfile, type ControllerDomainEvent, type FrameSnapshot } from "~/components/features/simulator/core/types";
 import type { MemberSerializeData } from "~/components/features/simulator/core/World/Member/Member";
 import { GameView } from "~/components/features/simulator/render/Renderer";
 import { Icons } from "~/components/icons";
@@ -91,6 +91,7 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 				activeCharacterId: props.simulatorData.campA[0].members[0].player?.characters[0]?.id ?? "",
 			},
 		});
+		await engine.setProfile(createRealtimeProfile());
 
 		// 预加载成员数据
 		await refreshMembers();

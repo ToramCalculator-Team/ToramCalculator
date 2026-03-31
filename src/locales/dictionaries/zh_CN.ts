@@ -1135,9 +1135,9 @@ const dictionary: Dictionary = {
 					formFieldDescription: "请输入智力值",
 				},
 				vit: {
-					key: "体质",
-					tableFieldDescription: "角色的体质值",
-					formFieldDescription: "请输入体质值",
+					key: "耐力",
+					tableFieldDescription: "角色的耐力值",
+					formFieldDescription: "请输入耐力值",
 				},
 				agi: {
 					key: "敏捷",

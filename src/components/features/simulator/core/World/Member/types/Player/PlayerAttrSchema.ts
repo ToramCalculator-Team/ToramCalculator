@@ -925,7 +925,7 @@ export const PlayerAttrNestedSchema: PlayerAttrNestedSchema = {
 		expression: "0",
 	},
 	vit: {
-		displayName: "体力",
+		displayName: "耐力",
 		expression: "0",
 	},
 	agi: {

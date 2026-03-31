@@ -164,6 +164,7 @@ export class SimulationEngineImpl implements SimulationEngine {
 	private readyPromise: Promise<void>;
 	private resolveReady: (() => void) | null = null;
 	private rejectReady: ((error: Error) => void) | null = null;
+	private suppressControllerPeerSend = false;
 
 	constructor(public readonly id: string) {
 		// 1. 创建 Worker 和 MessageChannel
@@ -192,6 +193,7 @@ export class SimulationEngineImpl implements SimulationEngine {
 				threadName: "main",
 				peer: {
 					send: (msg: EngineControlMessage) => {
+						if (this.suppressControllerPeerSend) return;
 						this.executeControl(msg).catch((error) => {
 							log.error(`[${this.id}] send engine command failed`, error);
 						});
@@ -308,6 +310,21 @@ export class SimulationEngineImpl implements SimulationEngine {
 		await this.executePayload(message as SimulatorTaskTypeMapValue, "high");
 	}
 
+	/**
+	 * 本地 lifecycleActor 需要先接收控制命令，才能正确等待 worker 回传的 RESULT_*。
+	 * 否则 UI 会一直停留在 idle，导致生命周期按钮全部禁用。
+	 */
+	private async dispatchLifecycleControl(message: EngineControlMessage): Promise<void> {
+		this.suppressControllerPeerSend = true;
+		try {
+			(this.lifecycleActor as { send: (msg: EngineControlMessage) => void }).send(message);
+		} finally {
+			this.suppressControllerPeerSend = false;
+		}
+
+		await this.executeControl(message);
+	}
+
 	/** 通用引擎 RPC，返回标准化 { success, data?, error? } */
 	async executeEngineRPC(rpc: EngineRPC, priority: SimulatorTaskPriority = "high") {
 		const res = await this.executePayload(rpc, priority);
@@ -330,7 +347,15 @@ export class SimulationEngineImpl implements SimulationEngine {
 	}
 
 	async loadScenario(data: EngineScenarioData): Promise<void> {
-		await this.mustSuccess({ type: "load_scenario", data });
+		const ctx = this.lifecycleActor.getSnapshot().context;
+		await this.dispatchLifecycleControl({
+			type: "CMD_INIT",
+			data,
+			sourceSide: "controller",
+			seq: ctx.nextSeq(),
+			correlationId: ctx.newCorrelationId(),
+			operatorId: this.operatorId,
+		} as EngineControlMessage);
 	}
 	async setProfile(profile: SimulationProfile): Promise<void> {
 		await this.mustSuccess({ type: "set_profile", profile });
@@ -342,7 +367,7 @@ export class SimulationEngineImpl implements SimulationEngine {
 
 	start(): Promise<void> {
 		const ctx = this.lifecycleActor.getSnapshot().context;
-		return this.executeControl({
+		return this.dispatchLifecycleControl({
 			type: "CMD_START",
 			sourceSide: "controller",
 			seq: ctx.nextSeq(),
@@ -352,23 +377,23 @@ export class SimulationEngineImpl implements SimulationEngine {
 	}
 	pause(): Promise<void> {
 		const ctx = this.lifecycleActor.getSnapshot().context;
-		return this.executeControl({ type: "CMD_PAUSE", sourceSide: "controller", seq: ctx.nextSeq(), correlationId: ctx.newCorrelationId(), operatorId: this.operatorId } as EngineControlMessage);
+		return this.dispatchLifecycleControl({ type: "CMD_PAUSE", sourceSide: "controller", seq: ctx.nextSeq(), correlationId: ctx.newCorrelationId(), operatorId: this.operatorId } as EngineControlMessage);
 	}
 	resume(): Promise<void> {
 		const ctx = this.lifecycleActor.getSnapshot().context;
-		return this.executeControl({ type: "CMD_RESUME", sourceSide: "controller", seq: ctx.nextSeq(), correlationId: ctx.newCorrelationId(), operatorId: this.operatorId } as EngineControlMessage);
+		return this.dispatchLifecycleControl({ type: "CMD_RESUME", sourceSide: "controller", seq: ctx.nextSeq(), correlationId: ctx.newCorrelationId(), operatorId: this.operatorId } as EngineControlMessage);
 	}
 	stop(): Promise<void> {
 		const ctx = this.lifecycleActor.getSnapshot().context;
-		return this.executeControl({ type: "CMD_STOP", sourceSide: "controller", seq: ctx.nextSeq(), correlationId: ctx.newCorrelationId(), operatorId: this.operatorId } as EngineControlMessage);
+		return this.dispatchLifecycleControl({ type: "CMD_STOP", sourceSide: "controller", seq: ctx.nextSeq(), correlationId: ctx.newCorrelationId(), operatorId: this.operatorId } as EngineControlMessage);
 	}
 	reset(): Promise<void> {
 		const ctx = this.lifecycleActor.getSnapshot().context;
-		return this.executeControl({ type: "CMD_RESET", sourceSide: "controller", seq: ctx.nextSeq(), correlationId: ctx.newCorrelationId(), operatorId: this.operatorId } as EngineControlMessage);
+		return this.dispatchLifecycleControl({ type: "CMD_RESET", sourceSide: "controller", seq: ctx.nextSeq(), correlationId: ctx.newCorrelationId(), operatorId: this.operatorId } as EngineControlMessage);
 	}
 	step(): Promise<void> {
 		const ctx = this.lifecycleActor.getSnapshot().context;
-		return this.executeControl({ type: "CMD_STEP", sourceSide: "controller", seq: ctx.nextSeq(), correlationId: ctx.newCorrelationId(), operatorId: this.operatorId } as EngineControlMessage);
+		return this.dispatchLifecycleControl({ type: "CMD_STEP", sourceSide: "controller", seq: ctx.nextSeq(), correlationId: ctx.newCorrelationId(), operatorId: this.operatorId } as EngineControlMessage);
 	}
 
 	sendIntent(intent: IntentMessage): Promise<{ success: boolean; error?: string }> {
