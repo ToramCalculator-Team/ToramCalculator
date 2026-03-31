@@ -31,11 +31,12 @@ import type { Nullable } from "@babylonjs/core/types";
 import { useEngine } from "../core/thread/EngineContext";
 import { rendererCommunication } from "./RendererCommunication";
 import { createRendererController } from "./RendererController";
-import type { EntityId } from "./RendererProtocol";
+import type { EntityId, RendererCmd } from "./RendererProtocol";
 import {
 	createThirdPersonController,
 	type ThirdPersonCameraController,
 } from "./ThirdPersonCameraController";
+import type { SimulationEngine } from "../core/thread/SimulationEngine";
 
 const log = createLogger("Renderer");
 
@@ -254,8 +255,9 @@ const cssColors = {
 // ==================== 颜色归一化 ====================
 const rgb2Bcolor3 = (c: number[]) => new Color3(c[0] / 255, c[1] / 255, c[2] / 255);
 
-export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
-	const { realtimePool: pool } = useEngine();
+export function GameView(props: { followEntityId?: EntityId; engine?: SimulationEngine | null }): JSX.Element {
+	const { defaultEngine } = useEngine();
+	const simulationEngine = () => props.engine ?? defaultEngine();
 	const [loaderState, setLoaderState] = createSignal(false);
 
 	const themeColors = createMemo(
@@ -303,25 +305,31 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
 	// ==================== 渲染通信设置 ====================
 	function setupRenderCommunication() {
 		log.info("设置渲染通信");
-		rendererCommunication.setRenderHandler((payload: any) => {
+		rendererCommunication.setRenderHandler((payload: unknown) => {
 			try {
 				if (!payload) return;
 				if (Array.isArray(payload)) {
-					rendererController.send(payload as any);
+					rendererController.send(payload as RendererCmd[]);
 					return;
 				}
-				if (payload.type === "render:cmd" && payload.cmd) {
-					rendererController.send(payload.cmd);
-				} else if (payload.type === "render:cmds" && Array.isArray(payload.cmds)) {
-					rendererController.send(payload.cmds);
-				} else {
-					rendererController.send(payload as any);
+				if (typeof payload === "object" && payload !== null) {
+					const packet = payload as { type?: unknown; cmd?: unknown; cmds?: unknown[] };
+					if (packet.type === "render:cmd" && packet.cmd) {
+						rendererController.send(packet.cmd as RendererCmd);
+						return;
+					}
+					if (packet.type === "render:cmds" && Array.isArray(packet.cmds)) {
+						rendererController.send(packet.cmds as RendererCmd[]);
+						return;
+					}
 				}
 			} catch (e) {
 				console.error("RendererCommunication: 处理渲染指令失败", e);
 			}
 		});
-		rendererCommunication.initialize(pool);
+		const runtimeEngine = simulationEngine();
+		if (!runtimeEngine) return;
+		rendererCommunication.initialize(runtimeEngine);
 	}
 
 	// ==================== 窗口调整设置 ====================
@@ -490,7 +498,9 @@ export function GameView(props: { followEntityId?: EntityId }): JSX.Element {
 		setupRenderCommunication();
 
 		// 7. 拉取当前世界渲染快照并应用（渲染层晚于引擎就绪，需首次全量同步），然后回放缓冲的渲染指令
-		const renderSnapshot = await pool.getRenderSnapshot(true);
+		const runtimeEngine = simulationEngine();
+		if (!runtimeEngine) return;
+		const renderSnapshot = await runtimeEngine.getRenderSnapshot(true);
 		if (renderSnapshot && rendererController.applyRenderSnapshot) {
 			await rendererController.applyRenderSnapshot(renderSnapshot);
 		}

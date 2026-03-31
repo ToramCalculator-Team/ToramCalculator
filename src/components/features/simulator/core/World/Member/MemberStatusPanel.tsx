@@ -502,7 +502,7 @@ export const StatsRenderer = (props: { data?: object }) => {
 
 export function MemberStatusPanel(props: { controllerId?: string; member: Accessor<MemberSerializeData | null> }) {
 	const engine = useEngine();
-	const pool = engine.realtimePool;
+	const runtimeEngine = engine.defaultEngine();
 
 	const [liveAttrs, setLiveAttrs] = createSignal<object | undefined>(undefined);
 	const [subViewId, setSubViewId] = createSignal<string | null>(null);
@@ -513,19 +513,20 @@ export function MemberStatusPanel(props: { controllerId?: string; member: Access
 	const [displayDetail, setDisplayDetail] = createSignal(false);
 	const [activeTab, setActiveTab] = createSignal<"attrs" | "buffs">("attrs");
 
-	const handleDebugViewFrame = (data: { workerId: string; event: unknown }) => {
+	const handleDebugViewFrame = (data: { engineId: string; frame: unknown }) => {
 		const currentViewId = subViewId();
 		if (!currentViewId) return;
-		const evt = data.event as { viewId?: unknown; data?: unknown };
+		const evt = data.frame as { viewId?: unknown; data?: unknown };
 		if (evt && evt.viewId === currentViewId && evt.data && typeof evt.data === "object") {
 			setLiveAttrs(evt.data as object);
 		}
 	};
 
 	createEffect(() => {
-		pool.on("debug_view_frame", handleDebugViewFrame);
+		const listener = handleDebugViewFrame as (payload: { engineId: string; frame: unknown }) => void;
+		runtimeEngine?.on("debug_view_frame", listener);
 		onCleanup(() => {
-			pool.off("debug_view_frame", handleDebugViewFrame);
+			runtimeEngine?.off("debug_view_frame", listener);
 		});
 	});
 
@@ -539,7 +540,7 @@ export function MemberStatusPanel(props: { controllerId?: string; member: Access
 		if (!shouldSubscribe) {
 			if (current) {
 				const cmd: DataQueryCommand = { type: "unsubscribe_debug_view", viewId: current };
-				pool.executeTask("data_query", cmd, "low").catch(console.error);
+				runtimeEngine?.executeDataQuery(cmd, "low").catch(console.error);
 				setSubViewId(null);
 				setLiveAttrs(undefined);
 			}
@@ -554,14 +555,13 @@ export function MemberStatusPanel(props: { controllerId?: string; member: Access
 				viewType: "stat_container_export",
 				hz: 10,
 			};
-			pool
-				.executeTask("data_query", cmd, "low")
+			runtimeEngine
+				?.executeDataQuery(cmd, "low")
 				.then((res) => {
-					const task = res.data as { success?: boolean; data?: { viewId?: string }; error?: string } | undefined;
-					if (res.success && task?.success && task.data?.viewId) {
-						setSubViewId(task.data.viewId);
+					if (res?.success && res.data && typeof res.data === "object" && "viewId" in res.data) {
+						setSubViewId((res.data as { viewId: string }).viewId);
 					} else {
-						console.warn("订阅成员属性面板失败:", task?.error ?? res.error);
+						console.warn("订阅成员属性面板失败:", res?.error);
 					}
 				})
 				.catch(console.error);
@@ -572,7 +572,7 @@ export function MemberStatusPanel(props: { controllerId?: string; member: Access
 		const current = subViewId();
 		if (current) {
 			const cmd: DataQueryCommand = { type: "unsubscribe_debug_view", viewId: current };
-			pool.executeTask("data_query", cmd, "low").catch(console.error);
+			runtimeEngine?.executeDataQuery(cmd, "low").catch(console.error);
 		}
 	});
 

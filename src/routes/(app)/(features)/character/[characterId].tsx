@@ -147,9 +147,10 @@ export default function CharactePage() {
 	);
 
 	const [playerWithRelations, { refetch: refetchPlayerWithRelations }] = createResource(
-		() => character(),
-		async (char) => {
-			const player = await selectPlayerByIdWithRelations(char?.belongToPlayerId ?? "");
+		() => character()?.belongToPlayerId ?? null,
+		async (playerId) => {
+			if (!playerId) return null;
+			const player = await selectPlayerByIdWithRelations(playerId);
 			console.log("player", player);
 			return player;
 		},
@@ -158,79 +159,90 @@ export default function CharactePage() {
 	// ==================== 引擎集成 ====================
 	const engine = useEngine();
 
+	const previewScenario = createMemo<EngineScenarioData | null>(() => {
+		const currentCharacter = character();
+		const player = playerWithRelations();
+		if (!currentCharacter || !player) return null;
+		if (!player.id) return null;
+		if (!Array.isArray(player.characters) || player.characters.length === 0) return null;
+
+		const now = new Date().toISOString();
+		const teamAId = "CHARACTER_PREVIEW_TEAM_A";
+		const teamBId = "CHARACTER_PREVIEW_TEAM_B";
+		const memberId = "CHARACTER_PREVIEW_MEMBER";
+		const statisticId = "CHARACTER_PREVIEW_STATISTIC";
+
+		const member: MemberWithRelations = {
+			id: memberId,
+			name: currentCharacter.name ?? "未命名角色",
+			sequence: 0,
+			type: "Player",
+			playerId: player.id,
+			partnerId: null,
+			mercenaryId: null,
+			mobId: null,
+			mobDifficultyFlag: "Normal",
+			actions: null,
+			belongToTeamId: teamAId,
+			player,
+			partner: null,
+			mercenary: null,
+			mob: null,
+		};
+
+		const teamA: TeamWithRelations = {
+			id: teamAId,
+			name: "CharacterPreviewTeamA",
+			gems: [],
+			members: [member],
+		};
+		const teamB: TeamWithRelations = {
+			id: teamBId,
+			name: "CharacterPreviewTeamB",
+			gems: [],
+			members: [],
+		};
+
+		return {
+			simulator: {
+				id: "CHARACTER_PREVIEW_SIMULATOR",
+				name: "CharacterPreviewSimulator",
+				details: null,
+				statisticId,
+				updatedByAccountId: null,
+				createdByAccountId: null,
+				campA: [teamA],
+				campB: [teamB],
+				statistic: {
+					id: statisticId,
+					updatedAt: now,
+					createdAt: now,
+					usageTimestamps: [],
+					viewTimestamps: [],
+				},
+			},
+			runtimeSelection: {
+				primaryMemberId: memberId,
+				activeCharacterId: currentCharacter.id ?? "",
+			},
+		};
+	});
+
 	createEffect(
 		on(
-			() =>  playerWithRelations(),
-			async () => {
-				console.log("玩家配置发生变化，将更新引擎初始化数据", playerWithRelations());
-				if (!engine.ready()) return;
-				const now = new Date().toISOString();
-				const teamAId = "CHARACTER_PREVIEW_TEAM_A";
-				const teamBId = "CHARACTER_PREVIEW_TEAM_B";
-				const memberId = "CHARACTER_PREVIEW_MEMBER";
-				const statisticId = "CHARACTER_PREVIEW_STATISTIC";
-
-				const member: MemberWithRelations = {
-					id: memberId,
-					name: character()?.name ?? "未命名角色",
-					sequence: 0,
-					type: "Player",
-					playerId: playerWithRelations()?.id ?? "",
-					partnerId: null,
-					mercenaryId: null,
-					mobId: null,
-					mobDifficultyFlag: "Normal",
-					actions: null,
-					belongToTeamId: teamAId,
-					player: playerWithRelations() ?? null,
-					partner: null,
-					mercenary: null,
-					mob: null,
-				};
-
-				const teamA: TeamWithRelations = {
-					id: teamAId,
-					name: "CharacterPreviewTeamA",
-					gems: [],
-					members: [member],
-				};
-				const teamB: TeamWithRelations = {
-					id: teamBId,
-					name: "CharacterPreviewTeamB",
-					gems: [],
-					members: [],
-				};
-
-				const simulator = {
-					id: "CHARACTER_PREVIEW_SIMULATOR",
-					name: "CharacterPreviewSimulator",
-					details: null,
-					statisticId,
-					updatedByAccountId: null,
-					createdByAccountId: null,
-					campA: [teamA],
-					campB: [teamB],
-					statistic: {
-						id: statisticId,
-						updatedAt: now,
-						createdAt: now,
-						usageTimestamps: [],
-						viewTimestamps: [],
-					},
-				};
-
-				const scenario: EngineScenarioData = {
-					simulator,
-					runtimeSelection: {
-						primaryMemberId: memberId,
-						activeCharacterId: character()?.id ?? "",
-					},
-				};
-
-				console.log("scenario", scenario);
-
-				await engine.loadScenario(scenario);
-				await engine.setProfile(createPreviewProfile());
+			() => ({
+				ready: engine.ready(),
+				scenario: previewScenario(),
+			}),
+			async ({ ready, scenario }) => {
+				if (!ready || !scenario) return;
+				console.log("玩家配置发生变化，将更新引擎初始化数据", scenario);
+				try {
+					await engine.loadScenario(scenario);
+					await engine.setProfile(createPreviewProfile());
+				} catch (error) {
+					console.error("Character 页加载预览场景失败", error);
+				}
 			},
 		),
 	);

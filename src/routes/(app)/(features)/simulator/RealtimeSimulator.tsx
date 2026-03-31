@@ -12,12 +12,11 @@ import type { SimulatorWithRelations } from "@db/generated/repositories/simulato
 import { A } from "@solidjs/router";
 import { createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
+import { waitFor } from "xstate";
 import { AddMemberControllerButton } from "~/components/features/simulator/controller/AddMemberControllerButton";
 import { ControlPanel, EngineStatusBar } from "~/components/features/simulator/controller/components";
-import { EngineLifecycleController } from "~/components/features/simulator/controller/EngineLifecycleController";
 import { MemberController } from "~/components/features/simulator/controller/MemberController";
 import { MemberControllerPanel } from "~/components/features/simulator/controller/MemberControllerPanel";
-import type { EngineControlMessage } from "~/components/features/simulator/core/GameEngineSM";
 import { useEngine } from "~/components/features/simulator/core/thread/EngineContext";
 import {
 	ControllerDomainEventBatchSchema,
@@ -34,15 +33,14 @@ export interface RealtimeSimulatorProps {
 }
 
 export function RealtimeSimulator(props: RealtimeSimulatorProps) {
-	const { realtimePool: pool } = useEngine();
+	const { createEngine, disposeEngine } = useEngine();
+	const engine = createEngine("simulator");
 
 	const cleanupFunctions: Array<() => void> = [];
 
 	function registerCleanup(fn: () => void) {
 		cleanupFunctions.push(fn);
 	}
-
-	const lifecycle = new EngineLifecycleController(pool);
 
 	/** 成员控制器列表（可动态添加） */
 	const [memberControllers, setMemberControllers] = createSignal<
@@ -85,11 +83,10 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 	onMount(async () => {
 		console.log(`--RealtimeSimulator Page Mount`);
 
-		// 先注册 SimulatorPool 事件监听（必须在初始化之前，以便接收 RESULT_INIT）
 		setupDataSync();
 
-		// 初始化引擎（会发送 CMD_INIT，需要监听器接收 RESULT_INIT）
-		await lifecycle.initialize(props.simulatorData);
+		await engine.loadScenario(props.simulatorData as unknown as Parameters<typeof engine.loadScenario>[0]);
+		await waitFor(engine.lifecycleActor, (state) => state.matches("ready"), { timeout: 5000 });
 
 		// 预加载成员数据
 		await refreshMembers();
@@ -104,7 +101,7 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 
 		// 定期检查状态变化
 		const interval = setInterval(() => {
-			const snapshot = lifecycle.engineActor.getSnapshot();
+			const snapshot = engine.lifecycleActor.getSnapshot();
 			setIsRunning(snapshot.matches("running"));
 			setIsPaused(snapshot.matches("paused"));
 		}, 100);
@@ -124,42 +121,32 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 				console.error("清理函数执行失败:", error);
 			}
 		});
-		// 先重置引擎（将Worker侧状态机归位到idle），再销毁控制器
-		lifecycle.reset();
-		lifecycle.destroy();
+		engine.reset();
 		// 清理所有成员控制器
 		memberControllers().forEach(({ controller }) => {
 			controller.unbind().catch(console.error);
 		});
 		// 卸载所有监听器
-		pool.off("engine_state_machine", handleEngineStateMachine);
-		pool.off("frame_snapshot", handleFrameSnapshot);
-		pool.off("engine_telemetry", handleEngineTelemetry);
-		pool.off("domain_event_batch", handleDomainEventBatch);
-		pool.off("system_event", handleSystemEvent);
-		pool.off("render_cmd", handleRenderCmd);
+		engine.off("frame_snapshot", handleFrameSnapshot);
+		engine.off("engine_telemetry", handleEngineTelemetry);
+		engine.off("domain_event_batch", handleDomainEventBatch);
+		engine.off("system_event", handleSystemEvent);
+		engine.off("render_cmd", handleRenderCmd);
+		void disposeEngine("simulator");
 	});
 
 	// ==================== 数据同步 ====================
 
-	// 保存所有监听器引用，确保可以正确卸载
-	const handleEngineStateMachine = (data: { workerId: string; event: unknown }) => {
-		if (data.event && typeof data.event === "object" && "type" in data.event) {
-			// 转发引擎状态机消息到 lifecycle controller
-			(lifecycle.engineActor as { send: (msg: EngineControlMessage) => void }).send(data.event as EngineControlMessage);
-		}
-	};
-
-	const handleFrameSnapshot = (data: { workerId: string; event: unknown }) => {
-		if (data.event && typeof data.event === "object" && "frameNumber" in data.event) {
-			const snapshot = data.event as FrameSnapshot;
+	const handleFrameSnapshot = (data: { engineId: string; snapshot: FrameSnapshot }) => {
+		if (data.snapshot && typeof data.snapshot === "object" && "frameNumber" in data.snapshot) {
+			const snapshot = data.snapshot;
 			setLatestFrameSnapshot(snapshot);
 		}
 	};
 
-	const handleEngineTelemetry = (data: { workerId: string; event: unknown }) => {
-		if (!data.event || typeof data.event !== "object") return;
-		const evt = data.event as { frameNumber?: unknown; runTime?: unknown; fps?: unknown; memberCount?: unknown };
+	const handleEngineTelemetry = (data: { engineId: string; telemetry: unknown }) => {
+		if (!data.telemetry || typeof data.telemetry !== "object") return;
+		const evt = data.telemetry as { frameNumber?: unknown; runTime?: unknown; fps?: unknown; memberCount?: unknown };
 		if (
 			typeof evt.frameNumber === "number" &&
 			typeof evt.runTime === "number" &&
@@ -175,8 +162,8 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 		}
 	};
 
-	const handleDomainEventBatch = (data: { workerId: string; event: unknown }) => {
-		const parsed = ControllerDomainEventBatchSchema.safeParse(data.event);
+	const handleDomainEventBatch = (data: { engineId: string; batch: unknown }) => {
+		const parsed = ControllerDomainEventBatchSchema.safeParse(data.batch);
 		if (parsed.success) {
 			const batch = parsed.data;
 			setControllerEventState((prev) => {
@@ -225,31 +212,29 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 		}
 	};
 
-	const handleSystemEvent = (_data: { workerId: string; event: unknown }) => {
+	const handleSystemEvent = (_data: { engineId: string; event: unknown }) => {
 		// 系统事件现在只用于 worker_ready/error/日志等，不再处理领域事件
 		// 领域事件已提升为 domain_event_batch 顶层消息
 	};
 
-	const handleRenderCmd = (data: { workerId: string; event: unknown }) => {
+	const handleRenderCmd = (data: { engineId: string; cmd: unknown }) => {
 		// 渲染命令由 UI 层处理
-		console.log("RealtimeSimulator: 收到渲染命令:", data.event);
+		console.log("RealtimeSimulator: 收到渲染命令:", data.cmd);
 	};
 
 	const setupDataSync = () => {
-		// 监听引擎状态机消息
-		pool.on("engine_state_machine", handleEngineStateMachine);
-		pool.on("frame_snapshot", handleFrameSnapshot);
-		pool.on("engine_telemetry", handleEngineTelemetry);
-		pool.on("domain_event_batch", handleDomainEventBatch);
-		pool.on("system_event", handleSystemEvent);
-		pool.on("render_cmd", handleRenderCmd);
+		engine.on("frame_snapshot", handleFrameSnapshot);
+		engine.on("engine_telemetry", handleEngineTelemetry);
+		engine.on("domain_event_batch", handleDomainEventBatch);
+		engine.on("system_event", handleSystemEvent);
+		engine.on("render_cmd", handleRenderCmd);
 	};
 
 	// ==================== 成员管理 ====================
 
 	const refreshMembers = async () => {
 		try {
-			const result = await pool.getMembers();
+			const result = await engine.getMembers();
 			if (Array.isArray(result)) {
 				const validMembers = result.filter(
 					(member) => member && typeof member === "object" && "id" in member && "type" in member && "name" in member,
@@ -291,7 +276,7 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 			return;
 		}
 
-		const controller = new MemberController(pool);
+		const controller = new MemberController(engine);
 		await controller.bind(memberId);
 
 		setMemberControllers((prev) => [...prev, { id: controller.controllerId, controller, boundMemberId: memberId }]);
@@ -398,7 +383,7 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 									members={members}
 									controllerEventState={controllerEventState}
 									onRemove={() => removeMemberController(item.id)}
-									gameView={<GameView followEntityId={members()[0]?.id} />}
+									gameView={<GameView followEntityId={members()[0]?.id} engine={engine} />}
 								/>
 							)}
 						</For>
@@ -413,12 +398,12 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 						<div class="flex gap-2 w-full">
 							<EngineStatusBar isRunning={isRunning} isPaused={isPaused} telemetry={engineTelemetry} />
 							<ControlPanel
-								engineActor={lifecycle.engineActor}
-								onStart={() => lifecycle.start()}
-								onReset={() => lifecycle.reset()}
-								onPause={() => lifecycle.pause()}
-								onResume={() => lifecycle.resume()}
-								onStep={() => lifecycle.step()}
+								engineActor={engine.lifecycleActor}
+								onStart={() => engine.start()}
+								onReset={() => engine.reset()}
+								onPause={() => engine.pause()}
+								onResume={() => engine.resume()}
+								onStep={() => engine.step()}
 							/>
 						</div>
 

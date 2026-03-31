@@ -9,7 +9,6 @@ import type { PreviewReport } from "../Preview/types";
 import { type EngineScenarioData, EngineScenarioDataSchema, type EngineStats, type SimulationProfile } from "../types";
 import type { MemberSerializeData } from "../World/Member/Member";
 import { WorkerSystemMessageSchema } from "./protocol";
-import simulationWorker from "./Simulation.worker?worker&url";
 
 const log = createLogger("SimPool");
 
@@ -325,38 +324,4 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 	}
 }
 
-// ==================== 实例导出 ====================
-
-// 实时模拟实例 - 单Worker，适合实时控制
-export const realtimeSimulatorPool = new SimulatorPool({
-	workerUrl: simulationWorker,
-	priority: [...SimulatorTaskPriority],
-	maxWorkers: 1, // 单Worker用于实时模拟
-	taskTimeout: 30000, // 实时模拟需要更快的响应
-	maxRetries: 1, // 实时模拟减少重试次数
-	maxQueueSize: 10, // 实时模拟减少队列大小
-	monitorInterval: 5000, // 实时模拟更频繁的监控
-	isWorkerReadyMessage: (sys) => {
-		if (sys.type !== "system_event") return false;
-		if (typeof sys.data !== "object" || sys.data === null) return false;
-		const data = sys.data as { type?: unknown };
-		return data.type === "worker_ready";
-	},
-});
-
-// 批量计算实例 - 多Worker，适合并行计算
-export const batchSimulatorPool = new SimulatorPool({
-	workerUrl: simulationWorker,
-	priority: [...SimulatorTaskPriority],
-	maxWorkers: Math.min(navigator.hardwareConcurrency || 4, 6), // 多Worker用于并行计算
-	taskTimeout: 60000, // 增加超时时间，战斗模拟可能需要更长时间
-	maxRetries: 2, // 减少重试次数
-	maxQueueSize: 100, // 减少队列大小
-	monitorInterval: 10000, // 增加监控间隔
-	isWorkerReadyMessage: (sys) => {
-		if (sys.type !== "system_event") return false;
-		if (typeof sys.data !== "object" || sys.data === null) return false;
-		const data = sys.data as { type?: unknown };
-		return data.type === "worker_ready";
-	},
-});
+// 实例由 EngineService 按场景创建并管理。

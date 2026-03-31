@@ -2,7 +2,6 @@ import {
 	createContext,
 	createSignal,
 	onCleanup,
-	onMount,
 	type ParentProps,
 	useContext,
 } from "solid-js";
@@ -11,11 +10,7 @@ import type { PreviewReport } from "../Preview/types";
 import type { EngineScenarioData, SimulationProfile } from "../types";
 import type { MemberSerializeData } from "../World/Member/Member";
 import { EngineService } from "./EngineService";
-import {
-	batchSimulatorPool,
-	realtimeSimulatorPool,
-	type SimulatorPool,
-} from "./SimulatorPool";
+import type { SimulationEngine } from "./SimulationEngine";
 
 const log = createLogger("EngineCtx");
 
@@ -24,9 +19,10 @@ const log = createLogger("EngineCtx");
 export interface EngineContextValue {
 	/** EngineService 单例（可用于高级 / 命令式操作） */
 	service: EngineService;
-
-	/** 底层 pool 引用（供 Simulator 页面高级用法，如 EngineLifecycleController） */
-	realtimePool: SimulatorPool;
+	defaultEngine: () => SimulationEngine | null;
+	createEngine: (id?: string) => SimulationEngine;
+	getEngine: (id: string) => SimulationEngine | null;
+	disposeEngine: (id: string) => Promise<void>;
 
 	// ---- reactive signals ----
 	/** 引擎是否已就绪（pool 初始化完成） */
@@ -44,6 +40,7 @@ export interface EngineContextValue {
 	loadScenario: (data: EngineScenarioData) => Promise<void>;
 	setProfile: (profile: SimulationProfile) => Promise<void>;
 	patchMemberConfig: (memberId: string, memberData: unknown) => Promise<void>;
+	predictSkillDamage: (memberId: string, skillIds?: string[]) => Promise<PreviewReport>;
 	runSkillPreview: (memberId: string) => Promise<PreviewReport>;
 }
 
@@ -53,25 +50,26 @@ const EngineCtx = createContext<EngineContextValue>();
 
 export function EngineProvider(props: ParentProps) {
 	const service = EngineService.getInstance();
+	const defaultEngine = () => service.getDefaultEngine();
 	const [ready, setReady] = createSignal(false);
 	const [members, setMembers] = createSignal<MemberSerializeData[]>([]);
 	const [previewReport, setPreviewReport] = createSignal<PreviewReport | null>(null);
 
-	onMount(() => {
-		service.attachRealtimePool(realtimeSimulatorPool);
-		service.attachBatchPool(batchSimulatorPool);
-		setReady(true);
-		log.info("pools attached, ready");
-	});
+	defaultEngine()
+		.whenReady()
+		.then(() => {
+			setReady(true);
+			log.info("default engine ready");
+		})
+		.catch((error) => log.error("default engine init failed", error));
 
 	onCleanup(() => {
 		log.info("cleanup");
+		void service.shutdown();
 	});
 
 	const refreshMembers = async (): Promise<MemberSerializeData[]> => {
-		const pool = service.getRealtimePool();
-		if (!pool) return [];
-		const list = await pool.getMembers();
+		const list = await defaultEngine().getMembers();
 		setMembers(list);
 		return list;
 	};
@@ -91,14 +89,23 @@ export function EngineProvider(props: ParentProps) {
 	};
 
 	const runSkillPreview = async (memberId: string): Promise<PreviewReport> => {
-		const report = await service.runSkillPreview(memberId);
+		const report = await service.runSkillPreview(memberId, defaultEngine().id);
+		setPreviewReport(report);
+		return report;
+	};
+
+	const predictSkillDamage = async (memberId: string, skillIds?: string[]): Promise<PreviewReport> => {
+		const report = await service.predictSkillDamage(defaultEngine().id, memberId, skillIds);
 		setPreviewReport(report);
 		return report;
 	};
 
 	const value: EngineContextValue = {
 		service,
-		realtimePool: realtimeSimulatorPool,
+		defaultEngine,
+		createEngine: (id?: string) => service.createEngine(id),
+		getEngine: (id: string) => service.getEngine(id),
+		disposeEngine: (id: string) => service.disposeEngine(id),
 		ready,
 		members,
 		refreshMembers,
@@ -106,6 +113,7 @@ export function EngineProvider(props: ParentProps) {
 		loadScenario,
 		setProfile,
 		patchMemberConfig,
+		predictSkillDamage,
 		runSkillPreview,
 	};
 

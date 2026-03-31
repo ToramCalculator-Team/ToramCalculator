@@ -1,6 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { IntentMessage } from "../core/MessageRouter/MessageRouter";
-import type { SimulatorPool } from "../core/thread/SimulatorPool";
+import type { SimulationEngine } from "../core/thread/SimulationEngine";
 
 /**
  * 成员控制器
@@ -10,12 +10,41 @@ import type { SimulatorPool } from "../core/thread/SimulatorPool";
  */
 export class MemberController {
 	public readonly controllerId: string;
+	private targets: SimulationEngine[];
 
 	constructor(
-		private pool: SimulatorPool,
+		targets: SimulationEngine | SimulationEngine[],
 		controllerId?: string,
 	) {
+		this.targets = Array.isArray(targets) ? [...targets] : [targets];
 		this.controllerId = controllerId ?? createId();
+	}
+
+	addTarget(engine: SimulationEngine): void {
+		if (!this.targets.some((item) => item.id === engine.id)) {
+			this.targets.push(engine);
+		}
+	}
+
+	removeTarget(engineId: string): void {
+		this.targets = this.targets.filter((item) => item.id !== engineId);
+	}
+
+	setTargets(engines: SimulationEngine[]): void {
+		this.targets = [...engines];
+	}
+
+	getPrimaryTarget(): SimulationEngine | null {
+		return this.targets[0] ?? null;
+	}
+
+	private async broadcastIntent(intent: IntentMessage): Promise<Array<{ engineId: string; success: boolean; error?: string }>> {
+		return await Promise.all(
+			this.targets.map(async (engine) => {
+				const result = await engine.sendIntent(intent);
+				return { engineId: engine.id, success: result.success, error: result.error };
+			}),
+		);
 	}
 
 	async bind(memberId: string) {
@@ -26,7 +55,7 @@ export class MemberController {
 			controllerId: this.controllerId,
 			data: { memberId },
 		};
-		await this.pool.sendIntent(intent);
+		return await this.broadcastIntent(intent);
 	}
 
 	async unbind() {
@@ -37,7 +66,7 @@ export class MemberController {
 			controllerId: this.controllerId,
 			data: {},
 		};
-		await this.pool.sendIntent(intent);
+		return await this.broadcastIntent(intent);
 	}
 
 	async selectTarget(targetMemberId: string) {
@@ -48,7 +77,7 @@ export class MemberController {
 			controllerId: this.controllerId,
 			data: { targetId: targetMemberId },
 		};
-		await this.pool.sendIntent(intent);
+		return await this.broadcastIntent(intent);
 	}
 
 	async castSkill(skillId: string) {
@@ -59,7 +88,7 @@ export class MemberController {
 			controllerId: this.controllerId,
 			data: { skillId },
 		};
-		await this.pool.sendIntent(intent);
+		return await this.broadcastIntent(intent);
 	}
 
 	async move(x: number, y: number) {
@@ -70,7 +99,7 @@ export class MemberController {
 			controllerId: this.controllerId,
 			data: { position: { x, y } },
 		};
-		await this.pool.sendIntent(intent);
+		return await this.broadcastIntent(intent);
 	}
 
 	async stopMove() {
@@ -81,7 +110,7 @@ export class MemberController {
 			controllerId: this.controllerId,
 			data: {},
 		};
-		await this.pool.sendIntent(intent);
+		return await this.broadcastIntent(intent);
 	}
 }
 

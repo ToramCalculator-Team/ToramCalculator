@@ -11,7 +11,6 @@ import { createEffect, createMemo, createSignal, For, type JSX, Show } from "sol
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import type { FrameSnapshot } from "../core/GameEngine";
-import { useEngine } from "../core/thread/EngineContext";
 import type { MemberSerializeData } from "../core/World/Member/Member";
 import { MemberStatusPanel } from "../core/World/Member/MemberStatusPanel";
 import type { MemberController } from "./MemberController";
@@ -34,7 +33,6 @@ interface MemberControllerPanelProps {
 }
 
 export function MemberControllerPanel(props: MemberControllerPanelProps) {
-	const { realtimePool: pool } = useEngine();
 	const [skillList, setSkillList] = createSignal<Array<{ id: string; name: string; level: number }>>([]);
 
 	const controllerView = createMemo(() => {
@@ -72,7 +70,9 @@ export function MemberControllerPanel(props: MemberControllerPanelProps) {
 	createEffect(() => {
 		const memberId = props.boundMemberId;
 		if (!memberId) return;
-		pool.getMemberSkillList(memberId).then(setSkillList).catch(console.error);
+		const target = props.controller.getPrimaryTarget();
+		if (!target) return;
+		target.getMemberSkillList(memberId).then(setSkillList).catch(console.error);
 	});
 
 	const handleCastSkill = (skillId: string) => {

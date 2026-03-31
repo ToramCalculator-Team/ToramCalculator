@@ -7,9 +7,6 @@
  * - UI组件
  */
 
-// 引擎生命周期控制器
-export { EngineLifecycleController } from "./EngineLifecycleController";
-
 // 成员控制器
 export { MemberController } from "./MemberController";
 
