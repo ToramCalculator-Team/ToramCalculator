@@ -7,7 +7,7 @@ import {
 } from "solid-js";
 import { createLogger } from "~/lib/Logger";
 import type { PreviewReport } from "../Preview/types";
-import type { EngineScenarioData, SimulationProfile } from "../types";
+import type { EngineScenarioData, RuntimeConfig } from "../types";
 import type { MemberSerializeData } from "../World/Member/Member";
 import { EngineService } from "./EngineService";
 import type { SimulationEngine } from "./SimulationEngine";
@@ -38,7 +38,7 @@ export interface EngineContextValue {
 
 	// ---- actions ----
 	loadScenario: (data: EngineScenarioData) => Promise<void>;
-	setProfile: (profile: SimulationProfile) => Promise<void>;
+	setRuntimeConfig: (config: RuntimeConfig) => Promise<void>;
 	patchMemberConfig: (memberId: string, memberData: unknown) => Promise<void>;
 	predictSkillDamage: (memberId: string, skillIds?: string[]) => Promise<PreviewReport>;
 	runSkillPreview: (memberId: string) => Promise<PreviewReport>;
@@ -79,8 +79,8 @@ export function EngineProvider(props: ParentProps) {
 		await refreshMembers();
 	};
 
-	const setProfile = async (profile: SimulationProfile): Promise<void> => {
-		await service.setProfile(profile);
+	const setRuntimeConfig = async (config: RuntimeConfig): Promise<void> => {
+		await service.setRuntimeConfig(config);
 		await refreshMembers();
 	};
 
@@ -112,7 +112,7 @@ export function EngineProvider(props: ParentProps) {
 		refreshMembers,
 		previewReport,
 		loadScenario,
-		setProfile,
+		setRuntimeConfig,
 		patchMemberConfig,
 		predictSkillDamage,
 		runSkillPreview,

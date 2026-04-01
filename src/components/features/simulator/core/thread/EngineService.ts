@@ -1,10 +1,10 @@
 import { createLogger } from "~/lib/Logger";
 import type { DPSImpactResult, PreviewReport, SkillProbeResult } from "../Preview/types";
-import type { EngineScenarioData, SimulationProfile } from "../types";
-import { SimulatorPool } from "./SimulatorPool";
-import { SimulationEngineImpl, type SimulationEngine } from "./SimulationEngine";
-import simulationWorker from "./Simulation.worker?worker&url";
+import type { EngineScenarioData, RuntimeConfig } from "../types";
 import { SimulatorTaskPriority } from "./protocol";
+import simulationWorker from "./Simulation.worker?worker&url";
+import { type SimulationEngine, SimulationEngineImpl } from "./SimulationEngine";
+import { SimulatorPool } from "./SimulatorPool";
 
 const log = createLogger("EngineService");
 
@@ -88,8 +88,8 @@ export class EngineService {
 		log.info("初始化数据加载完成");
 	}
 
-	async setProfile(profile: SimulationProfile, engineId?: string): Promise<void> {
-		await this.requireEngine(engineId).setProfile(profile);
+	async setRuntimeConfig(config: RuntimeConfig, engineId?: string): Promise<void> {
+		await this.requireEngine(engineId).setRuntimeConfig(config);
 		log.info("运行模式设置完成");
 	}
 

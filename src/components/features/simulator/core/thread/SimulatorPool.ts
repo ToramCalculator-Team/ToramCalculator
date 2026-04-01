@@ -1,10 +1,11 @@
+import type { MemberWithRelations } from "@db/generated/repositories/member";
 import { createLogger } from "~/lib/Logger";
 import type { WorkerMessageEvent } from "~/lib/WorkerPool/type";
 import { type PoolConfig, WorkerPool, type WorkerWrapper } from "~/lib/WorkerPool/WorkerPool";
 import type { RendererCmd, RenderSnapshot } from "../../render/RendererProtocol";
 import type { IntentMessage } from "../MessageRouter/MessageRouter";
 import type { PreviewReport } from "../Preview/types";
-import type { EngineScenarioData, EngineStats, SimulationProfile } from "../types";
+import type { EngineScenarioData, EngineStats, RuntimeConfig } from "../types";
 import type { MemberSerializeData } from "../World/Member/Member";
 import {
 	type EngineRPC,
@@ -163,13 +164,13 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 		return { success: result.success, error: result.error };
 	}
 
-	async setProfile(profile: SimulationProfile): Promise<{ success: boolean; error?: string }> {
-		const rpc: EngineRPC = { type: "set_profile", profile };
+	async setRuntimeConfig(config: RuntimeConfig): Promise<{ success: boolean; error?: string }> {
+		const rpc: EngineRPC = { type: "set_runtime_config", config };
 		const result = await this.executeTask("engine_rpc", rpc, "high");
 		return { success: result.success, error: result.error };
 	}
 
-	async patchMember(memberId: string, memberData: unknown): Promise<{ success: boolean; error?: string }> {
+	async patchMember(memberId: string, memberData: MemberWithRelations): Promise<{ success: boolean; error?: string }> {
 		const rpc: EngineRPC = { type: "patch_member", memberId, memberData };
 		const result = await this.executeTask("engine_rpc", rpc, "high");
 		return { success: result.success, error: result.error };

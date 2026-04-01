@@ -29,11 +29,7 @@ import {
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 import { repositoryMethods } from "@db/generated/repositories";
-import {
-	selectAllCharactersByBelongtoplayerid,
-	selectCharacterById,
-	updateCharacter,
-} from "@db/generated/repositories/character";
+import { selectAllCharactersByBelongtoplayerid, updateCharacter } from "@db/generated/repositories/character";
 import { selectAllCharacterRegistletsByBelongtocharacterid } from "@db/generated/repositories/character_registlet";
 import { selectAllCharacterSkillsByBelongtocharacterid } from "@db/generated/repositories/character_skill";
 import { selectAllCombosByBelongtocharacterid } from "@db/generated/repositories/combo";
@@ -46,7 +42,7 @@ import { selectPlayerSpecialById } from "@db/generated/repositories/player_speci
 import { selectPlayerWeaponById } from "@db/generated/repositories/player_weapon";
 import type { TeamWithRelations } from "@db/generated/repositories/team";
 import type { character, DB } from "@db/generated/zod";
-import { CharacterPersonalityType } from "@db/schema/enums";
+import type { CharacterPersonalityType } from "@db/schema/enums";
 import { Motion, Presence } from "solid-motionone";
 import { DATA_CONFIG } from "~/components/business/data-config";
 import { Sheet } from "~/components/containers/sheet";
@@ -57,7 +53,7 @@ import { RangeInput } from "~/components/controls/range";
 import { Select } from "~/components/controls/select";
 import { VirtualTable } from "~/components/dataDisplay/virtualTable";
 import { useEngine } from "~/components/features/simulator/core/thread/EngineContext";
-import { createPreviewProfile, type EngineScenarioData } from "~/components/features/simulator/core/types";
+import { createPreviewConfig, type EngineScenarioData } from "~/components/features/simulator/core/types";
 import { StatsRenderer } from "~/components/features/simulator/core/World/Member/MemberStatusPanel";
 import { Icons } from "~/components/icons";
 import { MediaContext } from "~/lib/contexts/Media";
@@ -257,7 +253,7 @@ export default function CharactePage() {
 				try {
 					console.log("loading scenario", scenario);
 					await engine.loadScenario(scenario);
-					await engine.setProfile(createPreviewProfile());
+					await engine.setRuntimeConfig(createPreviewConfig());
 				} catch (error) {
 					console.error("Character 页加载预览场景失败", error);
 				}
@@ -446,100 +442,100 @@ export default function CharactePage() {
 						/>
 					</div>
 					<div class="Content flex h-full w-full flex-1 flex-col overflow-hidden p-6 landscape:flex-row">
-						{/* 角色视图 */}
-						<div class="CharacterView hidden w-full flex-1 max-h-48 overflow-hidden portrait:block">
-							<canvas ref={setCanvas} class="border-dividing-color block h-full w-full rounded-md border">
-								当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
-							</canvas>
-						</div>
-						<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:hidden landscape:h-full landscape:w-px"></div>
-
-						{/* 标签栏 */}
-						<OverlayScrollbarsComponent
-							element="div"
-							options={{ scrollbars: { visibility: "hidden" } }}
-							defer
-							class="flex-none portrait:w-full landscape:w-fit"
-						>
-							<div class={`flex flex-row items-start gap-2 landscape:flex-col`}>
-								<Button
-									onClick={() => setActiveTab("combo")}
-									level={activeTab() === "combo" ? "primary" : "quaternary"}
-									icon={<Icons.Outline.Gamepad />}
-									textAlign="left"
-									class="flex-none landscape:w-full"
-								>
-									{dictionary().ui.character.tabs.combo}
-								</Button>
-								<Button
-									onClick={() => setActiveTab("equipment")}
-									level={activeTab() === "equipment" ? "primary" : "quaternary"}
-									icon={<Icons.Outline.Category />}
-									textAlign="left"
-									class="flex-none landscape:w-full"
-								>
-									{dictionary().ui.character.tabs.equipment.selfName}
-								</Button>
-								<Button
-									onClick={() => setActiveTab("consumable")}
-									level={activeTab() === "consumable" ? "primary" : "quaternary"}
-									icon={<Icons.Outline.Sale />}
-									textAlign="left"
-									class="flex-none landscape:w-full"
-								>
-									{dictionary().ui.character.tabs.consumable}
-								</Button>
-								<Button
-									onClick={() => setActiveTab("cooking")}
-									level={activeTab() === "cooking" ? "primary" : "quaternary"}
-									icon={<Icons.Outline.Coupon2 />}
-									textAlign="left"
-									class="flex-none landscape:w-full"
-								>
-									{dictionary().ui.character.tabs.cooking}
-								</Button>
-								<Button
-									onClick={() => setActiveTab("registlet")}
-									level={activeTab() === "registlet" ? "primary" : "quaternary"}
-									icon={<Icons.Outline.CreditCard />}
-									textAlign="left"
-									class="flex-none landscape:w-full"
-								>
-									{dictionary().ui.character.tabs.registlet}
-								</Button>
-								<Button
-									onClick={() => setActiveTab("skill")}
-									level={activeTab() === "skill" ? "primary" : "quaternary"}
-									icon={<Icons.Outline.Scale />}
-									textAlign="left"
-									class="flex-none landscape:w-full"
-								>
-									{dictionary().ui.character.tabs.skill}
-								</Button>
-								<Button
-									onClick={() => setActiveTab("ability")}
-									level={activeTab() === "ability" ? "primary" : "quaternary"}
-									icon={<Icons.Outline.Filter />}
-									textAlign="left"
-									class="flex-none landscape:w-full"
-								>
-									{dictionary().ui.character.tabs.ability}
-								</Button>
-								<Button
-									onClick={() => setActiveTab("base")}
-									level={activeTab() === "base" ? "primary" : "quaternary"}
-									icon={<Icons.Outline.Edit />}
-									textAlign="left"
-									class="flex-none landscape:w-full"
-								>
-									{dictionary().ui.character.tabs.base}
-								</Button>
-							</div>
-						</OverlayScrollbarsComponent>
-						<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:h-full landscape:w-px"></div>
-
 						{/* 配置版块 */}
 						<Show when={panelMode() === "Config" || media.width >= 1024}>
+							{/* 角色视图 */}
+							<div class="CharacterView hidden w-full flex-1 h-48 overflow-hidden portrait:block">
+								<canvas ref={setCanvas} class="border-dividing-color block h-full w-full rounded-md border">
+									当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
+								</canvas>
+							</div>
+							<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:hidden landscape:h-full landscape:w-px"></div>
+
+							{/* 标签栏 */}
+							<OverlayScrollbarsComponent
+								element="div"
+								options={{ scrollbars: { visibility: "hidden" } }}
+								defer
+								class="flex-none portrait:w-full landscape:w-fit"
+							>
+								<div class={`flex flex-row items-start gap-2 landscape:flex-col`}>
+									<Button
+										onClick={() => setActiveTab("combo")}
+										level={activeTab() === "combo" ? "primary" : "quaternary"}
+										icon={<Icons.Outline.Gamepad />}
+										textAlign="left"
+										class="flex-none landscape:w-full"
+									>
+										{dictionary().ui.character.tabs.combo}
+									</Button>
+									<Button
+										onClick={() => setActiveTab("equipment")}
+										level={activeTab() === "equipment" ? "primary" : "quaternary"}
+										icon={<Icons.Outline.Category />}
+										textAlign="left"
+										class="flex-none landscape:w-full"
+									>
+										{dictionary().ui.character.tabs.equipment.selfName}
+									</Button>
+									<Button
+										onClick={() => setActiveTab("consumable")}
+										level={activeTab() === "consumable" ? "primary" : "quaternary"}
+										icon={<Icons.Outline.Sale />}
+										textAlign="left"
+										class="flex-none landscape:w-full"
+									>
+										{dictionary().ui.character.tabs.consumable}
+									</Button>
+									<Button
+										onClick={() => setActiveTab("cooking")}
+										level={activeTab() === "cooking" ? "primary" : "quaternary"}
+										icon={<Icons.Outline.Coupon2 />}
+										textAlign="left"
+										class="flex-none landscape:w-full"
+									>
+										{dictionary().ui.character.tabs.cooking}
+									</Button>
+									<Button
+										onClick={() => setActiveTab("registlet")}
+										level={activeTab() === "registlet" ? "primary" : "quaternary"}
+										icon={<Icons.Outline.CreditCard />}
+										textAlign="left"
+										class="flex-none landscape:w-full"
+									>
+										{dictionary().ui.character.tabs.registlet}
+									</Button>
+									<Button
+										onClick={() => setActiveTab("skill")}
+										level={activeTab() === "skill" ? "primary" : "quaternary"}
+										icon={<Icons.Outline.Scale />}
+										textAlign="left"
+										class="flex-none landscape:w-full"
+									>
+										{dictionary().ui.character.tabs.skill}
+									</Button>
+									<Button
+										onClick={() => setActiveTab("ability")}
+										level={activeTab() === "ability" ? "primary" : "quaternary"}
+										icon={<Icons.Outline.Filter />}
+										textAlign="left"
+										class="flex-none landscape:w-full"
+									>
+										{dictionary().ui.character.tabs.ability}
+									</Button>
+									<Button
+										onClick={() => setActiveTab("base")}
+										level={activeTab() === "base" ? "primary" : "quaternary"}
+										icon={<Icons.Outline.Edit />}
+										textAlign="left"
+										class="flex-none landscape:w-full"
+									>
+										{dictionary().ui.character.tabs.base}
+									</Button>
+								</div>
+							</OverlayScrollbarsComponent>
+							<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:h-full landscape:w-px"></div>
+
 							<div class="Config flex flex-col gap-2 w-full lg:w-[30dvw] lg:flex-none p-3">
 								<OverlayScrollbarsComponent
 									element="div"
@@ -1050,7 +1046,7 @@ export default function CharactePage() {
 
 						{/* 属性面板 */}
 						<Show when={panelMode() === "AttrPreview" || media.width >= 1024}>
-							<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:h-full landscape:w-px" />
+							<div class="Divider landscape:bg-dividing-color flex-none portrait:hidden landscape:mx-2 landscape:h-full landscape:w-px" />
 							<OverlayScrollbarsComponent
 								element="div"
 								options={{ scrollbars: { autoHide: "scroll" } }}

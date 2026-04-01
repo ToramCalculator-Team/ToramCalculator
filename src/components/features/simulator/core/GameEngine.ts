@@ -33,9 +33,9 @@ import type {
 	FrameStepResult,
 	GameEngineSnapshot,
 	MemberDomainEvent,
-	SimulationProfile,
+	RuntimeConfig,
 } from "./types";
-import { createRealtimeProfile } from "./types";
+import { createRealtimeConfig } from "./types";
 import type { MemberSerializeData } from "./World/Member/Member";
 import type { MemberContext } from "./World/Member/MemberContext";
 import type { Player } from "./World/Member/types/Player/Player";
@@ -106,10 +106,10 @@ export class GameEngine {
 	private scenarioData: EngineScenarioData | null = null;
 
 	/**
-	 * 引擎语义模式。
+	 * 引擎运行配置。
 	 * 它决定“连续运行由谁驱动”，而不是简单透传给底层时钟。
 	 */
-	private profile: SimulationProfile = createRealtimeProfile();
+	private runtimeConfig: RuntimeConfig = createRealtimeConfig();
 
 	/**
 	 * 引擎运行会话状态。
@@ -372,17 +372,17 @@ export class GameEngine {
 	 * 切换仿真配置描述符（mode/stop/output/probe 等）。
 	 * 仅在 idle / ready 状态下允许切换，运行中切换需先 stop。
 	 */
-	setProfile(profile: SimulationProfile): void {
+	setRuntimeConfig(config: RuntimeConfig): void {
 		if (this.runState === "running" || this.runState === "paused") {
-			log.warn("GameEngine: 运行中/暂停中无法切换 profile，请先 stop");
+			log.warn("GameEngine: 运行中/暂停中无法切换 runtimeConfig，请先 stop");
 			return;
 		}
-		this.profile = profile;
-		log.info(`GameEngine: profile 已切换 (driveMode=${profile.driveMode}, exec=${profile.executionSemantics})`);
+		this.runtimeConfig = config;
+		log.info(`GameEngine: runtimeConfig 已切换 (driveMode=${config.driveMode}, exec=${config.executionSemantics})`);
 	}
 
-	getProfile(): SimulationProfile {
-		return { ...this.profile };
+	getRuntimeConfig(): RuntimeConfig {
+		return { ...this.runtimeConfig };
 	}
 
 	/**
@@ -764,7 +764,7 @@ export class GameEngine {
 		this.startTime = performance.now();
 		this.runState = "running";
 
-		if (this.profile.driveMode === "clocked") {
+		if (this.runtimeConfig.driveMode === "clocked") {
 			this.resetEngineFrameLoopStats("raf");
 			this.resetSnapshotObserver();
 			this.frameLoop.start((tick) => {
@@ -812,7 +812,7 @@ export class GameEngine {
 
 		this.runState = "paused";
 
-		if (this.profile.driveMode === "unclocked") {
+		if (this.runtimeConfig.driveMode === "unclocked") {
 			this.cancelFastForwardSlice();
 		} else {
 			this.frameLoop.pause();
@@ -832,7 +832,7 @@ export class GameEngine {
 
 		this.runState = "running";
 
-		if (this.profile.driveMode === "unclocked") {
+		if (this.runtimeConfig.driveMode === "unclocked") {
 			this.scheduleFastForwardSlice();
 		} else {
 			this.frameLoop.resume();
@@ -972,11 +972,11 @@ export class GameEngine {
 	 * @returns 处理结果
 	 */
 	async processIntent(message: IntentMessage): Promise<MessageProcessResult> {
-		if (!this.profile.acceptExternalIntents) {
+		if (!this.runtimeConfig.acceptExternalIntents) {
 			return {
 				success: false,
 				message: "意图输入已禁用",
-				error: "Intent input disabled by profile.acceptExternalIntents",
+				error: "Intent input disabled by runtimeConfig.acceptExternalIntents",
 			};
 		}
 
@@ -993,11 +993,11 @@ export class GameEngine {
 	 * @returns 处理结果数组
 	 */
 	async processIntents(messages: IntentMessage[]): Promise<MessageProcessResult[]> {
-		if (!this.profile.acceptExternalIntents) {
+		if (!this.runtimeConfig.acceptExternalIntents) {
 			return messages.map(() => ({
 				success: false,
 				message: "意图输入已禁用",
-				error: "Intent input disabled by profile.acceptExternalIntents",
+				error: "Intent input disabled by runtimeConfig.acceptExternalIntents",
 			}));
 		}
 

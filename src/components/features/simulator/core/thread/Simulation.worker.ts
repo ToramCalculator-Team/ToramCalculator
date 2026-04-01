@@ -3,6 +3,7 @@
  * 将GameEngine运行在安全沙盒环境中
  */
 
+import type { MemberWithRelations } from "@db/generated/repositories/member";
 import { createLogger } from "~/lib/Logger";
 import { prepareForTransfer, sanitizeForPostMessage } from "~/lib/WorkerPool/MessageSerializer";
 import type { WorkerMessage, WorkerMessageEvent } from "~/lib/WorkerPool/type";
@@ -12,7 +13,7 @@ import { JSProcessor } from "../JSProcessor/JSProcessor";
 import { createBuiltInPipelineRegistry } from "../Pipline/BuiltInPipelineRegistry";
 import { PreviewRunner } from "../Preview/PreviewRunner";
 import type { SimulatorSafeAPI } from "../sandboxGlobals";
-import type { EngineInfrastructure, SimulationProfile } from "../types";
+import type { EngineInfrastructure, EngineScenarioData, RuntimeConfig } from "../types";
 import { DebugViewRegistry } from "./DebugViewRegistry";
 import {
 	type EngineRPC,
@@ -119,9 +120,7 @@ debugViewRegistry.setGameEngine(gameEngine);
 /**
  * 处理引擎 RPC 请求
  */
-async function handleEngineRPC(
-	rpc: EngineRPC,
-): Promise<{ success: boolean; data?: unknown; error?: string }> {
+async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data?: unknown; error?: string }> {
 	try {
 		switch (rpc.type) {
 			case "get_members": {
@@ -219,105 +218,100 @@ async function handleEngineRPC(
 				}
 			}
 
-		case "get_render_snapshot": {
-			try {
-				const renderSnapshot = gameEngine.getRenderSnapshot(rpc.includeAreas ?? false);
-				return { success: true, data: renderSnapshot };
-			} catch (error) {
-				return {
-					success: false,
-					error: error instanceof Error ? error.message : "Unknown error",
-				};
+			case "get_render_snapshot": {
+				try {
+					const renderSnapshot = gameEngine.getRenderSnapshot(rpc.includeAreas ?? false);
+					return { success: true, data: renderSnapshot };
+				} catch (error) {
+					return {
+						success: false,
+						error: error instanceof Error ? error.message : "Unknown error",
+					};
+				}
 			}
-		}
 
-		case "load_scenario": {
-			try {
-				gameEngine.loadScenario(rpc.data as Parameters<typeof gameEngine.loadScenario>[0]);
-				return { success: true };
-			} catch (error) {
-				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+			case "load_scenario": {
+				try {
+					gameEngine.loadScenario(rpc.data as EngineScenarioData);
+					return { success: true };
+				} catch (error) {
+					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+				}
 			}
-		}
 
-		case "set_profile": {
-			try {
-				gameEngine.setProfile(rpc.profile as SimulationProfile);
-				return { success: true };
-			} catch (error) {
-				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+			case "set_runtime_config": {
+				try {
+					gameEngine.setRuntimeConfig(rpc.config as RuntimeConfig);
+					return { success: true };
+				} catch (error) {
+					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+				}
 			}
-		}
 
-		case "patch_member": {
-			try {
-				const ok = gameEngine.patchMemberConfig(
-					rpc.memberId,
-					rpc.memberData as Parameters<typeof gameEngine.patchMemberConfig>[1],
-				);
-				return { success: ok, error: ok ? undefined : "patchMemberConfig failed" };
-			} catch (error) {
-				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+			case "patch_member": {
+				try {
+					const ok = gameEngine.patchMemberConfig(rpc.memberId, rpc.memberData as MemberWithRelations);
+					return { success: ok, error: ok ? undefined : "patchMemberConfig failed" };
+				} catch (error) {
+					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+				}
 			}
-		}
 
-		case "run_preview": {
-			try {
-				const runner = new PreviewRunner(gameEngine);
-				const report = runner.runPreview(rpc.memberId);
-				return { success: true, data: report };
-			} catch (error) {
-				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+			case "run_preview": {
+				try {
+					const runner = new PreviewRunner(gameEngine);
+					const report = runner.runPreview(rpc.memberId);
+					return { success: true, data: report };
+				} catch (error) {
+					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+				}
 			}
-		}
 
-		case "get_computed_skills": {
-			try {
-				const skills = gameEngine.getComputedSkillInfos(rpc.memberId);
-				return { success: true, data: skills };
-			} catch (error) {
-				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+			case "get_computed_skills": {
+				try {
+					const skills = gameEngine.getComputedSkillInfos(rpc.memberId);
+					return { success: true, data: skills };
+				} catch (error) {
+					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+				}
 			}
-		}
 
-		case "capture_checkpoint": {
-			try {
-				const checkpoint = gameEngine.captureCheckpoint();
-				return { success: true, data: checkpoint };
-			} catch (error) {
-				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+			case "capture_checkpoint": {
+				try {
+					const checkpoint = gameEngine.captureCheckpoint();
+					return { success: true, data: checkpoint };
+				} catch (error) {
+					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+				}
 			}
-		}
 
-		case "restore_checkpoint": {
-			try {
-				gameEngine.restoreCheckpoint(
-					rpc.checkpoint as Parameters<typeof gameEngine.restoreCheckpoint>[0],
-				);
-				return { success: true };
-			} catch (error) {
-				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+			case "restore_checkpoint": {
+				try {
+					gameEngine.restoreCheckpoint(rpc.checkpoint as Parameters<typeof gameEngine.restoreCheckpoint>[0]);
+					return { success: true };
+				} catch (error) {
+					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+				}
 			}
-		}
 
-		case "export_expr_dict": {
-			try {
-				const entries = infra.jsProcessor.exportTransformedExprDict();
-				return { success: true, data: entries };
-			} catch (error) {
-				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+			case "export_expr_dict": {
+				try {
+					const entries = infra.jsProcessor.exportTransformedExprDict();
+					return { success: true, data: entries };
+				} catch (error) {
+					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+				}
 			}
-		}
 
-		case "import_expr_dict": {
-			try {
-				infra.jsProcessor.importTransformedExprDict(rpc.entries as Array<[string, string]>);
-				return { success: true };
-			} catch (error) {
-				return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+			case "import_expr_dict": {
+				try {
+					infra.jsProcessor.importTransformedExprDict(rpc.entries as Array<[string, string]>);
+					return { success: true };
+				} catch (error) {
+					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+				}
 			}
 		}
-	}
 	} catch (error) {
 		return {
 			success: false,
@@ -395,11 +389,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 						const duration = endTime - startTime;
 
 						// 返回结果给SimulatorPool
-						const response: WorkerMessageEvent<
-							unknown,
-							SimulatorTaskMap,
-							unknown
-						> = {
+						const response: WorkerMessageEvent<unknown, SimulatorTaskMap, unknown> = {
 							belongToTaskId: portbelongToTaskId,
 							result: portResult,
 							error: null,
@@ -415,11 +405,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 						const duration = endTime - startTime;
 
 						// 返回错误给SimulatorPool
-						const errorResponse: WorkerMessageEvent<
-							unknown,
-							SimulatorTaskMap,
-							unknown
-						> = {
+						const errorResponse: WorkerMessageEvent<unknown, SimulatorTaskMap, unknown> = {
 							belongToTaskId: portbelongToTaskId,
 							result: null,
 							error: error instanceof Error ? error.message : String(error),
@@ -513,7 +499,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 // ==================== 统一系统消息出口 ====================
 /**
  * 统一的 Push/Stream 消息发送函数
- * 
+ *
  * 支持所有顶层 push 消息类型：
  * - engine_state_machine: 引擎状态机镜像
  * - render_cmd: 渲染指令
@@ -522,11 +508,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
  * - frame_snapshot: 帧快照
  * - debug_view_frame: 调试视图数据帧（订阅制）
  */
-function postSystemMessage(
-	port: MessagePort,
-	type: PushMessageType,
-	data: unknown,
-) {
+function postSystemMessage(port: MessagePort, type: PushMessageType, data: unknown) {
 	// 使用共享的MessageSerializer确保数据可以安全地通过postMessage传递
 	const sanitizedData = sanitizeForPostMessage(data);
 	const msg = { belongToTaskId: type, type, data: sanitizedData } as const;

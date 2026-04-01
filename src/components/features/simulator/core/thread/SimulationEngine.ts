@@ -34,7 +34,7 @@ import type {
 	EngineScenarioData,
 	EngineStats,
 	FrameSnapshot,
-	SimulationProfile,
+	RuntimeConfig,
 } from "../types";
 import type { MemberSerializeData } from "../World/Member/Member";
 import {
@@ -99,7 +99,7 @@ export interface SimulationEngine {
 
 	// ── 场景与配置 ──────────────────────────────────
 	loadScenario(data: EngineScenarioData): Promise<void>;
-	setProfile(profile: SimulationProfile): Promise<void>;
+	setRuntimeConfig(config: RuntimeConfig): Promise<void>;
 
 	// ── 生命周期控制（映射为 EngineControlMessage → Worker） ──
 	start(): Promise<void>;
@@ -357,8 +357,8 @@ export class SimulationEngineImpl implements SimulationEngine {
 			operatorId: this.operatorId,
 		} as EngineControlMessage);
 	}
-	async setProfile(profile: SimulationProfile): Promise<void> {
-		await this.mustSuccess({ type: "set_profile", profile });
+	async setRuntimeConfig(config: RuntimeConfig): Promise<void> {
+		await this.mustSuccess({ type: "set_runtime_config", config });
 	}
 	// ── 生命周期控制 ──────────────────────────────────
 	// 每个方法构造一条 EngineControlMessage，通过 executeControl 发送给 Worker。

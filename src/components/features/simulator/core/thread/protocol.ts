@@ -119,8 +119,8 @@ export const EngineRPCSchema = z.discriminatedUnion("type", [
 		data: EngineScenarioDataSchema,
 	}),
 	z.object({
-		type: z.literal("set_profile"),
-		profile: z.unknown(),
+		type: z.literal("set_runtime_config"),
+		config: z.unknown(),
 	}),
 	z.object({
 		type: z.literal("patch_member"),

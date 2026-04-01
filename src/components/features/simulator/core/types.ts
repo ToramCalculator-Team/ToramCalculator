@@ -37,7 +37,7 @@ export type EngineState =
 	| "paused" // 已暂停
 	| "stopped"; // 已停止
 
-// ==================== SimulationProfile ====================
+// ==================== RuntimeConfig ====================
 
 /** 帧驱动方式 */
 export type DriveMode = "clocked" | "unclocked";
@@ -64,10 +64,9 @@ export type ProbePolicy =
 	| "rollbackAfterSkillProbe";
 
 /**
- * 仿真配置描述符。
- * 多维度配置替代旧的 EngineMode / FrameLoopMode / enableIntentInput。
+ * 引擎运行配置描述符。
  */
-export interface SimulationProfile {
+export interface RuntimeConfig {
 	driveMode: DriveMode;
 	executionSemantics: ExecutionSemantics;
 	stopPolicy: StopPolicy;
@@ -79,7 +78,7 @@ export interface SimulationProfile {
 	maxFrameSkip: number;
 }
 
-export function createRealtimeProfile(overrides?: Partial<SimulationProfile>): SimulationProfile {
+export function createRealtimeConfig(overrides?: Partial<RuntimeConfig>): RuntimeConfig {
 	return {
 		driveMode: "clocked",
 		executionSemantics: "full",
@@ -94,10 +93,10 @@ export function createRealtimeProfile(overrides?: Partial<SimulationProfile>): S
 	};
 }
 
-export function createFastForwardProfile(
+export function createFastForwardConfig(
 	stopPolicy: StopPolicy = { kind: "untilBattleEnd" },
-	overrides?: Partial<SimulationProfile>,
-): SimulationProfile {
+	overrides?: Partial<RuntimeConfig>,
+): RuntimeConfig {
 	return {
 		driveMode: "unclocked",
 		executionSemantics: "full",
@@ -112,7 +111,7 @@ export function createFastForwardProfile(
 	};
 }
 
-export function createPreviewProfile(overrides?: Partial<SimulationProfile>): SimulationProfile {
+export function createPreviewConfig(overrides?: Partial<RuntimeConfig>): RuntimeConfig {
 	return {
 		driveMode: "unclocked",
 		executionSemantics: "previewSafe",
