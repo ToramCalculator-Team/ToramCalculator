@@ -536,7 +536,7 @@ export default function CharactePage() {
 							</OverlayScrollbarsComponent>
 							<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:h-full landscape:w-px"></div>
 
-							<div class="Config flex flex-col gap-2 w-full lg:w-[30dvw] lg:flex-none p-3">
+							<div class="Config flex flex-col gap-2 w-full lg:w-[30dvw] lg:flex-none">
 								<OverlayScrollbarsComponent
 									element="div"
 									options={{ scrollbars: { autoHide: "scroll" } }}
