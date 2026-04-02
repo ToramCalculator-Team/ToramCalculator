@@ -1,5 +1,5 @@
+import { deleteCookie } from "@solidjs/start/http";
 import type { APIEvent } from "@solidjs/start/server";
-import { deleteCookie } from "vinxi/http";
 
 export async function GET({ params }: APIEvent) {
 	deleteCookie("jwt");

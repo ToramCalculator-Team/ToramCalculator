@@ -1,8 +1,8 @@
 import { findUserByEmail } from "@db/repositories/user";
+import { setCookie } from "@solidjs/start/http";
 import type { APIEvent } from "@solidjs/start/server";
 import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
-import { setCookie } from "vinxi/http";
 
 export async function POST(event: APIEvent) {
 	try {

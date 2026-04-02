@@ -2,9 +2,9 @@ import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 import type { DB } from "@db/generated/zod/index";
 import { getDB } from "@db/repositories/database";
 import { findUserById } from "@db/repositories/user";
+import { getCookie } from "@solidjs/start/http";
 import type { APIEvent } from "@solidjs/start/server";
 import { jwtVerify } from "jose";
-import { getCookie } from "vinxi/http";
 import { z } from "zod/v4";
 import type { SyncRequestBody } from "~/shared/types/sync";
 

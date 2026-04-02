@@ -5,7 +5,7 @@ generated
 .output
 .vercel
 .netlify
-.vinxi
+.nitro
 bundle.tar.gz
 
 # Environment
@@ -23,18 +23,9 @@ pnpm-lock.yaml
 *.launch
 .settings/
 
-# Temp
-gitignore
-db/temp_server_schema.prisma
-db/temp_client_schema.prisma
-
 # Build artifacts
 public/chunk-manifest.json
 public/service.worker.js
-
-# System Files
-.DS_Store
-Thumbs.db
 
 #db
 db/generated/

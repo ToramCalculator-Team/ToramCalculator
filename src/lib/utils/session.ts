@@ -1,7 +1,7 @@
 "use server";
 import { findUserByEmail, findUserWithRelations } from "@db/repositories/user";
+import { getCookie } from "@solidjs/start/http";
 import { jwtVerify } from "jose";
-import { getCookie } from "vinxi/http";
 
 async function verifyJWT(token: string, secret: string) {
 	const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));

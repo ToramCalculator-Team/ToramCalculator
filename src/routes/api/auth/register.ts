@@ -1,10 +1,10 @@
 import { getDB } from "@db/repositories/database";
 import { createUser, findUserByEmail } from "@db/repositories/user";
 import { createId } from "@paralleldrive/cuid2";
+import { setCookie } from "@solidjs/start/http";
 import type { APIEvent } from "@solidjs/start/server";
 import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
-import { setCookie } from "vinxi/http";
 
 export async function POST(event: APIEvent) {
 	try {

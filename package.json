@@ -2,21 +2,26 @@
   "name": "toram-calculator",
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev",
-    "dev:init": "pnpm dev:init:inject && pnpm dev:init:generate",
-    "dev:init:inject": "tsx db/generator/injectEnums.ts",
-    "dev:init:generate": "prisma generate --schema=db/generated/schema.prisma",
-    "dev:setup": "pnpm backend:down && pnpm backend:up -d && pnpm db:restore",
-    "backend:up": "docker compose --env-file .env -f ./backend/docker-compose.yaml up",
-    "backend:stop": "docker compose --env-file .env -f ./backend/docker-compose.yaml stop",
-    "backend:down": "docker compose --env-file .env -f ./backend/docker-compose.yaml down --volumes",
+    "setup": "pnpm generate && pnpm infra:reset",
+
+    "dev": "vite dev",
+    "preview": "vite preview",
+
+    "generate": "tsx db/generator/injectEnums.ts && prisma generate --schema=db/generated/schema.prisma",
+
+    "infra:up": "docker compose --env-file .env -f ./backend/docker-compose.yaml up -d",
+    "infra:stop": "docker compose --env-file .env -f ./backend/docker-compose.yaml stop",
+    "infra:down": "docker compose --env-file .env -f ./backend/docker-compose.yaml down --volumes",
+    "infra:reset": "pnpm infra:down && pnpm infra:up && pnpm db:restore",
+
     "db:studio": "prisma studio --config=db/studio.config.ts",
     "db:backup": "tsx db/scripts/backup.ts",
     "db:restore": "tsx db/scripts/restore.ts",
-    "build": "node src/worker/sw/build.mjs && NODE_OPTIONS=--max-old-space-size=4096 vinxi build",
-    "start": "vinxi start",
-    "clear-build": "rm -rf .vinxi/ .output bundle.tar.gz public/service.worker.js public/chunk-manifest.json public/service.worker.js db/generated",
-    "package": "rm -rf .vinxi/ .output bundle.tar.gz && pnpm build && tar -czf bundle.tar.gz .vinxi/ .output/",
+
+    "build": "node src/worker/sw/build.mjs && NODE_OPTIONS=--max-old-space-size=4096 vite build",
+    "clean": "rm -rf dist .output .nitro bundle.tar.gz public/service.worker.js public/chunk-manifest.json db/generated",
+    "deploy": "pnpm clean && pnpm build && tar -czf bundle.tar.gz .output/",
+
     "prepare": "husky"
   },
   "devDependencies": {
@@ -56,7 +61,8 @@
     "@solid-primitives/scheduled": "^1.5.0",
     "@solidjs/meta": "^0.28.0",
     "@solidjs/router": "^0.15.3",
-    "@solidjs/start": "latest",
+    "@solidjs/start": "2.0.0-alpha.2",
+    "@solidjs/vite-plugin-nitro-2": "^0.1.0",
     "@tailwindcss/typography": "^0.5.14",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/solid-form": "latest",
@@ -82,7 +88,7 @@
     "solid-js": "^1.9.10",
     "solid-motionone": "^1.0.4",
     "tailwindcss": "latest",
-    "vinxi": "^0.5.10",
+    "vite": "^7.0.0",
     "xstate": "^5.19.2",
     "zod": "^4.1.12"
   },
