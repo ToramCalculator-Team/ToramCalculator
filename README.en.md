@@ -16,9 +16,9 @@ ToramCalculator is an auxiliary tool developed for the Toram Online game. It hel
 🔗 [https://app.kiaclouth.com](https://app.kiaclouth.com)
 
 
-### 🌐 Wiki URL
+### 🌐 Wiki
 
-🔗 [https://deepwiki.com/ToramCalculator-Team/ToramCalculator](https://deepwiki.com/ToramCalculator-Team/ToramCalculator)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ToramCalculator-Team/ToramCalculator)
 
 
 ### Environment Requirements
