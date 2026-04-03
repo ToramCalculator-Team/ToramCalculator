@@ -1,7 +1,7 @@
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createEffect, createSignal, type JSX, on, onCleanup, onMount, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { useMedia } from "~/lib/contexts/Media-component";
+import { useMedia } from "~/contexts/Media-component";
 import { setStore, store } from "~/store";
 
 export interface FormSheetProps {

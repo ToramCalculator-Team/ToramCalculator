@@ -12,8 +12,8 @@ import { BabylonBg } from "~/components/effects/babylonBg";
 import { RandomBallBackground } from "~/components/effects/randomBg";
 import { LoginDialog } from "~/components/features/loginDialog";
 import { Setting } from "~/components/features/setting";
-import { EngineProvider } from "~/components/features/simulator/core/thread/EngineContext";
-import { MediaProvider } from "~/lib/contexts/Media-component";
+import { MediaProvider } from "~/contexts/Media-component";
+import { EngineProvider } from "~/lib/engine/core/thread/EngineContext";
 import { ensureLocalAccount } from "~/lib/localAccount";
 import { setStore, store } from "~/store";
 

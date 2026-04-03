@@ -31,7 +31,7 @@ import {
 	useContext,
 } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { MediaContext } from "~/lib/contexts/Media";
+import { MediaContext } from "~/contexts/Media";
 import type { Dic, EnumFieldDetail } from "~/locales/type";
 import { store } from "~/store";
 import { Button } from "../controls/button";

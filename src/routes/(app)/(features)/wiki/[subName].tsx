@@ -22,7 +22,7 @@ import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { VirtualTable } from "~/components/dataDisplay/virtualTable";
 import { Icons } from "~/components/icons/index";
-import { MediaContext } from "~/lib/contexts/Media";
+import { MediaContext } from "~/contexts/Media";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import { setWikiStore, wikiStore } from "./store";

@@ -12,7 +12,7 @@ import {
 	useContext,
 } from "solid-js";
 import { Portal } from "solid-js/web";
-import { type CharacterEntityRuntime, EntityFactory } from "~/components/features/simulator/render/RendererController";
+import { type CharacterEntityRuntime, EntityFactory } from "~/lib/engine/render/RendererController";
 // import "@babylonjs/core/Debug/debugLayer"; // Augments the scene with the debug methods
 // import "@babylonjs/inspector"; // Injects a local ES6 version of the inspector to prevent automatically relying on the none compatible version
 import "@babylonjs/loaders/glTF/2.0/glTFLoader";
@@ -52,11 +52,11 @@ import { LoadingBar } from "~/components/controls/loadingBar";
 import { RangeInput } from "~/components/controls/range";
 import { Select } from "~/components/controls/select";
 import { VirtualTable } from "~/components/dataDisplay/virtualTable";
-import { useEngine } from "~/components/features/simulator/core/thread/EngineContext";
-import { createPreviewConfig, type EngineScenarioData } from "~/components/features/simulator/core/types";
-import { StatsRenderer } from "~/components/features/simulator/core/World/Member/MemberStatusPanel";
 import { Icons } from "~/components/icons";
-import { MediaContext } from "~/lib/contexts/Media";
+import { MediaContext } from "~/contexts/Media";
+import { useEngine } from "~/lib/engine/core/thread/EngineContext";
+import { createPreviewConfig, type EngineScenarioData } from "~/lib/engine/core/types";
+import { StatsRenderer } from "~/lib/engine/core/World/Member/MemberStatusPanel";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import { createCharacter } from "./createCharacter";

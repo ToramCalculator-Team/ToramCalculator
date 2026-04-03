@@ -12,23 +12,23 @@ import type { SimulatorWithRelations } from "@db/generated/repositories/simulato
 import { A } from "@solidjs/router";
 import { createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { AddMemberControllerButton } from "~/components/features/simulator/controller/AddMemberControllerButton";
-import { ControlPanel, EngineStatusBar } from "~/components/features/simulator/controller/components";
-import { MemberController } from "~/components/features/simulator/controller/MemberController";
-import { MemberControllerPanel } from "~/components/features/simulator/controller/MemberControllerPanel";
-import { useEngine } from "~/components/features/simulator/core/thread/EngineContext";
+import { Icons } from "~/components/icons";
+import { AddMemberControllerButton } from "~/lib/engine/controller/AddMemberControllerButton";
+import { ControlPanel, EngineStatusBar } from "~/lib/engine/controller/components";
+import { MemberController } from "~/lib/engine/controller/MemberController";
+import { MemberControllerPanel } from "~/lib/engine/controller/MemberControllerPanel";
+import { useEngine } from "~/lib/engine/core/thread/EngineContext";
 import {
 	ControllerDomainEventBatchSchema,
 	type EngineTelemetry,
-} from "~/components/features/simulator/core/thread/protocol";
+} from "~/lib/engine/core/thread/protocol";
 import {
 	type ControllerDomainEvent,
 	createRealtimeConfig,
 	type FrameSnapshot,
-} from "~/components/features/simulator/core/types";
-import type { MemberSerializeData } from "~/components/features/simulator/core/World/Member/Member";
-import { GameView } from "~/components/features/simulator/render/Renderer";
-import { Icons } from "~/components/icons";
+} from "~/lib/engine/core/types";
+import type { MemberSerializeData } from "~/lib/engine/core/World/Member/Member";
+import { GameView } from "~/lib/engine/render/Renderer";
 import { store } from "~/store";
 
 export interface RealtimeSimulatorProps {

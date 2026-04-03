@@ -10,7 +10,7 @@ import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Filing } from "~/components/features/filing";
 import { Icons } from "~/components/icons/index";
-import { MediaContext } from "~/lib/contexts/Media";
+import { MediaContext } from "~/contexts/Media";
 import { getDictionary } from "~/locales/i18n";
 import type { Dictionary } from "~/locales/type";
 import { setStore, store } from "~/store";

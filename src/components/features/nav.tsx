@@ -4,7 +4,7 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createMemo, createSignal, type JSX, useContext } from "solid-js";
 import { Motion } from "solid-motionone";
 import { Icons } from "~/components/icons/index";
-import { MediaContext } from "~/lib/contexts/Media";
+import { MediaContext } from "~/contexts/Media";
 import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import { Button } from "../controls/button";

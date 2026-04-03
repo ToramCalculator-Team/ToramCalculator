@@ -1,5 +1,5 @@
 import { type ZodType, z } from "zod/v4";
-import type { ActionPool, ConditionPool } from "~/components/features/simulator/core/World/Member/runtime/Agent/type";
+import type { ActionPool, ConditionPool } from "~/lib/engine/core/World/Member/runtime/Agent/type";
 
 export type MdslPrimitiveType = "string" | "number" | "boolean" | "null" | "unknown";
 

@@ -8,7 +8,7 @@ import "blockly/blocks";
 import type { MemberType } from "@db/schema/enums";
 import { javascriptGenerator } from "blockly/javascript";
 import defaultData from "~/components/features/logicEditor/defaultData.json";
-import { MediaContext } from "~/lib/contexts/Media";
+import { MediaContext } from "~/contexts/Media";
 import { store } from "~/store";
 import { baseToolBoxConfig } from "./baseToolBoxConfig";
 

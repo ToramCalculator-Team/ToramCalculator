@@ -1,6 +1,6 @@
 import { type JSX, onCleanup, onMount, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { useMedia } from "~/lib/contexts/Media-component";
+import { useMedia } from "~/contexts/Media-component";
 import { store } from "~/store";
 
 export function Sheet(props: { children: JSX.Element; state: boolean; setState: (state: boolean) => void }) {
