@@ -331,7 +331,7 @@ export class GameEngine {
 		data.simulator.campA.forEach((team) => {
 			this.addTeam("campA", team);
 			team.members.forEach((member) => {
-				this.addMember("campA", team.id, member, 0);
+				this.addMember("campA", team.id, member);
 			});
 		});
 
@@ -340,7 +340,7 @@ export class GameEngine {
 		data.simulator.campB.forEach((team) => {
 			this.addTeam("campB", team);
 			team.members.forEach((member) => {
-				this.addMember("campB", team.id, member, 0);
+				this.addMember("campB", team.id, member);
 			});
 		});
 
@@ -890,11 +890,10 @@ export class GameEngine {
 	 * @param campId 阵营ID
 	 * @param teamId 队伍ID
 	 * @param memberData 成员数据
-	 * @param characterIndex 角色索引
 	 */
-	addMember(campId: string, teamId: string, memberData: MemberWithRelations, characterIndex: number): void {
+	addMember(campId: string, teamId: string, memberData: MemberWithRelations): void {
 		// 容器只负责委托，不处理具体创建逻辑
-		this.world.memberManager.createAndRegister(memberData, campId, teamId, characterIndex);
+		this.world.memberManager.createAndRegister(memberData, campId, teamId);
 	}
 
 	/**
@@ -917,7 +916,7 @@ export class GameEngine {
 		const { campId, teamId } = existing;
 
 		this.world.memberManager.unregisterMember(memberId);
-		this.world.memberManager.createAndRegister(newData, campId, teamId, 0);
+		this.world.memberManager.createAndRegister(newData, campId, teamId);
 
 		if (this.scenarioData) {
 			this.patchInitializationData(memberId, newData);

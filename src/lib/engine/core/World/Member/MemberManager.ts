@@ -132,7 +132,6 @@ export class MemberManager {
 	 * @param memberData 成员数据库数据
 	 * @param campId 阵营ID
 	 * @param teamId 队伍ID
-	 * @param characterIndex 角色索引
 	 * @param position 位置
 	 * @returns 创建的成员实例，失败则返回null
 	 */
@@ -140,12 +139,11 @@ export class MemberManager {
 		memberData: MemberWithRelations,
 		campId: string,
 		teamId: string,
-		characterIndex: number,
 		position?: { x: number; y: number; z: number },
 	): Actor<AnyActorLogic> | null {
 		switch (memberData.type) {
 			case "Player": {
-				const player = new Player(memberData, campId, teamId, characterIndex, position);
+				const player = new Player(memberData, campId, teamId, position);
 				// 设置域事件发射器
 				player.setDomainEventSender(this.domainEventSender);
 				player.setEvaluateExpression(this.evaluateExpression);

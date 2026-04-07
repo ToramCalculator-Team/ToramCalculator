@@ -132,7 +132,6 @@ export const EngineScenarioDataSchema = z.object({
 	simulator: SimulatorWithRelationsSchema,
 	runtimeSelection: z.object({
 		primaryMemberId: z.string(),
-		activeCharacterId: z.string(),
 	}),
 });
 

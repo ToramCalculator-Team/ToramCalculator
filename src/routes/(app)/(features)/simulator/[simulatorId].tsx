@@ -1,6 +1,6 @@
 import { selectSimulatorByIdWithRelations } from "@db/generated/repositories/simulator";
 import { useParams } from "@solidjs/router";
-import { createResource, onCleanup, onMount, Show } from "solid-js";
+import { createEffect, createResource, createSignal, onCleanup, onMount, Show } from "solid-js";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { RealtimeSimulator } from "~/routes/(app)/(features)/simulator/RealtimeSimulator";
 
@@ -12,10 +12,13 @@ export default function SimulatorPage() {
 	const [simulatorData, { refetch: refetchSimulator }] = createResource(() =>
 		selectSimulatorByIdWithRelations(params.simulatorId ?? ""),
 	);
+    
+	// 场景模式：打木桩练习（仅配置自身和地方怪物）、完整场景配置
+	const [mode, setMode] = createSignal<"practice" | "full">("practice");
 
-	// createEffect(() => {
-	//   console.log("simulatorData", simulatorData());
-	// });
+	createEffect(() => {
+	  console.log("simulatorData", simulatorData());
+	});
 
 	onMount(() => {
 		console.log(`--Simulator Page Mount`);

@@ -69,7 +69,6 @@ const BuiltinRegistletEffects: Record<string, RegistletEffectDef> = {
 };
 
 export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateContext, PlayerContext> {
-	characterIndex: number;
 	activeCharacter: CharacterWithRelations;
 
 	/**
@@ -83,17 +82,22 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 		memberData: MemberWithRelations,
 		campId: string,
 		teamId: string,
-		characterIndex: number,
 		position?: { x: number; y: number; z: number },
 	) {
+		log.info("Player constructor", memberData);
 		if (!memberData.player) {
 			throw new Error("Player数据缺失");
 		}
-		if (!memberData.player.characters[characterIndex]) {
-			throw new Error("Character数据缺失");
+		const activeCharacterId = memberData.player?.useIn;
+		let activeCharacter = memberData.player.characters.find((character) => character.id === activeCharacterId);
+		if (!activeCharacter) {
+			throw new Error("未在Player.Characters中找到useIn对应的Character");
+		}
+		if (!activeCharacterId) {
+			log.warn("Player数据缺失useIn，将使用第一个角色");
+			activeCharacter = memberData.player.characters[0];
 		}
 
-		const activeCharacter = memberData.player.characters[characterIndex];
 		const attrSchema = PlayerAttrSchemaGenerator(activeCharacter);
 		const statContainer = new StatContainer<PlayerAttrType>(attrSchema);
 		const initialSkillList = activeCharacter.skills ?? [];
@@ -127,7 +131,6 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 		);
 
 		this.context.owner = this;
-		this.characterIndex = characterIndex;
 		this.activeCharacter = activeCharacter;
 
 		this.initializePassiveSkills(memberData);

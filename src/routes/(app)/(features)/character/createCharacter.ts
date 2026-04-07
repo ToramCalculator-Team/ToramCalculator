@@ -5,6 +5,7 @@ import {
 	type Player,
 	selectAllPlayersByBelongtoaccountid,
 	selectPlayerById,
+    updatePlayer,
 } from "@db/generated/repositories/player";
 import { insertStatistic } from "@db/generated/repositories/statistic";
 import type { Account } from "@db/repositories/account";
@@ -63,6 +64,9 @@ export const createCharacter = async (): Promise<Character> => {
 			},
 			trx,
 		);
+		await updatePlayer(player.id, {
+			useIn: character.id,
+		}, trx);
 		console.log("character", character);
 		setStore("session", "account", "player", {
 			id: player.id,

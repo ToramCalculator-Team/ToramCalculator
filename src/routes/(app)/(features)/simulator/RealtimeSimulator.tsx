@@ -92,7 +92,6 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 			simulator: props.simulatorData,
 			runtimeSelection: {
 				primaryMemberId: props.simulatorData.campA[0].members[0].id,
-				activeCharacterId: props.simulatorData.campA[0].members[0].player?.characters[0]?.id ?? "",
 			},
 		});
 		await engine.setRuntimeConfig(createRealtimeConfig());

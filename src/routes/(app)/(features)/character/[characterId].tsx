@@ -206,7 +206,6 @@ export default function CharactePage() {
 					mercenaryId: null,
 					mobId: null,
 					mobDifficultyFlag: "Normal",
-					actions: null,
 					belongToTeamId: teamAId,
 					player,
 					partner: null,
@@ -247,7 +246,6 @@ export default function CharactePage() {
 					},
 					runtimeSelection: {
 						primaryMemberId: memberId,
-						activeCharacterId: currentCharacter.id ?? "",
 					},
 				};
 				try {
