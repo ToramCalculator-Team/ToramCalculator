@@ -74,12 +74,12 @@ export function Select(props: SelectProps) {
 			<button
 				type="button"
 				onClick={() => !props.disabled && setIsOpen(!isOpen())}
-				class={`${!props.styleLess && "border-dividing-color border"} text-main-text-color flex w-full items-center justify-between rounded-md p-1 ${
+				class={`${!props.styleLess && "border-dividing-color border p-1"} text-main-text-color flex w-full items-center justify-between rounded-md ${
 					props.disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
 				}`}
 			>
 				<div
-					class={`${!props.styleLess && "bg-area-color rounded-md"} flex h-12 w-full items-center justify-between px-2 ${props.textCenter ? "justify-center" : "justify-between"}`}
+					class={`${!props.styleLess && "bg-area-color rounded-md px-2"} flex h-12 w-full items-center justify-between ${props.textCenter ? "justify-center" : "justify-between"}`}
 				>
 					<Show
 						when={hasOptionGenerator}

@@ -398,7 +398,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 													position: "absolute",
 													transform: `translateY(${virtualRow.start}px)`,
 													"border-bottom": "1px solid transparent",
-													"border-image": "repeating-linear-gradient(to right, var(--color-dividing-color) 0 6px, transparent 6px 12px) 1",
+													"border-image": "repeating-linear-gradient(to right, var(--color-dividing-color) 0 3px, transparent 3px 6px) 1",
 												}}
 												onPointerDown={handleRowPointerDown}
 												onClick={(e) => handleRowClick(primaryKey, e)}

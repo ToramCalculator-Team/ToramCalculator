@@ -14,6 +14,7 @@ const NavBtn = (props: {
 		btnName: string;
 		icon: JSX.Element;
 		url: string;
+		activeKey?: string;
 	};
 	active: (path: string) => string;
 	class?: string;
@@ -29,7 +30,7 @@ const NavBtn = (props: {
 			}
 		>
 			<div
-				class={`iconArea rounded-full p-3 lg:px-4 lg:py-1 ${props.active(props.config.url)} group-hover:bg-area-color group-focus:bg-area-color lg:group-hover:bg-brand-color-1st lg:group-focus:bg-brand-color-1st`}
+				class={`iconArea rounded-full p-3 lg:px-4 lg:py-1 ${props.active(props.config.activeKey ?? props.config.url)} group-hover:bg-area-color group-focus:bg-area-color lg:group-hover:bg-brand-color-1st lg:group-focus:bg-brand-color-1st`}
 			>
 				{props.config.icon}
 			</div>
@@ -59,6 +60,7 @@ export const Nav = () => {
 		}
 		return condition ? "bg-area-color lg:bg-brand-color-1st" : "";
 	};
+	
 	const _navHiddenTables: (keyof DB)[] = [
 		"verification_token",
 		"account",
@@ -157,9 +159,10 @@ export const Nav = () => {
 						/>
 						<NavBtn
 							config={{
-								btnName: dictionary().db.mob.selfName,
+								btnName: "wiki",
 								icon: <Icons.Outline.Calendar />,
 								url: "/wiki/mob",
+								activeKey: "wiki",
 							}}
 							active={active}
 							class="Home landscape:hidden"

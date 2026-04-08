@@ -408,8 +408,8 @@ export const DATA_CONFIG: DataConfig = {
 					accessorFn: (row) => row.name,
 					cell: (info) => info.getValue(),
 					size: {
-						"zh-CN": 180,
-						"zh-TW": 180,
+						"zh-CN": 200,
+						"zh-TW": 200,
 						ja: 260,
 						en: 260,
 					}[store.settings.userInterface.language],
