@@ -1,0 +1,146 @@
+{
+  "Colors": {
+    "Accent": {
+      "value": "{Brand.brown}",
+      "type": "color",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "Primary": {
+      "value": "{white}",
+      "type": "color",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "Brand-4th": {
+      "value": "{Brand.navyBlue}",
+      "type": "color",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "Brand-1st": {
+      "value": "{Brand.greenBlue}",
+      "type": "color",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "Brand-2nd": {
+      "value": "{Brand.yellow}",
+      "type": "color",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "Brand-3rd": {
+      "value": "{Brand.orange}",
+      "type": "color",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "Area": {
+      "value": "{Brand.navyBlue-8}",
+      "type": "color",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "Dividing": {
+      "value": "{Brand.navyBlue-20}",
+      "type": "color",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "MainContent": {
+      "value": "{Brand.brown-70}",
+      "type": "color",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "Broundary": {
+      "value": "{Brand.brown-55}",
+      "type": "color",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    }
+  },
+  "Sizes": {
+    "圆角0": {
+      "value": 0,
+      "type": "number",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "圆角4": {
+      "value": 4,
+      "type": "number",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "圆角12": {
+      "value": 12,
+      "type": "number",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "圆角8": {
+      "value": 8,
+      "type": "number",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    }
+  }
+}

@@ -9,7 +9,7 @@
   "scope": "/",
   "start_url": "/",
   "description": "一个简单的托拉姆数值计算器：角色配置、连击计算等",
-  "display_override": ["standalone", "minimal-ui","window-controls-overlay"],
+  "display_override": ["window-controls-overlay", "fullscreen", "standalone"],
   "prefer_related_applications": true,
   "screenshots": [
     {

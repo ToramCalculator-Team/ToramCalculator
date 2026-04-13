@@ -23,6 +23,7 @@ import type { Nullable } from "@babylonjs/core/types";
 import { createEffect, createMemo, createSignal, type JSX, onCleanup, onMount } from "solid-js";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { store } from "~/store";
+import { resolveColorSystem } from "~/styles/colorSystem/colorSystemController";
 import "@babylonjs/core/Rendering/depthRendererSceneComponent";
 import { SpotLight } from "@babylonjs/core/Lights/spotLight";
 import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
@@ -229,31 +230,6 @@ function isPBRMaterial(mat: Nullable<Material>): mat is PBRMaterial {
 	return mat !== null && mat.getClassName() === "PBRMaterial";
 }
 
-/**
- * 将RGB数组转换为BabylonJS的Color3对象
- */
-const rgb2Bcolor3 = (c: number[]) => new Color3(c[0] / 255, c[1] / 255, c[2] / 255);
-
-// ==================== 常量定义 ====================
-// 主题色定义
-const cssColors = {
-	white: [255, 255, 255],
-	geryWhite: [200, 200, 200],
-	grey: [55, 55, 55],
-	black: [0, 0, 0],
-	brown: [47, 26, 73],
-	navyBlue: [105, 145, 214],
-	greenBlue: [149, 207, 213],
-	yellow: [255, 166, 60],
-	orange: [253, 126, 80],
-	water: [0, 140, 229],
-	fire: [233, 62, 38],
-	earth: [255, 151, 54],
-	wind: [0, 143, 84],
-	light: [248, 193, 56],
-	dark: [141, 56, 240],
-};
-
 // 旋转动画定义
 const yRot = new Animation("yRot", "rotation.y", 1, Animation.ANIMATIONTYPE_FLOAT, Animation.ANIMATIONLOOPMODE_CYCLE);
 yRot.setKeys([
@@ -261,31 +237,17 @@ yRot.setKeys([
 	{ frame: 96, value: 2 * Math.PI },
 ]);
 
+// ==================== 常量定义 ====================
+// 主题色事实源已迁移到独立颜色系统；Babylon 侧只消费生成后的中立颜色投影。
+
 // ==================== 主组件 ====================
 export function BabylonBg(): JSX.Element {
 	// ==================== 状态管理 ====================
 	// 主题色计算
-	const themeColors = createMemo(
-		() =>
-			({
-				light: {
-					accent: rgb2Bcolor3(cssColors.brown),
-					primary: rgb2Bcolor3(cssColors.white),
-					transition: rgb2Bcolor3(cssColors.navyBlue),
-					brand_1st: rgb2Bcolor3(cssColors.greenBlue),
-					brand_2nd: rgb2Bcolor3(cssColors.yellow),
-					brand_3rd: rgb2Bcolor3(cssColors.orange),
-				},
-				dark: {
-					accent: rgb2Bcolor3(cssColors.white),
-					primary: rgb2Bcolor3(cssColors.grey),
-					transition: rgb2Bcolor3(cssColors.navyBlue),
-					brand_1st: rgb2Bcolor3(cssColors.greenBlue),
-					brand_2nd: rgb2Bcolor3(cssColors.yellow),
-					brand_3rd: rgb2Bcolor3(cssColors.orange),
-				},
-			})[store.settings.userInterface.theme],
+	const colorSystem = createMemo(() =>
+		resolveColorSystem(store.settings.userInterface.theme, store.settings.userInterface.themeVersion),
 	);
+	const themePrimaryColor = createMemo(() => new Color3(...colorSystem().colors.semantic.primary.rgb01));
 
 	// 加载状态
 	const [loaderState, setLoaderState] = createSignal(false);
@@ -308,6 +270,16 @@ export function BabylonBg(): JSX.Element {
 			camera.beta -= event.movementY / 100000;
 		}
 	};
+	const handleMouseMove = (event: MouseEvent) => {
+		if (camera) {
+			cameraControl(event, camera);
+		}
+	};
+	const handleResize = () => {
+		if (engine) {
+			engine.resize();
+		}
+	};
 
 	// ==================== 生命周期 ====================
 	onMount(() => {
@@ -323,7 +295,7 @@ export function BabylonBg(): JSX.Element {
 		// 初始化场景
 		scene = new Scene(engine);
 		scene.clearColor = new Color4(1, 1, 1, 1);
-		scene.ambientColor = themeColors().primary;
+		scene.ambientColor = themePrimaryColor();
 
 		// 初始化相机
 		camera = new ArcRotateCamera("Camera", 1.58, 1.6, 3.12, new Vector3(0, 0.43, 0), scene);
@@ -456,7 +428,7 @@ export function BabylonBg(): JSX.Element {
 			}
 			if (isPBRMaterial(defaultMat)) {
 				defPBR = defaultMat;
-				defPBR.albedoColor = themeColors().primary;
+				defPBR.albedoColor = themePrimaryColor();
 				defPBR.ambientColor = new Color3(0.008, 0.01, 0.01);
 			}
 
@@ -465,7 +437,7 @@ export function BabylonBg(): JSX.Element {
 			if (mat) {
 				mat.center = new Vector3(0, 0, -6);
 				mat.isEnabled = true;
-				mat.color = themeColors().primary;
+				mat.color = themePrimaryColor();
 				mat.radius = 8;
 				mat.density = 0.5;
 			}
@@ -486,10 +458,16 @@ export function BabylonBg(): JSX.Element {
 			engine.runRenderLoop(() => {
 				// 同步材质颜色
 				if (defPBR) {
-					const currentColor = themeColors().primary;
+					const currentColor = themePrimaryColor();
 					if (!defPBR.albedoColor.equals(currentColor)) {
 						defPBR.albedoColor = currentColor;
 						defPBR.markAsDirty(Material.TextureDirtyFlag);
+					}
+					const volumetricFog = defPBR.pluginManager?.getPlugin(
+						"VolumetricFog",
+					) as VolumetricFogPluginMaterial | undefined | null;
+					if (volumetricFog && !volumetricFog.color.equals(currentColor)) {
+						volumetricFog.color = currentColor;
 					}
 				}
 				scene.render();
@@ -498,21 +476,25 @@ export function BabylonBg(): JSX.Element {
 		});
 
 		// 注册事件监听
-		window.addEventListener("mousemove", (e) => cameraControl(e, camera));
-		window.addEventListener("resize", () => engine.resize());
+		window.addEventListener("mousemove", handleMouseMove);
+		window.addEventListener("resize", handleResize);
 	});
 
 	// 主题色变化响应
 	createEffect(() => {
-		scene.ambientColor = themeColors().primary;
+		if (!scene) {
+			return;
+		}
+
+		scene.ambientColor = themePrimaryColor();
 	});
 
 	// 清理
 	onCleanup(() => {
-		scene.dispose();
-		engine.dispose();
-		window.removeEventListener("mousemove", (e) => cameraControl(e, camera));
-		window.removeEventListener("resize", () => engine.resize());
+		scene?.dispose();
+		engine?.dispose();
+		window.removeEventListener("mousemove", handleMouseMove);
+		window.removeEventListener("resize", handleResize);
 		console.log("内存已清理");
 	});
 

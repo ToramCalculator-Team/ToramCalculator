@@ -6,6 +6,7 @@ import { Scene } from "@babylonjs/core/scene";
 import { createEffect, createMemo, createSignal, type JSX, onCleanup, onMount } from "solid-js";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { store } from "~/store";
+import { resolveColorSystem } from "~/styles/colorSystem/colorSystemController";
 import "@babylonjs/core/Rendering/depthRendererSceneComponent";
 import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
 import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
@@ -105,48 +106,15 @@ class FogOfWarPluginMaterial extends MaterialPluginBase {
 }
 
 // ----------------------------------------预设内容-----------------------------------
-// 主题是定义
-const cssColors = {
-	white: [255, 255, 255],
-	geryWhite: [200, 200, 200],
-	grey: [55, 55, 55],
-	black: [0, 0, 0],
-	brown: [47, 26, 73],
-	navyBlue: [105, 145, 214],
-	greenBlue: [149, 207, 213],
-	yellow: [255, 166, 60],
-	orange: [253, 126, 80],
-	water: [0, 140, 229],
-	fire: [233, 62, 38],
-	earth: [255, 151, 54],
-	wind: [0, 143, 84],
-	light: [248, 193, 56],
-	dark: [141, 56, 240],
-};
-const rgb2Bcolor3 = (c: number[]) => new Color3(c[0] / 255, c[1] / 255, c[2] / 255);
+// 主题色事实源已迁移到独立颜色系统；Babylon 侧只消费生成后的中立颜色投影。
 
 export function BabylonBg(): JSX.Element {
-	const themeColors = createMemo(
-		() =>
-			({
-				light: {
-					accent: rgb2Bcolor3(cssColors.brown),
-					primary: rgb2Bcolor3(cssColors.white),
-					transition: rgb2Bcolor3(cssColors.navyBlue),
-					brand_1st: rgb2Bcolor3(cssColors.greenBlue),
-					brand_2nd: rgb2Bcolor3(cssColors.yellow),
-					brand_3rd: rgb2Bcolor3(cssColors.orange),
-				},
-				dark: {
-					accent: rgb2Bcolor3(cssColors.white),
-					primary: rgb2Bcolor3(cssColors.grey),
-					transition: rgb2Bcolor3(cssColors.navyBlue),
-					brand_1st: rgb2Bcolor3(cssColors.greenBlue),
-					brand_2nd: rgb2Bcolor3(cssColors.yellow),
-					brand_3rd: rgb2Bcolor3(cssColors.orange),
-				},
-			})[store.settings.userInterface.theme],
+	// 主题色计算
+	const colorSystem = createMemo(() =>
+		resolveColorSystem(store.settings.userInterface.theme, store.settings.userInterface.themeVersion),
 	);
+	// 颜色系统输出的是中立投影，这里只做 Babylon Color3 运行时适配
+	const themePrimaryColor = createMemo(() => new Color3(...colorSystem().colors.semantic.primary.rgb01));
 	// 场景渲染状态代替图片加载状态
 	const [loaderState, setLoaderState] = createSignal(false);
 	// 模型加载进度展示标签引用
@@ -309,6 +277,21 @@ export function BabylonBg(): JSX.Element {
 		if (activeKeys.has("a")) moveInput.x += 1;
 		if (activeKeys.has("d")) moveInput.x -= 1;
 	};
+	const handleMouseMove = (event: MouseEvent) => {
+		if (camera) {
+			cameraMouseControl(event, camera);
+		}
+	};
+	const handleKeyDown = (event: KeyboardEvent) => {
+		if (camera) {
+			cameraKeyboardControl(event, camera);
+		}
+	};
+	const handleResize = () => {
+		if (engine) {
+			engine.resize();
+		}
+	};
 
 	// 测试模式配置函数
 	function testModelOpen() {
@@ -338,7 +321,7 @@ export function BabylonBg(): JSX.Element {
 		scene = new Scene(engine);
 		scene.clearColor = new Color4(1, 1, 1, 1);
 		createEffect(() => {
-			scene.ambientColor = themeColors().primary;
+			scene.ambientColor = themePrimaryColor();
 		});
 		// 雾
 		scene.fogMode = Scene.FOGMODE_EXP2;
@@ -586,19 +569,19 @@ export function BabylonBg(): JSX.Element {
 			updateCameraMovement(camera);
 		});
 
-		window.addEventListener("mousemove", (e: MouseEvent) => cameraMouseControl(e, camera));
-		window.addEventListener("keydown", (e: KeyboardEvent) => cameraKeyboardControl(e, camera));
+		window.addEventListener("mousemove", handleMouseMove);
+		window.addEventListener("keydown", handleKeyDown);
 		window.addEventListener("keyup", handleKeyUp);
-		window.addEventListener("resize", () => engine.resize());
+		window.addEventListener("resize", handleResize);
 	});
 
 	onCleanup(() => {
-		scene.dispose();
-		engine.dispose();
-		window.removeEventListener("mousemove", (e: MouseEvent) => cameraMouseControl(e, camera));
-		window.removeEventListener("keydown", (e: KeyboardEvent) => cameraKeyboardControl(e, camera));
+		scene?.dispose();
+		engine?.dispose();
+		window.removeEventListener("mousemove", handleMouseMove);
+		window.removeEventListener("keydown", handleKeyDown);
 		window.removeEventListener("keyup", handleKeyUp);
-		window.removeEventListener("resize", () => engine.resize());
+		window.removeEventListener("resize", handleResize);
 		console.log("内存已清理");
 	});
 

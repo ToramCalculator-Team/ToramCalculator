@@ -377,6 +377,13 @@ const dictionary: Dictionary = {
 					title: "颜色模式",
 					description: "只有普普通通的白天模式和黑暗模式",
 				},
+				themeVersion: {
+					title: "颜色版本",
+					description: "选择当前颜色系统使用的风格版本。",
+					v1: "v1",
+					v2: "v2",
+					v3: "v3",
+				},
 			},
 			language: {
 				title: "语言偏好",

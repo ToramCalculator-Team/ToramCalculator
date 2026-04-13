@@ -137,7 +137,7 @@ export default function IndexPage() {
 			}
 
 			if (fullscreenElement.requestFullscreen) {
-				await fullscreenElement.requestFullscreen();
+				await fullscreenElement.requestFullscreen({ navigationUI: "hide" });
 			} else {
 				await fullscreenElement.webkitRequestFullscreen?.();
 			}

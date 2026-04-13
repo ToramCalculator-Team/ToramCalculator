@@ -369,6 +369,13 @@ const dictionary: Dictionary = {
 					title: "主題色",
 					description: "只有普普通通的白天模式和黑暗模式",
 				},
+				themeVersion: {
+					title: "顏色版本",
+					description: "選擇目前顏色系統使用的風格版本。",
+					v1: "v1",
+					v2: "v2",
+					v3: "v3",
+				},
 				isAnimationEnabled: {
 					title: "是否開啟動畫",
 					description: "將影響所有頁面的過渡和動畫效果持續時間。",

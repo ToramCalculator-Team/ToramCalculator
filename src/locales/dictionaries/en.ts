@@ -377,6 +377,13 @@ const dictionary: Dictionary = {
 					title: "Color Theme",
 					description: "...",
 				},
+				themeVersion: {
+					title: "Theme Version",
+					description: "Choose which token version drives the current color system.",
+					v1: "v1",
+					v2: "v2",
+					v3: "v3",
+				},
 			},
 			language: {
 				title: "Language",

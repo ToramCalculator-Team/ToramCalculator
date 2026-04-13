@@ -16,6 +16,7 @@ import { MediaProvider } from "~/contexts/Media-component";
 import { EngineProvider } from "~/lib/engine/core/thread/EngineContext";
 import { ensureLocalAccount } from "~/lib/localAccount";
 import { setStore, store } from "~/store";
+import { applyColorSystem } from "~/styles/colorSystem/colorSystemController";
 
 export default function AppMainContet(props: ParentProps) {
 	// 热键
@@ -58,15 +59,17 @@ export default function AppMainContet(props: ParentProps) {
 		setStore("settings", "userInterface", "isAnimationEnabled", true);
 	};
 
-	// 主题切换时
+	// 主题切换
 	createEffect(
 		on(
-			() => store.settings.userInterface.theme,
-			() => {
+			() => [store.settings.userInterface.theme, store.settings.userInterface.themeVersion] as const,
+			([theme, themeVersion]) => {
 				console.log("主题切换");
 				disableTransition();
-				document.documentElement.classList.remove("light", "dark");
-				document.documentElement.classList.add(store.settings.userInterface.theme);
+				applyColorSystem({
+					mode: theme,
+					version: themeVersion,
+				});
 				setTimeout(() => {
 					enableTransition();
 				}, 1);

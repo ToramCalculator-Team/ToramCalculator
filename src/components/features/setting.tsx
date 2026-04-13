@@ -215,6 +215,35 @@ export const Setting = () => {
 												),
 											},
 											{
+												title: dictionary().ui.settings.userInterface.themeVersion.title,
+												description: dictionary().ui.settings.userInterface.themeVersion.description,
+												children: (
+													<div class="Selector flex flex-col">
+														<Radio
+															name="v1"
+															checked={store.settings.userInterface.themeVersion === "v1"}
+															onClick={() => setStore("settings", "userInterface", "themeVersion", "v1")}
+														>
+															{dictionary().ui.settings.userInterface.themeVersion.v1}
+														</Radio>
+														<Radio
+															name="v2"
+															checked={store.settings.userInterface.themeVersion === "v2"}
+															onClick={() => setStore("settings", "userInterface", "themeVersion", "v2")}
+														>
+															{dictionary().ui.settings.userInterface.themeVersion.v2}
+														</Radio>
+														<Radio
+															name="v3"
+															checked={store.settings.userInterface.themeVersion === "v3"}
+															onClick={() => setStore("settings", "userInterface", "themeVersion", "v3")}
+														>
+															{dictionary().ui.settings.userInterface.themeVersion.v3}
+														</Radio>
+													</div>
+												),
+											},
+											{
 												title: dictionary().ui.settings.userInterface.isAnimationEnabled.title,
 												description: dictionary().ui.settings.userInterface.isAnimationEnabled.description,
 												children: (

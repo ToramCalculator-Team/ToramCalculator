@@ -378,6 +378,13 @@ const dictionary: Dictionary = {
 					title: "色のテーマ",
 					description: "普通の白天と黒夜しかありません。",
 				},
+				themeVersion: {
+					title: "テーマバージョン",
+					description: "現在の色システムで使うトークンの版を選択します。",
+					v1: "v1",
+					v2: "v2",
+					v3: "v3",
+				},
 			},
 			language: {
 				title: "言語",

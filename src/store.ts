@@ -49,6 +49,8 @@ type SettingsState = {
 	userInterface: {
 		/** 主题 */
 		theme: "light" | "dark";
+		/** 颜色版本 */
+		themeVersion: "v1" | "v2" | "v3";
 		/** 语言 */
 		language: Locale;
 		/** 是否启用动画 */
@@ -140,8 +142,8 @@ export type Store = {
 	pages: PageState;
 };
 
-const initialStore: Store = {
-	version: 20251009,
+export const initialStore: Store = {
+	version: 20260413,
 	database: {
 		inited: false,
 		tableSyncState: {
@@ -157,6 +159,7 @@ const initialStore: Store = {
 	settings: {
 		userInterface: {
 			theme: "light",
+			themeVersion: "v2",
 			language: "zh-CN",
 			isAnimationEnabled: true,
 			is3DbackgroundDisabled: false,
@@ -305,5 +308,5 @@ export const getActStore = () => {
 	return initialStore;
 };
 
-const [store, setStore] = createStore<Store>(getActStore());
+const [store, setStore] = createStore<Store>(initialStore);
 export { store, setStore };

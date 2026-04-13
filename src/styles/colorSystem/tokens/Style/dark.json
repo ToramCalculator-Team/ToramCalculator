@@ -1,0 +1,146 @@
+{
+  "Colors": {
+    "Accent": {
+      "value": "{white}",
+      "type": "color",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "Primary": {
+      "value": "{grey}",
+      "type": "color",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "Brand-4th": {
+      "value": "{Brand.navyBlue}",
+      "type": "color",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "Brand-1st": {
+      "value": "{Brand.greenBlue}",
+      "type": "color",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "Brand-2nd": {
+      "value": "{Brand.yellow}",
+      "type": "color",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "Brand-3rd": {
+      "value": "{Brand.orange}",
+      "type": "color",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "Area": {
+      "value": "#ffffff0d",
+      "type": "color",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "Dividing": {
+      "value": "#ffffff4d",
+      "type": "color",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "MainContent": {
+      "value": "#ffffffcc",
+      "type": "color",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "Broundary": {
+      "value": "#ffffff99",
+      "type": "color",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    }
+  },
+  "Sizes": {
+    "圆角0": {
+      "value": 0,
+      "type": "number",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "圆角4": {
+      "value": 4,
+      "type": "number",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "圆角12": {
+      "value": 12,
+      "type": "number",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    },
+    "圆角8": {
+      "value": 8,
+      "type": "number",
+      "$extensions": {
+        "com.figma.scopes": [
+          "ALL_SCOPES"
+        ],
+        "com.figma.hiddenFromPublishing": false
+      }
+    }
+  }
+}

@@ -5,8 +5,8 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { Scene } from "@babylonjs/core/scene";
 import { createEffect, createMemo, createSignal, type JSX, onCleanup, onMount } from "solid-js";
 import { createLogger } from "~/lib/Logger";
-import { getCssColorRgb } from "~/lib/utils/color";
 import { store } from "~/store";
+import { resolveColorSystem } from "~/styles/colorSystem/colorSystemController";
 import "@babylonjs/core/Rendering/depthRendererSceneComponent";
 import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
 import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
@@ -29,14 +29,11 @@ import { SolidParticleSystem } from "@babylonjs/core/Particles/solidParticleSyst
 import { LensRenderingPipeline } from "@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/lensRenderingPipeline";
 import type { Nullable } from "@babylonjs/core/types";
 import { useEngine } from "../core/thread/EngineContext";
+import type { SimulationEngine } from "../core/thread/SimulationEngine";
 import { rendererCommunication } from "./RendererCommunication";
 import { createRendererController } from "./RendererController";
 import type { EntityId, RendererCmd } from "./RendererProtocol";
-import {
-	createThirdPersonController,
-	type ThirdPersonCameraController,
-} from "./ThirdPersonCameraController";
-import type { SimulationEngine } from "../core/thread/SimulationEngine";
+import { createThirdPersonController, type ThirdPersonCameraController } from "./ThirdPersonCameraController";
 
 const log = createLogger("Renderer");
 
@@ -235,52 +232,21 @@ function isPBRMaterial(mat: Nullable<Material>): mat is PBRMaterial {
 	return mat !== null && mat.getClassName() === "PBRMaterial";
 }
 
-// ==================== CSS 颜色定义 ====================
-const cssColors = {
-	white: getCssColorRgb("--white"),
-	grey: getCssColorRgb("--grey"),
-	black: getCssColorRgb("--black"),
-	brown: getCssColorRgb("--brown"),
-	navyBlue: getCssColorRgb("--navyBlue"),
-	greenBlue: getCssColorRgb("--greenBlue"),
-	yellow: getCssColorRgb("--yellow"),
-	orange: getCssColorRgb("--orange"),
-	water: getCssColorRgb("--water"),
-	fire: getCssColorRgb("--fire"),
-	earth: getCssColorRgb("--earth"),
-	wind: getCssColorRgb("--wind"),
-	light: getCssColorRgb("--light"),
-	dark: getCssColorRgb("--dark"),
-};
-// ==================== 颜色归一化 ====================
-const rgb2Bcolor3 = (c: number[]) => new Color3(c[0] / 255, c[1] / 255, c[2] / 255);
+// ==================== 颜色来源 ====================
+// 旧实现从 CSS 变量反查颜色；现在直接消费独立颜色系统输出的中立颜色投影。
+// Babylon 侧只在最后一步把 `rgb01` 适配成 `Color3`，不再维护本地色表。
 
 export function GameView(props: { followEntityId?: EntityId; engine?: SimulationEngine | null }): JSX.Element {
 	const { defaultEngine } = useEngine();
 	const simulationEngine = () => props.engine ?? defaultEngine();
 	const [loaderState, setLoaderState] = createSignal(false);
 
-	const themeColors = createMemo(
-		() =>
-			({
-				light: {
-					accent: rgb2Bcolor3(cssColors.brown),
-					primary: rgb2Bcolor3(cssColors.white),
-					transition: rgb2Bcolor3(cssColors.navyBlue),
-					brand_1st: rgb2Bcolor3(cssColors.greenBlue),
-					brand_2nd: rgb2Bcolor3(cssColors.yellow),
-					brand_3rd: rgb2Bcolor3(cssColors.orange),
-				},
-				dark: {
-					accent: rgb2Bcolor3(cssColors.white),
-					primary: rgb2Bcolor3(cssColors.grey),
-					transition: rgb2Bcolor3(cssColors.navyBlue),
-					brand_1st: rgb2Bcolor3(cssColors.greenBlue),
-					brand_2nd: rgb2Bcolor3(cssColors.yellow),
-					brand_3rd: rgb2Bcolor3(cssColors.orange),
-				},
-			})[store.settings.userInterface.theme],
+	// 主题色计算
+	const colorSystem = createMemo(() =>
+		resolveColorSystem(store.settings.userInterface.theme, store.settings.userInterface.themeVersion),
 	);
+	// 颜色系统输出的是中立投影，这里只做 Babylon Color3 运行时适配
+	const themePrimaryColor = createMemo(() => new Color3(...colorSystem().colors.semantic.primary.rgb01));
 
 	// ==================== DOM 引用 ====================
 	const [canvasRef, setCanvasRef] = createSignal<HTMLCanvasElement | undefined>(undefined);
@@ -408,11 +374,16 @@ export function GameView(props: { followEntityId?: EntityId; engine?: Simulation
 		scene = new Scene(engine);
 		scene.clearColor = new Color4(1, 1, 1, 1);
 		createEffect(() => {
-			scene.ambientColor = themeColors().primary;
+			scene.ambientColor = themePrimaryColor();
 		});
 
 		// 3. 初始化渲染控制器
 		rendererController = createRendererController(scene);
+
+		RegisterMaterialPlugin("VolumetricFog", (material) => {
+			material.volumetricFog = new VolumetricFogPluginMaterial(material);
+			return material.volumetricFog;
+		});
 
 		// 4. 加载模型
 		await AppendSceneAsync("/models/bg.glb", scene);
@@ -424,7 +395,7 @@ export function GameView(props: { followEntityId?: EntityId; engine?: Simulation
 		}
 		if (isPBRMaterial(defaultMat)) {
 			defPBR = defaultMat;
-			defPBR.albedoColor = themeColors().primary;
+			defPBR.albedoColor = themePrimaryColor();
 			defPBR.ambientColor = new Color3(0.008, 0.01, 0.01);
 		}
 
@@ -433,16 +404,10 @@ export function GameView(props: { followEntityId?: EntityId; engine?: Simulation
 		if (mat) {
 			mat.center = new Vector3(0, 0, -6);
 			mat.isEnabled = true;
-			mat.color = themeColors().primary;
+			mat.color = themePrimaryColor();
 			mat.radius = 8;
 			mat.density = 0.5;
 		}
-
-		// 注册材质插件
-		RegisterMaterialPlugin("VolumetricFog", (material) => {
-			material.volumetricFog = new VolumetricFogPluginMaterial(material);
-			return material.volumetricFog;
-		});
 
 		// scene.fogMode = Scene.FOGMODE_EXP2;
 		// scene.fogDensity = 0.01;
@@ -551,7 +516,7 @@ export function GameView(props: { followEntityId?: EntityId; engine?: Simulation
 		SPS.addShape(particle, spsNumber);
 		particle.dispose();
 		const spsMesh = SPS.buildMesh();
-		
+
 		spsMesh.receiveShadows = true;
 		shadowGenerator.addShadowCaster(spsMesh, true);
 		if (defPBR) {
@@ -610,10 +575,17 @@ export function GameView(props: { followEntityId?: EntityId; engine?: Simulation
 				thirdPersonController.update(dt);
 				// 同步材质颜色
 				if (defPBR) {
-					const currentColor = themeColors().primary;
+					const currentColor = themePrimaryColor();
 					if (!defPBR.albedoColor.equals(currentColor)) {
 						defPBR.albedoColor = currentColor;
 						defPBR.markAsDirty(Material.TextureDirtyFlag);
+					}
+					const volumetricFog = defPBR.pluginManager?.getPlugin("VolumetricFog") as
+						| VolumetricFogPluginMaterial
+						| undefined
+						| null;
+					if (volumetricFog && !volumetricFog.color.equals(currentColor)) {
+						volumetricFog.color = currentColor;
 					}
 				}
 				scene.render();

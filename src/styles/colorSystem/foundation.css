@@ -1,0 +1,122 @@
+@layer base {
+  * {
+    box-sizing: border-box;
+    transition: all 150ms;
+    outline-width: 2px;
+    outline-color: transparent;
+    outline-style: solid;
+    outline-offset: -2px;
+  }
+
+  html,
+  body {
+    min-height: 100%;
+    margin: 0;
+  }
+
+  body {
+    overflow: hidden;
+  }
+
+  img,
+  picture,
+  video,
+  canvas,
+  svg {
+    display: block;
+    max-width: 100%;
+  }
+
+  .transitionColorNone * {
+    transition: all 0s !important;
+    transition-delay: 0s !important;
+  }
+
+  .transitionNone,
+  .transitionNone * {
+    transition: none !important;
+    transition-delay: 0s !important;
+    animation: none !important;
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+
+  *:focus-visible {
+    outline-color: rgb(var(--brand-1st));
+  }
+
+  /* 交互检测 */
+  
+  /* *:hover {
+    outline-color: rgb(var(--brand-3rd));
+  }
+  
+  *:focus-visible {
+    background-color: red !important;
+    z-index: 9999;
+  } */
+}
+
+@source inline("text-brand-color-1st text-brand-color-2nd text-brand-color-3rd bg-brand-color-1st bg-brand-color-2nd bg-brand-color-3rd");
+
+@plugin '@tailwindcss/typography';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-primary-color-0: rgb(var(--primary) / 0);
+  --color-primary-color-10: rgb(var(--primary) / 0.1);
+  --color-primary-color-30: rgb(var(--primary) / 0.3);
+  --color-primary-color-90: rgb(var(--primary) / 0.9);
+  --color-primary-color: rgb(var(--primary));
+  --color-accent-color: rgb(var(--accent));
+  --color-main-text-color: rgb(var(--main-content));
+  --color-boundary-color: rgb(var(--broundary));
+  --color-area-color: rgb(var(--area));
+  --color-dividing-color: rgb(var(--dividing));
+  --color-brand-color-1st: rgb(var(--brand-1st));
+  --color-brand-color-2nd: rgb(var(--brand-2nd));
+  --color-brand-color-3rd: rgb(var(--brand-3rd));
+  --color-brand-color-4th: rgb(var(--brand-4th));
+  --color-water: rgb(var(--water));
+  --color-fire: rgb(var(--fire));
+  --color-earth: rgb(var(--earth));
+  --color-wind: rgb(var(--wind));
+  --color-light: rgb(var(--light));
+  --color-dark: rgb(var(--dark));
+
+  --radius-*: initial;
+  --radius: var(--radius);
+  --radius-xl: calc(var(--radius) + 8px);
+  --radius-lg: calc(var(--radius) + 4px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-none: 0px;
+  --radius-full: 9999px;
+
+  --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji", "Noto Color Emoji";
+
+  --background-image-aeskl: url("/app-image/bg.jpg");
+
+  --box-shadow-color: rgb(var(--transition));
+
+  --shadow-card: 0 4px 4px 0, 0 4px 16px 0;
+  --shadow-dialog: 0 4px 32px 0;
+}
+
+:root {
+  --transition: var(--brand-4th);
+  --radius: var(--radius-12);
+  --radius: 12px;
+
+  color: rgb(var(--accent));
+  background-color: rgb(var(--primary));
+}
+
+:root[data-theme-mode="dark"] {
+  --transition: var(--black);
+}

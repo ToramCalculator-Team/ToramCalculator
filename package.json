@@ -7,9 +7,10 @@
 		"dev": "vite dev",
 		"start": "PORT=3001 node .output/server/index.mjs",
 
-		"generate": "pnpm generate:inject && pnpm generate:schema",
+		"generate": "pnpm generate:inject && pnpm generate:schema && pnpm generate:colorSystem",
 		"generate:inject": "tsx db/generator/injectEnums.ts",
 		"generate:schema": "prisma generate --schema=db/generated/schema.prisma",
+		"generate:colorSystem": "tsx src/styles/colorSystem/generator/generator.ts",
 
 		"infra:up": "docker compose --env-file .env -f ./backend/docker-compose.yaml up -d",
 		"infra:stop": "docker compose --env-file .env -f ./backend/docker-compose.yaml stop",

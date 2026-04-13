@@ -1,0 +1,62 @@
+{
+  "red": {
+    "value": "#fc482e",
+    "type": "color",
+    "$extensions": {
+      "com.figma.scopes": [
+        "ALL_SCOPES"
+      ],
+      "com.figma.hiddenFromPublishing": false
+    }
+  },
+  "orange": {
+    "value": "#ffa63c",
+    "type": "color",
+    "$extensions": {
+      "com.figma.scopes": [
+        "ALL_SCOPES"
+      ],
+      "com.figma.hiddenFromPublishing": false
+    }
+  },
+  "yellow": {
+    "value": "#ffcd41",
+    "type": "color",
+    "$extensions": {
+      "com.figma.scopes": [
+        "ALL_SCOPES"
+      ],
+      "com.figma.hiddenFromPublishing": false
+    }
+  },
+  "green": {
+    "value": "#00ae60",
+    "type": "color",
+    "$extensions": {
+      "com.figma.scopes": [
+        "ALL_SCOPES"
+      ],
+      "com.figma.hiddenFromPublishing": false
+    }
+  },
+  "blue": {
+    "value": "#0099fb",
+    "type": "color",
+    "$extensions": {
+      "com.figma.scopes": [
+        "ALL_SCOPES"
+      ],
+      "com.figma.hiddenFromPublishing": false
+    }
+  },
+  "purple": {
+    "value": "#9a47fa",
+    "type": "color",
+    "$extensions": {
+      "com.figma.scopes": [
+        "ALL_SCOPES"
+      ],
+      "com.figma.hiddenFromPublishing": false
+    }
+  }
+}

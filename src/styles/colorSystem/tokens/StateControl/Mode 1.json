@@ -1,0 +1,92 @@
+{
+  "连击版块可见性": {
+    "value": "false",
+    "type": "boolean",
+    "$extensions": {
+      "com.figma.scopes": [
+        "ALL_SCOPES"
+      ],
+      "com.figma.hiddenFromPublishing": false
+    }
+  },
+  "能力值版块可见性": {
+    "value": "false",
+    "type": "boolean",
+    "$extensions": {
+      "com.figma.scopes": [
+        "ALL_SCOPES"
+      ],
+      "com.figma.hiddenFromPublishing": false
+    }
+  },
+  "技能版块可见性": {
+    "value": "false",
+    "type": "boolean",
+    "$extensions": {
+      "com.figma.scopes": [
+        "ALL_SCOPES"
+      ],
+      "com.figma.hiddenFromPublishing": false
+    }
+  },
+  "装备版块可见性": {
+    "value": "true",
+    "type": "boolean",
+    "$extensions": {
+      "com.figma.scopes": [
+        "ALL_SCOPES"
+      ],
+      "com.figma.hiddenFromPublishing": false
+    }
+  },
+  "消耗品版块可见性": {
+    "value": "false",
+    "type": "boolean",
+    "$extensions": {
+      "com.figma.scopes": [
+        "ALL_SCOPES"
+      ],
+      "com.figma.hiddenFromPublishing": false
+    }
+  },
+  "料理版块可见性": {
+    "value": "false",
+    "type": "boolean",
+    "$extensions": {
+      "com.figma.scopes": [
+        "ALL_SCOPES"
+      ],
+      "com.figma.hiddenFromPublishing": false
+    }
+  },
+  "雷吉斯托环版块可见性": {
+    "value": "false",
+    "type": "boolean",
+    "$extensions": {
+      "com.figma.scopes": [
+        "ALL_SCOPES"
+      ],
+      "com.figma.hiddenFromPublishing": false
+    }
+  },
+  "基本配置版块可见性": {
+    "value": "false",
+    "type": "boolean",
+    "$extensions": {
+      "com.figma.scopes": [
+        "ALL_SCOPES"
+      ],
+      "com.figma.hiddenFromPublishing": false
+    }
+  },
+  "是light状态吗": {
+    "value": "true",
+    "type": "boolean",
+    "$extensions": {
+      "com.figma.scopes": [
+        "ALL_SCOPES"
+      ],
+      "com.figma.hiddenFromPublishing": false
+    }
+  }
+}
