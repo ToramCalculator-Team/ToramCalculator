@@ -1,6 +1,6 @@
 import { A } from "@solidjs/router";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { createMemo, createResource, createSignal, Index, type JSX, Show } from "solid-js";
+import { createResource, createSignal, Index, type JSX, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { Button } from "~/components/controls/button";
 import { CheckBox } from "~/components/controls/checkBox";
@@ -8,7 +8,7 @@ import { Input, type InputComponentType } from "~/components/controls/input";
 import { Radio } from "~/components/controls/radio";
 import { Toggle } from "~/components/controls/toggle";
 import { Icons } from "~/components/icons/index";
-import { getDictionary } from "~/locales/i18n";
+import { useDictionary } from "~/contexts/Dictionary";
 import { getActStore, setStore, store } from "~/store";
 import { ServiceWorkerManager } from "./swManager";
 
@@ -47,7 +47,7 @@ async function getStorageUsageInfo(): Promise<{
 }
 
 export const Setting = () => {
-	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
+	const dictionary = useDictionary();
 	const [hasInstalled, setHasInstalled] = createSignal(true);
 	const [deferredPrompt, setDeferredPrompt] = createSignal<BeforeInstallPromptEvent | null>(null);
 	const [storageUsageInfo, { mutate: mutateStorageUsageInfo }] = createResource(getStorageUsageInfo);

@@ -38,22 +38,35 @@ import { Button } from "../controls/button";
 import { LoadingBar } from "../controls/loadingBar";
 
 export interface VirtualTableProps<T extends Record<string, unknown>> {
+	// 行高预测
 	measure?: {
 		estimateSize: number;
 	};
+	// 行数据获取器
 	dataFetcher: () => Promise<T[]>;
+	// 主键字段
 	primaryKeyField: string;
+	// 列定义
 	columnsDef: ColumnDef<T>[];
+	// 隐藏列定义
 	hiddenColumnDef: Array<keyof T>;
+	// 单元格渲染器
 	tdGenerator: Partial<{
 		[K in keyof T]: (props: { cell: Cell<T, unknown>; dic: Dic<T> }) => JSX.Element;
 	}>;
+	// 默认排序
 	defaultSort: { id: keyof T; desc: boolean };
+	// 全局过滤字符串
 	globalFilterStr: Accessor<string>;
+	// 字典
 	dictionary: Dic<T>;
+	// 行点击处理
 	rowHandleClick: (id: string) => void;
+	// 列可见性
 	columnVisibility?: VisibilityState;
+	// 列可见性变化处理
 	onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
+	// 重新获取数据处理
 	onRefetch?: (refetch: () => void) => void;
 }
 
@@ -306,7 +319,12 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 					</Motion.div>
 				</Show>
 			</Presence>
-			<OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }} class="w-full h-full" defer>
+			<OverlayScrollbarsComponent
+				element="div"
+				options={{ scrollbars: { autoHide: "scroll" } }}
+				class="w-full h-full"
+				defer
+			>
 				<div class="TableContainer flex h-full flex-col">
 					<div class={`TableHead z-10 flex w-fit`}>
 						<For each={table()?.getHeaderGroups()}>
@@ -358,15 +376,14 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 						ref={setVirtualScrollRef}
 						class="TableBodyContaier h-full min-w-full flex-1"
 						style={{
-							width:
-								`${table()
-									?.getAllColumns()
-									.reduce((acc, col) => {
-										if (props.hiddenColumnDef.includes(col.id as keyof T)) {
-											return acc;
-										}
-										return acc + col.getSize();
-									}, 0)}px`,
+							width: `${table()
+								?.getAllColumns()
+								.reduce((acc, col) => {
+									if (props.hiddenColumnDef.includes(col.id as keyof T)) {
+										return acc;
+									}
+									return acc + col.getSize();
+								}, 0)}px`,
 						}}
 					>
 						<Show
@@ -398,7 +415,8 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 													position: "absolute",
 													transform: `translateY(${virtualRow.start}px)`,
 													"border-bottom": "1px solid transparent",
-													"border-image": "repeating-linear-gradient(to right, var(--color-dividing-color) 0 3px, transparent 3px 6px) 1",
+													"border-image":
+														"repeating-linear-gradient(to right, var(--color-dividing-color) 0 3px, transparent 3px 6px) 1",
 												}}
 												onPointerDown={handleRowPointerDown}
 												onClick={(e) => handleRowClick(primaryKey, e)}

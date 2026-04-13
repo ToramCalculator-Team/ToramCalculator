@@ -13,11 +13,9 @@ import { getActStore, initialStore, setStore, store } from "./store";
 const hasStore = !!localStorage.getItem("store");
 if (hasStore) {
 	// 说明不是初次加载，根据本地配置，修改页面状态
-	console.log("非初次加载，根据本地配置，修改页面状态");
 	setStore(getActStore());
 } else {
 	// 初次加载时使用默认配置
-	console.log("初次加载时使用默认配置");
 	setStore(initialStore);
 	// 添加资源加载动画
 	mount(() => <ResourcesLoader />, document.body);

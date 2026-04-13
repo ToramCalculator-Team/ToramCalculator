@@ -1,11 +1,11 @@
 import type { DB } from "@db/generated/zod";
 import { A, useLocation } from "@solidjs/router";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { createMemo, createSignal, type JSX, useContext } from "solid-js";
+import { createSignal, type JSX, useContext } from "solid-js";
 import { Motion } from "solid-motionone";
 import { Icons } from "~/components/icons/index";
+import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import { Button } from "../controls/button";
 
@@ -47,8 +47,7 @@ const Divider = () => (
 
 export const Nav = () => {
 	const [display, setDisplay] = createSignal(false);
-	// UI文本字典
-	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
+	const dictionary = useDictionary();
 	const media = useContext(MediaContext);
 	const location = useLocation();
 

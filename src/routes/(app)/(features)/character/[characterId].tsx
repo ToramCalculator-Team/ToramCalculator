@@ -53,17 +53,17 @@ import { RangeInput } from "~/components/controls/range";
 import { Select } from "~/components/controls/select";
 import { VirtualTable } from "~/components/dataDisplay/virtualTable";
 import { Icons } from "~/components/icons";
+import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
 import { useEngine } from "~/lib/engine/core/thread/EngineContext";
 import { createPreviewConfig, type EngineScenarioData } from "~/lib/engine/core/types";
 import { StatsRenderer } from "~/lib/engine/core/World/Member/MemberStatusPanel";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import { createCharacter } from "./createCharacter";
+import { EquipmentPanel, type EquipmentSlot } from "./panels/EquipmentPanel";
 
 export default function CharactePage() {
-	// UI文本字典
-	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
+	const dictionary = useDictionary();
 
 	const navigate = useNavigate();
 
@@ -93,79 +93,6 @@ export default function CharactePage() {
 		console.log("character", character);
 		return character;
 	});
-	const [mainWeapon, { refetch: refetchMainWeapon }] = createResource(
-		() => character()?.weaponId,
-		async (id) => {
-			const result = await selectPlayerWeaponById(id);
-			// console.log("selected main weapon", result);
-			return result;
-		},
-	);
-	const [subWeapon, { refetch: refetchSubWeapon }] = createResource(
-		() => character()?.subWeaponId,
-		async (id) => {
-			const result = await selectPlayerWeaponById(id);
-			// console.log("selected sub weapon", result);
-			return result;
-		},
-	);
-	const [armor, { refetch: refetchArmor }] = createResource(
-		() => character()?.armorId,
-		async (id) => {
-			const result = await selectPlayerArmorById(id);
-			// console.log("selected armor", result);
-			return result;
-		},
-	);
-	const [option, { refetch: refetchOption }] = createResource(
-		() => character()?.optionId,
-		async (id) => {
-			const result = await selectPlayerOptionById(id);
-			// console.log("selected option", result);
-			return result;
-		},
-	);
-	const [special, { refetch: refetchSpecial }] = createResource(
-		() => character()?.specialId,
-		async (id) => {
-			const result = await selectPlayerSpecialById(id);
-			// console.log("selected special", result);
-			return result;
-		},
-	);
-	const [skills, { refetch: refetchSkills }] = createResource(
-		() => character()?.id,
-		async (id) => {
-			const result = await selectAllCharacterSkillsByBelongtocharacterid(id);
-			// console.log("selected skills", result);
-			return result;
-		},
-	);
-	const [registlets, { refetch: refetchRegistlets }] = createResource(
-		() => character()?.id,
-		async (id) => {
-			const result = await selectAllCharacterRegistletsByBelongtocharacterid(id);
-			// console.log("selected registlets", result);
-			return result;
-		},
-	);
-	const [consumables, { refetch: refetchConsumables }] = createResource(
-		() => character()?.id,
-		async (id) => {
-			const result = await selectAllConsumablesByCharacterId(id);
-			// console.log("selected consumables", result);
-			return result;
-		},
-	);
-	const [combos, { refetch: refetchCombos }] = createResource(
-		() => character()?.id,
-		async (id) => {
-			const result = await selectAllCombosByBelongtocharacterid(id);
-			// console.log("selected combos", result);
-			return result;
-		},
-	);
-
 	const charactersFinder = (id: string) => selectAllCharactersByBelongtoplayerid(id);
 	const [characters, { refetch: refetchCharacters }] = createResource(
 		() => store.session.account.player?.id ?? "",
@@ -174,6 +101,33 @@ export default function CharactePage() {
 
 	// ==================== 引擎集成 ====================
 	const engine = useEngine();
+	const previewTeamAId = "CHARACTER_PREVIEW_TEAM_A";
+	const previewTeamBId = "CHARACTER_PREVIEW_TEAM_B";
+	const previewMemberId = "CHARACTER_PREVIEW_MEMBER";
+	const previewStatisticId = "CHARACTER_PREVIEW_STATISTIC";
+	const [scenarioLoaded, setScenarioLoaded] = createSignal(false);
+	let rangeUpdateTimer: number | undefined;
+
+	const queueCharacterPatch = (patch: Partial<character>, debounceMs = 200) => {
+		if (rangeUpdateTimer !== undefined) {
+			window.clearTimeout(rangeUpdateTimer);
+		}
+		rangeUpdateTimer = window.setTimeout(() => {
+			rangeUpdateTimer = undefined;
+			void commitCharacterPatch(patch);
+		}, debounceMs);
+	};
+
+	const commitCharacterPatch = async (patch: Partial<character>) => {
+		const current = character();
+		if (!current) return;
+		if (rangeUpdateTimer !== undefined) {
+			window.clearTimeout(rangeUpdateTimer);
+			rangeUpdateTimer = undefined;
+		}
+		await updateCharacter(current.id, patch);
+		await refetchPlayerWithRelations();
+	};
 
 	createEffect(
 		on(
@@ -182,6 +136,7 @@ export default function CharactePage() {
 				playerWithRelations: playerWithRelations(),
 			}),
 			async () => {
+				if (!engine.ready()) return null;
 				console.log("玩家配置发生变化，将更新引擎初始化数据");
 
 				const currentCharacter = character();
@@ -191,13 +146,9 @@ export default function CharactePage() {
 				if (!Array.isArray(player.characters) || player.characters.length === 0) return null;
 
 				const now = new Date().toISOString();
-				const teamAId = "CHARACTER_PREVIEW_TEAM_A";
-				const teamBId = "CHARACTER_PREVIEW_TEAM_B";
-				const memberId = "CHARACTER_PREVIEW_MEMBER";
-				const statisticId = "CHARACTER_PREVIEW_STATISTIC";
 
 				const member: MemberWithRelations = {
-					id: memberId,
+					id: previewMemberId,
 					name: currentCharacter.name ?? "未命名角色",
 					sequence: 0,
 					type: "Player",
@@ -206,7 +157,7 @@ export default function CharactePage() {
 					mercenaryId: null,
 					mobId: null,
 					mobDifficultyFlag: "Normal",
-					belongToTeamId: teamAId,
+					belongToTeamId: previewTeamAId,
 					player,
 					partner: null,
 					mercenary: null,
@@ -214,13 +165,13 @@ export default function CharactePage() {
 				};
 
 				const teamA: TeamWithRelations = {
-					id: teamAId,
+					id: previewTeamAId,
 					name: "CharacterPreviewTeamA",
 					gems: [],
 					members: [member],
 				};
 				const teamB: TeamWithRelations = {
-					id: teamBId,
+					id: previewTeamBId,
 					name: "CharacterPreviewTeamB",
 					gems: [],
 					members: [],
@@ -231,13 +182,13 @@ export default function CharactePage() {
 						id: "CHARACTER_PREVIEW_SIMULATOR",
 						name: "CharacterPreviewSimulator",
 						details: null,
-						statisticId,
+						statisticId: previewStatisticId,
 						updatedByAccountId: null,
 						createdByAccountId: null,
 						campA: [teamA],
 						campB: [teamB],
 						statistic: {
-							id: statisticId,
+							id: previewStatisticId,
 							updatedAt: now,
 							createdAt: now,
 							usageTimestamps: [],
@@ -245,13 +196,20 @@ export default function CharactePage() {
 						},
 					},
 					runtimeSelection: {
-						primaryMemberId: memberId,
+						primaryMemberId: previewMemberId,
 					},
 				};
 				try {
-					console.log("loading scenario", scenario);
-					await engine.loadScenario(scenario);
-					await engine.setRuntimeConfig(createPreviewConfig());
+					if (!scenarioLoaded()) {
+						console.log("loading scenario", scenario);
+						await engine.service.loadScenario(scenario);
+						await engine.service.setRuntimeConfig(createPreviewConfig());
+						await engine.refreshMembers();
+						setScenarioLoaded(true);
+						return;
+					}
+
+					await engine.patchMemberConfig(previewMemberId, member);
 				} catch (error) {
 					console.error("Character 页加载预览场景失败", error);
 				}
@@ -261,7 +219,7 @@ export default function CharactePage() {
 
 	const primaryMember = createMemo(() => {
 		const list = engine.members();
-		const primaryMember = list.find((member) => member.id === "CHARACTER_PREVIEW_MEMBER");
+		const primaryMember = list.find((member) => member.id === previewMemberId);
 		console.log("primaryMember", primaryMember);
 		return primaryMember;
 	});
@@ -271,6 +229,43 @@ export default function CharactePage() {
 	const [dialogVistualTableType, setDialogVistualTableType] = createSignal<keyof DB>("player_weapon");
 	const [operateTarget, setOperateTarget] = createSignal<keyof character>("weaponId");
 	const [globalFilterStr, setGlobalFilterStr] = createSignal("");
+	
+	const equipmentSlotConfig:Record<EquipmentSlot, keyof DB> = {
+		mainHand: "player_weapon",
+		subHand: "player_weapon",
+		armor: "player_armor",
+		additional: "player_option",
+		special: "player_special",
+	};
+
+	const openEquipmentPicker = (slot: EquipmentSlot) => {
+		const tableType = equipmentSlotConfig[slot];
+		const primaryKey = getPrimaryKeys(tableType)[0];
+		if (!primaryKey) return;
+		console.log("tableType", tableType, "primaryKey", primaryKey);
+		setSelectSheetIsOpen(true);
+		setDialogVistualTableType(tableType);
+		setOperateTarget(primaryKey);
+		setSelectSheetTitle(dictionary().db[tableType].selfName);
+	};
+
+	const clearEquipmentSlot = (slot: EquipmentSlot) => {
+		const tableType = equipmentSlotConfig[slot];
+		const primaryKey = getPrimaryKeys(tableType)[0];
+		if (!primaryKey) return;
+		console.log("tableType", tableType, "primaryKey", primaryKey);
+		queueCharacterPatch({
+			[primaryKey]: "",
+		} as Partial<character>);
+	};
+
+	const previewEquipmentItem = (slot: EquipmentSlot, itemId: string) => {
+		const tableType = equipmentSlotConfig[slot];
+		setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+			type: tableType,
+			id: itemId,
+		});
+	};
 
 	const tabs = {
 		combo: { label: dictionary().ui.character.tabs.combo, value: "combo" },
@@ -400,6 +395,9 @@ export default function CharactePage() {
 	});
 
 	onCleanup(() => {
+		if (rangeUpdateTimer !== undefined) {
+			window.clearTimeout(rangeUpdateTimer);
+		}
 		console.log("--CharacterIdPage unmount");
 	});
 
@@ -543,355 +541,18 @@ export default function CharactePage() {
 								>
 									{/* 装备 */}
 									<Show when={activeTab() === "equipment"}>
-										<div class={`flex w-full flex-none gap-3 portrait:flex-wrap landscape:flex-col`}>
-											{/* 主手 */}
-											<section
-												role="application"
-												onClick={() => {
-													const weaponId = character().weaponId;
-													if (weaponId) {
-														setStore("pages", "cardGroup", store.pages.cardGroup.length, {
-															type: "player_weapon",
-															id: weaponId,
-														});
-													}
-												}}
-												onKeyUp={(e) => {
-													if (e.key === "Enter" || e.key === " ") {
-														e.preventDefault();
-														e.stopPropagation();
-													}
-												}}
-												class="MainHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border landscape:w-full landscape:border-b"
-											>
-												<div class="Label px-4 py-3">{dictionary().ui.character.tabs.equipment.mainHand}</div>
-												<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
-													<Show when={mainWeapon()} fallback={<Icons.Spirits iconName="unknown" size={36} />}>
-														{(mainWeapon) => (
-															<>
-																<Icons.Spirits iconName={mainWeapon().type ?? ""} size={36} />
-																{mainWeapon().name}
-															</>
-														)}
-													</Show>
-												</div>
-												<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
-													<Button
-														icon={<Icons.Outline.Category />}
-														level="quaternary"
-														class="rounded-none"
-														onClick={() => {
-															// 打开装备选择器
-															setSelectSheetIsOpen(true);
-															setDialogVistualTableType("player_weapon");
-															setOperateTarget("weaponId");
-															setSelectSheetTitle(dictionary().ui.character.tabs.equipment.mainHand);
-														}}
-													/>
-													<Show
-														when={character().weaponId}
-														fallback={
-															<Button
-																icon={<Icons.Outline.DocmentAdd />}
-																level="quaternary"
-																class="rounded-none rounded-tr"
-															/>
-														}
-													>
-														<Button
-															icon={<Icons.Outline.Trash />}
-															level="quaternary"
-															class="rounded-none rounded-tr"
-															onClick={async () => {
-																await updateCharacter(character().id, {
-																	weaponId: "",
-																});
-																await refetchPlayerWithRelations();
-															}}
-														/>
-													</Show>
-												</button>
-											</section>
-											{/* 副手 */}
-											<section
-												role="application"
-												onClick={() => {
-													const subWeaponId = character().subWeaponId;
-													if (subWeaponId) {
-														setStore("pages", "cardGroup", store.pages.cardGroup.length, {
-															type: "player_weapon",
-															id: subWeaponId,
-														});
-													}
-												}}
-												onKeyUp={(e) => {
-													if (e.key === "Enter" || e.key === " ") {
-														e.preventDefault();
-														e.stopPropagation();
-													}
-												}}
-												class="SubHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border landscape:w-full landscape:border-b"
-											>
-												<div class="Label px-4 py-3">{dictionary().ui.character.tabs.equipment.subHand}</div>
-												<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
-													<Show when={subWeapon()} fallback={<Icons.Spirits iconName="unknown" size={36} />}>
-														{(subWeapon) => (
-															<>
-																<Icons.Spirits iconName={subWeapon().type ?? ""} size={36} />
-																{subWeapon().name}
-															</>
-														)}
-													</Show>
-												</div>
-												<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
-													<Button
-														icon={<Icons.Outline.Category />}
-														level="quaternary"
-														class="rounded-none"
-														onClick={() => {
-															// 打开装备选择器
-															setSelectSheetIsOpen(true);
-															setDialogVistualTableType("player_weapon");
-															setOperateTarget("subWeaponId");
-															setSelectSheetTitle(dictionary().ui.character.tabs.equipment.subHand);
-														}}
-													/>
-													<Show
-														when={character().subWeaponId}
-														fallback={
-															<Button
-																icon={<Icons.Outline.DocmentAdd />}
-																level="quaternary"
-																class="rounded-none rounded-tr"
-															/>
-														}
-													>
-														<Button
-															icon={<Icons.Outline.Trash />}
-															level="quaternary"
-															class="rounded-none rounded-tr"
-															onClick={async () => {
-																await updateCharacter(character().id, {
-																	subWeaponId: "",
-																});
-																await refetchPlayerWithRelations();
-															}}
-														/>
-													</Show>
-												</button>
-											</section>
-											{/* 防具 */}
-											<section
-												role="application"
-												onClick={() => {
-													const armorId = character().armorId;
-													if (armorId) {
-														setStore("pages", "cardGroup", store.pages.cardGroup.length, {
-															type: "player_armor",
-															id: armorId,
-														});
-													}
-												}}
-												onKeyUp={(e) => {
-													if (e.key === "Enter" || e.key === " ") {
-														e.preventDefault();
-														e.stopPropagation();
-													}
-												}}
-												class="Armor  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
-											>
-												<div class="Label px-4 py-3 portrait:hidden">
-													{dictionary().ui.character.tabs.equipment.armor}
-												</div>
-												<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
-													<Show when={armor()} fallback={<Icons.Spirits iconName="unknown" size={36} />}>
-														{(armor) => (
-															<>
-																<Icons.Spirits iconName={armor().ability ?? ""} size={36} />
-																{armor().name}
-															</>
-														)}
-													</Show>
-												</div>
-												<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
-													<Button
-														icon={<Icons.Outline.Category />}
-														level="quaternary"
-														class="rounded-none"
-														onClick={() => {
-															// 打开装备选择器
-															setSelectSheetIsOpen(true);
-															setDialogVistualTableType("player_armor");
-															setOperateTarget("armorId");
-															setSelectSheetTitle(dictionary().ui.character.tabs.equipment.armor);
-														}}
-													/>
-													<Show
-														when={character().armorId}
-														fallback={
-															<Button
-																icon={<Icons.Outline.DocmentAdd />}
-																level="quaternary"
-																class="rounded-none rounded-tr"
-															/>
-														}
-													>
-														<Button
-															icon={<Icons.Outline.Trash />}
-															level="quaternary"
-															class="rounded-none rounded-tr"
-															onClick={async () => {
-																await updateCharacter(character().id, {
-																	armorId: "",
-																});
-																await refetchPlayerWithRelations();
-															}}
-														/>
-													</Show>
-												</button>
-											</section>
-											{/* 追加 */}
-											<section
-												role="application"
-												onClick={() => {
-													const optionId = character().optionId;
-													if (optionId) {
-														setStore("pages", "cardGroup", store.pages.cardGroup.length, {
-															type: "player_option",
-															id: optionId,
-														});
-													}
-												}}
-												onKeyUp={(e) => {
-													if (e.key === "Enter" || e.key === " ") {
-														e.preventDefault();
-														e.stopPropagation();
-													}
-												}}
-												class="OptEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
-											>
-												<div class="Label px-4 py-3 portrait:hidden">
-													{dictionary().ui.character.tabs.equipment.option}
-												</div>
-												<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
-													<Show when={option()} fallback={<Icons.Spirits iconName="unknown" size={36} />}>
-														{(option) => (
-															<>
-																<Icons.Spirits iconName={"option"} size={36} />
-																{option().name}
-															</>
-														)}
-													</Show>
-												</div>
-												<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
-													<Button
-														icon={<Icons.Outline.Category />}
-														level="quaternary"
-														class="rounded-none"
-														onClick={() => {
-															// 打开装备选择器
-															setSelectSheetIsOpen(true);
-															setDialogVistualTableType("player_option");
-															setOperateTarget("optionId");
-															setSelectSheetTitle(dictionary().ui.character.tabs.equipment.option);
-														}}
-													/>
-													<Show
-														when={character().optionId}
-														fallback={
-															<Button
-																icon={<Icons.Outline.DocmentAdd />}
-																level="quaternary"
-																class="rounded-none rounded-tr"
-															/>
-														}
-													>
-														<Button
-															icon={<Icons.Outline.Trash />}
-															level="quaternary"
-															class="rounded-none rounded-tr"
-															onClick={async () => {
-																await updateCharacter(character().id, {
-																	optionId: "",
-																});
-																await refetchPlayerWithRelations();
-															}}
-														/>
-													</Show>
-												</button>
-											</section>
-											{/* 特殊 */}
-											<section
-												role="application"
-												onClick={() => {
-													const specialId = character().specialId;
-													if (specialId) {
-														setStore("pages", "cardGroup", store.pages.cardGroup.length, {
-															type: "player_special",
-															id: specialId,
-														});
-													}
-												}}
-												onKeyUp={(e) => {
-													if (e.key === "Enter" || e.key === " ") {
-														e.preventDefault();
-														e.stopPropagation();
-													}
-												}}
-												class="SpeEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
-											>
-												<div class="Label px-4 py-3 portrait:hidden">
-													{dictionary().ui.character.tabs.equipment.special}
-												</div>
-												<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
-													<Show when={special()} fallback={<Icons.Spirits iconName="unknown" size={36} />}>
-														{(special) => (
-															<>
-																<Icons.Spirits iconName={"special"} size={36} />
-																{special().name}
-															</>
-														)}
-													</Show>
-												</div>
-												<button type="button" onClick={(e) => e.stopPropagation()} class="Function flex flex-none">
-													<Button
-														icon={<Icons.Outline.Category />}
-														level="quaternary"
-														class="rounded-none"
-														onClick={() => {
-															// 打开装备选择器
-															setSelectSheetIsOpen(true);
-															setDialogVistualTableType("player_special");
-															setOperateTarget("specialId");
-															setSelectSheetTitle(dictionary().ui.character.tabs.equipment.special);
-														}}
-													/>
-													<Show
-														when={character().specialId}
-														fallback={
-															<Button
-																icon={<Icons.Outline.DocmentAdd />}
-																level="quaternary"
-																class="rounded-none rounded-tr"
-															/>
-														}
-													>
-														<Button
-															icon={<Icons.Outline.Trash />}
-															level="quaternary"
-															class="rounded-none rounded-tr"
-															onClick={async () => {
-																await updateCharacter(character().id, {
-																	specialId: "",
-																});
-																await refetchPlayerWithRelations();
-															}}
-														/>
-													</Show>
-												</button>
-											</section>
-											{/* 时装 */}
-										</div>
+										<EquipmentPanel
+											slots={{
+												mainHand: character().weapon,
+												subHand: character().subWeapon,
+												armor: character().armor,
+												additional: character().option,
+												special: character().special,
+											}}
+											onPickRequested={openEquipmentPicker}
+											onClearRequested={clearEquipmentSlot}
+											onItemPreviewRequested={previewEquipmentItem}
+										/>
 									</Show>
 
 									{/* 基本配置 */}
@@ -903,10 +564,9 @@ export default function CharactePage() {
 													type="text"
 													value={character().name}
 													onChange={async (e) => {
-														await updateCharacter(character().id, {
+														await commitCharacterPatch({
 															name: e.target.value,
 														});
-														await refetchPlayerWithRelations();
 													}}
 													description="请输入角色名称"
 												/>
@@ -922,10 +582,9 @@ export default function CharactePage() {
 												<RangeInput
 													value={character().lv}
 													setValue={(value) => {
-														updateCharacter(character().id, {
+														queueCharacterPatch({
 															lv: value,
 														});
-														refetchPlayerWithRelations();
 													}}
 													min={1}
 													max={300}
@@ -940,10 +599,9 @@ export default function CharactePage() {
 														<RangeInput
 															value={character().str}
 															setValue={(value) => {
-																updateCharacter(character().id, {
+																queueCharacterPatch({
 																	str: value,
 																});
-																refetchPlayerWithRelations();
 															}}
 															min={1}
 														/>
@@ -953,10 +611,9 @@ export default function CharactePage() {
 														<RangeInput
 															value={character().int}
 															setValue={(value) => {
-																updateCharacter(character().id, {
+																queueCharacterPatch({
 																	int: value,
 																});
-																refetchPlayerWithRelations();
 															}}
 															min={1}
 														/>
@@ -966,10 +623,9 @@ export default function CharactePage() {
 														<RangeInput
 															value={character().vit}
 															setValue={(value) => {
-																updateCharacter(character().id, {
+																queueCharacterPatch({
 																	vit: value,
 																});
-																refetchPlayerWithRelations();
 															}}
 															min={1}
 														/>
@@ -979,10 +635,9 @@ export default function CharactePage() {
 														<RangeInput
 															value={character().agi}
 															setValue={(value) => {
-																updateCharacter(character().id, {
+																queueCharacterPatch({
 																	agi: value,
 																});
-																refetchPlayerWithRelations();
 															}}
 															min={1}
 														/>
@@ -992,10 +647,9 @@ export default function CharactePage() {
 														<RangeInput
 															value={character().dex}
 															setValue={(value) => {
-																updateCharacter(character().id, {
+																queueCharacterPatch({
 																	dex: value,
 																});
-																refetchPlayerWithRelations();
 															}}
 															min={1}
 														/>
@@ -1006,11 +660,10 @@ export default function CharactePage() {
 												<div class="PersonalityTypeLabel">{dictionary().db.character.fields.personalityType.key}</div>
 												<Select
 													value={character().personalityType}
-													setValue={(value) => {
-														updateCharacter(character().id, {
+													setValue={async (value) => {
+														await commitCharacterPatch({
 															personalityType: value as CharacterPersonalityType,
 														});
-														refetchPlayerWithRelations();
 													}}
 													options={[
 														{ label: dictionary().db.character.fields.personalityType.enumMap.None, value: "None" },
@@ -1026,10 +679,9 @@ export default function CharactePage() {
 												<RangeInput
 													value={character().personalityValue}
 													setValue={(value) => {
-														updateCharacter(character().id, {
+														queueCharacterPatch({
 															personalityValue: value,
 														});
-														refetchPlayerWithRelations();
 													}}
 													min={1}
 													max={255}
@@ -1132,12 +784,11 @@ export default function CharactePage() {
 									globalFilterStr,
 									rowHandleClick: async (id) => {
 										console.log("目标数据外键id", id);
-										await updateCharacter(character().id, {
+										await commitCharacterPatch({
 											[operateTarget()]: id,
-										});
+										} as Partial<character>);
 										setGlobalFilterStr("");
 										setSelectSheetIsOpen(false);
-										await refetchPlayerWithRelations();
 									},
 									columnVisibility: {},
 									onColumnVisibilityChange: () => {},

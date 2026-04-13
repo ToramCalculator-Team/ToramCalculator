@@ -5,7 +5,6 @@ import type { DB } from "@db/generated/zod/index";
 import { A, useNavigate, useParams } from "@solidjs/router";
 import {
 	createEffect,
-	createMemo,
 	createSignal,
 	For,
 	type JSX,
@@ -22,16 +21,15 @@ import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { VirtualTable } from "~/components/dataDisplay/virtualTable";
 import { Icons } from "~/components/icons/index";
+import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import { setWikiStore, wikiStore } from "./store";
 import { wikiPageConfig } from "./wikiPage/wikiPageConfig";
 
 export default function WikiSubPage() {
 	const media = useContext(MediaContext);
-	// UI文本字典
-	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
+	const dictionary = useDictionary();
 	// url 参数
 	const params = useParams();
 	const navigate = useNavigate();

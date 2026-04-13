@@ -12,6 +12,7 @@ import { BabylonBg } from "~/components/effects/babylonBg";
 import { RandomBallBackground } from "~/components/effects/randomBg";
 import { LoginDialog } from "~/components/features/loginDialog";
 import { Setting } from "~/components/features/setting";
+import { DictionaryProvider } from "~/contexts/Dictionary";
 import { MediaProvider } from "~/contexts/Media-component";
 import { EngineProvider } from "~/lib/engine/core/thread/EngineContext";
 import { ensureLocalAccount } from "~/lib/localAccount";
@@ -151,7 +152,7 @@ export default function AppMainContet(props: ParentProps) {
 			const getFirstPrimaryKeyValue = <TTableName extends keyof DB>(tableName: TTableName) => {
 				const pk = getPrimaryKeys(tableName)[0];
 				// 生成器约定：主键通常是 string（例如 id），这里显式收敛成 string，避免联合表名导致的索引类型发散
-				return String(defaultData[tableName][pk as keyof typeof defaultData[TTableName]] ?? "");
+				return String(defaultData[tableName][pk as keyof (typeof defaultData)[TTableName]] ?? "");
 			};
 
 			for (const key of Object.keys(repositoryMethods) as Array<keyof DB>) {
@@ -180,22 +181,24 @@ export default function AppMainContet(props: ParentProps) {
 
 	return (
 		<MediaProvider>
-			<EngineProvider>
-				<Show when={store.settings.userInterface.is3DbackgroundDisabled}>
-					<BabylonBg />
-				</Show>
-				<RandomBallBackground />
-				<Motion.div
-					id="AppMainContet"
-					class={`h-full w-full overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
-				>
-					{props.children}
-				</Motion.div>
-				<Setting />
-				<LoginDialog />
-				<CardGroup />
-				<FormGroup />
-			</EngineProvider>
+			<DictionaryProvider>
+				<EngineProvider>
+					<Show when={store.settings.userInterface.is3DbackgroundDisabled}>
+						<BabylonBg />
+					</Show>
+					<RandomBallBackground />
+					<Motion.div
+						id="AppMainContet"
+						class={`h-full w-full overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
+					>
+						{props.children}
+					</Motion.div>
+					<Setting />
+					<LoginDialog />
+					<CardGroup />
+					<FormGroup />
+				</EngineProvider>{" "}
+			</DictionaryProvider>
 		</MediaProvider>
 	);
 }

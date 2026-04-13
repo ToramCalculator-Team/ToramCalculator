@@ -6,6 +6,7 @@ import { createLogger } from "~/lib/Logger";
 import { ModifierType, type StatContainer } from "../../runtime/StatContainer/StatContainer";
 
 const log = createLogger("Prebattle");
+const mathInstance = create(all, { number: "number", matrix: "Array" });
 
 /**
  * PrebattleModifiers
@@ -74,7 +75,6 @@ export function evalAstExpression(code: string, ctx: EvalContext): number {
 	}
 	const node: any = ast.body[0].expression;
 
-	const math = create(all, { number: "number", matrix: "Array" });
 	const scope: Record<string, unknown> = {
 		skill: ctx.skill || { lv: 0 },
 		nullish: (a: unknown, b: unknown) => (a === null || a === undefined ? b : a),
@@ -137,7 +137,7 @@ export function evalAstExpression(code: string, ctx: EvalContext): number {
 	};
 
 	const expr = toExpr(node);
-	const value = math.evaluate(expr, scope) as unknown;
+	const value = mathInstance.evaluate(expr, scope) as unknown;
 	if (typeof value === "number") return value;
 	if (typeof value === "boolean") return value ? 1 : 0;
 	const n = Number(value);
