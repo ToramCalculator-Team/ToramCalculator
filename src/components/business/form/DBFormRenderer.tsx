@@ -377,6 +377,7 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 					<For each={childRelationTableNames()}>
 						{(tableName) => {
 							const data = () => (childRelations()?.[tableName] ?? []) as unknown[];
+							const tableNameLabel = dictionary().db[tableName as keyof DB].selfName?.length > 0 ? dictionary().db[tableName as keyof DB].selfName : tableName;
 							return (
 								<div class="Field flex flex-col gap-2">
 									<Button
@@ -409,7 +410,7 @@ export const DBForm = <TTableName extends keyof DB>(props: DBFormProps<TTableNam
 											}
 										}}
 									>
-										{dictionary().db[tableName as keyof DB].selfName}
+										{tableNameLabel}
 									</Button>
 								</div>
 							);
