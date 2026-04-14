@@ -500,6 +500,7 @@ const dictionary: Dictionary = {
 			description: "Emmm..............",
 			tabs: {
 				combo: "Combo",
+				behavior: "Behavior",
 				equipment: {
 					selfName: "Equipment",
 					mainHand: "Main Hand",
@@ -1109,6 +1110,11 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "The modifiers of the character.",
 					formFieldDescription: "Please enter the modifiers of the character.",
 				},
+				actions: {
+					key: "Actions",
+					tableFieldDescription: "The actions of the character.",
+					formFieldDescription: "Please enter the actions of the character.",
+				},
 				partnerSkillAId: {
 					key: "Partner Skill A ID",
 					tableFieldDescription: "The ID of the partner skill A the character is equipped with.",
@@ -1517,11 +1523,6 @@ const dictionary: Dictionary = {
 					},
 				},
 				belongToTeamId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
-				},
-				actions: {
 					key: "",
 					tableFieldDescription: "",
 					formFieldDescription: "",

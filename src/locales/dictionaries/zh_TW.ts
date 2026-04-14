@@ -594,6 +594,7 @@ const dictionary: Dictionary = {
 			description: "此頁面正在開發中，請勿使用",
 			tabs: {
 				combo: "連擊",
+				behavior: "行動",
 				equipment: {
 					selfName: "裝備",
 					mainHand: "主手",
@@ -1202,6 +1203,11 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "機體的屬性修正值",
 					formFieldDescription: "請輸入機體的屬性修正值",
 				},
+				actions: {
+					key: "行動",
+					tableFieldDescription: "機體的行動",
+					formFieldDescription: "請輸入機體的行動",
+				},
 				partnerSkillAId: {
 					key: "伙伴技能A ID",
 					tableFieldDescription: "伙伴技能A的ID",
@@ -1610,11 +1616,6 @@ const dictionary: Dictionary = {
 					},
 				},
 				belongToTeamId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
-				},
-				actions: {
 					key: "",
 					tableFieldDescription: "",
 					formFieldDescription: "",

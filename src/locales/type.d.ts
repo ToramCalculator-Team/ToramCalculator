@@ -228,6 +228,7 @@ export interface Dictionary {
 			description: string;
 			tabs: {
 				combo: string;
+				behavior: string;
 				equipment: {
 					selfName: string;
 					mainHand: string;

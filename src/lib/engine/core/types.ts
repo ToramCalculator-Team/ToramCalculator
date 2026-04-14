@@ -52,7 +52,13 @@ export type StopPolicy =
 	| { kind: "untilBattleEnd" }
 	| { kind: "untilSequencesDone" };
 
-/** 输出策略 */
+/**
+ * 输出策略（设计意图；部分分支仍在 GameEngine 中逐步接入）。
+ *
+ * - `streamRealtime`：面向实时 UI 的持续输出语义。
+ * - `collectFrameSnapshots`：面向批量/回放类输出的收集语义。
+ * - `returnPreviewReport`：面向机体/技能预览的一次性报告语义。
+ */
 export type OutputPolicy =
 	| "streamRealtime"
 	| "collectFrameSnapshots"
@@ -65,6 +71,14 @@ export type ProbePolicy =
 
 /**
  * 引擎运行配置描述符。
+ *
+ * 常用预设：
+ * - {@link createRealtimeConfig} — 时钟驱动、可接外部意图、实时快照流语义
+ * - {@link createFastForwardConfig} — 非时钟快进、不接外部意图、适合全 AI 推演
+ * - {@link createPreviewConfig} — 预览语义、探针回滚、产出预览报告
+ *
+ * 说明：`outputPolicy` 与部分字段的精细分支仍在引擎内对齐中；高频 `frame_snapshot`
+ * 由 GameEngine 内快照观察器节流推送至主线程（非严格「每逻辑帧」），供 UI / 多控制器视图使用。
  */
 export interface RuntimeConfig {
 	driveMode: DriveMode;
@@ -78,6 +92,16 @@ export interface RuntimeConfig {
 	maxFrameSkip: number;
 }
 
+/**
+ * 预设：实时模式（`driveMode: "clocked"`）。
+ *
+ * 模拟贴近真实时间的运行：由帧循环按 `targetFPS` 等驱动推进。
+ *
+ * 1. 时钟驱动、近似恒定节拍推进（受 `timeScale` / 跳帧上限等影响）。
+ * 2. 当前实现下不因成员闲置而自动停帧；若后续增加「同步手动成员」类开关，行为以该字段为准。
+ * 3. 按引擎内快照策略向主线程推送 `frame_snapshot`（节流），供 UI 与绑定成员视图，并非严格每逻辑帧、也不专指某一控制器类。
+ * 4. `acceptExternalIntents: true`，成员可接收外部意图（如 `MemberController`）。
+ */
 export function createRealtimeConfig(overrides?: Partial<RuntimeConfig>): RuntimeConfig {
 	return {
 		driveMode: "clocked",
@@ -92,6 +116,19 @@ export function createRealtimeConfig(overrides?: Partial<RuntimeConfig>): Runtim
 		...overrides,
 	};
 }
+
+/**
+ * 预设：快速流程模式（`driveMode: "unclocked"`）。
+ *
+ * 不等待墙钟：在单帧工作完成后尽快进入下一帧（分片推进以防长时间独占线程）。
+ *
+ * **使用预期**：场景内成员宜均由 AI 行为树驱动；若存在长期无 BT、无外部意图的成员，可能出现持续闲置（引擎不据此自动暂停，除非另行实现）。
+ *
+ * 1. 快进式推进（`unclocked`）。
+ * 2. 当前实现下不因成员闲置而自动停帧。
+ * 3. `outputPolicy: "collectFrameSnapshots"` 表示设计上的批量快照语义；具体收集与下发仍以 GameEngine 实现为准。主线程侧仍可能按快照观察器节流收到 `frame_snapshot`。
+ * 4. `acceptExternalIntents: false`，不接受外部操控意图。
+ */
 
 export function createFastForwardConfig(
 	stopPolicy: StopPolicy = { kind: "untilBattleEnd" },
@@ -110,6 +147,17 @@ export function createFastForwardConfig(
 		...overrides,
 	};
 }
+
+/**
+ * 预设：预览模式（`executionSemantics: "previewSafe"`）。
+ *
+ * 用于机体/装备变更后的属性与技能效果预览：在 `previewSafe` 下 Buff 等走简化语义，伤害类可出可读结果；配合 `probePolicy: "rollbackAfterSkillProbe"` 做探针后回滚。
+ *
+ * 1. 非时钟驱动（`unclocked`），按 `stopPolicy: untilSequencesDone` 等在短流程内跑完。
+ * 2. 预览流程通常不强调「战斗闲置」语义；停步由停止策略与序列结束条件决定。
+ * 3. **主输出**为预览报告（`outputPolicy: "returnPreviewReport"` / `PreviewReport` 路径），而非实时操控流；需要时仍可有节流的 `frame_snapshot` 供 UI，但不应理解为「每帧喂给控制器」。
+ * 4. `acceptExternalIntents: false`，不接受外部操控意图。
+ */
 
 export function createPreviewConfig(overrides?: Partial<RuntimeConfig>): RuntimeConfig {
 	return {

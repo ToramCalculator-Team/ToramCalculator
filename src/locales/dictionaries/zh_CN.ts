@@ -594,6 +594,7 @@ const dictionary: Dictionary = {
 			description: "此页面正在开发中，请勿使用",
 			tabs: {
 				combo: "连击",
+				behavior: "行为",
 				equipment: {
 					selfName: "装备",
 					mainHand: "主手",
@@ -1202,6 +1203,11 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "角色的属性修正值",
 					formFieldDescription: "请输入属性修正值",
 				},
+				actions: {
+					key: "行为",
+					tableFieldDescription: "角色的行为",
+					formFieldDescription: "请输入角色的行为",
+				},
 				partnerSkillAId: {
 					key: "伙伴技能A ID",
 					tableFieldDescription: "伙伴技能A的ID",
@@ -1613,11 +1619,6 @@ const dictionary: Dictionary = {
 					key: "队伍ID",
 					tableFieldDescription: "成员的队伍ID",
 					formFieldDescription: "选择成员的队伍",
-				},
-				actions: {
-					key: "行为",
-					tableFieldDescription: "成员的行为",
-					formFieldDescription: "请输入成员的行为",
 				},
 				type: {
 					key: "类型",

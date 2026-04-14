@@ -269,6 +269,7 @@ export default function CharactePage() {
 
 	const tabs = {
 		combo: { label: dictionary().ui.character.tabs.combo, value: "combo" },
+		behavior: { label: dictionary().ui.character.tabs.behavior, value: "behavior" },
 		equipment: { label: dictionary().ui.character.tabs.equipment.selfName, value: "equipment" },
 		consumable: { label: dictionary().ui.character.tabs.consumable, value: "consumable" },
 		cooking: { label: dictionary().ui.character.tabs.cooking, value: "cooking" },

@@ -597,6 +597,7 @@ const dictionary: Dictionary = {
 			description: "このページは開発中です。使用しないでください。",
 			tabs: {
 				combo: "コンボ",
+				behavior: "行動",
 				equipment: {
 					selfName: "アイテム",
 					mainHand: "メインハンド",
@@ -1205,6 +1206,11 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "キャラクターの修正値",
 					formFieldDescription: "キャラクターの修正値を入力してください。",
 				},
+				actions: {
+					key: "行動",
+					tableFieldDescription: "キャラクターの行動",
+					formFieldDescription: "キャラクターの行動を入力してください。",
+				},
 				partnerSkillAId: {
 					key: "パートナー技能A ID",
 					tableFieldDescription: "キャラクターのパートナー技能A ID",
@@ -1613,11 +1619,6 @@ const dictionary: Dictionary = {
 					},
 				},
 				belongToTeamId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
-				},
-				actions: {
 					key: "",
 					tableFieldDescription: "",
 					formFieldDescription: "",
