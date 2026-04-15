@@ -13,6 +13,19 @@ const CONFIG = {
 	DEFAULT_TRIGGER: ".",            // 默认触发头
 };
 
+// 转义 LIKE 通配符，防止通配符注入
+function escapeLikePattern(str: string): string {
+	return str.replace(/[%_\\]/g, "\\$&");
+}
+
+// 过滤日志中的 ANSI 转义序列和控制字符，防止日志注入
+function sanitizeLogMessage(msg: string): string {
+	return msg
+		.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, "") // 移除 ANSI 转义序列
+		.replace(/[\r\n]/g, " ")                // 替换换行符为空格
+		.replace(/[\x00-\x1f]/g, "");           // 移除其他控制字符
+}
+
 // ===================== 日志函数 =====================
 function log(msg: string, type: 'info' | 'error' | 'warn' | 'success' = 'info') {
 	const stamp = new Date().toISOString().replace("T", " ").split(".")[0];
@@ -23,7 +36,8 @@ function log(msg: string, type: 'info' | 'error' | 'warn' | 'success' = 'info') 
 		error: '\x1b[31m',
 	};
 	const reset = '\x1b[0m';
-	console.log(`${prefix[type]}[${stamp}] [DishWS] ${msg}${reset}`);
+	const safeMsg = sanitizeLogMessage(msg);
+	console.log(`${prefix[type]}[${stamp}] [DishWS] ${safeMsg}${reset}`);
 }
 
 // ===================== 命令冷却系统 =====================
@@ -376,20 +390,21 @@ ${trigger}加餐<等级><料理名><门牌号> - 提交料理
 	}
 
 	private async queryDishByName(
-		name: string, 
+		name: string,
 		level: number | null,
 		aliases: Map<string, string>
 	): Promise<string> {
 		try {
 			const db = await getDB();
-			
-			// 解析别名
+
+			// 解析别名并转义通配符
 			const resolvedName = aliases.get(name) || name;
+			const escapedName = escapeLikePattern(resolvedName);
 
 			let query = db
 				.selectFrom("dish")
 				.where("status", "=", "Approved")
-				.where("name", "like", `%${resolvedName}%`)
+				.where("name", "like", `%${escapedName}%`)
 				.selectAll();
 
 			if (level !== null) {

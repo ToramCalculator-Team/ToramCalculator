@@ -43,7 +43,10 @@ async function fetchDishes(params: {
 		if (params.level) searchParams.set("level", String(params.level));
 		if (params.page) searchParams.set("page", String(params.page));
 		if (params.pageSize) searchParams.set("pageSize", String(params.pageSize));
-		if (params.search) searchParams.set("search", params.search);
+		// 限制搜索词长度，防止过长查询
+		if (params.search && params.search.length <= 50) {
+			searchParams.set("search", params.search);
+		}
 
 		const response = await fetch(`/api/dish?${searchParams.toString()}`);
 		if (!response.ok) {
@@ -253,12 +256,30 @@ const DishPage: Component = () => {
 	// 处理提交
 	const handleSubmit = async () => {
 		const form = submitForm();
+		
+		// 输入验证
 		if (!form.playerId) {
 			alert("请填写门牌号");
 			return;
 		}
+		if (form.playerId.length > 20) {
+			alert("门牌号过长");
+			return;
+		}
 		if (!form.dish1Name) {
 			alert("请填写至少一个料理名称");
+			return;
+		}
+		if (form.dish1Name.length > 50) {
+			alert("料理名称过长");
+			return;
+		}
+		if (form.dish2Name && form.dish2Name.length > 50) {
+			alert("料理2名称过长");
+			return;
+		}
+		if (form.qqNumber && !/^\d{5,15}$/.test(form.qqNumber)) {
+			alert("QQ号格式不正确");
 			return;
 		}
 

@@ -6,6 +6,11 @@ import { jwtVerify } from "jose";
 import { z } from "zod/v4";
 import { createId } from "@paralleldrive/cuid2";
 
+// 转义 LIKE 通配符，防止通配符注入
+function escapeLikePattern(str: string): string {
+	return str.replace(/[%_\\]/g, "\\$&");
+}
+
 // 料理提交请求 schema
 const SubmitDishSchema = z.object({
 	name: z.string().min(1, "料理名称不能为空").max(50, "料理名称过长"),
@@ -92,12 +97,13 @@ export async function GET(event: APIEvent) {
 		if (query.playerId) {
 			queryBuilder = queryBuilder.where("playerId", "=", query.playerId);
 		}
-		// 搜索功能：匹配门牌号或料理名称
+		// 搜索功能：匹配门牌号或料理名称（转义通配符）
 		if (query.search) {
+			const escapedSearch = escapeLikePattern(query.search);
 			queryBuilder = queryBuilder.where((eb) =>
 				eb.or([
-					eb("playerId", "like", `%${query.search}%`),
-					eb("name", "like", `%${query.search}%`),
+					eb("playerId", "like", `%${escapedSearch}%`),
+					eb("name", "like", `%${escapedSearch}%`),
 				])
 			);
 		}
@@ -119,10 +125,11 @@ export async function GET(event: APIEvent) {
 			.$if(!!query.playerId, (qb) => qb.where("playerId", "=", query.playerId!));
 		
 		if (query.search) {
+			const escapedSearch = escapeLikePattern(query.search);
 			countQuery = countQuery.where((eb) =>
 				eb.or([
-					eb("playerId", "like", `%${query.search}%`),
-					eb("name", "like", `%${query.search}%`),
+					eb("playerId", "like", `%${escapedSearch}%`),
+					eb("name", "like", `%${escapedSearch}%`),
 				])
 			);
 		}
