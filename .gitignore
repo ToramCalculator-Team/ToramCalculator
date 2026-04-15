@@ -29,8 +29,6 @@ public/service.worker.js
 
 #db
 db/generated/
-db/backups/
-Untitled-1
 
 # Environment variables
 .env.local
