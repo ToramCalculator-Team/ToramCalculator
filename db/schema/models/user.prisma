@@ -29,6 +29,11 @@ model account {
     create account_create_data?
     update account_update_data?
 
+    // 料理相关
+    submittedDishes dish[]   @relation("dish_submitted_by")
+    reviewedDishes  dish[]   @relation("dish_reviewed_by")
+    dishConfigs     dish_config[] @relation("dish_config_updated_by")
+
     @@unique([provider, providerAccountId])
 }
 

@@ -427,3 +427,11 @@ export const REGISLET_TYPE = [
   "SonicWaveEnhance",
 ] as const;
 export type RegisletType = (typeof REGISLET_TYPE)[number];
+
+// 料理审核状态
+export const DISH_REVIEW_STATUS = ["Pending", "Approved", "Rejected"] as const;
+export type DishReviewStatus = (typeof DISH_REVIEW_STATUS)[number];
+
+// 料理来源
+export const DISH_SOURCE = ["Web", "QQBot"] as const;
+export type DishSource = (typeof DISH_SOURCE)[number];
