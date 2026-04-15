@@ -49,6 +49,19 @@ export interface TransformToGetValueOptions {
 	};
 }
 
+export interface AnalyzeDependenciesResult {
+	/** self.xxx 依赖列表 */
+	selfDependencies: string[];
+	/** target.xxx 依赖列表 */
+	targetDependencies: string[];
+	/** 是否包含 skill.lv */
+	hasSkillLv: boolean;
+	/** 是否包含 distance */
+	hasDistance: boolean;
+	/** 是否包含 targetCount */
+	hasTargetCount: boolean;
+}
+
 /**
  * 表达式转换器
  */
@@ -474,5 +487,81 @@ export const ExpressionTransformer = {
 		return (
 			!!value && typeof value === "object" && "type" in value && typeof (value as { type?: unknown }).type === "string"
 		);
+	},
+
+	/**
+	 * 分析表达式依赖
+	 *
+	 * @param expression 原始表达式字符串
+	 * @returns 依赖分析结果
+	 */
+	analyzeDependencies(expression: string): AnalyzeDependenciesResult {
+		const result: AnalyzeDependenciesResult = {
+			selfDependencies: [],
+			targetDependencies: [],
+			hasSkillLv: false,
+			hasDistance: false,
+			hasTargetCount: false,
+		};
+
+		try {
+			const { ast, sourceOffset } = this.parseExpressionToAst(expression);
+
+			this.walkAST(ast, (node: Node) => {
+				// 检查成员表达式
+				if (node.type === "MemberExpression") {
+					const memberExpr = node as MemberExpression;
+
+					// 提取根标识符
+					let current: Node = memberExpr;
+					while (current.type === "MemberExpression") {
+						current = (current as MemberExpression).object;
+					}
+
+					if (current.type === "Identifier") {
+						const rootName = (current as Identifier).name;
+
+						// 检查 self.xxx
+						if (rootName === "self") {
+							const key = this.extractPropertyKey(node, expression);
+							if (key && !result.selfDependencies.includes(key)) {
+								result.selfDependencies.push(key);
+							}
+						}
+
+						// 检查 target.xxx
+						if (rootName === "target") {
+							const key = this.extractPropertyKey(node, expression);
+							if (key && !result.targetDependencies.includes(key)) {
+								result.targetDependencies.push(key);
+							}
+						}
+
+						// 检查 skill.lv
+						if (rootName === "skill" && memberExpr.property.type === "Identifier") {
+							const propName = (memberExpr.property as Identifier).name;
+							if (propName === "lv") {
+								result.hasSkillLv = true;
+							}
+						}
+					}
+				}
+
+				// 检查独立标识符
+				if (node.type === "Identifier") {
+					const identifier = node as Identifier;
+					if (identifier.name === "distance") {
+						result.hasDistance = true;
+					}
+					if (identifier.name === "targetCount") {
+						result.hasTargetCount = true;
+					}
+				}
+			});
+		} catch (error) {
+			// 解析失败时返回空依赖
+		}
+
+		return result;
 	},
 };

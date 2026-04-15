@@ -27,9 +27,7 @@
 		"clean:generated": "rm -rf db/generated",
 		"clean:build": "rm -rf dist .output .nitro bundle.tar.gz public/service.worker.js public/chunk-manifest.json",
 
-		"package": "tar -czf bundle.tar.gz .output/",
-
-		"prepare": "husky"
+		"package": "tar -czf bundle.tar.gz .output/"
 	},
 	"devDependencies": {
 		"@babylonjs/inspector": "8.53.0",
@@ -40,7 +38,6 @@
 		"@types/node": "^22.7.9",
 		"@types/pg": "^8.11.11",
 		"esbuild": "^0.25.6",
-		"husky": "^9.1.4",
 		"prisma": "7.2.0",
 		"tsx": "^4.21.0",
 		"typescript": "^5.8.2",

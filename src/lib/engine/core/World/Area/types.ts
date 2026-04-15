@@ -78,10 +78,12 @@ export interface DamageAreaRequest {
 	};
 	/** 伤害载荷 */
 	payload: {
-		/** 编译后的伤害表达式（先以 string 占位） */
-		compiledDamageExpr: string;
-		/** 可选的 self 绑定值 */
-		selfBindings?: Record<string, number | string | boolean>;
+		/** 原始伤害表达式（保留 self/target/skill.lv/distance/targetCount 等变量） */
+		damageFormula: string;
+		/** 施法者属性快照（施法时捕获的 self.xxx 属性值） */
+		casterSnapshot: Record<string, number>;
+		/** 技能等级 */
+		skillLv: number;
 	};
 	/** 施法时的位置（用于计算轨迹） */
 	casterId: string;
@@ -97,8 +99,12 @@ export interface DamageDispatchPayload {
 	sourceId: string;
 	/** 区域ID */
 	areaId: string;
-	/** 编译后的伤害表达式 */
-	compiledDamageExpr: string;
+	/** 原始伤害表达式 */
+	damageFormula: string;
+	/** 施法者属性快照 */
+	casterSnapshot: Record<string, number>;
+	/** 技能等级 */
+	skillLv: number;
 	/** 攻击次数 */
 	attackCount: number;
 	/** 伤害数量 */

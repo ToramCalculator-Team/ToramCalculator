@@ -59,18 +59,20 @@ export interface PlayerRuntimeState extends Record<string, unknown> {
 	 */
 	compiledSkillEffectLogicByEffectId: Record<string, string>;
 
-	/** 当前伤害请求（用于调试/管线暂存） */
+	/** 当前伤害请求（来自分布式伤害系统） */
 	currentDamageRequest:
 		| {
 				sourceId: string;
-				targetId: string;
-				skillId: string;
-				damageType: "physical" | "magic";
-				canBeDodged: boolean;
-				canBeGuarded: boolean;
+				areaId: string;
 				damageFormula: string;
-				extraVars?: Record<string, unknown>;
-				sourceSnapshot?: Record<string, unknown>;
+				casterSnapshot: Record<string, number>;
+				skillLv: number;
+				attackCount: number;
+				damageCount: number;
+				vars: {
+					distance: number;
+					targetCount: number;
+				};
 		  }
 		| undefined;
 }
