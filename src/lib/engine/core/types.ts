@@ -16,7 +16,6 @@ import type { MessageRouterStats } from "./MessageRouter/MessageRouter";
 import type { PipelineRegistry } from "./Pipline/PipelineRegistry";
 import type { StagePool } from "./Pipline/types";
 import type { MemberSerializeData } from "./World/Member/Member";
-import type { MemberContext } from "./World/Member/MemberContext";
 
 /**
  * 引擎基础设施 -- 长期驻留的编译缓存和管线定义。
@@ -24,7 +23,7 @@ import type { MemberContext } from "./World/Member/MemberContext";
  */
 export interface EngineInfrastructure {
 	jsProcessor: JSProcessor;
-	pipelineRegistry: PipelineRegistry<MemberContext, StagePool<MemberContext>>;
+	pipelineRegistry: PipelineRegistry<Record<string, any>, StagePool<Record<string, any>>>;
 }
 
 /**

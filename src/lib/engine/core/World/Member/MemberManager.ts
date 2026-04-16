@@ -50,7 +50,7 @@ export class MemberManager {
 	/** 引擎帧号读取函数（由引擎注入） */
 	private getCurrentFrame: (() => number) | null = null;
 	/** 引擎级 pipeline registry（由引擎注入） */
-	private pipelineRegistry: PipelineRegistry<MemberContext, StagePool<MemberContext>> | null = null;
+	private pipelineRegistry: PipelineRegistry<Record<string, any>, StagePool<Record<string, any>>> | null = null;
 
 	// ==================== 主控目标系统 ====================
 
@@ -117,7 +117,7 @@ export class MemberManager {
 	/**
 	 * 设置引擎级 pipeline registry（由引擎注入）。
 	 */
-	setPipelineRegistry(registry: PipelineRegistry<MemberContext, StagePool<MemberContext>> | null): void {
+	setPipelineRegistry(registry: PipelineRegistry<Record<string, any>, StagePool<Record<string, any>>> | null): void {
 		this.pipelineRegistry = registry;
 		if (!registry) return;
 		for (const member of this.members.values()) {

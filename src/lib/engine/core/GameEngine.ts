@@ -97,7 +97,7 @@ export class GameEngine {
 	/** 表达式求值器 - 负责 self/target/world 绑定 */
 	private expressionEvaluator: ExpressionEvaluator;
 	/** 引擎级管线定义仓库 */
-	private pipelineRegistry: PipelineRegistry<MemberContext, StagePool<MemberContext>>;
+	private pipelineRegistry: PipelineRegistry<Record<string, any>, StagePool<Record<string, any>>>;
 
 	/** 引擎配置 */
 	private config: EngineConfig;
@@ -1388,7 +1388,7 @@ export class GameEngine {
 	/**
 	 * 获取引擎级 pipeline registry。
 	 */
-	getPipelineRegistry(): PipelineRegistry<MemberContext, StagePool<MemberContext>> {
+	getPipelineRegistry(): PipelineRegistry<Record<string, any>, StagePool<Record<string, any>>> {
 		return this.pipelineRegistry;
 	}
 
