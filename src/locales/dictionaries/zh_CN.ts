@@ -3084,6 +3084,118 @@ const dictionary: Dictionary = {
 					formFieldDescription: ""
 				}
 			},
+		},
+		dish: {
+			selfName: "料理",
+			description: "玩家提交的料理信息，支持审核功能",
+			fields: {
+				id: {
+					key: "ID",
+					tableFieldDescription: "料理的唯一标识符",
+					formFieldDescription: "料理的唯一标识符"
+				},
+				name: {
+					key: "料理名称",
+					tableFieldDescription: "料理的名称",
+					formFieldDescription: "请输入料理名称"
+				},
+				level: {
+					key: "料理等级",
+					tableFieldDescription: "料理的等级(1-10)",
+					formFieldDescription: "请选择料理等级"
+				},
+				playerId: {
+					key: "门牌号",
+					tableFieldDescription: "玩家的门牌号/玩家ID",
+					formFieldDescription: "请输入门牌号"
+				},
+				source: {
+					key: "来源",
+					tableFieldDescription: "料理的提交来源",
+					formFieldDescription: "选择来源"
+				},
+				status: {
+					key: "审核状态",
+					tableFieldDescription: "料理的审核状态",
+					formFieldDescription: "选择审核状态"
+				},
+				qqNumber: {
+					key: "QQ号",
+					tableFieldDescription: "提交者的QQ号",
+					formFieldDescription: "请输入QQ号"
+				},
+				remark: {
+					key: "备注",
+					tableFieldDescription: "审核意见或备注",
+					formFieldDescription: "请输入备注"
+				},
+				createdAt: {
+					key: "创建时间",
+					tableFieldDescription: "料理创建的时间",
+					formFieldDescription: ""
+				},
+				updatedAt: {
+					key: "更新时间",
+					tableFieldDescription: "料理更新的时间",
+					formFieldDescription: ""
+				},
+				reviewedAt: {
+					key: "审核时间",
+					tableFieldDescription: "料理审核的时间",
+					formFieldDescription: ""
+				},
+				reviewedById: {
+					key: "审核人ID",
+					tableFieldDescription: "审核人的账户ID",
+					formFieldDescription: ""
+				},
+				submittedById: {
+					key: "提交人ID",
+					tableFieldDescription: "提交人的账户ID",
+					formFieldDescription: ""
+				}
+			}
+		},
+		dish_config: {
+			selfName: "料理配置",
+			description: "料理功能的配置项，如WebSocket地址等",
+			fields: {
+				id: {
+					key: "ID",
+					tableFieldDescription: "配置的唯一标识符",
+					formFieldDescription: "配置的唯一标识符"
+				},
+				key: {
+					key: "配置键",
+					tableFieldDescription: "配置的键名",
+					formFieldDescription: "请输入配置键名"
+				},
+				value: {
+					key: "配置值",
+					tableFieldDescription: "配置的值",
+					formFieldDescription: "请输入配置值"
+				},
+				remark: {
+					key: "备注",
+					tableFieldDescription: "配置的备注说明",
+					formFieldDescription: "请输入备注"
+				},
+				createdAt: {
+					key: "创建时间",
+					tableFieldDescription: "配置创建的时间",
+					formFieldDescription: ""
+				},
+				updatedAt: {
+					key: "更新时间",
+					tableFieldDescription: "配置更新的时间",
+					formFieldDescription: ""
+				},
+				updatedById: {
+					key: "更新人ID",
+					tableFieldDescription: "更新人的账户ID",
+					formFieldDescription: ""
+				}
+			}
 		}
 	},
 };

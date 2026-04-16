@@ -1002,4 +1002,20 @@ export const OutlineIcons = {
 			</svg>
 		);
 	},
+
+	Pizza: (props: JSX.IntrinsicElements["svg"]) => {
+		return (
+			<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+				<title>Pizza</title>
+				<path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2Z" stroke="currentColor" stroke-width="1.5"/>
+				<path d="M12 2L12 22" stroke="currentColor" stroke-width="1.5"/>
+				<path d="M12 2C14.5 2 16.5 6.48 16.5 12C16.5 17.52 14.5 22 12 22" stroke="currentColor" stroke-width="1.5"/>
+				<circle cx="8" cy="8" r="1.5" fill="currentColor"/>
+				<circle cx="6" cy="14" r="1.5" fill="currentColor"/>
+				<circle cx="10" cy="17" r="1.5" fill="currentColor"/>
+				<circle cx="14" cy="6" r="1" fill="currentColor"/>
+				<circle cx="18" cy="10" r="1" fill="currentColor"/>
+			</svg>
+		);
+	},
 };

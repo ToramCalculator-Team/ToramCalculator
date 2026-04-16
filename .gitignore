@@ -29,3 +29,15 @@ public/service.worker.js
 
 #db
 db/generated/
+
+# Environment variables
+.env.local
+
+# IDE
+.cursor/
+
+# OS
+.DS_Store
+
+# Logs
+*.log

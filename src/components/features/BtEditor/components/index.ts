@@ -8,6 +8,7 @@ export type { DividerProps } from "./Divider/Divider";
 export { Divider } from "./Divider/Divider";
 export { ExamplesMenu } from "./ExamplesMenu/ExamplesMenu";
 export { SkillLogicExmaplesMenu } from "./ExamplesMenu/SkillLogicExmaplesMenu";
+export { DishMenu } from "./ExamplesMenu/DishMenu";
 export type { MenuProps } from "./Menu/Menu";
 export { Menu } from "./Menu/Menu";
 export type { MenuItemProps } from "./Menu/MenuItem";

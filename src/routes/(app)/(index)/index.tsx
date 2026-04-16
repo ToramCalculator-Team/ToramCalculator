@@ -89,6 +89,13 @@ export default function IndexPage() {
 			icon: <Icons.Outline.Basketball />,
 			name: "查询构建器",
 		},
+		{
+			onClick: () => {
+				navigate("dish");
+			},
+			icon: <Icons.Outline.Pizza />,
+			name: "料理名单",
+		},
 	]);
 
 	// 页面附加功能（右上角按钮组）配置

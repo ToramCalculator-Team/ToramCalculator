@@ -15,11 +15,14 @@ interface InputProps extends JSX.InputHTMLAttributes<HTMLInputElement> {
 	state?: InputStateType;
 	validationMessage?: string;
 	inputWidth?: number;
+	setValue?: (value: string) => void;
 }
 
 export const Input = (props: InputProps) => {
 	const hasChildren = "children" in props;
 	const id = `input-${createId()}`;
+	// 从 props 中排除 setValue、value、type，避免传递给 DOM 元素时冲突
+	const { setValue, value, type, class: classProp, ...restProps } = props;
 
 	const getSizeClass = () => {
 		const sizeMap = {
@@ -78,32 +81,35 @@ export const Input = (props: InputProps) => {
 					<Switch fallback={<div>未知类型的输入框</div>}>
 						<Match when={props.type === "text"}>
 							<input
-								{...props}
+								{...restProps}
 								id={id}
 								class={`text-accent-color bg-area-color w-full rounded p-3 ${getDisableClass()} ${getStateClass()}`}
 								style={{
 									width: `${props.inputWidth}px`,
 								}}
+								onInput={(e) => setValue?.(e.currentTarget.value)}
 							/>
 						</Match>
 						<Match when={props.type === "password"}>
 							<input
-								{...props}
+								{...restProps}
 								id={id}
 								class={`text-accent-color bg-area-color w-full rounded p-3 ${getDisableClass()} ${getStateClass()}`}
 								style={{
 									width: `${props.inputWidth}px`,
 								}}
+								onInput={(e) => setValue?.(e.currentTarget.value)}
 							/>
 						</Match>
 						<Match when={props.type === "number"}>
 							<input
-								{...props}
+								{...restProps}
 								id={id}
 								class={`text-accent-color bg-area-color w-full rounded p-3 ${getDisableClass()} ${getStateClass()}`}
 								style={{
 									width: `${props.inputWidth}px`,
 								}}
+								onInput={(e) => setValue?.(e.currentTarget.value)}
 							/>
 						</Match>
 						<Match when={props.type === "boolean"}>

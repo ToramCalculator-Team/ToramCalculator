@@ -3,31 +3,26 @@
 	"type": "module",
 	"scripts": {
 		"setup": "pnpm generate && pnpm infra:reset",
-
 		"dev": "vite dev",
 		"start": "PORT=3001 node .output/server/index.mjs",
-
 		"generate": "pnpm generate:inject && pnpm generate:schema && pnpm generate:colorSystem",
 		"generate:inject": "tsx db/generator/injectEnums.ts",
 		"generate:schema": "prisma generate --schema=db/generated/schema.prisma",
 		"generate:colorSystem": "tsx src/styles/colorSystem/generator/generator.ts",
-
 		"infra:up": "docker compose --env-file .env -f ./backend/docker-compose.yaml up -d",
 		"infra:stop": "docker compose --env-file .env -f ./backend/docker-compose.yaml stop",
 		"infra:down": "docker compose --env-file .env -f ./backend/docker-compose.yaml down --volumes",
 		"infra:reset": "pnpm infra:down && pnpm infra:up && pnpm db:restore",
-
 		"db:studio": "prisma studio --config=db/studio.config.ts",
 		"db:backup": "tsx db/scripts/backup.ts",
 		"db:restore": "tsx db/scripts/restore.ts",
-
 		"build": "node src/worker/sw/build.mjs && NODE_OPTIONS=--max-old-space-size=4096 vite build",
-
 		"clean": "pnpm clean:build && pnpm clean:generated",
 		"clean:generated": "rm -rf db/generated",
 		"clean:build": "rm -rf dist .output .nitro bundle.tar.gz public/service.worker.js public/chunk-manifest.json",
 
-		"package": "tar -czf bundle.tar.gz .output/"
+		"package": "tar -czf bundle.tar.gz .output/",
+		"prepare": "husky"
 	},
 	"devDependencies": {
 		"@babylonjs/inspector": "8.53.0",
@@ -37,6 +32,7 @@
 		"@types/js-cookie": "^3.0.6",
 		"@types/node": "^22.7.9",
 		"@types/pg": "^8.11.11",
+		"@types/ws": "^8.18.1",
 		"esbuild": "^0.25.6",
 		"prisma": "7.2.0",
 		"tsx": "^4.21.0",
@@ -93,6 +89,7 @@
 		"solid-motionone": "^1.0.4",
 		"tailwindcss": "latest",
 		"vite": "^7.0.0",
+		"ws": "^8.20.0",
 		"xstate": "^5.19.2",
 		"zod": "^4.1.12"
 	},
