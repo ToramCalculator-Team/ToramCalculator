@@ -92,26 +92,26 @@ export const CommonActionPool = {
 			.meta({ description: "范围攻击" }),
 		(context, input) => {
 			log.debug(`👤 [${context.owner?.name}] 范围攻击`, input);
-			// 解析伤害表达式，将所需的self变量放入参数列表
 			const owner = context.owner;
 			if (!owner) {
 				log.warn(`⚠️ [${context.owner?.name}] 无法找到owner`);
 				return State.FAILED;
 			}
-			const valueProvider = (key: string) => owner.statContainer.getValue(key);
-			const res = ExpressionTransformer.transform(input.damageFormula, {
-				replaceAccessor: "self",
-				valueProvider,
-			});
-			if (!res.success) {
-				log.warn(`⚠️ [${owner.name}] 伤害表达式解析失败: ${res.error}`);
-				return State.FAILED;
+
+			// 分析表达式依赖
+			const dependencies = ExpressionTransformer.analyzeDependencies(input.damageFormula);
+			log.debug(`👤 [${owner.name}] 表达式依赖分析:`, dependencies);
+
+			// 创建施法者属性快照（只快照用到的属性）
+			const casterSnapshot: Record<string, number> = {};
+			for (const key of dependencies.selfDependencies) {
+				casterSnapshot[key] = owner.statContainer.getValue(key);
 			}
-			let damageExpr = res.compiledExpression;
-			// 替换skill.lv为技能等级
+
+			// 获取技能等级
 			const skillLv = context.currentSkill?.lv ?? 0;
-			damageExpr = damageExpr.replace("skill.lv", String(skillLv));
-			log.debug(`👤 [${owner.name}] 解析后表达式: ${damageExpr}`);
+
+			log.debug(`👤 [${owner.name}] 施法者快照:`, casterSnapshot, `技能等级: ${skillLv}`);
 
 			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
 			const startFrame = context.getCurrentFrame();
@@ -138,7 +138,9 @@ export const CommonActionPool = {
 					},
 				},
 				payload: {
-					compiledDamageExpr: damageExpr,
+					damageFormula: input.damageFormula,
+					casterSnapshot,
+					skillLv,
 				},
 				casterId: owner.id,
 				targetId: input.targetId,

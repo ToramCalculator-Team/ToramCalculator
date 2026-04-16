@@ -139,7 +139,9 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 				const payload: DamageDispatchPayload = {
 					sourceId: request.identity.sourceId,
 					areaId: instance.areaId,
-					compiledDamageExpr: request.payload.compiledDamageExpr,
+					damageFormula: request.payload.damageFormula,
+					casterSnapshot: request.payload.casterSnapshot,
+					skillLv: request.payload.skillLv,
 					attackCount: request.attackSemantics.attackCount,
 					damageCount: request.attackSemantics.damageCount,
 					vars: {

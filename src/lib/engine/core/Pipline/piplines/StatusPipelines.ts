@@ -1,7 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod/v4";
-import type { MemberContext } from "../World/Member/MemberContext";
-import { defineStage, type PipelineDef, type StagePool } from "./types";
+import type { MemberContext } from "../../World/Member/MemberContext";
+import { defineStage, type PipelineDef, type StagePool } from "../types";
 
 /**
  * 状态施加相关阶段池。

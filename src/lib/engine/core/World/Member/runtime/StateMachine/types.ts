@@ -1,6 +1,5 @@
-import { Actor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
-import { Member } from "../../Member";
-import { MemberType } from "@db/schema/enums";
+import type { Actor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
+import type { Member } from "../../Member";
 
 /**
  * 成员事件类型枚举
@@ -8,7 +7,7 @@ import { MemberType } from "@db/schema/enums";
  */
 export interface MemberCreateEvent extends EventObject {
   type: "create";
-}
+} 
 export interface MemberDestroyEvent extends EventObject {
   type: "destroy";
 }

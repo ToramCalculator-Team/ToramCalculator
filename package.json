@@ -20,6 +20,7 @@
 		"clean": "pnpm clean:build && pnpm clean:generated",
 		"clean:generated": "rm -rf db/generated",
 		"clean:build": "rm -rf dist .output .nitro bundle.tar.gz public/service.worker.js public/chunk-manifest.json",
+
 		"package": "tar -czf bundle.tar.gz .output/",
 		"prepare": "husky"
 	},
@@ -33,7 +34,6 @@
 		"@types/pg": "^8.11.11",
 		"@types/ws": "^8.18.1",
 		"esbuild": "^0.25.6",
-		"husky": "^9.1.4",
 		"prisma": "7.2.0",
 		"tsx": "^4.21.0",
 		"typescript": "^5.8.2",

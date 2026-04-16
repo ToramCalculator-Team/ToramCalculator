@@ -250,15 +250,15 @@ export class GameEngine {
 			jsProcessor: this.jsProcessor,
 			getMemberById: (id) => this.world.memberManager.getMember(id),
 		});
+		// 设置表达式求值器到 MemberManager（成员创建时会注入到成员 context.expressionEvaluator）
+		this.world.memberManager.setEvaluateExpression((expression, context) =>
+			this.expressionEvaluator.evaluateNumberOrBoolean(expression, context),
+		);
 
 		// 设置域事件发射器到 MemberManager
 		this.world.memberManager.setDomainEventSender((event) => {
 			this.emitDomainEvent(event);
 		});
-		// 设置表达式求值器到 MemberManager（成员创建时会注入到成员 context.expressionEvaluator）
-		this.world.memberManager.setEvaluateExpression((expression, context) =>
-			this.expressionEvaluator.evaluateNumberOrBoolean(expression, context),
-		);
 		// 设置引擎帧号读取函数到 MemberManager（引擎帧号为唯一真相）
 		this.world.memberManager.setGetCurrentFrame(() => this.getCurrentFrame());
 		// 设置伤害请求处理器到 MemberManager（成员创建时会注入到成员 context.damageRequestHandler）

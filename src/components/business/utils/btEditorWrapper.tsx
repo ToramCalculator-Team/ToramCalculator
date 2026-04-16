@@ -1,8 +1,8 @@
 import type { JSX } from "solid-js";
 import { Portal, Show } from "solid-js/web";
 import { Motion, Presence } from "solid-motionone";
+import { Button } from "~/components/controls/button";
 import { store } from "~/store";
-import { Button } from "../controls/button";
 
 export const BtEditorWrapper: (props:{title: string, children: JSX.Element, editorDisplay: boolean, setEditorDisplay: (editorDisplay: boolean) => void}) => JSX.Element = (props) => {
 	return (

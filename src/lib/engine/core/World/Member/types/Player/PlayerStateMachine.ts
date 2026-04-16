@@ -192,7 +192,7 @@ export const playerStateMachine = (
 				log.debug(`👤 [${context.owner?.name}] 显示警告`, event);
 				// 发出技能施放被拒绝事件
 				const owner = context.owner;
-				if (owner && owner.context.domainEventSender) {
+				if (owner?.context.domainEventSender) {
 					const domainEventSender = owner.context.domainEventSender as (
 						event: MemberDomainEvent,
 					) => void;

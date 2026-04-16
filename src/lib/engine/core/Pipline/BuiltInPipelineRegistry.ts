@@ -1,7 +1,7 @@
 import type { MemberContext } from "../World/Member/MemberContext";
 import { CommonPipelineDef, CommonStages } from "./CommonPipelines";
 import { PipelineRegistry } from "./PipelineRegistry";
-import { StatusPipelineDef, StatusStages } from "./StatusPipelines";
+import { StatusPipelineDef, StatusStages } from "./piplines/StatusPipelines";
 import type { PipelineDef, StagePool } from "./types";
 
 /**
