@@ -75,8 +75,8 @@ export const CardGroup = () => {
 													tableName={cardGroupItem.type}
 													data={cardData()}
 													dataSchema={DBSchema[cardGroupItem.type]}
-													hiddenFields={config?.card.hiddenFields}
-													fieldGroupMap={config?.fieldGroupMap}
+													hiddenFields={config?.card.hiddenFields as any}
+													fieldGroupMap={config?.fieldGroupMap as any}
 													fieldGenerator={config?.card.fieldGenerator}
 													// @ts-expect-error 函数逆变性问题：after
 													after={config?.card.after}

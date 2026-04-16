@@ -1,10 +1,12 @@
 import { CommonActionPool } from "./CommonActions";
 import { CommonConditionPool } from "./CommonCondition";
-import { MemberContext } from "../../MemberContext";
+import type { BtContext } from "./BtContext";
 import { actionPoolToInvokers, conditionPoolToInvokers } from "./uitls";
 
-export const commonActions = actionPoolToInvokers(MemberContext, CommonActionPool);
-export const commonConditions = conditionPoolToInvokers(MemberContext, CommonConditionPool);
+type CommonBtContextTypeHint = BtContext & Record<string, any>;
+const btContextTypeHint = {} as CommonBtContextTypeHint;
+export const commonActions = actionPoolToInvokers(btContextTypeHint, CommonActionPool);
+export const commonConditions = conditionPoolToInvokers(btContextTypeHint, CommonConditionPool);
 
 /**
  * BT-private callable bundle shared by all members.
@@ -14,5 +16,4 @@ export const CommonBtBindings = {
 	...commonActions,
 	...commonConditions,
 };
-
-export type CommonBtContext = MemberContext & typeof CommonBtBindings;
+export type CommonBtContext = BtContext & typeof CommonBtBindings;

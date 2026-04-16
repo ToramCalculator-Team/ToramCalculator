@@ -8,10 +8,10 @@
  */
 
 import { createMemo, For, Show } from "solid-js";
-import type { BuffViewData } from "./Member";
+import type { BuffViewDataSnapshot } from "../../types";
 
 interface BuffTabProps {
-	buffs?: BuffViewData[];
+	buffs?: BuffViewDataSnapshot[];
 }
 
 /**

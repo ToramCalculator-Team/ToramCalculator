@@ -3,26 +3,28 @@ import type { MemberType } from "@db/schema/enums";
 import { createActor } from "xstate";
 import { createLogger } from "~/lib/Logger";
 import type { ExpressionContext } from "../../JSProcessor/types";
-import type { PipelineRegistry } from "../../Pipline/PipelineRegistry";
-import type { StagePool } from "../../Pipline/types";
+import type { PipelineOverlay } from "../../Pipeline/overlay";
+import type { PipelineResolverService } from "../../Pipeline/PipelineResolverService";
+import type { StageData, StageEnv } from "../../Pipeline/stageEnv";
 import type { MemberCheckpoint, MemberDomainEvent } from "../../types";
 import type { DamageAreaRequest } from "../Area/types";
-import type { MemberContext } from "./MemberContext";
+import type { MemberRuntimeServices } from "./runtime/Agent/RuntimeServices";
+import { MemberRuntimeServicesDefaults } from "./runtime/Agent/RuntimeServices";
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
-import { PipelineManager } from "./runtime/Pipeline/PiplineManager";
 import type { NestedSchema } from "./runtime/StatContainer/SchemaTypes";
 import type { StatContainer } from "./runtime/StatContainer/StatContainer";
 import type {
 	MemberActor,
 	MemberEventType,
 	MemberStateContext,
-	MemberStateMachine,
+	MemberStateMachine, 
 } from "./runtime/StateMachine/types";
 import {
 	InMemoryStatusInstanceStore,
 	type MutableStatusInstanceStore,
 	type StatusInstance,
 } from "./runtime/Status/StatusInstanceStore";
+import type { MemberSharedRuntime } from "./runtime/types";
 
 const log = createLogger("Member");
 
@@ -44,7 +46,7 @@ export class Member<
 	TAttrKey extends string,
 	TStateEvent extends MemberEventType,
 	TStateContext extends MemberStateContext,
-	TContext extends MemberContext & Record<string, unknown>,
+	TRuntime extends MemberSharedRuntime,
 > {
 	id: string;
 	type: MemberType;
@@ -53,32 +55,43 @@ export class Member<
 	teamId: string;
 	dataSchema: NestedSchema;
 	statContainer: StatContainer<TAttrKey>;
-	/**
-	 * Shared cross-system runtime context.
-	 * FSM / pipeline / BT all read from this public member-level surface.
-	 * Any system-private context should derive from it instead of expanding the contract in-place.
-	 */
-	context: TContext;
-	btManager: BtManager<TAttrKey, TStateEvent, TStateContext, TContext>;
-	pipelineManager: PipelineManager<MemberContext, StagePool<MemberContext>>;
+	/** 共享 runtime（可序列化，可进 checkpoint） */
+	runtime: TRuntime;
+	/** 引擎注入 services（不可序列化） */
+	services: MemberRuntimeServices;
+	btManager: BtManager<TAttrKey, TStateEvent, TStateContext, TRuntime>;
+	/** 成员级持久 overlays（纯数据，可 checkpoint） */
+	pipelineOverlays: PipelineOverlay[] = [];
+	private pipelineResolverService: PipelineResolverService | null = null;
 	statusStore: MutableStatusInstanceStore;
 	actor: MemberActor<TStateEvent, TStateContext>;
 	private actorStarted = false;
 	data: MemberWithRelations;
-	position: { x: number; y: number; z: number };
+	get position(): { x: number; y: number; z: number } {
+		return this.runtime.position;
+	}
+	set position(next: { x: number; y: number; z: number }) {
+		this.runtime.position = next;
+	}
+	/**
+	 * 渲染侧私有状态（不序列化、不进入 checkpoint）。
+	 * 用于渲染快照推断动画进度等 UI-only 信息。
+	 */
+	renderState: { lastAction?: { name: string; ts: number; params?: Record<string, unknown> } } = {};
 	private renderMessageSender: ((payload: unknown) => void) | null = null;
 	private domainEventSender: ((event: MemberDomainEvent) => void) | null = null;
 
 	constructor(
 		stateMachine: (
-			member: Member<TAttrKey, TStateEvent, TStateContext, TContext>,
+			member: Member<TAttrKey, TStateEvent, TStateContext, TRuntime>,
 		) => MemberStateMachine<TStateEvent, TStateContext>,
 		campId: string,
 		teamId: string,
 		memberData: MemberWithRelations,
 		dataSchema: NestedSchema,
 		statContainer: StatContainer<TAttrKey>,
-		context: TContext,
+		runtime: TRuntime,
+		services: MemberRuntimeServices = MemberRuntimeServicesDefaults,
 		position?: { x: number; y: number; z: number },
 		btContextBindings: Record<string, unknown> = {},
 	) {
@@ -87,19 +100,20 @@ export class Member<
 		this.name = memberData.name;
 		this.campId = campId;
 		this.teamId = teamId;
-		this.context = context;
+		this.runtime = runtime;
+		this.services = services;
 		this.dataSchema = dataSchema;
 		this.data = memberData;
 		this.statContainer = statContainer;
 
-		// BT gets a private derived context: member.context + BT bindings + skill agent members.
+		// BT gets a private derived context: member.runtime + BT bindings + skill agent members.
 		this.btManager = new BtManager(this, btContextBindings);
 
-		this.pipelineManager = new PipelineManager({} as StagePool<MemberContext>);
-		this.statusStore = new InMemoryStatusInstanceStore(() => this.context.getCurrentFrame());
-		this.context.statusTags = [];
-
-		this.position = position ?? { x: 0, y: 0, z: 0 };
+		this.statusStore = new InMemoryStatusInstanceStore(() => this.services.getCurrentFrame());
+		this.runtime.statusTags = this.runtime.statusTags ?? [];
+		if (position) {
+			this.runtime.position = position;
+		}
 
 		this.actor = createActor(stateMachine(this), {
 			id: memberData.id,
@@ -126,7 +140,7 @@ export class Member<
 
 	setRenderMessageSender(renderMessageSender: ((payload: unknown) => void) | null): void {
 		this.renderMessageSender = renderMessageSender;
-		this.context.renderMessageSender = renderMessageSender;
+		this.services.renderMessageSender = renderMessageSender;
 
 		const spawnCmd = {
 			type: "render:cmd" as const,
@@ -149,37 +163,86 @@ export class Member<
 	 */
 	setDomainEventSender(domainEventSender: ((event: MemberDomainEvent) => void) | null): void {
 		this.domainEventSender = domainEventSender;
-		this.context.domainEventSender = domainEventSender;
+		this.services.domainEventSender = domainEventSender;
 	}
 
 	setEvaluateExpression(
 		evaluateExpression: ((expression: string, context: ExpressionContext) => number | boolean) | null,
 	): void {
-		if (evaluateExpression) {
-			this.context.expressionEvaluator = evaluateExpression;
-		}
+		this.services.expressionEvaluator = evaluateExpression;
 	}
 
 	setDamageRequestHandler(damageRequestHandler: ((damageRequest: DamageAreaRequest) => void) | null): void {
-		this.context.damageRequestHandler = damageRequestHandler;
+		this.services.damageRequestHandler = damageRequestHandler;
 	}
 
 	setGetCurrentFrame(getCurrentFrame: (() => number) | null): void {
-		(this.context as Record<string, unknown>).getCurrentFrame = getCurrentFrame;
+		if (getCurrentFrame) {
+			this.services.getCurrentFrame = getCurrentFrame;
+		}
 	}
 
-	setPipelineRegistry(registry: PipelineRegistry<MemberContext, StagePool<MemberContext>>): void {
-		this.pipelineManager.replaceStagePool(registry.stagePool);
-		this.pipelineManager.replacePipelines(registry.getPipelineDefSnapshot());
+	setPipelineResolverService(resolver: PipelineResolverService | null): void {
+		this.pipelineResolverService = resolver;
 	}
 
-	runPipeline(pipelineName: string, params?: Record<string, unknown>) {
-		return this.pipelineManager.run(pipelineName, this.context as MemberContext, params);
+	/**
+	 * 执行管线（纯计算）。
+	 *
+	 * Actor 隔离原则：member 只访问自身属性。
+	 * 需要跨 actor 数据（如目标防御力）的管线，由编排层通过 `peerStats` 逐次传入。
+	 *
+	 * @param pipelineName 管线名称
+	 * @param params 管线输入参数
+	 * @param peerStats 编排层按次提供的跨 actor 只读查询函数（仅本次调用有效）
+	 */
+	runPipeline(
+		pipelineName: string,
+		params?: Record<string, unknown>,
+		peerStats?: (memberId: string, path: string) => number,
+	) {
+		const resolver = this.pipelineResolverService;
+		if (!resolver) {
+			throw new Error(`pipelineResolverService 未注入：${pipelineName}`);
+		}
+
+		const frame = this.services.getCurrentFrame();
+
+		const env: StageEnv = {
+			frame,
+			stats: (memberIdOrSelector: string, path: string) => {
+				if (memberIdOrSelector === "self" || memberIdOrSelector === this.id) {
+					return this.statContainer.getValue(path as TAttrKey);
+				}
+				if (peerStats) {
+					return peerStats(memberIdOrSelector, path);
+				}
+				return 0;
+			},
+			eval: (expr: string, vars?: Record<string, unknown>) => {
+				const evaluator = this.services.expressionEvaluator;
+				if (!evaluator) throw new Error(`expressionEvaluator 未注入：${expr}`);
+				const ctx: ExpressionContext = {
+					currentFrame: frame,
+					casterId: this.id,
+					targetId: this.runtime.targetId,
+					...(vars ?? {}),
+				};
+				const out = evaluator(expr, ctx);
+				return typeof out === "number" ? out : out ? 1 : 0;
+			},
+			newId: () => `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+			memberRuntime: this.runtime,
+		};
+
+		const overlays = this.pipelineOverlays;
+		const input: StageData = params ?? {};
+		return resolver.resolveAndRun(pipelineName, overlays, env, input);
 	}
 
 	/**
 	 * Status truth lives in statusStore.
-	 * member.context.statusTags is only the derived compatibility view that other systems read.
+	 * statusTags 由 runtime 提供，是跨系统共享读面；写入由 statusStore 派生更新。
 	 */
 	applyStatusInstance(instance: StatusInstance): void {
 		this.statusStore.apply(instance);
@@ -192,13 +255,13 @@ export class Member<
 	}
 
 	private syncStatusTags(): void {
-		let currentFrame = this.context.currentFrame;
+		let currentFrame = this.runtime.currentFrame;
 		try {
-			currentFrame = this.context.getCurrentFrame();
+			currentFrame = this.services.getCurrentFrame();
 		} catch {
 			// Before engine services are injected, fall back to the local snapshot value.
 		}
-		this.context.statusTags = this.statusStore.getStatusTags(currentFrame);
+		this.runtime.statusTags = this.statusStore.getStatusTags(currentFrame);
 	}
 
 	notifyDomainEvent(event: MemberDomainEvent): void {
@@ -211,8 +274,7 @@ export class Member<
 		if (!this.actorStarted) {
 			throw new Error(`member actor not started: ${this.id}`);
 		}
-		this.context.currentFrame = frame;
-		this.context.position = this.position;
+		this.runtime.currentFrame = frame;
 		this.statusStore.purgeExpired(frame);
 		this.syncStatusTags();
 		this.actor.send({ type: "update", timestamp: frame } as TStateEvent);
@@ -228,8 +290,9 @@ export class Member<
 			statContainer: this.statContainer.captureCheckpoint(),
 			statusStore: this.statusStore.captureCheckpoint(),
 			btManager: this.btManager.captureCheckpoint(),
-			pipelineManager: this.pipelineManager.captureCheckpoint(),
+			pipelineOverlays: structuredClone(this.pipelineOverlays),
 			position: { ...this.position },
+			runtime: structuredClone(this.runtime),
 		};
 	}
 
@@ -237,9 +300,14 @@ export class Member<
 		this.statContainer.restoreCheckpoint(checkpoint.statContainer);
 		this.statusStore.restoreCheckpoint(checkpoint.statusStore);
 		this.btManager.restoreCheckpoint(checkpoint.btManager);
-		this.pipelineManager.restoreCheckpoint(checkpoint.pipelineManager);
-		this.position = { ...checkpoint.position };
-		this.context.position = this.position;
+		const overlayCp = checkpoint as unknown as { pipelineOverlays?: PipelineOverlay[] };
+		const runtimeCp = checkpoint as unknown as { runtime?: TRuntime };
+		this.pipelineOverlays = structuredClone(overlayCp.pipelineOverlays ?? []);
+		this.runtime = structuredClone(runtimeCp.runtime ?? this.runtime);
+		// position 以 checkpoint.position 为准（与 runtime.position 保持一致）
+		this.runtime.position = { ...checkpoint.position };
 		this.syncStatusTags();
 	}
 }
+
+// (deleted) safeGetFrame: services 未注入应直接抛错

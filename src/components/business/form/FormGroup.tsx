@@ -36,8 +36,8 @@ export const FormGroup = () => {
 												initialValue={initialValue}
 												dataSchema={DBSchema[formGroupItem.type]}
 												childrenRelations={config().childrenRelations}
-												hiddenFields={config().form.hiddenFields}
-												fieldGroupMap={config().fieldGroupMap}
+												hiddenFields={config().form.hiddenFields as any}
+												fieldGroupMap={config().fieldGroupMap as any}
 												fieldGenerator={config().form.fieldGenerator}
 												onInsert={async (value) => {
 													const insertFun = DATA_CONFIG[formGroupItem.type]?.form.onInsert;

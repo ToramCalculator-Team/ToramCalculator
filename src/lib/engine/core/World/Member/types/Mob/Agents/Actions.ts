@@ -1,6 +1,6 @@
+import type { BtContext } from "../../../runtime/Agent/BtContext";
 import type { ActionPool } from "../../../runtime/Agent/type";
-import type { MobRuntimeState } from "./RuntimeState";
 
-export const MobActionPool = {} as const satisfies ActionPool<MobRuntimeState>;
+export const MobActionPool = {} as const satisfies ActionPool<BtContext & Record<string, unknown>>;
 
 export type MobActionPool = typeof MobActionPool;

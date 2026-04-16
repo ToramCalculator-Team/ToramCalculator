@@ -1,19 +1,48 @@
 import type { MemberType } from "@db/schema/enums";
-import { MemberContext } from "~/lib/engine/core/World/Member/MemberContext";
 import { CommonActionPool } from "~/lib/engine/core/World/Member/runtime/Agent/CommonActions";
 import { CommonConditionPool } from "~/lib/engine/core/World/Member/runtime/Agent/CommonCondition";
+import type { BtContext } from "~/lib/engine/core/World/Member/runtime/Agent/BtContext";
 import type { ActionPool, ConditionPool } from "~/lib/engine/core/World/Member/runtime/Agent/type";
 import { MobActionPool } from "~/lib/engine/core/World/Member/types/Mob/Agents/Actions";
 import { MobConditionPool } from "~/lib/engine/core/World/Member/types/Mob/Agents/Condition";
-import { MobContext } from "~/lib/engine/core/World/Member/types/Mob/Agents/Context";
 import { PlayerActionPool } from "~/lib/engine/core/World/Member/types/Player/Agents/Actions";
 import { PlayerConditionPool } from "~/lib/engine/core/World/Member/types/Player/Agents/Condition";
-import { PlayerContext } from "~/lib/engine/core/World/Member/types/Player/Agents/Context";
+
+const MemberRuntimeShape = {
+	currentFrame: 0,
+	position: { x: 0, y: 0, z: 0 },
+	targetId: "",
+	statusTags: [] as string[],
+	currentSkill: null as unknown,
+	previousSkill: null as unknown,
+	currentSkillVariant: null as unknown,
+	currentSkillParams: {} as Record<string, number>,
+	currentSkillStartupFrames: 0,
+	currentSkillChargingFrames: 0,
+	currentSkillChantingFrames: 0,
+	currentSkillActionFrames: 0,
+};
+
+const PlayerRuntimeShape = {
+	...MemberRuntimeShape,
+	type: "Player" as const,
+	skillList: [] as unknown[],
+	skillCooldowns: [] as number[],
+	character: null as unknown,
+};
+
+const MobRuntimeShape = {
+	...MemberRuntimeShape,
+	type: "Mob" as const,
+	skillList: [] as unknown[],
+	skillCooldowns: [] as number[],
+	character: null as unknown,
+};
 
 export type MdslProfileConfig = {
 	memberType: MemberType;
-	actionPool: ActionPool<any>;
-	conditionPool: ConditionPool<any>;
+	actionPool: ActionPool<BtContext & Record<string, unknown>>;
+	conditionPool: ConditionPool<BtContext & Record<string, unknown>>;
 	propertyObject: Record<string, unknown>;
 };
 
@@ -34,8 +63,7 @@ export const getMdslProfileConfig = (memberType: MemberType): MdslProfileConfig 
 					...PlayerConditionPool,
 				},
 				propertyObject: {
-					...MemberContext,
-					...PlayerContext,
+					...PlayerRuntimeShape,
 				},
 			};
 		case "Mob":
@@ -50,8 +78,7 @@ export const getMdslProfileConfig = (memberType: MemberType): MdslProfileConfig 
 					...MobConditionPool,
 				},
 				propertyObject: {
-					...MemberContext,
-					...MobContext,
+					...MobRuntimeShape,
 				},
 			};
 		case "Partner":
@@ -62,7 +89,7 @@ export const getMdslProfileConfig = (memberType: MemberType): MdslProfileConfig 
 				memberType,
 				actionPool: CommonActionPool,
 				conditionPool: CommonConditionPool,
-				propertyObject: MemberContext,
+				propertyObject: MemberRuntimeShape,
 			};
 	}
 };

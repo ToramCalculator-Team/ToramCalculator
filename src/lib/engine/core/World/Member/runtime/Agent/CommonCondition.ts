@@ -1,5 +1,5 @@
 import { z } from "zod/v4";
-import type { MemberContext } from "../../MemberContext";
+import type { BtContext } from "./BtContext";
 import { type ConditionPool, defineCondition } from "./type";
 
 export const CommonConditionPool = {
@@ -36,6 +36,6 @@ export const CommonConditionPool = {
 		const exceptionNames = ["cowering", "overturned", "dizzy"];
 		return exceptionNames.some((name) => context.statusTags.includes(name));
 	}),
-} as const satisfies ConditionPool<MemberContext>;
+} as const satisfies ConditionPool<BtContext>;
 
 export type CommonConditionPool = typeof CommonConditionPool;

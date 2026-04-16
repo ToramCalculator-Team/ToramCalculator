@@ -13,8 +13,8 @@ import {
 } from "./FrameLoop/types";
 import type { JSProcessor } from "./JSProcessor/JSProcessor";
 import type { MessageRouterStats } from "./MessageRouter/MessageRouter";
-import type { PipelineRegistry } from "./Pipline/PipelineRegistry";
-import type { StagePool } from "./Pipline/types";
+import type { PipelineCatalog } from "./Pipeline/PipelineCatalog";
+import type { PipelineResolverService } from "./Pipeline/PipelineResolverService";
 import type { MemberSerializeData } from "./World/Member/Member";
 
 /**
@@ -23,7 +23,8 @@ import type { MemberSerializeData } from "./World/Member/Member";
  */
 export interface EngineInfrastructure {
 	jsProcessor: JSProcessor;
-	pipelineRegistry: PipelineRegistry<Record<string, any>, StagePool<Record<string, any>>>;
+	pipelineCatalog: PipelineCatalog;
+	pipelineResolverService: PipelineResolverService;
 }
 
 /**
@@ -610,25 +611,6 @@ export interface BtManagerCheckpoint {
 	}>;
 }
 
-/** PipelineManager 检查点：动态 patch 状态（compiledChains 可从定义重建） */
-export interface PipelineManagerCheckpoint {
-	/** pipelineName -> afterStageName -> 插入条目（plain data） */
-	dynamicStages: Record<
-		string,
-		Record<
-			string,
-			Array<{
-				stageName: string;
-				params?: Record<string, unknown>;
-				insertedSeq: number;
-			}>
-		>
-	>;
-	insertedSeq: number;
-	hasMemberOverrides: boolean;
-	hasSkillOverrides: boolean;
-}
-
 /** DamageAreaSystem 检查点 */
 export interface DamageAreaSystemCheckpoint {
 	nextAreaId: number;
@@ -657,8 +639,10 @@ export interface MemberCheckpoint {
 	statContainer: StatContainerCheckpoint;
 	statusStore: StatusInstanceStoreCheckpoint;
 	btManager: BtManagerCheckpoint;
-	pipelineManager: PipelineManagerCheckpoint;
+	pipelineOverlays: unknown;
 	position: { x: number; y: number; z: number };
+	/** 共享 runtime（plain data，可 postMessage） */
+	runtime: unknown;
 }
 
 /** World 检查点 */

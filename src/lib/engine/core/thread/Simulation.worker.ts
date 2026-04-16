@@ -10,7 +10,8 @@ import type { WorkerMessage, WorkerMessageEvent } from "~/lib/WorkerPool/type";
 import { GameEngine } from "../GameEngine";
 import { type EngineControlMessage, EngineControlMessageSchema } from "../GameEngineSM";
 import { JSProcessor } from "../JSProcessor/JSProcessor";
-import { createBuiltInPipelineRegistry } from "../Pipline/BuiltInPipelineRegistry";
+import { PipelineCatalog } from "../Pipeline/PipelineCatalog";
+import { PipelineResolverService } from "../Pipeline/PipelineResolverService";
 import { PreviewRunner } from "../Preview/PreviewRunner";
 import type { SimulatorSafeAPI } from "../sandboxGlobals";
 import type { EngineInfrastructure, EngineScenarioData, RuntimeConfig } from "../types";
@@ -86,9 +87,11 @@ function initializeWorkerSandbox() {
 initializeWorkerSandbox();
 
 // Worker 级长期持有的基础设施 -- 跨 engine reset/cleanup 存活
+const pipelineCatalog = new PipelineCatalog();
 const infra: EngineInfrastructure = {
 	jsProcessor: new JSProcessor(),
-	pipelineRegistry: createBuiltInPipelineRegistry(),
+	pipelineCatalog,
+	pipelineResolverService: new PipelineResolverService(pipelineCatalog),
 };
 
 const gameEngine = new GameEngine(

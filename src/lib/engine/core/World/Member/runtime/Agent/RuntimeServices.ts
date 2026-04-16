@@ -8,7 +8,6 @@ import type { DamageAreaRequest } from "../../../Area/types";
  * 说明：
  * - 这些字段由引擎/成员管理器注入。
  * - 它们不是成员状态本身，而是运行时可调用服务。
- * - 当前仍会被并入共享 member.context，后续会进一步与 runtime state 拆层。
  */
 export interface MemberRuntimeServices {
 	/** 当前帧号（由引擎注入） */

@@ -4,28 +4,29 @@ import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefiniti
 import { State } from "~/lib/mistreevous/State";
 import type { BtManagerCheckpoint, Checkpointable } from "../../../../types";
 import type { Member } from "../../Member";
-import type { MemberContext } from "../../MemberContext";
+import type { BtContext } from "../Agent/BtContext";
 import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
+import type { MemberSharedRuntime } from "../types";
 
 const log = createLogger("BtManager");
 
 type BtEntry = {
 	bt: BehaviourTree;
-	btContext: Record<string, unknown>;
+	btContext: BtContext & Record<string, unknown>;
 };
 
 export class BtManager<
 	TAttrKey extends string,
 	TStateEvent extends MemberEventType,
 	TStateContext extends MemberStateContext,
-	TContext extends MemberContext & Record<string, unknown> = MemberContext & Record<string, unknown>,
+	TRuntime extends MemberSharedRuntime = MemberSharedRuntime,
 > implements Checkpointable<BtManagerCheckpoint>
 {
 	private activeEffectEntry: BtEntry | undefined;
 	private parallelEntries: Map<string, BtEntry> = new Map();
 
 	constructor(
-		private owner: Member<TAttrKey, TStateEvent, TStateContext, TContext>,
+		private owner: Member<TAttrKey, TStateEvent, TStateContext, TRuntime>,
 		/**
 		 * BT-only callable bindings.
 		 * Purpose: keep BT actions / conditions out of the public member context contract.
@@ -35,21 +36,37 @@ export class BtManager<
 
 	/**
 	 * Build a BT-private context.
-	 * Layering order:
-	 * 1. member.context as the shared public runtime surface
-	 * 2. BT bindings such as action/condition invokers
-	 * 3. user-supplied skill agent fields/getters/methods
+	 *
+	 * 分层顺序（原型链由近到远）：
+	 * 1. user agent 实例字段/方法（最近，若有）
+	 * 2. BT bindings（action/condition invokers）
+	 * 3. owner 句柄（用于 BT 动作内通过 `this.owner` 访问 member 服务）
+	 * 4. member.runtime 作为共享只读面（BT 直接消费 $currentFrame / $currentSkill / $targetId 等）
+	 *
+	 * 说明：
+	 * - runtime 已是扁平结构（含 currentSkill* / currentSkillStartupFrames 等），无需再做 get/set 映射。
+	 * - FSM 是 runtime 的唯一写入方；BT 仅读取。
 	 */
-	private buildBtContext(agent?: string): Record<string, unknown> {
-		const memberContext = this.owner.context;
-		const btContext = Object.create(memberContext) as Record<string, unknown>;
+	private buildBtContext(agent?: string): BtContext & Record<string, unknown> {
+		const owner = this.owner;
+		const runtime = owner.runtime as unknown as Record<string, unknown>;
+
+		// 以 runtime 作为原型：BT 通过原型链直读 runtime 字段，且写入会落在 btContext 自身（不污染 runtime）。
+		const btContext = Object.create(runtime) as Record<string, unknown>;
+
+		Object.defineProperty(btContext, "owner", {
+			value: owner,
+			enumerable: true,
+			configurable: true,
+		});
+
 		Object.defineProperties(btContext, Object.getOwnPropertyDescriptors(this.btBindings));
 
 		type AgentInstance = Record<string, unknown>;
 		type AgentCtor = new () => AgentInstance;
 
 		if (!agent) {
-			return btContext;
+			return btContext as BtContext & Record<string, unknown>;
 		}
 
 		let AgentClass: AgentCtor;
@@ -57,7 +74,7 @@ export class BtManager<
 			const agentClassCreator = new Function("BehaviourTree", "State", "owner", `return ${agent};`) as unknown as (
 				bt: typeof BehaviourTree,
 				state: typeof State,
-				owner: Member<TAttrKey, TStateEvent, TStateContext, TContext>,
+				owner: Member<TAttrKey, TStateEvent, TStateContext, TRuntime>,
 			) => AgentCtor;
 
 			AgentClass = agentClassCreator(BehaviourTree, State, this.owner);
@@ -65,7 +82,7 @@ export class BtManager<
 			log.warn(
 				`[${this.owner.name}] failed to compile BT agent: ${error instanceof Error ? error.message : String(error)}`,
 			);
-			return btContext;
+			return btContext as BtContext & Record<string, unknown>;
 		}
 
 		let instance: AgentInstance;
@@ -75,14 +92,14 @@ export class BtManager<
 			log.warn(
 				`[${this.owner.name}] failed to initialize BT agent: ${error instanceof Error ? error.message : String(error)}`,
 			);
-			return btContext;
+			return btContext as BtContext & Record<string, unknown>;
 		}
 
 		const registerProperty = (name: string, descriptor: PropertyDescriptor): void => {
 			if (!name || name === "constructor") return;
 
 			const memberSlotExists =
-				Object.hasOwn(memberContext, name) || !!Object.getOwnPropertyDescriptor(memberContext, name);
+				Object.hasOwn(runtime, name) || !!Object.getOwnPropertyDescriptor(runtime, name);
 			const btSlotExists = Object.hasOwn(btContext, name) || !!Object.getOwnPropertyDescriptor(btContext, name);
 
 			if (memberSlotExists || btSlotExists) {
@@ -112,7 +129,7 @@ export class BtManager<
 			}
 		}
 
-		return btContext;
+		return btContext as BtContext & Record<string, unknown>;
 	}
 
 	tickAll(): void {

@@ -1,7 +1,7 @@
 import { type ZodType, z } from "zod/v4";
 import { createLogger } from "~/lib/Logger";
 import type { State } from "~/lib/mistreevous/State";
-import type { MemberContext } from "../../MemberContext";
+import type { BtContext } from "./BtContext";
 import type { ActionPool, ConditionPool } from "./type";
 
 const log = createLogger("AgentUtils");
@@ -153,8 +153,10 @@ export const maxMin = (min: number, value: number, max: number) => {
  * @param actionName 动作名称
  * @param params 参数
  */
-export const sendRenderCommand = (context: MemberContext, actionName: string, params?: Record<string, unknown>) => {
-	if (!context.renderMessageSender) {
+export const sendRenderCommand = (context: BtContext, actionName: string, params?: Record<string, unknown>) => {
+	const owner = context.owner;
+	const renderMessageSender = owner?.services?.renderMessageSender as ((payload: unknown) => void) | null | undefined;
+	if (!renderMessageSender) {
 		log.warn(`⚠️ [${context.owner?.name}] 无法获取渲染消息接口，无法发送渲染指令: ${actionName}`);
 		return;
 	}
@@ -170,11 +172,9 @@ export const sendRenderCommand = (context: MemberContext, actionName: string, pa
 			params,
 		},
 	};
-	context.renderMessageSender?.(renderCmd);
+	renderMessageSender(renderCmd);
 	// 记录最后一次渲染动作，供渲染快照推算 animation.progress
-	if (context.owner?.context) {
-		const ctx = context.owner.context as Record<string, unknown>;
-		if (!ctx.__render) ctx.__render = {};
-		(ctx.__render as Record<string, unknown>).lastAction = { name: actionName, ts: now, params };
+	if (owner) {
+		owner.renderState.lastAction = { name: actionName, ts: now, params };
 	}
 };

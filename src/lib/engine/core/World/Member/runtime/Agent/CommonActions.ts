@@ -3,10 +3,10 @@ import { createLogger } from "~/lib/Logger";
 import { State } from "~/lib/mistreevous/State";
 import { ExpressionTransformer } from "../../../../JSProcessor/ExpressionTransformer";
 import type { DamageAreaRequest } from "../../../Area/types";
-import type { MemberContext } from "../../MemberContext";
 import { ModifierType } from "../StatContainer/StatContainer";
+import type { BtContext } from "./BtContext";
 import { type ActionPool, defineAction } from "./type";
-import { sendRenderCommand } from "./uitls";
+import { sendRenderCommand } from "./uitls"; 
 
 const log = createLogger("Actions");
 
@@ -114,7 +114,7 @@ export const CommonActionPool = {
 			log.debug(`👤 [${owner.name}] 施法者快照:`, casterSnapshot, `技能等级: ${skillLv}`);
 
 			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
-			const startFrame = context.getCurrentFrame();
+			const startFrame = owner.services.getCurrentFrame();
 			const damageRequest: DamageAreaRequest = {
 				identity: {
 					sourceId: owner.id,
@@ -145,7 +145,7 @@ export const CommonActionPool = {
 				casterId: owner.id,
 				targetId: input.targetId,
 			};
-			context.damageRequestHandler?.(damageRequest);
+			owner.services.damageRequestHandler?.(damageRequest);
 
 			return State.SUCCEEDED;
 		},
@@ -276,6 +276,6 @@ export const CommonActionPool = {
 			return State.SUCCEEDED;
 		},
 	),
-} as const satisfies ActionPool<MemberContext>;
+} as const satisfies ActionPool<BtContext>;
 
 export type CommonActionPool = typeof CommonActionPool;

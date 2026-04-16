@@ -4,13 +4,12 @@ import type { MemberType } from "@db/schema/enums";
 import type { Actor, AnyActorLogic } from "xstate";
 import { createLogger } from "~/lib/Logger";
 import type { ExpressionContext } from "../../JSProcessor/types";
-import type { PipelineRegistry } from "../../Pipline/PipelineRegistry";
-import type { StagePool } from "../../Pipline/types";
 import type { MemberCheckpoint, MemberDomainEvent } from "../../types";
 import type { DamageAreaRequest } from "../Area/types";
+import type { PipelineResolverService } from "../../Pipeline/PipelineResolverService";
 import type { Member } from "./Member";
-import type { MemberContext } from "./MemberContext";
 import type { MemberEventType, MemberStateContext } from "./runtime/StateMachine/types";
+import type { MemberSharedRuntime } from "./runtime/types";
 import { Mob } from "./types/Mob/Mob";
 import { Player } from "./types/Player/Player";
 
@@ -19,7 +18,7 @@ const log = createLogger("MemberMgr");
 // ============================== 类型定义 ==============================
 
 // 避免 any：用通用基类型承载不同成员实现
-export type AnyMemberEntry = Member<string, MemberEventType, MemberStateContext, MemberContext & Record<string, unknown>>;
+export type AnyMemberEntry = Member<string, MemberEventType, MemberStateContext, MemberSharedRuntime>;
 
 // ============================== 成员管理器类 ==============================
 
@@ -49,8 +48,8 @@ export class MemberManager {
 	private damageRequestHandler: ((damageRequest: DamageAreaRequest) => void) | null = null;
 	/** 引擎帧号读取函数（由引擎注入） */
 	private getCurrentFrame: (() => number) | null = null;
-	/** 引擎级 pipeline registry（由引擎注入） */
-	private pipelineRegistry: PipelineRegistry<Record<string, any>, StagePool<Record<string, any>>> | null = null;
+	/** 新管线解析器（由引擎注入） */
+	private pipelineResolverService: PipelineResolverService | null = null;
 
 	// ==================== 主控目标系统 ====================
 
@@ -115,13 +114,13 @@ export class MemberManager {
 	}
 
 	/**
-	 * 设置引擎级 pipeline registry（由引擎注入）。
+	 * 设置引擎级 pipeline resolver（由引擎注入）。
 	 */
-	setPipelineRegistry(registry: PipelineRegistry<Record<string, any>, StagePool<Record<string, any>>> | null): void {
-		this.pipelineRegistry = registry;
-		if (!registry) return;
+	setPipelineResolverService(resolver: PipelineResolverService | null): void {
+		this.pipelineResolverService = resolver;
+		if (!resolver) return;
 		for (const member of this.members.values()) {
-			member.setPipelineRegistry(registry);
+			member.setPipelineResolverService(resolver);
 		}
 	}
 
@@ -150,8 +149,8 @@ export class MemberManager {
 				player.setDamageRequestHandler(this.damageRequestHandler);
 				player.setGetCurrentFrame(this.getCurrentFrame);
 				player.setRenderMessageSender(this.renderMessageSender);
-				if (this.pipelineRegistry) {
-					player.setPipelineRegistry(this.pipelineRegistry);
+				if (this.pipelineResolverService) {
+					player.setPipelineResolverService(this.pipelineResolverService);
 				}
 				const success = this.registerMember(player, campId, teamId, memberData);
 				if (success) {
@@ -171,8 +170,8 @@ export class MemberManager {
 				mob.setDamageRequestHandler(this.damageRequestHandler);
 				mob.setGetCurrentFrame(this.getCurrentFrame);
 				mob.setRenderMessageSender(this.renderMessageSender);
-				if (this.pipelineRegistry) {
-					mob.setPipelineRegistry(this.pipelineRegistry);
+				if (this.pipelineResolverService) {
+					mob.setPipelineResolverService(this.pipelineResolverService);
 				}
 				const success = this.registerMember(mob, campId, teamId, memberData);
 				if (success) {
@@ -206,7 +205,6 @@ export class MemberManager {
 	 */
 	registerMember(member: AnyMemberEntry, campId: string, teamId: string, memberData: MemberWithRelations): boolean {
 		this.members.set(memberData.id, member);
-		// console.log(`📝 注册成员: ${memberData.name} (${memberData.type}) -> ${campId}/${teamId}`);
 
 		// 维护阵营/队伍索引
 		if (!this.membersByCamp.has(campId)) {

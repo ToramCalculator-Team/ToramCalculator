@@ -17,8 +17,8 @@ import { type EngineControlMessage, GameEngineSM } from "./GameEngineSM";
 import type { JSProcessor } from "./JSProcessor/JSProcessor";
 import type { ExpressionContext } from "./JSProcessor/types";
 import { type IntentMessage, type MessageProcessResult, MessageRouter } from "./MessageRouter/MessageRouter";
-import type { PipelineRegistry } from "./Pipline/PipelineRegistry";
-import type { StagePool } from "./Pipline/types";
+import type { PipelineCatalog } from "./Pipeline/PipelineCatalog";
+import type { PipelineResolverService } from "./Pipeline/PipelineResolverService";
 import type {
 	BuffViewDataSnapshot,
 	ComputedSkillInfo,
@@ -37,7 +37,6 @@ import type {
 } from "./types";
 import { createRealtimeConfig } from "./types";
 import type { MemberSerializeData } from "./World/Member/Member";
-import type { MemberContext } from "./World/Member/MemberContext";
 import type { Player } from "./World/Member/types/Player/Player";
 import { World } from "./World/World";
 
@@ -96,8 +95,10 @@ export class GameEngine {
 	private jsProcessor: JSProcessor;
 	/** 表达式求值器 - 负责 self/target/world 绑定 */
 	private expressionEvaluator: ExpressionEvaluator;
-	/** 引擎级管线定义仓库 */
-	private pipelineRegistry: PipelineRegistry<Record<string, any>, StagePool<Record<string, any>>>;
+	/** 新的冻结 Catalog */
+	private pipelineCatalog: PipelineCatalog;
+	/** 新的 Resolver（含 overlay + 编译缓存） */
+	private pipelineResolverService: PipelineResolverService;
 
 	/** 引擎配置 */
 	private config: EngineConfig;
@@ -208,7 +209,7 @@ export class GameEngine {
 	 * 构造函数
 	 *
 	 * @param config 引擎配置
-	 * @param infra 长期驻留的基础设施（JSProcessor、PipelineRegistry），由 Worker 级持有
+	 * @param infra 长期驻留的基础设施（JSProcessor、PipelineCatalog、PipelineResolverService），由 Worker 级持有
 	 */
 	constructor(config: EngineConfig, infra: EngineInfrastructure) {
 		console.log("================= GameEngine constructor ==================");
@@ -220,7 +221,8 @@ export class GameEngine {
 
 		// 接收外部注入的基础设施（跨 reset/cleanup 存活）
 		this.jsProcessor = infra.jsProcessor;
-		this.pipelineRegistry = infra.pipelineRegistry;
+		this.pipelineCatalog = infra.pipelineCatalog;
+		this.pipelineResolverService = infra.pipelineResolverService;
 
 		// 初始化核心模块 - 按依赖顺序
 		this.eventQueue = new EventQueue(config.eventQueueConfig, () => this.currentFrame);
@@ -265,8 +267,8 @@ export class GameEngine {
 		this.world.memberManager.setDamageRequestHandler((damageRequest) => {
 			this.world.areaManager.damageAreaSystem.add(damageRequest);
 		});
-		// 设置引擎级 pipeline registry 到 MemberManager（成员创建时会注入到成员级执行器）
-		this.world.memberManager.setPipelineRegistry(this.pipelineRegistry);
+		// 设置引擎级 pipeline resolver 到 MemberManager（成员创建时注入到成员）
+		this.world.memberManager.setPipelineResolverService(this.pipelineResolverService);
 
 		// 创建状态机 - executor 角色
 		let seqCounter = 0;
@@ -386,7 +388,7 @@ export class GameEngine {
 	}
 
 	/**
-	 * 清理仿真层资源，保留 Infrastructure（JSProcessor、PipelineRegistry）。
+	 * 清理仿真层资源，保留 Infrastructure（JSProcessor、PipelineCatalog、PipelineResolverService）。
 	 * 清理后引擎回到 idle 状态。
 	 */
 	cleanup(): void {
@@ -711,8 +713,13 @@ export class GameEngine {
 		const member = this.getMember(memberId);
 		if (!member || member.type !== "Player") return [];
 
-		const context = (member as { context?: { skillList?: unknown } }).context;
-		const skillList = Array.isArray(context?.skillList) ? context?.skillList : [];
+		const player = member as Player;
+		const skillList = player.runtime.skillList;
+		if (!skillList.length) {
+			log.debug(
+				`getMemberSkillList: empty skillList member=${memberId} character=${player.runtime.character?.id ?? "null"}`,
+			);
+		}
 		return skillList.map((s) => {
 			const skill = s as { id?: unknown; lv?: unknown; template?: { name?: unknown } };
 			return {
@@ -1277,11 +1284,7 @@ export class GameEngine {
 		const frameNumber = this.getCurrentFrame();
 		const engineNowTs = Date.now();
 		const members = this.world.memberManager.getAllMembers().map((member) => {
-			const ctx = member.context as Record<string, unknown>;
-			const __render = ctx.__render as
-				| { lastAction?: { name: string; ts: number; params?: Record<string, unknown> } }
-				| undefined;
-			const lastAction = __render?.lastAction;
+			const lastAction = member.renderState?.lastAction;
 			let animation: { name: string; progress: number } | undefined;
 			if (lastAction) {
 				const elapsed = engineNowTs - lastAction.ts;
@@ -1383,13 +1386,6 @@ export class GameEngine {
 	 */
 	getFrameLoop(): FrameLoop {
 		return this.frameLoop;
-	}
-
-	/**
-	 * 获取引擎级 pipeline registry。
-	 */
-	getPipelineRegistry(): PipelineRegistry<Record<string, any>, StagePool<Record<string, any>>> {
-		return this.pipelineRegistry;
 	}
 
 	// ==================== 私有方法 ====================
@@ -1581,7 +1577,8 @@ export class GameEngine {
 			typeof globalThis !== "undefined" && globalThis.__ALLOW_GAMEENGINE_IN_MAIN_THREAD === true;
 
 		// 检查是否在沙盒Worker中（有safeAPI标记）
-		const isSandboxWorker = typeof globalThis !== "undefined" && globalThis.safeAPI;
+		const isSandboxWorker =
+			typeof globalThis !== "undefined" && typeof globalThis === "object" && "safeAPI" in globalThis;
 
 		// 检查是否在Worker环境中（有self但没有window）
 		const isWorkerEnvironment = typeof self !== "undefined" && !isMainThread;
@@ -1616,8 +1613,8 @@ export class GameEngine {
 	 * 为每个技能计算当前的消耗值和可用性
 	 */
 	private computePlayerSkills(player: Player, currentFrame: number): ComputedSkillInfo[] {
-		const skillList = (player.context as { skillList?: unknown }).skillList ?? [];
-		const skillCooldowns = player.context.skillCooldowns ?? [];
+		const skillList = (player.runtime as { skillList?: unknown }).skillList ?? [];
+		const skillCooldowns = (player.runtime as { skillCooldowns?: unknown }).skillCooldowns ?? [];
 		const currentMp = player.statContainer?.getValue("mp.current") ?? 0;
 		const currentHp = player.statContainer?.getValue("hp.current") ?? 0;
 
@@ -1681,7 +1678,7 @@ export class GameEngine {
 			}
 
 			// 获取冷却状态
-			const cooldownRemaining = skillCooldowns[index] ?? 0;
+			const cooldownRemaining = Array.isArray(skillCooldowns) ? ((skillCooldowns[index] as number) ?? 0) : 0;
 
 			// 判断是否可用
 			const isAvailable = cooldownRemaining <= 0 && currentMp >= mpCost && currentHp >= hpCost;

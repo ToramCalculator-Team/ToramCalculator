@@ -1,8 +1,10 @@
 import type { MemberWithRelations } from "@db/generated/repositories/member";
 import { Member } from "../../Member";
+import { MemberRuntimeServicesDefaults } from "../../runtime/Agent/RuntimeServices";
 import type { ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
 import { StatContainer } from "../../runtime/StatContainer/StatContainer";
-import { MobBtBindings, MobContext } from "./Agents/Context";
+import type { MobRuntime } from "../../runtime/types";
+import { MobBtBindings } from "./Agents/BtBindings";
 import { MobAttrSchema } from "./MobAttrSchema";
 import {
 	createMobStateMachine,
@@ -16,7 +18,7 @@ export class Mob extends Member<
 	MobAttrType,
 	MobEventType,
 	MobStateContext,
-	MobContext
+	MobRuntime
 > {
 	constructor(
 		memberData: MemberWithRelations,
@@ -30,15 +32,15 @@ export class Mob extends Member<
 		const attrSchema = MobAttrSchema(memberData.mob);
 		const statContainer = new StatContainer<MobAttrType>(attrSchema);
 
-		// 重要：context 必须是每个成员独立的对象，且引用在构造后不可再被替换
-		const context: MobContext = {
-			...MobContext,
-			owner: undefined,
+		const runtime: MobRuntime = {
+			type: "Mob",
+			currentFrame: 0,
 			position: position ?? { x: 0, y: 0, z: 0 },
-			// Responsibility: share the same initial target snapshot with the FSM.
-			// Purpose: avoid Mob runtime starting with different targetId values in
-			// shared context vs. state-machine context.
 			targetId: memberData.id,
+			statusTags: [],
+			skillList: [],
+			skillCooldowns: [],
+			character: null,
 		};
 
 		super(
@@ -48,12 +50,10 @@ export class Mob extends Member<
 			memberData,
 			attrSchema,
 			statContainer,
-			context,
+			runtime,
+			MemberRuntimeServicesDefaults,
 			position,
 			MobBtBindings,
 		);
-
-		// 完成 owner 回填
-		this.context.owner = this;
 	}
 }

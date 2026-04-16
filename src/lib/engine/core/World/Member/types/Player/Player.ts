@@ -4,9 +4,11 @@ import type { MemberWithRelations } from "@db/generated/repositories/member";
 import { z } from "zod/v4";
 import { createLogger } from "~/lib/Logger";
 import { Member } from "../../Member";
+import { MemberRuntimeServicesDefaults } from "../../runtime/Agent/RuntimeServices";
 import type { ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
 import { ModifierType, StatContainer } from "../../runtime/StatContainer/StatContainer";
-import { PlayerBtBindings, PlayerContext } from "./Agents/Context";
+import type { PlayerRuntime } from "../../runtime/types";
+import { PlayerBtBindings } from "./Agents/BtBindings";
 import { PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
 import { type PlayerEventType, type PlayerStateContext, playerStateMachine } from "./PlayerStateMachine";
 import { applyPrebattleModifiers } from "./PrebattleDataSysModifiers";
@@ -68,13 +70,15 @@ const BuiltinRegistletEffects: Record<string, RegistletEffectDef> = {
 	},
 };
 
-export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateContext, PlayerContext> {
+export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateContext, PlayerRuntime> {
 	activeCharacter: CharacterWithRelations;
 
 	/**
-	 * Per-skill registlet parameter index.
-	 * Purpose: resolve skill-specific registlet effects once during construction,
-	 * then reuse the indexed result when a skill enters execution.
+	 * 每个技能的托环参数索引。
+	 *
+	 * 目的：
+	 * - 构造期一次性解析托环的“按技能参数”效果
+	 * - 施放时复用索引结果，避免重复扫描
 	 */
 	private readonly skillParamsBySkillId = new Map<string, RegistletSkillParamDef[]>();
 
@@ -100,19 +104,26 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 
 		const attrSchema = PlayerAttrSchemaGenerator(activeCharacter);
 		const statContainer = new StatContainer<PlayerAttrType>(attrSchema);
-		const initialSkillList = activeCharacter.skills ?? [];
+		const initialSkillList = activeCharacter.skills;
 
-		// The shared member context is mutated by runtime service injection,
-		// so every player must own a dedicated object instance.
-		const context: PlayerContext = {
-			...PlayerContext,
-			owner: undefined,
+		if (!initialSkillList) {
+			throw new Error("未在Character.Skills中找到技能");
+		}
+
+		const runtime: PlayerRuntime = {
+			type: "Player",
+			currentFrame: 0,
 			position: position ?? { x: 0, y: 0, z: 0 },
-			// Responsibility: keep the shared member context aligned with the
-			// long-standing FSM bootstrap default.
-			// Purpose: remove the first targetId split before the FSM mirror sync
-			// runs on later frames.
 			targetId: memberData.id,
+			statusTags: [],
+			currentSkill: null,
+			previousSkill: null,
+			currentSkillVariant: null,
+			currentSkillParams: {},
+			currentSkillStartupFrames: 0,
+			currentSkillChargingFrames: 0,
+			currentSkillChantingFrames: 0,
+			currentSkillActionFrames: 0,
 			skillList: initialSkillList,
 			skillCooldowns: initialSkillList.map(() => 0),
 			character: activeCharacter,
@@ -125,12 +136,11 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 			memberData,
 			attrSchema,
 			statContainer,
-			context,
+			runtime,
+			MemberRuntimeServicesDefaults,
 			position,
 			PlayerBtBindings,
 		);
-
-		this.context.owner = this;
 		this.activeCharacter = activeCharacter;
 
 		this.initializePassiveSkills(memberData);
@@ -177,14 +187,11 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 			}
 
 			for (const pipelinePatch of effect.pipelinePatches) {
-				this.pipelineManager.insertPipelineStage(
-					pipelinePatch.pipelineName,
-					pipelinePatch.afterStageName as never,
-					pipelinePatch.insertStageName as never,
-					`${sourceId}.${pipelinePatch.insertStageName}`,
-					sourceId,
-					pipelinePatch.params,
-					pipelinePatch.priority ?? 0,
+				// 旧 PipelineManager 已移除；此处改为构造纯数据 overlay。
+				// 注意：旧的 "stageName" -> 新的 "instruction anchor" 映射尚未建立，
+				// 当前内置托环效果未使用 pipelinePatches，因此先做告警并跳过。
+				log.warn(
+					`托环管线补丁暂未迁移（已跳过）：${pipelinePatch.pipelineName} after=${pipelinePatch.afterStageName} insert=${pipelinePatch.insertStageName}`,
 				);
 			}
 

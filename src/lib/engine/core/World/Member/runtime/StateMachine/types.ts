@@ -1,5 +1,6 @@
 import type { Actor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
 import type { Member } from "../../Member";
+import type { MemberSharedRuntime } from "../types";
 
 /**
  * 成员事件类型枚举
@@ -36,20 +37,20 @@ export type MemberStateMachine<
   TStateEvent extends EventObject = MemberEventType, // 状态机事件类型
   TStateContext extends MemberStateContext = MemberStateContext, // 状态机上下文类型
 > = StateMachine<
-  TStateContext, // TContext - 状态机上下文
-  TStateEvent, // TEvent - 事件类型（可扩展）
-  Record<string, any>, // TChildren - 子状态机
-  any, // TActor - Actor配置
-  any, // TAction - 动作配置
-  any, // TGuard - 守卫配置
-  string, // TDelay - 延迟配置
-  {}, // TStateValue - 状态值
-  string, // TTag - 标签
-  NonReducibleUnknown, // TInput - 输入类型
-  any, // TOutput - 输出类型（当状态机完成时）
-  EventObject, // TEmitted - 发出的事件类型
-  any, // TMeta - 元数据
-  any // TStateSchema - 状态模式
+	TStateContext, // TContext - 状态机上下文
+	TStateEvent, // TEvent - 事件类型（可扩展）
+	Record<string, any>, // TChildren - 子状态机
+	any, // TActor - Actor配置
+	any, // TAction - 动作配置
+	any, // TGuard - 守卫配置
+	string, // TDelay - 延迟配置
+	any, // TStateValue - 状态值
+	string, // TTag - 标签
+	NonReducibleUnknown, // TInput - 输入类型
+	any, // TOutput - 输出类型（当状态机完成时）
+	EventObject, // TEmitted - 发出的事件类型
+	any, // TMeta - 元数据
+	any // TStateSchema - 状态模式
 >;
 
 /**
@@ -77,22 +78,14 @@ export type MemberActor<
  * - keep legacy FSM guards/actions type-safe while the refactor is in progress
  *
  * Purpose:
- * - owner / targetId / position / currentFrame / statusTags are mirrors
- *   of member.context, not independent sources of truth
+ * - owner is the canonical entry to read `member.runtime`/`member.services`;
+ *   FSM context itself is not a mirror of member runtime.
  */
 export interface MemberStateContext {
-  /** 成员引用 */
-  owner: Member<any, any, any, any>;
-  /** 成员目标ID */
-  targetId: string;
-  /** 是否存活 */
-  isAlive: boolean;
-  /** 位置信息 */
-  position: { x: number; y: number; z: number };
-  /** 创建帧 */
-  createdAtFrame: number;
-  /** 当前帧 */
-  currentFrame: number;
-  /** 状态标签组 */
-  statusTags: string[];
+	/** 成员引用 */
+	owner: Member<string, MemberEventType, MemberStateContext, MemberSharedRuntime>;
+	/** 是否存活 */
+	isAlive: boolean;
+	/** 创建帧（用于行为树/FSM 计算相对时间） */
+	createdAtFrame: number;
 }
