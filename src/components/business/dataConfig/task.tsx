@@ -1,7 +1,24 @@
+import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { TaskSchema, type task } from "@db/generated/zod";
+import { getDictionary } from "~/locales/i18n";
+import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-export const TASK_DATA_CONFIG: TableDataConfig<"task"> = {
+const dictionary = getDictionary(store.settings.userInterface.language); 
+
+export const TASK_DATA_CONFIG: TableDataConfig<task> = {
+	dictionary: dictionary.db.task,
+	dataSchema: TaskSchema,
+	primaryKey: "id",
+	defaultData: defaultData.task,
+	dataFetcher: {
+		get: repositoryMethods.task.select,
+		getAll: repositoryMethods.task.selectAll,
+		insert: repositoryMethods.task.insert,
+		update: repositoryMethods.task.update,
+		delete: repositoryMethods.task.delete,
+	},
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name", "lv", "type", "description"],
@@ -54,5 +71,8 @@ export const TASK_DATA_CONFIG: TableDataConfig<"task"> = {
 	card: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 		fieldGenerator: {},
+		deleteCallback: repositoryMethods.task.delete,
+		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "task", data }),
+		editAbleCallback: (data) => repositoryMethods.task.canEdit(data.id),
 	},
 };

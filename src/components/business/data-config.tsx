@@ -1,6 +1,9 @@
 import type { ChildTableOf } from "@db/generated/dmmf-utils";
 import type { DB } from "@db/generated/zod";
+import { ZodObject, ZodType } from "zod/v4";
+import type { Dic } from "~/locales/type";
 import type { VirtualTableProps } from "../dataDisplay/virtualTable";
+import { DataRendererProps } from "./card/DataRenderer";
 import type { DBdataRendererProps } from "./card/DBdataRenderer";
 import { ACTIVITY_DATA_CONFIG } from "./dataConfig/activity";
 import { ADDRESS_DATA_CONFIG } from "./dataConfig/address";
@@ -27,28 +30,56 @@ import { TASK_DATA_CONFIG } from "./dataConfig/task";
 import { WEAPON_DATA_CONFIG } from "./dataConfig/weapon";
 import { WORLD_DATA_CONFIG } from "./dataConfig/world";
 import { ZONE_DATA_CONFIG } from "./dataConfig/zone";
-import type { DBFormProps } from "./form/DBFormRenderer";
+import type { FormProps } from "./form/FormRenderer";
 
-export type TableDataConfig<T extends keyof DB> = {
-	fieldGroupMap: Record<string, Array<keyof DB[T]>>;
-	table: Omit<
-		VirtualTableProps<DB[T]>,
+type SafeOmit<T, K extends keyof T> = Omit<T, K>
+
+export type TableDataConfig<T extends Record<string, unknown>> = {
+	dictionary: Dic<T>;
+	dataSchema: ZodObject<{ [K in keyof T]: ZodType }>;
+	primaryKey: keyof T;
+	defaultData: T;
+	dataFetcher: {
+		get: (id: string) => Promise<T | undefined>;
+		getAll: () => Promise<Array<T>>;
+		insert: (data: T) => Promise<T>;
+		update: (id: string, data: T) => Promise<T>;
+		delete: (id: string) => Promise<T | undefined>;
+	};
+	fieldGroupMap: Record<string, Array<keyof T>>;
+	table: SafeOmit<
+		VirtualTableProps<T>,
 		| "dataFetcher"
 		| "dictionary"
 		| "rowHandleClick"
 		| "onColumnVisibilityChange"
 		| "onRefetch"
 		| "globalFilterStr"
-		| "primaryKeyField"
 	>;
-	form: Omit<DBFormProps<T>, "initialValue" | "dataSchema" | "tableName">;
-	card: Omit<DBdataRendererProps<T>, "data" | "dictionary" | "dataSchema" | "tableName">;
-	childrenRelations?: Array<ChildTableOf<T>>;
+	form: SafeOmit<FormProps<T, ZodObject<{ [K in keyof T]: ZodType }>>, 
+		| "value"
+		| "dataSchema"
+		| "tableName"
+		| "primaryKey"
+		| "defaultValue"
+		| "dictionary"
+		| "fieldGroupMap"
+	>;
+	card: SafeOmit<DataRendererProps<T, ZodObject<{ [K in keyof T]: ZodType }>>, 
+		| "data"
+		| "tableName"
+		| "primaryKey"
+		| "dataSchema"
+		| "dictionary"
+		| "fieldGroupMap"
+	>;
 };
 
-export type DataConfig = Partial<{
-	[T in keyof DB]: TableDataConfig<T>;
-}>;
+// 擦除类型后的存储版本
+// 函数参数用 any 消除逆变问题，这是唯一需要 any 的地方
+export type AnyTableDataConfig = TableDataConfig<any>
+
+export type DataConfig = Partial<Record<keyof DB, AnyTableDataConfig>>;
 
 export const DATA_CONFIG: DataConfig = {
 	activity: ACTIVITY_DATA_CONFIG,

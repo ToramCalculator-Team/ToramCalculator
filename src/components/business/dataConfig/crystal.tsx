@@ -1,9 +1,26 @@
+import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { CrystalSchema, type crystal } from "@db/generated/zod";
 import { stringArrayCellRenderer } from "~/components/business/utils/stringArrayCellRenderer";
 import { Icons } from "~/components/icons";
+import { getDictionary } from "~/locales/i18n";
+import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-export const CRYSTAL_DATA_CONFIG: TableDataConfig<"crystal"> = {
+const dictionary = getDictionary(store.settings.userInterface.language); 
+
+export const CRYSTAL_DATA_CONFIG: TableDataConfig<crystal> = {
+	dictionary: dictionary.db.crystal,
+	dataSchema: CrystalSchema,
+	primaryKey: "itemId",
+	defaultData: defaultData.crystal,
+	dataFetcher: {
+		get: repositoryMethods.crystal.select,
+		getAll: repositoryMethods.crystal.selectAll,
+		insert: repositoryMethods.crystal.insert,
+		update: repositoryMethods.crystal.update,
+		delete: repositoryMethods.crystal.delete,
+	},
 	fieldGroupMap: {
 		所属道具: ["itemId"],
 		基本信息: ["name", "type", "modifiers"],
@@ -48,5 +65,8 @@ export const CRYSTAL_DATA_CONFIG: TableDataConfig<"crystal"> = {
 				);
 			},
 		},
+		deleteCallback: repositoryMethods.crystal.delete,
+		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "crystal", data }),
+		editAbleCallback: (data) => repositoryMethods.crystal.canEdit(data.itemId),
 	},
 };

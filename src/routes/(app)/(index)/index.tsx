@@ -621,7 +621,7 @@ export default function IndexPage() {
 																											...pre,
 																											{
 																												type: groupType,
-																												id: resultItem.id,
+																												data: resultItem,
 																											},
 																										])
 																									: null;

@@ -1,7 +1,24 @@
+import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { RecipeIngredientSchema, type recipe_ingredient } from "@db/generated/zod";
+import { getDictionary } from "~/locales/i18n";
+import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-export const RECIPE_INGREDIENT_DATA_CONFIG: TableDataConfig<"recipe_ingredient"> = {
+const dictionary = getDictionary(store.settings.userInterface.language);
+
+export const RECIPE_INGREDIENT_DATA_CONFIG: TableDataConfig<recipe_ingredient> = {
+	dictionary: dictionary.db.recipe_ingredient,
+	dataSchema: RecipeIngredientSchema,
+	primaryKey: "id",
+	defaultData: defaultData.recipe_ingredient,
+	dataFetcher: {
+		get: repositoryMethods.recipe_ingredient.select,
+		getAll: repositoryMethods.recipe_ingredient.selectAll,
+		insert: repositoryMethods.recipe_ingredient.insert,
+		update: repositoryMethods.recipe_ingredient.update,
+		delete: repositoryMethods.recipe_ingredient.delete,
+	},
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["count", "type", "itemId"],
@@ -26,5 +43,8 @@ export const RECIPE_INGREDIENT_DATA_CONFIG: TableDataConfig<"recipe_ingredient">
 	card: {
 		hiddenFields: ["id"],
 		fieldGenerator: {},
+		deleteCallback: repositoryMethods.recipe_ingredient.delete,
+		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "recipe_ingredient", data }),
+		editAbleCallback: (data) => repositoryMethods.recipe_ingredient.canEdit(data.id),
 	},
 };

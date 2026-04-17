@@ -111,7 +111,7 @@ type PageState = {
 	/** 卡片组缓存 */
 	cardGroup: {
 		type: keyof DB;
-		id: string;
+		data: Record<string, unknown>;
 	}[];
 	/** 表单组缓存 */
 	formGroup: {

@@ -1,7 +1,24 @@
+import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { ItemSchema, type item } from "@db/generated/zod";
+import { getDictionary } from "~/locales/i18n";
+import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-export const ITEM_DATA_CONFIG: TableDataConfig<"item"> = {
+const dictionary = getDictionary(store.settings.userInterface.language); 
+
+export const ITEM_DATA_CONFIG: TableDataConfig<item> = {
+	dictionary: dictionary.db.item,
+	dataSchema: ItemSchema,
+	primaryKey: "id",
+	defaultData: defaultData.item,
+	dataFetcher: {
+		get: repositoryMethods.item.select,
+		getAll: repositoryMethods.item.selectAll,
+		insert: repositoryMethods.item.insert,
+		update: repositoryMethods.item.update,
+		delete: repositoryMethods.item.delete,
+	},
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name", "itemType", "itemSourceType"],
@@ -38,5 +55,8 @@ export const ITEM_DATA_CONFIG: TableDataConfig<"item"> = {
 	card: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 		fieldGenerator: {},
+		deleteCallback: repositoryMethods.item.delete,
+		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "item", data }),
+		editAbleCallback: (data) => repositoryMethods.item.canEdit(data.id),
 	},
 };

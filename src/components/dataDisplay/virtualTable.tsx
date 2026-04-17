@@ -44,8 +44,6 @@ export interface VirtualTableProps<T extends Record<string, unknown>> {
 	};
 	// 行数据获取器
 	dataFetcher: () => Promise<T[]>;
-	// 主键字段
-	primaryKeyField: string;
 	// 列定义
 	columnsDef: ColumnDef<T>[];
 	// 隐藏列定义
@@ -61,7 +59,7 @@ export interface VirtualTableProps<T extends Record<string, unknown>> {
 	// 字典
 	dictionary: Dic<T>;
 	// 行点击处理
-	rowHandleClick: (id: string) => void;
+	rowHandleClick: (data: T) => void;
 	// 列可见性
 	columnVisibility?: VisibilityState;
 	// 列可见性变化处理
@@ -225,7 +223,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 		};
 	};
 
-	const handleRowClick = (primaryKey: string, e: MouseEvent) => {
+	const handleRowClick = (data: T, e: MouseEvent) => {
 		if (suppressNextRowClick) {
 			suppressNextRowClick = false;
 			clearSuppressedClickReset();
@@ -234,7 +232,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 			return;
 		}
 
-		props.rowHandleClick(primaryKey);
+		props.rowHandleClick(data);
 	};
 
 	onCleanup(() => {
@@ -401,7 +399,6 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 										if (!row) {
 											return null;
 										}
-										const primaryKey = String(row.getValue(props.primaryKeyField));
 										return (
 											<button
 												type="button"
@@ -419,7 +416,10 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 														"repeating-linear-gradient(to right, var(--color-dividing-color) 0 3px, transparent 3px 6px) 1",
 												}}
 												onPointerDown={handleRowPointerDown}
-												onClick={(e) => handleRowClick(primaryKey, e)}
+												onClick={(e) => {
+													console.log("row.original", row.original);
+													handleRowClick(row.original, e)
+												}}
 												class={`Row group border-dividing-color hover:bg-area-color flex cursor-pointer transition-none hover:rounded hover:border-transparent`}
 											>
 												<For

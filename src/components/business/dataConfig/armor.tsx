@@ -1,8 +1,25 @@
+import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { ArmorSchema, type armor } from "@db/generated/zod";
 import { stringArrayCellRenderer } from "~/components/business/utils/stringArrayCellRenderer";
+import { getDictionary } from "~/locales/i18n";
+import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-export const ARMOR_DATA_CONFIG: TableDataConfig<"armor"> = {
+const dictionary = getDictionary(store.settings.userInterface.language); 
+
+export const ARMOR_DATA_CONFIG: TableDataConfig<armor> = {
+	dictionary: dictionary.db.armor,
+	dataSchema: ArmorSchema,
+	primaryKey: "itemId",
+	defaultData: defaultData.armor,
+	dataFetcher: {
+		get: repositoryMethods.armor.select,
+		getAll: repositoryMethods.armor.selectAll,
+		insert: repositoryMethods.armor.insert,
+		update: repositoryMethods.armor.update,
+		delete: repositoryMethods.armor.delete,
+	},
 	fieldGroupMap: {
 		所属道具: ["itemId"],
 		基本信息: ["name", "baseAbi"],
@@ -30,5 +47,8 @@ export const ARMOR_DATA_CONFIG: TableDataConfig<"armor"> = {
 	card: {
 		hiddenFields: [],
 		fieldGenerator: {},
+		deleteCallback: repositoryMethods.armor.delete,
+		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "armor", data }),
+		editAbleCallback: (data) => repositoryMethods.armor.canEdit(data.itemId),
 	},
 };

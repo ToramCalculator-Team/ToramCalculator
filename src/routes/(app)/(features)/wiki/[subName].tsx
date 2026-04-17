@@ -3,17 +3,7 @@ import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 import { repositoryMethods } from "@db/generated/repositories";
 import type { DB } from "@db/generated/zod/index";
 import { A, useNavigate, useParams } from "@solidjs/router";
-import {
-	createEffect,
-	createSignal,
-	For,
-	type JSX,
-	on,
-	onCleanup,
-	onMount,
-	Show,
-	useContext,
-} from "solid-js";
+import { createEffect, createSignal, For, type JSX, on, onCleanup, onMount, Show, useContext } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { DATA_CONFIG, type DataConfig } from "~/components/business/data-config";
 import { Dialog } from "~/components/containers/dialog";
@@ -315,8 +305,7 @@ export default function WikiSubPage() {
 									when={wikiPageConfig[wikiStore.type]?.mainContent}
 									fallback={VirtualTable<DB[typeof wikiStore.type]>({
 										measure: validDataConfig().table.measure,
-										primaryKeyField: getPrimaryKeys(wikiStore.type)[0],
-										dataFetcher: async () => (await repositoryMethods[wikiStore.type].selectAll?.()) ?? [],
+										dataFetcher: validDataConfig().dataFetcher.getAll,
 										// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
 										columnsDef: validDataConfig().table.columnsDef,
 										// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
@@ -324,10 +313,10 @@ export default function WikiSubPage() {
 										tdGenerator: validDataConfig().table.tdGenerator,
 										// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
 										defaultSort: validDataConfig().table.defaultSort,
-										dictionary: dictionary().db[wikiStore.type],
+										dictionary: validDataConfig().dictionary,
 										globalFilterStr: () => wikiStore.table.globalFilterStr,
-										rowHandleClick: (id) =>
-											setStore("pages", "cardGroup", (pre) => [...pre, { type: wikiStore.type, id }]),
+										rowHandleClick: (data) =>
+											setStore("pages", "cardGroup", store.pages.cardGroup.length, { type: wikiStore.type, data }),
 										columnVisibility: wikiStore.table.columnVisibility,
 										onColumnVisibilityChange: (updater) => {
 											if (typeof updater === "function") {
@@ -362,8 +351,8 @@ export default function WikiSubPage() {
 									//   />
 									// }
 								>
-									{wikiPageConfig[wikiStore.type]?.mainContent?.(dictionary(), (id) =>
-										setStore("pages", "cardGroup", (pre) => [...pre, { type: wikiStore.type, id }]),
+									{wikiPageConfig[wikiStore.type]?.mainContent?.(dictionary(), (data) =>
+										setStore("pages", "cardGroup", (pre) => [...pre, { type: wikiStore.type, data }]),
 									)}
 								</Show>
 							</div>

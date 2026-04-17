@@ -1,14 +1,30 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { insertStatistic } from "@db/generated/repositories/statistic";
+import { SkillSchema, type skill } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { SKILL_TREE_TYPE, type SkillTreeType } from "@db/schema/enums";
 import { createId } from "@paralleldrive/cuid2";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
+import { getDictionary } from "~/locales/i18n";
+import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-export const SKILL_DATA_CONFIG: TableDataConfig<"skill"> = {
+const dictionary = getDictionary(store.settings.userInterface.language); 
+
+export const SKILL_DATA_CONFIG: TableDataConfig<skill> = {
+	dictionary: dictionary.db.skill,
+	dataSchema: SkillSchema,
+	primaryKey: "id",
+	defaultData: defaultData.skill,
+	dataFetcher: {
+		get: repositoryMethods.skill.select,
+		getAll: repositoryMethods.skill.selectAll,
+		insert: repositoryMethods.skill.insert,
+		update: repositoryMethods.skill.update,
+		delete: repositoryMethods.skill.delete,
+	},
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name", "treeType", "tier", "posX", "posY"],
@@ -109,5 +125,8 @@ export const SKILL_DATA_CONFIG: TableDataConfig<"skill"> = {
 	card: {
 		hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
 		fieldGenerator: {},
+		deleteCallback: repositoryMethods.skill.delete,
+		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "skill", data }),
+		editAbleCallback: (data) => repositoryMethods.skill.canEdit(data.id),
 	},
 };

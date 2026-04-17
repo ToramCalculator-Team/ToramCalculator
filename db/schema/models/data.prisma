@@ -261,9 +261,9 @@ model weapon {
     stability       Int
     defaultCrystals crystal[]
     modifiers       String[]
-    colorA          Int
-    colorB          Int
-    colorC          Int
+    colorA          Int?
+    colorB          Int?
+    colorC          Int?
     images          image[]
 
     usedByPlayerWeapons player_weapon[]
@@ -278,9 +278,9 @@ model armor {
     baseAbi         Int
     defaultCrystals crystal[]
     modifiers       String[]
-    colorA          Int
-    colorB          Int
-    colorC          Int
+    colorA          Int?
+    colorB          Int?
+    colorC          Int?
     images          image[]
 
     usedByPlayerArmors player_armor[]
@@ -295,9 +295,9 @@ model option {
     baseAbi         Int
     defaultCrystals crystal[]
     modifiers       String[]
-    colorA          Int
-    colorB          Int
-    colorC          Int
+    colorA          Int?
+    colorB          Int?
+    colorC          Int?    
     images          image[]
 
     usedByPlayerOptions player_option[]

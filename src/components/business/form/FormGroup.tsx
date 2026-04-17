@@ -8,7 +8,7 @@ import { Index, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { DATA_CONFIG } from "~/components/business/data-config";
 import { setStore, store } from "~/store";
-import { DBForm } from "./DBFormRenderer";
+import { Form } from "./FormRenderer";
 import { FormSheet } from "./FormSheet";
 
 export const FormGroup = () => {
@@ -24,6 +24,7 @@ export const FormGroup = () => {
 				>
 					<Index each={store.pages.formGroup}>
 						{(formData, index) => {
+							// 从stroe获取当前表单数据
 							const formGroupItem = store.pages.formGroup[index];
 							const config = DATA_CONFIG[formGroupItem.type];
 							const initialValue = formData().data as DB[typeof formGroupItem.type];
@@ -31,13 +32,15 @@ export const FormGroup = () => {
 								<FormSheet display={true} index={index} total={store.pages.formGroup.length}>
 									<Show when={config}>
 										{(config) => (
-											<DBForm
+											<Form
 												tableName={formGroupItem.type}
-												initialValue={initialValue}
-												dataSchema={DBSchema[formGroupItem.type]}
-												childrenRelations={config().childrenRelations}
-												hiddenFields={config().form.hiddenFields as any}
-												fieldGroupMap={config().fieldGroupMap as any}
+												value={initialValue}
+												primaryKey={config().primaryKey}
+												defaultValue={config().defaultData}
+												dataSchema={config().dataSchema}
+												dictionary={config().dictionary}
+												hiddenFields={config().form.hiddenFields}
+												fieldGroupMap={config().fieldGroupMap}
 												fieldGenerator={config().form.fieldGenerator}
 												onInsert={async (value) => {
 													const insertFun = DATA_CONFIG[formGroupItem.type]?.form.onInsert;
@@ -61,7 +64,7 @@ export const FormGroup = () => {
 													setStore("pages", "formGroup", (pre) => pre.slice(0, -1));
 													return result;
 												}}
-											></DBForm>
+											></Form>
 										)}
 									</Show>
 								</FormSheet>

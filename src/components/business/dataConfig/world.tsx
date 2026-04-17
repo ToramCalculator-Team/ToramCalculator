@@ -1,7 +1,24 @@
+import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { WorldSchema, type world } from "@db/generated/zod";
+import { getDictionary } from "~/locales/i18n";
+import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-export const WORLD_DATA_CONFIG: TableDataConfig<"world"> = {
+const dictionary = getDictionary(store.settings.userInterface.language); 
+
+export const WORLD_DATA_CONFIG: TableDataConfig<world> = {
+	dictionary: dictionary.db.world,
+	dataSchema: WorldSchema,
+	primaryKey: "id",
+	defaultData: defaultData.world,
+	dataFetcher: {
+		get: repositoryMethods.world.select,
+		getAll: repositoryMethods.world.selectAll,
+		insert: repositoryMethods.world.insert,
+		update: repositoryMethods.world.update,
+		delete: repositoryMethods.world.delete,
+	},
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name"],
@@ -23,5 +40,8 @@ export const WORLD_DATA_CONFIG: TableDataConfig<"world"> = {
 	card: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 		fieldGenerator: {},
+		deleteCallback: repositoryMethods.world.delete,
+		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "world", data }),
+		editAbleCallback: (data) => repositoryMethods.world.canEdit(data.id),
 	},
 };

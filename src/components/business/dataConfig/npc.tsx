@@ -1,7 +1,24 @@
+import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { NpcSchema, type npc } from "@db/generated/zod";
+import { getDictionary } from "~/locales/i18n";
+import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-export const NPC_DATA_CONFIG: TableDataConfig<"npc"> = {
+const dictionary = getDictionary(store.settings.userInterface.language); 
+
+export const NPC_DATA_CONFIG: TableDataConfig<npc> = {
+	dictionary: dictionary.db.npc,
+	dataSchema: NpcSchema,
+	primaryKey: "id",
+	defaultData: defaultData.npc,
+	dataFetcher: {
+		get: repositoryMethods.npc.select,
+		getAll: repositoryMethods.npc.selectAll,
+		insert: repositoryMethods.npc.insert,
+		update: repositoryMethods.npc.update,
+		delete: repositoryMethods.npc.delete,
+	},
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name"],
@@ -27,5 +44,8 @@ export const NPC_DATA_CONFIG: TableDataConfig<"npc"> = {
 	card: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 		fieldGenerator: {},
+		deleteCallback: repositoryMethods.npc.delete,
+		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "npc", data }),
+		editAbleCallback: (data) => repositoryMethods.npc.canEdit(data.id),
 	},
 };

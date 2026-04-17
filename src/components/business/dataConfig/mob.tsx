@@ -1,4 +1,6 @@
+import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { MobSchema, type mob } from "@db/generated/zod";
 import type { ElementType, MemberType, MobType } from "@db/schema/enums";
 import { MOB_DIFFICULTY_FLAG, type MobDifficultyFlag } from "@db/schema/enums";
 import { createEffect, createSignal, Show } from "solid-js";
@@ -8,10 +10,24 @@ import { Select } from "~/components/controls/select";
 import { BtEditor } from "~/components/features/BtEditor/BtEditor";
 import { Icons } from "~/components/icons";
 import { generateBossDataByFlag } from "~/lib/utils/mob";
-import { store } from "~/store";
+import { getDictionary } from "~/locales/i18n";
+import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-export const MOB_DATA_CONFIG: TableDataConfig<"mob"> = {
+const dictionary = getDictionary(store.settings.userInterface.language); 
+
+export const MOB_DATA_CONFIG: TableDataConfig<mob> = {
+	dictionary: dictionary.db.mob,
+	dataSchema: MobSchema,
+	primaryKey: "id",
+	defaultData: defaultData.mob,
+	dataFetcher: {
+		get: repositoryMethods.mob.select,
+		getAll: repositoryMethods.mob.selectAll,
+		insert: repositoryMethods.mob.insert,
+		update: repositoryMethods.mob.update,
+		delete: repositoryMethods.mob.delete,
+	},
 	fieldGroupMap: {
 		ID: ["id"],
 		常规属性: ["name", "baseLv", "experience", "partsExperience", "maxhp"],
@@ -337,5 +353,8 @@ export const MOB_DATA_CONFIG: TableDataConfig<"mob"> = {
 			);
 		},
 		fieldGenerator: {},
+		deleteCallback: repositoryMethods.mob.delete,
+		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "mob", data }),
+		editAbleCallback: (data) => repositoryMethods.mob.canEdit(data.id),
 	},
 };

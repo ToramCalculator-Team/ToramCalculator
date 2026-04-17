@@ -1,7 +1,24 @@
+import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { ZoneSchema, type zone } from "@db/generated/zod";
+import { getDictionary } from "~/locales/i18n";
+import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-export const ZONE_DATA_CONFIG: TableDataConfig<"zone"> = {
+const dictionary = getDictionary(store.settings.userInterface.language); 
+
+export const ZONE_DATA_CONFIG: TableDataConfig<zone> = {
+	dictionary: dictionary.db.zone,
+	dataSchema: ZoneSchema,
+	primaryKey: "id",
+	defaultData: defaultData.zone,
+	dataFetcher: {
+		get: repositoryMethods.zone.select,
+		getAll: repositoryMethods.zone.selectAll,
+		insert: repositoryMethods.zone.insert,
+		update: repositoryMethods.zone.update,
+		delete: repositoryMethods.zone.delete,
+	},
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name", "rewardNodes"],
@@ -56,5 +73,8 @@ export const ZONE_DATA_CONFIG: TableDataConfig<"zone"> = {
 	card: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 		fieldGenerator: {},
+		deleteCallback: repositoryMethods.zone.delete,
+		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "zone", data }),
+		editAbleCallback: (data) => repositoryMethods.zone.canEdit(data.id),
 	},
 };

@@ -513,11 +513,9 @@ export function DBdataRenderer<TName extends keyof DB>(props: DBdataRendererProp
 												<Button
 													level={group.isParent ? "quaternary" : "default"}
 													onclick={() => {
-														const itemPrimaryKey = getPrimaryKeys(group.tableName)[0];
-														const itemId = String(item.data[itemPrimaryKey as keyof typeof item.data]);
 														setStore("pages", "cardGroup", store.pages.cardGroup.length, {
 															type: group.tableName,
-															id: itemId,
+															data: item.data,
 														});
 													}}
 													class="lg:w-fit lg:border-dividing-color lg:border-2"

@@ -1,8 +1,25 @@
+import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { OptionSchema, type option } from "@db/generated/zod";
 import { stringArrayCellRenderer } from "~/components/business/utils/stringArrayCellRenderer";
+import { getDictionary } from "~/locales/i18n";
+import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-export const OPTION_DATA_CONFIG: TableDataConfig<"option"> = {
+const dictionary = getDictionary(store.settings.userInterface.language); 
+
+export const OPTION_DATA_CONFIG: TableDataConfig<option> = {
+	dictionary: dictionary.db.option,
+	dataSchema: OptionSchema,
+	primaryKey: "itemId",
+	defaultData: defaultData.option,
+	dataFetcher: {
+		get: repositoryMethods.option.select,
+		getAll: repositoryMethods.option.selectAll,
+		insert: repositoryMethods.option.insert,
+		update: repositoryMethods.option.update,
+		delete: repositoryMethods.option.delete,
+	},
 	fieldGroupMap: {
 		所属道具: ["itemId"],
 		基本信息: ["name", "baseAbi"],
@@ -41,5 +58,8 @@ export const OPTION_DATA_CONFIG: TableDataConfig<"option"> = {
 	card: {
 		hiddenFields: [],
 		fieldGenerator: {},
+		deleteCallback: repositoryMethods.option.delete,
+		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "option", data }),
+		editAbleCallback: (data) => repositoryMethods.option.canEdit(data.itemId),
 	},
 };

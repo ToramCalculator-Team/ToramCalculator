@@ -1,7 +1,24 @@
+import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { ConsumableSchema, type consumable } from "@db/generated/zod";
+import { getDictionary } from "~/locales/i18n";
+import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-export const CONSUMABLE_DATA_CONFIG: TableDataConfig<"consumable"> = {
+const dictionary = getDictionary(store.settings.userInterface.language); 
+
+export const CONSUMABLE_DATA_CONFIG: TableDataConfig<consumable> = {
+	dictionary: dictionary.db.consumable,
+	dataSchema: ConsumableSchema,
+	primaryKey: "itemId",
+	defaultData: defaultData.consumable,
+	dataFetcher: {
+		get: repositoryMethods.consumable.select,
+		getAll: repositoryMethods.consumable.selectAll,
+		insert: repositoryMethods.consumable.insert,
+		update: repositoryMethods.consumable.update,
+		delete: repositoryMethods.consumable.delete,
+	},
 	fieldGroupMap: {
 		所属道具: ["itemId"],
 		基本信息: ["name", "type"],
@@ -32,5 +49,8 @@ export const CONSUMABLE_DATA_CONFIG: TableDataConfig<"consumable"> = {
 	card: {
 		hiddenFields: [],
 		fieldGenerator: {},
+		deleteCallback: repositoryMethods.consumable.delete,
+		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "consumable", data }),
+		editAbleCallback: (data) => repositoryMethods.consumable.canEdit(data.itemId),
 	},
 };

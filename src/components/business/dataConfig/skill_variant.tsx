@@ -1,4 +1,6 @@
+import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { SkillVariantSchema, type skill_variant } from "@db/generated/zod";
 import type { MemberType } from "@db/schema/enums";
 import type { MemberBTTree } from "@db/schema/jsons";
 import { createEffect, createSignal, Index } from "solid-js";
@@ -7,9 +9,24 @@ import { Button } from "~/components/controls/button";
 import { Input } from "~/components/controls/input";
 import { BtEditor } from "~/components/features/BtEditor/BtEditor";
 import { skillLogicExample } from "~/components/features/BtEditor/data/SkillExamples";
+import { getDictionary } from "~/locales/i18n";
+import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<"skill_variant"> = {
+const dictionary = getDictionary(store.settings.userInterface.language); 
+
+export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = {
+	dictionary: dictionary.db.skill_variant,
+	dataSchema: SkillVariantSchema,
+	primaryKey: "id",
+	defaultData: defaultData.skill_variant,
+	dataFetcher: {
+		get: repositoryMethods.skill_variant.select,
+		getAll: repositoryMethods.skill_variant.selectAll,
+		insert: repositoryMethods.skill_variant.insert,
+		update: repositoryMethods.skill_variant.update,
+		delete: repositoryMethods.skill_variant.delete,
+	},
 	fieldGroupMap: {
 		ID: ["id"],
 		启用条件: ["targetMainWeaponType", "targetSubWeaponType", "targetArmorAbilityType"],
@@ -327,5 +344,8 @@ export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<"skill_variant"> = {
 				);
 			},
 		},
+		deleteCallback: repositoryMethods.skill_variant.delete,
+		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "skill_variant", data }),
+		editAbleCallback: (data) => repositoryMethods.skill_variant.canEdit(data.id),
 	},
 };

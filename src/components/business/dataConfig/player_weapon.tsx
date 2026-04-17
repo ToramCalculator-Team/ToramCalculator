@@ -1,8 +1,25 @@
+import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { PlayerWeaponSchema, type player_weapon } from "@db/generated/zod";
 import { stringArrayCellRenderer } from "~/components/business/utils/stringArrayCellRenderer";
+import { getDictionary } from "~/locales/i18n";
+import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-export const PLAYER_WEAPON_DATA_CONFIG: TableDataConfig<"player_weapon"> = {
+const dictionary = getDictionary(store.settings.userInterface.language); 
+
+export const PLAYER_WEAPON_DATA_CONFIG: TableDataConfig<player_weapon> = {
+	dictionary: dictionary.db.player_weapon,
+	dataSchema: PlayerWeaponSchema,
+	primaryKey: "id",
+	defaultData: defaultData.player_weapon,
+	dataFetcher: {
+		get: repositoryMethods.player_weapon.select,
+		getAll: repositoryMethods.player_weapon.selectAll,
+		insert: repositoryMethods.player_weapon.insert,
+		update: repositoryMethods.player_weapon.update,
+		delete: repositoryMethods.player_weapon.delete,
+	},
 	fieldGroupMap: {
 		ID: ["id"],
 		基础属性: ["type", "name", "baseAbi", "stability", "elementType"],
@@ -43,5 +60,8 @@ export const PLAYER_WEAPON_DATA_CONFIG: TableDataConfig<"player_weapon"> = {
 	card: {
 		hiddenFields: ["id"],
 		fieldGenerator: {},
+		deleteCallback: repositoryMethods.player_weapon.delete,
+		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "player_weapon", data }),
+		editAbleCallback: (data) => repositoryMethods.player_weapon.canEdit(data.id),
 	},
 };

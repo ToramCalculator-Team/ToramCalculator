@@ -1,7 +1,24 @@
+import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { RecipeSchema, type recipe } from "@db/generated/zod";
+import { getDictionary } from "~/locales/i18n";
+import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-export const RECIPE_DATA_CONFIG: TableDataConfig<"recipe"> = {
+const dictionary = getDictionary(store.settings.userInterface.language);
+
+export const RECIPE_DATA_CONFIG: TableDataConfig<recipe> = {
+	dictionary: dictionary.db.recipe,
+	dataSchema: RecipeSchema,
+	primaryKey: "id",
+	defaultData: defaultData.recipe,
+	dataFetcher: {
+		get: repositoryMethods.recipe.select,
+		getAll: repositoryMethods.recipe.selectAll,
+		insert: repositoryMethods.recipe.insert,
+		update: repositoryMethods.recipe.update,
+		delete: repositoryMethods.recipe.delete,
+	},
 	fieldGroupMap: {
 		ID: ["id"],
 		所属道具: ["itemId"],
@@ -24,5 +41,8 @@ export const RECIPE_DATA_CONFIG: TableDataConfig<"recipe"> = {
 	card: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 		fieldGenerator: {},
+		deleteCallback: repositoryMethods.recipe.delete,
+		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "recipe", data }),
+		editAbleCallback: (data) => repositoryMethods.recipe.canEdit(data.id),
 	},
 };

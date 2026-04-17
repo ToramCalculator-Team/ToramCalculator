@@ -1,4 +1,5 @@
 import { selectAllWorlds } from "@db/generated/repositories/world";
+import type { address } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
@@ -10,7 +11,7 @@ import { Select } from "~/components/controls/select";
 import { Icons } from "~/components/icons/index";
 import type { Dictionary } from "~/locales/type";
 
-export const AddressPage = (dic: Dictionary, itemHandleClick: (id: string) => void) => {
+export const AddressPage = (dic: Dictionary, itemHandleClick: (data: address) => void) => {
 	const [expandedAddresses, setExpandedAddresses] = createSignal<Set<string>>(new Set());
 	const [selectedWorldId, setSelectedWorldId] = createSignal<string>("Iruna World");
 	const [OverlayScrollbarsComponentRef, setOverlayScrollbarsComponentRef] = createSignal<
@@ -176,7 +177,7 @@ export const AddressPage = (dic: Dictionary, itemHandleClick: (id: string) => vo
 															"grid-column": x - validGridInfo().minX + 1,
 															"grid-row": y - validGridInfo().minY + 1,
 														}}
-														onClick={() => itemHandleClick(address().id)}
+														onClick={() => itemHandleClick(address())}
 													>
 														<div class="Name overflow-hidden font-bold text-nowrap text-ellipsis p-2 bg-accent-color text-primary-color w-full">
 															{address().name}
