@@ -1,14 +1,11 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { AddressSchema, type address } from "@db/generated/zod";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-const dictionary = getDictionary(store.settings.userInterface.language); 
-
-export const ADDRESS_DATA_CONFIG: TableDataConfig<address> = {
-	dictionary: dictionary.db.address,
+export const ADDRESS_DATA_CONFIG: TableDataConfig<address> = (dictionary) => ({
+	dictionary: dictionary().db.address,
 	dataSchema: AddressSchema,
 	primaryKey: "id",
 	defaultData: defaultData.address,
@@ -52,4 +49,4 @@ export const ADDRESS_DATA_CONFIG: TableDataConfig<address> = {
 		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "address", data }),
 		editAbleCallback: (data) => repositoryMethods.address.canEdit(data.id),
 	},
-};
+});

@@ -1,14 +1,11 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { MaterialSchema, type material } from "@db/generated/zod";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-const dictionary = getDictionary(store.settings.userInterface.language); 
-
-export const MATERIAL_DATA_CONFIG: TableDataConfig<material> = {
-	dictionary: dictionary.db.material,
+export const MATERIAL_DATA_CONFIG: TableDataConfig<material> = (dictionary) => ({
+	dictionary: dictionary().db.material,
 	dataSchema: MaterialSchema,
 	primaryKey: "itemId",
 	defaultData: defaultData.material,
@@ -48,4 +45,4 @@ export const MATERIAL_DATA_CONFIG: TableDataConfig<material> = {
 		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "material", data }),
 		editAbleCallback: (data) => repositoryMethods.material.canEdit(data.itemId),
 	},
-};
+});

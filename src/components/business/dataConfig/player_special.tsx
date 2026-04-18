@@ -2,14 +2,11 @@ import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { PlayerSpecialSchema, type player_special } from "@db/generated/zod";
 import { stringArrayCellRenderer } from "~/components/business/utils/stringArrayCellRenderer";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-const dictionary = getDictionary(store.settings.userInterface.language); 
-
-export const PLAYER_SPECIAL_DATA_CONFIG: TableDataConfig<player_special> = {
-	dictionary: dictionary.db.player_special,
+export const PLAYER_SPECIAL_DATA_CONFIG: TableDataConfig<player_special> = (dictionary) => ({
+	dictionary: dictionary().db.player_special,
 	dataSchema: PlayerSpecialSchema,
 	primaryKey: "id",
 	defaultData: defaultData.player_special,
@@ -55,4 +52,4 @@ export const PLAYER_SPECIAL_DATA_CONFIG: TableDataConfig<player_special> = {
 		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "player_special", data }),
 		editAbleCallback: (data) => repositoryMethods.player_special.canEdit(data.id),
 	},
-};
+});

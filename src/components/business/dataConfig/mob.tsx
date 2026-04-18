@@ -10,14 +10,11 @@ import { Select } from "~/components/controls/select";
 import { BtEditor } from "~/components/features/BtEditor/BtEditor";
 import { Icons } from "~/components/icons";
 import { generateBossDataByFlag } from "~/lib/utils/mob";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-const dictionary = getDictionary(store.settings.userInterface.language); 
-
-export const MOB_DATA_CONFIG: TableDataConfig<mob> = {
-	dictionary: dictionary.db.mob,
+export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
+	dictionary: dictionary().db.mob,
 	dataSchema: MobSchema,
 	primaryKey: "id",
 	defaultData: defaultData.mob,
@@ -357,4 +354,4 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = {
 		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "mob", data }),
 		editAbleCallback: (data) => repositoryMethods.mob.canEdit(data.id),
 	},
-};
+});

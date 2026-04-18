@@ -9,14 +9,11 @@ import { Button } from "~/components/controls/button";
 import { Input } from "~/components/controls/input";
 import { BtEditor } from "~/components/features/BtEditor/BtEditor";
 import { skillLogicExample } from "~/components/features/BtEditor/data/SkillExamples";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-const dictionary = getDictionary(store.settings.userInterface.language); 
-
-export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = {
-	dictionary: dictionary.db.skill_variant,
+export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = (dictionary) => ({
+	dictionary: dictionary().db.skill_variant,
 	dataSchema: SkillVariantSchema,
 	primaryKey: "id",
 	defaultData: defaultData.skill_variant,
@@ -348,4 +345,4 @@ export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = {
 		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "skill_variant", data }),
 		editAbleCallback: (data) => repositoryMethods.skill_variant.canEdit(data.id),
 	},
-};
+});

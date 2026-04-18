@@ -4,16 +4,18 @@
  * 用于展示DB内的数据，card是特化的dialog
  */
 
-import { type DB, DBSchema } from "@db/generated/zod/index";
+import type { DB } from "@db/generated/zod/index";
 import {  Index, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { DATA_CONFIG } from "~/components/business/data-config";
 import { Icons } from "~/components/icons";
+import { useDictionary } from "~/contexts/Dictionary";
 import { setStore, store } from "~/store";
 import { Card } from "./Card";
 import { DataRenderer } from "./DataRenderer";
 
 export const CardGroup = () => {
+	const dictionary = useDictionary();
 	return (
 		<Presence exitBeforeEnter>
 			<Show when={store.pages.cardGroup.length > 0}>
@@ -27,7 +29,7 @@ export const CardGroup = () => {
 					<Index each={store.pages.cardGroup}>
 						{(cardData, index) => {
 							const cardGroupItem = store.pages.cardGroup[index];
-							const config = DATA_CONFIG[cardGroupItem.type];
+							const config = DATA_CONFIG[cardGroupItem.type]?.(dictionary);
 							const data = cardData().data as DB[typeof cardGroupItem.type];
 							return (
 								<Card
@@ -52,6 +54,9 @@ export const CardGroup = () => {
 													hiddenFields={config().card.hiddenFields}
 													fieldGroupMap={config().fieldGroupMap}
 													fieldGenerator={config().card.fieldGenerator}
+													inheritsFrom={config().inheritsFrom}
+													embeds={config().embeds}
+													relationOverrides={config().relationOverrides}
 													after={config().card.after}
 													before={config().card.before}
 												/>

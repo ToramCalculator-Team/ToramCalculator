@@ -73,7 +73,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 	//   const start = performance.now();
 	//   console.log("virtualTable start", start);
 	const media = useContext(MediaContext);
-	const [data, { refetch: refetchData }] = createResource(props.dataFetcher);
+	const [data, { refetch: refetchData }] = createResource(async () => await props.dataFetcher());
 
 	// [列可见性控制组件]的可见状态
 	const [columnVisibleIsOpen, setColumnVisibleIsOpen] = createSignal(false);
@@ -403,10 +403,8 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 											<button
 												type="button"
 												ref={(el) => {
-													if (el && props.measure) {
-														el.setAttribute("data-index", virtualRow.index.toString());
-														tableContainer().measureElement(el);
-													}
+													el.setAttribute("data-index", virtualRow.index.toString());
+													tableContainer().measureElement(el);
 												}}
 												style={{
 													position: "absolute",
@@ -418,7 +416,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 												onPointerDown={handleRowPointerDown}
 												onClick={(e) => {
 													console.log("row.original", row.original);
-													handleRowClick(row.original, e)
+													handleRowClick(row.original, e);
 												}}
 												class={`Row group border-dividing-color hover:bg-area-color flex cursor-pointer transition-none hover:rounded hover:border-transparent`}
 											>

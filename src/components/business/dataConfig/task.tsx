@@ -1,14 +1,11 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { TaskSchema, type task } from "@db/generated/zod";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-const dictionary = getDictionary(store.settings.userInterface.language); 
-
-export const TASK_DATA_CONFIG: TableDataConfig<task> = {
-	dictionary: dictionary.db.task,
+export const TASK_DATA_CONFIG: TableDataConfig<task> = (dictionary) => ({
+	dictionary: dictionary().db.task,
 	dataSchema: TaskSchema,
 	primaryKey: "id",
 	defaultData: defaultData.task,
@@ -75,4 +72,4 @@ export const TASK_DATA_CONFIG: TableDataConfig<task> = {
 		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "task", data }),
 		editAbleCallback: (data) => repositoryMethods.task.canEdit(data.id),
 	},
-};
+});

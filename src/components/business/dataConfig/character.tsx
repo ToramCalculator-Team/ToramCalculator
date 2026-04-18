@@ -2,14 +2,11 @@ import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { CharacterSchema, type character } from "@db/generated/zod";
 import { stringArrayCellRenderer } from "~/components/business/utils/stringArrayCellRenderer";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-const dictionary = getDictionary(store.settings.userInterface.language); 
-
-export const CHARACTER_DATA_CONFIG: TableDataConfig<character> = {
-	dictionary: dictionary.db.character,
+export const CHARACTER_DATA_CONFIG: TableDataConfig<character> = (dictionary) => ({
+	dictionary: dictionary().db.character,
 	dataSchema: CharacterSchema,
 	primaryKey: "id",
 	defaultData: defaultData.character,
@@ -70,4 +67,4 @@ export const CHARACTER_DATA_CONFIG: TableDataConfig<character> = {
 		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "character", data }),
 		editAbleCallback: (data) => repositoryMethods.character.canEdit(data.id),
 	},
-};
+});

@@ -1,14 +1,11 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { ZoneSchema, type zone } from "@db/generated/zod";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-const dictionary = getDictionary(store.settings.userInterface.language); 
-
-export const ZONE_DATA_CONFIG: TableDataConfig<zone> = {
-	dictionary: dictionary.db.zone,
+export const ZONE_DATA_CONFIG: TableDataConfig<zone> = (dictionary) => ({
+	dictionary: dictionary().db.zone,
 	dataSchema: ZoneSchema,
 	primaryKey: "id",
 	defaultData: defaultData.zone,
@@ -77,4 +74,4 @@ export const ZONE_DATA_CONFIG: TableDataConfig<zone> = {
 		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "zone", data }),
 		editAbleCallback: (data) => repositoryMethods.zone.canEdit(data.id),
 	},
-};
+});

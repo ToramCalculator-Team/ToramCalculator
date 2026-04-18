@@ -3,14 +3,11 @@ import { repositoryMethods } from "@db/generated/repositories";
 import { CrystalSchema, type crystal } from "@db/generated/zod";
 import { stringArrayCellRenderer } from "~/components/business/utils/stringArrayCellRenderer";
 import { Icons } from "~/components/icons";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-const dictionary = getDictionary(store.settings.userInterface.language); 
-
-export const CRYSTAL_DATA_CONFIG: TableDataConfig<crystal> = {
-	dictionary: dictionary.db.crystal,
+export const CRYSTAL_DATA_CONFIG: TableDataConfig<crystal> = (dictionary) => ({
+	dictionary: dictionary().db.crystal,
 	dataSchema: CrystalSchema,
 	primaryKey: "itemId",
 	defaultData: defaultData.crystal,
@@ -69,4 +66,4 @@ export const CRYSTAL_DATA_CONFIG: TableDataConfig<crystal> = {
 		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "crystal", data }),
 		editAbleCallback: (data) => repositoryMethods.crystal.canEdit(data.itemId),
 	},
-};
+});

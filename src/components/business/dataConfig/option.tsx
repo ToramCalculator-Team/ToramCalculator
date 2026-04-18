@@ -2,14 +2,11 @@ import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { OptionSchema, type option } from "@db/generated/zod";
 import { stringArrayCellRenderer } from "~/components/business/utils/stringArrayCellRenderer";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-const dictionary = getDictionary(store.settings.userInterface.language); 
-
-export const OPTION_DATA_CONFIG: TableDataConfig<option> = {
-	dictionary: dictionary.db.option,
+export const OPTION_DATA_CONFIG: TableDataConfig<option> = (dictionary) => ({
+	dictionary: dictionary().db.option,
 	dataSchema: OptionSchema,
 	primaryKey: "itemId",
 	defaultData: defaultData.option,
@@ -62,4 +59,4 @@ export const OPTION_DATA_CONFIG: TableDataConfig<option> = {
 		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "option", data }),
 		editAbleCallback: (data) => repositoryMethods.option.canEdit(data.itemId),
 	},
-};
+});

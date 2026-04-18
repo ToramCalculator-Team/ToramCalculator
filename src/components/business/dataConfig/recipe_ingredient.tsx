@@ -1,14 +1,11 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { RecipeIngredientSchema, type recipe_ingredient } from "@db/generated/zod";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-const dictionary = getDictionary(store.settings.userInterface.language);
-
-export const RECIPE_INGREDIENT_DATA_CONFIG: TableDataConfig<recipe_ingredient> = {
-	dictionary: dictionary.db.recipe_ingredient,
+export const RECIPE_INGREDIENT_DATA_CONFIG: TableDataConfig<recipe_ingredient> = (dictionary) => ({
+	dictionary: dictionary().db.recipe_ingredient,
 	dataSchema: RecipeIngredientSchema,
 	primaryKey: "id",
 	defaultData: defaultData.recipe_ingredient,
@@ -47,4 +44,4 @@ export const RECIPE_INGREDIENT_DATA_CONFIG: TableDataConfig<recipe_ingredient> =
 		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "recipe_ingredient", data }),
 		editAbleCallback: (data) => repositoryMethods.recipe_ingredient.canEdit(data.id),
 	},
-};
+});

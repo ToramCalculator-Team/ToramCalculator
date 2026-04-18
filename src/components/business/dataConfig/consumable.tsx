@@ -1,14 +1,11 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { ConsumableSchema, type consumable } from "@db/generated/zod";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-const dictionary = getDictionary(store.settings.userInterface.language); 
-
-export const CONSUMABLE_DATA_CONFIG: TableDataConfig<consumable> = {
-	dictionary: dictionary.db.consumable,
+export const CONSUMABLE_DATA_CONFIG: TableDataConfig<consumable> = (dictionary) => ({
+	dictionary: dictionary().db.consumable,
 	dataSchema: ConsumableSchema,
 	primaryKey: "itemId",
 	defaultData: defaultData.consumable,
@@ -53,4 +50,4 @@ export const CONSUMABLE_DATA_CONFIG: TableDataConfig<consumable> = {
 		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "consumable", data }),
 		editAbleCallback: (data) => repositoryMethods.consumable.canEdit(data.itemId),
 	},
-};
+});

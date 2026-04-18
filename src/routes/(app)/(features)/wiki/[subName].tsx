@@ -1,11 +1,9 @@
 import { defaultData } from "@db/defaultData";
-import { getPrimaryKeys } from "@db/generated/dmmf-utils";
-import { repositoryMethods } from "@db/generated/repositories";
 import type { DB } from "@db/generated/zod/index";
 import { A, useNavigate, useParams } from "@solidjs/router";
-import { createEffect, createSignal, For, type JSX, on, onCleanup, onMount, Show, useContext } from "solid-js";
+import { createEffect, createMemo, createSignal, For, type JSX, on, onCleanup, onMount, Show, useContext } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { DATA_CONFIG, type DataConfig } from "~/components/business/data-config";
+import { type AnyTableDataConfig, DATA_CONFIG } from "~/components/business/data-config";
 import { Dialog } from "~/components/containers/dialog";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
@@ -16,6 +14,23 @@ import { MediaContext } from "~/contexts/Media";
 import { setStore, store } from "~/store";
 import { setWikiStore, wikiStore } from "./store";
 import { wikiPageConfig } from "./wikiPage/wikiPageConfig";
+
+// 页面级 refetch 注册表：
+// - VirtualTable 挂载时注册当前表的 refetch
+// - FormGroup 在新增/更新成功后按表名触发刷新
+// 之所以放在这里，是因为这个页面本身负责协调表格和表单两个模块。
+type WikiTableRefetch = () => void;
+const wikiTableRefetchers: Partial<Record<keyof DB, WikiTableRefetch>> = {};
+
+// 注册某个 wiki 表的刷新函数（后注册会覆盖前一个，保证始终使用当前页面实例）
+export const registerWikiTableRefetch = (tableName: keyof DB, refetch: WikiTableRefetch) => {
+	wikiTableRefetchers[tableName] = refetch;
+};
+
+// 在表单提交成功后触发指定表的列表刷新
+export const triggerWikiTableRefetch = (tableName: keyof DB) => {
+	wikiTableRefetchers[tableName]?.();
+};
 
 export default function WikiSubPage() {
 	const media = useContext(MediaContext);
@@ -30,7 +45,7 @@ export default function WikiSubPage() {
 
 	const [wikiSelectorIsOpen, setWikiSelectorIsOpen] = createSignal(false);
 
-	const [dataConfig, setDataConfig] = createSignal<DataConfig[keyof DataConfig] | undefined>();
+	const dataConfig = createMemo(() => DATA_CONFIG[wikiStore.type]);
 
 	// 监听url参数变化, 初始化页面状态
 	createEffect(
@@ -44,7 +59,6 @@ export default function WikiSubPage() {
 					setWikiStore("type", tabkeName);
 					setIsMainContentFullscreen(true);
 					setActiveBannerIndex(0);
-					setDataConfig(DATA_CONFIG[wikiStore.type]);
 				} else {
 					navigate(`/404`);
 				}
@@ -303,17 +317,14 @@ export default function WikiSubPage() {
 								</div>
 								<Show
 									when={wikiPageConfig[wikiStore.type]?.mainContent}
-									fallback={VirtualTable<DB[typeof wikiStore.type]>({
-										measure: validDataConfig().table.measure,
-										dataFetcher: validDataConfig().dataFetcher.getAll,
-										// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
-										columnsDef: validDataConfig().table.columnsDef,
-										// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
-										hiddenColumnDef: validDataConfig().table.hiddenColumnDef,
-										tdGenerator: validDataConfig().table.tdGenerator,
-										// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
-										defaultSort: validDataConfig().table.defaultSort,
-										dictionary: validDataConfig().dictionary,
+									fallback={VirtualTable({
+										measure: validDataConfig()(dictionary).table.measure,
+										dataFetcher: validDataConfig()(dictionary).dataFetcher.getAll,
+										columnsDef: validDataConfig()(dictionary).table.columnsDef,
+										hiddenColumnDef: validDataConfig()(dictionary).table.hiddenColumnDef,
+										tdGenerator: validDataConfig()(dictionary).table.tdGenerator,
+										defaultSort: validDataConfig()(dictionary).table.defaultSort,
+										dictionary: validDataConfig()(dictionary).dictionary,
 										globalFilterStr: () => wikiStore.table.globalFilterStr,
 										rowHandleClick: (data) =>
 											setStore("pages", "cardGroup", store.pages.cardGroup.length, { type: wikiStore.type, data }),
@@ -324,6 +335,10 @@ export default function WikiSubPage() {
 													columnVisibility: updater(wikiStore.table.columnVisibility),
 												});
 											}
+										},
+										onRefetch: (refetch) => {
+											// 将当前表的 refetch 暴露给表单提交回调使用
+											registerWikiTableRefetch(wikiStore.type, refetch);
 										},
 									})}
 									// 用jsx方式调用时不会刷新内容，不知道为什么
@@ -467,7 +482,7 @@ export default function WikiSubPage() {
 						>
 							<div class="flex flex-col gap-3">
 								<For each={wikiSelectorConfig}>
-									{(group, index) => {
+									{(group) => {
 										return (
 											<div class="Group flex flex-col gap-2">
 												<div class="GroupTitle flex flex-col gap-3">
@@ -478,7 +493,7 @@ export default function WikiSubPage() {
 												</div>
 												<div class="GroupContent flex flex-wrap gap-2">
 													<For each={group.groupFields}>
-														{(field, index) => {
+														{(field) => {
 															return (
 																<A
 																	href={`/wiki/${field.name}`}

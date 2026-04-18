@@ -1,14 +1,11 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { DropItemSchema, type drop_item } from "@db/generated/zod";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-const dictionary = getDictionary(store.settings.userInterface.language); 
-
-export const DROP_ITEM_DATA_CONFIG: TableDataConfig<drop_item> = {
-	dictionary: dictionary.db.drop_item,
+export const DROP_ITEM_DATA_CONFIG: TableDataConfig<drop_item> = (dictionary) => ({
+	dictionary: dictionary().db.drop_item,
 	dataSchema: DropItemSchema,
 	primaryKey: "id",
 	defaultData: defaultData.drop_item,
@@ -44,4 +41,4 @@ export const DROP_ITEM_DATA_CONFIG: TableDataConfig<drop_item> = {
 		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "drop_item", data }),
 		editAbleCallback: (data) => repositoryMethods.drop_item.canEdit(data.id),
 	},
-};
+});

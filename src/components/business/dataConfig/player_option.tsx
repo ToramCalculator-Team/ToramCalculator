@@ -2,14 +2,11 @@ import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { PlayerOptionSchema, type player_option } from "@db/generated/zod";
 import { stringArrayCellRenderer } from "~/components/business/utils/stringArrayCellRenderer";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-const dictionary = getDictionary(store.settings.userInterface.language); 
-
-export const PLAYER_OPTION_DATA_CONFIG: TableDataConfig<player_option> = {
-	dictionary: dictionary.db.player_option,
+export const PLAYER_OPTION_DATA_CONFIG: TableDataConfig<player_option> = (dictionary) => ({
+	dictionary: dictionary().db.player_option,
 	dataSchema: PlayerOptionSchema,
 	primaryKey: "id",
 	defaultData: defaultData.player_option,
@@ -56,4 +53,4 @@ export const PLAYER_OPTION_DATA_CONFIG: TableDataConfig<player_option> = {
 		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "player_option", data }),
 		editAbleCallback: (data) => repositoryMethods.player_option.canEdit(data.id),
 	},
-};
+});

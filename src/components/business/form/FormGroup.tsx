@@ -3,15 +3,18 @@
  *
  * 用于展示DB内的数据，form是特化的form
  */
-import { type DB, DBSchema } from "@db/generated/zod/index";
+import type { DB } from "@db/generated/zod/index";
 import { Index, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { DATA_CONFIG } from "~/components/business/data-config";
+import { useDictionary } from "~/contexts/Dictionary";
+import { triggerWikiTableRefetch } from "~/routes/(app)/(features)/wiki/[subName]";
 import { setStore, store } from "~/store";
 import { Form } from "./FormRenderer";
 import { FormSheet } from "./FormSheet";
 
 export const FormGroup = () => {
+	const dictionary = useDictionary();
 	return (
 		<Presence exitBeforeEnter>
 			{/* 此处包装是为了最后一层消失时先展示动画 */}
@@ -26,7 +29,7 @@ export const FormGroup = () => {
 						{(formData, index) => {
 							// 从stroe获取当前表单数据
 							const formGroupItem = store.pages.formGroup[index];
-							const config = DATA_CONFIG[formGroupItem.type];
+							const config = DATA_CONFIG[formGroupItem.type]?.(dictionary);
 							const initialValue = formData().data as DB[typeof formGroupItem.type];
 							return (
 								<FormSheet display={true} index={index} total={store.pages.formGroup.length}>
@@ -42,23 +45,27 @@ export const FormGroup = () => {
 												hiddenFields={config().form.hiddenFields}
 												fieldGroupMap={config().fieldGroupMap}
 												fieldGenerator={config().form.fieldGenerator}
+												inheritsFrom={config().inheritsFrom}
+												embeds={config().embeds}
 												onInsert={async (value) => {
-													const insertFun = DATA_CONFIG[formGroupItem.type]?.form.onInsert;
+													const insertFun = config().form.onInsert;
 													if (!insertFun) {
 														throw new Error(`${formGroupItem.type} 没有插入方法`);
 													}
-													const result = await insertFun(value as any);
+													const result = await insertFun(value);
+													triggerWikiTableRefetch(formGroupItem.type);
 													// 打印结果并关闭表单
 													console.log("插入结果：", result);
 													setStore("pages", "formGroup", (pre) => pre.slice(0, -1));
 													return result;
 												}}
 												onUpdate={async (primaryKeyValue, value) => {
-													const updateFun = DATA_CONFIG[formGroupItem.type]?.form.onUpdate;
+													const updateFun = config().form.onUpdate;
 													if (!updateFun) {
 														throw new Error(`${formGroupItem.type} 没有更新方法`);
 													}
-													const result = await updateFun(primaryKeyValue, value as any);
+													const result = await updateFun(primaryKeyValue, value);
+													triggerWikiTableRefetch(formGroupItem.type);
 													// 打印结果并关闭表单
 													console.log("更新结果：", result);
 													setStore("pages", "formGroup", (pre) => pre.slice(0, -1));

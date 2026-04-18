@@ -1,14 +1,11 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { NpcSchema, type npc } from "@db/generated/zod";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-const dictionary = getDictionary(store.settings.userInterface.language); 
-
-export const NPC_DATA_CONFIG: TableDataConfig<npc> = {
-	dictionary: dictionary.db.npc,
+export const NPC_DATA_CONFIG: TableDataConfig<npc> = (dictionary) => ({
+	dictionary: dictionary().db.npc,
 	dataSchema: NpcSchema,
 	primaryKey: "id",
 	defaultData: defaultData.npc,
@@ -48,4 +45,4 @@ export const NPC_DATA_CONFIG: TableDataConfig<npc> = {
 		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "npc", data }),
 		editAbleCallback: (data) => repositoryMethods.npc.canEdit(data.id),
 	},
-};
+});

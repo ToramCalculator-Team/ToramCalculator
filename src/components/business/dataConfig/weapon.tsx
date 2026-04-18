@@ -5,21 +5,32 @@ import { insertStatistic } from "@db/generated/repositories/statistic";
 import { deleteWeapon, insertWeapon, updateWeapon } from "@db/generated/repositories/weapon";
 import { ItemSchema, WeaponSchema, type weapon } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
-import type { ElementType } from "@db/schema/enums";
+import { type ElementType, WEAPON_TYPE, type WeaponType } from "@db/schema/enums";
 import { createId } from "@paralleldrive/cuid2";
 import type { z } from "zod/v4";
 import { stringArrayCellRenderer } from "~/components/business/utils/stringArrayCellRenderer";
+import { Select } from "~/components/controls/select";
 import { Icons } from "~/components/icons";
-import { getDictionary } from "~/locales/i18n";
-import type { Dic } from "~/locales/type";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
-const dictionary = getDictionary(store.settings.userInterface.language); 
-
 const WeaponItemSchema = ItemSchema.extend(WeaponSchema.shape);
 type WeaponItem = z.output<typeof WeaponItemSchema>;
+const WeaponItemInputSchema = WeaponItemSchema.pick({
+	itemSourceType: true,
+	name: true,
+	dataSources: true,
+	details: true,
+	type: true,
+	elementType: true,
+	baseAbi: true,
+	stability: true,
+	modifiers: true,
+	colorA: true,
+	colorB: true,
+	colorC: true,
+});
 
 /**
  * 创建新的 Weapon（包含父表 Item）
@@ -30,6 +41,8 @@ export const createWeapon = async (params: WeaponItem): Promise<WeaponItem> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
 		const { account } = await getUserContext(trx);
+		const input = WeaponItemInputSchema.parse(params);
+		const itemId = createId();
 
 		// 1. 创建统计记录
 		const statistic = await insertStatistic(
@@ -45,12 +58,12 @@ export const createWeapon = async (params: WeaponItem): Promise<WeaponItem> => {
 		// 2. 创建父表 item
 		const item = await insertItem(
 			{
-				id: createId(),
+				itemSourceType: input.itemSourceType,
+				name: input.name,
+				dataSources: input.dataSources,
+				details: input.details,
+				id: itemId,
 				itemType: "Weapon", // 从 weapon 推导
-				itemSourceType: params.itemSourceType,
-				name: params.name,
-				dataSources: params.dataSources || "",
-				details: params.details || null,
 				statisticId: statistic.id,
 				createdByAccountId: account.id,
 				updatedByAccountId: account.id,
@@ -61,16 +74,16 @@ export const createWeapon = async (params: WeaponItem): Promise<WeaponItem> => {
 		// 3. 创建 weapon
 		const weapon = await insertWeapon(
 			{
-				name: params.name,
-				type: params.type,
-				elementType: params.elementType,
-				baseAbi: params.baseAbi,
-				stability: params.stability,
-				modifiers: params.modifiers,
-				colorA: params.colorA,
-				colorB: params.colorB,
-				colorC: params.colorC,
-				itemId: item.id,
+				itemId,
+				name: input.name,
+				type: input.type,
+				elementType: input.elementType,
+				baseAbi: input.baseAbi,
+				stability: input.stability,
+				modifiers: input.modifiers,
+				colorA: input.colorA,
+				colorB: input.colorB,
+				colorC: input.colorC,
 			},
 			trx,
 		);
@@ -94,7 +107,7 @@ export const updateWeaponWithItem = async (itemId: string, params: Partial<Weapo
 		const { account } = await getUserContext(trx);
 
 		// 1. 更新 item
-		const item = await db
+		const item = await trx
 			.updateTable("item")
 			.set({
 				name: params.name,
@@ -107,32 +120,13 @@ export const updateWeaponWithItem = async (itemId: string, params: Partial<Weapo
 			.executeTakeFirstOrThrow();
 
 		// 2. 更新 weapon
-		const weaponUpdate: Partial<weapon> = {};
-		if (params.name !== undefined) weaponUpdate.name = params.name;
-		if (params.type !== undefined) weaponUpdate.type = params.type;
-		if (params.elementType !== undefined) weaponUpdate.elementType = params.elementType;
-		if (params.baseAbi !== undefined) weaponUpdate.baseAbi = params.baseAbi;
-		if (params.stability !== undefined) weaponUpdate.stability = params.stability;
-		if (params.modifiers !== undefined) weaponUpdate.modifiers = params.modifiers;
-		if (params.colorA !== undefined) weaponUpdate.colorA = params.colorA;
-		if (params.colorB !== undefined) weaponUpdate.colorB = params.colorB;
-		if (params.colorC !== undefined) weaponUpdate.colorC = params.colorC;
-
-		const weapon = await updateWeapon(itemId, weaponUpdate, trx);
+		const weapon = await updateWeapon(itemId, WeaponSchema.parse(params), trx);
 
 		return {
 			...item,
 			...weapon,
 		};
 	});
-};
-
-const WeaponItemDictionary: Dic<WeaponItem> = {
-	...dictionary.db.weapon,
-	fields: {
-		...dictionary.db.weapon.fields,
-		...dictionary.db.item.fields,
-	},
 };
 
 const WeaponItemDefaultData: WeaponItem = {
@@ -163,8 +157,30 @@ const getAllWeaponItems = async (): Promise<WeaponItem[]> => {
 const insertWeaponItem = async (data: WeaponItem): Promise<WeaponItem> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
-		const weapon = await insertWeapon(WeaponSchema.parse(data), trx);
-		const item = await insertItem(ItemSchema.parse(data), trx);
+		const { account } = await getUserContext(trx);
+		const statistic = await insertStatistic(
+			{
+				...defaultData.statistic,
+				id: createId(),
+			},
+			trx,
+		);
+		const item = await insertItem(
+			{
+				...ItemSchema.parse(data),
+				statisticId: statistic.id,
+				createdByAccountId: account.id,
+				updatedByAccountId: account.id,
+			},
+			trx,
+		);
+		const weapon = await insertWeapon(
+			{
+				...WeaponSchema.parse(data),
+				itemId: item.id,
+			},
+			trx,
+		);
 		return {
 			...weapon,
 			...item,
@@ -194,8 +210,15 @@ const deleteWeaponItem = async (id: string): Promise<WeaponItem | undefined> => 
 	});
 };
 
-export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem> = {
-	dictionary: WeaponItemDictionary,
+// 第二个类型参数 = 配置站点字典覆盖范围。声明 inheritsFrom 后，渲染器会在运行时自动把 item 的字典合并上来，
+// 因此这里只需要提供 weapon 自己的字段字典。
+export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem, weapon> = (dictionary) => ({
+	// 声明 weapon 与 item 是 1:1 继承关系；渲染器会自动：
+	//   - 合并 item 的字典/字段生成器到 weapon（child 优先）
+	//   - 从关联内容中排除 item 以及 armor/consumable 等同级子类（兄弟表自动推导）
+	//   - 把 item 的父级关系（如 statistic、account）作为 weapon 的关联一并展示
+	inheritsFrom: { table: "item", via: "itemId" },
+	dictionary: dictionary().db.weapon,
 	dataSchema: WeaponItemSchema,
 	primaryKey: "itemId",
 	defaultData: WeaponItemDefaultData,
@@ -207,7 +230,7 @@ export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem> = {
 		delete: deleteWeaponItem,
 	},
 	fieldGroupMap: {
-		基本信息: ["name", "baseAbi", "stability","itemSourceType","dataSources", "details", "elementType"],
+		基本信息: ["type", "name", "baseAbi", "stability", "itemSourceType", "dataSources", "details", "elementType"],
 		其他属性: ["modifiers"],
 		颜色信息: ["colorA", "colorB", "colorC"],
 	},
@@ -252,7 +275,20 @@ export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem> = {
 	},
 	form: {
 		hiddenFields: [],
-		fieldGenerator: {},
+		fieldGenerator: {
+			type: (value, setValue, _validationMessage, dictionary, _dataSchema) => {
+				return (
+					<Select
+						options={WEAPON_TYPE.map((type) => ({
+							label: dictionary.fields.type.enumMap[type],
+							value: type,
+						}))}
+						value={value()}
+						setValue={(v) => setValue(v as WeaponType)}
+					/>
+				);
+			},
+		},
 		onInsert: async (values) => createWeapon(values),
 		onUpdate: updateWeaponWithItem,
 	},
@@ -260,7 +296,11 @@ export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem> = {
 		hiddenFields: [],
 		fieldGenerator: {},
 		deleteCallback: deleteWeaponItem,
-		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "weapon", data }),
+		openEditor: (data) =>
+			setStore("pages", "formGroup", store.pages.formGroup.length, {
+				type: "weapon",
+				data,
+			}),
 		editAbleCallback: (data) => repositoryMethods.weapon.canEdit(data.itemId),
 	},
-};
+});

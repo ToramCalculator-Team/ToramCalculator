@@ -1,29 +1,148 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { selectAllSkillVariantsByBelongtoskillid } from "@db/generated/repositories/skill_variant";
 import { insertStatistic } from "@db/generated/repositories/statistic";
-import { SkillSchema, type skill } from "@db/generated/zod";
+import { SkillSchema, SkillVariantSchema, type skill } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { SKILL_TREE_TYPE, type SkillTreeType } from "@db/schema/enums";
 import { createId } from "@paralleldrive/cuid2";
+import { jsonArrayFrom } from "kysely/helpers/postgres";
+import z from "zod/v4";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
+import { getUserContext } from "../utils/context";
 
-const dictionary = getDictionary(store.settings.userInterface.language); 
+const SkillWithVariantsSchema = SkillSchema.extend({
+	variants: z.array(SkillVariantSchema),
+});
 
-export const SKILL_DATA_CONFIG: TableDataConfig<skill> = {
-	dictionary: dictionary.db.skill,
-	dataSchema: SkillSchema,
+type SkillWithVariants = z.output<typeof SkillWithVariantsSchema>;
+
+const defaultDataWithVariants: SkillWithVariants = {
+	...defaultData.skill,
+	variants: [],
+};
+
+const getSkillWithVariants = async (id: string): Promise<SkillWithVariants> => {
+	const db = await getDB();
+	const res = await db
+		.selectFrom("skill")
+		.selectAll("skill")
+		.select((eb) => [
+			jsonArrayFrom(
+				eb
+					.selectFrom("skill_variant")
+					.whereRef("skill_variant.belongToskillId", "=", "skill.id")
+					.selectAll("skill_variant"),
+			).as("variants"),
+		])
+		.where("skill.id", "=", id)
+		.executeTakeFirstOrThrow();
+	return res;
+};
+
+const getAllSkillWithVariants = async (): Promise<SkillWithVariants[]> => {
+	const db = await getDB();
+	const res = await db
+		.selectFrom("skill")
+		.selectAll("skill")
+		.select((eb) => [
+			jsonArrayFrom(
+				eb
+					.selectFrom("skill_variant")
+					.whereRef("skill_variant.belongToskillId", "=", "skill.id")
+					.selectAll("skill_variant"),
+			).as("variants"),
+		])
+		.execute();
+	return res;
+};
+
+const insertSkillWithVariants = async (data: SkillWithVariants): Promise<SkillWithVariants> => {
+	const db = await getDB();
+	return await db.transaction().execute(async (trx) => {
+		const statistic = await insertStatistic(
+			{
+				...defaultData.statistic,
+				id: createId(),
+			},
+			trx,
+		);
+		const { account } = await getUserContext(trx);
+		const skillData = SkillSchema.parse(data);
+		const skill = await repositoryMethods.skill.insert(
+			{
+				...skillData,
+				statisticId: statistic.id,
+				createdByAccountId: account.id,
+				updatedByAccountId: account.id,
+			},
+			trx,
+		);
+		const variants = await Promise.all(
+			data.variants.map(async (variant) => {
+				const variantData = SkillVariantSchema.parse(variant);
+				return await repositoryMethods.skill_variant.insert(variantData, trx);
+			}),
+		);
+		return {
+			...skill,
+			variants,
+		};
+	});
+};
+
+const updateSkillWithVariants = async (id: string, data: SkillWithVariants): Promise<SkillWithVariants> => {
+	const db = await getDB();
+	return await db.transaction().execute(async (trx) => {
+		const skillData = SkillSchema.parse(data);
+		const skill = await repositoryMethods.skill.update(id, skillData, trx);
+		const variants = await Promise.all(
+			data.variants.map(async (variant) => {
+				const variantData = SkillVariantSchema.parse(variant);
+				return await repositoryMethods.skill_variant.update(variant.id, variantData, trx);
+			}),
+		);
+		return {
+			...skill,
+			variants,
+		};
+	});
+};
+
+const deleteSkillWithVariants = async (id: string): Promise<SkillWithVariants | undefined> => {
+	const db = await getDB();
+	await db.transaction().execute(async (trx) => {
+		await repositoryMethods.skill.delete(id, trx);
+		const variants = await selectAllSkillVariantsByBelongtoskillid(id, trx);
+		await Promise.all(
+			variants.map(async (variant) => {
+				return await repositoryMethods.skill_variant.delete(variant.id, trx);
+			}),
+		);
+	});
+	return undefined;
+};
+// 第二个类型参数 = 配置站点字典覆盖范围。声明 embeds 后，variants 字段不参与字典渲染，
+// 因此这里只需提供 skill 自己字段的字典（子表 skill_variant 的字典由渲染器递归使用 skill_variant 的 dataConfig）。
+export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill> = (dictionary) => ({
+	// 声明 variants 是 skill 的内嵌子表（1:N）；渲染器会：
+	//   - 卡片：内嵌展示为按钮列表
+	//   - 表单：内嵌为数组编辑器（递归使用 skill_variant 自己的 dataConfig）
+	//   - 把 variants 从普通字段渲染流程中剔除，避免被当作通用 array 处理
+	embeds: [{ field: "variants", table: "skill_variant", via: "belongToskillId" }],
+	dictionary: dictionary().db.skill,
+	dataSchema: SkillWithVariantsSchema,
 	primaryKey: "id",
-	defaultData: defaultData.skill,
+	defaultData: defaultDataWithVariants,
 	dataFetcher: {
-		get: repositoryMethods.skill.select,
-		getAll: repositoryMethods.skill.selectAll,
-		insert: repositoryMethods.skill.insert,
-		update: repositoryMethods.skill.update,
-		delete: repositoryMethods.skill.delete,
+		get: getSkillWithVariants,
+		getAll: getAllSkillWithVariants,
+		insert: insertSkillWithVariants,
+		update: updateSkillWithVariants,
+		delete: deleteSkillWithVariants,
 	},
 	fieldGroupMap: {
 		ID: ["id"],
@@ -106,27 +225,14 @@ export const SKILL_DATA_CONFIG: TableDataConfig<skill> = {
 				);
 			},
 		},
-		onInsert: async (skill) => {
-			const db = await getDB();
-			return await db.transaction().execute(async (trx) => {
-				const statistic = await insertStatistic(
-					{
-						...defaultData.statistic,
-						id: createId(),
-					},
-					trx,
-				);
-				skill.statisticId = statistic.id;
-				return await repositoryMethods.skill.insert(skill, trx);
-			});
-		},
-		onUpdate: repositoryMethods.skill.update,
+		onInsert: insertSkillWithVariants,
+		onUpdate: updateSkillWithVariants,
 	},
 	card: {
 		hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
 		fieldGenerator: {},
-		deleteCallback: repositoryMethods.skill.delete,
+		deleteCallback: deleteSkillWithVariants,
 		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "skill", data }),
 		editAbleCallback: (data) => repositoryMethods.skill.canEdit(data.id),
 	},
-};
+});

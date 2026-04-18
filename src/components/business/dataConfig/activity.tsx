@@ -1,14 +1,11 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { ActivitySchema, type activity } from "@db/generated/zod";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-const dictionary = getDictionary(store.settings.userInterface.language); 
-
-export const ACTIVITY_DATA_CONFIG: TableDataConfig<activity> = {
-	dictionary: dictionary.db.activity,
+export const ACTIVITY_DATA_CONFIG: TableDataConfig<activity> = (dictionary) => ({
+	dictionary: dictionary().db.activity,
 	dataSchema: ActivitySchema,
 	primaryKey: "id",
 	defaultData: defaultData.activity,
@@ -55,4 +52,4 @@ export const ACTIVITY_DATA_CONFIG: TableDataConfig<activity> = {
 		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "activity", data }),
 		editAbleCallback: (data) => repositoryMethods.activity.canEdit(data.id),
 	},
-};
+});

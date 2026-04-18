@@ -1,14 +1,11 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { WorldSchema, type world } from "@db/generated/zod";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-const dictionary = getDictionary(store.settings.userInterface.language); 
-
-export const WORLD_DATA_CONFIG: TableDataConfig<world> = {
-	dictionary: dictionary.db.world,
+export const WORLD_DATA_CONFIG: TableDataConfig<world> = (dictionary) => ({
+	dictionary: dictionary().db.world,
 	dataSchema: WorldSchema,
 	primaryKey: "id",
 	defaultData: defaultData.world,
@@ -44,4 +41,4 @@ export const WORLD_DATA_CONFIG: TableDataConfig<world> = {
 		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "world", data }),
 		editAbleCallback: (data) => repositoryMethods.world.canEdit(data.id),
 	},
-};
+});

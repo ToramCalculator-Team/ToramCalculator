@@ -7,9 +7,9 @@ import { Button } from "~/components/controls/button";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import { Input } from "~/components/controls/input";
 import { Toggle } from "~/components/controls/toggle";
+import { fieldInfo } from "~/components/dataDisplay/utils";
 import { getDictionary } from "~/locales/i18n";
 import type { Dic, EnumFieldDetail } from "~/locales/type";
-import { fieldInfo } from "~/components/dataDisplay/utils";
 import { store } from "~/store";
 
 export const Form = <T extends Record<string, unknown>>(props: {
@@ -251,12 +251,12 @@ export function FieldRenderer<T extends Record<string, unknown>>(props: {
 					title={inputTitle}
 					description={inputDescription}
 					autocomplete="off"
-					type="text"
+					type="number"
 					id={props.field().name}
 					name={props.field().name}
 					value={props.field().state.value as number}
 					onBlur={props.field().handleBlur}
-					onChange={(e) => props.field().handleChange(e.target.value)}
+					onChange={(e) => props.field().handleChange(parseFloat(e.target.value))}
 					validationMessage={fieldInfo(props.field())}
 					class={fieldCalss}
 				/>

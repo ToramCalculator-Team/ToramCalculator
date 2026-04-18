@@ -2,14 +2,11 @@ import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { PlayerArmorSchema, type player_armor } from "@db/generated/zod";
 import { stringArrayCellRenderer } from "~/components/business/utils/stringArrayCellRenderer";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
-const dictionary = getDictionary(store.settings.userInterface.language); 
-
-export const PLAYER_ARMOR_DATA_CONFIG: TableDataConfig<player_armor> = {
-	dictionary: dictionary.db.player_armor,
+export const PLAYER_ARMOR_DATA_CONFIG: TableDataConfig<player_armor> = (dictionary) => ({
+	dictionary: dictionary().db.player_armor,
 	dataSchema: PlayerArmorSchema,
 	primaryKey: "id",
 	defaultData: defaultData.player_armor,
@@ -57,4 +54,4 @@ export const PLAYER_ARMOR_DATA_CONFIG: TableDataConfig<player_armor> = {
 		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "player_armor", data }),
 		editAbleCallback: (data) => repositoryMethods.player_armor.canEdit(data.id),
 	},
-};
+});
