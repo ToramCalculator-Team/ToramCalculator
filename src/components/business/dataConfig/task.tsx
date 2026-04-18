@@ -1,8 +1,12 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { insertStatistic } from "@db/generated/repositories/statistic";
 import { TaskSchema, type task } from "@db/generated/zod";
+import { getDB } from "@db/repositories/database";
+import { createId } from "@paralleldrive/cuid2";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
+import { getUserContext } from "../utils/context";
 
 export const TASK_DATA_CONFIG: TableDataConfig<task> = (dictionary) => ({
 	dictionary: dictionary().db.task,
@@ -12,6 +16,7 @@ export const TASK_DATA_CONFIG: TableDataConfig<task> = (dictionary) => ({
 	dataFetcher: {
 		get: repositoryMethods.task.select,
 		getAll: repositoryMethods.task.selectAll,
+		liveQuery: (db) => db.selectFrom("task").selectAll("task"),
 		insert: repositoryMethods.task.insert,
 		update: repositoryMethods.task.update,
 		delete: repositoryMethods.task.delete,
@@ -62,8 +67,36 @@ export const TASK_DATA_CONFIG: TableDataConfig<task> = (dictionary) => ({
 	form: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 		fieldGenerator: {},
-		onInsert: repositoryMethods.task.insert,
-		onUpdate: repositoryMethods.task.update,
+		onInsert: async (data) => {
+			const db = await getDB();
+			return db.transaction().execute(async (trx) => {
+				const { account } = await getUserContext(trx);
+				const statistic = await insertStatistic(
+					{
+						...defaultData.statistic,
+						id: createId(),
+					},
+					trx,
+				);
+				return repositoryMethods.task.insert(
+					{
+						...data,
+						id: createId(),
+						statisticId: statistic.id,
+						createdByAccountId: account.id,
+						updatedByAccountId: account.id,
+					},
+					trx,
+				);
+			});
+		},
+		onUpdate: async (id, data) => {
+			const db = await getDB();
+			return db.transaction().execute(async (trx) => {
+				const { account } = await getUserContext(trx);
+				return repositoryMethods.task.update(id, { ...data, updatedByAccountId: account.id }, trx);
+			});
+		},
 	},
 	card: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],

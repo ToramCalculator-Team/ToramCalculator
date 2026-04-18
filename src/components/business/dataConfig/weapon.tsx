@@ -17,117 +17,6 @@ import { getUserContext } from "../utils/context";
 
 const WeaponItemSchema = ItemSchema.extend(WeaponSchema.shape);
 type WeaponItem = z.output<typeof WeaponItemSchema>;
-const WeaponItemInputSchema = WeaponItemSchema.pick({
-	itemSourceType: true,
-	name: true,
-	dataSources: true,
-	details: true,
-	type: true,
-	elementType: true,
-	baseAbi: true,
-	stability: true,
-	modifiers: true,
-	colorA: true,
-	colorB: true,
-	colorC: true,
-});
-
-/**
- * 创建新的 Weapon（包含父表 Item）
- * @param params 武器参数
- * @returns 创建的 Item 和 Weapon
- */
-export const createWeapon = async (params: WeaponItem): Promise<WeaponItem> => {
-	const db = await getDB();
-	return await db.transaction().execute(async (trx) => {
-		const { account } = await getUserContext(trx);
-		const input = WeaponItemInputSchema.parse(params);
-		const itemId = createId();
-
-		// 1. 创建统计记录
-		const statistic = await insertStatistic(
-			{
-				...defaultData.statistic,
-				id: createId(),
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-			},
-			trx,
-		);
-
-		// 2. 创建父表 item
-		const item = await insertItem(
-			{
-				itemSourceType: input.itemSourceType,
-				name: input.name,
-				dataSources: input.dataSources,
-				details: input.details,
-				id: itemId,
-				itemType: "Weapon", // 从 weapon 推导
-				statisticId: statistic.id,
-				createdByAccountId: account.id,
-				updatedByAccountId: account.id,
-			},
-			trx,
-		);
-
-		// 3. 创建 weapon
-		const weapon = await insertWeapon(
-			{
-				itemId,
-				name: input.name,
-				type: input.type,
-				elementType: input.elementType,
-				baseAbi: input.baseAbi,
-				stability: input.stability,
-				modifiers: input.modifiers,
-				colorA: input.colorA,
-				colorB: input.colorB,
-				colorC: input.colorC,
-			},
-			trx,
-		);
-
-		return {
-			...item,
-			...weapon,
-		};
-	});
-};
-
-/**
- * 更新武器（同时更新 Item 和 Weapon）
- * @param itemId Item ID
- * @param params 更新参数
- * @returns 更新后的 Item 和 Weapon
- */
-export const updateWeaponWithItem = async (itemId: string, params: Partial<WeaponItem>): Promise<WeaponItem> => {
-	const db = await getDB();
-	return await db.transaction().execute(async (trx) => {
-		const { account } = await getUserContext(trx);
-
-		// 1. 更新 item
-		const item = await trx
-			.updateTable("item")
-			.set({
-				name: params.name,
-				dataSources: params.dataSources,
-				details: params.details,
-				updatedByAccountId: account.id,
-			})
-			.where("id", "=", itemId)
-			.returningAll()
-			.executeTakeFirstOrThrow();
-
-		// 2. 更新 weapon
-		const weapon = await updateWeapon(itemId, WeaponSchema.parse(params), trx);
-
-		return {
-			...item,
-			...weapon,
-		};
-	});
-};
 
 const WeaponItemDefaultData: WeaponItem = {
 	...defaultData.weapon,
@@ -218,6 +107,9 @@ export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem, weapon> = (dictiona
 	//   - 从关联内容中排除 item 以及 armor/consumable 等同级子类（兄弟表自动推导）
 	//   - 把 item 的父级关系（如 statistic、account）作为 weapon 的关联一并展示
 	inheritsFrom: { table: "item", via: "itemId" },
+	relationOverrides: {
+		hide: ["player_weapon","statistic","account_create_data","account_update_data"],
+	},
 	dictionary: dictionary().db.weapon,
 	dataSchema: WeaponItemSchema,
 	primaryKey: "itemId",
@@ -228,6 +120,25 @@ export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem, weapon> = (dictiona
 		insert: insertWeaponItem,
 		update: updateWeaponItem,
 		delete: deleteWeaponItem,
+		// weapon join item。两张表都有 name 列，live 订阅对重复列名严格，所以显式选列：
+		//   - item.*（item.name 作为最终 name）
+		//   - weapon 除 name 之外的列（name 由 item 提供即可）
+		liveQuery: (db) =>
+			db
+				.selectFrom("weapon")
+				.innerJoin("item", (join) => join.onRef("weapon.itemId", "=", "item.id"))
+				.selectAll("item")
+				.select([
+					"weapon.itemId",
+					"weapon.type",
+					"weapon.elementType",
+					"weapon.baseAbi",
+					"weapon.stability",
+					"weapon.modifiers",
+					"weapon.colorA",
+					"weapon.colorB",
+					"weapon.colorC",
+				]),
 	},
 	fieldGroupMap: {
 		基本信息: ["type", "name", "baseAbi", "stability", "itemSourceType", "dataSources", "details", "elementType"],
@@ -289,8 +200,8 @@ export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem, weapon> = (dictiona
 				);
 			},
 		},
-		onInsert: async (values) => createWeapon(values),
-		onUpdate: updateWeaponWithItem,
+		onInsert: async (values) => insertWeaponItem(values),
+		onUpdate: updateWeaponItem,
 	},
 	card: {
 		hiddenFields: [],

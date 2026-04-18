@@ -12,6 +12,7 @@ export const RECIPE_INGREDIENT_DATA_CONFIG: TableDataConfig<recipe_ingredient> =
 	dataFetcher: {
 		get: repositoryMethods.recipe_ingredient.select,
 		getAll: repositoryMethods.recipe_ingredient.selectAll,
+		liveQuery: (db) => db.selectFrom("recipe_ingredient").selectAll("recipe_ingredient"),
 		insert: repositoryMethods.recipe_ingredient.insert,
 		update: repositoryMethods.recipe_ingredient.update,
 		delete: repositoryMethods.recipe_ingredient.delete,

@@ -1,10 +1,15 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { insertStatistic } from "@db/generated/repositories/statistic";
 import { ItemSchema, type item } from "@db/generated/zod";
+import { getDB } from "@db/repositories/database";
+import { createId } from "@paralleldrive/cuid2";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
+import { getUserContext } from "../utils/context";
 
 export const ITEM_DATA_CONFIG: TableDataConfig<item> = (dictionary) => ({
+	embeds: [{ field: "recipe", table: "recipe", via: "itemId" }],
 	dictionary: dictionary().db.item,
 	dataSchema: ItemSchema,
 	primaryKey: "id",
@@ -12,6 +17,7 @@ export const ITEM_DATA_CONFIG: TableDataConfig<item> = (dictionary) => ({
 	dataFetcher: {
 		get: repositoryMethods.item.select,
 		getAll: repositoryMethods.item.selectAll,
+		liveQuery: (db) => db.selectFrom("item").selectAll("item"),
 		insert: repositoryMethods.item.insert,
 		update: repositoryMethods.item.update,
 		delete: repositoryMethods.item.delete,
@@ -46,8 +52,36 @@ export const ITEM_DATA_CONFIG: TableDataConfig<item> = (dictionary) => ({
 	form: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 		fieldGenerator: {},
-		onInsert: repositoryMethods.item.insert,
-		onUpdate: repositoryMethods.item.update,
+		onInsert: async (data) => {
+			const db = await getDB();
+			return db.transaction().execute(async (trx) => {
+				const { account } = await getUserContext(trx);
+				const statistic = await insertStatistic(
+					{
+						...defaultData.statistic,
+						id: createId(),
+					},
+					trx,
+				);
+				return repositoryMethods.item.insert(
+					{
+						...data,
+						id: createId(),
+						statisticId: statistic.id,
+						createdByAccountId: account.id,
+						updatedByAccountId: account.id,
+					},
+					trx,
+				);
+			});
+		},
+		onUpdate: async (id, data) => {
+			const db = await getDB();
+			return db.transaction().execute(async (trx) => {
+				const { account } = await getUserContext(trx);
+				return repositoryMethods.item.update(id, { ...data, updatedByAccountId: account.id }, trx);
+			});
+		},
 	},
 	card: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],

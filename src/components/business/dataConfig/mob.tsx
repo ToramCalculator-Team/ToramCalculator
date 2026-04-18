@@ -1,8 +1,11 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { insertStatistic } from "@db/generated/repositories/statistic";
 import { MobSchema, type mob } from "@db/generated/zod";
+import { getDB } from "@db/repositories/database";
 import type { ElementType, MemberType, MobType } from "@db/schema/enums";
 import { MOB_DIFFICULTY_FLAG, type MobDifficultyFlag } from "@db/schema/enums";
+import { createId } from "@paralleldrive/cuid2";
 import { createEffect, createSignal, Show } from "solid-js";
 import { BtEditorWrapper } from "~/components/business/utils/btEditorWrapper";
 import { Input } from "~/components/controls/input";
@@ -12,6 +15,7 @@ import { Icons } from "~/components/icons";
 import { generateBossDataByFlag } from "~/lib/utils/mob";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
+import { getUserContext } from "../utils/context";
 
 export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 	dictionary: dictionary().db.mob,
@@ -21,6 +25,7 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 	dataFetcher: {
 		get: repositoryMethods.mob.select,
 		getAll: repositoryMethods.mob.selectAll,
+		liveQuery: (db) => db.selectFrom("mob").selectAll("mob"),
 		insert: repositoryMethods.mob.insert,
 		update: repositoryMethods.mob.update,
 		delete: repositoryMethods.mob.delete,
@@ -280,7 +285,30 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 				);
 			},
 		},
-		onInsert: repositoryMethods.mob.insert,
+		onInsert: async (data) => {
+			const db = await getDB();
+			return db.transaction().execute(async (trx) => {
+				const { account } = await getUserContext(trx);
+				const statistic = await insertStatistic(
+					{
+						...defaultData.statistic,
+						id: createId(),
+					},
+					trx,
+				);
+				const mob = await repositoryMethods.mob.insert(
+					{
+						...data,
+						id: createId(),
+						statisticId: statistic.id,
+						createdByAccountId: account.id,
+						updatedByAccountId: account.id,
+					},
+					trx,
+				);
+				return mob;
+			});
+		},
 		onUpdate: repositoryMethods.mob.update,
 	},
 	card: {

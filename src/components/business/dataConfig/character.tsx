@@ -1,6 +1,9 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { insertStatistic } from "@db/generated/repositories/statistic";
 import { CharacterSchema, type character } from "@db/generated/zod";
+import { getDB } from "@db/repositories/database";
+import { createId } from "@paralleldrive/cuid2";
 import { stringArrayCellRenderer } from "~/components/business/utils/stringArrayCellRenderer";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
@@ -13,6 +16,7 @@ export const CHARACTER_DATA_CONFIG: TableDataConfig<character> = (dictionary) =>
 	dataFetcher: {
 		get: repositoryMethods.character.select,
 		getAll: repositoryMethods.character.selectAll,
+		liveQuery: (db) => db.selectFrom("character").selectAll("character"),
 		insert: repositoryMethods.character.insert,
 		update: repositoryMethods.character.update,
 		delete: repositoryMethods.character.delete,
@@ -55,9 +59,28 @@ export const CHARACTER_DATA_CONFIG: TableDataConfig<character> = (dictionary) =>
 		},
 	},
 	form: {
-		hiddenFields: [],
+		hiddenFields: ["id", "statisticId"],
 		fieldGenerator: {},
-		onInsert: repositoryMethods.character.insert,
+		onInsert: async (data) => {
+			const db = await getDB();
+			return db.transaction().execute(async (trx) => {
+				const statistic = await insertStatistic(
+					{
+						...defaultData.statistic,
+						id: createId(),
+					},
+					trx,
+				);
+				return repositoryMethods.character.insert(
+					{
+						...data,
+						id: createId(),
+						statisticId: statistic.id,
+					},
+					trx,
+				);
+			});
+		},
 		onUpdate: repositoryMethods.character.update,
 	},
 	card: {

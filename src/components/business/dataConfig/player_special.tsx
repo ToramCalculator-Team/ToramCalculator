@@ -13,6 +13,7 @@ export const PLAYER_SPECIAL_DATA_CONFIG: TableDataConfig<player_special> = (dict
 	dataFetcher: {
 		get: repositoryMethods.player_special.select,
 		getAll: repositoryMethods.player_special.selectAll,
+		liveQuery: (db) => db.selectFrom("player_special").selectAll("player_special"),
 		insert: repositoryMethods.player_special.insert,
 		update: repositoryMethods.player_special.update,
 		delete: repositoryMethods.player_special.delete,

@@ -75,6 +75,7 @@ const insertSkillWithVariants = async (data: SkillWithVariants): Promise<SkillWi
 		const skill = await repositoryMethods.skill.insert(
 			{
 				...skillData,
+				id: createId(),
 				statisticId: statistic.id,
 				createdByAccountId: account.id,
 				updatedByAccountId: account.id,
@@ -84,7 +85,11 @@ const insertSkillWithVariants = async (data: SkillWithVariants): Promise<SkillWi
 		const variants = await Promise.all(
 			data.variants.map(async (variant) => {
 				const variantData = SkillVariantSchema.parse(variant);
-				return await repositoryMethods.skill_variant.insert(variantData, trx);
+				return await repositoryMethods.skill_variant.insert({
+					...variantData,
+					id: createId(),
+					belongToskillId: skill.id,
+				}, trx);
 			}),
 		);
 		return {
@@ -143,6 +148,20 @@ export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill> = (dic
 		insert: insertSkillWithVariants,
 		update: updateSkillWithVariants,
 		delete: deleteSkillWithVariants,
+		// 与 getAllSkillWithVariants 同款 jsonArrayFrom 子查询，仅去掉 .execute()；
+		// skill 或 skill_variant 任意变动都会触发刷新
+		liveQuery: (db) =>
+			db
+				.selectFrom("skill")
+				.selectAll("skill")
+				.select((eb) => [
+					jsonArrayFrom(
+						eb
+							.selectFrom("skill_variant")
+							.whereRef("skill_variant.belongToskillId", "=", "skill.id")
+							.selectAll("skill_variant"),
+					).as("variants"),
+				]),
 	},
 	fieldGroupMap: {
 		ID: ["id"],

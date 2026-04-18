@@ -1,8 +1,12 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { insertStatistic } from "@db/generated/repositories/statistic";
 import { ZoneSchema, type zone } from "@db/generated/zod";
+import { getDB } from "@db/repositories/database";
+import { createId } from "@paralleldrive/cuid2";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
+import { getUserContext } from "../utils/context";
 
 export const ZONE_DATA_CONFIG: TableDataConfig<zone> = (dictionary) => ({
 	dictionary: dictionary().db.zone,
@@ -12,6 +16,7 @@ export const ZONE_DATA_CONFIG: TableDataConfig<zone> = (dictionary) => ({
 	dataFetcher: {
 		get: repositoryMethods.zone.select,
 		getAll: repositoryMethods.zone.selectAll,
+		liveQuery: (db) => db.selectFrom("zone").selectAll("zone"),
 		insert: repositoryMethods.zone.insert,
 		update: repositoryMethods.zone.update,
 		delete: repositoryMethods.zone.delete,
@@ -64,8 +69,36 @@ export const ZONE_DATA_CONFIG: TableDataConfig<zone> = (dictionary) => ({
 	form: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 		fieldGenerator: {},
-		onInsert: repositoryMethods.zone.insert,
-		onUpdate: repositoryMethods.zone.update,
+		onInsert: async (data) => {
+			const db = await getDB();
+			return db.transaction().execute(async (trx) => {
+				const { account } = await getUserContext(trx);
+				const statistic = await insertStatistic(
+					{
+						...defaultData.statistic,
+						id: createId(),
+					},
+					trx,
+				);
+				return repositoryMethods.zone.insert(
+					{
+						...data,
+						id: createId(),
+						statisticId: statistic.id,
+						createdByAccountId: account.id,
+						updatedByAccountId: account.id,
+					},
+					trx,
+				);
+			});
+		},
+		onUpdate: async (id, data) => {
+			const db = await getDB();
+			return db.transaction().execute(async (trx) => {
+				const { account } = await getUserContext(trx);
+				return repositoryMethods.zone.update(id, { ...data, updatedByAccountId: account.id }, trx);
+			});
+		},
 	},
 	card: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],

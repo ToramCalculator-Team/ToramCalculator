@@ -1,8 +1,12 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
+import { insertStatistic } from "@db/generated/repositories/statistic";
 import { ActivitySchema, type activity } from "@db/generated/zod";
+import { getDB } from "@db/repositories/database";
+import { createId } from "@paralleldrive/cuid2";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
+import { getUserContext } from "../utils/context";
 
 export const ACTIVITY_DATA_CONFIG: TableDataConfig<activity> = (dictionary) => ({
 	dictionary: dictionary().db.activity,
@@ -12,6 +16,7 @@ export const ACTIVITY_DATA_CONFIG: TableDataConfig<activity> = (dictionary) => (
 	dataFetcher: {
 		get: repositoryMethods.activity.select,
 		getAll: repositoryMethods.activity.selectAll,
+		liveQuery: (db) => db.selectFrom("activity").selectAll("activity"),
 		insert: repositoryMethods.activity.insert,
 		update: repositoryMethods.activity.update,
 		delete: repositoryMethods.activity.delete,
@@ -42,7 +47,24 @@ export const ACTIVITY_DATA_CONFIG: TableDataConfig<activity> = (dictionary) => (
 	form: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 		fieldGenerator: {},
-		onInsert: repositoryMethods.activity.insert,
+		onInsert: async (data) => {
+			const db = await getDB();
+			return db.transaction().execute(async (trx) => {
+				const { account } = await getUserContext(trx);
+				const statistic = await insertStatistic({
+					...defaultData.statistic,
+					id: createId(),
+				}, trx);
+				const activity = await repositoryMethods.activity.insert({
+					...data,
+					id: createId(),
+					statisticId: statistic.id,
+					createdByAccountId: account.id,
+					updatedByAccountId: account.id,
+				}, trx);
+				return activity;
+			});
+		},
 		onUpdate: repositoryMethods.activity.update,
 	},
 	card: {

@@ -12,9 +12,10 @@ import {
 	getFilteredRowModel,
 	getSortedRowModel,
 	type OnChangeFn,
+	type SortingState,
 	type VisibilityState,
 } from "@tanstack/solid-table";
-import { createVirtualizer } from "@tanstack/solid-virtual";
+import { createVirtualizer, type Virtualizer } from "@tanstack/solid-virtual";
 import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import {
@@ -42,8 +43,12 @@ export interface VirtualTableProps<T extends Record<string, unknown>> {
 	measure?: {
 		estimateSize: number;
 	};
-	// 行数据获取器
-	dataFetcher: () => Promise<T[]>;
+	// 行数据获取器（一次性 Promise 模式；若同时提供 `data` 则 `data` 优先，此项可缺省）
+	dataFetcher?: () => Promise<T[]>;
+	// 响应式行数据（订阅模式，例如来自 createLiveKyselyQuery）；提供时优先使用，dataFetcher 被忽略
+	data?: Accessor<T[]>;
+	// 响应式行数据的加载状态（配合 `data` 使用）
+	dataLoading?: Accessor<boolean>;
 	// 列定义
 	columnsDef: ColumnDef<T>[];
 	// 隐藏列定义
@@ -64,8 +69,6 @@ export interface VirtualTableProps<T extends Record<string, unknown>> {
 	columnVisibility?: VisibilityState;
 	// 列可见性变化处理
 	onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
-	// 重新获取数据处理
-	onRefetch?: (refetch: () => void) => void;
 }
 
 export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTableProps<T>) {
@@ -73,7 +76,17 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 	//   const start = performance.now();
 	//   console.log("virtualTable start", start);
 	const media = useContext(MediaContext);
-	const [data, { refetch: refetchData }] = createResource(async () => await props.dataFetcher());
+	// 当提供了响应式 `data` 时，跳过 createResource；否则用传入的 dataFetcher 做一次性拉取
+	const [fetchedData] = createResource(async () => {
+		if (props.data) return [] as T[]; // 有响应式来源时不触发拉取
+		return (await props.dataFetcher?.()) ?? [];
+	});
+
+	// 统一读取当前行数据
+	const currentRows: Accessor<T[]> = () => props.data?.() ?? fetchedData.latest ?? [];
+	// 统一读取加载就绪状态
+	const isDataReady: Accessor<boolean> = () =>
+		props.data ? !(props.dataLoading?.() ?? false) : fetchedData.state === "ready";
 
 	// [列可见性控制组件]的可见状态
 	const [columnVisibleIsOpen, setColumnVisibleIsOpen] = createSignal(false);
@@ -82,46 +95,72 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 	const [globalFilter, setGlobalFilter] = createSignal("");
 	const debounceSetGlobalFilter = debounce((value: string) => setGlobalFilter(value), 500);
 
-	// 暴露 refetch 方法
-	createEffect(() => {
-		console.log("表格已重新获取数据");
-		props.onRefetch?.(refetchData);
-	});
-
 	// 过滤字符串
 	createEffect(() => debounceSetGlobalFilter(props.globalFilterStr()));
 
 	const [virtualScrollRef, setVirtualScrollRef] = createSignal<OverlayScrollbarsComponentRef | undefined>(undefined);
+
+	// 排序状态提取到外部 signal。这样即便 Table 实例因为 data 变更被重建，
+	// 新 Table 的 state 仍然读取同一个 signal，sorting 不会被重置为 defaultSort。
+	const [sorting, setSorting] = createSignal<SortingState>([
+		{ id: props.defaultSort.id as string, desc: props.defaultSort.desc },
+	]);
+
+	// 稳定的"空列可见性"引用。getter 不能每次返回新 `{}`，否则 Tanstack
+	// 把它当作 state 变化 → 调 onColumnVisibilityChange → 回写 wikiStore
+	// → props 变 → getter 又给新 `{}` → 无限循环（栈溢出）。
+	const EMPTY_COLUMN_VISIBILITY: VisibilityState = {};
+
 	const [table, setTable] = createSignal<TanStackTable<T>>();
+
+	// 虚拟器依赖当前 table 实例：data 变 → 新 table → 新 virtualizer。
+	// 单例 getter 方案会触发栈溢出（见历史 commit），所以仍用 createMemo 重建。
+	// 为了保留滚动位置和测量缓存，新虚拟器重建时从旧实例里抢 scrollOffset 和
+	// measurementsCache 作为 initialOffset / initialMeasurementsCache 种子——
+	// solid-virtual 的 onCleanup 只解绑观察者，对象属性仍可读。
+	let prevVirtualizer: Virtualizer<HTMLElement, Element> | undefined;
 	const tableContainer = createMemo(() => {
-		return createVirtualizer({
-			count: table()?.getRowCount() ?? 0,
+		const t = table();
+		const seedOffset = prevVirtualizer?.scrollOffset ?? undefined;
+		const seedMeasurements = prevVirtualizer?.measurementsCache;
+		const hasSeed = Array.isArray(seedMeasurements) && seedMeasurements.length > 0;
+		const next = createVirtualizer({
+			count: t?.getRowCount() ?? 0,
 			getScrollElement: () => virtualScrollRef()?.osInstance()?.elements().viewport ?? null,
 			estimateSize: () => props.measure?.estimateSize ?? 96,
 			overscan: 5,
 			measureElement: (element) => element.getBoundingClientRect().height,
-		});
+			...(seedOffset != null ? { initialOffset: seedOffset } : {}),
+			...(hasSeed ? { initialMeasurementsCache: seedMeasurements } : {}),
+		}) as unknown as Virtualizer<HTMLElement, Element>;
+		prevVirtualizer = next;
+		return next;
 	});
 
+// data 变化时重建 Table 实例。排序/过滤/列可见性通过外部 signal 读取，不丢。
 	createEffect(
 		on(
-			() => data.state,
+			() => currentRows(),
 			() => {
-				// console.log("tableData change", performance.now() - start);
-				// console.log("tableData", data());
 				setTable(
-					createSolidTable({
-						data: data.latest ?? [],
+					createSolidTable<T>({
+						data: currentRows(),
 						columns: props.columnsDef,
 						getCoreRowModel: getCoreRowModel(),
 						getSortedRowModel: getSortedRowModel(),
 						state: {
+							get sorting() {
+								return sorting();
+							},
 							get globalFilter() {
 								return globalFilter();
 							},
 							get columnVisibility() {
-								return props.columnVisibility;
+								return props.columnVisibility ?? EMPTY_COLUMN_VISIBILITY;
 							},
+						},
+						onSortingChange: (updater) => {
+							setSorting((prev) => (typeof updater === "function" ? updater(prev) : updater));
 						},
 						onColumnVisibilityChange: props.onColumnVisibilityChange,
 						onGlobalFilterChange: setGlobalFilter,
@@ -131,22 +170,11 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 						getFacetedRowModel: getFacetedRowModel(),
 						getFacetedUniqueValues: getFacetedUniqueValues(),
 						getFacetedMinMaxValues: getFacetedMinMaxValues(),
-						debugTable: true,
+						debugTable: false,
 						debugHeaders: false,
 						debugColumns: false,
-						initialState: {
-							sorting: [
-								{
-									id: props.defaultSort.id as string,
-									desc: props.defaultSort.desc,
-								},
-							],
-						},
 					}),
 				);
-			},
-			{
-				defer: true,
 			},
 		),
 	);
@@ -272,8 +300,8 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 										const allVisible = table()?.getIsAllColumnsVisible() ?? false;
 										props.onColumnVisibilityChange?.((old) => {
 											const newVisibility = { ...old };
-											table()
-												?.getAllLeafColumns()
+											table
+												()?.getAllLeafColumns()
 												.forEach((col) => {
 													if (!props.hiddenColumnDef.includes(col.id as keyof T)) {
 														newVisibility[col.id] = !allVisible;
@@ -385,7 +413,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 						}}
 					>
 						<Show
-							when={data.state === "ready"}
+							when={isDataReady()}
 							fallback={
 								<div class="flex h-full w-full items-center justify-center">
 									<LoadingBar />

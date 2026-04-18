@@ -13,6 +13,7 @@ export const PLAYER_OPTION_DATA_CONFIG: TableDataConfig<player_option> = (dictio
 	dataFetcher: {
 		get: repositoryMethods.player_option.select,
 		getAll: repositoryMethods.player_option.selectAll,
+		liveQuery: (db) => db.selectFrom("player_option").selectAll("player_option"),
 		insert: repositoryMethods.player_option.insert,
 		update: repositoryMethods.player_option.update,
 		delete: repositoryMethods.player_option.delete,

@@ -1,4 +1,5 @@
 import type { DB } from "@db/generated/zod";
+import type { Compilable, Kysely } from "kysely";
 import type { Accessor } from "solid-js";
 import type { ZodObject, ZodType } from "zod/v4";
 import type { Dic, Dictionary } from "~/locales/type";
@@ -103,6 +104,13 @@ export type TableDataConfig<T extends Record<string, unknown>, TDic extends Reco
 		insert: (data: T) => Promise<T>;
 		update: (id: string, data: T) => Promise<T>;
 		delete: (id: string) => Promise<T | undefined>;
+		/**
+		 * 可选：返回一个可被 PGlite `live` 扩展订阅的 Kysely 查询构造器。
+		 * 提供后，wiki 列表页会改用 createLiveKyselyQuery 订阅式拉取，
+		 * 写入/同步导致的行变更将自动刷新列表，无需手动 invalidate。
+		 * 未提供时仍用 getAll 一次性拉取。
+		 */
+		liveQuery?: (db: Kysely<DB>) => Compilable<T>;
 	};
 	fieldGroupMap: Record<string, Array<keyof T>>;
 	/** 继承关系声明（见 InheritsFromDecl） */
@@ -113,7 +121,7 @@ export type TableDataConfig<T extends Record<string, unknown>, TDic extends Reco
 	relationOverrides?: RelationOverridesDecl;
 	table: SafeOmit<
 		VirtualTableProps<T>,
-		"dataFetcher" | "dictionary" | "rowHandleClick" | "onColumnVisibilityChange" | "onRefetch" | "globalFilterStr"
+		"dataFetcher" | "dictionary" | "rowHandleClick" | "onColumnVisibilityChange" | "globalFilterStr"
 	>;
 	form: SafeOmit<
 		FormProps<T, ZodObject<{ [K in keyof T]: ZodType }>>,

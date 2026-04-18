@@ -1,26 +1,124 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
-import { CrystalSchema, type crystal } from "@db/generated/zod";
+import { deleteCrystal, insertCrystal, updateCrystal } from "@db/generated/repositories/crystal";
+import { deleteItem, insertItem, updateItem } from "@db/generated/repositories/item";
+import { insertStatistic } from "@db/generated/repositories/statistic";
+import { CrystalSchema, type crystal, ItemSchema } from "@db/generated/zod";
+import { getDB } from "@db/repositories/database";
+import { createId } from "@paralleldrive/cuid2";
+import type { z } from "zod/v4";
 import { stringArrayCellRenderer } from "~/components/business/utils/stringArrayCellRenderer";
 import { Icons } from "~/components/icons";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
+import { getUserContext } from "../utils/context";
 
-export const CRYSTAL_DATA_CONFIG: TableDataConfig<crystal> = (dictionary) => ({
+const CrystalItemSchema = ItemSchema.extend(CrystalSchema.shape);
+type CrystalItem = z.output<typeof CrystalItemSchema>;
+
+const CrystalItemDefaultData: CrystalItem = {
+	...defaultData.crystal,
+	...defaultData.item,
+};
+
+const getCrystalItem = async (id: string): Promise<CrystalItem> => {
+	const db = await getDB();
+	const crystalRow = await db.selectFrom("crystal").where("itemId", "=", id).selectAll().executeTakeFirstOrThrow();
+	const item = await db.selectFrom("item").where("id", "=", crystalRow.itemId).selectAll().executeTakeFirstOrThrow();
+	return {
+		...crystalRow,
+		...item,
+	};
+};
+
+const getAllCrystalItems = async (): Promise<CrystalItem[]> => {
+	const db = await getDB();
+	return await db
+		.selectFrom("crystal")
+		.innerJoin("item", (join) => join.onRef("crystal.itemId", "=", "item.id"))
+		.selectAll()
+		.execute();
+};
+
+const insertCrystalItem = async (data: CrystalItem): Promise<CrystalItem> => {
+	const db = await getDB();
+	return await db.transaction().execute(async (trx) => {
+		const { account } = await getUserContext(trx);
+		const statistic = await insertStatistic(
+			{
+				...defaultData.statistic,
+				id: createId(),
+			},
+			trx,
+		);
+		const item = await insertItem(
+			{
+				...ItemSchema.parse(data),
+				statisticId: statistic.id,
+				createdByAccountId: account.id,
+				updatedByAccountId: account.id,
+			},
+			trx,
+		);
+		const crystalRow = await insertCrystal(
+			{
+				...CrystalSchema.parse(data),
+				itemId: item.id,
+			},
+			trx,
+		);
+		return {
+			...crystalRow,
+			...item,
+		};
+	});
+};
+
+const updateCrystalItem = async (id: string, data: Partial<CrystalItem>): Promise<CrystalItem> => {
+	const db = await getDB();
+	return await db.transaction().execute(async (trx) => {
+		const crystalRow = await updateCrystal(id, CrystalSchema.parse(data), trx);
+		const item = await updateItem(id, ItemSchema.parse(data), trx);
+		return {
+			...crystalRow,
+			...item,
+		};
+	});
+};
+
+const deleteCrystalItem = async (id: string): Promise<CrystalItem | undefined> => {
+	const db = await getDB();
+	return await db.transaction().execute(async (trx) => {
+		await deleteCrystal(id, trx);
+		await deleteItem(id, trx);
+		return undefined;
+	});
+};
+
+export const CRYSTAL_DATA_CONFIG: TableDataConfig<CrystalItem, crystal> = (dictionary) => ({
+	inheritsFrom: { table: "item", via: "itemId" },
+	relationOverrides: {
+		hide: ["statistic", "account_create_data", "account_update_data"],
+	},
 	dictionary: dictionary().db.crystal,
-	dataSchema: CrystalSchema,
+	dataSchema: CrystalItemSchema,
 	primaryKey: "itemId",
-	defaultData: defaultData.crystal,
+	defaultData: CrystalItemDefaultData,
 	dataFetcher: {
-		get: repositoryMethods.crystal.select,
-		getAll: repositoryMethods.crystal.selectAll,
-		insert: repositoryMethods.crystal.insert,
-		update: repositoryMethods.crystal.update,
-		delete: repositoryMethods.crystal.delete,
+		get: getCrystalItem,
+		getAll: getAllCrystalItems,
+		insert: insertCrystalItem,
+		update: updateCrystalItem,
+		delete: deleteCrystalItem,
+		liveQuery: (db) =>
+			db
+				.selectFrom("crystal")
+				.innerJoin("item", (join) => join.onRef("crystal.itemId", "=", "item.id"))
+				.selectAll("item")
+				.select(["crystal.itemId", "crystal.type", "crystal.modifiers"]),
 	},
 	fieldGroupMap: {
-		所属道具: ["itemId"],
-		基本信息: ["name", "type", "modifiers"],
+		基本信息: ["name", "type", "itemSourceType", "dataSources", "details", "modifiers"],
 	},
 	table: {
 		measure: {
@@ -36,7 +134,7 @@ export const CRYSTAL_DATA_CONFIG: TableDataConfig<crystal> = (dictionary) => ({
 			},
 			{ accessorKey: "type", cell: (info) => info.getValue(), size: 100 },
 		],
-		hiddenColumnDef: [],
+		hiddenColumnDef: ["itemId"],
 		defaultSort: { id: "name", desc: false },
 		tdGenerator: {
 			modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
@@ -45,8 +143,8 @@ export const CRYSTAL_DATA_CONFIG: TableDataConfig<crystal> = (dictionary) => ({
 	form: {
 		hiddenFields: [],
 		fieldGenerator: {},
-		onInsert: repositoryMethods.crystal.insert,
-		onUpdate: repositoryMethods.crystal.update,
+		onInsert: async (values) => insertCrystalItem(values),
+		onUpdate: updateCrystalItem,
 	},
 	card: {
 		hiddenFields: [],
@@ -62,7 +160,7 @@ export const CRYSTAL_DATA_CONFIG: TableDataConfig<crystal> = (dictionary) => ({
 				);
 			},
 		},
-		deleteCallback: repositoryMethods.crystal.delete,
+		deleteCallback: deleteCrystalItem,
 		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "crystal", data }),
 		editAbleCallback: (data) => repositoryMethods.crystal.canEdit(data.itemId),
 	},

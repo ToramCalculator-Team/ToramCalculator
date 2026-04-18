@@ -8,7 +8,6 @@ import { Index, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { DATA_CONFIG } from "~/components/business/data-config";
 import { useDictionary } from "~/contexts/Dictionary";
-import { triggerWikiTableRefetch } from "~/routes/(app)/(features)/wiki/[subName]";
 import { setStore, store } from "~/store";
 import { Form } from "./FormRenderer";
 import { FormSheet } from "./FormSheet";
@@ -53,7 +52,6 @@ export const FormGroup = () => {
 														throw new Error(`${formGroupItem.type} 没有插入方法`);
 													}
 													const result = await insertFun(value);
-													triggerWikiTableRefetch(formGroupItem.type);
 													// 打印结果并关闭表单
 													console.log("插入结果：", result);
 													setStore("pages", "formGroup", (pre) => pre.slice(0, -1));
@@ -65,7 +63,6 @@ export const FormGroup = () => {
 														throw new Error(`${formGroupItem.type} 没有更新方法`);
 													}
 													const result = await updateFun(primaryKeyValue, value);
-													triggerWikiTableRefetch(formGroupItem.type);
 													// 打印结果并关闭表单
 													console.log("更新结果：", result);
 													setStore("pages", "formGroup", (pre) => pre.slice(0, -1));

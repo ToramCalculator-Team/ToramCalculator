@@ -12,6 +12,7 @@ export const DROP_ITEM_DATA_CONFIG: TableDataConfig<drop_item> = (dictionary) =>
 	dataFetcher: {
 		get: repositoryMethods.drop_item.select,
 		getAll: repositoryMethods.drop_item.selectAll,
+		liveQuery: (db) => db.selectFrom("drop_item").selectAll("drop_item"),
 		insert: repositoryMethods.drop_item.insert,
 		update: repositoryMethods.drop_item.update,
 		delete: repositoryMethods.drop_item.delete,

@@ -2493,20 +2493,20 @@ const dictionary: Dictionary = {
 				},
 				targetMainWeaponType: {
 					key: "目标主武器类型",
-					tableFieldDescription: "目标主武器类型",
-					formFieldDescription: "目标主武器类型",
+					tableFieldDescription: "此技能变体需要什么武器才能生效",
+					formFieldDescription: "此技能变体需要什么武器才能生效",
 					enumMap: mainHandTypeLimit,
 				},
 				targetSubWeaponType: {
 					key: "目标副武器类型",
-					tableFieldDescription: "目标副武器类型",
-					formFieldDescription: "目标副武器类型",
+					tableFieldDescription: "此技能变体需要什么副武器才能生效",
+					formFieldDescription: "此技能变体需要什么副武器才能生效",
 					enumMap: subHandTypeLimit,
 				},
 				targetArmorAbilityType: {
 					key: "目标身体装备能力类型",
-					tableFieldDescription: "目标身体装备能力类型",
-					formFieldDescription: "目标身体装备能力类型",
+					tableFieldDescription: "此技能变体需要什么身体装备能力才能生效",
+					formFieldDescription: "此技能变体需要什么身体装备能力才能生效",
 					enumMap: playerArmorAbilityTypeLimit,
 				},
 				activeEffect: {

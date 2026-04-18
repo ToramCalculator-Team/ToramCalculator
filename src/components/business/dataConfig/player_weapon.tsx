@@ -14,6 +14,7 @@ export const PLAYER_WEAPON_DATA_CONFIG: TableDataConfig<player_weapon> = (dictio
 	dataFetcher: {
 		get: repositoryMethods.player_weapon.select,
 		getAll: repositoryMethods.player_weapon.selectAll,
+		liveQuery: (db) => db.selectFrom("player_weapon").selectAll("player_weapon"),
 		insert: repositoryMethods.player_weapon.insert,
 		update: repositoryMethods.player_weapon.update,
 		delete: repositoryMethods.player_weapon.delete,

@@ -1,9 +1,10 @@
 import { defaultData } from "@db/defaultData";
 import type { DB } from "@db/generated/zod/index";
+import { getDB } from "@db/repositories/database";
 import { A, useNavigate, useParams } from "@solidjs/router";
 import { createEffect, createMemo, createSignal, For, type JSX, on, onCleanup, onMount, Show, useContext } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { type AnyTableDataConfig, DATA_CONFIG } from "~/components/business/data-config";
+import { DATA_CONFIG } from "~/components/business/data-config";
 import { Dialog } from "~/components/containers/dialog";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
@@ -11,26 +12,10 @@ import { VirtualTable } from "~/components/dataDisplay/virtualTable";
 import { Icons } from "~/components/icons/index";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
+import { createLiveKyselyQuery } from "~/lib/liveQuery";
 import { setStore, store } from "~/store";
 import { setWikiStore, wikiStore } from "./store";
 import { wikiPageConfig } from "./wikiPage/wikiPageConfig";
-
-// 页面级 refetch 注册表：
-// - VirtualTable 挂载时注册当前表的 refetch
-// - FormGroup 在新增/更新成功后按表名触发刷新
-// 之所以放在这里，是因为这个页面本身负责协调表格和表单两个模块。
-type WikiTableRefetch = () => void;
-const wikiTableRefetchers: Partial<Record<keyof DB, WikiTableRefetch>> = {};
-
-// 注册某个 wiki 表的刷新函数（后注册会覆盖前一个，保证始终使用当前页面实例）
-export const registerWikiTableRefetch = (tableName: keyof DB, refetch: WikiTableRefetch) => {
-	wikiTableRefetchers[tableName] = refetch;
-};
-
-// 在表单提交成功后触发指定表的列表刷新
-export const triggerWikiTableRefetch = (tableName: keyof DB) => {
-	wikiTableRefetchers[tableName]?.();
-};
 
 export default function WikiSubPage() {
 	const media = useContext(MediaContext);
@@ -46,6 +31,17 @@ export default function WikiSubPage() {
 	const [wikiSelectorIsOpen, setWikiSelectorIsOpen] = createSignal(false);
 
 	const dataConfig = createMemo(() => DATA_CONFIG[wikiStore.type]);
+
+	// 响应式订阅当前表的行数据（如果 dataConfig 声明了 liveQuery）。
+	// 切换 wikiStore.type 时，createEffect 内部会自动退订旧订阅、订阅新表。
+	const liveTableRows = createLiveKyselyQuery(async () => {
+		const cfg = dataConfig();
+		if (!cfg) return null;
+		const liveQueryBuilder = cfg(dictionary).dataFetcher.liveQuery;
+		if (!liveQueryBuilder) return null;
+		const db = await getDB();
+		return liveQueryBuilder(db);
+	});
 
 	// 监听url参数变化, 初始化页面状态
 	createEffect(
@@ -200,7 +196,7 @@ export default function WikiSubPage() {
 											onClick={() =>
 												setStore("pages", "formGroup", store.pages.formGroup.length, {
 													type: wikiStore.type,
-													data: defaultData[wikiStore.type],
+													data: validDataConfig()(dictionary).defaultData,
 												})
 											}
 										></Button>
@@ -218,7 +214,7 @@ export default function WikiSubPage() {
 											onClick={() => {
 												setStore("pages", "formGroup", store.pages.formGroup.length, {
 													type: wikiStore.type,
-													data: defaultData[wikiStore.type],
+													data: validDataConfig()(dictionary).defaultData,
 												});
 											}}
 										>
@@ -317,30 +313,31 @@ export default function WikiSubPage() {
 								</div>
 								<Show
 									when={wikiPageConfig[wikiStore.type]?.mainContent}
-									fallback={VirtualTable({
-										measure: validDataConfig()(dictionary).table.measure,
-										dataFetcher: validDataConfig()(dictionary).dataFetcher.getAll,
-										columnsDef: validDataConfig()(dictionary).table.columnsDef,
-										hiddenColumnDef: validDataConfig()(dictionary).table.hiddenColumnDef,
-										tdGenerator: validDataConfig()(dictionary).table.tdGenerator,
-										defaultSort: validDataConfig()(dictionary).table.defaultSort,
-										dictionary: validDataConfig()(dictionary).dictionary,
-										globalFilterStr: () => wikiStore.table.globalFilterStr,
-										rowHandleClick: (data) =>
-											setStore("pages", "cardGroup", store.pages.cardGroup.length, { type: wikiStore.type, data }),
-										columnVisibility: wikiStore.table.columnVisibility,
-										onColumnVisibilityChange: (updater) => {
-											if (typeof updater === "function") {
-												setWikiStore("table", {
-													columnVisibility: updater(wikiStore.table.columnVisibility),
-												});
-											}
-										},
-										onRefetch: (refetch) => {
-											// 将当前表的 refetch 暴露给表单提交回调使用
-											registerWikiTableRefetch(wikiStore.type, refetch);
-										},
-									})}
+									fallback={(() => {
+										const cfg = validDataConfig()(dictionary);
+										// 所有 dataConfig 都提供了 liveQuery，直接走订阅路径
+										return VirtualTable({
+											measure: cfg.table.measure,
+											data: liveTableRows.rows,
+											dataLoading: () => liveTableRows.status() === "loading",
+											columnsDef: cfg.table.columnsDef,
+											hiddenColumnDef: cfg.table.hiddenColumnDef,
+											tdGenerator: cfg.table.tdGenerator,
+											defaultSort: cfg.table.defaultSort,
+											dictionary: cfg.dictionary,
+											globalFilterStr: () => wikiStore.table.globalFilterStr,
+											rowHandleClick: (data) =>
+												setStore("pages", "cardGroup", store.pages.cardGroup.length, { type: wikiStore.type, data }),
+											columnVisibility: wikiStore.table.columnVisibility,
+											onColumnVisibilityChange: (updater) => {
+												if (typeof updater === "function") {
+													setWikiStore("table", {
+														columnVisibility: updater(wikiStore.table.columnVisibility),
+													});
+												}
+											},
+										});
+									})()}
 									// 用jsx方式调用时不会刷新内容，不知道为什么
 									// fallback={
 									//   <VirtualTable<DB[typeof wikiStore.type]>
@@ -434,7 +431,7 @@ export default function WikiSubPage() {
 											onClick={() => {
 												setStore("pages", "formGroup", store.pages.formGroup.length, {
 													type: wikiStore.type,
-													data: defaultData[wikiStore.type],
+													data: validDataConfig()(dictionary).defaultData,
 												});
 											}}
 										></Button>

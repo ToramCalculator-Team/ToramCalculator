@@ -20,6 +20,7 @@ export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = (dictio
 	dataFetcher: {
 		get: repositoryMethods.skill_variant.select,
 		getAll: repositoryMethods.skill_variant.selectAll,
+		liveQuery: (db) => db.selectFrom("skill_variant").selectAll("skill_variant"),
 		insert: repositoryMethods.skill_variant.insert,
 		update: repositoryMethods.skill_variant.update,
 		delete: repositoryMethods.skill_variant.delete,
