@@ -53,6 +53,7 @@ const insertSpecialItem = async (data: SpecialItem): Promise<SpecialItem> => {
 		const item = await insertItem(
 			{
 				...ItemSchema.parse(data),
+				id: createId(),
 				statisticId: statistic.id,
 				createdByAccountId: account.id,
 				updatedByAccountId: account.id,

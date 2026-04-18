@@ -57,6 +57,7 @@ const insertWeaponItem = async (data: WeaponItem): Promise<WeaponItem> => {
 		const item = await insertItem(
 			{
 				...ItemSchema.parse(data),
+				id: createId(),
 				statisticId: statistic.id,
 				createdByAccountId: account.id,
 				updatedByAccountId: account.id,
