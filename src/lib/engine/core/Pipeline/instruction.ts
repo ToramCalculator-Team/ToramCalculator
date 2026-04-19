@@ -28,7 +28,10 @@ export type InstructionOp =
 	| "not"
 	| "select"
 	| "get"
-	| "eval";
+	| "eval"
+	// 副作用：向编排层派发事件。a = 事件名（字符串字面量），b = 可选 payload 表达式；
+	// target 写入一个布尔标志（1 = 已派发）。
+	| "emit";
 
 /** 操作数：数字字面量 / 变量引用 / 属性路径字符串。 */
 export type Operand = number | string;

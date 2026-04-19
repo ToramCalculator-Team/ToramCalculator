@@ -80,6 +80,14 @@ export type DataStorages<T extends string> = {
 	[key in T]: DataStorage;
 };
 
+/**
+ * 属性变更监听器。
+ *
+ * 仅当属性"已被观测过"且 `oldValue !== newValue` 时触发。
+ * 用于阶段 3 的 `AttributeWatcherRegistry` 做阈值跨线检测；数据层自身不含业务语义。
+ */
+export type AttributeChangeListener = (oldValue: number, newValue: number, path: string) => void;
+
 // 类型谓词函数，用于检查对象是否为DataStorage类型
 export function isDataStorageType(obj: unknown): obj is DataStorage {
 	return (
@@ -160,7 +168,16 @@ export function dynamicTotalValue(data: DataStorage): number {
 export interface ModifierSource {
 	id: string;
 	name: string;
-	type: "equipment" | "skill" | "buff" | "debuff" | "passive" | "system";
+	/**
+	 * 来源类别：
+	 * - `equipment`：装备（武器/防具/锻晶等）
+	 * - `skill`：技能主动效果
+	 * - `buff` / `debuff`：临时增益 / 减益
+	 * - `passive`：被动技能（`skill.isPassive === true`）
+	 * - `registlet`：雷吉斯托环
+	 * - `system`：系统赋予
+	 */
+	type: "equipment" | "skill" | "buff" | "debuff" | "passive" | "registlet" | "system";
 }
 
 export interface Modifier {
@@ -400,6 +417,15 @@ export class StatContainer<T extends string>
 	/** 属性状态标志位 */
 	private readonly flags: Uint32Array;
 
+	/**
+	 * 属性是否已经被观测过（首次 `updateDirtyValues` 写入 `values[index]` 后置 1）。
+	 * 用于 `onChange` 判定：未观测过时跳过事件，避免构造期把 0→初值 误报成 change。
+	 */
+	private readonly hasObserved: Uint32Array;
+
+	/** onChange 监听器表：attrIndex -> callback 集合 */
+	private readonly changeListeners: Map<number, Set<AttributeChangeListener>> = new Map();
+
 	/** 修饰符数据存储 - 5个数组分别存储不同类型的修饰符 */
 	private readonly modifierArrays: Float64Array[];
 
@@ -466,6 +492,7 @@ export class StatContainer<T extends string>
 		this.values = new Float64Array(keyCount);
 		this.flags = new Uint32Array(Math.ceil(keyCount / 32));
 		this.dirtyBitmap = new Uint32Array(Math.ceil(keyCount / 32));
+		this.hasObserved = new Uint32Array(Math.ceil(keyCount / 32));
 
 		// 初始化修饰符数组
 		this.modifierArrays = [];
@@ -544,9 +571,11 @@ export class StatContainer<T extends string>
 
 		// 重新计算
 		this.stats.cacheMisses++;
+		const oldValue = this.values[index];
 		const value = this.computeAttributeValue(index);
 		this.values[index] = value;
 		BitFlags.set(this.flags, index, AttributeFlags.IS_CACHED);
+		this.notifyValueChange(index, oldValue, value);
 
 		return value;
 	}
@@ -579,6 +608,76 @@ export class StatContainer<T extends string>
 	 */
 	getDisplayName(attr: T): string {
 		return this.displayNames.get(attr) || attr;
+	}
+
+	// ==================== 公共API - 变更订阅 ====================
+
+	/**
+	 * 订阅属性变更。
+	 *
+	 * 语义：
+	 * - 仅在属性"已被至少观测过一次"且 `oldValue !== newValue` 时触发 callback。
+	 *   构造期的初始计算（0 → 初值）不会被误报。
+	 * - 变更检测发生在属性真正被重算时（getValue / updateDirtyValues）；
+	 *   为让跨阈值触发器即时响应，业务侧（或 Member.tick）应在每帧调用 `flushDirtyValues`。
+	 * - 纯被动机制：数据层不持有业务语义，阈值 / 过滤交给编排层的 `AttributeWatcherRegistry`。
+	 *
+	 * @returns 取消订阅的函数
+	 */
+	onChange(attr: T, listener: AttributeChangeListener): () => void {
+		const index = this.keyToIndex.get(attr);
+		if (index === undefined) {
+			log.warn(`onChange: 未知属性 ${attr}`);
+			return () => {};
+		}
+		let set = this.changeListeners.get(index);
+		if (!set) {
+			set = new Set();
+			this.changeListeners.set(index, set);
+		}
+		set.add(listener);
+		return () => {
+			const s = this.changeListeners.get(index);
+			if (!s) return;
+			s.delete(listener);
+			if (s.size === 0) this.changeListeners.delete(index);
+		};
+	}
+
+	/**
+	 * 将所有标脏属性立即刷新计算，并触发对应的 onChange 监听器。
+	 *
+	 * 用法：每帧由成员 tick 调用一次，使阈值 watcher 能够及时拿到 modifier 变更后的值。
+	 */
+	flushDirtyValues(): void {
+		if (this.hasDirtyValues()) {
+			this.updateDirtyValues();
+		}
+	}
+
+	/**
+	 * 触发 onChange 监听器；仅在属性已被观测过且值真正改变时 fire。
+	 *
+	 * @internal 供 StatContainer 内部各写入路径调用。
+	 */
+	private notifyValueChange(index: number, oldValue: number, newValue: number): void {
+		const arrayIndex = index >>> 5;
+		const bitIndex = index & 31;
+		const alreadyObserved = (this.hasObserved[arrayIndex] & (1 << bitIndex)) !== 0;
+		this.hasObserved[arrayIndex] |= 1 << bitIndex;
+		if (!alreadyObserved) return;
+		if (oldValue === newValue) return;
+
+		const listeners = this.changeListeners.get(index);
+		if (!listeners || listeners.size === 0) return;
+		const path = String(this.indexToKey[index]);
+		for (const cb of listeners) {
+			try {
+				cb(oldValue, newValue, path);
+			} catch (error) {
+				log.error(`StatContainer.onChange 监听器抛错 (${path})：`, error);
+			}
+		}
 	}
 
 	// ==================== 公共API - 修饰符管理 ====================
@@ -815,6 +914,26 @@ export class StatContainer<T extends string>
 	 */
 	removeModifiersBySourceId(sourceId: string): void {
 		this.updateModifiersBySourceId(sourceId, []);
+	}
+
+	/**
+	 * 按 sourceId 前缀移除其全部修饰条目。
+	 *
+	 * 用于 passive / buff 卸载：`passive.<id>` 前缀下的所有 sourceId（含动态后缀如
+	 * `passive.<id>.<suffix>.<frame>`）一次清理完。
+	 */
+	removeModifiersBySourceIdPrefix(sourceIdPrefix: string): void {
+		if (this.sourceIndex.size === 0) return;
+		// 拷贝 key 列表避免在迭代时改 map
+		const matchingIds: string[] = [];
+		for (const sourceId of this.sourceIndex.keys()) {
+			if (sourceId === sourceIdPrefix || sourceId.startsWith(`${sourceIdPrefix}.`)) {
+				matchingIds.push(sourceId);
+			}
+		}
+		for (const id of matchingIds) {
+			this.updateModifiersBySourceId(id, []);
+		}
 	}
 
 	// ==================== 公共API - 数据导出 ====================
@@ -1235,13 +1354,12 @@ export class StatContainer<T extends string>
 			// 按依赖顺序计算
 			for (const index of order) {
 				if (this.isDirty(index)) {
-					const _attrName = String(this.indexToKey[index]);
-					// 静默更新属性
-
+					const oldValue = this.values[index];
 					const value = this.computeAttributeValue(index);
 					this.values[index] = value;
 					BitFlags.set(this.flags, index, AttributeFlags.IS_CACHED);
 					this.clearDirty(index);
+					this.notifyValueChange(index, oldValue, value);
 					updatedCount++;
 				}
 			}
@@ -1249,13 +1367,12 @@ export class StatContainer<T extends string>
 			// 处理没有依赖关系的属性
 			for (let i = 0; i < this.values.length; i++) {
 				if (this.isDirty(i)) {
-					const _attrName = String(this.indexToKey[i]);
-					// console.log(`🔧 更新独立属性: ${_attrName} (index: ${i})`);
-
+					const oldValue = this.values[i];
 					const value = this.computeAttributeValue(i);
 					this.values[i] = value;
 					BitFlags.set(this.flags, i, AttributeFlags.IS_CACHED);
 					this.clearDirty(i);
+					this.notifyValueChange(i, oldValue, value);
 					updatedCount++;
 				}
 			}
@@ -1558,6 +1675,9 @@ export class StatContainer<T extends string>
 		this.values.set(checkpoint.values);
 		this.flags.set(checkpoint.flags);
 		this.dirtyBitmap.set(checkpoint.dirtyBitmap);
+		// checkpoint 里的值视为"过去已经观测过"。此后再变化才广播 onChange，
+		// 避免回放时把 restore 后的"首次计算"误报成变更事件。
+		this.hasObserved.fill(0xffffffff);
 		for (let i = 0; i < this.modifierArrays.length; i++) {
 			this.modifierArrays[i].set(checkpoint.modifierArrays[i]);
 		}

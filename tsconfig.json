@@ -1,22 +1,24 @@
 {
-  "compilerOptions": {
-    "strictNullChecks": true,
-    "skipLibCheck": true,
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "jsx": "preserve",
-    "jsxImportSource": "solid-js",
-    "allowJs": true,
-    "strict": true,
-    "noEmit": true,
-    "types": ["@solidjs/start/env","node"],
-    "isolatedModules": true,
-    "paths": {
-      "~/*": ["./src/*"],
-      "@db/*": ["./db/*"]
-    }
-  }
+	"compilerOptions": {
+		"strictNullChecks": true,
+		"skipLibCheck": true,
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"allowSyntheticDefaultImports": true,
+		"esModuleInterop": true,
+		"jsx": "preserve",
+		"jsxImportSource": "solid-js",
+		"allowJs": true,
+		"strict": true,
+		"noEmit": true,
+		"types": ["@solidjs/start/env", "node"],
+		"isolatedModules": true,
+		"paths": {
+			"~/*": ["./src/*"],
+			"@db/*": ["./db/*"]
+		}
+	},
+	"include": ["src", "db/generator", "db/repositories"],
+	"exclude": ["node_modules", "dist", ".output", ".nitro", "backend", "public"]
 }

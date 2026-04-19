@@ -11,6 +11,8 @@ import {
 	type FrameLoopSnapshot,
 	type FrameLoopStats,
 } from "./FrameLoop/types";
+import type { EventCatalog } from "./Event/EventCatalog";
+import type { TagRegistry } from "./Event/TagRegistry";
 import type { JSProcessor } from "./JSProcessor/JSProcessor";
 import type { MessageRouterStats } from "./MessageRouter/MessageRouter";
 import type { PipelineCatalog } from "./Pipeline/PipelineCatalog";
@@ -25,6 +27,10 @@ export interface EngineInfrastructure {
 	jsProcessor: JSProcessor;
 	pipelineCatalog: PipelineCatalog;
 	pipelineResolverService: PipelineResolverService;
+	/** 标签/事件位索引注册表；proc mask 与 damage tag 共用。 */
+	tagRegistry: TagRegistry;
+	/** 事件目录：订阅位索引 + payload schema。 */
+	eventCatalog: EventCatalog;
 }
 
 /**

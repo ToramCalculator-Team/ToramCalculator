@@ -90,6 +90,30 @@ export function compilePipeline(instructions: readonly PipelineInstruction[]): C
 					vars[instr.target] = Math.max(minV, Math.min(a, maxV));
 					break;
 				}
+				case "emit": {
+					// a 约定为事件名字符串字面量；b 可选，是 payload 表达式（交给 env.eval）。
+					// target 写入 1 表示"已派发"，便于上游 overlay 用 select 依据此标志做分支。
+					const eventName = typeof instr.a === "string" ? instr.a : String(instr.a);
+					let payload: unknown = null;
+					if (instr.b !== undefined) {
+						if (typeof instr.b === "number") {
+							payload = instr.b;
+						} else {
+							const expr = String(instr.b);
+							if (expr.length > 0) {
+								// 先尝试作为变量/输入字段读取；若不是，降级为表达式求值。
+								if (Object.hasOwn(vars, expr) || Object.hasOwn(input, expr) || expr.startsWith("input.")) {
+									payload = resolveOperand(expr, vars, input, env);
+								} else {
+									payload = env.eval(expr, { ...input, ...vars });
+								}
+							}
+						}
+					}
+					env.emit(eventName, payload);
+					vars[instr.target] = 1;
+					break;
+				}
 				default: {
 					// 一元
 					if (instr.b === undefined && instr.op in unaryOperators) {

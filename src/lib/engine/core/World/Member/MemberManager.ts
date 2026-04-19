@@ -3,6 +3,7 @@ import type { TeamWithRelations } from "@db/generated/repositories/team";
 import type { MemberType } from "@db/schema/enums";
 import type { Actor, AnyActorLogic } from "xstate";
 import { createLogger } from "~/lib/Logger";
+import type { EventCatalog } from "../../Event/EventCatalog";
 import type { ExpressionContext } from "../../JSProcessor/types";
 import type { MemberCheckpoint, MemberDomainEvent } from "../../types";
 import type { DamageAreaRequest } from "../Area/types";
@@ -50,6 +51,8 @@ export class MemberManager {
 	private getCurrentFrame: (() => number) | null = null;
 	/** 新管线解析器（由引擎注入） */
 	private pipelineResolverService: PipelineResolverService | null = null;
+	/** 事件目录（由引擎注入，用于每成员的 ProcBus 初始化） */
+	private eventCatalog: EventCatalog | null = null;
 
 	// ==================== 主控目标系统 ====================
 
@@ -124,6 +127,17 @@ export class MemberManager {
 		}
 	}
 
+	/**
+	 * 设置引擎级 EventCatalog（由引擎注入）。
+	 * 每成员收到后各自构造独立 ProcBus，并将 StatusStore / Pipeline emit 路由到它。
+	 */
+	setEventCatalog(catalog: EventCatalog | null): void {
+		this.eventCatalog = catalog;
+		for (const member of this.members.values()) {
+			member.setEventCatalog(catalog);
+		}
+	}
+
 	// ==================== 公共接口 ====================
 	/**
 	 * 创建并注册新成员
@@ -152,6 +166,11 @@ export class MemberManager {
 				if (this.pipelineResolverService) {
 					player.setPipelineResolverService(this.pipelineResolverService);
 				}
+				if (this.eventCatalog) {
+					player.setEventCatalog(this.eventCatalog);
+				}
+				// 托环安装必须在 setEventCatalog 之后：订阅类 effect 依赖 ProcBus 就绪。
+				player.installRegistletsFromCharacter();
 				const success = this.registerMember(player, campId, teamId, memberData);
 				if (success) {
 					player.start();
@@ -172,6 +191,9 @@ export class MemberManager {
 				mob.setRenderMessageSender(this.renderMessageSender);
 				if (this.pipelineResolverService) {
 					mob.setPipelineResolverService(this.pipelineResolverService);
+				}
+				if (this.eventCatalog) {
+					mob.setEventCatalog(this.eventCatalog);
 				}
 				const success = this.registerMember(mob, campId, teamId, memberData);
 				if (success) {

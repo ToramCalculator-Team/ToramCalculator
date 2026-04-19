@@ -1,12 +1,14 @@
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import type { MemberWithRelations } from "@db/generated/repositories/member";
-import { z } from "zod/v4";
 import { createLogger } from "~/lib/Logger";
 import { Member } from "../../Member";
+import { BUILT_IN_REGISTLETS_BY_ID } from "../../Registlets/BuiltInRegistlets";
+import { installRegistlet } from "../../Registlets/RegistletLoader";
 import { MemberRuntimeServicesDefaults } from "../../runtime/Agent/RuntimeServices";
+import { mergeSchema, type SlotDeclaration } from "../../runtime/StatContainer/SchemaMerge";
 import type { ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
-import { ModifierType, StatContainer } from "../../runtime/StatContainer/StatContainer";
+import { StatContainer } from "../../runtime/StatContainer/StatContainer";
 import type { PlayerRuntime } from "../../runtime/types";
 import { PlayerBtBindings } from "./Agents/BtBindings";
 import { PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
@@ -17,57 +19,17 @@ const log = createLogger("Player");
 
 export type PlayerAttrType = ExtractAttrPaths<ReturnType<typeof PlayerAttrSchemaGenerator>>;
 
-const registerRingConfigSchema = z.object({
-	id: z.string(),
-	level: z.number().int().min(1).default(1),
-});
-
-const characterRuntimeAugmentSchema = z.object({
-	registerRings: z.array(registerRingConfigSchema).default([]),
-});
-
-type CharacterRuntimeAugmentConfig = z.output<typeof characterRuntimeAugmentSchema>;
-
-type RegistletAttrModifierDef = {
-	attr: PlayerAttrType;
-	modifierType: ModifierType;
-	valuePerLevel: number;
-};
-
-type RegistletPipelinePatchDef = {
-	pipelineName: string;
-	afterStageName: string;
-	insertStageName: string;
-	params?: Record<string, unknown>;
-	priority?: number;
-};
-
+/**
+ * 托环为某个技能提供的参数（将来由 RegistletLoader 从 registlet 数据填充）。
+ *
+ * 保留这套"技能参数索引"脚手架，让 FSM 在 `添加待处理技能` / `添加待处理技能变体` action 里
+ * 能一次性拿到当前技能的 registlet 参数快照，避免重复扫描。
+ * 当前没有数据源会填充它（RegistletLoader 的 `skillBranchActivators` 尚未接入）。
+ */
 type RegistletSkillParamDef = {
 	skillId: string;
 	param: string;
 	value: number;
-};
-
-type RegistletEffectDef = {
-	maxLevel: number;
-	attrModifiers: RegistletAttrModifierDef[];
-	pipelinePatches: RegistletPipelinePatchDef[];
-	skillParams: RegistletSkillParamDef[];
-};
-
-const BuiltinRegistletEffects: Record<string, RegistletEffectDef> = {
-	sleep_insufficient: {
-		maxLevel: 5,
-		attrModifiers: [
-			{
-				attr: "status.sleep.durationRate",
-				modifierType: ModifierType.STATIC_FIXED,
-				valuePerLevel: -10,
-			},
-		],
-		pipelinePatches: [],
-		skillParams: [],
-	},
 };
 
 export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateContext, PlayerRuntime> {
@@ -102,7 +64,11 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 			activeCharacter = memberData.player.characters[0];
 		}
 
-		const attrSchema = PlayerAttrSchemaGenerator(activeCharacter);
+		const baseSchema = PlayerAttrSchemaGenerator(activeCharacter);
+		// 技能 / 托环 / buff 可能需要额外属性槽（咏咒层数、冷却时间戳等）。
+		// 必须在 StatContainer 构造前并入 schema，战斗中不能再扩容（Float64Array 固定长度）。
+		const slotDeclarations = Player.collectAttributeSlots(activeCharacter, memberData);
+		const attrSchema = mergeSchema(baseSchema, slotDeclarations);
 		const statContainer = new StatContainer<PlayerAttrType>(attrSchema);
 		const initialSkillList = activeCharacter.skills;
 
@@ -143,106 +109,68 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 		);
 		this.activeCharacter = activeCharacter;
 
-		this.initializePassiveSkills(memberData);
 		applyPrebattleModifiers(this.statContainer, memberData);
-		this.mountRegistletEffects();
-	}
-
-	private initializePassiveSkills(memberData: MemberWithRelations): void {
-		log.debug("initializePassiveSkills", memberData);
-		// TODO: integrate passive skill initialization with the real skill system.
 	}
 
 	/**
-	 * Split all equipped registlets into the three supported effect lanes:
-	 * 1. stat modifiers
-	 * 2. always-on pipeline inserts
-	 * 3. skill parameter overlays
+	 * 从 character_registlet 关联列表安装已装备的雷吉斯托环。
+	 *
+	 * 必须在 `setEventCatalog` 之后调用 —— 否则 ProcBus 还未就绪，subscription 会被跳过。
+	 * MemberManager 负责调用时序。
 	 */
-	private mountRegistletEffects(): void {
-		const config = this.parseRuntimeAugments(this.activeCharacter?.details);
-
-		for (const ring of config.registerRings) {
-			const normalizedId = ring.id.trim().toLowerCase();
-			const effect = BuiltinRegistletEffects[normalizedId];
-			if (!effect) {
-				log.warn(`未实现的托环效果，已跳过: ${ring.id}`);
+	installRegistletsFromCharacter(): void {
+		const rings = this.activeCharacter?.registlets ?? [];
+		for (const ring of rings) {
+			const template = BUILT_IN_REGISTLETS_BY_ID.get(ring.templateId);
+			if (!template) {
+				log.debug(`托环模板未在内置表中登记，跳过: ${ring.templateId}`);
 				continue;
 			}
-
-			const level = Math.max(1, Math.min(ring.level, effect.maxLevel));
-			const sourceId = `registlet.${normalizedId}`;
-
-			for (const attrModifier of effect.attrModifiers) {
-				this.statContainer.addModifier(
-					attrModifier.attr,
-					attrModifier.modifierType,
-					attrModifier.valuePerLevel * level,
-					{
-						id: sourceId,
-						name: normalizedId,
-						type: "equipment",
-					},
-				);
-			}
-
-			for (const pipelinePatch of effect.pipelinePatches) {
-				// 旧 PipelineManager 已移除；此处改为构造纯数据 overlay。
-				// 注意：旧的 "stageName" -> 新的 "instruction anchor" 映射尚未建立，
-				// 当前内置托环效果未使用 pipelinePatches，因此先做告警并跳过。
-				log.warn(
-					`托环管线补丁暂未迁移（已跳过）：${pipelinePatch.pipelineName} after=${pipelinePatch.afterStageName} insert=${pipelinePatch.insertStageName}`,
-				);
-			}
-
-			for (const skillParam of effect.skillParams) {
-				this.registerSkillParam(skillParam);
+			try {
+				installRegistlet(this, template, ring.level);
+			} catch (error) {
+				log.warn(`安装托环失败: ${template.id}`, error);
 			}
 		}
 	}
 
+	/**
+	 * 收集所有需要在 StatContainer 上预分配的属性槽。
+	 *
+	 * 来源（当前为 no-op，数据模型接入后在此填充）：
+	 * - 角色已学技能的 `attributeSlots` 声明（如爆能的咏咒层数）
+	 * - 装备的托环 / passive 的 `attributeSlots` 声明（如 HP 紧急回复的 lastTriggeredFrame）
+	 * - 预插 buff 的 `attributeSlots` 声明（如弧光剑舞层数）
+	 *
+	 * 命名约定见 `SchemaMerge.ts`：`skill.<id>.<field>` / `passive.<id>.<field>` / `buff.<id>.<field>`。
+	 */
+	private static collectAttributeSlots(
+		_activeCharacter: CharacterWithRelations,
+		_memberData: MemberWithRelations,
+	): SlotDeclaration[] {
+		const slots: SlotDeclaration[] = [];
+		// 数据模型补齐后在此追加：
+		// for (const skill of _activeCharacter.skills) {
+		//   slots.push(...(skill.template?.attributeSlots ?? []));
+		// }
+		return slots;
+	}
+
+	/**
+	 * 根据当前技能解析其在 registlet 作用下的参数快照。
+	 *
+	 * 预留脚手架：未来 RegistletLoader 或 skillBranchActivators 接入时，会往
+	 * `skillParamsBySkillId` 里写数据；FSM 在"添加待处理技能" action 调本方法得到覆盖参数。
+	 * 当前无数据源，永远返回 `{}`。
+	 */
 	resolveSkillParams(skill: CharacterSkillWithRelations | null): Record<string, number> {
-		if (!skill) {
-			return {};
-		}
-
+		if (!skill) return {};
 		const params = this.skillParamsBySkillId.get(skill.id);
-		if (!params?.length) {
-			return {};
-		}
-
+		if (!params?.length) return {};
 		const result: Record<string, number> = {};
 		for (const skillParam of params) {
 			result[skillParam.param] = skillParam.value;
 		}
 		return result;
-	}
-
-	private registerSkillParam(skillParam: RegistletSkillParamDef): void {
-		const existing = this.skillParamsBySkillId.get(skillParam.skillId);
-		if (existing) {
-			existing.push(skillParam);
-			return;
-		}
-		this.skillParamsBySkillId.set(skillParam.skillId, [skillParam]);
-	}
-
-	private parseRuntimeAugments(details?: string | null): CharacterRuntimeAugmentConfig {
-		if (!details) {
-			return { registerRings: [] };
-		}
-
-		try {
-			const parsed = JSON.parse(details);
-			const result = characterRuntimeAugmentSchema.safeParse(parsed);
-			if (!result.success) {
-				log.warn(`角色 details 中的运行时增强配置无效，已忽略: ${result.error.message}`);
-				return { registerRings: [] };
-			}
-			return result.data;
-		} catch (error) {
-			log.warn(`角色 details 不是有效 JSON，已忽略托环配置: ${error instanceof Error ? error.message : String(error)}`);
-			return { registerRings: [] };
-		}
 	}
 }

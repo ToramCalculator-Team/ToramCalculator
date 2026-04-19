@@ -1,6 +1,7 @@
 import type { MemberWithRelations } from "@db/generated/repositories/member";
 import { Member } from "../../Member";
 import { MemberRuntimeServicesDefaults } from "../../runtime/Agent/RuntimeServices";
+import { mergeSchema, type SlotDeclaration } from "../../runtime/StatContainer/SchemaMerge";
 import type { ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
 import { StatContainer } from "../../runtime/StatContainer/StatContainer";
 import type { MobRuntime } from "../../runtime/types";
@@ -29,7 +30,10 @@ export class Mob extends Member<
 		if (!memberData.mob) {
 			throw new Error("Mob数据缺失");
 		}
-		const attrSchema = MobAttrSchema(memberData.mob);
+		const baseSchema = MobAttrSchema(memberData.mob);
+		// Mob 目前没有托环；预留入口便于将来怪物技能也能声明槽。
+		const slotDeclarations = Mob.collectAttributeSlots(memberData);
+		const attrSchema = mergeSchema(baseSchema, slotDeclarations);
 		const statContainer = new StatContainer<MobAttrType>(attrSchema);
 
 		const runtime: MobRuntime = {
@@ -55,5 +59,10 @@ export class Mob extends Member<
 			position,
 			MobBtBindings,
 		);
+	}
+
+	/** 预留入口，当前为空。Mob 技能数据模型补齐后在此收集 attribute slots。 */
+	private static collectAttributeSlots(_memberData: MemberWithRelations): SlotDeclaration[] {
+		return [];
 	}
 }

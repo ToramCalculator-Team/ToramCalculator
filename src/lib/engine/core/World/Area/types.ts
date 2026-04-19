@@ -40,6 +40,23 @@ export interface DamageRangeParams {
 }
 
 /**
+ * 警告区域类型。
+ *
+ * 用于红/蓝区护盾等按警告圈染色的 hook 识别来源。
+ * - `red` / `blue`：红/蓝色警告范围攻击（怪物 AoE 告警区）
+ * - `none`：非警告区攻击（普攻、直射技能等）
+ */
+export type DamageWarningZone = "red" | "blue" | "none";
+
+/**
+ * 命中目标相对施法者的方位（基于目标朝向）。
+ *
+ * 用于「殿后（镜头朝向后方受击减伤）」等方向类 hook。
+ * 初版仅四向；后续可扩展为连续角度。
+ */
+export type DamageDirection = "front" | "back" | "left" | "right";
+
+/**
  * 伤害区域请求（施法者侧构造）
  */
 export interface DamageAreaRequest {
@@ -84,6 +101,17 @@ export interface DamageAreaRequest {
 		casterSnapshot: Record<string, number>;
 		/** 技能等级 */
 		skillLv: number;
+		/**
+		 * 伤害归因标签。供受击 Pipeline 的 overlay / proc mask 订阅判定。
+		 * 约定集合（非穷举）：
+		 * - 元素：fire / water / earth / wind / light / dark / normal
+		 * - 性质：physical / magical / percentage
+		 * - 异常衍生伤害：ignition / poison / bleed / magicalExplosion
+		 * - 特殊类型：controlEnhance（锤击·控制强化）
+		 */
+		damageTags: string[];
+		/** 警告区域类型（红/蓝区护盾识别依据） */
+		warningZone: DamageWarningZone;
 	};
 	/** 施法时的位置（用于计算轨迹） */
 	casterId: string;
@@ -93,6 +121,12 @@ export interface DamageAreaRequest {
 
 /**
  * 伤害派发载荷（派发给受击者）
+ *
+ * 受击 Pipeline（`hitResolve` / `applyDamage`）消费本 payload；
+ * 绝大多数按伤害来源判定的 passive / 托环（燃烧的斗志、红区护盾、殿后 …）
+ * 依赖 `damageTags` / `warningZone` / `direction` 做条件分支。
+ *
+ * 字段由 `DamageAreaSystem.tick` 从 `DamageAreaRequest` 透传并追加动态变量（距离、方向）。
  */
 export interface DamageDispatchPayload {
 	/** 施法者ID */
@@ -109,6 +143,18 @@ export interface DamageDispatchPayload {
 	attackCount: number;
 	/** 伤害数量 */
 	damageCount: number;
+	/** 伤害归因标签（见 DamageAreaRequest.payload.damageTags 说明） */
+	damageTags: string[];
+	/** 警告区域类型 */
+	warningZone: DamageWarningZone;
+	/** 目标相对施法者的方位（由 DamageAreaSystem 基于几何位置计算） */
+	direction: DamageDirection;
+	/**
+	 * 是否致死。派发时初值为 `false`；由受击 Pipeline 计算出最终伤害后，
+	 * 若 `damage >= target.hp.current` 则置 `true`，供"最后的抵抗 / 最后的意志"等
+	 * 致死拦截类 overlay 与 `death.incoming` 订阅读取。
+	 */
+	isFatal: boolean;
 	/** 动态变量 */
 	vars: {
 		/** 距离（中心到目标位置） */

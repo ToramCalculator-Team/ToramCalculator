@@ -558,6 +558,8 @@ export const defaultData: DB = {
 		attrModifiers: [],
 		pipelinePatches: [],
 		skillBranchActivators: [],
+		subscriptions: [],
+		thresholdWatchers: [],
 		updatedByAccountId: null,
 		createdByAccountId: null
 	},

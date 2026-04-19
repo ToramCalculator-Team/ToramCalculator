@@ -2,22 +2,25 @@ import type { MemberWithRelations } from "@db/generated/repositories/member";
 import type { MemberType } from "@db/schema/enums";
 import { createActor } from "xstate";
 import { createLogger } from "~/lib/Logger";
+import type { EventCatalog } from "../../Event/EventCatalog";
 import type { ExpressionContext } from "../../JSProcessor/types";
 import type { PipelineOverlay } from "../../Pipeline/overlay";
 import type { PipelineResolverService } from "../../Pipeline/PipelineResolverService";
 import type { StageData, StageEnv } from "../../Pipeline/stageEnv";
 import type { MemberCheckpoint, MemberDomainEvent } from "../../types";
 import type { DamageAreaRequest } from "../Area/types";
-import type { MemberRuntimeServices } from "./runtime/Agent/RuntimeServices";
+import type { MemberRuntimeServices, PipelineEventSinkEvent } from "./runtime/Agent/RuntimeServices";
 import { MemberRuntimeServicesDefaults } from "./runtime/Agent/RuntimeServices";
+import { AttributeWatcherRegistry } from "./runtime/AttributeWatcher/AttributeWatcher";
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
+import { ProcBus } from "./runtime/ProcBus/ProcBus";
 import type { NestedSchema } from "./runtime/StatContainer/SchemaTypes";
 import type { StatContainer } from "./runtime/StatContainer/StatContainer";
 import type {
 	MemberActor,
 	MemberEventType,
 	MemberStateContext,
-	MemberStateMachine, 
+	MemberStateMachine,
 } from "./runtime/StateMachine/types";
 import {
 	InMemoryStatusInstanceStore,
@@ -64,6 +67,13 @@ export class Member<
 	pipelineOverlays: PipelineOverlay[] = [];
 	private pipelineResolverService: PipelineResolverService | null = null;
 	statusStore: MutableStatusInstanceStore;
+	/**
+	 * 订阅子系统。`setEventCatalog` 注入目录后才创建，未创建前 `emit` / `subscribe` 都 no-op（带告警）。
+	 * 每成员独立持有，跨成员事件由外部（MemberManager / GameEngine）路由。
+	 */
+	procBus: ProcBus | null = null;
+	/** 属性阈值 watcher 注册表。每成员独立持有；passive 安装时注册，卸载时清理。 */
+	attributeWatchers: AttributeWatcherRegistry<TAttrKey>;
 	actor: MemberActor<TStateEvent, TStateContext>;
 	private actorStarted = false;
 	data: MemberWithRelations;
@@ -110,6 +120,8 @@ export class Member<
 		this.btManager = new BtManager(this, btContextBindings);
 
 		this.statusStore = new InMemoryStatusInstanceStore(() => this.services.getCurrentFrame());
+		// 属性 watcher：依赖 StatContainer.onChange，与 EventCatalog 无关，可立即构造。
+		this.attributeWatchers = new AttributeWatcherRegistry<TAttrKey>(this.statContainer);
 		this.runtime.statusTags = this.runtime.statusTags ?? [];
 		if (position) {
 			this.runtime.position = position;
@@ -187,26 +199,82 @@ export class Member<
 	}
 
 	/**
+	 * 注入引擎级 EventCatalog，并在首次注入时完成以下装配：
+	 *  1. 创建本成员的 ProcBus（每成员独立）。
+	 *  2. 把 StatusInstanceStore 的变更事件路由到 ProcBus，派发 `status.entered` / `status.exited`。
+	 *  3. 把 Pipeline `emit` 算子的事件 sink 路由到 ProcBus（服务层 `pipelineEventSink`）。
+	 *
+	 * 传入 `null` 表示卸载（成员销毁前清理订阅）。
+	 */
+	setEventCatalog(catalog: EventCatalog | null): void {
+		if (!catalog) {
+			this.procBus?.clear();
+			this.procBus = null;
+			this.statusStore.setChangeListener(null);
+			this.services.pipelineEventSink = null;
+			return;
+		}
+
+		if (!this.procBus) {
+			this.procBus = new ProcBus(catalog);
+		}
+
+		const bus = this.procBus;
+		this.statusStore.setChangeListener((change) => {
+			if (change.kind === "entered") {
+				bus.emit(
+					"status.entered",
+					{
+						type: change.instance.type,
+						sourceId: change.instance.sourceId,
+						frame: change.frame,
+					},
+					change.frame,
+				);
+			} else {
+				bus.emit(
+					"status.exited",
+					{
+						type: change.instance.type,
+						reason: change.reason ?? "removed",
+						frame: change.frame,
+					},
+					change.frame,
+				);
+			}
+		});
+
+		this.services.pipelineEventSink = (event: PipelineEventSinkEvent) => {
+			bus.emit(event.name, event.payload, event.frame);
+		};
+	}
+
+	/**
 	 * 执行管线（纯计算）。
 	 *
-	 * Actor 隔离原则：member 只访问自身属性。
-	 * 需要跨 actor 数据（如目标防御力）的管线，由编排层通过 `peerStats` 逐次传入。
+	 * Actor 隔离原则：member 只访问自身属性。跨 actor 数据必须通过事件 payload 快照传递
+	 * （例如受击 payload 里的 `casterSnapshot`），严禁在管线执行期同步读取其他成员。
+	 *
+	 * 环境字段：
+	 * - `stats("self", path)` / `stats(<selfId>, path)`：读本成员属性；读其他成员会返回 0 并告警。
+	 * - `memberRuntime`：共享 runtime 只读快照。
+	 * - `statusTags()`：本成员 status tag 列表（等价于 `memberRuntime.statusTags`）。
+	 * - `damageTags()`：`params.damageTags` 的只读视图（受击管线调用时传入）。
+	 * - `emit(name, payload)`：管线 `emit` 算子的落点，事件路由给本成员的 pipelineEventSink。
 	 *
 	 * @param pipelineName 管线名称
-	 * @param params 管线输入参数
-	 * @param peerStats 编排层按次提供的跨 actor 只读查询函数（仅本次调用有效）
+	 * @param params 管线输入参数；包含特殊键 `damageTags?: string[]` 用于受击相关管线
 	 */
-	runPipeline(
-		pipelineName: string,
-		params?: Record<string, unknown>,
-		peerStats?: (memberId: string, path: string) => number,
-	) {
+	runPipeline(pipelineName: string, params?: Record<string, unknown>) {
 		const resolver = this.pipelineResolverService;
 		if (!resolver) {
 			throw new Error(`pipelineResolverService 未注入：${pipelineName}`);
 		}
 
 		const frame = this.services.getCurrentFrame();
+		const damageTagsParam = Array.isArray(params?.damageTags)
+			? (params?.damageTags as readonly string[])
+			: ([] as readonly string[]);
 
 		const env: StageEnv = {
 			frame,
@@ -214,9 +282,9 @@ export class Member<
 				if (memberIdOrSelector === "self" || memberIdOrSelector === this.id) {
 					return this.statContainer.getValue(path as TAttrKey);
 				}
-				if (peerStats) {
-					return peerStats(memberIdOrSelector, path);
-				}
+				log.warn(
+					`runPipeline(${pipelineName})：拒绝跨 actor 属性读取 (${memberIdOrSelector}.${path})；跨成员数据必须随事件 payload 传入`,
+				);
 				return 0;
 			},
 			eval: (expr: string, vars?: Record<string, unknown>) => {
@@ -233,6 +301,18 @@ export class Member<
 			},
 			newId: () => `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
 			memberRuntime: this.runtime,
+			statusTags: () => this.runtime.statusTags,
+			damageTags: () => damageTagsParam,
+			emit: (eventName: string, payload: unknown) => {
+				const sink = this.services.pipelineEventSink;
+				if (!sink) {
+					log.debug(
+						`runPipeline(${pipelineName})：pipelineEventSink 未注入，丢弃事件 ${eventName}`,
+					);
+					return;
+				}
+				sink({ name: eventName, payload, frame });
+			},
 		};
 
 		const overlays = this.pipelineOverlays;
@@ -279,6 +359,8 @@ export class Member<
 		this.syncStatusTags();
 		this.actor.send({ type: "update", timestamp: frame } as TStateEvent);
 		this.btManager.tickAll();
+		// 让阈值 watcher 及时响应 modifier 导致的数值变化：把本帧累计的脏值刷出。
+		this.statContainer.flushDirtyValues();
 	}
 
 	// ==================== Checkpoint ====================

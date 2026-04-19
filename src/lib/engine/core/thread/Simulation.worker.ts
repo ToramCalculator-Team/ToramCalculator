@@ -7,6 +7,10 @@ import type { MemberWithRelations } from "@db/generated/repositories/member";
 import { createLogger } from "~/lib/Logger";
 import { prepareForTransfer, sanitizeForPostMessage } from "~/lib/WorkerPool/MessageSerializer";
 import type { WorkerMessage, WorkerMessageEvent } from "~/lib/WorkerPool/type";
+import { BUILT_IN_EVENTS } from "../Event/BuiltInEvents";
+import { EventCatalog } from "../Event/EventCatalog";
+import { getBuiltInTags } from "../Event/TagConstants";
+import { TagRegistry } from "../Event/TagRegistry";
 import { GameEngine } from "../GameEngine";
 import { type EngineControlMessage, EngineControlMessageSchema } from "../GameEngineSM";
 import { JSProcessor } from "../JSProcessor/JSProcessor";
@@ -88,10 +92,14 @@ initializeWorkerSandbox();
 
 // Worker 级长期持有的基础设施 -- 跨 engine reset/cleanup 存活
 const pipelineCatalog = new PipelineCatalog();
+const tagRegistry = new TagRegistry(getBuiltInTags());
+const eventCatalog = new EventCatalog(BUILT_IN_EVENTS);
 const infra: EngineInfrastructure = {
 	jsProcessor: new JSProcessor(),
 	pipelineCatalog,
 	pipelineResolverService: new PipelineResolverService(pipelineCatalog),
+	tagRegistry,
+	eventCatalog,
 };
 
 const gameEngine = new GameEngine(

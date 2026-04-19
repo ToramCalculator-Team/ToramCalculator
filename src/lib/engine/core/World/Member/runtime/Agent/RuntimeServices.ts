@@ -3,6 +3,16 @@ import type { MemberDomainEvent } from "../../../../types";
 import type { DamageAreaRequest } from "../../../Area/types";
 
 /**
+ * 管线 `emit` 算子派发的事件（面向本成员自身的订阅系统）。
+ * 与 `MemberDomainEvent`（面向 UI / 控制器）区分：前者是 passive / buff 订阅用的成员内事件。
+ */
+export interface PipelineEventSinkEvent {
+	name: string;
+	payload: unknown;
+	frame: number;
+}
+
+/**
  * 成员运行时服务接口。
  *
  * 说明：
@@ -20,6 +30,11 @@ export interface MemberRuntimeServices {
 	renderMessageSender: ((payload: unknown) => void) | null;
 	/** 域事件发射器 */
 	domainEventSender: ((event: MemberDomainEvent) => void) | null;
+	/**
+	 * 管线事件汇（Pipeline `emit` 算子派发的事件流入此处）。
+	 * 阶段 3 将被 ProcBus 订阅；在 ProcBus 就位前，默认实现仅记录日志。
+	 */
+	pipelineEventSink: ((event: PipelineEventSinkEvent) => void) | null;
 }
 
 export const MemberRuntimeServicesDefaults: MemberRuntimeServices = {
@@ -38,4 +53,5 @@ export const MemberRuntimeServicesDefaults: MemberRuntimeServices = {
 	domainEventSender: (event: MemberDomainEvent) => {
 		throw new Error(`domainEventSender 未注入：${event}`);
 	},
+	pipelineEventSink: null,
 };

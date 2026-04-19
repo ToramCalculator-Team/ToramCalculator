@@ -2,7 +2,7 @@ import { createLogger } from "~/lib/Logger";
 import type { Checkpointable, DamageAreaSystemCheckpoint } from "../../types";
 import type { AnyMemberEntry, MemberManager } from "../Member/MemberManager";
 import type { SpaceManager } from "../SpaceManager";
-import type { DamageAreaRequest, DamageDispatchPayload, Vec3 } from "./types";
+import type { DamageAreaRequest, DamageDirection, DamageDispatchPayload, Vec3 } from "./types";
 
 const log = createLogger("DmgArea");
 
@@ -135,6 +135,7 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 			// 对每个有效目标派发伤害
 			for (const target of validTargets) {
 				const distance = this.computeDistance(currentCenter, target.position);
+				const direction = this.computeDirection(currentCenter, target.position);
 
 				const payload: DamageDispatchPayload = {
 					sourceId: request.identity.sourceId,
@@ -144,6 +145,11 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 					skillLv: request.payload.skillLv,
 					attackCount: request.attackSemantics.attackCount,
 					damageCount: request.attackSemantics.damageCount,
+					damageTags: [...request.payload.damageTags],
+					warningZone: request.payload.warningZone,
+					direction,
+					// 受击 Pipeline 计算最终伤害后会回填 isFatal；派发时未知。
+					isFatal: false,
 					vars: {
 						distance,
 						targetCount,
@@ -204,6 +210,22 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 		const dy = a.y - b.y;
 		const dz = a.z - b.z;
 		return Math.sqrt(dx * dx + dy * dy + dz * dz);
+	}
+
+	/**
+	 * 计算目标相对施法者的方位（四向）。
+	 *
+	 * 当前实现：仅基于 XZ 平面位置差。XZ 都接近 0 时视为正面命中。
+	 * 后续当 Member 拥有独立 `facing` 字段后，应改为在目标本地坐标系下计算。
+	 */
+	private computeDirection(casterCenter: Vec3, targetPos: Vec3): DamageDirection {
+		const dx = targetPos.x - casterCenter.x;
+		const dz = targetPos.z - casterCenter.z;
+		if (Math.abs(dx) < 1e-6 && Math.abs(dz) < 1e-6) return "front";
+		if (Math.abs(dx) >= Math.abs(dz)) {
+			return dx >= 0 ? "right" : "left";
+		}
+		return dz >= 0 ? "front" : "back";
 	}
 
 	captureCheckpoint(): DamageAreaSystemCheckpoint {

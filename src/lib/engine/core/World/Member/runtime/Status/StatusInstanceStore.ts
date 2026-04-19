@@ -15,12 +15,31 @@ export interface StatusInstance {
 	meta?: Record<string, unknown>;
 }
 
+/**
+ * Status 变更事件（供 Member 路由到 ProcBus 派发 `status.entered` / `status.exited`）。
+ *
+ * reason：
+ *   - `entered`：apply 一个新实例
+ *   - `expired`：自然到期被 purgeExpired 移除
+ *   - `removed`：被 removeById / removeByType 主动移除
+ */
+export interface StatusChangeEvent {
+	kind: "entered" | "exited";
+	instance: StatusInstance;
+	reason?: "expired" | "removed";
+	frame: number;
+}
+
+export type StatusChangeListener = (event: StatusChangeEvent) => void;
+
 export interface MutableStatusInstanceStore
 	extends StatusInstanceStore, Checkpointable<StatusInstanceStoreCheckpoint> {
 	apply(instance: StatusInstance): void;
 	removeById(id: string): void;
 	removeByType(type: StatusType): void;
 	purgeExpired(currentFrame: number): void;
+	/** 设置状态变更监听器（每 store 至多一个；Member 构造后立即接入，后续覆盖 = 覆盖旧 handler）。 */
+	setChangeListener(listener: StatusChangeListener | null): void;
 }
 
 /**
@@ -50,8 +69,27 @@ export class InMemoryStatusInstanceStore
 	implements MutableStatusInstanceStore, Checkpointable<StatusInstanceStoreCheckpoint>
 {
 	private readonly instances = new Map<string, StatusInstance>();
+	private changeListener: StatusChangeListener | null = null;
 
 	constructor(private readonly getCurrentFrame: () => number) {}
+
+	setChangeListener(listener: StatusChangeListener | null): void {
+		this.changeListener = listener;
+	}
+
+	private notify(kind: "entered" | "exited", instance: StatusInstance, reason?: "expired" | "removed"): void {
+		if (!this.changeListener) return;
+		try {
+			this.changeListener({
+				kind,
+				instance,
+				reason,
+				frame: this.getCurrentFrame(),
+			});
+		} catch {
+			// listener 抛错不应影响 status 状态；错误在 listener 内部记录。
+		}
+	}
 
 	list(): StatusInstance[] {
 		this.purgeExpired(this.getCurrentFrame());
@@ -90,18 +128,24 @@ export class InMemoryStatusInstanceStore
 
 	apply(instance: StatusInstance): void {
 		// 第一版策略：同类型状态覆盖旧实例，避免重复 sleep/poison 堆叠语义未定。
+		// removeByType 会为旧实例派发 `exited (reason=removed)`。
 		this.removeByType(instance.type);
 		this.instances.set(instance.id, instance);
+		this.notify("entered", instance);
 	}
 
 	removeById(id: string): void {
+		const instance = this.instances.get(id);
+		if (!instance) return;
 		this.instances.delete(id);
+		this.notify("exited", instance, "removed");
 	}
 
 	removeByType(type: StatusType): void {
 		for (const [id, instance] of this.instances.entries()) {
 			if (instance.type === type) {
 				this.instances.delete(id);
+				this.notify("exited", instance, "removed");
 			}
 		}
 	}
@@ -110,6 +154,7 @@ export class InMemoryStatusInstanceStore
 		for (const [id, instance] of this.instances.entries()) {
 			if (instance.expiresAtFrame !== undefined && instance.expiresAtFrame <= currentFrame) {
 				this.instances.delete(id);
+				this.notify("exited", instance, "expired");
 			}
 		}
 	}

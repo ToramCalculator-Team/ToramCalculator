@@ -1,7 +1,13 @@
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import { assign, type EventObject, setup } from "xstate";
 import { createLogger } from "~/lib/Logger";
-import type { MemberDomainEvent } from "../../../../types";
+import type { DamageDispatchPayload } from "../../../Area/types";
+import {
+	createHitSession,
+	type HitSession,
+	resolveDamageAndApply,
+	resolveHitCheck,
+} from "../../DamageResolution";
 import type { Member } from "../../Member";
 import type { MemberEventType, MemberStateContext, MemberStateMachine } from "../../runtime/StateMachine/types";
 import type { PlayerRuntime } from "../../runtime/types";
@@ -83,19 +89,11 @@ interface 进行控制判定 extends EventObject {
 interface 受到攻击 extends EventObject {
 	type: "受到攻击";
 	data: {
-		origin: string;
-		skillId: string;
-		damageRequest?: {
-			sourceId: string;
-			targetId: string;
-			skillId: string;
-			damageType: "physical" | "magic";
-			canBeDodged: boolean;
-			canBeGuarded: boolean;
-			damageFormula: string;
-			extraVars?: Record<string, unknown>;
-			sourceSnapshot?: Record<string, unknown>;
-		};
+		/**
+		 * 由 DamageAreaSystem 派发的伤害 payload。
+		 * FSM 在"进行命中判定 / 进行控制判定 / 进行伤害计算"三段里依次消费。
+		 */
+		damageRequest: DamageDispatchPayload;
 	};
 }
 interface 受到治疗 extends EventObject {
@@ -149,7 +147,17 @@ export type PlayerEventType =
 	| 切换目标;
 
 // 定义 PlayerStateContext 类型（提前声明）
-export interface PlayerStateContext extends MemberStateContext {}
+//
+// 注意：新字段以 optional 方式加入，以保留与基础 `MemberStateContext` 结构的双向赋值兼容性
+// （XState 对 context/owner 泛型参数的推断对变位敏感，必选字段会破坏 Member.btManager.owner.actor 赋值链）。
+export interface PlayerStateContext extends MemberStateContext {
+	/**
+	 * 当前受击事务。
+	 * 生命周期：受到攻击 → 创建 → 经过 hitCheck / damageCalc / applyDamage 三段后 → 清空。
+	 * 详见 `DamageResolution.ts`。
+	 */
+	hitSession?: HitSession | null;
+}
 
 export const playerStateMachine = (
 	member: Member<PlayerAttrType, PlayerEventType, PlayerStateContext, PlayerRuntime>,
@@ -367,9 +375,16 @@ export const playerStateMachine = (
 				// 不要在自定义 action 中调用 raise(...)（非命令式），这里直接向自身发送事件即可
 				player.actor.send({ type: "进行控制判定" });
 			},
-			命中计算管线: ({ context, event }) => {
+			命中计算管线: assign(({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 命中计算管线`, event);
-			},
+				const session = context.hitSession;
+				if (!session) {
+					log.warn(`👤 [${context.owner?.name}] 命中计算管线：hitSession 为空，跳过`);
+					return context;
+				}
+				resolveHitCheck(player, session);
+				return context;
+			}),
 			根据命中结果进行下一步: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 根据命中结果进行下一步`, event);
 				// 命中后再进入控制判定
@@ -377,6 +392,8 @@ export const playerStateMachine = (
 			},
 			控制判定管线: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 控制判定管线`, event);
+				// 骨架版：statusResist 管线调用将在异常施加需求出现时迭代加入。
+				// 当前保持空实现，确保 "进行伤害计算" 能正常触发。
 			},
 			反馈控制结果给施法者: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 反馈控制结果给施法者`, event);
@@ -385,20 +402,35 @@ export const playerStateMachine = (
 				log.debug(`👤 [${context.owner?.name}] 发送伤害计算事件给自己`, event);
 				player.actor.send({ type: "进行伤害计算" });
 			},
-			伤害计算管线: ({ context, event }) => {
+			伤害计算管线: assign(({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 伤害计算管线`, event);
-			},
+				const session = context.hitSession;
+				if (!session) {
+					log.warn(`👤 [${context.owner?.name}] 伤害计算管线：hitSession 为空，跳过`);
+					return context;
+				}
+				resolveDamageAndApply(player, session);
+				return context;
+			}),
 			反馈伤害结果给施法者: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 反馈伤害结果给施法者`, event);
 			},
 			发送属性修改事件给自己: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 发送属性修改事件给自己`, event);
-				const currentHp = player.statContainer.getValue("hp.current");
+				// 优先使用受击事务里计算出的 hpAfter；若不存在（非受击路径）则回落到当前值。
+				const hpAfter =
+					typeof context.hitSession?.hpAfter === "number"
+						? context.hitSession.hpAfter
+						: player.statContainer.getValue("hp.current");
 				player.actor.send({
 					type: "修改属性",
-					data: { attr: "hp.current", value: currentHp },
+					data: { attr: "hp.current", value: hpAfter },
 				});
 			},
+			清空受击缓存: assign(({ context }) => ({
+				...context,
+				hitSession: null,
+			})),
 			发出属性变化域事件: ({ context, event }) => {
 				const owner = context.owner;
 				if (!owner) return;
@@ -483,15 +515,19 @@ export const playerStateMachine = (
 			发送buff修改事件给自己: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 发送buff修改事件给自己`, event);
 			},
-			记录伤害请求: ({ context, event }) => {
+			记录伤害请求: assign(({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 记录伤害请求`, event);
 				const e = event as 受到攻击;
 				const damageRequest = e.data?.damageRequest;
 				if (!damageRequest) {
 					log.error(`👤 [${context.owner?.name}] 伤害请求不存在`);
-					return;
+					return context;
 				}
-			},
+				return {
+					...context,
+					hitSession: createHitSession(damageRequest),
+				};
+			}),
 			修改目标Id: ({ context, event }, params: { targetId: string }) => {
 				log.debug(`👤 [${context.owner?.name}] 修改目标Id`, event);
 				// 统一 targetId：runtime 是跨系统共享读面
@@ -675,6 +711,7 @@ export const playerStateMachine = (
 			isAlive: true,
 			createdAtFrame: player.runtime.currentFrame,
 			owner: player,
+			hitSession: null,
 		},
 		id: machineId,
 		initial: "存活",

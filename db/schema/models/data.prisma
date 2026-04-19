@@ -520,6 +520,8 @@ model registlet {
     attrModifiers         String[]
     pipelinePatches       Json[] /// ZOD PipelinePatchEffectSchema
     skillBranchActivators Json[] /// ZOD SkillBranchActivatorEffectSchema
+    subscriptions         Json[] /// ZOD EventSubscriptionEffectSchema
+    thresholdWatchers     Json[] /// ZOD ThresholdWatcherEffectSchema
 
     usedByCharacterRegistlets character_registlet[]
 

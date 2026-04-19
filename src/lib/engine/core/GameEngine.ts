@@ -17,6 +17,7 @@ import { type EngineControlMessage, GameEngineSM } from "./GameEngineSM";
 import type { JSProcessor } from "./JSProcessor/JSProcessor";
 import type { ExpressionContext } from "./JSProcessor/types";
 import { type IntentMessage, type MessageProcessResult, MessageRouter } from "./MessageRouter/MessageRouter";
+import type { EventCatalog } from "./Event/EventCatalog";
 import type { PipelineCatalog } from "./Pipeline/PipelineCatalog";
 import type { PipelineResolverService } from "./Pipeline/PipelineResolverService";
 import type {
@@ -99,6 +100,8 @@ export class GameEngine {
 	private pipelineCatalog: PipelineCatalog;
 	/** 新的 Resolver（含 overlay + 编译缓存） */
 	private pipelineResolverService: PipelineResolverService;
+	/** 事件目录：订阅系统位索引 + payload schema */
+	private eventCatalog: EventCatalog;
 
 	/** 引擎配置 */
 	private config: EngineConfig;
@@ -223,6 +226,7 @@ export class GameEngine {
 		this.jsProcessor = infra.jsProcessor;
 		this.pipelineCatalog = infra.pipelineCatalog;
 		this.pipelineResolverService = infra.pipelineResolverService;
+		this.eventCatalog = infra.eventCatalog;
 
 		// 初始化核心模块 - 按依赖顺序
 		this.eventQueue = new EventQueue(config.eventQueueConfig, () => this.currentFrame);
@@ -269,6 +273,8 @@ export class GameEngine {
 		});
 		// 设置引擎级 pipeline resolver 到 MemberManager（成员创建时注入到成员）
 		this.world.memberManager.setPipelineResolverService(this.pipelineResolverService);
+		// 设置引擎级 EventCatalog 到 MemberManager（每成员据此构造独立 ProcBus）
+		this.world.memberManager.setEventCatalog(this.eventCatalog);
 
 		// 创建状态机 - executor 角色
 		let seqCounter = 0;

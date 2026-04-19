@@ -13,11 +13,11 @@ const defaultSkillDefinition = `root {
 		action [animation, "施法后摇", $后摇帧数]
 		wait [$后摇帧数]
     }
-}   
+}
 
 root [mainAction] {
     sequence {
-        action [rangeAttack, $targetId,"physical","physical",1,$伤害计算公式,1,3]
+        action [rangeAttack, $targetId,"physical","physical",1,$伤害计算公式,1,$伤害标签,"none",3]
     }
 }`;
 const defaultSkillAgent = `class Agent {
@@ -33,6 +33,11 @@ const defaultSkillAgent = `class Agent {
     get 后摇帧数() {
         const endFrames = this.currentSkillActionFrames - this.currentSkillStartupFrames
         return endFrames
+    }
+    get 伤害标签() {
+        // 伤害归因标签。commonAttackSchema.damageTags；受击 Pipeline 的 overlay/proc 订阅依据之一。
+        // 物理类 rangeAttack 默认给 ["physical"]；后续可加元素/特殊 tag。
+        return ["physical"];
     }
 }`;
 
