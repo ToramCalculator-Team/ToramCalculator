@@ -19,7 +19,7 @@ type EquipmentPanelProps = {
 	};
 	onPickRequested: (slot: EquipmentSlot) => void;
 	onClearRequested: (slot: EquipmentSlot) => void;
-	onItemPreviewRequested: (slot: EquipmentSlot, itemId: string) => void;
+	onItemPreviewRequested: (slot: EquipmentSlot, item: PlayerWeaponWithRelations | PlayerArmorWithRelations | PlayerOptionWithRelations | PlayerSpecialWithRelations) => void;
 };
 
 export function EquipmentPanel(props: EquipmentPanelProps) {
@@ -30,9 +30,8 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 			<section
 				role="application"
 				onClick={() => {
-					const weaponId = props.slots.mainHand?.id;
-					if (weaponId) {
-						props.onItemPreviewRequested("mainHand", weaponId);
+					if (props.slots.mainHand) {
+						props.onItemPreviewRequested("mainHand", props.slots.mainHand);
 					}
 				}}
 				onKeyUp={(e) => {
@@ -83,9 +82,8 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 			<section
 				role="application"
 				onClick={() => {
-					const subWeaponId = props.slots.subHand?.id;
-					if (subWeaponId) {
-						props.onItemPreviewRequested("subHand", subWeaponId);
+					if (props.slots.subHand) {
+						props.onItemPreviewRequested("subHand", props.slots.subHand);
 					}
 				}}
 				onKeyUp={(e) => {
@@ -136,9 +134,8 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 			<section
 				role="application"
 				onClick={() => {
-					const armorId = props.slots.armor?.id;
-					if (armorId) {
-						props.onItemPreviewRequested("armor", armorId);
+					if (props.slots.armor) {
+						props.onItemPreviewRequested("armor", props.slots.armor);
 					}
 				}}
 				onKeyUp={(e) => {
@@ -189,9 +186,8 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 			<section
 				role="application"
 				onClick={() => {
-					const optionId = props.slots.additional?.id;
-					if (optionId) {
-						props.onItemPreviewRequested("additional", optionId);
+					if (props.slots.additional) {
+						props.onItemPreviewRequested("additional", props.slots.additional);	
 					}
 				}}
 				onKeyUp={(e) => {
@@ -242,9 +238,8 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 			<section
 				role="application"
 				onClick={() => {
-					const specialId = props.slots.special?.id;
-					if (specialId) {
-						props.onItemPreviewRequested("special", specialId);
+					if (props.slots.special) {
+						props.onItemPreviewRequested("special", props.slots.special);
 					}
 				}}
 				onKeyUp={(e) => {

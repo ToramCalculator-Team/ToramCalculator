@@ -12,7 +12,7 @@ import {
 	useContext,
 } from "solid-js";
 import { Portal } from "solid-js/web";
-import { type CharacterEntityRuntime, EntityFactory } from "~/lib/engine/render/RendererController";
+import { BuiltinAnimationType, type CharacterEntityRuntime, EntityFactory } from "~/lib/engine/render/RendererController";
 // import "@babylonjs/core/Debug/debugLayer"; // Augments the scene with the debug methods
 // import "@babylonjs/inspector"; // Injects a local ES6 version of the inspector to prevent automatically relying on the none compatible version
 import "@babylonjs/loaders/glTF/2.0/glTFLoader";
@@ -30,19 +30,17 @@ import { Engine } from "@babylonjs/core/Engines/engine";
 import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 import { repositoryMethods } from "@db/generated/repositories";
 import { selectAllCharactersByBelongtoplayerid, updateCharacter } from "@db/generated/repositories/character";
-import { selectAllCharacterRegistletsByBelongtocharacterid } from "@db/generated/repositories/character_registlet";
-import { selectAllCharacterSkillsByBelongtocharacterid } from "@db/generated/repositories/character_skill";
-import { selectAllCombosByBelongtocharacterid } from "@db/generated/repositories/combo";
-import { selectAllConsumablesByCharacterId } from "@db/generated/repositories/consumable";
 import type { MemberWithRelations } from "@db/generated/repositories/member";
 import { selectPlayerByIdWithRelations } from "@db/generated/repositories/player";
-import { selectPlayerArmorById } from "@db/generated/repositories/player_armor";
-import { selectPlayerOptionById } from "@db/generated/repositories/player_option";
-import { selectPlayerSpecialById } from "@db/generated/repositories/player_special";
-import { selectPlayerWeaponById } from "@db/generated/repositories/player_weapon";
+import type { PlayerArmorWithRelations } from "@db/generated/repositories/player_armor";
+import type { PlayerOptionWithRelations } from "@db/generated/repositories/player_option";
+import type { PlayerSpecialWithRelations } from "@db/generated/repositories/player_special";
+import type { PlayerWeaponWithRelations } from "@db/generated/repositories/player_weapon";
 import type { TeamWithRelations } from "@db/generated/repositories/team";
 import type { character, DB } from "@db/generated/zod";
+import { getDB } from "@db/repositories/database";
 import type { CharacterPersonalityType } from "@db/schema/enums";
+import { VisibilityState } from "@tanstack/solid-table";
 import { Motion, Presence } from "solid-motionone";
 import { DATA_CONFIG } from "~/components/business/data-config";
 import { Sheet } from "~/components/containers/sheet";
@@ -58,6 +56,7 @@ import { MediaContext } from "~/contexts/Media";
 import { useEngine } from "~/lib/engine/core/thread/EngineContext";
 import { createPreviewConfig, type EngineScenarioData } from "~/lib/engine/core/types";
 import { StatsRenderer } from "~/lib/engine/core/World/Member/MemberStatusPanel";
+import { createLiveKyselyQuery } from "~/lib/liveQuery";
 import { setStore, store } from "~/store";
 import { createCharacter } from "./createCharacter";
 import { EquipmentPanel, type EquipmentSlot } from "./panels/EquipmentPanel";
@@ -77,7 +76,7 @@ export default function CharactePage() {
 
 	const [playerWithRelations, { refetch: refetchPlayerWithRelations }] = createResource(
 		() => params.characterId,
-		async (characterId) => {
+		async () => {
 			const playerId = store.session.account.player?.id;
 			if (!playerId) return null;
 			const player = await selectPlayerByIdWithRelations(playerId);
@@ -227,10 +226,10 @@ export default function CharactePage() {
 	const [selectSheetIsOpen, setSelectSheetIsOpen] = createSignal(false);
 	const [selectSheetTitle, setSelectSheetTitle] = createSignal("");
 	const [dialogVistualTableType, setDialogVistualTableType] = createSignal<keyof DB>("player_weapon");
-	const [operateTarget, setOperateTarget] = createSignal<keyof character>("weaponId");
 	const [globalFilterStr, setGlobalFilterStr] = createSignal("");
-	
-	const equipmentSlotConfig:Record<EquipmentSlot, keyof DB> = {
+	const [dialogTableColumnVisibility, setDialogTableColumnVisibility] = createSignal<VisibilityState>({});
+
+	const equipmentSlotConfig: Record<EquipmentSlot, keyof DB> = {
 		mainHand: "player_weapon",
 		subHand: "player_weapon",
 		armor: "player_armor",
@@ -245,7 +244,6 @@ export default function CharactePage() {
 		console.log("tableType", tableType, "primaryKey", primaryKey);
 		setSelectSheetIsOpen(true);
 		setDialogVistualTableType(tableType);
-		setOperateTarget(primaryKey);
 		setSelectSheetTitle(dictionary().db[tableType].selfName);
 	};
 
@@ -259,13 +257,29 @@ export default function CharactePage() {
 		} as Partial<character>);
 	};
 
-	const previewEquipmentItem = (slot: EquipmentSlot, itemId: string) => {
+	const previewEquipmentItem = (
+		slot: EquipmentSlot,
+		item: PlayerWeaponWithRelations | PlayerArmorWithRelations | PlayerOptionWithRelations | PlayerSpecialWithRelations,
+	) => {
 		const tableType = equipmentSlotConfig[slot];
 		setStore("pages", "cardGroup", store.pages.cardGroup.length, {
 			type: tableType,
-			id: itemId,
+			data: item,
 		});
 	};
+
+	const dataConfig = createMemo(() => DATA_CONFIG[dialogVistualTableType()]);
+
+	// 响应式订阅当前表的行数据（如果 dataConfig 声明了 liveQuery）。
+	// 切换 wikiStore.type 时，createEffect 内部会自动退订旧订阅、订阅新表。
+	const liveTableRows = createLiveKyselyQuery(async () => {
+		const cfg = dataConfig();
+		if (!cfg) return null;
+		const liveQueryBuilder = cfg(dictionary).dataFetcher.liveQuery;
+		if (!liveQueryBuilder) return null;
+		const db = await getDB();
+		return liveQueryBuilder(db);
+	});
 
 	const tabs = {
 		combo: { label: dictionary().ui.character.tabs.combo, value: "combo" },
@@ -385,7 +399,7 @@ export default function CharactePage() {
 
 						// idle 动画已经在 createCharacter 中自动播放
 						// 如果需要切换到其他动画，可以使用：
-						// characterEntity.animationController.playBuiltinAnimation(BuiltinAnimationType.WALK);
+						characterEntity.animationController.playBuiltinAnimation(BuiltinAnimationType.WALK);
 					}, 10);
 			},
 		),
@@ -412,392 +426,407 @@ export default function CharactePage() {
 			}
 		>
 			{(character) => (
-				<Motion.div
-					animate={{ opacity: [0, 1] }}
-					exit={{ opacity: 0 }}
-					transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-					class="CharacterPage relative flex h-full w-full flex-col overflow-hidden"
-				>
-					<div class={`Title w-full flex gap-2`}>
-						<Select
-							value={character().name}
-							setValue={(value) => {
-								navigate(`/character/${value}`);
-							}}
-							options={characters()?.map((character) => ({ label: character.name, value: character.id })) ?? []}
-							placeholder={character().name}
-							styleLess
-							textCenter
-						/>
-						<Button
-							icon={<Icons.Outline.AddUser />}
-							level="quaternary"
-							onClick={async () => {
-								const character = await createCharacter();
-								navigate(`/character/${character.id}`);
-							}}
-						/>
-					</div>
-					<div class="Content flex h-full w-full flex-1 flex-col overflow-hidden p-6 landscape:flex-row">
-						{/* 配置版块 */}
-						<Show when={panelMode() === "Config" || media.width >= 1024}>
-							{/* 角色视图 */}
-							<div class="CharacterView hidden w-full flex-1 h-48 overflow-hidden portrait:block">
-								<canvas ref={setCanvas} class="border-dividing-color block h-full w-full rounded-md border">
-									当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
-								</canvas>
-							</div>
-							<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:hidden landscape:h-full landscape:w-px"></div>
-
-							{/* 标签栏 */}
-							<OverlayScrollbarsComponent
-								element="div"
-								options={{ scrollbars: { visibility: "hidden" } }}
-								defer
-								class="flex-none portrait:w-full landscape:w-fit"
+				<Show when={dataConfig()}>
+					{(validDataConfig) => {
+						const cfg = validDataConfig()(dictionary);
+						return (
+							<Motion.div
+								animate={{ opacity: [0, 1] }}
+								exit={{ opacity: 0 }}
+								transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+								class="CharacterPage relative flex h-full w-full flex-col overflow-hidden"
 							>
-								<div class={`flex flex-row items-start gap-2 landscape:flex-col`}>
-									<Button
-										onClick={() => setActiveTab("combo")}
-										level={activeTab() === "combo" ? "primary" : "quaternary"}
-										icon={<Icons.Outline.Gamepad />}
-										textAlign="left"
-										class="flex-none landscape:w-full"
-									>
-										{dictionary().ui.character.tabs.combo}
-									</Button>
-									<Button
-										onClick={() => setActiveTab("equipment")}
-										level={activeTab() === "equipment" ? "primary" : "quaternary"}
-										icon={<Icons.Outline.Category />}
-										textAlign="left"
-										class="flex-none landscape:w-full"
-									>
-										{dictionary().ui.character.tabs.equipment.selfName}
-									</Button>
-									<Button
-										onClick={() => setActiveTab("consumable")}
-										level={activeTab() === "consumable" ? "primary" : "quaternary"}
-										icon={<Icons.Outline.Sale />}
-										textAlign="left"
-										class="flex-none landscape:w-full"
-									>
-										{dictionary().ui.character.tabs.consumable}
-									</Button>
-									<Button
-										onClick={() => setActiveTab("cooking")}
-										level={activeTab() === "cooking" ? "primary" : "quaternary"}
-										icon={<Icons.Outline.Coupon2 />}
-										textAlign="left"
-										class="flex-none landscape:w-full"
-									>
-										{dictionary().ui.character.tabs.cooking}
-									</Button>
-									<Button
-										onClick={() => setActiveTab("registlet")}
-										level={activeTab() === "registlet" ? "primary" : "quaternary"}
-										icon={<Icons.Outline.CreditCard />}
-										textAlign="left"
-										class="flex-none landscape:w-full"
-									>
-										{dictionary().ui.character.tabs.registlet}
-									</Button>
-									<Button
-										onClick={() => setActiveTab("skill")}
-										level={activeTab() === "skill" ? "primary" : "quaternary"}
-										icon={<Icons.Outline.Scale />}
-										textAlign="left"
-										class="flex-none landscape:w-full"
-									>
-										{dictionary().ui.character.tabs.skill}
-									</Button>
-									<Button
-										onClick={() => setActiveTab("ability")}
-										level={activeTab() === "ability" ? "primary" : "quaternary"}
-										icon={<Icons.Outline.Filter />}
-										textAlign="left"
-										class="flex-none landscape:w-full"
-									>
-										{dictionary().ui.character.tabs.ability}
-									</Button>
-									<Button
-										onClick={() => setActiveTab("base")}
-										level={activeTab() === "base" ? "primary" : "quaternary"}
-										icon={<Icons.Outline.Edit />}
-										textAlign="left"
-										class="flex-none landscape:w-full"
-									>
-										{dictionary().ui.character.tabs.base}
-									</Button>
-								</div>
-							</OverlayScrollbarsComponent>
-							<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:h-full landscape:w-px"></div>
-
-							<div class="Config flex flex-col gap-2 w-full lg:w-[30dvw] lg:flex-none">
-								<OverlayScrollbarsComponent
-									element="div"
-									options={{ scrollbars: { autoHide: "scroll" } }}
-									defer
-									class="flex flex-none w-full h-full"
-								>
-									{/* 装备 */}
-									<Show when={activeTab() === "equipment"}>
-										<EquipmentPanel
-											slots={{
-												mainHand: character().weapon,
-												subHand: character().subWeapon,
-												armor: character().armor,
-												additional: character().option,
-												special: character().special,
-											}}
-											onPickRequested={openEquipmentPicker}
-											onClearRequested={clearEquipmentSlot}
-											onItemPreviewRequested={previewEquipmentItem}
-										/>
-									</Show>
-
-									{/* 基本配置 */}
-									<Show when={activeTab() === "base"}>
-										<div class="BasicConfig flex flex-col gap-2">
-											<div class="BasicConfigItem flex flex-col gap-2">
-												<div class="BasicConfigItemLabel">角色名称</div>
-												<Input
-													type="text"
-													value={character().name}
-													onChange={async (e) => {
-														await commitCharacterPatch({
-															name: e.target.value,
-														});
-													}}
-													description="请输入角色名称"
-												/>
-											</div>
-										</div>
-									</Show>
-
-									{/* 能力值版块 */}
-									<Show when={activeTab() === "ability"}>
-										<div class="AbilityConfig flex flex-col gap-2">
-											<div class="Level flex flex-col gap-2">
-												<div class="LevelLabel">{dictionary().db.character.fields.lv.key}</div>
-												<RangeInput
-													value={character().lv}
-													setValue={(value) => {
-														queueCharacterPatch({
-															lv: value,
-														});
-													}}
-													min={1}
-													max={300}
-													showSlider={false}
-												/>
-											</div>
-											<div class="Ability flex flex-col gap-2">
-												<div class="AbilityLabel">ABI</div>
-												<div class="AbilityValueGroup flex flex-col gap-2">
-													<div class="Str flex items-center gap-2">
-														<div class="StrLabel">{dictionary().db.character.fields.str.key}</div>
-														<RangeInput
-															value={character().str}
-															setValue={(value) => {
-																queueCharacterPatch({
-																	str: value,
-																});
-															}}
-															min={1}
-														/>
-													</div>
-													<div class="Int flex items-center gap-2">
-														<div class="IntLabel">{dictionary().db.character.fields.int.key}</div>
-														<RangeInput
-															value={character().int}
-															setValue={(value) => {
-																queueCharacterPatch({
-																	int: value,
-																});
-															}}
-															min={1}
-														/>
-													</div>
-													<div class="Vit flex items-center gap-2">
-														<div class="VitLabel">{dictionary().db.character.fields.vit.key}</div>
-														<RangeInput
-															value={character().vit}
-															setValue={(value) => {
-																queueCharacterPatch({
-																	vit: value,
-																});
-															}}
-															min={1}
-														/>
-													</div>
-													<div class="Agi flex items-center gap-2">
-														<div class="AgiLabel">{dictionary().db.character.fields.agi.key}</div>
-														<RangeInput
-															value={character().agi}
-															setValue={(value) => {
-																queueCharacterPatch({
-																	agi: value,
-																});
-															}}
-															min={1}
-														/>
-													</div>
-													<div class="Dex flex items-center gap-2">
-														<div class="DexLabel">{dictionary().db.character.fields.dex.key}</div>
-														<RangeInput
-															value={character().dex}
-															setValue={(value) => {
-																queueCharacterPatch({
-																	dex: value,
-																});
-															}}
-															min={1}
-														/>
-													</div>
-												</div>
-											</div>
-											<div class="PersonalityType flex flex-col gap-2">
-												<div class="PersonalityTypeLabel">{dictionary().db.character.fields.personalityType.key}</div>
-												<Select
-													value={character().personalityType}
-													setValue={async (value) => {
-														await commitCharacterPatch({
-															personalityType: value as CharacterPersonalityType,
-														});
-													}}
-													options={[
-														{ label: dictionary().db.character.fields.personalityType.enumMap.None, value: "None" },
-														{ label: dictionary().db.character.fields.personalityType.enumMap.Luk, value: "Luk" },
-														{ label: dictionary().db.character.fields.personalityType.enumMap.Cri, value: "Cri" },
-														{ label: dictionary().db.character.fields.personalityType.enumMap.Tec, value: "Tec" },
-														{ label: dictionary().db.character.fields.personalityType.enumMap.Men, value: "Men" },
-													]}
-												/>
-											</div>
-											<div class="PersonalityValue flex flex-col gap-2">
-												<div class="PersonalityValueLabel">{dictionary().db.character.fields.personalityValue.key}</div>
-												<RangeInput
-													value={character().personalityValue}
-													setValue={(value) => {
-														queueCharacterPatch({
-															personalityValue: value,
-														});
-													}}
-													min={1}
-													max={255}
-													showSlider={false}
-												/>
-											</div>
-										</div>
-									</Show>
-								</OverlayScrollbarsComponent>
-							</div>
-						</Show>
-
-						{/* 属性面板 */}
-						<Show when={panelMode() === "AttrPreview" || media.width >= 1024}>
-							<div class="Divider landscape:bg-dividing-color flex-none portrait:hidden landscape:mx-2 landscape:h-full landscape:w-px" />
-							<OverlayScrollbarsComponent
-								element="div"
-								options={{ scrollbars: { autoHide: "scroll" } }}
-								defer
-								class="MemberStats flex flex-col gap-2 w-full landscape:flex-none"
-							>
-								<StatsRenderer data={primaryMember()?.attrs} />
-							</OverlayScrollbarsComponent>
-						</Show>
-
-						{/* 控制栏 */}
-						<Presence exitBeforeEnter>
-							<Show when={media.width < 1024}>
-								<Motion.div
-									class="Control bg-primary-color shadow-dividing-color shadow-dialog absolute bottom-3 left-1/2 z-10 flex gap-1 rounded p-1 landscape:bottom-6"
-									animate={{
-										opacity: [0, 1],
-										transform: ["translateX(-50%)", "translateX(-50%)"],
-									}}
-									exit={{ opacity: 0, transform: "translateX(-50%)" }}
-									transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-								>
-									<Button
-										size="sm"
-										level="quaternary"
-										icon={<Icons.Outline.Edit />}
-										onClick={() => setPanelMode("Config")}
-										active={panelMode() === "Config"}
+								<div class={`Title w-full flex gap-2`}>
+									<Select
+										value={character().name}
+										setValue={(value) => {
+											navigate(`/character/${value}`);
+										}}
+										options={characters()?.map((character) => ({ label: character.name, value: character.id })) ?? []}
+										placeholder={character().name}
+										styleLess
+										textCenter
 									/>
 									<Button
-										size="sm"
+										icon={<Icons.Outline.AddUser />}
 										level="quaternary"
-										icon={<Icons.Outline.Chart />}
-										onClick={() => setPanelMode("AttrPreview")}
-										active={panelMode() === "AttrPreview"}
-									/>
-									<Button
-										size="sm"
-										level="quaternary"
-										icon={<Icons.Outline.Basketball />}
-										onClick={() => setPanelMode("SkillPreview")}
-										active={panelMode() === "SkillPreview"}
-									/>
-								</Motion.div>
-							</Show>
-						</Presence>
-					</div>
-
-					{/* 弹窗 */}
-					<Portal>
-						<Sheet
-							state={selectSheetIsOpen()}
-							setState={(state) => {
-								setSelectSheetIsOpen(state);
-								setGlobalFilterStr("");
-							}}
-						>
-							<div class="flex h-[90dvh] w-full flex-col gap-2 p-6">
-								<div class="SheetTitle w-full text-xl font-bold flex items-center justify-between">
-									{selectSheetTitle()}
-									<Button
-										icon={<Icons.Outline.Close />}
-										level="quaternary"
-										class="rounded-none rounded-tr"
-										onClick={() => {
-											setSelectSheetIsOpen(false);
-											setGlobalFilterStr("");
+										onClick={async () => {
+											const character = await createCharacter();
+											navigate(`/character/${character.id}`);
 										}}
 									/>
 								</div>
-								<Input type="text" value={globalFilterStr()} onInput={(e) => setGlobalFilterStr(e.target.value)} />
-								{VirtualTable<DB[keyof DB]>({
-									measure: DATA_CONFIG[dialogVistualTableType()]?.table.measure,
-									primaryKeyField: getPrimaryKeys(dialogVistualTableType())[0],
-									dataFetcher: async () => (await repositoryMethods[dialogVistualTableType()]?.selectAll?.()) ?? [],
-									// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
-									columnsDef: DATA_CONFIG[dialogVistualTableType()]?.table.columnsDef,
-									// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
-									hiddenColumnDef: DATA_CONFIG[dialogVistualTableType()]?.table.hiddenColumnDef,
-									// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
-									tdGenerator: DATA_CONFIG[dialogVistualTableType()]?.table.tdGenerator,
-									// @ts-expect-error-next-line  数组联合类型问题，暂时忽略
-									defaultSort: DATA_CONFIG[dialogVistualTableType()]?.table.defaultSort,
-									dictionary: dictionary().db[dialogVistualTableType()],
-									globalFilterStr,
-									rowHandleClick: async (id) => {
-										console.log("目标数据外键id", id);
-										await commitCharacterPatch({
-											[operateTarget()]: id,
-										} as Partial<character>);
-										setGlobalFilterStr("");
-										setSelectSheetIsOpen(false);
-									},
-									columnVisibility: {},
-									onColumnVisibilityChange: () => {},
-								})}
-							</div>
-						</Sheet>
-					</Portal>
-				</Motion.div>
+								<div class="Content flex h-full w-full flex-1 flex-col overflow-hidden p-6 landscape:flex-row">
+									{/* 配置版块 */}
+									<Show when={panelMode() === "Config" || media.width >= 1024}>
+										{/* 角色视图 */}
+										<div class="CharacterView hidden w-full flex-1 h-48 overflow-hidden portrait:block">
+											<canvas ref={setCanvas} class="border-dividing-color block h-full w-full rounded-md border">
+												当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
+											</canvas>
+										</div>
+										<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:hidden landscape:h-full landscape:w-px"></div>
+
+										{/* 标签栏 */}
+										<OverlayScrollbarsComponent
+											element="div"
+											options={{ scrollbars: { visibility: "hidden" } }}
+											defer
+											class="flex-none portrait:w-full landscape:w-fit"
+										>
+											<div class={`flex flex-row items-start gap-2 landscape:flex-col`}>
+												<Button
+													onClick={() => setActiveTab("combo")}
+													level={activeTab() === "combo" ? "primary" : "quaternary"}
+													icon={<Icons.Outline.Gamepad />}
+													textAlign="left"
+													class="flex-none landscape:w-full"
+												>
+													{dictionary().ui.character.tabs.combo}
+												</Button>
+												<Button
+													onClick={() => setActiveTab("equipment")}
+													level={activeTab() === "equipment" ? "primary" : "quaternary"}
+													icon={<Icons.Outline.Category />}
+													textAlign="left"
+													class="flex-none landscape:w-full"
+												>
+													{dictionary().ui.character.tabs.equipment.selfName}
+												</Button>
+												<Button
+													onClick={() => setActiveTab("consumable")}
+													level={activeTab() === "consumable" ? "primary" : "quaternary"}
+													icon={<Icons.Outline.Sale />}
+													textAlign="left"
+													class="flex-none landscape:w-full"
+												>
+													{dictionary().ui.character.tabs.consumable}
+												</Button>
+												<Button
+													onClick={() => setActiveTab("cooking")}
+													level={activeTab() === "cooking" ? "primary" : "quaternary"}
+													icon={<Icons.Outline.Coupon2 />}
+													textAlign="left"
+													class="flex-none landscape:w-full"
+												>
+													{dictionary().ui.character.tabs.cooking}
+												</Button>
+												<Button
+													onClick={() => setActiveTab("registlet")}
+													level={activeTab() === "registlet" ? "primary" : "quaternary"}
+													icon={<Icons.Outline.CreditCard />}
+													textAlign="left"
+													class="flex-none landscape:w-full"
+												>
+													{dictionary().ui.character.tabs.registlet}
+												</Button>
+												<Button
+													onClick={() => setActiveTab("skill")}
+													level={activeTab() === "skill" ? "primary" : "quaternary"}
+													icon={<Icons.Outline.Scale />}
+													textAlign="left"
+													class="flex-none landscape:w-full"
+												>
+													{dictionary().ui.character.tabs.skill}
+												</Button>
+												<Button
+													onClick={() => setActiveTab("ability")}
+													level={activeTab() === "ability" ? "primary" : "quaternary"}
+													icon={<Icons.Outline.Filter />}
+													textAlign="left"
+													class="flex-none landscape:w-full"
+												>
+													{dictionary().ui.character.tabs.ability}
+												</Button>
+												<Button
+													onClick={() => setActiveTab("base")}
+													level={activeTab() === "base" ? "primary" : "quaternary"}
+													icon={<Icons.Outline.Edit />}
+													textAlign="left"
+													class="flex-none landscape:w-full"
+												>
+													{dictionary().ui.character.tabs.base}
+												</Button>
+											</div>
+										</OverlayScrollbarsComponent>
+										<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:h-full landscape:w-px"></div>
+
+										<div class="Config flex flex-col gap-2 w-full lg:w-[30dvw] lg:flex-none">
+											<OverlayScrollbarsComponent
+												element="div"
+												options={{ scrollbars: { autoHide: "scroll" } }}
+												defer
+												class="flex flex-none w-full h-full"
+											>
+												{/* 装备 */}
+												<Show when={activeTab() === "equipment"}>
+													<EquipmentPanel
+														slots={{
+															mainHand: character().weapon,
+															subHand: character().subWeapon,
+															armor: character().armor,
+															additional: character().option,
+															special: character().special,
+														}}
+														onPickRequested={openEquipmentPicker}
+														onClearRequested={clearEquipmentSlot}
+														onItemPreviewRequested={previewEquipmentItem}
+													/>
+												</Show>
+
+												{/* 基本配置 */}
+												<Show when={activeTab() === "base"}>
+													<div class="BasicConfig flex flex-col gap-2">
+														<div class="BasicConfigItem flex flex-col gap-2">
+															<div class="BasicConfigItemLabel">角色名称</div>
+															<Input
+																type="text"
+																value={character().name}
+																onChange={async (e) => {
+																	await commitCharacterPatch({
+																		name: e.target.value,
+																	});
+																}}
+																description="请输入角色名称"
+															/>
+														</div>
+													</div>
+												</Show>
+
+												{/* 能力值版块 */}
+												<Show when={activeTab() === "ability"}>
+													<div class="AbilityConfig flex flex-col gap-2">
+														<div class="Level flex flex-col gap-2">
+															<div class="LevelLabel">{dictionary().db.character.fields.lv.key}</div>
+															<RangeInput
+																value={character().lv}
+																setValue={(value) => {
+																	queueCharacterPatch({
+																		lv: value,
+																	});
+																}}
+																min={1}
+																max={300}
+																showSlider={false}
+															/>
+														</div>
+														<div class="Ability flex flex-col gap-2">
+															<div class="AbilityLabel">ABI</div>
+															<div class="AbilityValueGroup flex flex-col gap-2">
+																<div class="Str flex items-center gap-2">
+																	<div class="StrLabel">{dictionary().db.character.fields.str.key}</div>
+																	<RangeInput
+																		value={character().str}
+																		setValue={(value) => {
+																			queueCharacterPatch({
+																				str: value,
+																			});
+																		}}
+																		min={1}
+																	/>
+																</div>
+																<div class="Int flex items-center gap-2">
+																	<div class="IntLabel">{dictionary().db.character.fields.int.key}</div>
+																	<RangeInput
+																		value={character().int}
+																		setValue={(value) => {
+																			queueCharacterPatch({
+																				int: value,
+																			});
+																		}}
+																		min={1}
+																	/>
+																</div>
+																<div class="Vit flex items-center gap-2">
+																	<div class="VitLabel">{dictionary().db.character.fields.vit.key}</div>
+																	<RangeInput
+																		value={character().vit}
+																		setValue={(value) => {
+																			queueCharacterPatch({
+																				vit: value,
+																			});
+																		}}
+																		min={1}
+																	/>
+																</div>
+																<div class="Agi flex items-center gap-2">
+																	<div class="AgiLabel">{dictionary().db.character.fields.agi.key}</div>
+																	<RangeInput
+																		value={character().agi}
+																		setValue={(value) => {
+																			queueCharacterPatch({
+																				agi: value,
+																			});
+																		}}
+																		min={1}
+																	/>
+																</div>
+																<div class="Dex flex items-center gap-2">
+																	<div class="DexLabel">{dictionary().db.character.fields.dex.key}</div>
+																	<RangeInput
+																		value={character().dex}
+																		setValue={(value) => {
+																			queueCharacterPatch({
+																				dex: value,
+																			});
+																		}}
+																		min={1}
+																	/>
+																</div>
+															</div>
+														</div>
+														<div class="PersonalityType flex flex-col gap-2">
+															<div class="PersonalityTypeLabel">
+																{dictionary().db.character.fields.personalityType.key}
+															</div>
+															<Select
+																value={character().personalityType}
+																setValue={async (value) => {
+																	await commitCharacterPatch({
+																		personalityType: value as CharacterPersonalityType,
+																	});
+																}}
+																options={[
+																	{
+																		label: dictionary().db.character.fields.personalityType.enumMap.None,
+																		value: "None",
+																	},
+																	{ label: dictionary().db.character.fields.personalityType.enumMap.Luk, value: "Luk" },
+																	{ label: dictionary().db.character.fields.personalityType.enumMap.Cri, value: "Cri" },
+																	{ label: dictionary().db.character.fields.personalityType.enumMap.Tec, value: "Tec" },
+																	{ label: dictionary().db.character.fields.personalityType.enumMap.Men, value: "Men" },
+																]}
+															/>
+														</div>
+														<div class="PersonalityValue flex flex-col gap-2">
+															<div class="PersonalityValueLabel">
+																{dictionary().db.character.fields.personalityValue.key}
+															</div>
+															<RangeInput
+																value={character().personalityValue}
+																setValue={(value) => {
+																	queueCharacterPatch({
+																		personalityValue: value,
+																	});
+																}}
+																min={1}
+																max={255}
+																showSlider={false}
+															/>
+														</div>
+													</div>
+												</Show>
+											</OverlayScrollbarsComponent>
+										</div>
+									</Show>
+
+									{/* 属性面板 */}
+									<Show when={panelMode() === "AttrPreview" || media.width >= 1024}>
+										<div class="Divider landscape:bg-dividing-color flex-none portrait:hidden landscape:mx-2 landscape:h-full landscape:w-px" />
+										<OverlayScrollbarsComponent
+											element="div"
+											options={{ scrollbars: { autoHide: "scroll" } }}
+											defer
+											class="MemberStats flex flex-col gap-2 w-full landscape:flex-none"
+										>
+											<StatsRenderer data={primaryMember()?.attrs} />
+										</OverlayScrollbarsComponent>
+									</Show>
+
+									{/* 控制栏 */}
+									<Presence exitBeforeEnter>
+										<Show when={media.width < 1024}>
+											<Motion.div
+												class="Control bg-primary-color shadow-dividing-color shadow-dialog absolute bottom-3 left-1/2 z-10 flex gap-1 rounded p-1 landscape:bottom-6"
+												animate={{
+													opacity: [0, 1],
+													transform: ["translateX(-50%)", "translateX(-50%)"],
+												}}
+												exit={{ opacity: 0, transform: "translateX(-50%)" }}
+												transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+											>
+												<Button
+													size="sm"
+													level="quaternary"
+													icon={<Icons.Outline.Edit />}
+													onClick={() => setPanelMode("Config")}
+													active={panelMode() === "Config"}
+												/>
+												<Button
+													size="sm"
+													level="quaternary"
+													icon={<Icons.Outline.Chart />}
+													onClick={() => setPanelMode("AttrPreview")}
+													active={panelMode() === "AttrPreview"}
+												/>
+												<Button
+													size="sm"
+													level="quaternary"
+													icon={<Icons.Outline.Basketball />}
+													onClick={() => setPanelMode("SkillPreview")}
+													active={panelMode() === "SkillPreview"}
+												/>
+											</Motion.div>
+										</Show>
+									</Presence>
+								</div>
+
+								{/* 弹窗 */}
+								<Portal>
+									<Sheet
+										state={selectSheetIsOpen()}
+										setState={(state) => {
+											setSelectSheetIsOpen(state);
+											setGlobalFilterStr("");
+										}}
+									>
+										<div class="flex h-[90dvh] w-full flex-col gap-2 p-6">
+											<div class="SheetTitle w-full text-xl font-bold flex items-center justify-between">
+												{selectSheetTitle()}
+												<Button
+													icon={<Icons.Outline.Close />}
+													level="quaternary"
+													class="rounded-none rounded-tr"
+													onClick={() => {
+														setSelectSheetIsOpen(false);
+														setGlobalFilterStr("");
+													}}
+												/>
+											</div>
+											<Input
+												type="text"
+												value={globalFilterStr()}
+												onInput={(e) => setGlobalFilterStr(e.target.value)}
+											/>
+											{VirtualTable({
+												measure: cfg.table.measure,
+												data: liveTableRows.rows,
+												dataLoading: () => liveTableRows.status() === "loading",
+												columnsDef: cfg.table.columnsDef,
+												hiddenColumnDef: cfg.table.hiddenColumnDef,
+												tdGenerator: cfg.table.tdGenerator,
+												defaultSort: cfg.table.defaultSort,
+												dictionary: cfg.dictionary,
+												globalFilterStr: () => globalFilterStr(),
+												rowHandleClick: (data) =>
+													setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+														type: dialogVistualTableType(),
+														data,
+													}),
+												columnVisibility: dialogTableColumnVisibility(),
+												onColumnVisibilityChange: (updater) => {
+													if (typeof updater === "function") {
+														setDialogTableColumnVisibility(updater(dialogTableColumnVisibility()));
+													}
+												},
+											})}
+										</div>
+									</Sheet>
+								</Portal>
+							</Motion.div>
+						);
+					}}
+				</Show>
 			)}
 		</Show>
 	);
