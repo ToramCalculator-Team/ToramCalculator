@@ -1,3 +1,4 @@
+import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import type { PlayerArmorWithRelations } from "@db/generated/repositories/player_armor";
 import type { PlayerOptionWithRelations } from "@db/generated/repositories/player_option";
 import type { PlayerSpecialWithRelations } from "@db/generated/repositories/player_special";
@@ -7,7 +8,10 @@ import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
 
-export type EquipmentSlot = "mainHand" | "subHand" | "armor" | "additional" | "special";
+export type EquipmentSlot = Extract<
+  keyof CharacterWithRelations,
+  "weaponId" | "subWeaponId" | "armorId" | "optionId" | "specialId"
+>;
 
 type EquipmentPanelProps = {
 	slots: {
@@ -31,7 +35,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 				role="application"
 				onClick={() => {
 					if (props.slots.mainHand) {
-						props.onItemPreviewRequested("mainHand", props.slots.mainHand);
+						props.onItemPreviewRequested("weaponId", props.slots.mainHand);
 					}
 				}}
 				onKeyUp={(e) => {
@@ -60,7 +64,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 						class="rounded-none"
 						onClick={() => {
 							// 打开装备选择器
-							props.onPickRequested("mainHand");
+							props.onPickRequested("weaponId");
 						}}
 					/>
 					<Show
@@ -72,7 +76,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 							level="quaternary"
 							class="rounded-none rounded-tr"
 							onClick={async () => {
-								props.onClearRequested("mainHand");
+								props.onClearRequested("weaponId");
 							}}
 						/>
 					</Show>
@@ -83,7 +87,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 				role="application"
 				onClick={() => {
 					if (props.slots.subHand) {
-						props.onItemPreviewRequested("subHand", props.slots.subHand);
+						props.onItemPreviewRequested("subWeaponId", props.slots.subHand);
 					}
 				}}
 				onKeyUp={(e) => {
@@ -112,7 +116,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 						class="rounded-none"
 						onClick={() => {
 							// 打开装备选择器
-							props.onPickRequested("subHand");
+							props.onPickRequested("subWeaponId");
 						}}
 					/>
 					<Show
@@ -124,7 +128,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 							level="quaternary"
 							class="rounded-none rounded-tr"
 							onClick={async () => {
-								props.onClearRequested("subHand");
+								props.onClearRequested("subWeaponId");
 							}}
 						/>
 					</Show>
@@ -135,7 +139,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 				role="application"
 				onClick={() => {
 					if (props.slots.armor) {
-						props.onItemPreviewRequested("armor", props.slots.armor);
+						props.onItemPreviewRequested("armorId", props.slots.armor);
 					}
 				}}
 				onKeyUp={(e) => {
@@ -164,7 +168,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 						class="rounded-none"
 						onClick={() => {
 							// 打开装备选择器
-							props.onPickRequested("armor");
+							props.onPickRequested("armorId");
 						}}
 					/>
 					<Show
@@ -176,7 +180,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 							level="quaternary"
 							class="rounded-none rounded-tr"
 							onClick={async () => {
-								props.onClearRequested("armor");
+								props.onClearRequested("armorId");
 							}}
 						/>
 					</Show>
@@ -187,7 +191,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 				role="application"
 				onClick={() => {
 					if (props.slots.additional) {
-						props.onItemPreviewRequested("additional", props.slots.additional);	
+						props.onItemPreviewRequested("optionId", props.slots.additional);	
 					}
 				}}
 				onKeyUp={(e) => {
@@ -216,7 +220,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 						class="rounded-none"
 						onClick={() => {
 							// 打开装备选择器
-							props.onPickRequested("additional");
+							props.onPickRequested("optionId");
 						}}
 					/>
 					<Show
@@ -228,7 +232,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 							level="quaternary"
 							class="rounded-none rounded-tr"
 							onClick={async () => {
-								props.onClearRequested("additional");
+								props.onClearRequested("optionId");
 							}}
 						/>
 					</Show>
@@ -239,7 +243,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 				role="application"
 				onClick={() => {
 					if (props.slots.special) {
-						props.onItemPreviewRequested("special", props.slots.special);
+						props.onItemPreviewRequested("specialId", props.slots.special);
 					}
 				}}
 				onKeyUp={(e) => {
@@ -268,7 +272,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 						class="rounded-none"
 						onClick={() => {
 							// 打开装备选择器
-							props.onPickRequested("special");
+							props.onPickRequested("specialId");
 						}}
 					/>
 					<Show
@@ -280,7 +284,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 							level="quaternary"
 							class="rounded-none rounded-tr"
 							onClick={async () => {
-								props.onClearRequested("special");
+								props.onClearRequested("specialId");
 							}}
 						/>
 					</Show>

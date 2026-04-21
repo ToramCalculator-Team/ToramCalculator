@@ -8,7 +8,7 @@
  *   都会触发回调，无需手动失效
  * - Solid 的 `createEffect` 追踪 queryFn 闭包内的 signal；signal 变化时重建订阅
  * - onCleanup 保证订阅释放
- *
+ * 
  * 为什么不直接返回 createResource：
  * - createResource 面向"一次性 Promise"模型，需要手动 refetch
  * - live.query 天然是订阅模型，直接包成 Signal 更贴合 Solid 反应式
@@ -18,7 +18,7 @@
  */
 
 import type { Compilable } from "kysely";
-import { createEffect, createSignal, onCleanup, type Accessor } from "solid-js";
+import { type Accessor, createEffect, createSignal, onCleanup } from "solid-js";
 
 export type LiveQueryStatus = "idle" | "loading" | "ready" | "error";
 

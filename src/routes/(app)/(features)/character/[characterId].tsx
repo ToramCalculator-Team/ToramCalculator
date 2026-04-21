@@ -1,4 +1,21 @@
+import { getPrimaryKeys } from "@db/generated/dmmf-utils";
+import {
+	type CharacterWithRelations,
+	selectAllCharactersByBelongtoplayerid,
+	updateCharacter,
+} from "@db/generated/repositories/character";
+import type { MemberWithRelations } from "@db/generated/repositories/member";
+import { selectPlayerByIdWithRelations } from "@db/generated/repositories/player";
+import type { PlayerArmorWithRelations } from "@db/generated/repositories/player_armor";
+import type { PlayerOptionWithRelations } from "@db/generated/repositories/player_option";
+import type { PlayerSpecialWithRelations } from "@db/generated/repositories/player_special";
+import type { PlayerWeaponWithRelations } from "@db/generated/repositories/player_weapon";
+import type { TeamWithRelations } from "@db/generated/repositories/team";
+import type { character, DB } from "@db/generated/zod";
+import { getDB } from "@db/repositories/database";
+import type { CharacterPersonalityType } from "@db/schema/enums";
 import { useNavigate, useParams } from "@solidjs/router";
+import type { VisibilityState } from "@tanstack/solid-table";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import {
 	createEffect,
@@ -12,35 +29,6 @@ import {
 	useContext,
 } from "solid-js";
 import { Portal } from "solid-js/web";
-import { BuiltinAnimationType, type CharacterEntityRuntime, EntityFactory } from "~/lib/engine/render/RendererController";
-// import "@babylonjs/core/Debug/debugLayer"; // Augments the scene with the debug methods
-// import "@babylonjs/inspector"; // Injects a local ES6 version of the inspector to prevent automatically relying on the none compatible version
-import "@babylonjs/loaders/glTF/2.0/glTFLoader";
-import "@babylonjs/loaders/glTF/2.0/Extensions/KHR_draco_mesh_compression";
-import {
-	type AbstractEngine,
-	ArcRotateCamera,
-	Color3,
-	Scene,
-	ShadowGenerator,
-	SpotLight,
-	Vector3,
-} from "@babylonjs/core";
-import { Engine } from "@babylonjs/core/Engines/engine";
-import { getPrimaryKeys } from "@db/generated/dmmf-utils";
-import { repositoryMethods } from "@db/generated/repositories";
-import { selectAllCharactersByBelongtoplayerid, updateCharacter } from "@db/generated/repositories/character";
-import type { MemberWithRelations } from "@db/generated/repositories/member";
-import { selectPlayerByIdWithRelations } from "@db/generated/repositories/player";
-import type { PlayerArmorWithRelations } from "@db/generated/repositories/player_armor";
-import type { PlayerOptionWithRelations } from "@db/generated/repositories/player_option";
-import type { PlayerSpecialWithRelations } from "@db/generated/repositories/player_special";
-import type { PlayerWeaponWithRelations } from "@db/generated/repositories/player_weapon";
-import type { TeamWithRelations } from "@db/generated/repositories/team";
-import type { character, DB } from "@db/generated/zod";
-import { getDB } from "@db/repositories/database";
-import type { CharacterPersonalityType } from "@db/schema/enums";
-import { VisibilityState } from "@tanstack/solid-table";
 import { Motion, Presence } from "solid-motionone";
 import { DATA_CONFIG } from "~/components/business/data-config";
 import { Sheet } from "~/components/containers/sheet";
@@ -50,37 +38,41 @@ import { LoadingBar } from "~/components/controls/loadingBar";
 import { RangeInput } from "~/components/controls/range";
 import { Select } from "~/components/controls/select";
 import { VirtualTable } from "~/components/dataDisplay/virtualTable";
+import { CharacterView } from "~/components/features/character/CharacterView";
+import { EquipmentPanel, type EquipmentSlot } from "~/components/features/character/EquipmentPanel";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
 import { useEngine } from "~/lib/engine/core/thread/EngineContext";
 import { createPreviewConfig, type EngineScenarioData } from "~/lib/engine/core/types";
 import { StatsRenderer } from "~/lib/engine/core/World/Member/MemberStatusPanel";
+import { createLogger } from "~/lib/Logger";
 import { createLiveKyselyQuery } from "~/lib/liveQuery";
 import { setStore, store } from "~/store";
 import { createCharacter } from "./createCharacter";
-import { EquipmentPanel, type EquipmentSlot } from "./panels/EquipmentPanel";
+
+const logger = createLogger("CharacterPage");
 
 export default function CharactePage() {
-	const dictionary = useDictionary();
-
 	const navigate = useNavigate();
-
+	const dictionary = useDictionary();
 	const media = useContext(MediaContext);
+
+	// 从url获取机体id参数
+	const params = useParams();
 
 	// 面板模式
 	type PanelModeType = "Config" | "AttrPreview" | "SkillPreview";
 	const [panelMode, setPanelMode] = createSignal<PanelModeType>("Config");
 
-	const params = useParams();
-
+	// 页面数据获取
 	const [playerWithRelations, { refetch: refetchPlayerWithRelations }] = createResource(
 		() => params.characterId,
 		async () => {
 			const playerId = store.session.account.player?.id;
 			if (!playerId) return null;
 			const player = await selectPlayerByIdWithRelations(playerId);
-			console.log("player", player);
+			logger.info("player", player);
 			return player;
 		},
 	);
@@ -89,7 +81,7 @@ export default function CharactePage() {
 		if (!player) return null;
 		const character = player.characters.find((c) => c.id === params.characterId);
 		if (!character) return null;
-		console.log("character", character);
+		logger.info("character", character);
 		return character;
 	});
 	const charactersFinder = (id: string) => selectAllCharactersByBelongtoplayerid(id);
@@ -128,6 +120,7 @@ export default function CharactePage() {
 		await refetchPlayerWithRelations();
 	};
 
+	// 监听玩家配置变化，更新引擎场景数据
 	createEffect(
 		on(
 			() => ({
@@ -136,7 +129,7 @@ export default function CharactePage() {
 			}),
 			async () => {
 				if (!engine.ready()) return null;
-				console.log("玩家配置发生变化，将更新引擎初始化数据");
+				logger.info("玩家配置发生变化，将更新引擎初始化数据");
 
 				const currentCharacter = character();
 				const player = playerWithRelations();
@@ -200,7 +193,7 @@ export default function CharactePage() {
 				};
 				try {
 					if (!scenarioLoaded()) {
-						console.log("loading scenario", scenario);
+						logger.info("loading scenario", scenario);
 						await engine.service.loadScenario(scenario);
 						await engine.service.setRuntimeConfig(createPreviewConfig());
 						await engine.refreshMembers();
@@ -219,41 +212,46 @@ export default function CharactePage() {
 	const primaryMember = createMemo(() => {
 		const list = engine.members();
 		const primaryMember = list.find((member) => member.id === previewMemberId);
-		console.log("primaryMember", primaryMember);
+		logger.info("primaryMember", primaryMember);
 		return primaryMember;
 	});
 
-	const [selectSheetIsOpen, setSelectSheetIsOpen] = createSignal(false);
-	const [selectSheetTitle, setSelectSheetTitle] = createSignal("");
-	const [dialogVistualTableType, setDialogVistualTableType] = createSignal<keyof DB>("player_weapon");
-	const [globalFilterStr, setGlobalFilterStr] = createSignal("");
-	const [dialogTableColumnVisibility, setDialogTableColumnVisibility] = createSignal<VisibilityState>({});
+	// 抽屉状态管理
+	const [sheetIsOpen, setSheetIsOpen] = createSignal(false);
+
+	// 选择器（表格）状态管理
+	const [selectorTitle, setSelectorTitle] = createSignal("");
+	const [selectorType, setSelectorType] = createSignal<keyof DB>("player_weapon");
+	const [selectorFilterStr, setSelectorFilterStr] = createSignal("");
+	const [selectorColumnVisibility, setSelectorColumnVisibility] = createSignal<VisibilityState>({});
+	const [selectorPrimaryKey, setSelectorPrimaryKey] = createSignal<string>("");
+
+	// 对应character的字段
+	const [dataSolt, setDataSolt] = createSignal<keyof CharacterWithRelations | null>(null);
 
 	const equipmentSlotConfig: Record<EquipmentSlot, keyof DB> = {
-		mainHand: "player_weapon",
-		subHand: "player_weapon",
-		armor: "player_armor",
-		additional: "player_option",
-		special: "player_special",
+		weaponId: "player_weapon",
+		subWeaponId: "player_weapon",
+		armorId: "player_armor",
+		optionId: "player_option",
+		specialId: "player_special",
 	};
 
 	const openEquipmentPicker = (slot: EquipmentSlot) => {
+		setDataSolt(slot);
 		const tableType = equipmentSlotConfig[slot];
 		const primaryKey = getPrimaryKeys(tableType)[0];
 		if (!primaryKey) return;
-		console.log("tableType", tableType, "primaryKey", primaryKey);
-		setSelectSheetIsOpen(true);
-		setDialogVistualTableType(tableType);
-		setSelectSheetTitle(dictionary().db[tableType].selfName);
+		logger.info("tableType", tableType, "primaryKey", primaryKey);
+		setSelectorType(tableType);
+		setSelectorPrimaryKey(primaryKey);
+		setSelectorTitle(dictionary().db[tableType].selfName);
+		setSheetIsOpen(true);
 	};
 
 	const clearEquipmentSlot = (slot: EquipmentSlot) => {
-		const tableType = equipmentSlotConfig[slot];
-		const primaryKey = getPrimaryKeys(tableType)[0];
-		if (!primaryKey) return;
-		console.log("tableType", tableType, "primaryKey", primaryKey);
 		queueCharacterPatch({
-			[primaryKey]: "",
+			[slot]: "",
 		} as Partial<character>);
 	};
 
@@ -268,7 +266,7 @@ export default function CharactePage() {
 		});
 	};
 
-	const dataConfig = createMemo(() => DATA_CONFIG[dialogVistualTableType()]);
+	const dataConfig = createMemo(() => DATA_CONFIG[selectorType()]);
 
 	// 响应式订阅当前表的行数据（如果 dataConfig 声明了 liveQuery）。
 	// 切换 wikiStore.type 时，createEffect 内部会自动退订旧订阅、订阅新表。
@@ -294,126 +292,15 @@ export default function CharactePage() {
 	};
 	const [activeTab, setActiveTab] = createSignal<keyof typeof tabs>("equipment");
 
-	const [canvas, setCanvas] = createSignal<HTMLCanvasElement | null>(null);
-	let babylonEngine: AbstractEngine;
-	let scene: Scene;
-	let camera: ArcRotateCamera;
-
-	const createBabylonScene = (canvas: HTMLCanvasElement): Scene => {
-		babylonEngine = new Engine(canvas, true);
-		babylonEngine.loadingScreen = {
-			displayLoadingUI: (): void => {
-				// console.log('display')
-			},
-			hideLoadingUI: (): void => {
-				// console.log('hidden')
-			},
-			loadingUIBackgroundColor: "#000000",
-			loadingUIText: "Loading...",
-		};
-		scene = new Scene(babylonEngine);
-		scene.autoClear = false;
-		// 雾
-		scene.fogMode = Scene.FOGMODE_EXP2;
-		scene.fogDensity = 0.01;
-		scene.fogStart = 16;
-		scene.fogEnd = 22;
-		scene.fogColor = new Color3(0.8, 0.8, 0.8);
-		// 测试模式配置函数
-		// function testModelOpen() {
-		//   // 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
-		//   void scene.debugLayer.show({
-		//     // embedMode: true
-		//   });
-		//   // 世界坐标轴显示
-		//   new AxesViewer(scene, 0.1);
-		// }
-		// testModelOpen();
-
-		// 摄像机
-		camera = new ArcRotateCamera("Camera", 1.55, 1.2, 7, new Vector3(0, 1, 0), scene);
-		camera.minZ = 0.1;
-		camera.fov = 1;
-
-		// -----------------------------------光照设置------------------------------------
-		// 设置顶部锥形光
-		const mainSpotLight = new SpotLight(
-			"mainSpotLight",
-			new Vector3(0, 18, 8),
-			new Vector3(0, -1, 0),
-			Math.PI,
-			5,
-			scene,
-		);
-		mainSpotLight.id = "mainSpotLight";
-		mainSpotLight.radius = 10;
-		mainSpotLight.intensity = 1500;
-
-		// 顶部锥形光的阴影发生器---------------------
-		const mainSpotLightShadowGenerator = new ShadowGenerator(1024, mainSpotLight);
-		mainSpotLightShadowGenerator.bias = 0.000001;
-		mainSpotLightShadowGenerator.darkness = 0.1;
-		mainSpotLightShadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
-
-		// 设置正面锥形光
-		const frontSpotLight = new SpotLight(
-			"frontSpotLight",
-			new Vector3(0, -1, 10),
-			new Vector3(0, 1, 0),
-			Math.PI,
-			5,
-			scene,
-		);
-		frontSpotLight.id = "frontSpotLight";
-		frontSpotLight.radius = 10;
-		frontSpotLight.intensity = 1500;
-
-		// -----------------------------------------角色模型--------------------------------------------
-
-		// 开始渲染循环
-		babylonEngine.runRenderLoop(() => {
-			scene.render();
-		});
-
-		const onWinResize = () => babylonEngine.resize();
-		window.addEventListener("resize", onWinResize);
-		return scene;
-	};
-
-	// new Engine会重设canvas尺寸，这会导致布局重绘，然后引起视觉抖动。这里通过延迟渲染解决
-	createEffect(
-		on(
-			() => canvas(),
-			(c) => {
-				if (c)
-					setTimeout(async () => {
-						const scene = createBabylonScene(c);
-						const factory = new EntityFactory(scene);
-						let characterEntity: CharacterEntityRuntime | null = null;
-						// 创建角色实体
-						characterEntity = await factory.createCharacter(
-							character()?.id ?? "unknown",
-							character()?.name ?? "未命名角色",
-							new Vector3(0, 0, 4),
-						);
-
-						// idle 动画已经在 createCharacter 中自动播放
-						// 如果需要切换到其他动画，可以使用：
-						characterEntity.animationController.playBuiltinAnimation(BuiltinAnimationType.WALK);
-					}, 10);
-			},
-		),
-	);
-
 	onMount(() => {
-		console.log("--CharacterIdPage render");
+		logger.info("--CharacterIdPage render");
 	});
 
 	onCleanup(() => {
 		if (rangeUpdateTimer !== undefined) {
 			window.clearTimeout(rangeUpdateTimer);
 		}
-		console.log("--CharacterIdPage unmount");
+		logger.info("--CharacterIdPage unmount");
 	});
 
 	return (
@@ -460,11 +347,7 @@ export default function CharactePage() {
 									{/* 配置版块 */}
 									<Show when={panelMode() === "Config" || media.width >= 1024}>
 										{/* 角色视图 */}
-										<div class="CharacterView hidden w-full flex-1 h-48 overflow-hidden portrait:block">
-											<canvas ref={setCanvas} class="border-dividing-color block h-full w-full rounded-md border">
-												当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
-											</canvas>
-										</div>
+										<CharacterView character={character()} />
 										<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:hidden landscape:h-full landscape:w-px"></div>
 
 										{/* 标签栏 */}
@@ -774,29 +657,29 @@ export default function CharactePage() {
 								{/* 弹窗 */}
 								<Portal>
 									<Sheet
-										state={selectSheetIsOpen()}
+										state={sheetIsOpen()}
 										setState={(state) => {
-											setSelectSheetIsOpen(state);
-											setGlobalFilterStr("");
+											setSheetIsOpen(state);
+											setSelectorFilterStr("");
 										}}
 									>
 										<div class="flex h-[90dvh] w-full flex-col gap-2 p-6">
-											<div class="SheetTitle w-full text-xl font-bold flex items-center justify-between">
-												{selectSheetTitle()}
+											<div class="SelectorTitle w-full text-xl font-bold flex items-center justify-between">
+												{selectorTitle()}
 												<Button
 													icon={<Icons.Outline.Close />}
 													level="quaternary"
 													class="rounded-none rounded-tr"
 													onClick={() => {
-														setSelectSheetIsOpen(false);
-														setGlobalFilterStr("");
+														setSheetIsOpen(false);
+														setSelectorFilterStr("");
 													}}
 												/>
 											</div>
 											<Input
 												type="text"
-												value={globalFilterStr()}
-												onInput={(e) => setGlobalFilterStr(e.target.value)}
+												value={selectorFilterStr()}
+												onInput={(e) => setSelectorFilterStr(e.target.value)}
 											/>
 											{VirtualTable({
 												measure: cfg.table.measure,
@@ -807,16 +690,27 @@ export default function CharactePage() {
 												tdGenerator: cfg.table.tdGenerator,
 												defaultSort: cfg.table.defaultSort,
 												dictionary: cfg.dictionary,
-												globalFilterStr: () => globalFilterStr(),
-												rowHandleClick: (data) =>
-													setStore("pages", "cardGroup", store.pages.cardGroup.length, {
-														type: dialogVistualTableType(),
-														data,
-													}),
-												columnVisibility: dialogTableColumnVisibility(),
+												globalFilterStr: selectorFilterStr,
+												rowHandleClick: (data) => {
+													const datasolt = dataSolt();
+													if (!datasolt) return;
+													if (!selectorPrimaryKey()) return;
+													const dataPrimaryValue = data[selectorPrimaryKey()];
+													if (!dataPrimaryValue) return;
+													logger.info("commitCharacterPatch", {
+														[datasolt]: dataPrimaryValue,
+													});
+													commitCharacterPatch({
+														[datasolt]: dataPrimaryValue,
+													});
+													setSheetIsOpen(false);
+													setSelectorFilterStr("");
+													setSelectorColumnVisibility({});
+												},
+												columnVisibility: selectorColumnVisibility(),
 												onColumnVisibilityChange: (updater) => {
 													if (typeof updater === "function") {
-														setDialogTableColumnVisibility(updater(dialogTableColumnVisibility()));
+														setSelectorColumnVisibility(updater(selectorColumnVisibility()));
 													}
 												},
 											})}
