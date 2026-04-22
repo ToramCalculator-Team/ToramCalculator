@@ -39,7 +39,10 @@ const getDB = async (): Promise<Kysely<DB>> => {
 	} else {
 		// 客户端模块导入
 		const { PGliteDialect } = await import("./dialect/dialect");
-		const { pgWorker } = await import("~/initialWorker");
+		// 职责约束：repository 不再直接依赖顶层 await 导出的 worker，
+		// 统一走 createPgWorker()，与 bootstrap 的启动编排保持同一入口。
+		const { createPgWorker } = await import("~/initialWorker");
+		const pgWorker = await createPgWorker();
 
 		// Kysely 实例创建
 		cachedDB = new Kysely<DB>({

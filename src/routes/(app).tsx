@@ -1,8 +1,3 @@
-import { defaultData } from "@db/defaultData";
-import { getPrimaryKeys } from "@db/generated/dmmf-utils";
-import { repositoryMethods } from "@db/generated/repositories";
-import type { DB } from "@db/generated/zod/index";
-import { getDB } from "@db/repositories/database";
 import hotkeys from "hotkeys-js";
 import { createEffect, on, onMount, type ParentProps, Show } from "solid-js";
 import { Motion } from "solid-motionone";
@@ -14,8 +9,8 @@ import { LoginDialog } from "~/components/features/loginDialog";
 import { Setting } from "~/components/features/setting";
 import { DictionaryProvider } from "~/contexts/Dictionary";
 import { MediaProvider } from "~/contexts/Media-component";
+import { BootstrapProvider } from "~/lib/bootstrap/BootstrapContext";
 import { EngineProvider } from "~/lib/engine/core/thread/EngineContext";
-import { ensureLocalAccount } from "~/lib/localAccount";
 import { setStore, store } from "~/store";
 import { applyColorSystem } from "~/styles/colorSystem/colorSystemController";
 
@@ -144,61 +139,30 @@ export default function AppMainContet(props: ParentProps) {
 	// 本地状态更新
 	onMount(async () => {
 		setStore("pages", "resourcesLoaded", true);
-		await ensureLocalAccount();
-
-		// 数据库查询测试
-		const db = await getDB();
-		db.transaction().execute(async (trx) => {
-			const getFirstPrimaryKeyValue = <TTableName extends keyof DB>(tableName: TTableName) => {
-				const pk = getPrimaryKeys(tableName)[0];
-				// 生成器约定：主键通常是 string（例如 id），这里显式收敛成 string，避免联合表名导致的索引类型发散
-				return String(defaultData[tableName][pk as keyof (typeof defaultData)[TTableName]] ?? "");
-			};
-
-			for (const key of Object.keys(repositoryMethods) as Array<keyof DB>) {
-				const value = repositoryMethods[key];
-				if (!value.select?.name) {
-					continue;
-				}
-				const primaryKey = getPrimaryKeys(key);
-				if (primaryKey.length === 0) {
-					continue;
-				}
-				const data = await value.select(getFirstPrimaryKeyValue(key), trx);
-				// console.log(
-				//   "表名：",
-				//   key,
-				//   "主键：",
-				//   primaryKey,
-				//   "默认值的主键：",
-				//   defaultData[key as keyof DB][primaryKey[0]],
-				//   "数据：",
-				//   data,
-				// );
-			}
-		});
 	});
 
 	return (
-		<MediaProvider>
-			<DictionaryProvider>
-				<EngineProvider>
-					<Show when={store.settings.userInterface.is3DbackgroundDisabled}>
-						<BabylonBg />
-					</Show>
-					<RandomBallBackground />
-					<Motion.div
-						id="AppMainContet"
-						class={`h-full w-full overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
-					>
-						{props.children}
-					</Motion.div>
-					<Setting />
-					<LoginDialog />
-					<CardGroup />
-					<FormGroup />
-				</EngineProvider>{" "}
-			</DictionaryProvider>
-		</MediaProvider>
+		<BootstrapProvider>
+			<MediaProvider>
+				<DictionaryProvider>
+					<EngineProvider>
+						<Show when={store.settings.userInterface.is3DbackgroundDisabled}>
+							<BabylonBg />
+						</Show>
+						<RandomBallBackground />
+						<Motion.div
+							id="AppMainContet"
+							class={`h-full w-full overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
+						>
+							{props.children}
+						</Motion.div>
+						<Setting />
+						<LoginDialog />
+						<CardGroup />
+						<FormGroup />
+					</EngineProvider>{" "}
+				</DictionaryProvider>
+			</MediaProvider>
+		</BootstrapProvider>
 	);
 }

@@ -423,6 +423,9 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 							<div style={{ height: `${tableContainer().getTotalSize()}px` }} class={`TableBody relative`}>
 								<For each={tableContainer().getVirtualItems()}>
 									{(virtualRow) => {
+										if (!virtualRow) {
+											return null;
+										}
 										const row = table()?.getRowModel().rows[virtualRow.index];
 										if (!row) {
 											return null;

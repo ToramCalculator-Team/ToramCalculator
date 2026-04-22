@@ -31,6 +31,18 @@ export interface LiveKyselyQueryResult<T> {
 	error: Accessor<Error | undefined>;
 }
 
+type LiveQueryAdapter = {
+	live: {
+		query: (
+			sql: string,
+			params: unknown[],
+			cb: (res: { rows: unknown[] }) => void,
+		) => Promise<{ unsubscribe: (cb?: (res: unknown) => void) => Promise<void> }>;
+	};
+};
+// 说明：PGliteWorker 的库类型没有完整暴露 live.query 泛型签名，
+// 这里使用窄适配类型，仅覆盖当前文件真实依赖的最小接口。
+
 /**
  * 把一个 Kysely 查询构造器挂到 PGlite live 订阅上。
  *
@@ -61,6 +73,11 @@ export function createLiveKyselyQuery<T>(
 
 		void (async () => {
 			try {
+				// 关键门控：在建立 live 订阅前等待 pgworker ready，规避首次启动竞态。
+				const { waitFor } = await import("~/lib/bootstrap/context-standalone");
+				await waitFor("pgworker");
+				if (disposed) return;
+
 				// 编译 Kysely 查询；queryFn 返回 null/undefined 表示当前不订阅
 				const compilable = await queryFn();
 				if (disposed) return;
@@ -72,15 +89,16 @@ export function createLiveKyselyQuery<T>(
 				const compiled = compilable.compile();
 
 				// 动态导入，避免 SSR 触发 Worker 构造
-				const { pgWorker } = await import("~/initialWorker");
+				const { createPgWorker } = await import("~/initialWorker");
+				const pgWorker = (await createPgWorker()) as unknown as LiveQueryAdapter;
 				if (disposed) return;
 
-				const sub = await pgWorker.live.query<T>(
+				const sub = await pgWorker.live.query(
 					compiled.sql,
 					[...compiled.parameters] as unknown[],
 					(res) => {
 						if (disposed) return;
-						setRows(() => res.rows);
+						setRows(() => res.rows as T[]);
 						setStatus("ready");
 					},
 				);
