@@ -14,7 +14,7 @@ import { createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-j
 import { Motion, Presence } from "solid-motionone";
 import { Icons } from "~/components/icons";
 import { AddMemberControllerButton } from "~/lib/engine/controller/AddMemberControllerButton";
-import { ControlPanel, EngineStatusBar } from "~/lib/engine/controller/components";
+import { ControlPanel } from "~/lib/engine/controller/components";
 import { MemberController } from "~/lib/engine/controller/MemberController";
 import { MemberControllerPanel } from "~/lib/engine/controller/MemberControllerPanel";
 import { useEngine } from "~/lib/engine/core/thread/EngineContext";
@@ -398,12 +398,11 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 
 					{/* 引擎控制栏 */}
 					<div class="flex gap-1">
-						<A href="/" class="Left flex gap-1 p-3 items-center w-fit">
+						<A href="/" class="Left flex gap-1 p-3 items-center w-fit portrait:hidden">
 							<Icons.Brand.NoPaddingLogoText class="w-[160px] h-6" />
 						</A>
 
 						<div class="flex gap-2 w-full">
-							<EngineStatusBar isRunning={isRunning} isPaused={isPaused} telemetry={engineTelemetry} />
 							<ControlPanel
 								engineActor={engine.lifecycleActor}
 								onStart={() => engine.start()}

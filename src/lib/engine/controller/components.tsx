@@ -7,48 +7,11 @@
  * - 可复用的UI组件
  */
 
-import { type Accessor, createEffect, createSignal, For, Match, Show, Switch } from "solid-js";
+import { type Accessor, createEffect, createSignal, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Select } from "~/components/controls/select";
-import type { ComputedSkillInfo } from "../core/GameEngine";
-import type { EngineTelemetry } from "../core/thread/protocol";
 import type { MemberSerializeData } from "../core/World/Member/Member";
-import { MemberStatusPanel } from "../core/World/Member/MemberStatusPanel";
-
-// ============================== 状态栏组件 ==============================
-
-interface StatusBarProps {
-	isRunning: Accessor<boolean>;
-	isPaused: Accessor<boolean>;
-	telemetry: Accessor<EngineTelemetry | null>;
-}
-
-/**
- * 状态栏组件 - 显示模拟器运行状态和关键指标
- */
-export function EngineStatusBar(props: StatusBarProps) {
-	return (
-		<div class="portrait:bg-area-color flex items-center rounded p-4">
-			<div class="flex w-full items-center gap-4 portrait:justify-between">
-				<Show when={props.isRunning() || props.isPaused()}>
-					<div class="flex items-center gap-2">
-						<span class="text-sm font-medium">运行时间：</span>
-						<span class="text-sm">{((props.telemetry()?.runTime ?? 0) / 1000).toFixed(1)}s</span>
-					</div>
-					<div class="flex items-center gap-2">
-						<span class="text-sm font-medium">成员数：</span>
-						<span class="text-sm">{props.telemetry()?.memberCount ?? 0}</span>
-					</div>
-					<div class="flex items-center gap-2">
-						<span class="text-sm font-medium">帧号：</span>
-						<span class="text-sm">{props.telemetry()?.frameNumber ?? 0}</span>
-					</div>
-				</Show>
-			</div>
-		</div>
-	);
-}
 
 // ============================== 控制面板组件 ==============================
 

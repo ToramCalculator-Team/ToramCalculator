@@ -1,5 +1,5 @@
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
-import { assign, type EventObject, setup } from "xstate";
+import { type EventObject, setup } from "xstate";
 import { createLogger } from "~/lib/Logger";
 import type { DamageDispatchPayload } from "../../../Area/types";
 import {
@@ -159,6 +159,43 @@ export interface PlayerStateContext extends MemberStateContext {
 	hitSession?: HitSession | null;
 }
 
+type SkillVariant = NonNullable<NonNullable<CharacterSkillWithRelations["template"]>["variants"]>[number];
+
+const playerMachineSetup = setup({
+	types: {
+		context: {} as PlayerStateContext,
+		events: {} as PlayerEventType,
+		output: {} as Player,
+	},
+});
+
+const playerRaiseHitCheck = playerMachineSetup.raise({ type: "进行命中判定" });
+const playerRaiseControlCheck = playerMachineSetup.raise({ type: "进行控制判定" });
+const playerRaiseDamageCalc = playerMachineSetup.raise({ type: "进行伤害计算" });
+const playerRaiseHpAttrUpdate = playerMachineSetup.raise(({ context }) => {
+	const owner = context.owner as Player | undefined;
+	const hpAfter =
+		typeof context.hitSession?.hpAfter === "number"
+			? context.hitSession.hpAfter
+			: owner?.statContainer.getValue("hp.current") ?? 0;
+	return {
+		type: "修改属性" as const,
+		data: { attr: "hp.current", value: hpAfter },
+	};
+});
+const playerAssignHitSession = playerMachineSetup.assign(({ context, event }) => {
+	log.debug(`👤 [${context.owner?.name}] 记录伤害请求`, event);
+	const e = event as 受到攻击;
+	const damageRequest = e.data?.damageRequest;
+	if (!damageRequest) {
+		return {};
+	}
+	return {
+		hitSession: createHitSession(damageRequest),
+	};
+});
+const playerClearHitSession = playerMachineSetup.assign({ hitSession: null });
+
 export const playerStateMachine = (
 	member: Member<PlayerAttrType, PlayerEventType, PlayerStateContext, PlayerRuntime>,
 ): MemberStateMachine<PlayerEventType, PlayerStateContext> => {
@@ -166,13 +203,9 @@ export const playerStateMachine = (
 	const player = member as Player;
 	const machineId = player.id;
 
-	const machine = setup({
-		types: {
-			context: {} as PlayerStateContext,
-			events: {} as PlayerEventType,
-			output: {} as Player,
-		},
-		actions: {
+	const machine = playerMachineSetup
+		.extend({
+			actions: {
 			根据角色配置生成初始状态: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 根据角色配置生成初始状态`, event);
 			},
@@ -203,7 +236,7 @@ export const playerStateMachine = (
 				log.debug(`👤 [${context.owner?.name}] 添加待处理技能`, event);
 				const e = event as 使用技能;
 				const skillId = e.data.skillId;
-				const skill = player.activeCharacter.skills?.find((s) => s.id === skillId);
+				const skill = player.activeCharacter.skills?.find((s: CharacterSkillWithRelations) => s.id === skillId);
 				if (!skill) {
 					log.error(`🎮 [${context.owner?.name}] 的当前技能不存在`);
 				}
@@ -363,33 +396,21 @@ export const playerStateMachine = (
 			重置到复活状态: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 重置到复活状态`, event);
 			},
-			发送命中判定事件给自己: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 发送命中判定事件给自己`, event);
-				// 不使用 raise(...)，直接向自身发送事件（命令式），避免 XState dev build 警告
-			},
+			发送命中判定事件给自己: playerRaiseHitCheck,
 			反馈命中结果给施法者: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 反馈命中结果给施法者`, event);
 			},
-			发送控制判定事件给自己: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 发送控制判定事件给自己`, event);
-				// 不要在自定义 action 中调用 raise(...)（非命令式），这里直接向自身发送事件即可
-				player.actor.send({ type: "进行控制判定" });
-			},
-			命中计算管线: assign(({ context, event }) => {
+			发送控制判定事件给自己: playerRaiseControlCheck,
+			命中计算管线: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 命中计算管线`, event);
 				const session = context.hitSession;
 				if (!session) {
 					log.warn(`👤 [${context.owner?.name}] 命中计算管线：hitSession 为空，跳过`);
-					return context;
+					return;
 				}
 				resolveHitCheck(player, session);
-				return context;
-			}),
-			根据命中结果进行下一步: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 根据命中结果进行下一步`, event);
-				// 命中后再进入控制判定
-				player.actor.send({ type: "进行控制判定" });
 			},
+			根据命中结果进行下一步: playerRaiseControlCheck,
 			控制判定管线: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 控制判定管线`, event);
 				// 骨架版：statusResist 管线调用将在异常施加需求出现时迭代加入。
@@ -398,39 +419,20 @@ export const playerStateMachine = (
 			反馈控制结果给施法者: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 反馈控制结果给施法者`, event);
 			},
-			发送伤害计算事件给自己: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 发送伤害计算事件给自己`, event);
-				player.actor.send({ type: "进行伤害计算" });
-			},
-			伤害计算管线: assign(({ context, event }) => {
+			发送伤害计算事件给自己: playerRaiseDamageCalc,
+			伤害计算管线: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 伤害计算管线`, event);
 				const session = context.hitSession;
 				if (!session) {
 					log.warn(`👤 [${context.owner?.name}] 伤害计算管线：hitSession 为空，跳过`);
-					return context;
+					return;
 				}
 				resolveDamageAndApply(player, session);
-				return context;
-			}),
+			},
 			反馈伤害结果给施法者: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 反馈伤害结果给施法者`, event);
 			},
-			发送属性修改事件给自己: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 发送属性修改事件给自己`, event);
-				// 优先使用受击事务里计算出的 hpAfter；若不存在（非受击路径）则回落到当前值。
-				const hpAfter =
-					typeof context.hitSession?.hpAfter === "number"
-						? context.hitSession.hpAfter
-						: player.statContainer.getValue("hp.current");
-				player.actor.send({
-					type: "修改属性",
-					data: { attr: "hp.current", value: hpAfter },
-				});
-			},
-			清空受击缓存: assign(({ context }) => ({
-				...context,
-				hitSession: null,
-			})),
+			发送属性修改事件给自己: playerRaiseHpAttrUpdate,
 			发出属性变化域事件: ({ context, event }) => {
 				const owner = context.owner;
 				if (!owner) return;
@@ -515,19 +517,8 @@ export const playerStateMachine = (
 			发送buff修改事件给自己: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 发送buff修改事件给自己`, event);
 			},
-			记录伤害请求: assign(({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 记录伤害请求`, event);
-				const e = event as 受到攻击;
-				const damageRequest = e.data?.damageRequest;
-				if (!damageRequest) {
-					log.error(`👤 [${context.owner?.name}] 伤害请求不存在`);
-					return context;
-				}
-				return {
-					...context,
-					hitSession: createHitSession(damageRequest),
-				};
-			}),
+			记录伤害请求: playerAssignHitSession,
+			清空受击缓存: playerClearHitSession,
 			修改目标Id: ({ context, event }, params: { targetId: string }) => {
 				log.debug(`👤 [${context.owner?.name}] 修改目标Id`, event);
 				// 统一 targetId：runtime 是跨系统共享读面
@@ -536,8 +527,8 @@ export const playerStateMachine = (
 			logEvent: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 日志事件`, event);
 			},
-		},
-		guards: {
+			},
+			guards: {
 			存在蓄力阶段: ({ context, event }) => {
 				log.debug(`👤 [${context.owner?.name}] 判断技能是否有蓄力阶段`, event);
 
@@ -705,8 +696,9 @@ export const playerStateMachine = (
 				context.isAlive = isAlive;
 				return isAlive;
 			},
-		},
-	}).createMachine({
+			},
+		})
+		.createMachine({
 		context: {
 			isAlive: true,
 			createdAtFrame: player.runtime.currentFrame,
@@ -768,6 +760,9 @@ export const playerStateMachine = (
 							},
 							{
 								type: "发送属性修改事件给自己",
+							},
+							{
+								type: "清空受击缓存",
 							},
 						],
 					},
@@ -976,13 +971,13 @@ export const playerStateMachine = (
 				description: "不可操作，中断当前行为",
 			},
 		},
-	});
+		});
 
 	return machine;
 };
 
 const getSkillVariant = (skill: CharacterSkillWithRelations, player: Player) => {
-	return skill.template?.variants.find((e) => {
+	return skill.template?.variants.find((e: SkillVariant) => {
 		const weaponCondition = e.targetMainWeaponType === player.activeCharacter.weapon?.type || e.targetMainWeaponType === "Any"
 		const subWeaponCondition = e.targetSubWeaponType === player.activeCharacter.subWeapon?.type || e.targetSubWeaponType === "Any"
 		const armorAbilityCondition = e.targetArmorAbilityType === player.activeCharacter.armor?.ability || e.targetArmorAbilityType === "Any"

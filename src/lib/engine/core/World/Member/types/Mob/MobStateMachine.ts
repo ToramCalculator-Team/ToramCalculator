@@ -1,4 +1,4 @@
-import { assign, type EventObject, setup } from "xstate";
+import { type EventObject, setup } from "xstate";
 import { createLogger } from "~/lib/Logger";
 import type { DamageDispatchPayload } from "../../../Area/types";
 import { ModifierType } from "../../runtime/StatContainer/StatContainer";
@@ -8,6 +8,7 @@ import type {
 	MemberStateMachine,
 } from "../../runtime/StateMachine/types";
 import type { Mob, MobAttrType } from "./Mob";
+import { createHitSession, resolveDamageAndApply, resolveHitCheck, type HitSession } from "../../DamageResolution";
 
 const log = createLogger("MobSM");
 
@@ -125,23 +126,41 @@ export interface MobPendingDamageResult {
 
 // 新字段以 optional 方式加入，保留与 MemberStateContext 的双向赋值兼容性（Member 泛型对 context 为不变）。
 export interface MobStateContext extends MemberStateContext {
-	pendingDamage?: DamageDispatchPayload | null;
-	pendingHitResult?: MobPendingHitResult | null;
-	pendingDamageResult?: MobPendingDamageResult | null;
+	hitSession?: HitSession | null;
 }
+
+const mobMachineSetup = setup({
+	types: {
+		context: {} as MobStateContext,
+		events: {} as MobEventType,
+		output: {} as Mob,
+	},
+});
+
+const mobRaiseHitCheck = mobMachineSetup.raise({ type: "进行命中判定" });
+const mobRaiseControlCheck = mobMachineSetup.raise({ type: "进行控制判定" });
+const mobRaiseDamageCalc = mobMachineSetup.raise({ type: "进行伤害计算" });
+const mobAssignHitSession = mobMachineSetup.assign(({ context, event }) => {
+	log.debug(`👹 [${context.owner?.name}] 记录伤害请求`, event);
+	const e = event as 受到攻击;
+	const damageRequest = e.data?.damageRequest;
+	if (!damageRequest) {
+		return {};
+	}
+	return {
+		hitSession: createHitSession(damageRequest),
+	};
+});
+const mobClearHitSession = mobMachineSetup.assign({ hitSession: null });
 
 export const createMobStateMachine = (
 	mob: Mob,
 ): MemberStateMachine<MobEventType, MobStateContext> => {
 	const machineId = mob.id;
 
-	return setup({
-		types: {
-			context: {} as MobStateContext,
-			events: {} as MobEventType,
-			output: {} as Mob,
-		},
-		actions: {
+	return mobMachineSetup
+		.extend({
+			actions: {
 			根据配置生成初始状态: ({ context, event }) => {
 				// Add your action code here
 				// ...
@@ -242,75 +261,25 @@ export const createMobStateMachine = (
 				// ...
 				log.debug(`👹 [${context.owner?.name}] 重置到复活状态`, event);
 			},
-			发送命中判定事件给自己: ({ context, event }) => {
-				log.debug(
-					`👹 [${context.owner?.name}] 发送命中判定事件给自己`,
-					event,
-				);
-				mob.actor.send({ type: "进行命中判定" });
-			},
-			记录伤害请求: assign(({ context, event }) => {
-				log.debug(`👹 [${context.owner?.name}] 记录伤害请求`, event);
-				const e = event as 受到攻击;
-				const damageRequest = e.data?.damageRequest;
-				if (!damageRequest) {
-					log.error(`👹 [${context.owner?.name}] 伤害请求不存在`);
-					return context;
-				}
-				return {
-					...context,
-					pendingDamage: damageRequest,
-					pendingHitResult: null,
-					pendingDamageResult: null,
-				};
-			}),
+			发送命中判定事件给自己: mobRaiseHitCheck,
+			记录伤害请求: mobAssignHitSession,
+			清空受击缓存: mobClearHitSession,
 			反馈命中结果给施法者: ({ context, event }) => {
 				// Add your action code here
 				// ...
 				log.debug(`👹 [${context.owner?.name}] 反馈命中结果给施法者`, event);
 			},
-			发送控制判定事件给自己: ({ context, event }) => {
-				log.debug(
-					`👹 [${context.owner?.name}] 发送控制判定事件给自己`,
-					event,
-				);
-				mob.actor.send({ type: "进行控制判定" });
-			},
-			命中计算管线: assign(({ context, event }) => {
+			发送控制判定事件给自己: mobRaiseControlCheck,
+			命中计算管线: ({ context, event }) => {
 				log.debug(`👹 [${context.owner?.name}] 命中计算管线`, event);
-				const damageRequest = context.pendingDamage;
-				if (!damageRequest) {
-					log.warn(`👹 [${context.owner?.name}] 命中计算管线：pendingDamage 为空，跳过`);
-					return context;
+				const session = context.hitSession;
+				if (!session) {
+					log.warn(`👹 [${context.owner?.name}] 命中计算管线：hitSession 为空，跳过`);
+					return;
 				}
-
-				const isMagical = damageRequest.damageTags.includes("magical") ? 1 : 0;
-				const casterHit = Number(damageRequest.casterSnapshot.hit ?? 0);
-				const skillMpCost = Number(damageRequest.casterSnapshot["skill.mpCost"] ?? 0);
-
-				const hitCheckOutput = mob.runPipeline("hitCheck", {
-					isMagical,
-					casterHit,
-					skillMpCost,
-					damageTags: damageRequest.damageTags,
-				}) as Record<string, unknown>;
-
-				const hitRate = Number(hitCheckOutput.hitRate ?? 0);
-				const roll = Math.random() * 100;
-				const hit = roll < hitRate;
-
-				return {
-					...context,
-					pendingHitResult: { damageRequest, hitRate, hit },
-				};
-			}),
-			根据命中结果进行下一步: ({ context, event }) => {
-				log.debug(
-					`👹 [${context.owner?.name}] 根据命中结果进行下一步`,
-					event,
-				);
-				mob.actor.send({ type: "进行控制判定" });
+				resolveHitCheck(mob, session);
 			},
+			根据命中结果进行下一步: mobRaiseControlCheck,
 			控制判定管线: ({ context, event }) => {
 				// Add your action code here
 				// ...
@@ -321,126 +290,16 @@ export const createMobStateMachine = (
 				// ...
 				log.debug(`👹 [${context.owner?.name}] 反馈控制结果给施法者`, event);
 			},
-			发送伤害计算事件给自己: ({ context, event }) => {
-				log.debug(
-					`👹 [${context.owner?.name}] 发送伤害计算事件给自己`,
-					event,
-				);
-				mob.actor.send({ type: "进行伤害计算" });
-			},
-			伤害计算管线: assign(({ context, event }) => {
+			发送伤害计算事件给自己: mobRaiseDamageCalc,
+			伤害计算管线: ({ context, event }) => {
 				log.debug(`👹 [${context.owner?.name}] 伤害计算管线`, event);
-				const hitResult = context.pendingHitResult;
-				const damageRequest = context.pendingDamage;
-				if (!hitResult || !damageRequest) {
-					log.warn(`👹 [${context.owner?.name}] 伤害计算管线：受击缓存缺失，跳过`);
-					return context;
+				const session = context.hitSession;
+				if (!session) {
+					log.warn(`👹 [${context.owner?.name}] 伤害计算管线：hitSession 为空，跳过`);
+					return;
 				}
-
-				if (!hitResult.hit) {
-					mob.notifyDomainEvent({
-						type: "hit",
-						memberId: mob.id,
-						damage: 0,
-						hp: mob.statContainer.getValue("hp.current"),
-					});
-					return {
-						...context,
-						pendingDamageResult: { baseDamage: 0, finalDamage: 0, isFatal: false, crit: false },
-					};
-				}
-
-				const evaluator = mob.services.expressionEvaluator;
-				let baseDamage = 0;
-				if (evaluator && damageRequest.damageFormula) {
-					const out = evaluator(damageRequest.damageFormula, {
-						currentFrame: mob.runtime.currentFrame,
-						casterId: damageRequest.sourceId,
-						targetId: mob.id,
-						skillLv: damageRequest.skillLv,
-						distance: damageRequest.vars.distance,
-						targetCount: damageRequest.vars.targetCount,
-						casterSnapshot: damageRequest.casterSnapshot,
-					});
-					if (typeof out === "number" && Number.isFinite(out)) {
-						baseDamage = out;
-					} else if (typeof out === "boolean") {
-						baseDamage = out ? 1 : 0;
-					}
-				}
-
-				const isBack = damageRequest.direction === "back" ? 1 : 0;
-				const isFront = damageRequest.direction === "front" ? 1 : 0;
-				const isRedZone = damageRequest.warningZone === "red" ? 1 : 0;
-				const isBlueZone = damageRequest.warningZone === "blue" ? 1 : 0;
-
-				const damageOutput = mob.runPipeline("damageCalc", {
-					baseDamage,
-					damageTags: damageRequest.damageTags,
-					warningZone: damageRequest.warningZone,
-					direction: damageRequest.direction,
-					isBack,
-					isFront,
-					isRedZone,
-					isBlueZone,
-					skillLv: damageRequest.skillLv,
-				}) as Record<string, unknown>;
-
-				const finalDamage = Number(damageOutput.finalDamage ?? 0);
-				const isFatal = Number(damageOutput.isFatal ?? 0) >= 1;
-				const crit = Number(damageOutput.crit ?? 0) >= 1;
-
-				const hpBefore = mob.statContainer.getValue("hp.current");
-				const mpBefore = mob.statContainer.getValue("mp.current");
-
-				const applyOutput = mob.runPipeline("applyDamage", {
-					finalDamage,
-					mpCost: 0,
-					damageTags: damageRequest.damageTags,
-				}) as Record<string, unknown>;
-
-				const hpAfter = Number(applyOutput.hpAfter ?? hpBefore);
-				const mpAfter = Number(applyOutput.mpAfter ?? mpBefore);
-				const hpDelta = hpAfter - hpBefore;
-				const mpDelta = mpAfter - mpBefore;
-
-				if (hpDelta !== 0) {
-					mob.statContainer.addModifier(
-						"hp.current" as MobAttrType,
-						ModifierType.DYNAMIC_FIXED,
-						hpDelta,
-						{
-							id: `damage.${damageRequest.areaId}.${mob.runtime.currentFrame}`,
-							name: "damage",
-							type: "system",
-						},
-					);
-				}
-				if (mpDelta !== 0) {
-					mob.statContainer.addModifier(
-						"mp.current" as MobAttrType,
-						ModifierType.DYNAMIC_FIXED,
-						mpDelta,
-						{
-							id: `damage.${damageRequest.areaId}.${mob.runtime.currentFrame}.mp`,
-							name: "damage-mp",
-							type: "system",
-						},
-					);
-				}
-
-				mob.notifyDomainEvent({
-					type: "hit",
-					memberId: mob.id,
-					damage: finalDamage,
-					hp: hpAfter,
-				});
-
-				return {
-					...context,
-					pendingDamageResult: { baseDamage, finalDamage, isFatal, crit },
-				};
-			}),
+				resolveDamageAndApply(mob, session);
+			},
 			反馈伤害结果给施法者: ({ context, event }) => {
 				// Add your action code here
 				// ...
@@ -467,8 +326,8 @@ export const createMobStateMachine = (
 				// ...
 				log.debug(`👹 [${context.owner?.name}] 日志事件`, event);
 			},
-		},
-		guards: {
+			},
+			guards: {
 			存在蓄力阶段: ({ context, event }) => {
 				log.debug(`👹 [${context.owner?.name}] 存在蓄力阶段`, event);
 				// Add your guard condition here
@@ -494,16 +353,15 @@ export const createMobStateMachine = (
 				// Add your guard condition here
 				return true;
 			},
-		},
-	}).createMachine({
+			},
+		})
+		.createMachine({
 		id: machineId,
 		context: {
 			isAlive: true,
 			createdAtFrame: mob.runtime.currentFrame,
 			owner: mob,
-			pendingDamage: null,
-			pendingHitResult: null,
-			pendingDamageResult: null,
+			hitSession: null,
 		},
 		initial: "存活",
 		entry: {
@@ -567,6 +425,9 @@ export const createMobStateMachine = (
 							},
 							{
 								type: "发送属性修改事件给自己",
+							},
+							{
+								type: "清空受击缓存",
 							},
 						],
 					},
@@ -789,5 +650,5 @@ export const createMobStateMachine = (
 				description: "不可操作，中断当前行为",
 			},
 		},
-	});
+		});
 };

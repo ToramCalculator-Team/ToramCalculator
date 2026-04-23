@@ -14,6 +14,7 @@ import { useEngine } from "../../thread/EngineContext";
 import type { EngineRPC } from "../../thread/protocol";
 import type { MemberSerializeData } from "./Member";
 import { type DataStorage, isDataStorageType } from "./runtime/StatContainer/StatContainer";
+import { Icons } from "~/components/icons";
 
 // ============================== 组件实现 ==============================
 
@@ -590,7 +591,7 @@ export function MemberStatusPanel(props: { controllerId?: string; member: Access
 		>
 			{/* 基础信息 */}
 			<Button onClick={() => setDisplayDetail(!displayDetail())} level="secondary" class="w-fit h-fit">
-				{props.member()?.name || "未知成员"}
+				<Icons.Outline.InfoCircle />
 			</Button>
 
 			<Dialog state={displayDetail()} setState={setDisplayDetail} title="成员详情">
