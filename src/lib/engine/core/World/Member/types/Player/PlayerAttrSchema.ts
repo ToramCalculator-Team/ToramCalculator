@@ -1563,7 +1563,7 @@ export const PlayerAttrSchemaGenerator = (character: CharacterWithRelations): Pl
 			expression: `${character.int}`,
 		},
 		vit: {
-			displayName: "体力",
+			displayName: "耐力",
 			expression: `${character.vit}`,
 		},
 		agi: {

@@ -54,7 +54,7 @@ export const Button = (props: MyButtonProps) => {
 		<button
 			{...props}
 			type={props.type ?? "button"}
-			class={` ${props.class ? `${defaultButtonClassNames()} ${props.class}` : defaultButtonClassNames()}`}
+			class={` ${defaultButtonClassNames()} ${props.class} `}
 		>
 			{config().icon}
 			{config().children}

@@ -1,5 +1,6 @@
 import { defaultData } from "@db/defaultData";
-import { type Character, insertCharacter } from "@db/generated/repositories/character";
+import { type Character, insertCharacter, updateCharacter } from "@db/generated/repositories/character";
+import { insertCharacterSkill } from "@db/generated/repositories/character_skill";
 import {
 	insertPlayer,
 	type Player,
@@ -7,6 +8,8 @@ import {
 	selectPlayerById,
     updatePlayer,
 } from "@db/generated/repositories/player";
+import { insertSkill } from "@db/generated/repositories/skill";
+import { insertSkillVariant } from "@db/generated/repositories/skill_variant";
 import { insertStatistic } from "@db/generated/repositories/statistic";
 import type { Account } from "@db/repositories/account";
 import { getDB } from "@db/repositories/database";
@@ -55,12 +58,44 @@ export const createCharacter = async (): Promise<Character> => {
 			},
 			trx,
 		);
+		const skillStatistic = await insertStatistic(
+			{
+				...defaultData.statistic,
+				id: createId(),
+			},
+			trx,
+		);
+		const skill = await insertSkill(
+			{
+				...defaultData.skill,
+				id: createId(),
+				statisticId: skillStatistic.id,
+			},
+			trx,
+		);
+		const skillVariant = await insertSkillVariant(
+			{
+				...defaultData.skill_variant,
+				id: createId(),
+				belongToskillId: skill.id,
+			},
+			trx,
+		);
 		const character = await insertCharacter(
 			{
 				...defaultData.character,
 				id: createId(),
 				belongToPlayerId: player.id,
 				statisticId: characterStatistic.id,
+			},
+			trx,
+		);
+		const character_skill = await insertCharacterSkill(
+			{
+				...defaultData.character_skill,
+				id: createId(),
+				belongToCharacterId: character.id,
+				templateId: skill.id,
 			},
 			trx,
 		);

@@ -606,7 +606,11 @@ const dictionary: Dictionary = {
 				consumable: "消耗品",
 				cooking: "料理",
 				registlet: "雷吉斯托環",
-				skill: "技能",
+				skill: {
+					selfName: "技能",
+					treeSkill: "技能樹",
+					starGem: "星石",
+				},
 				ability: "能力值",
 				base: "基本配置",
 			}
@@ -3072,6 +3076,16 @@ const dictionary: Dictionary = {
 					formFieldDescription: ""
 				},
 				createdByAccountId: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				subscriptions: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				thresholdWatchers: {
 					key: "",
 					tableFieldDescription: "",
 					formFieldDescription: ""

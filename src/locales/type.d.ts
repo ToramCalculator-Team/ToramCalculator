@@ -240,7 +240,11 @@ export interface Dictionary {
 				consumable: string;
 				cooking: string;
 				registlet: string;
-				skill: string;
+				skill: {
+					selfName: string;
+					treeSkill: string;
+					starGem: string;
+				};
 				ability: string;
 				base: string;
 			};

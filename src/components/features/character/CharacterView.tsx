@@ -61,16 +61,6 @@ export function CharacterView(props: CharacterViewProps): JSX.Element {
 		scene.fogStart = 16;
 		scene.fogEnd = 22;
 		scene.fogColor = new Color3(0.8, 0.8, 0.8);
-		// 测试模式配置函数
-		// function testModelOpen() {
-		//   // 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
-		//   void scene.debugLayer.show({
-		//     // embedMode: true
-		//   });
-		//   // 世界坐标轴显示
-		//   new AxesViewer(scene, 0.1);
-		// }
-		// testModelOpen();
 
 		// 摄像机
 		camera = new ArcRotateCamera("Camera", 1.55, 1.2, 7, new Vector3(0, 1, 0), scene);
@@ -164,7 +154,7 @@ export function CharacterView(props: CharacterViewProps): JSX.Element {
 	});
 
 	return (
-		<div class="CharacterView relative hidden w-full flex-1 h-48 overflow-hidden portrait:block">
+		<div class="CharacterView relative hidden w-full flex-1 h-48 flex-none overflow-hidden portrait:block">
 			<canvas ref={setCanvas} class="border-dividing-color block h-full w-full rounded-md border">
 				当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
 			</canvas>

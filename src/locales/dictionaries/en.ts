@@ -512,7 +512,11 @@ const dictionary: Dictionary = {
 				consumable: "Consumable",
 				cooking: "Cooking",
 				registlet: "Registlet",
-				skill: "Skill",
+				skill: {
+					selfName: "Skill",
+					treeSkill: "Tree Skill",
+					starGem: "Star Gem",
+				},
 				ability: "Ability",
 				base: "Base",
 			}
@@ -3004,6 +3008,16 @@ const dictionary: Dictionary = {
 					formFieldDescription: ""
 				},
 				createdByAccountId: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				subscriptions: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				thresholdWatchers: {
 					key: "",
 					tableFieldDescription: "",
 					formFieldDescription: ""

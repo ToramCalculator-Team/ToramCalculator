@@ -609,7 +609,11 @@ const dictionary: Dictionary = {
 				consumable: "コンシューム",
 				cooking: "コック",
 				registlet: "レジストルト",
-				skill: "スキル",
+				skill: {
+					selfName: "スキル",
+					treeSkill: "ツリースキル",
+					starGem: "スタージェム",
+				},
 				ability: "ステータス",
 				base: "ベース",
 			}
@@ -3094,6 +3098,16 @@ const dictionary: Dictionary = {
 					formFieldDescription: ""
 				},
 				createdByAccountId: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				subscriptions: {
+					key: "",
+					tableFieldDescription: "",
+					formFieldDescription: ""
+				},
+				thresholdWatchers: {
 					key: "",
 					tableFieldDescription: "",
 					formFieldDescription: ""

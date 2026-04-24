@@ -12,8 +12,6 @@ import type { PlayerSpecialWithRelations } from "@db/generated/repositories/play
 import type { PlayerWeaponWithRelations } from "@db/generated/repositories/player_weapon";
 import type { TeamWithRelations } from "@db/generated/repositories/team";
 import type { character, DB } from "@db/generated/zod";
-import { getDB } from "@db/repositories/database";
-import type { CharacterPersonalityType } from "@db/schema/enums";
 import { useNavigate, useParams } from "@solidjs/router";
 import type { VisibilityState } from "@tanstack/solid-table";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
@@ -22,6 +20,7 @@ import {
 	createMemo,
 	createResource,
 	createSignal,
+	For,
 	on,
 	onCleanup,
 	onMount,
@@ -35,9 +34,9 @@ import { Sheet } from "~/components/containers/sheet";
 import { Button } from "~/components/controls/button";
 import { Input } from "~/components/controls/input";
 import { LoadingBar } from "~/components/controls/loadingBar";
-import { RangeInput } from "~/components/controls/range";
 import { Select } from "~/components/controls/select";
 import { VirtualTable } from "~/components/dataDisplay/virtualTable";
+import { AbiPanel } from "~/components/features/character/AbiPanel";
 import { CharacterView } from "~/components/features/character/CharacterView";
 import { EquipmentPanel, type EquipmentSlot } from "~/components/features/character/EquipmentPanel";
 import { Icons } from "~/components/icons";
@@ -270,12 +269,11 @@ export default function CharactePage() {
 
 	// 响应式订阅当前表的行数据（如果 dataConfig 声明了 liveQuery）。
 	// 切换 wikiStore.type 时，createEffect 内部会自动退订旧订阅、订阅新表。
-	const liveTableRows = createLiveKyselyQuery(async () => {
+	const liveTableRows = createLiveKyselyQuery((db) => {
 		const cfg = dataConfig();
 		if (!cfg) return null;
 		const liveQueryBuilder = cfg(dictionary).dataFetcher.liveQuery;
 		if (!liveQueryBuilder) return null;
-		const db = await getDB();
 		return liveQueryBuilder(db);
 	});
 
@@ -323,6 +321,7 @@ export default function CharactePage() {
 								transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
 								class="CharacterPage relative flex h-full w-full flex-col overflow-hidden"
 							>
+								{/* 角色选择器 */}
 								<div class={`Title w-full flex gap-2`}>
 									<Select
 										value={character().name}
@@ -410,7 +409,7 @@ export default function CharactePage() {
 													textAlign="left"
 													class="flex-none landscape:w-full"
 												>
-													{dictionary().ui.character.tabs.skill}
+													{dictionary().ui.character.tabs.skill.selfName}
 												</Button>
 												<Button
 													onClick={() => setActiveTab("ability")}
@@ -478,124 +477,84 @@ export default function CharactePage() {
 
 												{/* 能力值版块 */}
 												<Show when={activeTab() === "ability"}>
-													<div class="AbilityConfig flex flex-col gap-2">
-														<div class="Level flex flex-col gap-2">
-															<div class="LevelLabel">{dictionary().db.character.fields.lv.key}</div>
-															<RangeInput
-																value={character().lv}
-																setValue={(value) => {
-																	queueCharacterPatch({
-																		lv: value,
-																	});
-																}}
-																min={1}
-																max={300}
-																showSlider={false}
-															/>
-														</div>
-														<div class="Ability flex flex-col gap-2">
-															<div class="AbilityLabel">ABI</div>
-															<div class="AbilityValueGroup flex flex-col gap-2">
-																<div class="Str flex items-center gap-2">
-																	<div class="StrLabel">{dictionary().db.character.fields.str.key}</div>
-																	<RangeInput
-																		value={character().str}
-																		setValue={(value) => {
-																			queueCharacterPatch({
-																				str: value,
-																			});
-																		}}
-																		min={1}
-																	/>
-																</div>
-																<div class="Int flex items-center gap-2">
-																	<div class="IntLabel">{dictionary().db.character.fields.int.key}</div>
-																	<RangeInput
-																		value={character().int}
-																		setValue={(value) => {
-																			queueCharacterPatch({
-																				int: value,
-																			});
-																		}}
-																		min={1}
-																	/>
-																</div>
-																<div class="Vit flex items-center gap-2">
-																	<div class="VitLabel">{dictionary().db.character.fields.vit.key}</div>
-																	<RangeInput
-																		value={character().vit}
-																		setValue={(value) => {
-																			queueCharacterPatch({
-																				vit: value,
-																			});
-																		}}
-																		min={1}
-																	/>
-																</div>
-																<div class="Agi flex items-center gap-2">
-																	<div class="AgiLabel">{dictionary().db.character.fields.agi.key}</div>
-																	<RangeInput
-																		value={character().agi}
-																		setValue={(value) => {
-																			queueCharacterPatch({
-																				agi: value,
-																			});
-																		}}
-																		min={1}
-																	/>
-																</div>
-																<div class="Dex flex items-center gap-2">
-																	<div class="DexLabel">{dictionary().db.character.fields.dex.key}</div>
-																	<RangeInput
-																		value={character().dex}
-																		setValue={(value) => {
-																			queueCharacterPatch({
-																				dex: value,
-																			});
-																		}}
-																		min={1}
-																	/>
-																</div>
+													<AbiPanel
+														slots={{
+															lv: character().lv,
+															str: character().str,
+															int: character().int,
+															vit: character().vit,
+															agi: character().agi,
+															dex: character().dex,
+															personalityType: character().personalityType,
+															personalityValue: character().personalityValue,
+														}}
+														onChangeRequested={async (slot, value) => {
+															await commitCharacterPatch({
+																[slot]: value,
+															});
+														}}
+													/>
+												</Show>
+
+												{/* 技能 */}
+												<Show when={activeTab() === "skill"}>
+													<div class="SkillConfig flex flex-col gap-2">
+														<div class="SkillTree flex flex-col">
+															<div class="SkillConfigLabel flex justify-between">
+																<span class="font-bold">{dictionary().ui.character.tabs.skill.treeSkill}</span>
+																<Button
+																	icon={<Icons.Outline.DocmentAdd />}
+																	level="quaternary"
+																	onClick={() => {
+																		console.log("add skill");
+																	}}
+																/>
 															</div>
+															<For each={character().skills.filter((skill) => !skill.isStarGem)}>
+																{(skill, index) => (
+																	<button
+																		type="button"
+																		class={`SkillItem flex flex-col gap-2 py-3 ${index() === character().skills.length - 1 ? "" : "border-b border-dividing-color"}`}
+																	>
+																		<div class="w-full h-full flex items-center">
+																			<div
+																				class={`Label w-full flex gap-1 px-4 py-3 border-l-2 ${
+																					{
+																						0: "border-brand-color-1st",
+																						1: "border-brand-color-2nd",
+																						2: "border-brand-color-3rd",
+																						3: "border-brand-color-4th",
+																					}[index() % 4]
+																				}`}
+																			>
+																				{skill.template.name}
+																			</div>
+																			<div class="flex-none w-14 px-4 py-3">
+																				<Icons.Outline.Edit />
+																			</div>
+																		</div>
+																	</button>
+																)}
+															</For>
 														</div>
-														<div class="PersonalityType flex flex-col gap-2">
-															<div class="PersonalityTypeLabel">
-																{dictionary().db.character.fields.personalityType.key}
+														<div class="StarGem flex flex-col">
+															<div class="StarGemLabel flex justify-between">
+																<span class="font-bold">{dictionary().ui.character.tabs.skill.starGem}</span>
+																<Button
+																	icon={<Icons.Outline.DocmentAdd />}
+																	level="quaternary"
+																	onClick={() => {
+																		console.log("add skill");
+																	}}
+																/>
 															</div>
-															<Select
-																value={character().personalityType}
-																setValue={async (value) => {
-																	await commitCharacterPatch({
-																		personalityType: value as CharacterPersonalityType,
-																	});
-																}}
-																options={[
-																	{
-																		label: dictionary().db.character.fields.personalityType.enumMap.None,
-																		value: "None",
-																	},
-																	{ label: dictionary().db.character.fields.personalityType.enumMap.Luk, value: "Luk" },
-																	{ label: dictionary().db.character.fields.personalityType.enumMap.Cri, value: "Cri" },
-																	{ label: dictionary().db.character.fields.personalityType.enumMap.Tec, value: "Tec" },
-																	{ label: dictionary().db.character.fields.personalityType.enumMap.Men, value: "Men" },
-																]}
-															/>
-														</div>
-														<div class="PersonalityValue flex flex-col gap-2">
-															<div class="PersonalityValueLabel">
-																{dictionary().db.character.fields.personalityValue.key}
-															</div>
-															<RangeInput
-																value={character().personalityValue}
-																setValue={(value) => {
-																	queueCharacterPatch({
-																		personalityValue: value,
-																	});
-																}}
-																min={1}
-																max={255}
-																showSlider={false}
-															/>
+															<For each={character().skills.filter((skill) => skill.isStarGem)}>
+																{(skill) => (
+																	<div class="SkillItem flex flex-col gap-2">
+																		<div class="SkillItemLabel">{skill.template.name}</div>
+																	</div>
+																)}
+															</For>
 														</div>
 													</div>
 												</Show>

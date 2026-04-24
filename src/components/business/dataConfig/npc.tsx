@@ -32,8 +32,9 @@ export const NPC_DATA_CONFIG: TableDataConfig<npc> = (dictionary) => ({
 		columnsDef: [
 			{ accessorKey: "id", cell: (info) => info.getValue(), size: 200 },
 			{ accessorKey: "name", cell: (info) => info.getValue(), size: 200 },
+			{ accessorKey: "zoneId", cell: (info) => info.getValue(), size: 200 },
 		],
-		hiddenColumnDef: [],
+		hiddenColumnDef: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 		defaultSort: { field: "name", desc: false },
 		tdGenerator: {},
 	},

@@ -164,9 +164,9 @@ export const defaultData: DB = {
 	},
 	character_skill: {
 		id: "defaultCharacterSkillId",
-		lv: 0,
+		lv: 1,
 		isStarGem: false,
-		templateId: "",
+		templateId: "defaultSkillId",
 		belongToCharacterId: "defaultCharacterId",
 	},
 	combo: {
@@ -452,7 +452,7 @@ export const defaultData: DB = {
 		mpCost: "100",
 		description: "",
 		details: null,
-		belongToskillId: "",
+		belongToskillId: "defaultSkillId",
 	},
 	special: {
 		name: "默认特殊",
