@@ -28,6 +28,7 @@ import {
 	type JSX,
 	on,
 	onCleanup,
+	onMount,
 	Show,
 	useContext,
 } from "solid-js";
@@ -58,7 +59,7 @@ export interface VirtualTableProps<T extends Record<string, unknown>> {
 		[K in keyof T]: (props: { cell: Cell<T, unknown>; dic: Dic<T> }) => JSX.Element;
 	}>;
 	// 默认排序
-	defaultSort: { id: keyof T; desc: boolean };
+	defaultSort: { field: keyof T; desc: boolean };
 	// 全局过滤字符串
 	globalFilterStr: Accessor<string>;
 	// 字典
@@ -72,6 +73,7 @@ export interface VirtualTableProps<T extends Record<string, unknown>> {
 }
 
 export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTableProps<T>) {
+	// 行拖拽阈值
 	const ROW_DRAG_THRESHOLD = 3;
 	//   const start = performance.now();
 	//   console.log("virtualTable start", start);
@@ -103,7 +105,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 	// 排序状态提取到外部 signal。这样即便 Table 实例因为 data 变更被重建，
 	// 新 Table 的 state 仍然读取同一个 signal，sorting 不会被重置为 defaultSort。
 	const [sorting, setSorting] = createSignal<SortingState>([
-		{ id: props.defaultSort.id as string, desc: props.defaultSort.desc },
+		{ id: props.defaultSort.field as string, desc: props.defaultSort.desc },
 	]);
 
 	// 稳定的"空列可见性"引用。getter 不能每次返回新 `{}`，否则 Tanstack
@@ -142,6 +144,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 		on(
 			() => currentRows(),
 			() => {
+				console.log("重建Table实例");
 				setTable(
 					createSolidTable<T>({
 						data: currentRows(),
@@ -263,6 +266,10 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 		props.rowHandleClick(data);
 	};
 
+	onMount(() =>{
+		console.log("VirtualTable onMount");
+	})
+
 	onCleanup(() => {
 		clearRowDragListeners();
 		clearSuppressedClickReset();
@@ -271,6 +278,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 
 	return (
 		<>
+		{/* 列可见性控制组件 */}
 			<Presence exitBeforeEnter>
 				<Show when={columnVisibleIsOpen()}>
 					<Motion.div
@@ -345,6 +353,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 					</Motion.div>
 				</Show>
 			</Presence>
+		{/* 表格容器 */}
 			<OverlayScrollbarsComponent
 				element="div"
 				options={{ scrollbars: { autoHide: "scroll" } }}
@@ -352,6 +361,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 				defer
 			>
 				<div class="TableContainer flex h-full flex-col">
+					{/* 表头 */}
 					<div class={`TableHead z-10 flex w-fit`}>
 						<For each={table()?.getHeaderGroups()}>
 							{(headerGroup) => (
@@ -396,6 +406,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 							)}
 						</For>
 					</div>
+					{/* 表格主体 */}
 					<OverlayScrollbarsComponent
 						element="div"
 						options={{ scrollbars: { autoHide: "scroll" } }}
@@ -435,6 +446,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 												type="button"
 												ref={(el) => {
 													el.setAttribute("data-index", virtualRow.index.toString());
+													// tableContainer().measureElement(el);
 												}}
 												style={{
 													position: "absolute",

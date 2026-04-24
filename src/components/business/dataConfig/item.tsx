@@ -46,7 +46,7 @@ export const ITEM_DATA_CONFIG: TableDataConfig<item> = (dictionary) => ({
 			{ accessorKey: "details", cell: (info) => info.getValue(), size: 150 },
 		],
 		hiddenColumnDef: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
-		defaultSort: { id: "id", desc: false },
+		defaultSort: { field: "id", desc: false },
 		tdGenerator: {},
 	},
 	form: {

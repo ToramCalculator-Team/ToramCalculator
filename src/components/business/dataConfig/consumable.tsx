@@ -137,7 +137,7 @@ export const CONSUMABLE_DATA_CONFIG: TableDataConfig<ConsumableItem, consumable>
 			{ accessorKey: "effects", cell: (info) => info.getValue(), size: 150 },
 		],
 		hiddenColumnDef: ["itemId"],
-		defaultSort: { id: "name", desc: false },
+		defaultSort: { field: "name", desc: false },
 		tdGenerator: {},
 	},
 	form: {

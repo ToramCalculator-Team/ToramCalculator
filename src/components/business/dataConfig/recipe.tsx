@@ -34,7 +34,7 @@ export const RECIPE_DATA_CONFIG: TableDataConfig<recipe> = (dictionary) => ({
 	table: {
 		columnsDef: [],
 		hiddenColumnDef: [],
-		defaultSort: { id: "id", desc: false },
+		defaultSort: { field: "id", desc: false },
 		tdGenerator: {},
 	},
 	form: {

@@ -54,7 +54,7 @@ export const CHARACTER_DATA_CONFIG: TableDataConfig<character> = (dictionary) =>
 			modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
 		},
 		defaultSort: {
-			id: "name",
+			field: "name",
 			desc: false,
 		},
 	},

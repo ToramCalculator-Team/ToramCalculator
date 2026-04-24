@@ -145,7 +145,7 @@ export const OPTION_DATA_CONFIG: TableDataConfig<OptionItem, option> = (dictiona
 		],
 		hiddenColumnDef: ["itemId"],
 		defaultSort: {
-			id: "name",
+			field: "name",
 			desc: false,
 		},
 		tdGenerator: {

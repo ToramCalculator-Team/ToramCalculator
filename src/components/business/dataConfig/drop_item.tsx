@@ -26,7 +26,7 @@ export const DROP_ITEM_DATA_CONFIG: TableDataConfig<drop_item> = (dictionary) =>
 	table: {
 		columnsDef: [],
 		hiddenColumnDef: [],
-		defaultSort: { id: "id", desc: false },
+		defaultSort: { field: "id", desc: false },
 		tdGenerator: {},
 	},
 	form: {

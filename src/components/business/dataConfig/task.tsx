@@ -61,7 +61,7 @@ export const TASK_DATA_CONFIG: TableDataConfig<task> = (dictionary) => ({
 			},
 		],
 		hiddenColumnDef: ["id", "createdByAccountId", "updatedByAccountId", "statisticId", "belongToNpcId"],
-		defaultSort: { id: "name", desc: false },
+		defaultSort: { field: "name", desc: false },
 		tdGenerator: {},
 	},
 	form: {

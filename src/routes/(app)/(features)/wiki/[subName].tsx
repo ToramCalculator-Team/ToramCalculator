@@ -1,8 +1,18 @@
 import { defaultData } from "@db/defaultData";
 import type { DB } from "@db/generated/zod/index";
-import { getDB } from "@db/repositories/database";
 import { A, useNavigate, useParams } from "@solidjs/router";
-import { createEffect, createMemo, createSignal, For, type JSX, on, onCleanup, onMount, Show, useContext } from "solid-js";
+import {
+	createEffect,
+	createMemo,
+	createSignal,
+	For,
+	type JSX,
+	on,
+	onCleanup,
+	onMount,
+	Show,
+	useContext,
+} from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { DATA_CONFIG } from "~/components/business/data-config";
 import { Dialog } from "~/components/containers/dialog";
@@ -31,15 +41,16 @@ export default function WikiSubPage() {
 	const [wikiSelectorIsOpen, setWikiSelectorIsOpen] = createSignal(false);
 
 	const dataConfig = createMemo(() => DATA_CONFIG[wikiStore.type]);
+	const wikiConfig = createMemo(() => wikiPageConfig[wikiStore.type]);
 
 	// 响应式订阅当前表的行数据（如果 dataConfig 声明了 liveQuery）。
-	// 切换 wikiStore.type 时，createEffect 内部会自动退订旧订阅、订阅新表。
-	const liveTableRows = createLiveKyselyQuery(async () => {
+	// queryFn 必须同步读取 signal，这样 liveQuery 内部的 createEffect 才能追踪依赖，
+	// 切换 wikiStore.type 时自动退订旧订阅、订阅新表。
+	const liveTableRows = createLiveKyselyQuery((db) => {
 		const cfg = dataConfig();
 		if (!cfg) return null;
 		const liveQueryBuilder = cfg(dictionary).dataFetcher.liveQuery;
 		if (!liveQueryBuilder) return null;
-		const db = await getDB();
 		return liveQueryBuilder(db);
 	});
 
@@ -53,6 +64,12 @@ export default function WikiSubPage() {
 					const tabkeName = params.subName as keyof DB;
 					// 初始化页面状态
 					setWikiStore("type", tabkeName);
+					// 重置表状态，避免旧表的过滤/列可见性泄漏到新表
+					setWikiStore("table", {
+						globalFilterStr: "",
+						columnVisibility: {},
+						configSheetIsOpen: false,
+					});
 					setIsMainContentFullscreen(true);
 					setActiveBannerIndex(0);
 				} else {
@@ -150,6 +167,7 @@ export default function WikiSubPage() {
 	return (
 		<Show when={dataConfig()}>
 			{(validDataConfig) => {
+				// console.log("syncState", JSON.stringify(store.database.tableSyncState, null, 2), "wikiStore.type", JSON.stringify(wikiStore.type), "validDataConfig", validDataConfig());
 				return (
 					<Show
 						when={store.database.tableSyncState[wikiStore.type]}
@@ -312,60 +330,42 @@ export default function WikiSubPage() {
 									/>
 								</div>
 								<Show
-									when={wikiPageConfig[wikiStore.type]?.mainContent}
-									fallback={(() => {
-										const cfg = validDataConfig()(dictionary);
-										// 所有 dataConfig 都提供了 liveQuery，直接走订阅路径
-										return VirtualTable({
-											measure: cfg.table.measure,
-											data: liveTableRows.rows,
-											dataLoading: () => liveTableRows.status() === "loading",
-											columnsDef: cfg.table.columnsDef,
-											hiddenColumnDef: cfg.table.hiddenColumnDef,
-											tdGenerator: cfg.table.tdGenerator,
-											defaultSort: cfg.table.defaultSort,
-											dictionary: cfg.dictionary,
-											globalFilterStr: () => wikiStore.table.globalFilterStr,
-											rowHandleClick: (data) =>
-												setStore("pages", "cardGroup", store.pages.cardGroup.length, { type: wikiStore.type, data }),
-											columnVisibility: wikiStore.table.columnVisibility,
-											onColumnVisibilityChange: (updater) => {
-												if (typeof updater === "function") {
-													setWikiStore("table", {
-														columnVisibility: updater(wikiStore.table.columnVisibility),
-													});
-												}
-											},
-										});
-									})()}
-									// 用jsx方式调用时不会刷新内容，不知道为什么
-									// fallback={
-									//   <VirtualTable<DB[typeof wikiStore.type]>
-									//     primaryKeyField={getPrimaryKeyFields(wikiStore.type)[0]}
-									//     dataFetcher={async () => (await repositoryMethods[wikiStore.type].selectAll?.()) ?? []}
-									//     columnsDef={validDataConfig().table.columnsDef}
-									//     hiddenColumnDef={validDataConfig().table.hiddenColumnDef}
-									//     tdGenerator={validDataConfig().table.tdGenerator}
-									//     defaultSort={validDataConfig().table.defaultSort}
-									//     dictionary={dictionary().db[wikiStore.type]}
-									//     globalFilterStr={() => wikiStore.table.globalFilterStr}
-									//     rowHandleClick={(id) =>
-									//       setStore("pages", "cardGroup", (pre) => [...pre, { type: wikiStore.type, id }])
-									//     }
-									//     columnVisibility={wikiStore.table.columnVisibility}
-									//     onColumnVisibilityChange={(updater) => {
-									//       if (typeof updater === "function") {
-									//         setWikiStore("table", {
-									//           columnVisibility: updater(wikiStore.table.columnVisibility),
-									//         });
-									//       }
-									//     }}
-									//   />
-									// }
+									when={liveTableRows.status() === "ready"}
 								>
-									{wikiPageConfig[wikiStore.type]?.mainContent?.(dictionary(), (data) =>
-										setStore("pages", "cardGroup", (pre) => [...pre, { type: wikiStore.type, data }]),
-									)}
+									<Show when={wikiStore.type}>
+										{(type) => {
+											const cfg = validDataConfig()(dictionary);
+											if (!cfg) return null;
+
+											return (
+												<VirtualTable
+													measure={cfg.table.measure}
+													data={liveTableRows.rows}
+													dataLoading={() => false}
+													columnsDef={cfg.table.columnsDef}
+													hiddenColumnDef={cfg.table.hiddenColumnDef}
+													tdGenerator={cfg.table.tdGenerator}
+													defaultSort={cfg.table.defaultSort}
+													dictionary={cfg.dictionary}
+													globalFilterStr={() => wikiStore.table.globalFilterStr}
+													rowHandleClick={(data) =>
+														setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+															type: wikiStore.type,
+															data,
+														})
+													}
+													columnVisibility={wikiStore.table.columnVisibility}
+													onColumnVisibilityChange={(updater) => {
+														if (typeof updater === "function") {
+															setWikiStore("table", {
+																columnVisibility: updater(wikiStore.table.columnVisibility),
+															});
+														}
+													}}
+												/>
+											);
+										}}
+									</Show>
 								</Show>
 							</div>
 							<Presence exitBeforeEnter>

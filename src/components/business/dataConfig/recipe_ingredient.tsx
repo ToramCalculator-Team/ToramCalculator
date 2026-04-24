@@ -29,7 +29,7 @@ export const RECIPE_INGREDIENT_DATA_CONFIG: TableDataConfig<recipe_ingredient> =
 			{ accessorKey: "itemId", cell: (info) => info.getValue(), size: 200 },
 		],
 		hiddenColumnDef: [],
-		defaultSort: { id: "id", desc: false },
+		defaultSort: { field: "id", desc: false },
 		tdGenerator: {},
 	},
 	form: {

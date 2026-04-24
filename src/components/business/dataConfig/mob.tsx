@@ -223,7 +223,7 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 			},
 		],
 		hiddenColumnDef: ["id", "type", "actions", "createdByAccountId", "updatedByAccountId"],
-		defaultSort: { id: "experience", desc: true },
+		defaultSort: { field: "experience", desc: true },
 		tdGenerator: {
 			initialElement: (props) =>
 				({

@@ -212,7 +212,7 @@ export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill> = (dic
 		],
 		hiddenColumnDef: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
 		defaultSort: {
-			id: "name",
+			field: "name",
 			desc: false,
 		},
 		tdGenerator: {},

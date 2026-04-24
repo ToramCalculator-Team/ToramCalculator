@@ -168,7 +168,7 @@ export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem, weapon> = (dictiona
 		],
 		hiddenColumnDef: ["itemId"],
 		defaultSort: {
-			id: "name",
+			field: "name",
 			desc: false,
 		},
 		tdGenerator: {

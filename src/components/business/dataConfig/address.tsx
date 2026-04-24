@@ -38,7 +38,7 @@ export const ADDRESS_DATA_CONFIG: TableDataConfig<address> = (dictionary) => ({
 			{ accessorKey: "posY", cell: (info) => info.getValue(), size: 160 },
 		],
 		hiddenColumnDef: ["id"],
-		defaultSort: { id: "name", desc: false },
+		defaultSort: { field: "name", desc: false },
 		tdGenerator: {},
 	},
 	form: {

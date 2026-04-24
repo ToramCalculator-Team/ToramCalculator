@@ -128,7 +128,7 @@ export const MATERIAL_DATA_CONFIG: TableDataConfig<MaterialItem, material> = (di
 			{ accessorKey: "ptValue", cell: (info) => info.getValue(), size: 100 },
 		],
 		hiddenColumnDef: ["itemId"],
-		defaultSort: { id: "name", desc: false },
+		defaultSort: { field: "name", desc: false },
 		tdGenerator: {},
 	},
 	form: {

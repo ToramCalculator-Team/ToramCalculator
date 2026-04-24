@@ -41,7 +41,7 @@ export const ACTIVITY_DATA_CONFIG: TableDataConfig<activity> = (dictionary) => (
 			},
 		],
 		hiddenColumnDef: ["id"],
-		defaultSort: { id: "name", desc: false },
+		defaultSort: { field: "name", desc: false },
 		tdGenerator: {},
 	},
 	form: {

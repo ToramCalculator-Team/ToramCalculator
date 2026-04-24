@@ -43,7 +43,7 @@ export const PLAYER_WEAPON_DATA_CONFIG: TableDataConfig<player_weapon> = (dictio
 		],
 		hiddenColumnDef: ["id", "belongToPlayerId"],
 		defaultSort: {
-			id: "type",
+			field: "type",
 			desc: false,
 		},
 		tdGenerator: {

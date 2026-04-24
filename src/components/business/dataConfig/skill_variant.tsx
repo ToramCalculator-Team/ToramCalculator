@@ -90,7 +90,7 @@ export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = (dictio
 			},
 		],
 		hiddenColumnDef: ["id", "belongToskillId"],
-		defaultSort: { id: "id", desc: false },
+		defaultSort: { field: "id", desc: false },
 		tdGenerator: {},
 	},
 	form: {

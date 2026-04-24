@@ -63,7 +63,7 @@ export const ZONE_DATA_CONFIG: TableDataConfig<zone> = (dictionary) => ({
 			},
 		],
 		hiddenColumnDef: ["id", "activityId", "addressId", "createdByAccountId", "updatedByAccountId", "statisticId"],
-		defaultSort: { id: "name", desc: false },
+		defaultSort: { field: "name", desc: false },
 		tdGenerator: {},
 	},
 	form: {

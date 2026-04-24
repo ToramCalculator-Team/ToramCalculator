@@ -34,7 +34,7 @@ export const NPC_DATA_CONFIG: TableDataConfig<npc> = (dictionary) => ({
 			{ accessorKey: "name", cell: (info) => info.getValue(), size: 200 },
 		],
 		hiddenColumnDef: [],
-		defaultSort: { id: "name", desc: false },
+		defaultSort: { field: "name", desc: false },
 		tdGenerator: {},
 	},
 	form: {

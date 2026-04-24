@@ -36,7 +36,7 @@ export const PLAYER_OPTION_DATA_CONFIG: TableDataConfig<player_option> = (dictio
 			{ accessorKey: "belongToPlayerId", cell: (info) => info.getValue(), size: 100 },
 		],
 		hiddenColumnDef: ["id", "belongToPlayerId", "templateId"],
-		defaultSort: { id: "name", desc: false },
+		defaultSort: { field: "name", desc: false },
 		tdGenerator: {
 			modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
 		},

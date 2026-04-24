@@ -133,7 +133,7 @@ export const SPECIAL_DATA_CONFIG: TableDataConfig<SpecialItem, special> = (dicti
 			},
 		],
 		hiddenColumnDef: ["itemId"],
-		defaultSort: { id: "name", desc: false },
+		defaultSort: { field: "name", desc: false },
 		tdGenerator: {
 			modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
 		},

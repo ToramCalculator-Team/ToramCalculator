@@ -129,7 +129,7 @@ export const ARMOR_DATA_CONFIG: TableDataConfig<ArmorItem, armor> = (dictionary)
 			{ accessorKey: "baseAbi", cell: (info) => info.getValue(), size: 100 },
 		],
 		hiddenColumnDef: ["itemId"],
-		defaultSort: { id: "name", desc: false },
+		defaultSort: { field: "name", desc: false },
 		tdGenerator: {
 			modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
 		},
