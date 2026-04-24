@@ -435,7 +435,6 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 												type="button"
 												ref={(el) => {
 													el.setAttribute("data-index", virtualRow.index.toString());
-													tableContainer().measureElement(el);
 												}}
 												style={{
 													position: "absolute",
