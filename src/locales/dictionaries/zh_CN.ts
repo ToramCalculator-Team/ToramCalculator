@@ -612,7 +612,10 @@ const dictionary: Dictionary = {
 					starGem: "星石",
 				},
 				ability: "能力值",
-				base: "基本配置",
+				base: {
+					selfName: "基本配置",
+					name: "名称",
+				},
 			},
 		},
 	},

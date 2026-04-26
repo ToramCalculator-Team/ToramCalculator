@@ -615,7 +615,10 @@ const dictionary: Dictionary = {
 					starGem: "スタージェム",
 				},
 				ability: "ステータス",
-				base: "ベース",
+				base: {
+					selfName: "ベース",
+					name: "名前",
+				},
 			}
 		},
 	},

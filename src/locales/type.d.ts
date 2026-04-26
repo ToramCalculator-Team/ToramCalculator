@@ -246,7 +246,10 @@ export interface Dictionary {
 					starGem: string;
 				};
 				ability: string;
-				base: string;
+				base: {
+					selfName: string;
+					name: string;
+				};
 			};
 		};
 	};

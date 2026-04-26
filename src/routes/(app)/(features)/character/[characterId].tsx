@@ -427,12 +427,13 @@ export default function CharactePage() {
 													textAlign="left"
 													class="flex-none landscape:w-full"
 												>
-													{dictionary().ui.character.tabs.base}
+													{dictionary().ui.character.tabs.base.selfName}
 												</Button>
 											</div>
 										</OverlayScrollbarsComponent>
 										<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:h-full landscape:w-px"></div>
 
+										{/* 配置面板组 */}
 										<div class="Config flex flex-col gap-2 w-full lg:w-[30dvw] lg:flex-none">
 											<OverlayScrollbarsComponent
 												element="div"
@@ -460,7 +461,7 @@ export default function CharactePage() {
 												<Show when={activeTab() === "base"}>
 													<div class="BasicConfig flex flex-col gap-2">
 														<div class="BasicConfigItem flex flex-col gap-2">
-															<div class="BasicConfigItemLabel">角色名称</div>
+															<div class="BasicConfigItemLabel">{dictionary().ui.character.tabs.base.name}</div>
 															<Input
 																type="text"
 																value={character().name}

@@ -518,7 +518,10 @@ const dictionary: Dictionary = {
 					starGem: "Star Gem",
 				},
 				ability: "Ability",
-				base: "Base",
+				base: {
+					selfName: "Base",
+					name: "Name",
+				},
 			}
 		},
 	},
