@@ -1,6 +1,8 @@
 import { defaultData } from "@db/defaultData";
 import type { DB } from "@db/generated/zod/index";
+import { tablefunc } from "@electric-sql/pglite/contrib/tablefunc";
 import { A, useNavigate, useParams } from "@solidjs/router";
+import { copyFile } from "fs";
 import {
 	createEffect,
 	createMemo,
@@ -14,6 +16,7 @@ import {
 	useContext,
 } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
+import { z } from "zod";
 import { DATA_CONFIG } from "~/components/business/data-config";
 import { Dialog } from "~/components/containers/dialog";
 import { Button } from "~/components/controls/button";
@@ -43,17 +46,6 @@ export default function WikiSubPage() {
 	const dataConfig = createMemo(() => DATA_CONFIG[wikiStore.type]);
 	const wikiConfig = createMemo(() => wikiPageConfig[wikiStore.type]);
 
-	// 响应式订阅当前表的行数据（如果 dataConfig 声明了 liveQuery）。
-	// queryFn 必须同步读取 signal，这样 liveQuery 内部的 createEffect 才能追踪依赖，
-	// 切换 wikiStore.type 时自动退订旧订阅、订阅新表。
-	const liveTableRows = createLiveKyselyQuery((db) => {
-		const cfg = dataConfig();
-		if (!cfg) return null;
-		const liveQueryBuilder = cfg(dictionary).dataFetcher.liveQuery;
-		if (!liveQueryBuilder) return null;
-		return liveQueryBuilder(db);
-	});
-
 	// 监听url参数变化, 初始化页面状态
 	createEffect(
 		on(
@@ -62,7 +54,7 @@ export default function WikiSubPage() {
 				console.log("Url参数：", params.subName);
 				if (params.subName && params.subName in defaultData) {
 					const tabkeName = params.subName as keyof DB;
-					// 初始化页面状态
+					// 重置页面状态
 					setWikiStore("type", tabkeName);
 					// 重置表状态，避免旧表的过滤/列可见性泄漏到新表
 					setWikiStore("table", {
@@ -330,23 +322,43 @@ export default function WikiSubPage() {
 									/>
 								</div>
 								<Show
-									when={liveTableRows.status() === "ready"}
+									when={!wikiConfig()}
+									fallback={wikiConfig()?.mainContent(dictionary(), (item) => {
+										console.log(item);
+									})}
 								>
-									<Show when={wikiStore.type}>
-										{(type) => {
-											const cfg = validDataConfig()(dictionary);
-											if (!cfg) return null;
-
-											return (
+									{(_) => {
+										const cfg = () => validDataConfig()(dictionary);
+										if (!cfg()) return null;
+										// 响应式订阅当前表的行数据。
+										// queryFn 必须同步读取 signal，这样 liveQuery 内部的 createEffect 才能追踪依赖，
+										// 切换 wikiStore.type 时自动退订旧订阅、订阅新表。
+										const liveTableRows = createLiveKyselyQuery((db) => {
+											return cfg().dataFetcher.liveQuery?.(db);
+										});
+										return (
+											<Show
+												when={liveTableRows.status() === "ready"}
+												fallback={
+													<Motion.div
+														animate={{ opacity: [0, 1] }}
+														exit={{ opacity: 0 }}
+														transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+														class="LoadingState flex h-full w-full flex-col items-center justify-center gap-3"
+													>
+														<LoadingBar class="w-1/2 min-w-[320px]" />
+														<h1 class="animate-pulse">{liveTableRows.status()}</h1>
+													</Motion.div>
+												}
+											>
 												<VirtualTable
-													measure={cfg.table.measure}
-													data={liveTableRows.rows}
-													dataLoading={() => false}
-													columnsDef={cfg.table.columnsDef}
-													hiddenColumnDef={cfg.table.hiddenColumnDef}
-													tdGenerator={cfg.table.tdGenerator}
-													defaultSort={cfg.table.defaultSort}
-													dictionary={cfg.dictionary}
+													measure={cfg().table.measure}
+													data={() => liveTableRows.rows()}
+													columnsDef={cfg().table.columnsDef}
+													hiddenColumnDef={cfg().table.hiddenColumnDef}
+													tdGenerator={cfg().table.tdGenerator}
+													defaultSort={cfg().table.defaultSort}
+													dictionary={cfg().dictionary}
 													globalFilterStr={() => wikiStore.table.globalFilterStr}
 													rowHandleClick={(data) =>
 														setStore("pages", "cardGroup", store.pages.cardGroup.length, {
@@ -363,9 +375,9 @@ export default function WikiSubPage() {
 														}
 													}}
 												/>
-											);
-										}}
-									</Show>
+											</Show>
+										);
+									}}
 								</Show>
 							</div>
 							<Presence exitBeforeEnter>

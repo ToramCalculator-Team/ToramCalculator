@@ -16,6 +16,7 @@ import { useNavigate, useParams } from "@solidjs/router";
 import type { VisibilityState } from "@tanstack/solid-table";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import {
+	type Accessor,
 	createEffect,
 	createMemo,
 	createResource,
@@ -29,7 +30,7 @@ import {
 } from "solid-js";
 import { Portal } from "solid-js/web";
 import { Motion, Presence } from "solid-motionone";
-import { DATA_CONFIG } from "~/components/business/data-config";
+import { DATA_CONFIG, type TableDataConfig } from "~/components/business/data-config";
 import { Sheet } from "~/components/containers/sheet";
 import { Button } from "~/components/controls/button";
 import { Input } from "~/components/controls/input";
@@ -47,6 +48,7 @@ import { createPreviewConfig, type EngineScenarioData } from "~/lib/engine/core/
 import { StatsRenderer } from "~/lib/engine/core/World/Member/MemberStatusPanel";
 import { createLogger } from "~/lib/Logger";
 import { createLiveKyselyQuery } from "~/lib/liveQuery";
+import type { Dictionary } from "~/locales/type";
 import { setStore, store } from "~/store";
 import { createCharacter } from "./createCharacter";
 
@@ -217,16 +219,58 @@ export default function CharactePage() {
 
 	// 抽屉状态管理
 	const [sheetIsOpen, setSheetIsOpen] = createSignal(false);
+	const [sheetTitle, setSheetTitle] = createSignal("");
 
 	// 选择器（表格）状态管理
-	const [selectorTitle, setSelectorTitle] = createSignal("");
+	const [isSelectorOpen, setIsSelectorOpen] = createSignal(false);
 	const [selectorType, setSelectorType] = createSignal<keyof DB>("player_weapon");
-	const [selectorFilterStr, setSelectorFilterStr] = createSignal("");
 	const [selectorColumnVisibility, setSelectorColumnVisibility] = createSignal<VisibilityState>({});
 	const [selectorPrimaryKey, setSelectorPrimaryKey] = createSignal<string>("");
 
 	// 对应character的字段
-	const [dataSolt, setDataSolt] = createSignal<keyof CharacterWithRelations | null>(null);
+	const [dataSolt, setDataSolt] = createSignal<keyof CharacterWithRelations>("id");
+
+	const EquipmentSelector = <T extends Record<string, unknown>>(
+		dataConfig: TableDataConfig<T>,
+		dictionary: Accessor<Dictionary>,
+		rowClickHandler: (data: T) => void,
+	) => {
+		const cfg = dataConfig(dictionary);
+		if (!cfg) return null;
+
+		// 响应式订阅当前表的行数据（如果 dataConfig 声明了 liveQuery）。
+		// 切换 wikiStore.type 时，createEffect 内部会自动退订旧订阅、订阅新表。
+		const liveTableRows = createLiveKyselyQuery((db) => {
+			if (!cfg) return null;
+			const liveQueryBuilder = cfg.dataFetcher.liveQuery;
+			if (!liveQueryBuilder) return null;
+			return liveQueryBuilder(db);
+		});
+		const [selectorFilterStr, setSelectorFilterStr] = createSignal("");
+
+		return (
+			<>
+				<Input type="text" value={selectorFilterStr()} onInput={(e) => setSelectorFilterStr(e.target.value)} />
+				<VirtualTable
+					measure={cfg.table.measure}
+					data={() => liveTableRows.rows()}
+					columnsDef={cfg.table.columnsDef}
+					hiddenColumnDef={cfg.table.hiddenColumnDef}
+					tdGenerator={cfg.table.tdGenerator}
+					defaultSort={cfg.table.defaultSort}
+					dictionary={cfg.dictionary}
+					globalFilterStr={selectorFilterStr}
+					rowHandleClick={rowClickHandler}
+					columnVisibility={selectorColumnVisibility()}
+					onColumnVisibilityChange={(updater) => {
+						if (typeof updater === "function") {
+							setSelectorColumnVisibility(updater(selectorColumnVisibility()));
+						}
+					}}
+				/>
+			</>
+		);
+	};
 
 	const equipmentSlotConfig: Record<EquipmentSlot, keyof DB> = {
 		weaponId: "player_weapon",
@@ -236,24 +280,29 @@ export default function CharactePage() {
 		specialId: "player_special",
 	};
 
+	// 打开装备选择器
 	const openEquipmentPicker = (slot: EquipmentSlot) => {
+		// 将抽屉内容设置为选择器
+		setIsSelectorOpen(true);
 		setDataSolt(slot);
 		const tableType = equipmentSlotConfig[slot];
 		const primaryKey = getPrimaryKeys(tableType)[0];
 		if (!primaryKey) return;
 		logger.info("tableType", tableType, "primaryKey", primaryKey);
+		setSheetTitle(dictionary().db[tableType].selfName);
 		setSelectorType(tableType);
 		setSelectorPrimaryKey(primaryKey);
-		setSelectorTitle(dictionary().db[tableType].selfName);
 		setSheetIsOpen(true);
 	};
 
+	// 清空装备槽
 	const clearEquipmentSlot = (slot: EquipmentSlot) => {
 		queueCharacterPatch({
 			[slot]: "",
 		} as Partial<character>);
 	};
 
+	// 装备属性预览
 	const previewEquipmentItem = (
 		slot: EquipmentSlot,
 		item: PlayerWeaponWithRelations | PlayerArmorWithRelations | PlayerOptionWithRelations | PlayerSpecialWithRelations,
@@ -266,16 +315,6 @@ export default function CharactePage() {
 	};
 
 	const dataConfig = createMemo(() => DATA_CONFIG[selectorType()]);
-
-	// 响应式订阅当前表的行数据（如果 dataConfig 声明了 liveQuery）。
-	// 切换 wikiStore.type 时，createEffect 内部会自动退订旧订阅、订阅新表。
-	const liveTableRows = createLiveKyselyQuery((db) => {
-		const cfg = dataConfig();
-		if (!cfg) return null;
-		const liveQueryBuilder = cfg(dictionary).dataFetcher.liveQuery;
-		if (!liveQueryBuilder) return null;
-		return liveQueryBuilder(db);
-	});
 
 	const tabs = {
 		combo: { label: dictionary().ui.character.tabs.combo, value: "combo" },
@@ -313,7 +352,6 @@ export default function CharactePage() {
 			{(character) => (
 				<Show when={dataConfig()}>
 					{(validDataConfig) => {
-						const cfg = validDataConfig()(dictionary);
 						return (
 							<Motion.div
 								animate={{ opacity: [0, 1] }}
@@ -451,7 +489,7 @@ export default function CharactePage() {
 															additional: character().option,
 															special: character().special,
 														}}
-														onPickRequested={openEquipmentPicker}
+														onPickRequested={(slot) => openEquipmentPicker(slot)}
 														onClearRequested={clearEquipmentSlot}
 														onItemPreviewRequested={previewEquipmentItem}
 													/>
@@ -530,8 +568,17 @@ export default function CharactePage() {
 																			>
 																				{skill.template.name}
 																			</div>
-																			<div class="flex-none w-14 px-4 py-3">
-																				<Icons.Outline.Edit />
+																			<div class="flex flex-none w-14 px-4 py-3">
+																				<Button
+																					icon={<Icons.Outline.Edit />}
+																					level="quaternary"
+																					onClick={() => console.log("edit skill")}
+																				/>
+																				<Button
+																					icon={<Icons.Outline.Trash />}
+																					level="quaternary"
+																					onClick={() => console.log("delete skill")}
+																				/>
 																			</div>
 																		</div>
 																	</button>
@@ -620,60 +667,35 @@ export default function CharactePage() {
 										state={sheetIsOpen()}
 										setState={(state) => {
 											setSheetIsOpen(state);
-											setSelectorFilterStr("");
 										}}
 									>
 										<div class="flex h-[90dvh] w-full flex-col gap-2 p-6">
-											<div class="SelectorTitle w-full text-xl font-bold flex items-center justify-between">
-												{selectorTitle()}
+											<div class="sheetTitle w-full text-xl font-bold flex items-center justify-between">
+												{sheetTitle()}
 												<Button
 													icon={<Icons.Outline.Close />}
 													level="quaternary"
 													class="rounded-none rounded-tr"
 													onClick={() => {
 														setSheetIsOpen(false);
-														setSelectorFilterStr("");
+														setIsSelectorOpen(false);
 													}}
 												/>
 											</div>
-											<Input
-												type="text"
-												value={selectorFilterStr()}
-												onInput={(e) => setSelectorFilterStr(e.target.value)}
-											/>
-											{VirtualTable({
-												measure: cfg.table.measure,
-												data: liveTableRows.rows,
-												dataLoading: () => liveTableRows.status() === "loading",
-												columnsDef: cfg.table.columnsDef,
-												hiddenColumnDef: cfg.table.hiddenColumnDef,
-												tdGenerator: cfg.table.tdGenerator,
-												defaultSort: cfg.table.defaultSort,
-												dictionary: cfg.dictionary,
-												globalFilterStr: selectorFilterStr,
-												rowHandleClick: (data) => {
-													const datasolt = dataSolt();
-													if (!datasolt) return;
-													if (!selectorPrimaryKey()) return;
+											<Show when={isSelectorOpen()}>
+												{EquipmentSelector(validDataConfig(), dictionary, (data) => {
 													const dataPrimaryValue = data[selectorPrimaryKey()];
 													if (!dataPrimaryValue) return;
 													logger.info("commitCharacterPatch", {
-														[datasolt]: dataPrimaryValue,
+														[dataSolt()]: dataPrimaryValue,
 													});
 													commitCharacterPatch({
-														[datasolt]: dataPrimaryValue,
+														[dataSolt()]: dataPrimaryValue,
 													});
 													setSheetIsOpen(false);
-													setSelectorFilterStr("");
 													setSelectorColumnVisibility({});
-												},
-												columnVisibility: selectorColumnVisibility(),
-												onColumnVisibilityChange: (updater) => {
-													if (typeof updater === "function") {
-														setSelectorColumnVisibility(updater(selectorColumnVisibility()));
-													}
-												},
-											})}
+												})}
+											</Show>
 										</div>
 									</Sheet>
 								</Portal>

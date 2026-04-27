@@ -121,7 +121,7 @@ export type TableDataConfig<T extends Record<string, unknown>, TDic extends Reco
 	relationOverrides?: RelationOverridesDecl;
 	table: SafeOmit<
 		VirtualTableProps<T>,
-		"dataFetcher" | "dictionary" | "rowHandleClick" | "onColumnVisibilityChange" | "globalFilterStr"
+		"data" | "dictionary" | "rowHandleClick" | "onColumnVisibilityChange" | "globalFilterStr"
 	>;
 	form: SafeOmit<
 		FormProps<T, ZodObject<{ [K in keyof T]: ZodType }>>,
