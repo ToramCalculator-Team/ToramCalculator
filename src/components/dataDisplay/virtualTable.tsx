@@ -312,7 +312,14 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 			</Presence>
 			<OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }} class="w-full h-full">
 				<div class="TableContainer flex h-full flex-col">
-					<div class={`TableHead z-10 flex w-fit`}>
+					<Motion.div
+					animate={{
+						opacity: [0, 1],
+					}}
+					transition={{
+						duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+					}}
+					class={`TableHead z-10 flex w-fit`}>
 						<For each={table.getHeaderGroups()}>
 							{(headerGroup) => (
 								<div class="TableHeadGroup border-dividing-color flex min-w-full gap-0 border-t lg:border-b-2 lg:border-t-0">
@@ -354,7 +361,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 								</div>
 							)}
 						</For>
-					</div>
+					</Motion.div>
 					<OverlayScrollbarsComponent
 						element="div"
 						options={{ scrollbars: { autoHide: "scroll" } }}
@@ -373,15 +380,27 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 							{(validVirtualer) => (
 								<div style={{ height: `${validVirtualer().getTotalSize()}px` }} class={`TableBody relative`}>
 									<For each={validVirtualer().getVirtualItems().filter(Boolean)}>
-										{(virtualRow) => {
+										{(virtualRow, index) => {
 											try {
 												const row = table.getRowModel().rows[virtualRow.index];
 												if (!row) {
 													return null;
 												}
 												return (
-													<button
+													<Motion.button
 														type="button"
+														animate={{
+															opacity: [0, 1],
+															transform: ["translateY(30px)", "translateY(0)"],
+														}}
+														transition={{
+															duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+															delay: store.settings.userInterface.isAnimationEnabled
+																? index() < 15
+																	? index() * 0.07
+																	: 0
+																: 0,
+														}}
 														ref={(el) => {
 															el.setAttribute("data-index", virtualRow.index.toString());
 															// 仅在该 DOM 首次挂载时测量一次，避免重复测量触发 RO loop 警告。
@@ -441,7 +460,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 																);
 															}}
 														</For>
-													</button>
+													</Motion.button>
 												);
 											} catch (error) {
 												console.log("virtualRow", virtualRow, error);

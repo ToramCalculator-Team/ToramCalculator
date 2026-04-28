@@ -337,45 +337,30 @@ export default function WikiSubPage() {
 											return cfg().dataFetcher.liveQuery?.(db);
 										});
 										return (
-											<Show
-												when={liveTableRows.status() === "ready"}
-												fallback={
-													<Motion.div
-														animate={{ opacity: [0, 1] }}
-														exit={{ opacity: 0 }}
-														transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-														class="LoadingState flex h-full w-full flex-col items-center justify-center gap-3"
-													>
-														<LoadingBar class="w-1/2 min-w-[320px]" />
-														<h1 class="animate-pulse">{liveTableRows.status()}</h1>
-													</Motion.div>
+											<VirtualTable
+												measure={cfg().table.measure}
+												data={() => liveTableRows.rows()}
+												columnsDef={cfg().table.columnsDef}
+												hiddenColumnDef={cfg().table.hiddenColumnDef}
+												tdGenerator={cfg().table.tdGenerator}
+												defaultSort={cfg().table.defaultSort}
+												dictionary={cfg().dictionary}
+												globalFilterStr={() => wikiStore.table.globalFilterStr}
+												rowHandleClick={(data) =>
+													setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+														type: wikiStore.type,
+														data,
+													})
 												}
-											>
-												<VirtualTable
-													measure={cfg().table.measure}
-													data={() => liveTableRows.rows()}
-													columnsDef={cfg().table.columnsDef}
-													hiddenColumnDef={cfg().table.hiddenColumnDef}
-													tdGenerator={cfg().table.tdGenerator}
-													defaultSort={cfg().table.defaultSort}
-													dictionary={cfg().dictionary}
-													globalFilterStr={() => wikiStore.table.globalFilterStr}
-													rowHandleClick={(data) =>
-														setStore("pages", "cardGroup", store.pages.cardGroup.length, {
-															type: wikiStore.type,
-															data,
-														})
+												columnVisibility={wikiStore.table.columnVisibility}
+												onColumnVisibilityChange={(updater) => {
+													if (typeof updater === "function") {
+														setWikiStore("table", {
+															columnVisibility: updater(wikiStore.table.columnVisibility),
+														});
 													}
-													columnVisibility={wikiStore.table.columnVisibility}
-													onColumnVisibilityChange={(updater) => {
-														if (typeof updater === "function") {
-															setWikiStore("table", {
-																columnVisibility: updater(wikiStore.table.columnVisibility),
-															});
-														}
-													}}
-												/>
-											</Show>
+												}}
+											/>
 										);
 									}}
 								</Show>
