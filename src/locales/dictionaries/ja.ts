@@ -613,13 +613,48 @@ const dictionary: Dictionary = {
 					selfName: "スキル",
 					treeSkill: "ツリースキル",
 					starGem: "スタージェム",
+					trees: {
+						BladeSkill: "",
+						ShootSkill: "",
+						MagicSkill: "",
+						MarshallSkill: "",
+						DualSwordSkill: "",
+						HalberdSkill: "",
+						MononofuSkill: "",
+						CrusherSkill: "",
+						FeatheringSkill: "",
+						GuardSkill: "",
+						ShieldSkill: "",
+						KnifeSkill: "",
+						KnightSkill: "",
+						HunterSkill: "",
+						PriestSkill: "",
+						AssassinSkill: "",
+						WizardSkill: "",
+						SupportSkill: "",
+						BattleSkill: "",
+						SurvivalSkill: "",
+						SmithSkill: "",
+						AlchemySkill: "",
+						TamerSkill: "",
+						DarkPowerSkill: "",
+						MagicBladeSkill: "",
+						DancerSkill: "",
+						MinstrelSkill: "",
+						BareHandSkill: "",
+						NinjaSkill: "",
+						PartisanSkill: "",
+						LuckSkill: "",
+						MerchantSkill: "",
+						PetSkill: "",
+					},
 				},
 				ability: "ステータス",
 				base: {
 					selfName: "ベース",
 					name: "名前",
 				},
-			}
+			},
 		},
 	},
 	db: {
@@ -3042,24 +3077,24 @@ const dictionary: Dictionary = {
 				id: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				level: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				templateId: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				belongToCharacterId: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
-				}
-			}
+					formFieldDescription: "",
+				},
+			},
 		},
 		registlet: {
 			selfName: "",
@@ -3068,55 +3103,55 @@ const dictionary: Dictionary = {
 				id: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				name: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				maxLevel: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				attrModifiers: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				pipelinePatches: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				skillBranchActivators: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				updatedByAccountId: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				createdByAccountId: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				subscriptions: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				thresholdWatchers: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
-				}
-			}
-		}
+					formFieldDescription: "",
+				},
+			},
+		},
 	},
 };
 

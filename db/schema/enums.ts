@@ -265,8 +265,8 @@ export const ABNORMAL_TYPE = [
 ] as const;
 export type AbnormalType = (typeof ABNORMAL_TYPE)[number];
 
-// 技能树类型
-export const SKILL_TREE_TYPE = [
+// 武器技能
+export const WEAPON_SKILL_GROUP = [
   "BladeSkill", // 剑术技能
   "ShootSkill", // 射击技能
   "MagicSkill", // 魔法技能
@@ -276,7 +276,12 @@ export const SKILL_TREE_TYPE = [
   "MononofuSkill", // 武士技能
   "CrusherSkill", // 粉碎者技能
   "FeatheringSkill", // 灵魂技能
-  "GuardSkill", // 格挡技能
+] as const;
+export type WeaponSkillGroup = (typeof WEAPON_SKILL_GROUP)[number] 
+
+// 强化技能
+export const BUFF_SKILL_GROUP = [
+  "GuardSkill", // 防卫技能
   "ShieldSkill", // 护盾技能
   "KnifeSkill", // 小刀技能
   "KnightSkill", // 骑士技能
@@ -284,15 +289,27 @@ export const SKILL_TREE_TYPE = [
   "PriestSkill", // 祭司技能
   "AssassinSkill", // 暗杀技能
   "WizardSkill", // 巫师技能
-  //
+] as const;
+export type BuffSkillGroup = (typeof BUFF_SKILL_GROUP)[number];
+
+// 辅助技能
+export const ASSIST_SKILL_GROUP =[
   "SupportSkill", // 辅助技能
   "BattleSkill", // 好战分子
   "SurvivalSkill", // 生存本能
-  //
+] as const;
+export type AssistSkillGroup = (typeof ASSIST_SKILL_GROUP)[number];
+
+// 制造相关
+export const PRODUCE_SKILL_GROUP = [
   "SmithSkill", // 锻冶大师
   "AlchemySkill", // 炼金术士
   "TamerSkill", // 驯兽天分
-  //
+] as const;
+export type ProduceSkillGroup = (typeof PRODUCE_SKILL_GROUP)[number];
+
+// 技能书
+export const SKILL_BOOK_GROUP = [
   "DarkPowerSkill", // 暗黑之力
   "MagicBladeSkill", // 魔剑技能
   "DancerSkill", // 舞者技能
@@ -300,10 +317,34 @@ export const SKILL_TREE_TYPE = [
   "BareHandSkill", // 空手技能
   "NinjaSkill", // 忍者技能
   "PartisanSkill", // 游击队技能
-  //
+] as const;
+export type SkillBookGroup = (typeof SKILL_BOOK_GROUP)[number];
+
+export const OTHER_SKILL_GROUP = [
   "LuckSkill",
   "MerchantSkill", // 商人技能
   "PetSkill", // 宠物技能
+] as const;
+export type OtherSkillGroup = (typeof OTHER_SKILL_GROUP)[number];
+
+export const SKILL_TREE_GROUP_TYPE = [
+  "WeaponSkillGroup",
+  "BuffSkillGroup",
+  "AssistSkillGroup",
+  "ProduceSkillGroup",
+  "SkillBookGroup",
+  "OtherSkillGroup"
+] as const;
+export type SkillTreeGroupType = (typeof SKILL_TREE_GROUP_TYPE)[number];
+
+// 技能树类型
+export const SKILL_TREE_TYPE = [
+  ...WEAPON_SKILL_GROUP,
+  ...BUFF_SKILL_GROUP,
+  ...ASSIST_SKILL_GROUP,
+  ...PRODUCE_SKILL_GROUP,
+  ...SKILL_BOOK_GROUP,
+  ...OTHER_SKILL_GROUP
 ] as const;
 export type SkillTreeType = (typeof SKILL_TREE_TYPE)[number];
 

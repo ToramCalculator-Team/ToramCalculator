@@ -1,4 +1,5 @@
 import type { DB } from "@db/generated/zod/index";
+import { SkillTreeGroupType, SkillTreeType } from "@db/schema/enums";
 
 export type FieldDetail = {
 	key: string;
@@ -244,6 +245,12 @@ export interface Dictionary {
 					selfName: string;
 					treeSkill: string;
 					starGem: string;
+					trees: {
+						[K in keyof SkillTreeMap]: {
+							selfName: string;
+							tree: SkillTreeMap[K];
+						};
+					};
 				};
 				ability: string;
 				base: {

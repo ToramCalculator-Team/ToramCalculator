@@ -610,6 +610,71 @@ const dictionary: Dictionary = {
 					selfName: "技能",
 					treeSkill: "技能树",
 					starGem: "星石",
+					trees: {
+						WeaponSkillGroup: {
+							selfName: "武器技能",
+							tree: {
+								BladeSkill: "剑术技能",
+								ShootSkill: "射击技能",
+								MagicSkill: "魔法技能",
+								MarshallSkill: "格斗技能",
+								DualSwordSkill: "双剑技能",
+								HalberdSkill: "斧枪技能",
+								MononofuSkill: "武士技能",
+								CrusherSkill: "粉碎者技能",
+								FeatheringSkill: "灵魂技能",
+							},
+						},
+						BuffSkillGroup: {
+							selfName: "强化技能",
+							tree: {
+								GuardSkill: "防卫技能",
+								ShieldSkill: "护盾技能",
+								KnifeSkill: "小刀技能",
+								KnightSkill: "骑士技能",
+								HunterSkill: "狩猎技能",
+								PriestSkill: "祭司技能",
+								AssassinSkill: "暗杀技能",
+								WizardSkill: "巫师技能",
+							},
+						},
+						AssistSkillGroup: {
+							selfName: "辅助技能",
+							tree: {
+								SupportSkill: "辅助技能",
+								BattleSkill: "好战分子",
+								SurvivalSkill: "生存本能",
+							},
+						},
+						ProduceSkillGroup: {
+							selfName: "制造相关",
+							tree: {
+								SmithSkill: "锻冶大师",
+								AlchemySkill: "炼金术士",
+								TamerSkill: "驯兽天分",
+							},
+						},
+						SkillBookGroup: {
+							selfName: "技能书",
+							tree: {
+								DarkPowerSkill: "暗黑之力",
+								MagicBladeSkill: "魔剑技能",
+								DancerSkill: "舞者技能",
+								MinstrelSkill: "诗人技能",
+								BareHandSkill: "空手技能",
+								NinjaSkill: "忍者技能",
+								PartisanSkill: "游击队技能",
+							},
+						},
+						OtherSkillGroup: {
+							selfName: "其他技能",
+							tree: {
+								LuckSkill: "",
+								MerchantSkill: "商人技能",
+								PetSkill: "宠物技能",
+							},
+						},
+					},
 				},
 				ability: "能力值",
 				base: {
@@ -1701,8 +1766,10 @@ const dictionary: Dictionary = {
 				},
 				type: {
 					key: "类型",
-					tableFieldDescription: "目前支持的类型只有这些，虽然实际上解包可以看到有很多种，但是对于咱这个应用没啥用，因此忽略了很多种类。",
-					formFieldDescription: "目前支持的类型只有这些，虽然实际上解包可以看到有很多种，但是对于咱这个应用没啥用，因此忽略了很多种类。",
+					tableFieldDescription:
+						"目前支持的类型只有这些，虽然实际上解包可以看到有很多种，但是对于咱这个应用没啥用，因此忽略了很多种类。",
+					formFieldDescription:
+						"目前支持的类型只有这些，虽然实际上解包可以看到有很多种，但是对于咱这个应用没啥用，因此忽略了很多种类。",
 					enumMap: mobType,
 				},
 				captureable: {
@@ -1727,14 +1794,16 @@ const dictionary: Dictionary = {
 				},
 				initialElement: {
 					key: "元素属性",
-					tableFieldDescription: "这是初始属性，怪物在战斗时可能会改变其属性，详细情况将取决于怪物行为中的描述，要查看怪物行为，请点击具体怪物",
+					tableFieldDescription:
+						"这是初始属性，怪物在战斗时可能会改变其属性，详细情况将取决于怪物行为中的描述，要查看怪物行为，请点击具体怪物",
 					formFieldDescription: "这里填写怪物的初始属性即可，有关属性变化的描述请在怪物行为中编辑",
 					enumMap: elementType,
 				},
 				radius: {
 					key: "半径",
 					tableFieldDescription: "怪物的模型尺寸，主要是用来计算技能是否命中",
-					formFieldDescription: "怪物的模型尺寸，主要是用来计算技能是否命中,从远处按下圣拳之裁后，技能发动瞬间屏幕上显示的距离-1就可以测出这个值。",
+					formFieldDescription:
+						"怪物的模型尺寸，主要是用来计算技能是否命中,从远处按下圣拳之裁后，技能发动瞬间屏幕上显示的距离-1就可以测出这个值。",
 				},
 				maxhp: {
 					key: "最大生命值",
@@ -1814,17 +1883,20 @@ const dictionary: Dictionary = {
 				statisticId: {
 					key: "统计信息ID",
 					tableFieldDescription: "这是怪物的统计信息字段数据库id，一般来说，你应该不可能看到这个",
-					formFieldDescription: "这是怪物的统计信息字段数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
+					formFieldDescription:
+						"这是怪物的统计信息字段数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
 				},
 				updatedByAccountId: {
 					key: "更新者ID",
 					tableFieldDescription: "这是怪物的更新者数据库id，一般来说，你应该不可能看到这个",
-					formFieldDescription: "这是怪物的更新者数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
+					formFieldDescription:
+						"这是怪物的更新者数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
 				},
 				createdByAccountId: {
 					key: "创建者ID",
 					tableFieldDescription: "这是怪物的创建者数据库id，一般来说，你应该不可能看到这个",
-					formFieldDescription: "这是怪物的创建者数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
+					formFieldDescription:
+						"这是怪物的创建者数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
 				},
 			},
 			description: "不是所有怪物一开始就是怪物，也不是所有怪物看起来都像怪物。",
@@ -2475,7 +2547,8 @@ const dictionary: Dictionary = {
 				statisticId: {
 					key: "统计信息ID",
 					tableFieldDescription: "这是统计信息字段数据库id，一般来说，你应该不可能看到这个",
-					formFieldDescription: "这是统计信息字段数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
+					formFieldDescription:
+						"这是统计信息字段数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
 				},
 				updatedByAccountId: {
 					key: "更新者ID",
@@ -3027,23 +3100,23 @@ const dictionary: Dictionary = {
 				id: {
 					key: "ID",
 					tableFieldDescription: "ID",
-					formFieldDescription: "ID"
+					formFieldDescription: "ID",
 				},
 				level: {
 					key: "等级",
 					tableFieldDescription: "角色佩戴的雷吉斯托环的等级",
-					formFieldDescription: "请输入等级"
+					formFieldDescription: "请输入等级",
 				},
 				templateId: {
 					key: "所属雷吉斯托环",
 					tableFieldDescription: "角色佩戴的雷吉斯托环的ID",
-					formFieldDescription: "选择角色佩戴的雷吉斯托环"
+					formFieldDescription: "选择角色佩戴的雷吉斯托环",
 				},
 				belongToCharacterId: {
 					key: "所属角色",
 					tableFieldDescription: "角色佩戴的雷吉斯托环所属的角色ID",
-					formFieldDescription: "选择角色"
-				}
+					formFieldDescription: "选择角色",
+				},
 			},
 		},
 		registlet: {
@@ -3053,55 +3126,55 @@ const dictionary: Dictionary = {
 				id: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				name: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				maxLevel: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				attrModifiers: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				pipelinePatches: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				skillBranchActivators: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				updatedByAccountId: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				createdByAccountId: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				subscriptions: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
+					formFieldDescription: "",
 				},
 				thresholdWatchers: {
 					key: "",
 					tableFieldDescription: "",
-					formFieldDescription: ""
-				}
+					formFieldDescription: "",
+				},
 			},
-		}
+		},
 	},
 };
 

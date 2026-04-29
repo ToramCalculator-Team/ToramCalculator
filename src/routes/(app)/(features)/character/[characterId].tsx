@@ -4,14 +4,34 @@ import {
 	selectAllCharactersByBelongtoplayerid,
 	updateCharacter,
 } from "@db/generated/repositories/character";
+import { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import type { MemberWithRelations } from "@db/generated/repositories/member";
 import { selectPlayerByIdWithRelations } from "@db/generated/repositories/player";
 import type { PlayerArmorWithRelations } from "@db/generated/repositories/player_armor";
 import type { PlayerOptionWithRelations } from "@db/generated/repositories/player_option";
 import type { PlayerSpecialWithRelations } from "@db/generated/repositories/player_special";
 import type { PlayerWeaponWithRelations } from "@db/generated/repositories/player_weapon";
+import { SkillWithRelations } from "@db/generated/repositories/skill";
 import type { TeamWithRelations } from "@db/generated/repositories/team";
-import type { character, DB } from "@db/generated/zod";
+import type { character, DB, skilltreetype } from "@db/generated/zod";
+import {
+	ASSIST_SKILL_GROUP,
+	AssistSkillGroup,
+	BUFF_SKILL_GROUP,
+	BuffSkillGroup,
+	OTHER_SKILL_GROUP,
+	OtherSkillGroup,
+	PRODUCE_SKILL_GROUP,
+	ProduceSkillGroup,
+	SKILL_BOOK_GROUP,
+	SKILL_TREE_GROUP_TYPE,
+	SKILL_TREE_TYPE,
+	SkillBookGroup,
+	SkillTreeGroupType,
+	SkillTreeType,
+	WEAPON_SKILL_GROUP,
+	WeaponSkillGroup,
+} from "@db/schema/enums";
 import { useNavigate, useParams } from "@solidjs/router";
 import type { VisibilityState } from "@tanstack/solid-table";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
@@ -22,6 +42,7 @@ import {
 	createResource,
 	createSignal,
 	For,
+	Index,
 	on,
 	onCleanup,
 	onMount,
@@ -30,6 +51,7 @@ import {
 } from "solid-js";
 import { Portal } from "solid-js/web";
 import { Motion, Presence } from "solid-motionone";
+import { readonly } from "zod";
 import { DATA_CONFIG, type TableDataConfig } from "~/components/business/data-config";
 import { Sheet } from "~/components/containers/sheet";
 import { Button } from "~/components/controls/button";
@@ -53,6 +75,25 @@ import { setStore, store } from "~/store";
 import { createCharacter } from "./createCharacter";
 
 const logger = createLogger("CharacterPage");
+
+export type SkillTreeMap = {
+	WeaponSkillGroup: WeaponSkillGroup;
+	BuffSkillGroup: BuffSkillGroup;
+	AssistSkillGroup: AssistSkillGroup;
+	ProduceSkillGroup: ProduceSkillGroup;
+	SkillBookGroup: SkillBookGroup;
+	OtherSkillGroup: OtherSkillGroup;
+};
+
+export type SkillTreeGroupMap = {
+	[K in keyof SkillTreeMap]: Record<
+		SkillTreeMap[K],
+		{
+			isDisplay: boolean;
+			skills: CharacterSkillWithRelations[];
+		}
+	>;
+};
 
 export default function CharactePage() {
 	const navigate = useNavigate();
@@ -330,7 +371,168 @@ export default function CharactePage() {
 		ability: { label: dictionary().ui.character.tabs.ability, value: "ability" },
 		base: { label: dictionary().ui.character.tabs.base, value: "base" },
 	};
-	const [activeTab, setActiveTab] = createSignal<keyof typeof tabs>("equipment");
+	const [activeTab, setActiveTab] = createSignal<keyof typeof tabs>("skill");
+
+	// 机体已习得的技能树技能
+	const [acquiredSkillList, setAcquiredSkillList] = createSignal<CharacterSkillWithRelations[]>([]);
+	// 机体已习得的星石技能
+	const [startGemSkillList, setStartGemSkillList] = createSignal<CharacterSkillWithRelations[]>([]);
+	// 机体已习得技能树
+	const [skillTree, setSkillTree] = createSignal<SkillTreeGroupMap>({
+		WeaponSkillGroup: {
+			BladeSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			CrusherSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			DualSwordSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			FeatheringSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			HalberdSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			MagicSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			MarshallSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			MononofuSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			ShootSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+		},
+		BuffSkillGroup: {
+			AssassinSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			GuardSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			HunterSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			KnifeSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			KnightSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			PriestSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			ShieldSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			WizardSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+		},
+		AssistSkillGroup: {
+			BattleSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			SupportSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			SurvivalSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+		},
+		ProduceSkillGroup: {
+			AlchemySkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			SmithSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			TamerSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+		},
+		SkillBookGroup: {
+			BareHandSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			DancerSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			DarkPowerSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			MagicBladeSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			MinstrelSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			NinjaSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			PartisanSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+		},
+		OtherSkillGroup: {
+			LuckSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			MerchantSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+			PetSkill: {
+				isDisplay: false,
+				skills: [],
+			},
+		},
+	});
+
+	// 填充分组信号
+	character()?.skills.forEach((skill) => {
+		if (skill.isStarGem) {
+			setStartGemSkillList((pre) => [...pre, skill]);
+		} else {
+			setAcquiredSkillList((pre) => [...pre, skill]);
+		}
+	});
 
 	onMount(() => {
 		logger.info("--CharacterIdPage render");
@@ -364,7 +566,7 @@ export default function CharactePage() {
 							>
 								{/* 角色选择器 */}
 								<div class={`Title w-full flex`}>
-									<Show when={characters.latest} fallback={<LoadingBar class="w-full" />}>
+									<Show when={characters.latest} fallback={<LoadingBar class="w-full h-12" />}>
 										{(validCharacters) => (
 											<Select
 												value={validCharacter().name}
@@ -556,74 +758,86 @@ export default function CharactePage() {
 
 												{/* 技能 */}
 												<Show when={activeTab() === "skill"}>
-													<div class="SkillConfig flex flex-col gap-2">
-														<div class="SkillTree flex flex-col">
-															<div class="SkillConfigLabel flex justify-between">
-																<span class="font-bold">{dictionary().ui.character.tabs.skill.treeSkill}</span>
-																<Button
-																	icon={<Icons.Outline.DocmentAdd />}
-																	level="quaternary"
-																	onClick={() => {
-																		setSheetIsOpen(true)
-																	}}
-																/>
-															</div>
-															<For each={validCharacter().skills.filter((skill) => !skill.isStarGem)}>
-																{(skill, index) => (
-																	<button
-																		type="button"
-																		class={`SkillItem flex flex-col gap-2 py-3 ${index() === validCharacter().skills.length - 1 ? "" : "border-b border-dividing-color"}`}
-																	>
-																		<div class="w-full h-full flex items-center">
-																			<div
-																				class={`Label w-full flex gap-1 px-4 py-3 border-l-2 ${
-																					{
-																						0: "border-brand-color-1st",
-																						1: "border-brand-color-2nd",
-																						2: "border-brand-color-3rd",
-																						3: "border-brand-color-4th",
-																					}[index() % 4]
-																				}`}
-																			>
-																				{skill.template.name}
-																			</div>
-																			<div class="flex flex-none w-14 px-4 py-3">
-																				<Button
-																					icon={<Icons.Outline.Edit />}
-																					level="quaternary"
-																					onClick={() => console.log("edit skill")}
-																				/>
-																				<Button
-																					icon={<Icons.Outline.Trash />}
-																					level="quaternary"
-																					onClick={() => console.log("delete skill")}
-																				/>
-																			</div>
-																		</div>
-																	</button>
-																)}
-															</For>
-														</div>
-														<div class="StarGem flex flex-col">
-															<div class="StarGemLabel flex justify-between">
-																<span class="font-bold">{dictionary().ui.character.tabs.skill.starGem}</span>
-																<Button
-																	icon={<Icons.Outline.DocmentAdd />}
-																	level="quaternary"
-																	onClick={() => {
-																		console.log("add skill");
-																	}}
-																/>
-															</div>
-															<For each={validCharacter().skills.filter((skill) => skill.isStarGem)}>
-																{(skill) => (
-																	<div class="SkillItem flex flex-col gap-2">
-																		<div class="SkillItemLabel">{skill.template.name}</div>
+													{(_) => {
+														return (
+															<div class="SkillConfig flex flex-col gap-2 w-full">
+																<div class="SkillTree flex flex-col">
+																	<div class="SkillConfigLabel flex justify-between">
+																		<span class="font-bold">{dictionary().ui.character.tabs.skill.treeSkill}</span>
+																		<Button
+																			icon={<Icons.Outline.DocmentAdd />}
+																			level="quaternary"
+																			onClick={() => {
+																				setSheetIsOpen(true);
+																				setSheetTitle(dictionary().ui.character.tabs.skill.selfName);
+																			}}
+																		/>
 																	</div>
-																)}
-															</For>
-														</div>
-													</div>
+																	<For each={Object.entries(skillTree())}>
+																		{([_treeGroup, treeGroupContext], index) => {
+																			const treeGroupType = _treeGroup as SkillTreeGroupType
+																			return (
+																				<For each={Object.keys(treeGroupContext)}>
+																					{(_skillTree, index) => {
+																						const skillTreeType = _skillTree as SkillTreeType;
+																						return (
+																							<button type="button" class={`SkillItem flex flex-col gap-2 py-3`}>
+																								<div class="w-full h-full flex items-center">
+																									<div
+																										class={`Label w-full flex gap-1 px-4 py-3 border-l-2 ${
+																											{
+																												0: "border-brand-color-1st",
+																												1: "border-brand-color-2nd",
+																												2: "border-brand-color-3rd",
+																												3: "border-brand-color-4th",
+																											}[index() % 4]
+																										}`}
+																									>
+																										{dictionary().ui.character.tabs.skill.trees[treeGroupType].tree[skillTreeType]}
+																									</div>
+																									<div class="flex flex-none w-14 px-4 py-3">
+																										<Button
+																											icon={<Icons.Outline.Edit />}
+																											level="quaternary"
+																											onClick={() => console.log("edit skill")}
+																										/>
+																										<Button
+																											icon={<Icons.Outline.Trash />}
+																											level="quaternary"
+																											onClick={() => console.log("delete skill")}
+																										/>
+																									</div>
+																								</div>
+																							</button>
+																						);
+																					}}
+																				</For>
+																			);
+																		}}
+																	</For>
+																</div>
+																<div class="StarGem flex flex-col">
+																	<div class="StarGemLabel flex justify-between">
+																		<span class="font-bold">{dictionary().ui.character.tabs.skill.starGem}</span>
+																		<Button
+																			icon={<Icons.Outline.DocmentAdd />}
+																			level="quaternary"
+																			onClick={() => {
+																				console.log("add skill");
+																			}}
+																		/>
+																	</div>
+																	<For each={validCharacter().skills.filter((skill) => skill.isStarGem)}>
+																		{(skill) => (
+																			<div class="SkillItem flex flex-col gap-2">
+																				<div class="SkillItemLabel">{skill.template.name}</div>
+																			</div>
+																		)}
+																	</For>
+																</div>
+															</div>
+														);
+													}}
 												</Show>
 											</OverlayScrollbarsComponent>
 										</div>
@@ -701,10 +915,62 @@ export default function CharactePage() {
 													}}
 												/>
 											</div>
-											{/* <Show when={}>
-
-												<Input type="text" value={selectorFilterStr()} onInput={(e) => setSelectorFilterStr(e.target.value)} />
-											</Show> */}
+											<Show when={activeTab() === "skill"}>
+												{(_) => {
+													return (
+														<OverlayScrollbarsComponent
+															element="div"
+															options={{ scrollbars: { autoHide: "scroll" } }}
+															class="SkillGroupConfig h-full min-w-full flex-1"
+														>
+															<Index each={SKILL_TREE_GROUP_TYPE}>
+																{(treeGroupType) => {
+																	return (
+																		<section class={`SkillGroup-${treeGroupType()} flex w-full flex-col gap-2`}>
+																			<h3 class="text-accent-color flex items-center gap-2 font-bold">
+																				{dictionary().ui.character.tabs.skill.trees[treeGroupType()].selfName}
+																				<div class="Divider bg-dividing-color h-px w-full flex-1" />
+																			</h3>
+																			<div class="Content flex flex-wrap gap-1">
+																				<Index each={Object.entries(skillTree()[treeGroupType()])}>
+																					{(skillTreeType, index) => {
+																						const [treeName, treeValue] = skillTreeType() as [
+																							skilltreetype,
+																							{
+																								isDisplay: boolean;
+																								skills: CharacterSkillWithRelations[];
+																							},
+																						];
+																						return (
+																							<Button
+																								class={`flex-col gap-2 items-center justify-center portrait:w-[calc((100%-8px)/3)] ${treeValue.isDisplay ? " bg-accent-color! text-primary-color" : "bg-area-color"}`}
+																								onClick={() => {
+																									setSkillTree((pre) => ({
+																										...pre,
+																										[treeGroupType()]: {
+																											...pre[treeGroupType()],
+																											[treeName]: {},
+																										},
+																									}));
+																								}}
+																							>
+																								<div class="flex-none w-12 h-12 p-1 flex items-center justify-center rounded bg-area-color">
+																									<Icons.Spirits iconName={treeName} size={36} />
+																								</div>
+																								{dictionary().db.skill.fields.treeType.enumMap[treeName]}
+																							</Button>
+																						);
+																					}}
+																				</Index>
+																			</div>
+																		</section>
+																	);
+																}}
+															</Index>
+														</OverlayScrollbarsComponent>
+													);
+												}}
+											</Show>
 											<Show when={isSelectorOpen()}>
 												{EquipmentSelector(validDataConfig(), dictionary, (data) => {
 													const dataPrimaryValue = data[selectorPrimaryKey()];
