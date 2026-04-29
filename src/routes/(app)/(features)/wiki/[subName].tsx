@@ -1,8 +1,6 @@
 import { defaultData } from "@db/defaultData";
 import type { DB } from "@db/generated/zod/index";
-import { tablefunc } from "@electric-sql/pglite/contrib/tablefunc";
 import { A, useNavigate, useParams } from "@solidjs/router";
-import { copyFile } from "fs";
 import {
 	createEffect,
 	createMemo,
@@ -13,11 +11,11 @@ import {
 	onCleanup,
 	onMount,
 	Show,
+	untrack,
 	useContext,
 } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { z } from "zod";
-import { DATA_CONFIG } from "~/components/business/data-config";
+import { type AnyTableDataConfig, DATA_CONFIG } from "~/components/business/data-config";
 import { Dialog } from "~/components/containers/dialog";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
@@ -29,6 +27,14 @@ import { createLiveKyselyQuery } from "~/lib/liveQuery";
 import { setStore, store } from "~/store";
 import { setWikiStore, wikiStore } from "./store";
 import { wikiPageConfig } from "./wikiPage/wikiPageConfig";
+
+type WikiTableConfig = ReturnType<AnyTableDataConfig>;
+type CommittedWikiTable = {
+	configKey: string;
+	type: keyof DB;
+	config: WikiTableConfig;
+	rows: Record<string, unknown>[];
+};
 
 export default function WikiSubPage() {
 	const media = useContext(MediaContext);
@@ -45,6 +51,87 @@ export default function WikiSubPage() {
 
 	const dataConfig = createMemo(() => DATA_CONFIG[wikiStore.type]);
 	const wikiConfig = createMemo(() => wikiPageConfig[wikiStore.type]);
+
+	/**
+	 * 表格配置和首包数据需要一起提交：配置变化后先等待对应数据源 ready，
+	 * 后续同 configKey 的 liveQuery 更新只刷新 rows，避免表头和表体使用不同版本。
+	 */
+	const tableConfigRequest = createMemo(() => {
+		const configFactory = dataConfig();
+		if (!configFactory) return;
+		const type = wikiStore.type;
+		return {
+			configKey: String(type),
+			type,
+			config: configFactory(dictionary),
+		};
+	});
+
+	const [committedTable, setCommittedTable] = createSignal<CommittedWikiTable>();
+	const currentCommittedTable = createMemo(() => {
+		const request = tableConfigRequest();
+		const table = committedTable();
+		if (!request || !table || request.configKey !== table.configKey) return;
+		return table;
+	});
+
+	const liveTableRows = createLiveKyselyQuery<any>((db) => {
+		const request = tableConfigRequest();
+		return request?.config.dataFetcher.liveQuery?.(db) ?? null;
+	});
+
+	let liveLoadingConfigKey: string | undefined;
+	createEffect(() => {
+		const request = tableConfigRequest();
+		if (!request || !request.config.dataFetcher.liveQuery) return;
+
+		const status = liveTableRows.status();
+		if (status === "loading") {
+			// 记录本轮 liveQuery 对应的配置，ready 时只允许提交同一轮结果。
+			liveLoadingConfigKey = request.configKey;
+			return;
+		}
+		if (status !== "ready") return;
+
+		// 这里读取 committedTable 只是做守卫，不能让当前 effect 订阅自己写入的 signal。
+		const committedConfigKey = untrack(() => committedTable()?.configKey);
+		if (committedConfigKey !== request.configKey && liveLoadingConfigKey !== request.configKey) return;
+
+		setCommittedTable({
+			configKey: request.configKey,
+			type: request.type,
+			config: request.config,
+			rows: liveTableRows.rows() as Record<string, unknown>[],
+		});
+	});
+
+	createEffect(() => {
+		const request = tableConfigRequest();
+		if (!request || request.config.dataFetcher.liveQuery) return;
+
+		let disposed = false;
+		const configKey = request.configKey;
+		// getAll 是一次性异步查询；返回时校验 configKey，丢弃已经过期的结果。
+		void request.config.dataFetcher
+			.getAll()
+			.then((rows) => {
+				if (disposed || tableConfigRequest()?.configKey !== configKey) return;
+				setCommittedTable({
+					configKey,
+					type: request.type,
+					config: request.config,
+					rows: rows as Record<string, unknown>[],
+				});
+			})
+			.catch((error) => {
+				if (disposed) return;
+				console.error("[WikiTable] getAll 查询失败", error);
+			});
+
+		onCleanup(() => {
+			disposed = true;
+		});
+	});
 
 	// 监听url参数变化, 初始化页面状态
 	createEffect(
@@ -328,39 +415,46 @@ export default function WikiSubPage() {
 									})}
 								>
 									{(_) => {
-										const cfg = () => validDataConfig()(dictionary);
-										if (!cfg()) return null;
-										// 响应式订阅当前表的行数据。
-										// queryFn 必须同步读取 signal，这样 liveQuery 内部的 createEffect 才能追踪依赖，
-										// 切换 wikiStore.type 时自动退订旧订阅、订阅新表。
-										const liveTableRows = createLiveKyselyQuery((db) => {
-											return cfg().dataFetcher.liveQuery?.(db);
-										});
 										return (
-											<VirtualTable
-												measure={cfg().table.measure}
-												data={() => liveTableRows.rows()}
-												columnsDef={cfg().table.columnsDef}
-												hiddenColumnDef={cfg().table.hiddenColumnDef}
-												tdGenerator={cfg().table.tdGenerator}
-												defaultSort={cfg().table.defaultSort}
-												dictionary={cfg().dictionary}
-												globalFilterStr={() => wikiStore.table.globalFilterStr}
-												rowHandleClick={(data) =>
-													setStore("pages", "cardGroup", store.pages.cardGroup.length, {
-														type: wikiStore.type,
-														data,
-													})
-												}
-												columnVisibility={wikiStore.table.columnVisibility}
-												onColumnVisibilityChange={(updater) => {
-													if (typeof updater === "function") {
-														setWikiStore("table", {
-															columnVisibility: updater(wikiStore.table.columnVisibility),
-														});
-													}
-												}}
-											/>
+											<Show when={currentCommittedTable()}>
+												{(table) => (
+													<Motion.div
+														animate={{
+															opacity: [0, 1],
+														}}
+														transition={{
+															duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+														}}
+														class="VirtualTableAnimationBox w-full h-full"
+													>
+														<VirtualTable
+															measure={table().config.table.measure}
+															data={() => table().rows}
+															primaryKey={table().config.primaryKey}
+															columnsDef={table().config.table.columnsDef}
+															hiddenColumnDef={table().config.table.hiddenColumnDef}
+															tdGenerator={table().config.table.tdGenerator}
+															defaultSort={table().config.table.defaultSort}
+															dictionary={table().config.dictionary}
+															globalFilterStr={() => wikiStore.table.globalFilterStr}
+															rowHandleClick={(data) =>
+																setStore("pages", "cardGroup", store.pages.cardGroup.length, {
+																	type: table().type,
+																	data,
+																})
+															}
+															columnVisibility={wikiStore.table.columnVisibility}
+															onColumnVisibilityChange={(updater) => {
+																if (typeof updater === "function") {
+																	setWikiStore("table", {
+																		columnVisibility: updater(wikiStore.table.columnVisibility),
+																	});
+																}
+															}}
+														/>
+													</Motion.div>
+												)}
+											</Show>
 										);
 									}}
 								</Show>

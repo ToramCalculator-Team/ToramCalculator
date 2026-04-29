@@ -253,7 +253,8 @@ export default function CharactePage() {
 				<Input type="text" value={selectorFilterStr()} onInput={(e) => setSelectorFilterStr(e.target.value)} />
 				<VirtualTable
 					measure={cfg.table.measure}
-					data={() => liveTableRows.rows()}
+					data={liveTableRows.rows}
+					primaryKey={cfg.primaryKey}
 					columnsDef={cfg.table.columnsDef}
 					hiddenColumnDef={cfg.table.hiddenColumnDef}
 					tdGenerator={cfg.table.tdGenerator}

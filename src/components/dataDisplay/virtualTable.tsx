@@ -13,16 +13,17 @@ import {
 	type OnChangeFn,
 	type VisibilityState,
 } from "@tanstack/solid-table";
-import { createVirtualizer, type Virtualizer } from "@tanstack/solid-virtual";
+import { createVirtualizer, VirtualItem, type Virtualizer } from "@tanstack/solid-virtual";
 import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { type Accessor, createEffect, createSignal, For, type JSX, on, onCleanup, Show } from "solid-js";
+import { type Accessor, createEffect, createSignal, For, type JSX, on, onCleanup, onMount, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import type { Dic, EnumFieldDetail } from "~/locales/type";
 import { store } from "~/store";
 import { Button } from "../controls/button";
 
 export interface VirtualTableProps<T extends Record<string, unknown>> {
+	primaryKey: keyof T;
 	// 行高预测
 	measure?: {
 		estimateSize: number;
@@ -62,22 +63,30 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 
 	// 过滤字符串
 	createEffect(() => debounceSetGlobalFilter(props.globalFilterStr()));
+	createEffect(() => {
+		const res = props.data();
+		console.log("res:", res.length);
+	});
 
 	// 创建一次 table，用 reactive getter 保持响应式
 	const table = createSolidTable({
 		get data() {
-			return props.data();
+			const res = props.data();
+			return res;
 		},
 		get columns() {
 			return props.columnsDef;
 		},
+		getRowId: (row) => String(row[props.primaryKey]),
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
-		get state() {
-			return {
-				globalFilter: globalFilter(),
-				columnVisibility: props.columnVisibility,
-			};
+		state: {
+			get globalFilter() {
+				return globalFilter();
+			},
+			get columnVisibility() {
+				return props.columnVisibility;
+			},
 		},
 		onColumnVisibilityChange: props.onColumnVisibilityChange,
 		onGlobalFilterChange: setGlobalFilter,
@@ -100,49 +109,34 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 	});
 
 	const [virtualScrollRef, setVirtualScrollRef] = createSignal<OverlayScrollbarsComponentRef | undefined>(undefined);
-	const [scrollElement, setScrollElement] = createSignal<HTMLElement | null>(null);
 	const [virtualer, setVirtualer] = createSignal<Virtualizer<HTMLElement, Element> | null>(null);
+	const [virtualItems, setVirtualItems] = createSignal<VirtualItem[]>([]);
 
-	// OverlayScrollbars 的 `defer` 会导致 ref 已有但 osInstance/viewport 还不可用。
-	// 因此把 viewport 单独抽成 signal：一旦就绪就 setScrollElement，避免“只跑一次读到 undefined”。
-	createEffect(() => {
-		const ref = virtualScrollRef();
-		if (!ref) {
-			setScrollElement(null);
-			return;
-		}
-
-		let cancelled = false;
-		const check = () => {
-			if (cancelled) return;
-			const viewport = ref.osInstance()?.elements().viewport ?? null;
-			if (viewport) {
-				setScrollElement(viewport);
-				return;
-			}
-			requestAnimationFrame(check);
-		};
-		check();
-
-		onCleanup(() => {
-			cancelled = true;
-		});
-	});
-
-	// 虚拟器随滚动 viewport 就绪创建（viewport / table 任何一方未就绪都不创建）
-	createEffect(() => {
-		const el = scrollElement();
-		if (!el) return;
+	onMount(() => {
+		console.log("VirtualTable onMount");
 		const v = createVirtualizer({
 			get count() {
 				return table.getRowCount();
 			},
-			getScrollElement: () => el,
+			getItemKey: (index) => {
+				const row = table.getRowModel().rows[index];
+				return row?.id ?? index;
+			},
+			getScrollElement: () => virtualScrollRef()?.osInstance()?.elements().viewport ?? null,
 			estimateSize: () => props.measure?.estimateSize ?? 96,
 			overscan: 5,
 			measureElement: (element) => element.getBoundingClientRect().height,
+			onChange: (instance, sync) => {
+				setVirtualItems(instance.getVirtualItems());
+			},
 		});
 		setVirtualer(v);
+	});
+
+	onCleanup(() => {
+		clearRowDragListeners();
+		clearSuppressedClickReset();
+		console.log("VirtualTable onCleanup");
 	});
 
 	// 行点击和拖拽事件
@@ -230,12 +224,6 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 		props.rowHandleClick(data);
 	};
 
-	onCleanup(() => {
-		clearRowDragListeners();
-		clearSuppressedClickReset();
-		console.log("VirtualTable onCleanup");
-	});
-
 	return (
 		<>
 			<Presence exitBeforeEnter>
@@ -313,13 +301,14 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 			<OverlayScrollbarsComponent element="div" options={{ scrollbars: { autoHide: "scroll" } }} class="w-full h-full">
 				<div class="TableContainer flex h-full flex-col">
 					<Motion.div
-					animate={{
-						opacity: [0, 1],
-					}}
-					transition={{
-						duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
-					}}
-					class={`TableHead z-10 flex w-fit`}>
+						// animate={{
+						// 	opacity: [0, 1],
+						// }}
+						// transition={{
+						// 	duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+						// }}
+						class={`TableHead z-10 flex w-fit`}
+					>
 						<For each={table.getHeaderGroups()}>
 							{(headerGroup) => (
 								<div class="TableHeadGroup border-dividing-color flex min-w-full gap-0 border-t lg:border-b-2 lg:border-t-0">
@@ -377,98 +366,100 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 						}}
 					>
 						<Show when={virtualer()} fallback={"virtualer undifined"}>
-							{(validVirtualer) => (
-								<div style={{ height: `${validVirtualer().getTotalSize()}px` }} class={`TableBody relative`}>
-									<For each={validVirtualer().getVirtualItems().filter(Boolean)}>
-										{(virtualRow, index) => {
-											try {
-												const row = table.getRowModel().rows[virtualRow.index];
-												if (!row) {
-													return null;
-												}
-												return (
-													<Motion.button
-														type="button"
-														animate={{
-															opacity: [0, 1],
-															transform: ["translateY(30px)", "translateY(0)"],
-														}}
-														transition={{
-															duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
-															delay: store.settings.userInterface.isAnimationEnabled
-																? index() < 15
-																	? index() * 0.07
-																	: 0
-																: 0,
-														}}
-														ref={(el) => {
-															el.setAttribute("data-index", virtualRow.index.toString());
-															// 仅在该 DOM 首次挂载时测量一次，避免重复测量触发 RO loop 警告。
-															if (el.dataset.measured === "1") return;
-															el.dataset.measured = "1";
-															requestAnimationFrame(() => {
-																validVirtualer().measureElement(el);
-															});
-														}}
-														style={{
-															position: "absolute",
-															top: `${virtualRow.start}px`,
-															"border-bottom": "1px solid transparent",
-															"border-image":
-																"repeating-linear-gradient(to right, var(--color-dividing-color) 0 3px, transparent 3px 6px) 1",
-														}}
-														onPointerDown={handleRowPointerDown}
-														onClick={(e) => {
-															console.log("row.original", row.original);
-															handleRowClick(row.original, e);
-														}}
-														class={`Row group border-dividing-color hover:bg-area-color flex cursor-pointer transition-none hover:rounded hover:border-transparent`}
-													>
-														<For
-															each={row
-																.getVisibleCells()
-																.filter((cell) => !props.hiddenColumnDef.includes(cell.column.id))}
-														>
-															{(cell) => {
-																const columnId = cell.column.id;
-																let columnKey = columnId;
-																const isEnum = "enumMap" in props.dictionary.fields[columnId];
-																try {
-																	columnKey = isEnum
-																		? (props.dictionary.fields[columnId] as EnumFieldDetail<string>).enumMap[
-																				cell.getValue<string>()
-																			]
-																		: cell.getValue<string>();
-																} catch (error) {
-																	console.log("字典中不存在该字段", columnId, error);
-																}
-
-																const hasFieldGenerator = columnId in props.tdGenerator;
-																const fieldGenerator = hasFieldGenerator ? props.tdGenerator[columnId] : () => null;
-																return (
-																	<div
-																		style={{
-																			...getCommonPinningStyles(cell.column),
-																			width: `${getCommonPinningStyles(cell.column).width}px`,
-																		}}
-																		class={`text-main-text-color flex flex-col justify-center overflow-x-hidden px-6 py-6 text-ellipsis`}
-																	>
-																		<Show when={hasFieldGenerator} fallback={String(columnKey)}>
-																			{fieldGenerator?.({ cell, dic: props.dictionary })}
-																		</Show>
-																	</div>
-																);
+							{(validVirtualer) => {
+								return (
+									<div style={{ height: `${validVirtualer().getTotalSize()}px` }} class={`TableBody relative`}>
+										<For each={virtualItems()}>
+											{(virtualRow, index) => {
+												try {
+													const row = table.getRowModel().rows[virtualRow.index];
+													if (!row) {
+														return null;
+													}
+													return (
+														<Motion.button
+															type="button"
+															// animate={{
+															// 	opacity: [0, 1],
+															// 	transform: ["translateY(30px)", "translateY(0)"],
+															// }}
+															// transition={{
+															// 	duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+															// 	delay: store.settings.userInterface.isAnimationEnabled
+															// 		? index() < 15
+															// 			? index() * 0.07
+															// 			: 0
+															// 		: 0,
+															// }}
+															ref={(el) => {
+																el.setAttribute("data-index", virtualRow.index.toString());
+																// 仅在该 DOM 首次挂载时测量一次，避免重复测量触发 RO loop 警告。
+																if (el.dataset.measured === "1") return;
+																el.dataset.measured = "1";
+																requestAnimationFrame(() => {
+																	validVirtualer().measureElement(el);
+																});
 															}}
-														</For>
-													</Motion.button>
-												);
-											} catch (error) {
-												console.log("virtualRow", virtualRow, error);
-											}
-										}}
-									</For>
-								</div>
-							)}
+															style={{
+																position: "absolute",
+																top: `${virtualRow.start}px`,
+																"border-bottom": "1px solid transparent",
+																"border-image":
+																	"repeating-linear-gradient(to right, var(--color-dividing-color) 0 3px, transparent 3px 6px) 1",
+															}}
+															onPointerDown={handleRowPointerDown}
+															onClick={(e) => {
+																console.log("row.original", row.original);
+																handleRowClick(row.original, e);
+															}}
+															class={`Row group border-dividing-color hover:bg-area-color flex cursor-pointer transition-none hover:rounded hover:border-transparent`}
+														>
+															<For
+																each={row
+																	.getVisibleCells()
+																	.filter((cell) => !props.hiddenColumnDef.includes(cell.column.id))}
+															>
+																{(cell) => {
+																	const columnId = cell.column.id;
+																	let columnKey = columnId;
+																	const isEnum = "enumMap" in props.dictionary.fields[columnId];
+																	try {
+																		columnKey = isEnum
+																			? (props.dictionary.fields[columnId] as EnumFieldDetail<string>).enumMap[
+																					cell.getValue<string>()
+																				]
+																			: cell.getValue<string>();
+																	} catch (error) {
+																		console.log("字典中不存在该字段", columnId, error);
+																	}
+
+																	const hasFieldGenerator = columnId in props.tdGenerator;
+																	const fieldGenerator = hasFieldGenerator ? props.tdGenerator[columnId] : () => null;
+																	return (
+																		<div
+																			style={{
+																				...getCommonPinningStyles(cell.column),
+																				width: `${getCommonPinningStyles(cell.column).width}px`,
+																			}}
+																			class={`text-main-text-color flex flex-col justify-center overflow-x-hidden px-6 py-6 text-ellipsis`}
+																		>
+																			<Show when={hasFieldGenerator} fallback={String(columnKey)}>
+																				{fieldGenerator?.({ cell, dic: props.dictionary })}
+																			</Show>
+																		</div>
+																	);
+																}}
+															</For>
+														</Motion.button>
+													);
+												} catch (error) {
+													console.log("virtualRow", virtualRow, error);
+												}
+											}}
+										</For>
+									</div>
+								);
+							}}
 						</Show>
 					</OverlayScrollbarsComponent>
 				</div>

@@ -54,6 +54,9 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 		创建和更新信息: ["createdByAccountId", "updatedByAccountId"],
 	},
 	table: {
+		measure: {
+			estimateSize: 97
+		},
 		columnsDef: [
 			{
 				id: "id",

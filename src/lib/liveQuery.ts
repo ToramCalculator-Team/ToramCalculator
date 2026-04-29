@@ -88,10 +88,9 @@ export function createLiveKyselyQuery<T>(
 
 	createEffect(() => {
 		const kysely = db();
-		// db 未就绪时保持 loading 并清空 rows，db 到位后 effect 会重跑
+		// db 未就绪时保持 loading，db 到位后 effect 会重跑。
 		if (!kysely) {
 			setStatus("loading");
-			setRows(() => []);
 			return;
 		}
 
@@ -107,10 +106,9 @@ export function createLiveKyselyQuery<T>(
 			return;
 		}
 
-		// 切换查询时立即清空旧数据，避免新表短暂显示旧表内容
+		// 切换查询时进入 loading；rows 保留上一版，由调用方决定何时提交到界面。
 		setStatus("loading");
 		setError(undefined);
-		setRows(() => []);
 
 		if (!compilable) {
 			setStatus("idle");
