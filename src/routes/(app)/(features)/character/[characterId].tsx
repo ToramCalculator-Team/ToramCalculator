@@ -4,33 +4,31 @@ import {
 	selectAllCharactersByBelongtoplayerid,
 	updateCharacter,
 } from "@db/generated/repositories/character";
-import { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
+import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import type { MemberWithRelations } from "@db/generated/repositories/member";
 import { selectPlayerByIdWithRelations } from "@db/generated/repositories/player";
 import type { PlayerArmorWithRelations } from "@db/generated/repositories/player_armor";
 import type { PlayerOptionWithRelations } from "@db/generated/repositories/player_option";
 import type { PlayerSpecialWithRelations } from "@db/generated/repositories/player_special";
 import type { PlayerWeaponWithRelations } from "@db/generated/repositories/player_weapon";
-import { SkillWithRelations } from "@db/generated/repositories/skill";
 import type { TeamWithRelations } from "@db/generated/repositories/team";
 import type { character, DB, skilltreetype } from "@db/generated/zod";
 import {
 	ASSIST_SKILL_GROUP,
-	AssistSkillGroup,
+	type AssistSkillGroup,
 	BUFF_SKILL_GROUP,
-	BuffSkillGroup,
+	type BuffSkillGroup,
 	OTHER_SKILL_GROUP,
-	OtherSkillGroup,
+	type OtherSkillGroup,
 	PRODUCE_SKILL_GROUP,
-	ProduceSkillGroup,
+	type ProduceSkillGroup,
 	SKILL_BOOK_GROUP,
 	SKILL_TREE_GROUP_TYPE,
-	SKILL_TREE_TYPE,
-	SkillBookGroup,
-	SkillTreeGroupType,
-	SkillTreeType,
+	type SkillBookGroup,
+	type SkillTreeGroupType,
+	type SkillTreeType,
 	WEAPON_SKILL_GROUP,
-	WeaponSkillGroup,
+	type WeaponSkillGroup,
 } from "@db/schema/enums";
 import { useNavigate, useParams } from "@solidjs/router";
 import type { VisibilityState } from "@tanstack/solid-table";
@@ -51,7 +49,6 @@ import {
 } from "solid-js";
 import { Portal } from "solid-js/web";
 import { Motion, Presence } from "solid-motionone";
-import { readonly } from "zod";
 import { DATA_CONFIG, type TableDataConfig } from "~/components/business/data-config";
 import { Sheet } from "~/components/containers/sheet";
 import { Button } from "~/components/controls/button";
@@ -76,18 +73,19 @@ import { createCharacter } from "./createCharacter";
 
 const logger = createLogger("CharacterPage");
 
-export type SkillTreeMap = {
-	WeaponSkillGroup: WeaponSkillGroup;
-	BuffSkillGroup: BuffSkillGroup;
-	AssistSkillGroup: AssistSkillGroup;
-	ProduceSkillGroup: ProduceSkillGroup;
-	SkillBookGroup: SkillBookGroup;
-	OtherSkillGroup: OtherSkillGroup;
-};
+const SKILL_TREE_MAP = {
+	WeaponSkillGroup: WEAPON_SKILL_GROUP,
+	BuffSkillGroup: BUFF_SKILL_GROUP,
+	AssistSkillGroup: ASSIST_SKILL_GROUP,
+	ProduceSkillGroup: PRODUCE_SKILL_GROUP,
+	SkillBookGroup: SKILL_BOOK_GROUP,
+	OtherSkillGroup: OTHER_SKILL_GROUP,
+} as const;
+type SkillTreeMap = typeof SKILL_TREE_MAP;
 
 export type SkillTreeGroupMap = {
 	[K in keyof SkillTreeMap]: Record<
-		SkillTreeMap[K],
+		SkillTreeMap[K][number],
 		{
 			isDisplay: boolean;
 			skills: CharacterSkillWithRelations[];
@@ -526,12 +524,35 @@ export default function CharactePage() {
 	});
 
 	// 填充分组信号
-	character()?.skills.forEach((skill) => {
-		if (skill.isStarGem) {
-			setStartGemSkillList((pre) => [...pre, skill]);
-		} else {
-			setAcquiredSkillList((pre) => [...pre, skill]);
-		}
+	createEffect(() => {
+		character()?.skills.forEach((skill) => {
+			if (skill.isStarGem) {
+				setStartGemSkillList((pre) => [...pre, skill]);
+			} else {
+				setAcquiredSkillList((pre) => [...pre, skill]);
+			}
+			const groups = Object.entries(SKILL_TREE_MAP);
+			groups.forEach(([_key, value]) => {
+				const groupName = _key as keyof SkillTreeMap;
+				value.forEach((treeName) => {
+					if (skill.template.treeType === treeName) {
+						console.log("groupName", groupName);
+						console.log("treeName", treeName);
+						console.log("skill", skill);
+						setSkillTree((pre) => ({
+							...pre,
+							[groupName]: {
+								...pre[groupName],
+								[treeName]: {
+									isDisplay: true,
+									skills: [...pre[groupName][treeName].skills, skill],
+								},
+							},
+						}));
+					}
+				});
+			});
+		});
 	});
 
 	onMount(() => {
@@ -693,13 +714,13 @@ export default function CharactePage() {
 										<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:h-full landscape:w-px"></div>
 
 										{/* 配置面板组 */}
-										<div class="Config flex flex-col gap-2 w-full lg:w-[30dvw] lg:flex-none">
-											<OverlayScrollbarsComponent
-												element="div"
-												options={{ scrollbars: { autoHide: "scroll" } }}
-												defer
-												class="flex flex-none w-full h-full"
-											>
+										<OverlayScrollbarsComponent
+											element="div"
+											options={{ scrollbars: { autoHide: "scroll" } }}
+											defer
+											class="ConfigPannel w-full h-full landscape:basis-1/2"
+										>
+											<div class="Config flex flex-col w-full h-full">
 												{/* 装备 */}
 												<Show when={activeTab() === "equipment"}>
 													<EquipmentPanel
@@ -775,14 +796,18 @@ export default function CharactePage() {
 																	</div>
 																	<For each={Object.entries(skillTree())}>
 																		{([_treeGroup, treeGroupContext], index) => {
-																			const treeGroupType = _treeGroup as SkillTreeGroupType
+																			console.log([_treeGroup, treeGroupContext], index());
+																			const treeGroupType = _treeGroup as SkillTreeGroupType;
 																			return (
-																				<For each={Object.keys(treeGroupContext)}>
+																				<For each={Object.entries(treeGroupContext)}>
 																					{(_skillTree, index) => {
-																						const skillTreeType = _skillTree as SkillTreeType;
+																						const skillTreeType = _skillTree[0];
+																						const skillTreeContent = _skillTree[1];
+																						console.log(skillTreeType, skillTreeContent);
+																						if (skillTreeContent.skills.length === 0) return null;
 																						return (
-																							<button type="button" class={`SkillItem flex flex-col gap-2 py-3`}>
-																								<div class="w-full h-full flex items-center">
+																							<button type="button" class={`SkillItem flex flex-col gap-2`}>
+																								<div class="w-full h-full flex flex-1 items-center">
 																									<div
 																										class={`Label w-full flex gap-1 px-4 py-3 border-l-2 ${
 																											{
@@ -793,9 +818,13 @@ export default function CharactePage() {
 																											}[index() % 4]
 																										}`}
 																									>
-																										{dictionary().ui.character.tabs.skill.trees[treeGroupType].tree[skillTreeType]}
+																										{
+																											dictionary().ui.character.tabs.skill.trees[treeGroupType].tree[
+																												skillTreeType
+																											]
+																										}
 																									</div>
-																									<div class="flex flex-none w-14 px-4 py-3">
+																									<div class="flex flex-none px-4 py-3">
 																										<Button
 																											icon={<Icons.Outline.Edit />}
 																											level="quaternary"
@@ -839,8 +868,8 @@ export default function CharactePage() {
 														);
 													}}
 												</Show>
-											</OverlayScrollbarsComponent>
-										</div>
+											</div>
+										</OverlayScrollbarsComponent>
 									</Show>
 
 									{/* 属性面板 */}
@@ -850,7 +879,7 @@ export default function CharactePage() {
 											element="div"
 											options={{ scrollbars: { autoHide: "scroll" } }}
 											defer
-											class="MemberStats flex flex-col gap-2 w-full landscape:flex-none"
+											class="MemberStats flex flex-col gap-2 w-full landscape:basis-1/2"
 										>
 											<StatsRenderer data={primaryMember()?.attrs} />
 										</OverlayScrollbarsComponent>
@@ -902,7 +931,7 @@ export default function CharactePage() {
 											setSheetIsOpen(state);
 										}}
 									>
-										<div class="flex h-[90dvh] w-full flex-col gap-2 p-6">
+										<div class="flex portrait:h-[90dvh] w-full flex-col gap-2 p-6">
 											<div class="sheetTitle w-full text-xl font-bold flex items-center justify-between">
 												{sheetTitle()}
 												<Button
@@ -945,13 +974,21 @@ export default function CharactePage() {
 																							<Button
 																								class={`flex-col gap-2 items-center justify-center portrait:w-[calc((100%-8px)/3)] ${treeValue.isDisplay ? " bg-accent-color! text-primary-color" : "bg-area-color"}`}
 																								onClick={() => {
-																									setSkillTree((pre) => ({
-																										...pre,
-																										[treeGroupType()]: {
-																											...pre[treeGroupType()],
-																											[treeName]: {},
-																										},
-																									}));
+																									setSkillTree((pre) => {
+																										const preTreeIsDisplay = pre[treeGroupType()][treeName].isDisplay;
+																										const preTreeSkills = pre[treeGroupType()][treeName].skills;
+																										console.log(preTreeIsDisplay, preTreeSkills)
+																										return pre
+																										// return {
+																										// 	...pre,
+																										// 	[treeGroupType()]: {
+																										// 		...pre[treeGroupType()],
+																										// 		[treeName]: {
+																										// 			isDisplay: preTreeSkills > 0 ? true : !preTreeIsDisplay,
+																										// 		},
+																										// 	},
+																										// };
+																									});
 																								}}
 																							>
 																								<div class="flex-none w-12 h-12 p-1 flex items-center justify-center rounded bg-area-color">
