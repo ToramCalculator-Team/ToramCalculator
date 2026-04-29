@@ -1,7 +1,8 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { PlayerArmorSchema, type player_armor } from "@db/generated/zod";
-import { stringArrayCellRenderer } from "~/components/business/utils/stringArrayCellRenderer";
+import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
+import { Icons } from "~/components/icons";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
@@ -36,10 +37,18 @@ export const PLAYER_ARMOR_DATA_CONFIG: TableDataConfig<player_armor> = (dictiona
 			{ accessorKey: "modifiers", cell: (info) => info.getValue(), size: 360 },
 			{ accessorKey: "belongToPlayerId", cell: (info) => info.getValue(), size: 100 },
 		],
-		hiddenColumnDef: ["id", "belongToPlayerId", "templateId"],
+		hiddenColumnDef: ["id", "ability", "belongToPlayerId", "templateId"],
 		defaultSort: { field: "name", desc: false },
 		tdGenerator: {
-			modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
+			name: ({ cell, dic }) => (
+				<div class="text-accent-color flex items-center gap-2">
+					<div class="flex-none w-12 h-12 p-1 flex items-center justify-center rounded bg-area-color">
+						<Icons.Spirits iconName={cell.row.original.ability} size={36} />
+					</div>
+					<span>{cell.getValue<string>()}</span>
+				</div>
+			),
+			modifiers: (props) => <ModifiersRenderer data={props.cell.getValue() as Array<string>} />,
 		},
 	},
 	form: {

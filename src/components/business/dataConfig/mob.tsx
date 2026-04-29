@@ -7,7 +7,7 @@ import type { ElementType, MemberType, MobType } from "@db/schema/enums";
 import { MOB_DIFFICULTY_FLAG, type MobDifficultyFlag } from "@db/schema/enums";
 import { createId } from "@paralleldrive/cuid2";
 import { createEffect, createSignal, Show } from "solid-js";
-import { BtEditorWrapper } from "~/components/business/utils/btEditorWrapper";
+import { BtEditorWrapper } from "~/components/business/utils/BTEditorWrapper";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
 import { BtEditor } from "~/components/features/BtEditor/BtEditor";

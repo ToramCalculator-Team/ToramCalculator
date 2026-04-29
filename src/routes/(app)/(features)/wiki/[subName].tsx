@@ -425,7 +425,7 @@ export default function WikiSubPage() {
 														transition={{
 															duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
 														}}
-														class="VirtualTableAnimationBox w-full h-full"
+														class="VirtualTableAnimationBox w-full h-full border-t border-dividing-color"
 													>
 														<VirtualTable
 															measure={table().config.table.measure}

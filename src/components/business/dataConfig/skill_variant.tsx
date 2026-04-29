@@ -4,7 +4,7 @@ import { SkillVariantSchema, type skill_variant } from "@db/generated/zod";
 import type { MemberType } from "@db/schema/enums";
 import type { MemberBTTree } from "@db/schema/jsons";
 import { createEffect, createSignal, Index } from "solid-js";
-import { BtEditorWrapper } from "~/components/business/utils/btEditorWrapper";
+import { BtEditorWrapper } from "~/components/business/utils/BTEditorWrapper";
 import { Button } from "~/components/controls/button";
 import { Input } from "~/components/controls/input";
 import { BtEditor } from "~/components/features/BtEditor/BtEditor";

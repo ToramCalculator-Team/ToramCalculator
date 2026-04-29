@@ -1,10 +1,10 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { PlayerWeaponSchema, type player_weapon } from "@db/generated/zod";
-import { stringArrayCellRenderer } from "~/components/business/utils/stringArrayCellRenderer";
+import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
+import { Icons } from "~/components/icons";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
-
 
 export const PLAYER_WEAPON_DATA_CONFIG: TableDataConfig<player_weapon> = (dictionary) => ({
 	dictionary: dictionary().db.player_weapon,
@@ -32,7 +32,7 @@ export const PLAYER_WEAPON_DATA_CONFIG: TableDataConfig<player_weapon> = (dictio
 		columnsDef: [
 			{ accessorKey: "id", cell: (info) => info.getValue(), size: 200 },
 			{ accessorKey: "type", cell: (info) => info.getValue(), size: 120 },
-			{ accessorKey: "name", cell: (info) => info.getValue(), size: 160 },
+			{ accessorKey: "name", cell: (info) => info.getValue(), size: 200 },
 			{ accessorKey: "baseAbi", cell: (info) => info.getValue(), size: 120 },
 			{ accessorKey: "stability", cell: (info) => info.getValue(), size: 120 },
 			{ accessorKey: "elementType", cell: (info) => info.getValue(), size: 120 },
@@ -41,13 +41,21 @@ export const PLAYER_WEAPON_DATA_CONFIG: TableDataConfig<player_weapon> = (dictio
 			{ accessorKey: "modifiers", cell: (info) => info.getValue(), size: 360 },
 			{ accessorKey: "belongToPlayerId", cell: (info) => info.getValue(), size: 100 },
 		],
-		hiddenColumnDef: ["id", "belongToPlayerId"],
+		hiddenColumnDef: ["id", "type", "belongToPlayerId"],
 		defaultSort: {
-			field: "type",
+			field: "name",
 			desc: false,
 		},
 		tdGenerator: {
-			modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
+			name: ({ cell, dic }) => (
+				<div class="text-accent-color flex items-center gap-2">
+					<div class="flex-none w-12 h-12 p-1 flex items-center justify-center rounded bg-area-color">
+						<Icons.Spirits iconName={cell.row.original.type} size={36} />
+					</div>
+					<span>{cell.getValue<string>()}</span>
+				</div>
+			),
+			modifiers: (props) => <ModifiersRenderer data={props.cell.getValue() as Array<string>} />,
 		},
 	},
 	form: {

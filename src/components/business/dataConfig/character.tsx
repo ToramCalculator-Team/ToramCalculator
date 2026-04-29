@@ -4,7 +4,7 @@ import { insertStatistic } from "@db/generated/repositories/statistic";
 import { CharacterSchema, type character } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
-import { stringArrayCellRenderer } from "~/components/business/utils/stringArrayCellRenderer";
+import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
@@ -51,7 +51,7 @@ export const CHARACTER_DATA_CONFIG: TableDataConfig<character> = (dictionary) =>
 		],
 		hiddenColumnDef: ["id", "statisticId"],
 		tdGenerator: {
-			modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
+			modifiers: (props) => <ModifiersRenderer data={props.cell.getValue() as Array<string>} />,
 		},
 		defaultSort: {
 			field: "name",

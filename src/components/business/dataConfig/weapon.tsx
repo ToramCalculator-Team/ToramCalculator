@@ -8,7 +8,7 @@ import { getDB } from "@db/repositories/database";
 import { type ElementType, WEAPON_TYPE, type WeaponType } from "@db/schema/enums";
 import { createId } from "@paralleldrive/cuid2";
 import type { z } from "zod/v4";
-import { stringArrayCellRenderer } from "~/components/business/utils/stringArrayCellRenderer";
+import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
 import { Select } from "~/components/controls/select";
 import { Icons } from "~/components/icons";
 import { setStore, store } from "~/store";
@@ -172,7 +172,15 @@ export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem, weapon> = (dictiona
 			desc: false,
 		},
 		tdGenerator: {
-			modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
+			modifiers: (props) => <ModifiersRenderer data={props.cell.getValue() as Array<string>} />,
+			name: ({ cell, dic }) => (
+				<div class="text-accent-color flex items-center gap-2">
+					<div class="flex-none w-12 h-12 p-1 flex items-center justify-center rounded bg-area-color">
+						<Icons.Spirits iconName={cell.row.original.type} size={36} />
+					</div>
+					<span>{cell.getValue<string>()}</span>
+				</div>
+			),
 			elementType: (props) =>
 				({
 					Water: <Icons.Game.ElementWater class="h-12 w-12" />,

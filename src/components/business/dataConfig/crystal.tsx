@@ -7,7 +7,7 @@ import { CrystalSchema, type crystal, ItemSchema } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
 import type { z } from "zod/v4";
-import { stringArrayCellRenderer } from "~/components/business/utils/stringArrayCellRenderer";
+import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
 import { Icons } from "~/components/icons";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
@@ -138,7 +138,7 @@ export const CRYSTAL_DATA_CONFIG: TableDataConfig<CrystalItem, crystal> = (dicti
 		hiddenColumnDef: ["itemId"],
 		defaultSort: { field: "name", desc: false },
 		tdGenerator: {
-			modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
+			modifiers: (props) => <ModifiersRenderer data={props.cell.getValue() as Array<string>} />,
 		},
 	},
 	form: {

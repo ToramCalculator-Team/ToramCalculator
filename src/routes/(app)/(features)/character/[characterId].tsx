@@ -251,24 +251,26 @@ export default function CharactePage() {
 		return (
 			<>
 				<Input type="text" value={selectorFilterStr()} onInput={(e) => setSelectorFilterStr(e.target.value)} />
-				<VirtualTable
-					measure={cfg.table.measure}
-					data={liveTableRows.rows}
-					primaryKey={cfg.primaryKey}
-					columnsDef={cfg.table.columnsDef}
-					hiddenColumnDef={cfg.table.hiddenColumnDef}
-					tdGenerator={cfg.table.tdGenerator}
-					defaultSort={cfg.table.defaultSort}
-					dictionary={cfg.dictionary}
-					globalFilterStr={selectorFilterStr}
-					rowHandleClick={rowClickHandler}
-					columnVisibility={selectorColumnVisibility()}
-					onColumnVisibilityChange={(updater) => {
-						if (typeof updater === "function") {
-							setSelectorColumnVisibility(updater(selectorColumnVisibility()));
-						}
-					}}
-				/>
+				<div class="TableBox p-3 rounded border-dividing-color border w-full h-full">
+					<VirtualTable
+						measure={cfg.table.measure}
+						data={liveTableRows.rows}
+						primaryKey={cfg.primaryKey}
+						columnsDef={cfg.table.columnsDef}
+						hiddenColumnDef={cfg.table.hiddenColumnDef}
+						tdGenerator={cfg.table.tdGenerator}
+						defaultSort={cfg.table.defaultSort}
+						dictionary={cfg.dictionary}
+						globalFilterStr={selectorFilterStr}
+						rowHandleClick={rowClickHandler}
+						columnVisibility={selectorColumnVisibility()}
+						onColumnVisibilityChange={(updater) => {
+							if (typeof updater === "function") {
+								setSelectorColumnVisibility(updater(selectorColumnVisibility()));
+							}
+						}}
+					/>
+				</div>
 			</>
 		);
 	};
@@ -350,7 +352,7 @@ export default function CharactePage() {
 				</div>
 			}
 		>
-			{(character) => (
+			{(validCharacter) => (
 				<Show when={dataConfig()}>
 					{(validDataConfig) => {
 						return (
@@ -361,31 +363,47 @@ export default function CharactePage() {
 								class="CharacterPage relative flex h-full w-full flex-col overflow-hidden"
 							>
 								{/* 角色选择器 */}
-								<div class={`Title w-full flex gap-2`}>
-									<Select
-										value={character().name}
-										setValue={(value) => {
-											navigate(`/character/${value}`);
-										}}
-										options={characters()?.map((character) => ({ label: character.name, value: character.id })) ?? []}
-										placeholder={character().name}
-										styleLess
-										textCenter
-									/>
+								<div class={`Title w-full flex`}>
+									<Show when={characters.latest} fallback={<LoadingBar class="w-full" />}>
+										{(validCharacters) => (
+											<Select
+												value={validCharacter().name}
+												setValue={(value) => {
+													navigate(`/character/${value}`);
+												}}
+												options={
+													validCharacters().map((character) => ({ label: character.name, value: character.id })) ?? []
+												}
+												optionGenerator={(option, selected, onclick) => (
+													<button
+														type="button"
+														class={`w-full py-1 px-6 text-accent-color text-start ${selected ? "font-bold text-2xl" : ""} `}
+														onClick={onclick}
+													>
+														{option.label ?? "---"}
+													</button>
+												)}
+												placeholder={validCharacter().name}
+												styleLess
+											/>
+										)}
+									</Show>
 									<Button
 										icon={<Icons.Outline.AddUser />}
 										level="quaternary"
 										onClick={async () => {
 											const character = await createCharacter();
+											await refetchCharacters();
 											navigate(`/character/${character.id}`);
 										}}
+										class="absolute right-6 top-0"
 									/>
 								</div>
 								<div class="Content flex h-full w-full flex-1 flex-col overflow-hidden p-6 landscape:flex-row">
 									{/* 配置版块 */}
 									<Show when={panelMode() === "Config" || media.width >= 1024}>
 										{/* 角色视图 */}
-										<CharacterView character={character()} />
+										<CharacterView character={validCharacter()} />
 										<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:hidden landscape:h-full landscape:w-px"></div>
 
 										{/* 标签栏 */}
@@ -484,11 +502,11 @@ export default function CharactePage() {
 												<Show when={activeTab() === "equipment"}>
 													<EquipmentPanel
 														slots={{
-															mainHand: character().weapon,
-															subHand: character().subWeapon,
-															armor: character().armor,
-															additional: character().option,
-															special: character().special,
+															mainHand: validCharacter().weapon,
+															subHand: validCharacter().subWeapon,
+															armor: validCharacter().armor,
+															additional: validCharacter().option,
+															special: validCharacter().special,
 														}}
 														onPickRequested={(slot) => openEquipmentPicker(slot)}
 														onClearRequested={clearEquipmentSlot}
@@ -503,7 +521,7 @@ export default function CharactePage() {
 															<div class="BasicConfigItemLabel">{dictionary().ui.character.tabs.base.name}</div>
 															<Input
 																type="text"
-																value={character().name}
+																value={validCharacter().name}
 																onChange={async (e) => {
 																	await commitCharacterPatch({
 																		name: e.target.value,
@@ -519,14 +537,14 @@ export default function CharactePage() {
 												<Show when={activeTab() === "ability"}>
 													<AbiPanel
 														slots={{
-															lv: character().lv,
-															str: character().str,
-															int: character().int,
-															vit: character().vit,
-															agi: character().agi,
-															dex: character().dex,
-															personalityType: character().personalityType,
-															personalityValue: character().personalityValue,
+															lv: validCharacter().lv,
+															str: validCharacter().str,
+															int: validCharacter().int,
+															vit: validCharacter().vit,
+															agi: validCharacter().agi,
+															dex: validCharacter().dex,
+															personalityType: validCharacter().personalityType,
+															personalityValue: validCharacter().personalityValue,
 														}}
 														onChangeRequested={async (slot, value) => {
 															await commitCharacterPatch({
@@ -550,11 +568,11 @@ export default function CharactePage() {
 																	}}
 																/>
 															</div>
-															<For each={character().skills.filter((skill) => !skill.isStarGem)}>
+															<For each={validCharacter().skills.filter((skill) => !skill.isStarGem)}>
 																{(skill, index) => (
 																	<button
 																		type="button"
-																		class={`SkillItem flex flex-col gap-2 py-3 ${index() === character().skills.length - 1 ? "" : "border-b border-dividing-color"}`}
+																		class={`SkillItem flex flex-col gap-2 py-3 ${index() === validCharacter().skills.length - 1 ? "" : "border-b border-dividing-color"}`}
 																	>
 																		<div class="w-full h-full flex items-center">
 																			<div
@@ -597,7 +615,7 @@ export default function CharactePage() {
 																	}}
 																/>
 															</div>
-															<For each={character().skills.filter((skill) => skill.isStarGem)}>
+															<For each={validCharacter().skills.filter((skill) => skill.isStarGem)}>
 																{(skill) => (
 																	<div class="SkillItem flex flex-col gap-2">
 																		<div class="SkillItemLabel">{skill.template.name}</div>

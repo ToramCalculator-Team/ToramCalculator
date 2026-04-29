@@ -311,7 +311,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 					>
 						<For each={table.getHeaderGroups()}>
 							{(headerGroup) => (
-								<div class="TableHeadGroup border-dividing-color flex min-w-full gap-0 border-t lg:border-b-2 lg:border-t-0">
+								<div class="TableHeadGroup border-dividing-color flex min-w-full gap-0 lg:border-b-2">
 									<For each={headerGroup.headers}>
 										{(header) => {
 											const { column } = header;

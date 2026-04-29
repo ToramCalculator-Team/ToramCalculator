@@ -79,7 +79,7 @@ export function Select(props: SelectProps) {
 				}`}
 			>
 				<div
-					class={`${!props.styleLess && "bg-area-color rounded-md px-2"} flex h-12 w-full items-center justify-between ${props.textCenter ? "justify-center" : "justify-between"}`}
+					class={`${!props.styleLess && "bg-area-color rounded-md px-2"} flex h-12 w-full items-center ${props.textCenter ? "justify-center" : "justify-between"}`}
 				>
 					<Show
 						when={hasOptionGenerator}
@@ -93,7 +93,7 @@ export function Select(props: SelectProps) {
 											label: "请选择",
 											value: "",
 										}),
-							false,
+							true,
 							() => handleSelect(selectedOption() ?? initialOptions.latest?.[0] ?? { label: "请选择", value: "" }),
 						)}
 					</Show>
@@ -121,6 +121,7 @@ export function Select(props: SelectProps) {
 							{(option, index) => {
 								const selected = option.value === selectedOption()?.value;
 								const optionGenerator = hasOptionGenerator ? props.optionGenerator : undefined;
+								console.log(option)
 								const optionItem = optionGenerator ? (
 									optionGenerator(option, selected, () => handleSelect(option))
 								) : (

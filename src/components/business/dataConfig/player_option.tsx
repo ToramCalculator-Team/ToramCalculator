@@ -1,7 +1,7 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { PlayerOptionSchema, type player_option } from "@db/generated/zod";
-import { stringArrayCellRenderer } from "~/components/business/utils/stringArrayCellRenderer";
+import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
 import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
@@ -38,7 +38,7 @@ export const PLAYER_OPTION_DATA_CONFIG: TableDataConfig<player_option> = (dictio
 		hiddenColumnDef: ["id", "belongToPlayerId", "templateId"],
 		defaultSort: { field: "name", desc: false },
 		tdGenerator: {
-			modifiers: (props) => stringArrayCellRenderer(props.cell.getValue<string[]>()),
+			modifiers: (props) => <ModifiersRenderer data={props.cell.getValue() as Array<string>} />,
 		},
 	},
 	form: {
