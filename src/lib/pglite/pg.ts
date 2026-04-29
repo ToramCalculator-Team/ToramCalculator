@@ -2,8 +2,8 @@ import { live } from "@electric-sql/pglite/live";
 import { PGliteWorker } from "@electric-sql/pglite/worker";
 import { electricSync } from "@electric-sql/pglite-sync";
 import PGWorker from "~/worker/PGlite.worker?worker";
-import { setStore } from "./store";
-import type { syncMessage } from "./worker/PGlite.worker";
+import { setStore } from "../../store";
+import type { syncMessage } from "../../worker/PGlite.worker";
 
 export type AppPgWorker = Awaited<ReturnType<typeof PGliteWorker.create>>;
 

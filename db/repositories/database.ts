@@ -41,7 +41,7 @@ const getDB = async (): Promise<Kysely<DB>> => {
 		const { PGliteDialect } = await import("./dialect/dialect");
 		// 职责约束：repository 不再直接依赖顶层 await 导出的 worker，
 		// 统一走 createPgWorker()，与 bootstrap 的启动编排保持同一入口。
-		const { createPgWorker } = await import("~/initialWorker");
+		const { createPgWorker } = await import("~/lib/pglite/pg");
 		const pgWorker = await createPgWorker();
 
 		// Kysely 实例创建

@@ -23,7 +23,7 @@ import { VirtualTable } from "~/components/dataDisplay/virtualTable";
 import { Icons } from "~/components/icons/index";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
-import { createLiveKyselyQuery } from "~/lib/liveQuery";
+import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
 import { setStore, store } from "~/store";
 import { setWikiStore, wikiStore } from "./store";
 import { wikiPageConfig } from "./wikiPage/wikiPageConfig";

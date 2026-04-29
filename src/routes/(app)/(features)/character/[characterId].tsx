@@ -47,7 +47,7 @@ import { useEngine } from "~/lib/engine/core/thread/EngineContext";
 import { createPreviewConfig, type EngineScenarioData } from "~/lib/engine/core/types";
 import { StatsRenderer } from "~/lib/engine/core/World/Member/MemberStatusPanel";
 import { createLogger } from "~/lib/Logger";
-import { createLiveKyselyQuery } from "~/lib/liveQuery";
+import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
 import type { Dictionary } from "~/locales/type";
 import { setStore, store } from "~/store";
 import { createCharacter } from "./createCharacter";
@@ -250,7 +250,6 @@ export default function CharactePage() {
 
 		return (
 			<>
-				<Input type="text" value={selectorFilterStr()} onInput={(e) => setSelectorFilterStr(e.target.value)} />
 				<div class="TableBox p-3 rounded border-dividing-color border w-full h-full">
 					<VirtualTable
 						measure={cfg.table.measure}
@@ -271,6 +270,7 @@ export default function CharactePage() {
 						}}
 					/>
 				</div>
+				<Input type="text" value={selectorFilterStr()} onInput={(e) => setSelectorFilterStr(e.target.value)} />
 			</>
 		);
 	};
@@ -564,7 +564,7 @@ export default function CharactePage() {
 																	icon={<Icons.Outline.DocmentAdd />}
 																	level="quaternary"
 																	onClick={() => {
-																		console.log("add skill");
+																		setSheetIsOpen(true)
 																	}}
 																/>
 															</div>
@@ -701,6 +701,10 @@ export default function CharactePage() {
 													}}
 												/>
 											</div>
+											{/* <Show when={}>
+
+												<Input type="text" value={selectorFilterStr()} onInput={(e) => setSelectorFilterStr(e.target.value)} />
+											</Show> */}
 											<Show when={isSelectorOpen()}>
 												{EquipmentSelector(validDataConfig(), dictionary, (data) => {
 													const dataPrimaryValue = data[selectorPrimaryKey()];

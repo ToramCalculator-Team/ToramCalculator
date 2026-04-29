@@ -123,7 +123,7 @@ export function createLiveKyselyQuery<T>(
 		void (async () => {
 			try {
 				// 动态导入，避免 SSR 触发 Worker 构造
-				const { createPgWorker } = await import("~/initialWorker");
+				const { createPgWorker } = await import("~/lib/pglite/pg");
 				const pgWorker = (await createPgWorker()) as unknown as LiveQueryAdapter;
 				if (disposed) return;
 

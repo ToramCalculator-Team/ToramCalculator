@@ -9,14 +9,16 @@ import type { Locale } from "~/locales/i18n";
  */
 
 type DatabaseState = {
-  /** 本地数据库是否初始化 */
+	/** 本地数据库是否初始化 */
 	inited: boolean;
-  /** 本地数据库表同步状态 */
+	/** 本地数据库表同步状态 */
 	tableSyncState: Partial<Record<keyof DB, boolean>>;
+	/** 是否启动数据同步 */
+	sync: boolean;
 };
 
 type SessionState = {
-  /** 用户信息 */
+	/** 用户信息 */
 	user?: {
 		/** 用户ID */
 		id: string;
@@ -25,7 +27,7 @@ type SessionState = {
 		/** 用户头像 */
 		avatar: string;
 	};
-  /** 用户账户信息 */
+	/** 用户账户信息 */
 	account: {
 		/** 账户ID */
 		id: string;
@@ -155,6 +157,7 @@ export const initialStore: Store = {
 			statistic: false,
 			user: false,
 		},
+		sync: false,
 	},
 	settings: {
 		userInterface: {
@@ -240,7 +243,7 @@ const cloneDeep = (value: unknown): unknown => {
  * - 数组：按下标递归合并（行为贴近 lodash merge）
  * - 其他类型：后者覆盖前者
  */
-const mergeDeep = <T,>(...sources: unknown[]): T => {
+const mergeDeep = <T>(...sources: unknown[]): T => {
 	const mergeTwo = (target: unknown, source: unknown): unknown => {
 		if (source === undefined) {
 			return target;
@@ -261,9 +264,7 @@ const mergeDeep = <T,>(...sources: unknown[]): T => {
 			return out;
 		}
 		if (isPlainObject(source)) {
-			const out: Record<string, unknown> = isPlainObject(target)
-				? { ...target }
-				: {};
+			const out: Record<string, unknown> = isPlainObject(target) ? { ...target } : {};
 			for (const [key, sourceValue] of Object.entries(source)) {
 				out[key] = mergeTwo(out[key], sourceValue);
 			}

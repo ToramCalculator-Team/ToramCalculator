@@ -5,7 +5,6 @@ import { Motion, Presence } from "solid-motionone";
 import { z } from "zod/v4";
 import defaultUserAvatarUrl from "~/../public/icons/512.png?url";
 import { Button } from "~/components/controls/button";
-import { syncControl } from "~/initialWorker";
 import { bindLocalAccountToUser, clearChangesContent, ensureLocalAccount } from "~/lib/localAccount";
 import { emailExists, getUserByCookie } from "~/lib/utils/session";
 import { getDictionary } from "~/locales/i18n";
@@ -96,8 +95,8 @@ export const LoginDialog = () => {
 					await clearChangesContent();
 				}
 				// 启动数据同步
-				console.log("登录成功，启动数据同步");
-				syncControl.start();
+				console.log("登录成功");
+				setStore("database", "sync", true);
 				setStore("pages", "loginDialogState", false);
 			}
 		} catch (error) {
@@ -119,9 +118,9 @@ export const LoginDialog = () => {
 		setStore("pages", "loginDialogState", false);
 
 		// 停止数据同步
-		syncControl.stop();
+		setStore("database", "sync", false);
 		await ensureLocalAccount();
-		console.log("用户登出，停止数据同步");
+		console.log("用户登出");
 	};
 
 	const register = async (value: LoginFormProps) => {
@@ -170,8 +169,8 @@ export const LoginDialog = () => {
 				}
 
 				// 启动数据同步
-				syncControl.start();
-				console.log("注册成功，启动数据同步");
+				setStore("database", "sync", true);
+				console.log("注册成功");
 			}
 
 			setStore("pages", "loginDialogState", false);

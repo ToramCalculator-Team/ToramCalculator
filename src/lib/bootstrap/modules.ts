@@ -166,7 +166,7 @@ export const bootstrapModules: BootstrapModule[] = [
 		timeout: 60_000,
 		init: async () => {
 			// Phase B 起由 bootstrap 主动创建 worker，避免调用方各自抢跑初始化。
-			const { createPgWorker } = await import("~/initialWorker");
+			const { createPgWorker } = await import("~/lib/pglite/pg");
 			await createPgWorker();
 		},
 	},
@@ -200,8 +200,18 @@ export const bootstrapModules: BootstrapModule[] = [
 		name: "changeLog",
 		deps: ["pgworker", "localAccount"],
 		optional: true,
-		init: async ({ log }) => {
-			log("observer stub; changelog sync is still triggered outside bootstrap");
+		init: async () => {
+		  const { syncControl } = await import("~/lib/pglite/pg");
+	  
+		  createRoot(() => {
+			createEffect(() => {
+			  if (store.database.sync) {
+				syncControl.start();
+			  } else {
+				syncControl.stop();
+			  }
+			});
+		  });
 		},
-	},
+	  }
 ];
