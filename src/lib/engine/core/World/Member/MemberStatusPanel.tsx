@@ -594,7 +594,7 @@ export function MemberStatusPanel(props: { controllerId?: string; member: Access
 				<Icons.Outline.InfoCircle />
 			</Button>
 
-			<Dialog state={displayDetail()} setState={setDisplayDetail} title="成员详情">
+			<Dialog state={displayDetail()} setState={setDisplayDetail} title="成员详情" maxWith="80vw">
 				<div class="flex w-full flex-1 flex-col gap-1">
 					{/* Tab 切换 */}
 					<div class="border-dividing-color flex gap-2 border-b">

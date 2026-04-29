@@ -117,7 +117,7 @@ export function MemberControllerPanel(props: MemberControllerPanelProps) {
 			{/* 3D渲染区域（中间区域 rows 2-7） */}
 			<div class="absolute top-0 left-0 w-full h-full overflow-hidden rounded">{props.gameView}</div>
 
-			<div class="z-10 row-start-8 col-start-3 portrait:col-start-1 col-span-4 portrait:col-span-8 row-span-1 flex flex-col gap-2">
+			<div class="z-9 row-start-8 col-start-3 portrait:col-start-1 col-span-4 portrait:col-span-8 row-span-1 flex flex-col gap-2">
 				{/* 技能面板 */}
 				<Show when={skillList().length > 0} fallback={<div class="text-xs">暂无技能</div>}>
 					<div class="grid grid-rows-1 grid-cols-14 gap-2 portrait:grid-cols-4">
