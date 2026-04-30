@@ -66,6 +66,10 @@ export default defineConfig(() => {
 			},
 		},
 		build: {
+			// Keep this explicit because vite-plugin-top-level-await reads the raw
+			// config before Vite resolves "baseline-widely-available"; its fallback
+			// includes Safari 14, which makes esbuild try to downlevel destructuring.
+			target: ["chrome107", "edge107", "firefox104", "safari16"],
 			// 默认关闭 sourcemap（显著降低构建内存占用）；需要时用 VITE_SOURCEMAP=true 开启
 			sourcemap: false,
 			// 启用Vite的manifest生成
