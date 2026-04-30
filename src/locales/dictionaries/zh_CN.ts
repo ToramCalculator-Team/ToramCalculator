@@ -2550,6 +2550,11 @@ const dictionary: Dictionary = {
 					formFieldDescription:
 						"这是统计信息字段数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
 				},
+				preSkillId: {
+					key: "前置技能ID",
+					tableFieldDescription: "前置技能",
+					formFieldDescription: "前置技能",
+				},
 				updatedByAccountId: {
 					key: "更新者ID",
 					tableFieldDescription: "这是更新者数据库id，一般来说，你应该不可能看到这个",

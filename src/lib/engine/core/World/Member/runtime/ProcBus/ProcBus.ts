@@ -14,8 +14,8 @@
  *   本身不可序列化，restore 时由 passive / skill 的安装逻辑重新订阅。
  */
 
+import type { EventCatalog } from "~/lib/engine/core/Event/EventCatalog";
 import { createLogger } from "~/lib/Logger";
-import type { EventCatalog } from "./EventCatalog";
 
 const log = createLogger("ProcBus");
 

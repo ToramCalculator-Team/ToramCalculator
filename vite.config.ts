@@ -59,8 +59,8 @@ function createChunkManifestPlugin(): Plugin {
 }
 
 export default defineConfig(() => {
-  return {
-    resolve: {
+	return {
+		resolve: {
 			alias: {
 				"@db": "/db",
 			},
@@ -107,10 +107,10 @@ export default defineConfig(() => {
 		optimizeDeps: {
 			exclude: ["@electric-sql/pglite", "@babylonjs/inspector"],
 		},
-    plugins: [
-      // SPA 模式用于避免 SSR 在 Node 里加载 monaco-editor 链上的 .css
-      solidStart({ ssr: false }),
-      nitroV2Plugin(),
+		plugins: [
+			// SPA 模式用于避免 SSR 在 Node 里加载 monaco-editor 链上的 .css
+			solidStart({ ssr: false }),
+			nitroV2Plugin(),
 			topLevelAwait({
 				// The export name of top-level await promise for each chunk module
 				promiseExportName: "__tla",
@@ -120,6 +120,6 @@ export default defineConfig(() => {
 			tailwindcss(),
 			// 添加chunk清单生成插件
 			createChunkManifestPlugin(),
-    ],
-  };
+		],
+	};
 });

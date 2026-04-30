@@ -41,7 +41,6 @@ generatorHandler({
 			// 生成隐式多对多模型
 			const implicitManyToManyModels = generateImplicitManyToManyModels(options.dmmf.datamodel.models);
 
-
 			// 包含中间表的完整模型列表
 			const allModels = sorted([...options.dmmf.datamodel.models, ...implicitManyToManyModels], (a, b) =>
 				a.name.localeCompare(b.name),

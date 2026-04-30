@@ -1,11 +1,6 @@
 import type { account, DB } from "@db/generated/zod/index";
 import { createId } from "@paralleldrive/cuid2";
-import type {
-	Insertable,
-	Selectable,
-	Transaction,
-	Updateable,
-} from "kysely";
+import type { Insertable, Selectable, Transaction, Updateable } from "kysely";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { z } from "zod/v4";
 import { AccountCreateDataSchema, AccountSchema, AccountUpdateDataSchema } from "../generated/zod/index";

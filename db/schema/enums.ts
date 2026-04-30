@@ -1,7 +1,7 @@
 /**
  * @file enums.ts
  * @description 枚举定义文件
- * 
+ *
  * 此文件主要用于定义数据库中出现的枚举类型，生成器会将这里的内容和main.prisma合并成完整的prisma文件。
  * 此文件也为作为开发中数据库枚举的唯一事实来源
  */
@@ -68,35 +68,35 @@ export type MaterialType = (typeof MATERIAL_TYPE)[number];
 
 // 宠物性格
 export const PET_PERSONA_TYPE = [
-  "Fervent",
-  "Intelligent",
-  "Mild",
-  "Swift",
-  "Justice",
-  "Devoted",
-  "Impulsive",
-  "Calm",
-  "Sly",
-  "Timid",
-  "Brave",
-  "Active",
-  "Sturdy",
-  "Steady",
-  "Max",
+	"Fervent",
+	"Intelligent",
+	"Mild",
+	"Swift",
+	"Justice",
+	"Devoted",
+	"Impulsive",
+	"Calm",
+	"Sly",
+	"Timid",
+	"Brave",
+	"Active",
+	"Sturdy",
+	"Steady",
+	"Max",
 ] as const;
 export type PetPersonaType = (typeof PET_PERSONA_TYPE)[number];
 
 // 宠物类型
 export const PET_TYPE = [
-  "AllTrades",
-  "PhysicalAttack",
-  "MagicAttack",
-  "PhysicalDefense",
-  "MagicDefense",
-  "Avoidance",
-  "Hit",
-  "SkillsEnhancement",
-  "Genius",
+	"AllTrades",
+	"PhysicalAttack",
+	"MagicAttack",
+	"PhysicalDefense",
+	"MagicDefense",
+	"Avoidance",
+	"Hit",
+	"SkillsEnhancement",
+	"Genius",
 ] as const;
 export type PetType = (typeof PET_TYPE)[number];
 
@@ -114,15 +114,15 @@ export type Visibility = (typeof VISIBILITY)[number];
 
 // 主武器类型
 export const MAIN_WEAPON_TYPE = [
-  "OneHandSword",// 0
-  "TwoHandSword",// 1
-  "Bow",// 2
-  "Bowgun",// 3
-  "Rod",// 4
-  "Magictool",// 5
-  "Knuckle",// 6
-  "Halberd",// 7
-  "Katana",// 8
+	"OneHandSword", // 0
+	"TwoHandSword", // 1
+	"Bow", // 2
+	"Bowgun", // 3
+	"Rod", // 4
+	"Magictool", // 5
+	"Knuckle", // 6
+	"Halberd", // 7
+	"Katana", // 8
 ] as const;
 export type MainWeaponType = (typeof MAIN_WEAPON_TYPE)[number];
 
@@ -139,7 +139,14 @@ export const SUB_WEAPON_TYPE = ["Arrow", "ShortSword", "NinjutsuScroll", "Shield
 export type SubWeaponType = (typeof SUB_WEAPON_TYPE)[number];
 
 // 副手武器类型
-export const SUB_HAND_TYPE = [...SUB_WEAPON_TYPE, MAIN_WEAPON_TYPE[0], MAIN_HAND_TYPE[5], MAIN_HAND_TYPE[6], MAIN_HAND_TYPE[8], "None"] as const;
+export const SUB_HAND_TYPE = [
+	...SUB_WEAPON_TYPE,
+	MAIN_WEAPON_TYPE[0],
+	MAIN_HAND_TYPE[5],
+	MAIN_HAND_TYPE[6],
+	MAIN_HAND_TYPE[8],
+	"None",
+] as const;
 export type SubHandType = (typeof SUB_HAND_TYPE)[number];
 
 // 副手武器类型限制范围
@@ -168,33 +175,33 @@ export type AvatarType = (typeof AVATAR_TYPE)[number];
 
 // 锻晶
 export const CRYSTAL_TYPE = [
-  "NormalCrystal",
-  "WeaponCrystal",
-  "ArmorCrystal",
-  "OptionCrystal",
-  "SpecialCrystal",
+	"NormalCrystal",
+	"WeaponCrystal",
+	"ArmorCrystal",
+	"OptionCrystal",
+	"SpecialCrystal",
 ] as const;
 export type CrystalType = (typeof CRYSTAL_TYPE)[number];
 
 // 消耗品
 export const CONSUMABLE_TYPE = [
-  "MaxHp",
-  "MaxMp",
-  "pAtk",
-  "mAtk",
-  "Aspd",
-  "Cspd",
-  "Hit",
-  "Flee",
-  "EleStro",
-  "EleRes",
-  "pRes",
-  "mRes",
+	"MaxHp",
+	"MaxMp",
+	"pAtk",
+	"mAtk",
+	"Aspd",
+	"Cspd",
+	"Hit",
+	"Flee",
+	"EleStro",
+	"EleRes",
+	"pRes",
+	"mRes",
 ] as const;
 export type ConsumableType = (typeof CONSUMABLE_TYPE)[number];
 
 // 道具来源
-export const ITEM_SOURCE_TYPE = ["Mob", "Task", "BlacksmithShop","Player"] as const;
+export const ITEM_SOURCE_TYPE = ["Mob", "Task", "BlacksmithShop", "Player"] as const;
 export type ItemSourceType = (typeof ITEM_SOURCE_TYPE)[number];
 
 // 道具
@@ -215,136 +222,136 @@ export type RecipeIngredientType = (typeof RECIPE_INGREDIENT_TYPE)[number];
 
 // 异常状态
 export const ABNORMAL_TYPE = [
-  "MagicFlinch",
-  "None",
-  "Flinch",
-  "Tumble",
-  "Stun",
-  "KnockBack",
-  "Poison",
-  "PoisonLevel1",
-  "PoisonLevel2",
-  "Paralysis",
-  "Blindness",
-  "Ignition",
-  "Freeze",
-  "Breaking",
-  "Slow",
-  "Stop",
-  "Fear",
-  "Dizzy",
-  "Weak",
-  "Collapse",
-  "Confusion",
-  "Silent",
-  "Bleed",
-  "Sleep",
-  "Rage",
-  "Tiredness",
-  "Blessing",
-  "SystemInvincibility",
-  "BestState",
-  "Invincibility",
-  "Suction",
-  "Taming",
-  "Curse",
-  "Flash",
-  "Runaway",
-  "MagicalExplosion",
-  "Sick",
-  "Malgravity",
-  "Dispel",
-  "Inversion",
-  "Mineralization",
-  "NoTools",
-  "Enhance",
-  "ComboInvincibility",
-  "DeathTorqueShot",
-  "SystemAddHate",
-  "Recovery",
+	"MagicFlinch",
+	"None",
+	"Flinch",
+	"Tumble",
+	"Stun",
+	"KnockBack",
+	"Poison",
+	"PoisonLevel1",
+	"PoisonLevel2",
+	"Paralysis",
+	"Blindness",
+	"Ignition",
+	"Freeze",
+	"Breaking",
+	"Slow",
+	"Stop",
+	"Fear",
+	"Dizzy",
+	"Weak",
+	"Collapse",
+	"Confusion",
+	"Silent",
+	"Bleed",
+	"Sleep",
+	"Rage",
+	"Tiredness",
+	"Blessing",
+	"SystemInvincibility",
+	"BestState",
+	"Invincibility",
+	"Suction",
+	"Taming",
+	"Curse",
+	"Flash",
+	"Runaway",
+	"MagicalExplosion",
+	"Sick",
+	"Malgravity",
+	"Dispel",
+	"Inversion",
+	"Mineralization",
+	"NoTools",
+	"Enhance",
+	"ComboInvincibility",
+	"DeathTorqueShot",
+	"SystemAddHate",
+	"Recovery",
 ] as const;
 export type AbnormalType = (typeof ABNORMAL_TYPE)[number];
 
 // 武器技能
 export const WEAPON_SKILL_GROUP = [
-  "BladeSkill", // 剑术技能
-  "ShootSkill", // 射击技能
-  "MagicSkill", // 魔法技能
-  "MarshallSkill", // 格斗技能
-  "DualSwordSkill", // 双剑技能
-  "HalberdSkill", // 斧枪技能
-  "MononofuSkill", // 武士技能
-  "CrusherSkill", // 粉碎者技能
-  "FeatheringSkill", // 灵魂技能
+	"BladeSkill", // 剑术技能
+	"ShootSkill", // 射击技能
+	"MagicSkill", // 魔法技能
+	"MarshallSkill", // 格斗技能
+	"DualSwordSkill", // 双剑技能
+	"HalberdSkill", // 斧枪技能
+	"MononofuSkill", // 武士技能
+	"CrusherSkill", // 粉碎者技能
+	"FeatheringSkill", // 灵魂技能
 ] as const;
-export type WeaponSkillGroup = (typeof WEAPON_SKILL_GROUP)[number] 
+export type WeaponSkillGroup = (typeof WEAPON_SKILL_GROUP)[number];
 
 // 强化技能
 export const BUFF_SKILL_GROUP = [
-  "GuardSkill", // 防卫技能
-  "ShieldSkill", // 护盾技能
-  "KnifeSkill", // 小刀技能
-  "KnightSkill", // 骑士技能
-  "HunterSkill", // 狩猎技能
-  "PriestSkill", // 祭司技能
-  "AssassinSkill", // 暗杀技能
-  "WizardSkill", // 巫师技能
+	"GuardSkill", // 防卫技能
+	"ShieldSkill", // 护盾技能
+	"KnifeSkill", // 小刀技能
+	"KnightSkill", // 骑士技能
+	"HunterSkill", // 狩猎技能
+	"PriestSkill", // 祭司技能
+	"AssassinSkill", // 暗杀技能
+	"WizardSkill", // 巫师技能
 ] as const;
 export type BuffSkillGroup = (typeof BUFF_SKILL_GROUP)[number];
 
 // 辅助技能
-export const ASSIST_SKILL_GROUP =[
-  "SupportSkill", // 辅助技能
-  "BattleSkill", // 好战分子
-  "SurvivalSkill", // 生存本能
+export const ASSIST_SKILL_GROUP = [
+	"SupportSkill", // 辅助技能
+	"BattleSkill", // 好战分子
+	"SurvivalSkill", // 生存本能
 ] as const;
 export type AssistSkillGroup = (typeof ASSIST_SKILL_GROUP)[number];
 
 // 制造相关
 export const PRODUCE_SKILL_GROUP = [
-  "SmithSkill", // 锻冶大师
-  "AlchemySkill", // 炼金术士
-  "TamerSkill", // 驯兽天分
+	"SmithSkill", // 锻冶大师
+	"AlchemySkill", // 炼金术士
+	"TamerSkill", // 驯兽天分
 ] as const;
 export type ProduceSkillGroup = (typeof PRODUCE_SKILL_GROUP)[number];
 
 // 技能书
 export const SKILL_BOOK_GROUP = [
-  "DarkPowerSkill", // 暗黑之力
-  "MagicBladeSkill", // 魔剑技能
-  "DancerSkill", // 舞者技能
-  "MinstrelSkill", // 诗人技能
-  "BareHandSkill", // 空手技能
-  "NinjaSkill", // 忍者技能
-  "PartisanSkill", // 游击队技能
+	"DarkPowerSkill", // 暗黑之力
+	"MagicBladeSkill", // 魔剑技能
+	"DancerSkill", // 舞者技能
+	"MinstrelSkill", // 诗人技能
+	"BareHandSkill", // 空手技能
+	"NinjaSkill", // 忍者技能
+	"PartisanSkill", // 游击队技能
 ] as const;
 export type SkillBookGroup = (typeof SKILL_BOOK_GROUP)[number];
 
 export const OTHER_SKILL_GROUP = [
-  "LuckSkill",
-  "MerchantSkill", // 商人技能
-  "PetSkill", // 宠物技能
+	"LuckSkill",
+	"MerchantSkill", // 商人技能
+	"PetSkill", // 宠物技能
 ] as const;
 export type OtherSkillGroup = (typeof OTHER_SKILL_GROUP)[number];
 
 export const SKILL_TREE_GROUP_TYPE = [
-  "WeaponSkillGroup",
-  "BuffSkillGroup",
-  "AssistSkillGroup",
-  "ProduceSkillGroup",
-  "SkillBookGroup",
-  "OtherSkillGroup"
+	"WeaponSkillGroup",
+	"BuffSkillGroup",
+	"AssistSkillGroup",
+	"ProduceSkillGroup",
+	"SkillBookGroup",
+	"OtherSkillGroup",
 ] as const;
 export type SkillTreeGroupType = (typeof SKILL_TREE_GROUP_TYPE)[number];
 
 // 技能树类型
 export const SKILL_TREE_TYPE = [
-  ...WEAPON_SKILL_GROUP,
-  ...BUFF_SKILL_GROUP,
-  ...ASSIST_SKILL_GROUP,
-  ...PRODUCE_SKILL_GROUP,
-  ...SKILL_BOOK_GROUP,
-  ...OTHER_SKILL_GROUP
+	...WEAPON_SKILL_GROUP,
+	...BUFF_SKILL_GROUP,
+	...ASSIST_SKILL_GROUP,
+	...PRODUCE_SKILL_GROUP,
+	...SKILL_BOOK_GROUP,
+	...OTHER_SKILL_GROUP,
 ] as const;
 export type SkillTreeType = (typeof SKILL_TREE_TYPE)[number];
 
@@ -354,117 +361,117 @@ export type SkillAttackType = (typeof SKILL_ATTACK_TYP)[number];
 
 // 伤害范围类型
 export const DAMAGE_RANGE_TYPE = [
-  "None", // 单体伤害,无法通过单纯的移动回避，可通过闪躲或部分防御技能将其无效化。
-  "Range", // 范围伤害,伤害中心点为敌方的技能，警告范围为红色。
-  "Enemy", // 周围伤害,伤害中心点为自身的技能，警告范围为红色。
-  "MoveAttack", // 冲撞伤害,直线状且自身会沿攻击范围移动的技能，警告范围为红色。
-  "Line", // 直线伤害,正面发出的直线状攻击，警告范围为红色。
-  "Ground", // 贴地伤害,贴地移动的伤害，会受地形阻挡，表现形式通常为剑气、射刃。警告范围为蓝色。
-  "Bullet", // 子弹伤害,向目标射出球状投射物之技能，路径中与着弹点处可以分别造成伤害，警告范围为蓝色。
-  "GroundFixed", // 地面伤害,放置于地面上的固定伤害领域，表现形式为地刺，警告范围为蓝色。
-  "Meteor", // 陨石伤害,自空中垂直落下的技能，表现形式为陨石，警告范围为蓝色。
-  "Explosion", // 爆炸伤害,先在场上产生如光束落下般的区域，随后爆炸并消失的技能，警告范围为蓝色。
-  "Attraction", // 吸引伤害,在场上产生会持续造成伤害并把玩家吸引至中心区域的领域，表现形式为漩涡或龙卷风，警告范围为蓝色。
+	"None", // 单体伤害,无法通过单纯的移动回避，可通过闪躲或部分防御技能将其无效化。
+	"Range", // 范围伤害,伤害中心点为敌方的技能，警告范围为红色。
+	"Enemy", // 周围伤害,伤害中心点为自身的技能，警告范围为红色。
+	"MoveAttack", // 冲撞伤害,直线状且自身会沿攻击范围移动的技能，警告范围为红色。
+	"Line", // 直线伤害,正面发出的直线状攻击，警告范围为红色。
+	"Ground", // 贴地伤害,贴地移动的伤害，会受地形阻挡，表现形式通常为剑气、射刃。警告范围为蓝色。
+	"Bullet", // 子弹伤害,向目标射出球状投射物之技能，路径中与着弹点处可以分别造成伤害，警告范围为蓝色。
+	"GroundFixed", // 地面伤害,放置于地面上的固定伤害领域，表现形式为地刺，警告范围为蓝色。
+	"Meteor", // 陨石伤害,自空中垂直落下的技能，表现形式为陨石，警告范围为蓝色。
+	"Explosion", // 爆炸伤害,先在场上产生如光束落下般的区域，随后爆炸并消失的技能，警告范围为蓝色。
+	"Attraction", // 吸引伤害,在场上产生会持续造成伤害并把玩家吸引至中心区域的领域，表现形式为漩涡或龙卷风，警告范围为蓝色。
 ] as const;
 export type DamageRangeType = (typeof DAMAGE_RANGE_TYPE)[number];
 
 // 连击效果类型
 export const COMBO_STEP_TYPE = [
-  "None",
-  "Start",
-  "Rengeki", // 连击
-  "ThirdEye", // 心眼
-  "Filling", // 补位
-  "Quick", // 迅速
-  "HardHit", // 增幅
-  "Tenacity", // 执着
-  "Invincible", // 无敌
-  "BloodSucking", // 吸血
-  "Tough", // 强韧
-  "AMomentaryWalk",
-  "Reflection", // 反射
-  "Illusion",
-  "Max",
+	"None",
+	"Start",
+	"Rengeki", // 连击
+	"ThirdEye", // 心眼
+	"Filling", // 补位
+	"Quick", // 迅速
+	"HardHit", // 增幅
+	"Tenacity", // 执着
+	"Invincible", // 无敌
+	"BloodSucking", // 吸血
+	"Tough", // 强韧
+	"AMomentaryWalk",
+	"Reflection", // 反射
+	"Illusion",
+	"Max",
 ] as const;
 export type ComboStepType = (typeof COMBO_STEP_TYPE)[number];
 
 // 雷吉斯托环类型
 export const REGISLET_TYPE = [
-  "Nil",
-  "AtkUp",
-  "MAtkUp",
-  "MaxHpUp",
-  "MaxMpUp",
-  "DefUp",
-  "MDefUp",
-  "HitUp",
-  "FleeUp",
-  "AspdUp",
-  "CspdUp",
-  "PursuitResist",
-  "PoisonRecovery",
-  "BurningFightingSpirit",
-  "NeuralControl",
-  "CatEye",
-  "Hyperthermia",
-  "Temporaryrepairs",
-  "Spike",
-  "StandingWithArmsCrossed",
-  "BloodyWarrior",
-  "SilentRecharge",
-  "ShortSleeper",
-  "MagicalNonExplosion",
-  "MonsterHunt",
-  "CoffeeBreak",
-  "Practitioner",
-  "PetOfAttacker",
-  "PetOfTanker",
-  "EmergencyHpRecovery",
-  "EmergencyMpRecovery",
-  "MagicalBash",
-  "SavingTechnique",
-  "LastHero",
-  "Lonely",
-  "StartDash",
-  "BaskInTheSun",
-  "TheSameBoat",
-  "LastResistance",
-  "BackwardWarning",
-  "Saviour",
-  "Panic",
-  "Transfer",
-  "HideCombo",
-  "NothingStyle",
-  "FailTrapper",
-  "Guitarist",
-  "QuickDance",
-  "SeoulConnect",
-  "ExtremeSurvival",
-  "AvoidSet",
-  "LongStep",
-  "TeleportStep",
-  "FireTalent",
-  "WaterTalent",
-  "WindTalent",
-  "LandTalent",
-  "LightTalent",
-  "DarkTalent",
-  "CriticalCare",
-  "NoneNow",
-  "TargetDeclaration",
-  "LeavingWorkNotification",
-  "DamageCheck",
-  "PoisonBooster",
-  "FlameBooster",
-  "WeaknessBlade",
-  "PreparationPoison",
-  "HardHitEnhance",
-  "AccelBladeExtension",
-  "PowerShootSharp",
-  "OneWheelEnhance",
-  "MagicArrowPursuit",
-  "MagicWallEnhance",
-  "SmashEnhance",
-  "SonicWaveEnhance",
+	"Nil",
+	"AtkUp",
+	"MAtkUp",
+	"MaxHpUp",
+	"MaxMpUp",
+	"DefUp",
+	"MDefUp",
+	"HitUp",
+	"FleeUp",
+	"AspdUp",
+	"CspdUp",
+	"PursuitResist",
+	"PoisonRecovery",
+	"BurningFightingSpirit",
+	"NeuralControl",
+	"CatEye",
+	"Hyperthermia",
+	"Temporaryrepairs",
+	"Spike",
+	"StandingWithArmsCrossed",
+	"BloodyWarrior",
+	"SilentRecharge",
+	"ShortSleeper",
+	"MagicalNonExplosion",
+	"MonsterHunt",
+	"CoffeeBreak",
+	"Practitioner",
+	"PetOfAttacker",
+	"PetOfTanker",
+	"EmergencyHpRecovery",
+	"EmergencyMpRecovery",
+	"MagicalBash",
+	"SavingTechnique",
+	"LastHero",
+	"Lonely",
+	"StartDash",
+	"BaskInTheSun",
+	"TheSameBoat",
+	"LastResistance",
+	"BackwardWarning",
+	"Saviour",
+	"Panic",
+	"Transfer",
+	"HideCombo",
+	"NothingStyle",
+	"FailTrapper",
+	"Guitarist",
+	"QuickDance",
+	"SeoulConnect",
+	"ExtremeSurvival",
+	"AvoidSet",
+	"LongStep",
+	"TeleportStep",
+	"FireTalent",
+	"WaterTalent",
+	"WindTalent",
+	"LandTalent",
+	"LightTalent",
+	"DarkTalent",
+	"CriticalCare",
+	"NoneNow",
+	"TargetDeclaration",
+	"LeavingWorkNotification",
+	"DamageCheck",
+	"PoisonBooster",
+	"FlameBooster",
+	"WeaknessBlade",
+	"PreparationPoison",
+	"HardHitEnhance",
+	"AccelBladeExtension",
+	"PowerShootSharp",
+	"OneWheelEnhance",
+	"MagicArrowPursuit",
+	"MagicWallEnhance",
+	"SmashEnhance",
+	"SonicWaveEnhance",
 ] as const;
 export type RegisletType = (typeof REGISLET_TYPE)[number];

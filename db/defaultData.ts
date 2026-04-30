@@ -422,6 +422,7 @@ export const defaultData: DB = {
 		details: "默认技能详情",
 		dataSources: "",
 		statisticId: "",
+		preSkillId: null,
 		updatedByAccountId: null,
 		createdByAccountId: null,
 	},

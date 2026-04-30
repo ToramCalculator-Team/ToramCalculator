@@ -297,7 +297,7 @@ model option {
     modifiers       String[]
     colorA          Int?
     colorB          Int?
-    colorC          Int?    
+    colorC          Int?
     images          image[]
 
     usedByPlayerOptions player_option[]
@@ -473,6 +473,10 @@ model skill {
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
+    preSkill    skill?    @relation("SkillPrerequisite", fields: [preSkillId], references: [id], onDelete: SetNull)
+    preSkillId  String?
+
+    nextSkills skill[] @relation("SkillPrerequisite")
 
     usedByCharacterSkills character_skill[]
 
@@ -540,13 +544,13 @@ model player {
     name  String
     useIn String
 
-    pets              player_pet[]
-    weapons           player_weapon[]
-    armors            player_armor[]
-    options           player_option[]
-    specials          player_special[]
-    avatars           avatar[]
-    characters        character[]
+    pets       player_pet[]
+    weapons    player_weapon[]
+    armors     player_armor[]
+    options    player_option[]
+    specials   player_special[]
+    avatars    avatar[]
+    characters character[]
 
     belongToAccount   account @relation(fields: [belongToAccountId], references: [id], onDelete: Cascade)
     belongToAccountId String
