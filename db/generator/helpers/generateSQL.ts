@@ -488,9 +488,9 @@ CREATE OR REPLACE VIEW "${tableName}" AS
 	 */
 	private generateTriggers(tableName: string, colNames: string[], pkCols: string[]): string {
 		const jsonFields = colNames.map((name) => `'${name}', NEW."${name}"`).join(",\n      ");
-		const updateJsonFields = colNames
-			.map((name) => `'${name}', COALESCE(NEW."${name}", local."${name}")`)
-			.join(",\n      ");
+		// UPDATE 记录发送的是视图合并后的完整快照。
+		// 这里必须保留显式 NULL：NULL 表示清空可空字段，缺少字段才表示不参与本次变更。
+		const updateJsonFields = colNames.map((name) => `'${name}', NEW."${name}"`).join(",\n      ");
 
 		const changedColsCheck = colNames
 			.filter((c) => !pkCols.includes(c))
@@ -563,7 +563,7 @@ $$ LANGUAGE plpgsql;`;
 				.map(
 					(name) =>
 						`
-    "${name}" = CASE WHEN NEW."${name}" IS DISTINCT FROM synced."${name}" THEN NEW."${name}" ELSE local."${name}" END`,
+    "${name}" = NEW."${name}"`,
 				)
 				.join(",") || "-- no non-pk fields";
 
@@ -579,6 +579,7 @@ BEGIN
     SELECT * INTO synced FROM "${tableName}_synced" WHERE ${pkCols.map((pk) => `"${pk}" = NEW."${pk}"`).join(" AND ")};
     SELECT * INTO local FROM "${tableName}_local" WHERE ${pkCols.map((pk) => `"${pk}" = NEW."${pk}"`).join(" AND ")};
     ${changedColsCheck || "-- no non-pk fields to track"}
+    -- FOUND 来自 local 查询：视图 UPDATE 需要按是否已有本地覆盖行决定 INSERT 或 UPDATE。
     IF NOT FOUND THEN
     INSERT INTO "${tableName}_local" (
         ${colNames.map((name) => `"${name}"`).join(", ")},
@@ -594,13 +595,8 @@ BEGIN
     UPDATE "${tableName}_local"
     SET
         ${updateSetLines},
-        changed_columns = (
-        SELECT array_agg(DISTINCT col) FROM (
-            SELECT unnest(local.changed_columns) AS col
-            UNION
-            SELECT unnest(changed_cols) AS col
-        ) AS cols
-        ),
+        -- changed_columns 表示 local 相对 synced 的当前差异集合，重算可移除已回到 synced 值的字段。
+        changed_columns = changed_cols,
         write_id = local_write_id
     WHERE ${pkCols.map((pk) => `"${pk}" = NEW."${pk}"`).join(" AND ")};
     END IF;
@@ -615,9 +611,9 @@ BEGIN
     VALUES (
     '${tableName}',
     'update',
-    jsonb_strip_nulls(jsonb_build_object(
+    jsonb_build_object(
         ${updateJsonFields}
-    )),
+    ),
     local_write_id,
     pg_current_xact_id()
     );

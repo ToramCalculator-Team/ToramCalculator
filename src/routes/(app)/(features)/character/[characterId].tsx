@@ -1,128 +1,62 @@
-import { getPrimaryKeys } from "@db/generated/dmmf-utils";
-import {
-	type CharacterWithRelations,
-	selectAllCharactersByBelongtoplayerid,
-	updateCharacter,
-} from "@db/generated/repositories/character";
-import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
+import { selectAllCharactersByBelongtoplayerid, updateCharacter } from "@db/generated/repositories/character";
 import type { MemberWithRelations } from "@db/generated/repositories/member";
 import { selectPlayerByIdWithRelations } from "@db/generated/repositories/player";
-import type { PlayerArmorWithRelations } from "@db/generated/repositories/player_armor";
-import type { PlayerOptionWithRelations } from "@db/generated/repositories/player_option";
-import type { PlayerSpecialWithRelations } from "@db/generated/repositories/player_special";
-import type { PlayerWeaponWithRelations } from "@db/generated/repositories/player_weapon";
 import type { TeamWithRelations } from "@db/generated/repositories/team";
 import type { character, DB } from "@db/generated/zod";
-import {
-	ASSIST_SKILL_GROUP,
-	BUFF_SKILL_GROUP,
-	OTHER_SKILL_GROUP,
-	PRODUCE_SKILL_GROUP,
-	SKILL_BOOK_GROUP,
-	SKILL_TREE_GROUP_TYPE,
-	SKILL_TREE_TYPE,
-	type SkillTreeType,
-	WEAPON_SKILL_GROUP,
-} from "@db/schema/enums";
 import { useNavigate, useParams } from "@solidjs/router";
-import type { VisibilityState } from "@tanstack/solid-table";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import {
-	type Accessor,
 	createEffect,
 	createMemo,
 	createResource,
 	createSignal,
-	For,
-	Index,
 	on,
 	onCleanup,
 	onMount,
 	Show,
 	useContext,
 } from "solid-js";
-import { Portal } from "solid-js/web";
 import { Motion, Presence } from "solid-motionone";
-import { DATA_CONFIG, type TableDataConfig } from "~/components/business/data-config";
-import { Sheet } from "~/components/containers/sheet";
 import { Button } from "~/components/controls/button";
-import { Input } from "~/components/controls/input";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Select } from "~/components/controls/select";
-import { VirtualTable } from "~/components/dataDisplay/virtualTable";
-import { AbiPanel } from "~/components/features/character/AbiPanel";
+import { CharacterConfigPanel } from "~/components/features/character/CharacterConfigPanel";
 import { CharacterView } from "~/components/features/character/CharacterView";
-import { EquipmentPanel, type EquipmentSlot } from "~/components/features/character/EquipmentPanel";
 import { Icons } from "~/components/icons";
-import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
 import { useEngine } from "~/lib/engine/core/thread/EngineContext";
 import { createPreviewConfig, type EngineScenarioData } from "~/lib/engine/core/types";
 import { StatsRenderer } from "~/lib/engine/core/World/Member/MemberStatusPanel";
 import { createLogger } from "~/lib/Logger";
-import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
-import type { Dictionary } from "~/locales/type";
 import { setStore, store } from "~/store";
 import { createCharacter } from "./createCharacter";
 
 const logger = createLogger("CharacterPage");
 
-const SKILL_TREE_MAP = {
-	WeaponSkillGroup: WEAPON_SKILL_GROUP,
-	BuffSkillGroup: BUFF_SKILL_GROUP,
-	AssistSkillGroup: ASSIST_SKILL_GROUP,
-	ProduceSkillGroup: PRODUCE_SKILL_GROUP,
-	SkillBookGroup: SKILL_BOOK_GROUP,
-	OtherSkillGroup: OTHER_SKILL_GROUP,
-} as const;
-
-type SkillTreeNode = {
-	skills: CharacterSkillWithRelations[];
-};
-
-type CharacterSkillTreeMap = Record<SkillTreeType, SkillTreeNode>;
-
-type SkillTreeVisibilityMap = Partial<Record<SkillTreeType, boolean>>;
-
-function createEmptyCharacterSkillTree(): CharacterSkillTreeMap {
-	// skills 的事实来源是 character().skills；这里只建立派生索引，避免把服务端数据再存成可变 UI 状态。
-	const tree = {} as CharacterSkillTreeMap;
-	for (const treeType of SKILL_TREE_TYPE) {
-		tree[treeType] = { skills: [] };
-	}
-	return tree;
-}
-
 export default function CharactePage() {
 	const navigate = useNavigate();
-	const dictionary = useDictionary();
 	const media = useContext(MediaContext);
-
-	// 从url获取机体id参数
 	const params = useParams();
 
-	// 面板模式
 	type PanelModeType = "Config" | "AttrPreview" | "SkillPreview";
 	const [panelMode, setPanelMode] = createSignal<PanelModeType>("Config");
 
-	// characters获取，用于角色选择器
 	const charactersFinder = (id: string) => selectAllCharactersByBelongtoplayerid(id);
 	const [characters, { refetch: refetchCharacters }] = createResource(
 		() => store.session.account.player?.id ?? "",
 		charactersFinder,
 	);
 
-	// 当前活动角色
 	const [playerWithRelations, { refetch: refetchPlayerWithRelations }] = createResource(
 		() => store.session.account.player?.id,
 		async (playerId) => {
+			if (!playerId) return null;
 			const player = await selectPlayerByIdWithRelations(playerId);
 			logger.info("player", player);
 			return player;
 		},
 	);
 
-	// 当playerId或者params.characterId变化时，character会刷新
 	const character = createMemo(() => {
 		const player = playerWithRelations();
 		if (!player) return null;
@@ -132,7 +66,6 @@ export default function CharactePage() {
 		return character;
 	});
 
-	// ==================== 引擎集成 ====================
 	const engine = useEngine();
 	const previewTeamAId = "CHARACTER_PREVIEW_TEAM_A";
 	const previewTeamBId = "CHARACTER_PREVIEW_TEAM_B";
@@ -140,29 +73,36 @@ export default function CharactePage() {
 	const previewStatisticId = "CHARACTER_PREVIEW_STATISTIC";
 	const [scenarioLoaded, setScenarioLoaded] = createSignal(false);
 	let rangeUpdateTimer: number | undefined;
+	let pendingCharacterPatch: Partial<character> = {};
 
 	const queueCharacterPatch = (patch: Partial<character>, debounceMs = 200) => {
+		pendingCharacterPatch = { ...pendingCharacterPatch, ...patch };
 		if (rangeUpdateTimer !== undefined) {
 			window.clearTimeout(rangeUpdateTimer);
 		}
 		rangeUpdateTimer = window.setTimeout(() => {
 			rangeUpdateTimer = undefined;
-			void commitCharacterPatch(patch);
+			const patchToCommit = pendingCharacterPatch;
+			pendingCharacterPatch = {};
+			void commitCharacterPatch(patchToCommit);
 		}, debounceMs);
 	};
 
 	const commitCharacterPatch = async (patch: Partial<character>) => {
 		const current = character();
 		if (!current) return;
+		const patchToCommit = { ...pendingCharacterPatch, ...patch };
+		pendingCharacterPatch = {};
 		if (rangeUpdateTimer !== undefined) {
 			window.clearTimeout(rangeUpdateTimer);
 			rangeUpdateTimer = undefined;
 		}
-		await updateCharacter(current.id, patch);
+		if (Object.keys(patchToCommit).length === 0) return;
+		await updateCharacter(current.id, patchToCommit);
 		await refetchPlayerWithRelations();
 	};
 
-	// 监听玩家配置变化，更新引擎场景数据
+	// 角色配置变化后同步预览引擎；配置面板只提交 character patch，预览生命周期留在页面层。
 	createEffect(
 		on(
 			() => ({
@@ -180,7 +120,6 @@ export default function CharactePage() {
 				if (!Array.isArray(player.characters) || player.characters.length === 0) return null;
 
 				const now = new Date().toISOString();
-
 				const member: MemberWithRelations = {
 					id: previewMemberId,
 					name: currentCharacter.name ?? "未命名角色",
@@ -233,6 +172,7 @@ export default function CharactePage() {
 						primaryMemberId: previewMemberId,
 					},
 				};
+
 				try {
 					if (!scenarioLoaded()) {
 						logger.info("loading scenario", scenario);
@@ -258,146 +198,12 @@ export default function CharactePage() {
 		return primaryMember;
 	});
 
-	// 抽屉状态管理
-	const [sheetIsOpen, setSheetIsOpen] = createSignal(false);
-	const [sheetTitle, setSheetTitle] = createSignal("");
-
-	// 选择器（表格）状态管理
-	const [isSelectorOpen, setIsSelectorOpen] = createSignal(false);
-	const [selectorType, setSelectorType] = createSignal<keyof DB>("player_weapon");
-	const [selectorColumnVisibility, setSelectorColumnVisibility] = createSignal<VisibilityState>({});
-	const [selectorPrimaryKey, setSelectorPrimaryKey] = createSignal<string>("");
-
-	// 对应character的字段
-	const [dataSolt, setDataSolt] = createSignal<keyof CharacterWithRelations>("id");
-
-	const EquipmentSelector = <T extends Record<string, unknown>>(
-		dataConfig: TableDataConfig<T>,
-		dictionary: Accessor<Dictionary>,
-		rowClickHandler: (data: T) => void,
-	) => {
-		const cfg = dataConfig(dictionary);
-		if (!cfg) return null;
-
-		// 响应式订阅当前表的行数据（如果 dataConfig 声明了 liveQuery）。
-		// 切换 wikiStore.type 时，createEffect 内部会自动退订旧订阅、订阅新表。
-		const liveTableRows = createLiveKyselyQuery((db) => {
-			if (!cfg) return null;
-			const liveQueryBuilder = cfg.dataFetcher.liveQuery;
-			if (!liveQueryBuilder) return null;
-			return liveQueryBuilder(db);
-		});
-		const [selectorFilterStr, setSelectorFilterStr] = createSignal("");
-
-		return (
-			<>
-				<div class="TableBox p-3 rounded border-dividing-color border w-full h-full">
-					<VirtualTable
-						measure={cfg.table.measure}
-						data={liveTableRows.rows}
-						primaryKey={cfg.primaryKey}
-						columnsDef={cfg.table.columnsDef}
-						hiddenColumnDef={cfg.table.hiddenColumnDef}
-						tdGenerator={cfg.table.tdGenerator}
-						defaultSort={cfg.table.defaultSort}
-						dictionary={cfg.dictionary}
-						globalFilterStr={selectorFilterStr}
-						rowHandleClick={rowClickHandler}
-						columnVisibility={selectorColumnVisibility()}
-						onColumnVisibilityChange={(updater) => {
-							if (typeof updater === "function") {
-								setSelectorColumnVisibility(updater(selectorColumnVisibility()));
-							}
-						}}
-					/>
-				</div>
-				<Input type="text" value={selectorFilterStr()} onInput={(e) => setSelectorFilterStr(e.target.value)} />
-			</>
-		);
-	};
-
-	const equipmentSlotConfig: Record<EquipmentSlot, keyof DB> = {
-		weaponId: "player_weapon",
-		subWeaponId: "player_weapon",
-		armorId: "player_armor",
-		optionId: "player_option",
-		specialId: "player_special",
-	};
-
-	// 打开装备选择器
-	const openEquipmentPicker = (slot: EquipmentSlot) => {
-		// 将抽屉内容设置为选择器
-		setIsSelectorOpen(true);
-		setDataSolt(slot);
-		const tableType = equipmentSlotConfig[slot];
-		const primaryKey = getPrimaryKeys(tableType)[0];
-		if (!primaryKey) return;
-		logger.info("tableType", tableType, "primaryKey", primaryKey);
-		setSheetTitle(dictionary().db[tableType].selfName);
-		setSelectorType(tableType);
-		setSelectorPrimaryKey(primaryKey);
-		setSheetIsOpen(true);
-	};
-
-	// 清空装备槽
-	const clearEquipmentSlot = (slot: EquipmentSlot) => {
-		queueCharacterPatch({
-			[slot]: "",
-		} as Partial<character>);
-	};
-
-	// 装备属性预览
-	const previewEquipmentItem = (
-		slot: EquipmentSlot,
-		item: PlayerWeaponWithRelations | PlayerArmorWithRelations | PlayerOptionWithRelations | PlayerSpecialWithRelations,
-	) => {
-		const tableType = equipmentSlotConfig[slot];
+	const previewDataItem = (type: keyof DB, data: unknown) => {
 		setStore("pages", "cardGroup", store.pages.cardGroup.length, {
-			type: tableType,
-			data: item,
+			type,
+			data: data as Record<string, unknown>,
 		});
 	};
-
-	const dataConfig = createMemo(() => DATA_CONFIG[selectorType()]);
-
-	const tabs = {
-		combo: { label: dictionary().ui.character.tabs.combo, value: "combo" },
-		behavior: { label: dictionary().ui.character.tabs.behavior, value: "behavior" },
-		equipment: { label: dictionary().ui.character.tabs.equipment.selfName, value: "equipment" },
-		consumable: { label: dictionary().ui.character.tabs.consumable, value: "consumable" },
-		cooking: { label: dictionary().ui.character.tabs.cooking, value: "cooking" },
-		registlet: { label: dictionary().ui.character.tabs.registlet, value: "registlet" },
-		skill: { label: dictionary().ui.character.tabs.skill, value: "skill" },
-		ability: { label: dictionary().ui.character.tabs.ability, value: "ability" },
-		base: { label: dictionary().ui.character.tabs.base, value: "base" },
-	};
-	const [activeTab, setActiveTab] = createSignal<keyof typeof tabs>("skill");
-
-	const skillTree = createMemo<CharacterSkillTreeMap>(() => {
-		const tree = createEmptyCharacterSkillTree();
-
-		for (const skill of character()?.skills ?? []) {
-			tree[skill.template.treeType].skills.push(skill);
-		}
-
-		return tree;
-	});
-
-	const [skillTreeVisibility, setSkillTreeVisibility] = createSignal<SkillTreeVisibilityMap>({});
-
-	const hasSkillTreeSkills = (treeType: SkillTreeType) => skillTree()[treeType].skills.length > 0;
-
-	const isSkillTreeDisplayed = (treeType: SkillTreeType) => {
-		return hasSkillTreeSkills(treeType) || (skillTreeVisibility()[treeType] ?? false);
-	};
-
-	// 展示开关是当前角色的局部 UI 状态；角色切换时清空，避免空技能树选择串到下一名角色。
-	createEffect(
-		on(
-			() => character()?.id,
-			() => setSkillTreeVisibility({}),
-		),
-	);
 
 	onMount(() => {
 		logger.info("--CharacterIdPage render");
@@ -420,445 +226,105 @@ export default function CharactePage() {
 			}
 		>
 			{(validCharacter) => (
-				<Show when={dataConfig()}>
-					{(validDataConfig) => {
-						return (
-							<Motion.div
-								animate={{ opacity: [0, 1] }}
-								exit={{ opacity: 0 }}
-								transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-								class="CharacterPage relative flex h-full w-full flex-col overflow-hidden"
+				<Motion.div
+					animate={{ opacity: [0, 1] }}
+					exit={{ opacity: 0 }}
+					transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+					class="CharacterPage relative flex h-full w-full flex-col overflow-hidden"
+				>
+					<div class="Title w-full flex">
+						<Show when={characters.latest} fallback={<LoadingBar class="w-full h-12" />}>
+							{(validCharacters) => (
+								<Select
+									value={validCharacter().id}
+									setValue={(value) => navigate(`/character/${value}`)}
+									options={validCharacters().map((character) => ({ label: character.name, value: character.id })) ?? []}
+									optionGenerator={(option, selected, onclick) => (
+										<button
+											type="button"
+											class={`w-full py-1 px-6 text-accent-color text-start ${selected ? "font-bold text-2xl" : ""} `}
+											onClick={onclick}
+										>
+											{option.label ?? "---"}
+										</button>
+									)}
+									placeholder={validCharacter().name}
+									styleLess
+								/>
+							)}
+						</Show>
+						<Button
+							icon={<Icons.Outline.AddUser />}
+							level="quaternary"
+							onClick={async () => {
+								const character = await createCharacter();
+								await refetchCharacters();
+								navigate(`/character/${character.id}`);
+							}}
+							class="absolute right-6 top-0"
+						/>
+					</div>
+					<div class="Content flex h-full w-full flex-1 flex-col overflow-hidden p-6 landscape:flex-row">
+						<Show when={panelMode() === "Config" || media.width >= 1024}>
+							<CharacterView character={validCharacter()} />
+							<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:hidden landscape:h-full landscape:w-px"></div>
+							<CharacterConfigPanel
+								character={validCharacter()}
+								onPatchRequested={commitCharacterPatch}
+								onDebouncedPatchRequested={queueCharacterPatch}
+								onItemPreviewRequested={previewDataItem}
+							/>
+						</Show>
+
+						<Show when={panelMode() === "AttrPreview" || media.width >= 1024}>
+							<div class="Divider landscape:bg-dividing-color flex-none portrait:hidden landscape:mx-2 landscape:h-full landscape:w-px" />
+							<OverlayScrollbarsComponent
+								element="div"
+								options={{ scrollbars: { autoHide: "scroll" } }}
+								defer
+								class="MemberStats flex flex-col gap-2 w-full landscape:basis-1/2"
 							>
-								{/* 角色选择器 */}
-								<div class={`Title w-full flex`}>
-									<Show when={characters.latest} fallback={<LoadingBar class="w-full h-12" />}>
-										{(validCharacters) => (
-											<Select
-												value={validCharacter().name}
-												setValue={(value) => {
-													navigate(`/character/${value}`);
-												}}
-												options={
-													validCharacters().map((character) => ({ label: character.name, value: character.id })) ?? []
-												}
-												optionGenerator={(option, selected, onclick) => (
-													<button
-														type="button"
-														class={`w-full py-1 px-6 text-accent-color text-start ${selected ? "font-bold text-2xl" : ""} `}
-														onClick={onclick}
-													>
-														{option.label ?? "---"}
-													</button>
-												)}
-												placeholder={validCharacter().name}
-												styleLess
-											/>
-										)}
-									</Show>
+								<StatsRenderer data={primaryMember()?.attrs} />
+							</OverlayScrollbarsComponent>
+						</Show>
+
+						<Presence exitBeforeEnter>
+							<Show when={media.width < 1024}>
+								<Motion.div
+									class="Control bg-primary-color shadow-dividing-color shadow-dialog absolute bottom-3 left-1/2 z-10 flex gap-1 rounded p-1 landscape:bottom-6"
+									animate={{
+										opacity: [0, 1],
+										transform: ["translateX(-50%)", "translateX(-50%)"],
+									}}
+									exit={{ opacity: 0, transform: "translateX(-50%)" }}
+									transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+								>
 									<Button
-										icon={<Icons.Outline.AddUser />}
+										size="sm"
 										level="quaternary"
-										onClick={async () => {
-											const character = await createCharacter();
-											await refetchCharacters();
-											navigate(`/character/${character.id}`);
-										}}
-										class="absolute right-6 top-0"
+										icon={<Icons.Outline.Edit />}
+										onClick={() => setPanelMode("Config")}
+										active={panelMode() === "Config"}
 									/>
-								</div>
-								<div class="Content flex h-full w-full flex-1 flex-col overflow-hidden p-6 landscape:flex-row">
-									{/* 配置版块 */}
-									<Show when={panelMode() === "Config" || media.width >= 1024}>
-										{/* 角色视图 */}
-										<CharacterView character={validCharacter()} />
-										<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:hidden landscape:h-full landscape:w-px"></div>
-
-										{/* 标签栏 */}
-										<OverlayScrollbarsComponent
-											element="div"
-											options={{ scrollbars: { visibility: "hidden" } }}
-											defer
-											class="flex-none portrait:w-full landscape:w-fit"
-										>
-											<div class={`flex flex-row items-start gap-2 landscape:flex-col`}>
-												<Button
-													onClick={() => setActiveTab("combo")}
-													level={activeTab() === "combo" ? "primary" : "quaternary"}
-													icon={<Icons.Outline.Gamepad />}
-													textAlign="left"
-													class="flex-none landscape:w-full"
-												>
-													{dictionary().ui.character.tabs.combo}
-												</Button>
-												<Button
-													onClick={() => setActiveTab("equipment")}
-													level={activeTab() === "equipment" ? "primary" : "quaternary"}
-													icon={<Icons.Outline.Category />}
-													textAlign="left"
-													class="flex-none landscape:w-full"
-												>
-													{dictionary().ui.character.tabs.equipment.selfName}
-												</Button>
-												<Button
-													onClick={() => setActiveTab("consumable")}
-													level={activeTab() === "consumable" ? "primary" : "quaternary"}
-													icon={<Icons.Outline.Sale />}
-													textAlign="left"
-													class="flex-none landscape:w-full"
-												>
-													{dictionary().ui.character.tabs.consumable}
-												</Button>
-												<Button
-													onClick={() => setActiveTab("cooking")}
-													level={activeTab() === "cooking" ? "primary" : "quaternary"}
-													icon={<Icons.Outline.Coupon2 />}
-													textAlign="left"
-													class="flex-none landscape:w-full"
-												>
-													{dictionary().ui.character.tabs.cooking}
-												</Button>
-												<Button
-													onClick={() => setActiveTab("registlet")}
-													level={activeTab() === "registlet" ? "primary" : "quaternary"}
-													icon={<Icons.Outline.CreditCard />}
-													textAlign="left"
-													class="flex-none landscape:w-full"
-												>
-													{dictionary().ui.character.tabs.registlet}
-												</Button>
-												<Button
-													onClick={() => setActiveTab("skill")}
-													level={activeTab() === "skill" ? "primary" : "quaternary"}
-													icon={<Icons.Outline.Scale />}
-													textAlign="left"
-													class="flex-none landscape:w-full"
-												>
-													{dictionary().ui.character.tabs.skill.selfName}
-												</Button>
-												<Button
-													onClick={() => setActiveTab("ability")}
-													level={activeTab() === "ability" ? "primary" : "quaternary"}
-													icon={<Icons.Outline.Filter />}
-													textAlign="left"
-													class="flex-none landscape:w-full"
-												>
-													{dictionary().ui.character.tabs.ability}
-												</Button>
-												<Button
-													onClick={() => setActiveTab("base")}
-													level={activeTab() === "base" ? "primary" : "quaternary"}
-													icon={<Icons.Outline.Edit />}
-													textAlign="left"
-													class="flex-none landscape:w-full"
-												>
-													{dictionary().ui.character.tabs.base.selfName}
-												</Button>
-											</div>
-										</OverlayScrollbarsComponent>
-										<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:h-full landscape:w-px"></div>
-
-										{/* 配置面板组 */}
-										<OverlayScrollbarsComponent
-											element="div"
-											options={{ scrollbars: { autoHide: "scroll" } }}
-											defer
-											class="ConfigPannel w-full h-full landscape:basis-1/2"
-										>
-											<div class="Config flex flex-col w-full h-full">
-												{/* 装备 */}
-												<Show when={activeTab() === "equipment"}>
-													<EquipmentPanel
-														slots={{
-															mainHand: validCharacter().weapon,
-															subHand: validCharacter().subWeapon,
-															armor: validCharacter().armor,
-															additional: validCharacter().option,
-															special: validCharacter().special,
-														}}
-														onPickRequested={(slot) => openEquipmentPicker(slot)}
-														onClearRequested={clearEquipmentSlot}
-														onItemPreviewRequested={previewEquipmentItem}
-													/>
-												</Show>
-
-												{/* 基本配置 */}
-												<Show when={activeTab() === "base"}>
-													<div class="BasicConfig flex flex-col gap-2">
-														<div class="BasicConfigItem flex flex-col gap-2">
-															<div class="BasicConfigItemLabel">{dictionary().ui.character.tabs.base.name}</div>
-															<Input
-																type="text"
-																value={validCharacter().name}
-																onChange={async (e) => {
-																	await commitCharacterPatch({
-																		name: e.target.value,
-																	});
-																}}
-																description="请输入角色名称"
-															/>
-														</div>
-													</div>
-												</Show>
-
-												{/* 能力值版块 */}
-												<Show when={activeTab() === "ability"}>
-													<AbiPanel
-														slots={{
-															lv: validCharacter().lv,
-															str: validCharacter().str,
-															int: validCharacter().int,
-															vit: validCharacter().vit,
-															agi: validCharacter().agi,
-															dex: validCharacter().dex,
-															personalityType: validCharacter().personalityType,
-															personalityValue: validCharacter().personalityValue,
-														}}
-														onChangeRequested={async (slot, value) => {
-															await commitCharacterPatch({
-																[slot]: value,
-															});
-														}}
-													/>
-												</Show>
-
-												{/* 技能 */}
-												<Show when={activeTab() === "skill"}>
-													{(_) => {
-														return (
-															<div class="SkillConfig flex flex-col gap-2 w-full">
-																<div class="SkillTree flex flex-col">
-																	<div class="SkillConfigLabel flex justify-between">
-																		<span class="font-bold">{dictionary().ui.character.tabs.skill.treeSkill}</span>
-																		<Button
-																			icon={<Icons.Outline.DocmentAdd />}
-																			level="quaternary"
-																			onClick={() => {
-																				setSheetIsOpen(true);
-																				setSheetTitle(dictionary().ui.character.tabs.skill.selfName);
-																			}}
-																		/>
-																	</div>
-																	<Index each={SKILL_TREE_GROUP_TYPE}>
-																		{(treeGroupType) => {
-																			return (
-																				<Index each={SKILL_TREE_MAP[treeGroupType()]}>
-																					{(skillTreeType, index) => {
-																						const treeType = skillTreeType();
-																						return (
-																							<Show when={isSkillTreeDisplayed(treeType)}>
-																								<button type="button" class={`SkillItem flex flex-col gap-2`}>
-																									<div class="w-full h-full flex flex-1 items-center">
-																										<div
-																											class={`Label w-full flex gap-1 px-4 py-3 border-l-2 ${
-																												{
-																													0: "border-brand-color-1st",
-																													1: "border-brand-color-2nd",
-																													2: "border-brand-color-3rd",
-																													3: "border-brand-color-4th",
-																												}[index % 4]
-																											}`}
-																										>
-																											{dictionary().db.skill.fields.treeType.enumMap[treeType]}
-																										</div>
-																										<div class="flex flex-none px-4 py-3">
-																											<Button
-																												icon={<Icons.Outline.Edit />}
-																												level="quaternary"
-																												onClick={() => console.log("edit skill")}
-																											/>
-																											<Button
-																												icon={<Icons.Outline.Trash />}
-																												level="quaternary"
-																												onClick={() => {
-																													if (hasSkillTreeSkills(treeType)) {
-																														console.log("当前技能树包含技能，暂不处理");
-																														return;
-																													}
-																													setSkillTreeVisibility((pre) => ({
-																														...pre,
-																														[treeType]: !isSkillTreeDisplayed(treeType),
-																													}));
-																												}}
-																											/>
-																										</div>
-																									</div>
-																								</button>
-																							</Show>
-																						);
-																					}}
-																				</Index>
-																			);
-																		}}
-																	</Index>
-																</div>
-																<div class="StarGem flex flex-col">
-																	<div class="StarGemLabel flex justify-between">
-																		<span class="font-bold">{dictionary().ui.character.tabs.skill.starGem}</span>
-																		<Button
-																			icon={<Icons.Outline.DocmentAdd />}
-																			level="quaternary"
-																			onClick={() => {
-																				console.log("add skill");
-																			}}
-																		/>
-																	</div>
-																	<For each={validCharacter().skills.filter((skill) => skill.isStarGem)}>
-																		{(skill) => (
-																			<div class="SkillItem flex flex-col gap-2">
-																				<div class="SkillItemLabel">{skill.template.name}</div>
-																			</div>
-																		)}
-																	</For>
-																</div>
-															</div>
-														);
-													}}
-												</Show>
-											</div>
-										</OverlayScrollbarsComponent>
-									</Show>
-
-									{/* 属性面板 */}
-									<Show when={panelMode() === "AttrPreview" || media.width >= 1024}>
-										<div class="Divider landscape:bg-dividing-color flex-none portrait:hidden landscape:mx-2 landscape:h-full landscape:w-px" />
-										<OverlayScrollbarsComponent
-											element="div"
-											options={{ scrollbars: { autoHide: "scroll" } }}
-											defer
-											class="MemberStats flex flex-col gap-2 w-full landscape:basis-1/2"
-										>
-											<StatsRenderer data={primaryMember()?.attrs} />
-										</OverlayScrollbarsComponent>
-									</Show>
-
-									{/* 控制栏 */}
-									<Presence exitBeforeEnter>
-										<Show when={media.width < 1024}>
-											<Motion.div
-												class="Control bg-primary-color shadow-dividing-color shadow-dialog absolute bottom-3 left-1/2 z-10 flex gap-1 rounded p-1 landscape:bottom-6"
-												animate={{
-													opacity: [0, 1],
-													transform: ["translateX(-50%)", "translateX(-50%)"],
-												}}
-												exit={{ opacity: 0, transform: "translateX(-50%)" }}
-												transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-											>
-												<Button
-													size="sm"
-													level="quaternary"
-													icon={<Icons.Outline.Edit />}
-													onClick={() => setPanelMode("Config")}
-													active={panelMode() === "Config"}
-												/>
-												<Button
-													size="sm"
-													level="quaternary"
-													icon={<Icons.Outline.Chart />}
-													onClick={() => setPanelMode("AttrPreview")}
-													active={panelMode() === "AttrPreview"}
-												/>
-												<Button
-													size="sm"
-													level="quaternary"
-													icon={<Icons.Outline.Basketball />}
-													onClick={() => setPanelMode("SkillPreview")}
-													active={panelMode() === "SkillPreview"}
-												/>
-											</Motion.div>
-										</Show>
-									</Presence>
-								</div>
-
-								{/* 弹窗 */}
-								<Portal>
-									<Sheet
-										state={sheetIsOpen()}
-										setState={(state) => {
-											setSheetIsOpen(state);
-										}}
-									>
-										<div class="flex portrait:h-[90dvh] w-full flex-col gap-2 p-6">
-											<div class="sheetTitle w-full text-xl font-bold flex items-center justify-between">
-												{sheetTitle()}
-												<Button
-													icon={<Icons.Outline.Close />}
-													level="quaternary"
-													class="rounded-none rounded-tr"
-													onClick={() => {
-														setSheetIsOpen(false);
-														setIsSelectorOpen(false);
-													}}
-												/>
-											</div>
-											<Show when={activeTab() === "skill"}>
-												{(_) => {
-													return (
-														<OverlayScrollbarsComponent
-															element="div"
-															options={{ scrollbars: { autoHide: "scroll" } }}
-															class="SkillGroupConfig h-full min-w-full flex-1"
-														>
-															<Index each={SKILL_TREE_GROUP_TYPE}>
-																{(treeGroupType) => {
-																	return (
-																		<section class={`SkillGroup-${treeGroupType()} flex w-full flex-col gap-2`}>
-																			<h3 class="text-accent-color flex items-center gap-2 font-bold">
-																				{dictionary().ui.character.tabs.skill.trees[treeGroupType()].selfName}
-																				<div class="Divider bg-dividing-color h-px w-full flex-1" />
-																			</h3>
-																			<div class="Content flex flex-wrap gap-1">
-																				<Index each={SKILL_TREE_MAP[treeGroupType()]}>
-																					{(skillTreeType, index) => {
-																						const treeName = skillTreeType();
-																						return (
-																							<Button
-																								class={`flex-col gap-2 items-center justify-center portrait:w-[calc((100%-8px)/3)] ${isSkillTreeDisplayed(treeName) ? " bg-accent-color! text-primary-color" : "bg-area-color"}`}
-																								onClick={() => {
-																									if (hasSkillTreeSkills(treeName)) return;
-																									setSkillTreeVisibility((pre) => ({
-																										...pre,
-																										[treeName]: !isSkillTreeDisplayed(treeName),
-																									}));
-																								}}
-																							>
-																								<div class="flex-none w-12 h-12 p-1 flex items-center justify-center rounded bg-area-color">
-																									<Icons.Spirits iconName={treeName} size={36} />
-																								</div>
-																								{dictionary().db.skill.fields.treeType.enumMap[treeName]}
-																							</Button>
-																						);
-																					}}
-																				</Index>
-																			</div>
-																		</section>
-																	);
-																}}
-															</Index>
-														</OverlayScrollbarsComponent>
-													);
-												}}
-											</Show>
-											<Show when={isSelectorOpen()}>
-												{EquipmentSelector(validDataConfig(), dictionary, (data) => {
-													const dataPrimaryValue = data[selectorPrimaryKey()];
-													if (!dataPrimaryValue) return;
-													logger.info("commitCharacterPatch", {
-														[dataSolt()]: dataPrimaryValue,
-													});
-													commitCharacterPatch({
-														[dataSolt()]: dataPrimaryValue,
-													});
-													setSheetIsOpen(false);
-													setSelectorColumnVisibility({});
-												})}
-											</Show>
-										</div>
-									</Sheet>
-								</Portal>
-							</Motion.div>
-						);
-					}}
-				</Show>
+									<Button
+										size="sm"
+										level="quaternary"
+										icon={<Icons.Outline.Chart />}
+										onClick={() => setPanelMode("AttrPreview")}
+										active={panelMode() === "AttrPreview"}
+									/>
+									<Button
+										size="sm"
+										level="quaternary"
+										icon={<Icons.Outline.Basketball />}
+										onClick={() => setPanelMode("SkillPreview")}
+										active={panelMode() === "SkillPreview"}
+									/>
+								</Motion.div>
+							</Show>
+						</Presence>
+					</div>
+				</Motion.div>
 			)}
 		</Show>
 	);

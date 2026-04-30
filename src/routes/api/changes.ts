@@ -4,11 +4,13 @@ import { getDB } from "@db/repositories/database";
 import { findUserById } from "@db/repositories/user";
 import { getCookie } from "@solidjs/start/http";
 import type { APIEvent } from "@solidjs/start/server";
+import type { JWTPayload } from "jose";
 import { jwtVerify } from "jose";
 import { z } from "zod/v4";
-import type { SyncRequestBody } from "~/shared/types/sync";
 
 // ==================== API 处理函数 ====================
+
+type ChangeValue = Record<string, unknown>;
 
 export async function POST(event: APIEvent) {
 	const token = getCookie("jwt");
@@ -17,7 +19,7 @@ export async function POST(event: APIEvent) {
 		return new Response("未发现jwt，终止数据写入", { status: 401 });
 	}
 
-	let jwtUser: any;
+	let jwtUser: JWTPayload;
 	try {
 		const secret = new TextEncoder().encode(process.env.AUTH_SECRET);
 		const { payload } = await jwtVerify(token, secret, {
@@ -30,7 +32,11 @@ export async function POST(event: APIEvent) {
 		return new Response("JWT 无效", { status: 401 });
 	}
 
-	const body = (await event.request.json()) as SyncRequestBody;
+	if (typeof jwtUser.sub !== "string") {
+		return new Response("JWT 缺少用户标识", { status: 401 });
+	}
+
+	const requestBody = await event.request.json();
 
 	const user = await findUserById(jwtUser.sub);
 
@@ -38,8 +44,6 @@ export async function POST(event: APIEvent) {
 	if (!user) {
 		return new Response("未认证用户，终止数据写入", { status: 401 });
 	}
-
-	console.log(`用户:${user.name} 变更数据,body:`, body);
 
 	// -------- 安全校验与约束 --------
 	// 1) 允许的操作（默认禁用删除）
@@ -50,17 +54,20 @@ export async function POST(event: APIEvent) {
 	const ChangeSchema = z.object({
 		table_name: z.string().regex(SAFE_TABLE_NAME, "非法表名"),
 		operation: z.union([z.literal("insert"), z.literal("update"), z.literal("delete")]),
-		value: z.any(),
+		value: z.record(z.string(), z.unknown()),
 		write_id: z.string().min(1).optional(),
 		transaction_id: z.string().min(1).optional(),
 	});
 	const TxSchema = z.array(z.object({ id: z.string().optional(), changes: z.array(ChangeSchema) }));
 
+	let body: z.infer<typeof TxSchema>;
 	try {
-		TxSchema.parse(body);
-	} catch (e) {
+		body = TxSchema.parse(requestBody);
+	} catch {
 		return new Response("请求结构非法", { status: 400 });
 	}
+
+	console.log(`用户:${user.name} 变更数据,body:`, body);
 
 	// 示例权限判断（可选）
 	// if (user.role !== "admin") {
@@ -95,22 +102,25 @@ export async function POST(event: APIEvent) {
 						continue;
 					}
 
-					// 值过滤：移除 undefined，避免覆盖为 null/undefined
-					const cleanValue: Record<string, any> = {};
+					// 值过滤只移除 undefined；null 是可空外键的显式清空语义，必须写入服务端。
+					const cleanValue: ChangeValue = {};
 					for (const [k, v] of Object.entries(change.value ?? {})) {
 						if (v !== undefined) cleanValue[k] = v;
 					}
 
 					switch (change.operation) {
 						case "insert":
-							await trx.insertInto(tableName).values(cleanValue).execute();
+							await trx
+								.insertInto(tableName)
+								.values(cleanValue as never)
+								.execute();
 							break;
 
 						case "update": {
 							let query = trx.updateTable(tableName).set(cleanValue);
 							// 添加所有主键条件
 							for (const pk of primaryKeys) {
-								query = query.where(pk, "=", change.value[pk]);
+								query = query.where(pk, "=", change.value[String(pk)] as never);
 							}
 							await query.execute();
 							break;
@@ -120,7 +130,7 @@ export async function POST(event: APIEvent) {
 							let query = trx.deleteFrom(tableName);
 							// 添加所有主键条件
 							for (const pk of primaryKeys) {
-								query = query.where(pk, "=", change.value[pk]);
+								query = query.where(pk, "=", change.value[String(pk)] as never);
 							}
 							await query.execute();
 							break;
