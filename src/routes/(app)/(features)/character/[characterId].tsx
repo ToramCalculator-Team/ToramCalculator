@@ -12,23 +12,17 @@ import type { PlayerOptionWithRelations } from "@db/generated/repositories/playe
 import type { PlayerSpecialWithRelations } from "@db/generated/repositories/player_special";
 import type { PlayerWeaponWithRelations } from "@db/generated/repositories/player_weapon";
 import type { TeamWithRelations } from "@db/generated/repositories/team";
-import type { character, DB, skilltreetype } from "@db/generated/zod";
+import type { character, DB } from "@db/generated/zod";
 import {
 	ASSIST_SKILL_GROUP,
-	type AssistSkillGroup,
 	BUFF_SKILL_GROUP,
-	type BuffSkillGroup,
 	OTHER_SKILL_GROUP,
-	type OtherSkillGroup,
 	PRODUCE_SKILL_GROUP,
-	type ProduceSkillGroup,
 	SKILL_BOOK_GROUP,
 	SKILL_TREE_GROUP_TYPE,
-	type SkillBookGroup,
-	type SkillTreeGroupType,
+	SKILL_TREE_TYPE,
 	type SkillTreeType,
 	WEAPON_SKILL_GROUP,
-	type WeaponSkillGroup,
 } from "@db/schema/enums";
 import { useNavigate, useParams } from "@solidjs/router";
 import type { VisibilityState } from "@tanstack/solid-table";
@@ -81,17 +75,23 @@ const SKILL_TREE_MAP = {
 	SkillBookGroup: SKILL_BOOK_GROUP,
 	OtherSkillGroup: OTHER_SKILL_GROUP,
 } as const;
-type SkillTreeMap = typeof SKILL_TREE_MAP;
 
-export type SkillTreeGroupMap = {
-	[K in keyof SkillTreeMap]: Record<
-		SkillTreeMap[K][number],
-		{
-			isDisplay: boolean;
-			skills: CharacterSkillWithRelations[];
-		}
-	>;
+type SkillTreeNode = {
+	skills: CharacterSkillWithRelations[];
 };
+
+type CharacterSkillTreeMap = Record<SkillTreeType, SkillTreeNode>;
+
+type SkillTreeVisibilityMap = Partial<Record<SkillTreeType, boolean>>;
+
+function createEmptyCharacterSkillTree(): CharacterSkillTreeMap {
+	// skills 的事实来源是 character().skills；这里只建立派生索引，避免把服务端数据再存成可变 UI 状态。
+	const tree = {} as CharacterSkillTreeMap;
+	for (const treeType of SKILL_TREE_TYPE) {
+		tree[treeType] = { skills: [] };
+	}
+	return tree;
+}
 
 export default function CharactePage() {
 	const navigate = useNavigate();
@@ -105,17 +105,24 @@ export default function CharactePage() {
 	type PanelModeType = "Config" | "AttrPreview" | "SkillPreview";
 	const [panelMode, setPanelMode] = createSignal<PanelModeType>("Config");
 
-	// 页面数据获取
+	// characters获取，用于角色选择器
+	const charactersFinder = (id: string) => selectAllCharactersByBelongtoplayerid(id);
+	const [characters, { refetch: refetchCharacters }] = createResource(
+		() => store.session.account.player?.id ?? "",
+		charactersFinder,
+	);
+
+	// 当前活动角色
 	const [playerWithRelations, { refetch: refetchPlayerWithRelations }] = createResource(
-		() => params.characterId,
-		async () => {
-			const playerId = store.session.account.player?.id;
-			if (!playerId) return null;
+		() => store.session.account.player?.id,
+		async (playerId) => {
 			const player = await selectPlayerByIdWithRelations(playerId);
 			logger.info("player", player);
 			return player;
 		},
 	);
+
+	// 当playerId或者params.characterId变化时，character会刷新
 	const character = createMemo(() => {
 		const player = playerWithRelations();
 		if (!player) return null;
@@ -124,11 +131,6 @@ export default function CharactePage() {
 		logger.info("character", character);
 		return character;
 	});
-	const charactersFinder = (id: string) => selectAllCharactersByBelongtoplayerid(id);
-	const [characters, { refetch: refetchCharacters }] = createResource(
-		() => store.session.account.player?.id ?? "",
-		charactersFinder,
-	);
 
 	// ==================== 引擎集成 ====================
 	const engine = useEngine();
@@ -371,189 +373,31 @@ export default function CharactePage() {
 	};
 	const [activeTab, setActiveTab] = createSignal<keyof typeof tabs>("skill");
 
-	// 机体已习得的技能树技能
-	const [acquiredSkillList, setAcquiredSkillList] = createSignal<CharacterSkillWithRelations[]>([]);
-	// 机体已习得的星石技能
-	const [startGemSkillList, setStartGemSkillList] = createSignal<CharacterSkillWithRelations[]>([]);
-	// 机体已习得技能树
-	const [skillTree, setSkillTree] = createSignal<SkillTreeGroupMap>({
-		WeaponSkillGroup: {
-			BladeSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			CrusherSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			DualSwordSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			FeatheringSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			HalberdSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			MagicSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			MarshallSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			MononofuSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			ShootSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-		},
-		BuffSkillGroup: {
-			AssassinSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			GuardSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			HunterSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			KnifeSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			KnightSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			PriestSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			ShieldSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			WizardSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-		},
-		AssistSkillGroup: {
-			BattleSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			SupportSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			SurvivalSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-		},
-		ProduceSkillGroup: {
-			AlchemySkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			SmithSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			TamerSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-		},
-		SkillBookGroup: {
-			BareHandSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			DancerSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			DarkPowerSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			MagicBladeSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			MinstrelSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			NinjaSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			PartisanSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-		},
-		OtherSkillGroup: {
-			LuckSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			MerchantSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-			PetSkill: {
-				isDisplay: false,
-				skills: [],
-			},
-		},
+	const skillTree = createMemo<CharacterSkillTreeMap>(() => {
+		const tree = createEmptyCharacterSkillTree();
+
+		for (const skill of character()?.skills ?? []) {
+			tree[skill.template.treeType].skills.push(skill);
+		}
+
+		return tree;
 	});
 
-	// 填充分组信号
-	createEffect(() => {
-		character()?.skills.forEach((skill) => {
-			if (skill.isStarGem) {
-				setStartGemSkillList((pre) => [...pre, skill]);
-			} else {
-				setAcquiredSkillList((pre) => [...pre, skill]);
-			}
-			const groups = Object.entries(SKILL_TREE_MAP);
-			groups.forEach(([_key, value]) => {
-				const groupName = _key as keyof SkillTreeMap;
-				value.forEach((treeName) => {
-					if (skill.template.treeType === treeName) {
-						console.log("groupName", groupName);
-						console.log("treeName", treeName);
-						console.log("skill", skill);
-						setSkillTree((pre) => ({
-							...pre,
-							[groupName]: {
-								...pre[groupName],
-								[treeName]: {
-									isDisplay: true,
-									skills: [...pre[groupName][treeName].skills, skill],
-								},
-							},
-						}));
-					}
-				});
-			});
-		});
-	});
+	const [skillTreeVisibility, setSkillTreeVisibility] = createSignal<SkillTreeVisibilityMap>({});
+
+	const hasSkillTreeSkills = (treeType: SkillTreeType) => skillTree()[treeType].skills.length > 0;
+
+	const isSkillTreeDisplayed = (treeType: SkillTreeType) => {
+		return hasSkillTreeSkills(treeType) || (skillTreeVisibility()[treeType] ?? false);
+	};
+
+	// 展示开关是当前角色的局部 UI 状态；角色切换时清空，避免空技能树选择串到下一名角色。
+	createEffect(
+		on(
+			() => character()?.id,
+			() => setSkillTreeVisibility({}),
+		),
+	);
 
 	onMount(() => {
 		logger.info("--CharacterIdPage render");
@@ -794,56 +638,58 @@ export default function CharactePage() {
 																			}}
 																		/>
 																	</div>
-																	<For each={Object.entries(skillTree())}>
-																		{([_treeGroup, treeGroupContext], index) => {
-																			console.log([_treeGroup, treeGroupContext], index());
-																			const treeGroupType = _treeGroup as SkillTreeGroupType;
+																	<Index each={SKILL_TREE_GROUP_TYPE}>
+																		{(treeGroupType) => {
 																			return (
-																				<For each={Object.entries(treeGroupContext)}>
-																					{(_skillTree, index) => {
-																						const skillTreeType = _skillTree[0];
-																						const skillTreeContent = _skillTree[1];
-																						console.log(skillTreeType, skillTreeContent);
-																						if (skillTreeContent.skills.length === 0) return null;
+																				<Index each={SKILL_TREE_MAP[treeGroupType()]}>
+																					{(skillTreeType, index) => {
+																						const treeType = skillTreeType();
 																						return (
-																							<button type="button" class={`SkillItem flex flex-col gap-2`}>
-																								<div class="w-full h-full flex flex-1 items-center">
-																									<div
-																										class={`Label w-full flex gap-1 px-4 py-3 border-l-2 ${
-																											{
-																												0: "border-brand-color-1st",
-																												1: "border-brand-color-2nd",
-																												2: "border-brand-color-3rd",
-																												3: "border-brand-color-4th",
-																											}[index() % 4]
-																										}`}
-																									>
-																										{
-																											dictionary().ui.character.tabs.skill.trees[treeGroupType].tree[
-																												skillTreeType
-																											]
-																										}
+																							<Show when={isSkillTreeDisplayed(treeType)}>
+																								<button type="button" class={`SkillItem flex flex-col gap-2`}>
+																									<div class="w-full h-full flex flex-1 items-center">
+																										<div
+																											class={`Label w-full flex gap-1 px-4 py-3 border-l-2 ${
+																												{
+																													0: "border-brand-color-1st",
+																													1: "border-brand-color-2nd",
+																													2: "border-brand-color-3rd",
+																													3: "border-brand-color-4th",
+																												}[index % 4]
+																											}`}
+																										>
+																											{dictionary().db.skill.fields.treeType.enumMap[treeType]}
+																										</div>
+																										<div class="flex flex-none px-4 py-3">
+																											<Button
+																												icon={<Icons.Outline.Edit />}
+																												level="quaternary"
+																												onClick={() => console.log("edit skill")}
+																											/>
+																											<Button
+																												icon={<Icons.Outline.Trash />}
+																												level="quaternary"
+																												onClick={() => {
+																													if (hasSkillTreeSkills(treeType)) {
+																														console.log("当前技能树包含技能，暂不处理");
+																														return;
+																													}
+																													setSkillTreeVisibility((pre) => ({
+																														...pre,
+																														[treeType]: !isSkillTreeDisplayed(treeType),
+																													}));
+																												}}
+																											/>
+																										</div>
 																									</div>
-																									<div class="flex flex-none px-4 py-3">
-																										<Button
-																											icon={<Icons.Outline.Edit />}
-																											level="quaternary"
-																											onClick={() => console.log("edit skill")}
-																										/>
-																										<Button
-																											icon={<Icons.Outline.Trash />}
-																											level="quaternary"
-																											onClick={() => console.log("delete skill")}
-																										/>
-																									</div>
-																								</div>
-																							</button>
+																								</button>
+																							</Show>
 																						);
 																					}}
-																				</For>
+																				</Index>
 																			);
 																		}}
-																	</For>
+																	</Index>
 																</div>
 																<div class="StarGem flex flex-col">
 																	<div class="StarGemLabel flex justify-between">
@@ -961,34 +807,18 @@ export default function CharactePage() {
 																				<div class="Divider bg-dividing-color h-px w-full flex-1" />
 																			</h3>
 																			<div class="Content flex flex-wrap gap-1">
-																				<Index each={Object.entries(skillTree()[treeGroupType()])}>
+																				<Index each={SKILL_TREE_MAP[treeGroupType()]}>
 																					{(skillTreeType, index) => {
-																						const [treeName, treeValue] = skillTreeType() as [
-																							skilltreetype,
-																							{
-																								isDisplay: boolean;
-																								skills: CharacterSkillWithRelations[];
-																							},
-																						];
+																						const treeName = skillTreeType();
 																						return (
 																							<Button
-																								class={`flex-col gap-2 items-center justify-center portrait:w-[calc((100%-8px)/3)] ${treeValue.isDisplay ? " bg-accent-color! text-primary-color" : "bg-area-color"}`}
+																								class={`flex-col gap-2 items-center justify-center portrait:w-[calc((100%-8px)/3)] ${isSkillTreeDisplayed(treeName) ? " bg-accent-color! text-primary-color" : "bg-area-color"}`}
 																								onClick={() => {
-																									setSkillTree((pre) => {
-																										const preTreeIsDisplay = pre[treeGroupType()][treeName].isDisplay;
-																										const preTreeSkills = pre[treeGroupType()][treeName].skills;
-																										console.log(preTreeIsDisplay, preTreeSkills)
-																										return pre
-																										// return {
-																										// 	...pre,
-																										// 	[treeGroupType()]: {
-																										// 		...pre[treeGroupType()],
-																										// 		[treeName]: {
-																										// 			isDisplay: preTreeSkills > 0 ? true : !preTreeIsDisplay,
-																										// 		},
-																										// 	},
-																										// };
-																									});
+																									if (hasSkillTreeSkills(treeName)) return;
+																									setSkillTreeVisibility((pre) => ({
+																										...pre,
+																										[treeName]: !isSkillTreeDisplayed(treeName),
+																									}));
 																								}}
 																							>
 																								<div class="flex-none w-12 h-12 p-1 flex items-center justify-center rounded bg-area-color">

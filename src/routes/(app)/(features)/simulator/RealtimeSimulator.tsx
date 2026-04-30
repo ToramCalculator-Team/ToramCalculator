@@ -35,7 +35,48 @@ export interface RealtimeSimulatorProps {
 	simulatorData: SimulatorWithRelations;
 }
 
+type FullscreenCapableDocument = Document & {
+	webkitFullscreenElement?: Element | null;
+	webkitExitFullscreen?: () => Promise<void> | void;
+};
+
+type FullscreenCapableElement = HTMLElement & {
+	webkitRequestFullscreen?: () => Promise<void> | void;
+};
+
+
 export function RealtimeSimulator(props: RealtimeSimulatorProps) {
+	const [isFullscreen, setIsFullscreen] = createSignal(false);
+	const [isFullscreenSupported, setIsFullscreenSupported] = createSignal(false);
+
+	const syncFullscreenState = () => {
+		const fullscreenDocument = document as FullscreenCapableDocument;
+		setIsFullscreen(!!(document.fullscreenElement ?? fullscreenDocument.webkitFullscreenElement));
+	};
+
+	const handleToggleFullscreen = async () => {
+		const fullscreenDocument = document as FullscreenCapableDocument;
+		const fullscreenElement = document.documentElement as FullscreenCapableElement;
+
+		try {
+			if (isFullscreen()) {
+				if (fullscreenDocument.exitFullscreen) {
+					await fullscreenDocument.exitFullscreen();
+				} else {
+					await fullscreenDocument.webkitExitFullscreen?.();
+				}
+				return;
+			}
+
+			if (fullscreenElement.requestFullscreen) {
+				await fullscreenElement.requestFullscreen({ navigationUI: "hide" });
+			} else {
+				await fullscreenElement.webkitRequestFullscreen?.();
+			}
+		} catch (error) {
+			console.error("Failed to toggle fullscreen mode", error);
+		}
+	};
 	const { defaultEngine } = useEngine();
 	const engine = defaultEngine();
 
@@ -116,6 +157,25 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 
 		registerCleanup(() => {
 			clearInterval(interval);
+		});
+		
+		const fullscreenElement = document.documentElement as FullscreenCapableElement;
+		setIsFullscreenSupported(
+			!!document.fullscreenEnabled ||
+				!!fullscreenElement.requestFullscreen ||
+				!!fullscreenElement.webkitRequestFullscreen,
+		);
+		syncFullscreenState();
+
+		const handleFullscreenChange = () => {
+			syncFullscreenState();
+		};
+		document.addEventListener("fullscreenchange", handleFullscreenChange);
+		document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+
+		onCleanup(() => {
+			document.removeEventListener("fullscreenchange", handleFullscreenChange);
+			document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
 		});
 	});
 
@@ -405,7 +465,10 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 						<div class="flex gap-2 w-full">
 							<ControlPanel
 								engineActor={engine.lifecycleActor}
-								onStart={() => engine.start()}
+								onStart={() => {
+									handleToggleFullscreen()
+									engine.start()
+								}}
 								onReset={() => engine.reset()}
 								onPause={() => engine.pause()}
 								onResume={() => engine.resume()}

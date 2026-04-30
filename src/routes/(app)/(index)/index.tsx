@@ -15,21 +15,9 @@ import { getDictionary } from "~/locales/i18n";
 import type { Dictionary } from "~/locales/type";
 import { setStore, store } from "~/store";
 import { indexPageMachine } from "./indexPageMachine";
-
-type FullscreenCapableDocument = Document & {
-	webkitFullscreenElement?: Element | null;
-	webkitExitFullscreen?: () => Promise<void> | void;
-};
-
-type FullscreenCapableElement = HTMLElement & {
-	webkitRequestFullscreen?: () => Promise<void> | void;
-};
-
 export default function IndexPage() {
 	const [searchButtonRef, setSearchButtonRef] = createSignal<HTMLButtonElement | undefined>(undefined);
 	const [searchInputRef, setSearchInputRef] = createSignal<HTMLInputElement | undefined>(undefined);
-	const [isFullscreen, setIsFullscreen] = createSignal(false);
-	const [isFullscreenSupported, setIsFullscreenSupported] = createSignal(false);
 
 	// 导航
 	const navigate = useNavigate();
@@ -116,35 +104,6 @@ export default function IndexPage() {
 			title: dictionary().ui.settings.title,
 		},
 	]);
-
-	const syncFullscreenState = () => {
-		const fullscreenDocument = document as FullscreenCapableDocument;
-		setIsFullscreen(!!(document.fullscreenElement ?? fullscreenDocument.webkitFullscreenElement));
-	};
-
-	const handleToggleFullscreen = async () => {
-		const fullscreenDocument = document as FullscreenCapableDocument;
-		const fullscreenElement = document.documentElement as FullscreenCapableElement;
-
-		try {
-			if (isFullscreen()) {
-				if (fullscreenDocument.exitFullscreen) {
-					await fullscreenDocument.exitFullscreen();
-				} else {
-					await fullscreenDocument.webkitExitFullscreen?.();
-				}
-				return;
-			}
-
-			if (fullscreenElement.requestFullscreen) {
-				await fullscreenElement.requestFullscreen({ navigationUI: "hide" });
-			} else {
-				await fullscreenElement.webkitRequestFullscreen?.();
-			}
-		} catch (error) {
-			console.error("Failed to toggle fullscreen mode", error);
-		}
-	};
 
 	type CustomMenuConfig = {
 		groupType: "wiki" | "appPages";
@@ -299,27 +258,12 @@ export default function IndexPage() {
 
 		// 监听绑带与清除
 		document.addEventListener("keydown", handleKeyPress);
-		const fullscreenElement = document.documentElement as FullscreenCapableElement;
-		setIsFullscreenSupported(
-			!!document.fullscreenEnabled ||
-				!!fullscreenElement.requestFullscreen ||
-				!!fullscreenElement.webkitRequestFullscreen,
-		);
-		syncFullscreenState();
-
-		const handleFullscreenChange = () => {
-			syncFullscreenState();
-		};
 
 		window.addEventListener("popstate", handlePopState);
-		document.addEventListener("fullscreenchange", handleFullscreenChange);
-		document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
 
 		onCleanup(() => {
 			document.removeEventListener("keydown", handleKeyPress);
 			window.removeEventListener("popstate", handlePopState);
-			document.removeEventListener("fullscreenchange", handleFullscreenChange);
-			document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
 		});
 	});
 
@@ -344,30 +288,6 @@ export default function IndexPage() {
 						icon={<Icons.Outline.Burger />}
 					></Button>
 					<div class="RightFun flex gap-1">
-						<Show when={isFullscreenSupported()}>
-							<Show
-								when={isFullscreen()}
-								fallback={
-									<Button
-										class="outline-hidden focus-within:outline-hidden"
-										level="quaternary"
-										onClick={() => void handleToggleFullscreen()}
-										icon={<Icons.Outline.Expand />}
-										title={dictionary().ui.actions.enterFullscreen}
-										aria-label={dictionary().ui.actions.enterFullscreen}
-									></Button>
-								}
-							>
-								<Button
-									class="outline-hidden focus-within:outline-hidden"
-									level="quaternary"
-									onClick={() => void handleToggleFullscreen()}
-									icon={<Icons.Outline.Collapse />}
-									title={dictionary().ui.actions.exitFullscreen}
-									aria-label={dictionary().ui.actions.exitFullscreen}
-								></Button>
-							</Show>
-						</Show>
 						<For each={extraFunctionConfig()}>
 							{(config) => {
 								return (
