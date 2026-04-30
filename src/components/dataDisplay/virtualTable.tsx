@@ -13,7 +13,7 @@ import {
 	type OnChangeFn,
 	type VisibilityState,
 } from "@tanstack/solid-table";
-import { createVirtualizer, VirtualItem, type Virtualizer } from "@tanstack/solid-virtual";
+import { createVirtualizer, type VirtualItem, type Virtualizer } from "@tanstack/solid-virtual";
 import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { type Accessor, createEffect, createSignal, For, type JSX, on, onCleanup, onMount, Show } from "solid-js";
@@ -126,7 +126,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 			estimateSize: () => props.measure?.estimateSize ?? 96,
 			overscan: 5,
 			measureElement: (element) => element.getBoundingClientRect().height,
-			onChange: (instance, sync) => {
+			onChange: (instance, _sync) => {
 				setVirtualItems(instance.getVirtualItems());
 			},
 		});
@@ -370,7 +370,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 								return (
 									<div style={{ height: `${validVirtualer().getTotalSize()}px` }} class={`TableBody relative`}>
 										<For each={virtualItems()}>
-											{(virtualRow, index) => {
+											{(virtualRow, _index) => {
 												try {
 													const row = table.getRowModel().rows[virtualRow.index];
 													if (!row) {
