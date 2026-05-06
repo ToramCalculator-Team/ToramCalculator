@@ -3,7 +3,6 @@ import { nitroV2Plugin } from "@solidjs/vite-plugin-nitro-2";
 import tailwindcss from "@tailwindcss/vite";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
-import topLevelAwait from "vite-plugin-top-level-await";
 
 function createChunkManifestPlugin(): Plugin {
 	return {
@@ -87,22 +86,6 @@ export default defineConfig(() => {
 						}
 					},
 				},
-				// external: [
-				//   "cloudflare:sockets",
-				//   "@babylonjs/core",
-				//   "@babylonjs/inspector",
-				//   "@babylonjs/loaders",
-				//   "@babylonjs/materials",
-				//   "@babylonjs/inspector",
-				// ],
-				// output: {
-				//   paths: {
-				//     "@babylonjs/loaders": "https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js",
-				//     "@babylonjs/inspector": "https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js",
-				//     "@babylonjs/core": "https://cdn.babylonjs.com/babylon.js",
-				//     "@babylonjs/materials": "https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js",
-				//   },
-				// },
 			},
 		},
 		worker: {
@@ -115,12 +98,6 @@ export default defineConfig(() => {
 			// SPA 模式用于避免 SSR 在 Node 里加载 monaco-editor 链上的 .css
 			solidStart({ ssr: false }),
 			nitroV2Plugin(),
-			topLevelAwait({
-				// The export name of top-level await promise for each chunk module
-				promiseExportName: "__tla",
-				// The function to generate import names of top-level await promise in each chunk module
-				promiseImportName: (i) => `__tla_${i}`,
-			}),
 			tailwindcss(),
 			// 添加chunk清单生成插件
 			createChunkManifestPlugin(),

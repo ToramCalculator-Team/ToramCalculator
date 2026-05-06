@@ -13,102 +13,21 @@ import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator"
 import { AppendSceneAsync } from "@babylonjs/core/Loading/sceneLoader";
 import "@babylonjs/loaders/glTF/2.0/glTFLoader";
 import "@babylonjs/loaders/glTF/2.0/Extensions/KHR_draco_mesh_compression";
-import "@babylonjs/core/Debug/debugLayer"; // Augments the scene with the debug methods
-import "@babylonjs/inspector"; // Injects a local ES6 version of the inspector to prevent automatically relying on the none compatible version
 import { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 import { AxesViewer } from "@babylonjs/core/Debug/axesViewer";
 import { SpotLight } from "@babylonjs/core/Lights/spotLight";
-import type { Material } from "@babylonjs/core/Materials/material";
-import { MaterialPluginBase } from "@babylonjs/core/Materials/materialPluginBase";
 import { NodeMaterial } from "@babylonjs/core/Materials/Node/nodeMaterial";
-import { CubeTexture } from "@babylonjs/core/Materials/Textures/cubeTexture";
 import { Scalar } from "@babylonjs/core/Maths/math.scalar";
-import type { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
-import type { SubMesh } from "@babylonjs/core/Meshes/subMesh";
 import { SolidParticleSystem } from "@babylonjs/core/Particles/solidParticleSystem";
-import type { Nullable } from "@babylonjs/core/types";
 
 // 模拟无限宽平面
-
-// ==================== 材质插件 ====================
-/**
- * 战争迷雾材质插件
- * 实现了一个基于距离的迷雾效果
- */
-class FogOfWarPluginMaterial extends MaterialPluginBase {
-	static fogCenter = new Vector3(1, 1, 0);
-	_isEnabled = false;
-
-	constructor(material: Material) {
-		super(material, "FogOfWar", 200, { FogOfWar: false });
-		this.isEnabled = true;
-	}
-
-	get isEnabled() {
-		return this._isEnabled;
-	}
-
-	set isEnabled(enabled) {
-		if (this._isEnabled === enabled) return;
-		this._isEnabled = enabled;
-		this.markAllDefinesAsDirty();
-		this._enable(this._isEnabled);
-	}
-
-	prepareDefines(defines: Record<string, boolean>, scene: Scene, mesh: Mesh) {
-		defines.FogOfWar = this._isEnabled;
-	}
-
-	getClassName() {
-		return "FogOfWarPluginMaterial";
-	}
-
-	getUniforms() {
-		return {
-			ubo: [{ name: "fogCenter", size: 3, type: "vec3" }],
-			fragment: `#ifdef FogOfWar
-                uniform vec3 fogCenter;
-                #endif`,
-		};
-	}
-
-	bindForSubMesh(
-		uniformBuffer: { updateVector3: (arg0: string, arg1: Vector3) => void },
-		scene: Scene,
-		engine: Engine,
-		subMesh: SubMesh,
-	) {
-		if (this._isEnabled) {
-			uniformBuffer.updateVector3("fogCenter", FogOfWarPluginMaterial.fogCenter);
-		}
-	}
-
-	getCustomCode = (shaderType: string): Nullable<{ [pointName: string]: string }> => {
-		if (shaderType === "vertex") {
-			return {
-				CUSTOM_VERTEX_DEFINITIONS: `varying vec3 vWorldPos;`,
-				CUSTOM_VERTEX_MAIN_END: `vWorldPos = worldPos.xyz;`,
-			};
-		}
-		if (shaderType === "fragment") {
-			return {
-				CUSTOM_FRAGMENT_MAIN_END: `
-          float d = length(vWorldPos.xyz - fogCenter);
-          d = (18.0 - d)/10.0;
-          gl_FragColor.rgb *= vec3(d);
-        `,
-				CUSTOM_FRAGMENT_DEFINITIONS: `varying vec3 vWorldPos;`,
-			};
-		}
-		return null;
-	};
-}
 
 // ----------------------------------------预设内容-----------------------------------
 // 主题色事实源已迁移到独立颜色系统；Babylon 侧只消费生成后的中立颜色投影。
 
-export function BabylonBg(): JSX.Element {
+export function BabylonGame(): JSX.Element {
+	console.log("===================================")
 	// 主题色计算
 	const colorSystem = createMemo(() =>
 		resolveColorSystem(store.settings.userInterface.theme, store.settings.userInterface.themeVersion),
@@ -295,6 +214,8 @@ export function BabylonBg(): JSX.Element {
 
 	// 测试模式配置函数
 	function testModelOpen() {
+		import("@babylonjs/core/Debug/debugLayer"); // Augments the scene with the debug methods
+		import("@babylonjs/inspector"); // Injects a local ES6 version of the inspector to prevent automatically relying on the none compatible version
 		// 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
 		void scene.debugLayer.show({
 			// embedMode: true
@@ -304,7 +225,6 @@ export function BabylonBg(): JSX.Element {
 	}
 
 	// 主场景内容
-
 	onMount(async () => {
 		engine = new Engine(canvas, true);
 		//自定义加载动画
