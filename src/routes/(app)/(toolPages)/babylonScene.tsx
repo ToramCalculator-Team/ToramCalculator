@@ -14,9 +14,19 @@ import { AppendSceneAsync } from "@babylonjs/core/Loading/sceneLoader";
 import "@babylonjs/loaders/glTF/2.0/glTFLoader";
 import "@babylonjs/loaders/glTF/2.0/Extensions/KHR_draco_mesh_compression";
 import { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
-import { AxesViewer } from "@babylonjs/core/Debug/axesViewer";
 import { SpotLight } from "@babylonjs/core/Lights/spotLight";
 import { NodeMaterial } from "@babylonjs/core/Materials/Node/nodeMaterial";
+// NodeMaterial snippet 反序列化依赖 RegisterClass 注册表；显式加载 #LLUXAC 使用的节点块，保证序列化类名能恢复为运行时节点。
+import "@babylonjs/core/Materials/Node/Blocks/Dual/textureBlock";
+import "@babylonjs/core/Materials/Node/Blocks/addBlock";
+import "@babylonjs/core/Materials/Node/Blocks/gradientBlock";
+import "@babylonjs/core/Materials/Node/Blocks/remapBlock";
+import "@babylonjs/core/Materials/Node/Blocks/scaleBlock";
+import "@babylonjs/core/Materials/Node/Blocks/vectorMergerBlock";
+import "@babylonjs/core/Materials/Node/Blocks/vectorSplitterBlock";
+// RGBD 纹理解码会创建内置后处理；显式注册 shader，避免开发服务器把 shader 请求回退成 HTML。
+import "@babylonjs/core/Shaders/postprocess.vertex";
+import "@babylonjs/core/Shaders/rgbdDecode.fragment";
 import { Scalar } from "@babylonjs/core/Maths/math.scalar";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { SolidParticleSystem } from "@babylonjs/core/Particles/solidParticleSystem";
@@ -26,8 +36,8 @@ import { SolidParticleSystem } from "@babylonjs/core/Particles/solidParticleSyst
 // ----------------------------------------预设内容-----------------------------------
 // 主题色事实源已迁移到独立颜色系统；Babylon 侧只消费生成后的中立颜色投影。
 
-export function BabylonGame(): JSX.Element {
-	console.log("===================================")
+export default function BabylonGame(): JSX.Element {
+	console.log("===================================");
 	// 主题色计算
 	const colorSystem = createMemo(() =>
 		resolveColorSystem(store.settings.userInterface.theme, store.settings.userInterface.themeVersion),
@@ -196,16 +206,20 @@ export function BabylonGame(): JSX.Element {
 		if (activeKeys.has("a")) moveInput.x += 1;
 		if (activeKeys.has("d")) moveInput.x -= 1;
 	};
+
+	// 鼠标移动事件处理
 	const handleMouseMove = (event: MouseEvent) => {
 		if (camera) {
 			cameraMouseControl(event, camera);
 		}
 	};
+
 	const handleKeyDown = (event: KeyboardEvent) => {
 		if (camera) {
 			cameraKeyboardControl(event, camera);
 		}
 	};
+
 	const handleResize = () => {
 		if (engine) {
 			engine.resize();
@@ -213,9 +227,10 @@ export function BabylonGame(): JSX.Element {
 	};
 
 	// 测试模式配置函数
-	function testModelOpen() {
-		import("@babylonjs/core/Debug/debugLayer"); // Augments the scene with the debug methods
-		import("@babylonjs/inspector"); // Injects a local ES6 version of the inspector to prevent automatically relying on the none compatible version
+	async function testModelOpen(scene: Scene) {
+		await import("@babylonjs/core/Debug/debugLayer"); // Augments the scene with the debug methods
+		await import("@babylonjs/inspector"); // Injects a local ES6 version of the inspector to prevent automatically relying on the none compatible version
+		const { AxesViewer } = await import("@babylonjs/core/Debug/axesViewer");
 		// 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
 		void scene.debugLayer.show({
 			// embedMode: true
@@ -255,7 +270,7 @@ export function BabylonGame(): JSX.Element {
 				scene.fogColor = new Color3(0.3, 0.3, 0.3);
 			}
 		});
-		// testModelOpen();
+		testModelOpen(scene);
 
 		// 摄像机
 		camera = new UniversalCamera("Camera", new Vector3(0, 1, 0), scene);

@@ -1,9 +1,6 @@
-// import "@babylonjs/core/Debug/debugLayer"; // Augments the scene with the debug methods
-// import "@babylonjs/inspector"; // Injects a local ES6 version of the inspector to prevent automatically relying on the none compatible version
 import "@babylonjs/loaders/glTF/2.0/glTFLoader";
 import "@babylonjs/loaders/glTF/2.0/Extensions/KHR_draco_mesh_compression";
 import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
-// import { AxesViewer } from "@babylonjs/core/Debug/axesViewer";
 import type { AbstractEngine } from "@babylonjs/core/Engines/abstractEngine";
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
@@ -13,7 +10,7 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { Scene } from "@babylonjs/core/scene";
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import { createEffect, createMemo, createSignal, type JSX, on, onCleanup, onMount } from "solid-js";
-// import { LoadingBar } from "~/components/controls/loadingBar";
+
 import {
 	BuiltinAnimationType,
 	type CharacterEntityRuntime,
@@ -138,7 +135,10 @@ export function CharacterView(props: CharacterViewProps): JSX.Element {
 	);
 
 	// 测试模式配置函数
-	// function testModelOpen() {
+	// async function testModelOpen(scene: Scene) {
+	// 	await import("@babylonjs/core/Debug/debugLayer"); // Augments the scene with the debug methods
+	// 	await import("@babylonjs/inspector"); // Injects a local ES6 version of the inspector to prevent automatically relying on the none compatible version
+	// 	const { AxesViewer } = await import("@babylonjs/core/Debug/axesViewer");
 	// 	// 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
 	// 	void scene.debugLayer.show({
 	// 		// embedMode: true
@@ -154,7 +154,7 @@ export function CharacterView(props: CharacterViewProps): JSX.Element {
 	});
 
 	return (
-		<div class="CharacterView relative hidden w-full flex-1 h-48 flex-none overflow-hidden portrait:block">
+		<div class="CharacterView relative hidden w-full h-48 flex-none overflow-hidden portrait:block">
 			<canvas ref={setCanvas} class="border-dividing-color block h-full w-full rounded-md border">
 				当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
 			</canvas>

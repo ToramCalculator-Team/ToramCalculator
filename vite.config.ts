@@ -92,7 +92,9 @@ export default defineConfig(() => {
 			format: "es" as const,
 		},
 		optimizeDeps: {
-			exclude: ["@electric-sql/pglite", "@babylonjs/inspector"],
+			// Babylon Inspector 依赖 React/Fluent UI；预构建会补齐 CommonJS React 的 default 兼容层，避免浏览器直接加载原始 ESM 依赖。
+			include: ["@babylonjs/inspector", "@griffel/react", "react", "react-dom"],
+			exclude: ["@electric-sql/pglite"],
 		},
 		plugins: [
 			// SPA 模式用于避免 SSR 在 Node 里加载 monaco-editor 链上的 .css

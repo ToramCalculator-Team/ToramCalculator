@@ -40,6 +40,8 @@ export default function CharactePage() {
 
 	type PanelModeType = "Config" | "AttrPreview" | "SkillPreview";
 	const [panelMode, setPanelMode] = createSignal<PanelModeType>("Config");
+	const isConfigPanelVisible = createMemo(() => panelMode() === "Config" || media.width >= 1024);
+	const isAttrPreviewVisible = createMemo(() => panelMode() === "AttrPreview" || media.width >= 1024);
 
 	const charactersFinder = (id: string) => selectAllCharactersByBelongtoplayerid(id);
 	const [characters, { refetch: refetchCharacters }] = createResource(
@@ -265,8 +267,11 @@ export default function CharactePage() {
 						/>
 					</div>
 					<div class="Content flex h-full w-full flex-1 flex-col overflow-hidden p-6 landscape:flex-row">
-						<Show when={panelMode() === "Config" || media.width >= 1024}>
-							<CharacterView character={validCharacter()} />
+						<div class={isConfigPanelVisible() ? "contents" : "hidden"}>
+							{/* 面板隐藏时移除3d渲染逻辑以降低功耗和性能损失 */}
+							<Show when={isConfigPanelVisible()}>
+								<CharacterView character={validCharacter()} />
+							</Show>
 							<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:hidden landscape:h-full landscape:w-px"></div>
 							<CharacterConfigPanel
 								character={validCharacter()}
@@ -274,9 +279,9 @@ export default function CharactePage() {
 								onDebouncedPatchRequested={queueCharacterPatch}
 								onItemPreviewRequested={previewDataItem}
 							/>
-						</Show>
+						</div>
 
-						<Show when={panelMode() === "AttrPreview" || media.width >= 1024}>
+						<div class={isAttrPreviewVisible() ? "contents" : "hidden"}>
 							<div class="Divider landscape:bg-dividing-color flex-none portrait:hidden landscape:mx-2 landscape:h-full landscape:w-px" />
 							<OverlayScrollbarsComponent
 								element="div"
@@ -286,12 +291,12 @@ export default function CharactePage() {
 							>
 								<StatsRenderer data={primaryMember()?.attrs} />
 							</OverlayScrollbarsComponent>
-						</Show>
+						</div>
 
 						<Presence exitBeforeEnter>
 							<Show when={media.width < 1024}>
 								<Motion.div
-									class="Control bg-primary-color shadow-dividing-color shadow-dialog absolute bottom-3 left-1/2 z-10 flex gap-1 rounded p-1 landscape:bottom-6"
+									class="ModuleSwitcher bg-primary-color shadow-dividing-color shadow-dialog absolute bottom-3 left-1/2 z-10 flex gap-1 rounded p-1 landscape:bottom-6"
 									animate={{
 										opacity: [0, 1],
 										transform: ["translateX(-50%)", "translateX(-50%)"],

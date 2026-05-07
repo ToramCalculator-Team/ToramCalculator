@@ -46,7 +46,7 @@ export function ForeignKeyPickerSheet<T extends Record<string, unknown>>(props: 
 	return (
 		<Portal>
 			<Sheet state={props.open} setState={props.onOpenChange}>
-				<div class="flex portrait:h-[90dvh] w-full flex-col gap-2 p-6">
+				<div class="flex portrait:h-[90dvh] w-full h-full flex-col gap-2 p-6">
 					<div class="sheetTitle w-full text-xl font-bold flex items-center justify-between">
 						{props.title}
 						<Button icon={<Icons.Outline.Close />} level="quaternary" class="rounded-none rounded-tr" onClick={close} />
