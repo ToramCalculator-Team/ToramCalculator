@@ -1,31 +1,33 @@
-"use server";
-import { findUserByEmail, findUserWithRelations } from "@db/repositories/user";
-import { getCookie } from "@solidjs/start/http";
-import { jwtVerify } from "jose";
-
-async function verifyJWT(token: string, secret: string) {
-	const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
-	// console.log("解析出的 User ID:", payload.sub); // 直接获取用户 ID
-	return payload.sub; // 返回用户 ID
-}
-
+// 函数级 "use server" 保留 SolidStart server function 的类型化调用，同时让客户端构建只看到调用边界。
 export async function getUserByCookie() {
-	const secrt = process.env.AUTH_SECRET;
-	// console.log("secrt", secrt);
-	if (!secrt) return null;
+	"use server";
+
+	// 服务端依赖放在函数内部，避免 client bundle 解析 AUTH_SECRET、cookie、JWT、DB 查询实现。
+	const [{ findUserWithRelations }, { getCookie }, { jwtVerify }] = await Promise.all([
+		import("@db/repositories/user"),
+		import("@solidjs/start/http"),
+		import("jose"),
+	]);
+
+	const secret = process.env.AUTH_SECRET;
+	if (!secret) return null;
 
 	const token = getCookie("jwt");
-	// console.log("token", token);
 	if (!token) return null;
 
-	const userId = await verifyJWT(token, secrt);
+	const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
+	// payload.sub 直接作为用户 ID，后续只用 ID 查询完整用户关系。
+	const userId = payload.sub;
 	if (!userId) return null;
 
-	const user = await findUserWithRelations(userId);
-	return user;
+	return await findUserWithRelations(userId);
 }
 
 export async function emailExists(email: string) {
+	"use server";
+
+	// 注册页只需要布尔结果，避免把用户对象结构暴露给调用方。
+	const { findUserByEmail } = await import("@db/repositories/user");
 	const user = await findUserByEmail(email);
 	return !!user;
 }

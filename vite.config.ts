@@ -4,7 +4,36 @@ import tailwindcss from "@tailwindcss/vite";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
 
+type ManifestEntry = {
+	fileName: string;
+	size: number;
+	kind: "js" | "css" | "wasm" | "worker" | "image" | "font" | "data" | "other";
+};
+
 function createChunkManifestPlugin(): Plugin {
+	const getKind = (fileName: string): ManifestEntry["kind"] => {
+		const lower = fileName.toLowerCase();
+		if (lower.includes("worker") && lower.endsWith(".js")) return "worker";
+		if (lower.endsWith(".js")) return "js";
+		if (lower.endsWith(".css")) return "css";
+		if (lower.endsWith(".wasm")) return "wasm";
+		if (/\.(png|jpg|jpeg|gif|svg|ico|webp)$/i.test(lower)) return "image";
+		if (/\.(woff|woff2|ttf|eot)$/i.test(lower)) return "font";
+		if (/\.(data|gz|tar)$/i.test(lower)) return "data";
+		return "other";
+	};
+
+	const getOutputSize = (output: any): number => {
+		if (output.type === "chunk") return Buffer.byteLength(output.code);
+		return typeof output.source === "string" ? Buffer.byteLength(output.source) : output.source.byteLength;
+	};
+
+	const toEntry = (fileName: string, output: any): ManifestEntry => ({
+		fileName,
+		size: getOutputSize(output),
+		kind: getKind(fileName),
+	});
+
 	return {
 		name: "chunk-manifest-generator",
 		apply: "build",
@@ -14,36 +43,94 @@ function createChunkManifestPlugin(): Plugin {
 				return;
 			}
 
-			type ManifestEntry = { fileName: string };
-
 			const chunkManifest = {
 				version: "1.0.0",
 				buildTime: Date.now(),
 				buildTimeISO: new Date().toISOString(),
+				startup: [] as ManifestEntry[],
 				chunks: {
 					core: [] as ManifestEntry[],
+					warm: [] as ManifestEntry[],
 				},
 				assets: {
-					images: [] as ManifestEntry[],
-					fonts: [] as ManifestEntry[],
-					others: [] as ManifestEntry[],
+					core: [] as ManifestEntry[],
+					warm: [] as ManifestEntry[],
 				},
 			};
 
+			const chunks = new Map<string, Extract<(typeof bundle)[string], { type: "chunk" }>>();
+			const coreFiles = new Set<string>();
+			const startupFiles = new Set<string>();
+
 			for (const [fileName, output] of Object.entries(bundle)) {
 				if (output.type === "chunk") {
-					if (output.isEntry || (output.isDynamicEntry && !output.facadeModuleId?.includes("(character)"))) {
-						chunkManifest.chunks.core.push({ fileName });
+					chunks.set(fileName, output);
+				}
+			}
+
+			const addChunkWithStaticDependencies = (fileName: string, targetFiles: Set<string>) => {
+				if (targetFiles.has(fileName)) return;
+				const chunk = chunks.get(fileName);
+				if (!chunk) return;
+
+				targetFiles.add(fileName);
+				for (const importedFile of chunk.imports) {
+					addChunkWithStaticDependencies(importedFile, targetFiles);
+				}
+
+				const metadata = chunk.viteMetadata;
+				for (const cssFile of metadata?.importedCss ?? []) {
+					targetFiles.add(cssFile);
+				}
+				for (const assetFile of metadata?.importedAssets ?? []) {
+					targetFiles.add(assetFile);
+				}
+			};
+
+			const isEntryClient = (facadeModuleId: string) => facadeModuleId.endsWith("/src/entry-client.tsx");
+			const isStartupRoute = (facadeModuleId: string) =>
+				facadeModuleId.includes("/src/routes/(app).tsx") ||
+				facadeModuleId.includes("/src/routes/(app)/(index)/index.tsx");
+
+			for (const [fileName, output] of chunks) {
+				const facadeModuleId = output.facadeModuleId?.replace(/\\/g, "/") ?? "";
+				if (isEntryClient(facadeModuleId)) {
+					// core 只沿 entry-client 的静态依赖图收集，动态路由、worker、wasm/data 归入 warm。
+					addChunkWithStaticDependencies(fileName, coreFiles);
+				}
+			}
+
+			for (const fileName of coreFiles) {
+				startupFiles.add(fileName);
+			}
+
+			for (const [fileName, output] of chunks) {
+				const facadeModuleId = output.facadeModuleId?.replace(/\\/g, "/") ?? "";
+				if (isStartupRoute(facadeModuleId)) {
+					// startup 表示用户看到首页前浏览器需要下载的路由链资源，用于生产加载进度分母。
+					addChunkWithStaticDependencies(fileName, startupFiles);
+				}
+			}
+
+			for (const [fileName, output] of Object.entries(bundle)) {
+				const entry = toEntry(fileName, output);
+				if (startupFiles.has(fileName)) {
+					chunkManifest.startup.push(entry);
+				}
+
+				if (output.type === "chunk") {
+					if (coreFiles.has(fileName)) {
+						chunkManifest.chunks.core.push(entry);
+					} else {
+						chunkManifest.chunks.warm.push(entry);
 					}
 					continue;
 				}
 
-				if (/\.(png|jpg|jpeg|gif|svg|ico|webp)$/i.test(fileName)) {
-					chunkManifest.assets.images.push({ fileName });
-				} else if (/\.(woff|woff2|ttf|eot)$/i.test(fileName)) {
-					chunkManifest.assets.fonts.push({ fileName });
+				if (coreFiles.has(fileName) || fileName.startsWith("_build/assets/entry-client-")) {
+					chunkManifest.assets.core.push(entry);
 				} else {
-					chunkManifest.assets.others.push({ fileName });
+					chunkManifest.assets.warm.push(entry);
 				}
 			}
 
@@ -57,7 +144,9 @@ function createChunkManifestPlugin(): Plugin {
 	};
 }
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
+	const isDev = mode === "development";
+
 	return {
 		resolve: {
 			alias: {
@@ -65,21 +154,30 @@ export default defineConfig(() => {
 			},
 		},
 		build: {
-			// Keep this explicit because vite-plugin-top-level-await reads the raw
-			// config before Vite resolves "baseline-widely-available"; its fallback
-			// includes Safari 14, which makes esbuild try to downlevel destructuring.
-			target: ["chrome107", "edge107", "firefox104", "safari16"],
 			// 默认关闭 sourcemap（显著降低构建内存占用）；需要时用 VITE_SOURCEMAP=true 开启
 			sourcemap: false,
 			// 启用Vite的manifest生成
+			// manifest 同时供 chunk-manifest-generator 判断入口依赖边界。
 			manifest: true,
 			rollupOptions: {
 				output: {
-					// Keep Babylon in its own synchronous vendor chunk so it does not share
-					// initialization order with application chunks rewritten by top-level-await.
+					// Babylon runtime 保持独立 vendor chunk，避免首屏静态依赖和 3D 运行时互相污染。
 					manualChunks(id: string) {
+						// Vite preload helper 必须独立成小 chunk，否则可能落进 Babylon runtime 并把首屏入口拖大。
+						if (id.includes("preload-helper")) {
+							return "vite-runtime";
+						}
+						if (
+							id.includes("@babylonjs/inspector") ||
+							id.includes("@babylonjs/core/Debug/") ||
+							id.includes("@fluentui/") ||
+							id.includes("@griffel/") ||
+							/[\\/]node_modules[\\/](react|react-dom)[\\/]/.test(id)
+						) {
+							return "babylon-debug";
+						}
 						if (id.includes("@babylonjs/")) {
-							return "babylon";
+							return "babylon-runtime";
 						}
 						if (id.includes("@electric-sql/pglite")) {
 							return "pglite";
@@ -93,7 +191,7 @@ export default defineConfig(() => {
 		},
 		optimizeDeps: {
 			// Babylon Inspector 依赖 React/Fluent UI；预构建会补齐 CommonJS React 的 default 兼容层，避免浏览器直接加载原始 ESM 依赖。
-			include: ["@babylonjs/inspector", "@griffel/react", "react", "react-dom"],
+			include: isDev ? ["@babylonjs/inspector", "@griffel/react", "react", "react-dom"] : [],
 			exclude: ["@electric-sql/pglite"],
 		},
 		plugins: [

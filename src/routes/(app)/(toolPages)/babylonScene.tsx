@@ -226,19 +226,6 @@ export default function BabylonGame(): JSX.Element {
 		}
 	};
 
-	// 测试模式配置函数
-	async function testModelOpen(scene: Scene) {
-		await import("@babylonjs/core/Debug/debugLayer"); // Augments the scene with the debug methods
-		await import("@babylonjs/inspector"); // Injects a local ES6 version of the inspector to prevent automatically relying on the none compatible version
-		const { AxesViewer } = await import("@babylonjs/core/Debug/axesViewer");
-		// 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
-		void scene.debugLayer.show({
-			// embedMode: true
-		});
-		// 世界坐标轴显示
-		new AxesViewer(scene, 0.1);
-	}
-
 	// 主场景内容
 	onMount(async () => {
 		engine = new Engine(canvas, true);
@@ -270,7 +257,24 @@ export default function BabylonGame(): JSX.Element {
 				scene.fogColor = new Color3(0.3, 0.3, 0.3);
 			}
 		});
-		testModelOpen(scene);
+
+		// 测试模式配置函数
+		// 开发环境下启动检查器。生产构建会移除这个分支，避免打包 Babylon Inspector。
+		if (import.meta.env.DEV) {
+			const openInspector = async () => {
+				await import("@babylonjs/core/Debug/debugLayer");
+				await import("@babylonjs/inspector");
+				const { AxesViewer } = await import("@babylonjs/core/Debug/axesViewer");
+				// 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
+				void scene.debugLayer.show({
+					// embedMode: true
+				});
+				// 世界坐标轴显示
+				new AxesViewer(scene, 0.1);
+			};
+
+			await openInspector();
+		}
 
 		// 摄像机
 		camera = new UniversalCamera("Camera", new Vector3(0, 1, 0), scene);

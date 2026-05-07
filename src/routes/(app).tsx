@@ -1,12 +1,7 @@
 import hotkeys from "hotkeys-js";
-import { createEffect, on, onMount, type ParentProps, Show } from "solid-js";
+import { createEffect, createSignal, lazy, on, onMount, type ParentProps, Show, Suspense } from "solid-js";
 import { Motion } from "solid-motionone";
-import { CardGroup } from "~/components/business/card/CardGroup";
-import { FormGroup } from "~/components/business/form/FormGroup";
-import { BabylonBg } from "~/components/effects/babylonBg";
 import { RandomBallBackground } from "~/components/effects/randomBg";
-import { LoginDialog } from "~/components/features/loginDialog";
-import { Setting } from "~/components/features/setting";
 import { DictionaryProvider } from "~/contexts/Dictionary";
 import { MediaProvider } from "~/contexts/Media-component";
 import { BootstrapProvider } from "~/lib/bootstrap/BootstrapContext";
@@ -14,7 +9,64 @@ import { EngineProvider } from "~/lib/engine/core/thread/EngineContext";
 import { setStore, store } from "~/store";
 import { applyColorSystem } from "~/styles/colorSystem/colorSystemController";
 
+const BabylonBg = lazy(async () => {
+	const module = await import("~/components/effects/babylonBg");
+	return { default: module.BabylonBg };
+});
+
+const Setting = lazy(async () => {
+	const module = await import("~/components/features/setting");
+	return { default: module.Setting };
+});
+
+const LoginDialog = lazy(async () => {
+	const module = await import("~/components/features/loginDialog");
+	return { default: module.LoginDialog };
+});
+
+const CardGroup = lazy(async () => {
+	const module = await import("~/components/business/card/CardGroup");
+	return { default: module.CardGroup };
+});
+
+const FormGroup = lazy(async () => {
+	const module = await import("~/components/business/form/FormGroup");
+	return { default: module.FormGroup };
+});
+
 export default function AppMainContet(props: ParentProps) {
+	let warmCacheScheduled = false;
+	const [settingRequested, setSettingRequested] = createSignal(false);
+	const [loginDialogRequested, setLoginDialogRequested] = createSignal(false);
+	const [cardGroupRequested, setCardGroupRequested] = createSignal(false);
+	const [formGroupRequested, setFormGroupRequested] = createSignal(false);
+
+	const scheduleWarmCache = () => {
+		if (warmCacheScheduled || typeof window === "undefined" || !("serviceWorker" in navigator)) {
+			return;
+		}
+
+		const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+		if (connection?.saveData) {
+			return;
+		}
+
+		warmCacheScheduled = true;
+		const startWarmCache = async () => {
+			const { warmCache } = await import("~/worker/sw/client");
+			warmCache({ mode: "all" });
+		};
+
+		// Warm cache starts after the app shell is interactive so first paint stays small.
+		if ("requestIdleCallback" in window) {
+			(window as Window & { requestIdleCallback: (callback: () => void, options?: { timeout: number }) => void }).requestIdleCallback(
+				() => void startWarmCache(),
+				{ timeout: 5000 },
+			);
+		} else {
+			setTimeout(() => void startWarmCache(), 3000);
+		}
+	};
 	// 热键
 	hotkeys("ctrl+a,ctrl+b,r,f,enter,esc", (event, handler) => {
 		switch (
@@ -114,6 +166,22 @@ export default function AppMainContet(props: ParentProps) {
 		// console.log("本地存储更新");
 	});
 
+	// 非首屏弹层首次打开时才下载对应 chunk；下载后保持挂载，交给组件内部 Presence 处理退出动画。
+	createEffect(() => {
+		if (store.pages.settingsDialogState) {
+			setSettingRequested(true);
+		}
+		if (store.pages.loginDialogState) {
+			setLoginDialogRequested(true);
+		}
+		if (store.pages.cardGroup.length > 0) {
+			setCardGroupRequested(true);
+		}
+		if (store.pages.formGroup.length > 0) {
+			setFormGroupRequested(true);
+		}
+	});
+
 	// 移除全局加载动画
 	// 此处移除是为了客户端在初次下载完资源时，将画面从加载过渡到正常页面，preload.js中的是为了保证之后的每次页面都不展示加载动画
 	createEffect(
@@ -129,6 +197,7 @@ export default function AppMainContet(props: ParentProps) {
 						loader.remove();
 					}, 1000);
 				}
+				scheduleWarmCache();
 			},
 			{
 				defer: true,
@@ -138,7 +207,23 @@ export default function AppMainContet(props: ParentProps) {
 
 	// 本地状态更新
 	onMount(async () => {
-		setStore("pages", "resourcesLoaded", true);
+		// 首屏完成要晚于组件挂载一个绘制周期，避免把“已挂载”误判成“已可见”。
+		const markFirstScreenReady = () => {
+			window.dispatchEvent(new Event("app:first-screen-ready"));
+			setStore("pages", "resourcesLoaded", true);
+		};
+
+		if ("requestAnimationFrame" in window) {
+			window.requestAnimationFrame(() => {
+				window.requestAnimationFrame(() => {
+					markFirstScreenReady();
+				});
+			});
+		} else {
+			setTimeout(() => {
+				markFirstScreenReady();
+			}, 0);
+		}
 	});
 
 	return (
@@ -146,9 +231,11 @@ export default function AppMainContet(props: ParentProps) {
 			<MediaProvider>
 				<DictionaryProvider>
 					<EngineProvider>
-						<Show when={store.settings.userInterface.is3DbackgroundDisabled}>
-							<BabylonBg />
-						</Show>
+						<Suspense fallback={null}>
+							<Show when={store.settings.userInterface.is3DbackgroundDisabled}>
+								<BabylonBg />
+							</Show>
+						</Suspense>
 						<RandomBallBackground />
 						<Motion.div
 							id="AppMainContet"
@@ -156,10 +243,20 @@ export default function AppMainContet(props: ParentProps) {
 						>
 							{props.children}
 						</Motion.div>
-						<Setting />
-						<LoginDialog />
-						<CardGroup />
-						<FormGroup />
+						<Suspense fallback={null}>
+							<Show when={settingRequested()}>
+								<Setting />
+							</Show>
+							<Show when={loginDialogRequested()}>
+								<LoginDialog />
+							</Show>
+							<Show when={cardGroupRequested()}>
+								<CardGroup />
+							</Show>
+							<Show when={formGroupRequested()}>
+								<FormGroup />
+							</Show>
+						</Suspense>
 					</EngineProvider>{" "}
 				</DictionaryProvider>
 			</MediaProvider>

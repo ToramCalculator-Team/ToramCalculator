@@ -201,7 +201,7 @@ export const initialStore: Store = {
 	sw: {
 		periodicCheckEnabled: true,
 		periodicCheckInterval: 30 * 60 * 1000, // 30分钟
-		cacheStrategy: "all",
+		cacheStrategy: "core-only",
 		lastManualUpdate: undefined,
 	},
 };

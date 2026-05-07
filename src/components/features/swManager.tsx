@@ -13,6 +13,13 @@ const defaultSWContext: SWContext = {
 		assets: new Map(),
 		data: new Map(),
 		pages: new Map(),
+		warm: {
+			inProgress: false,
+			done: 0,
+			total: 0,
+			failed: 0,
+			bytes: 0,
+		},
 		manifestVersion: "",
 		lastUpdate: "",
 	},
@@ -111,6 +118,43 @@ export const ServiceWorkerManager = () => {
 							swClient.getCacheStatus();
 							break;
 						}
+						case "WARM_CACHE_PROGRESS": {
+							setState((prev) => ({
+								...prev,
+								cacheStatus: {
+									...prev.cacheStatus,
+									warm: {
+										...prev.cacheStatus.warm,
+										inProgress: true,
+										done: msg.data?.done ?? prev.cacheStatus.warm.done,
+										total: msg.data?.total ?? prev.cacheStatus.warm.total,
+										failed: msg.data?.failed ?? prev.cacheStatus.warm.failed,
+										bytes: msg.data?.bytes ?? prev.cacheStatus.warm.bytes,
+										lastUpdate: new Date().toISOString(),
+									},
+								},
+							}));
+							break;
+						}
+						case "WARM_CACHE_COMPLETED":
+						case "WARM_CACHE_FAILED": {
+							setState((prev) => ({
+								...prev,
+								cacheStatus: {
+									...prev.cacheStatus,
+									warm: {
+										...prev.cacheStatus.warm,
+										inProgress: false,
+										total: msg.data?.total ?? prev.cacheStatus.warm.total,
+										failed: msg.data?.failed ?? prev.cacheStatus.warm.failed,
+										bytes: msg.data?.bytes ?? prev.cacheStatus.warm.bytes,
+										lastUpdate: new Date().toISOString(),
+									},
+								},
+							}));
+							swClient.getCacheStatus();
+							break;
+						}
 						case "CACHE_STATUS": {
 							setState((prev) => ({
 								...prev,
@@ -120,6 +164,7 @@ export const ServiceWorkerManager = () => {
 									assets: msg.data?.assets ? new Map(msg.data.assets) : prev.cacheStatus.assets,
 									data: prev.cacheStatus.data,
 									pages: prev.cacheStatus.pages,
+									warm: msg.data?.warm ?? prev.cacheStatus.warm,
 								},
 							}));
 							break;
@@ -160,6 +205,18 @@ export const ServiceWorkerManager = () => {
 			swClient.forceUpdate();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to force update");
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const handleWarmCache = () => {
+		try {
+			setIsLoading(true);
+			setError(null);
+			swClient.warmCache({ mode: "all", force: true });
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to warm cache");
 		} finally {
 			setIsLoading(false);
 		}
@@ -277,6 +334,10 @@ export const ServiceWorkerManager = () => {
 					⬇️ 强制更新
 				</Button>
 
+				<Button onClick={handleWarmCache} disabled={!isAvailable() || isLoading()}>
+					完整离线缓存
+				</Button>
+
 				<Button onClick={handleClearCache} disabled={!isAvailable() || isLoading()} level="secondary">
 					🗑️ 清理缓存
 				</Button>
@@ -355,6 +416,17 @@ export const ServiceWorkerManager = () => {
 			</Show>
 
 			{/* 新增 SW 配置面板 */}
+			<div class="WarmCacheSection rounded-lg border p-4">
+				<h4 class="mb-3 font-medium">后台资源缓存</h4>
+				<div class="text-sm">
+					{state().cacheStatus.warm.inProgress
+						? `缓存中：${state().cacheStatus.warm.done}/${state().cacheStatus.warm.total}`
+						: state().cacheStatus.warm.total > 0
+							? `已处理 ${state().cacheStatus.warm.done}/${state().cacheStatus.warm.total}，失败 ${state().cacheStatus.warm.failed}`
+							: "未开始"}
+				</div>
+			</div>
+
 			<div class="SwConfigSection rounded-lg border p-4">
 				<h4 class="mb-3 font-medium">Service Worker 配置</h4>
 				<div class="flex flex-col gap-2">

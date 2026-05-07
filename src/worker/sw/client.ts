@@ -11,7 +11,11 @@ const listeners = new Set<Listener>();
 function post(type: string, data?: any) {
 	if (navigator.serviceWorker?.controller) {
 		navigator.serviceWorker.controller.postMessage({ type, data });
+		return;
 	}
+	void navigator.serviceWorker?.ready.then((registration) => {
+		registration.active?.postMessage({ type, data });
+	});
 }
 
 if (typeof window !== "undefined" && "serviceWorker" in navigator) {
@@ -34,8 +38,8 @@ export function stopPeriodicCheck() {
 export function checkCacheVersion() {
 	post("CHECK_CACHE_VERSION");
 }
-export function forceUpdate() {
-	post("FORCE_UPDATE");
+export function forceUpdate(options?: { mode?: "all"; force?: boolean }) {
+	post("FORCE_UPDATE", options);
 }
 export function clearCache() {
 	post("CLEAR_CACHE");
@@ -48,6 +52,10 @@ export function getCheckStatus() {
 }
 export function setConfig(config: any) {
 	post("SET_CONFIG", config);
+}
+
+export function warmCache(options?: { mode?: "all"; force?: boolean }) {
+	post("WARM_CACHE", options);
 }
 
 // 兼容原 getState

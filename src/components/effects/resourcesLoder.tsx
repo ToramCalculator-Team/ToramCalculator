@@ -5,6 +5,12 @@ export const ResourcesLoader = () => {
 				id="resource-list"
 				class="w-dvw overflow-hidden p-6 text-xs text-nowrap text-ellipsis text-dividing-color"
 			></div>
+			<div class="w-dvw px-6 pb-3">
+				<div class="bg-dividing-color/30 h-1 w-full overflow-hidden rounded">
+					{/* 生产模式下由 entry-client 按 startup manifest 的已加载字节数更新宽度。 */}
+					<div id="startup-progress-bar" class="bg-accent-color h-full w-0 transition-[width] duration-200"></div>
+				</div>
+			</div>
 			<div id="loadingBox">
 				<div class="Shadow shadow-none">
 					<div class="Circle"></div>

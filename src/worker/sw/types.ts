@@ -25,6 +25,7 @@ export interface SWMessage {
 		| "IMMEDIATE_CHECK"
 		| "GET_CHECK_STATUS"
 		| "SET_CONFIG"
+		| "WARM_CACHE"
 		| "GET_VERSION_STATUS"
 		| "FORCE_VERSION_UPDATE";
 	data?: any;
@@ -53,6 +54,14 @@ export interface CacheStatus {
 	assets: Map<string, boolean>;
 	data: Map<string, boolean>;
 	pages: Map<string, boolean>;
+	warm: {
+		inProgress: boolean;
+		done: number;
+		total: number;
+		failed: number;
+		bytes: number;
+		lastUpdate?: string;
+	};
 	manifestVersion?: string;
 	lastUpdate?: string;
 	versionCheck?: {
