@@ -1,6 +1,9 @@
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import { SKILL_TREE_GROUP_TYPE, SKILL_TREE_TYPE, type SkillTreeType } from "@db/schema/enums";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createEffect, createMemo, createSignal, For, Index, on, Show } from "solid-js";
+import { Portal } from "solid-js/web";
+import { Sheet } from "~/components/containers/sheet";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
@@ -40,6 +43,12 @@ export function SkillPanel(props: SkillPanelProps) {
 		}
 		return tree;
 	});
+	const [activeSkillTree, setActiveSkillTree] = createSignal<SkillTreeType>("MagicSkill");
+	const [skillTreePanelOpen, setSkillTreePanelOpen] = createSignal(false);
+	const openSkillTreePanel = (treeType: SkillTreeType) => {
+		setActiveSkillTree(treeType);
+		setSkillTreePanelOpen(true);
+	};
 
 	const hasSkillTreeSkills = (treeType: SkillTreeType) => skillTree()[treeType].skills.length > 0;
 	const isSkillTreeDisplayed = (treeType: SkillTreeType) =>
@@ -74,7 +83,11 @@ export function SkillPanel(props: SkillPanelProps) {
 								const treeType = skillTreeType();
 								return (
 									<Show when={isSkillTreeDisplayed(treeType)}>
-										<div class="SkillItem flex flex-col gap-2">
+										<button
+											type="button"
+											class="SkillItem flex flex-col gap-2"
+											onclick={() => openSkillTreePanel(treeType)}
+										>
 											<div class="w-full h-full flex flex-1 items-center">
 												<div
 													class={`Label w-full flex gap-1 px-4 py-3 border-l-2 ${
@@ -98,7 +111,7 @@ export function SkillPanel(props: SkillPanelProps) {
 													</div>
 												</Show>
 											</div>
-										</div>
+										</button>
 									</Show>
 								);
 							}}
@@ -119,6 +132,30 @@ export function SkillPanel(props: SkillPanelProps) {
 					)}
 				</For>
 			</div>
+
+			<Portal>
+				<Sheet state={skillTreePanelOpen()} setState={setSkillTreePanelOpen}>
+					<div class="flex portrait:h-[90dvh] w-full flex-col gap-2 p-6">
+						<div class="sheetTitle w-full text-xl font-bold flex items-center justify-between">
+							{dictionary().db.skill.fields.treeType.enumMap[activeSkillTree()]}
+							<Button
+								icon={<Icons.Outline.Close />}
+								level="quaternary"
+								class="rounded-none rounded-tr"
+								onClick={close}
+							/>
+						</div>
+						<OverlayScrollbarsComponent
+							element="div"
+							options={{ scrollbars: { autoHide: "scroll" } }}
+							class="SkillGroupConfig h-full min-w-full flex-1"
+						>
+							{/* 根据当前活动技能树内的技能坐标范围绘制技能树网格 */}
+							
+						</OverlayScrollbarsComponent>
+					</div>
+				</Sheet>
+			</Portal>
 			<SkillTreePickerSheet
 				open={pickerOpen()}
 				onOpenChange={(open) => setPickerOpen(open)}

@@ -109,7 +109,7 @@ export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem, weapon> = (dictiona
 	//   - 把 item 的父级关系（如 statistic、account）作为 weapon 的关联一并展示
 	inheritsFrom: { table: "item", via: "itemId" },
 	relationOverrides: {
-		hide: ["player_weapon","statistic","account_create_data","account_update_data"],
+		hide: ["player_weapon", "statistic", "account_create_data", "account_update_data"],
 	},
 	dictionary: dictionary().db.weapon,
 	dataSchema: WeaponItemSchema,
@@ -162,6 +162,7 @@ export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem, weapon> = (dictiona
 				size: 150,
 			},
 			{ accessorKey: "modifiers", cell: (info) => info.getValue(), size: 360 },
+			{ accessorKey: "type", cell: (info) => info.getValue(), size: 180 },
 			{ accessorKey: "colorA", cell: (info) => info.getValue(), size: 150 },
 			{ accessorKey: "colorB", cell: (info) => info.getValue(), size: 150 },
 			{ accessorKey: "colorC", cell: (info) => info.getValue(), size: 150 },

@@ -126,19 +126,27 @@ export const CRYSTAL_DATA_CONFIG: TableDataConfig<CrystalItem, crystal> = (dicti
 			estimateSize: 160,
 		},
 		columnsDef: [
-			{ accessorKey: "name", cell: (info) => info.getValue(), size: 150 },
+			{ accessorKey: "name", cell: (info) => info.getValue(), size: 260 },
 			{ accessorKey: "itemId", cell: (info) => info.getValue(), size: 200 },
 			{
 				accessorKey: "modifiers",
 				cell: (info) => info.getValue(),
 				size: 480,
 			},
-			{ accessorKey: "type", cell: (info) => info.getValue(), size: 100 },
+			{ accessorKey: "type", cell: (info) => info.getValue(), size: 180 },
 		],
 		hiddenColumnDef: ["itemId"],
 		defaultSort: { field: "name", desc: false },
 		tdGenerator: {
 			modifiers: (props) => <ModifiersRenderer data={props.cell.getValue() as Array<string>} />,
+			name: ({ cell, dic }) => (
+				<div class="text-accent-color flex items-center gap-2">
+					<div class="flex-none w-12 h-12 p-1 flex items-center justify-center rounded bg-area-color">
+						<Icons.Spirits iconName={cell.row.original.type} size={36} />
+					</div>
+					<span>{cell.getValue<string>()}</span>
+				</div>
+			),
 		},
 	},
 	form: {
