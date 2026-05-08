@@ -49,6 +49,7 @@ export function SkillTreePickerSheet(props: SkillTreePickerSheetProps) {
 						element="div"
 						options={{ scrollbars: { autoHide: "scroll" } }}
 						class="SkillGroupConfig h-full min-w-full flex-1"
+						defer
 					>
 						<Index each={SKILL_TREE_GROUP_TYPE}>
 							{(treeGroupType) => (
