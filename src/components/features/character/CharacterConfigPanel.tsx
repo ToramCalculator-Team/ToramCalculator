@@ -34,7 +34,7 @@ export function CharacterConfigPanel(props: CharacterConfigPanelProps) {
 		{ key: "base", label: () => dictionary().ui.character.tabs.base.selfName, icon: <Icons.Outline.Edit /> },
 	] as const;
 	type CharacterConfigTab = (typeof tabs)[number]["key"];
-	const [activeTab, setActiveTab] = createSignal<CharacterConfigTab>("skill");
+	const [activeTab, setActiveTab] = createSignal<CharacterConfigTab>("equipment");
 
 	return (
 		<>

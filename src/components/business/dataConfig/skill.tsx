@@ -85,11 +85,14 @@ const insertSkillWithVariants = async (data: SkillWithVariants): Promise<SkillWi
 		const variants = await Promise.all(
 			data.variants.map(async (variant) => {
 				const variantData = SkillVariantSchema.parse(variant);
-				return await repositoryMethods.skill_variant.insert({
-					...variantData,
-					id: createId(),
-					belongToskillId: skill.id,
-				}, trx);
+				return await repositoryMethods.skill_variant.insert(
+					{
+						...variantData,
+						id: createId(),
+						belongToskillId: skill.id,
+					},
+					trx,
+				);
 			}),
 		);
 		return {
@@ -167,7 +170,7 @@ export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill> = (dic
 		ID: ["id"],
 		基本信息: ["name", "treeType", "tier", "posX", "posY"],
 		技能属性: ["chargingType", "distanceType", "targetType", "isPassive"],
-		其他信息: ["dataSources", "details"],
+		其他信息: ["preSkillId", "dataSources", "details"],
 		统计信息: ["statisticId"],
 		创建和更新信息: ["createdByAccountId", "updatedByAccountId"],
 	},
@@ -209,6 +212,12 @@ export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill> = (dic
 				cell: (info) => info.getValue<boolean>().toString(),
 				size: 160,
 			},
+			{
+				id: "preSkillId",
+				accessorFn: (row) => row.preSkillId,
+				cell: (info) => info.getValue<string | null>(),
+				size: 160,
+			}
 		],
 		hiddenColumnDef: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
 		defaultSort: {

@@ -80,7 +80,7 @@ export function MemberControllerPanel(props: MemberControllerPanelProps) {
 	};
 
 	return (
-		<div class="MemberControllerPanel w-full h-full relative grid grid-cols-8 grid-rows-8 gap-2 p-2 bg-accent-color rounded overflow-hidden">
+		<div class="MemberControllerPanel w-full h-full relative grid grid-cols-8 grid-rows-8 gap-2 p-2 bg-accent-color rounded overflow-hidden shrink">
 			<div class="z-10 col-span-8 row-span-1 grid grid-cols-8 grid-rows-1 gap-2 items-center justify-between">
 				<div class="col-span-1 portrait:col-span-2 row-span-1 flex w-full h-full">
 					{/* 成员状态：优先用 byController 投影；否则用成员静态数据兜底（避免“只有壳”） */}
@@ -117,16 +117,23 @@ export function MemberControllerPanel(props: MemberControllerPanelProps) {
 			{/* 3D渲染区域（中间区域 rows 2-7） */}
 			<div class="absolute top-0 left-0 w-full h-full overflow-hidden rounded">{props.gameView}</div>
 
-			<div class="z-9 row-start-8 col-start-3 portrait:col-start-1 col-span-4 portrait:col-span-8 row-span-1 flex flex-col gap-2">
+			<div class="z-9 row-start-8 col-start-3 portrait:col-start-1 col-span-4 portrait:col-span-8 row-span-1 flex min-h-0 min-w-0 flex-col gap-2 overflow-hidden">
 				{/* 技能面板 */}
 				<Show when={skillList().length > 0} fallback={<div class="text-xs">暂无技能</div>}>
-					<div class="grid grid-rows-1 grid-cols-14 gap-2 portrait:grid-cols-4">
+					{/* 设计说明：技能栏是固定高度的一行快捷栏；超出的技能只进入横向滚动，避免 grid 隐式行把父级撑高。 */}
+					<div
+						class="grid h-full min-h-0 w-full min-w-0 grid-flow-col grid-rows-1 gap-2 overflow-x-auto overflow-y-hidden [--skill-visible-button-count:7] portrait:[--skill-visible-button-count:4]"
+						style={{
+							"grid-auto-columns":
+								"calc((100% - (var(--skill-visible-button-count) - 1) * 0.5rem) / var(--skill-visible-button-count))",
+						}}
+					>
 						<For each={skillList()}>
 							{(skill) => (
 								<Button
 									onClick={() => handleCastSkill(skill.id)}
 									disabled={controllerEvents().skillAvailability?.[skill.id] === false}
-									class="col-span-2 portrait:col-span-1 row-span-1 shadow-card shadow-brand-color-1st hover:shadow-brand-color-2nd"
+									class="h-full min-w-0 shadow-card shadow-brand-color-1st hover:shadow-brand-color-2nd"
 									level="secondary"
 								>
 									<Icons.Spirits iconName={skill.name} />

@@ -129,6 +129,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 			onChange: (instance, _sync) => {
 				setVirtualItems(instance.getVirtualItems());
 			},
+			useAnimationFrameWithResizeObserver: true,
 		});
 		setVirtualer(v);
 	});
