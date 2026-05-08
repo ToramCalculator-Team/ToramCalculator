@@ -49,6 +49,7 @@ type SkillLinkCell = Record<SkillLinkDirection, boolean> & {
 
 export type SkillPanelProps = {
 	characterId: string;
+	onSkillsChanged: () => Promise<void>;
 	skills: CharacterSkillWithRelations[];
 };
 
@@ -386,6 +387,12 @@ export function SkillPanel(props: SkillPanelProps) {
 		setSkillTreeEditorSheetOpen(true);
 	};
 	const closeSkillTreeEditorSheet = () => setSkillTreeEditorSheetOpen(false);
+	const notifySkillsChanged = () => {
+		// 设计说明：技能写库成功后刷新页面层角色关系数据，避免 SkillPanel 重挂载时从旧 props.skills 回放旧状态。
+		void props.onSkillsChanged().catch((error) => {
+			console.error("刷新角色技能关系失败", error);
+		});
+	};
 
 	const templateLevel = (template: Skill) => skillLevelByTemplateId()[template.id]?.lv ?? 0;
 	const hasSkillsInTree = (treeType: SkillTreeType) =>
@@ -427,6 +434,7 @@ export function SkillPanel(props: SkillPanelProps) {
 
 		try {
 			await Promise.all(characterSkillIds.map((id) => deleteCharacterSkill(id)));
+			notifySkillsChanged();
 		} catch (error) {
 			setSkillLevelByTemplateId(previousLevels);
 			setVisibleSkillTreeOverrides(previousVisibleSkillTreeOverrides);
@@ -525,6 +533,7 @@ export function SkillPanel(props: SkillPanelProps) {
 					return Promise.resolve();
 				}),
 			);
+			notifySkillsChanged();
 		} catch (error) {
 			setSkillLevelByTemplateId(previousLevels);
 			console.error("更新角色技能等级失败", error);
@@ -646,10 +655,12 @@ export function SkillPanel(props: SkillPanelProps) {
 								onClick={closeSkillTreeEditorSheet}
 							/>
 						</div>
+						{/* 不使用defer时会出现布局动画 */}
 						<OverlayScrollbarsComponent
 							element="div"
 							options={{ scrollbars: { autoHide: "scroll" } }}
 							class="SkillGroupConfig h-full w-full rounded"
+							defer
 						>
 							{/* 根据当前活动技能树模板绘制技能树网格；角色是否习得只影响节点等级和状态。 */}
 							<Show

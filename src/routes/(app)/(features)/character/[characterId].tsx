@@ -278,6 +278,9 @@ export default function CharactePage() {
 								onPatchRequested={commitCharacterPatch}
 								onDebouncedPatchRequested={queueCharacterPatch}
 								onItemPreviewRequested={previewDataItem}
+								onSkillsChanged={async () => {
+									await refetchPlayerWithRelations();
+								}}
 							/>
 						</div>
 

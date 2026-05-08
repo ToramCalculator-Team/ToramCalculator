@@ -15,6 +15,7 @@ export type CharacterConfigPanelProps = {
 	onPatchRequested: (patch: Partial<character>) => Promise<void>;
 	onDebouncedPatchRequested: (patch: Partial<character>, debounceMs?: number) => void;
 	onItemPreviewRequested: (type: keyof DB, data: unknown) => void;
+	onSkillsChanged: () => Promise<void>;
 };
 
 export function CharacterConfigPanel(props: CharacterConfigPanelProps) {
@@ -101,7 +102,11 @@ export function CharacterConfigPanel(props: CharacterConfigPanelProps) {
 						/>
 					</Show>
 					<Show when={activeTab() === "skill"}>
-						<SkillPanel characterId={props.character.id} skills={props.character.skills} />
+						<SkillPanel
+							characterId={props.character.id}
+							onSkillsChanged={props.onSkillsChanged}
+							skills={props.character.skills}
+						/>
 					</Show>
 				</div>
 			</OverlayScrollbarsComponent>
