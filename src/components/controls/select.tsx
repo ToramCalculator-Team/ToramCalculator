@@ -121,7 +121,7 @@ export function Select(props: SelectProps) {
 							{(option, index) => {
 								const selected = option.value === selectedOption()?.value;
 								const optionGenerator = hasOptionGenerator ? props.optionGenerator : undefined;
-								console.log(option)
+								// console.log(option)
 								const optionItem = optionGenerator ? (
 									optionGenerator(option, selected, () => handleSelect(option))
 								) : (

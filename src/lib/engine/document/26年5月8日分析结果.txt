@@ -1,0 +1,47 @@
+
+———————————— 整体架构设计补充 ——————————————
+建议顺序
+先修 EventQueue 消费后清理和伤害 modifier 聚合，因为这两点直接影响快速模拟的帧数目标。
+
+第二步接 seeded PRNG，并把随机源纳入 checkpoint；这样预览、回放、批量对比才具备可验证性。
+
+第三步让 RuntimeConfig.stopPolicy 真正驱动 fast-forward 收束，再补 PreviewRunner 的 previewSafe 流水线执行。
+
+第四步重做批量预览任务边界：一个 worker 任务应包含 checkpoint、exprDict、memberId、skillIds chunk，并在同一 worker 内 restore 后只探测该 chunk。
+
+第五步再做高频快照优化；当前文档给出的 Phase 1 路线合理，先固定 FrameSnapshot 字段和跳过 JSON 清洗路径，再用 profiling 决定 SAB。
+
+
+—————————————— 管线系统设计补充 ——————————————
+边界建议
+保留 BT + Pipeline 主方向，先把契约补硬。
+
+给 Pipeline 建公开槽位表：每条 pipeline 暴露哪些 slot、输入字段、输出字段、允许覆盖哪些变量、版本号是多少。
+把 target 与 anchorId 分离，解决 overlay 叠加时的锚点歧义。
+给常见 hook 做高层 DSL，再编译到三地址码，例如 capDamage(percentOfTargetHp=1)、reduceDamageWhen(tag=redZone, rate=level%)。
+接入 skill-scoped overlay，让托环可以只影响指定技能、指定 hit、指定 phase。
+接入 skillBranchActivators，让托环能打开技能内预定义分支，而不修改技能 BT 主体。
+把 BT agent 限制为 typed action/condition 池，保留 JS agent 作为调试入口。
+给 BT/FSM 增加输入窗口模型，覆盖“一阵风方向键”“月神灾厄后摇向后输入”。
+给 ProcBus 增加 world/team/aggro 事件源，覆盖“队友死亡”“仇恨指向自己”“队伍最后一人”。
+给 Pipeline/BT 共用 seeded PRNG，保证预览、快进、回放结果可复现。
+
+
+—————————————— EngineService调整 ————————————————
+EngineService的职责： 
+·提供给 UI 页面与游戏引擎交互的主线程门面。 
+·实时引擎由 Service 直管，分支/分析任务由 batchPool 执行。 
+实际上它是个将主线程需求拆解到具体worker操作指令的中间解析器，比如character页面需要“不计算动画也不考虑buff副作用的模拟引擎（因为如果按正常模拟引擎来产出character页面数据的话，可能会很慢（因为有动画），也会出现buff过期的问题），用它产出机体配置结果预览，包括机体属性，技能伤害等”，wiki页面需要“同样产出结果，但是需要按真实模拟过程高速跑完整个场景计算流程的引擎池，因为需要对比多个道具，因此要的是快速和并行且真实（不能忽略动画和buff副作用等）”，而实时模拟页面则需要实时接受用户输入。
+app启动后立即启动一个主引擎用来服务character的机体数值反馈和实时模拟页面，路由切换character和simulator时，该引擎对应切换到预览和实时模式。当用户打开wiki和查看技能预览界面时，启动分支worker池，进行并行高速模拟或者分支dps计算（由主引擎产出检查点，并结合主线程提供的技能集创建多个分支引擎快速计算dps等结果）。打开实时模拟页面时，则实时响应用户输入产出状态快照以便后续分析（未来也许需要在实时模拟时也创建检查点并分支模拟或者快速计算）。
+EngineService负责这些调度和worker管理。
+
+## 核心风险
+runBatchPreviewParallel 的任务边界是当前最需要改的地方。代码先从实时引擎拿 checkpoint 和 exprDict，再把技能列表切块，见 EngineService.ts (line 205)。但每个 chunk 内部执行的是三条独立 pool 任务：importExprDict、restoreCheckpoint、runPreview，见 EngineService.ts (line 223)。
+WorkerPool.executeTask 会把每条任务分配给任意空闲 worker，见 WorkerPool.ts (line 599)。所以 importExprDict 可能落到 worker A，restoreCheckpoint 可能落到 worker B，runPreview 可能落到 worker C。即使偶然落在同一个 worker，也没有契约保证。这里和文档里“一个 worker 任务应包含 checkpoint、exprDict、memberId、skillIds chunk”的建议一致，见 26年5月8日分析结果.txt (line 10)。
+_chunk 变量当前没有被使用，runPreview(memberId) 会探测该成员所有技能，见 EngineService.ts (line 224)。这会导致多个 worker 重复计算全量技能，再把重复结果合并。
+EngineService 的并行预览方法已经知道太多业务细节：checkpoint、表达式字典、技能分块、worker 数、预览报告聚合都写在一个门面类里。服务层因此变成“资源管理 + 业务调度 + 预览编排”的混合体。
+
+## 边界问题
+EngineService 是单例，并且构造函数立即创建 default engine 和 batchPool，见 EngineService.ts (line 23)。这会让初始化时机、测试隔离、HMR、页面卸载后的恢复变复杂。shutdown() 会关闭所有 engine 和 batchPool，但没有把 EngineService.instance 置空，见 EngineService.ts (line 249)。如果 Provider 卸载后再次挂载，旧单例仍存在，batchPool 已经 shutdown，后续批量任务会进入关闭后的池。
+错误语义也偏软。queryMemberStats 找不到成员时返回 {}，见 EngineService.ts (line 180)；runSkillPreview 失败时返回空报告，见 EngineService.ts (line 111)；SimulationEngine.getMembers 失败时返回空数组，见 SimulationEngine.ts (line 402)。UI 会很难区分“确实为空”和“worker/RPC 出错”。
+API 命名也有一点语义漂移。predictSkillDamage(sourceEngineId, memberId, skillIds) 实际调用的是 runBatchPreview，见 EngineService.ts (line 119)；当 skillIds 为空时会走 runSkillPreview，含义变成“探测全部技能”。这个行为需要显式契约，否则调用方容易误判空数组代表“不探测任何技能”。
