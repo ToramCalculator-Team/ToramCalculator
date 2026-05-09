@@ -56,7 +56,8 @@ export type StopPolicy =
 	| { kind: "manual" }
 	| { kind: "untilFrame"; targetFrame: number }
 	| { kind: "untilBattleEnd" }
-	| { kind: "untilSequencesDone" };
+	| { kind: "untilSequencesDone" }
+	| { kind: "untilMemberActionEnds"; memberId: string };
 
 /**
  * 输出策略（设计意图；部分分支仍在 GameEngine 中逐步接入）。
@@ -665,6 +666,8 @@ export interface EngineCheckpoint {
 	world: WorldCheckpoint;
 	domainEventBus: DomainEventBusCheckpoint;
 	controllerEventProjector: ControllerEventProjectorCheckpoint;
+	/** 确定性 PRNG 状态（xorshift128 四元组） */
+	randomState: { x: number; y: number; z: number; w: number };
 }
 
 /**

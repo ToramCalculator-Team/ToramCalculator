@@ -123,9 +123,9 @@ export function Dialog(props: {
         >
           <div 
             role="application"
-            class={`DialogBox bg-primary-color shadow-dividing-color shadow-dialog relative flex max-h-[70vh] w-full portrait:max-w-[90vw] flex-col items-center gap-3 rounded p-2`}
+            class={`DialogBox bg-primary-color shadow-dividing-color shadow-dialog relative flex max-h-[70vh] lg:max-w-[960px] w-full max-w-[50vw] portrait:max-w-[90vw] flex-col items-center gap-3 rounded p-2`}
             style={{
-              "max-width": props.maxWith ?? "50vw"
+              "max-width": props.maxWith
             }}
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {

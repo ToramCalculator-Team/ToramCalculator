@@ -588,10 +588,10 @@ export default function WikiSubPage() {
 																	onClick={() => {
 																		setWikiSelectorIsOpen(false);
 																	}}
-																	class="border-dividing-color flex w-[calc(33.333333%-8px)] flex-col items-center gap-2 rounded border px-2 py-3"
+																	class="border-dividing-color flex lg:w-[calc(20%-0.4rem)] w-[calc(33.333333%-0.333333rem)] flex-col items-center gap-2 rounded border px-2 py-3"
 																>
 																	{field.icon}
-																	<span class="text-nowrap overflow-ellipsis">
+																	<span class="text-nowrap text-ellipsis">
 																		{dictionary().db[field.name].selfName}
 																	</span>
 																</A>

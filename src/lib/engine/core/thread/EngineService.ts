@@ -1,7 +1,6 @@
 import { createLogger } from "~/lib/Logger";
-import type { DPSImpactResult, PreviewReport, SkillProbeResult } from "../Preview/types";
 import type { EngineScenarioData, RuntimeConfig } from "../types";
-import { SimulatorTaskPriority } from "./protocol";
+import { type BranchTask, type BranchResult, SimulatorTaskPriority } from "./protocol";
 import simulationWorker from "./Simulation.worker?worker&url";
 import { type SimulationEngine, SimulationEngineImpl } from "./SimulationEngine";
 import { SimulatorPool } from "./SimulatorPool";
@@ -9,13 +8,12 @@ import { SimulatorPool } from "./SimulatorPool";
 const log = createLogger("EngineService");
 
 /**
- * 批量分发阈值：任务数 <= 此值时在单 worker 内顺序执行，超过时分发到 batchPool 并行执行。
- */
-const BATCH_DISPATCH_THRESHOLD = 5;
-
-/**
  * 提供给 UI 页面与游戏引擎交互的主线程门面。
- * 实时引擎由 Service 直管，分支/分析任务由 batchPool 执行。
+ * 职责收敛为两件事：
+ * 1. 引擎实例资源管理（创建 / 查询 / 销毁）
+ * 2. 原子分支任务执行原语（executeBranchTask / executeBranchBatch）
+ *
+ * 编排逻辑（技能分组、结果聚合等）由页面级消费者负责。
  */
 export class EngineService {
 	private static instance: EngineService | null = null;
@@ -27,11 +25,23 @@ export class EngineService {
 		return EngineService.instance;
 	}
 
-	private readonly engines = new Map<string, SimulationEngine>();
-	private readonly batchPool: SimulatorPool;
+	private engines: Map<string, SimulationEngine> = new Map();
+	private batchPool: SimulatorPool | null = null;
+	private initialized = false;
 	private readonly defaultEngineId = "__default__";
 
 	private constructor() {
+		// 不做自动初始化：由 init() 显式调用
+	}
+
+	/**
+	 * 显式初始化：创建 batchPool 和 default engine。
+	 * 由 bootstrap 在 app 启动时调用。
+	 */
+	init(): void {
+		if (this.initialized) return;
+		this.initialized = true;
+
 		this.batchPool = new SimulatorPool({
 			workerUrl: simulationWorker,
 			priority: [...SimulatorTaskPriority],
@@ -48,12 +58,20 @@ export class EngineService {
 			},
 		});
 		this.createEngine(this.defaultEngineId);
-		log.info("初始化");
+		log.info("EngineService 初始化完成");
 	}
 
+	isReady(): boolean {
+		return this.initialized;
+	}
+
+	// ==================== 引擎资源管理 ====================
+
 	getDefaultEngine(): SimulationEngine {
+		this.ensureInitialized();
 		return this.createEngine(this.defaultEngineId);
 	}
+
 	createEngine(id = `engine_${Date.now()}`): SimulationEngine {
 		const existing = this.engines.get(id);
 		if (existing) return existing;
@@ -61,12 +79,15 @@ export class EngineService {
 		this.engines.set(id, engine);
 		return engine;
 	}
+
 	getEngine(id: string): SimulationEngine | null {
 		return this.engines.get(id) ?? null;
 	}
+
 	getAllEngines(): SimulationEngine[] {
 		return [...this.engines.values()];
 	}
+
 	async disposeEngine(id: string): Promise<void> {
 		const engine = this.engines.get(id);
 		if (!engine) return;
@@ -74,183 +95,96 @@ export class EngineService {
 		this.engines.delete(id);
 	}
 
+	private ensureInitialized(): void {
+		if (!this.initialized) {
+			this.init();
+		}
+	}
+
 	private requireEngine(engineId?: string): SimulationEngine {
+		this.ensureInitialized();
 		const id = engineId ?? this.defaultEngineId;
 		const engine = this.engines.get(id);
 		if (!engine) throw new Error(`engine not found: ${id}`);
 		return engine;
 	}
 
-	// ==================== 生命周期 ====================
+	// ==================== 生命周期委托 ====================
 
 	async loadScenario(data: EngineScenarioData, engineId?: string): Promise<void> {
 		await this.requireEngine(engineId).loadScenario(data);
-		log.info("初始化数据加载完成");
 	}
 
 	async setRuntimeConfig(config: RuntimeConfig, engineId?: string): Promise<void> {
 		await this.requireEngine(engineId).setRuntimeConfig(config);
-		log.info("运行模式设置完成");
 	}
 
-	/**
-	 * 增量更新成员配置（Character 页面配置变更）。
-	 * 将变更推送到 realtime worker 的引擎实例上。
-	 */
 	async patchMemberConfig(memberId: string, memberData: unknown, engineId?: string): Promise<void> {
 		await this.requireEngine(engineId).patchMemberConfig(memberId, memberData);
-		log.info(`成员配置更新完成: ${memberId}`);
 	}
 
-	// ==================== 预览 API ====================
+	// ==================== 原子分支任务原语 ====================
 
 	/**
-	 * 对单个成员运行预览——探测其所有技能。
-	 * 始终在实时 worker 上执行（单任务，无需分发）。
+	 * 执行单个原子分支任务。
+	 * 一次 WorkerPool.executeTask 调用，保证 [restore → patch → execute → collect] 在同一 Worker 上完成。
+	 *
+	 * @param task 分支任务描述（含 checkpoint、patches、runtimeConfig、outputSelector）
+	 * @returns 分支结果（success + data 或 success + error）
 	 */
-	async runSkillPreview(memberId: string, engineId?: string): Promise<PreviewReport> {
-		const report = await this.requireEngine(engineId).runPreview(memberId);
-		if (!report) {
-			return { memberId, statSnapshot: {}, skillProbes: [], elapsedMs: 0 };
+	async executeBranchTask(task: BranchTask): Promise<{ ok: true; data: BranchResult } | { ok: false; error: string }> {
+		this.ensureInitialized();
+		try {
+			const result = await this.batchPool!.executeTask("engine_rpc", { type: "branch_task", task } as never, "medium");
+			if (!result.success) {
+				return { ok: false, error: result.error ?? "branch_task failed" };
+			}
+			return { ok: true, data: (result.data as BranchResult) ?? { outputType: "unknown" } };
+		} catch (error) {
+			return { ok: false, error: error instanceof Error ? error.message : "Unknown error" };
 		}
-		return report;
-	}
-
-	predictSkillDamage(sourceEngineId: string, memberId: string, skillIds?: string[]): Promise<PreviewReport> {
-		return this.runBatchPreview(memberId, skillIds ?? [], sourceEngineId);
-	}
-
-	/**
-	 * 对多个技能运行批量预览。
-	 * 使用动态分发策略：
-	 * - taskCount <= BATCH_DISPATCH_THRESHOLD → 单 worker 顺序执行
-	 * - taskCount > BATCH_DISPATCH_THRESHOLD → 分发到 batchPool workers
-	 */
-	async runBatchPreview(memberId: string, skillIds: string[], sourceEngineId?: string): Promise<PreviewReport> {
-		const shouldParallelize = skillIds.length > BATCH_DISPATCH_THRESHOLD && this.batchPool !== null;
-
-		if (shouldParallelize) {
-			log.info(
-				`批量预览并行执行: 成员 ${memberId}, ${skillIds.length} 技能，通过 batchPool 并行执行`,
-			);
-			return this.runBatchPreviewParallel(memberId, skillIds, sourceEngineId);
-		}
-
-		log.info(
-			`批量预览顺序执行: 成员 ${memberId}, ${skillIds.length} 技能，通过 realtimePool 顺序执行`,
-		);
-		return this.runSkillPreview(memberId, sourceEngineId);
 	}
 
 	/**
-	 * 跨多个道具运行 DPS 对比。
-	 * - itemCount <= BATCH_DISPATCH_THRESHOLD → 单 worker 执行
-	 * - itemCount > BATCH_DISPATCH_THRESHOLD → 分发到 batchPool
+	 * 批量执行原子分支任务（全并行）。
+	 * 每个 task 独立提交到 batchPool，由 pool 内负载均衡分配 Worker。
+	 *
+	 * @param tasks 分支任务数组
+	 * @returns 与输入顺序一致的结果数组
 	 */
-	async runBatchDPSCompare(itemIds: string[], memberId: string, sourceEngineId?: string): Promise<DPSImpactResult[]> {
-		const shouldParallelize = itemIds.length > BATCH_DISPATCH_THRESHOLD && this.batchPool !== null;
-
-		if (shouldParallelize) {
-			log.info(
-				`DPS 对比并行执行: ${itemIds.length} 道具，通过 batchPool 并行执行`,
-			);
-			return this.runBatchDPSParallel(itemIds, memberId, sourceEngineId);
-		}
-
-		log.info(
-			`DPS 对比顺序执行: ${itemIds.length} 道具，通过 realtimePool 顺序执行`,
-		);
-		return this.runBatchDPSSequential(itemIds, memberId, sourceEngineId);
-	}
-
-	calculateDPSImpact(sourceEngineId: string, memberId: string, equipmentConfigs: Array<{ id: string }>): Promise<DPSImpactResult[]> {
-		return this.runBatchDPSCompare(
-			equipmentConfigs.map((x) => x.id),
-			memberId,
-			sourceEngineId,
-		);
-	}
-
-	async previewMemberState(sourceEngineId: string, memberId: string): Promise<Record<string, unknown>> {
-		return this.queryMemberStats(memberId, sourceEngineId);
+	async executeBranchBatch(tasks: BranchTask[]): Promise<Array<{ ok: true; data: BranchResult } | { ok: false; error: string }>> {
+		return Promise.all(tasks.map((t) => this.executeBranchTask(t)));
 	}
 
 	// ==================== 查询 API ====================
 
-	async queryMemberStats(memberId: string, engineId?: string): Promise<Record<string, unknown>> {
+	async queryMemberStats(memberId: string, engineId?: string): Promise<Record<string, unknown> | null> {
 		const members = await this.requireEngine(engineId).getMembers();
 		const match = members.find((m) => m.id === memberId);
-		return match?.attrs ?? {};
-	}
-
-	async queryDPSImpact(itemId: string, _memberId: string): Promise<DPSImpactResult> {
-		// TODO: 后续迭代接入完整 DPS 模拟
-		return { itemId, dpsDelta: 0, dpsPercent: "0%" };
+		return match?.attrs ?? null;
 	}
 
 	async queryComputedSkills(memberId: string, engineId?: string): Promise<unknown[]> {
 		return this.requireEngine(engineId).getComputedSkills(memberId);
 	}
 
-	// ==================== 内部：批量分发 ====================
+	// ==================== 生命周期 ====================
 
 	/**
-	 * 在 batch workers 间并行执行（大批量）。
-	 * 流程：
-	 * 1. 从实时 worker 捕获 checkpoint + 表达式字典
-	 * 2. 将技能探测分块分发到 batch workers
-	 * 3. 每个 batch worker：导入 checkpoint + 表达式字典 → 探测技能 → 返回结果
-	 * 4. 聚合结果
+	 * 关闭所有资源并将 instance 置空，支持重新 init()。
 	 */
-	private async runBatchPreviewParallel(memberId: string, skillIds: string[], sourceEngineId?: string): Promise<PreviewReport> {
-		const sourceEngine = this.requireEngine(sourceEngineId);
-		const batchPool = this.batchPool;
-
-		const [checkpoint, exprDict] = await Promise.all([
-			sourceEngine.captureCheckpoint(),
-			sourceEngine.exportExprDict(),
-		]);
-
-		const workerCount = Math.min(skillIds.length, 4);
-		const chunkSize = Math.ceil(skillIds.length / workerCount);
-		const chunks: string[][] = [];
-		for (let i = 0; i < skillIds.length; i += chunkSize) {
-			chunks.push(skillIds.slice(i, i + chunkSize));
-		}
-
-		log.info(`技能探测分发: ${skillIds.length} 技能，通过 ${chunks.length} 个 worker 并行执行`);
-
-		// Each batch worker: import state → run preview → return partial results
-		const tasks = chunks.map(async (_chunk) => {
-			await batchPool.importExprDict(exprDict);
-			if (checkpoint) {
-				await batchPool.restoreCheckpoint(checkpoint);
-			}
-			const report = await batchPool.runPreview(memberId);
-			return report?.skillProbes ?? [];
-		});
-
-		const chunkResults = await Promise.all(tasks);
-		const allProbes: SkillProbeResult[] = chunkResults.flat();
-
-		return { memberId, statSnapshot: {}, skillProbes: allProbes, elapsedMs: 0 };
-	}
-
-	private async runBatchDPSSequential(itemIds: string[], _memberId: string, _sourceEngineId?: string): Promise<DPSImpactResult[]> {
-		// TODO: 后续迭代接入完整 DPS 模拟
-		return itemIds.map((itemId) => ({ itemId, dpsDelta: 0, dpsPercent: "0%" }));
-	}
-
-	private async runBatchDPSParallel(itemIds: string[], _memberId: string, _sourceEngineId?: string): Promise<DPSImpactResult[]> {
-		// TODO: 后续迭代接入完整并行 DPS 模拟
-		return itemIds.map((itemId) => ({ itemId, dpsDelta: 0, dpsPercent: "0%" }));
-	}
-
 	async shutdown(): Promise<void> {
+		if (!this.initialized) return;
 		for (const engine of this.engines.values()) {
 			await engine.dispose();
 		}
 		this.engines.clear();
-		await this.batchPool.shutdown();
+		if (this.batchPool) {
+			await this.batchPool.shutdown();
+			this.batchPool = null;
+		}
+		this.initialized = false;
+		EngineService.instance = null;
+		log.info("EngineService 已关闭");
 	}
 }

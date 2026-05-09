@@ -277,7 +277,7 @@ export const createMobStateMachine = (
 					log.warn(`👹 [${context.owner?.name}] 命中计算管线：hitSession 为空，跳过`);
 					return;
 				}
-				resolveHitCheck(mob, session);
+				resolveHitCheck(mob, session, mob.services.random);
 			},
 			根据命中结果进行下一步: mobRaiseControlCheck,
 			控制判定管线: ({ context, event }) => {

@@ -3,6 +3,7 @@ import type { TeamWithRelations } from "@db/generated/repositories/team";
 import { createId } from "@paralleldrive/cuid2";
 import { type Actor, createActor } from "xstate";
 import { createLogger } from "~/lib/Logger";
+import { Random } from "~/lib/random";
 import type { RenderSnapshot, RenderSnapshotArea } from "../render/RendererProtocol";
 import { ControlBindingManager } from "./Controller/ControlBindingManager";
 import { ControllerRegistry } from "./Controller/ControllerEndpoint";
@@ -105,6 +106,9 @@ export class GameEngine {
 
 	/** 引擎配置 */
 	private config: EngineConfig;
+
+	/** 确定性随机数生成器（seeded xorshift128），可 checkpoint */
+	random: Random;
 
 	/** 存储场景配置参数，用于重置时复用 */
 	private scenarioData: EngineScenarioData | null = null;
@@ -222,6 +226,8 @@ export class GameEngine {
 
 		this.config = config;
 
+		this.random = new Random();
+
 		// 接收外部注入的基础设施（跨 reset/cleanup 存活）
 		this.jsProcessor = infra.jsProcessor;
 		this.pipelineCatalog = infra.pipelineCatalog;
@@ -275,6 +281,9 @@ export class GameEngine {
 		this.world.memberManager.setPipelineResolverService(this.pipelineResolverService);
 		// 设置引擎级 EventCatalog 到 MemberManager（每成员据此构造独立 ProcBus）
 		this.world.memberManager.setEventCatalog(this.eventCatalog);
+
+		// 注入引擎级确定性随机数生成器
+		this.world.memberManager.setRandom(() => this.random.value());
 
 		// 创建状态机 - executor 角色
 		let seqCounter = 0;
@@ -1150,6 +1159,9 @@ export class GameEngine {
 		let eventsProcessed = 0;
 
 		for (const event of eventsForFrame) {
+			if (event.processed) {
+				continue;
+			}
 			if (eventsProcessed >= maxEvents) {
 				break;
 			}
@@ -1190,14 +1202,14 @@ export class GameEngine {
 		this.controllerEventProjector.flush(frameNumber);
 
 		// 4. 检查是否还有本帧待处理事件，禁止往当前帧插入事件的情况下，目前只需要考虑maxEvents限流
-		// eventsForFrame 已是当前帧分桶，避免重复取队列
 		const hasPendingEvents = eventsForFrame.some((event) => !event.processed);
 
 		const pendingFrameTasks = this.pendingFrameTasksCount;
 
-		// 5. 如果当前帧事件和帧内任务都处理完毕，推进逻辑帧号
+		// 5. 如果当前帧事件和帧内任务都处理完毕，推进逻辑帧号并清理已完成帧的事件
 		if (!hasPendingEvents && pendingFrameTasks === 0) {
 			this.currentFrame = frameNumber + 1;
+			this.eventQueue.removeByFrame(frameNumber);
 		}
 
 		return {
@@ -1526,6 +1538,7 @@ export class GameEngine {
 	 * - 不依赖底层 wall-clock
 	 * - 由引擎主动重复调用 stepFrame
 	 * - 通过帧数预算 + 时间预算避免长时间独占线程
+	 * - 每帧检查 RuntimeConfig.stopPolicy 决定是否收束
 	 */
 	private processFastForwardSlice(): void {
 		if (this.runState !== "running") {
@@ -1539,6 +1552,12 @@ export class GameEngine {
 			this.runSingleFrame("manual");
 			framesExecuted += 1;
 
+			if (this.checkStopCondition()) {
+				this.pause();
+				log.info(`stopPolicy 触发终止，当前帧号: ${this.currentFrame}`);
+				return;
+			}
+
 			if (performance.now() - sliceStartTime >= FAST_FORWARD_MAX_SLICE_TIME_MS) {
 				break;
 			}
@@ -1546,6 +1565,49 @@ export class GameEngine {
 
 		if (this.runState === "running") {
 			this.scheduleFastForwardSlice();
+		}
+	}
+
+	/**
+	 * 根据 RuntimeConfig.stopPolicy 检查是否应停止快进。
+	 */
+	private checkStopCondition(): boolean {
+		const policy = this.runtimeConfig.stopPolicy;
+		switch (policy.kind) {
+			case "manual":
+				return false;
+			case "untilFrame":
+				return this.currentFrame >= policy.targetFrame;
+			case "untilBattleEnd": {
+				const allMembers = this.world.memberManager.getAllMembers();
+				if (allMembers.length === 0) return true;
+				const camps = new Set<string>();
+				for (const m of allMembers) {
+					if (m.statContainer.getValue("hp.current") > 0) {
+						camps.add(m.campId);
+					}
+				}
+				return camps.size <= 1;
+			}
+			case "untilSequencesDone": {
+				const allMembers = this.world.memberManager.getAllMembers();
+				if (allMembers.length === 0) return true;
+				for (const m of allMembers) {
+					const runtime = m.runtime as { actionQueue?: { length: number } };
+					if (runtime.actionQueue && runtime.actionQueue.length > 0) {
+						return false;
+					}
+				}
+				return true;
+			}
+			case "untilMemberActionEnds": {
+				const m = this.world.memberManager.getMember(policy.memberId);
+				if (!m) return true;
+				const runtime = m.runtime as { actionQueue?: { length: number } };
+				return !runtime.actionQueue || runtime.actionQueue.length === 0;
+			}
+			default:
+				return false;
 		}
 	}
 
@@ -1704,6 +1766,33 @@ export class GameEngine {
 		});
 	}
 
+	/**
+	 * 同步快进：在当前线程上连续执行逻辑帧，直到 stopPolicy 触发或达到帧数上限。
+	 * 仅供预览/探针等短流程使用；不适用长时间实时模拟。
+	 *
+	 * @param maxTotalFrames 最大总帧数保护上限（防止无限循环）
+	 * @returns 实际执行的逻辑帧数
+	 */
+	fastForwardSync(maxTotalFrames: number = 500): number {
+		if (this.runState !== "running") {
+			if (this.runState === "idle") {
+				log.warn("fastForwardSync: 引擎未加载场景数据");
+				return 0;
+			}
+			this.runState = "running";
+		}
+		let totalFrames = 0;
+		while (this.runState === "running" && totalFrames < maxTotalFrames) {
+			this.runSingleFrame("manual");
+			totalFrames++;
+			if (this.checkStopCondition()) {
+				this.runState = "ready";
+				break;
+			}
+		}
+		return totalFrames;
+	}
+
 	// ==================== Checkpoint / Restore ====================
 
 	captureCheckpoint(): EngineCheckpoint {
@@ -1714,6 +1803,7 @@ export class GameEngine {
 			world: this.world.captureCheckpoint(),
 			domainEventBus: this.domainEventBus.captureCheckpoint(),
 			controllerEventProjector: this.controllerEventProjector.captureCheckpoint(),
+			randomState: this.random.getState(),
 		};
 	}
 
@@ -1728,6 +1818,9 @@ export class GameEngine {
 		this.world.restoreCheckpoint(checkpoint.world);
 		this.domainEventBus.restoreCheckpoint(checkpoint.domainEventBus);
 		this.controllerEventProjector.restoreCheckpoint(checkpoint.controllerEventProjector);
+		if (checkpoint.randomState) {
+			this.random.setState(checkpoint.randomState);
+		}
 
 		if (wasRunning) {
 			this.resume();

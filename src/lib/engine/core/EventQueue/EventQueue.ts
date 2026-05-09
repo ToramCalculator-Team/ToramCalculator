@@ -113,6 +113,24 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 	}
 
 	/**
+	 * 移除指定帧的所有事件（用于帧结束后清理）。
+	 * 已完成的事件会从 buckets、byId 中删除并归零 totalSize。
+	 *
+	 * @param frameNumber 要清理的帧号
+	 */
+	removeByFrame(frameNumber: number): void {
+		const list = this.buckets.get(frameNumber);
+		if (!list) return;
+		const count = list.length;
+		for (const e of list) {
+			this.byId.delete(e.id);
+		}
+		this.buckets.delete(frameNumber);
+		if (this.totalSize >= count) this.totalSize -= count;
+		this.stats.currentSize = this.totalSize;
+	}
+
+	/**
 	 * 移除指定事件
 	 *
 	 * @param eventId 事件ID

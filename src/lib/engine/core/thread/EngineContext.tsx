@@ -6,7 +6,6 @@ import {
 	useContext,
 } from "solid-js";
 import { createLogger } from "~/lib/Logger";
-import type { PreviewReport } from "../Preview/types";
 import type { EngineScenarioData, RuntimeConfig } from "../types";
 import type { MemberSerializeData } from "../World/Member/Member";
 import { EngineService } from "./EngineService";
@@ -33,15 +32,10 @@ export interface EngineContextValue {
 	/** 手动刷新成员列表 */
 	refreshMembers: () => Promise<MemberSerializeData[]>;
 
-	/** 最近一次 PreviewReport */
-	previewReport: () => PreviewReport | null;
-
-	// ---- actions ----
+	// ---- actions (thin delegates to EngineService) ----
 	loadScenario: (data: EngineScenarioData) => Promise<void>;
 	setRuntimeConfig: (config: RuntimeConfig) => Promise<void>;
 	patchMemberConfig: (memberId: string, memberData: unknown) => Promise<void>;
-	predictSkillDamage: (memberId: string, skillIds?: string[]) => Promise<PreviewReport>;
-	runSkillPreview: (memberId: string) => Promise<PreviewReport>;
 }
 
 const EngineCtx = createContext<EngineContextValue>();
@@ -53,7 +47,6 @@ export function EngineProvider(props: ParentProps) {
 	const defaultEngine = () => service.getDefaultEngine();
 	const [ready, setReady] = createSignal(false);
 	const [members, setMembers] = createSignal<MemberSerializeData[]>([]);
-	const [previewReport, setPreviewReport] = createSignal<PreviewReport | null>(null);
 
 	defaultEngine()
 		.whenReady()
@@ -89,18 +82,6 @@ export function EngineProvider(props: ParentProps) {
 		await refreshMembers();
 	};
 
-	const runSkillPreview = async (memberId: string): Promise<PreviewReport> => {
-		const report = await service.runSkillPreview(memberId, defaultEngine().id);
-		setPreviewReport(report);
-		return report;
-	};
-
-	const predictSkillDamage = async (memberId: string, skillIds?: string[]): Promise<PreviewReport> => {
-		const report = await service.predictSkillDamage(defaultEngine().id, memberId, skillIds);
-		setPreviewReport(report);
-		return report;
-	};
-
 	const value: EngineContextValue = {
 		service,
 		defaultEngine,
@@ -110,12 +91,9 @@ export function EngineProvider(props: ParentProps) {
 		ready,
 		members,
 		refreshMembers,
-		previewReport,
 		loadScenario,
 		setRuntimeConfig,
 		patchMemberConfig,
-		predictSkillDamage,
-		runSkillPreview,
 	};
 
 	return <EngineCtx.Provider value={value}>{props.children}</EngineCtx.Provider>;

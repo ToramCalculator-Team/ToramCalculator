@@ -53,6 +53,8 @@ export class MemberManager {
 	private pipelineResolverService: PipelineResolverService | null = null;
 	/** 事件目录（由引擎注入，用于每成员的 ProcBus 初始化） */
 	private eventCatalog: EventCatalog | null = null;
+	/** 引擎级随机数函数（由引擎注入） */
+	private randomFn: (() => number) | null = null;
 
 	// ==================== 主控目标系统 ====================
 
@@ -138,6 +140,16 @@ export class MemberManager {
 		}
 	}
 
+	/**
+	 * 设置引擎级确定性随机数函数（由引擎注入）。
+	 */
+	setRandom(randomFn: () => number): void {
+		this.randomFn = randomFn;
+		for (const member of this.members.values()) {
+			member.services.random = randomFn;
+		}
+	}
+
 	// ==================== 公共接口 ====================
 	/**
 	 * 创建并注册新成员
@@ -163,6 +175,10 @@ export class MemberManager {
 				player.setDamageRequestHandler(this.damageRequestHandler);
 				player.setGetCurrentFrame(this.getCurrentFrame);
 				player.setRenderMessageSender(this.renderMessageSender);
+				if (this.randomFn) {
+					player.services.random = this.randomFn;
+					player.btManager.setRandom(this.randomFn);
+				}
 				if (this.pipelineResolverService) {
 					player.setPipelineResolverService(this.pipelineResolverService);
 				}
@@ -189,6 +205,10 @@ export class MemberManager {
 				mob.setDamageRequestHandler(this.damageRequestHandler);
 				mob.setGetCurrentFrame(this.getCurrentFrame);
 				mob.setRenderMessageSender(this.renderMessageSender);
+				if (this.randomFn) {
+					mob.services.random = this.randomFn;
+					mob.btManager.setRandom(this.randomFn);
+				}
 				if (this.pipelineResolverService) {
 					mob.setPipelineResolverService(this.pipelineResolverService);
 				}

@@ -21,6 +21,7 @@ import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Select } from "~/components/controls/select";
 import { CharacterConfigPanel } from "~/components/features/character/CharacterConfigPanel";
+import { SkillPreviewPanel } from "~/components/features/character/SkillPreviewPanel";
 import { CharacterView } from "~/components/features/character/CharacterView";
 import { Icons } from "~/components/icons";
 import { MediaContext } from "~/contexts/Media";
@@ -42,6 +43,7 @@ export default function CharactePage() {
 	const [panelMode, setPanelMode] = createSignal<PanelModeType>("Config");
 	const isConfigPanelVisible = createMemo(() => panelMode() === "Config" || media.width >= 1024);
 	const isAttrPreviewVisible = createMemo(() => panelMode() === "AttrPreview" || media.width >= 1024);
+	const isSkillPreviewVisible = createMemo(() => panelMode() === "SkillPreview" || media.width >= 1024);
 
 	const charactersFinder = (id: string) => selectAllCharactersByBelongtoplayerid(id);
 	const [characters, { refetch: refetchCharacters }] = createResource(
@@ -293,6 +295,18 @@ export default function CharactePage() {
 								class="MemberStats flex flex-col gap-2 w-full landscape:basis-1/2"
 							>
 								<StatsRenderer data={primaryMember()?.attrs} />
+							</OverlayScrollbarsComponent>
+						</div>
+
+						<div class={isSkillPreviewVisible() ? "contents" : "hidden"}>
+							<div class="Divider landscape:bg-dividing-color flex-none portrait:hidden landscape:mx-2 landscape:h-full landscape:w-px" />
+							<OverlayScrollbarsComponent
+								element="div"
+								options={{ scrollbars: { autoHide: "scroll" } }}
+								defer
+								class="SkillPreview flex w-full flex-col gap-2 landscape:basis-1/2"
+							>
+								<SkillPreviewPanel memberId={previewMemberId} />
 							</OverlayScrollbarsComponent>
 						</div>
 

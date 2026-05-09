@@ -468,6 +468,7 @@ export const CommonActionPool = {
 			if (!owner) return State.FAILED;
 			owner.procBus?.unsubscribeBySource(input.sourceId);
 			owner.attributeWatchers.unwatchBySource(input.sourceId);
+			owner.statContainer.removeModifiersBySourceIdPrefix(input.sourceId);
 			return State.SUCCEEDED;
 		},
 	),

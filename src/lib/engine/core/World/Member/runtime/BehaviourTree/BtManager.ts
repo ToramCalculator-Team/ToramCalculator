@@ -24,6 +24,7 @@ export class BtManager<
 {
 	private activeEffectEntry: BtEntry | undefined;
 	private parallelEntries: Map<string, BtEntry> = new Map();
+	private btOptions: { random?: () => number } = {};
 
 	constructor(
 		private owner: Member<TAttrKey, TStateEvent, TStateContext, TRuntime>,
@@ -33,6 +34,10 @@ export class BtManager<
 		 */
 		private readonly btBindings: Record<string, unknown> = {},
 	) {}
+
+	setRandom(randomFn: () => number): void {
+		this.btOptions = { random: randomFn };
+	}
 
 	/**
 	 * Build a BT-private context.
@@ -158,7 +163,7 @@ export class BtManager<
 		agent?: string,
 	): BehaviourTree | undefined {
 		const btContext = this.buildBtContext(agent?.trim());
-		const bt = new BehaviourTree(definition, btContext);
+		const bt = new BehaviourTree(definition, btContext, this.btOptions);
 		this.activeEffectEntry = { bt, btContext };
 		return bt;
 	}
@@ -169,7 +174,7 @@ export class BtManager<
 		agent?: string,
 	): BehaviourTree | undefined {
 		const btContext = this.buildBtContext(agent?.trim());
-		const bt = new BehaviourTree(definition, btContext);
+		const bt = new BehaviourTree(definition, btContext, this.btOptions);
 		this.parallelEntries.set(name, { bt, btContext });
 		return bt;
 	}

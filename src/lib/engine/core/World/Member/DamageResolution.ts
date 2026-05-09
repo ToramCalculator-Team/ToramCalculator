@@ -84,9 +84,9 @@ function buildDirectionalInputs(damageRequest: DamageDispatchPayload): Record<st
 /**
  * 跑 hitCheck 管线并做随机投掷（FSM 保持纯函数，随机源在此集中）。
  *
- * 骨架版：`Math.random`；切 seeded PRNG 时改这一处。
+ * @param random 引擎级确定性 PRNG 函数（xorshift128），缺省退回 Math.random
  */
-export function resolveHitCheck(member: AnyMember, session: HitSession): HitSession {
+export function resolveHitCheck(member: AnyMember, session: HitSession, random?: () => number): HitSession {
 	const req = session.damageRequest;
 
 	const isMagical = req.damageTags.includes("magical") ? 1 : 0;
@@ -101,7 +101,7 @@ export function resolveHitCheck(member: AnyMember, session: HitSession): HitSess
 	}) as Record<string, unknown>;
 
 	const hitRate = Number(output.hitRate ?? 0);
-	const roll = Math.random() * 100;
+	const roll = (random ?? Math.random)() * 100;
 	const hit = roll < hitRate;
 
 	session.hitRate = hitRate;
@@ -185,14 +185,13 @@ export function resolveDamageAndApply(member: AnyMember, session: HitSession): H
 	const hpDelta = hpAfter - hpBefore;
 	const mpDelta = mpAfter - mpBefore;
 
-	// 写回 StatContainer（一次性 modifier，sourceId 带帧号唯一；长期运行的聚合清理是后续迭代事项）
 	if (hpDelta !== 0) {
 		member.statContainer.addModifier(
 			"hp.current",
 			ModifierType.DYNAMIC_FIXED,
 			hpDelta,
 			{
-				id: `damage.${req.areaId}.${member.runtime.currentFrame}`,
+				id: `damage.hp.${req.areaId}`,
 				name: "damage",
 				type: "system",
 			},
@@ -204,7 +203,7 @@ export function resolveDamageAndApply(member: AnyMember, session: HitSession): H
 			ModifierType.DYNAMIC_FIXED,
 			mpDelta,
 			{
-				id: `damage.${req.areaId}.${member.runtime.currentFrame}.mp`,
+				id: `damage.mp.${req.areaId}`,
 				name: "damage-mp",
 				type: "system",
 			},

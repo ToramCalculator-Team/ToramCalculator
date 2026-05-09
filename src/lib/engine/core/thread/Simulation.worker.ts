@@ -322,6 +322,127 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
 				}
 			}
+
+			case "branch_task": {
+				try {
+					const task = (rpc as { task: unknown }).task as {
+						checkpoint: unknown;
+						exprDict: Array<[string, string]>;
+						patches: Array<{
+							type: string;
+							memberId?: string;
+							skillIds?: string[];
+							equipmentId?: string;
+							sequence?: Array<{ skillId: string }>;
+							patch?: Record<string, unknown>;
+						}>;
+						runtimeConfig?: Record<string, unknown>;
+						outputSelector: { type: string; memberId?: string; fields?: string[] };
+					};
+
+					// 1. restore checkpoint
+					gameEngine.restoreCheckpoint(task.checkpoint as Parameters<typeof gameEngine.restoreCheckpoint>[0]);
+
+					// 2. import expression dictionary (for cross-worker consistency)
+					if (task.exprDict && task.exprDict.length > 0) {
+						infra.jsProcessor.importTransformedExprDict(task.exprDict);
+					}
+
+					// 3. apply runtimeConfig override
+					if (task.runtimeConfig) {
+						const mergedConfig = {
+							...gameEngine.getRuntimeConfig(),
+							...task.runtimeConfig,
+						} as RuntimeConfig;
+						gameEngine.setRuntimeConfig(mergedConfig);
+					}
+
+					// 4. apply patches + collect the first memberId for results
+					let primaryMemberId: string | undefined;
+					for (const patch of task.patches ?? []) {
+						if (patch.memberId) primaryMemberId = patch.memberId;
+
+						switch (patch.type) {
+							case "action_sequence": {
+								const member = gameEngine.getMember(patch.memberId!);
+								if (member) {
+									for (const action of patch.sequence ?? []) {
+										member.actor.send({
+											type: "使用技能",
+											data: { target: "", skillId: action.skillId },
+										});
+									}
+								}
+								break;
+							}
+							case "member_skills": {
+								// Future: restrict member skills
+								break;
+							}
+							case "member_config": {
+								gameEngine.patchMemberConfig(patch.memberId!, patch.patch as MemberWithRelations);
+								break;
+							}
+						}
+					}
+
+					// 5. fast-forward synchronously
+					const frames = gameEngine.fastForwardSync(1000);
+					log.info(`branch_task: ${frames} 帧完成`);
+
+					// 6. collect results based on outputSelector
+					const selector = task.outputSelector;
+					switch (selector.type) {
+						case "preview_report": {
+							if (!primaryMemberId) {
+								return { success: false, error: "preview_report outputSelector requires memberId in patches" };
+							}
+							const runner = new PreviewRunner(gameEngine);
+							const report = runner.runPreview(primaryMemberId);
+							return {
+								success: true,
+								data: { outputType: "preview_report", memberId: primaryMemberId, skillProbes: report.skillProbes },
+							};
+						}
+				case "dps_impact": {
+					const all = gameEngine.getAllMembers();
+					const opposingMembers = all.filter((m) => m.id !== primaryMemberId);
+					if (opposingMembers.length === 0) {
+						return {
+							success: true,
+							data: { outputType: "dps_impact", memberId: primaryMemberId, damage: 0, error: "场景中没有敌对目标" },
+						};
+					}
+					let totalDamage = 0;
+					for (const m of opposingMembers) {
+						const hpMax = m.statContainer.getValue("hp.max");
+						const hpCur = m.statContainer.getValue("hp.current");
+						const taken = Math.max(0, hpMax - hpCur);
+						if (taken > 0) totalDamage += taken;
+					}
+					return {
+						success: true,
+						data: { outputType: "dps_impact", memberId: primaryMemberId, damage: totalDamage },
+					};
+				}
+						case "member_attrs": {
+							const member = gameEngine.getMember(selector.memberId!);
+							const attrs: Record<string, unknown> = {};
+							if (member) {
+								const all = member.statContainer.exportNestedValues();
+								for (const field of selector.fields ?? []) {
+									attrs[field] = (all as Record<string, unknown>)[field];
+								}
+							}
+							return { success: true, data: { outputType: "member_attrs", memberId: selector.memberId, attrs } };
+						}
+						default:
+							return { success: false, error: `unknown outputSelector type: ${selector.type}` };
+					}
+				} catch (error) {
+					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+				}
+			}
 		}
 	} catch (error) {
 		return {

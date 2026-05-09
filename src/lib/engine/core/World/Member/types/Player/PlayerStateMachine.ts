@@ -408,7 +408,7 @@ export const playerStateMachine = (
 					log.warn(`👤 [${context.owner?.name}] 命中计算管线：hitSession 为空，跳过`);
 					return;
 				}
-				resolveHitCheck(player, session);
+				resolveHitCheck(player, session, player.services.random);
 			},
 			根据命中结果进行下一步: playerRaiseControlCheck,
 			控制判定管线: ({ context, event }) => {

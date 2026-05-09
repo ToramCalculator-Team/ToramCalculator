@@ -35,6 +35,8 @@ export interface MemberRuntimeServices {
 	 * 阶段 3 将被 ProcBus 订阅；在 ProcBus 就位前，默认实现仅记录日志。
 	 */
 	pipelineEventSink: ((event: PipelineEventSinkEvent) => void) | null;
+	/** 引擎级随机数生成器（seeded PRNG），用于命中判定等确定性模拟 */
+	random: () => number;
 }
 
 export const MemberRuntimeServicesDefaults: MemberRuntimeServices = {
@@ -54,4 +56,5 @@ export const MemberRuntimeServicesDefaults: MemberRuntimeServices = {
 		throw new Error(`domainEventSender 未注入：${event}`);
 	},
 	pipelineEventSink: null,
+	random: Math.random,
 };

@@ -193,7 +193,9 @@ export const bootstrapModules: BootstrapModule[] = [
 		timeout: 60_000,
 		init: async () => {
 			const { EngineService } = await import("~/lib/engine/core/thread/EngineService");
-			await EngineService.getInstance().getDefaultEngine().whenReady();
+			const service = EngineService.getInstance();
+			service.init();
+			await service.getDefaultEngine().whenReady();
 		},
 	},
 	{

@@ -10,7 +10,75 @@
 import { z } from "zod/v4";
 import type { EngineControlMessage } from "../GameEngineSM";
 import { IntentMessageSchema } from "../MessageRouter/MessageRouter";
-import { EngineScenarioDataSchema } from "../types";
+import { EngineScenarioDataSchema, type EngineCheckpoint, type RuntimeConfig } from "../types";
+
+// ==================== Branch Task ====================
+
+/**
+ * 分支任务：一次完整的 [restore → patch → execute → collect] 原子操作。
+ * 提交为单次 WorkerPool.executeTask，保证在同一 Worker 上执行完整流程。
+ */
+export const ActionSpecSchema = z.object({
+	skillId: z.string(),
+});
+
+export type ActionSpec = z.output<typeof ActionSpecSchema>;
+
+export const BranchPatchSchema = z.discriminatedUnion("type", [
+	z.object({
+		type: z.literal("member_skills"),
+		memberId: z.string(),
+		skillIds: z.array(z.string()),
+	}),
+	z.object({
+		type: z.literal("member_equipment"),
+		memberId: z.string(),
+		equipmentId: z.string(),
+	}),
+	z.object({
+		type: z.literal("member_config"),
+		memberId: z.string(),
+		patch: z.record(z.string(), z.unknown()),
+	}),
+	z.object({
+		type: z.literal("action_sequence"),
+		memberId: z.string(),
+		sequence: z.array(ActionSpecSchema),
+	}),
+]);
+
+export type BranchPatch = z.output<typeof BranchPatchSchema>;
+
+export const OutputSelectorSchema = z.discriminatedUnion("type", [
+	z.object({ type: z.literal("preview_report") }),
+	z.object({ type: z.literal("dps_impact") }),
+	z.object({ type: z.literal("member_attrs"), memberId: z.string(), fields: z.array(z.string()) }),
+]);
+
+export type OutputSelector = z.output<typeof OutputSelectorSchema>;
+
+export const BranchTaskSchema = z.object({
+	checkpoint: z.unknown(),
+	exprDict: z.array(z.tuple([z.string(), z.string()])),
+	patches: z.array(BranchPatchSchema),
+	runtimeConfig: z.record(z.string(), z.unknown()).optional(),
+	outputSelector: OutputSelectorSchema,
+});
+
+export type BranchTask = z.output<typeof BranchTaskSchema>;
+
+export const BranchResultSchema = z.object({
+	outputType: z.string(),
+	memberId: z.string().optional(),
+	damage: z.number().optional(),
+	dpsDelta: z.number().optional(),
+	dpsPercent: z.string().optional(),
+	attrs: z.record(z.string(), z.unknown()).optional(),
+	skillProbes: z.array(z.unknown()).optional(),
+	error: z.string().optional(),
+});
+
+export type BranchResult = z.output<typeof BranchResultSchema>;
 
 // ==================== Push / Stream ====================
 
@@ -148,6 +216,10 @@ export const EngineRPCSchema = z.discriminatedUnion("type", [
 	z.object({
 		type: z.literal("import_expr_dict"),
 		entries: z.unknown(),
+	}),
+	z.object({
+		type: z.literal("branch_task"),
+		task: BranchTaskSchema,
 	}),
 ]);
 
