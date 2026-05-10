@@ -1,8 +1,9 @@
-import type { DB } from "@db/generated/zod";
 import { getFkRefByColumn, isFkColumn, listFkColumns } from "@db/generated/dmmf-utils";
 import { repositoryMethods } from "@db/generated/repositories";
-import { type AnyFieldApi, createForm, type DeepKeys, type DeepValue } from "@tanstack/solid-form";
-import { type Accessor, createMemo, createResource, For, Index, Show } from "solid-js";
+import type { DB } from "@db/generated/zod";
+import { createId } from "@paralleldrive/cuid2";
+import { type AnyFieldApi, createForm, type DeepKeys } from "@tanstack/solid-form";
+import { createMemo, createResource, For, Index, Show } from "solid-js";
 import type { JSX } from "solid-js/jsx-runtime";
 import type { ZodEnum, ZodObject, ZodType } from "zod/v4";
 import { Autocomplete } from "~/components/controls/autoComplete";
@@ -16,10 +17,7 @@ import { useDictionary } from "~/contexts/Dictionary";
 import type { Dic, EnumFieldDetail } from "~/locales/type";
 import { DATA_CONFIG, type EmbedsDecl, type InheritsFromDecl } from "../data-config";
 
-export interface FormProps<
-	T extends Record<string, unknown>,
-	TSchema extends ZodObject<{ [K in keyof T]: ZodType }>,
-> {
+export interface FormProps<T extends Record<string, unknown>, TSchema extends ZodObject<{ [K in keyof T]: ZodType }>> {
 	// UI渲染表单名称时需要
 	tableName: string;
 	// 表单值
@@ -328,6 +326,19 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 		return currentPrimaryKeyValue === defaultPrimaryKeyValue;
 	});
 
+	// 新建记录的默认数据通常带有 defaultXXX 主键占位值；当主键字段在表单内隐藏时，
+	// 用户没有机会手动替换它，因此这里在进入 form state 前生成真实 id。
+	// 设计目标：保持“默认主键 == 新建态”的判断语义，同时避免提交时把 defaultXXX 写入数据流。
+	const initialValue = createMemo(() => {
+		if (isNew() && props.hiddenFields?.includes(props.primaryKey)) {
+			return {
+				...props.value,
+				[props.primaryKey]: createId(),
+			};
+		}
+		return props.value;
+	});
+
 	// ---------- 合并 inheritsFrom 带来的父表字典/字段生成器 ----------
 
 	const mergedDictionary = createMemo<Dic<T>>(() => {
@@ -394,7 +405,7 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 	// ---------- 创建表单 ----------
 
 	const form = createForm(() => ({
-		defaultValues: props.value,
+		defaultValues: initialValue(),
 		onSubmit: async ({ value: newValues }) => {
 			if (isNew()) {
 				await props.onInsert?.(newValues);
@@ -526,10 +537,16 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 								<Button
 									level="secondary"
 									onClick={() => {
+										const childPrimaryKey = childConfig.primaryKey;
 										const newItem = {
 											...(childConfig.defaultData as Record<string, unknown>),
-											[embed.via]: props.value[props.primaryKey],
+											[embed.via]: initialValue()[props.primaryKey],
 										};
+										// 内嵌子表新增同样不能保留 defaultXXX 主键；否则后续独立编辑时会被误判为“添加”，
+										// 或在更新父表时尝试更新一条不存在的 defaultXXX 子记录。
+										if (childConfig.form.hiddenFields?.includes(childPrimaryKey as never)) {
+											newItem[String(childPrimaryKey)] = createId();
+										}
 										arrayField().pushValue(newItem as never);
 									}}
 								>
@@ -578,9 +595,7 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 					{(fieldGroupMap) => (
 						<For
 							each={Object.entries(fieldGroupMap()).filter(([_, keys]) =>
-								keys.some(
-									(key) => !props.hiddenFields?.includes(key) && !embedFieldNames().has(String(key)),
-								),
+								keys.some((key) => !props.hiddenFields?.includes(key) && !embedFieldNames().has(String(key))),
 							)}
 						>
 							{([groupName, keys]) => (

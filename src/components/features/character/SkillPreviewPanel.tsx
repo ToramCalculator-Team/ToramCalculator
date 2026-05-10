@@ -1,3 +1,4 @@
+import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import { createEffect, createSignal, For, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { useEngine } from "~/lib/engine/core/thread/EngineContext";
@@ -12,6 +13,13 @@ export interface SkillRow {
 	error?: string;
 }
 
+type PreviewSkillSource = {
+	id: string;
+	name: string;
+	level: number;
+	computed?: { isAvailable?: boolean; mpCost?: number; hpCost?: number; castingRange?: number };
+};
+
 /**
  * 技能伤害预览面板。
  *
@@ -21,11 +29,20 @@ export interface SkillRow {
  *   3. 通过 batchPool 并行执行所有分支任务
  *   4. 收集伤害结果并展示
  */
-export function SkillPreviewPanel(props: { memberId: string }) {
+export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: CharacterSkillWithRelations[] }) {
 	const engine = useEngine();
 	const [skills, setSkills] = createSignal<SkillRow[]>([]);
 	const [computing, setComputing] = createSignal(false);
 	const [error, setError] = createSignal<string | null>(null);
+
+	const learnedSkillSources = (): PreviewSkillSource[] =>
+		(props.learnedSkills ?? [])
+			.filter((skill) => (skill.lv ?? 0) > 0)
+			.map((skill) => ({
+				id: skill.id,
+				name: skill.template?.name ?? skill.id,
+				level: skill.lv,
+			}));
 
 	const compute = async () => {
 		const memberId = props.memberId;
@@ -40,9 +57,17 @@ export function SkillPreviewPanel(props: { memberId: string }) {
 
 			// 1. 获取成员已习得的技能列表
 			const rawSkills = await defaultEngine.getComputedSkills(memberId);
-			const skillList = (rawSkills as Array<{
-				id: string; name: string; level: number; computed: { isAvailable: boolean; mpCost: number };
-			}>).filter((s) => s.computed?.isAvailable ?? true);
+			const computedSkillList = (
+				rawSkills as Array<{
+					id: string;
+					name: string;
+					level: number;
+					computed: { isAvailable: boolean; mpCost: number };
+				}>
+			).filter((s) => s.level > 0);
+			// 设计说明：引擎成员加载/热替换可能晚于面板首次计算；此时数据库关系数据已经可用，
+			// 但 getComputedSkills 仍可能短暂返回空。用角色页传入的 learnedSkills 兜底，避免 UI 误报“没有技能”。
+			const skillList = computedSkillList.length > 0 ? computedSkillList : learnedSkillSources();
 
 			if (skillList.length === 0) {
 				setSkills([]);
@@ -50,7 +75,16 @@ export function SkillPreviewPanel(props: { memberId: string }) {
 				return;
 			}
 
-			setSkills(skillList.map((s) => ({ id: s.id, name: s.name, level: s.level, damage: 0, loading: true })));
+			setSkills(
+				skillList.map((s) => ({
+					id: s.id,
+					name: s.name,
+					level: s.level,
+					damage: 0,
+					loading: true,
+					error: s.computed && s.computed.isAvailable === false ? "当前资源不足，技能暂不可用" : undefined,
+				})),
+			);
 
 			// 2. 捕获检查点 + 表达式字典
 			const [checkpoint, exprDict] = await Promise.all([
@@ -62,11 +96,13 @@ export function SkillPreviewPanel(props: { memberId: string }) {
 			const tasks = skillList.map((skill) => ({
 				checkpoint,
 				exprDict,
-				patches: [{
-					type: "action_sequence" as const,
-					memberId,
-					sequence: [{ skillId: skill.id }],
-				}],
+				patches: [
+					{
+						type: "action_sequence" as const,
+						memberId,
+						sequence: [{ skillId: skill.id }],
+					},
+				],
 				runtimeConfig: {
 					stopPolicy: { kind: "untilMemberActionEnds", memberId },
 					outputPolicy: "returnPreviewReport",
@@ -75,7 +111,9 @@ export function SkillPreviewPanel(props: { memberId: string }) {
 			}));
 
 			// 4. 并行执行所有分支任务
-			const results = await engine.service.executeBranchBatch(tasks as Parameters<typeof engine.service.executeBranchBatch>[0]);
+			const results = await engine.service.executeBranchBatch(
+				tasks as Parameters<typeof engine.service.executeBranchBatch>[0],
+			);
 
 			// 5. 更新结果
 			setSkills((prev) =>
@@ -96,6 +134,10 @@ export function SkillPreviewPanel(props: { memberId: string }) {
 	};
 
 	createEffect(() => {
+		// 预览成员是异步加载/热替换进引擎的；订阅 members 快照可以在角色技能配置落库并 patch 引擎后重算。
+		// 否则面板可能在场景尚未加载完成时先算到空列表，之后不再刷新。
+		engine.members();
+		learnedSkillSources();
 		if (props.memberId && engine.ready()) {
 			void compute();
 		}
@@ -106,11 +148,7 @@ export function SkillPreviewPanel(props: { memberId: string }) {
 			<div class="flex items-center justify-between">
 				<h2 class="text-lg font-bold">技能伤害预览</h2>
 				<Show when={skills().length > 0}>
-					<Button
-						onClick={() => compute()}
-						class="text-xs text-link-color hover:underline"
-						disabled={computing()}
-					>
+					<Button onClick={() => compute()} class="text-xs text-link-color hover:underline" disabled={computing()}>
 						{computing() ? "计算中..." : "重新计算"}
 					</Button>
 				</Show>
@@ -156,12 +194,16 @@ export function SkillPreviewPanel(props: { memberId: string }) {
 												</span>
 											}
 										>
-											<span class="text-xs text-error-color" title={skill.error}>错误</span>
+											<span class="text-xs text-error-color" title={skill.error}>
+												错误
+											</span>
 										</Show>
 									</Show>
 								</div>
 								<Show when={skill.error}>
-									<div class="text-xs text-error-color" title={skill.error}>⚠</div>
+									<div class="text-xs text-error-color" title={skill.error}>
+										⚠
+									</div>
 								</Show>
 							</div>
 						)}

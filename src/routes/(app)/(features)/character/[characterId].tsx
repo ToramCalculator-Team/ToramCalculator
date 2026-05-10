@@ -21,8 +21,8 @@ import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Select } from "~/components/controls/select";
 import { CharacterConfigPanel } from "~/components/features/character/CharacterConfigPanel";
-import { SkillPreviewPanel } from "~/components/features/character/SkillPreviewPanel";
 import { CharacterView } from "~/components/features/character/CharacterView";
+import { SkillPreviewPanel } from "~/components/features/character/SkillPreviewPanel";
 import { Icons } from "~/components/icons";
 import { MediaContext } from "~/contexts/Media";
 import { useEngine } from "~/lib/engine/core/thread/EngineContext";
@@ -124,6 +124,12 @@ export default function CharactePage() {
 				if (!Array.isArray(player.characters) || player.characters.length === 0) return null;
 
 				const now = new Date().toISOString();
+				// 角色页的预览目标由当前路由决定，而 Player 构造器会根据 player.useIn 选择 activeCharacter。
+				// 因此这里把传入引擎的玩家快照固定到当前角色，避免账号当前使用角色与页面角色不一致时预览错对象。
+				const previewPlayer = {
+					...player,
+					useIn: currentCharacter.id,
+				};
 				const member: MemberWithRelations = {
 					id: previewMemberId,
 					name: currentCharacter.name ?? "未命名角色",
@@ -135,7 +141,7 @@ export default function CharactePage() {
 					mobId: null,
 					mobDifficultyFlag: "Normal",
 					belongToTeamId: previewTeamAId,
-					player,
+					player: previewPlayer,
 					partner: null,
 					mercenary: null,
 					mob: null,
@@ -306,7 +312,7 @@ export default function CharactePage() {
 								defer
 								class="SkillPreview flex w-full flex-col gap-2 landscape:basis-1/2"
 							>
-								<SkillPreviewPanel memberId={previewMemberId} />
+								<SkillPreviewPanel memberId={previewMemberId} learnedSkills={character()?.skills ?? []} />
 							</OverlayScrollbarsComponent>
 						</div>
 
