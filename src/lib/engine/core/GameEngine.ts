@@ -2,13 +2,14 @@ import type { MemberWithRelations } from "@db/generated/repositories/member";
 import type { TeamWithRelations } from "@db/generated/repositories/team";
 import { createId } from "@paralleldrive/cuid2";
 import { type Actor, createActor } from "xstate";
-import { createLogger } from "~/lib/Logger";
+import { createLogger } from "~/lib/Logger"; 
 import { Random } from "~/lib/random";
 import type { RenderSnapshot, RenderSnapshotArea } from "../render/RendererProtocol";
 import { ControlBindingManager } from "./Controller/ControlBindingManager";
 import { ControllerRegistry } from "./Controller/ControllerEndpoint";
 import { ControllerEventProjector } from "./DomainEvents/ControllerEventProjector";
 import { DomainEventBus } from "./DomainEvents/DomainEventBus";
+import type { EventCatalog } from "./Event/EventCatalog";
 import { EventQueue } from "./EventQueue/EventQueue";
 import type { QueueEvent } from "./EventQueue/types";
 import { ExpressionEvaluator } from "./Expression/ExpressionEvaluator";
@@ -18,7 +19,6 @@ import { type EngineControlMessage, GameEngineSM } from "./GameEngineSM";
 import type { JSProcessor } from "./JSProcessor/JSProcessor";
 import type { ExpressionContext } from "./JSProcessor/types";
 import { type IntentMessage, type MessageProcessResult, MessageRouter } from "./MessageRouter/MessageRouter";
-import type { EventCatalog } from "./Event/EventCatalog";
 import type { PipelineCatalog } from "./Pipeline/PipelineCatalog";
 import type { PipelineResolverService } from "./Pipeline/PipelineResolverService";
 import type {
@@ -921,6 +921,7 @@ export class GameEngine {
 	/**
 	 * 增量更新成员配置（热替换）。
 	 * 销毁旧成员实例并以新数据重建，用于 Character 页面配置变更后快速刷新。
+	 * 替换过程保留 memberId 和主控目标，避免相机跟随在同一成员热替换时短暂切到 null。
 	 * 仅在 idle / ready 状态下允许操作。
 	 */
 	patchMemberConfig(memberId: string, newData: MemberWithRelations): boolean {
@@ -935,10 +936,9 @@ export class GameEngine {
 			return false;
 		}
 
-		const { campId, teamId } = existing;
-
-		this.world.memberManager.unregisterMember(memberId);
-		this.world.memberManager.createAndRegister(newData, campId, teamId);
+		if (!this.world.memberManager.replaceMember(memberId, newData)) {
+			return false;
+		}
 
 		if (this.scenarioData) {
 			this.patchInitializationData(memberId, newData);

@@ -2,6 +2,7 @@ import type { CharacterWithRelations } from "@db/generated/repositories/characte
 import type { character, DB } from "@db/generated/zod";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createSignal, For, Show } from "solid-js";
+import type { CharacterPageCommand } from "~/routes/(app)/(features)/character/characterPageModel";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
@@ -12,10 +13,9 @@ import { SkillPanel } from "./SkillPanel";
 
 export type CharacterConfigPanelProps = {
 	character: CharacterWithRelations;
-	onPatchRequested: (patch: Partial<character>) => Promise<void>;
-	onDebouncedPatchRequested: (patch: Partial<character>, debounceMs?: number) => void;
+	onPatchRequested: (patch: Partial<character>) => void;
 	onItemPreviewRequested: (type: keyof DB, data: unknown) => void;
-	onSkillsChanged: () => Promise<void>;
+	onCommand: (command: CharacterPageCommand) => void;
 };
 
 export function CharacterConfigPanel(props: CharacterConfigPanelProps) {
@@ -93,18 +93,23 @@ export function CharacterConfigPanel(props: CharacterConfigPanelProps) {
 							}}
 							onChangeRequested={(slot, value) => {
 								const patch = { [slot]: value } as Partial<character>;
-								if (typeof value === "number") {
-									props.onDebouncedPatchRequested(patch);
-									return;
-								}
-								void props.onPatchRequested(patch);
+								props.onPatchRequested(patch);
 							}}
 						/>
 					</Show>
 					<Show when={activeTab() === "skill"}>
 						<SkillPanel
 							characterId={props.character.id}
-							onSkillsChanged={props.onSkillsChanged}
+							onSkillLevelsChangeRequested={(changes) =>
+								props.onCommand({ type: "skills.setLevels", changes })
+							}
+							onSkillTreeRemoveRequested={(payload) =>
+								props.onCommand({
+									type: "skills.removeTree",
+									templateIds: payload.templateIds,
+									characterSkillIds: payload.characterSkillIds,
+								})
+							}
 							skills={props.character.skills}
 						/>
 					</Show>

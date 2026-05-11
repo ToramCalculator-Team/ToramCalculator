@@ -4,7 +4,16 @@ import "overlayscrollbars/overlayscrollbars.css";
 import { mount, StartClient } from "@solidjs/start/client";
 import { ClickScrollPlugin, OverlayScrollbars } from "overlayscrollbars";
 import { ResourcesLoader } from "./components/effects/resourcesLoder";
+import { LogLevel, setGlobalLogLevel } from "./lib/Logger";
 import { getActStore, initialStore, setStore, store } from "./store";
+
+
+// =========================
+// 生成环境下将日志降级到仅报错
+// =========================
+if (!import.meta.env.DEV) {
+	setGlobalLogLevel(LogLevel.ERROR);
+}
 
 // =========================
 // 查询本地存储中的store，并设置页面状态

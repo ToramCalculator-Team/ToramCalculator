@@ -1,9 +1,4 @@
-import {
-	type CharacterSkillWithRelations,
-	deleteCharacterSkill,
-	insertCharacterSkill,
-	updateCharacterSkill,
-} from "@db/generated/repositories/character_skill";
+import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import { type Skill, selectAllSkills } from "@db/generated/repositories/skill";
 import { SKILL_TREE_GROUP_TYPE, SKILL_TREE_TYPE, type SkillTreeType } from "@db/schema/enums";
 import { createId } from "@paralleldrive/cuid2";
@@ -49,8 +44,11 @@ type SkillLinkCell = Record<SkillLinkDirection, boolean> & {
 
 export type SkillPanelProps = {
 	characterId: string;
-	onSkillsChanged: () => Promise<void>;
 	skills: CharacterSkillWithRelations[];
+	onSkillLevelsChangeRequested: (
+		changes: Array<{ template: Skill; lv: number; characterSkillId?: string }>,
+	) => void;
+	onSkillTreeRemoveRequested: (payload: { templateIds: string[]; characterSkillIds: string[] }) => void;
 };
 
 const SKILL_GRID_CELL_SIZE = 68;
@@ -346,7 +344,7 @@ export function SkillPanel(props: SkillPanelProps) {
 	const [skillTreePickerOpen, setSkillTreePickerOpen] = createSignal(false);
 	const [visibleSkillTreeOverrides, setVisibleSkillTreeOverrides] = createSignal<VisibleSkillTreeOverrideMap>({});
 	const [focusedTreeSkillId, setFocusedTreeSkillId] = createSignal<string | null>(null);
-	// 设计说明：技能等级编辑先写入本地映射以保证 +/- 操作即时反馈，仓储更新失败时再回滚到提交前状态。
+	// 设计说明：技能节点交互先写入面板局部映射；页面 model 负责 DB 提交和失败时通过 props.skills 回灌回滚状态。
 	const [skillLevelByTemplateId, setSkillLevelByTemplateId] = createSignal<SkillLevelByTemplateId>(
 		createSkillLevelByTemplateId(props.skills),
 	);
@@ -387,13 +385,6 @@ export function SkillPanel(props: SkillPanelProps) {
 		setSkillTreeEditorSheetOpen(true);
 	};
 	const closeSkillTreeEditorSheet = () => setSkillTreeEditorSheetOpen(false);
-	const notifySkillsChanged = () => {
-		// 设计说明：技能写库成功后刷新页面层角色关系数据，避免 SkillPanel 重挂载时从旧 props.skills 回放旧状态。
-		void props.onSkillsChanged().catch((error) => {
-			console.error("刷新角色技能关系失败", error);
-		});
-	};
-
 	const templateLevel = (template: Skill) => skillLevelByTemplateId()[template.id]?.lv ?? 0;
 	const hasSkillsInTree = (treeType: SkillTreeType) =>
 		skillTemplateTreeIndex()[treeType].templates.some((template) => templateLevel(template) >= SKILL_LEARNED_LEVEL);
@@ -409,15 +400,13 @@ export function SkillPanel(props: SkillPanelProps) {
 	};
 
 	// 设计说明：删除技能树条目表示移除该角色在这个树类型下的普通技能配置；星石技能属于独立配置，不跟随技能树删除。
-	const removeSkillTreeFromCharacter = async (treeType: SkillTreeType) => {
+	const removeSkillTreeFromCharacter = (treeType: SkillTreeType) => {
 		const templates = skillTemplateTreeIndex()[treeType].templates;
 		const previousLevels = skillLevelByTemplateId();
-		const previousVisibleSkillTreeOverrides = visibleSkillTreeOverrides();
-		const previousFocusedTreeSkillId = focusedTreeSkillId();
-		const previousSkillTreeEditorSheetOpen = skillTreeEditorSheetOpen();
 		const characterSkillIds = templates
 			.map((template) => previousLevels[template.id]?.characterSkillId)
 			.filter((id): id is string => Boolean(id));
+		const templateIds = templates.map((template) => template.id);
 
 		setVisibleSkillTreeOverrides((pre) => ({ ...pre, [treeType]: false }));
 		setFocusedTreeSkillId((focused) =>
@@ -431,17 +420,7 @@ export function SkillPanel(props: SkillPanelProps) {
 			}
 			return nextLevels;
 		});
-
-		try {
-			await Promise.all(characterSkillIds.map((id) => deleteCharacterSkill(id)));
-			notifySkillsChanged();
-		} catch (error) {
-			setSkillLevelByTemplateId(previousLevels);
-			setVisibleSkillTreeOverrides(previousVisibleSkillTreeOverrides);
-			setFocusedTreeSkillId(previousFocusedTreeSkillId);
-			setSkillTreeEditorSheetOpen(previousSkillTreeEditorSheetOpen);
-			console.error("删除角色技能树失败", error);
-		}
+		props.onSkillTreeRemoveRequested({ templateIds, characterSkillIds });
 	};
 
 	createEffect(
@@ -495,7 +474,7 @@ export function SkillPanel(props: SkillPanelProps) {
 		return branch;
 	};
 
-	const persistSkillLevels = async (changes: Array<{ template: Skill; lv: number }>) => {
+	const persistSkillLevels = (changes: Array<{ template: Skill; lv: number }>) => {
 		if (changes.length === 0) return;
 		const previousLevels = skillLevelByTemplateId();
 		const preparedChanges = changes.map((change) => {
@@ -515,29 +494,7 @@ export function SkillPanel(props: SkillPanelProps) {
 			}
 			return nextLevels;
 		});
-		try {
-			await Promise.all(
-				preparedChanges.map((change) => {
-					if (change.characterSkillId && previousLevels[change.template.id]?.characterSkillId) {
-						return updateCharacterSkill(change.characterSkillId, { lv: change.lv });
-					}
-					if (change.characterSkillId) {
-						return insertCharacterSkill({
-							id: change.characterSkillId,
-							lv: change.lv,
-							isStarGem: false,
-							templateId: change.template.id,
-							belongToCharacterId: props.characterId,
-						});
-					}
-					return Promise.resolve();
-				}),
-			);
-			notifySkillsChanged();
-		} catch (error) {
-			setSkillLevelByTemplateId(previousLevels);
-			console.error("更新角色技能等级失败", error);
-		}
+		props.onSkillLevelsChangeRequested(preparedChanges);
 	};
 
 	const increaseSkillLevel = (template: Skill) => {
@@ -552,7 +509,7 @@ export function SkillPanel(props: SkillPanelProps) {
 			}
 		}
 		changeMap.set(template.id, { template, lv: nextLevel });
-		void persistSkillLevels(Array.from(changeMap.values()));
+		persistSkillLevels(Array.from(changeMap.values()));
 	};
 
 	const decreaseSkillLevel = (template: Skill) => {
@@ -567,7 +524,7 @@ export function SkillPanel(props: SkillPanelProps) {
 				if (templateLevel(dependent) > 0) changeMap.set(dependent.id, { template: dependent, lv: 0 });
 			}
 		}
-		void persistSkillLevels(Array.from(changeMap.values()));
+		persistSkillLevels(Array.from(changeMap.values()));
 	};
 
 	const canDecreaseSkill = (template: Skill) => {
@@ -614,7 +571,7 @@ export function SkillPanel(props: SkillPanelProps) {
 														level="quaternary"
 														onClick={(event) => {
 															event.stopPropagation();
-															void removeSkillTreeFromCharacter(treeType);
+															removeSkillTreeFromCharacter(treeType);
 														}}
 													/>
 												</div>

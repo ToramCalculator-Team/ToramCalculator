@@ -31,7 +31,19 @@ export interface LiveKyselyQueryResult<T> {
 	status: Accessor<LiveQueryStatus>;
 	/** 若发生错误，这里会有 Error 对象 */
 	error: Accessor<Error | undefined>;
+	/** 手动重新执行当前查询；live 订阅不可用时使用同一条 SQL 做一次性校准。 */
+	refresh: () => Promise<void>;
 }
+
+export type LiveKyselyQueryOptions = {
+	/**
+	 * live.query 需要把 SQL 包装成临时 view 并解析依赖表。
+	 * 复杂 SQL 在普通查询可执行时仍可能订阅失败；开启后降级为一次性查询。
+	 */
+	fallbackOnLiveError?: boolean;
+	/** 查询切换时是否保留上一版 rows；默认清空以避免跨表残留。 */
+	keepRowsOnLoading?: boolean;
+};
 
 type LiveQueryAdapter = {
 	live: {
@@ -39,7 +51,11 @@ type LiveQueryAdapter = {
 			sql: string,
 			params: unknown[],
 			cb: (res: { rows: unknown[] }) => void,
-		) => Promise<{ unsubscribe: (cb?: (res: unknown) => void) => Promise<void> }>;
+		) => Promise<{
+			initialResults: { rows: unknown[] };
+			refresh: () => Promise<void>;
+			unsubscribe: (cb?: (res: unknown) => void) => Promise<void>;
+		}>;
 	};
 };
 // 说明：PGliteWorker 的库类型没有完整暴露 live.query 泛型签名，
@@ -63,10 +79,13 @@ type LiveQueryAdapter = {
  */
 export function createLiveKyselyQuery<T>(
 	queryFn: (db: Kysely<DB>) => Compilable<T> | null | undefined,
+	options: LiveKyselyQueryOptions = {},
 ): LiveKyselyQueryResult<T> {
 	const [rows, setRows] = createSignal<T[]>([]);
 	const [status, setStatus] = createSignal<LiveQueryStatus>("idle");
 	const [error, setError] = createSignal<Error | undefined>();
+	const fallbackOnLiveError = options.fallbackOnLiveError ?? true;
+	let refreshCurrent: () => Promise<void> = async () => {};
 
 	// db 实例以 signal 持有：异步就绪后 setDb 会触发 effect 重跑，建立首次订阅。
 	const [db, setDb] = createSignal<Kysely<DB> | undefined>();
@@ -106,11 +125,16 @@ export function createLiveKyselyQuery<T>(
 			return;
 		}
 
-		// 切换查询时进入 loading；rows 保留上一版，由调用方决定何时提交到界面。
+		// 切换查询时进入 loading；默认清空 rows，调用方可用 keepRowsOnLoading 保留上一版。
 		setStatus("loading");
 		setError(undefined);
+		if (!options.keepRowsOnLoading) {
+			setRows(() => []);
+		}
 
 		if (!compilable) {
+			refreshCurrent = async () => {};
+			setRows(() => []);
 			setStatus("idle");
 			return;
 		}
@@ -119,6 +143,14 @@ export function createLiveKyselyQuery<T>(
 
 		let disposed = false;
 		let liveSub: { unsubscribe: (cb?: (res: unknown) => void) => Promise<void> } | undefined;
+		const runFallbackQuery = async () => {
+			const result = await kysely.executeQuery<T>(compiled);
+			if (disposed) return;
+			setError(undefined);
+			setRows(() => result.rows);
+			setStatus("ready");
+		};
+		refreshCurrent = runFallbackQuery;
 
 		void (async () => {
 			try {
@@ -136,6 +168,13 @@ export function createLiveKyselyQuery<T>(
 						setStatus("ready");
 					},
 				);
+				if (!disposed) {
+					setRows(() => sub.initialResults.rows as T[]);
+					setStatus("ready");
+					refreshCurrent = async () => {
+						await sub.refresh();
+					};
+				}
 
 				if (disposed) {
 					await sub.unsubscribe();
@@ -145,8 +184,17 @@ export function createLiveKyselyQuery<T>(
 			} catch (e) {
 				if (disposed) return;
 				setError(e instanceof Error ? e : new Error(String(e)));
-				setStatus("error");
 				console.error("[liveQuery] 订阅失败", e);
+				if (fallbackOnLiveError) {
+					try {
+						await runFallbackQuery();
+						return;
+					} catch (fallbackError) {
+						if (disposed) return;
+						setError(fallbackError instanceof Error ? fallbackError : new Error(String(fallbackError)));
+					}
+				}
+				setStatus("error");
 			}
 		})();
 
@@ -158,5 +206,10 @@ export function createLiveKyselyQuery<T>(
 		});
 	});
 
-	return { rows, status, error };
+	return {
+		rows,
+		status,
+		error,
+		refresh: () => refreshCurrent(),
+	};
 }

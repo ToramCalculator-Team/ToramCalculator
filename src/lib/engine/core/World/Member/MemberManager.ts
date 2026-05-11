@@ -2,12 +2,12 @@ import type { MemberWithRelations } from "@db/generated/repositories/member";
 import type { TeamWithRelations } from "@db/generated/repositories/team";
 import type { MemberType } from "@db/schema/enums";
 import type { Actor, AnyActorLogic } from "xstate";
-import { createLogger } from "~/lib/Logger";
+import { createLogger } from "~/lib/Logger"; 
 import type { EventCatalog } from "../../Event/EventCatalog";
 import type { ExpressionContext } from "../../JSProcessor/types";
+import type { PipelineResolverService } from "../../Pipeline/PipelineResolverService";
 import type { MemberCheckpoint, MemberDomainEvent } from "../../types";
 import type { DamageAreaRequest } from "../Area/types";
-import type { PipelineResolverService } from "../../Pipeline/PipelineResolverService";
 import type { Member } from "./Member";
 import type { MemberEventType, MemberStateContext } from "./runtime/StateMachine/types";
 import type { MemberSharedRuntime } from "./runtime/types";
@@ -263,6 +263,34 @@ export class MemberManager {
 		if (!this.primaryMemberId) {
 			this.autoSelectPrimaryMember();
 		}
+
+		return true;
+	}
+
+	/**
+	 * 以相同 memberId 热替换成员实例。
+	 *
+	 * 目的：
+	 * - Character 页面配置变化需要重建 Player/StatContainer 等底层结构。
+	 * - 替换期间保留成员身份、阵营队伍索引和主控目标，避免渲染层收到无意义的 null 主控切换。
+	 */
+	replaceMember(memberId: string, memberData: MemberWithRelations): boolean {
+		const existing = this.members.get(memberId);
+		if (!existing) {
+			log.warn(`⚠️ 成员不存在: ${memberId}`);
+			return false;
+		}
+		if (memberData.id !== memberId) {
+			log.warn(`⚠️ 替换成员ID不一致: ${memberId} -> ${memberData.id}`);
+			return false;
+		}
+
+		const position = { ...existing.position };
+		const actor = this.createAndRegister(memberData, existing.campId, existing.teamId, position);
+		if (!actor) return false;
+
+		existing.setEventCatalog(null);
+		existing.actor.stop();
 
 		return true;
 	}

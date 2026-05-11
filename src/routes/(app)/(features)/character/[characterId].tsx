@@ -1,21 +1,7 @@
-import { selectAllCharactersByBelongtoplayerid, updateCharacter } from "@db/generated/repositories/character";
-import type { MemberWithRelations } from "@db/generated/repositories/member";
-import { selectPlayerByIdWithRelations } from "@db/generated/repositories/player";
-import type { TeamWithRelations } from "@db/generated/repositories/team";
-import type { character, DB } from "@db/generated/zod";
+import type { DB, character } from "@db/generated/zod";
 import { useNavigate, useParams } from "@solidjs/router";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import {
-	createEffect,
-	createMemo,
-	createResource,
-	createSignal,
-	on,
-	onCleanup,
-	onMount,
-	Show,
-	useContext,
-} from "solid-js";
+import { createMemo, createSignal, onMount, Show, useContext } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
@@ -26,10 +12,10 @@ import { SkillPreviewPanel } from "~/components/features/character/SkillPreviewP
 import { Icons } from "~/components/icons";
 import { MediaContext } from "~/contexts/Media";
 import { useEngine } from "~/lib/engine/core/thread/EngineContext";
-import { createPreviewConfig, type EngineScenarioData } from "~/lib/engine/core/types";
 import { StatsRenderer } from "~/lib/engine/core/World/Member/MemberStatusPanel";
 import { createLogger } from "~/lib/Logger";
 import { setStore, store } from "~/store";
+import { createCharacterPageModel } from "./characterPageModel";
 import { createCharacter } from "./createCharacter";
 
 const logger = createLogger("CharacterPage");
@@ -38,6 +24,7 @@ export default function CharactePage() {
 	const navigate = useNavigate();
 	const media = useContext(MediaContext);
 	const params = useParams();
+	const engine = useEngine();
 
 	type PanelModeType = "Config" | "AttrPreview" | "SkillPreview";
 	const [panelMode, setPanelMode] = createSignal<PanelModeType>("Config");
@@ -45,161 +32,26 @@ export default function CharactePage() {
 	const isAttrPreviewVisible = createMemo(() => panelMode() === "AttrPreview" || media.width >= 1024);
 	const isSkillPreviewVisible = createMemo(() => panelMode() === "SkillPreview" || media.width >= 1024);
 
-	const charactersFinder = (id: string) => selectAllCharactersByBelongtoplayerid(id);
-	const [characters, { refetch: refetchCharacters }] = createResource(
-		() => store.session.account.player?.id ?? "",
-		charactersFinder,
-	);
-
-	const [playerWithRelations, { refetch: refetchPlayerWithRelations }] = createResource(
-		() => store.session.account.player?.id,
-		async (playerId) => {
-			if (!playerId) return null;
-			const player = await selectPlayerByIdWithRelations(playerId);
-			logger.info("player", player);
-			return player;
-		},
-	);
-
-	const character = createMemo(() => {
-		const player = playerWithRelations();
-		if (!player) return null;
-		const character = player.characters.find((c) => c.id === params.characterId);
-		if (!character) return null;
-		logger.info("character", character);
-		return character;
-	});
-
-	const engine = useEngine();
 	const previewTeamAId = "CHARACTER_PREVIEW_TEAM_A";
 	const previewTeamBId = "CHARACTER_PREVIEW_TEAM_B";
 	const previewMemberId = "CHARACTER_PREVIEW_MEMBER";
 	const previewStatisticId = "CHARACTER_PREVIEW_STATISTIC";
-	const [scenarioLoaded, setScenarioLoaded] = createSignal(false);
-	let rangeUpdateTimer: number | undefined;
-	let pendingCharacterPatch: Partial<character> = {};
 
-	const queueCharacterPatch = (patch: Partial<character>, debounceMs = 200) => {
-		pendingCharacterPatch = { ...pendingCharacterPatch, ...patch };
-		if (rangeUpdateTimer !== undefined) {
-			window.clearTimeout(rangeUpdateTimer);
-		}
-		rangeUpdateTimer = window.setTimeout(() => {
-			rangeUpdateTimer = undefined;
-			const patchToCommit = pendingCharacterPatch;
-			pendingCharacterPatch = {};
-			void commitCharacterPatch(patchToCommit);
-		}, debounceMs);
-	};
+	// 角色配置变化后同步预览引擎；配置面板只提交 command，预览生命周期由页面 model 统一调度。
+	const model = createCharacterPageModel({
+		playerId: () => store.session.account.player?.id,
+		characterId: () => params.characterId,
+		engine,
+		previewIds: {
+			teamAId: previewTeamAId,
+			teamBId: previewTeamBId,
+			memberId: previewMemberId,
+			statisticId: previewStatisticId,
+		},
+	});
 
-	const commitCharacterPatch = async (patch: Partial<character>) => {
-		const current = character();
-		if (!current) return;
-		const patchToCommit = { ...pendingCharacterPatch, ...patch };
-		pendingCharacterPatch = {};
-		if (rangeUpdateTimer !== undefined) {
-			window.clearTimeout(rangeUpdateTimer);
-			rangeUpdateTimer = undefined;
-		}
-		if (Object.keys(patchToCommit).length === 0) return;
-		await updateCharacter(current.id, patchToCommit);
-		await refetchPlayerWithRelations();
-	};
-
-	// 角色配置变化后同步预览引擎；配置面板只提交 character patch，预览生命周期留在页面层。
-	createEffect(
-		on(
-			() => ({
-				ready: engine.ready(),
-				playerWithRelations: playerWithRelations(),
-			}),
-			async () => {
-				if (!engine.ready()) return null;
-				logger.info("玩家配置发生变化，将更新引擎初始化数据");
-
-				const currentCharacter = character();
-				const player = playerWithRelations();
-				if (!currentCharacter || !player) return null;
-				if (!player.id) return null;
-				if (!Array.isArray(player.characters) || player.characters.length === 0) return null;
-
-				const now = new Date().toISOString();
-				// 角色页的预览目标由当前路由决定，而 Player 构造器会根据 player.useIn 选择 activeCharacter。
-				// 因此这里把传入引擎的玩家快照固定到当前角色，避免账号当前使用角色与页面角色不一致时预览错对象。
-				const previewPlayer = {
-					...player,
-					useIn: currentCharacter.id,
-				};
-				const member: MemberWithRelations = {
-					id: previewMemberId,
-					name: currentCharacter.name ?? "未命名角色",
-					sequence: 0,
-					type: "Player",
-					playerId: player.id,
-					partnerId: null,
-					mercenaryId: null,
-					mobId: null,
-					mobDifficultyFlag: "Normal",
-					belongToTeamId: previewTeamAId,
-					player: previewPlayer,
-					partner: null,
-					mercenary: null,
-					mob: null,
-				};
-
-				const teamA: TeamWithRelations = {
-					id: previewTeamAId,
-					name: "CharacterPreviewTeamA",
-					gems: [],
-					members: [member],
-				};
-				const teamB: TeamWithRelations = {
-					id: previewTeamBId,
-					name: "CharacterPreviewTeamB",
-					gems: [],
-					members: [],
-				};
-
-				const scenario: EngineScenarioData = {
-					simulator: {
-						id: "CHARACTER_PREVIEW_SIMULATOR",
-						name: "CharacterPreviewSimulator",
-						details: null,
-						statisticId: previewStatisticId,
-						updatedByAccountId: null,
-						createdByAccountId: null,
-						campA: [teamA],
-						campB: [teamB],
-						statistic: {
-							id: previewStatisticId,
-							updatedAt: now,
-							createdAt: now,
-							usageTimestamps: [],
-							viewTimestamps: [],
-						},
-					},
-					runtimeSelection: {
-						primaryMemberId: previewMemberId,
-					},
-				};
-
-				try {
-					if (!scenarioLoaded()) {
-						logger.info("loading scenario", scenario);
-						await engine.service.loadScenario(scenario);
-						await engine.service.setRuntimeConfig(createPreviewConfig());
-						await engine.refreshMembers();
-						setScenarioLoaded(true);
-						return;
-					}
-
-					await engine.patchMemberConfig(previewMemberId, member);
-				} catch (error) {
-					console.error("Character 页加载预览场景失败", error);
-				}
-			},
-		),
-	);
+	const character = createMemo(() => model.pageData.character);
+	const characters = createMemo(() => model.pageData.characters);
 
 	const primaryMember = createMemo(() => {
 		const list = engine.members();
@@ -207,6 +59,10 @@ export default function CharactePage() {
 		logger.info("primaryMember", primaryMember);
 		return primaryMember;
 	});
+
+	const dispatchCharacterPatch = (patch: Partial<character>) => {
+		model.dispatch({ type: "character.patch", patch });
+	};
 
 	const previewDataItem = (type: keyof DB, data: unknown) => {
 		setStore("pages", "cardGroup", store.pages.cardGroup.length, {
@@ -219,19 +75,15 @@ export default function CharactePage() {
 		logger.info("--CharacterIdPage render");
 	});
 
-	onCleanup(() => {
-		if (rangeUpdateTimer !== undefined) {
-			window.clearTimeout(rangeUpdateTimer);
-		}
-		logger.info("--CharacterIdPage unmount");
-	});
-
 	return (
 		<Show
 			when={character()}
 			fallback={
 				<div class="LoadingState flex h-full w-full flex-col items-center justify-center gap-3">
 					<LoadingBar center class="h-12 w-1/2 min-w-[320px]" />
+					<Show when={model.status() === "error"}>
+						<div class="text-sm text-accent-color">角色数据加载失败</div>
+					</Show>
 				</div>
 			}
 		>
@@ -243,32 +95,29 @@ export default function CharactePage() {
 					class="CharacterPage relative flex h-full w-full flex-col overflow-hidden"
 				>
 					<div class="Title w-full flex">
-						<Show when={characters.latest} fallback={<LoadingBar class="w-full h-12" />}>
-							{(validCharacters) => (
-								<Select
-									value={validCharacter().id}
-									setValue={(value) => navigate(`/character/${value}`)}
-									options={validCharacters().map((character) => ({ label: character.name, value: character.id })) ?? []}
-									optionGenerator={(option, selected, onclick) => (
-										<button
-											type="button"
-											class={`w-full py-1 px-6 text-accent-color text-start ${selected ? "font-bold text-2xl" : ""} `}
-											onClick={onclick}
-										>
-											{option.label ?? "---"}
-										</button>
-									)}
-									placeholder={validCharacter().name}
-									styleLess
-								/>
-							)}
+						<Show when={characters().length > 0} fallback={<LoadingBar class="w-full h-12" />}>
+							<Select
+								value={validCharacter().id}
+								setValue={(value) => navigate(`/character/${value}`)}
+								options={characters().map((character) => ({ label: character.name, value: character.id }))}
+								optionGenerator={(option, selected, onclick) => (
+									<button
+										type="button"
+										class={`w-full py-1 px-6 text-accent-color text-start ${selected ? "font-bold text-2xl" : ""} `}
+										onClick={onclick}
+									>
+										{option.label ?? "---"}
+									</button>
+								)}
+								placeholder={validCharacter().name}
+								styleLess
+							/>
 						</Show>
 						<Button
 							icon={<Icons.Outline.AddUser />}
 							level="quaternary"
 							onClick={async () => {
 								const character = await createCharacter();
-								await refetchCharacters();
 								navigate(`/character/${character.id}`);
 							}}
 							class="absolute right-6 top-0"
@@ -283,12 +132,9 @@ export default function CharactePage() {
 							<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:hidden landscape:h-full landscape:w-px"></div>
 							<CharacterConfigPanel
 								character={validCharacter()}
-								onPatchRequested={commitCharacterPatch}
-								onDebouncedPatchRequested={queueCharacterPatch}
+								onPatchRequested={dispatchCharacterPatch}
 								onItemPreviewRequested={previewDataItem}
-								onSkillsChanged={async () => {
-									await refetchPlayerWithRelations();
-								}}
+								onCommand={model.dispatch}
 							/>
 						</div>
 
@@ -312,7 +158,7 @@ export default function CharactePage() {
 								defer
 								class="SkillPreview flex w-full flex-col gap-2 landscape:basis-1/2"
 							>
-								<SkillPreviewPanel memberId={previewMemberId} learnedSkills={character()?.skills ?? []} />
+								<SkillPreviewPanel memberId={previewMemberId} learnedSkills={validCharacter().skills ?? []} />
 							</OverlayScrollbarsComponent>
 						</div>
 

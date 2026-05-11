@@ -4,7 +4,7 @@
  */
 
 import type { MemberWithRelations } from "@db/generated/repositories/member";
-import { createLogger } from "~/lib/Logger";
+import { createLogger, LogLevel, setGlobalLogLevel } from "~/lib/Logger";
 import { prepareForTransfer, sanitizeForPostMessage } from "~/lib/WorkerPool/MessageSerializer";
 import type { WorkerMessage, WorkerMessageEvent } from "~/lib/WorkerPool/type";
 import { BUILT_IN_EVENTS } from "../Event/BuiltInEvents";
@@ -30,6 +30,7 @@ import {
 } from "./protocol";
 
 const log = createLogger("SimWorker");
+log.setLevel(LogLevel.ERROR);
 
 // ==================== 沙盒环境初始化 ====================
 

@@ -11,6 +11,7 @@ type RequestOptions = {
 	headers: HeadersInit;
 	body?: string;
 	signal?: AbortSignal;
+	credentials?: RequestCredentials;
 };
 
 // 重试配置：持续重试3分钟，延迟时间从1秒缓慢增加到20秒
@@ -49,7 +50,15 @@ async function resilientFetch(url: string, options: RequestOptions, retryCount: 
 			console.warn(`服务器错误（${res.status}），准备重试`);
 			return await retryFetch(url, options, retryCount + 1);
 		}
-		console.log("上传成功", res);
+		if (res.status === 401 || res.status === 403) {
+			console.warn(`上传认证失败（${res.status}），等待认证恢复后重试`, res);
+			return await retryFetch(url, options, retryCount + 1);
+		}
+		if (res.ok) {
+			console.log("上传成功", res);
+		} else {
+			console.warn(`上传被服务器拒绝（${res.status}）`, res);
+		}
 		return res;
 	} catch (_err) {
 		console.log("发生错误，正在重试", _err);
@@ -71,6 +80,8 @@ async function request(
 		headers: {
 			"Content-Type": "application/json",
 		},
+		// 设计说明：/api/changes 通过 httpOnly jwt cookie 认证；跨端口开发环境必须显式携带凭据。
+		credentials: "include",
 	};
 
 	if (data !== undefined) {
@@ -221,6 +232,10 @@ export class ChangeLogSynchronizer {
 
 		if (response.ok) {
 			return "accepted";
+		}
+
+		if (response.status === 401 || response.status === 403) {
+			return "retry";
 		}
 
 		return response.status < 500 ? "rejected" : "retry";

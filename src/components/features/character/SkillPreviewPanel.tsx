@@ -1,7 +1,9 @@
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
-import { createEffect, createSignal, For, Show } from "solid-js";
+import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { useEngine } from "~/lib/engine/core/thread/EngineContext";
+
+const PREVIEW_COMPUTE_DEBOUNCE_MS = 150;
 
 export interface SkillRow {
 	id: string;
@@ -34,6 +36,10 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 	const [skills, setSkills] = createSignal<SkillRow[]>([]);
 	const [computing, setComputing] = createSignal(false);
 	const [error, setError] = createSignal<string | null>(null);
+	let computeTimer: number | undefined;
+	let computeInFlight = false;
+	let computeQueued = false;
+	let latestComputeToken = 0;
 
 	const learnedSkillSources = (): PreviewSkillSource[] =>
 		(props.learnedSkills ?? [])
@@ -44,7 +50,7 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 				level: skill.lv,
 			}));
 
-	const compute = async () => {
+	const compute = async (token: number) => {
 		const memberId = props.memberId;
 		if (!memberId || !engine.ready()) return;
 
@@ -57,6 +63,7 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 
 			// 1. 获取成员已习得的技能列表
 			const rawSkills = await defaultEngine.getComputedSkills(memberId);
+			if (token !== latestComputeToken) return;
 			const computedSkillList = (
 				rawSkills as Array<{
 					id: string;
@@ -91,6 +98,7 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 				defaultEngine.captureCheckpoint(),
 				defaultEngine.exportExprDict(),
 			]);
+			if (token !== latestComputeToken) return;
 
 			// 3. 为每个技能构建原子分支任务
 			const tasks = skillList.map((skill) => ({
@@ -114,6 +122,7 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 			const results = await engine.service.executeBranchBatch(
 				tasks as Parameters<typeof engine.service.executeBranchBatch>[0],
 			);
+			if (token !== latestComputeToken) return;
 
 			// 5. 更新结果
 			setSkills((prev) =>
@@ -127,10 +136,49 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 				}),
 			);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : String(err));
+			if (token === latestComputeToken) {
+				setError(err instanceof Error ? err.message : String(err));
+			}
 		} finally {
-			setComputing(false);
+			if (token === latestComputeToken) {
+				setComputing(false);
+			}
 		}
+	};
+
+	const runCompute = async (token: number) => {
+		if (computeInFlight) {
+			computeQueued = true;
+			return;
+		}
+		computeInFlight = true;
+		try {
+			await compute(token);
+		} finally {
+			computeInFlight = false;
+			if (computeQueued || token !== latestComputeToken) {
+				computeQueued = false;
+				scheduleCompute();
+			}
+		}
+	};
+
+	const scheduleCompute = (delay = PREVIEW_COMPUTE_DEBOUNCE_MS) => {
+		if (computeTimer !== undefined) {
+			window.clearTimeout(computeTimer);
+		}
+		const token = latestComputeToken + 1;
+		latestComputeToken = token;
+		if (computeInFlight) {
+			computeQueued = true;
+			return;
+		}
+		// 设计说明：技能预览依赖 Worker 分支模拟，跟随引擎成员快照做 trailing debounce。
+		// 高频角色 patch 期间只保留最后一次计算请求，避免旧快照结果覆盖最新 UI。
+		computeTimer = window.setTimeout(() => {
+			computeTimer = undefined;
+			void runCompute(token);
+		}, delay);
 	};
 
 	createEffect(() => {
@@ -139,8 +187,16 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 		engine.members();
 		learnedSkillSources();
 		if (props.memberId && engine.ready()) {
-			void compute();
+			scheduleCompute();
 		}
+	});
+
+	onCleanup(() => {
+		if (computeTimer !== undefined) {
+			window.clearTimeout(computeTimer);
+		}
+		latestComputeToken += 1;
+		computeQueued = false;
 	});
 
 	return (
@@ -148,7 +204,7 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 			<div class="flex items-center justify-between">
 				<h2 class="text-lg font-bold">技能伤害预览</h2>
 				<Show when={skills().length > 0}>
-					<Button onClick={() => compute()} class="text-xs text-link-color hover:underline" disabled={computing()}>
+					<Button onClick={() => scheduleCompute(0)} class="text-xs text-link-color hover:underline" disabled={computing()}>
 						{computing() ? "计算中..." : "重新计算"}
 					</Button>
 				</Show>
