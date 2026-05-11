@@ -3,17 +3,18 @@ import { type Account, createAccount, findAccountById } from "@db/repositories/a
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
 import { sql, type Transaction } from "kysely";
-import { setStore, store } from "~/store";
+import { store } from "~/store";
+import { hydrateSessionAccountStore } from "./sessionAccountStore";
 
 /**
  * 确保本地存在临时账户
  * 如果 store 中没有 accountId，则创建一个新的临时账户
- * @returns Promise<string> 返回账户ID
+ * @returns Promise<Account> 返回账户记录
  */
-export async function ensureLocalAccount(trx?: Transaction<DB>): Promise<Account> {
+export async function ensureTemporaryAccount(trx?: Transaction<DB>): Promise<Account> {
 	const isBrowser = typeof window !== "undefined";
 	if (!isBrowser) {
-		throw new Error("ensureLocalAccount 只能在浏览器环境中调用");
+		throw new Error("ensureTemporaryAccount 只能在浏览器环境中调用");
 	}
 
 	// 检查 store 是否已有 accountId
@@ -23,10 +24,6 @@ export async function ensureLocalAccount(trx?: Transaction<DB>): Promise<Account
 	if (!accountId) {
 		// 创建新的临时账户
 		accountId = createId();
-		setStore("session", "account", {
-			id: accountId,
-			type: "User",
-		});
 
 		// 在数据库中创建账户记录
 		account = await createAccount(
@@ -44,6 +41,9 @@ export async function ensureLocalAccount(trx?: Transaction<DB>): Promise<Account
 		// 验证账户是否存在于数据库中
 		const existingAccount = await findAccountById(accountId, trx);
 		if (!existingAccount) {
+			if (store.session.user?.id) {
+				throw new Error("当前登录账号尚未同步到本地数据库，无法初始化当前会话账号");
+			}
 			// 如果数据库中没有该账户，重新创建
 			account = await createAccount(
 				{
@@ -61,6 +61,7 @@ export async function ensureLocalAccount(trx?: Transaction<DB>): Promise<Account
 		}
 	}
 
+	await hydrateSessionAccountStore(account, trx);
 	return account;
 }
 
@@ -69,7 +70,7 @@ export async function ensureLocalAccount(trx?: Transaction<DB>): Promise<Account
  * @param accountId 账户ID
  * @param userId 用户ID
  */
-export async function bindLocalAccountToUser(accountId: string, userId: string): Promise<void> {
+export async function bindTemporaryAccountToUser(accountId: string, userId: string): Promise<void> {
 	const db = await getDB();
 	await db.updateTable("account").set({ userId }).where("id", "=", accountId).execute();
 
@@ -79,7 +80,7 @@ export async function bindLocalAccountToUser(accountId: string, userId: string):
 /**
  * 清除changes内容
  */
-export async function clearChangesContent(): Promise<void> {
+export async function clearLocalChanges(): Promise<void> {
 	const db = await getDB();
 	await sql`DELETE FROM changes`.execute(db);
 

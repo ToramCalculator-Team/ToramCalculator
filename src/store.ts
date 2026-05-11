@@ -185,7 +185,7 @@ export const initialStore: Store = {
 	},
 	session: {
 		account: {
-			// 初始化页面时，ensureLocalAccount方法会覆盖此内容
+			// 初始化页面时，ensureTemporaryAccount 方法会覆盖此内容
 			id: "",
 			type: "User",
 		},

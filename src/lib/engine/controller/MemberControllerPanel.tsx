@@ -137,7 +137,7 @@ export function MemberControllerPanel(props: MemberControllerPanelProps) {
 									level="secondary"
 								>
 									<Icons.Spirits iconName={skill.name} />
-									<span class="whitespace-nowrap text-xs text-ellipsis overflow-hidden">{skill.name}</span>
+									<span class="whitespace-nowrap text-xs">{skill.name}</span>
 								</Button>
 							)}
 						</For>

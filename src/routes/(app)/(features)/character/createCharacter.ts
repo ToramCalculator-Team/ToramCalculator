@@ -1,55 +1,25 @@
 import { defaultData } from "@db/defaultData";
-import { type Character, insertCharacter, updateCharacter } from "@db/generated/repositories/character";
+import { type Character, insertCharacter } from "@db/generated/repositories/character";
 import { insertCharacterSkill } from "@db/generated/repositories/character_skill";
-import {
-	insertPlayer,
-	type Player,
-	selectAllPlayersByBelongtoaccountid,
-	selectPlayerById,
-    updatePlayer,
-} from "@db/generated/repositories/player";
+import { updatePlayer } from "@db/generated/repositories/player";
 import { insertSkill } from "@db/generated/repositories/skill";
 import { insertSkillVariant } from "@db/generated/repositories/skill_variant";
 import { insertStatistic } from "@db/generated/repositories/statistic";
 import type { Account } from "@db/repositories/account";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
-import { ensureLocalAccount } from "~/lib/localAccount";
-import { setStore, store } from "~/store";
+import { ensureAccountPlayer } from "~/session/accountPlayer";
+import { hydrateSessionAccountStore } from "~/session/sessionAccountStore";
+import { ensureTemporaryAccount } from "~/session/temporaryAccount";
 
-// 根据本地账户创建角色
+// 根据当前账户创建角色
 export const createCharacter = async (): Promise<Character> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
-		let account: Account;
-		account = await ensureLocalAccount(trx);
+		const account: Account = await ensureTemporaryAccount(trx);
 		console.log("account", account);
-		let player: Player;
-		if (store.session.account.player?.id) {
-			// 从LocalStorage中获取PlayerID，并查询数据库中是否存在对应的Player
-			const res = await selectPlayerById(store.session.account.player.id, trx);
-			if (res) {
-				player = res;
-			} else {
-				throw new Error("LocalStorage中的PlayerID无效，未在数据库中找到对应的Player");
-			}
-		} else {
-			const players = await selectAllPlayersByBelongtoaccountid(account.id, trx);
-			if (players.length > 0) {
-				// 账号存在多个角色时，默认使用第一个
-				player = players[0];
-			} else {
-				// 账号不存在角色时，创建第一个角色
-				player = await insertPlayer(
-					{
-						...defaultData.player,
-						id: createId(),
-						belongToAccountId: account.id,
-					},
-					trx,
-				);
-			}
-		}
+		// 设计说明：player 由账号上下文保证存在，创建机体只负责挂载 character 图谱。
+		const player = await ensureAccountPlayer(account.id, trx);
 		console.log("player", player);
 		const characterStatistic = await insertStatistic(
 			{
@@ -73,7 +43,7 @@ export const createCharacter = async (): Promise<Character> => {
 			},
 			trx,
 		);
-		const skillVariant = await insertSkillVariant(
+		await insertSkillVariant(
 			{
 				...defaultData.skill_variant,
 				id: createId(),
@@ -90,7 +60,7 @@ export const createCharacter = async (): Promise<Character> => {
 			},
 			trx,
 		);
-		const character_skill = await insertCharacterSkill(
+		await insertCharacterSkill(
 			{
 				...defaultData.character_skill,
 				id: createId(),
@@ -99,16 +69,15 @@ export const createCharacter = async (): Promise<Character> => {
 			},
 			trx,
 		);
-		await updatePlayer(player.id, {
-			useIn: character.id,
-		}, trx);
-		console.log("character", character);
-		setStore("session", "account", "player", {
-			id: player.id,
-			character: {
-				id: character.id,
+		await updatePlayer(
+			player.id,
+			{
+				useIn: character.id,
 			},
-		});
+			trx,
+		);
+		console.log("character", character);
+		await hydrateSessionAccountStore(account, trx);
 		return character;
 	});
 };

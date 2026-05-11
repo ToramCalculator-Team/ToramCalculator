@@ -3,6 +3,7 @@ import { createId } from "@paralleldrive/cuid2";
 import type { Insertable, Selectable, Transaction, Updateable } from "kysely";
 import { jsonObjectFrom } from "kysely/helpers/postgres";
 import { z } from "zod/v4";
+import { defaultData } from "../defaultData";
 import { AccountCreateDataSchema, AccountSchema, AccountUpdateDataSchema } from "../generated/zod/index";
 import { getDB } from "./database";
 import { defineRelations, makeRelations } from "./subRelationFactory";
@@ -82,6 +83,16 @@ export async function createAccount(data: AccountInsert, trx?: Transaction<DB>) 
 	// 创建关联的账户数据
 	await db.insertInto("account_create_data").values({ accountId: account.id }).returningAll().executeTakeFirstOrThrow();
 	await db.insertInto("account_update_data").values({ accountId: account.id }).returningAll().executeTakeFirstOrThrow();
+	// 设计说明：player 是账号下角色资产的归属根，账号创建时同步创建，character 由用户显式创建。
+	await db
+		.insertInto("player")
+		.values({
+			...defaultData.player,
+			id: createId(),
+			belongToAccountId: account.id,
+		})
+		.returningAll()
+		.executeTakeFirstOrThrow();
 
 	return account;
 }

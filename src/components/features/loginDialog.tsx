@@ -5,9 +5,10 @@ import { Motion, Presence } from "solid-motionone";
 import { z } from "zod/v4";
 import defaultUserAvatarUrl from "~/../public/icons/512.png?url";
 import { Button } from "~/components/controls/button";
-import { bindLocalAccountToUser, clearChangesContent, ensureLocalAccount } from "~/lib/localAccount";
 import { emailExists, getUserByCookie } from "~/lib/utils/session";
 import { getDictionary } from "~/locales/i18n";
+import { clearSessionAccountStore, hydrateSessionAccountStore } from "~/session/sessionAccountStore";
+import { bindTemporaryAccountToUser, clearLocalChanges, ensureTemporaryAccount } from "~/session/temporaryAccount";
 import { setStore, store } from "~/store";
 import { Dialog } from "../containers/dialog";
 import type { InputStateType } from "../controls/input";
@@ -66,6 +67,7 @@ export const LoginDialog = () => {
 				if (passwordInput) {
 					passwordInput.focus();
 				}
+				return;
 			}
 
 			// 从服务端获取用户信息
@@ -74,25 +76,25 @@ export const LoginDialog = () => {
 
 			if (user) {
 				console.log(value.bindLocalAccount);
+				let sessionAccount = user.accounts[0];
 				if (value.bindLocalAccount) {
-					await bindLocalAccountToUser(store.session.account.id, user.id);
+					const temporaryAccount = await ensureTemporaryAccount();
+					await bindTemporaryAccountToUser(temporaryAccount.id, user.id);
+					sessionAccount = temporaryAccount;
 				}
 				setStore("session", "user", {
 					id: user.id,
 					name: user.name ?? "未命名用户",
 					avatar: user.image ?? defaultUserAvatarUrl,
 				});
-				if (user.accounts.length > 0) {
-					setStore("session", "account", {
-						id: user.accounts[0].id,
-						type: user.accounts[0].type,
-					});
+				if (sessionAccount) {
+					await hydrateSessionAccountStore(sessionAccount);
 				}
 
 				// 登陆成功
 				// 如果bindLocalAccount是false，则清空本地数据库内的changes内容
 				if (!value.bindLocalAccount) {
-					await clearChangesContent();
+					await clearLocalChanges();
 				}
 				// 启动数据同步
 				console.log("登录成功");
@@ -109,17 +111,13 @@ export const LoginDialog = () => {
 		await fetch("/api/auth/logout");
 		// 清空 session
 		setStore("session", "user", undefined);
-		setStore("session", "account", {
-			id: "",
-			type: "User",
-			player: undefined,
-		});
+		clearSessionAccountStore();
 		// 关闭登录对话框
 		setStore("pages", "loginDialogState", false);
 
 		// 停止数据同步
 		setStore("database", "sync", false);
-		await ensureLocalAccount();
+		await ensureTemporaryAccount();
 		console.log("用户登出");
 	};
 
@@ -152,20 +150,20 @@ export const LoginDialog = () => {
 			// console.log("获取到的用户信息:", user);
 
 			if (user) {
+				let sessionAccount = user.accounts[0];
 				// 此时已知userId，将本地数据库内的匿名账号绑定到该userId
 				if (value.bindLocalAccount) {
-					await bindLocalAccountToUser(store.session.account.id, user.id);
+					const temporaryAccount = await ensureTemporaryAccount();
+					await bindTemporaryAccountToUser(temporaryAccount.id, user.id);
+					sessionAccount = temporaryAccount;
 				}
 				setStore("session", "user", {
 					id: user.id,
 					name: user.name ?? "未命名用户",
 					avatar: user.image ?? defaultUserAvatarUrl,
 				});
-				if (user.accounts.length > 0) {
-					setStore("session", "account", {
-						id: user.accounts[0].id,
-						type: user.accounts[0].type,
-					});
+				if (sessionAccount) {
+					await hydrateSessionAccountStore(sessionAccount);
 				}
 
 				// 启动数据同步

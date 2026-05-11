@@ -1,6 +1,6 @@
 import type { DB } from "@db/generated/zod/index";
 import { createEffect, createRoot } from "solid-js";
-import { ensureLocalAccount } from "~/lib/localAccount";
+import { ensureTemporaryAccount } from "~/session/temporaryAccount";
 import { store } from "~/store";
 import type { BootstrapModule } from "./types";
 
@@ -179,12 +179,12 @@ export const bootstrapModules: BootstrapModule[] = [
 		},
 	},
 	{
-		name: "localAccount",
-		deps: ["pgworker"],
+		name: "temporaryAccount",
+		deps: ["electricInitialSync"],
 		timeout: 60_000,
 		init: async () => {
-			// 职责迁移：本地账号初始化从路由 onMount 收拢到统一启动阶段。
-			await ensureLocalAccount();
+			// 职责迁移：本地账号初始化从路由 onMount 收拢到统一启动阶段；登录账号需要等首轮同步后再恢复。
+			await ensureTemporaryAccount();
 		},
 	},
 	{
@@ -200,20 +200,20 @@ export const bootstrapModules: BootstrapModule[] = [
 	},
 	{
 		name: "changeLog",
-		deps: ["pgworker", "localAccount"],
+		deps: ["pgworker", "temporaryAccount"],
 		optional: true,
 		init: async () => {
-		  const { syncControl } = await import("~/lib/pglite/pg");
-	  
-		  createRoot(() => {
-			createEffect(() => {
-			  if (store.database.sync) {
-				syncControl.start();
-			  } else {
-				syncControl.stop();
-			  }
+			const { syncControl } = await import("~/lib/pglite/pg");
+
+			createRoot(() => {
+				createEffect(() => {
+					if (store.database.sync) {
+						syncControl.start();
+					} else {
+						syncControl.stop();
+					}
+				});
 			});
-		  });
 		},
-	  }
+	},
 ];

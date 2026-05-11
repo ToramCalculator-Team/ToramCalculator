@@ -639,38 +639,36 @@ export const playerStateMachine = (
 					log.error(`🎮 [${context.owner?.name}] 技能效果不存在: ${skillId}`);
 					return true;
 				}
-				if (variant.hpCost && variant.mpCost) {
-					const hpCost = player.services.expressionEvaluator?.(variant.hpCost, {
+				const evalCost = (expr: string | null | undefined, label: string): number | null => {
+					// 设计说明：消耗字段在数据库中允许为空；空值代表无消耗，非空公式必须得到有限数字。
+					const normalizedExpr = expr?.trim();
+					if (!normalizedExpr) return 0;
+					const cost = player.services.expressionEvaluator?.(normalizedExpr, {
 						currentFrame: player.runtime.currentFrame,
 						casterId: player.id,
 						skillLv: skill?.lv ?? 0,
 					});
-					if (typeof hpCost !== "number") {
-						log.error(`👤 [${context.owner?.name}] 技能HP消耗不是数字`);
-						return true;
+					if (typeof cost === "number" && Number.isFinite(cost)) {
+						return cost;
 					}
-					const mpCost = player.services.expressionEvaluator?.(variant.mpCost, {
-						currentFrame: player.runtime.currentFrame,
-						casterId: player.id,
-						skillLv: skill?.lv ?? 0,
-					});
-					if (typeof mpCost !== "number") {
-						log.error(`👤 [${context.owner?.name}] 技能MP消耗不是数字`);
-						return true;
-					}
-					if (
-						hpCost > player.statContainer.getValue("hp.current") ||
-						mpCost > player.statContainer.getValue("mp.current")
-					) {
-						log.debug(`- 该技能不满足施法消耗，HP:${hpCost} MP:${mpCost}`);
-						// 这里需要撤回RS的修改
-						return true;
-					}
-					log.debug(`- 该技能满足施法消耗，HP:${hpCost} MP:${mpCost}`);
-				} else {
-					log.error(`🎮 [${context.owner?.name}] 技能消耗表达式不存在`);
-					return true; // 视为不满足施法条件
+					log.error(`👤 [${context.owner?.name}] 技能${label}消耗不是有限数字`);
+					return null;
+				};
+
+				const hpCost = evalCost(variant.hpCost, "HP");
+				if (hpCost === null) return true;
+				const mpCost = evalCost(variant.mpCost, "MP");
+				if (mpCost === null) return true;
+
+				if (
+					hpCost > player.statContainer.getValue("hp.current") ||
+					mpCost > player.statContainer.getValue("mp.current")
+				) {
+					log.debug(`- 该技能不满足施法消耗，HP:${hpCost} MP:${mpCost}`);
+					// 这里需要撤回RS的修改
+					return true;
 				}
+				log.debug(`- 该技能满足施法消耗，HP:${hpCost} MP:${mpCost}`);
 				return false;
 			},
 			技能带有心眼: ({ context, event }) => {

@@ -466,7 +466,7 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 							<ControlPanel
 								engineActor={engine.lifecycleActor}
 								onStart={() => {
-									handleToggleFullscreen()
+									// handleToggleFullscreen()
 									engine.start()
 								}}
 								onReset={() => engine.reset()}

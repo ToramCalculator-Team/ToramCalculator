@@ -1,5 +1,6 @@
 // @refresh reload
 import "~/styles/app.css";
+import "~/lib/babylon/registerBuiltinShaders";
 import "overlayscrollbars/overlayscrollbars.css";
 import { mount, StartClient } from "@solidjs/start/client";
 import { ClickScrollPlugin, OverlayScrollbars } from "overlayscrollbars";
