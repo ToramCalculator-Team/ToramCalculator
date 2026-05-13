@@ -115,7 +115,7 @@ export interface DamageAreaRequest {
 	};
 	/** 施法时的位置（用于计算轨迹） */
 	casterId: string;
-	/** 目标位置（用于 rangeAttack 锁定中心） */
+	/** 目标成员（用于 singleAttack 锁定目标 / rangeAttack 锁定中心） */
 	targetId?: string;
 }
 
@@ -207,4 +207,3 @@ export interface TrapAreaRequest {
 	/** 施法位置 */
 	castPosition: Vec3;
 }
-

@@ -190,8 +190,6 @@ export default defineConfig(({ mode }) => {
 			format: "es" as const,
 		},
 		optimizeDeps: {
-			// Babylon Inspector 依赖 React/Fluent UI；预构建会补齐 CommonJS React 的 default 兼容层，避免浏览器直接加载原始 ESM 依赖。
-			include: isDev ? ["@babylonjs/inspector", "@griffel/react", "react", "react-dom"] : [],
 			exclude: ["@electric-sql/pglite"],
 		},
 		plugins: [

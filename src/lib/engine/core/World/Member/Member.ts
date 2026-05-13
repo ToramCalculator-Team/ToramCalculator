@@ -9,18 +9,24 @@ import type { PipelineResolverService } from "../../Pipeline/PipelineResolverSer
 import type { StageData, StageEnv } from "../../Pipeline/stageEnv";
 import type { MemberCheckpoint, MemberDomainEvent } from "../../types";
 import type { DamageAreaRequest } from "../Area/types";
-import type { MemberRuntimeServices, PipelineEventSinkEvent } from "./runtime/Agent/RuntimeServices";
+import { MemberBaseAttrType, MemberBaseNestedSchema } from "./MemberBaseSchema";
+import type {
+	MemberRuntimeServices,
+	MemberTargetResolver,
+	PipelineEventSinkEvent,
+} from "./runtime/Agent/RuntimeServices";
 import { MemberRuntimeServicesDefaults } from "./runtime/Agent/RuntimeServices";
 import { AttributeWatcherRegistry } from "./runtime/AttributeWatcher/AttributeWatcher";
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
 import { ProcBus } from "./runtime/ProcBus/ProcBus";
-import type { NestedSchema } from "./runtime/StatContainer/SchemaTypes";
+import type { ExtractAttrPaths, NestedSchema } from "./runtime/StatContainer/SchemaTypes";
 import type { StatContainer } from "./runtime/StatContainer/StatContainer";
 import type {
 	MemberActor,
 	MemberEventType,
 	MemberStateContext,
 	MemberStateMachine,
+	MemberStateMachineEnv,
 } from "./runtime/StateMachine/types";
 import {
 	InMemoryStatusInstanceStore,
@@ -93,7 +99,7 @@ export class Member<
 
 	constructor(
 		stateMachine: (
-			member: Member<TAttrKey, TStateEvent, TStateContext, TRuntime>,
+			env: MemberStateMachineEnv<TAttrKey, TStateEvent, TStateContext, TRuntime>,
 		) => MemberStateMachine<TStateEvent, TStateContext>,
 		campId: string,
 		teamId: string,
@@ -111,7 +117,7 @@ export class Member<
 		this.campId = campId;
 		this.teamId = teamId;
 		this.runtime = runtime;
-		this.services = services;
+		this.services = { ...services };
 		this.dataSchema = dataSchema;
 		this.data = memberData;
 		this.statContainer = statContainer;
@@ -127,9 +133,19 @@ export class Member<
 			this.runtime.position = position;
 		}
 
-		this.actor = createActor(stateMachine(this), {
-			id: memberData.id,
-		});
+		this.actor = createActor(
+			stateMachine({
+				id: this.id,
+				name: this.name,
+				position: this.position,
+				runtime: this.runtime,
+				statContainer: this.statContainer,
+				services: this.services,
+				btManager: this.btManager,
+				notifyDomainEvent: this.notifyDomainEvent,
+				runPipeline: this.runPipeline,
+			}),
+		);
 	}
 
 	start(): void {
@@ -176,6 +192,10 @@ export class Member<
 	setDomainEventSender(domainEventSender: ((event: MemberDomainEvent) => void) | null): void {
 		this.domainEventSender = domainEventSender;
 		this.services.domainEventSender = domainEventSender;
+	}
+
+	setTargetResolver(targetResolver: MemberTargetResolver | null): void {
+		this.services.targetResolver = targetResolver;
 	}
 
 	setEvaluateExpression(
@@ -306,9 +326,7 @@ export class Member<
 			emit: (eventName: string, payload: unknown) => {
 				const sink = this.services.pipelineEventSink;
 				if (!sink) {
-					log.debug(
-						`runPipeline(${pipelineName})：pipelineEventSink 未注入，丢弃事件 ${eventName}`,
-					);
+					log.debug(`runPipeline(${pipelineName})：pipelineEventSink 未注入，丢弃事件 ${eventName}`);
 					return;
 				}
 				sink({ name: eventName, payload, frame });

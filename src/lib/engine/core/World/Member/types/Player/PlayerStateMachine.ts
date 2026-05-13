@@ -1,16 +1,28 @@
+import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import { type EventObject, setup } from "xstate";
+import type { ExpressionContext } from "~/lib/engine/core/JSProcessor/types";
+import type { StageData } from "~/lib/engine/core/Pipeline/stageEnv";
+import type { MemberDomainEvent } from "~/lib/engine/core/types";
 import { createLogger } from "~/lib/Logger";
 import type { DamageDispatchPayload } from "../../../Area/types";
+import { MemberBaseAttrType } from "../../MemberBaseSchema";
+import type { MemberRuntimeServices } from "../../runtime/Agent/RuntimeServices";
+import type { BtManager } from "../../runtime/BehaviourTree/BtManager";
 import {
 	createHitSession,
 	type HitSession,
 	resolveDamageAndApply,
 	resolveHitCheck,
-} from "../../DamageResolution";
-import type { Member } from "../../Member";
-import type { MemberEventType, MemberStateContext, MemberStateMachine } from "../../runtime/StateMachine/types";
-import type { PlayerRuntime } from "../../runtime/types";
+} from "../../runtime/DamageResolution";
+import { ModifierType, type StatContainer } from "../../runtime/StatContainer/StatContainer";
+import type {
+	MemberEventType,
+	MemberStateContext,
+	MemberStateMachine,
+	MemberStateMachineEnv,
+} from "../../runtime/StateMachine/types";
+import type { MemberSharedRuntime, PlayerRuntime } from "../../runtime/types";
 import type { Player, PlayerAttrType } from "./Player";
 
 const log = createLogger("PlayerSM");
@@ -149,7 +161,7 @@ export type PlayerEventType =
 // 定义 PlayerStateContext 类型（提前声明）
 //
 // 注意：新字段以 optional 方式加入，以保留与基础 `MemberStateContext` 结构的双向赋值兼容性
-// （XState 对 context/owner 泛型参数的推断对变位敏感，必选字段会破坏 Member.btManager.owner.actor 赋值链）。
+// （XState 对 context/env 泛型参数的推断对变位敏感，必选字段会破坏 Member.btManager.env.actor 赋值链）。
 export interface PlayerStateContext extends MemberStateContext {
 	/**
 	 * 当前受击事务。
@@ -157,6 +169,12 @@ export interface PlayerStateContext extends MemberStateContext {
 	 * 详见 `DamageResolution.ts`。
 	 */
 	hitSession?: HitSession | null;
+}
+
+// 状态机执行动作时需要的外部能力
+export interface PlayerStateMachineEnv
+	extends MemberStateMachineEnv<PlayerAttrType, PlayerEventType, PlayerStateContext, PlayerRuntime> {
+	runtime: PlayerRuntime;
 }
 
 type SkillVariant = NonNullable<NonNullable<CharacterSkillWithRelations["template"]>["variants"]>[number];
@@ -172,814 +190,815 @@ const playerMachineSetup = setup({
 const playerRaiseHitCheck = playerMachineSetup.raise({ type: "进行命中判定" });
 const playerRaiseControlCheck = playerMachineSetup.raise({ type: "进行控制判定" });
 const playerRaiseDamageCalc = playerMachineSetup.raise({ type: "进行伤害计算" });
-const playerRaiseHpAttrUpdate = playerMachineSetup.raise(({ context }) => {
-	const owner = context.owner as Player | undefined;
-	const hpAfter =
-		typeof context.hitSession?.hpAfter === "number"
-			? context.hitSession.hpAfter
-			: owner?.statContainer.getValue("hp.current") ?? 0;
-	return {
-		type: "修改属性" as const,
-		data: { attr: "hp.current", value: hpAfter },
-	};
-});
-const playerAssignHitSession = playerMachineSetup.assign(({ context, event }) => {
-	log.debug(`👤 [${context.owner?.name}] 记录伤害请求`, event);
-	const e = event as 受到攻击;
-	const damageRequest = e.data?.damageRequest;
-	if (!damageRequest) {
-		return {};
-	}
-	return {
-		hitSession: createHitSession(damageRequest),
-	};
-});
+const playerRaiseHpAttrUpdate = (statContainer: StatContainer<PlayerAttrType>) => {
+	return playerMachineSetup.raise(({ context }) => {
+		const hpAfter =
+			typeof context.hitSession?.hpAfter === "number"
+				? context.hitSession.hpAfter
+				: (statContainer.getValue("hp.current") ?? 0);
+		return {
+			type: "修改属性" as const,
+			data: { attr: "hp.current", value: hpAfter },
+		};
+	});
+};
+const playerAssignHitSession = (name: string) => {
+	return playerMachineSetup.assign(({ context, event }) => {
+		log.debug(`👤 [${name}] 记录伤害请求`, event);
+		const e = event as 受到攻击;
+		const damageRequest = e.data?.damageRequest;
+		if (!damageRequest) {
+			return {};
+		}
+		return {
+			hitSession: createHitSession(damageRequest),
+		};
+	});
+};
 const playerClearHitSession = playerMachineSetup.assign({ hitSession: null });
 
 export const playerStateMachine = (
-	member: Member<PlayerAttrType, PlayerEventType, PlayerStateContext, PlayerRuntime>,
+	env: PlayerStateMachineEnv,
 ): MemberStateMachine<PlayerEventType, PlayerStateContext> => {
-	// 类型断言：playerStateMachine 内部需要访问 Player 特有属性
-	const player = member as Player;
-	const machineId = player.id;
+	const machineId = `${env.id}-FSM`;
 
 	const machine = playerMachineSetup
 		.extend({
 			actions: {
-			根据角色配置生成初始状态: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 根据角色配置生成初始状态`, event);
-			},
-			启用站立动画: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 启用站立动画`, event);
-			},
-			启用移动动画: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 启用移动动画`, event);
-			},
-			显示警告: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 显示警告`, event);
-				// 发出技能施放被拒绝事件
-				const owner = context.owner;
-				if (!owner) return;
-				// 从事件中获取技能ID（如果有）
-				const skillId = (event as { data?: { skillId?: string } }).data?.skillId ?? "";
-				owner.notifyDomainEvent({
-					type: "skill_cast_denied",
-					memberId: owner.id,
-					skillId,
-					reason: "技能可用性检查失败",
-				});
-			},
-			创建警告结束通知: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 创建警告结束通知`, event);
-			},
-			添加待处理技能: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 添加待处理技能`, event);
-				const e = event as 使用技能;
-				const skillId = e.data.skillId;
-				const skill = player.activeCharacter.skills?.find((s: CharacterSkillWithRelations) => s.id === skillId);
-				if (!skill) {
-					log.error(`🎮 [${context.owner?.name}] 的当前技能不存在`);
-				}
-				player.runtime.currentSkill = skill ?? null;
-				// 一旦 pending 技能槽被赋值，立即解析 registlet 提供的技能参数快照，
-				// 让 guards、pipeline、BT 都读同一份，无需反复重扫托环。
-				player.runtime.currentSkillParams = player.resolveSkillParams(player.runtime.currentSkill);
-			},
-			清空待处理技能: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 清空待处理技能`, event);
-				player.runtime.previousSkill = player.runtime.currentSkill;
-				player.runtime.currentSkill = null;
-				player.runtime.currentSkillVariant = null;
-				// 技能结束后清空瞬态快照，避免把上一个技能的 registlet 参数泄漏到下一次。
-				player.runtime.currentSkillParams = {};
-				player.runtime.currentSkillStartupFrames = 0;
-				player.runtime.currentSkillChargingFrames = 0;
-				player.runtime.currentSkillChantingFrames = 0;
-				player.runtime.currentSkillActionFrames = 0;
-				player.btManager.unregisterActiveEffectBt();
-			},
-			清理行为树: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 清理行为树`, event);
-				player.btManager.clear();
-			},
-			添加待处理技能变体: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 添加待处理技能变体`, event);
-				if (!player.runtime.currentSkill) {
-					log.error(`🎮 [${context.owner?.name}] 当前技能不存在`);
-					return;
-				}
-				// 在选定最终 variant 前重算参数快照；若 pre-skill 管线重写了 pending 技能，这里保持对齐。
-				player.runtime.currentSkillParams = player.resolveSkillParams(player.runtime.currentSkill);
-				const variant = getSkillVariant(player.runtime.currentSkill, player);
-				log.debug(`技能变体`, variant);
-				player.runtime.currentSkillVariant = variant ?? null;
-			},
-			计算技能生命周期参数: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 计算技能生命周期参数`, event);
-				const skill = player.runtime.currentSkill;
-				const variant = player.runtime.currentSkillVariant;
-				if (!skill || !variant) {
-					log.error(`👤 [${context.owner?.name}] 缺少技能或变体，无法计算生命周期参数`);
-					player.runtime.currentSkillStartupFrames = 0;
-					player.runtime.currentSkillChargingFrames = 0;
-					player.runtime.currentSkillChantingFrames = 0;
-					player.runtime.currentSkillActionFrames = 0;
-					return;
-				}
-
-				// 预求值 variant 上的字符串公式，再交给纯计算管线套用行动速度修正。
-				const evaluator = player.services.expressionEvaluator;
-				const evalNum = (expr: string | null | undefined, label: string): number => {
-					if (!expr) return 0;
-					if (!evaluator) {
-						log.error(`👤 [${context.owner?.name}] expressionEvaluator 未注入：${label}`);
-						return 0;
-					}
-					const out = evaluator(expr, {
-						currentFrame: player.runtime.currentFrame,
-						casterId: player.id,
-						targetId: player.runtime.targetId,
-						skillLv: skill.lv ?? 0,
+				根据角色配置生成初始状态: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 根据角色配置生成初始状态`, event);
+				},
+				启用站立动画: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 启用站立动画`, event);
+				},
+				启用移动动画: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 启用移动动画`, event);
+				},
+				显示警告: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 显示警告`, event);
+					const skillId = (event as { data?: { skillId?: string } }).data?.skillId ?? "";
+					env.notifyDomainEvent({
+						type: "skill_cast_denied",
+						memberId: env.id,
+						skillId,
+						reason: "技能可用性检查失败",
 					});
-					if (typeof out === "number" && Number.isFinite(out)) return out;
-					if (typeof out === "boolean") return out ? 1 : 0;
-					log.warn(`👤 [${context.owner?.name}] ${label} 求值结果非数字，置 0：${String(out)}`);
-					return 0;
-				};
+				},
+				创建警告结束通知: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 创建警告结束通知`, event);
+				},
+				添加待处理技能: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 添加待处理技能`, event);
+					const e = event as 使用技能;
+					const skillId = e.data.skillId;
+					const skill = env.runtime.character?.skills?.find((s: CharacterSkillWithRelations) => s.id === skillId);
+					if (!skill) {
+						log.error(`🎮 [${env.name}] 的当前技能不存在`);
+					}
+					env.runtime.currentSkill = skill ?? null;
+					const resolvedTargetId = env.services.targetResolver?.(env.id, e.data.target) ?? e.data.target;
+					// 技能 BT 通过 `$targetId` 读取 runtime.targetId；进入 BT 前写入解析结果，避免动作层收到 self/空目标。
+					env.runtime.targetId = resolvedTargetId || env.id;
+				},
+				清空待处理技能: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 清空待处理技能`, event);
+					env.runtime.previousSkill = env.runtime.currentSkill;
+					env.runtime.currentSkill = null;
+					env.runtime.currentSkillVariant = null;
+						// 技能结束后清空瞬态快照，避免把上一个技能的 registlet 分支参数泄漏到下一次。
+						env.runtime.currentSkillBranchParams = {};
+					env.runtime.currentSkillStartupFrames = 0;
+					env.runtime.currentSkillChargingFrames = 0;
+					env.runtime.currentSkillChantingFrames = 0;
+					env.runtime.currentSkillActionFrames = 0;
+					env.btManager.unregisterActiveEffectBt();
+				},
+				清理行为树: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 清理行为树`, event);
+					env.btManager.clear();
+				},
+				添加待处理技能变体: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 添加待处理技能变体`, event);
+					if (!env.runtime.currentSkill) {
+						log.error(`🎮 [${env.name}] 当前技能不存在`);
+						return;
+					}
+					const variant = getSkillVariant(env.runtime.currentSkill, env.runtime.character);
+					log.debug(`技能变体`, variant);
+					env.runtime.currentSkillVariant = variant ?? null;
+				},
+				计算技能生命周期参数: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 计算技能生命周期参数`, event);
+					const skill = env.runtime.currentSkill;
+					const variant = env.runtime.currentSkillVariant;
+					if (!skill || !variant) {
+						log.error(`👤 [${env.name}] 缺少技能或变体，无法计算生命周期参数`);
+						env.runtime.currentSkillStartupFrames = 0;
+						env.runtime.currentSkillChargingFrames = 0;
+						env.runtime.currentSkillChantingFrames = 0;
+						env.runtime.currentSkillActionFrames = 0;
+						return;
+					}
 
-				const startupOriginal = evalNum(variant.startupFrames, "startupFrames");
-				const motionFixed = evalNum(variant.motionFixed, "motionFixed");
-				const motionModified = evalNum(variant.motionModified, "motionModified");
-				const chantingFixed = evalNum(variant.chantingFixed, "chantingFixed");
-				const chantingModified = evalNum(variant.chantingModified, "chantingModified");
-				const reservoirFixed = evalNum(variant.reservoirFixed, "reservoirFixed");
-				const reservoirModified = evalNum(variant.reservoirModified, "reservoirModified");
-
-				const runPipelineFrames = (
-					pipelineName: string,
-					params: Record<string, unknown>,
-					fallback: number,
-				): number => {
-					try {
-						const out = player.runPipeline(pipelineName, params) as Record<string, unknown>;
-						const frames = out?.frames;
-						if (typeof frames === "number" && Number.isFinite(frames)) {
-							return Math.max(0, Math.floor(frames));
+					// 预求值 variant 上的字符串公式，再交给纯计算管线套用行动速度修正。
+					const evaluator = env.services.expressionEvaluator;
+					const evalNum = (expr: string | null | undefined, label: string): number => {
+						if (!expr) return 0;
+						const asNumber = Number(expr);
+						if (Number.isFinite(asNumber)) return asNumber;
+						if (!evaluator) {
+							log.error(`👤 [${env.name}] expressionEvaluator 未注入：${label}`);
+							return 0;
 						}
-					} catch (error) {
-						log.warn(
-							`👤 [${context.owner?.name}] 运行 ${pipelineName} 失败: ${error instanceof Error ? error.message : String(error)}`,
-						);
+						const out = evaluator(expr, {
+							currentFrame: env.runtime.currentFrame,
+							casterId: env.id,
+							targetId: env.runtime.targetId,
+							skillLv: skill.lv ?? 0,
+						});
+						if (typeof out === "number" && Number.isFinite(out)) return out;
+						if (typeof out === "boolean") return out ? 1 : 0;
+						log.warn(`👤 [${env.name}] ${label} 求值结果非数字，置 0：${String(out)}`);
+						return 0;
+					};
+
+					const startupOriginal = evalNum(variant.startupFrames, "startupFrames");
+					const motionFixed = evalNum(variant.motionFixed, "motionFixed");
+					const motionModified = evalNum(variant.motionModified, "motionModified");
+					const chantingFixed = evalNum(variant.chantingFixed, "chantingFixed");
+					const chantingModified = evalNum(variant.chantingModified, "chantingModified");
+					const reservoirFixed = evalNum(variant.reservoirFixed, "reservoirFixed");
+					const reservoirModified = evalNum(variant.reservoirModified, "reservoirModified");
+
+					const runPipelineFrames = (
+						pipelineName: string,
+						params: Record<string, unknown>,
+						fallback: number,
+					): number => {
+						try {
+							const out = env.runPipeline(pipelineName, params) as Record<string, unknown>;
+							const frames = out?.frames;
+							if (typeof frames === "number" && Number.isFinite(frames)) {
+								return Math.max(0, Math.floor(frames));
+							}
+						} catch (error) {
+							log.warn(
+								`👤 [${env.name}] 运行 ${pipelineName} 失败: ${error instanceof Error ? error.message : String(error)}`,
+							);
+						}
+						return Math.max(0, Math.floor(fallback));
+					};
+
+					env.runtime.currentSkillStartupFrames = runPipelineFrames(
+						"skill.startup",
+						{ original: startupOriginal },
+						startupOriginal,
+					);
+					env.runtime.currentSkillChargingFrames = runPipelineFrames(
+						"skill.charging",
+						{ fixed: reservoirFixed, modified: reservoirModified },
+						reservoirFixed + reservoirModified,
+					);
+					env.runtime.currentSkillChantingFrames = runPipelineFrames(
+						"skill.chanting",
+						{ fixed: chantingFixed, modified: chantingModified },
+						chantingFixed + chantingModified,
+					);
+					env.runtime.currentSkillActionFrames = runPipelineFrames(
+						"skill.action",
+						{ fixed: motionFixed, modified: motionModified },
+						motionFixed + motionModified,
+					);
+
+					log.debug(
+						`👤 [${env.name}] 技能帧参数: startup=${env.runtime.currentSkillStartupFrames}, charging=${env.runtime.currentSkillChargingFrames}, chanting=${env.runtime.currentSkillChantingFrames}, action=${env.runtime.currentSkillActionFrames}`,
+					);
+				},
+				执行技能: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 执行技能`, event);
+					log.debug(`技能名称`, env.runtime.currentSkill?.template?.name);
+
+					const skillVariant = env.runtime.currentSkillVariant;
+					if (!skillVariant) {
+						log.error(`🎮 [${env.name}] 当前技能效果不存在`);
+						// env.actor.send({ type: "技能执行完成" });
+						return;
 					}
-					return Math.max(0, Math.floor(fallback));
-				};
 
-				player.runtime.currentSkillStartupFrames = runPipelineFrames(
-					"skill.startup",
-					{ original: startupOriginal },
-					startupOriginal,
-				);
-				player.runtime.currentSkillChargingFrames = runPipelineFrames(
-					"skill.charging",
-					{ fixed: reservoirFixed, modified: reservoirModified },
-					reservoirFixed + reservoirModified,
-				);
-				player.runtime.currentSkillChantingFrames = runPipelineFrames(
-					"skill.chanting",
-					{ fixed: chantingFixed, modified: chantingModified },
-					chantingFixed + chantingModified,
-				);
-				player.runtime.currentSkillActionFrames = runPipelineFrames(
-					"skill.action",
-					{ fixed: motionFixed, modified: motionModified },
-					motionFixed + motionModified,
-				);
+					// 提取行为树定义
+					// const treeDefinition = skillLogicExample.default.definition;
+					// const agentCode = skillLogicExample.default.agent;
 
-				log.debug(
-					`👤 [${context.owner?.name}] 技能帧参数: startup=${player.runtime.currentSkillStartupFrames}, charging=${player.runtime.currentSkillChargingFrames}, chanting=${player.runtime.currentSkillChantingFrames}, action=${player.runtime.currentSkillActionFrames}`,
-				);
-			},
-			执行技能: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 执行技能`, event);
-				log.debug(`技能名称`, player.runtime.currentSkill?.template?.name);
+					const treeDefinition = skillVariant.activeEffect.definition;
+					const agentCode = skillVariant.activeEffect.agent;
 
-				const skillVariant = player.runtime.currentSkillVariant;
-				if (!skillVariant) {
-					log.error(`🎮 [${context.owner?.name}] 当前技能效果不存在`);
-					player.actor.send({ type: "技能执行完成" });
-					return;
-				}
+					const treeData = env.btManager.registerActiveEffectBt(treeDefinition, agentCode);
+					if (!treeData) {
+						log.error(`🎮 [${env.name}] 技能逻辑不是有效的行为树 TreeData，已跳过执行`, treeDefinition);
+						// env.actor.send({ type: "技能执行完成" });
+						return;
+					}
+				},
+				重置控制抵抗时间: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 重置控制抵抗时间`, event);
+				},
+				中断当前行为: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 中断当前行为`, event);
+				},
+				启动受控动画: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 启动受控动画`, event);
+				},
+				重置到复活状态: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 重置到复活状态`, event);
+				},
+				发送命中判定事件给自己: playerRaiseHitCheck,
+				反馈命中结果给施法者: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 反馈命中结果给施法者`, event);
+				},
+				发送控制判定事件给自己: playerRaiseControlCheck,
+				命中计算管线: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 命中计算管线`, event);
+					const session = context.hitSession;
+					if (!session) {
+						log.warn(`👤 [${env.name}] 命中计算管线：hitSession 为空，跳过`);
+						return;
+					}
+					resolveHitCheck(env.runPipeline, session, env.services.random);
+				},
+				根据命中结果进行下一步: playerRaiseControlCheck,
+				控制判定管线: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 控制判定管线`, event);
+					// 骨架版：statusResist 管线调用将在异常施加需求出现时迭代加入。
+					// 当前保持空实现，确保 "进行伤害计算" 能正常触发。
+				},
+				反馈控制结果给施法者: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 反馈控制结果给施法者`, event);
+				},
+				发送伤害计算事件给自己: playerRaiseDamageCalc,
+				伤害计算管线: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 伤害计算管线`, event);
+					const session = context.hitSession;
+					if (!session) {
+						log.warn(`👤 [${env.name}] 伤害计算管线：hitSession 为空，跳过`);
+						return;
+					}
+					resolveDamageAndApply(
+						env.id,
+						env.services.getCurrentFrame(),
+						() => env.statContainer.getValue("hp.current"),
+						() => env.statContainer.getValue("mp.current"),
+						(value) =>
+							env.statContainer.addModifier("hp.current", ModifierType.DYNAMIC_FIXED, value, {
+								id: `damage.hp.${session.damageRequest.areaId}`,
+								name: "damage-hp",
+								type: "system",
+							}),
+						(value) =>
+							env.statContainer.addModifier("mp.current", ModifierType.DYNAMIC_FIXED, value, {
+								id: `damage.mp.${session.damageRequest.areaId}`,
+								name: "damage-mp",
+								type: "system",
+							}),
+						env.notifyDomainEvent,
+						env.runPipeline,
+						env.services.expressionEvaluator,
+						session,
+					);
+				},
+				反馈伤害结果给施法者: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 反馈伤害结果给施法者`, event);
+				},
+				发送属性修改事件给自己: playerRaiseHpAttrUpdate(env.statContainer),
+				发出属性变化域事件: ({ context, event }) => {
+					const e = event as 修改属性;
+					const attr = e.data?.attr;
+					const newValue = e.data?.value ?? 0;
 
-				// 提取行为树定义
-				// const treeDefinition = skillLogicExample.default.definition;
-				// const agentCode = skillLogicExample.default.agent;
+					// 获取当前属性值
+					const hp = env.statContainer.getValue("hp.current");
+					const mp = env.statContainer.getValue("mp.current");
+					const position = env.position;
 
-				const treeDefinition = skillVariant.activeEffect.definition;
-				const agentCode = skillVariant.activeEffect.agent;
-
-				const treeData = player.btManager.registerActiveEffectBt(treeDefinition, agentCode);
-				if (!treeData) {
-					log.error(`🎮 [${context.owner?.name}] 技能逻辑不是有效的行为树 TreeData，已跳过执行`, treeDefinition);
-					player.actor.send({ type: "技能执行完成" });
-					return;
-				}
-			},
-			重置控制抵抗时间: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 重置控制抵抗时间`, event);
-			},
-			中断当前行为: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 中断当前行为`, event);
-			},
-			启动受控动画: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 启动受控动画`, event);
-			},
-			重置到复活状态: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 重置到复活状态`, event);
-			},
-			发送命中判定事件给自己: playerRaiseHitCheck,
-			反馈命中结果给施法者: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 反馈命中结果给施法者`, event);
-			},
-			发送控制判定事件给自己: playerRaiseControlCheck,
-			命中计算管线: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 命中计算管线`, event);
-				const session = context.hitSession;
-				if (!session) {
-					log.warn(`👤 [${context.owner?.name}] 命中计算管线：hitSession 为空，跳过`);
-					return;
-				}
-				resolveHitCheck(player, session, player.services.random);
-			},
-			根据命中结果进行下一步: playerRaiseControlCheck,
-			控制判定管线: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 控制判定管线`, event);
-				// 骨架版：statusResist 管线调用将在异常施加需求出现时迭代加入。
-				// 当前保持空实现，确保 "进行伤害计算" 能正常触发。
-			},
-			反馈控制结果给施法者: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 反馈控制结果给施法者`, event);
-			},
-			发送伤害计算事件给自己: playerRaiseDamageCalc,
-			伤害计算管线: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 伤害计算管线`, event);
-				const session = context.hitSession;
-				if (!session) {
-					log.warn(`👤 [${context.owner?.name}] 伤害计算管线：hitSession 为空，跳过`);
-					return;
-				}
-				resolveDamageAndApply(player, session);
-			},
-			反馈伤害结果给施法者: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 反馈伤害结果给施法者`, event);
-			},
-			发送属性修改事件给自己: playerRaiseHpAttrUpdate,
-			发出属性变化域事件: ({ context, event }) => {
-				const owner = context.owner;
-				if (!owner) return;
-
-				const e = event as 修改属性;
-				const attr = e.data?.attr;
-				const newValue = e.data?.value ?? 0;
-
-				// 获取当前属性值
-				const hp = owner.statContainer.getValue("hp.current");
-				const mp = owner.statContainer.getValue("mp.current");
-				const position = owner.position;
-
-				// 发出 state_changed 事件
-				owner.notifyDomainEvent({
-					type: "state_changed",
-					memberId: owner.id,
-					hp: attr === "hp.current" ? newValue : hp,
-					mp: attr === "mp.current" ? newValue : mp,
-					position,
-				});
-
-				// 如果是 HP 变化，检查是否受击/死亡
-				// 注意：这里无法准确判断受击，因为不知道修改前的值
-				// 受击/死亡事件应该由伤害系统直接发出
-				if (attr === "hp.current" && newValue <= 0 && hp > 0) {
-					// 死亡事件
-					owner.notifyDomainEvent({
-						type: "death",
-						memberId: owner.id,
+					// 发出 state_changed 事件
+					env.notifyDomainEvent({
+						type: "state_changed",
+						memberId: env.id,
+						hp: attr === "hp.current" ? newValue : hp,
+						mp: attr === "mp.current" ? newValue : mp,
+						position,
 					});
-				}
-			},
-			发出移动开始域事件: ({ context, event: _event }) => {
-				const owner = context.owner;
-				if (!owner) return;
 
-				owner.notifyDomainEvent({
-					type: "move_started",
-					memberId: owner.id,
-					position: owner.position,
-				});
-			},
-			发出移动停止域事件: ({ context, event: _event }) => {
-				const owner = context.owner;
-				if (!owner) return;
+					// 如果是 HP 变化，检查是否受击/死亡
+					// 注意：这里无法准确判断受击，因为不知道修改前的值
+					// 受击/死亡事件应该由伤害系统直接发出
+					if (attr === "hp.current" && newValue <= 0 && hp > 0) {
+						// 死亡事件
+						env.notifyDomainEvent({
+							type: "death",
+							memberId: env.id,
+						});
+					}
+				},
+				发出移动开始域事件: ({ context, event: _event }) => {
+					env.notifyDomainEvent({
+						type: "move_started",
+						memberId: env.id,
+						position: env.position,
+					});
+				},
+				发出移动停止域事件: ({ context, event: _event }) => {
+					env.notifyDomainEvent({
+						type: "move_stopped",
+						memberId: env.id,
+						position: env.position,
+					});
+				},
+				发出施法进度开始事件: ({ context, event: _event }) => {
+					const skillId = env.runtime.currentSkill?.id ?? "";
+					if (!skillId) return;
 
-				owner.notifyDomainEvent({
-					type: "move_stopped",
-					memberId: owner.id,
-					position: owner.position,
-				});
-			},
-			发出施法进度开始事件: ({ context, event: _event }) => {
-				const owner = context.owner;
-				if (!owner) return;
+					env.notifyDomainEvent({
+						type: "cast_progress",
+						memberId: env.id,
+						skillId,
+						progress: 0,
+					});
+				},
+				发出施法进度结束事件: ({ context, event: _event }) => {
+					const skillId = env.runtime.currentSkill?.id ?? "";
+					if (!skillId) return;
 
-				const skillId = player.runtime.currentSkill?.id ?? "";
-				if (!skillId) return;
-
-				owner.notifyDomainEvent({
-					type: "cast_progress",
-					memberId: owner.id,
-					skillId,
-					progress: 0,
-				});
-			},
-			发出施法进度结束事件: ({ context, event: _event }) => {
-				const owner = context.owner;
-				if (!owner) return;
-
-				const skillId = player.runtime.currentSkill?.id ?? "";
-				if (!skillId) return;
-
-				owner.notifyDomainEvent({
-					type: "cast_progress",
-					memberId: owner.id,
-					skillId,
-					progress: 1,
-				});
-			},
-			发送buff修改事件给自己: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 发送buff修改事件给自己`, event);
-			},
-			记录伤害请求: playerAssignHitSession,
-			清空受击缓存: playerClearHitSession,
-			修改目标Id: ({ context, event }, params: { targetId: string }) => {
-				log.debug(`👤 [${context.owner?.name}] 修改目标Id`, event);
-				// 统一 targetId：runtime 是跨系统共享读面
-				player.runtime.targetId = params.targetId;
-			},
-			logEvent: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 日志事件`, event);
-			},
+					env.notifyDomainEvent({
+						type: "cast_progress",
+						memberId: env.id,
+						skillId,
+						progress: 1,
+					});
+				},
+				发送buff修改事件给自己: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 发送buff修改事件给自己`, event);
+				},
+				记录伤害请求: playerAssignHitSession(env.id),
+				清空受击缓存: playerClearHitSession,
+				修改目标Id: ({ context, event }, params: { targetId: string }) => {
+					log.debug(`👤 [${env.name}] 修改目标Id`, event);
+					// 统一 targetId：runtime 是跨系统共享读面
+					env.runtime.targetId = params.targetId;
+				},
+				logEvent: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 日志事件`, event);
+				},
 			},
 			guards: {
-			存在蓄力阶段: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 判断技能是否有蓄力阶段`, event);
+				存在蓄力阶段: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 判断技能是否有蓄力阶段`, event);
 
-				const variant = player.runtime.currentSkillVariant;
-				if (!variant) {
-					log.error(`👤 [${context.owner?.name}] 技能效果不存在`);
-					return false;
-				}
-
-				// 蓄力阶段相关属性（假设使用chargeFixed和chargeModified）
-				const reservoirFixed = player.services.expressionEvaluator?.(variant.reservoirFixed ?? "0", {
-					currentFrame: player.runtime.currentFrame,
-					casterId: player.id,
-				});
-				if (typeof reservoirFixed !== "number") {
-					log.error(`👤 [${context.owner?.name}] 蓄力阶段固定值不是数字`);
-					return false;
-				}
-				const reservoirModified = player.services.expressionEvaluator?.(variant.reservoirModified ?? "0", {
-					currentFrame: player.runtime.currentFrame,
-					casterId: player.id,
-				});
-				if (typeof reservoirModified !== "number") {
-					log.error(`👤 [${context.owner?.name}] 蓄力阶段可加速值不是数字`);
-					return false;
-				}
-				log.debug(reservoirFixed + reservoirModified > 0 ? "有蓄力阶段" : "没有蓄力阶段");
-				return reservoirFixed + reservoirModified > 0;
-			},
-			存在咏唱阶段: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 判断技能是否有咏唱阶段`, event);
-				const variant = player.runtime.currentSkillVariant;
-				if (!variant) {
-					log.error(`👤 [${context.owner?.name}] 技能效果不存在`);
-					return false;
-				}
-				const chantingFixed = player.services.expressionEvaluator?.(variant.chantingFixed ?? "0", {
-					currentFrame: player.runtime.currentFrame,
-					casterId: player.id,
-				});
-				if (typeof chantingFixed !== "number") {
-					log.error(`👤 [${context.owner?.name}] 咏唱阶段固定值不是数字`);
-					return false;
-				}
-				const chantingModified = player.services.expressionEvaluator?.(variant.chantingModified ?? "0", {
-					currentFrame: player.runtime.currentFrame,
-					casterId: player.id,
-				});
-				if (typeof chantingModified !== "number") {
-					log.error(`👤 [${context.owner?.name}] 咏唱阶段可加速值不是数字`);
-					return false;
-				}
-				log.debug(chantingFixed + chantingModified > 0 ? "有咏唱阶段" : "没有咏唱阶段");
-				return chantingFixed + chantingModified > 0;
-			},
-			存在后续连击: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 判断技能是否有后续连击`, event);
-				// Add your guard condition here
-				return false;
-			},
-			没有可用技能效果: ({ context, event }) => {
-				// Add your guard condition here
-				log.debug(`👤 [${context.owner?.name}] 判断技能是否有可用效果`, event);
-				const e = event as 使用技能;
-				const skillId = e.data.skillId;
-				const skill = player.runtime.currentSkill;
-				if (!skill) {
-					log.error(`🎮 [${context.owner?.name}] 技能不存在: ${skillId}`);
-					return true;
-				}
-				const variant = getSkillVariant(skill, player);
-				if (!variant) {
-					log.error(`🎮 [${context.owner?.name}] 技能变体不存在: ${skillId}`);
-					return true;
-				}
-				log.debug(`🎮 [${context.owner?.name}] 的技能 ${skill.template?.name} 可用`);
-				return false;
-			},
-			还未冷却: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 判断技能是否还未冷却`, event);
-				const e = event as 使用技能;
-				const skillId = e.data.skillId;
-				const skillIndex = player.runtime.skillList.findIndex((s) => s.id === skillId);
-				const res = skillIndex >= 0 ? player.runtime.skillCooldowns[skillIndex] : undefined;
-				if (res === undefined) {
-					log.debug(`- 该技能不存在冷却时间`);
-					return false;
-				}
-				if (res <= 0) {
-					log.debug(`- 该技能处于冷却状态`);
-					return false;
-				}
-				log.debug(`- 该技能未冷却，剩余冷却时间：${res}`);
-				return true;
-			},
-			施法条件不满足: ({ context, event }) => {
-				// 此守卫通过后说明技能可发动，则更新当前技能数据
-				const e = event as 使用技能;
-				const skillId = e.data.skillId;
-
-				const skill = player.runtime.currentSkill;
-				if (!skill) {
-					log.error(`🎮 [${context.owner?.name}] 技能不存在: ${skillId}`);
-					return true;
-				}
-				const variant = getSkillVariant(skill, player);
-				if (!variant) {
-					log.error(`🎮 [${context.owner?.name}] 技能效果不存在: ${skillId}`);
-					return true;
-				}
-				const evalCost = (expr: string | null | undefined, label: string): number | null => {
-					// 设计说明：消耗字段在数据库中允许为空；空值代表无消耗，非空公式必须得到有限数字。
-					const normalizedExpr = expr?.trim();
-					if (!normalizedExpr) return 0;
-					const cost = player.services.expressionEvaluator?.(normalizedExpr, {
-						currentFrame: player.runtime.currentFrame,
-						casterId: player.id,
-						skillLv: skill?.lv ?? 0,
-					});
-					if (typeof cost === "number" && Number.isFinite(cost)) {
-						return cost;
+					const variant = env.runtime.currentSkillVariant;
+					if (!variant) {
+						log.error(`👤 [${env.name}] 技能效果不存在`);
+						return false;
 					}
-					log.error(`👤 [${context.owner?.name}] 技能${label}消耗不是有限数字`);
-					return null;
-				};
 
-				const hpCost = evalCost(variant.hpCost, "HP");
-				if (hpCost === null) return true;
-				const mpCost = evalCost(variant.mpCost, "MP");
-				if (mpCost === null) return true;
-
-				if (
-					hpCost > player.statContainer.getValue("hp.current") ||
-					mpCost > player.statContainer.getValue("mp.current")
-				) {
-					log.debug(`- 该技能不满足施法消耗，HP:${hpCost} MP:${mpCost}`);
-					// 这里需要撤回RS的修改
+					// 蓄力阶段相关属性（假设使用chargeFixed和chargeModified）
+					const reservoirFixed = env.services.expressionEvaluator?.(variant.reservoirFixed ?? "0", {
+						currentFrame: env.runtime.currentFrame,
+						casterId: env.id,
+					});
+					if (typeof reservoirFixed !== "number") {
+						log.error(`👤 [${env.name}] 蓄力阶段固定值不是数字`);
+						return false;
+					}
+					const reservoirModified = env.services.expressionEvaluator?.(variant.reservoirModified ?? "0", {
+						currentFrame: env.runtime.currentFrame,
+						casterId: env.id,
+					});
+					if (typeof reservoirModified !== "number") {
+						log.error(`👤 [${env.name}] 蓄力阶段可加速值不是数字`);
+						return false;
+					}
+					log.debug(reservoirFixed + reservoirModified > 0 ? "有蓄力阶段" : "没有蓄力阶段");
+					return reservoirFixed + reservoirModified > 0;
+				},
+				存在咏唱阶段: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 判断技能是否有咏唱阶段`, event);
+					const variant = env.runtime.currentSkillVariant;
+					if (!variant) {
+						log.error(`👤 [${env.name}] 技能效果不存在`);
+						return false;
+					}
+					const chantingFixed = env.services.expressionEvaluator?.(variant.chantingFixed ?? "0", {
+						currentFrame: env.runtime.currentFrame,
+						casterId: env.id,
+					});
+					if (typeof chantingFixed !== "number") {
+						log.error(`👤 [${env.name}] 咏唱阶段固定值不是数字`);
+						return false;
+					}
+					const chantingModified = env.services.expressionEvaluator?.(variant.chantingModified ?? "0", {
+						currentFrame: env.runtime.currentFrame,
+						casterId: env.id,
+					});
+					if (typeof chantingModified !== "number") {
+						log.error(`👤 [${env.name}] 咏唱阶段可加速值不是数字`);
+						return false;
+					}
+					log.debug(chantingFixed + chantingModified > 0 ? "有咏唱阶段" : "没有咏唱阶段");
+					return chantingFixed + chantingModified > 0;
+				},
+				存在后续连击: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 判断技能是否有后续连击`, event);
+					// Add your guard condition here
+					return false;
+				},
+				没有可用技能效果: ({ context, event }) => {
+					// Add your guard condition here
+					log.debug(`👤 [${env.name}] 判断技能是否有可用效果`, event);
+					const e = event as 使用技能;
+					const skillId = e.data.skillId;
+					const skill = env.runtime.currentSkill;
+					if (!skill) {
+						log.error(`🎮 [${env.name}] 技能不存在: ${skillId}`);
+						return true;
+					}
+					const variant = getSkillVariant(skill, env.runtime.character);
+					if (!variant) {
+						log.error(`🎮 [${env.name}] 技能变体不存在: ${skillId}`);
+						return true;
+					}
+					log.debug(`🎮 [${env.name}] 的技能 ${skill.template?.name} 可用`);
+					return false;
+				},
+				还未冷却: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 判断技能是否还未冷却`, event);
+					const e = event as 使用技能;
+					const skillId = e.data.skillId;
+					const skillIndex = env.runtime.skillList.findIndex((s) => s.id === skillId);
+					const res = skillIndex >= 0 ? env.runtime.skillCooldowns[skillIndex] : undefined;
+					if (res === undefined) {
+						log.debug(`- 该技能不存在冷却时间`);
+						return false;
+					}
+					if (res <= 0) {
+						log.debug(`- 该技能处于冷却状态`);
+						return false;
+					}
+					log.debug(`- 该技能未冷却，剩余冷却时间：${res}`);
 					return true;
-				}
-				log.debug(`- 该技能满足施法消耗，HP:${hpCost} MP:${mpCost}`);
-				return false;
-			},
-			技能带有心眼: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 判断技能是否有心眼`, event);
-				return true;
-			},
-			目标不抵抗此技能的控制效果: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 判断目标是否不抵抗此技能的控制效果`, event);
-				return true;
-			},
-			目标抵抗此技能的控制效果: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 判断目标是否抵抗此技能的控制效果`, event);
-				return true;
-			},
-			是物理伤害: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 判断技能是否是物理伤害`, event);
-				return true;
-			},
-			满足存活条件: ({ context, event }) => {
-				log.debug(`👤 [${context.owner?.name}] 判断玩家是否满足存活条件`, event);
-				const hp = player.statContainer.getValue("hp.current");
-				const isAlive = hp > 0;
-				context.isAlive = isAlive;
-				return isAlive;
-			},
+				},
+				施法条件不满足: ({ context, event }) => {
+					// 此守卫通过后说明技能可发动，则更新当前技能数据
+					const e = event as 使用技能;
+					const skillId = e.data.skillId;
+
+					const skill = env.runtime.currentSkill;
+					if (!skill) {
+						log.error(`🎮 [${env.name}] 技能不存在: ${skillId}`);
+						return true;
+					}
+					const variant = getSkillVariant(skill, env.runtime.character);
+					if (!variant) {
+						log.error(`🎮 [${env.name}] 技能效果不存在: ${skillId}`);
+						return true;
+					}
+					const evalCost = (expr: string | null | undefined, label: string): number | null => {
+						// 设计说明：消耗字段在数据库中允许为空；空值代表无消耗，非空公式必须得到有限数字。
+						const normalizedExpr = expr?.trim();
+						if (!normalizedExpr) return 0;
+						const cost = env.services.expressionEvaluator?.(normalizedExpr, {
+							currentFrame: env.runtime.currentFrame,
+							casterId: env.id,
+							skillLv: skill?.lv ?? 0,
+						});
+						if (typeof cost === "number" && Number.isFinite(cost)) {
+							return cost;
+						}
+						log.error(`👤 [${env.name}] 技能${label}消耗不是有限数字`);
+						return null;
+					};
+
+					const hpCost = evalCost(variant.hpCost, "HP");
+					if (hpCost === null) return true;
+					const mpCost = evalCost(variant.mpCost, "MP");
+					if (mpCost === null) return true;
+
+					if (hpCost > env.statContainer.getValue("hp.current") || mpCost > env.statContainer.getValue("mp.current")) {
+						log.debug(`- 该技能不满足施法消耗，HP:${hpCost} MP:${mpCost}`);
+						// 这里需要撤回RS的修改
+						return true;
+					}
+					log.debug(`- 该技能满足施法消耗，HP:${hpCost} MP:${mpCost}`);
+					return false;
+				},
+				技能带有心眼: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 判断技能是否有心眼`, event);
+					return true;
+				},
+				目标不抵抗此技能的控制效果: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 判断目标是否不抵抗此技能的控制效果`, event);
+					return true;
+				},
+				目标抵抗此技能的控制效果: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 判断目标是否抵抗此技能的控制效果`, event);
+					return true;
+				},
+				是物理伤害: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 判断技能是否是物理伤害`, event);
+					return true;
+				},
+				满足存活条件: ({ context, event }) => {
+					log.debug(`👤 [${env.name}] 判断玩家是否满足存活条件`, event);
+					const hp = env.statContainer.getValue("hp.current");
+					const isAlive = hp > 0;
+					context.isAlive = isAlive;
+					return isAlive;
+				},
 			},
 		})
 		.createMachine({
-		context: {
-			isAlive: true,
-			createdAtFrame: player.runtime.currentFrame,
-			owner: player,
-			hitSession: null,
-		},
-		id: machineId,
-		initial: "存活",
-		entry: {
-			type: "根据角色配置生成初始状态",
-		},
-		states: {
-			存活: {
-				initial: "可操作状态",
-				on: {
-					受到攻击: {
-						actions: [
-							{
-								type: "记录伤害请求",
-							},
-							{
-								type: "发送命中判定事件给自己",
-							},
-						],
-					},
-					进行命中判定: {
-						actions: [
-							{
-								type: "命中计算管线",
-							},
-							{
-								type: "反馈命中结果给施法者",
-							},
-							{
-								type: "根据命中结果进行下一步",
-							},
-						],
-					},
-					进行控制判定: {
-						actions: [
-							{
-								type: "控制判定管线",
-							},
-							{
-								type: "反馈控制结果给施法者",
-							},
-							{
-								type: "发送伤害计算事件给自己",
-							},
-						],
-					},
-					进行伤害计算: {
-						actions: [
-							{
-								type: "伤害计算管线",
-							},
-							{
-								type: "反馈伤害结果给施法者",
-							},
-							{
+			context: {
+				isAlive: true,
+				createdAtFrame: env.runtime.currentFrame,
+				hitSession: null,
+			},
+			id: machineId,
+			initial: "存活",
+			entry: {
+				type: "根据角色配置生成初始状态",
+			},
+			states: {
+				存活: {
+					initial: "可操作状态",
+					on: {
+						受到攻击: {
+							actions: [
+								{
+									type: "记录伤害请求",
+								},
+								{
+									type: "发送命中判定事件给自己",
+								},
+							],
+						},
+						进行命中判定: {
+							actions: [
+								{
+									type: "命中计算管线",
+								},
+								{
+									type: "反馈命中结果给施法者",
+								},
+								{
+									type: "根据命中结果进行下一步",
+								},
+							],
+						},
+						进行控制判定: {
+							actions: [
+								{
+									type: "控制判定管线",
+								},
+								{
+									type: "反馈控制结果给施法者",
+								},
+								{
+									type: "发送伤害计算事件给自己",
+								},
+							],
+						},
+						进行伤害计算: {
+							actions: [
+								{
+									type: "伤害计算管线",
+								},
+								{
+									type: "反馈伤害结果给施法者",
+								},
+								{
+									type: "发送属性修改事件给自己",
+								},
+								{
+									type: "清空受击缓存",
+								},
+							],
+						},
+						收到buff增删事件: {
+							actions: [
+								{
+									type: "发送buff修改事件给自己",
+								},
+							],
+						},
+						受到治疗: {
+							target: "存活",
+							actions: {
 								type: "发送属性修改事件给自己",
 							},
+						},
+						修改属性: [
 							{
-								type: "清空受击缓存",
+								target: "存活",
+								guard: {
+									type: "满足存活条件",
+								},
+								actions: {
+									type: "发出属性变化域事件",
+								},
+							},
+							{
+								target: "死亡",
+								actions: {
+									type: "发出属性变化域事件",
+								},
 							},
 						],
-					},
-					收到buff增删事件: {
-						actions: [
-							{
-								type: "发送buff修改事件给自己",
-							},
-						],
-					},
-					受到治疗: {
-						target: "存活",
-						actions: {
-							type: "发送属性修改事件给自己",
-						},
-					},
-					修改属性: [
-						{
-							target: "存活",
-							guard: {
-								type: "满足存活条件",
-							},
+						修改buff: {},
+						切换目标: {
 							actions: {
-								type: "发出属性变化域事件",
-							},
-						},
-						{
-							target: "死亡",
-							actions: {
-								type: "发出属性变化域事件",
-							},
-						},
-					],
-					修改buff: {},
-					切换目标: {
-						actions: {
-							type: "修改目标Id",
-							params: ({ event }) => {
-								const e = event as 切换目标;
-								return { targetId: e.data.targetId };
+								type: "修改目标Id",
+								params: ({ event }) => {
+									const e = event as 切换目标;
+									return { targetId: e.data.targetId };
+								},
 							},
 						},
 					},
-				},
-				description: "玩家存活状态，此时可操作且可影响上下文",
-				states: {
-					可操作状态: {
-						initial: "空闲状态",
-						on: {
-							应用控制: {
-								target: "控制状态",
-							},
-						},
-						description: "可响应输入操作",
-						states: {
-							空闲状态: {
-								initial: "静止",
-								on: {
-									使用格挡: {
-										target: "格挡状态",
-									},
-									使用闪躲: {
-										target: "闪躲中",
-									},
-									使用技能: {
-										target: "技能处理状态",
-									},
-								},
-								states: {
-									静止: {
-										on: {
-											移动: {
-												target: "移动中",
-											},
-										},
-										entry: {
-											type: "启用站立动画",
-										},
-									},
-									移动中: {
-										on: {
-											停止移动: {
-												target: "静止",
-											},
-										},
-										entry: {
-											type: "启用移动动画",
-										},
-									},
+					description: "玩家存活状态，此时可操作且可影响上下文",
+					states: {
+						可操作状态: {
+							initial: "空闲状态",
+							on: {
+								应用控制: {
+									target: "控制状态",
 								},
 							},
-							格挡状态: {
-								on: {
-									结束格挡: {
-										target: "空闲状态",
+							description: "可响应输入操作",
+							states: {
+								空闲状态: {
+									initial: "静止",
+									on: {
+										使用格挡: {
+											target: "格挡状态",
+										},
+										使用闪躲: {
+											target: "闪躲中",
+										},
+										使用技能: {
+											target: "技能处理状态",
+										},
 									},
-								},
-							},
-							闪躲中: {
-								on: {
-									收到闪躲持续时间结束通知: {
-										target: "空闲状态",
-									},
-								},
-							},
-							技能处理状态: {
-								initial: "初始化技能",
-								entry: {
-									type: "添加待处理技能",
-								},
-								exit: {
-									type: "清空待处理技能",
-								},
-								states: {
-									初始化技能: {
-										always: [
-											{
-												target: "警告状态",
-												guard: "没有可用技能效果",
+									states: {
+										静止: {
+											on: {
+												移动: {
+													target: "移动中",
+												},
 											},
-											{
-												target: "警告状态",
-												guard: "还未冷却",
-											},
-											{
-												target: "警告状态",
-												guard: "施法条件不满足",
-											},
-											{
-												target: "执行技能中",
-											},
-										],
-									},
-									警告状态: {
-										on: {
-											收到警告结束通知: {
-												target: `#${machineId}.存活.可操作状态.空闲状态`,
+											entry: {
+												type: "启用站立动画",
 											},
 										},
-										entry: [
-											{
-												type: "显示警告",
+										移动中: {
+											on: {
+												停止移动: {
+													target: "静止",
+												},
 											},
-											{
-												type: "创建警告结束通知",
+											entry: {
+												type: "启用移动动画",
 											},
-										],
+										},
 									},
-									执行技能中: {
-										entry: [
-											{ type: "发出施法进度开始事件" },
-											{ type: "添加待处理技能变体" },
-											{ type: "计算技能生命周期参数" },
-											{ type: "执行技能" },
-										],
-										on: {
-											技能执行完成: [
+								},
+								格挡状态: {
+									on: {
+										结束格挡: {
+											target: "空闲状态",
+										},
+									},
+								},
+								闪躲中: {
+									on: {
+										收到闪躲持续时间结束通知: {
+											target: "空闲状态",
+										},
+									},
+								},
+								技能处理状态: {
+									initial: "初始化技能",
+									entry: {
+										type: "添加待处理技能",
+									},
+									exit: {
+										type: "清空待处理技能",
+									},
+									states: {
+										初始化技能: {
+											always: [
 												{
-													target: `#${machineId}.存活.可操作状态.技能处理状态`,
-													guard: "存在后续连击",
-													actions: [{ type: "发出施法进度结束事件" }],
+													target: "警告状态",
+													guard: "没有可用技能效果",
 												},
 												{
-													target: `#${machineId}.存活.可操作状态.空闲状态`,
-													actions: [{ type: "发出施法进度结束事件" }],
+													target: "警告状态",
+													guard: "还未冷却",
+												},
+												{
+													target: "警告状态",
+													guard: "施法条件不满足",
+												},
+												{
+													target: "执行技能中",
 												},
 											],
 										},
+										警告状态: {
+											on: {
+												收到警告结束通知: {
+													target: `#${machineId}.存活.可操作状态.空闲状态`,
+												},
+											},
+											entry: [
+												{
+													type: "显示警告",
+												},
+												{
+													type: "创建警告结束通知",
+												},
+											],
+										},
+										执行技能中: {
+											entry: [
+												{ type: "发出施法进度开始事件" },
+												{ type: "添加待处理技能变体" },
+												{ type: "计算技能生命周期参数" },
+												{ type: "执行技能" },
+											],
+											on: {
+												技能执行完成: [
+													{
+														target: `#${machineId}.存活.可操作状态.技能处理状态`,
+														guard: "存在后续连击",
+														actions: [{ type: "发出施法进度结束事件" }],
+													},
+													{
+														target: `#${machineId}.存活.可操作状态.空闲状态`,
+														actions: [{ type: "发出施法进度结束事件" }],
+													},
+												],
+											},
+										},
 									},
 								},
 							},
 						},
-					},
-					控制状态: {
-						on: {
-							控制时间结束: {
-								target: `#${machineId}.存活.可操作状态.空闲状态`,
+						控制状态: {
+							on: {
+								控制时间结束: {
+									target: `#${machineId}.存活.可操作状态.空闲状态`,
+								},
 							},
-						},
-						entry: [
-							{
-								type: "重置控制抵抗时间",
-							},
-							{
-								type: "中断当前行为",
-							},
-							{
-								type: "启动受控动画",
-							},
-						],
-					},
-				},
-			},
-			死亡: {
-				entry: {
-					type: "清理行为树",
-				},
-				on: {
-					复活: {
-						target: `#${machineId}.存活.可操作状态`,
-						actions: {
-							type: "重置到复活状态",
+							entry: [
+								{
+									type: "重置控制抵抗时间",
+								},
+								{
+									type: "中断当前行为",
+								},
+								{
+									type: "启动受控动画",
+								},
+							],
 						},
 					},
 				},
-				description: "不可操作，中断当前行为",
+				死亡: {
+					entry: {
+						type: "清理行为树",
+					},
+					on: {
+						复活: {
+							target: `#${machineId}.存活.可操作状态`,
+							actions: {
+								type: "重置到复活状态",
+							},
+						},
+					},
+					description: "不可操作，中断当前行为",
+				},
 			},
-		},
 		});
 
 	return machine;
 };
 
-const getSkillVariant = (skill: CharacterSkillWithRelations, player: Player) => {
+const getSkillVariant = (skill: CharacterSkillWithRelations, character: CharacterWithRelations | null) => {
+	if (character === null) return undefined;
 	return skill.template?.variants.find((e: SkillVariant) => {
-		const weaponCondition = e.targetMainWeaponType === player.activeCharacter.weapon?.type || e.targetMainWeaponType === "Any"
-		const subWeaponCondition = e.targetSubWeaponType === player.activeCharacter.subWeapon?.type || e.targetSubWeaponType === "Any"
-		const armorAbilityCondition = e.targetArmorAbilityType === player.activeCharacter.armor?.ability || e.targetArmorAbilityType === "Any"
-		const result = weaponCondition && subWeaponCondition && armorAbilityCondition
+		const weaponCondition = e.targetMainWeaponType === character.weapon?.type || e.targetMainWeaponType === "Any";
+		const subWeaponCondition = e.targetSubWeaponType === character.subWeapon?.type || e.targetSubWeaponType === "Any";
+		const armorAbilityCondition =
+			e.targetArmorAbilityType === character.armor?.ability || e.targetArmorAbilityType === "Any";
+		const result = weaponCondition && subWeaponCondition && armorAbilityCondition;
 		return result;
-	})
+	});
 };

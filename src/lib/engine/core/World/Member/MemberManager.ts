@@ -150,6 +150,35 @@ export class MemberManager {
 		}
 	}
 
+	/**
+	 * 解析成员技能目标。
+	 *
+	 * 设计说明：
+	 * - 用户没有显式指定目标，或目标落到自己身上时，优先收敛到第一个敌对成员。
+	 * - 如果场景里暂时没有敌对成员，则保留原始目标，让后续流程维持可诊断的状态。
+	 */
+	private resolveTargetId(sourceMemberId: string, requestedTargetId?: string | null): string | null {
+		const source = this.members.get(sourceMemberId);
+		const requested = requestedTargetId?.trim();
+
+		if (requested) {
+			const target = this.members.get(requested);
+			if (target && target.id !== sourceMemberId) {
+				return target.id;
+			}
+		}
+
+		if (source) {
+			for (const member of this.members.values()) {
+				if (member.id !== sourceMemberId && member.campId !== source.campId) {
+					return member.id;
+				}
+			}
+		}
+
+		return sourceMemberId;
+	}
+
 	// ==================== 公共接口 ====================
 	/**
 	 * 创建并注册新成员
@@ -171,6 +200,7 @@ export class MemberManager {
 				const player = new Player(memberData, campId, teamId, position);
 				// 设置域事件发射器
 				player.setDomainEventSender(this.domainEventSender);
+				player.setTargetResolver(this.resolveTargetId.bind(this));
 				player.setEvaluateExpression(this.evaluateExpression);
 				player.setDamageRequestHandler(this.damageRequestHandler);
 				player.setGetCurrentFrame(this.getCurrentFrame);
@@ -201,6 +231,7 @@ export class MemberManager {
 				const mob = new Mob(memberData, campId, teamId, position);
 				// 设置域事件发射器
 				mob.setDomainEventSender(this.domainEventSender);
+				mob.setTargetResolver(this.resolveTargetId.bind(this));
 				mob.setEvaluateExpression(this.evaluateExpression);
 				mob.setDamageRequestHandler(this.damageRequestHandler);
 				mob.setGetCurrentFrame(this.getCurrentFrame);

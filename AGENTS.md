@@ -60,4 +60,4 @@ SW version is extracted from `src/store.ts`'s `version` field.
 - **TypeScript**: strict, `noEmit`, `moduleResolution: bundler`, JSX preserve (Solid).
 - **Env**: `.env` with `dotenv-expand` (supports `${VAR}` references). Copy from `.env.example`.
 - **Text encoding**: source files are UTF-8. When reading or editing from PowerShell, use explicit UTF-8 handling (for example `Get-Content -Encoding UTF8`) so Chinese comments are not misread as mojibake.
-- **No tests exist** in this repo. Pre-commit verification is `pnpm build`.
+- **No tests exist** in this repo.

@@ -12,6 +12,8 @@ export interface PipelineEventSinkEvent {
 	frame: number;
 }
 
+export type MemberTargetResolver = (sourceMemberId: string, requestedTargetId?: string | null) => string | null;
+
 /**
  * 成员运行时服务接口。
  *
@@ -30,6 +32,14 @@ export interface MemberRuntimeServices {
 	renderMessageSender: ((payload: unknown) => void) | null;
 	/** 域事件发射器 */
 	domainEventSender: ((event: MemberDomainEvent) => void) | null;
+	/**
+	 * 目标解析器。
+	 *
+	 * 设计说明：
+	 * - 技能进入 BT 前先把空 target / 自己 target 收敛成一个真实目标。
+	 * - 这样 BT、日志和后续伤害动作会消费同一个最终 targetId，不再在动作层各自补救。
+	 */
+	targetResolver: MemberTargetResolver | null;
 	/**
 	 * 管线事件汇（Pipeline `emit` 算子派发的事件流入此处）。
 	 * 阶段 3 将被 ProcBus 订阅；在 ProcBus 就位前，默认实现仅记录日志。
@@ -55,6 +65,7 @@ export const MemberRuntimeServicesDefaults: MemberRuntimeServices = {
 	domainEventSender: (event: MemberDomainEvent) => {
 		throw new Error(`domainEventSender 未注入：${event}`);
 	},
+	targetResolver: null,
 	pipelineEventSink: null,
 	random: Math.random,
 };

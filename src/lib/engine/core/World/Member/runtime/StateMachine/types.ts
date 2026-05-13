@@ -1,5 +1,13 @@
 import type { Actor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
+import { ExpressionContext } from "~/lib/engine/core/JSProcessor/types";
+import { StageData } from "~/lib/engine/core/Pipeline/stageEnv";
+import { MemberDomainEvent } from "~/lib/engine/core/types";
 import type { Member } from "../../Member";
+import { MemberBaseAttrType, MemberBaseNestedSchema } from "../../MemberBaseSchema";
+import { MemberRuntimeServices } from "../Agent/RuntimeServices";
+import { BtManager } from "../BehaviourTree/BtManager";
+import { ExtractAttrPaths } from "../StatContainer/SchemaTypes";
+import { StatContainer } from "../StatContainer/StatContainer";
 import type { MemberSharedRuntime } from "../types";
 
 /**
@@ -7,24 +15,24 @@ import type { MemberSharedRuntime } from "../types";
  * 基础事件类型，所有成员类型都支持的事件
  */
 export interface MemberCreateEvent extends EventObject {
-  type: "create";
-} 
+	type: "create";
+}
 export interface MemberDestroyEvent extends EventObject {
-  type: "destroy";
+	type: "destroy";
 }
 export interface MemberUpdateEvent extends EventObject {
-  type: "update";
-  timestamp: number;
+	type: "update";
+	timestamp: number;
 }
 export interface MemberCustomEvent extends EventObject {
-  type: string;
-  data?: Record<string, unknown>;
+	type: string;
+	data?: Record<string, unknown>;
 }
 export type MemberEventType =
-  | MemberCreateEvent // 创建事件
-  | MemberDestroyEvent // 销毁事件
-  | MemberUpdateEvent // 更新事件
-  | MemberCustomEvent; // 自定义事件
+	| MemberCreateEvent // 创建事件
+	| MemberDestroyEvent // 销毁事件
+	| MemberUpdateEvent // 更新事件
+	| MemberCustomEvent; // 自定义事件
 
 /**
  * 成员状态机类型
@@ -34,8 +42,8 @@ export type MemberEventType =
  * @template TAttrKey 属性键的字符串联合类型
  */
 export type MemberStateMachine<
-  TStateEvent extends EventObject = MemberEventType, // 状态机事件类型
-  TStateContext extends MemberStateContext = MemberStateContext, // 状态机上下文类型
+	TStateEvent extends EventObject = MemberEventType, // 状态机事件类型
+	TStateContext extends MemberStateContext = MemberStateContext, // 状态机上下文类型
 > = StateMachine<
 	TStateContext, // TContext - 状态机上下文
 	TStateEvent, // TEvent - 事件类型（可扩展）
@@ -53,6 +61,24 @@ export type MemberStateMachine<
 	any // TStateSchema - 状态模式
 >;
 
+// 状态机执行动作时需要的外部能力
+export interface MemberStateMachineEnv<
+	TAttrKey extends string,
+	TStateEvent extends MemberEventType,
+	TStateContext extends MemberStateContext,
+	TRuntime extends MemberSharedRuntime,
+> {
+	id: string;
+	name: string;
+	position: { x: number; y: number; z: number };
+	runtime: TRuntime;
+	statContainer: StatContainer<TAttrKey>;
+	services: MemberRuntimeServices;
+	btManager: BtManager<TAttrKey, TStateEvent, TStateContext, TRuntime>;
+	notifyDomainEvent(event: MemberDomainEvent): void;
+	runPipeline(pipelineName: string, params?: Record<string, unknown>): StageData;
+}
+
 /**
  * 成员Actor类型
  * 基于 XState Actor 类型，提供完整的类型推断
@@ -62,8 +88,8 @@ export type MemberStateMachine<
  * @template TStateContext 状态机上下文类型
  */
 export type MemberActor<
-  TStateEvent extends EventObject = MemberEventType,
-  TStateContext extends MemberStateContext = MemberStateContext,
+	TStateEvent extends EventObject = MemberEventType,
+	TStateContext extends MemberStateContext = MemberStateContext,
 > = Actor<MemberStateMachine<TStateEvent, TStateContext>>;
 
 /**
@@ -82,8 +108,6 @@ export type MemberActor<
  *   FSM context itself is not a mirror of member runtime.
  */
 export interface MemberStateContext {
-	/** 成员引用 */
-	owner: Member<string, MemberEventType, MemberStateContext, MemberSharedRuntime>;
 	/** 是否存活 */
 	isAlive: boolean;
 	/** 创建帧（用于行为树/FSM 计算相对时间） */

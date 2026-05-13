@@ -249,7 +249,7 @@ export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill> = (dic
 				size: 160,
 			},
 		],
-		hiddenColumnDef: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
+		hiddenColumnDef: ["id", "preSkillId","statisticId", "createdByAccountId", "updatedByAccountId"],
 		defaultSort: {
 			field: "name",
 			desc: false,

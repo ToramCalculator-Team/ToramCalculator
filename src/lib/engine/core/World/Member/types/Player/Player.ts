@@ -1,5 +1,4 @@
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
-import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import type { MemberWithRelations } from "@db/generated/repositories/member";
 import { createLogger } from "~/lib/Logger";
 import { Member } from "../../Member";
@@ -11,38 +10,16 @@ import type { ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
 import { StatContainer } from "../../runtime/StatContainer/StatContainer";
 import type { PlayerRuntime } from "../../runtime/types";
 import { PlayerBtBindings } from "./Agents/BtBindings";
-import { PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
+import { type PlayerAttrNestedSchema, PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
 import { type PlayerEventType, type PlayerStateContext, playerStateMachine } from "./PlayerStateMachine";
 import { applyPrebattleModifiers } from "./PrebattleDataSysModifiers";
 
 const log = createLogger("Player");
 
-export type PlayerAttrType = ExtractAttrPaths<ReturnType<typeof PlayerAttrSchemaGenerator>>;
-
-/**
- * 托环为某个技能提供的参数（将来由 RegistletLoader 从 registlet 数据填充）。
- *
- * 保留这套"技能参数索引"脚手架，让 FSM 在 `添加待处理技能` / `添加待处理技能变体` action 里
- * 能一次性拿到当前技能的 registlet 参数快照，避免重复扫描。
- * 当前没有数据源会填充它（RegistletLoader 的 `skillBranchActivators` 尚未接入）。
- */
-type RegistletSkillParamDef = {
-	skillId: string;
-	param: string;
-	value: number;
-};
+export type PlayerAttrType = ExtractAttrPaths<PlayerAttrNestedSchema>;
 
 export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateContext, PlayerRuntime> {
 	activeCharacter: CharacterWithRelations;
-
-	/**
-	 * 每个技能的托环参数索引。
-	 *
-	 * 目的：
-	 * - 构造期一次性解析托环的“按技能参数”效果
-	 * - 施放时复用索引结果，避免重复扫描
-	 */
-	private readonly skillParamsBySkillId = new Map<string, RegistletSkillParamDef[]>();
 
 	constructor(
 		memberData: MemberWithRelations,
@@ -85,7 +62,7 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 			currentSkill: null,
 			previousSkill: null,
 			currentSkillVariant: null,
-			currentSkillParams: {},
+			currentSkillBranchParams: {},
 			currentSkillStartupFrames: 0,
 			currentSkillChargingFrames: 0,
 			currentSkillChantingFrames: 0,
@@ -154,23 +131,5 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 		//   slots.push(...(skill.template?.attributeSlots ?? []));
 		// }
 		return slots;
-	}
-
-	/**
-	 * 根据当前技能解析其在 registlet 作用下的参数快照。
-	 *
-	 * 预留脚手架：未来 RegistletLoader 或 skillBranchActivators 接入时，会往
-	 * `skillParamsBySkillId` 里写数据；FSM 在"添加待处理技能" action 调本方法得到覆盖参数。
-	 * 当前无数据源，永远返回 `{}`。
-	 */
-	resolveSkillParams(skill: CharacterSkillWithRelations | null): Record<string, number> {
-		if (!skill) return {};
-		const params = this.skillParamsBySkillId.get(skill.id);
-		if (!params?.length) return {};
-		const result: Record<string, number> = {};
-		for (const skillParam of params) {
-			result[skillParam.param] = skillParam.value;
-		}
-		return result;
 	}
 }

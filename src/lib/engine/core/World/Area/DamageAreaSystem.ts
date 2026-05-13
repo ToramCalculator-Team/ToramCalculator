@@ -110,22 +110,41 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 			// 计算当前中心点
 			const currentCenter = this.computeCurrentCenter(instance, frame);
 
-			// 查询范围内的候选目标
-			const candidates = this.spaceManager.queryCircle<AnyMemberEntry>(currentCenter, shape.radius);
-
-			// 过滤：仅敌方阵营
-			const enemyTargets = candidates.members.filter((member) => {
-				return member.campId !== request.identity.sourceCampId;
-			});
-
-			// 命中节流：每 N 帧允许再次命中
 			const hitIntervalFrames = request.hitPolicy.hitIntervalFrames;
-			const validTargets: AnyMemberEntry[] = [];
-			for (const target of enemyTargets) {
-				const lastHitFrame = instance.lastHitFrameByTargetId.get(target.id) ?? -Infinity;
-				if (frame - lastHitFrame >= hitIntervalFrames) {
-					validTargets.push(target);
-					instance.lastHitFrameByTargetId.set(target.id, frame);
+
+			// 根据范围类型选择候选目标
+			let validTargets: AnyMemberEntry[];
+
+			if (request.range.rangeKind === "Single" || request.range.rangeKind === "None") {
+				const singleTarget = request.targetId ? this.memberManager.getMember(request.targetId) : null;
+				if (singleTarget && singleTarget.campId !== request.identity.sourceCampId) {
+					const lastHitFrame = instance.lastHitFrameByTargetId.get(singleTarget.id) ?? -Infinity;
+					if (frame - lastHitFrame >= hitIntervalFrames) {
+						instance.lastHitFrameByTargetId.set(singleTarget.id, frame);
+						validTargets = [singleTarget];
+					} else {
+						validTargets = [];
+					}
+				} else {
+					validTargets = [];
+				}
+			} else {
+				// 查询范围内的候选目标
+				const candidates = this.spaceManager.queryCircle<AnyMemberEntry>(currentCenter, shape.radius);
+
+				// 过滤：仅敌方阵营
+				const enemyTargets = candidates.members.filter((member) => {
+					return member.campId !== request.identity.sourceCampId;
+				});
+
+				// 命中节流：每 N 帧允许再次命中
+				validTargets = [];
+				for (const target of enemyTargets) {
+					const lastHitFrame = instance.lastHitFrameByTargetId.get(target.id) ?? -Infinity;
+					if (frame - lastHitFrame >= hitIntervalFrames) {
+						validTargets.push(target);
+						instance.lastHitFrameByTargetId.set(target.id, frame);
+					}
 				}
 			}
 
@@ -271,6 +290,13 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 		}
 
 		switch (rangeKind) {
+			case "Single":
+			case "None":
+				return {
+					shape: { type: "circle", radius: 0 },
+					// 设计说明：单体攻击不通过空间查询筛选目标，但 distance 仍应表达施法者到目标的距离。
+					trajectory: { type: "static", center: caster.position },
+				};
 			case "Enemy":
 				return {
 					shape: { type: "circle", radius: rangeParams.radius ?? 0 },
@@ -291,11 +317,6 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 						speed: rangeParams.speed ?? 0,
 					},
 				};
-			case "None":
-				return {
-					shape: { type: "circle", radius: 0 },
-					trajectory: { type: "static", center: target.position },
-				};
 			default:
 				return {
 					shape: { type: "circle", radius: rangeParams.radius ?? 0 },
@@ -312,7 +333,9 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 	 * 导出当前存活区域状态（用于渲染快照）
 	 * @param frame 当前逻辑帧
 	 */
-	getAreaSnapshot(frame: number): Array<{ id: string; position: Vec3; shape: { radius: number }; remainingTime: number }> {
+	getAreaSnapshot(
+		frame: number,
+	): Array<{ id: string; position: Vec3; shape: { radius: number }; remainingTime: number }> {
 		const result: Array<{ id: string; position: Vec3; shape: { radius: number }; remainingTime: number }> = [];
 		for (const instance of this.instances.values()) {
 			const { request } = instance;

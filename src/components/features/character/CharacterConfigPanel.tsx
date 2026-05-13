@@ -2,10 +2,10 @@ import type { CharacterWithRelations } from "@db/generated/repositories/characte
 import type { character, DB } from "@db/generated/zod";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createSignal, For, Show } from "solid-js";
-import type { CharacterPageCommand } from "~/routes/(app)/(features)/character/characterPageModel";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
+import type { CharacterPageCommand } from "~/routes/(app)/(features)/character/characterPageModel";
 import { AbilityPanel } from "./AbilityPanel";
 import { BasePanel } from "./BasePanel";
 import { EquipmentPanel } from "./EquipmentPanel";
@@ -16,7 +16,7 @@ export type CharacterConfigPanelProps = {
 	onPatchRequested: (patch: Partial<character>) => void;
 	onItemPreviewRequested: (type: keyof DB, data: unknown) => void;
 	onCommand: (command: CharacterPageCommand) => void;
-};
+}; 
 
 export function CharacterConfigPanel(props: CharacterConfigPanelProps) {
 	const dictionary = useDictionary();

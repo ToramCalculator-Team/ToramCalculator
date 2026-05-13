@@ -13,15 +13,12 @@
  */
 
 import { createLogger } from "~/lib/Logger";
-import type { DamageDispatchPayload } from "../Area/types";
-import type { Member } from "./Member";
-import type { MemberEventType, MemberStateContext } from "./runtime/StateMachine/types";
-import type { MemberSharedRuntime } from "./runtime/types";
-import { ModifierType } from "./runtime/StatContainer/StatContainer";
+import type { ExpressionContext } from "../../../JSProcessor/types";
+import type { StageData } from "../../../Pipeline/stageEnv";
+import type { MemberDomainEvent } from "../../../types";
+import type { DamageDispatchPayload } from "../../Area/types";
 
 const log = createLogger("DamageResolution");
-
-type AnyMember = Member<string, MemberEventType, MemberStateContext, MemberSharedRuntime>;
 
 /**
  * 单次受击的完整事务对象。
@@ -86,14 +83,18 @@ function buildDirectionalInputs(damageRequest: DamageDispatchPayload): Record<st
  *
  * @param random 引擎级确定性 PRNG 函数（xorshift128），缺省退回 Math.random
  */
-export function resolveHitCheck(member: AnyMember, session: HitSession, random?: () => number): HitSession {
+export function resolveHitCheck(
+	runPipeline: (pipelineName: string, params?: Record<string, unknown>) => StageData,
+	session: HitSession,
+	random?: () => number,
+): HitSession {
 	const req = session.damageRequest;
 
 	const isMagical = req.damageTags.includes("magical") ? 1 : 0;
 	const casterHit = Number(req.casterSnapshot.hit ?? 0);
 	const skillMpCost = Number(req.casterSnapshot["skill.mpCost"] ?? 0);
 
-	const output = member.runPipeline("hitCheck", {
+	const output = runPipeline("hitCheck", {
 		isMagical,
 		casterHit,
 		skillMpCost,
@@ -114,7 +115,18 @@ export function resolveHitCheck(member: AnyMember, session: HitSession, random?:
  *
  * 未命中分支：直接上报 0 伤害的 hit event，不改 HP/MP。
  */
-export function resolveDamageAndApply(member: AnyMember, session: HitSession): HitSession {
+export function resolveDamageAndApply(
+	id: string,
+	currentFrame: number,
+	hpGetter: () => number,
+	mpGetter: () => number,
+	hpApplyer: (vaule: number) => void,
+	mpApplyer: (vaule: number) => void,
+	notifyDomainEvent: (event: MemberDomainEvent) => void,
+	runPipeline: (pipelineName: string, params?: Record<string, unknown>) => StageData,
+	evaluator: ((expression: string, context: ExpressionContext) => number | boolean) | null,
+	session: HitSession,
+): HitSession {
 	const req = session.damageRequest;
 
 	// 未命中：早退出，但也标记结果字段以便后续 consumer 判别状态完整性。
@@ -123,11 +135,11 @@ export function resolveDamageAndApply(member: AnyMember, session: HitSession): H
 		session.finalDamage = 0;
 		session.isFatal = false;
 		session.crit = false;
-		session.hpAfter = member.statContainer.getValue("hp.current");
-		session.mpAfter = member.statContainer.getValue("mp.current");
-		member.notifyDomainEvent({
+		session.hpAfter = hpGetter();
+		session.mpAfter = mpGetter();
+		notifyDomainEvent({
 			type: "hit",
-			memberId: member.id,
+			memberId: id,
 			damage: 0,
 			hp: session.hpAfter,
 		});
@@ -135,13 +147,12 @@ export function resolveDamageAndApply(member: AnyMember, session: HitSession): H
 	}
 
 	// 1) 施法者公式求值（formula 中 self 指向施法者快照，target 指向受击者）
-	const evaluator = member.services.expressionEvaluator;
 	let baseDamage = 0;
 	if (evaluator && req.damageFormula) {
 		const out = evaluator(req.damageFormula, {
-			currentFrame: member.runtime.currentFrame,
+			currentFrame: currentFrame,
 			casterId: req.sourceId,
-			targetId: member.id,
+			targetId: id,
 			skillLv: req.skillLv,
 			distance: req.vars.distance,
 			targetCount: req.vars.targetCount,
@@ -158,7 +169,7 @@ export function resolveDamageAndApply(member: AnyMember, session: HitSession): H
 
 	// 2) damageCalc 管线
 	const directionalInputs = buildDirectionalInputs(req);
-	const damageOutput = member.runPipeline("damageCalc", {
+	const damageOutput = runPipeline("damageCalc", {
 		baseDamage,
 		damageTags: req.damageTags,
 		warningZone: req.warningZone,
@@ -172,9 +183,9 @@ export function resolveDamageAndApply(member: AnyMember, session: HitSession): H
 	const crit = Number(damageOutput.crit ?? 0) >= 1;
 
 	// 3) applyDamage 管线
-	const hpBefore = member.statContainer.getValue("hp.current");
-	const mpBefore = member.statContainer.getValue("mp.current");
-	const applyOutput = member.runPipeline("applyDamage", {
+	const hpBefore = hpGetter();
+	const mpBefore = mpGetter();
+	const applyOutput = runPipeline("applyDamage", {
 		finalDamage,
 		mpCost: 0,
 		damageTags: req.damageTags,
@@ -186,33 +197,15 @@ export function resolveDamageAndApply(member: AnyMember, session: HitSession): H
 	const mpDelta = mpAfter - mpBefore;
 
 	if (hpDelta !== 0) {
-		member.statContainer.addModifier(
-			"hp.current",
-			ModifierType.DYNAMIC_FIXED,
-			hpDelta,
-			{
-				id: `damage.hp.${req.areaId}`,
-				name: "damage",
-				type: "system",
-			},
-		);
+		hpApplyer(hpDelta);
 	}
 	if (mpDelta !== 0) {
-		member.statContainer.addModifier(
-			"mp.current",
-			ModifierType.DYNAMIC_FIXED,
-			mpDelta,
-			{
-				id: `damage.mp.${req.areaId}`,
-				name: "damage-mp",
-				type: "system",
-			},
-		);
+		mpApplyer(mpDelta);
 	}
 
-	member.notifyDomainEvent({
+	notifyDomainEvent({
 		type: "hit",
-		memberId: member.id,
+		memberId: id,
 		damage: finalDamage,
 		hp: hpAfter,
 	});

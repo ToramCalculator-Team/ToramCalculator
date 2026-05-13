@@ -361,7 +361,8 @@ export type SkillAttackType = (typeof SKILL_ATTACK_TYP)[number];
 
 // 伤害范围类型
 export const DAMAGE_RANGE_TYPE = [
-	"None", // 单体伤害,无法通过单纯的移动回避，可通过闪躲或部分防御技能将其无效化。
+	"Single", // 单体伤害,直接锁定目标ID，不依赖空间查询。警告范围无。
+	"None", // 旧单体语义的兼容值；历史数据可能仍使用该枚举。
 	"Range", // 范围伤害,伤害中心点为敌方的技能，警告范围为红色。
 	"Enemy", // 周围伤害,伤害中心点为自身的技能，警告范围为红色。
 	"MoveAttack", // 冲撞伤害,直线状且自身会沿攻击范围移动的技能，警告范围为红色。

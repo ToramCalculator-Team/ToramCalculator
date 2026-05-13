@@ -506,47 +506,21 @@ export const ExpressionTransformer = {
 
 		try {
 			const { ast, sourceOffset } = this.parseExpressionToAst(expression);
+			const memberAccesses = this.collectMemberAccesses(ast, expression, sourceOffset);
+			const normalizedAccesses = this.normalizeMemberAccesses(memberAccesses);
+
+			// 检查 self.xxx / target.xxx
+			// 设计说明：依赖分析只记录最外层路径，避免 `self.pie` 和 `self.pie.m` 同时进入快照。
+			for (const access of normalizedAccesses) {
+				if (access.root === "self" && !result.selfDependencies.includes(access.key)) {
+					result.selfDependencies.push(access.key);
+				}
+				if (access.root === "target" && !result.targetDependencies.includes(access.key)) {
+					result.targetDependencies.push(access.key);
+				}
+			}
 
 			this.walkAST(ast, (node: Node) => {
-				// 检查成员表达式
-				if (node.type === "MemberExpression") {
-					const memberExpr = node as MemberExpression;
-
-					// 提取根标识符
-					let current: Node = memberExpr;
-					while (current.type === "MemberExpression") {
-						current = (current as MemberExpression).object;
-					}
-
-					if (current.type === "Identifier") {
-						const rootName = (current as Identifier).name;
-
-						// 检查 self.xxx
-						if (rootName === "self") {
-							const key = this.extractPropertyKey(node, expression);
-							if (key && !result.selfDependencies.includes(key)) {
-								result.selfDependencies.push(key);
-							}
-						}
-
-						// 检查 target.xxx
-						if (rootName === "target") {
-							const key = this.extractPropertyKey(node, expression);
-							if (key && !result.targetDependencies.includes(key)) {
-								result.targetDependencies.push(key);
-							}
-						}
-
-						// 检查 skill.lv
-						if (rootName === "skill" && memberExpr.property.type === "Identifier") {
-							const propName = (memberExpr.property as Identifier).name;
-							if (propName === "lv") {
-								result.hasSkillLv = true;
-							}
-						}
-					}
-				}
-
 				// 检查独立标识符
 				if (node.type === "Identifier") {
 					const identifier = node as Identifier;
@@ -555,6 +529,24 @@ export const ExpressionTransformer = {
 					}
 					if (identifier.name === "targetCount") {
 						result.hasTargetCount = true;
+					}
+				}
+
+				// 检查 skill.lv
+				if (node.type === "MemberExpression") {
+					const memberExpr = node as MemberExpression;
+					let current: Node = memberExpr;
+					while (current.type === "MemberExpression") {
+						current = (current as MemberExpression).object;
+					}
+
+					if (current.type !== "Identifier") return;
+					const rootName = (current as Identifier).name;
+					if (rootName !== "skill" || memberExpr.property.type !== "Identifier") return;
+
+					const propName = (memberExpr.property as Identifier).name;
+					if (propName === "lv") {
+						result.hasSkillLv = true;
 					}
 				}
 			});

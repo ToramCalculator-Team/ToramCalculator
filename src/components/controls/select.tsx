@@ -1,4 +1,4 @@
-import { createEffect, createResource, createSignal, For, type JSX, on, onCleanup, onMount, Show } from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, For, type JSX, onCleanup, onMount, Show } from "solid-js";
 
 export type SelectOption = {
 	label: string;
@@ -24,29 +24,17 @@ export function Select(props: SelectProps) {
 	const [isOpen, setIsOpen] = createSignal(false);
 	const [selectedOption, setSelectedOption] = createSignal<SelectOption | undefined>(undefined);
 
-	// 初始化时获取选项
-	const [initialOptions] = createResource(async () => {
-		let options: SelectOption[] = [];
-		if (props.optionsFetcher) {
-			options = await props.optionsFetcher("");
-		} else if (props.options) {
-			options = props.options;
-		}
-		return options;
-	});
-
-	// 当初始选项加载完成后，设置选中的选项
-	createEffect(
-		on(initialOptions, async (options) => {
-			// console.log("options:====", options);
-			if (options) {
-				const option = options.find((opt) => opt.value === props.value);
-				if (option) {
-					setSelectedOption(option);
-				}
-			}
-		}),
+	// 设计说明：options 可能来自父组件的响应式数组；Select 不能只缓存首次选项，否则外部改名后会显示旧 label。
+	const [fetchedOptions] = createResource(
+		() => props.optionsFetcher,
+		async (optionsFetcher) => (optionsFetcher ? optionsFetcher("") : []),
 	);
+	const currentOptions = createMemo(() => (props.optionsFetcher ? fetchedOptions.latest ?? [] : props.options ?? []));
+
+	createEffect(() => {
+		const option = currentOptions().find((opt) => opt.value === props.value);
+		setSelectedOption(option);
+	});
 
 	const handleSelect = (option: SelectOption) => {
 		setSelectedOption(option);
@@ -87,14 +75,14 @@ export function Select(props: SelectProps) {
 					>
 						{props.optionGenerator?.(
 							selectedOption() ??
-								(initialOptions.latest
-									? initialOptions.latest[0]
+								(currentOptions().length > 0
+									? currentOptions()[0]
 									: {
 											label: "请选择",
 											value: "",
 										}),
 							true,
-							() => handleSelect(selectedOption() ?? initialOptions.latest?.[0] ?? { label: "请选择", value: "" }),
+							() => handleSelect(selectedOption() ?? currentOptions()[0] ?? { label: "请选择", value: "" }),
 						)}
 					</Show>
 					<Show when={!props.styleLess}>
@@ -116,8 +104,8 @@ export function Select(props: SelectProps) {
 						props.optionPosition === "top" ? "-top-1 -translate-y-full" : "top-2 translate-y-12"
 					}`}
 				>
-					<Show when={initialOptions.latest?.length}>
-						<For each={initialOptions.latest}>
+					<Show when={currentOptions().length}>
+						<For each={currentOptions()}>
 							{(option, index) => {
 								const selected = option.value === selectedOption()?.value;
 								const optionGenerator = hasOptionGenerator ? props.optionGenerator : undefined;

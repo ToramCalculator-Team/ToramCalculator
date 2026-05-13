@@ -22,7 +22,7 @@ const vec2Schema = z.object({
 const commonAttackSchema = z.object({
 	targetId: z.string().meta({ description: "目标ID" }),
 	expApplicationType: z.enum(["physical", "magic", "normal", "none"]).meta({ description: "惯性施加类型" }),
-	expResolutionType: z.enum(["physical", "magic", "normal"]).meta({ description: "惯性结算类型" }),
+	expResolutionType: z.enum(["physical", "magic", "normal"]).meta({ description: "惯性依赖类型" }),
 	attackCount: z.number().meta({ description: "攻击次数，多次造成伤害公式对应的伤害" }),
 	damageFormula: z.string().meta({ description: "伤害公式，伤害公式中可以包含self变量，self变量表示当前角色" }),
 	damageCount: z.number().meta({ description: "伤害数量，将伤害公式计算出的伤害平均分配到攻击次数" }),
@@ -94,9 +94,67 @@ export const CommonActionPool = {
 	/** 单体攻击 */
 	singleAttack: defineAction(commonAttackSchema.meta({ description: "单体攻击" }), (context, input) => {
 		log.debug(`👤 [${context.owner?.name}] generateSingleAttack`, input);
-		// 解析伤害表达式，将所需的self变量放入参数列表
+		const owner = context.owner;
+		if (!owner) {
+			log.warn(`⚠️ [${context.owner?.name}] 无法找到owner`);
+			return State.FAILED;
+		}
+
+		const targetId = owner.services.targetResolver?.(owner.id, input.targetId) ?? input.targetId;
+		if (!targetId || targetId === owner.id) {
+			log.warn(`⚠️ [${owner.name}] 单体攻击缺少有效敌对目标`, input);
+			return State.FAILED;
+		}
+
+		// 分析表达式依赖
+		const dependencies = ExpressionTransformer.analyzeDependencies(input.damageFormula);
+		log.debug(`👤 [${owner.name}] 表达式依赖分析:`, dependencies);
+
+		// 创建施法者属性快照（只快照用到的属性）
+		const casterSnapshot: Record<string, number> = {};
+		for (const key of dependencies.selfDependencies) {
+			casterSnapshot[key] = owner.statContainer.getValue(key);
+		}
+
+		// 获取技能等级
+		const skillLv = context.currentSkill?.lv ?? 0;
+
+		log.debug(`👤 [${owner.name}] 施法者快照:`, casterSnapshot, `技能等级: ${skillLv}`);
 
 		// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
+		const startFrame = owner.services.getCurrentFrame();
+		const damageRequest: DamageAreaRequest = {
+			identity: {
+				sourceId: owner.id,
+				sourceCampId: owner.campId,
+			},
+			lifetime: {
+				startFrame,
+				durationFrames: 1,
+			},
+			hitPolicy: {
+				hitIntervalFrames: 1,
+			},
+			attackSemantics: {
+				attackCount: input.attackCount,
+				damageCount: input.damageCount,
+			},
+			range: {
+				rangeKind: "Single",
+				rangeParams: {},
+			},
+			payload: {
+				damageFormula: input.damageFormula,
+				casterSnapshot,
+				skillLv,
+				damageTags: Array.from(new Set([...deriveBaseDamageTags(input.expResolutionType), ...input.damageTags])),
+				warningZone: input.warningZone,
+			},
+			casterId: owner.id,
+			targetId,
+		};
+		owner.services.damageRequestHandler?.(damageRequest);
+
 		return State.SUCCEEDED;
 	}),
 

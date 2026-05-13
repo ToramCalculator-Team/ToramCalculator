@@ -1,4 +1,4 @@
-import type { DB, character } from "@db/generated/zod";
+import type { character, DB } from "@db/generated/zod";
 import { useNavigate, useParams } from "@solidjs/router";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createMemo, createSignal, onMount, Show, useContext } from "solid-js";
@@ -62,7 +62,7 @@ export default function CharactePage() {
 
 	const dispatchCharacterPatch = (patch: Partial<character>) => {
 		model.dispatch({ type: "character.patch", patch });
-	};
+	}; 
 
 	const previewDataItem = (type: keyof DB, data: unknown) => {
 		setStore("pages", "cardGroup", store.pages.cardGroup.length, {

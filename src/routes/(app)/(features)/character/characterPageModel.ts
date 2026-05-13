@@ -27,6 +27,7 @@ import {
 import type { ComboWithRelations } from "@db/generated/repositories/combo";
 import type { ConsumableWithRelations } from "@db/generated/repositories/consumable";
 import type { MemberWithRelations } from "@db/generated/repositories/member";
+import type { MobWithRelations } from "@db/generated/repositories/mob";
 import { type PlayerWithRelations, selectPlayerByIdWithRelations } from "@db/generated/repositories/player";
 import type { PlayerArmorWithRelations } from "@db/generated/repositories/player_armor";
 import type { PlayerOptionWithRelations } from "@db/generated/repositories/player_option";
@@ -618,6 +619,9 @@ export function createCharacterPageModel(input: {
 		const currentCharacter = pageData.character;
 		if (!player || !currentCharacter || !player.id) return null;
 		const now = new Date().toISOString();
+		const previewTargetStatisticId = `${input.previewIds.statisticId}:target`;
+		const previewTargetMobId = `${input.previewIds.memberId}:target-mob`;
+		const previewTargetMemberId = `${input.previewIds.memberId}:target-member`;
 		// 设计说明：预览输入由页面工作副本生成，保证 UI、DB 回滚和引擎投影使用同一个角色快照。
 		const previewPlayer: PlayerWithRelations = {
 			...player,
@@ -625,6 +629,66 @@ export function createCharacterPageModel(input: {
 			characters: player.characters.map((candidate) =>
 				candidate.id === currentCharacter.id ? currentCharacter : candidate,
 			),
+		};
+		const trainingMob: MobWithRelations = {
+			id: previewTargetMobId,
+			name: "CharacterPreviewTarget",
+			type: "Mob",
+			captureable: false,
+			baseLv: currentCharacter.lv,
+			experience: 0,
+			partsExperience: 0,
+			initialElement: "Normal",
+			radius: 1,
+			maxhp: 1000000,
+			physicalDefense: 0,
+			physicalResistance: 0,
+			magicalDefense: 0,
+			magicalResistance: 0,
+			criticalResistance: 0,
+			avoidance: 0,
+			dodge: 0,
+			block: 0,
+			normalDefExp: 0,
+			physicDefExp: 0,
+			magicDefExp: 0,
+			// 设计说明：Mob 预览只需要一个合法、可结构克隆的行为树定义；实际预览只消费其存在，不依赖该 BT 运行结果。
+			actions: {
+				name: "CharacterPreviewTargetActions",
+				definition: "root { wait [1] }",
+				agent: "",
+				memberType: "Mob",
+			},
+			details: null,
+			dataSources: "character-preview",
+			statisticId: previewTargetStatisticId,
+			updatedByAccountId: null,
+			createdByAccountId: null,
+			drops: [],
+			statistic: {
+				id: previewTargetStatisticId,
+				updatedAt: now,
+				createdAt: now,
+				usageTimestamps: [],
+				viewTimestamps: [],
+			},
+			images: [],
+		};
+		const targetMember: MemberWithRelations = {
+			id: previewTargetMemberId,
+			name: trainingMob.name,
+			sequence: 1,
+			type: "Mob",
+			playerId: null,
+			partnerId: null,
+			mercenaryId: null,
+			mobId: trainingMob.id,
+			mobDifficultyFlag: "Normal",
+			belongToTeamId: input.previewIds.teamBId,
+			player: null,
+			partner: null,
+			mercenary: null,
+			mob: trainingMob,
 		};
 		const member: MemberWithRelations = {
 			id: input.previewIds.memberId,
@@ -652,7 +716,8 @@ export function createCharacterPageModel(input: {
 			id: input.previewIds.teamBId,
 			name: "CharacterPreviewTeamB",
 			gems: [],
-			members: [],
+			// 设计说明：预览场景必须包含一个敌对目标，技能预览和 dps_impact 才能命中非空目标集合。
+			members: [targetMember],
 		};
 		const scenario: EngineScenarioData = {
 			simulator: {
