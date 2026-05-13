@@ -26,8 +26,8 @@ export interface ProcEvent<TPayload = unknown> {
 	mask: bigint;
 	/** payload；形状由 EventCatalog 中对应的 zod schema 约束（本版不强制校验）。 */
 	payload: TPayload;
-	/** 派发帧号。 */
-	frame: number;
+	/** 派发模拟时间（毫秒）。 */
+	timeMs: number;
 }
 
 export type ProcPredicate<TPayload = unknown> = (event: ProcEvent<TPayload>) => boolean;
@@ -66,12 +66,7 @@ export class ProcBus {
 	 * @param predicate 精细过滤（如按 status type 过滤）；传 `null` 表示接受全部匹配 mask 的事件。
 	 * @param handler 触发回调。
 	 */
-	subscribe(
-		sourceId: string,
-		mask: bigint,
-		predicate: ProcPredicate | null,
-		handler: ProcHandler,
-	): ProcSubscriptionId {
+	subscribe(sourceId: string, mask: bigint, predicate: ProcPredicate | null, handler: ProcHandler): ProcSubscriptionId {
 		const id = this.nextId++;
 		this.subscriptions.set(id, { id, sourceId, mask, predicate, handler });
 		return id;
@@ -119,12 +114,12 @@ export class ProcBus {
 	 *
 	 * @param name 事件名（EventCatalog 中已注册）。
 	 * @param payload 事件 payload。
-	 * @param frame 派发帧号。
+	 * @param timeMs 派发模拟时间（毫秒）。
 	 */
-	emit(name: string, payload: unknown, frame: number): void {
+	emit(name: string, payload: unknown, timeMs: number): void {
 		const bit = this.catalog.getBit(name);
 		const mask = 1n << BigInt(bit);
-		const event: ProcEvent = { name, mask, payload, frame };
+		const event: ProcEvent = { name, mask, payload, timeMs };
 
 		for (const sub of this.subscriptions.values()) {
 			if ((sub.mask & mask) === 0n) continue;

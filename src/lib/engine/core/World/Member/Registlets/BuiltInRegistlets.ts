@@ -147,7 +147,7 @@ const HP_EMERGENCY: RegistletRow = {
 			path: "hp.current",
 			threshold: "self.hp.max * 0.25",
 			direction: "falling",
-			cooldownFrames: 3600,
+			cooldownMs: 60000,
 			fireOnRegister: false,
 			handlers: [
 				{

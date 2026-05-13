@@ -8,8 +8,10 @@ import type { NestedSchema } from "../World/Member/runtime/StatContainer/SchemaT
  * - 该类型不做强约束（允许扩展字段），仅提供最小公共字段集合
  */
 export interface ExpressionContext {
-	/** 当前帧号（必填，用于基于帧的逻辑判断） */
-	currentFrame: number;
+	/** 当前模拟时间（毫秒），规则表达式读取的唯一时间源。 */
+	currentTimeMs: number;
+	/** 当前逻辑 tick 序号，仅用于排序、日志和回放定位。 */
+	tickIndex: number;
 	/** 施法者成员ID（通常等于 self.id） */
 	casterId: string;
 	/** 目标成员ID（可选） */

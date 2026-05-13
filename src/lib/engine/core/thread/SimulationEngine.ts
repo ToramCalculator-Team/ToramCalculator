@@ -30,12 +30,7 @@ import type { RenderSnapshot } from "../../render/RendererProtocol";
 import { type EngineControlMessage, GameEngineSM } from "../GameEngineSM";
 import type { IntentMessage } from "../MessageRouter/MessageRouter";
 import type { PreviewReport } from "../Preview/types";
-import type {
-	EngineScenarioData,
-	EngineStats,
-	FrameSnapshot,
-	RuntimeConfig,
-} from "../types";
+import type { EngineScenarioData, EngineStats, FrameSnapshot, RuntimeConfig } from "../types";
 import type { MemberSerializeData } from "../World/Member/Member";
 import {
 	type EngineRPC,
@@ -131,11 +126,20 @@ export interface SimulationEngine {
 	importExprDict(entries: Array<[string, string]>): Promise<void>;
 
 	// ── 通用引擎 RPC（低层请求-响应） ─────────────────
-	executeEngineRPC(rpc: EngineRPC, priority?: SimulatorTaskPriority): Promise<{ success: boolean; data?: unknown; error?: string }>;
+	executeEngineRPC(
+		rpc: EngineRPC,
+		priority?: SimulatorTaskPriority,
+	): Promise<{ success: boolean; data?: unknown; error?: string }>;
 
 	// ── 事件订阅 ──────────────────────────────────
-	on<K extends keyof SimulationEngineEventMap>(event: K, listener: (payload: SimulationEngineEventMap[K]) => void): () => void;
-	off<K extends keyof SimulationEngineEventMap>(event: K, listener?: (payload: SimulationEngineEventMap[K]) => void): void;
+	on<K extends keyof SimulationEngineEventMap>(
+		event: K,
+		listener: (payload: SimulationEngineEventMap[K]) => void,
+	): () => void;
+	off<K extends keyof SimulationEngineEventMap>(
+		event: K,
+		listener?: (payload: SimulationEngineEventMap[K]) => void,
+	): void;
 
 	// ── 销毁 ──────────────────────────────────────
 	dispose(): Promise<void>;
@@ -288,7 +292,10 @@ export class SimulationEngineImpl implements SimulationEngine {
 	 * 底层 RPC 方法：构造消息 → 注册 pending → 发送到 Worker → 等待响应。
 	 * 30 秒超时后自动 reject，防止永久挂起。
 	 */
-	private async executePayload(payload: SimulatorTaskTypeMapValue, priority: SimulatorTaskPriority): Promise<WorkerMessageEvent<unknown, Record<string, unknown>, unknown>> {
+	private async executePayload(
+		payload: SimulatorTaskTypeMapValue,
+		priority: SimulatorTaskPriority,
+	): Promise<WorkerMessageEvent<unknown, Record<string, unknown>, unknown>> {
 		await this.whenReady();
 		const taskId = createId();
 		const message: WorkerMessage<SimulatorTaskTypeMapValue, SimulatorTaskPriority> = {
@@ -330,7 +337,9 @@ export class SimulationEngineImpl implements SimulationEngine {
 	async executeEngineRPC(rpc: EngineRPC, priority: SimulatorTaskPriority = "high") {
 		const res = await this.executePayload(rpc, priority);
 		if (res.error) return { success: false, error: String(res.error) };
-		return (res.result as { success: boolean; data?: unknown; error?: string }) ?? { success: false, error: "empty result" };
+		return (
+			(res.result as { success: boolean; data?: unknown; error?: string }) ?? { success: false, error: "empty result" }
+		);
 	}
 
 	async whenReady(): Promise<void> {
@@ -378,23 +387,53 @@ export class SimulationEngineImpl implements SimulationEngine {
 	}
 	pause(): Promise<void> {
 		const ctx = this.lifecycleActor.getSnapshot().context;
-		return this.dispatchLifecycleControl({ type: "CMD_PAUSE", sourceSide: "controller", seq: ctx.nextSeq(), correlationId: ctx.newCorrelationId(), operatorId: this.operatorId } as EngineControlMessage);
+		return this.dispatchLifecycleControl({
+			type: "CMD_PAUSE",
+			sourceSide: "controller",
+			seq: ctx.nextSeq(),
+			correlationId: ctx.newCorrelationId(),
+			operatorId: this.operatorId,
+		} as EngineControlMessage);
 	}
 	resume(): Promise<void> {
 		const ctx = this.lifecycleActor.getSnapshot().context;
-		return this.dispatchLifecycleControl({ type: "CMD_RESUME", sourceSide: "controller", seq: ctx.nextSeq(), correlationId: ctx.newCorrelationId(), operatorId: this.operatorId } as EngineControlMessage);
+		return this.dispatchLifecycleControl({
+			type: "CMD_RESUME",
+			sourceSide: "controller",
+			seq: ctx.nextSeq(),
+			correlationId: ctx.newCorrelationId(),
+			operatorId: this.operatorId,
+		} as EngineControlMessage);
 	}
 	stop(): Promise<void> {
 		const ctx = this.lifecycleActor.getSnapshot().context;
-		return this.dispatchLifecycleControl({ type: "CMD_STOP", sourceSide: "controller", seq: ctx.nextSeq(), correlationId: ctx.newCorrelationId(), operatorId: this.operatorId } as EngineControlMessage);
+		return this.dispatchLifecycleControl({
+			type: "CMD_STOP",
+			sourceSide: "controller",
+			seq: ctx.nextSeq(),
+			correlationId: ctx.newCorrelationId(),
+			operatorId: this.operatorId,
+		} as EngineControlMessage);
 	}
 	reset(): Promise<void> {
 		const ctx = this.lifecycleActor.getSnapshot().context;
-		return this.dispatchLifecycleControl({ type: "CMD_RESET", sourceSide: "controller", seq: ctx.nextSeq(), correlationId: ctx.newCorrelationId(), operatorId: this.operatorId } as EngineControlMessage);
+		return this.dispatchLifecycleControl({
+			type: "CMD_RESET",
+			sourceSide: "controller",
+			seq: ctx.nextSeq(),
+			correlationId: ctx.newCorrelationId(),
+			operatorId: this.operatorId,
+		} as EngineControlMessage);
 	}
 	step(): Promise<void> {
 		const ctx = this.lifecycleActor.getSnapshot().context;
-		return this.dispatchLifecycleControl({ type: "CMD_STEP", sourceSide: "controller", seq: ctx.nextSeq(), correlationId: ctx.newCorrelationId(), operatorId: this.operatorId } as EngineControlMessage);
+		return this.dispatchLifecycleControl({
+			type: "CMD_STEP",
+			sourceSide: "controller",
+			seq: ctx.nextSeq(),
+			correlationId: ctx.newCorrelationId(),
+			operatorId: this.operatorId,
+		} as EngineControlMessage);
 	}
 
 	sendIntent(intent: IntentMessage): Promise<{ success: boolean; error?: string }> {
@@ -406,7 +445,9 @@ export class SimulationEngineImpl implements SimulationEngine {
 	}
 	async getMemberSkillList(memberId: string): Promise<Array<{ id: string; name: string; level: number }>> {
 		const res = await this.executeEngineRPC({ type: "get_member_skill_list", memberId }, "low");
-		return res.success && Array.isArray(res.data) ? (res.data as Array<{ id: string; name: string; level: number }>) : [];
+		return res.success && Array.isArray(res.data)
+			? (res.data as Array<{ id: string; name: string; level: number }>)
+			: [];
 	}
 	async getMemberState(memberId: string): Promise<{ success: boolean; value?: string; error?: string }> {
 		const res = await this.executeEngineRPC({ type: "get_member_state", memberId }, "low");
@@ -451,11 +492,17 @@ export class SimulationEngineImpl implements SimulationEngine {
 		await this.mustSuccess({ type: "import_expr_dict", entries });
 	}
 
-	on<K extends keyof SimulationEngineEventMap>(event: K, listener: (payload: SimulationEngineEventMap[K]) => void): () => void {
+	on<K extends keyof SimulationEngineEventMap>(
+		event: K,
+		listener: (payload: SimulationEngineEventMap[K]) => void,
+	): () => void {
 		this.emitter.on(event, listener);
 		return () => this.off(event, listener);
 	}
-	off<K extends keyof SimulationEngineEventMap>(event: K, listener?: (payload: SimulationEngineEventMap[K]) => void): void {
+	off<K extends keyof SimulationEngineEventMap>(
+		event: K,
+		listener?: (payload: SimulationEngineEventMap[K]) => void,
+	): void {
 		this.emitter.off(event, listener);
 	}
 

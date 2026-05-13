@@ -7,11 +7,11 @@ import type { PipelineInstruction } from "./instruction";
  * - 由 `PipelineCatalog` 收编并冻结
  * - 解析/编译/执行由 `PipelineResolverService` 负责
  *
- * 技能生命周期帧管线（skill.startup / charging / chanting / action）约定：
+ * 技能生命周期毫秒管线（skill.startup / charging / chanting / action）约定：
  * - 由编排层（FSM action "计算技能生命周期参数"）预求值 variant 上的字符串公式，
  *   以 `input.original`（startup）或 `input.fixed` + `input.modified`（其余三段）传入。
  * - 管线只负责套用 mspd 行动速度修正：rate = max(0.5, 1 - mspd/100)，然后向下取整。
- * - FSM 再把管线输出 `frames` 写入 `runtime.currentSkill*Frames`。
+ * - FSM 再把管线输出 `durationMs` 写入 `runtime.currentSkill*Ms`。
  */
 
 /** 标准行动速度修正：rate = max(0.5, 1 - mspd/100)。 */
@@ -23,54 +23,54 @@ const mspdRateInstructions: readonly PipelineInstruction[] = [
 ];
 
 export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstruction[]> = {
-	// 前摇：variant.startupFrames 为单一公式，整段受行动速度影响。
+	// 前摇：variant.startupMs 为单一公式，整段受行动速度影响。
 	// 输入：input.original（由 FSM 预求值）
 	"skill.startup": [
 		...mspdRateInstructions,
-		{ target: "rawFrames", op: "*", a: "input.original", b: "rate" },
-		{ target: "frames", op: "floor", a: "rawFrames" },
+		{ target: "rawDurationMs", op: "*", a: "input.original", b: "rate" },
+		{ target: "durationMs", op: "floor", a: "rawDurationMs" },
 	],
 
-	// 蓄力：reservoirFixed 不受速度影响；reservoirModified 受行动速度修正。
+	// 蓄力：chargingFixedMs 不受速度影响；chargingModifiedMs 受行动速度修正。
 	// 输入：input.fixed, input.modified
 	"skill.charging": [
 		...mspdRateInstructions,
 		{ target: "adj", op: "*", a: "input.modified", b: "rate" },
-		{ target: "rawFrames", op: "+", a: "input.fixed", b: "adj" },
-		{ target: "frames", op: "floor", a: "rawFrames" },
+		{ target: "rawDurationMs", op: "+", a: "input.fixed", b: "adj" },
+		{ target: "durationMs", op: "floor", a: "rawDurationMs" },
 	],
 
-	// 咏唱：chantingFixed 不受速度影响；chantingModified 受行动速度修正。
+	// 咏唱：chantingFixedMs 不受速度影响；chantingModifiedMs 受行动速度修正。
 	// 输入：input.fixed, input.modified
 	"skill.chanting": [
 		...mspdRateInstructions,
 		{ target: "adj", op: "*", a: "input.modified", b: "rate" },
-		{ target: "rawFrames", op: "+", a: "input.fixed", b: "adj" },
-		{ target: "frames", op: "floor", a: "rawFrames" },
+		{ target: "rawDurationMs", op: "+", a: "input.fixed", b: "adj" },
+		{ target: "durationMs", op: "floor", a: "rawDurationMs" },
 	],
 
-	// 发动（motion）：motionFixed 不受速度影响；motionModified 受行动速度修正。
+	// 发动（motion）：actionFixedMs 不受速度影响；actionModifiedMs 受行动速度修正。
 	// 输入：input.fixed, input.modified
 	"skill.action": [
 		...mspdRateInstructions,
 		{ target: "adj", op: "*", a: "input.modified", b: "rate" },
-		{ target: "rawFrames", op: "+", a: "input.fixed", b: "adj" },
-		{ target: "frames", op: "floor", a: "rawFrames" },
+		{ target: "rawDurationMs", op: "+", a: "input.fixed", b: "adj" },
+		{ target: "durationMs", op: "floor", a: "rawDurationMs" },
 	],
 
 	"status.apply": [
-		// baseDuration = input.baseDurationFrames
-		{ target: "baseDuration", op: "+", a: "input.baseDurationFrames", b: 0 },
+		// baseDurationMs = input.baseDurationMs
+		{ target: "baseDurationMs", op: "+", a: "input.baseDurationMs", b: 0 },
 		// durationRate = get(self, "status.{statusType}.durationRate")
 		{ target: "durationRate", op: "get", a: "self", b: "status.{statusType}.durationRate" },
-		// resolved = baseDuration * durationRate / 100
-		{ target: "resolved0", op: "*", a: "baseDuration", b: "durationRate" },
+		// resolvedDurationMs = baseDurationMs * durationRate / 100
+		{ target: "resolved0", op: "*", a: "baseDurationMs", b: "durationRate" },
 		{ target: "resolved1", op: "/", a: "resolved0", b: 100 },
-		{ target: "resolved", op: "floor", a: "resolved1" },
-		// appliedAt = env.frame
-		{ target: "appliedAt", op: "+", a: "env.frame", b: 0 },
-		// expiresAt = appliedAt + resolved
-		{ target: "expiresAt", op: "+", a: "appliedAt", b: "resolved" },
+		{ target: "resolvedDurationMs", op: "floor", a: "resolved1" },
+		// appliedAtMs = env.timeMs
+		{ target: "appliedAtMs", op: "+", a: "env.timeMs", b: 0 },
+		// expiresAtMs = appliedAtMs + resolvedDurationMs
+		{ target: "expiresAtMs", op: "+", a: "appliedAtMs", b: "resolvedDurationMs" },
 	],
 
 	"damage.physical": [

@@ -160,21 +160,22 @@ export const sendRenderCommand = (context: BtContext, actionName: string, params
 		log.warn(`⚠️ [${context.owner?.name}] 无法获取渲染消息接口，无法发送渲染指令: ${actionName}`);
 		return;
 	}
-	const now = Date.now();
+	const ts = owner?.services?.getCurrentTimeMs?.() ?? context.currentTimeMs;
+	const seq = owner?.services?.getTickIndex?.() ?? context.tickIndex;
 	const renderCmd = {
 		type: "render:cmd" as const,
 		cmd: {
 			type: "action" as const,
 			entityId: context.owner?.id,
 			name: actionName,
-			seq: now,
-			ts: now,
+			seq,
+			ts,
 			params,
 		},
 	};
 	renderMessageSender(renderCmd);
 	// 记录最后一次渲染动作，供渲染快照推算 animation.progress
 	if (owner) {
-		owner.renderState.lastAction = { name: actionName, ts: now, params };
+		owner.renderState.lastAction = { name: actionName, ts, params };
 	}
 };

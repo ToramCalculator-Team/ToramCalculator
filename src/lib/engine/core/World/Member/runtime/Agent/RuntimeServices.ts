@@ -9,7 +9,7 @@ import type { DamageAreaRequest } from "../../../Area/types";
 export interface PipelineEventSinkEvent {
 	name: string;
 	payload: unknown;
-	frame: number;
+	timeMs: number;
 }
 
 export type MemberTargetResolver = (sourceMemberId: string, requestedTargetId?: string | null) => string | null;
@@ -22,8 +22,10 @@ export type MemberTargetResolver = (sourceMemberId: string, requestedTargetId?: 
  * - 它们不是成员状态本身，而是运行时可调用服务。
  */
 export interface MemberRuntimeServices {
-	/** 当前帧号（由引擎注入） */
-	getCurrentFrame: () => number;
+	/** 当前模拟时间（毫秒，由引擎注入） */
+	getCurrentTimeMs: () => number;
+	/** 当前逻辑 tick 序号（由引擎注入，仅用于排序/日志）。 */
+	getTickIndex: () => number;
 	/** 表达式求值器 */
 	expressionEvaluator: ((expression: string, context: ExpressionContext) => number | boolean) | null;
 	/** 伤害请求处理器 */
@@ -50,8 +52,11 @@ export interface MemberRuntimeServices {
 }
 
 export const MemberRuntimeServicesDefaults: MemberRuntimeServices = {
-	getCurrentFrame: () => {
-		throw new Error("getCurrentFrame 未注入");
+	getCurrentTimeMs: () => {
+		throw new Error("getCurrentTimeMs 未注入");
+	},
+	getTickIndex: () => {
+		throw new Error("getTickIndex 未注入");
 	},
 	expressionEvaluator: (expression: string) => {
 		throw new Error(`expressionEvaluator 未注入：${expression}`);

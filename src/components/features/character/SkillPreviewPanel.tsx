@@ -14,6 +14,8 @@ export interface SkillRow {
 	loading: boolean;
 	/** 技能执行失败时的错误信息（无变体、无目标等） */
 	error?: string;
+	/** 技能执行成功但当前预览没有伤害时的说明。 */
+	note?: string;
 }
 
 type PreviewSkillSource = {
@@ -93,7 +95,8 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 						level: s.level,
 						damage: previous?.damage ?? 0,
 						loading: true,
-						error: s.computed && s.computed.isAvailable === false ? "当前资源不足，技能暂不可用" : undefined,
+						error: undefined,
+						note: undefined,
 					};
 				});
 			});
@@ -141,10 +144,22 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 				prev.map((row) => {
 					const res = resultBySkillId.get(row.id);
 					if (!res || !res.ok) {
-						return { ...row, loading: false, damage: 0, error: res?.error ?? "task failed" };
+						return {
+							...row,
+							loading: false,
+							damage: 0,
+							error: res?.error ?? "task failed",
+							note: undefined,
+						};
 					}
-					const data = res.data as { damage?: number; error?: string };
-					return { ...row, loading: false, damage: data.damage ?? 0, error: data.error };
+					const data = res.data as { damage?: number; error?: string; note?: string };
+					return {
+						...row,
+						loading: false,
+						damage: data.damage ?? 0,
+						error: data.error,
+						note: data.note,
+					};
 				}),
 			);
 		} catch (err) {
@@ -266,20 +281,23 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 										<Show
 											when={skill.error}
 											fallback={
-												<span class={skill.damage > 0 ? "text-success-color" : "text-muted-color"}>
+												<span class={skill.damage > 0 ? "text-success-color" : "text-muted-color"} title={skill.note}>
 													{skill.damage.toLocaleString()}
 												</span>
 											}
 										>
 											<span class="text-xs text-error-color" title={skill.error}>
-												错误
+												不可用
 											</span>
 										</Show>
 									</Show>
 								</div>
-								<Show when={skill.error}>
-									<div class="text-xs text-error-color" title={skill.error}>
-										⚠
+								<Show when={skill.error || skill.note}>
+									<div
+										class={`max-w-48 truncate text-xs ${skill.error ? "text-error-color" : "text-muted-color"}`}
+										title={skill.error ?? skill.note}
+									>
+										{skill.error ?? skill.note}
 									</div>
 								</Show>
 							</div>

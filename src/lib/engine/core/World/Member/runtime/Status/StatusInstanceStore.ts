@@ -7,9 +7,9 @@ export interface StatusInstance {
 	type: StatusType;
 	sourceId?: string;
 	sourceSkillId?: string;
-	appliedAtFrame: number;
-	resolvedDurationFrames?: number;
-	expiresAtFrame?: number;
+	appliedAtMs: number;
+	resolvedDurationMs?: number;
+	expiresAtMs?: number;
 	stacks?: number;
 	tags?: string[];
 	meta?: Record<string, unknown>;
@@ -27,17 +27,16 @@ export interface StatusChangeEvent {
 	kind: "entered" | "exited";
 	instance: StatusInstance;
 	reason?: "expired" | "removed";
-	frame: number;
+	timeMs: number;
 }
 
 export type StatusChangeListener = (event: StatusChangeEvent) => void;
 
-export interface MutableStatusInstanceStore
-	extends StatusInstanceStore, Checkpointable<StatusInstanceStoreCheckpoint> {
+export interface MutableStatusInstanceStore extends StatusInstanceStore, Checkpointable<StatusInstanceStoreCheckpoint> {
 	apply(instance: StatusInstance): void;
 	removeById(id: string): void;
 	removeByType(type: StatusType): void;
-	purgeExpired(currentFrame: number): void;
+	purgeExpired(currentTimeMs: number): void;
 	/** 设置状态变更监听器（每 store 至多一个；Member 构造后立即接入，后续覆盖 = 覆盖旧 handler）。 */
 	setChangeListener(listener: StatusChangeListener | null): void;
 }
@@ -53,8 +52,8 @@ export interface StatusInstanceStore {
 	list(): StatusInstance[];
 	getByType(type: StatusType): StatusInstance[];
 	hasStatus(type: StatusType): boolean;
-	getStatusRemaining(type: StatusType, currentFrame: number): number | null;
-	getStatusTags(currentFrame: number): string[];
+	getStatusRemaining(type: StatusType, currentTimeMs: number): number | null;
+	getStatusTags(currentTimeMs: number): string[];
 }
 
 /**
@@ -71,7 +70,7 @@ export class InMemoryStatusInstanceStore
 	private readonly instances = new Map<string, StatusInstance>();
 	private changeListener: StatusChangeListener | null = null;
 
-	constructor(private readonly getCurrentFrame: () => number) {}
+	constructor(private readonly getCurrentTimeMs: () => number) {}
 
 	setChangeListener(listener: StatusChangeListener | null): void {
 		this.changeListener = listener;
@@ -84,7 +83,7 @@ export class InMemoryStatusInstanceStore
 				kind,
 				instance,
 				reason,
-				frame: this.getCurrentFrame(),
+				timeMs: this.getCurrentTimeMs(),
 			});
 		} catch {
 			// listener 抛错不应影响 status 状态；错误在 listener 内部记录。
@@ -92,30 +91,30 @@ export class InMemoryStatusInstanceStore
 	}
 
 	list(): StatusInstance[] {
-		this.purgeExpired(this.getCurrentFrame());
+		this.purgeExpired(this.getCurrentTimeMs());
 		return Array.from(this.instances.values());
 	}
 
 	getByType(type: StatusType): StatusInstance[] {
-		this.purgeExpired(this.getCurrentFrame());
+		this.purgeExpired(this.getCurrentTimeMs());
 		return this.list().filter((instance) => instance.type === type);
 	}
 
 	hasStatus(type: StatusType): boolean {
-		this.purgeExpired(this.getCurrentFrame());
+		this.purgeExpired(this.getCurrentTimeMs());
 		return this.getByType(type).length > 0;
 	}
 
-	getStatusRemaining(type: StatusType, currentFrame: number): number | null {
-		this.purgeExpired(currentFrame);
+	getStatusRemaining(type: StatusType, currentTimeMs: number): number | null {
+		this.purgeExpired(currentTimeMs);
 		const instance = this.getByType(type)[0];
 		if (!instance) return null;
-		if (instance.expiresAtFrame === undefined) return null;
-		return Math.max(0, instance.expiresAtFrame - currentFrame);
+		if (instance.expiresAtMs === undefined) return null;
+		return Math.max(0, instance.expiresAtMs - currentTimeMs);
 	}
 
-	getStatusTags(currentFrame: number): string[] {
-		this.purgeExpired(currentFrame);
+	getStatusTags(currentTimeMs: number): string[] {
+		this.purgeExpired(currentTimeMs);
 		const tags = new Set<string>();
 		for (const instance of this.instances.values()) {
 			const instanceTags = instance.tags?.length ? instance.tags : [instance.type];
@@ -150,9 +149,9 @@ export class InMemoryStatusInstanceStore
 		}
 	}
 
-	purgeExpired(currentFrame: number): void {
+	purgeExpired(currentTimeMs: number): void {
 		for (const [id, instance] of this.instances.entries()) {
-			if (instance.expiresAtFrame !== undefined && instance.expiresAtFrame <= currentFrame) {
+			if (instance.expiresAtMs !== undefined && instance.expiresAtMs <= currentTimeMs) {
 				this.instances.delete(id);
 				this.notify("exited", instance, "expired");
 			}
@@ -168,9 +167,9 @@ export class InMemoryStatusInstanceStore
 					type: inst.type,
 					sourceId: inst.sourceId,
 					sourceSkillId: inst.sourceSkillId,
-					appliedAtFrame: inst.appliedAtFrame,
-					resolvedDurationFrames: inst.resolvedDurationFrames,
-					expiresAtFrame: inst.expiresAtFrame,
+					appliedAtMs: inst.appliedAtMs,
+					resolvedDurationMs: inst.resolvedDurationMs,
+					expiresAtMs: inst.expiresAtMs,
 					stacks: inst.stacks,
 					tags: inst.tags,
 					meta: inst.meta,

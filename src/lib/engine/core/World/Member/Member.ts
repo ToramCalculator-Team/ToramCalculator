@@ -7,7 +7,7 @@ import type { ExpressionContext } from "../../JSProcessor/types";
 import type { PipelineOverlay } from "../../Pipeline/overlay";
 import type { PipelineResolverService } from "../../Pipeline/PipelineResolverService";
 import type { StageData, StageEnv } from "../../Pipeline/stageEnv";
-import type { MemberCheckpoint, MemberDomainEvent } from "../../types";
+import type { MemberCheckpoint, MemberDomainEvent, SimulationTickContext } from "../../types";
 import type { DamageAreaRequest } from "../Area/types";
 import type { MemberBtEnv } from "./runtime/Agent/BtContext";
 import type {
@@ -97,6 +97,18 @@ export class Member<
 	private renderMessageSender: ((payload: unknown) => void) | null = null;
 	private domainEventSender: ((event: MemberDomainEvent) => void) | null = null;
 
+	private getRenderCommandTiming(): { seq: number; ts: number } {
+		let seq = this.runtime.tickIndex;
+		let ts = this.runtime.currentTimeMs;
+		try {
+			seq = this.services.getTickIndex();
+			ts = this.services.getCurrentTimeMs();
+		} catch {
+			// 渲染初始化可能早于引擎时间服务注入；此时使用 runtime 初始时间。
+		}
+		return { seq, ts };
+	}
+
 	constructor(
 		stateMachine: (
 			env: MemberStateMachineEnv<TAttrKey, TStateEvent, TStateContext, TRuntime>,
@@ -125,7 +137,7 @@ export class Member<
 		// BT gets a private env plus derived context: runtime read slots + BT bindings + skill agent members.
 		this.btManager = new BtManager(this.createBtEnv(), btContextBindings);
 
-		this.statusStore = new InMemoryStatusInstanceStore(() => this.services.getCurrentFrame());
+		this.statusStore = new InMemoryStatusInstanceStore(() => this.services.getCurrentTimeMs());
 		// 属性 watcher：依赖 StatContainer.onChange，与 EventCatalog 无关，可立即构造。
 		this.attributeWatchers = new AttributeWatcherRegistry<TAttrKey>(this.statContainer);
 		this.runtime.statusTags = this.runtime.statusTags ?? [];
@@ -248,6 +260,7 @@ export class Member<
 	setRenderMessageSender(renderMessageSender: ((payload: unknown) => void) | null): void {
 		this.renderMessageSender = renderMessageSender;
 		this.services.renderMessageSender = renderMessageSender;
+		const timing = this.getRenderCommandTiming();
 
 		const spawnCmd = {
 			type: "render:cmd" as const,
@@ -256,8 +269,8 @@ export class Member<
 				entityId: this.id,
 				name: this.name,
 				position: this.position,
-				seq: 0,
-				ts: Date.now(),
+				seq: timing.seq,
+				ts: timing.ts,
 			},
 		};
 		this.renderMessageSender?.(spawnCmd);
@@ -287,9 +300,15 @@ export class Member<
 		this.services.damageRequestHandler = damageRequestHandler;
 	}
 
-	setGetCurrentFrame(getCurrentFrame: (() => number) | null): void {
-		if (getCurrentFrame) {
-			this.services.getCurrentFrame = getCurrentFrame;
+	setGetCurrentTimeMs(getCurrentTimeMs: (() => number) | null): void {
+		if (getCurrentTimeMs) {
+			this.services.getCurrentTimeMs = getCurrentTimeMs;
+		}
+	}
+
+	setGetTickIndex(getTickIndex: (() => number) | null): void {
+		if (getTickIndex) {
+			this.services.getTickIndex = getTickIndex;
 		}
 	}
 
@@ -326,9 +345,9 @@ export class Member<
 					{
 						type: change.instance.type,
 						sourceId: change.instance.sourceId,
-						frame: change.frame,
+						timeMs: change.timeMs,
 					},
-					change.frame,
+					change.timeMs,
 				);
 			} else {
 				bus.emit(
@@ -336,15 +355,15 @@ export class Member<
 					{
 						type: change.instance.type,
 						reason: change.reason ?? "removed",
-						frame: change.frame,
+						timeMs: change.timeMs,
 					},
-					change.frame,
+					change.timeMs,
 				);
 			}
 		});
 
 		this.services.pipelineEventSink = (event: PipelineEventSinkEvent) => {
-			bus.emit(event.name, event.payload, event.frame);
+			bus.emit(event.name, event.payload, event.timeMs);
 		};
 	}
 
@@ -370,13 +389,15 @@ export class Member<
 			throw new Error(`pipelineResolverService 未注入：${pipelineName}`);
 		}
 
-		const frame = this.services.getCurrentFrame();
+		const timeMs = this.services.getCurrentTimeMs();
+		const tickIndex = this.services.getTickIndex();
 		const damageTagsParam = Array.isArray(params?.damageTags)
 			? (params?.damageTags as readonly string[])
 			: ([] as readonly string[]);
 
 		const env: StageEnv = {
-			frame,
+			timeMs,
+			tickIndex,
 			stats: (memberIdOrSelector: string, path: string) => {
 				if (memberIdOrSelector === "self" || memberIdOrSelector === this.id) {
 					return this.statContainer.getValue(path as TAttrKey);
@@ -390,7 +411,8 @@ export class Member<
 				const evaluator = this.services.expressionEvaluator;
 				if (!evaluator) throw new Error(`expressionEvaluator 未注入：${expr}`);
 				const ctx: ExpressionContext = {
-					currentFrame: frame,
+					currentTimeMs: timeMs,
+					tickIndex,
 					casterId: this.id,
 					targetId: this.runtime.targetId,
 					...(vars ?? {}),
@@ -408,7 +430,7 @@ export class Member<
 					log.debug(`runPipeline(${pipelineName})：pipelineEventSink 未注入，丢弃事件 ${eventName}`);
 					return;
 				}
-				sink({ name: eventName, payload, frame });
+				sink({ name: eventName, payload, timeMs });
 			},
 		};
 
@@ -432,13 +454,13 @@ export class Member<
 	}
 
 	private syncStatusTags(): void {
-		let currentFrame = this.runtime.currentFrame;
+		let currentTimeMs = this.runtime.currentTimeMs;
 		try {
-			currentFrame = this.services.getCurrentFrame();
+			currentTimeMs = this.services.getCurrentTimeMs();
 		} catch {
 			// Before engine services are injected, fall back to the local snapshot value.
 		}
-		this.runtime.statusTags = this.statusStore.getStatusTags(currentFrame);
+		this.runtime.statusTags = this.statusStore.getStatusTags(currentTimeMs);
 	}
 
 	notifyDomainEvent(event: MemberDomainEvent): void {
@@ -447,14 +469,16 @@ export class Member<
 		}
 	}
 
-	tick(frame: number): void {
+	tick(tick: SimulationTickContext): void {
 		if (!this.actorStarted) {
 			throw new Error(`member actor not started: ${this.id}`);
 		}
-		this.runtime.currentFrame = frame;
-		this.statusStore.purgeExpired(frame);
+		this.runtime.tickIndex = tick.tickIndex;
+		this.runtime.currentTimeMs = tick.currentTimeMs;
+		this.runtime.deltaTimeMs = tick.deltaTimeMs;
+		this.statusStore.purgeExpired(tick.currentTimeMs);
 		this.syncStatusTags();
-		this.actor.send({ type: "update", timestamp: frame } as TStateEvent);
+		this.actor.send({ type: "update", timestamp: tick.currentTimeMs } as TStateEvent);
 		this.btManager.tickAll();
 		// 让阈值 watcher 及时响应 modifier 导致的数值变化：把本帧累计的脏值刷出。
 		this.statContainer.flushDirtyValues();
@@ -489,4 +513,4 @@ export class Member<
 	}
 }
 
-// (deleted) safeGetFrame: services 未注入应直接抛错
+// (deleted) safeGetTimeMs: services 未注入应直接抛错

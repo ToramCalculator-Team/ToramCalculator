@@ -1,10 +1,11 @@
+import type { SimulationTickContext } from "../../types";
 import type { MemberManager } from "../Member/MemberManager";
 import type { SpaceManager } from "../SpaceManager";
 import type { TrapAreaRequest } from "./types";
 
 /**
  * 陷阱区域系统
- * 管理跨帧陷阱区域实例
+ * 管理跨时间陷阱区域实例
  * 当前为空壳实现，后续补充触发次数/激活延迟等规则
  */
 export class TrapAreaSystem {
@@ -37,9 +38,9 @@ export class TrapAreaSystem {
 	}
 
 	/**
-	 * 每帧更新
+	 * 每 tick 更新
 	 */
-	tick(frame: number): void {
+	tick(_tick: SimulationTickContext): void {
 		// TODO: 实现陷阱区域 tick 逻辑
 		// - 触发检测
 		// - 激活延迟
@@ -50,4 +51,3 @@ export class TrapAreaSystem {
 		// TODO: 实现陷阱区域清理逻辑
 	}
 }
-

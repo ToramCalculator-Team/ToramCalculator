@@ -70,8 +70,8 @@ export class PreviewRunner {
 				skillName,
 				predictedDamage: 0,
 				mpCost: 0,
-				castTimeFrames: 0,
-				cooldownFrames: 0,
+				castTimeMs: 0,
+				cooldownMs: 0,
 				isAvailable: false,
 			};
 		}
@@ -85,8 +85,8 @@ export class PreviewRunner {
 				skillName,
 				predictedDamage: 0,
 				mpCost: info?.computed.mpCost ?? 0,
-				castTimeFrames: 0,
-				cooldownFrames: info?.computed.cooldownRemaining ?? 0,
+				castTimeMs: 0,
+				cooldownMs: info?.computed.cooldownRemaining ?? 0,
 				isAvailable: false,
 			};
 		}
@@ -115,8 +115,8 @@ export class PreviewRunner {
 				skillName,
 				predictedDamage: 0,
 				mpCost: info.computed.mpCost,
-				castTimeFrames: 0,
-				cooldownFrames: info.computed.cooldownRemaining,
+				castTimeMs: 0,
+				cooldownMs: info.computed.cooldownRemaining,
 				isAvailable: true,
 			};
 		}
@@ -125,19 +125,18 @@ export class PreviewRunner {
 		memberEntry.actor.send({ type: "使用技能", data: { target: "", skillId } });
 
 		// 执行同步快进
-		const framesRun = this.engine.fastForwardSync(500);
+		const { ticksRun } = this.engine.fastForwardSync({ maxDurationMs: 1000 });
 
-		log.debug(
-			`探测技能 ${skillId}(${skillName}): 执行 ${framesRun} 帧, 累计伤害 ${totalDamage}`,
-		);
+		log.debug(`探测技能 ${skillId}(${skillName}): 执行 ${ticksRun} tick, 累计伤害 ${totalDamage}`);
 
 		return {
 			skillId,
 			skillName,
 			predictedDamage: totalDamage,
 			mpCost: info.computed.mpCost,
-			castTimeFrames: info.computed.castingRange,
-			cooldownFrames: info.computed.cooldownRemaining,
+			// ComputedSkillInfo 当前只暴露消耗/可用性/距离，技能时序需要后续从共享时序服务填充。
+			castTimeMs: 0,
+			cooldownMs: info.computed.cooldownRemaining,
 			isAvailable: info.computed.isAvailable,
 		};
 	}

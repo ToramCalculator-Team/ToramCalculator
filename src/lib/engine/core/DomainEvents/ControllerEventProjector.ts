@@ -1,6 +1,6 @@
 /**
  * 控制器事件投影器
- * 
+ *
  * 职责：
  * - 将 MemberDomainEvent 投影为 ControllerDomainEvent（按 binding 映射 memberId -> controllerId）
  * - 批量收集并发送到主线程
@@ -9,17 +9,24 @@
 
 import { createLogger } from "~/lib/Logger";
 import type { ControlBindingManager } from "../Controller/ControlBindingManager";
-import type { Checkpointable, ControllerDomainEvent, ControllerEventProjectorCheckpoint, MemberDomainEvent } from "../types";
+import type {
+	Checkpointable,
+	ControllerDomainEvent,
+	ControllerEventProjectorCheckpoint,
+	MemberDomainEvent,
+} from "../types";
 
 const log = createLogger("EventProj");
 
 export class ControllerEventProjector implements Checkpointable<ControllerEventProjectorCheckpoint> {
 	private bindingManager: ControlBindingManager;
 	/** 领域事件批发送器（直接发送 domain_event_batch 顶层消息） */
-	private domainEventBatchSender: ((payload: { type: "controller_domain_event_batch"; frameNumber: number; events: ControllerDomainEvent[] }) => void) | null = null;
-	
-	/** 当前帧收集的控制器事件 */
-	private currentFrameEvents: ControllerDomainEvent[] = [];
+	private domainEventBatchSender:
+		| ((payload: { type: "controller_domain_event_batch"; tickIndex: number; events: ControllerDomainEvent[] }) => void)
+		| null = null;
+
+	/** 当前 tick 收集的控制器事件 */
+	private currentTickEvents: ControllerDomainEvent[] = [];
 
 	constructor(bindingManager: ControlBindingManager) {
 		this.bindingManager = bindingManager;
@@ -27,10 +34,18 @@ export class ControllerEventProjector implements Checkpointable<ControllerEventP
 
 	/**
 	 * 设置领域事件批发送器
-	 * 
+	 *
 	 * 注意：现在直接发送 domain_event_batch 顶层消息，不再嵌套在 system_event 中
 	 */
-	setDomainEventBatchSender(sender: ((payload: { type: "controller_domain_event_batch"; frameNumber: number; events: ControllerDomainEvent[] }) => void) | null): void {
+	setDomainEventBatchSender(
+		sender:
+			| ((payload: {
+					type: "controller_domain_event_batch";
+					tickIndex: number;
+					events: ControllerDomainEvent[];
+			  }) => void)
+			| null,
+	): void {
 		this.domainEventBatchSender = sender;
 	}
 
@@ -41,7 +56,7 @@ export class ControllerEventProjector implements Checkpointable<ControllerEventP
 	project(event: MemberDomainEvent): void {
 		// 查找绑定到该 member 的 controllerId
 		const controllerId = this.bindingManager.getControllerIdByMemberId(event.memberId);
-		
+
 		if (!controllerId) {
 			// 没有控制器绑定，不投影
 			return;
@@ -53,7 +68,7 @@ export class ControllerEventProjector implements Checkpointable<ControllerEventP
 			controllerId,
 		} as ControllerDomainEvent;
 
-		this.currentFrameEvents.push(controllerEvent);
+		this.currentTickEvents.push(controllerEvent);
 	}
 
 	/**
@@ -68,23 +83,23 @@ export class ControllerEventProjector implements Checkpointable<ControllerEventP
 			entityId: memberId,
 		};
 
-		this.currentFrameEvents.push(cameraEvent);
+		this.currentTickEvents.push(cameraEvent);
 	}
 
 	/**
-	 * 刷新帧（发送所有收集的事件到主线程）
-	 * 
+	 * 刷新 tick（发送所有收集的事件到主线程）
+	 *
 	 * 现在直接发送 domain_event_batch 顶层消息，不再嵌套在 system_event 中
-	 * @param frameNumber 当前帧号
+	 * @param tickIndex 当前 tick 序号
 	 */
-	flush(frameNumber: number): void {
-		if (this.currentFrameEvents.length === 0) {
+	flush(tickIndex: number): void {
+		if (this.currentTickEvents.length === 0) {
 			return;
 		}
 
 		if (!this.domainEventBatchSender) {
 			log.warn("ControllerEventProjector: 领域事件批发送器未设置，无法发送事件");
-			this.currentFrameEvents = [];
+			this.currentTickEvents = [];
 			return;
 		}
 
@@ -92,32 +107,31 @@ export class ControllerEventProjector implements Checkpointable<ControllerEventP
 		try {
 			this.domainEventBatchSender({
 				type: "controller_domain_event_batch",
-				frameNumber,
-				events: this.currentFrameEvents,
+				tickIndex,
+				events: this.currentTickEvents,
 			});
 		} catch (error) {
 			log.error("ControllerEventProjector: 发送事件失败:", error);
 		}
 
 		// 清空缓存
-		this.currentFrameEvents = [];
+		this.currentTickEvents = [];
 	}
 
 	captureCheckpoint(): ControllerEventProjectorCheckpoint {
 		return {
-			currentFrameEvents: structuredClone(this.currentFrameEvents),
+			currentTickEvents: structuredClone(this.currentTickEvents),
 		};
 	}
 
 	restoreCheckpoint(checkpoint: ControllerEventProjectorCheckpoint): void {
-		this.currentFrameEvents = structuredClone(checkpoint.currentFrameEvents) as ControllerDomainEvent[];
+		this.currentTickEvents = structuredClone(checkpoint.currentTickEvents) as ControllerDomainEvent[];
 	}
 
 	/**
 	 * 清空所有缓存
 	 */
 	clear(): void {
-		this.currentFrameEvents = [];
+		this.currentTickEvents = [];
 	}
 }
-

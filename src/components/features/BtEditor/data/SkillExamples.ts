@@ -3,15 +3,15 @@ import type { SkillExample } from "../types";
 
 const defaultSkillDefinition = `root {
 	sequence{
-		action [animation,"施法前摇",$currentSkillStartupFrames]
-		wait [$currentSkillStartupFrames]
-		action [animation,"蓄力动画",$currentSkillChargingFrames]
-		wait [$currentSkillChargingFrames]
-		action [animation, "咏唱动画",$currentSkillChantingFrames]
-		wait [$currentSkillChantingFrames]
+		action [animation,"施法前摇",$currentSkillStartupMs]
+		wait [$currentSkillStartupMs]
+		action [animation,"蓄力动画",$currentSkillChargingMs]
+		wait [$currentSkillChargingMs]
+		action [animation, "咏唱动画",$currentSkillChantingMs]
+		wait [$currentSkillChantingMs]
         branch [mainAction]
-		action [animation, "施法后摇", $后摇帧数]
-		wait [$后摇帧数]
+		action [animation, "施法后摇", $后摇毫秒]
+		wait [$后摇毫秒]
     }
 }
 
@@ -30,9 +30,9 @@ const defaultSkillAgent = `class Agent {
     get 技能倍率() {
         return 100 + skill.lv * 5 + self.vit + self.str;
     }
-    get 后摇帧数() {
-        const endFrames = this.currentSkillActionFrames - this.currentSkillStartupFrames
-        return endFrames
+    get 后摇毫秒() {
+        const endMs = this.currentSkillActionMs - this.currentSkillStartupMs
+        return endMs
     }
     get 伤害标签() {
         // 伤害归因标签。commonAttackSchema.damageTags；受击 Pipeline 的 overlay/proc 订阅依据之一。

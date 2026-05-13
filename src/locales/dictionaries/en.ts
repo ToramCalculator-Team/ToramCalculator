@@ -2541,40 +2541,40 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "技能作用范围",
 					formFieldDescription: "技能作用范围",
 				},
-				motionFixed: {
-					key: "Fixed Animation Frames",
-					tableFieldDescription: "固定动画帧",
-					formFieldDescription: "固定动画帧",
+				actionFixedMs: {
+					key: "Fixed Action Time (ms)",
+					tableFieldDescription: "固定动作时长（ms）",
+					formFieldDescription: "固定动作时长（ms）",
 				},
-				motionModified: {
-					key: "Acceleratable Animation Frames",
-					tableFieldDescription: "可加速动画帧",
-					formFieldDescription: "可加速动画帧",
+				actionModifiedMs: {
+					key: "Acceleratable Action Time (ms)",
+					tableFieldDescription: "可加速动作时长（ms）",
+					formFieldDescription: "可加速动作时长（ms）",
 				},
-				chantingFixed: {
-					key: "Fixed Chanting Time",
-					tableFieldDescription: "固定咏唱时间",
-					formFieldDescription: "固定咏唱时间",
+				chantingFixedMs: {
+					key: "Fixed Chanting Time (ms)",
+					tableFieldDescription: "固定咏唱时长（ms）",
+					formFieldDescription: "固定咏唱时长（ms）",
 				},
-				chantingModified: {
-					key: "Acceleratable Chanting Time",
-					tableFieldDescription: "可加速咏唱时间",
-					formFieldDescription: "可加速咏唱时间",
+				chantingModifiedMs: {
+					key: "Acceleratable Chanting Time (ms)",
+					tableFieldDescription: "可加速咏唱时长（ms）",
+					formFieldDescription: "可加速咏唱时长（ms）",
 				},
-				reservoirFixed: {
-					key: "Fixed Charging Time",
-					tableFieldDescription: "固定蓄力时间",
-					formFieldDescription: "固定蓄力时间",
+				chargingFixedMs: {
+					key: "Fixed Charging Time (ms)",
+					tableFieldDescription: "固定蓄力时长（ms）",
+					formFieldDescription: "固定蓄力时长（ms）",
 				},
-				reservoirModified: {
-					key: "Acceleratable Charging Time",
-					tableFieldDescription: "可加速蓄力时间",
-					formFieldDescription: "可加速蓄力时间",
+				chargingModifiedMs: {
+					key: "Acceleratable Charging Time (ms)",
+					tableFieldDescription: "可加速蓄力时长（ms）",
+					formFieldDescription: "可加速蓄力时长（ms）",
 				},
-				startupFrames: {
-					key: "Startup Frames",
-					tableFieldDescription: "技能前摇",
-					formFieldDescription: "技能前摇",
+				startupMs: {
+					key: "Startup Time (ms)",
+					tableFieldDescription: "技能前摇（ms）",
+					formFieldDescription: "技能前摇（ms）",
 				},
 				hpCost: {
 					key: "HP Cost",

@@ -166,7 +166,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 
 	/**
 	 * 兜底：把对应 MemberType 的 Property 对象注入到编辑器 Agent 上（仅在缺失时注入），
-	 * 让 `$targetId/$currentFrame/$vAtkP` 这类属性引用在编辑器里也能取到“占位值”。
+	 * 让 `$targetId/$currentTimeMs/$vAtkP` 这类属性引用在编辑器里也能取到“占位值”。
 	 * 注意：只注入 propertyObject，不注入 action/condition（避免破坏 invoker 查找）。
 	 */
 	const injectDefaultPropertiesIntoBoard = (board: Agent): Agent => {
@@ -240,9 +240,9 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		const boardWithFallback = wrapAgentWithFallback(board, def);
 
 		// 配置行为树选项
-		// 注意：我们每 60fps 调用一次 step()，所以 delta 设置为 1000 / 60 毫秒
+		// 注意：预览按 60Hz 逻辑 tick 调用 step()，所以 delta 设置为 1000 / 60 毫秒
 		const options: BehaviourTreeOptions = {
-			getDeltaTime: () => 1 / 60,
+			getDeltaTimeMs: () => 1000 / 60,
 		};
 
 		// 创建并返回行为树实例

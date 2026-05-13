@@ -1,18 +1,10 @@
 import { SimulatorWithRelationsSchema } from "@db/generated/repositories/simulator";
 import { MEMBER_TYPE } from "@db/schema/enums";
 import { z } from "zod/v4";
-import {
-	EventQueueConfigSchema,
-	type QueueSnapshot,
-	type QueueStats,
-} from "./EventQueue/types";
-import {
-	FrameLoopConfigSchema,
-	type FrameLoopSnapshot,
-	type FrameLoopStats,
-} from "./FrameLoop/types";
 import type { EventCatalog } from "./Event/EventCatalog";
 import type { TagRegistry } from "./Event/TagRegistry";
+import { EventQueueConfigSchema, type QueueSnapshot, type QueueStats } from "./EventQueue/types";
+import { FrameLoopConfigSchema, type FrameLoopSnapshot, type FrameLoopStats } from "./FrameLoop/types";
 import type { JSProcessor } from "./JSProcessor/JSProcessor";
 import type { MessageRouterStats } from "./MessageRouter/MessageRouter";
 import type { PipelineCatalog } from "./Pipeline/PipelineCatalog";
@@ -54,7 +46,7 @@ export type ExecutionSemantics = "full" | "previewSafe";
 /** 停止策略 */
 export type StopPolicy =
 	| { kind: "manual" }
-	| { kind: "untilFrame"; targetFrame: number }
+	| { kind: "untilTimeMs"; targetTimeMs: number }
 	| { kind: "untilBattleEnd" }
 	| { kind: "untilSequencesDone" }
 	| { kind: "untilMemberActionEnds"; memberId: string };
@@ -66,15 +58,10 @@ export type StopPolicy =
  * - `collectFrameSnapshots`：面向批量/回放类输出的收集语义。
  * - `returnPreviewReport`：面向机体/技能预览的一次性报告语义。
  */
-export type OutputPolicy =
-	| "streamRealtime"
-	| "collectFrameSnapshots"
-	| "returnPreviewReport";
+export type OutputPolicy = "streamRealtime" | "collectFrameSnapshots" | "returnPreviewReport";
 
 /** 探针策略 */
-export type ProbePolicy =
-	| "disabled"
-	| "rollbackAfterSkillProbe";
+export type ProbePolicy = "disabled" | "rollbackAfterSkillProbe";
 
 /**
  * 引擎运行配置描述符。
@@ -94,15 +81,29 @@ export interface RuntimeConfig {
 	outputPolicy: OutputPolicy;
 	probePolicy: ProbePolicy;
 	acceptExternalIntents: boolean;
-	targetFPS: number;
+	logicHz: number;
 	timeScale: number;
-	maxFrameSkip: number;
+	maxTickSkip: number;
+}
+
+/**
+ * 单次逻辑 tick 的权威时间上下文。
+ *
+ * 设计说明：
+ * - currentTimeMs 是规则系统读取的时间源。
+ * - tickIndex 只用于排序、日志、回放定位和 checkpoint。
+ * - deltaTimeMs 让 BT wait、区域轨迹和未来连续效果都能脱离 wall-clock。
+ */
+export interface SimulationTickContext {
+	tickIndex: number;
+	currentTimeMs: number;
+	deltaTimeMs: number;
 }
 
 /**
  * 预设：实时模式（`driveMode: "clocked"`）。
  *
- * 模拟贴近真实时间的运行：由帧循环按 `targetFPS` 等驱动推进。
+ * 模拟贴近真实时间的运行：由时钟循环按 `logicHz` 等驱动推进。
  *
  * 1. 时钟驱动、近似恒定节拍推进（受 `timeScale` / 跳帧上限等影响）。
  * 2. 当前实现下不因成员闲置而自动停帧；若后续增加「同步手动成员」类开关，行为以该字段为准。
@@ -117,9 +118,9 @@ export function createRealtimeConfig(overrides?: Partial<RuntimeConfig>): Runtim
 		outputPolicy: "streamRealtime",
 		probePolicy: "disabled",
 		acceptExternalIntents: true,
-		targetFPS: 60,
+		logicHz: 60,
 		timeScale: 1,
-		maxFrameSkip: 5,
+		maxTickSkip: 5,
 		...overrides,
 	};
 }
@@ -148,9 +149,9 @@ export function createFastForwardConfig(
 		outputPolicy: "collectFrameSnapshots",
 		probePolicy: "disabled",
 		acceptExternalIntents: false,
-		targetFPS: 60,
+		logicHz: 60,
 		timeScale: 1,
-		maxFrameSkip: 5,
+		maxTickSkip: 5,
 		...overrides,
 	};
 }
@@ -174,9 +175,9 @@ export function createPreviewConfig(overrides?: Partial<RuntimeConfig>): Runtime
 		outputPolicy: "returnPreviewReport",
 		probePolicy: "rollbackAfterSkillProbe",
 		acceptExternalIntents: false,
-		targetFPS: 60,
+		logicHz: 60,
 		timeScale: 1,
-		maxFrameSkip: 5,
+		maxTickSkip: 5,
 		...overrides,
 	};
 }
@@ -209,8 +210,10 @@ export type EngineConfig = z.output<typeof EngineConfigSchema>;
 export interface EngineStats {
 	/** 引擎状态 */
 	SMState: string; // 待优化
-	/** 当前帧号 */
-	currentFrame: number;
+	/** 当前逻辑 tick 序号 */
+	tickIndex: number;
+	/** 当前模拟时间（毫秒） */
+	currentTimeMs: number;
 	/** 运行时间（毫秒） */
 	runTime: number;
 	/** 成员 */
@@ -224,22 +227,24 @@ export interface EngineStats {
 }
 
 /**
- * 单帧执行结果
- * FrameLoop 在每次调用 engine.stepFrame 后，使用该结果更新统计与快照
+ * 单 tick 执行结果
+ * FrameLoop 在每次调用 engine.stepTick 后，使用该结果更新统计与快照
  */
-export interface FrameStepResult {
-	/** 本次执行处理的帧号 */
-	frameNumber: number;
-	/** 本帧逻辑执行耗时（毫秒） */
+export interface TickStepResult {
+	/** 本次执行处理的 tick 序号 */
+	tickIndex: number;
+	/** 本次执行处理的模拟时间（毫秒） */
+	currentTimeMs: number;
+	/** 本 tick 逻辑执行耗时（毫秒） */
 	duration: number;
-	/** 本帧处理的事件数量 */
+	/** 本 tick 处理的事件数量 */
 	eventsProcessed: number;
-	/** 本帧更新的成员数量 */
+	/** 本 tick 更新的成员数量 */
 	membersUpdated: number;
-	/** 是否仍有当前帧待处理事件（executeFrame 等于当前帧且未 processed） */
+	/** 是否仍有当前时间片待处理事件 */
 	hasPendingEvents: boolean;
-	/** 当前仍挂起的帧内任务数量（pendingFrameTasksCount） */
-	pendingFrameTasks: number;
+	/** 当前仍挂起的 tick 内任务数量（pendingTickTasksCount） */
+	pendingTickTasks: number;
 }
 
 /**
@@ -263,10 +268,12 @@ export type ComputedSkillInfo = z.output<typeof ComputedSkillInfoSchema>;
  * 帧快照接口 - 包含引擎和所有成员的完整状态
  */
 export interface GameEngineSnapshot {
-	frameNumber: number;
+	tickIndex: number;
+	currentTimeMs: number;
 	timestamp: number;
 	engine: {
-		frameNumber: number;
+		tickIndex: number;
+		currentTimeMs: number;
 		runTime: number;
 		frameLoop: FrameLoopSnapshot;
 		eventQueue: QueueSnapshot;
@@ -300,9 +307,7 @@ export const RealtimeMemberSnapshotSchema = z.object({
 	}),
 });
 
-export type RealtimeMemberSnapshot = z.output<
-	typeof RealtimeMemberSnapshotSchema
->;
+export type RealtimeMemberSnapshot = z.output<typeof RealtimeMemberSnapshotSchema>;
 
 /**
  * Buff 视图数据 Schema - 与 BuffViewData 对齐
@@ -332,18 +337,21 @@ export const BuffViewDataSchema = z.object({
 export type BuffViewDataSnapshot = z.output<typeof BuffViewDataSchema>;
 
 /**
- * 高频帧快照 - 用于 frame_snapshot 通道
- * 将来 SAB 也会以此结构为基础设计布局
+ * 高频状态快照 - 用于 frame_snapshot 通道。
+ * 设计说明：通道名沿用 frame_snapshot，payload 只暴露 tickIndex/currentTimeMs，避免规则层重新依赖物理帧语义。
  */
 export const FrameSnapshotSchema = z.object({
-	/** 逻辑帧号 */
-	frameNumber: z.number(),
-	/** 时间戳（毫秒） */
+	/** 逻辑 tick 序号 */
+	tickIndex: z.number(),
+	/** 当前模拟时间（毫秒） */
+	currentTimeMs: z.number(),
+	/** 发送时间戳（毫秒） */
 	timestamp: z.number(),
 	engine: z.object({
-		frameNumber: z.number(),
+		tickIndex: z.number(),
+		currentTimeMs: z.number(),
 		runTime: z.number(),
-		fps: z.number(),
+		ticksPerSecond: z.number(),
 	}),
 	/** 所有成员的高频视图 */
 	members: z.array(RealtimeMemberSnapshotSchema),
@@ -535,7 +543,8 @@ export type ControllerDomainEvent = z.output<typeof ControllerDomainEventSchema>
  */
 export const EngineStatsFullSchema = z
 	.object({
-		currentFrame: z.number(),
+		tickIndex: z.number(),
+		currentTimeMs: z.number(),
 	})
 	.passthrough();
 
@@ -556,8 +565,8 @@ export interface Checkpointable<T> {
 export interface EventQueueCheckpoint {
 	events: Array<{
 		id: string;
-		insertFrame: number;
-		executeFrame: number;
+		insertedAtMs: number;
+		executeAtMs: number;
 		type: string;
 		processed: boolean;
 		targetMemberId: string;
@@ -594,9 +603,9 @@ export interface StatusInstanceStoreCheckpoint {
 		type: string;
 		sourceId?: string;
 		sourceSkillId?: string;
-		appliedAtFrame: number;
-		resolvedDurationFrames?: number;
-		expiresAtFrame?: number;
+		appliedAtMs: number;
+		resolvedDurationMs?: number;
+		expiresAtMs?: number;
 		stacks?: number;
 		tags?: string[];
 		meta?: Record<string, unknown>;
@@ -624,19 +633,19 @@ export interface DamageAreaSystemCheckpoint {
 	instances: Array<{
 		areaId: string;
 		requestPayload: unknown;
-		lastHitFrameByTargetId: Array<[string, number]>;
+		lastHitTimeMsByTargetId: Array<[string, number]>;
 	}>;
 }
 
 /** DomainEventBus 检查点 */
 export interface DomainEventBusCheckpoint {
-	currentFrame: number;
-	currentFrameEvents: Array<[string, MemberDomainEvent]>;
+	tickIndex: number;
+	currentTickEvents: Array<[string, MemberDomainEvent]>;
 }
 
 /** ControllerEventProjector 检查点 */
 export interface ControllerEventProjectorCheckpoint {
-	currentFrameEvents: Array<unknown>;
+	currentTickEvents: Array<unknown>;
 }
 
 /** 单个成员的完整检查点 */
@@ -660,7 +669,8 @@ export interface WorldCheckpoint {
 
 /** 引擎完整检查点 */
 export interface EngineCheckpoint {
-	frameNumber: number;
+	tickIndex: number;
+	currentTimeMs: number;
 	timestamp: number;
 	eventQueue: EventQueueCheckpoint;
 	world: WorldCheckpoint;
@@ -676,8 +686,10 @@ export interface EngineCheckpoint {
 export interface BattleSnapshot {
 	/** 快照时间戳 */
 	timestamp: number;
-	/** 帧号 */
-	frameNumber: number;
+	/** 逻辑 tick 序号 */
+	tickIndex: number;
+	/** 当前模拟时间（毫秒） */
+	currentTimeMs: number;
 	/** 所有成员状态 */
 	members: Array<MemberSerializeData>;
 	/** 战斗状态 */

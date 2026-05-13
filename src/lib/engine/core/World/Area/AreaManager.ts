@@ -1,3 +1,4 @@
+import type { SimulationTickContext } from "../../types";
 import type { MemberManager } from "../Member/MemberManager";
 import type { SpaceManager } from "../SpaceManager";
 import { BuffAreaSystem } from "./BuffAreaSystem";
@@ -14,23 +15,20 @@ export class AreaManager {
 	public readonly buffAreaSystem: BuffAreaSystem;
 	public readonly trapAreaSystem: TrapAreaSystem;
 
-	constructor(
-		spaceManager: SpaceManager,
-		memberManager: MemberManager,
-	) {
+	constructor(spaceManager: SpaceManager, memberManager: MemberManager) {
 		this.damageAreaSystem = new DamageAreaSystem(spaceManager, memberManager);
 		this.buffAreaSystem = new BuffAreaSystem(spaceManager, memberManager);
 		this.trapAreaSystem = new TrapAreaSystem(spaceManager, memberManager);
 	}
 
 	/**
-	 * 每帧更新区域逻辑
+	 * 每 tick 更新区域逻辑
 	 * 顺序调度三个子系统
 	 */
-	tick(frame: number): void {
-		this.damageAreaSystem.tick(frame);
-		this.trapAreaSystem.tick(frame);
-		this.buffAreaSystem.tick(frame);
+	tick(tick: SimulationTickContext): void {
+		this.damageAreaSystem.tick(tick);
+		this.trapAreaSystem.tick(tick);
+		this.buffAreaSystem.tick(tick);
 	}
 
 	clear(): void {
@@ -39,4 +37,3 @@ export class AreaManager {
 		this.buffAreaSystem.clear();
 	}
 }
-

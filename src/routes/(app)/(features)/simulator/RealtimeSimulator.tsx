@@ -18,15 +18,8 @@ import { ControlPanel } from "~/lib/engine/controller/components";
 import { MemberController } from "~/lib/engine/controller/MemberController";
 import { MemberControllerPanel } from "~/lib/engine/controller/MemberControllerPanel";
 import { useEngine } from "~/lib/engine/core/thread/EngineContext";
-import {
-	ControllerDomainEventBatchSchema,
-	type EngineTelemetry,
-} from "~/lib/engine/core/thread/protocol";
-import {
-	type ControllerDomainEvent,
-	createRealtimeConfig,
-	type FrameSnapshot,
-} from "~/lib/engine/core/types";
+import { ControllerDomainEventBatchSchema, type EngineTelemetry } from "~/lib/engine/core/thread/protocol";
+import { type ControllerDomainEvent, createRealtimeConfig, type FrameSnapshot } from "~/lib/engine/core/types";
 import type { MemberSerializeData } from "~/lib/engine/core/World/Member/Member";
 import { GameView } from "~/lib/engine/render/Renderer";
 import { store } from "~/store";
@@ -43,7 +36,6 @@ type FullscreenCapableDocument = Document & {
 type FullscreenCapableElement = HTMLElement & {
 	webkitRequestFullscreen?: () => Promise<void> | void;
 };
-
 
 export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 	const [isFullscreen, setIsFullscreen] = createSignal(false);
@@ -158,7 +150,7 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 		registerCleanup(() => {
 			clearInterval(interval);
 		});
-		
+
 		const fullscreenElement = document.documentElement as FullscreenCapableElement;
 		setIsFullscreenSupported(
 			!!document.fullscreenEnabled ||
@@ -205,7 +197,7 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 	// ==================== 数据同步 ====================
 
 	const handleFrameSnapshot = (data: { engineId: string; snapshot: FrameSnapshot }) => {
-		if (data.snapshot && typeof data.snapshot === "object" && "frameNumber" in data.snapshot) {
+		if (data.snapshot && typeof data.snapshot === "object" && "tickIndex" in data.snapshot) {
 			const snapshot = data.snapshot;
 			setLatestFrameSnapshot(snapshot);
 		}
@@ -213,17 +205,25 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 
 	const handleEngineTelemetry = (data: { engineId: string; telemetry: unknown }) => {
 		if (!data.telemetry || typeof data.telemetry !== "object") return;
-		const evt = data.telemetry as { frameNumber?: unknown; runTime?: unknown; fps?: unknown; memberCount?: unknown };
+		const evt = data.telemetry as {
+			tickIndex?: unknown;
+			currentTimeMs?: unknown;
+			runTime?: unknown;
+			ticksPerSecond?: unknown;
+			memberCount?: unknown;
+		};
 		if (
-			typeof evt.frameNumber === "number" &&
+			typeof evt.tickIndex === "number" &&
+			typeof evt.currentTimeMs === "number" &&
 			typeof evt.runTime === "number" &&
-			typeof evt.fps === "number" &&
+			typeof evt.ticksPerSecond === "number" &&
 			typeof evt.memberCount === "number"
 		) {
 			setEngineTelemetry({
-				frameNumber: evt.frameNumber,
+				tickIndex: evt.tickIndex,
+				currentTimeMs: evt.currentTimeMs,
 				runTime: evt.runTime,
-				fps: evt.fps,
+				ticksPerSecond: evt.ticksPerSecond,
 				memberCount: evt.memberCount,
 			});
 		}
@@ -467,7 +467,7 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 								engineActor={engine.lifecycleActor}
 								onStart={() => {
 									// handleToggleFullscreen()
-									engine.start()
+									engine.start();
 								}}
 								onReset={() => engine.reset()}
 								onPause={() => engine.pause()}

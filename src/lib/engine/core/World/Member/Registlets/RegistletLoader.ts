@@ -27,17 +27,25 @@ import type {
 	PipelinePatchEffect,
 	RegistletHandler,
 	RegistletValue,
-	ThresholdWatcherEffect,
 } from "@db/schema/jsons";
 import { createLogger } from "~/lib/Logger";
 import type { ExpressionContext } from "../../../JSProcessor/types";
 import type { PipelineInstruction } from "../../../Pipeline/instruction";
 import type { PipelineOverlay } from "../../../Pipeline/overlay";
 import { type ModifierSource, ModifierType } from "../runtime/StatContainer/StatContainer";
-import { removeOverlaysBySourceId } from "./overlayUtils"; 
+import { removeOverlaysBySourceId } from "./overlayUtils";
 import type { AnyMember } from "./types";
 
 const log = createLogger("RegistletLoader");
+
+type ThresholdWatcherEffectMs = {
+	path: string;
+	threshold: RegistletValue;
+	direction: "rising" | "falling" | "both";
+	cooldownMs: number;
+	fireOnRegister: boolean;
+	handlers: readonly RegistletHandler[];
+};
 
 /** 最小 registlet 行形状。与 `db/generated/zod/index.ts#registlet` 兼容。 */
 export interface RegistletRow {
@@ -48,15 +56,13 @@ export interface RegistletRow {
 	pipelinePatches: readonly PipelinePatchEffect[];
 	skillBranchActivators: readonly unknown[];
 	subscriptions: readonly EventSubscriptionEffect[];
-	thresholdWatchers: readonly ThresholdWatcherEffect[];
+	thresholdWatchers: readonly ThresholdWatcherEffectMs[];
 }
 
 const REGISTLET_SOURCE_PREFIX = "registlet";
 
 function sourceIdOf(registletId: string, suffix?: string): string {
-	return suffix
-		? `${REGISTLET_SOURCE_PREFIX}.${registletId}.${suffix}`
-		: `${REGISTLET_SOURCE_PREFIX}.${registletId}`;
+	return suffix ? `${REGISTLET_SOURCE_PREFIX}.${registletId}.${suffix}` : `${REGISTLET_SOURCE_PREFIX}.${registletId}`;
 }
 
 /** 用 level 做简单占位符替换。对非字符串值原样返回。 */
@@ -76,10 +82,7 @@ function substituteLevel(value: RegistletValue, level: number): string | number 
  *
  * 非数字字符串（例如"self"、"hp.max"等标识符）保持 string，走 compiler 既有解析路径。
  */
-function substituteInstructionOperand(
-	op: string | number | undefined,
-	level: number,
-): string | number | undefined {
+function substituteInstructionOperand(op: string | number | undefined, level: number): string | number | undefined {
 	if (op === undefined) return undefined;
 	if (typeof op === "number") return op;
 	const replaced = substituteLevel(op, level);
@@ -94,7 +97,9 @@ function substituteInstructionOperand(
 	return replaced;
 }
 
-function mapModifierType(type: "dynamicFixed" | "dynamicPercentage" | "staticFixed" | "staticPercentage"): ModifierType {
+function mapModifierType(
+	type: "dynamicFixed" | "dynamicPercentage" | "staticFixed" | "staticPercentage",
+): ModifierType {
 	switch (type) {
 		case "dynamicFixed":
 			return ModifierType.DYNAMIC_FIXED;
@@ -172,7 +177,8 @@ function evaluateHandlerValue(
 		return 0;
 	}
 	const ctx: ExpressionContext = {
-		currentFrame: member.runtime.currentFrame,
+		currentTimeMs: member.runtime.currentTimeMs,
+		tickIndex: member.runtime.tickIndex,
 		casterId: member.id,
 		targetId: member.runtime.targetId,
 		level,
@@ -186,7 +192,7 @@ function evaluateHandlerValue(
 }
 
 /**
- * 执行一组 handler。eventCtx 是事件触发时的上下文（frame / 事件 payload 摘要等），
+ * 执行一组 handler。eventCtx 是事件触发时的上下文（timeMs / 事件 payload 摘要等），
  * 用于构造 modifier sourceId 和表达式求值的 extra ctx。
  */
 function runHandlers(
@@ -194,27 +200,23 @@ function runHandlers(
 	member: AnyMember,
 	registletId: string,
 	level: number,
-	eventCtx: { frame: number; eventName?: string },
+	eventCtx: { timeMs: number; eventName?: string },
 ): void {
 	for (const handler of handlers) {
 		try {
 			switch (handler.type) {
 				case "addModifier": {
 					const value = evaluateHandlerValue(handler.value, member, level);
-					const suffix = handler.lifetime === "bySource"
-						? (handler.sourceIdSuffix ?? "default")
-						: `${handler.sourceIdSuffix ?? "once"}.${eventCtx.frame}`;
+					const suffix =
+						handler.lifetime === "bySource"
+							? (handler.sourceIdSuffix ?? "default")
+							: `${handler.sourceIdSuffix ?? "once"}.${eventCtx.timeMs}`;
 					const source: ModifierSource = {
 						id: sourceIdOf(registletId, suffix),
 						name: handler.attribute,
 						type: "registlet",
 					};
-					member.statContainer.addModifier(
-						handler.attribute,
-						mapModifierType(handler.modifierType),
-						value,
-						source,
-					);
+					member.statContainer.addModifier(handler.attribute, mapModifierType(handler.modifierType), value, source);
 					break;
 				}
 				case "removeModifierBySource": {
@@ -241,7 +243,7 @@ function runHandlers(
 					for (const [k, v] of Object.entries(handler.payload)) {
 						payload[k] = substituteLevel(v as RegistletValue, level);
 					}
-					bus.emit(handler.eventName, payload, eventCtx.frame);
+					bus.emit(handler.eventName, payload, eventCtx.timeMs);
 					break;
 				}
 			}
@@ -254,12 +256,12 @@ function runHandlers(
 	}
 }
 
-/** 获取本成员当前帧（带 service 兜底）。 */
-function currentFrameOf(member: AnyMember): number {
+/** 获取本成员当前模拟时间（带 service 兜底）。 */
+function currentTimeMsOf(member: AnyMember): number {
 	try {
-		return member.services.getCurrentFrame();
+		return member.services.getCurrentTimeMs();
 	} catch {
-		return member.runtime.currentFrame;
+		return member.runtime.currentTimeMs;
 	}
 }
 
@@ -288,37 +290,33 @@ export function installRegistlet(member: AnyMember, registlet: RegistletRow, lev
 			for (const sub of registlet.subscriptions) {
 				const tagFilter = new Set(sub.requiredDamageTags);
 				const statusFilter = new Set(sub.requiredStatusTypes);
-				const predicate = tagFilter.size === 0 && statusFilter.size === 0
-					? null
-					: (event: { payload: unknown; name: string }) => {
-						const payload = event.payload as { damageTags?: string[]; type?: string };
-						if (tagFilter.size > 0) {
-							if (!Array.isArray(payload?.damageTags)) return false;
-							let hit = false;
-							for (const tag of payload.damageTags) {
-								if (tagFilter.has(tag)) {
-									hit = true;
-									break;
+				const predicate =
+					tagFilter.size === 0 && statusFilter.size === 0
+						? null
+						: (event: { payload: unknown; name: string }) => {
+								const payload = event.payload as { damageTags?: string[]; type?: string };
+								if (tagFilter.size > 0) {
+									if (!Array.isArray(payload?.damageTags)) return false;
+									let hit = false;
+									for (const tag of payload.damageTags) {
+										if (tagFilter.has(tag)) {
+											hit = true;
+											break;
+										}
+									}
+									if (!hit) return false;
 								}
-							}
-							if (!hit) return false;
-						}
-						if (statusFilter.size > 0) {
-							if (!payload?.type || !statusFilter.has(payload.type)) return false;
-						}
-						return true;
-					};
-				member.procBus.subscribeByName(
-					sourceIdOf(registlet.id),
-					sub.eventNames,
-					predicate,
-					(event) => {
-						runHandlers(sub.handlers, member, registlet.id, clampedLevel, {
-							frame: event.frame,
-							eventName: event.name,
-						});
-					},
-				);
+								if (statusFilter.size > 0) {
+									if (!payload?.type || !statusFilter.has(payload.type)) return false;
+								}
+								return true;
+							};
+				member.procBus.subscribeByName(sourceIdOf(registlet.id), sub.eventNames, predicate, (event) => {
+					runHandlers(sub.handlers, member, registlet.id, clampedLevel, {
+						timeMs: event.timeMs,
+						eventName: event.name,
+					});
+				});
 			}
 		}
 	}
@@ -326,20 +324,20 @@ export function installRegistlet(member: AnyMember, registlet: RegistletRow, lev
 	// 3. thresholdWatchers → attributeWatchers
 	for (const watcher of registlet.thresholdWatchers) {
 		const thresholdValue = evaluateHandlerValue(watcher.threshold, member, clampedLevel);
-		let lastFiredFrame = Number.NEGATIVE_INFINITY;
+		let lastFiredTimeMs = Number.NEGATIVE_INFINITY;
 		member.attributeWatchers.watch(
 			sourceIdOf(registlet.id),
 			watcher.path,
 			thresholdValue,
 			watcher.direction,
 			(ctx) => {
-				const frame = currentFrameOf(member);
-				if (watcher.cooldownFrames > 0 && frame - lastFiredFrame < watcher.cooldownFrames) {
+				const timeMs = currentTimeMsOf(member);
+				if (watcher.cooldownMs > 0 && timeMs - lastFiredTimeMs < watcher.cooldownMs) {
 					return;
 				}
-				lastFiredFrame = frame;
+				lastFiredTimeMs = timeMs;
 				runHandlers(watcher.handlers, member, registlet.id, clampedLevel, {
-					frame,
+					timeMs,
 					eventName: `threshold:${watcher.path}:${ctx.direction}`,
 				});
 			},

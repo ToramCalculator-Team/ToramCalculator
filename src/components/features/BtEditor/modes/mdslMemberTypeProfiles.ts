@@ -1,7 +1,7 @@
 import type { MemberType } from "@db/schema/enums";
+import type { BtContext } from "~/lib/engine/core/World/Member/runtime/Agent/BtContext";
 import { CommonActionPool } from "~/lib/engine/core/World/Member/runtime/Agent/CommonActions";
 import { CommonConditionPool } from "~/lib/engine/core/World/Member/runtime/Agent/CommonCondition";
-import type { BtContext } from "~/lib/engine/core/World/Member/runtime/Agent/BtContext";
 import type { ActionPool, ConditionPool } from "~/lib/engine/core/World/Member/runtime/Agent/type";
 import { MobActionPool } from "~/lib/engine/core/World/Member/types/Mob/Agents/Actions";
 import { MobConditionPool } from "~/lib/engine/core/World/Member/types/Mob/Agents/Condition";
@@ -9,7 +9,9 @@ import { PlayerActionPool } from "~/lib/engine/core/World/Member/types/Player/Ag
 import { PlayerConditionPool } from "~/lib/engine/core/World/Member/types/Player/Agents/Condition";
 
 const MemberRuntimeShape = {
-	currentFrame: 0,
+	tickIndex: 0,
+	currentTimeMs: 0,
+	deltaTimeMs: 0,
 	position: { x: 0, y: 0, z: 0 },
 	targetId: "",
 	statusTags: [] as string[],
@@ -17,10 +19,10 @@ const MemberRuntimeShape = {
 	previousSkill: null as unknown,
 	currentSkillVariant: null as unknown,
 	currentSkillBranchParams: {} as Record<string, number>,
-	currentSkillStartupFrames: 0,
-	currentSkillChargingFrames: 0,
-	currentSkillChantingFrames: 0,
-	currentSkillActionFrames: 0,
+	currentSkillStartupMs: 0,
+	currentSkillChargingMs: 0,
+	currentSkillChantingMs: 0,
+	currentSkillActionMs: 0,
 };
 
 const PlayerRuntimeShape = {

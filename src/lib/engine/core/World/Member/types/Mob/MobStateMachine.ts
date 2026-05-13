@@ -312,7 +312,8 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 					}
 					resolveDamageAndApply(
 						env.id,
-						env.services.getCurrentFrame(),
+						env.services.getCurrentTimeMs(),
+						env.services.getTickIndex(),
 						() => env.statContainer.getValue("hp.current"),
 						() => env.statContainer.getValue("mp.current"),
 						(value) =>
@@ -389,7 +390,7 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 			id: machineId,
 			context: {
 				isAlive: true,
-				createdAtFrame: env.runtime.currentFrame,
+				createdAtTimeMs: env.runtime.currentTimeMs,
 				hitSession: null,
 			},
 			initial: "存活",

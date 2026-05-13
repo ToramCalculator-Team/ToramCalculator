@@ -2,7 +2,7 @@ import type { MemberSharedRuntime } from "../World/Member/runtime/types";
 
 /**
  * 说明：
- * - env 只读，供“纯计算管线”查询帧号/数值/表达式求值等。
+ * - env 只读，供“纯计算管线”查询模拟时间/数值/表达式求值等。
  * - 成员共享 runtime 作为只读快照提供给管线使用。
  * - `emit` 是计算层向编排层的唯一主动通知通路；overlay 可用 `emit` 算子在管线特定阶段
  *   派发事件（如 "last_resistance.triggered"、"damage.received"）。事件真正路由到 ProcBus
@@ -20,7 +20,8 @@ export interface PipelineEmittedEvent {
 
 /** 管线执行只读环境 */
 export interface StageEnv {
-	readonly frame: number;
+	readonly timeMs: number;
+	readonly tickIndex: number;
 	readonly stats: (memberId: string, path: string) => number;
 	readonly eval: (expr: string, vars?: Record<string, unknown>) => number;
 	readonly newId: () => string;
@@ -45,4 +46,3 @@ export interface StageEnv {
 	 */
 	readonly emit: (eventName: string, payload: unknown) => void;
 }
-

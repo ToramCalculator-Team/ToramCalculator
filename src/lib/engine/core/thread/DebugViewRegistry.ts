@@ -1,6 +1,6 @@
 /**
  * 调试视图注册表
- * 
+ *
  * 管理订阅制的高频调试数据流（井盖模式）
  * - 只有订阅者才会收到数据
  * - 可配置频率（默认 10Hz）
@@ -38,8 +38,8 @@ export class DebugViewRegistry {
 	private gameEngine: GameEngine | null = null;
 	/** 每个订阅的上次发送时间（performance.now） */
 	private lastSentAt = new Map<string, number>();
-	/** 用于驱动调试帧推送的定时器 */
-	private frameTimer: number | null = null;
+	/** 用于驱动调试数据推送的定时器 */
+	private debugTimer: number | null = null;
 
 	// constructor() {
 	// 	// 注意：不要在构造时启动帧循环
@@ -55,7 +55,7 @@ export class DebugViewRegistry {
 
 	/**
 	 * 订阅调试视图
-	 * 
+	 *
 	 * @param config 订阅配置
 	 * @returns viewId 订阅ID
 	 */
@@ -69,9 +69,9 @@ export class DebugViewRegistry {
 		this.subscriptions.set(viewId, subscription);
 		log.info(`🔍 DebugViewRegistry: 订阅调试视图 ${viewId} (${config.viewType}, ${config.hz}Hz)`);
 
-		// 如果这是第一个订阅，启动帧循环
+		// 如果这是第一个订阅，启动调试推送循环
 		if (this.subscriptions.size === 1) {
-			this.startFrameLoop();
+			this.startDebugLoop();
 		}
 
 		return viewId;
@@ -79,7 +79,7 @@ export class DebugViewRegistry {
 
 	/**
 	 * 取消订阅
-	 * 
+	 *
 	 * @param viewId 订阅ID
 	 */
 	unsubscribe(viewId: string): boolean {
@@ -91,7 +91,7 @@ export class DebugViewRegistry {
 
 		// 如果没有订阅了，停止帧循环
 		if (this.subscriptions.size === 0) {
-			this.stopFrameLoop();
+			this.stopDebugLoop();
 		}
 
 		return removed;
@@ -112,40 +112,40 @@ export class DebugViewRegistry {
 	}
 
 	/**
-	 * 启动帧循环（推送调试数据）
+	 * 启动调试推送循环
 	 */
-	private startFrameLoop(): void {
-		if (this.frameTimer !== null) {
+	private startDebugLoop(): void {
+		if (this.debugTimer !== null) {
 			return; // 已在运行
 		}
 
 		// 使用 setInterval（Worker 环境更稳定；也避免 rAF 的签名差异）
-		this.frameTimer = setInterval(() => {
+		this.debugTimer = setInterval(() => {
 			if (this.subscriptions.size === 0) {
-				this.stopFrameLoop();
+				this.stopDebugLoop();
 				return;
 			}
-			this.emitDebugFrames();
+			this.emitDebugData();
 		}, 16) as unknown as number; // ~60Hz 调度粒度，具体发送频率由各订阅 hz 控制
 	}
 
 	/**
-	 * 停止帧循环
+	 * 停止调试推送循环
 	 */
-	private stopFrameLoop(): void {
-		if (this.frameTimer === null) {
+	private stopDebugLoop(): void {
+		if (this.debugTimer === null) {
 			return;
 		}
 
-		clearInterval(this.frameTimer);
+		clearInterval(this.debugTimer);
 
-		this.frameTimer = null;
+		this.debugTimer = null;
 	}
 
 	/**
-	 * 发送调试数据帧
+	 * 发送调试数据
 	 */
-	private emitDebugFrames(): void {
+	private emitDebugData(): void {
 		if (!this.gameEngine) {
 			return;
 		}
@@ -186,7 +186,8 @@ export class DebugViewRegistry {
 					viewId: subscription.viewId,
 					controllerId: subscription.controllerId,
 					memberId: subscription.memberId,
-					frame: this.gameEngine.getCurrentFrame(),
+					tickIndex: this.gameEngine.getTickIndex(),
+					currentTimeMs: this.gameEngine.getCurrentTimeMs(),
 					data,
 				});
 			}
@@ -216,35 +217,46 @@ export class DebugViewRegistry {
 		}
 	}
 
-	/** 调试数据帧发送器（由 worker 设置） */
-	private debugFrameSender: ((frame: {
-		viewId: string;
-		controllerId: string;
-		memberId: string;
-		frame: number;
-		data: unknown;
-	}) => void) | null = null;
+	/** 调试数据发送器（由 worker 设置） */
+	private debugFrameSender:
+		| ((
+				frame: {
+					viewId: string;
+					controllerId: string;
+					memberId: string;
+					tickIndex: number;
+					currentTimeMs: number;
+					data: unknown;
+				},
+		  ) => void)
+		| null = null;
 
 	/**
 	 * 设置调试数据帧发送器
 	 */
-	setDebugFrameSender(sender: ((frame: {
-		viewId: string;
-		controllerId: string;
-		memberId: string;
-		frame: number;
-		data: unknown;
-	}) => void) | null): void {
+	setDebugFrameSender(
+		sender:
+			| ((
+					frame: {
+						viewId: string;
+						controllerId: string;
+						memberId: string;
+						tickIndex: number;
+						currentTimeMs: number;
+						data: unknown;
+					},
+			  ) => void)
+			| null,
+	): void {
 		this.debugFrameSender = sender;
 	}
 
 	/**
 	 * 清理所有订阅
 	 */
-	clear(): void {
-		this.subscriptions.clear();
-		this.lastSentAt.clear();
-		this.stopFrameLoop();
+		clear(): void {
+			this.subscriptions.clear();
+			this.lastSentAt.clear();
+			this.stopDebugLoop();
+		}
 	}
-}
-

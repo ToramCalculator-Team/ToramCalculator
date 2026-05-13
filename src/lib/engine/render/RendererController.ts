@@ -673,8 +673,8 @@ class CommandHandler {
 
 	/** 应用渲染快照（首次同步时按全量世界状态创建/更新实体与区域，与逻辑快照区分） */
 	async applyRenderSnapshot(renderSnapshot: RenderSnapshot): Promise<void> {
-		const seq = renderSnapshot.engineNowTs;
-		const ts = renderSnapshot.engineNowTs;
+		const seq = renderSnapshot.tickIndex;
+		const ts = renderSnapshot.currentTimeMs;
 		for (const member of renderSnapshot.members) {
 			if (!this.entities.has(member.id)) {
 				await this.handle({
@@ -705,7 +705,7 @@ class CommandHandler {
 					type: "action",
 					entityId: member.id,
 					name: member.animation.name,
-					params: { progress: member.animation.progress, engineNowTs: renderSnapshot.engineNowTs },
+					params: { progress: member.animation.progress, currentTimeMs: renderSnapshot.currentTimeMs },
 					seq,
 					ts,
 				});
@@ -738,11 +738,7 @@ class CommandHandler {
 		const safeRadius = Math.max(0.1, radius);
 		let mesh = this.areaVisuals.get(area.id);
 		if (!mesh) {
-			mesh = MeshBuilder.CreateDisc(
-				`area:${area.id}`,
-				{ radius: safeRadius, tessellation: 32 },
-				this.scene,
-			);
+			mesh = MeshBuilder.CreateDisc(`area:${area.id}`, { radius: safeRadius, tessellation: 32 }, this.scene);
 			mesh.rotation.x = Math.PI / 2;
 			(mesh as Mesh & { __baseRadius?: number }).__baseRadius = safeRadius;
 			const mat = new StandardMaterial(`areaMat:${area.id}`, this.scene);
@@ -848,15 +844,13 @@ class CommandHandler {
 			const progress = typeof cmd.params?.progress === "number" ? cmd.params.progress : undefined;
 
 			const playWithSeek = (animationId: string, loop: boolean) => {
-				const group =
-					charEntity.builtinAnimations.get(animationId) || charEntity.customAnimations.get(animationId);
+				const group = charEntity.builtinAnimations.get(animationId) || charEntity.customAnimations.get(animationId);
 				if (!group) return;
 				charEntity.animationController.stopAllAnimations();
 				if (progress !== undefined && progress >= 0 && progress < 1) {
 					try {
 						const keys = group.targetedAnimations?.flatMap(
-							(ta: { animation: { getKeys?: () => Array<{ frame: number }> } }) =>
-								ta.animation.getKeys?.() ?? [],
+							(ta: { animation: { getKeys?: () => Array<{ frame: number }> } }) => ta.animation.getKeys?.() ?? [],
 						);
 						const maxFrame = keys.length ? Math.max(...keys.map((k) => k.frame)) : 60;
 						group.goToFrame(progress * maxFrame);
@@ -1170,7 +1164,7 @@ export function createRendererController(scene: Scene): RendererController {
 				type: "destroy",
 				entityId: id,
 				seq: Number.MAX_SAFE_INTEGER, // 使用最大序列号确保执行
-				ts: Date.now(),
+				ts: 0,
 			});
 		});
 		entities.clear();

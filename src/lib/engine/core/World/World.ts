@@ -1,4 +1,4 @@
-import type { WorldCheckpoint } from "../types";
+import type { SimulationTickContext, WorldCheckpoint } from "../types";
 import { AreaManager } from "./Area/AreaManager";
 import { MemberManager } from "./Member/MemberManager";
 import { SpaceManager } from "./SpaceManager";
@@ -17,17 +17,17 @@ export class World {
 	}
 
 	/**
-	 * 每帧 tick：成员 → 区域 → 统一执行 Intent
+	 * 每 tick 更新：成员 → 区域 → 统一执行 Intent。
 	 */
-	tick(frame: number): void {
-		// console.log(`🌍 [World] tick: ${frame}`);
+	tick(tick: SimulationTickContext): void {
+		// console.log(`🌍 [World] tick: ${tick.tickIndex}`);
 		const members = this.memberManager.getAllMembers();
 		for (const member of members) {
-			member.tick(frame);
+			member.tick(tick);
 		}
 
 		// 区域更新（AreaManager 调度三个子系统）
-		this.areaManager.tick(frame);
+		this.areaManager.tick(tick);
 	}
 
 	clear(): void {

@@ -9,6 +9,11 @@ import type { MemberSharedRuntime } from "../types";
 
 const log = createLogger("BtManager");
 
+type BtOptions = {
+	random?: () => number;
+	getDeltaTimeMs?: () => number;
+};
+
 type BtEntry<
 	TAttrKey extends string = string,
 	TStateEvent extends MemberEventType = MemberEventType,
@@ -28,7 +33,7 @@ export class BtManager<
 {
 	private activeEffectEntry: BtEntry<TAttrKey, TStateEvent, TStateContext, TRuntime> | undefined;
 	private parallelEntries: Map<string, BtEntry<TAttrKey, TStateEvent, TStateContext, TRuntime>> = new Map();
-	private btOptions: { random?: () => number } = {};
+	private btOptions: BtOptions = {};
 
 	constructor(
 		private owner: MemberBtEnv<TAttrKey, TStateEvent, TStateContext, TRuntime>,
@@ -40,7 +45,14 @@ export class BtManager<
 	) {}
 
 	setRandom(randomFn: () => number): void {
-		this.btOptions = { random: randomFn };
+		this.btOptions = { ...this.btOptions, random: randomFn };
+	}
+
+	private createBtOptions(): BtOptions {
+		return {
+			...this.btOptions,
+			getDeltaTimeMs: () => this.owner.runtime.deltaTimeMs,
+		};
 	}
 
 	/**
@@ -50,7 +62,7 @@ export class BtManager<
 	 * 1. user agent 实例字段/方法（若有）
 	 * 2. BT bindings（action/condition invokers）
 	 * 3. owner 句柄（BT 专用 env，用于动作内通过 `this.owner` 访问成员能力）
-	 * 4. member.runtime 只读 getter（BT 直接消费 $currentFrame / $currentSkill / $targetId 等）
+	 * 4. member.runtime 只读 getter（BT 直接消费 $currentTimeMs / $currentSkill / $targetId 等）
 	 *
 	 * 说明：
 	 * - runtime 字段保持扁平命名，getter 每次读取 owner.runtime 的当前值。
@@ -151,7 +163,7 @@ export class BtManager<
 
 	/**
 	 * 把 runtime 字段投影成 BT context 上的只读槽。
-	 * 目的：保留 `$currentFrame` 这类扁平引用，同时阻止 BT 写出 shadow runtime 值。
+	 * 目的：保留 `$currentTimeMs` 这类扁平引用，同时阻止 BT 写出 shadow runtime 值。
 	 */
 	private defineRuntimeReadSlots(
 		btContext: BtContext<TAttrKey, TStateEvent, TStateContext, TRuntime> & Record<string, unknown>,
@@ -210,7 +222,7 @@ export class BtManager<
 		agent?: string,
 	): BehaviourTree | undefined {
 		const btContext = this.buildBtContext(agent?.trim());
-		const bt = new BehaviourTree(definition, btContext, this.btOptions);
+		const bt = new BehaviourTree(definition, btContext, this.createBtOptions());
 		this.activeEffectEntry = { bt, btContext };
 		return bt;
 	}
@@ -221,7 +233,7 @@ export class BtManager<
 		agent?: string,
 	): BehaviourTree | undefined {
 		const btContext = this.buildBtContext(agent?.trim());
-		const bt = new BehaviourTree(definition, btContext, this.btOptions);
+		const bt = new BehaviourTree(definition, btContext, this.createBtOptions());
 		this.parallelEntries.set(name, { bt, btContext });
 		return bt;
 	}
@@ -240,6 +252,11 @@ export class BtManager<
 
 	getActiveEffectBt(): BehaviourTree | undefined {
 		return this.activeEffectEntry?.bt;
+	}
+
+	/** 供引擎停止策略判断成员技能生命周期，避免外部读取 activeEffectEntry 私有结构。 */
+	hasActiveEffectBt(): boolean {
+		return !!this.activeEffectEntry;
 	}
 
 	hasBuff(name: string): boolean {

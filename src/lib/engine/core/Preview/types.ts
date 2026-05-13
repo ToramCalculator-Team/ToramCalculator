@@ -7,8 +7,8 @@ export interface SkillProbeResult {
 	skillName: string;
 	predictedDamage: number;
 	mpCost: number;
-	castTimeFrames: number;
-	cooldownFrames: number;
+	castTimeMs: number;
+	cooldownMs: number;
 	isAvailable: boolean;
 	meta?: Record<string, unknown>;
 }

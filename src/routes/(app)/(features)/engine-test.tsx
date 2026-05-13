@@ -73,7 +73,7 @@ export default function EngineTestPage() {
 	const testCheckpoint = async () => {
 		const eng = engine.service.getDefaultEngine();
 		const cp = await eng.captureCheckpoint();
-		addLog(`  checkpoint: ${cp ? `captured (frameNumber=${(cp as Record<string, unknown>).frameNumber})` : "null"}`);
+		addLog(`  checkpoint: ${cp ? `captured (tickIndex=${(cp as Record<string, unknown>).tickIndex})` : "null"}`);
 		if (cp) {
 			await eng.restoreCheckpoint(cp);
 			addLog(`  restoreCheckpoint: OK`);
@@ -135,11 +135,7 @@ export default function EngineTestPage() {
 			</div>
 
 			<div class="flex-1 overflow-y-auto rounded bg-black/5 p-3 font-mono text-sm dark:bg-white/5">
-				<For each={log()}>
-					{(line) => (
-						<div class="whitespace-pre-wrap break-all leading-relaxed">{line}</div>
-					)}
-				</For>
+				<For each={log()}>{(line) => <div class="whitespace-pre-wrap break-all leading-relaxed">{line}</div>}</For>
 				<Show when={log().length === 0}>
 					<div class="text-muted-color italic">点击上方按钮运行测试</div>
 				</Show>

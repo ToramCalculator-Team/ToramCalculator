@@ -1,6 +1,6 @@
 /**
- * 事件队列 - 跨帧事件调度和存储
- * 主要事件处理逻辑在状态机中，事件队列只负责跨帧对状态机发送消息
+ * 事件队列 - 跨模拟时间片调度和存储
+ * 主要事件处理逻辑在状态机中，事件队列只负责按模拟时间对状态机发送消息
  */
 
 import { createLogger } from "~/lib/Logger";
@@ -12,12 +12,12 @@ const log = createLogger("EventQueue");
 export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 	/** 事件队列配置 */
 	private config: EventQueueConfig;
-	/** 帧号获取器 */
-	private frameGetter: () => number;
+	/** 当前模拟时间获取器 */
+	private timeGetter: () => number;
 
 	/**
-	 * 按执行帧分桶存储事件：
-	 * - 避免每帧对全量 events 做 filter（长时/快进模拟的结构性瓶颈）
+	 * 按执行时间分桶存储事件：
+	 * - 避免每 tick 对全量 events 做 filter（长时/快进模拟的结构性瓶颈）
 	 * - bucket 内保持插入顺序
 	 */
 	private readonly buckets: Map<number, QueueEvent[]> = new Map();
@@ -45,13 +45,13 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 	 *
 	 * @param config 队列配置
 	 */
-	constructor(config: Partial<EventQueueConfig> = {}, frameGetter: () => number) {
+	constructor(config: Partial<EventQueueConfig> = {}, timeGetter: () => number) {
 		this.config = {
 			maxQueueSize: 1000,
 			enablePerformanceMonitoring: true,
 			...config,
 		};
-		this.frameGetter = frameGetter;
+		this.timeGetter = timeGetter;
 	}
 
 	// ==================== 事件操作 ====================
@@ -76,9 +76,9 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 			}
 
 			// 写入分桶
-			const list = this.buckets.get(event.executeFrame) ?? [];
+			const list = this.buckets.get(event.executeAtMs) ?? [];
 			list.push(event);
-			this.buckets.set(event.executeFrame, list);
+			this.buckets.set(event.executeAtMs, list);
 			this.byId.set(event.id, event);
 			this.totalSize += 1;
 
@@ -113,20 +113,31 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 	}
 
 	/**
-	 * 移除指定帧的所有事件（用于帧结束后清理）。
-	 * 已完成的事件会从 buckets、byId 中删除并归零 totalSize。
+	 * 移除指定时间及更早时间中已经处理完成的事件。
 	 *
-	 * @param frameNumber 要清理的帧号
+	 * @param currentTimeMs 当前模拟时间（毫秒）
 	 */
-	removeByFrame(frameNumber: number): void {
-		const list = this.buckets.get(frameNumber);
-		if (!list) return;
-		const count = list.length;
-		for (const e of list) {
-			this.byId.delete(e.id);
+	removeProcessedDue(currentTimeMs: number): void {
+		for (const time of [...this.buckets.keys()].sort((a, b) => a - b)) {
+			if (time > currentTimeMs) break;
+			const list = this.buckets.get(time);
+			if (!list) continue;
+			const remaining = list.filter((event) => !event.processed);
+			const removedCount = list.length - remaining.length;
+			for (const e of list) {
+				if (e.processed) {
+					this.byId.delete(e.id);
+				}
+			}
+			if (remaining.length === 0) {
+				this.buckets.delete(time);
+			} else {
+				this.buckets.set(time, remaining);
+			}
+			if (removedCount > 0) {
+				this.totalSize = Math.max(0, this.totalSize - removedCount);
+			}
 		}
-		this.buckets.delete(frameNumber);
-		if (this.totalSize >= count) this.totalSize -= count;
 		this.stats.currentSize = this.totalSize;
 	}
 
@@ -142,16 +153,16 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 			return false;
 		}
 
-		const frame = event.executeFrame;
-		const list = this.buckets.get(frame);
+		const timeMs = event.executeAtMs;
+		const list = this.buckets.get(timeMs);
 		if (list) {
 			const idx = list.findIndex((e) => e.id === eventId);
 			if (idx !== -1) {
 				list.splice(idx, 1);
 				if (list.length === 0) {
-					this.buckets.delete(frame);
+					this.buckets.delete(timeMs);
 				} else {
-					this.buckets.set(frame, list);
+					this.buckets.set(timeMs, list);
 				}
 			}
 		}
@@ -203,13 +214,21 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 	}
 
 	/**
-	 * 获取指定帧的所有事件
+	 * 获取当前时间及更早时间需要执行的所有事件。
 	 *
-	 * @param frameNumber 指定帧号
+	 * @param currentTimeMs 当前模拟时间（毫秒）
 	 * @returns 需要执行的事件数组
 	 */
-	getByFrame(frameNumber: number): QueueEvent[] {
-		return this.buckets.get(frameNumber) ?? [];
+	getDue(currentTimeMs: number): QueueEvent[] {
+		const due: QueueEvent[] = [];
+		for (const time of [...this.buckets.keys()].sort((a, b) => a - b)) {
+			if (time > currentTimeMs) break;
+			const list = this.buckets.get(time);
+			if (list) {
+				due.push(...list);
+			}
+		}
+		return due;
 	}
 
 	// ==================== 队列状态 ====================
@@ -251,33 +270,33 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 	}
 
 	/**
-	 * 获取队列中最早的事件帧号
+	 * 获取队列中最早的事件执行时间
 	 *
-	 * @returns 最早帧号，如果队列为空则返回Infinity
+	 * @returns 最早执行时间，如果队列为空则返回Infinity
 	 */
-	getEarliestFrame(): number {
+	getEarliestTimeMs(): number {
 		if (this.totalSize === 0) {
 			return Infinity;
 		}
 		let min = Infinity;
-		for (const f of this.buckets.keys()) {
-			if (f < min) min = f;
+		for (const time of this.buckets.keys()) {
+			if (time < min) min = time;
 		}
 		return min;
 	}
 
 	/**
-	 * 获取队列中最晚的事件帧号
+	 * 获取队列中最晚的事件执行时间
 	 *
-	 * @returns 最晚帧号，如果队列为空则返回-Infinity
+	 * @returns 最晚执行时间，如果队列为空则返回-Infinity
 	 */
-	getLatestFrame(): number {
+	getLatestTimeMs(): number {
 		if (this.totalSize === 0) {
 			return -Infinity;
 		}
 		let max = -Infinity;
-		for (const f of this.buckets.keys()) {
-			if (f > max) max = f;
+		for (const time of this.buckets.keys()) {
+			if (time > max) max = time;
 		}
 		return max;
 	}
@@ -296,11 +315,11 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 						all.push({ ...e });
 					}
 				}
-				// 与旧实现保持一致：快照按 executeFrame 升序
-				all.sort((a, b) => a.executeFrame - b.executeFrame);
+				// 快照按 executeAtMs 升序，便于重放时维持确定性。
+				all.sort((a, b) => a.executeAtMs - b.executeAtMs);
 				return all;
 			})(),
-			currentFrame: this.frameGetter(),
+			currentTimeMs: this.timeGetter(),
 			stats: { ...this.stats },
 		};
 
@@ -310,13 +329,13 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 	/**
 	 * 恢复到指定快照
 	 *
-	 * @param frameNumber 目标帧号
+	 * @param currentTimeMs 目标模拟时间
 	 * @returns 恢复是否成功
 	 */
-	restoreSnapshot(frameNumber: number): boolean {
-		const snapshot = this.snapshots.find((s) => s.currentFrame === frameNumber);
+	restoreSnapshot(currentTimeMs: number): boolean {
+		const snapshot = this.snapshots.find((s) => s.currentTimeMs === currentTimeMs);
 		if (!snapshot) {
-			log.warn("⚠️ 目标帧的事件队列快照不存在:", frameNumber);
+			log.warn("⚠️ 目标时间的事件队列快照不存在:", currentTimeMs);
 			return false;
 		}
 
@@ -327,15 +346,15 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 			this.totalSize = 0;
 			for (const e of snapshot.events) {
 				const copied = { ...e };
-				const list = this.buckets.get(copied.executeFrame) ?? [];
+				const list = this.buckets.get(copied.executeAtMs) ?? [];
 				list.push(copied);
-				this.buckets.set(copied.executeFrame, list);
+				this.buckets.set(copied.executeAtMs, list);
 				this.byId.set(copied.id, copied);
 				this.totalSize += 1;
 			}
 			this.stats = { ...snapshot.stats };
 
-			log.info(`🔄 恢复到指定帧快照: ${frameNumber} - 事件数: ${this.totalSize}`);
+			log.info(`🔄 恢复到指定时间快照: ${currentTimeMs}ms - 事件数: ${this.totalSize}`);
 			return true;
 		} catch (error) {
 			log.error("❌ 恢复快照失败:", error);
@@ -356,15 +375,15 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 
 	captureCheckpoint(): EventQueueCheckpoint {
 		const events: EventQueueCheckpoint["events"] = [];
-		const frames = [...this.buckets.keys()].sort((a, b) => a - b);
-		for (const frame of frames) {
-			const list = this.buckets.get(frame);
+		const times = [...this.buckets.keys()].sort((a, b) => a - b);
+		for (const timeMs of times) {
+			const list = this.buckets.get(timeMs);
 			if (!list) continue;
 			for (const e of list) {
 				const row: EventQueueCheckpoint["events"][number] = {
 					id: e.id,
-					insertFrame: e.insertFrame,
-					executeFrame: e.executeFrame,
+					insertedAtMs: e.insertedAtMs,
+					executeAtMs: e.executeAtMs,
 					type: e.type,
 					processed: e.processed,
 					targetMemberId: e.targetMemberId,
@@ -393,8 +412,8 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 		for (const row of checkpoint.events) {
 			const e: QueueEvent = {
 				id: row.id,
-				insertFrame: row.insertFrame,
-				executeFrame: row.executeFrame,
+				insertedAtMs: row.insertedAtMs,
+				executeAtMs: row.executeAtMs,
 				type: row.type as QueueEventType,
 				processed: row.processed,
 				targetMemberId: row.targetMemberId,
@@ -404,9 +423,9 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 			if (row.payload !== undefined) {
 				e.payload = structuredClone(row.payload);
 			}
-			const list = this.buckets.get(e.executeFrame) ?? [];
+			const list = this.buckets.get(e.executeAtMs) ?? [];
 			list.push(e);
-			this.buckets.set(e.executeFrame, list);
+			this.buckets.set(e.executeAtMs, list);
 			this.byId.set(e.id, e);
 		}
 		this.totalSize = checkpoint.totalSize;
@@ -417,5 +436,5 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 		};
 	}
 
-	// 无私有排序插入：按帧分桶后不再需要
+	// 无私有排序插入：按时间分桶后不再需要
 }

@@ -114,18 +114,18 @@ export class Wait extends Leaf {
 			return;
 		}
 
-		// 如果我们在选项中定义了 'getDeltaTime' 函数，则使用它来计算我们已经等待了多长时间。
-		if (typeof this.options.getDeltaTime === "function") {
+		// 如果我们在选项中定义了 'getDeltaTimeMs' 函数，则使用它来计算我们已经等待了多长时间。
+		if (typeof this.options.getDeltaTimeMs === "function") {
 			// 获取增量时间。
-			const deltaTime = this.options.getDeltaTime();
+			const deltaTimeMs = this.options.getDeltaTimeMs();
 
 			// 我们的增量时间必须是有效数字，不能是 NaN。
-			if (typeof deltaTime !== "number" || Number.isNaN(deltaTime)) {
-				throw new Error("The delta time must be a valid number and not NaN.");
+			if (typeof deltaTimeMs !== "number" || Number.isNaN(deltaTimeMs)) {
+				throw new Error("The delta time ms must be a valid number and not NaN.");
 			}
 
 			// 根据增量时间更新此节点已等待的时间量。
-			this.waitedDuration += deltaTime * 1000;
+			this.waitedDuration += deltaTimeMs;
 		} else {
 			// 我们没有使用增量时间，因此只需计算自首次更新以来已经过去了多少时间。
 			this.waitedDuration = Date.now() - this.initialUpdateTime;

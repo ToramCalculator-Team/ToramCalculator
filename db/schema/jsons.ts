@@ -203,13 +203,13 @@ export type EventSubscriptionEffect = z.output<typeof EventSubscriptionEffectSch
  * 属性阈值 watcher 效果：属性跨越阈值时触发一组 handler。
  *
  * 典型用例：
- * - HP 紧急回复：path=hp.current, threshold="self.hp.max * 0.25", direction=falling, cooldown=3600
+ * - HP 紧急回复：path=hp.current, threshold="self.hp.max * 0.25", direction=falling, cooldownMs=60000
  */
 export const ThresholdWatcherEffectSchema = z.object({
 	path: z.string(),
 	threshold: RegistletValueSchema,
 	direction: z.enum(["rising", "falling", "both"]).default("falling"),
-	cooldownFrames: z.number().int().nonnegative().default(0),
+	cooldownMs: z.number().int().nonnegative().default(0),
 	fireOnRegister: z.boolean().default(false),
 	handlers: z.array(RegistletHandlerSchema).min(1),
 });

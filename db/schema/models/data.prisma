@@ -502,13 +502,13 @@ model skill_variant {
     elementLogic           String
     castingRange           String
     effectiveRange         Int
-    motionFixed            String
-    motionModified         String
-    chantingFixed          String
-    chantingModified       String
-    reservoirFixed         String
-    reservoirModified      String
-    startupFrames          String
+    actionFixedMs          String
+    actionModifiedMs       String
+    chantingFixedMs        String
+    chantingModifiedMs     String
+    chargingFixedMs        String
+    chargingModifiedMs     String
+    startupMs              String
     details                String?
 
     belongToSkill   skill  @relation(fields: [belongToskillId], references: [id], onDelete: Cascade)

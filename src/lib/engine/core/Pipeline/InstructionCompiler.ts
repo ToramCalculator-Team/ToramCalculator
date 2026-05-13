@@ -2,7 +2,7 @@ import type { Operand, PipelineInstruction } from "./instruction";
 import { binaryOperators, unaryOperators } from "./operators";
 import type { StageData, StageEnv } from "./stageEnv";
 
-/** 
+/**
  * 目标：
  * - 把 `PipelineInstruction[]` 预编译成单个 closure，提高执行性能
  * - 严格保持“纯计算”：除 `env.*` 查询外，不产生副作用
@@ -23,8 +23,9 @@ const resolveOperand = (op: Operand, vars: Vars, input: StageData, env: StageEnv
 	// 1) 已计算变量
 	if (Object.hasOwn(vars, op)) return vars[op]!;
 
-	// 2) env.frame 便捷读取
-	if (op === "env.frame" || op === "frame") return env.frame;
+	// 2) env.timeMs / env.tickIndex 便捷读取
+	if (op === "env.timeMs" || op === "timeMs") return env.timeMs;
+	if (op === "env.tickIndex" || op === "tickIndex") return env.tickIndex;
 
 	// 3) 显式 input.xxx
 	if (op.startsWith("input.")) {
@@ -138,4 +139,3 @@ export function compilePipeline(instructions: readonly PipelineInstruction[]): C
 		return { ...input, ...vars };
 	};
 }
-

@@ -33,6 +33,45 @@ import {
 const log = createLogger("SimWorker");
 log.setLevel(LogLevel.ERROR);
 
+type PreviewRuntimeForSkill = {
+	character?: {
+		weapon?: { type?: unknown } | null;
+		subWeapon?: { type?: unknown } | null;
+		armor?: { ability?: unknown } | null;
+	} | null;
+	skillList?: Array<{
+		id?: unknown;
+		template?: {
+			variants?: Array<{
+				targetMainWeaponType?: unknown;
+				targetSubWeaponType?: unknown;
+				targetArmorAbilityType?: unknown;
+			}>;
+		} | null;
+	}>;
+};
+
+function hasMatchingSkillVariant(
+	member: { runtime: unknown } | null | undefined,
+	skillId: string | undefined,
+): boolean | undefined {
+	if (!member || !skillId) return undefined;
+	const runtime = member.runtime as PreviewRuntimeForSkill;
+	const skill = runtime.skillList?.find((candidate) => candidate.id === skillId);
+	const variants = skill?.template?.variants;
+	if (!Array.isArray(variants)) return false;
+	const mainWeaponType = runtime.character?.weapon?.type;
+	const subWeaponType = runtime.character?.subWeapon?.type;
+	const armorAbilityType = runtime.character?.armor?.ability;
+	return variants.some((variant) => {
+		const mainWeaponMatched = variant.targetMainWeaponType === mainWeaponType || variant.targetMainWeaponType === "Any";
+		const subWeaponMatched = variant.targetSubWeaponType === subWeaponType || variant.targetSubWeaponType === "Any";
+		const armorMatched =
+			variant.targetArmorAbilityType === armorAbilityType || variant.targetArmorAbilityType === "Any";
+		return mainWeaponMatched && subWeaponMatched && armorMatched;
+	});
+}
+
 // ==================== 沙盒环境初始化 ====================
 
 /**
@@ -111,12 +150,12 @@ const gameEngine = new GameEngine(
 			enablePerformanceMonitoring: false,
 		},
 		frameLoopConfig: {
-			targetFPS: 60,
-			enableFrameSkip: true,
-			maxFrameSkip: 5,
+			logicHz: 60,
+			enableTickSkip: true,
+			maxTickSkip: 5,
 			enablePerformanceMonitoring: false,
 			timeScale: 1,
-			maxEventsPerFrame: 10,
+			maxEventsPerTick: 10,
 		},
 	},
 	infra,
@@ -349,8 +388,11 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 					// 3. apply runtimeConfig from a fresh preview baseline so previous branch tasks cannot leak policy.
 					gameEngine.setRuntimeConfig(createPreviewConfig(task.runtimeConfig as Partial<RuntimeConfig> | undefined));
 
-					// 4. apply patches + collect the first memberId for results
+					// 4. apply patches + collect preview diagnostics from the same branch execution.
 					let primaryMemberId: string | undefined;
+					let primaryActionSkillId: string | undefined;
+					let primaryActionHasMatchingVariant: boolean | undefined;
+					const damageAreaCountBefore = gameEngine.getDamageAreaCreatedCount();
 					for (const patch of task.patches ?? []) {
 						if (patch.memberId) primaryMemberId = patch.memberId;
 
@@ -359,6 +401,10 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 								const member = gameEngine.getMember(patch.memberId);
 								if (member) {
 									for (const action of patch.sequence ?? []) {
+										if (!primaryActionSkillId) {
+											primaryActionSkillId = action.skillId;
+											primaryActionHasMatchingVariant = hasMatchingSkillVariant(member, action.skillId);
+										}
 										member.actor.send({
 											type: "使用技能",
 											data: { target: "", skillId: action.skillId },
@@ -379,8 +425,11 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 					}
 
 					// 5. fast-forward synchronously
-					const frames = gameEngine.fastForwardSync(1000);
-					log.info(`branch_task: ${frames} 帧完成`);
+					const fastForward = gameEngine.fastForwardSync({ maxDurationMs: 1000 });
+					const { ticksRun, elapsedMs } = fastForward;
+					const damageAreaCountAfter = gameEngine.getDamageAreaCreatedCount();
+					const damageAreaCount = Math.max(0, damageAreaCountAfter - damageAreaCountBefore);
+					log.info(`branch_task: ${ticksRun} tick 完成，模拟时间 ${elapsedMs}ms`);
 
 					// 6. collect results based on outputSelector
 					const selector = task.outputSelector;
@@ -402,7 +451,16 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 							if (opposingMembers.length === 0) {
 								return {
 									success: true,
-									data: { outputType: "dps_impact", memberId: primaryMemberId, damage: 0, error: "场景中没有敌对目标" },
+									data: {
+										outputType: "dps_impact",
+										memberId: primaryMemberId,
+										damage: 0,
+										damageAreaCount,
+										ticksRun,
+										elapsedMs,
+										reason: "no_target",
+										error: "场景中没有敌对目标",
+									},
 								};
 							}
 							let totalDamage = 0;
@@ -412,9 +470,38 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 								const taken = Math.max(0, hpMax - hpCur);
 								if (taken > 0) totalDamage += taken;
 							}
+							const sourceMember = primaryMemberId ? gameEngine.getMember(primaryMemberId) : undefined;
+							const activeEffectStillRunning = !!sourceMember?.btManager.hasActiveEffectBt();
+							let reason: string | undefined;
+							let note: string | undefined;
+							let error: string | undefined;
+							if (activeEffectStillRunning) {
+								reason = "action_timeout";
+								error = `技能预览超过 ${elapsedMs}ms 仍未结束`;
+							} else if (primaryActionHasMatchingVariant === false) {
+								reason = "no_variant";
+								note = "没有匹配当前装备的可执行变体";
+							} else if (damageAreaCount === 0) {
+								reason = "no_damage_area";
+								note = "技能当前段未产生伤害";
+							} else if (totalDamage === 0) {
+								reason = "zero_damage";
+								note = "技能已进入命中流程，最终伤害为 0";
+							}
 							return {
 								success: true,
-								data: { outputType: "dps_impact", memberId: primaryMemberId, damage: totalDamage },
+								data: {
+									outputType: "dps_impact",
+									memberId: primaryMemberId,
+									damage: totalDamage,
+									damageAreaCount,
+									ticksRun,
+									elapsedMs,
+									reason,
+									note,
+									error,
+									skillId: primaryActionSkillId,
+								},
 							};
 						}
 						case "member_attrs": {
@@ -666,9 +753,10 @@ function startTelemetryLoop(port: MessagePort) {
 			if (!gameEngine.isRunning() && gameEngine.getSMState() !== "paused") return;
 			const frameLoopStats = gameEngine.getFrameLoopStats();
 			postSystemMessage(port, "engine_telemetry", {
-				frameNumber: gameEngine.getCurrentFrame(),
+				tickIndex: gameEngine.getTickIndex(),
+				currentTimeMs: gameEngine.getCurrentTimeMs(),
 				runTime: gameEngine.getRunTimeMs(),
-				fps: frameLoopStats.averageFPS,
+				ticksPerSecond: frameLoopStats.averageTicksPerSecond,
 				memberCount: gameEngine.getMemberCount(),
 			});
 		} catch {

@@ -2,7 +2,7 @@ import type { MemberWithRelations } from "@db/generated/repositories/member";
 import type { TeamWithRelations } from "@db/generated/repositories/team";
 import { createId } from "@paralleldrive/cuid2";
 import { type Actor, createActor } from "xstate";
-import { createLogger } from "~/lib/Logger"; 
+import { createLogger } from "~/lib/Logger";
 import { Random } from "~/lib/random";
 import type { RenderSnapshot, RenderSnapshotArea } from "../render/RendererProtocol";
 import { ControlBindingManager } from "./Controller/ControlBindingManager";
@@ -32,10 +32,10 @@ import type {
 	EngineState,
 	EngineStats,
 	FrameSnapshot,
-	FrameStepResult,
 	GameEngineSnapshot,
 	MemberDomainEvent,
 	RuntimeConfig,
+	TickStepResult,
 } from "./types";
 import { createRealtimeConfig } from "./types";
 import type { MemberSerializeData } from "./World/Member/Member";
@@ -47,11 +47,22 @@ const log = createLogger("GameEngine");
 /**
  * FAST_FORWARD 使用分片推进，避免长时间独占 Worker 事件循环。
  * 说明：
- * - 每个 slice 最多推进固定数量的逻辑帧
+ * - 每个 slice 最多推进固定数量的逻辑 tick
  * - 每个 slice 也受真实时间预算约束，保证 pause / stop 能尽快生效
  */
-const FAST_FORWARD_MAX_FRAMES_PER_SLICE = 120;
+const FAST_FORWARD_MAX_TICKS_PER_SLICE = 120;
 const FAST_FORWARD_MAX_SLICE_TIME_MS = 8;
+
+export type FastForwardSyncOptions = {
+	maxTicks?: number;
+	maxDurationMs?: number;
+};
+
+export type FastForwardSyncResult = {
+	ticksRun: number;
+	elapsedMs: number;
+	reachedLimit: boolean;
+};
 
 /**
  * 扩展 globalThis 类型，添加测试环境标记
@@ -90,7 +101,7 @@ export class GameEngine {
 	/** 控制器事件投影器 */
 	private controllerEventProjector: ControllerEventProjector;
 
-	/** 帧循环 - 推进时间和调度事件 */
+	/** tick 循环 - 推进时间和调度事件 */
 	private frameLoop: FrameLoop;
 
 	/** JS表达式处理器 - 负责编译JS代码 */
@@ -131,22 +142,28 @@ export class GameEngine {
 	/** 开始时间戳 */
 	private startTime: number = 0;
 
-	/** 当前逻辑帧号 */
-	private currentFrame: number = 0;
+	/** 当前逻辑 tick 序号 */
+	private tickIndex: number = 0;
+
+	/** 当前模拟时间（毫秒），规则系统读取的唯一时间源 */
+	private currentTimeMs: number = 0;
+
+	/** 当前 tick 的模拟时间跨度（毫秒） */
+	private deltaTimeMs: number = 0;
 
 	/**
 	 * 引擎级循环统计。
 	 * 说明：
-	 * - 对外暴露“实际完成了多少逻辑帧”
+	 * - 对外暴露“实际完成了多少逻辑 tick”
 	 * - 与 FrameLoop 的底层时钟统计分离，但复用同一个结构以保持接口兼容
 	 */
 	private frameLoopStats: FrameLoopStats = {
-		averageFPS: 0,
-		totalFrames: 0,
+		averageTicksPerSecond: 0,
+		totalTicks: 0,
 		totalRunTime: 0,
 		clockKind: "manual",
-		skippedFrames: 0,
-		timeoutFrames: 0,
+		skippedTicks: 0,
+		timeoutTicks: 0,
 	};
 
 	/** 快照历史 */
@@ -170,8 +187,8 @@ export class GameEngine {
 	/** 对端通信发送器 - 用于向 controller 状态机发送消息 */
 	private sendToPeer?: (command: EngineControlMessage) => void;
 
-	/** 当前挂起的帧内任务数量（用于防止跨帧未完成任务） */
-	private pendingFrameTasksCount: number = 0;
+	/** 当前挂起的 tick 内任务数量（用于防止跨 tick 未完成任务） */
+	private pendingTickTasksCount: number = 0;
 
 	/**
 	 * 快照观察器。
@@ -180,7 +197,7 @@ export class GameEngine {
 	 * - 第一轮仍保持默认关闭，避免引入额外高频负载
 	 */
 	private snapshotObserver = {
-		snapshotFPS: 0,
+		snapshotHz: 0,
 		snapshotIntervalMs: Number.POSITIVE_INFINITY,
 		lastSnapshotTime: 0,
 	};
@@ -235,7 +252,7 @@ export class GameEngine {
 		this.eventCatalog = infra.eventCatalog;
 
 		// 初始化核心模块 - 按依赖顺序
-		this.eventQueue = new EventQueue(config.eventQueueConfig, () => this.currentFrame);
+		this.eventQueue = new EventQueue(config.eventQueueConfig, () => this.currentTimeMs);
 
 		// 初始化控制器相关组件
 		this.bindingManager = new ControlBindingManager();
@@ -271,8 +288,9 @@ export class GameEngine {
 		this.world.memberManager.setDomainEventSender((event) => {
 			this.emitDomainEvent(event);
 		});
-		// 设置引擎帧号读取函数到 MemberManager（引擎帧号为唯一真相）
-		this.world.memberManager.setGetCurrentFrame(() => this.getCurrentFrame());
+		// 设置引擎时间读取函数到 MemberManager（引擎时间为唯一真相）
+		this.world.memberManager.setGetCurrentTimeMs(() => this.getCurrentTimeMs());
+		this.world.memberManager.setGetTickIndex(() => this.getTickIndex());
 		// 设置伤害请求处理器到 MemberManager（成员创建时会注入到成员 context.damageRequestHandler）
 		this.world.memberManager.setDamageRequestHandler((damageRequest) => {
 			this.world.areaManager.damageAreaSystem.add(damageRequest);
@@ -328,8 +346,10 @@ export class GameEngine {
 		this.scenarioData = data;
 
 		this.startTime = performance.now();
-		this.currentFrame = 0;
-		this.pendingFrameTasksCount = 0;
+		this.tickIndex = 0;
+		this.currentTimeMs = 0;
+		this.deltaTimeMs = 0;
+		this.pendingTickTasksCount = 0;
 		this.resetEngineFrameLoopStats("manual");
 		this.resetSnapshotObserver();
 		this.snapshots = [];
@@ -377,7 +397,9 @@ export class GameEngine {
 		} else {
 			this.world.clear();
 			this.eventQueue.clear();
-			this.currentFrame = 0;
+			this.tickIndex = 0;
+			this.currentTimeMs = 0;
+			this.deltaTimeMs = 0;
 			this.snapshots = [];
 			this.runState = "idle";
 		}
@@ -395,6 +417,12 @@ export class GameEngine {
 			return;
 		}
 		this.runtimeConfig = config;
+		this.config.frameLoopConfig.logicHz = config.logicHz;
+		this.config.frameLoopConfig.timeScale = config.timeScale;
+		this.config.frameLoopConfig.maxTickSkip = config.maxTickSkip;
+		this.frameLoop.setLogicHz(config.logicHz);
+		this.frameLoop.setTimeScale(config.timeScale);
+		this.frameLoop.setTickSkipConfig({ maxTickSkip: config.maxTickSkip });
 		log.info(`GameEngine: runtimeConfig 已切换 (driveMode=${config.driveMode}, exec=${config.executionSemantics})`);
 	}
 
@@ -418,7 +446,9 @@ export class GameEngine {
 
 		this.scenarioData = null;
 		this.snapshots = [];
-		this.currentFrame = 0;
+		this.tickIndex = 0;
+		this.currentTimeMs = 0;
+		this.deltaTimeMs = 0;
 		this.stats = {
 			totalSnapshots: 0,
 			totalEventsProcessed: 0,
@@ -469,7 +499,8 @@ export class GameEngine {
 	 * 用于 frame_snapshot 通道（UI 实时渲染 & 技能栏状态）
 	 */
 	public createFrameSnapshot(): FrameSnapshot {
-		const frameNumber = this.getCurrentFrame();
+		const tickIndex = this.getTickIndex();
+		const currentTimeMs = this.getCurrentTimeMs();
 		const timestamp = performance.now();
 		const frameLoopStats = this.getFrameLoopStats();
 
@@ -527,7 +558,7 @@ export class GameEngine {
 					// 计算技能（仅 Player 类型）
 					if (boundMember.type === "Player") {
 						const player = boundMember as Player;
-						boundMemberSkills = this.computePlayerSkills(player, frameNumber);
+						boundMemberSkills = this.computePlayerSkills(player, currentTimeMs, tickIndex);
 					}
 				}
 			}
@@ -540,12 +571,14 @@ export class GameEngine {
 		}
 
 		const snapshot: FrameSnapshot = {
-			frameNumber,
+			tickIndex,
+			currentTimeMs,
 			timestamp,
 			engine: {
-				frameNumber,
+				tickIndex,
+				currentTimeMs,
 				runTime: performance.now() - this.startTime,
-				fps: frameLoopStats.averageFPS,
+				ticksPerSecond: frameLoopStats.averageTicksPerSecond,
 			},
 			members,
 			byController: controllerIds.length > 0 ? byController : undefined,
@@ -613,7 +646,7 @@ export class GameEngine {
 		sender:
 			| ((payload: {
 					type: "controller_domain_event_batch";
-					frameNumber: number;
+					tickIndex: number;
 					events: ControllerDomainEvent[];
 			  }) => void)
 			| null,
@@ -686,7 +719,8 @@ export class GameEngine {
 
 		return {
 			SMState: this.getSMState(),
-			currentFrame: this.getCurrentFrame(),
+			tickIndex: this.getTickIndex(),
+			currentTimeMs: this.getCurrentTimeMs(),
 			runTime,
 			members: this.getAllMemberData(),
 			eventQueueStats: this.eventQueue.getStats(),
@@ -754,7 +788,7 @@ export class GameEngine {
 		if (!member || member.type !== "Player") {
 			return [];
 		}
-		return this.computePlayerSkills(member as Player, this.getCurrentFrame());
+		return this.computePlayerSkills(member as Player, this.getCurrentTimeMs(), this.getTickIndex());
 	}
 
 	/**
@@ -875,14 +909,21 @@ export class GameEngine {
 			return;
 		}
 
-		this.runSingleFrame("manual");
+		this.runSingleTick("manual", this.getLogicStepMs());
 	}
 
 	/**
-	 * 获取当前帧号
+	 * 获取当前逻辑 tick 序号
 	 */
-	getCurrentFrame(): number {
-		return this.currentFrame;
+	getTickIndex(): number {
+		return this.tickIndex;
+	}
+
+	/**
+	 * 获取当前模拟时间（毫秒）
+	 */
+	getCurrentTimeMs(): number {
+		return this.currentTimeMs;
 	}
 
 	// ==================== 子组件功能封装：成员管理 ====================
@@ -984,6 +1025,14 @@ export class GameEngine {
 		return this.world.memberManager.getMember(memberId);
 	}
 
+	/**
+	 * 已创建伤害区域总数。
+	 * 预览分支用它区分“技能没有生成伤害流程”和“生成伤害流程但最终伤害为 0”。
+	 */
+	getDamageAreaCreatedCount(): number {
+		return this.world.areaManager.damageAreaSystem.getCreatedAreaCount();
+	}
+
 	// ==================== 子组件功能封装：消息路由 ====================
 
 	/**
@@ -1064,53 +1113,53 @@ export class GameEngine {
 	}
 
 	/**
-	 * 开始一个帧内任务，返回任务ID
+	 * 开始一个 tick 内任务，返回任务ID
 	 *
-	 * 目前作为简单计数器实现，用于防止跨帧未完成任务；后续可按需扩展来源追踪等调试信息。
+	 * 目前作为简单计数器实现，用于防止跨 tick 未完成任务；后续可按需扩展来源追踪等调试信息。
 	 */
-	beginFrameTask(taskId?: string, _meta: { source?: string } = {}): string {
+	beginTickTask(taskId?: string, _meta: { source?: string } = {}): string {
 		const id = taskId ?? createId();
-		this.pendingFrameTasksCount += 1;
+		this.pendingTickTasksCount += 1;
 		return id;
 	}
 
 	/**
-	 * 标记帧内任务完成
+	 * 标记 tick 内任务完成
 	 */
-	endFrameTask(_taskId: string): void {
-		if (this.pendingFrameTasksCount > 0) {
-			this.pendingFrameTasksCount -= 1;
+	endTickTask(_taskId: string): void {
+		if (this.pendingTickTasksCount > 0) {
+			this.pendingTickTasksCount -= 1;
 		}
 	}
 
 	/**
-	 * 分发成员跨帧调度事件
+	 * 分发成员跨模拟时间调度事件
 	 *
 	 * 说明：
 	 * - 这是从主线程 / 行为树等地方向成员 FSM 发送跨帧调度事件的统一入口
-	 * - 实际上是往 EventQueue 写入一条 `member_fsm_event`，由 `stepFrame` 在对应帧消费
+	 * - 实际上是往 EventQueue 写入一条 `member_fsm_event`，由 `stepTick` 在对应时间片消费
 	 *
 	 * @param memberId      目标成员ID
 	 * @param eventType     FSM 事件类型（需与状态机定义保持一致）
 	 * @param payload       附加数据（可选）
-	 * @param delayFrames   延迟帧数（默认 0，表示当前帧）
+	 * @param delayMs       延迟毫秒（默认 0，表示当前时间片）
 	 * @param meta          调试元信息（例如 source）
 	 */
 	dispatchMemberEvent(
 		memberId: string,
 		eventType: string,
 		payload?: Record<string, unknown>,
-		delayFrames: number = 0,
+		delayMs: number = 0,
 		meta?: { source?: string },
 	): void {
-		const currentFrame = this.getCurrentFrame();
-		const executeFrame = currentFrame + Math.max(0, delayFrames);
+		const currentTimeMs = this.getCurrentTimeMs();
+		const executeAtMs = currentTimeMs + Math.max(0, delayMs);
 
 		this.eventQueue.insert({
 			id: createId(),
 			type: "member_fsm_event",
-			executeFrame,
-			insertFrame: currentFrame,
+			executeAtMs,
+			insertedAtMs: currentTimeMs,
 			processed: false,
 			targetMemberId: memberId,
 			fsmEventType: eventType,
@@ -1145,20 +1194,23 @@ export class GameEngine {
 	// ==================== 单帧执行核心逻辑 ====================
 
 	/**
-	 * 执行一帧逻辑：事件处理 + 成员更新
+	 * 执行一个逻辑 tick：事件处理 + 成员更新
 	 *
-	 * 由 FrameLoop 调度调用，是引擎级的单帧入口。
+	 * 由 FrameLoop 调度调用，是引擎级的单 tick 入口。
 	 */
-	stepFrame(options?: { maxEvents?: number }): FrameStepResult {
-		const frameNumber = this.getCurrentFrame();
-		const frameStartTime = performance.now();
+	stepTick(options?: { maxEvents?: number; deltaTimeMs?: number }): TickStepResult {
+		const tickIndex = this.getTickIndex();
+		const currentTimeMs = this.getCurrentTimeMs();
+		const tickStartTime = performance.now();
 		const maxEvents = options?.maxEvents ?? 100;
+		const deltaTimeMs = options?.deltaTimeMs ?? this.getLogicStepMs();
+		this.deltaTimeMs = deltaTimeMs;
 
-		// 1. 处理当前帧需要执行的事件（目前统一为 member_fsm_event）
-		const eventsForFrame = this.eventQueue.getByFrame(frameNumber);
+		// 1. 处理当前时间片需要执行的事件（目前统一为 member_fsm_event）
+		const eventsForTick = this.eventQueue.getDue(currentTimeMs);
 		let eventsProcessed = 0;
 
-		for (const event of eventsForFrame) {
+		for (const event of eventsForTick) {
 			if (event.processed) {
 				continue;
 			}
@@ -1178,12 +1230,12 @@ export class GameEngine {
 							// 将队列事件转发为 FSM 事件，由成员自己的状态机处理
 							member.actor.send({ type: fsmEventType, data: payload as Record<string, unknown> });
 						} else {
-							log.warn(`⚠️ stepFrame: 目标成员不存在: ${targetMemberId}`);
+							log.warn(`⚠️ stepTick: 目标成员不存在: ${targetMemberId}`);
 						}
 					}
 					break;
 				default:
-					log.warn(`⚠️ stepFrame: 未知事件类型: ${event.type}`);
+					log.warn(`⚠️ stepTick: 未知事件类型: ${event.type}`);
 					break;
 			}
 
@@ -1192,33 +1244,35 @@ export class GameEngine {
 		}
 
 		// 2. 成员/区域更新（驱动 BT/SM/Buff 等）
-		this.world.tick(frameNumber);
+		this.world.tick({ tickIndex, currentTimeMs, deltaTimeMs });
 		const membersUpdated = this.world.memberManager.getAllMembers().length;
 
-		const duration = performance.now() - frameStartTime;
+		const duration = performance.now() - tickStartTime;
 
 		// 3. 刷新域事件总线（分发事件并投影到控制器）
-		this.domainEventBus.flush(frameNumber);
-		this.controllerEventProjector.flush(frameNumber);
+		this.domainEventBus.flush(tickIndex);
+		this.controllerEventProjector.flush(tickIndex);
 
-		// 4. 检查是否还有本帧待处理事件，禁止往当前帧插入事件的情况下，目前只需要考虑maxEvents限流
-		const hasPendingEvents = eventsForFrame.some((event) => !event.processed);
+		// 4. 检查是否还有当前时间片待处理事件，目前主要由 maxEvents 限流造成。
+		const hasPendingEvents = eventsForTick.some((event) => !event.processed);
 
-		const pendingFrameTasks = this.pendingFrameTasksCount;
+		const pendingTickTasks = this.pendingTickTasksCount;
 
-		// 5. 如果当前帧事件和帧内任务都处理完毕，推进逻辑帧号并清理已完成帧的事件
-		if (!hasPendingEvents && pendingFrameTasks === 0) {
-			this.currentFrame = frameNumber + 1;
-			this.eventQueue.removeByFrame(frameNumber);
+		// 5. 如果当前时间片事件和 tick 内任务都处理完毕，推进逻辑时间并清理已完成事件。
+		if (!hasPendingEvents && pendingTickTasks === 0) {
+			this.tickIndex = tickIndex + 1;
+			this.currentTimeMs = currentTimeMs + deltaTimeMs;
+			this.eventQueue.removeProcessedDue(currentTimeMs);
 		}
 
 		return {
-			frameNumber,
+			tickIndex,
+			currentTimeMs,
 			duration,
 			eventsProcessed,
 			membersUpdated,
 			hasPendingEvents,
-			pendingFrameTasks,
+			pendingTickTasks,
 		};
 	}
 
@@ -1231,14 +1285,17 @@ export class GameEngine {
 	 */
 	getCurrentSnapshot(): GameEngineSnapshot {
 		const members = this.world.memberManager.getAllMembers();
-		const currentFrame = this.getCurrentFrame();
+		const tickIndex = this.getTickIndex();
+		const currentTimeMs = this.getCurrentTimeMs();
 
 		return {
 			timestamp: performance.now(),
-			frameNumber: currentFrame,
+			tickIndex,
+			currentTimeMs,
 			members: members.map((member) => member.serialize()),
 			engine: {
-				frameNumber: currentFrame,
+				tickIndex,
+				currentTimeMs,
 				runTime: performance.now() - this.startTime,
 				frameLoop: this.createFrameLoopSnapshot(),
 				eventQueue: this.eventQueue.getSnapshot(),
@@ -1260,7 +1317,7 @@ export class GameEngine {
 			this.snapshots = this.snapshots.slice(-500);
 		}
 
-		log.info(`📸 生成快照 #${this.stats.totalSnapshots} - 帧: ${snapshot.frameNumber}`);
+		log.info(`📸 生成快照 #${this.stats.totalSnapshots} - tick: ${snapshot.tickIndex}`);
 	}
 
 	/**
@@ -1299,14 +1356,15 @@ export class GameEngine {
 	 * @param includeAreas 是否包含区域状态，默认 false
 	 */
 	getRenderSnapshot(includeAreas = false): RenderSnapshot {
-		const frameNumber = this.getCurrentFrame();
-		const engineNowTs = Date.now();
+		const tickIndex = this.getTickIndex();
+		const currentTimeMs = this.getCurrentTimeMs();
 		const members = this.world.memberManager.getAllMembers().map((member) => {
 			const lastAction = member.renderState?.lastAction;
 			let animation: { name: string; progress: number } | undefined;
 			if (lastAction) {
-				const elapsed = engineNowTs - lastAction.ts;
-				const durationMs = 1000;
+				const elapsed = currentTimeMs - lastAction.ts;
+				const rawDurationMs = lastAction.params?.duration;
+				const durationMs = typeof rawDurationMs === "number" && rawDurationMs > 0 ? rawDurationMs : 1000;
 				const progress = Math.min(1, Math.max(0, elapsed / durationMs));
 				animation = { name: lastAction.name, progress };
 			}
@@ -1321,8 +1379,8 @@ export class GameEngine {
 		const areas = includeAreas ? this.collectRenderAreaSnapshot() : [];
 		const cameraFollowEntityId = this.world.memberManager.getPrimaryMemberId();
 		return {
-			frameNumber,
-			engineNowTs,
+			tickIndex,
+			currentTimeMs,
 			members,
 			areas,
 			cameraFollowEntityId,
@@ -1331,13 +1389,13 @@ export class GameEngine {
 
 	/** 收集当前存活区域状态，用于构建渲染快照（供 getRenderSnapshot 使用，与逻辑快照区分） */
 	private collectRenderAreaSnapshot(): RenderSnapshotArea[] {
-		const frame = this.getCurrentFrame();
-		const damage = this.world.areaManager.damageAreaSystem.getAreaSnapshot(frame).map((a) => ({
+		const currentTimeMs = this.getCurrentTimeMs();
+		const damage = this.world.areaManager.damageAreaSystem.getAreaSnapshot(currentTimeMs).map((a) => ({
 			id: a.id,
 			type: "damage",
 			position: a.position,
 			shape: a.shape,
-			remainingTime: a.remainingTime,
+			remainingTimeMs: a.remainingTimeMs,
 		}));
 		return damage;
 	}
@@ -1411,17 +1469,17 @@ export class GameEngine {
 	/**
 	 * 重置引擎级循环统计。
 	 * 目的：
-	 * - 把“逻辑帧推进统计”收回到 GameEngine
-	 * - 让对外 FPS / totalFrames 反映真实 stepFrame 执行结果
+	 * - 把“逻辑 tick 推进统计”收回到 GameEngine
+	 * - 让对外 ticksPerSecond / totalTicks 反映真实 stepTick 执行结果
 	 */
 	private resetEngineFrameLoopStats(clockKind: FrameLoopStats["clockKind"]): void {
 		this.frameLoopStats = {
-			averageFPS: 0,
-			totalFrames: 0,
+			averageTicksPerSecond: 0,
+			totalTicks: 0,
 			totalRunTime: 0,
 			clockKind,
-			skippedFrames: 0,
-			timeoutFrames: 0,
+			skippedTicks: 0,
+			timeoutTicks: 0,
 		};
 	}
 
@@ -1432,20 +1490,20 @@ export class GameEngine {
 	private resetSnapshotObserver(): void {
 		this.snapshotObserver.lastSnapshotTime = 0;
 		this.snapshotObserver.snapshotIntervalMs =
-			this.snapshotObserver.snapshotFPS > 0 ? 1000 / this.snapshotObserver.snapshotFPS : Number.POSITIVE_INFINITY;
+			this.snapshotObserver.snapshotHz > 0 ? 1000 / this.snapshotObserver.snapshotHz : Number.POSITIVE_INFINITY;
 	}
 
 	/**
 	 * 把底层时钟驱动统计同步到引擎级统计里。
 	 * 说明：
-	 * - clockKind / skippedFrames / timeoutFrames 仍来自底层 FrameLoop
-	 * - totalFrames / averageFPS / totalRunTime 由引擎自己根据 stepFrame 结果维护
+	 * - clockKind / skippedTicks / timeoutTicks 仍来自底层 FrameLoop
+	 * - totalTicks / averageTicksPerSecond / totalRunTime 由引擎自己根据 stepTick 结果维护
 	 */
 	private syncFrameLoopDriverStats(): void {
 		const driverStats = this.frameLoop.getFrameLoopStats();
 		this.frameLoopStats.clockKind = driverStats.clockKind;
-		this.frameLoopStats.skippedFrames = driverStats.skippedFrames;
-		this.frameLoopStats.timeoutFrames = driverStats.timeoutFrames;
+		this.frameLoopStats.skippedTicks = driverStats.skippedTicks;
+		this.frameLoopStats.timeoutTicks = driverStats.timeoutTicks;
 	}
 
 	/**
@@ -1458,10 +1516,10 @@ export class GameEngine {
 
 		const runTime = performance.now() - this.startTime;
 		this.frameLoopStats.totalRunTime = runTime;
-		this.frameLoopStats.totalFrames = this.currentFrame;
+		this.frameLoopStats.totalTicks = this.tickIndex;
 
 		const seconds = runTime / 1000;
-		this.frameLoopStats.averageFPS = seconds > 0 ? this.currentFrame / seconds : 0;
+		this.frameLoopStats.averageTicksPerSecond = seconds > 0 ? this.tickIndex / seconds : 0;
 	}
 
 	/**
@@ -1469,14 +1527,18 @@ export class GameEngine {
 	 */
 	private createFrameLoopSnapshot(): FrameLoopSnapshot {
 		return {
-			currentFrame: this.getCurrentFrame(),
-			fps: this.frameLoopStats.averageFPS,
+			tickIndex: this.getTickIndex(),
+			ticksPerSecond: this.frameLoopStats.averageTicksPerSecond,
 		};
+	}
+
+	private getLogicStepMs(): number {
+		return 1000 / this.config.frameLoopConfig.logicHz;
 	}
 
 	/**
 	 * realtime 驱动入口。
-	 * FrameLoop 只负责告诉我们“建议推进多少帧”，真正的循环控制在这里。
+	 * FrameLoop 只负责告诉我们“建议推进多少 tick”，真正的循环控制在这里。
 	 */
 	private handleFrameLoopTick(tick: FrameLoopTick): void {
 		if (this.runState !== "running") {
@@ -1485,20 +1547,21 @@ export class GameEngine {
 
 		this.syncFrameLoopDriverStats();
 
-		for (let index = 0; index < tick.dueSteps; index++) {
-			this.runSingleFrame(tick.clockKind);
+		for (let index = 0; index < tick.dueTicks; index++) {
+			this.runSingleTick(tick.clockKind, tick.logicStepMs);
 		}
 
 		this.syncFrameLoopDriverStats();
 	}
 
 	/**
-	 * 执行一次引擎级单帧事务，并统一更新统计/快照。
+	 * 执行一次引擎级单 tick 事务，并统一更新统计/快照。
 	 * 这样 manual step、realtime、fast-forward 就能复用一套收尾逻辑。
 	 */
-	private runSingleFrame(clockKind: FrameLoopStats["clockKind"]): FrameStepResult {
-		const stepResult = this.stepFrame({
-			maxEvents: this.config.frameLoopConfig.maxEventsPerFrame,
+	private runSingleTick(clockKind: FrameLoopStats["clockKind"], deltaTimeMs: number): TickStepResult {
+		const stepResult = this.stepTick({
+			maxEvents: this.config.frameLoopConfig.maxEventsPerTick,
+			deltaTimeMs,
 		});
 
 		this.stats.totalEventsProcessed += stepResult.eventsProcessed;
@@ -1536,9 +1599,9 @@ export class GameEngine {
 	 * fast-forward 分片推进。
 	 * 说明：
 	 * - 不依赖底层 wall-clock
-	 * - 由引擎主动重复调用 stepFrame
-	 * - 通过帧数预算 + 时间预算避免长时间独占线程
-	 * - 每帧检查 RuntimeConfig.stopPolicy 决定是否收束
+	 * - 由引擎主动重复调用 stepTick
+	 * - 通过 tick 数预算 + 时间预算避免长时间独占线程
+	 * - 每 tick 检查 RuntimeConfig.stopPolicy 决定是否收束
 	 */
 	private processFastForwardSlice(): void {
 		if (this.runState !== "running") {
@@ -1546,15 +1609,15 @@ export class GameEngine {
 		}
 
 		const sliceStartTime = performance.now();
-		let framesExecuted = 0;
+		let ticksExecuted = 0;
 
-		while (this.runState === "running" && framesExecuted < FAST_FORWARD_MAX_FRAMES_PER_SLICE) {
-			this.runSingleFrame("manual");
-			framesExecuted += 1;
+		while (this.runState === "running" && ticksExecuted < FAST_FORWARD_MAX_TICKS_PER_SLICE) {
+			this.runSingleTick("manual", this.getLogicStepMs());
+			ticksExecuted += 1;
 
 			if (this.checkStopCondition()) {
 				this.pause();
-				log.info(`stopPolicy 触发终止，当前帧号: ${this.currentFrame}`);
+				log.info(`stopPolicy 触发终止，当前 tick: ${this.tickIndex}, timeMs: ${this.currentTimeMs}`);
 				return;
 			}
 
@@ -1576,8 +1639,8 @@ export class GameEngine {
 		switch (policy.kind) {
 			case "manual":
 				return false;
-			case "untilFrame":
-				return this.currentFrame >= policy.targetFrame;
+			case "untilTimeMs":
+				return this.currentTimeMs >= policy.targetTimeMs;
 			case "untilBattleEnd": {
 				const allMembers = this.world.memberManager.getAllMembers();
 				if (allMembers.length === 0) return true;
@@ -1604,7 +1667,9 @@ export class GameEngine {
 				const m = this.world.memberManager.getMember(policy.memberId);
 				if (!m) return true;
 				const runtime = m.runtime as { actionQueue?: { length: number } };
-				return !runtime.actionQueue || runtime.actionQueue.length === 0;
+				const hasQueuedAction = !!runtime.actionQueue && runtime.actionQueue.length > 0;
+				const hasActiveEffectBt = m.btManager.hasActiveEffectBt();
+				return !hasQueuedAction && !hasActiveEffectBt;
 			}
 			default:
 				return false;
@@ -1613,10 +1678,10 @@ export class GameEngine {
 
 	/**
 	 * 引擎侧快照节流。
-	 * 这层负责决定“每完成一帧后是否需要对外发高频快照”。
+	 * 这层负责决定“每完成一个 tick 后是否需要对外发高频快照”。
 	 */
 	private emitFrameSnapshotIfNeeded(): void {
-		if (this.snapshotObserver.snapshotFPS <= 0 || !this.frameSnapshotSender) {
+		if (this.snapshotObserver.snapshotHz <= 0 || !this.frameSnapshotSender) {
 			return;
 		}
 
@@ -1680,7 +1745,7 @@ export class GameEngine {
 	 * 计算 Player 的技能数据
 	 * 为每个技能计算当前的消耗值和可用性
 	 */
-	private computePlayerSkills(player: Player, currentFrame: number): ComputedSkillInfo[] {
+	private computePlayerSkills(player: Player, currentTimeMs: number, tickIndex: number): ComputedSkillInfo[] {
 		const skillList = (player.runtime as { skillList?: unknown }).skillList ?? [];
 		const skillCooldowns = (player.runtime as { skillCooldowns?: unknown }).skillCooldowns ?? [];
 		const currentMp = player.statContainer?.getValue("mp.current") ?? 0;
@@ -1700,7 +1765,8 @@ export class GameEngine {
 			)?.find((e: { condition?: string }) => {
 				try {
 					const result = this.evaluateExpression(e.condition ?? "false", {
-						currentFrame,
+						currentTimeMs,
+						tickIndex,
 						casterId: player.id,
 						skillLv: skillLevel,
 					});
@@ -1717,7 +1783,8 @@ export class GameEngine {
 
 			if (effect) {
 				const mpCostResult = this.evaluateExpression(effect.mpCost ?? "0", {
-					currentFrame,
+					currentTimeMs,
+					tickIndex,
 					casterId: player.id,
 					skillLv: skillLevel,
 				});
@@ -1726,7 +1793,8 @@ export class GameEngine {
 				}
 				mpCost = mpCostResult;
 				const hpCostResult = this.evaluateExpression(effect.hpCost ?? "0", {
-					currentFrame,
+					currentTimeMs,
+					tickIndex,
 					casterId: player.id,
 					skillLv: skillLevel,
 				});
@@ -1735,7 +1803,8 @@ export class GameEngine {
 				}
 				hpCost = hpCostResult;
 				const castingRangeResult = this.evaluateExpression(String(effect.castingRange ?? "0"), {
-					currentFrame,
+					currentTimeMs,
+					tickIndex,
 					casterId: player.id,
 					skillLv: skillLevel,
 				});
@@ -1767,37 +1836,44 @@ export class GameEngine {
 	}
 
 	/**
-	 * 同步快进：在当前线程上连续执行逻辑帧，直到 stopPolicy 触发或达到帧数上限。
+	 * 同步快进：在当前线程上连续执行逻辑 tick，直到 stopPolicy 触发或达到 tick 上限。
 	 * 仅供预览/探针等短流程使用；不适用长时间实时模拟。
 	 *
-	 * @param maxTotalFrames 最大总帧数保护上限（防止无限循环）
-	 * @returns 实际执行的逻辑帧数
+	 * @param options.maxTicks 最大总 tick 数保护上限（防止无限循环）
+	 * @param options.maxDurationMs 最大模拟时间预算（毫秒）
+	 * @returns 实际执行的逻辑 tick 数与推进的模拟时间
 	 */
-	fastForwardSync(maxTotalFrames: number = 500): number {
+	fastForwardSync(options: FastForwardSyncOptions = {}): FastForwardSyncResult {
 		if (this.runState !== "running") {
 			if (this.runState === "idle") {
 				log.warn("fastForwardSync: 引擎未加载场景数据");
-				return 0;
+				return { ticksRun: 0, elapsedMs: 0, reachedLimit: false };
 			}
 			this.runState = "running";
 		}
-		let totalFrames = 0;
-		while (this.runState === "running" && totalFrames < maxTotalFrames) {
-			this.runSingleFrame("manual");
-			totalFrames++;
+		const maxTicks = options.maxTicks ?? Number.POSITIVE_INFINITY;
+		const maxDurationMs = options.maxDurationMs ?? Number.POSITIVE_INFINITY;
+		const startTimeMs = this.currentTimeMs;
+		let totalTicks = 0;
+		while (this.runState === "running" && totalTicks < maxTicks && this.currentTimeMs - startTimeMs < maxDurationMs) {
+			this.runSingleTick("manual", this.getLogicStepMs());
+			totalTicks++;
 			if (this.checkStopCondition()) {
 				this.runState = "ready";
 				break;
 			}
 		}
-		return totalFrames;
+		const elapsedMs = this.currentTimeMs - startTimeMs;
+		const reachedLimit = this.runState === "running" && (totalTicks >= maxTicks || elapsedMs >= maxDurationMs);
+		return { ticksRun: totalTicks, elapsedMs, reachedLimit };
 	}
 
 	// ==================== Checkpoint / Restore ====================
 
 	captureCheckpoint(): EngineCheckpoint {
 		return {
-			frameNumber: this.currentFrame,
+			tickIndex: this.tickIndex,
+			currentTimeMs: this.currentTimeMs,
 			timestamp: performance.now(),
 			eventQueue: this.eventQueue.captureCheckpoint(),
 			world: this.world.captureCheckpoint(),
@@ -1813,7 +1889,9 @@ export class GameEngine {
 			this.pause();
 		}
 
-		this.currentFrame = checkpoint.frameNumber;
+		this.tickIndex = checkpoint.tickIndex;
+		this.currentTimeMs = checkpoint.currentTimeMs;
+		this.deltaTimeMs = 0;
 		this.eventQueue.restoreCheckpoint(checkpoint.eventQueue);
 		this.world.restoreCheckpoint(checkpoint.world);
 		this.domainEventBus.restoreCheckpoint(checkpoint.domainEventBus);

@@ -72,11 +72,17 @@ export type BranchTask = z.output<typeof BranchTaskSchema>;
 export const BranchResultSchema = z.object({
 	outputType: z.string(),
 	memberId: z.string().optional(),
+	skillId: z.string().optional(),
 	damage: z.number().optional(),
 	dpsDelta: z.number().optional(),
 	dpsPercent: z.string().optional(),
 	attrs: z.record(z.string(), z.unknown()).optional(),
 	skillProbes: z.array(z.unknown()).optional(),
+	note: z.string().optional(),
+	reason: z.string().optional(),
+	ticksRun: z.number().optional(),
+	elapsedMs: z.number().optional(),
+	damageAreaCount: z.number().optional(),
 	error: z.string().optional(),
 });
 
@@ -113,9 +119,10 @@ export const WorkerSystemMessageSchema = z.object({
 export type WorkerSystemMessage = z.output<typeof WorkerSystemMessageSchema>;
 
 export const EngineTelemetrySchema = z.object({
-	frameNumber: z.number(),
+	tickIndex: z.number(),
+	currentTimeMs: z.number(),
 	runTime: z.number(),
-	fps: z.number(),
+	ticksPerSecond: z.number(),
 	memberCount: z.number(),
 });
 
@@ -123,7 +130,7 @@ export type EngineTelemetry = z.output<typeof EngineTelemetrySchema>;
 
 export const ControllerDomainEventBatchSchema = z.object({
 	type: z.literal("controller_domain_event_batch"),
-	frameNumber: z.number(),
+	tickIndex: z.number(),
 	events: z.array(z.any()),
 });
 

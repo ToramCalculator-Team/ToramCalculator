@@ -52,11 +52,11 @@ export type NodeStateChange = {
  */
 export interface BehaviourTreeOptions {
 	/**
-	 * Gets a delta time in seconds that is used to calculate the elapsed duration of any `wait` nodes.
+	 * Gets a delta time in milliseconds that is used to calculate the elapsed duration of any `wait` nodes.
 	 * If this function is not defined then `Date.prototype.getTime()` will be used instead by default.
-	 * @returns The delta time to use in seconds.
+	 * @returns The delta time to use in milliseconds.
 	 */
-	getDeltaTime?(): number;
+	getDeltaTimeMs?(): number;
 
 	/**
 	 * Gets a pseudo-random floating-point number between 0 (inclusive) and 1 (exclusive) for use in operations such as:

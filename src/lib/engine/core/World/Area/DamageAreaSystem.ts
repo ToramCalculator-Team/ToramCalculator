@@ -1,5 +1,5 @@
 import { createLogger } from "~/lib/Logger";
-import type { Checkpointable, DamageAreaSystemCheckpoint } from "../../types";
+import type { Checkpointable, DamageAreaSystemCheckpoint, SimulationTickContext } from "../../types";
 import type { AnyMemberEntry, MemberManager } from "../Member/MemberManager";
 import type { SpaceManager } from "../SpaceManager";
 import type { DamageAreaRequest, DamageDirection, DamageDispatchPayload, Vec3 } from "./types";
@@ -31,8 +31,8 @@ interface DamageAreaInstance {
 		/** 线性速度（linear 时使用） */
 		speed?: number;
 	};
-	/** 每个目标的最后命中帧（用于 hitIntervalFrames 节流） */
-	lastHitFrameByTargetId: Map<string, number>;
+	/** 每个目标的最后命中时间（用于 hitIntervalMs 节流） */
+	lastHitTimeMsByTargetId: Map<string, number>;
 }
 
 /**
@@ -60,12 +60,17 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 			request,
 			shape,
 			trajectory,
-			lastHitFrameByTargetId: new Map(),
+			lastHitTimeMsByTargetId: new Map(),
 		};
 
 		this.instances.set(areaId, instance);
 		log.debug(`DamageAreaSystem: 添加伤害区域: ${areaId}`);
 		return areaId;
+	}
+
+	/** 供预览分支判断技能是否生成过伤害区域；区域可能在同帧过期，不能只看当前存活实例。 */
+	getCreatedAreaCount(): number {
+		return this.nextAreaId - 1;
 	}
 
 	/**
@@ -89,28 +94,29 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 	}
 
 	/**
-	 * 每帧更新
+	 * 每 tick 更新
 	 */
-	tick(frame: number): void {
+	tick(tick: SimulationTickContext): void {
+		const currentTimeMs = tick.currentTimeMs;
 		const instancesToRemove: string[] = [];
 
 		for (const instance of this.instances.values()) {
 			const { request, shape } = instance;
-			const { startFrame, durationFrames } = request.lifetime;
+			const { startTimeMs, durationMs } = request.lifetime;
 
 			// 检查生命周期
-			if (frame < startFrame) {
+			if (currentTimeMs < startTimeMs) {
 				continue; // 尚未开始
 			}
-			if (frame >= startFrame + durationFrames) {
+			if (currentTimeMs >= startTimeMs + durationMs) {
 				instancesToRemove.push(instance.areaId);
 				continue; // 已过期
 			}
 
 			// 计算当前中心点
-			const currentCenter = this.computeCurrentCenter(instance, frame);
+			const currentCenter = this.computeCurrentCenter(instance, currentTimeMs);
 
-			const hitIntervalFrames = request.hitPolicy.hitIntervalFrames;
+			const hitIntervalMs = request.hitPolicy.hitIntervalMs;
 
 			// 根据范围类型选择候选目标
 			let validTargets: AnyMemberEntry[];
@@ -118,9 +124,9 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 			if (request.range.rangeKind === "Single" || request.range.rangeKind === "None") {
 				const singleTarget = request.targetId ? this.memberManager.getMember(request.targetId) : null;
 				if (singleTarget && singleTarget.campId !== request.identity.sourceCampId) {
-					const lastHitFrame = instance.lastHitFrameByTargetId.get(singleTarget.id) ?? -Infinity;
-					if (frame - lastHitFrame >= hitIntervalFrames) {
-						instance.lastHitFrameByTargetId.set(singleTarget.id, frame);
+					const lastHitTimeMs = instance.lastHitTimeMsByTargetId.get(singleTarget.id) ?? -Infinity;
+					if (currentTimeMs - lastHitTimeMs >= hitIntervalMs) {
+						instance.lastHitTimeMsByTargetId.set(singleTarget.id, currentTimeMs);
 						validTargets = [singleTarget];
 					} else {
 						validTargets = [];
@@ -137,13 +143,13 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 					return member.campId !== request.identity.sourceCampId;
 				});
 
-				// 命中节流：每 N 帧允许再次命中
+				// 命中节流：间隔达到 hitIntervalMs 后允许再次命中
 				validTargets = [];
 				for (const target of enemyTargets) {
-					const lastHitFrame = instance.lastHitFrameByTargetId.get(target.id) ?? -Infinity;
-					if (frame - lastHitFrame >= hitIntervalFrames) {
+					const lastHitTimeMs = instance.lastHitTimeMsByTargetId.get(target.id) ?? -Infinity;
+					if (currentTimeMs - lastHitTimeMs >= hitIntervalMs) {
 						validTargets.push(target);
-						instance.lastHitFrameByTargetId.set(target.id, frame);
+						instance.lastHitTimeMsByTargetId.set(target.id, currentTimeMs);
 					}
 				}
 			}
@@ -193,9 +199,9 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 	/**
 	 * 计算当前中心点
 	 */
-	private computeCurrentCenter(instance: DamageAreaInstance, frame: number): Vec3 {
+	private computeCurrentCenter(instance: DamageAreaInstance, currentTimeMs: number): Vec3 {
 		const { trajectory, request } = instance;
-		const { startFrame } = request.lifetime;
+		const { startTimeMs } = request.lifetime;
 		const caster = this.memberManager.getMember(request.identity.sourceId);
 		if (!caster) {
 			throw new Error(`DamageAreaSystem: 施法者不存在: ${request.identity.sourceId}`);
@@ -206,8 +212,7 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 		}
 
 		// linear
-		const elapsedFrames = frame - startFrame;
-		const elapsedTime = elapsedFrames; // 假设 1 frame = 1 时间单位
+		const elapsedTimeSeconds = Math.max(0, currentTimeMs - startTimeMs) / 1000;
 		const { start, dir, speed } = trajectory;
 
 		if (!start || !dir || speed === undefined) {
@@ -215,9 +220,9 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 		}
 
 		return {
-			x: start.x + dir.x * speed * elapsedTime,
-			y: start.y + dir.y * speed * elapsedTime,
-			z: start.z + dir.z * speed * elapsedTime,
+			x: start.x + dir.x * speed * elapsedTimeSeconds,
+			y: start.y + dir.y * speed * elapsedTimeSeconds,
+			z: start.z + dir.z * speed * elapsedTimeSeconds,
 		};
 	}
 
@@ -253,7 +258,7 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 			instances.push({
 				areaId: instance.areaId,
 				requestPayload: structuredClone(instance.request),
-				lastHitFrameByTargetId: Array.from(instance.lastHitFrameByTargetId.entries()),
+				lastHitTimeMsByTargetId: Array.from(instance.lastHitTimeMsByTargetId.entries()),
 			});
 		}
 		return {
@@ -274,7 +279,7 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 				request,
 				shape,
 				trajectory,
-				lastHitFrameByTargetId: new Map(entry.lastHitFrameByTargetId),
+				lastHitTimeMsByTargetId: new Map(entry.lastHitTimeMsByTargetId),
 			};
 			this.instances.set(entry.areaId, instance);
 		}
@@ -331,24 +336,23 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 
 	/**
 	 * 导出当前存活区域状态（用于渲染快照）
-	 * @param frame 当前逻辑帧
+	 * @param currentTimeMs 当前模拟时间（毫秒）
 	 */
 	getAreaSnapshot(
-		frame: number,
-	): Array<{ id: string; position: Vec3; shape: { radius: number }; remainingTime: number }> {
-		const result: Array<{ id: string; position: Vec3; shape: { radius: number }; remainingTime: number }> = [];
+		currentTimeMs: number,
+	): Array<{ id: string; position: Vec3; shape: { radius: number }; remainingTimeMs: number }> {
+		const result: Array<{ id: string; position: Vec3; shape: { radius: number }; remainingTimeMs: number }> = [];
 		for (const instance of this.instances.values()) {
 			const { request } = instance;
-			const { startFrame, durationFrames } = request.lifetime;
-			if (frame < startFrame || frame >= startFrame + durationFrames) continue;
-			const position = this.computeCurrentCenter(instance, frame);
-			const remainingFrames = startFrame + durationFrames - frame;
-			const remainingTime = Math.max(0, remainingFrames / 60);
+			const { startTimeMs, durationMs } = request.lifetime;
+			if (currentTimeMs < startTimeMs || currentTimeMs >= startTimeMs + durationMs) continue;
+			const position = this.computeCurrentCenter(instance, currentTimeMs);
+			const remainingTimeMs = Math.max(0, startTimeMs + durationMs - currentTimeMs);
 			result.push({
 				id: instance.areaId,
 				position,
 				shape: { radius: instance.shape.radius },
-				remainingTime,
+				remainingTimeMs,
 			});
 		}
 		return result;

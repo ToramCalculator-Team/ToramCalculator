@@ -29,7 +29,9 @@ export class Mob extends Member<MobAttrType, MobEventType, MobStateContext, MobR
 
 		const runtime: MobRuntime = {
 			type: "Mob",
-			currentFrame: 0,
+			tickIndex: 0,
+			currentTimeMs: 0,
+			deltaTimeMs: 0,
 			position: position ?? { x: 0, y: 0, z: 0 },
 			targetId: memberData.id,
 			statusTags: [],

@@ -2,7 +2,7 @@ import type { MemberWithRelations } from "@db/generated/repositories/member";
 import type { TeamWithRelations } from "@db/generated/repositories/team";
 import type { MemberType } from "@db/schema/enums";
 import type { Actor, AnyActorLogic } from "xstate";
-import { createLogger } from "~/lib/Logger"; 
+import { createLogger } from "~/lib/Logger";
 import type { EventCatalog } from "../../Event/EventCatalog";
 import type { ExpressionContext } from "../../JSProcessor/types";
 import type { PipelineResolverService } from "../../Pipeline/PipelineResolverService";
@@ -47,8 +47,10 @@ export class MemberManager {
 	private evaluateExpression: ((expression: string, context: ExpressionContext) => number | boolean) | null = null;
 	/** 伤害请求处理器（由引擎注入） */
 	private damageRequestHandler: ((damageRequest: DamageAreaRequest) => void) | null = null;
-	/** 引擎帧号读取函数（由引擎注入） */
-	private getCurrentFrame: (() => number) | null = null;
+	/** 当前模拟时间读取函数（由引擎注入） */
+	private getCurrentTimeMs: (() => number) | null = null;
+	/** 当前逻辑 tick 序号读取函数（由引擎注入） */
+	private getTickIndex: (() => number) | null = null;
 	/** 新管线解析器（由引擎注入） */
 	private pipelineResolverService: PipelineResolverService | null = null;
 	/** 事件目录（由引擎注入，用于每成员的 ProcBus 初始化） */
@@ -99,12 +101,22 @@ export class MemberManager {
 	}
 
 	/**
-	 * 设置引擎帧号读取函数（由引擎注入）
+	 * 设置当前模拟时间读取函数（由引擎注入）
 	 */
-	setGetCurrentFrame(getCurrentFrame: (() => number) | null): void {
-		this.getCurrentFrame = getCurrentFrame;
+	setGetCurrentTimeMs(getCurrentTimeMs: (() => number) | null): void {
+		this.getCurrentTimeMs = getCurrentTimeMs;
 		for (const member of this.members.values()) {
-			member.setGetCurrentFrame(getCurrentFrame);
+			member.setGetCurrentTimeMs(getCurrentTimeMs);
+		}
+	}
+
+	/**
+	 * 设置当前逻辑 tick 序号读取函数（由引擎注入）
+	 */
+	setGetTickIndex(getTickIndex: (() => number) | null): void {
+		this.getTickIndex = getTickIndex;
+		for (const member of this.members.values()) {
+			member.setGetTickIndex(getTickIndex);
 		}
 	}
 
@@ -203,7 +215,8 @@ export class MemberManager {
 				player.setTargetResolver(this.resolveTargetId.bind(this));
 				player.setEvaluateExpression(this.evaluateExpression);
 				player.setDamageRequestHandler(this.damageRequestHandler);
-				player.setGetCurrentFrame(this.getCurrentFrame);
+				player.setGetCurrentTimeMs(this.getCurrentTimeMs);
+				player.setGetTickIndex(this.getTickIndex);
 				player.setRenderMessageSender(this.renderMessageSender);
 				if (this.randomFn) {
 					player.services.random = this.randomFn;
@@ -234,7 +247,8 @@ export class MemberManager {
 				mob.setTargetResolver(this.resolveTargetId.bind(this));
 				mob.setEvaluateExpression(this.evaluateExpression);
 				mob.setDamageRequestHandler(this.damageRequestHandler);
-				mob.setGetCurrentFrame(this.getCurrentFrame);
+				mob.setGetCurrentTimeMs(this.getCurrentTimeMs);
+				mob.setGetTickIndex(this.getTickIndex);
 				mob.setRenderMessageSender(this.renderMessageSender);
 				if (this.randomFn) {
 					mob.services.random = this.randomFn;
@@ -562,6 +576,8 @@ export class MemberManager {
 			// 通知渲染层相机跟随新目标（仅用于渲染层，不用于控制器层）
 			// 注意：多控制器架构下，主控目标概念仅用于渲染层（相机跟随），不再通知控制器层
 			if (memberId) {
+				const tickIndex = this.getCurrentTickIndexOrZero();
+				const currentTimeMs = this.getCurrentTimeMsOrZero();
 				this.renderMessageSender?.({
 					type: "render:cmd",
 					cmd: {
@@ -569,8 +585,8 @@ export class MemberManager {
 						entityId: memberId,
 						distance: 8,
 						verticalAngle: Math.PI / 6,
-						seq: Date.now(),
-						ts: Date.now(),
+						seq: tickIndex,
+						ts: currentTimeMs,
 					},
 				});
 			}
@@ -578,6 +594,22 @@ export class MemberManager {
 			// 已移除：primary_target_changed 系统事件发送
 			// 原因：多控制器架构下，每个控制器独立绑定成员，不存在"主控目标"概念
 			// 控制器层应通过 byController[controllerId] 获取绑定成员数据
+		}
+	}
+
+	private getCurrentTimeMsOrZero(): number {
+		try {
+			return this.getCurrentTimeMs?.() ?? 0;
+		} catch {
+			return 0;
+		}
+	}
+
+	private getCurrentTickIndexOrZero(): number {
+		try {
+			return this.getTickIndex?.() ?? 0;
+		} catch {
+			return 0;
 		}
 	}
 

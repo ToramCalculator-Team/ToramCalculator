@@ -106,6 +106,6 @@ export type MemberActor<
 export interface MemberStateContext {
 	/** 是否存活 */
 	isAlive: boolean;
-	/** 创建帧（用于行为树/FSM 计算相对时间） */
-	createdAtFrame: number;
+	/** 创建模拟时间（毫秒，用于行为树/FSM 计算相对时间） */
+	createdAtTimeMs: number;
 }

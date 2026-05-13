@@ -6,7 +6,7 @@ import type { DamageAreaRequest } from "../../../Area/types";
 import { ModifierType } from "../StatContainer/StatContainer";
 import type { BtContext } from "./BtContext";
 import { type ActionPool, defineAction } from "./type";
-import { sendRenderCommand } from "./uitls"; 
+import { sendRenderCommand } from "./uitls";
 
 const log = createLogger("Actions");
 
@@ -122,18 +122,18 @@ export const CommonActionPool = {
 		log.debug(`👤 [${owner.name}] 施法者快照:`, casterSnapshot, `技能等级: ${skillLv}`);
 
 		// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
-		const startFrame = owner.services.getCurrentFrame();
+		const startTimeMs = owner.services.getCurrentTimeMs();
 		const damageRequest: DamageAreaRequest = {
 			identity: {
 				sourceId: owner.id,
 				sourceCampId: owner.campId,
 			},
 			lifetime: {
-				startFrame,
-				durationFrames: 1,
+				startTimeMs,
+				durationMs: owner.runtime.deltaTimeMs,
 			},
 			hitPolicy: {
-				hitIntervalFrames: 1,
+				hitIntervalMs: owner.runtime.deltaTimeMs,
 			},
 			attackSemantics: {
 				attackCount: input.attackCount,
@@ -190,18 +190,18 @@ export const CommonActionPool = {
 			log.debug(`👤 [${owner.name}] 施法者快照:`, casterSnapshot, `技能等级: ${skillLv}`);
 
 			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
-			const startFrame = owner.services.getCurrentFrame();
+			const startTimeMs = owner.services.getCurrentTimeMs();
 			const damageRequest: DamageAreaRequest = {
 				identity: {
 					sourceId: owner.id,
 					sourceCampId: owner.campId,
 				},
 				lifetime: {
-					startFrame,
-					durationFrames: 1,
+					startTimeMs,
+					durationMs: owner.runtime.deltaTimeMs,
 				},
 				hitPolicy: {
-					hitIntervalFrames: 1,
+					hitIntervalMs: owner.runtime.deltaTimeMs,
 				},
 				attackSemantics: {
 					attackCount: input.attackCount,
@@ -321,9 +321,11 @@ export const CommonActionPool = {
 
 	/** 移除buff */
 	removeBuff: defineAction(
-		z.object({
-			treeName: z.string().meta({ description: "buff树名称" }),
-		}).meta({ description: "移除buff" }),
+		z
+			.object({
+				treeName: z.string().meta({ description: "buff树名称" }),
+			})
+			.meta({ description: "移除buff" }),
 		(context, input) => {
 			context.owner?.btManager.unregisterParallelBt(input.treeName);
 			return State.SUCCEEDED;
@@ -371,9 +373,13 @@ export const CommonActionPool = {
 	subscribeStatus: defineAction(
 		z
 			.object({
-				sourceId: z.string().meta({ description: "订阅来源 id（registlet/buff/passive skill 的 id，用于卸载时按来源清理）" }),
+				sourceId: z
+					.string()
+					.meta({ description: "订阅来源 id（registlet/buff/passive skill 的 id，用于卸载时按来源清理）" }),
 				direction: z.enum(["entered", "exited", "both"]).meta({ description: "关心状态进入/离开哪个方向" }),
-				types: z.array(z.string()).meta({ description: "感兴趣的状态 type 列表（StatusInstance.type）；空数组 = 全部" }),
+				types: z
+					.array(z.string())
+					.meta({ description: "感兴趣的状态 type 列表（StatusInstance.type）；空数组 = 全部" }),
 				counterSlot: z
 					.string()
 					.optional()
@@ -392,25 +398,21 @@ export const CommonActionPool = {
 			if (input.direction === "exited" || input.direction === "both") eventNames.push("status.exited");
 
 			const typesFilter = new Set(input.types);
-			const predicate = typesFilter.size === 0
-				? null
-				: (event: { payload: unknown }) => {
-					const payload = event.payload as { type?: string };
-					return !!payload?.type && typesFilter.has(payload.type);
-				};
+			const predicate =
+				typesFilter.size === 0
+					? null
+					: (event: { payload: unknown }) => {
+							const payload = event.payload as { type?: string };
+							return !!payload?.type && typesFilter.has(payload.type);
+						};
 
 			owner.procBus.subscribeByName(input.sourceId, eventNames, predicate, (event) => {
 				if (!input.counterSlot) return;
-				owner.statContainer.addModifier(
-					input.counterSlot,
-					ModifierType.DYNAMIC_FIXED,
-					1,
-					{
-						id: `${input.sourceId}.counter.${event.frame}`,
-						name: "subscribeStatus.counter",
-						type: "system",
-					},
-				);
+				owner.statContainer.addModifier(input.counterSlot, ModifierType.DYNAMIC_FIXED, 1, {
+					id: `${input.sourceId}.counter.${event.timeMs}`,
+					name: "subscribeStatus.counter",
+					type: "system",
+				});
 			});
 			return State.SUCCEEDED;
 		},
@@ -442,29 +444,25 @@ export const CommonActionPool = {
 			}
 
 			const tagFilter = new Set(input.requiredTags);
-			const predicate = tagFilter.size === 0
-				? null
-				: (event: { payload: unknown }) => {
-					const payload = event.payload as { damageTags?: string[] };
-					if (!Array.isArray(payload?.damageTags)) return false;
-					for (const tag of payload.damageTags) {
-						if (tagFilter.has(tag)) return true;
-					}
-					return false;
-				};
+			const predicate =
+				tagFilter.size === 0
+					? null
+					: (event: { payload: unknown }) => {
+							const payload = event.payload as { damageTags?: string[] };
+							if (!Array.isArray(payload?.damageTags)) return false;
+							for (const tag of payload.damageTags) {
+								if (tagFilter.has(tag)) return true;
+							}
+							return false;
+						};
 
 			owner.procBus.subscribeByName(input.sourceId, input.eventNames, predicate, (event) => {
 				if (!input.counterSlot) return;
-				owner.statContainer.addModifier(
-					input.counterSlot,
-					ModifierType.DYNAMIC_FIXED,
-					1,
-					{
-						id: `${input.sourceId}.counter.${event.frame}`,
-						name: "subscribeProc.counter",
-						type: "system",
-					},
-				);
+				owner.statContainer.addModifier(input.counterSlot, ModifierType.DYNAMIC_FIXED, 1, {
+					id: `${input.sourceId}.counter.${event.timeMs}`,
+					name: "subscribeProc.counter",
+					type: "system",
+				});
 			});
 			return State.SUCCEEDED;
 		},
@@ -498,16 +496,11 @@ export const CommonActionPool = {
 				input.direction,
 				(ctx) => {
 					if (!input.counterSlot) return;
-					owner.statContainer.addModifier(
-						input.counterSlot,
-						ModifierType.DYNAMIC_FIXED,
-						1,
-						{
-							id: `${input.sourceId}.counter.${ctx.newValue}`,
-							name: "watchThreshold.counter",
-							type: "system",
-						},
-					);
+					owner.statContainer.addModifier(input.counterSlot, ModifierType.DYNAMIC_FIXED, 1, {
+						id: `${input.sourceId}.counter.${ctx.newValue}`,
+						name: "watchThreshold.counter",
+						type: "system",
+					});
 				},
 				{ fireOnRegister: input.fireOnRegister },
 			);

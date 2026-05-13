@@ -101,7 +101,7 @@ export function resolveHitCheck(
 		skillMpCost,
 		damageTags: req.damageTags,
 	}) as Record<string, unknown>;
-	log.info("管线输出：",output)
+	log.info("管线输出：", output);
 
 	const hitRate = Number(output.hitRate ?? 0);
 	const roll = (random ?? Math.random)() * 100;
@@ -121,7 +121,8 @@ export function resolveHitCheck(
  */
 export function resolveDamageAndApply(
 	id: string,
-	currentFrame: number,
+	currentTimeMs: number,
+	tickIndex: number,
 	hpGetter: () => number,
 	mpGetter: () => number,
 	hpApplyer: (vaule: number) => void,
@@ -147,7 +148,7 @@ export function resolveDamageAndApply(
 			damage: 0,
 			hp: session.hpAfter,
 		});
-		log.info("未命中")
+		log.info("未命中");
 		return session;
 	}
 
@@ -155,7 +156,8 @@ export function resolveDamageAndApply(
 	let baseDamage = 0;
 	if (evaluator && req.damageFormula) {
 		const out = evaluator(req.damageFormula, {
-			currentFrame: currentFrame,
+			currentTimeMs,
+			tickIndex,
 			casterId: req.sourceId,
 			targetId: id,
 			skillLv: req.skillLv,
@@ -200,7 +202,7 @@ export function resolveDamageAndApply(
 	const mpAfter = Number(applyOutput.mpAfter ?? mpBefore);
 	const hpDelta = hpAfter - hpBefore;
 	const mpDelta = mpAfter - mpBefore;
-	log.info("hpDelta:", hpDelta, "mpDelta:", mpDelta)
+	log.info("hpDelta:", hpDelta, "mpDelta:", mpDelta);
 
 	if (hpDelta !== 0) {
 		hpApplyer(hpDelta);

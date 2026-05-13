@@ -69,15 +69,15 @@ export interface DamageAreaRequest {
 	};
 	/** 生命周期 */
 	lifetime: {
-		/** 开始帧 */
-		startFrame: number;
-		/** 持续帧数 */
-		durationFrames: number;
+		/** 开始模拟时间（毫秒） */
+		startTimeMs: number;
+		/** 持续时间（毫秒） */
+		durationMs: number;
 	};
 	/** 命中策略 */
 	hitPolicy: {
-		/** 同目标命中节流（每 N 帧可再次命中） */
-		hitIntervalFrames: number;
+		/** 同目标命中节流（毫秒） */
+		hitIntervalMs: number;
 	};
 	/** 攻击语义 */
 	attackSemantics: {
@@ -174,10 +174,10 @@ export interface BuffAreaRequest {
 	sourceId: string;
 	/** 施法者阵营ID */
 	sourceCampId: string;
-	/** 开始帧 */
-	startFrame: number;
-	/** 持续帧数 */
-	durationFrames: number;
+	/** 开始模拟时间（毫秒） */
+	startTimeMs: number;
+	/** 持续时间（毫秒） */
+	durationMs: number;
 	/** 范围类型 */
 	rangeKind: DamageRangeType;
 	/** 范围参数 */
@@ -196,10 +196,10 @@ export interface TrapAreaRequest {
 	sourceId: string;
 	/** 施法者阵营ID */
 	sourceCampId: string;
-	/** 开始帧 */
-	startFrame: number;
-	/** 持续帧数 */
-	durationFrames: number;
+	/** 开始模拟时间（毫秒） */
+	startTimeMs: number;
+	/** 持续时间（毫秒） */
+	durationMs: number;
 	/** 范围类型 */
 	rangeKind: DamageRangeType;
 	/** 范围参数 */

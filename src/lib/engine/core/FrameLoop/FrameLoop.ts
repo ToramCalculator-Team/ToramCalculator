@@ -2,7 +2,7 @@
  * 薄时钟驱动器。
  * 目标：
  * - 只负责 wall-clock 调度、固定步长换算、补帧裁剪
- * - 不再直接调用 GameEngine.stepFrame
+ * - 不再直接调用 GameEngine.stepTick
  * - 不再承载快照发送、运行模式语义、业务终止规则
  */
 
@@ -24,14 +24,14 @@ export class FrameLoop {
 	/** 当前使用的底层时钟类型 */
 	private clockKind: "raf" | "timeout" = "raf";
 
-	/** 固定逻辑步长（毫秒） */
-	private frameIntervalMs: number = 1000 / 60;
+	/** 固定逻辑步长（模拟毫秒） */
+	private logicStepMs: number = 1000 / 60;
 
 	/** 累积的 wall-clock 时间 */
-	private frameAccumulator: number = 0;
+	private tickAccumulatorMs: number = 0;
 
-	/** 因累积时间过大而被裁剪掉的补帧次数 */
-	private frameSkipCount: number = 0;
+	/** 因累积时间过大而被裁剪掉的补 tick 次数 */
+	private tickSkipCount: number = 0;
 
 	/** 本轮启动时间 */
 	private startTime: number = 0;
@@ -47,27 +47,27 @@ export class FrameLoop {
 
 	/** 时钟层可观测统计 */
 	private performanceStats: FrameLoopStats = {
-		averageFPS: 0,
-		totalFrames: 0,
+		averageTicksPerSecond: 0,
+		totalTicks: 0,
 		totalRunTime: 0,
 		clockKind: "raf",
-		skippedFrames: 0,
-		timeoutFrames: 0,
+		skippedTicks: 0,
+		timeoutTicks: 0,
 	};
 
 	constructor(config: Partial<FrameLoopConfig> = {}) {
 		this.config = {
-			targetFPS: 60,
-			enableFrameSkip: true,
-			maxFrameSkip: 5,
+			logicHz: 60,
+			enableTickSkip: true,
+			maxTickSkip: 5,
 			enablePerformanceMonitoring: true,
 			timeScale: 1.0,
-			maxEventsPerFrame: 100,
+			maxEventsPerTick: 100,
 			...config,
 		};
 
 		this.timeScale = this.config.timeScale;
-		this.frameIntervalMs = 1000 / this.config.targetFPS;
+		this.logicStepMs = 1000 / this.config.logicHz;
 	}
 
 	/**
@@ -89,7 +89,7 @@ export class FrameLoop {
 		this.resolveClockKind();
 		this.resetFrameLoopStats();
 
-		log.info(`⏱️ 启动帧驱动 - 目标帧率: ${this.config.targetFPS} FPS, 时钟: ${this.clockKind}`);
+		log.info(`⏱️ 启动逻辑时钟 - 逻辑频率: ${this.config.logicHz}Hz, 时钟: ${this.clockKind}`);
 		this.scheduleNextFrame();
 	}
 
@@ -111,7 +111,7 @@ export class FrameLoop {
 		this.onTick = null;
 
 		log.info(
-			`⏱️ 停止帧驱动 - 推进建议数: ${this.performanceStats.totalFrames}, 运行时间: ${(performance.now() - this.startTime).toFixed(2)}ms`,
+			`⏱️ 停止逻辑时钟 - 推进建议数: ${this.performanceStats.totalTicks}, 运行时间: ${(performance.now() - this.startTime).toFixed(2)}ms`,
 		);
 	}
 
@@ -166,7 +166,7 @@ export class FrameLoop {
 		this.timeScale = scale;
 		this.config.timeScale = scale;
 
-		if (scale === 0) {
+		if (scale === 0 && this.state === "running") {
 			this.pause();
 		} else if (this.state === "paused" && scale > 0) {
 			this.resume();
@@ -176,26 +176,42 @@ export class FrameLoop {
 	}
 
 	/**
-	 * 更新目标 FPS，并同步固定步长。
-	 * 这次重构顺手修正了“只改配置不改 frameIntervalMs”的脱节问题。
+	 * 更新逻辑频率，并同步固定步长。
 	 */
-	setTargetFPS(fps: number): void {
-		if (fps <= 0 || fps > 60) {
-			log.warn("⏱️ 无效的帧率设置:", fps);
+	setLogicHz(logicHz: number): void {
+		if (logicHz <= 0 || logicHz > 240) {
+			log.warn("⏱️ 无效的逻辑频率:", logicHz);
 			return;
 		}
 
-		this.config.targetFPS = fps;
-		this.frameIntervalMs = 1000 / fps;
+		this.config.logicHz = logicHz;
+		this.logicStepMs = 1000 / logicHz;
 
-		// 运行中切换 FPS 时，重新排一次时钟，避免旧 delay 继续生效。
+		// 运行中切换逻辑频率时，重新排一次时钟，避免旧 delay 继续生效。
 		if (this.state === "running") {
 			this.cancelScheduledFrame();
 			this.lastFrameTime = performance.now();
 			this.scheduleNextFrame();
 		}
 
-		log.info(`⏱️ 目标帧率已更新: ${fps} FPS`);
+		log.info(`⏱️ 逻辑频率已更新: ${logicHz}Hz`);
+	}
+
+	/**
+	 * 更新补 tick 裁剪策略。
+	 * GameEngine 切换 RuntimeConfig 时调用，使时钟层只保存调度策略，不参与运行语义判断。
+	 */
+	setTickSkipConfig(config: { enableTickSkip?: boolean; maxTickSkip?: number }): void {
+		if (typeof config.enableTickSkip === "boolean") {
+			this.config.enableTickSkip = config.enableTickSkip;
+		}
+		if (typeof config.maxTickSkip === "number") {
+			if (config.maxTickSkip < 1) {
+				log.warn("⏱️ maxTickSkip 必须大于等于 1:", config.maxTickSkip);
+				return;
+			}
+			this.config.maxTickSkip = config.maxTickSkip;
+		}
 	}
 
 	getState(): FrameLoopState {
@@ -208,8 +224,8 @@ export class FrameLoop {
 	 */
 	getSnapshot(): FrameLoopSnapshot {
 		return {
-			currentFrame: this.performanceStats.totalFrames,
-			fps: this.performanceStats.averageFPS,
+			tickIndex: this.performanceStats.totalTicks,
+			ticksPerSecond: this.performanceStats.averageTicksPerSecond,
 		};
 	}
 
@@ -261,7 +277,7 @@ export class FrameLoop {
 
 		this.frameTimer = setTimeout(() => {
 			this.processFrameLoop(performance.now());
-		}, this.frameIntervalMs) as unknown as number;
+		}, this.logicStepMs) as unknown as number;
 	}
 
 	/**
@@ -275,35 +291,35 @@ export class FrameLoop {
 		const deltaTime = timestamp - this.lastFrameTime;
 		this.lastFrameTime = timestamp;
 
-		this.frameAccumulator += deltaTime * this.timeScale;
+		this.tickAccumulatorMs += deltaTime * this.timeScale;
 
-		if (this.config.enableFrameSkip) {
-			const maxAccumulatedTime = this.frameIntervalMs * Math.max(1, this.config.maxFrameSkip);
-			if (this.frameAccumulator > maxAccumulatedTime) {
-				this.frameAccumulator = this.frameIntervalMs;
-				this.frameSkipCount += 1;
+		if (this.config.enableTickSkip) {
+			const maxAccumulatedTime = this.logicStepMs * Math.max(1, this.config.maxTickSkip);
+			if (this.tickAccumulatorMs > maxAccumulatedTime) {
+				this.tickAccumulatorMs = this.logicStepMs;
+				this.tickSkipCount += 1;
 			}
 		}
 
-		const dueSteps = Math.floor(this.frameAccumulator / this.frameIntervalMs);
-		if (dueSteps > 0) {
-			this.frameAccumulator -= dueSteps * this.frameIntervalMs;
-			this.performanceStats.totalFrames += dueSteps;
+		const dueTicks = Math.floor(this.tickAccumulatorMs / this.logicStepMs);
+		if (dueTicks > 0) {
+			this.tickAccumulatorMs -= dueTicks * this.logicStepMs;
+			this.performanceStats.totalTicks += dueTicks;
 			if (this.clockKind === "timeout") {
-				this.performanceStats.timeoutFrames += dueSteps;
+				this.performanceStats.timeoutTicks += dueTicks;
 			}
 		}
 
 		this.updateFrameLoopStats();
 
-		if (dueSteps > 0) {
+		if (dueTicks > 0) {
 			this.onTick({
 				timestamp,
 				deltaTime,
-				frameIntervalMs: this.frameIntervalMs,
-				dueSteps,
+				logicStepMs: this.logicStepMs,
+				dueTicks,
 				clockKind: this.clockKind,
-				skippedFrames: this.frameSkipCount,
+				skippedTicks: this.tickSkipCount,
 			});
 		}
 
@@ -318,22 +334,22 @@ export class FrameLoop {
 		const totalRunTime = performance.now() - this.startTime;
 		this.performanceStats.totalRunTime = totalRunTime;
 		this.performanceStats.clockKind = this.clockKind;
-		this.performanceStats.skippedFrames = this.frameSkipCount;
+		this.performanceStats.skippedTicks = this.tickSkipCount;
 
 		const seconds = totalRunTime / 1000;
-		this.performanceStats.averageFPS = seconds > 0 ? this.performanceStats.totalFrames / seconds : 0;
+		this.performanceStats.averageTicksPerSecond = seconds > 0 ? this.performanceStats.totalTicks / seconds : 0;
 	}
 
 	private resetFrameLoopStats(): void {
 		this.performanceStats = {
-			averageFPS: 0,
-			totalFrames: 0,
+			averageTicksPerSecond: 0,
+			totalTicks: 0,
 			totalRunTime: 0,
 			clockKind: this.clockKind,
-			skippedFrames: 0,
-			timeoutFrames: 0,
+			skippedTicks: 0,
+			timeoutTicks: 0,
 		};
-		this.frameAccumulator = 0;
-		this.frameSkipCount = 0;
+		this.tickAccumulatorMs = 0;
+		this.tickSkipCount = 0;
 	}
 }

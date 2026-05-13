@@ -6,12 +6,14 @@ import type { SkillVariantWithRelations } from "@db/generated/repositories/skill
  * 目标：把"共享运行时状态（可序列化，可进 checkpoint）"与"运行时服务（不可序列化）"分离。
  *
  * 设计说明：
- * - 所有字段一律扁平，命名直接对应 BT 契约（BtContext）与 MDSL 引用（$currentSkill* / $currentFrame 等）。
+ * - 所有字段一律扁平，命名直接对应 BT 契约（BtContext）与 MDSL 引用（$currentSkill* / $currentTimeMs 等）。
  * - BT 执行期通过只读 getter 直接消费这些字段，避免 runtime 原型链写入产生影子值。
  * - FSM 为这些字段的唯一写入方；BT 仅读取。
  */
 export interface MemberSharedRuntime {
-	currentFrame: number;
+	tickIndex: number;
+	currentTimeMs: number;
+	deltaTimeMs: number;
 	position: { x: number; y: number; z: number };
 	targetId: string;
 	statusTags: string[];
@@ -32,11 +34,11 @@ export interface PlayerRuntime extends MemberSharedRuntime {
 	/** 当前技能的运行期分支参数覆盖（来自托环等 runtime 增强）。 */
 	currentSkillBranchParams: Record<string, number>;
 
-	/** 当前技能生命周期的四段帧数。FSM 在"执行技能中"进入时一次性计算并写入；BT 只读。 */
-	currentSkillStartupFrames: number;
-	currentSkillChargingFrames: number;
-	currentSkillChantingFrames: number;
-	currentSkillActionFrames: number;
+	/** 当前技能生命周期的四段毫秒。FSM 在"执行技能中"进入时一次性计算并写入；BT 只读。 */
+	currentSkillStartupMs: number;
+	currentSkillChargingMs: number;
+	currentSkillChantingMs: number;
+	currentSkillActionMs: number;
 	character: CharacterWithRelations | null;
 }
 

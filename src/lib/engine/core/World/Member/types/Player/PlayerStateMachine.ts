@@ -178,6 +178,15 @@ export interface PlayerStateMachineEnv
 }
 
 type SkillVariant = NonNullable<NonNullable<CharacterSkillWithRelations["template"]>["variants"]>[number];
+type SkillVariantTimingMs = {
+	startupMs?: string | null;
+	actionFixedMs?: string | null;
+	actionModifiedMs?: string | null;
+	chantingFixedMs?: string | null;
+	chantingModifiedMs?: string | null;
+	chargingFixedMs?: string | null;
+	chargingModifiedMs?: string | null;
+};
 
 const playerMachineSetup = setup({
 	types: {
@@ -216,6 +225,16 @@ const playerAssignHitSession = (name: string) => {
 	});
 };
 const playerClearHitSession = playerMachineSetup.assign({ hitSession: null });
+
+function expressionContext(env: PlayerStateMachineEnv, extra?: Record<string, unknown>): ExpressionContext {
+	return {
+		currentTimeMs: env.runtime.currentTimeMs,
+		tickIndex: env.runtime.tickIndex,
+		casterId: env.id,
+		targetId: env.runtime.targetId,
+		...(extra ?? {}),
+	};
+}
 
 export const playerStateMachine = (
 	env: PlayerStateMachineEnv,
@@ -265,12 +284,12 @@ export const playerStateMachine = (
 					env.runtime.previousSkill = env.runtime.currentSkill;
 					env.runtime.currentSkill = null;
 					env.runtime.currentSkillVariant = null;
-						// 技能结束后清空瞬态快照，避免把上一个技能的 registlet 分支参数泄漏到下一次。
-						env.runtime.currentSkillBranchParams = {};
-					env.runtime.currentSkillStartupFrames = 0;
-					env.runtime.currentSkillChargingFrames = 0;
-					env.runtime.currentSkillChantingFrames = 0;
-					env.runtime.currentSkillActionFrames = 0;
+					// 技能结束后清空瞬态快照，避免把上一个技能的 registlet 分支参数泄漏到下一次。
+					env.runtime.currentSkillBranchParams = {};
+					env.runtime.currentSkillStartupMs = 0;
+					env.runtime.currentSkillChargingMs = 0;
+					env.runtime.currentSkillChantingMs = 0;
+					env.runtime.currentSkillActionMs = 0;
 					env.btManager.unregisterActiveEffectBt();
 				},
 				清理行为树: ({ context, event }) => {
@@ -293,10 +312,10 @@ export const playerStateMachine = (
 					const variant = env.runtime.currentSkillVariant;
 					if (!skill || !variant) {
 						log.error(`👤 [${env.name}] 缺少技能或变体，无法计算生命周期参数`);
-						env.runtime.currentSkillStartupFrames = 0;
-						env.runtime.currentSkillChargingFrames = 0;
-						env.runtime.currentSkillChantingFrames = 0;
-						env.runtime.currentSkillActionFrames = 0;
+						env.runtime.currentSkillStartupMs = 0;
+						env.runtime.currentSkillChargingMs = 0;
+						env.runtime.currentSkillChantingMs = 0;
+						env.runtime.currentSkillActionMs = 0;
 						return;
 					}
 
@@ -310,36 +329,32 @@ export const playerStateMachine = (
 							log.error(`👤 [${env.name}] expressionEvaluator 未注入：${label}`);
 							return 0;
 						}
-						const out = evaluator(expr, {
-							currentFrame: env.runtime.currentFrame,
-							casterId: env.id,
-							targetId: env.runtime.targetId,
-							skillLv: skill.lv ?? 0,
-						});
+						const out = evaluator(expr, expressionContext(env, { skillLv: skill.lv ?? 0 }));
 						if (typeof out === "number" && Number.isFinite(out)) return out;
 						if (typeof out === "boolean") return out ? 1 : 0;
 						log.warn(`👤 [${env.name}] ${label} 求值结果非数字，置 0：${String(out)}`);
 						return 0;
 					};
 
-					const startupOriginal = evalNum(variant.startupFrames, "startupFrames");
-					const motionFixed = evalNum(variant.motionFixed, "motionFixed");
-					const motionModified = evalNum(variant.motionModified, "motionModified");
-					const chantingFixed = evalNum(variant.chantingFixed, "chantingFixed");
-					const chantingModified = evalNum(variant.chantingModified, "chantingModified");
-					const reservoirFixed = evalNum(variant.reservoirFixed, "reservoirFixed");
-					const reservoirModified = evalNum(variant.reservoirModified, "reservoirModified");
+					const timing = variant as unknown as SkillVariantTimingMs;
+					const startupOriginal = evalNum(timing.startupMs, "startupMs");
+					const actionFixed = evalNum(timing.actionFixedMs, "actionFixedMs");
+					const actionModified = evalNum(timing.actionModifiedMs, "actionModifiedMs");
+					const chantingFixed = evalNum(timing.chantingFixedMs, "chantingFixedMs");
+					const chantingModified = evalNum(timing.chantingModifiedMs, "chantingModifiedMs");
+					const chargingFixed = evalNum(timing.chargingFixedMs, "chargingFixedMs");
+					const chargingModified = evalNum(timing.chargingModifiedMs, "chargingModifiedMs");
 
-					const runPipelineFrames = (
+					const runPipelineDurationMs = (
 						pipelineName: string,
 						params: Record<string, unknown>,
 						fallback: number,
 					): number => {
 						try {
 							const out = env.runPipeline(pipelineName, params) as Record<string, unknown>;
-							const frames = out?.frames;
-							if (typeof frames === "number" && Number.isFinite(frames)) {
-								return Math.max(0, Math.floor(frames));
+							const durationMs = out?.durationMs;
+							if (typeof durationMs === "number" && Number.isFinite(durationMs)) {
+								return Math.max(0, Math.floor(durationMs));
 							}
 						} catch (error) {
 							log.warn(
@@ -349,29 +364,29 @@ export const playerStateMachine = (
 						return Math.max(0, Math.floor(fallback));
 					};
 
-					env.runtime.currentSkillStartupFrames = runPipelineFrames(
+					env.runtime.currentSkillStartupMs = runPipelineDurationMs(
 						"skill.startup",
 						{ original: startupOriginal },
 						startupOriginal,
 					);
-					env.runtime.currentSkillChargingFrames = runPipelineFrames(
+					env.runtime.currentSkillChargingMs = runPipelineDurationMs(
 						"skill.charging",
-						{ fixed: reservoirFixed, modified: reservoirModified },
-						reservoirFixed + reservoirModified,
+						{ fixed: chargingFixed, modified: chargingModified },
+						chargingFixed + chargingModified,
 					);
-					env.runtime.currentSkillChantingFrames = runPipelineFrames(
+					env.runtime.currentSkillChantingMs = runPipelineDurationMs(
 						"skill.chanting",
 						{ fixed: chantingFixed, modified: chantingModified },
 						chantingFixed + chantingModified,
 					);
-					env.runtime.currentSkillActionFrames = runPipelineFrames(
+					env.runtime.currentSkillActionMs = runPipelineDurationMs(
 						"skill.action",
-						{ fixed: motionFixed, modified: motionModified },
-						motionFixed + motionModified,
+						{ fixed: actionFixed, modified: actionModified },
+						actionFixed + actionModified,
 					);
 
 					log.debug(
-						`👤 [${env.name}] 技能帧参数: startup=${env.runtime.currentSkillStartupFrames}, charging=${env.runtime.currentSkillChargingFrames}, chanting=${env.runtime.currentSkillChantingFrames}, action=${env.runtime.currentSkillActionFrames}`,
+						`👤 [${env.name}] 技能时间参数(ms): startup=${env.runtime.currentSkillStartupMs}, charging=${env.runtime.currentSkillChargingMs}, chanting=${env.runtime.currentSkillChantingMs}, action=${env.runtime.currentSkillActionMs}`,
 					);
 				},
 				执行技能: ({ context, event }) => {
@@ -444,7 +459,8 @@ export const playerStateMachine = (
 					}
 					resolveDamageAndApply(
 						env.id,
-						env.services.getCurrentFrame(),
+						env.services.getCurrentTimeMs(),
+						env.services.getTickIndex(),
 						() => env.statContainer.getValue("hp.current"),
 						() => env.statContainer.getValue("mp.current"),
 						(value) =>
@@ -560,24 +576,25 @@ export const playerStateMachine = (
 					}
 
 					// 蓄力阶段相关属性（假设使用chargeFixed和chargeModified）
-					const reservoirFixed = env.services.expressionEvaluator?.(variant.reservoirFixed ?? "0", {
-						currentFrame: env.runtime.currentFrame,
-						casterId: env.id,
-					});
-					if (typeof reservoirFixed !== "number") {
+					const timing = variant as unknown as SkillVariantTimingMs;
+					const chargingFixed = env.services.expressionEvaluator?.(
+						timing.chargingFixedMs ?? "0",
+						expressionContext(env),
+					);
+					if (typeof chargingFixed !== "number") {
 						log.error(`👤 [${env.name}] 蓄力阶段固定值不是数字`);
 						return false;
 					}
-					const reservoirModified = env.services.expressionEvaluator?.(variant.reservoirModified ?? "0", {
-						currentFrame: env.runtime.currentFrame,
-						casterId: env.id,
-					});
-					if (typeof reservoirModified !== "number") {
+					const chargingModified = env.services.expressionEvaluator?.(
+						timing.chargingModifiedMs ?? "0",
+						expressionContext(env),
+					);
+					if (typeof chargingModified !== "number") {
 						log.error(`👤 [${env.name}] 蓄力阶段可加速值不是数字`);
 						return false;
 					}
-					log.debug(reservoirFixed + reservoirModified > 0 ? "有蓄力阶段" : "没有蓄力阶段");
-					return reservoirFixed + reservoirModified > 0;
+					log.debug(chargingFixed + chargingModified > 0 ? "有蓄力阶段" : "没有蓄力阶段");
+					return chargingFixed + chargingModified > 0;
 				},
 				存在咏唱阶段: ({ context, event }) => {
 					log.debug(`👤 [${env.name}] 判断技能是否有咏唱阶段`, event);
@@ -586,18 +603,19 @@ export const playerStateMachine = (
 						log.error(`👤 [${env.name}] 技能效果不存在`);
 						return false;
 					}
-					const chantingFixed = env.services.expressionEvaluator?.(variant.chantingFixed ?? "0", {
-						currentFrame: env.runtime.currentFrame,
-						casterId: env.id,
-					});
+					const timing = variant as unknown as SkillVariantTimingMs;
+					const chantingFixed = env.services.expressionEvaluator?.(
+						timing.chantingFixedMs ?? "0",
+						expressionContext(env),
+					);
 					if (typeof chantingFixed !== "number") {
 						log.error(`👤 [${env.name}] 咏唱阶段固定值不是数字`);
 						return false;
 					}
-					const chantingModified = env.services.expressionEvaluator?.(variant.chantingModified ?? "0", {
-						currentFrame: env.runtime.currentFrame,
-						casterId: env.id,
-					});
+					const chantingModified = env.services.expressionEvaluator?.(
+						timing.chantingModifiedMs ?? "0",
+						expressionContext(env),
+					);
 					if (typeof chantingModified !== "number") {
 						log.error(`👤 [${env.name}] 咏唱阶段可加速值不是数字`);
 						return false;
@@ -665,7 +683,8 @@ export const playerStateMachine = (
 						const normalizedExpr = expr?.trim();
 						if (!normalizedExpr) return 0;
 						const cost = env.services.expressionEvaluator?.(normalizedExpr, {
-							currentFrame: env.runtime.currentFrame,
+							currentTimeMs: env.runtime.currentTimeMs,
+							tickIndex: env.runtime.tickIndex,
 							casterId: env.id,
 							skillLv: skill?.lv ?? 0,
 						});
@@ -717,7 +736,7 @@ export const playerStateMachine = (
 		.createMachine({
 			context: {
 				isAlive: true,
-				createdAtFrame: env.runtime.currentFrame,
+				createdAtTimeMs: env.runtime.currentTimeMs,
 				hitSession: null,
 			},
 			id: machineId,

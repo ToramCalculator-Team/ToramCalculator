@@ -261,7 +261,7 @@ function failPending(
 }
 
 function hasOwn<T extends object>(value: T, key: PropertyKey): key is keyof T {
-	return Object.prototype.hasOwnProperty.call(value, key);
+	return Object.hasOwn(value, key);
 }
 
 function cloneForWorker<T>(value: T): T {
@@ -294,7 +294,7 @@ export function createCharacterPageModel(input: {
 	let engineSyncTimer: number | undefined;
 	let engineSyncInFlight = false;
 	let engineSyncQueued = false;
-	let dbQueue: CharacterPageMutation[] = [];
+	const dbQueue: CharacterPageMutation[] = [];
 	let scenarioLoadedForCharacterId: string | undefined;
 	let latestEngineSyncToken = 0;
 
@@ -304,6 +304,7 @@ export function createCharacterPageModel(input: {
 		const characterId = input.characterId();
 		return playerId && characterId ? `${playerId}:${characterId}` : "";
 	};
+	let activeSourceKey = "";
 
 	const bumpRevision = () => {
 		setPageData("revision", (revision) => revision + 1);
@@ -326,9 +327,7 @@ export function createCharacterPageModel(input: {
 				? {
 						...player,
 						characters: player.characters.map((candidate) =>
-							candidate.id === characterId
-								? ({ ...candidate, ...expandedPatch } as CharacterWithRelations)
-								: candidate,
+							candidate.id === characterId ? ({ ...candidate, ...expandedPatch } as CharacterWithRelations) : candidate,
 						),
 					}
 				: player,
@@ -347,19 +346,19 @@ export function createCharacterPageModel(input: {
 		// 设计说明：装备 FK 变化会立即影响 UI 和引擎输入，因此在本地 patch 阶段同步补齐 relation object。
 		const expanded: Partial<CharacterWithRelations> = { ...patch };
 		if (hasOwn(patch, "weaponId")) {
-			expanded.weapon = patch.weaponId ? pageData.assets.weaponsById[patch.weaponId] ?? null : null;
+			expanded.weapon = patch.weaponId ? (pageData.assets.weaponsById[patch.weaponId] ?? null) : null;
 		}
 		if (hasOwn(patch, "subWeaponId")) {
-			expanded.subWeapon = patch.subWeaponId ? pageData.assets.weaponsById[patch.subWeaponId] ?? null : null;
+			expanded.subWeapon = patch.subWeaponId ? (pageData.assets.weaponsById[patch.subWeaponId] ?? null) : null;
 		}
 		if (hasOwn(patch, "armorId")) {
-			expanded.armor = patch.armorId ? pageData.assets.armorsById[patch.armorId] ?? null : null;
+			expanded.armor = patch.armorId ? (pageData.assets.armorsById[patch.armorId] ?? null) : null;
 		}
 		if (hasOwn(patch, "optionId")) {
-			expanded.option = patch.optionId ? pageData.assets.optionsById[patch.optionId] ?? null : null;
+			expanded.option = patch.optionId ? (pageData.assets.optionsById[patch.optionId] ?? null) : null;
 		}
 		if (hasOwn(patch, "specialId")) {
-			expanded.special = patch.specialId ? pageData.assets.specialsById[patch.specialId] ?? null : null;
+			expanded.special = patch.specialId ? (pageData.assets.specialsById[patch.specialId] ?? null) : null;
 		}
 		return { ...expanded, ...relationPatch };
 	};
@@ -522,10 +521,7 @@ export function createCharacterPageModel(input: {
 		};
 	};
 
-	const mergeMutations = (
-		queued: CharacterPageMutation,
-		next: CharacterPageMutation,
-	): CharacterPageMutation | null => {
+	const mergeMutations = (queued: CharacterPageMutation, next: CharacterPageMutation): CharacterPageMutation | null => {
 		// 设计说明：合并只发生在有相同 mergeKey 的同类 mutation 上；previous 保留最早状态，patch 使用最后状态。
 		if (queued.kind === "character.patch" && next.kind === "character.patch") {
 			return createCharacterPatchMutation(
@@ -834,25 +830,31 @@ export function createCharacterPageModel(input: {
 	};
 
 	createEffect(
-		on(
-			currentSourceKey,
-			() => {
-				// 设计说明：离开当前角色前先尝试 flush 已排队写入，再清空本页同步状态，降低快速路由切换的数据丢失风险。
-				if (dbFlushTimer !== undefined) {
-					window.clearTimeout(dbFlushTimer);
-					dbFlushTimer = undefined;
-					void flushDbQueue();
-				}
-				if (engineSyncTimer !== undefined) {
-					window.clearTimeout(engineSyncTimer);
-					engineSyncTimer = undefined;
-				}
-				latestEngineSyncToken += 1;
-				engineSyncQueued = false;
-				scenarioLoadedForCharacterId = undefined;
-				setPageData(reconcile(emptyPageData()));
-			},
-		),
+		on(currentSourceKey, (nextSourceKey) => {
+			// 设计说明：playerId 在 session 恢复或刷新期间可能短暂为空；空身份不是一次有效路由切换，
+			// 不能据此清空 pageData，否则会出现 loading → 内容 → loading → 内容的闪烁。
+			if (!nextSourceKey) return;
+			if (!activeSourceKey) {
+				activeSourceKey = nextSourceKey;
+				return;
+			}
+			if (activeSourceKey === nextSourceKey) return;
+			activeSourceKey = nextSourceKey;
+			// 设计说明：离开当前角色前先尝试 flush 已排队写入，再清空本页同步状态，降低快速路由切换的数据丢失风险。
+			if (dbFlushTimer !== undefined) {
+				window.clearTimeout(dbFlushTimer);
+				dbFlushTimer = undefined;
+				void flushDbQueue();
+			}
+			if (engineSyncTimer !== undefined) {
+				window.clearTimeout(engineSyncTimer);
+				engineSyncTimer = undefined;
+			}
+			latestEngineSyncToken += 1;
+			engineSyncQueued = false;
+			scenarioLoadedForCharacterId = undefined;
+			setPageData(reconcile(emptyPageData()));
+		}),
 	);
 
 	createEffect(
@@ -862,6 +864,7 @@ export function createCharacterPageModel(input: {
 				// 设计说明：resource 返回值只在身份仍匹配当前路由时写入工作副本，避免慢查询覆盖新角色页面。
 				if (data === undefined) return;
 				if (data === null) {
+					if (!currentSourceKey()) return;
 					setPageData(reconcile(emptyPageData()));
 					scenarioLoadedForCharacterId = undefined;
 					return;

@@ -1,10 +1,11 @@
+import type { SimulationTickContext } from "../../types";
 import type { MemberManager } from "../Member/MemberManager";
 import type { SpaceManager } from "../SpaceManager";
 import type { BuffAreaRequest } from "./types";
 
 /**
  * Buff 区域系统
- * 管理跨帧 Buff 区域实例（光环与 Buff 区域）
+ * 管理跨时间 Buff 区域实例（光环与 Buff 区域）
  * 当前为空壳实现，后续补充 enter/exit 或持续刷新逻辑
  */
 export class BuffAreaSystem {
@@ -37,9 +38,9 @@ export class BuffAreaSystem {
 	}
 
 	/**
-	 * 每帧更新
+	 * 每 tick 更新
 	 */
-	tick(frame: number): void {
+	tick(_tick: SimulationTickContext): void {
 		// TODO: 实现 Buff 区域 tick 逻辑
 		// - 计算 insideSet
 		// - enter/exit 或持续刷新
@@ -50,4 +51,3 @@ export class BuffAreaSystem {
 		// TODO: 实现 Buff 区域清理逻辑
 	}
 }
-
