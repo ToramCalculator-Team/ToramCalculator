@@ -9,7 +9,7 @@ import type { PipelineResolverService } from "../../Pipeline/PipelineResolverSer
 import type { StageData, StageEnv } from "../../Pipeline/stageEnv";
 import type { MemberCheckpoint, MemberDomainEvent } from "../../types";
 import type { DamageAreaRequest } from "../Area/types";
-import { MemberBaseAttrType, MemberBaseNestedSchema } from "./MemberBaseSchema";
+import type { MemberBtEnv } from "./runtime/Agent/BtContext";
 import type {
 	MemberRuntimeServices,
 	MemberTargetResolver,
@@ -19,7 +19,7 @@ import { MemberRuntimeServicesDefaults } from "./runtime/Agent/RuntimeServices";
 import { AttributeWatcherRegistry } from "./runtime/AttributeWatcher/AttributeWatcher";
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
 import { ProcBus } from "./runtime/ProcBus/ProcBus";
-import type { ExtractAttrPaths, NestedSchema } from "./runtime/StatContainer/SchemaTypes";
+import type { NestedSchema } from "./runtime/StatContainer/SchemaTypes";
 import type { StatContainer } from "./runtime/StatContainer/StatContainer";
 import type {
 	MemberActor,
@@ -122,8 +122,8 @@ export class Member<
 		this.data = memberData;
 		this.statContainer = statContainer;
 
-		// BT gets a private derived context: member.runtime + BT bindings + skill agent members.
-		this.btManager = new BtManager(this, btContextBindings);
+		// BT gets a private env plus derived context: runtime read slots + BT bindings + skill agent members.
+		this.btManager = new BtManager(this.createBtEnv(), btContextBindings);
 
 		this.statusStore = new InMemoryStatusInstanceStore(() => this.services.getCurrentFrame());
 		// 属性 watcher：依赖 StatContainer.onChange，与 EventCatalog 无关，可立即构造。
@@ -133,19 +133,98 @@ export class Member<
 			this.runtime.position = position;
 		}
 
-		this.actor = createActor(
-			stateMachine({
-				id: this.id,
-				name: this.name,
-				position: this.position,
-				runtime: this.runtime,
-				statContainer: this.statContainer,
-				services: this.services,
-				btManager: this.btManager,
-				notifyDomainEvent: this.notifyDomainEvent,
-				runPipeline: this.runPipeline,
-			}),
-		);
+		this.actor = createActor(stateMachine(this.createStateMachineEnv()));
+	}
+
+	/**
+	 * 构造 FSM 专用 env。
+	 *
+	 * 设计说明：
+	 * - getter 让 checkpoint restore 替换 runtime 后，状态机闭包继续读取 Member 当前字段。
+	 * - 方法用箭头函数转发，避免 XState action 调用时丢失 Member.this。
+	 */
+	private createStateMachineEnv(): MemberStateMachineEnv<TAttrKey, TStateEvent, TStateContext, TRuntime> {
+		const self = this;
+		return {
+			get id() {
+				return self.id;
+			},
+			get name() {
+				return self.name;
+			},
+			get position() {
+				return self.position;
+			},
+			get runtime() {
+				return self.runtime;
+			},
+			get statContainer() {
+				return self.statContainer;
+			},
+			get services() {
+				return self.services;
+			},
+			get btManager() {
+				return self.btManager;
+			},
+			notifyDomainEvent: (event) => self.notifyDomainEvent(event),
+			runPipeline: (pipelineName, params) => self.runPipeline(pipelineName, params),
+		};
+	}
+
+	/**
+	 * 构造 BT 专用 env。
+	 *
+	 * 设计说明：
+	 * - getter 让 checkpoint restore 替换 runtime / procBus 后，BT 继续读取 Member 当前字段。
+	 * - send 封装 actor 访问，使 BtManager 不依赖完整 Member 类。
+	 */
+	private createBtEnv(): MemberBtEnv<TAttrKey, TStateEvent, TStateContext, TRuntime> {
+		const self = this;
+		return {
+			get id() {
+				return self.id;
+			},
+			get type() {
+				return self.type;
+			},
+			get name() {
+				return self.name;
+			},
+			get campId() {
+				return self.campId;
+			},
+			get teamId() {
+				return self.teamId;
+			},
+			get position() {
+				return self.position;
+			},
+			get runtime() {
+				return self.runtime;
+			},
+			get statContainer() {
+				return self.statContainer;
+			},
+			get services() {
+				return self.services;
+			},
+			get btManager() {
+				return self.btManager;
+			},
+			get procBus() {
+				return self.procBus;
+			},
+			get attributeWatchers() {
+				return self.attributeWatchers;
+			},
+			get renderState() {
+				return self.renderState;
+			},
+			notifyDomainEvent: (event) => self.notifyDomainEvent(event),
+			runPipeline: (pipelineName, params) => self.runPipeline(pipelineName, params),
+			send: (event) => self.actor.send(event),
+		};
 	}
 
 	start(): void {

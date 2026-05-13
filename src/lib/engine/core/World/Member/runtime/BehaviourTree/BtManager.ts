@@ -3,16 +3,20 @@ import { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import { State } from "~/lib/mistreevous/State";
 import type { BtManagerCheckpoint, Checkpointable } from "../../../../types";
-import type { Member } from "../../Member";
-import type { BtContext } from "../Agent/BtContext";
+import type { BtContext, MemberBtEnv } from "../Agent/BtContext";
 import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
 import type { MemberSharedRuntime } from "../types";
 
 const log = createLogger("BtManager");
 
-type BtEntry = {
+type BtEntry<
+	TAttrKey extends string = string,
+	TStateEvent extends MemberEventType = MemberEventType,
+	TStateContext extends MemberStateContext = MemberStateContext,
+	TRuntime extends MemberSharedRuntime = MemberSharedRuntime,
+> = {
 	bt: BehaviourTree;
-	btContext: BtContext & Record<string, unknown>;
+	btContext: BtContext<TAttrKey, TStateEvent, TStateContext, TRuntime> & Record<string, unknown>;
 };
 
 export class BtManager<
@@ -22,12 +26,12 @@ export class BtManager<
 	TRuntime extends MemberSharedRuntime = MemberSharedRuntime,
 > implements Checkpointable<BtManagerCheckpoint>
 {
-	private activeEffectEntry: BtEntry | undefined;
-	private parallelEntries: Map<string, BtEntry> = new Map();
+	private activeEffectEntry: BtEntry<TAttrKey, TStateEvent, TStateContext, TRuntime> | undefined;
+	private parallelEntries: Map<string, BtEntry<TAttrKey, TStateEvent, TStateContext, TRuntime>> = new Map();
 	private btOptions: { random?: () => number } = {};
 
 	constructor(
-		private owner: Member<TAttrKey, TStateEvent, TStateContext, TRuntime>,
+		private owner: MemberBtEnv<TAttrKey, TStateEvent, TStateContext, TRuntime>,
 		/**
 		 * BT-only callable bindings.
 		 * Purpose: keep BT actions / conditions out of the public member context contract.
@@ -42,36 +46,43 @@ export class BtManager<
 	/**
 	 * Build a BT-private context.
 	 *
-	 * 分层顺序（原型链由近到远）：
-	 * 1. user agent 实例字段/方法（最近，若有）
+	 * 可访问槽：
+	 * 1. user agent 实例字段/方法（若有）
 	 * 2. BT bindings（action/condition invokers）
-	 * 3. owner 句柄（用于 BT 动作内通过 `this.owner` 访问 member 服务）
-	 * 4. member.runtime 作为共享只读面（BT 直接消费 $currentFrame / $currentSkill / $targetId 等）
+	 * 3. owner 句柄（BT 专用 env，用于动作内通过 `this.owner` 访问成员能力）
+	 * 4. member.runtime 只读 getter（BT 直接消费 $currentFrame / $currentSkill / $targetId 等）
 	 *
 	 * 说明：
-	 * - runtime 已是扁平结构（含 currentSkill* / currentSkillStartupFrames 等），无需再做 get/set 映射。
+	 * - runtime 字段保持扁平命名，getter 每次读取 owner.runtime 的当前值。
 	 * - FSM 是 runtime 的唯一写入方；BT 仅读取。
 	 */
-	private buildBtContext(agent?: string): BtContext & Record<string, unknown> {
-		const owner = this.owner;
-		const runtime = owner.runtime as unknown as Record<string, unknown>;
+	private buildBtContext(
+		agent?: string,
+	): BtContext<TAttrKey, TStateEvent, TStateContext, TRuntime> & Record<string, unknown> {
+		const runtime = this.owner.runtime as unknown as Record<string, unknown>;
+		const btContext = {} as BtContext<TAttrKey, TStateEvent, TStateContext, TRuntime> & Record<string, unknown>;
 
-		// 以 runtime 作为原型：BT 通过原型链直读 runtime 字段，且写入会落在 btContext 自身（不污染 runtime）。
-		const btContext = Object.create(runtime) as Record<string, unknown>;
+		this.defineRuntimeReadSlots(btContext, runtime);
 
-		Object.defineProperty(btContext, "owner", {
-			value: owner,
-			enumerable: true,
-			configurable: true,
+		Object.defineProperty(btContext, "runtime", {
+			get: () => this.owner.runtime,
+			enumerable: false,
+			configurable: false,
 		});
 
-		Object.defineProperties(btContext, Object.getOwnPropertyDescriptors(this.btBindings));
+		Object.defineProperty(btContext, "owner", {
+			get: () => this.owner,
+			enumerable: false,
+			configurable: false,
+		});
+
+		this.defineBtBindings(btContext);
 
 		type AgentInstance = Record<string, unknown>;
 		type AgentCtor = new () => AgentInstance;
 
 		if (!agent) {
-			return btContext as BtContext & Record<string, unknown>;
+			return btContext;
 		}
 
 		let AgentClass: AgentCtor;
@@ -79,7 +90,7 @@ export class BtManager<
 			const agentClassCreator = new Function("BehaviourTree", "State", "owner", `return ${agent};`) as unknown as (
 				bt: typeof BehaviourTree,
 				state: typeof State,
-				owner: Member<TAttrKey, TStateEvent, TStateContext, TRuntime>,
+				owner: MemberBtEnv<TAttrKey, TStateEvent, TStateContext, TRuntime>,
 			) => AgentCtor;
 
 			AgentClass = agentClassCreator(BehaviourTree, State, this.owner);
@@ -87,7 +98,7 @@ export class BtManager<
 			log.warn(
 				`[${this.owner.name}] failed to compile BT agent: ${error instanceof Error ? error.message : String(error)}`,
 			);
-			return btContext as BtContext & Record<string, unknown>;
+			return btContext;
 		}
 
 		let instance: AgentInstance;
@@ -97,17 +108,18 @@ export class BtManager<
 			log.warn(
 				`[${this.owner.name}] failed to initialize BT agent: ${error instanceof Error ? error.message : String(error)}`,
 			);
-			return btContext as BtContext & Record<string, unknown>;
+			return btContext;
 		}
 
 		const registerProperty = (name: string, descriptor: PropertyDescriptor): void => {
 			if (!name || name === "constructor") return;
 
-			const memberSlotExists =
-				Object.hasOwn(runtime, name) || !!Object.getOwnPropertyDescriptor(runtime, name);
+			const runtimeSlotExists =
+				Object.hasOwn(this.owner.runtime as unknown as Record<string, unknown>, name) ||
+				!!Object.getOwnPropertyDescriptor(this.owner.runtime as unknown as Record<string, unknown>, name);
 			const btSlotExists = Object.hasOwn(btContext, name) || !!Object.getOwnPropertyDescriptor(btContext, name);
 
-			if (memberSlotExists || btSlotExists) {
+			if (runtimeSlotExists || btSlotExists) {
 				log.warn(`[${this.owner.name}] skipped BT agent member "${name}" because the slot already exists`);
 				return;
 			}
@@ -134,7 +146,42 @@ export class BtManager<
 			}
 		}
 
-		return btContext as BtContext & Record<string, unknown>;
+		return btContext;
+	}
+
+	/**
+	 * 把 runtime 字段投影成 BT context 上的只读槽。
+	 * 目的：保留 `$currentFrame` 这类扁平引用，同时阻止 BT 写出 shadow runtime 值。
+	 */
+	private defineRuntimeReadSlots(
+		btContext: BtContext<TAttrKey, TStateEvent, TStateContext, TRuntime> & Record<string, unknown>,
+		runtime: Record<string, unknown>,
+	): void {
+		for (const key of Object.keys(runtime)) {
+			Object.defineProperty(btContext, key, {
+				get: () => (this.owner.runtime as unknown as Record<string, unknown>)[key],
+				set: () => {
+					throw new Error(`[${this.owner.name}] BT runtime field is read-only: ${key}`);
+				},
+				enumerable: false,
+				configurable: false,
+			});
+		}
+	}
+
+	private defineBtBindings(
+		btContext: BtContext<TAttrKey, TStateEvent, TStateContext, TRuntime> & Record<string, unknown>,
+	): void {
+		for (const [name, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(this.btBindings))) {
+			if (Object.hasOwn(btContext, name) || !!Object.getOwnPropertyDescriptor(btContext, name)) {
+				log.warn(`[${this.owner.name}] skipped BT binding "${name}" because the slot already exists`);
+				continue;
+			}
+			Object.defineProperty(btContext, name, {
+				...descriptor,
+				configurable: true,
+			});
+		}
 	}
 
 	tickAll(): void {
@@ -142,7 +189,7 @@ export class BtManager<
 			const state = this.activeEffectEntry.bt.getState();
 			if (state === State.SUCCEEDED || state === State.FAILED) {
 				this.activeEffectEntry = undefined;
-				this.owner.actor.send({ type: "技能执行完成" } as TStateEvent);
+				this.owner.send({ type: "技能执行完成" } as TStateEvent);
 			} else {
 				this.activeEffectEntry.bt.step();
 			}

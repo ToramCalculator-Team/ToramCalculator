@@ -7,20 +7,11 @@ import { StatContainer } from "../../runtime/StatContainer/StatContainer";
 import type { MobRuntime } from "../../runtime/types";
 import { MobBtBindings } from "./Agents/BtBindings";
 import { MobAttrSchema } from "./MobAttrSchema";
-import {
-	createMobStateMachine,
-	type MobEventType,
-	type MobStateContext,
-} from "./MobStateMachine";
+import { createMobStateMachine, type MobEventType, type MobStateContext } from "./MobStateMachine";
 
 export type MobAttrType = ExtractAttrPaths<ReturnType<typeof MobAttrSchema>>;
 
-export class Mob extends Member<
-	MobAttrType,
-	MobEventType,
-	MobStateContext,
-	MobRuntime
-> {
+export class Mob extends Member<MobAttrType, MobEventType, MobStateContext, MobRuntime> {
 	constructor(
 		memberData: MemberWithRelations,
 		campId: string,

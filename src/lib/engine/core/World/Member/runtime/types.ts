@@ -7,7 +7,7 @@ import type { SkillVariantWithRelations } from "@db/generated/repositories/skill
  *
  * 设计说明：
  * - 所有字段一律扁平，命名直接对应 BT 契约（BtContext）与 MDSL 引用（$currentSkill* / $currentFrame 等）。
- * - BT 执行期通过 `Object.create(runtime)` 作为原型链父节点直接消费这些字段，无需再做一层 get/set 映射。
+ * - BT 执行期通过只读 getter 直接消费这些字段，避免 runtime 原型链写入产生影子值。
  * - FSM 为这些字段的唯一写入方；BT 仅读取。
  */
 export interface MemberSharedRuntime {

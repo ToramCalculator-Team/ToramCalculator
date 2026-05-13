@@ -1,13 +1,9 @@
 import type { Actor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
-import { ExpressionContext } from "~/lib/engine/core/JSProcessor/types";
-import { StageData } from "~/lib/engine/core/Pipeline/stageEnv";
-import { MemberDomainEvent } from "~/lib/engine/core/types";
-import type { Member } from "../../Member";
-import { MemberBaseAttrType, MemberBaseNestedSchema } from "../../MemberBaseSchema";
-import { MemberRuntimeServices } from "../Agent/RuntimeServices";
-import { BtManager } from "../BehaviourTree/BtManager";
-import { ExtractAttrPaths } from "../StatContainer/SchemaTypes";
-import { StatContainer } from "../StatContainer/StatContainer";
+import type { StageData } from "~/lib/engine/core/Pipeline/stageEnv";
+import type { MemberDomainEvent } from "~/lib/engine/core/types";
+import type { MemberRuntimeServices } from "../Agent/RuntimeServices";
+import type { BtManager } from "../BehaviourTree/BtManager";
+import type { StatContainer } from "../StatContainer/StatContainer";
 import type { MemberSharedRuntime } from "../types";
 
 /**

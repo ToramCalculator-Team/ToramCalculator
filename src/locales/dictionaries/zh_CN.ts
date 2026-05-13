@@ -798,7 +798,7 @@ const dictionary: Dictionary = {
 			description: "记录水晶和选项之间的关联关系",
 		},
 		_crystalToplayer_armor: {
-			selfName: "",
+			selfName: "水晶-玩家防具关联",
 			fields: {
 				A: {
 					key: "",
@@ -811,10 +811,10 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "记录水晶和玩家防具之间的关联关系",
 		},
 		_crystalToplayer_option: {
-			selfName: "",
+			selfName: "水晶-玩家追加关联",
 			fields: {
 				A: {
 					key: "",
@@ -827,10 +827,10 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "记录水晶和玩家追加装备之间的关联关系",
 		},
 		_crystalToplayer_special: {
-			selfName: "",
+			selfName: "水晶-玩家特殊关联",
 			fields: {
 				A: {
 					key: "",
@@ -843,10 +843,10 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "记录水晶和玩家特殊装备之间的关联关系",
 		},
 		_crystalToplayer_weapon: {
-			selfName: "",
+			selfName: "水晶-玩家武器关联",
 			fields: {
 				A: {
 					key: "",
@@ -859,10 +859,10 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "记录水晶和玩家武器之间的关联关系",
 		},
 		_crystalTospecial: {
-			selfName: "",
+			selfName: "水晶-特殊装备关联",
 			fields: {
 				A: {
 					key: "",
@@ -875,10 +875,10 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "记录水晶和特殊装备之间的关联关系",
 		},
 		_crystalToweapon: {
-			selfName: "",
+			selfName: "水晶-武器关联",
 			fields: {
 				A: {
 					key: "",
@@ -891,10 +891,10 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "记录水晶和武器之间的关联关系",
 		},
 		_frontRelation: {
-			selfName: "",
+			selfName: "前置关联",
 			fields: {
 				A: {
 					key: "",
@@ -907,11 +907,11 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "记录水晶之间的前置/后置关联关系",
 		},
 		_linkZones: {
-			selfName: "",
-			description: "",
+			selfName: "区域连接",
+			description: "记录区域之间的连接关系",
 			fields: {
 				A: {
 					key: "",
@@ -930,13 +930,13 @@ const dictionary: Dictionary = {
 			fields: {
 				A: {
 					key: "怪物ID",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					tableFieldDescription: "关联的怪物ID",
+					formFieldDescription: "选择要关联的怪物",
 				},
 				B: {
 					key: "区域ID",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					tableFieldDescription: "关联的区域ID",
+					formFieldDescription: "选择要关联的区域",
 				},
 			},
 			description: "记录怪物和区域之间的关联关系",
@@ -1017,7 +1017,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "账号创建记录",
 		},
 		account_update_data: {
 			selfName: "账号更新数据",
@@ -1349,7 +1349,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "角色习得技能信息",
 		},
 		combo: {
 			selfName: "连击",
@@ -1375,7 +1375,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "连击信息",
 		},
 		combo_step: {
 			selfName: "连击步骤",
@@ -1402,7 +1402,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "连击步骤信息",
 		},
 		consumable: {
 			selfName: "消耗品",
@@ -1434,7 +1434,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "选择消耗品所属的道具",
 				},
 			},
-			description: "",
+			description: "游戏中的消耗品信息",
 		},
 		crystal: {
 			selfName: "锻晶",
@@ -1461,7 +1461,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "选择锻晶所属的道具",
 				},
 			},
-			description: "",
+			description: "游戏中的锻晶信息",
 		},
 		drop_item: {
 			selfName: "掉落物品",
@@ -1504,10 +1504,10 @@ const dictionary: Dictionary = {
 					formFieldDescription: "选择掉落物品的怪物",
 				},
 			},
-			description: "",
+			description: "怪物掉落物品信息",
 		},
 		image: {
-			selfName: "",
+			selfName: "图片",
 			fields: {
 				id: {
 					key: "ID",
@@ -1545,7 +1545,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "选择图片的怪物",
 				},
 			},
-			description: "",
+			description: "游戏中的图片资源信息",
 		},
 		item: {
 			selfName: "道具",
@@ -1603,7 +1603,7 @@ const dictionary: Dictionary = {
 					},
 				},
 			},
-			description: "",
+			description: "游戏中的道具信息",
 		},
 		material: {
 			selfName: "素材",
@@ -1635,7 +1635,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "选择素材所属的道具",
 				},
 			},
-			description: "",
+			description: "游戏中的素材信息",
 		},
 		member: {
 			selfName: "成员",
@@ -1704,7 +1704,7 @@ const dictionary: Dictionary = {
 					},
 				},
 			},
-			description: "",
+			description: "队伍成员信息",
 		},
 		mercenary: {
 			selfName: "佣兵",
@@ -1749,7 +1749,7 @@ const dictionary: Dictionary = {
 					},
 				},
 			},
-			description: "",
+			description: "佣兵信息",
 		},
 		mob: {
 			selfName: "怪物",
@@ -1935,7 +1935,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "游戏中的NPC信息",
 		},
 		option: {
 			selfName: "追加装备",
@@ -1976,7 +1976,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "所属道具ID",
 				},
 			},
-			description: "",
+			description: "游戏中的追加装备信息",
 		},
 		player: {
 			selfName: "玩家",
@@ -2002,7 +2002,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "玩家信息",
 		},
 		player_armor: {
 			selfName: "玩家防具",
@@ -2314,7 +2314,7 @@ const dictionary: Dictionary = {
 					enumMap: elementType,
 				},
 			},
-			description: "",
+			description: "玩家自定义武器信息",
 		},
 		post: {
 			selfName: "帖子",
@@ -2345,7 +2345,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "帖子信息",
 		},
 		recipe: {
 			selfName: "配方",
@@ -2381,7 +2381,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "游戏中的配方信息",
 		},
 		recipe_ingredient: {
 			selfName: "配方材料",
@@ -2413,7 +2413,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "所属配方",
 				},
 			},
-			description: "",
+			description: "配方材料信息",
 		},
 		session: {
 			selfName: "会话",
@@ -2439,43 +2439,43 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "会话信息",
 		},
 		simulator: {
 			selfName: "模拟器",
 			fields: {
 				id: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "模拟器ID",
+					tableFieldDescription: "模拟器的唯一标识符",
+					formFieldDescription: "模拟器的唯一标识符",
 				},
 				name: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "名称",
+					tableFieldDescription: "模拟器的名称",
+					formFieldDescription: "请输入模拟器的名称",
 				},
 				details: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "详情",
+					tableFieldDescription: "模拟器的详情",
+					formFieldDescription: "请输入模拟器的详情",
 				},
 				statisticId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "统计ID",
+					tableFieldDescription: "关联的统计信息",
+					formFieldDescription: "选择关联的统计信息",
 				},
 				updatedByAccountId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "更新者",
+					tableFieldDescription: "最后更新此模拟器的账号",
+					formFieldDescription: "选择更新者账号",
 				},
 				createdByAccountId: {
-					key: "",
-					tableFieldDescription: "",
-					formFieldDescription: "",
+					key: "创建者",
+					tableFieldDescription: "创建此模拟器的账号",
+					formFieldDescription: "选择创建者账号",
 				},
 			},
-			description: "",
+			description: "模拟器信息",
 		},
 		skill: {
 			selfName: "技能",
@@ -2566,7 +2566,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "这是创建者数据库id，如果有哪里需要你输入这个，请给开发人员反馈。这是不正常的情况。",
 				},
 			},
-			description: "",
+			description: "游戏中的技能信息",
 		},
 		skill_variant: {
 			selfName: "技能变体",
@@ -2685,7 +2685,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "所属技能",
 				},
 			},
-			description: "",
+			description: "技能变体信息",
 		},
 		special: {
 			selfName: "特殊装备",
@@ -2711,7 +2711,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "所属道具ID",
 				},
 			},
-			description: "",
+			description: "游戏中的特殊装备信息",
 		},
 		statistic: {
 			selfName: "统计信息",
@@ -2742,7 +2742,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "游戏的统计字段",
 		},
 		task: {
 			selfName: "任务",
@@ -2794,7 +2794,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "游戏中的任务信息",
 		},
 		task_collect_require: {
 			selfName: "任务收集要求",
@@ -2820,7 +2820,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "所属任务",
 				},
 			},
-			description: "",
+			description: "任务收集需求",
 		},
 		task_kill_requirement: {
 			selfName: "任务击杀要求",
@@ -2846,7 +2846,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "所属任务",
 				},
 			},
-			description: "",
+			description: "任务击杀要求",
 		},
 		task_reward: {
 			selfName: "任务奖励",
@@ -2883,7 +2883,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "所属任务",
 				},
 			},
-			description: "",
+			description: "任务奖励信息",
 		},
 		team: {
 			selfName: "队伍",
@@ -2904,7 +2904,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "队伍信息",
 		},
 		user: {
 			selfName: "用户",
@@ -2940,7 +2940,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "用户信息",
 		},
 		verification_token: {
 			selfName: "验证令牌",
@@ -2961,7 +2961,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "验证令牌信息",
 		},
 		weapon: {
 			selfName: "武器",
@@ -3019,7 +3019,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "武器所属的物品",
 				},
 			},
-			description: "",
+			description: "游戏中的武器信息",
 		},
 		world: {
 			selfName: "世界",
@@ -3050,7 +3050,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "",
 				},
 			},
-			description: "",
+			description: "游戏中的世界信息",
 		},
 		zone: {
 			selfName: "区域",
@@ -3099,8 +3099,8 @@ const dictionary: Dictionary = {
 			description: "游戏中的区域信息，包括名称、链接区域、道具点等信息",
 		},
 		character_registlet: {
-			selfName: "",
-			description: "",
+			selfName: "角色雷吉斯托环",
+			description: "角色佩戴的雷吉斯托环信息",
 			fields: {
 				id: {
 					key: "ID",
@@ -3125,8 +3125,8 @@ const dictionary: Dictionary = {
 			},
 		},
 		registlet: {
-			selfName: "",
-			description: "",
+			selfName: "雷吉斯托环",
+			description: "游戏中的雷吉斯托环信息",
 			fields: {
 				id: {
 					key: "",

@@ -7,8 +7,15 @@ import {
 	resolveDamageAndApply,
 	resolveHitCheck,
 } from "../../runtime/DamageResolution";
-import type { MemberEventType, MemberStateContext, MemberStateMachine } from "../../runtime/StateMachine/types";
-import type { Mob } from "./Mob";
+import { ModifierType } from "../../runtime/StatContainer/StatContainer";
+import type {
+	MemberEventType,
+	MemberStateContext,
+	MemberStateMachine,
+	MemberStateMachineEnv,
+} from "../../runtime/StateMachine/types";
+import type { MobRuntime } from "../../runtime/types";
+import type { Mob, MobAttrType } from "./Mob";
 
 const log = createLogger("MobSM");
 
@@ -129,6 +136,11 @@ export interface MobStateContext extends MemberStateContext {
 	hitSession?: HitSession | null;
 }
 
+export interface MobStateMachineEnv
+	extends MemberStateMachineEnv<MobAttrType, MobEventType, MobStateContext, MobRuntime> {
+	runtime: MobRuntime;
+}
+
 const mobMachineSetup = setup({
 	types: {
 		context: {} as MobStateContext,
@@ -140,9 +152,9 @@ const mobMachineSetup = setup({
 const mobRaiseHitCheck = mobMachineSetup.raise({ type: "进行命中判定" });
 const mobRaiseControlCheck = mobMachineSetup.raise({ type: "进行控制判定" });
 const mobRaiseDamageCalc = mobMachineSetup.raise({ type: "进行伤害计算" });
-const mobAssignHitSession = (mob: Mob) => {
+const mobAssignHitSession = (name: string) => {
 	return mobMachineSetup.assign(({ context, event }) => {
-		log.debug(`👹 [${mob.name}] 记录伤害请求`, event);
+		log.debug(`👹 [${name}] 记录伤害请求`, event);
 		const e = event as 受到攻击;
 		const damageRequest = e.data?.damageRequest;
 		if (!damageRequest) {
@@ -155,8 +167,8 @@ const mobAssignHitSession = (mob: Mob) => {
 };
 const mobClearHitSession = mobMachineSetup.assign({ hitSession: null });
 
-export const createMobStateMachine = (mob: Mob): MemberStateMachine<MobEventType, MobStateContext> => {
-	const machineId = mob.id;
+export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachine<MobEventType, MobStateContext> => {
+	const machineId = env.id;
 
 	return mobMachineSetup
 		.extend({
@@ -164,176 +176,197 @@ export const createMobStateMachine = (mob: Mob): MemberStateMachine<MobEventType
 				根据配置生成初始状态: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 根据配置生成初始状态`, event);
+					log.debug(`👹 [${env.name}] 根据配置生成初始状态`, event);
 				},
 				启用站立动画: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 启用站立动画`, event);
+					log.debug(`👹 [${env.name}] 启用站立动画`, event);
 				},
 				启用移动动画: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 启用移动动画`, event);
+					log.debug(`👹 [${env.name}] 启用移动动画`, event);
 				},
 				启用前摇动画: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 启用前摇动画`, event);
+					log.debug(`👹 [${env.name}] 启用前摇动画`, event);
 				},
 				计算前摇时长: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 计算前摇时长`, event);
+					log.debug(`👹 [${env.name}] 计算前摇时长`, event);
 				},
 				创建前摇结束通知: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 创建前摇结束通知`, event);
+					log.debug(`👹 [${env.name}] 创建前摇结束通知`, event);
 				},
 				启用蓄力动画: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 启用蓄力动画`, event);
+					log.debug(`👹 [${env.name}] 启用蓄力动画`, event);
 				},
 				计算蓄力时长: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 计算蓄力时长`, event);
+					log.debug(`👹 [${env.name}] 计算蓄力时长`, event);
 				},
 				创建蓄力结束通知: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 创建蓄力结束通知`, event);
+					log.debug(`👹 [${env.name}] 创建蓄力结束通知`, event);
 				},
 				启用咏唱动画: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 启用咏唱动画`, event);
+					log.debug(`👹 [${env.name}] 启用咏唱动画`, event);
 				},
 				计算咏唱时长: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 计算咏唱时长`, event);
+					log.debug(`👹 [${env.name}] 计算咏唱时长`, event);
 				},
 				创建咏唱结束通知: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 创建咏唱结束通知`, event);
+					log.debug(`👹 [${env.name}] 创建咏唱结束通知`, event);
 				},
 				启用技能发动动画: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 启用技能发动动画`, event);
+					log.debug(`👹 [${env.name}] 启用技能发动动画`, event);
 				},
 				计算发动时长: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 计算发动时长`, event);
+					log.debug(`👹 [${env.name}] 计算发动时长`, event);
 				},
 				创建发动结束通知: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 创建发动结束通知`, event);
+					log.debug(`👹 [${env.name}] 创建发动结束通知`, event);
 				},
 				技能效果管线: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 技能效果管线`, event);
+					log.debug(`👹 [${env.name}] 技能效果管线`, event);
 				},
 				重置控制抵抗时间: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 重置控制抵抗时间`, event);
+					log.debug(`👹 [${env.name}] 重置控制抵抗时间`, event);
 				},
 				中断当前行为: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 中断当前行为`, event);
+					log.debug(`👹 [${env.name}] 中断当前行为`, event);
 				},
 				启动受控动画: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 启动受控动画`, event);
+					log.debug(`👹 [${env.name}] 启动受控动画`, event);
 				},
 				重置到复活状态: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 重置到复活状态`, event);
+					log.debug(`👹 [${env.name}] 重置到复活状态`, event);
 				},
 				发送命中判定事件给自己: mobRaiseHitCheck,
-				记录伤害请求: mobAssignHitSession(mob),
+				记录伤害请求: mobAssignHitSession(env.name),
 				清空受击缓存: mobClearHitSession,
 				反馈命中结果给施法者: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 反馈命中结果给施法者`, event);
+					log.debug(`👹 [${env.name}] 反馈命中结果给施法者`, event);
 				},
 				发送控制判定事件给自己: mobRaiseControlCheck,
 				命中计算管线: ({ context, event }) => {
-					log.debug(`👹 [${mob.name}] 命中计算管线`, event);
+					log.debug(`👹 [${env.name}] 命中计算管线`, event);
 					const session = context.hitSession;
 					if (!session) {
-						log.warn(`👹 [${mob.name}] 命中计算管线：hitSession 为空，跳过`);
+						log.warn(`👹 [${env.name}] 命中计算管线：hitSession 为空，跳过`);
 						return;
 					}
-					resolveHitCheck(mob, session, mob.services.random);
+					resolveHitCheck(env.runPipeline, session, env.services.random);
 				},
 				根据命中结果进行下一步: mobRaiseControlCheck,
 				控制判定管线: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 控制判定管线`, event);
+					log.debug(`👹 [${env.name}] 控制判定管线`, event);
 				},
 				反馈控制结果给施法者: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 反馈控制结果给施法者`, event);
+					log.debug(`👹 [${env.name}] 反馈控制结果给施法者`, event);
 				},
 				发送伤害计算事件给自己: mobRaiseDamageCalc,
 				伤害计算管线: ({ context, event }) => {
-					log.debug(`👹 [${mob.name}] 伤害计算管线`, event);
+					log.debug(`👹 [${env.name}] 伤害计算管线`, event);
 					const session = context.hitSession;
 					if (!session) {
-						log.warn(`👹 [${mob.name}] 伤害计算管线：hitSession 为空，跳过`);
+						log.warn(`👹 [${env.name}] 伤害计算管线：hitSession 为空，跳过`);
 						return;
 					}
-					resolveDamageAndApply(mob, session);
+					resolveDamageAndApply(
+						env.id,
+						env.services.getCurrentFrame(),
+						() => env.statContainer.getValue("hp.current"),
+						() => env.statContainer.getValue("mp.current"),
+						(value) =>
+							env.statContainer.addModifier("hp.current", ModifierType.DYNAMIC_FIXED, value, {
+								id: `damage.hp.${session.damageRequest.areaId}`,
+								name: "damage-hp",
+								type: "system",
+							}),
+						(value) =>
+							env.statContainer.addModifier("mp.current", ModifierType.DYNAMIC_FIXED, value, {
+								id: `damage.mp.${session.damageRequest.areaId}`,
+								name: "damage-mp",
+								type: "system",
+							}),
+						env.notifyDomainEvent,
+						env.runPipeline,
+						env.services.expressionEvaluator,
+						session,
+					);
 				},
 				反馈伤害结果给施法者: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 反馈伤害结果给施法者`, event);
+					log.debug(`👹 [${env.name}] 反馈伤害结果给施法者`, event);
 				},
 				发送属性修改事件给自己: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 发送属性修改事件给自己`, event);
+					log.debug(`👹 [${env.name}] 发送属性修改事件给自己`, event);
 				},
 				发送buff修改事件给自己: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 发送buff修改事件给自己`, event);
+					log.debug(`👹 [${env.name}] 发送buff修改事件给自己`, event);
 				},
 				logEvent: ({ context, event }) => {
 					// Add your action code here
 					// ...
-					log.debug(`👹 [${mob.name}] 日志事件`, event);
+					log.debug(`👹 [${env.name}] 日志事件`, event);
 				},
 			},
 			guards: {
 				存在蓄力阶段: ({ context, event }) => {
-					log.debug(`👹 [${mob.name}] 存在蓄力阶段`, event);
+					log.debug(`👹 [${env.name}] 存在蓄力阶段`, event);
 					// Add your guard condition here
 					return true;
 				},
 				存在咏唱阶段: ({ context, event }) => {
-					log.debug(`👹 [${mob.name}] 存在咏唱阶段`, event);
+					log.debug(`👹 [${env.name}] 存在咏唱阶段`, event);
 					// Add your guard condition here
 					return true;
 				},
 				存在后续连击: ({ context, event }) => {
-					log.debug(`👹 [${mob.name}] 存在后续连击`, event);
+					log.debug(`👹 [${env.name}] 存在后续连击`, event);
 					// Add your guard condition here
 					return true;
 				},
@@ -344,12 +377,12 @@ export const createMobStateMachine = (mob: Mob): MemberStateMachine<MobEventType
 						throw new Error(`命中会话无效`);
 					}
 					res = session.damageRequest.damageTags.includes("physcial");
-					log.debug(`👹 [${mob.name}] 判断是否是是物理伤害`, res);
+					log.debug(`👹 [${env.name}] 判断是否是是物理伤害`, res);
 					return res;
 				},
 				满足存活条件: ({ context, event }) => {
-					log.debug(`👹 [${mob.name}] 满足存活条件`, event);
-					const hp = mob.statContainer.getValue("hp.current");
+					log.debug(`👹 [${env.name}] 满足存活条件`, event);
+					const hp = env.statContainer.getValue("hp.current");
 					const isAlive = hp > 0;
 					context.isAlive = isAlive;
 					return isAlive;
@@ -360,7 +393,7 @@ export const createMobStateMachine = (mob: Mob): MemberStateMachine<MobEventType
 			id: machineId,
 			context: {
 				isAlive: true,
-				createdAtFrame: mob.runtime.currentFrame,
+				createdAtFrame: env.runtime.currentFrame,
 				hitSession: null,
 			},
 			initial: "存活",
