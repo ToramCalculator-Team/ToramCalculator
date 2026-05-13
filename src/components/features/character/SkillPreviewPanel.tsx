@@ -2,6 +2,7 @@ import type { CharacterSkillWithRelations } from "@db/generated/repositories/cha
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { useEngine } from "~/lib/engine/core/thread/EngineContext";
+import type { BranchTask } from "~/lib/engine/core/thread/protocol";
 
 const PREVIEW_COMPUTE_DEBOUNCE_MS = 150;
 
@@ -26,7 +27,7 @@ type PreviewSkillSource = {
  * 技能伤害预览面板。
  *
  * 对每个已习得技能，通过原子分支任务（BranchTask）计算 DPS：
- *   1. 从主引擎捕获检查点
+ *   1. 从主引擎捕获场景构造态和运行态检查点
  *   2. 为每个技能创建分支任务（注入对应 skillId 的动作序列）
  *   3. 通过 batchPool 并行执行所有分支任务
  *   4. 收集伤害结果并展示
@@ -40,6 +41,7 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 	let computeInFlight = false;
 	let computeQueued = false;
 	let latestComputeToken = 0;
+	let latestDependencyKey = "";
 
 	const learnedSkillSources = (): PreviewSkillSource[] =>
 		(props.learnedSkills ?? [])
@@ -56,7 +58,6 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 
 		setComputing(true);
 		setError(null);
-		setSkills([]);
 
 		try {
 			const defaultEngine = engine.service.getDefaultEngine();
@@ -82,26 +83,38 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 				return;
 			}
 
-			setSkills(
-				skillList.map((s) => ({
-					id: s.id,
-					name: s.name,
-					level: s.level,
-					damage: 0,
-					loading: true,
-					error: s.computed && s.computed.isAvailable === false ? "当前资源不足，技能暂不可用" : undefined,
-				})),
-			);
+			setSkills((prev) => {
+				const previousRows = new Map(prev.map((row) => [row.id, row]));
+				return skillList.map((s) => {
+					const previous = previousRows.get(s.id);
+					return {
+						id: s.id,
+						name: s.name,
+						level: s.level,
+						damage: previous?.damage ?? 0,
+						loading: true,
+						error: s.computed && s.computed.isAvailable === false ? "当前资源不足，技能暂不可用" : undefined,
+					};
+				});
+			});
 
-			// 2. 捕获检查点 + 表达式字典
-			const [checkpoint, exprDict] = await Promise.all([
+			// 2. 捕获分支重建输入：scenarioData 构造对象图，checkpoint 恢复运行态。
+			const [checkpoint, exprDict, scenarioData] = await Promise.all([
 				defaultEngine.captureCheckpoint(),
 				defaultEngine.exportExprDict(),
+				defaultEngine.getInitializationData(),
 			]);
 			if (token !== latestComputeToken) return;
+			if (!checkpoint) {
+				throw new Error("技能预览无法捕获引擎检查点");
+			}
+			if (!scenarioData) {
+				throw new Error("技能预览无法获取引擎场景数据");
+			}
 
 			// 3. 为每个技能构建原子分支任务
-			const tasks = skillList.map((skill) => ({
+			const tasks: BranchTask[] = skillList.map((skill) => ({
+				scenarioData,
 				checkpoint,
 				exprDict,
 				patches: [
@@ -119,15 +132,14 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 			}));
 
 			// 4. 并行执行所有分支任务
-			const results = await engine.service.executeBranchBatch(
-				tasks as Parameters<typeof engine.service.executeBranchBatch>[0],
-			);
+			const results = await engine.service.executeBranchBatch(tasks);
 			if (token !== latestComputeToken) return;
 
 			// 5. 更新结果
+			const resultBySkillId = new Map(skillList.map((skill, index) => [skill.id, results[index]]));
 			setSkills((prev) =>
-				prev.map((row, i) => {
-					const res = results[i];
+				prev.map((row) => {
+					const res = resultBySkillId.get(row.id);
 					if (!res || !res.ok) {
 						return { ...row, loading: false, damage: 0, error: res?.error ?? "task failed" };
 					}
@@ -184,9 +196,14 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 	createEffect(() => {
 		// 预览成员是异步加载/热替换进引擎的；订阅 members 快照可以在角色技能配置落库并 patch 引擎后重算。
 		// 否则面板可能在场景尚未加载完成时先算到空列表，之后不再刷新。
-		engine.members();
-		learnedSkillSources();
-		if (props.memberId && engine.ready()) {
+		const member = engine.members().find((candidate) => candidate.id === props.memberId);
+		const learnedKey = learnedSkillSources()
+			.map((skill) => `${skill.id}:${skill.level}`)
+			.join("|");
+		// 设计说明：members 信号会随 refresh 产生新数组；用当前成员属性快照做稳定 key，避免同一状态重复排队。
+		const dependencyKey = `${props.memberId}|${member ? JSON.stringify(member.attrs) : "missing"}|${learnedKey}`;
+		if (props.memberId && engine.ready() && member && dependencyKey !== latestDependencyKey) {
+			latestDependencyKey = dependencyKey;
 			scheduleCompute();
 		}
 	});
@@ -204,7 +221,11 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 			<div class="flex items-center justify-between">
 				<h2 class="text-lg font-bold">技能伤害预览</h2>
 				<Show when={skills().length > 0}>
-					<Button onClick={() => scheduleCompute(0)} class="text-xs text-link-color hover:underline" disabled={computing()}>
+					<Button
+						onClick={() => scheduleCompute(0)}
+						class="text-xs text-link-color hover:underline"
+						disabled={computing()}
+					>
 						{computing() ? "计算中..." : "重新计算"}
 					</Button>
 				</Show>

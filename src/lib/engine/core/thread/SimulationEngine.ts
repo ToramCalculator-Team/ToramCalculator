@@ -119,6 +119,7 @@ export interface SimulationEngine {
 	getRenderSnapshot(includeAreas?: boolean): Promise<RenderSnapshot | null>;
 	getEngineStats(): Promise<{ success: boolean; data?: EngineStats; error?: string }>;
 	getComputedSkills(memberId: string): Promise<unknown[]>;
+	getInitializationData(): Promise<EngineScenarioData | null>;
 	patchMemberConfig(memberId: string, data: unknown): Promise<void>;
 	runPreview(memberId: string): Promise<PreviewReport | null>;
 
@@ -423,6 +424,10 @@ export class SimulationEngineImpl implements SimulationEngine {
 	async getComputedSkills(memberId: string): Promise<unknown[]> {
 		const res = await this.executeEngineRPC({ type: "get_computed_skills", memberId }, "low");
 		return res.success && Array.isArray(res.data) ? (res.data as unknown[]) : [];
+	}
+	async getInitializationData(): Promise<EngineScenarioData | null> {
+		const res = await this.executeEngineRPC({ type: "get_initialization_data" }, "high");
+		return res.success ? ((res.data as EngineScenarioData | null | undefined) ?? null) : null;
 	}
 	async patchMemberConfig(memberId: string, data: unknown): Promise<void> {
 		await this.mustSuccess({ type: "patch_member", memberId, memberData: data });

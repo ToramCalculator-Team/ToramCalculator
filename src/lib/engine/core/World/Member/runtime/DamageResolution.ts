@@ -90,6 +90,7 @@ export function resolveHitCheck(
 ): HitSession {
 	const req = session.damageRequest;
 
+	let hit = false;
 	const isMagical = req.damageTags.includes("magical") ? 1 : 0;
 	const casterHit = Number(req.casterSnapshot.hit ?? 0);
 	const skillMpCost = Number(req.casterSnapshot["skill.mpCost"] ?? 0);
@@ -100,13 +101,16 @@ export function resolveHitCheck(
 		skillMpCost,
 		damageTags: req.damageTags,
 	}) as Record<string, unknown>;
+	log.info("管线输出：",output)
 
 	const hitRate = Number(output.hitRate ?? 0);
 	const roll = (random ?? Math.random)() * 100;
-	const hit = roll < hitRate;
+	hit = roll < hitRate;
 
+	// 命中率
 	session.hitRate = hitRate;
-	session.hit = hit;
+	// 魔法技能强制命中
+	session.hit = isMagical ? true : hit;
 	return session;
 }
 
@@ -143,6 +147,7 @@ export function resolveDamageAndApply(
 			damage: 0,
 			hp: session.hpAfter,
 		});
+		log.info("未命中")
 		return session;
 	}
 
@@ -195,6 +200,7 @@ export function resolveDamageAndApply(
 	const mpAfter = Number(applyOutput.mpAfter ?? mpBefore);
 	const hpDelta = hpAfter - hpBefore;
 	const mpDelta = mpAfter - mpBefore;
+	log.info("hpDelta:", hpDelta, "mpDelta:", mpDelta)
 
 	if (hpDelta !== 0) {
 		hpApplyer(hpDelta);

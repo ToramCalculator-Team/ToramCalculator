@@ -371,12 +371,8 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 					return true;
 				},
 				是物理伤害: ({ context, event }) => {
-					let res = true;
-					const session = context.hitSession;
-					if (!session) {
-						throw new Error(`命中会话无效`);
-					}
-					res = session.damageRequest.damageTags.includes("physcial");
+					const damageRequest = (event as 受到攻击).data?.damageRequest ?? context.hitSession?.damageRequest;
+					const res = damageRequest?.damageTags.includes("physical") ?? false;
 					log.debug(`👹 [${env.name}] 判断是否是是物理伤害`, res);
 					return res;
 				},
@@ -404,21 +400,9 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 				存活: {
 					initial: "可操作状态",
 					on: {
-						受到攻击: [
-							{
-								actions: [{ type: "记录伤害请求" }, { type: "发送命中判定事件给自己" }],
-								guard: {
-									type: "是物理伤害",
-								},
-							},
-							{
-								actions: [
-									{ type: "记录伤害请求" },
-									{ type: "反馈命中结果给施法者" },
-									{ type: "发送控制判定事件给自己" },
-								],
-							},
-						],
+						受到攻击: {
+							actions: [{ type: "记录伤害请求" }, { type: "发送命中判定事件给自己" }],
+						},
 						进行命中判定: {
 							actions: [
 								{

@@ -193,6 +193,13 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 		return task?.success && Array.isArray(task.data) ? task.data : [];
 	}
 
+	async getInitializationData(): Promise<EngineScenarioData | null> {
+		const rpc: EngineRPC = { type: "get_initialization_data" };
+		const result = await this.executeTask("engine_rpc", rpc, "high");
+		const task = result.data as { success: boolean; data?: EngineScenarioData | null } | undefined;
+		return task?.success ? (task.data ?? null) : null;
+	}
+
 	async captureCheckpoint(): Promise<unknown | null> {
 		const rpc: EngineRPC = { type: "capture_checkpoint" };
 		const result = await this.executeTask("engine_rpc", rpc, "high");

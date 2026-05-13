@@ -4,7 +4,7 @@
  */
 
 import type { MemberWithRelations } from "@db/generated/repositories/member";
-import { createLogger, LogLevel, setGlobalLogLevel } from "~/lib/Logger";
+import { createLogger, LogLevel } from "~/lib/Logger";
 import { prepareForTransfer, sanitizeForPostMessage } from "~/lib/WorkerPool/MessageSerializer";
 import type { WorkerMessage, WorkerMessageEvent } from "~/lib/WorkerPool/type";
 import { BUILT_IN_EVENTS } from "../Event/BuiltInEvents";
@@ -18,9 +18,10 @@ import { PipelineCatalog } from "../Pipeline/PipelineCatalog";
 import { PipelineResolverService } from "../Pipeline/PipelineResolverService";
 import { PreviewRunner } from "../Preview/PreviewRunner";
 import type { SimulatorSafeAPI } from "../sandboxGlobals";
-import type { EngineInfrastructure, EngineScenarioData, RuntimeConfig } from "../types";
+import { createPreviewConfig, type EngineInfrastructure, type EngineScenarioData, type RuntimeConfig } from "../types";
 import { DebugViewRegistry } from "./DebugViewRegistry";
 import {
+	type BranchTask,
 	type EngineRPC,
 	EngineRPCSchema,
 	type PushMessageType,
@@ -297,6 +298,14 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 				}
 			}
 
+			case "get_initialization_data": {
+				try {
+					return { success: true, data: gameEngine.getInitializationData() };
+				} catch (error) {
+					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+				}
+			}
+
 			case "restore_checkpoint": {
 				try {
 					gameEngine.restoreCheckpoint(rpc.checkpoint as Parameters<typeof gameEngine.restoreCheckpoint>[0]);
@@ -326,37 +335,19 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 
 			case "branch_task": {
 				try {
-					const task = (rpc as { task: unknown }).task as {
-						checkpoint: unknown;
-						exprDict: Array<[string, string]>;
-						patches: Array<{
-							type: string;
-							memberId?: string;
-							skillIds?: string[];
-							equipmentId?: string;
-							sequence?: Array<{ skillId: string }>;
-							patch?: Record<string, unknown>;
-						}>;
-						runtimeConfig?: Record<string, unknown>;
-						outputSelector: { type: string; memberId?: string; fields?: string[] };
-					};
+					const task = (rpc as { task: BranchTask }).task;
 
-					// 1. restore checkpoint
-					gameEngine.restoreCheckpoint(task.checkpoint as Parameters<typeof gameEngine.restoreCheckpoint>[0]);
-
-					// 2. import expression dictionary (for cross-worker consistency)
+					// 1. import expression dictionary before scenario construction to keep compiled expressions deterministic.
 					if (task.exprDict && task.exprDict.length > 0) {
 						infra.jsProcessor.importTransformedExprDict(task.exprDict);
 					}
 
-					// 3. apply runtimeConfig override
-					if (task.runtimeConfig) {
-						const mergedConfig = {
-							...gameEngine.getRuntimeConfig(),
-							...task.runtimeConfig,
-						} as RuntimeConfig;
-						gameEngine.setRuntimeConfig(mergedConfig);
-					}
+					// 2. rebuild the branch object graph, then restore runtime state captured from the source engine.
+					gameEngine.loadScenario(task.scenarioData);
+					gameEngine.restoreCheckpoint(task.checkpoint as Parameters<typeof gameEngine.restoreCheckpoint>[0]);
+
+					// 3. apply runtimeConfig from a fresh preview baseline so previous branch tasks cannot leak policy.
+					gameEngine.setRuntimeConfig(createPreviewConfig(task.runtimeConfig as Partial<RuntimeConfig> | undefined));
 
 					// 4. apply patches + collect the first memberId for results
 					let primaryMemberId: string | undefined;
@@ -365,7 +356,7 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 
 						switch (patch.type) {
 							case "action_sequence": {
-								const member = gameEngine.getMember(patch.memberId!);
+								const member = gameEngine.getMember(patch.memberId);
 								if (member) {
 									for (const action of patch.sequence ?? []) {
 										member.actor.send({
@@ -381,7 +372,7 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 								break;
 							}
 							case "member_config": {
-								gameEngine.patchMemberConfig(patch.memberId!, patch.patch as MemberWithRelations);
+								gameEngine.patchMemberConfig(patch.memberId, patch.patch as MemberWithRelations);
 								break;
 							}
 						}
@@ -405,29 +396,29 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 								data: { outputType: "preview_report", memberId: primaryMemberId, skillProbes: report.skillProbes },
 							};
 						}
-				case "dps_impact": {
-					const all = gameEngine.getAllMembers();
-					const opposingMembers = all.filter((m) => m.id !== primaryMemberId);
-					if (opposingMembers.length === 0) {
-						return {
-							success: true,
-							data: { outputType: "dps_impact", memberId: primaryMemberId, damage: 0, error: "场景中没有敌对目标" },
-						};
-					}
-					let totalDamage = 0;
-					for (const m of opposingMembers) {
-						const hpMax = m.statContainer.getValue("hp.max");
-						const hpCur = m.statContainer.getValue("hp.current");
-						const taken = Math.max(0, hpMax - hpCur);
-						if (taken > 0) totalDamage += taken;
-					}
-					return {
-						success: true,
-						data: { outputType: "dps_impact", memberId: primaryMemberId, damage: totalDamage },
-					};
-				}
+						case "dps_impact": {
+							const all = gameEngine.getAllMembers();
+							const opposingMembers = all.filter((m) => m.id !== primaryMemberId);
+							if (opposingMembers.length === 0) {
+								return {
+									success: true,
+									data: { outputType: "dps_impact", memberId: primaryMemberId, damage: 0, error: "场景中没有敌对目标" },
+								};
+							}
+							let totalDamage = 0;
+							for (const m of opposingMembers) {
+								const hpMax = m.statContainer.getValue("hp.max");
+								const hpCur = m.statContainer.getValue("hp.current");
+								const taken = Math.max(0, hpMax - hpCur);
+								if (taken > 0) totalDamage += taken;
+							}
+							return {
+								success: true,
+								data: { outputType: "dps_impact", memberId: primaryMemberId, damage: totalDamage },
+							};
+						}
 						case "member_attrs": {
-							const member = gameEngine.getMember(selector.memberId!);
+							const member = gameEngine.getMember(selector.memberId);
 							const attrs: Record<string, unknown> = {};
 							if (member) {
 								const all = member.statContainer.exportNestedValues();
@@ -438,7 +429,10 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 							return { success: true, data: { outputType: "member_attrs", memberId: selector.memberId, attrs } };
 						}
 						default:
-							return { success: false, error: `unknown outputSelector type: ${selector.type}` };
+							return {
+								success: false,
+								error: `unknown outputSelector type: ${(selector as { type?: string }).type ?? "unknown"}`,
+							};
 					}
 				} catch (error) {
 					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };

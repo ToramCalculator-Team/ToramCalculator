@@ -1,11 +1,18 @@
 import { createLogger } from "~/lib/Logger";
 import type { EngineScenarioData, RuntimeConfig } from "../types";
-import { type BranchTask, type BranchResult, SimulatorTaskPriority } from "./protocol";
+import { type BranchResult, type BranchTask, SimulatorTaskPriority } from "./protocol";
 import simulationWorker from "./Simulation.worker?worker&url";
 import { type SimulationEngine, SimulationEngineImpl } from "./SimulationEngine";
 import { SimulatorPool } from "./SimulatorPool";
 
 const log = createLogger("EngineService");
+
+function getBranchWorkerLimit(): number {
+	const hardwareLimit = navigator.hardwareConcurrency || 4;
+	// 设计说明：开发环境每个 module worker 都会建立 Vite HMR 连接；技能预览保留小并发，避免页面刷新时连接和 CPU 峰值过高。
+	const devLimit = import.meta.env.DEV ? 2 : 6;
+	return Math.min(hardwareLimit, devLimit);
+}
 
 /**
  * 提供给 UI 页面与游戏引擎交互的主线程门面。
@@ -45,7 +52,7 @@ export class EngineService {
 		this.batchPool = new SimulatorPool({
 			workerUrl: simulationWorker,
 			priority: [...SimulatorTaskPriority],
-			maxWorkers: Math.min(navigator.hardwareConcurrency || 4, 6),
+			maxWorkers: getBranchWorkerLimit(),
 			taskTimeout: 60000,
 			maxRetries: 1,
 			maxQueueSize: 100,
@@ -127,19 +134,22 @@ export class EngineService {
 
 	/**
 	 * 执行单个原子分支任务。
-	 * 一次 WorkerPool.executeTask 调用，保证 [restore → patch → execute → collect] 在同一 Worker 上完成。
+	 * 一次 WorkerPool.executeTask 调用，保证 [loadScenario → restore → patch → execute → collect] 在同一 Worker 上完成。
 	 *
-	 * @param task 分支任务描述（含 checkpoint、patches、runtimeConfig、outputSelector）
+	 * @param task 分支任务描述（含 scenarioData、checkpoint、patches、runtimeConfig、outputSelector）
 	 * @returns 分支结果（success + data 或 success + error）
 	 */
 	async executeBranchTask(task: BranchTask): Promise<{ ok: true; data: BranchResult } | { ok: false; error: string }> {
 		this.ensureInitialized();
 		try {
-			const result = await this.batchPool!.executeTask("engine_rpc", { type: "branch_task", task } as never, "medium");
-			if (!result.success) {
-				return { ok: false, error: result.error ?? "branch_task failed" };
+			const pool = this.batchPool;
+			if (!pool) throw new Error("branch worker pool not initialized");
+			const result = await pool.executeTask("engine_rpc", { type: "branch_task", task } as never, "medium");
+			const rpcResult = result.data as { success?: boolean; data?: BranchResult; error?: string } | undefined;
+			if (!result.success || !rpcResult?.success) {
+				return { ok: false, error: rpcResult?.error ?? result.error ?? "branch_task failed" };
 			}
-			return { ok: true, data: (result.data as BranchResult) ?? { outputType: "unknown" } };
+			return { ok: true, data: rpcResult.data ?? { outputType: "unknown" } };
 		} catch (error) {
 			return { ok: false, error: error instanceof Error ? error.message : "Unknown error" };
 		}
@@ -152,7 +162,9 @@ export class EngineService {
 	 * @param tasks 分支任务数组
 	 * @returns 与输入顺序一致的结果数组
 	 */
-	async executeBranchBatch(tasks: BranchTask[]): Promise<Array<{ ok: true; data: BranchResult } | { ok: false; error: string }>> {
+	async executeBranchBatch(
+		tasks: BranchTask[],
+	): Promise<Array<{ ok: true; data: BranchResult } | { ok: false; error: string }>> {
 		return Promise.all(tasks.map((t) => this.executeBranchTask(t)));
 	}
 

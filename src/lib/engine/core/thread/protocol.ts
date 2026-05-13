@@ -10,12 +10,12 @@
 import { z } from "zod/v4";
 import type { EngineControlMessage } from "../GameEngineSM";
 import { IntentMessageSchema } from "../MessageRouter/MessageRouter";
-import { EngineScenarioDataSchema, type EngineCheckpoint, type RuntimeConfig } from "../types";
+import { EngineScenarioDataSchema } from "../types";
 
 // ==================== Branch Task ====================
 
 /**
- * 分支任务：一次完整的 [restore → patch → execute → collect] 原子操作。
+ * 分支任务：一次完整的 [loadScenario → restore → patch → execute → collect] 原子操作。
  * 提交为单次 WorkerPool.executeTask，保证在同一 Worker 上执行完整流程。
  */
 export const ActionSpecSchema = z.object({
@@ -58,6 +58,8 @@ export const OutputSelectorSchema = z.discriminatedUnion("type", [
 export type OutputSelector = z.output<typeof OutputSelectorSchema>;
 
 export const BranchTaskSchema = z.object({
+	// 设计说明：checkpoint 只表达已加载引擎的运行态；分支 Worker 需要 scenarioData 先重建对象图。
+	scenarioData: EngineScenarioDataSchema,
 	checkpoint: z.unknown(),
 	exprDict: z.array(z.tuple([z.string(), z.string()])),
 	patches: z.array(BranchPatchSchema),
@@ -205,6 +207,9 @@ export const EngineRPCSchema = z.discriminatedUnion("type", [
 	}),
 	z.object({
 		type: z.literal("capture_checkpoint"),
+	}),
+	z.object({
+		type: z.literal("get_initialization_data"),
 	}),
 	z.object({
 		type: z.literal("restore_checkpoint"),

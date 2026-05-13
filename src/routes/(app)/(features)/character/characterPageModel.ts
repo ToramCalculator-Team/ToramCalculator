@@ -14,7 +14,7 @@
  */
 import {
 	type CharacterWithRelations,
-	selectAllCharactersByBelongtoplayerid, 
+	selectAllCharactersByBelongtoplayerid,
 	updateCharacter,
 } from "@db/generated/repositories/character";
 import type { CharacterRegistletWithRelations } from "@db/generated/repositories/character_registlet";
@@ -860,7 +860,8 @@ export function createCharacterPageModel(input: {
 			() => loadedData(),
 			(data) => {
 				// 设计说明：resource 返回值只在身份仍匹配当前路由时写入工作副本，避免慢查询覆盖新角色页面。
-				if (!data) {
+				if (data === undefined) return;
+				if (data === null) {
 					setPageData(reconcile(emptyPageData()));
 					scenarioLoadedForCharacterId = undefined;
 					return;
@@ -892,9 +893,9 @@ export function createCharacterPageModel(input: {
 	});
 
 	const status = createMemo<CharacterPageStatus>(() => {
-		if (loadedData.loading) return "loading";
 		if (loadedData.error) return "error";
 		if (pageData.character) return "ready";
+		if (loadedData.loading) return "loading";
 		return "idle";
 	});
 
