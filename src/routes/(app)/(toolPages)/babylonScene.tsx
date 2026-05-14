@@ -1,35 +1,23 @@
-import type { AbstractEngine } from "@babylonjs/core/Engines/abstractEngine";
-import { Engine } from "@babylonjs/core/Engines/engine";
-import { Color3, Color4 } from "@babylonjs/core/Maths/math";
-import { Vector3 } from "@babylonjs/core/Maths/math.vector";
-import { Scene } from "@babylonjs/core/scene";
 import { createEffect, createMemo, createSignal, type JSX, onCleanup, onMount } from "solid-js";
 import { LoadingBar } from "~/components/controls/loadingBar";
+import {
+	AppendSceneAsync,
+	Color3,
+	Color4,
+	Engine,
+	MeshBuilder,
+	NodeMaterial,
+	Scalar,
+	Scene,
+	ShadowGenerator,
+	SolidParticleSystem,
+	SpotLight,
+	UniversalCamera,
+	Vector3,
+} from "~/lib/babylon/runtime";
+import type { AbstractEngine } from "~/lib/babylon/runtime";
 import { store } from "~/store";
 import { resolveColorSystem } from "~/styles/colorSystem/colorSystemController";
-import "@babylonjs/core/Rendering/depthRendererSceneComponent";
-import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
-import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
-import { AppendSceneAsync } from "@babylonjs/core/Loading/sceneLoader";
-import "@babylonjs/loaders/glTF/2.0/glTFLoader";
-import "@babylonjs/loaders/glTF/2.0/Extensions/KHR_draco_mesh_compression";
-import { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
-import { SpotLight } from "@babylonjs/core/Lights/spotLight";
-import { NodeMaterial } from "@babylonjs/core/Materials/Node/nodeMaterial";
-// NodeMaterial snippet 反序列化依赖 RegisterClass 注册表；显式加载 #LLUXAC 使用的节点块，保证序列化类名能恢复为运行时节点。
-import "@babylonjs/core/Materials/Node/Blocks/Dual/textureBlock";
-import "@babylonjs/core/Materials/Node/Blocks/addBlock";
-import "@babylonjs/core/Materials/Node/Blocks/gradientBlock";
-import "@babylonjs/core/Materials/Node/Blocks/remapBlock";
-import "@babylonjs/core/Materials/Node/Blocks/scaleBlock";
-import "@babylonjs/core/Materials/Node/Blocks/vectorMergerBlock";
-import "@babylonjs/core/Materials/Node/Blocks/vectorSplitterBlock";
-// RGBD 纹理解码会创建内置后处理；显式注册 shader，避免开发服务器把 shader 请求回退成 HTML。
-import "@babylonjs/core/Shaders/postprocess.vertex";
-import "@babylonjs/core/Shaders/rgbdDecode.fragment";
-import { Scalar } from "@babylonjs/core/Maths/math.scalar";
-import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
-import { SolidParticleSystem } from "@babylonjs/core/Particles/solidParticleSystem";
 
 // 模拟无限宽平面
 

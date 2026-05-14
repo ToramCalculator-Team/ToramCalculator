@@ -1,17 +1,8 @@
-import "@babylonjs/loaders/glTF/2.0/glTFLoader";
-import "@babylonjs/loaders/glTF/2.0/Extensions/KHR_draco_mesh_compression";
-import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
-import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
-import type { AbstractEngine } from "@babylonjs/core/Engines/abstractEngine";
-import { Engine } from "@babylonjs/core/Engines/engine";
-import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
-import { SpotLight } from "@babylonjs/core/Lights/spotLight";
-import { Color3 } from "@babylonjs/core/Maths/math";
-import { Vector3 } from "@babylonjs/core/Maths/math.vector";
-import { Scene } from "@babylonjs/core/scene";
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import { createEffect, createMemo, createSignal, type JSX, on, onCleanup, onMount } from "solid-js";
 
+import { ArcRotateCamera, Color3, Engine, Scene, ShadowGenerator, SpotLight, Vector3 } from "~/lib/babylon/runtime";
+import type { AbstractEngine } from "~/lib/babylon/runtime";
 import {
 	BuiltinAnimationType,
 	type CharacterEntityRuntime,

@@ -1,33 +1,34 @@
-import type { AbstractEngine } from "@babylonjs/core/Engines/abstractEngine";
-import { Engine } from "@babylonjs/core/Engines/engine";
-import { Color3, Color4 } from "@babylonjs/core/Maths/math";
-import { Vector3 } from "@babylonjs/core/Maths/math.vector";
-import { Scene } from "@babylonjs/core/scene";
 import { createEffect, createMemo, createSignal, type JSX, onCleanup, onMount } from "solid-js";
 import { createLogger } from "~/lib/Logger";
+import {
+	AppendSceneAsync,
+	Color3,
+	Color4,
+	Engine,
+	LensRenderingPipeline,
+	Material,
+	MaterialPluginBase,
+	MeshBuilder,
+	PBRBaseMaterial,
+	RegisterMaterialPlugin,
+	Scalar,
+	Scene,
+	ShadowGenerator,
+	SolidParticleSystem,
+	SpotLight,
+	Vector3,
+} from "~/lib/babylon/runtime";
+import type {
+	AbstractEngine,
+	ArcRotateCamera,
+	MaterialDefines,
+	Mesh,
+	Nullable,
+	PBRMaterial,
+	SubMesh,
+} from "~/lib/babylon/runtime";
 import { store } from "~/store";
 import { resolveColorSystem } from "~/styles/colorSystem/colorSystemController";
-import "@babylonjs/core/Rendering/depthRendererSceneComponent";
-import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
-import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
-import { AppendSceneAsync } from "@babylonjs/core/Loading/sceneLoader";
-import "@babylonjs/loaders/glTF/2.0/glTFLoader";
-import "@babylonjs/loaders/glTF/2.0/Extensions/KHR_draco_mesh_compression";
-import type { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
-import { SpotLight } from "@babylonjs/core/Lights/spotLight";
-import { Material } from "@babylonjs/core/Materials/material";
-import type { MaterialDefines } from "@babylonjs/core/Materials/materialDefines";
-import { MaterialPluginBase } from "@babylonjs/core/Materials/materialPluginBase";
-import { RegisterMaterialPlugin } from "@babylonjs/core/Materials/materialPluginManager";
-import { PBRBaseMaterial } from "@babylonjs/core/Materials/PBR/pbrBaseMaterial";
-import type { PBRMaterial } from "@babylonjs/core/Materials/PBR/pbrMaterial";
-import { Scalar } from "@babylonjs/core/Maths/math.scalar";
-import type { Mesh } from "@babylonjs/core/Meshes/mesh";
-import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
-import type { SubMesh } from "@babylonjs/core/Meshes/subMesh";
-import { SolidParticleSystem } from "@babylonjs/core/Particles/solidParticleSystem";
-import { LensRenderingPipeline } from "@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/lensRenderingPipeline";
-import type { Nullable } from "@babylonjs/core/types";
 import { useEngine } from "../core/thread/EngineContext";
 import type { SimulationEngine } from "../core/thread/SimulationEngine";
 import { rendererCommunication } from "./RendererCommunication";

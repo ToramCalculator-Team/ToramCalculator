@@ -4,36 +4,31 @@
  * 支持主题切换，并保持与SolidJS的响应式同步
  */
 
-import { Animation } from "@babylonjs/core/Animations/animation";
-import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
-import type { AbstractEngine } from "@babylonjs/core/Engines/abstractEngine";
-import { Engine } from "@babylonjs/core/Engines/engine";
-import { Material } from "@babylonjs/core/Materials/material";
-import type { MaterialDefines } from "@babylonjs/core/Materials/materialDefines";
-import { MaterialPluginBase } from "@babylonjs/core/Materials/materialPluginBase";
-import { PBRBaseMaterial } from "@babylonjs/core/Materials/PBR/pbrBaseMaterial";
-import type { PBRMaterial } from "@babylonjs/core/Materials/PBR/pbrMaterial";
-import { Color3, Color4 } from "@babylonjs/core/Maths/math";
-import { Vector3 } from "@babylonjs/core/Maths/math.vector";
-import type { Mesh } from "@babylonjs/core/Meshes/mesh";
-import type { SubMesh } from "@babylonjs/core/Meshes/subMesh";
-import { LensRenderingPipeline } from "@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/lensRenderingPipeline";
-import { Scene } from "@babylonjs/core/scene";
-import type { Nullable } from "@babylonjs/core/types";
 import { createEffect, createMemo, createSignal, type JSX, onCleanup, onMount } from "solid-js";
 import { LoadingBar } from "~/components/controls/loadingBar";
+import {
+	Animation,
+	ArcRotateCamera,
+	Color3,
+	Color4,
+	Engine,
+	LensRenderingPipeline,
+	Material,
+	MaterialPluginBase,
+	MeshBuilder,
+	PBRBaseMaterial,
+	RegisterMaterialPlugin,
+	Scalar,
+	Scene,
+	SceneLoader,
+	ShadowGenerator,
+	SolidParticleSystem,
+	SpotLight,
+	Vector3,
+} from "~/lib/babylon/runtime";
+import type { AbstractEngine, MaterialDefines, Mesh, Nullable, PBRMaterial, SubMesh } from "~/lib/babylon/runtime";
 import { store } from "~/store";
 import { resolveColorSystem } from "~/styles/colorSystem/colorSystemController";
-import "@babylonjs/core/Rendering/depthRendererSceneComponent";
-import { SpotLight } from "@babylonjs/core/Lights/spotLight";
-import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
-import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
-import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
-import { RegisterMaterialPlugin } from "@babylonjs/core/Materials/materialPluginManager";
-import { Scalar } from "@babylonjs/core/Maths/math.scalar";
-import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
-import { SolidParticleSystem } from "@babylonjs/core/Particles/solidParticleSystem";
-import "@babylonjs/loaders/glTF/2.0/glTFLoader";
 
 // ==================== 类型声明 ====================
 declare module "@babylonjs/core" {

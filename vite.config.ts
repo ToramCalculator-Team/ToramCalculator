@@ -144,9 +144,7 @@ function createChunkManifestPlugin(): Plugin {
 	};
 }
 
-export default defineConfig(({ mode }) => {
-	const isDev = mode === "development";
-
+export default defineConfig(() => {
 	return {
 		resolve: {
 			alias: {
@@ -190,7 +188,12 @@ export default defineConfig(({ mode }) => {
 			format: "es" as const,
 		},
 		optimizeDeps: {
-			exclude: ["@electric-sql/pglite"],
+			// Babylon 的 shader、loader、scene component 会沿运行时能力按需进入模块图。
+			// 目的：开发模式直接服务 Babylon 的 ESM 文件，避免 Vite 在场景初始化中追加预构建并使浏览器已请求的 chunk 过期。
+			exclude: ["@babylonjs/core", "@babylonjs/loaders", "@babylonjs/materials", "@electric-sql/pglite"],
+			// Inspector 是调试 UI，内部依赖 React、Fluent UI 与 Griffel；这条链路需要 Vite 的 CJS/ESM 兼容包装。
+			// 目的：让 babylonScene 按需打开 Inspector 时直接复用稳定的调试 UI 预构建产物。
+			include: ["@babylonjs/inspector"],
 		},
 		plugins: [
 			// SPA 模式用于避免 SSR 在 Node 里加载 monaco-editor 链上的 .css

@@ -1,6 +1,5 @@
-import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
-import { Vector3 } from "@babylonjs/core/Maths/math.vector";
-import type { Scene } from "@babylonjs/core/scene";
+import { ArcRotateCamera, Vector3 } from "~/lib/babylon/runtime";
+import type { Scene } from "~/lib/babylon/runtime";
 import type { createRendererController } from "./RendererController";
 import type { EntityId } from "./RendererProtocol";
 

@@ -1,109 +1,118 @@
-# ToramCalculator — Agent Guide
+# ToramCalculator — 代理工作指南
 
-## Quick commands
+## 常用命令
 
-| Action | Command |
-|--------|---------|
-| Setup (first time / schema change) | `pnpm setup` |
-| Generate code only | `pnpm generate` |
-| Dev server | `pnpm dev` |
-| Build (pre-commit) | `pnpm build` |
-| Lint & format | `pnpm biome check --write src/ db/` |
-| Start infra | `pnpm infra:up` |
-| Reset infra (destroys volumes) | `pnpm infra:reset` |
-| Prisma Studio (on generated schema) | `pnpm db:studio` |
+| 操作 | 命令 |
+|------|------|
+| 首次初始化 / schema 变更后初始化 | `pnpm setup` |
+| 只生成代码 | `pnpm generate` |
+| 启动开发服务器 | `pnpm dev` |
+| 提交前构建 | `pnpm build` |
+| 检查并格式化 | `pnpm biome check --write src/ db/` |
+| 启动基础设施 | `pnpm infra:up` |
+| 重置基础设施（会删除 volumes） | `pnpm infra:reset` |
+| 打开 Prisma Studio（使用生成后的 schema） | `pnpm db:studio` |
 
-## Architecture
+## 架构
 
-- **Framework**: SolidJS + SolidStart v2 alpha (`@solidjs/start`), Vite 7, **SSR disabled** (`ssr: false`). SPA mode.
-- **Routing**: File-based (`src/routes/`), parens-wrap layouts: `(app)`, `(features)`, `(toolPages)`.
-- **State**: SolidJS stores (`src/store.ts`) + XState machines (`xstate`).
-- **3D**: Babylon.js 8.53 (core, loaders, materials; inspector dev-only).
-- **3D vendor chunk**: `babylon-runtime`, `babylon-debug` (includes React/FluentUI for inspector).
+- **框架**：SolidJS + SolidStart v2 alpha（`@solidjs/start`）、Vite 7，**关闭 SSR**（`ssr: false`），以 SPA 模式运行。
+- **路由**：基于文件系统（`src/routes/`），使用括号目录组织布局：`(app)`、`(features)`、`(toolPages)`。
+- **状态**：SolidJS store（`src/store.ts`）+ XState 状态机（`xstate`）。
+- **3D**：Babylon.js 8.53（core、loaders、materials；inspector 仅开发时使用）。
+- **3D vendor chunk**：`babylon-runtime`、`babylon-debug`（后者包含 inspector 所需的 React/FluentUI）。
 
-## Database & Codegen (critical)
+## 数据库与代码生成
 
-**Generated code** lives in `db/generated/` and is gitignored. Regenerate with `pnpm generate`.
+**生成代码**位于 `db/generated/`，该目录被 git 忽略。需要重新生成时运行 `pnpm generate`。
 
-Generation pipeline (in order):
-1. `generate:inject` — reads `db/schema/enums.ts`, injects enums into Prisma schema via `EnumInjector`
-2. `generate:schema` — runs custom Prisma generator (`db/generator/generator.ts`) producing: Zod schemas, DMMF utils, Kysely query builder rules, SQL (server + client), repositories
-3. `generate:colorSystem` — generates CSS color tokens from `src/styles/colorSystem/generator/generator.ts`
+生成流程按以下顺序执行：
 
-**Schema source files**: `db/schema/main.prisma` + `db/schema/models/*.prisma` + `db/schema/enums.ts`
-- `enums.ts` is the **single source of truth** for DB enums; edit it, not the prisma files directly.
-- After editing schema or enums: run `pnpm generate` or `pnpm setup` (also resets infra).
+1. `generate:inject`：读取 `db/schema/enums.ts`，通过 `EnumInjector` 将枚举注入 Prisma schema。
+2. `generate:schema`：运行自定义 Prisma generator（`db/generator/generator.ts`），生成 Zod schema、DMMF 工具、Kysely query builder 规则、SQL（server + client）和 repository。
+3. `generate:colorSystem`：从 `src/styles/colorSystem/generator/generator.ts` 生成 CSS 颜色 token。
 
-**DB access**: Kysely (`kysely`) with `@db/generated/zod/index` for types.
-- Server: PostgreSQL via `pg` pool.
-- Client: PGlite in Web Worker (`src/lib/pglite/`) synced via ElectricSQL.
+**Schema 源文件**：`db/schema/main.prisma` + `db/schema/models/*.prisma` + `db/schema/enums.ts`
 
-**Change API**: `POST /api/changes` — JWT-authenticated write endpoint (insert/update only, deletes blocked).
+- `enums.ts` 是数据库枚举的**唯一事实源**；修改枚举时改它，不要直接改 prisma 文件。
+- 修改 schema 或枚举后，运行 `pnpm generate` 或 `pnpm setup`；`pnpm setup` 会同时重置基础设施。
 
-## Infrastructure
+**数据库访问**：使用 Kysely（`kysely`），类型来自 `@db/generated/zod/index`。
 
-- Docker Compose in `backend/docker-compose.yaml` — PostgreSQL 16 (tmpfs, logical WAL) + ElectricSQL.
-- Init SQL loaded from `db/generated/server.sql`.
-- `infra:reset` does `down --volumes` + up + restore backup — destroys all data.
+- 服务端：PostgreSQL，通过 `pg` pool 访问。
+- 客户端：PGlite Web Worker（`src/lib/pglite/`），通过 ElectricSQL 同步。
 
-## Build / Service Worker
+**变更 API**：`POST /api/changes`，这是 JWT 认证的写入端点；只允许 insert/update，禁止 delete。
 
-`pnpm build` does:
-1. Service worker build: `node src/worker/sw/build.mjs` (esbuild, outputs `public/service.worker.js`)
-2. Vite build: `NODE_OPTIONS=--max-old-space-size=4096 vite build`
+## 基础设施
 
-SW version is extracted from `src/store.ts`'s `version` field.
+- Docker Compose 文件位于 `backend/docker-compose.yaml`，包含 PostgreSQL 16（tmpfs、logical WAL）和 ElectricSQL。
+- 初始化 SQL 来自 `db/generated/server.sql`。
+- `infra:reset` 会执行 `down --volumes`、重新启动服务并恢复备份；该操作会删除所有数据。
 
-## Conventions
+## 构建与 Service Worker
 
-- **Path aliases**: `~/` → `src/`, `@db/` → `db/`
-- **TypeScript**: strict, `noEmit`, `moduleResolution: bundler`, JSX preserve (Solid).
-- **Env**: `.env` with `dotenv-expand` (supports `${VAR}` references). Copy from `.env.example`.
-- **Text encoding**: source files are UTF-8. When reading or editing from PowerShell, use explicit UTF-8 handling (for example `Get-Content -Encoding UTF8`) so Chinese comments are not misread as mojibake.
-- **No tests exist** in this repo.
+`pnpm build` 执行两步：
 
-## Documentation & ADRs
+1. Service Worker 构建：`node src/worker/sw/build.mjs`（使用 esbuild，输出 `public/service.worker.js`）。
+2. Vite 构建：`NODE_OPTIONS=--max-old-space-size=4096 vite build`。
 
-Design docs live in `src/lib/engine/document/`. Code is not the sole source of truth — the engine carries design intent that only survives in documentation. Read and extend it as you work.
+SW 版本号从 `src/store.ts` 的 `version` 字段提取。
 
-### Layout
+## 约定
 
-- `src/lib/engine/document/README.md` — entry point, reader-oriented navigation.
-- `src/lib/engine/document/decisions/` — ADRs (architecture decision records).
-- `src/lib/engine/document/decisions/README.md` — **authoritative ADR rules**. Read before writing one.
-- `src/lib/engine/document/decisions/0000-template.md` — template.
-- Legacy narratives (`架构设计说明概要.md`, `hook与触发层设计讨论结论.md`, `通信协议表.md`, `WorldAreaSystem.md`) — historical snapshots. Do not extend them; split new content into ADRs instead.
+- **路径别名**：`~/` 指向 `src/`，`@db/` 指向 `db/`。
+- **TypeScript**：启用 strict、`noEmit`、`moduleResolution: bundler`，JSX 使用 preserve（Solid）。
+- **环境变量**：使用 `.env` 和 `dotenv-expand`，支持 `${VAR}` 引用；新环境从 `.env.example` 复制。
+- **文本编码**：源文件使用 UTF-8。从 PowerShell 读取或编辑文件时显式指定 UTF-8，例如 `Get-Content -Encoding UTF8`，避免中文注释变成乱码。
+- **测试**：当前仓库没有测试。
 
-### When to propose an ADR
+## 文档与 ADR
 
-Propose one (with user confirmation) when the change:
-- Crosses ≥2 top-level engine directories, or modifies a contract (`PipelineCatalog` / `EventCatalog` / `AttributeSchema` / `StatusTypeRegistry`, inter-thread protocol, checkpoint format).
-- Switches an already-implemented approach to a different one.
-- Introduces a new registry, communication mechanism, or layering.
-- Establishes a convention future passives / skills / pipelines must follow (naming prefixes, bitfield allocation, payload field additions).
+设计文档位于 `src/lib/engine/document/`。代码不是唯一事实源；引擎设计意图需要通过文档保留。工作时应读取并扩展相关文档。
 
-Do **not** create ADRs for: single-file refactors, bug fixes, formatting, or purely exploratory ideas. Commit messages and inline comments cover those.
+### 目录结构
 
-### Hard rules (never violate silently)
+- `src/lib/engine/document/README.md`：文档入口，按读者视角组织导航。
+- `src/lib/engine/document/decisions/`：ADR（架构决策记录）。
+- `src/lib/engine/document/decisions/README.md`：**ADR 规则的权威来源**；写 ADR 前必须阅读。
+- `src/lib/engine/document/decisions/0000-template.md`：ADR 模板。
+- 历史叙述文档（`架构设计说明概要.md`、`hook与触发层设计讨论结论.md`、`通信协议表.md`、`WorldAreaSystem.md`）：这些是历史快照。不要继续扩写它们；新内容拆入 ADR。
 
-1. **Never edit an existing `Accepted` ADR's body.** Substantive corrections go into a new ADR that `Supersedes: NNNN`. Only the status field, broken links, code line numbers, and typos may be patched in place.
-2. **Never reuse an ADR number.** Deprecated/superseded ADRs keep their number forever.
-3. **"代价" (trade-offs) section is mandatory.** If you cannot articulate what the decision gives up, stop and ask — the design is not ready.
-4. **Keep ADRs single-concern.** Multiple independent trade-offs → multiple ADRs.
-5. **Do not restate code.** ADRs explain *why*, not *what*. Link with `path:line`, don't paste signatures.
-6. **Candidate options must list both pros and cons.** A one-sided option means analysis is incomplete.
+### 何时提议新增 ADR
 
-### Authoring workflow
+变更满足以下任一条件时，先向用户提议新增 ADR，并等待确认：
 
-Full procedure in `decisions/README.md` §维护规则. Short version:
+- 跨越至少 2 个引擎顶层目录，或修改契约：`PipelineCatalog`、`EventCatalog`、`AttributeSchema`、`StatusTypeRegistry`、线程间协议、checkpoint 格式。
+- 将已经实现的方案切换为另一种方案。
+- 引入新的 registry、通信机制或分层方式。
+- 建立未来 passive、skill、pipeline 必须遵守的约定，例如命名前缀、bitfield 分配、payload 字段新增。
 
-1. Grep the index and 待拆清单 for duplicates / supersedable entries.
-2. Take max index + 1, four digits. File: `NNNN-<kebab-english-slug>.md`.
-3. Copy `0000-template.md`; initial status `Proposed`.
-4. Update the index table; tick off 待拆清单 if applicable.
-5. Add `// 见 src/lib/engine/document/decisions/NNNN-xxx.md` only at non-obvious code sites — don't spam.
-6. Commit ADR + code in one commit, message prefixed with `(ADR-NNNN)`. Doc-only revisions use `docs:` prefix in a separate commit.
+以下场景不新增 ADR：单文件重构、缺陷修复、格式调整、纯探索想法。此类内容用提交信息和行内注释承载。
 
-### Language
+### 硬性规则
 
-Write ADRs in Chinese to match the rest of the document set, unless the user explicitly asks otherwise. Metadata keys (`状态`, `日期`, `决策层`) stay in Chinese for consistency with existing ADRs.
+1. **不要静默修改已 `Accepted` 的 ADR 正文。** 实质修正应新增 ADR，并在新 ADR 中写 `Supersedes: NNNN`。只有状态字段、损坏链接、代码行号和错别字可以在原 ADR 中直接修正。
+2. **不要复用 ADR 编号。** 已废弃或被取代的 ADR 也永久保留原编号。
+3. **`代价`部分必填。** 如果说不清决策放弃了什么，停下来向用户确认；此时设计还未准备好。
+4. **每个 ADR 只处理一个关注点。** 多个独立取舍应拆成多个 ADR。
+5. **ADR 不复述代码。** ADR 解释“为什么”，不解释“代码写了什么”。用 `path:line` 链接代码，不粘贴签名。
+6. **候选方案必须同时列出优点和缺点。** 只有单边论证说明分析不完整。
+
+### 编写流程
+
+完整流程见 `decisions/README.md` 的“维护规则”章节。简版如下：
+
+1. 先 grep ADR 索引和待拆清单，确认没有重复议题，也没有应被取代的现有 ADR。
+2. 取当前最大编号 + 1，使用四位数字。文件名格式：`NNNN-<英文短横线-slug>.md`。
+3. 复制 `0000-template.md`，初始状态设为 `Proposed`。
+4. 更新索引表；如果命中待拆清单，同时勾掉对应项。
+5. 只在不明显的代码位置添加 `// 见 src/lib/engine/document/decisions/NNNN-xxx.md`；不要到处添加。
+6. ADR 和代码放在同一个提交中，提交信息以 `(ADR-NNNN)` 开头。纯文档修订使用 `docs:` 前缀，并单独提交。
+
+### 语言
+
+ADR 使用中文书写，以匹配现有文档集；只有用户明确要求时才使用其他语言。元数据键（`状态`、`日期`、`决策层`）保持中文。
+
+## 额外约束
+
+你可以使用 `uvx codetre` 查看代码大纲

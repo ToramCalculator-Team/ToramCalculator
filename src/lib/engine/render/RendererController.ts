@@ -1,16 +1,18 @@
-import { Animation } from "@babylonjs/core/Animations/animation";
-import { AnimationGroup } from "@babylonjs/core/Animations/animationGroup";
-import { IAnimationKey } from "@babylonjs/core/Animations/animationKey";
-import { AppendSceneAsync, ImportMeshAsync, SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
-import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
-import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture";
-import { Color3 } from "@babylonjs/core/Maths/math";
-import { Vector3 } from "@babylonjs/core/Maths/math.vector";
-import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
-import { Mesh } from "@babylonjs/core/Meshes/mesh";
-import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
-import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
-import type { Scene } from "@babylonjs/core/scene";
+import {
+	Animation,
+	AnimationGroup,
+	AppendSceneAsync,
+	Color3,
+	DynamicTexture,
+	ImportMeshAsync,
+	Mesh,
+	MeshBuilder,
+	SceneLoader,
+	StandardMaterial,
+	TransformNode,
+	Vector3,
+} from "~/lib/babylon/runtime";
+import type { AbstractMesh, IAnimationKey, Scene } from "~/lib/babylon/runtime";
 import type {
 	ActionCmd,
 	CameraFollowCmd,
