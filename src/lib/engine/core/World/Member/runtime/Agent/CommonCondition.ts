@@ -1,6 +1,17 @@
 import { z } from "zod/v4";
+import { BUILT_IN_REGISTLETS_BY_ID } from "../../attachments/BuiltInRegistlets";
 import type { BtContext } from "./BtContext";
 import { type ConditionPool, defineCondition } from "./type";
+
+function currentCharacterOf(context: BtContext): unknown {
+	const runtime = context.runtime ?? context.owner?.runtime;
+	if (!runtime || typeof runtime !== "object" || !("character" in runtime)) return null;
+	return (runtime as { character?: unknown }).character ?? null;
+}
+
+function currentSkillIdOf(context: BtContext): string | null {
+	return context.currentSkill?.templateId ?? context.currentSkill?.template?.id ?? context.currentSkill?.id ?? null;
+}
 
 export const CommonConditionPool = {
 	/** 是否拥有指定名称的buff
@@ -36,6 +47,51 @@ export const CommonConditionPool = {
 		const exceptionNames = ["cowering", "overturned", "dizzy"];
 		return exceptionNames.some((name) => context.statusTags.includes(name));
 	}),
+
+	/**
+	 * 判断当前技能分支是否被托环启用。
+	 *
+	 * 设计说明：
+	 * - 托环的 skillBranchActivators 保留在 character.registlets 数据里。
+	 * - 条件运行时直接搜索 character 数据，避免在 Member runtime 上缓存一份分支状态。
+	 */
+	isSkillBranchActivated: defineCondition(
+		z.object({
+			branchKey: z.string(),
+			skillId: z.string().optional(),
+			value: z.number().optional(),
+		}),
+		(context, input) => {
+			const skillId = input.skillId ?? currentSkillIdOf(context);
+			if (!skillId) return false;
+
+			const character = currentCharacterOf(context) as {
+				registlets?: Array<{
+					templateId?: string;
+					template?: {
+						skillBranchActivators?: Array<{
+							skillId: string;
+							branchKey: string;
+							value: number;
+						}>;
+					} | null;
+				}>;
+			} | null;
+			const rings = Array.isArray(character?.registlets) ? character.registlets : [];
+			for (const ring of rings) {
+				const activators =
+					ring.template?.skillBranchActivators ??
+					(ring.templateId ? BUILT_IN_REGISTLETS_BY_ID.get(ring.templateId)?.skillBranchActivators : undefined) ??
+					[];
+				for (const activator of activators) {
+					if (activator.skillId !== skillId || activator.branchKey !== input.branchKey) continue;
+					if (input.value === undefined) return activator.value !== 0;
+					return activator.value === input.value;
+				}
+			}
+			return false;
+		},
+	),
 } as const satisfies ConditionPool<BtContext>;
 
 export type CommonConditionPool = typeof CommonConditionPool;

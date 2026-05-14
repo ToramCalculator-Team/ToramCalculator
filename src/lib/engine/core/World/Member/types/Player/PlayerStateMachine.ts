@@ -1,8 +1,6 @@
-import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import { type EventObject, setup } from "xstate";
 import type { ExpressionContext } from "~/lib/engine/core/JSProcessor/types";
-import type { StageData } from "~/lib/engine/core/Pipeline/stageEnv";
 import type { MemberDomainEvent } from "~/lib/engine/core/types";
 import { createLogger } from "~/lib/Logger";
 import type { DamageDispatchPayload } from "../../../Area/types";
@@ -24,6 +22,7 @@ import type {
 } from "../../runtime/StateMachine/types";
 import type { MemberSharedRuntime, PlayerRuntime } from "../../runtime/types";
 import type { Player, PlayerAttrType } from "./Player";
+import { computePlayerSkillLifecycleMs, type SkillVariantTimingMs, selectPlayerSkillVariant } from "./skillLifecycle";
 
 const log = createLogger("PlayerSM");
 
@@ -177,17 +176,6 @@ export interface PlayerStateMachineEnv
 	runtime: PlayerRuntime;
 }
 
-type SkillVariant = NonNullable<NonNullable<CharacterSkillWithRelations["template"]>["variants"]>[number];
-type SkillVariantTimingMs = {
-	startupMs?: string | null;
-	actionFixedMs?: string | null;
-	actionModifiedMs?: string | null;
-	chantingFixedMs?: string | null;
-	chantingModifiedMs?: string | null;
-	chargingFixedMs?: string | null;
-	chargingModifiedMs?: string | null;
-};
-
 const playerMachineSetup = setup({
 	types: {
 		context: {} as PlayerStateContext,
@@ -284,8 +272,6 @@ export const playerStateMachine = (
 					env.runtime.previousSkill = env.runtime.currentSkill;
 					env.runtime.currentSkill = null;
 					env.runtime.currentSkillVariant = null;
-					// 技能结束后清空瞬态快照，避免把上一个技能的 registlet 分支参数泄漏到下一次。
-					env.runtime.currentSkillBranchParams = {};
 					env.runtime.currentSkillStartupMs = 0;
 					env.runtime.currentSkillChargingMs = 0;
 					env.runtime.currentSkillChantingMs = 0;
@@ -302,7 +288,7 @@ export const playerStateMachine = (
 						log.error(`🎮 [${env.name}] 当前技能不存在`);
 						return;
 					}
-					const variant = getSkillVariant(env.runtime.currentSkill, env.runtime.character);
+					const variant = selectPlayerSkillVariant(env.runtime.currentSkill, env.runtime.character);
 					log.debug(`技能变体`, variant);
 					env.runtime.currentSkillVariant = variant ?? null;
 				},
@@ -319,71 +305,24 @@ export const playerStateMachine = (
 						return;
 					}
 
-					// 预求值 variant 上的字符串公式，再交给纯计算管线套用行动速度修正。
-					const evaluator = env.services.expressionEvaluator;
-					const evalNum = (expr: string | null | undefined, label: string): number => {
-						if (!expr) return 0;
-						const asNumber = Number(expr);
-						if (Number.isFinite(asNumber)) return asNumber;
-						if (!evaluator) {
-							log.error(`👤 [${env.name}] expressionEvaluator 未注入：${label}`);
-							return 0;
-						}
-						const out = evaluator(expr, expressionContext(env, { skillLv: skill.lv ?? 0 }));
-						if (typeof out === "number" && Number.isFinite(out)) return out;
-						if (typeof out === "boolean") return out ? 1 : 0;
-						log.warn(`👤 [${env.name}] ${label} 求值结果非数字，置 0：${String(out)}`);
-						return 0;
-					};
+					if (!env.services.expressionEvaluator) {
+						log.error(`👤 [${env.name}] expressionEvaluator 未注入：无法计算技能生命周期`);
+						return;
+					}
 
-					const timing = variant as unknown as SkillVariantTimingMs;
-					const startupOriginal = evalNum(timing.startupMs, "startupMs");
-					const actionFixed = evalNum(timing.actionFixedMs, "actionFixedMs");
-					const actionModified = evalNum(timing.actionModifiedMs, "actionModifiedMs");
-					const chantingFixed = evalNum(timing.chantingFixedMs, "chantingFixedMs");
-					const chantingModified = evalNum(timing.chantingModifiedMs, "chantingModifiedMs");
-					const chargingFixed = evalNum(timing.chargingFixedMs, "chargingFixedMs");
-					const chargingModified = evalNum(timing.chargingModifiedMs, "chargingModifiedMs");
+					const lifecycle = computePlayerSkillLifecycleMs({
+						variant,
+						skillLevel: skill.lv ?? 0,
+						expressionContext: expressionContext(env),
+						evaluateExpression: env.services.expressionEvaluator,
+						runPipeline: env.runPipeline,
+						onWarn: (message) => log.warn(`👤 [${env.name}] ${message}`),
+					});
 
-					const runPipelineDurationMs = (
-						pipelineName: string,
-						params: Record<string, unknown>,
-						fallback: number,
-					): number => {
-						try {
-							const out = env.runPipeline(pipelineName, params) as Record<string, unknown>;
-							const durationMs = out?.durationMs;
-							if (typeof durationMs === "number" && Number.isFinite(durationMs)) {
-								return Math.max(0, Math.floor(durationMs));
-							}
-						} catch (error) {
-							log.warn(
-								`👤 [${env.name}] 运行 ${pipelineName} 失败: ${error instanceof Error ? error.message : String(error)}`,
-							);
-						}
-						return Math.max(0, Math.floor(fallback));
-					};
-
-					env.runtime.currentSkillStartupMs = runPipelineDurationMs(
-						"skill.startup",
-						{ original: startupOriginal },
-						startupOriginal,
-					);
-					env.runtime.currentSkillChargingMs = runPipelineDurationMs(
-						"skill.charging",
-						{ fixed: chargingFixed, modified: chargingModified },
-						chargingFixed + chargingModified,
-					);
-					env.runtime.currentSkillChantingMs = runPipelineDurationMs(
-						"skill.chanting",
-						{ fixed: chantingFixed, modified: chantingModified },
-						chantingFixed + chantingModified,
-					);
-					env.runtime.currentSkillActionMs = runPipelineDurationMs(
-						"skill.action",
-						{ fixed: actionFixed, modified: actionModified },
-						actionFixed + actionModified,
-					);
+					env.runtime.currentSkillStartupMs = lifecycle.startupMs;
+					env.runtime.currentSkillChargingMs = lifecycle.chargingMs;
+					env.runtime.currentSkillChantingMs = lifecycle.chantingMs;
+					env.runtime.currentSkillActionMs = lifecycle.actionMs;
 
 					log.debug(
 						`👤 [${env.name}] 技能时间参数(ms): startup=${env.runtime.currentSkillStartupMs}, charging=${env.runtime.currentSkillChargingMs}, chanting=${env.runtime.currentSkillChantingMs}, action=${env.runtime.currentSkillActionMs}`,
@@ -638,7 +577,7 @@ export const playerStateMachine = (
 						log.error(`🎮 [${env.name}] 技能不存在: ${skillId}`);
 						return true;
 					}
-					const variant = getSkillVariant(skill, env.runtime.character);
+					const variant = selectPlayerSkillVariant(skill, env.runtime.character);
 					if (!variant) {
 						log.error(`🎮 [${env.name}] 技能变体不存在: ${skillId}`);
 						return true;
@@ -673,7 +612,7 @@ export const playerStateMachine = (
 						log.error(`🎮 [${env.name}] 技能不存在: ${skillId}`);
 						return true;
 					}
-					const variant = getSkillVariant(skill, env.runtime.character);
+					const variant = selectPlayerSkillVariant(skill, env.runtime.character);
 					if (!variant) {
 						log.error(`🎮 [${env.name}] 技能效果不存在: ${skillId}`);
 						return true;
@@ -1008,16 +947,4 @@ export const playerStateMachine = (
 		});
 
 	return machine;
-};
-
-const getSkillVariant = (skill: CharacterSkillWithRelations, character: CharacterWithRelations | null) => {
-	if (character === null) return undefined;
-	return skill.template?.variants.find((e: SkillVariant) => {
-		const weaponCondition = e.targetMainWeaponType === character.weapon?.type || e.targetMainWeaponType === "Any";
-		const subWeaponCondition = e.targetSubWeaponType === character.subWeapon?.type || e.targetSubWeaponType === "Any";
-		const armorAbilityCondition =
-			e.targetArmorAbilityType === character.armor?.ability || e.targetArmorAbilityType === "Any";
-		const result = weaponCondition && subWeaponCondition && armorAbilityCondition;
-		return result;
-	});
 };

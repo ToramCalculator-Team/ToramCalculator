@@ -260,6 +260,11 @@ export const ComputedSkillInfoSchema = z.object({
 		castingRange: z.number(),
 		cooldownRemaining: z.number(),
 		isAvailable: z.boolean(),
+		startupMs: z.number(),
+		chargingMs: z.number(),
+		chantingMs: z.number(),
+		actionMs: z.number(),
+		activeEffectDurationMs: z.number(),
 	}),
 });
 export type ComputedSkillInfo = z.output<typeof ComputedSkillInfoSchema>;

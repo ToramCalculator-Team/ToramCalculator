@@ -8,6 +8,7 @@ export interface SkillProbeResult {
 	predictedDamage: number;
 	mpCost: number;
 	castTimeMs: number;
+	activeEffectDurationMs?: number;
 	cooldownMs: number;
 	isAvailable: boolean;
 	meta?: Record<string, unknown>;

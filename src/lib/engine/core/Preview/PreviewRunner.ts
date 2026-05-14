@@ -2,6 +2,7 @@ import { createLogger } from "~/lib/Logger";
 import type { GameEngine } from "../GameEngine";
 import type { EngineCheckpoint } from "../types";
 import { createPreviewConfig } from "../types";
+import { resolvePreviewFastForwardTimeoutMs } from "./previewTimeout";
 import type { PreviewReport, SkillProbeResult } from "./types";
 
 const log = createLogger("PreviewRunner");
@@ -125,7 +126,8 @@ export class PreviewRunner {
 		memberEntry.actor.send({ type: "使用技能", data: { target: "", skillId } });
 
 		// 执行同步快进
-		const { ticksRun } = this.engine.fastForwardSync({ maxDurationMs: 1000 });
+		const timeoutMs = resolvePreviewFastForwardTimeoutMs(info.computed.activeEffectDurationMs);
+		const { ticksRun } = this.engine.fastForwardSync({ maxDurationMs: timeoutMs });
 
 		log.debug(`探测技能 ${skillId}(${skillName}): 执行 ${ticksRun} tick, 累计伤害 ${totalDamage}`);
 
@@ -134,8 +136,8 @@ export class PreviewRunner {
 			skillName,
 			predictedDamage: totalDamage,
 			mpCost: info.computed.mpCost,
-			// ComputedSkillInfo 当前只暴露消耗/可用性/距离，技能时序需要后续从共享时序服务填充。
-			castTimeMs: 0,
+			castTimeMs: info.computed.activeEffectDurationMs,
+			activeEffectDurationMs: info.computed.activeEffectDurationMs,
 			cooldownMs: info.computed.cooldownRemaining,
 			isAvailable: info.computed.isAvailable,
 		};

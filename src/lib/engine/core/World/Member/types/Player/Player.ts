@@ -1,9 +1,11 @@
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import type { MemberWithRelations } from "@db/generated/repositories/member";
 import { createLogger } from "~/lib/Logger";
+import type { RuntimeAttachment } from "../../attachments/RuntimeAttachment";
+import { collectAttachmentSlots } from "../../attachments/RuntimeAttachment";
+import { installRuntimeAttachment } from "../../attachments/RuntimeAttachmentInstaller";
+import { collectPlayerRuntimeAttachments } from "../../construction/collectPlayerRuntimeAttachments";
 import { Member } from "../../Member";
-import { BUILT_IN_REGISTLETS_BY_ID } from "../../Registlets/BuiltInRegistlets";
-import { installRegistlet } from "../../Registlets/RegistletLoader";
 import { MemberRuntimeServicesDefaults } from "../../runtime/Agent/RuntimeServices";
 import { mergeSchema, type SlotDeclaration } from "../../runtime/StatContainer/SchemaMerge";
 import type { ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
@@ -12,7 +14,6 @@ import type { PlayerRuntime } from "../../runtime/types";
 import { PlayerBtBindings } from "./Agents/BtBindings";
 import { type PlayerAttrNestedSchema, PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
 import { type PlayerEventType, type PlayerStateContext, playerStateMachine } from "./PlayerStateMachine";
-import { applyPrebattleModifiers } from "./PrebattleDataSysModifiers";
 
 const log = createLogger("Player");
 
@@ -20,6 +21,7 @@ export type PlayerAttrType = ExtractAttrPaths<PlayerAttrNestedSchema>;
 
 export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateContext, PlayerRuntime> {
 	activeCharacter: CharacterWithRelations;
+	private readonly runtimeAttachments: RuntimeAttachment<PlayerAttrType>[];
 
 	constructor(
 		memberData: MemberWithRelations,
@@ -32,19 +34,22 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 			throw new Error("Player数据缺失");
 		}
 		const activeCharacterId = memberData.player?.useIn;
-		let activeCharacter = memberData.player.characters.find((character) => character.id === activeCharacterId);
-		if (!activeCharacter) {
-			throw new Error("未在Player.Characters中找到useIn对应的Character");
-		}
+		let activeCharacter = activeCharacterId
+			? memberData.player.characters.find((character) => character.id === activeCharacterId)
+			: undefined;
 		if (!activeCharacterId) {
 			log.warn("Player数据缺失useIn，将使用第一个角色");
 			activeCharacter = memberData.player.characters[0];
 		}
+		if (!activeCharacter) {
+			throw new Error("未在Player.Characters中找到useIn对应的Character");
+		}
 
+		const runtimeAttachments = collectPlayerRuntimeAttachments<PlayerAttrType>(activeCharacter, memberData);
 		const baseSchema = PlayerAttrSchemaGenerator(activeCharacter);
 		// 技能 / 托环 / buff 可能需要额外属性槽（咏咒层数、冷却时间戳等）。
 		// 必须在 StatContainer 构造前并入 schema，战斗中不能再扩容（Float64Array 固定长度）。
-		const slotDeclarations = Player.collectAttributeSlots(activeCharacter, memberData);
+		const slotDeclarations = Player.collectAttributeSlots(activeCharacter, memberData, runtimeAttachments);
 		const attrSchema = mergeSchema(baseSchema, slotDeclarations);
 		const statContainer = new StatContainer<PlayerAttrType>(attrSchema);
 		const initialSkillList = activeCharacter.skills;
@@ -64,7 +69,6 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 			currentSkill: null,
 			previousSkill: null,
 			currentSkillVariant: null,
-			currentSkillBranchParams: {},
 			currentSkillStartupMs: 0,
 			currentSkillChargingMs: 0,
 			currentSkillChantingMs: 0,
@@ -87,28 +91,21 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 			PlayerBtBindings,
 		);
 		this.activeCharacter = activeCharacter;
-
-		applyPrebattleModifiers(this.statContainer, memberData);
+		this.runtimeAttachments = runtimeAttachments;
 	}
 
 	/**
-	 * 从 character_registlet 关联列表安装已装备的雷吉斯托环。
+	 * 安装战前 RuntimeAttachment。
 	 *
 	 * 必须在 `setEventCatalog` 之后调用 —— 否则 ProcBus 还未就绪，subscription 会被跳过。
 	 * MemberManager 负责调用时序。
 	 */
-	installRegistletsFromCharacter(): void {
-		const rings = this.activeCharacter?.registlets ?? [];
-		for (const ring of rings) {
-			const template = BUILT_IN_REGISTLETS_BY_ID.get(ring.templateId);
-			if (!template) {
-				log.debug(`托环模板未在内置表中登记，跳过: ${ring.templateId}`);
-				continue;
-			}
+	installPrebattleRuntimeAttachments(): void {
+		for (const attachment of this.runtimeAttachments) {
 			try {
-				installRegistlet(this, template, ring.level);
+				installRuntimeAttachment(this, attachment);
 			} catch (error) {
-				log.warn(`安装托环失败: ${template.id}`, error);
+				log.warn(`安装战前附加效果失败: ${attachment.source.sourceId ?? attachment.source.id}`, error);
 			}
 		}
 	}
@@ -126,8 +123,9 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 	private static collectAttributeSlots(
 		_activeCharacter: CharacterWithRelations,
 		_memberData: MemberWithRelations,
+		runtimeAttachments: readonly RuntimeAttachment[],
 	): SlotDeclaration[] {
-		const slots: SlotDeclaration[] = [];
+		const slots: SlotDeclaration[] = collectAttachmentSlots(runtimeAttachments);
 		// 数据模型补齐后在此追加：
 		// for (const skill of _activeCharacter.skills) {
 		//   slots.push(...(skill.template?.attributeSlots ?? []));

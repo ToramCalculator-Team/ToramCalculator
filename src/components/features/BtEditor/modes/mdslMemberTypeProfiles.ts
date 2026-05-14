@@ -18,7 +18,6 @@ const MemberRuntimeShape = {
 	currentSkill: null as unknown,
 	previousSkill: null as unknown,
 	currentSkillVariant: null as unknown,
-	currentSkillBranchParams: {} as Record<string, number>,
 	currentSkillStartupMs: 0,
 	currentSkillChargingMs: 0,
 	currentSkillChantingMs: 0,

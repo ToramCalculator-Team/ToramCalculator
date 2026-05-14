@@ -11,10 +11,27 @@
  *  4. registlet.hpEmergency       (HP 紧急回复) — threshold watcher: HP 跨 25% 下穿
  *  5. registlet.jianqingZhuiji    (减轻追击)   — subscription: 进入胆怯/翻覆/昏厥时 +物理防御%
  *
- * 运行时由 `RegistletLoader.installRegistlet` 消费。
+ * 运行时由 Player 的 RuntimeAttachment collector 消费。
  */
 
-import type { RegistletRow } from "./RegistletLoader";
+import type {
+	EventSubscriptionEffect,
+	PipelinePatchEffect,
+	SkillBranchActivatorEffect,
+	ThresholdWatcherEffect,
+} from "@db/schema/jsons";
+
+/** 最小 registlet 行形状。与 `db/generated/zod/index.ts#registlet` 兼容。 */
+export interface RegistletRow {
+	id: string;
+	name: string;
+	maxLevel: number;
+	attrModifiers: string[];
+	pipelinePatches: readonly PipelinePatchEffect[];
+	skillBranchActivators: readonly SkillBranchActivatorEffect[];
+	subscriptions: readonly EventSubscriptionEffect[];
+	thresholdWatchers: readonly ThresholdWatcherEffect[];
+}
 
 /**
  * 领教领教：伤害上限变为目标最大 HP 的 1%。

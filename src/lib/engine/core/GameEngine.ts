@@ -40,6 +40,11 @@ import type {
 import { createRealtimeConfig } from "./types";
 import type { MemberSerializeData } from "./World/Member/Member";
 import type { Player } from "./World/Member/types/Player/Player";
+import {
+	computePlayerSkillLifecycleMs,
+	EMPTY_PLAYER_SKILL_LIFECYCLE_MS,
+	selectPlayerSkillVariant,
+} from "./World/Member/types/Player/skillLifecycle";
 import { World } from "./World/World";
 
 const log = createLogger("GameEngine");
@@ -1752,66 +1757,49 @@ export class GameEngine {
 		const currentHp = player.statContainer?.getValue("hp.current") ?? 0;
 
 		return (Array.isArray(skillList) ? skillList : []).map((skill: unknown, index: number) => {
-			const s = skill as { id?: unknown; lv?: unknown; template?: { name?: unknown; variants?: unknown[] } };
-			const template = s.template as { name?: unknown; variants?: unknown[] } | undefined;
+			const s = skill as Player["runtime"]["skillList"][number];
+			const template = s.template;
 			const skillName = String(template?.name ?? "未知技能");
 			const skillLevel = Number(s.lv ?? 0);
 
-			// 查找适用的技能效果
-			const effect = (
-				template?.variants as
-					| Array<{ condition?: string; mpCost?: string; hpCost?: string; castingRange?: number }>
-					| undefined
-			)?.find((e: { condition?: string }) => {
-				try {
-					const result = this.evaluateExpression(e.condition ?? "false", {
-						currentTimeMs,
-						tickIndex,
-						casterId: player.id,
-						skillLv: skillLevel,
-					});
-					return !!result;
-				} catch {
-					return false;
-				}
-			});
+			// 设计说明：运行时技能变体按装备约束选择；预览数据与 FSM 使用同一选择规则，避免 UI 显示与实际释放分叉。
+			const effect = selectPlayerSkillVariant(s, player.runtime.character);
+			const expressionContext: ExpressionContext = {
+				currentTimeMs,
+				tickIndex,
+				casterId: player.id,
+				targetId: player.runtime.targetId,
+				skillLv: skillLevel,
+			};
 
 			// 计算消耗
 			let mpCost = 0;
 			let hpCost = 0;
 			let castingRange = 0;
+			let lifecycle = EMPTY_PLAYER_SKILL_LIFECYCLE_MS;
 
 			if (effect) {
-				const mpCostResult = this.evaluateExpression(effect.mpCost ?? "0", {
-					currentTimeMs,
-					tickIndex,
-					casterId: player.id,
-					skillLv: skillLevel,
+				const evalOptionalNumber = (expr: string | null | undefined, label: string): number => {
+					const normalizedExpr = expr?.trim();
+					if (!normalizedExpr) return 0;
+					const result = this.evaluateExpression(normalizedExpr, expressionContext);
+					if (typeof result !== "number" || !Number.isFinite(result)) {
+						throw new Error(`表达式: ${label}=${expr} 执行结果不是有限数字`);
+					}
+					return result;
+				};
+
+				mpCost = evalOptionalNumber(effect.mpCost, "mpCost");
+				hpCost = evalOptionalNumber(effect.hpCost, "hpCost");
+				castingRange = evalOptionalNumber(effect.castingRange, "castingRange");
+				lifecycle = computePlayerSkillLifecycleMs({
+					variant: effect,
+					skillLevel,
+					expressionContext,
+					evaluateExpression: (expr, context) => this.evaluateExpression(expr, context),
+					runPipeline: (pipelineName, params) => player.runPipeline(pipelineName, params),
+					onWarn: (message) => log.warn(`computePlayerSkills(${player.id}:${s.id}) ${message}`),
 				});
-				if (typeof mpCostResult !== "number") {
-					throw new Error(`表达式: ${effect.mpCost} 执行结果不是数字`);
-				}
-				mpCost = mpCostResult;
-				const hpCostResult = this.evaluateExpression(effect.hpCost ?? "0", {
-					currentTimeMs,
-					tickIndex,
-					casterId: player.id,
-					skillLv: skillLevel,
-				});
-				if (typeof hpCostResult !== "number") {
-					throw new Error(`表达式: ${effect.hpCost} 执行结果不是数字`);
-				}
-				hpCost = hpCostResult;
-				const castingRangeResult = this.evaluateExpression(String(effect.castingRange ?? "0"), {
-					currentTimeMs,
-					tickIndex,
-					casterId: player.id,
-					skillLv: skillLevel,
-				});
-				if (typeof castingRangeResult !== "number") {
-					throw new Error(`表达式: ${effect.castingRange} 执行结果不是数字`);
-				}
-				castingRange = castingRangeResult;
 			}
 
 			// 获取冷却状态
@@ -1830,6 +1818,11 @@ export class GameEngine {
 					castingRange,
 					cooldownRemaining,
 					isAvailable,
+					startupMs: lifecycle.startupMs,
+					chargingMs: lifecycle.chargingMs,
+					chantingMs: lifecycle.chantingMs,
+					actionMs: lifecycle.actionMs,
+					activeEffectDurationMs: lifecycle.activeEffectDurationMs,
 				},
 			};
 		});

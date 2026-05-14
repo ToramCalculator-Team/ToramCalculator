@@ -31,8 +31,6 @@ export interface PlayerRuntime extends MemberSharedRuntime {
 	previousSkill: CharacterSkillWithRelations | null;
 	/** 当前技能基于武器/副手/防具类型选出的变体。 */
 	currentSkillVariant: SkillVariantWithRelations | null;
-	/** 当前技能的运行期分支参数覆盖（来自托环等 runtime 增强）。 */
-	currentSkillBranchParams: Record<string, number>;
 
 	/** 当前技能生命周期的四段毫秒。FSM 在"执行技能中"进入时一次性计算并写入；BT 只读。 */
 	currentSkillStartupMs: number;

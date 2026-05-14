@@ -17,6 +17,7 @@ import { JSProcessor } from "../JSProcessor/JSProcessor";
 import { PipelineCatalog } from "../Pipeline/PipelineCatalog";
 import { PipelineResolverService } from "../Pipeline/PipelineResolverService";
 import { PreviewRunner } from "../Preview/PreviewRunner";
+import { resolvePreviewFastForwardTimeoutMs } from "../Preview/previewTimeout";
 import type { SimulatorSafeAPI } from "../sandboxGlobals";
 import { createPreviewConfig, type EngineInfrastructure, type EngineScenarioData, type RuntimeConfig } from "../types";
 import { DebugViewRegistry } from "./DebugViewRegistry";
@@ -70,6 +71,16 @@ function hasMatchingSkillVariant(
 			variant.targetArmorAbilityType === armorAbilityType || variant.targetArmorAbilityType === "Any";
 		return mainWeaponMatched && subWeaponMatched && armorMatched;
 	});
+}
+
+function getPrimaryActionDurationMs(
+	gameEngine: GameEngine,
+	memberId: string | undefined,
+	skillId: string | undefined,
+): number | undefined {
+	if (!memberId || !skillId) return undefined;
+	return gameEngine.getComputedSkillInfos(memberId).find((skill) => skill.id === skillId)?.computed
+		.activeEffectDurationMs;
 }
 
 // ==================== 沙盒环境初始化 ====================
@@ -393,6 +404,7 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 					let primaryActionSkillId: string | undefined;
 					let primaryActionHasMatchingVariant: boolean | undefined;
 					const damageAreaCountBefore = gameEngine.getDamageAreaCreatedCount();
+
 					for (const patch of task.patches ?? []) {
 						if (patch.memberId) primaryMemberId = patch.memberId;
 
@@ -425,7 +437,9 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 					}
 
 					// 5. fast-forward synchronously
-					const fastForward = gameEngine.fastForwardSync({ maxDurationMs: 1000 });
+					const activeEffectDurationMs = getPrimaryActionDurationMs(gameEngine, primaryMemberId, primaryActionSkillId);
+					const previewTimeoutMs = resolvePreviewFastForwardTimeoutMs(activeEffectDurationMs);
+					const fastForward = gameEngine.fastForwardSync({ maxDurationMs: previewTimeoutMs });
 					const { ticksRun, elapsedMs } = fastForward;
 					const damageAreaCountAfter = gameEngine.getDamageAreaCreatedCount();
 					const damageAreaCount = Math.max(0, damageAreaCountAfter - damageAreaCountBefore);
@@ -475,9 +489,9 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 							let reason: string | undefined;
 							let note: string | undefined;
 							let error: string | undefined;
-							if (activeEffectStillRunning) {
+							if (fastForward.reachedLimit && activeEffectStillRunning) {
 								reason = "action_timeout";
-								error = `技能预览超过 ${elapsedMs}ms 仍未结束`;
+								error = `技能预览超过 ${previewTimeoutMs}ms 仍未结束`;
 							} else if (primaryActionHasMatchingVariant === false) {
 								reason = "no_variant";
 								note = "没有匹配当前装备的可执行变体";

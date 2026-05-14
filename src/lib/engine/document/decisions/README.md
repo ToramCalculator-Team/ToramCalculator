@@ -114,6 +114,7 @@
 | 编号 | 标题 | 状态 | 主题 |
 |---|---|---|---|
 | [0001](./0001-stat-container-as-unified-persistence-slot.md) | StatContainer 作为持久化槽的统一载体 | Accepted | 数据层 |
+| [0002](./0002-member-runtime-attachments-as-prebattle-assembly-contract.md) | Member runtime attachments as prebattle assembly contract | Accepted | 跨层 |
 
 ## 待拆分清单
 

@@ -228,8 +228,8 @@ export class MemberManager {
 				if (this.eventCatalog) {
 					player.setEventCatalog(this.eventCatalog);
 				}
-				// 托环安装必须在 setEventCatalog 之后：订阅类 effect 依赖 ProcBus 就绪。
-				player.installRegistletsFromCharacter();
+				// 战前附加效果安装必须在 setEventCatalog 之后：订阅类 effect 依赖 ProcBus 就绪。
+				player.installPrebattleRuntimeAttachments();
 				const success = this.registerMember(player, campId, teamId, memberData);
 				if (success) {
 					player.start();

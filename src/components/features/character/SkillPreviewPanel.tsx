@@ -6,11 +6,19 @@ import type { BranchTask } from "~/lib/engine/core/thread/protocol";
 
 const PREVIEW_COMPUTE_DEBOUNCE_MS = 150;
 
+const formatDurationMs = (durationMs: number) => {
+	if (durationMs <= 0) return "0ms";
+	if (durationMs < 1000) return `${durationMs}ms`;
+	const seconds = durationMs / 1000;
+	return `${Number.isInteger(seconds) ? seconds.toFixed(0) : seconds.toFixed(2)}s`;
+};
+
 export interface SkillRow {
 	id: string;
 	name: string;
 	level: number;
 	damage: number;
+	activeEffectDurationMs: number;
 	loading: boolean;
 	/** 技能执行失败时的错误信息（无变体、无目标等） */
 	error?: string;
@@ -22,7 +30,13 @@ type PreviewSkillSource = {
 	id: string;
 	name: string;
 	level: number;
-	computed?: { isAvailable?: boolean; mpCost?: number; hpCost?: number; castingRange?: number };
+	computed?: {
+		isAvailable?: boolean;
+		mpCost?: number;
+		hpCost?: number;
+		castingRange?: number;
+		activeEffectDurationMs?: number;
+	};
 };
 
 /**
@@ -72,7 +86,7 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 					id: string;
 					name: string;
 					level: number;
-					computed: { isAvailable: boolean; mpCost: number };
+					computed: { isAvailable: boolean; mpCost: number; activeEffectDurationMs: number };
 				}>
 			).filter((s) => s.level > 0);
 			// 设计说明：引擎成员加载/热替换可能晚于面板首次计算；此时数据库关系数据已经可用，
@@ -94,6 +108,7 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 						name: s.name,
 						level: s.level,
 						damage: previous?.damage ?? 0,
+						activeEffectDurationMs: s.computed?.activeEffectDurationMs ?? 0,
 						loading: true,
 						error: undefined,
 						note: undefined,
@@ -269,6 +284,7 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 					<div class="flex gap-2 rounded bg-black/5 px-3 py-1.5 text-xs font-semibold dark:bg-white/5">
 						<span class="flex-1">技能</span>
 						<span class="w-20 text-right">等级</span>
+						<span class="w-24 text-right">主动效果</span>
 						<span class="w-28 text-right">伤害</span>
 					</div>
 					<For each={skills()}>
@@ -276,6 +292,9 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 							<div class="flex items-center gap-2 rounded px-3 py-2 odd:bg-black/5 dark:odd:bg-white/5">
 								<div class="flex-1 truncate text-sm">{skill.name}</div>
 								<div class="w-20 text-right text-xs text-muted-color">Lv.{skill.level}</div>
+								<div class="w-24 text-right text-xs font-mono tabular-nums text-muted-color">
+									{formatDurationMs(skill.activeEffectDurationMs)}
+								</div>
 								<div class="w-28 text-right text-sm font-mono tabular-nums">
 									<Show when={!skill.loading} fallback={<span class="text-muted-color">...</span>}>
 										<Show

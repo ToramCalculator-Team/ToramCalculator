@@ -75,7 +75,6 @@
 		"js-cookie": "^3.0.5",
 		"kysely": "^0.28.9",
 		"lotto-draw": "^1.0.2",
-		"mathjs": "^15.1.0",
 		"monaco-editor": "^0.55.1",
 		"nodemailer": "^6.10.0",
 		"overlayscrollbars": "^2.13.0",

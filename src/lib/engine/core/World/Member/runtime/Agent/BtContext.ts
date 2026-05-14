@@ -75,7 +75,6 @@ export interface BtContext<
 	currentSkill?: CharacterSkillWithRelations | null;
 	previousSkill?: CharacterSkillWithRelations | null;
 	currentSkillVariant?: SkillVariantWithRelations | null;
-	currentSkillBranchParams?: Record<string, number>;
 
 	/** 当前技能生命周期的四段毫秒（FSM 在"执行技能中"进入时由管线计算一次，BT 只读）。 */
 	currentSkillStartupMs?: number;

@@ -9,10 +9,7 @@
  */
 import * as Enums from "@db/schema/enums";
 import { createLogger } from "~/lib/Logger";
-import type {
-	Checkpointable,
-	StatContainerCheckpoint,
-} from "../../../../types";
+import type { Checkpointable, StatContainerCheckpoint } from "../../../../types";
 import type { AttributeExpression, NestedSchema } from "./SchemaTypes";
 import { SchemaFlattener } from "./SchemaTypes";
 import { StatContainerASTCompiler } from "./StatContainerAST";
@@ -122,26 +119,17 @@ export function dynamicTotalValue(data: DataStorage): number {
 
 	// 添加静态百分比修正
 	if (data.static.percentage) {
-		staticPercentage = data.static.percentage.reduce(
-			(acc, curr) => acc + curr.value,
-			0,
-		);
+		staticPercentage = data.static.percentage.reduce((acc, curr) => acc + curr.value, 0);
 	}
 
 	// 添加动态修正值
 	if (data.dynamic.fixed) {
-		dynamicFixed = data.dynamic.fixed.reduce(
-			(acc, curr) => acc + curr.value,
-			0,
-		);
+		dynamicFixed = data.dynamic.fixed.reduce((acc, curr) => acc + curr.value, 0);
 	}
 
 	// 添加动态百分比修正
 	if (data.dynamic.percentage) {
-		dynamicPercentage = data.dynamic.percentage.reduce(
-			(acc, curr) => acc + curr.value,
-			0,
-		);
+		dynamicPercentage = data.dynamic.percentage.reduce((acc, curr) => acc + curr.value, 0);
 	}
 
 	totalFixed = staticFixed + dynamicFixed;
@@ -177,7 +165,7 @@ export interface ModifierSource {
 	 * - `registlet`：雷吉斯托环
 	 * - `system`：系统赋予
 	 */
-	type: "equipment" | "skill" | "buff" | "debuff" | "passive" | "registlet" | "system";
+	type: "equipment" | "skill" | "buff" | "debuff" | "passive" | "registlet" | "item" | "system";
 }
 
 export interface Modifier {
@@ -317,10 +305,7 @@ export class DependencyGraph {
 		};
 
 		for (let i = 0; i < this.maxSize; i++) {
-			if (
-				!visited[i] &&
-				(this.dependencies[i].size > 0 || this.dependents[i].size > 0)
-			) {
+			if (!visited[i] && (this.dependencies[i].size > 0 || this.dependents[i].size > 0)) {
 				visit(i);
 			}
 		}
@@ -406,9 +391,7 @@ export class DependencyGraph {
 /**
  * 基于TypedArray的高性能响应式数据管理器
  */
-export class StatContainer<T extends string>
-	implements Checkpointable<StatContainerCheckpoint>
-{
+export class StatContainer<T extends string> implements Checkpointable<StatContainerCheckpoint> {
 	// ==================== 核心数据结构 ====================
 
 	/** 主要属性值存储 - 连续内存布局 */
@@ -430,10 +413,7 @@ export class StatContainer<T extends string>
 	private readonly modifierArrays: Float64Array[];
 
 	/** 修饰符来源聚合：按类型 -> 属性索引 -> sourceId -> value */
-	private readonly modifierSources: Map<
-		ModifierType,
-		Map<number, Map<string, number>>
-	>;
+	private readonly modifierSources: Map<ModifierType, Map<number, Map<string, number>>>;
 
 	/** sourceId 反向索引：sourceId -> (type * keyCount + attrIndex) 集合 */
 	private readonly sourceIndex: Map<string, Set<number>>;
@@ -707,12 +687,7 @@ export class StatContainer<T extends string>
 	/**
 	 * 添加修饰符
 	 */
-	addModifier(
-		attr: T,
-		targetType: ModifierType,
-		value: number,
-		source: ModifierSource,
-	): void {
+	addModifier(attr: T, targetType: ModifierType, value: number, source: ModifierSource): void {
 		// 获取属性索引
 		const index = this.keyToIndex.get(attr);
 		if (index === undefined) {
@@ -810,23 +785,17 @@ export class StatContainer<T extends string>
 	/**
 	 * 按 sourceId 查询其影响的所有修饰条目
 	 */
-	getModifiersBySourceId(
-		sourceId: string,
-	): Array<{ attr: T; targetType: ModifierType; value: number }> {
+	getModifiersBySourceId(sourceId: string): Array<{ attr: T; targetType: ModifierType; value: number }> {
 		const keys = this.sourceIndex.get(sourceId);
 		if (!keys || keys.size === 0) return [];
 
-		const result: Array<{ attr: T; targetType: ModifierType; value: number }> =
-			[];
+		const result: Array<{ attr: T; targetType: ModifierType; value: number }> = [];
 		const keyCount = this.values.length;
 
 		for (const entryKey of keys) {
 			const type = Math.floor(entryKey / keyCount) as ModifierType;
 			const attrIndex = entryKey - type * keyCount;
-			const value = this.modifierSources
-				.get(type)
-				?.get(attrIndex)
-				?.get(sourceId);
+			const value = this.modifierSources.get(type)?.get(attrIndex)?.get(sourceId);
 			if (value === undefined || value === 0) continue;
 			result.push({ attr: this.indexToKey[attrIndex], targetType: type, value });
 		}
@@ -854,9 +823,7 @@ export class StatContainer<T extends string>
 			}
 			const entryKey = this.getSourceEntryKey(item.targetType, attrIndex);
 			if (desired.has(entryKey)) {
-				log.warn(
-					`⚠️ updateModifiersBySourceId 收到重复条目: ${String(item.attr)} ${ModifierType[item.targetType]}`,
-				);
+				log.warn(`⚠️ updateModifiersBySourceId 收到重复条目: ${String(item.attr)} ${ModifierType[item.targetType]}`);
 			}
 			desired.set(entryKey, item.value);
 		}
@@ -959,10 +926,7 @@ export class StatContainer<T extends string>
 		const result: Record<string, unknown> = {};
 
 		// 收集指定类型在某属性索引下的全部来源条目
-		const collect = (
-			type: ModifierType,
-			attrIndex: number,
-		): Array<{ sourceId: string; value: number }> => {
+		const collect = (type: ModifierType, attrIndex: number): Array<{ sourceId: string; value: number }> => {
 			const perType = this.modifierSources.get(type);
 			const perAttr = perType?.get(attrIndex);
 			const out: Array<{ sourceId: string; value: number }> = [];
@@ -974,12 +938,7 @@ export class StatContainer<T extends string>
 			return out;
 		};
 
-		const setNested = (
-			root: Record<string, unknown>,
-			path: string[],
-			leafKey: string,
-			value: number,
-		) => {
+		const setNested = (root: Record<string, unknown>, path: string[], leafKey: string, value: number) => {
 			let current: Record<string, unknown> = root;
 			for (const seg of path) {
 				const next = current[seg];
@@ -1015,15 +974,9 @@ export class StatContainer<T extends string>
 				}
 				storage.baseValue = Number.isFinite(base) ? base : 0;
 				storage.static.fixed = collect(ModifierType.STATIC_FIXED, index);
-				storage.static.percentage = collect(
-					ModifierType.STATIC_PERCENTAGE,
-					index,
-				);
+				storage.static.percentage = collect(ModifierType.STATIC_PERCENTAGE, index);
 				storage.dynamic.fixed = collect(ModifierType.DYNAMIC_FIXED, index);
-				storage.dynamic.percentage = collect(
-					ModifierType.DYNAMIC_PERCENTAGE,
-					index,
-				);
+				storage.dynamic.percentage = collect(ModifierType.DYNAMIC_PERCENTAGE, index);
 			}
 
 			current[leafKey] = storage as unknown as Record<string, unknown>;
@@ -1060,10 +1013,7 @@ export class StatContainer<T extends string>
 			};
 		}
 	> {
-		const collect = (
-			type: ModifierType,
-			attrIndex: number,
-		): Array<{ sourceId: string; value: number }> => {
+		const collect = (type: ModifierType, attrIndex: number): Array<{ sourceId: string; value: number }> => {
 			const perType = this.modifierSources.get(type);
 			const perAttr = perType?.get(attrIndex);
 			const out: Array<{ sourceId: string; value: number }> = [];
@@ -1122,10 +1072,7 @@ export class StatContainer<T extends string>
 			}
 
 			// 不注入GameEngine上下文，只处理self属性访问
-			const compiled = this.compileExpressionOnce(
-				attrName as T,
-				expressionData.expression,
-			);
+			const compiled = this.compileExpressionOnce(attrName as T, expressionData.expression);
 			// console.log(attrName, compiled);
 			if (compiled.constant !== null) {
 				// 常量：直接作为基础值
@@ -1147,10 +1094,9 @@ export class StatContainer<T extends string>
 				// 创建计算函数
 				const code = compiled.code;
 				// 预编译表达式函数（避免每次计算都 new Function）
-				const fn = new Function(
-					"ctx",
-					`with (ctx) { return ${code}; }`,
-				) as (ctx: { _get: (k: string) => number }) => unknown;
+				const fn = new Function("ctx", `with (ctx) { return ${code}; }`) as (ctx: {
+					_get: (k: string) => number;
+				}) => unknown;
 				// 仅注入取值函数，避免对 Member 的强耦合
 				const executionContext = { _get: (k: string) => this.getValue(k as T) };
 				this.computationFunctions.set(index, () => {
@@ -1173,9 +1119,7 @@ export class StatContainer<T extends string>
 
 				BitFlags.set(this.flags, index, AttributeFlags.HAS_COMPUTATION);
 			} else {
-				log.error(
-					`❌ 属性 ${attrName} 表达式编译失败: ${expressionData.expression}`,
-				);
+				log.error(`❌ 属性 ${attrName} 表达式编译失败: ${expressionData.expression}`);
 				this.computationFunctions.set(index, () => 0);
 				BitFlags.set(this.flags, index, AttributeFlags.HAS_COMPUTATION);
 			}
@@ -1193,10 +1137,7 @@ export class StatContainer<T extends string>
 		expression: string,
 	): { code: string | null; deps: string[]; constant: number | null } {
 		// 1) 纯数字常量
-		if (
-			!Number.isNaN(Number(expression)) &&
-			Number.isFinite(Number(expression))
-		) {
+		if (!Number.isNaN(Number(expression)) && Number.isFinite(Number(expression))) {
 			return { code: null, deps: [], constant: Number(expression) };
 		}
 
@@ -1214,13 +1155,8 @@ export class StatContainer<T extends string>
 
 		// 4) AST 编译，一次性得到 code 与 deps
 		try {
-			const knownAttributes = Array.from(this.keyToIndex.keys()).map((attr) =>
-				String(attr),
-			);
-			const compiler = new StatContainerASTCompiler(
-				knownAttributes,
-				String(currentAttr),
-			);
+			const knownAttributes = Array.from(this.keyToIndex.keys()).map((attr) => String(attr));
+			const compiler = new StatContainerASTCompiler(knownAttributes, String(currentAttr));
 			const result = compiler.compile(expression);
 			if (!result.success) {
 				log.error(`❌ AST编译失败: ${expression}`, result.error);
@@ -1290,11 +1226,9 @@ export class StatContainer<T extends string>
 
 		// 获取修饰符值
 		const staticFixed = this.modifierArrays[ModifierType.STATIC_FIXED][index];
-		const staticPercentage =
-			this.modifierArrays[ModifierType.STATIC_PERCENTAGE][index];
+		const staticPercentage = this.modifierArrays[ModifierType.STATIC_PERCENTAGE][index];
 		const dynamicFixed = this.modifierArrays[ModifierType.DYNAMIC_FIXED][index];
-		const dynamicPercentage =
-			this.modifierArrays[ModifierType.DYNAMIC_PERCENTAGE][index];
+		const dynamicPercentage = this.modifierArrays[ModifierType.DYNAMIC_PERCENTAGE][index];
 
 		const totalPercentage = staticPercentage + dynamicPercentage;
 		const totalFixed = staticFixed + dynamicFixed;
@@ -1302,9 +1236,7 @@ export class StatContainer<T extends string>
 		// noBaseValue 属性：不做“基础值 * (1 + %)”的乘法，只对修正值做加法累加
 		if (this.isNoBaseValue[index]) {
 			const computationFn = this.computationFunctions.get(index);
-			const baseValue = computationFn
-				? computationFn()
-				: this.modifierArrays[ModifierType.BASE_VALUE][index];
+			const baseValue = computationFn ? computationFn() : this.modifierArrays[ModifierType.BASE_VALUE][index];
 			return baseValue + totalFixed + totalPercentage;
 		}
 
@@ -1334,9 +1266,7 @@ export class StatContainer<T extends string>
 				initialDirtyIndices.push(i);
 			}
 		}
-		const initialDirtyAttrs = initialDirtyIndices.map((i) =>
-			String(this.indexToKey[i]),
-		);
+		const initialDirtyAttrs = initialDirtyIndices.map((i) => String(this.indexToKey[i]));
 
 		if (initialDirtyAttrs.length > 0) {
 			// console.log(`🔄 开始更新，脏属性列表:`, initialDirtyAttrs);
@@ -1389,9 +1319,7 @@ export class StatContainer<T extends string>
 			}
 
 			if (remainingDirtyIndices.length > 0) {
-				const remainingDirtyAttrs = remainingDirtyIndices.map((i) =>
-					String(this.indexToKey[i]),
-				);
+				const remainingDirtyAttrs = remainingDirtyIndices.map((i) => String(this.indexToKey[i]));
 				log.error(`⚠️ 更新后仍有脏属性:`, remainingDirtyAttrs);
 			}
 
@@ -1480,10 +1408,7 @@ export class StatContainer<T extends string>
 			memoryUsage: {
 				values: this.values.byteLength,
 				flags: this.flags.byteLength,
-				modifiers: this.modifierArrays.reduce(
-					(sum, arr) => sum + arr.byteLength,
-					0,
-				),
+				modifiers: this.modifierArrays.reduce((sum, arr) => sum + arr.byteLength, 0),
 				total:
 					this.values.byteLength +
 					this.flags.byteLength +
@@ -1506,8 +1431,8 @@ export class StatContainer<T extends string>
 	/**
 	 * 获取调试信息
 	 */
-	getDebugInfo(): Record<string, any> {
-		const result: Record<string, any> = {};
+	getDebugInfo(): Record<string, unknown> {
+		const result: Record<string, unknown> = {};
 
 		for (let i = 0; i < this.indexToKey.length; i++) {
 			const key = this.indexToKey[i];
@@ -1515,25 +1440,15 @@ export class StatContainer<T extends string>
 				value: this.values[i],
 				isDirty: this.isDirty(i),
 				isCached: BitFlags.has(this.flags, i, AttributeFlags.IS_CACHED),
-				hasComputation: BitFlags.has(
-					this.flags,
-					i,
-					AttributeFlags.HAS_COMPUTATION,
-				),
-				dependencies: Array.from(this.dependencyGraph.getDependencies(i)).map(
-					(idx) => this.indexToKey[idx],
-				),
-				dependents: Array.from(this.dependencyGraph.getDependents(i)).map(
-					(idx) => this.indexToKey[idx],
-				),
+				hasComputation: BitFlags.has(this.flags, i, AttributeFlags.HAS_COMPUTATION),
+				dependencies: Array.from(this.dependencyGraph.getDependencies(i)).map((idx) => this.indexToKey[idx]),
+				dependents: Array.from(this.dependencyGraph.getDependents(i)).map((idx) => this.indexToKey[idx]),
 				modifiers: {
 					base: this.modifierArrays[ModifierType.BASE_VALUE][i],
 					staticFixed: this.modifierArrays[ModifierType.STATIC_FIXED][i],
-					staticPercentage:
-						this.modifierArrays[ModifierType.STATIC_PERCENTAGE][i],
+					staticPercentage: this.modifierArrays[ModifierType.STATIC_PERCENTAGE][i],
 					dynamicFixed: this.modifierArrays[ModifierType.DYNAMIC_FIXED][i],
-					dynamicPercentage:
-						this.modifierArrays[ModifierType.DYNAMIC_PERCENTAGE][i],
+					dynamicPercentage: this.modifierArrays[ModifierType.DYNAMIC_PERCENTAGE][i],
 				},
 			};
 		}
@@ -1581,12 +1496,8 @@ export class StatContainer<T extends string>
 			} else {
 				computedAttrs.push(attrKey);
 				// 获取该属性的依赖关系
-				const dependencies = Array.from(
-					this.dependencyGraph.getDependencies(i),
-				);
-				const depNames = dependencies.map(
-					(depIndex) => this.indexToKey[depIndex],
-				);
+				const dependencies = Array.from(this.dependencyGraph.getDependencies(i));
+				const depNames = dependencies.map((depIndex) => this.indexToKey[depIndex]);
 				dependencyMap.set(attrKey, depNames);
 			}
 		}
@@ -1615,20 +1526,14 @@ export class StatContainer<T extends string>
 		});
 
 		// 输出依赖关系统计
-		const totalDeps = Array.from(dependencyMap.values()).reduce(
-			(sum, deps) => sum + deps.length,
-			0,
-		);
-		const avgComplexity =
-			computedAttrs.length > 0 ? totalDeps / computedAttrs.length : 0;
+		const totalDeps = Array.from(dependencyMap.values()).reduce((sum, deps) => sum + deps.length, 0);
+		const avgComplexity = computedAttrs.length > 0 ? totalDeps / computedAttrs.length : 0;
 
 		log.debug(`📈 依赖关系统计:`);
 		log.debug(`   • 基础属性: ${baseAttrs.length}`);
 		log.debug(`   • 计算属性: ${computedAttrs.length}`);
 		log.debug(`   • 依赖关系: ${totalDeps}`);
-		log.debug(
-			`   • 复杂度: ${avgComplexity.toFixed(2)} (平均每个计算属性的依赖数)`,
-		);
+		log.debug(`   • 复杂度: ${avgComplexity.toFixed(2)} (平均每个计算属性的依赖数)`);
 
 		// 如果有循环依赖，输出警告
 		const hasCycles = this.dependencyGraph.detectCycles();
@@ -1636,9 +1541,7 @@ export class StatContainer<T extends string>
 			log.warn(`\n⚠️  检测到循环依赖:`);
 			hasCycles.forEach((cycle, index) => {
 				const cycleNames = cycle.map((idx) => this.indexToKey[idx]);
-				log.warn(
-					`   ${index + 1}. ${cycleNames.join(" → ")} → ${cycleNames[0]}`,
-				);
+				log.warn(`   ${index + 1}. ${cycleNames.join(" → ")} → ${cycleNames[0]}`);
 			});
 		}
 
@@ -1650,8 +1553,7 @@ export class StatContainer<T extends string>
 	captureCheckpoint(): StatContainerCheckpoint {
 		const modifierSources: StatContainerCheckpoint["modifierSources"] = [];
 		for (const [modifierType, perType] of this.modifierSources) {
-			const entries: StatContainerCheckpoint["modifierSources"][number]["entries"] =
-				[];
+			const entries: StatContainerCheckpoint["modifierSources"][number]["entries"] = [];
 			for (const [attrIndex, perAttr] of perType) {
 				const sources: Array<{ sourceId: string; value: number }> = [];
 				for (const [sourceId, value] of perAttr) {
