@@ -10,7 +10,8 @@ import type { PipelineInstruction } from "./instruction";
  * 技能生命周期毫秒管线（skill.startup / charging / chanting / action）约定：
  * - 由编排层（FSM action "计算技能生命周期参数"）预求值 variant 上的字符串公式，
  *   以 `input.original`（startup）或 `input.fixed` + `input.modified`（其余三段）传入。
- * - 管线只负责套用 mspd 行动速度修正：rate = max(0.5, 1 - mspd/100)，然后向下取整。
+ * - startup / charging / action 套用 mspd 行动速度修正：rate = max(0.5, 1 - mspd/100)。
+ * - chanting 额外套用 cspr 咏唱缩减：chantRate = max(0, 1 - cspr/100)，再叠加 mspd 动画修正。
  * - FSM 再把管线输出 `durationMs` 写入 `runtime.currentSkill*Ms`。
  */
 
@@ -20,6 +21,14 @@ const mspdRateInstructions: readonly PipelineInstruction[] = [
 	{ target: "mspdPct", op: "/", a: "mspd", b: 100 },
 	{ target: "rawRate", op: "-", a: 1, b: "mspdPct" },
 	{ target: "rate", op: "max", a: 0.5, b: "rawRate" },
+];
+
+/** 标准咏唱缩减修正：chantRate = max(0, 1 - cspr/100)。 */
+const csprRateInstructions: readonly PipelineInstruction[] = [
+	{ target: "cspr", op: "get", a: "self", b: "cspr" },
+	{ target: "csprPct", op: "/", a: "cspr", b: 100 },
+	{ target: "rawChantRate", op: "-", a: 1, b: "csprPct" },
+	{ target: "chantRate", op: "max", a: 0, b: "rawChantRate" },
 ];
 
 export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstruction[]> = {
@@ -40,11 +49,13 @@ export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstructi
 		{ target: "durationMs", op: "floor", a: "rawDurationMs" },
 	],
 
-	// 咏唱：chantingFixedMs 不受速度影响；chantingModifiedMs 受行动速度修正。
+	// 咏唱：chantingFixedMs 不受速度影响；chantingModifiedMs 先受 CSPD 咏唱缩减，再受行动速度动画修正。
 	// 输入：input.fixed, input.modified
 	"skill.chanting": [
 		...mspdRateInstructions,
-		{ target: "adj", op: "*", a: "input.modified", b: "rate" },
+		...csprRateInstructions,
+		{ target: "chantAdj", op: "*", a: "input.modified", b: "chantRate" },
+		{ target: "adj", op: "*", a: "chantAdj", b: "rate" },
 		{ target: "rawDurationMs", op: "+", a: "input.fixed", b: "adj" },
 		{ target: "durationMs", op: "floor", a: "rawDurationMs" },
 	],

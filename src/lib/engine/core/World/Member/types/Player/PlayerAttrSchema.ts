@@ -2086,7 +2086,7 @@ export const PlayerAttrSchemaGenerator = (character: CharacterWithRelations): Pl
 
 		accuracy: {
 			displayName: "命中",
-			expression: "0",
+			expression: "lv + dex",
 		},
 
 		absAccuracy: {
@@ -2096,7 +2096,7 @@ export const PlayerAttrSchemaGenerator = (character: CharacterWithRelations): Pl
 
 		avoid: {
 			displayName: "回避",
-			expression: "0",
+			expression: "lv + agi",
 		},
 
 		absAvoid: {
@@ -2142,20 +2142,21 @@ export const PlayerAttrSchemaGenerator = (character: CharacterWithRelations): Pl
 
 		aspd: {
 			displayName: "攻击速度",
-			expression: "0",
+			expression: `lv + ${MainWeaponTypeMap[mainWeaponType].baseAspd} + str * conv.strToAspd + int * conv.intToAspd + agi * conv.agiToAspd + dex * conv.dexToAspd`,
 		},
 		mspd: {
 			displayName: "行动速度",
-			expression: "0",
+			expression: "Math.min(50, Math.max(0, Math.floor((aspd - 1000) / 180)))",
 			noBaseValue: true,
 		},
 		cspd: {
 			displayName: "咏唱速度",
-			expression: "0",
+			expression: "lv + dex + 2.94 + agi * 1.16",
 		},
 		cspr: {
 			displayName: "咏唱缩减",
-			expression: "0",
+			// 设计说明：CSPD 到咏唱缩减是分段收益；1000 前每 20 CSPD = 1，1000 后每 180 CSPD = 1。
+			expression: "cspd <= 1000 ? Math.max(0, Math.floor(cspd / 20)) : 50 + Math.floor((cspd - 1000) / 180)",
 			noBaseValue: true,
 		},
 
