@@ -12,13 +12,14 @@ export type GlobalCardEntryApi = {
 export type GlobalCardEntry = {
 	id?: string;
 	title?: string;
-	titleIcon?: JSX.Element;
+	titleIcon?: () => JSX.Element;
 	render: (api: GlobalCardEntryApi) => JSX.Element;
 	onClose?: () => void;
 };
 
 export type GlobalCardEntryState = GlobalCardEntry & {
 	id: string;
+	closing: boolean;
 };
 
 let cardEntrySerial = 0;
@@ -37,22 +38,24 @@ const [entries, setEntries] = createStore<GlobalCardEntryState[]>([]);
 export const globalCardGroup = {
 	add(entry: GlobalCardEntry) {
 		const id = entry.id ?? createCardEntryId();
-		setEntries((previous) => [...previous, { ...entry, id }]);
+		setEntries((previous) => [...previous, { ...entry, id, closing: false }]);
 		return id;
 	},
 
+	/** 标记卡片为关闭中，触发退出动画。动画结束后由 confirmRemove 真正移除。 */
 	remove(id?: string) {
 		const targetIndex = id === undefined ? entries.length - 1 : entries.findIndex((entry) => entry.id === id);
 		if (targetIndex < 0) return;
 
 		const targetEntry = entries[targetIndex];
-		if (!targetEntry) return;
+		if (!targetEntry || targetEntry.closing) return;
 
 		targetEntry.onClose?.();
-		if (id === undefined) {
-			setEntries((previous) => previous.slice(0, -1));
-			return;
-		}
+		setEntries(targetIndex, "closing", true);
+	},
+
+	/** 退出动画完成后真正从数组中移除 */
+	confirmRemove(id: string) {
 		setEntries((previous) => previous.filter((entry) => entry.id !== id));
 	},
 
@@ -69,5 +72,10 @@ export const globalCardGroup = {
 
 	size() {
 		return entries.length;
+	},
+
+	/** 非关闭中的卡片数量，用于计算旋转角度（关闭瞬间即响应） */
+	activeSize() {
+		return entries.filter((e) => !e.closing).length;
 	},
 };

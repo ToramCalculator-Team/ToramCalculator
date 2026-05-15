@@ -82,7 +82,7 @@ export default function CharactePage() {
 		 */
 		globalCardGroup.add({
 			title: (cardData as { name?: unknown }).name?.toString() ?? "",
-			titleIcon: <Icons.Spirits iconName={type} />,
+			titleIcon: () => <Icons.Spirits iconName={type} />,
 			render: (cardApi) => {
 				if (!config) return <pre>{JSON.stringify(cardData, null, 2)}</pre>;
 

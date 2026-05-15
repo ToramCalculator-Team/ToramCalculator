@@ -1,9 +1,9 @@
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { createSignal, JSX, onCleanup, onMount, Show } from "solid-js";
+import { type JSX, onCleanup, onMount, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { store } from "~/store";
 
-const Decorate = (props: JSX.IntrinsicElements["svg"]) => {
+export const Decorate = (props: JSX.IntrinsicElements["svg"]) => {
   return (
     <svg width="44" height="47" viewBox="0 0 44 47" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
       <title>Dialog Decorate</title>

@@ -8,7 +8,7 @@ const Keyframes = (props: { name: string; [key: string]: JSX.CSSProperties | str
 			? cssObject
 			: Object.keys(cssObject).reduce((accumulator, key) => {
 					const cssKey = key.replace(/[A-Z]/g, (v) => `-${v.toLowerCase()}`);
-					const cssValue = cssObject[key as keyof typeof cssObject]!.toString().replace("'", "");
+					const cssValue = cssObject[key as keyof typeof cssObject]?.toString().replace("'", "");
 					return `${accumulator}${cssKey}:${cssValue};`;
 				}, "");
 
@@ -39,7 +39,7 @@ export const RandomBallBackground = () => {
 			? ballsRef.forEach((ball, i) => {
 					ball.style.filter = `drop-shadow(0 0 ${ballsSize[i] * 2}px currentcolor)`;
 				})
-			: ballsRef.forEach((ball, i) => {
+			: ballsRef.forEach((ball, _i) => {
 					ball.style.filter = "drop-shadow(0 0 0px currentcolor)";
 				});
 	});
@@ -49,6 +49,7 @@ export const RandomBallBackground = () => {
 			animate={{ opacity: [0, 1] }}
 			transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 2 : 0 }}
 			class="Background fixed -z-10 h-dvh w-dvw opacity-0"
+			// style={{ "background-image": "url(/app-image/sceneBG.png)"}}
 		>
 			<div class="Balls -z-10">
 				<For each={ballsSize}>
@@ -65,7 +66,9 @@ export const RandomBallBackground = () => {
 									}}
 								/>
 								<div
-									ref={(el) => (ballsRef[i()] = el!)}
+									ref={(el) => {
+										ballsRef[i()] = el;
+									}}
 									class={`Ball absolute aspect-square rounded-full`}
 									style={{
 										color,

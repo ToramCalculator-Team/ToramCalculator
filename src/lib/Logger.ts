@@ -48,6 +48,13 @@ export function createLogger(tag: string, options: LoggerOptions = {}) {
 	let localLevel = options.level ?? LogLevel.DEBUG;
 
 	return {
+		/**
+		 * SILENT = 0,
+		 * ERROR = 1,
+		 * WARN = 2,
+		 * INFO = 3,
+		 * DEBUG = 4,
+		 */
 		setLevel(level: LogLevel) {
 			localLevel = level;
 		},

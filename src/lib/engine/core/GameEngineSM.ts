@@ -6,6 +6,7 @@ import type { GameEngine } from "./GameEngine";
 import { EngineScenarioDataSchema } from "./types";
 
 const log = createLogger("EngineSM");
+log.setLevel(1);
 
 // 命令类型（controller → executor）
 const CommandSchema = z.discriminatedUnion("type", [

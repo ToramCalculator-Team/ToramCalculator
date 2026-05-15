@@ -39,9 +39,11 @@ export function GlobalCardContainer() {
 								<Card
 									display={globalCardGroup.size() - index() < 5}
 									index={index()}
-									total={globalCardGroup.size()}
+									total={globalCardGroup.activeSize()}
 									titleIcon={entry.titleIcon}
 									title={entry.title ?? ""}
+									closing={entry.closing}
+									onExitComplete={() => globalCardGroup.confirmRemove(entry.id)}
 								>
 									{content}
 								</Card>

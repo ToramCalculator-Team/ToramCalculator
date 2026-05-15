@@ -251,13 +251,13 @@ export default function AppMainContet(props: ParentProps) {
 							<Show when={loginDialogRequested()}>
 								<LoginDialog />
 							</Show>
-							<Show when={globalCardRequested()}>
-								<GlobalCardContainer />
-							</Show>
-							<Show when={globalFormRequested()}>
-								<GlobalFormContainer />
-							</Show>
 						</Suspense>
+						<Show when={globalCardRequested()}>
+							<GlobalCardContainer />
+						</Show>
+						<Show when={globalFormRequested()}>
+							<GlobalFormContainer />
+						</Show>
 					</EngineProvider>{" "}
 				</DictionaryProvider>
 			</MediaProvider>

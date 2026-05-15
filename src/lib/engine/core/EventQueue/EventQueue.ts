@@ -8,6 +8,7 @@ import type { Checkpointable, EventQueueCheckpoint } from "../types";
 import type { EventQueueConfig, QueueEvent, QueueEventType, QueueSnapshot, QueueStats } from "./types";
 
 const log = createLogger("EventQueue");
+log.setLevel(1)
 
 export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 	/** 事件队列配置 */

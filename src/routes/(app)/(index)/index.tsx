@@ -42,7 +42,7 @@ export default function IndexPage() {
 		const config = DATA_CONFIG[type]?.(dictionary);
 		globalCardGroup.add({
 			title: (data as { name?: unknown }).name?.toString() ?? "",
-			titleIcon: <Icons.Spirits iconName={type} />,
+			titleIcon: () => <Icons.Spirits iconName={type} />,
 			render: (cardApi) => {
 				if (!config) return <pre>{JSON.stringify(data, null, 2)}</pre>;
 
