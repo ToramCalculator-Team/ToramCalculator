@@ -1,7 +1,6 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { RecipeIngredientSchema, type recipe_ingredient } from "@db/generated/zod";
-import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
 export const RECIPE_INGREDIENT_DATA_CONFIG: TableDataConfig<recipe_ingredient> = (dictionary) => ({
@@ -42,7 +41,6 @@ export const RECIPE_INGREDIENT_DATA_CONFIG: TableDataConfig<recipe_ingredient> =
 		hiddenFields: ["id"],
 		fieldGenerator: {},
 		deleteCallback: repositoryMethods.recipe_ingredient.delete,
-		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "recipe_ingredient", data }),
 		editAbleCallback: (data) => repositoryMethods.recipe_ingredient.canEdit(data.id),
 	},
 });

@@ -129,7 +129,15 @@ export type TableDataConfig<T extends Record<string, unknown>, TDic extends Reco
 	>;
 	card: SafeOmit<
 		DataRendererProps<T, ZodObject<{ [K in keyof T]: ZodType }>>,
-		"data" | "tableName" | "primaryKey" | "dataSchema" | "dictionary" | "fieldGroupMap"
+		| "data"
+		| "tableName"
+		| "primaryKey"
+		| "dataSchema"
+		| "dictionary"
+		| "fieldGroupMap"
+		| "openEditor"
+		| "openCard"
+		| "closeCard"
 	>;
 };
 

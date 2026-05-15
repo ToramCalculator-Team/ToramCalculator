@@ -1,7 +1,6 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { DropItemSchema, type drop_item } from "@db/generated/zod";
-import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
 export const DROP_ITEM_DATA_CONFIG: TableDataConfig<drop_item> = (dictionary) => ({
@@ -39,7 +38,6 @@ export const DROP_ITEM_DATA_CONFIG: TableDataConfig<drop_item> = (dictionary) =>
 		hiddenFields: ["id"],
 		fieldGenerator: {},
 		deleteCallback: repositoryMethods.drop_item.delete,
-		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "drop_item", data }),
 		editAbleCallback: (data) => repositoryMethods.drop_item.canEdit(data.id),
 	},
 });

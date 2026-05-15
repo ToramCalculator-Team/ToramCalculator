@@ -1,6 +1,8 @@
 import hotkeys from "hotkeys-js";
 import { createEffect, createSignal, lazy, on, onMount, type ParentProps, Show, Suspense } from "solid-js";
 import { Motion } from "solid-motionone";
+import { globalCardGroup } from "~/components/business/card/globalCardGroup";
+import { globalFormGroup } from "~/components/business/form/globalFormGroup";
 import { RandomBallBackground } from "~/components/effects/randomBg";
 import { DictionaryProvider } from "~/contexts/Dictionary";
 import { MediaProvider } from "~/contexts/Media-component";
@@ -24,22 +26,22 @@ const LoginDialog = lazy(async () => {
 	return { default: module.LoginDialog };
 });
 
-const CardGroup = lazy(async () => {
-	const module = await import("~/components/business/card/CardGroup");
-	return { default: module.CardGroup };
+const GlobalCardContainer = lazy(async () => {
+	const module = await import("~/components/business/card/GlobalCardContainer");
+	return { default: module.GlobalCardContainer };
 });
 
-const FormGroup = lazy(async () => {
-	const module = await import("~/components/business/form/FormGroup");
-	return { default: module.FormGroup };
+const GlobalFormContainer = lazy(async () => {
+	const module = await import("~/components/business/form/GlobalFormContainer");
+	return { default: module.GlobalFormContainer };
 });
 
 export default function AppMainContet(props: ParentProps) {
 	let warmCacheScheduled = false;
 	const [settingRequested, setSettingRequested] = createSignal(false);
 	const [loginDialogRequested, setLoginDialogRequested] = createSignal(false);
-	const [cardGroupRequested, setCardGroupRequested] = createSignal(false);
-	const [formGroupRequested, setFormGroupRequested] = createSignal(false);
+	const [globalCardRequested, setGlobalCardRequested] = createSignal(false);
+	const [globalFormRequested, setGlobalFormRequested] = createSignal(false);
 
 	const scheduleWarmCache = () => {
 		if (warmCacheScheduled || typeof window === "undefined" || !("serviceWorker" in navigator)) {
@@ -59,10 +61,9 @@ export default function AppMainContet(props: ParentProps) {
 
 		// Warm cache starts after the app shell is interactive so first paint stays small.
 		if ("requestIdleCallback" in window) {
-			(window as Window & { requestIdleCallback: (callback: () => void, options?: { timeout: number }) => void }).requestIdleCallback(
-				() => void startWarmCache(),
-				{ timeout: 5000 },
-			);
+			(
+				window as Window & { requestIdleCallback: (callback: () => void, options?: { timeout: number }) => void }
+			).requestIdleCallback(() => void startWarmCache(), { timeout: 5000 });
 		} else {
 			setTimeout(() => void startWarmCache(), 3000);
 		}
@@ -174,11 +175,11 @@ export default function AppMainContet(props: ParentProps) {
 		if (store.pages.loginDialogState) {
 			setLoginDialogRequested(true);
 		}
-		if (store.pages.cardGroup.length > 0) {
-			setCardGroupRequested(true);
+		if (globalCardGroup.size() > 0) {
+			setGlobalCardRequested(true);
 		}
-		if (store.pages.formGroup.length > 0) {
-			setFormGroupRequested(true);
+		if (globalFormGroup.size() > 0) {
+			setGlobalFormRequested(true);
 		}
 	});
 
@@ -250,11 +251,11 @@ export default function AppMainContet(props: ParentProps) {
 							<Show when={loginDialogRequested()}>
 								<LoginDialog />
 							</Show>
-							<Show when={cardGroupRequested()}>
-								<CardGroup />
+							<Show when={globalCardRequested()}>
+								<GlobalCardContainer />
 							</Show>
-							<Show when={formGroupRequested()}>
-								<FormGroup />
+							<Show when={globalFormRequested()}>
+								<GlobalFormContainer />
 							</Show>
 						</Suspense>
 					</EngineProvider>{" "}

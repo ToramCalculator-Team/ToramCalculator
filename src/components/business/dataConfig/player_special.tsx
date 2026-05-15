@@ -2,7 +2,6 @@ import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { PlayerSpecialSchema, type player_special } from "@db/generated/zod";
 import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
-import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
 export const PLAYER_SPECIAL_DATA_CONFIG: TableDataConfig<player_special> = (dictionary) => ({
@@ -50,7 +49,6 @@ export const PLAYER_SPECIAL_DATA_CONFIG: TableDataConfig<player_special> = (dict
 		hiddenFields: ["id"],
 		fieldGenerator: {},
 		deleteCallback: repositoryMethods.player_special.delete,
-		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "player_special", data }),
 		editAbleCallback: (data) => repositoryMethods.player_special.canEdit(data.id),
 	},
 });

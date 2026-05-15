@@ -3,6 +3,11 @@ import { useNavigate, useParams } from "@solidjs/router";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createMemo, createSignal, onMount, Show, useContext } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
+import { DataRenderer } from "~/components/business/card/DataRenderer";
+import { globalCardGroup } from "~/components/business/card/globalCardGroup";
+import { DATA_CONFIG } from "~/components/business/data-config";
+import { Form } from "~/components/business/form/FormRenderer";
+import { globalFormGroup } from "~/components/business/form/globalFormGroup";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Select } from "~/components/controls/select";
@@ -10,11 +15,12 @@ import { CharacterConfigPanel } from "~/components/features/character/CharacterC
 import { CharacterView } from "~/components/features/character/CharacterView";
 import { SkillPreviewPanel } from "~/components/features/character/SkillPreviewPanel";
 import { Icons } from "~/components/icons";
+import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
 import { useEngine } from "~/lib/engine/core/thread/EngineContext";
 import { StatsRenderer } from "~/lib/engine/core/World/Member/MemberStatusPanel";
 import { createLogger } from "~/lib/Logger";
-import { setStore, store } from "~/store";
+import { store } from "~/store";
 import { createCharacterPageModel } from "./characterPageModel";
 import { createCharacter } from "./createCharacter";
 
@@ -23,6 +29,7 @@ const logger = createLogger("CharacterPage");
 export default function CharactePage() {
 	const navigate = useNavigate();
 	const media = useContext(MediaContext);
+	const dictionary = useDictionary();
 	const params = useParams();
 	const engine = useEngine();
 
@@ -60,14 +67,76 @@ export default function CharactePage() {
 		return primaryMember;
 	});
 
-	const dispatchCharacterPatch = (patch: Partial<character>) => {
-		model.dispatch({ type: "character.patch", patch });
-	}; 
+	const dispatchCharacterPatch = (
+		patch: Partial<character>,
+		relations?: Partial<NonNullable<typeof model.pageData.character>>,
+	) => {
+		model.dispatch({ type: "character.patch", patch, relations });
+	};
 
 	const previewDataItem = (type: keyof DB, data: unknown) => {
-		setStore("pages", "cardGroup", store.pages.cardGroup.length, {
-			type,
-			data: data as Record<string, unknown>,
+		const cardData = data as Record<string, unknown>;
+		const config = DATA_CONFIG[type]?.(dictionary);
+		/**
+		 * 角色页的预览卡片由当前场景创建，递归关联和编辑表单沿用同一个角色页上下文。
+		 */
+		globalCardGroup.add({
+			title: (cardData as { name?: unknown }).name?.toString() ?? "",
+			titleIcon: <Icons.Spirits iconName={type} />,
+			render: (cardApi) => {
+				if (!config) return <pre>{JSON.stringify(cardData, null, 2)}</pre>;
+
+				return (
+					<DataRenderer
+						primaryKey={config.primaryKey}
+						dictionary={config.dictionary}
+						deleteCallback={config.card.deleteCallback}
+						openCard={previewDataItem}
+						closeCard={cardApi.close}
+						openEditor={(nextData) => {
+							globalFormGroup.add({
+								render: (api) => (
+									<Form
+										tableName={type}
+										value={nextData}
+										primaryKey={config.primaryKey}
+										defaultValue={config.defaultData}
+										dataSchema={config.dataSchema}
+										dictionary={config.dictionary}
+										hiddenFields={config.form.hiddenFields}
+										fieldGroupMap={config.fieldGroupMap}
+										fieldGenerator={config.form.fieldGenerator}
+										inheritsFrom={config.inheritsFrom}
+										embeds={config.embeds}
+										onInsert={async (value) => {
+											const result = await config.form.onInsert(value);
+											api.close();
+											return result;
+										}}
+										onUpdate={async (primaryKeyValue, value) => {
+											const result = await config.form.onUpdate(primaryKeyValue, value);
+											api.close();
+											return result;
+										}}
+									/>
+								),
+							});
+						}}
+						editAbleCallback={config.card.editAbleCallback}
+						tableName={type}
+						data={cardData}
+						dataSchema={config.dataSchema}
+						hiddenFields={config.card.hiddenFields}
+						fieldGroupMap={config.fieldGroupMap}
+						fieldGenerator={config.card.fieldGenerator}
+						inheritsFrom={config.inheritsFrom}
+						embeds={config.embeds}
+						relationOverrides={config.relationOverrides}
+						after={config.card.after}
+						before={config.card.before}
+					/>
+				);
+			},
 		});
 	};
 

@@ -3,7 +3,6 @@ import { repositoryMethods } from "@db/generated/repositories";
 import { PlayerArmorSchema, type player_armor } from "@db/generated/zod";
 import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
 import { Icons } from "~/components/icons";
-import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
 export const PLAYER_ARMOR_DATA_CONFIG: TableDataConfig<player_armor> = (dictionary) => ({
@@ -61,7 +60,6 @@ export const PLAYER_ARMOR_DATA_CONFIG: TableDataConfig<player_armor> = (dictiona
 		hiddenFields: ["id"],
 		fieldGenerator: {},
 		deleteCallback: repositoryMethods.player_armor.delete,
-		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "player_armor", data }),
 		editAbleCallback: (data) => repositoryMethods.player_armor.canEdit(data.id),
 	},
 });

@@ -4,7 +4,6 @@ import { insertStatistic } from "@db/generated/repositories/statistic";
 import { NpcSchema, type npc } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
-import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
@@ -76,7 +75,6 @@ export const NPC_DATA_CONFIG: TableDataConfig<npc> = (dictionary) => ({
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 		fieldGenerator: {},
 		deleteCallback: repositoryMethods.npc.delete,
-		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "npc", data }),
 		editAbleCallback: (data) => repositoryMethods.npc.canEdit(data.id),
 	},
 });

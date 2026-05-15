@@ -4,7 +4,6 @@ import { insertStatistic } from "@db/generated/repositories/statistic";
 import { AddressSchema, type address } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
-import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
@@ -48,17 +47,23 @@ export const ADDRESS_DATA_CONFIG: TableDataConfig<address> = (dictionary) => ({
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				const statistic = await insertStatistic({
-					...defaultData.statistic,
-					id: createId(),
-				}, trx);
-				const address = await repositoryMethods.address.insert({
-					...data,
-					id: createId(),
-					statisticId: statistic.id,
-					createdByAccountId: account.id,
-					updatedByAccountId: account.id,
-				}, trx);
+				const statistic = await insertStatistic(
+					{
+						...defaultData.statistic,
+						id: createId(),
+					},
+					trx,
+				);
+				const address = await repositoryMethods.address.insert(
+					{
+						...data,
+						id: createId(),
+						statisticId: statistic.id,
+						createdByAccountId: account.id,
+						updatedByAccountId: account.id,
+					},
+					trx,
+				);
 				return address;
 			});
 		},
@@ -68,7 +73,6 @@ export const ADDRESS_DATA_CONFIG: TableDataConfig<address> = (dictionary) => ({
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 		fieldGenerator: {},
 		deleteCallback: repositoryMethods.address.delete,
-		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "address", data }),
 		editAbleCallback: (data) => repositoryMethods.address.canEdit(data.id),
 	},
 });

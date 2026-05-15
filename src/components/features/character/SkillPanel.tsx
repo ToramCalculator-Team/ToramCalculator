@@ -45,9 +45,7 @@ type SkillLinkCell = Record<SkillLinkDirection, boolean> & {
 export type SkillPanelProps = {
 	characterId: string;
 	skills: CharacterSkillWithRelations[];
-	onSkillLevelsChangeRequested: (
-		changes: Array<{ template: Skill; lv: number; characterSkillId?: string }>,
-	) => void;
+	onSkillLevelsChangeRequested: (changes: Array<{ template: Skill; lv: number; characterSkillId?: string }>) => void;
 	onSkillTreeRemoveRequested: (payload: { templateIds: string[]; characterSkillIds: string[] }) => void;
 };
 

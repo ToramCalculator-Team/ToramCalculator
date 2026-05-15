@@ -7,7 +7,6 @@ import { ItemSchema, MaterialSchema, type material } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
 import type { z } from "zod/v4";
-import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
@@ -141,7 +140,6 @@ export const MATERIAL_DATA_CONFIG: TableDataConfig<MaterialItem, material> = (di
 		hiddenFields: [],
 		fieldGenerator: {},
 		deleteCallback: deleteMaterialItem,
-		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "material", data }),
 		editAbleCallback: (data) => repositoryMethods.material.canEdit(data.itemId),
 	},
 });

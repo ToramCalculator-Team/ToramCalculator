@@ -13,7 +13,7 @@ import { Select } from "~/components/controls/select";
 import { BtEditor } from "~/components/features/BtEditor/BtEditor";
 import { Icons } from "~/components/icons";
 import { generateBossDataByFlag } from "~/lib/utils/mob";
-import { setStore, store } from "~/store";
+import { store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
@@ -55,7 +55,7 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 	},
 	table: {
 		measure: {
-			estimateSize: 97
+			estimateSize: 97,
 		},
 		columnsDef: [
 			{
@@ -382,7 +382,6 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 		},
 		fieldGenerator: {},
 		deleteCallback: repositoryMethods.mob.delete,
-		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "mob", data }),
 		editAbleCallback: (data) => repositoryMethods.mob.canEdit(data.id),
 	},
 });

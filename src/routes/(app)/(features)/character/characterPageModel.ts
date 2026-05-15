@@ -339,6 +339,25 @@ export function createCharacterPageModel(input: {
 		setPageData("relations", "skillsById", indexById(skills));
 	};
 
+	const cacheCharacterPatchRelations = (relationPatch: Partial<CharacterWithRelations>) => {
+		// 设计说明：新增装备会先写入装备表，再回写角色 FK；缓存 relation 后，同一轮本地 patch 可立即展开槽位 UI。
+		if (relationPatch.weapon) {
+			setPageData("assets", "weaponsById", relationPatch.weapon.id, relationPatch.weapon);
+		}
+		if (relationPatch.subWeapon) {
+			setPageData("assets", "weaponsById", relationPatch.subWeapon.id, relationPatch.subWeapon);
+		}
+		if (relationPatch.armor) {
+			setPageData("assets", "armorsById", relationPatch.armor.id, relationPatch.armor);
+		}
+		if (relationPatch.option) {
+			setPageData("assets", "optionsById", relationPatch.option.id, relationPatch.option);
+		}
+		if (relationPatch.special) {
+			setPageData("assets", "specialsById", relationPatch.special.id, relationPatch.special);
+		}
+	};
+
 	const expandCharacterPatch = (
 		patch: Partial<character>,
 		relationPatch: Partial<CharacterWithRelations> = {},
@@ -406,6 +425,7 @@ export function createCharacterPageModel(input: {
 			previousBase,
 			applyLocal: () => {
 				if (pageData.character?.id !== characterId) return;
+				cacheCharacterPatchRelations(relationPatch);
 				patchLocalCharacter(characterId, expandedPatch, patch);
 				bumpRevision();
 			},

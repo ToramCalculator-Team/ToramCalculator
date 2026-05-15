@@ -609,7 +609,7 @@ model player_option {
     baseAbi    Int
     extraAbi   Int
     template   option?   @relation(fields: [templateId], references: [itemId])
-    templateId String
+    templateId String?
     refinement Int
     modifiers  String[]
     crystals   crystal[]
@@ -628,7 +628,7 @@ model player_special {
     baseAbi    Int
     extraAbi   Int
     template   special?  @relation(fields: [templateId], references: [itemId])
-    templateId String
+    templateId String?
     modifiers  String[]
     crystals   crystal[]
 

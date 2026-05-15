@@ -14,7 +14,6 @@ import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
 import type { Dic, Dictionary, EnumFieldDetail } from "~/locales/type";
-import { setStore, store } from "~/store";
 import { DATA_CONFIG, type EmbedsDecl, type InheritsFromDecl, type RelationOverridesDecl } from "../data-config";
 
 export type DataRendererProps<
@@ -49,6 +48,10 @@ export type DataRendererProps<
 	deleteCallback: (id: string) => Promise<T | undefined>;
 	// 编辑回调
 	openEditor: (data: T) => void;
+	// 关联卡片打开回调
+	openCard: (type: keyof DB, data: Record<string, unknown>) => void;
+	// 关闭当前卡片
+	closeCard: () => void;
 	// 编辑权限计算回调
 	editAbleCallback: (data: T) => Promise<boolean>;
 	// 前置内容，通常是卡片数据控制器
@@ -65,9 +68,7 @@ function modelHasNameField(tableName: string): boolean {
 }
 
 function findNameSideRelation(fromTable: string) {
-	return RELATION_METADATA.find(
-		(r) => r.from === fromTable && r.type === "ManyToOne" && modelHasNameField(r.to),
-	);
+	return RELATION_METADATA.find((r) => r.from === fromTable && r.type === "ManyToOne" && modelHasNameField(r.to));
 }
 
 function getReadableName(tableName: string, record: any): string {
@@ -146,10 +147,9 @@ function detectSiblingSubtypes(parentTable: keyof DB, selfTable: keyof DB): Arra
 	return siblings;
 }
 
-export function DataRenderer<
-	T extends Record<string, unknown>,
-	TSchema extends ZodObject<{ [K in keyof T]: ZodType }>,
->(props: DataRendererProps<T, TSchema>) {
+export function DataRenderer<T extends Record<string, unknown>, TSchema extends ZodObject<{ [K in keyof T]: ZodType }>>(
+	props: DataRendererProps<T, TSchema>,
+) {
 	// 全局字典（供关联内容展示、父表字段合并使用）
 	const dictionary = useDictionary();
 
@@ -283,7 +283,9 @@ export function DataRenderer<
 			String(selfTable),
 		]);
 		const onlySet = props.relationOverrides?.only ? new Set(props.relationOverrides.only.map(String)) : null;
-		const hideSet = props.relationOverrides?.hide ? new Set(props.relationOverrides.hide.map(String)) : new Set<string>();
+		const hideSet = props.relationOverrides?.hide
+			? new Set(props.relationOverrides.hide.map(String))
+			: new Set<string>();
 		const prefixMap = props.relationOverrides?.prefix;
 
 		const passFilter = (tableName: keyof DB) => {
@@ -306,12 +308,7 @@ export function DataRenderer<
 			if (pkArr.length === 0) return;
 			const pk = String(pkArr[0]);
 			try {
-				const rows = await (db as any)
-					.selectFrom(tableName)
-					.select(["name"])
-					.where(pk, "=", id)
-					.limit(1)
-					.execute();
+				const rows = await (db as any).selectFrom(tableName).select(["name"]).where(pk, "=", id).limit(1).execute();
 				const nm = rows[0]?.name as string | undefined;
 				if (nm) nameByPkCache.set(k, nm);
 				return nm;
@@ -398,8 +395,7 @@ export function DataRenderer<
 			for (const item of items) {
 				const displayName = await resolveDisplayName(String(tableName), item);
 				const prefixKey: keyof Dictionary["ui"]["relationPrefix"] =
-					prefixOverride ??
-					getRelationPrefixKey(String(sourceTable), String(tableName), firstRelation.relationName);
+					prefixOverride ?? getRelationPrefixKey(String(sourceTable), String(tableName), firstRelation.relationName);
 				upsert({ tableName, prefixKey, isParent: isParentBucket, item, displayName });
 			}
 		};
@@ -468,9 +464,7 @@ export function DataRenderer<
 			<Show
 				when={"fieldGroupMap" in props && Object.keys(props.fieldGroupMap ?? {}).length > 0}
 				fallback={
-					<For each={Object.entries(data())}>
-						{([key, val]) => fieldRenderer(key as keyof T, val as T[keyof T])}
-					</For>
+					<For each={Object.entries(data())}>{([key, val]) => fieldRenderer(key as keyof T, val as T[keyof T])}</For>
 				}
 			>
 				<For each={Object.entries(props.fieldGroupMap ?? {})}>
@@ -517,10 +511,7 @@ export function DataRenderer<
 												<Button
 													level="default"
 													onclick={() => {
-														setStore("pages", "cardGroup", store.pages.cardGroup.length, {
-															type: embed.table,
-															data: item as Record<string, unknown>,
-														});
+														props.openCard(embed.table, item as Record<string, unknown>);
 													}}
 													class="lg:w-fit lg:border-dividing-color lg:border-2"
 												>
@@ -552,10 +543,7 @@ export function DataRenderer<
 												<Button
 													level={group.isParent ? "quaternary" : "default"}
 													onclick={() => {
-														setStore("pages", "cardGroup", store.pages.cardGroup.length, {
-															type: group.tableName,
-															data: item.data as Record<string, unknown>,
-														});
+														props.openCard(group.tableName, item.data as Record<string, unknown>);
 													}}
 													class="lg:w-fit lg:border-dividing-color lg:border-2"
 												>
@@ -585,14 +573,14 @@ export function DataRenderer<
 							icon={<Icons.Outline.Trash />}
 							onclick={async () => {
 								props.deleteCallback(data()[props.primaryKey] as string);
-								setStore("pages", "cardGroup", (pre) => pre.slice(0, -1));
+								props.closeCard();
 							}}
 						/>
 						<Button
 							class="w-fit"
 							icon={<Icons.Outline.Edit />}
 							onclick={() => {
-								setStore("pages", "cardGroup", (pre) => pre.slice(0, -1));
+								props.closeCard();
 								props.openEditor(data());
 							}}
 						/>

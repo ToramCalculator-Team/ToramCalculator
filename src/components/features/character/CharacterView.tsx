@@ -1,8 +1,7 @@
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import { createEffect, createMemo, createSignal, type JSX, on, onCleanup, onMount } from "solid-js";
-
-import { ArcRotateCamera, Color3, Engine, Scene, ShadowGenerator, SpotLight, Vector3 } from "~/lib/babylon/runtime";
 import type { AbstractEngine } from "~/lib/babylon/runtime";
+import { ArcRotateCamera, Color3, Engine, Scene, ShadowGenerator, SpotLight, Vector3 } from "~/lib/babylon/runtime";
 import {
 	BuiltinAnimationType,
 	type CharacterEntityRuntime,

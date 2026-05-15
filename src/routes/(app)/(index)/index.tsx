@@ -5,6 +5,11 @@ import { useMachine } from "@xstate/solid";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createMemo, createSignal, For, Index, type JSX, onCleanup, onMount, Show, useContext } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
+import { DataRenderer } from "~/components/business/card/DataRenderer";
+import { globalCardGroup } from "~/components/business/card/globalCardGroup";
+import { DATA_CONFIG } from "~/components/business/data-config";
+import { Form } from "~/components/business/form/FormRenderer";
+import { globalFormGroup } from "~/components/business/form/globalFormGroup";
 import { Sheet } from "~/components/containers/sheet";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
@@ -29,6 +34,71 @@ export default function IndexPage() {
 	// 使用状态机管理此页面状态
 	const [state, send] = useMachine(indexPageMachine);
 	const context = () => state.context;
+
+	/**
+	 * 首页搜索结果卡片在首页场景内创建，递归关联继续沿用当前语言字典。
+	 */
+	const openSearchResultCard = (type: keyof DB, data: Record<string, unknown>) => {
+		const config = DATA_CONFIG[type]?.(dictionary);
+		globalCardGroup.add({
+			title: (data as { name?: unknown }).name?.toString() ?? "",
+			titleIcon: <Icons.Spirits iconName={type} />,
+			render: (cardApi) => {
+				if (!config) return <pre>{JSON.stringify(data, null, 2)}</pre>;
+
+				return (
+					<DataRenderer
+						primaryKey={config.primaryKey}
+						dictionary={config.dictionary}
+						deleteCallback={config.card.deleteCallback}
+						openCard={openSearchResultCard}
+						closeCard={cardApi.close}
+						openEditor={(nextData) => {
+							globalFormGroup.add({
+								render: (api) => (
+									<Form
+										tableName={type}
+										value={nextData}
+										primaryKey={config.primaryKey}
+										defaultValue={config.defaultData}
+										dataSchema={config.dataSchema}
+										dictionary={config.dictionary}
+										hiddenFields={config.form.hiddenFields}
+										fieldGroupMap={config.fieldGroupMap}
+										fieldGenerator={config.form.fieldGenerator}
+										inheritsFrom={config.inheritsFrom}
+										embeds={config.embeds}
+										onInsert={async (value) => {
+											const result = await config.form.onInsert(value);
+											api.close();
+											return result;
+										}}
+										onUpdate={async (primaryKeyValue, value) => {
+											const result = await config.form.onUpdate(primaryKeyValue, value);
+											api.close();
+											return result;
+										}}
+									/>
+								),
+							});
+						}}
+						editAbleCallback={config.card.editAbleCallback}
+						tableName={type}
+						data={data}
+						dataSchema={config.dataSchema}
+						hiddenFields={config.card.hiddenFields}
+						fieldGroupMap={config.fieldGroupMap}
+						fieldGenerator={config.card.fieldGenerator}
+						inheritsFrom={config.inheritsFrom}
+						embeds={config.embeds}
+						relationOverrides={config.relationOverrides}
+						after={config.card.after}
+						before={config.card.before}
+					/>
+				);
+			},
+		});
+	};
 
 	// 事件分发函数，调用状态机处理事件
 	const handleSearchInput = (e: Event & { target: HTMLInputElement }) => {
@@ -536,15 +606,12 @@ export default function IndexPage() {
 																							}}
 																							onClick={async () => {
 																								// 设置卡片类型和ID
-																								"id" in resultItem
-																									? setStore("pages", "cardGroup", (pre) => [
-																											...pre,
-																											{
-																												type: groupType,
-																												data: resultItem,
-																											},
-																										])
-																									: null;
+																								if ("id" in resultItem) {
+																									openSearchResultCard(
+																										groupType,
+																										resultItem as Record<string, unknown>,
+																									);
+																								}
 																							}}
 																						>
 																							<div class="Name group-hover:border-accent-color border-b-2 border-transparent p-1 text-left">

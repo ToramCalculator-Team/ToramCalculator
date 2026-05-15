@@ -110,16 +110,6 @@ type PageState = {
 			};
 		};
 	}>;
-	/** 卡片组缓存 */
-	cardGroup: {
-		type: keyof DB;
-		data: Record<string, unknown>;
-	}[];
-	/** 表单组缓存 */
-	formGroup: {
-		type: keyof DB;
-		data: Record<string, unknown>;
-	}[];
 };
 
 type SwState = {
@@ -195,8 +185,6 @@ export const initialStore: Store = {
 		settingsDialogState: false,
 		loginDialogState: false,
 		wiki: {},
-		cardGroup: [],
-		formGroup: [],
 	},
 	sw: {
 		periodicCheckEnabled: true,
@@ -280,6 +268,18 @@ const mergeDeep = <T>(...sources: unknown[]): T => {
 	return acc as T;
 };
 
+const stripRuntimeOnlyState = (value: Store): Store => {
+	// 运行时弹层栈携带闭包或记录快照，不能从旧 localStorage 合并回持久化 store。
+	const pages = value.pages as PageState & { formGroup?: unknown; cardGroup?: unknown };
+	if ("formGroup" in pages) {
+		delete pages.formGroup;
+	}
+	if ("cardGroup" in pages) {
+		delete pages.cardGroup;
+	}
+	return value;
+};
+
 export const getActStore = () => {
 	const isBrowser = typeof window !== "undefined";
 	if (isBrowser) {
@@ -298,8 +298,9 @@ export const getActStore = () => {
 			} else {
 				mergedStore = mergeDeep<Store>({}, newStoreWithoutVersion, oldStoreWithoutVersion);
 				mergedStore.version = newVersion;
-				localStorage.setItem("store", JSON.stringify(mergedStore));
 			}
+			mergedStore = stripRuntimeOnlyState(mergedStore);
+			localStorage.setItem("store", JSON.stringify(mergedStore));
 			return mergedStore;
 		} else {
 			console.log(performance.now(), "初始化本地配置");

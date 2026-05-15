@@ -1,11 +1,22 @@
 import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import type { PlayerArmorWithRelations } from "@db/generated/repositories/player_armor";
+import { selectPlayerArmorByIdWithRelations } from "@db/generated/repositories/player_armor";
 import type { PlayerOptionWithRelations } from "@db/generated/repositories/player_option";
+import { selectPlayerOptionByIdWithRelations } from "@db/generated/repositories/player_option";
 import type { PlayerSpecialWithRelations } from "@db/generated/repositories/player_special";
+import { selectPlayerSpecialByIdWithRelations } from "@db/generated/repositories/player_special";
 import type { PlayerWeaponWithRelations } from "@db/generated/repositories/player_weapon";
+import { selectPlayerWeaponByIdWithRelations } from "@db/generated/repositories/player_weapon";
 import type { character, DB } from "@db/generated/zod";
 import { createSignal, Show } from "solid-js";
+import type { TableDataConfig } from "~/components/business/data-config";
+import { PLAYER_ARMOR_DATA_CONFIG } from "~/components/business/dataConfig/player_armor";
+import { PLAYER_OPTION_DATA_CONFIG } from "~/components/business/dataConfig/player_option";
+import { PLAYER_SPECIAL_DATA_CONFIG } from "~/components/business/dataConfig/player_special";
+import { PLAYER_WEAPON_DATA_CONFIG } from "~/components/business/dataConfig/player_weapon";
+import { Form } from "~/components/business/form/FormRenderer";
+import { globalFormGroup } from "~/components/business/form/globalFormGroup";
 import { ForeignKeyPickerSheet } from "~/components/business/table/ForeignKeyPickerSheet";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
@@ -15,16 +26,110 @@ export type EquipmentSlot = "weaponId" | "subWeaponId" | "armorId" | "optionId" 
 
 export type EquipmentPanelProps = {
 	character: CharacterWithRelations;
-	onPatchRequested: (patch: Partial<character>) => Promise<void> | void;
+	onPatchRequested: (patch: Partial<character>, relations?: Partial<CharacterWithRelations>) => Promise<void> | void;
 	onItemPreviewRequested: (type: keyof DB, data: unknown) => void;
 };
 
-const equipmentSlotConfig: Record<EquipmentSlot, keyof DB> = {
+const equipmentSlotConfig = {
 	weaponId: "player_weapon",
 	subWeaponId: "player_weapon",
 	armorId: "player_armor",
 	optionId: "player_option",
 	specialId: "player_special",
+} as const satisfies Record<EquipmentSlot, keyof DB>;
+
+const equipmentRelationKeyConfig = {
+	weaponId: "weapon",
+	subWeaponId: "subWeapon",
+	armorId: "armor",
+	optionId: "option",
+	specialId: "special",
+} as const satisfies Record<EquipmentSlot, keyof CharacterWithRelations>;
+
+type EquipmentTableName = (typeof equipmentSlotConfig)[EquipmentSlot];
+type EquipmentSlotTable<S extends EquipmentSlot> = (typeof equipmentSlotConfig)[S];
+type EquipmentTableRow<T extends EquipmentTableName> = DB[T];
+type EquipmentSlotRow<S extends EquipmentSlot> = EquipmentTableRow<EquipmentSlotTable<S>>;
+
+type EquipmentRelationByTable = {
+	player_weapon: PlayerWeaponWithRelations;
+	player_armor: PlayerArmorWithRelations;
+	player_option: PlayerOptionWithRelations;
+	player_special: PlayerSpecialWithRelations;
+};
+
+type EquipmentRelation<T extends EquipmentTableName> = EquipmentRelationByTable[T];
+
+const withBelongToPlayerId = <T extends EquipmentTableName>(
+	value: EquipmentTableRow<T>,
+	belongToPlayerId: string,
+): EquipmentTableRow<T> => ({
+	...value,
+	belongToPlayerId,
+});
+
+const readInsertedEquipmentId = (row: { id: unknown }, tableName: string): string => {
+	// 设计说明：当前装备槽位只接入玩家装备表，这些表都以 id 作为主键；这里把表单配置主键推断从槽位联合类型中移出。
+	const primaryValue = row.id;
+	if (typeof primaryValue !== "string") {
+		throw new Error(`${tableName} 新增结果缺少字符串主键`);
+	}
+	return primaryValue;
+};
+
+const equipmentDataConfigFactories = {
+	player_weapon: PLAYER_WEAPON_DATA_CONFIG,
+	player_armor: PLAYER_ARMOR_DATA_CONFIG,
+	player_option: PLAYER_OPTION_DATA_CONFIG,
+	player_special: PLAYER_SPECIAL_DATA_CONFIG,
+} as const satisfies { [T in EquipmentTableName]: TableDataConfig<EquipmentTableRow<T>> };
+
+const equipmentRelationLoaders = {
+	player_weapon: selectPlayerWeaponByIdWithRelations,
+	player_armor: selectPlayerArmorByIdWithRelations,
+	player_option: selectPlayerOptionByIdWithRelations,
+	player_special: selectPlayerSpecialByIdWithRelations,
+} as const satisfies { [T in EquipmentTableName]: (id: string) => Promise<EquipmentRelation<T> | undefined> };
+
+const equipmentRelationFallbacks = {
+	player_weapon: (inserted) => ({ ...inserted, template: null, crystals: [] }),
+	player_armor: (inserted) => ({ ...inserted, template: null, crystals: [] }),
+	player_option: (inserted) => ({ ...inserted, template: null, crystals: [] }),
+	player_special: (inserted) => ({ ...inserted, template: null, crystals: [] }),
+} satisfies { [T in EquipmentTableName]: (inserted: EquipmentTableRow<T>) => EquipmentRelation<T> };
+
+const getEquipmentDataConfig = <T extends EquipmentTableName>(
+	tableName: T,
+	dictionary: Parameters<TableDataConfig<EquipmentTableRow<T>>>[0],
+): ReturnType<TableDataConfig<EquipmentTableRow<T>>> => {
+	// 设计说明：配置表已用 satisfies 校验 tableName 与 row 类型对应关系；这里保留泛型索引后的字面量关联。
+	const configFactory = equipmentDataConfigFactories[tableName] as unknown as TableDataConfig<EquipmentTableRow<T>>;
+	return configFactory(dictionary);
+};
+
+const loadEquipmentWithRelations = async <T extends EquipmentTableName>(
+	tableName: T,
+	id: string,
+	inserted: EquipmentTableRow<T>,
+): Promise<EquipmentRelation<T>> => {
+	const selectWithRelations = equipmentRelationLoaders[tableName] as (
+		id: string,
+	) => Promise<EquipmentRelation<T> | undefined>;
+	const fallbackWithRelations = equipmentRelationFallbacks[tableName] as unknown as (
+		inserted: EquipmentTableRow<T>,
+	) => EquipmentRelation<T>;
+	return (await selectWithRelations(id)) ?? fallbackWithRelations(inserted);
+};
+
+const toCharacterPatch = <S extends EquipmentSlot>(slot: S, id: string): Pick<character, S> => {
+	return { [slot]: id } as Pick<character, S>;
+};
+
+const toRelationPatch = <S extends EquipmentSlot>(
+	slot: S,
+	relation: EquipmentRelation<EquipmentSlotTable<S>>,
+): Partial<CharacterWithRelations> => {
+	return { [equipmentRelationKeyConfig[slot]]: relation } as Partial<CharacterWithRelations>;
 };
 
 export function EquipmentPanel(props: EquipmentPanelProps) {
@@ -43,6 +148,49 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 	const clearEquipmentSlot = (slot: EquipmentSlot) => {
 		// data.prisma 将装备外键定义为 String?；清空装备用 NULL 表达无关联。
 		void props.onPatchRequested({ [slot]: null } as Partial<character>);
+	};
+
+	const openEquipmentCreateForm = <S extends EquipmentSlot>(slot: S) => {
+		const tableName = equipmentSlotConfig[slot];
+		const config = getEquipmentDataConfig(tableName, dictionary);
+
+		const initialValue = withBelongToPlayerId(config.defaultData, props.character.belongToPlayerId);
+
+		globalFormGroup.add({
+			render: (api) => (
+				<Form<EquipmentSlotRow<S>, typeof config.dataSchema>
+					tableName={tableName}
+					value={initialValue as EquipmentSlotRow<S>}
+					primaryKey={config.primaryKey}
+					defaultValue={config.defaultData as EquipmentSlotRow<S>}
+					dataSchema={config.dataSchema}
+					dictionary={config.dictionary}
+					hiddenFields={config.form.hiddenFields}
+					fieldGroupMap={config.fieldGroupMap}
+					fieldGenerator={config.form.fieldGenerator}
+					inheritsFrom={config.inheritsFrom}
+					embeds={config.embeds}
+					onInsert={async (value) => {
+						// 设计说明：装备槽位依赖刚创建记录的真实主键，因此先插入装备，再回写 character FK。
+						const inserted = await config.form.onInsert(value);
+						const primaryValue = readInsertedEquipmentId(inserted, tableName);
+						const insertedEquipment = await loadEquipmentWithRelations(tableName, primaryValue, inserted);
+						// 设计说明：新增装备写库后立即把 relation 回填到角色页工作副本，避免 FK 已变更但槽位 UI 等待整页重载。
+						await props.onPatchRequested(
+							toCharacterPatch(slot, primaryValue),
+							toRelationPatch(slot, insertedEquipment),
+						);
+						api.close();
+						return inserted;
+					}}
+					onUpdate={async (primaryKeyValue, value) => {
+						const result = await config.form.onUpdate(primaryKeyValue, value);
+						api.close();
+						return result;
+					}}
+				/>
+			),
+		});
 	};
 
 	const previewEquipmentItem = (
@@ -107,7 +255,15 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 						<Show
 							when={props.character.weapon?.id}
 							fallback={
-								<Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" class="rounded-none rounded-tr" />
+								<Button
+									icon={<Icons.Outline.DocmentAdd />}
+									level="quaternary"
+									class="rounded-none rounded-tr"
+									onClick={(e) => {
+										e.stopPropagation();
+										openEquipmentCreateForm("weaponId");
+									}}
+								/>
 							}
 						>
 							<Button
@@ -163,7 +319,15 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 						<Show
 							when={props.character.subWeapon?.id}
 							fallback={
-								<Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" class="rounded-none rounded-tr" />
+								<Button
+									icon={<Icons.Outline.DocmentAdd />}
+									level="quaternary"
+									class="rounded-none rounded-tr"
+									onClick={(e) => {
+										e.stopPropagation();
+										openEquipmentCreateForm("subWeaponId");
+									}}
+								/>
 							}
 						>
 							<Button
@@ -219,7 +383,15 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 						<Show
 							when={props.character.armor?.id}
 							fallback={
-								<Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" class="rounded-none rounded-tr" />
+								<Button
+									icon={<Icons.Outline.DocmentAdd />}
+									level="quaternary"
+									class="rounded-none rounded-tr"
+									onClick={(e) => {
+										e.stopPropagation();
+										openEquipmentCreateForm("armorId");
+									}}
+								/>
 							}
 						>
 							<Button
@@ -275,7 +447,15 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 						<Show
 							when={props.character.option?.id}
 							fallback={
-								<Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" class="rounded-none rounded-tr" />
+								<Button
+									icon={<Icons.Outline.DocmentAdd />}
+									level="quaternary"
+									class="rounded-none rounded-tr"
+									onClick={(e) => {
+										e.stopPropagation();
+										openEquipmentCreateForm("optionId");
+									}}
+								/>
 							}
 						>
 							<Button
@@ -331,7 +511,15 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 						<Show
 							when={props.character.special?.id}
 							fallback={
-								<Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" class="rounded-none rounded-tr" />
+								<Button
+									icon={<Icons.Outline.DocmentAdd />}
+									level="quaternary"
+									class="rounded-none rounded-tr"
+									onClick={(e) => {
+										e.stopPropagation();
+										openEquipmentCreateForm("specialId");
+									}}
+								/>
 							}
 						>
 							<Button

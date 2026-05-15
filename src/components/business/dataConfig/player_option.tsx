@@ -2,7 +2,6 @@ import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { PlayerOptionSchema, type player_option } from "@db/generated/zod";
 import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
-import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
 export const PLAYER_OPTION_DATA_CONFIG: TableDataConfig<player_option> = (dictionary) => ({
@@ -51,7 +50,6 @@ export const PLAYER_OPTION_DATA_CONFIG: TableDataConfig<player_option> = (dictio
 		hiddenFields: ["id"],
 		fieldGenerator: {},
 		deleteCallback: repositoryMethods.player_option.delete,
-		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "player_option", data }),
 		editAbleCallback: (data) => repositoryMethods.player_option.canEdit(data.id),
 	},
 });

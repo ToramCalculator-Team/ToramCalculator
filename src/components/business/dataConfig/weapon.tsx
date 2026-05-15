@@ -11,7 +11,6 @@ import type { z } from "zod/v4";
 import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
 import { Select } from "~/components/controls/select";
 import { Icons } from "~/components/icons";
-import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
@@ -217,11 +216,6 @@ export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem, weapon> = (dictiona
 		hiddenFields: [],
 		fieldGenerator: {},
 		deleteCallback: deleteWeaponItem,
-		openEditor: (data) =>
-			setStore("pages", "formGroup", store.pages.formGroup.length, {
-				type: "weapon",
-				data,
-			}),
 		editAbleCallback: (data) => repositoryMethods.weapon.canEdit(data.itemId),
 	},
 });

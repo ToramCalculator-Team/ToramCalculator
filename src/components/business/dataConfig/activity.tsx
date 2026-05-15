@@ -4,7 +4,6 @@ import { insertStatistic } from "@db/generated/repositories/statistic";
 import { ActivitySchema, type activity } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
-import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
@@ -51,17 +50,23 @@ export const ACTIVITY_DATA_CONFIG: TableDataConfig<activity> = (dictionary) => (
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				const statistic = await insertStatistic({
-					...defaultData.statistic,
-					id: createId(),
-				}, trx);
-				const activity = await repositoryMethods.activity.insert({
-					...data,
-					id: createId(),
-					statisticId: statistic.id,
-					createdByAccountId: account.id,
-					updatedByAccountId: account.id,
-				}, trx);
+				const statistic = await insertStatistic(
+					{
+						...defaultData.statistic,
+						id: createId(),
+					},
+					trx,
+				);
+				const activity = await repositoryMethods.activity.insert(
+					{
+						...data,
+						id: createId(),
+						statisticId: statistic.id,
+						createdByAccountId: account.id,
+						updatedByAccountId: account.id,
+					},
+					trx,
+				);
 				return activity;
 			});
 		},
@@ -71,7 +76,6 @@ export const ACTIVITY_DATA_CONFIG: TableDataConfig<activity> = (dictionary) => (
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 		fieldGenerator: {},
 		deleteCallback: repositoryMethods.activity.delete,
-		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "activity", data }),
 		editAbleCallback: (data) => repositoryMethods.activity.canEdit(data.id),
 	},
 });

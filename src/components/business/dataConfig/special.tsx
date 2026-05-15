@@ -8,7 +8,6 @@ import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
 import type { z } from "zod/v4";
 import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
-import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
@@ -148,7 +147,6 @@ export const SPECIAL_DATA_CONFIG: TableDataConfig<SpecialItem, special> = (dicti
 		hiddenFields: [],
 		fieldGenerator: {},
 		deleteCallback: deleteSpecialItem,
-		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "special", data }),
 		editAbleCallback: (data) => repositoryMethods.special.canEdit(data.itemId),
 	},
 });

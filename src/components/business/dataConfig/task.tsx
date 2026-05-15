@@ -4,7 +4,6 @@ import { insertStatistic } from "@db/generated/repositories/statistic";
 import { TaskSchema, type task } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
-import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
@@ -102,7 +101,6 @@ export const TASK_DATA_CONFIG: TableDataConfig<task> = (dictionary) => ({
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 		fieldGenerator: {},
 		deleteCallback: repositoryMethods.task.delete,
-		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "task", data }),
 		editAbleCallback: (data) => repositoryMethods.task.canEdit(data.id),
 	},
 });

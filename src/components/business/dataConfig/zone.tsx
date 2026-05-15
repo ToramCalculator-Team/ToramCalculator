@@ -4,7 +4,6 @@ import { insertStatistic } from "@db/generated/repositories/statistic";
 import { ZoneSchema, type zone } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
-import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
@@ -104,7 +103,6 @@ export const ZONE_DATA_CONFIG: TableDataConfig<zone> = (dictionary) => ({
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 		fieldGenerator: {},
 		deleteCallback: repositoryMethods.zone.delete,
-		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "zone", data }),
 		editAbleCallback: (data) => repositoryMethods.zone.canEdit(data.id),
 	},
 });

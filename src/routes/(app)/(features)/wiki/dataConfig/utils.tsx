@@ -3,10 +3,11 @@ import type { DB } from "@db/generated/zod/index";
 import { getDB } from "@db/repositories/database";
 import type { Transaction } from "kysely";
 import { Show } from "solid-js";
+import { globalCardGroup } from "~/components/business/card/globalCardGroup";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons/index";
 import type { Dictionary } from "~/locales/type";
-import { setStore, store } from "~/store";
+import { store } from "~/store";
 import { setWikiStore } from "../store";
 
 export const arrayDiff = <T extends keyof DB>(props: { table: T; oldArray: DB[T][]; newArray: DB[T][] }) => {
@@ -78,7 +79,7 @@ export const CardSharedSection = <T extends object>(props: {
 								await props.delete(trx, props.data);
 							});
 							// 关闭当前卡片
-							setStore("pages", "cardGroup", (pre) => pre.slice(0, -1));
+							globalCardGroup.remove();
 						}}
 					/>
 					<Button
@@ -86,7 +87,7 @@ export const CardSharedSection = <T extends object>(props: {
 						icon={<Icons.Outline.Edit />}
 						onclick={() => {
 							// 关闭当前卡片
-							setStore("pages", "cardGroup", (pre) => pre.slice(0, -1));
+							globalCardGroup.remove();
 							// 打开表单
 							setWikiStore("form", { isOpen: true, data: props.data });
 						}}

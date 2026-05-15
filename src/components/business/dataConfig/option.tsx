@@ -8,7 +8,6 @@ import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
 import type { z } from "zod/v4";
 import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
-import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
@@ -162,7 +161,6 @@ export const OPTION_DATA_CONFIG: TableDataConfig<OptionItem, option> = (dictiona
 		hiddenFields: [],
 		fieldGenerator: {},
 		deleteCallback: deleteOptionItem,
-		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "option", data }),
 		editAbleCallback: (data) => repositoryMethods.option.canEdit(data.itemId),
 	},
 });

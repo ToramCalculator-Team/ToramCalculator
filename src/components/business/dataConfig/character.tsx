@@ -5,7 +5,6 @@ import { CharacterSchema, type character } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
 import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
-import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
 export const CHARACTER_DATA_CONFIG: TableDataConfig<character> = (dictionary) => ({
@@ -87,7 +86,6 @@ export const CHARACTER_DATA_CONFIG: TableDataConfig<character> = (dictionary) =>
 		hiddenFields: [],
 		fieldGenerator: {},
 		deleteCallback: repositoryMethods.character.delete,
-		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "character", data }),
 		editAbleCallback: (data) => repositoryMethods.character.canEdit(data.id),
 	},
 });

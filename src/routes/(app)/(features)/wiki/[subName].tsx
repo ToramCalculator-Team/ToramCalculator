@@ -15,7 +15,11 @@ import {
 	useContext,
 } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
+import { DataRenderer } from "~/components/business/card/DataRenderer";
+import { globalCardGroup } from "~/components/business/card/globalCardGroup";
 import { type AnyTableDataConfig, DATA_CONFIG } from "~/components/business/data-config";
+import { Form } from "~/components/business/form/FormRenderer";
+import { globalFormGroup } from "~/components/business/form/globalFormGroup";
 import { Dialog } from "~/components/containers/dialog";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
@@ -24,7 +28,7 @@ import { Icons } from "~/components/icons/index";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
 import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
-import { setStore, store } from "~/store";
+import { store } from "~/store";
 import { setWikiStore, wikiStore } from "./store";
 import { wikiPageConfig } from "./wikiPage/wikiPageConfig";
 
@@ -79,6 +83,105 @@ export default function WikiSubPage() {
 		const request = tableConfigRequest();
 		return request?.config.dataFetcher.liveQuery?.(db) ?? null;
 	});
+
+	/**
+	 * Wiki 页面在场景内组装卡片内容，卡片栈通过 globalCardGroup 记录运行时 JSX。
+	 * 设计目的：字典、递归关联和编辑提交都来自当前页面上下文。
+	 */
+	const openCurrentTableCard = (type: keyof DB, data: Record<string, unknown>) => {
+		const config = DATA_CONFIG[type]?.(dictionary);
+		globalCardGroup.add({
+			title: (data as { name?: unknown }).name?.toString() ?? "",
+			titleIcon: <Icons.Spirits iconName={type} />,
+			render: (cardApi) => {
+				if (!config) return <pre>{JSON.stringify(data, null, 2)}</pre>;
+
+				return (
+					<DataRenderer
+						primaryKey={config.primaryKey}
+						dictionary={config.dictionary}
+						deleteCallback={config.card.deleteCallback}
+						openCard={openCurrentTableCard}
+						closeCard={cardApi.close}
+						openEditor={(nextData) => {
+							globalFormGroup.add({
+								render: (api) => (
+									<Form
+										tableName={type}
+										value={nextData}
+										primaryKey={config.primaryKey}
+										defaultValue={config.defaultData}
+										dataSchema={config.dataSchema}
+										dictionary={config.dictionary}
+										hiddenFields={config.form.hiddenFields}
+										fieldGroupMap={config.fieldGroupMap}
+										fieldGenerator={config.form.fieldGenerator}
+										inheritsFrom={config.inheritsFrom}
+										embeds={config.embeds}
+										onInsert={async (value) => {
+											const result = await config.form.onInsert(value);
+											api.close();
+											return result;
+										}}
+										onUpdate={async (primaryKeyValue, value) => {
+											const result = await config.form.onUpdate(primaryKeyValue, value);
+											api.close();
+											return result;
+										}}
+									/>
+								),
+							});
+						}}
+						editAbleCallback={config.card.editAbleCallback}
+						tableName={type}
+						data={data}
+						dataSchema={config.dataSchema}
+						hiddenFields={config.card.hiddenFields}
+						fieldGroupMap={config.fieldGroupMap}
+						fieldGenerator={config.card.fieldGenerator}
+						inheritsFrom={config.inheritsFrom}
+						embeds={config.embeds}
+						relationOverrides={config.relationOverrides}
+						after={config.card.after}
+						before={config.card.before}
+					/>
+				);
+			},
+		});
+	};
+
+	const openCreateForm = () => {
+		const request = tableConfigRequest();
+		if (!request) return;
+		const { type, config } = request;
+		globalFormGroup.add({
+			render: (api) => (
+				<Form
+					tableName={type}
+					value={config.defaultData}
+					primaryKey={config.primaryKey}
+					defaultValue={config.defaultData}
+					dataSchema={config.dataSchema}
+					dictionary={config.dictionary}
+					hiddenFields={config.form.hiddenFields}
+					fieldGroupMap={config.fieldGroupMap}
+					fieldGenerator={config.form.fieldGenerator}
+					inheritsFrom={config.inheritsFrom}
+					embeds={config.embeds}
+					onInsert={async (value) => {
+						const result = await config.form.onInsert(value);
+						api.close();
+						return result;
+					}}
+					onUpdate={async (primaryKeyValue, value) => {
+						const result = await config.form.onUpdate(primaryKeyValue, value);
+						api.close();
+						return result;
+					}}
+				/>
+			),
+		});
+	};
 
 	let liveLoadingConfigKey: string | undefined;
 	createEffect(() => {
@@ -245,7 +348,7 @@ export default function WikiSubPage() {
 
 	return (
 		<Show when={dataConfig()}>
-			{(validDataConfig) => {
+			{(_validDataConfig) => {
 				// console.log("syncState", JSON.stringify(store.database.tableSyncState, null, 2), "wikiStore.type", JSON.stringify(wikiStore.type), "validDataConfig", validDataConfig());
 				return (
 					<Show
@@ -290,12 +393,7 @@ export default function WikiSubPage() {
 											size="sm"
 											icon={<Icons.Outline.CloudUpload />}
 											class="flex bg-transparent lg:hidden"
-											onClick={() =>
-												setStore("pages", "formGroup", store.pages.formGroup.length, {
-													type: wikiStore.type,
-													data: validDataConfig()(dictionary).defaultData,
-												})
-											}
+											onClick={openCreateForm}
 										></Button>
 									</Show>
 									<Button // 仅移动端显示
@@ -308,12 +406,7 @@ export default function WikiSubPage() {
 										<Button // 仅PC端显示
 											icon={<Icons.Outline.CloudUpload />}
 											class="hidden lg:flex"
-											onClick={() => {
-												setStore("pages", "formGroup", store.pages.formGroup.length, {
-													type: wikiStore.type,
-													data: validDataConfig()(dictionary).defaultData,
-												});
-											}}
+											onClick={openCreateForm}
 										>
 											{dictionary().ui.actions.add}
 										</Button>
@@ -437,12 +530,7 @@ export default function WikiSubPage() {
 															defaultSort={table().config.table.defaultSort}
 															dictionary={table().config.dictionary}
 															globalFilterStr={() => wikiStore.table.globalFilterStr}
-															rowHandleClick={(data) =>
-																setStore("pages", "cardGroup", store.pages.cardGroup.length, {
-																	type: table().type,
-																	data,
-																})
-															}
+															rowHandleClick={(data) => openCurrentTableCard(table().type, data)}
 															columnVisibility={wikiStore.table.columnVisibility}
 															onColumnVisibilityChange={(updater) => {
 																if (typeof updater === "function") {
@@ -519,12 +607,7 @@ export default function WikiSubPage() {
 											level="quaternary"
 											icon={<Icons.Outline.CloudUpload />}
 											class="hidden lg:flex"
-											onClick={() => {
-												setStore("pages", "formGroup", store.pages.formGroup.length, {
-													type: wikiStore.type,
-													data: validDataConfig()(dictionary).defaultData,
-												});
-											}}
+											onClick={openCreateForm}
 										></Button>
 									</Show>
 									<input
@@ -591,9 +674,7 @@ export default function WikiSubPage() {
 																	class="border-dividing-color flex lg:w-[calc(20%-0.4rem)] w-[calc(33.333333%-0.333333rem)] flex-col items-center gap-2 rounded border px-2 py-3"
 																>
 																	{field.icon}
-																	<span class="text-nowrap text-ellipsis">
-																		{dictionary().db[field.name].selfName}
-																	</span>
+																	<span class="text-nowrap text-ellipsis">{dictionary().db[field.name].selfName}</span>
 																</A>
 															);
 														}}

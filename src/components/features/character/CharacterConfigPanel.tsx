@@ -13,10 +13,10 @@ import { SkillPanel } from "./SkillPanel";
 
 export type CharacterConfigPanelProps = {
 	character: CharacterWithRelations;
-	onPatchRequested: (patch: Partial<character>) => void;
+	onPatchRequested: (patch: Partial<character>, relations?: Partial<CharacterWithRelations>) => void;
 	onItemPreviewRequested: (type: keyof DB, data: unknown) => void;
 	onCommand: (command: CharacterPageCommand) => void;
-}; 
+};
 
 export function CharacterConfigPanel(props: CharacterConfigPanelProps) {
 	const dictionary = useDictionary();
@@ -100,9 +100,7 @@ export function CharacterConfigPanel(props: CharacterConfigPanelProps) {
 					<Show when={activeTab() === "skill"}>
 						<SkillPanel
 							characterId={props.character.id}
-							onSkillLevelsChangeRequested={(changes) =>
-								props.onCommand({ type: "skills.setLevels", changes })
-							}
+							onSkillLevelsChangeRequested={(changes) => props.onCommand({ type: "skills.setLevels", changes })}
 							onSkillTreeRemoveRequested={(payload) =>
 								props.onCommand({
 									type: "skills.removeTree",

@@ -2,12 +2,14 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createEffect, createSignal, type JSX, on, onCleanup, onMount, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { useMedia } from "~/contexts/Media-component";
-import { setStore, store } from "~/store";
+import { store } from "~/store";
 
 export interface FormSheetProps {
 	display: boolean;
 	index: number;
 	total: number;
+	onClose: () => void;
+	onExitComplete: () => void;
 	children: JSX.Element;
 }
 
@@ -15,9 +17,6 @@ export function FormSheet(props: FormSheetProps) {
 	const media = useMedia();
 	// 计算偏移级别
 	const [offsetLevel, setOffsetLevel] = createSignal(0);
-
-	// 缓存创建时的index
-	const { index: initialIndex } = props;
 
 	createEffect(
 		on(
@@ -27,6 +26,13 @@ export function FormSheet(props: FormSheetProps) {
 			},
 		),
 	);
+
+	createEffect(() => {
+		if (!props.display && !store.settings.userInterface.isAnimationEnabled) {
+			// 设计说明：动画关闭时不等待 Motion 回调，避免关闭态 entry 留在运行时栈。
+			props.onExitComplete();
+		}
+	});
 
 	onMount(() => {
 		console.log("--SheetBox render");
@@ -38,18 +44,21 @@ export function FormSheet(props: FormSheetProps) {
 
 	return (
 		<Presence exitBeforeEnter>
-			<Show when={store.pages.formGroup.length >= initialIndex}>
+			{/* display 由全局容器的关闭态驱动，节点会保留到退出动画播放完再从运行时栈移除。 */}
+			<Show when={props.display}>
 				<Motion.div
 					animate={{ opacity: [0, 1] }}
 					exit={{ opacity: [1, 0] }}
+					onMotionComplete={() => {
+						if (!props.display) props.onExitComplete();
+					}}
 					transition={{
 						duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0,
 					}}
-					class={`SheetBG bg-primary-color-30 backdrop-blur fixed top-0 left-0 h-dvh w-dvw`}
+					class={`SheetBG bg-primary-color-30 pointer-events-auto fixed top-0 left-0 h-dvh w-dvw backdrop-blur`}
 					onClick={(e) => {
 						e.stopPropagation();
-						// 由于此处直接删除store内容，上层也没有缓存处理，上层的Index会直接剔除数据，导致目前的退出动画全部无效
-						setStore("pages", "formGroup", (pre) => pre.slice(0, -1));
+						props.onClose();
 					}}
 					style={{
 						"z-index": props.index,

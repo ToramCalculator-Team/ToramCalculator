@@ -9,7 +9,6 @@ import { createId } from "@paralleldrive/cuid2";
 import type { z } from "zod/v4";
 import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
 import { Icons } from "~/components/icons";
-import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
@@ -170,7 +169,6 @@ export const CRYSTAL_DATA_CONFIG: TableDataConfig<CrystalItem, crystal> = (dicti
 			},
 		},
 		deleteCallback: deleteCrystalItem,
-		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "crystal", data }),
 		editAbleCallback: (data) => repositoryMethods.crystal.canEdit(data.itemId),
 	},
 });

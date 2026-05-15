@@ -13,7 +13,6 @@ import { jsonArrayFrom } from "kysely/helpers/postgres";
 import z from "zod/v4";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
-import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
@@ -249,7 +248,7 @@ export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill> = (dic
 				size: 160,
 			},
 		],
-		hiddenColumnDef: ["id", "preSkillId","statisticId", "createdByAccountId", "updatedByAccountId"],
+		hiddenColumnDef: ["id", "preSkillId", "statisticId", "createdByAccountId", "updatedByAccountId"],
 		defaultSort: {
 			field: "name",
 			desc: false,
@@ -290,7 +289,6 @@ export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill> = (dic
 		hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
 		fieldGenerator: {},
 		deleteCallback: deleteSkillWithVariants,
-		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "skill", data }),
 		editAbleCallback: (data) => repositoryMethods.skill.canEdit(data.id),
 	},
 });

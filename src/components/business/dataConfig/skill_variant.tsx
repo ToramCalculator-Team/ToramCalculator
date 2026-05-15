@@ -9,7 +9,6 @@ import { Button } from "~/components/controls/button";
 import { Input } from "~/components/controls/input";
 import { BtEditor } from "~/components/features/BtEditor/BtEditor";
 import { skillLogicExample } from "~/components/features/BtEditor/data/SkillExamples";
-import { setStore, store } from "~/store";
 import type { TableDataConfig } from "../data-config";
 
 export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = (dictionary) => ({
@@ -343,7 +342,6 @@ export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = (dictio
 			},
 		},
 		deleteCallback: repositoryMethods.skill_variant.delete,
-		openEditor: (data) => setStore("pages", "formGroup", store.pages.formGroup.length, { type: "skill_variant", data }),
 		editAbleCallback: (data) => repositoryMethods.skill_variant.canEdit(data.id),
 	},
 });
