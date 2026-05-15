@@ -97,9 +97,6 @@ const deleteCrystalItem = async (id: string): Promise<CrystalItem | undefined> =
 
 export const CRYSTAL_DATA_CONFIG: TableDataConfig<CrystalItem, crystal> = (dictionary) => ({
 	inheritsFrom: { table: "item", via: "itemId" },
-	relationOverrides: {
-		hide: ["statistic", "account_create_data", "account_update_data"],
-	},
 	dictionary: dictionary().db.crystal,
 	dataSchema: CrystalItemSchema,
 	primaryKey: "itemId",
@@ -155,6 +152,9 @@ export const CRYSTAL_DATA_CONFIG: TableDataConfig<CrystalItem, crystal> = (dicti
 		onUpdate: updateCrystalItem,
 	},
 	card: {
+		relationOverrides: {
+			hide: ["statistic", "account_create_data", "account_update_data"],
+		},
 		hiddenFields: [],
 		fieldGenerator: {
 			name: (data, key, dictionary) => {

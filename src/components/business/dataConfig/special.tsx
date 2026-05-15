@@ -96,9 +96,6 @@ const deleteSpecialItem = async (id: string): Promise<SpecialItem | undefined> =
 
 export const SPECIAL_DATA_CONFIG: TableDataConfig<SpecialItem, special> = (dictionary) => ({
 	inheritsFrom: { table: "item", via: "itemId" },
-	relationOverrides: {
-		hide: ["player_special", "statistic", "account_create_data", "account_update_data"],
-	},
 	dictionary: dictionary().db.special,
 	dataSchema: SpecialItemSchema,
 	primaryKey: "itemId",
@@ -144,6 +141,9 @@ export const SPECIAL_DATA_CONFIG: TableDataConfig<SpecialItem, special> = (dicti
 		onUpdate: updateSpecialItem,
 	},
 	card: {
+		relationOverrides: {
+			hide: ["player_special", "statistic", "account_create_data", "account_update_data"],
+		},
 		hiddenFields: [],
 		fieldGenerator: {},
 		deleteCallback: deleteSpecialItem,

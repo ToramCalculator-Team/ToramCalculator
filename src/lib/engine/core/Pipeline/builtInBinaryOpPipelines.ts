@@ -32,6 +32,31 @@ const csprRateInstructions: readonly PipelineInstruction[] = [
 ];
 
 export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstruction[]> = {
+	// 见 src/lib/engine/document/decisions/0003-skill-cost-as-pipeline-contract.md
+	// 技能消耗：FSM 预求值 variant 上的 HP/MP 消耗表达式，管线负责给 passive / buff / overlay 留修正锚点。
+	// 输入：input.baseHpCost, input.baseMpCost, input.skillLevel。该管线服务施法前检查，overlay 不应在此 emit。
+	"skill.cost": [
+		{ target: "baseHpCost", op: "+", a: "input.baseHpCost", b: 0 },
+		{ target: "baseMpCost", op: "+", a: "input.baseMpCost", b: 0 },
+
+		// 固定修正锚点。减蓝耗可挂负值；HP 代偿类效果可在这里把 MP 成本转移到 HP 成本。
+		{ target: "hpCostModifier", op: "+", a: 0, b: 0 },
+		{ target: "mpCostModifier", op: "+", a: 0, b: 0 },
+
+		// 比例修正锚点。半耗、免耗、倍率类效果优先挂这里，避免覆写基础公式。
+		{ target: "hpCostRate", op: "+", a: 1, b: 0 },
+		{ target: "mpCostRate", op: "+", a: 1, b: 0 },
+
+		{ target: "rawHpCost", op: "+", a: "baseHpCost", b: "hpCostModifier" },
+		{ target: "rawMpCost", op: "+", a: "baseMpCost", b: "mpCostModifier" },
+		{ target: "ratedHpCost", op: "*", a: "rawHpCost", b: "hpCostRate" },
+		{ target: "ratedMpCost", op: "*", a: "rawMpCost", b: "mpCostRate" },
+
+		// 消耗管线不表达回复；主动回 MP 应由技能 BT 或 proc 管线事件承载。
+		{ target: "hpCost", op: "max", a: 0, b: "ratedHpCost" },
+		{ target: "mpCost", op: "max", a: 0, b: "ratedMpCost" },
+	],
+
 	// 前摇：variant.startupMs 为单一公式，整段受行动速度影响。
 	// 输入：input.original（由 FSM 预求值）
 	"skill.startup": [

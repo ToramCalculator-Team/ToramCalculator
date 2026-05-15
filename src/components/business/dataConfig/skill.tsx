@@ -166,9 +166,6 @@ export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill> = (dic
 	//   - 表单：内嵌为数组编辑器（递归使用 skill_variant 自己的 dataConfig）
 	//   - 把 variants 从普通字段渲染流程中剔除，避免被当作通用 array 处理
 
-	relationOverrides: {
-		only: ["skill_variant"],
-	},
 	embeds: [{ field: "variants", table: "skill_variant", via: "belongToskillId" }],
 	dictionary: dictionary().db.skill,
 	dataSchema: SkillWithVariantsSchema,
@@ -221,7 +218,7 @@ export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill> = (dic
 				id: "treeType",
 				accessorFn: (row) => row.treeType,
 				cell: (info) => info.getValue<SkillTreeType>(),
-				size: 120,
+				size: 180,
 			},
 			{
 				id: "tier",
@@ -286,6 +283,9 @@ export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill> = (dic
 		onUpdate: updateSkillWithVariants,
 	},
 	card: {
+		relationOverrides: {
+			only: ["skill_variant"],
+		},
 		hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
 		fieldGenerator: {},
 		deleteCallback: deleteSkillWithVariants,

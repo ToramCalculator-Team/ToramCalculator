@@ -107,9 +107,6 @@ export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem, weapon> = (dictiona
 	//   - 从关联内容中排除 item 以及 armor/consumable 等同级子类（兄弟表自动推导）
 	//   - 把 item 的父级关系（如 statistic、account）作为 weapon 的关联一并展示
 	inheritsFrom: { table: "item", via: "itemId" },
-	relationOverrides: {
-		hide: ["player_weapon", "statistic", "account_create_data", "account_update_data"],
-	},
 	dictionary: dictionary().db.weapon,
 	dataSchema: WeaponItemSchema,
 	primaryKey: "itemId",
@@ -213,6 +210,9 @@ export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem, weapon> = (dictiona
 		onUpdate: updateWeaponItem,
 	},
 	card: {
+		relationOverrides: {
+			hide: ["player_weapon", "statistic", "account_create_data", "account_update_data"],
+		},
 		hiddenFields: [],
 		fieldGenerator: {},
 		deleteCallback: deleteWeaponItem,

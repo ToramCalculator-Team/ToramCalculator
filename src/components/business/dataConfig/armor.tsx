@@ -96,9 +96,6 @@ const deleteArmorItem = async (id: string): Promise<ArmorItem | undefined> => {
 
 export const ARMOR_DATA_CONFIG: TableDataConfig<ArmorItem, armor> = (dictionary) => ({
 	inheritsFrom: { table: "item", via: "itemId" },
-	relationOverrides: {
-		hide: ["player_armor", "statistic", "account_create_data", "account_update_data"],
-	},
 	dictionary: dictionary().db.armor,
 	dataSchema: ArmorItemSchema,
 	primaryKey: "itemId",
@@ -140,6 +137,9 @@ export const ARMOR_DATA_CONFIG: TableDataConfig<ArmorItem, armor> = (dictionary)
 		onUpdate: updateArmorItem,
 	},
 	card: {
+		relationOverrides: {
+			hide: ["player_armor", "statistic", "account_create_data", "account_update_data"],
+		},
 		hiddenFields: [],
 		fieldGenerator: {},
 		deleteCallback: deleteArmorItem,

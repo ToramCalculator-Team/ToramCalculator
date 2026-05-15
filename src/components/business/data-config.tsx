@@ -117,8 +117,6 @@ export type TableDataConfig<T extends Record<string, unknown>, TDic extends Reco
 	inheritsFrom?: InheritsFromDecl;
 	/** 内嵌子表声明（见 EmbedsDecl） */
 	embeds?: EmbedsDecl[];
-	/** 自动关联内容覆盖（见 RelationOverridesDecl） */
-	relationOverrides?: RelationOverridesDecl;
 	table: SafeOmit<
 		VirtualTableProps<T>,
 		"data" | "primaryKey" | "dictionary" | "rowHandleClick" | "onColumnVisibilityChange" | "globalFilterStr"
@@ -127,6 +125,7 @@ export type TableDataConfig<T extends Record<string, unknown>, TDic extends Reco
 		FormProps<T, ZodObject<{ [K in keyof T]: ZodType }>>,
 		"value" | "dataSchema" | "tableName" | "primaryKey" | "defaultValue" | "dictionary" | "fieldGroupMap"
 	>;
+	// 卡片展示配置承载自动关联内容覆盖，避免把展示过滤规则混入实体结构声明。
 	card: SafeOmit<
 		DataRendererProps<T, ZodObject<{ [K in keyof T]: ZodType }>>,
 		| "data"

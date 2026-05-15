@@ -12,9 +12,6 @@ export const RECIPE_DATA_CONFIG: TableDataConfig<recipe> = (dictionary) => ({
 	dataSchema: RecipeSchema,
 	primaryKey: "id",
 	defaultData: defaultData.recipe,
-	relationOverrides: {
-		hide: ["statistic", "account_create_data", "account_update_data"],
-	},
 	dataFetcher: {
 		get: repositoryMethods.recipe.select,
 		getAll: repositoryMethods.recipe.selectAll,
@@ -71,6 +68,9 @@ export const RECIPE_DATA_CONFIG: TableDataConfig<recipe> = (dictionary) => ({
 		},
 	},
 	card: {
+		relationOverrides: {
+			hide: ["statistic", "account_create_data", "account_update_data"],
+		},
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 		fieldGenerator: {},
 		deleteCallback: repositoryMethods.recipe.delete,

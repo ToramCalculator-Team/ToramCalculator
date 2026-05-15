@@ -99,9 +99,6 @@ const deleteConsumableItem = async (id: string): Promise<ConsumableItem | undefi
 
 export const CONSUMABLE_DATA_CONFIG: TableDataConfig<ConsumableItem, consumable> = (dictionary) => ({
 	inheritsFrom: { table: "item", via: "itemId" },
-	relationOverrides: {
-		hide: ["statistic", "account_create_data", "account_update_data"],
-	},
 	dictionary: dictionary().db.consumable,
 	dataSchema: ConsumableItemSchema,
 	primaryKey: "itemId",
@@ -146,6 +143,9 @@ export const CONSUMABLE_DATA_CONFIG: TableDataConfig<ConsumableItem, consumable>
 		onUpdate: updateConsumableItem,
 	},
 	card: {
+		relationOverrides: {
+			hide: ["statistic", "account_create_data", "account_update_data"],
+		},
 		hiddenFields: [],
 		fieldGenerator: {},
 		deleteCallback: deleteConsumableItem,

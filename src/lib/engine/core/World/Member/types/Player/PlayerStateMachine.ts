@@ -224,6 +224,61 @@ function expressionContext(env: PlayerStateMachineEnv, extra?: Record<string, un
 	};
 }
 
+type PlayerSkillCost = {
+	hpCost: number;
+	mpCost: number;
+};
+
+function resolveCurrentSkillCost(env: PlayerStateMachineEnv): PlayerSkillCost | null {
+	const skill = env.runtime.currentSkill;
+	const variant =
+		env.runtime.currentSkillVariant ?? (skill ? selectPlayerSkillVariant(skill, env.runtime.character) : null);
+	if (!skill || !variant) {
+		log.error(`🎮 [${env.name}] 缺少技能或变体，无法计算技能消耗`);
+		return null;
+	}
+
+	const evalCost = (expr: string | null | undefined, label: string): number | null => {
+		// 设计说明：消耗字段在数据库中允许为空；空值代表无消耗，非空公式必须得到有限数字。
+		const normalizedExpr = expr?.trim();
+		if (!normalizedExpr) return 0;
+		const cost = env.services.expressionEvaluator?.(normalizedExpr, {
+			...expressionContext(env),
+			skillLv: skill.lv ?? 0,
+		});
+		if (typeof cost === "number" && Number.isFinite(cost)) {
+			return cost;
+		}
+		log.error(`👤 [${env.name}] 技能${label}消耗不是有限数字`);
+		return null;
+	};
+
+	const hpCost = evalCost(variant.hpCost, "HP");
+	if (hpCost === null) return null;
+	const mpCost = evalCost(variant.mpCost, "MP");
+	if (mpCost === null) return null;
+
+	try {
+		const resolved = env.runPipeline("skill.cost", {
+			baseHpCost: hpCost,
+			baseMpCost: mpCost,
+			skillLevel: skill.lv ?? 0,
+			skillId: skill.id,
+			skillTreeType: skill.template?.treeType ?? "",
+		});
+		const resolvedHpCost = Number(resolved.hpCost);
+		const resolvedMpCost = Number(resolved.mpCost);
+		if (Number.isFinite(resolvedHpCost) && Number.isFinite(resolvedMpCost)) {
+			return { hpCost: resolvedHpCost, mpCost: resolvedMpCost };
+		}
+		log.error(`👤 [${env.name}] skill.cost 管线输出不是有限数字`);
+		return null;
+	} catch (error) {
+		log.error(`👤 [${env.name}] skill.cost 管线执行失败`, error);
+		return null;
+	}
+}
+
 export const playerStateMachine = (
 	env: PlayerStateMachineEnv,
 ): MemberStateMachine<PlayerEventType, PlayerStateContext> => {
@@ -327,6 +382,31 @@ export const playerStateMachine = (
 					log.debug(
 						`👤 [${env.name}] 技能时间参数(ms): startup=${env.runtime.currentSkillStartupMs}, charging=${env.runtime.currentSkillChargingMs}, chanting=${env.runtime.currentSkillChantingMs}, action=${env.runtime.currentSkillActionMs}`,
 					);
+				},
+				扣除技能消耗: ({ event }) => {
+					log.debug(`👤 [${env.name}] 扣除技能消耗`, event);
+					const cost = resolveCurrentSkillCost(env);
+					if (!cost) return;
+
+					const skill = env.runtime.currentSkill;
+					const sourceName = skill?.template?.name ?? "skill-cost";
+					const sourceSkillId = skill?.id ?? "unknown";
+
+					// 设计说明：技能释放被 FSM 接受后立即写入 StatContainer，BT 只消费技能上下文，不承担基础扣费职责。
+					if (cost.hpCost !== 0) {
+						env.statContainer.addModifier("hp.current", ModifierType.DYNAMIC_FIXED, -cost.hpCost, {
+							id: `skill.cost.hp.${sourceSkillId}`,
+							name: `${sourceName}.hpCost`,
+							type: "skill",
+						});
+					}
+					if (cost.mpCost !== 0) {
+						env.statContainer.addModifier("mp.current", ModifierType.DYNAMIC_FIXED, -cost.mpCost, {
+							id: `skill.cost.mp.${sourceSkillId}`,
+							name: `${sourceName}.mpCost`,
+							type: "skill",
+						});
+					}
 				},
 				执行技能: ({ context, event }) => {
 					log.debug(`👤 [${env.name}] 执行技能`, event);
@@ -617,27 +697,9 @@ export const playerStateMachine = (
 						log.error(`🎮 [${env.name}] 技能效果不存在: ${skillId}`);
 						return true;
 					}
-					const evalCost = (expr: string | null | undefined, label: string): number | null => {
-						// 设计说明：消耗字段在数据库中允许为空；空值代表无消耗，非空公式必须得到有限数字。
-						const normalizedExpr = expr?.trim();
-						if (!normalizedExpr) return 0;
-						const cost = env.services.expressionEvaluator?.(normalizedExpr, {
-							currentTimeMs: env.runtime.currentTimeMs,
-							tickIndex: env.runtime.tickIndex,
-							casterId: env.id,
-							skillLv: skill?.lv ?? 0,
-						});
-						if (typeof cost === "number" && Number.isFinite(cost)) {
-							return cost;
-						}
-						log.error(`👤 [${env.name}] 技能${label}消耗不是有限数字`);
-						return null;
-					};
-
-					const hpCost = evalCost(variant.hpCost, "HP");
-					if (hpCost === null) return true;
-					const mpCost = evalCost(variant.mpCost, "MP");
-					if (mpCost === null) return true;
+					const cost = resolveCurrentSkillCost(env);
+					if (!cost) return true;
+					const { hpCost, mpCost } = cost;
 
 					if (hpCost > env.statContainer.getValue("hp.current") || mpCost > env.statContainer.getValue("mp.current")) {
 						log.debug(`- 该技能不满足施法消耗，HP:${hpCost} MP:${mpCost}`);
@@ -754,10 +816,10 @@ export const playerStateMachine = (
 						},
 						修改属性: [
 							{
-								target: "存活",
 								guard: {
 									type: "满足存活条件",
 								},
+								// 设计说明：非致死属性变化只同步领域事件，避免扣蓝/受击等普通变化重进存活状态并打断当前行为。
 								actions: {
 									type: "发出属性变化域事件",
 								},
@@ -886,8 +948,10 @@ export const playerStateMachine = (
 										},
 										执行技能中: {
 											entry: [
-												{ type: "发出施法进度开始事件" },
 												{ type: "添加待处理技能变体" },
+												{ type: "扣除技能消耗" },
+												{ type: "发送属性修改事件给自己" },
+												{ type: "发出施法进度开始事件" },
 												{ type: "计算技能生命周期参数" },
 												{ type: "执行技能" },
 											],

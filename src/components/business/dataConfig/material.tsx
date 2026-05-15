@@ -95,9 +95,6 @@ const deleteMaterialItem = async (id: string): Promise<MaterialItem | undefined>
 
 export const MATERIAL_DATA_CONFIG: TableDataConfig<MaterialItem, material> = (dictionary) => ({
 	inheritsFrom: { table: "item", via: "itemId" },
-	relationOverrides: {
-		hide: ["statistic", "account_create_data", "account_update_data"],
-	},
 	dictionary: dictionary().db.material,
 	dataSchema: MaterialItemSchema,
 	primaryKey: "itemId",
@@ -137,6 +134,9 @@ export const MATERIAL_DATA_CONFIG: TableDataConfig<MaterialItem, material> = (di
 		onUpdate: updateMaterialItem,
 	},
 	card: {
+		relationOverrides: {
+			hide: ["statistic", "account_create_data", "account_update_data"],
+		},
 		hiddenFields: [],
 		fieldGenerator: {},
 		deleteCallback: deleteMaterialItem,

@@ -133,7 +133,7 @@ export function MemberControllerPanel(props: MemberControllerPanelProps) {
 								<Button
 									onClick={() => handleCastSkill(skill.id)}
 									disabled={controllerEvents().skillAvailability?.[skill.id] === false}
-									class="h-full min-w-0 shadow-card shadow-brand-color-1st hover:shadow-brand-color-2nd"
+									class="h-full min-w-0 shadow-card shadow-brand-color-1st hover:shadow-brand-color-2nd active:shadow-brand-color-3rd"
 									level="secondary"
 								>
 									<Icons.Spirits iconName={skill.name} />

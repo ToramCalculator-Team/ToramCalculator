@@ -96,9 +96,6 @@ const deleteOptionItem = async (id: string): Promise<OptionItem | undefined> => 
 
 export const OPTION_DATA_CONFIG: TableDataConfig<OptionItem, option> = (dictionary) => ({
 	inheritsFrom: { table: "item", via: "itemId" },
-	relationOverrides: {
-		hide: ["player_option", "statistic", "account_create_data", "account_update_data"],
-	},
 	dictionary: dictionary().db.option,
 	dataSchema: OptionItemSchema,
 	primaryKey: "itemId",
@@ -158,6 +155,9 @@ export const OPTION_DATA_CONFIG: TableDataConfig<OptionItem, option> = (dictiona
 		onUpdate: updateOptionItem,
 	},
 	card: {
+		relationOverrides: {
+			hide: ["player_option", "statistic", "account_create_data", "account_update_data"],
+		},
 		hiddenFields: [],
 		fieldGenerator: {},
 		deleteCallback: deleteOptionItem,

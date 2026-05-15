@@ -40,12 +40,16 @@ export const PLAYER_SPECIAL_DATA_CONFIG: TableDataConfig<player_special> = (dict
 		},
 	},
 	form: {
-		hiddenFields: ["id"],
+		// 创建资产时，通常player从上下文中获取，不另外编辑
+		hiddenFields: ["id", "belongToPlayerId"],
 		fieldGenerator: {},
 		onInsert: repositoryMethods.player_special.insert,
 		onUpdate: repositoryMethods.player_special.update,
 	},
 	card: {
+		relationOverrides: {
+			only: ["special"],
+		},
 		hiddenFields: ["id"],
 		fieldGenerator: {},
 		deleteCallback: repositoryMethods.player_special.delete,

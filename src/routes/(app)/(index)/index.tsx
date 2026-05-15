@@ -91,7 +91,7 @@ export default function IndexPage() {
 						fieldGenerator={config.card.fieldGenerator}
 						inheritsFrom={config.inheritsFrom}
 						embeds={config.embeds}
-						relationOverrides={config.relationOverrides}
+						relationOverrides={config.card.relationOverrides}
 						after={config.card.after}
 						before={config.card.before}
 					/>
