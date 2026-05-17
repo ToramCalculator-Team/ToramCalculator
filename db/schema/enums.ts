@@ -324,6 +324,8 @@ export const SKILL_BOOK_GROUP = [
 	"BareHandSkill", // 空手技能
 	"NinjaSkill", // 忍者技能
 	"PartisanSkill", // 游击队技能
+	"NecromancerSkill",// 死灵法术
+	"GolemSkill",// 魔像技能
 ] as const;
 export type SkillBookGroup = (typeof SKILL_BOOK_GROUP)[number];
 

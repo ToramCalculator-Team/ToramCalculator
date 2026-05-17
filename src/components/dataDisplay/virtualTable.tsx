@@ -54,6 +54,25 @@ export interface VirtualTableProps<T extends Record<string, unknown>> {
 
 export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTableProps<T>) {
 	const ROW_DRAG_THRESHOLD = 3;
+	const VIRTUAL_TABLE_DEBUG_QUERY_KEY = "debugVirtualTable";
+	const VIRTUAL_TABLE_DEBUG_STORAGE_KEY = "VirtualTableDebug";
+
+	// 诊断日志默认关闭，避免大表滚动时刷屏。
+	// 需要定位动态测量问题时，在浏览器控制台执行：
+	// localStorage.setItem("VirtualTableDebug", "1")
+	// 或在 URL 上追加 ?debugVirtualTable=1，然后刷新页面。
+	const isVirtualTableDebugEnabled = () => {
+		if (!import.meta.env.DEV || typeof window === "undefined") return false;
+		return (
+			window.localStorage.getItem(VIRTUAL_TABLE_DEBUG_STORAGE_KEY) === "1" ||
+			new URLSearchParams(window.location.search).get(VIRTUAL_TABLE_DEBUG_QUERY_KEY) === "1"
+		);
+	};
+
+	const debugVirtualTable = (label: string, payload: Record<string, unknown>) => {
+		if (!isVirtualTableDebugEnabled()) return;
+		console.log(`[VirtualTable:${String(props.primaryKey)}] ${label}`, payload);
+	};
 
 	// [列可见性控制组件]的可见状态
 	const [columnVisibleIsOpen] = createSignal(false);
@@ -125,7 +144,29 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 			getScrollElement: () => virtualScrollRef()?.osInstance()?.elements().viewport ?? null,
 			estimateSize: () => props.measure?.estimateSize ?? 96,
 			overscan: 5,
-			measureElement: (element) => element.getBoundingClientRect().height,
+			measureElement: (element) => {
+				// ResizeObserver 可能在元素卸载后仍然回调；此时测量值为 0，不能写入 virtualizer 的尺寸缓存。
+				if (!element.isConnected || !document.body.contains(element)) {
+					debugVirtualTable("skipDisconnectedMeasure", {
+						index: element.getAttribute("data-index"),
+						datasetMeasured: element.getAttribute("data-measured"),
+					});
+					return props.measure?.estimateSize ?? 96;
+				}
+
+				const measuredHeight = element.getBoundingClientRect().height;
+				if (measuredHeight <= 0) {
+					debugVirtualTable("skipZeroHeightMeasure", {
+						index: element.getAttribute("data-index"),
+						offsetHeight: element.offsetHeight,
+						clientHeight: element.clientHeight,
+						scrollHeight: element.scrollHeight,
+						childElementCount: element.childElementCount,
+					});
+					return props.measure?.estimateSize ?? 96;
+				}
+				return measuredHeight;
+			},
 			onChange: (instance, _sync) => {
 				setVirtualItems(instance.getVirtualItems());
 			},
@@ -395,9 +436,20 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 															ref={(el) => {
 																el.setAttribute("data-index", virtualRow.index.toString());
 																// 仅在该 DOM 首次挂载时测量一次，避免重复测量触发 RO loop 警告。
-																if (el.dataset.measured === "1") return;
+																if (el.dataset.measured === "1") {
+																	return;
+																}
 																el.dataset.measured = "1";
 																requestAnimationFrame(() => {
+																	// rAF 延迟期间，虚拟列表可能已经卸载该 DOM；跳过过期元素，避免 0 高度污染尺寸缓存。
+																	if (!el.isConnected || !document.body.contains(el)) {
+																		debugVirtualTable("skipDisconnectedRafMeasure", {
+																			index: virtualRow.index,
+																			rowId: row.id,
+																			datasetIndex: el.getAttribute("data-index"),
+																		});
+																		return;
+																	}
 																	validVirtualer().measureElement(el);
 																});
 															}}

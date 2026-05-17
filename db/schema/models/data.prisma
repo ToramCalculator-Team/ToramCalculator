@@ -501,7 +501,7 @@ model skill_variant {
     buffs                  Json[] /// ZOD MemberBTSchema
     elementLogic           String
     castingRange           String
-    effectiveRange         Int
+    effectiveRange         String
     actionFixedMs          String
     actionModifiedMs       String
     chantingFixedMs        String
