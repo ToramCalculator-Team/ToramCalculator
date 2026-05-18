@@ -1,5 +1,6 @@
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import type { MemberWithRelations } from "@db/generated/repositories/member";
+import type { MemberBTTree } from "@db/schema/jsons";
 import { createLogger } from "~/lib/Logger";
 import type { RuntimeAttachment } from "../../attachments/RuntimeAttachment";
 import { collectAttachmentSlots } from "../../attachments/RuntimeAttachment";
@@ -113,7 +114,8 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 	/**
 	 * 收集所有需要在 StatContainer 上预分配的属性槽。
 	 *
-	 * 来源（当前为 no-op，数据模型接入后在此填充）：
+	 * 来源：
+	 * - 当前角色自身 `actions` 行为树声明（如 AI 行动计数器）
 	 * - 角色已学技能的 `attributeSlots` 声明（如爆能的咏咒层数）
 	 * - 装备的托环 / passive 的 `attributeSlots` 声明（如 HP 紧急回复的 lastTriggeredFrame）
 	 * - 预插 buff 的 `attributeSlots` 声明（如弧光剑舞层数）
@@ -121,15 +123,32 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 	 * 命名约定见 `SchemaMerge.ts`：`skill.<id>.<field>` / `passive.<id>.<field>` / `buff.<id>.<field>`。
 	 */
 	private static collectAttributeSlots(
-		_activeCharacter: CharacterWithRelations,
+		activeCharacter: CharacterWithRelations,
 		_memberData: MemberWithRelations,
 		runtimeAttachments: readonly RuntimeAttachment[],
 	): SlotDeclaration[] {
 		const slots: SlotDeclaration[] = collectAttachmentSlots(runtimeAttachments);
-		// 数据模型补齐后在此追加：
-		// for (const skill of _activeCharacter.skills) {
-		//   slots.push(...(skill.template?.attributeSlots ?? []));
-		// }
+		// 设计说明：BT agent 实例字段只承载当前执行对象，跨帧变量通过行为树数据声明槽并并入 StatContainer。
+		// 这里收集所有已学技能变体，保证战斗中切换分支或装备匹配变体时不会触发运行期扩容。
+		Player.collectBtAttributeSlots(slots, activeCharacter.actions);
+		for (const skill of activeCharacter.skills) {
+			for (const variant of skill.template.variants) {
+				Player.collectBtAttributeSlots(slots, variant.activeEffect);
+				for (const passiveEffect of variant.passiveEffects) {
+					Player.collectBtAttributeSlots(slots, passiveEffect);
+				}
+				for (const buff of variant.buffs) {
+					Player.collectBtAttributeSlots(slots, buff);
+				}
+			}
+		}
 		return slots;
+	}
+
+	private static collectBtAttributeSlots(slots: SlotDeclaration[], tree: MemberBTTree): void {
+		const attributeSlots = (tree as Partial<MemberBTTree>).attributeSlots;
+		if (Array.isArray(attributeSlots)) {
+			slots.push(...attributeSlots);
+		}
 	}
 }

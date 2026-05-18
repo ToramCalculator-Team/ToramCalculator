@@ -157,6 +157,7 @@ export const defaultData: DB = {
 			name: "default",
 			definition: "",
 			agent: "",
+			attributeSlots: [],
 		},
 		belongToPlayerId: "defaultPlayerId",
 		details: null,
@@ -277,6 +278,7 @@ export const defaultData: DB = {
 			name: "default",
 			definition: "",
 			agent: "",
+			attributeSlots: [],
 		},
 		details: "",
 		dataSources: "",
@@ -436,6 +438,7 @@ export const defaultData: DB = {
 			name: "default",
 			definition: skillLogicExample.default.definition,
 			agent: skillLogicExample.default.agent,
+			attributeSlots: [],
 		},
 		passiveEffects: [],
 		buffs: [],
@@ -562,6 +565,6 @@ export const defaultData: DB = {
 		subscriptions: [],
 		thresholdWatchers: [],
 		updatedByAccountId: null,
-		createdByAccountId: null
+		createdByAccountId: null,
 	},
 };

@@ -620,15 +620,18 @@ export interface StatusInstanceStoreCheckpoint {
 /** Member FSM 检查点（XState persisted snapshot） */
 export type MemberFSMCheckpoint = unknown;
 
-/** BtManager 检查点 */
+/**
+ * BtManager 检查点。
+ *
+ * 设计说明：BT agent 普通字段不承载可 checkpoint 状态；跨帧数值状态通过行为树
+ * `attributeSlots` 进入成员 StatContainer，并随 `MemberCheckpoint.statContainer` 保存。
+ */
 export interface BtManagerCheckpoint {
 	hasActiveEffect: boolean;
 	activeEffectBtId?: string;
-	activeEffectContext?: Record<string, unknown>;
 	parallelEntries: Array<{
 		name: string;
 		btId: string;
-		context: Record<string, unknown>;
 	}>;
 }
 

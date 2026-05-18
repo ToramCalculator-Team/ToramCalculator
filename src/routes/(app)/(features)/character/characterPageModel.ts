@@ -674,6 +674,7 @@ export function createCharacterPageModel(input: {
 				definition: "root { wait [1] }",
 				agent: "",
 				memberType: "Mob",
+				attributeSlots: [],
 			},
 			details: null,
 			dataSources: "character-preview",

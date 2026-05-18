@@ -102,18 +102,21 @@ export const skillLogicExample: Record<string, MemberBTTree> = {
 		name: "default",
 		definition: defaultSkillDefinition,
 		agent: defaultSkillAgent,
+		attributeSlots: [],
 	},
 	魔法炮: {
 		memberType: "Player",
 		name: "魔法炮",
 		definition: magic_cannon_definition,
 		agent: magic_cannon_agent,
+		attributeSlots: [],
 	},
 	魔法炮充能: {
 		memberType: "Player",
 		name: "魔法炮充能",
 		definition: magic_cannon_buff1_definition,
 		agent: magic_cannon_buff1_agent,
+		attributeSlots: [],
 	},
 };
 

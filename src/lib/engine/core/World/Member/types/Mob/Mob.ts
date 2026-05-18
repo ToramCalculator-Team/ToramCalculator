@@ -1,4 +1,5 @@
 import type { MemberWithRelations } from "@db/generated/repositories/member";
+import type { MemberBTTree } from "@db/schema/jsons";
 import { Member } from "../../Member";
 import { MemberRuntimeServicesDefaults } from "../../runtime/Agent/RuntimeServices";
 import { mergeSchema, type SlotDeclaration } from "../../runtime/StatContainer/SchemaMerge";
@@ -22,7 +23,7 @@ export class Mob extends Member<MobAttrType, MobEventType, MobStateContext, MobR
 			throw new Error("Mob数据缺失");
 		}
 		const baseSchema = MobAttrSchema(memberData.mob);
-		// Mob 目前没有托环；预留入口便于将来怪物技能也能声明槽。
+		// Mob 没有托环安装阶段；自身 actions 行为树的持久化变量仍需在构造 StatContainer 前声明。
 		const slotDeclarations = Mob.collectAttributeSlots(memberData);
 		const attrSchema = mergeSchema(baseSchema, slotDeclarations);
 		const statContainer = new StatContainer<MobAttrType>(attrSchema);
@@ -54,8 +55,19 @@ export class Mob extends Member<MobAttrType, MobEventType, MobStateContext, MobR
 		);
 	}
 
-	/** 预留入口，当前为空。Mob 技能数据模型补齐后在此收集 attribute slots。 */
-	private static collectAttributeSlots(_memberData: MemberWithRelations): SlotDeclaration[] {
-		return [];
+	/** 收集 Mob 行为树声明的持久化属性槽，保证 BT 变量随 StatContainer checkpoint。 */
+	private static collectAttributeSlots(memberData: MemberWithRelations): SlotDeclaration[] {
+		const slots: SlotDeclaration[] = [];
+		if (memberData.mob) {
+			Mob.collectBtAttributeSlots(slots, memberData.mob.actions);
+		}
+		return slots;
+	}
+
+	private static collectBtAttributeSlots(slots: SlotDeclaration[], tree: MemberBTTree): void {
+		const attributeSlots = (tree as Partial<MemberBTTree>).attributeSlots;
+		if (Array.isArray(attributeSlots)) {
+			slots.push(...attributeSlots);
+		}
 	}
 }

@@ -14,14 +14,8 @@ type BtOptions = {
 	getDeltaTimeMs?: () => number;
 };
 
-type BtEntry<
-	TAttrKey extends string = string,
-	TStateEvent extends MemberEventType = MemberEventType,
-	TStateContext extends MemberStateContext = MemberStateContext,
-	TRuntime extends MemberSharedRuntime = MemberSharedRuntime,
-> = {
+type BtEntry = {
 	bt: BehaviourTree;
-	btContext: BtContext<TAttrKey, TStateEvent, TStateContext, TRuntime> & Record<string, unknown>;
 };
 
 export class BtManager<
@@ -31,8 +25,8 @@ export class BtManager<
 	TRuntime extends MemberSharedRuntime = MemberSharedRuntime,
 > implements Checkpointable<BtManagerCheckpoint>
 {
-	private activeEffectEntry: BtEntry<TAttrKey, TStateEvent, TStateContext, TRuntime> | undefined;
-	private parallelEntries: Map<string, BtEntry<TAttrKey, TStateEvent, TStateContext, TRuntime>> = new Map();
+	private activeEffectEntry: BtEntry | undefined;
+	private parallelEntries: Map<string, BtEntry> = new Map();
 	private btOptions: BtOptions = {};
 
 	constructor(
@@ -223,7 +217,7 @@ export class BtManager<
 	): BehaviourTree | undefined {
 		const btContext = this.buildBtContext(agent?.trim());
 		const bt = new BehaviourTree(definition, btContext, this.createBtOptions());
-		this.activeEffectEntry = { bt, btContext };
+		this.activeEffectEntry = { bt };
 		return bt;
 	}
 
@@ -234,7 +228,7 @@ export class BtManager<
 	): BehaviourTree | undefined {
 		const btContext = this.buildBtContext(agent?.trim());
 		const bt = new BehaviourTree(definition, btContext, this.createBtOptions());
-		this.parallelEntries.set(name, { bt, btContext });
+		this.parallelEntries.set(name, { bt });
 		return bt;
 	}
 
@@ -268,19 +262,6 @@ export class BtManager<
 		this.parallelEntries.clear();
 	}
 
-	/**
-	 * Shallow snapshot of BT context own properties; skips functions (not postMessage-safe).
-	 */
-	private snapshotBtContext(ctx: Record<string, unknown>): Record<string, unknown> {
-		const out: Record<string, unknown> = {};
-		for (const key of Object.keys(ctx)) {
-			const v = ctx[key];
-			if (typeof v === "function") continue;
-			out[key] = v;
-		}
-		return out;
-	}
-
 	private deriveBtId(bt: BehaviourTree): string {
 		try {
 			const id = bt.getTreeNodeDetails()?.id;
@@ -297,7 +278,6 @@ export class BtManager<
 			parallelEntries.push({
 				name,
 				btId: this.deriveBtId(entry.bt),
-				context: this.snapshotBtContext(entry.btContext),
 			});
 		}
 
@@ -309,7 +289,6 @@ export class BtManager<
 		return {
 			hasActiveEffect: true,
 			activeEffectBtId: this.deriveBtId(active.bt),
-			activeEffectContext: this.snapshotBtContext(active.btContext),
 			parallelEntries,
 		};
 	}

@@ -7,6 +7,27 @@
 import { z } from "zod/v4";
 import { MEMBER_TYPE } from "./enums";
 
+// StatContainer 可合并的属性定义，字段形状需与 SchemaAttribute 保持一致。
+export const SchemaAttributeSchema = z.object({
+	// 属性展示名，主要用于调试与 UI 展示。
+	displayName: z.string(),
+	// 属性初始表达式，通常是 "0"、"-Infinity" 等常量。
+	expression: z.string(),
+	// 百分比修正不参与乘法，仅做加法累加。
+	noBaseValue: z.boolean().optional(),
+	// 仅保留基础值，适合技能计数器、冷却时间戳等持久化槽。
+	onlyBaseValue: z.boolean().optional(),
+});
+export type SchemaAttributeData = z.output<typeof SchemaAttributeSchema>;
+
+// 行为树声明的持久化属性槽；跨帧变量必须写入 StatContainer。
+export const AttributeSlotDeclarationSchema = z.object({
+	// 点号分隔的完整属性路径，前缀由 SchemaMerge 统一校验。
+	path: z.string(),
+	attribute: SchemaAttributeSchema,
+});
+export type AttributeSlotDeclarationData = z.output<typeof AttributeSlotDeclarationSchema>;
+
 // 行为树
 export const BTSchema = z.object({
 	// 行为树名称
@@ -15,6 +36,8 @@ export const BTSchema = z.object({
 	definition: z.string(),
 	// 可调用函数集
 	agent: z.string(),
+	// 行为树需要 checkpoint 的变量槽；默认空数组兼容历史数据。
+	attributeSlots: z.array(AttributeSlotDeclarationSchema).default([]),
 });
 export type BTTree = z.output<typeof BTSchema>;
 
