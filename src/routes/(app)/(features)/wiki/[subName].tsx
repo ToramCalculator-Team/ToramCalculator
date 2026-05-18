@@ -4,6 +4,7 @@ import { A, useNavigate, useParams } from "@solidjs/router";
 import {
 	createEffect,
 	createMemo,
+	createResource,
 	createSignal,
 	For,
 	type JSX,
@@ -79,7 +80,7 @@ export default function WikiSubPage() {
 		return table;
 	});
 
-	const liveTableRows = createLiveKyselyQuery<any>((db) => {
+	const liveTableRows = createLiveKyselyQuery<Record<string, unknown>>((db) => {
 		const request = tableConfigRequest();
 		return request?.config.dataFetcher.liveQuery?.(db) ?? null;
 	});
@@ -95,56 +96,82 @@ export default function WikiSubPage() {
 			titleIcon: () => <Icons.Spirits iconName={type} />,
 			render: (cardApi) => {
 				if (!config) return <pre>{JSON.stringify(data, null, 2)}</pre>;
+				const primaryKeyValue = data[config.primaryKey as string];
+				const [detailData] = createResource(
+					() => (primaryKeyValue == null ? data : String(primaryKeyValue)),
+					async (source: string | Record<string, unknown>) => {
+						if (typeof source !== "string") return source;
+						// 列表行可以是轻量投影；卡片和编辑器必须使用 dataFetcher.get 读取完整实体。
+						// 设计目的：把列表吞吐和详情实体边界分开，避免大表切页时一次性加载所有嵌套子表。
+						try {
+							return ((await config.dataFetcher.get(source)) ?? data) as Record<string, unknown>;
+						} catch (error) {
+							console.error("[WikiCard] 详情查询失败，回退到列表行数据", error);
+							return data;
+						}
+					},
+				);
 
 				return (
-					<DataRenderer
-						primaryKey={config.primaryKey}
-						dictionary={config.dictionary}
-						deleteCallback={config.card.deleteCallback}
-						openCard={openCurrentTableCard}
-						closeCard={cardApi.close}
-						openEditor={(nextData) => {
-							globalFormGroup.add({
-								render: (api) => (
-									<Form
-										tableName={type}
-										value={nextData}
-										primaryKey={config.primaryKey}
-										defaultValue={config.defaultData}
-										dataSchema={config.dataSchema}
-										dictionary={config.dictionary}
-										hiddenFields={config.form.hiddenFields}
-										fieldGroupMap={config.fieldGroupMap}
-										fieldGenerator={config.form.fieldGenerator}
-										inheritsFrom={config.inheritsFrom}
-										embeds={config.embeds}
-										onInsert={async (value) => {
-											const result = await config.form.onInsert(value);
-											api.close();
-											return result;
-										}}
-										onUpdate={async (primaryKeyValue, value) => {
-											const result = await config.form.onUpdate(primaryKeyValue, value);
-											api.close();
-											return result;
-										}}
-									/>
-								),
-							});
-						}}
-						editAbleCallback={config.card.editAbleCallback}
-						tableName={type}
-						data={data}
-						dataSchema={config.dataSchema}
-						hiddenFields={config.card.hiddenFields}
-						fieldGroupMap={config.fieldGroupMap}
-						fieldGenerator={config.card.fieldGenerator}
-						inheritsFrom={config.inheritsFrom}
-						embeds={config.embeds}
-						relationOverrides={config.card.relationOverrides}
-						after={config.card.after}
-						before={config.card.before}
-					/>
+					<Show
+						when={detailData()}
+						fallback={
+							<div class="LoadingState flex min-h-32 w-full flex-col items-center justify-center gap-3">
+								<LoadingBar class="w-1/2 min-w-[240px]" />
+							</div>
+						}
+					>
+						{(validDetailData) => (
+							<DataRenderer
+								primaryKey={config.primaryKey}
+								dictionary={config.dictionary}
+								deleteCallback={config.card.deleteCallback}
+								openCard={openCurrentTableCard}
+								closeCard={cardApi.close}
+								openEditor={(nextData) => {
+									globalFormGroup.add({
+										render: (api) => (
+											<Form
+												tableName={type}
+												value={nextData}
+												primaryKey={config.primaryKey}
+												defaultValue={config.defaultData}
+												dataSchema={config.dataSchema}
+												dictionary={config.dictionary}
+												hiddenFields={config.form.hiddenFields}
+												fieldGroupMap={config.fieldGroupMap}
+												fieldGenerator={config.form.fieldGenerator}
+												inheritsFrom={config.inheritsFrom}
+												embeds={config.embeds}
+												onInsert={async (value) => {
+													const result = await config.form.onInsert(value);
+													api.close();
+													return result;
+												}}
+												onUpdate={async (primaryKeyValue, value) => {
+													const result = await config.form.onUpdate(primaryKeyValue, value);
+													api.close();
+													return result;
+												}}
+											/>
+										),
+									});
+								}}
+								editAbleCallback={config.card.editAbleCallback}
+								tableName={type}
+								data={validDetailData()}
+								dataSchema={config.dataSchema}
+								hiddenFields={config.card.hiddenFields}
+								fieldGroupMap={config.fieldGroupMap}
+								fieldGenerator={config.card.fieldGenerator}
+								inheritsFrom={config.inheritsFrom}
+								embeds={config.embeds}
+								relationOverrides={config.card.relationOverrides}
+								after={config.card.after}
+								before={config.card.before}
+							/>
+						)}
+					</Show>
 				);
 			},
 		});

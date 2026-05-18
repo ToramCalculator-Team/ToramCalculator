@@ -19,6 +19,6 @@
 			"@db/*": ["./db/*"]
 		}
 	},
-	"include": ["src", "db/generator", "db/repositories"],
+	"include": ["src", "db/scripts/**/*.ts", "db/generator", "db/repositories"],
 	"exclude": ["node_modules", "dist", ".output", ".nitro", "backend", "public"]
 }

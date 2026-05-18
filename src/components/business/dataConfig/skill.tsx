@@ -21,6 +21,7 @@ const SkillWithVariantsSchema = SkillSchema.extend({
 });
 
 type SkillWithVariants = z.output<typeof SkillWithVariantsSchema>;
+type SkillListRow = skill;
 
 const defaultDataWithVariants: SkillWithVariants = {
 	...defaultData.skill,
@@ -160,7 +161,7 @@ const deleteSkillWithVariants = async (id: string): Promise<SkillWithVariants | 
 };
 // 第二个类型参数 = 配置站点字典覆盖范围。声明 embeds 后，variants 字段不参与字典渲染，
 // 因此这里只需提供 skill 自己字段的字典（子表 skill_variant 的字典由渲染器递归使用 skill_variant 的 dataConfig）。
-export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill> = (dictionary) => ({
+export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill, SkillListRow> = (dictionary) => ({
 	// 声明 variants 是 skill 的内嵌子表（1:N）；渲染器会：
 	//   - 卡片：内嵌展示为按钮列表
 	//   - 表单：内嵌为数组编辑器（递归使用 skill_variant 自己的 dataConfig）
@@ -177,20 +178,9 @@ export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill> = (dic
 		insert: insertSkillWithVariants,
 		update: updateSkillWithVariants,
 		delete: deleteSkillWithVariants,
-		// 与 getAllSkillWithVariants 同款 jsonArrayFrom 子查询，仅去掉 .execute()；
-		// skill 或 skill_variant 任意变动都会触发刷新
-		liveQuery: (db) =>
-			db
-				.selectFrom("skill")
-				.selectAll("skill")
-				.select((eb) => [
-					jsonArrayFrom(
-						eb
-							.selectFrom("skill_variant")
-							.whereRef("skill_variant.belongToskillId", "=", "skill.id")
-							.selectAll("skill_variant"),
-					).as("variants"),
-				]),
+		// 列表页只需要 skill 自身字段；variants 在打开详情或编辑时按主键读取完整实体。
+		// 设计目的：避免 wiki 快速切页时把 skill_variant 子表聚合进每个列表行，降低 PGlite 初始订阅压力。
+		liveQuery: (db) => db.selectFrom("skill").selectAll("skill"),
 	},
 	fieldGroupMap: {
 		ID: ["id"],

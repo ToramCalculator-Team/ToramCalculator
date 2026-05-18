@@ -90,10 +90,14 @@ export type RelationOverridesDecl = {
  *                 当声明了 `inheritsFrom` 时，渲染器会在运行时自动合并父表字典，
  *                 此时 TDic 可收窄为"仅子表自己的字段类型"（如 `weapon` 而非 `WeaponItem`），
  *                 避免在配置里手动重复父表的字段字典。
+ * @typeParam TList 列表页行数据形状，默认 = T。
+ *                  列表可以只返回表格需要的轻量投影；详情和编辑仍通过 dataFetcher.get 获取完整 T。
  */
-export type TableDataConfig<T extends Record<string, unknown>, TDic extends Record<string, unknown> = T> = (
-	dictionary: Accessor<Dictionary>,
-) => {
+export type TableDataConfig<
+	T extends Record<string, unknown>,
+	TDic extends Record<string, unknown> = T,
+	TList extends Record<string, unknown> = T,
+> = (dictionary: Accessor<Dictionary>) => {
 	dictionary: Dic<TDic>;
 	dataSchema: ZodObject<{ [K in keyof T]: ZodType }>;
 	primaryKey: keyof T;
@@ -110,7 +114,7 @@ export type TableDataConfig<T extends Record<string, unknown>, TDic extends Reco
 		 * 写入/同步导致的行变更将自动刷新列表，无需手动 invalidate。
 		 * 未提供时仍用 getAll 一次性拉取。
 		 */
-		liveQuery?: (db: Kysely<DB>) => Compilable<T>;
+		liveQuery?: (db: Kysely<DB>) => Compilable<TList>;
 	};
 	fieldGroupMap: Record<string, Array<keyof T>>;
 	/** 继承关系声明（见 InheritsFromDecl） */
@@ -118,7 +122,7 @@ export type TableDataConfig<T extends Record<string, unknown>, TDic extends Reco
 	/** 内嵌子表声明（见 EmbedsDecl） */
 	embeds?: EmbedsDecl[];
 	table: SafeOmit<
-		VirtualTableProps<T>,
+		VirtualTableProps<TList>,
 		"data" | "primaryKey" | "dictionary" | "rowHandleClick" | "onColumnVisibilityChange" | "globalFilterStr"
 	>;
 	form: SafeOmit<
@@ -142,7 +146,7 @@ export type TableDataConfig<T extends Record<string, unknown>, TDic extends Reco
 
 // 擦除类型后的存储版本
 // 函数参数用 any 消除逆变问题，这是唯一需要 any 的地方
-export type AnyTableDataConfig = TableDataConfig<any, any>;
+export type AnyTableDataConfig = TableDataConfig<any, any, any>;
 
 export type DataConfig = Partial<Record<keyof DB, AnyTableDataConfig>>;
 

@@ -3,11 +3,10 @@
  * @description 从 CSV 文件恢复数据库
  */
 
-import { type ChildProcessByStdio, execSync, spawn } from "node:child_process";
+import { type ChildProcessWithoutNullStreams, execSync, spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
-import type { Readable, Writable } from "node:stream";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { MODEL_METADATA, RELATION_METADATA } from "../generated/dmmf-utils.js";
@@ -44,9 +43,52 @@ interface ProcessedEnvVars {
 interface ImportResult {
 	importedCount: number;
 	skippedCount: number;
+	failedTables: ImportFailure[];
 }
 
-type PsqlProcess = ChildProcessByStdio<Writable, Readable, Readable>;
+/**
+ * 单表导入失败信息
+ */
+interface ImportFailure {
+	table: string;
+	message: string;
+}
+
+type TableImportStatus = "imported" | "skipped";
+
+type PsqlProcess = ChildProcessWithoutNullStreams;
+
+/**
+ * 格式化 psql 输出，避免长 CSV 错误把终端日志冲掉
+ * @param label - 输出来源
+ * @param output - 原始输出
+ * @returns 可读日志片段
+ */
+export const formatPsqlOutput = (label: string, output: string): string => {
+	const trimmedOutput = output.trim();
+	if (!trimmedOutput) {
+		return "";
+	}
+
+	const maxOutputLength = 4000;
+	const formattedOutput =
+		trimmedOutput.length > maxOutputLength
+			? `${trimmedOutput.slice(0, maxOutputLength)}\n...输出已截断，原始长度 ${trimmedOutput.length} 字符`
+			: trimmedOutput;
+
+	return `${label}:\n${formattedOutput}`;
+};
+
+/**
+ * 生成导入失败摘要
+ * @param failedTables - 失败表列表
+ * @returns 恢复流程级错误信息
+ */
+export const formatImportFailureSummary = (failedTables: ImportFailure[]): string => {
+	const lines = failedTables.map((failure) => `- ${failure.table}:\n${failure.message}`);
+
+	return `CSV 导入失败：${failedTables.length} 个表未成功导入\n${lines.join("\n")}`;
+};
 
 /**
  * 解析环境变量引用
@@ -360,14 +402,15 @@ export const createPsqlProcess = (config: Config): PsqlProcess => {
 		// 本地数据库：通过 Docker 容器导入
 		const pgUrl = `postgresql://${config.PG_USERNAME}:${config.PG_PASSWORD}@/${config.PG_DBNAME}`;
 
-		return spawn("docker", ["exec", "-i", config.PG_CONTAINER_NAME, "psql", pgUrl], {
+		// ON_ERROR_STOP 让 SQL / \copy 错误转成 psql 非 0 退出码，恢复脚本才能把单表失败升级为流程失败。
+		return spawn("docker", ["exec", "-i", config.PG_CONTAINER_NAME, "psql", "-v", "ON_ERROR_STOP=1", pgUrl], {
 			stdio: ["pipe", "pipe", "pipe"],
 		});
 	} else {
 		// 远程数据库：使用 Docker 容器中的 psql 连接远程数据库
 		const pgUrl = `postgresql://${config.PG_USERNAME}:${config.PG_PASSWORD}@${config.PG_HOST}:${config.PG_PORT}/${config.PG_DBNAME}`;
 
-		return spawn("docker", ["run", "--rm", "-i", "postgres:16-alpine", "psql", pgUrl], {
+		return spawn("docker", ["run", "--rm", "-i", "postgres:16-alpine", "psql", "-v", "ON_ERROR_STOP=1", pgUrl], {
 			stdio: ["pipe", "pipe", "pipe"],
 		});
 	}
@@ -378,9 +421,9 @@ export const createPsqlProcess = (config: Config): PsqlProcess => {
  * @param table - 表名
  * @param csvFile - CSV 文件路径
  * @param config - 配置对象
- * @returns Promise，导入成功则 resolve
+ * @returns Promise，返回导入状态；空 CSV 被视为跳过
  */
-export const importSingleCsvFile = (table: string, csvFile: string, config: Config): Promise<void> => {
+export const importSingleCsvFile = (table: string, csvFile: string, config: Config): Promise<TableImportStatus> => {
 	return new Promise((resolve, reject) => {
 		console.log(`⬆️ 正在导入表: ${table}...`);
 
@@ -390,8 +433,8 @@ export const importSingleCsvFile = (table: string, csvFile: string, config: Conf
 			// 检查 CSV 文件是否只有表头（空数据）
 			const lines = csvContent.trim().split("\n");
 			if (lines.length <= 1) {
-				console.log(`⚠️ 跳过: ${table} (CSV 文件为空)`);
-				resolve();
+				console.log(`⬆️ 跳过: ${table} (CSV 文件为空)`);
+				resolve("skipped");
 				return;
 			}
 
@@ -401,16 +444,39 @@ export const importSingleCsvFile = (table: string, csvFile: string, config: Conf
 				return;
 			}
 
+			let stdout = "";
+			let stderr = "";
+			let stdinError: Error | undefined;
+
+			// 保留 psql 原始输出，导入失败时能定位到具体约束、列或 CSV 行。
+			child.stdout.on("data", (chunk) => {
+				stdout += chunk.toString();
+			});
+			child.stderr.on("data", (chunk) => {
+				stderr += chunk.toString();
+			});
+			child.stdin.on("error", (error) => {
+				stdinError = error;
+			});
+
 			// 发送 SQL 命令和 CSV 数据
-			child.stdin.write(`SET session_replication_role = 'replica';\\copy "${table}" FROM STDIN CSV HEADER;\n`);
+			child.stdin.write("SET session_replication_role = 'replica';\n");
+			child.stdin.write(`\\copy "${table}" FROM STDIN CSV HEADER;\n`);
 			child.stdin.write(csvContent);
 			child.stdin.end();
 
 			child.on("close", (code) => {
-				if (code === 0) {
-					resolve();
+				if (code === 0 && !stdinError) {
+					resolve("imported");
 				} else {
-					reject(new Error(`导入失败，退出码: ${code}`));
+					const details = [
+						`导入失败，psql 退出码: ${code ?? "unknown"}`,
+						stdinError ? `stdin 写入失败: ${stdinError.message}` : "",
+						formatPsqlOutput("psql stderr", stderr),
+						formatPsqlOutput("psql stdout", stdout),
+					].filter(Boolean);
+
+					reject(new Error(details.join("\n")));
 				}
 			});
 
@@ -432,17 +498,25 @@ export const importCsvFiles = async (tables: string[], config: Config): Promise<
 
 	let importedCount = 0;
 	let skippedCount = 0;
+	const failedTables: ImportFailure[] = [];
 
 	for (const table of tables) {
 		const csvFile = path.join(config.BACKUP_DIR, `${table}.csv`);
 
 		if (fileExists(csvFile)) {
 			try {
-				await importSingleCsvFile(table, csvFile, config);
-				importedCount++;
+				const importStatus = await importSingleCsvFile(table, csvFile, config);
+				if (importStatus === "imported") {
+					importedCount++;
+				} else {
+					skippedCount++;
+				}
 			} catch (error) {
 				console.error(`❌ 导入表 ${table} 失败:`, (error as Error).message);
-				skippedCount++;
+				failedTables.push({
+					table,
+					message: (error as Error).message,
+				});
 			}
 		} else {
 			console.log(`⚠️ 跳过: ${table} (未找到 ${csvFile})`);
@@ -450,8 +524,8 @@ export const importCsvFiles = async (tables: string[], config: Config): Promise<
 		}
 	}
 
-	console.log(`📊 导入完成: ${importedCount} 个表成功导入, ${skippedCount} 个表跳过`);
-	return { importedCount, skippedCount };
+	console.log(`📊 导入完成: ${importedCount} 个表成功导入, ${skippedCount} 个表跳过, ${failedTables.length} 个表失败`);
+	return { importedCount, skippedCount, failedTables };
 };
 
 /**
@@ -486,14 +560,20 @@ export const restore = async (config: Config): Promise<void> => {
 		const tables = getTableOrder();
 
 		// 3. 按顺序导入 CSV 文件
-		await importCsvFiles(tables, config);
+		const importResult = await importCsvFiles(tables, config);
 
 		// 4. 恢复外键约束
 		restoreForeignKeys(config);
 
+		if (importResult.failedTables.length > 0) {
+			throw new Error(formatImportFailureSummary(importResult.failedTables));
+		}
+
 		console.log("✅ 数据库恢复完成！");
 	} catch (error) {
-		console.error("❌ 数据库恢复失败:", error);
+		// 恢复脚本的主要使用场景是定位数据问题；打印 message 可以保留 psql 的多行诊断，避免 stack 把根因挤出视线。
+		const message = error instanceof Error ? error.message : String(error);
+		console.error(`❌ 数据库恢复失败:\n${message}`);
 		process.exit(1);
 	}
 };

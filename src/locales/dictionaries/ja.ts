@@ -188,6 +188,8 @@ const skillTreeType: Record<Enums.SkillTreeType, string> = {
 	BareHandSkill: "素手スキル",
 	NinjaSkill: "忍者スキル",
 	PartisanSkill: "パルチザンスキル",
+	NecromancerSkill: "ネクロマンサースキル",
+	GolemSkill: "ゴーレムスキル",
 	//
 	LuckSkill: "ラックスキル",
 	MerchantSkill: "商人スキル",
@@ -667,6 +669,8 @@ const dictionary: Dictionary = {
 								BareHandSkill: "素手スキル",
 								NinjaSkill: "忍者スキル",
 								PartisanSkill: "パルチザンスキル",
+								NecromancerSkill: "ネクロマンサースキル",
+								GolemSkill: "ゴーレムスキル",
 							},
 						},
 						OtherSkillGroup: {
