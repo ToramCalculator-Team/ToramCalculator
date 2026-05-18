@@ -1,9 +1,6 @@
 import { defaultData } from "@db/defaultData";
 import { type Character, insertCharacter } from "@db/generated/repositories/character";
-import { insertCharacterSkill } from "@db/generated/repositories/character_skill";
 import { updatePlayer } from "@db/generated/repositories/player";
-import { insertSkill } from "@db/generated/repositories/skill";
-import { insertSkillVariant } from "@db/generated/repositories/skill_variant";
 import { insertStatistic } from "@db/generated/repositories/statistic";
 import type { Account } from "@db/repositories/account";
 import { getDB } from "@db/repositories/database";
@@ -28,44 +25,12 @@ export const createCharacter = async (): Promise<Character> => {
 			},
 			trx,
 		);
-		const skillStatistic = await insertStatistic(
-			{
-				...defaultData.statistic,
-				id: createId(),
-			},
-			trx,
-		);
-		const skill = await insertSkill(
-			{
-				...defaultData.skill,
-				id: createId(),
-				statisticId: skillStatistic.id,
-			},
-			trx,
-		);
-		await insertSkillVariant(
-			{
-				...defaultData.skill_variant,
-				id: createId(),
-				belongToskillId: skill.id,
-			},
-			trx,
-		);
 		const character = await insertCharacter(
 			{
 				...defaultData.character,
 				id: createId(),
 				belongToPlayerId: player.id,
 				statisticId: characterStatistic.id,
-			},
-			trx,
-		);
-		await insertCharacterSkill(
-			{
-				...defaultData.character_skill,
-				id: createId(),
-				belongToCharacterId: character.id,
-				templateId: skill.id,
 			},
 			trx,
 		);
@@ -76,7 +41,7 @@ export const createCharacter = async (): Promise<Character> => {
 			},
 			trx,
 		);
-		console.log("character", character);
+		console.log("已创建机体：", character);
 		await hydrateSessionAccountStore(account, trx);
 		return character;
 	});

@@ -411,7 +411,7 @@ export const defaultData: DB = {
 	skill: {
 		id: "defaultSkillId",
 		name: "默认技能",
-		treeType: "BladeSkill",
+		treeType: "LuckSkill",
 		posX: 0,
 		posY: 0,
 		tier: 0,
