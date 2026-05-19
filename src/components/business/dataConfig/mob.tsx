@@ -265,17 +265,15 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 						>
 							<BtEditor
 								title={dictionary.fields.actions.key}
-								initValues={{
-									definition: value().definition ?? "",
-									agent: value().agent ?? "",
+								initValue={{
+									...value(),
 									memberType: (value().memberType as MemberType) ?? "Mob",
+									attributeSlots: value().attributeSlots ?? [],
 								}}
-								onSave={(mdsl, agent, memberType) => {
+								onSave={(nextTree) => {
 									const newValue = {
 										...value(),
-										definition: mdsl,
-										agent: agent,
-										memberType: memberType,
+										...nextTree,
 									};
 									console.log(newValue);
 									setValue(newValue);

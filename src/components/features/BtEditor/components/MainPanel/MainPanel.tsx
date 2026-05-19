@@ -1,12 +1,10 @@
 import { type Component, createEffect, createSignal, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
+import type { EditableBtDropPlacement, EditableBtNodeType } from "../../model/editableTree";
 import type { ConnectorType, NodeType } from "../../types/workflow";
 import { DefaultNode } from "../workflow/DefaultNode";
-import {
-	WorkflowCanvas,
-	type WorkflowCanvasInstance,
-} from "../workflow/WorkflowCanvas";
+import { WorkflowCanvas, type WorkflowCanvasInstance } from "../workflow/WorkflowCanvas";
 
 export type CanvasElements = {
 	nodes: NodeType[];
@@ -16,17 +14,35 @@ export type CanvasElements = {
 export type MainPanelProps = {
 	layoutId: string | null;
 	elements: CanvasElements;
+	selectedNodeId?: string;
+	dragNodeType?: EditableBtNodeType;
+	dragNodeId?: string;
+	activeDropPlacement?: EditableBtDropPlacement;
 	showPlayButton: boolean;
 	showReplayButton: boolean;
 	showStopButton: boolean;
 	onPlayButtonClick(): void;
 	onReplayButtonClick(): void;
 	onStopButtonClick(): void;
+	onStepButtonClick?: () => void;
+	onNodeDragOver?: (placement: EditableBtDropPlacement | null) => void;
+	onNodeDrop?: (placement: EditableBtDropPlacement | null) => void;
+	onNodeDragEnd?: () => void;
+	onCanvasClick?: () => void;
+	onNodeClick?: (nodeId: string) => void;
+	onNodeLongPress?: (nodeId: string) => void;
+	onNodeMove?: (nodeId: string, direction: -1 | 1) => void;
+	onNodeDelete?: (nodeId: string) => void;
+	onTreeNodeDragStart?: (nodeId: string) => void;
+	onTreeNodeDragEnd?: () => void;
+	canDeleteNode?: (nodeId: string) => boolean;
+	canDropOnNode?: (nodeId: string) => boolean;
+	showCanvasControls?: boolean;
+	readOnly?: boolean;
 };
 
 export const MainPanel: Component<MainPanelProps> = (props) => {
-	const [canvasInstance, setCanvasInstance] =
-		createSignal<WorkflowCanvasInstance | null>(null);
+	const [canvasInstance, setCanvasInstance] = createSignal<WorkflowCanvasInstance | null>(null);
 	const [isFitNeeded, setIsFitNeeded] = createSignal<boolean>(true);
 	const [lastLayoutId, setLastLayoutId] = createSignal<string | null>(null);
 
@@ -53,57 +69,60 @@ export const MainPanel: Component<MainPanelProps> = (props) => {
 	return (
 		<div class="relative h-full w-full font-['Consolas']">
 			<WorkflowCanvas
-				onInitalise={(instance: WorkflowCanvasInstance) =>
-					setCanvasInstance(instance)
-				}
+				onInitalise={(instance: WorkflowCanvasInstance) => setCanvasInstance(instance)}
 				nodes={props.elements.nodes}
 				connectors={props.elements.edges}
+				selectedNodeId={props.selectedNodeId}
+				dragNodeType={props.dragNodeType}
+				dragNodeId={props.dragNodeId}
+				activeDropPlacement={props.activeDropPlacement}
 				nodeComponents={{
 					default: DefaultNode,
+					selected: DefaultNode,
 				}}
+				onNodeDragOver={props.onNodeDragOver}
+				onNodeDrop={props.onNodeDrop}
+				onNodeDragEnd={props.onNodeDragEnd}
+				onCanvasClick={props.onCanvasClick}
+				onNodeClick={props.onNodeClick}
+				onNodeLongPress={props.onNodeLongPress}
+				onNodeMove={props.onNodeMove}
+				onNodeDelete={props.onNodeDelete}
+				onTreeNodeDragStart={props.onTreeNodeDragStart}
+				onTreeNodeDragEnd={props.onTreeNodeDragEnd}
+				canDeleteNode={props.canDeleteNode}
+				canDropOnNode={props.canDropOnNode}
+				readOnly={props.readOnly}
 			/>
-			<div class="absolute bottom-0 left-0 m-3.75 flex gap-3.75">
-				<Show when={props.showPlayButton}>
-					<Button
-						level="primary"
-						onClick={props.onPlayButtonClick}
-						class="run-tree-fab"
-					>
-						<Icons.Outline.Play />
-					</Button>
-				</Show>
-				<Show when={props.showReplayButton}>
-					<Button
-						level="primary"
-						onClick={props.onReplayButtonClick}
-						class="run-tree-fab"
-					>
-						<Icons.Outline.Replay />
-					</Button>
-				</Show>
-				<Show when={props.showStopButton}>
-					<Button
-						level="primary"
-						onClick={props.onStopButtonClick}
-						class="run-tree-fab"
-					>
-						<Icons.Outline.Stop />
-					</Button>
-				</Show>
-				<Show
-					when={
-						props.elements.edges.length > 0 && props.elements.nodes.length > 0
-					}
-				>
-					<Button
-						level="primary"
-						onClick={() => canvasInstance()?.fit()}
-						class="run-tree-fab"
-					>
-						<Icons.Outline.Location />
-					</Button>
-				</Show>
-			</div>
+			<Show when={props.showCanvasControls !== false}>
+				<div class="absolute bottom-0 left-0 m-3.75 flex gap-3.75">
+					<Show when={props.showPlayButton}>
+						<Button level="primary" onClick={props.onPlayButtonClick} class="run-tree-fab">
+							<Icons.Outline.Play />
+						</Button>
+					</Show>
+					<Show when={props.showPlayButton && props.onStepButtonClick}>
+						<Button level="primary" onClick={props.onStepButtonClick} class="run-tree-fab min-h-11 min-w-11">
+							<Icons.Outline.Swap />
+						</Button>
+					</Show>
+					<Show when={props.showReplayButton}>
+						<Button level="primary" onClick={props.onReplayButtonClick} class="run-tree-fab">
+							<Icons.Outline.Replay />
+						</Button>
+					</Show>
+					<Show when={props.showStopButton}>
+						<Button level="primary" onClick={props.onStopButtonClick} class="run-tree-fab">
+							<Icons.Outline.Stop />
+						</Button>
+					</Show>
+					<Show when={props.elements.edges.length > 0 && props.elements.nodes.length > 0}>
+						<Button level="primary" onClick={() => canvasInstance()?.fit()} class="run-tree-fab">
+							<Icons.Outline.Location />
+						</Button>
+					</Show>
+				</div>
+			</Show>
 		</div>
 	);
 };

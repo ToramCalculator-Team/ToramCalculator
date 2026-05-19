@@ -111,17 +111,15 @@ export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = (dictio
 						>
 							<BtEditor
 								title={dictionary.fields.activeEffect.key}
-								initValues={{
-									definition: value().definition ?? "",
-									agent: value().agent ?? "",
+								initValue={{
+									...value(),
 									memberType: (value().memberType as MemberType) ?? "Player",
+									attributeSlots: value().attributeSlots ?? [],
 								}}
-								onSave={(mdsl, agent, memberType) => {
+								onSave={(nextTree) => {
 									const newValue = {
 										...value(),
-										definition: mdsl,
-										agent: agent,
-										memberType: memberType,
+										...nextTree,
 									};
 									console.log(newValue);
 									setValue(newValue);
@@ -183,13 +181,11 @@ export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = (dictio
 										>
 											<BtEditor
 												title={dictionary.fields.passiveEffects.key}
-												initValues={item()}
-												onSave={(mdsl, agent, memberType) => {
+												initValue={{ ...item(), attributeSlots: item().attributeSlots ?? [] }}
+												onSave={(nextTree) => {
 													const newValue = {
 														...item(),
-														definition: mdsl,
-														agent: agent,
-														memberType: memberType,
+														...nextTree,
 													};
 													const i = index;
 													const next = arrayValue().slice();
@@ -274,13 +270,11 @@ export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = (dictio
 										>
 											<BtEditor
 												title={dictionary.fields.buffs.key}
-												initValues={item()}
-												onSave={(mdsl, agent, memberType) => {
+												initValue={{ ...item(), attributeSlots: item().attributeSlots ?? [] }}
+												onSave={(nextTree) => {
 													const newValue = {
 														...item(),
-														definition: mdsl,
-														agent: agent,
-														memberType: memberType,
+														...nextTree,
 													};
 													const i = index;
 													const next = arrayValue().slice();
@@ -327,14 +321,10 @@ export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = (dictio
 					<div class="w-full h-[50vh] rounded overflow-hidden">
 						<BtEditor
 							title={dictionary.fields[key].key}
-							initValues={{
-								definition: field.activeEffect.definition ?? "",
-								agent: field.activeEffect.agent ?? "",
-								memberType: field.activeEffect.memberType ?? "Player",
-							}}
+							initValue={{ ...field.activeEffect, attributeSlots: field.activeEffect.attributeSlots ?? [] }}
 							readOnly={true}
-							onSave={(mdsl, agent, memberType) => {
-								console.log(mdsl, agent, memberType);
+							onSave={(nextTree) => {
+								console.log(nextTree);
 							}}
 						/>
 					</div>

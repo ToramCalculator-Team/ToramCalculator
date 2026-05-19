@@ -7,32 +7,18 @@ export type DefaultNodeCallbackTagProps = {
 	args: DefaultNodeArgument[];
 };
 
-export const DefaultNodeCallbackTag: Component<DefaultNodeCallbackTagProps> = (
-	props,
-) => {
-	const getArgument = (arg: DefaultNodeArgument, index: number) => {
+export const DefaultNodeCallbackTag: Component<DefaultNodeCallbackTagProps> = (props) => {
+	const getArgument = (arg: DefaultNodeArgument) => {
 		if (typeof arg === "string") {
 			return <p class="default-node-argument string">{`"${arg}"`}</p>;
 		} else if (typeof arg === "number") {
 			return <p class="default-node-argument number">{arg}</p>;
 		} else if (typeof arg === "boolean") {
-			return (
-				<p class="default-node-argument boolean">{arg ? "true" : "false"}</p>
-			);
+			return <p class="default-node-argument boolean">{arg ? "true" : "false"}</p>;
 		} else if (arg === null || arg === undefined) {
-			return (
-				<p class="default-node-argument null">
-					{arg === null ? "null" : "undefined"}
-				</p>
-			);
-		} else if (
-			typeof arg === "object" &&
-			Object.keys(arg).length === 1 &&
-			Object.hasOwn(arg, "$")
-		) {
-			return (
-				<p class="default-node-argument agent-property-reference">{arg["$"]}</p>
-			);
+			return <p class="default-node-argument null">{arg === null ? "null" : "undefined"}</p>;
+		} else if (typeof arg === "object" && Object.keys(arg).length === 1 && Object.hasOwn(arg, "$")) {
+			return <p class="default-node-argument agent-property-reference">{arg.$}</p>;
 		} else {
 			return <p class="default-node-argument unknown">{JSON.stringify(arg)}</p>;
 		}
@@ -45,7 +31,7 @@ export const DefaultNodeCallbackTag: Component<DefaultNodeCallbackTagProps> = (
 			</div>
 			<div class="flex flex-row items-baseline px-1.5 py-1">
 				<p class="m-0">{props.functionName}</p>
-				<For each={props.args}>{(arg, index) => getArgument(arg, index())}</For>
+				<For each={props.args}>{(arg) => getArgument(arg)}</For>
 			</div>
 		</div>
 	);

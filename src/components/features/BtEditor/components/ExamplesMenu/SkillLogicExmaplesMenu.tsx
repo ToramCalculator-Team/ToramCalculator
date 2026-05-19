@@ -9,9 +9,7 @@ export type SkillLogicExmaplesMenuProps = {
 	onMDSLInsert: (mdsl: string, agent: string) => void;
 };
 
-export const SkillLogicExmaplesMenu: Component<SkillLogicExmaplesMenuProps> = (
-	props,
-) => {
+export const SkillLogicExmaplesMenu: Component<SkillLogicExmaplesMenuProps> = (props) => {
 	const [anchorEl, setAnchorEl] = createSignal<HTMLElement | null>(null);
 	const open = () => Boolean(anchorEl());
 
@@ -31,9 +29,7 @@ export const SkillLogicExmaplesMenu: Component<SkillLogicExmaplesMenuProps> = (
 	};
 
 	const getExampleListItemsForCategory = (category: SkillExampleCategory) => {
-		return SkillLogicExamples.filter(
-			(example) => example.category === category,
-		);
+		return SkillLogicExamples.filter((example) => example.category === category);
 	};
 
 	return (

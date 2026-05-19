@@ -5,74 +5,45 @@ import type { NodeType } from "../../types/workflow";
 import { DefaultNodeCallbackTag } from "./DefaultNodeCallbackTag";
 import { DefaultNodeGuardTag } from "./DefaultNodeGuardTag";
 
-export type DefaultNodeArgument =
-	| string
-	| number
-	| boolean
-	| null
-	| { $: string };
+export type DefaultNodeArgument = string | number | boolean | null | { $: string };
 
 export const DefaultNode: Component<NodeType> = (props) => {
 	const getStateClasses = () => {
+		if (props.isPlaceholder) {
+			return "border-2 border-dashed border-accent-color bg-area-color opacity-55";
+		}
+		const selectedClass = props.variant === "selected" ? "ring-2 ring-brand-color-2nd" : "";
 		switch (props.state) {
 			case State.RUNNING:
-				return "bg-transtion-color font-bold";
+				return `bg-transtion-color font-bold ${selectedClass}`;
 			case State.SUCCEEDED:
-				return "bg-brand-color-1st text-primary-color";
+				return `bg-brand-color-1st text-primary-color ${selectedClass}`;
 			case State.FAILED:
-				return "bg-brand-color-3rd text-primary-color";
+				return `bg-brand-color-3rd text-primary-color ${selectedClass}`;
 			default:
-				return "bg-primary-color";
+				return props.variant === "selected"
+					? "bg-accent-color text-primary-color ring-2 ring-brand-color-2nd"
+					: "bg-primary-color";
 		}
 	};
 
 	const getIcon = (nodeType: string) => {
 		return {
-			action: (
-				<Icons.Outline.Edit class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#3772ff] p-1" />
-			),
-			condition: (
-				<Icons.Outline.Filter class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#eac435] p-1" />
-			),
-			fail: (
-				<Icons.Outline.Close class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#e40066] p-1" />
-			),
-			flip: (
-				<Icons.Outline.Swap class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#f29e4c] p-1" />
-			),
-			lotto: (
-				<Icons.Outline.Coins class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#83e377] p-1" />
-			),
-			parallel: (
-				<Icons.Outline.Category2 class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#0db39e] p-1" />
-			),
-			race: (
-				<Icons.Outline.Category2 class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#16db93] p-1" />
-			),
-			all: (
-				<Icons.Outline.Category2 class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#16db93] p-1" />
-			),
-			repeat: (
-				<Icons.Outline.Loading class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#6c91bf] p-1" />
-			),
-			retry: (
-				<Icons.Outline.Loading class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#a14ebf] p-1" />
-			),
-			root: (
-				<Icons.Outline.Home class="text-primary-color h-6 w-6 flex-none rounded-md bg-[rgb(99,98,104)] p-1" />
-			),
-			selector: (
-				<Icons.Outline.Category class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#54478c] p-1" />
-			),
-			sequence: (
-				<Icons.Outline.Box2 class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#e40066] p-1" />
-			),
-			succeed: (
-				<Icons.Outline.Flag class="text-primary-color h-6 w-6 flex-none rounded-md bg-[rgb(0,190,32)] p-1" />
-			),
-			wait: (
-				<Icons.Outline.Calendar class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#826aed] p-1" />
-			),
+			action: <Icons.Outline.Edit class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#3772ff] p-1" />,
+			condition: <Icons.Outline.Filter class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#eac435] p-1" />,
+			fail: <Icons.Outline.Close class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#e40066] p-1" />,
+			flip: <Icons.Outline.Swap class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#f29e4c] p-1" />,
+			lotto: <Icons.Outline.Coins class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#83e377] p-1" />,
+			parallel: <Icons.Outline.Category2 class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#0db39e] p-1" />,
+			race: <Icons.Outline.Category2 class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#16db93] p-1" />,
+			all: <Icons.Outline.Category2 class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#16db93] p-1" />,
+			repeat: <Icons.Outline.Loading class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#6c91bf] p-1" />,
+			retry: <Icons.Outline.Loading class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#a14ebf] p-1" />,
+			root: <Icons.Outline.Home class="text-primary-color h-6 w-6 flex-none rounded-md bg-[rgb(99,98,104)] p-1" />,
+			selector: <Icons.Outline.Category class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#54478c] p-1" />,
+			sequence: <Icons.Outline.Box2 class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#e40066] p-1" />,
+			succeed: <Icons.Outline.Flag class="text-primary-color h-6 w-6 flex-none rounded-md bg-[rgb(0,190,32)] p-1" />,
+			wait: <Icons.Outline.Calendar class="text-primary-color h-6 w-6 flex-none rounded-md bg-[#826aed] p-1" />,
 		}[nodeType];
 	};
 
@@ -98,16 +69,10 @@ export const DefaultNode: Component<NodeType> = (props) => {
 		} else if (arg === null || arg === undefined) {
 			return (
 				<p class="bg-area-color m-0 mx-0.5 inline-flex h-6 items-center rounded-md px-1.5 text-xs leading-4 font-semibold text-[#517075]">
-					<span class="leading-[100%]">
-						{arg === null ? "null" : "undefined"}
-					</span>
+					<span class="leading-[100%]">{arg === null ? "null" : "undefined"}</span>
 				</p>
 			);
-		} else if (
-			typeof arg === "object" &&
-			Object.keys(arg).length === 1 &&
-			Object.hasOwn(arg, "$")
-		) {
+		} else if (typeof arg === "object" && Object.keys(arg).length === 1 && Object.hasOwn(arg, "$")) {
 			return (
 				<p class="bg-area-color m-0 mx-0.5 inline-flex h-6 items-center rounded-md px-1.5 text-xs leading-4 font-semibold text-[#009fc7]">
 					<span class="leading-[100%]">{arg.$}</span>
@@ -123,13 +88,20 @@ export const DefaultNode: Component<NodeType> = (props) => {
 	};
 	return (
 		<div
-			class={`shadow-dividing-color flex flex-row items-start rounded-md p-2 whitespace-nowrap shadow ${getStateClasses()}`}
+			class={`shadow-dividing-color flex min-h-10 cursor-pointer flex-row items-start rounded-md p-2 whitespace-nowrap shadow ${getStateClasses()}`}
 		>
 			{getIcon(props.type)}
 			<div class="flex flex-col">
 				<div class="flex flex-row items-center">
 					<p class="m-0 mx-1.5 ml-2 inline-flex h-6 items-center">
-						<span class="leading-[100%]">{props.caption}</span>
+						<span
+							class="leading-[100%] translate-y-[0.06em] inline-block"
+							style={{
+								"dominant-baseline": "middle",
+							}}
+						>
+							{props.isPlaceholder ? `放置 ${props.caption}` : props.caption}
+						</span>
 					</p>
 					<For each={props.args}>{(arg) => getArgument(arg)}</For>
 				</div>

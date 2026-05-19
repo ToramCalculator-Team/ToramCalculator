@@ -64,9 +64,7 @@ export const ExamplesMenu: Component<ExamplesMenuProps> = (props) => {
 				</Show>
 				<Show when={getExampleListItemsForCategory("composite").length > 0}>
 					<Divider />
-					<div class="text-accent-color/70 px-1.25 py-0.5 text-xs">
-						Composites
-					</div>
+					<div class="text-accent-color/70 px-1.25 py-0.5 text-xs">Composites</div>
 					<MenuList dense>
 						<For each={getExampleListItemsForCategory("composite")}>
 							{(example) => (
@@ -79,9 +77,7 @@ export const ExamplesMenu: Component<ExamplesMenuProps> = (props) => {
 				</Show>
 				<Show when={getExampleListItemsForCategory("decorator").length > 0}>
 					<Divider />
-					<div class="text-accent-color/70 px-1.25 py-0.5 text-xs">
-						Decorators
-					</div>
+					<div class="text-accent-color/70 px-1.25 py-0.5 text-xs">Decorators</div>
 					<MenuList dense>
 						<For each={getExampleListItemsForCategory("decorator")}>
 							{(example) => (

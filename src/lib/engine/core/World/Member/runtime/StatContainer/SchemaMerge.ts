@@ -33,7 +33,20 @@ export interface SlotDeclaration {
  * 允许的顶级前缀，超出此集合的路径将抛错。
  * 保留 base schema 根节点与新增槽之间的边界清晰。
  */
-const ALLOWED_PREFIXES = new Set(["skill", "passive", "buff"]);
+export const ALLOWED_ATTRIBUTE_SLOT_PREFIXES = ["skill", "passive", "buff"] as const;
+const ALLOWED_PREFIXES = new Set<string>(ALLOWED_ATTRIBUTE_SLOT_PREFIXES);
+
+export function validateSlotDeclarationPath(path: string): string | null {
+	const segments = path.split(".").filter((s) => s.length > 0);
+	if (segments.length < 2) {
+		return `属性槽路径至少需要两段（前缀 + 字段名），收到：${path}`;
+	}
+	const prefix = segments[0];
+	if (!ALLOWED_PREFIXES.has(prefix)) {
+		return `属性槽路径前缀必须是 ${ALLOWED_ATTRIBUTE_SLOT_PREFIXES.join(" / ")} 之一，收到：${path}`;
+	}
+	return null;
+}
 
 /**
  * 将槽声明列表并入基础 schema，返回新的 NestedSchema。
@@ -49,15 +62,8 @@ export function mergeSchema(base: NestedSchema, slots: readonly SlotDeclaration[
 
 	for (const slot of slots) {
 		const segments = slot.path.split(".").filter((s) => s.length > 0);
-		if (segments.length < 2) {
-			throw new Error(`属性槽路径至少需要两段（前缀 + 字段名），收到：${slot.path}`);
-		}
-		const prefix = segments[0];
-		if (!ALLOWED_PREFIXES.has(prefix)) {
-			throw new Error(
-				`属性槽路径前缀必须是 ${[...ALLOWED_PREFIXES].join(" / ")} 之一，收到：${slot.path}`,
-			);
-		}
+		const pathError = validateSlotDeclarationPath(slot.path);
+		if (pathError) throw new Error(pathError);
 
 		insertSlot(result, segments, slot.attribute, slot.path);
 	}

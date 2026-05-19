@@ -8,12 +8,7 @@ export type MenuItemProps = {
 };
 
 const MenuItem: Component<MenuItemProps> = (props) => {
-	const [local, others] = splitProps(props, [
-		"dense",
-		"onClick",
-		"children",
-		"class",
-	]);
+	const [local, others] = splitProps(props, ["dense", "onClick", "children", "class"]);
 
 	return (
 		<div

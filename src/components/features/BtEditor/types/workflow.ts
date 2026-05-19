@@ -32,7 +32,8 @@ export type NodeType = {
 	entryCallback?: NodeDetails["entry"];
 	stepCallback?: NodeDetails["step"];
 	exitCallback?: NodeDetails["exit"];
-	variant: string;
+	isPlaceholder?: boolean;
+	variant: "default" | "selected";
 };
 
 /**

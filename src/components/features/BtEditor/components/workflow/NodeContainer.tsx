@@ -1,22 +1,20 @@
-import {
-	type Component,
-	createEffect,
-	createSignal,
-	Index,
-	on,
-	Show,
-} from "solid-js";
-import type {
-	ChildNode,
-	ConnectorVariant,
-	NodeType,
-} from "../../types/workflow";
+import { type Component, createEffect, createSignal, Index, on, Show } from "solid-js";
+import type { ChildNode, ConnectorVariant, NodeType } from "../../types/workflow";
 import { Node } from "./Node";
 
 export type NodeContainerProps = {
 	parentNode: NodeType;
 	childNodes: ChildNode[];
 	nodeComponents: { [key: string]: Component<NodeType> };
+	selectedNodeId?: string;
+	onNodeClick?: (nodeId: string) => void;
+	onNodeLongPress?: (nodeId: string) => void;
+	onNodeMove?: (nodeId: string, direction: -1 | 1) => void;
+	onNodeDelete?: (nodeId: string) => void;
+	onTreeNodeDragStart?: (nodeId: string) => void;
+	onTreeNodeDragEnd?: () => void;
+	canDeleteNode?: (nodeId: string) => boolean;
+	readOnly?: boolean;
 };
 
 // Get connector class based on variant
@@ -35,11 +33,8 @@ const getConnectorClass = (variant: ConnectorVariant): string => {
 
 export const NodeContainer: Component<NodeContainerProps> = (props) => {
 	let nodeChildrenContainerRef: HTMLDivElement | undefined;
-	const [connectorTargetOffsets, setConnectorTargetOffsets] = createSignal<
-		number[] | null
-	>(null);
-	const [nodeChildrenContainerHeight, setNodeChildrenContainerHeight] =
-		createSignal<number>(0);
+	const [connectorTargetOffsets, setConnectorTargetOffsets] = createSignal<number[] | null>(null);
+	const [nodeChildrenContainerHeight, setNodeChildrenContainerHeight] = createSignal<number>(0);
 
 	// 计算连接器目标偏移量的函数
 	// 注意：不进行缓存判断，每次都重新计算，确保连线位置始终准确
@@ -48,8 +43,7 @@ export const NodeContainer: Component<NodeContainerProps> = (props) => {
 	const calculateConnectorOffsets = () => {
 		if (!nodeChildrenContainerRef) return;
 
-		const currentNodeChildrenContainerHeight =
-			nodeChildrenContainerRef.clientHeight || 0;
+		const currentNodeChildrenContainerHeight = nodeChildrenContainerRef.clientHeight || 0;
 		const childrenCount = nodeChildrenContainerRef.children.length || 0;
 		const expectedChildrenCount = props.childNodes.length;
 
@@ -65,9 +59,7 @@ export const NodeContainer: Component<NodeContainerProps> = (props) => {
 
 		for (let childIndex = 0; childIndex < childrenCount; childIndex++) {
 			// 获取当前子元素
-			const childElement = nodeChildrenContainerRef.children[
-				childIndex
-			] as HTMLElement;
+			const childElement = nodeChildrenContainerRef.children[childIndex] as HTMLElement;
 			if (!childElement) continue;
 
 			// 获取子元素的高度
@@ -108,13 +100,19 @@ export const NodeContainer: Component<NodeContainerProps> = (props) => {
 				<Node
 					wrapped={props.nodeComponents[props.parentNode.variant]}
 					model={props.parentNode}
+					selected={props.selectedNodeId === props.parentNode.id}
+					onClick={props.onNodeClick}
+					onLongPress={props.onNodeLongPress}
+					onMove={props.onNodeMove}
+					onDelete={props.onNodeDelete}
+					onDragStart={props.onTreeNodeDragStart}
+					onDragEnd={props.onTreeNodeDragEnd}
+					canDelete={props.canDeleteNode}
+					readOnly={props.readOnly}
 				/>
 			</div>
 			<Show when={props.childNodes.length > 0}>
-				<div
-					class="relative my-[3px] w-10"
-					style={{ height: `${nodeChildrenContainerHeight() || 1}px` }}
-				>
+				<div class="relative my-[3px] w-10" style={{ height: `${nodeChildrenContainerHeight() || 1}px` }}>
 					<Show
 						when={
 							connectorTargetOffsets() &&
@@ -122,10 +120,7 @@ export const NodeContainer: Component<NodeContainerProps> = (props) => {
 							nodeChildrenContainerHeight() > 0
 						}
 					>
-						<svg
-							class="absolute inset-0 w-full"
-							style={{ height: `${nodeChildrenContainerHeight() || 1}px` }}
-						>
+						<svg class="absolute inset-0 w-full" style={{ height: `${nodeChildrenContainerHeight() || 1}px` }}>
 							<title>Connector Path</title>
 							<Index each={props.childNodes}>
 								{(childNode, index) => {
@@ -148,12 +143,8 @@ export const NodeContainer: Component<NodeContainerProps> = (props) => {
 											d={pathD}
 											stroke-width="2"
 											fill="transparent"
-											stroke-linejoin={
-												variant === "active" ? "round" : undefined
-											}
-											stroke-dasharray={
-												variant === "active" ? "8, 4" : undefined
-											}
+											stroke-linejoin={variant === "active" ? "round" : undefined}
+											stroke-dasharray={variant === "active" ? "8, 4" : undefined}
 										/>
 									);
 								}}
@@ -161,16 +152,22 @@ export const NodeContainer: Component<NodeContainerProps> = (props) => {
 						</svg>
 					</Show>
 				</div>
-				<div
-					ref={nodeChildrenContainerRef}
-					class="my-[3px] flex flex-col items-stretch"
-				>
+				<div ref={nodeChildrenContainerRef} class="my-[3px] flex flex-col items-stretch">
 					<Index each={props.childNodes}>
 						{(childNode) => (
 							<NodeContainer
 								parentNode={childNode().child.node}
 								childNodes={childNode().child.children}
 								nodeComponents={props.nodeComponents}
+								selectedNodeId={props.selectedNodeId}
+								onNodeClick={props.onNodeClick}
+								onNodeLongPress={props.onNodeLongPress}
+								onNodeMove={props.onNodeMove}
+								onNodeDelete={props.onNodeDelete}
+								onTreeNodeDragStart={props.onTreeNodeDragStart}
+								onTreeNodeDragEnd={props.onTreeNodeDragEnd}
+								canDeleteNode={props.canDeleteNode}
+								readOnly={props.readOnly}
 							/>
 						)}
 					</Index>

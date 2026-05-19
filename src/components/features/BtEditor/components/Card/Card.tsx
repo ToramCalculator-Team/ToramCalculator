@@ -8,12 +8,7 @@ export type CardProps = {
 };
 
 const Card: Component<CardProps> = (props) => {
-	const [local, others] = splitProps(props, [
-		"elevation",
-		"children",
-		"class",
-		"style",
-	]);
+	const [local, others] = splitProps(props, ["elevation", "children", "class", "style"]);
 
 	const elevation = () => local.elevation ?? 1;
 
@@ -28,11 +23,7 @@ const Card: Component<CardProps> = (props) => {
 	};
 
 	return (
-		<div
-			class={`bg-primary-color rounded ${elevationClasses()} ${local.class || ""}`}
-			style={local.style}
-			{...others}
-		>
+		<div class={`bg-primary-color rounded ${elevationClasses()} ${local.class || ""}`} style={local.style} {...others}>
 			{local.children}
 		</div>
 	);

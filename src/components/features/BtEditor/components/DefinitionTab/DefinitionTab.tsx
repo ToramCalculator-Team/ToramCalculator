@@ -13,22 +13,15 @@ export type DefinitionTabProps = {
 };
 
 export const DefinitionTab: Component<DefinitionTabProps> = (props) => {
-	const mode = () =>
-		props.definitionType === DefinitionType.JSON ? "json" : "mdsl";
+	const mode = () => (props.definitionType === DefinitionType.JSON ? "json" : "mdsl");
 
 	return (
 		<div class="flex flex-col w-full h-full basis-3/5 overflow-hidden bg-area-color">
 			<div class="flex flex-row items-center px-3 py-2">
-				<span class="tracking-wider text-accent-color font-bold">
-					Definition
-				</span>
+				<span class="tracking-wider text-accent-color font-bold">Definition</span>
 				<div class="flex items-center h-[18px] ml-auto mr-1.5">
-					<Show when={props.definitionType === DefinitionType.MDSL}>
-						MDSL
-					</Show>
-					<Show when={props.definitionType === DefinitionType.JSON}>
-						JSON
-					</Show>
+					<Show when={props.definitionType === DefinitionType.MDSL}>MDSL</Show>
+					<Show when={props.definitionType === DefinitionType.JSON}>JSON</Show>
 				</div>
 			</div>
 			<Divider />

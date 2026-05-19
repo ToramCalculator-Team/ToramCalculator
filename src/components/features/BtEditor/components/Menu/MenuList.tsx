@@ -8,10 +8,7 @@ export type MenuListProps = {
 
 const MenuList: Component<MenuListProps> = (props) => {
 	return (
-		<div
-			class={`${props.dense ? "py-1" : "py-2"} ${props.class || ""}`}
-			role="menu"
-		>
+		<div class={`${props.dense ? "py-1" : "py-2"} ${props.class || ""}`} role="menu">
 			{props.children}
 		</div>
 	);
