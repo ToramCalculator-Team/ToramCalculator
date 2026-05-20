@@ -5,11 +5,11 @@ import { SkillLogicExamples } from "../../data/SkillExamples";
 import type { SkillExample, SkillExampleCategory } from "../../types";
 import { Divider, Menu, MenuItem, MenuList } from "../";
 
-export type SkillLogicExmaplesMenuProps = {
+export type SkillLogicExamplesMenuProps = {
 	onMDSLInsert: (mdsl: string, agent: string) => void;
 };
 
-export const SkillLogicExmaplesMenu: Component<SkillLogicExmaplesMenuProps> = (props) => {
+export const SkillLogicExamplesMenu: Component<SkillLogicExamplesMenuProps> = (props) => {
 	const [anchorEl, setAnchorEl] = createSignal<HTMLElement | null>(null);
 	const open = () => Boolean(anchorEl());
 
@@ -34,7 +34,7 @@ export const SkillLogicExmaplesMenu: Component<SkillLogicExmaplesMenuProps> = (p
 
 	return (
 		<>
-			<Button level="quaternary" onClick={handleClick} class="p-1">
+			<Button level="quaternary" aria-label="打开技能示例" title="技能示例" onClick={handleClick} class="h-11 w-11 p-2">
 				<Icons.Outline.Basketball />
 			</Button>
 			<Menu anchorEl={anchorEl()} open={open()} onClose={handleClose}>

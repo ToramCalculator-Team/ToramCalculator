@@ -1,4 +1,5 @@
-import { type Component, createEffect, createSignal, Index, on, Show } from "solid-js";
+import { type Component, createEffect, createMemo, createSignal, Index, on, Show } from "solid-js";
+import { State } from "~/lib/mistreevous/State";
 import type { ChildNode, ConnectorVariant, NodeType } from "../../types/workflow";
 import { Node } from "./Node";
 
@@ -9,11 +10,11 @@ export type NodeContainerProps = {
 	selectedNodeId?: string;
 	onNodeClick?: (nodeId: string) => void;
 	onNodeLongPress?: (nodeId: string) => void;
-	onNodeMove?: (nodeId: string, direction: -1 | 1) => void;
-	onNodeDelete?: (nodeId: string) => void;
 	onTreeNodeDragStart?: (nodeId: string) => void;
+	onTreeNodePointerDragMove?: (clientX: number, clientY: number) => void;
+	onTreeNodePointerDragEnd?: (clientX: number, clientY: number) => void;
 	onTreeNodeDragEnd?: () => void;
-	canDeleteNode?: (nodeId: string) => boolean;
+	runtimeNodeStates?: Record<string, State>;
 	readOnly?: boolean;
 };
 
@@ -31,10 +32,22 @@ const getConnectorClass = (variant: ConnectorVariant): string => {
 	}
 };
 
+const stateToConnectorVariant = (state: State): ConnectorVariant => {
+	if (state === State.RUNNING) return "active";
+	if (state === State.SUCCEEDED) return "succeeded";
+	if (state === State.FAILED) return "failed";
+	return "default";
+};
+
 export const NodeContainer: Component<NodeContainerProps> = (props) => {
 	let nodeChildrenContainerRef: HTMLDivElement | undefined;
 	const [connectorTargetOffsets, setConnectorTargetOffsets] = createSignal<number[] | null>(null);
 	const [nodeChildrenContainerHeight, setNodeChildrenContainerHeight] = createSignal<number>(0);
+	const getRuntimeNodeState = (node: NodeType): State => props.runtimeNodeStates?.[node.path] ?? node.state;
+	const parentNodeModel = createMemo(() => ({
+		...props.parentNode,
+		state: getRuntimeNodeState(props.parentNode),
+	}));
 
 	// 计算连接器目标偏移量的函数
 	// 注意：不进行缓存判断，每次都重新计算，确保连线位置始终准确
@@ -99,15 +112,14 @@ export const NodeContainer: Component<NodeContainerProps> = (props) => {
 			<div class="my-[5px] flex items-center">
 				<Node
 					wrapped={props.nodeComponents[props.parentNode.variant]}
-					model={props.parentNode}
+					model={parentNodeModel()}
 					selected={props.selectedNodeId === props.parentNode.id}
 					onClick={props.onNodeClick}
 					onLongPress={props.onNodeLongPress}
-					onMove={props.onNodeMove}
-					onDelete={props.onNodeDelete}
 					onDragStart={props.onTreeNodeDragStart}
+					onPointerDragMove={props.onTreeNodePointerDragMove}
+					onPointerDragEnd={props.onTreeNodePointerDragEnd}
 					onDragEnd={props.onTreeNodeDragEnd}
-					canDelete={props.canDeleteNode}
 					readOnly={props.readOnly}
 				/>
 			</div>
@@ -129,7 +141,9 @@ export const NodeContainer: Component<NodeContainerProps> = (props) => {
 									if (!offsets || height === 0) return null;
 
 									const offset = offsets[index];
-									const variant = childNode().connector.variant;
+									const connectorVariant = createMemo(() =>
+										stateToConnectorVariant(getRuntimeNodeState(childNode().child.node)),
+									);
 									const source = { x: 0, y: height / 2 };
 									const target = { x: 40, y: offset };
 									const containerWidth = 40;
@@ -139,12 +153,12 @@ export const NodeContainer: Component<NodeContainerProps> = (props) => {
 
 									return (
 										<path
-											class={getConnectorClass(variant)}
+											class={getConnectorClass(connectorVariant())}
 											d={pathD}
 											stroke-width="2"
 											fill="transparent"
-											stroke-linejoin={variant === "active" ? "round" : undefined}
-											stroke-dasharray={variant === "active" ? "8, 4" : undefined}
+											stroke-linejoin={connectorVariant() === "active" ? "round" : undefined}
+											stroke-dasharray={connectorVariant() === "active" ? "8, 4" : undefined}
 										/>
 									);
 								}}
@@ -162,11 +176,11 @@ export const NodeContainer: Component<NodeContainerProps> = (props) => {
 								selectedNodeId={props.selectedNodeId}
 								onNodeClick={props.onNodeClick}
 								onNodeLongPress={props.onNodeLongPress}
-								onNodeMove={props.onNodeMove}
-								onNodeDelete={props.onNodeDelete}
 								onTreeNodeDragStart={props.onTreeNodeDragStart}
+								onTreeNodePointerDragMove={props.onTreeNodePointerDragMove}
+								onTreeNodePointerDragEnd={props.onTreeNodePointerDragEnd}
 								onTreeNodeDragEnd={props.onTreeNodeDragEnd}
-								canDeleteNode={props.canDeleteNode}
+								runtimeNodeStates={props.runtimeNodeStates}
 								readOnly={props.readOnly}
 							/>
 						)}

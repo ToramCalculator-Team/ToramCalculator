@@ -1,7 +1,5 @@
-import { type Component, type JSX, Show } from "solid-js";
-import { Icons } from "~/components/icons";
+import type { Component } from "solid-js";
 import type { NodeType } from "../../types/workflow";
-import { Divider } from "../Divider/Divider";
 
 export type NodeProps = {
 	wrapped: Component<NodeType>;
@@ -9,117 +7,139 @@ export type NodeProps = {
 	selected?: boolean;
 	onClick?: (nodeId: string) => void;
 	onLongPress?: (nodeId: string) => void;
-	onMove?: (nodeId: string, direction: -1 | 1) => void;
-	onDelete?: (nodeId: string) => void;
 	onDragStart?: (nodeId: string) => void;
+	onPointerDragMove?: (clientX: number, clientY: number) => void;
+	onPointerDragEnd?: (clientX: number, clientY: number) => void;
 	onDragEnd?: () => void;
-	canDelete?: (nodeId: string) => boolean;
 	readOnly?: boolean;
 };
 
 export const Node: Component<NodeProps> = (props) => {
 	const Wrapped = props.wrapped;
-	let longPressTimer: number | undefined;
+	// 设计说明：节点交互以 pointer 状态机为准，松开前才判定点击或拖拽，避免移动端按下节点时立即打开属性面板。
+	type PointerInteraction =
+		| { state: "idle" }
+		| { state: "pressed"; pointerId: number; startX: number; startY: number }
+		| { state: "dragging"; pointerId: number };
+	let pointerInteraction: PointerInteraction = { state: "idle" };
+	let skipNextNativeClick = false;
+	let nativeClickResetTimer: number | undefined;
+	let nodeButtonRef: HTMLButtonElement | undefined;
+	const dragActivationDistance = 6;
 	const canDrag = () => !props.readOnly && props.model.type !== "root" && !props.model.isPlaceholder;
 
-	const clearLongPress = () => {
-		if (longPressTimer) {
-			window.clearTimeout(longPressTimer);
-			longPressTimer = undefined;
+	const resetPointerInteraction = () => {
+		pointerInteraction = { state: "idle" };
+	};
+
+	const releasePointerCapture = (pointerId: number) => {
+		if (nodeButtonRef?.hasPointerCapture(pointerId)) {
+			nodeButtonRef.releasePointerCapture(pointerId);
+		}
+	};
+
+	const markNativeClickHandledByPointer = () => {
+		skipNextNativeClick = true;
+		if (nativeClickResetTimer !== undefined) window.clearTimeout(nativeClickResetTimer);
+		nativeClickResetTimer = window.setTimeout(() => {
+			skipNextNativeClick = false;
+			nativeClickResetTimer = undefined;
+		}, 80);
+	};
+
+	const clearNativeClickSkip = () => {
+		skipNextNativeClick = false;
+		if (nativeClickResetTimer !== undefined) {
+			window.clearTimeout(nativeClickResetTimer);
+			nativeClickResetTimer = undefined;
 		}
 	};
 
 	return (
 		<div class="relative inline-flex items-center">
 			<button
+				ref={nodeButtonRef}
 				type="button"
 				data-bt-node-id={props.model.id}
 				data-bt-placeholder={props.model.isPlaceholder ? "true" : undefined}
-				class={`select-none bg-transparent p-0 text-left ${canDrag() ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}
-				draggable={canDrag()}
+				class={`touch-none select-none bg-transparent p-0 text-left ${canDrag() ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}
+				draggable={false}
 				onClick={(event) => {
 					event.stopPropagation();
+					if (skipNextNativeClick) {
+						event.preventDefault();
+						clearNativeClickSkip();
+						return;
+					}
 					props.onClick?.(props.model.id);
 				}}
 				onMouseDown={(event) => {
-					event.stopPropagation();
+					if (event.button !== 1) event.stopPropagation();
 				}}
 				onMouseUp={(event) => {
-					event.stopPropagation();
+					if (event.button !== 1) event.stopPropagation();
 				}}
-				onDragStart={(event) => {
-					event.stopPropagation();
-					if (props.readOnly || props.model.type === "root" || props.model.isPlaceholder) {
-						event.preventDefault();
-						return;
-					}
-					event.dataTransfer?.setData("application/x-bt-tree-node", props.model.id);
-					event.dataTransfer?.setData("text/plain", props.model.caption);
-					if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
-					props.onDragStart?.(props.model.id);
-				}}
-				onDragEnd={() => props.onDragEnd?.()}
 				onPointerDown={(event) => {
+					if (event.pointerType === "mouse" && event.button !== 0) return;
 					event.stopPropagation();
-					clearLongPress();
-					longPressTimer = window.setTimeout(() => props.onLongPress?.(props.model.id), 500);
+					event.preventDefault();
+					pointerInteraction = {
+						state: "pressed",
+						pointerId: event.pointerId,
+						startX: event.clientX,
+						startY: event.clientY,
+					};
+					clearNativeClickSkip();
+					nodeButtonRef?.setPointerCapture(event.pointerId);
+				}}
+				onPointerMove={(event) => {
+					const interaction = pointerInteraction;
+					if (interaction.state === "idle" || interaction.pointerId !== event.pointerId) return;
+					event.stopPropagation();
+					event.preventDefault();
+					if (interaction.state === "pressed") {
+						const distance = Math.hypot(event.clientX - interaction.startX, event.clientY - interaction.startY);
+						if (distance <= dragActivationDistance || !canDrag()) return;
+						pointerInteraction = { state: "dragging", pointerId: event.pointerId };
+						props.onDragStart?.(props.model.id);
+					}
+					if (pointerInteraction.state === "dragging") {
+						props.onPointerDragMove?.(event.clientX, event.clientY);
+					}
 				}}
 				onPointerUp={(event) => {
+					const interaction = pointerInteraction;
+					if (interaction.state === "idle" || interaction.pointerId !== event.pointerId) return;
 					event.stopPropagation();
-					clearLongPress();
+					event.preventDefault();
+					releasePointerCapture(event.pointerId);
+					resetPointerInteraction();
+					if (interaction.state === "dragging") {
+						markNativeClickHandledByPointer();
+						props.onPointerDragEnd?.(event.clientX, event.clientY);
+						return;
+					}
+					markNativeClickHandledByPointer();
+					props.onClick?.(props.model.id);
 				}}
 				onPointerCancel={(event) => {
+					const interaction = pointerInteraction;
+					if (interaction.state === "idle" || interaction.pointerId !== event.pointerId) return;
 					event.stopPropagation();
-					clearLongPress();
+					releasePointerCapture(event.pointerId);
+					resetPointerInteraction();
+					clearNativeClickSkip();
+					if (interaction.state === "dragging") {
+						props.onDragEnd?.();
+					}
 				}}
 				onPointerLeave={(event) => {
+					if (pointerInteraction.state === "idle") return;
 					event.stopPropagation();
-					clearLongPress();
 				}}
 			>
 				<Wrapped {...props.model} variant={props.selected ? "selected" : props.model.variant} />
 			</button>
-			<Show when={props.selected && props.model.type !== "root" && !props.readOnly}>
-				<div class="-top-12 left-0 absolute z-20 flex text-primary-color rounded-md bg-brand-color-3rd shadow shadow-dividing-color">
-					<NodeActionButton label="上移" onClick={() => props.onMove?.(props.model.id, -1)}>
-						<Icons.Outline.Left class=" rotate-90" />
-					</NodeActionButton>
-					<Divider orientation="vertical" />
-					<NodeActionButton label="下移" onClick={() => props.onMove?.(props.model.id, 1)}>
-						<Icons.Outline.Left class=" -rotate-90" />
-					</NodeActionButton>
-					<Divider orientation="vertical" />
-					<NodeActionButton
-						label="删除"
-						disabled={!props.canDelete?.(props.model.id)}
-						onClick={() => props.onDelete?.(props.model.id)}
-					>
-						<Icons.Outline.Trash />
-					</NodeActionButton>
-				</div>
-			</Show>
 		</div>
 	);
 };
-
-const NodeActionButton: Component<{
-	children: JSX.Element;
-	label: string;
-	disabled?: boolean;
-	onClick: () => void;
-}> = (props) => (
-	<button
-		type="button"
-		aria-label={props.label}
-		title={props.label}
-		disabled={props.disabled}
-		class="flex h-10 items-center cursor-pointer justify-center hover:bg-dividing-color p-3 text-xs disabled:pointer-events-none disabled:opacity-40"
-		onPointerDown={(event) => event.stopPropagation()}
-		onClick={(event) => {
-			event.stopPropagation();
-			props.onClick();
-		}}
-	>
-		{props.children}
-	</button>
-);

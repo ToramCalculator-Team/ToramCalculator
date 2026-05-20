@@ -40,19 +40,14 @@ export function parseArgumentTokens(
 		// If the current token should be an actual argument then validate it, otherwise it should be a ',' token.
 		if (shouldBeArgumentToken) {
 			// Get the argument definition.
-			const argumentDefinition = getArgumentDefinition(
-				token,
-				stringArgumentPlaceholders,
-			);
+			const argumentDefinition = getArgumentDefinition(token, stringArgumentPlaceholders);
 
 			// This is a valid argument!
 			argumentList.push(argumentDefinition);
 		} else {
 			// The current token should be a ',' token.
 			if (token !== ",") {
-				throw new Error(
-					`invalid argument list, expected ',' or ']' but got '${token}'`,
-				);
+				throw new Error(`invalid argument list, expected ',' or ']' but got '${token}'`);
 			}
 		}
 	});
@@ -70,10 +65,7 @@ export function parseArgumentTokens(
  * @param stringArgumentPlaceholders The mapping of string literal node argument placeholders to original values.
  * @returns An argument value definition.
  */
-function getArgumentDefinition(
-	token: string,
-	stringArgumentPlaceholders: StringLiteralPlaceholders,
-): AnyArgument {
+function getArgumentDefinition(token: string, stringArgumentPlaceholders: StringLiteralPlaceholders): AnyArgument {
 	// Check whether the token represents a null value.
 	if (token === "null") {
 		return {
@@ -102,7 +94,7 @@ function getArgumentDefinition(
 	// Check whether the token is a placeholder (e.g. @@0@@) representing a string literal.
 	if (token.match(/^@@\d+@@$/g)) {
 		return {
-			value: stringArgumentPlaceholders[token].replace('\\"', '"'),
+			value: stringArgumentPlaceholders[token],
 			type: "string",
 		};
 	}

@@ -1,9 +1,9 @@
 import { createSignal } from "solid-js";
 import {
-	findEditableNode,
 	type EditableBtDropPlacement,
 	type EditableBtNodeType,
 	type EditableBtTree,
+	findEditableNode,
 	insertNodeByDropPlacement,
 	isEditableNodeDescendant,
 	materializePlaceholderTree,
@@ -38,6 +38,9 @@ export function useBtDragDrop(options: UseBtDragDropOptions) {
 	const createDragPreviewKey = (type: EditableBtNodeType, placement: EditableBtDropPlacement): string =>
 		`${draggedTreeNodeId() ? `tree:${draggedTreeNodeId()}` : "library"}:${type}:${placement.targetNodeId}:${placement.intent}`;
 
+	const createInsertPreviewKey = (type: EditableBtNodeType, placement: EditableBtDropPlacement): string =>
+		`insert:${type}:${placement.targetNodeId}:${placement.intent}`;
+
 	const startLibraryNodeDrag = (type: EditableBtNodeType) => {
 		if (options.isReadOnly()) return;
 		setDraggedNodeType(type);
@@ -66,6 +69,37 @@ export function useBtDragDrop(options: UseBtDragDropOptions) {
 	const clearDanglingNodeDrag = () => {
 		if (!draggedNodeType()) return;
 		clearNodeDrag();
+	};
+
+	const previewInsertNode = (placement: EditableBtDropPlacement, type: EditableBtNodeType = "action") => {
+		if (options.isReadOnly() || draggedNodeType()) return;
+		const key = createInsertPreviewKey(type, placement);
+		if (dragPreview()?.key === key) return;
+		const result = insertNodeByDropPlacement(options.getActiveTree(), type, placement, { placeholder: true });
+		setActiveDropPlacement(placement);
+		setDragPreview({ key, tree: result.tree, nodeId: result.nodeId });
+	};
+
+	const clearInsertPreview = () => {
+		if (draggedNodeType()) return;
+		setActiveDropPlacement(undefined);
+		setDragPreview(undefined);
+	};
+
+	const commitInsertNode = (placement: EditableBtDropPlacement, type: EditableBtNodeType = "action") => {
+		if (options.isReadOnly()) return;
+		const key = createInsertPreviewKey(type, placement);
+		const preview = dragPreview();
+		const result =
+			preview?.key === key
+				? materializePlaceholderTree(preview.tree)
+				: insertNodeByDropPlacement(options.getActiveTree(), type, placement);
+		options.onTreeChange(result.tree);
+		if (result.nodeId) {
+			options.onSelectNode(result.nodeId);
+			options.onOpenInspector();
+		}
+		clearInsertPreview();
 	};
 
 	const updateNodeDropPreview = (placement: EditableBtDropPlacement | null) => {
@@ -119,7 +153,9 @@ export function useBtDragDrop(options: UseBtDragDropOptions) {
 
 	const canDropOnNode = (id: string) => {
 		const sourceNodeId = draggedTreeNodeId();
-		return !sourceNodeId || (id !== sourceNodeId && !isEditableNodeDescendant(options.getActiveTree(), sourceNodeId, id));
+		return (
+			!sourceNodeId || (id !== sourceNodeId && !isEditableNodeDescendant(options.getActiveTree(), sourceNodeId, id))
+		);
 	};
 
 	return {
@@ -133,6 +169,9 @@ export function useBtDragDrop(options: UseBtDragDropOptions) {
 		clearDanglingNodeDrag,
 		updateNodeDropPreview,
 		commitNodeDrop,
+		previewInsertNode,
+		clearInsertPreview,
+		commitInsertNode,
 		canDropOnNode,
 	};
 }

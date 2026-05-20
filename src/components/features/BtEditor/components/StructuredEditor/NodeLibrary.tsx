@@ -1,5 +1,6 @@
 import { type Component, For } from "solid-js";
-import { Button } from "~/components/controls/button";
+import type { JSX } from "solid-js/jsx-runtime";
+import { Icons } from "~/components/icons";
 import type { EditableBtNodeType } from "../../model/editableTree";
 
 export type NodeLibraryProps = {
@@ -10,6 +11,34 @@ export type NodeLibraryProps = {
 };
 
 const dragMimeType = "application/x-bt-node-type";
+const nodeIconClass = "h-8 w-8 flex-none rounded-md p-1.5 text-primary-color";
+
+type NodeIcon = (props: JSX.IntrinsicElements["svg"]) => JSX.Element;
+
+const nodeIconConfig: Record<EditableBtNodeType, { icon: NodeIcon; colorClass: string }> = {
+	action: { icon: Icons.Outline.Edit, colorClass: "bg-[#3772ff]" },
+	condition: { icon: Icons.Outline.Filter, colorClass: "bg-[#eac435]" },
+	fail: { icon: Icons.Outline.Close, colorClass: "bg-[#e40066]" },
+	flip: { icon: Icons.Outline.Swap, colorClass: "bg-[#f29e4c]" },
+	lotto: { icon: Icons.Outline.Coins, colorClass: "bg-[#83e377]" },
+	parallel: { icon: Icons.Outline.Category2, colorClass: "bg-[#0db39e]" },
+	race: { icon: Icons.Outline.Category2, colorClass: "bg-[#16db93]" },
+	all: { icon: Icons.Outline.Category2, colorClass: "bg-[#16db93]" },
+	repeat: { icon: Icons.Outline.Loading, colorClass: "bg-[#6c91bf]" },
+	retry: { icon: Icons.Outline.Loading, colorClass: "bg-[#a14ebf]" },
+	root: { icon: Icons.Outline.Home, colorClass: "bg-[rgb(99,98,104)]" },
+	selector: { icon: Icons.Outline.Category, colorClass: "bg-[#54478c]" },
+	sequence: { icon: Icons.Outline.Box2, colorClass: "bg-[#e40066]" },
+	succeed: { icon: Icons.Outline.Flag, colorClass: "bg-[rgb(0,190,32)]" },
+	wait: { icon: Icons.Outline.Calendar, colorClass: "bg-[#826aed]" },
+	branch: { icon: Icons.Outline.Location, colorClass: "bg-[#6c91bf]" },
+};
+
+const getNodeIcon = (type: EditableBtNodeType) => {
+	const config = nodeIconConfig[type];
+	const Icon = config.icon;
+	return <Icon class={`${nodeIconClass} ${config.colorClass}`} />;
+};
 
 const groups: Array<{
 	title: string;
@@ -53,20 +82,20 @@ const groups: Array<{
 
 export const NodeLibrary: Component<NodeLibraryProps> = (props) => {
 	return (
-		<div class="flex h-full min-h-0 flex-col gap-3 overflow-auto p-3">
+		<div class="flex h-full min-h-0 flex-col overflow-auto">
 			<For each={groups}>
 				{(group) => (
-					<section class="flex flex-col gap-2">
-						<div class="px-1">
-							<div class="text-main-text-color text-xs font-bold uppercase">{group.title}</div>
-							<div class="text-main-text-color text-xs leading-5">{group.description}</div>
+					<section class="border-dividing-color flex flex-col border-b">
+						<div class="px-3 py-3">
+							<div class="text-accent-color text-xs font-bold tracking-wide">{group.title}</div>
+							<div class="text-main-text-color mt-1 text-xs leading-5">{group.description}</div>
 						</div>
-						<div class="flex flex-col gap-2">
+						<div class="border-dividing-color border-t">
 							<For each={group.nodes}>
 								{(node) => (
-									<Button
-										level="secondary"
-										class="min-h-14 cursor-grab flex-col items-start justify-center gap-1 text-left text-sm active:cursor-grabbing"
+									<button
+										type="button"
+										class="border-dividing-color hover:bg-area-color flex min-h-16 w-full cursor-grab items-center gap-3 border-b px-3 py-2 text-left transition-colors last:border-b-0 active:cursor-grabbing disabled:pointer-events-none disabled:opacity-50"
 										disabled={props.disabled}
 										draggable={!props.disabled}
 										onDragStart={(event) => {
@@ -78,9 +107,12 @@ export const NodeLibrary: Component<NodeLibraryProps> = (props) => {
 										onDragEnd={() => props.onDragEnd?.()}
 										onClick={() => props.onAdd(node.type)}
 									>
-										<span class="font-bold">{node.label}</span>
-										<span class="text-main-text-color line-clamp-2 text-xs no-underline">{node.description}</span>
-									</Button>
+										{getNodeIcon(node.type)}
+										<span class="min-w-0">
+											<span class="block text-sm font-bold">{node.label}</span>
+											<span class="text-main-text-color line-clamp-2 text-xs">{node.description}</span>
+										</span>
+									</button>
 								)}
 							</For>
 						</div>

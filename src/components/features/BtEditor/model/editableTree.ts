@@ -1,4 +1,4 @@
-import { convertMDSLToJSON, validateDefinition } from "~/lib/mistreevous";
+import { convertJSONToMDSL, convertMDSLToJSON, validateDefinition } from "~/lib/mistreevous";
 import type {
 	AnyChildNodeDefinition,
 	NodeArgument,
@@ -6,8 +6,7 @@ import type {
 	NodeGuardDefinition,
 	RootNodeDefinition,
 } from "~/lib/mistreevous/BehaviourTreeDefinition";
-import { State } from "~/lib/mistreevous/State";
-import type { NodeType } from "../types/workflow";
+import { getErrorMessage } from "../utils/errors";
 
 export type EditableBtNodeType =
 	| "root"
@@ -67,6 +66,12 @@ export type EditableBtDocument = {
 	activeRootKey: string;
 };
 
+export type EditableBtBranchReference = {
+	rootKey: string;
+	nodeId: string;
+	ref: string;
+};
+
 export type EditableBtDropIntent = "child" | "before" | "after" | "parent";
 
 export type EditableBtDropPlacement = {
@@ -85,16 +90,22 @@ export const COMPOSITE_NODE_TYPES = new Set<EditableBtNodeType>([
 export const DECORATOR_NODE_TYPES = new Set<EditableBtNodeType>(["root", "repeat", "retry", "flip", "succeed", "fail"]);
 export const LEAF_NODE_TYPES = new Set<EditableBtNodeType>(["action", "condition", "wait", "branch"]);
 
-let nodeCounter = 0;
+let fallbackIdCounter = 0;
+
+function createEditableId(prefix: string): string {
+	const uuid = globalThis.crypto?.randomUUID?.();
+	if (uuid) return `${prefix}-${uuid}`;
+	fallbackIdCounter += 1;
+	// 设计说明：旧运行环境没有 randomUUID 时仍需保证单会话内的编辑节点可区分。
+	return `${prefix}-${Date.now().toString(36)}-${fallbackIdCounter.toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
 
 export function createEditableNodeId(): string {
-	nodeCounter += 1;
-	return `bt-node-${Date.now().toString(36)}-${nodeCounter.toString(36)}`;
+	return createEditableId("bt-node");
 }
 
 export function createEditableRootKey(): string {
-	nodeCounter += 1;
-	return `bt-root-${Date.now().toString(36)}-${nodeCounter.toString(36)}`;
+	return createEditableId("bt-root");
 }
 
 export function createDefaultEditableTree(): EditableBtTree {
@@ -125,7 +136,7 @@ export function createEditableRoot(name?: string, tree: EditableBtTree = createD
 }
 
 export function getEditableRootDisplayName(root: EditableBtRoot): string {
-	return root.name?.trim() || "主树";
+	return root.name?.trim() || "主入口";
 }
 
 export function getActiveEditableRoot(document: EditableBtDocument): EditableBtRoot {
@@ -157,10 +168,50 @@ export function updateActiveEditableTree(
 	};
 }
 
+export function findEditableRootByName(document: EditableBtDocument, name: string): EditableBtRoot | undefined {
+	const normalizedName = normalizeRootName(name);
+	return normalizedName ? document.roots.find((root) => root.name === normalizedName) : undefined;
+}
+
+export function collectEditableBranchReferences(document: EditableBtDocument): EditableBtBranchReference[] {
+	const references: EditableBtBranchReference[] = [];
+	for (const root of document.roots) {
+		collectBranchReferencesFromNode(root.key, root.tree.root, references);
+	}
+	return references;
+}
+
+export function getEditableRootBranchReferenceCount(document: EditableBtDocument, rootKey: string): number {
+	const targetRoot = document.roots.find((root) => root.key === rootKey);
+	if (!targetRoot?.name) return 0;
+	return collectEditableBranchReferences(document).filter((reference) => reference.ref === targetRoot.name).length;
+}
+
+export function canDeleteEditableRoot(document: EditableBtDocument, rootKey: string): boolean {
+	const targetRoot = document.roots.find((root) => root.key === rootKey);
+	if (!targetRoot?.name || document.roots.length <= 1) return false;
+	return getEditableRootBranchReferenceCount(document, rootKey) === 0;
+}
+
+/**
+ * 设计说明：命名子树是当前 BT 文档内的局部符号；重命名必须同步改写 branch.ref，避免 UI 名称变更制造悬空引用。
+ */
 export function renameEditableRoot(document: EditableBtDocument, rootKey: string, name: string): EditableBtDocument {
+	const targetRoot = document.roots.find((root) => root.key === rootKey);
+	const previousName = targetRoot?.name;
+	const nextName = normalizeRootName(name);
 	return {
 		...document,
-		roots: document.roots.map((root) => (root.key === rootKey ? { ...root, name: normalizeRootName(name) } : root)),
+		roots: document.roots.map((root) => {
+			const renamedRoot = root.key === rootKey ? { ...root, name: nextName } : root;
+			if (!previousName || !nextName) return renamedRoot;
+			return {
+				...renamedRoot,
+				tree: {
+					root: rewriteBranchRefInNode(renamedRoot.tree.root, previousName, nextName),
+				},
+			};
+		}),
 	};
 }
 
@@ -173,7 +224,7 @@ export function addEditableRoot(document: EditableBtDocument, name: string): Edi
 }
 
 export function deleteEditableRoot(document: EditableBtDocument, rootKey: string): EditableBtDocument {
-	if (document.roots.length <= 1) return document;
+	if (!canDeleteEditableRoot(document, rootKey)) return document;
 	const roots = document.roots.filter((root) => root.key !== rootKey);
 	const activeRootKey = document.activeRootKey === rootKey ? roots[0]?.key : document.activeRootKey;
 	return {
@@ -319,21 +370,7 @@ export function editableDocumentFromDefinition(definition: string): EditableBtDo
 	const trimmed = definition.trim();
 	if (!trimmed) return createDefaultEditableDocument();
 
-	let roots: RootNodeDefinition[];
-	try {
-		const parsed = JSON.parse(trimmed);
-		const result = validateDefinition(parsed);
-		if (!result.succeeded || !result.json) {
-			throw new Error(result.errorMessage ?? "JSON 定义无效");
-		}
-		roots = result.json;
-	} catch (jsonError) {
-		try {
-			roots = convertMDSLToJSON(trimmed);
-		} catch {
-			throw jsonError;
-		}
-	}
+	const roots = parseDefinitionRoots(trimmed);
 
 	const editableRoots = roots.map((rootDefinition) =>
 		createEditableRoot(rootDefinition.id, { root: editableNodeFromDefinition(rootDefinition) }),
@@ -344,6 +381,33 @@ export function editableDocumentFromDefinition(definition: string): EditableBtDo
 		roots: editableRoots,
 		activeRootKey: primaryRoot.key,
 	};
+}
+
+function parseDefinitionRoots(definition: string): RootNodeDefinition[] {
+	let mdslErrorMessage = "";
+	try {
+		return convertMDSLToJSON(definition);
+	} catch (mdslError) {
+		mdslErrorMessage = formatDefinitionParseError(mdslError);
+	}
+
+	try {
+		const parsed = JSON.parse(definition);
+		const result = validateDefinition(parsed);
+		if (!result.succeeded || !result.json) {
+			throw new Error(result.errorMessage ?? "JSON 定义无效");
+		}
+		return result.json;
+	} catch (jsonError) {
+		// 设计说明：持久化源码是 MDSL；JSON 分支仅用于兼容历史编辑器输出和内部调试粘贴。
+		throw new Error(
+			`Definition 不是有效 MDSL；兼容 JSON 解析也失败。\nMDSL: ${mdslErrorMessage}\nJSON: ${formatDefinitionParseError(jsonError)}`,
+		);
+	}
+}
+
+function formatDefinitionParseError(error: unknown): string {
+	return getErrorMessage(error);
 }
 
 export function editableNodeFromDefinition(definition: RootNodeDefinition | AnyChildNodeDefinition): EditableBtNode {
@@ -423,6 +487,7 @@ export function editableNodeToDefinition(node: EditableBtNode): RootNodeDefiniti
 		if (node.duration !== undefined) {
 			base.duration = node.duration;
 		}
+		// 设计说明：节点类型由上方分支锁定，base 采用动态对象是为了复用属性写入逻辑。
 		return base as unknown as AnyChildNodeDefinition;
 	}
 	if (node.type === "branch") {
@@ -440,6 +505,7 @@ export function editableNodeToDefinition(node: EditableBtNode): RootNodeDefiniti
 
 	if (COMPOSITE_NODE_TYPES.has(node.type)) {
 		base.children = node.children.map((child) => editableNodeToDefinition(child));
+		// 设计说明：mistreevous 的 union 由 type 字段区分，动态 children 写入后交由统一 definition validator 校验。
 		return base as unknown as AnyChildNodeDefinition;
 	}
 
@@ -447,25 +513,59 @@ export function editableNodeToDefinition(node: EditableBtNode): RootNodeDefiniti
 	if (child) {
 		base.child = editableNodeToDefinition(child);
 	}
+	// 设计说明：root/decorator 的 child 字段按节点类型构造，最终保存前会再次通过 mistreevous validator。
 	return base as unknown as RootNodeDefinition | AnyChildNodeDefinition;
 }
 
 export function editableTreeToDefinitionText(tree: EditableBtTree): string {
-	return JSON.stringify(editableTreeToRootDefinition(tree), null, "\t");
+	return convertJSONToMDSL(editableTreeToRootDefinition(tree));
 }
 
 export function editableDocumentToDefinitionText(document: EditableBtDocument): string {
 	const definitions = editableDocumentToRootDefinitions(document);
-	return JSON.stringify(definitions.length === 1 ? definitions[0] : definitions, null, "\t");
+	return convertJSONToMDSL(definitions);
 }
 
 export function findEditableNode(tree: EditableBtTree, id: string): EditableBtNode | undefined {
 	return findNodeInSubtree(tree.root, id);
 }
 
+export function findEditableDocumentNode(
+	document: EditableBtDocument,
+	id: string,
+): { root: EditableBtRoot; node: EditableBtNode } | undefined {
+	for (const root of document.roots) {
+		const node = findEditableNode(root.tree, id);
+		if (node) return { root, node };
+	}
+	return undefined;
+}
+
 export function isEditableNodeDescendant(tree: EditableBtTree, ancestorId: string, nodeId: string): boolean {
 	const ancestor = findEditableNode(tree, ancestorId);
 	return ancestor ? containsNodeId(ancestor.children, nodeId) : false;
+}
+
+function collectBranchReferencesFromNode(
+	rootKey: string,
+	node: EditableBtNode,
+	references: EditableBtBranchReference[],
+): void {
+	if (node.type === "branch") {
+		const ref = node.ref?.trim();
+		if (ref) references.push({ rootKey, nodeId: node.id, ref });
+	}
+	for (const child of node.children) {
+		collectBranchReferencesFromNode(rootKey, child, references);
+	}
+}
+
+function rewriteBranchRefInNode(node: EditableBtNode, previousName: string, nextName: string): EditableBtNode {
+	return {
+		...node,
+		ref: node.type === "branch" && node.ref?.trim() === previousName ? nextName : node.ref,
+		children: node.children.map((child) => rewriteBranchRefInNode(child, previousName, nextName)),
+	};
 }
 
 function findNodeInSubtree(node: EditableBtNode, id: string): EditableBtNode | undefined {
@@ -790,58 +890,6 @@ function moveNodeInSubtree(node: EditableBtNode, id: string, direction: -1 | 1):
 	return { ...node, children };
 }
 
-export function createCanvasElementsFromEditableTree(
-	tree: EditableBtTree,
-	selectedNodeId?: string,
-	runtimeStates: Record<string, State> = {},
-): {
-	nodes: NodeType[];
-	edges: Array<{ id: string; from: string; to: string; variant: "default" | "active" | "succeeded" | "failed" }>;
-} {
-	const nodes: NodeType[] = [];
-	const edges: Array<{ id: string; from: string; to: string; variant: "default" | "active" | "succeeded" | "failed" }> =
-		[];
-
-	const visit = (node: EditableBtNode, path: string, parentId?: string) => {
-		const nodeState = runtimeStates[path] ?? State.READY;
-		nodes.push({
-			id: node.id,
-			caption: getEditableNodeCaption(node),
-			state: nodeState,
-			type: node.type,
-			args: getNodeDisplayArgs(node),
-			whileGuard: node.while ? toDisplayGuard(node.while) : undefined,
-			untilGuard: node.until ? toDisplayGuard(node.until) : undefined,
-			entryCallback: node.entry ? toDisplayCallback(node.entry) : undefined,
-			stepCallback: node.step ? toDisplayCallback(node.step) : undefined,
-			exitCallback: node.exit ? toDisplayCallback(node.exit) : undefined,
-			isPlaceholder: node.isPlaceholder,
-			variant: selectedNodeId === node.id ? "selected" : "default",
-		});
-		if (parentId) {
-			edges.push({
-				id: `${parentId}_${node.id}`,
-				from: parentId,
-				to: node.id,
-				variant: stateToConnectorVariant(nodeState),
-			});
-		}
-		for (const [index, child] of node.children.entries()) {
-			visit(child, `${path}.${index}`, node.id);
-		}
-	};
-
-	visit(tree.root, "0");
-	return { nodes, edges };
-}
-
-function stateToConnectorVariant(state: State): "default" | "active" | "succeeded" | "failed" {
-	if (state === State.RUNNING) return "active";
-	if (state === State.SUCCEEDED) return "succeeded";
-	if (state === State.FAILED) return "failed";
-	return "default";
-}
-
 export function getEditableNodeCaption(node: EditableBtNode): string {
 	switch (node.type) {
 		case "root":
@@ -900,14 +948,6 @@ export function formatArgument(arg: unknown): string {
 	return String(arg);
 }
 
-function getNodeDisplayArgs(node: EditableBtNode): NodeArgument[] {
-	if (node.type === "action" || node.type === "condition") return node.args;
-	if (node.type === "wait")
-		return [node.duration as NodeArgument].filter((arg): arg is NodeArgument => arg !== undefined);
-	if (node.type === "branch") return node.ref ? [node.ref] : [];
-	return [];
-}
-
 function attributeFromDefinition(
 	attribute?: NodeAttributeDefinition | NodeGuardDefinition,
 ): EditableBtAttribute | undefined {
@@ -951,28 +991,6 @@ function withOptionalArgs<T extends Record<string, unknown>>(target: T, args: No
 		};
 	}
 	return target;
-}
-
-function ensureChildren(node: EditableBtNode): EditableBtNode[] {
-	if (node.children.length > 0) return node.children;
-	return [createDefaultNode("action")];
-}
-
-function toDisplayCallback(attribute: EditableBtAttribute): NonNullable<NodeType["entryCallback"]> {
-	return {
-		type: "callback",
-		calls: attribute.call,
-		args: attribute.args,
-	};
-}
-
-function toDisplayGuard(attribute: EditableBtAttribute): NonNullable<NodeType["whileGuard"]> {
-	return {
-		type: "guard",
-		calls: attribute.call,
-		args: attribute.args,
-		succeedOnAbort: !!attribute.succeedOnAbort,
-	};
 }
 
 function normalizeRootName(name?: string): string | undefined {

@@ -34,7 +34,7 @@ export const ExamplesMenu: Component<ExamplesMenuProps> = (props) => {
 
 	return (
 		<>
-			<Button level="quaternary" onClick={handleClick} class="p-1">
+			<Button level="quaternary" aria-label="打开通用示例" title="通用示例" onClick={handleClick} class="h-11 w-11 p-2">
 				<Icons.Outline.Receipt />
 			</Button>
 			<Menu anchorEl={anchorEl()} open={open()} onClose={handleClose}>

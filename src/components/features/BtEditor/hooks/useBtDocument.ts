@@ -1,6 +1,7 @@
 import { createMemo, createSignal } from "solid-js";
 import {
 	addEditableRoot,
+	canDeleteEditableRoot,
 	cloneEditableDocument,
 	createDefaultEditableDocument,
 	deleteEditableRoot,
@@ -15,6 +16,7 @@ import {
 	setActiveEditableRootKey,
 	updateActiveEditableTree,
 } from "../model/editableTree";
+import { getErrorMessage } from "../utils/errors";
 
 export type EditableBtDocumentParseResult = {
 	document: EditableBtDocument;
@@ -29,7 +31,7 @@ export function parseInitialEditableDocument(definition: string): EditableBtDocu
 	} catch (error) {
 		return {
 			document: createDefaultEditableDocument(),
-			error: error instanceof Error ? error.message : String(error),
+			error: getErrorMessage(error),
 		};
 	}
 }
@@ -60,10 +62,15 @@ export function useBtDocument(initialDocument: EditableBtDocument) {
 		return id ? findEditableNode(activeTree(), id) : undefined;
 	});
 
-	const replaceDocument = (document: EditableBtDocument, nextSelectedNodeId?: string) => {
+	const replaceDocument = (document: EditableBtDocument, nextSelectedNodeId?: string | null) => {
 		const nextDocument = cloneEditableDocument(document);
 		setEditableDocument(nextDocument);
-		setSelectedNodeId(nextSelectedNodeId ?? getPreferredSelectionId(getActiveEditableTree(nextDocument)));
+		// 设计说明：undefined 表示沿用默认焦点策略，null 表示调用方需要显式清空节点焦点。
+		setSelectedNodeId(
+			nextSelectedNodeId === null
+				? undefined
+				: (nextSelectedNodeId ?? getPreferredSelectionId(getActiveEditableTree(nextDocument))),
+		);
 		return nextDocument;
 	};
 
@@ -74,15 +81,19 @@ export function useBtDocument(initialDocument: EditableBtDocument) {
 	const replaceActiveTree = (tree: EditableBtTree) =>
 		replaceDocumentPreservingSelection(updateActiveEditableTree(editableDocument(), () => tree));
 
-	const switchActiveRoot = (rootKey: string) =>
-		replaceDocument(setActiveEditableRootKey(editableDocument(), rootKey));
+	const switchActiveRoot = (rootKey: string, nextSelectedNodeId?: string) =>
+		replaceDocument(setActiveEditableRootKey(editableDocument(), rootKey), nextSelectedNodeId);
 
 	const renameRoot = (rootKey: string, name: string) =>
 		replaceDocumentPreservingSelection(renameEditableRoot(editableDocument(), rootKey, name));
 
-	const addNamedRoot = () => replaceDocument(addEditableRoot(editableDocument(), createNextRootName(editableDocument())));
+	const addNamedRoot = () =>
+		replaceDocument(addEditableRoot(editableDocument(), createNextRootName(editableDocument())));
 
-	const deleteNamedRoot = (rootKey: string) => replaceDocument(deleteEditableRoot(editableDocument(), rootKey));
+	const deleteNamedRoot = (rootKey: string) => {
+		if (!canDeleteEditableRoot(editableDocument(), rootKey)) return editableDocument();
+		return replaceDocument(deleteEditableRoot(editableDocument(), rootKey));
+	};
 
 	return {
 		editableDocument,

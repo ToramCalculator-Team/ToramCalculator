@@ -1,9 +1,11 @@
 import type { MemberType } from "@db/schema/enums";
 import type { AttributeSlotDeclarationData } from "@db/schema/jsons";
-import { validateSlotDeclarationPath } from "~/lib/engine/core/World/Member/runtime/StatContainer/SchemaMerge";
 import { createBtContext } from "~/lib/engine/core/World/Member/runtime/BehaviourTree/BtContextFactory";
+import { validateSlotDeclarationPath } from "~/lib/engine/core/World/Member/runtime/StatContainer/SchemaMerge";
 import { validateDefinition } from "~/lib/mistreevous";
 import type { NodeArgument } from "~/lib/mistreevous/BehaviourTreeDefinition";
+import type { MdslIntellisenseRegistry } from "../modes/mdslIntellisense";
+import { getErrorMessage } from "../utils/errors";
 import {
 	COMPOSITE_NODE_TYPES,
 	DECORATOR_NODE_TYPES,
@@ -12,8 +14,6 @@ import {
 	type EditableBtNode,
 	editableDocumentToRootDefinitions,
 } from "./editableTree";
-import { buildMdslIntellisenseRegistry, type MdslIntellisenseRegistry } from "../modes/mdslIntellisense";
-import { getMdslProfileConfig } from "../modes/mdslMemberTypeProfiles";
 import { createPreviewMemberBtEnv, getPreviewBtBindings } from "./previewRuntime";
 
 export type BtAuthoringDiagnosticSeverity = "error" | "warning" | "info";
@@ -31,16 +31,22 @@ export type BtAuthoringValidationInput = {
 	memberType: MemberType;
 	agent: string;
 	attributeSlots: AttributeSlotDeclarationData[];
-	registry?: MdslIntellisenseRegistry;
+	registry: MdslIntellisenseRegistry;
 };
 
 export function validateBtAuthoring(input: BtAuthoringValidationInput): BtAuthoringDiagnostic[] {
-	const registry = input.registry ?? buildMdslIntellisenseRegistry(getMdslProfileConfig(input.memberType), input.agent);
 	const diagnostics: BtAuthoringDiagnostic[] = [];
 	diagnostics.push(...validateDocumentStructure(input.document));
-	diagnostics.push(...validateCalls(input.document, registry));
+	diagnostics.push(...validateCalls(input.document, input.registry));
+	diagnostics.push(...validateMdslSerializableArguments(input.document));
 	diagnostics.push(...validateAgentContext(input.memberType, input.agent));
-	diagnostics.push(...validateAttributeSlots(input.attributeSlots).map((message) => ({ severity: "error" as const, code: "slot.invalid", message })));
+	diagnostics.push(
+		...validateAttributeSlots(input.attributeSlots).map((message) => ({
+			severity: "error" as const,
+			code: "slot.invalid",
+			message,
+		})),
+	);
 
 	try {
 		const validation = validateDefinition(editableDocumentToRootDefinitions(input.document));
@@ -55,7 +61,7 @@ export function validateBtAuthoring(input: BtAuthoringValidationInput): BtAuthor
 		diagnostics.push({
 			severity: "error",
 			code: "definition.invalid",
-			message: error instanceof Error ? error.message : String(error),
+			message: getErrorMessage(error),
 		});
 	}
 
@@ -101,7 +107,7 @@ function validateDocumentStructure(document: EditableBtDocument): BtAuthoringDia
 		diagnostics.push({
 			severity: "error",
 			code: "root.primary.count",
-			message: "行为树必须有且只有一个未命名主树",
+			message: "行为树必须有且只有一个未命名主入口",
 		});
 	}
 
@@ -228,6 +234,56 @@ function validateCalls(document: EditableBtDocument, registry: MdslIntellisenseR
 	return diagnostics;
 }
 
+function validateMdslSerializableArguments(document: EditableBtDocument): BtAuthoringDiagnostic[] {
+	const diagnostics: BtAuthoringDiagnostic[] = [];
+	const checkArgument = (rootKey: string, nodeId: string, arg: unknown): void => {
+		if (!isPropertyReferenceArgument(arg)) return;
+		if (isMdslPlainIdentifier(arg.$)) return;
+		diagnostics.push({
+			severity: "error",
+			code: "definition.mdsl.propertyRef",
+			rootKey,
+			nodeId,
+			message: `属性引用无法序列化为 MDSL：$${arg.$}`,
+		});
+	};
+	const checkArguments = (rootKey: string, nodeId: string, args: readonly unknown[] | undefined): void => {
+		for (const arg of args ?? []) checkArgument(rootKey, nodeId, arg);
+	};
+	const checkAttribute = (rootKey: string, nodeId: string, attribute: EditableBtAttribute | undefined): void => {
+		checkArguments(rootKey, nodeId, attribute?.args);
+	};
+	const walk = (rootKey: string, node: EditableBtNode): void => {
+		checkArguments(rootKey, node.id, node.args);
+		if (node.type === "wait") {
+			checkArguments(rootKey, node.id, Array.isArray(node.duration) ? node.duration : [node.duration]);
+		}
+		if (node.type === "lotto") {
+			checkArguments(rootKey, node.id, node.weights);
+		}
+		checkAttribute(rootKey, node.id, node.entry);
+		checkAttribute(rootKey, node.id, node.step);
+		checkAttribute(rootKey, node.id, node.exit);
+		checkAttribute(rootKey, node.id, node.while);
+		checkAttribute(rootKey, node.id, node.until);
+		for (const child of node.children) walk(rootKey, child);
+	};
+	for (const root of document.roots) {
+		walk(root.key, root.tree.root);
+	}
+	return diagnostics;
+}
+
+function isPropertyReferenceArgument(arg: unknown): arg is { $: string } {
+	return typeof arg === "object" && arg !== null && "$" in arg && typeof arg.$ === "string";
+}
+
+function isMdslPlainIdentifier(value: string): boolean {
+	const trimmed = value.trim();
+	if (!trimmed || trimmed !== value || trimmed.startsWith("$")) return false;
+	return !/[\s[\](){},"]/.test(trimmed);
+}
+
 function validateAgentContext(memberType: MemberType, agent: string): BtAuthoringDiagnostic[] {
 	const diagnostics: BtAuthoringDiagnostic[] = [];
 	const { warnings } = createBtContext({
@@ -237,7 +293,8 @@ function validateAgentContext(memberType: MemberType, agent: string): BtAuthorin
 	});
 	for (const warning of warnings) {
 		diagnostics.push({
-			severity: warning.code === "agent.compile.failed" || warning.code === "agent.initialize.failed" ? "error" : "warning",
+			severity:
+				warning.code === "agent.compile.failed" || warning.code === "agent.initialize.failed" ? "error" : "warning",
 			code: warning.code,
 			message: warning.message,
 		});

@@ -1,7 +1,4 @@
-import type {
-	NodeAttributeDefinition,
-	NodeGuardDefinition,
-} from "../BehaviourTreeDefinition";
+import type { NodeAttributeDefinition, NodeGuardDefinition } from "../BehaviourTreeDefinition";
 import { getArgumentJsonValue } from "./MDSLArguments";
 import { parseArgumentTokens } from "./MDSLNodeArgumentParser";
 import { popAndCheck, type StringLiteralPlaceholders } from "./MDSLUtilities";
@@ -27,13 +24,7 @@ export function parseAttributeTokens(
 	tokens: string[],
 	stringArgumentPlaceholders: StringLiteralPlaceholders,
 ): NodeAttributes {
-	const nodeAttributeNames: (keyof NodeAttributes)[] = [
-		"while",
-		"until",
-		"entry",
-		"exit",
-		"step",
-	];
+	const nodeAttributeNames: (keyof NodeAttributes)[] = ["while", "until", "entry", "exit", "step"];
 
 	// Create an object to hold any attributes found.
 	const attributes: NodeAttributes = {};
@@ -45,23 +36,18 @@ export function parseAttributeTokens(
 	while (nodeAttributeNames.includes(nextAttributeName)) {
 		// Check to make sure that we have not already created an attribute definition of this type.
 		if (attributes[nextAttributeName]) {
-			throw new Error(
-				`duplicate attribute '${tokens[0].toUpperCase()}' found for node`,
-			);
+			throw new Error(`duplicate attribute '${tokens[0].toUpperCase()}' found for node`);
 		}
 
 		// Remove the attribute name token from the array of tokens.
 		tokens.shift();
 
-		// Grab the attribute arguments, assuming the first to be an identifier.
-		const [attributeCallIdentifier, ...attributeArguments] =
-			parseArgumentTokens(tokens, stringArgumentPlaceholders);
+		// Grab the attribute arguments, assuming the first to be a callable reference.
+		const [attributeCallIdentifier, ...attributeArguments] = parseArgumentTokens(tokens, stringArgumentPlaceholders);
 
-		// The first attribute argument has to be an agent function reference.
-		if (attributeCallIdentifier?.type !== "identifier") {
-			throw new Error(
-				"expected agent function or registered function name identifier argument for attribute",
-			);
+		// 设计说明：字符串形式用于兼容包含空格或标点的历史可调用名；普通名称仍会以 identifier 书写。
+		if (!attributeCallIdentifier || !["identifier", "string"].includes(attributeCallIdentifier.type)) {
+			throw new Error("expected agent function or registered function name identifier argument for attribute");
 		}
 
 		// Any attribute arguments (other than the expected function reference token) must have a type of string, number, boolean, agent property reference or null.
@@ -91,14 +77,14 @@ export function parseAttributeTokens(
 
 			// Create the guard definition and add it to the object of attribute definitions found.
 			attributes[nextAttributeName] = {
-				call: attributeCallIdentifier.value,
+				call: attributeCallIdentifier.value as string,
 				args: attributeArguments.map(getArgumentJsonValue),
 				succeedOnAbort,
 			};
 		} else {
 			// Create the attribute definition and add it to the object of attribute definitions found.
 			attributes[nextAttributeName] = {
-				call: attributeCallIdentifier.value,
+				call: attributeCallIdentifier.value as string,
 				args: attributeArguments.map(getArgumentJsonValue),
 			};
 		}

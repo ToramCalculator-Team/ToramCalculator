@@ -1,11 +1,39 @@
-import { batch, type Component, createEffect, createMemo, createSignal, Index, onCleanup, onMount } from "solid-js";
-import type { EditableBtDropIntent, EditableBtDropPlacement, EditableBtNodeType } from "../../model/editableTree";
+import type { JSX } from "solid-js";
+import {
+	batch,
+	type Component,
+	createEffect,
+	createMemo,
+	createSignal,
+	Index,
+	onCleanup,
+	onMount,
+	Show,
+} from "solid-js";
+import { Icons } from "~/components/icons";
+import type { State } from "~/lib/mistreevous/State";
+import {
+	COMPOSITE_NODE_TYPES,
+	DECORATOR_NODE_TYPES,
+	type EditableBtDropIntent,
+	type EditableBtDropPlacement,
+	type EditableBtNodeType,
+} from "../../model/editableTree";
 import type { ConnectorType, NodeType, NodeWithChildren } from "../../types/workflow";
 import { NodeContainer } from "./NodeContainer";
 
 type CanvasPoint = { x: number; y: number };
 type ViewportState = { x: number; y: number; scale: number };
 type DropTargetRect = { nodeId: string; rect: DOMRect };
+type LayoutAnchor = { nodeId: string; left: number; top: number };
+type SelectedNodeBounds = {
+	nodeId: string;
+	nodeType: string;
+	left: number;
+	top: number;
+	width: number;
+	height: number;
+};
 
 export type WorkflowCanvasInstance = {
 	fit(): void;
@@ -18,6 +46,7 @@ export type WorkflowCanvasProps = {
 	dragNodeType?: EditableBtNodeType;
 	dragNodeId?: string;
 	activeDropPlacement?: EditableBtDropPlacement;
+	runtimeNodeStates?: Record<string, State>;
 	nodeComponents: { [key: string]: Component<NodeType> };
 	onInitalise?: (instance: WorkflowCanvasInstance) => void;
 	onUpdate?: () => void;
@@ -27,9 +56,14 @@ export type WorkflowCanvasProps = {
 	onCanvasClick?: () => void;
 	onNodeClick?: (nodeId: string) => void;
 	onNodeLongPress?: (nodeId: string) => void;
-	onNodeMove?: (nodeId: string, direction: -1 | 1) => void;
+	onNodeInspect?: (nodeId: string) => void;
 	onNodeDelete?: (nodeId: string) => void;
+	onNodeInsertPreview?: (placement: EditableBtDropPlacement) => void;
+	onNodeInsertCancel?: () => void;
+	onNodeInsertCommit?: (placement: EditableBtDropPlacement) => void;
 	onTreeNodeDragStart?: (nodeId: string) => void;
+	onTreeNodePointerDragMove?: (clientX: number, clientY: number) => void;
+	onTreeNodePointerDragEnd?: (clientX: number, clientY: number) => void;
 	onTreeNodeDragEnd?: () => void;
 	canDeleteNode?: (nodeId: string) => boolean;
 	canDropOnNode?: (nodeId: string) => boolean;
@@ -40,6 +74,7 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 	let canvasWrapperRef: HTMLDivElement | undefined;
 	let rootNodesContainerRef: HTMLDivElement | undefined;
 	let canvasDragStartPosition: { x: number; y: number } | null = null;
+	let canvasPanButton: 0 | 1 | null = null;
 	let hasCanvasDragMoved = false;
 	let lastCanvasDragPosition: CanvasPoint | null = null;
 	const activePointers = new Map<number, CanvasPoint>();
@@ -47,12 +82,16 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 	let viewportState: ViewportState = { x: 0, y: 0, scale: 1 };
 	let pendingViewport: ViewportState | null = null;
 	let viewportAnimationFrame: number | undefined;
+	let selectionMeasureFrame: number | undefined;
+	let layoutAnchor: LayoutAnchor | null = null;
+	let layoutStabilizationQueued = false;
 	let dropTargetRects: DropTargetRect[] = [];
 	let dropSourceKey = "";
 	const [translateX, setTranslateX] = createSignal(0);
 	const [translateY, setTranslateY] = createSignal(0);
 	const [scale, setScale] = createSignal(1);
 	const [isViewportInteracting, setIsViewportInteracting] = createSignal(false);
+	const [selectedNodeBounds, setSelectedNodeBounds] = createSignal<SelectedNodeBounds | null>(null);
 
 	// 获取嵌套的根节点
 	const getNestedRootNodes = (nodes: NodeType[], connectors: ConnectorType[]): NodeWithChildren[] => {
@@ -94,6 +133,9 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 
 	// Memoize nested root nodes to avoid unnecessary recalculations
 	const nestedRootNodes = createMemo(() => getNestedRootNodes(props.nodes, props.connectors));
+	const nodeLayoutSignature = createMemo(() =>
+		props.nodes.map((node) => `${node.id}:${node.caption}:${node.type}:${node.isPlaceholder ? "p" : ""}`).join("|"),
+	);
 	const snapToDevicePixel = (value: number): number => {
 		const ratio = typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
 		return Math.round(value * ratio) / ratio;
@@ -141,6 +183,7 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 		window.addEventListener("dragstart", resetCanvasInteraction);
 		window.addEventListener("dragend", resetCanvasInteraction);
 		window.addEventListener("blur", resetCanvasInteraction);
+		window.addEventListener("resize", scheduleSelectionMeasure);
 	});
 
 	onCleanup(() => {
@@ -152,8 +195,12 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 		window.removeEventListener("dragstart", resetCanvasInteraction);
 		window.removeEventListener("dragend", resetCanvasInteraction);
 		window.removeEventListener("blur", resetCanvasInteraction);
+		window.removeEventListener("resize", scheduleSelectionMeasure);
 		if (viewportAnimationFrame !== undefined) {
 			cancelAnimationFrame(viewportAnimationFrame);
+		}
+		if (selectionMeasureFrame !== undefined) {
+			cancelAnimationFrame(selectionMeasureFrame);
 		}
 	});
 
@@ -167,6 +214,21 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 			dropSourceKey = nextDropSourceKey;
 			dropTargetRects = [];
 		}
+	});
+
+	createEffect(() => {
+		const selectedNodeId = props.selectedNodeId;
+		translateX();
+		translateY();
+		scale();
+		nodeLayoutSignature();
+		if (!selectedNodeId || props.readOnly || props.dragNodeType) {
+			setSelectedNodeBounds(null);
+			return;
+		}
+		// 设计说明：加号 hover 会插入占位节点，操作按钮坐标在预览期间保持冻结，避免树重排造成 hover 抖动。
+		if (props.activeDropPlacement) return;
+		scheduleSelectionMeasure();
 	});
 
 	const handleWheel = (e: WheelEvent) => {
@@ -204,15 +266,106 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 			setTranslateY(next.y);
 			setScale(next.scale);
 		});
+		scheduleSelectionMeasure();
 	};
 
-	const beginCanvasInteraction = (x: number, y: number) => {
+	const scheduleSelectionMeasure = () => {
+		if (selectionMeasureFrame !== undefined) return;
+		selectionMeasureFrame = requestAnimationFrame(() => {
+			selectionMeasureFrame = undefined;
+			measureSelectedNodeBounds();
+		});
+	};
+
+	const measureSelectedNodeBounds = () => {
+		const selectedNodeId = props.selectedNodeId;
+		const selectedNode = props.nodes.find((node) => node.id === selectedNodeId);
+		if (!canvasWrapperRef || !selectedNodeId || !selectedNode || props.readOnly || props.dragNodeType) {
+			setSelectedNodeBounds(null);
+			return;
+		}
+		const selectedElement = [...canvasWrapperRef.querySelectorAll<HTMLElement>("[data-bt-node-id]")].find(
+			(element) => element.dataset.btNodeId === selectedNodeId && element.dataset.btPlaceholder !== "true",
+		);
+		if (!selectedElement) {
+			setSelectedNodeBounds(null);
+			return;
+		}
+		const canvasRect = canvasWrapperRef.getBoundingClientRect();
+		const nodeRect = selectedElement.getBoundingClientRect();
+		setSelectedNodeBounds({
+			nodeId: selectedNode.id,
+			nodeType: selectedNode.type,
+			left: nodeRect.left - canvasRect.left,
+			top: nodeRect.top - canvasRect.top,
+			width: nodeRect.width,
+			height: nodeRect.height,
+		});
+	};
+
+	const getNodeCanvasRect = (nodeId: string): { left: number; top: number } | null => {
+		if (!canvasWrapperRef) return null;
+		const selectedElement = [...canvasWrapperRef.querySelectorAll<HTMLElement>("[data-bt-node-id]")].find(
+			(element) => element.dataset.btNodeId === nodeId && element.dataset.btPlaceholder !== "true",
+		);
+		if (!selectedElement) return null;
+		const canvasRect = canvasWrapperRef.getBoundingClientRect();
+		const nodeRect = selectedElement.getBoundingClientRect();
+		return {
+			left: nodeRect.left - canvasRect.left,
+			top: nodeRect.top - canvasRect.top,
+		};
+	};
+
+	const captureLayoutAnchor = (nodeId?: string) => {
+		if (!nodeId) return;
+		const rect = getNodeCanvasRect(nodeId);
+		if (!rect) return;
+		layoutAnchor = {
+			nodeId,
+			left: rect.left,
+			top: rect.top,
+		};
+	};
+
+	const capturePreviewLayoutAnchor = (placement: EditableBtDropPlacement | null) => {
+		captureLayoutAnchor(placement?.targetNodeId ?? props.activeDropPlacement?.targetNodeId ?? props.selectedNodeId);
+	};
+
+	const scheduleLayoutStabilization = () => {
+		if (layoutStabilizationQueued) return;
+		layoutStabilizationQueued = true;
+		queueMicrotask(() => {
+			layoutStabilizationQueued = false;
+			stabilizeLayoutAnchor();
+		});
+	};
+
+	const stabilizeLayoutAnchor = () => {
+		const anchor = layoutAnchor;
+		layoutAnchor = null;
+		if (!anchor) return;
+		const nextRect = getNodeCanvasRect(anchor.nodeId);
+		if (!nextRect) return;
+		const deltaX = anchor.left - nextRect.left;
+		const deltaY = anchor.top - nextRect.top;
+		if (Math.abs(deltaX) < 0.5 && Math.abs(deltaY) < 0.5) {
+			scheduleSelectionMeasure();
+			return;
+		}
+		// 设计说明：占位节点会触发树布局重排；用目标节点锚点反向平移视口，让用户眼中的树位置保持稳定。
+		commitViewport({ ...viewportState, x: viewportState.x + deltaX, y: viewportState.y + deltaY }, true);
+	};
+
+	const beginCanvasInteraction = (x: number, y: number, button: 0 | 1) => {
 		canvasDragStartPosition = { x, y };
+		canvasPanButton = button;
 		hasCanvasDragMoved = false;
 		setIsViewportInteracting(true);
 	};
 
 	const resetCanvasInteraction = () => {
+		canvasPanButton = null;
 		lastCanvasDragPosition = null;
 		canvasDragStartPosition = null;
 		activePointers.clear();
@@ -225,6 +378,11 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 		return !target.closest("[data-bt-node-id], button, input, textarea, select, [draggable='true']");
 	};
 
+	const isMiddleMousePanTarget = (target: EventTarget | null): boolean => {
+		if (!(target instanceof Element)) return true;
+		return !target.closest("input, textarea, select, [contenteditable='true']");
+	};
+
 	const markCanvasMoved = (x: number, y: number) => {
 		if (!canvasDragStartPosition) return;
 		if (Math.hypot(x - canvasDragStartPosition.x, y - canvasDragStartPosition.y) > 4) {
@@ -233,8 +391,12 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 	};
 
 	const handleMouseDown = (e: MouseEvent) => {
-		if (e.button !== 0 || props.dragNodeType || !isCanvasPanTarget(e.target)) return;
-		beginCanvasInteraction(e.clientX, e.clientY);
+		if (props.dragNodeType) return;
+		const primaryPan = e.button === 0 && isCanvasPanTarget(e.target);
+		const middlePan = e.button === 1 && isMiddleMousePanTarget(e.target);
+		if (!primaryPan && !middlePan) return;
+		e.preventDefault();
+		beginCanvasInteraction(e.clientX, e.clientY, e.button as 0 | 1);
 		lastCanvasDragPosition = { x: e.clientX, y: e.clientY };
 	};
 
@@ -255,7 +417,8 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 		lastCanvasDragPosition = { x: e.clientX, y: e.clientY };
 	};
 
-	const handleMouseUp = () => {
+	const handleMouseUp = (e: MouseEvent) => {
+		if (canvasPanButton !== null && e.button !== canvasPanButton) return;
 		resetCanvasInteraction();
 	};
 
@@ -272,7 +435,7 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 	const handlePointerDown = (event: PointerEvent) => {
 		if (event.pointerType === "mouse") return;
 		event.preventDefault();
-		beginCanvasInteraction(event.clientX, event.clientY);
+		beginCanvasInteraction(event.clientX, event.clientY, 0);
 		canvasWrapperRef?.setPointerCapture(event.pointerId);
 		activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 		if (activePointers.size === 1) {
@@ -401,13 +564,15 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 		if (!props.dragNodeType) return;
 		event.preventDefault();
 		if (event.dataTransfer) event.dataTransfer.dropEffect = props.dragNodeId ? "move" : "copy";
-		props.onNodeDragOver?.(getDropPlacement(event.clientX, event.clientY));
+		const placement = getDropPlacement(event.clientX, event.clientY);
+		props.onNodeDragOver?.(placement);
 	};
 
 	const handleDrop = (event: DragEvent) => {
 		if (!props.dragNodeType) return;
 		event.preventDefault();
-		props.onNodeDrop?.(getDropPlacement(event.clientX, event.clientY));
+		const placement = getDropPlacement(event.clientX, event.clientY);
+		props.onNodeDrop?.(placement);
 		dropTargetRects = [];
 		props.onNodeDragEnd?.();
 	};
@@ -419,6 +584,57 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 		props.onNodeDragOver?.(null);
 	};
 
+	const handleTreeNodeDragStart = (nodeId: string) => {
+		resetCanvasInteraction();
+		dropTargetRects = [];
+		props.onTreeNodeDragStart?.(nodeId);
+	};
+
+	// 设计说明：树节点的 pointer 拖拽复用画布落点计算，移动端和桌面鼠标使用同一套预览/提交规则。
+	const handleTreeNodePointerDragMove = (clientX: number, clientY: number) => {
+		const placement = getDropPlacement(clientX, clientY);
+		props.onNodeDragOver?.(placement);
+		props.onTreeNodePointerDragMove?.(clientX, clientY);
+	};
+
+	const handleTreeNodePointerDragEnd = (clientX: number, clientY: number) => {
+		const placement = getDropPlacement(clientX, clientY);
+		props.onNodeDrop?.(placement);
+		dropTargetRects = [];
+		props.onNodeDragEnd?.();
+		props.onTreeNodePointerDragEnd?.(clientX, clientY);
+		resetCanvasInteraction();
+	};
+
+	const handleTreeNodeDragCancel = () => {
+		props.onNodeDragOver?.(null);
+		dropTargetRects = [];
+		props.onTreeNodeDragEnd?.();
+		resetCanvasInteraction();
+	};
+
+	const handleInsertPreview = (placement: EditableBtDropPlacement) => {
+		capturePreviewLayoutAnchor(placement);
+		props.onNodeInsertPreview?.(placement);
+		scheduleLayoutStabilization();
+	};
+
+	const handleInsertCancel = () => {
+		capturePreviewLayoutAnchor(null);
+		props.onNodeInsertCancel?.();
+		scheduleLayoutStabilization();
+	};
+
+	const handleInsertCommit = (placement: EditableBtDropPlacement) => {
+		capturePreviewLayoutAnchor(placement);
+		props.onNodeInsertCommit?.(placement);
+		scheduleLayoutStabilization();
+	};
+
+	const handleAuxClick = (event: MouseEvent) => {
+		if (event.button === 1) event.preventDefault();
+	};
+
 	return (
 		<div
 			role="application"
@@ -428,6 +644,7 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 			onMouseMove={handleMouseMove}
 			onMouseUp={handleMouseUp}
 			onMouseLeave={handleMouseLeave}
+			onAuxClick={handleAuxClick}
 			onPointerDown={handlePointerDown}
 			onPointerMove={handlePointerMove}
 			onPointerUp={handlePointerEnd}
@@ -472,18 +689,193 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 									selectedNodeId={props.selectedNodeId}
 									onNodeClick={props.onNodeClick}
 									onNodeLongPress={props.onNodeLongPress}
-									onNodeMove={props.onNodeMove}
-									onNodeDelete={props.onNodeDelete}
-									onTreeNodeDragStart={props.onTreeNodeDragStart}
-									onTreeNodeDragEnd={props.onTreeNodeDragEnd}
-									canDeleteNode={props.canDeleteNode}
+									onTreeNodeDragStart={handleTreeNodeDragStart}
+									onTreeNodePointerDragMove={handleTreeNodePointerDragMove}
+									onTreeNodePointerDragEnd={handleTreeNodePointerDragEnd}
+									onTreeNodeDragEnd={handleTreeNodeDragCancel}
+									runtimeNodeStates={props.runtimeNodeStates}
 									readOnly={props.readOnly || !!props.dragNodeType}
 								/>
 							)}
 						</Index>
 					</div>
 				</div>
+				<Show when={selectedNodeBounds()}>
+					{(bounds) => (
+						<NodeSelectionControls
+							bounds={bounds()}
+							canDelete={!!props.canDeleteNode?.(bounds().nodeId)}
+							onInspect={props.onNodeInspect ? () => props.onNodeInspect?.(bounds().nodeId) : undefined}
+							onDelete={() => props.onNodeDelete?.(bounds().nodeId)}
+							onPreview={handleInsertPreview}
+							onCancel={handleInsertCancel}
+							onCommit={handleInsertCommit}
+						/>
+					)}
+				</Show>
 			</div>
 		</div>
 	);
 };
+
+const NodeSelectionControls: Component<{
+	bounds: SelectedNodeBounds;
+	canDelete: boolean;
+	onInspect?: () => void;
+	onDelete: () => void;
+	onPreview?: (placement: EditableBtDropPlacement) => void;
+	onCancel: () => void;
+	onCommit: (placement: EditableBtDropPlacement) => void;
+}> = (props) => {
+	const placement = (intent: EditableBtDropIntent): EditableBtDropPlacement => ({
+		targetNodeId: props.bounds.nodeId,
+		intent,
+	});
+	const canInsertSibling = () => props.bounds.nodeType !== "root";
+	const canInsertChild = () =>
+		COMPOSITE_NODE_TYPES.has(props.bounds.nodeType as EditableBtNodeType) ||
+		DECORATOR_NODE_TYPES.has(props.bounds.nodeType as EditableBtNodeType);
+
+	return (
+		<div class="pointer-events-none absolute inset-0 z-30">
+			<Show when={canInsertSibling()}>
+				<NodeOverlayMenuGroup
+					style={{
+						left: `${props.bounds.left + props.bounds.width / 2}px`,
+						top: `${props.bounds.top}px`,
+						transform: "translate(-50%, calc(-100% - 8px))",
+					}}
+				>
+					<NodeInsertOverlayButton
+						label="在上方新增动作"
+						placement={placement("before")}
+						onPreview={props.onPreview}
+						onCancel={props.onCancel}
+						onCommit={props.onCommit}
+					/>
+				</NodeOverlayMenuGroup>
+			</Show>
+			<Show when={props.canDelete}>
+				<NodeOverlayMenuGroup
+					style={{
+						left: `${props.bounds.left}px`,
+						top: `${props.bounds.top + props.bounds.height / 2}px`,
+						transform: "translate(calc(-100% - 8px), -50%)",
+					}}
+				>
+					<NodeOverlayButton
+						label="删除节点"
+						class="bg-brand-color-3rd text-primary-color hover:bg-brand-color-2nd"
+						onClick={props.onDelete}
+					>
+						<Icons.Outline.Trash />
+					</NodeOverlayButton>
+				</NodeOverlayMenuGroup>
+			</Show>
+			<Show when={canInsertSibling()}>
+				<NodeOverlayMenuGroup
+					style={{
+						left: `${props.bounds.left + props.bounds.width / 2}px`,
+						top: `${props.bounds.top + props.bounds.height}px`,
+						transform: "translate(-50%, 8px)",
+					}}
+				>
+					<NodeInsertOverlayButton
+						label="在下方新增动作"
+						placement={placement("after")}
+						onPreview={props.onPreview}
+						onCancel={props.onCancel}
+						onCommit={props.onCommit}
+					/>
+				</NodeOverlayMenuGroup>
+			</Show>
+			<Show when={canInsertChild() || props.onInspect}>
+				<NodeOverlayMenuGroup
+					style={{
+						left: `${props.bounds.left + props.bounds.width}px`,
+						top: `${props.bounds.top + props.bounds.height / 2}px`,
+						transform: "translate(8px, -50%)",
+					}}
+				>
+					<Show when={props.onInspect}>
+						<NodeOverlayButton
+							label="打开节点配置"
+							class="bg-area-color text-accent-color hover:bg-dividing-color lg:hidden"
+							onClick={() => props.onInspect?.()}
+						>
+							<Icons.Outline.Settings />
+						</NodeOverlayButton>
+					</Show>
+					<Show when={canInsertChild()}>
+						<NodeInsertOverlayButton
+							label="向子级末尾新增动作"
+							placement={placement("child")}
+							onPreview={props.onPreview}
+							onCancel={props.onCancel}
+							onCommit={props.onCommit}
+						/>
+					</Show>
+				</NodeOverlayMenuGroup>
+			</Show>
+		</div>
+	);
+};
+
+const NodeOverlayMenuGroup: Component<{
+	children: JSX.Element;
+	style: JSX.CSSProperties;
+}> = (props) => (
+	// 设计说明：节点菜单按四个方向组织，组负责定位，按钮只负责行为，避免新增菜单项时重复计算散点坐标。
+	<div class="pointer-events-none absolute flex flex-row items-center justify-center gap-2" style={props.style}>
+		{props.children}
+	</div>
+);
+
+const NodeInsertOverlayButton: Component<{
+	label: string;
+	placement: EditableBtDropPlacement;
+	onPreview?: (placement: EditableBtDropPlacement) => void;
+	onCancel: () => void;
+	onCommit: (placement: EditableBtDropPlacement) => void;
+}> = (props) => (
+	<NodeOverlayButton
+		label={props.label}
+		class="bg-accent-color text-primary-color hover:bg-brand-color-1st"
+		onMouseEnter={() => props.onPreview?.(props.placement)}
+		onMouseLeave={props.onCancel}
+		onFocus={() => props.onPreview?.(props.placement)}
+		onBlur={props.onCancel}
+		onClick={() => props.onCommit(props.placement)}
+	>
+		<span class="text-xl leading-none">+</span>
+	</NodeOverlayButton>
+);
+
+const NodeOverlayButton: Component<{
+	children: JSX.Element;
+	label: string;
+	class: string;
+	onClick: () => void;
+	onMouseEnter?: () => void;
+	onMouseLeave?: () => void;
+	onFocus?: () => void;
+	onBlur?: () => void;
+}> = (props) => (
+	<button
+		type="button"
+		aria-label={props.label}
+		title={props.label}
+		class={`pointer-events-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-full p-2 text-xs shadow shadow-dividing-color lg:h-9 lg:w-9 ${props.class}`}
+		onMouseEnter={props.onMouseEnter}
+		onMouseLeave={props.onMouseLeave}
+		onFocus={props.onFocus}
+		onBlur={props.onBlur}
+		onPointerDown={(event) => event.stopPropagation()}
+		onClick={(event) => {
+			event.stopPropagation();
+			props.onClick();
+		}}
+	>
+		{props.children}
+	</button>
+);

@@ -1,25 +1,38 @@
 import type { MemberType } from "@db/schema/enums";
 import { MEMBER_TYPE } from "@db/schema/enums";
 import type { AttributeSlotDeclarationData, MemberBTTree } from "@db/schema/jsons";
-import { type Component, createMemo, createSignal, onCleanup, onMount, Show } from "solid-js";
+import { type Component, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import { Sheet } from "~/components/containers/sheet";
 import { Button } from "~/components/controls/button";
-import { Input } from "~/components/controls/input";
-import { Select } from "~/components/controls/select";
 import { Icons } from "~/components/icons";
-import { ExamplesMenu, SkillLogicExmaplesMenu, ToastContainer } from "./components";
+import { State } from "~/lib/mistreevous/State";
+import { ExamplesMenu, SkillLogicExamplesMenu, ToastContainer } from "./components";
 import { type AdvancedPanelKey, AdvancedTextPanels } from "./components/AdvancedPanels/AdvancedTextPanels";
+import { DebugConsole } from "./components/DebugConsole/DebugConsole";
+import { DiagnosticsDrawer } from "./components/Diagnostics/DiagnosticsDrawer";
+import { DiagnosticsStatusBar } from "./components/Diagnostics/DiagnosticsStatusBar";
+import {
+	type BtDiagnosticListItem,
+	severityClass,
+	severityRank,
+	toDiagnosticListItem,
+} from "./components/Diagnostics/diagnosticsModel";
 import { type CanvasElements, MainPanel } from "./components/MainPanel/MainPanel";
+import { PreviewRuntimeStatus } from "./components/PreviewRuntimeStatus/PreviewRuntimeStatus";
 import { NodeInspector } from "./components/StructuredEditor/NodeInspector";
 import { NodeLibrary } from "./components/StructuredEditor/NodeLibrary";
-import { getPreferredSelectionId, parseInitialEditableDocument, useBtDocument } from "./hooks/useBtDocument";
+import { type BtSubtreeNavItem, SubtreeNavBar } from "./components/SubtreeNavBar/SubtreeNavBar";
+import { createCanvasElementsFromEditableTree } from "./components/workflow/createCanvasElementsFromEditableTree";
+import { parseInitialEditableDocument, useBtDocument } from "./hooks/useBtDocument";
 import { useBtDragDrop } from "./hooks/useBtDragDrop";
 import { useBtHistory } from "./hooks/useBtHistory";
 import { useBtPreviewRuntime } from "./hooks/useBtPreviewRuntime";
 import { getBlockingDiagnostics, validateBtAuthoring } from "./model/authoringValidator";
 import {
 	addNodeAtSelection,
+	canDeleteEditableRoot,
 	cloneEditableDocument,
-	createCanvasElementsFromEditableTree,
+	collectEditableBranchReferences,
 	createDefaultEditableDocument,
 	deleteEditableNode,
 	duplicateChildNode,
@@ -30,6 +43,9 @@ import {
 	type EditableBtTree,
 	editableDocumentFromDefinition,
 	editableDocumentToDefinitionText,
+	findEditableRootByName,
+	getEditableNodeCaption,
+	getEditableRootBranchReferenceCount,
 	getEditableRootDisplayName,
 	moveEditableNode,
 	updateEditableNode,
@@ -38,6 +54,7 @@ import { buildMdslIntellisenseRegistry } from "./modes/mdslIntellisense";
 import { getMdslProfileConfig } from "./modes/mdslMemberTypeProfiles";
 import { toast } from "./stores/toastStore";
 import { DefinitionType, SidebarTab } from "./types/app";
+import { getErrorMessage } from "./utils/errors";
 
 export { DefinitionType, SidebarTab };
 
@@ -132,6 +149,8 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	const [advancedOpen, setAdvancedOpen] = createSignal(false);
 	const [advancedPanel, setAdvancedPanel] = createSignal<AdvancedPanelKey>("definition");
 	const [mobileInspectorOpen, setMobileInspectorOpen] = createSignal(false);
+	const [diagnosticsOpen, setDiagnosticsOpen] = createSignal(false);
+	const [debugConsoleOpen, setDebugConsoleOpen] = createSignal(false);
 	const mdslIntellisense = createMemo(() => {
 		const config = getMdslProfileConfig(memberType());
 		return buildMdslIntellisenseRegistry(config, agent());
@@ -174,15 +193,63 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		...diagnostics(),
 		...previewDiagnostics().filter((diagnostic) => diagnostic.severity === "warning"),
 	]);
-	const topDiagnostic = createMemo(() => visibleDiagnostics()[0]);
-	const topDiagnosticClass = createMemo(() => {
-		const severity = topDiagnostic()?.severity;
-		if (severity === "warning") return "bg-amber-500/10 text-amber-600";
-		if (severity === "info") return "bg-area-color text-main-text-color";
-		return "bg-brand-color-3rd/10 text-brand-color-3rd";
+	const diagnosticListItems = createMemo<BtDiagnosticListItem[]>(() => {
+		const document = editableDocument();
+		const items: BtDiagnosticListItem[] = [];
+		if (definitionError()) {
+			items.push({
+				id: "definition:parse",
+				severity: "error",
+				source: "definition",
+				code: "definition.parse",
+				message: definitionError(),
+			});
+		}
+		for (const diagnostic of diagnostics()) {
+			items.push(toDiagnosticListItem(diagnostic, "authoring", document));
+		}
+		for (const diagnostic of previewDiagnostics().filter((item) => item.severity === "warning")) {
+			items.push(toDiagnosticListItem(diagnostic, "preview", document));
+		}
+		return items.sort((left, right) => severityRank(left.severity) - severityRank(right.severity));
+	});
+	const diagnosticCounts = createMemo(() => ({
+		errors: diagnosticListItems().filter((item) => item.severity === "error").length,
+		warnings: diagnosticListItems().filter((item) => item.severity === "warning").length,
+	}));
+	const topDiagnostic = createMemo(() => diagnosticListItems()[0]);
+	const topDiagnosticClass = createMemo(() => severityClass(topDiagnostic()?.severity ?? "info"));
+	const subtreeNavItems = createMemo<BtSubtreeNavItem[]>(() => {
+		const document = editableDocument();
+		const items = diagnosticListItems();
+		return document.roots.map((root) => ({
+			rootKey: root.key,
+			displayName: getEditableRootDisplayName(root),
+			isPrimary: !root.name,
+			errorCount: items.filter((item) => item.rootKey === root.key && item.severity === "error").length,
+			warningCount: items.filter((item) => item.rootKey === root.key && item.severity === "warning").length,
+			referenceCount: getEditableRootBranchReferenceCount(document, root.key),
+		}));
+	});
+	const namedSubtreeOptions = createMemo(() =>
+		editableDocument()
+			.roots.filter((root) => !!root.name)
+			.map((root) => ({ label: getEditableRootDisplayName(root), value: root.name ?? "" })),
+	);
+	const selectedNodeDiagnostics = createMemo(() => {
+		const id = selectedNodeId();
+		if (!id) return [];
+		return visibleDiagnostics().filter(
+			(diagnostic) => diagnostic.nodeId === id && (!diagnostic.rootKey || diagnostic.rootKey === activeRoot().key),
+		);
 	});
 	const canSave = createMemo(() => !definitionError() && blockingDiagnostics().length === 0);
 	const isReadOnly = createMemo(() => !!props.readOnly);
+	const currentTreeStateLabel = createMemo(() => formatBtState(behaviourTree()?.getState()));
+	const runningNodeSummary = createMemo(() => {
+		const runningNode = findNodeByRuntimeState(activeTree().root, runtimeNodeStates(), State.RUNNING);
+		return runningNode ? getEditableNodeCaption(runningNode) : "无";
+	});
 
 	const createSnapshot = (): EditorSnapshot => ({
 		treeName: treeName(),
@@ -211,7 +278,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	});
 	const canUndo = createMemo(() => !isReadOnly() && history.canUndo());
 	const canRedo = createMemo(() => !isReadOnly() && history.canRedo());
-	const recordHistory = history.recordHistory;
+	const recordHistory = () => history.recordSnapshot(createSnapshot());
 	const undo = history.undo;
 	const redo = history.redo;
 
@@ -223,9 +290,15 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		queueMicrotask(refreshPreview);
 	};
 
+	const resetPreviewBecauseDocumentChanged = () => {
+		const wasPlaying = !!behaviourTreePlayInterval();
+		resetPreviewForEdit();
+		if (wasPlaying) toast.info("文档已变更，预览已停止", 1800);
+	};
+
 	const handleTreeChange = (next: EditableBtTree, options: { recordHistory?: boolean } = {}) => {
 		if (options.recordHistory !== false) recordHistory();
-		resetPreviewForEdit();
+		resetPreviewBecauseDocumentChanged();
 		replaceActiveTree(next);
 		schedulePreviewRefresh();
 	};
@@ -234,22 +307,25 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		if (isReadOnly()) return;
 		if (nextAgent === agent()) return;
 		if (options.recordHistory !== false) recordHistory();
-		resetPreviewForEdit();
+		resetPreviewBecauseDocumentChanged();
 		setAgent(nextAgent);
 		schedulePreviewRefresh();
 	};
 
-	const handleDefinitionApply = (nextDefinition: string, options: { recordHistory?: boolean } = {}) => {
+	const handleDefinitionApply = (
+		nextDefinition: string,
+		options: { recordHistory?: boolean; nextSelectedNodeId?: string | null } = {},
+	) => {
 		if (isReadOnly()) return;
 		try {
 			const nextDocument = editableDocumentFromDefinition(nextDefinition);
 			if (options.recordHistory !== false) recordHistory();
-			resetPreviewForEdit();
-			replaceDocument(nextDocument);
+			resetPreviewBecauseDocumentChanged();
+			replaceDocument(nextDocument, options.nextSelectedNodeId);
 			schedulePreviewRefresh();
 			setDefinitionError("");
 		} catch (error) {
-			setDefinitionError(error instanceof Error ? error.message : String(error));
+			setDefinitionError(getErrorMessage(error));
 		}
 	};
 
@@ -257,7 +333,8 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		if (isReadOnly()) return;
 		recordHistory();
 		handleAgentChange(nextAgent, { recordHistory: false });
-		handleDefinitionApply(mdsl, { recordHistory: false });
+		handleDefinitionApply(mdsl, { recordHistory: false, nextSelectedNodeId: null });
+		setMobileInspectorOpen(false);
 	};
 
 	const handleTreeNameChange = (nextName: string) => {
@@ -269,7 +346,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	const handleMemberTypeChange = (nextMemberType: MemberType) => {
 		if (isReadOnly() || nextMemberType === memberType()) return;
 		recordHistory();
-		resetPreviewForEdit();
+		resetPreviewBecauseDocumentChanged();
 		setMemberType(nextMemberType);
 		schedulePreviewRefresh();
 	};
@@ -277,6 +354,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	const handleActiveRootChange = (rootKey: string) => {
 		if (rootKey === activeRoot().key) return;
 		recordHistory();
+		// 设计说明：root 切换会替换画布拓扑，先清理预览状态，避免旧运行态映射到新子树路径。
 		resetPreviewForEdit();
 		switchActiveRoot(rootKey);
 		setMobileInspectorOpen(false);
@@ -286,7 +364,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		const trimmedName = nextName.trim();
 		if (isReadOnly() || !root.name || !trimmedName || root.name === trimmedName) return;
 		recordHistory();
-		resetPreviewForEdit();
+		resetPreviewBecauseDocumentChanged();
 		renameRoot(root.key, trimmedName);
 		schedulePreviewRefresh();
 	};
@@ -294,17 +372,34 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	const handleAddRoot = () => {
 		if (isReadOnly()) return;
 		recordHistory();
-		resetPreviewForEdit();
+		resetPreviewBecauseDocumentChanged();
 		addNamedRoot();
 		schedulePreviewRefresh();
 	};
 
 	const handleDeleteRoot = () => {
 		if (isReadOnly() || !activeRoot().name) return;
+		if (!canDeleteEditableRoot(editableDocument(), activeRoot().key)) return;
 		recordHistory();
-		resetPreviewForEdit();
+		resetPreviewBecauseDocumentChanged();
 		deleteNamedRoot(activeRoot().key);
 		schedulePreviewRefresh();
+	};
+
+	const handleOpenBranchTarget = (ref: string) => {
+		const targetRoot = findEditableRootByName(editableDocument(), ref);
+		if (!targetRoot) return;
+		switchActiveRoot(targetRoot.key, targetRoot.tree.root.id);
+		setMobileInspectorOpen(false);
+	};
+
+	const handleDiagnosticClick = (item: BtDiagnosticListItem) => {
+		if (item.rootKey && item.rootKey !== activeRoot().key) {
+			switchActiveRoot(item.rootKey, item.nodeId);
+		}
+		if (item.nodeId) setSelectedNodeId(item.nodeId);
+		setDiagnosticsOpen(false);
+		setMobileInspectorOpen(!!item.nodeId);
 	};
 
 	const updateSelectedNode = (node: EditableBtNode) => {
@@ -318,7 +413,8 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		if (!id || id === activeTree().root.id) return;
 		const nextTree = deleteEditableNode(activeTree(), id);
 		handleTreeChange(nextTree);
-		setSelectedNodeId(getPreferredSelectionId(nextTree));
+		setSelectedNodeId(undefined);
+		setMobileInspectorOpen(false);
 	};
 
 	const moveSelectedNode = (direction: -1 | 1) => {
@@ -353,6 +449,9 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		clearDanglingNodeDrag,
 		updateNodeDropPreview,
 		commitNodeDrop,
+		previewInsertNode,
+		clearInsertPreview,
+		commitInsertNode,
 		canDropOnNode,
 	} = useBtDragDrop({
 		isReadOnly,
@@ -363,13 +462,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	});
 
 	const renderedEditableTree = createMemo(() => dragPreview()?.tree ?? activeTree());
-	const canvasElements = createMemo<CanvasElements>(() =>
-		createCanvasElementsFromEditableTree(
-			renderedEditableTree(),
-			isReadOnly() ? undefined : selectedNodeId(),
-			isReadOnly() ? {} : runtimeNodeStates(),
-		),
-	);
+	const canvasElements = createMemo<CanvasElements>(() => createCanvasElementsFromEditableTree(renderedEditableTree()));
 
 	const onPlayButtonPressed = (): void => {
 		const error = playPreview();
@@ -472,24 +565,39 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 
 	return (
 		<div id="BtEditor" class="BtEditor bg-primary-color relative flex h-full w-full flex-col overflow-hidden">
-			<div class="border-dividing-color flex min-h-14 items-center gap-2 border-b p-2">
-				<h1 class="min-w-0 flex-1 truncate px-1 text-lg font-bold">{props.title}</h1>
+			<div class="border-dividing-color flex min-h-14 flex-wrap items-center gap-2 border-b p-2">
+				<div class="flex min-w-0 flex-1 basis-[24rem] items-center gap-2">
+					<label class="sr-only" for="bt-editor-tree-name">
+						行为树名
+					</label>
+					<input
+						id="bt-editor-tree-name"
+						aria-label="行为树名"
+						class="border-dividing-color bg-area-color min-h-11 min-w-0 flex-1 rounded-md border px-3 text-lg font-semibold outline-none transition-colors focus:border-accent-color disabled:opacity-70"
+						type="text"
+						value={treeName()}
+						placeholder={props.title || "未命名行为树"}
+						onInput={(event) => handleTreeNameChange(event.currentTarget.value)}
+						disabled={isReadOnly()}
+					/>
+					<MemberTypeSegmentedControl value={memberType()} disabled={isReadOnly()} onChange={handleMemberTypeChange} />
+				</div>
 				<Show when={!isReadOnly()}>
-					<Button level="quaternary" class="min-h-11 min-w-11 p-2" disabled={!canSave()} onClick={save}>
+					<Button level="quaternary" class="h-11 w-11 p-2" disabled={!canSave()} onClick={save}>
 						<Icons.Outline.Save />
 					</Button>
-					<Button level="quaternary" class="min-h-11 min-w-11 p-2" disabled={!canUndo()} onClick={undo}>
+					<Button level="quaternary" class="h-11 w-11 p-2" disabled={!canUndo()} onClick={undo}>
 						<Icons.Outline.Back />
 					</Button>
-					<Button level="quaternary" class="min-h-11 min-w-11 p-2" disabled={!canRedo()} onClick={redo}>
+					<Button level="quaternary" class="h-11 w-11 p-2" disabled={!canRedo()} onClick={redo}>
 						<Icons.Outline.Replay />
 					</Button>
 					<ExamplesMenu onMDSLInsert={handleMDSLInsert} />
-					<SkillLogicExmaplesMenu onMDSLInsert={handleMDSLInsert} />
+					<SkillLogicExamplesMenu onMDSLInsert={handleMDSLInsert} />
 				</Show>
 				<Button
 					level="quaternary"
-					class="min-h-11 min-w-11 p-2"
+					class="h-11 w-11 p-2"
 					onClick={() => {
 						setAdvancedPanel("definition");
 						setAdvancedOpen(true);
@@ -498,74 +606,22 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 					<Icons.Outline.Burger />
 				</Button>
 				<Show when={props.onClose}>
-					<Button level="quaternary" class="min-h-11 min-w-11 p-2" onClick={() => props.onClose?.()}>
+					<Button level="quaternary" class="h-11 w-11 p-2" onClick={() => props.onClose?.()}>
 						<Icons.Outline.Close />
 					</Button>
 				</Show>
 			</div>
-			<Show when={definitionError() || topDiagnostic()}>
-				<div
-					class={`px-3 py-2 text-sm ${definitionError() ? "bg-brand-color-3rd/10 text-brand-color-3rd" : topDiagnosticClass()}`}
-				>
-					{definitionError() || topDiagnostic()?.message}
-				</div>
+			<Show when={diagnosticListItems().length > 0}>
+				<DiagnosticsStatusBar
+					errors={diagnosticCounts().errors}
+					warnings={diagnosticCounts().warnings}
+					topDiagnostic={topDiagnostic()}
+					class={topDiagnosticClass()}
+					onOpen={() => setDiagnosticsOpen(true)}
+				/>
 			</Show>
 			<div class="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)_340px]">
-				<aside class="border-dividing-color hidden min-h-0 border-r lg:block">
-					<div class="border-dividing-color flex flex-col gap-2 border-b p-3">
-						<Input
-							title="名称"
-							type="text"
-							value={treeName()}
-							onInput={(event) => handleTreeNameChange(event.currentTarget.value)}
-							disabled={isReadOnly()}
-						/>
-						<Select
-							value={memberType()}
-							setValue={(value) => handleMemberTypeChange(value as MemberType)}
-							options={MEMBER_TYPE.map((type) => ({ label: type, value: type }))}
-							disabled={isReadOnly()}
-						/>
-						<div class="border-dividing-color mt-1 flex flex-col gap-2 border-t pt-2">
-							<div class="text-main-text-color text-xs">Root</div>
-							<Select
-								value={activeRoot().key}
-								setValue={handleActiveRootChange}
-								options={editableDocument().roots.map((root) => ({
-									label: getEditableRootDisplayName(root),
-									value: root.key,
-								}))}
-								disabled={isReadOnly()}
-							/>
-							<Show when={activeRoot().name}>
-								<Input
-									title="子树名称"
-									type="text"
-									value={activeRoot().name ?? ""}
-									onInput={(event) => handleRootNameChange(activeRoot(), event.currentTarget.value)}
-									disabled={isReadOnly()}
-								/>
-							</Show>
-							<div class="grid grid-cols-2 gap-2">
-								<Button
-									level="secondary"
-									class="min-h-11 justify-center"
-									disabled={isReadOnly()}
-									onClick={handleAddRoot}
-								>
-									新增子树
-								</Button>
-								<Button
-									level="quaternary"
-									class="min-h-11 justify-center"
-									disabled={isReadOnly() || !activeRoot().name}
-									onClick={handleDeleteRoot}
-								>
-									删除子树
-								</Button>
-							</div>
-						</div>
-					</div>
+				<aside class="border-dividing-color hidden min-h-0 border-r lg:flex lg:flex-col">
 					<NodeLibrary
 						onAdd={addNodeToSelected}
 						onDragStart={startLibraryNodeDrag}
@@ -585,69 +641,73 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 						</Button>
 					</div>
 				</aside>
-				<main class="relative min-h-0">
-					<MainPanel
-						layoutId="structured"
-						elements={canvasElements()}
-						selectedNodeId={selectedNodeId()}
-						dragNodeType={draggedNodeType()}
-						dragNodeId={draggedTreeNodeId()}
-						activeDropPlacement={activeDropPlacement()}
-						showPlayButton={!!behaviourTree() && !behaviourTreePlayInterval()}
-						showReplayButton={!!behaviourTreePlayInterval()}
-						showStopButton={!!behaviourTreePlayInterval()}
-						onPlayButtonClick={onPlayButtonPressed}
-						onReplayButtonClick={onPlayButtonPressed}
-						onStopButtonClick={onStopButtonPressed}
-						onStepButtonClick={stepPreview}
-						onNodeDragOver={updateNodeDropPreview}
-						onNodeDrop={commitNodeDrop}
-						onNodeDragEnd={clearNodeDrag}
-						onCanvasClick={() => {
-							setSelectedNodeId(undefined);
-							setMobileInspectorOpen(false);
-						}}
-						onNodeClick={(id) => {
-							setSelectedNodeId(id);
-							setMobileInspectorOpen(true);
-						}}
-						onNodeLongPress={(id) => {
-							setSelectedNodeId(id);
-							setMobileInspectorOpen(true);
-						}}
-						onNodeMove={(id, direction) => {
-							setSelectedNodeId(id);
-							moveSelectedNode(direction);
-						}}
-						onNodeDelete={(id) => {
-							setSelectedNodeId(id);
-							deleteSelectedNode();
-						}}
-						onTreeNodeDragStart={startTreeNodeDrag}
-						onTreeNodeDragEnd={clearNodeDrag}
-						canDeleteNode={(id) => !isReadOnly() && id !== activeTree().root.id}
-						canDropOnNode={canDropOnNode}
+				<main class="relative flex min-h-0 flex-col">
+					<SubtreeNavBar
+						items={subtreeNavItems()}
+						activeRootKey={activeRoot().key}
+						activeRoot={activeRoot()}
+						deleteBlockedReason={getActiveRootDeleteBlockedReason(editableDocument(), activeRoot())}
 						readOnly={isReadOnly()}
+						onSwitch={handleActiveRootChange}
+						onAdd={handleAddRoot}
+						onRename={(name) => handleRootNameChange(activeRoot(), name)}
+						onDelete={handleDeleteRoot}
 					/>
-					<div class="absolute right-2 bottom-2 left-2 flex gap-2 lg:hidden">
-						<Button class="min-h-11 flex-1" onClick={() => setMobileInspectorOpen(true)}>
-							属性
-						</Button>
-						<Button class="min-h-11 flex-1" disabled={isReadOnly()} onClick={() => addNodeToSelected("action")}>
-							动作
-						</Button>
-						<Button class="min-h-11 flex-1" disabled={isReadOnly()} onClick={() => addNodeToSelected("sequence")}>
-							控制
-						</Button>
-						<Button
-							class="min-h-11 flex-1"
-							onClick={() => {
-								setAdvancedPanel("slots");
-								setAdvancedOpen(true);
+					<div class="min-h-0 flex-1">
+						<MainPanel
+							layoutId={`structured:${activeRoot().key}`}
+							elements={canvasElements()}
+							selectedNodeId={selectedNodeId()}
+							dragNodeType={draggedNodeType()}
+							dragNodeId={draggedTreeNodeId()}
+							activeDropPlacement={activeDropPlacement()}
+							showPlayButton={!!behaviourTree() && !behaviourTreePlayInterval()}
+							showReplayButton={!!behaviourTreePlayInterval()}
+							showStopButton={!!behaviourTreePlayInterval()}
+							onPlayButtonClick={onPlayButtonPressed}
+							onReplayButtonClick={onPlayButtonPressed}
+							onStopButtonClick={onStopButtonPressed}
+							onStepButtonClick={stepPreview}
+							onNodeDragOver={updateNodeDropPreview}
+							onNodeDrop={commitNodeDrop}
+							onNodeDragEnd={clearNodeDrag}
+							onCanvasClick={() => {
+								setSelectedNodeId(undefined);
+								setMobileInspectorOpen(false);
 							}}
-						>
-							槽
-						</Button>
+							onNodeClick={(id) => {
+								setSelectedNodeId(id);
+								setMobileInspectorOpen(false);
+							}}
+							onNodeLongPress={(id) => {
+								setSelectedNodeId(id);
+								setMobileInspectorOpen(false);
+							}}
+							onNodeInspect={(id) => {
+								setSelectedNodeId(id);
+								setMobileInspectorOpen(true);
+							}}
+							onNodeDelete={(id) => {
+								setSelectedNodeId(id);
+								deleteSelectedNode();
+							}}
+							onNodeInsertPreview={previewInsertNode}
+							onNodeInsertCancel={clearInsertPreview}
+							onNodeInsertCommit={commitInsertNode}
+							onTreeNodeDragStart={startTreeNodeDrag}
+							onTreeNodeDragEnd={clearNodeDrag}
+							canDeleteNode={(id) => !isReadOnly() && id !== activeTree().root.id}
+							canDropOnNode={canDropOnNode}
+							runtimeNodeStates={isReadOnly() ? {} : runtimeNodeStates()}
+							previewStatus={
+								<PreviewRuntimeStatus
+									tick={debugTick()}
+									treeState={currentTreeStateLabel()}
+									runningNode={runningNodeSummary()}
+								/>
+							}
+							readOnly={isReadOnly()}
+						/>
 					</div>
 				</main>
 				<aside class="border-dividing-color hidden min-h-0 border-l lg:block">
@@ -655,7 +715,10 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 						node={selectedNode()}
 						registry={mdslIntellisense()}
 						attributeSlots={attributeSlots()}
+						subtreeOptions={namedSubtreeOptions()}
+						nodeDiagnostics={selectedNodeDiagnostics()}
 						onChange={updateSelectedNode}
+						onOpenBranchTarget={handleOpenBranchTarget}
 						onDelete={() => {
 							deleteSelectedNode();
 						}}
@@ -670,43 +733,17 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 					/>
 				</aside>
 			</div>
-			<Show when={mobileInspectorOpen()}>
-				<div class="absolute inset-x-0 bottom-0 z-40 max-h-[78vh] overflow-hidden rounded-t-lg bg-primary-color shadow-lg lg:hidden">
-					<div class="border-dividing-color flex items-center gap-2 border-b p-2">
-						<Button level="quaternary" class="min-h-11" onClick={() => setMobileInspectorOpen(false)}>
-							关闭
-						</Button>
-						<Button class="min-h-11" disabled={isReadOnly()} onClick={() => addNodeToSelected("action")}>
-							加动作
-						</Button>
-						<Button class="min-h-11" disabled={isReadOnly()} onClick={() => addNodeToSelected("condition")}>
-							加条件
-						</Button>
-					</div>
-					<div class="grid max-h-[calc(78vh-56px)] grid-cols-1 overflow-auto">
-						<NodeLibrary
-							onAdd={addNodeToSelected}
-							onDragStart={startLibraryNodeDrag}
-							onDragEnd={clearNodeDrag}
-							disabled={isReadOnly()}
-						/>
-						<div class="border-dividing-color border-t p-3">
-							<Button
-								level="secondary"
-								class="min-h-11 w-full justify-center"
-								onClick={() => {
-									setAdvancedPanel("slots");
-									setAdvancedOpen(true);
-								}}
-							>
-								编辑属性槽
-							</Button>
-						</div>
+			<div class="lg:hidden">
+				<Sheet state={mobileInspectorOpen()} setState={setMobileInspectorOpen}>
+					<div class="h-[90dvh] w-full overflow-hidden">
 						<NodeInspector
 							node={selectedNode()}
 							registry={mdslIntellisense()}
 							attributeSlots={attributeSlots()}
+							subtreeOptions={namedSubtreeOptions()}
+							nodeDiagnostics={selectedNodeDiagnostics()}
 							onChange={updateSelectedNode}
+							onOpenBranchTarget={handleOpenBranchTarget}
 							onDelete={() => {
 								deleteSelectedNode();
 							}}
@@ -720,29 +757,27 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 							readOnly={isReadOnly()}
 						/>
 					</div>
-				</div>
-			</Show>
-			<Show when={debugLogs().length > 0}>
-				<div class="border-dividing-color hidden max-h-32 overflow-auto border-t px-3 py-2 text-xs lg:block">
-					<div class="mb-1 flex gap-3 text-main-text-color">
-						<span>tick: {debugTick()}</span>
-						<span>selected: {selectedNode()?.type ?? "-"}</span>
-					</div>
-					<div class="flex flex-col gap-1">
-						{debugLogs().map((log) => (
-							<div>
-								[{log.tick}] {log.message}
-							</div>
-						))}
-					</div>
-				</div>
-			</Show>
+				</Sheet>
+			</div>
+			<DebugConsole
+				open={debugConsoleOpen()}
+				logs={debugLogs()}
+				tick={debugTick()}
+				onToggle={() => setDebugConsoleOpen((open) => !open)}
+			/>
+			<DiagnosticsDrawer
+				open={diagnosticsOpen()}
+				items={diagnosticListItems()}
+				onClose={() => setDiagnosticsOpen(false)}
+				onSelect={handleDiagnosticClick}
+			/>
 			<AdvancedTextPanels
 				open={advancedOpen()}
 				activePanel={advancedPanel()}
 				definition={definition()}
 				agent={agent()}
 				attributeSlots={attributeSlots()}
+				mdslIntellisense={mdslIntellisense()}
 				definitionError={definitionError()}
 				agentError={agentError()}
 				onClose={() => setAdvancedOpen(false)}
@@ -752,7 +787,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 				onAttributeSlotsChange={(slots) => {
 					if (isReadOnly()) return;
 					recordHistory();
-					resetPreviewForEdit();
+					resetPreviewBecauseDocumentChanged();
 					setAttributeSlots(slots);
 					schedulePreviewRefresh();
 				}}
@@ -761,6 +796,74 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 			<ToastContainer />
 		</div>
 	);
+};
+
+const formatBtState = (state?: State): string => {
+	if (state === State.RUNNING) return "Running";
+	if (state === State.SUCCEEDED) return "Succeeded";
+	if (state === State.FAILED) return "Failed";
+	return "Ready";
+};
+
+const findNodeByRuntimeState = (
+	node: EditableBtNode,
+	runtimeStates: Record<string, State>,
+	state: State,
+	path = "0",
+): EditableBtNode | undefined => {
+	if (runtimeStates[path] === state) return node;
+	for (const [index, child] of node.children.entries()) {
+		const found = findNodeByRuntimeState(child, runtimeStates, state, `${path}.${index}`);
+		if (found) return found;
+	}
+	return undefined;
+};
+
+const MemberTypeSegmentedControl: Component<{
+	value: MemberType;
+	disabled: boolean;
+	onChange: (value: MemberType) => void;
+}> = (props) => (
+	// 设计说明：MemberType 是互斥上下文，使用 radio 分段控件直接暴露当前 registry/属性路径目标。
+	<fieldset
+		aria-label="行为树类型"
+		class="border-dividing-color bg-area-color flex min-h-11 shrink-0 items-center gap-1 rounded-md border p-1"
+	>
+		<legend class="sr-only">行为树类型</legend>
+		<For each={MEMBER_TYPE}>
+			{(type) => {
+				const selected = () => props.value === type;
+				return (
+					<label
+						class="relative inline-flex min-h-9 cursor-pointer items-center rounded px-2 text-xs font-medium transition-colors lg:px-3 lg:text-sm"
+						classList={{
+							"bg-accent-color text-primary-color": selected(),
+							"hover:bg-dividing-color text-main-text-color": !selected(),
+							"pointer-events-none opacity-60": props.disabled,
+						}}
+					>
+						<input
+							type="radio"
+							name="bt-editor-member-type"
+							value={type}
+							checked={selected()}
+							disabled={props.disabled}
+							class="sr-only"
+							onChange={() => props.onChange(type)}
+						/>
+						{type}
+					</label>
+				);
+			}}
+		</For>
+	</fieldset>
+);
+
+const getActiveRootDeleteBlockedReason = (document: EditableBtDocument, root: EditableBtRoot): string => {
+	if (!root.name) return "主入口不能删除";
+	const references = collectEditableBranchReferences(document).filter((reference) => reference.ref === root.name);
+	if (references.length > 0) return `已有 ${references.length} 个 branch 引用，先调整引用后再删除`;
+	return "";
 };
 
 function isEditableKeyboardTarget(target: EventTarget | null): boolean {

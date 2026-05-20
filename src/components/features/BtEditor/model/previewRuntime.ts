@@ -1,4 +1,11 @@
 import type { MemberType } from "@db/schema/enums";
+import type { MemberBtEnv } from "~/lib/engine/core/World/Member/runtime/Agent/BtContext";
+import type { MemberRuntimeServices } from "~/lib/engine/core/World/Member/runtime/Agent/RuntimeServices";
+import { createBtContext } from "~/lib/engine/core/World/Member/runtime/BehaviourTree/BtContextFactory";
+import type { MemberStateContext } from "~/lib/engine/core/World/Member/runtime/StateMachine/types";
+import type { MemberSharedRuntime, MobRuntime, PlayerRuntime } from "~/lib/engine/core/World/Member/runtime/types";
+import { MobBtBindings } from "~/lib/engine/core/World/Member/types/Mob/Agents/BtBindings";
+import { PlayerBtBindings } from "~/lib/engine/core/World/Member/types/Player/Agents/BtBindings";
 import { BehaviourTree, type BehaviourTreeOptions, State } from "~/lib/mistreevous";
 import type { Agent } from "~/lib/mistreevous/Agent";
 import type {
@@ -7,18 +14,7 @@ import type {
 	NodeGuardDefinition,
 	RootNodeDefinition,
 } from "~/lib/mistreevous/BehaviourTreeDefinition";
-import { createBtContext } from "~/lib/engine/core/World/Member/runtime/BehaviourTree/BtContextFactory";
-import type { MemberBtEnv } from "~/lib/engine/core/World/Member/runtime/Agent/BtContext";
-import type { MemberRuntimeServices } from "~/lib/engine/core/World/Member/runtime/Agent/RuntimeServices";
-import type { MemberStateContext } from "~/lib/engine/core/World/Member/runtime/StateMachine/types";
-import type {
-	MemberSharedRuntime,
-	MobRuntime,
-	PlayerRuntime,
-} from "~/lib/engine/core/World/Member/runtime/types";
 import type { MdslIntellisenseRegistry } from "../modes/mdslIntellisense";
-import { MobBtBindings } from "~/lib/engine/core/World/Member/types/Mob/Agents/BtBindings";
-import { PlayerBtBindings } from "~/lib/engine/core/World/Member/types/Player/Agents/BtBindings";
 import type { BtAuthoringDiagnostic } from "./authoringValidator";
 
 export type BtPreviewResult = {
@@ -79,7 +75,9 @@ export const getPreviewBtBindings = (memberType: MemberType): Record<string, unk
 	return PlayerBtBindings;
 };
 
-export const createPreviewMemberBtEnv = (memberType: MemberType): MemberBtEnv<string, PreviewEvent, MemberStateContext> => {
+export const createPreviewMemberBtEnv = (
+	memberType: MemberType,
+): MemberBtEnv<string, PreviewEvent, MemberStateContext> => {
 	const runtime = createPreviewRuntime(memberType);
 	const services: MemberRuntimeServices = {
 		getCurrentTimeMs: () => runtime.currentTimeMs,
@@ -114,6 +112,7 @@ export const createPreviewMemberBtEnv = (memberType: MemberType): MemberBtEnv<st
 		notifyDomainEvent: () => undefined,
 		runPipeline: () => ({ original: 0, result: 0 }) as never,
 		send: () => undefined,
+		// 设计说明：预览环境只实现 BT 调用需要的最小 MemberBtEnv 面，缺失的引擎能力必须通过 mock 行为显式给出。
 	} as unknown as MemberBtEnv<string, PreviewEvent, MemberStateContext>;
 };
 
@@ -138,7 +137,8 @@ export function createPreviewBehaviourTree(options: {
 	});
 	for (const warning of warnings) {
 		emitDiagnostic({
-			severity: warning.code === "agent.compile.failed" || warning.code === "agent.initialize.failed" ? "error" : "warning",
+			severity:
+				warning.code === "agent.compile.failed" || warning.code === "agent.initialize.failed" ? "error" : "warning",
 			code: warning.code,
 			message: warning.message,
 		});
@@ -177,6 +177,7 @@ function wrapPreviewAgentWithFallback(
 				return State.SUCCEEDED;
 			};
 		},
+		// 设计说明：Proxy 动态补齐未知 action/condition，类型边界由 fallback 诊断暴露给编辑器。
 	}) as unknown as Agent;
 }
 

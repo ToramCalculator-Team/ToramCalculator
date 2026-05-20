@@ -32,7 +32,7 @@ export type AttributeSlotDeclarationData = z.output<typeof AttributeSlotDeclarat
 export const BTSchema = z.object({
 	// 行为树名称
 	name: z.string(),
-	// 行为树定义
+	// 行为树定义持久化为 MDSL 源码；运行时解析为 JSON AST。
 	definition: z.string(),
 	// 可调用函数集
 	agent: z.string(),

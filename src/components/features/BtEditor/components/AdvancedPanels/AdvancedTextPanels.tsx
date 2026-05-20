@@ -2,6 +2,8 @@ import type { AttributeSlotDeclarationData } from "@db/schema/jsons";
 import { type Component, createEffect, createMemo, createSignal, Match, Show, Switch } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { validateAttributeSlots } from "../../model/authoringValidator";
+import type { MdslIntellisenseRegistry } from "../../modes/mdslIntellisense";
+import { getErrorMessage } from "../../utils/errors";
 import { CodeEditor } from "../CodeEditor/CodeEditor";
 import { AttributeSlotsPanel } from "./AttributeSlotsPanel";
 
@@ -13,6 +15,7 @@ export type AdvancedTextPanelsProps = {
 	definition: string;
 	agent: string;
 	attributeSlots: AttributeSlotDeclarationData[];
+	mdslIntellisense?: MdslIntellisenseRegistry;
 	definitionError?: string;
 	agentError?: string;
 	onClose: () => void;
@@ -30,24 +33,34 @@ export const AdvancedTextPanels: Component<AdvancedTextPanelsProps> = (props) =>
 	const [slotJsonError, setSlotJsonError] = createSignal("");
 
 	const slotErrors = createMemo(() => validateAttributeSlots(props.attributeSlots));
+	const serializedSlots = createMemo(() => JSON.stringify(props.attributeSlots, null, "\t"));
+	const definitionDirty = createMemo(() => draftDefinition() !== props.definition);
+	const agentDirty = createMemo(() => agentDraft() !== props.agent);
+	const slotsDirty = createMemo(() => slotJsonDraft() !== serializedSlots());
 
 	const syncDefinitionDraft = () => setDraftDefinition(props.definition);
 	const syncSlotJsonDraft = () => {
-		setSlotJsonDraft(JSON.stringify(props.attributeSlots, null, "\t"));
+		setSlotJsonDraft(serializedSlots());
 		setSlotJsonError("");
 	};
 	const syncAgentDraft = () => setAgentDraft(props.agent);
 
-	createEffect(() => {
-		if (props.open && props.activePanel === "definition") syncDefinitionDraft();
-	});
+	const syncActivePanelDraft = (panel: AdvancedPanelKey) => {
+		if (panel === "definition") syncDefinitionDraft();
+		if (panel === "agent") syncAgentDraft();
+		if (panel === "slots") syncSlotJsonDraft();
+	};
 
+	let previousOpen = false;
+	let previousPanel = props.activePanel;
 	createEffect(() => {
-		if (props.open && props.activePanel === "agent") syncAgentDraft();
-	});
-
-	createEffect(() => {
-		if (props.open && props.activePanel === "slots") syncSlotJsonDraft();
+		const open = props.open;
+		const panel = props.activePanel;
+		if (open && (!previousOpen || previousPanel !== panel)) {
+			syncActivePanelDraft(panel);
+		}
+		previousOpen = open;
+		previousPanel = panel;
 	});
 
 	const applySlotJson = () => {
@@ -65,9 +78,14 @@ export const AdvancedTextPanels: Component<AdvancedTextPanelsProps> = (props) =>
 			}
 			props.onAttributeSlotsChange(parsed);
 			setSlotJsonError("");
+			setSlotJsonDraft(JSON.stringify(parsed, null, "\t"));
 		} catch (error) {
-			setSlotJsonError(error instanceof Error ? error.message : String(error));
+			setSlotJsonError(getErrorMessage(error));
 		}
+	};
+
+	const applyDefinitionDraft = () => {
+		props.onDefinitionApply(draftDefinition());
 	};
 
 	return (
@@ -83,17 +101,17 @@ export const AdvancedTextPanels: Component<AdvancedTextPanelsProps> = (props) =>
 								syncDefinitionDraft();
 							}}
 						>
-							Definition
+							Definition{definitionDirty() ? " *" : ""}
 						</Button>
-							<Button
-								level={props.activePanel === "agent" ? "primary" : "quaternary"}
-								class="min-h-11"
-								onClick={() => {
-									props.onPanelChange("agent");
-									syncAgentDraft();
-								}}
-							>
-							Agent
+						<Button
+							level={props.activePanel === "agent" ? "primary" : "quaternary"}
+							class="min-h-11"
+							onClick={() => {
+								props.onPanelChange("agent");
+								syncAgentDraft();
+							}}
+						>
+							Agent{agentDirty() ? " *" : ""}
 						</Button>
 						<Button
 							level={props.activePanel === "slots" ? "primary" : "quaternary"}
@@ -103,7 +121,7 @@ export const AdvancedTextPanels: Component<AdvancedTextPanelsProps> = (props) =>
 								syncSlotJsonDraft();
 							}}
 						>
-							Slots
+							Slots{slotsDirty() ? " *" : ""}
 						</Button>
 						<Button level="quaternary" class="ml-auto min-h-11" onClick={props.onClose}>
 							关闭
@@ -116,10 +134,10 @@ export const AdvancedTextPanels: Component<AdvancedTextPanelsProps> = (props) =>
 									<div class="border-dividing-color flex items-center gap-2 border-b p-2">
 										<Button
 											class="min-h-11"
-											disabled={props.readOnly}
-											onClick={() => props.onDefinitionApply(draftDefinition())}
+											disabled={props.readOnly || !definitionDirty()}
+											onClick={applyDefinitionDraft}
 										>
-											应用 Definition
+											应用 MDSL
 										</Button>
 										<Show when={props.definitionError}>
 											<div class="text-brand-color-3rd text-sm">{props.definitionError}</div>
@@ -129,28 +147,33 @@ export const AdvancedTextPanels: Component<AdvancedTextPanelsProps> = (props) =>
 										<CodeEditor
 											value={draftDefinition()}
 											onChange={setDraftDefinition}
-											mode="json"
+											mode="mdsl"
+											mdslIntellisense={props.mdslIntellisense}
 											readOnly={props.readOnly}
 										/>
 									</div>
 								</div>
 							</Match>
-								<Match when={props.activePanel === "agent"}>
-									<div class="flex h-full flex-col">
-										<div class="border-dividing-color flex items-center gap-2 border-b p-2">
-											<Button class="min-h-11" disabled={props.readOnly} onClick={() => props.onAgentChange(agentDraft())}>
-												应用 Agent
-											</Button>
-										</div>
-										<Show when={props.agentError}>
-											<div class="bg-brand-color-3rd/10 p-2 text-sm text-brand-color-3rd">{props.agentError}</div>
-										</Show>
-										<div class="min-h-0 flex-1">
-											<CodeEditor
-												value={agentDraft()}
-												onChange={setAgentDraft}
-												mode="javascript"
-												readOnly={props.readOnly}
+							<Match when={props.activePanel === "agent"}>
+								<div class="flex h-full flex-col">
+									<div class="border-dividing-color flex items-center gap-2 border-b p-2">
+										<Button
+											class="min-h-11"
+											disabled={props.readOnly || !agentDirty()}
+											onClick={() => props.onAgentChange(agentDraft())}
+										>
+											应用 Agent
+										</Button>
+									</div>
+									<Show when={props.agentError}>
+										<div class="bg-brand-color-3rd/10 p-2 text-sm text-brand-color-3rd">{props.agentError}</div>
+									</Show>
+									<div class="min-h-0 flex-1">
+										<CodeEditor
+											value={agentDraft()}
+											onChange={setAgentDraft}
+											mode="javascript"
+											readOnly={props.readOnly}
 										/>
 									</div>
 								</div>
@@ -164,7 +187,7 @@ export const AdvancedTextPanels: Component<AdvancedTextPanelsProps> = (props) =>
 									/>
 									<div class="border-dividing-color flex min-h-0 flex-col border-t lg:border-t-0 lg:border-l">
 										<div class="flex items-center gap-2 p-2">
-											<Button class="min-h-11" disabled={props.readOnly} onClick={applySlotJson}>
+											<Button class="min-h-11" disabled={props.readOnly || !slotsDirty()} onClick={applySlotJson}>
 												应用 JSON
 											</Button>
 											<Button level="quaternary" class="min-h-11" onClick={syncSlotJsonDraft}>

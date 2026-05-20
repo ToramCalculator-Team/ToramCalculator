@@ -5,9 +5,8 @@ import { CheckBox } from "~/components/controls/checkBox";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
 import type { NodeArgument } from "~/lib/mistreevous/BehaviourTreeDefinition";
+import type { BtAuthoringDiagnostic } from "../../model/authoringValidator";
 import {
-	COMPOSITE_NODE_TYPES,
-	DECORATOR_NODE_TYPES,
 	type EditableBtAttribute,
 	type EditableBtNode,
 	type EditableBtNodeType,
@@ -21,7 +20,10 @@ export type NodeInspectorProps = {
 	node?: EditableBtNode;
 	registry: MdslIntellisenseRegistry;
 	attributeSlots: AttributeSlotDeclarationData[];
+	subtreeOptions: Array<{ label: string; value: string }>;
+	nodeDiagnostics?: BtAuthoringDiagnostic[];
 	onChange: (node: EditableBtNode) => void;
+	onOpenBranchTarget?: (ref: string) => void;
 	onDelete: () => void;
 	onDuplicate: () => void;
 	onMove: (direction: -1 | 1) => void;
@@ -30,7 +32,7 @@ export type NodeInspectorProps = {
 };
 
 const nodeTypeOptions: Array<{ label: string; value: EditableBtNodeType }> = [
-	{ label: "Root", value: "root" },
+	{ label: "子树入口", value: "root" },
 	{ label: "Sequence", value: "sequence" },
 	{ label: "Selector", value: "selector" },
 	{ label: "Parallel", value: "parallel" },
@@ -54,12 +56,6 @@ type ArgumentRow = {
 	param: MdslParamSpec;
 	index: number;
 	value: NodeArgument;
-};
-
-type InspectorContentItem = {
-	title: string;
-	description?: string;
-	children: JSX.Element;
 };
 
 const defaultArgumentForParam = (param: MdslParamSpec): NodeArgument => {
@@ -109,6 +105,19 @@ export const NodeInspector: Component<NodeInspectorProps> = (props) => {
 		...Object.keys(props.registry.properties).map((name) => ({ label: `$${name}`, value: `$${name}` })),
 		...props.attributeSlots.map((slot) => ({ label: slot.path, value: slot.path })),
 	]);
+	const nodeDiagnostics = createMemo(() => props.nodeDiagnostics ?? []);
+	const branchTargetOptions = createMemo(() => {
+		const ref = props.node?.type === "branch" ? props.node.ref?.trim() : "";
+		const options = props.subtreeOptions;
+		if (ref && !options.some((option) => option.value === ref)) {
+			return [{ label: `${ref}（缺失）`, value: ref }, ...options];
+		}
+		return options;
+	});
+	const hasBranchTarget = createMemo(() => {
+		const ref = props.node?.type === "branch" ? props.node.ref?.trim() : "";
+		return !!ref && props.subtreeOptions.some((option) => option.value === ref);
+	});
 
 	const update = (patch: Partial<EditableBtNode>) => {
 		if (!props.node || props.readOnly) return;
@@ -182,191 +191,200 @@ export const NodeInspector: Component<NodeInspectorProps> = (props) => {
 
 					return (
 						<div class="flex flex-col gap-3">
-							<div class="flex items-center justify-between gap-2">
-								<div>
-									<div class="font-bold text-accent-color">节点属性</div>
-									<div class="text-main-text-color text-xs">{nodeAccessor().id}</div>
-								</div>
+							<div>
+								<div class="font-bold text-accent-color">节点属性</div>
+								<div class="text-main-text-color text-xs">{nodeAccessor().id}</div>
 							</div>
-							<Select
-								value={nodeAccessor().type}
-								setValue={(value) => {
-									if (props.readOnly) return;
-									if (props.node) props.onChange(retargetEditableNode(props.node, value as EditableBtNodeType));
-								}}
-								options={availableNodeTypeOptions()}
-								disabled={nodeAccessor().type === "root" || props.readOnly}
-							/>
-							<Show when={nodeAccessor().type === "action" || nodeAccessor().type === "condition"}>
+							<Show when={nodeDiagnostics().length > 0}>
+								<InlineDiagnostics diagnostics={nodeDiagnostics()} />
+							</Show>
+							<div class="border-dividing-color border-t py-3">
+								<div class="mb-2 text-sm font-bold text-accent-color">节点类型</div>
 								<Select
-									value={nodeAccessor().call ?? ""}
-									setValue={updateCall}
-									options={callableOptions()}
-									placeholder="选择调用"
-									disabled={props.readOnly}
-								/>
-								<InspectorContentModule
-									moduleName="ActionArguments"
-									labelName="参数"
-									action={
-										<Button
-											level="quaternary"
-											class="min-h-11"
-											disabled={props.readOnly || !!callable()}
-											onClick={addArg}
-										>
-											新增
-										</Button>
-									}
-									content={argumentRows().map((row) => ({
-										title: row.param.label,
-										description: formatParamType(row.param),
-										children: (
-											<div class="flex w-full min-w-0 items-center gap-2">
-												<div class="min-w-0 flex-1">
-													<Show
-														when={isPathArgument(row.param) && slotOptions().length > 0}
-														fallback={
-															<ArgumentInput
-																value={formatArgument(row.value)}
-																onInput={(event) => updateArg(row.index, event.currentTarget.value, row.param)}
-																disabled={props.readOnly}
-															/>
-														}
-													>
-														<Select
-															value={formatArgument(row.value)}
-															setValue={(value) => updateArg(row.index, value, row.param)}
-															options={slotOptions()}
-															disabled={props.readOnly}
-														/>
-													</Show>
-												</div>
-												<Button
-													level="quaternary"
-													class="min-h-11 flex-none"
-													disabled={props.readOnly || !!callable()}
-													onClick={() => removeArg(row.index)}
-												>
-													删
-												</Button>
-											</div>
-										),
-									}))}
-								/>
-							</Show>
-							<Show when={nodeAccessor().type === "wait"}>
-								<Input
-									type="text"
-									title="duration"
-									value={formatArgument(nodeAccessor().duration ?? 1000)}
-									disabled={props.readOnly}
-									onInput={(event) => {
-										const raw = event.currentTarget.value.trim();
-										update({ duration: raw.startsWith("$") ? { $: raw.slice(1) } : Number(raw) || 0 });
+									value={nodeAccessor().type}
+									setValue={(value) => {
+										if (props.readOnly) return;
+										if (props.node) props.onChange(retargetEditableNode(props.node, value as EditableBtNodeType));
 									}}
+									options={availableNodeTypeOptions()}
+									disabled={nodeAccessor().type === "root" || props.readOnly}
 								/>
+							</div>
+							<Show when={nodeAccessor().type === "action" || nodeAccessor().type === "condition"}>
+								<InspectorSection title="调用">
+									<Select
+										value={nodeAccessor().call ?? ""}
+										setValue={updateCall}
+										options={callableOptions()}
+										placeholder="选择调用"
+										disabled={props.readOnly}
+									/>
+									<ArgumentInspectorModule
+										moduleName="ActionArguments"
+										labelName="参数"
+										action={
+											<Button
+												level="quaternary"
+												class="min-h-10"
+												disabled={props.readOnly || !!callable()}
+												onClick={addArg}
+											>
+												新增
+											</Button>
+										}
+										rows={argumentRows()}
+										slotOptions={slotOptions()}
+										canRemove={!props.readOnly && !callable()}
+										readOnly={props.readOnly}
+										onChange={updateArg}
+										onRemove={removeArg}
+										isPathArgument={isPathArgument}
+									/>
+									<InlineDiagnostics diagnostics={nodeDiagnostics().filter(isCallOrArgumentDiagnostic)} />
+								</InspectorSection>
 							</Show>
-							<Show when={nodeAccessor().type === "branch"}>
-								<Input
-									type="text"
-									title="ref"
-									value={nodeAccessor().ref ?? ""}
-									disabled={props.readOnly}
-									onInput={(event) => update({ ref: event.currentTarget.value })}
+							<Show
+								when={
+									nodeAccessor().type === "wait" ||
+									nodeAccessor().type === "branch" ||
+									nodeAccessor().type === "repeat" ||
+									nodeAccessor().type === "retry" ||
+									nodeAccessor().type === "lotto"
+								}
+							>
+								<InspectorSection title="控制参数">
+									<Show when={nodeAccessor().type === "wait"}>
+										<Input
+											type="text"
+											title="duration"
+											value={formatArgument(nodeAccessor().duration ?? 1000)}
+											disabled={props.readOnly}
+											onInput={(event) => {
+												const raw = event.currentTarget.value.trim();
+												update({ duration: raw.startsWith("$") ? { $: raw.slice(1) } : Number(raw) || 0 });
+											}}
+										/>
+									</Show>
+									<Show when={nodeAccessor().type === "branch"}>
+										<InlineDiagnostics diagnostics={nodeDiagnostics().filter(isBranchDiagnostic)} />
+										<Select
+											value={nodeAccessor().ref ?? ""}
+											setValue={(value) => update({ ref: value })}
+											options={branchTargetOptions()}
+											placeholder="选择子树"
+											disabled={props.readOnly || branchTargetOptions().length === 0}
+										/>
+										<div class="flex gap-2">
+											<Button
+												level="secondary"
+												class="min-h-10 flex-1 justify-center"
+												disabled={!hasBranchTarget()}
+												onClick={() => props.onOpenBranchTarget?.(nodeAccessor().ref ?? "")}
+											>
+												打开目标子树
+											</Button>
+										</div>
+										<Show when={branchTargetOptions().length === 0}>
+											<div class="text-main-text-color text-xs">当前 BT 没有可引用的命名子树。</div>
+										</Show>
+									</Show>
+									<Show when={nodeAccessor().type === "repeat"}>
+										<Input
+											type="number"
+											title="iterations"
+											value={getSingleNumberValue(nodeAccessor().iterations, 1)}
+											disabled={props.readOnly}
+											onInput={(event) => update({ iterations: Number(event.currentTarget.value) || 1 })}
+										/>
+									</Show>
+									<Show when={nodeAccessor().type === "retry"}>
+										<Input
+											type="number"
+											title="attempts"
+											value={getSingleNumberValue(nodeAccessor().attempts, 1)}
+											disabled={props.readOnly}
+											onInput={(event) => update({ attempts: Number(event.currentTarget.value) || 1 })}
+										/>
+									</Show>
+									<Show when={nodeAccessor().type === "lotto"}>
+										<Input
+											type="text"
+											title="weights"
+											description="用逗号分隔，留空表示平均权重"
+											value={(nodeAccessor().weights ?? []).map(formatArgument).join(",")}
+											disabled={props.readOnly}
+											onInput={(event) =>
+												update({
+													weights: event.currentTarget.value
+														.split(",")
+														.map((item) => item.trim())
+														.filter(Boolean)
+														.map((item) => (item.startsWith("$") ? { $: item.slice(1) } : Number(item) || 1)),
+												})
+											}
+										/>
+									</Show>
+								</InspectorSection>
+							</Show>
+							<InspectorSection title="生命周期" collapsible>
+								<InlineDiagnostics diagnostics={nodeDiagnostics().filter(isCallbackDiagnostic)} />
+								<AttributeEditor
+									title="entry"
+									value={nodeAccessor().entry}
+									onChange={(patch) => updateAttribute("entry", patch)}
+									onClear={() => clearAttribute("entry")}
+									readOnly={props.readOnly}
 								/>
-							</Show>
-							<Show when={nodeAccessor().type === "repeat"}>
-								<Input
-									type="number"
-									title="iterations"
-									value={getSingleNumberValue(nodeAccessor().iterations, 1)}
-									disabled={props.readOnly}
-									onInput={(event) => update({ iterations: Number(event.currentTarget.value) || 1 })}
+								<AttributeEditor
+									title="step"
+									value={nodeAccessor().step}
+									onChange={(patch) => updateAttribute("step", patch)}
+									onClear={() => clearAttribute("step")}
+									readOnly={props.readOnly}
 								/>
-							</Show>
-							<Show when={nodeAccessor().type === "retry"}>
-								<Input
-									type="number"
-									title="attempts"
-									value={getSingleNumberValue(nodeAccessor().attempts, 1)}
-									disabled={props.readOnly}
-									onInput={(event) => update({ attempts: Number(event.currentTarget.value) || 1 })}
+								<AttributeEditor
+									title="exit"
+									value={nodeAccessor().exit}
+									onChange={(patch) => updateAttribute("exit", patch)}
+									onClear={() => clearAttribute("exit")}
+									readOnly={props.readOnly}
 								/>
-							</Show>
-							<Show when={nodeAccessor().type === "lotto"}>
-								<Input
-									type="text"
-									title="weights"
-									description="用逗号分隔，留空表示平均权重"
-									value={(nodeAccessor().weights ?? []).map(formatArgument).join(",")}
-									disabled={props.readOnly}
-									onInput={(event) =>
-										update({
-											weights: event.currentTarget.value
-												.split(",")
-												.map((item) => item.trim())
-												.filter(Boolean)
-												.map((item) => (item.startsWith("$") ? { $: item.slice(1) } : Number(item) || 1)),
-										})
-									}
+							</InspectorSection>
+							<InspectorSection title="守卫" collapsible>
+								<InlineDiagnostics diagnostics={nodeDiagnostics().filter(isGuardDiagnostic)} />
+								<AttributeEditor
+									title="while"
+									value={nodeAccessor().while}
+									onChange={(patch) => updateAttribute("while", patch)}
+									onClear={() => clearAttribute("while")}
+									guard
+									readOnly={props.readOnly}
 								/>
-							</Show>
-							<AttributeEditor
-								title="entry"
-								value={nodeAccessor().entry}
-								onChange={(patch) => updateAttribute("entry", patch)}
-								onClear={() => clearAttribute("entry")}
-								readOnly={props.readOnly}
-							/>
-							<AttributeEditor
-								title="step"
-								value={nodeAccessor().step}
-								onChange={(patch) => updateAttribute("step", patch)}
-								onClear={() => clearAttribute("step")}
-								readOnly={props.readOnly}
-							/>
-							<AttributeEditor
-								title="exit"
-								value={nodeAccessor().exit}
-								onChange={(patch) => updateAttribute("exit", patch)}
-								onClear={() => clearAttribute("exit")}
-								readOnly={props.readOnly}
-							/>
-							<AttributeEditor
-								title="while"
-								value={nodeAccessor().while}
-								onChange={(patch) => updateAttribute("while", patch)}
-								onClear={() => clearAttribute("while")}
-								guard
-								readOnly={props.readOnly}
-							/>
-							<AttributeEditor
-								title="until"
-								value={nodeAccessor().until}
-								onChange={(patch) => updateAttribute("until", patch)}
-								onClear={() => clearAttribute("until")}
-								guard
-								readOnly={props.readOnly}
-							/>
+								<AttributeEditor
+									title="until"
+									value={nodeAccessor().until}
+									onChange={(patch) => updateAttribute("until", patch)}
+									onClear={() => clearAttribute("until")}
+									guard
+									readOnly={props.readOnly}
+								/>
+							</InspectorSection>
 							<Show
 								when={
 									slotOptions().length > 0 && (nodeAccessor().type === "action" || nodeAccessor().type === "condition")
 								}
 							>
-								<div class="border-dividing-color rounded border p-2">
-									<div class="mb-2 text-sm font-bold">可用属性/槽</div>
+								<InspectorSection
+									title="可用属性槽"
+									collapsible
+									defaultOpen={argumentRows().some((row) => isPathArgument(row.param))}
+								>
 									<div class="flex max-h-32 flex-wrap gap-1 overflow-auto">
 										<For each={slotOptions()}>
 											{(slot) => <span class="bg-area-color rounded px-2 py-1 text-xs">{slot.label}</span>}
 										</For>
 									</div>
-								</div>
-							</Show>
-							<Show
-								when={COMPOSITE_NODE_TYPES.has(nodeAccessor().type) || DECORATOR_NODE_TYPES.has(nodeAccessor().type)}
-							>
-								<div class="text-main-text-color text-xs">可从节点库向当前节点添加子节点。</div>
+								</InspectorSection>
 							</Show>
 						</div>
 					);
@@ -376,22 +394,110 @@ export const NodeInspector: Component<NodeInspectorProps> = (props) => {
 	);
 };
 
-const InspectorContentModule: Component<{
+const InspectorSection: Component<{
+	title: string;
+	children: JSX.Element;
+	collapsible?: boolean;
+	defaultOpen?: boolean;
+}> = (props) => {
+	const content = <div class="flex flex-col gap-2 py-2">{props.children}</div>;
+	if (props.collapsible) {
+		return (
+			<details class="border-dividing-color border-t py-2" open={props.defaultOpen}>
+				<summary class="cursor-pointer py-1 text-sm font-bold text-accent-color">{props.title}</summary>
+				{content}
+			</details>
+		);
+	}
+	return (
+		<section class="border-dividing-color border-t py-2">
+			<div class="py-1 text-sm font-bold text-accent-color">{props.title}</div>
+			{content}
+		</section>
+	);
+};
+
+const InlineDiagnostics: Component<{ diagnostics: BtAuthoringDiagnostic[] }> = (props) => (
+	<Show when={props.diagnostics.length > 0}>
+		<div class="flex flex-col gap-1">
+			<For each={props.diagnostics}>
+				{(diagnostic) => (
+					<div
+						class={`rounded px-2 py-1 text-xs ${
+							diagnostic.severity === "warning"
+								? "bg-amber-500/10 text-amber-600"
+								: diagnostic.severity === "info"
+									? "bg-area-color text-main-text-color"
+									: "bg-brand-color-3rd/10 text-brand-color-3rd"
+						}`}
+					>
+						{diagnostic.message}
+					</div>
+				)}
+			</For>
+		</div>
+	</Show>
+);
+
+const isCallOrArgumentDiagnostic = (diagnostic: BtAuthoringDiagnostic): boolean =>
+	diagnostic.code.startsWith("action.") || diagnostic.code.startsWith("condition.");
+
+const isCallbackDiagnostic = (diagnostic: BtAuthoringDiagnostic): boolean => diagnostic.code.startsWith("callback.");
+
+const isGuardDiagnostic = (diagnostic: BtAuthoringDiagnostic): boolean => diagnostic.code.startsWith("guard.");
+
+const isBranchDiagnostic = (diagnostic: BtAuthoringDiagnostic): boolean => diagnostic.code.startsWith("branch.");
+
+const ArgumentInspectorModule: Component<{
 	moduleName: string;
 	labelName: string;
 	action?: JSX.Element;
-	content: InspectorContentItem[];
+	rows: ArgumentRow[];
+	slotOptions: Array<{ label: string; value: string }>;
+	canRemove: boolean;
+	readOnly?: boolean;
+	onChange: (index: number, value: string, param: MdslParamSpec) => void;
+	onRemove: (index: number) => void;
+	isPathArgument: (param: MdslParamSpec) => boolean;
 }> = (props) => (
 	<div class={`Module ${props.moduleName} flex flex-col gap-1 lg:gap-2`}>
-		<div class="flex items-center justify-between gap-2 lg:px-2">
-			<h2 class="ModuleTitle py-2 text-xl font-bold">{props.labelName}</h2>
+		<div class="flex items-center justify-between gap-2">
+			<h2 class="ModuleTitle py-1 text-base font-bold">{props.labelName}</h2>
 			{props.action}
 		</div>
 		<div class="LabelGroup flex flex-col gap-2">
-			<Index each={props.content}>
-				{(item) => (
-					<Input title={item().title} description={item().description}>
-						{item().children}
+			<Index each={props.rows}>
+				{(row) => (
+					<Input title={row().param.label} description={formatParamType(row().param)}>
+						<div class="flex w-full min-w-0 items-center gap-2">
+							<div class="min-w-0 flex-1">
+								<Show
+									when={props.isPathArgument(row().param) && props.slotOptions.length > 0}
+									fallback={
+										<ArgumentInput
+											value={formatArgument(row().value)}
+											onInput={(event) => props.onChange(row().index, event.currentTarget.value, row().param)}
+											disabled={props.readOnly}
+										/>
+									}
+								>
+									<Select
+										value={formatArgument(row().value)}
+										setValue={(value) => props.onChange(row().index, value, row().param)}
+										options={props.slotOptions}
+										disabled={props.readOnly}
+									/>
+								</Show>
+							</div>
+							<Button
+								level="quaternary"
+								class="min-h-11 flex-none"
+								disabled={!props.canRemove}
+								onClick={() => props.onRemove(row().index)}
+							>
+								删
+							</Button>
+						</div>
 					</Input>
 				)}
 			</Index>
@@ -424,12 +530,12 @@ const AttributeEditor: Component<{
 	readOnly?: boolean;
 }> = (props) => {
 	return (
-		<div class="border-dividing-color rounded border p-2">
-			<div class="mb-2 flex items-center justify-between gap-2">
+		<div class="border-dividing-color border-t py-2 first:border-t-0">
+			<div class="flex items-center justify-between gap-2">
 				<span class="text-sm font-bold">{props.title}</span>
 				<Button
 					level="quaternary"
-					class="min-h-11"
+					class="min-h-10"
 					disabled={props.readOnly}
 					onClick={props.value ? props.onClear : () => props.onChange({ call: "SomeAction", args: [] })}
 				>
@@ -438,7 +544,7 @@ const AttributeEditor: Component<{
 			</div>
 			<Show when={props.value}>
 				{(attribute) => (
-					<div class="flex flex-col gap-2">
+					<div class="mt-2 flex flex-col gap-2">
 						<Input
 							type="text"
 							value={attribute().call}

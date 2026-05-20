@@ -23,6 +23,7 @@ export type ConnectorProps = {
  */
 export type NodeType = {
 	id: string;
+	path: string;
 	caption: string;
 	state: State;
 	type: string;

@@ -28,11 +28,7 @@ import {
 import { getArgumentJsonValue } from "./MDSLArguments";
 import { parseArgumentTokens } from "./MDSLNodeArgumentParser";
 import { parseAttributeTokens } from "./MDSLNodeAttributeParser";
-import {
-	popAndCheck,
-	type StringLiteralPlaceholders,
-	tokenise,
-} from "./MDSLUtilities";
+import { popAndCheck, type StringLiteralPlaceholders, tokenise } from "./MDSLUtilities";
 
 /**
  * 将 MDSL 树定义字符串转换为等效的 JSON 定义。
@@ -63,10 +59,7 @@ function convertTokensToJSONDefinition(
 	}
 
 	// 我们应该有匹配数量的 '{' 和 '}' 标记。如果没有，则存在未正确关闭的作用域。
-	if (
-		tokens.filter((token) => token === "{").length !==
-		tokens.filter((token) => token === "}").length
-	) {
+	if (tokens.filter((token) => token === "{").length !== tokens.filter((token) => token === "}").length) {
 		throw new Error("scope character mismatch");
 	}
 
@@ -77,10 +70,7 @@ function convertTokensToJSONDefinition(
 	//    [root, lotto, sequence],
 	//    [root, selector]
 	// ]
-	const treeStacks: [
-		Partial<RootNodeDefinition>,
-		...Partial<AnyChildNodeDefinition>[],
-	][] = [];
+	const treeStacks: [Partial<RootNodeDefinition>, ...Partial<AnyChildNodeDefinition>[]][] = [];
 
 	// 创建我们创建的所有根节点定义的数组。
 	const rootNodes: Partial<RootNodeDefinition>[] = [];
@@ -115,9 +105,7 @@ function convertTokensToJSONDefinition(
 
 		// 获取当前树栈中最顶部的节点，这将是组合/装饰器节点
 		// 如果是组合节点，我们将填充其子节点数组；如果是装饰器，则设置其子节点。
-		const topTreeStackTopNode = topTreeStack[
-			topTreeStack.length - 1
-		] as AnyNodeDefinition;
+		const topTreeStackTopNode = topTreeStack[topTreeStack.length - 1] as AnyNodeDefinition;
 
 		// 如果当前根栈中最顶部的节点是组合或装饰器
 		// 节点，则当前节点应该作为最顶部节点的子节点添加。
@@ -274,22 +262,19 @@ function convertTokensToJSONDefinition(
  * @param stringLiteralPlaceholders 替换的字符串字面量占位符。
  * @returns 根节点 JSON 定义。
  */
-function createRootNode(
-	tokens: string[],
-	stringLiteralPlaceholders: StringLiteralPlaceholders,
-): RootNodeDefinition {
+function createRootNode(tokens: string[], stringLiteralPlaceholders: StringLiteralPlaceholders): RootNodeDefinition {
 	// 创建根节点定义。
 	let node = {
 		type: "root",
 	} as Partial<RootNodeDefinition>;
 
-	// 解析任何节点参数，如果有的话，我们应该只有一个，这将是根标识符的标识符参数。
+	// 解析任何节点参数，如果有的话，我们应该只有一个，这将是根标识符参数。
 	const nodeArguments = parseArgumentTokens(tokens, stringLiteralPlaceholders);
 
 	// 检查是否定义了任何节点参数。
 	if (nodeArguments.length) {
-		// 如果有的话，我们应该只有一个参数，这将是根标识符的标识符参数。
-		if (nodeArguments.length === 1 && nodeArguments[0].type === "identifier") {
+		// 如果有的话，我们应该只有一个参数，这将是根标识符参数。
+		if (nodeArguments.length === 1 && ["identifier", "string"].includes(nodeArguments[0].type)) {
 			// 根节点标识符将是第一个也是唯一的节点参数值。
 			node.id = nodeArguments[0].value as string;
 		} else {
@@ -338,10 +323,7 @@ function createSucceedNode(
  * @param stringLiteralPlaceholders 替换的字符串字面量占位符。
  * @returns 失败节点 JSON 定义。
  */
-function createFailNode(
-	tokens: string[],
-	stringLiteralPlaceholders: StringLiteralPlaceholders,
-): FailNodeDefinition {
+function createFailNode(tokens: string[], stringLiteralPlaceholders: StringLiteralPlaceholders): FailNodeDefinition {
 	const node = {
 		type: "fail",
 		...parseAttributeTokens(tokens, stringLiteralPlaceholders),
@@ -360,10 +342,7 @@ function createFailNode(
  * @param stringLiteralPlaceholders 替换的字符串字面量占位符。
  * @returns 翻转节点 JSON 定义。
  */
-function createFlipNode(
-	tokens: string[],
-	stringLiteralPlaceholders: StringLiteralPlaceholders,
-): FlipNodeDefinition {
+function createFlipNode(tokens: string[], stringLiteralPlaceholders: StringLiteralPlaceholders): FlipNodeDefinition {
 	const node = {
 		type: "flip",
 		...parseAttributeTokens(tokens, stringLiteralPlaceholders),
@@ -410,22 +389,15 @@ function createRepeatNode(
 
 			// 如果定义了，重复节点必须具有正数的迭代次数。
 			if (node.iterations < 0) {
-				throw new Error(
-					"a repeat node must have a positive number of iterations if defined",
-				);
+				throw new Error("a repeat node must have a positive number of iterations if defined");
 			}
 		} else if (nodeArguments.length === 2) {
 			// 定义了最小和最大迭代计数。
-			node.iterations = [
-				nodeArguments[0].value as number,
-				nodeArguments[1].value as number,
-			];
+			node.iterations = [nodeArguments[0].value as number, nodeArguments[1].value as number];
 
 			// 如果定义了，重复节点必须具有正数的最小和最大迭代计数。
 			if (node.iterations[0] < 0 || node.iterations[1] < 0) {
-				throw new Error(
-					"a repeat node must have a positive minimum and maximum iteration count if defined",
-				);
+				throw new Error("a repeat node must have a positive minimum and maximum iteration count if defined");
 			}
 
 			// 重复节点的最小迭代计数不能超过最大迭代计数。
@@ -436,9 +408,7 @@ function createRepeatNode(
 			}
 		} else {
 			// 定义了不正确的迭代计数数量。
-			throw new Error(
-				"invalid number of repeat node iteration count arguments defined",
-			);
+			throw new Error("invalid number of repeat node iteration count arguments defined");
 		}
 	}
 
@@ -461,10 +431,7 @@ function createRepeatNode(
  * @param stringLiteralPlaceholders 替换的字符串字面量占位符。
  * @returns 重试节点 JSON 定义。
  */
-function createRetryNode(
-	tokens: string[],
-	stringLiteralPlaceholders: StringLiteralPlaceholders,
-): RetryNodeDefinition {
+function createRetryNode(tokens: string[], stringLiteralPlaceholders: StringLiteralPlaceholders): RetryNodeDefinition {
 	let node = { type: "retry" } as RetryNodeDefinition;
 
 	// 获取节点参数。
@@ -489,35 +456,24 @@ function createRetryNode(
 
 			// 如果定义了，重试节点必须具有正数的尝试次数。
 			if (node.attempts < 0) {
-				throw new Error(
-					"a retry node must have a positive number of attempts if defined",
-				);
+				throw new Error("a retry node must have a positive number of attempts if defined");
 			}
 		} else if (nodeArguments.length === 2) {
 			// 定义了最小和最大尝试计数。
-			node.attempts = [
-				nodeArguments[0].value as number,
-				nodeArguments[1].value as number,
-			];
+			node.attempts = [nodeArguments[0].value as number, nodeArguments[1].value as number];
 
 			// 如果定义了，重试节点必须具有正数的最小和最大尝试计数。
 			if (node.attempts[0] < 0 || node.attempts[1] < 0) {
-				throw new Error(
-					"a retry node must have a positive minimum and maximum attempt count if defined",
-				);
+				throw new Error("a retry node must have a positive minimum and maximum attempt count if defined");
 			}
 
 			// 重试节点的最小尝试计数不能超过最大尝试计数。
 			if (node.attempts[0] > node.attempts[1]) {
-				throw new Error(
-					"a retry node must not have a minimum attempt count that exceeds the maximum attempt count",
-				);
+				throw new Error("a retry node must not have a minimum attempt count that exceeds the maximum attempt count");
 			}
 		} else {
 			// 定义了不正确的尝试计数数量。
-			throw new Error(
-				"invalid number of retry node attempt count arguments defined",
-			);
+			throw new Error("invalid number of retry node attempt count arguments defined");
 		}
 	}
 
@@ -606,10 +562,7 @@ function createParallelNode(
  * @param stringLiteralPlaceholders 替换的字符串字面量占位符。
  * @returns 竞态节点 JSON 定义。
  */
-function createRaceNode(
-	tokens: string[],
-	stringLiteralPlaceholders: StringLiteralPlaceholders,
-): RaceNodeDefinition {
+function createRaceNode(tokens: string[], stringLiteralPlaceholders: StringLiteralPlaceholders): RaceNodeDefinition {
 	const node = {
 		type: "race",
 		...parseAttributeTokens(tokens, stringLiteralPlaceholders),
@@ -628,10 +581,7 @@ function createRaceNode(
  * @param stringLiteralPlaceholders 替换的字符串字面量占位符。
  * @returns 全部节点 JSON 定义。
  */
-function createAllNode(
-	tokens: string[],
-	stringLiteralPlaceholders: StringLiteralPlaceholders,
-): AllNodeDefinition {
+function createAllNode(tokens: string[], stringLiteralPlaceholders: StringLiteralPlaceholders): AllNodeDefinition {
 	const node = {
 		type: "all",
 		...parseAttributeTokens(tokens, stringLiteralPlaceholders),
@@ -650,10 +600,7 @@ function createAllNode(
  * @param stringLiteralPlaceholders 替换的字符串字面量占位符。
  * @returns 抽签节点 JSON 定义。
  */
-function createLottoNode(
-	tokens: string[],
-	stringLiteralPlaceholders: StringLiteralPlaceholders,
-): LottoNodeDefinition {
+function createLottoNode(tokens: string[], stringLiteralPlaceholders: StringLiteralPlaceholders): LottoNodeDefinition {
 	// 如果定义了任何节点参数，则它们必须是我们的权重。
 	const nodeArguments = parseArgumentTokens(tokens, stringLiteralPlaceholders);
 
@@ -661,18 +608,14 @@ function createLottoNode(
 	nodeArguments.forEach((arg) => {
 		if (arg.type === "number") {
 			if (!arg.isInteger || arg.value < 0) {
-				throw new Error(
-					`lotto node weight arguments must be non-negative integer values`,
-				);
+				throw new Error(`lotto node weight arguments must be non-negative integer values`);
 			}
 			return;
 		}
 		if (arg.type === "property_reference") {
 			return;
 		}
-		throw new Error(
-			`lotto node weight arguments must be non-negative integer values or agent property references`,
-		);
+		throw new Error(`lotto node weight arguments must be non-negative integer values or agent property references`);
 	});
 
 	const node = {
@@ -702,15 +645,12 @@ function createActionNode(
 	tokens: string[],
 	stringLiteralPlaceholders: StringLiteralPlaceholders,
 ): ActionNodeDefinition {
-	// 解析任何节点参数，我们应该至少有一个，这将是动作名称的标识符参数
+	// 解析任何节点参数，我们应该至少有一个，这将是动作名称参数
 	// 和用于动作的 agent 函数，所有其他参数将作为该函数的参数传递。
-	const [actionNameIdentifier, ...agentFunctionArgs] = parseArgumentTokens(
-		tokens,
-		stringLiteralPlaceholders,
-	);
+	const [actionNameIdentifier, ...agentFunctionArgs] = parseArgumentTokens(tokens, stringLiteralPlaceholders);
 
-	// 我们的第一个参数必须已定义且是标识符，因为我们需要动作名称参数。
-	if (actionNameIdentifier?.type !== "identifier") {
+	// 我们的第一个参数必须已定义且是可调用名称参数。
+	if (!actionNameIdentifier || !["identifier", "string"].includes(actionNameIdentifier.type)) {
 		throw new Error("expected action name identifier argument");
 	}
 
@@ -726,7 +666,7 @@ function createActionNode(
 	// 返回动作节点定义。
 	return {
 		type: "action",
-		call: actionNameIdentifier.value,
+		call: actionNameIdentifier.value as string,
 		args: agentFunctionArgs.map(getArgumentJsonValue),
 		...parseAttributeTokens(tokens, stringLiteralPlaceholders),
 	};
@@ -742,15 +682,12 @@ function createConditionNode(
 	tokens: string[],
 	stringLiteralPlaceholders: StringLiteralPlaceholders,
 ): ConditionNodeDefinition {
-	// 解析任何节点参数，我们应该至少有一个，这将是条件名称的标识符参数
+	// 解析任何节点参数，我们应该至少有一个，这将是条件名称参数
 	// 和用于条件的 agent 函数，所有其他参数将作为该函数的参数传递。
-	const [conditionNameIdentifier, ...agentFunctionArgs] = parseArgumentTokens(
-		tokens,
-		stringLiteralPlaceholders,
-	);
+	const [conditionNameIdentifier, ...agentFunctionArgs] = parseArgumentTokens(tokens, stringLiteralPlaceholders);
 
-	// 我们的第一个参数必须已定义且是标识符，因为我们需要条件名称参数。
-	if (conditionNameIdentifier?.type !== "identifier") {
+	// 我们的第一个参数必须已定义且是可调用名称参数。
+	if (!conditionNameIdentifier || !["identifier", "string"].includes(conditionNameIdentifier.type)) {
 		throw new Error("expected condition name identifier argument");
 	}
 
@@ -766,7 +703,7 @@ function createConditionNode(
 	// 返回条件节点定义。
 	return {
 		type: "condition",
-		call: conditionNameIdentifier.value,
+		call: conditionNameIdentifier.value as string,
 		args: agentFunctionArgs.map(getArgumentJsonValue),
 		...parseAttributeTokens(tokens, stringLiteralPlaceholders),
 	};
@@ -778,10 +715,7 @@ function createConditionNode(
  * @param stringLiteralPlaceholders 替换的字符串字面量占位符。
  * @returns 等待节点 JSON 定义。
  */
-function createWaitNode(
-	tokens: string[],
-	stringLiteralPlaceholders: StringLiteralPlaceholders,
-): WaitNodeDefinition {
+function createWaitNode(tokens: string[], stringLiteralPlaceholders: StringLiteralPlaceholders): WaitNodeDefinition {
 	const node = { type: "wait" } as WaitNodeDefinition;
 
 	// 获取节点参数。
@@ -803,9 +737,7 @@ function createWaitNode(
 			if (arg.type === "property_reference") {
 				return;
 			}
-			throw new Error(
-				`wait node durations must be integer values or agent property references`,
-			);
+			throw new Error(`wait node durations must be integer values or agent property references`);
 		});
 
 		// 我们可能有：
@@ -817,35 +749,19 @@ function createWaitNode(
 			node.duration = getArgumentJsonValue(nodeArguments[0]);
 
 			// 如果定义了明确的持续时间且是数字，则它必须是正数。
-			if (
-				nodeArguments[0].type === "number" &&
-				(nodeArguments[0].value as number) < 0
-			) {
+			if (nodeArguments[0].type === "number" && (nodeArguments[0].value as number) < 0) {
 				throw new Error("a wait node must have a positive duration");
 			}
 		} else if (nodeArguments.length === 2) {
 			// 定义了最小和最大持续时间边界，从中将随机选择持续时间。
-			node.duration = [
-				getArgumentJsonValue(nodeArguments[0]),
-				getArgumentJsonValue(nodeArguments[1]),
-			];
+			node.duration = [getArgumentJsonValue(nodeArguments[0]), getArgumentJsonValue(nodeArguments[1])];
 
 			// 等待节点必须具有正数的最小和最大持续时间（如果它们是数字）。
-			if (
-				nodeArguments[0].type === "number" &&
-				(nodeArguments[0].value as number) < 0
-			) {
-				throw new Error(
-					"a wait node must have a positive minimum and maximum duration",
-				);
+			if (nodeArguments[0].type === "number" && (nodeArguments[0].value as number) < 0) {
+				throw new Error("a wait node must have a positive minimum and maximum duration");
 			}
-			if (
-				nodeArguments[1].type === "number" &&
-				(nodeArguments[1].value as number) < 0
-			) {
-				throw new Error(
-					"a wait node must have a positive minimum and maximum duration",
-				);
+			if (nodeArguments[1].type === "number" && (nodeArguments[1].value as number) < 0) {
+				throw new Error("a wait node must have a positive minimum and maximum duration");
 			}
 
 			// 等待节点的最小持续时间不能超过最大持续时间（当两者都是数字时）。
@@ -854,9 +770,7 @@ function createWaitNode(
 				nodeArguments[1].type === "number" &&
 				(nodeArguments[0].value as number) > (nodeArguments[1].value as number)
 			) {
-				throw new Error(
-					"a wait node must not have a minimum duration that exceeds the maximum duration",
-				);
+				throw new Error("a wait node must not have a minimum duration that exceeds the maximum duration");
 			}
 		} else if (nodeArguments.length > 2) {
 			// 定义了不正确的持续时间参数数量。
@@ -881,16 +795,20 @@ function createBranchNode(
 	tokens: string[],
 	stringLiteralPlaceholders: StringLiteralPlaceholders,
 ): BranchNodeDefinition {
-	// 解析任何节点参数，我们应该有一个，这将是根引用的标识符参数。
+	// 解析任何节点参数，我们应该有一个，这将是根引用参数。
 	const nodeArguments = parseArgumentTokens(tokens, stringLiteralPlaceholders);
 
-	// 对于分支节点，我们应该只有一个标识符参数，这是根引用。
-	if (nodeArguments.length !== 1 || nodeArguments[0].type !== "identifier") {
+	// 对于分支节点，我们应该只有一个根引用参数；字符串形式用于兼容包含空格或标点的子树名。
+	if (nodeArguments.length !== 1 || !["identifier", "string"].includes(nodeArguments[0].type)) {
 		throw new Error("expected single branch name argument");
 	}
 
 	// 返回分支节点定义。
-	return { type: "branch", ref: nodeArguments[0].value };
+	return {
+		type: "branch",
+		ref: nodeArguments[0].value as string,
+		...parseAttributeTokens(tokens, stringLiteralPlaceholders),
+	};
 }
 
 /**
@@ -899,20 +817,13 @@ function createBranchNode(
  */
 function validatePoppedNode(definition: AnyNodeDefinition): void {
 	// 装饰器必须定义子节点。
-	if (
-		isDecoratorNodeDefinition(definition) &&
-		isNullOrUndefined(definition.child)
-	) {
-		throw new Error(
-			`a ${definition.type} node must have a single child node defined`,
-		);
+	if (isDecoratorNodeDefinition(definition) && isNullOrUndefined(definition.child)) {
+		throw new Error(`a ${definition.type} node must have a single child node defined`);
 	}
 
 	// 组合节点必须至少定义一个子节点。
 	if (isCompositeNodeDefinition(definition) && !definition.children?.length) {
-		throw new Error(
-			`a ${definition.type} node must have at least a single child node defined`,
-		);
+		throw new Error(`a ${definition.type} node must have at least a single child node defined`);
 	}
 
 	// 我们需要确保定义了权重的抽签节点具有与子节点数量匹配的权重数量。
@@ -921,9 +832,7 @@ function validatePoppedNode(definition: AnyNodeDefinition): void {
 		if (typeof definition.weights !== "undefined") {
 			// 检查权重属性是否为正整数数组，每个子节点元素对应一个元素。
 			if (definition.weights.length !== definition.children.length) {
-				throw new Error(
-					"expected a number of weight arguments matching the number of child nodes for lotto node",
-				);
+				throw new Error("expected a number of weight arguments matching the number of child nodes for lotto node");
 			}
 		}
 	}

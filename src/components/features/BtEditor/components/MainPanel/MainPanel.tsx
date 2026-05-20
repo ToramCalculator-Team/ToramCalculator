@@ -1,6 +1,7 @@
-import { type Component, createEffect, createSignal, Show } from "solid-js";
+import { type Component, createEffect, createSignal, type JSX, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
+import type { State } from "~/lib/mistreevous/State";
 import type { EditableBtDropPlacement, EditableBtNodeType } from "../../model/editableTree";
 import type { ConnectorType, NodeType } from "../../types/workflow";
 import { DefaultNode } from "../workflow/DefaultNode";
@@ -25,14 +26,19 @@ export type MainPanelProps = {
 	onReplayButtonClick(): void;
 	onStopButtonClick(): void;
 	onStepButtonClick?: () => void;
+	previewStatus?: JSX.Element;
+	runtimeNodeStates?: Record<string, State>;
 	onNodeDragOver?: (placement: EditableBtDropPlacement | null) => void;
 	onNodeDrop?: (placement: EditableBtDropPlacement | null) => void;
 	onNodeDragEnd?: () => void;
 	onCanvasClick?: () => void;
 	onNodeClick?: (nodeId: string) => void;
 	onNodeLongPress?: (nodeId: string) => void;
-	onNodeMove?: (nodeId: string, direction: -1 | 1) => void;
+	onNodeInspect?: (nodeId: string) => void;
 	onNodeDelete?: (nodeId: string) => void;
+	onNodeInsertPreview?: (placement: EditableBtDropPlacement) => void;
+	onNodeInsertCancel?: () => void;
+	onNodeInsertCommit?: (placement: EditableBtDropPlacement) => void;
 	onTreeNodeDragStart?: (nodeId: string) => void;
 	onTreeNodeDragEnd?: () => void;
 	canDeleteNode?: (nodeId: string) => boolean;
@@ -76,6 +82,7 @@ export const MainPanel: Component<MainPanelProps> = (props) => {
 				dragNodeType={props.dragNodeType}
 				dragNodeId={props.dragNodeId}
 				activeDropPlacement={props.activeDropPlacement}
+				runtimeNodeStates={props.runtimeNodeStates}
 				nodeComponents={{
 					default: DefaultNode,
 					selected: DefaultNode,
@@ -86,8 +93,11 @@ export const MainPanel: Component<MainPanelProps> = (props) => {
 				onCanvasClick={props.onCanvasClick}
 				onNodeClick={props.onNodeClick}
 				onNodeLongPress={props.onNodeLongPress}
-				onNodeMove={props.onNodeMove}
+				onNodeInspect={props.onNodeInspect}
 				onNodeDelete={props.onNodeDelete}
+				onNodeInsertPreview={props.onNodeInsertPreview}
+				onNodeInsertCancel={props.onNodeInsertCancel}
+				onNodeInsertCommit={props.onNodeInsertCommit}
 				onTreeNodeDragStart={props.onTreeNodeDragStart}
 				onTreeNodeDragEnd={props.onTreeNodeDragEnd}
 				canDeleteNode={props.canDeleteNode}
@@ -95,32 +105,33 @@ export const MainPanel: Component<MainPanelProps> = (props) => {
 				readOnly={props.readOnly}
 			/>
 			<Show when={props.showCanvasControls !== false}>
-				<div class="absolute bottom-0 left-0 m-3.75 flex gap-3.75">
+				<div class="absolute w-[calc(100%-1.5rem)] bottom-3 left-3 flex gap-2">
 					<Show when={props.showPlayButton}>
-						<Button level="primary" onClick={props.onPlayButtonClick} class="run-tree-fab">
+						<Button level="primary" onClick={props.onPlayButtonClick} class="run-tree-fab flex-none">
 							<Icons.Outline.Play />
 						</Button>
 					</Show>
 					<Show when={props.showPlayButton && props.onStepButtonClick}>
-						<Button level="primary" onClick={props.onStepButtonClick} class="run-tree-fab min-h-11 min-w-11">
+						<Button level="primary" onClick={props.onStepButtonClick} class="run-tree-fab flex-none min-h-11 min-w-11">
 							<Icons.Outline.Swap />
 						</Button>
 					</Show>
 					<Show when={props.showReplayButton}>
-						<Button level="primary" onClick={props.onReplayButtonClick} class="run-tree-fab">
+						<Button level="primary" onClick={props.onReplayButtonClick} class="run-tree-fab flex-none">
 							<Icons.Outline.Replay />
 						</Button>
 					</Show>
 					<Show when={props.showStopButton}>
-						<Button level="primary" onClick={props.onStopButtonClick} class="run-tree-fab">
+						<Button level="primary" onClick={props.onStopButtonClick} class="run-tree-fab flex-none">
 							<Icons.Outline.Stop />
 						</Button>
 					</Show>
 					<Show when={props.elements.edges.length > 0 && props.elements.nodes.length > 0}>
-						<Button level="primary" onClick={() => canvasInstance()?.fit()} class="run-tree-fab">
+						<Button level="primary" onClick={() => canvasInstance()?.fit()} class="run-tree-fab flex-none">
 							<Icons.Outline.Location />
 						</Button>
 					</Show>
+					<Show when={props.previewStatus}>{props.previewStatus}</Show>
 				</div>
 			</Show>
 		</div>

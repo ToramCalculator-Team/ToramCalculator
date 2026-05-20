@@ -23,10 +23,7 @@ export type TokeniseResult = {
  * @param expected An optional string or array or items, one of which must match the next popped token.
  * @returns The popped token.
  */
-export function popAndCheck(
-	tokens: string[],
-	expected?: string | string[],
-): string {
+export function popAndCheck(tokens: string[], expected?: string | string[]): string {
 	// Get and remove the next token.
 	const popped = tokens.shift();
 
@@ -41,18 +38,12 @@ export function popAndCheck(
 		const expectedValues = typeof expected === "string" ? [expected] : expected;
 
 		// Check whether the popped token matches at least one of our expected items.
-		const tokenMatchesExpectation = expectedValues.some(
-			(item) => popped.toUpperCase() === item.toUpperCase(),
-		);
+		const tokenMatchesExpectation = expectedValues.some((item) => popped.toUpperCase() === item.toUpperCase());
 
 		// Throw an error if the popped token didn't match any of our expected items.
 		if (!tokenMatchesExpectation) {
-			const expectationString = expectedValues
-				.map((item) => `'${item}'`)
-				.join(" or ");
-			throw new Error(
-				`unexpected token found. Expected ${expectationString} but got '${popped}'`,
-			);
+			const expectationString = expectedValues.map((item) => `'${item}'`).join(" or ");
+			throw new Error(`unexpected token found. Expected ${expectationString} but got '${popped}'`);
 		}
 	}
 
@@ -70,8 +61,7 @@ export function tokenise(definition: string): TokeniseResult {
 	definition = definition.replace(/\/\*(.|\n)*?\*\//g, "");
 
 	// Swap out any node/attribute argument string literals with a placeholder and get a mapping of placeholders to original values as well as the processed definition.
-	const { placeholders, processedDefinition } =
-		substituteStringLiterals(definition);
+	const { placeholders, processedDefinition } = substituteStringLiterals(definition);
 
 	// Add some space around various important characters so that they can be plucked out easier as individual tokens.
 	definition = processedDefinition.replace(/\(/g, " ( ");
@@ -103,23 +93,19 @@ function substituteStringLiterals(definition: string): {
 	const placeholders: StringLiteralPlaceholders = {};
 
 	// Replace any string literals wrapped with double quotes in our definition with placeholders to be processed later.
-	const processedDefinition = definition.replace(
-		/"(\\.|[^"\\])*"/g,
-		(match) => {
-			const strippedMatch = match.substring(1, match.length - 1);
-			let placeholder = Object.keys(placeholders).find(
-				(key) => placeholders[key] === strippedMatch,
-			);
+	const processedDefinition = definition.replace(/"(\\.|[^"\\])*"/g, (match) => {
+		// 设计说明：字符串字面量按 JSON string 规则反转义，保证 printer 输出的引号、反斜杠和换行可完整回读。
+		const strippedMatch = JSON.parse(match) as string;
+		let placeholder = Object.keys(placeholders).find((key) => placeholders[key] === strippedMatch);
 
-			// If we have no existing string literal match then create a new placeholder.
-			if (!placeholder) {
-				placeholder = `@@${Object.keys(placeholders).length}@@`;
-				placeholders[placeholder] = strippedMatch;
-			}
+		// If we have no existing string literal match then create a new placeholder.
+		if (!placeholder) {
+			placeholder = `@@${Object.keys(placeholders).length}@@`;
+			placeholders[placeholder] = strippedMatch;
+		}
 
-			return placeholder;
-		},
-	);
+		return placeholder;
+	});
 
 	return { placeholders, processedDefinition };
 }

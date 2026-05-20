@@ -20,10 +20,14 @@ export function useBtHistory<TSnapshot>(options: UseBtHistoryOptions<TSnapshot>)
 	const canUndo = createMemo(() => undoStack().length > 0);
 	const canRedo = createMemo(() => redoStack().length > 0);
 
-	const recordHistory = () => {
+	const recordSnapshot = (snapshot: TSnapshot) => {
 		if (options.canRecord && !options.canRecord()) return;
-		setUndoStack((stack) => [...stack, options.createSnapshot()].slice(-limit));
+		setUndoStack((stack) => [...stack, snapshot].slice(-limit));
 		setRedoStack([]);
+	};
+
+	const recordHistory = () => {
+		recordSnapshot(options.createSnapshot());
 	};
 
 	const undo = () => {
@@ -47,6 +51,7 @@ export function useBtHistory<TSnapshot>(options: UseBtHistoryOptions<TSnapshot>)
 	return {
 		canUndo,
 		canRedo,
+		recordSnapshot,
 		recordHistory,
 		undo,
 		redo,

@@ -1,13 +1,13 @@
 import type { MemberType } from "@db/schema/enums";
 import { createSignal, onCleanup } from "solid-js";
-import type { BehaviourTree } from "~/lib/mistreevous";
-import { State } from "~/lib/mistreevous";
+import type { BehaviourTree, State } from "~/lib/mistreevous";
 import type { NodeDetails } from "~/lib/mistreevous/nodes/Node";
 import type { BtAuthoringDiagnostic } from "../model/authoringValidator";
 import type { EditableBtDocument } from "../model/editableTree";
 import { editableDocumentToRootDefinitions } from "../model/editableTree";
-import type { MdslIntellisenseRegistry } from "../modes/mdslIntellisense";
 import { createPreviewBehaviourTree } from "../model/previewRuntime";
+import type { MdslIntellisenseRegistry } from "../modes/mdslIntellisense";
+import { getErrorMessage } from "../utils/errors";
 
 type RuntimeNodeStateMap = Record<string, State>;
 
@@ -62,10 +62,10 @@ export function useBtPreviewRuntime(options: UseBtPreviewRuntimeOptions) {
 				getDeltaTimeMs: () => 1000 / 60,
 				onNodeStateChange: (change) => {
 					setDebugLogs((logs) =>
-						[{ tick: debugTick(), message: `${change.type} ${change.previousState} -> ${change.state}` }, ...logs].slice(
-							0,
-							20,
-						),
+						[
+							{ tick: debugTick(), message: `${change.type} ${change.previousState} -> ${change.state}` },
+							...logs,
+						].slice(0, 20),
 					);
 				},
 			},
@@ -84,7 +84,7 @@ export function useBtPreviewRuntime(options: UseBtPreviewRuntimeOptions) {
 			setBehaviourTree(null);
 			setRuntimeNodeStates({});
 			setPreviewDiagnostics([]);
-			return error instanceof Error ? error.message : String(error);
+			return getErrorMessage(error);
 		}
 	};
 
@@ -113,7 +113,7 @@ export function useBtPreviewRuntime(options: UseBtPreviewRuntimeOptions) {
 			setRuntimeNodeStates(collectRuntimeNodeStates(tree.getTreeNodeDetails()));
 			setDebugTick((tick) => tick + 1);
 		} catch (exception) {
-			options.onError(exception instanceof Error ? exception.message : String(exception));
+			options.onError(getErrorMessage(exception));
 			stopPreview();
 		}
 		if (!tree.isRunning()) {
@@ -153,8 +153,6 @@ export function useBtPreviewRuntime(options: UseBtPreviewRuntimeOptions) {
 		debugLogs,
 		runtimeNodeStates,
 		previewDiagnostics,
-		setRuntimeNodeStates,
-		setPreviewDiagnostics,
 		refreshTreeInstance,
 		stopPreview,
 		resetPreviewForEdit,
