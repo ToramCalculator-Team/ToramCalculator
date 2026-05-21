@@ -2,7 +2,7 @@ import { getFkRefByColumn, isFkColumn, listFkColumns } from "@db/generated/dmmf-
 import { repositoryMethods } from "@db/generated/repositories";
 import type { DB } from "@db/generated/zod";
 import { createId } from "@paralleldrive/cuid2";
-import { type AnyFieldApi, createForm, type DeepKeys } from "@tanstack/solid-form";
+import { type AnyFieldApi, createForm, type DeepKeys, SolidFormExtendedApi } from "@tanstack/solid-form";
 import { createMemo, createResource, For, Index, Show } from "solid-js";
 import type { JSX } from "solid-js/jsx-runtime";
 import type { ZodEnum, ZodObject, ZodType } from "zod/v4";
@@ -16,6 +16,9 @@ import { fieldInfo } from "~/components/dataDisplay/utils";
 import { useDictionary } from "~/contexts/Dictionary";
 import type { Dic, EnumFieldDetail } from "~/locales/type";
 import { DATA_CONFIG, type EmbedsDecl, type InheritsFromDecl } from "../data-config";
+
+// 标准表单字段Input class
+export const DefaultFieldClass = "border-dividing-color border-t pt-3 w-full";
 
 export interface FormProps<T extends Record<string, unknown>, TSchema extends ZodObject<{ [K in keyof T]: ZodType }>> {
 	// UI渲染表单名称时需要
@@ -59,13 +62,18 @@ type ForeignKeyRenderInfo = {
 	referencedField: string;
 };
 
+type FormRendererFormApi<TFormData> = Pick<
+	SolidFormExtendedApi<TFormData, any, any, any, any, any, any, any, any, any, any, any>,
+	"Field"
+>;
+
 /**
  * 渲染单个字段（供主表单和 embed 内嵌数组共用）
  * - pathPrefix 为空时渲染顶层字段；否则渲染嵌套字段（如 "variants[0]"）
  * - dataSchema / dictionary / fieldGenerator 都对应这组字段实际所属的表（父表或子表）
  */
-function FormFieldBlock<TItem extends Record<string, unknown>>(props: {
-	form: ReturnType<typeof createForm<TItem>> | ReturnType<typeof createForm<any>>;
+function FormFieldBlock<TFormData extends Record<string, unknown>, TItem extends Record<string, unknown>>(props: {
+	form: FormRendererFormApi<TFormData>;
 	pathPrefix: string;
 	fieldKey: keyof TItem & string;
 	dataSchema: ZodObject<{ [K in keyof TItem]: ZodType }>;
@@ -93,10 +101,8 @@ function FormFieldBlock<TItem extends Record<string, unknown>>(props: {
 	];
 	const inputTitle = fieldDic?.key ?? String(key);
 	const inputDescription = fieldDic?.formFieldDescription ?? "";
-	const fieldClass = "border-dividing-color bg-primary-color rounded-md border w-full";
 
 	return (
-		// @ts-expect-error - 动态路径与 DeepKeys<T> 类型对齐困难，运行时正确
 		<props.form.Field
 			name={fullName}
 			validators={{
@@ -125,7 +131,7 @@ function FormFieldBlock<TItem extends Record<string, unknown>>(props: {
 							title={inputTitle !== String(key) ? inputTitle : fkInfo.referencedTable}
 							description={inputDescription || `选择 ${fkInfo.referencedTable} 记录`}
 							validationMessage={fieldInfo(field())}
-							class={fieldClass}
+							class={DefaultFieldClass}
 						>
 							<Autocomplete
 								id={String(fullName)}
@@ -154,7 +160,7 @@ function FormFieldBlock<TItem extends Record<string, unknown>>(props: {
 							title={inputTitle}
 							description={inputDescription}
 							validationMessage={fieldInfo(field())}
-							class={fieldClass}
+							class={DefaultFieldClass}
 						>
 							<div class="ArrayBox flex w-full flex-col gap-2">
 								<Index each={arrayValue()}>
@@ -204,7 +210,7 @@ function FormFieldBlock<TItem extends Record<string, unknown>>(props: {
 								title={inputTitle}
 								description={inputDescription}
 								validationMessage={fieldInfo(field())}
-								class={fieldClass}
+								class={DefaultFieldClass}
 							>
 								<Show
 									when={options.length > 6}
@@ -241,7 +247,7 @@ function FormFieldBlock<TItem extends Record<string, unknown>>(props: {
 								onBlur={field().handleBlur}
 								onChange={(e) => field().handleChange(parseFloat(e.target.value))}
 								validationMessage={fieldInfo(field())}
-								class={fieldClass}
+								class={DefaultFieldClass}
 							/>
 						);
 					}
@@ -251,7 +257,7 @@ function FormFieldBlock<TItem extends Record<string, unknown>>(props: {
 								title={inputTitle}
 								description={inputDescription}
 								validationMessage={fieldInfo(field())}
-								class={fieldClass}
+								class={DefaultFieldClass}
 							>
 								<Toggle
 									id={field().name}
@@ -276,7 +282,7 @@ function FormFieldBlock<TItem extends Record<string, unknown>>(props: {
 								onBlur={field().handleBlur}
 								onChange={(e) => field().handleChange(e.target.value as never)}
 								validationMessage={fieldInfo(field())}
-								class={fieldClass}
+								class={DefaultFieldClass}
 							>
 								"逻辑编辑器，暂未处理"
 							</Input>
@@ -285,7 +291,7 @@ function FormFieldBlock<TItem extends Record<string, unknown>>(props: {
 					case "object": {
 						// 对象型字段：不在此渲染器内处理，需 fieldGenerator 兜底（比如 BtEditor）
 						return (
-							<Input title={inputTitle} description={inputDescription} class={fieldClass}>
+							<Input title={inputTitle} description={inputDescription} class={DefaultFieldClass}>
 								<span class="text-dividing-color">[object] 需要自定义 fieldGenerator</span>
 							</Input>
 						);
@@ -303,13 +309,12 @@ function FormFieldBlock<TItem extends Record<string, unknown>>(props: {
 								onBlur={field().handleBlur}
 								onChange={(e) => field().handleChange(e.target.value as never)}
 								validationMessage={fieldInfo(field())}
-								class={fieldClass}
+								class={DefaultFieldClass}
 							/>
 						);
 					}
 				}
 			}}
-			{/* @ts-expect-error 同上 */}
 		</props.form.Field>
 	);
 }
@@ -446,18 +451,14 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 		if (!childConfig) {
 			return (
 				<section class="FieldGroup flex w-full flex-col gap-2">
-					<h3 class="text-accent-color px-3 py-2">未找到子表配置：{embed.table}</h3>
+					<h3 class="text-accent-color py-2">未找到子表配置：{embed.table}</h3>
 				</section>
 			);
 		}
 		const childTableName = embed.table;
 		return (
-			<section class="FieldGroup flex w-full flex-col gap-2">
-				<h3 class="text-accent-color flex items-center gap-2 px-3 py-2">
-					{childConfig.dictionary.selfName}
-					<div class="Divider bg-dividing-color h-px w-full flex-1" />
-				</h3>
-				{/* @ts-expect-error 动态 embed 字段名与 DeepKeys<T> 对齐困难 */}
+			<section class="FieldGroup flex w-full flex-col gap-2 p-2 bg-primary-color rounded">
+				<h3 class="text-accent-color font-bold flex items-center gap-2 py-2">{childConfig.dictionary.selfName}</h3>
 				<form.Field name={embed.field} mode="array">
 					{(arrayField: () => AnyFieldApi) => {
 						const items = () => (arrayField().state.value as Array<Record<string, unknown>>) ?? [];
@@ -471,7 +472,6 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 													{childConfig.dictionary.selfName} #{index + 1}
 												</span>
 												<Button
-													level="tertiary"
 													onClick={() => {
 														arrayField().removeValue(index);
 													}}
@@ -555,7 +555,6 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 							</div>
 						);
 					}}
-					{/* @ts-expect-error 同上 */}
 				</form.Field>
 			</section>
 		);
@@ -599,11 +598,8 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 							)}
 						>
 							{([groupName, keys]) => (
-								<section class="FieldGroup flex w-full flex-col gap-2">
-									<h3 class="text-accent-color flex items-center gap-2 px-3 py-2">
-										{groupName}
-										<div class="Divider bg-dividing-color h-px w-full flex-1" />
-									</h3>
+								<section class="FieldGroup flex w-full flex-col gap-2 p-2 bg-primary-color rounded">
+									<h3 class="text-accent-color font-bold flex items-center gap-2 py-2">{groupName}</h3>
 									<div class="Content flex flex-col gap-3">{fieldGroupGenerator(keys)}</div>
 								</section>
 							)}

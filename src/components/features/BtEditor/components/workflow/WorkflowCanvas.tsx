@@ -1,15 +1,5 @@
 import type { JSX } from "solid-js";
-import {
-	batch,
-	type Component,
-	createEffect,
-	createMemo,
-	createSignal,
-	Index,
-	onCleanup,
-	onMount,
-	Show,
-} from "solid-js";
+import { batch, type Component, createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { Icons } from "~/components/icons";
 import type { State } from "~/lib/mistreevous/State";
 import {
@@ -19,7 +9,14 @@ import {
 	type EditableBtDropPlacement,
 	type EditableBtNodeType,
 } from "../../model/editableTree";
-import type { ConnectorType, NodeType, NodeWithChildren } from "../../types/workflow";
+import type {
+	ClientPoint,
+	ConnectorType,
+	NodeType,
+	NodeWithChildren,
+	TreeNodeDragStart,
+	WorkflowDragOverlay,
+} from "../../types/workflow";
 import { NodeContainer } from "./NodeContainer";
 
 type CanvasPoint = { x: number; y: number };
@@ -46,11 +43,12 @@ export type WorkflowCanvasProps = {
 	dragNodeType?: EditableBtNodeType;
 	dragNodeId?: string;
 	activeDropPlacement?: EditableBtDropPlacement;
+	dragOverlay?: WorkflowDragOverlay;
 	runtimeNodeStates?: Record<string, State>;
 	nodeComponents: { [key: string]: Component<NodeType> };
 	onInitalise?: (instance: WorkflowCanvasInstance) => void;
 	onUpdate?: () => void;
-	onNodeDragOver?: (placement: EditableBtDropPlacement | null) => void;
+	onNodeDragOver?: (placement: EditableBtDropPlacement | null, pointer?: ClientPoint) => void;
 	onNodeDrop?: (placement: EditableBtDropPlacement | null) => void;
 	onNodeDragEnd?: () => void;
 	onCanvasClick?: () => void;
@@ -61,7 +59,7 @@ export type WorkflowCanvasProps = {
 	onNodeInsertPreview?: (placement: EditableBtDropPlacement) => void;
 	onNodeInsertCancel?: () => void;
 	onNodeInsertCommit?: (placement: EditableBtDropPlacement) => void;
-	onTreeNodeDragStart?: (nodeId: string) => void;
+	onTreeNodeDragStart?: (payload: TreeNodeDragStart) => void;
 	onTreeNodePointerDragMove?: (clientX: number, clientY: number) => void;
 	onTreeNodePointerDragEnd?: (clientX: number, clientY: number) => void;
 	onTreeNodeDragEnd?: () => void;
@@ -87,6 +85,7 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 	let layoutStabilizationQueued = false;
 	let dropTargetRects: DropTargetRect[] = [];
 	let dropSourceKey = "";
+	let treeNodePointerDrag: { pointerId: number } | null = null;
 	const [translateX, setTranslateX] = createSignal(0);
 	const [translateY, setTranslateY] = createSignal(0);
 	const [scale, setScale] = createSignal(1);
@@ -133,6 +132,27 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 
 	// Memoize nested root nodes to avoid unnecessary recalculations
 	const nestedRootNodes = createMemo(() => getNestedRootNodes(props.nodes, props.connectors));
+	const nestedRootNodeById = createMemo(
+		() => new Map(nestedRootNodes().map((rootNode) => [rootNode.node.id, rootNode])),
+	);
+	const nestedRootNodeIds = createMemo(() => nestedRootNodes().map((rootNode) => rootNode.node.id));
+	const getNestedRootNodeById = (nodeId: string): NodeWithChildren => {
+		const rootNode = nestedRootNodeById().get(nodeId);
+		if (!rootNode) throw new Error(`missing root node ${nodeId}`);
+		return rootNode;
+	};
+	const dragOverlayRootNodes = createMemo(() =>
+		props.dragOverlay ? getNestedRootNodes(props.dragOverlay.nodes, props.dragOverlay.edges) : [],
+	);
+	const dragOverlayRootNodeById = createMemo(
+		() => new Map(dragOverlayRootNodes().map((rootNode) => [rootNode.node.id, rootNode])),
+	);
+	const dragOverlayRootNodeIds = createMemo(() => dragOverlayRootNodes().map((rootNode) => rootNode.node.id));
+	const getDragOverlayRootNodeById = (nodeId: string): NodeWithChildren => {
+		const rootNode = dragOverlayRootNodeById().get(nodeId);
+		if (!rootNode) throw new Error(`missing drag overlay root node ${nodeId}`);
+		return rootNode;
+	};
 	const nodeLayoutSignature = createMemo(() =>
 		props.nodes.map((node) => `${node.id}:${node.caption}:${node.type}:${node.isPlaceholder ? "p" : ""}`).join("|"),
 	);
@@ -184,6 +204,10 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 		window.addEventListener("dragend", resetCanvasInteraction);
 		window.addEventListener("blur", resetCanvasInteraction);
 		window.addEventListener("resize", scheduleSelectionMeasure);
+		// 设计说明：拖拽开始后 pointer 流归画布会话管理；源节点可能因预览重排而被替换，后续 move/up 不能依赖源节点组件继续存活。
+		window.addEventListener("pointermove", handleGlobalTreeNodePointerMove, { capture: true, passive: false });
+		window.addEventListener("pointerup", handleGlobalTreeNodePointerEnd, { capture: true, passive: false });
+		window.addEventListener("pointercancel", handleGlobalTreeNodePointerCancel, { capture: true, passive: false });
 	});
 
 	onCleanup(() => {
@@ -196,6 +220,9 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 		window.removeEventListener("dragend", resetCanvasInteraction);
 		window.removeEventListener("blur", resetCanvasInteraction);
 		window.removeEventListener("resize", scheduleSelectionMeasure);
+		window.removeEventListener("pointermove", handleGlobalTreeNodePointerMove, true);
+		window.removeEventListener("pointerup", handleGlobalTreeNodePointerEnd, true);
+		window.removeEventListener("pointercancel", handleGlobalTreeNodePointerCancel, true);
 		if (viewportAnimationFrame !== undefined) {
 			cancelAnimationFrame(viewportAnimationFrame);
 		}
@@ -214,6 +241,7 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 			dropSourceKey = nextDropSourceKey;
 			dropTargetRects = [];
 		}
+		if (!props.dragNodeId) treeNodePointerDrag = null;
 	});
 
 	createEffect(() => {
@@ -565,7 +593,7 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 		event.preventDefault();
 		if (event.dataTransfer) event.dataTransfer.dropEffect = props.dragNodeId ? "move" : "copy";
 		const placement = getDropPlacement(event.clientX, event.clientY);
-		props.onNodeDragOver?.(placement);
+		props.onNodeDragOver?.(placement, { x: event.clientX, y: event.clientY });
 	};
 
 	const handleDrop = (event: DragEvent) => {
@@ -584,20 +612,30 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 		props.onNodeDragOver?.(null);
 	};
 
-	const handleTreeNodeDragStart = (nodeId: string) => {
+	const handleTreeNodeDragStart = (payload: TreeNodeDragStart) => {
+		treeNodePointerDrag = { pointerId: payload.pointerId };
 		resetCanvasInteraction();
 		dropTargetRects = [];
-		props.onTreeNodeDragStart?.(nodeId);
+		props.onTreeNodeDragStart?.(payload);
+		dropTargetRects = getDropTargetRects();
+		const placement = getDropPlacement(payload.currentPointer.x, payload.currentPointer.y);
+		props.onNodeDragOver?.(placement, payload.currentPointer);
 	};
 
 	// 设计说明：树节点的 pointer 拖拽复用画布落点计算，移动端和桌面鼠标使用同一套预览/提交规则。
 	const handleTreeNodePointerDragMove = (clientX: number, clientY: number) => {
+		if (!props.dragNodeType) return;
 		const placement = getDropPlacement(clientX, clientY);
-		props.onNodeDragOver?.(placement);
+		props.onNodeDragOver?.(placement, { x: clientX, y: clientY });
 		props.onTreeNodePointerDragMove?.(clientX, clientY);
 	};
 
 	const handleTreeNodePointerDragEnd = (clientX: number, clientY: number) => {
+		treeNodePointerDrag = null;
+		if (!props.dragNodeType) {
+			resetCanvasInteraction();
+			return;
+		}
 		const placement = getDropPlacement(clientX, clientY);
 		props.onNodeDrop?.(placement);
 		dropTargetRects = [];
@@ -607,10 +645,32 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 	};
 
 	const handleTreeNodeDragCancel = () => {
+		treeNodePointerDrag = null;
 		props.onNodeDragOver?.(null);
 		dropTargetRects = [];
 		props.onTreeNodeDragEnd?.();
 		resetCanvasInteraction();
+	};
+
+	const isActiveTreeNodePointer = (event: PointerEvent): boolean =>
+		!!treeNodePointerDrag && treeNodePointerDrag.pointerId === event.pointerId;
+
+	const handleGlobalTreeNodePointerMove = (event: PointerEvent) => {
+		if (!isActiveTreeNodePointer(event)) return;
+		event.preventDefault();
+		handleTreeNodePointerDragMove(event.clientX, event.clientY);
+	};
+
+	const handleGlobalTreeNodePointerEnd = (event: PointerEvent) => {
+		if (!isActiveTreeNodePointer(event)) return;
+		event.preventDefault();
+		handleTreeNodePointerDragEnd(event.clientX, event.clientY);
+	};
+
+	const handleGlobalTreeNodePointerCancel = (event: PointerEvent) => {
+		if (!isActiveTreeNodePointer(event)) return;
+		event.preventDefault();
+		handleTreeNodeDragCancel();
 	};
 
 	const handleInsertPreview = (placement: EditableBtDropPlacement) => {
@@ -629,6 +689,20 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 		capturePreviewLayoutAnchor(placement);
 		props.onNodeInsertCommit?.(placement);
 		scheduleLayoutStabilization();
+	};
+
+	const getDragOverlayStyle = (overlay: WorkflowDragOverlay): JSX.CSSProperties => {
+		const canvasRect = canvasWrapperRef?.getBoundingClientRect();
+		const canvasLeft = canvasRect?.left ?? 0;
+		const canvasTop = canvasRect?.top ?? 0;
+		const deltaX = overlay.currentPointer.x - overlay.startPointer.x;
+		const deltaY = overlay.currentPointer.y - overlay.startPointer.y;
+		return {
+			left: `${snapToDevicePixel(overlay.sourceRect.left - canvasLeft + deltaX)}px`,
+			top: `${snapToDevicePixel(overlay.sourceRect.top - canvasTop + deltaY)}px`,
+			transform: `scale(${scale()})`,
+			"transform-origin": "0 0",
+		};
 	};
 
 	const handleAuxClick = (event: MouseEvent) => {
@@ -680,26 +754,54 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 					}}
 				>
 					<div ref={rootNodesContainerRef} class="flex flex-col items-center">
-						<Index each={nestedRootNodes()}>
-							{(rootNode) => (
-								<NodeContainer
-									parentNode={rootNode().node}
-									childNodes={rootNode().children}
-									nodeComponents={props.nodeComponents}
-									selectedNodeId={props.selectedNodeId}
-									onNodeClick={props.onNodeClick}
-									onNodeLongPress={props.onNodeLongPress}
-									onTreeNodeDragStart={handleTreeNodeDragStart}
-									onTreeNodePointerDragMove={handleTreeNodePointerDragMove}
-									onTreeNodePointerDragEnd={handleTreeNodePointerDragEnd}
-									onTreeNodeDragEnd={handleTreeNodeDragCancel}
-									runtimeNodeStates={props.runtimeNodeStates}
-									readOnly={props.readOnly || !!props.dragNodeType}
-								/>
-							)}
-						</Index>
+						<For each={nestedRootNodeIds()}>
+							{(rootNodeId) => {
+								const rootNode = createMemo(() => getNestedRootNodeById(rootNodeId));
+								return (
+									<NodeContainer
+										parentNode={rootNode().node}
+										childNodes={rootNode().children}
+										nodeComponents={props.nodeComponents}
+										selectedNodeId={props.selectedNodeId}
+										draggingNodeId={props.dragNodeId}
+										onNodeClick={props.onNodeClick}
+										onNodeLongPress={props.onNodeLongPress}
+										onTreeNodeDragStart={handleTreeNodeDragStart}
+										onTreeNodePointerDragMove={handleTreeNodePointerDragMove}
+										onTreeNodePointerDragEnd={handleTreeNodePointerDragEnd}
+										onTreeNodeDragEnd={handleTreeNodeDragCancel}
+										runtimeNodeStates={props.runtimeNodeStates}
+										readOnly={props.readOnly || !!props.dragNodeType}
+									/>
+								);
+							}}
+						</For>
 					</div>
 				</div>
+				<Show when={props.dragOverlay}>
+					{(overlay) => (
+						<div
+							data-bt-drag-overlay="true"
+							class="pointer-events-none absolute z-40 opacity-90 drop-shadow-lg"
+							style={getDragOverlayStyle(overlay())}
+						>
+							<For each={dragOverlayRootNodeIds()}>
+								{(rootNodeId) => {
+									const rootNode = createMemo(() => getDragOverlayRootNodeById(rootNodeId));
+									return (
+										<NodeContainer
+											parentNode={rootNode().node}
+											childNodes={rootNode().children}
+											nodeComponents={props.nodeComponents}
+											runtimeNodeStates={props.runtimeNodeStates}
+											readOnly
+										/>
+									);
+								}}
+							</For>
+						</div>
+					)}
+				</Show>
 				<Show when={selectedNodeBounds()}>
 					{(bounds) => (
 						<NodeSelectionControls
@@ -800,7 +902,7 @@ const NodeSelectionControls: Component<{
 					<Show when={props.onInspect}>
 						<NodeOverlayButton
 							label="打开节点配置"
-							class="bg-area-color text-accent-color hover:bg-dividing-color lg:hidden"
+							class="bg-brand-color-1st text-primary-color hover:bg-brand-color-2nd lg:hidden"
 							onClick={() => props.onInspect?.()}
 						>
 							<Icons.Outline.Settings />
@@ -840,7 +942,7 @@ const NodeInsertOverlayButton: Component<{
 }> = (props) => (
 	<NodeOverlayButton
 		label={props.label}
-		class="bg-accent-color text-primary-color hover:bg-brand-color-1st"
+		class="bg-brand-color-3rd text-accent-color hover:bg-brand-color-1st"
 		onMouseEnter={() => props.onPreview?.(props.placement)}
 		onMouseLeave={props.onCancel}
 		onFocus={() => props.onPreview?.(props.placement)}

@@ -2,6 +2,15 @@ import type { NodeDetails } from "~/lib/mistreevous/nodes/Node";
 import type { State } from "~/lib/mistreevous/State";
 
 export type Position = { x: number; y: number };
+export type ClientPoint = { x: number; y: number };
+export type ClientRect = { left: number; top: number; width: number; height: number };
+export type TreeNodeDragStart = {
+	nodeId: string;
+	pointerId: number;
+	startPointer: ClientPoint;
+	currentPointer: ClientPoint;
+	sourceRect: ClientRect;
+};
 
 /**
  * Connector variant types
@@ -45,6 +54,14 @@ export type ConnectorType = {
 	from: string;
 	to: string;
 	variant: ConnectorVariant;
+};
+
+export type WorkflowDragOverlay = {
+	nodes: NodeType[];
+	edges: ConnectorType[];
+	sourceRect: ClientRect;
+	startPointer: ClientPoint;
+	currentPointer: ClientPoint;
 };
 
 export type ChildNode = {

@@ -16,14 +16,26 @@
 
 | 操作 | 命令 |
 |------|------|
-| 首次初始化 / schema 变更后初始化 | `pnpm setup` |
+| 首次初始化 / 需要重置基础设施 | `pnpm setup` |
 | 只生成代码 | `pnpm generate` |
 | 启动开发服务器 | `pnpm dev` |
-| 提交前构建 | `pnpm build` |
+| 完整构建（资源重，明确需要时使用） | `pnpm build` |
+| 检查代码 | `pnpm biome check src/ db/` |
 | 检查并格式化 | `pnpm biome check --write src/ db/` |
 | 启动基础设施 | `pnpm infra:up` |
-| 重置基础设施（会删除 volumes） | `pnpm infra:reset` |
+| 重置基础设施（干净环境测试） | `pnpm infra:reset` |
 | 打开 Prisma Studio（使用生成后的 schema） | `pnpm db:studio` |
+
+## 验证策略
+
+| 变更类型 | 默认验证 | 升级条件 |
+|---|---|---|
+| 文档 / AGENTS | `git diff` | 无需构建 |
+| TS / UI 小改 | `pnpm biome check <相关路径>` | 影响路由、包入口或构建链路时再构建 |
+| schema / enums | `pnpm generate` | 需要重新初始化基础设施时运行 `pnpm setup` |
+| Service Worker / Vite / 生成产物引用 | `pnpm build` | 默认需要完整构建 |
+
+任务完成验证不默认执行 `pnpm build`；仅在修改构建链路、Service Worker、Vite 配置、包入口、生成产物引用，或用户明确要求完整构建时运行。
 
 ## 架构
 
@@ -46,7 +58,7 @@
 **Schema 源文件**：`db/schema/main.prisma` + `db/schema/models/*.prisma` + `db/schema/enums.ts`
 
 - `enums.ts` 是数据库枚举的**唯一事实源**；修改枚举时改它，不要直接改 prisma 文件。
-- 修改 schema 或枚举后，运行 `pnpm generate` 或 `pnpm setup`；`pnpm setup` 会同时重置基础设施。
+- 修改 schema 或枚举后，默认运行 `pnpm generate`；首次初始化或需要重新初始化基础设施时运行 `pnpm setup`。
 
 **数据库访问**：使用 Kysely（`kysely`），类型来自 `@db/generated/zod/index`。
 
@@ -59,7 +71,7 @@
 
 - Docker Compose 文件位于 `backend/docker-compose.yaml`，包含 PostgreSQL 16（tmpfs、logical WAL）和 ElectricSQL。
 - 初始化 SQL 来自 `db/generated/server.sql`。
-- `infra:reset` 会执行 `down --volumes`、重新启动服务并恢复备份；该操作会删除所有数据。
+- `infra:reset` 会执行 `down --volumes`、重新启动服务并恢复备份；通常用于干净环境测试。
 
 ## 构建与 Service Worker
 
@@ -70,9 +82,9 @@
 
 SW 版本号从 `src/store.ts` 的 `version` 字段提取。
 
-## 代码生成
+## 注释规则
 
-新增内容时，添加中文注释，说明设计意图
+新增非显然抽象、跨层约束、缓存/同步/兼容边界时，添加中文注释说明设计目的和原理；直观实现无需为了形式添加注释。
 
 ## 约定
 
@@ -88,48 +100,4 @@ SW 版本号从 `src/store.ts` 的 `version` 字段提取。
 
 ## 文档与 ADR
 
-设计文档位于 `src/lib/engine/document/`。代码不是唯一事实源；引擎设计意图需要通过文档保留。工作时应读取并扩展相关文档。
-
-### 目录结构
-
-- `src/lib/engine/document/README.md`：文档入口，按读者视角组织导航。
-- `src/lib/engine/document/decisions/`：ADR（架构决策记录）。
-- `src/lib/engine/document/decisions/README.md`：**ADR 规则的权威来源**；写 ADR 前必须阅读。
-- `src/lib/engine/document/decisions/0000-template.md`：ADR 模板。
-- 历史叙述文档（`架构设计说明概要.md`、`hook与触发层设计讨论结论.md`、`通信协议表.md`、`WorldAreaSystem.md`）：这些是历史快照。不要继续扩写它们；新内容拆入 ADR。
-
-### 何时提议新增 ADR
-
-变更满足以下任一条件时，先向用户提议新增 ADR，并等待确认：
-
-- 跨越至少 2 个引擎顶层目录，或修改契约：`PipelineCatalog`、`EventCatalog`、`AttributeSchema`、`StatusTypeRegistry`、线程间协议、checkpoint 格式。
-- 将已经实现的方案切换为另一种方案。
-- 引入新的 registry、通信机制或分层方式。
-- 建立未来 passive、skill、pipeline 必须遵守的约定，例如命名前缀、bitfield 分配、payload 字段新增。
-
-以下场景不新增 ADR：单文件重构、缺陷修复、格式调整、纯探索想法。此类内容用提交信息和行内注释承载。
-
-### 硬性规则
-
-1. **不要静默修改已 `Accepted` 的 ADR 正文。** 实质修正应新增 ADR，并在新 ADR 中写 `Supersedes: NNNN`。只有状态字段、损坏链接、代码行号和错别字可以在原 ADR 中直接修正。
-2. **不要复用 ADR 编号。** 已废弃或被取代的 ADR 也永久保留原编号。
-3. **`代价`部分必填。** 如果说不清决策放弃了什么，停下来向用户确认；此时设计还未准备好。
-4. **每个 ADR 只处理一个关注点。** 多个独立取舍应拆成多个 ADR。
-5. **ADR 不复述代码。** ADR 解释“为什么”，不解释“代码写了什么”。用 `path:line` 链接代码，不粘贴签名。
-6. **候选方案必须同时列出优点和缺点。** 只有单边论证说明分析不完整。
-
-### 编写流程
-
-完整流程见 `decisions/README.md` 的“维护规则”章节。简版如下：
-
-1. 先 grep ADR 索引和待拆清单，确认没有重复议题，也没有应被取代的现有 ADR。
-2. 取当前最大编号 + 1，使用四位数字。文件名格式：`NNNN-<英文短横线-slug>.md`。
-3. 复制 `0000-template.md`，初始状态设为 `Proposed`。
-4. 更新索引表；如果命中待拆清单，同时勾掉对应项。
-5. 只在不明显的代码位置添加 `// 见 src/lib/engine/document/decisions/NNNN-xxx.md`；不要到处添加。
-6. ADR 和代码放在同一个提交中，提交信息以 `(ADR-NNNN)` 开头。纯文档修订使用 `docs:` 前缀，并单独提交。
-
-### 语言
-
-ADR 使用中文书写，以匹配现有文档集；只有用户明确要求时才使用其他语言。元数据键（`状态`、`日期`、`决策层`）保持中文。
-
+修改 `src/lib/engine/` 时同时遵守 `src/lib/engine/AGENTS.md`。引擎设计意图通过 `src/lib/engine/document/` 保留。

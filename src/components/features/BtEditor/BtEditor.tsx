@@ -1,12 +1,23 @@
 import type { MemberType } from "@db/schema/enums";
 import { MEMBER_TYPE } from "@db/schema/enums";
 import type { AttributeSlotDeclarationData, MemberBTTree } from "@db/schema/jsons";
-import { type Component, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import { type Component, createEffect, createMemo, createSignal, on, onCleanup, onMount, Show } from "solid-js";
 import { Sheet } from "~/components/containers/sheet";
 import { Button } from "~/components/controls/button";
+import { EnumSelect } from "~/components/controls/enumSelect";
+import { Input } from "~/components/controls/input";
+import { Select } from "~/components/controls/select";
 import { Icons } from "~/components/icons";
 import { State } from "~/lib/mistreevous/State";
-import { ExamplesMenu, SkillLogicExamplesMenu, ToastContainer } from "./components";
+import {
+	Divider,
+	ExamplesMenuContent,
+	Menu,
+	MenuItem,
+	MenuList,
+	SkillLogicExamplesMenuContent,
+	ToastContainer,
+} from "./components";
 import { type AdvancedPanelKey, AdvancedTextPanels } from "./components/AdvancedPanels/AdvancedTextPanels";
 import { DebugConsole } from "./components/DebugConsole/DebugConsole";
 import { DiagnosticsDrawer } from "./components/Diagnostics/DiagnosticsDrawer";
@@ -27,10 +38,9 @@ import { parseInitialEditableDocument, useBtDocument } from "./hooks/useBtDocume
 import { useBtDragDrop } from "./hooks/useBtDragDrop";
 import { useBtHistory } from "./hooks/useBtHistory";
 import { useBtPreviewRuntime } from "./hooks/useBtPreviewRuntime";
-import { getBlockingDiagnostics, validateBtAuthoring } from "./model/authoringValidator";
+import { validateBtAuthoring } from "./model/authoringValidator";
 import {
 	addNodeAtSelection,
-	canDeleteEditableRoot,
 	cloneEditableDocument,
 	collectEditableBranchReferences,
 	createDefaultEditableDocument,
@@ -54,23 +64,19 @@ import { buildMdslIntellisenseRegistry } from "./modes/mdslIntellisense";
 import { getMdslProfileConfig } from "./modes/mdslMemberTypeProfiles";
 import { toast } from "./stores/toastStore";
 import { DefinitionType, SidebarTab } from "./types/app";
+import type { WorkflowDragOverlay } from "./types/workflow";
 import { getErrorMessage } from "./utils/errors";
 
 export { DefinitionType, SidebarTab };
 
+export type BtEditorValue = Pick<MemberBTTree, "definition" | "agent"> &
+	Partial<Pick<MemberBTTree, "name" | "memberType" | "attributeSlots">>;
+
 export type BtEditorProps = {
 	title: string;
-	initValue?: MemberBTTree;
-	/** @deprecated 兼容旧调用点，后续统一改为 initValue。 */
-	initValues?: {
-		definition: string;
-		agent: string;
-		memberType?: MemberType;
-		name?: string;
-		attributeSlots?: AttributeSlotDeclarationData[];
-	};
+	value: BtEditorValue;
 	readOnly?: boolean;
-	onSave: (nextTree: MemberBTTree) => void;
+	onChange?: (nextTree: MemberBTTree) => void;
 	onClose?: () => void;
 };
 
@@ -91,24 +97,13 @@ const emptyTree = (): MemberBTTree => ({
 	attributeSlots: [],
 });
 
-const normalizeInitValue = (props: BtEditorProps): MemberBTTree => {
-	if (props.initValue) {
-		return {
-			...props.initValue,
-			attributeSlots: props.initValue.attributeSlots ?? [],
-		};
-	}
-	if (props.initValues) {
-		return {
-			name: props.initValues.name ?? "default",
-			definition: props.initValues.definition,
-			agent: props.initValues.agent,
-			memberType: props.initValues.memberType ?? "Player",
-			attributeSlots: props.initValues.attributeSlots ?? [],
-		};
-	}
-	return emptyTree();
-};
+const defaultTree = emptyTree();
+
+const normalizeValue = (value: BtEditorValue): MemberBTTree => ({
+	...defaultTree,
+	...value,
+	attributeSlots: value.attributeSlots ?? [],
+});
 
 const cloneAttributeSlots = (slots: AttributeSlotDeclarationData[]): AttributeSlotDeclarationData[] =>
 	slots.map((slot) => ({
@@ -116,13 +111,21 @@ const cloneAttributeSlots = (slots: AttributeSlotDeclarationData[]): AttributeSl
 		attribute: { ...slot.attribute },
 	}));
 
+const getAttributeSlotsSignature = (slots: AttributeSlotDeclarationData[]) => JSON.stringify(slots);
+
+// 设计说明：受控同步只比较可持久化 BT 数据，避免节点焦点、拖拽预览、面板开关等编辑态穿过组件边界。
+const getBtEditorValueSignature = (value: MemberBTTree): string =>
+	[value.name, value.definition, value.agent, value.memberType, getAttributeSlotsSignature(value.attributeSlots)].join(
+		"\u001f",
+	);
+
 /**
  * 行为树结构化编辑器。
  *
- * 设计说明：内部以 EditableBtDocument 为权威模型；文本面板用于导入/高级编辑，保存时统一输出 MemberBTTree。
+ * 设计说明：外部 value 只承载持久化语义数据；节点焦点、面板、拖拽、预览和历史栈保留为编辑器内部状态。
  */
 export const BtEditor: Component<BtEditorProps> = (props) => {
-	const initial = normalizeInitValue(props);
+	const initial = normalizeValue(props.value);
 	const initialEditableDocument = parseInitialEditableDocument(initial.definition);
 	const [treeName, setTreeName] = createSignal(initial.name);
 	const [agent, setAgent] = createSignal(initial.agent || "class Agent {}");
@@ -151,6 +154,9 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	const [mobileInspectorOpen, setMobileInspectorOpen] = createSignal(false);
 	const [diagnosticsOpen, setDiagnosticsOpen] = createSignal(false);
 	const [debugConsoleOpen, setDebugConsoleOpen] = createSignal(false);
+	const [topMenuAnchorEl, setTopMenuAnchorEl] = createSignal<HTMLElement | null>(null);
+	const topMenuOpen = () => Boolean(topMenuAnchorEl());
+	const closeTopMenu = () => setTopMenuAnchorEl(null);
 	const mdslIntellisense = createMemo(() => {
 		const config = getMdslProfileConfig(memberType());
 		return buildMdslIntellisenseRegistry(config, agent());
@@ -166,7 +172,6 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		stopPreview,
 		resetPreviewForEdit,
 		playPreview,
-		stepPreview,
 	} = useBtPreviewRuntime({
 		getDocument: editableDocument,
 		getAgent: agent,
@@ -183,7 +188,6 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 			registry: mdslIntellisense(),
 		}),
 	);
-	const blockingDiagnostics = createMemo(() => getBlockingDiagnostics(diagnostics()));
 	const agentError = createMemo(
 		() =>
 			diagnostics().find((diagnostic) => diagnostic.code.startsWith("agent.") && diagnostic.severity === "error")
@@ -243,13 +247,30 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 			(diagnostic) => diagnostic.nodeId === id && (!diagnostic.rootKey || diagnostic.rootKey === activeRoot().key),
 		);
 	});
-	const canSave = createMemo(() => !definitionError() && blockingDiagnostics().length === 0);
 	const isReadOnly = createMemo(() => !!props.readOnly);
+	const externalValue = createMemo(() => normalizeValue(props.value));
+	const externalValueSignature = createMemo(() => getBtEditorValueSignature(externalValue()));
+	const currentValue = createMemo<MemberBTTree>(() => ({
+		name: treeName() || "default",
+		definition: definition(),
+		agent: agent(),
+		memberType: memberType(),
+		attributeSlots: cloneAttributeSlots(attributeSlots()),
+	}));
 	const currentTreeStateLabel = createMemo(() => formatBtState(behaviourTree()?.getState()));
 	const runningNodeSummary = createMemo(() => {
 		const runningNode = findNodeByRuntimeState(activeTree().root, runtimeNodeStates(), State.RUNNING);
 		return runningNode ? getEditableNodeCaption(runningNode) : "无";
 	});
+	const emitChange = (patch: Partial<MemberBTTree> = {}) => {
+		const nextValue: MemberBTTree = {
+			...currentValue(),
+			...patch,
+			attributeSlots: cloneAttributeSlots(patch.attributeSlots ?? currentValue().attributeSlots),
+		};
+		if (getBtEditorValueSignature(nextValue) === getBtEditorValueSignature(externalValue())) return;
+		props.onChange?.(nextValue);
+	};
 
 	const createSnapshot = (): EditorSnapshot => ({
 		treeName: treeName(),
@@ -268,6 +289,13 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		setAttributeSlots(cloneAttributeSlots(snapshot.attributeSlots));
 		replaceDocument(snapshot.document, snapshot.selectedNodeId);
 		setDefinitionError("");
+		emitChange({
+			name: snapshot.treeName || "default",
+			definition: editableDocumentToDefinitionText(snapshot.document),
+			agent: snapshot.agent,
+			memberType: snapshot.memberType,
+			attributeSlots: cloneAttributeSlots(snapshot.attributeSlots),
+		});
 		queueMicrotask(() => setDefinitionError(refreshTreeInstance()));
 	};
 
@@ -296,10 +324,53 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		if (wasPlaying) toast.info("文档已变更，预览已停止", 1800);
 	};
 
+	const openAdvancedPanel = (panel: AdvancedPanelKey) => {
+		closeTopMenu();
+		setAdvancedPanel(panel);
+		setAdvancedOpen(true);
+	};
+
+	// 设计说明：外部 value 变化只同步内部 draft；对外通知只能从用户命令处理器发出，避免响应式 effect 反向写表单。
+	createEffect(
+		on(
+			externalValueSignature,
+			() => {
+				const nextValue = externalValue();
+				const current = currentValue();
+				if (getBtEditorValueSignature(current) === getBtEditorValueSignature(nextValue)) return;
+
+				const definitionChanged = current.definition !== nextValue.definition;
+				const runtimeContextChanged =
+					definitionChanged ||
+					current.agent !== nextValue.agent ||
+					current.memberType !== nextValue.memberType ||
+					getAttributeSlotsSignature(current.attributeSlots) !== getAttributeSlotsSignature(nextValue.attributeSlots);
+
+				if (runtimeContextChanged) resetPreviewBecauseDocumentChanged();
+				if (current.name !== nextValue.name) setTreeName(nextValue.name);
+				if (current.agent !== nextValue.agent) setAgent(nextValue.agent);
+				if (current.memberType !== nextValue.memberType) setMemberType(nextValue.memberType);
+				if (
+					getAttributeSlotsSignature(current.attributeSlots) !== getAttributeSlotsSignature(nextValue.attributeSlots)
+				) {
+					setAttributeSlots(cloneAttributeSlots(nextValue.attributeSlots));
+				}
+				if (definitionChanged) {
+					const nextDocument = parseInitialEditableDocument(nextValue.definition);
+					replaceDocument(nextDocument.document);
+					setDefinitionError(nextDocument.error);
+				}
+				if (runtimeContextChanged) schedulePreviewRefresh();
+			},
+			{ defer: true },
+		),
+	);
+
 	const handleTreeChange = (next: EditableBtTree, options: { recordHistory?: boolean } = {}) => {
 		if (options.recordHistory !== false) recordHistory();
 		resetPreviewBecauseDocumentChanged();
-		replaceActiveTree(next);
+		const nextDocument = replaceActiveTree(next);
+		emitChange({ definition: editableDocumentToDefinitionText(nextDocument) });
 		schedulePreviewRefresh();
 	};
 
@@ -309,6 +380,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		if (options.recordHistory !== false) recordHistory();
 		resetPreviewBecauseDocumentChanged();
 		setAgent(nextAgent);
+		emitChange({ agent: nextAgent });
 		schedulePreviewRefresh();
 	};
 
@@ -321,7 +393,8 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 			const nextDocument = editableDocumentFromDefinition(nextDefinition);
 			if (options.recordHistory !== false) recordHistory();
 			resetPreviewBecauseDocumentChanged();
-			replaceDocument(nextDocument, options.nextSelectedNodeId);
+			const replacedDocument = replaceDocument(nextDocument, options.nextSelectedNodeId);
+			emitChange({ definition: editableDocumentToDefinitionText(replacedDocument) });
 			schedulePreviewRefresh();
 			setDefinitionError("");
 		} catch (error) {
@@ -331,16 +404,29 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 
 	const handleMDSLInsert = (mdsl: string, nextAgent: string): void => {
 		if (isReadOnly()) return;
-		recordHistory();
-		handleAgentChange(nextAgent, { recordHistory: false });
-		handleDefinitionApply(mdsl, { recordHistory: false, nextSelectedNodeId: null });
-		setMobileInspectorOpen(false);
+		try {
+			const nextDocument = editableDocumentFromDefinition(mdsl);
+			recordHistory();
+			resetPreviewBecauseDocumentChanged();
+			setAgent(nextAgent);
+			const replacedDocument = replaceDocument(nextDocument, null);
+			emitChange({
+				agent: nextAgent,
+				definition: editableDocumentToDefinitionText(replacedDocument),
+			});
+			schedulePreviewRefresh();
+			setDefinitionError("");
+			setMobileInspectorOpen(false);
+		} catch (error) {
+			setDefinitionError(getErrorMessage(error));
+		}
 	};
 
 	const handleTreeNameChange = (nextName: string) => {
 		if (isReadOnly() || nextName === treeName()) return;
 		recordHistory();
 		setTreeName(nextName);
+		emitChange({ name: nextName || "default" });
 	};
 
 	const handleMemberTypeChange = (nextMemberType: MemberType) => {
@@ -348,6 +434,18 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		recordHistory();
 		resetPreviewBecauseDocumentChanged();
 		setMemberType(nextMemberType);
+		emitChange({ memberType: nextMemberType });
+		schedulePreviewRefresh();
+	};
+
+	const handleAttributeSlotsChange = (slots: AttributeSlotDeclarationData[]) => {
+		if (isReadOnly()) return;
+		const nextSlots = cloneAttributeSlots(slots);
+		if (getAttributeSlotsSignature(nextSlots) === getAttributeSlotsSignature(attributeSlots())) return;
+		recordHistory();
+		resetPreviewBecauseDocumentChanged();
+		setAttributeSlots(nextSlots);
+		emitChange({ attributeSlots: nextSlots });
 		schedulePreviewRefresh();
 	};
 
@@ -365,7 +463,8 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		if (isReadOnly() || !root.name || !trimmedName || root.name === trimmedName) return;
 		recordHistory();
 		resetPreviewBecauseDocumentChanged();
-		renameRoot(root.key, trimmedName);
+		const nextDocument = renameRoot(root.key, trimmedName);
+		emitChange({ definition: editableDocumentToDefinitionText(nextDocument) });
 		schedulePreviewRefresh();
 	};
 
@@ -373,17 +472,29 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		if (isReadOnly()) return;
 		recordHistory();
 		resetPreviewBecauseDocumentChanged();
-		addNamedRoot();
+		const nextDocument = addNamedRoot();
+		emitChange({ definition: editableDocumentToDefinitionText(nextDocument) });
+		schedulePreviewRefresh();
+	};
+
+	const handleDeleteRootByKey = (rootKey: string) => {
+		if (isReadOnly()) return;
+		const root = editableDocument().roots.find((item) => item.key === rootKey);
+		if (!root) return;
+		const blockedReason = getRootDeleteBlockedReason(editableDocument(), root);
+		if (blockedReason) {
+			toast.warning(blockedReason);
+			return;
+		}
+		recordHistory();
+		resetPreviewBecauseDocumentChanged();
+		const nextDocument = deleteNamedRoot(rootKey);
+		emitChange({ definition: editableDocumentToDefinitionText(nextDocument) });
 		schedulePreviewRefresh();
 	};
 
 	const handleDeleteRoot = () => {
-		if (isReadOnly() || !activeRoot().name) return;
-		if (!canDeleteEditableRoot(editableDocument(), activeRoot().key)) return;
-		recordHistory();
-		resetPreviewBecauseDocumentChanged();
-		deleteNamedRoot(activeRoot().key);
-		schedulePreviewRefresh();
+		handleDeleteRootByKey(activeRoot().key);
 	};
 
 	const handleOpenBranchTarget = (ref: string) => {
@@ -410,7 +521,11 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	const deleteSelectedNode = () => {
 		if (isReadOnly()) return;
 		const id = selectedNodeId();
-		if (!id || id === activeTree().root.id) return;
+		if (!id) return;
+		if (id === activeTree().root.id) {
+			handleDeleteRoot();
+			return;
+		}
 		const nextTree = deleteEditableNode(activeTree(), id);
 		handleTreeChange(nextTree);
 		setSelectedNodeId(undefined);
@@ -439,10 +554,11 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	};
 
 	const {
+		dragSession,
 		draggedNodeType,
 		draggedTreeNodeId,
 		activeDropPlacement,
-		dragPreview,
+		previewTree,
 		startLibraryNodeDrag,
 		startTreeNodeDrag,
 		clearNodeDrag,
@@ -461,8 +577,19 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		onOpenInspector: () => setMobileInspectorOpen(true),
 	});
 
-	const renderedEditableTree = createMemo(() => dragPreview()?.tree ?? activeTree());
+	const renderedEditableTree = createMemo(() => previewTree() ?? activeTree());
 	const canvasElements = createMemo<CanvasElements>(() => createCanvasElementsFromEditableTree(renderedEditableTree()));
+	const dragOverlay = createMemo<WorkflowDragOverlay | undefined>(() => {
+		const session = dragSession();
+		if (session.phase !== "tree-dragging") return undefined;
+		const elements = createCanvasElementsFromEditableTree({ root: session.sourceSubtree });
+		return {
+			...elements,
+			sourceRect: session.sourceRect,
+			startPointer: session.startPointer,
+			currentPointer: session.currentPointer,
+		};
+	});
 
 	const onPlayButtonPressed = (): void => {
 		const error = playPreview();
@@ -471,21 +598,6 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 
 	const onStopButtonPressed = (): void => {
 		stopPreview();
-	};
-
-	const save = () => {
-		if (isReadOnly()) return;
-		const blocking = blockingDiagnostics();
-		if (blocking.length > 0) return;
-		setDefinitionError("");
-		const nextTree: MemberBTTree = {
-			name: treeName() || "default",
-			definition: definition(),
-			agent: agent(),
-			memberType: memberType(),
-			attributeSlots: attributeSlots(),
-		};
-		props.onSave(nextTree);
 	};
 
 	const handleKeyDown = (event: KeyboardEvent) => {
@@ -515,6 +627,12 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		}
 		if (event.key === "Delete" || event.key === "Backspace") {
 			event.preventDefault();
+			const subtreeTabRootKey = getSubtreeTabRootKey(event.target);
+			// 设计说明：tab 焦点属于分支导航命令域，Delete 直接删除该分支，避免穿透到画布当前节点选择。
+			if (subtreeTabRootKey) {
+				handleDeleteRootByKey(subtreeTabRootKey);
+				return;
+			}
 			deleteSelectedNode();
 		}
 	};
@@ -565,51 +683,54 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 
 	return (
 		<div id="BtEditor" class="BtEditor bg-primary-color relative flex h-full w-full flex-col overflow-hidden">
-			<div class="border-dividing-color flex min-h-14 flex-wrap items-center gap-2 border-b p-2">
-				<div class="flex min-w-0 flex-1 basis-[24rem] items-center gap-2">
-					<label class="sr-only" for="bt-editor-tree-name">
-						行为树名
-					</label>
-					<input
-						id="bt-editor-tree-name"
-						aria-label="行为树名"
-						class="border-dividing-color bg-area-color min-h-11 min-w-0 flex-1 rounded-md border px-3 text-lg font-semibold outline-none transition-colors focus:border-accent-color disabled:opacity-70"
-						type="text"
-						value={treeName()}
-						placeholder={props.title || "未命名行为树"}
-						onInput={(event) => handleTreeNameChange(event.currentTarget.value)}
-						disabled={isReadOnly()}
-					/>
-					<MemberTypeSegmentedControl value={memberType()} disabled={isReadOnly()} onChange={handleMemberTypeChange} />
+			<div class="border-dividing-color flex min-h-12 items-center border-b bg-primary-color">
+				<div class="flex h-full shrink-0 items-center px-2">
+					<Button
+						level="quaternary"
+						class="h-10 min-h-10 px-3 py-2"
+						aria-label="打开行为树菜单"
+						title="行为树菜单"
+						onClick={(event) => setTopMenuAnchorEl(topMenuOpen() ? null : event.currentTarget)}
+					>
+						<Icons.Outline.Burger />
+					</Button>
 				</div>
-				<Show when={!isReadOnly()}>
-					<Button level="quaternary" class="h-11 w-11 p-2" disabled={!canSave()} onClick={save}>
-						<Icons.Outline.Save />
-					</Button>
-					<Button level="quaternary" class="h-11 w-11 p-2" disabled={!canUndo()} onClick={undo}>
-						<Icons.Outline.Back />
-					</Button>
-					<Button level="quaternary" class="h-11 w-11 p-2" disabled={!canRedo()} onClick={redo}>
-						<Icons.Outline.Replay />
-					</Button>
-					<ExamplesMenu onMDSLInsert={handleMDSLInsert} />
-					<SkillLogicExamplesMenu onMDSLInsert={handleMDSLInsert} />
-				</Show>
-				<Button
-					level="quaternary"
-					class="h-11 w-11 p-2"
-					onClick={() => {
-						setAdvancedPanel("definition");
-						setAdvancedOpen(true);
-					}}
-				>
-					<Icons.Outline.Burger />
-				</Button>
+				<SubtreeNavBar
+					items={subtreeNavItems()}
+					activeRootKey={activeRoot().key}
+					readOnly={isReadOnly()}
+					onSwitch={handleActiveRootChange}
+					onAdd={handleAddRoot}
+					onDelete={handleDeleteRootByKey}
+				/>
 				<Show when={props.onClose}>
-					<Button level="quaternary" class="h-11 w-11 p-2" onClick={() => props.onClose?.()}>
-						<Icons.Outline.Close />
-					</Button>
+					<div class="flex h-full shrink-0 items-center px-2">
+						<Button
+							level="quaternary"
+							class="h-10 min-h-10 px-3 py-2"
+							aria-label="关闭编辑器"
+							title="关闭编辑器"
+							onClick={() => props.onClose?.()}
+						>
+							<Icons.Outline.Close />
+						</Button>
+					</div>
 				</Show>
+				<BtEditorTopMenu
+					anchorEl={topMenuAnchorEl()}
+					open={topMenuOpen()}
+					title={props.title}
+					treeName={treeName()}
+					memberType={memberType()}
+					activeRoot={activeRoot()}
+					readOnly={isReadOnly()}
+					onClose={closeTopMenu}
+					onTreeNameChange={handleTreeNameChange}
+					onMemberTypeChange={handleMemberTypeChange}
+					onRootNameChange={handleRootNameChange}
+					onOpenAdvanced={openAdvancedPanel}
+					onMDSLInsert={handleMDSLInsert}
+				/>
 			</div>
 			<Show when={diagnosticListItems().length > 0}>
 				<DiagnosticsStatusBar
@@ -642,17 +763,6 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 					</div>
 				</aside>
 				<main class="relative flex min-h-0 flex-col">
-					<SubtreeNavBar
-						items={subtreeNavItems()}
-						activeRootKey={activeRoot().key}
-						activeRoot={activeRoot()}
-						deleteBlockedReason={getActiveRootDeleteBlockedReason(editableDocument(), activeRoot())}
-						readOnly={isReadOnly()}
-						onSwitch={handleActiveRootChange}
-						onAdd={handleAddRoot}
-						onRename={(name) => handleRootNameChange(activeRoot(), name)}
-						onDelete={handleDeleteRoot}
-					/>
 					<div class="min-h-0 flex-1">
 						<MainPanel
 							layoutId={`structured:${activeRoot().key}`}
@@ -661,13 +771,17 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 							dragNodeType={draggedNodeType()}
 							dragNodeId={draggedTreeNodeId()}
 							activeDropPlacement={activeDropPlacement()}
+							dragOverlay={dragOverlay()}
 							showPlayButton={!!behaviourTree() && !behaviourTreePlayInterval()}
 							showReplayButton={!!behaviourTreePlayInterval()}
 							showStopButton={!!behaviourTreePlayInterval()}
 							onPlayButtonClick={onPlayButtonPressed}
 							onReplayButtonClick={onPlayButtonPressed}
 							onStopButtonClick={onStopButtonPressed}
-							onStepButtonClick={stepPreview}
+							canUndo={canUndo()}
+							canRedo={canRedo()}
+							onUndo={undo}
+							onRedo={redo}
 							onNodeDragOver={updateNodeDropPreview}
 							onNodeDrop={commitNodeDrop}
 							onNodeDragEnd={clearNodeDrag}
@@ -784,19 +898,86 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 				onPanelChange={setAdvancedPanel}
 				onDefinitionApply={handleDefinitionApply}
 				onAgentChange={handleAgentChange}
-				onAttributeSlotsChange={(slots) => {
-					if (isReadOnly()) return;
-					recordHistory();
-					resetPreviewBecauseDocumentChanged();
-					setAttributeSlots(slots);
-					schedulePreviewRefresh();
-				}}
+				onAttributeSlotsChange={handleAttributeSlotsChange}
 				readOnly={isReadOnly()}
 			/>
 			<ToastContainer />
 		</div>
 	);
 };
+
+const BtEditorTopMenu: Component<{
+	anchorEl: HTMLElement | null;
+	open: boolean;
+	title: string;
+	treeName: string;
+	memberType: MemberType;
+	activeRoot: EditableBtRoot;
+	readOnly: boolean;
+	onClose: () => void;
+	onTreeNameChange: (name: string) => void;
+	onMemberTypeChange: (memberType: MemberType) => void;
+	onRootNameChange: (root: EditableBtRoot, name: string) => void;
+	onOpenAdvanced: (panel: AdvancedPanelKey) => void;
+	onMDSLInsert: (mdsl: string, agent: string) => void;
+}> = (props) => (
+	<Menu anchorEl={props.anchorEl} open={props.open} onClose={props.onClose} class="w-[380px] max-w-[calc(100vw-16px)]">
+		{/* 设计说明：菜单收纳低频配置与文本编辑入口，顶栏空间留给分支导航和关闭动作。 */}
+		<div class="flex flex-col gap-3 px-4 py-3">
+			<div class="text-accent-color text-xs font-semibold">文档</div>
+			<Input
+				type="text"
+				id="bt-editor-tree-name"
+				aria-label="行为树名"
+				value={props.treeName}
+				placeholder={props.title || "未命名行为树"}
+				onInput={(event) => props.onTreeNameChange(event.currentTarget.value)}
+				disabled={props.readOnly}
+			/>
+			<div class="flex flex-col gap-2">
+				<div class="text-main-text-color text-xs">类型</div>
+				<MemberTypePicker
+					value={props.memberType}
+					disabled={props.readOnly}
+					onChange={props.onMemberTypeChange}
+					compact
+				/>
+			</div>
+		</div>
+		<Show when={props.activeRoot.name}>
+			<Divider />
+			<div class="flex flex-col gap-2 px-4 py-3">
+				<div class="text-accent-color text-xs font-semibold">当前分支</div>
+				<Input
+					type="text"
+					aria-label="当前分支名"
+					value={props.activeRoot.name ?? ""}
+					disabled={props.readOnly}
+					onInput={(event) => props.onRootNameChange(props.activeRoot, event.currentTarget.value)}
+				/>
+			</div>
+		</Show>
+		<Divider />
+		<div class="text-accent-color px-4 pt-2 text-xs font-semibold">编辑</div>
+		<MenuList dense>
+			<MenuItem dense onClick={() => props.onOpenAdvanced("definition")}>
+				MDSL
+			</MenuItem>
+			<MenuItem dense onClick={() => props.onOpenAdvanced("agent")}>
+				Agent
+			</MenuItem>
+			<MenuItem dense onClick={() => props.onOpenAdvanced("slots")}>
+				属性槽
+			</MenuItem>
+		</MenuList>
+		<Divider />
+		<div class="text-accent-color px-4 pt-2 text-xs font-semibold">通用示例</div>
+		<ExamplesMenuContent onMDSLInsert={props.onMDSLInsert} onSelect={props.onClose} />
+		<Divider />
+		<div class="text-accent-color px-4 pt-2 text-xs font-semibold">技能示例</div>
+		<SkillLogicExamplesMenuContent onMDSLInsert={props.onMDSLInsert} onSelect={props.onClose} />
+	</Menu>
+);
 
 const formatBtState = (state?: State): string => {
 	if (state === State.RUNNING) return "Running";
@@ -819,48 +1000,65 @@ const findNodeByRuntimeState = (
 	return undefined;
 };
 
-const MemberTypeSegmentedControl: Component<{
+const memberTypeLabels: Record<MemberType, string> = {
+	Player: "玩家",
+	Partner: "伙伴",
+	Mercenary: "佣兵",
+	Mob: "怪物",
+};
+
+const memberTypeOptions = MEMBER_TYPE.map((type) => ({
+	label: memberTypeLabels[type],
+	value: type,
+}));
+
+const MemberTypePicker: Component<{
 	value: MemberType;
 	disabled: boolean;
 	onChange: (value: MemberType) => void;
-}> = (props) => (
-	// 设计说明：MemberType 是互斥上下文，使用 radio 分段控件直接暴露当前 registry/属性路径目标。
-	<fieldset
-		aria-label="行为树类型"
-		class="border-dividing-color bg-area-color flex min-h-11 shrink-0 items-center gap-1 rounded-md border p-1"
-	>
-		<legend class="sr-only">行为树类型</legend>
-		<For each={MEMBER_TYPE}>
-			{(type) => {
-				const selected = () => props.value === type;
-				return (
-					<label
-						class="relative inline-flex min-h-9 cursor-pointer items-center rounded px-2 text-xs font-medium transition-colors lg:px-3 lg:text-sm"
-						classList={{
-							"bg-accent-color text-primary-color": selected(),
-							"hover:bg-dividing-color text-main-text-color": !selected(),
-							"pointer-events-none opacity-60": props.disabled,
-						}}
-					>
-						<input
-							type="radio"
-							name="bt-editor-member-type"
-							value={type}
-							checked={selected()}
-							disabled={props.disabled}
-							class="sr-only"
-							onChange={() => props.onChange(type)}
-						/>
-						{type}
-					</label>
-				);
-			}}
-		</For>
-	</fieldset>
-);
+	compact?: boolean;
+}> = (props) => {
+	const setValue = (value: string) => props.onChange(value as MemberType);
+	if (props.compact) {
+		return (
+			<Select
+				value={props.value}
+				setValue={setValue}
+				options={memberTypeOptions}
+				disabled={props.disabled}
+				textCenter
+			/>
+		);
+	}
+	return (
+		// 设计说明：MemberType 决定 action/condition registry 和属性路径上下文；桌面用枚举按钮直接比较，移动端用 Select 降低宽度占用。
+		<>
+			<div class="hidden shrink-0 lg:block">
+				<EnumSelect<Record<MemberType, MemberType>>
+					value={props.value}
+					setValue={(value) => props.onChange(value as MemberType)}
+					options={[...MEMBER_TYPE]}
+					field={{ id: "bt-editor-member-type", name: "bt-editor-member-type" }}
+					dic={memberTypeLabels}
+					disabled={props.disabled}
+				/>
+			</div>
+			<div class="w-32 shrink-0 lg:hidden">
+				<Select
+					value={props.value}
+					setValue={setValue}
+					options={memberTypeOptions}
+					disabled={props.disabled}
+					textCenter
+				/>
+			</div>
+		</>
+	);
+};
 
-const getActiveRootDeleteBlockedReason = (document: EditableBtDocument, root: EditableBtRoot): string => {
+const getRootDeleteBlockedReason = (document: EditableBtDocument, root: EditableBtRoot): string => {
 	if (!root.name) return "主入口不能删除";
+	if (document.roots.length <= 1) return "至少保留一个分支";
 	const references = collectEditableBranchReferences(document).filter((reference) => reference.ref === root.name);
 	if (references.length > 0) return `已有 ${references.length} 个 branch 引用，先调整引用后再删除`;
 	return "";
@@ -870,4 +1068,9 @@ function isEditableKeyboardTarget(target: EventTarget | null): boolean {
 	if (!(target instanceof HTMLElement)) return false;
 	const tagName = target.tagName.toLowerCase();
 	return tagName === "input" || tagName === "textarea" || tagName === "select" || target.isContentEditable;
+}
+
+function getSubtreeTabRootKey(target: EventTarget | null): string | undefined {
+	if (!(target instanceof HTMLElement)) return undefined;
+	return target.closest<HTMLElement>("[data-bt-subtree-root-key]")?.dataset.btSubtreeRootKey;
 }

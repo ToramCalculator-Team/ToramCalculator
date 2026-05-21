@@ -13,7 +13,8 @@ export default function BtEditorPage() {
 		attributeSlots: [],
 	});
 
-	const onSave = (nextTree: MemberBTTree) => {
+	const onChange = (nextTree: MemberBTTree) => {
+		setInitValue(nextTree);
 		console.log(nextTree);
 	};
 
@@ -23,5 +24,5 @@ export default function BtEditorPage() {
 		setInitValue({ ...skillLogicExample.default, definition, agent, memberType: "Player" });
 	});
 
-	return <BtEditor title="行为树编辑器" initValue={initValue()} onSave={onSave} />;
+	return <BtEditor title="行为树编辑器" value={initValue()} onChange={onChange} />;
 }

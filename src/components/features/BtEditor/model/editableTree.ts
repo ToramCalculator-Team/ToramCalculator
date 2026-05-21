@@ -670,6 +670,35 @@ export function moveNodeByDropPlacement(
 	return insertPreparedNodeByDropPlacement(treeWithoutSource, moved, placement);
 }
 
+/**
+ * 设计说明：pointer 拖拽期间源节点 DOM 需要继续接收 pointer capture；预览树保留源节点，并在目标落点插入整棵子树的占位副本。
+ */
+export function previewMoveNodeByDropPlacement(
+	tree: EditableBtTree,
+	sourceNodeId: string,
+	placement: EditableBtDropPlacement,
+): { tree: EditableBtTree; nodeId: string } | null {
+	if (tree.root.id === sourceNodeId) return null;
+	if (sourceNodeId === placement.targetNodeId || isEditableNodeDescendant(tree, sourceNodeId, placement.targetNodeId)) {
+		return null;
+	}
+
+	const source = findEditableNode(tree, sourceNodeId);
+	if (!source) return null;
+	const placeholder = cloneEditableNode(source);
+	assignFreshIds(placeholder);
+	const placeholderSubtree = markPlaceholderSubtree(placeholder);
+	return insertPreparedNodeByDropPlacement(tree, placeholderSubtree, placement);
+}
+
+function markPlaceholderSubtree(node: EditableBtNode): EditableBtNode {
+	return {
+		...node,
+		isPlaceholder: true,
+		children: node.children.map(markPlaceholderSubtree),
+	};
+}
+
 function insertPreparedNodeByDropPlacement(
 	tree: EditableBtTree,
 	child: EditableBtNode,

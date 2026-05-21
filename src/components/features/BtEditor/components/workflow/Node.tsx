@@ -1,13 +1,14 @@
 import type { Component } from "solid-js";
-import type { NodeType } from "../../types/workflow";
+import type { ClientRect, NodeType, TreeNodeDragStart } from "../../types/workflow";
 
 export type NodeProps = {
 	wrapped: Component<NodeType>;
 	model: NodeType;
 	selected?: boolean;
+	dragging?: boolean;
 	onClick?: (nodeId: string) => void;
 	onLongPress?: (nodeId: string) => void;
-	onDragStart?: (nodeId: string) => void;
+	onDragStart?: (payload: TreeNodeDragStart) => void;
 	onPointerDragMove?: (clientX: number, clientY: number) => void;
 	onPointerDragEnd?: (clientX: number, clientY: number) => void;
 	onDragEnd?: () => void;
@@ -20,13 +21,23 @@ export const Node: Component<NodeProps> = (props) => {
 	type PointerInteraction =
 		| { state: "idle" }
 		| { state: "pressed"; pointerId: number; startX: number; startY: number }
-		| { state: "dragging"; pointerId: number };
+		| { state: "dragging"; pointerId: number; startX: number; startY: number };
 	let pointerInteraction: PointerInteraction = { state: "idle" };
 	let skipNextNativeClick = false;
 	let nativeClickResetTimer: number | undefined;
 	let nodeButtonRef: HTMLButtonElement | undefined;
 	const dragActivationDistance = 6;
 	const canDrag = () => !props.readOnly && props.model.type !== "root" && !props.model.isPlaceholder;
+
+	const getClientRect = (): ClientRect => {
+		const rect = nodeButtonRef?.getBoundingClientRect();
+		return {
+			left: rect?.left ?? 0,
+			top: rect?.top ?? 0,
+			width: rect?.width ?? 0,
+			height: rect?.height ?? 0,
+		};
+	};
 
 	const resetPointerInteraction = () => {
 		pointerInteraction = { state: "idle" };
@@ -62,7 +73,7 @@ export const Node: Component<NodeProps> = (props) => {
 				type="button"
 				data-bt-node-id={props.model.id}
 				data-bt-placeholder={props.model.isPlaceholder ? "true" : undefined}
-				class={`touch-none select-none bg-transparent p-0 text-left ${canDrag() ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}
+				class={`touch-none select-none bg-transparent p-0 text-left ${canDrag() ? "cursor-grab active:cursor-grabbing" : "cursor-default"}${props.dragging ? " opacity-35" : ""}`}
 				draggable={false}
 				onClick={(event) => {
 					event.stopPropagation();
@@ -100,8 +111,19 @@ export const Node: Component<NodeProps> = (props) => {
 					if (interaction.state === "pressed") {
 						const distance = Math.hypot(event.clientX - interaction.startX, event.clientY - interaction.startY);
 						if (distance <= dragActivationDistance || !canDrag()) return;
-						pointerInteraction = { state: "dragging", pointerId: event.pointerId };
-						props.onDragStart?.(props.model.id);
+						pointerInteraction = {
+							state: "dragging",
+							pointerId: event.pointerId,
+							startX: interaction.startX,
+							startY: interaction.startY,
+						};
+						props.onDragStart?.({
+							nodeId: props.model.id,
+							pointerId: event.pointerId,
+							startPointer: { x: interaction.startX, y: interaction.startY },
+							currentPointer: { x: event.clientX, y: event.clientY },
+							sourceRect: getClientRect(),
+						});
 					}
 					if (pointerInteraction.state === "dragging") {
 						props.onPointerDragMove?.(event.clientX, event.clientY);

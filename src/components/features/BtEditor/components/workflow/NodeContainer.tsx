@@ -1,6 +1,6 @@
-import { type Component, createEffect, createMemo, createSignal, Index, on, Show } from "solid-js";
+import { type Component, createEffect, createMemo, createSignal, For, on, onCleanup, Show } from "solid-js";
 import { State } from "~/lib/mistreevous/State";
-import type { ChildNode, ConnectorVariant, NodeType } from "../../types/workflow";
+import type { ChildNode, ConnectorVariant, NodeType, TreeNodeDragStart } from "../../types/workflow";
 import { Node } from "./Node";
 
 export type NodeContainerProps = {
@@ -8,9 +8,10 @@ export type NodeContainerProps = {
 	childNodes: ChildNode[];
 	nodeComponents: { [key: string]: Component<NodeType> };
 	selectedNodeId?: string;
+	draggingNodeId?: string;
 	onNodeClick?: (nodeId: string) => void;
 	onNodeLongPress?: (nodeId: string) => void;
-	onTreeNodeDragStart?: (nodeId: string) => void;
+	onTreeNodeDragStart?: (payload: TreeNodeDragStart) => void;
 	onTreeNodePointerDragMove?: (clientX: number, clientY: number) => void;
 	onTreeNodePointerDragEnd?: (clientX: number, clientY: number) => void;
 	onTreeNodeDragEnd?: () => void;
@@ -41,6 +42,8 @@ const stateToConnectorVariant = (state: State): ConnectorVariant => {
 
 export const NodeContainer: Component<NodeContainerProps> = (props) => {
 	let nodeChildrenContainerRef: HTMLDivElement | undefined;
+	let connectorMeasureFrame: number | undefined;
+	let measuredParentNodeId = props.parentNode.id;
 	const [connectorTargetOffsets, setConnectorTargetOffsets] = createSignal<number[] | null>(null);
 	const [nodeChildrenContainerHeight, setNodeChildrenContainerHeight] = createSignal<number>(0);
 	const getRuntimeNodeState = (node: NodeType): State => props.runtimeNodeStates?.[node.path] ?? node.state;
@@ -48,6 +51,42 @@ export const NodeContainer: Component<NodeContainerProps> = (props) => {
 		...props.parentNode,
 		state: getRuntimeNodeState(props.parentNode),
 	}));
+	const childNodeById = createMemo(
+		() => new Map(props.childNodes.map((childNode) => [childNode.child.node.id, childNode])),
+	);
+	const childNodeIds = createMemo(() => props.childNodes.map((childNode) => childNode.child.node.id));
+	const getChildNodeById = (nodeId: string): ChildNode => {
+		const childNode = childNodeById().get(nodeId);
+		if (!childNode) throw new Error(`missing child node ${nodeId}`);
+		return childNode;
+	};
+	const getNodeLayoutSignature = (node: NodeType): string =>
+		[
+			node.id,
+			node.caption,
+			node.type,
+			node.isPlaceholder ? "p" : "",
+			JSON.stringify(node.args),
+			JSON.stringify(node.whileGuard),
+			JSON.stringify(node.untilGuard),
+			JSON.stringify(node.entryCallback),
+			JSON.stringify(node.stepCallback),
+			JSON.stringify(node.exitCallback),
+		].join(":");
+	const getChildLayoutSignature = (childNode: ChildNode): string =>
+		`${getNodeLayoutSignature(childNode.child.node)}[${childNode.child.children.map(getChildLayoutSignature).join("|")}]`;
+	const childLayoutSignature = createMemo(() => props.childNodes.map(getChildLayoutSignature).join("|"));
+
+	const areOffsetsEqual = (left: number[] | null, right: number[]): boolean =>
+		!!left && left.length === right.length && left.every((value, index) => Math.abs(value - right[index]) < 0.5);
+
+	const scheduleConnectorOffsetsCalculation = () => {
+		if (connectorMeasureFrame !== undefined) return;
+		connectorMeasureFrame = requestAnimationFrame(() => {
+			connectorMeasureFrame = undefined;
+			calculateConnectorOffsets();
+		});
+	};
 
 	// 计算连接器目标偏移量的函数
 	// 注意：不进行缓存判断，每次都重新计算，确保连线位置始终准确
@@ -87,25 +126,37 @@ export const NodeContainer: Component<NodeContainerProps> = (props) => {
 			childPositionOffset += childHeight;
 		}
 
-		// 总是更新 signals，确保连线始终使用最新数据
-		setConnectorTargetOffsets(offsets);
-		setNodeChildrenContainerHeight(currentNodeChildrenContainerHeight);
+		// 设计说明：测量值来自 DOM，重复写入相同几何只会制造无意义刷新；几何变化时才更新连线。
+		if (!areOffsetsEqual(connectorTargetOffsets(), offsets)) {
+			setConnectorTargetOffsets(offsets);
+		}
+		if (Math.abs(nodeChildrenContainerHeight() - currentNodeChildrenContainerHeight) >= 0.5) {
+			setNodeChildrenContainerHeight(currentNodeChildrenContainerHeight);
+		}
 	};
 
-	// 额外监听节点 ID 的变化
+	// 额外监听节点 ID 和可见内容的变化
 	// 原因：当编辑器内容更新时，节点可能会被替换（相同数量但不同节点），
 	// 此时需要重新计算连接器位置。使用节点 ID 的签名作为依赖，既明确又轻量
 	createEffect(
 		on(
-			() => props.childNodes.length,
+			() => `${props.parentNode.id}:${childLayoutSignature()}`,
 			() => {
-				setNodeChildrenContainerHeight(0);
-				setTimeout(() => {
-					calculateConnectorOffsets();
-				}, 10);
+				if (measuredParentNodeId !== props.parentNode.id) {
+					measuredParentNodeId = props.parentNode.id;
+					setConnectorTargetOffsets(null);
+					setNodeChildrenContainerHeight(0);
+				}
+				scheduleConnectorOffsetsCalculation();
 			},
 		),
 	);
+
+	onCleanup(() => {
+		if (connectorMeasureFrame !== undefined) {
+			cancelAnimationFrame(connectorMeasureFrame);
+		}
+	});
 
 	return (
 		<div class="flex flex-row items-stretch">
@@ -114,6 +165,7 @@ export const NodeContainer: Component<NodeContainerProps> = (props) => {
 					wrapped={props.nodeComponents[props.parentNode.variant]}
 					model={parentNodeModel()}
 					selected={props.selectedNodeId === props.parentNode.id}
+					dragging={props.draggingNodeId === props.parentNode.id}
 					onClick={props.onNodeClick}
 					onLongPress={props.onNodeLongPress}
 					onDragStart={props.onTreeNodeDragStart}
@@ -124,67 +176,69 @@ export const NodeContainer: Component<NodeContainerProps> = (props) => {
 				/>
 			</div>
 			<Show when={props.childNodes.length > 0}>
-				<div class="relative my-[3px] w-10" style={{ height: `${nodeChildrenContainerHeight() || 1}px` }}>
-					<Show
-						when={
-							connectorTargetOffsets() &&
-							connectorTargetOffsets()?.length === props.childNodes.length &&
-							nodeChildrenContainerHeight() > 0
-						}
-					>
-						<svg class="absolute inset-0 w-full" style={{ height: `${nodeChildrenContainerHeight() || 1}px` }}>
+				<div class="relative my-[3px] w-10 self-stretch">
+					<Show when={connectorTargetOffsets() && nodeChildrenContainerHeight() > 0}>
+						<svg class="absolute inset-0 h-full w-full">
 							<title>Connector Path</title>
-							<Index each={props.childNodes}>
-								{(childNode, index) => {
-									const offsets = connectorTargetOffsets();
-									const height = nodeChildrenContainerHeight();
-									if (!offsets || height === 0) return null;
-
-									const offset = offsets[index];
+							<For each={childNodeIds()}>
+								{(childNodeId, index) => {
+									const childNode = createMemo(() => getChildNodeById(childNodeId));
+									const connectorPath = createMemo(() => {
+										const offsets = connectorTargetOffsets();
+										const height = nodeChildrenContainerHeight();
+										const offset = offsets?.[index()];
+										if (!offsets || height === 0 || offset === undefined) return undefined;
+										const source = { x: 0, y: height / 2 };
+										const target = { x: 40, y: offset };
+										const containerWidth = 40;
+										return `M${source.x} ${source.y} C${containerWidth / 2} ${source.y} ${containerWidth / 2} ${target.y} ${target.x} ${target.y}`;
+									});
 									const connectorVariant = createMemo(() =>
 										stateToConnectorVariant(getRuntimeNodeState(childNode().child.node)),
 									);
-									const source = { x: 0, y: height / 2 };
-									const target = { x: 40, y: offset };
-									const containerWidth = 40;
-
-									// Calculate path data
-									const pathD = `M${source.x} ${source.y} C${containerWidth / 2} ${source.y} ${containerWidth / 2} ${target.y} ${target.x} ${target.y}`;
 
 									return (
-										<path
-											class={getConnectorClass(connectorVariant())}
-											d={pathD}
-											stroke-width="2"
-											fill="transparent"
-											stroke-linejoin={connectorVariant() === "active" ? "round" : undefined}
-											stroke-dasharray={connectorVariant() === "active" ? "8, 4" : undefined}
-										/>
+										<Show when={connectorPath()}>
+											{(pathD) => (
+												<path
+													class={getConnectorClass(connectorVariant())}
+													d={pathD()}
+													stroke-width="2"
+													fill="transparent"
+													stroke-linejoin={connectorVariant() === "active" ? "round" : undefined}
+													stroke-dasharray={connectorVariant() === "active" ? "8, 4" : undefined}
+												/>
+											)}
+										</Show>
 									);
 								}}
-							</Index>
+							</For>
 						</svg>
 					</Show>
 				</div>
 				<div ref={nodeChildrenContainerRef} class="my-[3px] flex flex-col items-stretch">
-					<Index each={props.childNodes}>
-						{(childNode) => (
-							<NodeContainer
-								parentNode={childNode().child.node}
-								childNodes={childNode().child.children}
-								nodeComponents={props.nodeComponents}
-								selectedNodeId={props.selectedNodeId}
-								onNodeClick={props.onNodeClick}
-								onNodeLongPress={props.onNodeLongPress}
-								onTreeNodeDragStart={props.onTreeNodeDragStart}
-								onTreeNodePointerDragMove={props.onTreeNodePointerDragMove}
-								onTreeNodePointerDragEnd={props.onTreeNodePointerDragEnd}
-								onTreeNodeDragEnd={props.onTreeNodeDragEnd}
-								runtimeNodeStates={props.runtimeNodeStates}
-								readOnly={props.readOnly}
-							/>
-						)}
-					</Index>
+					<For each={childNodeIds()}>
+						{(childNodeId) => {
+							const childNode = createMemo(() => getChildNodeById(childNodeId));
+							return (
+								<NodeContainer
+									parentNode={childNode().child.node}
+									childNodes={childNode().child.children}
+									nodeComponents={props.nodeComponents}
+									selectedNodeId={props.selectedNodeId}
+									draggingNodeId={props.draggingNodeId}
+									onNodeClick={props.onNodeClick}
+									onNodeLongPress={props.onNodeLongPress}
+									onTreeNodeDragStart={props.onTreeNodeDragStart}
+									onTreeNodePointerDragMove={props.onTreeNodePointerDragMove}
+									onTreeNodePointerDragEnd={props.onTreeNodePointerDragEnd}
+									onTreeNodeDragEnd={props.onTreeNodeDragEnd}
+									runtimeNodeStates={props.runtimeNodeStates}
+									readOnly={props.readOnly}
+								/>
+							);
+						}}
+					</For>
 				</div>
 			</Show>
 		</div>

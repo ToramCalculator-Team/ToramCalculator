@@ -9,6 +9,91 @@ export type ExamplesMenuProps = {
 	onMDSLInsert: (mdsl: string, agent: string) => void;
 };
 
+export type ExamplesMenuContentProps = ExamplesMenuProps & {
+	onSelect?: () => void;
+};
+
+export const ExamplesMenuContent: Component<ExamplesMenuContentProps> = (props) => {
+	const onExampleClick = (example: Example) => {
+		props.onSelect?.();
+
+		// 将对应的 MDSL 和 Agent 发送到插入口
+		props.onMDSLInsert(example.definition, example.board);
+	};
+
+	const getExampleListItemsForCategory = (category: ExampleCategory) => {
+		return Examples.filter((example) => example.category === category);
+	};
+
+	return (
+		<>
+			<Show when={getExampleListItemsForCategory("advanced").length > 0}>
+				<MenuList dense>
+					<For each={getExampleListItemsForCategory("advanced")}>
+						{(example) => (
+							<MenuItem dense onClick={() => onExampleClick(example)}>
+								{example.caption}
+							</MenuItem>
+						)}
+					</For>
+				</MenuList>
+			</Show>
+			<Show when={getExampleListItemsForCategory("leaf").length > 0}>
+				<Divider />
+				<div class="text-accent-color/70 px-1.25 py-0.5 text-xs">Leaves</div>
+				<MenuList dense>
+					<For each={getExampleListItemsForCategory("leaf")}>
+						{(example) => (
+							<MenuItem dense onClick={() => onExampleClick(example)}>
+								{example.caption}
+							</MenuItem>
+						)}
+					</For>
+				</MenuList>
+			</Show>
+			<Show when={getExampleListItemsForCategory("composite").length > 0}>
+				<Divider />
+				<div class="text-accent-color/70 px-1.25 py-0.5 text-xs">Composites</div>
+				<MenuList dense>
+					<For each={getExampleListItemsForCategory("composite")}>
+						{(example) => (
+							<MenuItem dense onClick={() => onExampleClick(example)}>
+								{example.caption}
+							</MenuItem>
+						)}
+					</For>
+				</MenuList>
+			</Show>
+			<Show when={getExampleListItemsForCategory("decorator").length > 0}>
+				<Divider />
+				<div class="text-accent-color/70 px-1.25 py-0.5 text-xs">Decorators</div>
+				<MenuList dense>
+					<For each={getExampleListItemsForCategory("decorator")}>
+						{(example) => (
+							<MenuItem dense onClick={() => onExampleClick(example)}>
+								{example.caption}
+							</MenuItem>
+						)}
+					</For>
+				</MenuList>
+			</Show>
+			<Show when={getExampleListItemsForCategory("misc").length > 0}>
+				<Divider />
+				<div class="text-accent-color/70 px-1.25 py-0.5 text-xs">Misc</div>
+				<MenuList dense>
+					<For each={getExampleListItemsForCategory("misc")}>
+						{(example) => (
+							<MenuItem dense onClick={() => onExampleClick(example)}>
+								{example.caption}
+							</MenuItem>
+						)}
+					</For>
+				</MenuList>
+			</Show>
+		</>
+	);
+};
+
 export const ExamplesMenu: Component<ExamplesMenuProps> = (props) => {
 	const [anchorEl, setAnchorEl] = createSignal<HTMLElement | null>(null);
 	const open = () => Boolean(anchorEl());
@@ -21,86 +106,13 @@ export const ExamplesMenu: Component<ExamplesMenuProps> = (props) => {
 		setAnchorEl(null);
 	};
 
-	const onExampleClick = (example: Example) => {
-		setAnchorEl(null);
-
-		// 将对应的 MDSL 和 Agent 发送到插入口
-		props.onMDSLInsert(example.definition, example.board);
-	};
-
-	const getExampleListItemsForCategory = (category: ExampleCategory) => {
-		return Examples.filter((example) => example.category === category);
-	};
-
 	return (
 		<>
-			<Button level="quaternary" aria-label="打开通用示例" title="通用示例" onClick={handleClick} class="h-11 w-11 p-2">
+			<Button level="quaternary" aria-label="打开通用示例" title="通用示例" onClick={handleClick}>
 				<Icons.Outline.Receipt />
 			</Button>
 			<Menu anchorEl={anchorEl()} open={open()} onClose={handleClose}>
-				<Show when={getExampleListItemsForCategory("advanced").length > 0}>
-					<MenuList dense>
-						<For each={getExampleListItemsForCategory("advanced")}>
-							{(example) => (
-								<MenuItem dense onClick={() => onExampleClick(example)}>
-									{example.caption}
-								</MenuItem>
-							)}
-						</For>
-					</MenuList>
-				</Show>
-				<Show when={getExampleListItemsForCategory("leaf").length > 0}>
-					<Divider />
-					<div class="text-accent-color/70 px-1.25 py-0.5 text-xs">Leaves</div>
-					<MenuList dense>
-						<For each={getExampleListItemsForCategory("leaf")}>
-							{(example) => (
-								<MenuItem dense onClick={() => onExampleClick(example)}>
-									{example.caption}
-								</MenuItem>
-							)}
-						</For>
-					</MenuList>
-				</Show>
-				<Show when={getExampleListItemsForCategory("composite").length > 0}>
-					<Divider />
-					<div class="text-accent-color/70 px-1.25 py-0.5 text-xs">Composites</div>
-					<MenuList dense>
-						<For each={getExampleListItemsForCategory("composite")}>
-							{(example) => (
-								<MenuItem dense onClick={() => onExampleClick(example)}>
-									{example.caption}
-								</MenuItem>
-							)}
-						</For>
-					</MenuList>
-				</Show>
-				<Show when={getExampleListItemsForCategory("decorator").length > 0}>
-					<Divider />
-					<div class="text-accent-color/70 px-1.25 py-0.5 text-xs">Decorators</div>
-					<MenuList dense>
-						<For each={getExampleListItemsForCategory("decorator")}>
-							{(example) => (
-								<MenuItem dense onClick={() => onExampleClick(example)}>
-									{example.caption}
-								</MenuItem>
-							)}
-						</For>
-					</MenuList>
-				</Show>
-				<Show when={getExampleListItemsForCategory("misc").length > 0}>
-					<Divider />
-					<div class="text-accent-color/70 px-1.25 py-0.5 text-xs">Misc</div>
-					<MenuList dense>
-						<For each={getExampleListItemsForCategory("misc")}>
-							{(example) => (
-								<MenuItem dense onClick={() => onExampleClick(example)}>
-									{example.caption}
-								</MenuItem>
-							)}
-						</For>
-					</MenuList>
-				</Show>
+				<ExamplesMenuContent onMDSLInsert={props.onMDSLInsert} onSelect={handleClose} />
 			</Menu>
 		</>
 	);

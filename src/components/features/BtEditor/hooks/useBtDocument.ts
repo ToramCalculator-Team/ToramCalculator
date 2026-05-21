@@ -75,7 +75,9 @@ export function useBtDocument(initialDocument: EditableBtDocument) {
 	};
 
 	const replaceDocumentPreservingSelection = (document: EditableBtDocument) => {
-		setEditableDocument(cloneEditableDocument(document));
+		const nextDocument = cloneEditableDocument(document);
+		setEditableDocument(nextDocument);
+		return nextDocument;
 	};
 
 	const replaceActiveTree = (tree: EditableBtTree) =>

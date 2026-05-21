@@ -15,6 +15,7 @@ import { Icons } from "~/components/icons";
 import { generateBossDataByFlag } from "~/lib/utils/mob";
 import { store } from "~/store";
 import type { TableDataConfig } from "../data-config";
+import { DefaultFieldClass } from "../form/FormRenderer";
 import { getUserContext } from "../utils/context";
 
 export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
@@ -256,7 +257,7 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 						title={dictionary.fields.actions.key}
 						description={dictionary.fields.actions.formFieldDescription}
 						validationMessage={validationMessage}
-						class="border-dividing-color bg-primary-color w-full rounded-md border"
+						class={DefaultFieldClass}
 					>
 						<BtEditorWrapper
 							title={dictionary.fields.actions.key}
@@ -265,12 +266,12 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 						>
 							<BtEditor
 								title={dictionary.fields.actions.key}
-								initValue={{
+								value={{
 									...value(),
 									memberType: (value().memberType as MemberType) ?? "Mob",
 									attributeSlots: value().attributeSlots ?? [],
 								}}
-								onSave={(nextTree) => {
+								onChange={(nextTree) => {
 									const newValue = {
 										...value(),
 										...nextTree,
@@ -332,12 +333,12 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 							label: flag,
 							value: flag,
 						}))}
-						optionGenerator={(option, selected, handleSelect) => {
+						optionGenerator={(option, selected, onClick) => {
 							return (
 								<button
 									type="button"
-									class={`hover:bg-area-color flex cursor-pointer gap-3 px-3 py-2 ${selected ? "bg-area-color" : ""}`}
-									onClick={handleSelect}
+									class={`flex cursor-pointer gap-3 px-3 py-2 ${selected ? "font-bold" : ""}`}
+									onClick={onClick}
 								>
 									<div class="text-accent-color flex gap-1">
 										<Icons.Filled.Star

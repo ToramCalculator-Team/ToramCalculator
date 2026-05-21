@@ -111,12 +111,12 @@ export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = (dictio
 						>
 							<BtEditor
 								title={dictionary.fields.activeEffect.key}
-								initValue={{
+								value={{
 									...value(),
 									memberType: (value().memberType as MemberType) ?? "Player",
 									attributeSlots: value().attributeSlots ?? [],
 								}}
-								onSave={(nextTree) => {
+								onChange={(nextTree) => {
 									const newValue = {
 										...value(),
 										...nextTree,
@@ -181,8 +181,8 @@ export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = (dictio
 										>
 											<BtEditor
 												title={dictionary.fields.passiveEffects.key}
-												initValue={{ ...item(), attributeSlots: item().attributeSlots ?? [] }}
-												onSave={(nextTree) => {
+												value={{ ...item(), attributeSlots: item().attributeSlots ?? [] }}
+												onChange={(nextTree) => {
 													const newValue = {
 														...item(),
 														...nextTree,
@@ -270,8 +270,8 @@ export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = (dictio
 										>
 											<BtEditor
 												title={dictionary.fields.buffs.key}
-												initValue={{ ...item(), attributeSlots: item().attributeSlots ?? [] }}
-												onSave={(nextTree) => {
+												value={{ ...item(), attributeSlots: item().attributeSlots ?? [] }}
+												onChange={(nextTree) => {
 													const newValue = {
 														...item(),
 														...nextTree,
@@ -321,11 +321,8 @@ export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = (dictio
 					<div class="w-full h-[50vh] rounded overflow-hidden">
 						<BtEditor
 							title={dictionary.fields[key].key}
-							initValue={{ ...field.activeEffect, attributeSlots: field.activeEffect.attributeSlots ?? [] }}
+							value={{ ...field.activeEffect, attributeSlots: field.activeEffect.attributeSlots ?? [] }}
 							readOnly={true}
-							onSave={(nextTree) => {
-								console.log(nextTree);
-							}}
 						/>
 					</div>
 				);

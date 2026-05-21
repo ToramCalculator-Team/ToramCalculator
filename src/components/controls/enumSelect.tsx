@@ -12,6 +12,7 @@ type EnumSelectProps<T extends Record<string, string>> = {
 		name: string;
 	};
 	dic: EnumFieldDetail<string>["enumMap"];
+	disabled?: boolean;
 };
 
 export function EnumSelect<T extends Record<string, string>>(props: EnumSelectProps<T>) {
@@ -35,6 +36,7 @@ export function EnumSelect<T extends Record<string, string>>(props: EnumSelectPr
 								onChange={(e) => {
 									props.setValue?.(e.target.value);
 								}}
+								disabled={props.disabled}
 								class="mt-0.5 sr-only rounded px-4 py-2"
 							/>
 						</label>

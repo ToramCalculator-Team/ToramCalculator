@@ -34,7 +34,7 @@ export const Input = (props: InputProps) => {
 
 	const getStateClass = () => {
 		const stateMap = {
-			default: "focus:outline-brand-color-1st",
+			default: "focus:outline-brand-color-1st focus:outline-2 hover:outline hover:outline-brand-color-1st",
 			error: "focus:outline-brand-color-2nd",
 		};
 		return stateMap[props.state ?? "default"];
@@ -43,7 +43,7 @@ export const Input = (props: InputProps) => {
 	const getDisableClass = () => (props.disabled ? "pointer-events-none opacity-50" : "");
 
 	return (
-		<div class={`flex flex-1 flex-col items-start gap-2 p-2 ${props.class ?? ""}`}>
+		<div class={`flex flex-1 flex-col items-start gap-2 ${props.class ?? ""}`}>
 			<Show when={props.title}>
 				<Show
 					when={hasChildren}

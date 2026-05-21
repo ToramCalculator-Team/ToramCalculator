@@ -1,5 +1,5 @@
 import type { AttributeSlotDeclarationData } from "@db/schema/jsons";
-import { type Component, createMemo, For, Index, type JSX, Show } from "solid-js";
+import { type Component, createEffect, createMemo, createSignal, For, Index, type JSX, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { CheckBox } from "~/components/controls/checkBox";
 import { Input } from "~/components/controls/input";
@@ -14,7 +14,12 @@ import {
 	parseNodeArgument,
 	retargetEditableNode,
 } from "../../model/editableTree";
-import type { MdslCallableSpec, MdslIntellisenseRegistry, MdslParamSpec } from "../../modes/mdslIntellisense";
+import type {
+	MdslCallableSpec,
+	MdslIntellisenseRegistry,
+	MdslParamSpec,
+	MdslTypeSpec,
+} from "../../modes/mdslIntellisense";
 
 export type NodeInspectorProps = {
 	node?: EditableBtNode;
@@ -53,9 +58,16 @@ const nodeTypeOptions: Array<{ label: string; value: EditableBtNodeType }> = [
 type AttributeKey = "entry" | "step" | "exit" | "while" | "until";
 
 type ArgumentRow = {
+	identity: string;
 	param: MdslParamSpec;
 	index: number;
 	value: NodeArgument;
+};
+
+type ArgumentReferenceOption = {
+	label: string;
+	value: string;
+	type: MdslTypeSpec;
 };
 
 const defaultArgumentForParam = (param: MdslParamSpec): NodeArgument => {
@@ -69,12 +81,6 @@ const defaultArgumentForParam = (param: MdslParamSpec): NodeArgument => {
 const normalizeArgsForSpec = (args: NodeArgument[], spec?: MdslCallableSpec): NodeArgument[] => {
 	if (!spec) return args;
 	return spec.params.map((param, index) => args[index] ?? defaultArgumentForParam(param));
-};
-
-const parseParamValue = (value: string, param: MdslParamSpec): NodeArgument => {
-	if (param.type.kind === "primitive" && param.type.type === "number") return Number(value) || 0;
-	if (param.type.kind === "primitive" && param.type.type === "boolean") return value === "true";
-	return parseNodeArgument(value);
 };
 
 const getSingleNumberValue = (value: number | [number, number] | undefined, fallback: number): number => {
@@ -105,6 +111,13 @@ export const NodeInspector: Component<NodeInspectorProps> = (props) => {
 		...Object.keys(props.registry.properties).map((name) => ({ label: `$${name}`, value: `$${name}` })),
 		...props.attributeSlots.map((slot) => ({ label: slot.path, value: slot.path })),
 	]);
+	const propertyReferenceOptions = createMemo<ArgumentReferenceOption[]>(() =>
+		Object.entries(props.registry.properties).map(([name, type]) => ({
+			label: `$${name}`,
+			value: `$${name}`,
+			type,
+		})),
+	);
 	const nodeDiagnostics = createMemo(() => props.nodeDiagnostics ?? []);
 	const branchTargetOptions = createMemo(() => {
 		const ref = props.node?.type === "branch" ? props.node.ref?.trim() : "";
@@ -170,9 +183,15 @@ export const NodeInspector: Component<NodeInspectorProps> = (props) => {
 						const node = nodeAccessor();
 						if (spec) {
 							const args = normalizeArgsForSpec(node.args, spec);
-							return spec.params.map((param, index) => ({ param, index, value: args[index] }));
+							return spec.params.map((param, index) => ({
+								identity: `${node.id}:${index}:${param.label}`,
+								param,
+								index,
+								value: args[index],
+							}));
 						}
 						return node.args.map((value, index) => ({
+							identity: `${node.id}:${index}:arg${index + 1}`,
 							param: { label: `arg${index + 1}`, type: { kind: "primitive", type: "unknown" } },
 							index,
 							value,
@@ -183,9 +202,9 @@ export const NodeInspector: Component<NodeInspectorProps> = (props) => {
 						const nextSpec = callableSource()[value];
 						update({ call: value, args: normalizeArgsForSpec(nodeAccessor().args, nextSpec) });
 					};
-					const updateArg = (index: number, value: string, param: MdslParamSpec) => {
+					const updateArg = (index: number, value: NodeArgument) => {
 						const args = normalizeArgsForSpec(nodeAccessor().args, callable());
-						args[index] = parseParamValue(value, param);
+						args[index] = value;
 						update({ args });
 					};
 
@@ -234,6 +253,7 @@ export const NodeInspector: Component<NodeInspectorProps> = (props) => {
 										}
 										rows={argumentRows()}
 										slotOptions={slotOptions()}
+										propertyReferenceOptions={propertyReferenceOptions()}
 										canRemove={!props.readOnly && !callable()}
 										readOnly={props.readOnly}
 										onChange={updateArg}
@@ -454,9 +474,10 @@ const ArgumentInspectorModule: Component<{
 	action?: JSX.Element;
 	rows: ArgumentRow[];
 	slotOptions: Array<{ label: string; value: string }>;
+	propertyReferenceOptions: ArgumentReferenceOption[];
 	canRemove: boolean;
 	readOnly?: boolean;
-	onChange: (index: number, value: string, param: MdslParamSpec) => void;
+	onChange: (index: number, value: NodeArgument) => void;
 	onRemove: (index: number) => void;
 	isPathArgument: (param: MdslParamSpec) => boolean;
 }> = (props) => (
@@ -471,23 +492,14 @@ const ArgumentInspectorModule: Component<{
 					<Input title={row().param.label} description={formatParamType(row().param)}>
 						<div class="flex w-full min-w-0 items-center gap-2">
 							<div class="min-w-0 flex-1">
-								<Show
-									when={props.isPathArgument(row().param) && props.slotOptions.length > 0}
-									fallback={
-										<ArgumentInput
-											value={formatArgument(row().value)}
-											onInput={(event) => props.onChange(row().index, event.currentTarget.value, row().param)}
-											disabled={props.readOnly}
-										/>
-									}
-								>
-									<Select
-										value={formatArgument(row().value)}
-										setValue={(value) => props.onChange(row().index, value, row().param)}
-										options={props.slotOptions}
-										disabled={props.readOnly}
-									/>
-								</Show>
+								<ArgumentField
+									row={row()}
+									slotOptions={props.slotOptions}
+									propertyReferenceOptions={props.propertyReferenceOptions}
+									isPathArgument={props.isPathArgument}
+									readOnly={props.readOnly}
+									onChange={props.onChange}
+								/>
 							</div>
 							<Button
 								level="quaternary"
@@ -505,16 +517,379 @@ const ArgumentInspectorModule: Component<{
 	</div>
 );
 
+const ArgumentField: Component<{
+	row: ArgumentRow;
+	slotOptions: Array<{ label: string; value: string }>;
+	propertyReferenceOptions: ArgumentReferenceOption[];
+	isPathArgument: (param: MdslParamSpec) => boolean;
+	readOnly?: boolean;
+	onChange: (index: number, value: NodeArgument) => void;
+}> = (props) => {
+	const update = (value: NodeArgument) => props.onChange(props.row.index, value);
+	const param = () => props.row.param;
+	const value = () => props.row.value;
+	const referenceOptions = () => getReferenceOptionsForParam(param(), props.propertyReferenceOptions);
+
+	if (props.isPathArgument(param()) && props.slotOptions.length > 0) {
+		return (
+			<Select
+				value={formatArgument(value())}
+				setValue={(nextValue) => update(parseNodeArgument(nextValue))}
+				options={props.slotOptions}
+				disabled={props.readOnly}
+			/>
+		);
+	}
+
+	if (param().type.kind === "enum") {
+		return (
+			<EnumArgumentField
+				identity={props.row.identity}
+				value={value()}
+				values={param().type.values}
+				referenceOptions={referenceOptions()}
+				disabled={props.readOnly}
+				onChange={update}
+			/>
+		);
+	}
+
+	if (param().type.kind === "primitive") {
+		if (param().type.type === "number") {
+			return (
+				<NumberArgumentField
+					identity={props.row.identity}
+					value={value()}
+					referenceOptions={referenceOptions()}
+					readOnly={props.readOnly}
+					onChange={update}
+				/>
+			);
+		}
+		if (param().type.type === "boolean") {
+			return (
+				<BooleanArgumentField
+					identity={props.row.identity}
+					value={value()}
+					referenceOptions={referenceOptions()}
+					readOnly={props.readOnly}
+					onChange={update}
+				/>
+			);
+		}
+		if (param().type.type === "string") {
+			return (
+				<StringArgumentField
+					identity={props.row.identity}
+					value={value()}
+					referenceOptions={referenceOptions()}
+					readOnly={props.readOnly}
+					onChange={update}
+				/>
+			);
+		}
+		if (param().type.type === "null") {
+			return (
+				<input
+					type="text"
+					value="null"
+					disabled
+					class="text-accent-color bg-area-color pointer-events-none w-full rounded p-3 opacity-50"
+				/>
+			);
+		}
+	}
+
+	return (
+		<ArgumentInput
+			type="text"
+			value={formatArgument(value())}
+			onInput={(event) => update(parseNodeArgument(event.currentTarget.value))}
+			disabled={props.readOnly}
+		/>
+	);
+};
+
+const EnumArgumentField: Component<{
+	identity: string;
+	value: NodeArgument;
+	values: readonly string[];
+	referenceOptions: ArgumentReferenceOption[];
+	disabled?: boolean;
+	onChange: (value: NodeArgument) => void;
+}> = (props) => {
+	const fallback = () => props.values[0] ?? "";
+	const [directValue, setDirectValue] = createSignal(typeof props.value === "string" ? props.value : fallback());
+	let previousIdentity = props.identity;
+
+	createEffect(() => {
+		if (props.identity !== previousIdentity) {
+			previousIdentity = props.identity;
+			setDirectValue(typeof props.value === "string" ? props.value : fallback());
+			return;
+		}
+		if (typeof props.value === "string") setDirectValue(props.value);
+	});
+
+	const commitDirectValue = (value: string) => {
+		setDirectValue(value);
+		props.onChange(value);
+	};
+
+	return (
+		// 设计说明：枚举参数的直接值来自 schema 候选；引用模式只接收字符串/未知属性，避免手写自由文本绕过枚举约束。
+		<div class="flex min-w-0 gap-2">
+			<Select
+				value={directValue()}
+				setValue={commitDirectValue}
+				options={props.values.map((option) => ({ label: option, value: option }))}
+				disabled={props.disabled || isPropertyReferenceArgument(props.value)}
+			/>
+			<ReferenceSelect
+				value={props.value}
+				options={props.referenceOptions}
+				directLabel="直接枚举值"
+				disabled={props.disabled}
+				onDirect={() => props.onChange(directValue())}
+				onReference={props.onChange}
+			/>
+		</div>
+	);
+};
+
+const NumberArgumentField: Component<{
+	identity: string;
+	value: NodeArgument;
+	referenceOptions: ArgumentReferenceOption[];
+	readOnly?: boolean;
+	onChange: (value: NodeArgument) => void;
+}> = (props) => {
+	const [rawValue, setRawValue] = createSignal(typeof props.value === "number" ? String(props.value) : "");
+	let previousIdentity = props.identity;
+
+	createEffect(() => {
+		if (props.identity !== previousIdentity) {
+			previousIdentity = props.identity;
+			setRawValue(typeof props.value === "number" ? String(props.value) : "");
+			return;
+		}
+		if (typeof props.value === "number") setRawValue(String(props.value));
+	});
+
+	const parseFiniteNumber = (raw: string): number | undefined => {
+		const trimmed = raw.trim();
+		if (!trimmed || trimmed === "+" || trimmed === "-" || trimmed === "." || trimmed === "+." || trimmed === "-.") {
+			return undefined;
+		}
+		const nextValue = Number(trimmed);
+		return Number.isFinite(nextValue) ? nextValue : undefined;
+	};
+
+	const commitRawValue = (): number => {
+		const parsed = parseFiniteNumber(rawValue());
+		const nextValue = parsed ?? (typeof props.value === "number" ? props.value : 0);
+		setRawValue(String(nextValue));
+		return nextValue;
+	};
+
+	const handleInput: JSX.EventHandler<HTMLInputElement, InputEvent> = (event) => {
+		const nextRawValue = event.currentTarget.value;
+		setRawValue(nextRawValue);
+		const parsed = parseFiniteNumber(nextRawValue);
+		if (parsed !== undefined) props.onChange(parsed);
+	};
+
+	return (
+		// 设计说明：数字输入存在“正在输入但还不是合法 number”的瞬态，本地 raw buffer 避免把小数点/负号立刻提交成 0。
+		<div class="flex min-w-0 gap-2">
+			<ArgumentInput
+				type="number"
+				value={rawValue()}
+				disabled={props.readOnly || isPropertyReferenceArgument(props.value)}
+				onInput={handleInput}
+				onBlur={() => props.onChange(commitRawValue())}
+			/>
+			<ReferenceSelect
+				value={props.value}
+				options={props.referenceOptions}
+				directLabel="直接数值"
+				disabled={props.readOnly}
+				onDirect={() => props.onChange(commitRawValue())}
+				onReference={props.onChange}
+			/>
+		</div>
+	);
+};
+
+const BooleanArgumentField: Component<{
+	identity: string;
+	value: NodeArgument;
+	referenceOptions: ArgumentReferenceOption[];
+	readOnly?: boolean;
+	onChange: (value: NodeArgument) => void;
+}> = (props) => {
+	const [directValue, setDirectValue] = createSignal(typeof props.value === "boolean" ? props.value : false);
+	let previousIdentity = props.identity;
+
+	createEffect(() => {
+		if (props.identity !== previousIdentity) {
+			previousIdentity = props.identity;
+			setDirectValue(typeof props.value === "boolean" ? props.value : false);
+			return;
+		}
+		if (typeof props.value === "boolean") setDirectValue(props.value);
+	});
+
+	const commitDirectValue = (value: boolean) => {
+		setDirectValue(value);
+		props.onChange(value);
+	};
+
+	return (
+		<div class="flex min-w-0 items-center gap-2">
+			<div class={isPropertyReferenceArgument(props.value) ? "pointer-events-none opacity-50" : ""}>
+				<CheckBox
+					name="boolean-argument"
+					checked={directValue()}
+					disabled={props.readOnly || isPropertyReferenceArgument(props.value)}
+					onChange={(event) => commitDirectValue(event.currentTarget.checked)}
+				>
+					{directValue() ? "true" : "false"}
+				</CheckBox>
+			</div>
+			<ReferenceSelect
+				value={props.value}
+				options={props.referenceOptions}
+				directLabel="直接布尔值"
+				disabled={props.readOnly}
+				onDirect={() => props.onChange(directValue())}
+				onReference={props.onChange}
+			/>
+		</div>
+	);
+};
+
+const StringArgumentField: Component<{
+	identity: string;
+	value: NodeArgument;
+	referenceOptions: ArgumentReferenceOption[];
+	readOnly?: boolean;
+	onChange: (value: NodeArgument) => void;
+}> = (props) => {
+	const [directValue, setDirectValue] = createSignal(typeof props.value === "string" ? props.value : "");
+	let previousIdentity = props.identity;
+
+	createEffect(() => {
+		if (props.identity !== previousIdentity) {
+			previousIdentity = props.identity;
+			setDirectValue(typeof props.value === "string" ? props.value : "");
+			return;
+		}
+		if (typeof props.value === "string") setDirectValue(props.value);
+	});
+
+	const commitDirectValue = (value: string) => {
+		setDirectValue(value);
+		props.onChange(value);
+	};
+
+	return (
+		<div class="flex min-w-0 gap-2">
+			<ArgumentInput
+				type="text"
+				value={directValue()}
+				disabled={props.readOnly || isPropertyReferenceArgument(props.value)}
+				onInput={(event) => commitDirectValue(event.currentTarget.value)}
+			/>
+			<ReferenceSelect
+				value={props.value}
+				options={props.referenceOptions}
+				directLabel="直接文本"
+				disabled={props.readOnly}
+				onDirect={() => props.onChange(directValue())}
+				onReference={props.onChange}
+			/>
+		</div>
+	);
+};
+
+const ReferenceSelect: Component<{
+	value: NodeArgument;
+	options: ArgumentReferenceOption[];
+	directLabel: string;
+	disabled?: boolean;
+	onDirect: () => void;
+	onReference: (value: NodeArgument) => void;
+}> = (props) => {
+	const currentReference = createMemo(() =>
+		isPropertyReferenceArgument(props.value) ? formatArgument(props.value) : "",
+	);
+	const options = createMemo(() => {
+		const current = currentReference();
+		const currentOption =
+			current && !props.options.some((option) => option.value === current)
+				? [{ label: `${current}（当前）`, value: current }]
+				: [];
+		return [{ label: props.directLabel, value: "" }, ...currentOption, ...props.options];
+	});
+
+	return (
+		// 设计说明：当前文档可能引用了未声明或类型暂不可推断的 `$属性`；显示当前值可以保护旧数据不被控件语义吞掉。
+		<Show when={props.options.length > 0 || !!currentReference()}>
+			<div class="w-36 shrink-0">
+				<Select
+					value={currentReference()}
+					setValue={(nextValue) => {
+						if (!nextValue) {
+							props.onDirect();
+							return;
+						}
+						props.onReference(parseNodeArgument(nextValue));
+					}}
+					options={options()}
+					disabled={props.disabled}
+				/>
+			</div>
+		</Show>
+	);
+};
+
+const isPropertyReferenceArgument = (value: NodeArgument): value is { $: string } =>
+	typeof value === "object" && value !== null && "$" in value;
+
+const getReferenceOptionsForParam = (
+	param: MdslParamSpec,
+	options: ArgumentReferenceOption[],
+): ArgumentReferenceOption[] => {
+	if (param.type.kind === "enum") {
+		return options.filter((option) => {
+			if (option.type.kind !== "primitive") return false;
+			return option.type.type === "string" || option.type.type === "unknown";
+		});
+	}
+	if (param.type.kind !== "primitive") return [];
+	const expectedType = param.type.type;
+	if (expectedType === "null") return [];
+	if (expectedType === "unknown") return options;
+	return options.filter((option) => {
+		if (option.type.kind !== "primitive") return false;
+		return option.type.type === expectedType || option.type.type === "unknown";
+	});
+};
+
 const ArgumentInput: Component<{
+	type: "text" | "number";
 	value: string;
 	disabled?: boolean;
 	onInput: JSX.EventHandler<HTMLInputElement, InputEvent>;
+	onBlur?: JSX.EventHandler<HTMLInputElement, FocusEvent>;
 }> = (props) => (
 	<input
-		type="text"
+		type={props.type}
 		value={props.value}
 		disabled={props.disabled}
 		onInput={props.onInput}
+		onBlur={props.onBlur}
 		class={`text-accent-color bg-area-color w-full rounded p-3 focus:outline-brand-color-1st ${
 			props.disabled ? "pointer-events-none opacity-50" : ""
 		}`}

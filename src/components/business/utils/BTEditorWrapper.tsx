@@ -4,10 +4,17 @@ import { Motion, Presence } from "solid-motionone";
 import { Button } from "~/components/controls/button";
 import { store } from "~/store";
 
-export const BtEditorWrapper: (props:{title: string, children: JSX.Element, editorDisplay: boolean, setEditorDisplay: (editorDisplay: boolean) => void}) => JSX.Element = (props) => {
+export const BtEditorWrapper: (props: {
+	title: string;
+	children: JSX.Element;
+	editorDisplay: boolean;
+	setEditorDisplay: (editorDisplay: boolean) => void;
+}) => JSX.Element = (props) => {
 	return (
 		<>
-			<Button class="w-full" onClick={() => props.setEditorDisplay(true)}>{props.title}</Button>
+			<Button class="w-full" onClick={() => props.setEditorDisplay(true)}>
+				{props.title}
+			</Button>
 			<Portal>
 				<Presence exitBeforeEnter>
 					<Show when={props.editorDisplay}>
@@ -23,7 +30,7 @@ export const BtEditorWrapper: (props:{title: string, children: JSX.Element, edit
 						>
 							<div
 								role="application"
-								class="DialogBox bg-primary-color shadow-dividing-color shadow-dialog relative flex h-[90vh] w-[90vw] flex-col items-center gap-3 rounded p-2"
+								class="DialogBox bg-primary-color shadow-dividing-color shadow-dialog relative flex h-full w-full flex-col items-center gap-3 rounded"
 								onClick={(e) => e.stopPropagation()}
 								onKeyDown={(e) => {
 									if (e.key === "Escape") {

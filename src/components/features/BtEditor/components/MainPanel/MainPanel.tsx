@@ -3,7 +3,13 @@ import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import type { State } from "~/lib/mistreevous/State";
 import type { EditableBtDropPlacement, EditableBtNodeType } from "../../model/editableTree";
-import type { ConnectorType, NodeType } from "../../types/workflow";
+import type {
+	ClientPoint,
+	ConnectorType,
+	NodeType,
+	TreeNodeDragStart,
+	WorkflowDragOverlay,
+} from "../../types/workflow";
 import { DefaultNode } from "../workflow/DefaultNode";
 import { WorkflowCanvas, type WorkflowCanvasInstance } from "../workflow/WorkflowCanvas";
 
@@ -19,16 +25,20 @@ export type MainPanelProps = {
 	dragNodeType?: EditableBtNodeType;
 	dragNodeId?: string;
 	activeDropPlacement?: EditableBtDropPlacement;
+	dragOverlay?: WorkflowDragOverlay;
 	showPlayButton: boolean;
 	showReplayButton: boolean;
 	showStopButton: boolean;
 	onPlayButtonClick(): void;
 	onReplayButtonClick(): void;
 	onStopButtonClick(): void;
-	onStepButtonClick?: () => void;
+	canUndo?: boolean;
+	canRedo?: boolean;
+	onUndo?: () => void;
+	onRedo?: () => void;
 	previewStatus?: JSX.Element;
 	runtimeNodeStates?: Record<string, State>;
-	onNodeDragOver?: (placement: EditableBtDropPlacement | null) => void;
+	onNodeDragOver?: (placement: EditableBtDropPlacement | null, pointer?: ClientPoint) => void;
 	onNodeDrop?: (placement: EditableBtDropPlacement | null) => void;
 	onNodeDragEnd?: () => void;
 	onCanvasClick?: () => void;
@@ -39,7 +49,7 @@ export type MainPanelProps = {
 	onNodeInsertPreview?: (placement: EditableBtDropPlacement) => void;
 	onNodeInsertCancel?: () => void;
 	onNodeInsertCommit?: (placement: EditableBtDropPlacement) => void;
-	onTreeNodeDragStart?: (nodeId: string) => void;
+	onTreeNodeDragStart?: (payload: TreeNodeDragStart) => void;
 	onTreeNodeDragEnd?: () => void;
 	canDeleteNode?: (nodeId: string) => boolean;
 	canDropOnNode?: (nodeId: string) => boolean;
@@ -82,6 +92,7 @@ export const MainPanel: Component<MainPanelProps> = (props) => {
 				dragNodeType={props.dragNodeType}
 				dragNodeId={props.dragNodeId}
 				activeDropPlacement={props.activeDropPlacement}
+				dragOverlay={props.dragOverlay}
 				runtimeNodeStates={props.runtimeNodeStates}
 				nodeComponents={{
 					default: DefaultNode,
@@ -111,9 +122,24 @@ export const MainPanel: Component<MainPanelProps> = (props) => {
 							<Icons.Outline.Play />
 						</Button>
 					</Show>
-					<Show when={props.showPlayButton && props.onStepButtonClick}>
-						<Button level="primary" onClick={props.onStepButtonClick} class="run-tree-fab flex-none min-h-11 min-w-11">
-							<Icons.Outline.Swap />
+					<Show when={props.onUndo}>
+						<Button
+							level="primary"
+							disabled={!props.canUndo}
+							onClick={() => props.onUndo?.()}
+							class="run-tree-fab flex-none"
+						>
+							<Icons.Outline.Back />
+						</Button>
+					</Show>
+					<Show when={props.onRedo}>
+						<Button
+							level="primary"
+							disabled={!props.canRedo}
+							onClick={() => props.onRedo?.()}
+							class="run-tree-fab flex-none"
+						>
+							<Icons.Outline.Replay />
 						</Button>
 					</Show>
 					<Show when={props.showReplayButton}>
@@ -127,7 +153,11 @@ export const MainPanel: Component<MainPanelProps> = (props) => {
 						</Button>
 					</Show>
 					<Show when={props.elements.edges.length > 0 && props.elements.nodes.length > 0}>
-						<Button level="primary" onClick={() => canvasInstance()?.fit()} class="run-tree-fab flex-none">
+						<Button
+							level="primary"
+							onClick={() => canvasInstance()?.fit()}
+							class="run-tree-fab hidden flex-none lg:flex"
+						>
 							<Icons.Outline.Location />
 						</Button>
 					</Show>

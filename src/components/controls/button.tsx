@@ -46,7 +46,7 @@ export const Button = (props: MyButtonProps) => {
 
 	createEffect(() => {
 		setDefaultButtonClassNames(
-			`${config().disableClass} cursor-pointer flex items-center underline-offset-4 hover:underline ${config().sizeClass} ${config().levelClass} ${config().textAlignClass}`,
+			`${config().disableClass} cursor-pointer flex items-center underline-offset-4 hover:underline shadow-dividing-color hover:shadow-card ${config().sizeClass} ${config().levelClass} ${config().textAlignClass}`,
 		);
 	});
 
