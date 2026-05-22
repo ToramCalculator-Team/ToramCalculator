@@ -4,7 +4,6 @@
  * @version 1.0.0
  */
 // import type { Selectable } from "kysely";
-import { skillLogicExample } from "~/components/features/BtEditor/data/SkillExamples";
 import type { DB } from "./generated/zod/index";
 
 // type SelectDB<T> = {
@@ -433,30 +432,24 @@ export const defaultData: DB = {
 		targetMainWeaponType: "Any",
 		targetSubWeaponType: "Any",
 		targetArmorAbilityType: "Any",
-		activeEffect: {
-			memberType: "Player",
-			name: "default",
-			definition: skillLogicExample.default.definition,
-			agent: skillLogicExample.default.agent,
-			attributeSlots: [],
-		},
-		passiveEffects: [],
-		buffs: [],
-		elementLogic: "self.mainWeapon.element",
-		castingRange: "",
-		effectiveRange: "0",
-		actionFixedMs: "",
-		actionModifiedMs: "",
-		chantingFixedMs: "",
-		chantingModifiedMs: "",
-		chargingFixedMs: "",
-		chargingModifiedMs: "",
-		startupMs: "",
+		activeBehavior: null,
+		passiveBehavior: [],
+		registeredBehavior: [],
 		hpCost: null,
 		mpCost: "100",
 		description: "",
 		details: null,
 		belongToskillId: "defaultSkillId",
+	},
+	behavior_tree: {
+		id: "defaultBehaviorTreeId",
+		name: "默认行为树",
+		definition: "",
+		agent: "",
+		attributeSlots: [],
+		activeOwnerId: null,
+		passiveOwnerId: null,
+		registeredOwnerId: null,
 	},
 	special: {
 		name: "默认特殊",

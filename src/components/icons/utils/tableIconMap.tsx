@@ -13,6 +13,7 @@ export const TableIconMap: Record<keyof DB, JSX.Element> = {
 	avatar: undefined,
 	_avatarTocharacter: undefined,
 	_backRelation: undefined,
+	behavior_tree: undefined,
 	_campA: undefined,
 	_campB: undefined,
 	character: undefined,

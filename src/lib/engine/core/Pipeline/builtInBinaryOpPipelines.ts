@@ -57,7 +57,7 @@ export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstructi
 		{ target: "mpCost", op: "max", a: 0, b: "ratedMpCost" },
 	],
 
-	// 前摇：variant.startupMs 为单一公式，整段受行动速度影响。
+	// 前摇：activeBehavior.behaviorParams.lifecycle.startupMs 为单一公式，整段受行动速度影响。
 	// 输入：input.original（由 FSM 预求值）
 	"skill.startup": [
 		...mspdRateInstructions,
@@ -65,7 +65,7 @@ export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstructi
 		{ target: "durationMs", op: "floor", a: "rawDurationMs" },
 	],
 
-	// 蓄力：chargingFixedMs 不受速度影响；chargingModifiedMs 受行动速度修正。
+	// 蓄力：lifecycle.chargingFixedMs 不受速度影响；lifecycle.chargingModifiedMs 受行动速度修正。
 	// 输入：input.fixed, input.modified
 	"skill.charging": [
 		...mspdRateInstructions,
@@ -74,7 +74,7 @@ export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstructi
 		{ target: "durationMs", op: "floor", a: "rawDurationMs" },
 	],
 
-	// 咏唱：chantingFixedMs 不受速度影响；chantingModifiedMs 先受 CSPD 咏唱缩减，再受行动速度动画修正。
+	// 咏唱：lifecycle.chantingFixedMs 不受速度影响；lifecycle.chantingModifiedMs 先受 CSPD 咏唱缩减，再受行动速度动画修正。
 	// 输入：input.fixed, input.modified
 	"skill.chanting": [
 		...mspdRateInstructions,
@@ -85,7 +85,7 @@ export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstructi
 		{ target: "durationMs", op: "floor", a: "rawDurationMs" },
 	],
 
-	// 发动（motion）：actionFixedMs 不受速度影响；actionModifiedMs 受行动速度修正。
+	// 发动（motion）：lifecycle.actionFixedMs 不受速度影响；lifecycle.actionModifiedMs 受行动速度修正。
 	// 输入：input.fixed, input.modified
 	"skill.action": [
 		...mspdRateInstructions,

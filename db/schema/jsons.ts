@@ -5,7 +5,7 @@
  * 此文件主要用于定义数据库中出现的 Json 类型，生成器会将这里的内容补充到生成的zod/index.ts文件中。
  */
 import { z } from "zod/v4";
-import { MEMBER_TYPE } from "./enums";
+import { MEMBER_TYPE, SKILL_BEHAVIOR_KIND } from "./enums";
 
 // StatContainer 可合并的属性定义，字段形状需与 SchemaAttribute 保持一致。
 export const SchemaAttributeSchema = z.object({
@@ -27,6 +27,231 @@ export const AttributeSlotDeclarationSchema = z.object({
 	attribute: SchemaAttributeSchema,
 });
 export type AttributeSlotDeclarationData = z.output<typeof AttributeSlotDeclarationSchema>;
+
+// 行为树或行为 DSL 声明的属性槽列表；默认空数组用于兼容无槽技能。
+export const AttributeSlotDeclarationListSchema = z.array(AttributeSlotDeclarationSchema).default([]);
+export type AttributeSlotDeclarationListData = z.output<typeof AttributeSlotDeclarationListSchema>;
+
+// 技能默认行为 DSL 的顶层类型标签；只描述游戏内容分类，不参与主动/被动入口判定。
+export const SkillBehaviorKindSchema = z.enum(SKILL_BEHAVIOR_KIND);
+export type SkillBehaviorKindData = z.output<typeof SkillBehaviorKindSchema>;
+
+// 技能释放生命周期参数；从旧 skill_variant 时间字段迁入。
+export const SkillBehaviorLifecycleSchema = z
+	.object({
+		// 前摇生效点；由 skill.startup pipeline 修正。
+		startupMs: z.string().default("0"),
+		// 固定动作时间，不受行动速度影响。
+		actionFixedMs: z.string().default("0"),
+		// 可修正动作时间，进入 skill.action pipeline。
+		actionModifiedMs: z.string().default("0"),
+		// 固定咏唱时间，不受速度影响。
+		chantingFixedMs: z.string().default("0"),
+		// 可修正咏唱时间，进入 skill.chanting pipeline。
+		chantingModifiedMs: z.string().default("0"),
+		// 固定蓄力时间，不受速度影响。
+		chargingFixedMs: z.string().default("0"),
+		// 可修正蓄力时间，进入 skill.charging pipeline。
+		chargingModifiedMs: z.string().default("0"),
+		// 释放入口层面的锁定与寻敌参数。
+		targeting: z
+			.object({
+				// 释放距离，旧 castingRange 迁入此处。
+				castingRange: z.string().default("0"),
+			})
+			.default({ castingRange: "0" }),
+	})
+	.default({
+		startupMs: "0",
+		actionFixedMs: "0",
+		actionModifiedMs: "0",
+		chantingFixedMs: "0",
+		chantingModifiedMs: "0",
+		chargingFixedMs: "0",
+		chargingModifiedMs: "0",
+		targeting: { castingRange: "0" },
+	});
+export type SkillBehaviorLifecycleData = z.output<typeof SkillBehaviorLifecycleSchema>;
+
+// 伤害元素公式；旧 elementLogic 迁入 expression。
+export const DamageElementFormulaParamSchema = z.object({
+	expression: z.string().default("self.mainWeapon.element"),
+});
+export type DamageElementFormulaParamData = z.output<typeof DamageElementFormulaParamSchema>;
+
+// 单次伤害事件的公式参数。
+export const DamageFormulaParamSchema = z.object({
+	// 固定值公式，默认 0。
+	constant: z.string().default("0"),
+	// 倍率公式，默认 100。
+	multiplier: z.string().default("100"),
+	// 基础攻击来源，例如 atk.p / atk.m / 自定义表达式。
+	base: z.string().optional(),
+	// 元素来源可为主手、副手或技能内建表达式。
+	element: DamageElementFormulaParamSchema.default({ expression: "self.mainWeapon.element" }),
+});
+export type DamageFormulaParamData = z.output<typeof DamageFormulaParamSchema>;
+
+// 伤害投递与范围参数；warningZone 只随非单体范围存在。
+export const DamageDeliveryParamSchema = z.object({
+	// 对应 DAMAGE_RANGE_TYPE 的字符串值，避免在 JSON schema 内硬依赖数据库 enum。
+	rangeType: z.string().default("Single"),
+	// 旧 effectiveRange 迁入具体伤害事件范围。
+	effectiveRange: z.string().default("0"),
+	// 单体技能没有 warningZone；范围技能由区域管理器解释此参数。
+	warningZone: z.unknown().optional(),
+});
+export type DamageDeliveryParamData = z.output<typeof DamageDeliveryParamSchema>;
+
+// 单次伤害事件的时间参数；周期与持续语义交给区域管理器解释。
+export const DamageTimingParamSchema = z.object({
+	delayMs: z.string().default("0"),
+	durationMs: z.string().optional(),
+	intervalMs: z.string().optional(),
+	repeatCount: z.string().optional(),
+});
+export type DamageTimingParamData = z.output<typeof DamageTimingParamSchema>;
+
+// 命中时判定的异常参数。
+export const AilmentParamSchema = z.object({
+	// 对应 ABNORMAL_TYPE 的字符串值。
+	type: z.string(),
+	// 发生概率，支持表达式。
+	probability: z.string().default("100"),
+	// 持续时间，按毫秒表达。
+	durationMs: z.string().optional(),
+});
+export type AilmentParamData = z.output<typeof AilmentParamSchema>;
+
+// 单次伤害事件；一个技能可拥有多个事件，每个事件独立命中与投递。
+export const DamageEventParamSchema = z.object({
+	name: z.string().optional(),
+	formula: DamageFormulaParamSchema.default({
+		constant: "0",
+		multiplier: "100",
+		element: { expression: "self.mainWeapon.element" },
+	}),
+	delivery: DamageDeliveryParamSchema.default({ rangeType: "Single", effectiveRange: "0" }),
+	timing: DamageTimingParamSchema.default({ delayMs: "0" }),
+	ailments: z.array(AilmentParamSchema).default([]),
+});
+export type DamageEventParamData = z.output<typeof DamageEventParamSchema>;
+
+// DamageAction 的参数。
+export const DamageActionParamsSchema = z.object({
+	lifecycle: SkillBehaviorLifecycleSchema,
+	damageEvents: z.array(DamageEventParamSchema).min(1),
+	rawBranches: z.array(z.unknown()).default([]),
+});
+export type DamageActionParamsData = z.output<typeof DamageActionParamsSchema>;
+
+// StatusAction 的参数。
+export const StatusActionParamsSchema = z.object({
+	lifecycle: SkillBehaviorLifecycleSchema,
+	effects: z.array(z.unknown()).default([]),
+	rawBranches: z.array(z.unknown()).default([]),
+});
+export type StatusActionParamsData = z.output<typeof StatusActionParamsSchema>;
+
+// RecoveryAction 的参数。
+export const RecoveryActionParamsSchema = z.object({
+	lifecycle: SkillBehaviorLifecycleSchema,
+	recoveries: z.array(z.unknown()).default([]),
+	rawBranches: z.array(z.unknown()).default([]),
+});
+export type RecoveryActionParamsData = z.output<typeof RecoveryActionParamsSchema>;
+
+// PassiveRule 的参数；成员创建时安装。
+export const PassiveRuleParamsSchema = z.object({
+	// modifier 的精确参数由 StatContainer 运行时 schema 决定；数据库层只保留数组外形。
+	modifiers: z.array(z.unknown()).default([]),
+	runtimeAttachments: z.array(z.unknown()).default([]),
+	attributeSlots: AttributeSlotDeclarationListSchema,
+	rawBranches: z.array(z.unknown()).default([]),
+});
+export type PassiveRuleParamsData = z.output<typeof PassiveRuleParamsSchema>;
+
+// WorldObject 的参数；用于召唤物、地物等世界对象。
+export const WorldObjectParamsSchema = z.object({
+	lifecycle: SkillBehaviorLifecycleSchema,
+	rawBranches: z.array(z.unknown()).default([]),
+});
+export type WorldObjectParamsData = z.output<typeof WorldObjectParamsSchema>;
+
+// WorldZone 的参数；用于持续区域或周期伤害区域。
+export const WorldZoneParamsSchema = z.object({
+	lifecycle: SkillBehaviorLifecycleSchema,
+	range: DamageDeliveryParamSchema.default({ rangeType: "Single", effectiveRange: "0" }),
+	rawBranches: z.array(z.unknown()).default([]),
+});
+export type WorldZoneParamsData = z.output<typeof WorldZoneParamsSchema>;
+
+// RegisteredAction 的参数；用于长期注册但能结构化的数据行为。
+export const RegisteredActionParamsSchema = z.object({
+	attributeSlots: AttributeSlotDeclarationListSchema,
+	rawBranches: z.array(z.unknown()).default([]),
+});
+export type RegisteredActionParamsData = z.output<typeof RegisteredActionParamsSchema>;
+
+const DamageActionBehaviorSchema = z.object({
+	behaviorKind: z.literal("DamageAction"),
+	behaviorParams: DamageActionParamsSchema,
+	attributeSlots: AttributeSlotDeclarationListSchema.optional(),
+});
+
+const StatusActionBehaviorSchema = z.object({
+	behaviorKind: z.literal("StatusAction"),
+	behaviorParams: StatusActionParamsSchema,
+	attributeSlots: AttributeSlotDeclarationListSchema.optional(),
+});
+
+const RecoveryActionBehaviorSchema = z.object({
+	behaviorKind: z.literal("RecoveryAction"),
+	behaviorParams: RecoveryActionParamsSchema,
+	attributeSlots: AttributeSlotDeclarationListSchema.optional(),
+});
+
+const WorldObjectBehaviorSchema = z.object({
+	behaviorKind: z.literal("WorldObject"),
+	behaviorParams: WorldObjectParamsSchema,
+	attributeSlots: AttributeSlotDeclarationListSchema.optional(),
+});
+
+const WorldZoneBehaviorSchema = z.object({
+	behaviorKind: z.literal("WorldZone"),
+	behaviorParams: WorldZoneParamsSchema,
+	attributeSlots: AttributeSlotDeclarationListSchema.optional(),
+});
+
+const PassiveRuleBehaviorSchema = z.object({
+	behaviorKind: z.literal("PassiveRule"),
+	behaviorParams: PassiveRuleParamsSchema,
+	attributeSlots: AttributeSlotDeclarationListSchema.optional(),
+});
+
+const RegisteredActionBehaviorSchema = z.object({
+	behaviorKind: z.literal("RegisteredAction"),
+	behaviorParams: RegisteredActionParamsSchema,
+	attributeSlots: AttributeSlotDeclarationListSchema.optional(),
+});
+
+// 主动释放默认 DSL；自定义 activeBehaviorTree 存在时运行时会跳过此 DSL。
+export const ActiveSkillBehaviorSchema = z.discriminatedUnion("behaviorKind", [
+	DamageActionBehaviorSchema,
+	StatusActionBehaviorSchema,
+	RecoveryActionBehaviorSchema,
+	WorldObjectBehaviorSchema,
+	WorldZoneBehaviorSchema,
+]);
+export type ActiveSkillBehaviorData = z.output<typeof ActiveSkillBehaviorSchema>;
+
+// 成员创建时安装的默认被动 DSL。
+export const PassiveSkillBehaviorSchema = PassiveRuleBehaviorSchema;
+export type PassiveSkillBehaviorData = z.output<typeof PassiveSkillBehaviorSchema>;
+
+// 生命周期超过本次技能释放的长期注册行为 DSL。
+export const RegisteredSkillBehaviorSchema = RegisteredActionBehaviorSchema;
+export type RegisteredSkillBehaviorData = z.output<typeof RegisteredSkillBehaviorSchema>;
 
 // 行为树
 export const BTSchema = z.object({

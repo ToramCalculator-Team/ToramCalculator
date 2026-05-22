@@ -1,0 +1,105 @@
+id,name,definition,agent,attributeSlots,activeOwnerId,passiveOwnerId,registeredOwnerId
+MagicCannonVariant1Id__active_bt,魔法炮,"root {
+	/* 根据是否存在魔法炮充能buff，决定执行发射还是充能 */
+	selector {
+		sequence{
+			condition [hasBuff,""魔法炮充能buff""]
+			action [log, ""魔炮发射""]
+			/* 此顺序分支的以下内容仅在魔法炮充能buff存在时执行（魔炮发射） */
+			action [animation,""施法前摇"",$currentSkillStartupMs]
+			wait [$currentSkillStartupMs]
+			action [animation,""蓄力动画"",$currentSkillChargingMs]
+			wait [$currentSkillChargingMs]
+			action [animation, ""咏唱动画"",$currentSkillChantingMs]
+			wait [$currentSkillChantingMs]
+			action [rangeAttack, $targetId,""magic"",""magic"",1,$伤害计算公式,1,$伤害标签,""none"",3]
+			action [removeBuff,""魔法炮充能buff""]
+			action [animation, ""施法后摇"", $后摇毫秒]
+			wait [$后摇毫秒]
+    }
+		sequence{
+			/* 其它顺序节点都返回失败值时，执行此分支（魔炮充填） */
+			action [log, ""魔炮充填""]
+			action [animation,""施法前摇"",$currentSkillStartupMs]
+			wait [$currentSkillStartupMs]
+			action [animation,""蓄力动画"",$currentSkillChargingMs]
+			wait [$currentSkillChargingMs]
+			action [animation, ""咏唱动画"",$currentSkillChantingMs]
+			wait [$currentSkillChantingMs]
+			action [addBuff,""魔法炮充能buff""]
+			action [animation, ""施法后摇"", $后摇毫秒]
+			wait [$后摇毫秒]
+    }
+	}
+}","class Agent {
+    get 后摇毫秒() {
+        const endMs = this.currentSkillActionMs - this.currentSkillStartupMs
+        return endMs
+    }
+    get 伤害计算公式() {
+        const 有效魔攻 = ""(self.lv - target.lv + self.atk.m) * target.red.m - target.def.m * (1 - self.pie.m)"";
+        return `(${有效魔攻} + 100) * (100 + skillLv * 5 + self.vit + self.str) / 100`
+    }
+ get 伤害标签() {
+       return [""magic""];
+    }
+}",[],MagicCannonVariant1Id,,
+MagicCannonVariant1Id__registered_bt_1,魔法炮充能buff,"root {
+  repeat {
+    sequence {
+      wait [1000]
+      action [addCharge, 1]
+    }
+  }
+}","class Agent {
+  constructor() {
+    this._charge = 0; // 真正存值的地方
+  }
+
+  get charge() {
+    return this._charge;
+  }
+
+  set charge(i) {
+    this._charge = Number(i) || 0;
+  }
+
+  addCharge(i) {
+    this.charge = this.charge + (Number(i) || 0);
+    console.log('魔法炮充能：',this._charge)
+    return State.SUCCEEDED
+  }
+}",[],,,MagicCannonVariant1Id
+xdv0qzto85gqzs9ciku5jxcw__active_bt,default,"root {
+	sequence{
+		action [animation,""施法前摇"",$currentSkillStartupMs]
+		wait [$currentSkillStartupMs]
+		action [animation,""蓄力动画"",$currentSkillChargingMs]
+		wait [$currentSkillChargingMs]
+		action [animation, ""咏唱动画"",$currentSkillChantingMs]
+		wait [$currentSkillChantingMs]
+        branch [mainAction]
+		action [animation, ""施法后摇"", $后摇毫秒]
+		wait [$后摇毫秒]
+    }
+}
+
+root [mainAction] {
+    sequence {
+        action [singleAttack, $targetId,""magic"",""magic"",1,$伤害计算公式,1,$伤害标签,""none""]
+    }
+}","class Agent {
+    get 后摇毫秒() {
+        const endMs = this.currentSkillActionMs - this.currentSkillStartupMs
+        return endMs
+    }
+    get 伤害标签() {
+        // 伤害归因标签。commonAttackSchema.damageTags；受击 Pipeline 的 overlay/proc 订阅依据之一。
+        // 物理类 rangeAttack 默认给 [""physical""]；后续可加元素/特殊 tag。
+        return [""magical""];
+    }
+    get 伤害计算公式() {
+        const 有效魔攻 = ""(self.lv - target.lv + self.atk.m) * target.red.m - target.def.m * (1 - self.pie.m)"";
+        return `${有效魔攻} + (90 + skillLv * 5)`
+    }
+}",[],xdv0qzto85gqzs9ciku5jxcw,,

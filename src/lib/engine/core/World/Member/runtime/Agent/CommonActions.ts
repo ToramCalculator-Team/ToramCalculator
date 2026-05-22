@@ -308,7 +308,7 @@ export const CommonActionPool = {
 		(context, input) => {
 			log.debug(`👤 [${context.owner?.name}] addBuff`, input);
 			// buff逻辑所需的定义应该会被加载到上下文中，找到他并注册即可
-			const buff = context.currentSkillVariant?.buffs.find((buff) => buff.name === input.treeName);
+			const buff = context.currentSkillVariant?.registeredBehaviorTrees?.find((tree) => tree.name === input.treeName);
 			if (!buff) {
 				log.warn(`⚠️ [${context.owner?.name}] 无法找到buff: ${input.treeName}`);
 				return State.FAILED;

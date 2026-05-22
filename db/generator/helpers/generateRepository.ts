@@ -576,6 +576,9 @@ export type ${pascalName}WithRelations = z.output<typeof ${pascalName}WithRelati
 		const childRelations = relations.filter((rel) => !this.isBusinessParentRelation(rel.name));
 
 		for (const relation of childRelations) {
+			if (this.shouldSkipSubRelation(modelName, relation.name)) {
+				continue;
+			}
 			if (relation.targetTable && !relation.targetTable.includes("//")) {
 				const targetTable = relation.targetTable;
 				const targetCamelName = NamingRules.VariableName(targetTable);
@@ -1158,7 +1161,21 @@ ${this.generateCrudExports(crudExports)}
           )${nullHandler}.as("${field.name}")`;
 			} else {
 				// 外键在目标表中，指向当前模型
-				const reverseForeignKey = `${NamingRules.ZodTypeName(model.name)}Id`;
+				const targetModel = this.models.find((m) => m.name.toLowerCase() === targetTable.toLowerCase());
+				const reverseField = targetModel?.fields.find(
+					(f: any) =>
+						f.kind === "object" &&
+						f.type === model.name &&
+						f.relationName === field.relationName &&
+						f.relationFromFields &&
+						f.relationFromFields.length > 0,
+				);
+				if (!reverseField || !reverseField.relationFromFields || reverseField.relationFromFields.length === 0) {
+					throw new Error(`Cannot find reverse relation field from ${targetTable} to ${model.name}`);
+				}
+				// 设计说明：一对一子关系的外键常位于目标表，字段名不一定是 <source>Id。
+				// 这里按 relationName 定位反向字段，保证 activeOwnerId/passiveOwnerId 这类语义化外键能生成正确查询。
+				const reverseForeignKey = reverseField.relationFromFields[0];
 				const targetCamelName = NamingRules.VariableName(targetTable);
 				const isOptional = this.isRelationOptional(field, model);
 				const nullHandler = isOptional ? "" : ".$notNull()";
@@ -1208,7 +1225,11 @@ ${this.generateCrudExports(crudExports)}
 
 			const reverseField = targetModel.fields.find(
 				(f: any) =>
-					f.kind === "object" && f.type === model.name && f.relationFromFields && f.relationFromFields.length > 0,
+					f.kind === "object" &&
+					f.type === model.name &&
+					f.relationName === field.relationName &&
+					f.relationFromFields &&
+					f.relationFromFields.length > 0,
 			);
 
 			if (!reverseField || !reverseField.relationFromFields || reverseField.relationFromFields.length === 0) {
@@ -1234,7 +1255,11 @@ ${this.generateCrudExports(crudExports)}
 
 			const reverseField = targetModel.fields.find(
 				(f: any) =>
-					f.kind === "object" && f.type === model.name && f.relationFromFields && f.relationFromFields.length > 0,
+					f.kind === "object" &&
+					f.type === model.name &&
+					f.relationName === field.relationName &&
+					f.relationFromFields &&
+					f.relationFromFields.length > 0,
 			);
 
 			if (!reverseField || !reverseField.relationFromFields || reverseField.relationFromFields.length === 0) {
@@ -1317,9 +1342,7 @@ ${this.generateCrudExports(crudExports)}
 		if (currentModelName === targetModelName) {
 			const selfRelationFields = model.fields.filter(
 				(candidate: DMMF.Field) =>
-					candidate.kind === "object" &&
-					candidate.type === model.name &&
-					candidate.relationName === field.relationName,
+					candidate.kind === "object" && candidate.type === model.name && candidate.relationName === field.relationName,
 			);
 			const firstField = selfRelationFields[0];
 

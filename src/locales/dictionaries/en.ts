@@ -2515,70 +2515,20 @@ const dictionary: Dictionary = {
 					formFieldDescription: "此技能变体需要什么身体装备能力才能生效",
 					enumMap: playerArmorAbilityTypeLimit,
 				},
-				activeEffect: {
-					key: "Active Effect",
-					tableFieldDescription: "主动效果",
-					formFieldDescription: "主动效果",
+				activeBehavior: {
+					key: "Active Behavior DSL",
+					tableFieldDescription: "Default structured behavior for active skill execution",
+					formFieldDescription: "Runs when activeBehaviorTree is not set",
 				},
-				passiveEffects: {
-					key: "Passive Effect",
-					tableFieldDescription: "被动效果",
-					formFieldDescription: "被动效果",
+				passiveBehavior: {
+					key: "Passive Behavior DSL",
+					tableFieldDescription: "Default passive behaviors installed when the member is created",
+					formFieldDescription: "Default passive behaviors installed when the member is created",
 				},
-				buffs: {
-					key: "Buff Effect",
-					tableFieldDescription: "Buff效果",
-					formFieldDescription: "Buff效果",
-				},
-				elementLogic: {
-					key: "Element Logic",
-					tableFieldDescription: "伤害属性的判断逻辑",
-					formFieldDescription: "伤害属性的判断逻辑",
-				},
-				castingRange: {
-					key: "Casting Range",
-					tableFieldDescription: "施法范围",
-					formFieldDescription: "施法范围",
-				},
-				effectiveRange: {
-					key: "Skill Range",
-					tableFieldDescription: "技能作用范围",
-					formFieldDescription: "技能作用范围",
-				},
-				actionFixedMs: {
-					key: "Fixed Action Time (ms)",
-					tableFieldDescription: "固定动作时长（ms）",
-					formFieldDescription: "固定动作时长（ms）",
-				},
-				actionModifiedMs: {
-					key: "Acceleratable Action Time (ms)",
-					tableFieldDescription: "可加速动作时长（ms）",
-					formFieldDescription: "可加速动作时长（ms）",
-				},
-				chantingFixedMs: {
-					key: "Fixed Chanting Time (ms)",
-					tableFieldDescription: "固定咏唱时长（ms）",
-					formFieldDescription: "固定咏唱时长（ms）",
-				},
-				chantingModifiedMs: {
-					key: "Acceleratable Chanting Time (ms)",
-					tableFieldDescription: "可加速咏唱时长（ms）",
-					formFieldDescription: "可加速咏唱时长（ms）",
-				},
-				chargingFixedMs: {
-					key: "Fixed Charging Time (ms)",
-					tableFieldDescription: "固定蓄力时长（ms）",
-					formFieldDescription: "固定蓄力时长（ms）",
-				},
-				chargingModifiedMs: {
-					key: "Acceleratable Charging Time (ms)",
-					tableFieldDescription: "可加速蓄力时长（ms）",
-					formFieldDescription: "可加速蓄力时长（ms）",
-				},
-				startupMs: {
-					key: "Startup Time (ms)",
-					tableFieldDescription: "技能前摇（ms）",
-					formFieldDescription: "技能前摇（ms）",
+				registeredBehavior: {
+					key: "Registered Behavior DSL",
+					tableFieldDescription: "Long-lived default behaviors registered beyond one skill execution",
+					formFieldDescription: "Long-lived default behaviors registered beyond one skill execution",
 				},
 				hpCost: {
 					key: "HP Cost",
@@ -2607,6 +2557,52 @@ const dictionary: Dictionary = {
 				},
 			},
 			description: "Skill variant information",
+		},
+		behavior_tree: {
+			selfName: "Behavior Tree",
+			fields: {
+				id: {
+					key: "ID",
+					tableFieldDescription: "Behavior tree ID",
+					formFieldDescription: "Behavior tree ID",
+				},
+				name: {
+					key: "Name",
+					tableFieldDescription: "Behavior tree name",
+					formFieldDescription: "Behavior tree name",
+				},
+				definition: {
+					key: "Definition",
+					tableFieldDescription: "MDSL behavior tree definition",
+					formFieldDescription: "MDSL behavior tree definition",
+				},
+				agent: {
+					key: "Agent",
+					tableFieldDescription: "Callable behavior tree functions",
+					formFieldDescription: "Callable behavior tree functions",
+				},
+				attributeSlots: {
+					key: "Attribute Slots",
+					tableFieldDescription: "Persistent StatContainer slots declared by this tree",
+					formFieldDescription: "Persistent StatContainer slots declared by this tree as JSON",
+				},
+				activeOwnerId: {
+					key: "Active Owner Variant",
+					tableFieldDescription: "Skill variant that owns this active behavior tree",
+					formFieldDescription: "Skill variant that owns this active behavior tree",
+				},
+				passiveOwnerId: {
+					key: "Passive Owner Variant",
+					tableFieldDescription: "Skill variant that owns this passive behavior tree",
+					formFieldDescription: "Skill variant that owns this passive behavior tree",
+				},
+				registeredOwnerId: {
+					key: "Registered Owner Variant",
+					tableFieldDescription: "Skill variant that owns this registered behavior tree",
+					formFieldDescription: "Skill variant that owns this registered behavior tree",
+				},
+			},
+			description: "Custom behavior tree resources owned by skill variants",
 		},
 		special: {
 			selfName: "Special Equipment",

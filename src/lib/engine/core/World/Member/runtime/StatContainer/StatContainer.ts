@@ -8,6 +8,7 @@
  * - 内存优化：连续内存布局，减少GC压力
  */
 import * as Enums from "@db/schema/enums";
+import { z } from "zod/v4";
 import { createLogger } from "~/lib/Logger";
 import type { Checkpointable, StatContainerCheckpoint } from "../../../../types";
 import type { AttributeExpression, NestedSchema } from "./SchemaTypes";
@@ -197,6 +198,34 @@ export enum ModifierType {
 	DYNAMIC_PERCENTAGE,
 	MODIFIER_ARRAYS_COUNT = 5,
 }
+
+// 运行时 modifier 的数据化入口使用字符串，加载进 StatContainer 前再映射为 ModifierType 数字枚举。
+export const StatModifierKindSchema = z.enum([
+	"baseValue",
+	"staticFixed",
+	"staticPercentage",
+	"dynamicFixed",
+	"dynamicPercentage",
+]);
+export type StatModifierKind = z.output<typeof StatModifierKindSchema>;
+
+// 被动 DSL 装配 modifier 时先用此 schema 校验外部数据，再映射为 addModifier 的实参。
+export const StatModifierParamSchema = z.object({
+	// 目标属性路径，例如 "atk.p"、"hp.current"。
+	attribute: z.string(),
+	// 字符串枚举在加载阶段映射到运行时 ModifierType 数字枚举。
+	modifierType: StatModifierKindSchema,
+	// 支持常量或装配阶段可求值的表达式。
+	value: z.union([z.string(), z.number(), z.boolean()]),
+	// sourceId/sourceName 未提供时由安装方按技能来源补全。
+	sourceId: z.string().optional(),
+	sourceName: z.string().optional(),
+	// sourceType 对齐 ModifierSource.type。
+	sourceType: z
+		.enum(["equipment", "skill", "buff", "debuff", "passive", "registlet", "item", "system"])
+		.default("skill"),
+});
+export type StatModifierParam = z.output<typeof StatModifierParamSchema>;
 
 // ============================== 工具类 ==============================
 

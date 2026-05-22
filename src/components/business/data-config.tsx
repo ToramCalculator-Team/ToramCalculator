@@ -8,6 +8,7 @@ import type { DataRendererProps } from "./card/DataRenderer";
 import { ACTIVITY_DATA_CONFIG } from "./dataConfig/activity";
 import { ADDRESS_DATA_CONFIG } from "./dataConfig/address";
 import { ARMOR_DATA_CONFIG } from "./dataConfig/armor";
+import { BEHAVIOR_TREE_DATA_CONFIG } from "./dataConfig/behavior_tree";
 import { CHARACTER_DATA_CONFIG } from "./dataConfig/character";
 import { CONSUMABLE_DATA_CONFIG } from "./dataConfig/consumable";
 import { CRYSTAL_DATA_CONFIG } from "./dataConfig/crystal";
@@ -154,6 +155,7 @@ export const DATA_CONFIG: DataConfig = {
 	activity: ACTIVITY_DATA_CONFIG,
 	address: ADDRESS_DATA_CONFIG,
 	armor: ARMOR_DATA_CONFIG,
+	behavior_tree: BEHAVIOR_TREE_DATA_CONFIG,
 	character: CHARACTER_DATA_CONFIG,
 	consumable: CONSUMABLE_DATA_CONFIG,
 	crystal: CRYSTAL_DATA_CONFIG,

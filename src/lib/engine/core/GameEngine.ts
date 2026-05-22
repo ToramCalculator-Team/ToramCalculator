@@ -43,6 +43,7 @@ import type { Player } from "./World/Member/types/Player/Player";
 import {
 	computePlayerSkillLifecycleMs,
 	EMPTY_PLAYER_SKILL_LIFECYCLE_MS,
+	getActiveBehaviorCastingRangeExpression,
 	selectPlayerSkillVariant,
 } from "./World/Member/types/Player/skillLifecycle";
 import { World } from "./World/World";
@@ -1791,7 +1792,7 @@ export class GameEngine {
 
 				mpCost = evalOptionalNumber(effect.mpCost, "mpCost");
 				hpCost = evalOptionalNumber(effect.hpCost, "hpCost");
-				castingRange = evalOptionalNumber(effect.castingRange, "castingRange");
+				castingRange = evalOptionalNumber(getActiveBehaviorCastingRangeExpression(effect), "castingRange");
 				lifecycle = computePlayerSkillLifecycleMs({
 					variant: effect,
 					skillLevel,

@@ -27,4 +27,6 @@ export const RELATION_BREAK_POINTS: Record<string, string[]> = {
 	recipe_ingredient: ["item"],
 	user: ["sessions"],
 	account: ["user"],
+	// behavior_tree 的 owner 反查只用于定位归属，不继续展开 skill_variant，避免行为树资源与技能变体形成递归查询。
+	behavior_tree: ["activeOwner", "passiveOwner", "registeredOwner"],
 };

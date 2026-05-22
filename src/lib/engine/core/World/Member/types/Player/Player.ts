@@ -15,6 +15,7 @@ import type { PlayerRuntime } from "../../runtime/types";
 import { PlayerBtBindings } from "./Agents/BtBindings";
 import { type PlayerAttrNestedSchema, PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
 import { type PlayerEventType, type PlayerStateContext, playerStateMachine } from "./PlayerStateMachine";
+import { selectPlayerSkillVariant } from "./skillLifecycle";
 
 const log = createLogger("Player");
 
@@ -93,6 +94,17 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 		);
 		this.activeCharacter = activeCharacter;
 		this.runtimeAttachments = runtimeAttachments;
+		this.installPassiveBehaviorTrees();
+	}
+
+	private installPassiveBehaviorTrees(): void {
+		for (const skill of this.activeCharacter.skills) {
+			const variant = selectPlayerSkillVariant(skill, this.activeCharacter);
+			const tree = variant?.passiveBehaviorTree;
+			if (!tree) continue;
+
+			this.btManager.registerParallelBt(`passive:${variant.id}:${tree.name}`, tree.definition, tree.agent);
+		}
 	}
 
 	/**
@@ -116,9 +128,9 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 	 *
 	 * 来源：
 	 * - 当前角色自身 `actions` 行为树声明（如 AI 行动计数器）
-	 * - 角色已学技能的 `attributeSlots` 声明（如爆能的咏咒层数）
+	 * - 角色已学技能的自定义行为树与默认行为 DSL 的 `attributeSlots` 声明（如爆能的咏咒层数）
 	 * - 装备的托环 / passive 的 `attributeSlots` 声明（如 HP 紧急回复的 lastTriggeredFrame）
-	 * - 预插 buff 的 `attributeSlots` 声明（如弧光剑舞层数）
+	 * - 长期注册行为树的 `attributeSlots` 声明（如弧光剑舞层数）
 	 *
 	 * 命名约定见 `SchemaMerge.ts`：`skill.<id>.<field>` / `passive.<id>.<field>` / `buff.<id>.<field>`。
 	 */
@@ -133,12 +145,17 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 		Player.collectBtAttributeSlots(slots, activeCharacter.actions);
 		for (const skill of activeCharacter.skills) {
 			for (const variant of skill.template.variants) {
-				Player.collectBtAttributeSlots(slots, variant.activeEffect);
-				for (const passiveEffect of variant.passiveEffects) {
-					Player.collectBtAttributeSlots(slots, passiveEffect);
+				Player.collectBehaviorTreeAttributeSlots(slots, variant.activeBehaviorTree);
+				Player.collectBehaviorTreeAttributeSlots(slots, variant.passiveBehaviorTree);
+				for (const registeredTree of variant.registeredBehaviorTrees ?? []) {
+					Player.collectBehaviorTreeAttributeSlots(slots, registeredTree);
 				}
-				for (const buff of variant.buffs) {
-					Player.collectBtAttributeSlots(slots, buff);
+				Player.collectBehaviorAttributeSlots(slots, variant.activeBehavior);
+				for (const passiveBehavior of variant.passiveBehavior ?? []) {
+					Player.collectBehaviorAttributeSlots(slots, passiveBehavior);
+				}
+				for (const registeredBehavior of variant.registeredBehavior ?? []) {
+					Player.collectBehaviorAttributeSlots(slots, registeredBehavior);
 				}
 			}
 		}
@@ -150,5 +167,28 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 		if (Array.isArray(attributeSlots)) {
 			slots.push(...attributeSlots);
 		}
+	}
+
+	private static collectBehaviorTreeAttributeSlots(slots: SlotDeclaration[], tree: unknown): void {
+		const treeRecord = Player.asRecord(tree);
+		const attributeSlots = treeRecord?.attributeSlots;
+		if (Array.isArray(attributeSlots)) {
+			slots.push(...(attributeSlots as SlotDeclaration[]));
+		}
+	}
+
+	private static collectBehaviorAttributeSlots(slots: SlotDeclaration[], behavior: unknown): void {
+		const behaviorRecord = Player.asRecord(behavior);
+		const behaviorParams = Player.asRecord(behaviorRecord?.behaviorParams);
+		const attributeSlots = behaviorRecord?.attributeSlots ?? behaviorParams?.attributeSlots;
+		if (Array.isArray(attributeSlots)) {
+			slots.push(...(attributeSlots as SlotDeclaration[]));
+		}
+	}
+
+	private static asRecord(value: unknown): Record<string, unknown> | null {
+		return typeof value === "object" && value !== null && !Array.isArray(value)
+			? (value as Record<string, unknown>)
+			: null;
 	}
 }

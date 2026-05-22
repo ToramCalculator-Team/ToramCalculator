@@ -493,26 +493,42 @@ model skill_variant {
     targetMainWeaponType   String // Enum MAIN_HAND_TYPE_LIMIT
     targetSubWeaponType    String // Enum SUB_HAND_TYPE_LIMIT
     targetArmorAbilityType String // Enum PLAYER_ARMOR_ABILITY_TYPE_LIMIT
-    hpCost                 String?
-    mpCost                 String?
-    description            String
-    activeEffect           Json /// ZOD MemberBTSchema
-    passiveEffects         Json[] /// ZOD MemberBTSchema
-    buffs                  Json[] /// ZOD MemberBTSchema
-    elementLogic           String
-    castingRange           String
-    effectiveRange         String
-    actionFixedMs          String
-    actionModifiedMs       String
-    chantingFixedMs        String
-    chantingModifiedMs     String
-    chargingFixedMs        String
-    chargingModifiedMs     String
-    startupMs              String
-    details                String?
+    hpCost      String?
+    mpCost      String?
+    description String
+
+    activeBehavior     Json?  /// ZOD ActiveSkillBehaviorSchema
+    passiveBehavior    Json[] /// ZOD PassiveSkillBehaviorSchema
+    registeredBehavior Json[] /// ZOD RegisteredSkillBehaviorSchema
+
+    activeBehaviorTree     behavior_tree?  @relation("SkillVariantActiveBehaviorTree")
+    passiveBehaviorTree    behavior_tree?  @relation("SkillVariantPassiveBehaviorTree")
+    registeredBehaviorTrees behavior_tree[] @relation("SkillVariantRegisteredBehaviorTrees")
+
+    details String?
 
     belongToSkill   skill  @relation(fields: [belongToskillId], references: [id], onDelete: Cascade)
     belongToskillId String
+}
+
+// 技能行为树资源
+// 设计说明：行为树是 DSL 的替代入口，归属关系由顶层 relation 表达，避免在行为 JSON 内重复维护 behaviorTreeId。
+model behavior_tree {
+    id String @id
+
+    name           String
+    definition     String
+    agent          String
+    attributeSlots Json /// ZOD AttributeSlotDeclarationListSchema
+
+    activeOwner   skill_variant? @relation("SkillVariantActiveBehaviorTree", fields: [activeOwnerId], references: [id], onDelete: Cascade)
+    activeOwnerId String?        @unique
+
+    passiveOwner   skill_variant? @relation("SkillVariantPassiveBehaviorTree", fields: [passiveOwnerId], references: [id], onDelete: Cascade)
+    passiveOwnerId String?        @unique
+
+    registeredOwner   skill_variant? @relation("SkillVariantRegisteredBehaviorTrees", fields: [registeredOwnerId], references: [id], onDelete: Cascade)
+    registeredOwnerId String?
 }
 
 // 雷吉斯托环

@@ -1,12 +1,8 @@
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import { type EventObject, setup } from "xstate";
 import type { ExpressionContext } from "~/lib/engine/core/JSProcessor/types";
-import type { MemberDomainEvent } from "~/lib/engine/core/types";
 import { createLogger } from "~/lib/Logger";
 import type { DamageDispatchPayload } from "../../../Area/types";
-import { MemberBaseAttrType } from "../../MemberBaseSchema";
-import type { MemberRuntimeServices } from "../../runtime/Agent/RuntimeServices";
-import type { BtManager } from "../../runtime/BehaviourTree/BtManager";
 import {
 	createHitSession,
 	type HitSession,
@@ -20,9 +16,9 @@ import type {
 	MemberStateMachine,
 	MemberStateMachineEnv,
 } from "../../runtime/StateMachine/types";
-import type { MemberSharedRuntime, PlayerRuntime } from "../../runtime/types";
+import type { PlayerRuntime } from "../../runtime/types";
 import type { Player, PlayerAttrType } from "./Player";
-import { computePlayerSkillLifecycleMs, type SkillVariantTimingMs, selectPlayerSkillVariant } from "./skillLifecycle";
+import { computePlayerSkillLifecycleMs, getActiveBehaviorLifecycle, selectPlayerSkillVariant } from "./skillLifecycle";
 
 const log = createLogger("PlayerSM");
 
@@ -127,6 +123,9 @@ interface 切换目标 extends EventObject {
 	type: "切换目标";
 	data: { targetId: string };
 }
+interface 技能执行完成 extends EventObject {
+	type: "技能执行完成";
+}
 
 export type PlayerEventType =
 	| MemberEventType
@@ -155,7 +154,8 @@ export type PlayerEventType =
 	| 收到buff增删事件
 	| 收到快照请求
 	| 收到目标快照
-	| 切换目标;
+	| 切换目标
+	| 技能执行完成;
 
 // 定义 PlayerStateContext 类型（提前声明）
 //
@@ -419,12 +419,17 @@ export const playerStateMachine = (
 						return;
 					}
 
-					// 提取行为树定义
-					// const treeDefinition = skillLogicExample.default.definition;
-					// const agentCode = skillLogicExample.default.agent;
+					const activeTree = skillVariant.activeBehaviorTree;
+					if (!activeTree) {
+						if (skillVariant.activeBehavior) {
+							log.warn(`🎮 [${env.name}] 默认技能 DSL 尚未接入执行器，已完成本次技能流程`);
+						}
+						env.send({ type: "技能执行完成" });
+						return;
+					}
 
-					const treeDefinition = skillVariant.activeEffect.definition;
-					const agentCode = skillVariant.activeEffect.agent;
+					const treeDefinition = activeTree.definition;
+					const agentCode = activeTree.agent;
 
 					const treeData = env.btManager.registerActiveEffectBt(treeDefinition, agentCode);
 					if (!treeData) {
@@ -594,8 +599,7 @@ export const playerStateMachine = (
 						return false;
 					}
 
-					// 蓄力阶段相关属性（假设使用chargeFixed和chargeModified）
-					const timing = variant as unknown as SkillVariantTimingMs;
+					const timing = getActiveBehaviorLifecycle(variant);
 					const chargingFixed = env.services.expressionEvaluator?.(
 						timing.chargingFixedMs ?? "0",
 						expressionContext(env),
@@ -622,7 +626,7 @@ export const playerStateMachine = (
 						log.error(`👤 [${env.name}] 技能效果不存在`);
 						return false;
 					}
-					const timing = variant as unknown as SkillVariantTimingMs;
+					const timing = getActiveBehaviorLifecycle(variant);
 					const chantingFixed = env.services.expressionEvaluator?.(
 						timing.chantingFixedMs ?? "0",
 						expressionContext(env),

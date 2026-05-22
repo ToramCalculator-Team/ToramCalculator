@@ -22,8 +22,18 @@ export type SkillVariantTimingMs = {
 	chargingModifiedMs?: string | null;
 };
 
+type SkillBehaviorLifecycleSource = SkillVariantTimingMs & {
+	targeting?: {
+		castingRange?: string | null;
+	} | null;
+};
+
+type SkillVariantBehaviorSource = {
+	activeBehavior?: unknown;
+};
+
 type ComputePlayerSkillLifecycleParams = {
-	variant: SkillVariantTimingMs;
+	variant: SkillVariantBehaviorSource;
 	skillLevel: number;
 	expressionContext: ExpressionContext;
 	evaluateExpression: (expr: string, context: ExpressionContext) => number | boolean;
@@ -55,6 +65,25 @@ export function selectPlayerSkillVariant(
 	});
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+	return typeof value === "object" && value !== null && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: null;
+}
+
+export function getActiveBehaviorLifecycle(variant: SkillVariantBehaviorSource): SkillBehaviorLifecycleSource {
+	const activeBehavior = asRecord(variant.activeBehavior);
+	const behaviorParams = asRecord(activeBehavior?.behaviorParams);
+	const lifecycle = asRecord(behaviorParams?.lifecycle);
+	return (lifecycle ?? {}) as SkillBehaviorLifecycleSource;
+}
+
+export function getActiveBehaviorCastingRangeExpression(variant: SkillVariantBehaviorSource): string | null {
+	const targeting = asRecord(getActiveBehaviorLifecycle(variant).targeting);
+	const castingRange = targeting?.castingRange;
+	return typeof castingRange === "string" ? castingRange : null;
+}
+
 export function computePlayerSkillLifecycleMs({
 	variant,
 	skillLevel,
@@ -76,7 +105,7 @@ export function computePlayerSkillLifecycleMs({
 		return 0;
 	};
 
-	const timing = variant as SkillVariantTimingMs;
+	const timing = getActiveBehaviorLifecycle(variant);
 	const startupOriginal = evalNum(timing.startupMs, "startupMs");
 	const actionFixed = evalNum(timing.actionFixedMs, "actionFixedMs");
 	const actionModified = evalNum(timing.actionModifiedMs, "actionModifiedMs");

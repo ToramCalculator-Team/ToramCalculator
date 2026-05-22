@@ -73,6 +73,7 @@ export interface MemberStateMachineEnv<
 	btManager: BtManager<TAttrKey, TStateEvent, TStateContext, TRuntime>;
 	notifyDomainEvent(event: MemberDomainEvent): void;
 	runPipeline(pipelineName: string, params?: Record<string, unknown>): StageData;
+	send(event: TStateEvent): void;
 }
 
 /**

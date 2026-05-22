@@ -181,6 +181,7 @@ export class Member<
 			},
 			notifyDomainEvent: (event) => self.notifyDomainEvent(event),
 			runPipeline: (pipelineName, params) => self.runPipeline(pipelineName, params),
+			send: (event) => self.actor.send(event),
 		};
 	}
 

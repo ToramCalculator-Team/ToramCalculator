@@ -2605,70 +2605,20 @@ const dictionary: Dictionary = {
 					formFieldDescription: "此技能变体需要什么身体装备能力才能生效",
 					enumMap: playerArmorAbilityTypeLimit,
 				},
-				activeEffect: {
-					key: "主动效果",
-					tableFieldDescription: "主动效果",
-					formFieldDescription: "主动效果",
+				activeBehavior: {
+					key: "アクティブ行動 DSL",
+					tableFieldDescription: "能動発動時に使う既定の構造化行動",
+					formFieldDescription: "activeBehaviorTree がない場合に実行する DSL",
 				},
-				passiveEffects: {
-					key: "被动效果",
-					tableFieldDescription: "被动效果",
-					formFieldDescription: "被动效果",
+				passiveBehavior: {
+					key: "パッシブ行動 DSL",
+					tableFieldDescription: "メンバー作成時にインストールする既定のパッシブ行動一覧",
+					formFieldDescription: "メンバー作成時にインストールする既定のパッシブ行動一覧",
 				},
-				buffs: {
-					key: "Buff效果",
-					tableFieldDescription: "Buff效果",
-					formFieldDescription: "Buff效果",
-				},
-				elementLogic: {
-					key: "伤害属性的判断逻辑",
-					tableFieldDescription: "伤害属性的判断逻辑",
-					formFieldDescription: "伤害属性的判断逻辑",
-				},
-				castingRange: {
-					key: "施法范围",
-					tableFieldDescription: "施法范围",
-					formFieldDescription: "施法范围",
-				},
-				effectiveRange: {
-					key: "技能作用范围",
-					tableFieldDescription: "技能作用范围",
-					formFieldDescription: "技能作用范围",
-				},
-				actionFixedMs: {
-					key: "固定动作时长（ms）",
-					tableFieldDescription: "固定动作时长（ms）",
-					formFieldDescription: "固定动作时长（ms）",
-				},
-				actionModifiedMs: {
-					key: "可加速动作时长（ms）",
-					tableFieldDescription: "可加速动作时长（ms）",
-					formFieldDescription: "可加速动作时长（ms）",
-				},
-				chantingFixedMs: {
-					key: "固定咏唱时长（ms）",
-					tableFieldDescription: "固定咏唱时长（ms）",
-					formFieldDescription: "固定咏唱时长（ms）",
-				},
-				chantingModifiedMs: {
-					key: "可加速咏唱时长（ms）",
-					tableFieldDescription: "可加速咏唱时长（ms）",
-					formFieldDescription: "可加速咏唱时长（ms）",
-				},
-				chargingFixedMs: {
-					key: "固定蓄力时长（ms）",
-					tableFieldDescription: "固定蓄力时长（ms）",
-					formFieldDescription: "固定蓄力时长（ms）",
-				},
-				chargingModifiedMs: {
-					key: "可加速蓄力时长（ms）",
-					tableFieldDescription: "可加速蓄力时长（ms）",
-					formFieldDescription: "可加速蓄力时长（ms）",
-				},
-				startupMs: {
-					key: "技能前摇（ms）",
-					tableFieldDescription: "技能前摇（ms）",
-					formFieldDescription: "技能前摇（ms）",
+				registeredBehavior: {
+					key: "登録行動 DSL",
+					tableFieldDescription: "今回のスキル発動を超えて残る長期登録行動一覧",
+					formFieldDescription: "今回のスキル発動を超えて残る長期登録行動一覧",
 				},
 				hpCost: {
 					key: "HP消耗",
@@ -2697,6 +2647,52 @@ const dictionary: Dictionary = {
 				},
 			},
 			description: "スキルバリアント情報",
+		},
+		behavior_tree: {
+			selfName: "ビヘイビアツリー",
+			fields: {
+				id: {
+					key: "ID",
+					tableFieldDescription: "ビヘイビアツリーの一意識別子",
+					formFieldDescription: "ビヘイビアツリーの一意識別子",
+				},
+				name: {
+					key: "名前",
+					tableFieldDescription: "ビヘイビアツリー名",
+					formFieldDescription: "ビヘイビアツリー名",
+				},
+				definition: {
+					key: "定義",
+					tableFieldDescription: "MDSL ビヘイビアツリー定義",
+					formFieldDescription: "MDSL ビヘイビアツリー定義",
+				},
+				agent: {
+					key: "Agent",
+					tableFieldDescription: "ビヘイビアツリーの呼び出し可能関数群",
+					formFieldDescription: "ビヘイビアツリーの呼び出し可能関数群",
+				},
+				attributeSlots: {
+					key: "属性スロット",
+					tableFieldDescription: "StatContainer に追加する永続属性スロット",
+					formFieldDescription: "StatContainer に追加する永続属性スロット JSON",
+				},
+				activeOwnerId: {
+					key: "能動所有スキル変体",
+					tableFieldDescription: "この能動ビヘイビアツリーを所有するスキル変体",
+					formFieldDescription: "この能動ビヘイビアツリーを所有するスキル変体",
+				},
+				passiveOwnerId: {
+					key: "受動所有スキル変体",
+					tableFieldDescription: "この受動ビヘイビアツリーを所有するスキル変体",
+					formFieldDescription: "この受動ビヘイビアツリーを所有するスキル変体",
+				},
+				registeredOwnerId: {
+					key: "登録所有スキル変体",
+					tableFieldDescription: "この長期登録ビヘイビアツリーを所有するスキル変体",
+					formFieldDescription: "この長期登録ビヘイビアツリーを所有するスキル変体",
+				},
+			},
+			description: "スキル変体が所有するカスタムビヘイビアツリー資源",
 		},
 		special: {
 			selfName: "特殊装備",

@@ -50,6 +50,18 @@ export type SkillChargingType = (typeof SKILL_CHARGING_TYPE)[number];
 export const SKILL_EFFECT_TAG = ["DamageSkill", "ControlSkill", "BuffSkill"] as const;
 export type SkillEffectTag = (typeof SKILL_EFFECT_TAG)[number];
 
+// 技能默认行为 DSL 类型
+export const SKILL_BEHAVIOR_KIND = [
+	"DamageAction",
+	"StatusAction",
+	"RecoveryAction",
+	"PassiveRule",
+	"WorldObject",
+	"WorldZone",
+	"RegisteredAction",
+] as const;
+export type SkillBehaviorKind = (typeof SKILL_BEHAVIOR_KIND)[number];
+
 // 控制效果枚举（胆怯，翻覆，昏厥）
 export const CONTROL_EFFECT = ["None", "Cowardly", "Turn", "Dizzy"] as const;
 export type ControlEffect = (typeof CONTROL_EFFECT)[number];
@@ -324,8 +336,8 @@ export const SKILL_BOOK_GROUP = [
 	"BareHandSkill", // 空手技能
 	"NinjaSkill", // 忍者技能
 	"PartisanSkill", // 游击队技能
-	"NecromancerSkill",// 死灵法术
-	"GolemSkill",// 魔像技能
+	"NecromancerSkill", // 死灵法术
+	"GolemSkill", // 魔像技能
 ] as const;
 export type SkillBookGroup = (typeof SKILL_BOOK_GROUP)[number];
 

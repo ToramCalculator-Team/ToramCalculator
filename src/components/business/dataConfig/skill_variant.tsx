@@ -1,15 +1,58 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { SkillVariantSchema, type skill_variant } from "@db/generated/zod";
-import type { MemberType } from "@db/schema/enums";
-import type { MemberBTTree } from "@db/schema/jsons";
-import { createEffect, createSignal, Index } from "solid-js";
-import { BtEditorWrapper } from "~/components/business/utils/BTEditorWrapper";
-import { Button } from "~/components/controls/button";
+import { createSignal } from "solid-js";
 import { Input } from "~/components/controls/input";
-import { BtEditor } from "~/components/features/BtEditor/BtEditor";
-import { skillLogicExample } from "~/components/features/BtEditor/data/SkillExamples";
 import type { TableDataConfig } from "../data-config";
+
+const formatJson = (value: unknown): string => JSON.stringify(value ?? null, null, 2);
+
+const tryParseJson = (text: string): { ok: true; value: unknown } | { ok: false; message: string } => {
+	try {
+		return { ok: true, value: JSON.parse(text) };
+	} catch (error) {
+		return { ok: false, message: error instanceof Error ? error.message : String(error) };
+	}
+};
+
+const createJsonField =
+	<TValue,>(fieldName: keyof skill_variant) =>
+	(
+		value: () => TValue,
+		setValue: (value: TValue) => void,
+		validationMessage: string | undefined,
+		dictionary: { fields: Record<string, { key: string; formFieldDescription: string }> },
+	) => {
+		const fieldKey = String(fieldName);
+		const [text, setText] = createSignal(formatJson(value()));
+		const [localError, setLocalError] = createSignal<string | undefined>();
+
+		return (
+			<Input
+				title={dictionary.fields[fieldKey].key}
+				description={dictionary.fields[fieldKey].formFieldDescription}
+				validationMessage={localError() ?? validationMessage}
+				class="border-dividing-color bg-primary-color w-full rounded-md border"
+			>
+				<textarea
+					value={text()}
+					spellcheck={false}
+					class="text-accent-color bg-area-color min-h-48 w-full resize-y rounded p-3 font-mono text-sm"
+					onInput={(event) => {
+						const nextText = event.currentTarget.value;
+						setText(nextText);
+						const parsed = tryParseJson(nextText);
+						if (!parsed.ok) {
+							setLocalError(parsed.message);
+							return;
+						}
+						setLocalError(undefined);
+						setValue(parsed.value as TValue);
+					}}
+				/>
+			</Input>
+		);
+	};
 
 export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = (dictionary) => ({
 	dictionary: dictionary().db.skill_variant,
@@ -28,287 +71,38 @@ export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = (dictio
 		ID: ["id"],
 		启用条件: ["targetMainWeaponType", "targetSubWeaponType", "targetArmorAbilityType"],
 		所属技能: ["belongToskillId"],
-		基本信息: [
-			"hpCost",
-			"mpCost",
-			"startupMs",
-			"castingRange",
-			"effectiveRange",
-			"actionFixedMs",
-			"actionModifiedMs",
-			"chantingFixedMs",
-			"chantingModifiedMs",
-			"chargingFixedMs",
-			"chargingModifiedMs",
-		],
-		技能效果: ["activeEffect", "passiveEffects", "buffs"],
+		释放门槛: ["hpCost", "mpCost"],
+		默认行为: ["activeBehavior", "passiveBehavior", "registeredBehavior"],
 		详细信息: ["description", "details"],
-		其他信息: ["elementLogic"],
 	},
 	table: {
 		columnsDef: [
 			{
-				accessorKey: "castingRange",
+				accessorKey: "description",
 				cell: (info) => info.getValue(),
-				size: 100,
+				size: 240,
 			},
 			{
-				accessorKey: "effectiveRange",
+				accessorKey: "mpCost",
 				cell: (info) => info.getValue(),
-				size: 100,
+				size: 120,
 			},
 			{
-				accessorKey: "actionFixedMs",
+				accessorKey: "hpCost",
 				cell: (info) => info.getValue(),
-				size: 100,
-			},
-			{
-				accessorKey: "actionModifiedMs",
-				cell: (info) => info.getValue(),
-				size: 100,
-			},
-			{
-				accessorKey: "chantingFixedMs",
-				cell: (info) => info.getValue(),
-				size: 100,
-			},
-			{
-				accessorKey: "chantingModifiedMs",
-				cell: (info) => info.getValue(),
-				size: 100,
-			},
-			{
-				accessorKey: "chargingFixedMs",
-				cell: (info) => info.getValue(),
-				size: 100,
-			},
-			{
-				accessorKey: "chargingModifiedMs",
-				cell: (info) => info.getValue(),
-				size: 100,
+				size: 120,
 			},
 		],
-		hiddenColumnDef: ["id", "belongToskillId"],
+		hiddenColumnDef: ["id", "belongToskillId", "activeBehavior", "passiveBehavior", "registeredBehavior"],
 		defaultSort: { field: "id", desc: false },
 		tdGenerator: {},
 	},
 	form: {
 		hiddenFields: ["id"],
 		fieldGenerator: {
-			activeEffect: (value, setValue, validationMessage, dictionary) => {
-				const [editorDisplay, setEditorDisplay] = createSignal(false);
-				return (
-					<Input
-						title={dictionary.fields.activeEffect.key}
-						description={dictionary.fields.activeEffect.formFieldDescription}
-						validationMessage={validationMessage}
-						class="border-dividing-color bg-primary-color w-full rounded-md border"
-					>
-						<BtEditorWrapper
-							title={dictionary.fields.activeEffect.key}
-							editorDisplay={editorDisplay()}
-							setEditorDisplay={setEditorDisplay}
-						>
-							<BtEditor
-								title={dictionary.fields.activeEffect.key}
-								value={{
-									...value(),
-									memberType: (value().memberType as MemberType) ?? "Player",
-									attributeSlots: value().attributeSlots ?? [],
-								}}
-								onChange={(nextTree) => {
-									const newValue = {
-										...value(),
-										...nextTree,
-									};
-									console.log(newValue);
-									setValue(newValue);
-									// setEditorDisplay(false);
-								}}
-								onClose={() => setEditorDisplay(false)}
-							/>
-						</BtEditorWrapper>
-					</Input>
-				);
-			},
-			passiveEffects: (value, setValue, validationMessage, dictionary) => {
-				const arrayValue = () => (value() as MemberBTTree[]) ?? [];
-				const [editorDisplay, setEditorDisplay] = createSignal<Array<boolean>>([]);
-
-				// 让 editorDisplay 的长度始终与数组长度对齐（新增项默认 false）
-				createEffect(() => {
-					const len = arrayValue().length;
-					setEditorDisplay((prev) => {
-						const next = Array.from({ length: len }, (_, i) => prev[i] ?? false);
-						if (prev.length === next.length && prev.every((v, i) => v === next[i])) return prev;
-						return next;
-					});
-				});
-
-				const setEditorDisplayAt = (i: number, v: boolean) => {
-					setEditorDisplay((prev) => {
-						const next = [...prev];
-						next[i] = v;
-						return next;
-					});
-				};
-				return (
-					<Input
-						title={dictionary.fields.passiveEffects.key}
-						description={dictionary.fields.passiveEffects.formFieldDescription}
-						validationMessage={validationMessage}
-						class="border-dividing-color bg-primary-color w-full rounded-md border"
-					>
-						<div class="ArrayBox flex w-full flex-col gap-2">
-							<Index each={arrayValue()}>
-								{(item, index) => (
-									<div class="flex gap-1">
-										<Input
-											type="text"
-											value={item().name}
-											onChange={(e) => {
-												const i = index;
-												const next = arrayValue().slice();
-												next[i] = { ...item(), name: e.target.value };
-												setValue(next);
-											}}
-											class="w-full p-0! min-w-64"
-										/>
-										<BtEditorWrapper
-											title={dictionary.fields.passiveEffects.key}
-											editorDisplay={editorDisplay()[index] ?? false}
-											setEditorDisplay={(v) => setEditorDisplayAt(index, v)}
-										>
-											<BtEditor
-												title={dictionary.fields.passiveEffects.key}
-												value={{ ...item(), attributeSlots: item().attributeSlots ?? [] }}
-												onChange={(nextTree) => {
-													const newValue = {
-														...item(),
-														...nextTree,
-													};
-													const i = index;
-													const next = arrayValue().slice();
-													next[i] = newValue;
-													setValue(next);
-												}}
-												onClose={() => setEditorDisplayAt(index, false)}
-											/>
-										</BtEditorWrapper>
-										<Button
-											onClick={(e) => {
-												const i = index;
-												setValue(arrayValue().filter((_, j) => j !== i));
-												setEditorDisplay((prev) => prev.filter((_, j) => j !== i));
-												e.stopPropagation();
-											}}
-										>
-											-
-										</Button>
-									</div>
-								)}
-							</Index>
-							<Button
-								onClick={() => {
-									setValue(arrayValue().concat(skillLogicExample.default));
-								}}
-								class="w-full"
-							>
-								+
-							</Button>
-						</div>
-					</Input>
-				);
-			},
-			buffs: (value, setValue, validationMessage, dictionary) => {
-				const arrayValue = () => (value() as MemberBTTree[]) ?? [];
-				const [editorDisplay, setEditorDisplay] = createSignal<Array<boolean>>([]);
-
-				// 让 editorDisplay 的长度始终与数组长度对齐（新增项默认 false）
-				createEffect(() => {
-					const len = arrayValue().length;
-					setEditorDisplay((prev) => {
-						const next = Array.from({ length: len }, (_, i) => prev[i] ?? false);
-						if (prev.length === next.length && prev.every((v, i) => v === next[i])) return prev;
-						return next;
-					});
-				});
-
-				const setEditorDisplayAt = (i: number, v: boolean) => {
-					setEditorDisplay((prev) => {
-						const next = [...prev];
-						next[i] = v;
-						return next;
-					});
-				};
-				return (
-					<Input
-						title={dictionary.fields.buffs.key}
-						description={dictionary.fields.buffs.formFieldDescription}
-						validationMessage={validationMessage}
-						class="border-dividing-color bg-primary-color w-full rounded-md border"
-					>
-						<div class="ArrayBox flex w-full flex-col gap-2">
-							<Index each={arrayValue()}>
-								{(item, index) => (
-									<div class="flex gap-1">
-										<Input
-											type="text"
-											value={item().name}
-											onChange={(e) => {
-												const i = index;
-												const next = arrayValue().slice();
-												next[i] = { ...item(), name: e.target.value };
-												setValue(next);
-											}}
-											class="w-full p-0! min-w-64"
-										/>
-										<BtEditorWrapper
-											title={dictionary.fields.buffs.key}
-											editorDisplay={editorDisplay()[index] ?? false}
-											setEditorDisplay={(v) => setEditorDisplayAt(index, v)}
-										>
-											<BtEditor
-												title={dictionary.fields.buffs.key}
-												value={{ ...item(), attributeSlots: item().attributeSlots ?? [] }}
-												onChange={(nextTree) => {
-													const newValue = {
-														...item(),
-														...nextTree,
-													};
-													const i = index;
-													const next = arrayValue().slice();
-													next[i] = newValue;
-													setValue(next);
-												}}
-												onClose={() => setEditorDisplayAt(index, false)}
-											/>
-										</BtEditorWrapper>
-										<Button
-											onClick={(e) => {
-												const i = index;
-												setValue(arrayValue().filter((_, j) => j !== i));
-												setEditorDisplay((prev) => prev.filter((_, j) => j !== i));
-												e.stopPropagation();
-											}}
-										>
-											-
-										</Button>
-									</div>
-								)}
-							</Index>
-							<Button
-								onClick={() => {
-									setValue(arrayValue().concat(skillLogicExample.default));
-								}}
-								class="w-full"
-							>
-								+
-							</Button>
-						</div>
-					</Input>
-				);
-			},
+			activeBehavior: createJsonField<skill_variant["activeBehavior"]>("activeBehavior"),
+			passiveBehavior: createJsonField<skill_variant["passiveBehavior"]>("passiveBehavior"),
+			registeredBehavior: createJsonField<skill_variant["registeredBehavior"]>("registeredBehavior"),
 		},
 		onInsert: repositoryMethods.skill_variant.insert,
 		onUpdate: repositoryMethods.skill_variant.update,
@@ -316,17 +110,15 @@ export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = (dictio
 	card: {
 		hiddenFields: ["id"],
 		fieldGenerator: {
-			activeEffect: (field, key, dictionary) => {
-				return (
-					<div class="w-full h-[50vh] rounded overflow-hidden">
-						<BtEditor
-							title={dictionary.fields[key].key}
-							value={{ ...field.activeEffect, attributeSlots: field.activeEffect.attributeSlots ?? [] }}
-							readOnly={true}
-						/>
-					</div>
-				);
-			},
+			activeBehavior: (field, key) => (
+				<pre class="bg-area-color max-h-[50vh] w-full overflow-auto rounded p-3 text-sm">{formatJson(field[key])}</pre>
+			),
+			passiveBehavior: (field, key) => (
+				<pre class="bg-area-color max-h-[50vh] w-full overflow-auto rounded p-3 text-sm">{formatJson(field[key])}</pre>
+			),
+			registeredBehavior: (field, key) => (
+				<pre class="bg-area-color max-h-[50vh] w-full overflow-auto rounded p-3 text-sm">{formatJson(field[key])}</pre>
+			),
 		},
 		deleteCallback: repositoryMethods.skill_variant.delete,
 		editAbleCallback: (data) => repositoryMethods.skill_variant.canEdit(data.id),

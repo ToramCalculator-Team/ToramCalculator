@@ -2583,70 +2583,20 @@ const dictionary: Dictionary = {
 					formFieldDescription: "此技能变體需要什么身體裝備能力才能生效",
 					enumMap: playerArmorAbilityTypeLimit,
 				},
-				activeEffect: {
-					key: "主動效果",
-					tableFieldDescription: "主動效果",
-					formFieldDescription: "主動效果",
+				activeBehavior: {
+					key: "主動行為 DSL",
+					tableFieldDescription: "主動釋放時使用的預設結構化行為",
+					formFieldDescription: "activeBehaviorTree 不存在時執行的主動釋放 DSL",
 				},
-				passiveEffects: {
-					key: "被動效果",
-					tableFieldDescription: "被動效果",
-					formFieldDescription: "被動效果",
+				passiveBehavior: {
+					key: "被動行為 DSL",
+					tableFieldDescription: "成員建立時安裝的預設被動行為列表",
+					formFieldDescription: "成員建立時安裝的預設被動行為列表",
 				},
-				buffs: {
-					key: "Buff效果",
-					tableFieldDescription: "Buff效果",
-					formFieldDescription: "Buff效果",
-				},
-				elementLogic: {
-					key: "伤害屬性的判断逻辑",
-					tableFieldDescription: "伤害屬性的判断逻辑",
-					formFieldDescription: "伤害屬性的判断逻辑",
-				},
-				castingRange: {
-					key: "施法範圍",
-					tableFieldDescription: "施法範圍",
-					formFieldDescription: "施法範圍",
-				},
-				effectiveRange: {
-					key: "技能作用範圍",
-					tableFieldDescription: "技能作用範圍",
-					formFieldDescription: "技能作用範圍",
-				},
-				actionFixedMs: {
-					key: "固定動作時長（ms）",
-					tableFieldDescription: "固定動作時長（ms）",
-					formFieldDescription: "固定動作時長（ms）",
-				},
-				actionModifiedMs: {
-					key: "可加速動作時長（ms）",
-					tableFieldDescription: "可加速動作時長（ms）",
-					formFieldDescription: "可加速動作時長（ms）",
-				},
-				chantingFixedMs: {
-					key: "固定詠唱時長（ms）",
-					tableFieldDescription: "固定詠唱時長（ms）",
-					formFieldDescription: "固定詠唱時長（ms）",
-				},
-				chantingModifiedMs: {
-					key: "可加速詠唱時長（ms）",
-					tableFieldDescription: "可加速詠唱時長（ms）",
-					formFieldDescription: "可加速詠唱時長（ms）",
-				},
-				chargingFixedMs: {
-					key: "固定蓄力時長（ms）",
-					tableFieldDescription: "固定蓄力時長（ms）",
-					formFieldDescription: "固定蓄力時長（ms）",
-				},
-				chargingModifiedMs: {
-					key: "可加速蓄力時長（ms）",
-					tableFieldDescription: "可加速蓄力時長（ms）",
-					formFieldDescription: "可加速蓄力時長（ms）",
-				},
-				startupMs: {
-					key: "技能前搖（ms）",
-					tableFieldDescription: "技能前搖（ms）",
-					formFieldDescription: "技能前搖（ms）",
+				registeredBehavior: {
+					key: "長期註冊行為 DSL",
+					tableFieldDescription: "生命週期超過本次技能釋放的預設註冊行為列表",
+					formFieldDescription: "生命週期超過本次技能釋放的預設註冊行為列表",
 				},
 				hpCost: {
 					key: "HP消耗",
@@ -2675,6 +2625,52 @@ const dictionary: Dictionary = {
 				},
 			},
 			description: "技能變體資訊",
+		},
+		behavior_tree: {
+			selfName: "行為樹",
+			fields: {
+				id: {
+					key: "ID",
+					tableFieldDescription: "行為樹唯一標識符",
+					formFieldDescription: "行為樹唯一標識符",
+				},
+				name: {
+					key: "名稱",
+					tableFieldDescription: "行為樹名稱",
+					formFieldDescription: "行為樹名稱",
+				},
+				definition: {
+					key: "定義",
+					tableFieldDescription: "MDSL 行為樹定義",
+					formFieldDescription: "MDSL 行為樹定義",
+				},
+				agent: {
+					key: "Agent",
+					tableFieldDescription: "行為樹可呼叫函式集",
+					formFieldDescription: "行為樹可呼叫函式集",
+				},
+				attributeSlots: {
+					key: "屬性槽",
+					tableFieldDescription: "需要併入 StatContainer 的持久化屬性槽",
+					formFieldDescription: "需要併入 StatContainer 的持久化屬性槽 JSON",
+				},
+				activeOwnerId: {
+					key: "主動歸屬技能變體",
+					tableFieldDescription: "作為自訂主動行為樹歸屬的技能變體",
+					formFieldDescription: "作為自訂主動行為樹歸屬的技能變體",
+				},
+				passiveOwnerId: {
+					key: "被動歸屬技能變體",
+					tableFieldDescription: "作為自訂被動行為樹歸屬的技能變體",
+					formFieldDescription: "作為自訂被動行為樹歸屬的技能變體",
+				},
+				registeredOwnerId: {
+					key: "長期註冊歸屬技能變體",
+					tableFieldDescription: "作為長期註冊行為樹歸屬的技能變體",
+					formFieldDescription: "作為長期註冊行為樹歸屬的技能變體",
+				},
+			},
+			description: "技能變體擁有的自訂行為樹資源",
 		},
 		special: {
 			selfName: "特殊裝備",
