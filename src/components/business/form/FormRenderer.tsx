@@ -2,23 +2,26 @@ import { getFkRefByColumn, isFkColumn, listFkColumns } from "@db/generated/dmmf-
 import { repositoryMethods } from "@db/generated/repositories";
 import type { DB } from "@db/generated/zod";
 import { createId } from "@paralleldrive/cuid2";
-import { type AnyFieldApi, createForm, type DeepKeys, SolidFormExtendedApi } from "@tanstack/solid-form";
+import { type AnyFieldApi, createForm, type DeepKeys } from "@tanstack/solid-form";
 import { createMemo, createResource, For, Index, Show } from "solid-js";
-import type { JSX } from "solid-js/jsx-runtime";
-import type { ZodEnum, ZodObject, ZodType } from "zod/v4";
+import type { ZodObject, ZodType } from "zod/v4";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { Button } from "~/components/controls/button";
-import { EnumSelect } from "~/components/controls/enumSelect";
 import { Input } from "~/components/controls/input";
-import { Select } from "~/components/controls/select";
-import { Toggle } from "~/components/controls/toggle";
 import { fieldInfo } from "~/components/dataDisplay/utils";
 import { useDictionary } from "~/contexts/Dictionary";
-import type { Dic, EnumFieldDetail } from "~/locales/type";
+import type { Dic, FieldDetail } from "~/locales/type";
 import { DATA_CONFIG, type EmbedsDecl, type InheritsFromDecl } from "../data-config";
+import {
+	DefaultFieldClass,
+	type FormRendererFormApi,
+	type FormRendererPath,
+	type FormRenderers,
+	hasFieldRenderer,
+	SchemaFieldNode,
+} from "./SchemaFieldRenderer";
 
-// 标准表单字段Input class
-export const DefaultFieldClass = "border-dividing-color border-t pt-3 w-full";
+export { DefaultFieldClass } from "./SchemaFieldRenderer";
 
 export interface FormProps<T extends Record<string, unknown>, TSchema extends ZodObject<{ [K in keyof T]: ZodType }>> {
 	// UI渲染表单名称时需要
@@ -37,17 +40,9 @@ export interface FormProps<T extends Record<string, unknown>, TSchema extends Zo
 	hiddenFields?: Array<keyof T>;
 	// 表单字段分组
 	fieldGroupMap?: Record<string, Array<keyof T>>;
-	// 表单字段生成器
-	fieldGenerator?: Partial<{
-		[K in keyof T]: (
-			value: () => T[K],
-			setValue: (value: T[K]) => void,
-			validationMessage: string,
-			dictionary: Dic<T>,
-			dataSchema: ZodObject<Record<keyof T, ZodType>>,
-		) => JSX.Element;
-	}>;
-	// 继承关系（合并父表字典/字段生成器）
+	// 表单节点渲染器：fields 完全接管节点，containers 只接管对象/数组/union 容器层。
+	renderers?: FormRenderers<T>;
+	// 继承关系（合并父表字典/渲染器）
 	inheritsFrom?: InheritsFromDecl;
 	// 内嵌子表（1:N，表单内嵌套数组编辑器）
 	embeds?: EmbedsDecl[];
@@ -62,15 +57,10 @@ type ForeignKeyRenderInfo = {
 	referencedField: string;
 };
 
-type FormRendererFormApi<TFormData> = Pick<
-	SolidFormExtendedApi<TFormData, any, any, any, any, any, any, any, any, any, any, any>,
-	"Field"
->;
-
 /**
  * 渲染单个字段（供主表单和 embed 内嵌数组共用）
  * - pathPrefix 为空时渲染顶层字段；否则渲染嵌套字段（如 "variants[0]"）
- * - dataSchema / dictionary / fieldGenerator 都对应这组字段实际所属的表（父表或子表）
+ * - dataSchema / dictionary / renderers 都对应这组字段实际所属的表（父表或子表）
  */
 function FormFieldBlock<TFormData extends Record<string, unknown>, TItem extends Record<string, unknown>>(props: {
 	form: FormRendererFormApi<TFormData>;
@@ -78,52 +68,32 @@ function FormFieldBlock<TFormData extends Record<string, unknown>, TItem extends
 	fieldKey: keyof TItem & string;
 	dataSchema: ZodObject<{ [K in keyof TItem]: ZodType }>;
 	dictionary: Dic<TItem>;
-	fieldGenerator?: Partial<{
-		[K in keyof TItem]: (
-			value: () => TItem[K],
-			setValue: (value: TItem[K]) => void,
-			validationMessage: string,
-			dictionary: Dic<TItem>,
-			dataSchema: ZodObject<Record<keyof TItem, ZodType>>,
-		) => JSX.Element;
-	}>;
+	renderers?: FormRenderers<TItem>;
 	foreignKeyFieldMap: Map<string, ForeignKeyRenderInfo>;
 	fkOptionsByTable: () => Partial<Record<keyof DB, unknown[]>> | undefined;
 }) {
 	const key = props.fieldKey;
-	const fullName = (props.pathPrefix ? `${props.pathPrefix}.${key}` : key) as unknown as DeepKeys<any>;
+	const fullName = (props.pathPrefix ? `${props.pathPrefix}.${key}` : key) as unknown as DeepKeys<
+		Record<string, unknown>
+	>;
 	const schemaField = props.dataSchema.shape[key];
-	const fieldGenerator = props.fieldGenerator?.[key];
 	const fkInfo = props.foreignKeyFieldMap.get(String(key));
-
-	const fieldDic = (props.dictionary.fields as Record<string, { key?: string; formFieldDescription?: string }>)[
-		String(key)
-	];
+	const fieldDic = (props.dictionary.fields as Record<string, FieldDetail | undefined>)[String(key)];
 	const inputTitle = fieldDic?.key ?? String(key);
 	const inputDescription = fieldDic?.formFieldDescription ?? "";
 
-	return (
-		<props.form.Field
-			name={fullName}
-			validators={{
-				onChangeAsyncDebounceMs: 500,
-				onChangeAsync: schemaField,
-			}}
-		>
-			{(field: () => AnyFieldApi) => {
-				// 1) 自定义 fieldGenerator 优先
-				if (fieldGenerator) {
-					return fieldGenerator(
-						() => field().state.value as TItem[typeof key],
-						(value) => field().setValue(value as never),
-						fieldInfo(field()),
-						props.dictionary,
-						props.dataSchema as ZodObject<Record<keyof TItem, ZodType>>,
-					);
-				}
+	if (!schemaField) return null;
 
-				// 2) 外键列兜底：自动 Autocomplete
-				if (fkInfo) {
+	if (!hasFieldRenderer(props.renderers, String(key)) && fkInfo) {
+		return (
+			<props.form.Field
+				name={fullName}
+				validators={{
+					onChangeAsyncDebounceMs: 500,
+					onChangeAsync: schemaField,
+				}}
+			>
+				{(field: () => AnyFieldApi) => {
 					const options = () =>
 						(props.fkOptionsByTable()?.[fkInfo.referencedTable] ?? []) as Array<Record<string, unknown>>;
 					return (
@@ -150,172 +120,20 @@ function FormFieldBlock<TFormData extends Record<string, unknown>, TItem extends
 							/>
 						</Input>
 					);
-				}
+				}}
+			</props.form.Field>
+		);
+	}
 
-				// 3) 数组兜底：简单字符串数组
-				if (schemaField.type === "array") {
-					const arrayValue = () => (field().state.value as string[]) ?? [];
-					return (
-						<Input
-							title={inputTitle}
-							description={inputDescription}
-							validationMessage={fieldInfo(field())}
-							class={DefaultFieldClass}
-						>
-							<div class="ArrayBox flex w-full flex-col gap-2">
-								<Index each={arrayValue()}>
-									{(item, index) => (
-										<div class="flex items-center gap-2">
-											<div class="flex-1">
-												<Input
-													type="text"
-													value={item()}
-													onChange={(e) => {
-														field().replaceValue(index, e.target.value as never);
-													}}
-													class="w-full p-0!"
-												/>
-											</div>
-											<Button
-												onClick={(e) => {
-													field().removeValue(index);
-													e.stopPropagation();
-												}}
-											>
-												-
-											</Button>
-										</div>
-									)}
-								</Index>
-								<Button
-									onClick={() => {
-										field().pushValue("" as never);
-									}}
-									class="w-full"
-								>
-									+
-								</Button>
-							</div>
-						</Input>
-					);
-				}
-
-				// 4) 按 schema type 分派
-				switch (schemaField.type) {
-					case "enum": {
-						const options = (schemaField as ZodEnum<Record<string, string>>).options.map((i) => i.toString());
-						const enumMap = (fieldDic as EnumFieldDetail<string> | undefined)?.enumMap ?? {};
-						return (
-							<Input
-								title={inputTitle}
-								description={inputDescription}
-								validationMessage={fieldInfo(field())}
-								class={DefaultFieldClass}
-							>
-								<Show
-									when={options.length > 6}
-									fallback={
-										<EnumSelect
-											value={field().state.value as string}
-											setValue={(value) => field().setValue(value as never)}
-											options={options}
-											dic={enumMap}
-											field={{ id: field().name, name: field().name }}
-										/>
-									}
-								>
-									<Select
-										value={field().state.value as string}
-										setValue={(v) => field().setValue(v as never)}
-										options={options.map((type) => ({ label: enumMap[type] ?? type, value: type }))}
-										placeholder={field().state.value as string}
-									/>
-								</Show>
-							</Input>
-						);
-					}
-					case "number": {
-						return (
-							<Input
-								title={inputTitle}
-								description={inputDescription}
-								autocomplete="off"
-								type="number"
-								id={field().name}
-								name={field().name}
-								value={field().state.value as number}
-								onBlur={field().handleBlur}
-								onChange={(e) => field().handleChange(parseFloat(e.target.value))}
-								validationMessage={fieldInfo(field())}
-								class={DefaultFieldClass}
-							/>
-						);
-					}
-					case "boolean": {
-						return (
-							<Input
-								title={inputTitle}
-								description={inputDescription}
-								validationMessage={fieldInfo(field())}
-								class={DefaultFieldClass}
-							>
-								<Toggle
-									id={field().name}
-									onClick={() => field().setValue(!field().state.value as never)}
-									onBlur={field().handleBlur}
-									name={field().name}
-									checked={field().state.value as boolean}
-								/>
-							</Input>
-						);
-					}
-					case "lazy": {
-						return (
-							<Input
-								title={inputTitle}
-								description={inputDescription}
-								autocomplete="off"
-								type="text"
-								id={field().name}
-								name={field().name}
-								value={field().state.value as string}
-								onBlur={field().handleBlur}
-								onChange={(e) => field().handleChange(e.target.value as never)}
-								validationMessage={fieldInfo(field())}
-								class={DefaultFieldClass}
-							>
-								"逻辑编辑器，暂未处理"
-							</Input>
-						);
-					}
-					case "object": {
-						// 对象型字段：不在此渲染器内处理，需 fieldGenerator 兜底（比如 BtEditor）
-						return (
-							<Input title={inputTitle} description={inputDescription} class={DefaultFieldClass}>
-								<span class="text-dividing-color">[object] 需要自定义 fieldGenerator</span>
-							</Input>
-						);
-					}
-					default: {
-						return (
-							<Input
-								title={inputTitle}
-								description={inputDescription}
-								autocomplete="off"
-								type="text"
-								id={field().name}
-								name={field().name}
-								value={field().state.value as string}
-								onBlur={field().handleBlur}
-								onChange={(e) => field().handleChange(e.target.value as never)}
-								validationMessage={fieldInfo(field())}
-								class={DefaultFieldClass}
-							/>
-						);
-					}
-				}
-			}}
-		</props.form.Field>
+	return (
+		<SchemaFieldNode<TFormData, TItem>
+			form={props.form}
+			name={String(fullName)}
+			path={String(key) as FormRendererPath<TItem>}
+			schema={schemaField}
+			dictionary={fieldDic}
+			renderers={props.renderers}
+		/>
 	);
 }
 
@@ -344,7 +162,7 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 		return props.value;
 	});
 
-	// ---------- 合并 inheritsFrom 带来的父表字典/字段生成器 ----------
+	// ---------- 合并 inheritsFrom 带来的父表字典/节点渲染器 ----------
 
 	const mergedDictionary = createMemo<Dic<T>>(() => {
 		if (!props.inheritsFrom) return props.dictionary;
@@ -358,14 +176,20 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 		} as Dic<T>;
 	});
 
-	const mergedFieldGenerator = createMemo(() => {
-		const own = props.fieldGenerator ?? {};
-		if (!props.inheritsFrom) return own as NonNullable<typeof props.fieldGenerator>;
+	const mergedRenderers = createMemo<FormRenderers<T> | undefined>(() => {
+		const own = props.renderers;
+		if (!props.inheritsFrom) return own;
 		const parentForm = DATA_CONFIG[props.inheritsFrom.table]?.(dictionary).form;
 		return {
-			...((parentForm?.fieldGenerator as object) ?? {}),
-			...(own as object),
-		} as NonNullable<typeof props.fieldGenerator>;
+			fields: {
+				...((parentForm?.renderers?.fields as object) ?? {}),
+				...((own?.fields as object) ?? {}),
+			},
+			containers: {
+				...((parentForm?.renderers?.containers as object) ?? {}),
+				...((own?.containers as object) ?? {}),
+			},
+		} as FormRenderers<T>;
 	});
 
 	// ---------- 自动 FK 字段映射 ----------
@@ -435,7 +259,7 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 						fieldKey={String(key) as keyof T & string}
 						dataSchema={props.dataSchema}
 						dictionary={mergedDictionary()}
-						fieldGenerator={mergedFieldGenerator()}
+						renderers={mergedRenderers()}
 						foreignKeyFieldMap={foreignKeyFieldMap()}
 						fkOptionsByTable={() => fkOptionsByTable()}
 					/>
@@ -492,7 +316,7 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 																	fieldKey={childKey as never}
 																	dataSchema={childConfig.dataSchema}
 																	dictionary={childConfig.dictionary}
-																	fieldGenerator={childConfig.form.fieldGenerator}
+																	renderers={childConfig.form.renderers}
 																	foreignKeyFieldMap={childFkMapFor(childTableName, embed.via)}
 																	fkOptionsByTable={() => fkOptionsByTable()}
 																/>
@@ -519,7 +343,7 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 																				fieldKey={childKey as never}
 																				dataSchema={childConfig.dataSchema}
 																				dictionary={childConfig.dictionary}
-																				fieldGenerator={childConfig.form.fieldGenerator}
+																				renderers={childConfig.form.renderers}
 																				foreignKeyFieldMap={childFkMapFor(childTableName, embed.via)}
 																				fkOptionsByTable={() => fkOptionsByTable()}
 																			/>
@@ -535,7 +359,6 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 									)}
 								</Index>
 								<Button
-									level="secondary"
 									onClick={() => {
 										const childPrimaryKey = childConfig.primaryKey;
 										const newItem = {

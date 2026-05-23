@@ -67,9 +67,12 @@ export const MainPanel: Component<MainPanelProps> = (props) => {
 		const doNodesExist = props.elements.nodes.length > 0;
 		const instance = canvasInstance();
 
+		// 设计说明：首次渲染时元素数据可能已存在，但 WorkflowCanvas 还没把实例交回来；此时不能把 fit 状态标记为完成。
+		if (!instance) return;
+
 		// If we ever go from having no layout to some layout we should call 'fit'.
 		if (doNodesExist && isFitNeeded()) {
-			instance?.fit();
+			instance.fit();
 			setIsFitNeeded(false);
 		} else if (!doNodesExist && !isFitNeeded()) {
 			setIsFitNeeded(true);
@@ -77,7 +80,7 @@ export const MainPanel: Component<MainPanelProps> = (props) => {
 
 		// If we swap layouts we should call 'fit'.
 		if (lastLayoutId() !== props.layoutId) {
-			instance?.fit();
+			instance.fit();
 			setLastLayoutId(props.layoutId);
 		}
 	});

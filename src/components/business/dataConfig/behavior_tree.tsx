@@ -4,23 +4,20 @@ import { BehaviorTreeSchema, type behavior_tree } from "@db/generated/zod";
 import { createSignal } from "solid-js";
 import { Input } from "~/components/controls/input";
 import type { TableDataConfig } from "../data-config";
+import type { FormFieldRendererContext } from "../form/SchemaFieldRenderer";
 
 const formatJson = (value: unknown): string => JSON.stringify(value ?? [], null, 2);
 
-const createAttributeSlotsField = (
-	value: () => behavior_tree["attributeSlots"],
-	setValue: (value: behavior_tree["attributeSlots"]) => void,
-	validationMessage: string | undefined,
-	dictionary: { fields: Record<string, { key: string; formFieldDescription: string }> },
-) => {
+const createAttributeSlotsField = (context: FormFieldRendererContext<behavior_tree, "attributeSlots">) => {
+	const value = () => context.value();
 	const [text, setText] = createSignal(formatJson(value()));
 	const [localError, setLocalError] = createSignal<string | undefined>();
 
 	return (
 		<Input
-			title={dictionary.fields.attributeSlots.key}
-			description={dictionary.fields.attributeSlots.formFieldDescription}
-			validationMessage={localError() ?? validationMessage}
+			title={context.dictionary?.key ?? "attributeSlots"}
+			description={context.dictionary?.formFieldDescription ?? ""}
+			validationMessage={localError() ?? context.validationMessage}
 			class="border-dividing-color bg-primary-color w-full rounded-md border"
 		>
 			<textarea
@@ -31,7 +28,7 @@ const createAttributeSlotsField = (
 					const nextText = event.currentTarget.value;
 					setText(nextText);
 					try {
-						setValue(JSON.parse(nextText) as behavior_tree["attributeSlots"]);
+						context.setValue(JSON.parse(nextText));
 						setLocalError(undefined);
 					} catch (error) {
 						setLocalError(error instanceof Error ? error.message : String(error));
@@ -89,8 +86,10 @@ export const BEHAVIOR_TREE_DATA_CONFIG: TableDataConfig<behavior_tree> = (dictio
 	},
 	form: {
 		hiddenFields: ["id"],
-		fieldGenerator: {
-			attributeSlots: createAttributeSlotsField,
+		renderers: {
+			fields: {
+				attributeSlots: createAttributeSlotsField,
+			},
 		},
 		onInsert: repositoryMethods.behavior_tree.insert,
 		onUpdate: repositoryMethods.behavior_tree.update,

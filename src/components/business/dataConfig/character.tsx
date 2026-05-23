@@ -59,7 +59,6 @@ export const CHARACTER_DATA_CONFIG: TableDataConfig<character> = (dictionary) =>
 	},
 	form: {
 		hiddenFields: ["id", "statisticId"],
-		fieldGenerator: {},
 		onInsert: async (data) => {
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {

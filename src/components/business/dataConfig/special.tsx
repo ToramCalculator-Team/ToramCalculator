@@ -136,7 +136,6 @@ export const SPECIAL_DATA_CONFIG: TableDataConfig<SpecialItem, special> = (dicti
 	},
 	form: {
 		hiddenFields: [],
-		fieldGenerator: {},
 		onInsert: async (values) => insertSpecialItem(values),
 		onUpdate: updateSpecialItem,
 	},

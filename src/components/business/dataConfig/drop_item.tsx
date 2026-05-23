@@ -30,7 +30,6 @@ export const DROP_ITEM_DATA_CONFIG: TableDataConfig<drop_item> = (dictionary) =>
 	},
 	form: {
 		hiddenFields: ["id"],
-		fieldGenerator: {},
 		onInsert: repositoryMethods.drop_item.insert,
 		onUpdate: repositoryMethods.drop_item.update,
 	},

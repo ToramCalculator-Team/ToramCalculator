@@ -53,7 +53,6 @@ export const PLAYER_ARMOR_DATA_CONFIG: TableDataConfig<player_armor> = (dictiona
 	form: {
 		// 创建资产时，通常player从上下文中获取，不另外编辑
 		hiddenFields: ["id", "belongToPlayerId"],
-		fieldGenerator: {},
 		onInsert: repositoryMethods.player_armor.insert,
 		onUpdate: repositoryMethods.player_armor.update,
 	},

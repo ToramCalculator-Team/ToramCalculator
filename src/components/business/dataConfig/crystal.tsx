@@ -147,7 +147,6 @@ export const CRYSTAL_DATA_CONFIG: TableDataConfig<CrystalItem, crystal> = (dicti
 	},
 	form: {
 		hiddenFields: [],
-		fieldGenerator: {},
 		onInsert: async (values) => insertCrystalItem(values),
 		onUpdate: updateCrystalItem,
 	},

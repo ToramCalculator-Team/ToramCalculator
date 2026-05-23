@@ -132,7 +132,6 @@ export const ARMOR_DATA_CONFIG: TableDataConfig<ArmorItem, armor> = (dictionary)
 	},
 	form: {
 		hiddenFields: [],
-		fieldGenerator: {},
 		onInsert: async (values) => insertArmorItem(values),
 		onUpdate: updateArmorItem,
 	},

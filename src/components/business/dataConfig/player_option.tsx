@@ -43,7 +43,6 @@ export const PLAYER_OPTION_DATA_CONFIG: TableDataConfig<player_option> = (dictio
 	form: {
 		// 创建资产时，通常player从上下文中获取，不另外编辑
 		hiddenFields: ["id", "belongToPlayerId"],
-		fieldGenerator: {},
 		onInsert: repositoryMethods.player_option.insert,
 		onUpdate: repositoryMethods.player_option.update,
 	},

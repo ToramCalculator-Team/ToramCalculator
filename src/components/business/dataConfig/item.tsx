@@ -50,7 +50,6 @@ export const ITEM_DATA_CONFIG: TableDataConfig<item> = (dictionary) => ({
 	},
 	form: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
-		fieldGenerator: {},
 		onInsert: async (data) => {
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {

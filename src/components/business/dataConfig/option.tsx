@@ -150,7 +150,6 @@ export const OPTION_DATA_CONFIG: TableDataConfig<OptionItem, option> = (dictiona
 	},
 	form: {
 		hiddenFields: [],
-		fieldGenerator: {},
 		onInsert: async (values) => insertOptionItem(values),
 		onUpdate: updateOptionItem,
 	},

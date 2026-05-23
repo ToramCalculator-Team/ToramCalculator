@@ -38,7 +38,7 @@ type SafeOmit<T, K extends keyof T> = Omit<T, K>;
 /**
  * 1:1 继承父表（当前表与父表在概念上是同一实体）
  * 渲染器会自动：
- *  - 合并父表的 dictionary / fieldGenerator（child 优先）
+ *  - 合并父表的 dictionary / 表单 renderers / 卡片 fieldGenerator（child 优先）
  *  - 查询父表的反向关系并合并到当前表的关联内容中
  *  - 排除父表的兄弟子类（如 weapon 的 inheritsFrom=item，则 armor/consumable 等同级子类不会出现在关联内容里）
  */

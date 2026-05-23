@@ -192,18 +192,21 @@ export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem, weapon> = (dictiona
 	},
 	form: {
 		hiddenFields: [],
-		fieldGenerator: {
-			type: (value, setValue, _validationMessage, dictionary, _dataSchema) => {
-				return (
-					<Select
-						options={WEAPON_TYPE.map((type) => ({
-							label: dictionary.fields.type.enumMap[type],
-							value: type,
-						}))}
-						value={value()}
-						setValue={(v) => setValue(v as WeaponType)}
-					/>
-				);
+		renderers: {
+			fields: {
+				type: ({ value, setValue }) => {
+					const typeDictionary = dictionary().db.weapon.fields.type;
+					return (
+						<Select
+							options={WEAPON_TYPE.map((type) => ({
+								label: typeDictionary.enumMap[type],
+								value: type,
+							}))}
+							value={value() as WeaponType}
+							setValue={(v) => setValue(v as WeaponType)}
+						/>
+					);
+				},
 			},
 		},
 		onInsert: async (values) => insertWeaponItem(values),

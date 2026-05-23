@@ -138,7 +138,6 @@ export const CONSUMABLE_DATA_CONFIG: TableDataConfig<ConsumableItem, consumable>
 	},
 	form: {
 		hiddenFields: [],
-		fieldGenerator: {},
 		onInsert: async (values) => insertConsumableItem(values),
 		onUpdate: updateConsumableItem,
 	},

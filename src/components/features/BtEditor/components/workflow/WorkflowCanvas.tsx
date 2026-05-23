@@ -70,6 +70,7 @@ export type WorkflowCanvasProps = {
 
 export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 	let canvasWrapperRef: HTMLDivElement | undefined;
+	let canvasSurfaceRef: HTMLDivElement | undefined;
 	let rootNodesContainerRef: HTMLDivElement | undefined;
 	let canvasDragStartPosition: { x: number; y: number } | null = null;
 	let canvasPanButton: 0 | 1 | null = null;
@@ -80,6 +81,7 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 	let viewportState: ViewportState = { x: 0, y: 0, scale: 1 };
 	let pendingViewport: ViewportState | null = null;
 	let viewportAnimationFrame: number | undefined;
+	let fitAnimationFrame: number | undefined;
 	let selectionMeasureFrame: number | undefined;
 	let layoutAnchor: LayoutAnchor | null = null;
 	let layoutStabilizationQueued = false;
@@ -163,10 +165,22 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 
 	// Fit the contents into the centre of the canvas.
 	const fit = () => {
-		const canvasWrapperOffsetHeight = canvasWrapperRef?.offsetHeight || 0;
-		const canvasWrapperOffsetWidth = canvasWrapperRef?.offsetWidth || 0;
-		const rootNodesContainerOffsetHeight = rootNodesContainerRef?.offsetHeight || 0;
-		const rootNodesContainerOffsetWidth = rootNodesContainerRef?.offsetWidth || 0;
+		if (fitAnimationFrame !== undefined) {
+			cancelAnimationFrame(fitAnimationFrame);
+		}
+		// 设计说明：画布尺寸会受顶部诊断条、左右栏和字体渲染影响；延后一帧测量，避免用半完成布局计算初始居中。
+		fitAnimationFrame = requestAnimationFrame(() => {
+			fitAnimationFrame = undefined;
+			fitNow();
+		});
+	};
+
+	const fitNow = () => {
+		if (!canvasWrapperRef || !rootNodesContainerRef) return;
+		const canvasWrapperOffsetHeight = canvasWrapperRef.offsetHeight;
+		const canvasWrapperOffsetWidth = canvasWrapperRef.offsetWidth;
+		const rootNodesContainerOffsetHeight = rootNodesContainerRef.offsetHeight;
+		const rootNodesContainerOffsetWidth = rootNodesContainerRef.offsetWidth;
 
 		commitViewport(
 			{
@@ -186,11 +200,7 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 	onMount(() => {
 		props.onInitalise?.(instance);
 		props.onUpdate?.();
-
-		// 延迟执行，确保 DOM 元素已经渲染
-		setTimeout(() => {
-			fit();
-		}, 1);
+		fit();
 
 		// Wheel 保留桌面缩放；触控缩放走 pointer 事件。
 		if (canvasWrapperRef) {
@@ -225,6 +235,9 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 		window.removeEventListener("pointercancel", handleGlobalTreeNodePointerCancel, true);
 		if (viewportAnimationFrame !== undefined) {
 			cancelAnimationFrame(viewportAnimationFrame);
+		}
+		if (fitAnimationFrame !== undefined) {
+			cancelAnimationFrame(fitAnimationFrame);
 		}
 		if (selectionMeasureFrame !== undefined) {
 			cancelAnimationFrame(selectionMeasureFrame);
@@ -297,6 +310,20 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 		scheduleSelectionMeasure();
 	};
 
+	const getCanvasSurfaceRect = (): DOMRect | null => {
+		const surface = canvasSurfaceRef ?? canvasWrapperRef;
+		return surface?.getBoundingClientRect() ?? null;
+	};
+
+	const getRenderedNodeElement = (nodeId: string): HTMLElement | null => {
+		if (!rootNodesContainerRef) return null;
+		return (
+			[...rootNodesContainerRef.querySelectorAll<HTMLElement>("[data-bt-node-id]")].find(
+				(element) => element.dataset.btNodeId === nodeId && element.dataset.btPlaceholder !== "true",
+			) ?? null
+		);
+	};
+
 	const scheduleSelectionMeasure = () => {
 		if (selectionMeasureFrame !== undefined) return;
 		selectionMeasureFrame = requestAnimationFrame(() => {
@@ -312,14 +339,12 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 			setSelectedNodeBounds(null);
 			return;
 		}
-		const selectedElement = [...canvasWrapperRef.querySelectorAll<HTMLElement>("[data-bt-node-id]")].find(
-			(element) => element.dataset.btNodeId === selectedNodeId && element.dataset.btPlaceholder !== "true",
-		);
-		if (!selectedElement) {
+		const selectedElement = getRenderedNodeElement(selectedNodeId);
+		const canvasRect = getCanvasSurfaceRect();
+		if (!selectedElement || !canvasRect) {
 			setSelectedNodeBounds(null);
 			return;
 		}
-		const canvasRect = canvasWrapperRef.getBoundingClientRect();
 		const nodeRect = selectedElement.getBoundingClientRect();
 		setSelectedNodeBounds({
 			nodeId: selectedNode.id,
@@ -332,12 +357,9 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 	};
 
 	const getNodeCanvasRect = (nodeId: string): { left: number; top: number } | null => {
-		if (!canvasWrapperRef) return null;
-		const selectedElement = [...canvasWrapperRef.querySelectorAll<HTMLElement>("[data-bt-node-id]")].find(
-			(element) => element.dataset.btNodeId === nodeId && element.dataset.btPlaceholder !== "true",
-		);
-		if (!selectedElement) return null;
-		const canvasRect = canvasWrapperRef.getBoundingClientRect();
+		const selectedElement = getRenderedNodeElement(nodeId);
+		const canvasRect = getCanvasSurfaceRect();
+		if (!selectedElement || !canvasRect) return null;
 		const nodeRect = selectedElement.getBoundingClientRect();
 		return {
 			left: nodeRect.left - canvasRect.left,
@@ -729,7 +751,7 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 			onDrop={handleDrop}
 			onDragLeave={handleDragLeave}
 		>
-			<div class="absolute inset-0 bg-area-color">
+			<div ref={canvasSurfaceRef} class="absolute inset-0 bg-area-color">
 				<svg class="absolute inset-0 w-full h-full">
 					<title>Workflow Canvas</title>
 					<defs>
@@ -746,11 +768,13 @@ export const WorkflowCanvas: Component<WorkflowCanvasProps> = (props) => {
 					</defs>
 					<rect x="0" y="0" width="100%" height="100%" fill="url(#canvas-pattern-background)" />
 				</svg>
+				{/* 设计说明：视口平移/缩放以画布左上角为原点，保证网格、节点和悬浮菜单使用同一坐标系。 */}
 				<div
 					class="absolute"
 					classList={{ "will-change-transform": isViewportInteracting() }}
 					style={{
 						transform: `translate(${snapToDevicePixel(translateX())}px, ${snapToDevicePixel(translateY())}px) scale(${scale()})`,
+						"transform-origin": "0 0",
 					}}
 				>
 					<div ref={rootNodesContainerRef} class="flex flex-col items-center">
@@ -842,10 +866,10 @@ const NodeSelectionControls: Component<{
 		<div class="pointer-events-none absolute inset-0 z-30">
 			<Show when={canInsertSibling()}>
 				<NodeOverlayMenuGroup
+					anchor="top"
 					style={{
 						left: `${props.bounds.left + props.bounds.width / 2}px`,
 						top: `${props.bounds.top}px`,
-						transform: "translate(-50%, calc(-100% - 8px))",
 					}}
 				>
 					<NodeInsertOverlayButton
@@ -859,10 +883,10 @@ const NodeSelectionControls: Component<{
 			</Show>
 			<Show when={props.canDelete}>
 				<NodeOverlayMenuGroup
+					anchor="left"
 					style={{
 						left: `${props.bounds.left}px`,
 						top: `${props.bounds.top + props.bounds.height / 2}px`,
-						transform: "translate(calc(-100% - 8px), -50%)",
 					}}
 				>
 					<NodeOverlayButton
@@ -876,10 +900,10 @@ const NodeSelectionControls: Component<{
 			</Show>
 			<Show when={canInsertSibling()}>
 				<NodeOverlayMenuGroup
+					anchor="bottom"
 					style={{
 						left: `${props.bounds.left + props.bounds.width / 2}px`,
 						top: `${props.bounds.top + props.bounds.height}px`,
-						transform: "translate(-50%, 8px)",
 					}}
 				>
 					<NodeInsertOverlayButton
@@ -893,10 +917,10 @@ const NodeSelectionControls: Component<{
 			</Show>
 			<Show when={canInsertChild() || props.onInspect}>
 				<NodeOverlayMenuGroup
+					anchor="right"
 					style={{
 						left: `${props.bounds.left + props.bounds.width}px`,
 						top: `${props.bounds.top + props.bounds.height / 2}px`,
-						transform: "translate(8px, -50%)",
 					}}
 				>
 					<Show when={props.onInspect}>
@@ -924,14 +948,28 @@ const NodeSelectionControls: Component<{
 };
 
 const NodeOverlayMenuGroup: Component<{
+	anchor: "top" | "left" | "bottom" | "right";
 	children: JSX.Element;
 	style: JSX.CSSProperties;
-}> = (props) => (
-	// 设计说明：节点菜单按四个方向组织，组负责定位，按钮只负责行为，避免新增菜单项时重复计算散点坐标。
-	<div class="pointer-events-none absolute flex flex-row items-center justify-center gap-2" style={props.style}>
-		{props.children}
-	</div>
-);
+}> = (props) => {
+	const anchorClass = () =>
+		({
+			top: "-mt-2 -translate-x-1/2 -translate-y-full",
+			left: "-ml-2 -translate-x-full -translate-y-1/2",
+			bottom: "translate-y-2 -translate-x-1/2",
+			right: "translate-x-2 -translate-y-1/2",
+		})[props.anchor];
+
+	return (
+		// 设计说明：节点菜单按四个方向组织，锚点类只描述几何偏移；按钮只负责行为，避免新增菜单项时重复计算散点坐标。
+		<div
+			class={`pointer-events-none absolute flex flex-row items-center justify-center gap-2 ${anchorClass()}`}
+			style={props.style}
+		>
+			{props.children}
+		</div>
+	);
+};
 
 const NodeInsertOverlayButton: Component<{
 	label: string;

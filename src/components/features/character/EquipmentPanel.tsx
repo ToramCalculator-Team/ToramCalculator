@@ -167,7 +167,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 					dictionary={config.dictionary}
 					hiddenFields={config.form.hiddenFields}
 					fieldGroupMap={config.fieldGroupMap}
-					fieldGenerator={config.form.fieldGenerator}
+					renderers={config.form.renderers}
 					inheritsFrom={config.inheritsFrom}
 					embeds={config.embeds}
 					onInsert={async (value) => {

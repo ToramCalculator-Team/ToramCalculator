@@ -1,58 +1,9 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
 import { SkillVariantSchema, type skill_variant } from "@db/generated/zod";
-import { createSignal } from "solid-js";
-import { Input } from "~/components/controls/input";
 import type { TableDataConfig } from "../data-config";
 
 const formatJson = (value: unknown): string => JSON.stringify(value ?? null, null, 2);
-
-const tryParseJson = (text: string): { ok: true; value: unknown } | { ok: false; message: string } => {
-	try {
-		return { ok: true, value: JSON.parse(text) };
-	} catch (error) {
-		return { ok: false, message: error instanceof Error ? error.message : String(error) };
-	}
-};
-
-const createJsonField =
-	<TValue,>(fieldName: keyof skill_variant) =>
-	(
-		value: () => TValue,
-		setValue: (value: TValue) => void,
-		validationMessage: string | undefined,
-		dictionary: { fields: Record<string, { key: string; formFieldDescription: string }> },
-	) => {
-		const fieldKey = String(fieldName);
-		const [text, setText] = createSignal(formatJson(value()));
-		const [localError, setLocalError] = createSignal<string | undefined>();
-
-		return (
-			<Input
-				title={dictionary.fields[fieldKey].key}
-				description={dictionary.fields[fieldKey].formFieldDescription}
-				validationMessage={localError() ?? validationMessage}
-				class="border-dividing-color bg-primary-color w-full rounded-md border"
-			>
-				<textarea
-					value={text()}
-					spellcheck={false}
-					class="text-accent-color bg-area-color min-h-48 w-full resize-y rounded p-3 font-mono text-sm"
-					onInput={(event) => {
-						const nextText = event.currentTarget.value;
-						setText(nextText);
-						const parsed = tryParseJson(nextText);
-						if (!parsed.ok) {
-							setLocalError(parsed.message);
-							return;
-						}
-						setLocalError(undefined);
-						setValue(parsed.value as TValue);
-					}}
-				/>
-			</Input>
-		);
-	};
 
 export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = (dictionary) => ({
 	dictionary: dictionary().db.skill_variant,
@@ -99,10 +50,13 @@ export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<skill_variant> = (dictio
 	},
 	form: {
 		hiddenFields: ["id"],
-		fieldGenerator: {
-			activeBehavior: createJsonField<skill_variant["activeBehavior"]>("activeBehavior"),
-			passiveBehavior: createJsonField<skill_variant["passiveBehavior"]>("passiveBehavior"),
-			registeredBehavior: createJsonField<skill_variant["registeredBehavior"]>("registeredBehavior"),
+		renderers: {
+			containers: {
+				"activeBehavior.behaviorParams.damageEvents": (context) =>
+					context.renderFrame({
+						children: () => <div class="flex gap-2 p-1 bg-area-color rounded">{context.children()}</div>,
+					}),
+			},
 		},
 		onInsert: repositoryMethods.skill_variant.insert,
 		onUpdate: repositoryMethods.skill_variant.update,

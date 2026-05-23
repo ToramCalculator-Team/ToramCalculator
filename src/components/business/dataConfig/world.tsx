@@ -35,7 +35,6 @@ export const WORLD_DATA_CONFIG: TableDataConfig<world> = (dictionary) => ({
 	},
 	form: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
-		fieldGenerator: {},
 		onInsert: async (data) => {
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {

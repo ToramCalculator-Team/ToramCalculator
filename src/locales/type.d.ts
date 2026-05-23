@@ -1,13 +1,20 @@
 import type { DB } from "@db/generated/zod/index";
-import { SkillTreeGroupType, SkillTreeType } from "@db/schema/enums";
 
 export type FieldDetail = {
 	key: string;
 	tableFieldDescription: string;
 	formFieldDescription: string;
+	/**
+	 * Json 字段的嵌套节点字典。阶段 1 允许按需提供，缺失节点由表单回退为 schema 字段名。
+	 * fields / item / variants 分别对应 object、array item 与 discriminated union 分支。
+	 */
+	fields?: Record<string, FieldDetail>;
+	item?: FieldDetail;
+	variants?: Record<string, FieldDetail>;
+	enumMap?: Record<string, string>;
 };
 
-type EnumFieldDetail<Enum extends string> = FieldDetail & {
+export type EnumFieldDetail<Enum extends string> = FieldDetail & {
 	enumMap: Record<Enum, string>;
 };
 

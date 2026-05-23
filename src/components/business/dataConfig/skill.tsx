@@ -14,6 +14,7 @@ import z from "zod/v4";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
 import type { TableDataConfig } from "../data-config";
+import { DefaultFieldClass } from "../form/SchemaFieldRenderer";
 import { getUserContext } from "../utils/context";
 
 const SkillWithVariantsSchema = SkillSchema.extend({
@@ -244,29 +245,32 @@ export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill, SkillL
 	},
 	form: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
-		fieldGenerator: {
-			treeType: (value, setValue, validationMessage, dictionary) => {
-				return (
-					<Input
-						title={dictionary.fields.treeType.key}
-						description={dictionary.fields.treeType.formFieldDescription}
-						validationMessage={validationMessage}
-						class="border-dividing-color bg-primary-color rounded-md border w-full"
-					>
-						<Select
-							value={value()}
-							setValue={(v) => setValue(v as SkillTreeType)}
-							options={[
-								...SKILL_TREE_TYPE.map((type) => ({
-									label: dictionary.fields.treeType.enumMap[type],
-									value: type,
-								})),
-							]}
-							placeholder={value()}
-							// optionPosition="top"
-						/>
-					</Input>
-				);
+		renderers: {
+			fields: {
+				treeType: ({ value, setValue, validationMessage }) => {
+					const treeTypeDictionary = dictionary().db.skill.fields.treeType;
+					return (
+						<Input
+							title={treeTypeDictionary.key}
+							description={treeTypeDictionary.formFieldDescription}
+							validationMessage={validationMessage}
+							class={DefaultFieldClass}
+						>
+							<Select
+								value={value() as SkillTreeType}
+								setValue={(v) => setValue(v as SkillTreeType)}
+								options={[
+									...SKILL_TREE_TYPE.map((type) => ({
+										label: treeTypeDictionary.enumMap[type],
+										value: type,
+									})),
+								]}
+								placeholder={value() as SkillTreeType}
+								// optionPosition="top"
+							/>
+						</Input>
+					);
+				},
 			},
 		},
 		onInsert: insertSkillWithVariants,

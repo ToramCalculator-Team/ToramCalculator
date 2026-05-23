@@ -249,42 +249,46 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 	},
 	form: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
-		fieldGenerator: {
-			actions: (value, setValue, validationMessage, dictionary) => {
-				const [editorDisplay, setEditorDisplay] = createSignal(false);
-				return (
-					<Input
-						title={dictionary.fields.actions.key}
-						description={dictionary.fields.actions.formFieldDescription}
-						validationMessage={validationMessage}
-						class={DefaultFieldClass}
-					>
-						<BtEditorWrapper
-							title={dictionary.fields.actions.key}
-							editorDisplay={editorDisplay()}
-							setEditorDisplay={setEditorDisplay}
+		renderers: {
+			fields: {
+				actions: ({ value, setValue, validationMessage }) => {
+					const actionDictionary = dictionary().db.mob.fields.actions;
+					const [editorDisplay, setEditorDisplay] = createSignal(false);
+					const currentValue = () => value() as mob["actions"];
+					return (
+						<Input
+							title={actionDictionary.key}
+							description={actionDictionary.formFieldDescription}
+							validationMessage={validationMessage}
+							class={DefaultFieldClass}
 						>
-							<BtEditor
-								title={dictionary.fields.actions.key}
-								value={{
-									...value(),
-									memberType: (value().memberType as MemberType) ?? "Mob",
-									attributeSlots: value().attributeSlots ?? [],
-								}}
-								onChange={(nextTree) => {
-									const newValue = {
-										...value(),
-										...nextTree,
-									};
-									console.log(newValue);
-									setValue(newValue);
-									// setEditorDisplay(false);
-								}}
-								onClose={() => setEditorDisplay(false)}
-							/>
-						</BtEditorWrapper>
-					</Input>
-				);
+							<BtEditorWrapper
+								title={actionDictionary.key}
+								editorDisplay={editorDisplay()}
+								setEditorDisplay={setEditorDisplay}
+							>
+								<BtEditor
+									title={actionDictionary.key}
+									value={{
+										...currentValue(),
+										memberType: (currentValue().memberType as MemberType) ?? "Mob",
+										attributeSlots: currentValue().attributeSlots ?? [],
+									}}
+									onChange={(nextTree) => {
+										const newValue = {
+											...currentValue(),
+											...nextTree,
+										};
+										console.log(newValue);
+										setValue(newValue);
+										// setEditorDisplay(false);
+									}}
+									onClose={() => setEditorDisplay(false)}
+								/>
+							</BtEditorWrapper>
+						</Input>
+					);
+				},
 			},
 		},
 		onInsert: async (data) => {

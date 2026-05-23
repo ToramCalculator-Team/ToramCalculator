@@ -33,7 +33,6 @@ export const RECIPE_INGREDIENT_DATA_CONFIG: TableDataConfig<recipe_ingredient> =
 	},
 	form: {
 		hiddenFields: ["id"],
-		fieldGenerator: {},
 		onInsert: repositoryMethods.recipe_ingredient.insert,
 		onUpdate: repositoryMethods.recipe_ingredient.update,
 	},

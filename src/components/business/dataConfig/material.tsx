@@ -129,7 +129,6 @@ export const MATERIAL_DATA_CONFIG: TableDataConfig<MaterialItem, material> = (di
 	},
 	form: {
 		hiddenFields: [],
-		fieldGenerator: {},
 		onInsert: async (values) => insertMaterialItem(values),
 		onUpdate: updateMaterialItem,
 	},
