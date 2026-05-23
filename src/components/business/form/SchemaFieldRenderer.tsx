@@ -174,10 +174,7 @@ export function SchemaFieldNode<
 					if ((field().state.value === null || field().state.value === undefined) && isComplexType(type)) {
 						return (
 							<Input title={title} description={description} validationMessage={validationMessage()} class={className}>
-								<Button
-									class="w-full"
-									onClick={() => field().setValue(createSchemaDefaultValue(unwrapped) as never)}
-								>
+								<Button class="w-full" onClick={() => field().setValue(createSchemaDefaultValue(unwrapped) as never)}>
 									创建
 								</Button>
 							</Input>
@@ -186,11 +183,7 @@ export function SchemaFieldNode<
 
 					const clearButton = () => (
 						<Show when={wrapper.nullable || wrapper.optional}>
-							<Button
-								onClick={() => field().setValue((wrapper.nullable ? null : undefined) as never)}
-							>
-								清空
-							</Button>
+							<Button onClick={() => field().setValue((wrapper.nullable ? null : undefined) as never)}>清空</Button>
 						</Show>
 					);
 

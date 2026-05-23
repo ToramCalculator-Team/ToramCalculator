@@ -1,12 +1,15 @@
 import type { DB } from "@db/generated/zod/index";
 
-export type FieldDetail = {
+export type BaseFieldDetail = {
 	key: string;
 	tableFieldDescription: string;
 	formFieldDescription: string;
+};
+
+export type FieldDetail = BaseFieldDetail & {
 	/**
-	 * Json 字段的嵌套节点字典。阶段 1 允许按需提供，缺失节点由表单回退为 schema 字段名。
-	 * fields / item / variants 分别对应 object、array item 与 discriminated union 分支。
+	 * Json 字段运行时读取用的宽松嵌套节点字典。
+	 * 精确的编辑器补全由 FieldDetailFor<T> 提供；这里保持宽松，方便表单在运行时按路径读取缺失节点。
 	 */
 	fields?: Record<string, FieldDetail>;
 	item?: FieldDetail;
@@ -14,24 +17,105 @@ export type FieldDetail = {
 	enumMap?: Record<string, string>;
 };
 
-export type EnumFieldDetail<Enum extends string> = FieldDetail & {
+export type EnumFieldDetail<Enum extends string> = BaseFieldDetail & {
 	enumMap: Record<Enum, string>;
 };
 
+type IsAny<T> = 0 extends 1 & T ? true : false;
+
+type IsUnknown<T> =
+	IsAny<T> extends true ? false : unknown extends T ? ([keyof T] extends [never] ? true : false) : false;
+
+type IsUnion<T, TUnion = T> = IsAny<T> extends true
+	? false
+	: T extends unknown
+		? [TUnion] extends [T]
+			? false
+			: true
+		: false;
+
 /**
- * 判断 T 是否是 string literal union（不是 string 自身）
+ * 判断 T 是否是 string literal union（不是 string 自身，也不是单个 literal）。
+ * 单个 literal 常见于 discriminated union 分支内，不强制它提供 enumMap。
  */
 type IsStringLiteralUnionOnly<T> = [NonNullable<T>] extends [string]
 	? string extends NonNullable<T>
 		? false
-		: true
+		: IsUnion<NonNullable<T>>
 	: false;
 
+type FieldValue<T, K extends PropertyKey> = T extends unknown ? (K extends keyof T ? T[K] : never) : never;
+
+type KnownDiscriminator = "behaviorKind" | "type";
+
+// 只在对象 union 上识别判别字段；普通对象里的 enum 字段不应该被误当成 variants。
+type DiscriminatorKey<T> =
+	IsUnion<T> extends true
+		? KnownDiscriminator extends infer K extends string
+			? K extends keyof T
+				? IsStringLiteralUnionOnly<FieldValue<T, K>> extends true
+					? K
+					: never
+				: never
+			: never
+		: never;
+
+type ObjectFieldDict<T> = {
+	[K in Extract<keyof T, string>]-?: FieldDetailFor<FieldValue<T, K>>;
+};
+
+type VariantDict<T, D extends keyof T & string> = {
+	[Value in Extract<FieldValue<T, D>, string>]-?: FieldDetailFor<Extract<T, Record<D, Value>>>;
+};
+
+type HasNestedDictionary<T> =
+	IsAny<T> extends true
+		? false
+		: IsUnknown<T> extends true
+			? false
+			: IsStringLiteralUnionOnly<T> extends true
+				? false
+				: NonNullable<T> extends readonly (infer Item)[]
+					? HasNestedDictionary<Item>
+					: [DiscriminatorKey<NonNullable<T>>] extends [never]
+						? NonNullable<T> extends object
+							? true
+							: false
+						: true;
+
+type ArrayFieldDetail<Item> =
+	HasNestedDictionary<Item> extends true ? BaseFieldDetail & { item: FieldDetailFor<Item> } : FieldDetail;
+
 /**
- * 字段字典结构：对 string literal union 字段加 enumMap
+ * 递归字段字典结构。
+ * 设计目标：用类型把嵌套结构完整暴露给编辑器，让维护字典时可以沿 fields / item / variants 自动补全。
+ * unknown / any / 无法静态理解的节点会降级为普通 FieldDetail，避免把 JSON 自由区误判成结构化字典。
+ */
+export type FieldDetailFor<T> =
+	IsAny<T> extends true
+		? FieldDetail
+		: IsUnknown<T> extends true
+			? FieldDetail
+			: IsStringLiteralUnionOnly<T> extends true
+				? EnumFieldDetail<Extract<NonNullable<T>, string>>
+				: NonNullable<T> extends readonly (infer Item)[]
+					? ArrayFieldDetail<Item>
+					: [DiscriminatorKey<NonNullable<T>>] extends [never]
+						? NonNullable<T> extends object
+							? BaseFieldDetail & { fields: ObjectFieldDict<NonNullable<T>> }
+							: FieldDetail
+						: DiscriminatorKey<NonNullable<T>> extends infer D extends keyof NonNullable<T> & string
+							? BaseFieldDetail & {
+									fields: ObjectFieldDict<NonNullable<T>>;
+									variants: VariantDict<NonNullable<T>, D>;
+								}
+							: never;
+
+/**
+ * 字段字典结构：顶层字段和 JSON 嵌套字段都通过 FieldDetailFor 获得编辑器补全。
  */
 type FieldDict<T> = {
-	[K in keyof T]: IsStringLiteralUnionOnly<T[K]> extends true ? EnumFieldDetail<Extract<T[K], string>> : FieldDetail;
+	[K in keyof T]: FieldDetailFor<T[K]>;
 };
 
 /**
