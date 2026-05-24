@@ -1325,7 +1325,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "キャラクターの統計を選択してください。",
 				},
 			},
-			description: "キャラクター情報"
+			description: "キャラクター情報",
 		},
 		character_skill: {
 			selfName: "機体技能",
@@ -2218,7 +2218,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "宠物的所属玩家",
 				},
 			},
-			description: "プレイヤー情報"
+			description: "プレイヤー情報",
 		},
 		player_special: {
 			selfName: "プレイヤー特殊装備",
@@ -2483,7 +2483,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "选择创建者账号",
 				},
 			},
-			description: "シミュレーター情報"
+			description: "シミュレーター情報",
 		},
 		skill: {
 			selfName: "スキル",
@@ -2577,7 +2577,7 @@ const dictionary: Dictionary = {
 						"これは作成者のデータベースIDです。これを入力するように求められた場合は、開発者に報告してください。これは正常ではありません。",
 				},
 			},
-			description: "ゲーム内のスキル情報"
+			description: "ゲーム内のスキル情報",
 		},
 		skill_variant: {
 			selfName: "スキル効果",

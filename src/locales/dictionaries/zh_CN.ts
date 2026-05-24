@@ -1283,6 +1283,78 @@ const dictionary: Dictionary = {
 					key: "行为",
 					tableFieldDescription: "角色的行为",
 					formFieldDescription: "请输入角色的行为",
+					fields: {
+						name: {
+							key: "行为树名称",
+							tableFieldDescription: "行为树的名称",
+							formFieldDescription: "行为树的名称",
+						},
+						definition: {
+							key: "行为树定义",
+							tableFieldDescription: "MDSL 行为树定义",
+							formFieldDescription: "MDSL 行为树定义",
+						},
+						agent: {
+							key: "可调用函数集",
+							tableFieldDescription: "行为树可调用函数集",
+							formFieldDescription: "行为树可调用函数集",
+						},
+						memberType: {
+							key: "成员类型",
+							tableFieldDescription: "成员类型",
+							formFieldDescription: "成员类型",
+							enumMap: {
+								Player: "玩家",
+								Partner: "伙伴",
+								Mercenary: "佣兵",
+								Mob: "怪物",
+							},
+						},
+						attributeSlots: {
+							key: "属性槽",
+							tableFieldDescription: "需要并入 StatContainer 的持久化属性槽",
+							formFieldDescription: "需要并入 StatContainer 的持久化属性槽",
+							item: {
+								key: "",
+								tableFieldDescription: "",
+								formFieldDescription: "",
+								fields: {
+									path: {
+										key: "属性路径",
+										tableFieldDescription: "点号分隔的完整属性路径",
+										formFieldDescription: "点号分隔的完整属性路径",
+									},
+									attribute: {
+										key: "属性定义",
+										tableFieldDescription: "属性定义",
+										formFieldDescription: "属性定义",
+										fields: {
+											displayName: {
+												key: "展示名",
+												tableFieldDescription: "属性展示名",
+												formFieldDescription: "属性展示名",
+											},
+											expression: {
+												key: "初始表达式",
+												tableFieldDescription: "属性初始表达式",
+												formFieldDescription: "属性初始表达式",
+											},
+											noBaseValue: {
+												key: "不参与乘法",
+												tableFieldDescription: "百分比修正不参与乘法",
+												formFieldDescription: "百分比修正不参与乘法",
+											},
+											onlyBaseValue: {
+												key: "仅保留基础值",
+												tableFieldDescription: "仅保留基础值",
+												formFieldDescription: "仅保留基础值",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				partnerSkillAId: {
 					key: "伙伴技能A ID",
@@ -1785,6 +1857,78 @@ const dictionary: Dictionary = {
 					key: "行为",
 					tableFieldDescription: "怪物的行为描述，模拟器运行的时候会根据其中的逻辑模拟怪物行动",
 					formFieldDescription: "怪物的行为描述，模拟器运行的时候会根据其中的逻辑模拟怪物行动",
+					fields: {
+						name: {
+							key: "行为树名称",
+							tableFieldDescription: "行为树的名称",
+							formFieldDescription: "行为树的名称",
+						},
+						definition: {
+							key: "行为树定义",
+							tableFieldDescription: "MDSL 行为树定义",
+							formFieldDescription: "MDSL 行为树定义",
+						},
+						agent: {
+							key: "可调用函数集",
+							tableFieldDescription: "行为树可调用函数集",
+							formFieldDescription: "行为树可调用函数集",
+						},
+						memberType: {
+							key: "成员类型",
+							tableFieldDescription: "成员类型",
+							formFieldDescription: "成员类型",
+							enumMap: {
+								Player: "玩家",
+								Partner: "伙伴",
+								Mercenary: "佣兵",
+								Mob: "怪物",
+							},
+						},
+						attributeSlots: {
+							key: "属性槽",
+							tableFieldDescription: "需要并入 StatContainer 的持久化属性槽",
+							formFieldDescription: "需要并入 StatContainer 的持久化属性槽",
+							item: {
+								key: "",
+								tableFieldDescription: "",
+								formFieldDescription: "",
+								fields: {
+									path: {
+										key: "属性路径",
+										tableFieldDescription: "点号分隔的完整属性路径",
+										formFieldDescription: "点号分隔的完整属性路径",
+									},
+									attribute: {
+										key: "属性定义",
+										tableFieldDescription: "属性定义",
+										formFieldDescription: "属性定义",
+										fields: {
+											displayName: {
+												key: "展示名",
+												tableFieldDescription: "属性展示名",
+												formFieldDescription: "属性展示名",
+											},
+											expression: {
+												key: "初始表达式",
+												tableFieldDescription: "属性初始表达式",
+												formFieldDescription: "属性初始表达式",
+											},
+											noBaseValue: {
+												key: "不参与乘法",
+												tableFieldDescription: "百分比修正不参与乘法",
+												formFieldDescription: "百分比修正不参与乘法",
+											},
+											onlyBaseValue: {
+												key: "仅保留基础值",
+												tableFieldDescription: "仅保留基础值",
+												formFieldDescription: "仅保留基础值",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				baseLv: {
 					key: "基础等级",
@@ -2602,16 +2746,850 @@ const dictionary: Dictionary = {
 					key: "主动行为 DSL",
 					tableFieldDescription: "主动释放时使用的默认结构化行为",
 					formFieldDescription: "activeBehaviorTree 不存在时执行的主动释放 DSL",
+					fields: {
+						behaviorKind: {
+							key: "行为类型",
+							tableFieldDescription: "区分不同行为模式",
+							formFieldDescription: "区分不同行为模式",
+							enumMap: {
+								DamageAction: "伤害行为",
+								StatusAction: "状态行为",
+								RecoveryAction: "恢复行为",
+								WorldObject: "世界对象",
+								WorldZone: "世界区域",
+							},
+						},
+						behaviorParams: {
+							key: "行为参数",
+							tableFieldDescription: "不同行为类型对应的参数",
+							formFieldDescription: "不同行为类型对应的参数",
+							fields: {
+								lifecycle: {
+									key: "生命周期",
+									tableFieldDescription: "技能行为生命周期配置",
+									formFieldDescription: "技能行为生命周期配置",
+									fields: {
+										startupMs: { key: "前摇(ms)", tableFieldDescription: "", formFieldDescription: "" },
+										actionFixedMs: { key: "固定动作时长(ms)", tableFieldDescription: "", formFieldDescription: "" },
+										actionModifiedMs: {
+											key: "可加速动作时长(ms)",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+										},
+										chantingFixedMs: { key: "固定咏唱时长(ms)", tableFieldDescription: "", formFieldDescription: "" },
+										chantingModifiedMs: {
+											key: "可加速咏唱时长(ms)",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+										},
+										chargingFixedMs: { key: "固定蓄力时长(ms)", tableFieldDescription: "", formFieldDescription: "" },
+										chargingModifiedMs: {
+											key: "可加速蓄力时长(ms)",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+										},
+										targeting: {
+											key: "目标选择",
+											tableFieldDescription: "目标选择参数",
+											formFieldDescription: "目标选择参数",
+											fields: {
+												castingRange: { key: "施法距离", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+									},
+								},
+								rawBranches: {
+									key: "原始分支",
+									tableFieldDescription: "原始分支列表",
+									formFieldDescription: "原始分支列表",
+								},
+							},
+						},
+						attributeSlots: {
+							key: "属性槽",
+							tableFieldDescription: "需要并入 StatContainer 的属性槽",
+							formFieldDescription: "需要并入 StatContainer 的属性槽",
+							item: {
+								key: "",
+								tableFieldDescription: "",
+								formFieldDescription: "",
+								fields: {
+									path: {
+										key: "属性路径",
+										tableFieldDescription: "点号分隔的完整属性路径",
+										formFieldDescription: "点号分隔的完整属性路径",
+									},
+									attribute: {
+										key: "属性定义",
+										tableFieldDescription: "属性定义",
+										formFieldDescription: "属性定义",
+										fields: {
+											displayName: { key: "展示名", tableFieldDescription: "", formFieldDescription: "" },
+											expression: { key: "初始表达式", tableFieldDescription: "", formFieldDescription: "" },
+											noBaseValue: { key: "不参与乘法", tableFieldDescription: "", formFieldDescription: "" },
+											onlyBaseValue: { key: "仅保留基础值", tableFieldDescription: "", formFieldDescription: "" },
+										},
+									},
+								},
+							},
+						},
+					},
+					variants: {
+						DamageAction: {
+							key: "伤害行为",
+							tableFieldDescription: "",
+							formFieldDescription: "",
+							fields: {
+								behaviorKind: { key: "行为类型", tableFieldDescription: "", formFieldDescription: "" },
+								behaviorParams: {
+									key: "行为参数",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									fields: {
+										lifecycle: {
+											key: "生命周期",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												startupMs: { key: "前摇(ms)", tableFieldDescription: "", formFieldDescription: "" },
+												actionFixedMs: { key: "固定动作时长(ms)", tableFieldDescription: "", formFieldDescription: "" },
+												actionModifiedMs: {
+													key: "可加速动作时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												chantingFixedMs: {
+													key: "固定咏唱时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												chantingModifiedMs: {
+													key: "可加速咏唱时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												chargingFixedMs: {
+													key: "固定蓄力时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												chargingModifiedMs: {
+													key: "可加速蓄力时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												targeting: {
+													key: "目标选择",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													fields: {
+														castingRange: { key: "施法距离", tableFieldDescription: "", formFieldDescription: "" },
+													},
+												},
+											},
+										},
+										damageEvents: {
+											key: "伤害事件",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											item: {
+												key: "",
+												tableFieldDescription: "",
+												formFieldDescription: "",
+												fields: {
+													formula: {
+														key: "公式",
+														tableFieldDescription: "",
+														formFieldDescription: "",
+														fields: {
+															constant: { key: "常数", tableFieldDescription: "", formFieldDescription: "" },
+															multiplier: { key: "倍率", tableFieldDescription: "", formFieldDescription: "" },
+															element: {
+																key: "元素",
+																tableFieldDescription: "",
+																formFieldDescription: "",
+																fields: {
+																	expression: { key: "表达式", tableFieldDescription: "", formFieldDescription: "" },
+																},
+															},
+															base: { key: "基础值", tableFieldDescription: "", formFieldDescription: "" },
+														},
+													},
+													delivery: {
+														key: "传递",
+														tableFieldDescription: "",
+														formFieldDescription: "",
+														fields: {
+															rangeType: { key: "范围类型", tableFieldDescription: "", formFieldDescription: "" },
+															effectiveRange: { key: "有效范围", tableFieldDescription: "", formFieldDescription: "" },
+															warningZone: { key: "警告区域", tableFieldDescription: "", formFieldDescription: "" },
+														},
+													},
+													timing: {
+														key: "时机",
+														tableFieldDescription: "",
+														formFieldDescription: "",
+														fields: {
+															delayMs: { key: "延迟(ms)", tableFieldDescription: "", formFieldDescription: "" },
+															durationMs: { key: "持续时间(ms)", tableFieldDescription: "", formFieldDescription: "" },
+															intervalMs: { key: "间隔(ms)", tableFieldDescription: "", formFieldDescription: "" },
+															repeatCount: { key: "重复次数", tableFieldDescription: "", formFieldDescription: "" },
+														},
+													},
+													ailments: {
+														key: "异常状态",
+														tableFieldDescription: "",
+														formFieldDescription: "",
+														item: {
+															key: "",
+															tableFieldDescription: "",
+															formFieldDescription: "",
+															fields: {
+																type: { key: "类型", tableFieldDescription: "", formFieldDescription: "" },
+																probability: { key: "概率", tableFieldDescription: "", formFieldDescription: "" },
+																durationMs: {
+																	key: "持续时间(ms)",
+																	tableFieldDescription: "",
+																	formFieldDescription: "",
+																},
+															},
+														},
+													},
+													name: { key: "名称", tableFieldDescription: "", formFieldDescription: "" },
+												},
+											},
+										},
+										rawBranches: { key: "原始分支", tableFieldDescription: "", formFieldDescription: "" },
+									},
+								},
+								attributeSlots: {
+									key: "属性槽",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									item: {
+										key: "",
+										tableFieldDescription: "",
+										formFieldDescription: "",
+										fields: {
+											path: { key: "属性路径", tableFieldDescription: "", formFieldDescription: "" },
+											attribute: {
+												key: "属性定义",
+												tableFieldDescription: "",
+												formFieldDescription: "",
+												fields: {
+													displayName: { key: "展示名", tableFieldDescription: "", formFieldDescription: "" },
+													expression: { key: "初始表达式", tableFieldDescription: "", formFieldDescription: "" },
+													noBaseValue: { key: "不参与乘法", tableFieldDescription: "", formFieldDescription: "" },
+													onlyBaseValue: { key: "仅保留基础值", tableFieldDescription: "", formFieldDescription: "" },
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+						StatusAction: {
+							key: "状态行为",
+							tableFieldDescription: "",
+							formFieldDescription: "",
+							fields: {
+								behaviorKind: { key: "行为类型", tableFieldDescription: "", formFieldDescription: "" },
+								behaviorParams: {
+									key: "行为参数",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									fields: {
+										lifecycle: {
+											key: "生命周期",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												startupMs: { key: "前摇(ms)", tableFieldDescription: "", formFieldDescription: "" },
+												actionFixedMs: { key: "固定动作时长(ms)", tableFieldDescription: "", formFieldDescription: "" },
+												actionModifiedMs: {
+													key: "可加速动作时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												chantingFixedMs: {
+													key: "固定咏唱时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												chantingModifiedMs: {
+													key: "可加速咏唱时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												chargingFixedMs: {
+													key: "固定蓄力时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												chargingModifiedMs: {
+													key: "可加速蓄力时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												targeting: {
+													key: "目标选择",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													fields: {
+														castingRange: { key: "施法距离", tableFieldDescription: "", formFieldDescription: "" },
+													},
+												},
+											},
+										},
+										effects: {
+											key: "效果列表",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											item: {
+												key: "",
+												tableFieldDescription: "",
+												formFieldDescription: "",
+												fields: {
+													type: {
+														key: "效果类型",
+														tableFieldDescription: "",
+														formFieldDescription: "",
+														enumMap: {
+															MagicFlinch: "魔法胆怯",
+															None: "无",
+															Flinch: "胆怯",
+															Tumble: "翻覆",
+															Stun: "昏厥",
+															KnockBack: "击退",
+															Poison: "中毒",
+															PoisonLevel1: "中毒LV1",
+															PoisonLevel2: "中毒LV2",
+															Paralysis: "麻痹",
+															Blindness: "盲目",
+															Ignition: "着火",
+															Freeze: "冻结",
+															Breaking: "破坏",
+															Slow: "减速",
+															Stop: "停止",
+															Fear: "恐惧",
+															Dizzy: "眩晕",
+															Weak: "虚弱",
+															Collapse: "坍塌",
+															Confusion: "混乱",
+															Silent: "沉默",
+															Bleed: "出血",
+															Sleep: "睡眠",
+															Rage: "愤怒",
+															Tiredness: "疲劳",
+															Blessing: "祝福",
+															SystemInvincibility: "系统无敌",
+															BestState: "最佳状态",
+															Invincibility: "无敌",
+															Suction: "吸引",
+															Taming: "驯服",
+															Curse: "诅咒",
+															Flash: "闪光",
+															Runaway: "失控",
+															MagicalExplosion: "魔法爆炸",
+															Sick: "生病",
+															Malgravity: "异常重力",
+															Dispel: "驱散",
+															Inversion: "反转",
+															Mineralization: "矿物化",
+															NoTools: "禁用工具",
+															Enhance: "强化",
+															ComboInvincibility: "连击无敌",
+															DeathTorqueShot: "死亡回旋",
+															SystemAddHate: "系统仇恨",
+															Recovery: "恢复",
+														},
+													},
+													probability: { key: "概率", tableFieldDescription: "", formFieldDescription: "" },
+													durationMs: { key: "持续时间(ms)", tableFieldDescription: "", formFieldDescription: "" },
+												},
+											},
+										},
+										rawBranches: { key: "原始分支", tableFieldDescription: "", formFieldDescription: "" },
+									},
+								},
+								attributeSlots: {
+									key: "属性槽",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									item: {
+										key: "",
+										tableFieldDescription: "",
+										formFieldDescription: "",
+										fields: {
+											path: { key: "属性路径", tableFieldDescription: "", formFieldDescription: "" },
+											attribute: {
+												key: "属性定义",
+												tableFieldDescription: "",
+												formFieldDescription: "",
+												fields: {
+													displayName: { key: "展示名", tableFieldDescription: "", formFieldDescription: "" },
+													expression: { key: "初始表达式", tableFieldDescription: "", formFieldDescription: "" },
+													noBaseValue: { key: "不参与乘法", tableFieldDescription: "", formFieldDescription: "" },
+													onlyBaseValue: { key: "仅保留基础值", tableFieldDescription: "", formFieldDescription: "" },
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+						RecoveryAction: {
+							key: "恢复行为",
+							tableFieldDescription: "",
+							formFieldDescription: "",
+							fields: {
+								behaviorKind: { key: "行为类型", tableFieldDescription: "", formFieldDescription: "" },
+								behaviorParams: {
+									key: "行为参数",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									fields: {
+										lifecycle: {
+											key: "生命周期",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												startupMs: { key: "前摇(ms)", tableFieldDescription: "", formFieldDescription: "" },
+												actionFixedMs: { key: "固定动作时长(ms)", tableFieldDescription: "", formFieldDescription: "" },
+												actionModifiedMs: {
+													key: "可加速动作时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												chantingFixedMs: {
+													key: "固定咏唱时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												chantingModifiedMs: {
+													key: "可加速咏唱时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												chargingFixedMs: {
+													key: "固定蓄力时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												chargingModifiedMs: {
+													key: "可加速蓄力时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												targeting: {
+													key: "目标选择",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													fields: {
+														castingRange: { key: "施法距离", tableFieldDescription: "", formFieldDescription: "" },
+													},
+												},
+											},
+										},
+										recoveries: {
+											key: "恢复列表",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											item: {
+												key: "",
+												tableFieldDescription: "",
+												formFieldDescription: "",
+												fields: {
+													type: { key: "恢复类型", tableFieldDescription: "", formFieldDescription: "" },
+													value: { key: "恢复值", tableFieldDescription: "", formFieldDescription: "" },
+													formula: { key: "恢复公式", tableFieldDescription: "", formFieldDescription: "" },
+												},
+											},
+										},
+										rawBranches: { key: "原始分支", tableFieldDescription: "", formFieldDescription: "" },
+									},
+								},
+								attributeSlots: {
+									key: "属性槽",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									item: {
+										key: "",
+										tableFieldDescription: "",
+										formFieldDescription: "",
+										fields: {
+											path: { key: "属性路径", tableFieldDescription: "", formFieldDescription: "" },
+											attribute: {
+												key: "属性定义",
+												tableFieldDescription: "",
+												formFieldDescription: "",
+												fields: {
+													displayName: { key: "展示名", tableFieldDescription: "", formFieldDescription: "" },
+													expression: { key: "初始表达式", tableFieldDescription: "", formFieldDescription: "" },
+													noBaseValue: { key: "不参与乘法", tableFieldDescription: "", formFieldDescription: "" },
+													onlyBaseValue: { key: "仅保留基础值", tableFieldDescription: "", formFieldDescription: "" },
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+						WorldObject: {
+							key: "世界对象",
+							tableFieldDescription: "",
+							formFieldDescription: "",
+							fields: {
+								behaviorKind: { key: "行为类型", tableFieldDescription: "", formFieldDescription: "" },
+								behaviorParams: {
+									key: "行为参数",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									fields: {
+										lifecycle: {
+											key: "生命周期",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												startupMs: { key: "前摇(ms)", tableFieldDescription: "", formFieldDescription: "" },
+												actionFixedMs: { key: "固定动作时长(ms)", tableFieldDescription: "", formFieldDescription: "" },
+												actionModifiedMs: {
+													key: "可加速动作时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												chantingFixedMs: {
+													key: "固定咏唱时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												chantingModifiedMs: {
+													key: "可加速咏唱时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												chargingFixedMs: {
+													key: "固定蓄力时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												chargingModifiedMs: {
+													key: "可加速蓄力时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												targeting: {
+													key: "目标选择",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													fields: {
+														castingRange: { key: "施法距离", tableFieldDescription: "", formFieldDescription: "" },
+													},
+												},
+											},
+										},
+										rawBranches: { key: "原始分支", tableFieldDescription: "", formFieldDescription: "" },
+									},
+								},
+								attributeSlots: {
+									key: "属性槽",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									item: {
+										key: "",
+										tableFieldDescription: "",
+										formFieldDescription: "",
+										fields: {
+											path: { key: "属性路径", tableFieldDescription: "", formFieldDescription: "" },
+											attribute: {
+												key: "属性定义",
+												tableFieldDescription: "",
+												formFieldDescription: "",
+												fields: {
+													displayName: { key: "展示名", tableFieldDescription: "", formFieldDescription: "" },
+													expression: { key: "初始表达式", tableFieldDescription: "", formFieldDescription: "" },
+													noBaseValue: { key: "不参与乘法", tableFieldDescription: "", formFieldDescription: "" },
+													onlyBaseValue: { key: "仅保留基础值", tableFieldDescription: "", formFieldDescription: "" },
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+						WorldZone: {
+							key: "世界区域",
+							tableFieldDescription: "",
+							formFieldDescription: "",
+							fields: {
+								behaviorKind: { key: "行为类型", tableFieldDescription: "", formFieldDescription: "" },
+								behaviorParams: {
+									key: "行为参数",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									fields: {
+										lifecycle: {
+											key: "生命周期",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												startupMs: { key: "前摇(ms)", tableFieldDescription: "", formFieldDescription: "" },
+												actionFixedMs: { key: "固定动作时长(ms)", tableFieldDescription: "", formFieldDescription: "" },
+												actionModifiedMs: {
+													key: "可加速动作时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												chantingFixedMs: {
+													key: "固定咏唱时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												chantingModifiedMs: {
+													key: "可加速咏唱时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												chargingFixedMs: {
+													key: "固定蓄力时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												chargingModifiedMs: {
+													key: "可加速蓄力时长(ms)",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+												targeting: {
+													key: "目标选择",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													fields: {
+														castingRange: { key: "施法距离", tableFieldDescription: "", formFieldDescription: "" },
+													},
+												},
+											},
+										},
+										range: {
+											key: "范围",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												rangeType: { key: "范围类型", tableFieldDescription: "", formFieldDescription: "" },
+												effectiveRange: { key: "有效范围", tableFieldDescription: "", formFieldDescription: "" },
+												warningZone: { key: "警告区域", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										rawBranches: { key: "原始分支", tableFieldDescription: "", formFieldDescription: "" },
+									},
+								},
+								attributeSlots: {
+									key: "属性槽",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									item: {
+										key: "",
+										tableFieldDescription: "",
+										formFieldDescription: "",
+										fields: {
+											path: { key: "属性路径", tableFieldDescription: "", formFieldDescription: "" },
+											attribute: {
+												key: "属性定义",
+												tableFieldDescription: "",
+												formFieldDescription: "",
+												fields: {
+													displayName: { key: "展示名", tableFieldDescription: "", formFieldDescription: "" },
+													expression: { key: "初始表达式", tableFieldDescription: "", formFieldDescription: "" },
+													noBaseValue: { key: "不参与乘法", tableFieldDescription: "", formFieldDescription: "" },
+													onlyBaseValue: { key: "仅保留基础值", tableFieldDescription: "", formFieldDescription: "" },
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				passiveBehavior: {
 					key: "被动行为 DSL",
 					tableFieldDescription: "成员创建时安装的默认被动行为列表",
 					formFieldDescription: "成员创建时安装的默认被动行为列表",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							behaviorKind: {
+								key: "行为类型",
+								tableFieldDescription: "区分不同行为模式",
+								formFieldDescription: "区分不同行为模式",
+							},
+							behaviorParams: {
+								key: "行为参数",
+								tableFieldDescription: "被动规则行为参数",
+								formFieldDescription: "被动规则行为参数",
+								fields: {
+									modifiers: {
+										key: "修正值列表",
+										tableFieldDescription: "修正值列表",
+										formFieldDescription: "修正值列表",
+									},
+									runtimeAttachments: {
+										key: "运行时附加",
+										tableFieldDescription: "运行时附加",
+										formFieldDescription: "运行时附加",
+									},
+									attributeSlots: {
+										key: "属性槽",
+										tableFieldDescription: "需要并入 StatContainer 的属性槽",
+										formFieldDescription: "需要并入 StatContainer 的属性槽",
+										item: {
+											key: "",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												path: {
+													key: "属性路径",
+													tableFieldDescription: "点号分隔的完整属性路径",
+													formFieldDescription: "点号分隔的完整属性路径",
+												},
+												attribute: {
+													key: "属性定义",
+													tableFieldDescription: "属性定义",
+													formFieldDescription: "属性定义",
+													fields: {
+														displayName: { key: "展示名", tableFieldDescription: "", formFieldDescription: "" },
+														expression: { key: "初始表达式", tableFieldDescription: "", formFieldDescription: "" },
+														noBaseValue: { key: "不参与乘法", tableFieldDescription: "", formFieldDescription: "" },
+														onlyBaseValue: { key: "仅保留基础值", tableFieldDescription: "", formFieldDescription: "" },
+													},
+												},
+											},
+										},
+									},
+									rawBranches: {
+										key: "原始分支",
+										tableFieldDescription: "原始分支列表",
+										formFieldDescription: "原始分支列表",
+									},
+								},
+							},
+							attributeSlots: {
+								key: "属性槽",
+								tableFieldDescription: "需要并入 StatContainer 的属性槽",
+								formFieldDescription: "需要并入 StatContainer 的属性槽",
+								item: {
+									key: "",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									fields: {
+										path: {
+											key: "属性路径",
+											tableFieldDescription: "点号分隔的完整属性路径",
+											formFieldDescription: "点号分隔的完整属性路径",
+										},
+										attribute: {
+											key: "属性定义",
+											tableFieldDescription: "属性定义",
+											formFieldDescription: "属性定义",
+											fields: {
+												displayName: { key: "展示名", tableFieldDescription: "", formFieldDescription: "" },
+												expression: { key: "初始表达式", tableFieldDescription: "", formFieldDescription: "" },
+												noBaseValue: { key: "不参与乘法", tableFieldDescription: "", formFieldDescription: "" },
+												onlyBaseValue: { key: "仅保留基础值", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				registeredBehavior: {
 					key: "长期注册行为 DSL",
 					tableFieldDescription: "生命周期超过本次技能释放的默认注册行为列表",
 					formFieldDescription: "生命周期超过本次技能释放的默认注册行为列表",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							behaviorKind: {
+								key: "行为类型",
+								tableFieldDescription: "区分不同行为模式",
+								formFieldDescription: "区分不同行为模式",
+							},
+							behaviorParams: {
+								key: "行为参数",
+								tableFieldDescription: "注册行为参数",
+								formFieldDescription: "注册行为参数",
+								fields: {
+									attributeSlots: {
+										key: "属性槽",
+										tableFieldDescription: "需要并入 StatContainer 的属性槽",
+										formFieldDescription: "需要并入 StatContainer 的属性槽",
+										item: {
+											key: "",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												path: {
+													key: "属性路径",
+													tableFieldDescription: "点号分隔的完整属性路径",
+													formFieldDescription: "点号分隔的完整属性路径",
+												},
+												attribute: {
+													key: "属性定义",
+													tableFieldDescription: "属性定义",
+													formFieldDescription: "属性定义",
+													fields: {
+														displayName: { key: "展示名", tableFieldDescription: "", formFieldDescription: "" },
+														expression: { key: "初始表达式", tableFieldDescription: "", formFieldDescription: "" },
+														noBaseValue: { key: "不参与乘法", tableFieldDescription: "", formFieldDescription: "" },
+														onlyBaseValue: { key: "仅保留基础值", tableFieldDescription: "", formFieldDescription: "" },
+													},
+												},
+											},
+										},
+									},
+									rawBranches: {
+										key: "原始分支",
+										tableFieldDescription: "原始分支列表",
+										formFieldDescription: "原始分支列表",
+									},
+								},
+							},
+							attributeSlots: {
+								key: "属性槽",
+								tableFieldDescription: "需要并入 StatContainer 的属性槽",
+								formFieldDescription: "需要并入 StatContainer 的属性槽",
+								item: {
+									key: "",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									fields: {
+										path: {
+											key: "属性路径",
+											tableFieldDescription: "点号分隔的完整属性路径",
+											formFieldDescription: "点号分隔的完整属性路径",
+										},
+										attribute: {
+											key: "属性定义",
+											tableFieldDescription: "属性定义",
+											formFieldDescription: "属性定义",
+											fields: {
+												displayName: { key: "展示名", tableFieldDescription: "", formFieldDescription: "" },
+												expression: { key: "初始表达式", tableFieldDescription: "", formFieldDescription: "" },
+												noBaseValue: { key: "不参与乘法", tableFieldDescription: "", formFieldDescription: "" },
+												onlyBaseValue: { key: "仅保留基础值", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				hpCost: {
 					key: "HP消耗",
@@ -2668,6 +3646,45 @@ const dictionary: Dictionary = {
 					key: "属性槽",
 					tableFieldDescription: "需要并入 StatContainer 的持久化属性槽",
 					formFieldDescription: "需要并入 StatContainer 的持久化属性槽 JSON",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							path: {
+								key: "属性路径",
+								tableFieldDescription: "点号分隔的完整属性路径",
+								formFieldDescription: "点号分隔的完整属性路径",
+							},
+							attribute: {
+								key: "属性定义",
+								tableFieldDescription: "属性定义",
+								formFieldDescription: "属性定义",
+								fields: {
+									displayName: {
+										key: "展示名",
+										tableFieldDescription: "属性展示名",
+										formFieldDescription: "属性展示名",
+									},
+									expression: {
+										key: "初始表达式",
+										tableFieldDescription: "属性初始表达式",
+										formFieldDescription: "属性初始表达式",
+									},
+									noBaseValue: {
+										key: "不参与乘法",
+										tableFieldDescription: "百分比修正不参与乘法",
+										formFieldDescription: "百分比修正不参与乘法",
+									},
+									onlyBaseValue: {
+										key: "仅保留基础值",
+										tableFieldDescription: "仅保留基础值",
+										formFieldDescription: "仅保留基础值",
+									},
+								},
+							},
+						},
+					},
 				},
 				activeOwnerId: {
 					key: "主动归属技能变体",
@@ -3152,11 +4169,154 @@ const dictionary: Dictionary = {
 					key: "管道补丁",
 					tableFieldDescription: "管道补丁效果",
 					formFieldDescription: "请配置管道补丁效果",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							pipelineName: {
+								key: "目标管道名称",
+								tableFieldDescription: "目标 pipeline 名称",
+								formFieldDescription: "目标 pipeline 名称",
+							},
+							slot: {
+								key: "目标槽位",
+								tableFieldDescription: "目标槽位",
+								formFieldDescription: "目标槽位",
+							},
+							position: {
+								key: "插入位置",
+								tableFieldDescription: "在目标步骤之前或之后插入",
+								formFieldDescription: "在目标步骤之前或之后插入",
+								enumMap: {
+									before: "之前",
+									after: "之后",
+								},
+							},
+							priority: {
+								key: "优先级",
+								tableFieldDescription: "执行优先级",
+								formFieldDescription: "执行优先级",
+							},
+							steps: {
+								key: "步骤列表",
+								tableFieldDescription: "一组局部步骤",
+								formFieldDescription: "一组局部步骤",
+								item: {
+									key: "",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									fields: {
+										type: {
+											key: "步骤类型",
+											tableFieldDescription: "步骤类型",
+											formFieldDescription: "步骤类型",
+											enumMap: {
+												setValue: "设置值",
+												runPipeline: "运行管道",
+												scheduleMemberEvent: "调度成员事件",
+												interrupt: "中断",
+												insertInstructions: "插入指令",
+											},
+										},
+									},
+									variants: {
+										setValue: {
+											key: "设置值",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "步骤类型", tableFieldDescription: "", formFieldDescription: "" },
+												target: { key: "目标字段", tableFieldDescription: "", formFieldDescription: "" },
+												value: { key: "值", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										runPipeline: {
+											key: "运行管道",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "步骤类型", tableFieldDescription: "", formFieldDescription: "" },
+												pipelineName: { key: "管道名称", tableFieldDescription: "", formFieldDescription: "" },
+												params: { key: "参数", tableFieldDescription: "", formFieldDescription: "", fields: {} },
+											},
+										},
+										scheduleMemberEvent: {
+											key: "调度成员事件",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "步骤类型", tableFieldDescription: "", formFieldDescription: "" },
+												eventName: { key: "事件名称", tableFieldDescription: "", formFieldDescription: "" },
+												delay: { key: "延迟", tableFieldDescription: "", formFieldDescription: "" },
+												payload: { key: "载荷", tableFieldDescription: "", formFieldDescription: "", fields: {} },
+											},
+										},
+										interrupt: {
+											key: "中断",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "步骤类型", tableFieldDescription: "", formFieldDescription: "" },
+												reason: { key: "原因", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										insertInstructions: {
+											key: "插入指令",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "步骤类型", tableFieldDescription: "", formFieldDescription: "" },
+												instructions: {
+													key: "指令列表",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													item: {
+														key: "",
+														tableFieldDescription: "",
+														formFieldDescription: "",
+														fields: {
+															target: { key: "目标", tableFieldDescription: "", formFieldDescription: "" },
+															op: { key: "运算符", tableFieldDescription: "", formFieldDescription: "" },
+															a: { key: "参数A", tableFieldDescription: "", formFieldDescription: "" },
+															b: { key: "参数B", tableFieldDescription: "", formFieldDescription: "" },
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				skillBranchActivators: {
 					key: "技能分支激活器",
 					tableFieldDescription: "技能分支激活效果",
 					formFieldDescription: "请配置技能分支激活效果",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							skillId: {
+								key: "目标技能 ID",
+								tableFieldDescription: "目标技能 ID",
+								formFieldDescription: "目标技能 ID",
+							},
+							branchKey: {
+								key: "分支键",
+								tableFieldDescription: "分支键",
+								formFieldDescription: "分支键",
+							},
+							value: {
+								key: "分支选择值",
+								tableFieldDescription: "分支选择值",
+								formFieldDescription: "分支选择值",
+							},
+						},
+					},
 				},
 				updatedByAccountId: {
 					key: "更新者",
@@ -3172,11 +4332,214 @@ const dictionary: Dictionary = {
 					key: "订阅事件",
 					tableFieldDescription: "事件订阅效果",
 					formFieldDescription: "请配置事件订阅效果",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							eventNames: {
+								key: "订阅事件名列表",
+								tableFieldDescription: "订阅的事件名列表",
+								formFieldDescription: "订阅的事件名列表",
+							},
+							requiredDamageTags: {
+								key: "需要的伤害标签",
+								tableFieldDescription: "需要的伤害标签",
+								formFieldDescription: "需要的伤害标签",
+							},
+							requiredStatusTypes: {
+								key: "需要的异常状态类型",
+								tableFieldDescription: "需要的异常状态类型",
+								formFieldDescription: "需要的异常状态类型",
+							},
+							handlers: {
+								key: "触发处理器",
+								tableFieldDescription: "触发时执行的动作列表",
+								formFieldDescription: "触发时执行的动作列表",
+								item: {
+									key: "",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									fields: {
+										type: {
+											key: "处理器类型",
+											tableFieldDescription: "处理器类型",
+											formFieldDescription: "处理器类型",
+											enumMap: {
+												addModifier: "添加修正",
+												removeModifierBySource: "按来源移除修正",
+												emit: "发射事件",
+											},
+										},
+									},
+									variants: {
+										addModifier: {
+											key: "添加修正",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "处理器类型", tableFieldDescription: "", formFieldDescription: "" },
+												attribute: { key: "属性", tableFieldDescription: "", formFieldDescription: "" },
+												modifierType: {
+													key: "修正类型",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													enumMap: {
+														dynamicFixed: "动态固定",
+														dynamicPercentage: "动态百分比",
+														staticFixed: "静态固定",
+														staticPercentage: "静态百分比",
+													},
+												},
+												value: { key: "值", tableFieldDescription: "", formFieldDescription: "" },
+												lifetime: {
+													key: "生命周期",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													enumMap: { once: "一次", bySource: "按来源" },
+												},
+												sourceIdSuffix: { key: "来源ID后缀", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										removeModifierBySource: {
+											key: "按来源移除修正",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "处理器类型", tableFieldDescription: "", formFieldDescription: "" },
+												attribute: { key: "属性", tableFieldDescription: "", formFieldDescription: "" },
+												sourceIdSuffix: { key: "来源ID后缀", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										emit: {
+											key: "发射事件",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "处理器类型", tableFieldDescription: "", formFieldDescription: "" },
+												eventName: { key: "事件名称", tableFieldDescription: "", formFieldDescription: "" },
+												payload: { key: "载荷", tableFieldDescription: "", formFieldDescription: "", fields: {} },
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				thresholdWatchers: {
 					key: "阈值监视器",
 					tableFieldDescription: "阈值监视效果",
 					formFieldDescription: "请配置阈值监视效果",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							path: {
+								key: "监控属性路径",
+								tableFieldDescription: "监控的属性路径",
+								formFieldDescription: "监控的属性路径",
+							},
+							threshold: {
+								key: "阈值",
+								tableFieldDescription: "阈值表达式",
+								formFieldDescription: "阈值表达式",
+							},
+							direction: {
+								key: "触发方向",
+								tableFieldDescription: "上升/下降/双向触发",
+								formFieldDescription: "上升/下降/双向触发",
+								enumMap: {
+									rising: "上升",
+									falling: "下降",
+									both: "双向",
+								},
+							},
+							cooldownMs: {
+								key: "冷却时间(ms)",
+								tableFieldDescription: "触发冷却时间",
+								formFieldDescription: "触发冷却时间",
+							},
+							fireOnRegister: {
+								key: "注册时立即触发",
+								tableFieldDescription: "注册时是否立即触发",
+								formFieldDescription: "注册时是否立即触发",
+							},
+							handlers: {
+								key: "触发处理器",
+								tableFieldDescription: "触发时执行的动作列表",
+								formFieldDescription: "触发时执行的动作列表",
+								item: {
+									key: "",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									fields: {
+										type: {
+											key: "处理器类型",
+											tableFieldDescription: "处理器类型",
+											formFieldDescription: "处理器类型",
+											enumMap: {
+												addModifier: "添加修正",
+												removeModifierBySource: "按来源移除修正",
+												emit: "发射事件",
+											},
+										},
+									},
+									variants: {
+										addModifier: {
+											key: "添加修正",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "处理器类型", tableFieldDescription: "", formFieldDescription: "" },
+												attribute: { key: "属性", tableFieldDescription: "", formFieldDescription: "" },
+												modifierType: {
+													key: "修正类型",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													enumMap: {
+														dynamicFixed: "动态固定",
+														dynamicPercentage: "动态百分比",
+														staticFixed: "静态固定",
+														staticPercentage: "静态百分比",
+													},
+												},
+												value: { key: "值", tableFieldDescription: "", formFieldDescription: "" },
+												lifetime: {
+													key: "生命周期",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													enumMap: { once: "一次", bySource: "按来源" },
+												},
+												sourceIdSuffix: { key: "来源ID后缀", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										removeModifierBySource: {
+											key: "按来源移除修正",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "处理器类型", tableFieldDescription: "", formFieldDescription: "" },
+												attribute: { key: "属性", tableFieldDescription: "", formFieldDescription: "" },
+												sourceIdSuffix: { key: "来源ID后缀", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										emit: {
+											key: "发射事件",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "处理器类型", tableFieldDescription: "", formFieldDescription: "" },
+												eventName: { key: "事件名称", tableFieldDescription: "", formFieldDescription: "" },
+												payload: { key: "载荷", tableFieldDescription: "", formFieldDescription: "", fields: {} },
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},

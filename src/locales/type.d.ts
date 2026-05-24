@@ -1,5 +1,55 @@
 import type { DB } from "@db/generated/zod/index";
 
+type SkillTreeMap = {
+	WeaponSkillGroup: {
+		BladeSkill: string;
+		ShootSkill: string;
+		MagicSkill: string;
+		MarshallSkill: string;
+		DualSwordSkill: string;
+		HalberdSkill: string;
+		MononofuSkill: string;
+		CrusherSkill: string;
+		FeatheringSkill: string;
+	};
+	BuffSkillGroup: {
+		GuardSkill: string;
+		ShieldSkill: string;
+		KnifeSkill: string;
+		KnightSkill: string;
+		HunterSkill: string;
+		PriestSkill: string;
+		AssassinSkill: string;
+		WizardSkill: string;
+	};
+	AssistSkillGroup: {
+		SupportSkill: string;
+		BattleSkill: string;
+		SurvivalSkill: string;
+	};
+	ProduceSkillGroup: {
+		SmithSkill: string;
+		AlchemySkill: string;
+		TamerSkill: string;
+	};
+	SkillBookGroup: {
+		DarkPowerSkill: string;
+		MagicBladeSkill: string;
+		DancerSkill: string;
+		MinstrelSkill: string;
+		BareHandSkill: string;
+		NinjaSkill: string;
+		PartisanSkill: string;
+		NecromancerSkill: string;
+		GolemSkill: string;
+	};
+	OtherSkillGroup: {
+		LuckSkill: string;
+		MerchantSkill: string;
+		PetSkill: string;
+	};
+};
+
 export type BaseFieldDetail = {
 	key: string;
 	tableFieldDescription: string;

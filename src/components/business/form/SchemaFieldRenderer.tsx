@@ -51,7 +51,7 @@ export {
 export { createSchemaDefaultValue } from "./schemaTree";
 
 // 顶层字段沿用原表单的分隔样式；嵌套节点使用更紧凑的无分隔布局。
-export const DefaultFieldClass = "border-dividing-color border-t pt-3 w-full";
+export const DefaultFieldClass = "first:border-none border-dividing-color border-t pt-3 w-full";
 
 function titleFromPath(path: string): string {
 	const lastSegment = path.split(".").at(-1) ?? path;
@@ -63,7 +63,7 @@ function nodeTitle(path: string, dictionary?: FieldDetail): string {
 }
 
 function nodeClass(depth: number): string {
-	return depth === 0 ? DefaultFieldClass : "w-full";
+	return depth === 0 ? DefaultFieldClass : "w-full bg-primary-color p-2 rounded";
 }
 
 function childDictionary(dictionary: FieldDetail | undefined, key: string): FieldDetail | undefined {
@@ -155,11 +155,11 @@ export function SchemaFieldNode<
 					const renderDefault = () => renderFrame();
 					return renderer
 						? renderer({
-								...baseContext(renderDefault),
-								kind,
-								children,
-								renderFrame,
-							} as FormContainerRendererContext<TRenderData, FormContainerRendererPath<TRenderData>>)
+							...baseContext(renderDefault),
+							kind,
+							children,
+							renderFrame,
+						} as FormContainerRendererContext<TRenderData, FormContainerRendererPath<TRenderData>>)
 						: renderDefault();
 				};
 
@@ -183,7 +183,9 @@ export function SchemaFieldNode<
 
 					const clearButton = () => (
 						<Show when={wrapper.nullable || wrapper.optional}>
-							<Button onClick={() => field().setValue((wrapper.nullable ? null : undefined) as never)}>清空</Button>
+							<div class="flex justify-end">
+								<Button onClick={() => field().setValue((wrapper.nullable ? null : undefined) as never)}>清空</Button>
+							</div>
 						</Show>
 					);
 
@@ -211,8 +213,8 @@ export function SchemaFieldNode<
 									validationMessage={validationMessage()}
 									class={className}
 								>
-									<div class="flex w-full flex-col gap-3">
-										<div class="flex justify-end">{clearButton()}</div>
+									<div class="flex w-full flex-col gap-1 hover:outline-brand-color-1st p-1 rounded bg-area-color">
+										{clearButton()}
 										{(options?.children ?? children)()}
 									</div>
 								</Input>
@@ -226,7 +228,7 @@ export function SchemaFieldNode<
 								<>
 									<Index each={items()}>
 										{(_item, index) => (
-											<div class="border-dividing-color flex w-full flex-col gap-2 rounded border p-2">
+											<div class="border-dividing-color flex w-full flex-col gap-2 bg-area-color rounded border p-2">
 												<div class="flex justify-end">
 													<Button onClick={() => field().removeValue(index)}>移除</Button>
 												</div>
@@ -257,8 +259,8 @@ export function SchemaFieldNode<
 									validationMessage={validationMessage()}
 									class={className}
 								>
-									<div class="flex w-full flex-col gap-3">
-										<div class="flex justify-end">{clearButton()}</div>
+									<div class="flex w-full flex-col gap-3 hover:outline-brand-color-4st rounded">
+										{clearButton()}
 										{(options?.children ?? children)()}
 									</div>
 								</Input>
@@ -330,8 +332,8 @@ export function SchemaFieldNode<
 									validationMessage={validationMessage()}
 									class={className}
 								>
-									<div class="flex w-full flex-col gap-3">
-										<div class="flex justify-end">{clearButton()}</div>
+									<div class="flex w-full flex-col gap-1 hover:outline-brand-color-2nd p-1 rounded">
+										{clearButton()}
 										{(options?.children ?? children)()}
 									</div>
 								</Input>

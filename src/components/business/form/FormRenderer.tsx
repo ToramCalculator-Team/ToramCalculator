@@ -290,8 +290,8 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 							<div class="EmbedArray flex w-full flex-col gap-4">
 								<Index each={items()}>
 									{(_item, index) => (
-										<div class="EmbedItem bg-primary-color border-dividing-color flex flex-col gap-3 rounded-md border p-3">
-											<div class="flex items-center justify-between">
+										<div class="EmbedItem bg-area-color border-dividing-color flex flex-col gap-1 rounded-md border p-1">
+											<div class="flex items-center justify-between p-2 ">
 												<span class="text-accent-color font-bold">
 													{childConfig.dictionary.selfName} #{index + 1}
 												</span>
@@ -332,9 +332,11 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 														);
 														if (visibleKeys.length === 0) return null;
 														return (
-															<section class="SubFieldGroup flex w-full flex-col gap-2">
-																<h4 class="text-main-text-color px-2 py-1 text-sm">{groupName}</h4>
-																<div class="Content flex flex-col gap-3">
+															<section class="SubFieldGroup flex portrait:flex-col w-full gap-2 bg-primary-color rounded p-2">
+																<h4 class="text-main-text-color p-2 portrait:w-full w-fit flex-none landscape:border-r border-dividing-color">
+																	{groupName}
+																</h4>
+																<div class="Content flex flex-col gap-2 w-full">
 																	<For each={visibleKeys}>
 																		{(childKey) => (
 																			<FormFieldBlock

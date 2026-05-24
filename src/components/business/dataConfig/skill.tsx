@@ -1,24 +1,26 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods } from "@db/generated/repositories";
-import {
-	selectAllSkillVariantsByBelongtoskillid,
-	selectSkillVariantById,
-} from "@db/generated/repositories/skill_variant";
+import { selectAllSkillVariantsByBelongtoskillid } from "@db/generated/repositories/skill_variant";
 import { insertStatistic } from "@db/generated/repositories/statistic";
-import { SkillSchema, SkillVariantSchema, type skill } from "@db/generated/zod";
+import { SkillSchema, type skill } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { SKILL_TREE_TYPE, type SkillTreeType } from "@db/schema/enums";
 import { createId } from "@paralleldrive/cuid2";
-import { jsonArrayFrom } from "kysely/helpers/postgres";
 import z from "zod/v4";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
 import type { TableDataConfig } from "../data-config";
 import { DefaultFieldClass } from "../form/SchemaFieldRenderer";
 import { getUserContext } from "../utils/context";
+import {
+	deleteSkillVariantEditor,
+	SkillVariantEditorSchema,
+	saveSkillVariantEditor,
+	selectSkillVariantEditorsByBelongToskillid,
+} from "./skill_variant";
 
 const SkillWithVariantsSchema = SkillSchema.extend({
-	variants: z.array(SkillVariantSchema),
+	variants: z.array(SkillVariantEditorSchema),
 });
 
 type SkillWithVariants = z.output<typeof SkillWithVariantsSchema>;
@@ -31,37 +33,22 @@ const defaultDataWithVariants: SkillWithVariants = {
 
 const getSkillWithVariants = async (id: string): Promise<SkillWithVariants> => {
 	const db = await getDB();
-	const res = await db
-		.selectFrom("skill")
-		.selectAll("skill")
-		.select((eb) => [
-			jsonArrayFrom(
-				eb
-					.selectFrom("skill_variant")
-					.whereRef("skill_variant.belongToskillId", "=", "skill.id")
-					.selectAll("skill_variant"),
-			).as("variants"),
-		])
-		.where("skill.id", "=", id)
-		.executeTakeFirstOrThrow();
-	return res;
+	const skill = await db.selectFrom("skill").where("skill.id", "=", id).selectAll("skill").executeTakeFirstOrThrow();
+	return {
+		...skill,
+		variants: await selectSkillVariantEditorsByBelongToskillid(id),
+	};
 };
 
 const getAllSkillWithVariants = async (): Promise<SkillWithVariants[]> => {
 	const db = await getDB();
-	const res = await db
-		.selectFrom("skill")
-		.selectAll("skill")
-		.select((eb) => [
-			jsonArrayFrom(
-				eb
-					.selectFrom("skill_variant")
-					.whereRef("skill_variant.belongToskillId", "=", "skill.id")
-					.selectAll("skill_variant"),
-			).as("variants"),
-		])
-		.execute();
-	return res;
+	const skills = await db.selectFrom("skill").selectAll("skill").execute();
+	return await Promise.all(
+		skills.map(async (skill) => ({
+			...skill,
+			variants: await selectSkillVariantEditorsByBelongToskillid(skill.id),
+		})),
+	);
 };
 
 const insertSkillWithVariants = async (data: SkillWithVariants): Promise<SkillWithVariants> => {
@@ -87,17 +74,16 @@ const insertSkillWithVariants = async (data: SkillWithVariants): Promise<SkillWi
 			trx,
 		);
 		const variants = await Promise.all(
-			data.variants.map(async (variant) => {
-				const variantData = SkillVariantSchema.parse(variant);
-				return await repositoryMethods.skill_variant.insert(
+			data.variants.map((variant) =>
+				saveSkillVariantEditor(
 					{
-						...variantData,
-						id: createId(),
+						...variant,
 						belongToskillId: skill.id,
 					},
 					trx,
-				);
-			}),
+					skill.id,
+				),
+			),
 		);
 		return {
 			...skill,
@@ -121,24 +107,20 @@ const updateSkillWithVariants = async (id: string, data: SkillWithVariants): Pro
 		await Promise.all(
 			existingVariants
 				.filter((variant) => !submittedIds.has(variant.id))
-				.map((variant) => repositoryMethods.skill_variant.delete(variant.id, trx)),
+				.map((variant) => deleteSkillVariantEditor(variant.id, trx)),
 		);
 
 		const variants = await Promise.all(
-			data.variants.map(async (variant) => {
-				const variantData = SkillVariantSchema.parse(variant);
-				const existing = await selectSkillVariantById(variant.id, trx);
-				if (existing) {
-					return await repositoryMethods.skill_variant.update(variant.id, variantData, trx);
-				}
-				return await repositoryMethods.skill_variant.insert(
+			data.variants.map((variant) =>
+				saveSkillVariantEditor(
 					{
-						...variantData,
+						...variant,
 						belongToskillId: id,
 					},
 					trx,
-				);
-			}),
+					id,
+				),
+			),
 		);
 		return {
 			...skill,
@@ -150,13 +132,13 @@ const updateSkillWithVariants = async (id: string, data: SkillWithVariants): Pro
 const deleteSkillWithVariants = async (id: string): Promise<SkillWithVariants | undefined> => {
 	const db = await getDB();
 	await db.transaction().execute(async (trx) => {
-		await repositoryMethods.skill.delete(id, trx);
 		const variants = await selectAllSkillVariantsByBelongtoskillid(id, trx);
 		await Promise.all(
 			variants.map(async (variant) => {
-				return await repositoryMethods.skill_variant.delete(variant.id, trx);
+				return await deleteSkillVariantEditor(variant.id, trx);
 			}),
 		);
+		await repositoryMethods.skill.delete(id, trx);
 	});
 	return undefined;
 };

@@ -591,7 +591,7 @@ const dictionary: Dictionary = {
 					selfName: "Base",
 					name: "Name",
 				},
-			}
+			},
 		},
 	},
 	db: {
@@ -989,7 +989,7 @@ const dictionary: Dictionary = {
 					key: "Type",
 					tableFieldDescription: "The type of address. Divided into normal and limited-time addresses.",
 					formFieldDescription: "Please select the type of address.",
-					enumMap:  addressType	,
+					enumMap: addressType,
 				},
 				posX: {
 					key: "X Coordinate",
@@ -1103,7 +1103,8 @@ const dictionary: Dictionary = {
 				id: {
 					key: "ID",
 					tableFieldDescription: "The database ID of the character. Usually not displayed.",
-					formFieldDescription: "The database ID of the character. If you are asked to input this, please report it to the developers.",
+					formFieldDescription:
+						"The database ID of the character. If you are asked to input this, please report it to the developers.",
 				},
 				name: {
 					key: "Name",
@@ -3022,24 +3023,24 @@ const dictionary: Dictionary = {
 				id: {
 					key: "ID",
 					tableFieldDescription: "ID",
-					formFieldDescription: "ID"
+					formFieldDescription: "ID",
 				},
 				level: {
 					key: "Level",
 					tableFieldDescription: "角色佩戴的雷吉斯托环的等级",
-					formFieldDescription: "Please enter level"
+					formFieldDescription: "Please enter level",
 				},
 				templateId: {
 					key: "Registlet",
 					tableFieldDescription: "角色佩戴的雷吉斯托环的ID",
-					formFieldDescription: "选择角色佩戴的雷吉斯托环"
+					formFieldDescription: "选择角色佩戴的雷吉斯托环",
 				},
 				belongToCharacterId: {
 					key: "Character",
 					tableFieldDescription: "角色佩戴的雷吉斯托环所属的角色ID",
-					formFieldDescription: "选择角色"
-				}
-			}
+					formFieldDescription: "选择角色",
+				},
+			},
 		},
 		registlet: {
 			selfName: "Registlet",
@@ -3048,55 +3049,55 @@ const dictionary: Dictionary = {
 				id: {
 					key: "ID",
 					tableFieldDescription: "雷吉斯托环的唯一标识符",
-					formFieldDescription: "雷吉斯托环的唯一标识符"
+					formFieldDescription: "雷吉斯托环的唯一标识符",
 				},
 				name: {
 					key: "Name",
 					tableFieldDescription: "雷吉斯托环的名称",
-					formFieldDescription: "请输入雷吉斯托环的名称"
+					formFieldDescription: "请输入雷吉斯托环的名称",
 				},
 				maxLevel: {
 					key: "Max Level",
 					tableFieldDescription: "雷吉斯托环的最大等级",
-					formFieldDescription: "请输入最大等级"
+					formFieldDescription: "请输入最大等级",
 				},
 				attrModifiers: {
 					key: "Attribute Modifiers",
 					tableFieldDescription: "雷吉斯托环的属性修正",
-					formFieldDescription: "请输入属性修正"
+					formFieldDescription: "请输入属性修正",
 				},
 				pipelinePatches: {
 					key: "Pipeline Patches",
 					tableFieldDescription: "管道补丁效果",
-					formFieldDescription: "请配置管道补丁效果"
+					formFieldDescription: "请配置管道补丁效果",
 				},
 				skillBranchActivators: {
 					key: "Skill Branch Activators",
 					tableFieldDescription: "技能分支激活效果",
-					formFieldDescription: "请配置技能分支激活效果"
+					formFieldDescription: "请配置技能分支激活效果",
 				},
 				updatedByAccountId: {
 					key: "Updated By",
 					tableFieldDescription: "最后更新者",
-					formFieldDescription: "选择更新者账号"
+					formFieldDescription: "选择更新者账号",
 				},
 				createdByAccountId: {
 					key: "Created By",
 					tableFieldDescription: "创建者",
-					formFieldDescription: "选择创建者账号"
+					formFieldDescription: "选择创建者账号",
 				},
 				subscriptions: {
 					key: "Event Subscriptions",
 					tableFieldDescription: "事件订阅效果",
-					formFieldDescription: "请配置事件订阅效果"
+					formFieldDescription: "请配置事件订阅效果",
 				},
 				thresholdWatchers: {
 					key: "Threshold Watchers",
 					tableFieldDescription: "阈值监视效果",
-					formFieldDescription: "请配置阈值监视效果"
-				}
-			}
-		}
+					formFieldDescription: "请配置阈值监视效果",
+				},
+			},
+		},
 	},
 };
 

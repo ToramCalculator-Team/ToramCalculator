@@ -685,7 +685,7 @@ const dictionary: Dictionary = {
 					selfName: "基本配置",
 					name: "名稱",
 				},
-			}
+			},
 		},
 	},
 	db: {
@@ -1322,7 +1322,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "請選擇機體的統計",
 				},
 			},
-			description: "角色資訊"
+			description: "角色資訊",
 		},
 		character_skill: {
 			selfName: "機體技能",
@@ -1764,8 +1764,10 @@ const dictionary: Dictionary = {
 				},
 				type: {
 					key: "怪物類型",
-					tableFieldDescription: "目前支援的類型只有這些，雖然實際上解包可以看到有很多種，但是對於咱這個應用沒啥用，因此忽略了很多種類。",
-					formFieldDescription: "目前支援的類型只有這些，雖然實際上解包可以看到有很多種，但是對於咱這個應用沒啥用，因此忽略了很多種類。",
+					tableFieldDescription:
+						"目前支援的類型只有這些，雖然實際上解包可以看到有很多種，但是對於咱這個應用沒啥用，因此忽略了很多種類。",
+					formFieldDescription:
+						"目前支援的類型只有這些，雖然實際上解包可以看到有很多種，但是對於咱這個應用沒啥用，因此忽略了很多種類。",
 					enumMap: mobType,
 				},
 				captureable: {
@@ -1790,14 +1792,16 @@ const dictionary: Dictionary = {
 				},
 				initialElement: {
 					key: "元素屬性",
-					tableFieldDescription: "這是初始屬性，怪物在戰鬥時可能會改變其屬性，詳細情況將取決於怪物行為中的描述，要查看怪物行為，請點擊具體怪物",
+					tableFieldDescription:
+						"這是初始屬性，怪物在戰鬥時可能會改變其屬性，詳細情況將取決於怪物行為中的描述，要查看怪物行為，請點擊具體怪物",
 					formFieldDescription: "這裡填寫怪物的初始屬性即可，有關屬性變化的描述請在怪物行為中編輯",
 					enumMap: elementType,
 				},
 				radius: {
 					key: "半徑",
 					tableFieldDescription: "怪物的模型尺寸，主要是用來計算技能是否命中",
-					formFieldDescription: "怪物的模型尺寸，主要是用來計算技能是否命中，從遠處按下聖拳之裁後，技能發動瞬間螢幕上顯示的距離-1就可以測出這個值。",
+					formFieldDescription:
+						"怪物的模型尺寸，主要是用來計算技能是否命中，從遠處按下聖拳之裁後，技能發動瞬間螢幕上顯示的距離-1就可以測出這個值。",
 				},
 				maxhp: {
 					key: "最大生命值",
@@ -1877,17 +1881,20 @@ const dictionary: Dictionary = {
 				statisticId: {
 					key: "統計信息ID",
 					tableFieldDescription: "這是怪物的統計信息欄位資料庫id，一般來說，你應該不可能看到這個",
-					formFieldDescription: "這是怪物的統計信息欄位資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
+					formFieldDescription:
+						"這是怪物的統計信息欄位資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
 				},
 				updatedByAccountId: {
 					key: "更新者ID",
 					tableFieldDescription: "這是怪物的更新者資料庫id，一般來說，你應該不可能看到這個",
-					formFieldDescription: "這是怪物的更新者資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
+					formFieldDescription:
+						"這是怪物的更新者資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
 				},
 				createdByAccountId: {
 					key: "創建者ID",
 					tableFieldDescription: "這是怪物的創建者資料庫id，一般來說，你應該不可能看到這個",
-					formFieldDescription: "這是怪物的創建者資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
+					formFieldDescription:
+						"這是怪物的創建者資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
 				},
 			},
 			description: "遊戲中的怪物資訊",
@@ -2200,7 +2207,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "寵物的所屬玩家",
 				},
 			},
-			description: "玩家資訊"
+			description: "玩家資訊",
 		},
 		player_special: {
 			selfName: "玩家特殊裝備",
@@ -2465,7 +2472,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "選择創建者帳號",
 				},
 			},
-			description: "模擬器資訊"
+			description: "模擬器資訊",
 		},
 		skill: {
 			selfName: "技能",
@@ -2555,7 +2562,7 @@ const dictionary: Dictionary = {
 					formFieldDescription: "這是建立者的資料庫ID。如果系統要求您輸入這個，請向開發者報告。這不是正常情況。",
 				},
 			},
-			description: "遊戲中的技能資訊"
+			description: "遊戲中的技能資訊",
 		},
 		skill_variant: {
 			selfName: "技能效果",
@@ -3090,24 +3097,24 @@ const dictionary: Dictionary = {
 				id: {
 					key: "ID",
 					tableFieldDescription: "ID",
-					formFieldDescription: "ID"
+					formFieldDescription: "ID",
 				},
 				level: {
 					key: "等級",
 					tableFieldDescription: "角色佩戴的雷吉斯托环的等級",
-					formFieldDescription: "請輸入等級"
+					formFieldDescription: "請輸入等級",
 				},
 				templateId: {
 					key: "所屬雷吉斯托环",
 					tableFieldDescription: "角色佩戴的雷吉斯托环的ID",
-					formFieldDescription: "選择角色佩戴的雷吉斯托环"
+					formFieldDescription: "選择角色佩戴的雷吉斯托环",
 				},
 				belongToCharacterId: {
 					key: "所屬角色",
 					tableFieldDescription: "角色佩戴的雷吉斯托环所屬的角色ID",
-					formFieldDescription: "選择角色"
-				}
-			}
+					formFieldDescription: "選择角色",
+				},
+			},
 		},
 		registlet: {
 			selfName: "雷吉斯托環",
@@ -3116,55 +3123,55 @@ const dictionary: Dictionary = {
 				id: {
 					key: "ID",
 					tableFieldDescription: "雷吉斯托环的唯一標識符",
-					formFieldDescription: "雷吉斯托环的唯一標識符"
+					formFieldDescription: "雷吉斯托环的唯一標識符",
 				},
 				name: {
 					key: "名称",
 					tableFieldDescription: "雷吉斯托环的名称",
-					formFieldDescription: "請輸入雷吉斯托环的名称"
+					formFieldDescription: "請輸入雷吉斯托环的名称",
 				},
 				maxLevel: {
 					key: "最大等級",
 					tableFieldDescription: "雷吉斯托环的最大等級",
-					formFieldDescription: "請輸入最大等級"
+					formFieldDescription: "請輸入最大等級",
 				},
 				attrModifiers: {
 					key: "屬性修正",
 					tableFieldDescription: "雷吉斯托环的屬性修正",
-					formFieldDescription: "請輸入屬性修正"
+					formFieldDescription: "請輸入屬性修正",
 				},
 				pipelinePatches: {
 					key: "管道补丁",
 					tableFieldDescription: "管道补丁效果",
-					formFieldDescription: "請配置管道补丁效果"
+					formFieldDescription: "請配置管道补丁效果",
 				},
 				skillBranchActivators: {
 					key: "技能分支激活器",
 					tableFieldDescription: "技能分支激活效果",
-					formFieldDescription: "請配置技能分支激活效果"
+					formFieldDescription: "請配置技能分支激活效果",
 				},
 				updatedByAccountId: {
 					key: "更新者",
 					tableFieldDescription: "最後更新者",
-					formFieldDescription: "選择更新者帳號"
+					formFieldDescription: "選择更新者帳號",
 				},
 				createdByAccountId: {
 					key: "創建者",
 					tableFieldDescription: "創建者",
-					formFieldDescription: "選择創建者帳號"
+					formFieldDescription: "選择創建者帳號",
 				},
 				subscriptions: {
 					key: "订阅事件",
 					tableFieldDescription: "事件订阅效果",
-					formFieldDescription: "請配置事件订阅效果"
+					formFieldDescription: "請配置事件订阅效果",
 				},
 				thresholdWatchers: {
 					key: "阈值监视器",
 					tableFieldDescription: "阈值监视效果",
-					formFieldDescription: "請配置阈值监视效果"
-				}
-			}
-		}
+					formFieldDescription: "請配置阈值监视效果",
+				},
+			},
+		},
 	},
 };
 
