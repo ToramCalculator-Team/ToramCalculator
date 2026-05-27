@@ -4,7 +4,7 @@
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import type { MainHandType, SubHandType } from "@db/schema/enums";
 import { MemberBaseNestedSchema, MemberBaseStructure } from "../../MemberBaseSchema";
-import type { ConvertToNestedSchema, ConvertToNestedSchemaDic } from "../../runtime/StatContainer/SchemaTypes";
+import type { ConvertToNestedSchema, ConvertToNestedSchemaDic, ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
 
 // ============================== 其他玩家数据 ==============================
 
@@ -687,12 +687,15 @@ export interface PlayerAttrStructure extends MemberBaseStructure {
 	recoilDmg: null;
 }
 
+// ============================== 静态类型推导 ==============================
+
 /**
  * 将基础结构转换为NestedSchema类型
  *
  * 递归地将null值转换为SchemaAttribute，需要提供属性工厂类型
  */
 export type PlayerAttrNestedSchema = ConvertToNestedSchema<PlayerAttrStructure>;
+export type PlayerAttrKey = ExtractAttrPaths<PlayerAttrNestedSchema>;
 
 /**
  * 将基础结构转换为NestedSchemaDic类型

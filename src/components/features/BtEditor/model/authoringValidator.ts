@@ -14,7 +14,7 @@ import {
 	type EditableBtNode,
 	editableDocumentToRootDefinitions,
 } from "./editableTree";
-import { createPreviewMemberBtEnv, getPreviewBtBindings } from "./previewRuntime";
+import { createPreviewMemberBtManagerEnv, getPreviewBtBindings } from "./previewRuntime";
 
 export type BtAuthoringDiagnosticSeverity = "error" | "warning" | "info";
 
@@ -287,7 +287,7 @@ function isMdslPlainIdentifier(value: string): boolean {
 function validateAgentContext(memberType: MemberType, agent: string): BtAuthoringDiagnostic[] {
 	const diagnostics: BtAuthoringDiagnostic[] = [];
 	const { warnings } = createBtContext({
-		owner: createPreviewMemberBtEnv(memberType),
+		owner: createPreviewMemberBtManagerEnv(memberType),
 		btBindings: getPreviewBtBindings(memberType),
 		agent,
 	});

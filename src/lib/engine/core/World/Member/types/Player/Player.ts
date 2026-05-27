@@ -7,23 +7,21 @@ import { collectAttachmentSlots } from "../../attachments/RuntimeAttachment";
 import { installRuntimeAttachment } from "../../attachments/RuntimeAttachmentInstaller";
 import { collectPlayerRuntimeAttachments } from "../../construction/collectPlayerRuntimeAttachments";
 import { Member } from "../../Member";
-import { MemberRuntimeServicesDefaults } from "../../runtime/Agent/RuntimeServices";
+import { MemberRuntimeServicesDefaults } from "../../RuntimeServices";
 import { mergeSchema, type SlotDeclaration } from "../../runtime/StatContainer/SchemaMerge";
-import type { ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
+import type { ExtractAttrPaths, NestedSchema } from "../../runtime/StatContainer/SchemaTypes";
 import { StatContainer } from "../../runtime/StatContainer/StatContainer";
 import type { PlayerRuntime } from "../../runtime/types";
 import { PlayerBtBindings } from "./Agents/BtBindings";
-import { type PlayerAttrNestedSchema, PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
+import { type PlayerAttrNestedSchema, PlayerAttrSchemaGenerator, PlayerAttrKey } from "./PlayerAttrSchema";
 import { type PlayerEventType, type PlayerStateContext, playerStateMachine } from "./PlayerStateMachine";
 import { selectPlayerSkillVariant } from "./skillLifecycle";
 
 const log = createLogger("Player");
 
-export type PlayerAttrType = ExtractAttrPaths<PlayerAttrNestedSchema>;
-
-export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateContext, PlayerRuntime> {
+export class Player extends Member<PlayerAttrKey, PlayerEventType, PlayerStateContext, PlayerRuntime> {
 	activeCharacter: CharacterWithRelations;
-	private readonly runtimeAttachments: RuntimeAttachment<PlayerAttrType>[];
+	private readonly runtimeAttachments: RuntimeAttachment<PlayerAttrKey>[];
 
 	constructor(
 		memberData: MemberWithRelations,
@@ -47,13 +45,13 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 			throw new Error("未在Player.Characters中找到useIn对应的Character");
 		}
 
-		const runtimeAttachments = collectPlayerRuntimeAttachments<PlayerAttrType>(activeCharacter, memberData);
+		const runtimeAttachments = collectPlayerRuntimeAttachments<PlayerAttrKey>(activeCharacter, memberData);
 		const baseSchema = PlayerAttrSchemaGenerator(activeCharacter);
 		// 技能 / 托环 / buff 可能需要额外属性槽（咏咒层数、冷却时间戳等）。
 		// 必须在 StatContainer 构造前并入 schema，战斗中不能再扩容（Float64Array 固定长度）。
 		const slotDeclarations = Player.collectAttributeSlots(activeCharacter, memberData, runtimeAttachments);
 		const attrSchema = mergeSchema(baseSchema, slotDeclarations);
-		const statContainer = new StatContainer<PlayerAttrType>(attrSchema);
+		const statContainer = new StatContainer<PlayerAttrKey>(attrSchema);
 		const initialSkillList = activeCharacter.skills;
 
 		if (!initialSkillList) {
@@ -61,8 +59,11 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 		}
 
 		const runtime: PlayerRuntime = {
+			memberId: memberData.id,
+			name: memberData.name,
 			type: "Player",
 			tickIndex: 0,
+			statContainer,
 			currentTimeMs: 0,
 			deltaTimeMs: 0,
 			position: position ?? { x: 0, y: 0, z: 0 },
@@ -70,14 +71,10 @@ export class Player extends Member<PlayerAttrType, PlayerEventType, PlayerStateC
 			statusTags: [],
 			currentSkill: null,
 			previousSkill: null,
-			currentSkillVariant: null,
-			currentSkillStartupMs: 0,
-			currentSkillChargingMs: 0,
-			currentSkillChantingMs: 0,
-			currentSkillActionMs: 0,
+			services: MemberRuntimeServicesDefaults,
 			skillList: initialSkillList,
 			skillCooldowns: initialSkillList.map(() => 0),
-			character: activeCharacter,
+			data: activeCharacter,
 		};
 
 		super(

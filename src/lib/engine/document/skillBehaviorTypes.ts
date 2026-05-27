@@ -10,7 +10,7 @@ import type {
 } from "@db/schema/jsons"; // 复用已存在的数据库 JSON 契约。
 import type { StatModifierParam } from "../core/World/Member/runtime/StatContainer/StatContainer"; // modifier 的精确结构由 StatContainer 运行时决定。
 
-export type FormulaString = string; // 表达式字符串，例如 `50 + 5 * SLv`。
+export type FormulaString = string; // 表达式字符串，例如 `50 + 5 * skillLv`。
 
 export type StatPath = string; // StatContainer 属性路径，例如 `atk.p`、`hp.current`、`skill.magicCannon.charge`。
 
@@ -321,4 +321,125 @@ export interface SkillVariantRuntimeShape {
 	registeredBehaviorTrees: BehaviorTreeResource[]; // 长期注册行为树资源；可多棵。
 	details?: string | null; // 导入保真与低置信度信息。
 	belongToskillId: string; // 所属 skill ID。
+}
+
+export interface SkillBehaviorMdslTemplate {
+	// 内置默认 MDSL 模板；模板属于技能行为类型声明的附属内容，不写入 behavior_tree 表。
+	behaviorKind: SkillBehaviorKind; // 由 behaviorKind 选择模板。
+	slot: SkillBehaviorSlot; // 模板所属行为槽。
+	definition: string; // MDSL 流程骨架；技能数据由 behaviorParams 注入 Agent。
+}
+
+export const SkillBehaviorMdslTemplates = {
+	DamageAction: {
+		behaviorKind: "DamageAction",
+		slot: "active",
+		definition: `
+root {
+  sequence {
+    action [skillBehaviorPrepareActiveLifecycle]
+    action [skillBehaviorRunActiveBeforeBody]
+    action [skillBehaviorDispatchDamageEvents]
+    action [skillBehaviorRunActiveAfterBody]
+    action [skillBehaviorFinishActiveSkill]
+  }
+}
+`,
+	},
+	StatusAction: {
+		behaviorKind: "StatusAction",
+		slot: "active",
+		definition: `
+root {
+  sequence {
+    action [skillBehaviorPrepareActiveLifecycle]
+    action [skillBehaviorRunActiveBeforeBody]
+    action [skillBehaviorApplyStatusEffects]
+    action [skillBehaviorRunActiveAfterBody]
+    action [skillBehaviorFinishActiveSkill]
+  }
+}
+`,
+	},
+	RecoveryAction: {
+		behaviorKind: "RecoveryAction",
+		slot: "active",
+		definition: `
+root {
+  sequence {
+    action [skillBehaviorPrepareActiveLifecycle]
+    action [skillBehaviorRunActiveBeforeBody]
+    action [skillBehaviorApplyRecoveries]
+    action [skillBehaviorRunActiveAfterBody]
+    action [skillBehaviorFinishActiveSkill]
+  }
+}
+`,
+	},
+	PassiveRule: {
+		behaviorKind: "PassiveRule",
+		slot: "passive",
+		definition: `
+root {
+  sequence {
+    action [skillBehaviorInstallPassiveRule]
+  }
+}
+`,
+	},
+	WorldObject: {
+		behaviorKind: "WorldObject",
+		slot: "active",
+		definition: `
+root {
+  sequence {
+    action [skillBehaviorPrepareActiveLifecycle]
+    action [skillBehaviorRunActiveBeforeBody]
+    action [skillBehaviorSpawnWorldObject]
+    action [skillBehaviorRunActiveAfterBody]
+    action [skillBehaviorFinishActiveSkill]
+  }
+}
+`,
+	},
+	WorldZone: {
+		behaviorKind: "WorldZone",
+		slot: "active",
+		definition: `
+root {
+  sequence {
+    action [skillBehaviorPrepareActiveLifecycle]
+    action [skillBehaviorRunActiveBeforeBody]
+    action [skillBehaviorRegisterWorldZone]
+    action [skillBehaviorRunActiveAfterBody]
+    action [skillBehaviorFinishActiveSkill]
+  }
+}
+`,
+	},
+	RegisteredAction: {
+		behaviorKind: "RegisteredAction",
+		slot: "registered",
+		definition: `
+root {
+  sequence {
+    action [skillBehaviorRegisterLongRunningAction]
+  }
+}
+`,
+	},
+} satisfies Record<SkillBehaviorKind, SkillBehaviorMdslTemplate>;
+
+export function getSkillBehaviorMdslTemplate(
+	behaviorKind: SkillBehaviorKind | null | undefined,
+	slot?: SkillBehaviorSlot,
+): SkillBehaviorMdslTemplate | null {
+	if (!behaviorKind || !(behaviorKind in SkillBehaviorMdslTemplates)) {
+		return null;
+	}
+	const template = SkillBehaviorMdslTemplates[behaviorKind];
+	if (slot && template.slot !== slot) {
+		return null;
+	}
+	return template;
 }

@@ -463,7 +463,7 @@ model skill {
     tier         Int
     name         String
     isPassive    Boolean
-    chargingType String // Enum SKILL_CHARGING_TYPE
+    castTimeType String // Enum SKILL_CAST_TIME_TYPE
     distanceType String // Enum SKILL_DISTANCE_TYPE
     targetType   String // Enum SKILL_TARGET_TYPE
     variants     skill_variant[]

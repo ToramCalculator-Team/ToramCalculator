@@ -15,7 +15,7 @@ import type {
 	MemberStateMachineEnv,
 } from "../../runtime/StateMachine/types";
 import type { MobRuntime } from "../../runtime/types";
-import type { Mob, MobAttrType } from "./Mob";
+import type { Mob, MobAttrKey } from "./Mob";
 
 const log = createLogger("MobSM");
 
@@ -137,7 +137,7 @@ export interface MobStateContext extends MemberStateContext {
 }
 
 export interface MobStateMachineEnv
-	extends MemberStateMachineEnv<MobAttrType, MobEventType, MobStateContext, MobRuntime> {
+	extends MemberStateMachineEnv<MobAttrKey, MobEventType, MobStateContext, MobRuntime> {
 	runtime: MobRuntime;
 }
 

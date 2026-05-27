@@ -196,10 +196,10 @@ const skillTreeType: Record<Enums.SkillTreeType, string> = {
 	PetSkill: "Pet Skill",
 };
 
-const skillChargingType: Record<Enums.SkillChargingType, string> = {
+const skillCastTimeType: Record<Enums.SkillCastTimeType, string> = {
+	Instant: "Instant",
 	Chanting: "Chanting",
-	Reservoir: "Reservoir",
-	None: "None",
+	Charging: "Charging",
 };
 
 const skillDistanceType: Record<Enums.SkillDistanceType, string> = {
@@ -2437,11 +2437,11 @@ const dictionary: Dictionary = {
 					formFieldDescription: `Skills that can be cast without selecting a target are ${skillTargetType.Self}, skills that can target ${skillTargetType.Player} are ${skillTargetType.Player}.`,
 					enumMap: skillTargetType,
 				},
-				chargingType: {
-					key: "Casting Type",
-					tableFieldDescription: `Skills unaffected by chanting are all ${skillChargingType.Reservoir}.`,
-					formFieldDescription: `Skills unaffected by chanting are all ${skillChargingType.Reservoir}.`,
-					enumMap: skillChargingType,
+				castTimeType: {
+					key: "Cast Time Type",
+					tableFieldDescription: `The cast-time phase before skill action starts: ${skillCastTimeType.Instant}, ${skillCastTimeType.Chanting}, or ${skillCastTimeType.Charging}.`,
+					formFieldDescription: `The cast-time phase before skill action starts: ${skillCastTimeType.Instant}, ${skillCastTimeType.Chanting}, or ${skillCastTimeType.Charging}.`,
+					enumMap: skillCastTimeType,
 				},
 				distanceType: {
 					key: "Distance Power Type",

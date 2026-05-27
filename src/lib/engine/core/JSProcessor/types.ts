@@ -18,8 +18,6 @@ export interface ExpressionContext {
 	targetId?: string;
 	/** 技能等级（可选，用于技能表达式） */
 	skillLv?: number;
-	/** 环境变量（如天气、地形等） */
-	environment?: unknown;
 	/** 其他自定义变量 */
 	[key: string]: unknown;
 }

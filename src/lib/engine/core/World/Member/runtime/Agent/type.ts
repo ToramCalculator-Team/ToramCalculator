@@ -11,32 +11,33 @@ import type { State } from "~/lib/mistreevous";
 export type Action<
 	TInput extends ZodType,
 	TContext extends Record<string, any>,
+	TCapabilities = unknown,
 > = readonly [
 	TInput,
-	(context: TContext, actionInput: z.output<TInput>) => State,
+	(context: TContext, actionInput: z.output<TInput>, capabilities: TCapabilities) => State,
 ];
 
 /**
  * 动作池定义
  * 动作名称 → 动作定义 的映射
  */
-export type ActionPool<TContext extends Record<string, any>> = {
-	readonly [actionName: string]: Action<any, TContext>;
+export type ActionPool<TContext extends Record<string, any>, TCapabilities = unknown> = {
+	readonly [actionName: string]: Action<any, TContext, TCapabilities>;
 };
 
 /**
  * 从动作池提取动作名称联合类型
  */
-export type ActionNamesFromPool<TPool extends ActionPool<any>> = keyof TPool &
+export type ActionNamesFromPool<TPool extends ActionPool<any, any>> = keyof TPool &
 	string;
 
 /**
  * 从动作池提取特定动作的输入Schema类型
  */
 export type ActionInputSchema<
-	TPool extends ActionPool<any>,
+	TPool extends ActionPool<any, any>,
 	TActionName extends ActionNamesFromPool<TPool>,
-> = TPool[TActionName] extends Action<infer TInput, any> ? TInput : never;
+> = TPool[TActionName] extends Action<infer TInput, any, any> ? TInput : never;
 
 /**
  * 辅助函数：创建类型安全的动作
@@ -55,10 +56,11 @@ export type ActionInputSchema<
 export const defineAction = <
 	TInput extends ZodType,
 	TContext extends Record<string, any> = Record<string, any>,
+	TCapabilities = unknown,
 >(
 	inputSchema: TInput,
-	impl: (context: TContext, actionInput: z.output<TInput>) => State,
-): Action<TInput, TContext> => {
+	impl: (context: TContext, actionInput: z.output<TInput>, capabilities: TCapabilities) => State,
+): Action<TInput, TContext, TCapabilities> => {
 	return [inputSchema, impl] as const;
 };
 
@@ -73,17 +75,18 @@ export const defineAction = <
 export type Condition<
 	TInput extends ZodType,
 	TContext extends Record<string, any> = Record<string, any>,
+	TCapabilities = unknown,
 > = readonly [
 	TInput,
-	(context: TContext, actionInput: z.output<TInput>) => boolean,
+	(context: TContext, actionInput: z.output<TInput>, capabilities: TCapabilities) => boolean,
 ];
 
 /**
  * 条件池定义
  * 条件名称 → 条件定义 的映射
  */
-export type ConditionPool<TContext extends Record<string, any>> = {
-	readonly [conditionName: string]: Condition<any, TContext>;
+export type ConditionPool<TContext extends Record<string, any>, TCapabilities = unknown> = {
+	readonly [conditionName: string]: Condition<any, TContext, TCapabilities>;
 };
 
 /**
@@ -96,9 +99,9 @@ export type ConditionNamesFromPool<TPool extends ConditionPool<any>> =
  * 从条件池提取特定条件的输入Schema类型
  */
 export type ConditionInputSchema<
-	TPool extends ConditionPool<any>,
+	TPool extends ConditionPool<any, any>,
 	TConditionName extends ConditionNamesFromPool<TPool>,
-> = TPool[TConditionName] extends Condition<infer TInput, any> ? TInput : never;
+> = TPool[TConditionName] extends Condition<infer TInput, any, any> ? TInput : never;
 
 /**
  * 辅助函数：创建类型安全的条件
@@ -112,9 +115,10 @@ export type ConditionInputSchema<
 export const defineCondition = <
 	TInput extends ZodType,
 	TContext extends Record<string, any> = Record<string, any>,
+	TCapabilities = unknown,
 >(
 	inputSchema: TInput,
-	impl: (context: TContext, actionInput: z.output<TInput>) => boolean,
-): Condition<TInput, TContext> => {
+	impl: (context: TContext, actionInput: z.output<TInput>, capabilities: TCapabilities) => boolean,
+): Condition<TInput, TContext, TCapabilities> => {
 	return [inputSchema, impl] as const;
 };

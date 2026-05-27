@@ -417,7 +417,7 @@ export const defaultData: DB = {
 		posY: 0,
 		tier: 0,
 		isPassive: false,
-		chargingType: "None",
+		castTimeType: "Instant",
 		distanceType: "Both",
 		targetType: "Self",
 		details: "默认技能详情",

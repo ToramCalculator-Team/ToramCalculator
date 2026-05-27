@@ -1,16 +1,15 @@
 import { z } from "zod/v4";
 import { BUILT_IN_REGISTLETS_BY_ID } from "../../attachments/BuiltInRegistlets";
-import type { BtContext } from "./BtContext";
+import type { BtContext, MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
 import { type ConditionPool, defineCondition } from "./type";
 
 function currentCharacterOf(context: BtContext): unknown {
-	const runtime = context.runtime ?? context.owner?.runtime;
-	if (!runtime || typeof runtime !== "object" || !("character" in runtime)) return null;
-	return (runtime as { character?: unknown }).character ?? null;
+	if (!("character" in context)) return null;
+	return (context as { character?: unknown }).character ?? null;
 }
 
 function currentSkillIdOf(context: BtContext): string | null {
-	return context.currentSkill?.templateId ?? context.currentSkill?.template?.id ?? context.currentSkill?.id ?? null;
+	return context.currentSkill?.data?.templateId ?? context.currentSkill?.data?.template?.id ?? context.currentSkill?.data?.id ?? null;
 }
 
 export const CommonConditionPool = {
@@ -22,8 +21,8 @@ export const CommonConditionPool = {
 		z.object({
 			treeName: z.string(),
 		}),
-		(context, input) => {
-			return context.owner?.btManager.hasBuff(input.treeName) ?? false;
+		(_context, input, capabilities) => {
+			return capabilities.hasParallelBt(input.treeName);
 		},
 	),
 
@@ -92,6 +91,6 @@ export const CommonConditionPool = {
 			return false;
 		},
 	),
-} as const satisfies ConditionPool<BtContext>;
+} as const satisfies ConditionPool<BtContext, MemberBtCapabilities>;
 
 export type CommonConditionPool = typeof CommonConditionPool;

@@ -1,40 +1,34 @@
 import { createLogger } from "~/lib/Logger";
 import { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
+import { BehaviourTreeOptions } from "~/lib/mistreevous/BehaviourTreeOptions";
 import { State } from "~/lib/mistreevous/State";
 import type { BtManagerCheckpoint, Checkpointable } from "../../../../types";
-import type { MemberBtEnv } from "../Agent/BtContext";
-import type { MemberEventType, MemberStateContext } from "../StateMachine/types";
+import type { MemberEventType } from "../StateMachine/types";
 import type { MemberSharedRuntime } from "../types";
-import { createBtContext } from "./BtContextFactory";
+import type { MemberBtManagerEnv } from "./BtManagerEnv";
 
 const log = createLogger("BtManager");
-
-type BtOptions = {
-	random?: () => number;
-	getDeltaTimeMs?: () => number;
-};
 
 type BtEntry = {
 	bt: BehaviourTree;
 };
 
 export class BtManager<
-	TAttrKey extends string,
-	TStateEvent extends MemberEventType,
-	TStateContext extends MemberStateContext,
-	TRuntime extends MemberSharedRuntime = MemberSharedRuntime,
+	TExtraAttrKey extends string = never,
+	TContext extends MemberSharedRuntime<TExtraAttrKey> = MemberSharedRuntime<TExtraAttrKey>,
+	TStateEvent extends MemberEventType = MemberEventType,
 > implements Checkpointable<BtManagerCheckpoint>
 {
 	private activeEffectEntry: BtEntry | undefined;
 	private parallelEntries: Map<string, BtEntry> = new Map();
-	private btOptions: BtOptions = {};
+	private btOptions: BehaviourTreeOptions = {};
 
 	constructor(
-		private owner: MemberBtEnv<TAttrKey, TStateEvent, TStateContext, TRuntime>,
+		private env: MemberBtManagerEnv<TStateEvent, TExtraAttrKey, TContext>,
 		/**
 		 * BT-only callable bindings.
-		 * Purpose: keep BT actions / conditions out of the public member context contract.
+		 * Purpose: keep BT actions / conditions out of the checkpointable runtime blackboard.
 		 */
 		private readonly btBindings: Record<string, unknown> = {},
 	) {}
@@ -43,21 +37,26 @@ export class BtManager<
 		this.btOptions = { ...this.btOptions, random: randomFn };
 	}
 
-	private createBtOptions(): BtOptions {
+	private createBtOptions(): BehaviourTreeOptions {
 		return {
 			...this.btOptions,
-			getDeltaTimeMs: () => this.owner.runtime.deltaTimeMs,
+			getDeltaTimeMs: () => this.env.getDeltaTimeMs(),
 		};
 	}
 
-	private buildBtContext(agent?: string): Record<string, unknown> {
-		const { context } = createBtContext({
-			owner: this.owner,
-			btBindings: this.btBindings,
-			agent,
-			onWarning: (warning) => log.warn(warning.message),
-		});
-		return context;
+	private buildExecutionContext(): TContext & Record<string, unknown> {
+		const executionContext = Object.create(this.env.getContext()) as TContext & Record<string, unknown>;
+		for (const [name, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(this.btBindings))) {
+			if (Object.hasOwn(executionContext, name) || name in executionContext) {
+				log.warn(`[${this.env.name}] skipped BT binding "${name}" because the slot already exists`);
+				continue;
+			}
+			Object.defineProperty(executionContext, name, {
+				...descriptor,
+				configurable: true,
+			});
+		}
+		return executionContext;
 	}
 
 	tickAll(): void {
@@ -65,7 +64,7 @@ export class BtManager<
 			const state = this.activeEffectEntry.bt.getState();
 			if (state === State.SUCCEEDED || state === State.FAILED) {
 				this.activeEffectEntry = undefined;
-				this.owner.send({ type: "技能执行完成" } as TStateEvent);
+				this.env.send({ type: "技能执行完成" } as TStateEvent);
 			} else {
 				this.activeEffectEntry.bt.step();
 			}
@@ -83,10 +82,8 @@ export class BtManager<
 
 	registerActiveEffectBt(
 		definition: string | RootNodeDefinition | RootNodeDefinition[],
-		agent?: string,
 	): BehaviourTree | undefined {
-		const btContext = this.buildBtContext(agent?.trim());
-		const bt = new BehaviourTree(definition, btContext, this.createBtOptions());
+		const bt = new BehaviourTree(definition, this.buildExecutionContext(), this.createBtOptions());
 		this.activeEffectEntry = { bt };
 		return bt;
 	}
@@ -94,10 +91,8 @@ export class BtManager<
 	registerParallelBt(
 		name: string,
 		definition: string | RootNodeDefinition | RootNodeDefinition[],
-		agent?: string,
 	): BehaviourTree | undefined {
-		const btContext = this.buildBtContext(agent?.trim());
-		const bt = new BehaviourTree(definition, btContext, this.createBtOptions());
+		const bt = new BehaviourTree(definition, this.buildExecutionContext(), this.createBtOptions());
 		this.parallelEntries.set(name, { bt });
 		return bt;
 	}

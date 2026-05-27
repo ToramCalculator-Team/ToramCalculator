@@ -22,8 +22,8 @@
  * 用途：用于编辑器等只需要结构而不需要具体属性信息的场景
  * 特点：类型安全，不包含任何实际数据
  */
-export type Schema = {
-	[key: string]: null | Schema;
+export type SchemaStructure = {
+	[key: string]: null | SchemaStructure;
 };
 
 /**

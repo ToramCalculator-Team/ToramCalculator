@@ -1,5 +1,5 @@
-import type { BtContext } from "../../../runtime/Agent/BtContext";
-import { CommonBtBindings } from "../../../runtime/Agent/CommonBtContext";
+import type { BtContext, MemberBtCapabilities } from "../../../runtime/BehaviourTree/BtManagerEnv";
+import { createCommonBtBindings } from "../../../runtime/Agent/CommonBtContext";
 import { actionPoolToInvokers, conditionPoolToInvokers } from "../../../runtime/Agent/uitls";
 import { MobActionPool } from "./Actions";
 import { MobConditionPool } from "./Condition";
@@ -7,11 +7,13 @@ import { MobConditionPool } from "./Condition";
 export type MobBtContext = BtContext & Record<string, unknown>;
 
 const btContextTypeHint = {} as MobBtContext;
-const mobActions = actionPoolToInvokers(btContextTypeHint, MobActionPool);
-const mobConditions = conditionPoolToInvokers(btContextTypeHint, MobConditionPool);
 
-export const MobBtBindings = {
-	...CommonBtBindings,
-	...mobActions,
-	...mobConditions,
+export const createMobBtBindings = (capabilities: MemberBtCapabilities) => {
+	const mobActions = actionPoolToInvokers(btContextTypeHint, MobActionPool, capabilities);
+	const mobConditions = conditionPoolToInvokers(btContextTypeHint, MobConditionPool, capabilities);
+	return {
+		...createCommonBtBindings(capabilities),
+		...mobActions,
+		...mobConditions,
+	};
 };

@@ -12,7 +12,7 @@ import type { MemberEventType, MemberStateContext } from "../runtime/StateMachin
 import type { MemberSharedRuntime } from "../runtime/types";
 
 /** 泛化的 Member 类型别名，供战前附加效果安装器跨 Player / Mob 使用。 */
-export type RuntimeAttachmentMember = Member<string, MemberEventType, MemberStateContext, MemberSharedRuntime>;
+export type RuntimeAttachmentMember<TExtraAttrKey extends string = string> = Member<string, MemberEventType, MemberStateContext, MemberSharedRuntime<TExtraAttrKey>>;
 
 export type RuntimeAttachmentSourceType = ModifierSource["type"];
 

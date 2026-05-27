@@ -3,7 +3,7 @@ import { Motion } from "solid-motionone";
 import { Dialog } from "~/components/containers/dialog";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
-import type { PlayerAttrType } from "~/lib/engine/core/World/Member/types/Player/Player";
+import type { PlayerAttrKey } from "~/lib/engine/core/World/Member/types/Player/Player";
 import { store } from "~/store";
 
 // 能力值【1~10】
@@ -230,7 +230,7 @@ const attrsMap = {
 	],
 	// 护罩速度【3%，6%...15%】
 	"barrier.recharge": ["3%", "6%", "9%", "12%", "15%"],
-} satisfies Partial<Record<PlayerAttrType, string[]>>;
+} satisfies Partial<Record<PlayerAttrKey, string[]>>;
 
 const attrDisplayNames: Record<keyof typeof attrsMap, string> = {
 	str: "力量",

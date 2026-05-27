@@ -1,7 +1,8 @@
 import { type ZodType, z } from "zod/v4";
 import { createLogger } from "~/lib/Logger";
 import type { State } from "~/lib/mistreevous/State";
-import type { BtContext } from "./BtContext";
+import type { BtContext } from "../BehaviourTree/BtManagerEnv";
+import type { MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
 import type { ActionPool, ConditionPool } from "./type";
 
 const log = createLogger("AgentUtils");
@@ -94,9 +95,14 @@ const buildInputObject = (schema: ZodType, args: unknown[]): unknown => {
  * - 运行时不做 zod 校验
  * - 仍保留“位置参数 -> object 输入”的映射规则，以兼容 MDSL 的调用方式
  */
-export const actionPoolToInvokers = <TPool extends ActionPool<TContext>, TContext extends Record<string, unknown>>(
+export const actionPoolToInvokers = <
+	TPool extends ActionPool<TContext, TCapabilities>,
+	TContext extends Record<string, unknown>,
+	TCapabilities,
+>(
 	_context: TContext, // 仅用于类型推导
 	pool: TPool,
+	capabilities: TCapabilities,
 ) => {
 	// 注意：Mistreevous 会以 `agent[name].apply(agent, args)` 的方式调用动作函数
 	// 因此这里需要返回 `(...args) => State` 形态的函数，并在内部把“位置参数”映射为 impl 所需的 inputObj。
@@ -104,12 +110,16 @@ export const actionPoolToInvokers = <TPool extends ActionPool<TContext>, TContex
 	for (const name of Object.keys(pool)) {
 		const entry = pool[name as keyof TPool];
 		const schema = entry[0] as unknown as ZodType;
-		const impl = entry[1] as unknown as (context: TContext, actionInput: unknown) => State;
+		const impl = entry[1] as unknown as (
+			context: TContext,
+			actionInput: unknown,
+			capabilities: TCapabilities,
+		) => State;
 
 		// 必须使用 function 声明，以便拿到 `this === btContext`
 		invokers[name as keyof TPool] = function (this: TContext, ...args: unknown[]) {
 			const inputObj = buildInputObject(schema, args);
-			return impl(this, inputObj);
+			return impl(this, inputObj, capabilities);
 		};
 	}
 	return invokers;
@@ -119,11 +129,13 @@ export const actionPoolToInvokers = <TPool extends ActionPool<TContext>, TContex
  * 将 ConditionPool（[schema, impl]）转换为可直接注入 BT 上下文的 invoker 函数表。
  */
 export const conditionPoolToInvokers = <
-	TPool extends ConditionPool<TContext>,
+	TPool extends ConditionPool<TContext, TCapabilities>,
 	TContext extends Record<string, unknown>,
+	TCapabilities,
 >(
 	_context: TContext, // 仅用于类型推导
 	pool: TPool,
+	capabilities: TCapabilities,
 ): Record<keyof TPool, (this: TContext, ...args: unknown[]) => boolean> => {
 	// 注意：Mistreevous 会以 `agent[name].apply(agent, args)` 的方式调用条件函数
 	// 因此这里需要返回 `(...args) => boolean` 形态的函数，并在内部把“位置参数”映射为 impl 所需的 inputObj。
@@ -131,12 +143,16 @@ export const conditionPoolToInvokers = <
 	for (const name of Object.keys(pool)) {
 		const entry = pool[name as keyof TPool];
 		const schema = entry[0] as unknown as ZodType;
-		const impl = entry[1] as unknown as (context: TContext, actionInput: unknown) => boolean;
+		const impl = entry[1] as unknown as (
+			context: TContext,
+			actionInput: unknown,
+			capabilities: TCapabilities,
+		) => boolean;
 
 		// 必须使用 function 声明，以便拿到 `this === btContext`
 		invokers[name as keyof TPool] = function (this: TContext, ...args: unknown[]) {
 			const inputObj = buildInputObject(schema, args);
-			return impl(this, inputObj);
+			return impl(this, inputObj, capabilities);
 		};
 	}
 	return invokers;
@@ -153,20 +169,24 @@ export const maxMin = (min: number, value: number, max: number) => {
  * @param actionName 动作名称
  * @param params 参数
  */
-export const sendRenderCommand = (context: BtContext, actionName: string, params?: Record<string, unknown>) => {
-	const owner = context.owner;
-	const renderMessageSender = owner?.services?.renderMessageSender as ((payload: unknown) => void) | null | undefined;
+export const sendRenderCommand = (
+	context: BtContext,
+	capabilities: MemberBtCapabilities,
+	actionName: string,
+	params?: Record<string, unknown>,
+) => {
+	const renderMessageSender = capabilities.services.renderMessageSender;
 	if (!renderMessageSender) {
-		log.warn(`⚠️ [${context.owner?.name}] 无法获取渲染消息接口，无法发送渲染指令: ${actionName}`);
+		log.warn(`⚠️ [${context.name}] 无法获取渲染消息接口，无法发送渲染指令: ${actionName}`);
 		return;
 	}
-	const ts = owner?.services?.getCurrentTimeMs?.() ?? context.currentTimeMs;
-	const seq = owner?.services?.getTickIndex?.() ?? context.tickIndex;
+	const ts = capabilities.services.getCurrentTimeMs?.() ?? context.currentTimeMs;
+	const seq = capabilities.services.getTickIndex?.() ?? context.tickIndex;
 	const renderCmd = {
 		type: "render:cmd" as const,
 		cmd: {
 			type: "action" as const,
-			entityId: context.owner?.id,
+			entityId: context.memberId,
 			name: actionName,
 			seq,
 			ts,
@@ -175,7 +195,5 @@ export const sendRenderCommand = (context: BtContext, actionName: string, params
 	};
 	renderMessageSender(renderCmd);
 	// 记录最后一次渲染动作，供渲染快照推算 animation.progress
-	if (owner) {
-		owner.renderState.lastAction = { name: actionName, ts, params };
-	}
+	capabilities.renderState.lastAction = { name: actionName, ts, params };
 };

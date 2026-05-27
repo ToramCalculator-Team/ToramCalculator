@@ -309,7 +309,10 @@ export function uninstallRuntimeAttachment(member: RuntimeAttachmentMember, sour
  * - 安装前按 sourceId 清理旧条目，使热替换和重复安装保持幂等。
  * - `attributeSlots` 已在 StatContainer 构造前消费，此处不再处理。
  */
-export function installRuntimeAttachment(member: RuntimeAttachmentMember, attachment: RuntimeAttachment): void {
+export function installRuntimeAttachment<TExtraAttrKey extends string = string>(
+	member: RuntimeAttachmentMember<TExtraAttrKey>,
+	attachment: RuntimeAttachment<TExtraAttrKey>
+): void {
 	uninstallRuntimeAttachment(member, attachment.source);
 	const level = runtimeAttachmentLevel(attachment.source);
 
@@ -335,9 +338,9 @@ export function installRuntimeAttachment(member: RuntimeAttachmentMember, attach
 	installThresholdWatchers(member, attachment, attachment.thresholdWatchers ?? [], level);
 }
 
-export function installRuntimeAttachments(
-	member: RuntimeAttachmentMember,
-	attachments: readonly RuntimeAttachment[],
+export function installRuntimeAttachments<TExtraAttrKey extends string = string>(
+	member: RuntimeAttachmentMember<TExtraAttrKey>,
+	attachments: readonly RuntimeAttachment<TExtraAttrKey>[],
 ): void {
 	for (const attachment of attachments) {
 		installRuntimeAttachment(member, attachment);

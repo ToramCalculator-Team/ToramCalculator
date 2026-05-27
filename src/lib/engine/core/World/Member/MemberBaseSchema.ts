@@ -1,4 +1,9 @@
-import type { ConvertToNestedSchema, ConvertToNestedSchemaDic, ExtractAttrPaths } from "./runtime/StatContainer/SchemaTypes";
+import type {
+	ConvertToNestedSchema,
+	ConvertToNestedSchemaDic,
+	ExtractAttrPaths,
+	SchemaStructure,
+} from "./runtime/StatContainer/SchemaTypes";
 
 // ============================== 逆向出来的BounsType参考数据类型 ==============================
 
@@ -309,7 +314,7 @@ export interface MemberBaseStructure {
  * 递归地将null值转换为SchemaAttribute，需要提供属性工厂类型
  */
 export type MemberBaseNestedSchema = ConvertToNestedSchema<MemberBaseStructure>;
-export type MemberBaseAttrType = ExtractAttrPaths<MemberBaseNestedSchema>
+export type MemberBaseAttrKey = ExtractAttrPaths<MemberBaseNestedSchema>;
 
 /**
  * 将基础结构转换为NestedSchemaDic类型

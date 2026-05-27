@@ -34,7 +34,7 @@ type SkillVariantBehaviorSource = {
 
 type ComputePlayerSkillLifecycleParams = {
 	variant: SkillVariantBehaviorSource;
-	skillLevel: number;
+	skillLv: number;
 	expressionContext: ExpressionContext;
 	evaluateExpression: (expr: string, context: ExpressionContext) => number | boolean;
 	runPipeline: (pipelineName: string, params?: Record<string, unknown>) => StageData;
@@ -73,6 +73,10 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 export function getActiveBehaviorLifecycle(variant: SkillVariantBehaviorSource): SkillBehaviorLifecycleSource {
 	const activeBehavior = asRecord(variant.activeBehavior);
+	const programLifecycle = asRecord(activeBehavior?.lifecycle);
+	if (programLifecycle) return programLifecycle as SkillBehaviorLifecycleSource;
+
+	// 兼容旧导入数据：旧 DSL 把 lifecycle 放在 behaviorParams 内，单模板还原完成前继续读取。
 	const behaviorParams = asRecord(activeBehavior?.behaviorParams);
 	const lifecycle = asRecord(behaviorParams?.lifecycle);
 	return (lifecycle ?? {}) as SkillBehaviorLifecycleSource;
@@ -84,28 +88,23 @@ export function getActiveBehaviorCastingRangeExpression(variant: SkillVariantBeh
 	return typeof castingRange === "string" ? castingRange : null;
 }
 
-export function computePlayerSkillLifecycleMs({
-	variant,
-	skillLevel,
-	expressionContext,
-	evaluateExpression,
-	runPipeline,
-	onWarn,
-}: ComputePlayerSkillLifecycleParams): PlayerSkillLifecycleMs {
-	const context = { ...expressionContext, skillLv: skillLevel };
+export function computePlayerSkillLifecycleMs(props: ComputePlayerSkillLifecycleParams): PlayerSkillLifecycleMs {
 	const evalNum = (expr: string | null | undefined, label: string): number => {
 		if (!expr) return 0;
 		const asNumber = Number(expr);
 		if (Number.isFinite(asNumber)) return asNumber;
 
-		const out = evaluateExpression(expr, context);
+		const out = props.evaluateExpression(expr, {
+			...props.expressionContext,
+			skillLv: props.skillLv,
+		});
 		if (typeof out === "number" && Number.isFinite(out)) return out;
 		if (typeof out === "boolean") return out ? 1 : 0;
-		onWarn?.(`${label} 求值结果非数字，置 0：${String(out)}`);
+		props.onWarn?.(`${label} 求值结果非数字，置 0：${String(out)}`);
 		return 0;
 	};
 
-	const timing = getActiveBehaviorLifecycle(variant);
+	const timing = getActiveBehaviorLifecycle(props.variant);
 	const startupOriginal = evalNum(timing.startupMs, "startupMs");
 	const actionFixed = evalNum(timing.actionFixedMs, "actionFixedMs");
 	const actionModified = evalNum(timing.actionModifiedMs, "actionModifiedMs");
@@ -116,13 +115,13 @@ export function computePlayerSkillLifecycleMs({
 
 	const runPipelineDurationMs = (pipelineName: string, params: Record<string, unknown>, fallback: number): number => {
 		try {
-			const out = runPipeline(pipelineName, params);
+			const out = props.runPipeline(pipelineName, params);
 			const durationMs = out?.durationMs;
 			if (typeof durationMs === "number" && Number.isFinite(durationMs)) {
 				return Math.max(0, Math.floor(durationMs));
 			}
 		} catch (error) {
-			onWarn?.(`运行 ${pipelineName} 失败: ${error instanceof Error ? error.message : String(error)}`);
+			props.onWarn?.(`运行 ${pipelineName} 失败: ${error instanceof Error ? error.message : String(error)}`);
 		}
 		return Math.max(0, Math.floor(fallback));
 	};

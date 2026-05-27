@@ -1,6 +1,6 @@
 import type { MemberType } from "@db/schema/enums";
-import type { MemberBtEnv } from "~/lib/engine/core/World/Member/runtime/Agent/BtContext";
-import type { MemberRuntimeServices } from "~/lib/engine/core/World/Member/runtime/Agent/RuntimeServices";
+import type { MemberBtManagerEnv } from "~/lib/engine/core/World/Member/runtime/BehaviourTree/BtManagerEnv";
+import type { MemberRuntimeServices } from "~/lib/engine/core/World/Member/RuntimeServices";
 import { createBtContext } from "~/lib/engine/core/World/Member/runtime/BehaviourTree/BtContextFactory";
 import type { MemberStateContext } from "~/lib/engine/core/World/Member/runtime/StateMachine/types";
 import type { MemberSharedRuntime, MobRuntime, PlayerRuntime } from "~/lib/engine/core/World/Member/runtime/types";
@@ -16,6 +16,9 @@ import type {
 } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import type { MdslIntellisenseRegistry } from "../modes/mdslIntellisense";
 import type { BtAuthoringDiagnostic } from "./authoringValidator";
+import { StatContainer } from "~/lib/engine/core/World/Member/runtime/StatContainer/StatContainer";
+import { MemberBaseNestedSchema } from "~/lib/engine/core/World/Member/MemberBaseSchema";
+import { AttributeWatcherRegistry } from "~/lib/engine/core/World/Member/runtime/AttributeWatcher/AttributeWatcher";
 
 export type BtPreviewResult = {
 	tree: BehaviourTree;
@@ -35,27 +38,24 @@ type PreviewFallbackCalls = {
 
 const createPreviewRuntime = (memberType: MemberType): PreviewRuntime => {
 	const common = {
+		id: "preview-member-id",
+		name: "PreviewMember",
 		tickIndex: 0,
 		currentTimeMs: 0,
 		deltaTimeMs: 1000 / 60,
 		position: { x: 0, y: 0, z: 0 },
 		targetId: "preview-target",
 		statusTags: [],
+		currentSkill: null,
+		previousSkill: null,
+		skillCooldowns: [],
 	};
 	if (memberType === "Player") {
 		return {
 			...common,
 			type: "Player",
 			skillList: [],
-			skillCooldowns: [],
-			currentSkill: null,
-			previousSkill: null,
-			currentSkillVariant: null,
-			currentSkillStartupMs: 0,
-			currentSkillChargingMs: 0,
-			currentSkillChantingMs: 0,
-			currentSkillActionMs: 0,
-			character: null,
+			data: null,
 		} as PlayerRuntime;
 	}
 	if (memberType === "Mob") {
@@ -63,8 +63,7 @@ const createPreviewRuntime = (memberType: MemberType): PreviewRuntime => {
 			...common,
 			type: "Mob",
 			skillList: [],
-			skillCooldowns: [],
-			character: null,
+			data: null,
 		} as MobRuntime;
 	}
 	return { ...common, type: memberType };
@@ -75,9 +74,9 @@ export const getPreviewBtBindings = (memberType: MemberType): Record<string, unk
 	return PlayerBtBindings;
 };
 
-export const createPreviewMemberBtEnv = (
+export const createPreviewMemberBtManagerEnv = (
 	memberType: MemberType,
-): MemberBtEnv<string, PreviewEvent, MemberStateContext> => {
+): MemberBtManagerEnv => {
 	const runtime = createPreviewRuntime(memberType);
 	const services: MemberRuntimeServices = {
 		getCurrentTimeMs: () => runtime.currentTimeMs,
@@ -91,6 +90,8 @@ export const createPreviewMemberBtEnv = (
 		random: () => 0.5,
 	};
 
+	const MemberStatContainer = new StatContainer(MemberBaseNestedSchema)
+
 	return {
 		id: "bt-editor-preview",
 		type: memberType,
@@ -99,7 +100,7 @@ export const createPreviewMemberBtEnv = (
 		teamId: "preview",
 		position: runtime.position,
 		runtime,
-		statContainer: createPreviewStatContainer(),
+		statContainer: MemberStatContainer,
 		services,
 		btManager: {
 			registerParallelBt: () => undefined,
@@ -107,13 +108,13 @@ export const createPreviewMemberBtEnv = (
 			hasBuff: () => false,
 		},
 		procBus: null,
-		attributeWatchers: createPreviewAttributeWatchers(),
+		attributeWatchers: new AttributeWatcherRegistry(MemberStatContainer),
 		renderState: {},
 		notifyDomainEvent: () => undefined,
 		runPipeline: () => ({ original: 0, result: 0 }) as never,
 		send: () => undefined,
-		// 设计说明：预览环境只实现 BT 调用需要的最小 MemberBtEnv 面，缺失的引擎能力必须通过 mock 行为显式给出。
-	} as unknown as MemberBtEnv<string, PreviewEvent, MemberStateContext>;
+		// 设计说明：预览环境只实现 BT 调用需要的最小 MemberBtManagerEnv 面，缺失的引擎能力必须通过 mock 行为显式给出。
+	};
 };
 
 export function createPreviewBehaviourTree(options: {
@@ -129,7 +130,7 @@ export function createPreviewBehaviourTree(options: {
 		diagnostics.push(diagnostic);
 		options.onDiagnostic?.(diagnostic);
 	};
-	const env = createPreviewMemberBtEnv(options.memberType);
+	const env = createPreviewMemberBtManagerEnv(options.memberType);
 	const { context, warnings } = createBtContext({
 		owner: env,
 		btBindings: getPreviewBtBindings(options.memberType),

@@ -96,7 +96,7 @@ type IsStringLiteralUnionOnly<T> = [NonNullable<T>] extends [string]
 
 type FieldValue<T, K extends PropertyKey> = T extends unknown ? (K extends keyof T ? T[K] : never) : never;
 
-type KnownDiscriminator = "behaviorKind" | "type";
+type KnownDiscriminator = "type";
 
 // 只在对象 union 上识别判别字段；普通对象里的 enum 字段不应该被误当成 variants。
 type DiscriminatorKey<T> =

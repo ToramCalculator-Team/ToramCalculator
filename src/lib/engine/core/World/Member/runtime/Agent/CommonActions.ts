@@ -4,11 +4,16 @@ import { State } from "~/lib/mistreevous/State";
 import { ExpressionTransformer } from "../../../../JSProcessor/ExpressionTransformer";
 import type { DamageAreaRequest } from "../../../Area/types";
 import { ModifierType } from "../StatContainer/StatContainer";
-import type { BtContext } from "./BtContext";
 import { type ActionPool, defineAction } from "./type";
 import { sendRenderCommand } from "./uitls";
+import type { MemberSharedRuntime } from "../types";
+import { MemberBaseAttrKey } from "../../MemberBaseSchema";
+import type { MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
 
 const log = createLogger("Actions");
+
+type BtContext = MemberSharedRuntime;
+type BtCapabilities = MemberBtCapabilities<MemberBaseAttrKey | string>;
 
 export const logLv = 0; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
 
@@ -59,7 +64,7 @@ export const CommonActionPool = {
 			})
 			.meta({ description: "日志" }),
 		(context, input) => {
-			logLv > 0 && log.debug(`👤 [${context.owner?.name}] log`, input.message);
+			logLv > 0 && log.debug(`👤 [${context.name}] log`, input.message);
 			return State.SUCCEEDED;
 		},
 	),
@@ -71,7 +76,7 @@ export const CommonActionPool = {
 			})
 			.meta({ description: "移动到指定位置" }),
 		(context, input) => {
-			log.debug(`👤 [${context.owner?.name}] moveTo`, input);
+			log.debug(`👤 [${context.name}] moveTo`, input);
 			return State.SUCCEEDED;
 		},
 	),
@@ -84,56 +89,58 @@ export const CommonActionPool = {
 				duration: z.number().meta({ description: "动画时长" }),
 			})
 			.meta({ description: "播放动画" }),
-		(context, input) => {
-			log.debug(`👤 [${context.owner?.name}] animation`, input);
-			sendRenderCommand(context, input.name, { duration: input.duration });
+		(context, input, capabilities) => {
+			log.debug(`👤 [${context.name}] animation`, input);
+			sendRenderCommand(context, capabilities, input.name, { duration: input.duration });
 			return State.SUCCEEDED;
 		},
 	),
 
-	/** 单体攻击 */
-	singleAttack: defineAction(commonAttackSchema.meta({ description: "单体攻击" }), (context, input) => {
-		log.debug(`👤 [${context.owner?.name}] generateSingleAttack`, input);
-		const owner = context.owner;
-		if (!owner) {
-			log.warn(`⚠️ [${context.owner?.name}] 无法找到owner`);
-			return State.FAILED;
-		}
+	/** 计算技能生命周期数据 */
+	prepareSkillLifecycle: defineAction(
+		z.object({}).meta({ description: "计算技能生命周期数据" }),
+		(context, _input) => {
+			log.debug(`👤 [${context.name}] 计算技能生命周期数据`);
+			return State.SUCCEEDED;
+		}),
 
-		const targetId = owner.services.targetResolver?.(owner.id, input.targetId) ?? input.targetId;
-		if (!targetId || targetId === owner.id) {
-			log.warn(`⚠️ [${owner.name}] 单体攻击缺少有效敌对目标`, input);
+	/** 单体攻击 */
+	singleAttack: defineAction(commonAttackSchema.meta({ description: "单体攻击" }), (context, input, capabilities) => {
+		log.debug(`👤 [${context.name}] generateSingleAttack`, input);
+		const targetId = capabilities.services.targetResolver?.(context.memberId, input.targetId) ?? input.targetId;
+		if (!targetId || targetId === context.memberId) {
+			log.warn(`⚠️ [${context.name}] 单体攻击缺少有效敌对目标`, input);
 			return State.FAILED;
 		}
 
 		// 分析表达式依赖
 		const dependencies = ExpressionTransformer.analyzeDependencies(input.damageFormula);
-		log.debug(`👤 [${owner.name}] 表达式依赖分析:`, dependencies);
+		log.debug(`👤 [${context.name}] 表达式依赖分析:`, dependencies);
 
 		// 创建施法者属性快照（只快照用到的属性）
 		const casterSnapshot: Record<string, number> = {};
-		for (const key of dependencies.selfDependencies) {
-			casterSnapshot[key] = owner.statContainer.getValue(key);
+		for (const key of dependencies.selfDependencies as MemberBaseAttrKey[]) {
+			casterSnapshot[key] = capabilities.statContainer.getValue(key);
 		}
 
 		// 获取技能等级
-		const skillLv = context.currentSkill?.lv ?? 0;
+		const skillLv = context.currentSkill?.data.lv ?? 0;
 
-		log.debug(`👤 [${owner.name}] 施法者快照:`, casterSnapshot, `技能等级: ${skillLv}`);
+		log.debug(`👤 [${context.name}] 施法者快照:`, casterSnapshot, `技能等级: ${skillLv}`);
 
 		// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
-		const startTimeMs = owner.services.getCurrentTimeMs();
+		const startTimeMs = capabilities.services.getCurrentTimeMs();
 		const damageRequest: DamageAreaRequest = {
 			identity: {
-				sourceId: owner.id,
-				sourceCampId: owner.campId,
+				sourceId: context.memberId,
+				sourceCampId: context.campId,
 			},
 			lifetime: {
 				startTimeMs,
-				durationMs: owner.runtime.deltaTimeMs,
+				durationMs: context.deltaTimeMs,
 			},
 			hitPolicy: {
-				hitIntervalMs: owner.runtime.deltaTimeMs,
+				hitIntervalMs: context.deltaTimeMs,
 			},
 			attackSemantics: {
 				attackCount: input.attackCount,
@@ -150,10 +157,10 @@ export const CommonActionPool = {
 				damageTags: Array.from(new Set([...deriveBaseDamageTags(input.expResolutionType), ...input.damageTags])),
 				warningZone: input.warningZone,
 			},
-			casterId: owner.id,
+			casterId: context.memberId,
 			targetId,
 		};
-		owner.services.damageRequestHandler?.(damageRequest);
+		capabilities.services.damageRequestHandler?.(damageRequest);
 
 		return State.SUCCEEDED;
 	}),
@@ -166,42 +173,37 @@ export const CommonActionPool = {
 				radius: z.number().meta({ description: "伤害范围" }),
 			})
 			.meta({ description: "范围攻击" }),
-		(context, input) => {
-			log.debug(`👤 [${context.owner?.name}] 范围攻击`, input);
-			const owner = context.owner;
-			if (!owner) {
-				log.warn(`⚠️ [${context.owner?.name}] 无法找到owner`);
-				return State.FAILED;
-			}
+		(context, input, capabilities) => {
+			log.debug(`👤 [${context.name}] 范围攻击`, input);
 
 			// 分析表达式依赖
 			const dependencies = ExpressionTransformer.analyzeDependencies(input.damageFormula);
-			log.debug(`👤 [${owner.name}] 表达式依赖分析:`, dependencies);
+			log.debug(`👤 [${context.name}] 表达式依赖分析:`, dependencies);
 
 			// 创建施法者属性快照（只快照用到的属性）
 			const casterSnapshot: Record<string, number> = {};
-			for (const key of dependencies.selfDependencies) {
-				casterSnapshot[key] = owner.statContainer.getValue(key);
+			for (const key of dependencies.selfDependencies as MemberBaseAttrKey[]) {
+				casterSnapshot[key] = capabilities.statContainer.getValue(key);
 			}
 
 			// 获取技能等级
-			const skillLv = context.currentSkill?.lv ?? 0;
+			const skillLv = context.currentSkill?.data.lv ?? 0;
 
-			log.debug(`👤 [${owner.name}] 施法者快照:`, casterSnapshot, `技能等级: ${skillLv}`);
+			log.debug(`👤 [${context.name}] 施法者快照:`, casterSnapshot, `技能等级: ${skillLv}`);
 
 			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
-			const startTimeMs = owner.services.getCurrentTimeMs();
+			const startTimeMs = capabilities.services.getCurrentTimeMs();
 			const damageRequest: DamageAreaRequest = {
 				identity: {
-					sourceId: owner.id,
-					sourceCampId: owner.campId,
+					sourceId: context.memberId,
+					sourceCampId: context.campId,
 				},
 				lifetime: {
 					startTimeMs,
-					durationMs: owner.runtime.deltaTimeMs,
+					durationMs: context.deltaTimeMs,
 				},
 				hitPolicy: {
-					hitIntervalMs: owner.runtime.deltaTimeMs,
+					hitIntervalMs: context.deltaTimeMs,
 				},
 				attackSemantics: {
 					attackCount: input.attackCount,
@@ -220,10 +222,10 @@ export const CommonActionPool = {
 					damageTags: Array.from(new Set([...deriveBaseDamageTags(input.expResolutionType), ...input.damageTags])),
 					warningZone: input.warningZone,
 				},
-				casterId: owner.id,
+				casterId: context.memberId,
 				targetId: input.targetId,
 			};
-			owner.services.damageRequestHandler?.(damageRequest);
+			capabilities.services.damageRequestHandler?.(damageRequest);
 
 			return State.SUCCEEDED;
 		},
@@ -237,8 +239,8 @@ export const CommonActionPool = {
 				radius: z.number().meta({ description: "伤害半径" }),
 			})
 			.meta({ description: "周围攻击" }),
-		(context, input) => {
-			log.debug(`👤 [${context.owner?.name}] generateEnemyAttack`, input);
+		(context, input, capabilities) => {
+			log.debug(`👤 [${context.name}] generateEnemyAttack`, input);
 			// 解析伤害表达式，将所需的self变量放入参数列表
 
 			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
@@ -256,7 +258,7 @@ export const CommonActionPool = {
 			})
 			.meta({ description: "冲撞攻击" }),
 		(context, input) => {
-			log.debug(`👤 [${context.owner?.name}] generateMoveAttack`, input);
+			log.debug(`👤 [${context.name}] generateMoveAttack`, input);
 			// 解析伤害表达式，将所需的self变量放入参数列表
 
 			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
@@ -272,7 +274,7 @@ export const CommonActionPool = {
 			})
 			.meta({ description: "陨石伤害" }),
 		(context, input) => {
-			log.debug(`👤 [${context.owner?.name}] generateVerticalAttack`, input);
+			log.debug(`👤 [${context.name}] generateVerticalAttack`, input);
 			// 解析伤害表达式，将所需的self变量放入参数列表
 
 			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
@@ -290,7 +292,7 @@ export const CommonActionPool = {
 			})
 			.meta({ description: "地面伤害" }),
 		(context, input) => {
-			log.debug(`👤 [${context.owner?.name}] generateGroundAttack`, input);
+			log.debug(`👤 [${context.name}] generateGroundAttack`, input);
 			// 解析伤害表达式，将所需的self变量放入参数列表
 
 			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
@@ -306,15 +308,15 @@ export const CommonActionPool = {
 			})
 			.meta({ description: "添加buff" }),
 		(context, input) => {
-			log.debug(`👤 [${context.owner?.name}] addBuff`, input);
+			log.debug(`👤 [${context.name}] addBuff`, input);
 			// buff逻辑所需的定义应该会被加载到上下文中，找到他并注册即可
-			const buff = context.currentSkillVariant?.registeredBehaviorTrees?.find((tree) => tree.name === input.treeName);
+			const buff = context.currentSkill?.activeVariant.registeredBehaviorTrees?.find((tree) => tree.name === input.treeName);
 			if (!buff) {
-				log.warn(`⚠️ [${context.owner?.name}] 无法找到buff: ${input.treeName}`);
+				log.warn(`⚠️ [${context.name}] 无法找到buff: ${input.treeName}`);
 				return State.FAILED;
 			}
 			// 注册buff
-			context.owner?.btManager.registerParallelBt(buff.name, buff.definition, buff.agent);
+			capabilities.registerParallelBt(buff.name, buff.definition);
 			return State.SUCCEEDED;
 		},
 	),
@@ -326,8 +328,8 @@ export const CommonActionPool = {
 				treeName: z.string().meta({ description: "buff树名称" }),
 			})
 			.meta({ description: "移除buff" }),
-		(context, input) => {
-			context.owner?.btManager.unregisterParallelBt(input.treeName);
+		(_context, input, capabilities) => {
+			capabilities.unregisterParallelBt(input.treeName);
 			return State.SUCCEEDED;
 		},
 	),
@@ -341,15 +343,15 @@ export const CommonActionPool = {
 				type: z.enum(["fixed", "percentage"]).meta({ description: "属性类型" }),
 			})
 			.meta({ description: "属性修改" }),
-		(context, input) => {
-			log.debug(`👤 [${context.owner?.name}] modifyAttribute`, input);
-			context.owner?.statContainer.addModifier(
+		(context, input, capabilities) => {
+			log.debug(`👤 [${context.name}] modifyAttribute`, input);
+			capabilities.statContainer.addModifier(
 				input.attribute,
 				input.type === "fixed" ? ModifierType.DYNAMIC_FIXED : ModifierType.DYNAMIC_PERCENTAGE,
 				input.value,
 				{
-					id: context.currentSkill?.id ?? "",
-					name: context.currentSkill?.template.name ?? "",
+					id: context.currentSkill?.data.id ?? "",
+					name: context.currentSkill?.data.template.name ?? "",
 					type: "skill",
 				},
 			);
@@ -386,13 +388,7 @@ export const CommonActionPool = {
 					.meta({ description: "可选：StatContainer 属性槽路径，触发时 +1（供后续 BT 节点读取）" }),
 			})
 			.meta({ description: "订阅状态进入/离开事件" }),
-		(context, input) => {
-			const owner = context.owner;
-			if (!owner || !owner.procBus) {
-				log.warn(`👤 [${owner?.name}] subscribeStatus：ProcBus 未就绪，跳过`);
-				return State.FAILED;
-			}
-
+		(context, input, capabilities) => {
 			const eventNames: string[] = [];
 			if (input.direction === "entered" || input.direction === "both") eventNames.push("status.entered");
 			if (input.direction === "exited" || input.direction === "both") eventNames.push("status.exited");
@@ -402,13 +398,13 @@ export const CommonActionPool = {
 				typesFilter.size === 0
 					? null
 					: (event: { payload: unknown }) => {
-							const payload = event.payload as { type?: string };
-							return !!payload?.type && typesFilter.has(payload.type);
-						};
+						const payload = event.payload as { type?: string };
+						return !!payload?.type && typesFilter.has(payload.type);
+					};
 
-			owner.procBus.subscribeByName(input.sourceId, eventNames, predicate, (event) => {
+			capabilities.subscribeByName(input.sourceId, eventNames, predicate, (event) => {
 				if (!input.counterSlot) return;
-				owner.statContainer.addModifier(input.counterSlot, ModifierType.DYNAMIC_FIXED, 1, {
+				capabilities.statContainer.addModifier(input.counterSlot, ModifierType.DYNAMIC_FIXED, 1, {
 					id: `${input.sourceId}.counter.${event.timeMs}`,
 					name: "subscribeStatus.counter",
 					type: "system",
@@ -436,29 +432,23 @@ export const CommonActionPool = {
 				counterSlot: z.string().optional(),
 			})
 			.meta({ description: "按事件名 + tag 过滤订阅通用 proc 事件" }),
-		(context, input) => {
-			const owner = context.owner;
-			if (!owner || !owner.procBus) {
-				log.warn(`👤 [${owner?.name}] subscribeProc：ProcBus 未就绪，跳过`);
-				return State.FAILED;
-			}
-
+		(context, input, capabilities) => {
 			const tagFilter = new Set(input.requiredTags);
 			const predicate =
 				tagFilter.size === 0
 					? null
 					: (event: { payload: unknown }) => {
-							const payload = event.payload as { damageTags?: string[] };
-							if (!Array.isArray(payload?.damageTags)) return false;
-							for (const tag of payload.damageTags) {
-								if (tagFilter.has(tag)) return true;
-							}
-							return false;
-						};
+						const payload = event.payload as { damageTags?: string[] };
+						if (!Array.isArray(payload?.damageTags)) return false;
+						for (const tag of payload.damageTags) {
+							if (tagFilter.has(tag)) return true;
+						}
+						return false;
+					};
 
-			owner.procBus.subscribeByName(input.sourceId, input.eventNames, predicate, (event) => {
+			capabilities.subscribeByName(input.sourceId, input.eventNames, predicate, (event) => {
 				if (!input.counterSlot) return;
-				owner.statContainer.addModifier(input.counterSlot, ModifierType.DYNAMIC_FIXED, 1, {
+				capabilities.statContainer.addModifier(input.counterSlot, ModifierType.DYNAMIC_FIXED, 1, {
 					id: `${input.sourceId}.counter.${event.timeMs}`,
 					name: "subscribeProc.counter",
 					type: "system",
@@ -485,18 +475,15 @@ export const CommonActionPool = {
 				fireOnRegister: z.boolean().default(false),
 			})
 			.meta({ description: "注册属性阈值 watcher" }),
-		(context, input) => {
-			const owner = context.owner;
-			if (!owner) return State.FAILED;
-
-			owner.attributeWatchers.watch(
+		(context, input, capabilities) => {
+			capabilities.watch(
 				input.sourceId,
 				input.path,
 				input.threshold,
 				input.direction,
 				(ctx) => {
 					if (!input.counterSlot) return;
-					owner.statContainer.addModifier(input.counterSlot, ModifierType.DYNAMIC_FIXED, 1, {
+					capabilities.statContainer.addModifier(input.counterSlot, ModifierType.DYNAMIC_FIXED, 1, {
 						id: `${input.sourceId}.counter.${ctx.newValue}`,
 						name: "watchThreshold.counter",
 						type: "system",
@@ -514,15 +501,13 @@ export const CommonActionPool = {
 	 */
 	unsubscribeBySource: defineAction(
 		z.object({ sourceId: z.string() }).meta({ description: "按 sourceId 解绑该来源的所有订阅" }),
-		(context, input) => {
-			const owner = context.owner;
-			if (!owner) return State.FAILED;
-			owner.procBus?.unsubscribeBySource(input.sourceId);
-			owner.attributeWatchers.unwatchBySource(input.sourceId);
-			owner.statContainer.removeModifiersBySourceIdPrefix(input.sourceId);
+		(_context, input, capabilities) => {
+			capabilities.unsubscribeBySource(input.sourceId);
+			capabilities.unwatchBySource(input.sourceId);
+			capabilities.statContainer.removeModifiersBySourceIdPrefix(input.sourceId);
 			return State.SUCCEEDED;
 		},
 	),
-} as const satisfies ActionPool<BtContext>;
+} as const satisfies ActionPool<BtContext, BtCapabilities>;
 
 export type CommonActionPool = typeof CommonActionPool;

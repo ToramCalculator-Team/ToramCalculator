@@ -1,5 +1,5 @@
 import type { MemberType } from "@db/schema/enums";
-import type { BtContext } from "~/lib/engine/core/World/Member/runtime/Agent/BtContext";
+import type { BtContext } from "~/lib/engine/core/World/Member/runtime/BehaviourTree/BtManagerEnv";
 import { CommonActionPool } from "~/lib/engine/core/World/Member/runtime/Agent/CommonActions";
 import { CommonConditionPool } from "~/lib/engine/core/World/Member/runtime/Agent/CommonCondition";
 import type { ActionPool, ConditionPool } from "~/lib/engine/core/World/Member/runtime/Agent/type";

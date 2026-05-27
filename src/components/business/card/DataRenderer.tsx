@@ -38,6 +38,11 @@ export type DataRendererProps<
 	fieldGenerator?: Partial<{
 		[K in keyof T]: (data: T, key: K, dictionary: Dic<T>) => JSX.Element;
 	}>;
+	/**
+	 * 当前表记录在卡片入口和关联入口里的显示名。
+	 * 设计目的：把“某条记录如何被引用入口命名”的规则收敛到所属表配置，避免通用渲染器按字段顺序猜测业务文案。
+	 */
+	displayName?: (data: T, dictionary: Dictionary) => string;
 	// 继承关系声明（自动合并父表字典/字段生成器，并把父表反向关联并入关联内容）
 	inheritsFrom?: InheritsFromDecl;
 	// 内嵌子表声明（1:N 子表在卡片内以列表展示）
@@ -88,6 +93,15 @@ function getReadableName(tableName: string, record: any): string {
 	const pkArr = getPrimaryKeys(tableName as keyof DB);
 	const pk = pkArr[0];
 	return String((pk !== undefined ? record?.[pk as keyof typeof record] : "") ?? "");
+}
+
+function getConfiguredDisplayName(
+	tableName: keyof DB,
+	record: Record<string, unknown>,
+	dictionary: Dictionary,
+): string | undefined {
+	const config = DATA_CONFIG[tableName]?.(() => dictionary);
+	return config?.card.displayName?.(record, dictionary);
 }
 
 // ---------- 辅助：关系前缀文案推导 ----------
@@ -327,6 +341,12 @@ export function DataRenderer<T extends Record<string, unknown>, TSchema extends 
 		};
 
 		const resolveDisplayName = async (tableName: string, item: any): Promise<string> => {
+			const configuredName = getConfiguredDisplayName(
+				tableName as keyof DB,
+				item as Record<string, unknown>,
+				dictionary(),
+			);
+			if (configuredName) return configuredName;
 			if (typeof item?.name === "string" && item.name) return item.name;
 			const readable = getReadableName(tableName, item);
 			const pkArr = getPrimaryKeys(tableName as keyof DB);
@@ -504,8 +524,10 @@ export function DataRenderer<T extends Record<string, unknown>, TSchema extends 
 									<For each={items()}>
 										{(item) => {
 											const display = () => {
-												if (typeof item?.name === "string" && item.name) return item.name as string;
-												return getReadableName(String(embed.table), item);
+												return (
+													getConfiguredDisplayName(embed.table, item, dictionary()) ??
+													getReadableName(String(embed.table), item)
+												);
 											};
 											return (
 												<Button

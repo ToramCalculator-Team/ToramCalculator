@@ -168,7 +168,7 @@ export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill, SkillL
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name", "treeType", "tier", "posX", "posY"],
-		技能属性: ["chargingType", "distanceType", "targetType", "isPassive"],
+		技能属性: ["castTimeType", "distanceType", "targetType", "isPassive"],
 		其他信息: ["preSkillId", "dataSources", "details"],
 		统计信息: ["statisticId"],
 		创建和更新信息: ["createdByAccountId", "updatedByAccountId"],

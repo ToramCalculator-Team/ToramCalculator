@@ -196,10 +196,10 @@ const skillTreeType: Record<Enums.SkillTreeType, string> = {
 	PetSkill: "寵物技能",
 };
 
-const skillChargingType: Record<Enums.SkillChargingType, string> = {
+const skillCastTimeType: Record<Enums.SkillCastTimeType, string> = {
+	Instant: "瞬發",
 	Chanting: "詠唱",
-	Reservoir: "蓄力",
-	None: "無讀條",
+	Charging: "蓄力",
 };
 
 const skillDistanceType: Record<Enums.SkillDistanceType, string> = {
@@ -2514,11 +2514,11 @@ const dictionary: Dictionary = {
 					formFieldDescription: `不需要選擇目標就能施放的技能是${skillTargetType.Self}，可以選擇${skillTargetType.Player}作為目標的技能是${skillTargetType.Player}。`,
 					enumMap: skillTargetType,
 				},
-				chargingType: {
-					key: "詠唱類型",
-					tableFieldDescription: `不受詠唱影響的技能都是${skillChargingType.Reservoir}。`,
-					formFieldDescription: `不受詠唱影響的技能都是${skillChargingType.Reservoir}。`,
-					enumMap: skillChargingType,
+				castTimeType: {
+					key: "讀條類型",
+					tableFieldDescription: `技能動作開始前的讀條階段：${skillCastTimeType.Instant}、${skillCastTimeType.Chanting}、${skillCastTimeType.Charging}。`,
+					formFieldDescription: `技能動作開始前的讀條階段：${skillCastTimeType.Instant}、${skillCastTimeType.Chanting}、${skillCastTimeType.Charging}。`,
+					enumMap: skillCastTimeType,
 				},
 				distanceType: {
 					key: "距離威力類型",

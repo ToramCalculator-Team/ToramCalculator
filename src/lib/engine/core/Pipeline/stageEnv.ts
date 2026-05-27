@@ -19,13 +19,13 @@ export interface PipelineEmittedEvent {
 }
 
 /** 管线执行只读环境 */
-export interface StageEnv {
+export interface StageEnv<TExtraAttrKey extends string = string> {
 	readonly timeMs: number;
 	readonly tickIndex: number;
 	readonly stats: (memberId: string, path: string) => number;
 	readonly eval: (expr: string, vars?: Record<string, unknown>) => number;
 	readonly newId: () => string;
-	readonly memberRuntime: Readonly<MemberSharedRuntime>;
+	readonly memberRuntime: Readonly<MemberSharedRuntime<TExtraAttrKey>>;
 
 	/**
 	 * 当前 self 的状态 tag 集合（来自 StatusInstanceStore）。

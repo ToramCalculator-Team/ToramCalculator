@@ -19,7 +19,7 @@ const log = createLogger("MemberMgr");
 // ============================== 类型定义 ==============================
 
 // 避免 any：用通用基类型承载不同成员实现
-export type AnyMemberEntry = Member<string, MemberEventType, MemberStateContext, MemberSharedRuntime>;
+export type AnyMemberEntry = Member<string, MemberEventType, MemberStateContext, MemberSharedRuntime<string>>;
 
 // ============================== 成员管理器类 ==============================
 

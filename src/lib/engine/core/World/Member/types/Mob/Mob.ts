@@ -1,7 +1,7 @@
 import type { MemberWithRelations } from "@db/generated/repositories/member";
 import type { MemberBTTree } from "@db/schema/jsons";
 import { Member } from "../../Member";
-import { MemberRuntimeServicesDefaults } from "../../runtime/Agent/RuntimeServices";
+import { MemberRuntimeServicesDefaults } from "../../RuntimeServices";
 import { mergeSchema, type SlotDeclaration } from "../../runtime/StatContainer/SchemaMerge";
 import type { ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
 import { StatContainer } from "../../runtime/StatContainer/StatContainer";
@@ -10,9 +10,9 @@ import { MobBtBindings } from "./Agents/BtBindings";
 import { MobAttrSchema } from "./MobAttrSchema";
 import { createMobStateMachine, type MobEventType, type MobStateContext } from "./MobStateMachine";
 
-export type MobAttrType = ExtractAttrPaths<ReturnType<typeof MobAttrSchema>>;
+export type MobAttrKey = ExtractAttrPaths<ReturnType<typeof MobAttrSchema>>;
 
-export class Mob extends Member<MobAttrType, MobEventType, MobStateContext, MobRuntime> {
+export class Mob extends Member<MobAttrKey, MobEventType, MobStateContext, MobRuntime> {
 	constructor(
 		memberData: MemberWithRelations,
 		campId: string,
@@ -26,7 +26,7 @@ export class Mob extends Member<MobAttrType, MobEventType, MobStateContext, MobR
 		// Mob 没有托环安装阶段；自身 actions 行为树的持久化变量仍需在构造 StatContainer 前声明。
 		const slotDeclarations = Mob.collectAttributeSlots(memberData);
 		const attrSchema = mergeSchema(baseSchema, slotDeclarations);
-		const statContainer = new StatContainer<MobAttrType>(attrSchema);
+		const statContainer = new StatContainer<MobAttrKey>(attrSchema);
 
 		const runtime: MobRuntime = {
 			type: "Mob",
@@ -39,6 +39,13 @@ export class Mob extends Member<MobAttrType, MobEventType, MobStateContext, MobR
 			skillList: [],
 			skillCooldowns: [],
 			character: null,
+			data: null,
+			memberId: "",
+			name: "",
+			statContainer,
+			services: MemberRuntimeServicesDefaults,
+			currentSkill: null,
+			previousSkill: null
 		};
 
 		super(

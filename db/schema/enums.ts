@@ -42,25 +42,9 @@ export type SkillTargetType = (typeof SKILL_TARGET_TYPE)[number];
 export const SKILL_DISTANCE_TYPE = ["None", "Long", "Short", "Both"] as const;
 export type SkillDistanceType = (typeof SKILL_DISTANCE_TYPE)[number];
 
-// 技能读条类型枚举（咏唱、蓄力、无读条）
-export const SKILL_CHARGING_TYPE = ["Chanting", "Reservoir", "None"] as const;
-export type SkillChargingType = (typeof SKILL_CHARGING_TYPE)[number];
-
-// 技能效果标签类型枚举
-export const SKILL_EFFECT_TAG = ["DamageSkill", "ControlSkill", "BuffSkill"] as const;
-export type SkillEffectTag = (typeof SKILL_EFFECT_TAG)[number];
-
-// 技能默认行为 DSL 类型
-export const SKILL_BEHAVIOR_KIND = [
-	"DamageAction",
-	"StatusAction",
-	"RecoveryAction",
-	"PassiveRule",
-	"WorldObject",
-	"WorldZone",
-	"RegisteredAction",
-] as const;
-export type SkillBehaviorKind = (typeof SKILL_BEHAVIOR_KIND)[number];
+// 技能读条类型枚举；该维度只描述技能动作开始前的读条阶段，被动与 EX 由行为入口表达。
+export const SKILL_CAST_TIME_TYPE = ["Instant", "Chanting", "Charging"] as const;
+export type SkillCastTimeType = (typeof SKILL_CAST_TIME_TYPE)[number];
 
 // 控制效果枚举（胆怯，翻覆，昏厥）
 export const CONTROL_EFFECT = ["None", "Cowardly", "Turn", "Dizzy"] as const;

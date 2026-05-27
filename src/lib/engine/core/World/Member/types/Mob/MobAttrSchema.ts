@@ -3,7 +3,7 @@
  */
 import type { MobWithRelations } from "@db/generated/repositories/mob";
 import { MemberBaseNestedSchema, MemberBaseStructure } from "../../MemberBaseSchema";
-import type { ConvertToNestedSchema, ConvertToNestedSchemaDic } from "../../runtime/StatContainer/SchemaTypes";
+import type { ConvertToNestedSchema, ConvertToNestedSchemaDic, ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
 
 // ============================== 基础结构定义 ==============================
 
@@ -15,12 +15,15 @@ import type { ConvertToNestedSchema, ConvertToNestedSchemaDic } from "../../runt
  */
 export interface MobAttrStructure extends MemberBaseStructure {}
 
+// ============================== 静态类型推导 ==============================
+
 /**
  * 将基础结构转换为NestedSchema类型
  *
  * 递归地将null值转换为SchemaAttribute，需要提供属性工厂类型
  */
 export type MobAttrNestedSchema = ConvertToNestedSchema<MobAttrStructure>;
+export type MobAttrKey = ExtractAttrPaths<MobAttrNestedSchema>;
 
 /**
  * 将基础结构转换为NestedSchemaDic类型

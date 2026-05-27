@@ -3,6 +3,11 @@ import type { PipelineInstruction } from "./instruction";
 /**
  * 内置基础管线定义（仅数据）。
  *
+ * 职责边界：
+ * - Pipeline 只表达“输入数值/上下文 -> 输出数值/上下文”的计算修正。
+ * - 等待、循环、条件分支、注册行为树、创建区域、安装订阅、写入长期状态等流程逻辑由 FSM、MDSL/BT 或对应运行时服务承载。
+ * - 被动技能可以通过 pipeline overlay 改写公开计算槽，但不得把非计算副作用塞进管线。
+ *
  * 说明：
  * - 由 `PipelineCatalog` 收编并冻结
  * - 解析/编译/执行由 `PipelineResolverService` 负责

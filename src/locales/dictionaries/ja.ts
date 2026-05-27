@@ -196,10 +196,10 @@ const skillTreeType: Record<Enums.SkillTreeType, string> = {
 	PetSkill: "ペットスキル",
 };
 
-const skillChargingType: Record<Enums.SkillChargingType, string> = {
+const skillCastTimeType: Record<Enums.SkillCastTimeType, string> = {
+	Instant: "即時",
 	Chanting: "詠唱",
-	Reservoir: "チャージ",
-	None: "なし",
+	Charging: "チャージ",
 };
 
 const skillDistanceType: Record<Enums.SkillDistanceType, string> = {
@@ -2526,11 +2526,11 @@ const dictionary: Dictionary = {
 					formFieldDescription: `ターゲットを選択せずに発動できるスキルは${skillTargetType.Self}、${skillTargetType.Player}をターゲットにできるスキルは${skillTargetType.Player}です。`,
 					enumMap: skillTargetType,
 				},
-				chargingType: {
-					key: "詠唱タイプ",
-					tableFieldDescription: `詠唱の影響を受けないスキルはすべて${skillChargingType.Reservoir}です。`,
-					formFieldDescription: `詠唱の影響を受けないスキルはすべて${skillChargingType.Reservoir}です。`,
-					enumMap: skillChargingType,
+				castTimeType: {
+					key: "詠唱時間タイプ",
+					tableFieldDescription: `スキル動作開始前の詠唱時間段階：${skillCastTimeType.Instant}、${skillCastTimeType.Chanting}、${skillCastTimeType.Charging}。`,
+					formFieldDescription: `スキル動作開始前の詠唱時間段階：${skillCastTimeType.Instant}、${skillCastTimeType.Chanting}、${skillCastTimeType.Charging}。`,
+					enumMap: skillCastTimeType,
 				},
 				distanceType: {
 					key: "距離威力タイプ",

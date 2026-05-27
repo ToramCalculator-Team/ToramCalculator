@@ -35,6 +35,7 @@ import { BtEditorWrapper } from "~/components/business/utils/BTEditorWrapper";
 import { Button } from "~/components/controls/button";
 import { Input } from "~/components/controls/input";
 import { BtEditor } from "~/components/features/BtEditor/BtEditor";
+import type { Dic, Dictionary, FieldDetailFor } from "~/locales/type";
 import type { TableDataConfig } from "../data-config";
 import { DefaultFieldClass, type FormRenderers } from "../form/SchemaFieldRenderer";
 
@@ -92,6 +93,169 @@ export const SkillVariantEditorSchema = SkillVariantSchema.omit({
 
 export type BehaviorTreeEditor = z.output<typeof BehaviorTreeEditorSchema>;
 export type SkillVariantEditor = z.output<typeof SkillVariantEditorSchema>;
+
+const sourceField = (
+	enumMap: Record<SkillVariantEditor["activeBehavior"]["source"], string>,
+): FieldDetailFor<SkillVariantEditor["activeBehavior"]["source"]> => ({
+	key: "来源",
+	tableFieldDescription: "行为入口来源",
+	formFieldDescription: "行为入口来源",
+	enumMap,
+});
+
+const behaviorTreeEditorFieldDictionary = (dictionary: Dic<behavior_tree>): FieldDetailFor<BehaviorTreeEditor> => ({
+	key: dictionary.selfName,
+	tableFieldDescription: dictionary.description,
+	formFieldDescription: dictionary.description,
+	fields: {
+		id: dictionary.fields.id,
+		name: dictionary.fields.name,
+		definition: dictionary.fields.definition,
+		agent: dictionary.fields.agent,
+		attributeSlots: dictionary.fields.attributeSlots,
+	},
+});
+
+const behaviorTreeEditorListDictionary = (dictionary: Dic<behavior_tree>): FieldDetailFor<BehaviorTreeEditor[]> => ({
+	key: dictionary.selfName,
+	tableFieldDescription: dictionary.description,
+	formFieldDescription: dictionary.description,
+	item: behaviorTreeEditorFieldDictionary(dictionary),
+});
+
+const skillProgramDictionary = (
+	key: string,
+	description: string,
+): FieldDetailFor<z.output<typeof ActiveSkillBehaviorSchema>> =>
+	({
+		key,
+		tableFieldDescription: description,
+		formFieldDescription: description,
+		fields: {
+			lifecycle: {
+				key: "lifecycle",
+				tableFieldDescription: "SkillProgram lifecycle",
+				formFieldDescription: "SkillProgram lifecycle",
+			},
+			attributeSlots: {
+				key: "attributeSlots",
+				tableFieldDescription: "SkillProgram attribute slots",
+				formFieldDescription: "SkillProgram attribute slots",
+			},
+			steps: {
+				key: "steps",
+				tableFieldDescription: "SkillProgram steps",
+				formFieldDescription: "SkillProgram steps",
+			},
+			rawBranches: {
+				key: "rawBranches",
+				tableFieldDescription: "Imported raw source branches",
+				formFieldDescription: "Imported raw source branches",
+			},
+		},
+	}) as FieldDetailFor<z.output<typeof ActiveSkillBehaviorSchema>>;
+
+const skillProgramListDictionary = (
+	key: string,
+	description: string,
+): FieldDetailFor<z.output<typeof ActiveSkillBehaviorSchema>[]> =>
+	({
+		key,
+		tableFieldDescription: description,
+		formFieldDescription: description,
+		item: skillProgramDictionary("SkillProgram", description),
+	}) as FieldDetailFor<z.output<typeof ActiveSkillBehaviorSchema>[]>;
+
+const createSkillVariantEditorDictionary = (dictionary: Dictionary): Dic<SkillVariantEditor> => {
+	const rawSkillVariant = dictionary.db.skill_variant;
+	const behaviorTree = dictionary.db.behavior_tree;
+	const behaviorTreeField = behaviorTreeEditorFieldDictionary(behaviorTree);
+	const behaviorTreeList = behaviorTreeEditorListDictionary(behaviorTree);
+	const activeProgram = skillProgramDictionary(
+		rawSkillVariant.fields.activeBehavior.key,
+		rawSkillVariant.fields.activeBehavior.formFieldDescription,
+	);
+	const passiveProgram = skillProgramListDictionary(
+		rawSkillVariant.fields.passiveBehavior.key,
+		rawSkillVariant.fields.passiveBehavior.formFieldDescription,
+	);
+	const registeredProgram = skillProgramListDictionary(
+		rawSkillVariant.fields.registeredBehavior.key,
+		rawSkillVariant.fields.registeredBehavior.formFieldDescription,
+	);
+	const activeSourceEnumMap = {
+		none: dictionary.ui.relationPrefix.none,
+		dsl: rawSkillVariant.fields.activeBehavior.key,
+		bt: behaviorTree.selfName,
+	};
+	const activeSource = sourceField(activeSourceEnumMap);
+
+	// skill_variant 表单提交编辑视图模型，字典同步映射到同构路径。
+	// 原始 DSL 字典继续挂到 dsl 子节点，行为参数字段名只维护一份。
+	return {
+		selfName: rawSkillVariant.selfName,
+		description: rawSkillVariant.description,
+		fields: {
+			...rawSkillVariant.fields,
+			activeBehavior: {
+				key: rawSkillVariant.fields.activeBehavior.key,
+				tableFieldDescription: rawSkillVariant.fields.activeBehavior.tableFieldDescription,
+				formFieldDescription: rawSkillVariant.fields.activeBehavior.formFieldDescription,
+				fields: {
+					source: activeSource,
+					dsl: activeProgram,
+					tree: behaviorTreeField,
+				},
+				variants: {
+					none: {
+						key: activeSourceEnumMap.none,
+						tableFieldDescription: activeSourceEnumMap.none,
+						formFieldDescription: activeSourceEnumMap.none,
+						fields: {
+							source: activeSource,
+						},
+					},
+					dsl: {
+						key: activeSourceEnumMap.dsl,
+						tableFieldDescription: rawSkillVariant.fields.activeBehavior.tableFieldDescription,
+						formFieldDescription: rawSkillVariant.fields.activeBehavior.formFieldDescription,
+						fields: {
+							source: activeSource,
+							dsl: activeProgram,
+						},
+					},
+					bt: {
+						key: activeSourceEnumMap.bt,
+						tableFieldDescription: behaviorTree.description,
+						formFieldDescription: behaviorTree.description,
+						fields: {
+							source: activeSource,
+							tree: behaviorTreeField,
+						},
+					},
+				},
+			},
+			passiveBehavior: {
+				key: rawSkillVariant.fields.passiveBehavior.key,
+				tableFieldDescription: rawSkillVariant.fields.passiveBehavior.tableFieldDescription,
+				formFieldDescription: rawSkillVariant.fields.passiveBehavior.formFieldDescription,
+				fields: {
+					dsl: passiveProgram,
+					tree: behaviorTreeField,
+				},
+			},
+			registeredBehavior: {
+				key: rawSkillVariant.fields.registeredBehavior.key,
+				tableFieldDescription: rawSkillVariant.fields.registeredBehavior.tableFieldDescription,
+				formFieldDescription: rawSkillVariant.fields.registeredBehavior.formFieldDescription,
+				fields: {
+					dsl: registeredProgram,
+					trees: behaviorTreeList,
+				},
+			},
+		},
+	} as unknown as Dic<SkillVariantEditor>;
+};
 
 export const defaultSkillVariantEditor: SkillVariantEditor = SkillVariantEditorSchema.parse({
 	...defaultData.skill_variant,
@@ -358,6 +522,16 @@ export const deleteSkillVariantEditor = async (
 
 const hideImplementationField = () => <></>;
 
+const formatSkillVariantEnableCondition = (variant: SkillVariantEditor, dictionary: Dictionary) => {
+	const fields = dictionary.db.skill_variant.fields;
+	const mainWeapon =
+		fields.targetMainWeaponType.enumMap?.[variant.targetMainWeaponType] ?? variant.targetMainWeaponType;
+	const subWeapon = fields.targetSubWeaponType.enumMap?.[variant.targetSubWeaponType] ?? variant.targetSubWeaponType;
+	const armorAbility =
+		fields.targetArmorAbilityType.enumMap?.[variant.targetArmorAbilityType] ?? variant.targetArmorAbilityType;
+	return `${mainWeapon} / ${subWeapon} / ${armorAbility}`;
+};
+
 const renderBehaviorTreeEditorField = (props: {
 	title: string;
 	description?: string;
@@ -472,18 +646,13 @@ const skillVariantFormRenderers: FormRenderers<SkillVariantEditor> = {
 			}),
 		"registeredBehavior.trees[].id": hideImplementationField,
 	},
-	containers: {
-		"activeBehavior.dsl.behaviorParams.damageEvents": (context) =>
-			context.renderFrame({
-				children: () => <div class="flex gap-2 p-1 bg-area-color rounded">{context.children()}</div>,
-			}),
-	},
+	containers: {},
 };
 
-export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<SkillVariantEditor, skill_variant, skill_variant> = (
+export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<SkillVariantEditor, SkillVariantEditor, skill_variant> = (
 	dictionary,
 ) => ({
-	dictionary: dictionary().db.skill_variant,
+	dictionary: createSkillVariantEditorDictionary(dictionary()),
 	dataSchema: SkillVariantEditorSchema,
 	primaryKey: "id",
 	defaultData: defaultSkillVariantEditor,
@@ -533,6 +702,7 @@ export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<SkillVariantEditor, skil
 	},
 	card: {
 		hiddenFields: ["id"],
+		displayName: formatSkillVariantEnableCondition,
 		fieldGenerator: {
 			activeBehavior: (field, key) => (
 				<pre class="bg-area-color max-h-[50vh] w-full overflow-auto rounded p-3 text-sm">{formatJson(field[key])}</pre>

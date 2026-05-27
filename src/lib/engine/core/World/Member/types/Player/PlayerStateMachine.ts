@@ -17,8 +17,9 @@ import type {
 	MemberStateMachineEnv,
 } from "../../runtime/StateMachine/types";
 import type { PlayerRuntime } from "../../runtime/types";
-import type { Player, PlayerAttrType } from "./Player";
+import type { Player } from "./Player";
 import { computePlayerSkillLifecycleMs, getActiveBehaviorLifecycle, selectPlayerSkillVariant } from "./skillLifecycle";
+import { PlayerAttrKey } from "./PlayerAttrSchema";
 
 const log = createLogger("PlayerSM");
 
@@ -172,7 +173,7 @@ export interface PlayerStateContext extends MemberStateContext {
 
 // 状态机执行动作时需要的外部能力
 export interface PlayerStateMachineEnv
-	extends MemberStateMachineEnv<PlayerAttrType, PlayerEventType, PlayerStateContext, PlayerRuntime> {
+	extends MemberStateMachineEnv<PlayerAttrKey, PlayerEventType, PlayerRuntime> {
 	runtime: PlayerRuntime;
 }
 
@@ -187,7 +188,7 @@ const playerMachineSetup = setup({
 const playerRaiseHitCheck = playerMachineSetup.raise({ type: "进行命中判定" });
 const playerRaiseControlCheck = playerMachineSetup.raise({ type: "进行控制判定" });
 const playerRaiseDamageCalc = playerMachineSetup.raise({ type: "进行伤害计算" });
-const playerRaiseHpAttrUpdate = (statContainer: StatContainer<PlayerAttrType>) => {
+const playerRaiseHpAttrUpdate = (statContainer: StatContainer<PlayerAttrKey>) => {
 	return playerMachineSetup.raise(({ context }) => {
 		const hpAfter =
 			typeof context.hitSession?.hpAfter === "number"
@@ -220,6 +221,7 @@ function expressionContext(env: PlayerStateMachineEnv, extra?: Record<string, un
 		tickIndex: env.runtime.tickIndex,
 		casterId: env.id,
 		targetId: env.runtime.targetId,
+		skillLv: env.runtime.currentSkill?.data.lv,
 		...(extra ?? {}),
 	};
 }
@@ -230,9 +232,9 @@ type PlayerSkillCost = {
 };
 
 function resolveCurrentSkillCost(env: PlayerStateMachineEnv): PlayerSkillCost | null {
-	const skill = env.runtime.currentSkill;
+	const skill = env.runtime.currentSkill?.data;
 	const variant =
-		env.runtime.currentSkillVariant ?? (skill ? selectPlayerSkillVariant(skill, env.runtime.character) : null);
+		env.runtime.currentSkill?.activeVariant;
 	if (!skill || !variant) {
 		log.error(`🎮 [${env.name}] 缺少技能或变体，无法计算技能消耗`);
 		return null;
@@ -244,7 +246,6 @@ function resolveCurrentSkillCost(env: PlayerStateMachineEnv): PlayerSkillCost | 
 		if (!normalizedExpr) return 0;
 		const cost = env.services.expressionEvaluator?.(normalizedExpr, {
 			...expressionContext(env),
-			skillLv: skill.lv ?? 0,
 		});
 		if (typeof cost === "number" && Number.isFinite(cost)) {
 			return cost;
@@ -313,82 +314,46 @@ export const playerStateMachine = (
 					log.debug(`👤 [${env.name}] 添加待处理技能`, event);
 					const e = event as 使用技能;
 					const skillId = e.data.skillId;
-					const skill = env.runtime.character?.skills?.find((s: CharacterSkillWithRelations) => s.id === skillId);
+					const skill = env.runtime.data?.skills?.find((s: CharacterSkillWithRelations) => s.id === skillId);
 					if (!skill) {
 						log.error(`🎮 [${env.name}] 的当前技能不存在`);
+						throw new Error(`技能不存在: ${skillId}`);
 					}
-					env.runtime.currentSkill = skill ?? null;
+					const skillVariant = selectPlayerSkillVariant(skill, env.runtime.data);
+					if(!skillVariant) {
+						log.error(`🎮 [${env.name}] 的当前技能变体不存在`);
+						throw new Error(`技能变体不存在: ${skillId}`);
+					}
+					env.runtime.currentSkill = {
+						data: skill,
+						activeVariant: skillVariant,
+						lifecycle: {
+							startupMs: 0,
+							chargingMs: 0,
+							chantingMs: 0,
+							actionMs: 0,
+						},
+					};
 					const resolvedTargetId = env.services.targetResolver?.(env.id, e.data.target) ?? e.data.target;
 					// 技能 BT 通过 `$targetId` 读取 runtime.targetId；进入 BT 前写入解析结果，避免动作层收到 self/空目标。
 					env.runtime.targetId = resolvedTargetId || env.id;
 				},
 				清空待处理技能: ({ context, event }) => {
 					log.debug(`👤 [${env.name}] 清空待处理技能`, event);
-					env.runtime.previousSkill = env.runtime.currentSkill;
+					env.runtime.previousSkill = env.runtime.currentSkill?.data || null;
 					env.runtime.currentSkill = null;
-					env.runtime.currentSkillVariant = null;
-					env.runtime.currentSkillStartupMs = 0;
-					env.runtime.currentSkillChargingMs = 0;
-					env.runtime.currentSkillChantingMs = 0;
-					env.runtime.currentSkillActionMs = 0;
 					env.btManager.unregisterActiveEffectBt();
 				},
 				清理行为树: ({ context, event }) => {
 					log.debug(`👤 [${env.name}] 清理行为树`, event);
 					env.btManager.clear();
 				},
-				添加待处理技能变体: ({ context, event }) => {
-					log.debug(`👤 [${env.name}] 添加待处理技能变体`, event);
-					if (!env.runtime.currentSkill) {
-						log.error(`🎮 [${env.name}] 当前技能不存在`);
-						return;
-					}
-					const variant = selectPlayerSkillVariant(env.runtime.currentSkill, env.runtime.character);
-					log.debug(`技能变体`, variant);
-					env.runtime.currentSkillVariant = variant ?? null;
-				},
-				计算技能生命周期参数: ({ context, event }) => {
-					log.debug(`👤 [${env.name}] 计算技能生命周期参数`, event);
-					const skill = env.runtime.currentSkill;
-					const variant = env.runtime.currentSkillVariant;
-					if (!skill || !variant) {
-						log.error(`👤 [${env.name}] 缺少技能或变体，无法计算生命周期参数`);
-						env.runtime.currentSkillStartupMs = 0;
-						env.runtime.currentSkillChargingMs = 0;
-						env.runtime.currentSkillChantingMs = 0;
-						env.runtime.currentSkillActionMs = 0;
-						return;
-					}
-
-					if (!env.services.expressionEvaluator) {
-						log.error(`👤 [${env.name}] expressionEvaluator 未注入：无法计算技能生命周期`);
-						return;
-					}
-
-					const lifecycle = computePlayerSkillLifecycleMs({
-						variant,
-						skillLevel: skill.lv ?? 0,
-						expressionContext: expressionContext(env),
-						evaluateExpression: env.services.expressionEvaluator,
-						runPipeline: env.runPipeline,
-						onWarn: (message) => log.warn(`👤 [${env.name}] ${message}`),
-					});
-
-					env.runtime.currentSkillStartupMs = lifecycle.startupMs;
-					env.runtime.currentSkillChargingMs = lifecycle.chargingMs;
-					env.runtime.currentSkillChantingMs = lifecycle.chantingMs;
-					env.runtime.currentSkillActionMs = lifecycle.actionMs;
-
-					log.debug(
-						`👤 [${env.name}] 技能时间参数(ms): startup=${env.runtime.currentSkillStartupMs}, charging=${env.runtime.currentSkillChargingMs}, chanting=${env.runtime.currentSkillChantingMs}, action=${env.runtime.currentSkillActionMs}`,
-					);
-				},
 				扣除技能消耗: ({ event }) => {
 					log.debug(`👤 [${env.name}] 扣除技能消耗`, event);
 					const cost = resolveCurrentSkillCost(env);
 					if (!cost) return;
 
-					const skill = env.runtime.currentSkill;
+					const skill = env.runtime.currentSkill?.data;
 					const sourceName = skill?.template?.name ?? "skill-cost";
 					const sourceSkillId = skill?.id ?? "unknown";
 
@@ -410,9 +375,9 @@ export const playerStateMachine = (
 				},
 				执行技能: ({ context, event }) => {
 					log.debug(`👤 [${env.name}] 执行技能`, event);
-					log.debug(`技能名称`, env.runtime.currentSkill?.template?.name);
+					log.debug(`技能名称`, env.runtime.currentSkill?.data?.template?.name);
 
-					const skillVariant = env.runtime.currentSkillVariant;
+					const skillVariant = env.runtime.currentSkill?.activeVariant;
 					if (!skillVariant) {
 						log.error(`🎮 [${env.name}] 当前技能效果不存在`);
 						// env.actor.send({ type: "技能执行完成" });
@@ -421,8 +386,16 @@ export const playerStateMachine = (
 
 					const activeTree = skillVariant.activeBehaviorTree;
 					if (!activeTree) {
-						if (skillVariant.activeBehavior) {
-							log.warn(`🎮 [${env.name}] 默认技能 DSL 尚未接入执行器，已完成本次技能流程`);
+						const activeBehavior = skillVariant.activeBehavior;
+						if (activeBehavior) {
+							const treeData = env.btManager.registerActiveEffectBt();
+							if (!treeData) {
+								log.error(
+									`🎮 [${env.name}] 默认技能 SkillProgram 模板不是有效的行为树，已跳过执行`,
+								);
+								env.send({ type: "技能执行完成" });
+							}
+							return;
 						}
 						env.send({ type: "技能执行完成" });
 						return;
@@ -554,7 +527,7 @@ export const playerStateMachine = (
 					});
 				},
 				发出施法进度开始事件: ({ context, event: _event }) => {
-					const skillId = env.runtime.currentSkill?.id ?? "";
+					const skillId = env.runtime.currentSkill?.data.id ?? "";
 					if (!skillId) return;
 
 					env.notifyDomainEvent({
@@ -565,7 +538,7 @@ export const playerStateMachine = (
 					});
 				},
 				发出施法进度结束事件: ({ context, event: _event }) => {
-					const skillId = env.runtime.currentSkill?.id ?? "";
+					const skillId = env.runtime.currentSkill?.data.id ?? "";
 					if (!skillId) return;
 
 					env.notifyDomainEvent({
@@ -656,12 +629,12 @@ export const playerStateMachine = (
 					log.debug(`👤 [${env.name}] 判断技能是否有可用效果`, event);
 					const e = event as 使用技能;
 					const skillId = e.data.skillId;
-					const skill = env.runtime.currentSkill;
+					const skill = env.runtime.currentSkill?.data;
 					if (!skill) {
 						log.error(`🎮 [${env.name}] 技能不存在: ${skillId}`);
 						return true;
 					}
-					const variant = selectPlayerSkillVariant(skill, env.runtime.character);
+					const variant = selectPlayerSkillVariant(skill, env.runtime.data);
 					if (!variant) {
 						log.error(`🎮 [${env.name}] 技能变体不存在: ${skillId}`);
 						return true;
@@ -691,12 +664,12 @@ export const playerStateMachine = (
 					const e = event as 使用技能;
 					const skillId = e.data.skillId;
 
-					const skill = env.runtime.currentSkill;
+					const skill = env.runtime.currentSkill?.data;
 					if (!skill) {
 						log.error(`🎮 [${env.name}] 技能不存在: ${skillId}`);
 						return true;
 					}
-					const variant = selectPlayerSkillVariant(skill, env.runtime.character);
+					const variant = selectPlayerSkillVariant(skill, env.runtime.data);
 					if (!variant) {
 						log.error(`🎮 [${env.name}] 技能效果不存在: ${skillId}`);
 						return true;
@@ -952,11 +925,9 @@ export const playerStateMachine = (
 										},
 										执行技能中: {
 											entry: [
-												{ type: "添加待处理技能变体" },
 												{ type: "扣除技能消耗" },
 												{ type: "发送属性修改事件给自己" },
 												{ type: "发出施法进度开始事件" },
-												{ type: "计算技能生命周期参数" },
 												{ type: "执行技能" },
 											],
 											on: {

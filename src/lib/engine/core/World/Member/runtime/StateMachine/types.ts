@@ -1,10 +1,11 @@
 import type { Actor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
 import type { StageData } from "~/lib/engine/core/Pipeline/stageEnv";
 import type { MemberDomainEvent } from "~/lib/engine/core/types";
-import type { MemberRuntimeServices } from "../Agent/RuntimeServices";
+import type { MemberRuntimeServices } from "../../RuntimeServices";
 import type { BtManager } from "../BehaviourTree/BtManager";
 import type { StatContainer } from "../StatContainer/StatContainer";
 import type { MemberSharedRuntime } from "../types";
+import { MemberBaseAttrKey } from "../../MemberBaseSchema";
 
 /**
  * 成员事件类型枚举
@@ -35,7 +36,7 @@ export type MemberEventType =
  * 基于 XState StateMachine 类型，提供完整的类型推断
  * 使用泛型参数允许子类扩展事件类型
  *
- * @template TAttrKey 属性键的字符串联合类型
+ * @template TExtraAttrKey 属性键的字符串联合类型
  */
 export type MemberStateMachine<
 	TStateEvent extends EventObject = MemberEventType, // 状态机事件类型
@@ -59,18 +60,17 @@ export type MemberStateMachine<
 
 // 状态机执行动作时需要的外部能力
 export interface MemberStateMachineEnv<
-	TAttrKey extends string,
+	TExtraAttrKey extends string,
 	TStateEvent extends MemberEventType,
-	TStateContext extends MemberStateContext,
-	TRuntime extends MemberSharedRuntime,
+	TRuntime extends MemberSharedRuntime<TExtraAttrKey>,
 > {
 	id: string;
 	name: string;
 	position: { x: number; y: number; z: number };
 	runtime: TRuntime;
-	statContainer: StatContainer<TAttrKey>;
+	statContainer: StatContainer<MemberBaseAttrKey | TExtraAttrKey>;
 	services: MemberRuntimeServices;
-	btManager: BtManager<TAttrKey, TStateEvent, TStateContext, TRuntime>;
+	btManager: BtManager<TRuntime, TStateEvent>;
 	notifyDomainEvent(event: MemberDomainEvent): void;
 	runPipeline(pipelineName: string, params?: Record<string, unknown>): StageData;
 	send(event: TStateEvent): void;
@@ -101,8 +101,7 @@ export type MemberActor<
  * - keep legacy FSM guards/actions type-safe while the refactor is in progress
  *
  * Purpose:
- * - owner is the canonical entry to read `member.runtime`/`member.services`;
- *   FSM context itself is not a mirror of member runtime.
+ * - FSM actions read runtime through MemberStateMachineEnv; BT action capabilities are provided separately.
  */
 export interface MemberStateContext {
 	/** 是否存活 */
