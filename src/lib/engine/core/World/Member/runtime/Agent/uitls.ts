@@ -1,8 +1,8 @@
+import type { EventObject } from "xstate";
 import { type ZodType, z } from "zod/v4";
 import { createLogger } from "~/lib/Logger";
 import type { State } from "~/lib/mistreevous/State";
-import type { BtContext } from "../BehaviourTree/BtManagerEnv";
-import type { MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
+import type { BtContext, MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
 import type { ActionPool, ConditionPool } from "./type";
 
 const log = createLogger("AgentUtils");
@@ -96,9 +96,11 @@ const buildInputObject = (schema: ZodType, args: unknown[]): unknown => {
  * - 仍保留“位置参数 -> object 输入”的映射规则，以兼容 MDSL 的调用方式
  */
 export const actionPoolToInvokers = <
-	TPool extends ActionPool<TContext, TCapabilities>,
 	TContext extends Record<string, unknown>,
-	TCapabilities,
+	TExtraAttrKey extends string,
+	TStateEvent extends EventObject,
+	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TStateEvent>,
+	TPool extends ActionPool<TContext, TExtraAttrKey, TStateEvent, TCapabilities>,
 >(
 	_context: TContext, // 仅用于类型推导
 	pool: TPool,
@@ -110,11 +112,7 @@ export const actionPoolToInvokers = <
 	for (const name of Object.keys(pool)) {
 		const entry = pool[name as keyof TPool];
 		const schema = entry[0] as unknown as ZodType;
-		const impl = entry[1] as unknown as (
-			context: TContext,
-			actionInput: unknown,
-			capabilities: TCapabilities,
-		) => State;
+		const impl = entry[1] as unknown as (context: TContext, actionInput: unknown, capabilities: TCapabilities) => State;
 
 		// 必须使用 function 声明，以便拿到 `this === btContext`
 		invokers[name as keyof TPool] = function (this: TContext, ...args: unknown[]) {
@@ -129,9 +127,11 @@ export const actionPoolToInvokers = <
  * 将 ConditionPool（[schema, impl]）转换为可直接注入 BT 上下文的 invoker 函数表。
  */
 export const conditionPoolToInvokers = <
-	TPool extends ConditionPool<TContext, TCapabilities>,
 	TContext extends Record<string, unknown>,
-	TCapabilities,
+	TExtraAttrKey extends string,
+	TStateEvent extends EventObject,
+	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TStateEvent>,
+	TPool extends ConditionPool<TContext, TExtraAttrKey, TStateEvent, TCapabilities>,
 >(
 	_context: TContext, // 仅用于类型推导
 	pool: TPool,
@@ -169,9 +169,9 @@ export const maxMin = (min: number, value: number, max: number) => {
  * @param actionName 动作名称
  * @param params 参数
  */
-export const sendRenderCommand = (
-	context: BtContext,
-	capabilities: MemberBtCapabilities,
+export const sendRenderCommand = <TExtraAttrKey extends string, TStateEvent extends EventObject>(
+	context: BtContext<TExtraAttrKey>,
+	capabilities: MemberBtCapabilities<TExtraAttrKey, TStateEvent>,
 	actionName: string,
 	params?: Record<string, unknown>,
 ) => {

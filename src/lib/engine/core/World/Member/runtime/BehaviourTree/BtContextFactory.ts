@@ -1,28 +1,32 @@
 import { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import { State } from "~/lib/mistreevous/State";
-import type { MemberBtManagerEnv, BtContext } from "./BtManagerEnv";
 import type { MemberEventType } from "../StateMachine/types";
+import type { MemberSharedRuntime } from "../types";
+import type { BtContext, MemberBtManagerEnv } from "./BtManagerEnv";
 
 export type BtContextFactoryWarning = {
-	code:
-		| "agent.compile.failed"
-		| "agent.initialize.failed"
-		| "agent.member.conflict"
-		| "binding.member.conflict";
+	code: "agent.compile.failed" | "agent.initialize.failed" | "agent.member.conflict" | "binding.member.conflict";
 	message: string;
 	memberName: string;
 	slotName?: string;
 };
 
-export type CreateBtContextOptions<TStateEvent extends MemberEventType> = {
-	env: MemberBtManagerEnv<TStateEvent>;
+export type CreateBtContextOptions<
+	TStateEvent extends MemberEventType,
+	TExtraAttrKey extends string = string,
+	TContext extends MemberSharedRuntime<TExtraAttrKey> = MemberSharedRuntime<TExtraAttrKey>,
+> = {
+	env: MemberBtManagerEnv<TStateEvent, TExtraAttrKey, TContext>;
 	btBindings?: Record<string, unknown>;
 	agent?: string;
 	onWarning?: (warning: BtContextFactoryWarning) => void;
 };
 
-export type CreateBtContextResult = {
-	context: BtContext;
+export type CreateBtContextResult<
+	TExtraAttrKey extends string = string,
+	TContext extends MemberSharedRuntime<TExtraAttrKey> = MemberSharedRuntime<TExtraAttrKey>,
+> = {
+	context: TContext;
 	warnings: BtContextFactoryWarning[];
 };
 
@@ -30,15 +34,19 @@ export type CreateBtContextResult = {
  * 构造 BT 上下文。
  *
  * 做三件事：
- * 1. 以 owner.runtime 为基础，设置 owner 引用。
+ * 1. 以 env.getContext() 取得的 runtime 为基础。
  * 2. 合并 btBindings（action/condition invokers），带冲突检测。
  * 3. 编译 user agent class 并合并实例成员，带冲突检测。
  *
  * 不再做 getter 代理 —— runtime 本身就是 BT 的 this。
  */
-export function createBtContext<TStateEvent extends MemberEventType>(
-	options: CreateBtContextOptions<TStateEvent>,
-): CreateBtContextResult {
+export function createBtContext<
+	TStateEvent extends MemberEventType,
+	TExtraAttrKey extends string,
+	TContext extends MemberSharedRuntime<TExtraAttrKey>,
+>(
+	options: CreateBtContextOptions<TStateEvent, TExtraAttrKey, TContext>,
+): CreateBtContextResult<TExtraAttrKey, TContext> {
 	const { env, btBindings = {}, agent, onWarning } = options;
 	const warnings: BtContextFactoryWarning[] = [];
 	const btContext = env.getContext();
@@ -58,15 +66,13 @@ export function createBtContext<TStateEvent extends MemberEventType>(
 /**
  * 把 btBindings 合并到 btContext 上。已存在的 key 跳过并 warn。
  */
-function mergeBtBindings(
-	btContext: BtContext,
+function mergeBtBindings<TExtraAttrKey extends string>(
+	btContext: BtContext<TExtraAttrKey>,
 	btBindings: Record<string, unknown>,
 	memberName: string,
 	warn: (w: Omit<BtContextFactoryWarning, "memberName">) => void,
 ): void {
-	for (const [name, descriptor] of Object.entries(
-		Object.getOwnPropertyDescriptors(btBindings),
-	)) {
+	for (const [name, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(btBindings))) {
 		if (name in btContext) {
 			warn({
 				code: "binding.member.conflict",
@@ -83,9 +89,13 @@ function mergeBtBindings(
  * 编译 user agent class，实例化后把成员合并到 btContext。
  * 已存在的 key 跳过并 warn。
  */
-function mergeAgentMembers<TStateEvent extends MemberEventType>(
-	btContext: BtContext,
-	owner: MemberBtManagerEnv<TStateEvent>,
+function mergeAgentMembers<
+	TStateEvent extends MemberEventType,
+	TExtraAttrKey extends string,
+	TContext extends MemberSharedRuntime<TExtraAttrKey>,
+>(
+	btContext: BtContext<TExtraAttrKey>,
+	owner: MemberBtManagerEnv<TStateEvent, TExtraAttrKey, TContext>,
 	agent: string | undefined,
 	warn: (w: Omit<BtContextFactoryWarning, "memberName">) => void,
 ): void {
@@ -96,15 +106,10 @@ function mergeAgentMembers<TStateEvent extends MemberEventType>(
 
 	let AgentClass: AgentCtor;
 	try {
-		const factory = new Function(
-			"BehaviourTree",
-			"State",
-			"owner",
-			`return ${agent};`,
-		) as (
+		const factory = new Function("BehaviourTree", "State", "owner", `return ${agent};`) as (
 			bt: typeof BehaviourTree,
 			state: typeof State,
-			env: MemberBtManagerEnv<TStateEvent>,
+			env: MemberBtManagerEnv<TStateEvent, TExtraAttrKey, TContext>,
 		) => AgentCtor;
 		AgentClass = factory(BehaviourTree, State, owner);
 	} catch (error) {

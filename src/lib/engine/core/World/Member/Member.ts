@@ -9,15 +9,12 @@ import type { PipelineResolverService } from "../../Pipeline/PipelineResolverSer
 import type { StageData, StageEnv } from "../../Pipeline/stageEnv";
 import type { MemberCheckpoint, MemberDomainEvent, SimulationTickContext } from "../../types";
 import type { DamageAreaRequest } from "../Area/types";
-import type { MemberBtCapabilities, MemberBtManagerEnv } from "./runtime/BehaviourTree/BtManagerEnv";
-import type {
-	MemberRuntimeServices,
-	MemberTargetResolver,
-	PipelineEventSinkEvent,
-} from "./RuntimeServices";
+import type { MemberBaseAttrKey } from "./MemberBaseSchema";
+import type { MemberRuntimeServices, MemberTargetResolver, PipelineEventSinkEvent } from "./RuntimeServices";
 import { MemberRuntimeServicesDefaults } from "./RuntimeServices";
 import { AttributeWatcherRegistry } from "./runtime/AttributeWatcher/AttributeWatcher";
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
+import type { MemberBtCapabilities, MemberBtManagerEnv } from "./runtime/BehaviourTree/BtManagerEnv";
 import { ProcBus } from "./runtime/ProcBus/ProcBus";
 import type { NestedSchema, SchemaStructure } from "./runtime/StatContainer/SchemaTypes";
 import type { StatContainer } from "./runtime/StatContainer/StatContainer";
@@ -34,7 +31,6 @@ import {
 	type StatusInstance,
 } from "./runtime/Status/StatusInstanceStore";
 import type { MemberSharedRuntime } from "./runtime/types";
-import { MemberBaseAttrKey } from "./MemberBaseSchema";
 
 const log = createLogger("Member");
 
@@ -64,12 +60,12 @@ export class Member<
 	campId: string;
 	teamId: string;
 	dataSchema: NestedSchema;
-	statContainer: StatContainer<MemberBaseAttrKey |TExtraAttrKey>;
+	statContainer: StatContainer<MemberBaseAttrKey | TExtraAttrKey>;
 	/** 共享 runtime（可序列化，可进 checkpoint） */
 	runtime: TRuntime;
 	/** 引擎注入 services（不可序列化） */
 	services: MemberRuntimeServices;
-	btManager: BtManager<TRuntime, TStateEvent>;
+	btManager: BtManager<TExtraAttrKey, TRuntime, TStateEvent>;
 	/** 成员级持久 overlays（纯数据，可 checkpoint） */
 	pipelineOverlays: PipelineOverlay[] = [];
 	private pipelineResolverService: PipelineResolverService | null = null;
@@ -80,7 +76,7 @@ export class Member<
 	 */
 	procBus: ProcBus | null = null;
 	/** 属性阈值 watcher 注册表。每成员独立持有；passive 安装时注册，卸载时清理。 */
-	attributeWatchers: AttributeWatcherRegistry<MemberBaseAttrKey |TExtraAttrKey>;
+	attributeWatchers: AttributeWatcherRegistry<MemberBaseAttrKey | TExtraAttrKey>;
 	actor: MemberActor<TStateEvent, TStateContext>;
 	private actorStarted = false;
 	data: MemberWithRelations;
@@ -123,7 +119,7 @@ export class Member<
 		services: MemberRuntimeServices = MemberRuntimeServicesDefaults,
 		position?: { x: number; y: number; z: number },
 		btContextBindings: (
-			capabilities: MemberBtCapabilities<MemberBaseAttrKey | TExtraAttrKey, TStateEvent>,
+			capabilities: MemberBtCapabilities<TExtraAttrKey, TStateEvent>,
 		) => Record<string, unknown> = () => ({}),
 	) {
 		this.id = memberData.id;
@@ -158,7 +154,7 @@ export class Member<
 	 * - getter 让 checkpoint restore 替换 runtime 后，状态机闭包继续读取 Member 当前字段。
 	 * - 方法用箭头函数转发，避免 XState action 调用时丢失 Member.this。
 	 */
-	private createStateMachineEnv(): MemberStateMachineEnv<MemberBaseAttrKey |TExtraAttrKey, TStateEvent, TRuntime> {
+	private createStateMachineEnv(): MemberStateMachineEnv<TExtraAttrKey, TStateEvent, TRuntime> {
 		const self = this;
 		return {
 			get id() {
@@ -195,13 +191,19 @@ export class Member<
 	 * - getter 让 checkpoint restore 替换 runtime / procBus 后，BT 继续读取 Member 当前字段。
 	 * - send 封装 actor 访问，使 BtManager 不依赖完整 Member 类。
 	 */
-	private createBtCapabilities(): MemberBtCapabilities<MemberBaseAttrKey | TExtraAttrKey, TStateEvent> {
+	private createBtCapabilities(): MemberBtCapabilities<TExtraAttrKey, TStateEvent> {
 		const self = this;
 		return {
-			get services() { return self.services; },
-			get statContainer() { return self.statContainer; },
-			get renderState() { return self.renderState; },
-			registerParallelBt: (name, definition) => self.btManager.registerParallelBt(name, definition),
+			get services() {
+				return self.services;
+			},
+			get statContainer() {
+				return self.statContainer;
+			},
+			get renderState() {
+				return self.renderState;
+			},
+			registerParallelBt: (name, definition, agent) => self.btManager.registerParallelBt(name, definition, agent),
 			unregisterParallelBt: (name) => self.btManager.unregisterParallelBt(name),
 			hasParallelBt: (name) => self.btManager.hasBuff(name),
 			subscribeByName: (sourceId, eventNames, predicate, handler) => {
@@ -231,15 +233,15 @@ export class Member<
 	 * - action/condition 的副作用能力由 bindings 闭包持有，不进入可 checkpoint runtime。
 	 */
 	private createBtEnv(
-		capabilities: MemberBtCapabilities<MemberBaseAttrKey | TExtraAttrKey, TStateEvent>,
-	): MemberBtManagerEnv<TRuntime, TStateEvent> {
+		capabilities: MemberBtCapabilities<TExtraAttrKey, TStateEvent>,
+	): MemberBtManagerEnv<TStateEvent, TExtraAttrKey, TRuntime> {
 		const self = this;
 		return {
 			get name() {
 				return self.name;
 			},
 			getContext: () => self.runtime,
-			getCapabilities: () => capabilities as MemberBtCapabilities<string, TStateEvent>,
+			getCapabilities: () => capabilities,
 			getDeltaTimeMs: () => self.runtime.deltaTimeMs,
 			send: (event) => self.actor.send(event),
 		};
@@ -406,7 +408,7 @@ export class Member<
 			tickIndex,
 			stats: (memberIdOrSelector: string, path: string) => {
 				if (memberIdOrSelector === "self" || memberIdOrSelector === this.id) {
-					return this.statContainer.getValue(path as MemberBaseAttrKey |TExtraAttrKey);
+					return this.statContainer.getValue(path as MemberBaseAttrKey | TExtraAttrKey);
 				}
 				log.warn(
 					`runPipeline(${pipelineName})：拒绝跨 actor 属性读取 (${memberIdOrSelector}.${path})；跨成员数据必须随事件 payload 传入`,

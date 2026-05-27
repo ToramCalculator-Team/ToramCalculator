@@ -136,8 +136,7 @@ export interface MobStateContext extends MemberStateContext {
 	hitSession?: HitSession | null;
 }
 
-export interface MobStateMachineEnv
-	extends MemberStateMachineEnv<MobAttrKey, MobEventType, MobStateContext, MobRuntime> {
+export interface MobStateMachineEnv extends MemberStateMachineEnv<MobAttrKey, MobEventType, MobRuntime> {
 	runtime: MobRuntime;
 }
 

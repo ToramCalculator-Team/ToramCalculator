@@ -1,7 +1,7 @@
 import { createLogger } from "~/lib/Logger";
 import { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
-import { BehaviourTreeOptions } from "~/lib/mistreevous/BehaviourTreeOptions";
+import type { BehaviourTreeOptions } from "~/lib/mistreevous/BehaviourTreeOptions";
 import { State } from "~/lib/mistreevous/State";
 import type { BtManagerCheckpoint, Checkpointable } from "../../../../types";
 import type { MemberEventType } from "../StateMachine/types";
@@ -44,7 +44,7 @@ export class BtManager<
 		};
 	}
 
-	private buildExecutionContext(): TContext & Record<string, unknown> {
+	private buildExecutionContext(agent?: string): TContext & Record<string, unknown> {
 		const executionContext = Object.create(this.env.getContext()) as TContext & Record<string, unknown>;
 		for (const [name, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(this.btBindings))) {
 			if (Object.hasOwn(executionContext, name) || name in executionContext) {
@@ -56,7 +56,63 @@ export class BtManager<
 				configurable: true,
 			});
 		}
+		this.mergeAgentMembers(executionContext, agent?.trim());
 		return executionContext;
+	}
+
+	/**
+	 * 将行为树自定义 agent class 的成员合并到本次执行上下文。
+	 *
+	 * 设计说明：
+	 * - 每棵 BT 使用独立 executionContext，避免把 agent 成员写回 checkpoint runtime。
+	 * - 冲突时保留 runtime / bindings 的既有槽位，agent 只补充缺失成员。
+	 */
+	private mergeAgentMembers(context: Record<string, unknown>, agent: string | undefined): void {
+		if (!agent) return;
+
+		type AgentInstance = Record<string, unknown>;
+		type AgentCtor = new () => AgentInstance;
+
+		let AgentClass: AgentCtor;
+		try {
+			const factory = new Function("BehaviourTree", "State", "owner", `return ${agent};`) as (
+				bt: typeof BehaviourTree,
+				state: typeof State,
+				env: MemberBtManagerEnv<TStateEvent, TExtraAttrKey, TContext>,
+			) => AgentCtor;
+			AgentClass = factory(BehaviourTree, State, this.env);
+		} catch (error) {
+			log.warn(`[${this.env.name}] failed to compile agent: ${error instanceof Error ? error.message : String(error)}`);
+			return;
+		}
+
+		let instance: AgentInstance;
+		try {
+			instance = new AgentClass();
+		} catch (error) {
+			log.warn(`[${this.env.name}] failed to init agent: ${error instanceof Error ? error.message : String(error)}`);
+			return;
+		}
+
+		const register = (name: string, desc: PropertyDescriptor): void => {
+			if (!name || name === "constructor") return;
+			if (name in context) {
+				log.warn(`[${this.env.name}] skipped agent member "${name}" because the slot already exists`);
+				return;
+			}
+			Object.defineProperty(context, name, { ...desc, configurable: true });
+		};
+
+		for (const key of Object.getOwnPropertyNames(instance)) {
+			const desc = Object.getOwnPropertyDescriptor(instance, key);
+			if (desc) register(key, desc);
+		}
+		const proto = AgentClass.prototype as object;
+		for (const key of Object.getOwnPropertyNames(proto)) {
+			if (key === "constructor") continue;
+			const desc = Object.getOwnPropertyDescriptor(proto, key);
+			if (desc) register(key, desc);
+		}
 	}
 
 	tickAll(): void {
@@ -81,9 +137,11 @@ export class BtManager<
 	}
 
 	registerActiveEffectBt(
-		definition: string | RootNodeDefinition | RootNodeDefinition[],
+		definition?: string | RootNodeDefinition | RootNodeDefinition[],
+		agent?: string,
 	): BehaviourTree | undefined {
-		const bt = new BehaviourTree(definition, this.buildExecutionContext(), this.createBtOptions());
+		if (!definition) return undefined;
+		const bt = new BehaviourTree(definition, this.buildExecutionContext(agent), this.createBtOptions());
 		this.activeEffectEntry = { bt };
 		return bt;
 	}
@@ -91,8 +149,9 @@ export class BtManager<
 	registerParallelBt(
 		name: string,
 		definition: string | RootNodeDefinition | RootNodeDefinition[],
+		agent?: string,
 	): BehaviourTree | undefined {
-		const bt = new BehaviourTree(definition, this.buildExecutionContext(), this.createBtOptions());
+		const bt = new BehaviourTree(definition, this.buildExecutionContext(agent), this.createBtOptions());
 		this.parallelEntries.set(name, { bt });
 		return bt;
 	}

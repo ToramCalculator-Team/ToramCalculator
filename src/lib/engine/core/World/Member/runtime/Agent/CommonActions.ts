@@ -3,17 +3,17 @@ import { createLogger } from "~/lib/Logger";
 import { State } from "~/lib/mistreevous/State";
 import { ExpressionTransformer } from "../../../../JSProcessor/ExpressionTransformer";
 import type { DamageAreaRequest } from "../../../Area/types";
+import type { MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
 import { ModifierType } from "../StatContainer/StatContainer";
+import type { MemberEventType } from "../StateMachine/types";
+import type { MemberSharedRuntime } from "../types";
 import { type ActionPool, defineAction } from "./type";
 import { sendRenderCommand } from "./uitls";
-import type { MemberSharedRuntime } from "../types";
-import { MemberBaseAttrKey } from "../../MemberBaseSchema";
-import type { MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
 
 const log = createLogger("Actions");
 
-type BtContext = MemberSharedRuntime;
-type BtCapabilities = MemberBtCapabilities<MemberBaseAttrKey | string>;
+type BtContext = MemberSharedRuntime<string>;
+type BtCapabilities = MemberBtCapabilities<string, MemberEventType>;
 
 export const logLv = 0; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
 
@@ -97,12 +97,10 @@ export const CommonActionPool = {
 	),
 
 	/** 计算技能生命周期数据 */
-	prepareSkillLifecycle: defineAction(
-		z.object({}).meta({ description: "计算技能生命周期数据" }),
-		(context, _input) => {
-			log.debug(`👤 [${context.name}] 计算技能生命周期数据`);
-			return State.SUCCEEDED;
-		}),
+	prepareSkillLifecycle: defineAction(z.object({}).meta({ description: "计算技能生命周期数据" }), (context, _input) => {
+		log.debug(`👤 [${context.name}] 计算技能生命周期数据`);
+		return State.SUCCEEDED;
+	}),
 
 	/** 单体攻击 */
 	singleAttack: defineAction(commonAttackSchema.meta({ description: "单体攻击" }), (context, input, capabilities) => {
@@ -119,7 +117,7 @@ export const CommonActionPool = {
 
 		// 创建施法者属性快照（只快照用到的属性）
 		const casterSnapshot: Record<string, number> = {};
-		for (const key of dependencies.selfDependencies as MemberBaseAttrKey[]) {
+		for (const key of dependencies.selfDependencies) {
 			casterSnapshot[key] = capabilities.statContainer.getValue(key);
 		}
 
@@ -182,7 +180,7 @@ export const CommonActionPool = {
 
 			// 创建施法者属性快照（只快照用到的属性）
 			const casterSnapshot: Record<string, number> = {};
-			for (const key of dependencies.selfDependencies as MemberBaseAttrKey[]) {
+			for (const key of dependencies.selfDependencies) {
 				casterSnapshot[key] = capabilities.statContainer.getValue(key);
 			}
 
@@ -307,10 +305,12 @@ export const CommonActionPool = {
 				treeName: z.string().meta({ description: "buff树名称" }),
 			})
 			.meta({ description: "添加buff" }),
-		(context, input) => {
+		(context, input, capabilities) => {
 			log.debug(`👤 [${context.name}] addBuff`, input);
 			// buff逻辑所需的定义应该会被加载到上下文中，找到他并注册即可
-			const buff = context.currentSkill?.activeVariant.registeredBehaviorTrees?.find((tree) => tree.name === input.treeName);
+			const buff = context.currentSkill?.activeVariant.registeredBehaviorTrees?.find(
+				(tree) => tree.name === input.treeName,
+			);
 			if (!buff) {
 				log.warn(`⚠️ [${context.name}] 无法找到buff: ${input.treeName}`);
 				return State.FAILED;
@@ -398,9 +398,9 @@ export const CommonActionPool = {
 				typesFilter.size === 0
 					? null
 					: (event: { payload: unknown }) => {
-						const payload = event.payload as { type?: string };
-						return !!payload?.type && typesFilter.has(payload.type);
-					};
+							const payload = event.payload as { type?: string };
+							return !!payload?.type && typesFilter.has(payload.type);
+						};
 
 			capabilities.subscribeByName(input.sourceId, eventNames, predicate, (event) => {
 				if (!input.counterSlot) return;
@@ -438,13 +438,13 @@ export const CommonActionPool = {
 				tagFilter.size === 0
 					? null
 					: (event: { payload: unknown }) => {
-						const payload = event.payload as { damageTags?: string[] };
-						if (!Array.isArray(payload?.damageTags)) return false;
-						for (const tag of payload.damageTags) {
-							if (tagFilter.has(tag)) return true;
-						}
-						return false;
-					};
+							const payload = event.payload as { damageTags?: string[] };
+							if (!Array.isArray(payload?.damageTags)) return false;
+							for (const tag of payload.damageTags) {
+								if (tagFilter.has(tag)) return true;
+							}
+							return false;
+						};
 
 			capabilities.subscribeByName(input.sourceId, input.eventNames, predicate, (event) => {
 				if (!input.counterSlot) return;
@@ -508,6 +508,6 @@ export const CommonActionPool = {
 			return State.SUCCEEDED;
 		},
 	),
-} as const satisfies ActionPool<BtContext, BtCapabilities>;
+} as const satisfies ActionPool<BtContext, string, MemberEventType, BtCapabilities>;
 
 export type CommonActionPool = typeof CommonActionPool;

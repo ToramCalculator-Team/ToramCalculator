@@ -6,7 +6,7 @@ import { mergeSchema, type SlotDeclaration } from "../../runtime/StatContainer/S
 import type { ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
 import { StatContainer } from "../../runtime/StatContainer/StatContainer";
 import type { MobRuntime } from "../../runtime/types";
-import { MobBtBindings } from "./Agents/BtBindings";
+import { createMobBtBindings } from "./Agents/BtBindings";
 import { MobAttrSchema } from "./MobAttrSchema";
 import { createMobStateMachine, type MobEventType, type MobStateContext } from "./MobStateMachine";
 
@@ -30,6 +30,10 @@ export class Mob extends Member<MobAttrKey, MobEventType, MobStateContext, MobRu
 
 		const runtime: MobRuntime = {
 			type: "Mob",
+			memberId: memberData.id,
+			name: memberData.name,
+			campId,
+			teamId,
 			tickIndex: 0,
 			currentTimeMs: 0,
 			deltaTimeMs: 0,
@@ -38,14 +42,11 @@ export class Mob extends Member<MobAttrKey, MobEventType, MobStateContext, MobRu
 			statusTags: [],
 			skillList: [],
 			skillCooldowns: [],
-			character: null,
 			data: null,
-			memberId: "",
-			name: "",
 			statContainer,
 			services: MemberRuntimeServicesDefaults,
 			currentSkill: null,
-			previousSkill: null
+			previousSkill: null,
 		};
 
 		super(
@@ -58,7 +59,7 @@ export class Mob extends Member<MobAttrKey, MobEventType, MobStateContext, MobRu
 			runtime,
 			MemberRuntimeServicesDefaults,
 			position,
-			MobBtBindings,
+			createMobBtBindings,
 		);
 	}
 

@@ -1,7 +1,12 @@
 import { z } from "zod/v4";
 import { BUILT_IN_REGISTLETS_BY_ID } from "../../attachments/BuiltInRegistlets";
-import type { BtContext, MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
+import type { MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
+import type { MemberEventType } from "../StateMachine/types";
+import type { MemberSharedRuntime } from "../types";
 import { type ConditionPool, defineCondition } from "./type";
+
+type BtContext = MemberSharedRuntime<string>;
+type BtCapabilities = MemberBtCapabilities<string, MemberEventType>;
 
 function currentCharacterOf(context: BtContext): unknown {
 	if (!("character" in context)) return null;
@@ -9,7 +14,12 @@ function currentCharacterOf(context: BtContext): unknown {
 }
 
 function currentSkillIdOf(context: BtContext): string | null {
-	return context.currentSkill?.data?.templateId ?? context.currentSkill?.data?.template?.id ?? context.currentSkill?.data?.id ?? null;
+	return (
+		context.currentSkill?.data?.templateId ??
+		context.currentSkill?.data?.template?.id ??
+		context.currentSkill?.data?.id ??
+		null
+	);
 }
 
 export const CommonConditionPool = {
@@ -91,6 +101,6 @@ export const CommonConditionPool = {
 			return false;
 		},
 	),
-} as const satisfies ConditionPool<BtContext, MemberBtCapabilities>;
+} as const satisfies ConditionPool<BtContext, string, MemberEventType, BtCapabilities>;
 
 export type CommonConditionPool = typeof CommonConditionPool;

@@ -1,25 +1,21 @@
 import type { EventObject } from "xstate";
-import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import type { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
+import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import type { StageData } from "../../../../Pipeline/stageEnv";
 import type { MemberDomainEvent } from "../../../../types";
-import type {
-	WatchDirection,
-	WatchHandler,
-	WatcherId,
-	WatchOptions,
-} from "../AttributeWatcher/AttributeWatcher";
+import type { MemberBaseAttrKey } from "../../MemberBaseSchema";
+import type { MemberRuntimeServices } from "../../RuntimeServices";
+import type { WatchDirection, WatcherId, WatchHandler, WatchOptions } from "../AttributeWatcher/AttributeWatcher";
 import type { ProcHandler, ProcPredicate, ProcSubscriptionId } from "../ProcBus/ProcBus";
 import type { StatContainer } from "../StatContainer/StatContainer";
 import type { MemberEventType } from "../StateMachine/types";
 import type { MemberSharedRuntime } from "../types";
-import type { MemberRuntimeServices } from "../../RuntimeServices";
-import { MemberBaseAttrKey } from "../../MemberBaseSchema";
 
 export interface BtTreeController {
 	registerParallelBt(
 		name: string,
 		definition: string | RootNodeDefinition | RootNodeDefinition[],
+		agent?: string,
 	): unknown;
 	unregisterParallelBt(name: string): void;
 	hasBuff(name: string): boolean;
@@ -50,6 +46,7 @@ export interface MemberBtCapabilities<
 	registerParallelBt(
 		name: string,
 		definition: string | RootNodeDefinition | RootNodeDefinition[],
+		agent?: string,
 	): BehaviourTree | undefined;
 	unregisterParallelBt(name: string): void;
 	hasParallelBt(name: string): boolean;

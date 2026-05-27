@@ -12,8 +12,8 @@ import { mergeSchema, type SlotDeclaration } from "../../runtime/StatContainer/S
 import type { ExtractAttrPaths, NestedSchema } from "../../runtime/StatContainer/SchemaTypes";
 import { StatContainer } from "../../runtime/StatContainer/StatContainer";
 import type { PlayerRuntime } from "../../runtime/types";
-import { PlayerBtBindings } from "./Agents/BtBindings";
-import { type PlayerAttrNestedSchema, PlayerAttrSchemaGenerator, PlayerAttrKey } from "./PlayerAttrSchema";
+import { createPlayerBtBindings } from "./Agents/BtBindings";
+import { type PlayerAttrKey, type PlayerAttrNestedSchema, PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
 import { type PlayerEventType, type PlayerStateContext, playerStateMachine } from "./PlayerStateMachine";
 import { selectPlayerSkillVariant } from "./skillLifecycle";
 
@@ -61,6 +61,8 @@ export class Player extends Member<PlayerAttrKey, PlayerEventType, PlayerStateCo
 		const runtime: PlayerRuntime = {
 			memberId: memberData.id,
 			name: memberData.name,
+			campId,
+			teamId,
 			type: "Player",
 			tickIndex: 0,
 			statContainer,
@@ -87,7 +89,7 @@ export class Player extends Member<PlayerAttrKey, PlayerEventType, PlayerStateCo
 			runtime,
 			MemberRuntimeServicesDefaults,
 			position,
-			PlayerBtBindings,
+			createPlayerBtBindings,
 		);
 		this.activeCharacter = activeCharacter;
 		this.runtimeAttachments = runtimeAttachments;

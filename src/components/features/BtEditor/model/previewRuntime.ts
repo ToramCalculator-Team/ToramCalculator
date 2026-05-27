@@ -1,11 +1,21 @@
 import type { MemberType } from "@db/schema/enums";
-import type { MemberBtManagerEnv } from "~/lib/engine/core/World/Member/runtime/BehaviourTree/BtManagerEnv";
+import { MemberBaseNestedSchema } from "~/lib/engine/core/World/Member/MemberBaseSchema";
 import type { MemberRuntimeServices } from "~/lib/engine/core/World/Member/RuntimeServices";
+import { AttributeWatcherRegistry } from "~/lib/engine/core/World/Member/runtime/AttributeWatcher/AttributeWatcher";
 import { createBtContext } from "~/lib/engine/core/World/Member/runtime/BehaviourTree/BtContextFactory";
-import type { MemberStateContext } from "~/lib/engine/core/World/Member/runtime/StateMachine/types";
+import type {
+	MemberBtCapabilities,
+	MemberBtManagerEnv,
+} from "~/lib/engine/core/World/Member/runtime/BehaviourTree/BtManagerEnv";
+import { StatContainer } from "~/lib/engine/core/World/Member/runtime/StatContainer/StatContainer";
+import type { MemberEventType } from "~/lib/engine/core/World/Member/runtime/StateMachine/types";
 import type { MemberSharedRuntime, MobRuntime, PlayerRuntime } from "~/lib/engine/core/World/Member/runtime/types";
-import { MobBtBindings } from "~/lib/engine/core/World/Member/types/Mob/Agents/BtBindings";
-import { PlayerBtBindings } from "~/lib/engine/core/World/Member/types/Player/Agents/BtBindings";
+import { createMobBtBindings } from "~/lib/engine/core/World/Member/types/Mob/Agents/BtBindings";
+import type { MobAttrKey } from "~/lib/engine/core/World/Member/types/Mob/MobAttrSchema";
+import type { MobEventType } from "~/lib/engine/core/World/Member/types/Mob/MobStateMachine";
+import { createPlayerBtBindings } from "~/lib/engine/core/World/Member/types/Player/Agents/BtBindings";
+import type { PlayerAttrKey } from "~/lib/engine/core/World/Member/types/Player/PlayerAttrSchema";
+import type { PlayerEventType } from "~/lib/engine/core/World/Member/types/Player/PlayerStateMachine";
 import { BehaviourTree, type BehaviourTreeOptions, State } from "~/lib/mistreevous";
 import type { Agent } from "~/lib/mistreevous/Agent";
 import type {
@@ -16,18 +26,19 @@ import type {
 } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import type { MdslIntellisenseRegistry } from "../modes/mdslIntellisense";
 import type { BtAuthoringDiagnostic } from "./authoringValidator";
-import { StatContainer } from "~/lib/engine/core/World/Member/runtime/StatContainer/StatContainer";
-import { MemberBaseNestedSchema } from "~/lib/engine/core/World/Member/MemberBaseSchema";
-import { AttributeWatcherRegistry } from "~/lib/engine/core/World/Member/runtime/AttributeWatcher/AttributeWatcher";
 
 export type BtPreviewResult = {
 	tree: BehaviourTree;
 	diagnostics: BtAuthoringDiagnostic[];
 };
 
-type PreviewEvent = { type: string; data?: Record<string, unknown> };
+type PreviewRuntime = (PlayerRuntime | MobRuntime | (MemberSharedRuntime<string> & { type: MemberType })) &
+	MemberSharedRuntime<string>;
 
-type PreviewRuntime = PlayerRuntime | MobRuntime | (MemberSharedRuntime & { type: MemberType });
+type PreviewBtRuntime = {
+	env: MemberBtManagerEnv<MemberEventType, string, PreviewRuntime>;
+	btBindings: Record<string, unknown>;
+};
 
 type PreviewFallbackCalls = {
 	actions: Set<string>;
@@ -37,9 +48,11 @@ type PreviewFallbackCalls = {
 };
 
 const createPreviewRuntime = (memberType: MemberType): PreviewRuntime => {
-	const common = {
-		id: "preview-member-id",
+	const common: MemberSharedRuntime<string> = {
+		memberId: "preview-member-id",
 		name: "PreviewMember",
+		campId: "preview",
+		teamId: "preview",
 		tickIndex: 0,
 		currentTimeMs: 0,
 		deltaTimeMs: 1000 / 60,
@@ -56,7 +69,7 @@ const createPreviewRuntime = (memberType: MemberType): PreviewRuntime => {
 			type: "Player",
 			skillList: [],
 			data: null,
-		} as PlayerRuntime;
+		} as PreviewRuntime;
 	}
 	if (memberType === "Mob") {
 		return {
@@ -64,19 +77,23 @@ const createPreviewRuntime = (memberType: MemberType): PreviewRuntime => {
 			type: "Mob",
 			skillList: [],
 			data: null,
-		} as MobRuntime;
+		} as PreviewRuntime;
 	}
-	return { ...common, type: memberType };
+	return { ...common, type: memberType } as PreviewRuntime;
 };
 
-export const getPreviewBtBindings = (memberType: MemberType): Record<string, unknown> => {
-	if (memberType === "Mob") return MobBtBindings;
-	return PlayerBtBindings;
-};
-
-export const createPreviewMemberBtManagerEnv = (
+const createPreviewBtBindings = (
 	memberType: MemberType,
-): MemberBtManagerEnv => {
+	capabilities: MemberBtCapabilities<string, MemberEventType>,
+): Record<string, unknown> => {
+	// 预览环境使用 string 宽属性槽来承接 MDSL 动态输入；这里收窄到具体成员类型只用于复用真实 binding 工厂。
+	if (memberType === "Mob") {
+		return createMobBtBindings(capabilities as unknown as MemberBtCapabilities<MobAttrKey, MobEventType>);
+	}
+	return createPlayerBtBindings(capabilities as unknown as MemberBtCapabilities<PlayerAttrKey, PlayerEventType>);
+};
+
+export const createPreviewBtRuntime = (memberType: MemberType): PreviewBtRuntime => {
 	const runtime = createPreviewRuntime(memberType);
 	const services: MemberRuntimeServices = {
 		getCurrentTimeMs: () => runtime.currentTimeMs,
@@ -90,30 +107,44 @@ export const createPreviewMemberBtManagerEnv = (
 		random: () => 0.5,
 	};
 
-	const MemberStatContainer = new StatContainer(MemberBaseNestedSchema)
+	const statContainer = new StatContainer<string>(MemberBaseNestedSchema);
+	const attributeWatchers = new AttributeWatcherRegistry<string>(statContainer);
+	const renderState: MemberBtCapabilities<string, MemberEventType>["renderState"] = {};
+	const parallelBts = new Set<string>();
+
+	const capabilities: MemberBtCapabilities<string, MemberEventType> = {
+		statContainer,
+		services,
+		renderState,
+		registerParallelBt: (name) => {
+			parallelBts.add(name);
+			return undefined;
+		},
+		unregisterParallelBt: (name) => {
+			parallelBts.delete(name);
+		},
+		hasParallelBt: (name) => parallelBts.has(name),
+		subscribeByName: () => 0,
+		unsubscribeBySource: () => undefined,
+		watch: (sourceId, path, threshold, direction, handler, options) =>
+			attributeWatchers.watch(sourceId, path, threshold, direction, handler, options),
+		unwatchBySource: (sourceId) => attributeWatchers.unwatchBySource(sourceId),
+		notifyDomainEvent: () => undefined,
+		runPipeline: () => ({}),
+		send: () => undefined,
+	};
+
+	const env: MemberBtManagerEnv<MemberEventType, string, PreviewRuntime> = {
+		name: "BtEditorPreview",
+		getContext: () => runtime,
+		getCapabilities: () => capabilities,
+		getDeltaTimeMs: () => runtime.deltaTimeMs,
+		send: capabilities.send,
+	};
 
 	return {
-		id: "bt-editor-preview",
-		type: memberType,
-		name: "BtEditorPreview",
-		campId: "preview",
-		teamId: "preview",
-		position: runtime.position,
-		runtime,
-		statContainer: MemberStatContainer,
-		services,
-		btManager: {
-			registerParallelBt: () => undefined,
-			unregisterParallelBt: () => undefined,
-			hasBuff: () => false,
-		},
-		procBus: null,
-		attributeWatchers: new AttributeWatcherRegistry(MemberStatContainer),
-		renderState: {},
-		notifyDomainEvent: () => undefined,
-		runPipeline: () => ({ original: 0, result: 0 }) as never,
-		send: () => undefined,
-		// 设计说明：预览环境只实现 BT 调用需要的最小 MemberBtManagerEnv 面，缺失的引擎能力必须通过 mock 行为显式给出。
+		env,
+		btBindings: createPreviewBtBindings(memberType, capabilities),
 	};
 };
 
@@ -130,10 +161,10 @@ export function createPreviewBehaviourTree(options: {
 		diagnostics.push(diagnostic);
 		options.onDiagnostic?.(diagnostic);
 	};
-	const env = createPreviewMemberBtManagerEnv(options.memberType);
+	const { env, btBindings } = createPreviewBtRuntime(options.memberType);
 	const { context, warnings } = createBtContext({
-		owner: env,
-		btBindings: getPreviewBtBindings(options.memberType),
+		env,
+		btBindings,
 		agent: options.agent,
 	});
 	for (const warning of warnings) {
@@ -225,24 +256,4 @@ function collectPreviewFallbackCalls(
 
 	for (const definition of definitions) visit(definition);
 	return calls;
-}
-
-function createPreviewStatContainer() {
-	const values = new Map<string, number>();
-	return {
-		getValue: (path: string) => values.get(path) ?? 0,
-		setValue: (path: string, value: number) => values.set(path, value),
-		addModifier: (path: string, _type: unknown, value: number) => {
-			values.set(path, (values.get(path) ?? 0) + value);
-		},
-		removeModifiersBySourceIdPrefix: () => undefined,
-		onChange: () => () => undefined,
-	};
-}
-
-function createPreviewAttributeWatchers() {
-	return {
-		watch: () => 0,
-		unwatchBySource: () => undefined,
-	};
 }

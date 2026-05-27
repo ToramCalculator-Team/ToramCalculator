@@ -1,11 +1,11 @@
 import type { Actor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
 import type { StageData } from "~/lib/engine/core/Pipeline/stageEnv";
 import type { MemberDomainEvent } from "~/lib/engine/core/types";
+import type { MemberBaseAttrKey } from "../../MemberBaseSchema";
 import type { MemberRuntimeServices } from "../../RuntimeServices";
 import type { BtManager } from "../BehaviourTree/BtManager";
 import type { StatContainer } from "../StatContainer/StatContainer";
 import type { MemberSharedRuntime } from "../types";
-import { MemberBaseAttrKey } from "../../MemberBaseSchema";
 
 /**
  * 成员事件类型枚举
@@ -70,7 +70,7 @@ export interface MemberStateMachineEnv<
 	runtime: TRuntime;
 	statContainer: StatContainer<MemberBaseAttrKey | TExtraAttrKey>;
 	services: MemberRuntimeServices;
-	btManager: BtManager<TRuntime, TStateEvent>;
+	btManager: BtManager<TExtraAttrKey, TRuntime, TStateEvent>;
 	notifyDomainEvent(event: MemberDomainEvent): void;
 	runPipeline(pipelineName: string, params?: Record<string, unknown>): StageData;
 	send(event: TStateEvent): void;
