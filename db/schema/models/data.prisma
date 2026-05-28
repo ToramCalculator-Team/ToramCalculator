@@ -457,16 +457,12 @@ model task_reward {
 model skill {
     id String @id
 
-    treeType     String // Enum SKILL_TREE_TYPE
-    posX         Int
-    posY         Int
-    tier         Int
-    name         String
-    isPassive    Boolean
-    castTimeType String // Enum SKILL_CAST_TIME_TYPE
-    distanceType String // Enum SKILL_DISTANCE_TYPE
-    targetType   String // Enum SKILL_TARGET_TYPE
-    variants     skill_variant[]
+    treeType String // Enum SKILL_TREE_TYPE
+    posX     Int
+    posY     Int
+    tier     Int
+    name     String
+    variants skill_variant[]
 
     details     String
     dataSources String
@@ -493,16 +489,28 @@ model skill_variant {
     targetMainWeaponType   String // Enum MAIN_HAND_TYPE_LIMIT
     targetSubWeaponType    String // Enum SUB_HAND_TYPE_LIMIT
     targetArmorAbilityType String // Enum PLAYER_ARMOR_ABILITY_TYPE_LIMIT
-    hpCost      String?
-    mpCost      String?
-    description String
+    comboCompatible        Boolean
+    hpCost                 String?
+    mpCost                 String?
+    range                  String?
+    castTimeType           String // Enum SKILL_CAST_TIME_TYPE
+    distanceType           String // Enum SKILL_DISTANCE_TYPE
+    targetType             String // Enum SKILL_TARGET_TYPE
+    chantingFixedMs        String?
+    chantingModifiedMs     String?
+    chargingFixedMs        String?
+    chargingModifiedMs     String?
+    actionFixedMs          String
+    actionModifiedMs       String
+    startupRatio           String
+    description            String
 
-    activeBehavior     Json?  /// ZOD ActiveSkillBehaviorSchema
-    passiveBehavior    Json[] /// ZOD PassiveSkillBehaviorSchema
-    registeredBehavior Json[] /// ZOD RegisteredSkillBehaviorSchema
+    activeBehavior     Json?
+    passiveBehavior    Json[]
+    registeredBehavior Json[]
 
-    activeBehaviorTree     behavior_tree?  @relation("SkillVariantActiveBehaviorTree")
-    passiveBehaviorTree    behavior_tree?  @relation("SkillVariantPassiveBehaviorTree")
+    activeBehaviorTree      behavior_tree?  @relation("SkillVariantActiveBehaviorTree")
+    passiveBehaviorTree     behavior_tree?  @relation("SkillVariantPassiveBehaviorTree")
     registeredBehaviorTrees behavior_tree[] @relation("SkillVariantRegisteredBehaviorTrees")
 
     details String?

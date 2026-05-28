@@ -6,19 +6,9 @@
  */
 import { z } from "zod/v4";
 import { MEMBER_TYPE } from "./enums";
+import { SchemaAttributeSchema } from "~/lib/engine/core/World/Member/runtime/StatContainer/SchemaTypes";
 
-// StatContainer 可合并的属性定义，字段形状需与 SchemaAttribute 保持一致。
-export const SchemaAttributeSchema = z.object({
-	// 属性展示名，主要用于调试与 UI 展示。
-	displayName: z.string(),
-	// 属性初始表达式，通常是 "0"、"-Infinity" 等常量。
-	expression: z.string(),
-	// 百分比修正不参与乘法，仅做加法累加。
-	noBaseValue: z.boolean().optional(),
-	// 仅保留基础值，适合技能计数器、冷却时间戳等持久化槽。
-	onlyBaseValue: z.boolean().optional(),
-});
-export type SchemaAttributeData = z.output<typeof SchemaAttributeSchema>;
+// ==================================================================== 行为树 ==============================================================
 
 // 行为树声明的持久化属性槽；跨帧变量必须写入 StatContainer。
 export const AttributeSlotDeclarationSchema = z.object({
@@ -31,137 +21,6 @@ export type AttributeSlotDeclarationData = z.output<typeof AttributeSlotDeclarat
 // 行为树或行为 DSL 声明的属性槽列表；默认空数组用于兼容无槽技能。
 export const AttributeSlotDeclarationListSchema = z.array(AttributeSlotDeclarationSchema).default([]);
 export type AttributeSlotDeclarationListData = z.output<typeof AttributeSlotDeclarationListSchema>;
-
-// 技能释放生命周期参数；从旧 skill_variant 时间字段迁入。
-export const SkillBehaviorLifecycleSchema = z
-	.object({
-		// 前摇生效点；由 skill.startup pipeline 修正。
-		startupMs: z.string().default("0"),
-		// 固定动作时间，不受行动速度影响。
-		actionFixedMs: z.string().default("0"),
-		// 可修正动作时间，进入 skill.action pipeline。
-		actionModifiedMs: z.string().default("0"),
-		// 固定咏唱时间，不受速度影响。
-		chantingFixedMs: z.string().default("0"),
-		// 可修正咏唱时间，进入 skill.chanting pipeline。
-		chantingModifiedMs: z.string().default("0"),
-		// 固定蓄力时间，不受速度影响。
-		chargingFixedMs: z.string().default("0"),
-		// 可修正蓄力时间，进入 skill.charging pipeline。
-		chargingModifiedMs: z.string().default("0"),
-		// 释放入口层面的锁定与寻敌参数。
-		targeting: z
-			.object({
-				// 释放距离，旧 castingRange 迁入此处。
-				castingRange: z.string().default("0"),
-			})
-			.default({ castingRange: "0" }),
-	})
-	.default({
-		startupMs: "0",
-		actionFixedMs: "0",
-		actionModifiedMs: "0",
-		chantingFixedMs: "0",
-		chantingModifiedMs: "0",
-		chargingFixedMs: "0",
-		chargingModifiedMs: "0",
-		targeting: { castingRange: "0" },
-	});
-export type SkillBehaviorLifecycleData = z.output<typeof SkillBehaviorLifecycleSchema>;
-
-// 伤害元素公式；旧 elementLogic 迁入 expression。
-export const DamageElementFormulaParamSchema = z.object({
-	expression: z.string().default("self.mainWeapon.element"),
-});
-export type DamageElementFormulaParamData = z.output<typeof DamageElementFormulaParamSchema>;
-
-// 单次伤害事件的公式参数。
-export const DamageFormulaParamSchema = z.object({
-	// 固定值公式，默认 0。
-	constant: z.string().default("0"),
-	// 倍率公式，默认 100。
-	multiplier: z.string().default("100"),
-	// 基础攻击来源，例如 atk.p / atk.m / 自定义表达式。
-	base: z.string().optional(),
-	// 元素来源可为主手、副手或技能内建表达式。
-	element: DamageElementFormulaParamSchema.default({ expression: "self.mainWeapon.element" }),
-});
-export type DamageFormulaParamData = z.output<typeof DamageFormulaParamSchema>;
-
-// 伤害投递与范围参数；warningZone 只随非单体范围存在。
-export const DamageDeliveryParamSchema = z.object({
-	// 对应 DAMAGE_RANGE_TYPE 的字符串值，避免在 JSON schema 内硬依赖数据库 enum。
-	rangeType: z.string().default("Single"),
-	// 旧 effectiveRange 迁入具体伤害事件范围。
-	effectiveRange: z.string().default("0"),
-	// 单体技能没有 warningZone；范围技能由区域管理器解释此参数。
-	warningZone: z.unknown().optional(),
-});
-export type DamageDeliveryParamData = z.output<typeof DamageDeliveryParamSchema>;
-
-// 单次伤害事件的时间参数；周期与持续语义交给区域管理器解释。
-export const DamageTimingParamSchema = z.object({
-	delayMs: z.string().default("0"),
-	durationMs: z.string().optional(),
-	intervalMs: z.string().optional(),
-	repeatCount: z.string().optional(),
-});
-export type DamageTimingParamData = z.output<typeof DamageTimingParamSchema>;
-
-// 命中时判定的异常参数。
-export const AilmentParamSchema = z.object({
-	// 对应 ABNORMAL_TYPE 的字符串值。
-	type: z.string(),
-	// 发生概率，支持表达式。
-	probability: z.string().default("100"),
-	// 持续时间，按毫秒表达。
-	durationMs: z.string().optional(),
-});
-export type AilmentParamData = z.output<typeof AilmentParamSchema>;
-
-// 单次伤害事件；一个技能可拥有多个事件，每个事件独立命中与投递。
-export const DamageEventParamSchema = z.object({
-	name: z.string().optional(),
-	formula: DamageFormulaParamSchema.default({
-		constant: "0",
-		multiplier: "100",
-		element: { expression: "self.mainWeapon.element" },
-	}),
-	delivery: DamageDeliveryParamSchema.default({ rangeType: "Single", effectiveRange: "0" }),
-	timing: DamageTimingParamSchema.default({ delayMs: "0" }),
-	ailments: z.array(AilmentParamSchema).default([]),
-});
-export type DamageEventParamData = z.output<typeof DamageEventParamSchema>;
-
-// 技能行为统一 DSL 步骤；op 决定节点语义，params 暂保持开放，便于逐个还原技能后再收紧。
-export const SkillProgramStepSchema = z
-	.object({
-		op: z.string(),
-		params: z.record(z.string(), z.unknown()).default({}),
-	});
-export type SkillProgramStepData = z.output<typeof SkillProgramStepSchema>;
-
-// 技能行为统一模板；读条、伤害、回复、状态、EX 槽位都先进入同一个程序形状。
-export const SkillProgramSchema = z
-	.object({
-		lifecycle: SkillBehaviorLifecycleSchema.optional(),
-		attributeSlots: AttributeSlotDeclarationListSchema,
-		steps: z.array(SkillProgramStepSchema).default([]),
-		rawBranches: z.array(z.unknown()).default([]),
-	});
-export type SkillProgramData = z.output<typeof SkillProgramSchema>;
-
-// 主动释放默认 DSL；自定义 activeBehaviorTree 存在时运行时会跳过此 DSL。
-export const ActiveSkillBehaviorSchema = SkillProgramSchema;
-export type ActiveSkillBehaviorData = z.output<typeof ActiveSkillBehaviorSchema>;
-
-// 成员创建时安装的默认被动 DSL。
-export const PassiveSkillBehaviorSchema = SkillProgramSchema;
-export type PassiveSkillBehaviorData = z.output<typeof PassiveSkillBehaviorSchema>;
-
-// 生命周期超过本次技能释放的长期注册行为 DSL。
-export const RegisteredSkillBehaviorSchema = SkillProgramSchema;
-export type RegisteredSkillBehaviorData = z.output<typeof RegisteredSkillBehaviorSchema>;
 
 // 行为树
 export const BTSchema = z.object({
@@ -183,6 +42,8 @@ export const MemberBTSchema = z.object({
 	memberType: z.enum(MEMBER_TYPE).default("Player"),
 });
 export type MemberBTTree = z.output<typeof MemberBTSchema>;
+
+// ==================================================================== 托环 ==============================================================
 
 /**
  * 托环里的表达式值。

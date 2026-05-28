@@ -14,6 +14,8 @@
  * - 多语言支持：通过字典文件实现，不依赖运行时类型
  */
 
+import z from "zod/v4";
+
 // ============================== 基础Schema类型 ==============================
 
 /**
@@ -31,16 +33,17 @@ export type SchemaStructure = {
  *
  * 包含属性的显示名称、计算表达式和特殊标记
  */
-export interface SchemaAttribute {
-	/** 属性的显示名称，用于UI展示 */
-	displayName: string;
-	/** 属性的计算表达式，支持DSL语法 */
-	expression: string;
-	/** 标记属性是否为 noBaseValue（百分比修正不参与乘法，仅做加法累加） */
-	noBaseValue?: boolean;
-	/** 标记属性是否只包含基础值 */
-	onlyBaseValue?: boolean;
-}
+export const SchemaAttributeSchema = z.object({
+	// 属性展示名，主要用于调试与 UI 展示。
+	displayName: z.string(),
+	// 属性初始表达式，通常是 "0"、"-Infinity" 等常量。
+	expression: z.string(),
+	// 百分比修正不参与乘法，仅做加法累加。
+	noBaseValue: z.boolean().optional(),
+	// 仅保留基础值，适合技能计数器、冷却时间戳等持久化槽。
+	onlyBaseValue: z.boolean().optional(),
+});
+export type SchemaAttribute = z.output<typeof SchemaAttributeSchema>;
 
 /**
  * 嵌套Schema结构类型
