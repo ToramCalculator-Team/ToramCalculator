@@ -527,7 +527,6 @@ export interface PlayerAttrStructure extends MemberBaseStructure {
 		max: null;
 		current: null;
 		recovery: null;
-		atkRegen: null;
 	};
 
 	weaponAtk: {
@@ -663,6 +662,7 @@ export interface PlayerAttrStructure extends MemberBaseStructure {
 	mspd: null;
 	cspd: null;
 	cspr: null;
+	ampr: null;
 
 	aggro: {
 		current: null;
@@ -778,7 +778,6 @@ export const PlayerAttrStructure: PlayerAttrStructure = {
 		max: null,
 		current: null,
 		recovery: null,
-		atkRegen: null,
 	},
 	weaponAtk: {
 		p: null,
@@ -884,6 +883,7 @@ export const PlayerAttrStructure: PlayerAttrStructure = {
 	mspd: null,
 	cspd: null,
 	cspr: null,
+	ampr: null,
 	aggro: {
 		current: null,
 		rate: null,
@@ -1132,10 +1132,6 @@ export const PlayerAttrNestedSchema: PlayerAttrNestedSchema = {
 		},
 		recovery: {
 			displayName: "魔法值自然回复",
-			expression: "0",
-		},
-		atkRegen: {
-			displayName: "魔法攻击回复",
 			expression: "0",
 		},
 	},
@@ -1448,6 +1444,11 @@ export const PlayerAttrNestedSchema: PlayerAttrNestedSchema = {
 	},
 	cspr: {
 		displayName: "咏唱缩减",
+		expression: "0",
+	},
+
+	ampr: {
+		displayName: "魔法攻击回复",
 		expression: "0",
 	},
 	aggro: {
@@ -1783,10 +1784,6 @@ export const PlayerAttrSchemaGenerator = (character: CharacterWithRelations): Pl
 			recovery: {
 				displayName: "MP自然回复",
 				expression: "1 + mp.max / 10",
-			},
-			atkRegen: {
-				displayName: "MP攻击生成",
-				expression: "10 + mp.max / 10",
 			},
 		},
 
@@ -2161,6 +2158,11 @@ export const PlayerAttrSchemaGenerator = (character: CharacterWithRelations): Pl
 			// 设计说明：CSPD 到咏唱缩减是分段收益；1000 前每 20 CSPD = 1，1000 后每 180 CSPD = 1。
 			expression: "cspd <= 1000 ? Math.max(0, Math.floor(cspd / 20)) : 50 + Math.floor((cspd - 1000) / 180)",
 			noBaseValue: true,
+		},
+
+		ampr: {
+			displayName: "攻击时MP回复",
+			expression: "10 + mp.max / 10",
 		},
 
 		aggro: {

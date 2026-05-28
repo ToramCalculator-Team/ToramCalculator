@@ -118,6 +118,7 @@
 | [0001](./0001-stat-container-as-unified-persistence-slot.md) | StatContainer 作为持久化槽的统一载体 | Accepted | 数据层 |
 | [0002](./0002-member-runtime-attachments-as-prebattle-assembly-contract.md) | Member runtime attachments as prebattle assembly contract | Accepted | 跨层 |
 | [0003](./0003-skill-cost-as-pipeline-contract.md) | 技能消耗作为 Pipeline 契约 | Proposed | 跨层 |
+| [0004](./0004-skill-behavior-tree-import-iteration-plan.md) | 技能 Behavior Tree 导入迭代计划 | Proposed | 跨层 |
 
 ## 待拆分清单
 
