@@ -119,6 +119,7 @@
 | [0002](./0002-member-runtime-attachments-as-prebattle-assembly-contract.md) | Member runtime attachments as prebattle assembly contract | Accepted | 跨层 |
 | [0003](./0003-skill-cost-as-pipeline-contract.md) | 技能消耗作为 Pipeline 契约 | Proposed | 跨层 |
 | [0004](./0004-skill-behavior-tree-import-iteration-plan.md) | 技能 Behavior Tree 导入迭代计划 | Proposed | 跨层 |
+| [0005](./0005-onhit-effects-via-attack-payload.md) | 命中后效果通过攻击 Payload 传递 | Proposed | 编排层 / 通信 |
 
 ## 待拆分清单
 

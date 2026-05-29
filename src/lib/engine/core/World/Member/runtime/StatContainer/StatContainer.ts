@@ -153,7 +153,7 @@ export function dynamicTotalValue(data: DataStorage): number {
 }
 
 // ============================== 通用接口定义 ==============================
-
+export const ModifierSourceTypeSchema = z.enum(["equipment", "skill", "buff", "debuff", "passive", "registlet", "item", "system"]);
 export interface ModifierSource {
 	id: string;
 	name: string;
@@ -166,7 +166,7 @@ export interface ModifierSource {
 	 * - `registlet`：雷吉斯托环
 	 * - `system`：系统赋予
 	 */
-	type: "equipment" | "skill" | "buff" | "debuff" | "passive" | "registlet" | "item" | "system";
+	type: z.output<typeof ModifierSourceTypeSchema>;
 }
 
 export interface Modifier {
@@ -587,6 +587,28 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 		this.notifyValueChange(index, oldValue, value);
 
 		return value;
+	}
+
+	/**
+	 * 获取属性基础值（表达式求值结果，叠加 modifier 之前）
+	 */
+	getBaseValue(attr: T): number {
+		const index = this.keyToIndex.get(attr);
+		if (index === undefined) {
+			log.warn(`⚠️ 尝试获取不存在的属性基础值: ${attr}`);
+			return 0;
+		}
+
+		// 确保依赖链已更新
+		if (this.isDirty(index)) {
+			this.updateDirtyValues();
+		}
+
+		const computationFn = this.computationFunctions.get(index);
+		if (computationFn) {
+			return computationFn();
+		}
+		return this.modifierArrays[ModifierType.BASE_VALUE][index];
 	}
 
 	/**

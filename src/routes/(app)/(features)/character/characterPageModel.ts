@@ -33,7 +33,7 @@ import type { PlayerArmorWithRelations } from "@db/generated/repositories/player
 import type { PlayerOptionWithRelations } from "@db/generated/repositories/player_option";
 import type { PlayerSpecialWithRelations } from "@db/generated/repositories/player_special";
 import type { PlayerWeaponWithRelations } from "@db/generated/repositories/player_weapon";
-import type { Skill } from "@db/generated/repositories/skill";
+import type { SkillWithRelations } from "@db/generated/repositories/skill";
 import type { TeamWithRelations } from "@db/generated/repositories/team";
 import type { character, DB } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
@@ -84,7 +84,7 @@ export type CharacterPageData = {
 export type CharacterPageStatus = "idle" | "loading" | "ready" | "error";
 
 export type CharacterSkillLevelChange = {
-	template: Skill;
+	template: SkillWithRelations;
 	lv: number;
 	characterSkillId?: string;
 };
@@ -471,7 +471,7 @@ export function createCharacterPageModel(input: {
 						isStarGem: false,
 						templateId: change.template.id,
 						belongToCharacterId: characterId,
-						template: change.template as CharacterSkillWithRelations["template"],
+						template: change.template,
 					});
 				}
 				replaceCharacterSkills(characterId, Array.from(skillsByTemplateId.values()));

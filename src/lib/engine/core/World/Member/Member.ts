@@ -203,7 +203,7 @@ export class Member<
 			get renderState() {
 				return self.renderState;
 			},
-			registerParallelBt: (name, definition, agent) => self.btManager.registerParallelBt(name, definition, agent),
+			registerParallelBt: (name, definition, agent, localContext) => self.btManager.registerParallelBt(name, definition, agent, localContext),
 			unregisterParallelBt: (name) => self.btManager.unregisterParallelBt(name),
 			hasParallelBt: (name) => self.btManager.hasBuff(name),
 			subscribeByName: (sourceId, eventNames, predicate, handler) => {

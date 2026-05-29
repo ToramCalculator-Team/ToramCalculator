@@ -44,8 +44,19 @@ export class BtManager<
 		};
 	}
 
-	private buildExecutionContext(agent?: string): TContext & Record<string, unknown> {
+	private buildExecutionContext(agent?: string, localContext?: Record<string, unknown>): TContext & Record<string, unknown> {
 		const executionContext = Object.create(this.env.getContext()) as TContext & Record<string, unknown>;
+		// 注入 per-tree 本地上下文（如 skill 信息），优先级高于共享 runtime
+		if (localContext) {
+			for (const [key, value] of Object.entries(localContext)) {
+				Object.defineProperty(executionContext, key, {
+					value,
+					writable: true,
+					enumerable: true,
+					configurable: true,
+				});
+			}
+		}
 		for (const [name, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(this.btBindings))) {
 			if (Object.hasOwn(executionContext, name) || name in executionContext) {
 				log.warn(`[${this.env.name}] skipped BT binding "${name}" because the slot already exists`);
@@ -139,9 +150,10 @@ export class BtManager<
 	registerActiveEffectBt(
 		definition?: string | RootNodeDefinition | RootNodeDefinition[],
 		agent?: string,
+		localContext?: Record<string, unknown>,
 	): BehaviourTree | undefined {
 		if (!definition) return undefined;
-		const bt = new BehaviourTree(definition, this.buildExecutionContext(agent), this.createBtOptions());
+		const bt = new BehaviourTree(definition, this.buildExecutionContext(agent, localContext), this.createBtOptions());
 		this.activeEffectEntry = { bt };
 		return bt;
 	}
@@ -150,8 +162,9 @@ export class BtManager<
 		name: string,
 		definition: string | RootNodeDefinition | RootNodeDefinition[],
 		agent?: string,
+		localContext?: Record<string, unknown>,
 	): BehaviourTree | undefined {
-		const bt = new BehaviourTree(definition, this.buildExecutionContext(agent), this.createBtOptions());
+		const bt = new BehaviourTree(definition, this.buildExecutionContext(agent, localContext), this.createBtOptions());
 		this.parallelEntries.set(name, { bt });
 		return bt;
 	}

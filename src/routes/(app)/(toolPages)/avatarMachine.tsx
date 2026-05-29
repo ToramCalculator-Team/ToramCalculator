@@ -3,7 +3,7 @@ import { Motion } from "solid-motionone";
 import { Dialog } from "~/components/containers/dialog";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
-import type { PlayerAttrKey } from "~/lib/engine/core/World/Member/types/Player/Player";
+import { PlayerAttrKey } from "~/lib/engine/core/World/Member/types/Player/PlayerAttrSchema";
 import { store } from "~/store";
 
 // 能力值【1~10】
@@ -117,7 +117,7 @@ const attrsMap = {
 	// 魔法值自回【1~10】
 	"mp.recovery": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "5%", "10%", "15%"],
 	// 攻回【1~10】
-	"mp.atkRegen": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+	"ampr": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
 	// 暴击率/爆伤【1~5】【1%~3%】
 	"c.rate.p": ["1", "2", "3", "4", "5", "1%", "2%", "3%"],
 	"c.dmg.p": ["1", "2", "3", "4", "5", "1%", "2%", "3%"],
@@ -252,7 +252,7 @@ const attrDisplayNames: Record<keyof typeof attrsMap, string> = {
 	cspd: "咏唱速度",
 	"hp.recovery": "体力值自然回复",
 	"mp.recovery": "魔法值自然回复",
-	"mp.atkRegen": "攻击魔法回复",
+	"ampr": "攻击魔法回复",
 	"c.rate.p": "暴击率",
 	"c.dmg.p": "暴击伤害",
 	antiVirus: "异常抗性",

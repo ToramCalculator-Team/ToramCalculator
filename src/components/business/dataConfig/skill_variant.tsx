@@ -12,8 +12,6 @@ import {
 import {
 	deleteSkillVariant,
 	insertSkillVariant,
-	selectAllSkillVariants,
-	selectAllSkillVariantsByBelongtoskillid,
 	selectSkillVariantById,
 	updateSkillVariant,
 } from "@db/generated/repositories/skill_variant";
@@ -25,264 +23,111 @@ import {
 	type skill_variant,
 } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
-import { ActiveSkillBehaviorSchema, PassiveSkillBehaviorSchema, RegisteredSkillBehaviorSchema } from "@db/schema/jsons";
+import type { MemberBTTree } from "@db/schema/jsons";
 import { createId } from "@paralleldrive/cuid2";
 import type { Transaction } from "kysely";
-import { createSignal, Show } from "solid-js";
+import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import { createSignal, For, Show } from "solid-js";
 import type { JSX } from "solid-js/jsx-runtime";
 import z from "zod/v4";
 import { BtEditorWrapper } from "~/components/business/utils/BTEditorWrapper";
 import { Button } from "~/components/controls/button";
 import { Input } from "~/components/controls/input";
-import { BtEditor } from "~/components/features/BtEditor/BtEditor";
-import type { Dic, Dictionary, FieldDetailFor } from "~/locales/type";
+import { BtEditor, type BtEditorValue } from "~/components/features/BtEditor/BtEditor";
+import type { Dictionary } from "~/locales/type";
 import type { TableDataConfig } from "../data-config";
-import { DefaultFieldClass, type FormRenderers } from "../form/SchemaFieldRenderer";
+import { DefaultFieldClass, type FormFieldRendererContext, type FormRenderers } from "../form/SchemaFieldRenderer";
 
 const formatJson = (value: unknown): string => JSON.stringify(value ?? null, null, 2);
 
-// behavior_tree 的归属字段由 skill_variant 保存流程统一维护，表单里只暴露编辑者真正关心的树内容。
-// 这样新建 skill / 内嵌新建 skill_variant 时，行为树不会提前写库，也不会依赖尚未存在的 FK。
-const BehaviorTreeEditorSchema = BehaviorTreeSchema.omit({
-	activeOwnerId: true,
-	passiveOwnerId: true,
-	registeredOwnerId: true,
-}).extend({
-	id: z.string().default(() => createId()),
-	name: z.string().default(defaultData.behavior_tree.name),
-	definition: z.string().default(defaultData.behavior_tree.definition),
-	agent: z.string().default(defaultData.behavior_tree.agent),
+// 设计说明：行为树资源属于 behavior_tree 表，skill_variant 表单实体显式带上三条外链结果。
+// 这样 BtEditor 编辑的是可持久化的行为树记录，DSL JSON 字段继续作为无行为树时的回退入口。
+export const SkillVariantWithBehaviorTreesSchema = SkillVariantSchema.extend({
+	activeBehaviorTree: BehaviorTreeSchema.nullable(),
+	passiveBehaviorTree: BehaviorTreeSchema.nullable(),
+	registeredBehaviorTrees: z.array(BehaviorTreeSchema),
 });
 
-const ActiveBehaviorInputSchema = z.discriminatedUnion("source", [
-	z.object({ source: z.literal("none") }),
-	z.object({
-		source: z.literal("dsl"),
-		dsl: ActiveSkillBehaviorSchema,
-	}),
-	z.object({
-		source: z.literal("bt"),
-		tree: BehaviorTreeEditorSchema,
-	}),
-]);
+export type SkillVariantWithBehaviorTrees = z.output<typeof SkillVariantWithBehaviorTreesSchema>;
 
-// skill_variant 的表单模型表达“行为入口”的业务语义，而不是直接复刻数据库列：
-// - active: none / dsl / bt 三选一；
-// - passive: dsl 与 bt 可以并存；
-// - registered: dsl[] 与 bt[] 可以并存。
-// 持久化时再拆回 skill_variant 的 JSON 列和 behavior_tree 的 owner FK。
-export const SkillVariantEditorSchema = SkillVariantSchema.omit({
-	activeBehavior: true,
-	passiveBehavior: true,
-	registeredBehavior: true,
-}).extend({
-	activeBehavior: ActiveBehaviorInputSchema.default({ source: "none" }),
-	passiveBehavior: z
-		.object({
-			dsl: z.array(PassiveSkillBehaviorSchema).default([]),
-			tree: BehaviorTreeEditorSchema.nullable().default(null),
-		})
-		.default({ dsl: [], tree: null }),
-	registeredBehavior: z
-		.object({
-			dsl: z.array(RegisteredSkillBehaviorSchema).default([]),
-			trees: z.array(BehaviorTreeEditorSchema).default([]),
-		})
-		.default({ dsl: [], trees: [] }),
-});
-
-export type BehaviorTreeEditor = z.output<typeof BehaviorTreeEditorSchema>;
-export type SkillVariantEditor = z.output<typeof SkillVariantEditorSchema>;
-
-const sourceField = (
-	enumMap: Record<SkillVariantEditor["activeBehavior"]["source"], string>,
-): FieldDetailFor<SkillVariantEditor["activeBehavior"]["source"]> => ({
-	key: "来源",
-	tableFieldDescription: "行为入口来源",
-	formFieldDescription: "行为入口来源",
-	enumMap,
-});
-
-const behaviorTreeEditorFieldDictionary = (dictionary: Dic<behavior_tree>): FieldDetailFor<BehaviorTreeEditor> => ({
-	key: dictionary.selfName,
-	tableFieldDescription: dictionary.description,
-	formFieldDescription: dictionary.description,
-	fields: {
-		id: dictionary.fields.id,
-		name: dictionary.fields.name,
-		definition: dictionary.fields.definition,
-		agent: dictionary.fields.agent,
-		attributeSlots: dictionary.fields.attributeSlots,
-	},
-});
-
-const behaviorTreeEditorListDictionary = (dictionary: Dic<behavior_tree>): FieldDetailFor<BehaviorTreeEditor[]> => ({
-	key: dictionary.selfName,
-	tableFieldDescription: dictionary.description,
-	formFieldDescription: dictionary.description,
-	item: behaviorTreeEditorFieldDictionary(dictionary),
-});
-
-const skillProgramDictionary = (
-	key: string,
-	description: string,
-): FieldDetailFor<z.output<typeof ActiveSkillBehaviorSchema>> =>
-	({
-		key,
-		tableFieldDescription: description,
-		formFieldDescription: description,
-		fields: {
-			lifecycle: {
-				key: "lifecycle",
-				tableFieldDescription: "SkillProgram lifecycle",
-				formFieldDescription: "SkillProgram lifecycle",
-			},
-			attributeSlots: {
-				key: "attributeSlots",
-				tableFieldDescription: "SkillProgram attribute slots",
-				formFieldDescription: "SkillProgram attribute slots",
-			},
-			steps: {
-				key: "steps",
-				tableFieldDescription: "SkillProgram steps",
-				formFieldDescription: "SkillProgram steps",
-			},
-			rawBranches: {
-				key: "rawBranches",
-				tableFieldDescription: "Imported raw source branches",
-				formFieldDescription: "Imported raw source branches",
-			},
-		},
-	}) as FieldDetailFor<z.output<typeof ActiveSkillBehaviorSchema>>;
-
-const skillProgramListDictionary = (
-	key: string,
-	description: string,
-): FieldDetailFor<z.output<typeof ActiveSkillBehaviorSchema>[]> =>
-	({
-		key,
-		tableFieldDescription: description,
-		formFieldDescription: description,
-		item: skillProgramDictionary("SkillProgram", description),
-	}) as FieldDetailFor<z.output<typeof ActiveSkillBehaviorSchema>[]>;
-
-const createSkillVariantEditorDictionary = (dictionary: Dictionary): Dic<SkillVariantEditor> => {
-	const rawSkillVariant = dictionary.db.skill_variant;
-	const behaviorTree = dictionary.db.behavior_tree;
-	const behaviorTreeField = behaviorTreeEditorFieldDictionary(behaviorTree);
-	const behaviorTreeList = behaviorTreeEditorListDictionary(behaviorTree);
-	const activeProgram = skillProgramDictionary(
-		rawSkillVariant.fields.activeBehavior.key,
-		rawSkillVariant.fields.activeBehavior.formFieldDescription,
-	);
-	const passiveProgram = skillProgramListDictionary(
-		rawSkillVariant.fields.passiveBehavior.key,
-		rawSkillVariant.fields.passiveBehavior.formFieldDescription,
-	);
-	const registeredProgram = skillProgramListDictionary(
-		rawSkillVariant.fields.registeredBehavior.key,
-		rawSkillVariant.fields.registeredBehavior.formFieldDescription,
-	);
-	const activeSourceEnumMap = {
-		none: dictionary.ui.relationPrefix.none,
-		dsl: rawSkillVariant.fields.activeBehavior.key,
-		bt: behaviorTree.selfName,
-	};
-	const activeSource = sourceField(activeSourceEnumMap);
-
-	// skill_variant 表单提交编辑视图模型，字典同步映射到同构路径。
-	// 原始 DSL 字典继续挂到 dsl 子节点，行为参数字段名只维护一份。
-	return {
-		selfName: rawSkillVariant.selfName,
-		description: rawSkillVariant.description,
-		fields: {
-			...rawSkillVariant.fields,
-			activeBehavior: {
-				key: rawSkillVariant.fields.activeBehavior.key,
-				tableFieldDescription: rawSkillVariant.fields.activeBehavior.tableFieldDescription,
-				formFieldDescription: rawSkillVariant.fields.activeBehavior.formFieldDescription,
-				fields: {
-					source: activeSource,
-					dsl: activeProgram,
-					tree: behaviorTreeField,
-				},
-				variants: {
-					none: {
-						key: activeSourceEnumMap.none,
-						tableFieldDescription: activeSourceEnumMap.none,
-						formFieldDescription: activeSourceEnumMap.none,
-						fields: {
-							source: activeSource,
-						},
-					},
-					dsl: {
-						key: activeSourceEnumMap.dsl,
-						tableFieldDescription: rawSkillVariant.fields.activeBehavior.tableFieldDescription,
-						formFieldDescription: rawSkillVariant.fields.activeBehavior.formFieldDescription,
-						fields: {
-							source: activeSource,
-							dsl: activeProgram,
-						},
-					},
-					bt: {
-						key: activeSourceEnumMap.bt,
-						tableFieldDescription: behaviorTree.description,
-						formFieldDescription: behaviorTree.description,
-						fields: {
-							source: activeSource,
-							tree: behaviorTreeField,
-						},
-					},
-				},
-			},
-			passiveBehavior: {
-				key: rawSkillVariant.fields.passiveBehavior.key,
-				tableFieldDescription: rawSkillVariant.fields.passiveBehavior.tableFieldDescription,
-				formFieldDescription: rawSkillVariant.fields.passiveBehavior.formFieldDescription,
-				fields: {
-					dsl: passiveProgram,
-					tree: behaviorTreeField,
-				},
-			},
-			registeredBehavior: {
-				key: rawSkillVariant.fields.registeredBehavior.key,
-				tableFieldDescription: rawSkillVariant.fields.registeredBehavior.tableFieldDescription,
-				formFieldDescription: rawSkillVariant.fields.registeredBehavior.formFieldDescription,
-				fields: {
-					dsl: registeredProgram,
-					trees: behaviorTreeList,
-				},
-			},
-		},
-	} as unknown as Dic<SkillVariantEditor>;
-};
-
-export const defaultSkillVariantEditor: SkillVariantEditor = SkillVariantEditorSchema.parse({
+const defaultSkillVariantWithBehaviorTrees: SkillVariantWithBehaviorTrees = SkillVariantWithBehaviorTreesSchema.parse({
 	...defaultData.skill_variant,
-	activeBehavior: { source: "none" },
-	passiveBehavior: { dsl: [], tree: null },
-	registeredBehavior: { dsl: [], trees: [] },
+	comboCompatible: false,
+	range: null,
+	chantingFixedMs: null,
+	chantingModifiedMs: null,
+	chargingFixedMs: null,
+	chargingModifiedMs: null,
+	actionFixedMs: "0",
+	actionModifiedMs: "0",
+	startupRatio: "0",
+	activeBehaviorTree: null,
+	passiveBehaviorTree: null,
+	registeredBehaviorTrees: [],
 });
-
-const createDefaultBehaviorTreeEditor = (name = defaultData.behavior_tree.name): BehaviorTreeEditor =>
-	BehaviorTreeEditorSchema.parse({
-		...defaultData.behavior_tree,
-		id: createId(),
-		name,
-	});
 
 type BehaviorTreeOwnerKind = "active" | "passive" | "registered";
 
-type SkillVariantBehaviorTrees = {
-	active: behavior_tree | null;
-	passive: behavior_tree | null;
-	registered: behavior_tree[];
+type SkillVariantBehaviorTrees = Pick<
+	SkillVariantWithBehaviorTrees,
+	"activeBehaviorTree" | "passiveBehaviorTree" | "registeredBehaviorTrees"
+>;
+
+const selectSkillVariantWithBehaviorTreesQuery = (db: Transaction<DB> | Awaited<ReturnType<typeof getDB>>) =>
+	db
+		.selectFrom("skill_variant")
+		.selectAll("skill_variant")
+		.select((eb) => [
+			jsonObjectFrom(
+				eb
+					.selectFrom("behavior_tree")
+					.whereRef("behavior_tree.activeOwnerId", "=", "skill_variant.id")
+					.selectAll("behavior_tree"),
+			).as("activeBehaviorTree"),
+			jsonObjectFrom(
+				eb
+					.selectFrom("behavior_tree")
+					.whereRef("behavior_tree.passiveOwnerId", "=", "skill_variant.id")
+					.selectAll("behavior_tree"),
+			).as("passiveBehaviorTree"),
+			jsonArrayFrom(
+				eb
+					.selectFrom("behavior_tree")
+					.whereRef("behavior_tree.registeredOwnerId", "=", "skill_variant.id")
+					.selectAll("behavior_tree"),
+			).as("registeredBehaviorTrees"),
+		]);
+
+export const getSkillVariantWithBehaviorTrees = async (
+	id: string,
+	trx?: Transaction<DB>,
+): Promise<SkillVariantWithBehaviorTrees | undefined> => {
+	const db = trx || (await getDB());
+	const res = await selectSkillVariantWithBehaviorTreesQuery(db).where("skill_variant.id", "=", id).executeTakeFirst();
+	return res ? SkillVariantWithBehaviorTreesSchema.parse(res) : undefined;
+};
+
+export const getAllSkillVariantsWithBehaviorTrees = async (): Promise<SkillVariantWithBehaviorTrees[]> => {
+	const db = await getDB();
+	const res = await selectSkillVariantWithBehaviorTreesQuery(db).execute();
+	return res.map((variant) => SkillVariantWithBehaviorTreesSchema.parse(variant));
+};
+
+export const selectSkillVariantsWithBehaviorTreesByBelongToskillid = async (
+	belongToskillId: string,
+	trx?: Transaction<DB>,
+): Promise<SkillVariantWithBehaviorTrees[]> => {
+	const db = trx || (await getDB());
+	const res = await selectSkillVariantWithBehaviorTreesQuery(db)
+		.where("skill_variant.belongToskillId", "=", belongToskillId)
+		.execute();
+	return res.map((variant) => SkillVariantWithBehaviorTreesSchema.parse(variant));
 };
 
 const selectBehaviorTreesByOwner = async (
 	kind: BehaviorTreeOwnerKind,
 	variantId: string,
-	trx?: Transaction<DB>,
+	trx: Transaction<DB>,
 ): Promise<behavior_tree[]> => {
 	switch (kind) {
 		case "active":
@@ -294,88 +139,27 @@ const selectBehaviorTreesByOwner = async (
 	}
 };
 
-const selectSkillVariantBehaviorTrees = async (
-	variantId: string,
-	trx?: Transaction<DB>,
-): Promise<SkillVariantBehaviorTrees> => {
-	const [activeTrees, passiveTrees, registered] = await Promise.all([
-		selectBehaviorTreesByOwner("active", variantId, trx),
-		selectBehaviorTreesByOwner("passive", variantId, trx),
-		selectBehaviorTreesByOwner("registered", variantId, trx),
-	]);
-	return {
-		active: activeTrees[0] ?? null,
-		passive: passiveTrees[0] ?? null,
-		registered,
-	};
-};
-
-const toBehaviorTreeEditor = (tree: behavior_tree): BehaviorTreeEditor =>
-	BehaviorTreeEditorSchema.parse({
-		id: tree.id,
-		name: tree.name,
-		definition: tree.definition,
-		agent: tree.agent,
-		attributeSlots: tree.attributeSlots,
-	});
-
-const normalizeBehaviorTreeEditor = (tree: BehaviorTreeEditor): BehaviorTreeEditor =>
-	BehaviorTreeEditorSchema.parse({
-		...tree,
-		id: tree.id || createId(),
-	});
-
-const toBehaviorTreeRow = (tree: BehaviorTreeEditor, kind: BehaviorTreeOwnerKind, variantId: string): behavior_tree =>
+const normalizeBehaviorTree = (tree: behavior_tree, fallbackName: string): behavior_tree =>
 	BehaviorTreeSchema.parse({
 		...defaultData.behavior_tree,
-		...normalizeBehaviorTreeEditor(tree),
+		...tree,
+		id: tree.id || createId(),
+		name: tree.name || fallbackName,
+		attributeSlots: Array.isArray(tree.attributeSlots) ? tree.attributeSlots : [],
+	});
+
+const toBehaviorTreeRow = (tree: behavior_tree, kind: BehaviorTreeOwnerKind, variantId: string): behavior_tree => {
+	const normalized = normalizeBehaviorTree(tree, defaultData.behavior_tree.name);
+	return BehaviorTreeSchema.parse({
+		...normalized,
 		activeOwnerId: kind === "active" ? variantId : null,
 		passiveOwnerId: kind === "passive" ? variantId : null,
 		registeredOwnerId: kind === "registered" ? variantId : null,
 	});
-
-const toSkillVariantEditor = (variant: skill_variant, behaviorTrees: SkillVariantBehaviorTrees): SkillVariantEditor =>
-	SkillVariantEditorSchema.parse({
-		...variant,
-		activeBehavior: behaviorTrees.active
-			? {
-					source: "bt",
-					tree: toBehaviorTreeEditor(behaviorTrees.active),
-				}
-			: variant.activeBehavior
-				? {
-						source: "dsl",
-						dsl: variant.activeBehavior,
-					}
-				: { source: "none" },
-		passiveBehavior: {
-			dsl: variant.passiveBehavior,
-			tree: behaviorTrees.passive ? toBehaviorTreeEditor(behaviorTrees.passive) : null,
-		},
-		registeredBehavior: {
-			dsl: variant.registeredBehavior,
-			trees: behaviorTrees.registered.map(toBehaviorTreeEditor),
-		},
-	});
-
-const hydrateSkillVariantEditor = async (variant: skill_variant, trx?: Transaction<DB>): Promise<SkillVariantEditor> =>
-	toSkillVariantEditor(variant, await selectSkillVariantBehaviorTrees(variant.id, trx));
-
-const toSkillVariantRow = (editor: SkillVariantEditor, belongToskillId?: string): skill_variant => {
-	const data = SkillVariantEditorSchema.parse({
-		...editor,
-		belongToskillId: belongToskillId ?? editor.belongToskillId,
-	});
-	return SkillVariantSchema.parse({
-		...data,
-		activeBehavior: data.activeBehavior.source === "dsl" ? data.activeBehavior.dsl : null,
-		passiveBehavior: data.passiveBehavior.dsl,
-		registeredBehavior: data.registeredBehavior.dsl,
-	});
 };
 
 const upsertBehaviorTree = async (
-	tree: BehaviorTreeEditor,
+	tree: behavior_tree,
 	kind: BehaviorTreeOwnerKind,
 	variantId: string,
 	trx: Transaction<DB>,
@@ -389,12 +173,12 @@ const upsertBehaviorTree = async (
 const syncSingleBehaviorTree = async (
 	kind: Exclude<BehaviorTreeOwnerKind, "registered">,
 	variantId: string,
-	tree: BehaviorTreeEditor | null,
+	tree: behavior_tree | null,
 	trx: Transaction<DB>,
 ): Promise<behavior_tree | null> => {
 	const existingTrees = await selectBehaviorTreesByOwner(kind, variantId, trx);
 	const targetId = tree?.id;
-	// active/passive 是 1:1 关系；同步时先移除非目标树，保证唯一约束不会被旧行占住。
+	// active/passive 在数据库中用 unique owner FK 表达 1:1；先清理旧行，避免唯一约束占位。
 	for (const existing of existingTrees) {
 		if (existing.id !== targetId) await deleteBehaviorTree(existing.id, trx);
 	}
@@ -404,12 +188,12 @@ const syncSingleBehaviorTree = async (
 
 const syncRegisteredBehaviorTrees = async (
 	variantId: string,
-	trees: BehaviorTreeEditor[],
+	trees: behavior_tree[],
 	trx: Transaction<DB>,
 ): Promise<behavior_tree[]> => {
 	const existingTrees = await selectBehaviorTreesByOwner("registered", variantId, trx);
 	const submittedIds = new Set(trees.map((tree) => tree.id));
-	// registered 是 1:N 快照：表单数组移除的树也要同步删除，避免旧注册行为继续挂在技能变体上。
+	// registered 是 1:N 快照；表单删除的树同步删除，避免旧注册行为继续挂在技能变体上。
 	for (const existing of existingTrees) {
 		if (!submittedIds.has(existing.id)) await deleteBehaviorTree(existing.id, trx);
 	}
@@ -422,97 +206,77 @@ const syncRegisteredBehaviorTrees = async (
 };
 
 const syncSkillVariantBehaviorTrees = async (
-	editor: SkillVariantEditor,
+	data: SkillVariantWithBehaviorTrees,
 	trx: Transaction<DB>,
 ): Promise<SkillVariantBehaviorTrees> => {
-	const active =
-		editor.activeBehavior.source === "bt"
-			? await syncSingleBehaviorTree("active", editor.id, editor.activeBehavior.tree, trx)
-			: await syncSingleBehaviorTree("active", editor.id, null, trx);
-	const passive = await syncSingleBehaviorTree("passive", editor.id, editor.passiveBehavior.tree, trx);
-	const registered = await syncRegisteredBehaviorTrees(editor.id, editor.registeredBehavior.trees, trx);
-	return { active, passive, registered };
+	const activeBehaviorTree = await syncSingleBehaviorTree("active", data.id, data.activeBehaviorTree, trx);
+	const passiveBehaviorTree = await syncSingleBehaviorTree("passive", data.id, data.passiveBehaviorTree, trx);
+	const registeredBehaviorTrees = await syncRegisteredBehaviorTrees(data.id, data.registeredBehaviorTrees, trx);
+	return { activeBehaviorTree, passiveBehaviorTree, registeredBehaviorTrees };
 };
 
-export const saveSkillVariantEditor = async (
-	data: SkillVariantEditor,
+export const saveSkillVariantWithBehaviorTrees = async (
+	data: SkillVariantWithBehaviorTrees,
 	trx: Transaction<DB>,
 	belongToskillId?: string,
-): Promise<SkillVariantEditor> => {
-	// 这个 helper 是 skill_variant 独立编辑和 skill.variants 内嵌编辑的共同写入入口；
-	// 共享同一段事务映射逻辑，避免未来出现两套行为 DSL/BT 保存规则。
-	const editor = SkillVariantEditorSchema.parse({
+): Promise<SkillVariantWithBehaviorTrees> => {
+	// 设计说明：独立 skill_variant 表单和 skill.variants 内嵌表单共享同一写入入口。
+	// 行为树 owner FK 在这里统一回填，表单层只表达“这条变体拥有哪些行为树”。
+	const entity = SkillVariantWithBehaviorTreesSchema.parse({
+		...defaultSkillVariantWithBehaviorTrees,
 		...data,
 		id: data.id || createId(),
 		belongToskillId: belongToskillId ?? data.belongToskillId,
+		activeBehaviorTree: data.activeBehaviorTree ?? null,
+		passiveBehaviorTree: data.passiveBehaviorTree ?? null,
+		registeredBehaviorTrees: data.registeredBehaviorTrees ?? [],
 	});
-	const variantRow = toSkillVariantRow(editor, belongToskillId);
+	const variantRow = SkillVariantSchema.parse(entity);
 	const existing = await selectSkillVariantById(variantRow.id, trx);
 	const savedVariant = existing
 		? await updateSkillVariant(variantRow.id, variantRow, trx)
 		: await insertSkillVariant(variantRow, trx);
 	const behaviorTrees = await syncSkillVariantBehaviorTrees(
 		{
-			...editor,
+			...entity,
 			id: savedVariant.id,
 			belongToskillId: savedVariant.belongToskillId,
 		},
 		trx,
 	);
-	return toSkillVariantEditor(savedVariant, behaviorTrees);
+	return SkillVariantWithBehaviorTreesSchema.parse({
+		...savedVariant,
+		...behaviorTrees,
+	});
 };
 
-export const getSkillVariantEditor = async (id: string): Promise<SkillVariantEditor | undefined> => {
-	const variant = await selectSkillVariantById(id);
-	if (!variant) return undefined;
-	return await hydrateSkillVariantEditor(variant);
-};
-
-export const getAllSkillVariantEditors = async (): Promise<SkillVariantEditor[]> => {
-	const variants = await selectAllSkillVariants();
-	return await Promise.all(variants.map((variant) => hydrateSkillVariantEditor(variant)));
-};
-
-export const selectSkillVariantEditorsByBelongToskillid = async (
-	belongToskillId: string,
-	trx?: Transaction<DB>,
-): Promise<SkillVariantEditor[]> => {
-	const variants = await selectAllSkillVariantsByBelongtoskillid(belongToskillId, trx);
-	return await Promise.all(variants.map((variant) => hydrateSkillVariantEditor(variant, trx)));
-};
-
-export const insertSkillVariantEditor = async (data: SkillVariantEditor): Promise<SkillVariantEditor> => {
+export const insertSkillVariantWithBehaviorTrees = async (
+	data: SkillVariantWithBehaviorTrees,
+): Promise<SkillVariantWithBehaviorTrees> => {
 	const db = await getDB();
-	return await db.transaction().execute((trx) => saveSkillVariantEditor(data, trx));
+	return await db.transaction().execute((trx) => saveSkillVariantWithBehaviorTrees(data, trx));
 };
 
-export const updateSkillVariantEditor = async (id: string, data: SkillVariantEditor): Promise<SkillVariantEditor> => {
+export const updateSkillVariantWithBehaviorTrees = async (
+	id: string,
+	data: SkillVariantWithBehaviorTrees,
+): Promise<SkillVariantWithBehaviorTrees> => {
 	const db = await getDB();
-	return await db.transaction().execute((trx) =>
-		saveSkillVariantEditor(
-			{
-				...data,
-				id,
-			},
-			trx,
-		),
-	);
+	return await db.transaction().execute((trx) => saveSkillVariantWithBehaviorTrees({ ...data, id }, trx));
 };
 
-export const deleteSkillVariantEditor = async (
+export const deleteSkillVariantWithBehaviorTrees = async (
 	id: string,
 	trx?: Transaction<DB>,
-): Promise<SkillVariantEditor | undefined> => {
+): Promise<SkillVariantWithBehaviorTrees | undefined> => {
 	const deleteInTransaction = async (transaction: Transaction<DB>) => {
-		const variant = await selectSkillVariantById(id, transaction);
+		const variant = await getSkillVariantWithBehaviorTrees(id, transaction);
 		if (!variant) return undefined;
-		const editor = await hydrateSkillVariantEditor(variant, transaction);
-		const behaviorTrees = await selectSkillVariantBehaviorTrees(id, transaction);
-		for (const tree of [behaviorTrees.active, behaviorTrees.passive, ...behaviorTrees.registered]) {
+		for (const tree of [variant.activeBehaviorTree, variant.passiveBehaviorTree, ...variant.registeredBehaviorTrees]) {
 			if (tree) await deleteBehaviorTree(tree.id, transaction);
 		}
 		await deleteSkillVariant(id, transaction);
-		return editor;
+		return variant;
 	};
 
 	if (trx) return await deleteInTransaction(trx);
@@ -520,189 +284,277 @@ export const deleteSkillVariantEditor = async (
 	return await db.transaction().execute(deleteInTransaction);
 };
 
-const hideImplementationField = () => <></>;
+const createDefaultBehaviorTree = (name: string): behavior_tree =>
+	BehaviorTreeSchema.parse({
+		...defaultData.behavior_tree,
+		id: createId(),
+		name,
+	});
 
-const formatSkillVariantEnableCondition = (variant: SkillVariantEditor, dictionary: Dictionary) => {
-	const fields = dictionary.db.skill_variant.fields;
-	const mainWeapon =
-		fields.targetMainWeaponType.enumMap?.[variant.targetMainWeaponType] ?? variant.targetMainWeaponType;
-	const subWeapon = fields.targetSubWeaponType.enumMap?.[variant.targetSubWeaponType] ?? variant.targetSubWeaponType;
-	const armorAbility =
-		fields.targetArmorAbilityType.enumMap?.[variant.targetArmorAbilityType] ?? variant.targetArmorAbilityType;
-	return `${mainWeapon} / ${subWeapon} / ${armorAbility}`;
-};
+const toBtEditorValue = (tree: behavior_tree): BtEditorValue => ({
+	name: tree.name,
+	definition: tree.definition,
+	agent: tree.agent,
+	memberType: "Player",
+	attributeSlots: Array.isArray(tree.attributeSlots) ? tree.attributeSlots : [],
+});
 
-const renderBehaviorTreeEditorField = (props: {
+const patchBehaviorTreeFromEditor = (tree: behavior_tree, next: MemberBTTree): behavior_tree =>
+	BehaviorTreeSchema.parse({
+		...tree,
+		name: next.name,
+		definition: next.definition,
+		agent: next.agent,
+		attributeSlots: next.attributeSlots,
+	});
+
+const BehaviorTreeEditorControl = (props: {
 	title: string;
-	description?: string;
-	validationMessage?: string;
-	value: () => BehaviorTreeEditor | null | undefined;
-	setTree: (tree: BehaviorTreeEditor) => void;
-	clearTree?: () => void;
-}): JSX.Element => {
-	const [editorDisplay, setEditorDisplay] = createSignal(false);
+	value: () => behavior_tree | null | undefined;
+	setValue: (tree: behavior_tree) => void;
+	clearValue?: () => void;
+	clearLabel?: string;
+}) => {
+	const [display, setDisplay] = createSignal(false);
 	const currentTree = () => props.value() ?? null;
-	const title = () => props.title || defaultData.behavior_tree.name;
-	const ensureTree = (): BehaviorTreeEditor => {
+	const ensureTree = (): behavior_tree => {
 		const existing = currentTree();
 		if (existing) return existing;
-		const nextTree = createDefaultBehaviorTreeEditor(title());
-		props.setTree(nextTree);
+		const nextTree = createDefaultBehaviorTree(props.title);
+		props.setValue(nextTree);
 		return nextTree;
 	};
-
-	const updateTree = (patch: Partial<BehaviorTreeEditor>) => {
-		props.setTree({
-			...ensureTree(),
-			...patch,
-		});
-	};
+	const updateTree = (next: MemberBTTree) => props.setValue(patchBehaviorTreeFromEditor(ensureTree(), next));
 
 	return (
+		<Show
+			when={currentTree()}
+			fallback={
+				<Button class="w-full" onClick={() => props.setValue(createDefaultBehaviorTree(props.title))}>
+					创建行为树
+				</Button>
+			}
+		>
+			{(tree) => (
+				<div class="flex w-full flex-col gap-2">
+					<div class="bg-area-color text-main-text-color flex items-center justify-between gap-2 rounded p-2">
+						<span class="truncate">{tree().name || props.title}</span>
+						<Show when={props.clearValue}>
+							{(clearValue) => (
+								<Button level="secondary" onClick={clearValue()}>
+									{props.clearLabel ?? "清空"}
+								</Button>
+							)}
+						</Show>
+					</div>
+					<BtEditorWrapper title="打开行为树编辑器" editorDisplay={display()} setEditorDisplay={setDisplay}>
+						<BtEditor
+							title={props.title}
+							value={toBtEditorValue(tree())}
+							onChange={updateTree}
+							onClose={() => setDisplay(false)}
+						/>
+					</BtEditorWrapper>
+				</div>
+			)}
+		</Show>
+	);
+};
+
+const renderSingleBehaviorTreeField = (props: {
+	title: string;
+	description?: string;
+	validationMessage: string;
+	value: () => behavior_tree | null;
+	setValue: (tree: behavior_tree | null) => void;
+}): JSX.Element => (
+	<Input
+		title={props.title}
+		description={props.description ?? ""}
+		validationMessage={props.validationMessage}
+		class={DefaultFieldClass}
+	>
+		<BehaviorTreeEditorControl
+			title={props.title}
+			value={props.value}
+			setValue={(tree) => props.setValue(tree)}
+			clearValue={() => props.setValue(null)}
+		/>
+	</Input>
+);
+
+const renderRegisteredBehaviorTreesField = (
+	context: FormFieldRendererContext<SkillVariantWithBehaviorTrees, "registeredBehaviorTrees">,
+	title: string,
+): JSX.Element => {
+	const trees = () => (Array.isArray(context.value()) ? context.value() : []);
+	const setTrees = (next: behavior_tree[]) => context.setValue(next);
+	return (
 		<Input
-			title={title()}
-			description={props.description ?? ""}
-			validationMessage={props.validationMessage ?? ""}
+			title={title}
+			description={context.dictionary?.formFieldDescription ?? ""}
+			validationMessage={context.validationMessage}
 			class={DefaultFieldClass}
 		>
-			<Show
-				when={currentTree()}
-				fallback={
-					<Button class="w-full" onClick={() => props.setTree(createDefaultBehaviorTreeEditor(title()))}>
-						创建行为树
-					</Button>
-				}
-			>
-				{(tree) => (
-					<div class="flex w-full flex-col gap-2">
-						<div class="bg-area-color text-main-text-color flex items-center justify-between gap-2 rounded p-2">
-							<span class="truncate">{tree().name || title()}</span>
-							<Show when={props.clearTree}>
-								{(clearTree) => (
-									<Button level="secondary" onClick={clearTree()}>
-										清空
-									</Button>
-								)}
-							</Show>
-						</div>
-						<BtEditorWrapper
-							title="打开行为树编辑器"
-							editorDisplay={editorDisplay()}
-							setEditorDisplay={setEditorDisplay}
-						>
-							<BtEditor
-								title={title()}
-								value={{
-									...tree(),
-									memberType: "Player",
-									attributeSlots: tree().attributeSlots ?? [],
+			<div class="flex w-full flex-col gap-3">
+				<For each={trees()}>
+					{(tree, index) => (
+						<div class="border-dividing-color bg-primary-color flex w-full flex-col gap-2 rounded border p-2">
+							<div class="text-main-text-color font-bold">{`${title} #${index() + 1}`}</div>
+							<BehaviorTreeEditorControl
+								title={`${title} #${index() + 1}`}
+								value={() => tree}
+								setValue={(nextTree) => {
+									const next = [...trees()];
+									next[index()] = nextTree;
+									setTrees(next);
 								}}
-								onChange={(nextTree) => {
-									updateTree({
-										name: nextTree.name,
-										definition: nextTree.definition,
-										agent: nextTree.agent,
-										attributeSlots: nextTree.attributeSlots,
-									});
+								clearValue={() => {
+									setTrees(trees().filter((_, treeIndex) => treeIndex !== index()));
 								}}
-								onClose={() => setEditorDisplay(false)}
+								clearLabel="移除"
 							/>
-						</BtEditorWrapper>
-					</div>
-				)}
-			</Show>
+						</div>
+					)}
+				</For>
+				<Button class="w-full" onClick={() => setTrees([...trees(), createDefaultBehaviorTree(title)])}>
+					新增行为树
+				</Button>
+			</div>
 		</Input>
 	);
 };
 
-const skillVariantFormRenderers: FormRenderers<SkillVariantEditor> = {
-	fields: {
-		"activeBehavior.tree": (context) =>
-			renderBehaviorTreeEditorField({
-				title: context.dictionary?.key ?? "主动行为树",
-				description: context.dictionary?.formFieldDescription,
-				validationMessage: context.validationMessage,
-				value: context.value,
-				setTree: context.setValue,
-			}),
-		"activeBehavior.tree.id": hideImplementationField,
-		"passiveBehavior.tree": (context) =>
-			renderBehaviorTreeEditorField({
-				title: context.dictionary?.key ?? "被动行为树",
-				description: context.dictionary?.formFieldDescription,
-				validationMessage: context.validationMessage,
-				value: context.value,
-				setTree: context.setValue,
-				clearTree: () => context.setValue(null),
-			}),
-		"passiveBehavior.tree.id": hideImplementationField,
-		"registeredBehavior.trees[]": (context) =>
-			renderBehaviorTreeEditorField({
-				title: context.dictionary?.key ?? "长期注册行为树",
-				description: context.dictionary?.formFieldDescription,
-				validationMessage: context.validationMessage,
-				value: context.value,
-				setTree: context.setValue,
-			}),
-		"registeredBehavior.trees[].id": hideImplementationField,
-	},
-	containers: {},
+const createSkillVariantFormRenderers = (dictionary: Dictionary): FormRenderers<SkillVariantWithBehaviorTrees> => {
+	const behaviorTreeName = dictionary.db.behavior_tree.selfName;
+	return {
+		fields: {
+			activeBehaviorTree: (context) =>
+				renderSingleBehaviorTreeField({
+					title: `主动${behaviorTreeName}`,
+					description: context.dictionary?.formFieldDescription,
+					validationMessage: context.validationMessage,
+					value: context.value,
+					setValue: context.setValue,
+				}),
+			passiveBehaviorTree: (context) =>
+				renderSingleBehaviorTreeField({
+					title: `被动${behaviorTreeName}`,
+					description: context.dictionary?.formFieldDescription,
+					validationMessage: context.validationMessage,
+					value: context.value,
+					setValue: context.setValue,
+				}),
+			registeredBehaviorTrees: (context) => renderRegisteredBehaviorTreesField(context, `长期注册${behaviorTreeName}`),
+		},
+		containers: {
+			"activeBehavior.behaviorParams.damageEvents": (context) =>
+				context.renderFrame({
+					children: () => <div class="flex gap-2 p-1 bg-area-color rounded">{context.children()}</div>,
+				}),
+		},
+	};
 };
 
-export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<SkillVariantEditor, SkillVariantEditor, skill_variant> = (
+const renderBehaviorTreeCard = (
+	tree: behavior_tree | null | undefined,
+	emptyText: string,
+	title: string,
+): JSX.Element => (
+	<Show
+		when={tree}
+		fallback={
+			<div class="Field flex gap-2">
+				<span class="text-main-text-color text-nowrap">{emptyText}</span>
+			</div>
+		}
+	>
+		{(currentTree) => (
+			<div class="Field flex flex-col gap-2">
+				<span class="text-main-text-color text-nowrap">{currentTree().name}</span>
+				<div class="border-dividing-color bg-primary-color h-[32rem] min-h-96 w-full overflow-hidden rounded border">
+					<BtEditor title={title} value={toBtEditorValue(currentTree())} readOnly />
+				</div>
+			</div>
+		)}
+	</Show>
+);
+
+export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<SkillVariantWithBehaviorTrees, skill_variant, skill_variant> = (
 	dictionary,
 ) => ({
-	dictionary: createSkillVariantEditorDictionary(dictionary()),
-	dataSchema: SkillVariantEditorSchema,
+	dictionary: dictionary().db.skill_variant,
+	dataSchema: SkillVariantWithBehaviorTreesSchema,
 	primaryKey: "id",
-	defaultData: defaultSkillVariantEditor,
+	defaultData: defaultSkillVariantWithBehaviorTrees,
 	dataFetcher: {
-		get: getSkillVariantEditor,
-		getAll: getAllSkillVariantEditors,
+		get: getSkillVariantWithBehaviorTrees,
+		getAll: getAllSkillVariantsWithBehaviorTrees,
+		insert: insertSkillVariantWithBehaviorTrees,
+		update: updateSkillVariantWithBehaviorTrees,
+		delete: deleteSkillVariantWithBehaviorTrees,
 		liveQuery: (db) => db.selectFrom("skill_variant").selectAll("skill_variant"),
-		insert: insertSkillVariantEditor,
-		update: updateSkillVariantEditor,
-		delete: deleteSkillVariantEditor,
 	},
 	fieldGroupMap: {
 		ID: ["id"],
-		启用条件: ["targetMainWeaponType", "targetSubWeaponType", "targetArmorAbilityType"],
-		所属技能: ["belongToskillId"],
-		释放门槛: ["hpCost", "mpCost"],
-		默认行为: ["activeBehavior", "passiveBehavior", "registeredBehavior"],
-		详细信息: ["description", "details"],
+		基本信息: ["targetMainWeaponType", "targetSubWeaponType", "targetArmorAbilityType", "comboCompatible"],
+		消耗与范围: ["hpCost", "mpCost", "range"],
+		时间参数: [
+			"castTimeType",
+			"distanceType",
+			"targetType",
+			"chantingFixedMs",
+			"chantingModifiedMs",
+			"chargingFixedMs",
+			"chargingModifiedMs",
+			"actionFixedMs",
+			"actionModifiedMs",
+			"startupRatio",
+		],
+		"默认行为 DSL": ["activeBehavior", "passiveBehavior", "registeredBehavior"],
+		行为树: ["activeBehaviorTree", "passiveBehaviorTree", "registeredBehaviorTrees"],
+		其他: ["description", "details"],
+		关联: ["belongToskillId"],
 	},
 	table: {
 		columnsDef: [
+			{ id: "id", accessorFn: (row) => row.id, cell: (info) => info.getValue(), size: 200 },
 			{
-				accessorKey: "description",
+				id: "targetMainWeaponType",
+				accessorFn: (row) => row.targetMainWeaponType,
 				cell: (info) => info.getValue(),
-				size: 240,
+				size: 180,
 			},
 			{
-				accessorKey: "mpCost",
+				id: "targetSubWeaponType",
+				accessorFn: (row) => row.targetSubWeaponType,
 				cell: (info) => info.getValue(),
-				size: 120,
+				size: 180,
 			},
-			{
-				accessorKey: "hpCost",
-				cell: (info) => info.getValue(),
-				size: 120,
-			},
+			{ id: "description", accessorFn: (row) => row.description, cell: (info) => info.getValue(), size: 240 },
 		],
-		hiddenColumnDef: ["id", "belongToskillId", "activeBehavior", "passiveBehavior", "registeredBehavior"],
+		hiddenColumnDef: ["id", "belongToskillId"],
 		defaultSort: { field: "id", desc: false },
 		tdGenerator: {},
 	},
 	form: {
-		hiddenFields: ["id"],
-		renderers: skillVariantFormRenderers,
-		onInsert: insertSkillVariantEditor,
-		onUpdate: updateSkillVariantEditor,
+		hiddenFields: ["id", "belongToskillId"],
+		renderers: createSkillVariantFormRenderers(dictionary()),
+		onInsert: insertSkillVariantWithBehaviorTrees,
+		onUpdate: updateSkillVariantWithBehaviorTrees,
 	},
 	card: {
-		hiddenFields: ["id"],
-		displayName: formatSkillVariantEnableCondition,
+		hiddenFields: ["id", "belongToskillId"],
+		displayName: (variant, dictionary) => {
+			const fields = dictionary.db.skill_variant.fields;
+			const mainWeapon =
+				fields.targetMainWeaponType.enumMap?.[variant.targetMainWeaponType] ?? variant.targetMainWeaponType;
+			const subWeapon =
+				fields.targetSubWeaponType.enumMap?.[variant.targetSubWeaponType] ?? variant.targetSubWeaponType;
+			const armorAbility =
+				fields.targetArmorAbilityType.enumMap?.[variant.targetArmorAbilityType] ?? variant.targetArmorAbilityType;
+			return `${mainWeapon} / ${subWeapon} / ${armorAbility}`;
+		},
 		fieldGenerator: {
 			activeBehavior: (field, key) => (
 				<pre class="bg-area-color max-h-[50vh] w-full overflow-auto rounded p-3 text-sm">{formatJson(field[key])}</pre>
@@ -713,8 +565,17 @@ export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<SkillVariantEditor, Skil
 			registeredBehavior: (field, key) => (
 				<pre class="bg-area-color max-h-[50vh] w-full overflow-auto rounded p-3 text-sm">{formatJson(field[key])}</pre>
 			),
+			activeBehaviorTree: (field) => renderBehaviorTreeCard(field.activeBehaviorTree, "无主动行为树", "主动行为树"),
+			passiveBehaviorTree: (field) => renderBehaviorTreeCard(field.passiveBehaviorTree, "无被动行为树", "被动行为树"),
+			registeredBehaviorTrees: (field) => (
+				<div class="Field flex flex-col gap-2">
+					<For each={field.registeredBehaviorTrees}>
+						{(tree) => renderBehaviorTreeCard(tree, "无长期注册行为树", "长期注册行为树")}
+					</For>
+				</div>
+			),
 		},
-		deleteCallback: deleteSkillVariantEditor,
+		deleteCallback: deleteSkillVariantWithBehaviorTrees,
 		editAbleCallback: (data) => repositoryMethods.skill_variant.canEdit(data.id),
 	},
 });

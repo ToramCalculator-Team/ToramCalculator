@@ -161,7 +161,9 @@ export function evaluateModifierDslExpression(
 	const compiledExpression = expressionToJs(ast, scopeKeys, resolveIdentifier);
 	const names = Object.keys(scope);
 	const values = names.map((name) => scope[name]);
-	const runner = new Function(...names, `"use strict"; return (${compiledExpression});`) as (...args: unknown[]) => unknown;
+	const runner = new Function(...names, `"use strict"; return (${compiledExpression});`) as (
+		...args: unknown[]
+	) => unknown;
 	const value = runner(...values);
 	if (typeof value === "number") return Number.isFinite(value) ? value : 0;
 	if (typeof value === "boolean") return value;

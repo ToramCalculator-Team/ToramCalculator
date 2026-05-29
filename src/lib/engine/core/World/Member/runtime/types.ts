@@ -39,7 +39,24 @@ export interface MemberSharedRuntime<TExtraAttrKey extends string = never> exten
 	} | null;
 	/** 上一次释放的技能，用于连击判定等。 */
 	previousSkill: CharacterSkillWithRelations | null;
+	/** per-tree 注入的所属技能上下文（注册行为树时由 localContext 提供）。 */
+	skill?: { id: string; lv: number; name: string };
 }
+export const DefaultMemberSharedRuntime: MemberSharedRuntime = {
+	memberId: "",
+	name: "",
+	campId: "",
+	teamId: "",
+	tickIndex: 0,
+	currentTimeMs: 0,
+	deltaTimeMs: 0,
+	position: { x: 0, y: 0, z: 0 },
+	targetId: "",
+	statusTags: [],
+	skillCooldowns: [],
+	currentSkill: null,
+	previousSkill: null,
+};
 
 /** Player 专用 runtime 扩展。 */
 export interface PlayerRuntime extends MemberSharedRuntime<PlayerAttrKey> {
@@ -47,6 +64,12 @@ export interface PlayerRuntime extends MemberSharedRuntime<PlayerAttrKey> {
 	skillList: CharacterSkillWithRelations[];
 	data: CharacterWithRelations | null;
 }
+export const PlayerRuntimeDefaults: PlayerRuntime = {
+	...DefaultMemberSharedRuntime,
+	type: "Player",
+	skillList: [],
+	data: null,
+};
 
 /** Mob 专用 runtime 扩展。 */
 export interface MobRuntime extends MemberSharedRuntime<MobAttrKey> {
@@ -54,3 +77,9 @@ export interface MobRuntime extends MemberSharedRuntime<MobAttrKey> {
 	skillList: CharacterSkillWithRelations[];
 	data: MobWithRelations | null;
 }
+export const MobRuntimeDefaults: MobRuntime = {
+	...DefaultMemberSharedRuntime,
+	type: "Mob",
+	skillList: [],
+	data: null,
+};

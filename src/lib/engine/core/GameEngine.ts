@@ -769,20 +769,46 @@ export class GameEngine {
 		if (!member || member.type !== "Player") return [];
 
 		const player = member as Player;
+		const character = player.runtime.data;
 		const skillList = player.runtime.skillList;
 		if (!skillList.length) {
-			log.debug(
-				`getMemberSkillList: empty skillList member=${memberId} character=${player.runtime.character?.id ?? "null"}`,
-			);
+			log.debug(`getMemberSkillList: empty skillList member=${memberId} character=${player.data.id ?? "null"}`);
 		}
-		return skillList.map((s) => {
-			const skill = s as { id?: unknown; lv?: unknown; template?: { name?: unknown } };
-			return {
+
+		const result: Array<{ id: string; name: string; level: number }> = [];
+		for (const rawSkill of skillList) {
+			const skill = rawSkill as {
+				id?: unknown;
+				lv?: unknown;
+				template?: {
+					name?: unknown;
+					variants?: Array<{
+						targetMainWeaponType: string;
+						targetSubWeaponType: string;
+						targetArmorAbilityType: string;
+					}>;
+				};
+			};
+			if (!skill.template?.variants?.length) continue;
+
+			const hasValidVariant = skill.template.variants.some((variant) => {
+				const weaponCondition =
+					variant.targetMainWeaponType === character?.weapon?.type || variant.targetMainWeaponType === "Any";
+				const subWeaponCondition =
+					variant.targetSubWeaponType === character?.subWeapon?.type || variant.targetSubWeaponType === "Any";
+				const armorAbilityCondition =
+					variant.targetArmorAbilityType === character?.armor?.ability || variant.targetArmorAbilityType === "Any";
+				return weaponCondition && subWeaponCondition && armorAbilityCondition;
+			});
+			if (!hasValidVariant) continue;
+
+			result.push({
 				id: String(skill.id ?? ""),
 				name: String(skill.template?.name ?? skill.id ?? "未知技能"),
 				level: Number(skill.lv ?? 0),
-			};
-		});
+			});
+		}
+		return result;
 	}
 
 	/**
@@ -1761,16 +1787,15 @@ export class GameEngine {
 			const s = skill as Player["runtime"]["skillList"][number];
 			const template = s.template;
 			const skillName = String(template?.name ?? "未知技能");
-			const skillLevel = Number(s.lv ?? 0);
 
 			// 设计说明：运行时技能变体按装备约束选择；预览数据与 FSM 使用同一选择规则，避免 UI 显示与实际释放分叉。
-			const effect = selectPlayerSkillVariant(s, player.runtime.character);
+			const effect = selectPlayerSkillVariant(s, player.activeCharacter);
 			const expressionContext: ExpressionContext = {
 				currentTimeMs,
 				tickIndex,
 				casterId: player.id,
 				targetId: player.runtime.targetId,
-				skillLv: skillLevel,
+				skillLv: s.lv,
 			};
 
 			// 计算消耗
@@ -1795,7 +1820,7 @@ export class GameEngine {
 				castingRange = evalOptionalNumber(getActiveBehaviorCastingRangeExpression(effect), "castingRange");
 				lifecycle = computePlayerSkillLifecycleMs({
 					variant: effect,
-					skillLevel,
+					skillLv: s.lv,
 					expressionContext,
 					evaluateExpression: (expr, context) => this.evaluateExpression(expr, context),
 					runPipeline: (pipelineName, params) => player.runPipeline(pipelineName, params),
@@ -1812,7 +1837,7 @@ export class GameEngine {
 			return {
 				id: String((skill as { id?: unknown }).id ?? ""),
 				name: skillName,
-				level: skillLevel,
+				level: s.lv,
 				computed: {
 					mpCost,
 					hpCost,

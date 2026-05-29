@@ -50,10 +50,14 @@ export interface TransformToGetValueOptions {
 }
 
 export interface AnalyzeDependenciesResult {
-	/** self.xxx 依赖列表 */
+	/** self.xxx 依赖列表（计算值） */
 	selfDependencies: string[];
-	/** target.xxx 依赖列表 */
+	/** self._xxx 依赖列表（基础值，已去掉前缀） */
+	selfBaseValueDependencies: string[];
+	/** target.xxx 依赖列表（计算值） */
 	targetDependencies: string[];
+	/** target._xxx 依赖列表（基础值，已去掉前缀） */
+	targetBaseValueDependencies: string[];
 	/** 是否包含 skill.lv */
 	hasSkillLv: boolean;
 	/** 是否包含 distance */
@@ -160,17 +164,21 @@ export const ExpressionTransformer = {
 
 			for (const access of normalized) {
 				const schema = options?.schemas?.[access.root];
-				if (schema && !this.pathExistsInSchema(access.key, schema)) {
+				const isBaseValue = access.key.startsWith("_");
+				const resolvedKey = isBaseValue ? access.key.slice(1) : access.key;
+
+				if (schema && !this.pathExistsInSchema(resolvedKey, schema)) {
 					invalidPaths.push(`${access.root}.${access.key}`);
 					continue;
 				}
 
+				const method = isBaseValue ? "getBaseValue" : "getValue";
 				replacements.push({
 					start: access.start,
 					end: access.end,
-					replacement: `${access.root}.statContainer.getValue('${access.key}')`,
+					replacement: `${access.root}.statContainer.${method}('${resolvedKey}')`,
 				});
-				dependencies.add(access.key);
+				dependencies.add(resolvedKey);
 			}
 
 			if (invalidPaths.length > 0) {
@@ -498,7 +506,9 @@ export const ExpressionTransformer = {
 	analyzeDependencies(expression: string): AnalyzeDependenciesResult {
 		const result: AnalyzeDependenciesResult = {
 			selfDependencies: [],
+			selfBaseValueDependencies: [],
 			targetDependencies: [],
+			targetBaseValueDependencies: [],
 			hasSkillLv: false,
 			hasDistance: false,
 			hasTargetCount: false,
@@ -511,12 +521,31 @@ export const ExpressionTransformer = {
 
 			// 检查 self.xxx / target.xxx
 			// 设计说明：依赖分析只记录最外层路径，避免 `self.pie` 和 `self.pie.m` 同时进入快照。
+			// _xxx 前缀表示基础值通道，实际依赖的属性路径去掉前缀。
 			for (const access of normalizedAccesses) {
-				if (access.root === "self" && !result.selfDependencies.includes(access.key)) {
-					result.selfDependencies.push(access.key);
+				const isBaseValue = access.key.startsWith("_");
+				const resolvedKey = isBaseValue ? access.key.slice(1) : access.key;
+				if (access.root === "self") {
+					if (isBaseValue) {
+						if (!result.selfBaseValueDependencies.includes(resolvedKey)) {
+							result.selfBaseValueDependencies.push(resolvedKey);
+						}
+					} else {
+						if (!result.selfDependencies.includes(resolvedKey)) {
+							result.selfDependencies.push(resolvedKey);
+						}
+					}
 				}
-				if (access.root === "target" && !result.targetDependencies.includes(access.key)) {
-					result.targetDependencies.push(access.key);
+				if (access.root === "target") {
+					if (isBaseValue) {
+						if (!result.targetBaseValueDependencies.includes(resolvedKey)) {
+							result.targetBaseValueDependencies.push(resolvedKey);
+						}
+					} else {
+						if (!result.targetDependencies.includes(resolvedKey)) {
+							result.targetDependencies.push(resolvedKey);
+						}
+					}
 				}
 			}
 

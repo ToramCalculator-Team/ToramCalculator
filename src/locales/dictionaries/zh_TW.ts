@@ -47,6 +47,13 @@ const subHandTypeLimit: Record<Enums.SubHandTypeLimit, string> = {
 	Any: "不限",
 };
 
+const distanceType: Record<Enums.SkillDistanceType, string> = {
+	None: "不受影響",
+	Long: "僅受遠距離威力影響",
+	Short: "僅受近距離威力影響",
+	Both: "同時受遠距離和近距離威力影響",
+};
+
 // 實際類型
 // ----------------------------------------------------------------
 
@@ -68,6 +75,56 @@ const elementType: Record<Enums.ElementType, string> = {
 	Light: "光屬性",
 	Water: "水屬性",
 	Wind: "風屬性",
+};
+
+const abnormalType: Record<Enums.AbnormalType, string> = {
+	None: "無",
+	Flinch: "膽怯",
+	MagicFlinch: "魔法膽怯",
+	Tumble: "翻覆",
+	Stun: "昏厥",
+	KnockBack: "逼退",
+	Poison: "中毒",
+	PoisonLevel1: "中毒Lv1",
+	PoisonLevel2: "中毒Lv2",
+	Paralysis: "麻痺",
+	Blindness: "盲目",
+	Ignition: "著火",
+	Freeze: "冰凍",
+	Breaking: "降防",
+	Slow: "遲緩",
+	Stop: "停止",
+	Fear: "畏懼",
+	Dizzy: "眩暈",
+	Weak: "衰弱",
+	Collapse: "乏力",
+	Confusion: "魅惑",
+	Silent: "沉默",
+	Bleed: "出血",
+	Sleep: "睡眠",
+	Rage: "暴怒",
+	Tiredness: "疲勞",
+	Blessing: "祝福",
+	SystemInvincibility: "系統無敵",
+	BestState: "最佳狀態",
+	Invincibility: "無敵",
+	Suction: "吸引",
+	Taming: "馴服",
+	Curse: "詛咒",
+	Flash: "閃光",
+	Runaway: "逃跑",
+	MagicalExplosion: "魔力爆發",
+	Sick: "生病",
+	Malgravity: "重力異常",
+	Dispel: "驅散",
+	Inversion: "反轉",
+	Mineralization: "石化",
+	NoTools: "禁止道具",
+	Enhance: "強化",
+	ComboInvincibility: "連擊無敵",
+	DeathTorqueShot: "死亡扭矩射擊",
+	SystemAddHate: "系統仇恨",
+	Recovery: "恢復",
 };
 
 const weaponType: Record<Enums.WeaponType, string> = {
@@ -200,13 +257,6 @@ const skillCastTimeType: Record<Enums.SkillCastTimeType, string> = {
 	Instant: "瞬發",
 	Chanting: "詠唱",
 	Charging: "蓄力",
-};
-
-const skillDistanceType: Record<Enums.SkillDistanceType, string> = {
-	None: "不受影響",
-	Long: "僅受遠距離威力影響",
-	Short: "僅受近距離威力影響",
-	Both: "同時受遠距離和近距離威力影響",
 };
 
 const skillTargetType: Record<Enums.SkillTargetType, string> = {
@@ -1283,6 +1333,78 @@ const dictionary: Dictionary = {
 					key: "行動",
 					tableFieldDescription: "機體的行動",
 					formFieldDescription: "請輸入機體的行動",
+					fields: {
+						name: {
+							key: "行為樹名稱",
+							tableFieldDescription: "行為樹的名稱",
+							formFieldDescription: "行為樹的名稱",
+						},
+						definition: {
+							key: "行為樹定義",
+							tableFieldDescription: "MDSL 行為樹定義",
+							formFieldDescription: "MDSL 行為樹定義",
+						},
+						agent: {
+							key: "Agent 函式集",
+							tableFieldDescription: "行為樹可呼叫函式集",
+							formFieldDescription: "行為樹可呼叫函式集",
+						},
+						memberType: {
+							key: "成員類型",
+							tableFieldDescription: "此行為所屬的成員類型",
+							formFieldDescription: "此行為所屬的成員類型",
+							enumMap: {
+								Player: "玩家",
+								Partner: "夥伴",
+								Mercenary: "傭兵",
+								Mob: "怪物",
+							},
+						},
+						attributeSlots: {
+							key: "屬性槽",
+							tableFieldDescription: "需要併入 StatContainer 的持久化屬性槽",
+							formFieldDescription: "需要併入 StatContainer 的持久化屬性槽",
+							item: {
+								key: "",
+								tableFieldDescription: "",
+								formFieldDescription: "",
+								fields: {
+									path: {
+										key: "屬性路徑",
+										tableFieldDescription: "點號分隔的完整屬性路徑",
+										formFieldDescription: "點號分隔的完整屬性路徑",
+									},
+									attribute: {
+										key: "屬性定義",
+										tableFieldDescription: "屬性定義",
+										formFieldDescription: "屬性定義",
+										fields: {
+											displayName: {
+												key: "顯示名稱",
+												tableFieldDescription: "屬性顯示名稱",
+												formFieldDescription: "屬性顯示名稱",
+											},
+											expression: {
+												key: "初始表達式",
+												tableFieldDescription: "屬性初始表達式",
+												formFieldDescription: "屬性初始表達式",
+											},
+											noBaseValue: {
+												key: "不參與乘法",
+												tableFieldDescription: "百分比修正不參與乘法",
+												formFieldDescription: "百分比修正不參與乘法",
+											},
+											onlyBaseValue: {
+												key: "僅保留基礎值",
+												tableFieldDescription: "僅保留基礎值",
+												formFieldDescription: "僅保留基礎值",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				partnerSkillAId: {
 					key: "伙伴技能A ID",
@@ -1779,6 +1901,78 @@ const dictionary: Dictionary = {
 					key: "行為",
 					tableFieldDescription: "怪物的行為描述，模擬器運行的時候會根據其中的邏輯模擬怪物行動",
 					formFieldDescription: "怪物的行為描述，模擬器運行的時候會根據其中的邏輯模擬怪物行動",
+					fields: {
+						name: {
+							key: "行為樹名稱",
+							tableFieldDescription: "行為樹的名稱",
+							formFieldDescription: "行為樹的名稱",
+						},
+						definition: {
+							key: "行為樹定義",
+							tableFieldDescription: "MDSL 行為樹定義",
+							formFieldDescription: "MDSL 行為樹定義",
+						},
+						agent: {
+							key: "Agent 函式集",
+							tableFieldDescription: "行為樹可呼叫函式集",
+							formFieldDescription: "行為樹可呼叫函式集",
+						},
+						memberType: {
+							key: "成員類型",
+							tableFieldDescription: "此行為所屬的成員類型",
+							formFieldDescription: "此行為所屬的成員類型",
+							enumMap: {
+								Player: "玩家",
+								Partner: "夥伴",
+								Mercenary: "傭兵",
+								Mob: "怪物",
+							},
+						},
+						attributeSlots: {
+							key: "屬性槽",
+							tableFieldDescription: "需要併入 StatContainer 的持久化屬性槽",
+							formFieldDescription: "需要併入 StatContainer 的持久化屬性槽",
+							item: {
+								key: "",
+								tableFieldDescription: "",
+								formFieldDescription: "",
+								fields: {
+									path: {
+										key: "屬性路徑",
+										tableFieldDescription: "點號分隔的完整屬性路徑",
+										formFieldDescription: "點號分隔的完整屬性路徑",
+									},
+									attribute: {
+										key: "屬性定義",
+										tableFieldDescription: "屬性定義",
+										formFieldDescription: "屬性定義",
+										fields: {
+											displayName: {
+												key: "顯示名稱",
+												tableFieldDescription: "屬性顯示名稱",
+												formFieldDescription: "屬性顯示名稱",
+											},
+											expression: {
+												key: "初始表達式",
+												tableFieldDescription: "屬性初始表達式",
+												formFieldDescription: "屬性初始表達式",
+											},
+											noBaseValue: {
+												key: "不參與乘法",
+												tableFieldDescription: "百分比修正不參與乘法",
+												formFieldDescription: "百分比修正不參與乘法",
+											},
+											onlyBaseValue: {
+												key: "僅保留基礎值",
+												tableFieldDescription: "僅保留基礎值",
+												formFieldDescription: "僅保留基礎值",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				baseLv: {
 					key: "基礎等級",
@@ -2508,29 +2702,6 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "主要用於傭兵技能冷卻時間的計算",
 					formFieldDescription: "主要用於傭兵技能冷卻時間的計算",
 				},
-				targetType: {
-					key: "目標類型",
-					tableFieldDescription: `不需要選擇目標就能施放的技能是${skillTargetType.Self}，可以選擇${skillTargetType.Player}作為目標的技能是${skillTargetType.Player}。`,
-					formFieldDescription: `不需要選擇目標就能施放的技能是${skillTargetType.Self}，可以選擇${skillTargetType.Player}作為目標的技能是${skillTargetType.Player}。`,
-					enumMap: skillTargetType,
-				},
-				castTimeType: {
-					key: "讀條類型",
-					tableFieldDescription: `技能動作開始前的讀條階段：${skillCastTimeType.Instant}、${skillCastTimeType.Chanting}、${skillCastTimeType.Charging}。`,
-					formFieldDescription: `技能動作開始前的讀條階段：${skillCastTimeType.Instant}、${skillCastTimeType.Chanting}、${skillCastTimeType.Charging}。`,
-					enumMap: skillCastTimeType,
-				},
-				distanceType: {
-					key: "距離威力類型",
-					tableFieldDescription: "表示哪種類型的距離威力會影響這個技能",
-					formFieldDescription: "表示哪種類型的距離威力會影響這個技能",
-					enumMap: skillDistanceType,
-				},
-				isPassive: {
-					key: "被動",
-					tableFieldDescription: "習得後立即生效的技能是被動技能",
-					formFieldDescription: "習得後立即生效的技能是被動技能",
-				},
 				details: {
 					key: "補充說明",
 					tableFieldDescription: "編輯者想要補充的內容",
@@ -2630,6 +2801,69 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "所屬技能",
 					formFieldDescription: "所屬技能",
 				},
+				comboCompatible: {
+					key: "能否放入連擊中",
+					tableFieldDescription: "能否放入連擊中",
+					formFieldDescription: "能否放入連擊中",
+				},
+				range: {
+					key: "攻擊範圍",
+					tableFieldDescription: "攻擊範圍",
+					formFieldDescription: "攻擊範圍",
+				},
+				castTimeType: {
+					key: "讀條類型",
+					tableFieldDescription: `技能動作開始前的讀條階段：${skillCastTimeType.Instant}、${skillCastTimeType.Chanting}、${skillCastTimeType.Charging}。`,
+					formFieldDescription: `技能動作開始前的讀條階段：${skillCastTimeType.Instant}、${skillCastTimeType.Chanting}、${skillCastTimeType.Charging}。`,
+					enumMap: skillCastTimeType,
+				},
+				distanceType: {
+					key: "距離威力類型",
+					tableFieldDescription: "表示此技能變體受這些類型的距離威力影響",
+					formFieldDescription: "表示此技能變體受這些類型的距離威力影響",
+					enumMap: distanceType,
+				},
+				targetType: {
+					key: "目標類型",
+					tableFieldDescription: "此技能變體的目標類型",
+					formFieldDescription: "此技能變體的目標類型",
+					enumMap: skillTargetType,
+				},
+				chantingFixedMs: {
+					key: "固定詠唱時間",
+					tableFieldDescription: "固定詠唱時間",
+					formFieldDescription: "固定詠唱時間",
+				},
+				chantingModifiedMs: {
+					key: "可加速詠唱時間",
+					tableFieldDescription: "可加速詠唱時間",
+					formFieldDescription: "可加速詠唱時間",
+				},
+				chargingFixedMs: {
+					key: "固定蓄力時間",
+					tableFieldDescription: "固定蓄力時間",
+					formFieldDescription: "固定蓄力時間",
+				},
+				chargingModifiedMs: {
+					key: "可加速蓄力時間",
+					tableFieldDescription: "可加速蓄力時間",
+					formFieldDescription: "可加速蓄力時間",
+				},
+				actionFixedMs: {
+					key: "固定動作時間",
+					tableFieldDescription: "固定動作時間",
+					formFieldDescription: "固定動作時間",
+				},
+				actionModifiedMs: {
+					key: "可加速動作時間",
+					tableFieldDescription: "可加速動作時間",
+					formFieldDescription: "可加速動作時間",
+				},
+				startupRatio: {
+					key: "施法動作前搖比例",
+					tableFieldDescription: "施法動作前搖比例",
+					formFieldDescription: "施法動作前搖比例",
+				},
 			},
 			description: "技能變體資訊",
 		},
@@ -2660,6 +2894,45 @@ const dictionary: Dictionary = {
 					key: "屬性槽",
 					tableFieldDescription: "需要併入 StatContainer 的持久化屬性槽",
 					formFieldDescription: "需要併入 StatContainer 的持久化屬性槽 JSON",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							path: {
+								key: "屬性路徑",
+								tableFieldDescription: "點號分隔的完整屬性路徑",
+								formFieldDescription: "點號分隔的完整屬性路徑",
+							},
+							attribute: {
+								key: "屬性定義",
+								tableFieldDescription: "屬性定義",
+								formFieldDescription: "屬性定義",
+								fields: {
+									displayName: {
+										key: "顯示名稱",
+										tableFieldDescription: "屬性顯示名稱",
+										formFieldDescription: "屬性顯示名稱",
+									},
+									expression: {
+										key: "初始表達式",
+										tableFieldDescription: "屬性初始表達式",
+										formFieldDescription: "屬性初始表達式",
+									},
+									noBaseValue: {
+										key: "不參與乘法",
+										tableFieldDescription: "百分比修正不參與乘法",
+										formFieldDescription: "百分比修正不參與乘法",
+									},
+									onlyBaseValue: {
+										key: "僅保留基礎值",
+										tableFieldDescription: "僅保留基礎值",
+										formFieldDescription: "僅保留基礎值",
+									},
+								},
+							},
+						},
+					},
 				},
 				activeOwnerId: {
 					key: "主動歸屬技能變體",
@@ -3137,38 +3410,384 @@ const dictionary: Dictionary = {
 				},
 				attrModifiers: {
 					key: "屬性修正",
-					tableFieldDescription: "雷吉斯托环的屬性修正",
+					tableFieldDescription: "雷吉斯托環的屬性修正",
 					formFieldDescription: "請輸入屬性修正",
 				},
 				pipelinePatches: {
-					key: "管道补丁",
-					tableFieldDescription: "管道补丁效果",
-					formFieldDescription: "請配置管道补丁效果",
+					key: "管道補丁",
+					tableFieldDescription: "管道補丁效果",
+					formFieldDescription: "請配置管道補丁效果",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							pipelineName: {
+								key: "目標管道名稱",
+								tableFieldDescription: "目標 pipeline 名稱",
+								formFieldDescription: "目標 pipeline 名稱",
+							},
+							slot: {
+								key: "目標槽位",
+								tableFieldDescription: "目標槽位",
+								formFieldDescription: "目標槽位",
+							},
+							position: {
+								key: "插入位置",
+								tableFieldDescription: "在目標步驟之前或之後插入",
+								formFieldDescription: "在目標步驟之前或之後插入",
+								enumMap: {
+									before: "之前",
+									after: "之後",
+								},
+							},
+							priority: {
+								key: "優先級",
+								tableFieldDescription: "執行優先級",
+								formFieldDescription: "執行優先級",
+							},
+							steps: {
+								key: "步驟列表",
+								tableFieldDescription: "一組局部步驟",
+								formFieldDescription: "一組局部步驟",
+								item: {
+									key: "",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									fields: {
+										type: {
+											key: "步驟類型",
+											tableFieldDescription: "步驟類型",
+											formFieldDescription: "步驟類型",
+											enumMap: {
+												setValue: "設置值",
+												runPipeline: "運行管道",
+												scheduleMemberEvent: "調度成員事件",
+												interrupt: "中斷",
+												insertInstructions: "插入指令",
+											},
+										},
+									},
+									variants: {
+										setValue: {
+											key: "設置值",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "步驟類型", tableFieldDescription: "", formFieldDescription: "" },
+												target: { key: "目標字段", tableFieldDescription: "", formFieldDescription: "" },
+												value: { key: "值", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										runPipeline: {
+											key: "運行管道",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "步驟類型", tableFieldDescription: "", formFieldDescription: "" },
+												pipelineName: { key: "管道名稱", tableFieldDescription: "", formFieldDescription: "" },
+												params: { key: "參數", tableFieldDescription: "", formFieldDescription: "", fields: {} },
+											},
+										},
+										scheduleMemberEvent: {
+											key: "調度成員事件",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "步驟類型", tableFieldDescription: "", formFieldDescription: "" },
+												eventName: { key: "事件名稱", tableFieldDescription: "", formFieldDescription: "" },
+												delay: { key: "延遲", tableFieldDescription: "", formFieldDescription: "" },
+												payload: { key: "載荷", tableFieldDescription: "", formFieldDescription: "", fields: {} },
+											},
+										},
+										interrupt: {
+											key: "中斷",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "步驟類型", tableFieldDescription: "", formFieldDescription: "" },
+												reason: { key: "原因", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										insertInstructions: {
+											key: "插入指令",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "步驟類型", tableFieldDescription: "", formFieldDescription: "" },
+												instructions: {
+													key: "指令列表",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													item: {
+														key: "",
+														tableFieldDescription: "",
+														formFieldDescription: "",
+														fields: {
+															target: { key: "目標", tableFieldDescription: "", formFieldDescription: "" },
+															op: { key: "運算符", tableFieldDescription: "", formFieldDescription: "" },
+															a: { key: "參數A", tableFieldDescription: "", formFieldDescription: "" },
+															b: { key: "參數B", tableFieldDescription: "", formFieldDescription: "" },
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				skillBranchActivators: {
 					key: "技能分支激活器",
 					tableFieldDescription: "技能分支激活效果",
 					formFieldDescription: "請配置技能分支激活效果",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							skillId: {
+								key: "目標技能 ID",
+								tableFieldDescription: "目標技能 ID",
+								formFieldDescription: "目標技能 ID",
+							},
+							branchKey: {
+								key: "分支鍵",
+								tableFieldDescription: "分支鍵",
+								formFieldDescription: "分支鍵",
+							},
+							value: {
+								key: "分支選擇值",
+								tableFieldDescription: "分支選擇值",
+								formFieldDescription: "分支選擇值",
+							},
+						},
+					},
 				},
 				updatedByAccountId: {
 					key: "更新者",
 					tableFieldDescription: "最後更新者",
-					formFieldDescription: "選择更新者帳號",
+					formFieldDescription: "選擇更新者帳號",
 				},
 				createdByAccountId: {
 					key: "創建者",
 					tableFieldDescription: "創建者",
-					formFieldDescription: "選择創建者帳號",
+					formFieldDescription: "選擇創建者帳號",
 				},
 				subscriptions: {
-					key: "订阅事件",
-					tableFieldDescription: "事件订阅效果",
-					formFieldDescription: "請配置事件订阅效果",
+					key: "事件訂閱",
+					tableFieldDescription: "事件訂閱效果",
+					formFieldDescription: "請配置事件訂閱效果",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							eventNames: {
+								key: "訂閱事件名列表",
+								tableFieldDescription: "訂閱的事件名列表",
+								formFieldDescription: "訂閱的事件名列表",
+							},
+							requiredDamageTags: {
+								key: "需要的傷害標籤",
+								tableFieldDescription: "需要的傷害標籤",
+								formFieldDescription: "需要的傷害標籤",
+							},
+							requiredStatusTypes: {
+								key: "需要的異常狀態類型",
+								tableFieldDescription: "需要的異常狀態類型",
+								formFieldDescription: "需要的異常狀態類型",
+							},
+							handlers: {
+								key: "觸發處理器",
+								tableFieldDescription: "觸發時執行的動作列表",
+								formFieldDescription: "觸發時執行的動作列表",
+								item: {
+									key: "",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									fields: {
+										type: {
+											key: "處理器類型",
+											tableFieldDescription: "處理器類型",
+											formFieldDescription: "處理器類型",
+											enumMap: {
+												addModifier: "添加修正",
+												removeModifierBySource: "按來源移除修正",
+												emit: "發射事件",
+											},
+										},
+									},
+									variants: {
+										addModifier: {
+											key: "添加修正",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "處理器類型", tableFieldDescription: "", formFieldDescription: "" },
+												attribute: { key: "屬性", tableFieldDescription: "", formFieldDescription: "" },
+												modifierType: {
+													key: "修正類型",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													enumMap: {
+														dynamicFixed: "動態固定",
+														dynamicPercentage: "動態百分比",
+														staticFixed: "靜態固定",
+														staticPercentage: "靜態百分比",
+													},
+												},
+												value: { key: "值", tableFieldDescription: "", formFieldDescription: "" },
+												lifetime: {
+													key: "生命週期",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													enumMap: { once: "一次", bySource: "按來源" },
+												},
+												sourceIdSuffix: { key: "來源ID後綴", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										removeModifierBySource: {
+											key: "按來源移除修正",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "處理器類型", tableFieldDescription: "", formFieldDescription: "" },
+												attribute: { key: "屬性", tableFieldDescription: "", formFieldDescription: "" },
+												sourceIdSuffix: { key: "來源ID後綴", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										emit: {
+											key: "發射事件",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "處理器類型", tableFieldDescription: "", formFieldDescription: "" },
+												eventName: { key: "事件名稱", tableFieldDescription: "", formFieldDescription: "" },
+												payload: { key: "載荷", tableFieldDescription: "", formFieldDescription: "", fields: {} },
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				thresholdWatchers: {
-					key: "阈值监视器",
-					tableFieldDescription: "阈值监视效果",
-					formFieldDescription: "請配置阈值监视效果",
+					key: "閾值監視器",
+					tableFieldDescription: "閾值監視效果",
+					formFieldDescription: "請配置閾值監視效果",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							path: {
+								key: "屬性路徑",
+								tableFieldDescription: "要監視的屬性路徑",
+								formFieldDescription: "要監視的屬性路徑",
+							},
+							threshold: {
+								key: "閾值",
+								tableFieldDescription: "閾值",
+								formFieldDescription: "閾值",
+							},
+							direction: {
+								key: "方向",
+								tableFieldDescription: "觸發方向",
+								formFieldDescription: "觸發方向",
+								enumMap: {
+									rising: "上升",
+									falling: "下降",
+									both: "兩者",
+								},
+							},
+							cooldownMs: {
+								key: "冷卻時間(ms)",
+								tableFieldDescription: "冷卻時間（毫秒）",
+								formFieldDescription: "冷卻時間（毫秒）",
+							},
+							fireOnRegister: {
+								key: "註冊時觸發",
+								tableFieldDescription: "註冊時是否立即觸發",
+								formFieldDescription: "註冊時是否立即觸發",
+							},
+							handlers: {
+								key: "觸發處理器",
+								tableFieldDescription: "觸發時執行的動作列表",
+								formFieldDescription: "觸發時執行的動作列表",
+								item: {
+									key: "",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									fields: {
+										type: {
+											key: "處理器類型",
+											tableFieldDescription: "處理器類型",
+											formFieldDescription: "處理器類型",
+											enumMap: {
+												addModifier: "添加修正",
+												removeModifierBySource: "按來源移除修正",
+												emit: "發射事件",
+											},
+										},
+									},
+									variants: {
+										addModifier: {
+											key: "添加修正",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "處理器類型", tableFieldDescription: "", formFieldDescription: "" },
+												attribute: { key: "屬性", tableFieldDescription: "", formFieldDescription: "" },
+												modifierType: {
+													key: "修正類型",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													enumMap: {
+														dynamicFixed: "動態固定",
+														dynamicPercentage: "動態百分比",
+														staticFixed: "靜態固定",
+														staticPercentage: "靜態百分比",
+													},
+												},
+												value: { key: "值", tableFieldDescription: "", formFieldDescription: "" },
+												lifetime: {
+													key: "生命週期",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													enumMap: { once: "一次", bySource: "按來源" },
+												},
+												sourceIdSuffix: { key: "來源ID後綴", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										removeModifierBySource: {
+											key: "按來源移除修正",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "處理器類型", tableFieldDescription: "", formFieldDescription: "" },
+												attribute: { key: "屬性", tableFieldDescription: "", formFieldDescription: "" },
+												sourceIdSuffix: { key: "來源ID後綴", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										emit: {
+											key: "發射事件",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "處理器類型", tableFieldDescription: "", formFieldDescription: "" },
+												eventName: { key: "事件名稱", tableFieldDescription: "", formFieldDescription: "" },
+												payload: { key: "載荷", tableFieldDescription: "", formFieldDescription: "", fields: {} },
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},

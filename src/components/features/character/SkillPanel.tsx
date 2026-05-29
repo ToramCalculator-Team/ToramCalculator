@@ -1,15 +1,36 @@
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
-import { type Skill, selectAllSkills } from "@db/generated/repositories/skill";
+import { type Skill, type SkillWithRelations, selectAllSkills } from "@db/generated/repositories/skill";
 import { SKILL_TREE_GROUP_TYPE, SKILL_TREE_TYPE, type SkillTreeType } from "@db/schema/enums";
 import { createId } from "@paralleldrive/cuid2";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { createEffect, createMemo, createResource, createSignal, For, Index, on, Show } from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, For, Index, on, onCleanup, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import { Sheet } from "~/components/containers/sheet";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
 import { SKILL_TREE_MAP, SkillTreePickerSheet } from "./SkillTreePickerSheet";
+import { skillSubRelations } from "@db/generated/repositories/skill";
+import type { DB } from "@db/generated/zod/index";
+import type { Transaction } from "kysely";
+import { getDB } from "@db/repositories/database";
+
+async function selectSkillsByIdsWithRelations(
+	skillIds: string[],
+	trx?: Transaction<DB>,
+): Promise<SkillWithRelations[]> {
+	if (skillIds.length === 0) return [];
+
+	const db = trx || (await getDB());
+	// 设计说明：只在技能被真正写入角色技能时补齐关系；面板首屏只读基础技能树，减少打开成本。
+	return await db
+		.selectFrom("skill")
+		.where("skill.id", "in", skillIds)
+		.selectAll("skill")
+		.select((eb) => skillSubRelations(eb, eb.ref("skill.id")))
+		.execute();
+}
+
 
 type SkillTreeEntry = {
 	templates: Skill[];
@@ -45,7 +66,9 @@ type SkillLinkCell = Record<SkillLinkDirection, boolean> & {
 export type SkillPanelProps = {
 	characterId: string;
 	skills: CharacterSkillWithRelations[];
-	onSkillLevelsChangeRequested: (changes: Array<{ template: Skill; lv: number; characterSkillId?: string }>) => void;
+	onSkillLevelsChangeRequested: (
+		changes: Array<{ template: SkillWithRelations; lv: number; characterSkillId?: string }>,
+	) => void;
 	onSkillTreeRemoveRequested: (payload: { templateIds: string[]; characterSkillIds: string[] }) => void;
 };
 
@@ -71,6 +94,10 @@ function createSkillLevelByTemplateId(skills: CharacterSkillWithRelations[]): Sk
 			.filter((skill) => !skill.isStarGem)
 			.map((skill) => [skill.templateId, { characterSkillId: skill.id, lv: skill.lv }]),
 	);
+}
+
+function indexById<T extends { id: string }>(rows: T[]): Record<string, T> {
+	return Object.fromEntries(rows.map((row) => [row.id, row]));
 }
 
 function getGridCoordinateKey(x: number, y: number): string {
@@ -346,6 +373,9 @@ export function SkillPanel(props: SkillPanelProps) {
 	const [skillLevelByTemplateId, setSkillLevelByTemplateId] = createSignal<SkillLevelByTemplateId>(
 		createSkillLevelByTemplateId(props.skills),
 	);
+	const [skillTemplateRelationsById, setSkillTemplateRelationsById] = createSignal<Record<string, SkillWithRelations>>(
+		indexById(props.skills.map((skill) => skill.template)),
+	);
 
 	const skillTemplateTreeIndex = createMemo<SkillTemplateTreeIndex>(() => {
 		const tree = createEmptySkillTemplateTreeIndex();
@@ -383,6 +413,30 @@ export function SkillPanel(props: SkillPanelProps) {
 		setSkillTreeEditorSheetOpen(true);
 	};
 	const closeSkillTreeEditorSheet = () => setSkillTreeEditorSheetOpen(false);
+	let skillLevelMutationToken = 0;
+
+	const mergeSkillTemplateRelations = (templates: SkillWithRelations[]) => {
+		if (templates.length === 0) return;
+		setSkillTemplateRelationsById((current) => ({ ...current, ...indexById(templates) }));
+	};
+
+	const hydrateSkillTemplates = async (templates: Skill[]): Promise<SkillWithRelations[]> => {
+		const cache = skillTemplateRelationsById();
+		const missingIds = templates.filter((template) => !cache[template.id]).map((template) => template.id);
+		if (missingIds.length > 0) {
+			const loadedTemplates = await selectSkillsByIdsWithRelations(missingIds);
+			mergeSkillTemplateRelations(loadedTemplates);
+		}
+		const refreshedCache = skillTemplateRelationsById();
+		return templates.map((template) => {
+			const hydrated = refreshedCache[template.id];
+			if (!hydrated) {
+				throw new Error(`技能模板关系缺失: ${template.id}`);
+			}
+			return hydrated;
+		});
+	};
+
 	const templateLevel = (template: Skill) => skillLevelByTemplateId()[template.id]?.lv ?? 0;
 	const hasSkillsInTree = (treeType: SkillTreeType) =>
 		skillTemplateTreeIndex()[treeType].templates.some((template) => templateLevel(template) >= SKILL_LEARNED_LEVEL);
@@ -424,16 +478,27 @@ export function SkillPanel(props: SkillPanelProps) {
 	createEffect(
 		on(
 			() => props.characterId,
-			() => setVisibleSkillTreeOverrides({}),
+			() => {
+				skillLevelMutationToken += 1;
+				setVisibleSkillTreeOverrides({});
+				setSkillTemplateRelationsById(indexById(props.skills.map((skill) => skill.template)));
+			},
 		),
 	);
 
 	createEffect(
 		on(
-			() => props.skills.map((skill) => `${skill.id}:${skill.lv}`).join("|"),
-			() => setSkillLevelByTemplateId(createSkillLevelByTemplateId(props.skills)),
+			() => props.skills.map((skill) => `${skill.id}:${skill.lv}:${skill.template.id}`).join("|"),
+			() => {
+				setSkillLevelByTemplateId(createSkillLevelByTemplateId(props.skills));
+				mergeSkillTemplateRelations(props.skills.map((skill) => skill.template));
+			},
 		),
 	);
+
+	onCleanup(() => {
+		skillLevelMutationToken += 1;
+	});
 
 	createEffect(() => {
 		// 设计说明：空焦点是合法编辑状态，sheet 打开时不预选技能，只有用户点选节点后才展示 +/- 控件。
@@ -474,6 +539,7 @@ export function SkillPanel(props: SkillPanelProps) {
 
 	const persistSkillLevels = (changes: Array<{ template: Skill; lv: number }>) => {
 		if (changes.length === 0) return;
+		const mutationToken = ++skillLevelMutationToken;
 		const previousLevels = skillLevelByTemplateId();
 		const preparedChanges = changes.map((change) => {
 			const currentState = previousLevels[change.template.id];
@@ -492,7 +558,28 @@ export function SkillPanel(props: SkillPanelProps) {
 			}
 			return nextLevels;
 		});
-		props.onSkillLevelsChangeRequested(preparedChanges);
+		void (async () => {
+			try {
+				const hydratedTemplates = await hydrateSkillTemplates(preparedChanges.map((change) => change.template));
+				if (mutationToken !== skillLevelMutationToken) return;
+				const hydratedChanges = hydratedTemplates.map((template, index) => {
+					const preparedChange = preparedChanges[index];
+					if (!preparedChange) {
+						throw new Error("技能变更补齐失败");
+					}
+					return {
+						template,
+						lv: preparedChange.lv,
+						characterSkillId: preparedChange.characterSkillId,
+					};
+				});
+				props.onSkillLevelsChangeRequested(hydratedChanges);
+			} catch (error) {
+				if (mutationToken !== skillLevelMutationToken) return;
+				setSkillLevelByTemplateId(previousLevels);
+				console.error("SkillPanel 技能关系补齐失败", error);
+			}
+		})();
 	};
 
 	const increaseSkillLevel = (template: Skill) => {

@@ -47,6 +47,13 @@ const subHandTypeLimit: Record<Enums.SubHandTypeLimit, string> = {
 	Any: "Any",
 };
 
+const distanceType: Record<Enums.SkillDistanceType, string> = {
+	None: "Not Affected",
+	Long: "Long Range Only",
+	Short: "Short Range Only",
+	Both: "Both Ranges",
+};
+
 // Actual types
 // ----------------------------------------------------------------
 
@@ -200,13 +207,6 @@ const skillCastTimeType: Record<Enums.SkillCastTimeType, string> = {
 	Instant: "Instant",
 	Chanting: "Chanting",
 	Charging: "Charging",
-};
-
-const skillDistanceType: Record<Enums.SkillDistanceType, string> = {
-	None: "Not Affected",
-	Long: "Long Range Only",
-	Short: "Short Range Only",
-	Both: "Both Ranges",
 };
 
 const skillTargetType: Record<Enums.SkillTargetType, string> = {
@@ -1191,6 +1191,78 @@ const dictionary: Dictionary = {
 					key: "Actions",
 					tableFieldDescription: "The actions of the character.",
 					formFieldDescription: "Please enter the actions of the character.",
+					fields: {
+						name: {
+							key: "Behavior Tree Name",
+							tableFieldDescription: "Name of the behavior tree",
+							formFieldDescription: "Name of the behavior tree",
+						},
+						definition: {
+							key: "Behavior Tree Definition",
+							tableFieldDescription: "MDSL behavior tree definition",
+							formFieldDescription: "MDSL behavior tree definition",
+						},
+						agent: {
+							key: "Agent Functions",
+							tableFieldDescription: "Callable behavior tree functions",
+							formFieldDescription: "Callable behavior tree functions",
+						},
+						memberType: {
+							key: "Member Type",
+							tableFieldDescription: "The member type this action belongs to",
+							formFieldDescription: "The member type this action belongs to",
+							enumMap: {
+								Player: "Player",
+								Partner: "Partner",
+								Mercenary: "Mercenary",
+								Mob: "Mob",
+							},
+						},
+						attributeSlots: {
+							key: "Attribute Slots",
+							tableFieldDescription: "Persistent StatContainer slots declared by this tree",
+							formFieldDescription: "Persistent StatContainer slots declared by this tree",
+							item: {
+								key: "",
+								tableFieldDescription: "",
+								formFieldDescription: "",
+								fields: {
+									path: {
+										key: "Attribute Path",
+										tableFieldDescription: "Dot separated full attribute path",
+										formFieldDescription: "Dot separated full attribute path",
+									},
+									attribute: {
+										key: "Attribute Definition",
+										tableFieldDescription: "Attribute definition",
+										formFieldDescription: "Attribute definition",
+										fields: {
+											displayName: {
+												key: "Display Name",
+												tableFieldDescription: "Attribute display name",
+												formFieldDescription: "Attribute display name",
+											},
+											expression: {
+												key: "Initial Expression",
+												tableFieldDescription: "Attribute initial expression",
+												formFieldDescription: "Attribute initial expression",
+											},
+											noBaseValue: {
+												key: "No Base Value",
+												tableFieldDescription: "Percentage modifier does not participate in multiplication",
+												formFieldDescription: "Percentage modifier does not participate in multiplication",
+											},
+											onlyBaseValue: {
+												key: "Base Value Only",
+												tableFieldDescription: "Keep base value only",
+												formFieldDescription: "Keep base value only",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				partnerSkillAId: {
 					key: "Partner Skill A ID",
@@ -1691,6 +1763,78 @@ const dictionary: Dictionary = {
 						"Monster behavior description. The simulator will simulate actions based on this logic.",
 					formFieldDescription:
 						"Monster behavior description. The simulator will simulate actions based on this logic.",
+					fields: {
+						name: {
+							key: "Behavior Tree Name",
+							tableFieldDescription: "Name of the behavior tree",
+							formFieldDescription: "Name of the behavior tree",
+						},
+						definition: {
+							key: "Behavior Tree Definition",
+							tableFieldDescription: "MDSL behavior tree definition",
+							formFieldDescription: "MDSL behavior tree definition",
+						},
+						agent: {
+							key: "Agent Functions",
+							tableFieldDescription: "Callable behavior tree functions",
+							formFieldDescription: "Callable behavior tree functions",
+						},
+						memberType: {
+							key: "Member Type",
+							tableFieldDescription: "The member type this action belongs to",
+							formFieldDescription: "The member type this action belongs to",
+							enumMap: {
+								Player: "Player",
+								Partner: "Partner",
+								Mercenary: "Mercenary",
+								Mob: "Mob",
+							},
+						},
+						attributeSlots: {
+							key: "Attribute Slots",
+							tableFieldDescription: "Persistent StatContainer slots declared by this tree",
+							formFieldDescription: "Persistent StatContainer slots declared by this tree",
+							item: {
+								key: "",
+								tableFieldDescription: "",
+								formFieldDescription: "",
+								fields: {
+									path: {
+										key: "Attribute Path",
+										tableFieldDescription: "Dot separated full attribute path",
+										formFieldDescription: "Dot separated full attribute path",
+									},
+									attribute: {
+										key: "Attribute Definition",
+										tableFieldDescription: "Attribute definition",
+										formFieldDescription: "Attribute definition",
+										fields: {
+											displayName: {
+												key: "Display Name",
+												tableFieldDescription: "Attribute display name",
+												formFieldDescription: "Attribute display name",
+											},
+											expression: {
+												key: "Initial Expression",
+												tableFieldDescription: "Attribute initial expression",
+												formFieldDescription: "Attribute initial expression",
+											},
+											noBaseValue: {
+												key: "No Base Value",
+												tableFieldDescription: "Percentage modifier does not participate in multiplication",
+												formFieldDescription: "Percentage modifier does not participate in multiplication",
+											},
+											onlyBaseValue: {
+												key: "Base Value Only",
+												tableFieldDescription: "Keep base value only",
+												formFieldDescription: "Keep base value only",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				baseLv: {
 					key: "Base Level",
@@ -2431,29 +2575,6 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "Mainly used to calculate mercenary skill cooldown intervals",
 					formFieldDescription: "Mainly used to calculate mercenary skill cooldown intervals",
 				},
-				targetType: {
-					key: "Target Type",
-					tableFieldDescription: `Skills that can be cast without selecting a target are ${skillTargetType.Self}, skills that can target ${skillTargetType.Player} are ${skillTargetType.Player}.`,
-					formFieldDescription: `Skills that can be cast without selecting a target are ${skillTargetType.Self}, skills that can target ${skillTargetType.Player} are ${skillTargetType.Player}.`,
-					enumMap: skillTargetType,
-				},
-				castTimeType: {
-					key: "Cast Time Type",
-					tableFieldDescription: `The cast-time phase before skill action starts: ${skillCastTimeType.Instant}, ${skillCastTimeType.Chanting}, or ${skillCastTimeType.Charging}.`,
-					formFieldDescription: `The cast-time phase before skill action starts: ${skillCastTimeType.Instant}, ${skillCastTimeType.Chanting}, or ${skillCastTimeType.Charging}.`,
-					enumMap: skillCastTimeType,
-				},
-				distanceType: {
-					key: "Distance Power Type",
-					tableFieldDescription: "Indicates which types of distance power affect this skill",
-					formFieldDescription: "Indicates which types of distance power affect this skill",
-					enumMap: skillDistanceType,
-				},
-				isPassive: {
-					key: "Is Passive",
-					tableFieldDescription: "Skills that take effect immediately upon learning are passive skills",
-					formFieldDescription: "Skills that take effect immediately upon learning are passive skills",
-				},
 				details: {
 					key: "Additional Notes",
 					tableFieldDescription: "Anything the editor wants to add",
@@ -2556,6 +2677,69 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "所属技能",
 					formFieldDescription: "所属技能",
 				},
+				comboCompatible: {
+					key: "Combo Compatible",
+					tableFieldDescription: "Whether this skill can be placed in a combo",
+					formFieldDescription: "Whether this skill can be placed in a combo",
+				},
+				range: {
+					key: "Range",
+					tableFieldDescription: "Attack range",
+					formFieldDescription: "Attack range",
+				},
+				castTimeType: {
+					key: "Cast Type",
+					tableFieldDescription: `Cast type before skill action: ${skillCastTimeType.Instant}, ${skillCastTimeType.Chanting}, ${skillCastTimeType.Charging}.`,
+					formFieldDescription: `Cast type before skill action: ${skillCastTimeType.Instant}, ${skillCastTimeType.Chanting}, ${skillCastTimeType.Charging}.`,
+					enumMap: skillCastTimeType,
+				},
+				distanceType: {
+					key: "Distance Type",
+					tableFieldDescription: "Indicates which distance types affect this skill variant",
+					formFieldDescription: "Indicates which distance types affect this skill variant",
+					enumMap: distanceType,
+				},
+				targetType: {
+					key: "Target Type",
+					tableFieldDescription: "The target type of this skill variant",
+					formFieldDescription: "The target type of this skill variant",
+					enumMap: skillTargetType,
+				},
+				chantingFixedMs: {
+					key: "Fixed Chanting Time (ms)",
+					tableFieldDescription: "Fixed chanting time in milliseconds",
+					formFieldDescription: "Fixed chanting time in milliseconds",
+				},
+				chantingModifiedMs: {
+					key: "Modified Chanting Time (ms)",
+					tableFieldDescription: "Modified chanting time in milliseconds",
+					formFieldDescription: "Modified chanting time in milliseconds",
+				},
+				chargingFixedMs: {
+					key: "Fixed Charging Time (ms)",
+					tableFieldDescription: "Fixed charging time in milliseconds",
+					formFieldDescription: "Fixed charging time in milliseconds",
+				},
+				chargingModifiedMs: {
+					key: "Modified Charging Time (ms)",
+					tableFieldDescription: "Modified charging time in milliseconds",
+					formFieldDescription: "Modified charging time in milliseconds",
+				},
+				actionFixedMs: {
+					key: "Fixed Action Time (ms)",
+					tableFieldDescription: "Fixed action time in milliseconds",
+					formFieldDescription: "Fixed action time in milliseconds",
+				},
+				actionModifiedMs: {
+					key: "Modified Action Time (ms)",
+					tableFieldDescription: "Modified action time in milliseconds",
+					formFieldDescription: "Modified action time in milliseconds",
+				},
+				startupRatio: {
+					key: "Startup Ratio",
+					tableFieldDescription: "The ratio of startup animation before the skill action",
+					formFieldDescription: "The ratio of startup animation before the skill action",
+				},
 			},
 			description: "Skill variant information",
 		},
@@ -2586,6 +2770,45 @@ const dictionary: Dictionary = {
 					key: "Attribute Slots",
 					tableFieldDescription: "Persistent StatContainer slots declared by this tree",
 					formFieldDescription: "Persistent StatContainer slots declared by this tree as JSON",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							path: {
+								key: "Attribute Path",
+								tableFieldDescription: "Dot separated full attribute path",
+								formFieldDescription: "Dot separated full attribute path",
+							},
+							attribute: {
+								key: "Attribute Definition",
+								tableFieldDescription: "Attribute definition",
+								formFieldDescription: "Attribute definition",
+								fields: {
+									displayName: {
+										key: "Display Name",
+										tableFieldDescription: "Attribute display name",
+										formFieldDescription: "Attribute display name",
+									},
+									expression: {
+										key: "Initial Expression",
+										tableFieldDescription: "Attribute initial expression",
+										formFieldDescription: "Attribute initial expression",
+									},
+									noBaseValue: {
+										key: "No Base Value",
+										tableFieldDescription: "Percentage modifier does not participate in multiplication",
+										formFieldDescription: "Percentage modifier does not participate in multiplication",
+									},
+									onlyBaseValue: {
+										key: "Base Value Only",
+										tableFieldDescription: "Keep base value only",
+										formFieldDescription: "Keep base value only",
+									},
+								},
+							},
+						},
+					},
 				},
 				activeOwnerId: {
 					key: "Active Owner Variant",
@@ -3063,38 +3286,400 @@ const dictionary: Dictionary = {
 				},
 				attrModifiers: {
 					key: "Attribute Modifiers",
-					tableFieldDescription: "雷吉斯托环的属性修正",
-					formFieldDescription: "请输入属性修正",
+					tableFieldDescription: "Attribute modifiers of the registlet",
+					formFieldDescription: "Please enter attribute modifiers",
 				},
 				pipelinePatches: {
 					key: "Pipeline Patches",
-					tableFieldDescription: "管道补丁效果",
-					formFieldDescription: "请配置管道补丁效果",
+					tableFieldDescription: "Pipeline patch effects",
+					formFieldDescription: "Configure pipeline patch effects",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							pipelineName: {
+								key: "Target Pipeline",
+								tableFieldDescription: "Target pipeline name",
+								formFieldDescription: "Target pipeline name",
+							},
+							slot: {
+								key: "Target Slot",
+								tableFieldDescription: "Target slot",
+								formFieldDescription: "Target slot",
+							},
+							position: {
+								key: "Insert Position",
+								tableFieldDescription: "Insert before or after the target step",
+								formFieldDescription: "Insert before or after the target step",
+								enumMap: {
+									before: "Before",
+									after: "After",
+								},
+							},
+							priority: {
+								key: "Priority",
+								tableFieldDescription: "Execution priority",
+								formFieldDescription: "Execution priority",
+							},
+							steps: {
+								key: "Steps",
+								tableFieldDescription: "A group of local steps",
+								formFieldDescription: "A group of local steps",
+								item: {
+									key: "",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									fields: {
+										type: {
+											key: "Step Type",
+											tableFieldDescription: "Step type",
+											formFieldDescription: "Step type",
+											enumMap: {
+												setValue: "Set Value",
+												runPipeline: "Run Pipeline",
+												scheduleMemberEvent: "Schedule Member Event",
+												interrupt: "Interrupt",
+												insertInstructions: "Insert Instructions",
+											},
+										},
+									},
+									variants: {
+										setValue: {
+											key: "Set Value",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "Step Type", tableFieldDescription: "", formFieldDescription: "" },
+												target: { key: "Target Field", tableFieldDescription: "", formFieldDescription: "" },
+												value: { key: "Value", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										runPipeline: {
+											key: "Run Pipeline",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "Step Type", tableFieldDescription: "", formFieldDescription: "" },
+												pipelineName: { key: "Pipeline Name", tableFieldDescription: "", formFieldDescription: "" },
+												params: { key: "Params", tableFieldDescription: "", formFieldDescription: "", fields: {} },
+											},
+										},
+										scheduleMemberEvent: {
+											key: "Schedule Member Event",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "Step Type", tableFieldDescription: "", formFieldDescription: "" },
+												eventName: { key: "Event Name", tableFieldDescription: "", formFieldDescription: "" },
+												delay: { key: "Delay", tableFieldDescription: "", formFieldDescription: "" },
+												payload: { key: "Payload", tableFieldDescription: "", formFieldDescription: "", fields: {} },
+											},
+										},
+										interrupt: {
+											key: "Interrupt",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "Step Type", tableFieldDescription: "", formFieldDescription: "" },
+												reason: { key: "Reason", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										insertInstructions: {
+											key: "Insert Instructions",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "Step Type", tableFieldDescription: "", formFieldDescription: "" },
+												instructions: {
+													key: "Instructions",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													item: {
+														key: "",
+														tableFieldDescription: "",
+														formFieldDescription: "",
+														fields: {
+															target: { key: "Target", tableFieldDescription: "", formFieldDescription: "" },
+															op: { key: "Operator", tableFieldDescription: "", formFieldDescription: "" },
+															a: { key: "Param A", tableFieldDescription: "", formFieldDescription: "" },
+															b: { key: "Param B", tableFieldDescription: "", formFieldDescription: "" },
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				skillBranchActivators: {
 					key: "Skill Branch Activators",
-					tableFieldDescription: "技能分支激活效果",
-					formFieldDescription: "请配置技能分支激活效果",
+					tableFieldDescription: "Skill branch activation effects",
+					formFieldDescription: "Configure skill branch activation effects",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							skillId: {
+								key: "Target Skill ID",
+								tableFieldDescription: "Target skill ID",
+								formFieldDescription: "Target skill ID",
+							},
+							branchKey: {
+								key: "Branch Key",
+								tableFieldDescription: "Branch key",
+								formFieldDescription: "Branch key",
+							},
+							value: {
+								key: "Branch Selection Value",
+								tableFieldDescription: "Branch selection value",
+								formFieldDescription: "Branch selection value",
+							},
+						},
+					},
 				},
 				updatedByAccountId: {
 					key: "Updated By",
-					tableFieldDescription: "最后更新者",
-					formFieldDescription: "选择更新者账号",
+					tableFieldDescription: "Last updated by",
+					formFieldDescription: "Select updater account",
 				},
 				createdByAccountId: {
 					key: "Created By",
-					tableFieldDescription: "创建者",
-					formFieldDescription: "选择创建者账号",
+					tableFieldDescription: "Created by",
+					formFieldDescription: "Select creator account",
 				},
 				subscriptions: {
 					key: "Event Subscriptions",
-					tableFieldDescription: "事件订阅效果",
-					formFieldDescription: "请配置事件订阅效果",
+					tableFieldDescription: "Event subscription effects",
+					formFieldDescription: "Configure event subscription effects",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							eventNames: {
+								key: "Subscribed Event Names",
+								tableFieldDescription: "List of subscribed event names",
+								formFieldDescription: "List of subscribed event names",
+							},
+							requiredDamageTags: {
+								key: "Required Damage Tags",
+								tableFieldDescription: "Required damage tags",
+								formFieldDescription: "Required damage tags",
+							},
+							requiredStatusTypes: {
+								key: "Required Status Types",
+								tableFieldDescription: "Required abnormal status types",
+								formFieldDescription: "Required abnormal status types",
+							},
+							handlers: {
+								key: "Trigger Handlers",
+								tableFieldDescription: "Actions to execute on trigger",
+								formFieldDescription: "Actions to execute on trigger",
+								item: {
+									key: "",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									fields: {
+										type: {
+											key: "Handler Type",
+											tableFieldDescription: "Handler type",
+											formFieldDescription: "Handler type",
+											enumMap: {
+												addModifier: "Add Modifier",
+												removeModifierBySource: "Remove Modifier By Source",
+												emit: "Emit Event",
+											},
+										},
+									},
+									variants: {
+										addModifier: {
+											key: "Add Modifier",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "Handler Type", tableFieldDescription: "", formFieldDescription: "" },
+												attribute: { key: "Attribute", tableFieldDescription: "", formFieldDescription: "" },
+												modifierType: {
+													key: "Modifier Type",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													enumMap: {
+														dynamicFixed: "Dynamic Fixed",
+														dynamicPercentage: "Dynamic Percentage",
+														staticFixed: "Static Fixed",
+														staticPercentage: "Static Percentage",
+													},
+												},
+												value: { key: "Value", tableFieldDescription: "", formFieldDescription: "" },
+												lifetime: {
+													key: "Lifetime",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													enumMap: { once: "Once", bySource: "By Source" },
+												},
+												sourceIdSuffix: {
+													key: "Source ID Suffix",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+											},
+										},
+										removeModifierBySource: {
+											key: "Remove Modifier By Source",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "Handler Type", tableFieldDescription: "", formFieldDescription: "" },
+												attribute: { key: "Attribute", tableFieldDescription: "", formFieldDescription: "" },
+												sourceIdSuffix: {
+													key: "Source ID Suffix",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+											},
+										},
+										emit: {
+											key: "Emit Event",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "Handler Type", tableFieldDescription: "", formFieldDescription: "" },
+												eventName: { key: "Event Name", tableFieldDescription: "", formFieldDescription: "" },
+												payload: { key: "Payload", tableFieldDescription: "", formFieldDescription: "", fields: {} },
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				thresholdWatchers: {
 					key: "Threshold Watchers",
-					tableFieldDescription: "阈值监视效果",
-					formFieldDescription: "请配置阈值监视效果",
+					tableFieldDescription: "Threshold watcher effects",
+					formFieldDescription: "Configure threshold watcher effects",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							path: {
+								key: "Attribute Path",
+								tableFieldDescription: "Attribute path to watch",
+								formFieldDescription: "Attribute path to watch",
+							},
+							threshold: {
+								key: "Threshold",
+								tableFieldDescription: "Threshold value",
+								formFieldDescription: "Threshold value",
+							},
+							direction: {
+								key: "Direction",
+								tableFieldDescription: "Trigger direction",
+								formFieldDescription: "Trigger direction",
+								enumMap: {
+									rising: "Rising",
+									falling: "Falling",
+									both: "Both",
+								},
+							},
+							cooldownMs: {
+								key: "Cooldown (ms)",
+								tableFieldDescription: "Cooldown in milliseconds",
+								formFieldDescription: "Cooldown in milliseconds",
+							},
+							fireOnRegister: {
+								key: "Fire on Register",
+								tableFieldDescription: "Whether to fire immediately on registration",
+								formFieldDescription: "Whether to fire immediately on registration",
+							},
+							handlers: {
+								key: "Trigger Handlers",
+								tableFieldDescription: "Actions to execute on trigger",
+								formFieldDescription: "Actions to execute on trigger",
+								item: {
+									key: "",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									fields: {
+										type: {
+											key: "Handler Type",
+											tableFieldDescription: "Handler type",
+											formFieldDescription: "Handler type",
+											enumMap: {
+												addModifier: "Add Modifier",
+												removeModifierBySource: "Remove Modifier By Source",
+												emit: "Emit Event",
+											},
+										},
+									},
+									variants: {
+										addModifier: {
+											key: "Add Modifier",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "Handler Type", tableFieldDescription: "", formFieldDescription: "" },
+												attribute: { key: "Attribute", tableFieldDescription: "", formFieldDescription: "" },
+												modifierType: {
+													key: "Modifier Type",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													enumMap: {
+														dynamicFixed: "Dynamic Fixed",
+														dynamicPercentage: "Dynamic Percentage",
+														staticFixed: "Static Fixed",
+														staticPercentage: "Static Percentage",
+													},
+												},
+												value: { key: "Value", tableFieldDescription: "", formFieldDescription: "" },
+												lifetime: {
+													key: "Lifetime",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													enumMap: { once: "Once", bySource: "By Source" },
+												},
+												sourceIdSuffix: {
+													key: "Source ID Suffix",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+											},
+										},
+										removeModifierBySource: {
+											key: "Remove Modifier By Source",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "Handler Type", tableFieldDescription: "", formFieldDescription: "" },
+												attribute: { key: "Attribute", tableFieldDescription: "", formFieldDescription: "" },
+												sourceIdSuffix: {
+													key: "Source ID Suffix",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+												},
+											},
+										},
+										emit: {
+											key: "Emit Event",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "Handler Type", tableFieldDescription: "", formFieldDescription: "" },
+												eventName: { key: "Event Name", tableFieldDescription: "", formFieldDescription: "" },
+												payload: { key: "Payload", tableFieldDescription: "", formFieldDescription: "", fields: {} },
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},

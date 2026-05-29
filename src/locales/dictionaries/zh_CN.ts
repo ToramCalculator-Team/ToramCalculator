@@ -47,6 +47,13 @@ const subHandTypeLimit: Record<Enums.SubHandTypeLimit, string> = {
 	Any: "不限",
 };
 
+const distanceType: Record<Enums.SkillDistanceType, string> = {
+	None: "不受影响",
+	Long: "仅受远距离威力影响",
+	Short: "仅受近距离威力影响",
+	Both: "同时受远距离和近距离威力影响",
+};
+
 // 实际类型
 // ----------------------------------------------------------------
 
@@ -200,13 +207,6 @@ const skillCastTimeType: Record<Enums.SkillCastTimeType, string> = {
 	Instant: "瞬发",
 	Chanting: "咏唱",
 	Charging: "蓄力",
-};
-
-const skillDistanceType: Record<Enums.SkillDistanceType, string> = {
-	None: "不受影响",
-	Long: "仅受远距离威力影响",
-	Short: "仅受近距离威力影响",
-	Both: "同时受远距离和近距离威力影响",
 };
 
 const skillTargetType: Record<Enums.SkillTargetType, string> = {
@@ -2659,29 +2659,6 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "主要用于计算佣兵技能释放间隔",
 					formFieldDescription: "主要用于计算佣兵技能释放间隔",
 				},
-				targetType: {
-					key: "目标类型",
-					tableFieldDescription: `不需要选择目标即可释放的为${skillTargetType.Self}，能以${skillTargetType.Player}为目标的技能即为${skillTargetType.Player}。`,
-					formFieldDescription: `不需要选择目标即可释放的为${skillTargetType.Self}，能以${skillTargetType.Player}为目标的技能即为${skillTargetType.Player}。`,
-					enumMap: skillTargetType,
-				},
-				castTimeType: {
-					key: "读条类型",
-					tableFieldDescription: `技能动作开始前的读条阶段：${skillCastTimeType.Instant}、${skillCastTimeType.Chanting}、${skillCastTimeType.Charging}。`,
-					formFieldDescription: `技能动作开始前的读条阶段：${skillCastTimeType.Instant}、${skillCastTimeType.Chanting}、${skillCastTimeType.Charging}。`,
-					enumMap: skillCastTimeType,
-				},
-				distanceType: {
-					key: "距离威力类型",
-					tableFieldDescription: "表示此技能受这些类型的距离威力影响",
-					formFieldDescription: "表示此技能受这些类型的距离威力影响",
-					enumMap: skillDistanceType,
-				},
-				isPassive: {
-					key: "是被动技能吗",
-					tableFieldDescription: "学习后就一直生效的技能即为被动技能",
-					formFieldDescription: "学习后就一直生效的技能即为被动技能",
-				},
 				details: {
 					key: "额外说明",
 					tableFieldDescription: "编辑者想额外描述的东西",
@@ -2781,6 +2758,69 @@ const dictionary: Dictionary = {
 					key: "所属技能",
 					tableFieldDescription: "所属技能",
 					formFieldDescription: "所属技能",
+				},
+				comboCompatible: {
+					key: "能否放入连击中",
+					tableFieldDescription: "能否放入连击中",
+					formFieldDescription: "能否放入连击中",
+				},
+				range: {
+					key: "攻击范围",
+					tableFieldDescription: "攻击范围",
+					formFieldDescription: "攻击范围",
+				},
+				castTimeType: {
+					key: "读条类型",
+					tableFieldDescription: `技能动作开始前的读条阶段：${skillCastTimeType.Instant}、${skillCastTimeType.Chanting}、${skillCastTimeType.Charging}。`,
+					formFieldDescription: `技能动作开始前的读条阶段：${skillCastTimeType.Instant}、${skillCastTimeType.Chanting}、${skillCastTimeType.Charging}。`,
+					enumMap: skillCastTimeType,
+				},
+				distanceType: {
+					key: "距离威力类型",
+					tableFieldDescription: "表示此技能变体受这些类型的距离威力影响",
+					formFieldDescription: "表示此技能变体受这些类型的距离威力影响",
+					enumMap: distanceType,
+				},
+				targetType: {
+					key: "目标类型",
+					tableFieldDescription: "此技能变体的目标类型",
+					formFieldDescription: "此技能变体的目标类型",
+					enumMap: skillTargetType,
+				},
+				chantingFixedMs: {
+					key: "固定咏唱时间",
+					tableFieldDescription: "固定咏唱时间",
+					formFieldDescription: "固定咏唱时间",
+				},
+				chantingModifiedMs: {
+					key: "可加速咏唱时间",
+					tableFieldDescription: "可加速咏唱时间",
+					formFieldDescription: "可加速咏唱时间",
+				},
+				chargingFixedMs: {
+					key: "固定蓄力时间",
+					tableFieldDescription: "固定蓄力时间",
+					formFieldDescription: "固定蓄力时间",
+				},
+				chargingModifiedMs: {
+					key: "可加速蓄力时间",
+					tableFieldDescription: "可加速蓄力时间",
+					formFieldDescription: "可加速蓄力时间",
+				},
+				actionFixedMs: {
+					key: "固定动作时间",
+					tableFieldDescription: "固定动作时间",
+					formFieldDescription: "固定动作时间",
+				},
+				actionModifiedMs: {
+					key: "可加速动作时间",
+					tableFieldDescription: "可加速动作时间",
+					formFieldDescription: "可加速动作时间",
+				},
+				startupRatio: {
+					key: "施法动作前摇比例",
+					tableFieldDescription: "施法动作前摇比例",
+					formFieldDescription: "施法动作前摇比例",
 				},
 			},
 			description: "技能变体信息",

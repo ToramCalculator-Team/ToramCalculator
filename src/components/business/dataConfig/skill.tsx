@@ -13,14 +13,14 @@ import type { TableDataConfig } from "../data-config";
 import { DefaultFieldClass } from "../form/SchemaFieldRenderer";
 import { getUserContext } from "../utils/context";
 import {
-	deleteSkillVariantEditor,
-	SkillVariantEditorSchema,
-	saveSkillVariantEditor,
-	selectSkillVariantEditorsByBelongToskillid,
+	deleteSkillVariantWithBehaviorTrees,
+	SkillVariantWithBehaviorTreesSchema,
+	saveSkillVariantWithBehaviorTrees,
+	selectSkillVariantsWithBehaviorTreesByBelongToskillid,
 } from "./skill_variant";
 
 const SkillWithVariantsSchema = SkillSchema.extend({
-	variants: z.array(SkillVariantEditorSchema),
+	variants: z.array(SkillVariantWithBehaviorTreesSchema),
 });
 
 type SkillWithVariants = z.output<typeof SkillWithVariantsSchema>;
@@ -36,7 +36,7 @@ const getSkillWithVariants = async (id: string): Promise<SkillWithVariants> => {
 	const skill = await db.selectFrom("skill").where("skill.id", "=", id).selectAll("skill").executeTakeFirstOrThrow();
 	return {
 		...skill,
-		variants: await selectSkillVariantEditorsByBelongToskillid(id),
+		variants: await selectSkillVariantsWithBehaviorTreesByBelongToskillid(id),
 	};
 };
 
@@ -46,7 +46,7 @@ const getAllSkillWithVariants = async (): Promise<SkillWithVariants[]> => {
 	return await Promise.all(
 		skills.map(async (skill) => ({
 			...skill,
-			variants: await selectSkillVariantEditorsByBelongToskillid(skill.id),
+			variants: await selectSkillVariantsWithBehaviorTreesByBelongToskillid(skill.id),
 		})),
 	);
 };
@@ -75,9 +75,10 @@ const insertSkillWithVariants = async (data: SkillWithVariants): Promise<SkillWi
 		);
 		const variants = await Promise.all(
 			data.variants.map((variant) =>
-				saveSkillVariantEditor(
+				saveSkillVariantWithBehaviorTrees(
 					{
 						...variant,
+						id: createId(),
 						belongToskillId: skill.id,
 					},
 					trx,
@@ -107,20 +108,11 @@ const updateSkillWithVariants = async (id: string, data: SkillWithVariants): Pro
 		await Promise.all(
 			existingVariants
 				.filter((variant) => !submittedIds.has(variant.id))
-				.map((variant) => deleteSkillVariantEditor(variant.id, trx)),
+				.map((variant) => deleteSkillVariantWithBehaviorTrees(variant.id, trx)),
 		);
 
 		const variants = await Promise.all(
-			data.variants.map((variant) =>
-				saveSkillVariantEditor(
-					{
-						...variant,
-						belongToskillId: id,
-					},
-					trx,
-					id,
-				),
-			),
+			data.variants.map((variant) => saveSkillVariantWithBehaviorTrees({ ...variant, belongToskillId: id }, trx, id)),
 		);
 		return {
 			...skill,
@@ -135,7 +127,7 @@ const deleteSkillWithVariants = async (id: string): Promise<SkillWithVariants | 
 		const variants = await selectAllSkillVariantsByBelongtoskillid(id, trx);
 		await Promise.all(
 			variants.map(async (variant) => {
-				return await deleteSkillVariantEditor(variant.id, trx);
+				return await deleteSkillVariantWithBehaviorTrees(variant.id, trx);
 			}),
 		);
 		await repositoryMethods.skill.delete(id, trx);
@@ -168,7 +160,6 @@ export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill, SkillL
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name", "treeType", "tier", "posX", "posY"],
-		技能属性: ["castTimeType", "distanceType", "targetType", "isPassive"],
 		其他信息: ["preSkillId", "dataSources", "details"],
 		统计信息: ["statisticId"],
 		创建和更新信息: ["createdByAccountId", "updatedByAccountId"],

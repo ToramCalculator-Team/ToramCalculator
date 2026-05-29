@@ -47,6 +47,13 @@ const subHandTypeLimit: Record<Enums.SubHandTypeLimit, string> = {
 	Any: "なし",
 };
 
+const distanceType: Record<Enums.SkillDistanceType, string> = {
+	None: "影響なし",
+	Long: "遠距離のみ",
+	Short: "近距離のみ",
+	Both: "両方",
+};
+
 // 実際のタイプ
 // ----------------------------------------------------------------
 
@@ -200,13 +207,6 @@ const skillCastTimeType: Record<Enums.SkillCastTimeType, string> = {
 	Instant: "即時",
 	Chanting: "詠唱",
 	Charging: "チャージ",
-};
-
-const skillDistanceType: Record<Enums.SkillDistanceType, string> = {
-	None: "影響なし",
-	Long: "遠距離のみ",
-	Short: "近距離のみ",
-	Both: "両方",
 };
 
 const skillTargetType: Record<Enums.SkillTargetType, string> = {
@@ -1286,6 +1286,78 @@ const dictionary: Dictionary = {
 					key: "行動",
 					tableFieldDescription: "キャラクターの行動",
 					formFieldDescription: "キャラクターの行動を入力してください。",
+					fields: {
+						name: {
+							key: "ビヘイビアツリー名",
+							tableFieldDescription: "ビヘイビアツリーの名前",
+							formFieldDescription: "ビヘイビアツリーの名前",
+						},
+						definition: {
+							key: "ビヘイビアツリー定義",
+							tableFieldDescription: "MDSL ビヘイビアツリー定義",
+							formFieldDescription: "MDSL ビヘイビアツリー定義",
+						},
+						agent: {
+							key: "Agent関数",
+							tableFieldDescription: "ビヘイビアツリーの呼び出し可能関数群",
+							formFieldDescription: "ビヘイビアツリーの呼び出し可能関数群",
+						},
+						memberType: {
+							key: "メンバータイプ",
+							tableFieldDescription: "この行動が属するメンバータイプ",
+							formFieldDescription: "この行動が属するメンバータイプ",
+							enumMap: {
+								Player: "プレイヤー",
+								Partner: "パートナー",
+								Mercenary: "傭兵",
+								Mob: "モブ",
+							},
+						},
+						attributeSlots: {
+							key: "属性スロット",
+							tableFieldDescription: "StatContainer に追加する永続属性スロット",
+							formFieldDescription: "StatContainer に追加する永続属性スロット",
+							item: {
+								key: "",
+								tableFieldDescription: "",
+								formFieldDescription: "",
+								fields: {
+									path: {
+										key: "属性パス",
+										tableFieldDescription: "ドット区切りの完全な属性パス",
+										formFieldDescription: "ドット区切りの完全な属性パス",
+									},
+									attribute: {
+										key: "属性定義",
+										tableFieldDescription: "属性定義",
+										formFieldDescription: "属性定義",
+										fields: {
+											displayName: {
+												key: "表示名",
+												tableFieldDescription: "属性の表示名",
+												formFieldDescription: "属性の表示名",
+											},
+											expression: {
+												key: "初期式",
+												tableFieldDescription: "属性の初期式",
+												formFieldDescription: "属性の初期式",
+											},
+											noBaseValue: {
+												key: "乗算除外",
+												tableFieldDescription: "パーセンテージ補正が乗算に参加しない",
+												formFieldDescription: "パーセンテージ補正が乗算に参加しない",
+											},
+											onlyBaseValue: {
+												key: "基本値のみ",
+												tableFieldDescription: "基本値のみ保持",
+												formFieldDescription: "基本値のみ保持",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				partnerSkillAId: {
 					key: "パートナー技能A ID",
@@ -1783,6 +1855,78 @@ const dictionary: Dictionary = {
 					key: "行動",
 					tableFieldDescription: "モンスターの行動説明。シミュレーターはこのロジックに基づいて行動を模倣します",
 					formFieldDescription: "モンスターの行動説明。シミュレーターはこのロジックに基づいて行動を模倣します",
+					fields: {
+						name: {
+							key: "ビヘイビアツリー名",
+							tableFieldDescription: "ビヘイビアツリーの名前",
+							formFieldDescription: "ビヘイビアツリーの名前",
+						},
+						definition: {
+							key: "ビヘイビアツリー定義",
+							tableFieldDescription: "MDSL ビヘイビアツリー定義",
+							formFieldDescription: "MDSL ビヘイビアツリー定義",
+						},
+						agent: {
+							key: "Agent関数",
+							tableFieldDescription: "ビヘイビアツリーの呼び出し可能関数群",
+							formFieldDescription: "ビヘイビアツリーの呼び出し可能関数群",
+						},
+						memberType: {
+							key: "メンバータイプ",
+							tableFieldDescription: "この行動が属するメンバータイプ",
+							formFieldDescription: "この行動が属するメンバータイプ",
+							enumMap: {
+								Player: "プレイヤー",
+								Partner: "パートナー",
+								Mercenary: "傭兵",
+								Mob: "モブ",
+							},
+						},
+						attributeSlots: {
+							key: "属性スロット",
+							tableFieldDescription: "StatContainer に追加する永続属性スロット",
+							formFieldDescription: "StatContainer に追加する永続属性スロット",
+							item: {
+								key: "",
+								tableFieldDescription: "",
+								formFieldDescription: "",
+								fields: {
+									path: {
+										key: "属性パス",
+										tableFieldDescription: "ドット区切りの完全な属性パス",
+										formFieldDescription: "ドット区切りの完全な属性パス",
+									},
+									attribute: {
+										key: "属性定義",
+										tableFieldDescription: "属性定義",
+										formFieldDescription: "属性定義",
+										fields: {
+											displayName: {
+												key: "表示名",
+												tableFieldDescription: "属性の表示名",
+												formFieldDescription: "属性の表示名",
+											},
+											expression: {
+												key: "初期式",
+												tableFieldDescription: "属性の初期式",
+												formFieldDescription: "属性の初期式",
+											},
+											noBaseValue: {
+												key: "乗算除外",
+												tableFieldDescription: "パーセンテージ補正が乗算に参加しない",
+												formFieldDescription: "パーセンテージ補正が乗算に参加しない",
+											},
+											onlyBaseValue: {
+												key: "基本値のみ",
+												tableFieldDescription: "基本値のみ保持",
+												formFieldDescription: "基本値のみ保持",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				baseLv: {
 					key: "基本レベル",
@@ -2520,29 +2664,6 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "主に傭兵スキルのクールダウン間隔の計算に使用されます",
 					formFieldDescription: "主に傭兵スキルのクールダウン間隔の計算に使用されます",
 				},
-				targetType: {
-					key: "ターゲットタイプ",
-					tableFieldDescription: `ターゲットを選択せずに発動できるスキルは${skillTargetType.Self}、${skillTargetType.Player}をターゲットにできるスキルは${skillTargetType.Player}です。`,
-					formFieldDescription: `ターゲットを選択せずに発動できるスキルは${skillTargetType.Self}、${skillTargetType.Player}をターゲットにできるスキルは${skillTargetType.Player}です。`,
-					enumMap: skillTargetType,
-				},
-				castTimeType: {
-					key: "詠唱時間タイプ",
-					tableFieldDescription: `スキル動作開始前の詠唱時間段階：${skillCastTimeType.Instant}、${skillCastTimeType.Chanting}、${skillCastTimeType.Charging}。`,
-					formFieldDescription: `スキル動作開始前の詠唱時間段階：${skillCastTimeType.Instant}、${skillCastTimeType.Chanting}、${skillCastTimeType.Charging}。`,
-					enumMap: skillCastTimeType,
-				},
-				distanceType: {
-					key: "距離威力タイプ",
-					tableFieldDescription: "どのタイプの距離威力がこのスキルに影響するかを示します",
-					formFieldDescription: "どのタイプの距離威力がこのスキルに影響するかを示します",
-					enumMap: skillDistanceType,
-				},
-				isPassive: {
-					key: "パッシブ",
-					tableFieldDescription: "習得した時点で即座に効果が発揮されるスキルはパッシブスキルです",
-					formFieldDescription: "習得した時点で即座に効果が発揮されるスキルはパッシブスキルです",
-				},
 				details: {
 					key: "追加メモ",
 					tableFieldDescription: "編集者が追加したい内容",
@@ -2645,6 +2766,69 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "所属技能",
 					formFieldDescription: "所属技能",
 				},
+				comboCompatible: {
+					key: "コンボ対応",
+					tableFieldDescription: "コンボに配置できるかどうか",
+					formFieldDescription: "コンボに配置できるかどうか",
+				},
+				range: {
+					key: "攻撃範囲",
+					tableFieldDescription: "攻撃範囲",
+					formFieldDescription: "攻撃範囲",
+				},
+				castTimeType: {
+					key: "読込タイプ",
+					tableFieldDescription: `スキル行動開始前の読込段階：${skillCastTimeType.Instant}、${skillCastTimeType.Chanting}、${skillCastTimeType.Charging}。`,
+					formFieldDescription: `スキル行動開始前の読込段階：${skillCastTimeType.Instant}、${skillCastTimeType.Chanting}、${skillCastTimeType.Charging}。`,
+					enumMap: skillCastTimeType,
+				},
+				distanceType: {
+					key: "距離威力タイプ",
+					tableFieldDescription: "このスキル変体が影響を受ける距離威力の種類を示す",
+					formFieldDescription: "このスキル変体が影響を受ける距離威力の種類を示す",
+					enumMap: distanceType,
+				},
+				targetType: {
+					key: "対象タイプ",
+					tableFieldDescription: "このスキル変体の対象タイプ",
+					formFieldDescription: "このスキル変体の対象タイプ",
+					enumMap: skillTargetType,
+				},
+				chantingFixedMs: {
+					key: "固定詠唱時間(ms)",
+					tableFieldDescription: "固定詠唱時間(ミリ秒)",
+					formFieldDescription: "固定詠唱時間(ミリ秒)",
+				},
+				chantingModifiedMs: {
+					key: "可変詠唱時間(ms)",
+					tableFieldDescription: "加速可能な詠唱時間(ミリ秒)",
+					formFieldDescription: "加速可能な詠唱時間(ミリ秒)",
+				},
+				chargingFixedMs: {
+					key: "固定チャージ時間(ms)",
+					tableFieldDescription: "固定チャージ時間(ミリ秒)",
+					formFieldDescription: "固定チャージ時間(ミリ秒)",
+				},
+				chargingModifiedMs: {
+					key: "可変チャージ時間(ms)",
+					tableFieldDescription: "加速可能なチャージ時間(ミリ秒)",
+					formFieldDescription: "加速可能なチャージ時間(ミリ秒)",
+				},
+				actionFixedMs: {
+					key: "固定動作時間(ms)",
+					tableFieldDescription: "固定動作時間(ミリ秒)",
+					formFieldDescription: "固定動作時間(ミリ秒)",
+				},
+				actionModifiedMs: {
+					key: "可変動作時間(ms)",
+					tableFieldDescription: "加速可能な動作時間(ミリ秒)",
+					formFieldDescription: "加速可能な動作時間(ミリ秒)",
+				},
+				startupRatio: {
+					key: "動作前比率",
+					tableFieldDescription: "スキル動作前の準備動作の割合",
+					formFieldDescription: "スキル動作前の準備動作の割合",
+				},
 			},
 			description: "スキルバリアント情報",
 		},
@@ -2675,6 +2859,45 @@ const dictionary: Dictionary = {
 					key: "属性スロット",
 					tableFieldDescription: "StatContainer に追加する永続属性スロット",
 					formFieldDescription: "StatContainer に追加する永続属性スロット JSON",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							path: {
+								key: "属性パス",
+								tableFieldDescription: "ドット区切りの完全な属性パス",
+								formFieldDescription: "ドット区切りの完全な属性パス",
+							},
+							attribute: {
+								key: "属性定義",
+								tableFieldDescription: "属性定義",
+								formFieldDescription: "属性定義",
+								fields: {
+									displayName: {
+										key: "表示名",
+										tableFieldDescription: "属性の表示名",
+										formFieldDescription: "属性の表示名",
+									},
+									expression: {
+										key: "初期式",
+										tableFieldDescription: "属性の初期式",
+										formFieldDescription: "属性の初期式",
+									},
+									noBaseValue: {
+										key: "乗算除外",
+										tableFieldDescription: "パーセンテージ補正が乗算に参加しない",
+										formFieldDescription: "パーセンテージ補正が乗算に参加しない",
+									},
+									onlyBaseValue: {
+										key: "基本値のみ",
+										tableFieldDescription: "基本値のみ保持",
+										formFieldDescription: "基本値のみ保持",
+									},
+								},
+							},
+						},
+					},
 				},
 				activeOwnerId: {
 					key: "能動所有スキル変体",
@@ -3152,38 +3375,384 @@ const dictionary: Dictionary = {
 				},
 				attrModifiers: {
 					key: "属性修正",
-					tableFieldDescription: "雷吉斯托环的属性修正",
-					formFieldDescription: "请输入属性修正",
+					tableFieldDescription: "レジストレットの属性修正",
+					formFieldDescription: "属性修正を入力してください",
 				},
 				pipelinePatches: {
-					key: "管道补丁",
-					tableFieldDescription: "管道补丁效果",
-					formFieldDescription: "请配置管道补丁效果",
+					key: "パイプラインパッチ",
+					tableFieldDescription: "パイプライン修正効果",
+					formFieldDescription: "パイプライン修正効果を設定",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							pipelineName: {
+								key: "対象パイプライン",
+								tableFieldDescription: "対象パイプライン名",
+								formFieldDescription: "対象パイプライン名",
+							},
+							slot: {
+								key: "対象スロット",
+								tableFieldDescription: "対象スロット",
+								formFieldDescription: "対象スロット",
+							},
+							position: {
+								key: "挿入位置",
+								tableFieldDescription: "対象ステップの前後に挿入",
+								formFieldDescription: "対象ステップの前後に挿入",
+								enumMap: {
+									before: "前",
+									after: "後",
+								},
+							},
+							priority: {
+								key: "優先度",
+								tableFieldDescription: "実行優先度",
+								formFieldDescription: "実行優先度",
+							},
+							steps: {
+								key: "ステップ一覧",
+								tableFieldDescription: "一連のローカルステップ",
+								formFieldDescription: "一連のローカルステップ",
+								item: {
+									key: "",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									fields: {
+										type: {
+											key: "ステップタイプ",
+											tableFieldDescription: "ステップタイプ",
+											formFieldDescription: "ステップタイプ",
+											enumMap: {
+												setValue: "値設定",
+												runPipeline: "パイプライン実行",
+												scheduleMemberEvent: "メンバーイベント予約",
+												interrupt: "中断",
+												insertInstructions: "命令挿入",
+											},
+										},
+									},
+									variants: {
+										setValue: {
+											key: "値設定",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "ステップタイプ", tableFieldDescription: "", formFieldDescription: "" },
+												target: { key: "対象フィールド", tableFieldDescription: "", formFieldDescription: "" },
+												value: { key: "値", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										runPipeline: {
+											key: "パイプライン実行",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "ステップタイプ", tableFieldDescription: "", formFieldDescription: "" },
+												pipelineName: { key: "パイプライン名", tableFieldDescription: "", formFieldDescription: "" },
+												params: { key: "パラメータ", tableFieldDescription: "", formFieldDescription: "", fields: {} },
+											},
+										},
+										scheduleMemberEvent: {
+											key: "メンバーイベント予約",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "ステップタイプ", tableFieldDescription: "", formFieldDescription: "" },
+												eventName: { key: "イベント名", tableFieldDescription: "", formFieldDescription: "" },
+												delay: { key: "遅延", tableFieldDescription: "", formFieldDescription: "" },
+												payload: { key: "ペイロード", tableFieldDescription: "", formFieldDescription: "", fields: {} },
+											},
+										},
+										interrupt: {
+											key: "中断",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "ステップタイプ", tableFieldDescription: "", formFieldDescription: "" },
+												reason: { key: "理由", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										insertInstructions: {
+											key: "命令挿入",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "ステップタイプ", tableFieldDescription: "", formFieldDescription: "" },
+												instructions: {
+													key: "命令一覧",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													item: {
+														key: "",
+														tableFieldDescription: "",
+														formFieldDescription: "",
+														fields: {
+															target: { key: "対象", tableFieldDescription: "", formFieldDescription: "" },
+															op: { key: "演算子", tableFieldDescription: "", formFieldDescription: "" },
+															a: { key: "パラメータA", tableFieldDescription: "", formFieldDescription: "" },
+															b: { key: "パラメータB", tableFieldDescription: "", formFieldDescription: "" },
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				skillBranchActivators: {
-					key: "技能分支激活器",
-					tableFieldDescription: "技能分支激活效果",
-					formFieldDescription: "请配置技能分支激活效果",
+					key: "スキル分岐アクティベーター",
+					tableFieldDescription: "スキル分岐有効化効果",
+					formFieldDescription: "スキル分岐有効化効果を設定",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							skillId: {
+								key: "対象スキルID",
+								tableFieldDescription: "対象スキルID",
+								formFieldDescription: "対象スキルID",
+							},
+							branchKey: {
+								key: "分岐キー",
+								tableFieldDescription: "分岐キー",
+								formFieldDescription: "分岐キー",
+							},
+							value: {
+								key: "分岐選択値",
+								tableFieldDescription: "分岐選択値",
+								formFieldDescription: "分岐選択値",
+							},
+						},
+					},
 				},
 				updatedByAccountId: {
 					key: "更新者",
-					tableFieldDescription: "最后更新者",
-					formFieldDescription: "选择更新者账号",
+					tableFieldDescription: "最終更新者",
+					formFieldDescription: "更新者アカウントを選択",
 				},
 				createdByAccountId: {
-					key: "创建者",
-					tableFieldDescription: "创建者",
-					formFieldDescription: "选择创建者账号",
+					key: "作成者",
+					tableFieldDescription: "作成者",
+					formFieldDescription: "作成者アカウントを選択",
 				},
 				subscriptions: {
-					key: "订阅事件",
-					tableFieldDescription: "事件订阅效果",
-					formFieldDescription: "请配置事件订阅效果",
+					key: "イベント購読",
+					tableFieldDescription: "イベント購読効果",
+					formFieldDescription: "イベント購読効果を設定",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							eventNames: {
+								key: "購読イベント名一覧",
+								tableFieldDescription: "購読するイベント名の一覧",
+								formFieldDescription: "購読するイベント名の一覧",
+							},
+							requiredDamageTags: {
+								key: "必要ダメージタグ",
+								tableFieldDescription: "必要ダメージタグ",
+								formFieldDescription: "必要ダメージタグ",
+							},
+							requiredStatusTypes: {
+								key: "必要状態異常タイプ",
+								tableFieldDescription: "必要状態異常タイプ",
+								formFieldDescription: "必要状態異常タイプ",
+							},
+							handlers: {
+								key: "トリガーハンドラ",
+								tableFieldDescription: "トリガー時に実行するアクション一覧",
+								formFieldDescription: "トリガー時に実行するアクション一覧",
+								item: {
+									key: "",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									fields: {
+										type: {
+											key: "ハンドラタイプ",
+											tableFieldDescription: "ハンドラタイプ",
+											formFieldDescription: "ハンドラタイプ",
+											enumMap: {
+												addModifier: "修正追加",
+												removeModifierBySource: "ソース別修正削除",
+												emit: "イベント発射",
+											},
+										},
+									},
+									variants: {
+										addModifier: {
+											key: "修正追加",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "ハンドラタイプ", tableFieldDescription: "", formFieldDescription: "" },
+												attribute: { key: "属性", tableFieldDescription: "", formFieldDescription: "" },
+												modifierType: {
+													key: "修正タイプ",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													enumMap: {
+														dynamicFixed: "動的固定",
+														dynamicPercentage: "動的パーセント",
+														staticFixed: "静的固定",
+														staticPercentage: "静的パーセント",
+													},
+												},
+												value: { key: "値", tableFieldDescription: "", formFieldDescription: "" },
+												lifetime: {
+													key: "ライフタイム",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													enumMap: { once: "一度", bySource: "ソース別" },
+												},
+												sourceIdSuffix: { key: "ソースID接尾辞", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										removeModifierBySource: {
+											key: "ソース別修正削除",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "ハンドラタイプ", tableFieldDescription: "", formFieldDescription: "" },
+												attribute: { key: "属性", tableFieldDescription: "", formFieldDescription: "" },
+												sourceIdSuffix: { key: "ソースID接尾辞", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										emit: {
+											key: "イベント発射",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "ハンドラタイプ", tableFieldDescription: "", formFieldDescription: "" },
+												eventName: { key: "イベント名", tableFieldDescription: "", formFieldDescription: "" },
+												payload: { key: "ペイロード", tableFieldDescription: "", formFieldDescription: "", fields: {} },
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 				thresholdWatchers: {
-					key: "阈值监视器",
-					tableFieldDescription: "阈值监视效果",
-					formFieldDescription: "请配置阈值监视效果",
+					key: "閾値監視",
+					tableFieldDescription: "閾値監視効果",
+					formFieldDescription: "閾値監視効果を設定",
+					item: {
+						key: "",
+						tableFieldDescription: "",
+						formFieldDescription: "",
+						fields: {
+							path: {
+								key: "属性パス",
+								tableFieldDescription: "監視する属性パス",
+								formFieldDescription: "監視する属性パス",
+							},
+							threshold: {
+								key: "閾値",
+								tableFieldDescription: "閾値",
+								formFieldDescription: "閾値",
+							},
+							direction: {
+								key: "方向",
+								tableFieldDescription: "トリガー方向",
+								formFieldDescription: "トリガー方向",
+								enumMap: {
+									rising: "上昇",
+									falling: "下降",
+									both: "両方",
+								},
+							},
+							cooldownMs: {
+								key: "クールダウン(ms)",
+								tableFieldDescription: "クールダウン（ミリ秒）",
+								formFieldDescription: "クールダウン（ミリ秒）",
+							},
+							fireOnRegister: {
+								key: "登録時発火",
+								tableFieldDescription: "登録時に即座に発火するか",
+								formFieldDescription: "登録時に即座に発火するか",
+							},
+							handlers: {
+								key: "トリガーハンドラ",
+								tableFieldDescription: "トリガー時に実行するアクション一覧",
+								formFieldDescription: "トリガー時に実行するアクション一覧",
+								item: {
+									key: "",
+									tableFieldDescription: "",
+									formFieldDescription: "",
+									fields: {
+										type: {
+											key: "ハンドラタイプ",
+											tableFieldDescription: "ハンドラタイプ",
+											formFieldDescription: "ハンドラタイプ",
+											enumMap: {
+												addModifier: "修正追加",
+												removeModifierBySource: "ソース別修正削除",
+												emit: "イベント発射",
+											},
+										},
+									},
+									variants: {
+										addModifier: {
+											key: "修正追加",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "ハンドラタイプ", tableFieldDescription: "", formFieldDescription: "" },
+												attribute: { key: "属性", tableFieldDescription: "", formFieldDescription: "" },
+												modifierType: {
+													key: "修正タイプ",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													enumMap: {
+														dynamicFixed: "動的固定",
+														dynamicPercentage: "動的パーセント",
+														staticFixed: "静的固定",
+														staticPercentage: "静的パーセント",
+													},
+												},
+												value: { key: "値", tableFieldDescription: "", formFieldDescription: "" },
+												lifetime: {
+													key: "ライフタイム",
+													tableFieldDescription: "",
+													formFieldDescription: "",
+													enumMap: { once: "一度", bySource: "ソース別" },
+												},
+												sourceIdSuffix: { key: "ソースID接尾辞", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										removeModifierBySource: {
+											key: "ソース別修正削除",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "ハンドラタイプ", tableFieldDescription: "", formFieldDescription: "" },
+												attribute: { key: "属性", tableFieldDescription: "", formFieldDescription: "" },
+												sourceIdSuffix: { key: "ソースID接尾辞", tableFieldDescription: "", formFieldDescription: "" },
+											},
+										},
+										emit: {
+											key: "イベント発射",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												type: { key: "ハンドラタイプ", tableFieldDescription: "", formFieldDescription: "" },
+												eventName: { key: "イベント名", tableFieldDescription: "", formFieldDescription: "" },
+												payload: { key: "ペイロード", tableFieldDescription: "", formFieldDescription: "", fields: {} },
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},

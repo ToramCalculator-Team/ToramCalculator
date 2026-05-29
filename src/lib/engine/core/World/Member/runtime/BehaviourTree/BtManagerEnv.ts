@@ -16,6 +16,7 @@ export interface BtTreeController {
 		name: string,
 		definition: string | RootNodeDefinition | RootNodeDefinition[],
 		agent?: string,
+		localContext?: Record<string, unknown>,
 	): unknown;
 	unregisterParallelBt(name: string): void;
 	hasBuff(name: string): boolean;
@@ -47,6 +48,7 @@ export interface MemberBtCapabilities<
 		name: string,
 		definition: string | RootNodeDefinition | RootNodeDefinition[],
 		agent?: string,
+		localContext?: Record<string, unknown>,
 	): BehaviourTree | undefined;
 	unregisterParallelBt(name: string): void;
 	hasParallelBt(name: string): boolean;

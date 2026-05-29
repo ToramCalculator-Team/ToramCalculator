@@ -4,7 +4,7 @@ import { State } from "~/lib/mistreevous/State";
 import { ExpressionTransformer } from "../../../../JSProcessor/ExpressionTransformer";
 import type { DamageAreaRequest } from "../../../Area/types";
 import type { MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
-import { ModifierType } from "../StatContainer/StatContainer";
+import { ModifierSourceTypeSchema, ModifierType, StatModifierKindSchema } from "../StatContainer/StatContainer";
 import type { MemberEventType } from "../StateMachine/types";
 import type { MemberSharedRuntime } from "../types";
 import { type ActionPool, defineAction } from "./type";
@@ -12,7 +12,7 @@ import { sendRenderCommand } from "./uitls";
 
 const log = createLogger("Actions");
 
-type BtContext = MemberSharedRuntime<string>;
+type BtContext = MemberSharedRuntime;
 type BtCapabilities = MemberBtCapabilities<string, MemberEventType>;
 
 export const logLv = 0; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
@@ -35,6 +35,10 @@ const commonAttackSchema = z.object({
 		.array(z.string())
 		.default([])
 		.meta({ description: "伤害归因标签，供受击 Pipeline 的 overlay / proc 订阅判定（如 fire/poison/controlEnhance）" }),
+	ailments: z
+		.array(z.object({ type: z.string(), chance: z.string() }))
+		.default([])
+		.meta({ description: "伤害附带异常列表，每项包含异常类型(AbnormalType)和概率表达式" }),
 	warningZone: z
 		.enum(["red", "blue", "none"])
 		.default("none")
@@ -120,6 +124,9 @@ export const CommonActionPool = {
 		for (const key of dependencies.selfDependencies) {
 			casterSnapshot[key] = capabilities.statContainer.getValue(key);
 		}
+		for (const key of dependencies.selfBaseValueDependencies) {
+			casterSnapshot[`_${key}`] = capabilities.statContainer.getBaseValue(key);
+		}
 
 		// 获取技能等级
 		const skillLv = context.currentSkill?.data.lv ?? 0;
@@ -183,6 +190,9 @@ export const CommonActionPool = {
 			for (const key of dependencies.selfDependencies) {
 				casterSnapshot[key] = capabilities.statContainer.getValue(key);
 			}
+			for (const key of dependencies.selfBaseValueDependencies) {
+				casterSnapshot[`_${key}`] = capabilities.statContainer.getBaseValue(key);
+			}
 
 			// 获取技能等级
 			const skillLv = context.currentSkill?.data.lv ?? 0;
@@ -237,7 +247,7 @@ export const CommonActionPool = {
 				radius: z.number().meta({ description: "伤害半径" }),
 			})
 			.meta({ description: "周围攻击" }),
-		(context, input, capabilities) => {
+		(context, input, _capabilities) => {
 			log.debug(`👤 [${context.name}] generateEnemyAttack`, input);
 			// 解析伤害表达式，将所需的self变量放入参数列表
 
@@ -298,6 +308,124 @@ export const CommonActionPool = {
 		},
 	),
 
+	/** 回复 HP */
+	healHp: defineAction(
+		z
+			.object({
+				expression: z.string().meta({ description: "回复量表达式（可含 skillLv、self.xxx）" }),
+				sourceId: z.string().optional().meta({ description: "可选：回复来源 id；未提供时按当前技能聚合" }),
+				sourceName: z.string().optional().meta({ description: "可选：回复来源名称；未提供时使用当前技能名" }),
+				sourceType: ModifierSourceTypeSchema.optional().meta({ description: "可选：来源类别；未提供时按技能处理" }),
+			})
+			.meta({ description: "回复 HP" }),
+		(context, input, capabilities) => {
+			log.debug(`👤 [${context.name}] healHp`, input);
+
+			const skill = context.skill;
+			const currentSkillData = context.currentSkill?.data;
+			const skillLv = skill?.lv ?? currentSkillData?.lv ?? 0;
+
+			const evaluated = capabilities.services.expressionEvaluator?.(input.expression, {
+				currentTimeMs: context.currentTimeMs,
+				tickIndex: context.tickIndex,
+				casterId: context.memberId,
+				targetId: context.targetId,
+				skillLv,
+			});
+			if (typeof evaluated !== "number") {
+				log.warn(`⚠️ [${context.name}] HP回复表达式未返回数值`, input.expression, evaluated);
+				return State.FAILED;
+			}
+
+			const requested = Math.floor(evaluated);
+			if (requested <= 0) return State.SUCCEEDED;
+
+			const currentAttr = `hp.current`;
+			const maxAttr = `hp.max`;
+			const current = capabilities.statContainer.getValue(currentAttr);
+			const max = capabilities.statContainer.getValue(maxAttr);
+			const capped = max > 0 ? Math.min(requested, Math.max(0, max - current)) : requested;
+			if (capped <= 0) return State.SUCCEEDED;
+			const sourceName = input.sourceName ?? skill?.name ?? currentSkillData?.template?.name ?? `hp-heal`;
+			capabilities.statContainer.addModifier(currentAttr, ModifierType.DYNAMIC_FIXED, capped, {
+				id: input.sourceId ?? `skill.heal.hp.${skill?.id ?? currentSkillData?.id ?? "unknown"}`,
+				name: sourceName,
+				type: input.sourceType ?? "skill",
+			});
+
+			const hp = current + capped;
+			const mp = capabilities.statContainer.getValue("mp.current");
+
+			capabilities.notifyDomainEvent({
+				type: "state_changed",
+				memberId: context.memberId,
+				hp,
+				mp,
+			});
+
+			return State.SUCCEEDED;
+		},
+	),
+
+	/** 回复 MP */
+	healMp: defineAction(
+		z
+			.object({
+				expression: z.string().meta({ description: "回复量表达式（可含 skillLv、self.xxx）" }),
+				sourceId: z.string().optional().meta({ description: "可选：回复来源 id；未提供时按当前技能聚合" }),
+				sourceName: z.string().optional().meta({ description: "可选：回复来源名称；未提供时使用当前技能名" }),
+				sourceType: ModifierSourceTypeSchema.optional().meta({ description: "可选：来源类别；未提供时按技能处理" }),
+			})
+			.meta({ description: "回复 MP" }),
+		(context, input, capabilities) => {
+			log.debug(`👤 [${context.name}] healMp`, input);
+
+			const skill = context.skill;
+			const currentSkillData = context.currentSkill?.data;
+			const skillLv = skill?.lv ?? currentSkillData?.lv ?? 0;
+
+			const evaluated = capabilities.services.expressionEvaluator?.(input.expression, {
+				currentTimeMs: context.currentTimeMs,
+				tickIndex: context.tickIndex,
+				casterId: context.memberId,
+				targetId: context.targetId,
+				skillLv,
+			});
+			if (typeof evaluated !== "number") {
+				log.warn(`⚠️ [${context.name}] MP回复表达式未返回数值`, input.expression, evaluated);
+				return State.FAILED;
+			}
+
+			const requested = Math.floor(evaluated);
+			if (requested <= 0) return State.SUCCEEDED;
+
+			const currentAttr = `mp.current`;
+			const maxAttr = `mp.max`;
+			const current = capabilities.statContainer.getValue(currentAttr);
+			const max = capabilities.statContainer.getValue(maxAttr);
+			const capped = max > 0 ? Math.min(requested, Math.max(0, max - current)) : requested;
+			if (capped <= 0) return State.SUCCEEDED;
+			const sourceName = input.sourceName ?? skill?.name ?? currentSkillData?.template?.name ?? `mp-heal`;
+			capabilities.statContainer.addModifier(currentAttr, ModifierType.DYNAMIC_FIXED, capped, {
+				id: input.sourceId ?? `skill.heal.mp.${skill?.id ?? currentSkillData?.id ?? "unknown"}`,
+				name: sourceName,
+				type: input.sourceType ?? "skill",
+			});
+
+			const hp = capabilities.statContainer.getValue("hp.current");
+			const mp = current + capped;
+
+			capabilities.notifyDomainEvent({
+				type: "state_changed",
+				memberId: context.memberId,
+				hp,
+				mp,
+			});
+
+			return State.SUCCEEDED;
+		},
+	),
+
 	/** 添加buff */
 	addBuff: defineAction(
 		z
@@ -339,20 +467,47 @@ export const CommonActionPool = {
 		z
 			.object({
 				attribute: z.string().meta({ description: "属性名称" }),
-				value: z.number().meta({ description: "属性值" }),
-				type: z.enum(["fixed", "percentage"]).meta({ description: "属性类型" }),
+				expression: z.string().meta({ description: "属性值表达式" }),
+				type: StatModifierKindSchema.meta({ description: "属性修改通道" }),
+				sourceId: z.string().optional().meta({ description: "可选：稳定来源 id；未提供时使用当前技能 id" }),
+				sourceName: z.string().optional().meta({ description: "可选：来源名称；未提供时使用当前技能名" }),
+				sourceType: ModifierSourceTypeSchema.optional().meta({ description: "可选：来源类别；未提供时按技能处理" }),
+				skillLv: z.number().optional().meta({ description: "可选：技能等级；未提供时从 context.skill 读取" }),
 			})
 			.meta({ description: "属性修改" }),
 		(context, input, capabilities) => {
 			log.debug(`👤 [${context.name}] modifyAttribute`, input);
+			// 优先从 per-tree 注入的 skill 上下文读取，fallback 到 currentSkill
+			const skill = context.skill;
+			const currentSkillData = context.currentSkill?.data;
+
+			const skillLv = input.skillLv ?? skill?.lv ?? currentSkillData?.lv ?? 0;
+
+			const evaluated = capabilities.services.expressionEvaluator?.(input.expression, {
+				currentTimeMs: context.currentTimeMs,
+				tickIndex: context.tickIndex,
+				casterId: context.memberId,
+				targetId: context.targetId,
+				skillLv,
+			});
+			if (typeof evaluated !== "number") {
+				log.warn(`⚠️ [${context.name}] 属性修改表达式未返回数值`, input.expression, evaluated);
+				return State.FAILED;
+			}
 			capabilities.statContainer.addModifier(
 				input.attribute,
-				input.type === "fixed" ? ModifierType.DYNAMIC_FIXED : ModifierType.DYNAMIC_PERCENTAGE,
-				input.value,
 				{
-					id: context.currentSkill?.data.id ?? "",
-					name: context.currentSkill?.data.template.name ?? "",
-					type: "skill",
+					baseValue: ModifierType.BASE_VALUE,
+					staticFixed: ModifierType.STATIC_FIXED,
+					staticPercentage: ModifierType.STATIC_PERCENTAGE,
+					dynamicFixed: ModifierType.DYNAMIC_FIXED,
+					dynamicPercentage: ModifierType.DYNAMIC_PERCENTAGE,
+				}[input.type],
+				evaluated,
+				{
+					id: input.sourceId ?? skill?.id ?? currentSkillData?.id ?? "",
+					name: input.sourceName ?? skill?.name ?? currentSkillData?.template.name ?? "",
+					type: input.sourceType ?? "skill",
 				},
 			);
 			return State.SUCCEEDED;
@@ -388,7 +543,7 @@ export const CommonActionPool = {
 					.meta({ description: "可选：StatContainer 属性槽路径，触发时 +1（供后续 BT 节点读取）" }),
 			})
 			.meta({ description: "订阅状态进入/离开事件" }),
-		(context, input, capabilities) => {
+		(_context, input, capabilities) => {
 			const eventNames: string[] = [];
 			if (input.direction === "entered" || input.direction === "both") eventNames.push("status.entered");
 			if (input.direction === "exited" || input.direction === "both") eventNames.push("status.exited");
@@ -432,7 +587,7 @@ export const CommonActionPool = {
 				counterSlot: z.string().optional(),
 			})
 			.meta({ description: "按事件名 + tag 过滤订阅通用 proc 事件" }),
-		(context, input, capabilities) => {
+		(_context, input, capabilities) => {
 			const tagFilter = new Set(input.requiredTags);
 			const predicate =
 				tagFilter.size === 0
@@ -475,7 +630,7 @@ export const CommonActionPool = {
 				fireOnRegister: z.boolean().default(false),
 			})
 			.meta({ description: "注册属性阈值 watcher" }),
-		(context, input, capabilities) => {
+		(_context, input, capabilities) => {
 			capabilities.watch(
 				input.sourceId,
 				input.path,

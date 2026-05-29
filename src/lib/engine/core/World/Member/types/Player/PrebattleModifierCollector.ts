@@ -138,11 +138,17 @@ function collectPrebattleAttachmentModifiers<TAttrKey extends string>(
 		for (const [k, v] of Object.entries(node)) {
 			if ((k === "modifiers" || k === "cooking") && Array.isArray(v)) {
 				const fullPath = formatRootedPathFromCharacter(path);
-				all.push(...compilePrebattleModifierLines<TAttrKey>(toStringArray(v), { env }, {
-					id: fullPath,
-					name: fullPath,
-					type: "equipment" as const,
-				}));
+				all.push(
+					...compilePrebattleModifierLines<TAttrKey>(
+						toStringArray(v),
+						{ env },
+						{
+							id: fullPath,
+							name: fullPath,
+							type: "equipment" as const,
+						},
+					),
+				);
 			}
 
 			if (Array.isArray(v) && k !== "logic") {

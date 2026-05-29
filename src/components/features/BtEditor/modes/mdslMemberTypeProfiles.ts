@@ -7,38 +7,7 @@ import { MobActionPool } from "~/lib/engine/core/World/Member/types/Mob/Agents/A
 import { MobConditionPool } from "~/lib/engine/core/World/Member/types/Mob/Agents/Condition";
 import { PlayerActionPool } from "~/lib/engine/core/World/Member/types/Player/Agents/Actions";
 import { PlayerConditionPool } from "~/lib/engine/core/World/Member/types/Player/Agents/Condition";
-
-const MemberRuntimeShape = {
-	tickIndex: 0,
-	currentTimeMs: 0,
-	deltaTimeMs: 0,
-	position: { x: 0, y: 0, z: 0 },
-	targetId: "",
-	statusTags: [] as string[],
-	currentSkill: null as unknown,
-	previousSkill: null as unknown,
-	currentSkillVariant: null as unknown,
-	currentSkillStartupMs: 0,
-	currentSkillChargingMs: 0,
-	currentSkillChantingMs: 0,
-	currentSkillActionMs: 0,
-};
-
-const PlayerRuntimeShape = {
-	...MemberRuntimeShape,
-	type: "Player" as const,
-	skillList: [] as unknown[],
-	skillCooldowns: [] as number[],
-	character: null as unknown,
-};
-
-const MobRuntimeShape = {
-	...MemberRuntimeShape,
-	type: "Mob" as const,
-	skillList: [] as unknown[],
-	skillCooldowns: [] as number[],
-	character: null as unknown,
-};
+import { DefaultMemberSharedRuntime } from "~/lib/engine/core/World/Member/runtime/types";
 
 export type MdslProfileConfig = {
 	memberType: MemberType;
@@ -64,7 +33,7 @@ export const getMdslProfileConfig = (memberType: MemberType): MdslProfileConfig 
 					...PlayerConditionPool,
 				},
 				propertyObject: {
-					...PlayerRuntimeShape,
+					...DefaultMemberSharedRuntime,
 				},
 			};
 		case "Mob":
@@ -79,7 +48,7 @@ export const getMdslProfileConfig = (memberType: MemberType): MdslProfileConfig 
 					...MobConditionPool,
 				},
 				propertyObject: {
-					...MobRuntimeShape,
+					...DefaultMemberSharedRuntime,
 				},
 			};
 		case "Partner":
@@ -90,7 +59,7 @@ export const getMdslProfileConfig = (memberType: MemberType): MdslProfileConfig 
 				memberType,
 				actionPool: CommonActionPool,
 				conditionPool: CommonConditionPool,
-				propertyObject: MemberRuntimeShape,
+				propertyObject: DefaultMemberSharedRuntime,
 			};
 	}
 };

@@ -9,11 +9,10 @@ import { collectPlayerRuntimeAttachments } from "../../construction/collectPlaye
 import { Member } from "../../Member";
 import { MemberRuntimeServicesDefaults } from "../../RuntimeServices";
 import { mergeSchema, type SlotDeclaration } from "../../runtime/StatContainer/SchemaMerge";
-import type { ExtractAttrPaths, NestedSchema } from "../../runtime/StatContainer/SchemaTypes";
 import { StatContainer } from "../../runtime/StatContainer/StatContainer";
 import type { PlayerRuntime } from "../../runtime/types";
 import { createPlayerBtBindings } from "./Agents/BtBindings";
-import { type PlayerAttrKey, type PlayerAttrNestedSchema, PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
+import { type PlayerAttrKey, PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
 import { type PlayerEventType, type PlayerStateContext, playerStateMachine } from "./PlayerStateMachine";
 import { selectPlayerSkillVariant } from "./skillLifecycle";
 
@@ -102,7 +101,18 @@ export class Player extends Member<PlayerAttrKey, PlayerEventType, PlayerStateCo
 			const tree = variant?.passiveBehaviorTree;
 			if (!tree) continue;
 
-			this.btManager.registerParallelBt(`passive:${variant.id}:${tree.name}`, tree.definition, tree.agent);
+			this.btManager.registerParallelBt(
+				`passive:${variant.id}:${tree.name}`,
+				tree.definition,
+				tree.agent,
+				{
+					skill: {
+						id: variant.id,
+						lv: skill.lv,
+						name: skill.template?.name ?? "",
+					},
+				},
+			);
 		}
 	}
 
