@@ -14,7 +14,7 @@ import type { PipelineInstruction } from "./instruction";
  *
  * 技能生命周期管线（skill.charging / skill.chanting / skill.action）约定：
  * - 动画时序：chanting(咏唱) → charging(蓄力) → action(施法)。
- * - action 内部：startupMs(前摇) + 后摇 = actionMs。startupMs = floor(actionMs * startupRatio)，由 FSM 计算，不经过管线。
+ * - action 内部：startUp(前摇) + 后摇 = actionMs。startUp = floor(actionMs * startupRatio)，由 FSM 计算，不经过管线。
  * - 由编排层（FSM action “添加待处理技能”）预求值 variant 上的字符串公式并转为毫秒，
  *   以 `input.fixed` + `input.modified` 传入。
  * - charging / action 套用 mspd 行动速度修正：rate = max(0.5, 1 - mspd/100)。

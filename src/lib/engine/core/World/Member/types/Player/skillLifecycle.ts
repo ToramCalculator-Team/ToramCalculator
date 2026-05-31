@@ -5,10 +5,10 @@ import type { ExpressionContext } from "~/lib/engine/core/JSProcessor/types";
 import type { StageData } from "~/lib/engine/core/Pipeline/stageEnv";
 
 export interface PlayerSkillLifecycleMs {
-	chantingMs: number;
-	chargingMs: number;
+	chanting: number;
+	charging: number;
 	actionMs: number;
-	startupMs: number;
+	startUp: number;
 	activeEffectDurationMs: number;
 }
 
@@ -33,10 +33,10 @@ type ComputePlayerSkillLifecycleParams = {
 };
 
 export const EMPTY_PLAYER_SKILL_LIFECYCLE_MS: PlayerSkillLifecycleMs = {
-	chantingMs: 0,
-	chargingMs: 0,
+	chanting: 0,
+	charging: 0,
 	actionMs: 0,
-	startupMs: 0,
+	startUp: 0,
 	activeEffectDurationMs: 0,
 };
 
@@ -107,12 +107,12 @@ export function computePlayerSkillLifecycleMs(props: ComputePlayerSkillLifecycle
 		return Math.max(0, Math.floor(fallbackMs));
 	};
 
-	const chantingMs = runPipelineDurationMs(
+	const chanting = runPipelineDurationMs(
 		"skill.chanting",
 		{ fixed: chantingFixed, modified: chantingModified },
 		chantingFixed + chantingModified,
 	);
-	const chargingMs = runPipelineDurationMs(
+	const charging = runPipelineDurationMs(
 		"skill.charging",
 		{ fixed: chargingFixed, modified: chargingModified },
 		chargingFixed + chargingModified,
@@ -122,13 +122,13 @@ export function computePlayerSkillLifecycleMs(props: ComputePlayerSkillLifecycle
 		{ fixed: actionFixed, modified: actionModified },
 		actionFixed + actionModified,
 	);
-	const startupMs = Math.floor(actionMs * startupRatio);
+	const startUp = Math.floor(actionMs * startupRatio);
 
 	return {
-		chantingMs,
-		chargingMs,
+		chanting,
+		charging,
 		actionMs,
-		startupMs,
-		activeEffectDurationMs: chantingMs + chargingMs + actionMs,
+		startUp,
+		activeEffectDurationMs: chanting + charging + actionMs,
 	};
 }

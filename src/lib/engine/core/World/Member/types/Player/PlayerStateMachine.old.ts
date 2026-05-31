@@ -328,9 +328,9 @@ export const playerStateMachine = (
 						data: skill,
 						activeVariant: skillVariant,
 						lifecycle: {
-							startupMs: 0,
-							chargingMs: 0,
-							chantingMs: 0,
+							startUp: 0,
+							charging: 0,
+							chanting: 0,
 							actionMs: 0,
 						},
 					};

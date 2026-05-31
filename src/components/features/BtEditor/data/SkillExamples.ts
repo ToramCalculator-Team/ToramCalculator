@@ -3,12 +3,12 @@ import type { SkillExample } from "../types";
 
 const defaultSkillDefinition = `root {
 	sequence{
-		action [animation,"蓄力动画",$currentSkill.lifecycle.chargingMs]
-		wait [$currentSkill.lifecycle.chargingMs]
-		action [animation, "咏唱动画",$currentSkill.lifecycle.chantingMs]
-		wait [$currentSkill.lifecycle.chantingMs]
-		action [animation,"施法前摇",$currentSkill.lifecycle.startupMs]
-		wait [$currentSkill.lifecycle.startupMs]
+		action [animation,"蓄力动画",$currentSkill.lifecycle.charging]
+		wait [$currentSkill.lifecycle.charging]
+		action [animation, "咏唱动画",$currentSkill.lifecycle.chanting]
+		wait [$currentSkill.lifecycle.chanting]
+		action [animation,"施法前摇",$currentSkill.lifecycle.startUp]
+		wait [$currentSkill.lifecycle.startUp]
         branch [mainAction]
 		action [animation, "施法后摇", $后摇毫秒]
 		wait [$后摇毫秒]
@@ -22,7 +22,7 @@ root [mainAction] {
 }`;
 const defaultSkillAgent = `class Agent {
     get 后摇毫秒() {
-        const endMs = this.currentSkill.lifecycle.actionMs - this.currentSkill.lifecycle.startupMs
+        const endMs = this.currentSkill.lifecycle.actionMs - this.currentSkill.lifecycle.startUp
         return endMs
     }
 }`;

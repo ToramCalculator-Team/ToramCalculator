@@ -31,9 +31,9 @@ export interface MemberSharedRuntime<TExtraAttrKey extends string = never> exten
 		activeVariant: SkillVariantWithRelations;
 		lifecycle: {
 			/** 当前技能生命周期的四段毫秒。 */
-			startupMs: number;
-			chargingMs: number;
-			chantingMs: number;
+			startUp: number;
+			charging: number;
+			chanting: number;
 			actionMs: number;
 		};
 	} | null;
