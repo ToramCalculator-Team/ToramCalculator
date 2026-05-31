@@ -1,12 +1,12 @@
 import { z } from "zod/v4";
 import { BUILT_IN_REGISTLETS_BY_ID } from "../../attachments/BuiltInRegistlets";
 import type { MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
-import type { MemberEventType } from "../StateMachine/types";
+import type { MemberFSMEvent } from "../StateMachine/types";
 import type { MemberSharedRuntime } from "../types";
 import { type ConditionPool, defineCondition } from "./type";
 
 type BtContext = MemberSharedRuntime<string>;
-type BtCapabilities = MemberBtCapabilities<string, MemberEventType>;
+type BtCapabilities = MemberBtCapabilities<string, MemberFSMEvent>;
 
 function currentCharacterOf(context: BtContext): unknown {
 	if (!("character" in context)) return null;
@@ -101,6 +101,6 @@ export const CommonConditionPool = {
 			return false;
 		},
 	),
-} as const satisfies ConditionPool<BtContext, string, MemberEventType, BtCapabilities>;
+} as const satisfies ConditionPool<BtContext, string, MemberFSMEvent, BtCapabilities>;
 
 export type CommonConditionPool = typeof CommonConditionPool;

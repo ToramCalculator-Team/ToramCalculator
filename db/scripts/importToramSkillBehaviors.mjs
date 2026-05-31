@@ -845,7 +845,12 @@ for (const category of source.categories ?? []) {
 	for (const jsonTree of category.skillTrees ?? []) {
 		for (const jsonSkill of jsonTree.skills ?? []) {
 			summary.sourceSkills += 1;
-			const passiveEffects = (jsonSkill.effects ?? []).filter((effect) => effect.skillType === "被動");
+			const allEffects = (jsonSkill.effects ?? []).filter((effect) => !effect.isHistory);
+			const hasPassiveSkillType = allEffects.some((effect) => effect.skillType === "被動");
+			if (!hasPassiveSkillType) continue;
+			const passiveEffects = allEffects.filter(
+				(effect) => (effect.branches ?? []).some((b) => b.name === "passive"),
+			);
 			if (passiveEffects.length === 0) continue;
 
 			const resolvedSkill = resolveSkillRecord(jsonTree, jsonSkill, skillIndexes);
@@ -857,10 +862,6 @@ for (const category of source.categories ?? []) {
 			const skillRows = variantRowsBySkillId.get(resolvedSkill.record.id) ?? [];
 			const usedRows = new Set();
 			for (const effect of passiveEffects) {
-				if (effect.isHistory) {
-					summary.skippedHistoryEffects += 1;
-					continue;
-				}
 				summary.sourcePassiveEffects += 1;
 
 				const actions = buildPassiveModifyAttributeActions(jsonTree, jsonSkill, effect, summary);

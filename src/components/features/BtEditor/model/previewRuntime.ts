@@ -8,14 +8,14 @@ import type {
 	MemberBtManagerEnv,
 } from "~/lib/engine/core/World/Member/runtime/BehaviourTree/BtManagerEnv";
 import { StatContainer } from "~/lib/engine/core/World/Member/runtime/StatContainer/StatContainer";
-import type { MemberEventType } from "~/lib/engine/core/World/Member/runtime/StateMachine/types";
+import type { MemberFSMEvent } from "~/lib/engine/core/World/Member/runtime/StateMachine/types";
 import type { MemberSharedRuntime, MobRuntime, PlayerRuntime } from "~/lib/engine/core/World/Member/runtime/types";
 import { createMobBtBindings } from "~/lib/engine/core/World/Member/types/Mob/Agents/BtBindings";
 import type { MobAttrKey } from "~/lib/engine/core/World/Member/types/Mob/MobAttrSchema";
-import type { MobEventType } from "~/lib/engine/core/World/Member/types/Mob/MobStateMachine";
+import type { MobFSMEvent } from "~/lib/engine/core/World/Member/types/Mob/MobStateMachine";
 import { createPlayerBtBindings } from "~/lib/engine/core/World/Member/types/Player/Agents/BtBindings";
 import type { PlayerAttrKey } from "~/lib/engine/core/World/Member/types/Player/PlayerAttrSchema";
-import type { PlayerEventType } from "~/lib/engine/core/World/Member/types/Player/PlayerStateMachine";
+import type { PlayerFSMEvent } from "~/lib/engine/core/World/Member/types/Player/PlayerStateMachine";
 import { BehaviourTree, type BehaviourTreeOptions, State } from "~/lib/mistreevous";
 import type { Agent } from "~/lib/mistreevous/Agent";
 import type {
@@ -36,7 +36,7 @@ type PreviewRuntime = (PlayerRuntime | MobRuntime | (MemberSharedRuntime<string>
 	MemberSharedRuntime<string>;
 
 type PreviewBtRuntime = {
-	env: MemberBtManagerEnv<MemberEventType, string, PreviewRuntime>;
+	env: MemberBtManagerEnv<MemberFSMEvent, string, PreviewRuntime>;
 	btBindings: Record<string, unknown>;
 };
 
@@ -84,13 +84,13 @@ const createPreviewRuntime = (memberType: MemberType): PreviewRuntime => {
 
 const createPreviewBtBindings = (
 	memberType: MemberType,
-	capabilities: MemberBtCapabilities<string, MemberEventType>,
+	capabilities: MemberBtCapabilities<string, MemberFSMEvent>,
 ): Record<string, unknown> => {
 	// 预览环境使用 string 宽属性槽来承接 MDSL 动态输入；这里收窄到具体成员类型只用于复用真实 binding 工厂。
 	if (memberType === "Mob") {
-		return createMobBtBindings(capabilities as unknown as MemberBtCapabilities<MobAttrKey, MobEventType>);
+		return createMobBtBindings(capabilities as unknown as MemberBtCapabilities<MobAttrKey, MobFSMEvent>);
 	}
-	return createPlayerBtBindings(capabilities as unknown as MemberBtCapabilities<PlayerAttrKey, PlayerEventType>);
+	return createPlayerBtBindings(capabilities as unknown as MemberBtCapabilities<PlayerAttrKey, PlayerFSMEvent>);
 };
 
 export const createPreviewBtRuntime = (memberType: MemberType): PreviewBtRuntime => {
@@ -109,10 +109,10 @@ export const createPreviewBtRuntime = (memberType: MemberType): PreviewBtRuntime
 
 	const statContainer = new StatContainer<string>(MemberBaseNestedSchema);
 	const attributeWatchers = new AttributeWatcherRegistry<string>(statContainer);
-	const renderState: MemberBtCapabilities<string, MemberEventType>["renderState"] = {};
+	const renderState: MemberBtCapabilities<string, MemberFSMEvent>["renderState"] = {};
 	const parallelBts = new Set<string>();
 
-	const capabilities: MemberBtCapabilities<string, MemberEventType> = {
+	const capabilities: MemberBtCapabilities<string, MemberFSMEvent> = {
 		statContainer,
 		services,
 		renderState,
@@ -134,7 +134,7 @@ export const createPreviewBtRuntime = (memberType: MemberType): PreviewBtRuntime
 		send: () => undefined,
 	};
 
-	const env: MemberBtManagerEnv<MemberEventType, string, PreviewRuntime> = {
+	const env: MemberBtManagerEnv<MemberFSMEvent, string, PreviewRuntime> = {
 		name: "BtEditorPreview",
 		getContext: () => runtime,
 		getCapabilities: () => capabilities,

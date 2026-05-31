@@ -98,9 +98,9 @@ const buildInputObject = (schema: ZodType, args: unknown[]): unknown => {
 export const actionPoolToInvokers = <
 	TContext extends Record<string, unknown>,
 	TExtraAttrKey extends string,
-	TStateEvent extends EventObject,
-	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TStateEvent>,
-	TPool extends ActionPool<TContext, TExtraAttrKey, TStateEvent, TCapabilities>,
+	TFSMEvent extends EventObject,
+	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TFSMEvent>,
+	TPool extends ActionPool<TContext, TExtraAttrKey, TFSMEvent, TCapabilities>,
 >(
 	_context: TContext, // 仅用于类型推导
 	pool: TPool,
@@ -129,9 +129,9 @@ export const actionPoolToInvokers = <
 export const conditionPoolToInvokers = <
 	TContext extends Record<string, unknown>,
 	TExtraAttrKey extends string,
-	TStateEvent extends EventObject,
-	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TStateEvent>,
-	TPool extends ConditionPool<TContext, TExtraAttrKey, TStateEvent, TCapabilities>,
+	TFSMEvent extends EventObject,
+	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TFSMEvent>,
+	TPool extends ConditionPool<TContext, TExtraAttrKey, TFSMEvent, TCapabilities>,
 >(
 	_context: TContext, // 仅用于类型推导
 	pool: TPool,
@@ -169,9 +169,9 @@ export const maxMin = (min: number, value: number, max: number) => {
  * @param actionName 动作名称
  * @param params 参数
  */
-export const sendRenderCommand = <TExtraAttrKey extends string, TStateEvent extends EventObject>(
+export const sendRenderCommand = <TExtraAttrKey extends string, TFSMEvent extends EventObject>(
 	context: BtContext<TExtraAttrKey>,
-	capabilities: MemberBtCapabilities<TExtraAttrKey, TStateEvent>,
+	capabilities: MemberBtCapabilities<TExtraAttrKey, TFSMEvent>,
 	actionName: string,
 	params?: Record<string, unknown>,
 ) => {

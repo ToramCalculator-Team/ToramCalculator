@@ -5,6 +5,7 @@ import { validateSlotDeclarationPath } from "~/lib/engine/core/World/Member/runt
 import { validateDefinition } from "~/lib/mistreevous";
 import type { NodeArgument } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import type { MdslIntellisenseRegistry } from "../modes/mdslIntellisense";
+import { getRequiredParamCount } from "../modes/mdslIntellisense";
 import { getErrorMessage } from "../utils/errors";
 import {
 	COMPOSITE_NODE_TYPES,
@@ -199,13 +200,17 @@ function validateCalls(document: EditableBtDocument, registry: MdslIntellisenseR
 			});
 			return;
 		}
-		if (spec.params.length !== args.length) {
+		const requiredCount = getRequiredParamCount(spec);
+		if (args.length < requiredCount || args.length > spec.params.length) {
+			const expected = requiredCount === spec.params.length
+				? `${spec.params.length}`
+				: `${requiredCount}~${spec.params.length}`;
 			diagnostics.push({
 				severity: "error",
 				code: `${kind}.arg.count`,
 				rootKey,
 				nodeId,
-				message: `${call} 参数数量应为 ${spec.params.length}，当前为 ${args.length}`,
+				message: `${call} 参数数量应为 ${expected}，当前为 ${args.length}`,
 			});
 		}
 	};

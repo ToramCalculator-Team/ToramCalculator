@@ -541,12 +541,14 @@ const ArgumentField: Component<{
 		);
 	}
 
-	if (param().type.kind === "enum") {
+	const typeSpec = param().type;
+
+	if (typeSpec.kind === "enum") {
 		return (
 			<EnumArgumentField
 				identity={props.row.identity}
 				value={value()}
-				values={param().type.values}
+				values={typeSpec.values}
 				referenceOptions={referenceOptions()}
 				disabled={props.readOnly}
 				onChange={update}
@@ -554,8 +556,8 @@ const ArgumentField: Component<{
 		);
 	}
 
-	if (param().type.kind === "primitive") {
-		if (param().type.type === "number") {
+	if (typeSpec.kind === "primitive") {
+		if (typeSpec.type === "number") {
 			return (
 				<NumberArgumentField
 					identity={props.row.identity}
@@ -566,7 +568,7 @@ const ArgumentField: Component<{
 				/>
 			);
 		}
-		if (param().type.type === "boolean") {
+		if (typeSpec.type === "boolean") {
 			return (
 				<BooleanArgumentField
 					identity={props.row.identity}
@@ -577,7 +579,7 @@ const ArgumentField: Component<{
 				/>
 			);
 		}
-		if (param().type.type === "string") {
+		if (typeSpec.type === "string") {
 			return (
 				<StringArgumentField
 					identity={props.row.identity}
@@ -588,7 +590,7 @@ const ArgumentField: Component<{
 				/>
 			);
 		}
-		if (param().type.type === "null") {
+		if (typeSpec.type === "null") {
 			return (
 				<input
 					type="text"

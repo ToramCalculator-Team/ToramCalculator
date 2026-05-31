@@ -25,7 +25,7 @@ export interface MemberCustomEvent extends EventObject {
 	type: string;
 	data?: Record<string, unknown>;
 }
-export type MemberEventType =
+export type MemberFSMEvent =
 	| MemberCreateEvent // 创建事件
 	| MemberDestroyEvent // 销毁事件
 	| MemberUpdateEvent // 更新事件
@@ -39,11 +39,11 @@ export type MemberEventType =
  * @template TExtraAttrKey 属性键的字符串联合类型
  */
 export type MemberStateMachine<
-	TStateEvent extends EventObject = MemberEventType, // 状态机事件类型
-	TStateContext extends MemberStateContext = MemberStateContext, // 状态机上下文类型
+	TFSMEvent extends EventObject = MemberFSMEvent, // 状态机事件类型
+	TFSMContext extends MemberFSMContext = MemberFSMContext, // 状态机上下文类型
 > = StateMachine<
-	TStateContext, // TContext - 状态机上下文
-	TStateEvent, // TEvent - 事件类型（可扩展）
+	TFSMContext, // TContext - 状态机上下文
+	TFSMEvent, // TEvent - 事件类型（可扩展）
 	Record<string, any>, // TChildren - 子状态机
 	any, // TActor - Actor配置
 	any, // TAction - 动作配置
@@ -61,7 +61,7 @@ export type MemberStateMachine<
 // 状态机执行动作时需要的外部能力
 export interface MemberStateMachineEnv<
 	TExtraAttrKey extends string,
-	TStateEvent extends MemberEventType,
+	TFSMEvent extends MemberFSMEvent,
 	TRuntime extends MemberSharedRuntime<TExtraAttrKey>,
 > {
 	id: string;
@@ -70,10 +70,10 @@ export interface MemberStateMachineEnv<
 	runtime: TRuntime;
 	statContainer: StatContainer<MemberBaseAttrKey | TExtraAttrKey>;
 	services: MemberRuntimeServices;
-	btManager: BtManager<TExtraAttrKey, TRuntime, TStateEvent>;
+	btManager: BtManager<TExtraAttrKey, TRuntime, TFSMEvent>;
 	notifyDomainEvent(event: MemberDomainEvent): void;
 	runPipeline(pipelineName: string, params?: Record<string, unknown>): StageData;
-	send(event: TStateEvent): void;
+	send(event: TFSMEvent): void;
 }
 
 /**
@@ -81,13 +81,13 @@ export interface MemberStateMachineEnv<
  * 基于 XState Actor 类型，提供完整的类型推断
  * 使用泛型参数允许子类扩展事件类型
  *
- * @template TStateEvent 状态机事件类型
- * @template TStateContext 状态机上下文类型
+ * @template TFSMEvent 状态机事件类型
+ * @template TFSMContext 状态机上下文类型
  */
 export type MemberActor<
-	TStateEvent extends EventObject = MemberEventType,
-	TStateContext extends MemberStateContext = MemberStateContext,
-> = Actor<MemberStateMachine<TStateEvent, TStateContext>>;
+	TFSMEvent extends EventObject = MemberFSMEvent,
+	TFSMContext extends MemberFSMContext = MemberFSMContext,
+> = Actor<MemberStateMachine<TFSMEvent, TFSMContext>>;
 
 /**
  * 成员状态上下文通用接口
@@ -103,7 +103,7 @@ export type MemberActor<
  * Purpose:
  * - FSM actions read runtime through MemberStateMachineEnv; BT action capabilities are provided separately.
  */
-export interface MemberStateContext {
+export interface MemberFSMContext {
 	/** 是否存活 */
 	isAlive: boolean;
 	/** 创建模拟时间（毫秒，用于行为树/FSM 计算相对时间） */

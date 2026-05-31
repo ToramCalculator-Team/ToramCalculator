@@ -20,8 +20,8 @@ import type { NestedSchema, SchemaStructure } from "./runtime/StatContainer/Sche
 import type { StatContainer } from "./runtime/StatContainer/StatContainer";
 import type {
 	MemberActor,
-	MemberEventType,
-	MemberStateContext,
+	MemberFSMEvent,
+	MemberFSMContext,
 	MemberStateMachine,
 	MemberStateMachineEnv,
 } from "./runtime/StateMachine/types";
@@ -50,8 +50,8 @@ export interface MemberSerializeData {
 
 export class Member<
 	TExtraAttrKey extends string,
-	TStateEvent extends MemberEventType,
-	TStateContext extends MemberStateContext,
+	TFSMEvent extends MemberFSMEvent,
+	TFSMContext extends MemberFSMContext,
 	TRuntime extends MemberSharedRuntime<TExtraAttrKey>,
 > {
 	id: string;
@@ -65,7 +65,7 @@ export class Member<
 	runtime: TRuntime;
 	/** 引擎注入 services（不可序列化） */
 	services: MemberRuntimeServices;
-	btManager: BtManager<TExtraAttrKey, TRuntime, TStateEvent>;
+	btManager: BtManager<TExtraAttrKey, TRuntime, TFSMEvent>;
 	/** 成员级持久 overlays（纯数据，可 checkpoint） */
 	pipelineOverlays: PipelineOverlay[] = [];
 	private pipelineResolverService: PipelineResolverService | null = null;
@@ -77,7 +77,7 @@ export class Member<
 	procBus: ProcBus | null = null;
 	/** 属性阈值 watcher 注册表。每成员独立持有；passive 安装时注册，卸载时清理。 */
 	attributeWatchers: AttributeWatcherRegistry<MemberBaseAttrKey | TExtraAttrKey>;
-	actor: MemberActor<TStateEvent, TStateContext>;
+	actor: MemberActor<TFSMEvent, TFSMContext>;
 	private actorStarted = false;
 	data: MemberWithRelations;
 	get position(): { x: number; y: number; z: number } {
@@ -108,8 +108,8 @@ export class Member<
 
 	constructor(
 		stateMachine: (
-			env: MemberStateMachineEnv<TExtraAttrKey, TStateEvent, TRuntime>,
-		) => MemberStateMachine<TStateEvent, TStateContext>,
+			env: MemberStateMachineEnv<TExtraAttrKey, TFSMEvent, TRuntime>,
+		) => MemberStateMachine<TFSMEvent, TFSMContext>,
 		campId: string,
 		teamId: string,
 		memberData: MemberWithRelations,
@@ -119,7 +119,7 @@ export class Member<
 		services: MemberRuntimeServices = MemberRuntimeServicesDefaults,
 		position?: { x: number; y: number; z: number },
 		btContextBindings: (
-			capabilities: MemberBtCapabilities<TExtraAttrKey, TStateEvent>,
+			capabilities: MemberBtCapabilities<TExtraAttrKey, TFSMEvent>,
 		) => Record<string, unknown> = () => ({}),
 	) {
 		this.id = memberData.id;
@@ -154,7 +154,7 @@ export class Member<
 	 * - getter 让 checkpoint restore 替换 runtime 后，状态机闭包继续读取 Member 当前字段。
 	 * - 方法用箭头函数转发，避免 XState action 调用时丢失 Member.this。
 	 */
-	private createStateMachineEnv(): MemberStateMachineEnv<TExtraAttrKey, TStateEvent, TRuntime> {
+	private createStateMachineEnv(): MemberStateMachineEnv<TExtraAttrKey, TFSMEvent, TRuntime> {
 		const self = this;
 		return {
 			get id() {
@@ -191,7 +191,7 @@ export class Member<
 	 * - getter 让 checkpoint restore 替换 runtime / procBus 后，BT 继续读取 Member 当前字段。
 	 * - send 封装 actor 访问，使 BtManager 不依赖完整 Member 类。
 	 */
-	private createBtCapabilities(): MemberBtCapabilities<TExtraAttrKey, TStateEvent> {
+	private createBtCapabilities(): MemberBtCapabilities<TExtraAttrKey, TFSMEvent> {
 		const self = this;
 		return {
 			get services() {
@@ -233,8 +233,8 @@ export class Member<
 	 * - action/condition 的副作用能力由 bindings 闭包持有，不进入可 checkpoint runtime。
 	 */
 	private createBtEnv(
-		capabilities: MemberBtCapabilities<TExtraAttrKey, TStateEvent>,
-	): MemberBtManagerEnv<TStateEvent, TExtraAttrKey, TRuntime> {
+		capabilities: MemberBtCapabilities<TExtraAttrKey, TFSMEvent>,
+	): MemberBtManagerEnv<TFSMEvent, TExtraAttrKey, TRuntime> {
 		const self = this;
 		return {
 			get name() {
@@ -486,7 +486,7 @@ export class Member<
 		this.runtime.deltaTimeMs = tick.deltaTimeMs;
 		this.statusStore.purgeExpired(tick.currentTimeMs);
 		this.syncStatusTags();
-		this.actor.send({ type: "update", timestamp: tick.currentTimeMs } as TStateEvent);
+		this.actor.send({ type: "update", timestamp: tick.currentTimeMs } as TFSMEvent);
 		this.btManager.tickAll();
 		// 让阈值 watcher 及时响应 modifier 导致的数值变化：把本帧累计的脏值刷出。
 		this.statContainer.flushDirtyValues();

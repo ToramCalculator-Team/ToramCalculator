@@ -1,6 +1,6 @@
 import { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import { State } from "~/lib/mistreevous/State";
-import type { MemberEventType } from "../StateMachine/types";
+import type { MemberFSMEvent } from "../StateMachine/types";
 import type { MemberSharedRuntime } from "../types";
 import type { BtContext, MemberBtManagerEnv } from "./BtManagerEnv";
 
@@ -12,11 +12,11 @@ export type BtContextFactoryWarning = {
 };
 
 export type CreateBtContextOptions<
-	TStateEvent extends MemberEventType,
+	TFSMEvent extends MemberFSMEvent,
 	TExtraAttrKey extends string = string,
 	TContext extends MemberSharedRuntime<TExtraAttrKey> = MemberSharedRuntime<TExtraAttrKey>,
 > = {
-	env: MemberBtManagerEnv<TStateEvent, TExtraAttrKey, TContext>;
+	env: MemberBtManagerEnv<TFSMEvent, TExtraAttrKey, TContext>;
 	btBindings?: Record<string, unknown>;
 	agent?: string;
 	onWarning?: (warning: BtContextFactoryWarning) => void;
@@ -41,11 +41,11 @@ export type CreateBtContextResult<
  * 不再做 getter 代理 —— runtime 本身就是 BT 的 this。
  */
 export function createBtContext<
-	TStateEvent extends MemberEventType,
+	TFSMEvent extends MemberFSMEvent,
 	TExtraAttrKey extends string,
 	TContext extends MemberSharedRuntime<TExtraAttrKey>,
 >(
-	options: CreateBtContextOptions<TStateEvent, TExtraAttrKey, TContext>,
+	options: CreateBtContextOptions<TFSMEvent, TExtraAttrKey, TContext>,
 ): CreateBtContextResult<TExtraAttrKey, TContext> {
 	const { env, btBindings = {}, agent, onWarning } = options;
 	const warnings: BtContextFactoryWarning[] = [];
@@ -90,12 +90,12 @@ function mergeBtBindings<TExtraAttrKey extends string>(
  * 已存在的 key 跳过并 warn。
  */
 function mergeAgentMembers<
-	TStateEvent extends MemberEventType,
+	TFSMEvent extends MemberFSMEvent,
 	TExtraAttrKey extends string,
 	TContext extends MemberSharedRuntime<TExtraAttrKey>,
 >(
 	btContext: BtContext<TExtraAttrKey>,
-	owner: MemberBtManagerEnv<TStateEvent, TExtraAttrKey, TContext>,
+	owner: MemberBtManagerEnv<TFSMEvent, TExtraAttrKey, TContext>,
 	agent: string | undefined,
 	warn: (w: Omit<BtContextFactoryWarning, "memberName">) => void,
 ): void {
@@ -109,7 +109,7 @@ function mergeAgentMembers<
 		const factory = new Function("BehaviourTree", "State", "owner", `return ${agent};`) as (
 			bt: typeof BehaviourTree,
 			state: typeof State,
-			env: MemberBtManagerEnv<TStateEvent, TExtraAttrKey, TContext>,
+			env: MemberBtManagerEnv<TFSMEvent, TExtraAttrKey, TContext>,
 		) => AgentCtor;
 		AgentClass = factory(BehaviourTree, State, owner);
 	} catch (error) {

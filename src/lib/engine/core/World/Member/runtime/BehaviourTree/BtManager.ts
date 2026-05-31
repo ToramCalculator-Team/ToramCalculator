@@ -4,7 +4,7 @@ import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefiniti
 import type { BehaviourTreeOptions } from "~/lib/mistreevous/BehaviourTreeOptions";
 import { State } from "~/lib/mistreevous/State";
 import type { BtManagerCheckpoint, Checkpointable } from "../../../../types";
-import type { MemberEventType } from "../StateMachine/types";
+import type { MemberFSMEvent } from "../StateMachine/types";
 import type { MemberSharedRuntime } from "../types";
 import type { MemberBtManagerEnv } from "./BtManagerEnv";
 
@@ -17,15 +17,16 @@ type BtEntry = {
 export class BtManager<
 	TExtraAttrKey extends string = never,
 	TContext extends MemberSharedRuntime<TExtraAttrKey> = MemberSharedRuntime<TExtraAttrKey>,
-	TStateEvent extends MemberEventType = MemberEventType,
+	TFSMEvent extends MemberFSMEvent = MemberFSMEvent,
 > implements Checkpointable<BtManagerCheckpoint>
 {
 	private activeEffectEntry: BtEntry | undefined;
 	private parallelEntries: Map<string, BtEntry> = new Map();
 	private btOptions: BehaviourTreeOptions = {};
+	private _activeEffectDoneCallback: (() => void) | null = null;
 
 	constructor(
-		private env: MemberBtManagerEnv<TStateEvent, TExtraAttrKey, TContext>,
+		private env: MemberBtManagerEnv<TFSMEvent, TExtraAttrKey, TContext>,
 		/**
 		 * BT-only callable bindings.
 		 * Purpose: keep BT actions / conditions out of the checkpointable runtime blackboard.
@@ -35,6 +36,10 @@ export class BtManager<
 
 	setRandom(randomFn: () => number): void {
 		this.btOptions = { ...this.btOptions, random: randomFn };
+	}
+
+	onActiveEffectDone(callback: () => void): void {
+		this._activeEffectDoneCallback = callback;
 	}
 
 	private createBtOptions(): BehaviourTreeOptions {
@@ -89,7 +94,7 @@ export class BtManager<
 			const factory = new Function("BehaviourTree", "State", "owner", `return ${agent};`) as (
 				bt: typeof BehaviourTree,
 				state: typeof State,
-				env: MemberBtManagerEnv<TStateEvent, TExtraAttrKey, TContext>,
+				env: MemberBtManagerEnv<TFSMEvent, TExtraAttrKey, TContext>,
 			) => AgentCtor;
 			AgentClass = factory(BehaviourTree, State, this.env);
 		} catch (error) {
@@ -131,7 +136,13 @@ export class BtManager<
 			const state = this.activeEffectEntry.bt.getState();
 			if (state === State.SUCCEEDED || state === State.FAILED) {
 				this.activeEffectEntry = undefined;
-				this.env.send({ type: "技能执行完成" } as TStateEvent);
+				if (this._activeEffectDoneCallback) {
+					const cb = this._activeEffectDoneCallback;
+					this._activeEffectDoneCallback = null;
+					cb();
+				} else {
+					this.env.send({ type: "技能执行完成" } as TFSMEvent);
+				}
 			} else {
 				this.activeEffectEntry.bt.step();
 			}
@@ -188,6 +199,16 @@ export class BtManager<
 	/** 供引擎停止策略判断成员技能生命周期，避免外部读取 activeEffectEntry 私有结构。 */
 	hasActiveEffectBt(): boolean {
 		return !!this.activeEffectEntry;
+	}
+
+	hasRunningParallelBt(): boolean {
+		for (const entry of this.parallelEntries.values()) {
+			const state = entry.bt.getState();
+			if (state !== State.SUCCEEDED && state !== State.FAILED) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	hasBuff(name: string): boolean {

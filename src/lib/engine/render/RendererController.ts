@@ -30,6 +30,10 @@ import type {
 	SpawnCmd,
 	TeleportCmd,
 } from "./RendererProtocol";
+import { createLogger } from "~/lib/Logger";
+
+const logger = createLogger("RenderController");
+logger.setLevel(0);
 
 type EntityId = string;
 
@@ -173,7 +177,7 @@ class CharacterAnimationController {
 	playBuiltinAnimation(type: BuiltinAnimationType, options?: Partial<AnimationPlayRequest>): void {
 		const animationGroup = this.entity.builtinAnimations.get(type);
 		if (!animationGroup) {
-			console.warn(`Character ${this.entity.id}: 内置动画 ${type} 不存在`);
+			logger.warn(`Character ${this.entity.id}: 内置动画 ${type} 不存在`);
 			return;
 		}
 
@@ -218,7 +222,7 @@ class CharacterAnimationController {
 	private async createCustomAnimation(data: CustomAnimationData): Promise<AnimationGroup> {
 		// TODO: 实现关键帧数据到Babylon动画的转换
 		// 这里预留接口，等确定具体的关键帧数据结构后实现
-		console.log(`创建自定义动画: ${data.name}`, data);
+		logger.info(`创建自定义动画: ${data.name}`, data);
 
 		// 临时实现：创建一个空的动画组
 		const animationGroup = new AnimationGroup(data.name, this.scene);
@@ -267,7 +271,7 @@ class CharacterAnimationController {
 			this.entity.builtinAnimations.get(request.animationId) || this.entity.customAnimations.get(request.animationId);
 
 		if (!animationGroup) {
-			console.warn(`Character ${this.entity.id}: 动画 ${request.animationId} 不存在`);
+			logger.warn(`Character ${this.entity.id}: 动画 ${request.animationId} 不存在`);
 			return;
 		}
 
@@ -336,9 +340,9 @@ class EntityFactory {
 		}
 
 		// 调试：打印模型信息
-		console.log(`🔍 模型信息: meshes数量=${modelData.meshes.length}, 动画数量=${modelData.animationGroups.length}`);
+		logger.info(`🔍 模型信息: meshes数量=${modelData.meshes.length}, 动画数量=${modelData.animationGroups.length}`);
 		modelData.meshes.forEach((mesh, index) => {
-			console.log(
+			logger.info(
 				`  Mesh[${index}]: ${mesh.name}, 类型=${mesh.constructor.name}, enabled=${mesh.isEnabled()}, visible=${mesh.isVisible}`,
 			);
 		});
@@ -395,7 +399,7 @@ class EntityFactory {
 		modelData.animationGroups.forEach((originalGroup, index) => {
 			// 跳过已处理的动画（防止重复）
 			if (processedAnimations.has(originalGroup.name)) {
-				console.warn(`⚠️ 跳过重复动画: ${originalGroup.name}`);
+				logger.warn(`⚠️ 跳过重复动画: ${originalGroup.name}`);
 				return;
 			}
 			processedAnimations.add(originalGroup.name);
@@ -442,7 +446,7 @@ class EntityFactory {
 				unmappedTargets++;
 				if (unmappedTargets <= 3) {
 					// 只显示前3个未找到的目标
-					console.warn(`⚠️ 动画目标未找到: ${targetName}`);
+					logger.warn(`⚠️ 动画目标未找到: ${targetName}`);
 				}
 				return rootMesh;
 			});
@@ -450,7 +454,7 @@ class EntityFactory {
 			if (clonedGroup) {
 				builtinAnimations.set(originalGroup.name, clonedGroup);
 			} else {
-				console.error(`❌ 动画克隆失败: ${originalGroup.name}`);
+				logger.error(`❌ 动画克隆失败: ${originalGroup.name}`);
 			}
 		});
 
@@ -600,7 +604,7 @@ class EntityFactory {
 
 			return modelData;
 		} catch (error) {
-			console.error(`❌ 角色模型加载失败:`, error);
+			logger.error(`❌ 角色模型加载失败:`, error);
 			throw error;
 		}
 	}
@@ -767,34 +771,34 @@ class CommandHandler {
 
 	/** 生成实体 - 优先创建角色模型，失败则回退到球体 */
 	private async handleSpawn(cmd: SpawnCmd): Promise<void> {
-		console.log(`🎬 处理spawn命令:`, cmd);
+		logger.info(`🎬 处理spawn命令:`, cmd);
 
 		const exists = this.entities.get(cmd.entityId);
 		if (exists && exists.lastSeq > cmd.seq) {
-			console.log(`🎬 跳过旧序列号的spawn命令: ${cmd.entityId}`);
+			logger.info(`🎬 跳过旧序列号的spawn命令: ${cmd.entityId}`);
 			return;
 		}
 
 		if (exists) {
-			console.log(`🎬 销毁已存在的实体: ${cmd.entityId}`);
+			logger.info(`🎬 销毁已存在的实体: ${cmd.entityId}`);
 			this.disposeEntity(cmd.entityId);
 		}
 
 		const pos = new Vector3(cmd.position.x, cmd.position.y, cmd.position.z);
 
 		try {
-			console.log(`🎬 开始创建角色: ${cmd.entityId}`);
+			logger.info(`🎬 开始创建角色: ${cmd.entityId}`);
 			// 默认创建角色，如果失败则回退到球体
 			const entity = await this.factory.createCharacter(cmd.entityId, cmd.name, pos, cmd.props);
 			entity.lastSeq = cmd.seq;
 			this.entities.set(cmd.entityId, entity);
-			console.log(`🎬 角色创建成功: ${cmd.entityId}`);
+			logger.info(`🎬 角色创建成功: ${cmd.entityId}`);
 		} catch (error) {
-			console.warn(`🎬 角色创建失败，回退到球体模式:`, error);
+			logger.warn(`🎬 角色创建失败，回退到球体模式:`, error);
 			const entity = this.factory.createSphere(cmd.entityId, cmd.name, pos, cmd.props);
 			entity.lastSeq = cmd.seq;
 			this.entities.set(cmd.entityId, entity);
-			console.log(`🎬 球体创建成功: ${cmd.entityId}`);
+			logger.info(`🎬 球体创建成功: ${cmd.entityId}`);
 		}
 	}
 
@@ -977,7 +981,7 @@ class CommandHandler {
 		// 设置半径（仅对球体有效）
 		if (cmd.props.radius && entity.type === "sphere") {
 			// TODO: 实现球体半径动态调整
-			console.warn("球体半径动态调整暂未实现");
+			logger.warn("球体半径动态调整暂未实现");
 		}
 	}
 
@@ -1026,7 +1030,7 @@ class CommandHandler {
 					detail: cameraCmd,
 				}),
 			);
-			console.log(`📹 发送相机跟随命令: ${cmd.entityId}，保持当前视角`, cameraCmd);
+			logger.info(`📹 发送相机跟随命令: ${cmd.entityId}，保持当前视角`, cameraCmd);
 		}
 	}
 
@@ -1038,7 +1042,7 @@ class CommandHandler {
 		const entity = this.entities.get(id);
 		if (!entity) return;
 
-		console.log(`🗑️ 开始清理实体: ${id}`);
+		logger.info(`🗑️ 开始清理实体: ${id}`);
 
 		// 清理动画和动画组
 		if (entity.type === "character") {
@@ -1070,7 +1074,7 @@ class CommandHandler {
 		// 从实体映射中移除
 		this.entities.delete(id);
 
-		console.log(`✅ 实体清理完成: ${id}`);
+		logger.info(`✅ 实体清理完成: ${id}`);
 	}
 }
 
@@ -1138,12 +1142,12 @@ export function createRendererController(scene: Scene): RendererController {
 		if (Array.isArray(cmd)) {
 			cmd.forEach((c) => {
 				commandHandler.handle(c).catch((error) => {
-					console.error("RendererController: 处理命令失败", c, error);
+					logger.error("RendererController: 处理命令失败", c, error);
 				});
 			});
 		} else {
 			commandHandler.handle(cmd).catch((error) => {
-				console.error("RendererController: 处理命令失败", cmd, error);
+				logger.error("RendererController: 处理命令失败", cmd, error);
 			});
 		}
 	}

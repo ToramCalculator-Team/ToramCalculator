@@ -13,12 +13,12 @@ import { StatContainer } from "../../runtime/StatContainer/StatContainer";
 import type { PlayerRuntime } from "../../runtime/types";
 import { createPlayerBtBindings } from "./Agents/BtBindings";
 import { type PlayerAttrKey, PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
-import { type PlayerEventType, type PlayerStateContext, playerStateMachine } from "./PlayerStateMachine";
+import { type PlayerFSMEvent, type PlayerFSMContext, playerFSM } from "./PlayerStateMachine";
 import { selectPlayerSkillVariant } from "./skillLifecycle";
 
 const log = createLogger("Player");
 
-export class Player extends Member<PlayerAttrKey, PlayerEventType, PlayerStateContext, PlayerRuntime> {
+export class Player extends Member<PlayerAttrKey, PlayerFSMEvent, PlayerFSMContext, PlayerRuntime> {
 	activeCharacter: CharacterWithRelations;
 	private readonly runtimeAttachments: RuntimeAttachment<PlayerAttrKey>[];
 
@@ -79,7 +79,7 @@ export class Player extends Member<PlayerAttrKey, PlayerEventType, PlayerStateCo
 		};
 
 		super(
-			playerStateMachine,
+			playerFSM,
 			campId,
 			teamId,
 			memberData,

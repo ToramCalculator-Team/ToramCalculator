@@ -116,6 +116,7 @@ export interface SimulationEngine {
 	getComputedSkills(memberId: string): Promise<unknown[]>;
 	getInitializationData(): Promise<EngineScenarioData | null>;
 	patchMemberConfig(memberId: string, data: unknown): Promise<void>;
+	fastForward(options?: { maxTicks?: number; maxDurationMs?: number }): Promise<{ ticksRun: number; elapsedMs: number; reachedLimit: boolean } | null>;
 	runPreview(memberId: string): Promise<PreviewReport | null>;
 
 	// ── 检查点与表达式字典 ─────────────────────────
@@ -472,6 +473,10 @@ export class SimulationEngineImpl implements SimulationEngine {
 	}
 	async patchMemberConfig(memberId: string, data: unknown): Promise<void> {
 		await this.mustSuccess({ type: "patch_member", memberId, memberData: data });
+	}
+	async fastForward(options?: { maxTicks?: number; maxDurationMs?: number }): Promise<{ ticksRun: number; elapsedMs: number; reachedLimit: boolean } | null> {
+		const res = await this.executeEngineRPC({ type: "fast_forward", options: options ?? {} }, "high");
+		return res.success ? (res.data as { ticksRun: number; elapsedMs: number; reachedLimit: boolean }) : null;
 	}
 	async runPreview(memberId: string): Promise<PreviewReport | null> {
 		const res = await this.executeEngineRPC({ type: "run_preview", memberId }, "medium");

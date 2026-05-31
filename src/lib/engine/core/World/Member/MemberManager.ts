@@ -9,7 +9,7 @@ import type { PipelineResolverService } from "../../Pipeline/PipelineResolverSer
 import type { MemberCheckpoint, MemberDomainEvent } from "../../types";
 import type { DamageAreaRequest } from "../Area/types";
 import type { Member } from "./Member";
-import type { MemberEventType, MemberStateContext } from "./runtime/StateMachine/types";
+import type { MemberFSMEvent, MemberFSMContext } from "./runtime/StateMachine/types";
 import type { MemberSharedRuntime } from "./runtime/types";
 import { Mob } from "./types/Mob/Mob";
 import { Player } from "./types/Player/Player";
@@ -18,8 +18,8 @@ const log = createLogger("MemberMgr");
 
 // ============================== 类型定义 ==============================
 
-// 避免 any：用通用基类型承载不同成员实现
-export type AnyMemberEntry = Member<string, MemberEventType, MemberStateContext, MemberSharedRuntime<string>>;
+// 避免 any：用通用基类型承载不同成员实现。FSM 类型参数用 any 放宽以允许子类扩展事件/上下文。
+export type AnyMemberEntry = Member<string, any, any, MemberSharedRuntime<string>>;
 
 // ============================== 成员管理器类 ==============================
 

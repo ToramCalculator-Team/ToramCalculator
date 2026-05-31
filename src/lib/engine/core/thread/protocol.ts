@@ -233,6 +233,13 @@ export const EngineRPCSchema = z.discriminatedUnion("type", [
 		type: z.literal("branch_task"),
 		task: BranchTaskSchema,
 	}),
+	z.object({
+		type: z.literal("fast_forward"),
+		options: z.object({
+			maxTicks: z.number().optional(),
+			maxDurationMs: z.number().optional(),
+		}).optional(),
+	}),
 ]);
 
 export type EngineRPC = z.output<typeof EngineRPCSchema>;

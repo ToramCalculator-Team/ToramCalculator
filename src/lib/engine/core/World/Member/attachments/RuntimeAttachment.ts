@@ -8,11 +8,10 @@ import type {
 import type { Member } from "../Member";
 import type { SlotDeclaration } from "../runtime/StatContainer/SchemaMerge";
 import type { ModifierSource, ModifierType } from "../runtime/StatContainer/StatContainer";
-import type { MemberEventType, MemberStateContext } from "../runtime/StateMachine/types";
 import type { MemberSharedRuntime } from "../runtime/types";
 
-/** 泛化的 Member 类型别名，供战前附加效果安装器跨 Player / Mob 使用。 */
-export type RuntimeAttachmentMember<TExtraAttrKey extends string = string> = Member<string, MemberEventType, MemberStateContext, MemberSharedRuntime<TExtraAttrKey>>;
+/** 泛化的 Member 类型别名，供战前附加效果安装器跨 Player / Mob 使用。FSM 类型参数用 any 放宽，因为 attachment 系统不操作 actor。 */
+export type RuntimeAttachmentMember<TExtraAttrKey extends string = string> = Member<TExtraAttrKey, any, any, MemberSharedRuntime<TExtraAttrKey>>;
 
 export type RuntimeAttachmentSourceType = ModifierSource["type"];
 

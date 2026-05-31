@@ -762,7 +762,6 @@ export function createCharacterPageModel(input: {
 	};
 
 	const syncCurrentPageStateToEngine = async (revision: number, token: number) => {
-		// 设计说明：revision 和 token 共同过滤过期同步；路由切换或新 patch 到来后，旧 Worker 结果不再写回当前预览。
 		if (!input.engine.ready()) return;
 		if (token !== latestEngineSyncToken || revision !== pageData.revision) return;
 		const currentCharacter = pageData.character;
@@ -771,17 +770,20 @@ export function createCharacterPageModel(input: {
 			const scenario = createPreviewScenario();
 			const member = scenario?.simulator.campA[0]?.members[0];
 			if (!scenario || !member) return;
-			// 设计说明：首次进入角色或切换角色需要完整场景；同一角色的后续配置变化只 patch member，降低重建成本。
+			const engine = input.engine.defaultEngine();
 			if (scenarioLoadedForCharacterId !== currentCharacter.id) {
 				await input.engine.service.loadScenario(scenario);
 				await input.engine.service.setRuntimeConfig(createPreviewConfig());
+				await engine.fastForward();
 				await input.engine.refreshMembers();
 				if (pageData.character?.id === currentCharacter.id) {
 					scenarioLoadedForCharacterId = currentCharacter.id;
 				}
 				return;
 			}
-			await input.engine.patchMemberConfig(input.previewIds.memberId, cloneForWorker(member));
+			await input.engine.service.patchMemberConfig(input.previewIds.memberId, cloneForWorker(member));
+			await engine.fastForward();
+			await input.engine.refreshMembers();
 		} catch (error) {
 			console.error("Character 页面加载预览场景失败", error);
 		}
@@ -871,6 +873,7 @@ export function createCharacterPageModel(input: {
 				window.clearTimeout(engineSyncTimer);
 				engineSyncTimer = undefined;
 			}
+			void input.engine.defaultEngine().stop();
 			latestEngineSyncToken += 1;
 			engineSyncQueued = false;
 			scenarioLoadedForCharacterId = undefined;
@@ -914,6 +917,7 @@ export function createCharacterPageModel(input: {
 		if (engineSyncTimer !== undefined) {
 			window.clearTimeout(engineSyncTimer);
 		}
+		void input.engine.defaultEngine().stop();
 	});
 
 	const status = createMemo<CharacterPageStatus>(() => {

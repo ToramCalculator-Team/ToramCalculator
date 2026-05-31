@@ -1116,3 +1116,96 @@ r9mtsv0df063wcpm4526hy5s__active_bt,杖擊 主动伤害,"root {
 		wait [currentSkill.lifecycle.actionMs]
 	}
 }","",[],r9mtsv0df063wcpm4526hy5s,,
+u74ybtieg1me0es5o53qykfw__passive_bt,劍術要領 被动属性,"root {
+	/* toram-skill-import:passive-attribute-v1; sourceTree=劍術技能; sourceSkill=劍術要領 */
+	sequence {
+		action [modifyAttribute, ""atk.p"", ""Math.floor((skillLv-3)/5)+2"", ""staticPercentage""]
+		action [modifyAttribute, ""weaponAtk.p"", ""3*skillLv"", ""staticPercentage""]
+	}
+}","",[],,u74ybtieg1me0es5o53qykfw,
+b9ila9nhtasdukzg1so447xd__passive_bt,劍術要領 被动属性,"root {
+	/* toram-skill-import:passive-attribute-v1; sourceTree=劍術技能; sourceSkill=劍術要領 */
+	sequence {
+		action [modifyAttribute, ""atk.p"", ""Math.floor((skillLv-3)/5)+2"", ""staticPercentage""]
+		action [modifyAttribute, ""weaponAtk.p"", ""3*skillLv"", ""staticPercentage""]
+	}
+}","",[],,b9ila9nhtasdukzg1so447xd,
+e16pc4z96k84su4onqyec7df__passive_bt,劍速提升 被动属性,"root {
+	/* toram-skill-import:passive-attribute-v1; sourceTree=劍術技能; sourceSkill=劍速提升 */
+	sequence {
+		action [modifyAttribute, ""aspd"", ""10*skillLv"", ""staticFixed""]
+		action [modifyAttribute, ""aspd"", ""skillLv"", ""staticPercentage""]
+	}
+}","",[],,e16pc4z96k84su4onqyec7df,
+p20pqqb34582dik1gafjrblk__passive_bt,劍速提升 被动属性,"root {
+	/* toram-skill-import:passive-attribute-v1; sourceTree=劍術技能; sourceSkill=劍速提升 */
+	sequence {
+		action [modifyAttribute, ""aspd"", ""10*skillLv"", ""staticFixed""]
+		action [modifyAttribute, ""aspd"", ""skillLv"", ""staticPercentage""]
+	}
+}","",[],,p20pqqb34582dik1gafjrblk,
+r8ewx9lvdo3qs0llqq1vrx78__passive_bt,射擊要領 被动属性,"root {
+	/* toram-skill-import:passive-attribute-v1; sourceTree=射擊技能; sourceSkill=射擊要領 */
+	sequence {
+		action [modifyAttribute, ""atk.p"", ""Math.floor((skillLv-3)/5)+2"", ""staticPercentage""]
+		action [modifyAttribute, ""weaponAtk.p"", ""skillLv*3"", ""staticPercentage""]
+	}
+}","",[],,r8ewx9lvdo3qs0llqq1vrx78,
+lcyjf7iujsowedjbam2ivyic__passive_bt,魔法要領 被动属性,"root {
+	/* toram-skill-import:passive-attribute-v1; sourceTree=魔法技能; sourceSkill=魔法要領 */
+	sequence {
+		action [modifyAttribute, ""atk.m"", ""Math.floor((skillLv-3)/5)+2"", ""staticPercentage""]
+		action [modifyAttribute, ""weaponAtk.p"", ""skillLv*3"", ""staticPercentage""]
+	}
+}","",[],,lcyjf7iujsowedjbam2ivyic,
+i2x5jfpaqeb9xvlh3nkg0v1d__passive_bt,體術鍛鍊 被动属性,"root {
+	/* toram-skill-import:passive-attribute-v1; sourceTree=格鬥技能; sourceSkill=體術鍛鍊 */
+	sequence {
+		action [modifyAttribute, ""aspd"", ""0"", ""staticFixed""]
+		action [modifyAttribute, ""aspd"", ""0"", ""staticPercentage""]
+	}
+}","",[],,i2x5jfpaqeb9xvlh3nkg0v1d,
+b7ev63ohzr4zb1wemr58oyo6__passive_bt,乘勝追擊 被动属性,"root {
+	/* toram-skill-import:passive-attribute-v1; sourceTree=格鬥技能; sourceSkill=乘勝追擊 */
+	sequence {
+		action [modifyAttribute, ""ampr"", ""Math.floor((skillLv+1)/2)"", ""staticFixed""]
+	}
+}","",[],,b7ev63ohzr4zb1wemr58oyo6,
+rk1414ibpar997mtq0x488d3__passive_bt,神速軌跡 被动属性,"root {
+	/* toram-skill-import:passive-attribute-v1; sourceTree=雙劍技能; sourceSkill=神速軌跡 */
+	sequence {
+		action [modifyAttribute, ""unsheatheAtk"", ""5+skillLv"", ""staticFixed""]
+	}
+}","",[],,rk1414ibpar997mtq0x488d3,
+sdcfdw0nq8rm49g9d0cg84ss__passive_bt,雙手合持 被动属性,"root {
+	/* toram-skill-import:passive-attribute-v1; sourceTree=武士技能; sourceSkill=雙手合持 */
+	sequence {
+		action [modifyAttribute, ""accuracy"", ""skillLv"", ""staticPercentage""]
+		action [modifyAttribute, ""c.rate.p"", ""Math.floor(skillLv/2)"", ""staticFixed""]
+		action [modifyAttribute, ""weaponAtk.p"", ""skillLv"", ""staticPercentage""]
+	}
+}","",[],,sdcfdw0nq8rm49g9d0cg84ss,
+z5e1koe8vktl75bfg03ym0tz__passive_bt,弩弓獵人 被动属性,"root {
+	/* toram-skill-import:passive-attribute-v1; sourceTree=狩獵技能; sourceSkill=弩弓獵人 */
+	sequence {
+		action [modifyAttribute, ""weaponAtk.p"", ""0"", ""staticPercentage""]
+	}
+}","",[],,z5e1koe8vktl75bfg03ym0tz,
+o09iwbdc6lvh55e2kxd5ukhq__passive_bt,弩弓獵人 被动属性,"root {
+	/* toram-skill-import:passive-attribute-v1; sourceTree=狩獵技能; sourceSkill=弩弓獵人 */
+	sequence {
+		action [modifyAttribute, ""weaponAtk.p"", ""2.5*skillLv"", ""staticPercentage""]
+	}
+}","",[],,o09iwbdc6lvh55e2kxd5ukhq,
+gsdm8y4o2atjdmzlcjjkchml__passive_bt,詠唱要領 被动属性,"root {
+	/* toram-skill-import:passive-attribute-v1; sourceTree=巫師技能; sourceSkill=詠唱要領 */
+	sequence {
+		action [modifyAttribute, ""atk.p"", ""-50+2.5*skillLv"", ""staticPercentage""]
+	}
+}","",[],,gsdm8y4o2atjdmzlcjjkchml,
+migtiz9hu2laxvjbjcuodmxa__passive_bt,魔法戰士的要訣 被动属性,"root {
+	/* toram-skill-import:passive-attribute-v1; sourceTree=魔劍技能; sourceSkill=魔法戰士的要訣 */
+	sequence {
+		action [modifyAttribute, ""atk.p"", ""skillLv"", ""staticPercentage""]
+	}
+}","",[],,migtiz9hu2laxvjbjcuodmxa,

@@ -1151,7 +1151,7 @@ ${this.generateCrudExports(crudExports)}
 				const shouldSkip = isSelfRelation || this.shouldSkipSubRelation(model.name, field.name);
 				const subRelationCode = shouldSkip
 					? ""
-					: `\n              .select((eb) => ${targetCamelName}SubRelations(eb, eb.val("${targetTable}.${targetPrimaryKey}")))`;
+					: `\n              .select((eb) => ${targetCamelName}SubRelations(eb, eb.ref("${targetTable}.${targetPrimaryKey}")))`;
 				return `(eb: ExpressionBuilder<DB, "${currentTableName}">, id: Expression<string>) =>
           jsonObjectFrom(
             eb
@@ -1183,7 +1183,7 @@ ${this.generateCrudExports(crudExports)}
 				const shouldSkip = isSelfRelation || this.shouldSkipSubRelation(model.name, field.name);
 				const subRelationCode = shouldSkip
 					? ""
-					: `\n              .select((eb) => ${targetCamelName}SubRelations(eb, eb.val("${targetTable}.${targetPrimaryKey}")))`;
+					: `\n              .select((eb) => ${targetCamelName}SubRelations(eb, eb.ref("${targetTable}.${targetPrimaryKey}")))`;
 				return `(eb: ExpressionBuilder<DB, "${NamingRules.ZodTypeName(model.name)}">, id: Expression<string>) =>
           jsonObjectFrom(
             eb
@@ -1273,7 +1273,7 @@ ${this.generateCrudExports(crudExports)}
 			const shouldSkip = isSelfRelation || this.shouldSkipSubRelation(model.name, field.name);
 			const subRelationCode = shouldSkip
 				? ""
-				: `\n            .select((eb) => ${targetCamelName}SubRelations(eb, eb.val("${targetTable}.${targetPrimaryKey}")))`;
+				: `\n            .select((eb) => ${targetCamelName}SubRelations(eb, eb.ref("${targetTable}.${targetPrimaryKey}")))`;
 			return `(eb: ExpressionBuilder<DB, "${currentTableName}">, id: Expression<string>) =>
         jsonArrayFrom(
           eb
@@ -1315,7 +1315,7 @@ ${this.generateCrudExports(crudExports)}
 		const shouldSkip = isSelfRelation || this.shouldSkipSubRelation(model.name, field.name);
 		const subRelationCode = shouldSkip
 			? ""
-			: `\n          .select((eb) => ${targetCamelName}SubRelations(eb, eb.val("${targetTable}.${targetPrimaryKey}")))`;
+			: `\n          .select((eb) => ${targetCamelName}SubRelations(eb, eb.ref("${targetTable}.${targetPrimaryKey}")))`;
 
 		return `(eb: ExpressionBuilder<DB, "${currentTableName}">, id: Expression<string>) =>
       jsonArrayFrom(

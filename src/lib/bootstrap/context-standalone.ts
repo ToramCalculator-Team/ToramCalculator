@@ -1,6 +1,10 @@
+import { createLogger } from "../Logger";
 import { bootstrapModules } from "./modules";
 import { BootstrapOrchestrator } from "./orchestrator";
 import type { BootstrapState, ModuleStatus } from "./types";
+
+const logger = createLogger("Bootstrap")
+logger.setLevel(1)
 
 // 组件树外的单例入口：
 // liveQuery / repository 等非组件代码通过这里 waitFor，保证与 Provider 共享同一个启动状态机。
@@ -25,14 +29,11 @@ const getRuntime = () => {
 				lastLoggedStatus.set(name, status);
 
 				if (status === "ready") {
-					// eslint-disable-next-line no-console
-					console.info(`[Bootstrap] ${name} ready (${state.durations[name] ?? 0}ms)`);
+					logger.info(`[Bootstrap] ${name} ready (${state.durations[name] ?? 0}ms)`);
 				} else if (status === "error") {
-					// eslint-disable-next-line no-console
-					console.error(`[Bootstrap] ${name} failed`, state.errors[name]);
+					logger.error(`[Bootstrap] ${name} failed`, state.errors[name]);
 				} else if (status === "skipped") {
-					// eslint-disable-next-line no-console
-					console.warn(`[Bootstrap] ${name} skipped`, state.errors[name]);
+					logger.warn(`[Bootstrap] ${name} skipped`, state.errors[name]);
 				}
 			}
 		});

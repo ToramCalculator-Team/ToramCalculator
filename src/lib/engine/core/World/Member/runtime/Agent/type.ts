@@ -2,7 +2,7 @@ import type { EventObject } from "xstate";
 import type { ZodType, z } from "zod/v4";
 import type { State } from "~/lib/mistreevous";
 import type { MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
-import type { MemberEventType } from "../StateMachine/types";
+import type { MemberFSMEvent } from "../StateMachine/types";
 
 // ================================ Action ================================
 
@@ -15,10 +15,10 @@ export type Action<
 	TInput extends ZodType,
 	TContext extends Record<string, any>,
 	TExtraAttrKey extends string = never,
-	TStateEvent extends EventObject = MemberEventType,
-	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TStateEvent> = MemberBtCapabilities<
+	TFSMEvent extends EventObject = MemberFSMEvent,
+	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TFSMEvent> = MemberBtCapabilities<
 		TExtraAttrKey,
-		TStateEvent
+		TFSMEvent
 	>,
 > = readonly [TInput, (context: TContext, actionInput: z.output<TInput>, capabilities: TCapabilities) => State];
 
@@ -29,13 +29,13 @@ export type Action<
 export type ActionPool<
 	TContext extends Record<string, any>,
 	TExtraAttrKey extends string = never,
-	TStateEvent extends EventObject = MemberEventType,
-	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TStateEvent> = MemberBtCapabilities<
+	TFSMEvent extends EventObject = MemberFSMEvent,
+	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TFSMEvent> = MemberBtCapabilities<
 		TExtraAttrKey,
-		TStateEvent
+		TFSMEvent
 	>,
 > = {
-	readonly [actionName: string]: Action<any, TContext, TExtraAttrKey, TStateEvent, TCapabilities>;
+	readonly [actionName: string]: Action<any, TContext, TExtraAttrKey, TFSMEvent, TCapabilities>;
 };
 
 /**
@@ -69,15 +69,15 @@ export const defineAction = <
 	TInput extends ZodType,
 	TContext extends Record<string, any>,
 	TExtraAttrKey extends string = never,
-	TStateEvent extends EventObject = MemberEventType,
-	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TStateEvent> = MemberBtCapabilities<
+	TFSMEvent extends EventObject = MemberFSMEvent,
+	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TFSMEvent> = MemberBtCapabilities<
 		TExtraAttrKey,
-		TStateEvent
+		TFSMEvent
 	>,
 >(
 	inputSchema: TInput,
 	impl: (context: TContext, actionInput: z.output<TInput>, capabilities: TCapabilities) => State,
-): Action<TInput, TContext, TExtraAttrKey, TStateEvent, TCapabilities> => {
+): Action<TInput, TContext, TExtraAttrKey, TFSMEvent, TCapabilities> => {
 	return [inputSchema, impl] as const;
 };
 
@@ -92,10 +92,10 @@ export type Condition<
 	TInput extends ZodType,
 	TContext extends Record<string, any>,
 	TExtraAttrKey extends string = never,
-	TStateEvent extends EventObject = MemberEventType,
-	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TStateEvent> = MemberBtCapabilities<
+	TFSMEvent extends EventObject = MemberFSMEvent,
+	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TFSMEvent> = MemberBtCapabilities<
 		TExtraAttrKey,
-		TStateEvent
+		TFSMEvent
 	>,
 > = readonly [TInput, (context: TContext, actionInput: z.output<TInput>, capabilities: TCapabilities) => boolean];
 
@@ -106,13 +106,13 @@ export type Condition<
 export type ConditionPool<
 	TContext extends Record<string, any>,
 	TExtraAttrKey extends string = never,
-	TStateEvent extends EventObject = MemberEventType,
-	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TStateEvent> = MemberBtCapabilities<
+	TFSMEvent extends EventObject = MemberFSMEvent,
+	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TFSMEvent> = MemberBtCapabilities<
 		TExtraAttrKey,
-		TStateEvent
+		TFSMEvent
 	>,
 > = {
-	readonly [conditionName: string]: Condition<any, TContext, TExtraAttrKey, TStateEvent, TCapabilities>;
+	readonly [conditionName: string]: Condition<any, TContext, TExtraAttrKey, TFSMEvent, TCapabilities>;
 };
 
 /**
@@ -141,14 +141,14 @@ export const defineCondition = <
 	TInput extends ZodType,
 	TContext extends Record<string, any> = Record<string, any>,
 	TExtraAttrKey extends string = never,
-	TStateEvent extends EventObject = MemberEventType,
-	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TStateEvent> = MemberBtCapabilities<
+	TFSMEvent extends EventObject = MemberFSMEvent,
+	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TFSMEvent> = MemberBtCapabilities<
 		TExtraAttrKey,
-		TStateEvent
+		TFSMEvent
 	>,
 >(
 	inputSchema: TInput,
 	impl: (context: TContext, actionInput: z.output<TInput>, capabilities: TCapabilities) => boolean,
-): Condition<TInput, TContext, TExtraAttrKey, TStateEvent, TCapabilities> => {
+): Condition<TInput, TContext, TExtraAttrKey, TFSMEvent, TCapabilities> => {
 	return [inputSchema, impl] as const;
 };

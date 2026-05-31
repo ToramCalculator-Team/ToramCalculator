@@ -11,6 +11,8 @@ export type MdslParamSpec = {
 	type: MdslTypeSpec;
 	/** 参数说明（来自 zod meta/description 或 agent 注释） */
 	description?: string;
+	/** 是否为可选参数 */
+	optional?: boolean;
 };
 
 export type MdslCallableKind = "action" | "condition" | "callback" | "guard";
@@ -127,10 +129,13 @@ const getZodObjectShape = (schema: z.ZodObject): Record<string, ZodType> => {
 	return schema.shape as unknown as Record<string, ZodType>;
 };
 
+const isOptionalSchema = (schema: ZodType): boolean => {
+	return schema instanceof z.ZodOptional;
+};
+
 const flattenObjectSchemaToParams = (schema: ZodType, prefix = ""): MdslParamSpec[] => {
 	const unwrapped = unwrapSchema(schema);
 	if (!isZodObject(unwrapped)) {
-		// 非 object：在 MDSL 里仍然只能用位置参数表示，先给一个 unknown 占位提示
 		return [{ label: prefix || "input", type: getTypeSpec(unwrapped) }];
 	}
 
@@ -138,14 +143,20 @@ const flattenObjectSchemaToParams = (schema: ZodType, prefix = ""): MdslParamSpe
 	const result: MdslParamSpec[] = [];
 	for (const [key, child] of Object.entries(shape)) {
 		const label = prefix ? `${prefix}.${key}` : key;
+		const optional = isOptionalSchema(child);
 		const childUnwrapped = unwrapSchema(child);
 		if (isZodObject(childUnwrapped)) {
-			result.push(...flattenObjectSchemaToParams(childUnwrapped, label));
+			const nested = flattenObjectSchemaToParams(childUnwrapped, label);
+			if (optional) {
+				nested.forEach((p) => (p.optional = true));
+			}
+			result.push(...nested);
 		} else {
 			result.push({
 				label,
 				type: getTypeSpec(childUnwrapped),
 				description: getSchemaDescription(childUnwrapped),
+				optional,
 			});
 		}
 	}
@@ -205,6 +216,10 @@ const buildCallableSpecsFromPools = (
 
 	return { actions, conditions };
 };
+
+/** 获取 spec 的必填参数数量 */
+export const getRequiredParamCount = (spec: MdslCallableSpec): number =>
+	spec.params.filter((p) => !p.optional).length;
 
 /**
  * 参数化构建 MDSL IntelliSense Registry

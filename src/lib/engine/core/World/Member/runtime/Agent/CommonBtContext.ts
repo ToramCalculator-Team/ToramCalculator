@@ -12,8 +12,8 @@ const btContextTypeHint = {} as CommonBtContextTypeHint;
  * BT-private callable bundle shared by all members.
  * Purpose: keep generic BT invokers outside the public member.context contract.
  */
-export const createCommonBtBindings = <TExtraAttrKey extends string, TStateEvent extends EventObject>(
-	capabilities: MemberBtCapabilities<TExtraAttrKey, TStateEvent>,
+export const createCommonBtBindings = <TExtraAttrKey extends string, TFSMEvent extends EventObject>(
+	capabilities: MemberBtCapabilities<TExtraAttrKey, TFSMEvent>,
 ) => {
 	// common action/condition 定义是静态的；实例能力由调用方传入，并通过闭包绑定到 invoker。
 	const commonContextTypeHint = btContextTypeHint as CommonBtContextTypeHint<TExtraAttrKey>;

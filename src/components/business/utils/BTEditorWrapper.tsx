@@ -30,7 +30,7 @@ export const BtEditorWrapper: (props: {
 						>
 							<div
 								role="application"
-								class="DialogBox bg-primary-color shadow-dividing-color shadow-dialog relative flex h-full w-full flex-col items-center gap-3 rounded"
+								class="DialogBox bg-primary-color shadow-dividing-color shadow-dialog relative flex h-full w-full flex-col items-center gap-3 overflow-hidden"
 								onClick={(e) => e.stopPropagation()}
 								onKeyDown={(e) => {
 									if (e.key === "Escape") {

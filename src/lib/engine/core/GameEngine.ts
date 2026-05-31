@@ -1692,6 +1692,9 @@ export class GameEngine {
 					if (runtime.actionQueue && runtime.actionQueue.length > 0) {
 						return false;
 					}
+					if (m.btManager.hasRunningParallelBt()) {
+						return false;
+					}
 				}
 				return true;
 			}

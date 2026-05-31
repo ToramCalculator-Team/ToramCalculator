@@ -9,8 +9,8 @@ import {
 } from "../../runtime/DamageResolution";
 import { ModifierType } from "../../runtime/StatContainer/StatContainer";
 import type {
-	MemberEventType,
-	MemberStateContext,
+	MemberFSMEvent,
+	MemberFSMContext,
 	MemberStateMachine,
 	MemberStateMachineEnv,
 } from "../../runtime/StateMachine/types";
@@ -21,7 +21,7 @@ const log = createLogger("MobSM");
 
 /**
  * Mob特有的事件类型
- * 扩展MemberEventType，包含Mob特有的状态机事件
+ * 扩展MemberFSMEvent，包含Mob特有的状态机事件
  */
 interface 复活 extends EventObject {
 	type: "复活";
@@ -94,8 +94,8 @@ interface 收到蓄力结束通知 extends EventObject {
 	type: "收到蓄力结束通知";
 }
 
-export type MobEventType =
-	| MemberEventType
+export type MobFSMEvent =
+	| MemberFSMEvent
 	| 复活
 	| 移动
 	| 修改buff
@@ -131,19 +131,19 @@ export interface MobPendingDamageResult {
 	crit: boolean;
 }
 
-// 新字段以 optional 方式加入，保留与 MemberStateContext 的双向赋值兼容性（Member 泛型对 context 为不变）。
-export interface MobStateContext extends MemberStateContext {
+// 新字段以 optional 方式加入，保留与 MemberFSMContext 的双向赋值兼容性（Member 泛型对 context 为不变）。
+export interface MobFSMContext extends MemberFSMContext {
 	hitSession?: HitSession | null;
 }
 
-export interface MobStateMachineEnv extends MemberStateMachineEnv<MobAttrKey, MobEventType, MobRuntime> {
+export interface MobStateMachineEnv extends MemberStateMachineEnv<MobAttrKey, MobFSMEvent, MobRuntime> {
 	runtime: MobRuntime;
 }
 
 const mobMachineSetup = setup({
 	types: {
-		context: {} as MobStateContext,
-		events: {} as MobEventType,
+		context: {} as MobFSMContext,
+		events: {} as MobFSMEvent,
 		output: {} as Mob,
 	},
 });
@@ -166,7 +166,7 @@ const mobAssignHitSession = (name: string) => {
 };
 const mobClearHitSession = mobMachineSetup.assign({ hitSession: null });
 
-export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachine<MobEventType, MobStateContext> => {
+export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachine<MobFSMEvent, MobFSMContext> => {
 	const machineId = env.id;
 
 	return mobMachineSetup

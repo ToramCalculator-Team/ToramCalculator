@@ -8,11 +8,11 @@ import { StatContainer } from "../../runtime/StatContainer/StatContainer";
 import type { MobRuntime } from "../../runtime/types";
 import { createMobBtBindings } from "./Agents/BtBindings";
 import { MobAttrSchema } from "./MobAttrSchema";
-import { createMobStateMachine, type MobEventType, type MobStateContext } from "./MobStateMachine";
+import { createMobStateMachine, type MobFSMEvent, type MobFSMContext } from "./MobStateMachine";
 
 export type MobAttrKey = ExtractAttrPaths<ReturnType<typeof MobAttrSchema>>;
 
-export class Mob extends Member<MobAttrKey, MobEventType, MobStateContext, MobRuntime> {
+export class Mob extends Member<MobAttrKey, MobFSMEvent, MobFSMContext, MobRuntime> {
 	constructor(
 		memberData: MemberWithRelations,
 		campId: string,

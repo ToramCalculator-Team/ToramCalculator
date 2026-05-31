@@ -5,7 +5,7 @@ import { ExpressionTransformer } from "../../../../JSProcessor/ExpressionTransfo
 import type { DamageAreaRequest } from "../../../Area/types";
 import type { MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
 import { ModifierSourceTypeSchema, ModifierType, StatModifierKindSchema } from "../StatContainer/StatContainer";
-import type { MemberEventType } from "../StateMachine/types";
+import type { MemberFSMEvent } from "../StateMachine/types";
 import type { MemberSharedRuntime } from "../types";
 import { type ActionPool, defineAction } from "./type";
 import { sendRenderCommand } from "./uitls";
@@ -13,7 +13,7 @@ import { sendRenderCommand } from "./uitls";
 const log = createLogger("Actions");
 
 type BtContext = MemberSharedRuntime;
-type BtCapabilities = MemberBtCapabilities<string, MemberEventType>;
+type BtCapabilities = MemberBtCapabilities<string, MemberFSMEvent>;
 
 export const logLv = 0; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
 
@@ -663,6 +663,6 @@ export const CommonActionPool = {
 			return State.SUCCEEDED;
 		},
 	),
-} as const satisfies ActionPool<BtContext, string, MemberEventType, BtCapabilities>;
+} as const satisfies ActionPool<BtContext, string, MemberFSMEvent, BtCapabilities>;
 
 export type CommonActionPool = typeof CommonActionPool;

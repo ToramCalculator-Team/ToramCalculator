@@ -8,7 +8,7 @@ import type { MemberRuntimeServices } from "../../RuntimeServices";
 import type { WatchDirection, WatcherId, WatchHandler, WatchOptions } from "../AttributeWatcher/AttributeWatcher";
 import type { ProcHandler, ProcPredicate, ProcSubscriptionId } from "../ProcBus/ProcBus";
 import type { StatContainer } from "../StatContainer/StatContainer";
-import type { MemberEventType } from "../StateMachine/types";
+import type { MemberFSMEvent } from "../StateMachine/types";
 import type { MemberSharedRuntime } from "../types";
 
 export interface BtTreeController {
@@ -39,7 +39,7 @@ export type BtContext<TExtraAttrKey extends string = string> = MemberSharedRunti
  */
 export interface MemberBtCapabilities<
 	TExtraAttrKey extends string = never,
-	TStateEvent extends EventObject = MemberEventType,
+	TFSMEvent extends EventObject = MemberFSMEvent,
 > {
 	readonly statContainer: StatContainer<TExtraAttrKey | MemberBaseAttrKey>;
 	readonly services: MemberRuntimeServices;
@@ -70,7 +70,7 @@ export interface MemberBtCapabilities<
 	unwatchBySource(sourceId: string): void;
 	notifyDomainEvent(event: MemberDomainEvent): void;
 	runPipeline(pipelineName: string, params?: Record<string, unknown>): StageData;
-	send(event: TStateEvent): void;
+	send(event: TFSMEvent): void;
 }
 
 /**
@@ -79,13 +79,13 @@ export interface MemberBtCapabilities<
  * 设计说明：BtManager 只需要黑板提供者、action 能力提供者和完成事件发送入口。
  */
 export interface MemberBtManagerEnv<
-	TStateEvent extends EventObject = MemberEventType,
+	TFSMEvent extends EventObject = MemberFSMEvent,
 	TExtraAttrKey extends string = never,
 	TContext extends MemberSharedRuntime<TExtraAttrKey> = MemberSharedRuntime<TExtraAttrKey>,
 > {
 	readonly name: string;
 	getContext(): TContext;
-	getCapabilities(): MemberBtCapabilities<TExtraAttrKey, TStateEvent>;
+	getCapabilities(): MemberBtCapabilities<TExtraAttrKey, TFSMEvent>;
 	getDeltaTimeMs(): number;
-	send(event: TStateEvent): void;
+	send(event: TFSMEvent): void;
 }

@@ -311,6 +311,15 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 				}
 			}
 
+			case "fast_forward": {
+				try {
+					const result = gameEngine.fastForwardSync(rpc.options as Parameters<typeof gameEngine.fastForwardSync>[0]);
+					return { success: true, data: result };
+				} catch (error) {
+					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+				}
+			}
+
 			case "patch_member": {
 				try {
 					const ok = gameEngine.patchMemberConfig(rpc.memberId, rpc.memberData as MemberWithRelations);

@@ -43,7 +43,7 @@ export function AddMemberControllerButton(props: AddMemberControllerButtonProps)
 	return (
 		<div class="flex items-center gap-2">
 			<Button onClick={() => setShowDialog(true)} disabled={props.unboundMembers().length === 0} class="w-full">
-				<Icons.Outline.AddUser />
+				<Icons.Outline.AddUser class="flex-none" />
 			</Button>
 
 			<Show when={showDialog()}>

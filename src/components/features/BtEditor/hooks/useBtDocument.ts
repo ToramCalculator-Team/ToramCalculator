@@ -50,9 +50,7 @@ export function createNextRootName(document: EditableBtDocument): string {
  */
 export function useBtDocument(initialDocument: EditableBtDocument) {
 	const [editableDocument, setEditableDocument] = createSignal<EditableBtDocument>(initialDocument);
-	const [selectedNodeId, setSelectedNodeId] = createSignal<string | undefined>(
-		getPreferredSelectionId(getActiveEditableTree(initialDocument)),
-	);
+	const [selectedNodeId, setSelectedNodeId] = createSignal<string | undefined>(undefined);
 
 	const activeRoot = createMemo(() => getActiveEditableRoot(editableDocument()));
 	const activeTree = createMemo(() => getActiveEditableTree(editableDocument()));
