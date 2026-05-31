@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const repoRoot = process.cwd();
-const defaultSource = "/mnt/c/Users/KiaClouth2/Downloads/toram-skills.json";
+const repoRoot = path.resolve(new URL("../..", import.meta.url).pathname);
+const defaultSource = path.resolve(new URL("../toram-skills.json", import.meta.url).pathname);
 const sourceArgIndex = process.argv.indexOf("--source");
 const sourcePath = sourceArgIndex >= 0 ? process.argv[sourceArgIndex + 1] : defaultSource;
 const shouldWrite = process.argv.includes("--write");
