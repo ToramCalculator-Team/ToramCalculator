@@ -78,6 +78,22 @@ export type AgentPropertyReferenceArgument = Argument<string> & {
 };
 
 /**
+ * A type representing a node function argument with a value of an array parsed from MDSL.
+ */
+export type ArrayArgument = {
+	value: AnyArgument[];
+	type: "array";
+};
+
+/**
+ * A type representing a node function argument with a value of an object literal parsed from MDSL.
+ */
+export type ObjectArgument = {
+	value: Record<string, AnyArgument>;
+	type: "object";
+};
+
+/**
  * A type representing a reference to any node function argument parsed from MDSL.
  */
 export type AnyArgument =
@@ -86,7 +102,9 @@ export type AnyArgument =
 	| NumberArgument
 	| StringPlaceholderArgument
 	| IdentifierArgument
-	| AgentPropertyReferenceArgument;
+	| AgentPropertyReferenceArgument
+	| ArrayArgument
+	| ObjectArgument;
 
 /**
  * Gets the JSON value of the specified argument object.
@@ -94,11 +112,16 @@ export type AnyArgument =
  * @returns The JSON value of the specified argument object.
  */
 export function getArgumentJsonValue(arg: AnyArgument): any {
-	// If the argument is an agent property reference then the value format will be `{ $: "some_property_name" }`.
 	if (arg.type === "property_reference") {
 		return { $: arg.value };
 	}
-
-	// We can just return the value as-is.
+	if (arg.type === "array") {
+		return arg.value.map(getArgumentJsonValue);
+	}
+	if (arg.type === "object") {
+		return Object.fromEntries(
+			Object.entries(arg.value).map(([k, v]) => [k, getArgumentJsonValue(v)]),
+		);
+	}
 	return arg.value;
 }

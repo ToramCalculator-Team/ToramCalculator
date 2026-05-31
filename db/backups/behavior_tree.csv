@@ -427,7 +427,7 @@ o3zxw4p28k2gtfltcxj1qer5__active_bt,威力攻擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 50+5*skillLv) * (100+5*skillLv) / 100"", 1, ""[]"", ""[{\""type\"":\""Flinch\"",\""chance\"":\""50+5*skillLv\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 50+5*skillLv) * (100+5*skillLv) / 100"", 1, [], [{type: ""Flinch"", chance: ""50+5*skillLv""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -448,7 +448,7 @@ yna0gvnu2ky3nwdbhmiyd6ia__active_bt,威力攻擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 50+5*skillLv) * (100+5*skillLv) / 100"", 1, ""[]"", ""[{\""type\"":\""Flinch\"",\""chance\"":\""50+5*skillLv\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 50+5*skillLv) * (100+5*skillLv) / 100"", 1, [], [{type: ""Flinch"", chance: ""50+5*skillLv""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -462,7 +462,7 @@ ahouawd1fh7imo415bhom4z8__active_bt,快速蹴擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""normal"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + Math.min(3*(skillLv+1)*(skillLv+1),300)) * (Math.min(30+5*skillLv,75)) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""normal"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + Math.min(3*(skillLv+1)*(skillLv+1),300)) * (Math.min(30+5*skillLv,75)) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -476,7 +476,7 @@ ziew9ips3k7iirveld3i6f1d__active_bt,快速蹴擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""normal"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + Math.min(3*(skillLv+1)*(skillLv+1),300)) * (Math.min(30+5*skillLv,75)) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""normal"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + Math.min(3*(skillLv+1)*(skillLv+1),300)) * (Math.min(30+5*skillLv,75)) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -490,7 +490,7 @@ oy0ri3rx79ulkre960xh3ufh__active_bt,威力射擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 50+8*skillLv) * (125+5*skillLv) / 100"", 1, ""[]"", ""[{\""type\"":\""Tumble\"",\""chance\"":\""60+Math.floor((skillLv-1)/3)*10\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 50+8*skillLv) * (125+5*skillLv) / 100"", 1, [], [{type: ""Tumble"", chance: ""60+Math.floor((skillLv-1)/3)*10""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -504,7 +504,7 @@ gtlimnbgdty093lkjtcvlixp__active_bt,弱點狙擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 300+skillLv*10) * (900+skillLv*10) / 100"", 1, ""[]"", ""[{\""type\"":\""Breaking\"",\""chance\"":\""80+skillLv*2\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 300+skillLv*10) * (900+skillLv*10) / 100"", 1, [], [{type: ""Breaking"", chance: ""80+skillLv*2""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -518,7 +518,7 @@ bp1icp5q9jfmwuxo4pj1qyoo__active_bt,法術/長槍 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 50+skillLv*15) * (200+skillLv*10) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 50+skillLv*15) * (200+skillLv*10) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -532,7 +532,7 @@ saz5c51hwlln15bof6k2wx32__active_bt,音速波動 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 5*skillLv+25) * (100+2.5*skillLv) / 100"", 1, ""[]"", ""[{\""type\"":\""Tumble\"",\""chance\"":\""50+5*skillLv\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 5*skillLv+25) * (100+2.5*skillLv) / 100"", 1, [], [{type: ""Tumble"", chance: ""50+5*skillLv""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -546,7 +546,7 @@ txq5acm754smig7x8nhq3vi9__active_bt,音速波動 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 5*skillLv+25) * (100+2.5*skillLv) / 100"", 1, ""[]"", ""[{\""type\"":\""Tumble\"",\""chance\"":\""50+5*skillLv\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 5*skillLv+25) * (100+2.5*skillLv) / 100"", 1, [], [{type: ""Tumble"", chance: ""50+5*skillLv""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -572,7 +572,7 @@ o7jmmvg33m1pgmbtvq6tb1dw__active_bt,震腳 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 300) * (750+25*skillLv) / 100"", 1, ""[]"", ""[{\""type\"":\""Flinch\"",\""chance\"":\""10*skillLv\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 300) * (750+25*skillLv) / 100"", 1, [], [{type: ""Flinch"", chance: ""10*skillLv""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -586,7 +586,7 @@ ziuscb91dqsnumomwd3zwh5a__active_bt,震腳 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 300) * (750+25*skillLv) / 100"", 1, ""[]"", ""[{\""type\"":\""Flinch\"",\""chance\"":\""10*skillLv\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 300) * (750+25*skillLv) / 100"", 1, [], [{type: ""Flinch"", chance: ""10*skillLv""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -600,7 +600,7 @@ uast18l2borqrjpsoj80xtww__active_bt,雙弧斬 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100+skillLv*10) * (150+skillLv*10) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100+skillLv*10) * (150+skillLv*10) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -614,7 +614,7 @@ nv31pr2eukgzlwycg4ho94vq__active_bt,迅捷刺突 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 50+5*skillLv) * (100+5*skillLv) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 50+5*skillLv) * (100+5*skillLv) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -628,7 +628,7 @@ mqq5otmpczhowo3ndx0t33dd__active_bt,死亡斧槍 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 80+3*skillLv) * (125+Math.max(0,skillLv-1)*5) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 80+3*skillLv) * (125+Math.max(0,skillLv-1)*5) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -642,7 +642,7 @@ hldoaazhllu1q5ena3ab48p9__active_bt,刀柄打擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100+10*skillLv) * (100+5*skillLv) / 100"", 1, ""[]"", ""[{\""type\"":\""Paralysis\"",\""chance\"":\""50+skillLv*5\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100+10*skillLv) * (100+5*skillLv) / 100"", 1, [], [{type: ""Paralysis"", chance: ""50+skillLv*5""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -656,7 +656,7 @@ gnm1pp757kzhi30g74gs5go5__active_bt,刀柄打擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100+10*skillLv) * (100+5*skillLv) / 100"", 1, ""[]"", ""[{\""type\"":\""Paralysis\"",\""chance\"":\""50+skillLv*5\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100+10*skillLv) * (100+5*skillLv) / 100"", 1, [], [{type: ""Paralysis"", chance: ""50+skillLv*5""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -670,7 +670,7 @@ kl7swts1hg9t3bu81rbgbdbb__active_bt,正拳突擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200) * (200+skillLv*20) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200) * (200+skillLv*20) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -698,7 +698,7 @@ p94gbpkpq1ua72b6fvblfej3__active_bt,重盾擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 50+skillLv*5) * (skillLv*1.5) / 100"", 1, ""[]"", ""[{\""type\"":\""Stun\"",\""chance\"":\""75+2.5*skillLv\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 50+skillLv*5) * (skillLv*1.5) / 100"", 1, [], [{type: ""Stun"", chance: ""75+2.5*skillLv""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -712,7 +712,7 @@ oh9xxawhmb5zv0kv5rf3z7so__active_bt,飛刃 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 0) * (10+skillLv*4) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 0) * (10+skillLv*4) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -726,7 +726,7 @@ wxk34k3ss7e3dcl4hs8wx4o3__active_bt,混沌魔眼 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 50*skillLv) * (1250+250*skillLv) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 50*skillLv) * (1250+250*skillLv) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -740,7 +740,7 @@ lf7kq5jxni3y2h4gxt22yn4c__active_bt,破壞強襲 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 1000+100*skillLv) * (400+30*skillLv) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 1000+100*skillLv) * (400+30*skillLv) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -754,7 +754,7 @@ s7hmpd5gx9v3hb2cgf7rn5u2__active_bt,魔力槍擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 2000+100*skillLv) * (300+30*skillLv) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 2000+100*skillLv) * (300+30*skillLv) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -768,7 +768,7 @@ fdklvael246d6klah5b43v1n__active_bt,暴力重擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 40*skillLv) * (300+20*skillLv) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 40*skillLv) * (300+20*skillLv) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -782,7 +782,7 @@ duphhq2opfmf0dbt6qa3tt9v__active_bt,魔彈射擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 250+25*skillLv) * (200+20*skillLv) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 250+25*skillLv) * (200+20*skillLv) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -796,7 +796,7 @@ ikgdife0ntubliqvvs5rs3az__active_bt,掃堂腿 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 40*skillLv) * (150+10*skillLv) / 100"", 1, ""[]"", ""[{\""type\"":\""Tumble\"",\""chance\"":\""30+5*skillLv\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 40*skillLv) * (150+10*skillLv) / 100"", 1, [], [{type: ""Tumble"", chance: ""30+5*skillLv""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -810,7 +810,7 @@ olfsf0gu71kv3nprlhxwqok4__active_bt,高壓威逼 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 20+skillLv) * (150+skillLv*5) / 100"", 1, ""[]"", ""[{\""type\"":\""Flinch\"",\""chance\"":\""50+5*skillLv\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 20+skillLv) * (150+skillLv*5) / 100"", 1, [], [{type: ""Flinch"", chance: ""50+5*skillLv""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -824,7 +824,7 @@ ay1zq6jygzgi3mxbx1c450vb__active_bt,有眼無珠 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 100+skillLv*10) * (50+skillLv*10) / 100"", 1, ""[]"", ""[{\""type\"":\""Blindness\"",\""chance\"":\""70+3*skillLv\""}]"", ""none""]
+		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 100+skillLv*10) * (50+skillLv*10) / 100"", 1, [], [{type: ""Blindness"", chance: ""70+3*skillLv""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -838,7 +838,7 @@ d6bbxx46dwdxph2k5e4vnwwc__active_bt,暈頭轉向 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 60*skillLv) * (150+15*skillLv) / 100"", 1, ""[]"", ""[{\""type\"":\""Stun\"",\""chance\"":\""10+5*skillLv\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 60*skillLv) * (150+15*skillLv) / 100"", 1, [], [{type: ""Stun"", chance: ""10+5*skillLv""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -852,7 +852,7 @@ rcoewi1x7kqdc5eqjztobqzw__active_bt,破封穿心 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 300+skillLv*30) * (100+skillLv*10) / 100"", 1, ""[]"", ""[{\""type\"":\""Breaking\"",\""chance\"":\""60+4*skillLv\""}]"", ""none""]
+		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 300+skillLv*30) * (100+skillLv*10) / 100"", 1, [], [{type: ""Breaking"", chance: ""60+4*skillLv""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -866,7 +866,7 @@ w7d95hinnjyvph3mh2cmznww__active_bt,渦輪射擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 3, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 30+skillLv*4) * (50+skillLv*5) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 3, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 30+skillLv*4) * (50+skillLv*5) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -880,7 +880,7 @@ illriktn4py8rditezxzlhqd__active_bt,破滅射擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200) * (500+skillLv*10+self.str*0.5+self.dex*0.5) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200) * (500+skillLv*10+self.str*0.5+self.dex*0.5) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -894,7 +894,7 @@ ry7kjiuhwsxzejsaopa63ehs__active_bt,破滅射擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200) * (500+skillLv*10+self.str*0.5+self.dex*0.5) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200) * (500+skillLv*10+self.str*0.5+self.dex*0.5) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -908,7 +908,7 @@ jrxmc2fok447dxzf4amyia0l__active_bt,魔法小刀 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""normal"", ""physical"", 4, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 0) * (60+10*Math.min(skillLv,9)) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""normal"", ""physical"", 4, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 0) * (60+10*Math.min(skillLv,9)) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -922,7 +922,7 @@ b8bgjjc2epy1klrj3e5kaag8__active_bt,重擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 25+skillLv*5+self.agi*0.1) * (100+skillLv*2) / 100"", 1, ""[]"", ""[{\""type\"":\""Flinch\"",\""chance\"":\""75+25*Math.floor((skillLv-1)/5)\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 25+skillLv*5+self.agi*0.1) * (100+skillLv*2) / 100"", 1, [], [{type: ""Flinch"", chance: ""75+25*Math.floor((skillLv-1)/5)""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -948,7 +948,7 @@ eb1bv6yopt39tnsmyzkfbbdq__active_bt,重擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 25+skillLv*5+self.agi*0.1) * (100+skillLv*2) / 100"", 1, ""[]"", ""[{\""type\"":\""Flinch\"",\""chance\"":\""75+25*Math.floor((skillLv-1)/5)\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 25+skillLv*5+self.agi*0.1) * (100+skillLv*2) / 100"", 1, [], [{type: ""Flinch"", chance: ""75+25*Math.floor((skillLv-1)/5)""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -962,7 +962,7 @@ zl903pgt5cd4kbx7dtt8qhct__active_bt,痛擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 50+10*skillLv+self.agi*0.2) * (200+5*skillLv+self.agi*0.2) / 100"", 1, ""[]"", ""[{\""type\"":\""Stun\"",\""chance\"":\""Math.floor(skillLv/6)*25+50+self.agi*0.1\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 50+10*skillLv+self.agi*0.2) * (200+5*skillLv+self.agi*0.2) / 100"", 1, [], [{type: ""Stun"", chance: ""Math.floor(skillLv/6)*25+50+self.agi*0.1""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -976,7 +976,7 @@ ry5yap01fsp2qf2oop9rym2j__active_bt,痛擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 50+10*skillLv+self.agi*0.2) * (200+5*skillLv+self.agi*0.2) / 100"", 1, ""[]"", ""[{\""type\"":\""Stun\"",\""chance\"":\""Math.floor(skillLv/6)*25+50+self.agi*0.1\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 50+10*skillLv+self.agi*0.2) * (200+5*skillLv+self.agi*0.2) / 100"", 1, [], [{type: ""Stun"", chance: ""Math.floor(skillLv/6)*25+50+self.agi*0.1""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -990,7 +990,7 @@ h5hixd9m9ggpexyprgq1685a__active_bt,三段擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 3, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 25+2*skillLv) * (200+10*skillLv) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 3, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 25+2*skillLv) * (200+10*skillLv) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1004,7 +1004,7 @@ y7cxhpi1syrefqw2219dh9xf__active_bt,三段擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 3, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 25+2*skillLv) * (200+10*skillLv) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 3, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 25+2*skillLv) * (200+10*skillLv) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1018,7 +1018,7 @@ okr64acwu51fq8b7hsi8i0wh__active_bt,閃影擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""normal"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100) * (300+30*skillLv+self._agi/3) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""normal"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100) * (300+30*skillLv+self._agi/3) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1032,7 +1032,7 @@ m3db36jsikhnuv1mohdzhhhx__active_bt,閃影擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""normal"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100) * (300+30*skillLv+self._agi/3) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""normal"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100) * (300+30*skillLv+self._agi/3) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1046,7 +1046,7 @@ eef0ydgpak46lt1u5taulb9g__active_bt,空舞斬 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100+20*skillLv) * (50*skillLv+self.dex) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100+20*skillLv) * (50*skillLv+self.dex) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1066,7 +1066,7 @@ ojmoih72c1vm4p0snlesxn7e__active_bt,空舞斬 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100+20*skillLv) * (50*skillLv+self.dex) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100+20*skillLv) * (50*skillLv+self.dex) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1080,7 +1080,7 @@ ag7pre411risfodn0uhkcpw2__active_bt,組合拳 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""normal"", ""physical"", 3, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 0) * (100+10*skillLv) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""normal"", ""physical"", 3, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 0) * (100+10*skillLv) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1094,7 +1094,7 @@ hnhtrt7ov6q06pb66ay91gd0__active_bt,噴泉飛踢 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200+skillLv*10) * (900+skillLv*10+self.agi/2) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200+skillLv*10) * (900+skillLv*10+self.agi/2) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1108,7 +1108,7 @@ f44ygvzethcczmizu3dvurzs__active_bt,音速擠壓 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200) * (150+15*skillLv+self.dex*1) / 100"", 1, ""[]"", ""[{\""type\"":\""Tumble\"",\""chance\"":\""skillLv*10\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200) * (150+15*skillLv+self.dex*1) / 100"", 1, [], [{type: ""Tumble"", chance: ""skillLv*10""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1122,7 +1122,7 @@ ynvgl5osjetkwos6tvx0iifo__active_bt,腿踢 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 10*skillLv) * (10*skillLv+Math.max(0,skillLv-5)*10+self._str*0.5) / 100"", 1, ""[]"", ""[{\""type\"":\""KnockBack\"",\""chance\"":\""100\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 10*skillLv) * (10*skillLv+Math.max(0,skillLv-5)*10+self._str*0.5) / 100"", 1, [], [{type: ""KnockBack"", chance: ""100""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1136,7 +1136,7 @@ r9mtsv0df063wcpm4526hy5s__active_bt,杖擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100) * (190+skillLv+self.str*1) / 100"", 1, ""[]"", ""[{\""type\"":\""Flinch\"",\""chance\"":\""Math.min(100,50+5*skillLv)\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100) * (190+skillLv+self.str*1) / 100"", 1, [], [{type: ""Flinch"", chance: ""Math.min(100,50+5*skillLv)""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1192,7 +1192,7 @@ a0v7r3xs0kjv6l3p36gyt4uz__active_bt,迅捷攻擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 150+5*skillLv) * (150+10*skillLv) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 150+5*skillLv) * (150+10*skillLv) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1206,7 +1206,7 @@ tdubwv92d8fi08z1gyvv601u__active_bt,迅捷攻擊 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 150+5*skillLv) * (150+10*skillLv) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 150+5*skillLv) * (150+10*skillLv) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1220,7 +1220,7 @@ s4un83iopzye0amxnb0z2zyb__active_bt,橫掃千軍 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200+10*skillLv) * (150+5*skillLv) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200+10*skillLv) * (150+5*skillLv) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1234,7 +1234,7 @@ yeewulrsjycgn1hodw4qztxt__active_bt,橫掃千軍 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200+10*skillLv) * (150+5*skillLv) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200+10*skillLv) * (150+5*skillLv) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1248,7 +1248,7 @@ w5adanrcr6qvv2wch6nig0i2__active_bt,法術/光護 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 300) * (50+self.int*1) / 100"", 1, ""[]"", ""[{\""type\"":\""KnockBack\"",\""chance\"":\""100\""}]"", ""none""]
+		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 300) * (50+self.int*1) / 100"", 1, [], [{type: ""KnockBack"", chance: ""100""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1262,7 +1262,7 @@ ilvmdom2mrx6ruavunbugal1__active_bt,法術/光護 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 300) * (50+self.int*1) / 100"", 1, ""[]"", ""[{\""type\"":\""KnockBack\"",\""chance\"":\""100\""}]"", ""none""]
+		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 300) * (50+self.int*1) / 100"", 1, [], [{type: ""KnockBack"", chance: ""100""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1276,7 +1276,7 @@ exvyibkzfccam1226k8b23vy__active_bt,疾襲 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 4, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200+20*skillLv) * (500+40*skillLv+self._agi*2) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 4, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200+20*skillLv) * (500+40*skillLv+self._agi*2) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1290,7 +1290,7 @@ qz19ev1g2kphjddgh3puyald__active_bt,修羅氣場 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 0) * (95+self._agi/(24-skillLv*2)) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 0) * (95+self._agi/(24-skillLv*2)) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1304,7 +1304,7 @@ l5sg8b3iohb6tqt4ln8aegxe__active_bt,貼山靠 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 500) * (750+25*skillLv) / 100"", 1, ""[]"", ""[{\""type\"":\""Stun\"",\""chance\"":\""100\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 500) * (750+25*skillLv) / 100"", 1, [], [{type: ""Stun"", chance: ""100""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1318,7 +1318,7 @@ w27s0f1gfe4c5t4hefotu1fm__active_bt,貼山靠 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 500) * (750+25*skillLv) / 100"", 1, ""[]"", ""[{\""type\"":\""Stun\"",\""chance\"":\""100\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 500) * (750+25*skillLv) / 100"", 1, [], [{type: ""Stun"", chance: ""100""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1332,7 +1332,7 @@ xwoxyb3lxeaauql54sqtq60n__active_bt,禦空破陣 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 2, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 50+5*skillLv) * (100+skillLv) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 2, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 50+5*skillLv) * (100+skillLv) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1346,7 +1346,7 @@ hq5piax4pnt7u8cg9bub5bv3__active_bt,斷禍 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100+10*skillLv) * (200+30*skillLv) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100+10*skillLv) * (200+30*skillLv) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1360,7 +1360,7 @@ h3h2a6u5ekqkscfs7rc7oyyh__active_bt,斷禍 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100+10*skillLv) * (200+30*skillLv) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100+10*skillLv) * (200+30*skillLv) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1374,7 +1374,7 @@ k7fxwqbx5xlkqonghx63n067__active_bt,自動裝置 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""normal"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 0) * (100) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""normal"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 0) * (100) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1388,7 +1388,7 @@ mpdk0wrjfszbmke3jsnh7lp4__active_bt,生命的光輝 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 400) * (1000+100*skillLv) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 400) * (1000+100*skillLv) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1402,7 +1402,7 @@ ktouqu1hjeh8rv0d5oo8mwl5__active_bt,閃爍之劍 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200) * (500+75*skillLv) / 100"", 1, ""[]"", ""[{\""type\"":\""Flinch\"",\""chance\"":\""10*skillLv\""}]"", ""none""]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200) * (500+75*skillLv) / 100"", 1, [], [{type: ""Flinch"", chance: ""10*skillLv""}], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1416,7 +1416,7 @@ p5qz58bspo91c1xog1eouvwx__active_bt,神聖恩惠 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 300+Math.max(0,300*(skillLv-5))+self.dex) * (50*skillLv+self._int) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 300+Math.max(0,300*(skillLv-5))+self.dex) * (50*skillLv+self._int) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}
@@ -1430,7 +1430,7 @@ ojsyaz5vbrasp5t34wurdbmz__active_bt,神聖恩惠 主动伤害,"root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, ""chanting"", $currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 300+Math.max(0,300*(skillLv-5))+self.dex) * (50*skillLv+self._int) / 100"", 1, ""[]"", ""[]"", ""none""]
+		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 300+Math.max(0,300*(skillLv-5))+self.dex) * (50*skillLv+self._int) / 100"", 1, [], [], ""none""]
 		action [animation, ""action"", $currentSkill.lifecycle.action]
 		wait [$currentSkill.lifecycle.action]
 	}

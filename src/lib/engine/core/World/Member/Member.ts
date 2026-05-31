@@ -495,6 +495,17 @@ export class Member<
 	// ==================== Checkpoint ====================
 
 	captureCheckpoint(): MemberCheckpoint {
+		let runtimeClone: unknown;
+		try {
+			runtimeClone = structuredClone(this.runtime);
+		} catch (e) {
+			const uncloneable: string[] = [];
+			for (const [key, value] of Object.entries(this.runtime)) {
+				try { structuredClone(value); } catch { uncloneable.push(`${key}(${typeof value})`); }
+			}
+			log.error(`[${this.name}] runtime structuredClone failed. Uncloneable keys: ${uncloneable.join(", ")}`);
+			throw e;
+		}
 		return {
 			memberId: this.id,
 			fsm: this.actor.getPersistedSnapshot(),
@@ -503,7 +514,7 @@ export class Member<
 			btManager: this.btManager.captureCheckpoint(),
 			pipelineOverlays: structuredClone(this.pipelineOverlays),
 			position: { ...this.position },
-			runtime: structuredClone(this.runtime),
+			runtime: runtimeClone as typeof this.runtime,
 		};
 	}
 

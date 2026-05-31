@@ -484,6 +484,9 @@ export class SimulationEngineImpl implements SimulationEngine {
 	}
 	async captureCheckpoint(): Promise<unknown | null> {
 		const res = await this.executeEngineRPC({ type: "capture_checkpoint" }, "high");
+		if (!res.success) {
+			console.error("[SimEngine] captureCheckpoint failed:", res.error);
+		}
 		return res.success ? (res.data ?? null) : null;
 	}
 	async restoreCheckpoint(checkpoint: unknown): Promise<void> {

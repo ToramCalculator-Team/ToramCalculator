@@ -120,15 +120,24 @@ function printOptionalArgumentList(args?: NodeArgument[] | LottoWeightArgument[]
 }
 
 function printArgument(argument: NodeArgument | LottoWeightArgument | WaitDurationArgument): string {
+	if (argument === null) return "null";
 	if (typeof argument === "string") return JSON.stringify(argument);
 	if (typeof argument === "number") {
 		if (!Number.isFinite(argument)) throw new Error("MDSL printer cannot print non-finite numeric argument");
 		return String(argument);
 	}
 	if (typeof argument === "boolean") return String(argument);
-	if (argument === null) return "null";
+	if (Array.isArray(argument)) {
+		return `[${argument.map(printArgument).join(", ")}]`;
+	}
 	if (typeof argument === "object" && "$" in argument && typeof argument.$ === "string") {
 		return `$${printPropertyReference(argument.$)}`;
+	}
+	if (typeof argument === "object") {
+		const entries = Object.entries(argument).map(
+			([k, v]) => `${isPlainIdentifier(k) ? k : JSON.stringify(k)}: ${printArgument(v as NodeArgument)}`,
+		);
+		return `{${entries.join(", ")}}`;
 	}
 	throw new Error(`MDSL printer cannot print unsupported argument '${JSON.stringify(argument)}'`);
 }

@@ -88,7 +88,7 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 					level: number;
 					computed: { isAvailable: boolean; mpCost: number; activeEffectDurationMs: number };
 				}>
-			).filter((s) => s.level > 0);
+			).filter((s) => s.level > 0 && s.computed.isAvailable);
 			// 设计说明：引擎成员加载/热替换可能晚于面板首次计算；此时数据库关系数据已经可用，
 			// 但 getComputedSkills 仍可能短暂返回空。用角色页传入的 learnedSkills 兜底，避免 UI 误报“没有技能”。
 			const skillList = computedSkillList.length > 0 ? computedSkillList : learnedSkillSources();

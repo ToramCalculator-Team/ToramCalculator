@@ -1,4 +1,4 @@
-export type NodeArgument = string | number | boolean | null | { $: string };
+export type NodeArgument = string | number | boolean | null | { $: string } | NodeArgument[] | { [key: string]: NodeArgument };
 
 export type WaitDurationArgument = number | { $: string };
 export type LottoWeightArgument = number | { $: string };

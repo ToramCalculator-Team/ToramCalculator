@@ -71,6 +71,7 @@ export function tokenise(definition: string): TokeniseResult {
 	definition = definition.replace(/\]/g, " ] ");
 	definition = definition.replace(/\[/g, " [ ");
 	definition = definition.replace(/,/g, " , ");
+	definition = definition.replace(/:/g, " : ");
 
 	return {
 		// Split the definition into raw token form.

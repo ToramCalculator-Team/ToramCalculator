@@ -1835,7 +1835,7 @@ export class GameEngine {
 			const cooldownRemaining = Array.isArray(skillCooldowns) ? ((skillCooldowns[index] as number) ?? 0) : 0;
 
 			// 判断是否可用
-			const isAvailable = cooldownRemaining <= 0 && currentMp >= mpCost && currentHp >= hpCost;
+			const isAvailable = !!effect && cooldownRemaining <= 0 && currentMp >= mpCost && currentHp >= hpCost;
 
 			return {
 				id: String((skill as { id?: unknown }).id ?? ""),

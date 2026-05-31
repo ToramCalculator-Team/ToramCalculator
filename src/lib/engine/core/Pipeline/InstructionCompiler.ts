@@ -20,8 +20,13 @@ const asNumber = (v: unknown, label: string): number => {
 const resolveOperand = (op: Operand, vars: Vars, input: StageData, env: StageEnv): number => {
 	if (typeof op === "number") return op;
 
+	// 指令 DSL 的复合参数会用字符串承载数字片段（如 clamp 的 "0,100"）。
+	// 这里先识别数字字面量，避免把 "100" 当作未定义变量回退为 0。
+	const numericLiteral = Number(op);
+	if (op.trim() !== "" && Number.isFinite(numericLiteral)) return numericLiteral;
+
 	// 1) 已计算变量
-	if (Object.hasOwn(vars, op)) return vars[op]!;
+	if (Object.hasOwn(vars, op)) return asNumber(vars[op], op);
 
 	// 2) env.timeMs / env.tickIndex 便捷读取
 	if (op === "env.timeMs" || op === "timeMs") return env.timeMs;

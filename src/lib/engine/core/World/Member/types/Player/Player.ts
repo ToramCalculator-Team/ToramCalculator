@@ -13,7 +13,7 @@ import { StatContainer } from "../../runtime/StatContainer/StatContainer";
 import type { PlayerRuntime } from "../../runtime/types";
 import { createPlayerBtBindings } from "./Agents/BtBindings";
 import { type PlayerAttrKey, PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
-import { type PlayerFSMEvent, type PlayerFSMContext, playerFSM } from "./PlayerStateMachine";
+import { type PlayerFSMContext, type PlayerFSMEvent, playerFSM } from "./PlayerStateMachine";
 import { selectPlayerSkillVariant } from "./skillLifecycle";
 
 const log = createLogger("Player");
@@ -64,7 +64,6 @@ export class Player extends Member<PlayerAttrKey, PlayerFSMEvent, PlayerFSMConte
 			teamId,
 			type: "Player",
 			tickIndex: 0,
-			statContainer,
 			currentTimeMs: 0,
 			deltaTimeMs: 0,
 			position: position ?? { x: 0, y: 0, z: 0 },
@@ -72,7 +71,6 @@ export class Player extends Member<PlayerAttrKey, PlayerFSMEvent, PlayerFSMConte
 			statusTags: [],
 			currentSkill: null,
 			previousSkill: null,
-			services: MemberRuntimeServicesDefaults,
 			skillList: initialSkillList,
 			skillCooldowns: initialSkillList.map(() => 0),
 			data: activeCharacter,
@@ -101,18 +99,13 @@ export class Player extends Member<PlayerAttrKey, PlayerFSMEvent, PlayerFSMConte
 			const tree = variant?.passiveBehaviorTree;
 			if (!tree) continue;
 
-			this.btManager.registerParallelBt(
-				`passive:${variant.id}:${tree.name}`,
-				tree.definition,
-				tree.agent,
-				{
-					skill: {
-						id: variant.id,
-						lv: skill.lv,
-						name: skill.template?.name ?? "",
-					},
+			this.btManager.registerParallelBt(`passive:${variant.id}:${tree.name}`, tree.definition, tree.agent, {
+				skill: {
+					id: variant.id,
+					lv: skill.lv,
+					name: skill.template?.name ?? "",
 				},
-			);
+			});
 		}
 	}
 

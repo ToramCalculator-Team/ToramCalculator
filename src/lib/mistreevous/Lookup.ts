@@ -39,10 +39,12 @@ export const Lookup = {
 	 * 获取指定 agent 和函数名的函数调用器。
 	 */
 	getFuncInvoker(agent: Agent, name: string, resolveProperty?: (path: string) => unknown): InvokerFunction | null {
-		const processFunctionArguments = (args: any[]) =>
-			args.map((arg) => {
-				if (typeof arg === "object" && arg !== null && Object.keys(arg).length === 1 && Object.hasOwn(arg, "$")) {
-					const path = arg.$;
+		const resolveArg = (arg: unknown): unknown => {
+			if (Array.isArray(arg)) return arg.map(resolveArg);
+			if (typeof arg === "object" && arg !== null) {
+				const keys = Object.keys(arg);
+				if (keys.length === 1 && keys[0] === "$") {
+					const path = (arg as { $: string }).$;
 					if (typeof path !== "string" || path.length === 0) {
 						throw new Error("Agent property reference must be a non-empty string");
 					}
@@ -51,8 +53,15 @@ export const Lookup = {
 					if (resolveProperty) return resolveProperty(path);
 					return undefined;
 				}
-				return arg;
-			});
+				const result: Record<string, unknown> = {};
+				for (const [k, v] of Object.entries(arg)) {
+					result[k] = resolveArg(v);
+				}
+				return result;
+			}
+			return arg;
+		};
+		const processFunctionArguments = (args: any[]) => args.map(resolveArg);
 
 		// 检查 agent 是否包含指定的函数。
 		const agentFunction = agent[name];

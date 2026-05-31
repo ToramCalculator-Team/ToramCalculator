@@ -40,6 +40,11 @@ type PreviewRuntimeForSkill = {
 		subWeapon?: { type?: unknown } | null;
 		armor?: { ability?: unknown } | null;
 	} | null;
+	data?: {
+		weapon?: { type?: unknown } | null;
+		subWeapon?: { type?: unknown } | null;
+		armor?: { ability?: unknown } | null;
+	} | null;
 	skillList?: Array<{
 		id?: unknown;
 		template?: {
@@ -61,9 +66,10 @@ function hasMatchingSkillVariant(
 	const skill = runtime.skillList?.find((candidate) => candidate.id === skillId);
 	const variants = skill?.template?.variants;
 	if (!Array.isArray(variants)) return false;
-	const mainWeaponType = runtime.character?.weapon?.type;
-	const subWeaponType = runtime.character?.subWeapon?.type;
-	const armorAbilityType = runtime.character?.armor?.ability;
+	const character = runtime.character ?? runtime.data;
+	const mainWeaponType = character?.weapon?.type;
+	const subWeaponType = character?.subWeapon?.type;
+	const armorAbilityType = character?.armor?.ability;
 	return variants.some((variant) => {
 		const mainWeaponMatched = variant.targetMainWeaponType === mainWeaponType || variant.targetMainWeaponType === "Any";
 		const subWeaponMatched = variant.targetSubWeaponType === subWeaponType || variant.targetSubWeaponType === "Any";
@@ -353,6 +359,7 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 					const checkpoint = gameEngine.captureCheckpoint();
 					return { success: true, data: checkpoint };
 				} catch (error) {
+					log.error("capture_checkpoint: FAILED", error);
 					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
 				}
 			}
@@ -447,12 +454,15 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 
 					// 5. fast-forward synchronously
 					const activeEffectDurationMs = getPrimaryActionDurationMs(gameEngine, primaryMemberId, primaryActionSkillId);
+					log.debug("branch_task: activeEffectDurationMs =", activeEffectDurationMs);
 					const previewTimeoutMs = resolvePreviewFastForwardTimeoutMs(activeEffectDurationMs);
 					const fastForward = gameEngine.fastForwardSync({ maxDurationMs: previewTimeoutMs });
 					const { ticksRun, elapsedMs } = fastForward;
 					const damageAreaCountAfter = gameEngine.getDamageAreaCreatedCount();
 					const damageAreaCount = Math.max(0, damageAreaCountAfter - damageAreaCountBefore);
-					log.info(`branch_task: ${ticksRun} tick 完成，模拟时间 ${elapsedMs}ms`);
+					log.debug(
+						`branch_task: ${ticksRun} ticks, ${elapsedMs}ms, damageAreas=${damageAreaCount}, reachedLimit=${fastForward.reachedLimit}`,
+					);
 
 					// 6. collect results based on outputSelector
 					const selector = task.outputSelector;
@@ -470,6 +480,10 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 						}
 						case "dps_impact": {
 							const all = gameEngine.getAllMembers();
+							log.debug(
+								"dps_impact: all members:",
+								all.map((m) => ({ id: m.id, camp: m.campId })),
+							);
 							const opposingMembers = all.filter((m) => m.id !== primaryMemberId);
 							if (opposingMembers.length === 0) {
 								return {
@@ -491,8 +505,10 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 								const hpMax = m.statContainer.getValue("hp.max");
 								const hpCur = m.statContainer.getValue("hp.current");
 								const taken = Math.max(0, hpMax - hpCur);
+								log.debug(`dps_impact: target ${m.id} hp.max=${hpMax} hp.current=${hpCur} taken=${taken}`);
 								if (taken > 0) totalDamage += taken;
 							}
+							log.debug("dps_impact: totalDamage =", totalDamage);
 							const sourceMember = primaryMemberId ? gameEngine.getMember(primaryMemberId) : undefined;
 							const activeEffectStillRunning = !!sourceMember?.btManager.hasActiveEffectBt();
 							let reason: string | undefined;
