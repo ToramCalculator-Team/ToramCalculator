@@ -1,5 +1,6 @@
 import { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import { State } from "~/lib/mistreevous/State";
+import { ModifierType } from "../StatContainer/StatContainer";
 import type { MemberFSMEvent } from "../StateMachine/types";
 import type { MemberSharedRuntime } from "../types";
 import type { BtContext, MemberBtManagerEnv } from "./BtManagerEnv";
@@ -106,12 +107,13 @@ function mergeAgentMembers<
 
 	let AgentClass: AgentCtor;
 	try {
-		const factory = new Function("BehaviourTree", "State", "owner", `return ${agent};`) as (
+		const factory = new Function("BehaviourTree", "State", "ModifierType", "owner", `return ${agent};`) as (
 			bt: typeof BehaviourTree,
 			state: typeof State,
+			modType: typeof ModifierType,
 			env: MemberBtManagerEnv<TFSMEvent, TExtraAttrKey, TContext>,
 		) => AgentCtor;
-		AgentClass = factory(BehaviourTree, State, owner);
+		AgentClass = factory(BehaviourTree, State, ModifierType, owner);
 	} catch (error) {
 		warn({
 			code: "agent.compile.failed",

@@ -10,7 +10,7 @@ import type {
 	MemberStateMachineEnv,
 } from "../../runtime/StateMachine/types";
 import type { PlayerRuntime } from "../../runtime/types";
-import { selectPlayerSkillVariant } from "./skillLifecycle";
+import { selectPlayerSkillVariant, computePlayerSkillLifecycleMs } from "./skillLifecycle";
 import { PlayerAttrKey } from "./PlayerAttrSchema";
 
 const log = createLogger("PlayerFSM");
@@ -173,12 +173,17 @@ export const playerFSM = (
 					env.runtime.currentSkill = {
 						data: skill,
 						activeVariant: skillVariant,
-						lifecycle: {
-							startupMs: 0,
-							chargingMs: 0,
-							chantingMs: 0,
-							actionMs: 0,
-						},
+						lifecycle: computePlayerSkillLifecycleMs({
+							variant: skillVariant,
+							skillLv: skill.lv,
+							expressionContext: expressionContext(env),
+							evaluateExpression: (expr, ctx) => {
+								const result = env.services.expressionEvaluator?.(expr, ctx);
+								if (typeof result === "number" || typeof result === "boolean") return result;
+								return 0;
+							},
+							runPipeline: (name, params) => env.runPipeline(name, params),
+						}),
 					};
 					const resolvedTargetId =
 						env.services.targetResolver?.(env.id, e.data.target) ?? e.data.target;
@@ -247,6 +252,7 @@ export const playerFSM = (
 							type: "skill",
 						});
 					}
+					log.info(`[${env.name}] 已扣除技能消耗：Hp-${cost.hpCost}, Mp-${cost.mpCost}`);
 				},
 				重置控制抵抗时间: () => {
 					log.debug(`[${env.name}] 重置控制抵抗时间`);

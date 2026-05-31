@@ -8,10 +8,6 @@ MagicCannonVariant1Id__active_bt,魔法炮,"root {
 			/* 此顺序分支的以下内容仅在魔法炮充能buff存在时执行（魔炮发射） */
 			action [animation,""施法前摇"",$currentSkill.lifecycle.startupMs]
 			wait [$currentSkill.lifecycle.startupMs]
-			action [animation,""蓄力动画"",$currentSkill.lifecycle.chargingMs]
-			wait [$currentSkill.lifecycle.chargingMs]
-			action [animation, ""咏唱动画"",$currentSkill.lifecycle.chantingMs]
-			wait [$currentSkill.lifecycle.chantingMs]
 			action [rangeAttack, $targetId,""magic"",""magic"",1,$伤害计算公式,1,$伤害标签,""none"",3]
 			action [removeBuff,""魔法炮充能buff""]
 			action [animation, ""施法后摇"", $后摇毫秒]
@@ -22,10 +18,6 @@ MagicCannonVariant1Id__active_bt,魔法炮,"root {
 			action [log, ""魔炮充填""]
 			action [animation,""施法前摇"",$currentSkill.lifecycle.startupMs]
 			wait [$currentSkill.lifecycle.startupMs]
-			action [animation,""蓄力动画"",$currentSkill.lifecycle.chargingMs]
-			wait [$currentSkill.lifecycle.chargingMs]
-			action [animation, ""咏唱动画"",$currentSkill.lifecycle.chantingMs]
-			wait [$currentSkill.lifecycle.chantingMs]
 			action [addBuff,""魔法炮充能buff""]
 			action [animation, ""施法后摇"", $后摇毫秒]
 			wait [$后摇毫秒]
@@ -43,33 +35,15 @@ MagicCannonVariant1Id__active_bt,魔法炮,"root {
  get 伤害标签() {
        return [""magic""];
     }
-}",[],MagicCannonVariant1Id,,
+}",[],biqvrva0zpgc6wiojl4pho82,,
 MagicCannonVariant1Id__registered_bt_1,魔法炮充能buff,"root {
   repeat {
     sequence {
       wait [1000]
-      action [addCharge, 1]
+      action [modifyAttribute, ""buff.magicCannon.charge"", ""1"", ""dynamicFixed""]
     }
   }
-}","class Agent {
-  constructor() {
-    this._charge = 0; // 真正存值的地方
-  }
-
-  get charge() {
-    return this._charge;
-  }
-
-  set charge(i) {
-    this._charge = Number(i) || 0;
-  }
-
-  addCharge(i) {
-    this.charge = this.charge + (Number(i) || 0);
-    console.log('魔法炮充能：',this._charge)
-    return State.SUCCEEDED
-  }
-}",[],,,MagicCannonVariant1Id
+}","","[{""path"": ""buff.magicCannon.charge"", ""attribute"": {""displayName"": ""\u9b54\u6cd5\u70ae\u5145\u80fd\u6570"", ""expression"": ""0""}}]",,,biqvrva0zpgc6wiojl4pho82
 xdv0qzto85gqzs9ciku5jxcw__active_bt,default,"root {
 	sequence{
 		action [animation,""施法前摇"",$currentSkill.lifecycle.startupMs]
@@ -1209,3 +1183,255 @@ migtiz9hu2laxvjbjcuodmxa__passive_bt,魔法戰士的要訣 被动属性,"root {
 		action [modifyAttribute, ""atk.p"", ""skillLv"", ""staticPercentage""]
 	}
 }","",[],,migtiz9hu2laxvjbjcuodmxa,
+a0v7r3xs0kjv6l3p36gyt4uz__active_bt,迅捷攻擊 主动伤害,"root {
+	/* toram-skill-import:active-damage-v1; sourceTree=劍術技能; sourceSkill=迅捷攻擊 */
+	sequence {
+		action [animation, ""startup"", currentSkill.lifecycle.startupMs]
+		wait [currentSkill.lifecycle.startupMs]
+		action [animation, ""charging"", currentSkill.lifecycle.chargingMs]
+		wait [currentSkill.lifecycle.chargingMs]
+		action [animation, ""chanting"", currentSkill.lifecycle.chantingMs]
+		wait [currentSkill.lifecycle.chantingMs]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 150+5*skillLv) * (150+10*skillLv) / 100"", 1, [], [], ""none""]
+		action [animation, ""action"", currentSkill.lifecycle.actionMs]
+		wait [currentSkill.lifecycle.actionMs]
+	}
+}","",[],a0v7r3xs0kjv6l3p36gyt4uz,,
+tdubwv92d8fi08z1gyvv601u__active_bt,迅捷攻擊 主动伤害,"root {
+	/* toram-skill-import:active-damage-v1; sourceTree=劍術技能; sourceSkill=迅捷攻擊 */
+	sequence {
+		action [animation, ""startup"", currentSkill.lifecycle.startupMs]
+		wait [currentSkill.lifecycle.startupMs]
+		action [animation, ""charging"", currentSkill.lifecycle.chargingMs]
+		wait [currentSkill.lifecycle.chargingMs]
+		action [animation, ""chanting"", currentSkill.lifecycle.chantingMs]
+		wait [currentSkill.lifecycle.chantingMs]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 150+5*skillLv) * (150+10*skillLv) / 100"", 1, [], [], ""none""]
+		action [animation, ""action"", currentSkill.lifecycle.actionMs]
+		wait [currentSkill.lifecycle.actionMs]
+	}
+}","",[],tdubwv92d8fi08z1gyvv601u,,
+s4un83iopzye0amxnb0z2zyb__active_bt,橫掃千軍 主动伤害,"root {
+	/* toram-skill-import:active-damage-v1; sourceTree=劍術技能; sourceSkill=橫掃千軍 */
+	sequence {
+		action [animation, ""startup"", currentSkill.lifecycle.startupMs]
+		wait [currentSkill.lifecycle.startupMs]
+		action [animation, ""charging"", currentSkill.lifecycle.chargingMs]
+		wait [currentSkill.lifecycle.chargingMs]
+		action [animation, ""chanting"", currentSkill.lifecycle.chantingMs]
+		wait [currentSkill.lifecycle.chantingMs]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200+10*skillLv) * (150+5*skillLv) / 100"", 1, [], [], ""none""]
+		action [animation, ""action"", currentSkill.lifecycle.actionMs]
+		wait [currentSkill.lifecycle.actionMs]
+	}
+}","",[],s4un83iopzye0amxnb0z2zyb,,
+yeewulrsjycgn1hodw4qztxt__active_bt,橫掃千軍 主动伤害,"root {
+	/* toram-skill-import:active-damage-v1; sourceTree=劍術技能; sourceSkill=橫掃千軍 */
+	sequence {
+		action [animation, ""startup"", currentSkill.lifecycle.startupMs]
+		wait [currentSkill.lifecycle.startupMs]
+		action [animation, ""charging"", currentSkill.lifecycle.chargingMs]
+		wait [currentSkill.lifecycle.chargingMs]
+		action [animation, ""chanting"", currentSkill.lifecycle.chantingMs]
+		wait [currentSkill.lifecycle.chantingMs]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200+10*skillLv) * (150+5*skillLv) / 100"", 1, [], [], ""none""]
+		action [animation, ""action"", currentSkill.lifecycle.actionMs]
+		wait [currentSkill.lifecycle.actionMs]
+	}
+}","",[],yeewulrsjycgn1hodw4qztxt,,
+w5adanrcr6qvv2wch6nig0i2__active_bt,法術/光護 主动伤害,"root {
+	/* toram-skill-import:active-damage-v1; sourceTree=魔法技能; sourceSkill=法術/光護 */
+	sequence {
+		action [animation, ""startup"", currentSkill.lifecycle.startupMs]
+		wait [currentSkill.lifecycle.startupMs]
+		action [animation, ""charging"", currentSkill.lifecycle.chargingMs]
+		wait [currentSkill.lifecycle.chargingMs]
+		action [animation, ""chanting"", currentSkill.lifecycle.chantingMs]
+		wait [currentSkill.lifecycle.chantingMs]
+		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 300) * (50+self.int*1) / 100"", 1, [], [{type: ""KnockBack"", chance: ""100""}], ""none""]
+		action [animation, ""action"", currentSkill.lifecycle.actionMs]
+		wait [currentSkill.lifecycle.actionMs]
+	}
+}","",[],w5adanrcr6qvv2wch6nig0i2,,
+ilvmdom2mrx6ruavunbugal1__active_bt,法術/光護 主动伤害,"root {
+	/* toram-skill-import:active-damage-v1; sourceTree=魔法技能; sourceSkill=法術/光護 */
+	sequence {
+		action [animation, ""startup"", currentSkill.lifecycle.startupMs]
+		wait [currentSkill.lifecycle.startupMs]
+		action [animation, ""charging"", currentSkill.lifecycle.chargingMs]
+		wait [currentSkill.lifecycle.chargingMs]
+		action [animation, ""chanting"", currentSkill.lifecycle.chantingMs]
+		wait [currentSkill.lifecycle.chantingMs]
+		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 300) * (50+self.int*1) / 100"", 1, [], [{type: ""KnockBack"", chance: ""100""}], ""none""]
+		action [animation, ""action"", currentSkill.lifecycle.actionMs]
+		wait [currentSkill.lifecycle.actionMs]
+	}
+}","",[],ilvmdom2mrx6ruavunbugal1,,
+exvyibkzfccam1226k8b23vy__active_bt,疾襲 主动伤害,"root {
+	/* toram-skill-import:active-damage-v1; sourceTree=格鬥技能; sourceSkill=疾襲 */
+	sequence {
+		action [animation, ""startup"", currentSkill.lifecycle.startupMs]
+		wait [currentSkill.lifecycle.startupMs]
+		action [animation, ""charging"", currentSkill.lifecycle.chargingMs]
+		wait [currentSkill.lifecycle.chargingMs]
+		action [animation, ""chanting"", currentSkill.lifecycle.chantingMs]
+		wait [currentSkill.lifecycle.chantingMs]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 4, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200+20*skillLv) * (500+40*skillLv+self._agi*2) / 100"", 1, [], [], ""none""]
+		action [animation, ""action"", currentSkill.lifecycle.actionMs]
+		wait [currentSkill.lifecycle.actionMs]
+	}
+}","",[],exvyibkzfccam1226k8b23vy,,
+qz19ev1g2kphjddgh3puyald__active_bt,修羅氣場 主动伤害,"root {
+	/* toram-skill-import:active-damage-v1; sourceTree=格鬥技能; sourceSkill=修羅氣場 */
+	sequence {
+		action [animation, ""startup"", currentSkill.lifecycle.startupMs]
+		wait [currentSkill.lifecycle.startupMs]
+		action [animation, ""charging"", currentSkill.lifecycle.chargingMs]
+		wait [currentSkill.lifecycle.chargingMs]
+		action [animation, ""chanting"", currentSkill.lifecycle.chantingMs]
+		wait [currentSkill.lifecycle.chantingMs]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 0) * (95+self._agi/(24-skillLv*2)) / 100"", 1, [], [], ""none""]
+		action [animation, ""action"", currentSkill.lifecycle.actionMs]
+		wait [currentSkill.lifecycle.actionMs]
+	}
+}","",[],qz19ev1g2kphjddgh3puyald,,
+l5sg8b3iohb6tqt4ln8aegxe__active_bt,貼山靠 主动伤害,"root {
+	/* toram-skill-import:active-damage-v1; sourceTree=格鬥技能; sourceSkill=貼山靠 */
+	sequence {
+		action [animation, ""startup"", currentSkill.lifecycle.startupMs]
+		wait [currentSkill.lifecycle.startupMs]
+		action [animation, ""charging"", currentSkill.lifecycle.chargingMs]
+		wait [currentSkill.lifecycle.chargingMs]
+		action [animation, ""chanting"", currentSkill.lifecycle.chantingMs]
+		wait [currentSkill.lifecycle.chantingMs]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 500) * (750+25*skillLv) / 100"", 1, [], [{type: ""Stun"", chance: ""100""}], ""none""]
+		action [animation, ""action"", currentSkill.lifecycle.actionMs]
+		wait [currentSkill.lifecycle.actionMs]
+	}
+}","",[],l5sg8b3iohb6tqt4ln8aegxe,,
+w27s0f1gfe4c5t4hefotu1fm__active_bt,貼山靠 主动伤害,"root {
+	/* toram-skill-import:active-damage-v1; sourceTree=格鬥技能; sourceSkill=貼山靠 */
+	sequence {
+		action [animation, ""startup"", currentSkill.lifecycle.startupMs]
+		wait [currentSkill.lifecycle.startupMs]
+		action [animation, ""charging"", currentSkill.lifecycle.chargingMs]
+		wait [currentSkill.lifecycle.chargingMs]
+		action [animation, ""chanting"", currentSkill.lifecycle.chantingMs]
+		wait [currentSkill.lifecycle.chantingMs]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 500) * (750+25*skillLv) / 100"", 1, [], [{type: ""Stun"", chance: ""100""}], ""none""]
+		action [animation, ""action"", currentSkill.lifecycle.actionMs]
+		wait [currentSkill.lifecycle.actionMs]
+	}
+}","",[],w27s0f1gfe4c5t4hefotu1fm,,
+xwoxyb3lxeaauql54sqtq60n__active_bt,禦空破陣 主动伤害,"root {
+	/* toram-skill-import:active-damage-v1; sourceTree=雙劍技能; sourceSkill=禦空破陣 */
+	sequence {
+		action [animation, ""startup"", currentSkill.lifecycle.startupMs]
+		wait [currentSkill.lifecycle.startupMs]
+		action [animation, ""charging"", currentSkill.lifecycle.chargingMs]
+		wait [currentSkill.lifecycle.chargingMs]
+		action [animation, ""chanting"", currentSkill.lifecycle.chantingMs]
+		wait [currentSkill.lifecycle.chantingMs]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 2, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 50+5*skillLv) * (100+skillLv) / 100"", 1, [], [], ""none""]
+		action [animation, ""action"", currentSkill.lifecycle.actionMs]
+		wait [currentSkill.lifecycle.actionMs]
+	}
+}","",[],xwoxyb3lxeaauql54sqtq60n,,
+hq5piax4pnt7u8cg9bub5bv3__active_bt,斷禍 主动伤害,"root {
+	/* toram-skill-import:active-damage-v1; sourceTree=武士技能; sourceSkill=斷禍 */
+	sequence {
+		action [animation, ""startup"", currentSkill.lifecycle.startupMs]
+		wait [currentSkill.lifecycle.startupMs]
+		action [animation, ""charging"", currentSkill.lifecycle.chargingMs]
+		wait [currentSkill.lifecycle.chargingMs]
+		action [animation, ""chanting"", currentSkill.lifecycle.chantingMs]
+		wait [currentSkill.lifecycle.chantingMs]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100+10*skillLv) * (200+30*skillLv) / 100"", 1, [], [], ""none""]
+		action [animation, ""action"", currentSkill.lifecycle.actionMs]
+		wait [currentSkill.lifecycle.actionMs]
+	}
+}","",[],hq5piax4pnt7u8cg9bub5bv3,,
+h3h2a6u5ekqkscfs7rc7oyyh__active_bt,斷禍 主动伤害,"root {
+	/* toram-skill-import:active-damage-v1; sourceTree=武士技能; sourceSkill=斷禍 */
+	sequence {
+		action [animation, ""startup"", currentSkill.lifecycle.startupMs]
+		wait [currentSkill.lifecycle.startupMs]
+		action [animation, ""charging"", currentSkill.lifecycle.chargingMs]
+		wait [currentSkill.lifecycle.chargingMs]
+		action [animation, ""chanting"", currentSkill.lifecycle.chantingMs]
+		wait [currentSkill.lifecycle.chantingMs]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 100+10*skillLv) * (200+30*skillLv) / 100"", 1, [], [], ""none""]
+		action [animation, ""action"", currentSkill.lifecycle.actionMs]
+		wait [currentSkill.lifecycle.actionMs]
+	}
+}","",[],h3h2a6u5ekqkscfs7rc7oyyh,,
+k7fxwqbx5xlkqonghx63n067__active_bt,自動裝置 主动伤害,"root {
+	/* toram-skill-import:active-damage-v1; sourceTree=靈魂技能; sourceSkill=自動裝置 */
+	sequence {
+		action [animation, ""startup"", currentSkill.lifecycle.startupMs]
+		wait [currentSkill.lifecycle.startupMs]
+		action [animation, ""charging"", currentSkill.lifecycle.chargingMs]
+		wait [currentSkill.lifecycle.chargingMs]
+		action [animation, ""chanting"", currentSkill.lifecycle.chantingMs]
+		wait [currentSkill.lifecycle.chantingMs]
+		action [singleAttack, $targetId, ""normal"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 0) * (100) / 100"", 1, [], [], ""none""]
+		action [animation, ""action"", currentSkill.lifecycle.actionMs]
+		wait [currentSkill.lifecycle.actionMs]
+	}
+}","",[],k7fxwqbx5xlkqonghx63n067,,
+mpdk0wrjfszbmke3jsnh7lp4__active_bt,生命的光輝 主动伤害,"root {
+	/* toram-skill-import:active-damage-v1; sourceTree=靈魂技能; sourceSkill=生命的光輝 */
+	sequence {
+		action [animation, ""startup"", currentSkill.lifecycle.startupMs]
+		wait [currentSkill.lifecycle.startupMs]
+		action [animation, ""charging"", currentSkill.lifecycle.chargingMs]
+		wait [currentSkill.lifecycle.chargingMs]
+		action [animation, ""chanting"", currentSkill.lifecycle.chantingMs]
+		wait [currentSkill.lifecycle.chantingMs]
+		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 400) * (1000+100*skillLv) / 100"", 1, [], [], ""none""]
+		action [animation, ""action"", currentSkill.lifecycle.actionMs]
+		wait [currentSkill.lifecycle.actionMs]
+	}
+}","",[],mpdk0wrjfszbmke3jsnh7lp4,,
+ktouqu1hjeh8rv0d5oo8mwl5__active_bt,閃爍之劍 主动伤害,"root {
+	/* toram-skill-import:active-damage-v1; sourceTree=騎士精神; sourceSkill=閃爍之劍 */
+	sequence {
+		action [animation, ""startup"", currentSkill.lifecycle.startupMs]
+		wait [currentSkill.lifecycle.startupMs]
+		action [animation, ""charging"", currentSkill.lifecycle.chargingMs]
+		wait [currentSkill.lifecycle.chargingMs]
+		action [animation, ""chanting"", currentSkill.lifecycle.chantingMs]
+		wait [currentSkill.lifecycle.chantingMs]
+		action [singleAttack, $targetId, ""physical"", ""physical"", 1, ""(((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p)) + 200) * (500+75*skillLv) / 100"", 1, [], [{type: ""Flinch"", chance: ""10*skillLv""}], ""none""]
+		action [animation, ""action"", currentSkill.lifecycle.actionMs]
+		wait [currentSkill.lifecycle.actionMs]
+	}
+}","",[],ktouqu1hjeh8rv0d5oo8mwl5,,
+p5qz58bspo91c1xog1eouvwx__active_bt,神聖恩惠 主动伤害,"root {
+	/* toram-skill-import:active-damage-v1; sourceTree=祭司技能; sourceSkill=神聖恩惠 */
+	sequence {
+		action [animation, ""startup"", currentSkill.lifecycle.startupMs]
+		wait [currentSkill.lifecycle.startupMs]
+		action [animation, ""charging"", currentSkill.lifecycle.chargingMs]
+		wait [currentSkill.lifecycle.chargingMs]
+		action [animation, ""chanting"", currentSkill.lifecycle.chantingMs]
+		wait [currentSkill.lifecycle.chantingMs]
+		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 300+Math.max(0,300*(skillLv-5))+self.dex) * (50*skillLv+self._int) / 100"", 1, [], [], ""none""]
+		action [animation, ""action"", currentSkill.lifecycle.actionMs]
+		wait [currentSkill.lifecycle.actionMs]
+	}
+}","",[],p5qz58bspo91c1xog1eouvwx,,
+ojsyaz5vbrasp5t34wurdbmz__active_bt,神聖恩惠 主动伤害,"root {
+	/* toram-skill-import:active-damage-v1; sourceTree=祭司技能; sourceSkill=神聖恩惠 */
+	sequence {
+		action [animation, ""startup"", currentSkill.lifecycle.startupMs]
+		wait [currentSkill.lifecycle.startupMs]
+		action [animation, ""charging"", currentSkill.lifecycle.chargingMs]
+		wait [currentSkill.lifecycle.chargingMs]
+		action [animation, ""chanting"", currentSkill.lifecycle.chantingMs]
+		wait [currentSkill.lifecycle.chantingMs]
+		action [singleAttack, $targetId, ""magic"", ""magic"", 1, ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 300+Math.max(0,300*(skillLv-5))+self.dex) * (50*skillLv+self._int) / 100"", 1, [], [], ""none""]
+		action [animation, ""action"", currentSkill.lifecycle.actionMs]
+		wait [currentSkill.lifecycle.actionMs]
+	}
+}","",[],ojsyaz5vbrasp5t34wurdbmz,,

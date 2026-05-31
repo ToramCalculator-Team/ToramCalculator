@@ -18,7 +18,7 @@ import type {
 } from "../../runtime/StateMachine/types";
 import type { PlayerRuntime } from "../../runtime/types";
 import type { Player } from "./Player";
-import { computePlayerSkillLifecycleMs, getActiveBehaviorLifecycle, selectPlayerSkillVariant } from "./skillLifecycle";
+import { computePlayerSkillLifecycleMs, selectPlayerSkillVariant } from "./skillLifecycle";
 import { PlayerAttrKey } from "./PlayerAttrSchema";
 
 const log = createLogger("PlayerSM");
@@ -572,7 +572,7 @@ export const playerStateMachine = (
 						return false;
 					}
 
-					const timing = getActiveBehaviorLifecycle(variant);
+						const timing = variant as Record<string, string>;
 					const chargingFixed = env.services.expressionEvaluator?.(
 						timing.chargingFixedMs ?? "0",
 						expressionContext(env),
@@ -599,7 +599,7 @@ export const playerStateMachine = (
 						log.error(`👤 [${env.name}] 技能效果不存在`);
 						return false;
 					}
-					const timing = getActiveBehaviorLifecycle(variant);
+						const timing = variant as Record<string, string>;
 					const chantingFixed = env.services.expressionEvaluator?.(
 						timing.chantingFixedMs ?? "0",
 						expressionContext(env),

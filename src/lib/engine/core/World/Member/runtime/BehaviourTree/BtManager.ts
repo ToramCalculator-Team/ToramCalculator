@@ -5,6 +5,7 @@ import type { BehaviourTreeOptions } from "~/lib/mistreevous/BehaviourTreeOption
 import { State } from "~/lib/mistreevous/State";
 import type { BtManagerCheckpoint, Checkpointable } from "../../../../types";
 import type { MemberFSMEvent } from "../StateMachine/types";
+import { ModifierType } from "../StatContainer/StatContainer";
 import type { MemberSharedRuntime } from "../types";
 import type { MemberBtManagerEnv } from "./BtManagerEnv";
 
@@ -46,6 +47,11 @@ export class BtManager<
 		return {
 			...this.btOptions,
 			getDeltaTimeMs: () => this.env.getDeltaTimeMs(),
+			resolveProperty: (path: string) => {
+				const stat = this.env.getCapabilities().statContainer;
+				if (stat.hasKey(path)) return stat.getValue(path as any);
+				return undefined;
+			},
 		};
 	}
 
@@ -91,12 +97,13 @@ export class BtManager<
 
 		let AgentClass: AgentCtor;
 		try {
-			const factory = new Function("BehaviourTree", "State", "owner", `return ${agent};`) as (
+			const factory = new Function("BehaviourTree", "State", "ModifierType", "owner", `return ${agent};`) as (
 				bt: typeof BehaviourTree,
 				state: typeof State,
+				modType: typeof ModifierType,
 				env: MemberBtManagerEnv<TFSMEvent, TExtraAttrKey, TContext>,
 			) => AgentCtor;
-			AgentClass = factory(BehaviourTree, State, this.env);
+			AgentClass = factory(BehaviourTree, State, ModifierType, this.env);
 		} catch (error) {
 			log.warn(`[${this.env.name}] failed to compile agent: ${error instanceof Error ? error.message : String(error)}`);
 			return;

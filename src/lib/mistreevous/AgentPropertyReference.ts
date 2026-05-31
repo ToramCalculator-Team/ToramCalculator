@@ -19,13 +19,31 @@ export function isAgentPropertyReference(
 	return typeof propName === "string" && propName.length > 0;
 }
 
+export function resolveAgentProperty(agent: Agent, path: string): unknown {
+	const parts = path.split(".");
+	let current: unknown = agent;
+	for (const part of parts) {
+		if (current === null || current === undefined) return undefined;
+		current = (current as Record<string, unknown>)[part];
+	}
+	return current;
+}
+
 export function resolveAgentNonNegativeInteger(
 	agent: Agent,
 	value: number | AgentPropertyReference,
 	label: string,
+	resolveProperty?: (path: string) => unknown,
 ): number {
-	// 统一解析：数字直接使用；引用则从 agent 上取值
-	const resolved = typeof value === "number" ? value : agent[value.$];
+	let resolved: unknown;
+	if (typeof value === "number") {
+		resolved = value;
+	} else {
+		resolved = resolveAgentProperty(agent, value.$);
+		if (resolved === undefined && resolveProperty) {
+			resolved = resolveProperty(value.$);
+		}
+	}
 
 	if (
 		typeof resolved !== "number" ||

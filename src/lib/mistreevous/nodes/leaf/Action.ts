@@ -87,7 +87,7 @@ export class Action extends Leaf {
 		}
 
 		// 尝试获取动作函数的调用器。
-		const actionFuncInvoker = Lookup.getFuncInvoker(agent, this.actionName);
+		const actionFuncInvoker = Lookup.getFuncInvoker(agent, this.actionName, this.options.resolveProperty);
 
 		// 动作函数应该已定义。
 		if (actionFuncInvoker === null) {

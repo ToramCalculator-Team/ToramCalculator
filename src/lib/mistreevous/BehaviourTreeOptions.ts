@@ -73,4 +73,11 @@ export interface BehaviourTreeOptions {
 	 * @param change The object representing a change in state for a node in a behaviour tree instance.
 	 */
 	onNodeStateChange?(change: NodeStateChange): void;
+
+	/**
+	 * Fallback property resolver for `$` references that cannot be resolved from the agent.
+	 * @param path The dot-separated property path (e.g. "buff.magicCannon.charge").
+	 * @returns The resolved value, or undefined if not found.
+	 */
+	resolveProperty?(path: string): unknown;
 }

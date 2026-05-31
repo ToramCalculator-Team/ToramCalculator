@@ -4,7 +4,7 @@ import type { PipelineInstruction } from "./instruction";
  * 内置基础管线定义（仅数据）。
  *
  * 职责边界：
- * - Pipeline 只表达“输入数值/上下文 -> 输出数值/上下文”的计算修正。
+ * - Pipeline 只表达”输入数值/上下文 -> 输出数值/上下文”的计算修正。
  * - 等待、循环、条件分支、注册行为树、创建区域、安装订阅、写入长期状态等流程逻辑由 FSM、MDSL/BT 或对应运行时服务承载。
  * - 被动技能可以通过 pipeline overlay 改写公开计算槽，但不得把非计算副作用塞进管线。
  *
@@ -12,12 +12,14 @@ import type { PipelineInstruction } from "./instruction";
  * - 由 `PipelineCatalog` 收编并冻结
  * - 解析/编译/执行由 `PipelineResolverService` 负责
  *
- * 技能生命周期毫秒管线（skill.startup / charging / chanting / action）约定：
- * - 由编排层（FSM action "计算技能生命周期参数"）预求值 variant 上的字符串公式，
- *   以 `input.original`（startup）或 `input.fixed` + `input.modified`（其余三段）传入。
- * - startup / charging / action 套用 mspd 行动速度修正：rate = max(0.5, 1 - mspd/100)。
+ * 技能生命周期管线（skill.charging / skill.chanting / skill.action）约定：
+ * - 动画时序：chanting(咏唱) → charging(蓄力) → action(施法)。
+ * - action 内部：startupMs(前摇) + 后摇 = actionMs。startupMs = floor(actionMs * startupRatio)，由 FSM 计算，不经过管线。
+ * - 由编排层（FSM action “添加待处理技能”）预求值 variant 上的字符串公式并转为毫秒，
+ *   以 `input.fixed` + `input.modified` 传入。
+ * - charging / action 套用 mspd 行动速度修正：rate = max(0.5, 1 - mspd/100)。
  * - chanting 额外套用 cspr 咏唱缩减：chantRate = max(0, 1 - cspr/100)，再叠加 mspd 动画修正。
- * - FSM 再把管线输出 `durationMs` 写入 `runtime.currentSkill*Ms`。
+ * - FSM 再把管线输出 `durationMs` 写入 `runtime.currentSkill.lifecycle`。
  */
 
 /** 标准行动速度修正：rate = max(0.5, 1 - mspd/100)。 */
@@ -62,16 +64,8 @@ export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstructi
 		{ target: "mpCost", op: "max", a: 0, b: "ratedMpCost" },
 	],
 
-	// 前摇：activeBehavior.behaviorParams.lifecycle.startupMs 为单一公式，整段受行动速度影响。
-	// 输入：input.original（由 FSM 预求值）
-	"skill.startup": [
-		...mspdRateInstructions,
-		{ target: "rawDurationMs", op: "*", a: "input.original", b: "rate" },
-		{ target: "durationMs", op: "floor", a: "rawDurationMs" },
-	],
-
-	// 蓄力：lifecycle.chargingFixedMs 不受速度影响；lifecycle.chargingModifiedMs 受行动速度修正。
-	// 输入：input.fixed, input.modified
+	// 蓄力：chargingFixedMs 不受速度影响；chargingModifiedMs 受行动速度修正。
+	// 输入：input.fixed, input.modified（毫秒）
 	"skill.charging": [
 		...mspdRateInstructions,
 		{ target: "adj", op: "*", a: "input.modified", b: "rate" },
@@ -79,8 +73,8 @@ export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstructi
 		{ target: "durationMs", op: "floor", a: "rawDurationMs" },
 	],
 
-	// 咏唱：lifecycle.chantingFixedMs 不受速度影响；lifecycle.chantingModifiedMs 先受 CSPD 咏唱缩减，再受行动速度动画修正。
-	// 输入：input.fixed, input.modified
+	// 咏唱：chantingFixedMs 不受速度影响；chantingModifiedMs 先受 CSPD 咏唱缩减，再受行动速度动画修正。
+	// 输入：input.fixed, input.modified（毫秒）
 	"skill.chanting": [
 		...mspdRateInstructions,
 		...csprRateInstructions,
@@ -90,8 +84,8 @@ export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstructi
 		{ target: "durationMs", op: "floor", a: "rawDurationMs" },
 	],
 
-	// 发动（motion）：lifecycle.actionFixedMs 不受速度影响；lifecycle.actionModifiedMs 受行动速度修正。
-	// 输入：input.fixed, input.modified
+	// 施法（action）：actionFixedMs 不受速度影响；actionModifiedMs 受行动速度修正。
+	// 输入：input.fixed, input.modified（毫秒）
 	"skill.action": [
 		...mspdRateInstructions,
 		{ target: "adj", op: "*", a: "input.modified", b: "rate" },

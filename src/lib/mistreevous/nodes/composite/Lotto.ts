@@ -56,13 +56,13 @@ export class Lotto extends Composite {
 				if (typeof weight !== "number" && !isAgentPropertyReference(weight)) {
 					throw new Error(`lotto 节点权重参数无效：${JSON.stringify(weight)}`);
 				}
-				// Default to 1 when not provided; allow 0 to mean "never selected".
 				return resolveAgentNonNegativeInteger(
 					agent,
 					weight,
 					typeof weight === "number"
 						? `lotto 节点权重[${index}]`
 						: `lotto 节点引用的 agent 属性 '${weight.$}'（权重）`,
+					this.options.resolveProperty,
 				);
 			});
 

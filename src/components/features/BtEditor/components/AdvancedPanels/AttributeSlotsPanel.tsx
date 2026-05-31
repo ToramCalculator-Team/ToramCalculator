@@ -18,7 +18,6 @@ const createEmptySlot = (): AttributeSlotDeclarationData => ({
 	attribute: {
 		displayName: "行为树变量",
 		expression: "0",
-		onlyBaseValue: true,
 	},
 });
 
@@ -84,14 +83,6 @@ export const AttributeSlotsPanel: Component<AttributeSlotsPanelProps> = (props) 
 							onInput={(event) => updateSlot(index, { attribute: { expression: event.currentTarget.value } })}
 						/>
 						<div class="flex flex-wrap gap-2">
-							<CheckBox
-								name={`onlyBaseValue-${index}`}
-								checked={!!slot().attribute.onlyBaseValue}
-								disabled={props.readOnly}
-								onChange={(event) => updateSlot(index, { attribute: { onlyBaseValue: event.currentTarget.checked } })}
-							>
-								onlyBaseValue
-							</CheckBox>
 							<CheckBox
 								name={`noBaseValue-${index}`}
 								checked={!!slot().attribute.noBaseValue}

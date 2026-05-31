@@ -1,4 +1,5 @@
 import type { ActionResult, Agent, GlobalFunction } from "./Agent";
+import { resolveAgentProperty } from "./AgentPropertyReference";
 import type { RootNodeDefinition } from "./BehaviourTreeDefinition";
 
 export type InvokerFunction = (args: any[]) => ActionResult | boolean;
@@ -36,31 +37,20 @@ export const Lookup = {
 
 	/**
 	 * 获取指定 agent 和函数名的函数调用器。
-	 * 如果 agent 对象上存在指定名称的函数，则返回该函数；
-	 * 否则检查已注册的函数中是否有匹配项。
-	 * @param agent 行为树为其建模行为的 agent 实例。
-	 * @param name 函数名称。
-	 * @returns 指定 agent 和函数名的函数调用器。
 	 */
-	getFuncInvoker(agent: Agent, name: string): InvokerFunction | null {
-		// 处理传递给 agent 或已注册函数的参数的函数。
+	getFuncInvoker(agent: Agent, name: string, resolveProperty?: (path: string) => unknown): InvokerFunction | null {
 		const processFunctionArguments = (args: any[]) =>
 			args.map((arg) => {
-				// 该参数可能是 agent 属性引用。如果是，应将其替换为所引用的 agent 属性的值。
-				// agent 属性引用是一个对象，具有单个 "$" 属性，其值为表示 agent 属性名的字符串。
 				if (typeof arg === "object" && arg !== null && Object.keys(arg).length === 1 && Object.hasOwn(arg, "$")) {
-					// 从表示 agent 属性引用的对象中获取 agent 属性名。
-					const agentPropertyName = arg.$;
-
-					// agent 属性名必须是有效的字符串。
-					if (typeof agentPropertyName !== "string" || agentPropertyName.length === 0) {
-						throw new Error("Agent property reference must be a string?");
+					const path = arg.$;
+					if (typeof path !== "string" || path.length === 0) {
+						throw new Error("Agent property reference must be a non-empty string");
 					}
-
-					return agent[agentPropertyName];
+					const value = resolveAgentProperty(agent, path);
+					if (value !== undefined) return value;
+					if (resolveProperty) return resolveProperty(path);
+					return undefined;
 				}
-
-				// 参数可以原样传递给函数。
 				return arg;
 			});
 

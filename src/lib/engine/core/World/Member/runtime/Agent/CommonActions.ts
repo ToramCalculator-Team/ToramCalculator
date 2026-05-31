@@ -444,7 +444,7 @@ export const CommonActionPool = {
 				return State.FAILED;
 			}
 			// 注册buff
-			capabilities.registerParallelBt(buff.name, buff.definition);
+			capabilities.registerParallelBt(buff.name, buff.definition, buff.agent);
 			return State.SUCCEEDED;
 		},
 	),
@@ -505,7 +505,7 @@ export const CommonActionPool = {
 				}[input.type],
 				evaluated,
 				{
-					id: input.sourceId ?? skill?.id ?? currentSkillData?.id ?? "",
+					id: input.sourceId ?? skill?.id ?? currentSkillData?.id ?? input.attribute,
 					name: input.sourceName ?? skill?.name ?? currentSkillData?.template.name ?? "",
 					type: input.sourceType ?? "skill",
 				},

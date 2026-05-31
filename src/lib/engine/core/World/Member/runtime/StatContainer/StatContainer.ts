@@ -589,6 +589,14 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 		return value;
 	}
 
+	hasKey(key: string): boolean {
+		return this.keyToIndex.has(key as T);
+	}
+
+	getAllKeys(): T[] {
+		return this.indexToKey.slice();
+	}
+
 	/**
 	 * 获取属性基础值（表达式求值结果，叠加 modifier 之前）
 	 */

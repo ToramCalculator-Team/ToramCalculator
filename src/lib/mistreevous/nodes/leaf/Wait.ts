@@ -61,6 +61,7 @@ export class Wait extends Leaf {
 			typeof value === "number"
 				? "wait 节点持续时间（ms）"
 				: `wait 节点引用的 agent 属性 '${value.$}'（ms）`,
+			this.options.resolveProperty,
 		);
 	};
 

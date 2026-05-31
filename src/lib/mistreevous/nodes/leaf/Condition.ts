@@ -35,6 +35,7 @@ export class Condition extends Leaf {
 		const conditionFuncInvoker = Lookup.getFuncInvoker(
 			agent,
 			this.conditionName,
+			this.options.resolveProperty,
 		);
 
 		// 条件函数应该已定义。

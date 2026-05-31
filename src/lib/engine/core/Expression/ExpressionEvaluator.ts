@@ -4,6 +4,7 @@ import type { ExpressionContext } from "../JSProcessor/types";
 import type { NestedSchema } from "../World/Member/runtime/StatContainer/SchemaTypes";
 
 const log = createLogger("ExprEval");
+log.setLevel(0);
 
 type ExpressionMember = {
 	id: string;

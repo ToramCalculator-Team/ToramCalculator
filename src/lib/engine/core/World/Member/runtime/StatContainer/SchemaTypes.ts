@@ -40,8 +40,6 @@ export const SchemaAttributeSchema = z.object({
 	expression: z.string(),
 	// 百分比修正不参与乘法，仅做加法累加。
 	noBaseValue: z.boolean().optional(),
-	// 仅保留基础值，适合技能计数器、冷却时间戳等持久化槽。
-	onlyBaseValue: z.boolean().optional(),
 });
 export type SchemaAttribute = z.output<typeof SchemaAttributeSchema>;
 

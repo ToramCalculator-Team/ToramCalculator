@@ -129,7 +129,6 @@ export function numericSlot(path: string, displayName: string, initialExpression
 		attribute: {
 			displayName,
 			expression: initialExpression,
-			onlyBaseValue: true,
 		},
 	};
 }

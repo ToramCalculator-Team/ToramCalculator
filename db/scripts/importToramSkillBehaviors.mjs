@@ -600,9 +600,8 @@ const qualifiesForActiveDamageV1 = (effect) => {
 	if (damageBranches.length !== 1 || prorationBranches.length !== 1) return null;
 
 	const hasStack = branches.some((b) => b.name === "stack");
-	const hasEffect = branches.some((b) => b.name === "effect");
 	const hasHeal = branches.some((b) => b.name === "heal");
-	if (hasStack || hasEffect || hasHeal) return null;
+	if (hasStack || hasHeal) return null;
 
 	const damage = damageBranches[0];
 	const proration = prorationBranches[0];
