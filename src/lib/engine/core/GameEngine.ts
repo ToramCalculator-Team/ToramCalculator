@@ -1850,7 +1850,7 @@ export class GameEngine {
 					startUp: lifecycle.startUp,
 					charging: lifecycle.charging,
 					chanting: lifecycle.chanting,
-					actionMs: lifecycle.actionMs,
+					action: lifecycle.action,
 					activeEffectDurationMs: lifecycle.activeEffectDurationMs,
 				},
 			};

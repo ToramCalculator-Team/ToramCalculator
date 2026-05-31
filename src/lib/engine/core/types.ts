@@ -264,7 +264,7 @@ export const ComputedSkillInfoSchema = z.object({
 		startUp: z.number(),
 		charging: z.number(),
 		chanting: z.number(),
-		actionMs: z.number(),
+		action: z.number(),
 		activeEffectDurationMs: z.number(),
 	}),
 });

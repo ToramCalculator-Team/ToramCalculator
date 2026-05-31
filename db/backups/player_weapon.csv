@@ -1,3 +1,4 @@
 id,name,type,elementType,baseAbi,stability,extraAbi,templateId,refinement,modifiers,belongToPlayerId
 defaultPlayerSubWeaponId,风遁术,NinjutsuScroll,Normal,0,0,0,defaultSubWeaponItemId,0,"{""cspd + 250""}",defaultPlayerId
 defaultPlayerWeaponId,精丽魔导+15,Magictool,Light,462,70,10,defaultWeaponItemId,15,"{""mainWeapon.element = light"",""amp.normal + 25%"",""atk.p + 6%"",""atk.m + 12%"",""c.rate.p + 60"",""anticipate + 60%"",""red.p + 30%"",""red.m + 30%"",""antiVirus + 15%"",""mainWeapon.range - 3""}",defaultPlayerId
+o7ptvnw1g3g5fm46p59wy402,测试单手剑,OneHandSword,Light,270,70,10,,15,"{""str + 10%""}",defaultPlayerId

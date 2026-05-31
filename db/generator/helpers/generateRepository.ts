@@ -1510,6 +1510,14 @@ ${this.generateCrudExports(crudExports)}
 		return this.getPrimaryKeyFieldFromModel(model);
 	}
 
+	private getScalarColumnNames(modelName: string): string[] {
+		const model = this.models.find((m: any) => m.name === modelName);
+		if (!model) return [];
+		return model.fields
+			.filter((f: any) => f.kind !== "object")
+			.map((f: any) => f.name);
+	}
+
 	/**
 	 * 生成基于唯一约束的查询方法（用于无主键表）
 	 */
@@ -1693,10 +1701,14 @@ ${this.generateCrudExports(crudExports)}
 	private generateInsert(modelName: string): string {
 		const tableName = NamingRules.ZodTypeName(modelName);
 		const pascalName = NamingRules.TypeName(modelName, modelName);
+		const columns = this.getScalarColumnNames(modelName);
 
-		return `export async function insert${pascalName}(data: ${pascalName}Insert, trx?: Transaction<DB>) {
+		return `const ${tableName}Columns = new Set(${JSON.stringify(columns)});
+
+export async function insert${pascalName}(data: ${pascalName}Insert, trx?: Transaction<DB>) {
   const db = trx || await getDB();
-  return await db.insertInto("${tableName}").values(data).returningAll().executeTakeFirstOrThrow();
+  const filtered = Object.fromEntries(Object.entries(data).filter(([k]) => ${tableName}Columns.has(k))) as ${pascalName}Insert;
+  return await db.insertInto("${tableName}").values(filtered).returningAll().executeTakeFirstOrThrow();
 }`;
 	}
 
@@ -1710,7 +1722,8 @@ ${this.generateCrudExports(crudExports)}
 
 		return `export async function update${pascalName}(id: string, data: ${pascalName}Update, trx?: Transaction<DB>) {
   const db = trx || await getDB();
-  return await db.updateTable("${tableName}").set(data).where("${primaryKeyField}", "=", id).returningAll().executeTakeFirstOrThrow();
+  const filtered = Object.fromEntries(Object.entries(data).filter(([k]) => ${tableName}Columns.has(k))) as ${pascalName}Update;
+  return await db.updateTable("${tableName}").set(filtered).where("${primaryKeyField}", "=", id).returningAll().executeTakeFirstOrThrow();
 }`;
 	}
 

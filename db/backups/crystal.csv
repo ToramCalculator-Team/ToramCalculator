@@ -5,5 +5,5 @@ name,type,modifiers,itemId
 尉龙鲁迪斯,NormalCrystal,"{""distanceDmg.short + 9%"",""accuracy + 5%"",""mp.max + 200"",""hp.max - 300"",""c.rate.p - 7""}",defaultSpecialCrystalBItemId
 迪亚克,WeaponCrystal,"{""atk.m + 8%"",""pie.m + 20%"",""cspd - 16%""}",defaultWeaponCrystalAItemId
 巴图德,WeaponCrystal,"{""atk.m + 10%"",""pie.m + 7%"",""aggro.rate - 11%"",""def.m - 30%""}",defaultWeaponCrystalBItemId
-盖格纳,ArmorCrystal,"{""atk.m + 10%"",""int + 6%"",""cspd + 40%"",""mp.atkRegen + 10%""}",defaultArmorCrystalAItemId
+盖格纳,ArmorCrystal,"{""atk.m + 10%"",""int + 6%"",""cspd + 40%"",""ampr + 10%""}",defaultArmorCrystalAItemId
 阿鲁塔达尔,ArmorCrystal,"{""stab.p + 11%"",""str + 6%"",""vit + 6%"",""armor.ability == \""Light\"" && distanceDmg.short + 11%"",""armor.ability == \""Light\"" && stab.p - 5%"",""armor.ability == \""Heavy\"" && distanceDmg.long + 11%"",""armor.ability == \""Heavy\"" && stab.p - 5%""}",defaultArmorCrystalBItemId

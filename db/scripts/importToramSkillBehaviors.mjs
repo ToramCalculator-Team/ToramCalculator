@@ -638,22 +638,22 @@ const buildActiveDamageDefinition = (variantId, jsonTree, jsonSkill, damageInfo)
 	const vAtk = vAtkFormulas[prorationDamage];
 	const formula = `(${vAtk} + ${constant}) * (${multiplier}) / 100`;
 	const types = prorationToExpTypes[prorationDamage];
-	const ailmentsLiteral = ailment
-		? `[{type: ${toMdslString(ailment.type)}, chance: ${toMdslString(ailment.chance)}}]`
+	const ailmentsJson = ailment
+		? JSON.stringify([{ type: ailment.type, chance: ailment.chance }])
 		: "[]";
 	const lines = [
 		"root {",
 		`\t/* ${GENERATED_ACTIVE_DAMAGE_MARKER}; sourceTree=${jsonTree.name}; sourceSkill=${jsonSkill.name} */`,
 		"\tsequence {",
-		`\t\taction [animation, "startup", currentSkill.lifecycle.startUp]`,
-		`\t\twait [currentSkill.lifecycle.startUp]`,
-		`\t\taction [animation, "charging", currentSkill.lifecycle.charging]`,
-		`\t\twait [currentSkill.lifecycle.charging]`,
-		`\t\taction [animation, "chanting", currentSkill.lifecycle.chanting]`,
-		`\t\twait [currentSkill.lifecycle.chanting]`,
-		`\t\taction [singleAttack, $targetId, ${toMdslString(types.application)}, ${toMdslString(types.resolution)}, ${attackCount}, ${toMdslString(formula)}, 1, [], ${ailmentsLiteral}, "none"]`,
-		`\t\taction [animation, "action", currentSkill.lifecycle.actionMs]`,
-		`\t\twait [currentSkill.lifecycle.actionMs]`,
+		`\t\taction [animation, "startup", $currentSkill.lifecycle.startUp]`,
+		`\t\twait [$currentSkill.lifecycle.startUp]`,
+		`\t\taction [animation, "charging", $currentSkill.lifecycle.charging]`,
+		`\t\twait [$currentSkill.lifecycle.charging]`,
+		`\t\taction [animation, "chanting", $currentSkill.lifecycle.chanting]`,
+		`\t\twait [$currentSkill.lifecycle.chanting]`,
+		`\t\taction [singleAttack, $targetId, ${toMdslString(types.application)}, ${toMdslString(types.resolution)}, ${attackCount}, ${toMdslString(formula)}, 1, ${toMdslString("[]")}, ${toMdslString(ailmentsJson)}, "none"]`,
+		`\t\taction [animation, "action", $currentSkill.lifecycle.action]`,
+		`\t\twait [$currentSkill.lifecycle.action]`,
 		"\t}",
 		"}",
 	];

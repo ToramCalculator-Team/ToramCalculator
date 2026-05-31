@@ -7,7 +7,7 @@ import type { StageData } from "~/lib/engine/core/Pipeline/stageEnv";
 export interface PlayerSkillLifecycleMs {
 	chanting: number;
 	charging: number;
-	actionMs: number;
+	action: number;
 	startUp: number;
 	activeEffectDurationMs: number;
 }
@@ -35,7 +35,7 @@ type ComputePlayerSkillLifecycleParams = {
 export const EMPTY_PLAYER_SKILL_LIFECYCLE_MS: PlayerSkillLifecycleMs = {
 	chanting: 0,
 	charging: 0,
-	actionMs: 0,
+	action: 0,
 	startUp: 0,
 	activeEffectDurationMs: 0,
 };
@@ -117,18 +117,18 @@ export function computePlayerSkillLifecycleMs(props: ComputePlayerSkillLifecycle
 		{ fixed: chargingFixed, modified: chargingModified },
 		chargingFixed + chargingModified,
 	);
-	const actionMs = runPipelineDurationMs(
+	const action = runPipelineDurationMs(
 		"skill.action",
 		{ fixed: actionFixed, modified: actionModified },
 		actionFixed + actionModified,
 	);
-	const startUp = Math.floor(actionMs * startupRatio);
+	const startUp = Math.floor(action * startupRatio);
 
 	return {
 		chanting,
 		charging,
-		actionMs,
+		action,
 		startUp,
-		activeEffectDurationMs: chanting + charging + actionMs,
+		activeEffectDurationMs: chanting + charging + action,
 	};
 }

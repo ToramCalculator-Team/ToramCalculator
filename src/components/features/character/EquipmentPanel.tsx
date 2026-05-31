@@ -252,19 +252,17 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 								openEquipmentPicker("weaponId");
 							}}
 						/>
+						<Button
+							icon={<Icons.Outline.DocmentAdd />}
+							level="quaternary"
+							class="rounded-none rounded-tr"
+							onClick={(e) => {
+								e.stopPropagation();
+								openEquipmentCreateForm("weaponId");
+							}}
+						/>
 						<Show
 							when={props.character.weapon?.id}
-							fallback={
-								<Button
-									icon={<Icons.Outline.DocmentAdd />}
-									level="quaternary"
-									class="rounded-none rounded-tr"
-									onClick={(e) => {
-										e.stopPropagation();
-										openEquipmentCreateForm("weaponId");
-									}}
-								/>
-							}
 						>
 							<Button
 								icon={<Icons.Outline.Trash />}
@@ -316,19 +314,17 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 								openEquipmentPicker("subWeaponId");
 							}}
 						/>
+						<Button
+							icon={<Icons.Outline.DocmentAdd />}
+							level="quaternary"
+							class="rounded-none rounded-tr"
+							onClick={(e) => {
+								e.stopPropagation();
+								openEquipmentCreateForm("subWeaponId");
+							}}
+						/>
 						<Show
 							when={props.character.subWeapon?.id}
-							fallback={
-								<Button
-									icon={<Icons.Outline.DocmentAdd />}
-									level="quaternary"
-									class="rounded-none rounded-tr"
-									onClick={(e) => {
-										e.stopPropagation();
-										openEquipmentCreateForm("subWeaponId");
-									}}
-								/>
-							}
 						>
 							<Button
 								icon={<Icons.Outline.Trash />}
@@ -380,19 +376,17 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 								openEquipmentPicker("armorId");
 							}}
 						/>
+						<Button
+							icon={<Icons.Outline.DocmentAdd />}
+							level="quaternary"
+							class="rounded-none rounded-tr"
+							onClick={(e) => {
+								e.stopPropagation();
+								openEquipmentCreateForm("armorId");
+							}}
+						/>
 						<Show
 							when={props.character.armor?.id}
-							fallback={
-								<Button
-									icon={<Icons.Outline.DocmentAdd />}
-									level="quaternary"
-									class="rounded-none rounded-tr"
-									onClick={(e) => {
-										e.stopPropagation();
-										openEquipmentCreateForm("armorId");
-									}}
-								/>
-							}
 						>
 							<Button
 								icon={<Icons.Outline.Trash />}
@@ -444,19 +438,17 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 								openEquipmentPicker("optionId");
 							}}
 						/>
+						<Button
+							icon={<Icons.Outline.DocmentAdd />}
+							level="quaternary"
+							class="rounded-none rounded-tr"
+							onClick={(e) => {
+								e.stopPropagation();
+								openEquipmentCreateForm("optionId");
+							}}
+						/>
 						<Show
 							when={props.character.option?.id}
-							fallback={
-								<Button
-									icon={<Icons.Outline.DocmentAdd />}
-									level="quaternary"
-									class="rounded-none rounded-tr"
-									onClick={(e) => {
-										e.stopPropagation();
-										openEquipmentCreateForm("optionId");
-									}}
-								/>
-							}
 						>
 							<Button
 								icon={<Icons.Outline.Trash />}
@@ -508,19 +500,17 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 								openEquipmentPicker("specialId");
 							}}
 						/>
+						<Button
+							icon={<Icons.Outline.DocmentAdd />}
+							level="quaternary"
+							class="rounded-none rounded-tr"
+							onClick={(e) => {
+								e.stopPropagation();
+								openEquipmentCreateForm("specialId");
+							}}
+						/>
 						<Show
 							when={props.character.special?.id}
-							fallback={
-								<Button
-									icon={<Icons.Outline.DocmentAdd />}
-									level="quaternary"
-									class="rounded-none rounded-tr"
-									onClick={(e) => {
-										e.stopPropagation();
-										openEquipmentCreateForm("specialId");
-									}}
-								/>
-							}
 						>
 							<Button
 								icon={<Icons.Outline.Trash />}

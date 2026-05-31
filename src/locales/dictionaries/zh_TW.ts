@@ -616,7 +616,7 @@ const dictionary: Dictionary = {
 			//   skillVariantType: "讀取條類型",
 			//   actionFixedMs: "固定動作時長（ms）",
 			//   actionModifiedMs: "可加速動作時長（ms）",
-			//   skillActionMs: "動作時長總值（ms）",
+			//   skillaction: "動作時長總值（ms）",
 			//   chantingFixedMs: "固定詠唱時長（ms）",
 			//   chantingModifiedMs: "可加速詠唱時長（ms）",
 			//   skillchanting: "詠唱時長總值（ms）",

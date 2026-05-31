@@ -34,7 +34,7 @@ export interface MemberSharedRuntime<TExtraAttrKey extends string = never> exten
 			startUp: number;
 			charging: number;
 			chanting: number;
-			actionMs: number;
+			action: number;
 		};
 	} | null;
 	/** 上一次释放的技能，用于连击判定等。 */

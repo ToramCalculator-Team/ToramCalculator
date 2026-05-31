@@ -331,7 +331,7 @@ export const playerStateMachine = (
 							startUp: 0,
 							charging: 0,
 							chanting: 0,
-							actionMs: 0,
+							action: 0,
 						},
 					};
 					const resolvedTargetId = env.services.targetResolver?.(env.id, e.data.target) ?? e.data.target;

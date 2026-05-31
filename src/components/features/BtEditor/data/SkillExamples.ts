@@ -22,7 +22,7 @@ root [mainAction] {
 }`;
 const defaultSkillAgent = `class Agent {
     get 后摇毫秒() {
-        const endMs = this.currentSkill.lifecycle.actionMs - this.currentSkill.lifecycle.startUp
+        const endMs = this.currentSkill.lifecycle.action - this.currentSkill.lifecycle.startUp
         return endMs
     }
 }`;

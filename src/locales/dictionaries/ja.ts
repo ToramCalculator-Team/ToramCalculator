@@ -569,7 +569,7 @@ const dictionary: Dictionary = {
 			//   skillVariantType: "スキル効果タイプ",
 			//   actionFixedMs: "固定アクション時間（ms）",
 			//   actionModifiedMs: "加速可能アクション時間（ms）",
-			//   skillActionMs: "アクション総時間（ms）",
+			//   skillaction: "アクション総時間（ms）",
 			//   chantingFixedMs: "固定詠唱時長（ms）",
 			//   chantingModifiedMs: "加速可能詠唱時間（ms）",
 			//   skillchanting: "詠唱総時間（ms）",
