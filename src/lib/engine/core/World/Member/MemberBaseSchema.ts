@@ -2,7 +2,6 @@ import type {
 	ConvertToNestedSchema,
 	ConvertToNestedSchemaDic,
 	ExtractAttrPaths,
-	SchemaStructure,
 } from "./runtime/StatContainer/SchemaTypes";
 
 // ============================== 逆向出来的BounsType参考数据类型 ==============================
@@ -304,6 +303,11 @@ export interface MemberBaseStructure {
 			durationRate: null;
 		};
 	};
+	skill: {
+		nextCost: {
+			mpCostRate: null;
+		};
+	};
 }
 
 // ============================== 静态类型推导 ==============================
@@ -381,6 +385,11 @@ export const MemberBaseStructure: MemberBaseStructure = {
 	status: {
 		sleep: {
 			durationRate: null,
+		},
+	},
+	skill: {
+		nextCost: {
+			mpCostRate: null,
 		},
 	},
 };
@@ -533,6 +542,15 @@ export const MemberBaseNestedSchema: MemberBaseNestedSchema = {
 			},
 		},
 	},
+	skill: {
+		nextCost: {
+			mpCostRate: {
+				displayName: "下一技能MP消耗倍率修正",
+				expression: "0",
+				noBaseValue: true,
+			},
+		},
+	},
 };
 
 /**
@@ -591,6 +609,11 @@ export const MemberBaseNestedSchemaDic: MemberBaseNestedSchemaDic = {
 	status: {
 		sleep: {
 			durationRate: "",
+		},
+	},
+	skill: {
+		nextCost: {
+			mpCostRate: "",
 		},
 	},
 };

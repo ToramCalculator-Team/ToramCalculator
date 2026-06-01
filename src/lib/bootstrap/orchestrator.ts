@@ -215,6 +215,7 @@ export class BootstrapOrchestrator {
 		try {
 			const runtimeCtx: BootstrapRuntimeCtx = {
 				get: (name) => this.getValue(name),
+				waitFor: (name) => this.waitFor(name),
 				log: (msg) => {
 					// eslint-disable-next-line no-console
 					console.info(`[Bootstrap:${module.name}] ${msg}`);
@@ -223,7 +224,9 @@ export class BootstrapOrchestrator {
 
 			const task = module.init(runtimeCtx);
 			// 统一在 orchestrator 层做超时兜底，模块内部无需重复实现 watchdog。
-			const value = module.timeout ? await Promise.race([task, createTimeoutPromise(module.name, module.timeout)]) : await task;
+			const value = module.timeout
+				? await Promise.race([task, createTimeoutPromise(module.name, module.timeout)])
+				: await task;
 
 			this.values.set(module.name, value);
 			this.state.status[module.name] = "ready";

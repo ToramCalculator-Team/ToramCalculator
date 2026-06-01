@@ -577,7 +577,7 @@ const dictionary: Dictionary = {
 			//   chargingModifiedMs: "加速可能チャージ時間（ms）",
 			//   skillcharging: "チャージ総時間（ms）",
 			//   skillDuration: "スキル総所要時間（ms）",
-			//   skillstartUp: "スキル発動前時間（ms）",
+			//   skillstartup: "スキル発動前時間（ms）",
 			//   vMatk: "有効魔法攻撃力",
 			//   vPatk: "有効物理攻撃力",
 			// },

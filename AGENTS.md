@@ -14,19 +14,6 @@
 
 ## 常用命令
 
-WSL 内的 Node.js 由 root 用户的 nvm 管理。需要从 PowerShell 调用 `node`、`pnpm`、`tsx`、`tsc`、`biome` 等 Node 工具时，用交互 shell 加载 nvm，例如：
-
-```powershell
-wsl -d Ubuntu-24.04 --cd /root/code/ToramCalculator -- bash -ic 'node -v && pnpm -v'
-```
-
-当前 WSL Node 信息：
-
-- Node.js：`v24.4.1`，路径 `/root/.nvm/versions/node/v24.4.1/bin/node`
-- pnpm：`10.33.2`，路径 `/root/.nvm/versions/node/v24.4.1/bin/pnpm`
-
-避免在 Windows 侧直接对 WSL UNC 路径运行 `pnpm`；`cmd.exe` 不支持 UNC 工作目录，会退回到 `C:\Windows` 并找不到仓库或 node。
-
 | 操作 | 命令 |
 |------|------|
 | 首次初始化 / 需要重置基础设施 | `pnpm setup` |

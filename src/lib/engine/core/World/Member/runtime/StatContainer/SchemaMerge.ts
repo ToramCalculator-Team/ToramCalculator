@@ -8,12 +8,12 @@
  * - 本模块提供一个纯函数 `mergeSchema(base, slots)`，把若干槽声明合并进基础 schema。
  *
  * 命名约定（本版冻结）：
+ * - `skill.nextCost.*` —— 引擎保留的下一技能消耗修正槽，见 ADR 0007
  * - `skill.<skillId>.<field>` —— 技能自身的跨技能数据，如爆能 `skill.bouneng.castStacks`
  * - `passive.<passiveId>.<field>` —— 被动/托环持久化状态，如紧急回复 `passive.hpEmergency.lastTriggeredFrame`
  * - `buff.<buffId>.<field>` —— buff 实例自带的层数、计时等
  *
- * 前缀不得与基础 schema 的根节点冲突（当前基础 schema 根节点：lv / str / vit /
- * hp / mp / status / … 均不以 skill/passive/buff 开头，安全）。
+ * 基础 schema 可以预留同名前缀下的引擎槽；动态槽必须避开已存在的叶子路径。
  */
 
 import type { NestedSchema, SchemaAttribute } from "./SchemaTypes";
@@ -87,7 +87,9 @@ function insertSlot(root: NestedSchema, segments: string[], attr: SchemaAttribut
 		}
 
 		if (isSchemaAttribute(existing)) {
-			throw new Error(`路径 ${fullPath} 与已有叶子属性冲突：${segments.slice(0, i + 1).join(".")} 已是 SchemaAttribute`);
+			throw new Error(
+				`路径 ${fullPath} 与已有叶子属性冲突：${segments.slice(0, i + 1).join(".")} 已是 SchemaAttribute`,
+			);
 		}
 
 		// 为避免污染原始 schema，浅克隆一份

@@ -186,20 +186,24 @@ export function resolveDamageAndApply(
 	}) as Record<string, unknown>;
 
 	const finalDamage = Number(damageOutput.finalDamage ?? 0);
-	const isFatal = Number(damageOutput.isFatal ?? 0) >= 1;
 	const crit = Number(damageOutput.crit ?? 0) >= 1;
 
 	// 3) applyDamage 管线
 	const hpBefore = hpGetter();
 	const mpBefore = mpGetter();
+	// 设计说明：damageCount 表示同一次伤害结算后的数学拆段。
+	// hitCheck / damageCalc 只执行一次，最终伤害在进入 applyDamage 前按段数均分。
+	const damageCount = Math.max(1, Math.floor(req.damageCount || 1));
+	const segmentFinalDamage = finalDamage / damageCount;
 	const applyOutput = runPipeline("applyDamage", {
-		finalDamage,
+		finalDamage: segmentFinalDamage,
 		mpCost: 0,
 		damageTags: req.damageTags,
 	}) as Record<string, unknown>;
 
 	const hpAfter = Number(applyOutput.hpAfter ?? hpBefore);
 	const mpAfter = Number(applyOutput.mpAfter ?? mpBefore);
+	const isFatal = hpAfter <= 0;
 	const hpDelta = hpAfter - hpBefore;
 	const mpDelta = mpAfter - mpBefore;
 	log.info("hpDelta:", hpDelta, "mpDelta:", mpDelta);
@@ -214,12 +218,12 @@ export function resolveDamageAndApply(
 	notifyDomainEvent({
 		type: "hit",
 		memberId: id,
-		damage: finalDamage,
+		damage: segmentFinalDamage,
 		hp: hpAfter,
 	});
 
 	session.baseDamage = baseDamage;
-	session.finalDamage = finalDamage;
+	session.finalDamage = segmentFinalDamage;
 	session.isFatal = isFatal;
 	session.crit = crit;
 	session.hpAfter = hpAfter;

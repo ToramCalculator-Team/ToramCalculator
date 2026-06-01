@@ -23,14 +23,13 @@ const vec2Schema = z.object({
 	y: z.number().meta({ description: "Y坐标" }),
 });
 
-// 通用攻击参数
-const commonAttackSchema = z.object({
+// 通用攻击基础参数
+const commonAttackBaseSchema = z.object({
 	targetId: z.string().meta({ description: "目标ID" }),
 	expApplicationType: z.enum(["physical", "magic", "normal", "none"]).meta({ description: "惯性施加类型" }),
 	expResolutionType: z.enum(["physical", "magic", "normal"]).meta({ description: "惯性依赖类型" }),
-	attackCount: z.number().meta({ description: "攻击次数，多次造成伤害公式对应的伤害" }),
 	damageFormula: z.string().meta({ description: "伤害公式，伤害公式中可以包含self变量，self变量表示当前角色" }),
-	damageCount: z.number().meta({ description: "伤害数量，将伤害公式计算出的伤害平均分配到攻击次数" }),
+	damageCount: z.union([z.string(), z.number()]).meta({ description: "伤害拆分段数表达式；结算后按段数拆分伤害" }),
 	damageTags: z
 		.array(z.string())
 		.default([])
@@ -45,6 +44,32 @@ const commonAttackSchema = z.object({
 		.meta({ description: "警告区域类型（红/蓝区护盾识别依据）" }),
 });
 
+const damageIntervalSchemaShape = {
+	damageInterval: z
+		.union([z.string(), z.number()])
+		.optional()
+		.meta({ description: "可选：拆分伤害每段生效间隔毫秒表达式" }),
+};
+
+// 通用攻击参数；范围类 action 需要把自身几何参数放在 damageInterval 前，所以使用 base schema 单独组装。
+const commonAttackSchema = z.object({
+	...commonAttackBaseSchema.shape,
+	...damageIntervalSchemaShape,
+});
+
+const rangeAttackSchema = z.object({
+	...commonAttackBaseSchema.shape,
+	radius: z.number().meta({ description: "伤害范围" }),
+	...damageIntervalSchemaShape,
+});
+
+const moveAttackSchema = z.object({
+	...commonAttackBaseSchema.shape,
+	width: z.number().meta({ description: "攻击宽度" }),
+	speed: z.number().meta({ description: "冲撞速度" }),
+	...damageIntervalSchemaShape,
+});
+
 /**
  * 基于 expResolutionType 自动派生基础伤害类别标签。
  * 技能作者传入的 damageTags 会与此合并，重复的 tag 会被去重。
@@ -53,6 +78,103 @@ function deriveBaseDamageTags(expResolutionType: "physical" | "magic" | "normal"
 	if (expResolutionType === "physical") return ["physical"];
 	if (expResolutionType === "magic") return ["magical"];
 	return [];
+}
+
+function evaluateActionNumberExpression(
+	context: BtContext,
+	capabilities: BtCapabilities,
+	raw: string | number | undefined,
+	fallback: number,
+	label: string,
+	targetId?: string,
+): number {
+	if (raw == null || raw === "") return fallback;
+	if (typeof raw === "number") return Number.isFinite(raw) ? raw : fallback;
+	const expression = raw.trim();
+	if (!expression) return fallback;
+	const skill = context.skill;
+	const currentSkillData = context.currentSkill?.data;
+	const skillLv = skill?.lv ?? currentSkillData?.lv ?? 0;
+	const evaluated = capabilities.services.expressionEvaluator?.(expression, {
+		currentTimeMs: context.currentTimeMs,
+		tickIndex: context.tickIndex,
+		casterId: context.memberId,
+		targetId: targetId ?? context.targetId,
+		skillLv,
+	});
+	if (typeof evaluated === "number" && Number.isFinite(evaluated)) return evaluated;
+	if (typeof evaluated === "boolean") return evaluated ? 1 : 0;
+	log.warn(`⚠️ [${context.name}] ${label}表达式未返回数值`, expression, evaluated);
+	return fallback;
+}
+
+function buildDamageRequest(
+	context: BtContext,
+	input: z.output<typeof commonAttackSchema>,
+	capabilities: BtCapabilities,
+	rangeKind: DamageAreaRequest["range"]["rangeKind"],
+	rangeParams: DamageAreaRequest["range"]["rangeParams"],
+	targetId?: string,
+): DamageAreaRequest {
+	// 设计说明：施法者属性在生成伤害区域时快照，目标属性在受击侧实时读取。
+	// 这样飞行/延迟/分段伤害不会被施法者后续属性变化回溯影响。
+	const dependencies = ExpressionTransformer.analyzeDependencies(input.damageFormula);
+	log.debug(`👤 [${context.name}] 表达式依赖分析:`, dependencies);
+
+	const casterSnapshot: Record<string, number> = {};
+	for (const key of dependencies.selfDependencies) {
+		casterSnapshot[key] = capabilities.statContainer.getValue(key);
+	}
+	for (const key of dependencies.selfBaseValueDependencies) {
+		casterSnapshot[`_${key}`] = capabilities.statContainer.getBaseValue(key);
+	}
+
+	const skillLv = context.skill?.lv ?? context.currentSkill?.data.lv ?? 0;
+	const tickDurationMs = Math.max(1, Math.floor(context.deltaTimeMs || 1));
+	const damageCount = Math.max(
+		1,
+		Math.floor(evaluateActionNumberExpression(context, capabilities, input.damageCount, 1, "damageCount", targetId)),
+	);
+	const damageIntervalMs = Math.max(
+		0,
+		Math.floor(
+			evaluateActionNumberExpression(context, capabilities, input.damageInterval, 0, "damageInterval", targetId),
+		),
+	);
+	const durationMs =
+		damageCount <= 1 ? tickDurationMs : Math.max(tickDurationMs, (damageCount - 1) * damageIntervalMs + tickDurationMs);
+
+	log.debug(`👤 [${context.name}] 施法者快照:`, casterSnapshot, `技能等级: ${skillLv}`);
+
+	return {
+		identity: {
+			sourceId: context.memberId,
+			sourceCampId: context.campId,
+		},
+		lifetime: {
+			startTimeMs: capabilities.services.getCurrentTimeMs(),
+			durationMs,
+		},
+		hitPolicy: {
+			hitIntervalMs: damageIntervalMs,
+		},
+		attackSemantics: {
+			damageCount,
+		},
+		range: {
+			rangeKind,
+			rangeParams,
+		},
+		payload: {
+			damageFormula: input.damageFormula,
+			casterSnapshot,
+			skillLv,
+			damageTags: Array.from(new Set([...deriveBaseDamageTags(input.expResolutionType), ...(input.damageTags ?? [])])),
+			warningZone: input.warningZone ?? "none",
+		},
+		casterId: context.memberId,
+		targetId,
+	};
 }
 
 /**
@@ -115,164 +237,60 @@ export const CommonActionPool = {
 			return State.FAILED;
 		}
 
-		// 分析表达式依赖
-		const dependencies = ExpressionTransformer.analyzeDependencies(input.damageFormula);
-		log.debug(`👤 [${context.name}] 表达式依赖分析:`, dependencies);
-
-		// 创建施法者属性快照（只快照用到的属性）
-		const casterSnapshot: Record<string, number> = {};
-		for (const key of dependencies.selfDependencies) {
-			casterSnapshot[key] = capabilities.statContainer.getValue(key);
-		}
-		for (const key of dependencies.selfBaseValueDependencies) {
-			casterSnapshot[`_${key}`] = capabilities.statContainer.getBaseValue(key);
-		}
-
-		// 获取技能等级
-		const skillLv = context.currentSkill?.data.lv ?? 0;
-
-		log.debug(`👤 [${context.name}] 施法者快照:`, casterSnapshot, `技能等级: ${skillLv}`);
-
-		// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
-		const startTimeMs = capabilities.services.getCurrentTimeMs();
-		const damageRequest: DamageAreaRequest = {
-			identity: {
-				sourceId: context.memberId,
-				sourceCampId: context.campId,
-			},
-			lifetime: {
-				startTimeMs,
-				durationMs: context.deltaTimeMs,
-			},
-			hitPolicy: {
-				hitIntervalMs: context.deltaTimeMs,
-			},
-			attackSemantics: {
-				attackCount: input.attackCount,
-				damageCount: input.damageCount,
-			},
-			range: {
-				rangeKind: "Single",
-				rangeParams: {},
-			},
-			payload: {
-				damageFormula: input.damageFormula,
-				casterSnapshot,
-				skillLv,
-				damageTags: Array.from(new Set([...deriveBaseDamageTags(input.expResolutionType), ...input.damageTags])),
-				warningZone: input.warningZone,
-			},
-			casterId: context.memberId,
-			targetId,
-		};
+		// 将伤害表达式和伤害区域数据移交给区域管理器处理，区域管理器负责派发受击事件。
+		const damageRequest = buildDamageRequest(context, input, capabilities, "Single", {}, targetId);
 		capabilities.services.damageRequestHandler?.(damageRequest);
 
 		return State.SUCCEEDED;
 	}),
 
 	/** 范围攻击 */
-	rangeAttack: defineAction(
-		z
-			.object({
-				...commonAttackSchema.shape,
-				radius: z.number().meta({ description: "伤害范围" }),
-			})
-			.meta({ description: "范围攻击" }),
-		(context, input, capabilities) => {
-			log.debug(`👤 [${context.name}] 范围攻击`, input);
+	rangeAttack: defineAction(rangeAttackSchema.meta({ description: "范围攻击" }), (context, input, capabilities) => {
+		log.debug(`👤 [${context.name}] 范围攻击`, input);
 
-			// 分析表达式依赖
-			const dependencies = ExpressionTransformer.analyzeDependencies(input.damageFormula);
-			log.debug(`👤 [${context.name}] 表达式依赖分析:`, dependencies);
+		const targetId = capabilities.services.targetResolver?.(context.memberId, input.targetId) ?? input.targetId;
+		if (!targetId || targetId === context.memberId) {
+			log.warn(`⚠️ [${context.name}] 范围攻击缺少有效敌对目标`, input);
+			return State.FAILED;
+		}
 
-			// 创建施法者属性快照（只快照用到的属性）
-			const casterSnapshot: Record<string, number> = {};
-			for (const key of dependencies.selfDependencies) {
-				casterSnapshot[key] = capabilities.statContainer.getValue(key);
-			}
-			for (const key of dependencies.selfBaseValueDependencies) {
-				casterSnapshot[`_${key}`] = capabilities.statContainer.getBaseValue(key);
-			}
+		// 将伤害表达式和伤害区域数据移交给区域管理器处理，区域管理器负责派发受击事件。
+		const damageRequest = buildDamageRequest(context, input, capabilities, "Range", { radius: input.radius }, targetId);
+		capabilities.services.damageRequestHandler?.(damageRequest);
 
-			// 获取技能等级
-			const skillLv = context.currentSkill?.data.lv ?? 0;
-
-			log.debug(`👤 [${context.name}] 施法者快照:`, casterSnapshot, `技能等级: ${skillLv}`);
-
-			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
-			const startTimeMs = capabilities.services.getCurrentTimeMs();
-			const damageRequest: DamageAreaRequest = {
-				identity: {
-					sourceId: context.memberId,
-					sourceCampId: context.campId,
-				},
-				lifetime: {
-					startTimeMs,
-					durationMs: context.deltaTimeMs,
-				},
-				hitPolicy: {
-					hitIntervalMs: context.deltaTimeMs,
-				},
-				attackSemantics: {
-					attackCount: input.attackCount,
-					damageCount: input.damageCount,
-				},
-				range: {
-					rangeKind: "Range",
-					rangeParams: {
-						radius: input.radius,
-					},
-				},
-				payload: {
-					damageFormula: input.damageFormula,
-					casterSnapshot,
-					skillLv,
-					damageTags: Array.from(new Set([...deriveBaseDamageTags(input.expResolutionType), ...input.damageTags])),
-					warningZone: input.warningZone,
-				},
-				casterId: context.memberId,
-				targetId: input.targetId,
-			};
-			capabilities.services.damageRequestHandler?.(damageRequest);
-
-			return State.SUCCEEDED;
-		},
-	),
+		return State.SUCCEEDED;
+	}),
 
 	/** 周围攻击 */
 	surroundingsAttack: defineAction(
-		z
-			.object({
-				...commonAttackSchema.shape,
-				radius: z.number().meta({ description: "伤害半径" }),
-			})
-			.meta({ description: "周围攻击" }),
-		(context, input, _capabilities) => {
+		rangeAttackSchema.meta({ description: "周围攻击" }),
+		(context, input, capabilities) => {
 			log.debug(`👤 [${context.name}] generateEnemyAttack`, input);
-			// 解析伤害表达式，将所需的self变量放入参数列表
 
-			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
+			// 周围攻击以施法者为圆心，targetId 只保留给表达式求值上下文，不参与范围中心选择。
+			const expressionTargetId =
+				capabilities.services.targetResolver?.(context.memberId, input.targetId) ?? input.targetId;
+			const damageRequest = buildDamageRequest(
+				context,
+				input,
+				capabilities,
+				"Enemy",
+				{ radius: input.radius },
+				expressionTargetId,
+			);
+			capabilities.services.damageRequestHandler?.(damageRequest);
 			return State.SUCCEEDED;
 		},
 	),
 
 	/** 冲撞攻击 */
-	moveAttack: defineAction(
-		z
-			.object({
-				...commonAttackSchema.shape,
-				width: z.number().meta({ description: "攻击宽度" }),
-				speed: z.number().meta({ description: "冲撞速度" }),
-			})
-			.meta({ description: "冲撞攻击" }),
-		(context, input) => {
-			log.debug(`👤 [${context.name}] generateMoveAttack`, input);
-			// 解析伤害表达式，将所需的self变量放入参数列表
+	moveAttack: defineAction(moveAttackSchema.meta({ description: "冲撞攻击" }), (context, input) => {
+		log.debug(`👤 [${context.name}] generateMoveAttack`, input);
+		// 解析伤害表达式，将所需的self变量放入参数列表
 
-			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
-			return State.SUCCEEDED;
-		},
-	),
+		// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
+		return State.SUCCEEDED;
+	}),
 
 	/** 陨石伤害 */
 	verticalAttack: defineAction(
@@ -510,6 +528,59 @@ export const CommonActionPool = {
 					type: input.sourceType ?? "skill",
 				},
 			);
+			return State.SUCCEEDED;
+		},
+	),
+
+	/**
+	 * 按 sourceId 覆盖设置属性 modifier。
+	 *
+	 * 设计说明：
+	 * - `modifyAttribute` 是累加语义，适合“增加一层/加一段值”。
+	 * - 刷新型一次性效果需要同一 sourceId 重复施加时保持幂等，例如冲击波刷新下一技能半耗。
+	 * - 这里直接对齐 StatContainer 的 sourceId 覆盖更新能力，避免用当前总属性值反推 delta。
+	 */
+	setAttributeModifier: defineAction(
+		z
+			.object({
+				attribute: z.string().meta({ description: "属性名称" }),
+				expression: z.string().meta({ description: "属性值表达式" }),
+				type: StatModifierKindSchema.meta({ description: "属性修改通道" }),
+				sourceId: z.string().meta({ description: "稳定来源 id；重复设置会覆盖该 sourceId 的旧 modifier" }),
+				skillLv: z.number().optional().meta({ description: "可选：技能等级；未提供时从 context.skill 读取" }),
+			})
+			.meta({ description: "按来源覆盖设置属性修改" }),
+		(context, input, capabilities) => {
+			log.debug(`👤 [${context.name}] setAttributeModifier`, input);
+			const skill = context.skill;
+			const currentSkillData = context.currentSkill?.data;
+
+			const skillLv = input.skillLv ?? skill?.lv ?? currentSkillData?.lv ?? 0;
+
+			const evaluated = capabilities.services.expressionEvaluator?.(input.expression, {
+				currentTimeMs: context.currentTimeMs,
+				tickIndex: context.tickIndex,
+				casterId: context.memberId,
+				targetId: context.targetId,
+				skillLv,
+			});
+			if (typeof evaluated !== "number" || !Number.isFinite(evaluated)) {
+				log.warn(`⚠️ [${context.name}] 覆盖属性修改表达式未返回有限数值`, input.expression, evaluated);
+				return State.FAILED;
+			}
+			capabilities.statContainer.updateModifiersBySourceId(input.sourceId, [
+				{
+					attr: input.attribute,
+					targetType: {
+						baseValue: ModifierType.BASE_VALUE,
+						staticFixed: ModifierType.STATIC_FIXED,
+						staticPercentage: ModifierType.STATIC_PERCENTAGE,
+						dynamicFixed: ModifierType.DYNAMIC_FIXED,
+						dynamicPercentage: ModifierType.DYNAMIC_PERCENTAGE,
+					}[input.type],
+					value: evaluated,
+				},
+			]);
 			return State.SUCCEEDED;
 		},
 	),

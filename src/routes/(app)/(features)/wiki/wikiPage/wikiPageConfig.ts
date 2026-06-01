@@ -2,6 +2,7 @@ import type { DB } from "@db/generated/zod";
 import type { JSX } from "solid-js/jsx-runtime";
 import type { Dictionary } from "~/locales/type";
 import { AddressPage } from "./address";
+import { SkillPage } from "./skill";
 
 export interface WikiPageConfig<T extends DB[keyof DB]> {
 	mainContent: (dic: Dictionary, itemHandleClick: (data: T) => void) => JSX.Element;
@@ -12,5 +13,8 @@ export const wikiPageConfig: Partial<{
 }> = {
 	address: {
 		mainContent: AddressPage,
+	},
+	skill: {
+		mainContent: SkillPage,
 	},
 };

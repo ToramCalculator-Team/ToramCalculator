@@ -4,7 +4,11 @@
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import type { MainHandType, SubHandType } from "@db/schema/enums";
 import { MemberBaseNestedSchema, MemberBaseStructure } from "../../MemberBaseSchema";
-import type { ConvertToNestedSchema, ConvertToNestedSchemaDic, ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
+import type {
+	ConvertToNestedSchema,
+	ConvertToNestedSchemaDic,
+	ExtractAttrPaths,
+} from "../../runtime/StatContainer/SchemaTypes";
 
 // ============================== 其他玩家数据 ==============================
 
@@ -609,6 +613,7 @@ export interface PlayerAttrStructure extends MemberBaseStructure {
 			durationRate: null;
 		};
 	};
+	skill: MemberBaseStructure["skill"];
 
 	pursuit: {
 		rate: {
@@ -846,6 +851,7 @@ export const PlayerAttrStructure: PlayerAttrStructure = {
 	},
 	antiVirus: null,
 	status: MemberBaseStructure.status,
+	skill: MemberBaseStructure.skill,
 	pursuit: {
 		rate: {
 			p: null,
@@ -1334,6 +1340,7 @@ export const PlayerAttrNestedSchema: PlayerAttrNestedSchema = {
 		expression: "0",
 	},
 	status: MemberBaseNestedSchema.status,
+	skill: MemberBaseNestedSchema.skill,
 	pursuit: {
 		rate: {
 			p: {
@@ -2023,6 +2030,7 @@ export const PlayerAttrSchemaGenerator = (character: CharacterWithRelations): Pl
 			noBaseValue: true,
 		},
 		status: MemberBaseNestedSchema.status,
+		skill: MemberBaseNestedSchema.skill,
 
 		pursuit: {
 			rate: {

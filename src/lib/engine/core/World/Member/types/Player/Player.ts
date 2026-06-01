@@ -134,7 +134,8 @@ export class Player extends Member<PlayerAttrKey, PlayerFSMEvent, PlayerFSMConte
 	 * - 装备的托环 / passive 的 `attributeSlots` 声明（如 HP 紧急回复的 lastTriggeredFrame）
 	 * - 长期注册行为树的 `attributeSlots` 声明（如弧光剑舞层数）
 	 *
-	 * 命名约定见 `SchemaMerge.ts`：`skill.<id>.<field>` / `passive.<id>.<field>` / `buff.<id>.<field>`。
+	 * 命名约定见 `SchemaMerge.ts`：`skill.nextCost.*` 为引擎保留域，
+	 * 技能自定义槽使用 `skill.<id>.<field>` / `passive.<id>.<field>` / `buff.<id>.<field>`。
 	 */
 	private static collectAttributeSlots(
 		activeCharacter: CharacterWithRelations,

@@ -182,7 +182,6 @@ export function createPreviewConfig(overrides?: Partial<RuntimeConfig>): Runtime
 	};
 }
 
-
 // ==================== EngineScenarioData ====================
 
 export const EngineScenarioDataSchema = z.object({
@@ -261,7 +260,7 @@ export const ComputedSkillInfoSchema = z.object({
 		castingRange: z.number(),
 		cooldownRemaining: z.number(),
 		isAvailable: z.boolean(),
-		startUp: z.number(),
+		startup: z.number(),
 		charging: z.number(),
 		chanting: z.number(),
 		action: z.number(),
@@ -643,6 +642,7 @@ export interface DamageAreaSystemCheckpoint {
 		areaId: string;
 		requestPayload: unknown;
 		lastHitTimeMsByTargetId: Array<[string, number]>;
+		damageCountByTargetId?: Array<[string, number]>;
 	}>;
 }
 

@@ -7,11 +7,11 @@ const defaultSkillDefinition = `root {
 		wait [$currentSkill.lifecycle.charging]
 		action [animation, "咏唱动画",$currentSkill.lifecycle.chanting]
 		wait [$currentSkill.lifecycle.chanting]
-		action [animation,"施法前摇",$currentSkill.lifecycle.startUp]
-		wait [$currentSkill.lifecycle.startUp]
+		action [animation,"施法前摇",$currentSkill.lifecycle.startup]
+		wait [$currentSkill.lifecycle.startup]
         branch [mainAction]
-		action [animation, "施法后摇", $后摇毫秒]
-		wait [$后摇毫秒]
+		action [animation, "施法后摇", $currentSkill.lifecycle.recovery]
+		wait [$currentSkill.lifecycle.recovery]
     }
 }
 
@@ -20,14 +20,7 @@ root [mainAction] {
         action [rangeAttack, $targetId,"physical","physical",1,$伤害计算公式,1,$伤害标签,"none",3]
     }
 }`;
-const defaultSkillAgent = `class Agent {
-    get 后摇毫秒() {
-        const endMs = this.currentSkill.lifecycle.action - this.currentSkill.lifecycle.startUp
-        return endMs
-    }
-}`;
-
-
+const defaultSkillAgent = "";
 
 export const skillLogicExample: Record<string, MemberBTTree> = {
 	default: {

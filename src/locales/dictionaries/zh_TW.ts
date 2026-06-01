@@ -624,7 +624,7 @@ const dictionary: Dictionary = {
 			//   chargingModifiedMs: "可加速蓄力時長（ms）",
 			//   skillcharging: "蓄力時長總值（ms）",
 			//   skillDuration: "技能總耗時",
-			//   skillstartUp: "技能前搖（ms）",
+			//   skillstartup: "技能前搖（ms）",
 			//   vMatk: "有效攻擊力（魔法）",
 			//   vPatk: "有效物攻（物理）",
 			// },

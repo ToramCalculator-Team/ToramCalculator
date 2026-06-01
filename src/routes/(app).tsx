@@ -55,11 +55,18 @@ export default function AppMainContet(props: ParentProps) {
 
 		warmCacheScheduled = true;
 		const startWarmCache = async () => {
+			try {
+				const { waitFor } = await import("~/lib/bootstrap/context-standalone");
+				// 设计目的：离线缓存会批量下载工具页、Worker、wasm 和图片；等待首轮数据同步后再启动，保证数据搜索先获得网络资源。
+				await waitFor("electricInitialSync");
+			} catch (error) {
+				console.warn("数据启动阶段未完成，离线缓存延后到 bootstrap 判定后继续:", error);
+			}
 			const { warmCache } = await import("~/worker/sw/client");
 			warmCache({ mode: "all" });
 		};
 
-		// Warm cache starts after the app shell is interactive so first paint stays small.
+		// Warm cache starts after the app shell is interactive; startWarmCache then waits for data readiness.
 		if ("requestIdleCallback" in window) {
 			(
 				window as Window & { requestIdleCallback: (callback: () => void, options?: { timeout: number }) => void }

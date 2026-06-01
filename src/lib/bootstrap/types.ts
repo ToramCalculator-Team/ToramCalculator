@@ -15,6 +15,8 @@ export interface BootstrapModule<T = void> {
 
 export interface BootstrapRuntimeCtx {
 	get<T>(name: string): T | undefined;
+	/** 等待其它 bootstrap 模块就绪；用于“延后启动但失败后可降级继续”的资源优先级编排。 */
+	waitFor: (name: string) => Promise<void>;
 	log: (msg: string) => void;
 }
 

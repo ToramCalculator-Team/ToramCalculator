@@ -33,6 +33,8 @@ interface DamageAreaInstance {
 	};
 	/** 每个目标的最后命中时间（用于 hitIntervalMs 节流） */
 	lastHitTimeMsByTargetId: Map<string, number>;
+	/** 每个目标已派发的伤害段数（用于 damageCount 上限） */
+	damageCountByTargetId: Map<string, number>;
 }
 
 /**
@@ -61,6 +63,7 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 			shape,
 			trajectory,
 			lastHitTimeMsByTargetId: new Map(),
+			damageCountByTargetId: new Map(),
 		};
 
 		this.instances.set(areaId, instance);
@@ -117,6 +120,22 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 			const currentCenter = this.computeCurrentCenter(instance, currentTimeMs);
 
 			const hitIntervalMs = request.hitPolicy.hitIntervalMs;
+			const damageCount = Math.max(1, Math.floor(request.attackSemantics.damageCount));
+			const segmentIndexesByTargetId = new Map<string, number[]>();
+			const collectSegmentIndexes = (targetId: string): number[] => {
+				const dispatchedCount = instance.damageCountByTargetId.get(targetId) ?? 0;
+				if (dispatchedCount >= damageCount) return [];
+
+				const lastHitTimeMs = instance.lastHitTimeMsByTargetId.get(targetId) ?? -Infinity;
+				if (hitIntervalMs > 0 && currentTimeMs - lastHitTimeMs < hitIntervalMs) return [];
+
+				const remaining = damageCount - dispatchedCount;
+				const dispatchCount = hitIntervalMs <= 0 ? remaining : 1;
+				const indexes = Array.from({ length: dispatchCount }, (_, index) => dispatchedCount + index);
+				instance.damageCountByTargetId.set(targetId, dispatchedCount + dispatchCount);
+				instance.lastHitTimeMsByTargetId.set(targetId, currentTimeMs);
+				return indexes;
+			};
 
 			// 根据范围类型选择候选目标
 			let validTargets: AnyMemberEntry[];
@@ -124,9 +143,9 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 			if (request.range.rangeKind === "Single" || request.range.rangeKind === "None") {
 				const singleTarget = request.targetId ? this.memberManager.getMember(request.targetId) : null;
 				if (singleTarget && singleTarget.campId !== request.identity.sourceCampId) {
-					const lastHitTimeMs = instance.lastHitTimeMsByTargetId.get(singleTarget.id) ?? -Infinity;
-					if (currentTimeMs - lastHitTimeMs >= hitIntervalMs) {
-						instance.lastHitTimeMsByTargetId.set(singleTarget.id, currentTimeMs);
+					const segmentIndexes = collectSegmentIndexes(singleTarget.id);
+					if (segmentIndexes.length > 0) {
+						segmentIndexesByTargetId.set(singleTarget.id, segmentIndexes);
 						validTargets = [singleTarget];
 					} else {
 						validTargets = [];
@@ -146,10 +165,10 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 				// 命中节流：间隔达到 hitIntervalMs 后允许再次命中
 				validTargets = [];
 				for (const target of enemyTargets) {
-					const lastHitTimeMs = instance.lastHitTimeMsByTargetId.get(target.id) ?? -Infinity;
-					if (currentTimeMs - lastHitTimeMs >= hitIntervalMs) {
+					const segmentIndexes = collectSegmentIndexes(target.id);
+					if (segmentIndexes.length > 0) {
 						validTargets.push(target);
-						instance.lastHitTimeMsByTargetId.set(target.id, currentTimeMs);
+						segmentIndexesByTargetId.set(target.id, segmentIndexes);
 					}
 				}
 			}
@@ -161,31 +180,34 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 			for (const target of validTargets) {
 				const distance = this.computeDistance(currentCenter, target.position);
 				const direction = this.computeDirection(currentCenter, target.position);
+				const segmentIndexes = segmentIndexesByTargetId.get(target.id) ?? [0];
 
-				const payload: DamageDispatchPayload = {
-					sourceId: request.identity.sourceId,
-					areaId: instance.areaId,
-					damageFormula: request.payload.damageFormula,
-					casterSnapshot: request.payload.casterSnapshot,
-					skillLv: request.payload.skillLv,
-					attackCount: request.attackSemantics.attackCount,
-					damageCount: request.attackSemantics.damageCount,
-					damageTags: [...request.payload.damageTags],
-					warningZone: request.payload.warningZone,
-					direction,
-					// 受击 Pipeline 计算最终伤害后会回填 isFatal；派发时未知。
-					isFatal: false,
-					vars: {
-						distance,
-						targetCount,
-					},
-				};
+				for (const damageIndex of segmentIndexes) {
+					const payload: DamageDispatchPayload = {
+						sourceId: request.identity.sourceId,
+						areaId: instance.areaId,
+						damageFormula: request.payload.damageFormula,
+						casterSnapshot: request.payload.casterSnapshot,
+						skillLv: request.payload.skillLv,
+						damageCount: request.attackSemantics.damageCount,
+						damageIndex,
+						damageTags: [...request.payload.damageTags],
+						warningZone: request.payload.warningZone,
+						direction,
+						// 受击 Pipeline 计算最终伤害后会回填 isFatal；派发时未知。
+						isFatal: false,
+						vars: {
+							distance,
+							targetCount,
+						},
+					};
 
-				// 派发到目标
-				target.actor.send({
-					type: "受到攻击",
-					data: { damageRequest: payload },
-				});
+					// 派发到目标
+					target.actor.send({
+						type: "受到攻击",
+						data: { damageRequest: payload },
+					});
+				}
 			}
 		}
 
@@ -259,6 +281,7 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 				areaId: instance.areaId,
 				requestPayload: structuredClone(instance.request),
 				lastHitTimeMsByTargetId: Array.from(instance.lastHitTimeMsByTargetId.entries()),
+				damageCountByTargetId: Array.from(instance.damageCountByTargetId.entries()),
 			});
 		}
 		return {
@@ -280,6 +303,7 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 				shape,
 				trajectory,
 				lastHitTimeMsByTargetId: new Map(entry.lastHitTimeMsByTargetId),
+				damageCountByTargetId: new Map(entry.damageCountByTargetId ?? []),
 			};
 			this.instances.set(entry.areaId, instance);
 		}
@@ -288,9 +312,8 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 	private deriveShapeAndTrajectory(request: DamageAreaRequest): Pick<DamageAreaInstance, "shape" | "trajectory"> {
 		const { rangeKind, rangeParams } = request.range;
 		const caster = this.memberManager.getMember(request.identity.sourceId);
-		const target = request.targetId ? this.memberManager.getMember(request.targetId) : caster;
 
-		if (!caster || !target) {
+		if (!caster) {
 			throw new Error(`DamageAreaSystem: 施法者不存在: ${request.identity.sourceId}`);
 		}
 
@@ -307,11 +330,16 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 					shape: { type: "circle", radius: rangeParams.radius ?? 0 },
 					trajectory: { type: "static", center: caster.position },
 				};
-			case "Range":
+			case "Range": {
+				const target = request.targetId ? this.memberManager.getMember(request.targetId) : caster;
+				if (!target) {
+					throw new Error(`DamageAreaSystem: 目标不存在: ${request.targetId}`);
+				}
 				return {
 					shape: { type: "circle", radius: rangeParams.radius ?? 0 },
 					trajectory: { type: "static", center: target.position },
 				};
+			}
 			case "MoveAttack":
 				return {
 					shape: { type: "circle", radius: rangeParams.width ? rangeParams.width / 2 : 0 },

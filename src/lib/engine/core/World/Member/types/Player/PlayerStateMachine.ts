@@ -4,16 +4,17 @@ import type { ExpressionContext } from "~/lib/engine/core/JSProcessor/types";
 import { createLogger } from "~/lib/Logger";
 import { ModifierType } from "../../runtime/StatContainer/StatContainer";
 import type {
-	MemberFSMEvent,
 	MemberFSMContext,
+	MemberFSMEvent,
 	MemberStateMachine,
 	MemberStateMachineEnv,
 } from "../../runtime/StateMachine/types";
 import type { PlayerRuntime } from "../../runtime/types";
-import { selectPlayerSkillVariant, computePlayerSkillLifecycleMs } from "./skillLifecycle";
-import { PlayerAttrKey } from "./PlayerAttrSchema";
+import type { PlayerAttrKey } from "./PlayerAttrSchema";
+import { computePlayerSkillLifecycle, selectPlayerSkillVariant } from "./skillLifecycle";
 
 const log = createLogger("PlayerFSM");
+const NEXT_SKILL_COST_SOURCE_ID_PREFIX = "skill.nextCost";
 
 // ─── 事件类型 ───────────────────────────────────────────────────────────────
 
@@ -173,7 +174,7 @@ export const playerFSM = (
 					env.runtime.currentSkill = {
 						data: skill,
 						activeVariant: skillVariant,
-						lifecycle: computePlayerSkillLifecycleMs({
+						lifecycle: computePlayerSkillLifecycle({
 							variant: skillVariant,
 							skillLv: skill.lv,
 							expressionContext: expressionContext(env),
@@ -252,6 +253,8 @@ export const playerFSM = (
 							type: "skill",
 						});
 					}
+					// 下一技能消耗修正在扣费成功后消费；施法检查阶段也会运行 skill.cost，不能在管线内清理。
+					env.statContainer.removeModifiersBySourceIdPrefix(NEXT_SKILL_COST_SOURCE_ID_PREFIX);
 					log.info(`[${env.name}] 已扣除技能消耗：Hp-${cost.hpCost}, Mp-${cost.mpCost}`);
 				},
 				重置控制抵抗时间: () => {

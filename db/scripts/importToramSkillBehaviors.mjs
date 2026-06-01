@@ -13,7 +13,8 @@ const skillVariantCsvPath = path.join(repoRoot, "db/backups/skill_variant.csv");
 const behaviorTreeCsvPath = path.join(repoRoot, "db/backups/behavior_tree.csv");
 
 const GENERATED_PASSIVE_MARKER = "toram-skill-import:passive-attribute-v1";
-const GENERATED_ACTIVE_DAMAGE_MARKER = "toram-skill-import:active-damage-v1";
+const GENERATED_ACTIVE_DAMAGE_MARKER = "toram-skill-import:active-behavior-v2";
+const LEGACY_GENERATED_ACTIVE_DAMAGE_MARKER = "toram-skill-import:active-damage-v1";
 const LEGACY_IMPORTED_PASSIVE_MODIFIER_KIND = "toramPassiveModifiers";
 
 const treeTypeByJsonName = new Map([
@@ -163,11 +164,11 @@ const passiveMetadataAttributeNames = new Set([
 ]);
 
 const unsupportedExpressionPattern = /(?:^|[^A-Za-z0-9_])(?:stack|extra)\s*\[|\$/;
-const skillLevelSourceIdentifierPattern = /\b(?:SLv|sLv)\b/;
-const skillLevelSourceIdentifierGlobalPattern = /\b(?:SLv|sLv)\b/g;
+const skillLevelSourceIdentifierPattern = /\bSLv\b/;
+const skillLevelSourceIdentifierGlobalPattern = /\bSLv\b/g;
 const characterLevelSourceIdentifierGlobalPattern = /\bCLv\b/g;
 const mathMethods = new Set(["abs", "ceil", "floor", "max", "min", "pow", "round", "trunc"]);
-const allowedStandaloneIdentifiers = new Set(["skillLv", "lv", "Math"]);
+const allowedStandaloneIdentifiers = new Set(["skillLv", "self", "Math"]);
 
 const parseCsv = (content) => {
 	const rows = [];
@@ -419,6 +420,7 @@ const isSupportedNumericExpression = (expression) => {
 	for (const match of expression.matchAll(/\b[A-Za-z_][A-Za-z0-9_]*\b/g)) {
 		const identifier = match[0];
 		if (allowedStandaloneIdentifiers.has(identifier)) continue;
+		if (expression.slice(0, match.index).trimEnd().endsWith(".")) continue;
 		if (mathMethods.has(identifier) && expression.slice(Math.max(0, match.index - 5), match.index) === "Math.") {
 			continue;
 		}
@@ -441,7 +443,7 @@ const normalizePassiveExpression = (attr, context, summary) => {
 	}
 
 	let expression = value.replace(skillLevelSourceIdentifierGlobalPattern, "skillLv");
-	expression = expression.replace(characterLevelSourceIdentifierGlobalPattern, "lv");
+	expression = expression.replace(characterLevelSourceIdentifierGlobalPattern, "self.lv");
 	if (skillLevelSourceIdentifierPattern.test(value)) summary.normalizedSkillLvExpressions += 1;
 
 	const supported = isSupportedNumericExpression(expression);
@@ -516,7 +518,7 @@ const buildPassiveModifyAttributeActions = (jsonTree, jsonSkill, effect, summary
 	return actions;
 };
 
-const buildPassiveDefinition = (variantId, jsonTree, jsonSkill, actions) => {
+const buildPassiveDefinition = (_variantId, jsonTree, jsonSkill, actions) => {
 	const lines = [
 		"root {",
 		`\t/* ${GENERATED_PASSIVE_MARKER}; sourceTree=${jsonTree.name}; sourceSkill=${jsonSkill.name} */`,
@@ -564,11 +566,22 @@ const ailmentNameMap = {
 	畏懼: "Fear",
 };
 
-const vAtkFormulas = {
-	physical: "((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p))",
-	magic: "((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m))",
-	normal_attack: "((self.lv - target.lv + self.atk.p) * (1 - target.red.p) - target.def.p * (1 - self.pie.p))",
+const loadEffectiveAtkFormulas = () => {
+	const sourcePath = path.join(repoRoot, "src/lib/engine/core/World/Member/runtime/Agent/DamageFormulas.ts");
+	const source = fs.readFileSync(sourcePath, "utf8");
+	const readConst = (name) => {
+		const match = source.match(new RegExp(`export const ${name} = "([^"]+)"`));
+		if (!match) throw new Error(`无法从 DamageFormulas.ts 读取 ${name}`);
+		return match[1];
+	};
+	return {
+		physical: readConst("vAtkP"),
+		magic: readConst("vAtkM"),
+		normal_attack: readConst("vAtkP"),
+	};
 };
+
+const vAtkFormulas = loadEffectiveAtkFormulas();
 
 const prorationToExpTypes = {
 	physical: { application: "physical", resolution: "physical" },
@@ -576,8 +589,30 @@ const prorationToExpTypes = {
 	normal_attack: { application: "normal", resolution: "physical" },
 };
 
+const expandedActiveImportPolicy = new Map([
+	["魔法技能", new Set(["法術/飛箭", "法術/衝擊波", "法術/終結", "法術/魔法槍", "魔力充填", "魔力灌充"])],
+]);
+
+const magicChargeSlotPath = "buff.magicCharge.level";
+const magicChargeSourceId = "skill.magicCharge.level";
+const nextSkillMpCostRateSlotPath = "skill.nextCost.mpCostRate";
+const magicImpactNextCostSourceId = "skill.nextCost.mpCostRate.magicImpact";
+const magicChargeAttributeSlots = [
+	{
+		path: magicChargeSlotPath,
+		attribute: {
+			expression: "0",
+			displayName: "魔力充填等级",
+		},
+	},
+];
+
+const isExpandedActiveImportEnabled = (jsonTree, jsonSkill) =>
+	expandedActiveImportPolicy.get(jsonTree.name)?.has(jsonSkill.name) ?? false;
+
 const isGeneratedActiveDefinition = (definition) =>
-	typeof definition === "string" && definition.includes(GENERATED_ACTIVE_DAMAGE_MARKER);
+	typeof definition === "string" &&
+	(definition.includes(GENERATED_ACTIVE_DAMAGE_MARKER) || definition.includes(LEGACY_GENERATED_ACTIVE_DAMAGE_MARKER));
 
 const normalizeActiveExpression = (raw) => {
 	if (!raw) return null;
@@ -593,67 +628,453 @@ const normalizeActiveExpression = (raw) => {
 	return expr;
 };
 
-const qualifiesForActiveDamageV1 = (effect) => {
+const cloneJsonValue = (value) => (value == null ? value : structuredClone(value));
+
+const branchAttributesToObject = (branch) =>
+	Object.fromEntries((branch?.attributes ?? []).map((attribute) => [attribute.name, attribute.value]));
+
+const mergeBranchAttributes = (baseBranch, overrideBranch) => {
+	const merged = new Map((baseBranch.attributes ?? []).map((attribute) => [attribute.name, { ...attribute }]));
+	for (const attribute of overrideBranch.attributes ?? []) {
+		merged.set(attribute.name, { ...attribute });
+	}
+	baseBranch.attributes = [...merged.values()];
+};
+
+const hydrateEffect = (defaultEffect, overrideEffect) => {
+	if (overrideEffect.isDefault || !defaultEffect) return overrideEffect;
+
+	const hydrated = cloneJsonValue(defaultEffect);
+	for (const key of [
+		"mainWeapon",
+		"subWeapon",
+		"bodyArmor",
+		"isDefault",
+		"equipmentOperatorAnd",
+		"skillType",
+		"isHistory",
+	]) {
+		if (Object.hasOwn(overrideEffect, key)) hydrated[key] = overrideEffect[key];
+	}
+
+	const branches = hydrated.branches ?? [];
+	const mergeTargets = branches.filter((branch) => branch.name === "damage" || branch.name === "heal");
+	let unnamedOverrideIndex = 0;
+	for (const overrideBranch of overrideEffect.branches ?? []) {
+		if (!overrideBranch.name) {
+			if ((overrideBranch.attributes ?? []).length === 0) continue;
+			const target = mergeTargets[unnamedOverrideIndex++];
+			if (target) {
+				mergeBranchAttributes(target, overrideBranch);
+			} else {
+				branches.push({ ...cloneJsonValue(overrideBranch), name: "" });
+			}
+			continue;
+		}
+
+		const target = branches.find((branch) => branch.name === overrideBranch.name);
+		if (target) {
+			mergeBranchAttributes(target, overrideBranch);
+		} else {
+			branches.push(cloneJsonValue(overrideBranch));
+		}
+	}
+	hydrated.branches = branches;
+	return hydrated;
+};
+
+const buildHydratedActiveEffects = (jsonSkill) => {
+	const activeEffects = (jsonSkill.effects ?? []).filter((effect) => !effect.isHistory && effect.skillType !== "被動");
+	const defaultEffect = activeEffects.find((effect) => effect.isDefault) ?? null;
+	return activeEffects.map((effect) => hydrateEffect(defaultEffect, effect));
+};
+
+const addActiveUnsupported = (summary, reason, context) => {
+	summary.skippedActiveUnsupported += 1;
+	addCount(summary.activeUnsupportedCounts, reason);
+	pushExample(summary.activeUnsupportedExamples, reason, context);
+};
+
+const normalizeSecondsExpressionToMs = (raw) => {
+	const expression = normalizeActiveExpression(raw);
+	return expression ? `(${expression})*1000` : null;
+};
+
+const normalizeStaticSecondsToMs = (raw) => {
+	const expression = normalizeActiveExpression(raw);
+	if (!expression) return null;
+	const seconds = Number(expression);
+	return Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds * 1000)) : null;
+};
+
+const isTruthySourceFlag = (value) => value != null && value !== "" && value !== "0" && value !== 0 && value !== false;
+
+const buildDamageTags = (dmgAttrs) => {
+	const tags = [];
+	if (isTruthySourceFlag(dmgAttrs.is_place)) tags.push("is_place");
+	return tags;
+};
+
+const toMdslStringArrayLiteral = (items) => `[${items.map((item) => toMdslString(item)).join(", ")}]`;
+
+const toMdslAilmentsLiteral = (ailments) =>
+	ailments.length
+		? `[${ailments
+				.map((ailment) => `{type: ${toMdslString(ailment.type)}, chance: ${toMdslString(ailment.chance)}}`)
+				.join(", ")}]`
+		: "[]";
+
+const buildAilments = (dmgAttrs) => {
+	if (!dmgAttrs.ailment_name || !ailmentNameMap[dmgAttrs.ailment_name]) return [];
+	const chanceExpr = normalizeActiveExpression(dmgAttrs.ailment_chance);
+	if (!chanceExpr) return [];
+	return [{ type: ailmentNameMap[dmgAttrs.ailment_name], chance: chanceExpr }];
+};
+
+const buildDamageFormula = (prorationDamage, constant, multiplier) =>
+	`(${vAtkFormulas[prorationDamage]} + ${constant}) * (${multiplier}) / 100`;
+
+const resolveDamageActionName = (dmgAttrs) => {
+	if (dmgAttrs.type === "AOE" || dmgAttrs.radius) {
+		return dmgAttrs.end_position === "self" ? "surroundingsAttack" : "rangeAttack";
+	}
+	return "singleAttack";
+};
+
+const parseRadius = (raw) => {
+	const expression = normalizeActiveExpression(raw);
+	if (!expression) return null;
+	const radius = Number(expression);
+	return Number.isFinite(radius) ? radius : null;
+};
+
+const buildAttackActionLine = ({ actionName, types, formula, damageCount, tags, ailments, radius, damageInterval }) => {
+	const args = [
+		`action [${actionName}`,
+		"$targetId",
+		toMdslString(types.application),
+		toMdslString(types.resolution),
+		toMdslString(formula),
+		toMdslString(damageCount),
+		toMdslStringArrayLiteral(tags),
+		toMdslAilmentsLiteral(ailments),
+		toMdslString("none"),
+	];
+	if (actionName === "rangeAttack" || actionName === "surroundingsAttack") {
+		args.push(String(radius));
+	}
+	if (damageInterval) {
+		args.push(toMdslString(damageInterval));
+	}
+	return `\t\t${args.join(", ")}]`;
+};
+
+const buildDamageActionLines = (dmgAttrs, types, formula, summary, context) => {
+	const actionName = resolveDamageActionName(dmgAttrs);
+	const radius = actionName === "singleAttack" ? null : parseRadius(dmgAttrs.radius);
+	if (actionName !== "singleAttack" && radius == null) {
+		addActiveUnsupported(summary, "invalidRadius", { ...context, radius: dmgAttrs.radius });
+		return null;
+	}
+
+	const tags = buildDamageTags(dmgAttrs);
+	const ailments = buildAilments(dmgAttrs);
+	const hasFrequency = dmgAttrs.frequency != null && String(dmgAttrs.frequency).trim() !== "";
+	const frequency = hasFrequency ? normalizeActiveExpression(dmgAttrs.frequency) : null;
+
+	if (hasFrequency && !frequency) {
+		addActiveUnsupported(summary, "unsupportedFrequencyExpression", { ...context, frequency: dmgAttrs.frequency });
+		return null;
+	}
+
+	if (!hasFrequency) {
+		return [
+			buildAttackActionLine({
+				actionName,
+				types,
+				formula,
+				damageCount: "1",
+				tags,
+				ailments,
+				radius,
+			}),
+		];
+	}
+
+	if (!dmgAttrs.judgment) {
+		addActiveUnsupported(summary, "missingJudgmentForFrequency", { ...context, frequency: dmgAttrs.frequency });
+		return null;
+	}
+
+	if (dmgAttrs.judgment === "common") {
+		const damageInterval = dmgAttrs.cycle ? normalizeSecondsExpressionToMs(dmgAttrs.cycle) : null;
+		if (dmgAttrs.cycle && !damageInterval) {
+			addActiveUnsupported(summary, "unsupportedDamageIntervalExpression", { ...context, cycle: dmgAttrs.cycle });
+			return null;
+		}
+		return [
+			buildAttackActionLine({
+				actionName,
+				types,
+				formula,
+				damageCount: frequency,
+				tags,
+				ailments,
+				radius,
+				damageInterval,
+			}),
+		];
+	}
+
+	if (dmgAttrs.judgment === "separate") {
+		const actionCount = Number(frequency);
+		if (!Number.isInteger(actionCount) || actionCount < 1) {
+			addActiveUnsupported(summary, "nonStaticSeparateFrequency", { ...context, frequency });
+			return null;
+		}
+
+		const waitMs = dmgAttrs.cycle ? normalizeStaticSecondsToMs(dmgAttrs.cycle) : null;
+		if (dmgAttrs.cycle && waitMs == null) {
+			addActiveUnsupported(summary, "nonStaticSeparateCycle", { ...context, cycle: dmgAttrs.cycle });
+			return null;
+		}
+
+		const lines = [];
+		for (let index = 0; index < actionCount; index += 1) {
+			lines.push(
+				buildAttackActionLine({
+					actionName,
+					types,
+					formula,
+					damageCount: "1",
+					tags,
+					ailments,
+					radius,
+				}),
+			);
+			if (waitMs && index < actionCount - 1) lines.push(`\t\twait [${waitMs}]`);
+		}
+		return lines;
+	}
+
+	addActiveUnsupported(summary, "unsupportedJudgment", { ...context, judgment: dmgAttrs.judgment });
+	return null;
+};
+
+const buildDamageBehaviorInfo = (jsonTree, jsonSkill, effect, summary, expandedEnabled) => {
 	const branches = effect.branches ?? [];
 	const damageBranches = branches.filter((b) => b.name === "damage");
 	const prorationBranches = branches.filter((b) => b.name === "proration");
-	if (damageBranches.length !== 1 || prorationBranches.length !== 1) return null;
+	const context = { tree: jsonTree.name, skill: jsonSkill.name };
+	if (damageBranches.length === 0 || prorationBranches.length !== 1) {
+		addActiveUnsupported(summary, "damageMissingProration", context);
+		return null;
+	}
 
 	const hasStack = branches.some((b) => b.name === "stack");
 	const hasHeal = branches.some((b) => b.name === "heal");
-	if (hasStack || hasHeal) return null;
-
-	const damage = damageBranches[0];
-	const proration = prorationBranches[0];
-	const dmgAttrs = Object.fromEntries((damage.attributes ?? []).map((a) => [a.name, a.value]));
-
-	// Skip complex damage types (but allow frequency)
-	if (dmgAttrs.duration || dmgAttrs.radius) return null;
-	if (dmgAttrs.is_place || dmgAttrs.move_distance || dmgAttrs.end_position) return null;
-
-	const constant = normalizeActiveExpression(dmgAttrs.constant);
-	const multiplier = normalizeActiveExpression(dmgAttrs.multiplier);
-	if (!constant || !multiplier) return null;
-
-	const prorationDamage = proration.attributes?.find((a) => a.name === "damage")?.value;
-	if (!prorationDamage || !vAtkFormulas[prorationDamage]) return null;
-
-	const attackCount = dmgAttrs.frequency ? Number(dmgAttrs.frequency) : 1;
-	if (isNaN(attackCount) || attackCount < 1) return null;
-
-	// Extract ailment if present (non-blocking)
-	let ailment = null;
-	if (dmgAttrs.ailment_name && ailmentNameMap[dmgAttrs.ailment_name]) {
-		const chanceExpr = normalizeActiveExpression(dmgAttrs.ailment_chance);
-		if (chanceExpr) {
-			ailment = { type: ailmentNameMap[dmgAttrs.ailment_name], chance: chanceExpr };
-		}
+	if ((hasStack || hasHeal) && !expandedEnabled) {
+		addActiveUnsupported(summary, "legacyDamageWithStackOrHeal", context);
+		return null;
+	}
+	if (damageBranches.length !== 1 && !expandedEnabled) {
+		addActiveUnsupported(summary, "legacyMultipleDamageBranches", context);
+		return null;
 	}
 
-	return { constant, multiplier, prorationDamage, attackCount, ailment, dmgAttrs };
+	const proration = prorationBranches[0];
+	const prorationDamage = proration.attributes?.find((a) => a.name === "damage")?.value;
+	if (!prorationDamage || !vAtkFormulas[prorationDamage] || !prorationToExpTypes[prorationDamage]) {
+		addActiveUnsupported(summary, "unsupportedProrationDamage", { ...context, prorationDamage });
+		return null;
+	}
+
+	const types = prorationToExpTypes[prorationDamage];
+	const bodyLines = [];
+
+	for (let index = 0; index < damageBranches.length; index += 1) {
+		const damage = damageBranches[index];
+		const dmgAttrs = branchAttributesToObject(damage);
+		const damageContext = { ...context, damageIndex: index, damageName: dmgAttrs.name };
+
+		if (
+			!expandedEnabled &&
+			(dmgAttrs.duration || dmgAttrs.radius || dmgAttrs.is_place || dmgAttrs.move_distance || dmgAttrs.end_position)
+		) {
+			addActiveUnsupported(summary, "legacyComplexDamageShape", damageContext);
+			return null;
+		}
+		if (dmgAttrs.move_distance) {
+			addActiveUnsupported(summary, "unsupportedMoveDamage", damageContext);
+			return null;
+		}
+
+		const constant = normalizeActiveExpression(dmgAttrs.constant);
+		const multiplier = normalizeActiveExpression(dmgAttrs.multiplier);
+		if (!constant || !multiplier) {
+			addActiveUnsupported(summary, "unsupportedDamageFormulaPart", {
+				...damageContext,
+				constant: dmgAttrs.constant,
+				multiplier: dmgAttrs.multiplier,
+			});
+			return null;
+		}
+
+		const formula = buildDamageFormula(prorationDamage, constant, multiplier);
+		const actionLines = buildDamageActionLines(dmgAttrs, types, formula, summary, damageContext);
+		if (!actionLines) return null;
+		bodyLines.push(...actionLines);
+	}
+
+	return { bodyLines, agentGetters: [], attributeSlots: [] };
 };
 
-const buildActiveDamageDefinition = (variantId, jsonTree, jsonSkill, damageInfo) => {
-	const { constant, multiplier, prorationDamage, attackCount, ailment } = damageInfo;
-	const vAtk = vAtkFormulas[prorationDamage];
-	const formula = `(${vAtk} + ${constant}) * (${multiplier}) / 100`;
-	const types = prorationToExpTypes[prorationDamage];
-	const ailmentsLiteral = ailment
-		? `[{type: ${toMdslString(ailment.type)}, chance: ${toMdslString(ailment.chance)}}]`
-		: "[]";
+const buildMagicMaximizerChantingGetter = () => `\tget 魔力灌充咏唱毫秒() {
+\t\tconst lifecycle = owner.getContext()?.currentSkill?.lifecycle;
+\t\tconst baseMs = Number(lifecycle?.chanting ?? 0);
+\t\tconst statContainer = owner.getCapabilities().statContainer;
+\t\tconst chargeLv = Number(statContainer.getValue("${magicChargeSlotPath}") ?? 0);
+\t\tconst value = Math.max(0, Math.floor(baseMs - chargeLv * 1000));
+\t\treturn Number.isFinite(value) ? value : 0;
+\t}`;
+
+// 通用生命周期字段由 FSM 统一计算；生成脚本只为技能特例补 agent getter，避免把时序公式复制进每棵 BT。
+const buildActiveAgent = (extraGetters = []) => {
+	const getters = extraGetters.filter(Boolean);
+	return getters.length ? `class Agent {\n${getters.join("\n\n")}\n}` : "";
+};
+
+const buildHealBehaviorInfo = (jsonTree, jsonSkill, effect, summary, expandedEnabled) => {
+	const context = { tree: jsonTree.name, skill: jsonSkill.name };
+	if (!expandedEnabled) {
+		addActiveUnsupported(summary, "legacyHealDisabled", context);
+		return null;
+	}
+
+	const healBranches = (effect.branches ?? []).filter((branch) => branch.name === "heal");
+	if (healBranches.length !== 1) {
+		addActiveUnsupported(summary, "unsupportedHealBranchCount", context);
+		return null;
+	}
+
+	const attrs = branchAttributesToObject(healBranches[0]);
+	const expression = normalizeActiveExpression(attrs.constant);
+	if (!expression) {
+		addActiveUnsupported(summary, "unsupportedHealExpression", { ...context, constant: attrs.constant });
+		return null;
+	}
+
+	const actionName = attrs.type === "hp" ? "healHp" : attrs.type === "mp" ? "healMp" : null;
+	if (!actionName) {
+		addActiveUnsupported(summary, "unsupportedHealType", { ...context, type: attrs.type });
+		return null;
+	}
+
+	const bodyLines = [`\t\taction [${actionName}, ${toMdslString(expression)}]`];
+	const attributeSlots =
+		jsonSkill.name === "魔力充填" || jsonSkill.name === "魔力灌充" ? magicChargeAttributeSlots : [];
+	const agentGetters = [];
+	let chantingArg = "$currentSkill.lifecycle.chanting";
+
+	if (jsonSkill.name === "魔力充填") {
+		bodyLines.push(
+			`\t\taction [modifyAttribute, ${toMdslString(magicChargeSlotPath)}, ${toMdslString(
+				`skillLv - self.${magicChargeSlotPath}`,
+			)}, "dynamicFixed", ${toMdslString(magicChargeSourceId)}, "魔力充填等级", "skill"]`,
+		);
+	}
+
+	if (jsonSkill.name === "魔力灌充") {
+		agentGetters.push(buildMagicMaximizerChantingGetter());
+		chantingArg = "$魔力灌充咏唱毫秒";
+		bodyLines.push(
+			`\t\taction [modifyAttribute, ${toMdslString(magicChargeSlotPath)}, ${toMdslString(
+				`0 - self.${magicChargeSlotPath}`,
+			)}, "dynamicFixed", ${toMdslString(magicChargeSourceId)}, "魔力充填等级", "skill"]`,
+		);
+	}
+
+	return { bodyLines, agentGetters, attributeSlots, chantingArg };
+};
+
+const hasNextMpCostHalfEffect = (branches) =>
+	branches.some((branch) => {
+		if (branch.name !== "next") return false;
+		const attrs = branchAttributesToObject(branch);
+		return String(attrs.buffs ?? "")
+			.split(",")
+			.map((item) => item.trim())
+			.includes("mp_cost_half");
+	});
+
+const withPostSuccessEffects = (activeInfo, branches) => {
+	if (!activeInfo || !hasNextMpCostHalfEffect(branches)) return activeInfo;
+	return {
+		...activeInfo,
+		bodyLines: [
+			...activeInfo.bodyLines,
+			`\t\taction [setAttributeModifier, ${toMdslString(nextSkillMpCostRateSlotPath)}, ${toMdslString(
+				"-0.5",
+			)}, "dynamicFixed", ${toMdslString(magicImpactNextCostSourceId)}]`,
+		],
+	};
+};
+
+const buildActiveBehaviorInfo = (jsonTree, jsonSkill, effect, summary) => {
+	const expandedEnabled = isExpandedActiveImportEnabled(jsonTree, jsonSkill);
+	const branches = effect.branches ?? [];
+	const damageBranches = branches.filter((branch) => branch.name === "damage");
+	const healBranches = branches.filter((branch) => branch.name === "heal");
+
+	if (damageBranches.length > 0) {
+		return withPostSuccessEffects(
+			buildDamageBehaviorInfo(jsonTree, jsonSkill, effect, summary, expandedEnabled),
+			branches,
+		);
+	}
+	if (healBranches.length > 0) {
+		return withPostSuccessEffects(
+			buildHealBehaviorInfo(jsonTree, jsonSkill, effect, summary, expandedEnabled),
+			branches,
+		);
+	}
+
+	if (expandedEnabled) {
+		addActiveUnsupported(summary, "unsupportedExpandedActiveShape", { tree: jsonTree.name, skill: jsonSkill.name });
+	}
+	return null;
+};
+
+const hasLifecycleTiming = (...values) =>
+	values.some((value) => {
+		const text = String(value ?? "").trim();
+		return text !== "" && text !== "0";
+	});
+
+const buildLifecyclePhaseLines = (name, durationArg) => [
+	`\t\taction [animation, ${toMdslString(name)}, ${durationArg}]`,
+	`\t\twait [${durationArg}]`,
+];
+
+const buildActiveDamageDefinition = (variantRow, jsonTree, jsonSkill, activeInfo) => {
+	const chantingArg = activeInfo.chantingArg ?? "$currentSkill.lifecycle.chanting";
+	const hasChanting =
+		hasLifecycleTiming(variantRow.chantingFixedMs, variantRow.chantingModifiedMs) ||
+		chantingArg !== "$currentSkill.lifecycle.chanting";
+	const hasCharging = hasLifecycleTiming(variantRow.chargingFixedMs, variantRow.chargingModifiedMs);
+	// 主动技能生命周期按原始流程生成：咏唱、蓄力、施法前摇、技能主体、施法后摇。
+	const lifecycleLines = [
+		...(hasChanting ? buildLifecyclePhaseLines("chanting", chantingArg) : []),
+		...(hasCharging ? buildLifecyclePhaseLines("charging", "$currentSkill.lifecycle.charging") : []),
+		...buildLifecyclePhaseLines("startup", "$currentSkill.lifecycle.startup"),
+	];
 	const lines = [
 		"root {",
-		`\t/* ${GENERATED_ACTIVE_DAMAGE_MARKER}; sourceTree=${jsonTree.name}; sourceSkill=${jsonSkill.name} */`,
+		`\t/* ${GENERATED_ACTIVE_DAMAGE_MARKER}; sourceTree=${jsonTree.name}; sourceSkill=${jsonSkill.name}; variant=${variantRow.id} */`,
 		"\tsequence {",
-		`\t\taction [animation, "startup", $currentSkill.lifecycle.startUp]`,
-		`\t\twait [$currentSkill.lifecycle.startUp]`,
-		`\t\taction [animation, "charging", $currentSkill.lifecycle.charging]`,
-		`\t\twait [$currentSkill.lifecycle.charging]`,
-		`\t\taction [animation, "chanting", $currentSkill.lifecycle.chanting]`,
-		`\t\twait [$currentSkill.lifecycle.chanting]`,
-		`\t\taction [singleAttack, $targetId, ${toMdslString(types.application)}, ${toMdslString(types.resolution)}, ${attackCount}, ${toMdslString(formula)}, 1, [], ${ailmentsLiteral}, "none"]`,
-		`\t\taction [animation, "action", $currentSkill.lifecycle.action]`,
-		`\t\twait [$currentSkill.lifecycle.action]`,
+		...lifecycleLines,
+		...activeInfo.bodyLines,
+		...buildLifecyclePhaseLines("recovery", "$currentSkill.lifecycle.recovery"),
 		"\t}",
 		"}",
 	];
@@ -668,7 +1089,7 @@ const upsertActiveBehaviorTree = (
 	variantRow,
 	jsonTree,
 	jsonSkill,
-	damageInfo,
+	activeInfo,
 	summary,
 ) => {
 	const id = `${variantRow.id}__active_bt`;
@@ -698,10 +1119,10 @@ const upsertActiveBehaviorTree = (
 	}
 
 	setCell(row, "id", id);
-	setCell(row, "name", `${jsonSkill.name} 主动伤害`);
-	setCell(row, "definition", buildActiveDamageDefinition(variantRow.id, jsonTree, jsonSkill, damageInfo));
-	setCellNotNull(row, "agent", "");
-	setCellNotNull(row, "attributeSlots", "[]");
+	setCell(row, "name", `${jsonSkill.name} 主动行为`);
+	setCell(row, "definition", buildActiveDamageDefinition(variantRow, jsonTree, jsonSkill, activeInfo));
+	setCellNotNull(row, "agent", buildActiveAgent(activeInfo.agentGetters ?? []));
+	setCellNotNull(row, "attributeSlots", JSON.stringify(activeInfo.attributeSlots ?? []));
 	setCell(row, "activeOwnerId", variantRow.id);
 	setCell(row, "passiveOwnerId", "");
 	setCell(row, "registeredOwnerId", "");
@@ -834,6 +1255,8 @@ const summary = {
 	unsupportedExpressionExamples: new Map(),
 	unsupportedExtraCounts: new Map(),
 	unsupportedExtraExamples: new Map(),
+	activeUnsupportedCounts: new Map(),
+	activeUnsupportedExamples: new Map(),
 };
 
 const behaviorRowsToAppend = [];
@@ -847,9 +1270,7 @@ for (const category of source.categories ?? []) {
 			const allEffects = (jsonSkill.effects ?? []).filter((effect) => !effect.isHistory);
 			const hasPassiveSkillType = allEffects.some((effect) => effect.skillType === "被動");
 			if (!hasPassiveSkillType) continue;
-			const passiveEffects = allEffects.filter(
-				(effect) => (effect.branches ?? []).some((b) => b.name === "passive"),
-			);
+			const passiveEffects = allEffects.filter((effect) => (effect.branches ?? []).some((b) => b.name === "passive"));
 			if (passiveEffects.length === 0) continue;
 
 			const resolvedSkill = resolveSkillRecord(jsonTree, jsonSkill, skillIndexes);
@@ -906,7 +1327,7 @@ for (const category of source.categories ?? []) {
 for (const category of source.categories ?? []) {
 	for (const jsonTree of category.skillTrees ?? []) {
 		for (const jsonSkill of jsonTree.skills ?? []) {
-			const activeEffects = (jsonSkill.effects ?? []).filter((e) => e.skillType !== "被動");
+			const activeEffects = buildHydratedActiveEffects(jsonSkill);
 			if (activeEffects.length === 0) continue;
 
 			const resolvedSkill = resolveSkillRecord(jsonTree, jsonSkill, skillIndexes);
@@ -919,11 +1340,8 @@ for (const category of source.categories ?? []) {
 				if (effect.isHistory) continue;
 				summary.sourceActiveEffects += 1;
 
-				const damageInfo = qualifiesForActiveDamageV1(effect);
-				if (!damageInfo) {
-					summary.skippedActiveUnsupported += 1;
-					continue;
-				}
+				const activeInfo = buildActiveBehaviorInfo(jsonTree, jsonSkill, effect, summary);
+				if (!activeInfo) continue;
 
 				let targets;
 				try {
@@ -948,7 +1366,7 @@ for (const category of source.categories ?? []) {
 						row,
 						jsonTree,
 						jsonSkill,
-						damageInfo,
+						activeInfo,
 						summary,
 					);
 				}
@@ -983,6 +1401,8 @@ const outputSummary = {
 	unsupportedExpressionExamples: examplesToObject(summary.unsupportedExpressionExamples),
 	unsupportedExtraCounts: mapToObject(summary.unsupportedExtraCounts),
 	unsupportedExtraExamples: examplesToObject(summary.unsupportedExtraExamples),
+	activeUnsupportedCounts: mapToObject(summary.activeUnsupportedCounts),
+	activeUnsupportedExamples: examplesToObject(summary.activeUnsupportedExamples),
 };
 
 if (

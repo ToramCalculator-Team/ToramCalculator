@@ -190,8 +190,14 @@ export const bootstrapModules: BootstrapModule[] = [
 	{
 		name: "engine",
 		deps: [],
-		timeout: 60_000,
-		init: async () => {
+		timeout: 180_000,
+		init: async ({ log, waitFor }) => {
+			try {
+				// 设计目的：engine 会创建计算 Worker；等待首轮数据同步先完成，避免和 PGlite wasm/data、Electric 初始同步抢首启带宽。
+				await waitFor("electricInitialSync");
+			} catch (error) {
+				log(`data priority gate failed before engine init: ${String(error)}`);
+			}
 			const { EngineService } = await import("~/lib/engine/core/thread/EngineService");
 			const service = EngineService.getInstance();
 			service.init();

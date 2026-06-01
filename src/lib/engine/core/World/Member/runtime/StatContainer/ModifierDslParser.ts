@@ -1,6 +1,6 @@
 import { parse, tokenizer } from "acorn";
 import { createLogger } from "~/lib/Logger";
-import { type ModifierSource, ModifierType } from "./StatContainer";
+import { type ModifierSource, ModifierType } from "./StatContainerTypes";
 
 const log = createLogger("ModifierDslParser");
 

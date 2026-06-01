@@ -13,8 +13,8 @@ import type { PipelineInstruction } from "./instruction";
  * - 解析/编译/执行由 `PipelineResolverService` 负责
  *
  * 技能生命周期管线（skill.charging / skill.chanting / skill.action）约定：
- * - 动画时序：chanting(咏唱) → charging(蓄力) → action(施法)。
- * - action 内部：startUp(前摇) + 后摇 = action。startUp = floor(action * startupRatio)，由 FSM 计算，不经过管线。
+ * - 动画时序：chanting(咏唱) → charging(蓄力) → startup(前摇) → recovery(后摇)。
+ * - skill.action 输出拆分前动作总时长；FSM 将其拆为 startup + recovery，二者才写入 runtime lifecycle。
  * - 由编排层（FSM action “添加待处理技能”）预求值 variant 上的字符串公式并转为毫秒，
  *   以 `input.fixed` + `input.modified` 传入。
  * - charging / action 套用 mspd 行动速度修正：rate = max(0.5, 1 - mspd/100)。
@@ -53,11 +53,14 @@ export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstructi
 		// 比例修正锚点。半耗、免耗、倍率类效果优先挂这里，避免覆写基础公式。
 		{ target: "hpCostRate", op: "+", a: 1, b: 0 },
 		{ target: "mpCostRate", op: "+", a: 1, b: 0 },
+		// 下一技能消耗修正由 StatContainer 持有；管线只读取数值，消费清理由 FSM 扣费成功后执行。
+		{ target: "nextMpCostRateModifier", op: "get", a: "self", b: "skill.nextCost.mpCostRate" },
+		{ target: "effectiveMpCostRate", op: "+", a: "mpCostRate", b: "nextMpCostRateModifier" },
 
 		{ target: "rawHpCost", op: "+", a: "baseHpCost", b: "hpCostModifier" },
 		{ target: "rawMpCost", op: "+", a: "baseMpCost", b: "mpCostModifier" },
 		{ target: "ratedHpCost", op: "*", a: "rawHpCost", b: "hpCostRate" },
-		{ target: "ratedMpCost", op: "*", a: "rawMpCost", b: "mpCostRate" },
+		{ target: "ratedMpCost", op: "*", a: "rawMpCost", b: "effectiveMpCostRate" },
 
 		// 消耗管线不表达回复；主动回 MP 应由技能 BT 或 proc 管线事件承载。
 		{ target: "hpCost", op: "max", a: 0, b: "ratedHpCost" },

@@ -8,14 +8,44 @@
  * - 内存优化：连续内存布局，减少GC压力
  */
 import * as Enums from "@db/schema/enums";
-import { z } from "zod/v4";
 import { createLogger } from "~/lib/Logger";
 import type { Checkpointable, StatContainerCheckpoint } from "../../../../types";
+import { AttributeFlags, BitFlags } from "./BitFlags";
+import { DependencyGraph } from "./DependencyGraph";
 import type { AttributeExpression, NestedSchema } from "./SchemaTypes";
 import { SchemaFlattener } from "./SchemaTypes";
 import { StatContainerASTCompiler } from "./StatContainerAST";
+import type { AttributeChangeListener, DataStorage, ModifierSource } from "./StatContainerTypes";
+import { ModifierType } from "./StatContainerTypes";
 
+export { AttributeFlags, BitFlags } from "./BitFlags";
+export { DependencyGraph } from "./DependencyGraph";
+export type {
+	AttributeChangeListener,
+	DataStorage,
+	DataStorages,
+	Modifier,
+	ModifierSource,
+	StatModifierKind,
+	StatModifierParam,
+} from "./StatContainerTypes";
+export {
+	dynamicTotalValue,
+	isDataStorageType,
+	ModifierSourceTypeSchema,
+	ModifierType,
+	StatModifierKindSchema,
+	StatModifierParamSchema,
+} from "./StatContainerTypes";
+
+// 见 src/lib/engine/document/decisions/0006-stat-container-same-frame-dirty-convergence.md
 const log = createLogger("StatContainer");
+
+type PendingValueChange = {
+	index: number;
+	oldValue: number;
+	newValue: number;
+};
 
 // ============================== 枚举映射生成 ==============================
 
@@ -45,375 +75,6 @@ function createEnumMappings(): Map<string, number> {
 
 // 全局枚举映射
 const ENUM_MAPPINGS = createEnumMappings();
-
-// 数据存储接口，用于向外传输
-export type DataStorage = {
-	displayName: string;
-	expression: string;
-	baseValue: number;
-	actValue: number;
-	static: {
-		fixed: {
-			sourceId: string;
-			value: number;
-		}[];
-		percentage: {
-			sourceId: string;
-			value: number;
-		}[];
-	};
-	dynamic: {
-		fixed: {
-			sourceId: string;
-			value: number;
-		}[];
-		percentage: {
-			sourceId: string;
-			value: number;
-		}[];
-	};
-};
-
-export type DataStorages<T extends string> = {
-	[key in T]: DataStorage;
-};
-
-/**
- * 属性变更监听器。
- *
- * 仅当属性"已被观测过"且 `oldValue !== newValue` 时触发。
- * 用于阶段 3 的 `AttributeWatcherRegistry` 做阈值跨线检测；数据层自身不含业务语义。
- */
-export type AttributeChangeListener = (oldValue: number, newValue: number, path: string) => void;
-
-// 类型谓词函数，用于检查对象是否为DataStorage类型
-export function isDataStorageType(obj: unknown): obj is DataStorage {
-	return (
-		typeof obj === "object" &&
-		obj !== null &&
-		"displayName" in obj &&
-		"baseValue" in obj &&
-		"static" in obj &&
-		"dynamic" in obj
-	);
-}
-
-// 计算动态总值
-export function dynamicTotalValue(data: DataStorage): number {
-	if (!data || typeof data !== "object") return 0;
-
-	let baseValue = 0;
-	let total = 0;
-	let staticFixed = 0;
-	let staticPercentage = 0;
-	let dynamicFixed = 0;
-	let dynamicPercentage = 0;
-	let totalPercentage = staticPercentage + dynamicPercentage;
-	let totalFixed = staticFixed + dynamicFixed;
-
-	baseValue = Number(data.baseValue) || 0;
-
-	// 添加静态修正值
-	if (data.static.fixed) {
-		staticFixed = data.static.fixed.reduce((acc, curr) => acc + curr.value, 0);
-	}
-
-	// 添加静态百分比修正
-	if (data.static.percentage) {
-		staticPercentage = data.static.percentage.reduce((acc, curr) => acc + curr.value, 0);
-	}
-
-	// 添加动态修正值
-	if (data.dynamic.fixed) {
-		dynamicFixed = data.dynamic.fixed.reduce((acc, curr) => acc + curr.value, 0);
-	}
-
-	// 添加动态百分比修正
-	if (data.dynamic.percentage) {
-		dynamicPercentage = data.dynamic.percentage.reduce((acc, curr) => acc + curr.value, 0);
-	}
-
-	totalFixed = staticFixed + dynamicFixed;
-	totalPercentage = staticPercentage + dynamicPercentage;
-	total = baseValue * ((100 + totalPercentage) / 100) + totalFixed;
-
-	// console.table({
-	//   displayName: data.displayName,
-	//   baseValue,
-	//   staticFixed,
-	//   staticPercentage,
-	//   dynamicFixed,
-	//   dynamicPercentage,
-	//   totalPercentage,
-	//   totalFixed,
-	//   total,
-	// });
-
-	return Math.floor(total);
-}
-
-// ============================== 通用接口定义 ==============================
-export const ModifierSourceTypeSchema = z.enum(["equipment", "skill", "buff", "debuff", "passive", "registlet", "item", "system"]);
-export interface ModifierSource {
-	id: string;
-	name: string;
-	/**
-	 * 来源类别：
-	 * - `equipment`：装备（武器/防具/锻晶等）
-	 * - `skill`：技能主动效果
-	 * - `buff` / `debuff`：临时增益 / 减益
-	 * - `passive`：被动技能（`skill.isPassive === true`）
-	 * - `registlet`：雷吉斯托环
-	 * - `system`：系统赋予
-	 */
-	type: z.output<typeof ModifierSourceTypeSchema>;
-}
-
-export interface Modifier {
-	value: number;
-	source: ModifierSource;
-}
-
-// ============================== 枚举和常量 ==============================
-
-/**
- * 属性状态位标志
- * 使用位运算优化状态检查
- */
-export enum AttributeFlags {
-	// 仅保留必要标记：是否为计算属性、是否为基础值、是否已有缓存
-	HAS_COMPUTATION = 1 << 0, // 0001: 有计算函数
-	IS_BASE = 1 << 1, // 0010: 基础属性
-	IS_CACHED = 1 << 2, // 0100: 有缓存值
-}
-
-/**
- * 修饰符类型映射到数组索引
- */
-export enum ModifierType {
-	BASE_VALUE,
-	STATIC_FIXED,
-	STATIC_PERCENTAGE,
-	DYNAMIC_FIXED,
-	DYNAMIC_PERCENTAGE,
-	MODIFIER_ARRAYS_COUNT = 5,
-}
-
-// 运行时 modifier 的数据化入口使用字符串，加载进 StatContainer 前再映射为 ModifierType 数字枚举。
-export const StatModifierKindSchema = z.enum([
-	"baseValue",
-	"staticFixed",
-	"staticPercentage",
-	"dynamicFixed",
-	"dynamicPercentage",
-]);
-export type StatModifierKind = z.output<typeof StatModifierKindSchema>;
-
-// 被动 DSL 装配 modifier 时先用此 schema 校验外部数据，再映射为 addModifier 的实参。
-export const StatModifierParamSchema = z.object({
-	// 目标属性路径，例如 "atk.p"、"hp.current"。
-	attribute: z.string(),
-	// 字符串枚举在加载阶段映射到运行时 ModifierType 数字枚举。
-	modifierType: StatModifierKindSchema,
-	// 支持常量或装配阶段可求值的表达式。
-	value: z.union([z.string(), z.number(), z.boolean()]),
-	// sourceId/sourceName 未提供时由安装方按技能来源补全。
-	sourceId: z.string().optional(),
-	sourceName: z.string().optional(),
-	// sourceType 对齐 ModifierSource.type。
-	sourceType: z
-		.enum(["equipment", "skill", "buff", "debuff", "passive", "registlet", "item", "system"])
-		.default("skill"),
-});
-export type StatModifierParam = z.output<typeof StatModifierParamSchema>;
-
-// ============================== 工具类 ==============================
-
-/**
- * 位标志操作工具类
- */
-export const BitFlags = {
-	/**
-	 * 设置标志位
-	 */
-	set(flags: Uint32Array, index: number, flag: AttributeFlags): void {
-		const arrayIndex = index >>> 5; // index / 32
-		const bitIndex = index & 31; // index % 32
-		flags[arrayIndex] |= flag << bitIndex;
-	},
-
-	/**
-	 * 清除标志位
-	 */
-	clear(flags: Uint32Array, index: number, flag: AttributeFlags): void {
-		const arrayIndex = index >>> 5;
-		const bitIndex = index & 31;
-		flags[arrayIndex] &= ~(flag << bitIndex);
-	},
-
-	/**
-	 * 检查标志位
-	 */
-	has(flags: Uint32Array, index: number, flag: AttributeFlags): boolean {
-		const arrayIndex = index >>> 5;
-		const bitIndex = index & 31;
-		return (flags[arrayIndex] & (flag << bitIndex)) !== 0;
-	},
-
-	/**
-	 * 切换标志位
-	 */
-	toggle(flags: Uint32Array, index: number, flag: AttributeFlags): void {
-		const arrayIndex = index >>> 5;
-		const bitIndex = index & 31;
-		flags[arrayIndex] ^= flag << bitIndex;
-	},
-};
-
-/**
- * 依赖图管理
- */
-export class DependencyGraph {
-	private readonly dependencies: Set<number>[] = [];
-	private readonly dependents: Set<number>[] = [];
-	private sortedKeys: number[] = [];
-	private isTopologySorted = false;
-
-	constructor(private readonly maxSize: number) {
-		// 预分配数组
-		for (let i = 0; i < maxSize; i++) {
-			this.dependencies[i] = new Set();
-			this.dependents[i] = new Set();
-		}
-	}
-
-	addDependency(dependent: number, dependency: number): void {
-		if (dependent === dependency) return;
-
-		this.dependencies[dependent].add(dependency);
-		this.dependents[dependency].add(dependent);
-		this.isTopologySorted = false;
-	}
-
-	removeDependency(dependent: number, dependency: number): void {
-		this.dependencies[dependent].delete(dependency);
-		this.dependents[dependency].delete(dependent);
-		this.isTopologySorted = false;
-	}
-
-	getDependencies(attr: number): Set<number> {
-		return this.dependencies[attr];
-	}
-
-	getDependents(attr: number): Set<number> {
-		return this.dependents[attr];
-	}
-
-	getTopologicalOrder(): number[] {
-		if (this.isTopologySorted) {
-			return this.sortedKeys;
-		}
-
-		const visited = new Uint8Array(this.maxSize);
-		const temp = new Uint8Array(this.maxSize);
-		const order: number[] = [];
-
-		const visit = (node: number) => {
-			if (temp[node]) {
-				throw new Error(`检测到循环依赖: ${node}`);
-			}
-			if (visited[node]) return;
-
-			temp[node] = 1;
-			for (const dep of this.dependencies[node]) {
-				visit(dep);
-			}
-			temp[node] = 0;
-			visited[node] = 1;
-			order.push(node);
-		};
-
-		for (let i = 0; i < this.maxSize; i++) {
-			if (!visited[i] && (this.dependencies[i].size > 0 || this.dependents[i].size > 0)) {
-				visit(i);
-			}
-		}
-
-		this.sortedKeys = order;
-		this.isTopologySorted = true;
-		return order;
-	}
-
-	getAffectedAttributes(changedAttr: number): Set<number> {
-		const affected = new Set<number>();
-		const queue: number[] = [changedAttr];
-
-		while (queue.length > 0) {
-			const current = queue.shift() as number;
-			if (affected.has(current)) continue;
-
-			affected.add(current);
-			for (const dependent of this.dependents[current]) {
-				queue.push(dependent);
-			}
-		}
-
-		return affected;
-	}
-
-	/**
-	 * 导出依赖图的反向映射（以索引表示）
-	 * key 为属性索引，value 为依赖该属性的索引数组
-	 */
-	toDependentsObject(): Record<number, number[]> {
-		const result: Record<number, number[]> = {};
-		for (let i = 0; i < this.dependents.length; i++) {
-			if (this.dependents[i].size > 0) {
-				result[i] = Array.from(this.dependents[i]);
-			}
-		}
-		return result;
-	}
-
-	/**
-	 * 检测循环依赖，返回由索引组成的环列表
-	 */
-	detectCycles(): number[][] {
-		const cycles: number[][] = [];
-		const visited = new Set<number>();
-		const recursionStack = new Set<number>();
-		const path: number[] = [];
-
-		const dfs = (nodeIndex: number): boolean => {
-			if (recursionStack.has(nodeIndex)) {
-				const cycleStart = path.indexOf(nodeIndex);
-				if (cycleStart !== -1) cycles.push(path.slice(cycleStart));
-				return true;
-			}
-			if (visited.has(nodeIndex)) return false;
-
-			visited.add(nodeIndex);
-			recursionStack.add(nodeIndex);
-			path.push(nodeIndex);
-
-			for (const dep of this.dependencies[nodeIndex]) {
-				if (dfs(dep)) {
-					return true;
-				}
-			}
-
-			recursionStack.delete(nodeIndex);
-			path.pop();
-			return false;
-		};
-
-		for (let i = 0; i < this.dependencies.length; i++) {
-			if (!visited.has(i)) dfs(i);
-		}
-
-		return cycles;
-	}
-}
 
 // ============================== 主要实现 ==============================
 
@@ -452,6 +113,21 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 
 	/** 脏属性队列 - 使用Uint32Array作为位图 */
 	private readonly dirtyBitmap: Uint32Array;
+
+	/** 脏属性迭代队列：位图负责去重，数组负责让刷新成本跟本帧变更规模相关。 */
+	private dirtyList: number[] = [];
+
+	/** 属性拓扑 rank：刷新批次按 rank 排序，保证依赖先于依赖者计算。 */
+	private readonly topologyRank: Int32Array;
+
+	/** 刷新中的 onChange 事件先入队，当前计算批次完成后再统一派发。 */
+	private pendingNotifications: PendingValueChange[] = [];
+
+	/** 防止 listener 内 getValue / flushDirtyValues 嵌套启动完整 drain。 */
+	private isFlushing = false;
+
+	/** 同帧定点迭代上限按属性规模扩展，避免合法长链被小常量误判。 */
+	private readonly maxFlushPasses: number;
 
 	/** 计算函数存储（无参，内部闭包获取需要的上下文） */
 	private readonly computationFunctions: Map<number, () => number>;
@@ -502,6 +178,8 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 		this.flags = new Uint32Array(Math.ceil(keyCount / 32));
 		this.dirtyBitmap = new Uint32Array(Math.ceil(keyCount / 32));
 		this.hasObserved = new Uint32Array(Math.ceil(keyCount / 32));
+		this.topologyRank = new Int32Array(keyCount);
+		this.maxFlushPasses = Math.max(1, keyCount * 2);
 
 		// 初始化修饰符数组
 		this.modifierArrays = [];
@@ -540,6 +218,7 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 		if (expressions.size > 0) {
 			this.setupExpressions(expressions);
 		}
+		this.rebuildTopologyRank();
 
 		// 标记基础属性（无计算函数的属性视为基础值）
 		for (let i = 0; i < this.indexToKey.length; i++) {
@@ -569,7 +248,11 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 
 		// 检查是否需要更新
 		if (this.isDirty(index)) {
-			this.updateDirtyValues();
+			if (this.isFlushing) {
+				this.computeDirtyAttributeForRead(index, this.pendingNotifications);
+			} else {
+				this.updateDirtyValues();
+			}
 		}
 
 		// 检查是否有缓存值
@@ -580,12 +263,11 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 
 		// 重新计算
 		this.stats.cacheMisses++;
-		const oldValue = this.values[index];
-		const value = this.computeAttributeValue(index);
-		this.values[index] = value;
-		BitFlags.set(this.flags, index, AttributeFlags.IS_CACHED);
-		this.notifyValueChange(index, oldValue, value);
-
+		const pending = this.isFlushing ? this.pendingNotifications : [];
+		const value = this.computeAndCommitAttribute(index, pending);
+		if (!this.isFlushing) {
+			this.fireValueChanges(pending);
+		}
 		return value;
 	}
 
@@ -609,7 +291,11 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 
 		// 确保依赖链已更新
 		if (this.isDirty(index)) {
-			this.updateDirtyValues();
+			if (this.isFlushing) {
+				this.computeDirtyAttributeForRead(index, this.pendingNotifications);
+			} else {
+				this.updateDirtyValues();
+			}
 		}
 
 		const computationFn = this.computationFunctions.get(index);
@@ -627,7 +313,7 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 		const result: Record<T, number> = {} as Record<T, number>;
 
 		// 只在有脏值时才批量更新
-		if (this.hasDirtyValues()) {
+		if (this.hasDirtyValues() || this.pendingNotifications.length > 0) {
 			this.updateDirtyValues();
 		}
 
@@ -689,32 +375,45 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 	 * 用法：每帧由成员 tick 调用一次，使阈值 watcher 能够及时拿到 modifier 变更后的值。
 	 */
 	flushDirtyValues(): void {
-		if (this.hasDirtyValues()) {
+		if (this.hasDirtyValues() || this.pendingNotifications.length > 0) {
 			this.updateDirtyValues();
 		}
 	}
 
 	/**
-	 * 触发 onChange 监听器；仅在属性已被观测过且值真正改变时 fire。
+	 * 记录 onChange 事件；仅在属性已被观测过且值真正改变时入队。
 	 *
 	 * @internal 供 StatContainer 内部各写入路径调用。
 	 */
-	private notifyValueChange(index: number, oldValue: number, newValue: number): void {
+	private queueValueChange(index: number, oldValue: number, newValue: number, pending: PendingValueChange[]): void {
 		const arrayIndex = index >>> 5;
 		const bitIndex = index & 31;
 		const alreadyObserved = (this.hasObserved[arrayIndex] & (1 << bitIndex)) !== 0;
 		this.hasObserved[arrayIndex] |= 1 << bitIndex;
 		if (!alreadyObserved) return;
 		if (oldValue === newValue) return;
-
 		const listeners = this.changeListeners.get(index);
 		if (!listeners || listeners.size === 0) return;
-		const path = String(this.indexToKey[index]);
-		for (const cb of listeners) {
-			try {
-				cb(oldValue, newValue, path);
-			} catch (error) {
-				log.error(`StatContainer.onChange 监听器抛错 (${path})：`, error);
+
+		pending.push({ index, oldValue, newValue });
+	}
+
+	/**
+	 * 触发 onChange 监听器。
+	 *
+	 * 计算阶段只产生事件记录，通知阶段统一派发；listener 写回产生的新脏值交给外层 drain 下一轮吸收。
+	 */
+	private fireValueChanges(pending: PendingValueChange[]): void {
+		for (const change of pending) {
+			const listeners = this.changeListeners.get(change.index);
+			if (!listeners || listeners.size === 0) continue;
+			const path = String(this.indexToKey[change.index]);
+			for (const cb of listeners) {
+				try {
+					cb(change.oldValue, change.newValue, path);
+				} catch (error) {
+					log.error(`StatContainer.onChange 监听器抛错 (${path})：`, error);
+				}
 			}
 		}
 	}
@@ -978,7 +677,7 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 	 */
 	public exportNestedValues(): Record<string, unknown> {
 		// 确保最新值
-		if (this.hasDirtyValues()) {
+		if (this.hasDirtyValues() || this.pendingNotifications.length > 0) {
 			this.updateDirtyValues();
 		}
 
@@ -1278,6 +977,30 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 	// ==================== 内部实现 - 计算引擎 ====================
 
 	/**
+	 * 构建属性拓扑 rank。
+	 *
+	 * 依赖图只在表达式初始化阶段生成；刷新时只需要 rank 排序当前脏集，
+	 * 避免每帧遍历整张拓扑表。
+	 */
+	private rebuildTopologyRank(): void {
+		for (let i = 0; i < this.topologyRank.length; i++) {
+			this.topologyRank[i] = this.topologyRank.length + i;
+		}
+
+		try {
+			const order = this.dependencyGraph.getTopologicalOrder();
+			for (let rank = 0; rank < order.length; rank++) {
+				this.topologyRank[order[rank]] = rank;
+			}
+		} catch (_err) {
+			log.warn("⚠️ 检测到循环依赖，拓扑 rank 降级为属性索引顺序");
+			for (let i = 0; i < this.topologyRank.length; i++) {
+				this.topologyRank[i] = i;
+			}
+		}
+	}
+
+	/**
 	 * 计算单个属性值
 	 */
 	private computeAttributeValue(index: number): number {
@@ -1312,81 +1035,131 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 	}
 
 	/**
-	 * 批量更新脏值（优化版本）
+	 * 计算并提交属性值。
+	 *
+	 * 只负责写入缓存、清脏位、记录事件；事件派发由外层 drain 控制，
+	 * 避免 listener 写回时重入完整刷新流程。
+	 */
+	private computeAndCommitAttribute(index: number, pending: PendingValueChange[]): number {
+		const oldValue = this.values[index];
+		const value = this.computeAttributeValue(index);
+		this.values[index] = value;
+		BitFlags.set(this.flags, index, AttributeFlags.IS_CACHED);
+		this.clearDirty(index);
+		this.queueValueChange(index, oldValue, value, pending);
+		return value;
+	}
+
+	/**
+	 * listener 内读取刚标脏的属性时，只重算该属性的依赖链。
+	 *
+	 * 该路径不处理下游依赖者；下游依赖者仍留在 dirtyList，交给外层同帧 drain 按拓扑序处理。
+	 */
+	private computeDirtyAttributeForRead(
+		index: number,
+		pending: PendingValueChange[],
+		visiting: Set<number> = new Set(),
+	): void {
+		if (!this.isDirty(index)) return;
+		if (visiting.has(index)) {
+			log.warn(`⚠️ 检测到递归读取 ${this.indexToKey[index]}，跳过按需重算`);
+			return;
+		}
+
+		visiting.add(index);
+		for (const dependency of this.dependencyGraph.getDependencies(index)) {
+			if (this.isDirty(dependency)) {
+				this.computeDirtyAttributeForRead(dependency, pending, visiting);
+			}
+		}
+		visiting.delete(index);
+
+		if (this.isDirty(index)) {
+			this.computeAndCommitAttribute(index, pending);
+		}
+	}
+
+	/**
+	 * 取出当前脏批次并按拓扑 rank 排序。
+	 *
+	 * dirtyList 被清空后，listener 写回会追加到下一批；当前批次中被按需读取提前清掉的 index 会在计算时跳过。
+	 */
+	private drainDirtyBatchByTopologyRank(): number[] {
+		const batch = this.dirtyList;
+		this.dirtyList = [];
+		batch.sort((a, b) => {
+			const rankDiff = this.topologyRank[a] - this.topologyRank[b];
+			return rankDiff === 0 ? a - b : rankDiff;
+		});
+		return batch;
+	}
+
+	/**
+	 * 计算一个脏批次。
+	 */
+	private computePass(batch: number[], pending: PendingValueChange[]): void {
+		for (const index of batch) {
+			if (!this.isDirty(index)) continue;
+			this.computeAndCommitAttribute(index, pending);
+		}
+	}
+
+	/**
+	 * 批量更新脏值。
+	 *
+	 * 同帧定点迭代：计算当前脏批次，统一派发通知；通知写回的新脏值进入下一轮。
 	 */
 	private updateDirtyValues(): void {
+		if (this.isFlushing) return;
+
 		const startTime = performance.now();
-		let updatedCount = 0;
+		let pass = 0;
 
-		// 获取初始脏属性列表用于调试
-		const initialDirtyIndices = [];
-		for (let i = 0; i < this.values.length; i++) {
-			if (this.isDirty(i)) {
-				initialDirtyIndices.push(i);
-			}
-		}
-		const initialDirtyAttrs = initialDirtyIndices.map((i) => String(this.indexToKey[i]));
+		this.isFlushing = true;
+		try {
+			while (this.dirtyList.length > 0 || this.pendingNotifications.length > 0) {
+				if (++pass > this.maxFlushPasses) {
+					this.reportDirtyOscillation(pass);
+					break;
+				}
 
-		if (initialDirtyAttrs.length > 0) {
-			// console.log(`🔄 开始更新，脏属性列表:`, initialDirtyAttrs);
+				if (this.dirtyList.length > 0) {
+					const batch = this.drainDirtyBatchByTopologyRank();
+					this.computePass(batch, this.pendingNotifications);
+				}
 
-			// 获取拓扑排序（容错：循环依赖时降级为线性一次性刷新）
-			let order: number[] = [];
-			try {
-				order = this.dependencyGraph.getTopologicalOrder();
-			} catch (_err) {
-				log.warn("⚠️ 检测到循环依赖，采用降级刷新策略");
-				// 降级：直接遍历所有索引，顺序计算一次
-				order = Array.from({ length: this.values.length }, (_, i) => i);
-			}
-
-			// 按依赖顺序计算
-			for (const index of order) {
-				if (this.isDirty(index)) {
-					const oldValue = this.values[index];
-					const value = this.computeAttributeValue(index);
-					this.values[index] = value;
-					BitFlags.set(this.flags, index, AttributeFlags.IS_CACHED);
-					this.clearDirty(index);
-					this.notifyValueChange(index, oldValue, value);
-					updatedCount++;
+				if (this.pendingNotifications.length > 0) {
+					const pending = this.pendingNotifications;
+					this.pendingNotifications = [];
+					this.fireValueChanges(pending);
 				}
 			}
-
-			// 处理没有依赖关系的属性
-			for (let i = 0; i < this.values.length; i++) {
-				if (this.isDirty(i)) {
-					const oldValue = this.values[i];
-					const value = this.computeAttributeValue(i);
-					this.values[i] = value;
-					BitFlags.set(this.flags, i, AttributeFlags.IS_CACHED);
-					this.clearDirty(i);
-					this.notifyValueChange(i, oldValue, value);
-					updatedCount++;
-				}
-			}
-
+		} finally {
+			this.isFlushing = false;
 			this.stats.lastUpdateTime = performance.now() - startTime;
-			this.stats.computations += updatedCount;
-
-			// 检查是否还有脏属性（可能表明循环依赖）
-			const remainingDirtyIndices = [];
-			for (let i = 0; i < this.values.length; i++) {
-				if (this.isDirty(i)) {
-					remainingDirtyIndices.push(i);
-				}
-			}
-
-			if (remainingDirtyIndices.length > 0) {
-				const remainingDirtyAttrs = remainingDirtyIndices.map((i) => String(this.indexToKey[i]));
-				log.error(`⚠️ 更新后仍有脏属性:`, remainingDirtyAttrs);
-			}
-
-			// 只在有实际更新时才输出日志
-			// if (updatedCount > 0) {
-			//   console.log(`🔄 批量更新完成: ${updatedCount}个属性, 用时: ${this.stats.lastUpdateTime.toFixed(2)}ms`);
-			// }
+			// 统计保留 lastUpdateTime；热路径不构造调试日志字符串。
 		}
+	}
+
+	private reportDirtyOscillation(pass: number): void {
+		const dirtyAttrs = this.collectDirtyAttributeNames();
+		const pendingAttrs = this.pendingNotifications.map((change) => String(this.indexToKey[change.index]));
+		log.error(`⚠️ StatContainer 刷新超过 ${this.maxFlushPasses} 轮，疑似监听器写回振荡`, {
+			pass,
+			dirtyAttrs,
+			pendingAttrs,
+		});
+	}
+
+	private collectDirtyAttributeNames(): string[] {
+		const result: string[] = [];
+		const seen = new Set<number>();
+		for (const index of this.dirtyList) {
+			if (seen.has(index) || !this.isDirty(index)) continue;
+			seen.add(index);
+			result.push(String(this.indexToKey[index]));
+		}
+		return result;
 	}
 
 	// ==================== 内部实现 - 脏值管理 ====================
@@ -1399,15 +1172,13 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 
 		const queue: number[] = [index];
 		const visited = new Set<number>();
-		while (queue.length > 0) {
-			const current = queue.shift() as number;
+		let head = 0;
+		while (head < queue.length) {
+			const current = queue[head++];
 			if (visited.has(current)) continue;
 			visited.add(current);
 
-			const arrayIndex = current >>> 5;
-			const bitIndex = current & 31;
-			this.dirtyBitmap[arrayIndex] |= 1 << bitIndex;
-			BitFlags.clear(this.flags, current, AttributeFlags.IS_CACHED);
+			if (!this.setDirty(current)) continue;
 
 			const dependents = this.dependencyGraph.getDependents(current);
 			for (const dep of dependents) {
@@ -1417,13 +1188,29 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 	}
 
 	/**
+	 * 设置单个脏位并入队。
+	 *
+	 * 位图是去重来源；dirtyList 是刷新迭代来源。二者一起维护，避免刷新阶段扫描整张 schema。
+	 */
+	private setDirty(index: number): boolean {
+		if (this.isDirty(index)) return false;
+
+		const arrayIndex = index >>> 5;
+		const bitIndex = index & 31;
+		this.dirtyBitmap[arrayIndex] |= 1 << bitIndex;
+		BitFlags.clear(this.flags, index, AttributeFlags.IS_CACHED);
+		this.dirtyList.push(index);
+		return true;
+	}
+
+	/**
 	 * 清除脏值标记
 	 */
 	private clearDirty(index: number): void {
 		const arrayIndex = index >>> 5;
 		const bitIndex = index & 31;
 		this.dirtyBitmap[arrayIndex] &= ~(1 << bitIndex);
-		// 脏位图已清除，此处无需再维护标志位
+		// dirtyList 以批次 drain；清位时不做数组删除，避免热路径 O(n) 搬移。
 	}
 
 	/**
@@ -1439,20 +1226,30 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 	 * 检查是否有脏值需要更新
 	 */
 	private hasDirtyValues(): boolean {
-		// 检查 dirtyBitmap 是否有任何位被设置
-		for (let i = 0; i < this.dirtyBitmap.length; i++) {
-			if (this.dirtyBitmap[i] !== 0) {
-				return true;
-			}
-		}
-		return false;
+		return this.dirtyList.length > 0;
 	}
 
 	/**
 	 * 标记所有属性为脏值
 	 */
 	private markAllDirty(): void {
-		this.dirtyBitmap.fill(0xffffffff); // 设置所有位为1
+		this.dirtyBitmap.fill(0);
+		this.dirtyList = [];
+		for (let i = 0; i < this.values.length; i++) {
+			this.setDirty(i);
+		}
+	}
+
+	/**
+	 * 从 checkpoint 的 dirtyBitmap 重建 dirtyList。
+	 *
+	 * checkpoint 持久化位图；dirtyList 是运行时迭代索引，restore 后必须从位图恢复。
+	 */
+	private rebuildDirtyListFromBitmap(): void {
+		this.dirtyList = [];
+		for (let i = 0; i < this.values.length; i++) {
+			if (this.isDirty(i)) this.dirtyList.push(i);
+		}
 	}
 
 	// ==================== 调试和统计 ====================
@@ -1636,6 +1433,9 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 		this.values.set(checkpoint.values);
 		this.flags.set(checkpoint.flags);
 		this.dirtyBitmap.set(checkpoint.dirtyBitmap);
+		this.rebuildDirtyListFromBitmap();
+		this.pendingNotifications = [];
+		this.isFlushing = false;
 		// checkpoint 里的值视为"过去已经观测过"。此后再变化才广播 onChange，
 		// 避免回放时把 restore 后的"首次计算"误报成变更事件。
 		this.hasObserved.fill(0xffffffff);

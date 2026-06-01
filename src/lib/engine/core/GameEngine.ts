@@ -41,9 +41,11 @@ import { createRealtimeConfig } from "./types";
 import type { MemberSerializeData } from "./World/Member/Member";
 import type { Player } from "./World/Member/types/Player/Player";
 import {
-	computePlayerSkillLifecycleMs,
+	computePlayerSkillLifecycle,
 	EMPTY_PLAYER_SKILL_LIFECYCLE_MS,
 	getActiveBehaviorCastingRangeExpression,
+	getPlayerSkillLifecycleActionMs,
+	getPlayerSkillLifecycleDurationMs,
 	selectPlayerSkillVariant,
 } from "./World/Member/types/Player/skillLifecycle";
 import { World } from "./World/World";
@@ -1821,7 +1823,7 @@ export class GameEngine {
 				mpCost = evalOptionalNumber(effect.mpCost, "mpCost");
 				hpCost = evalOptionalNumber(effect.hpCost, "hpCost");
 				castingRange = evalOptionalNumber(getActiveBehaviorCastingRangeExpression(effect), "castingRange");
-				lifecycle = computePlayerSkillLifecycleMs({
+				lifecycle = computePlayerSkillLifecycle({
 					variant: effect,
 					skillLv: s.lv,
 					expressionContext,
@@ -1847,11 +1849,11 @@ export class GameEngine {
 					castingRange,
 					cooldownRemaining,
 					isAvailable,
-					startUp: lifecycle.startUp,
+					startup: lifecycle.startup,
 					charging: lifecycle.charging,
 					chanting: lifecycle.chanting,
-					action: lifecycle.action,
-					activeEffectDurationMs: lifecycle.activeEffectDurationMs,
+					action: getPlayerSkillLifecycleActionMs(lifecycle),
+					activeEffectDurationMs: getPlayerSkillLifecycleDurationMs(lifecycle),
 				},
 			};
 		});

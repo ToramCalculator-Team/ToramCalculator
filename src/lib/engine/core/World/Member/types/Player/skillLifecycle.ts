@@ -4,12 +4,11 @@ import type { SkillVariantWithRelations } from "@db/generated/repositories/skill
 import type { ExpressionContext } from "~/lib/engine/core/JSProcessor/types";
 import type { StageData } from "~/lib/engine/core/Pipeline/stageEnv";
 
-export interface PlayerSkillLifecycleMs {
+export interface PlayerSkillLifecycle {
 	chanting: number;
 	charging: number;
-	action: number;
-	startUp: number;
-	activeEffectDurationMs: number;
+	startup: number;
+	recovery: number;
 }
 
 type SkillVariantTimingSource = {
@@ -28,16 +27,26 @@ type ComputePlayerSkillLifecycleParams = {
 	skillLv: number;
 	expressionContext: ExpressionContext;
 	evaluateExpression: (expr: string, context: ExpressionContext) => number | boolean;
-	runPipeline: (pipelineName: string, params?: Record<string, unknown>) => StageData;
+	runPipeline: <TName extends SkillLifecycleDurationPipelineName>(
+		pipelineName: TName,
+		params: SkillLifecycleDurationPipelineParams[TName],
+	) => StageData;
 	onWarn?: (message: string) => void;
 };
 
-export const EMPTY_PLAYER_SKILL_LIFECYCLE_MS: PlayerSkillLifecycleMs = {
+type SkillLifecycleDurationPipelineParams = {
+	"skill.chanting": { fixed: number; modified: number };
+	"skill.charging": { fixed: number; modified: number };
+	"skill.action": { fixed: number; modified: number };
+};
+
+type SkillLifecycleDurationPipelineName = keyof SkillLifecycleDurationPipelineParams;
+
+export const EMPTY_PLAYER_SKILL_LIFECYCLE_MS: PlayerSkillLifecycle = {
 	chanting: 0,
 	charging: 0,
-	action: 0,
-	startUp: 0,
-	activeEffectDurationMs: 0,
+	startup: 0,
+	recovery: 0,
 };
 
 export function selectPlayerSkillVariant(
@@ -64,13 +73,22 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 export function getActiveBehaviorCastingRangeExpression(variant: { activeBehavior?: unknown }): string | null {
 	const activeBehavior = asRecord(variant.activeBehavior);
-	const lifecycle = asRecord(activeBehavior?.lifecycle) ?? asRecord(asRecord(activeBehavior?.behaviorParams)?.lifecycle);
+	const lifecycle =
+		asRecord(activeBehavior?.lifecycle) ?? asRecord(asRecord(activeBehavior?.behaviorParams)?.lifecycle);
 	const targeting = asRecord(lifecycle?.targeting);
 	const castingRange = targeting?.castingRange;
 	return typeof castingRange === "string" ? castingRange : null;
 }
 
-export function computePlayerSkillLifecycleMs(props: ComputePlayerSkillLifecycleParams): PlayerSkillLifecycleMs {
+export function getPlayerSkillLifecycleActionMs(lifecycle: PlayerSkillLifecycle): number {
+	return lifecycle.startup + lifecycle.recovery;
+}
+
+export function getPlayerSkillLifecycleDurationMs(lifecycle: PlayerSkillLifecycle): number {
+	return lifecycle.chanting + lifecycle.charging + getPlayerSkillLifecycleActionMs(lifecycle);
+}
+
+export function computePlayerSkillLifecycle(props: ComputePlayerSkillLifecycleParams): PlayerSkillLifecycle {
 	const evalNum = (expr: string | null | undefined, label: string): number => {
 		if (!expr) return 0;
 		const asNumber = Number(expr);
@@ -94,7 +112,11 @@ export function computePlayerSkillLifecycleMs(props: ComputePlayerSkillLifecycle
 	const actionModified = evalNum(props.variant.actionModifiedMs, "actionModifiedMs");
 	const startupRatio = Math.max(0, Math.min(1, Number(props.variant.startupRatio) || 0));
 
-	const runPipelineDurationMs = (pipelineName: string, params: Record<string, unknown>, fallbackMs: number): number => {
+	const runPipelineDurationMs = <TName extends SkillLifecycleDurationPipelineName>(
+		pipelineName: TName,
+		params: SkillLifecycleDurationPipelineParams[TName],
+		fallbackMs: number,
+	): number => {
 		try {
 			const out = props.runPipeline(pipelineName, params);
 			const durationMs = out?.durationMs;
@@ -117,18 +139,19 @@ export function computePlayerSkillLifecycleMs(props: ComputePlayerSkillLifecycle
 		{ fixed: chargingFixed, modified: chargingModified },
 		chargingFixed + chargingModified,
 	);
-	const action = runPipelineDurationMs(
+	// actionDurationMs 是拆分前动作总时长；runtime lifecycle 只暴露 BT 实际等待的 startup/recovery 阶段。
+	const actionDurationMs = runPipelineDurationMs(
 		"skill.action",
 		{ fixed: actionFixed, modified: actionModified },
 		actionFixed + actionModified,
 	);
-	const startUp = Math.floor(action * startupRatio);
+	const startup = Math.floor(actionDurationMs * startupRatio);
+	const recovery = Math.max(0, actionDurationMs - startup);
 
 	return {
 		chanting,
 		charging,
-		action,
-		startUp,
-		activeEffectDurationMs: chanting + charging + action,
+		startup,
+		recovery,
 	};
 }

@@ -120,6 +120,8 @@
 | [0003](./0003-skill-cost-as-pipeline-contract.md) | 技能消耗作为 Pipeline 契约 | Proposed | 跨层 |
 | [0004](./0004-skill-behavior-tree-import-iteration-plan.md) | 技能 Behavior Tree 导入迭代计划 | Proposed | 跨层 |
 | [0005](./0005-onhit-effects-via-attack-payload.md) | 命中后效果通过攻击 Payload 传递 | Proposed | 编排层 / 通信 |
+| [0006](./0006-stat-container-same-frame-dirty-convergence.md) | StatContainer 同帧脏值定点收敛 | Accepted | 数据层 |
+| [0007](./0007-next-skill-cost-modifier-contract.md) | 下一技能消耗修正契约 | Proposed | 跨层 |
 
 ## 待拆分清单
 

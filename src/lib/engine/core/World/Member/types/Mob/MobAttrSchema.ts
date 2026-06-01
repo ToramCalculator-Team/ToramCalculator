@@ -3,7 +3,11 @@
  */
 import type { MobWithRelations } from "@db/generated/repositories/mob";
 import { MemberBaseNestedSchema, MemberBaseStructure } from "../../MemberBaseSchema";
-import type { ConvertToNestedSchema, ConvertToNestedSchemaDic, ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
+import type {
+	ConvertToNestedSchema,
+	ConvertToNestedSchemaDic,
+	ExtractAttrPaths,
+} from "../../runtime/StatContainer/SchemaTypes";
 
 // ============================== 基础结构定义 ==============================
 
@@ -193,4 +197,5 @@ export const MobAttrSchema = (mob: MobWithRelations): MobAttrNestedSchema => ({
 		expression: `${0}`,
 	},
 	status: MemberBaseNestedSchema.status,
+	skill: MemberBaseNestedSchema.skill,
 });

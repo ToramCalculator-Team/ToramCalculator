@@ -13,7 +13,7 @@ import type { PlayerAttrKey } from "../types/Player/PlayerAttrSchema";
  * - BT 执行期直接消费这些字段；StatContainer、services、订阅器等成员组件通过 capabilities 注入。
  * - FSM 为这些字段的唯一写入方；BT action 通过 capabilities 请求外部组件执行副作用。
  */
-export interface MemberSharedRuntime<TExtraAttrKey extends string = never> extends Record<string, unknown> {
+export interface MemberSharedRuntime<_TExtraAttrKey extends string = never> extends Record<string, unknown> {
 	memberId: string;
 	name: string;
 	campId: string;
@@ -30,11 +30,11 @@ export interface MemberSharedRuntime<TExtraAttrKey extends string = never> exten
 		data: CharacterSkillWithRelations;
 		activeVariant: SkillVariantWithRelations;
 		lifecycle: {
-			/** 当前技能生命周期的四段毫秒。 */
-			startUp: number;
+			/** 当前技能生命周期的四段毫秒；动作总时长由 startup + recovery 派生。 */
 			charging: number;
 			chanting: number;
-			action: number;
+			startup: number;
+			recovery: number;
 		};
 	} | null;
 	/** 上一次释放的技能，用于连击判定等。 */

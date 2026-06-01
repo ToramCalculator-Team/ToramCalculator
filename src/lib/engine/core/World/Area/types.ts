@@ -76,14 +76,12 @@ export interface DamageAreaRequest {
 	};
 	/** 命中策略 */
 	hitPolicy: {
-		/** 同目标命中节流（毫秒） */
+		/** 同一目标分段伤害生效间隔（毫秒） */
 		hitIntervalMs: number;
 	};
 	/** 攻击语义 */
 	attackSemantics: {
-		/** 攻击次数，多次造成伤害公式对应的伤害 */
-		attackCount: number;
-		/** 伤害数量，将伤害公式计算出的伤害平均分配到攻击次数 */
+		/** 伤害拆分段数；每段共享同一伤害公式并在结算后按段数拆分 */
 		damageCount: number;
 	};
 	/** 范围配置 */
@@ -139,10 +137,10 @@ export interface DamageDispatchPayload {
 	casterSnapshot: Record<string, number>;
 	/** 技能等级 */
 	skillLv: number;
-	/** 攻击次数 */
-	attackCount: number;
-	/** 伤害数量 */
+	/** 伤害拆分段数 */
 	damageCount: number;
+	/** 当前伤害段序号，从 0 开始 */
+	damageIndex: number;
 	/** 伤害归因标签（见 DamageAreaRequest.payload.damageTags 说明） */
 	damageTags: string[];
 	/** 警告区域类型 */
