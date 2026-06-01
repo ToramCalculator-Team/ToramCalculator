@@ -56,7 +56,7 @@ export const Card = (props: CardProps) => {
 					onMotionComplete={() => {
 						if (props.closing) props.onExitComplete?.();
 					}}
-					class={`Card drop-shadow-dividing-color bg-primary-color fixed top-1/2 left-1/2 z-10 flex h-[70vh] w-full max-w-[90vw] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-3 rounded p-2 drop-shadow-2xl lg:max-w-[960px]`}
+					class={`Card drop-shadow-dividing-color bg-primary-color fixed top-1/2 left-1/2 z-10 flex h-[70vh] w-full max-w-[90vw] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-3 rounded p-2 drop-shadow-2xl lg:max-w-240`}
 					style={{
 						"z-index": props.index,
 					}}
@@ -79,12 +79,12 @@ export const Card = (props: CardProps) => {
 								/>
 							</svg>
 
-							<div class="bg-primary-color z-10 -mx-px py-[3px]">
-								<div class="border-boundary-color flex items-center border-y py-[3px]">
+							<div class="bg-primary-color z-10 -mx-px py-0.75">
+								<div class="border-boundary-color flex items-center border-y py-0.75">
 									<Show when={props.titleIcon}>
-										<div class="TitleIcon bg-accent-color flex items-center w-[34px] h-[34px]">{props.titleIcon?.()}</div>
+										<div class="TitleIcon bg-accent-color flex items-center w-8.5 h-8.5">{props.titleIcon?.()}</div>
 									</Show>
-									<h1 class="text-primary-color bg-accent-color py-[3px] text-xl font-bold">{props.title}</h1>
+									<h1 class="text-primary-color bg-accent-color py-0.75 text-xl font-bold">{props.title}</h1>
 								</div>
 							</div>
 							<svg width="30" height="48" viewBox="0 0 30 48" fill="none" xmlns="http://www.w3.org/2000/svg">

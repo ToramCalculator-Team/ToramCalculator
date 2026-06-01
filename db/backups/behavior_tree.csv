@@ -1457,7 +1457,7 @@ sgu6wzmh3vbat7tvmhpia3uc__active_bt,魔力充填 主动行为,"root {
 		action [animation, ""recovery"", $currentSkill.lifecycle.recovery]
 		wait [$currentSkill.lifecycle.recovery]
 	}
-}","","[{""path"":""buff.magicCharge.level"",""attribute"":{""expression"":""0"",""displayName"":""魔力充填等级""}}]",sgu6wzmh3vbat7tvmhpia3uc,,
+}","","[{""path"": ""buff.magicCharge.level"", ""attribute"": {""expression"": ""0"", ""displayName"": ""魔力充填等级""}}]",sgu6wzmh3vbat7tvmhpia3uc,,
 y2ic76vj350n6zevme4cj0gl__active_bt,魔力充填 主动行为,"root {
 	/* toram-skill-import:active-behavior-v2; sourceTree=魔法技能; sourceSkill=魔力充填; variant=y2ic76vj350n6zevme4cj0gl */
 	sequence {
@@ -1470,7 +1470,7 @@ y2ic76vj350n6zevme4cj0gl__active_bt,魔力充填 主动行为,"root {
 		action [animation, ""recovery"", $currentSkill.lifecycle.recovery]
 		wait [$currentSkill.lifecycle.recovery]
 	}
-}","","[{""path"":""buff.magicCharge.level"",""attribute"":{""expression"":""0"",""displayName"":""魔力充填等级""}}]",y2ic76vj350n6zevme4cj0gl,,
+}","","[{""path"": ""buff.magicCharge.level"", ""attribute"": {""expression"": ""0"", ""displayName"": ""魔力充填等级""}}]",y2ic76vj350n6zevme4cj0gl,,
 rczu916ipp0rq7rxiivxon0f__active_bt,魔力充填 主动行为,"root {
 	/* toram-skill-import:active-behavior-v2; sourceTree=魔法技能; sourceSkill=魔力充填; variant=rczu916ipp0rq7rxiivxon0f */
 	sequence {
@@ -1483,7 +1483,7 @@ rczu916ipp0rq7rxiivxon0f__active_bt,魔力充填 主动行为,"root {
 		action [animation, ""recovery"", $currentSkill.lifecycle.recovery]
 		wait [$currentSkill.lifecycle.recovery]
 	}
-}","","[{""path"":""buff.magicCharge.level"",""attribute"":{""expression"":""0"",""displayName"":""魔力充填等级""}}]",rczu916ipp0rq7rxiivxon0f,,
+}","","[{""path"": ""buff.magicCharge.level"", ""attribute"": {""expression"": ""0"", ""displayName"": ""魔力充填等级""}}]",rczu916ipp0rq7rxiivxon0f,,
 i0mwj8deq739d54ecpi63to2__active_bt,魔力充填 主动行为,"root {
 	/* toram-skill-import:active-behavior-v2; sourceTree=魔法技能; sourceSkill=魔力充填; variant=i0mwj8deq739d54ecpi63to2 */
 	sequence {
@@ -1496,7 +1496,7 @@ i0mwj8deq739d54ecpi63to2__active_bt,魔力充填 主动行为,"root {
 		action [animation, ""recovery"", $currentSkill.lifecycle.recovery]
 		wait [$currentSkill.lifecycle.recovery]
 	}
-}","","[{""path"":""buff.magicCharge.level"",""attribute"":{""expression"":""0"",""displayName"":""魔力充填等级""}}]",i0mwj8deq739d54ecpi63to2,,
+}","","[{""path"": ""buff.magicCharge.level"", ""attribute"": {""expression"": ""0"", ""displayName"": ""魔力充填等级""}}]",i0mwj8deq739d54ecpi63to2,,
 hgif2mtxu55oq9nh1lwqv8k9__active_bt,魔力灌充 主动行为,"root {
 	/* toram-skill-import:active-behavior-v2; sourceTree=魔法技能; sourceSkill=魔力灌充; variant=hgif2mtxu55oq9nh1lwqv8k9 */
 	sequence {
@@ -1518,7 +1518,7 @@ hgif2mtxu55oq9nh1lwqv8k9__active_bt,魔力灌充 主动行为,"root {
 		const value = Math.max(0, Math.floor(baseMs - chargeLv * 1000));
 		return Number.isFinite(value) ? value : 0;
 	}
-}","[{""path"":""buff.magicCharge.level"",""attribute"":{""expression"":""0"",""displayName"":""魔力充填等级""}}]",hgif2mtxu55oq9nh1lwqv8k9,,
+}","[{""path"": ""buff.magicCharge.level"", ""attribute"": {""expression"": ""0"", ""displayName"": ""魔力充填等级""}}]",hgif2mtxu55oq9nh1lwqv8k9,,
 y4lvylo8zne5asp1czx6ad2t__active_bt,魔力灌充 主动行为,"root {
 	/* toram-skill-import:active-behavior-v2; sourceTree=魔法技能; sourceSkill=魔力灌充; variant=y4lvylo8zne5asp1czx6ad2t */
 	sequence {
@@ -1540,7 +1540,7 @@ y4lvylo8zne5asp1czx6ad2t__active_bt,魔力灌充 主动行为,"root {
 		const value = Math.max(0, Math.floor(baseMs - chargeLv * 1000));
 		return Number.isFinite(value) ? value : 0;
 	}
-}","[{""path"":""buff.magicCharge.level"",""attribute"":{""expression"":""0"",""displayName"":""魔力充填等级""}}]",y4lvylo8zne5asp1czx6ad2t,,
+}","[{""path"": ""buff.magicCharge.level"", ""attribute"": {""expression"": ""0"", ""displayName"": ""魔力充填等级""}}]",y4lvylo8zne5asp1czx6ad2t,,
 x1zkrxl6x1n79s0xlh9y22c5__active_bt,魔力灌充 主动行为,"root {
 	/* toram-skill-import:active-behavior-v2; sourceTree=魔法技能; sourceSkill=魔力灌充; variant=x1zkrxl6x1n79s0xlh9y22c5 */
 	sequence {
@@ -1562,7 +1562,7 @@ x1zkrxl6x1n79s0xlh9y22c5__active_bt,魔力灌充 主动行为,"root {
 		const value = Math.max(0, Math.floor(baseMs - chargeLv * 1000));
 		return Number.isFinite(value) ? value : 0;
 	}
-}","[{""path"":""buff.magicCharge.level"",""attribute"":{""expression"":""0"",""displayName"":""魔力充填等级""}}]",x1zkrxl6x1n79s0xlh9y22c5,,
+}","[{""path"": ""buff.magicCharge.level"", ""attribute"": {""expression"": ""0"", ""displayName"": ""魔力充填等级""}}]",x1zkrxl6x1n79s0xlh9y22c5,,
 bk3nm2zritded47pm8lyiuo6__active_bt,魔力灌充 主动行为,"root {
 	/* toram-skill-import:active-behavior-v2; sourceTree=魔法技能; sourceSkill=魔力灌充; variant=bk3nm2zritded47pm8lyiuo6 */
 	sequence {
@@ -1584,7 +1584,7 @@ bk3nm2zritded47pm8lyiuo6__active_bt,魔力灌充 主动行为,"root {
 		const value = Math.max(0, Math.floor(baseMs - chargeLv * 1000));
 		return Number.isFinite(value) ? value : 0;
 	}
-}","[{""path"":""buff.magicCharge.level"",""attribute"":{""expression"":""0"",""displayName"":""魔力充填等级""}}]",bk3nm2zritded47pm8lyiuo6,,
+}","[{""path"": ""buff.magicCharge.level"", ""attribute"": {""expression"": ""0"", ""displayName"": ""魔力充填等级""}}]",bk3nm2zritded47pm8lyiuo6,,
 z0nieml8hnla9tpnijlodce4__active_bt,重擊 主动行为,"root {
 	/* toram-skill-import:active-behavior-v2; sourceTree=格鬥技能; sourceSkill=重擊; variant=z0nieml8hnla9tpnijlodce4 */
 	sequence {
