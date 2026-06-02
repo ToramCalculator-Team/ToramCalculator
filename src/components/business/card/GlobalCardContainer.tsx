@@ -1,6 +1,7 @@
 import { For, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { store } from "~/store";
+import { topGroup } from "../topGroup";
 import { Card } from "./Card";
 import { type GlobalCardEntryApi, globalCardGroup } from "./globalCardGroup";
 
@@ -12,7 +13,7 @@ export function GlobalCardContainer() {
 					animate={{ transform: ["scale(1.05)", "scale(1)"], opacity: [0, 1] }}
 					exit={{ transform: ["scale(1)", "scale(1.05)"], opacity: [1, 0] }}
 					transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-					class="DialogBG bg-primary-color-10 pointer-events-auto fixed top-0 left-0 z-50 grid h-dvh w-dvw transform place-items-center backdrop-blur"
+					class={`DialogBG bg-primary-color-10 pointer-events-auto fixed top-0 left-0 grid h-dvh w-dvw transform place-items-center backdrop-blur ${topGroup() === "card" ? "z-stack-top" : "z-stack"}`}
 					onClick={() => globalCardGroup.remove()}
 				>
 					<For each={globalCardGroup.entries()}>

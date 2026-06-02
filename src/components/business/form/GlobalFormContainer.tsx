@@ -1,6 +1,7 @@
 import { For, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { store } from "~/store";
+import { topGroup } from "../topGroup";
 import { FormSheet } from "./FormSheet";
 import { type GlobalFormEntryApi, globalFormGroup } from "./globalFormGroup";
 
@@ -12,7 +13,7 @@ export function GlobalFormContainer() {
 					animate={{ opacity: [0, 1] }}
 					exit={{ opacity: [1, 0] }}
 					transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-					class="GlobalFormContainer pointer-events-none fixed top-0 left-0 z-50 h-dvh w-dvw"
+					class={`GlobalFormContainer pointer-events-auto fixed top-0 left-0 h-dvh w-dvw ${topGroup() === "form" ? "z-stack-top" : "z-stack"}`}
 				>
 					<For each={globalFormGroup.entries()}>
 						{(entry, index) => {

@@ -117,7 +117,7 @@ export default function WikiSubPage() {
 						when={detailData()}
 						fallback={
 							<div class="LoadingState flex min-h-32 w-full flex-col items-center justify-center gap-3">
-								<LoadingBar class="w-1/2 min-w-[240px]" />
+								<LoadingBar class="w-1/2 min-w-60" />
 							</div>
 						}
 					>
@@ -297,73 +297,73 @@ export default function WikiSubPage() {
 			icon: JSX.Element;
 		}[];
 	}[] = [
-		{
-			groupName: dictionary().ui.wiki.selector.groupName.combat,
-			groupFields: [
-				{
-					name: "mob",
-					icon: <Icons.Filled.Browser />,
-				},
-				{
-					name: "skill",
-					icon: <Icons.Filled.Basketball />,
-				},
-				{
-					name: "weapon",
-					icon: <Icons.Filled.Box2 />,
-				},
-				{
-					name: "armor",
-					icon: <Icons.Filled.Category2 />,
-				},
-				{
-					name: "option",
-					icon: <Icons.Filled.Layers />,
-				},
-				{
-					name: "special",
-					icon: <Icons.Filled.Layers />,
-				},
-				{
-					name: "crystal",
-					icon: <Icons.Filled.Layers />,
-				},
-			],
-		},
-		{
-			groupName: dictionary().ui.wiki.selector.groupName.daily,
-			groupFields: [
-				{
-					name: "address",
-					icon: <Icons.Filled.Layers />,
-				},
-				{
-					name: "zone",
-					icon: <Icons.Filled.Layers />,
-				},
-				{
-					name: "npc",
-					icon: <Icons.Filled.Layers />,
-				},
-				{
-					name: "consumable",
-					icon: <Icons.Filled.Layers />,
-				},
-				{
-					name: "material",
-					icon: <Icons.Filled.Layers />,
-				},
-				{
-					name: "task",
-					icon: <Icons.Filled.Layers />,
-				},
-				{
-					name: "activity",
-					icon: <Icons.Filled.Layers />,
-				},
-			],
-		},
-	];
+			{
+				groupName: dictionary().ui.wiki.selector.groupName.combat,
+				groupFields: [
+					{
+						name: "mob",
+						icon: <Icons.Filled.Browser />,
+					},
+					{
+						name: "skill",
+						icon: <Icons.Filled.Basketball />,
+					},
+					{
+						name: "weapon",
+						icon: <Icons.Filled.Box2 />,
+					},
+					{
+						name: "armor",
+						icon: <Icons.Filled.Category2 />,
+					},
+					{
+						name: "option",
+						icon: <Icons.Filled.Layers />,
+					},
+					{
+						name: "special",
+						icon: <Icons.Filled.Layers />,
+					},
+					{
+						name: "crystal",
+						icon: <Icons.Filled.Layers />,
+					},
+				],
+			},
+			{
+				groupName: dictionary().ui.wiki.selector.groupName.daily,
+				groupFields: [
+					{
+						name: "address",
+						icon: <Icons.Filled.Layers />,
+					},
+					{
+						name: "zone",
+						icon: <Icons.Filled.Layers />,
+					},
+					{
+						name: "npc",
+						icon: <Icons.Filled.Layers />,
+					},
+					{
+						name: "consumable",
+						icon: <Icons.Filled.Layers />,
+					},
+					{
+						name: "material",
+						icon: <Icons.Filled.Layers />,
+					},
+					{
+						name: "task",
+						icon: <Icons.Filled.Layers />,
+					},
+					{
+						name: "activity",
+						icon: <Icons.Filled.Layers />,
+					},
+				],
+			},
+		];
 
 	onMount(() => {
 		console.log(`--Wiki Page Mount`);
@@ -400,14 +400,14 @@ export default function WikiSubPage() {
 							transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
 						>
 							<div class="Content flex flex-row items-center justify-between gap-4 px-6 py-0 lg:px-0 lg:py-3">
-								<h1 class="Text flex cursor-pointer items-center gap-3 text-left text-2xl font-black lg:bg-transparent lg:text-[2.5rem] lg:leading-[48px] lg:font-normal">
+								<h1 class="Text flex cursor-pointer items-center gap-3 text-left text-2xl font-black lg:bg-transparent lg:text-[2.5rem] lg:leading-12 lg:font-normal">
 									{dictionary().db[wikiStore.type].selfName}
 								</h1>
 								<input
 									id="DataSearchBox"
 									type="search"
 									placeholder={dictionary().ui.searchPlaceholder}
-									class="border-b-boundary-color placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color hidden h-[50px] w-full flex-1 rounded-none border-b bg-transparent px-3 py-2 backdrop-blur-xl focus:outline-hidden lg:block lg:h-[48px] lg:flex-1 lg:px-5 lg:font-normal"
+									class="border-b-boundary-color placeholder:text-dividing-color hover:border-main-text-color focus:border-main-text-color hidden h12.5 w-full flex-1 rounded-none border-b bg-transparent px-3 py-2 backdrop-blur-xl focus:outline-hidden lg:block lg:h-12 lg:flex-1 lg:px-5 lg:font-normal"
 									onInput={(e) => {
 										setWikiStore("table", {
 											globalFilterStr: e.target.value,
@@ -427,7 +427,7 @@ export default function WikiSubPage() {
 										size="sm"
 										icon={<Icons.Outline.InfoCircle />}
 										class="flex bg-transparent lg:hidden"
-										onClick={() => {}}
+										onClick={() => { }}
 									></Button>
 									<Show when={store.session.user?.id}>
 										<Button // 仅PC端显示
@@ -446,7 +446,7 @@ export default function WikiSubPage() {
 						<Presence exitBeforeEnter>
 							<Show when={!isMainContentFullscreen()}>
 								<Motion.div
-									class="Banner hidden h-[260px] flex-initial gap-3 p-3 opacity-0 lg:flex"
+									class="Banner hidden h-65 flex-initial gap-3 p-3 opacity-0 lg:flex"
 									animate={{ opacity: [0, 1] }}
 									exit={{ opacity: [1, 0] }}
 									transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
@@ -491,7 +491,7 @@ export default function WikiSubPage() {
 																		TOP.{index() + 1}
 																	</span>
 																	<div
-																		class={`h-px w-[110px] ${activeBannerIndex() === index() ? `bg-primary-color` : `bg-accent-color`}`}
+																		class={`h-px w-27.5 ${activeBannerIndex() === index() ? `bg-primary-color` : `bg-accent-color`}`}
 																	></div>
 																	<span
 																		class={`text-xl ${activeBannerIndex() === index() ? `text-primary-color` : `text-accent-color`}`}
@@ -579,7 +579,7 @@ export default function WikiSubPage() {
 									<Motion.div
 										animate={{ opacity: [0, 1] }}
 										exit={{ opacity: 0 }}
-										class="News hidden w-[248px] flex-initial flex-col gap-2 lg:flex"
+										class="News hidden w-62 flex-initial flex-col gap-2 lg:flex"
 									>
 										<div class="Title flex h-12 text-xl">{dictionary().ui.wiki.news.title}</div>
 										<div class="Content flex flex-1 flex-col gap-3">
@@ -698,7 +698,7 @@ export default function WikiSubPage() {
 																	onClick={() => {
 																		setWikiSelectorIsOpen(false);
 																	}}
-																	class="border-dividing-color flex lg:w-[calc(20%-0.4rem)] w-[calc(33.333333%-0.333333rem)] flex-col items-center gap-2 rounded border px-2 py-3"
+																	class="bg-area-color hover:shadow-card shadow-dividing-color flex lg:w-[calc((100%-2rem)/5)] w-[calc((100%-1rem)/3)] flex-col items-center gap-2 rounded px-2 lg:py-6 py-3"
 																>
 																	{field.icon}
 																	<span class="text-nowrap text-ellipsis">{dictionary().db[field.name].selfName}</span>

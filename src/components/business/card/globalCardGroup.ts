@@ -1,5 +1,6 @@
 import type { JSX } from "solid-js";
 import { createStore } from "solid-js/store";
+import { setTopGroup } from "../topGroup";
 
 export type GlobalCardEntryApi = {
 	readonly id: string;
@@ -39,6 +40,7 @@ export const globalCardGroup = {
 	add(entry: GlobalCardEntry) {
 		const id = entry.id ?? createCardEntryId();
 		setEntries((previous) => [...previous, { ...entry, id, closing: false }]);
+		setTopGroup("card");
 		return id;
 	},
 

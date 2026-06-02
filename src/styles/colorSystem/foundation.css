@@ -108,6 +108,18 @@
   --shadow-dialog: 0 4px 32px 0;
 }
 
+/**
+ * 全局 overlay 层级阶梯（单一事实源）。
+ * 仅用于全屏/浮层这类需要互相比较层级的元素；组件内部的局部 z 不受此约束。
+ * 层间留间隔（10），方便后续插入新层而无需重排。
+ */
+@utility z-page-chrome { z-index: 40; } /* 页面骨架 / 导航 */
+@utility z-overlay     { z-index: 50; } /* dialog / sheet / BTEditor 等浮层 */
+@utility z-stack       { z-index: 60; } /* card / form 基准层 */
+@utility z-stack-top   { z-index: 61; } /* card / form 被激活时上浮 */
+@utility z-toast       { z-index: 70; } /* toast，始终盖过 card / form */
+@utility z-splash      { z-index: 80; } /* LoadingBG / 启动遮罩，挡住一切 */
+
 :root {
   --transition: var(--brand-4th);
   --radius: var(--radius-12);

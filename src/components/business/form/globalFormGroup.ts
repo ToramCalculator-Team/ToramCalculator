@@ -1,5 +1,6 @@
 import type { JSX } from "solid-js";
 import { createStore } from "solid-js/store";
+import { setTopGroup } from "../topGroup";
 
 export type GlobalFormEntryApi = {
 	readonly id: string;
@@ -44,6 +45,7 @@ export const globalFormGroup = {
 	add(entry: GlobalFormEntry) {
 		const id = entry.id ?? createFormEntryId();
 		setEntries((previous) => [...previous, { ...entry, id, isClosing: false }]);
+		setTopGroup("form");
 		return id;
 	},
 

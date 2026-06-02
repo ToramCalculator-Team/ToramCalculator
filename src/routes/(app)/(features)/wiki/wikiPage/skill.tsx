@@ -94,7 +94,7 @@ export const SkillPage = (dic: Dictionary, itemHandleClick: (data: skill) => voi
 					options={{ scrollbars: { autoHide: "scroll" } }}
 					style={{ height: "100%", width: "100%" }}
 				>
-					<div class="Content flex flex-col gap-4 px-6 portrait:px-6">
+					<div class="Content flex flex-col gap-4 p-6 portrait:px-6">
 						<Index each={SKILL_TREE_GROUP_TYPE}>
 							{(treeGroupType, groupIndex) => (
 								<Motion.section
