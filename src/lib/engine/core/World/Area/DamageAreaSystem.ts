@@ -196,6 +196,7 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 						damageIndex,
 						damageTags: [...request.payload.damageTags],
 						warningZone: request.payload.warningZone,
+						lockCasterAttributes: request.payload.lockCasterAttributes,
 						direction,
 						// 受击 Pipeline 计算最终伤害后会回填 isFatal；派发时未知。
 						isFatal: false,

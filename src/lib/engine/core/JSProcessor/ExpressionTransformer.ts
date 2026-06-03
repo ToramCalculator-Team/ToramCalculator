@@ -131,20 +131,23 @@ export const ExpressionTransformer = {
 	},
 
 	/**
-	 * 静态提取表达式中 `self.hasBuff('X')` 的字面量参数列表。
+	 * 静态提取表达式中 `hasBuff('X')` 的字面量参数列表。
 	 *
-	 * 用途（切片3 脱手快照）：
-	 * - 伤害公式里的 `self.hasBuff('X')` 需要在“施放瞬间”求值并锁进 casterSnapshot，
+	 * 用途：
+	 * - 伤害公式里的 `hasBuff('X')` 在脱手锁定路径下需要在"施放瞬间"求值并锁入快照，
 	 *   而非受击结算时读施法者实时 buff。本方法在快照构造期收集需要预求值的 buff id。
+	 * - 仅识别裸调用形态 `hasBuff('X')`（求值时由注入的 ctx.hasBuff 解析，默认查询 self）；
+	 *   `self.hasBuff(...)` 不是有效形态——它会被 transformToGetValue 误改写为
+	 *   `self.statContainer.getValue('hasBuff')(...)`，因此不在此识别。
 	 * - 仅识别参数为字符串字面量的调用（静态可提取）；动态参数（变量/拼接）无法静态提取，
 	 *   由调用方 fallback 告警处理。
 	 *
-	 * 识别形态：CallExpression，callee 为 `self.hasBuff`，首参为字符串字面量。
+	 * 识别形态：CallExpression，callee 为 Identifier `hasBuff`，首参为字符串字面量。
 	 *
 	 * @param expression 原始表达式字符串
 	 * @returns 去重后的 buff id 字面量数组
 	 */
-	analyzeSelfHasBuffArgs(expression: string): string[] {
+	analyzeBareHasBuffArgs(expression: string): string[] {
 		const args = new Set<string>();
 		try {
 			const { ast } = this.parseExpressionToAst(expression);
@@ -154,13 +157,9 @@ export const ExpressionTransformer = {
 					callee: Node;
 					arguments: Node[];
 				};
-				const callee = call.callee;
-				// callee 必须是 self.hasBuff 形态的成员访问
-				if (callee.type !== "MemberExpression") return;
-				const member = callee as MemberExpression;
-				if (member.object.type !== "Identifier" || member.property.type !== "Identifier") return;
-				if ((member.object as Identifier).name !== "self") return;
-				if ((member.property as Identifier).name !== "hasBuff") return;
+				// callee 必须是裸标识符 hasBuff（非成员访问）
+				if (call.callee.type !== "Identifier") return;
+				if ((call.callee as Identifier).name !== "hasBuff") return;
 				// 首参必须是字符串字面量
 				const firstArg = call.arguments[0] as unknown as { type: string; value?: unknown };
 				if (firstArg && firstArg.type === "Literal" && typeof firstArg.value === "string") {

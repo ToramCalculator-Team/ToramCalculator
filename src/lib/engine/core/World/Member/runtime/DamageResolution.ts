@@ -13,6 +13,7 @@
  */
 
 import { createLogger } from "~/lib/Logger";
+import * as CasterSnapshot from "../../../Expression/CasterSnapshot";
 import type { ExpressionContext } from "../../../JSProcessor/types";
 import type { StageData } from "../../../Pipeline/stageEnv";
 import type { MemberDomainEvent } from "../../../types";
@@ -152,9 +153,17 @@ export function resolveDamageAndApply(
 		return session;
 	}
 
-	// 1) 施法者公式求值（formula 中 self 指向施法者快照，target 指向受击者）
+	// 1) 施法者公式求值（formula 中 target 始终指向受击者实时值）。
+	//    self 取值由 lockCasterAttributes 决定：
+	//    - 锁定：传入基于施放瞬间 casterSnapshot 的只读视图，脱手后不回溯施法者变化。
+	//    - 实时：不传 selfOverride，求值器按 sourceId 取施法者当前属性。
 	let baseDamage = 0;
 	if (evaluator && req.damageFormula) {
+		const selfOverride = req.lockCasterAttributes
+			? CasterSnapshot.createSelfFacade(req.casterSnapshot, (key) =>
+					log.warn(`casterSnapshot 缺少键: ${key}（公式依赖与快照不一致，按 0 处理）：${req.damageFormula}`),
+				)
+			: undefined;
 		const out = evaluator(req.damageFormula, {
 			currentTimeMs,
 			tickIndex,
@@ -163,7 +172,7 @@ export function resolveDamageAndApply(
 			skillLv: req.skillLv,
 			distance: req.vars.distance,
 			targetCount: req.vars.targetCount,
-			casterSnapshot: req.casterSnapshot,
+			selfOverride,
 		});
 		if (typeof out === "number" && Number.isFinite(out)) {
 			baseDamage = out;

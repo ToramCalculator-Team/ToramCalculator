@@ -110,6 +110,12 @@ export interface DamageAreaRequest {
 		damageTags: string[];
 		/** 警告区域类型（红/蓝区护盾识别依据） */
 		warningZone: DamageWarningZone;
+		/**
+		 * 是否脱手锁定施法者属性。
+		 * - true：结算时 self.* 读 casterSnapshot（施放瞬间值），脱手后不随施法者变化回溯。
+		 * - false：结算时 self.* 实时读施法者当前属性（持续光束、引导类技能）。
+		 */
+		lockCasterAttributes: boolean;
 	};
 	/** 施法时的位置（用于计算轨迹） */
 	casterId: string;
@@ -145,6 +151,12 @@ export interface DamageDispatchPayload {
 	damageTags: string[];
 	/** 警告区域类型 */
 	warningZone: DamageWarningZone;
+	/**
+	 * 是否脱手锁定施法者属性。
+	 * - true：结算时 self.* 读 casterSnapshot（施放瞬间值）。
+	 * - false：结算时 self.* 实时读施法者当前属性。
+	 */
+	lockCasterAttributes: boolean;
 	/** 目标相对施法者的方位（由 DamageAreaSystem 基于几何位置计算） */
 	direction: DamageDirection;
 	/**

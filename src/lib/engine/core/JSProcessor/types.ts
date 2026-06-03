@@ -18,6 +18,14 @@ export interface ExpressionContext {
 	targetId?: string;
 	/** 技能等级（可选，用于技能表达式） */
 	skillLv?: number;
+	/**
+	 * 预构造的 self 视图（可选）。
+	 *
+	 * 缺省时由 ExpressionEvaluator 按 casterId 取实时施法者。
+	 * 调用方需要锁定取值（如脱手技能读施放瞬间快照）时，传入预构造视图覆盖实时取值。
+	 * 类型保持 unknown：求值时通过 `with(ctx)` 暴露给表达式，求值器不约束其形状。
+	 */
+	selfOverride?: unknown;
 	/** 其他自定义变量 */
 	[key: string]: unknown;
 }

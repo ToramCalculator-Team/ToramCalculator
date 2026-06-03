@@ -1,6 +1,7 @@
 import { z } from "zod/v4";
 import { createLogger } from "~/lib/Logger";
 import { State } from "~/lib/mistreevous/State";
+import * as CasterSnapshot from "../../../../Expression/CasterSnapshot";
 import { ExpressionTransformer } from "../../../../JSProcessor/ExpressionTransformer";
 import type { DamageAreaRequest } from "../../../Area/types";
 import type { MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
@@ -42,6 +43,10 @@ const commonAttackBaseSchema = z.object({
 		.enum(["red", "blue", "none"])
 		.default("none")
 		.meta({ description: "警告区域类型（红/蓝区护盾识别依据）" }),
+	lockCasterAttributes: z.boolean().default(true).meta({
+		description:
+			"是否脱手锁定施法者属性。true（默认）：弹道/延迟/分段伤害结算时 self.* 读施放瞬间快照，不随施法者后续变化；false：结算时 self.* 实时读施法者当前属性（持续光束、引导类技能需要）",
+	}),
 });
 
 const damageIntervalSchemaShape = {
@@ -116,34 +121,27 @@ function buildDamageRequest(
 	rangeParams: DamageAreaRequest["range"]["rangeParams"],
 	targetId?: string,
 ): DamageAreaRequest {
-	// 设计说明：施法者属性在生成伤害区域时快照，目标属性在受击侧实时读取。
-	// 这样飞行/延迟/分段伤害不会被施法者后续属性变化回溯影响。
+	// 施法者属性在生成伤害区域时快照（施放瞬间值）。结算侧是否采用该快照由 lockCasterAttributes 决定：
+	// 锁定时 self.* 读此快照（脱手不回溯），实时时 self.* 读结算瞬间的施法者。
+	// 快照始终构造：命中判定（hitCheck）也依赖其中的 hit / skill.mpCost。
 	const dependencies = ExpressionTransformer.analyzeDependencies(input.damageFormula);
 	log.debug(`👤 [${context.name}] 表达式依赖分析:`, dependencies);
 
-	// 切片3：静态提取公式中的 self.hasBuff('X') 参数，避免被依赖分析误当数值 key
-	// （否则会对 'hasBuff' 走 getValue 产生噪声/错误值）。
-	const hasBuffArgs = ExpressionTransformer.analyzeSelfHasBuffArgs(input.damageFormula);
-	const hasBuffArgSet = new Set(hasBuffArgs);
+	// 公式里的 hasBuff('X') 是裸调用（求值时由注入的 ctx.hasBuff 解析），不走属性数值通道，
+	// 故不会出现在 selfDependencies 中，需单独静态提取并在施放瞬间锁存命中标志。
+	const hasBuffArgs = ExpressionTransformer.analyzeBareHasBuffArgs(input.damageFormula);
 
-	const casterSnapshot: Record<string, number> = {};
+	const casterSnapshot: CasterSnapshot.CasterSnapshot = {};
 	for (const key of dependencies.selfDependencies) {
-		// 排除 hasBuff：它不是属性数值通道，单独在下方按施放瞬间求值锁存。
-		if (key === "hasBuff") continue;
-		casterSnapshot[key] = capabilities.statContainer.getValue(key);
+		CasterSnapshot.setStat(casterSnapshot, key, capabilities.statContainer.getValue(key));
 	}
 	for (const key of dependencies.selfBaseValueDependencies) {
-		if (key === "hasBuff") continue;
-		casterSnapshot[`_${key}`] = capabilities.statContainer.getBaseValue(key);
+		CasterSnapshot.setBaseValue(casterSnapshot, key, capabilities.statContainer.getBaseValue(key));
 	}
-
-	// 切片3：在施放瞬间求值 self.hasBuff('X') 并以约定键 `hasBuff:X` 锁入快照（0/1）。
-	// 受击结算时 evaluator 走快照 facade，完全脱手锁定，不再读施法者实时 buff。
 	// capabilities.hasParallelBt 即 self.btManager.hasBuff（见 Member.ts capabilities 装配），
-	// 与 evaluator 实时路径同源，保证快照与实时语义一致。
-	for (const buffId of hasBuffArgSet) {
-		const present = capabilities.hasParallelBt(buffId);
-		casterSnapshot[`hasBuff:${buffId}`] = present ? 1 : 0;
+	// 与求值器实时路径同源，保证锁存值与实时语义一致。
+	for (const buffId of hasBuffArgs) {
+		CasterSnapshot.setHasBuff(casterSnapshot, buffId, capabilities.hasParallelBt(buffId));
 	}
 
 	const skillLv = context.skill?.lv ?? context.currentSkill?.data.lv ?? 0;
@@ -188,6 +186,7 @@ function buildDamageRequest(
 			skillLv,
 			damageTags: Array.from(new Set([...deriveBaseDamageTags(input.expResolutionType), ...(input.damageTags ?? [])])),
 			warningZone: input.warningZone ?? "none",
+			lockCasterAttributes: input.lockCasterAttributes ?? true,
 		},
 		casterId: context.memberId,
 		targetId,
