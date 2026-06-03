@@ -30,15 +30,15 @@ if (typeof window !== "undefined") {
 // =========================
 // 查询本地存储中的store，并设置页面状态
 // =========================
+if (!store.pages.resourcesLoaded) {
+	// 设计说明：首次加载的资源 loader 必须早于 release/store gate 挂载，否则网络检查期间会出现白屏。
+	console.log("=========================挂载加载器=========================");
+	mount(() => <ResourcesLoader />, document.body);
+}
+
 const startupGate = await runStartupGate();
 setStore(startupGate.store);
 sessionStorage.removeItem("app:preload-reload-attempted");
-
-if (!startupGate.hadPersistedStore) {
-	// 初次加载时使用默认配置
-	// 添加资源加载动画
-	mount(() => <ResourcesLoader />, document.body);
-}
 
 // =========================
 // 替换服务端提供的html模板内的缺省值内容

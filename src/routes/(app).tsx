@@ -6,7 +6,6 @@ import { globalFormGroup } from "~/components/business/form/globalFormGroup";
 import { RandomBallBackground } from "~/components/effects/randomBg";
 import { DictionaryProvider } from "~/contexts/Dictionary";
 import { MediaProvider } from "~/contexts/Media-component";
-import { AppBootGate } from "~/lib/bootstrap/AppBootGate";
 import { BootstrapProvider } from "~/lib/bootstrap/BootstrapContext";
 import { EngineProvider } from "~/lib/engine/core/thread/EngineContext";
 import { setStore, store } from "~/store";
@@ -215,16 +214,9 @@ export default function AppMainContet(props: ParentProps) {
 	);
 
 	// 本地状态更新
-	onMount(async () => {
-		try {
-			const { waitFor } = await import("~/lib/bootstrap/context-standalone");
-			await waitFor("electricInitialSync");
-		} catch (error) {
-			console.warn("数据启动阶段未完成，首屏 ready 事件等待恢复:", error);
-			return;
-		}
-
+	onMount(() => {
 		// 首屏完成要晚于组件挂载一个绘制周期，避免把“已挂载”误判成“已可见”。
+		// 设计说明：全局资源 loader 只表达应用外壳绘制完成；数据库查询由 repository 和表级 loading 按需等待。
 		const markFirstScreenReady = () => {
 			window.dispatchEvent(new Event("app:first-screen-ready"));
 			setStore("pages", "resourcesLoaded", true);
@@ -245,40 +237,38 @@ export default function AppMainContet(props: ParentProps) {
 
 	return (
 		<BootstrapProvider>
-			<AppBootGate>
-				<MediaProvider>
-					<DictionaryProvider>
-						<EngineProvider>
-							<Suspense fallback={null}>
-								<Show when={store.settings.userInterface.is3DbackgroundDisabled}>
-									<BabylonBg />
-								</Show>
-							</Suspense>
-							<RandomBallBackground />
-							<Motion.div
-								id="AppMainContet"
-								class={`h-full w-full overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
-							>
-								{props.children}
-							</Motion.div>
-							<Suspense fallback={null}>
-								<Show when={settingRequested()}>
-									<Setting />
-								</Show>
-								<Show when={loginDialogRequested()}>
-									<LoginDialog />
-								</Show>
-							</Suspense>
-							<Show when={globalCardRequested()}>
-								<GlobalCardContainer />
+			<MediaProvider>
+				<DictionaryProvider>
+					<EngineProvider>
+						<Suspense fallback={null}>
+							<Show when={store.settings.userInterface.is3DbackgroundDisabled}>
+								<BabylonBg />
 							</Show>
-							<Show when={globalFormRequested()}>
-								<GlobalFormContainer />
+						</Suspense>
+						<RandomBallBackground />
+						<Motion.div
+							id="AppMainContet"
+							class={`h-full w-full overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
+						>
+							{props.children}
+						</Motion.div>
+						<Suspense fallback={null}>
+							<Show when={settingRequested()}>
+								<Setting />
 							</Show>
-						</EngineProvider>{" "}
-					</DictionaryProvider>
-				</MediaProvider>
-			</AppBootGate>
+							<Show when={loginDialogRequested()}>
+								<LoginDialog />
+							</Show>
+						</Suspense>
+						<Show when={globalCardRequested()}>
+							<GlobalCardContainer />
+						</Show>
+						<Show when={globalFormRequested()}>
+							<GlobalFormContainer />
+						</Show>
+					</EngineProvider>{" "}
+				</DictionaryProvider>
+			</MediaProvider>
 		</BootstrapProvider>
 	);
 }

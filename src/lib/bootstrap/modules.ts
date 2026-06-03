@@ -5,8 +5,8 @@ import { ensureTemporaryAccount } from "~/session/temporaryAccount";
 import { store } from "~/store";
 import type { BootstrapModule } from "./types";
 
-// Electric 的“首轮同步完成”判定清单。
-// 目标是给 UI 一个可观测的全局门槛（electricInitialSync），而不是替代 tableSyncState 的细粒度用途。
+// Electric 的“全库首轮同步完成”判定清单。
+// 设计目的：全库同步完成用于缓存预热和诊断；页面外壳只依赖 pgworker，表级内容继续读取 tableSyncState。
 const ELECTRIC_SYNC_TABLES: Array<keyof DB> = [
 	"account",
 	"account_create_data",
@@ -185,6 +185,7 @@ export const bootstrapModules: BootstrapModule<unknown>[] = [
 	{
 		name: "electricInitialSync",
 		deps: ["pgworker"],
+		optional: true,
 		timeout: 120_000,
 		init: async () => {
 			await waitForElectricInitialSync();
@@ -192,10 +193,10 @@ export const bootstrapModules: BootstrapModule<unknown>[] = [
 	},
 	{
 		name: "temporaryAccount",
-		deps: ["electricInitialSync"],
+		deps: ["pgworker"],
 		timeout: 60_000,
 		init: async () => {
-			// 职责迁移：本地账号初始化从路由 onMount 收拢到统一启动阶段；登录账号需要等首轮同步后再恢复。
+			// 职责迁移：本地账号初始化从路由 onMount 收拢到统一启动阶段；本地账号只依赖 schema 已迁移且写入通道已注册。
 			await ensureTemporaryAccount();
 		},
 	},
@@ -205,8 +206,8 @@ export const bootstrapModules: BootstrapModule<unknown>[] = [
 		timeout: 180_000,
 		init: async ({ log, waitFor }) => {
 			try {
-				// 设计目的：engine 会创建计算 Worker；等待首轮数据同步先完成，避免和 PGlite wasm/data、Electric 初始同步抢首启带宽。
-				await waitFor("electricInitialSync");
+				// 设计目的：engine 会创建计算 Worker；等待 PGlite 完成迁移和同步注册，避免和数据库 wasm/data 初始化抢首启资源。
+				await waitFor("pgworker");
 			} catch (error) {
 				log(`data priority gate failed before engine init: ${String(error)}`);
 			}

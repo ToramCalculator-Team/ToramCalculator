@@ -269,8 +269,9 @@ const mergeDeep = <T>(...sources: unknown[]): T => {
 	return acc as T;
 };
 
-const stripRuntimeOnlyState = (value: Store): Store => {
-	// 运行时弹层栈携带闭包或记录快照，不能从旧 localStorage 合并回持久化 store。
+const removeDeprecatedStoreFields = (value: Store): Store => {
+	// 设计说明：迁移只清理已退出 Store 类型的历史字段，避免旧版本缓存继续覆盖新结构。
+	// 类型说明：formGroup/cardGroup 是历史缓存字段，当前 Store 类型已移除，只在迁移清理时临时扩展类型。
 	const pages = value.pages as PageState & { formGroup?: unknown; cardGroup?: unknown };
 	if ("formGroup" in pages) {
 		delete pages.formGroup;
@@ -281,28 +282,20 @@ const stripRuntimeOnlyState = (value: Store): Store => {
 	return value;
 };
 
-const readPlainChild = (value: unknown, key: string): Record<string, unknown> | undefined => {
-	if (!isPlainObject(value)) return undefined;
-	const child = value[key];
-	return isPlainObject(child) ? child : undefined;
-};
+const isCurrentStore = (value: unknown): value is Store =>
+	isPlainObject(value) && value.version === initialStore.version;
 
-const createMigratedStore = (oldStore: unknown): Store => {
-	const settings = readPlainChild(oldStore, "settings") ?? {};
-	const sw = readPlainChild(oldStore, "sw") ?? {};
-	const pages = readPlainChild(oldStore, "pages") ?? {};
-	const wiki = readPlainChild(pages, "wiki") ?? {};
+const migrateStore = (oldStore: unknown): Store => {
+	if (!isPlainObject(oldStore)) {
+		return initialStore;
+	}
 
-	// 设计说明：本地持久化只承诺用户偏好和长期页面配置。
-	// 运行时状态回到 initialStore，避免旧 UI 快照进入新版本启动路径。
-	const migrated = mergeDeep<Store>({}, initialStore, {
-		settings,
-		sw,
-		pages: { wiki },
+	// 设计说明：store 版本变化时只补齐新增默认字段并清理弃用字段；旧缓存的业务状态和同步状态继续保留。
+	const migrated = mergeDeep<Store>({}, initialStore, oldStore, {
 		version: initialStore.version,
 	});
 
-	return stripRuntimeOnlyState(migrated);
+	return removeDeprecatedStoreFields(migrated);
 };
 
 export const getActStore = () => {
@@ -311,9 +304,13 @@ export const getActStore = () => {
 		const storage = localStorage.getItem("store");
 		if (storage) {
 			const oldStore = safeParse(storage);
-			const mergedStore = createMigratedStore(oldStore);
-			localStorage.setItem("store", JSON.stringify(mergedStore));
-			return mergedStore;
+			if (isCurrentStore(oldStore)) {
+				return oldStore;
+			}
+
+			const migratedStore = migrateStore(oldStore);
+			localStorage.setItem("store", JSON.stringify(migratedStore));
+			return migratedStore;
 		} else {
 			console.log(performance.now(), "初始化本地配置");
 			localStorage.setItem("store", JSON.stringify(initialStore));
@@ -322,5 +319,5 @@ export const getActStore = () => {
 	return initialStore;
 };
 
-const [store, setStore] = createStore<Store>(initialStore);
+const [store, setStore] = createStore<Store>(getActStore());
 export { store, setStore };
