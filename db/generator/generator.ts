@@ -6,6 +6,7 @@
 import type { GeneratorOptions } from "@prisma/generator-helper";
 import pkg from "@prisma/generator-helper";
 import { PATHS } from "./config";
+import { ClientMigrationGenerator } from "./helpers/generateClientMigration";
 import { DMMFUtilsGenerator } from "./helpers/generateDMMFUtils";
 import { generateImplicitManyToManyModels } from "./helpers/generateImplicitManyToManyModels";
 import { QueryBuilderGenerator } from "./helpers/generateQueryBuilder";
@@ -89,11 +90,20 @@ generatorHandler({
 			}
 
 			// Generate SQL (需要 schema 内容，所以单独执行)
+			let sqlGenerated = false;
 			try {
 				const sqlGenerator = new SQLGenerator(outputDir);
 				await sqlGenerator.generate(finalSchema);
+				sqlGenerated = true;
 			} catch (error) {
 				console.warn("⚠️  SQL 生成失败，但继续执行其他任务:", error);
+			}
+
+			if (sqlGenerated) {
+				// 设计说明：客户端迁移账本属于 schema 衍生产物，必须跟随 generate:schema 原子更新。
+				// baseline 由单独脚本刷新；普通 generate 只生成从上一已接管 schema 到当前 schema 的迁移。
+				const clientMigrationGenerator = new ClientMigrationGenerator();
+				await clientMigrationGenerator.generate();
 			}
 
 			// 跳过 types.ts 生成，因为类型应该从 zod 导出

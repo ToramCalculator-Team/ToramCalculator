@@ -13,20 +13,35 @@ export type VersionStatus = {
 	isUpToDate: boolean;
 	version?: string;
 	buildTime?: number;
+	releaseId?: string;
+	assetVersion?: string;
+	swVersion?: string;
 };
 
-const IS_DEV =
-	typeof import.meta !== "undefined" && (import.meta as any).env && (import.meta as any).env.MODE === "development";
+type ReleaseManifest = {
+	releaseId: string;
+	assetVersion: string;
+	swVersion: string;
+	storeSchemaVersion: number;
+	dbSchemaVersion: number;
+	minCompatibleStoreSchemaVersion: number;
+	minCompatibleDbSchemaVersion: number;
+	generatedAt: string;
+};
 
-const MANIFEST_URL = "/chunk-manifest.json";
+const metaEnv =
+	typeof import.meta !== "undefined" ? (import.meta as ImportMeta & { env?: { MODE?: string } }).env : undefined;
+const IS_DEV = metaEnv?.MODE === "development";
+
+const RELEASE_URL = "/api/release";
 const VERSION_CACHE = "version-meta";
 const VERSION_KEY = "sw-version-meta";
 
-async function fetchManifest(): Promise<any | null> {
-	// 开发模式下不请求 chunk-manifest.json，避免 dev server 打印 404/not found
+async function fetchRelease(): Promise<ReleaseManifest | null> {
+	// 开发模式下不请求 release API，避免 dev server 热更新期间把版本门禁视作生产更新。
 	if (IS_DEV) return null;
 	try {
-		const resp = await fetch(`${MANIFEST_URL}?t=${Date.now()}`, {
+		const resp = await fetch(`${RELEASE_URL}?t=${Date.now()}`, {
 			cache: "no-store",
 			headers: {
 				"Cache-Control": "no-cache, no-store, must-revalidate",
@@ -40,7 +55,7 @@ async function fetchManifest(): Promise<any | null> {
 	}
 }
 
-async function getStoredMeta(): Promise<any | null> {
+async function getStoredMeta(): Promise<Partial<ReleaseManifest> | null> {
 	try {
 		const cache = await caches.open(VERSION_CACHE);
 		const res = await cache.match(VERSION_KEY);
@@ -51,17 +66,22 @@ async function getStoredMeta(): Promise<any | null> {
 	}
 }
 
-async function putStoredMeta(meta: any): Promise<void> {
+async function putStoredMeta(meta: Partial<ReleaseManifest>): Promise<void> {
 	const cache = await caches.open(VERSION_CACHE);
 	await cache.put(VERSION_KEY, new Response(JSON.stringify(meta), { headers: { "Content-Type": "application/json" } }));
 }
 
 export async function checkVersionChange(): Promise<{ hasChanged: boolean }> {
-	const manifest = await fetchManifest();
-	if (!manifest) return { hasChanged: false };
+	const release = await fetchRelease();
+	if (!release) return { hasChanged: false };
 
-	// KISS：只比较 version/buildTime（避免把全量 manifest 存进 CacheStorage，减少内存与序列化开销）
-	const current = { version: manifest.version, buildTime: manifest.buildTime };
+	// 版本元数据只保留资源和 SW 边界；store/DB 迁移由页面和 PGlite Worker 执行。
+	const current = {
+		releaseId: release.releaseId,
+		assetVersion: release.assetVersion,
+		swVersion: release.swVersion,
+		generatedAt: release.generatedAt,
+	};
 	const stored = await getStoredMeta();
 
 	if (!stored) {
@@ -69,27 +89,50 @@ export async function checkVersionChange(): Promise<{ hasChanged: boolean }> {
 		return { hasChanged: true };
 	}
 
-	const sameBuild = stored.buildTime === current.buildTime;
-	const sameVersion = stored.version === current.version;
-	if (sameBuild && sameVersion) return { hasChanged: false };
+	const sameRelease =
+		stored.releaseId === current.releaseId &&
+		stored.assetVersion === current.assetVersion &&
+		stored.swVersion === current.swVersion;
+	if (sameRelease) return { hasChanged: false };
 
 	await putStoredMeta(current);
 	return { hasChanged: true };
 }
 
 export async function getVersionStatus(): Promise<VersionStatus> {
-	const manifest = await fetchManifest();
+	const release = await fetchRelease();
 	const stored = await getStoredMeta();
-	if (!manifest) {
-		return { isUpToDate: !!stored, version: stored?.version, buildTime: stored?.buildTime };
+	if (!release) {
+		return {
+			isUpToDate: !!stored,
+			version: stored?.releaseId,
+			releaseId: stored?.releaseId,
+			assetVersion: stored?.assetVersion,
+			swVersion: stored?.swVersion,
+		};
 	}
-	const same = stored && stored.buildTime === manifest.buildTime && stored.version === manifest.version;
-	return { isUpToDate: !!same, version: manifest.version, buildTime: manifest.buildTime };
+	const same =
+		stored &&
+		stored.releaseId === release.releaseId &&
+		stored.assetVersion === release.assetVersion &&
+		stored.swVersion === release.swVersion;
+	return {
+		isUpToDate: !!same,
+		version: release.releaseId,
+		releaseId: release.releaseId,
+		assetVersion: release.assetVersion,
+		swVersion: release.swVersion,
+	};
 }
 
 export async function updateStoredVersion(): Promise<void> {
-	const manifest = await fetchManifest();
-	if (manifest) {
-		await putStoredMeta({ version: manifest.version, buildTime: manifest.buildTime });
+	const release = await fetchRelease();
+	if (release) {
+		await putStoredMeta({
+			releaseId: release.releaseId,
+			assetVersion: release.assetVersion,
+			swVersion: release.swVersion,
+			generatedAt: release.generatedAt,
+		});
 	}
 }

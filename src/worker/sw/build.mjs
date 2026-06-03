@@ -1,20 +1,9 @@
-import fs from "node:fs";
-import path from "node:path";
 import { build } from "esbuild";
 
-// 从 src/store.ts 读取 version（数字），作为 SW 版本；开发容错
-function readStoreVersion() {
-	try {
-		const content = fs.readFileSync(path.resolve("src/store.ts"), "utf8");
-		const m = content.match(/version:\s*(\d+)/);
-		return m ? String(parseInt(m[1], 10)) : "dev";
-	} catch {
-		return "dev";
-	}
-}
-
-const SW_VERSION = readStoreVersion();
-const SW_BUILD_TS = Date.now();
+// 设计说明：SW 版本跟随发布版本，而不是 store schema 版本。
+// 同一次构建由 runBuild.mjs 注入相同 release id，避免 SW 与页面协议版本分裂。
+const SW_VERSION = process.env.APP_SW_VERSION || process.env.APP_RELEASE_ID || "dev";
+const SW_BUILD_TS = process.env.APP_GENERATED_AT ? Date.parse(process.env.APP_GENERATED_AT) : Date.now();
 
 await build({
 	entryPoints: ["src/worker/sw/main.ts"],

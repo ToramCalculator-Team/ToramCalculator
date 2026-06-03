@@ -25,6 +25,23 @@ const IS_DEV = typeof import.meta !== "undefined" && import.meta.env && import.m
 let cacheStrategy: "all" | "core-only" | "assets-only" = "core-only";
 
 (async (worker: ServiceWorkerGlobalScope) => {
+	const fetchNoStore = (request: Request) => fetch(new Request(request, { cache: "no-store" }));
+
+	const networkFirst = async (request: Request, cacheName: string, fallback?: () => Promise<Response | undefined>) => {
+		const cache = await caches.open(cacheName);
+		try {
+			const response = await fetchNoStore(request);
+			if (response.ok) await cache.put(request, response.clone());
+			return response;
+		} catch {
+			const cached = await cache.match(request);
+			if (cached) return cached;
+			const fallbackResponse = await fallback?.();
+			if (fallbackResponse) return fallbackResponse;
+			throw new Error(`Network and cache both missed for ${request.url}`);
+		}
+	};
+
 	// install：只预缓存核心资源（开发模式跳过），并立刻接管下一阶段
 	worker.addEventListener("install", (event) => {
 		event.waitUntil(
@@ -49,6 +66,7 @@ let cacheStrategy: "all" | "core-only" | "assets-only" = "core-only";
 						if (result.hasChanged) {
 							await clearOldCaches();
 							await preCacheCore();
+							notifyAll("UPDATE_READY", { timestamp: Date.now() });
 						}
 					});
 				}
@@ -67,41 +85,39 @@ let cacheStrategy: "all" | "core-only" | "assets-only" = "core-only";
 			(async () => {
 				const pathname = url.pathname;
 
-				// manifest：优先缓存，失败返回空对象，避免硬错误
-				if (pathname === "/chunk-manifest.json") {
-					const cache = await caches.open(CACHE_STRATEGIES.CORE);
-					const cached = await cache.match(event.request);
-					if (cached) return cached;
-					try {
-						const response = await fetch(event.request);
-						if (response.ok) await cache.put(event.request, response.clone());
-						return response;
-					} catch {
-						return new Response("{}", { status: 200, headers: { "Content-Type": "application/json" } });
-					}
+				// release/chunk manifest：network-first，保证版本门禁不被旧缓存困住。
+				if (pathname === "/api/release" || pathname === "/chunk-manifest.json") {
+					return networkFirst(event.request, CACHE_STRATEGIES.CORE, async () => {
+						if (pathname === "/chunk-manifest.json") {
+							return new Response("{}", { status: 200, headers: { "Content-Type": "application/json" } });
+						}
+						return undefined;
+					});
 				}
 
-				// 主文档：cache-first
+				// 主文档：network-first
 				if (pathname === "/" || pathname === "/index.html") {
-					const cached = await caches.match(event.request);
-					if (cached) return cached;
-					const response = await fetch(event.request);
-					if (response.ok) {
-						const cache = await caches.open(CACHE_STRATEGIES.CORE);
-						await cache.put(event.request, response.clone());
-					}
-					return response;
+					return networkFirst(event.request, CACHE_STRATEGIES.CORE, async () => caches.match("/"));
 				}
 
 				// 路由：App Shell
 				if (isPageResource(pathname)) {
-					const shell = await caches.match("/");
-					return shell || fetch(event.request);
+					try {
+						const response = await fetchNoStore(event.request);
+						if (response.ok) {
+							const cache = await caches.open(CACHE_STRATEGIES.CORE);
+							await cache.put("/", response.clone());
+						}
+						return response;
+					} catch {
+						const shell = await caches.match("/");
+						return shell || fetch(event.request);
+					}
 				}
 
 				// 其他静态资源：cache-first；其余直连
-				if (isCoreResource(pathname)) return cacheOrNetwork(event as any, CACHE_STRATEGIES.CORE);
-				if (isAssetResource(pathname)) return cacheOrNetwork(event as any, CACHE_STRATEGIES.ASSETS);
+				if (isCoreResource(pathname)) return cacheOrNetwork(event, CACHE_STRATEGIES.CORE);
+				if (isAssetResource(pathname)) return cacheOrNetwork(event, CACHE_STRATEGIES.ASSETS);
 				return fetch(event.request);
 			})(),
 		);
@@ -140,6 +156,7 @@ let cacheStrategy: "all" | "core-only" | "assets-only" = "core-only";
 						if (result.hasChanged) {
 							await clearOldCaches();
 							await preCacheCore();
+							notifyAll("UPDATE_READY", { timestamp: Date.now() });
 						}
 						notifyAll("CACHE_UPDATED", { timestamp: Date.now(), changed: result.hasChanged });
 					})(),
@@ -148,11 +165,19 @@ let cacheStrategy: "all" | "core-only" | "assets-only" = "core-only";
 			case "FORCE_UPDATE":
 				event.waitUntil(
 					(async () => {
-						await preCacheCore();
-						if (msg.data?.mode === "all" || cacheStrategy === "all") {
-							await runWarmCache({ force: msg.data?.force ?? true });
+						try {
+							await preCacheCore();
+							if (msg.data?.mode === "all" || cacheStrategy === "all") {
+								await runWarmCache({ force: msg.data?.force ?? true });
+							}
+							notifyAll("UPDATE_READY", { timestamp: Date.now() });
+							notifyAll("FORCE_UPDATE_COMPLETED", { timestamp: Date.now() });
+						} catch (error) {
+							notifyAll("UPDATE_FAILED", {
+								timestamp: Date.now(),
+								message: error instanceof Error ? error.message : String(error),
+							});
 						}
-						notifyAll("FORCE_UPDATE_COMPLETED", { timestamp: Date.now() });
 					})(),
 				);
 				break;
@@ -198,6 +223,7 @@ let cacheStrategy: "all" | "core-only" | "assets-only" = "core-only";
 				event.waitUntil(
 					(async () => {
 						const status = await getVersionStatus();
+						notifyClient(event.source, "RELEASE_STATUS", status);
 						notifyClient(event.source, "VERSION_STATUS", status);
 					})(),
 				);

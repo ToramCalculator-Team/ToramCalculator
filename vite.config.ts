@@ -1,8 +1,22 @@
 import { solidStart } from "@solidjs/start/config";
 import { nitroV2Plugin } from "@solidjs/vite-plugin-nitro-2";
 import tailwindcss from "@tailwindcss/vite";
+import type { OutputAsset, OutputChunk } from "rollup";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
+
+const getReleaseId = () => process.env.APP_RELEASE_ID ?? process.env.VITE_RELEASE_ID ?? "dev";
+const getGeneratedAt = () => process.env.APP_GENERATED_AT ?? new Date(0).toISOString();
+
+const createReleaseDefines = () => {
+	const releaseId = getReleaseId();
+	return {
+		__APP_RELEASE_ID__: JSON.stringify(releaseId),
+		__APP_ASSET_VERSION__: JSON.stringify(process.env.APP_ASSET_VERSION ?? releaseId),
+		__APP_SW_VERSION__: JSON.stringify(process.env.APP_SW_VERSION ?? releaseId),
+		__APP_GENERATED_AT__: JSON.stringify(getGeneratedAt()),
+	};
+};
 
 type ManifestEntry = {
 	fileName: string;
@@ -23,12 +37,14 @@ function createChunkManifestPlugin(): Plugin {
 		return "other";
 	};
 
-	const getOutputSize = (output: any): number => {
+	type BundleOutput = OutputAsset | OutputChunk;
+
+	const getOutputSize = (output: BundleOutput): number => {
 		if (output.type === "chunk") return Buffer.byteLength(output.code);
 		return typeof output.source === "string" ? Buffer.byteLength(output.source) : output.source.byteLength;
 	};
 
-	const toEntry = (fileName: string, output: any): ManifestEntry => ({
+	const toEntry = (fileName: string, output: BundleOutput): ManifestEntry => ({
 		fileName,
 		size: getOutputSize(output),
 		kind: getKind(fileName),
@@ -44,9 +60,9 @@ function createChunkManifestPlugin(): Plugin {
 			}
 
 			const chunkManifest = {
-				version: "1.0.0",
+				version: getReleaseId(),
 				buildTime: Date.now(),
-				buildTimeISO: new Date().toISOString(),
+				buildTimeISO: getGeneratedAt(),
 				startup: [] as ManifestEntry[],
 				chunks: {
 					core: [] as ManifestEntry[],
@@ -151,6 +167,7 @@ export default defineConfig(() => {
 				"@db": "/db",
 			},
 		},
+		define: createReleaseDefines(),
 		build: {
 			// 默认关闭 sourcemap（显著降低构建内存占用）；需要时用 VITE_SOURCEMAP=true 开启
 			sourcemap: false,

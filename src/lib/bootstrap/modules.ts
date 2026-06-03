@@ -1,5 +1,6 @@
 import type { DB } from "@db/generated/zod/index";
 import { createEffect, createRoot } from "solid-js";
+import { runStartupGate } from "~/lib/version/startupGate";
 import { ensureTemporaryAccount } from "~/session/temporaryAccount";
 import { store } from "~/store";
 import type { BootstrapModule } from "./types";
@@ -42,6 +43,7 @@ const ELECTRIC_SYNC_TABLES: Array<keyof DB> = [
 	"recipe_ingredient",
 	"skill",
 	"skill_variant",
+	"behavior_tree",
 	"player_weapon",
 	"player_armor",
 	"player_option",
@@ -84,15 +86,25 @@ const waitForElectricInitialSync = (): Promise<void> => {
 	});
 };
 
-export const bootstrapModules: BootstrapModule[] = [
+export const bootstrapModules: BootstrapModule<unknown>[] = [
+	{
+		name: "release",
+		deps: [],
+		init: async () => (await runStartupGate()).release,
+	},
+	{
+		name: "storeMigration",
+		deps: ["release"],
+		init: async () => (await runStartupGate()).store,
+	},
 	{
 		name: "store",
-		deps: [],
+		deps: ["storeMigration"],
 		init: async () => undefined,
 	},
 	{
 		name: "sw",
-		deps: [],
+		deps: ["storeMigration"],
 		optional: true,
 		init: async ({ log }) => {
 			if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
@@ -111,22 +123,22 @@ export const bootstrapModules: BootstrapModule[] = [
 				}
 
 				try {
-					const manifestResp = await fetch("/chunk-manifest.json");
-					if (!manifestResp.ok) {
-						console.warn("无法获取chunk manifest，使用离线缓存");
+					const releaseResp = await fetch("/api/release", { cache: "no-store" });
+					if (!releaseResp.ok) {
+						console.warn("无法获取 release manifest，使用离线缓存");
 						return;
 					}
 
-					const manifest = await manifestResp.json();
+					const release = await releaseResp.json();
 					if (navigator.serviceWorker.controller) {
 						navigator.serviceWorker.controller.postMessage({
 							type: "CHECK_CACHE_VERSION",
-							data: { manifest },
+							data: { release },
 						});
-						console.log("已通知Service Worker检查缓存版本:", manifest.buildTime);
+						console.log("已通知Service Worker检查发布版本:", release.releaseId);
 					}
 				} catch (error) {
-					console.warn("缓存版本检查失败，使用离线缓存:", error);
+					console.warn("发布版本检查失败，使用离线缓存:", error);
 				}
 			};
 
@@ -154,7 +166,7 @@ export const bootstrapModules: BootstrapModule[] = [
 	},
 	{
 		name: "schemaCheck",
-		deps: ["store"],
+		deps: ["storeMigration"],
 		optional: true,
 		init: async ({ log }) => {
 			log("observer stub; schema version check ships in a later phase");
@@ -162,7 +174,7 @@ export const bootstrapModules: BootstrapModule[] = [
 	},
 	{
 		name: "pgworker",
-		deps: ["store"],
+		deps: ["storeMigration"],
 		timeout: 60_000,
 		init: async () => {
 			// Phase B 起由 bootstrap 主动创建 worker，避免调用方各自抢跑初始化。

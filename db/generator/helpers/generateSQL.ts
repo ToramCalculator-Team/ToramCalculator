@@ -90,10 +90,53 @@ import path from "node:path";
 import { PATHS } from "../config";
 import { writeFileSafely } from "../utils/writeFileSafely";
 
-interface TableStructure {
+export interface TableStructure {
 	tableName: string;
 	columns: string[];
 	constraints: string[];
+}
+
+export class ClientSyncSqlFactory {
+	extractTableBlock(clientSql: string, tableName: string): string {
+		const marker = `-- ${tableName}`;
+		const start = clientSql.startsWith(`${marker}\n`)
+			? 0
+			: clientSql.indexOf(`\n${marker}\n`) >= 0
+				? clientSql.indexOf(`\n${marker}\n`) + 1
+				: -1;
+		if (start < 0) {
+			throw new Error(`无法在 generated client.sql 中找到客户端表结构: ${tableName}`);
+		}
+
+		const next = clientSql.indexOf("\n-- ", start + marker.length + 1);
+		return clientSql.slice(start, next < 0 ? undefined : next).trim();
+	}
+
+	extractViewAndTriggers(clientSql: string, tableName: string): string {
+		const tableBlock = this.extractTableBlock(clientSql, tableName);
+		const viewStart = tableBlock.indexOf(`CREATE OR REPLACE VIEW "${tableName}"`);
+		if (viewStart < 0) {
+			throw new Error(`无法在 generated client.sql 中找到 view/trigger 结构: ${tableName}`);
+		}
+		return tableBlock.slice(viewStart).trim();
+	}
+
+	generateDropViewAndTriggers(tableName: string): string {
+		return [
+			`DROP VIEW IF EXISTS "${tableName}" CASCADE;`,
+			`DROP FUNCTION IF EXISTS ${tableName}_insert_trigger() CASCADE;`,
+			`DROP FUNCTION IF EXISTS ${tableName}_update_trigger() CASCADE;`,
+			`DROP FUNCTION IF EXISTS ${tableName}_delete_trigger() CASCADE;`,
+		].join("\n");
+	}
+
+	generateDropClientTableObjects(tableName: string): string {
+		return [
+			this.generateDropViewAndTriggers(tableName),
+			`DROP TABLE IF EXISTS "${tableName}_local" CASCADE;`,
+			`DROP TABLE IF EXISTS "${tableName}_synced" CASCADE;`,
+		].join("\n");
+	}
 }
 
 /**

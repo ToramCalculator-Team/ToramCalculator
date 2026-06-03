@@ -5,8 +5,8 @@ import { mount, StartClient } from "@solidjs/start/client";
 import { ClickScrollPlugin, OverlayScrollbars } from "overlayscrollbars";
 import { ResourcesLoader } from "./components/effects/resourcesLoder";
 import { LogLevel, setGlobalLogLevel } from "./lib/Logger";
-import { getActStore, initialStore, setStore, store } from "./store";
-
+import { runStartupGate } from "./lib/version/startupGate";
+import { setStore, store } from "./store";
 
 // =========================
 // 生成环境下将日志降级到仅报错
@@ -15,16 +15,27 @@ if (!import.meta.env.DEV) {
 	setGlobalLogLevel(LogLevel.ERROR);
 }
 
+if (typeof window !== "undefined") {
+	window.addEventListener("vite:preloadError", (event) => {
+		event.preventDefault();
+		const guardKey = "app:preload-reload-attempted";
+		if (sessionStorage.getItem(guardKey) === "1") {
+			return;
+		}
+		sessionStorage.setItem(guardKey, "1");
+		window.location.reload();
+	});
+}
+
 // =========================
 // 查询本地存储中的store，并设置页面状态
 // =========================
-const hasStore = !!localStorage.getItem("store");
-if (hasStore) {
-	// 说明不是初次加载，根据本地配置，修改页面状态
-	setStore(getActStore());
-} else {
+const startupGate = await runStartupGate();
+setStore(startupGate.store);
+sessionStorage.removeItem("app:preload-reload-attempted");
+
+if (!startupGate.hadPersistedStore) {
 	// 初次加载时使用默认配置
-	setStore(initialStore);
 	// 添加资源加载动画
 	mount(() => <ResourcesLoader />, document.body);
 }
@@ -138,11 +149,7 @@ if (resourceList) {
 		let currentAsset = "";
 
 		const update = (complete = false) => {
-			const percent = complete
-				? 100
-				: totalBytes > 0
-					? Math.min(95, Math.floor((loadedBytes / totalBytes) * 95))
-					: 0;
+			const percent = complete ? 100 : totalBytes > 0 ? Math.min(95, Math.floor((loadedBytes / totalBytes) * 95)) : 0;
 			setProgressBarWidth(percent);
 
 			if (complete) {

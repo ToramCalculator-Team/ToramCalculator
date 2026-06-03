@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-import initSQL from "@db/generated/client.sql?raw";
+import { CLIENT_DB_BASELINE, CLIENT_DB_MIGRATIONS, type ClientDbMigration } from "@db/client/migrations";
 import type { DB } from "@db/generated/zod/index";
 import { PGlite } from "@electric-sql/pglite";
 import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
@@ -8,6 +8,7 @@ import { live } from "@electric-sql/pglite/live";
 import { worker } from "@electric-sql/pglite/worker";
 import { electricSync } from "@electric-sql/pglite-sync";
 import { ChangeLogSynchronizer } from "~/lib/pglite/ChangeLogSynchronizer";
+import { DB_SCHEMA_VERSION, MIN_COMPATIBLE_DB_SCHEMA_VERSION } from "~/lib/version/schema";
 
 const ELECTRIC_HOST =
 	import.meta.env.VITE_SERVER_HOST === "localhost"
@@ -41,51 +42,163 @@ const notifySyncProgress = (tableName: keyof DB) => {
 	});
 };
 
-const migrates = [
-	{
-		name: "init",
-		sql: initSQL,
-	},
-];
+const PGLITE_DATA_DIR = "idb://toramCalculatorDB";
+const PGLITE_INDEXED_DB_NAME = "toramCalculatorDB";
+
+type DbMigration = ClientDbMigration;
+
+const createDatabase = async () =>
+	await PGlite.create({
+		dataDir: PGLITE_DATA_DIR,
+		relaxedDurability: true,
+		// debug: 1,
+		extensions: {
+			live,
+			electric: electricSync({ debug: false }),
+			pg_trgm,
+		},
+	});
+
+type WorkerPGlite = Awaited<ReturnType<typeof createDatabase>>;
+
+const deleteIndexedDb = (name: string): Promise<void> =>
+	new Promise((resolve, reject) => {
+		const request = indexedDB.deleteDatabase(name);
+		request.onsuccess = () => resolve();
+		request.onerror = () => reject(request.error ?? new Error(`Failed to delete IndexedDB ${name}`));
+		request.onblocked = () => reject(new Error(`IndexedDB ${name} deletion is blocked`));
+	});
+
+const resetDatabase = async (pg: WorkerPGlite | undefined): Promise<WorkerPGlite> => {
+	if (pg && "close" in pg && typeof pg.close === "function") {
+		await pg.close();
+	}
+	await deleteIndexedDb(PGLITE_INDEXED_DB_NAME);
+	return await createDatabase();
+};
+
+const ensureMigrationTables = async (pg: WorkerPGlite) => {
+	// 添加本地 schema 迁移记录表，记录客户端 baseline 和后续增量迁移。
+	try {
+		await pg.exec(`SELECT to_version FROM app_schema_migrations LIMIT 1;`);
+	} catch {
+		await pg.exec(`DROP TABLE IF EXISTS app_schema_migrations;`);
+	}
+	await pg.exec(`
+    CREATE TABLE IF NOT EXISTS app_schema_migrations (
+      id TEXT PRIMARY KEY,
+      from_version INTEGER NOT NULL,
+      to_version INTEGER NOT NULL,
+      checksum TEXT NOT NULL,
+      applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+};
+
+const hasLegacyInitMigration = async (pg: WorkerPGlite): Promise<boolean> => {
+	try {
+		const result = await pg.exec(`SELECT name FROM migrations WHERE name = 'init' LIMIT 1;`);
+		return result[0]?.rows.length > 0;
+	} catch {
+		return false;
+	}
+};
+
+const recordMigration = async (pg: WorkerPGlite, migration: DbMigration) => {
+	await ensureMigrationTables(pg);
+	await pg.exec(
+		`
+      INSERT INTO app_schema_migrations (id, from_version, to_version, checksum)
+      VALUES ('${migration.id}', ${migration.fromVersion}, ${migration.toVersion}, '${migration.checksum}')
+      ON CONFLICT (id) DO NOTHING;
+    `,
+	);
+};
+
+const recordBaseline = async (pg: WorkerPGlite) => {
+	await ensureMigrationTables(pg);
+	await pg.exec(
+		`
+      INSERT INTO app_schema_migrations (id, from_version, to_version, checksum)
+      VALUES ('${CLIENT_DB_BASELINE.id}', 0, ${CLIENT_DB_BASELINE.version}, '${CLIENT_DB_BASELINE.checksum}')
+      ON CONFLICT (id) DO NOTHING;
+    `,
+	);
+};
+
+const getCurrentDbSchemaVersion = async (pg: WorkerPGlite): Promise<number> => {
+	const result = await pg.exec(`SELECT MAX(to_version) AS version FROM app_schema_migrations;`);
+	const value = result[0]?.rows[0]?.version;
+	return typeof value === "number" ? value : Number(value ?? 0);
+};
+
+const hasAppliedClientMigrations = async (pg: WorkerPGlite): Promise<boolean> => {
+	const result = await pg.exec(`SELECT COUNT(*) AS count FROM app_schema_migrations;`);
+	const value = result[0]?.rows[0]?.count;
+	return Number(value ?? 0) > 0;
+};
+
+const prepareSchemaRuntime = async (pg: WorkerPGlite) => {
+	// FTS相关插件
+	await pg.exec(`CREATE EXTENSION IF NOT EXISTS pg_trgm;`);
+	await ensureMigrationTables(pg);
+};
+
+const applyMissingMigrations = async (pg: WorkerPGlite, fromVersion: number) => {
+	let currentVersion = fromVersion;
+	for (const migration of CLIENT_DB_MIGRATIONS) {
+		if (migration.toVersion <= currentVersion) continue;
+		if (migration.fromVersion !== currentVersion) {
+			throw new Error(
+				`PGlite migration chain mismatch: current=${currentVersion}, next=${migration.id}(${migration.fromVersion}->${migration.toVersion})`,
+			);
+		}
+		await pg.exec(migration.sql);
+		await recordMigration(pg, migration);
+		currentVersion = migration.toVersion;
+		console.log(`已应用迁移: ${migration.id}`);
+	}
+};
+
+const resetToBaseline = async (pg: WorkerPGlite | undefined): Promise<WorkerPGlite> => {
+	const nextPg = await resetDatabase(pg);
+	await prepareSchemaRuntime(nextPg);
+	await nextPg.exec(CLIENT_DB_BASELINE.sql);
+	await recordBaseline(nextPg);
+	await applyMissingMigrations(nextPg, CLIENT_DB_BASELINE.version);
+	return nextPg;
+};
+
+const applyMigrations = async (initialPg: WorkerPGlite): Promise<WorkerPGlite> => {
+	const pg = initialPg;
+	await prepareSchemaRuntime(pg);
+
+	if ((await hasLegacyInitMigration(pg)) || !(await hasAppliedClientMigrations(pg))) {
+		return await resetToBaseline(pg);
+	}
+
+	const currentVersion = await getCurrentDbSchemaVersion(pg);
+	if (currentVersion < MIN_COMPATIBLE_DB_SCHEMA_VERSION) {
+		return await resetToBaseline(pg);
+	}
+	await applyMissingMigrations(pg, currentVersion);
+
+	const nextVersion = await getCurrentDbSchemaVersion(pg);
+	if (nextVersion !== DB_SCHEMA_VERSION) {
+		throw new Error(`PGlite schema version mismatch: current=${nextVersion}, target=${DB_SCHEMA_VERSION}`);
+	}
+
+	return pg;
+};
 
 worker({
 	async init() {
-		const pg = await PGlite.create({
-			dataDir: "idb://toramCalculatorDB",
-			relaxedDurability: true,
-			// debug: 1,
-			extensions: {
-				live,
-				electric: electricSync({ debug: false }),
-				pg_trgm,
-			},
-		});
-
-		// FTS相关插件
-		await pg.exec(`CREATE EXTENSION IF NOT EXISTS pg_trgm;`);
-
-		// 添加本地迁移记录表
-		await pg.exec(`
-      CREATE TABLE IF NOT EXISTS migrations (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL UNIQUE,
-        applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-		const result = await pg.exec(`SELECT name FROM migrations ORDER BY id;`);
-		const appliedMigrations = result[0].rows.map((row) => row.name);
-		for (const migration of migrates) {
-			if (!appliedMigrations.includes(migration.name)) {
-				await pg.exec(migration.sql);
-				await pg.exec(
-					`
-        INSERT INTO migrations (name)
-        VALUES ('${migration.name}');
-      `,
-				);
-				console.log(`已应用迁移: ${migration.name}`);
-			}
+		let pg = await createDatabase();
+		try {
+			pg = await applyMigrations(pg);
+		} catch (error) {
+			console.warn("PGlite迁移失败，测试阶段直接重建本地数据库:", error);
+			pg = await resetToBaseline(pg);
 		}
 
 		const syncTable = async (tableName: keyof DB, primaryKey: string[], urlParams?: string) => {
@@ -98,7 +211,7 @@ worker({
 					},
 				},
 				table: `${tableName}_synced`,
-				shapeKey: `${tableName}s`,
+				shapeKey: `${tableName}s:v${DB_SCHEMA_VERSION}`,
 				primaryKey: primaryKey,
 				onInitialSync: () => notifySyncProgress(tableName),
 				onMustRefetch: async (tx) => {

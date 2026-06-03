@@ -14,6 +14,15 @@
  */
 
 // 消息类型定义
+export type SWMessageData = {
+	periodicCheckInterval?: number;
+	cacheStrategy?: "all" | "core-only" | "assets-only";
+	mode?: "all";
+	force?: boolean;
+	release?: unknown;
+	manifest?: unknown;
+};
+
 export interface SWMessage {
 	type:
 		| "CHECK_CACHE_VERSION"
@@ -26,9 +35,12 @@ export interface SWMessage {
 		| "GET_CHECK_STATUS"
 		| "SET_CONFIG"
 		| "WARM_CACHE"
+		| "UPDATE_READY"
+		| "UPDATE_FAILED"
+		| "RELEASE_STATUS"
 		| "GET_VERSION_STATUS"
 		| "FORCE_VERSION_UPDATE";
-	data?: any;
+	data?: SWMessageData;
 }
 
 // 错误类型定义
@@ -36,7 +48,7 @@ export interface SWError {
 	code: string;
 	message: string;
 	timestamp: number;
-	context?: any;
+	context?: unknown;
 }
 
 // 性能指标类型

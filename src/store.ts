@@ -1,6 +1,7 @@
 import type { DB } from "@db/generated/zod/index";
 import type { AccountType } from "@db/schema/enums";
 import { createStore } from "solid-js/store";
+import { STORE_SCHEMA_VERSION } from "~/lib/version/schema";
 import type { Locale } from "~/locales/i18n";
 
 /**
@@ -135,7 +136,7 @@ export type Store = {
 };
 
 export const initialStore: Store = {
-	version: 20260413,
+	version: STORE_SCHEMA_VERSION,
 	database: {
 		inited: false,
 		tableSyncState: {
@@ -280,26 +281,37 @@ const stripRuntimeOnlyState = (value: Store): Store => {
 	return value;
 };
 
+const readPlainChild = (value: unknown, key: string): Record<string, unknown> | undefined => {
+	if (!isPlainObject(value)) return undefined;
+	const child = value[key];
+	return isPlainObject(child) ? child : undefined;
+};
+
+const createMigratedStore = (oldStore: unknown): Store => {
+	const settings = readPlainChild(oldStore, "settings") ?? {};
+	const sw = readPlainChild(oldStore, "sw") ?? {};
+	const pages = readPlainChild(oldStore, "pages") ?? {};
+	const wiki = readPlainChild(pages, "wiki") ?? {};
+
+	// 设计说明：本地持久化只承诺用户偏好和长期页面配置。
+	// 运行时状态回到 initialStore，避免旧 UI 快照进入新版本启动路径。
+	const migrated = mergeDeep<Store>({}, initialStore, {
+		settings,
+		sw,
+		pages: { wiki },
+		version: initialStore.version,
+	});
+
+	return stripRuntimeOnlyState(migrated);
+};
+
 export const getActStore = () => {
 	const isBrowser = typeof window !== "undefined";
 	if (isBrowser) {
 		const storage = localStorage.getItem("store");
 		if (storage) {
-			const oldStore = safeParse(storage) || {};
-			const newStore = initialStore;
-
-			// 排除版本信息
-			const { version: oldVersion, ...oldStoreWithoutVersion } = oldStore;
-			const { version: newVersion, ...newStoreWithoutVersion } = newStore;
-
-			let mergedStore: Store;
-			if (oldVersion && oldVersion === newVersion) {
-				mergedStore = mergeDeep<Store>({}, newStore, oldStore);
-			} else {
-				mergedStore = mergeDeep<Store>({}, newStoreWithoutVersion, oldStoreWithoutVersion);
-				mergedStore.version = newVersion;
-			}
-			mergedStore = stripRuntimeOnlyState(mergedStore);
+			const oldStore = safeParse(storage);
+			const mergedStore = createMigratedStore(oldStore);
 			localStorage.setItem("store", JSON.stringify(mergedStore));
 			return mergedStore;
 		} else {

@@ -91,7 +91,8 @@ export const ServiceWorkerManager = () => {
 							}));
 							break;
 						}
-						case "VERSION_STATUS": {
+						case "VERSION_STATUS":
+						case "RELEASE_STATUS": {
 							setState((prev) => ({
 								...prev,
 								cacheStatus: {
@@ -103,6 +104,7 @@ export const ServiceWorkerManager = () => {
 							break;
 						}
 						case "CACHE_UPDATED":
+						case "UPDATE_READY":
 						case "FORCE_UPDATE_COMPLETED":
 						case "CACHE_CLEARED":
 						case "PERIODIC_CHECK_COMPLETED":
@@ -110,6 +112,10 @@ export const ServiceWorkerManager = () => {
 							swClient.getVersionStatus();
 							swClient.getCheckStatus();
 							swClient.getCacheStatus();
+							break;
+						}
+						case "UPDATE_FAILED": {
+							setError(msg.data?.message ?? "Update failed");
 							break;
 						}
 						case "PERIODIC_CHECK_STARTED":

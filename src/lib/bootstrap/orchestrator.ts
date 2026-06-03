@@ -36,9 +36,9 @@ const cloneState = (state: BootstrapState): BootstrapState => ({
 });
 
 export class BootstrapOrchestrator {
-	private readonly modules: BootstrapModule[];
+	private readonly modules: BootstrapModule<unknown>[];
 
-	private readonly moduleMap = new Map<string, BootstrapModule>();
+	private readonly moduleMap = new Map<string, BootstrapModule<unknown>>();
 
 	private readonly dependents = new Map<string, string[]>();
 
@@ -54,7 +54,7 @@ export class BootstrapOrchestrator {
 
 	private started = false;
 
-	constructor(modules: BootstrapModule[]) {
+	constructor(modules: BootstrapModule<unknown>[]) {
 		this.modules = [...modules];
 
 		for (const module of modules) {
@@ -190,7 +190,7 @@ export class BootstrapOrchestrator {
 		}
 	}
 
-	private hasBlockingDependencyFailure(module: BootstrapModule) {
+	private hasBlockingDependencyFailure(module: BootstrapModule<unknown>) {
 		return module.deps.some((dep) => {
 			const depStatus = this.state.status[dep];
 			const depModule = this.moduleMap.get(dep);
@@ -198,7 +198,7 @@ export class BootstrapOrchestrator {
 		});
 	}
 
-	private canRun(module: BootstrapModule) {
+	private canRun(module: BootstrapModule<unknown>) {
 		return module.deps.every((dep) => {
 			const depStatus = this.state.status[dep];
 			const depModule = this.moduleMap.get(dep);
@@ -206,7 +206,7 @@ export class BootstrapOrchestrator {
 		});
 	}
 
-	private async runModule(module: BootstrapModule) {
+	private async runModule(module: BootstrapModule<unknown>) {
 		this.startedAt.set(module.name, now());
 		this.state.status[module.name] = "loading";
 		this.state.errors[module.name] = undefined;

@@ -97,7 +97,7 @@ async function readManifest(): Promise<ChunkManifest | null> {
 	try {
 		// 读取 manifest
 		// 读取失败时返回 null，让 SW 保留已有缓存策略。
-		const resp = await fetch("/chunk-manifest.json");
+		const resp = await fetch("/chunk-manifest.json", { cache: "no-store" });
 		if (!resp.ok) return null;
 		return await resp.json();
 	} catch {
@@ -211,11 +211,9 @@ async function warmCacheImpl(options: {
 	return { ...warmStatus };
 }
 
-export async function warmCacheAll(options: {
-	force?: boolean;
-	concurrency?: number;
-	notify?: (progress: WarmProgress) => void;
-} = {}): Promise<WarmCacheStatus> {
+export async function warmCacheAll(
+	options: { force?: boolean; concurrency?: number; notify?: (progress: WarmProgress) => void } = {},
+): Promise<WarmCacheStatus> {
 	if (warmStatus.inProgress && activeWarmCache) {
 		return activeWarmCache;
 	}
@@ -234,8 +232,15 @@ export async function preCacheAll(): Promise<void> {
 
 export async function clearOldCaches(): Promise<void> {
 	const names = await caches.keys();
-	const keep = new Set(Object.values(CACHE_STRATEGIES));
-	await Promise.all(names.filter((n) => !keep.has(n as any)).map((n) => caches.delete(n)));
+	const keep = new Set<string>(Object.values(CACHE_STRATEGIES));
+	for (const prefix of ["core-", "assets-", "data-", "pages-"]) {
+		const previous = names
+			.filter((name) => name.startsWith(prefix) && !keep.has(name))
+			.sort()
+			.at(-1);
+		if (previous) keep.add(previous);
+	}
+	await Promise.all(names.filter((n) => !keep.has(n)).map((n) => caches.delete(n)));
 }
 
 export async function getCacheStatus(): Promise<CacheStatus> {
