@@ -371,9 +371,9 @@ const dictionary: Dictionary = {
 					title: "开启动画与过渡效果",
 					description: "将影响所有页面的过渡和动画效果持续时间。",
 				},
-				is3DbackgroundDisabled: {
-					title: "开启3D效果",
-					description: "可能会产生大量性能损耗，不推荐开启。",
+				is3DSceneEnabled: {
+					title: "启用3D场景",
+					description: "在应用背景中加载常驻3D场景；关闭后不会下载3D运行时和模型资源。",
 				},
 				colorTheme: {
 					title: "颜色模式",

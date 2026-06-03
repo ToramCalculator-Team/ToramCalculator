@@ -8,13 +8,9 @@ import { DictionaryProvider } from "~/contexts/Dictionary";
 import { MediaProvider } from "~/contexts/Media-component";
 import { BootstrapProvider } from "~/lib/bootstrap/BootstrapContext";
 import { EngineProvider } from "~/lib/engine/core/thread/EngineContext";
+import { SceneCanvas, SceneRuntimeProvider } from "~/lib/engine/render/SceneRuntime";
 import { setStore, store } from "~/store";
 import { applyColorSystem } from "~/styles/colorSystem/colorSystemController";
-
-const BabylonBg = lazy(async () => {
-	const module = await import("~/components/effects/babylonBg");
-	return { default: module.BabylonBg };
-});
 
 const Setting = lazy(async () => {
 	const module = await import("~/components/features/setting");
@@ -240,32 +236,30 @@ export default function AppMainContet(props: ParentProps) {
 			<MediaProvider>
 				<DictionaryProvider>
 					<EngineProvider>
-						<Suspense fallback={null}>
-							<Show when={store.settings.userInterface.is3DbackgroundDisabled}>
-								<BabylonBg />
+						<SceneRuntimeProvider enabled={store.settings.userInterface.is3DSceneEnabled}>
+							<SceneCanvas />
+							<RandomBallBackground />
+							<Motion.div
+								id="AppMainContet"
+								class={`h-full w-full overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
+							>
+								{props.children}
+							</Motion.div>
+							<Suspense fallback={null}>
+								<Show when={settingRequested()}>
+									<Setting />
+								</Show>
+								<Show when={loginDialogRequested()}>
+									<LoginDialog />
+								</Show>
+							</Suspense>
+							<Show when={globalCardRequested()}>
+								<GlobalCardContainer />
 							</Show>
-						</Suspense>
-						<RandomBallBackground />
-						<Motion.div
-							id="AppMainContet"
-							class={`h-full w-full overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
-						>
-							{props.children}
-						</Motion.div>
-						<Suspense fallback={null}>
-							<Show when={settingRequested()}>
-								<Setting />
+							<Show when={globalFormRequested()}>
+								<GlobalFormContainer />
 							</Show>
-							<Show when={loginDialogRequested()}>
-								<LoginDialog />
-							</Show>
-						</Suspense>
-						<Show when={globalCardRequested()}>
-							<GlobalCardContainer />
-						</Show>
-						<Show when={globalFormRequested()}>
-							<GlobalFormContainer />
-						</Show>
+						</SceneRuntimeProvider>
 					</EngineProvider>{" "}
 				</DictionaryProvider>
 			</MediaProvider>

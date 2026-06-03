@@ -255,15 +255,13 @@ export const Setting = () => {
 												),
 											},
 											{
-												title: dictionary().ui.settings.userInterface.is3DbackgroundDisabled.title,
-												description: dictionary().ui.settings.userInterface.is3DbackgroundDisabled.description,
+												title: dictionary().ui.settings.userInterface.is3DSceneEnabled.title,
+												description: dictionary().ui.settings.userInterface.is3DSceneEnabled.description,
 												children: (
 													<Toggle
-														name={dictionary().ui.settings.userInterface.is3DbackgroundDisabled.title}
-														onclick={() =>
-															setStore("settings", "userInterface", "is3DbackgroundDisabled", (prev) => !prev)
-														}
-														checked={store.settings.userInterface.is3DbackgroundDisabled}
+														name={dictionary().ui.settings.userInterface.is3DSceneEnabled.title}
+														onClick={() => setStore("settings", "userInterface", "is3DSceneEnabled", (prev) => !prev)}
+														checked={store.settings.userInterface.is3DSceneEnabled}
 													/>
 												),
 											},

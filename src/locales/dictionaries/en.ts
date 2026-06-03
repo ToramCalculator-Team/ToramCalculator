@@ -371,9 +371,10 @@ const dictionary: Dictionary = {
 					title: "Enable Animation",
 					description: "Will affect the duration of transitions and animations on all pages.",
 				},
-				is3DbackgroundDisabled: {
-					title: "Disable 3D Background",
-					description: "May cause a lot of performance loss, not recommended.",
+				is3DSceneEnabled: {
+					title: "Enable 3D Scene",
+					description:
+						"Loads the persistent 3D scene behind the app; when disabled, 3D runtime and model assets are not downloaded.",
 				},
 				colorTheme: {
 					title: "Color Theme",

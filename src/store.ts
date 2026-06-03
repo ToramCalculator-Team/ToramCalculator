@@ -58,8 +58,8 @@ type SettingsState = {
 		language: Locale;
 		/** 是否启用动画 */
 		isAnimationEnabled: boolean;
-		/** 是否禁用3D背景 */
-		is3DbackgroundDisabled: boolean;
+		/** 是否启用应用级3D场景 */
+		is3DSceneEnabled: boolean;
 	};
 	/** 是否已关闭PWA安装提示 */
 	hasDismissedPWAInstall: boolean;
@@ -152,11 +152,11 @@ export const initialStore: Store = {
 	},
 	settings: {
 		userInterface: {
-			theme: "light",
+			theme: "dark",
 			themeVersion: "v2",
 			language: "zh-CN",
 			isAnimationEnabled: true,
-			is3DbackgroundDisabled: false,
+			is3DSceneEnabled: true,
 		},
 		hasDismissedPWAInstall: false,
 		statusAndSync: {
@@ -279,6 +279,13 @@ const removeDeprecatedStoreFields = (value: Store): Store => {
 	if ("cardGroup" in pages) {
 		delete pages.cardGroup;
 	}
+	// 类型说明：is3DbackgroundDisabled 是旧版反向开关，只在迁移阶段临时读取/清理。
+	const userInterface = value.settings.userInterface as SettingsState["userInterface"] & {
+		is3DbackgroundDisabled?: unknown;
+	};
+	if ("is3DbackgroundDisabled" in userInterface) {
+		delete userInterface.is3DbackgroundDisabled;
+	}
 	return value;
 };
 
@@ -290,10 +297,20 @@ const migrateStore = (oldStore: unknown): Store => {
 		return initialStore;
 	}
 
+	const oldSettings = isPlainObject(oldStore.settings) ? oldStore.settings : {};
+	const oldUserInterface = isPlainObject(oldSettings.userInterface) ? oldSettings.userInterface : {};
+	const old3DBackgroundDisabled =
+		typeof oldUserInterface.is3DbackgroundDisabled === "boolean" ? oldUserInterface.is3DbackgroundDisabled : undefined;
+	const old3DSceneEnabled =
+		typeof oldUserInterface.is3DSceneEnabled === "boolean" ? oldUserInterface.is3DSceneEnabled : undefined;
+
 	// 设计说明：store 版本变化时只补齐新增默认字段并清理弃用字段；旧缓存的业务状态和同步状态继续保留。
 	const migrated = mergeDeep<Store>({}, initialStore, oldStore, {
 		version: initialStore.version,
 	});
+	if (old3DSceneEnabled === undefined && old3DBackgroundDisabled !== undefined) {
+		migrated.settings.userInterface.is3DSceneEnabled = !old3DBackgroundDisabled;
+	}
 
 	return removeDeprecatedStoreFields(migrated);
 };

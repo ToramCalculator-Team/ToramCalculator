@@ -372,9 +372,10 @@ const dictionary: Dictionary = {
 					description:
 						"すべてのページの遷移とアニメーション効果の持続時間に影響します。このコンフィグで制御されていないアニメーションがある場合は、ご報告ください。",
 				},
-				is3DbackgroundDisabled: {
-					title: "3D背景を無効にする",
-					description: "3D背景を無効にすると、大量の性能損失が発生しますが、推奨されません。",
+				is3DSceneEnabled: {
+					title: "3Dシーンを有効にする",
+					description:
+						"アプリ背景に常駐3Dシーンを読み込みます。無効にすると3Dランタイムとモデルをダウンロードしません。",
 				},
 				colorTheme: {
 					title: "色のテーマ",

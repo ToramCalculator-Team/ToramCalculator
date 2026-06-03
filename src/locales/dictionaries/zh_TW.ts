@@ -432,9 +432,9 @@ const dictionary: Dictionary = {
 					title: "是否開啟動畫",
 					description: "將影響所有頁面的過渡和動畫效果持續時間。",
 				},
-				is3DbackgroundDisabled: {
-					title: "是否禁用3D背景",
-					description: "可能會產生大量性能損耗，不推薦開啟。",
+				is3DSceneEnabled: {
+					title: "啟用3D場景",
+					description: "在應用背景中載入常駐3D場景；關閉後不會下載3D執行時與模型資源。",
 				},
 			},
 			language: {

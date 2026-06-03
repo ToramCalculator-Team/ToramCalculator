@@ -252,7 +252,7 @@ export interface Dictionary {
 					title: string;
 					description: string;
 				};
-				is3DbackgroundDisabled: {
+				is3DSceneEnabled: {
 					title: string;
 					description: string;
 				};
