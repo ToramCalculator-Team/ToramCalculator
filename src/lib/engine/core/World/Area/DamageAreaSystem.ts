@@ -1,6 +1,7 @@
 import { createLogger } from "~/lib/Logger";
 import type { Checkpointable, DamageAreaSystemCheckpoint, SimulationTickContext } from "../../types";
-import type { AnyMemberEntry, MemberManager } from "../Member/MemberManager";
+import type { MemberManager } from "../Member/MemberManager";
+import type { WorldObservable } from "../observable";
 import type { SpaceManager } from "../SpaceManager";
 import type { DamageAreaRequest, DamageDirection, DamageDispatchPayload, Vec3 } from "./types";
 
@@ -137,12 +138,16 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 				return indexes;
 			};
 
-			// 根据范围类型选择候选目标
-			let validTargets: AnyMemberEntry[];
+			// 根据范围类型选择候选目标。
+			// 统一以 WorldObservable 只读视图承载，调用方只依赖 id/campId/position/alive，
+			// 不再触碰富类 Member 内部实现（偏差#1 收敛）。
+			let validTargets: WorldObservable[];
 
 			if (request.range.rangeKind === "Single" || request.range.rangeKind === "None") {
+				// 单体/无范围：锁定 targetId，不经空间查询。
+				// 仍取 Member（getMember 返回富类，本身即 WorldObservable），但只读取投影字段。
 				const singleTarget = request.targetId ? this.memberManager.getMember(request.targetId) : null;
-				if (singleTarget && singleTarget.campId !== request.identity.sourceCampId) {
+				if (singleTarget && singleTarget.alive && singleTarget.campId !== request.identity.sourceCampId) {
 					const segmentIndexes = collectSegmentIndexes(singleTarget.id);
 					if (segmentIndexes.length > 0) {
 						segmentIndexesByTargetId.set(singleTarget.id, segmentIndexes);
@@ -154,17 +159,15 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 					validTargets = [];
 				}
 			} else {
-				// 查询范围内的候选目标
-				const candidates = this.spaceManager.queryCircle<AnyMemberEntry>(currentCenter, shape.radius);
-
-				// 过滤：仅敌方阵营
-				const enemyTargets = candidates.members.filter((member) => {
-					return member.campId !== request.identity.sourceCampId;
+				// 查询范围内的候选目标。存活过滤就地下沉给介质，敌我关系在此判定。
+				const candidates = this.spaceManager.queryCircle(currentCenter, shape.radius, {
+					aliveOnly: true,
+					filter: (observable) => observable.campId !== request.identity.sourceCampId,
 				});
 
 				// 命中节流：间隔达到 hitIntervalMs 后允许再次命中
 				validTargets = [];
-				for (const target of enemyTargets) {
+				for (const target of candidates.members) {
 					const segmentIndexes = collectSegmentIndexes(target.id);
 					if (segmentIndexes.length > 0) {
 						validTargets.push(target);
@@ -202,8 +205,10 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 						},
 					};
 
-					// 派发到目标
-					target.actor.send({
+					// 派发到目标。
+					// 经 memberManager.sendTo(id, event) 路由，而非 target.actor.send——
+					// 因为 target 是 WorldObservable 只读投影，不暴露 actor。
+					this.memberManager.sendTo(target.id, {
 						type: "受到攻击",
 						data: { damageRequest: payload },
 					});

@@ -121,12 +121,29 @@ function buildDamageRequest(
 	const dependencies = ExpressionTransformer.analyzeDependencies(input.damageFormula);
 	log.debug(`👤 [${context.name}] 表达式依赖分析:`, dependencies);
 
+	// 切片3：静态提取公式中的 self.hasBuff('X') 参数，避免被依赖分析误当数值 key
+	// （否则会对 'hasBuff' 走 getValue 产生噪声/错误值）。
+	const hasBuffArgs = ExpressionTransformer.analyzeSelfHasBuffArgs(input.damageFormula);
+	const hasBuffArgSet = new Set(hasBuffArgs);
+
 	const casterSnapshot: Record<string, number> = {};
 	for (const key of dependencies.selfDependencies) {
+		// 排除 hasBuff：它不是属性数值通道，单独在下方按施放瞬间求值锁存。
+		if (key === "hasBuff") continue;
 		casterSnapshot[key] = capabilities.statContainer.getValue(key);
 	}
 	for (const key of dependencies.selfBaseValueDependencies) {
+		if (key === "hasBuff") continue;
 		casterSnapshot[`_${key}`] = capabilities.statContainer.getBaseValue(key);
+	}
+
+	// 切片3：在施放瞬间求值 self.hasBuff('X') 并以约定键 `hasBuff:X` 锁入快照（0/1）。
+	// 受击结算时 evaluator 走快照 facade，完全脱手锁定，不再读施法者实时 buff。
+	// capabilities.hasParallelBt 即 self.btManager.hasBuff（见 Member.ts capabilities 装配），
+	// 与 evaluator 实时路径同源，保证快照与实时语义一致。
+	for (const buffId of hasBuffArgSet) {
+		const present = capabilities.hasParallelBt(buffId);
+		casterSnapshot[`hasBuff:${buffId}`] = present ? 1 : 0;
 	}
 
 	const skillLv = context.skill?.lv ?? context.currentSkill?.data.lv ?? 0;

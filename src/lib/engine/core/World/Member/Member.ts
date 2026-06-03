@@ -9,6 +9,7 @@ import type { PipelineResolverService } from "../../Pipeline/PipelineResolverSer
 import type { StageData, StageEnv } from "../../Pipeline/stageEnv";
 import type { MemberCheckpoint, MemberDomainEvent, SimulationTickContext } from "../../types";
 import type { DamageAreaRequest } from "../Area/types";
+import type { WorldObservable } from "../observable";
 import type { MemberBaseAttrKey } from "./MemberBaseSchema";
 import type { MemberRuntimeServices, MemberTargetResolver, PipelineEventSinkEvent } from "./RuntimeServices";
 import { MemberRuntimeServicesDefaults } from "./RuntimeServices";
@@ -53,7 +54,8 @@ export class Member<
 	TFSMEvent extends MemberFSMEvent,
 	TFSMContext extends MemberFSMContext,
 	TRuntime extends MemberSharedRuntime<TExtraAttrKey>,
-> {
+> implements WorldObservable
+{
 	id: string;
 	type: MemberType;
 	name: string;
@@ -85,6 +87,54 @@ export class Member<
 	}
 	set position(next: { x: number; y: number; z: number }) {
 		this.runtime.position = next;
+	}
+	/**
+	 * 权威存活标志（实现 WorldObservable.alive）。
+	 *
+	 * 判定策略（对齐 document/world-medium-analysis.tmp.md 偏差#1 决策）：
+	 * - FSM 死亡状态优先：若成员状态机定义了顶层「死亡」状态（如 Mob），
+	 *   则以「当前是否处于死亡态」为权威——不在死亡态即存活。
+	 * - 无死亡态者回退 HP：Player 等无死亡状态机的成员，回退到 `hp.current > 0`，
+	 *   保证在死亡 FSM 落地前不阻塞这类成员的存活判定。
+	 *
+	 * 这样可以收敛此前散落在各处的 `hp.current > 0` 内联 guard，统一对外暴露权威字段。
+	 */
+	get alive(): boolean {
+		return !this.isDeadState();
+	}
+	/**
+	 * 碰撞半径占位（实现 WorldObservable.collisionRadius）。
+	 *
+	 * 当前统一返回 0；真实碰撞几何留待切片 4（碰撞取代 startTimeMs 延迟 / 投射物命中）。
+	 * TODO(切片4): 由成员几何配置驱动真实碰撞半径。
+	 */
+	get collisionRadius(): number {
+		return 0;
+	}
+	/**
+	 * 判定成员是否处于「死亡」状态。
+	 *
+	 * 实现细节：
+	 * - 通过 actor 快照读取 FSM。`snapshot.machine.states` 暴露顶层状态定义，
+	 *   据此判断该成员的状态机是否定义了「死亡」状态。
+	 * - 定义了「死亡」态（Mob）：用 `snapshot.matches("死亡")` 作权威判定。
+	 * - 未定义「死亡」态（Player）：回退 `hp.current > 0`（HP 耗尽视为死亡）。
+	 * - 任何读取异常（actor 未就绪等）一律按「未死亡」处理，避免误判存活实体出局。
+	 */
+	private isDeadState(): boolean {
+		try {
+			const snapshot = this.actor.getSnapshot();
+			const states = snapshot.machine?.states as Record<string, unknown> | undefined;
+			const hasDeathState = !!states && "死亡" in states;
+			if (hasDeathState) {
+				return snapshot.matches("死亡" as never);
+			}
+			// 回退：无死亡状态机的成员以 HP 判定
+			return this.statContainer.getValue("hp.current") <= 0;
+		} catch {
+			// actor 尚未启动或快照不可读时，保守视为存活
+			return false;
+		}
 	}
 	/**
 	 * 渲染侧私有状态（不序列化、不进入 checkpoint）。

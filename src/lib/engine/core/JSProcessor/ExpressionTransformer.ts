@@ -91,8 +91,7 @@ export const ExpressionTransformer = {
 			const memberAccesses = this.collectMemberAccesses(ast, expression, sourceOffset);
 			const normalized = this.normalizeMemberAccesses(memberAccesses);
 
-			const replacements: Array<{ start: number; end: number; replacement: string }> =
-				[];
+			const replacements: Array<{ start: number; end: number; replacement: string }> = [];
 			const dependencies = new Set<string>();
 			const invalidPaths: string[] = [];
 
@@ -119,10 +118,7 @@ export const ExpressionTransformer = {
 				return result;
 			}
 
-			const compiledExpression = this.applyReplacements(
-				expression,
-				replacements,
-			);
+			const compiledExpression = this.applyReplacements(expression, replacements);
 
 			result.success = true;
 			result.compiledExpression = compiledExpression;
@@ -135,16 +131,56 @@ export const ExpressionTransformer = {
 	},
 
 	/**
+	 * 静态提取表达式中 `self.hasBuff('X')` 的字面量参数列表。
+	 *
+	 * 用途（切片3 脱手快照）：
+	 * - 伤害公式里的 `self.hasBuff('X')` 需要在“施放瞬间”求值并锁进 casterSnapshot，
+	 *   而非受击结算时读施法者实时 buff。本方法在快照构造期收集需要预求值的 buff id。
+	 * - 仅识别参数为字符串字面量的调用（静态可提取）；动态参数（变量/拼接）无法静态提取，
+	 *   由调用方 fallback 告警处理。
+	 *
+	 * 识别形态：CallExpression，callee 为 `self.hasBuff`，首参为字符串字面量。
+	 *
+	 * @param expression 原始表达式字符串
+	 * @returns 去重后的 buff id 字面量数组
+	 */
+	analyzeSelfHasBuffArgs(expression: string): string[] {
+		const args = new Set<string>();
+		try {
+			const { ast } = this.parseExpressionToAst(expression);
+			this.walkAST(ast, (node: Node) => {
+				if (node.type !== "CallExpression") return;
+				const call = node as unknown as {
+					callee: Node;
+					arguments: Node[];
+				};
+				const callee = call.callee;
+				// callee 必须是 self.hasBuff 形态的成员访问
+				if (callee.type !== "MemberExpression") return;
+				const member = callee as MemberExpression;
+				if (member.object.type !== "Identifier" || member.property.type !== "Identifier") return;
+				if ((member.object as Identifier).name !== "self") return;
+				if ((member.property as Identifier).name !== "hasBuff") return;
+				// 首参必须是字符串字面量
+				const firstArg = call.arguments[0] as unknown as { type: string; value?: unknown };
+				if (firstArg && firstArg.type === "Literal" && typeof firstArg.value === "string") {
+					args.add(firstArg.value);
+				}
+			});
+		} catch {
+			// 解析失败时返回空数组，交由调用方决定 fallback
+		}
+		return [...args];
+	},
+
+	/**
 	 * 转换表达式：将 self.xxx / target.xxx 改写为 *.statContainer.getValue('xxx')
 	 *
 	 * 说明：
 	 * - 不注入 self/target 变量；要求运行时通过 ctx.self/ctx.target 提供变量
 	 * - 仅支持静态属性链（不支持 self[a] 这类动态访问）
 	 */
-	transformToGetValue(
-		expression: string,
-		options?: TransformToGetValueOptions,
-	): TransformResult {
+	transformToGetValue(expression: string, options?: TransformToGetValueOptions): TransformResult {
 		const result: TransformResult = {
 			success: false,
 			compiledExpression: expression,
@@ -157,8 +193,7 @@ export const ExpressionTransformer = {
 			const memberAccesses = this.collectMemberAccesses(ast, expression, sourceOffset);
 			const normalized = this.normalizeMemberAccesses(memberAccesses);
 
-			const replacements: Array<{ start: number; end: number; replacement: string }> =
-				[];
+			const replacements: Array<{ start: number; end: number; replacement: string }> = [];
 			const dependencies = new Set<string>();
 			const invalidPaths: string[] = [];
 
@@ -186,10 +221,7 @@ export const ExpressionTransformer = {
 				return result;
 			}
 
-			const compiledExpression = this.applyReplacements(
-				expression,
-				replacements,
-			);
+			const compiledExpression = this.applyReplacements(expression, replacements);
 
 			result.success = true;
 			result.compiledExpression = compiledExpression;
@@ -333,10 +365,7 @@ export const ExpressionTransformer = {
 	 * - 按 start 倒序排序（从后往前替换），避免 offset 变化影响后续替换
 	 * - 使用字符串切片精确替换，保证位置准确
 	 */
-	applyReplacements(
-		source: string,
-		replacements: Array<{ start: number; end: number; replacement: string }>,
-	): string {
+	applyReplacements(source: string, replacements: Array<{ start: number; end: number; replacement: string }>): string {
 		const sorted = [...replacements].sort((a, b) => b.start - a.start);
 		let out = source;
 		for (const r of sorted) {
