@@ -132,6 +132,15 @@ const getCurrentDbSchemaVersion = async (pg: WorkerPGlite): Promise<number> => {
 	return typeof value === "number" ? value : Number(value ?? 0);
 };
 
+const assertCurrentDbSchemaVersion = async (pg: WorkerPGlite, phase: string) => {
+	const currentVersion = await getCurrentDbSchemaVersion(pg);
+	if (currentVersion !== DB_SCHEMA_VERSION) {
+		throw new Error(
+			`PGlite schema version mismatch after ${phase}: current=${currentVersion}, target=${DB_SCHEMA_VERSION}`,
+		);
+	}
+};
+
 const hasAppliedClientMigrations = async (pg: WorkerPGlite): Promise<boolean> => {
 	const result = await pg.exec(`SELECT COUNT(*) AS count FROM app_schema_migrations;`);
 	const value = result[0]?.rows[0]?.count;
@@ -166,6 +175,8 @@ const resetToBaseline = async (pg: WorkerPGlite | undefined): Promise<WorkerPGli
 	await nextPg.exec(CLIENT_DB_BASELINE.sql);
 	await recordBaseline(nextPg);
 	await applyMissingMigrations(nextPg, CLIENT_DB_BASELINE.version);
+	// 设计说明：重建路径也必须验证最终版本，避免“首次清缓存可启动、刷新后才发现账本断档”。
+	await assertCurrentDbSchemaVersion(nextPg, "baseline reset");
 	return nextPg;
 };
 
@@ -183,10 +194,7 @@ const applyMigrations = async (initialPg: WorkerPGlite): Promise<WorkerPGlite> =
 	}
 	await applyMissingMigrations(pg, currentVersion);
 
-	const nextVersion = await getCurrentDbSchemaVersion(pg);
-	if (nextVersion !== DB_SCHEMA_VERSION) {
-		throw new Error(`PGlite schema version mismatch: current=${nextVersion}, target=${DB_SCHEMA_VERSION}`);
-	}
+	await assertCurrentDbSchemaVersion(pg, "migration");
 
 	return pg;
 };

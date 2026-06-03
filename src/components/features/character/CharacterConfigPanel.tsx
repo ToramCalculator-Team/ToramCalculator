@@ -38,12 +38,12 @@ export function CharacterConfigPanel(props: CharacterConfigPanelProps) {
 	const [activeTab, setActiveTab] = createSignal<CharacterConfigTab>("equipment");
 
 	return (
-		<>
+		<div class="flex portrait:flex-col w-full h-full portrait:gap-6">
 			<OverlayScrollbarsComponent
 				element="div"
 				options={{ scrollbars: { visibility: "hidden" } }}
 				defer
-				class="flex-none portrait:w-full landscape:w-fit"
+				class="flex-none portrait:w-full landscape:w-fit py-3 landscape:px-3"
 			>
 				<div class="flex flex-row items-start gap-2 landscape:flex-col">
 					<For each={tabs}>
@@ -61,12 +61,12 @@ export function CharacterConfigPanel(props: CharacterConfigPanelProps) {
 					</For>
 				</div>
 			</OverlayScrollbarsComponent>
-			<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:h-full landscape:w-px"></div>
+			<div class="Divider bg-dividing-color flex-none portrait:hidden landscape:h-full landscape:w-px"></div>
 			<OverlayScrollbarsComponent
 				element="div"
 				options={{ scrollbars: { autoHide: "scroll" } }}
 				defer
-				class="ConfigPannel w-full h-full landscape:basis-1/2"
+				class="ConfigPannel w-full h-full landscape:basis-1/2 landscape:p-3"
 			>
 				<div class="Config flex flex-col w-full h-full">
 					<Show when={activeTab() === "equipment"}>
@@ -113,6 +113,6 @@ export function CharacterConfigPanel(props: CharacterConfigPanelProps) {
 					</Show>
 				</div>
 			</OverlayScrollbarsComponent>
-		</>
+		</div>
 	);
 }

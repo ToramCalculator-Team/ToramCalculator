@@ -193,44 +193,55 @@ export default function CharactePage() {
 						/>
 					</div>
 					<div class="Content flex h-full w-full flex-1 flex-col overflow-hidden p-6 landscape:flex-row">
-						<div class={isConfigPanelVisible() ? "contents" : "hidden"}>
-							{/* 面板隐藏时移除3d渲染逻辑以降低功耗和性能损失 */}
-							<Show when={isConfigPanelVisible()}>
-								<CharacterView character={validCharacter()} />
-							</Show>
-							<div class="Divider landscape:bg-dividing-color flex-none portrait:h-6 portrait:w-full landscape:mx-2 landscape:hidden landscape:h-full landscape:w-px"></div>
+						{/* 面板隐藏时移除3d渲染逻辑以降低功耗和性能损失 */}
+						<Show when={isConfigPanelVisible()}>
+							<CharacterView character={validCharacter()} />
+						</Show>
+						<OverlayScrollbarsComponent
+							element="div"
+							options={{ scrollbars: { autoHide: "scroll" } }}
+							defer
+							class={`CharacterConfigPanel landscape:basis-1/2 portrait:py-6 bg-brand-color-1st`}
+							style={{
+								display: isConfigPanelVisible() ? "" : "none"
+							}}
+						>
 							<CharacterConfigPanel
 								character={validCharacter()}
 								onPatchRequested={dispatchCharacterPatch}
 								onItemPreviewRequested={previewDataItem}
 								onCommand={model.dispatch}
 							/>
-						</div>
+						</OverlayScrollbarsComponent>
 
-						<div class={isAttrPreviewVisible() ? "contents" : "hidden"}>
-							<div class="Divider landscape:bg-dividing-color flex-none portrait:hidden landscape:mx-2 landscape:h-full landscape:w-px" />
-							<OverlayScrollbarsComponent
-								element="div"
-								options={{ scrollbars: { autoHide: "scroll" } }}
-								defer
-								class="MemberStats flex flex-col gap-2 w-full landscape:basis-1/2"
-							>
-								<StatsRenderer data={primaryMember()?.attrs} />
-							</OverlayScrollbarsComponent>
-						</div>
 
-						<div class={isSkillPreviewVisible() ? "contents" : "hidden"}>
-							<div class="Divider landscape:bg-dividing-color flex-none portrait:hidden landscape:mx-2 landscape:h-full landscape:w-px" />
-							<OverlayScrollbarsComponent
-								element="div"
-								options={{ scrollbars: { autoHide: "scroll" } }}
-								defer
-								class="SkillPreview flex w-full flex-col gap-2 landscape:basis-1/2"
-							>
-								<SkillPreviewPanel memberId={previewMemberId} learnedSkills={validCharacter().skills ?? []} />
-							</OverlayScrollbarsComponent>
-						</div>
+						<div class={`Divider landscape:bg-dividing-color flex-none portrait:hidden landscape:h-full landscape:w-px`} />
+						<OverlayScrollbarsComponent
+							element="div"
+							options={{ scrollbars: { autoHide: "scroll" } }}
+							defer
+							class={`MemberStats gap-2 landscape:basis-1/4 bg-brand-color-2nd`}
+							style={{
+								display: isAttrPreviewVisible() ? "flex" : "none"
+							}}
+						>
+							<StatsRenderer data={primaryMember()?.attrs} />
+						</OverlayScrollbarsComponent>
 
+						<div class={`Divider landscape:bg-dividing-color flex-none portrait:hidden landscape:h-full landscape:w-px`} />
+						<OverlayScrollbarsComponent
+							element="div"
+							options={{ scrollbars: { autoHide: "scroll" } }}
+							defer
+							class={`SkillPreview gap-2 landscape:basis-1/4 bg-brand-color-3rd`}
+							style={{
+								display: isSkillPreviewVisible() ? "flex" : "none"
+							}}
+						>
+							<SkillPreviewPanel memberId={previewMemberId} learnedSkills={validCharacter().skills ?? []} />
+						</OverlayScrollbarsComponent>
+
+						{/* 模式切换器 */}
 						<Presence exitBeforeEnter>
 							<Show when={media.width < 1024}>
 								<Motion.div
