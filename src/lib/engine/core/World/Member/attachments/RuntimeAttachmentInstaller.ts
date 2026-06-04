@@ -267,27 +267,40 @@ function installThresholdWatchers(
 	watchers: readonly ThresholdWatcherEffect[],
 	level: number,
 ): void {
+	if (watchers.length === 0) return;
+	if (!member.procBus) {
+		log.warn(
+			`installRuntimeAttachment: ProcBus 未就绪，thresholdWatchers 无法安装 (source=${runtimeAttachmentSourceId(attachment.source)})`,
+		);
+		return;
+	}
+	const sourceId = sourceIdOf(attachment.source);
 	for (const watcher of watchers) {
 		const thresholdValue = evaluateHandlerValue(watcher.threshold, member, level);
+		const direction = watcher.direction ?? "falling";
+		// 阈值穿越降格为 ProcBus 事件源（ADR 0010）：注册被监控点 + 订阅 attr.crossed。
+		member.attributeThresholdSource.register(sourceId, watcher.path, thresholdValue, direction, {
+			fireOnRegister: watcher.fireOnRegister ?? false,
+		});
 		let lastFiredTimeMs = Number.NEGATIVE_INFINITY;
-		member.attributeWatchers.watch(
-			sourceIdOf(attachment.source),
-			watcher.path,
-			thresholdValue,
-			watcher.direction ?? "falling",
-			(ctx) => {
+		member.procBus.subscribeByName(
+			sourceId,
+			["attr.crossed"],
+			(event) => {
+				const p = event.payload as { path?: string; threshold?: number };
+				return p?.path === watcher.path && p?.threshold === thresholdValue;
+			},
+			(event) => {
 				const timeMs = currentTimeMsOf(member);
 				const cooldownMs = watcher.cooldownMs ?? 0;
-				if (cooldownMs > 0 && timeMs - lastFiredTimeMs < cooldownMs) {
-					return;
-				}
+				if (cooldownMs > 0 && timeMs - lastFiredTimeMs < cooldownMs) return;
 				lastFiredTimeMs = timeMs;
+				const dir = (event.payload as { direction?: string }).direction ?? direction;
 				runHandlers(watcher.handlers, member, attachment.source, level, {
 					timeMs,
-					eventName: `threshold:${watcher.path}:${ctx.direction}`,
+					eventName: `threshold:${watcher.path}:${dir}`,
 				});
 			},
-			{ fireOnRegister: watcher.fireOnRegister ?? false },
 		);
 	}
 }
@@ -298,7 +311,7 @@ export function uninstallRuntimeAttachment(member: RuntimeAttachmentMember, sour
 		(overlay) => overlay.sourceId !== sourceId && !overlay.sourceId.startsWith(`${sourceId}.`),
 	);
 	member.procBus?.unsubscribeBySource(sourceId);
-	member.attributeWatchers.unwatchBySource(sourceId);
+	member.attributeThresholdSource.unregisterBySource(sourceId);
 	member.statContainer.removeModifiersBySourceIdPrefix(sourceId);
 }
 

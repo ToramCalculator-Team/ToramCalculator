@@ -718,20 +718,26 @@ export const CommonActionPool = {
 			})
 			.meta({ description: "注册属性阈值 watcher" }),
 		(_context, input, capabilities) => {
-			capabilities.watch(
+			// 阈值穿越降格为 ProcBus 事件源（ADR 0010）：注册被监控点 + 订阅 attr.crossed。
+			capabilities.registerThreshold(input.sourceId, input.path, input.threshold, input.direction, {
+				fireOnRegister: input.fireOnRegister,
+			});
+			capabilities.subscribeByName(
 				input.sourceId,
-				input.path,
-				input.threshold,
-				input.direction,
-				(ctx) => {
+				["attr.crossed"],
+				(event) => {
+					const p = event.payload as { path?: string; threshold?: number };
+					return p?.path === input.path && p?.threshold === input.threshold;
+				},
+				(event) => {
 					if (!input.counterSlot) return;
+					const newValue = (event.payload as { newValue?: number }).newValue ?? 0;
 					capabilities.statContainer.addModifier(input.counterSlot, ModifierType.DYNAMIC_FIXED, 1, {
-						id: `${input.sourceId}.counter.${ctx.newValue}`,
+						id: `${input.sourceId}.counter.${newValue}`,
 						name: "watchThreshold.counter",
 						type: "system",
 					});
 				},
-				{ fireOnRegister: input.fireOnRegister },
 			);
 			return State.SUCCEEDED;
 		},
@@ -745,7 +751,7 @@ export const CommonActionPool = {
 		z.object({ sourceId: z.string() }).meta({ description: "按 sourceId 解绑该来源的所有订阅" }),
 		(_context, input, capabilities) => {
 			capabilities.unsubscribeBySource(input.sourceId);
-			capabilities.unwatchBySource(input.sourceId);
+			capabilities.unregisterThresholdBySource(input.sourceId);
 			capabilities.statContainer.removeModifiersBySourceIdPrefix(input.sourceId);
 			return State.SUCCEEDED;
 		},

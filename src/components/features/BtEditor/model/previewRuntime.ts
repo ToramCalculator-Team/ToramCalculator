@@ -1,7 +1,6 @@
 import type { MemberType } from "@db/schema/enums";
 import { MemberBaseNestedSchema } from "~/lib/engine/core/World/Member/MemberBaseSchema";
 import type { MemberRuntimeServices } from "~/lib/engine/core/World/Member/RuntimeServices";
-import { AttributeWatcherRegistry } from "~/lib/engine/core/World/Member/runtime/AttributeWatcher/AttributeWatcher";
 import { createBtContext } from "~/lib/engine/core/World/Member/runtime/BehaviourTree/BtContextFactory";
 import type {
 	MemberBtCapabilities,
@@ -108,7 +107,6 @@ export const createPreviewBtRuntime = (memberType: MemberType): PreviewBtRuntime
 	};
 
 	const statContainer = new StatContainer<string>(MemberBaseNestedSchema);
-	const attributeWatchers = new AttributeWatcherRegistry<string>(statContainer);
 	const renderState: MemberBtCapabilities<string, MemberFSMEvent>["renderState"] = {};
 	const parallelBts = new Set<string>();
 
@@ -126,9 +124,8 @@ export const createPreviewBtRuntime = (memberType: MemberType): PreviewBtRuntime
 		hasParallelBt: (name) => parallelBts.has(name),
 		subscribeByName: () => 0,
 		unsubscribeBySource: () => undefined,
-		watch: (sourceId, path, threshold, direction, handler, options) =>
-			attributeWatchers.watch(sourceId, path, threshold, direction, handler, options),
-		unwatchBySource: (sourceId) => attributeWatchers.unwatchBySource(sourceId),
+		registerThreshold: () => undefined,
+		unregisterThresholdBySource: () => undefined,
 		notifyDomainEvent: () => undefined,
 		send: () => undefined,
 	};

@@ -345,7 +345,7 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 	 *   构造期的初始计算（0 → 初值）不会被误报。
 	 * - 变更检测发生在属性真正被重算时（getValue / updateDirtyValues）；
 	 *   为让跨阈值触发器即时响应，业务侧（或 Member.tick）应在每帧调用 `flushDirtyValues`。
-	 * - 纯被动机制：数据层不持有业务语义，阈值 / 过滤交给编排层的 `AttributeWatcherRegistry`。
+	 * - 纯被动机制：数据层不持有业务语义，阈值 / 过滤交给编排层的 `AttributeThresholdSource`。
 	 *
 	 * @returns 取消订阅的函数
 	 */

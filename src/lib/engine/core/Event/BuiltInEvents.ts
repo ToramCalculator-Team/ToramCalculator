@@ -55,6 +55,26 @@ export const SkillCastCompletedPayloadSchema = z.object({
 });
 
 /**
+ * 属性阈值穿越事件（ADR 0010：AttributeWatcher 降格为 ProcBus 事件源）。
+ *
+ * 由 AttributeThresholdSource 在监控属性跨越注册阈值的那一刻派发。
+ * 起步阶段是**单一事件**：所有阈值穿越共用本事件名，订阅者在 predicate 里按 `path` +
+ * 阈值过滤（per-path 拆位是文档化的升级路径，见 ADR 0010「未决」节）。
+ */
+export const AttrCrossedPayloadSchema = z.object({
+	/** 被监控的属性路径（如 `hp.current`）。 */
+	path: z.string(),
+	/** 注册的阈值数值。 */
+	threshold: z.number(),
+	/** 穿越前的值。 */
+	oldValue: z.number(),
+	/** 穿越后的值。 */
+	newValue: z.number(),
+	/** 实际穿越方向。 */
+	direction: z.enum(["rising", "falling"]),
+});
+
+/**
  * 引擎启动时注入 EventCatalog 的首批事件集合。
  */
 export const BUILT_IN_EVENTS: readonly EventDefinition[] = [
@@ -77,6 +97,11 @@ export const BUILT_IN_EVENTS: readonly EventDefinition[] = [
 		name: "skill.cast.completed",
 		payloadSchema: SkillCastCompletedPayloadSchema,
 		description: "施法者自身的技能完成事件（供爆能咏咒层累加等消费）",
+	},
+	{
+		name: "attr.crossed",
+		payloadSchema: AttrCrossedPayloadSchema,
+		description: "属性值跨越注册阈值（AttributeThresholdSource 派发，见 ADR 0010）",
 	},
 ] as const;
 

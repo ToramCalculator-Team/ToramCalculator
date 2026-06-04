@@ -36,7 +36,7 @@ export type DataStorages<T extends string> = {
  * 属性变更监听器。
  *
  * 仅当属性"已被观测过"且 `oldValue !== newValue` 时触发。
- * 用于阶段 3 的 `AttributeWatcherRegistry` 做阈值跨线检测；数据层自身不含业务语义。
+ * 用于编排层的 `AttributeThresholdSource` 做阈值跨线检测；数据层自身不含业务语义。
  */
 export type AttributeChangeListener = (oldValue: number, newValue: number, path: string) => void;
 

@@ -4,7 +4,7 @@ import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefiniti
 import type { MemberDomainEvent } from "../../../../types";
 import type { MemberBaseAttrKey } from "../../MemberBaseSchema";
 import type { MemberRuntimeServices } from "../../RuntimeServices";
-import type { WatchDirection, WatcherId, WatchHandler, WatchOptions } from "../AttributeWatcher/AttributeWatcher";
+import type { WatchDirection, WatchOptions } from "../AttributeWatcher/AttributeThresholdSource";
 import type { ProcHandler, ProcPredicate, ProcSubscriptionId } from "../ProcBus/ProcBus";
 import type { StatContainer } from "../StatContainer/StatContainer";
 import type { MemberFSMEvent } from "../StateMachine/types";
@@ -37,10 +37,12 @@ export type BtContext<TExtraAttrKey extends string = string> = MemberSharedRunti
  * MemberSharedRuntime，避免污染 checkpoint 黑板。
  *
  * 能力面收窄约定（见 src/lib/engine/AGENTS.md「通信机制角色」）：
- * - 订阅类能力（subscribeByName / watch / unsubscribeBySource / unwatchBySource）**只供**
- *   CommonActions 里的声明式订阅动作（subscribeStatus / subscribeProc / watchThreshold /
- *   unsubscribeBySource）封装调用。新写的叶子不要直接调它们——要订阅就新增/复用声明式动作，
- *   以免绕过 sourceId 清理约定，泄漏订阅。
+ * - 订阅类能力（subscribeByName / unsubscribeBySource / registerThreshold /
+ *   unregisterThresholdBySource）**只供** CommonActions 里的声明式订阅动作（subscribeStatus /
+ *   subscribeProc / watchThreshold / unsubscribeBySource）封装调用。新写的叶子不要直接调它们——
+ *   要订阅就新增/复用声明式动作，以免绕过 sourceId 清理约定，泄漏订阅。
+ * - 阈值穿越统一走 ProcBus 的 `attr.crossed` 事件（ADR 0010）：registerThreshold 只登记被监控点，
+ *   业务响应通过 subscribeByName(["attr.crossed"]) 订阅，不再有独立的 watch handler 通路。
  * - `notifyDomainEvent` 是「出 UI」通路，当前被 healHp / healMp 等叶子直接调用；这属于
  *   双总线在叶子层的残留，待 ADR（成员内总线统一 emit + DomainEventBus 降为下游投影）消除后收回。
  * - 不提供 `runPipeline`：管线是计算层、由 FSM / DamageResolution 调用；BT 叶子不直接跑管线。
@@ -69,17 +71,20 @@ export interface MemberBtCapabilities<
 	): ProcSubscriptionId;
 	/** @internal 仅供 CommonActions.unsubscribeBySource 封装调用。 */
 	unsubscribeBySource(sourceId: string): void;
-	/** @internal 仅供 CommonActions.watchThreshold 封装调用，叶子勿直接用。 */
-	watch(
+	/**
+	 * @internal 仅供 CommonActions.watchThreshold 封装调用，叶子勿直接用。
+	 * 注册一个被监控的属性阈值点；穿越时由 AttributeThresholdSource 派发 `attr.crossed` 到 ProcBus。
+	 * 业务响应通过 `subscribeByName(["attr.crossed"], ...)` 订阅，不依赖本方法返回值。
+	 */
+	registerThreshold(
 		sourceId: string,
 		path: TExtraAttrKey | MemberBaseAttrKey,
 		threshold: number,
 		direction: WatchDirection,
-		handler: WatchHandler,
 		options?: WatchOptions,
-	): WatcherId;
-	/** @internal 仅供 CommonActions.unsubscribeBySource 封装调用。 */
-	unwatchBySource(sourceId: string): void;
+	): void;
+	/** @internal 仅供 CommonActions.unsubscribeBySource 封装调用：清理该来源的阈值监控点。 */
+	unregisterThresholdBySource(sourceId: string): void;
 	/** 出 UI 投影；双总线残留，待 ADR 消除（见类注释）。 */
 	notifyDomainEvent(event: MemberDomainEvent): void;
 	send(event: TFSMEvent): void;

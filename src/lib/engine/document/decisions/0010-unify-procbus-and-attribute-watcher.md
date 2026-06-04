@@ -1,9 +1,9 @@
 # 0010 - 合并 ProcBus 与 AttributeWatcher 为单一成员内事件总线
 
-- **状态**: Proposed
-- **日期**: 2026-06-05
+- **状态**: Accepted
+- **日期**: 2026-06-05（Accepted：起步方案已落地，Step 3a/3b 完成）
 - **决策层**: 编排层 / 通信
-- **相关代码**: `src/lib/engine/core/World/Member/runtime/ProcBus/ProcBus.ts`、`src/lib/engine/core/World/Member/runtime/AttributeWatcher/AttributeWatcher.ts`、`src/lib/engine/core/World/Member/Member.ts`、`src/lib/engine/core/World/Member/runtime/Agent/CommonActions.ts:617-752`、`src/lib/engine/core/World/Member/attachments/RuntimeAttachmentInstaller.ts:255-293`、`src/lib/engine/core/Event/EventCatalog.ts`、`src/lib/engine/core/Event/BuiltInEvents.ts`
+- **相关代码**: `src/lib/engine/core/World/Member/runtime/ProcBus/ProcBus.ts`、`src/lib/engine/core/World/Member/runtime/AttributeWatcher/AttributeThresholdSource.ts`、`src/lib/engine/core/World/Member/Member.ts`、`src/lib/engine/core/World/Member/runtime/Agent/CommonActions.ts`、`src/lib/engine/core/World/Member/attachments/RuntimeAttachmentInstaller.ts`、`src/lib/engine/core/Event/EventCatalog.ts`、`src/lib/engine/core/Event/BuiltInEvents.ts`
 - **相关 ADR**: 0008（世界可观测属性作为空间介质，受击结算后 emit `damage.received` 到自身 ProcBus）
 
 ## 背景

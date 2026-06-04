@@ -13,7 +13,7 @@ import type { WorldObservable } from "../observable";
 import type { MemberBaseAttrKey } from "./MemberBaseSchema";
 import type { MemberRuntimeServices, MemberTargetResolver, PipelineEventSinkEvent } from "./RuntimeServices";
 import { MemberRuntimeServicesDefaults } from "./RuntimeServices";
-import { AttributeWatcherRegistry } from "./runtime/AttributeWatcher/AttributeWatcher";
+import { AttributeThresholdSource } from "./runtime/AttributeWatcher/AttributeThresholdSource";
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
 import type { MemberBtCapabilities, MemberBtManagerEnv } from "./runtime/BehaviourTree/BtManagerEnv";
 import { ProcBus } from "./runtime/ProcBus/ProcBus";
@@ -77,8 +77,11 @@ export class Member<
 	 * 每成员独立持有，跨成员事件由外部（MemberManager / GameEngine）路由。
 	 */
 	procBus: ProcBus | null = null;
-	/** 属性阈值 watcher 注册表。每成员独立持有；passive 安装时注册，卸载时清理。 */
-	attributeWatchers: AttributeWatcherRegistry<MemberBaseAttrKey | TExtraAttrKey>;
+	/**
+	 * 属性阈值事件源（ADR 0010）：订阅 StatContainer 变更，把阈值穿越派发为 ProcBus 的
+	 * `attr.crossed` 事件；emitter 在 setEventCatalog 接通 ProcBus 后注入。
+	 */
+	attributeThresholdSource: AttributeThresholdSource<MemberBaseAttrKey | TExtraAttrKey>;
 	actor: MemberActor<TFSMEvent, TFSMContext>;
 	private actorStarted = false;
 	data: MemberWithRelations;
@@ -184,8 +187,11 @@ export class Member<
 		this.statContainer = statContainer;
 
 		this.statusStore = new InMemoryStatusInstanceStore(() => this.services.getCurrentTimeMs());
-		// 属性 watcher：依赖 StatContainer.onChange，与 EventCatalog 无关，可立即构造。
-		this.attributeWatchers = new AttributeWatcherRegistry<MemberBaseAttrKey | TExtraAttrKey>(this.statContainer);
+		// 阈值事件源（ADR 0010）：emitter 在 setEventCatalog 接通 ProcBus 后注入，构造期先置空。
+		this.attributeThresholdSource = new AttributeThresholdSource<MemberBaseAttrKey | TExtraAttrKey>(
+			this.statContainer,
+			null,
+		);
 		const btCapabilities = this.createBtCapabilities();
 		// BT gets the checkpointable runtime blackboard plus callable bindings closed over capabilities.
 		this.btManager = new BtManager(this.createBtEnv(btCapabilities), btContextBindings(btCapabilities));
@@ -266,9 +272,9 @@ export class Member<
 			unsubscribeBySource: (sourceId) => {
 				self.procBus?.unsubscribeBySource(sourceId);
 			},
-			watch: (sourceId, path, threshold, direction, handler, options) =>
-				self.attributeWatchers.watch(sourceId, path, threshold, direction, handler, options),
-			unwatchBySource: (sourceId) => self.attributeWatchers.unwatchBySource(sourceId),
+			registerThreshold: (sourceId, path, threshold, direction, options) =>
+				self.attributeThresholdSource.register(sourceId, path, threshold, direction, options),
+			unregisterThresholdBySource: (sourceId) => self.attributeThresholdSource.unregisterBySource(sourceId),
 			notifyDomainEvent: (event) => self.notifyDomainEvent(event),
 			// 不暴露 runPipeline：管线属计算层，由 FSM / DamageResolution 调用；BT 叶子不直接跑管线。
 			send: (event) => self.actor.send(event),
@@ -388,6 +394,7 @@ export class Member<
 			this.procBus = null;
 			this.statusStore.setChangeListener(null);
 			this.services.pipelineEventSink = null;
+			this.attributeThresholdSource.setEmitter(null);
 			return;
 		}
 
@@ -423,6 +430,17 @@ export class Member<
 		this.services.pipelineEventSink = (event: PipelineEventSinkEvent) => {
 			bus.emit(event.name, event.payload, event.timeMs);
 		};
+
+		// 阈值事件源（ADR 0010）：把属性穿越派发为 ProcBus 的 attr.crossed 事件。
+		this.attributeThresholdSource.setEmitter((payload) => {
+			let timeMs = this.runtime.currentTimeMs;
+			try {
+				timeMs = this.services.getCurrentTimeMs();
+			} catch {
+				// 引擎时间服务注入前回退到 runtime 快照值。
+			}
+			bus.emit("attr.crossed", payload, timeMs);
+		});
 	}
 
 	/**
