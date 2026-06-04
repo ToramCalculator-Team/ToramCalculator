@@ -1,5 +1,11 @@
 /**
- * 域事件总线
+ * 域事件总线（成员 → UI 的单向投影）。
+ *
+ * 职责定位（三机制正名之一，见 src/lib/engine/AGENTS.md「通信机制角色」）：
+ * - 本结构是成员**对外**的投影通路：把权威源头产生的 MemberDomainEvent 投影给 UI / 控制器。
+ * - 它是单向出边，**不参与成员内逻辑**（成员内响应是 ProcBus 的职责），
+ *   也**不做跨帧调度**（那是 EventQueue 的职责）。
+ * - 订阅者只有投影器（ControllerEventProjector）这类「观察者」，passive / buff 不应订阅本总线。
  *
  * 职责：
  * - 收集来自权威源头的 MemberDomainEvent

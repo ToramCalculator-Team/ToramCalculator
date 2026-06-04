@@ -130,7 +130,6 @@ export const createPreviewBtRuntime = (memberType: MemberType): PreviewBtRuntime
 			attributeWatchers.watch(sourceId, path, threshold, direction, handler, options),
 		unwatchBySource: (sourceId) => attributeWatchers.unwatchBySource(sourceId),
 		notifyDomainEvent: () => undefined,
-		runPipeline: () => ({}),
 		send: () => undefined,
 	};
 

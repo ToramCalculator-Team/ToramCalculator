@@ -1,5 +1,15 @@
 /**
- * Proc Mask 事件总线。
+ * 成员内响应总线（Proc Mask 事件总线）。
+ *
+ * 职责定位（三机制正名之一，见 src/lib/engine/AGENTS.md「通信机制角色」）：
+ * - 本结构是成员**内部**的发布/订阅总线：passive / buff / registlet 在此声明「XXX 时 YYY」。
+ * - 它是同步的、本成员内的；跨成员事件需外部（MemberManager / GameEngine）路由到各成员 ProcBus。
+ * - 它**不做跨帧调度**（那是 EventQueue 的职责），也**不投影给 UI**（那是 DomainEventBus 的职责）。
+ *
+ * 事件源（喂入本总线的适配器，均为成员内部信号）：
+ * - StatusInstanceStore 变更 → `status.entered` / `status.exited`
+ * - Pipeline `emit` 算子 → 经 `pipelineEventSink` 派发
+ * - （规划中，见 ADR）AttributeWatcher 阈值穿越将降格为事件源，统一走本总线。
  *
  * 每成员持有一份独立 ProcBus。订阅者注册时声明感兴趣的事件 mask（通过 `EventCatalog.getMask`
  * 得到的 bigint）；派发时先做 `event.mask & subscriber.mask` 位与过滤，再调 predicate

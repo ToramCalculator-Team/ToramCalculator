@@ -124,6 +124,7 @@
 | [0007](./0007-next-skill-cost-modifier-contract.md) | 下一技能消耗修正契约 | Proposed | 跨层 |
 | [0008](./0008-world-observable-as-spatial-medium.md) | 世界可观测属性作为空间介质 | Proposed | 跨层 |
 | [0009](./0009-persistent-render-runtime.md) | 常驻渲染运行时作为应用级场景底座 | Proposed | 跨层 |
+| [0010](./0010-unify-procbus-and-attribute-watcher.md) | 合并 ProcBus 与 AttributeWatcher 为单一成员内事件总线 | Proposed | 编排层 / 通信 |
 
 ## 待拆分清单
 
@@ -134,7 +135,7 @@
 - [ ] 跨 actor 数据走快照随事件，撤回 peerStats — §2.1.4
 - [ ] Pipeline + overlay 作为 hook 主通路 — §2.2.1
 - [ ] Pipeline `emit` 算子作为计算层→编排层的主动通知通路 — §2.2.2
-- [ ] 订阅三形式并存（overlay / watcher / proc mask）与选用判据 — §2.3.2
-- [ ] 属性变更委托（watcher）借鉴 GAS OnGameplayAttributeValueChange — §2.3.3
-- [ ] Proc mask 事件总线借鉴 MMORPG aura/proc — §2.3.4
+- [ ] 订阅三形式并存（overlay / watcher / proc mask）与选用判据 — §2.3.2 → 由 ADR 0010 合并为单一总线
+- [x] 属性变更委托（watcher）借鉴 GAS OnGameplayAttributeValueChange — §2.3.3 → ADR 0010（降格为 ProcBus 事件源）
+- [x] Proc mask 事件总线借鉴 MMORPG aura/proc — §2.3.4 → ADR 0010
 - [ ] EventCatalog 作为编排层扁平注册表 — §2.3.5

@@ -1,7 +1,6 @@
 import type { EventObject } from "xstate";
 import type { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
-import type { StageData } from "../../../../Pipeline/stageEnv";
 import type { MemberDomainEvent } from "../../../../types";
 import type { MemberBaseAttrKey } from "../../MemberBaseSchema";
 import type { MemberRuntimeServices } from "../../RuntimeServices";
@@ -36,6 +35,15 @@ export type BtContext<TExtraAttrKey extends string = string> = MemberSharedRunti
  *
  * 设计说明：这些字段是成员组件或外部服务引用，生命周期由 Member 管理；它们不进入
  * MemberSharedRuntime，避免污染 checkpoint 黑板。
+ *
+ * 能力面收窄约定（见 src/lib/engine/AGENTS.md「通信机制角色」）：
+ * - 订阅类能力（subscribeByName / watch / unsubscribeBySource / unwatchBySource）**只供**
+ *   CommonActions 里的声明式订阅动作（subscribeStatus / subscribeProc / watchThreshold /
+ *   unsubscribeBySource）封装调用。新写的叶子不要直接调它们——要订阅就新增/复用声明式动作，
+ *   以免绕过 sourceId 清理约定，泄漏订阅。
+ * - `notifyDomainEvent` 是「出 UI」通路，当前被 healHp / healMp 等叶子直接调用；这属于
+ *   双总线在叶子层的残留，待 ADR（成员内总线统一 emit + DomainEventBus 降为下游投影）消除后收回。
+ * - 不提供 `runPipeline`：管线是计算层、由 FSM / DamageResolution 调用；BT 叶子不直接跑管线。
  */
 export interface MemberBtCapabilities<
 	TExtraAttrKey extends string = never,
@@ -52,13 +60,16 @@ export interface MemberBtCapabilities<
 	): BehaviourTree | undefined;
 	unregisterParallelBt(name: string): void;
 	hasParallelBt(name: string): boolean;
+	/** @internal 仅供 CommonActions.subscribeStatus / subscribeProc 封装调用，叶子勿直接用。 */
 	subscribeByName(
 		sourceId: string,
 		eventNames: readonly string[],
 		predicate: ProcPredicate | null,
 		handler: ProcHandler,
 	): ProcSubscriptionId;
+	/** @internal 仅供 CommonActions.unsubscribeBySource 封装调用。 */
 	unsubscribeBySource(sourceId: string): void;
+	/** @internal 仅供 CommonActions.watchThreshold 封装调用，叶子勿直接用。 */
 	watch(
 		sourceId: string,
 		path: TExtraAttrKey | MemberBaseAttrKey,
@@ -67,9 +78,10 @@ export interface MemberBtCapabilities<
 		handler: WatchHandler,
 		options?: WatchOptions,
 	): WatcherId;
+	/** @internal 仅供 CommonActions.unsubscribeBySource 封装调用。 */
 	unwatchBySource(sourceId: string): void;
+	/** 出 UI 投影；双总线残留，待 ADR 消除（见类注释）。 */
 	notifyDomainEvent(event: MemberDomainEvent): void;
-	runPipeline(pipelineName: string, params?: Record<string, unknown>): StageData;
 	send(event: TFSMEvent): void;
 }
 

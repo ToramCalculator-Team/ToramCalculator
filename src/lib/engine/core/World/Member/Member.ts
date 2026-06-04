@@ -270,7 +270,7 @@ export class Member<
 				self.attributeWatchers.watch(sourceId, path, threshold, direction, handler, options),
 			unwatchBySource: (sourceId) => self.attributeWatchers.unwatchBySource(sourceId),
 			notifyDomainEvent: (event) => self.notifyDomainEvent(event),
-			runPipeline: (pipelineName, params) => self.runPipeline(pipelineName, params),
+			// 不暴露 runPipeline：管线属计算层，由 FSM / DamageResolution 调用；BT 叶子不直接跑管线。
 			send: (event) => self.actor.send(event),
 		};
 	}
