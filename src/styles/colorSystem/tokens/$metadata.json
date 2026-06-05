@@ -1,11 +1,12 @@
 {
   "tokenSetOrder": [
-    "Style/dark",
-    "Style/light",
-    "StateControl/Mode 1",
+    "global",
     "Decorative/Mode 1",
     "Token/v1",
     "Token/v2",
-    "Token/v3"
+    "Token/v3",
+    "Style/light",
+    "Style/dark",
+    "StateControl/Mode 1"
   ]
 }

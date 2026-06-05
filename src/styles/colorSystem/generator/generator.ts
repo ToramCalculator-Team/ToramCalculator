@@ -1,28 +1,37 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+	type ColorSystemId,
+	type ResolvedColorSystem,
+	type ResolvedColorValue,
+	type ThemeMode,
+	type ThemeVersion,
+	themeModes,
+	themeVersions,
+} from "../colorSystemTypes";
 
 /**
  * 独立二维颜色系统生成器。
  *
  * 运行方式：
- * - `pnpm generate:color-system`
+ * - `pnpm generate:colorSystem`
  * - `tsx src/styles/colorSystem/generator/generator.ts`
+ *
+ * 输入来源：
+ * - figma插件：Tokens Studio for Figma
  *
  * 运行逻辑：
  * 1. 读取 `tokens/Token/*.json` 作为 primitive 风格版本层。
  * 2. 读取 `tokens/Style/*.json` 作为 semantic 明暗主题层。
  * 3. 解析 Tokens Studio 的 `{path.to.token}` 引用。
  * 4. 对缺失引用、循环引用、重复规范化键名直接失败，不做 fallback。
- * 5. 生成 TS / CSS / preload 三份产物。
+ * 5. 生成 TS / CSS 两份产物。
  *
  * 输出原则：
  * - 生成器只输出中立颜色投影，不输出 Babylon 这类具体运行时类实例。
  * - 为图形世界额外提供 `rgb01`，让 WebGL / Canvas / Babylon 能直接消费 0..1 浮点颜色。
  */
-
-type ThemeMode = "light" | "dark";
-type ThemeVersion = "v1" | "v2" | "v3";
 
 type TokenLeaf = {
 	path: string[];
@@ -31,23 +40,18 @@ type TokenLeaf = {
 	value: unknown;
 };
 
-type ColorValue = {
-	rgb: [number, number, number];
-	rgb01: [number, number, number];
-	alpha: number;
-	cssRgb: string;
-	hex: string;
+type TokenLeafValue = {
+	type: string;
+	value: unknown;
 };
 
-const THEME_MODES = ["light", "dark"] as const satisfies readonly ThemeMode[];
-const THEME_VERSIONS = ["v1", "v2", "v3"] as const satisfies readonly ThemeVersion[];
+type ColorValue = ResolvedColorValue;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const colorSystemDir = path.resolve(__dirname, "..");
 const tokensDir = path.join(colorSystemDir, "tokens");
 const generatedDir = path.join(colorSystemDir, "generated");
-const publicDir = path.resolve(colorSystemDir, "..", "..", "..", "public");
 
 const outputTsFile = path.join(generatedDir, "colorSystem.generated.ts");
 const outputCssFile = path.join(generatedDir, "colorSystem.generated.css");
@@ -56,8 +60,17 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isTokenLeaf(value: unknown): value is { value: unknown; type: string } {
-	return isPlainObject(value) && "value" in value && "type" in value;
+function readTokenLeaf(value: unknown): TokenLeafValue | null {
+	if (!isPlainObject(value)) return null;
+
+	// Tokens Studio 新导出默认使用 DTCG `$type/$value`；旧导出使用 `type/value`，这里统一成内部 leaf 形状。
+	if (typeof value.$type === "string" && "$value" in value) {
+		return { type: value.$type, value: value.$value };
+	}
+	if (typeof value.type === "string" && "value" in value) {
+		return { type: value.type, value: value.value };
+	}
+	return null;
 }
 
 function walkTokens(node: unknown, prefix: string[] = [], leaves: TokenLeaf[] = []): TokenLeaf[] {
@@ -70,12 +83,13 @@ function walkTokens(node: unknown, prefix: string[] = [], leaves: TokenLeaf[] = 
 			continue;
 		}
 
-		if (isTokenLeaf(value)) {
+		const leaf = readTokenLeaf(value);
+		if (leaf) {
 			leaves.push({
 				path: [...prefix, key],
 				fullPath: [...prefix, key].join("."),
-				type: value.type,
-				value: value.value,
+				type: leaf.type,
+				value: leaf.value,
 			});
 			continue;
 		}
@@ -93,7 +107,7 @@ async function readJsonFile(filePath: string): Promise<unknown> {
 
 function parseReference(raw: string): string | null {
 	const match = raw.trim().match(/^\{(.+)\}$/);
-	return match ? match[1] ?? null : null;
+	return match ? (match[1] ?? null) : null;
 }
 
 function resolveTokenValue(
@@ -123,7 +137,12 @@ function resolveTokenValue(
 
 	for (const fallbackMap of fallbackMaps) {
 		if (fallbackMap.has(reference)) {
-			return resolveTokenValue(reference, fallbackMap, fallbackMaps.filter((item) => item !== fallbackMap), nextStack);
+			return resolveTokenValue(
+				reference,
+				fallbackMap,
+				fallbackMaps.filter((item) => item !== fallbackMap),
+				nextStack,
+			);
 		}
 	}
 
@@ -179,17 +198,53 @@ function toCamelCase(input: string): string {
 	return kebab.replace(/-([a-z\d])/g, (_, char: string) => char.toUpperCase());
 }
 
-function assertUniqueKey(
-	groupName: string,
-	entryLabel: string,
-	key: string,
-	existing: Map<string, string>,
-) {
+function assertUniqueKey(groupName: string, entryLabel: string, key: string, existing: Map<string, string>) {
 	const previous = existing.get(key);
 	if (previous) {
 		throw new Error(`Duplicate ${groupName} key "${key}" from "${previous}" and "${entryLabel}"`);
 	}
 	existing.set(key, entryLabel);
+}
+
+function logGenerate(message: string) {
+	console.log(`[color-system] ${message}`);
+}
+
+function summarizeTokenTypes(leaves: TokenLeaf[]): string {
+	const counts = new Map<string, number>();
+	for (const leaf of leaves) {
+		counts.set(leaf.type, (counts.get(leaf.type) ?? 0) + 1);
+	}
+	return [...counts.entries()]
+		.sort(([left], [right]) => left.localeCompare(right))
+		.map(([type, count]) => `${type}=${count}`)
+		.join(", ");
+}
+
+function assertTokenLeaves(fileLabel: string, leaves: TokenLeaf[]) {
+	if (leaves.length > 0) return;
+	throw new Error(`Token file "${fileLabel}" produced 0 token leaves; check token format and export settings`);
+}
+
+function assertResolvedThemeHasContent(
+	mode: ThemeMode,
+	version: ThemeVersion,
+	primitiveColors: Record<string, ColorValue>,
+	semanticColors: Record<string, ColorValue>,
+	cssVars: Record<string, string>,
+) {
+	if (Object.keys(primitiveColors).length === 0) {
+		throw new Error(`Resolved color system "${mode}.${version}" has 0 primitive colors`);
+	}
+	if (Object.keys(semanticColors).length === 0) {
+		throw new Error(`Resolved color system "${mode}.${version}" has 0 semantic colors`);
+	}
+	if (!semanticColors.primary) {
+		throw new Error(`Resolved color system "${mode}.${version}" is missing semantic color "primary"`);
+	}
+	if (Object.keys(cssVars).length === 0) {
+		throw new Error(`Resolved color system "${mode}.${version}" has 0 CSS variables`);
+	}
 }
 
 function serializeForTs(value: unknown): string {
@@ -217,38 +272,48 @@ async function main() {
 	if (!Array.isArray(metadata.tokenSetOrder)) {
 		throw new Error("Tokens metadata is missing tokenSetOrder");
 	}
+	logGenerate(`metadata tokenSetOrder=${metadata.tokenSetOrder.join(", ")}`);
+
+	const expectedTokenSets = [
+		...themeVersions.map((version) => `Token/${version}`),
+		...themeModes.map((mode) => `Style/${mode}`),
+	];
+	const missingExpectedTokenSets = expectedTokenSets.filter((tokenSet) => !metadata.tokenSetOrder?.includes(tokenSet));
+	if (missingExpectedTokenSets.length > 0) {
+		throw new Error(`Tokens metadata is missing expected token sets: ${missingExpectedTokenSets.join(", ")}`);
+	}
+	const skippedTokenSets = metadata.tokenSetOrder.filter((tokenSet) => !expectedTokenSets.includes(tokenSet));
+	if (skippedTokenSets.length > 0) {
+		logGenerate(`skip token sets outside color system=${skippedTokenSets.join(", ")}`);
+	}
 
 	const primitiveByVersion = new Map<ThemeVersion, Map<string, TokenLeaf>>();
-	for (const version of THEME_VERSIONS) {
+	for (const version of themeVersions) {
 		const tokenFile = path.join(tokensDir, "Token", `${version}.json`);
 		const tokenLeaves = walkTokens(await readJsonFile(tokenFile));
-		primitiveByVersion.set(
-			version,
-			new Map(tokenLeaves.map((leaf) => [leaf.fullPath, leaf])),
-		);
+		assertTokenLeaves(`Token/${version}`, tokenLeaves);
+		logGenerate(`read Token/${version}: tokens=${tokenLeaves.length} (${summarizeTokenTypes(tokenLeaves)})`);
+		primitiveByVersion.set(version, new Map(tokenLeaves.map((leaf) => [leaf.fullPath, leaf])));
 	}
 
 	const styleByMode = new Map<ThemeMode, Map<string, TokenLeaf>>();
-	for (const mode of THEME_MODES) {
+	for (const mode of themeModes) {
 		const styleFile = path.join(tokensDir, "Style", `${mode}.json`);
 		const styleLeaves = walkTokens(await readJsonFile(styleFile));
-		styleByMode.set(
-			mode,
-			new Map(styleLeaves.map((leaf) => [leaf.fullPath, leaf])),
-		);
+		assertTokenLeaves(`Style/${mode}`, styleLeaves);
+		logGenerate(`read Style/${mode}: tokens=${styleLeaves.length} (${summarizeTokenTypes(styleLeaves)})`);
+		styleByMode.set(mode, new Map(styleLeaves.map((leaf) => [leaf.fullPath, leaf])));
 	}
 
-	const resolvedColorSystems: Record<ThemeMode, Record<ThemeVersion, unknown>> = {
-		light: { v1: null, v2: null, v3: null },
-		dark: { v1: null, v2: null, v3: null },
-	};
+	// 类型说明：Object.fromEntries 会丢失 themeModes/themeVersions 的字面量键；运行时键由同一组手写常量生成。
+	const resolvedColorSystems = Object.fromEntries(
+		themeModes.map((mode) => [mode, Object.fromEntries(themeVersions.map((version) => [version, null]))]),
+	) as Record<ThemeMode, Record<ThemeVersion, ResolvedColorSystem | null>>;
 
-	const cssRules: string[] = [
-		"/* This file is auto-generated by src/styles/colorSystem/generator/generator.ts */",
-	];
+	const cssRules: string[] = ["/* This file is auto-generated by src/styles/colorSystem/generator/generator.ts */"];
 
-	for (const mode of THEME_MODES) {
-		for (const version of THEME_VERSIONS) {
+	for (const mode of themeModes) {
+		for (const version of themeVersions) {
 			const primitiveMap = primitiveByVersion.get(version);
 			const styleMap = styleByMode.get(mode);
 			if (!primitiveMap || !styleMap) {
@@ -264,7 +329,9 @@ async function main() {
 
 			const primitiveTsKeyRegistry = new Map<string, string>();
 			const primitiveCssVarRegistry = new Map<string, string>();
-			for (const leaf of [...primitiveMap.values()].sort((left, right) => left.fullPath.localeCompare(right.fullPath))) {
+			for (const leaf of [...primitiveMap.values()].sort((left, right) =>
+				left.fullPath.localeCompare(right.fullPath),
+			)) {
 				if (leaf.type !== "color") {
 					continue;
 				}
@@ -332,9 +399,14 @@ async function main() {
 				...Object.fromEntries(Object.entries(semanticCssVars).sort(([left], [right]) => left.localeCompare(right))),
 				...Object.fromEntries(Object.entries(numberCssVars).sort(([left], [right]) => left.localeCompare(right))),
 			};
+			assertResolvedThemeHasContent(mode, version, primitiveColors, semanticColors, cssVars);
+			logGenerate(
+				`resolve ${mode}.${version}: primitive=${Object.keys(primitiveColors).length}, semantic=${Object.keys(semanticColors).length}, numbers=${Object.keys(numberTokens).length}, cssVars=${Object.keys(cssVars).length}`,
+			);
 
-			const resolvedColorSystem = {
-				id: `${mode}.${version}`,
+			const id: ColorSystemId = `${mode}.${version}`;
+			const resolvedColorSystem: ResolvedColorSystem = {
+				id,
 				mode,
 				version,
 				colors: {
@@ -351,46 +423,22 @@ async function main() {
 				.sort(([left], [right]) => left.localeCompare(right))
 				.map(([name, value]) => `  --${name}: ${value};`);
 
-			cssRules.push(
-				`:root[data-theme-mode="${mode}"][data-theme-version="${version}"] {`,
-				...cssVarLines,
-				"}",
-				"",
-			);
+			cssRules.push(`:root[data-theme-mode="${mode}"][data-theme-version="${version}"] {`, ...cssVarLines, "}", "");
 		}
 	}
 
-	const tsOutput = `/* This file is auto-generated by src/styles/colorSystem/generator/generator.ts */\n` +
-		`export type ThemeMode = "light" | "dark";\n` +
-		`export type ThemeVersion = "v1" | "v2" | "v3";\n` +
-		`export type ColorSystemState = { mode: ThemeMode; version: ThemeVersion };\n` +
-		`export type ResolvedColorValue = {\n` +
-		`  rgb: [number, number, number];\n` +
-		`  rgb01: [number, number, number];\n` +
-		`  alpha: number;\n` +
-		`  cssRgb: string;\n` +
-		`  hex: string;\n` +
-		`};\n` +
-		`export type ResolvedColorSystem = {\n` +
-		`  id: \`\${ThemeMode}.\${ThemeVersion}\`;\n` +
-		`  mode: ThemeMode;\n` +
-		`  version: ThemeVersion;\n` +
-		`  colors: {\n` +
-		`    primitive: Record<string, ResolvedColorValue>;\n` +
-		`    semantic: Record<string, ResolvedColorValue>;\n` +
-		`  };\n` +
-		`  numbers: Record<string, number>;\n` +
-		`  cssVars: Record<string, string>;\n` +
-		`};\n` +
-		`export const availableThemeModes = ${serializeForTs(THEME_MODES)} as const;\n` +
-		`export const availableThemeVersions = ${serializeForTs(THEME_VERSIONS)} as const;\n` +
-		`export const defaultColorSystemState = ${serializeForTs({ mode: "light", version: "v2" })} as const satisfies ColorSystemState;\n` +
+	const tsOutput =
+		`/* This file is auto-generated by src/styles/colorSystem/generator/generator.ts */\n` +
+		`import type { ResolvedColorSystem, ThemeMode, ThemeVersion } from "../colorSystemTypes";\n` +
+		`export type { ColorSystemId, ColorSystemState, ResolvedColorSystem, ResolvedColorValue, ThemeMode, ThemeVersion } from "../colorSystemTypes";\n` +
+		`export { defaultColorSystemState, themeModes as availableThemeModes, themeVersions as availableThemeVersions } from "../colorSystemTypes";\n` +
 		`export const resolvedColorSystems = ${serializeForTs(resolvedColorSystems)} as const satisfies Record<ThemeMode, Record<ThemeVersion, ResolvedColorSystem>>;\n`;
 
 	await mkdir(generatedDir, { recursive: true });
-	await mkdir(publicDir, { recursive: true });
 	await writeFile(outputTsFile, tsOutput, "utf8");
 	await writeFile(outputCssFile, `${cssRules.join("\n").trim()}\n`, "utf8");
+	logGenerate(`write ${path.relative(process.cwd(), outputTsFile)}`);
+	logGenerate(`write ${path.relative(process.cwd(), outputCssFile)}`);
 }
 
 // 脚本入口：任何解析或生成失败都直接让进程以失败状态结束，避免产出半残废结果。

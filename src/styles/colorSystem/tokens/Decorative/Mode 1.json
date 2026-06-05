@@ -1,62 +1,62 @@
 {
   "red": {
-    "value": "#fc482e",
-    "type": "color",
     "$extensions": {
       "com.figma.scopes": [
         "ALL_SCOPES"
       ],
       "com.figma.hiddenFromPublishing": false
-    }
+    },
+    "$type": "color",
+    "$value": "#fc482e"
   },
   "orange": {
-    "value": "#ffa63c",
-    "type": "color",
     "$extensions": {
       "com.figma.scopes": [
         "ALL_SCOPES"
       ],
       "com.figma.hiddenFromPublishing": false
-    }
+    },
+    "$type": "color",
+    "$value": "#ffa63c"
   },
   "yellow": {
-    "value": "#ffcd41",
-    "type": "color",
     "$extensions": {
       "com.figma.scopes": [
         "ALL_SCOPES"
       ],
       "com.figma.hiddenFromPublishing": false
-    }
+    },
+    "$type": "color",
+    "$value": "#ffcd41"
   },
   "green": {
-    "value": "#00ae60",
-    "type": "color",
     "$extensions": {
       "com.figma.scopes": [
         "ALL_SCOPES"
       ],
       "com.figma.hiddenFromPublishing": false
-    }
+    },
+    "$type": "color",
+    "$value": "#00ae60"
   },
   "blue": {
-    "value": "#0099fb",
-    "type": "color",
     "$extensions": {
       "com.figma.scopes": [
         "ALL_SCOPES"
       ],
       "com.figma.hiddenFromPublishing": false
-    }
+    },
+    "$type": "color",
+    "$value": "#0099fb"
   },
   "purple": {
-    "value": "#9a47fa",
-    "type": "color",
     "$extensions": {
       "com.figma.scopes": [
         "ALL_SCOPES"
       ],
       "com.figma.hiddenFromPublishing": false
-    }
+    },
+    "$type": "color",
+    "$value": "#9a47fa"
   }
 }

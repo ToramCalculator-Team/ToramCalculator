@@ -1,146 +1,146 @@
 {
   "Colors": {
     "Accent": {
-      "value": "{white}",
-      "type": "color",
       "$extensions": {
         "com.figma.scopes": [
           "ALL_SCOPES"
         ],
         "com.figma.hiddenFromPublishing": false
-      }
+      },
+      "$type": "color",
+      "$value": "{white}"
     },
     "Primary": {
-      "value": "{grey}",
-      "type": "color",
       "$extensions": {
         "com.figma.scopes": [
           "ALL_SCOPES"
         ],
         "com.figma.hiddenFromPublishing": false
-      }
+      },
+      "$type": "color",
+      "$value": "{grey}"
     },
     "Brand-4th": {
-      "value": "{Brand.navyBlue}",
-      "type": "color",
       "$extensions": {
         "com.figma.scopes": [
           "ALL_SCOPES"
         ],
         "com.figma.hiddenFromPublishing": false
-      }
+      },
+      "$type": "color",
+      "$value": "{Brand.navyBlue}"
     },
     "Brand-1st": {
-      "value": "{Brand.greenBlue}",
-      "type": "color",
       "$extensions": {
         "com.figma.scopes": [
           "ALL_SCOPES"
         ],
         "com.figma.hiddenFromPublishing": false
-      }
+      },
+      "$type": "color",
+      "$value": "{Brand.greenBlue}"
     },
     "Brand-2nd": {
-      "value": "{Brand.yellow}",
-      "type": "color",
       "$extensions": {
         "com.figma.scopes": [
           "ALL_SCOPES"
         ],
         "com.figma.hiddenFromPublishing": false
-      }
+      },
+      "$type": "color",
+      "$value": "{Brand.yellow}"
     },
     "Brand-3rd": {
-      "value": "{Brand.orange}",
-      "type": "color",
       "$extensions": {
         "com.figma.scopes": [
           "ALL_SCOPES"
         ],
         "com.figma.hiddenFromPublishing": false
-      }
+      },
+      "$type": "color",
+      "$value": "{Brand.orange}"
     },
     "Area": {
-      "value": "#ffffff0d",
-      "type": "color",
       "$extensions": {
         "com.figma.scopes": [
           "ALL_SCOPES"
         ],
         "com.figma.hiddenFromPublishing": false
-      }
+      },
+      "$type": "color",
+      "$value": "#ffffff0d"
     },
     "Dividing": {
-      "value": "#ffffff4d",
-      "type": "color",
       "$extensions": {
         "com.figma.scopes": [
           "ALL_SCOPES"
         ],
         "com.figma.hiddenFromPublishing": false
-      }
+      },
+      "$type": "color",
+      "$value": "#ffffff4d"
     },
     "MainContent": {
-      "value": "#ffffffcc",
-      "type": "color",
       "$extensions": {
         "com.figma.scopes": [
           "ALL_SCOPES"
         ],
         "com.figma.hiddenFromPublishing": false
-      }
+      },
+      "$type": "color",
+      "$value": "#ffffffcc"
     },
     "Broundary": {
-      "value": "#ffffff99",
-      "type": "color",
       "$extensions": {
         "com.figma.scopes": [
           "ALL_SCOPES"
         ],
         "com.figma.hiddenFromPublishing": false
-      }
+      },
+      "$type": "color",
+      "$value": "#ffffff99"
     }
   },
   "Sizes": {
     "圆角0": {
-      "value": 0,
-      "type": "number",
       "$extensions": {
         "com.figma.scopes": [
           "ALL_SCOPES"
         ],
         "com.figma.hiddenFromPublishing": false
-      }
+      },
+      "$type": "number",
+      "$value": 0
     },
     "圆角4": {
-      "value": 4,
-      "type": "number",
       "$extensions": {
         "com.figma.scopes": [
           "ALL_SCOPES"
         ],
         "com.figma.hiddenFromPublishing": false
-      }
+      },
+      "$type": "number",
+      "$value": 4
     },
     "圆角12": {
-      "value": 12,
-      "type": "number",
       "$extensions": {
         "com.figma.scopes": [
           "ALL_SCOPES"
         ],
         "com.figma.hiddenFromPublishing": false
-      }
+      },
+      "$type": "number",
+      "$value": 12
     },
     "圆角8": {
-      "value": 8,
-      "type": "number",
       "$extensions": {
         "com.figma.scopes": [
           "ALL_SCOPES"
         ],
         "com.figma.hiddenFromPublishing": false
-      }
+      },
+      "$type": "number",
+      "$value": 8
     }
   }
 }

@@ -1,92 +1,102 @@
 {
   "连击版块可见性": {
-    "value": "false",
-    "type": "boolean",
     "$extensions": {
       "com.figma.scopes": [
         "ALL_SCOPES"
       ],
       "com.figma.hiddenFromPublishing": false
-    }
+    },
+    "$type": "boolean",
+    "$value": "true"
   },
   "能力值版块可见性": {
-    "value": "false",
-    "type": "boolean",
     "$extensions": {
       "com.figma.scopes": [
         "ALL_SCOPES"
       ],
       "com.figma.hiddenFromPublishing": false
-    }
+    },
+    "$type": "boolean",
+    "$value": "false"
   },
   "技能版块可见性": {
-    "value": "false",
-    "type": "boolean",
     "$extensions": {
       "com.figma.scopes": [
         "ALL_SCOPES"
       ],
       "com.figma.hiddenFromPublishing": false
-    }
+    },
+    "$type": "boolean",
+    "$value": "false"
   },
   "装备版块可见性": {
-    "value": "true",
-    "type": "boolean",
     "$extensions": {
       "com.figma.scopes": [
         "ALL_SCOPES"
       ],
       "com.figma.hiddenFromPublishing": false
-    }
+    },
+    "$type": "boolean",
+    "$value": "false"
   },
   "消耗品版块可见性": {
-    "value": "false",
-    "type": "boolean",
     "$extensions": {
       "com.figma.scopes": [
         "ALL_SCOPES"
       ],
       "com.figma.hiddenFromPublishing": false
-    }
+    },
+    "$type": "boolean",
+    "$value": "false"
   },
   "料理版块可见性": {
-    "value": "false",
-    "type": "boolean",
     "$extensions": {
       "com.figma.scopes": [
         "ALL_SCOPES"
       ],
       "com.figma.hiddenFromPublishing": false
-    }
+    },
+    "$type": "boolean",
+    "$value": "false"
   },
   "雷吉斯托环版块可见性": {
-    "value": "false",
-    "type": "boolean",
     "$extensions": {
       "com.figma.scopes": [
         "ALL_SCOPES"
       ],
       "com.figma.hiddenFromPublishing": false
-    }
+    },
+    "$type": "boolean",
+    "$value": "false"
   },
   "基本配置版块可见性": {
-    "value": "false",
-    "type": "boolean",
     "$extensions": {
       "com.figma.scopes": [
         "ALL_SCOPES"
       ],
       "com.figma.hiddenFromPublishing": false
-    }
+    },
+    "$type": "boolean",
+    "$value": "false"
   },
   "是light状态吗": {
-    "value": "true",
-    "type": "boolean",
     "$extensions": {
       "com.figma.scopes": [
         "ALL_SCOPES"
       ],
       "com.figma.hiddenFromPublishing": false
-    }
+    },
+    "$type": "boolean",
+    "$value": "true"
+  },
+  "行为版块可见性": {
+    "$extensions": {
+      "com.figma.scopes": [
+        "ALL_SCOPES"
+      ],
+      "com.figma.hiddenFromPublishing": false
+    },
+    "$type": "boolean",
+    "$value": "false"
   }
 }
