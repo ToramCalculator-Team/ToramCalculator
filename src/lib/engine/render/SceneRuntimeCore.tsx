@@ -484,9 +484,6 @@ export function SceneRuntimeCore(props: {
 				syncThemeMaterials();
 				scene.render();
 			});
-			const handleResize = () => engine?.resize();
-			window.addEventListener("resize", handleResize);
-			onCleanup(() => window.removeEventListener("resize", handleResize));
 			scene.executeWhenReady(() => {
 				if (disposed) return;
 				engine?.resize();

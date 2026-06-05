@@ -2,21 +2,14 @@ import type { MemberSharedRuntime } from "../World/Member/runtime/types";
 
 /**
  * 说明：
- * - env 只读，供“纯计算管线”查询模拟时间/数值/表达式求值等。
+ * - env 只读，供"纯计算管线"查询模拟时间/数值/表达式求值等。
  * - 成员共享 runtime 作为只读快照提供给管线使用。
- * - `emit` 是计算层向编排层的唯一主动通知通路；overlay 可用 `emit` 算子在管线特定阶段
- *   派发事件（如 "last_resistance.triggered"、"damage.received"）。事件真正路由到 ProcBus
- *   由 Member 侧实现（见 `Member.runPipeline` 构造 env 处）。
+ * - 管线是纯计算层：产出数值结果，副作用（事件派发）由编排层（DamageResolution / FSM action /
+ *   Member 成员级订阅）负责，管线本身不再主动派发事件。
  */
 
 /** 管线输入/输出的通用数据载体。 */
 export type StageData = Record<string, unknown>;
-
-/** 管线 `emit` 派发的事件。 */
-export interface PipelineEmittedEvent {
-	readonly name: string;
-	readonly payload: unknown;
-}
 
 /** 管线执行只读环境 */
 export interface StageEnv<TExtraAttrKey extends string = string> {
@@ -39,10 +32,4 @@ export interface StageEnv<TExtraAttrKey extends string = string> {
 	 * 在 `Member.runPipeline` 构造 env 时从 `params.damageTags` 读入。
 	 */
 	readonly damageTags: () => readonly string[];
-
-	/**
-	 * 派发事件到本成员的 ProcBus / 编排层。
-	 * 由管线的 `emit` 算子调用；本帧累积，帧尾统一 flush。
-	 */
-	readonly emit: (eventName: string, payload: unknown) => void;
 }

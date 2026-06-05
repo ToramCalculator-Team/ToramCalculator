@@ -152,7 +152,7 @@ export const initialStore: Store = {
 	},
 	settings: {
 		userInterface: {
-			theme: "dark",
+			theme: "light",
 			themeVersion: "v2",
 			language: "zh-CN",
 			isAnimationEnabled: true,

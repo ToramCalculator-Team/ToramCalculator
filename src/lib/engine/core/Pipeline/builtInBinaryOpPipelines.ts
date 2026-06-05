@@ -41,7 +41,7 @@ const csprRateInstructions: readonly PipelineInstruction[] = [
 export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstruction[]> = {
 	// 见 src/lib/engine/document/decisions/0003-skill-cost-as-pipeline-contract.md
 	// 技能消耗：FSM 预求值 variant 上的 HP/MP 消耗表达式，管线负责给 passive / buff / overlay 留修正锚点。
-	// 输入：input.baseHpCost, input.baseMpCost, input.skillLevel。该管线服务施法前检查，overlay 不应在此 emit。
+	// 输入：input.baseHpCost, input.baseMpCost, input.skillLevel。该管线服务施法前检查，仅做纯数值修正。
 	"skill.cost": [
 		{ target: "baseHpCost", op: "+", a: "input.baseHpCost", b: 0 },
 		{ target: "baseMpCost", op: "+", a: "input.baseMpCost", b: 0 },

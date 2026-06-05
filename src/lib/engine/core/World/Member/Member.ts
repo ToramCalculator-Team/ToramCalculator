@@ -11,7 +11,7 @@ import type { MemberCheckpoint, MemberDomainEvent, SimulationTickContext } from 
 import type { DamageAreaRequest } from "../Area/types";
 import type { WorldObservable } from "../observable";
 import type { MemberBaseAttrKey } from "./MemberBaseSchema";
-import type { MemberRuntimeServices, MemberTargetResolver, PipelineEventSinkEvent } from "./RuntimeServices";
+import type { MemberRuntimeServices, MemberTargetResolver } from "./RuntimeServices";
 import { MemberRuntimeServicesDefaults } from "./RuntimeServices";
 import { AttributeThresholdSource } from "./runtime/AttributeWatcher/AttributeThresholdSource";
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
@@ -385,7 +385,6 @@ export class Member<
 	 * 注入引擎级 EventCatalog，并在首次注入时完成以下装配：
 	 *  1. 创建本成员的 ProcBus（每成员独立）。
 	 *  2. 把 StatusInstanceStore 的变更事件路由到 ProcBus，派发 `status.entered` / `status.exited`。
-	 *  3. 把 Pipeline `emit` 算子的事件 sink 路由到 ProcBus（服务层 `pipelineEventSink`）。
 	 *
 	 * 传入 `null` 表示卸载（成员销毁前清理订阅）。
 	 */
@@ -394,7 +393,6 @@ export class Member<
 			this.procBus?.clear();
 			this.procBus = null;
 			this.statusStore.setChangeListener(null);
-			this.services.pipelineEventSink = null;
 			this.attributeThresholdSource.setEmitter(null);
 			return;
 		}
@@ -428,10 +426,6 @@ export class Member<
 			}
 		});
 
-		this.services.pipelineEventSink = (event: PipelineEventSinkEvent) => {
-			bus.emit(event.name, event.payload, event.timeMs);
-		};
-
 		// 阈值事件源（ADR 0010）：把属性穿越派发为 ProcBus 的 attr.crossed 事件。
 		this.attributeThresholdSource.setEmitter((payload) => {
 			let timeMs = this.runtime.currentTimeMs;
@@ -461,7 +455,6 @@ export class Member<
 	 * - `memberRuntime`：共享 runtime 只读快照。
 	 * - `statusTags()`：本成员 status tag 列表（等价于 `memberRuntime.statusTags`）。
 	 * - `damageTags()`：`params.damageTags` 的只读视图（受击管线调用时传入）。
-	 * - `emit(name, payload)`：管线 `emit` 算子的落点，事件路由给本成员的 pipelineEventSink。
 	 *
 	 * @param pipelineName 管线名称
 	 * @param params 管线输入参数；包含特殊键 `damageTags?: string[]` 用于受击相关管线
@@ -507,14 +500,6 @@ export class Member<
 			memberRuntime: this.runtime,
 			statusTags: () => this.runtime.statusTags,
 			damageTags: () => damageTagsParam,
-			emit: (eventName: string, payload: unknown) => {
-				const sink = this.services.pipelineEventSink;
-				if (!sink) {
-					log.debug(`runPipeline(${pipelineName})：pipelineEventSink 未注入，丢弃事件 ${eventName}`);
-					return;
-				}
-				sink({ name: eventName, payload, timeMs });
-			},
 		};
 
 		const overlays = this.pipelineOverlays;

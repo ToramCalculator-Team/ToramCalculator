@@ -2,16 +2,6 @@ import type { ExpressionContext } from "../../JSProcessor/types";
 import type { MemberDomainEvent } from "../../types";
 import type { DamageAreaRequest } from "../Area/types";
 
-/**
- * 管线 `emit` 算子派发的事件（面向本成员自身的订阅系统）。
- * 与 `MemberDomainEvent`（面向 UI / 控制器）区分：前者是 passive / buff 订阅用的成员内事件。
- */
-export interface PipelineEventSinkEvent {
-	name: string;
-	payload: unknown;
-	timeMs: number;
-}
-
 export type MemberTargetResolver = (sourceMemberId: string, requestedTargetId?: string | null) => string | null;
 
 /**
@@ -42,11 +32,6 @@ export interface MemberRuntimeServices {
 	 * - 这样 BT、日志和后续伤害动作会消费同一个最终 targetId，不再在动作层各自补救。
 	 */
 	targetResolver: MemberTargetResolver | null;
-	/**
-	 * 管线事件汇（Pipeline `emit` 算子派发的事件流入此处）。
-	 * 阶段 3 将被 ProcBus 订阅；在 ProcBus 就位前，默认实现仅记录日志。
-	 */
-	pipelineEventSink: ((event: PipelineEventSinkEvent) => void) | null;
 	/** 引擎级随机数生成器（seeded PRNG），用于命中判定等确定性模拟 */
 	random: () => number;
 }
@@ -71,6 +56,5 @@ export const MemberRuntimeServicesDefaults: MemberRuntimeServices = {
 		throw new Error(`domainEventSender 未注入：${event}`);
 	},
 	targetResolver: null,
-	pipelineEventSink: null,
 	random: Math.random,
 };

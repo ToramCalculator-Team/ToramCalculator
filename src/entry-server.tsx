@@ -1,6 +1,7 @@
 // @refresh reload
 import { createHandler, StartServer } from "@solidjs/start/server";
-import { defaultColorSystemState, resolvedColorSystems } from "~/styles/colorSystem/generated/colorSystem.generated";
+import { defaultColorSystemState } from "~/styles/colorSystem/colorSystemTypes";
+import { resolvedColorSystems } from "~/styles/colorSystem/generated/colorSystem.generated";
 
 const APP_NAME = "托拉姆计算器-ToramCalculator:一个简单的托拉姆数值计算器";
 const APP_DEFAULT_TITLE = "托拉姆计算器-ToramCalculator";
@@ -12,11 +13,9 @@ export default createHandler(() => (
 		document={({ assets, children, scripts }) => {
 			const defaultThemeColor =
 				resolvedColorSystems[defaultColorSystemState.mode][defaultColorSystemState.version].colors.semantic.primary.hex;
-				
+
 			return (
-				<html
-					lang="zh-CN"
-				>
+				<html lang="zh-CN">
 					<head>
 						<meta charset="utf-8" />
 						<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />

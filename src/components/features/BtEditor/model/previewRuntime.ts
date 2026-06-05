@@ -102,7 +102,6 @@ export const createPreviewBtRuntime = (memberType: MemberType): PreviewBtRuntime
 		renderMessageSender: () => undefined,
 		domainEventSender: () => undefined,
 		targetResolver: (_sourceMemberId, requestedTargetId) => requestedTargetId ?? "preview-target",
-		pipelineEventSink: null,
 		random: () => 0.5,
 	};
 

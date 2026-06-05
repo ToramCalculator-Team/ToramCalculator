@@ -8,8 +8,8 @@
  *
  * 事件源（喂入本总线的适配器，均为成员内部信号）：
  * - StatusInstanceStore 变更 → `status.entered` / `status.exited`
- * - Pipeline `emit` 算子 → 经 `pipelineEventSink` 派发
- * - （规划中，见 ADR）AttributeWatcher 阈值穿越将降格为事件源，统一走本总线。
+ * - AttributeThresholdSource 阈值穿越 → `attr.crossed`（ADR 0010）
+ * - 编排层（DamageResolution / FSM action / registlet handler）按需 emit（如 `damage.received` / `damage.fatal`）
  *
  * 每成员持有一份独立 ProcBus。订阅者注册时声明感兴趣的事件 mask（通过 `EventCatalog.getMask`
  * 得到的 bigint）；派发时先做 `event.mask & subscriber.mask` 位与过滤，再调 predicate
