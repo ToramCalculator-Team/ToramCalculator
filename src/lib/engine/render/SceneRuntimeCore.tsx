@@ -124,7 +124,7 @@ class VolumetricFogPluginMaterial extends MaterialPluginBase {
 		return shaderType === "vertex"
 			? null
 			: {
-					CUSTOM_FRAGMENT_BEFORE_FRAGCOLOR: `
+				CUSTOM_FRAGMENT_BEFORE_FRAGCOLOR: `
             #ifdef VOLUMETRIC_FOG
               float volFogRadius2 = volFogRadius * volFogRadius;
               float distCamToPos = distance(vPositionW.xyz, vEyePosition.xyz);
@@ -150,7 +150,7 @@ class VolumetricFogPluginMaterial extends MaterialPluginBase {
               }
             #endif
           `,
-				};
+			};
 	}
 }
 
@@ -368,6 +368,8 @@ export function SceneRuntimeCore(props: {
 		shadowGenerator.bias = 0.000001;
 		shadowGenerator.darkness = 0.5;
 		shadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
+		shadowGenerator.filter = ShadowGenerator.FILTER_PCSS;
+		shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_HIGH;
 
 		const spsPositionL = { x: -7, y: 0, z: -6 };
 		const spsPositionR = { x: 7, y: 0, z: -6 };
@@ -468,8 +470,8 @@ export function SceneRuntimeCore(props: {
 			engine = new Engine(canvas, true);
 			engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
 			engine.loadingScreen = {
-				displayLoadingUI: () => {},
-				hideLoadingUI: () => {},
+				displayLoadingUI: () => { },
+				hideLoadingUI: () => { },
 				loadingUIBackgroundColor: "#000000",
 				loadingUIText: "Loading...",
 			};
@@ -490,6 +492,20 @@ export function SceneRuntimeCore(props: {
 				setReady(true);
 				setMode("idle");
 			});
+
+			// 测试模式配置函数
+			// 开发环境下启动检查器。生产构建会移除这个分支，避免打包 Babylon Inspector。
+			if (import.meta.env.DEV) {
+				await import("@babylonjs/core/Debug/debugLayer");
+				await import("@babylonjs/inspector");
+				const { AxesViewer } = await import("@babylonjs/core/Debug/axesViewer");
+				// 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
+				void scene.debugLayer.show({
+					// embedMode: true
+				});
+				// 世界坐标轴显示
+				new AxesViewer(scene, 0.1);
+			}
 		} catch (error) {
 			log.error("SceneRuntime 初始化失败", error);
 			setMode("error");
@@ -618,9 +634,8 @@ export function SceneRuntimeCore(props: {
 			ref={(element) => {
 				canvas = element;
 			}}
-			class={`fixed left-0 top-0 z-0 h-dvh w-dvw bg-transparent transition-opacity ${
-				ready() ? "opacity-100" : "opacity-0"
-			} ${mode() === "realtime" && cameraInputEnabled() ? "pointer-events-auto" : "pointer-events-none"}`}
+			class={`fixed left-0 top-0 z-0 h-dvh w-dvw bg-transparent transition-opacity ${ready() ? "opacity-100" : "opacity-0"
+				} ${mode() === "realtime" && cameraInputEnabled() ? "pointer-events-auto" : "pointer-events-none"}`}
 		>
 			当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
 		</canvas>

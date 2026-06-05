@@ -4,7 +4,7 @@ import { createEffect, createResource, createSignal, on, onCleanup, onMount, Sho
 import { Motion } from "solid-motionone";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { RealtimeSimulator } from "~/routes/(app)/(features)/simulator/RealtimeSimulator";
-import { store } from "~/store";
+import { store, setStore } from "~/store";
 
 /**
  * 模拟器主页面组件
@@ -14,6 +14,9 @@ export default function SimulatorPage() {
 	const [simulatorData, { refetch: refetchSimulator }] = createResource(() =>
 		selectSimulatorByIdWithRelations(params.simulatorId ?? ""),
 	);
+
+	// 记录用户进入模拟器页面时的3D场景开关状态，以便离开页面时恢复
+	const profile3DBgisOpen = store.settings.userInterface.is3DSceneEnabled;
 
 	// 场景模式：打木桩练习（仅配置自身和地方怪物）、完整场景配置
 	const [mode, setMode] = createSignal<"practice" | "full">("practice");
@@ -35,10 +38,13 @@ export default function SimulatorPage() {
 
 	onMount(() => {
 		console.log(`--Simulator Page Mount`);
+		setStore("settings","userInterface","is3DSceneEnabled", true);
 	});
 
 	onCleanup(() => {
 		console.log(`--Simulator Page Unmount`);
+		// 恢复用户设置的3D场景开关状态（如果之前是开的就继续开，之前是关的就继续关）
+		setStore("settings","userInterface","is3DSceneEnabled", profile3DBgisOpen);
 	});
 
 	return (

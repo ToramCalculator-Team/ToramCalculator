@@ -156,7 +156,7 @@ export const initialStore: Store = {
 			themeVersion: "v2",
 			language: "zh-CN",
 			isAnimationEnabled: true,
-			is3DSceneEnabled: true,
+			is3DSceneEnabled: false,
 		},
 		hasDismissedPWAInstall: false,
 		statusAndSync: {
