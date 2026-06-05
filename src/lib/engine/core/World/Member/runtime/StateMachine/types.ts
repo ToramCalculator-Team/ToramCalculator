@@ -72,6 +72,8 @@ export interface MemberStateMachineEnv<
 	services: MemberRuntimeServices;
 	btManager: BtManager<TExtraAttrKey, TRuntime, TFSMEvent>;
 	notifyDomainEvent(event: MemberDomainEvent): void;
+	/** 派发成员内事件到本成员 ProcBus（供 passive/registlet 响应，ADR-0011）。 */
+	emitProc(eventName: string, payload: unknown): void;
 	runPipeline(pipelineName: string, params?: Record<string, unknown>): StageData;
 	send(event: TFSMEvent): void;
 }

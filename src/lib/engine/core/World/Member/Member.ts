@@ -235,6 +235,7 @@ export class Member<
 				return self.btManager;
 			},
 			notifyDomainEvent: (event) => self.notifyDomainEvent(event),
+			emitProc: (eventName, payload) => self.emitProc(eventName, payload),
 			runPipeline: (pipelineName, params) => self.runPipeline(pipelineName, params),
 			send: (event) => self.actor.send(event),
 		};
@@ -543,6 +544,21 @@ export class Member<
 		if (this.domainEventSender) {
 			this.domainEventSender(event);
 		}
+	}
+
+	/** 派发成员内事件到本成员 ProcBus（供 passive/registlet 响应，ADR-0011）。 */
+	emitProc(eventName: string, payload: unknown): void {
+		if (!this.procBus) {
+			log.warn(`member ${this.name} ProcBus 未就绪，丢弃事件 ${eventName}`);
+			return;
+		}
+		let timeMs = this.runtime.currentTimeMs;
+		try {
+			timeMs = this.services.getCurrentTimeMs();
+		} catch {
+			// 引擎时间服务注入前回退到 runtime 快照值。
+		}
+		this.procBus.emit(eventName, payload, timeMs);
 	}
 
 	tick(tick: SimulationTickContext): void {

@@ -129,6 +129,7 @@ export function resolveDamageAndApply(
 	hpApplyer: (vaule: number) => void,
 	mpApplyer: (vaule: number) => void,
 	notifyDomainEvent: (event: MemberDomainEvent) => void,
+	emitProc: (eventName: string, payload: unknown) => void,
 	runPipeline: (pipelineName: string, params?: Record<string, unknown>) => StageData,
 	evaluator: ((expression: string, context: ExpressionContext) => number | boolean) | null,
 	session: HitSession,
@@ -148,6 +149,17 @@ export function resolveDamageAndApply(
 			memberId: id,
 			damage: 0,
 			hp: session.hpAfter,
+		});
+		// 对内（ProcBus）：受击事实供 passive/registlet 响应（ADR-0011）。
+		// 与上面对外的 notifyDomainEvent(hit) 成对：两者消费方不同，不是冗余双发。
+		emitProc("damage.received", {
+			finalDamage: 0,
+			hit: false,
+			crit: false,
+			isFatal: false,
+			sourceId: req.sourceId,
+			damageTags: req.damageTags,
+			frame: tickIndex,
 		});
 		log.info("未命中");
 		return session;
@@ -229,6 +241,17 @@ export function resolveDamageAndApply(
 		memberId: id,
 		damage: segmentFinalDamage,
 		hp: hpAfter,
+	});
+	// 对内（ProcBus）：受击事实供 passive/registlet 响应（ADR-0011）。
+	// 与上面对外的 notifyDomainEvent(hit) 成对：两者消费方不同，不是冗余双发。
+	emitProc("damage.received", {
+		finalDamage: segmentFinalDamage,
+		hit: true,
+		crit,
+		isFatal,
+		sourceId: req.sourceId,
+		damageTags: req.damageTags,
+		frame: tickIndex,
 	});
 
 	session.baseDamage = baseDamage;

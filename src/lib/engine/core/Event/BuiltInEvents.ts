@@ -89,17 +89,17 @@ export const BUILT_IN_EVENTS: readonly EventDefinition[] = [
 	{
 		name: "status.entered",
 		payloadSchema: StatusEnteredPayloadSchema,
-		description: "状态实例进入（StatusInstanceStore.apply 派发）",
+		description: "状态实例进入，派发到本成员 ProcBus（StatusInstanceStore.apply → Member changeListener，ADR-0011）",
 	},
 	{
 		name: "status.exited",
 		payloadSchema: StatusExitedPayloadSchema,
-		description: "状态实例离开（到期或主动移除）",
+		description: "状态实例离开（到期或主动移除），派发到本成员 ProcBus（ADR-0011）",
 	},
 	{
 		name: "damage.received",
 		payloadSchema: DamageReceivedPayloadSchema,
-		description: "受击管线结算完毕后派发",
+		description: "受击管线结算完毕后派发到本成员 ProcBus（ADR-0011，由 DamageResolution emit）",
 	},
 	{
 		name: "skill.cast.completed",

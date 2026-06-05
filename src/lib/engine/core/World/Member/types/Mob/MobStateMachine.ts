@@ -328,6 +328,7 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 								type: "system",
 							}),
 						env.notifyDomainEvent,
+						env.emitProc,
 						env.runPipeline,
 						env.services.expressionEvaluator,
 						session,
