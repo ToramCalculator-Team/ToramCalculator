@@ -60,8 +60,16 @@ export const SkillCastCompletedPayloadSchema = z.object({
  * 由 AttributeThresholdSource 在监控属性跨越注册阈值的那一刻派发。
  * 起步阶段是**单一事件**：所有阈值穿越共用本事件名，订阅者在 predicate 里按 `path` +
  * 阈值过滤（per-path 拆位是文档化的升级路径，见 ADR 0010「未决」节）。
+ *
+ * payload 携带产生本事件的注册身份（`sourceId` + `registrationId`），使订阅者能在
+ * predicate 里只认自己那一条注册，避免同 `(path, threshold)` 多源订阅时被彼此的跨越
+ * 事件重复 / 错向唤醒（见 ADR 0010「代价」正确性条目）。
  */
 export const AttrCrossedPayloadSchema = z.object({
+	/** 派发本事件的注册来源 id（registlet/buff/passive skill）。 */
+	sourceId: z.string(),
+	/** 派发本事件的注册内部序号（AttributeThresholdSource.register 返回值）。 */
+	registrationId: z.number(),
 	/** 被监控的属性路径（如 `hp.current`）。 */
 	path: z.string(),
 	/** 注册的阈值数值。 */

@@ -238,12 +238,6 @@ export const CommonActionPool = {
 		},
 	),
 
-	/** 计算技能生命周期数据 */
-	prepareSkillLifecycle: defineAction(z.object({}).meta({ description: "计算技能生命周期数据" }), (context, _input) => {
-		log.debug(`👤 [${context.name}] 计算技能生命周期数据`);
-		return State.SUCCEEDED;
-	}),
-
 	/** 单体攻击 */
 	singleAttack: defineAction(commonAttackSchema.meta({ description: "单体攻击" }), (context, input, capabilities) => {
 		log.debug(`👤 [${context.name}] generateSingleAttack`, input);
@@ -719,16 +713,19 @@ export const CommonActionPool = {
 			.meta({ description: "注册属性阈值 watcher" }),
 		(_context, input, capabilities) => {
 			// 阈值穿越降格为 ProcBus 事件源（ADR 0010）：注册被监控点 + 订阅 attr.crossed。
-			capabilities.registerThreshold(input.sourceId, input.path, input.threshold, input.direction, {
-				fireOnRegister: input.fireOnRegister,
-			});
+			// predicate 按 register 返回的 registrationId 精确匹配自己那一条注册，避免同
+			// (path, threshold) 多源订阅时被彼此的跨越事件重复 / 错向唤醒（ADR 0010 问题 A）。
+			const registrationId = capabilities.registerThreshold(
+				input.sourceId,
+				input.path,
+				input.threshold,
+				input.direction,
+				{ fireOnRegister: input.fireOnRegister },
+			);
 			capabilities.subscribeByName(
 				input.sourceId,
 				["attr.crossed"],
-				(event) => {
-					const p = event.payload as { path?: string; threshold?: number };
-					return p?.path === input.path && p?.threshold === input.threshold;
-				},
+				(event) => (event.payload as { registrationId?: number }).registrationId === registrationId,
 				(event) => {
 					if (!input.counterSlot) return;
 					const newValue = (event.payload as { newValue?: number }).newValue ?? 0;

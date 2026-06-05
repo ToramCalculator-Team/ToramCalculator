@@ -4,7 +4,7 @@ import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefiniti
 import type { MemberDomainEvent } from "../../../../types";
 import type { MemberBaseAttrKey } from "../../MemberBaseSchema";
 import type { MemberRuntimeServices } from "../../RuntimeServices";
-import type { WatchDirection, WatchOptions } from "../AttributeWatcher/AttributeThresholdSource";
+import type { RegisterOptions, ThresholdDirection } from "../AttributeWatcher/AttributeThresholdSource";
 import type { ProcHandler, ProcPredicate, ProcSubscriptionId } from "../ProcBus/ProcBus";
 import type { StatContainer } from "../StatContainer/StatContainer";
 import type { MemberFSMEvent } from "../StateMachine/types";
@@ -80,8 +80,8 @@ export interface MemberBtCapabilities<
 		sourceId: string,
 		path: TExtraAttrKey | MemberBaseAttrKey,
 		threshold: number,
-		direction: WatchDirection,
-		options?: WatchOptions,
+		direction: ThresholdDirection,
+		options?: RegisterOptions,
 	): void;
 	/** @internal 仅供 CommonActions.unsubscribeBySource 封装调用：清理该来源的阈值监控点。 */
 	unregisterThresholdBySource(sourceId: string): void;

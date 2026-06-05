@@ -80,6 +80,7 @@ ProcBus 管离散事件，AttributeWatcher 管阈值，各自注册表 / checkpo
 
 1. **放弃阈值判定的最短路径**：现状 watcher handler 直接挂在 `onChange` 上，跨越即调用。改为「onChange → 适配器检测 → emit → 总线 → predicate → handler」多了 emit + 派发两跳。对 HP/MP 这种低频阈值可忽略，但它是真实的间接层增加。
 2. **predicate 扇出（起步方案的已知代价）**：单一 `attr.crossed` 位下，任一被监控属性变化都唤醒全部 `attr.crossed` 订阅者再逐个比 path。当前阈值订阅基数小（少数 passive 的 HP/MP），可接受；基数变大时按「升级路径」拆 per-path bit。
+   > **勘误（见「后续」节）**：本条只把单 bit 的后果当成**性能扇出**估计不足——落地后实测发现它还是一处**正确性**漏洞（同 `(path, threshold)` 多源订阅会重复 / 错向触发）。已修复，详见末尾「## 后续」。
 3. **一次迁移**：`AttributeWatcherRegistry` 的公开 API、`Member.attributeWatchers` 字段、capabilities 的 `watch/unwatchBySource`、installer 的 watcher 分支、checkpoint 的 `attributeWatchers` 段都要改。BtEditor 预览运行时的 mock 也要跟。
 
 什么情况下会后悔：如果实测发现**绝大多数属性都需要阈值监控**，则连 per-path bit 升级路径也救不了——per-path mask 稀疏优势消失、位宽爆炸，此时 C 方案（threshold trigger 直接挂 onChange、完全不进 mask 空间）反而更省。届时需新 ADR 把阈值源从「mask 事件」退回「总线的一类专用 trigger」。当前判断阈值监控是少数 passive 的少数属性（HP/MP 为主），赌它稀疏；起步方案不赌位宽，先零改动跑通。
@@ -117,3 +118,14 @@ ProcBus 管离散事件，AttributeWatcher 管阈值，各自注册表 / checkpo
 - ADR 0006：StatContainer 同帧脏值定点收敛（保证 watcher 回写不自激的前提）。
 - ADR 0008：受击后 emit `damage.received` 到自身 ProcBus（成员内总线的既有事件源先例）。
 - Unreal GAS `OnGameplayAttributeValueChange`：阈值委托的参考实现（现 AttributeWatcher 的借鉴源）。
+
+## 后续
+
+### 复盘：「代价」第 2 条低估为正确性漏洞（2026-06-05，落地后实测）
+
+ADR 的「代价」第 2 条把单 `attr.crossed` 位的后果只估计为**性能扇出**（唤醒全部订阅者再逐个比 path）。落地后用一次性脚本实测，发现它同时是一处**正确性**漏洞：
+
+- **复现**：两个不同 `sourceId` 注册相同 `(path="hp.current", threshold=25, "falling")`，让 HP 跨阈值**一次**，每个 handler 被调用 **2 次**（应各 1 次）。N 个同点订阅放大成 N² 次调用。方向也未复查：`rising` 订阅者会被另一源的 `falling` 跨越错误唤醒。
+- **根因**：适配器每条 `register` 各挂一条 `onChange`，跨越时各自 `emit` 一次；`ProcBus.emit` 全广播；而订阅 predicate 只比 `path + threshold`，**不认产生事件的那条注册、不复查方向**。M 次 emit × N 个命中 predicate = M×N 次。这使本文「决议」与「关键设计点」中「N 个注册 → 各收各的，不丢不错配」的等价性声明**不成立**。
+- **修复（已落地，不改本 ADR 的决议方向）**：采用本 ADR「决议」第 3 条升级路径中预留的「携带注册身份」做法——`attr.crossed` payload 增加 `sourceId` + `registrationId`（`AttributeThresholdSource.register` 的返回值），订阅 predicate 改为只认自己那一条 `registrationId`。重复与错向同时消除（复测 `a=1 b=1 rise=0`）。改动点：`BuiltInEvents.ts`（payload schema）、`AttributeThresholdSource.ts`（emit 带身份）、`CommonActions.ts` 与 `RuntimeAttachmentInstaller.ts`（predicate 匹配 registrationId）。
+- **结论**：B 方案（阈值降格为事件源）方向仍然正确，本次只修了「订阅者如何认领属于自己的那条事件」这一实现细节。per-path bit 升级路径与 EventCatalog 生命周期问题（「未决」节）不受影响，仍未触发。

@@ -124,7 +124,7 @@
 | [0007](./0007-next-skill-cost-modifier-contract.md) | 下一技能消耗修正契约 | Proposed | 跨层 |
 | [0008](./0008-world-observable-as-spatial-medium.md) | 世界可观测属性作为空间介质 | Proposed | 跨层 |
 | [0009](./0009-persistent-render-runtime.md) | 常驻渲染运行时作为应用级场景底座 | Proposed | 跨层 |
-| [0010](./0010-unify-procbus-and-attribute-watcher.md) | 合并 ProcBus 与 AttributeWatcher 为单一成员内事件总线 | Proposed | 编排层 / 通信 |
+| [0010](./0010-unify-procbus-and-attribute-watcher.md) | 合并 ProcBus 与 AttributeWatcher 为单一成员内事件总线 | Accepted | 编排层 / 通信 |
 
 ## 待拆分清单
 

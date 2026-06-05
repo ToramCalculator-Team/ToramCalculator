@@ -279,17 +279,16 @@ function installThresholdWatchers(
 		const thresholdValue = evaluateHandlerValue(watcher.threshold, member, level);
 		const direction = watcher.direction ?? "falling";
 		// 阈值穿越降格为 ProcBus 事件源（ADR 0010）：注册被监控点 + 订阅 attr.crossed。
-		member.attributeThresholdSource.register(sourceId, watcher.path, thresholdValue, direction, {
+		// 按 register 返回的 registrationId 精确匹配，避免同 (path, threshold) 多源订阅
+		// 被彼此跨越事件重复 / 错向唤醒（ADR 0010 问题 A）。
+		const registrationId = member.attributeThresholdSource.register(sourceId, watcher.path, thresholdValue, direction, {
 			fireOnRegister: watcher.fireOnRegister ?? false,
 		});
 		let lastFiredTimeMs = Number.NEGATIVE_INFINITY;
 		member.procBus.subscribeByName(
 			sourceId,
 			["attr.crossed"],
-			(event) => {
-				const p = event.payload as { path?: string; threshold?: number };
-				return p?.path === watcher.path && p?.threshold === thresholdValue;
-			},
+			(event) => (event.payload as { registrationId?: number }).registrationId === registrationId,
 			(event) => {
 				const timeMs = currentTimeMsOf(member);
 				const cooldownMs = watcher.cooldownMs ?? 0;

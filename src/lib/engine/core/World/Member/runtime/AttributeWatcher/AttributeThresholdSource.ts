@@ -17,10 +17,12 @@ import type { StatContainer } from "../StatContainer/StatContainer";
 const log = createLogger("AttrThresholdSource");
 
 /** 阈值穿越方向。 */
-export type WatchDirection = "rising" | "falling" | "both";
+export type ThresholdDirection = "rising" | "falling" | "both";
 
 /** 派发 `attr.crossed` 的回调（由 Member 接到本成员 ProcBus.emit）。 */
 export type AttrCrossedEmitter = (payload: {
+	sourceId: string;
+	registrationId: number;
 	path: string;
 	threshold: number;
 	oldValue: number;
@@ -29,27 +31,19 @@ export type AttrCrossedEmitter = (payload: {
 }) => void;
 
 interface ThresholdEntry {
+	/** 注册内部序号；随 emit payload 传出，供订阅者只认自己那一条注册。 */
+	registrationId: number;
 	sourceId: string;
 	path: string;
 	threshold: number;
-	direction: WatchDirection;
-	/** 上一次观测到的值（注册时采样当前值）。 */
-	lastValue: number;
+	direction: ThresholdDirection;
 	/** StatContainer.onChange 返回的取消函数。 */
 	unsubscribe: () => void;
 }
 
-export interface AttributeThresholdSourceCheckpoint {
-	entries: Array<{ sourceId: string; path: string; threshold: number; direction: WatchDirection }>;
-}
-
-/** 注册时是否在「已在目标侧」时立即派发一次（对齐旧 watcher 的 fireOnRegister）。 */
 export interface RegisterOptions {
 	fireOnRegister?: boolean;
 }
-
-/** @deprecated 兼容别名：等价于 RegisterOptions。供 capabilities 接口复用。 */
-export type WatchOptions = RegisterOptions;
 
 /**
  * 每成员一个实例。`container` 用于读当前值 + 订阅变更；`emit` 把跨越事件送入 ProcBus。
@@ -76,17 +70,17 @@ export class AttributeThresholdSource<TAttrKey extends string = string> {
 		sourceId: string,
 		path: TAttrKey,
 		threshold: number,
-		direction: WatchDirection,
+		direction: ThresholdDirection,
 		options?: RegisterOptions,
 	): number {
 		const id = this.nextId++;
 		const initialValue = this.container.getValue(path);
 		const entry: ThresholdEntry = {
+			registrationId: id,
 			sourceId,
 			path,
 			threshold,
 			direction,
-			lastValue: initialValue,
 			unsubscribe: () => {},
 		};
 		entry.unsubscribe = this.container.onChange(path, (oldValue, newValue) => {
@@ -126,22 +120,10 @@ export class AttributeThresholdSource<TAttrKey extends string = string> {
 		this.entries.clear();
 	}
 
-	captureCheckpoint(): AttributeThresholdSourceCheckpoint {
-		return {
-			entries: Array.from(this.entries.values()).map((e) => ({
-				sourceId: e.sourceId,
-				path: e.path,
-				threshold: e.threshold,
-				direction: e.direction,
-			})),
-		};
-	}
-
 	/** 检测是否跨过阈值；跨过则 emit `attr.crossed` 到 ProcBus。 */
 	private handleChange(entry: ThresholdEntry, oldValue: number, newValue: number): void {
 		if (oldValue === newValue) return;
 		const crossed = this.detectCrossing(oldValue, newValue, entry.threshold, entry.direction);
-		entry.lastValue = newValue;
 		if (!crossed) return;
 		const direction: "rising" | "falling" = newValue > oldValue ? "rising" : "falling";
 		this.fire(entry, oldValue, newValue, direction);
@@ -155,7 +137,7 @@ export class AttributeThresholdSource<TAttrKey extends string = string> {
 		oldValue: number,
 		newValue: number,
 		threshold: number,
-		direction: WatchDirection,
+		direction: ThresholdDirection,
 	): boolean {
 		const fellThrough = oldValue > threshold && newValue <= threshold;
 		const roseThrough = oldValue < threshold && newValue >= threshold;
@@ -180,7 +162,15 @@ export class AttributeThresholdSource<TAttrKey extends string = string> {
 			return;
 		}
 		try {
-			this.emit({ path: entry.path, threshold: entry.threshold, oldValue, newValue, direction });
+			this.emit({
+				sourceId: entry.sourceId,
+				registrationId: entry.registrationId,
+				path: entry.path,
+				threshold: entry.threshold,
+				oldValue,
+				newValue,
+				direction,
+			});
 		} catch (error) {
 			log.error(`attr.crossed emit 抛错 (source=${entry.sourceId}, path=${entry.path})`, error);
 		}
