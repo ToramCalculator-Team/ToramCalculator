@@ -18,7 +18,7 @@ const NEXT_SKILL_COST_SOURCE_ID_PREFIX = "skill.nextCost";
 
 // ─── 事件类型 ───────────────────────────────────────────────────────────────
 
-interface Hp小于0 extends EventObject { type: "Hp小于0" }
+interface 死亡通知 extends EventObject { type: "死亡通知" }
 interface 受到控制 extends EventObject { type: "受到控制" }
 interface 控制结束 extends EventObject { type: "控制结束" }
 interface 复活 extends EventObject { type: "复活" }
@@ -36,7 +36,7 @@ interface 停止 extends EventObject { type: "停止" }
 
 export type PlayerFSMEvent =
 	| MemberFSMEvent
-	| Hp小于0
+	| 死亡通知
 	| 受到控制
 	| 控制结束
 	| 复活
@@ -319,7 +319,7 @@ export const playerFSM = (
 				存活: {
 					initial: "可操作状态",
 					on: {
-						Hp小于0: { target: "死亡" },
+						死亡通知: { target: "死亡" },
 					},
 					states: {
 						可操作状态: {

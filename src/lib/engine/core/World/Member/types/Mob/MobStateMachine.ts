@@ -377,13 +377,6 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 					log.debug(`👹 [${env.name}] 判断是否是是物理伤害`, res);
 					return res;
 				},
-				满足存活条件: ({ context, event }) => {
-					log.debug(`👹 [${env.name}] 满足存活条件`, event);
-					const hp = env.statContainer.getValue("hp.current");
-					const isAlive = hp > 0;
-					context.isAlive = isAlive;
-					return isAlive;
-				},
 			},
 		})
 		.createMachine({
@@ -401,6 +394,9 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 				存活: {
 					initial: "可操作状态",
 					on: {
+						死亡通知: {
+							target: "死亡",
+						},
 						受到攻击: {
 							actions: [{ type: "记录伤害请求" }, { type: "发送命中判定事件给自己" }],
 						},
@@ -457,17 +453,7 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 								type: "发送属性修改事件给自己",
 							},
 						},
-						修改属性: [
-							{
-								target: "存活",
-								guard: {
-									type: "满足存活条件",
-								},
-							},
-							{
-								target: "死亡",
-							},
-						],
+						修改属性: {},
 						修改buff: {},
 					},
 					description: "怪物存活状态，此时可操作且可影响上下文",

@@ -253,6 +253,16 @@ export function resolveDamageAndApply(
 		damageTags: req.damageTags,
 		frame: tickIndex,
 	});
+	// 致死事实（hpAfter<=0）：单独派发，统一驱动 FSM 死亡转换（Member 订阅后 actor.send 死亡通知）
+	// 并供「最后的抵抗」托环消费。仅命中且致死时发；未命中分支 isFatal 恒 false，不发。
+	if (isFatal) {
+		emitProc("damage.fatal", {
+			sourceId: req.sourceId,
+			hpAfter,
+			damageTags: req.damageTags,
+			frame: tickIndex,
+		});
+	}
 
 	session.baseDamage = baseDamage;
 	session.finalDamage = segmentFinalDamage;

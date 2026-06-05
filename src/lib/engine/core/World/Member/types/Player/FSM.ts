@@ -2,7 +2,7 @@ const a = {
   存活: {
     initial: "可操作状态",
     on: {
-      Hp小于0: {
+      死亡通知: {
         target: "死亡",
       },
     },

@@ -442,6 +442,12 @@ export class Member<
 			}
 			bus.emit("attr.crossed", payload, timeMs);
 		});
+
+		// 致死事件（统一死亡转换）：成员级订阅 damage.fatal，转发给 FSM 触发死亡转换。
+		// 订阅无状态，checkpoint restore 后由本方法重新装配；卸载分支已由 procBus.clear() 清理。
+		bus.subscribeByName(`member:${this.id}:death`, ["damage.fatal"], null, (event) => {
+			this.actor.send({ type: "死亡通知", data: event.payload } as TFSMEvent);
+		});
 	}
 
 	/**

@@ -46,6 +46,25 @@ export const DamageReceivedPayloadSchema = z.object({
 	frame: z.number(),
 });
 
+/**
+ * 致死事件（受击结算判定 hpAfter <= 0 的那一刻派发到本成员 ProcBus）。
+ *
+ * 单一事件同时服务两类消费方：
+ *  - Member 成员级订阅它并 `actor.send({type:"死亡通知"})` 驱动 FSM 转入死亡状态；
+ *  - 未来的「最后的抵抗」托环订阅同一事件做封顶 + 延迟死亡。
+ * 不引入平行死亡钩子机制（见「成员动作编排链设计」第三节）。
+ */
+export const DamageFatalPayloadSchema = z.object({
+	/** 致死伤害来源 id。 */
+	sourceId: z.string(),
+	/** 结算后的 HP（恒 <= 0）。 */
+	hpAfter: z.number(),
+	/** 致死伤害归因标签快照。 */
+	damageTags: z.array(z.string()),
+	/** 派发帧号。 */
+	frame: z.number(),
+});
+
 /** 技能咏唱/施展完成事件（施法者自身派发，供爆能咏咒层累加等消费）。 */
 export const SkillCastCompletedPayloadSchema = z.object({
 	skillId: z.string(),
@@ -100,6 +119,11 @@ export const BUILT_IN_EVENTS: readonly EventDefinition[] = [
 		name: "damage.received",
 		payloadSchema: DamageReceivedPayloadSchema,
 		description: "受击管线结算完毕后派发到本成员 ProcBus（ADR-0011，由 DamageResolution emit）",
+	},
+	{
+		name: "damage.fatal",
+		payloadSchema: DamageFatalPayloadSchema,
+		description: "受击结算判定致死（hpAfter<=0）时派发到本成员 ProcBus，驱动 FSM 死亡转换并供最后的抵抗托环消费",
 	},
 	{
 		name: "skill.cast.completed",
