@@ -34,6 +34,8 @@ export type RealtimeSceneConfig = {
 	followEntityId?: string;
 	activeControllerId?: string | null;
 	controllerIds?: string[];
+	/** 主控成员初始位置（由队形纯函数预先算出），用于相机创建时即对准目标，无需等引擎首帧 snapshot。 */
+	initialCameraTarget?: { x: number; y: number; z: number };
 };
 
 export type RealtimeSceneSession = {

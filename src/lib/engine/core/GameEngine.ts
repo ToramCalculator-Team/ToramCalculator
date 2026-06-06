@@ -39,6 +39,7 @@ import type {
 } from "./types";
 import { createRealtimeConfig } from "./types";
 import type { MemberSerializeData } from "./World/Member/Member";
+import { computeMemberFormation } from "./World/Member/memberFormation";
 import type { Player } from "./World/Member/types/Player/Player";
 import {
 	computePlayerSkillLifecycle,
@@ -371,12 +372,15 @@ export class GameEngine {
 		this.world.clear();
 		this.eventQueue.clear();
 
+		// 计算成员初始队形（唯一真相源，与渲染层共用同一纯函数）。
+		const formation = computeMemberFormation(data.simulator.campA, data.simulator.campB);
+
 		// 添加阵营A
 		this.addCamp("campA");
 		data.simulator.campA.forEach((team) => {
 			this.addTeam("campA", team);
 			team.members.forEach((member) => {
-				this.addMember("campA", team.id, member);
+				this.addMember("campA", team.id, member, formation.get(member.id)?.position);
 			});
 		});
 
@@ -385,7 +389,7 @@ export class GameEngine {
 		data.simulator.campB.forEach((team) => {
 			this.addTeam("campB", team);
 			team.members.forEach((member) => {
-				this.addMember("campB", team.id, member);
+				this.addMember("campB", team.id, member, formation.get(member.id)?.position);
 			});
 		});
 
@@ -988,9 +992,9 @@ export class GameEngine {
 	 * @param teamId 队伍ID
 	 * @param memberData 成员数据
 	 */
-	addMember(campId: string, teamId: string, memberData: MemberWithRelations): void {
+	addMember(campId: string, teamId: string, memberData: MemberWithRelations, position?: { x: number; y: number; z: number }): void {
 		// 容器只负责委托，不处理具体创建逻辑
-		this.world.memberManager.createAndRegister(memberData, campId, teamId);
+		this.world.memberManager.createAndRegister(memberData, campId, teamId, position);
 	}
 
 	/**
@@ -1407,6 +1411,7 @@ export class GameEngine {
 				name: member.name,
 				position: member.position,
 				yaw: 0,
+				entityType: member.type === "Mob" ? ("sphere" as const) : ("character" as const),
 				...(animation && { animation }),
 			};
 		});

@@ -219,7 +219,7 @@ export function SceneRuntimeCore(props: {
 	const setCameraInputEnabled = (enabled: boolean) => {
 		if (!canvas || !realtimeCamera) return;
 		if (enabled) {
-			realtimeCamera.attachControl(canvas, false);
+			realtimeCamera.attachControl(canvas, true);
 		} else {
 			realtimeCamera.detachControl();
 		}
@@ -369,7 +369,7 @@ export function SceneRuntimeCore(props: {
 		shadowGenerator.darkness = 0.5;
 		shadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
 		shadowGenerator.filter = ShadowGenerator.FILTER_PCSS;
-		shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_HIGH;
+		shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_LOW;
 
 		const spsPositionL = { x: -7, y: 0, z: -6 };
 		const spsPositionR = { x: 7, y: 0, z: -6 };
@@ -493,19 +493,19 @@ export function SceneRuntimeCore(props: {
 				setMode("idle");
 			});
 
-			// 测试模式配置函数
-			// 开发环境下启动检查器。生产构建会移除这个分支，避免打包 Babylon Inspector。
-			if (import.meta.env.DEV) {
-				await import("@babylonjs/core/Debug/debugLayer");
-				await import("@babylonjs/inspector");
-				const { AxesViewer } = await import("@babylonjs/core/Debug/axesViewer");
-				// 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
-				void scene.debugLayer.show({
-					// embedMode: true
-				});
-				// 世界坐标轴显示
-				new AxesViewer(scene, 0.1);
-			}
+			// // 测试模式配置函数
+			// // 开发环境下启动检查器。生产构建会移除这个分支，避免打包 Babylon Inspector。
+			// if (import.meta.env.DEV) {
+			// 	await import("@babylonjs/core/Debug/debugLayer");
+			// 	await import("@babylonjs/inspector");
+			// 	const { AxesViewer } = await import("@babylonjs/core/Debug/axesViewer");
+			// 	// 是否开启inspector ///////////////////////////////////////////////////////////////////////////////////////////////////
+			// 	void scene.debugLayer.show({
+			// 		// embedMode: true
+			// 	});
+			// 	// 世界坐标轴显示
+			// 	new AxesViewer(scene, 0.1);
+			// }
 		} catch (error) {
 			log.error("SceneRuntime 初始化失败", error);
 			setMode("error");
@@ -530,15 +530,22 @@ export function SceneRuntimeCore(props: {
 			await rendererController.applyRenderSnapshot(renderSnapshot);
 		}
 		rendererCommunication.markRenderSnapshotApplied();
+		const initialTarget = config.initialCameraTarget
+			? new Vector3(config.initialCameraTarget.x, config.initialCameraTarget.y + 1, config.initialCameraTarget.z)
+			: undefined;
 		const thirdPersonSetup = createThirdPersonController(scene, canvas, rendererController, config.followEntityId, {
 			distance: 8,
 			smoothTransition: true,
+			...(initialTarget ? { target: initialTarget } : {}),
 		});
 		realtimeCamera = thirdPersonSetup.camera;
 		thirdPersonController = thirdPersonSetup.controller;
 		realtimeCamera.minZ = 0.1;
 		realtimeCamera.fov = 1;
 		realtimeCamera.wheelDeltaPercentage = 0.05;
+		// 切换为活动相机：babylon 只把鼠标/滚轮输入路由给 scene.activeCamera，
+		// 否则输入仍被初始化时设的 backgroundCamera 吃掉，realtimeCamera 收不到。
+		scene.activeCamera = realtimeCamera;
 		realtimePipeline = new LensRenderingPipeline(
 			"realtime-lens",
 			{
@@ -635,7 +642,7 @@ export function SceneRuntimeCore(props: {
 				canvas = element;
 			}}
 			class={`fixed left-0 top-0 z-0 h-dvh w-dvw bg-transparent transition-opacity ${ready() ? "opacity-100" : "opacity-0"
-				} ${mode() === "realtime" && cameraInputEnabled() ? "pointer-events-auto" : "pointer-events-none"}`}
+				} ${mode() === "realtime" ? "pointer-events-auto" : "pointer-events-none"}`}
 		>
 			当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
 		</canvas>

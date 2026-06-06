@@ -125,6 +125,8 @@ export class ThirdPersonCameraController {
 
 		// 初始化相机位置
 		this.updateCameraAngle();
+		// 立即对准初始 target（如预摆位传入的主控成员位置），避免首帧前停在原点。
+		this.camera.setTarget(this.state.target.clone());
 
 		// 设置无限地面逻辑
 		// this.setupInfiniteGround();
@@ -164,8 +166,26 @@ export class ThirdPersonCameraController {
 			this.updateTransition(deltaTime);
 		}
 
-		// 暂时禁用每帧更新，只在状态改变时更新相机
-		// this.updateCameraPosition(this.state.smoothTransition);
+		// 把 state 应用到真实相机：恢复缺失的跟随与入场动画。
+		this.applyStateToCamera(deltaTime);
+
+	}
+
+	/**
+	 * 把内部 state 应用到真实 ArcRotateCamera。
+	 * - target：代码独占维度（鼠标只改 alpha/beta/radius），每帧朝 state.target 平滑插值，产生跟随与初始入场动画。
+	 * - distance/angle：仅在过渡进行时由代码驱动；过渡结束后交还鼠标控制，避免与用户输入打架。
+	 */
+	private applyStateToCamera(deltaTime: number): void {
+		const lerp = this.state.smoothTransition ? Math.min(1, this.transitionSpeed * deltaTime) : 1;
+		const nextTarget = Vector3.Lerp(this.camera.getTarget(), this.state.target, lerp);
+		this.camera.setTarget(nextTarget);
+
+		if (this.isTransitioning) {
+			this.camera.radius = this.state.distance;
+			this.camera.alpha = this.state.horizontalAngle;
+			this.camera.beta = this.state.verticalAngle;
+		}
 	}
 
 	/** 获取当前相机状态 */
@@ -394,7 +414,14 @@ export function createThirdPersonController(
 
 	// 禁用默认控制
 	camera.setTarget(new Vector3(0, 0, 0));
-	camera.attachControl(canvas, false);
+	// noPreventDefault=true：让 babylon 处理鼠标转向/滚轮缩放后不吞掉事件。
+	camera.attachControl(canvas, true);
+
+	// 同步缩放与俯仰限位到 babylon 相机本身，否则滚轮可把相机拉进目标内部或翻到地下。
+	camera.lowerRadiusLimit = defaultCameraState.minDistance;
+	camera.upperRadiusLimit = defaultCameraState.maxDistance;
+	camera.lowerBetaLimit = defaultCameraState.minVerticalAngle;
+	camera.upperBetaLimit = defaultCameraState.maxVerticalAngle;
 
 	// 创建控制器
 	const controller = new ThirdPersonCameraController(scene, camera, rendererController, {

@@ -211,7 +211,7 @@ worker({
 
 		const syncTable = async (tableName: keyof DB, primaryKey: string[], urlParams?: string) => {
 			const tableParams = urlParams ?? tableName;
-			return pg.electric.syncShapeToTable({
+			const shape = await pg.electric.syncShapeToTable({
 				shape: {
 					url: ELECTRIC_HOST,
 					params: {
@@ -226,6 +226,7 @@ worker({
 					await tx.exec(`DELETE FROM "${tableName}_synced";`);
 				},
 			});
+			return shape;
 		};
 
 		// const userShape = await syncTable('user', ["id"]);

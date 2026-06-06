@@ -11,9 +11,9 @@ import { store, setStore } from "~/store";
  */
 export default function SimulatorPage() {
 	const params = useParams();
-	const [simulatorData, { refetch: refetchSimulator }] = createResource(() =>
-		selectSimulatorByIdWithRelations(params.simulatorId ?? ""),
-	);
+	const [simulatorData, { refetch: refetchSimulator }] = createResource(async () => {
+		return await selectSimulatorByIdWithRelations(params.simulatorId ?? "");
+	});
 
 	// 记录用户进入模拟器页面时的3D场景开关状态，以便离开页面时恢复
 	const profile3DBgisOpen = store.settings.userInterface.is3DSceneEnabled;

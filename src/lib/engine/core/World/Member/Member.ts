@@ -327,6 +327,8 @@ export class Member<
 		this.services.renderMessageSender = renderMessageSender;
 		const timing = this.getRenderCommandTiming();
 
+		// Mob 暂以白色球体渲染（无角色模型）；其余成员走角色模型。
+		const isMob = this.type === "Mob";
 		const spawnCmd = {
 			type: "render:cmd" as const,
 			cmd: {
@@ -334,6 +336,8 @@ export class Member<
 				entityId: this.id,
 				name: this.name,
 				position: this.position,
+				entityType: isMob ? ("sphere" as const) : ("character" as const),
+				...(isMob ? { props: { color: "#ffffff", radius: 0.4 } } : {}),
 				seq: timing.seq,
 				ts: timing.ts,
 			},

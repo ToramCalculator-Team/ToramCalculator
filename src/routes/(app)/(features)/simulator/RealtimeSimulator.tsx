@@ -21,6 +21,7 @@ import { useEngine } from "~/lib/engine/core/thread/EngineContext";
 import { ControllerDomainEventBatchSchema, type EngineTelemetry } from "~/lib/engine/core/thread/protocol";
 import { type ControllerDomainEvent, createRealtimeConfig, type FrameSnapshot } from "~/lib/engine/core/types";
 import type { MemberSerializeData } from "~/lib/engine/core/World/Member/Member";
+import { computeMemberFormation } from "~/lib/engine/core/World/Member/memberFormation";
 import { MemberStatusPanel } from "~/lib/engine/core/World/Member/MemberStatusPanel";
 import { type RealtimeSceneSession, useSceneRuntime } from "~/lib/engine/render/SceneRuntime";
 import { store } from "~/store";
@@ -117,11 +118,16 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 		sceneSession()?.release();
 		setSceneSession(null);
 		try {
+			// 用与引擎相同的纯函数预算主控成员初始位置，让相机创建时即对准目标，无需等引擎首帧 snapshot。
+			const initialCameraTarget = followEntityId
+				? computeMemberFormation(props.simulatorData.campA, props.simulatorData.campB).get(followEntityId)?.position
+				: undefined;
 			const session = await sceneRuntime.acquireRealtimeSession({
 				engine,
 				followEntityId,
 				activeControllerId: controllerId,
 				controllerIds: memberControllers().map((item) => item.id),
+				initialCameraTarget,
 			});
 			if (disposed || requestSeq !== sceneSessionRequestSeq) {
 				session.release();
@@ -186,7 +192,9 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 				primaryMemberId: props.simulatorData.campA[0].members[0].id,
 			},
 		});
+
 		await engine.setRuntimeConfig(createRealtimeConfig());
+
 		await refreshMembers();
 
 		const firstMember = members()[0];
@@ -198,7 +206,7 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 			setActiveControllerId(firstController.id);
 		}
 		setIsInitialized(true);
-		void activateSceneSession(firstController?.id ?? null, firstController?.boundMemberId ?? firstMember?.id);
+		await activateSceneSession(firstController?.id ?? null, firstController?.boundMemberId ?? firstMember?.id);
 
 		const interval = setInterval(() => {
 			const snapshot = engine.lifecycleActor.getSnapshot();

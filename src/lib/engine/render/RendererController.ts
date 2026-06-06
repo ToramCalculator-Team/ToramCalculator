@@ -683,11 +683,14 @@ class CommandHandler {
 		const ts = renderSnapshot.currentTimeMs;
 		for (const member of renderSnapshot.members) {
 			if (!this.entities.has(member.id)) {
+				const isSphere = member.entityType === "sphere";
 				await this.handle({
 					type: "spawn",
 					entityId: member.id,
 					name: member.name,
 					position: member.position,
+					entityType: member.entityType,
+					...(isSphere ? { props: { color: "#ffffff", radius: 0.4 } } : {}),
 					seq,
 					ts,
 				});
@@ -785,6 +788,15 @@ class CommandHandler {
 		}
 
 		const pos = new Vector3(cmd.position.x, cmd.position.y, cmd.position.z);
+
+		// sphere 形态（如 mob）直接走简易球体；character 形态走模型加载，失败回退球体。
+		if (cmd.entityType === "sphere") {
+			const entity = this.factory.createSphere(cmd.entityId, cmd.name, pos, cmd.props);
+			entity.lastSeq = cmd.seq;
+			this.entities.set(cmd.entityId, entity);
+			logger.info(`🎬 球体创建成功(sphere 形态): ${cmd.entityId}`);
+			return;
+		}
 
 		try {
 			logger.info(`🎬 开始创建角色: ${cmd.entityId}`);

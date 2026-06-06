@@ -29,7 +29,7 @@ export default function FunctionPage(props: ParentProps) {
 				animate={{ opacity: [0, 1] }}
 				transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
 				id="mainContent"
-				class={`Content z-40 flex h-full w-full flex-col overflow-hidden ${sceneRuntime.mode() === "realtime" ? "" : "lg:landscape:px-12"}`}
+				class={`Content z-40 flex h-full w-full flex-col overflow-hidden ${sceneRuntime.mode() === "realtime" ? "pointer-events-none" : "lg:landscape:px-12"}`}
 			>
 				{props.children}
 			</Motion.div>

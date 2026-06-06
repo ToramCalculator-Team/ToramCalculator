@@ -15,6 +15,8 @@ export interface SpawnCmd extends CmdBase {
 	type: "spawn";
 	name: string;
 	position: Vec3;
+	/** 渲染形态：character 走模型加载，sphere 走简易球体（如 mob）。默认 character。 */
+	entityType?: "character" | "sphere";
 	props?: {
 		color?: string;
 		radius?: number; // m，默认 0.2（直径 0.4）
@@ -115,6 +117,8 @@ export interface RenderSnapshotMember {
 	name: string;
 	position: Vec3;
 	yaw: number;
+	/** 渲染形态：sphere（如 mob）或 character。缺省按 character 处理。 */
+	entityType?: "character" | "sphere";
 	animation?: { name: string; progress: number };
 }
 
