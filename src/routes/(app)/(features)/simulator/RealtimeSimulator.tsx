@@ -390,25 +390,6 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 		<Presence exitBeforeEnter>
 			<Show
 				when={isInitialized()}
-				fallback={
-					<Motion.div
-						animate={{ opacity: [0, 1] }}
-						exit={{ opacity: [1, 0] }}
-						transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
-						class="AnimationArea fixed inset-0 z-stack flex h-dvh w-dvw items-center justify-center backdrop-blur"
-					>
-						<div id="loadingBox" style={{ transform: "none", position: "relative", left: "unset", bottom: "unset" }}>
-							<div class="Shadow shadow-none">
-								<For each={Array.from({ length: 16 })}>{() => <div class="Circle"></div>}</For>
-							</div>
-							<div id="maskElement2"></div>
-							<div id="maskElement3"></div>
-							<div class="line">
-								<For each={Array.from({ length: 16 })}>{() => <div class="Circle"></div>}</For>
-							</div>
-						</div>
-					</Motion.div>
-				}
 			>
 				<Motion.div
 					animate={{ opacity: [0, 1] }}

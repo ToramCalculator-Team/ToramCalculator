@@ -241,7 +241,7 @@ export default function AppMainContet(props: ParentProps) {
 							<RandomBallBackground />
 							<Motion.div
 								id="AppMainContet"
-								class={`h-full w-full overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
+								class={`fixed left-0 top-0 h-dvh w-dvw overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
 							>
 								{props.children}
 							</Motion.div>

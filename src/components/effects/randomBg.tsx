@@ -48,7 +48,7 @@ export const RandomBallBackground = () => {
 		<Motion.div
 			animate={{ opacity: [0, 1] }}
 			transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 2 : 0 }}
-			class="Background fixed -z-10 h-dvh w-dvw opacity-0"
+			class="Background fixed left-0 top-0 -z-10 h-dvh w-dvw opacity-0"
 			// style={{ "background-image": "url(/app-image/sceneBG.png)"}}
 		>
 			<div class="Balls -z-10">

@@ -8,12 +8,16 @@
 
 import { createId } from "@paralleldrive/cuid2";
 import { createMemo, createSignal, type JSX, onCleanup, onMount } from "solid-js";
+import { type Actor, createActor } from "xstate";
 import type { AbstractEngine, MaterialDefines, Mesh, Nullable, PBRMaterial, SubMesh } from "~/lib/babylon/runtime";
 import {
+	Animation,
 	AppendSceneAsync,
 	ArcRotateCamera,
 	Color3,
 	Color4,
+	CubicEase,
+	EasingFunction,
 	Engine,
 	LensRenderingPipeline,
 	Material,
@@ -36,6 +40,7 @@ import { resolveColorSystem } from "~/styles/colorSystem/colorSystemController";
 import { RendererCommunication } from "./RendererCommunication";
 import { createRendererController } from "./RendererController";
 import type { RendererCmd } from "./RendererProtocol";
+import { createSceneMachine, type SceneMachine, type SceneMachineDeps } from "./sceneStateMachine";
 import type {
 	RealtimeSceneConfig,
 	RealtimeSceneSession,
@@ -45,8 +50,7 @@ import type {
 } from "./SceneRuntime";
 import {
 	type AnyCameraControlCmd,
-	createThirdPersonController,
-	type ThirdPersonCameraController,
+	ThirdPersonCameraController,
 } from "./ThirdPersonCameraController";
 
 const log = createLogger("SceneRuntime");
@@ -192,18 +196,24 @@ export function SceneRuntimeCore(props: {
 	let scene: Scene | undefined;
 	let backgroundRoot: TransformNode | undefined;
 	let realtimeRoot: TransformNode | undefined;
-	let backgroundCamera: ArcRotateCamera | undefined;
-	let realtimeCamera: ArcRotateCamera | undefined;
-	let realtimePipeline: LensRenderingPipeline | undefined;
+	// 单相机：全程唯一相机，观察态静态环绕，实时态由控制器跟随，态间用 babylon 动画补间。
+	let sceneCamera: ArcRotateCamera | undefined;
+	let lensPipeline: LensRenderingPipeline | undefined;
 	let rendererController: ReturnType<typeof createRendererController> | undefined;
 	let rendererCommunication: RendererCommunication | undefined;
 	let thirdPersonController: ThirdPersonCameraController | undefined;
 	let defPBR: PBRMaterial | undefined;
 	let activeSessionId: string | null = null;
 	let _activeControllerId: string | null = null;
+	// 跟随门控：仅 realtime 稳态为 true，控制器 update 才驱动相机；过渡/观察期为 false，避免与动画打架。
+	let followActive = false;
+	let sceneMachineActor: Actor<SceneMachine> | undefined;
 	let disposed = false;
 	let initializationPromise: Promise<void> | undefined;
 	let apiAnnounced = false;
+
+	// 观察位（背景相机初始姿态），过渡动画的"离开终点 / 进入起点"。
+	const OBSERVE_POSE = { alpha: 1.58, beta: 1.6, radius: 3.12, target: new Vector3(0, 0.43, 0) };
 
 	const setMode = (next: SceneRuntimeMode) => {
 		setLocalMode(next);
@@ -217,11 +227,11 @@ export function SceneRuntimeCore(props: {
 	};
 
 	const setCameraInputEnabled = (enabled: boolean) => {
-		if (!canvas || !realtimeCamera) return;
+		if (!canvas || !sceneCamera) return;
 		if (enabled) {
-			realtimeCamera.attachControl(canvas, true);
+			sceneCamera.attachControl(canvas, true);
 		} else {
-			realtimeCamera.detachControl();
+			sceneCamera.detachControl();
 		}
 		setCameraInputEnabledSignal(enabled);
 	};
@@ -277,32 +287,169 @@ export function SceneRuntimeCore(props: {
 		thirdPersonController.handleCameraCommand(command);
 	};
 
-	const releaseRealtimeSession = (sessionId?: string) => {
-		if (sessionId && activeSessionId !== sessionId) return;
-		window.removeEventListener("cameraControl", handleCameraControl as EventListener);
-		rendererCommunication?.dispose();
-		rendererCommunication = undefined;
-		rendererController?.dispose();
-		rendererController = undefined;
-		thirdPersonController?.dispose();
-		thirdPersonController = undefined;
-		realtimePipeline?.dispose();
-		realtimePipeline = undefined;
-		if (realtimeCamera) {
-			realtimeCamera.detachControl();
-			realtimeCamera.dispose();
-			realtimeCamera = undefined;
+	// ─── 单相机过渡动画 ──────────────────────────────────────────────────────────
+	// 进入跟随位的固定角度/距离（与 ThirdPersonCameraController 默认一致）。
+	const FOLLOW_POSE = { alpha: Math.PI / 2, beta: Math.PI / 3, radius: 8 };
+
+	/** 把 sceneCamera 的 alpha/beta/radius/target 用 CubicEase 补间到目标姿态，完成调用 onDone，返回取消函数。 */
+	const animateCameraTo = (
+		dest: { alpha: number; beta: number; radius: number; target: Vector3 },
+		onDone: () => void,
+	): (() => void) => {
+		if (!scene || !sceneCamera) {
+			onDone();
+			return () => {};
 		}
-		activeSessionId = null;
-		_activeControllerId = null;
-		setCameraInputEnabledSignal(false);
-		if (scene && backgroundCamera) {
-			scene.activeCamera = backgroundCamera;
+		const camera = sceneCamera;
+		const animationsEnabled = store.settings.userInterface.isAnimationEnabled;
+		const durationMs = animationsEnabled ? 700 : 0;
+		if (durationMs === 0) {
+			camera.alpha = dest.alpha;
+			camera.beta = dest.beta;
+			camera.radius = dest.radius;
+			camera.setTarget(dest.target.clone());
+			onDone();
+			return () => {};
 		}
-		realtimeRoot?.getChildren().forEach((node) => {
-			node.dispose();
+		const fps = 60;
+		const frames = Math.round((durationMs / 1000) * fps);
+		const ease = new CubicEase();
+		ease.setEasingMode(EasingFunction.EASINGMODE_EASEINOUT);
+
+		const makeScalarAnim = (prop: "alpha" | "beta" | "radius", from: number, to: number) => {
+			const anim = new Animation(`cam-${prop}`, prop, fps, Animation.ANIMATIONTYPE_FLOAT, Animation.ANIMATIONLOOPMODE_CONSTANT);
+			anim.setKeys([
+				{ frame: 0, value: from },
+				{ frame: frames, value: to },
+			]);
+			anim.setEasingFunction(ease);
+			return anim;
+		};
+		const targetAnim = new Animation("cam-target", "target", fps, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CONSTANT);
+		targetAnim.setKeys([
+			{ frame: 0, value: camera.getTarget().clone() },
+			{ frame: frames, value: dest.target.clone() },
+		]);
+		targetAnim.setEasingFunction(ease);
+
+		camera.animations = [
+			makeScalarAnim("alpha", camera.alpha, dest.alpha),
+			makeScalarAnim("beta", camera.beta, dest.beta),
+			makeScalarAnim("radius", camera.radius, dest.radius),
+			targetAnim,
+		];
+		const animatable = scene.beginAnimation(camera, 0, frames, false, 1, () => onDone());
+		return () => {
+			animatable.stop();
+		};
+	};
+
+	// ─── 机器副作用依赖 ──────────────────────────────────────────────────────────
+	const sceneMachineDeps: SceneMachineDeps = {
+		setupRealtimeResources: async (config) => {
+			if (!scene || !canvas) throw new Error("SceneRuntime is not ready");
+			rendererController = createRendererController(scene);
+			rendererCommunication = new RendererCommunication();
+			rendererCommunication.setRenderHandler(handleRenderPayload);
+			rendererCommunication.initialize(config.engine);
+			const renderSnapshot = await config.engine.getRenderSnapshot(true);
+			if (renderSnapshot && rendererController.applyRenderSnapshot) {
+				await rendererController.applyRenderSnapshot(renderSnapshot);
+			}
+			rendererCommunication.markRenderSnapshotApplied();
+			const initialTarget = config.initialCameraTarget
+				? new Vector3(config.initialCameraTarget.x, config.initialCameraTarget.y + 1, config.initialCameraTarget.z)
+				: undefined;
+			// 控制器复用唯一 sceneCamera，不再 new 第二台相机。
+			thirdPersonController = new ThirdPersonCameraController(scene, sceneCamera!, rendererController, {
+				followEntityId: config.followEntityId,
+				distance: FOLLOW_POSE.radius,
+				smoothTransition: true,
+				...(initialTarget ? { target: initialTarget } : {}),
+			});
+			// 控制器构造时会把相机 target 设到成员位；重置回观察位，让"飞入"动画从观察位起步。
+			sceneCamera!.alpha = OBSERVE_POSE.alpha;
+			sceneCamera!.beta = OBSERVE_POSE.beta;
+			sceneCamera!.radius = OBSERVE_POSE.radius;
+			sceneCamera!.setTarget(OBSERVE_POSE.target.clone());
+		},
+		teardownRealtimeResources: () => {
+			window.removeEventListener("cameraControl", handleCameraControl as EventListener);
+			rendererCommunication?.dispose();
+			rendererCommunication = undefined;
+			rendererController?.dispose();
+			rendererController = undefined;
+			thirdPersonController?.dispose();
+			thirdPersonController = undefined;
+			activeSessionId = null;
+			_activeControllerId = null;
+			setCameraInputEnabledSignal(false);
+			realtimeRoot?.getChildren().forEach((node) => {
+				node.dispose();
+			});
+		},
+		runCameraTransition: (direction, config, onDone) => {
+			if (direction === "leave") {
+				return animateCameraTo({ ...OBSERVE_POSE, target: OBSERVE_POSE.target.clone() }, onDone);
+			}
+			// enter：终点 target 取控制器当前 state（含成员位预摆），角度/距离用跟随默认。
+			const followTarget = thirdPersonController?.getCameraState().target ?? OBSERVE_POSE.target;
+			return animateCameraTo({ ...FOLLOW_POSE, target: followTarget.clone() }, onDone);
+		},
+		attachCameraInput: () => setCameraInputEnabled(true),
+		detachCameraInput: () => setCameraInputEnabled(false),
+		startFollow: (config) => {
+			followActive = true;
+			window.addEventListener("cameraControl", handleCameraControl as EventListener);
+			if (config?.followEntityId && thirdPersonController) {
+				thirdPersonController.handleCameraCommand({
+					type: "camera_control",
+					entityId: config.followEntityId,
+					subType: "follow",
+					data: { followEntityId: config.followEntityId },
+					seq: 0,
+					ts: Date.now(),
+				});
+			}
+		},
+		stopFollow: () => {
+			followActive = false;
+		},
+		onError: (error) => log.error("场景实时会话失败", error),
+	};
+
+	// 机器状态 → 对外 SceneRuntimeMode 映射。
+	const modeFromMachineState = (value: string): SceneRuntimeMode => {
+		switch (value) {
+			case "loading":
+				return "loading";
+			case "idle":
+				return "idle";
+			case "preparing":
+			case "entering":
+			case "realtime":
+			case "leaving":
+				// 过渡期对外即视为 realtime，使 UI（Nav 隐藏、pointer-events）与相机动画同步，避免闪烁。
+				return "realtime";
+			case "error":
+				return "error";
+			default:
+				return "idle";
+		}
+	};
+
+	const startSceneMachine = () => {
+		if (sceneMachineActor) {
+			sceneMachineActor.send({ type: "READY" });
+			return;
+		}
+		const machine = createSceneMachine(sceneMachineDeps);
+		sceneMachineActor = createActor(machine);
+		sceneMachineActor.subscribe((snapshot) => {
+			setMode(modeFromMachineState(String(snapshot.value)));
 		});
-		if (!disposed) setMode("idle");
+		sceneMachineActor.start();
+		sceneMachineActor.send({ type: "READY" });
 	};
 
 	const createBaseScene = async () => {
@@ -315,14 +462,21 @@ export function SceneRuntimeCore(props: {
 		scene.clearColor = new Color4(0, 0, 0, 0);
 		scene.ambientColor = themePrimaryColor();
 
-		backgroundCamera = new ArcRotateCamera("backgroundCamera", 1.58, 1.6, 3.12, new Vector3(0, 0.43, 0), scene);
-		backgroundCamera.minZ = 0.1;
-		backgroundCamera.fov = 1;
-		backgroundCamera.wheelDeltaPercentage = 0.05;
-		scene.activeCamera = backgroundCamera;
+		sceneCamera = new ArcRotateCamera(
+			"sceneCamera",
+			OBSERVE_POSE.alpha,
+			OBSERVE_POSE.beta,
+			OBSERVE_POSE.radius,
+			OBSERVE_POSE.target.clone(),
+			scene,
+		);
+		sceneCamera.minZ = 0.1;
+		sceneCamera.fov = 1;
+		sceneCamera.wheelDeltaPercentage = 0.05;
+		scene.activeCamera = sceneCamera;
 
-		new LensRenderingPipeline(
-			"background-lens",
+		lensPipeline = new LensRenderingPipeline(
+			"scene-lens",
 			{
 				edge_blur: 1.0,
 				chromatic_aberration: 1.0,
@@ -337,7 +491,7 @@ export function SceneRuntimeCore(props: {
 			},
 			scene,
 			1.0,
-			[backgroundCamera],
+			[sceneCamera],
 		);
 
 		const mainSpotLight = new SpotLight(
@@ -482,7 +636,8 @@ export function SceneRuntimeCore(props: {
 				if (!scene || !engine) return;
 				const dt = engine.getDeltaTime() / 1000;
 				rendererController?.tick(dt);
-				thirdPersonController?.update(dt);
+				// 仅 realtime 稳态驱动跟随；过渡期相机由 babylon 动画控制，避免两者打架。
+				if (followActive) thirdPersonController?.update(dt);
 				syncThemeMaterials();
 				scene.render();
 			});
@@ -490,7 +645,7 @@ export function SceneRuntimeCore(props: {
 				if (disposed) return;
 				engine?.resize();
 				setReady(true);
-				setMode("idle");
+				startSceneMachine();
 			});
 
 			// // 测试模式配置函数
@@ -508,65 +663,21 @@ export function SceneRuntimeCore(props: {
 			// }
 		} catch (error) {
 			log.error("SceneRuntime 初始化失败", error);
+			sceneMachineActor?.send({ type: "FAIL" });
 			setMode("error");
 		}
 	};
 
 	const acquireRealtimeSession = async (config: RealtimeSceneConfig): Promise<RealtimeSceneSession> => {
 		await initializationPromise;
-		if (!ready() || !scene || !canvas) {
+		if (!ready() || !scene || !canvas || !sceneMachineActor) {
 			throw new Error("SceneRuntime is not ready");
 		}
-		releaseRealtimeSession();
 		const sessionId = createId();
 		activeSessionId = sessionId;
 		_activeControllerId = config.activeControllerId ?? null;
-		rendererController = createRendererController(scene);
-		rendererCommunication = new RendererCommunication();
-		rendererCommunication.setRenderHandler(handleRenderPayload);
-		rendererCommunication.initialize(config.engine);
-		const renderSnapshot = await config.engine.getRenderSnapshot(true);
-		if (renderSnapshot && rendererController.applyRenderSnapshot) {
-			await rendererController.applyRenderSnapshot(renderSnapshot);
-		}
-		rendererCommunication.markRenderSnapshotApplied();
-		const initialTarget = config.initialCameraTarget
-			? new Vector3(config.initialCameraTarget.x, config.initialCameraTarget.y + 1, config.initialCameraTarget.z)
-			: undefined;
-		const thirdPersonSetup = createThirdPersonController(scene, canvas, rendererController, config.followEntityId, {
-			distance: 8,
-			smoothTransition: true,
-			...(initialTarget ? { target: initialTarget } : {}),
-		});
-		realtimeCamera = thirdPersonSetup.camera;
-		thirdPersonController = thirdPersonSetup.controller;
-		realtimeCamera.minZ = 0.1;
-		realtimeCamera.fov = 1;
-		realtimeCamera.wheelDeltaPercentage = 0.05;
-		// 切换为活动相机：babylon 只把鼠标/滚轮输入路由给 scene.activeCamera，
-		// 否则输入仍被初始化时设的 backgroundCamera 吃掉，realtimeCamera 收不到。
-		scene.activeCamera = realtimeCamera;
-		realtimePipeline = new LensRenderingPipeline(
-			"realtime-lens",
-			{
-				edge_blur: 1.0,
-				chromatic_aberration: 1.0,
-				distortion: 0.2,
-				dof_focus_distance: 50,
-				dof_aperture: 0.05,
-				grain_amount: 1.0,
-				dof_pentagon: true,
-				dof_gain: 1.0,
-				dof_threshold: 1.0,
-				dof_darken: 0.125,
-			},
-			scene,
-			1.0,
-			[realtimeCamera],
-		);
-		window.addEventListener("cameraControl", handleCameraControl as EventListener);
-		setCameraInputEnabled(true);
-		setMode("realtime");
+		// 若已有活动会话，先释放（机器从 realtime→leaving→idle 后再接受新 ACQUIRE）。
+		sceneMachineActor.send({ type: "ACQUIRE", config });
 		return {
 			id: sessionId,
 			setFollowTarget: (entityId) => {
@@ -588,7 +699,10 @@ export function SceneRuntimeCore(props: {
 				if (activeSessionId !== sessionId) return;
 				setCameraInputEnabled(enabled);
 			},
-			release: () => releaseRealtimeSession(sessionId),
+			release: () => {
+				if (activeSessionId !== sessionId) return;
+				sceneMachineActor?.send({ type: "RELEASE" });
+			},
 		};
 	};
 
@@ -616,7 +730,11 @@ export function SceneRuntimeCore(props: {
 		dispose: () => {
 			if (disposed) return;
 			disposed = true;
-			releaseRealtimeSession();
+			sceneMachineDeps.teardownRealtimeResources();
+			sceneMachineActor?.stop();
+			sceneMachineActor = undefined;
+			lensPipeline?.dispose();
+			lensPipeline = undefined;
 			scene?.dispose();
 			scene = undefined;
 			engine?.dispose();

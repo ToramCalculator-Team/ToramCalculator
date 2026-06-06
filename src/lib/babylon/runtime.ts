@@ -22,6 +22,7 @@ import "@babylonjs/loaders/glTF/2.0/Extensions/KHR_draco_mesh_compression";
 export { Animation } from "@babylonjs/core/Animations/animation";
 export { AnimationGroup } from "@babylonjs/core/Animations/animationGroup";
 export type { IAnimationKey } from "@babylonjs/core/Animations/animationKey";
+export { CubicEase, EasingFunction } from "@babylonjs/core/Animations/easing";
 export { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
 export { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 export type { AbstractEngine } from "@babylonjs/core/Engines/abstractEngine";

@@ -405,8 +405,8 @@ export function createThirdPersonController(
 	// 创建ArcRotateCamera
 	const camera = new ArcRotateCamera(
 		"thirdPersonCamera",
-		0, // alpha (水平角度)
-		Math.PI / 6, // beta (垂直角度)
+		Math.PI / 2, // alpha (水平角度)
+		Math.PI / 3, // beta (垂直角度)
 		8, // radius (距离)
 		Vector3.Zero(), // target
 		scene,
