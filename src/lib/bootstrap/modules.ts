@@ -63,19 +63,27 @@ const ELECTRIC_SYNC_TABLES: Array<keyof DB> = [
 	"simulator",
 ];
 
-const areAllElectricTablesReady = () =>
-	ELECTRIC_SYNC_TABLES.every((tableName) => store.database.tableSyncState[tableName] === true);
+/**
+ * 设计目标：把“表组是否 ready”的判断从具体页面/模块中抽出来，避免各处重复拼接门控逻辑。
+ * 函数职责：检查传入表集合是否都完成首轮 Electric initial sync。
+ */
+const areElectricTablesReady = (tableNames: Array<keyof DB>) =>
+	tableNames.every((tableName) => store.database.tableSyncState[tableName] === true);
 
-const waitForElectricInitialSync = (): Promise<void> => {
-	if (typeof window === "undefined" || areAllElectricTablesReady()) {
+/**
+ * 设计目标：让依赖少量同步表的启动模块只等待自己的最小数据集合。
+ * 函数职责：监听表组 ready 状态，并在满足条件后销毁独立 Solid root。
+ */
+const waitForElectricTables = (tableNames: Array<keyof DB>): Promise<void> => {
+	if (typeof window === "undefined" || areElectricTablesReady(tableNames)) {
 		return Promise.resolve();
 	}
 
 	return new Promise<void>((resolve) => {
 		createRoot((dispose) => {
-			// 独立 root：只监听到“全表 ready”这一刻就销毁，不污染组件树生命周期。
+			// 独立 root：只监听到“表组 ready”这一刻就销毁，不污染组件树生命周期。
 			createEffect(() => {
-				if (!areAllElectricTablesReady()) {
+				if (!areElectricTablesReady(tableNames)) {
 					return;
 				}
 
@@ -85,6 +93,12 @@ const waitForElectricInitialSync = (): Promise<void> => {
 		});
 	});
 };
+
+/**
+ * 设计目标：保留“全库首轮同步完成”的后台模块语义，服务缓存预热和诊断。
+ * 函数职责：等待 Electric 同步清单中的所有表完成首轮 initial sync。
+ */
+const waitForElectricInitialSync = (): Promise<void> => waitForElectricTables(ELECTRIC_SYNC_TABLES);
 
 export const bootstrapModules: BootstrapModule<unknown>[] = [
 	{
@@ -197,6 +211,8 @@ export const bootstrapModules: BootstrapModule<unknown>[] = [
 		timeout: 60_000,
 		init: async () => {
 			// 职责迁移：本地账号初始化从路由 onMount 收拢到统一启动阶段；本地账号只依赖 schema 已迁移且写入通道已注册。
+			// 设计目的：pgworker 现在只代表本地 schema ready；账号初始化还需要 account 表完成首轮同步。
+			await waitForElectricTables(["account"]);
 			await ensureTemporaryAccount();
 		},
 	},

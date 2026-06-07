@@ -377,7 +377,7 @@ export default function IndexPage() {
 
 				{/* 顶部 */}
 				<div
-					class={`Top flex flex-1 flex-col justify-center overflow-hidden ${context().searchResultOpened ? "p-3" : "p-6"} w-full landscape:mx-auto landscape:max-w-[1536px] landscape:p-3`}
+					class={`Top flex flex-1 flex-col justify-center overflow-hidden ${context().searchResultOpened ? "p-3" : "p-6"} w-full landscape:mx-auto landscape:max-w-384 landscape:p-3`}
 				>
 					{/* 问候语 */}
 					<Presence exitBeforeEnter>
@@ -448,7 +448,7 @@ export default function IndexPage() {
 							</Button>
 						</div>
 						<div
-							class={`SearchBox border-b-none group border-dividing-color focus-within:border-accent-color hover:border-accent-color box-content flex w-full gap-1 p-0.5 duration-700! landscape:border-b-2 landscape:focus-within:px-4 landscape:hover:px-4 ${context().searchResultOpened ? `landscape:basis-full` : `landscape:basis-[426px]`}`}
+							class={`SearchBox border-b-none group border-dividing-color focus-within:border-accent-color hover:border-accent-color box-content flex w-full gap-1 p-0.5 duration-700! landscape:border-b-2 landscape:focus-within:px-4 landscape:hover:px-4 ${context().searchResultOpened ? `landscape:basis-full` : `landscape:basis-106.5`}`}
 						>
 							<input
 								id="searchInput"
@@ -556,7 +556,7 @@ export default function IndexPage() {
 
 															return (
 																<Show when={groupResultValue.length > 0}>
-																	<div class={`ResultGroup flex flex-col gap-[2px]`}>
+																	<div class={`ResultGroup flex flex-col gap-0.5`}>
 																		<Motion.button
 																			onClick={() => {
 																				const newResultListState = [...context().resultListState];
