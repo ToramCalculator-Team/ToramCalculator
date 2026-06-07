@@ -746,13 +746,6 @@ export function createCharacterPageModel(input: {
 				createdByAccountId: null,
 				campA: [teamA],
 				campB: [teamB],
-				statistic: {
-					id: input.previewIds.statisticId,
-					updatedAt: now,
-					createdAt: now,
-					usageTimestamps: [],
-					viewTimestamps: [],
-				},
 			},
 			runtimeSelection: {
 				primaryMemberId: input.previewIds.memberId,

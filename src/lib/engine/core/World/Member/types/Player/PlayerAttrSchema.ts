@@ -1,7 +1,7 @@
 /**
  * 玩家数据配置
  */
-import type { CharacterWithRelations } from "@db/generated/repositories/character";
+import type { EngineCharacter } from "../../../../engineScenarioSchema";
 import type { MainHandType, SubHandType } from "@db/schema/enums";
 import { MemberBaseNestedSchema, MemberBaseStructure } from "../../MemberBaseSchema";
 import type {
@@ -1553,7 +1553,7 @@ export const PlayerAttrNestedSchema: PlayerAttrNestedSchema = {
  * 转换率相关：conversionRate → conv
  * 基础值相关：baseValue → base
  */
-export const PlayerAttrSchemaGenerator = (character: CharacterWithRelations): PlayerAttrNestedSchema => {
+export const PlayerAttrSchemaGenerator = (character: EngineCharacter): PlayerAttrNestedSchema => {
 	if (!character) throw new Error("PlayerAttrSchemaGenerator参数不能为空");
 	const mainWeaponType = (character.weapon?.type ?? "None") as MainHandType;
 	const subWeaponType = (character.subWeapon?.type ?? "None") as SubHandType;

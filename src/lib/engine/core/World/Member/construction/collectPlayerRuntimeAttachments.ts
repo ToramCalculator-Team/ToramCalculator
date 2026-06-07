@@ -1,5 +1,4 @@
-import type { CharacterWithRelations } from "@db/generated/repositories/character";
-import type { MemberWithRelations } from "@db/generated/repositories/member";
+import type { EngineCharacter, EngineMember } from "../../../engineScenarioSchema";
 import { createLogger } from "~/lib/Logger";
 import { BUILT_IN_REGISTLETS_BY_ID, type RegistletRow } from "../attachments/BuiltInRegistlets";
 import type { RuntimeAttachment } from "../attachments/RuntimeAttachment";
@@ -10,7 +9,7 @@ import {
 
 const log = createLogger("PlayerRuntimeAttachments");
 
-type CharacterRegistletWithMaybeTemplate = CharacterWithRelations["registlets"][number] & {
+type CharacterRegistletWithMaybeTemplate = EngineCharacter["registlets"][number] & {
 	template?: Partial<RegistletRow> | null;
 };
 
@@ -40,7 +39,7 @@ function resolveRegistletTemplate(ring: CharacterRegistletWithMaybeTemplate): Re
 	} as RegistletRow;
 }
 
-function collectRegistletAttachments(activeCharacter: CharacterWithRelations): RuntimeAttachment[] {
+function collectRegistletAttachments(activeCharacter: EngineCharacter): RuntimeAttachment[] {
 	const attachments: RuntimeAttachment[] = [];
 	for (const ring of activeCharacter.registlets as CharacterRegistletWithMaybeTemplate[]) {
 		const template = resolveRegistletTemplate(ring);
@@ -87,8 +86,8 @@ function collectRegistletAttachments(activeCharacter: CharacterWithRelations): R
  * - installer 在 MemberManager 注入 EventCatalog / evaluator 后统一安装。
  */
 export function collectPlayerRuntimeAttachments<TAttrKey extends string = string>(
-	activeCharacter: CharacterWithRelations,
-	memberData: MemberWithRelations,
+	activeCharacter: EngineCharacter,
+	memberData: EngineMember,
 ): RuntimeAttachment<TAttrKey>[] {
 	return [
 		...collectPrebattleModifierAttachments<TAttrKey>(memberData, activeCharacter),

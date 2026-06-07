@@ -7,7 +7,7 @@
  * 3. 将成员状态、技能和生命周期控制投影为全屏 HUD
  */
 
-import type { SimulatorWithRelations } from "@db/generated/repositories/simulator";
+import type { EngineSimulator } from "~/lib/engine/core/engineScenarioSchema";
 import { A } from "@solidjs/router";
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
@@ -27,7 +27,7 @@ import { type RealtimeSceneSession, useSceneRuntime } from "~/lib/engine/render/
 import { store } from "~/store";
 
 export interface RealtimeSimulatorProps {
-	simulatorData: SimulatorWithRelations;
+	simulatorData: EngineSimulator;
 }
 
 type ControllerEntry = {

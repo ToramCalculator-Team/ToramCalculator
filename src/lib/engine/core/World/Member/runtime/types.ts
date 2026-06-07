@@ -1,7 +1,4 @@
-import type { CharacterWithRelations } from "@db/generated/repositories/character";
-import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
-import type { MobWithRelations } from "@db/generated/repositories/mob";
-import type { SkillVariantWithRelations } from "@db/generated/repositories/skill_variant";
+import type { EngineCharacter, EngineCharacterSkill, EngineMob, EngineSkillVariant } from "../../../engineScenarioSchema";
 import type { MobAttrKey } from "../types/Mob/MobAttrSchema";
 import type { PlayerAttrKey } from "../types/Player/PlayerAttrSchema";
 
@@ -27,8 +24,8 @@ export interface MemberSharedRuntime<_TExtraAttrKey extends string = never> exte
 	skillCooldowns: number[];
 	/** 当前正在处理的技能（FSM 在"添加待处理技能"时写入，"清空待处理技能"时清空）。 */
 	currentSkill: {
-		data: CharacterSkillWithRelations;
-		activeVariant: SkillVariantWithRelations;
+		data: EngineCharacterSkill;
+		activeVariant: EngineSkillVariant;
 		lifecycle: {
 			/** 当前技能生命周期的四段毫秒；动作总时长由 startup + recovery 派生。 */
 			charging: number;
@@ -38,7 +35,7 @@ export interface MemberSharedRuntime<_TExtraAttrKey extends string = never> exte
 		};
 	} | null;
 	/** 上一次释放的技能，用于连击判定等。 */
-	previousSkill: CharacterSkillWithRelations | null;
+	previousSkill: EngineCharacterSkill | null;
 	/** per-tree 注入的所属技能上下文（注册行为树时由 localContext 提供）。 */
 	skill?: { id: string; lv: number; name: string };
 }
@@ -61,8 +58,8 @@ export const DefaultMemberSharedRuntime: MemberSharedRuntime = {
 /** Player 专用 runtime 扩展。 */
 export interface PlayerRuntime extends MemberSharedRuntime<PlayerAttrKey> {
 	type: "Player";
-	skillList: CharacterSkillWithRelations[];
-	data: CharacterWithRelations | null;
+	skillList: EngineCharacterSkill[];
+	data: EngineCharacter | null;
 }
 export const PlayerRuntimeDefaults: PlayerRuntime = {
 	...DefaultMemberSharedRuntime,
@@ -74,8 +71,8 @@ export const PlayerRuntimeDefaults: PlayerRuntime = {
 /** Mob 专用 runtime 扩展。 */
 export interface MobRuntime extends MemberSharedRuntime<MobAttrKey> {
 	type: "Mob";
-	skillList: CharacterSkillWithRelations[];
-	data: MobWithRelations | null;
+	skillList: EngineCharacterSkill[];
+	data: EngineMob | null;
 }
 export const MobRuntimeDefaults: MobRuntime = {
 	...DefaultMemberSharedRuntime,

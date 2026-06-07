@@ -1,4 +1,4 @@
-import type { MemberWithRelations } from "@db/generated/repositories/member";
+import type { EngineMember } from "../../../../engineScenarioSchema";
 import type { MemberBTTree } from "@db/schema/jsons";
 import { Member } from "../../Member";
 import { MemberRuntimeServicesDefaults } from "../../RuntimeServices";
@@ -14,7 +14,7 @@ export type MobAttrKey = ExtractAttrPaths<ReturnType<typeof MobAttrSchema>>;
 
 export class Mob extends Member<MobAttrKey, MobFSMEvent, MobFSMContext, MobRuntime> {
 	constructor(
-		memberData: MemberWithRelations,
+		memberData: EngineMember,
 		campId: string,
 		teamId: string,
 		position?: { x: number; y: number; z: number },
@@ -62,7 +62,7 @@ export class Mob extends Member<MobAttrKey, MobFSMEvent, MobFSMContext, MobRunti
 	}
 
 	/** 收集 Mob 行为树声明的持久化属性槽，保证 BT 变量随 StatContainer checkpoint。 */
-	private static collectAttributeSlots(memberData: MemberWithRelations): SlotDeclaration[] {
+	private static collectAttributeSlots(memberData: EngineMember): SlotDeclaration[] {
 		const slots: SlotDeclaration[] = [];
 		if (memberData.mob) {
 			Mob.collectBtAttributeSlots(slots, memberData.mob.actions);

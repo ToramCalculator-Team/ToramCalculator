@@ -1,4 +1,4 @@
-import type { MemberWithRelations } from "@db/generated/repositories/member";
+import type { EngineMember } from "../engineScenarioSchema";
 import { createLogger } from "~/lib/Logger";
 import type { WorkerMessageEvent } from "~/lib/WorkerPool/type";
 import { type PoolConfig, WorkerPool, type WorkerWrapper } from "~/lib/WorkerPool/WorkerPool";
@@ -170,7 +170,7 @@ export class SimulatorPool extends WorkerPool<SimulatorTaskTypeMapKey, Simulator
 		return { success: result.success, error: result.error };
 	}
 
-	async patchMember(memberId: string, memberData: MemberWithRelations): Promise<{ success: boolean; error?: string }> {
+	async patchMember(memberId: string, memberData: EngineMember): Promise<{ success: boolean; error?: string }> {
 		const rpc: EngineRPC = { type: "patch_member", memberId, memberData };
 		const result = await this.executeTask("engine_rpc", rpc, "high");
 		return { success: result.success, error: result.error };

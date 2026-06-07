@@ -1,5 +1,4 @@
-import type { MemberWithRelations } from "@db/generated/repositories/member";
-import type { TeamWithRelations } from "@db/generated/repositories/team";
+import type { EngineMember, EngineTeam } from "./engineScenarioSchema";
 import { createId } from "@paralleldrive/cuid2";
 import { type Actor, createActor } from "xstate";
 import { createLogger } from "~/lib/Logger";
@@ -981,7 +980,7 @@ export class GameEngine {
 	 * @param campId 阵营ID
 	 * @param teamData 队伍数据
 	 */
-	addTeam(campId: string, teamData: TeamWithRelations): void {
+	addTeam(campId: string, teamData: EngineTeam): void {
 		this.world.memberManager.addTeam(campId, teamData);
 	}
 
@@ -992,7 +991,7 @@ export class GameEngine {
 	 * @param teamId 队伍ID
 	 * @param memberData 成员数据
 	 */
-	addMember(campId: string, teamId: string, memberData: MemberWithRelations, position?: { x: number; y: number; z: number }): void {
+	addMember(campId: string, teamId: string, memberData: EngineMember, position?: { x: number; y: number; z: number }): void {
 		// 容器只负责委托，不处理具体创建逻辑
 		this.world.memberManager.createAndRegister(memberData, campId, teamId, position);
 	}
@@ -1003,7 +1002,7 @@ export class GameEngine {
 	 * 替换过程保留 memberId 和主控目标，避免相机跟随在同一成员热替换时短暂切到 null。
 	 * 仅在 idle / ready 状态下允许操作。
 	 */
-	patchMemberConfig(memberId: string, newData: MemberWithRelations): boolean {
+	patchMemberConfig(memberId: string, newData: EngineMember): boolean {
 		if (this.runState === "running" || this.runState === "paused") {
 			log.warn("GameEngine: 运行中无法 patchMemberConfig，请先 stop");
 			return false;
@@ -1030,7 +1029,7 @@ export class GameEngine {
 	/**
 	 * 同步更新存储的场景数据中对应成员，确保 reset 后使用最新配置。
 	 */
-	private patchInitializationData(memberId: string, newData: MemberWithRelations): void {
+	private patchInitializationData(memberId: string, newData: EngineMember): void {
 		if (!this.scenarioData) return;
 
 		for (const camp of [this.scenarioData.simulator.campA, this.scenarioData.simulator.campB]) {

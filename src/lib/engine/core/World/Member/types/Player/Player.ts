@@ -1,5 +1,4 @@
-import type { CharacterWithRelations } from "@db/generated/repositories/character";
-import type { MemberWithRelations } from "@db/generated/repositories/member";
+import type { EngineCharacter, EngineMember } from "../../../../engineScenarioSchema";
 import type { MemberBTTree } from "@db/schema/jsons";
 import { createLogger } from "~/lib/Logger";
 import type { RuntimeAttachment } from "../../attachments/RuntimeAttachment";
@@ -19,11 +18,11 @@ import { selectPlayerSkillVariant } from "./skillLifecycle";
 const log = createLogger("Player");
 
 export class Player extends Member<PlayerAttrKey, PlayerFSMEvent, PlayerFSMContext, PlayerRuntime> {
-	activeCharacter: CharacterWithRelations;
+	activeCharacter: EngineCharacter;
 	private readonly runtimeAttachments: RuntimeAttachment<PlayerAttrKey>[];
 
 	constructor(
-		memberData: MemberWithRelations,
+		memberData: EngineMember,
 		campId: string,
 		teamId: string,
 		position?: { x: number; y: number; z: number },
@@ -138,8 +137,8 @@ export class Player extends Member<PlayerAttrKey, PlayerFSMEvent, PlayerFSMConte
 	 * 技能自定义槽使用 `skill.<id>.<field>` / `passive.<id>.<field>` / `buff.<id>.<field>`。
 	 */
 	private static collectAttributeSlots(
-		activeCharacter: CharacterWithRelations,
-		_memberData: MemberWithRelations,
+		activeCharacter: EngineCharacter,
+		_memberData: EngineMember,
 		runtimeAttachments: readonly RuntimeAttachment[],
 	): SlotDeclaration[] {
 		const slots: SlotDeclaration[] = collectAttachmentSlots(runtimeAttachments);

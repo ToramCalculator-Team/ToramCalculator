@@ -1,5 +1,4 @@
-import type { CharacterWithRelations } from "@db/generated/repositories/character";
-import type { MemberWithRelations } from "@db/generated/repositories/member";
+import type { EngineCharacter, EngineMember } from "../../../../engineScenarioSchema";
 import * as Enums from "@db/schema/enums";
 import type { RuntimeAttachment } from "../../attachments/RuntimeAttachment";
 import {
@@ -110,8 +109,8 @@ function formatRootedPathFromCharacter(segments: string[]): string {
  * - 被动技能模板下的 `logic: string[]` 与 `modifiers: string[]`
  */
 function collectPrebattleAttachmentModifiers<TAttrKey extends string>(
-	memberData: MemberWithRelations,
-	activeCharacter?: CharacterWithRelations | null,
+	memberData: EngineMember,
+	activeCharacter?: EngineCharacter | null,
 ) {
 	const character = activeCharacter ?? memberData.player?.characters?.[0] ?? null;
 	const all: {
@@ -205,8 +204,8 @@ function collectPrebattleAttachmentModifiers<TAttrKey extends string>(
  * - installer 统一写入 StatContainer，避免 Player 构造函数直接修改运行时组件。
  */
 export function collectPrebattleModifierAttachments<TAttrKey extends string>(
-	memberData: MemberWithRelations,
-	activeCharacter?: CharacterWithRelations | null,
+	memberData: EngineMember,
+	activeCharacter?: EngineCharacter | null,
 ): RuntimeAttachment<TAttrKey>[] {
 	type MutableModifierAttachment = RuntimeAttachment<TAttrKey> & {
 		modifiers: {

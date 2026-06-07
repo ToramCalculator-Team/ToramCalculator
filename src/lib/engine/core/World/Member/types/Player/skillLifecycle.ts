@@ -1,6 +1,5 @@
-import type { CharacterWithRelations } from "@db/generated/repositories/character";
-import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
-import type { SkillVariantWithRelations } from "@db/generated/repositories/skill_variant";
+import type { EngineCharacter, EngineCharacterSkill, EngineSkillVariant } from "../../../../engineScenarioSchema";
+
 import type { ExpressionContext } from "~/lib/engine/core/JSProcessor/types";
 import type { StageData } from "~/lib/engine/core/Pipeline/stageEnv";
 
@@ -50,9 +49,9 @@ export const EMPTY_PLAYER_SKILL_LIFECYCLE_MS: PlayerSkillLifecycle = {
 };
 
 export function selectPlayerSkillVariant(
-	skill: CharacterSkillWithRelations,
-	character: CharacterWithRelations | null,
-): SkillVariantWithRelations | undefined {
+	skill: EngineCharacterSkill,
+	character: EngineCharacter | null,
+): EngineSkillVariant | undefined {
 	if (character === null) return undefined;
 	return skill.template?.variants.find((variant) => {
 		const weaponCondition =

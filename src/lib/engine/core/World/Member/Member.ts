@@ -1,4 +1,4 @@
-import type { MemberWithRelations } from "@db/generated/repositories/member";
+import type { EngineMember } from "../../engineScenarioSchema";
 import type { MemberType } from "@db/schema/enums";
 import { createActor } from "xstate";
 import { createLogger } from "~/lib/Logger";
@@ -84,7 +84,7 @@ export class Member<
 	attributeThresholdSource: AttributeThresholdSource<MemberBaseAttrKey | TExtraAttrKey>;
 	actor: MemberActor<TFSMEvent, TFSMContext>;
 	private actorStarted = false;
-	data: MemberWithRelations;
+	data: EngineMember;
 	get position(): { x: number; y: number; z: number } {
 		return this.runtime.position;
 	}
@@ -165,7 +165,7 @@ export class Member<
 		) => MemberStateMachine<TFSMEvent, TFSMContext>,
 		campId: string,
 		teamId: string,
-		memberData: MemberWithRelations,
+		memberData: EngineMember,
 		dataSchema: NestedSchema,
 		statContainer: StatContainer<MemberBaseAttrKey | TExtraAttrKey>,
 		runtime: TRuntime,

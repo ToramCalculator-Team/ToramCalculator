@@ -1,4 +1,4 @@
-import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
+import type { EngineCharacterSkill } from "../../../../engineScenarioSchema";
 import { type EventObject, fromPromise, setup } from "xstate";
 import type { ExpressionContext } from "~/lib/engine/core/JSProcessor/types";
 import { createLogger } from "~/lib/Logger";
@@ -160,7 +160,7 @@ export const playerFSM = (
 					const e = event as 使用技能;
 					const skillId = e.data.skillId;
 					const skill = env.runtime.data?.skills?.find(
-						(s: CharacterSkillWithRelations) => s.id === skillId,
+						(s: EngineCharacterSkill) => s.id === skillId,
 					);
 					if (!skill) {
 						log.error(`[${env.name}] 技能不存在: ${skillId}`);

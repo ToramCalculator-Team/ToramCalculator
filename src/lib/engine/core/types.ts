@@ -1,4 +1,4 @@
-import { SimulatorWithRelationsSchema } from "@db/generated/repositories/simulator";
+import { EngineSimulatorSchema } from "./engineScenarioSchema";
 import { MEMBER_TYPE } from "@db/schema/enums";
 import { z } from "zod/v4";
 import type { EventCatalog } from "./Event/EventCatalog";
@@ -185,7 +185,7 @@ export function createPreviewConfig(overrides?: Partial<RuntimeConfig>): Runtime
 // ==================== EngineScenarioData ====================
 
 export const EngineScenarioDataSchema = z.object({
-	simulator: SimulatorWithRelationsSchema,
+	simulator: EngineSimulatorSchema,
 	runtimeSelection: z.object({
 		primaryMemberId: z.string(),
 	}),

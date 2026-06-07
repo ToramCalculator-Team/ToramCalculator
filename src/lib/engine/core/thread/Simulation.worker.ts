@@ -3,7 +3,7 @@
  * 将GameEngine运行在安全沙盒环境中
  */
 
-import type { MemberWithRelations } from "@db/generated/repositories/member";
+import type { EngineMember } from "../engineScenarioSchema";
 import { createLogger, LogLevel } from "~/lib/Logger";
 import { prepareForTransfer, sanitizeForPostMessage } from "~/lib/WorkerPool/MessageSerializer";
 import type { WorkerMessage, WorkerMessageEvent } from "~/lib/WorkerPool/type";
@@ -328,7 +328,7 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 
 			case "patch_member": {
 				try {
-					const ok = gameEngine.patchMemberConfig(rpc.memberId, rpc.memberData as MemberWithRelations);
+					const ok = gameEngine.patchMemberConfig(rpc.memberId, rpc.memberData as EngineMember);
 					return { success: ok, error: ok ? undefined : "patchMemberConfig failed" };
 				} catch (error) {
 					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
@@ -446,7 +446,7 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data
 								break;
 							}
 							case "member_config": {
-								gameEngine.patchMemberConfig(patch.memberId, patch.patch as MemberWithRelations);
+								gameEngine.patchMemberConfig(patch.memberId, patch.patch as EngineMember);
 								break;
 							}
 						}
