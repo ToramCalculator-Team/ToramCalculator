@@ -26,3 +26,5 @@ function run(command, args, extraEnv = {}) {
 console.log(`Release ID: ${releaseId}`);
 run("node", ["src/worker/sw/build.mjs"]);
 run("vite", ["build"], { NODE_OPTIONS: "--max-old-space-size=4096" });
+// 产物落盘后补充 gzip 体积，供首屏加载进度按真实下载量计算。
+run("node", ["src/lib/version/appendAssetSizes.mjs"]);

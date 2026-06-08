@@ -32,7 +32,6 @@ if (typeof window !== "undefined") {
 // =========================
 if (!store.pages.resourcesLoaded) {
 	// 设计说明：首次加载的资源 loader 必须早于 release/store gate 挂载，否则网络检查期间会出现白屏。
-	console.log("=========================挂载加载器=========================");
 	mount(() => <ResourcesLoader />, document.body);
 }
 
@@ -65,6 +64,7 @@ if (resourceList) {
 	type StartupManifestEntry = {
 		fileName: string;
 		size: number;
+		gzipSize?: number;
 		kind?: string;
 	};
 
@@ -119,7 +119,9 @@ if (resourceList) {
 			const fileName = toResourcePath(entry.fileName);
 			if (seen.has(fileName)) continue;
 			seen.add(fileName);
-			result.push({ ...entry, fileName, size: Math.max(0, entry.size || 0) });
+			// gzipSize 由 build 后处理写入，代表 Nginx 反代下发的真实字节；缺失时回退未压缩 size。
+			const transferSize = Math.max(0, entry.gzipSize ?? entry.size ?? 0);
+			result.push({ ...entry, fileName, size: transferSize });
 		}
 		return result;
 	};
@@ -149,7 +151,8 @@ if (resourceList) {
 		let currentAsset = "";
 
 		const update = (complete = false) => {
-			const percent = complete ? 100 : totalBytes > 0 ? Math.min(95, Math.floor((loadedBytes / totalBytes) * 95)) : 0;
+			// 体积分母为 gzip 后真实下载字节，进度可自然逼近 100%，不再人为封顶。
+			const percent = complete ? 100 : totalBytes > 0 ? Math.min(100, Math.floor((loadedBytes / totalBytes) * 100)) : 0;
 			setProgressBarWidth(percent);
 
 			if (complete) {
