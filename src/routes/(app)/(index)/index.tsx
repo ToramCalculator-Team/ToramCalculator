@@ -2,6 +2,7 @@ import type { DB } from "@db/generated/zod/index";
 import { MetaProvider, Title } from "@solidjs/meta";
 import { useNavigate } from "@solidjs/router";
 import { useMachine } from "@xstate/solid";
+import { sql } from "kysely";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createMemo, createSignal, For, Index, type JSX, onCleanup, onMount, Show, useContext } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
@@ -36,19 +37,26 @@ export default function IndexPage() {
 	const [state, send] = useMachine(indexPageMachine);
 	const context = () => state.context;
 
-	// 数据同步延迟探针：订阅 sync_heartbeat 表，服务端每 3s 刷新 emitted_at（PG 时钟）。
-	// 收到更新时用本地时钟与 emitted_at 求差估算读路径端到端延迟。
-	const heartbeat = createLiveKyselyQuery<{ emitted_at: string | Date }>((db) =>
-		db.selectFrom("sync_heartbeat").select("emitted_at").limit(1),
+	// 数据同步延迟探针：live 订阅 sync_heartbeat，服务端每 3s 刷新 emitted_at（PG now()，UTC）。
+	// _synced 表被 electric-sync 写入时 live.query 自动回调，用本地时钟与 emitted_at 求差估算读路径端到端延迟。
+	//
+	// 注意：若读数停滞不刷新，根因是 shape tail 没把更新送达 _synced（本地 HTTP/1.1 6 连接上限会饿死
+	// tail 连接），而非 live 订阅本身——live 订阅依赖 _synced 实际发生写入。远端 HTTP/2 无此并发限制。
+	//
+	// 时区处理：emitted_at 列是 timestamp without time zone，存的是 UTC 字面值。
+	// PGlite 把该列解析成 Date 时会按“客户端本地时区”误读字面值（如 UTC+8 会偏 8 小时）。
+	// 故用 to_char 把列取成明确的 UTC ISO 字符串，自己补 Z 按 UTC 解析，绕开 PGlite 的本地时区 Date 行为。
+	const heartbeat = createLiveKyselyQuery<{ emitted_utc: string }>((db) =>
+		db
+			.selectFrom("sync_heartbeat")
+			.select(sql<string>`to_char(emitted_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS')`.as("emitted_utc"))
+			.limit(1),
 	);
 	const syncLatencyMs = createMemo<number | undefined>(() => {
 		const row = heartbeat.rows()[0];
-		if (!row?.emitted_at) return undefined;
-		// PGlite 对 timestamp 列可能返回 Date 对象，也可能返回字符串；统一解析。
-		const emittedMs =
-			row.emitted_at instanceof Date
-				? row.emitted_at.getTime()
-				: Date.parse(`${String(row.emitted_at).replace(" ", "T")}Z`);
+		if (!row?.emitted_utc) return undefined;
+		// emitted_utc 是 UTC 字面值（无时区后缀），补 Z 强制按 UTC 解析。
+		const emittedMs = Date.parse(`${row.emitted_utc}Z`);
 		if (Number.isNaN(emittedMs)) return undefined;
 		const delta = Date.now() - emittedMs;
 		// 客户端与服务端可能存在时钟偏移，负值统一钳为 0，避免显示负延迟。
