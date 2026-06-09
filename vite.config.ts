@@ -1,9 +1,13 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { solidStart } from "@solidjs/start/config";
 import { nitroV2Plugin } from "@solidjs/vite-plugin-nitro-2";
 import tailwindcss from "@tailwindcss/vite";
 import type { OutputAsset, OutputChunk } from "rollup";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const getReleaseId = () => process.env.APP_RELEASE_ID ?? process.env.VITE_RELEASE_ID ?? "dev";
 const getGeneratedAt = () => process.env.APP_GENERATED_AT ?? new Date(0).toISOString();
@@ -215,7 +219,11 @@ export default defineConfig(() => {
 		plugins: [
 			// SPA 模式用于避免 SSR 在 Node 里加载 monaco-editor 链上的 .css
 			solidStart({ ssr: false }),
-			nitroV2Plugin(),
+			nitroV2Plugin({
+				// 显式注册 Nitro plugin：服务端进程启动时执行一次，启动同步延迟探针心跳。
+				// 用绝对路径——Nitro 不解析 Vite 的 ~ 别名，传 ~ 会被当成绝对路径而 ERR_MODULE_NOT_FOUND。
+				plugins: [path.resolve(__dirname, "src/server/plugins/syncHeartbeat.ts")],
+			}),
 			tailwindcss(),
 			// 添加chunk清单生成插件
 			createChunkManifestPlugin(),

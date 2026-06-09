@@ -8,6 +8,7 @@ export const TableIconMap: Record<keyof DB, JSX.Element> = {
 	account_update_data: undefined,
 	activity: undefined,
 	address: undefined,
+	sync_heartbeat: undefined,
 	armor: undefined,
 	_armorTocrystal: undefined,
 	avatar: undefined,

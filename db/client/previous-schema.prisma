@@ -21,6 +21,15 @@ datasource db {
     provider = "postgresql"
 }
 
+// 同步延迟探针表
+// 设计目的：服务端定时写入 emitted_at（PG 时钟），客户端经 Electric 同步后用本地时钟对比，估算读路径端到端延迟。
+// 固定单行（id 常量），服务端用 upsert 不断刷新 emitted_at。
+model sync_heartbeat {
+    id         String   @id
+    seq        BigInt
+    emitted_at DateTime
+}
+
 
 // ===== ../models/data.prisma =====
 // 世界

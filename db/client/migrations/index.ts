@@ -1,4 +1,5 @@
 import baselineSql from "../baseline/client.sql?raw";
+import migration_20260608_080648_v1_to_v2_Sql from "./20260608_080648_v1_to_v2/client.sql?raw";
 
 export type ClientDbBaseline = {
 	id: string;
@@ -24,4 +25,12 @@ export const CLIENT_DB_BASELINE: ClientDbBaseline = {
 	sql: baselineSql,
 };
 
-export const CLIENT_DB_MIGRATIONS: ClientDbMigration[] = [];
+export const CLIENT_DB_MIGRATIONS: ClientDbMigration[] = [
+	{
+		id: "20260608_080648_v1_to_v2",
+		fromVersion: 1,
+		toVersion: 2,
+		checksum: "9d7f3338",
+		sql: migration_20260608_080648_v1_to_v2_Sql,
+	},
+];

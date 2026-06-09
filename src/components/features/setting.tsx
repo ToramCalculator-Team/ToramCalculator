@@ -2,6 +2,7 @@ import { A } from "@solidjs/router";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createResource, createSignal, Index, type JSX, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
+import { getDB } from "@db/repositories/database";
 import { Button } from "~/components/controls/button";
 import { CheckBox } from "~/components/controls/checkBox";
 import { Input, type InputComponentType } from "~/components/controls/input";
@@ -9,6 +10,7 @@ import { Radio } from "~/components/controls/radio";
 import { Toggle } from "~/components/controls/toggle";
 import { Icons } from "~/components/icons/index";
 import { useDictionary } from "~/contexts/Dictionary";
+import { createPgWorker, syncControl } from "~/lib/pglite/pg";
 import { getActStore, setStore, store } from "~/store";
 import { ServiceWorkerManager } from "./swManager";
 
@@ -51,6 +53,77 @@ export const Setting = () => {
 	const [hasInstalled, setHasInstalled] = createSignal(true);
 	const [deferredPrompt, setDeferredPrompt] = createSignal<BeforeInstallPromptEvent | null>(null);
 	const [storageUsageInfo, { mutate: mutateStorageUsageInfo }] = createResource(getStorageUsageInfo);
+
+	// 开发模式：按需往返延迟测量。
+	// 原理：向 sync_heartbeat 写一行（带唯一 marker），触发 changes 日志 → 上传 /api/changes →
+	// 服务端写 PG → Electric 回传到 sync_heartbeat_synced；订阅该 synced 表，看到 marker 匹配即停表。
+	// 用 performance.now() 单边计时，测“发送→收到同步回传”的完整往返，无客户端/服务端时钟偏移问题。
+	const PROBE_ID = "dev-roundtrip-probe";
+	const [roundTripMs, setRoundTripMs] = createSignal<number | undefined>();
+	const [measuring, setMeasuring] = createSignal(false);
+
+	const measureRoundTrip = async () => {
+		if (measuring()) return;
+		setMeasuring(true);
+		setRoundTripMs(undefined);
+		// 唯一 marker：写入 seq（BIGINT）。用 Date.now() 拼随机后两位降低同毫秒碰撞概率，
+		// 回传时按 String(marker) 匹配本次探测，避免命中历史行。
+		const marker = Date.now() * 100 + Math.floor(Math.random() * 100);
+		const markerStr = String(marker);
+		const startedAt = performance.now();
+		try {
+			const db = await getDB();
+			const pgWorker = await createPgWorker();
+			// 确保写入上行通道已开启，否则 changes 不会被上传。
+			syncControl.start();
+
+			// 写入探测行：客户端 sync_heartbeat 是 view（synced + local），无唯一约束，不能用 ON CONFLICT。
+			// 先查存在性，再走 INSERT 或 UPDATE 触发器；固定 PROBE_ID 避免本地表行无限增长。
+			const existing = await db
+				.selectFrom("sync_heartbeat")
+				.select("id")
+				.where("id", "=", PROBE_ID)
+				.executeTakeFirst();
+			if (existing) {
+				await db
+					.updateTable("sync_heartbeat")
+					.set({ seq: markerStr, emitted_at: new Date().toISOString() })
+					.where("id", "=", PROBE_ID)
+					.execute();
+			} else {
+				await db
+					.insertInto("sync_heartbeat")
+					.values({ id: PROBE_ID, seq: markerStr, emitted_at: new Date().toISOString() })
+					.execute();
+			}
+
+			// 轮询 synced 表等待服务端回传：electric-sync 批量写 _synced 表不保证触发 live.query 回调，
+			// 改用一次性 query 轮询最稳。必须查 _synced 而非 view（view 里本地写入会立即命中造成假阳性）。
+			const worker = pgWorker as unknown as {
+				query: (sql: string, params: unknown[]) => Promise<{ rows: Array<{ seq: string | number }> }>;
+			};
+			const POLL_INTERVAL_MS = 150;
+			const TIMEOUT_MS = 15_000;
+			let elapsed: number | undefined;
+			while (performance.now() - startedAt < TIMEOUT_MS) {
+				const res = await worker.query(`SELECT seq FROM sync_heartbeat_synced WHERE id = $1`, [PROBE_ID]);
+				if (res.rows.some((r) => String(r.seq) === markerStr)) {
+					elapsed = performance.now() - startedAt;
+					break;
+				}
+				await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+			}
+			if (elapsed === undefined) {
+				throw new Error("测量超时（15s 未收到回传）");
+			}
+			setRoundTripMs(Math.round(elapsed));
+		} catch (error) {
+			console.warn("[devRoundTrip] 往返测量失败:", error);
+			setRoundTripMs(undefined);
+		} finally {
+			setMeasuring(false);
+		}
+	};
 
 	// pwa安装条件满足时
 	window.addEventListener("beforeinstallprompt", (e) => {
@@ -285,6 +358,25 @@ export const Setting = () => {
 													/>
 												),
 											},
+											// 开发模式：按需往返延迟测量（测“发送→收到同步回传”的完整往返耗时）。
+											...(import.meta.env.DEV
+												? [
+														{
+															title: "数据同步延迟测量",
+															description: "向服务端写入一条探测数据，测量其经服务端往返同步回本地的耗时。",
+															children: (
+																<div class="flex items-center gap-3">
+																	<Button onClick={() => void measureRoundTrip()} disabled={measuring()}>
+																		{measuring() ? "测量中…" : "开始测量"}
+																	</Button>
+																	<Show when={roundTripMs() !== undefined}>
+																		<span class="text-main-text-color text-sm">往返延迟：{roundTripMs()}ms</span>
+																	</Show>
+																</div>
+															),
+														},
+													]
+												: []),
 										]}
 									/>
 									<Divider />

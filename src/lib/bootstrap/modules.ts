@@ -61,6 +61,7 @@ const ELECTRIC_SYNC_TABLES: Array<keyof DB> = [
 	"_campA",
 	"_campB",
 	"simulator",
+	"sync_heartbeat",
 ];
 
 /**

@@ -739,6 +739,27 @@ const dictionary: Dictionary = {
 		},
 	},
 	db: {
+		sync_heartbeat: {
+			selfName: "同步心跳",
+			fields: {
+				id: {
+					key: "ID",
+					tableFieldDescription: "心跳記錄ID",
+					formFieldDescription: "心跳記錄ID",
+				},
+				seq: {
+					key: "序號",
+					tableFieldDescription: "心跳自增序號",
+					formFieldDescription: "心跳自增序號",
+				},
+				emitted_at: {
+					key: "發出時間",
+					tableFieldDescription: "伺服端發出心跳的時間",
+					formFieldDescription: "伺服端發出心跳的時間",
+				},
+			},
+			description: "資料同步延遲探針",
+		},
 		_armorTocrystal: {
 			selfName: "防具-水晶关联",
 			fields: {

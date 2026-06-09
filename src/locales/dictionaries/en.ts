@@ -596,6 +596,27 @@ const dictionary: Dictionary = {
 		},
 	},
 	db: {
+		sync_heartbeat: {
+			selfName: "Sync Heartbeat",
+			fields: {
+				id: {
+					key: "ID",
+					tableFieldDescription: "Heartbeat record ID",
+					formFieldDescription: "Heartbeat record ID",
+				},
+				seq: {
+					key: "Seq",
+					tableFieldDescription: "Heartbeat incrementing sequence",
+					formFieldDescription: "Heartbeat incrementing sequence",
+				},
+				emitted_at: {
+					key: "Emitted At",
+					tableFieldDescription: "Time the server emitted the heartbeat",
+					formFieldDescription: "Time the server emitted the heartbeat",
+				},
+			},
+			description: "Data sync latency probe",
+		},
 		_armorTocrystal: {
 			selfName: "Armor-Crystal Relation",
 			fields: {

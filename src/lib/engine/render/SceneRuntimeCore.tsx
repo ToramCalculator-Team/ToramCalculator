@@ -641,11 +641,17 @@ export function SceneRuntimeCore(props: {
 				syncThemeMaterials();
 				scene.render();
 			});
-			scene.executeWhenReady(() => {
-				if (disposed) return;
-				engine?.resize();
-				setReady(true);
-				startSceneMachine();
+			// 等到 babylon 场景真正 ready（setReady(true) 已执行）后再让 initialize 完成，
+			// 否则 acquireRealtimeSession 只 await initializationPromise 时会撞上 ready() 仍为 false 的窗口。
+			await new Promise<void>((resolve) => {
+				scene!.executeWhenReady(() => {
+					if (!disposed) {
+						engine?.resize();
+						setReady(true);
+						startSceneMachine();
+					}
+					resolve();
+				});
 			});
 
 			// // 测试模式配置函数

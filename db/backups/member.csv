@@ -1,3 +1,4 @@
 id,name,sequence,type,playerId,partnerId,mercenaryId,mobId,mobDifficultyFlag,belongToTeamId
 defaultMember1Id,defaultMember1,0,Player,defaultPlayerId,,,,Easy,defaultTeamAId
-defaultMember2Id,defaultMember2,0,Mob,,,,clui55nha000111myotjx9ia0,Easy,defaultTeamBId
+defaultMember2Id,defaultMember2,0,Mob,,,,uc4jncckmmcpd6i2tc743pcu,Easy,defaultTeamBId
+defaultMember3Id,defaultMember3,0,Mob,,,,clui55nha000111myotjx9ia0,Easy,defaultTeamBId

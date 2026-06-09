@@ -201,7 +201,7 @@ export default function CharactePage() {
 							element="div"
 							options={{ scrollbars: { autoHide: "scroll" } }}
 							defer
-							class={`CharacterConfigPanel landscape:basis-1/2 portrait:py-6 bg-brand-color-1st`}
+							class={`CharacterConfigPanel landscape:basis-1/2 portrait:py-6`}
 							style={{
 								display: isConfigPanelVisible() ? "" : "none"
 							}}
@@ -220,7 +220,7 @@ export default function CharactePage() {
 							element="div"
 							options={{ scrollbars: { autoHide: "scroll" } }}
 							defer
-							class={`MemberStats gap-2 landscape:basis-1/4 bg-brand-color-2nd`}
+							class={`MemberStats gap-2 landscape:basis-1/4 landscape:p-3`}
 							style={{
 								display: isAttrPreviewVisible() ? "flex" : "none"
 							}}
@@ -233,7 +233,7 @@ export default function CharactePage() {
 							element="div"
 							options={{ scrollbars: { autoHide: "scroll" } }}
 							defer
-							class={`SkillPreview gap-2 landscape:basis-1/4 bg-brand-color-3rd`}
+							class={`SkillPreview gap-2 landscape:basis-1/4 landscape:p-3`}
 							style={{
 								display: isSkillPreviewVisible() ? "flex" : "none"
 							}}

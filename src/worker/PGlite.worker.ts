@@ -116,6 +116,7 @@ const ELECTRIC_SYNC_TABLE_CONFIGS = {
 	_campA: { tableName: "_campA", primaryKey: ["A", "B"], urlParams: `"_campA"` },
 	_campB: { tableName: "_campB", primaryKey: ["A", "B"], urlParams: `"_campB"` },
 	simulator: { tableName: "simulator", primaryKey: ["id"] },
+	sync_heartbeat: { tableName: "sync_heartbeat", primaryKey: ["id"] },
 } satisfies Record<string, ElectricSyncTableConfig>;
 
 // 同步优先级：账号表服务本地会话初始化；实时模拟表组服务 simulator 首屏。
@@ -158,6 +159,7 @@ const EARLY_ELECTRIC_SYNC_TABLES: ElectricSyncTableConfig[] = [
 	ELECTRIC_SYNC_TABLE_CONFIGS._campA,
 	ELECTRIC_SYNC_TABLE_CONFIGS._campB,
 	ELECTRIC_SYNC_TABLE_CONFIGS.simulator,
+	ELECTRIC_SYNC_TABLE_CONFIGS.sync_heartbeat,
 ];
 
 const EARLY_ELECTRIC_SYNC_TABLE_NAME_SET = new Set<keyof DB>(

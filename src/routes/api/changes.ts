@@ -67,7 +67,7 @@ export async function POST(event: APIEvent) {
 		return new Response("请求结构非法", { status: 400 });
 	}
 
-	console.log(`用户:${user.name} 变更数据,body:`, body);
+	console.log(`用户:${user.name} 变更数据,body:`, JSON.stringify(body, null, 2));
 
 	// 示例权限判断（可选）
 	// if (user.role !== "admin") {

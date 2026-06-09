@@ -693,6 +693,27 @@ const dictionary: Dictionary = {
 		},
 	},
 	db: {
+		sync_heartbeat: {
+			selfName: "同期ハートビート",
+			fields: {
+				id: {
+					key: "ID",
+					tableFieldDescription: "ハートビートレコードID",
+					formFieldDescription: "ハートビートレコードID",
+				},
+				seq: {
+					key: "シーケンス",
+					tableFieldDescription: "ハートビートの自動増分シーケンス",
+					formFieldDescription: "ハートビートの自動増分シーケンス",
+				},
+				emitted_at: {
+					key: "送信時刻",
+					tableFieldDescription: "サーバーがハートビートを送信した時刻",
+					formFieldDescription: "サーバーがハートビートを送信した時刻",
+				},
+			},
+			description: "データ同期遅延プローブ",
+		},
 		_armorTocrystal: {
 			selfName: "防具-水晶関連",
 			fields: {

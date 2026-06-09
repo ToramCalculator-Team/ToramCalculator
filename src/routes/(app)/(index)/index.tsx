@@ -18,6 +18,7 @@ import { Icons } from "~/components/icons/index";
 import { MediaContext } from "~/contexts/Media";
 import { getDictionary } from "~/locales/i18n";
 import type { Dictionary } from "~/locales/type";
+import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
 import { setStore, store } from "~/store";
 import { indexPageMachine } from "./indexPageMachine";
 export default function IndexPage() {
@@ -34,6 +35,25 @@ export default function IndexPage() {
 	// 使用状态机管理此页面状态
 	const [state, send] = useMachine(indexPageMachine);
 	const context = () => state.context;
+
+	// 数据同步延迟探针：订阅 sync_heartbeat 表，服务端每 3s 刷新 emitted_at（PG 时钟）。
+	// 收到更新时用本地时钟与 emitted_at 求差估算读路径端到端延迟。
+	const heartbeat = createLiveKyselyQuery<{ emitted_at: string | Date }>((db) =>
+		db.selectFrom("sync_heartbeat").select("emitted_at").limit(1),
+	);
+	const syncLatencyMs = createMemo<number | undefined>(() => {
+		const row = heartbeat.rows()[0];
+		if (!row?.emitted_at) return undefined;
+		// PGlite 对 timestamp 列可能返回 Date 对象，也可能返回字符串；统一解析。
+		const emittedMs =
+			row.emitted_at instanceof Date
+				? row.emitted_at.getTime()
+				: Date.parse(`${String(row.emitted_at).replace(" ", "T")}Z`);
+		if (Number.isNaN(emittedMs)) return undefined;
+		const delta = Date.now() - emittedMs;
+		// 客户端与服务端可能存在时钟偏移，负值统一钳为 0，避免显示负延迟。
+		return delta < 0 ? 0 : delta;
+	});
 
 	/**
 	 * 首页搜索结果卡片在首页场景内创建，递归关联继续沿用当前语言字典。
@@ -729,6 +749,14 @@ export default function IndexPage() {
 						</Motion.div>
 					</Show>
 				</Presence>
+				{/* 数据同步延迟（左下角） */}
+				<Show when={syncLatencyMs() !== undefined}>
+					<div
+						class={`SyncLatency text-boundary-color pointer-events-none absolute bottom-2 left-3 z-10 text-xs ${context().searchResultOpened ? "opacity-0" : "opacity-100"}`}
+					>
+						数据同步延迟：{syncLatencyMs()}ms
+					</div>
+				</Show>
 			</Motion.div>
 
 			{/* 小工具菜单 */}

@@ -4,6 +4,8 @@ import { Motion } from "solid-motionone";
 import { globalCardGroup } from "~/components/business/card/globalCardGroup";
 import { globalFormGroup } from "~/components/business/form/globalFormGroup";
 import { RandomBallBackground } from "~/components/effects/randomBg";
+import { LoginDialog } from "~/components/features/loginDialog";
+import { Setting } from "~/components/features/setting";
 import { DictionaryProvider } from "~/contexts/Dictionary";
 import { MediaProvider } from "~/contexts/Media-component";
 import { BootstrapProvider } from "~/lib/bootstrap/BootstrapContext";
@@ -11,16 +13,6 @@ import { EngineProvider } from "~/lib/engine/core/thread/EngineContext";
 import { SceneCanvas, SceneRuntimeProvider } from "~/lib/engine/render/SceneRuntime";
 import { setStore, store } from "~/store";
 import { applyColorSystem } from "~/styles/colorSystem/colorSystemController";
-
-const Setting = lazy(async () => {
-	const module = await import("~/components/features/setting");
-	return { default: module.Setting };
-});
-
-const LoginDialog = lazy(async () => {
-	const module = await import("~/components/features/loginDialog");
-	return { default: module.LoginDialog };
-});
 
 const GlobalCardContainer = lazy(async () => {
 	const module = await import("~/components/business/card/GlobalCardContainer");
@@ -34,8 +26,6 @@ const GlobalFormContainer = lazy(async () => {
 
 export default function AppMainContet(props: ParentProps) {
 	let warmCacheScheduled = false;
-	const [settingRequested, setSettingRequested] = createSignal(false);
-	const [loginDialogRequested, setLoginDialogRequested] = createSignal(false);
 	const [globalCardRequested, setGlobalCardRequested] = createSignal(false);
 	const [globalFormRequested, setGlobalFormRequested] = createSignal(false);
 
@@ -74,26 +64,26 @@ export default function AppMainContet(props: ParentProps) {
 	// 热键
 	hotkeys("ctrl+a,ctrl+b,r,f,enter,esc", (_event, handler) => {
 		switch (
-			handler.key
-			//   case "enter":
-			//     alert("you pressed enter!");
-			//     break;
-			//   case "esc":
-			//     alert("you pressed esc!");
-			//     break;
-			//   case "ctrl+a":
-			//     alert("you pressed ctrl+a!");
-			//     break;
-			// case "ctrl+b":
-			//   break;
-			//   case "r":
-			//     alert("you pressed r!");
-			//     break;
-			//   case "f":
-			//     alert("you pressed f!");
-			//     break;
-			//   default:
-			//     alert(event);
+		handler.key
+		//   case "enter":
+		//     alert("you pressed enter!");
+		//     break;
+		//   case "esc":
+		//     alert("you pressed esc!");
+		//     break;
+		//   case "ctrl+a":
+		//     alert("you pressed ctrl+a!");
+		//     break;
+		// case "ctrl+b":
+		//   break;
+		//   case "r":
+		//     alert("you pressed r!");
+		//     break;
+		//   case "f":
+		//     alert("you pressed f!");
+		//     break;
+		//   default:
+		//     alert(event);
 		) {
 		}
 	});
@@ -172,12 +162,6 @@ export default function AppMainContet(props: ParentProps) {
 
 	// 非首屏弹层首次打开时才下载对应 chunk；下载后保持挂载，交给组件内部 Presence 处理退出动画。
 	createEffect(() => {
-		if (store.pages.settingsDialogState) {
-			setSettingRequested(true);
-		}
-		if (store.pages.loginDialogState) {
-			setLoginDialogRequested(true);
-		}
 		if (globalCardGroup.size() > 0) {
 			setGlobalCardRequested(true);
 		}
@@ -237,30 +221,24 @@ export default function AppMainContet(props: ParentProps) {
 				<DictionaryProvider>
 					<EngineProvider>
 						<SceneRuntimeProvider enabled={store.settings.userInterface.is3DSceneEnabled}>
-							<SceneCanvas />
 							<RandomBallBackground />
+							<SceneCanvas />
 							<Motion.div
 								id="AppMainContet"
 								class={`fixed left-0 top-0 h-dvh w-dvw overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
 							>
 								{props.children}
+								<LoginDialog />
+								<Show when={globalCardRequested()}>
+									<GlobalCardContainer />
+								</Show>
+								<Show when={globalFormRequested()}>
+									<GlobalFormContainer />
+								</Show>
 							</Motion.div>
-							<Suspense fallback={null}>
-								<Show when={settingRequested()}>
-									<Setting />
-								</Show>
-								<Show when={loginDialogRequested()}>
-									<LoginDialog />
-								</Show>
-							</Suspense>
-							<Show when={globalCardRequested()}>
-								<GlobalCardContainer />
-							</Show>
-							<Show when={globalFormRequested()}>
-								<GlobalFormContainer />
-							</Show>
+							<Setting />
 						</SceneRuntimeProvider>
-					</EngineProvider>{" "}
+					</EngineProvider>
 				</DictionaryProvider>
 			</MediaProvider>
 		</BootstrapProvider>

@@ -568,4 +568,9 @@ export const defaultData: DB = {
 		updatedByAccountId: null,
 		createdByAccountId: null,
 	},
+	sync_heartbeat: {
+		id: "",
+		seq: "",
+		emitted_at: "",
+	},
 };
