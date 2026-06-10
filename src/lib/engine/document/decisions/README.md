@@ -126,6 +126,8 @@
 | [0009](./0009-persistent-render-runtime.md) | 常驻渲染运行时作为应用级场景底座 | Proposed | 跨层 |
 | [0010](./0010-unify-procbus-and-attribute-watcher.md) | 合并 ProcBus 与 AttributeWatcher 为单一成员内事件总线 | Accepted | 编排层 / 通信 |
 | [0011](./0011-member-facts-dual-bus-paired-dispatch.md) | 成员事实在结算点成对派发到两条总线 | Proposed | 编排层 / 通信 |
+| [0012](./0012-intent-first-visual-control.md) | 意图优先的视觉控制：意图层作为 UI 与场景的单一事实源 | Proposed | 跨层（应用层） |
+| [0013](./0013-attention-machine-as-phase-independent-root-actor.md) | 注意力机作为阶段无关的根级 actor | Proposed | 跨层（应用层） |
 
 ## 待拆分清单
 
