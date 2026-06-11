@@ -1,6 +1,6 @@
 # 0012 - 意图优先的视觉控制：意图层作为 UI 与场景的单一事实源
 
-- **状态**: Proposed
+- **状态**: Accepted
 - **日期**: 2026-06-09
 - **决策层**: 跨层（应用层 UI / 渲染 / 状态）
 - **相关代码**: `src/store.ts`、`src/lib/engine/render/SceneRuntimeCore.tsx`、`src/lib/engine/render/sceneStateMachine.ts`、`src/routes/(app)/(features)/character/[characterId].tsx`（现状触点）；`src/machines/`（规划落点）

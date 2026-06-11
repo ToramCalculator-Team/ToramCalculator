@@ -106,4 +106,4 @@
 
 ## 参考
 
-- `src/lib/engine/document/decisions/0003-skill-cost-as-pipeline-contract.md`
+- `docs/decisions/0003-skill-cost-as-pipeline-contract.md`

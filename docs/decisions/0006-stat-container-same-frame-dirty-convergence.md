@@ -104,5 +104,5 @@
 
 ## 参考
 
-- `src/lib/engine/document/decisions/0001-stat-container-as-unified-persistence-slot.md`
+- `docs/decisions/0001-stat-container-as-unified-persistence-slot.md`
 - 本次实现前的 `StatContainer.updateDirtyValues()` 热路径审查

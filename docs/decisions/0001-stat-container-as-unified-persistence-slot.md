@@ -104,6 +104,6 @@
 
 ## 参考
 
-- 原始讨论：`../hook与触发层设计讨论结论.md` §2.1.1
+- 原始讨论：`src/lib/engine/document/hook与触发层设计讨论结论.md` §2.1.1
 - Unreal GAS 的 `GameplayAttribute`（属性槽模型）与 `GameplayEffect`（可见效果）的分离
 - ECS 语境下的 component（数据槽）vs tag component（布尔标签）区分

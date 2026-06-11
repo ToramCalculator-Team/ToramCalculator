@@ -1,6 +1,6 @@
 # 0013 - 注意力机作为阶段无关的根级 actor
 
-- **状态**: Proposed
+- **状态**: Accepted
 - **日期**: 2026-06-09
 - **决策层**: 跨层（应用层状态架构）
 - **相关代码**: `src/machines/`（规划落点：`appMachine.ts`、`visualIntentMachine.ts`）

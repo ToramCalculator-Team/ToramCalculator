@@ -9,9 +9,9 @@
 | 你想做什么 | 该读什么 |
 |---|---|
 | **入门**：理解引擎整体怎么运转 | `架构设计说明概要.md`、`通信协议表.md` |
-| **实现**：要修改/扩展某模块，需要知道边界和约束 | `decisions/` 下相关 ADR；模块自身的 catalog 代码（`PipelineCatalog`、`EventCatalog`、`AttributeSchema`） |
+| **实现**：要修改/扩展某模块，需要知道边界和约束 | `docs/decisions/` 下相关 ADR；模块自身的 catalog 代码（`PipelineCatalog`、`EventCatalog`、`AttributeSchema`） |
 | **追因**：跨模块串一次端到端流程 | `flows/`（伤害分发、预览模式…）、`hook与触发层设计讨论结论.md` §2.99 |
-| **决策**：想知道"为什么这样设计"或"是否还能改" | `decisions/`（ADR），按编号或主题查 |
+| **决策**：想知道"为什么这样设计"或"是否还能改" | `docs/decisions/`（ADR），按编号或主题查 |
 
 ## 文档分层
 
@@ -22,14 +22,11 @@ document/
 ├── 通信协议表.md                L2 契约（主线程↔Worker）
 ├── WorldAreaSystem.md           L1 子系统设计
 ├── 未来性能提升方向.md          路线图 / 备忘
-├── decisions/                   L3 ADR：架构决策记录
-│   ├── README.md                ADR 索引与写作规范
-│   ├── 0000-template.md         空白模板
-│   └── NNNN-<slug>.md           按时序编号
 └── flows/                       L4 端到端流程叙事（按需创建）
 ```
 
-`hook与触发层设计讨论结论.md` 的内容会被增量拆进 `decisions/`，原文档保留作为历史快照不再演进。
+项目级 ADR 位于 `docs/decisions/`；引擎相关决策也进入该目录并通过主题列区分范围。
+`hook与触发层设计讨论结论.md` 的内容会被增量拆进 `docs/decisions/`，原文档保留作为历史快照不再演进。
 
 ## 三条纪律
 

@@ -1,6 +1,6 @@
 # 架构决策记录（ADR）
 
-本目录记录引擎模块的关键设计决策。每一条 ADR 回答一个问题：**为什么这样做，而不是那样做。**
+本目录记录项目级架构决策，覆盖应用层、引擎、数据层和跨层契约。每一条 ADR 回答一个问题：**为什么这样做，而不是那样做。**
 
 ## 为什么需要 ADR
 
@@ -49,7 +49,7 @@
 5. **更新索引**：在本 README 的索引表追加一行。如果来自"待拆清单"，勾掉对应项。
 6. **关联代码**：如果决议影响具体模块，在被影响文件顶部加一行引用注释：
    ```ts
-   // 见 src/lib/engine/document/decisions/NNNN-xxx.md
+   // 见 docs/decisions/NNNN-xxx.md
    ```
    只在"为什么这样写不明显"的地方加，不要在每个受影响文件都加。
 7. **提交**：ADR 与对应代码改动同一个 commit，commit message 首行带 `(ADR-NNNN)` 标记。
@@ -126,12 +126,12 @@
 | [0009](./0009-persistent-render-runtime.md) | 常驻渲染运行时作为应用级场景底座 | Proposed | 跨层 |
 | [0010](./0010-unify-procbus-and-attribute-watcher.md) | 合并 ProcBus 与 AttributeWatcher 为单一成员内事件总线 | Accepted | 编排层 / 通信 |
 | [0011](./0011-member-facts-dual-bus-paired-dispatch.md) | 成员事实在结算点成对派发到两条总线 | Proposed | 编排层 / 通信 |
-| [0012](./0012-intent-first-visual-control.md) | 意图优先的视觉控制：意图层作为 UI 与场景的单一事实源 | Proposed | 跨层（应用层） |
-| [0013](./0013-attention-machine-as-phase-independent-root-actor.md) | 注意力机作为阶段无关的根级 actor | Proposed | 跨层（应用层） |
+| [0012](./0012-intent-first-visual-control.md) | 意图优先的视觉控制：意图层作为 UI 与场景的单一事实源 | Accepted | 跨层（应用层） |
+| [0013](./0013-attention-machine-as-phase-independent-root-actor.md) | 注意力机作为阶段无关的根级 actor | Accepted | 跨层（应用层） |
 
 ## 待拆分清单
 
-以下决策来自 `../hook与触发层设计讨论结论.md`，将陆续拆成独立 ADR。原文档不再演进。
+以下决策来自 `src/lib/engine/document/hook与触发层设计讨论结论.md`，将陆续拆成独立 ADR。原文档保留为历史快照。
 
 - [ ] StatusInstance 边界收紧（只承载游戏内可见状态） — §2.1.2
 - [ ] DamageDispatchPayload 字段扩展与 bitfield 位索引 — §2.1.3
