@@ -38,7 +38,7 @@ export {
 	StatModifierParamSchema,
 } from "./StatContainerTypes";
 
-// 见 src/lib/engine/document/decisions/0006-stat-container-same-frame-dirty-convergence.md
+// 见 docs/decisions/0006-stat-container-same-frame-dirty-convergence.md
 const log = createLogger("StatContainer");
 
 type PendingValueChange = {

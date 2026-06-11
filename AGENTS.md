@@ -103,4 +103,5 @@ SW 版本号从 `src/store.ts` 的 `version` 字段提取。
 
 ## 文档与 ADR
 
-修改 `src/lib/engine/` 时同时遵守 `src/lib/engine/AGENTS.md`。引擎设计意图通过 `src/lib/engine/document/` 保留。
+项目级 ADR 位于 `docs/decisions/`，覆盖应用层、引擎、数据层和跨层契约。
+修改 `src/lib/engine/` 时同时遵守 `src/lib/engine/AGENTS.md`。引擎历史文档通过 `src/lib/engine/document/` 保留。

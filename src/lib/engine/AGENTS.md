@@ -20,11 +20,11 @@
 
 ## 文档与 ADR
 
-引擎设计意图通过 `src/lib/engine/document/` 保留。工作时读取相关文档；新设计内容写入 ADR，历史叙述文档只作为历史快照读取。
+引擎设计意图通过 `src/lib/engine/document/` 和 `docs/decisions/` 保留。工作时读取相关文档；新设计内容写入项目级 ADR，历史叙述文档只作为历史快照读取。
 
 历史叙述文档包括 `src/lib/engine/document/架构设计说明概要.md`、`src/lib/engine/document/hook与触发层设计讨论结论.md`、`src/lib/engine/document/通信协议表.md`、`src/lib/engine/document/WorldAreaSystem.md`。
 
-ADR 规则的权威来源是 `src/lib/engine/document/decisions/README.md`；写 ADR 前必须阅读。
+ADR 规则的权威来源是 `docs/decisions/README.md`；写 ADR 前必须阅读。
 
 满足以下任一条件时，先向用户提议新增 ADR，并等待确认：
 
