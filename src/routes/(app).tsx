@@ -11,6 +11,8 @@ import { MediaProvider } from "~/contexts/Media-component";
 import { BootstrapProvider } from "~/lib/bootstrap/BootstrapContext";
 import { EngineProvider } from "~/lib/engine/core/thread/EngineContext";
 import { SceneCanvas, SceneRuntimeProvider } from "~/lib/engine/render/SceneRuntime";
+import { AppActorProvider } from "~/machines/AppActorContext";
+import { SceneIntentBridge } from "~/machines/projections/SceneIntentBridge";
 import { setStore, store } from "~/store";
 import { applyColorSystem } from "~/styles/colorSystem/colorSystemController";
 
@@ -220,24 +222,27 @@ export default function AppMainContet(props: ParentProps) {
 			<MediaProvider>
 				<DictionaryProvider>
 					<EngineProvider>
-						<SceneRuntimeProvider enabled={store.settings.userInterface.is3DSceneEnabled}>
-							<RandomBallBackground />
-							<SceneCanvas />
-							<Motion.div
-								id="AppMainContet"
-								class={`fixed left-0 top-0 h-dvh w-dvw overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
-							>
-								{props.children}
-								<LoginDialog />
-								<Show when={globalCardRequested()}>
-									<GlobalCardContainer />
-								</Show>
-								<Show when={globalFormRequested()}>
-									<GlobalFormContainer />
-								</Show>
-							</Motion.div>
-							<Setting />
-						</SceneRuntimeProvider>
+						<AppActorProvider>
+							<SceneRuntimeProvider enabled={store.settings.userInterface.is3DSceneEnabled}>
+								<RandomBallBackground />
+								<SceneCanvas />
+								<SceneIntentBridge />
+								<Motion.div
+									id="AppMainContet"
+									class={`fixed left-0 top-0 h-dvh w-dvw overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
+								>
+									{props.children}
+									<LoginDialog />
+									<Show when={globalCardRequested()}>
+										<GlobalCardContainer />
+									</Show>
+									<Show when={globalFormRequested()}>
+										<GlobalFormContainer />
+									</Show>
+								</Motion.div>
+								<Setting />
+							</SceneRuntimeProvider>
+						</AppActorProvider>
 					</EngineProvider>
 				</DictionaryProvider>
 			</MediaProvider>

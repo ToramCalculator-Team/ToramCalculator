@@ -3,7 +3,8 @@
  *
  * 职责：持有唯一 canvas、Babylon engine/scene、基础背景组和实时模拟 session。
  * 边界：业务层只能通过 SceneRuntime session 进入实时渲染，不能越过本文件直接改 scene。
- * 见 src/lib/engine/document/decisions/0009-persistent-render-runtime.md
+ * 见 docs/decisions/0009-persistent-render-runtime.md
+ *    docs/decisions/0012-intent-first-visual-control.md（focusCamera/resetCamera 作为意图层场景投影）
  */
 
 import { createId } from "@paralleldrive/cuid2";
@@ -716,6 +717,30 @@ export function SceneRuntimeCore(props: {
 		ready,
 		mode,
 		acquireRealtimeSession,
+		// ── 意图层场景投影（ADR 0012）：把相机补间到槽位锚姿态 / 复位观察位 ──────────────
+		// guard：仅 sceneMachine 处于 idle 态时执行（观察稳态，无 realtime 跟随争抢相机）；
+		// 否则日志 + 立即 onDone（建议性回执兜底，realtime 期间的焦点意图被静默回执，冲突 #3 本次不解）。
+		focusCamera: (pose, onDone) => {
+			const sceneIdle = sceneMachineActor?.getSnapshot().matches("idle") ?? false;
+			if (!scene || !sceneCamera || !sceneIdle) {
+				log.debug("focusCamera 跳过：场景非 idle 稳态，立即回执");
+				onDone();
+				return () => {};
+			}
+			return animateCameraTo(
+				{ alpha: pose.alpha, beta: pose.beta, radius: pose.radius, target: new Vector3(pose.target.x, pose.target.y, pose.target.z) },
+				onDone,
+			);
+		},
+		resetCamera: (onDone) => {
+			const sceneIdle = sceneMachineActor?.getSnapshot().matches("idle") ?? false;
+			if (!scene || !sceneCamera || !sceneIdle) {
+				log.debug("resetCamera 跳过：场景非 idle 稳态，立即回执");
+				onDone();
+				return () => {};
+			}
+			return animateCameraTo({ ...OBSERVE_POSE, target: OBSERVE_POSE.target.clone() }, onDone);
+		},
 		projectWorldToScreen: (position): ScreenPoint | null => {
 			if (!scene || !engine) return null;
 			const camera = scene.activeCamera;

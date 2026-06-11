@@ -9,7 +9,7 @@ import { selectPlayerSpecialByIdWithRelations } from "@db/generated/repositories
 import type { PlayerWeaponWithRelations } from "@db/generated/repositories/player_weapon";
 import { selectPlayerWeaponByIdWithRelations } from "@db/generated/repositories/player_weapon";
 import type { character, DB } from "@db/generated/zod";
-import { createSignal, Show } from "solid-js";
+import { createMemo, Show } from "solid-js";
 import type { TableDataConfig } from "~/components/business/data-config";
 import { PLAYER_ARMOR_DATA_CONFIG } from "~/components/business/dataConfig/player_armor";
 import { PLAYER_OPTION_DATA_CONFIG } from "~/components/business/dataConfig/player_option";
@@ -21,6 +21,8 @@ import { ForeignKeyPickerSheet } from "~/components/business/table/ForeignKeyPic
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
+import { useIntentSnapshot, useVisualIntent } from "~/machines/AppActorContext";
+import type { EquipSlot } from "~/machines/intent/types";
 
 export type EquipmentSlot = "weaponId" | "subWeaponId" | "armorId" | "optionId" | "specialId";
 
@@ -37,6 +39,24 @@ const equipmentSlotConfig = {
 	optionId: "player_option",
 	specialId: "player_special",
 } as const satisfies Record<EquipmentSlot, keyof DB>;
+
+// 语义槽名（意图层 EquipSlot）↔ DB 外键列名（EquipmentSlot）的映射。
+// 仅本文件可见——意图层只表达"哪个槽"，列名结构是 character 表的私事（冲突 #8 的接缝）。
+const slotToSemantic = {
+	weaponId: "weapon",
+	subWeaponId: "subWeapon",
+	armorId: "armor",
+	optionId: "option",
+	specialId: "special",
+} as const satisfies Record<EquipmentSlot, EquipSlot>;
+
+const semanticToSlot = {
+	weapon: "weaponId",
+	subWeapon: "subWeaponId",
+	armor: "armorId",
+	option: "optionId",
+	special: "specialId",
+} as const satisfies Record<EquipSlot, EquipmentSlot>;
 
 const equipmentRelationKeyConfig = {
 	weaponId: "weapon",
@@ -134,16 +154,60 @@ const toRelationPatch = <S extends EquipmentSlot>(
 
 export function EquipmentPanel(props: EquipmentPanelProps) {
 	const dictionary = useDictionary();
-	const [pickerOpen, setPickerOpen] = createSignal(false);
-	const [pickerSlot, setPickerSlot] = createSignal<EquipmentSlot>("weaponId");
+	const intentActor = useVisualIntent();
+	const intent = useIntentSnapshot();
 
-	// 槽位到数据表的映射留在装备面板内，保证通用选择器无需知道 character 的字段结构。
-	const pickerTableType = () => equipmentSlotConfig[pickerSlot()];
+	// 本角色的装备槽意图（target 为本角色 equipmentSlot 时取其语义槽名）。
+	const intentSlot = createMemo<EquipSlot | null>(() => {
+		const target = intent().context.target;
+		if (target?.kind === "equipmentSlot" && target.characterId === props.character.id) {
+			return target.slot;
+		}
+		return null;
+	});
 
-	const openEquipmentPicker = (slot: EquipmentSlot) => {
-		setPickerSlot(slot);
-		setPickerOpen(true);
+	const intentState = createMemo(() => String(intent().value));
+
+	// 聚焦中的槽（attending / acquiring / engaging 任一活跃态 + target 为本槽）。
+	const focusedSlot = createMemo<EquipSlot | null>(() => {
+		const state = intentState();
+		if (state === "atRest" || state === "releasing") return null;
+		return intentSlot();
+	});
+
+	// 正在编辑的槽（engaging 态 + target 为本槽）→ picker 开。
+	const editingSlot = createMemo<EquipSlot | null>(() => (intentState() === "engaging" ? intentSlot() : null));
+
+	// picker 表类型由意图机 target.slot 经映射表得出。
+	const pickerTableType = createMemo(() => {
+		const slot = editingSlot();
+		return slot ? equipmentSlotConfig[semanticToSlot[slot]] : equipmentSlotConfig.weaponId;
+	});
+
+	// 意图输入：槽行点击 → ATTEND（检视）；编辑按钮 → ENGAGE（操纵）；关闭/Esc → RELEASE。
+	const attendSlot = (slot: EquipmentSlot) => {
+		intentActor.send({
+			type: "ATTEND",
+			target: { kind: "equipmentSlot", characterId: props.character.id, slot: slotToSemantic[slot] },
+			source: "ui",
+		});
 	};
+
+	const engageSlot = (slot: EquipmentSlot) => {
+		intentActor.send({
+			type: "ENGAGE",
+			target: { kind: "equipmentSlot", characterId: props.character.id, slot: slotToSemantic[slot] },
+			source: "ui",
+		});
+	};
+
+	const releaseIntent = () => {
+		intentActor.send({ type: "RELEASE", source: "ui" });
+	};
+
+	// 聚焦高亮：本槽处于 focused 态时加 ring。
+	const focusRing = (slot: EquipmentSlot) =>
+		focusedSlot() === slotToSemantic[slot] ? "ring-2 ring-primary-color ring-inset" : "";
 
 	const clearEquipmentSlot = (slot: EquipmentSlot) => {
 		// data.prisma 将装备外键定义为 String?；清空装备用 NULL 表达无关联。
@@ -201,6 +265,9 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 	};
 
 	const pickEquipment = async (row: Record<string, unknown>) => {
+		const slot = editingSlot();
+		if (!slot) return;
+		const dbSlot = semanticToSlot[slot];
 		const tableType = pickerTableType();
 		const primaryKey = getPrimaryKeys(tableType)[0];
 		if (!primaryKey) return;
@@ -208,7 +275,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 		const primaryValue = row[String(primaryKey)];
 		if (typeof primaryValue !== "string") return;
 
-		await props.onPatchRequested({ [pickerSlot()]: primaryValue } as Partial<character>);
+		await props.onPatchRequested({ [dbSlot]: primaryValue } as Partial<character>);
 	};
 
 	return (
@@ -218,6 +285,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 				<section
 					role="application"
 					onClick={() => {
+						attendSlot("weaponId");
 						if (props.character.weapon) {
 							previewEquipmentItem("weaponId", props.character.weapon);
 						}
@@ -228,7 +296,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 							e.stopPropagation();
 						}
 					}}
-					class="MainHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border landscape:w-full landscape:border-b"
+					class={`MainHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border landscape:w-full landscape:border-b ${focusRing("weaponId")}`}
 				>
 					<div class="Label px-4 py-3">{dictionary().ui.character.tabs.equipment.mainHand}</div>
 					<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
@@ -248,8 +316,8 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 							class="rounded-none"
 							onClick={(e) => {
 								e.stopPropagation();
-								// 打开装备选择器
-								openEquipmentPicker("weaponId");
+								// 编辑装备 → 操纵意图（ENGAGE），picker 由 editingSlot 派生
+								engageSlot("weaponId");
 							}}
 						/>
 						<Button
@@ -280,6 +348,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 				<section
 					role="application"
 					onClick={() => {
+						attendSlot("subWeaponId");
 						if (props.character.subWeapon) {
 							previewEquipmentItem("subWeaponId", props.character.subWeapon);
 						}
@@ -290,7 +359,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 							e.stopPropagation();
 						}
 					}}
-					class="SubHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border landscape:w-full landscape:border-b"
+					class={`SubHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border landscape:w-full landscape:border-b ${focusRing("subWeaponId")}`}
 				>
 					<div class="Label px-4 py-3">{dictionary().ui.character.tabs.equipment.subHand}</div>
 					<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
@@ -310,8 +379,8 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 							class="rounded-none"
 							onClick={(e) => {
 								e.stopPropagation();
-								// 打开装备选择器
-								openEquipmentPicker("subWeaponId");
+								// 编辑装备 → 操纵意图（ENGAGE），picker 由 editingSlot 派生
+								engageSlot("subWeaponId");
 							}}
 						/>
 						<Button
@@ -342,6 +411,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 				<section
 					role="application"
 					onClick={() => {
+						attendSlot("armorId");
 						if (props.character.armor) {
 							previewEquipmentItem("armorId", props.character.armor);
 						}
@@ -352,7 +422,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 							e.stopPropagation();
 						}
 					}}
-					class="Armor  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
+					class={`Armor  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b ${focusRing("armorId")}`}
 				>
 					<div class="Label px-4 py-3 portrait:hidden">{dictionary().ui.character.tabs.equipment.armor}</div>
 					<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
@@ -372,8 +442,8 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 							class="rounded-none"
 							onClick={(e) => {
 								e.stopPropagation();
-								// 打开装备选择器
-								openEquipmentPicker("armorId");
+								// 编辑装备 → 操纵意图（ENGAGE），picker 由 editingSlot 派生
+								engageSlot("armorId");
 							}}
 						/>
 						<Button
@@ -404,6 +474,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 				<section
 					role="application"
 					onClick={() => {
+						attendSlot("optionId");
 						if (props.character.option) {
 							previewEquipmentItem("optionId", props.character.option);
 						}
@@ -414,7 +485,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 							e.stopPropagation();
 						}
 					}}
-					class="OptEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
+					class={`OptEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b ${focusRing("optionId")}`}
 				>
 					<div class="Label px-4 py-3 portrait:hidden">{dictionary().ui.character.tabs.equipment.option}</div>
 					<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
@@ -434,8 +505,8 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 							class="rounded-none"
 							onClick={(e) => {
 								e.stopPropagation();
-								// 打开装备选择器
-								openEquipmentPicker("optionId");
+								// 编辑装备 → 操纵意图（ENGAGE），picker 由 editingSlot 派生
+								engageSlot("optionId");
 							}}
 						/>
 						<Button
@@ -466,6 +537,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 				<section
 					role="application"
 					onClick={() => {
+						attendSlot("specialId");
 						if (props.character.special) {
 							previewEquipmentItem("specialId", props.character.special);
 						}
@@ -476,7 +548,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 							e.stopPropagation();
 						}
 					}}
-					class="SpeEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b"
+					class={`SpeEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b ${focusRing("specialId")}`}
 				>
 					<div class="Label px-4 py-3 portrait:hidden">{dictionary().ui.character.tabs.equipment.special}</div>
 					<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
@@ -496,8 +568,8 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 							class="rounded-none"
 							onClick={(e) => {
 								e.stopPropagation();
-								// 打开装备选择器
-								openEquipmentPicker("specialId");
+								// 编辑装备 → 操纵意图（ENGAGE），picker 由 editingSlot 派生
+								engageSlot("specialId");
 							}}
 						/>
 						<Button
@@ -527,10 +599,13 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 				{/* 时装 */}
 			</div>
 			<ForeignKeyPickerSheet<Record<string, unknown>>
-				open={pickerOpen()}
+				open={editingSlot() !== null}
 				title={dictionary().db[pickerTableType()].selfName}
 				tableType={pickerTableType()}
-				onOpenChange={(open) => setPickerOpen(open)}
+				onOpenChange={(open) => {
+					// 关闭即释放意图（engaging → releasing）。打开由 ENGAGE 驱动，此处不处理。
+					if (!open) releaseIntent();
+				}}
 				onPick={pickEquipment}
 			/>
 		</>

@@ -3,7 +3,7 @@
  *
  * 职责：提供唯一的 3D 场景控制端口，并把重型 Babylon 实现延后到首屏完成后再加载。
  * 设计目标：业务页面只能申请 scoped session，不能直接持有 Babylon scene/engine/canvas。
- * 见 src/lib/engine/document/decisions/0009-persistent-render-runtime.md
+ * 见 docs/decisions/0009-persistent-render-runtime.md
  */
 
 import {
@@ -46,11 +46,23 @@ export type RealtimeSceneSession = {
 	release: () => void;
 };
 
+/** 相机姿态：环绕相机的 alpha/beta/radius 与对准点。供意图层场景投影对焦使用。 */
+export type CameraPose = {
+	alpha: number;
+	beta: number;
+	radius: number;
+	target: { x: number; y: number; z: number };
+};
+
 export type SceneRuntimeContextValue = {
 	ready: () => boolean;
 	mode: () => SceneRuntimeMode;
 	acquireRealtimeSession: (config: RealtimeSceneConfig) => Promise<RealtimeSceneSession>;
 	projectWorldToScreen: (position: { x: number; y: number; z: number }) => ScreenPoint | null;
+	// 意图层场景投影：把相机补间到姿态 / 复位到观察位，完成调用 onDone，返回取消函数。
+	// 见 docs/decisions/0012-intent-first-visual-control.md
+	focusCamera: (pose: CameraPose, onDone: () => void) => () => void;
+	resetCamera: (onDone: () => void) => () => void;
 };
 
 export type SceneRuntimeCoreApi = SceneRuntimeContextValue & {
@@ -175,6 +187,17 @@ export function SceneRuntimeProvider(props: ParentProps<{ enabled: boolean }>) {
 			return api.acquireRealtimeSession(config);
 		},
 		projectWorldToScreen: (position) => coreApi?.projectWorldToScreen(position) ?? null,
+		// 核心未就绪 / 3D 禁用时：no-op + 立即回执（建议性回执兜底，仿 createDisabledRealtimeSession）。
+		focusCamera: (pose, onDone) => {
+			if (coreApi) return coreApi.focusCamera(pose, onDone);
+			onDone();
+			return () => {};
+		},
+		resetCamera: (onDone) => {
+			if (coreApi) return coreApi.resetCamera(onDone);
+			onDone();
+			return () => {};
+		},
 	};
 
 	return (
