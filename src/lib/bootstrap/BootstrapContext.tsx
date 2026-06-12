@@ -1,10 +1,11 @@
 import { type Accessor, createContext, onCleanup, onMount, type ParentProps, useContext } from "solid-js";
 import { createStore } from "solid-js/store";
-import { ensureBootstrapStarted, getBootstrapState, subscribeBootstrap, waitFor } from "./context-standalone";
+import { getBootstrapState, subscribeBootstrap, waitFor } from "./context-standalone";
 import type { BootstrapState, ModuleStatus } from "./types";
 
-// 组件层读模型：
-// Provider 只负责把 standalone 状态桥接成响应式 accessor，不直接承载编排逻辑。
+// 组件层读模型（UI 响应式视图）：
+// Provider 不触发启动——启动由 entry-client 的 startBootstrap 显式负责。
+// 这里只把 standalone 的状态桥接成响应式 accessor 供组件订阅，不承载编排或触发逻辑。
 type BootstrapContextValue = {
 	status: (name: string) => Accessor<ModuleStatus>;
 	ready: (name: string) => Accessor<boolean>;
@@ -20,7 +21,7 @@ export function BootstrapProvider(props: ParentProps) {
 	let unsubscribe: () => void = () => {};
 
 	onMount(() => {
-		ensureBootstrapStarted();
+		// 不触发启动；仅订阅 standalone 状态。启动触发点唯一，在 entry-client。
 		unsubscribe = subscribeBootstrap((nextState) => {
 			setState(nextState);
 		});

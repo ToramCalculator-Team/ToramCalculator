@@ -4,6 +4,7 @@ import "overlayscrollbars/overlayscrollbars.css";
 import { mount, StartClient } from "@solidjs/start/client";
 import { ClickScrollPlugin, OverlayScrollbars } from "overlayscrollbars";
 import { ResourcesLoader } from "./components/effects/resourcesLoder";
+import { startBootstrap } from "./lib/bootstrap/context-standalone";
 import { LogLevel, setGlobalLogLevel } from "./lib/Logger";
 import { runStartupGate } from "./lib/version/startupGate";
 import { setStore, store } from "./store";
@@ -240,6 +241,11 @@ if (resourceList) {
 // 挂载 SolidStart 应用入口
 // =========================
 OverlayScrollbars.plugin(ClickScrollPlugin);
+
+// 显式触发应用启动编排（唯一触发点）：在挂载组件前调用，使启动时机与渲染顺序解耦。
+// startBootstrap 幂等且 SSR 安全（内部判 window）；组件/repository 仅通过 waitFor 消费，不再触发。
+startBootstrap();
+
 const root = document.getElementById("app");
 if (root) {
 	mount(() => <StartClient />, root);
