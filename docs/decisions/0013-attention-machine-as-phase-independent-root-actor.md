@@ -73,3 +73,19 @@ capability(phase: Phase, target: Target, op: Operation): boolean
 - 与用户的架构讨论（2026-06-09）：并行状态 vs 子状态 vs 独立 actor 的取舍。
 - Statecharts（Harel）中并行区域的正交性前提；XState v5 根级 invoke 与 actor system 文档。
 - 项目内同构范式：`Member.ts` 的 actor 化、`GameEngineSM.ts` 的角色化机器、`sceneStateMachine.ts` 的 deps 注入。
+
+## 现状更新（2026-06-12）
+
+落地时取消了原方案里的"AppMachine（生命周期机）根级 invoke 注意力机"这层包装。原因：
+
+- 评估 bootstrap → XState 化（ADR 0012 笔记里的 B2）时确认，应用启动是**并发依赖 DAG 调度**，不是状态转移问题。手写编排器（`src/lib/bootstrap/orchestrator.ts`）比状态机更贴合，强行 XState 化是负优化。
+- 因此 AppMachine 退化为 `initializing --always--> ready` 的空壳，不承载任何真实等待逻辑——这层没有存在价值。
+
+调整后：
+
+- **业务阶段机与注意力机平级**，都是 `AppActorProvider` 直接 `createActor` 的顶层 actor，互不 invoke。各自以 `systemId`（`businessPhase` / `visualIntent`）注册供寻址。
+- 业务机不再被空壳父机 invoke，`useBusinessPhase()` 直接从 context 取，去掉了 `system.get` 的时序兜底（actor 恒定存在）。
+- 应用就绪由 `BootstrapContext` 的 `allReady(...)` 表达，与状态机解耦。
+- 文件 `appMachine.ts` 重命名为 `businessPhaseMachine.ts`，语义对齐。
+
+本 ADR 的核心决议（注意力机阶段无关、跨阶段存活、capability 降级而非清空）仍然成立——只是注意力机的创建方式从"被 AppMachine invoke"变为"由 provider 独立创建"，actor 生命周期等于其状态需要存活时长的判据依旧满足。`PHASE_CHANGED` 阶段→注意力通知协议尚未实现，留作后续工作。

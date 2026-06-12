@@ -1,41 +1,41 @@
 /**
  * 应用 actor 的 SolidJS provider + 消费 hooks。
  *
- * - AppMachine（生命周期机）：initializing → ready，ready 时 invoke BusinessPhaseMachine。
- * - BusinessPhaseMachine（业务阶段机）：designing | simulating | analyzing，通过 system.get 取得。
- * - VisualIntentMachine（注意力机）：独立创建，与 AppMachine 平级。
+ * - BusinessPhaseMachine（业务阶段机）：designing | simulating | analyzing。
+ * - VisualIntentMachine（注意力机）：阶段无关，跨阶段存活。
  *
- * 等路由设计确定后，再决定注意力机归属和路由绑定方式。
+ * 二者平级，都是本 provider 直接创建的顶层 actor，互不 invoke。
+ * 应用启动就绪由 bootstrap 编排器表达（见 src/lib/bootstrap），不经状态机。
+ * systemId 保留，供场景/其他 actor 通过 actor.system.get() 寻址。
  */
 
 import { type Accessor, createContext, type JSX, onCleanup, type ParentProps, useContext } from "solid-js";
 import { fromActorRef } from "@xstate/solid";
-import { type Actor, type ActorRefFrom, createActor } from "xstate";
-import { type AppMachine, type BusinessPhaseMachine, createAppMachine } from "./appMachine";
+import { type Actor, createActor } from "xstate";
+import { type BusinessPhaseMachine, createBusinessPhaseMachine } from "./businessPhaseMachine";
 import { createVisualIntentMachine, type VisualIntentMachine, type VisualIntentSnapshot } from "./intent/visualIntentMachine";
 
-type AppActor = Actor<AppMachine>;
+type BusinessActor = Actor<BusinessPhaseMachine>;
 type IntentActor = Actor<VisualIntentMachine>;
-type BusinessPhaseActorRef = ActorRefFrom<BusinessPhaseMachine>;
 
 type AppActorContextValue = {
-	appActor: AppActor;
+	businessActor: BusinessActor;
 	intentActor: IntentActor;
 };
 
 const AppActorCtx = createContext<AppActorContextValue>();
 
 export function AppActorProvider(props: ParentProps): JSX.Element {
-	const appActor = createActor(createAppMachine(), { systemId: "app" });
-	appActor.start();
+	const businessActor = createActor(createBusinessPhaseMachine(), { systemId: "businessPhase" });
+	businessActor.start();
 
 	const intentActor = createActor(createVisualIntentMachine(), { systemId: "visualIntent" });
 	intentActor.start();
 
 	// Dev 日志
 	if (import.meta.env.DEV) {
-		appActor.subscribe((snapshot) => {
-			console.debug("[App]", snapshot.value);
+		businessActor.subscribe((snapshot) => {
+			console.debug("[BusinessPhase]", snapshot.value);
 		});
 		intentActor.subscribe((snapshot) => {
 			console.debug("[visualIntent]", snapshot.value, {
@@ -46,30 +46,20 @@ export function AppActorProvider(props: ParentProps): JSX.Element {
 	}
 
 	onCleanup(() => {
-		appActor.stop();
+		businessActor.stop();
 		intentActor.stop();
 	});
 
-	return <AppActorCtx.Provider value={{ appActor, intentActor }}>{props.children}</AppActorCtx.Provider>;
+	return <AppActorCtx.Provider value={{ businessActor, intentActor }}>{props.children}</AppActorCtx.Provider>;
 }
 
-/** 生命周期机 actor。 */
-export function useAppActor(): AppActor {
+/** 业务阶段机 actor。 */
+export function useBusinessPhase(): BusinessActor {
 	const ctx = useContext(AppActorCtx);
 	if (!ctx) {
-		throw new Error("useAppActor must be used within AppActorProvider");
+		throw new Error("useBusinessPhase must be used within AppActorProvider");
 	}
-	return ctx.appActor;
-}
-
-/** 业务阶段机 actor（由 AppMachine invoke，通过 system 取得）。 */
-export function useBusinessPhase(): BusinessPhaseActorRef {
-	const appActor = useAppActor();
-	const ref = appActor.system.get("businessPhase") as BusinessPhaseActorRef | undefined;
-	if (!ref) {
-		throw new Error("businessPhase actor not available; AppMachine may not be in ready state");
-	}
-	return ref;
+	return ctx.businessActor;
 }
 
 /** 注意力机 actor。 */
