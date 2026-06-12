@@ -2,13 +2,13 @@ import { useNavigate } from "@solidjs/router";
 import { createEffect, createMemo, createSignal, For, type JSX, onMount } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons/index";
-import { getDictionary } from "~/locales/i18n";
+import { useDictionary } from "~/contexts/Dictionary";
 import { setStore, store } from "~/store";
 
 export default function ProfilePage() {
 	const navigate = useNavigate();
 	// UI文本字典
-	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
+	const dictionary = useDictionary();
 
 	// 页面附加功能（右上角按钮组）配置
 	const [extraFunctionConfig] = createSignal<

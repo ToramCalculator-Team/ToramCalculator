@@ -17,11 +17,12 @@ import { LoadingBar } from "~/components/controls/loadingBar";
 import { Filing } from "~/components/features/filing";
 import { Icons } from "~/components/icons/index";
 import { MediaContext } from "~/contexts/Media";
-import { getDictionary } from "~/locales/i18n";
 import type { Dictionary } from "~/locales/type";
 import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
 import { setStore, store } from "~/store";
 import { indexPageMachine } from "./indexPageMachine";
+import { useDictionary } from "~/contexts/Dictionary";
+
 export default function IndexPage() {
 	const [searchButtonRef, setSearchButtonRef] = createSignal<HTMLButtonElement | undefined>(undefined);
 	const [searchInputRef, setSearchInputRef] = createSignal<HTMLInputElement | undefined>(undefined);
@@ -29,7 +30,7 @@ export default function IndexPage() {
 	// 导航
 	const navigate = useNavigate();
 	// UI文本字典
-	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
+	const dictionary = useDictionary();
 	// 媒体查询
 	const media = useContext(MediaContext);
 

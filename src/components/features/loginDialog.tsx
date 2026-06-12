@@ -6,13 +6,13 @@ import { z } from "zod/v4";
 import defaultUserAvatarUrl from "~/../public/icons/512.png?url";
 import { Button } from "~/components/controls/button";
 import { emailExists, getUserByCookie } from "~/lib/utils/session";
-import { getDictionary } from "~/locales/i18n";
 import { clearSessionAccountStore, hydrateSessionAccountStore } from "~/session/sessionAccountStore";
 import { bindTemporaryAccountToUser, clearLocalChanges, ensureTemporaryAccount } from "~/session/temporaryAccount";
 import { setStore, store } from "~/store";
 import { Dialog } from "../containers/dialog";
 import type { InputStateType } from "../controls/input";
 import { Input } from "../controls/input";
+import { useDictionary } from "~/contexts/Dictionary";
 
 function fieldInfo(field: AnyFieldApi): string {
 	const errors =
@@ -46,7 +46,7 @@ export const LoginDialog = () => {
 	const [passwordInputState, setPasswordInputState] = createSignal<InputStateType>("default");
 
 	// UI文本字典
-	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
+	const dictionary = useDictionary();
 
 	const logIn = async (value: LoginFormProps) => {
 		try {

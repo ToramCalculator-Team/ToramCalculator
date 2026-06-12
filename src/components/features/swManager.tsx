@@ -1,7 +1,7 @@
 import { createEffect, createMemo, createSignal, onCleanup, onMount, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons/index";
-import { getDictionary } from "~/locales/i18n";
+import { useDictionary } from "~/contexts/Dictionary";
 import { setStore, store } from "~/store";
 import * as swClient from "~/worker/sw/client";
 import type { SWContext } from "~/worker/sw/types";
@@ -36,7 +36,7 @@ const defaultSWContext: SWContext = {
 };
 
 export const ServiceWorkerManager = () => {
-	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
+	const dictionary = useDictionary();
 
 	const [isAvailable, setIsAvailable] = createSignal(false);
 	const [isLoading, setIsLoading] = createSignal(false);

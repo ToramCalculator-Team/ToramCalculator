@@ -8,9 +8,8 @@ import { EnumSelect } from "~/components/controls/enumSelect";
 import { Input } from "~/components/controls/input";
 import { Toggle } from "~/components/controls/toggle";
 import { fieldInfo } from "~/components/dataDisplay/utils";
-import { getDictionary } from "~/locales/i18n";
+import { useDictionary } from "~/contexts/Dictionary";
 import type { Dic, EnumFieldDetail } from "~/locales/type";
-import { store } from "~/store";
 
 export const Form = <T extends Record<string, unknown>>(props: {
 	initialValue: T;
@@ -28,7 +27,7 @@ export const Form = <T extends Record<string, unknown>>(props: {
 	onSubmit?: (values: T) => void;
 }) => {
 	// UI文本字典
-	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
+	const dictionary = useDictionary();
 
 	const form = createForm(() => ({
 		defaultValues: props.initialValue,

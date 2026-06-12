@@ -6,12 +6,12 @@ import { type Fields, QueryBuilder, type RuleGroupType } from "@query-builder/so
 import { createMemo, createSignal, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Select } from "~/components/controls/select";
-import { getDictionary } from "~/locales/i18n";
+import { useDictionary } from "~/contexts/Dictionary";
 import { store } from "~/store";
 
 export default function Repl() {
 	// UI文本字典
-	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
+	const dictionary = useDictionary();
 
 	// 当前选择的表
 	const [selectedTable, setSelectedTable] = createSignal<string>("");

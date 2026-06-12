@@ -1,10 +1,9 @@
-import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
+import { createSignal, onCleanup, onMount } from "solid-js";
 import { LoadingBar } from "~/components/controls/loadingBar";
-import { getDictionary } from "~/locales/i18n";
-import { store } from "~/store";
+import { useDictionary } from "~/contexts/Dictionary";
 
 export default function Loading() {
-	const [dictionary, setDictionary] = createSignal(getDictionary("en"));
+	const dictionary = useDictionary();
 	const [loadingPageRef, setLoadingPageRef] = createSignal<HTMLDivElement | null>(null);
 	const [img1Ref, setImg1Ref] = createSignal<HTMLDivElement | null>(null);
 	const [img2Ref, setImg2Ref] = createSignal<HTMLDivElement | null>(null);
@@ -34,10 +33,6 @@ export default function Loading() {
 
 	onCleanup(() => {
 		loadingPageRef()?.removeEventListener("mousemove", bgParallaxFn);
-	});
-
-	createEffect(() => {
-		setDictionary(getDictionary(store.settings.userInterface.language));
 	});
 
 	return (

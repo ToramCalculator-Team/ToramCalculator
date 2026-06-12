@@ -6,7 +6,6 @@ import { globalFormGroup } from "~/components/business/form/globalFormGroup";
 import { RandomBallBackground } from "~/components/effects/randomBg";
 import { LoginDialog } from "~/components/features/loginDialog";
 import { Setting } from "~/components/features/setting";
-import { DictionaryProvider } from "~/contexts/Dictionary";
 import { MediaProvider } from "~/contexts/Media-component";
 import { BootstrapProvider } from "~/lib/bootstrap/BootstrapContext";
 import { EngineProvider } from "~/lib/engine/core/thread/EngineContext";
@@ -220,31 +219,29 @@ export default function AppMainContet(props: ParentProps) {
 	return (
 		<BootstrapProvider>
 			<MediaProvider>
-				<DictionaryProvider>
-					<EngineProvider>
-						<AppActorProvider>
-							<SceneRuntimeProvider enabled={store.settings.userInterface.is3DSceneEnabled}>
-								<RandomBallBackground />
-								<SceneCanvas />
-								<SceneIntentBridge />
-								<Motion.div
-									id="AppMainContet"
-									class={`fixed left-0 top-0 h-dvh w-dvw overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
-								>
-									{props.children}
-									<LoginDialog />
-									<Show when={globalCardRequested()}>
-										<GlobalCardContainer />
-									</Show>
-									<Show when={globalFormRequested()}>
-										<GlobalFormContainer />
-									</Show>
-								</Motion.div>
-								<Setting />
-							</SceneRuntimeProvider>
-						</AppActorProvider>
-					</EngineProvider>
-				</DictionaryProvider>
+				<EngineProvider>
+					<AppActorProvider>
+						<SceneRuntimeProvider enabled={store.settings.userInterface.is3DSceneEnabled}>
+							<RandomBallBackground />
+							<SceneCanvas />
+							<SceneIntentBridge />
+							<Motion.div
+								id="AppMainContet"
+								class={`fixed left-0 top-0 h-dvh w-dvw overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
+							>
+								{props.children}
+								<LoginDialog />
+								<Show when={globalCardRequested()}>
+									<GlobalCardContainer />
+								</Show>
+								<Show when={globalFormRequested()}>
+									<GlobalFormContainer />
+								</Show>
+							</Motion.div>
+							<Setting />
+						</SceneRuntimeProvider>
+					</AppActorProvider>
+				</EngineProvider>
 			</MediaProvider>
 		</BootstrapProvider>
 	);

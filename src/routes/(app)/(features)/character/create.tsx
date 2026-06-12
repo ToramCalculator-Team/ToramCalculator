@@ -1,13 +1,13 @@
 import { useNavigate } from "@solidjs/router";
 import { createMemo, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
-import { getDictionary } from "~/locales/i18n";
 import { setStore, store } from "~/store";
 import { createCharacter } from "./createCharacter";
+import { useDictionary } from "~/contexts/Dictionary";
 
 export default function CreateCharacterPage() {
 	// UI文本字典
-	const dictionary = createMemo(() => getDictionary(store.settings.userInterface.language));
+	const dictionary = useDictionary();
 
 	const navigate = useNavigate();
 
