@@ -308,6 +308,9 @@ export const VirtualStatsRenderer = (props: { data?: object }) => {
 	const [scrollRef, setScrollRef] = createSignal<OverlayScrollbarsComponentRef | undefined>(undefined);
 	const [virtualizer, setVirtualizer] = createSignal<Virtualizer<HTMLElement, Element> | null>(null);
 	const [virtualItems, setVirtualItems] = createSignal<VirtualItem[]>([]);
+	// getTotalSize() 不是 Solid 信号，不会随测量更新而响应式重算；用信号驱动 spacer 高度，
+	// 否则 spacer 高度会冻结在初始预估值，导致动态行高被裁剪/重叠。
+	const [totalSize, setTotalSize] = createSignal(0);
 	const virtualItemKeys = createMemo(() => virtualItems().map((item) => String(item.key)));
 	const virtualItemByKey = createMemo(() => {
 		const map = new Map<string, VirtualItem>();
@@ -343,10 +346,14 @@ export const VirtualStatsRenderer = (props: { data?: object }) => {
 			},
 			onChange: (instance) => {
 				setVirtualItems(instance.getVirtualItems());
+				setTotalSize(instance.getTotalSize());
 			},
 			useAnimationFrameWithResizeObserver: true,
 		});
 		setVirtualizer(v);
+		// 首帧测量尚未发生时，onChange 可能未触发；用初始预估值兜底 spacer 高度。
+		setVirtualItems(v.getVirtualItems());
+		setTotalSize(v.getTotalSize());
 	});
 
 	return (
@@ -357,70 +364,72 @@ export const VirtualStatsRenderer = (props: { data?: object }) => {
 			class="RenderObject w-full h-[55vh]"
 		>
 			<Show when={virtualizer()}>
-				{(v) => (
-					<div style={{ height: `${v().getTotalSize()}px`, position: "relative", width: "100%" }}>
-						<For each={virtualItemKeys()}>
-							{(virtualKey) => {
-								const currentVirtual = () => virtualItemByKey().get(virtualKey);
-								const currentRow = () => {
-									const vi = currentVirtual();
-									return vi ? rows()[vi.index] : undefined;
-								};
-								return (
-									<Show when={currentVirtual()}>
-										{(vi) => (
-											<div
-												data-index={vi().index}
-												ref={(el) => {
-													if (el.dataset.measured === "1") return;
-													el.dataset.measured = "1";
-													requestAnimationFrame(() => {
-														if (!el.isConnected || !document.body.contains(el)) return;
-														virtualizer()?.measureElement(el);
-													});
-												}}
-												style={{ position: "absolute", top: `${vi().start}px`, left: 0, width: "100%" }}
-											>
-												<Show when={currentRow()}>
-													{(row) => (
-														<Show
-															when={row().kind === "attr"}
-															fallback={
-																<Show
-																	when={row().kind === "group"}
-																	fallback={
-																		<div
-																			class="String bg-area-color flex w-full flex-none flex-col gap-1 rounded-sm p-1 lg:gap-4"
-																			style={{ "margin-left": `${row().depth * 16}px` }}
-																		>
-																			<div class="Key w-full p-1 text-sm font-bold">{row().key}：</div>
-																			<div class={` ${actualValueClass}`}>
-																				{(row() as Extract<FlatStatRow, { kind: "string" }>).value}
-																			</div>
+				<div style={{ height: `${totalSize()}px`, position: "relative", width: "100%" }}>
+					<For each={virtualItemKeys()}>
+						{(virtualKey) => {
+							const currentVirtual = () => virtualItemByKey().get(virtualKey);
+							const currentRow = () => {
+								const vi = currentVirtual();
+								return vi ? rows()[vi.index] : undefined;
+							};
+							return (
+								<Show when={currentVirtual()}>
+									{(vi) => (
+										<div
+											data-index={vi().index}
+											ref={(el) => {
+												// 仅在首次挂载时手动测量并触发 RO 观测；之后 ResizeObserver 自动捕获
+												// 内容变化（10hz 下 chip 数变动导致的高度变化）。
+												if (el.dataset.measured === "1") return;
+												el.dataset.measured = "1";
+												requestAnimationFrame(() => {
+													if (!el.isConnected || !document.body.contains(el)) return;
+													virtualizer()?.measureElement(el);
+												});
+											}}
+											style={{
+												position: "absolute",
+												top: `${vi().start}px`,
+												left: 0,
+												width: "100%",
+												// 缩进放在被测量的行容器上（padding 而非 margin），保证内容不溢出 100% 宽度，
+												// 从而 chip 换行与实际测量一致，避免行高跳动。
+												"padding-left": `${(currentRow()?.depth ?? 0) * 16}px`,
+											}}
+										>
+											<Show when={currentRow()}>
+												{(row) => (
+													<Show
+														when={row().kind === "attr"}
+														fallback={
+															<Show
+																when={row().kind === "group"}
+																fallback={
+																	<div class="String bg-area-color flex w-full flex-none flex-col gap-1 rounded-sm p-1 lg:gap-4">
+																		<div class="Key w-full p-1 text-sm font-bold">{row().key}：</div>
+																		<div class={` ${actualValueClass}`}>
+																			{(row() as Extract<FlatStatRow, { kind: "string" }>).value}
 																		</div>
-																	}
-																>
-																	<div
-																		class="Object bg-area-color text-main-text-color rounded-sm px-2 py-1 font-bold"
-																		style={{ "margin-left": `${row().depth * 16}px` }}
-																	>
-																		{row().key}
 																	</div>
-																</Show>
-															}
-														>
-															<AttrRow row={row() as Extract<FlatStatRow, { kind: "attr" }>} />
-														</Show>
-													)}
-												</Show>
-											</div>
-										)}
-									</Show>
-								);
-							}}
-						</For>
-					</div>
-				)}
+																}
+															>
+																<div class="Object bg-area-color text-main-text-color rounded-sm px-2 py-1 font-bold">
+																	{row().key}
+																</div>
+															</Show>
+														}
+													>
+														<AttrRow row={row() as Extract<FlatStatRow, { kind: "attr" }>} />
+													</Show>
+												)}
+											</Show>
+										</div>
+									)}
+								</Show>
+							);
+						}}
+					</For>
+				</div>
 			</Show>
 		</OverlayScrollbarsComponent>
 	);
