@@ -92,6 +92,7 @@ SW 版本号从 `src/store.ts` 的 `version` 字段提取。
 ## 约定
 
 - **路径别名**：`~/` 指向 `src/`，`@db/` 指向 `db/`。
+- **`ensure*` 命名**：`ensure*` 只用于**幂等的补齐/修复**（get-or-create、create-if-not-exists，如 `ensureTemporaryAccount`、`ensureMigrationTables`），从任意位置多次调用都安全。**禁止**用 `ensure*` 惰性触发应用级生命周期（启动 worker/编排器、初始化服务单例）——那会把"启动"和"读取"柔和在一起，导致触发点不唯一、"从哪开始"无法定位。生命周期触发用 `start*`/`init*` 且必须有唯一显式入口；就绪校验用只读的 `is*`/`assert*`（漏启动时 `assert*` 抛错让问题显形，不得偷偷补救）。
 - **TypeScript**：启用 strict、`noEmit`、`moduleResolution: bundler`，JSX 使用 preserve（Solid）。
 - **环境变量**：使用 `.env` 和 `dotenv-expand`，支持 `${VAR}` 引用；新环境从 `.env.example` 复制。
 - **文本编码**：源文件使用 UTF-8。从 PowerShell 读取或编辑文件时显式指定 UTF-8，例如 `Get-Content -Encoding UTF8`，避免中文注释变成乱码。

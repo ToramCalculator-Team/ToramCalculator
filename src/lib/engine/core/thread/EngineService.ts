@@ -75,7 +75,7 @@ export class EngineService {
 	// ==================== 引擎资源管理 ====================
 
 	getDefaultEngine(): SimulationEngine {
-		this.ensureInitialized();
+		this.assertInitialized();
 		return this.createEngine(this.defaultEngineId);
 	}
 
@@ -102,14 +102,16 @@ export class EngineService {
 		this.engines.delete(id);
 	}
 
-	private ensureInitialized(): void {
+	private assertInitialized(): void {
+		// 唯一启动点是 bootstrap 的 engine 模块（modules.ts: service.init()）。
+		// 此处不再惰性 init——漏启动是编程错误，应显形而非被偷偷补救。
 		if (!this.initialized) {
-			this.init();
+			throw new Error("EngineService 尚未初始化：必须先由 bootstrap engine 模块调用 init()");
 		}
 	}
 
 	private requireEngine(engineId?: string): SimulationEngine {
-		this.ensureInitialized();
+		this.assertInitialized();
 		const id = engineId ?? this.defaultEngineId;
 		const engine = this.engines.get(id);
 		if (!engine) throw new Error(`engine not found: ${id}`);
@@ -140,7 +142,7 @@ export class EngineService {
 	 * @returns 分支结果（success + data 或 success + error）
 	 */
 	async executeBranchTask(task: BranchTask): Promise<{ ok: true; data: BranchResult } | { ok: false; error: string }> {
-		this.ensureInitialized();
+		this.assertInitialized();
 		try {
 			const pool = this.batchPool;
 			if (!pool) throw new Error("branch worker pool not initialized");
