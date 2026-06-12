@@ -34,10 +34,15 @@ export function SceneIntentBridge() {
 		const deps: SceneIntentProjectionDeps = {
 			focusTarget: (target, _op, onSettled) => {
 				if (target.kind === "equipmentSlot") {
+					// character 内容：补间到槽位锚姿态（围绕角色原点站位），到位后放手，用户可拖拽。
 					const pose = SLOT_CAMERA_POSES[target.slot];
 					return sceneRuntime.focusCamera(pose, onSettled);
 				}
-				// 其他 kind 暂无场景投影：立即回执（建议性回执兜底）。
+				if (target.kind === "simEntity") {
+					// realtime 内容：设 followEntityId（保留当前角度），随后控制器每帧跟随——非第二驱动源。
+					return sceneRuntime.followEntity(target.memberId, onSettled);
+				}
+				// skillTree / timelineEvent 暂无场景投影：立即回执（建议性回执兜底，本轮不做）。
 				console.debug("[SceneIntentBridge] focusTarget 无场景投影，立即回执", target.kind);
 				queueMicrotask(onSettled);
 				return () => {};

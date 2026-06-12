@@ -46,6 +46,12 @@ export type RealtimeSceneSession = {
 	release: () => void;
 };
 
+/** 角色内容会话：页面向共享场景申请把角色模型渲染进唯一常驻场景，对称于 RealtimeSceneSession。 */
+export type CharacterContentSession = {
+	id: string;
+	release: () => void;
+};
+
 /** 相机姿态：环绕相机的 alpha/beta/radius 与对准点。供意图层场景投影对焦使用。 */
 export type CameraPose = {
 	alpha: number;
@@ -58,11 +64,23 @@ export type SceneRuntimeContextValue = {
 	ready: () => boolean;
 	mode: () => SceneRuntimeMode;
 	acquireRealtimeSession: (config: RealtimeSceneConfig) => Promise<RealtimeSceneSession>;
+	/**
+	 * 申请把角色内容渲染进共享常驻场景，返回可释放 session。与 acquireRealtimeSession 同构：
+	 * 页面是内容来源的申请方，SceneRuntime 是不归任何页面所有的共享服务。
+	 * character/realtime 内容互斥，由 core sceneMachine 仲裁（新 acquire 自动释放旧来源）。
+	 */
+	acquireCharacterContent: (characterId: string) => Promise<CharacterContentSession>;
 	projectWorldToScreen: (position: { x: number; y: number; z: number }) => ScreenPoint | null;
 	// 意图层场景投影：把相机补间到姿态 / 复位到观察位，完成调用 onDone，返回取消函数。
 	// 见 docs/decisions/0012-intent-first-visual-control.md
 	focusCamera: (pose: CameraPose, onDone: () => void) => () => void;
 	resetCamera: (onDone: () => void) => () => void;
+	/**
+	 * realtime 内容专用相机跟随入口：注意力机对焦 simEntity 时设定 followEntityId（保留当前角度），
+	 * 随后由 ThirdPersonCameraController 每帧跟随——不写 target 补间，规避与控制器 target-lerp 争用。
+	 * 跟随是持续态，回执建议性（立即调 onDone）。
+	 */
+	followEntity: (entityId: string, onDone: () => void) => () => void;
 };
 
 export type SceneRuntimeCoreApi = SceneRuntimeContextValue & {
@@ -94,6 +112,11 @@ const createDisabledRealtimeSession = (
 	setActiveController: () => {},
 	setCameraInputEnabled: () => {},
 	release: () => releaseCallback(id),
+});
+
+const createDisabledCharacterContentSession = (id: string): CharacterContentSession => ({
+	id,
+	release: () => {},
 });
 
 export function SceneRuntimeProvider(props: ParentProps<{ enabled: boolean }>) {
@@ -186,6 +209,14 @@ export function SceneRuntimeProvider(props: ParentProps<{ enabled: boolean }>) {
 			const api = await ensureCore();
 			return api.acquireRealtimeSession(config);
 		},
+		acquireCharacterContent: async (characterId) => {
+			if (!props.enabled) {
+				const sessionId = `disabled-character-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+				return createDisabledCharacterContentSession(sessionId);
+			}
+			const api = await ensureCore();
+			return api.acquireCharacterContent(characterId);
+		},
 		projectWorldToScreen: (position) => coreApi?.projectWorldToScreen(position) ?? null,
 		// 核心未就绪 / 3D 禁用时：no-op + 立即回执（建议性回执兜底，仿 createDisabledRealtimeSession）。
 		focusCamera: (pose, onDone) => {
@@ -195,6 +226,11 @@ export function SceneRuntimeProvider(props: ParentProps<{ enabled: boolean }>) {
 		},
 		resetCamera: (onDone) => {
 			if (coreApi) return coreApi.resetCamera(onDone);
+			onDone();
+			return () => {};
+		},
+		followEntity: (entityId, onDone) => {
+			if (coreApi) return coreApi.followEntity(entityId, onDone);
 			onDone();
 			return () => {};
 		},

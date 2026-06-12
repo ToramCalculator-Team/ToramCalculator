@@ -39,10 +39,16 @@ import { createLogger } from "~/lib/Logger";
 import { store } from "~/store";
 import { resolveColorSystem } from "~/styles/colorSystem/colorSystemController";
 import { RendererCommunication } from "./RendererCommunication";
-import { createRendererController } from "./RendererController";
+import {
+	BuiltinAnimationType,
+	type CharacterEntityRuntime,
+	createRendererController,
+	EntityFactory,
+} from "./RendererController";
 import type { RendererCmd } from "./RendererProtocol";
 import { createSceneMachine, type SceneMachine, type SceneMachineDeps } from "./sceneStateMachine";
 import type {
+	CharacterContentSession,
 	RealtimeSceneConfig,
 	RealtimeSceneSession,
 	SceneRuntimeCoreApi,
@@ -197,6 +203,8 @@ export function SceneRuntimeCore(props: {
 	let scene: Scene | undefined;
 	let backgroundRoot: TransformNode | undefined;
 	let realtimeRoot: TransformNode | undefined;
+	// 角色内容根：character 内容稳态下挂角色模型；切换/释放时 dispose 子树。
+	let characterRoot: TransformNode | undefined;
 	// 单相机：全程唯一相机，观察态静态环绕，实时态由控制器跟随，态间用 babylon 动画补间。
 	let sceneCamera: ArcRotateCamera | undefined;
 	let lensPipeline: LensRenderingPipeline | undefined;
@@ -206,6 +214,10 @@ export function SceneRuntimeCore(props: {
 	let defPBR: PBRMaterial | undefined;
 	let activeSessionId: string | null = null;
 	let _activeControllerId: string | null = null;
+	// 角色内容：工厂、实体句柄、序号（防快速来回切换的异步失配，仿 acquireRealtimeSession 的 sessionId）。
+	let characterFactory: EntityFactory | undefined;
+	let characterEntity: CharacterEntityRuntime | undefined;
+	let characterContentSeq = 0;
 	// 跟随门控：仅 realtime 稳态为 true，控制器 update 才驱动相机；过渡/观察期为 false，避免与动画打架。
 	let followActive = false;
 	let sceneMachineActor: Actor<SceneMachine> | undefined;
@@ -345,6 +357,33 @@ export function SceneRuntimeCore(props: {
 		};
 	};
 
+	// ─── 角色内容资源清理 ────────────────────────────────────────────────────────
+	// 完整清理一个角色实体：动画组 / 网格 / 标签 / 纹理。仿 RendererController.disposeEntity——
+	// 克隆动画组与 label 都不在 mesh 子树内（label 无 parent），只 dispose 子树会泄漏它们。
+	const disposeCharacterEntity = (entity: CharacterEntityRuntime) => {
+		entity.animationController.stopAllAnimations();
+		entity.builtinAnimations.forEach((group) => group.dispose());
+		entity.customAnimations.forEach((group) => group.dispose());
+		entity.builtinAnimations.clear();
+		entity.customAnimations.clear();
+		entity.mesh.dispose(false, true);
+		entity.label?.dispose(false, true);
+		entity.labelTexture?.dispose();
+	};
+
+	// 向控制器下发"跟随实体"指令（保留当前角度）。三处入口（startFollow/setFollowTarget/followEntity）共用。
+	const sendFollowCommand = (entityId: string) => {
+		if (!thirdPersonController) return;
+		thirdPersonController.handleCameraCommand({
+			type: "camera_control",
+			entityId,
+			subType: "follow",
+			data: { followEntityId: entityId },
+			seq: 0,
+			ts: Date.now(),
+		});
+	};
+
 	// ─── 机器副作用依赖 ──────────────────────────────────────────────────────────
 	const sceneMachineDeps: SceneMachineDeps = {
 		setupRealtimeResources: async (config) => {
@@ -402,19 +441,38 @@ export function SceneRuntimeCore(props: {
 		startFollow: (config) => {
 			followActive = true;
 			window.addEventListener("cameraControl", handleCameraControl as EventListener);
-			if (config?.followEntityId && thirdPersonController) {
-				thirdPersonController.handleCameraCommand({
-					type: "camera_control",
-					entityId: config.followEntityId,
-					subType: "follow",
-					data: { followEntityId: config.followEntityId },
-					seq: 0,
-					ts: Date.now(),
-				});
+			if (config?.followEntityId) {
+				sendFollowCommand(config.followEntityId);
 			}
 		},
 		stopFollow: () => {
 			followActive = false;
+		},
+		setupCharacterContent: async (characterId) => {
+			if (!scene) throw new Error("SceneRuntime is not ready");
+			const seq = ++characterContentSeq;
+			// 工厂常驻复用：EntityFactory 的 GLB 模板缓存是实例级，每次 new 都会重新 ImportMesh 并
+			// 把隐藏模板永久留在 scene。复用同一工厂让模板只加载一次。
+			characterFactory ??= new EntityFactory(scene);
+			// 角色站位原点（0,0,0）；SLOT_CAMERA_POSES 围绕此原点摆位。
+			const entity = await characterFactory.createCharacter(characterId, characterId, new Vector3(0, 0, 0));
+			// 快速来回切换：异步加载期间若 seq 已被新请求/释放抢占，丢弃本次结果并完整清理。
+			if (seq !== characterContentSeq || !characterRoot) {
+				disposeCharacterEntity(entity);
+				return;
+			}
+			// 挂到 characterRoot（修 createCharacter 未挂 root 的既有 bug）；label 不在子树内，靠 entity 句柄清理。
+			entity.mesh.parent = characterRoot;
+			entity.animationController.playBuiltinAnimation(BuiltinAnimationType.IDLE, { mode: "loop" });
+			characterEntity = entity;
+		},
+		teardownCharacterContent: () => {
+			// 序号自增使在途 setupCharacterContent 结果失配丢弃。
+			characterContentSeq++;
+			if (characterEntity) {
+				disposeCharacterEntity(characterEntity);
+				characterEntity = undefined;
+			}
 		},
 		onError: (error) => log.error("场景实时会话失败", error),
 	};
@@ -425,6 +483,10 @@ export function SceneRuntimeCore(props: {
 			case "loading":
 				return "loading";
 			case "idle":
+			// character 内容稳态对外复用 idle：属观察类，Nav 不隐藏、相机可被注意力机摆位。
+			case "loadingCharacter":
+			case "character":
+			case "unloadingCharacter":
 				return "idle";
 			case "preparing":
 			case "entering":
@@ -459,6 +521,7 @@ export function SceneRuntimeCore(props: {
 		registerVolumetricFogPlugin();
 		backgroundRoot = new TransformNode("render-group:background", scene);
 		realtimeRoot = new TransformNode("render-group:realtime", scene);
+		characterRoot = new TransformNode("render-group:character", scene);
 
 		scene.clearColor = new Color4(0, 0, 0, 0);
 		scene.ambientColor = themePrimaryColor();
@@ -688,15 +751,8 @@ export function SceneRuntimeCore(props: {
 		return {
 			id: sessionId,
 			setFollowTarget: (entityId) => {
-				if (!entityId || activeSessionId !== sessionId || !thirdPersonController) return;
-				thirdPersonController.handleCameraCommand({
-					type: "camera_control",
-					entityId,
-					subType: "follow",
-					data: { followEntityId: entityId },
-					seq: 0,
-					ts: Date.now(),
-				});
+				if (!entityId || activeSessionId !== sessionId) return;
+				sendFollowCommand(entityId);
 			},
 			setActiveController: (controllerId) => {
 				if (activeSessionId !== sessionId) return;
@@ -713,17 +769,33 @@ export function SceneRuntimeCore(props: {
 		};
 	};
 
+	const acquireCharacterContent = async (characterId: string): Promise<CharacterContentSession> => {
+		await initializationPromise;
+		if (!ready() || !scene || !sceneMachineActor) {
+			throw new Error("SceneRuntime is not ready");
+		}
+		const sessionId = createId();
+		// 互斥由机器仲裁：idle 接受 LOAD_CHARACTER；非 idle（如 realtime/已有角色内容）时页面应先 release。
+		sceneMachineActor.send({ type: "LOAD_CHARACTER", characterId });
+		return {
+			id: sessionId,
+			release: () => {
+				sceneMachineActor?.send({ type: "RELEASE_CONTENT" });
+			},
+		};
+	};
+
 	const api: SceneRuntimeCoreApi = {
 		ready,
 		mode,
 		acquireRealtimeSession,
+		acquireCharacterContent,
 		// ── 意图层场景投影（ADR 0012）：把相机补间到槽位锚姿态 / 复位观察位 ──────────────
-		// guard：仅 sceneMachine 处于 idle 态时执行（观察稳态，无 realtime 跟随争抢相机）；
-		// 否则日志 + 立即 onDone（建议性回执兜底，realtime 期间的焦点意图被静默回执，冲突 #3 本次不解）。
+		// 统一相机模型（方案甲）：注意力机是 target→对焦姿态的唯一触发器，对 idle/character 稳态生效。
+		// 已移除 idle-only 守卫——realtime 下注意力对焦改走 followEntity（bridge 分流），不写 target 补间，
+		// 故此处补间不会与 controller target-lerp 同帧争用。animateCameraTo 是唯一补间器。
 		focusCamera: (pose, onDone) => {
-			const sceneIdle = sceneMachineActor?.getSnapshot().matches("idle") ?? false;
-			if (!scene || !sceneCamera || !sceneIdle) {
-				log.debug("focusCamera 跳过：场景非 idle 稳态，立即回执");
+			if (!scene || !sceneCamera) {
 				onDone();
 				return () => {};
 			}
@@ -733,13 +805,22 @@ export function SceneRuntimeCore(props: {
 			);
 		},
 		resetCamera: (onDone) => {
-			const sceneIdle = sceneMachineActor?.getSnapshot().matches("idle") ?? false;
-			if (!scene || !sceneCamera || !sceneIdle) {
-				log.debug("resetCamera 跳过：场景非 idle 稳态，立即回执");
+			if (!scene || !sceneCamera) {
 				onDone();
 				return () => {};
 			}
 			return animateCameraTo({ ...OBSERVE_POSE, target: OBSERVE_POSE.target.clone() }, onDone);
+		},
+		// realtime 内容专用：设定 followEntityId（保留当前角度），随后控制器每帧跟随。跟随是持续态，回执建议性。
+		// 控制器未就绪（非 realtime 稳态）→ no-op + 立即回执。
+		followEntity: (entityId, onDone) => {
+			if (!thirdPersonController) {
+				onDone();
+				return () => {};
+			}
+			sendFollowCommand(entityId);
+			onDone();
+			return () => {};
 		},
 		projectWorldToScreen: (position): ScreenPoint | null => {
 			if (!scene || !engine) return null;
@@ -762,6 +843,7 @@ export function SceneRuntimeCore(props: {
 			if (disposed) return;
 			disposed = true;
 			sceneMachineDeps.teardownRealtimeResources();
+			sceneMachineDeps.teardownCharacterContent();
 			sceneMachineActor?.stop();
 			sceneMachineActor = undefined;
 			lensPipeline?.dispose();

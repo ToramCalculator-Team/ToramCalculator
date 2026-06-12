@@ -223,12 +223,12 @@ export default function AppMainContet(props: ParentProps) {
 					<AppActorProvider>
 						<SceneRuntimeProvider enabled={store.settings.userInterface.is3DSceneEnabled}>
 							<RandomBallBackground />
-							<SceneCanvas />
-							<SceneIntentBridge />
 							<Motion.div
 								id="AppMainContet"
 								class={`fixed left-0 top-0 h-dvh w-dvw overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
 							>
+								<SceneCanvas />
+								<SceneIntentBridge />
 								{props.children}
 								<LoginDialog />
 								<Show when={globalCardRequested()}>
