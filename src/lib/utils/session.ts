@@ -1,13 +1,12 @@
+import { getCookie } from "@solidjs/start/http";
+import { jwtVerify } from "jose";
+import { findUserByEmail, findUserWithRelations } from "@db/repositories/user";
+
 // 函数级 "use server" 保留 SolidStart server function 的类型化调用，同时让客户端构建只看到调用边界。
+// server function 的函数体在 client bundle 会被整体替换为 RPC 调用，下面的 server-only 依赖
+//（DB 查询、cookie、jose）随之被 tree-shake，无需再用动态 import 做隔离。
 export async function getUserByCookie() {
 	"use server";
-
-	// 服务端依赖放在函数内部，避免 client bundle 解析 AUTH_SECRET、cookie、JWT、DB 查询实现。
-	const [{ findUserWithRelations }, { getCookie }, { jwtVerify }] = await Promise.all([
-		import("@db/repositories/user"),
-		import("@solidjs/start/http"),
-		import("jose"),
-	]);
 
 	const secret = process.env.AUTH_SECRET;
 	if (!secret) return null;
@@ -27,7 +26,6 @@ export async function emailExists(email: string) {
 	"use server";
 
 	// 注册页只需要布尔结果，避免把用户对象结构暴露给调用方。
-	const { findUserByEmail } = await import("@db/repositories/user");
 	const user = await findUserByEmail(email);
 	return !!user;
 }

@@ -1,4 +1,5 @@
 import { createContext, createSignal, onCleanup, onMount, type ParentProps, useContext } from "solid-js";
+import { waitFor } from "~/lib/bootstrap/context-standalone";
 import { createLogger } from "~/lib/Logger";
 import type { EngineScenarioData, RuntimeConfig } from "../types";
 import type { MemberSerializeData } from "../World/Member/Member";
@@ -46,7 +47,6 @@ export function EngineProvider(props: ParentProps) {
 	onMount(() => {
 		void (async () => {
 			try {
-				const { waitFor } = await import("~/lib/bootstrap/context-standalone");
 				// 设计目的：Provider 只桥接 bootstrap 统一编排后的 engine 状态，避免渲染 Provider 时抢跑初始化计算 Worker。
 				await waitFor("engine");
 				if (disposed) return;

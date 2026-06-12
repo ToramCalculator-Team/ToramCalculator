@@ -19,8 +19,10 @@
  */
 
 import type { DB } from "@db/generated/zod/index";
+import { getDB } from "@db/repositories/database";
 import type { Compilable, Kysely } from "kysely";
 import { type Accessor, createEffect, createSignal, onCleanup } from "solid-js";
+import { waitFor } from "~/lib/bootstrap/context-standalone";
 
 export type LiveQueryStatus = "idle" | "loading" | "ready" | "error";
 
@@ -93,9 +95,7 @@ export function createLiveKyselyQuery<T>(
 	// 异步初始化 db（只跑一次，后续复用缓存）
 	void (async () => {
 		try {
-			const { waitFor } = await import("~/lib/bootstrap/context-standalone");
 			await waitFor("pgworker");
-			const { getDB } = await import("@db/repositories/database");
 			const instance = await getDB();
 			setDb(() => instance);
 		} catch (e) {

@@ -1,3 +1,5 @@
+import dotenv from "dotenv";
+import { expand } from "dotenv-expand";
 import { Pool } from "pg";
 
 // 同步延迟探针（生产模式，服务端常驻心跳）。
@@ -30,9 +32,7 @@ let seq = 0n;
  */
 const getPool = async (): Promise<Pool> => {
 	if (!pool) {
-		const dotenv = await import("dotenv");
-		const expand = await import("dotenv-expand");
-		expand.expand(dotenv.config());
+		expand(dotenv.config());
 		pool = new Pool({
 			host: process.env.PG_HOST,
 			user: process.env.PG_USERNAME,
