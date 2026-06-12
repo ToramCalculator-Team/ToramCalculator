@@ -1,11 +1,15 @@
 import { createLogger } from "~/lib/Logger";
-import type { EngineScenarioData, RuntimeConfig } from "../types";
 import { type BranchResult, type BranchTask, SimulatorTaskPriority } from "./protocol";
 import simulationWorker from "./Simulation.worker?worker&url";
 import { type SimulationEngine, SimulationEngineImpl } from "./SimulationEngine";
 import { SimulatorPool } from "./SimulatorPool";
 
 const log = createLogger("EngineService");
+
+/** 主业务实时模拟常驻引擎 ID（ADR 0015）。 */
+export const SIMULATOR_ENGINE_ID = "simulator";
+/** 角色配置预览常驻引擎 ID（ADR 0015）。 */
+export const CHARACTER_ENGINE_ID = "character";
 
 function getBranchWorkerLimit(): number {
 	const hardwareLimit = navigator.hardwareConcurrency || 4;
@@ -35,14 +39,13 @@ export class EngineService {
 	private engines: Map<string, SimulationEngine> = new Map();
 	private batchPool: SimulatorPool | null = null;
 	private initialized = false;
-	private readonly defaultEngineId = "__default__";
 
 	private constructor() {
 		// 不做自动初始化：由 init() 显式调用
 	}
 
 	/**
-	 * 显式初始化：创建 batchPool 和 default engine。
+	 * 显式初始化：创建 batchPool 和两个具名常驻引擎（simulator / character）。
 	 * 由 bootstrap 在 app 启动时调用。
 	 */
 	init(): void {
@@ -64,7 +67,9 @@ export class EngineService {
 				return data.type === "worker_ready";
 			},
 		});
-		this.createEngine(this.defaultEngineId);
+		// ADR 0015：两个常驻引擎在 init 期一次性建好，状态隔离、跨 URL 常驻。
+		this.engines.set(SIMULATOR_ENGINE_ID, new SimulationEngineImpl(SIMULATOR_ENGINE_ID));
+		this.engines.set(CHARACTER_ENGINE_ID, new SimulationEngineImpl(CHARACTER_ENGINE_ID));
 		log.info("EngineService 初始化完成");
 	}
 
@@ -74,32 +79,14 @@ export class EngineService {
 
 	// ==================== 引擎资源管理 ====================
 
-	getDefaultEngine(): SimulationEngine {
-		this.assertInitialized();
-		return this.createEngine(this.defaultEngineId);
+	/** 主业务实时模拟引擎（常驻）。 */
+	getSimulatorEngine(): SimulationEngine {
+		return this.requireEngine(SIMULATOR_ENGINE_ID);
 	}
 
-	createEngine(id = `engine_${Date.now()}`): SimulationEngine {
-		const existing = this.engines.get(id);
-		if (existing) return existing;
-		const engine = new SimulationEngineImpl(id);
-		this.engines.set(id, engine);
-		return engine;
-	}
-
-	getEngine(id: string): SimulationEngine | null {
-		return this.engines.get(id) ?? null;
-	}
-
-	getAllEngines(): SimulationEngine[] {
-		return [...this.engines.values()];
-	}
-
-	async disposeEngine(id: string): Promise<void> {
-		const engine = this.engines.get(id);
-		if (!engine) return;
-		await engine.dispose();
-		this.engines.delete(id);
+	/** 角色配置预览引擎（常驻）。 */
+	getCharacterEngine(): SimulationEngine {
+		return this.requireEngine(CHARACTER_ENGINE_ID);
 	}
 
 	private assertInitialized(): void {
@@ -110,26 +97,11 @@ export class EngineService {
 		}
 	}
 
-	private requireEngine(engineId?: string): SimulationEngine {
+	private requireEngine(engineId: string): SimulationEngine {
 		this.assertInitialized();
-		const id = engineId ?? this.defaultEngineId;
-		const engine = this.engines.get(id);
-		if (!engine) throw new Error(`engine not found: ${id}`);
+		const engine = this.engines.get(engineId);
+		if (!engine) throw new Error(`engine not found: ${engineId}`);
 		return engine;
-	}
-
-	// ==================== 生命周期委托 ====================
-
-	async loadScenario(data: EngineScenarioData, engineId?: string): Promise<void> {
-		await this.requireEngine(engineId).loadScenario(data);
-	}
-
-	async setRuntimeConfig(config: RuntimeConfig, engineId?: string): Promise<void> {
-		await this.requireEngine(engineId).setRuntimeConfig(config);
-	}
-
-	async patchMemberConfig(memberId: string, memberData: unknown, engineId?: string): Promise<void> {
-		await this.requireEngine(engineId).patchMemberConfig(memberId, memberData);
 	}
 
 	// ==================== 原子分支任务原语 ====================
@@ -168,18 +140,6 @@ export class EngineService {
 		tasks: BranchTask[],
 	): Promise<Array<{ ok: true; data: BranchResult } | { ok: false; error: string }>> {
 		return Promise.all(tasks.map((t) => this.executeBranchTask(t)));
-	}
-
-	// ==================== 查询 API ====================
-
-	async queryMemberStats(memberId: string, engineId?: string): Promise<Record<string, unknown> | null> {
-		const members = await this.requireEngine(engineId).getMembers();
-		const match = members.find((m) => m.id === memberId);
-		return match?.attrs ?? null;
-	}
-
-	async queryComputedSkills(memberId: string, engineId?: string): Promise<unknown[]> {
-		return this.requireEngine(engineId).getComputedSkills(memberId);
 	}
 
 	// ==================== 生命周期 ====================

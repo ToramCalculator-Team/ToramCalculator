@@ -1,8 +1,8 @@
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
-import { useEngine } from "~/lib/engine/core/thread/EngineContext";
 import type { BranchTask } from "~/lib/engine/core/thread/protocol";
+import type { SkillPreviewDataSource } from "~/routes/(app)/(features)/character/characterPageModel";
 
 const PREVIEW_COMPUTE_DEBOUNCE_MS = 150;
 
@@ -48,8 +48,11 @@ type PreviewSkillSource = {
  *   3. 通过 batchPool 并行执行所有分支任务
  *   4. 收集伤害结果并展示
  */
-export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: CharacterSkillWithRelations[] }) {
-	const engine = useEngine();
+export function SkillPreviewPanel(props: {
+	memberId: string;
+	learnedSkills?: CharacterSkillWithRelations[];
+	dataSource: SkillPreviewDataSource;
+}) {
 	const [skills, setSkills] = createSignal<SkillRow[]>([]);
 	const [computing, setComputing] = createSignal(false);
 	const [error, setError] = createSignal<string | null>(null);
@@ -70,16 +73,16 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 
 	const compute = async (token: number) => {
 		const memberId = props.memberId;
-		if (!memberId || !engine.ready()) return;
+		if (!memberId || !props.dataSource.ready()) return;
 
 		setComputing(true);
 		setError(null);
 
 		try {
-			const defaultEngine = engine.service.getDefaultEngine();
+			const characterEngine = props.dataSource.engine();
 
 			// 1. 获取成员已习得的技能列表
-			const rawSkills = await defaultEngine.getComputedSkills(memberId);
+			const rawSkills = await characterEngine.getComputedSkills(memberId);
 			if (token !== latestComputeToken) return;
 			const computedSkillList = (
 				rawSkills as Array<{
@@ -118,9 +121,9 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 
 			// 2. 捕获分支重建输入：scenarioData 构造对象图，checkpoint 恢复运行态。
 			const [checkpoint, exprDict, scenarioData] = await Promise.all([
-				defaultEngine.captureCheckpoint(),
-				defaultEngine.exportExprDict(),
-				defaultEngine.getInitializationData(),
+				characterEngine.captureCheckpoint(),
+				characterEngine.exportExprDict(),
+				characterEngine.getInitializationData(),
 			]);
 			if (token !== latestComputeToken) return;
 			if (!checkpoint) {
@@ -150,7 +153,7 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 			}));
 
 			// 4. 并行执行所有分支任务
-			const results = await engine.service.executeBranchBatch(tasks);
+			const results = await props.dataSource.executeBranchBatch(tasks);
 			if (token !== latestComputeToken) return;
 
 			// 5. 更新结果
@@ -226,13 +229,13 @@ export function SkillPreviewPanel(props: { memberId: string; learnedSkills?: Cha
 	createEffect(() => {
 		// 预览成员是异步加载/热替换进引擎的；订阅 members 快照可以在角色技能配置落库并 patch 引擎后重算。
 		// 否则面板可能在场景尚未加载完成时先算到空列表，之后不再刷新。
-		const member = engine.members().find((candidate) => candidate.id === props.memberId);
+		const member = props.dataSource.members().find((candidate) => candidate.id === props.memberId);
 		const learnedKey = learnedSkillSources()
 			.map((skill) => `${skill.id}:${skill.level}`)
 			.join("|");
 		// 设计说明：members 信号会随 refresh 产生新数组；用当前成员属性快照做稳定 key，避免同一状态重复排队。
 		const dependencyKey = `${props.memberId}|${member ? JSON.stringify(member.attrs) : "missing"}|${learnedKey}`;
-		if (props.memberId && engine.ready() && member && dependencyKey !== latestDependencyKey) {
+		if (props.memberId && props.dataSource.ready() && member && dependencyKey !== latestDependencyKey) {
 			latestDependencyKey = dependencyKey;
 			scheduleCompute();
 		}

@@ -43,7 +43,10 @@ import type { Accessor } from "solid-js";
 import { createEffect, createMemo, createResource, on, onCleanup } from "solid-js";
 import { createStore, reconcile, unwrap } from "solid-js/store";
 import type { EngineContextValue } from "~/lib/engine/core/thread/EngineContext";
+import type { BranchResult, BranchTask } from "~/lib/engine/core/thread/protocol";
+import type { SimulationEngine } from "~/lib/engine/core/thread/SimulationEngine";
 import { createPreviewConfig, type EngineScenarioData } from "~/lib/engine/core/types";
+import type { MemberSerializeData } from "~/lib/engine/core/World/Member/Member";
 
 // 设计说明：DB 写入比 UI 响应慢，150ms 用于合并拖动、连点、快速切换产生的同类写入。
 const DB_DEBOUNCE_MS = 150;
@@ -107,12 +110,31 @@ export type CharacterPageCommand =
 			characterSkillIds: string[];
 	  };
 
+/**
+ * 技能预览面板所需的数据源入口（ADR 0015：character 引擎收敛到 model 经 props 下发）。
+ * 只承载数据源访问，计算编排（checkpoint/BranchTask/debounce）仍由面板负责。
+ */
+export type SkillPreviewDataSource = {
+	/** character 预览引擎实例访问（getter，避免缓存失效引用） */
+	engine: () => SimulationEngine;
+	/** character 引擎成员列表快照 */
+	members: () => MemberSerializeData[];
+	/** 两引擎是否均已就绪 */
+	ready: () => boolean;
+	/** 透传 batchPool 批量分支任务执行入口 */
+	executeBranchBatch: (
+		tasks: BranchTask[],
+	) => Promise<Array<{ ok: true; data: BranchResult } | { ok: false; error: string }>>;
+};
+
 export type CharacterPageModel = {
 	pageData: CharacterPageData;
 	status: Accessor<CharacterPageStatus>;
 	error: Accessor<unknown>;
 	dispatch: (command: CharacterPageCommand) => void;
 	reload: () => Promise<unknown>;
+	/** 技能预览数据源（经 props 下发给 SkillPreviewPanel） */
+	skillPreviewDataSource: SkillPreviewDataSource;
 };
 
 type CharacterPageLoadSource = {
@@ -763,20 +785,20 @@ export function createCharacterPageModel(input: {
 			const scenario = createPreviewScenario();
 			const member = scenario?.simulator.campA[0]?.members[0];
 			if (!scenario || !member) return;
-			const engine = input.engine.defaultEngine();
+			const engine = input.engine.characterEngine();
 			if (scenarioLoadedForCharacterId !== currentCharacter.id) {
-				await input.engine.service.loadScenario(scenario);
-				await input.engine.service.setRuntimeConfig(createPreviewConfig());
+				await engine.loadScenario(scenario);
+				await engine.setRuntimeConfig(createPreviewConfig());
 				await engine.fastForward();
-				await input.engine.refreshMembers();
+				await input.engine.refreshCharacterMembers();
 				if (pageData.character?.id === currentCharacter.id) {
 					scenarioLoadedForCharacterId = currentCharacter.id;
 				}
 				return;
 			}
-			await input.engine.service.patchMemberConfig(input.previewIds.memberId, cloneForWorker(member));
+			await engine.patchMemberConfig(input.previewIds.memberId, cloneForWorker(member));
 			await engine.fastForward();
-			await input.engine.refreshMembers();
+			await input.engine.refreshCharacterMembers();
 		} catch (error) {
 			console.error("Character 页面加载预览场景失败", error);
 		}
@@ -866,7 +888,7 @@ export function createCharacterPageModel(input: {
 				window.clearTimeout(engineSyncTimer);
 				engineSyncTimer = undefined;
 			}
-			void input.engine.defaultEngine().stop();
+			void input.engine.characterEngine().stop();
 			latestEngineSyncToken += 1;
 			engineSyncQueued = false;
 			scenarioLoadedForCharacterId = undefined;
@@ -910,7 +932,7 @@ export function createCharacterPageModel(input: {
 		if (engineSyncTimer !== undefined) {
 			window.clearTimeout(engineSyncTimer);
 		}
-		void input.engine.defaultEngine().stop();
+		void input.engine.characterEngine().stop();
 	});
 
 	const status = createMemo<CharacterPageStatus>(() => {
@@ -926,5 +948,11 @@ export function createCharacterPageModel(input: {
 		error: () => loadedData.error,
 		dispatch,
 		reload: async () => refetch(),
+		skillPreviewDataSource: {
+			engine: () => input.engine.characterEngine(),
+			members: input.engine.characterMembers,
+			ready: input.engine.ready,
+			executeBranchBatch: (tasks) => input.engine.service.executeBranchBatch(tasks),
+		},
 	};
 }

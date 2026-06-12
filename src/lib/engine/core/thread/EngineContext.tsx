@@ -1,7 +1,6 @@
 import { createContext, createSignal, onCleanup, onMount, type ParentProps, useContext } from "solid-js";
 import { waitFor } from "~/lib/bootstrap/context-standalone";
 import { createLogger } from "~/lib/Logger";
-import type { EngineScenarioData, RuntimeConfig } from "../types";
 import type { MemberSerializeData } from "../World/Member/Member";
 import { EngineService } from "./EngineService";
 import type { SimulationEngine } from "./SimulationEngine";
@@ -13,24 +12,19 @@ const log = createLogger("EngineCtx");
 export interface EngineContextValue {
 	/** EngineService 单例（可用于高级 / 命令式操作） */
 	service: EngineService;
-	defaultEngine: () => SimulationEngine;
-	createEngine: (id?: string) => SimulationEngine;
-	getEngine: (id: string) => SimulationEngine | null;
-	disposeEngine: (id: string) => Promise<void>;
+	/** 主业务实时模拟常驻引擎（ADR 0015） */
+	simulatorEngine: () => SimulationEngine;
+	/** 角色配置预览常驻引擎（ADR 0015） */
+	characterEngine: () => SimulationEngine;
 
 	// ---- reactive signals ----
-	/** 引擎是否已就绪（pool 初始化完成） */
+	/** 两引擎是否均已就绪 */
 	ready: () => boolean;
 
-	/** 当前成员列表快照 */
-	members: () => MemberSerializeData[];
-	/** 手动刷新成员列表 */
-	refreshMembers: () => Promise<MemberSerializeData[]>;
-
-	// ---- actions (thin delegates to EngineService) ----
-	loadScenario: (data: EngineScenarioData) => Promise<void>;
-	setRuntimeConfig: (config: RuntimeConfig) => Promise<void>;
-	patchMemberConfig: (memberId: string, memberData: unknown) => Promise<void>;
+	/** character 引擎成员列表快照（[characterId] 与 SkillPreview 经页面 model 共享） */
+	characterMembers: () => MemberSerializeData[];
+	/** 手动刷新 character 引擎成员列表 */
+	refreshCharacterMembers: () => Promise<MemberSerializeData[]>;
 }
 
 const EngineCtx = createContext<EngineContextValue>();
@@ -39,9 +33,10 @@ const EngineCtx = createContext<EngineContextValue>();
 
 export function EngineProvider(props: ParentProps) {
 	const service = EngineService.getInstance();
-	const defaultEngine = () => service.getDefaultEngine();
+	const simulatorEngine = () => service.getSimulatorEngine();
+	const characterEngine = () => service.getCharacterEngine();
 	const [ready, setReady] = createSignal(false);
-	const [members, setMembers] = createSignal<MemberSerializeData[]>([]);
+	const [characterMembers, setCharacterMembers] = createSignal<MemberSerializeData[]>([]);
 	let disposed = false;
 
 	onMount(() => {
@@ -50,13 +45,14 @@ export function EngineProvider(props: ParentProps) {
 				// 设计目的：Provider 只桥接 bootstrap 统一编排后的 engine 状态，避免渲染 Provider 时抢跑初始化计算 Worker。
 				await waitFor("engine");
 				if (disposed) return;
-				await defaultEngine().whenReady();
+				// bootstrap 已 gate 两引擎就绪；此处 Promise.all 为防御性，两引擎同阶段并行就绪。
+				await Promise.all([simulatorEngine().whenReady(), characterEngine().whenReady()]);
 				if (disposed) return;
 				setReady(true);
-				log.info("default engine ready");
+				log.info("simulator & character engines ready");
 			} catch (error) {
 				if (!disposed) {
-					log.error("default engine init failed", error);
+					log.error("engine init failed", error);
 				}
 			}
 		})();
@@ -68,39 +64,19 @@ export function EngineProvider(props: ParentProps) {
 		void service.shutdown();
 	});
 
-	const refreshMembers = async (): Promise<MemberSerializeData[]> => {
-		const list = await defaultEngine().getMembers();
-		setMembers(list);
+	const refreshCharacterMembers = async (): Promise<MemberSerializeData[]> => {
+		const list = await characterEngine().getMembers();
+		setCharacterMembers(list);
 		return list;
-	};
-
-	const loadScenario = async (data: EngineScenarioData): Promise<void> => {
-		await service.loadScenario(data);
-		await refreshMembers();
-	};
-
-	const setRuntimeConfig = async (config: RuntimeConfig): Promise<void> => {
-		await service.setRuntimeConfig(config);
-		await refreshMembers();
-	};
-
-	const patchMemberConfig = async (memberId: string, memberData: unknown): Promise<void> => {
-		await service.patchMemberConfig(memberId, memberData);
-		await refreshMembers();
 	};
 
 	const value: EngineContextValue = {
 		service,
-		defaultEngine,
-		createEngine: (id?: string) => service.createEngine(id),
-		getEngine: (id: string) => service.getEngine(id),
-		disposeEngine: (id: string) => service.disposeEngine(id),
+		simulatorEngine,
+		characterEngine,
 		ready,
-		members,
-		refreshMembers,
-		loadScenario,
-		setRuntimeConfig,
-		patchMemberConfig,
+		characterMembers,
+		refreshCharacterMembers,
 	};
 
 	return <EngineCtx.Provider value={value}>{props.children}</EngineCtx.Provider>;

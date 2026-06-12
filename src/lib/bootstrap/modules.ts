@@ -231,7 +231,10 @@ export const bootstrapModules: BootstrapModule<unknown>[] = [
 			const { EngineService } = await import("~/lib/engine/core/thread/EngineService");
 			const service = EngineService.getInstance();
 			service.init();
-			await service.getDefaultEngine().whenReady();
+			await Promise.all([
+				service.getSimulatorEngine().whenReady(),
+				service.getCharacterEngine().whenReady(),
+			]);
 		},
 	},
 	{

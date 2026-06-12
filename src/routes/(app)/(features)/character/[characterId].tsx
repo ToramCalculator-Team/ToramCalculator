@@ -1,7 +1,7 @@
 import type { character, DB } from "@db/generated/zod";
 import { useNavigate, useParams } from "@solidjs/router";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { createMemo, createSignal, onMount, Show, useContext } from "solid-js";
+import { createEffect, createMemo, createSignal, onCleanup, onMount, Show, useContext } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { DataRenderer } from "~/components/business/card/DataRenderer";
 import { globalCardGroup } from "~/components/business/card/globalCardGroup";
@@ -12,12 +12,12 @@ import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Select } from "~/components/controls/select";
 import { CharacterConfigPanel } from "~/components/features/character/CharacterConfigPanel";
-import { CharacterView } from "~/components/features/character/CharacterView";
 import { SkillPreviewPanel } from "~/components/features/character/SkillPreviewPanel";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
 import { useEngine } from "~/lib/engine/core/thread/EngineContext";
+import { type CharacterContentSession, useSceneRuntime } from "~/lib/engine/render/SceneRuntime";
 import { StatsRenderer } from "~/lib/engine/core/World/Member/MemberStatusPanel";
 import { createLogger } from "~/lib/Logger";
 import { store } from "~/store";
@@ -32,6 +32,7 @@ export default function CharactePage() {
 	const dictionary = useDictionary();
 	const params = useParams();
 	const engine = useEngine();
+	const sceneRuntime = useSceneRuntime();
 
 	type PanelModeType = "Config" | "AttrPreview" | "SkillPreview";
 	const [panelMode, setPanelMode] = createSignal<PanelModeType>("Config");
@@ -61,7 +62,7 @@ export default function CharactePage() {
 	const characters = createMemo(() => model.pageData.characters);
 
 	const primaryMember = createMemo(() => {
-		const list = engine.members();
+		const list = engine.characterMembers();
 		const primaryMember = list.find((member) => member.id === previewMemberId);
 		logger.info("primaryMember", primaryMember);
 		return primaryMember;
@@ -144,6 +145,32 @@ export default function CharactePage() {
 		logger.info("--CharacterIdPage render");
 	});
 
+	// 共享常驻场景的角色内容：随当前有效角色 id 申请/释放（对称于 RealtimeSimulator 的 realtime session）。
+	// 模型经全屏共享背景层渲染（不再内嵌配置面板小窗）。
+	let contentSession: CharacterContentSession | null = null;
+	let contentRequestSeq = 0;
+	createEffect(() => {
+		const id = character()?.id;
+		const requestSeq = ++contentRequestSeq;
+		// 先释放旧来源（id 变化 / 卸载），保证内容互斥。
+		contentSession?.release();
+		contentSession = null;
+		if (!id) return;
+		void sceneRuntime.acquireCharacterContent(id).then((session) => {
+			// 异步加载期间若已被新请求/卸载抢占，立即释放本次结果。
+			if (requestSeq !== contentRequestSeq) {
+				session.release();
+				return;
+			}
+			contentSession = session;
+		});
+	});
+	onCleanup(() => {
+		contentRequestSeq++;
+		contentSession?.release();
+		contentSession = null;
+	});
+
 	return (
 		<Show
 			when={character()}
@@ -193,10 +220,6 @@ export default function CharactePage() {
 						/>
 					</div>
 					<div class="Content flex h-full w-full flex-1 flex-col overflow-hidden p-6 landscape:flex-row">
-						{/* 面板隐藏时移除3d渲染逻辑以降低功耗和性能损失 */}
-						<Show when={isConfigPanelVisible()}>
-							<CharacterView character={validCharacter()} />
-						</Show>
 						<OverlayScrollbarsComponent
 							element="div"
 							options={{ scrollbars: { autoHide: "scroll" } }}
@@ -238,7 +261,11 @@ export default function CharactePage() {
 								display: isSkillPreviewVisible() ? "flex" : "none"
 							}}
 						>
-							<SkillPreviewPanel memberId={previewMemberId} learnedSkills={validCharacter().skills ?? []} />
+							<SkillPreviewPanel
+								memberId={previewMemberId}
+								learnedSkills={validCharacter().skills ?? []}
+								dataSource={model.skillPreviewDataSource}
+							/>
 						</OverlayScrollbarsComponent>
 
 						{/* 模式切换器 */}

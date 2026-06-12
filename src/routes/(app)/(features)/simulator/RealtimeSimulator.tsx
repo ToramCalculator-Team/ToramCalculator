@@ -25,6 +25,7 @@ import { computeMemberFormation } from "~/lib/engine/core/World/Member/memberFor
 import { MemberStatusPanel } from "~/lib/engine/core/World/Member/MemberStatusPanel";
 import { type RealtimeSceneSession, useSceneRuntime } from "~/lib/engine/render/SceneRuntime";
 import { store } from "~/store";
+import { useBusinessPhase } from "~/machines/AppActorContext";
 
 export interface RealtimeSimulatorProps {
 	simulatorData: EngineSimulator;
@@ -44,9 +45,10 @@ type ControllerEventState = {
 };
 
 export function RealtimeSimulator(props: RealtimeSimulatorProps) {
-	const { defaultEngine } = useEngine();
+	const businessActor = useBusinessPhase();
+	const { simulatorEngine } = useEngine();
 	const sceneRuntime = useSceneRuntime();
-	const engine = defaultEngine();
+	const engine = simulatorEngine();
 	const cleanupFunctions: Array<() => void> = [];
 
 	const [memberControllers, setMemberControllers] = createSignal<ControllerEntry[]>([]);
@@ -401,7 +403,7 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 						<A href="/" class="bg-primary-color-60 hidden rounded px-3 py-2 backdrop-blur-md landscape:flex">
 							<Icons.Brand.NoPaddingLogoText class="h-6 w-40" />
 						</A>
-						<div class="bg-primary-color-70 border-dividing-color flex min-w-72 flex-col gap-2 rounded border p-2 backdrop-blur-md">
+						<div class="bg-primary-color-70 border-dividing-color flex min-w-72 flex-col gap-2 rounded border p-2">
 							<div class="flex items-center justify-between gap-2 text-sm">
 								<span class="font-bold">{statusText()}</span>
 								<Show when={engineTelemetry()}>
@@ -456,7 +458,7 @@ export function RealtimeSimulator(props: RealtimeSimulatorProps) {
 						<div class="bg-primary-color-70 border-dividing-color rounded border p-2 backdrop-blur-md">
 							<ControlPanel
 								engineActor={engine.lifecycleActor}
-								onStart={() => engine.start()}
+								onStart={() => {engine.start()}}
 								onReset={() => engine.reset()}
 								onPause={() => engine.pause()}
 								onResume={() => engine.resume()}
