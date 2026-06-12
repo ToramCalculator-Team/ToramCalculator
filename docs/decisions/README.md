@@ -128,6 +128,8 @@
 | [0011](./0011-member-facts-dual-bus-paired-dispatch.md) | 成员事实在结算点成对派发到两条总线 | Proposed | 编排层 / 通信 |
 | [0012](./0012-intent-first-visual-control.md) | 意图优先的视觉控制：意图层作为 UI 与场景的单一事实源 | Accepted | 跨层（应用层） |
 | [0013](./0013-attention-machine-as-phase-independent-root-actor.md) | 注意力机作为阶段无关的根级 actor | Accepted | 跨层（应用层） |
+| [0014](./0014-routing-vs-state-management-baseline.md) | 路由与状态管理：主业务 vs 配套服务的分类基准 | Accepted | 跨层（应用层） |
+| [0015](./0015-runtime-resource-architecture.md) | 运行时资源架构：双引擎常驻、共享场景、注意力机为相机摆位触发器 | Accepted | 跨层（引擎/渲染/视觉意图） |
 
 ## 待拆分清单
 
