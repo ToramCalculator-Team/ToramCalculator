@@ -4,6 +4,7 @@
 	"scripts": {
 		"setup": "pnpm generate && pnpm infra:reset",
 		"dev": "vite dev",
+		"test": "vitest run",
 		"start": "PORT=3001 node .output/server/index.mjs",
 		"generate": "pnpm generate:inject && pnpm generate:schema && pnpm generate:colorSystem",
 		"generate:inject": "tsx db/generator/injectEnums.ts",
@@ -35,7 +36,8 @@
 		"esbuild": "^0.25.6",
 		"prisma": "7.2.0",
 		"tsx": "^4.21.0",
-		"typescript": "^5.8.2"
+		"typescript": "^5.8.2",
+		"vitest": "^4.1.9"
 	},
 	"dependencies": {
 		"@auth/core": "^0.38.0",
