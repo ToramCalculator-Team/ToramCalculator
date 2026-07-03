@@ -9,7 +9,7 @@ import { Setting } from "~/components/features/setting";
 import { MediaProvider } from "~/contexts/Media-component";
 import { BootstrapProvider } from "~/lib/bootstrap/BootstrapContext";
 import { EngineProvider } from "~/lib/engine/core/thread/EngineContext";
-import { SceneCanvas, SceneRuntimeProvider } from "~/lib/engine/render/SceneRuntime";
+import { SceneCanvas, SceneRuntimeProvider } from "~/lib/3dScene/SceneRuntime";
 import { AppActorProvider } from "~/machines/AppActorContext";
 import { SceneIntentBridge } from "~/machines/projections/SceneIntentBridge";
 import { setStore, store } from "~/store";

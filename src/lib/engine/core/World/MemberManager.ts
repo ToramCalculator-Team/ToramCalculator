@@ -1,17 +1,17 @@
-import type { EngineMember, EngineTeam } from "../../engineScenarioSchema";
+import type { EngineMember, EngineTeam } from "../engineScenarioSchema";
 import type { MemberType } from "@db/schema/enums";
 import type { Actor, AnyActorLogic } from "xstate";
 import { createLogger } from "~/lib/Logger";
-import type { EventCatalog } from "../../Event/EventCatalog";
-import type { ExpressionContext } from "../../JSProcessor/types";
-import type { PipelineResolverService } from "../../Pipeline/PipelineResolverService";
-import type { MemberCheckpoint, MemberDomainEvent } from "../../types";
-import type { DamageAreaRequest } from "../Area/types";
-import type { Member } from "./Member";
-import type { MemberFSMEvent, MemberFSMContext } from "./runtime/StateMachine/types";
-import type { MemberSharedRuntime } from "./runtime/types";
-import { Mob } from "./types/Mob/Mob";
-import { Player } from "./types/Player/Player";
+import type { EventCatalog } from "../Event/EventCatalog";
+import type { ExpressionContext } from "../JSProcessor/types";
+import type { PipelineResolverService } from "../Pipeline/PipelineResolverService";
+import type { MemberCheckpoint, MemberDomainEvent } from "../types";
+import type { DamageAreaRequest } from "./Area/types";
+import type { Member } from "./Member/Member";
+import type { MemberFSMEvent, MemberFSMContext } from "./Member/runtime/StateMachine/types";
+import type { MemberSharedRuntime } from "./Member/runtime/types";
+import { Mob } from "./Member/types/Mob/Mob";
+import { Player } from "./Member/types/Player/Player";
 
 const log = createLogger("MemberMgr");
 
@@ -579,11 +579,11 @@ export class MemberManager {
 				const currentTimeMs = this.getCurrentTimeMsOrZero();
 				this.renderMessageSender?.({
 					type: "render:cmd",
+					// 只传"跟随目标"这一逻辑事实；距离/角度由渲染层相机控制器自行决定
+					// （defaultCameraState），逻辑层不越权规定相机表现。
 					cmd: {
 						type: "camera_follow",
 						entityId: memberId,
-						distance: 8,
-						verticalAngle: Math.PI / 6,
 						seq: tickIndex,
 						ts: currentTimeMs,
 					},

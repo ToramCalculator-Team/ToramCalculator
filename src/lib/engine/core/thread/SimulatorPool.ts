@@ -2,7 +2,7 @@ import type { EngineMember } from "../engineScenarioSchema";
 import { createLogger } from "~/lib/Logger";
 import type { WorkerMessageEvent } from "~/lib/WorkerPool/type";
 import { type PoolConfig, WorkerPool, type WorkerWrapper } from "~/lib/WorkerPool/WorkerPool";
-import type { RendererCmd, RenderSnapshot } from "../../render/RendererProtocol";
+import type { RendererCmd, RenderSnapshot } from "./RendererProtocol";
 import type { IntentMessage } from "../MessageRouter/MessageRouter";
 import type { PreviewReport } from "../Preview/types";
 import type { EngineScenarioData, EngineStats, RuntimeConfig } from "../types";

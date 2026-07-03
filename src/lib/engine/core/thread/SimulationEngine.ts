@@ -26,7 +26,7 @@ import { createLogger } from "~/lib/Logger";
 import { EventEmitter } from "~/lib/WorkerPool/EventEmitter";
 import type { WorkerMessage, WorkerMessageEvent, WorkerSystemMessageEnvelope } from "~/lib/WorkerPool/type";
 import { WorkerSystemMessageEnvelopeSchema } from "~/lib/WorkerPool/type";
-import type { RenderSnapshot } from "../../render/RendererProtocol";
+import type { RenderSnapshot } from "./RendererProtocol";
 import { type EngineControlMessage, GameEngineSM } from "../GameEngineSM";
 import type { IntentMessage } from "../MessageRouter/MessageRouter";
 import type { PreviewReport } from "../Preview/types";

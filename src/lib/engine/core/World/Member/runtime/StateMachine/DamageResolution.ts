@@ -13,11 +13,11 @@
  */
 
 import { createLogger } from "~/lib/Logger";
-import * as CasterSnapshot from "../../../Expression/CasterSnapshot";
-import type { ExpressionContext } from "../../../JSProcessor/types";
-import type { StageData } from "../../../Pipeline/stageEnv";
-import type { MemberDomainEvent } from "../../../types";
-import type { DamageDispatchPayload } from "../../Area/types";
+import * as CasterSnapshot from "~/lib/engine/core/Expression/CasterSnapshot";
+import type { ExpressionContext } from "~/lib/engine/core/JSProcessor/types";
+import type { StageData } from "~/lib/engine/core/Pipeline/stageEnv";
+import type { MemberDomainEvent } from "~/lib/engine/core/types";
+import type { DamageDispatchPayload } from "~/lib/engine/core/World/Area/types";
 
 const log = createLogger("DamageResolution");
 

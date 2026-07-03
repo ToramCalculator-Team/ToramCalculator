@@ -1,5 +1,5 @@
 import type { SimulationTickContext } from "../../types";
-import type { MemberManager } from "../Member/MemberManager";
+import type { MemberManager } from "../MemberManager";
 import type { SpaceManager } from "../SpaceManager";
 import type { BuffAreaRequest } from "./types";
 

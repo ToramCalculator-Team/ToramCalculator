@@ -1,6 +1,6 @@
 import type { SimulationTickContext, WorldCheckpoint } from "../types";
 import { AreaManager } from "./Area/AreaManager";
-import { MemberManager } from "./Member/MemberManager";
+import { MemberManager } from "./MemberManager";
 import { SpaceManager } from "./SpaceManager";
 
 /**

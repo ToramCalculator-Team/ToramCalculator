@@ -6,7 +6,7 @@ import {
 	type HitSession,
 	resolveDamageAndApply,
 	resolveHitCheck,
-} from "../../runtime/DamageResolution";
+} from "../../runtime/StateMachine/DamageResolution";
 import { ModifierType } from "../../runtime/StatContainer/StatContainer";
 import type {
 	MemberFSMEvent,

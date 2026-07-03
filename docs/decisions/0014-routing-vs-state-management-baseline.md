@@ -76,3 +76,20 @@
 - 与用户的架构讨论（2026-06-12）：经五轮澄清收敛——核心业务对象是「模拟」、character/wiki/装备是「造轮子」配套服务、setting 范式（store 信号 + Show）、URL=可寻址资源。
 - ADR 0013：注意力机阶段无关、ROUTE_CHANGED / deps 注入 navigate 范式、PHASE_CHANGED 降级。
 - REST / web 平台基本原则：URL 标识可寻址资源，浏览器历史与刷新恢复语义。
+
+---
+
+## 补遗（2026-06-15）：character 资源定性 = 丙
+
+代价段曾留未决项：「character 究竟是 account 级可复用资源库，还是某次模拟的一次性草稿」。现定性为**丙（两者皆是）**：
+
+- character 配的机体是 **account 级可复用资源**（资源身份）——进 `character` 表、可寻址 URL（A 类资源），可被任意 simulator 引用。
+- **且** 从场景设计环节进入 character 页时，**携带「为当前 simulator 的某个 member 编辑」的会话上下文**——编辑结果既存入资源库，又回填到该 simulator 场景。
+- 两个事实正交、同时成立：资源身份进 URL；会话上下文是瞬时态（C 类），由进入时携带，**不进** character 资源本身、**不进** URL。
+
+层级澄清：character 页是「主业务 → 设计 → 初始场景设计 → 机体设计」的**内部特化工具**，因复杂度高 + 需分享而独立成 URL，但**未脱离主业务设计环节**。它在配套服务里的归类（决议#3）是就「可寻址资源型路由」而言；就业务语义而言，它是设计环节的嵌套节点。二者不矛盾。
+
+衍生影响：
+- 「世界内容跨页面延续」的精确定义 = **携带的 simulator 上下文未变则世界内容延续，变则重建**（与「在哪个页面」无关）。
+- 现状 `characterPageModel.ts:createPreviewScenario` 无条件造独立预览场景，仅实现「独立资源」一面；「携带 simulator 上下文延续」为目标态、待实现。
+- 详见 `docs/concepts/interaction-context.md`（交互情境为轻派生概念）与 ADR 0016（渲染层只吃 worldResources）。

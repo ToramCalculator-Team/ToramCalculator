@@ -19,7 +19,7 @@ import {
 	Suspense,
 	useContext,
 } from "solid-js";
-import type { SimulationEngine } from "../core/thread/SimulationEngine";
+import type { SimulationEngine } from "../engine/core/thread/SimulationEngine";
 
 export type SceneRuntimeMode = "booting" | "loading" | "idle" | "realtime" | "suspended" | "error";
 

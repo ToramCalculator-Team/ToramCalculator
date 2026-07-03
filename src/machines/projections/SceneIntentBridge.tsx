@@ -8,7 +8,7 @@
  */
 
 import { onCleanup, onMount } from "solid-js";
-import { type CameraPose, useSceneRuntime } from "~/lib/engine/render/SceneRuntime";
+import { type CameraPose, useSceneRuntime } from "~/lib/3dScene/SceneRuntime";
 import { useVisualIntent } from "../AppActorContext";
 import type { EquipSlot } from "../intent/types";
 import { createSceneIntentProjection, type SceneIntentProjectionDeps } from "./sceneIntentProjection";

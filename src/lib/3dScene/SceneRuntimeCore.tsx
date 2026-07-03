@@ -10,23 +10,17 @@
 import { createId } from "@paralleldrive/cuid2";
 import { createMemo, createSignal, type JSX, onCleanup, onMount } from "solid-js";
 import { type Actor, createActor } from "xstate";
-import type { AbstractEngine, MaterialDefines, Mesh, Nullable, PBRMaterial, SubMesh } from "~/lib/babylon/runtime";
+import type { AbstractEngine, PBRMaterial } from "~/lib/babylon/runtime";
 import {
-	Animation,
 	AppendSceneAsync,
 	ArcRotateCamera,
 	Color3,
 	Color4,
-	CubicEase,
-	EasingFunction,
 	Engine,
 	LensRenderingPipeline,
 	Material,
-	MaterialPluginBase,
 	Matrix,
 	MeshBuilder,
-	PBRBaseMaterial,
-	RegisterMaterialPlugin,
 	Scalar,
 	Scene,
 	ShadowGenerator,
@@ -38,14 +32,11 @@ import {
 import { createLogger } from "~/lib/Logger";
 import { store } from "~/store";
 import { resolveColorSystem } from "~/styles/colorSystem/colorSystemController";
-import { RendererCommunication } from "./RendererCommunication";
-import {
-	BuiltinAnimationType,
-	type CharacterEntityRuntime,
-	createRendererController,
-	EntityFactory,
-} from "./RendererController";
-import type { RendererCmd } from "./RendererProtocol";
+import { isPBRMaterial, registerVolumetricFogPlugin, VolumetricFogPluginMaterial } from "./materials/volumetricFog";
+import { RendererCommunication } from "./content/RendererCommunication";
+import { createCharacterContentDeps } from "./content/sceneContentDeps";
+import { createRendererController } from "./RendererController";
+import type { RendererCmd } from "../engine/core/thread/RendererProtocol";
 import { createSceneMachine, type SceneMachine, type SceneMachineDeps } from "./sceneStateMachine";
 import type {
 	CharacterContentSession,
@@ -55,125 +46,13 @@ import type {
 	SceneRuntimeMode,
 	ScreenPoint,
 } from "./SceneRuntime";
+import { animateCameraTo, FOLLOW_POSE, OBSERVE_POSE } from "./camera/cameraTransition";
 import {
-	type AnyCameraControlCmd,
 	ThirdPersonCameraController,
-} from "./ThirdPersonCameraController";
+} from "./camera/thirdPersonController";
+import { AnyCameraControlCmd } from "./camera/commands";
 
 const log = createLogger("SceneRuntime");
-
-let volumetricFogPluginRegistered = false;
-
-class VolumetricFogPluginMaterial extends MaterialPluginBase {
-	center = new Vector3(0, 0, 0);
-	radius = 3;
-	color = new Color3(1, 1, 1);
-	density = 4.5;
-	private readonly varColorName: string;
-	private enabledState = false;
-
-	constructor(material: Material) {
-		super(material, "VolumetricFog", 500, { VOLUMETRIC_FOG: false });
-		this.varColorName = material instanceof PBRBaseMaterial ? "finalColor" : "color";
-	}
-
-	get isEnabled() {
-		return this.enabledState;
-	}
-
-	set isEnabled(enabled) {
-		if (this.enabledState === enabled) return;
-		this.enabledState = enabled;
-		this.markAllDefinesAsDirty();
-		this._enable(this.enabledState);
-	}
-
-	prepareDefines(defines: MaterialDefines, _scene: Scene, _mesh: Mesh) {
-		defines.VOLUMETRIC_FOG = this.enabledState;
-	}
-
-	getUniforms() {
-		return {
-			ubo: [
-				{ name: "volFogCenter", size: 3, type: "vec3" },
-				{ name: "volFogRadius", size: 1, type: "float" },
-				{ name: "volFogColor", size: 3, type: "vec3" },
-				{ name: "volFogDensity", size: 1, type: "float" },
-			],
-			fragment: `#ifdef VOLUMETRIC_FOG
-                uniform vec3 volFogCenter;
-                uniform float volFogRadius;
-                uniform vec3 volFogColor;
-                uniform float volFogDensity;
-                #endif`,
-		};
-	}
-
-	bindForSubMesh(
-		uniformBuffer: {
-			updateVector3: (arg0: string, arg1: Vector3) => void;
-			updateFloat: (arg0: string, arg1: number) => void;
-			updateColor3: (arg0: string, arg1: Color3) => void;
-		},
-		_scene: Scene,
-		_engine: Engine,
-		_subMesh: SubMesh,
-	) {
-		if (this.enabledState) {
-			uniformBuffer.updateVector3("volFogCenter", this.center);
-			uniformBuffer.updateFloat("volFogRadius", this.radius);
-			uniformBuffer.updateColor3("volFogColor", this.color);
-			uniformBuffer.updateFloat("volFogDensity", this.density);
-		}
-	}
-
-	getClassName() {
-		return "VolumetricFogPluginMaterial";
-	}
-
-	getCustomCode(shaderType: string): Nullable<{ [pointName: string]: string }> {
-		return shaderType === "vertex"
-			? null
-			: {
-				CUSTOM_FRAGMENT_BEFORE_FRAGCOLOR: `
-            #ifdef VOLUMETRIC_FOG
-              float volFogRadius2 = volFogRadius * volFogRadius;
-              float distCamToPos = distance(vPositionW.xyz, vEyePosition.xyz);
-              vec3 dir = normalize(vPositionW.xyz - vEyePosition.xyz);
-              vec3 L = volFogCenter - vEyePosition.xyz;
-              float tca = dot(L, dir);
-              float d2 = dot(L, L) - tca * tca;
-              if (d2 < volFogRadius2) {
-                float thc = sqrt(volFogRadius2 - d2);
-                float t0 = tca - thc;
-                float t1 = tca + thc;
-                float dist = 0.0;
-                if (t0 < 0.0 && t1 > 0.0) {
-                  dist = min(distCamToPos, t1);
-                } else if (t0 > 0.0 && t1 > 0.0 && t0 < distCamToPos) {
-                  dist = min(t1, distCamToPos) - t0;
-                }
-                float distToCenter = length(cross(volFogCenter - vEyePosition.xyz, dir));
-                float fr = distToCenter < volFogRadius ? smoothstep(0.0, 1.0, cos(distToCenter/volFogRadius*3.141592/2.0)) : 0.0;
-                float e = dist/(volFogRadius*2.0);
-                e = 1.0 - exp(-e * volFogDensity);
-                ${this.varColorName} = mix(${this.varColorName}, vec4(volFogColor, ${this.varColorName}.a), clamp(e*fr, 0.0, 1.0));
-              }
-            #endif
-          `,
-			};
-	}
-}
-
-function isPBRMaterial(mat: Nullable<Material>): mat is PBRMaterial {
-	return mat !== null && mat.getClassName() === "PBRMaterial";
-}
-
-function registerVolumetricFogPlugin() {
-	if (volumetricFogPluginRegistered) return;
-	RegisterMaterialPlugin("VolumetricFog", (material) => new VolumetricFogPluginMaterial(material));
-	volumetricFogPluginRegistered = true;
-}
 
 function isCameraControlCommand(value: unknown): value is AnyCameraControlCmd {
 	if (typeof value !== "object" || value === null) return false;
@@ -214,19 +93,12 @@ export function SceneRuntimeCore(props: {
 	let defPBR: PBRMaterial | undefined;
 	let activeSessionId: string | null = null;
 	let _activeControllerId: string | null = null;
-	// 角色内容：工厂、实体句柄、序号（防快速来回切换的异步失配，仿 acquireRealtimeSession 的 sessionId）。
-	let characterFactory: EntityFactory | undefined;
-	let characterEntity: CharacterEntityRuntime | undefined;
-	let characterContentSeq = 0;
 	// 跟随门控：仅 realtime 稳态为 true，控制器 update 才驱动相机；过渡/观察期为 false，避免与动画打架。
 	let followActive = false;
 	let sceneMachineActor: Actor<SceneMachine> | undefined;
 	let disposed = false;
 	let initializationPromise: Promise<void> | undefined;
 	let apiAnnounced = false;
-
-	// 观察位（背景相机初始姿态），过渡动画的"离开终点 / 进入起点"。
-	const OBSERVE_POSE = { alpha: 1.58, beta: 1.6, radius: 3.12, target: new Vector3(0, 0.43, 0) };
 
 	const setMode = (next: SceneRuntimeMode) => {
 		setLocalMode(next);
@@ -300,76 +172,11 @@ export function SceneRuntimeCore(props: {
 		thirdPersonController.handleCameraCommand(command);
 	};
 
-	// ─── 单相机过渡动画 ──────────────────────────────────────────────────────────
-	// 进入跟随位的固定角度/距离（与 ThirdPersonCameraController 默认一致）。
-	const FOLLOW_POSE = { alpha: Math.PI / 2, beta: Math.PI / 3, radius: 8 };
-
-	/** 把 sceneCamera 的 alpha/beta/radius/target 用 CubicEase 补间到目标姿态，完成调用 onDone，返回取消函数。 */
-	const animateCameraTo = (
-		dest: { alpha: number; beta: number; radius: number; target: Vector3 },
-		onDone: () => void,
-	): (() => void) => {
-		if (!scene || !sceneCamera) {
-			onDone();
-			return () => {};
-		}
-		const camera = sceneCamera;
-		const animationsEnabled = store.settings.userInterface.isAnimationEnabled;
-		const durationMs = animationsEnabled ? 700 : 0;
-		if (durationMs === 0) {
-			camera.alpha = dest.alpha;
-			camera.beta = dest.beta;
-			camera.radius = dest.radius;
-			camera.setTarget(dest.target.clone());
-			onDone();
-			return () => {};
-		}
-		const fps = 60;
-		const frames = Math.round((durationMs / 1000) * fps);
-		const ease = new CubicEase();
-		ease.setEasingMode(EasingFunction.EASINGMODE_EASEINOUT);
-
-		const makeScalarAnim = (prop: "alpha" | "beta" | "radius", from: number, to: number) => {
-			const anim = new Animation(`cam-${prop}`, prop, fps, Animation.ANIMATIONTYPE_FLOAT, Animation.ANIMATIONLOOPMODE_CONSTANT);
-			anim.setKeys([
-				{ frame: 0, value: from },
-				{ frame: frames, value: to },
-			]);
-			anim.setEasingFunction(ease);
-			return anim;
-		};
-		const targetAnim = new Animation("cam-target", "target", fps, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CONSTANT);
-		targetAnim.setKeys([
-			{ frame: 0, value: camera.getTarget().clone() },
-			{ frame: frames, value: dest.target.clone() },
-		]);
-		targetAnim.setEasingFunction(ease);
-
-		camera.animations = [
-			makeScalarAnim("alpha", camera.alpha, dest.alpha),
-			makeScalarAnim("beta", camera.beta, dest.beta),
-			makeScalarAnim("radius", camera.radius, dest.radius),
-			targetAnim,
-		];
-		const animatable = scene.beginAnimation(camera, 0, frames, false, 1, () => onDone());
-		return () => {
-			animatable.stop();
-		};
-	};
-
-	// ─── 角色内容资源清理 ────────────────────────────────────────────────────────
-	// 完整清理一个角色实体：动画组 / 网格 / 标签 / 纹理。仿 RendererController.disposeEntity——
-	// 克隆动画组与 label 都不在 mesh 子树内（label 无 parent），只 dispose 子树会泄漏它们。
-	const disposeCharacterEntity = (entity: CharacterEntityRuntime) => {
-		entity.animationController.stopAllAnimations();
-		entity.builtinAnimations.forEach((group) => group.dispose());
-		entity.customAnimations.forEach((group) => group.dispose());
-		entity.builtinAnimations.clear();
-		entity.customAnimations.clear();
-		entity.mesh.dispose(false, true);
-		entity.label?.dispose(false, true);
-		entity.labelTexture?.dispose();
-	};
+	// 角色静态内容 deps：建/拆角色模型的逻辑抽到 content/sceneContentDeps，宿主只提供 scene/characterRoot 取值器。
+	const characterContentDeps = createCharacterContentDeps({
+		getScene: () => scene,
+		getCharacterRoot: () => characterRoot,
+	});
 
 	// 向控制器下发"跟随实体"指令（保留当前角度）。三处入口（startFollow/setFollowTarget/followEntity）共用。
 	const sendFollowCommand = (entityId: string) => {
@@ -430,11 +237,11 @@ export function SceneRuntimeCore(props: {
 		},
 		runCameraTransition: (direction, config, onDone) => {
 			if (direction === "leave") {
-				return animateCameraTo({ ...OBSERVE_POSE, target: OBSERVE_POSE.target.clone() }, onDone);
+				return animateCameraTo(scene, sceneCamera, { ...OBSERVE_POSE, target: OBSERVE_POSE.target.clone() }, onDone);
 			}
 			// enter：终点 target 取控制器当前 state（含成员位预摆），角度/距离用跟随默认。
 			const followTarget = thirdPersonController?.getCameraState().target ?? OBSERVE_POSE.target;
-			return animateCameraTo({ ...FOLLOW_POSE, target: followTarget.clone() }, onDone);
+			return animateCameraTo(scene, sceneCamera, { ...FOLLOW_POSE, target: followTarget.clone() }, onDone);
 		},
 		attachCameraInput: () => setCameraInputEnabled(true),
 		detachCameraInput: () => setCameraInputEnabled(false),
@@ -448,32 +255,8 @@ export function SceneRuntimeCore(props: {
 		stopFollow: () => {
 			followActive = false;
 		},
-		setupCharacterContent: async (characterId) => {
-			if (!scene) throw new Error("SceneRuntime is not ready");
-			const seq = ++characterContentSeq;
-			// 工厂常驻复用：EntityFactory 的 GLB 模板缓存是实例级，每次 new 都会重新 ImportMesh 并
-			// 把隐藏模板永久留在 scene。复用同一工厂让模板只加载一次。
-			characterFactory ??= new EntityFactory(scene);
-			// 角色站位原点（0,0,0）；SLOT_CAMERA_POSES 围绕此原点摆位。
-			const entity = await characterFactory.createCharacter(characterId, characterId, new Vector3(0, 0, 0));
-			// 快速来回切换：异步加载期间若 seq 已被新请求/释放抢占，丢弃本次结果并完整清理。
-			if (seq !== characterContentSeq || !characterRoot) {
-				disposeCharacterEntity(entity);
-				return;
-			}
-			// 挂到 characterRoot（修 createCharacter 未挂 root 的既有 bug）；label 不在子树内，靠 entity 句柄清理。
-			entity.mesh.parent = characterRoot;
-			entity.animationController.playBuiltinAnimation(BuiltinAnimationType.IDLE, { mode: "loop" });
-			characterEntity = entity;
-		},
-		teardownCharacterContent: () => {
-			// 序号自增使在途 setupCharacterContent 结果失配丢弃。
-			characterContentSeq++;
-			if (characterEntity) {
-				disposeCharacterEntity(characterEntity);
-				characterEntity = undefined;
-			}
-		},
+		setupCharacterContent: (characterId) => characterContentDeps.setupCharacterContent(characterId),
+		teardownCharacterContent: () => characterContentDeps.teardownCharacterContent(),
 		onError: (error) => log.error("场景实时会话失败", error),
 	};
 
@@ -800,6 +583,8 @@ export function SceneRuntimeCore(props: {
 				return () => {};
 			}
 			return animateCameraTo(
+				scene,
+				sceneCamera,
 				{ alpha: pose.alpha, beta: pose.beta, radius: pose.radius, target: new Vector3(pose.target.x, pose.target.y, pose.target.z) },
 				onDone,
 			);
@@ -809,7 +594,7 @@ export function SceneRuntimeCore(props: {
 				onDone();
 				return () => {};
 			}
-			return animateCameraTo({ ...OBSERVE_POSE, target: OBSERVE_POSE.target.clone() }, onDone);
+			return animateCameraTo(scene, sceneCamera, { ...OBSERVE_POSE, target: OBSERVE_POSE.target.clone() }, onDone);
 		},
 		// realtime 内容专用：设定 followEntityId（保留当前角度），随后控制器每帧跟随。跟随是持续态，回执建议性。
 		// 控制器未就绪（非 realtime 稳态）→ no-op + 立即回执。

@@ -7,7 +7,7 @@
  * - 处理渲染状态同步
  */
 
-import type { SimulationEngine } from "../core/thread/SimulationEngine";
+import type { SimulationEngine } from "../../engine/core/thread/SimulationEngine";
 
 export class RendererCommunication {
   private engine: SimulationEngine | null = null;
@@ -157,6 +157,3 @@ export class RendererCommunication {
   }
 }
 
-// ============================== 导出单例 ==============================
-
-export const rendererCommunication = new RendererCommunication();

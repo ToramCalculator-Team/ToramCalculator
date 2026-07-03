@@ -17,7 +17,7 @@ import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
 import { useEngine } from "~/lib/engine/core/thread/EngineContext";
-import { type CharacterContentSession, useSceneRuntime } from "~/lib/engine/render/SceneRuntime";
+import { type CharacterContentSession, useSceneRuntime } from "~/lib/3dScene/SceneRuntime";
 import { StatsRenderer } from "~/lib/engine/core/World/Member/MemberStatusPanel";
 import { createLogger } from "~/lib/Logger";
 import { store } from "~/store";

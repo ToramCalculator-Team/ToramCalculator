@@ -1,11 +1,9 @@
 // 消息驱动渲染协议（最小可用 + 可扩展）
 
-export type EntityId = string;
-
 export type Vec3 = { x: number; y: number; z: number };
 
 export interface CmdBase {
-	entityId: EntityId;
+	entityId: string;
 	seq: number; // 每实体递增序号，用于丢弃旧指令
 	ts: number; // 逻辑时间（ms）
 	epoch?: number; // 可选：上下文重置/重生
@@ -80,9 +78,9 @@ export interface ReconcileCmd extends CmdBase {
 
 export interface CameraFollowCmd extends CmdBase {
 	type: "camera_follow";
-	entityId: EntityId;
-	distance?: number;
-	verticalAngle?: number;
+	entityId: string;
+	// 仅传"跟随哪个实体"这一逻辑事实；相机距离/角度是渲染层策略，
+	// 由 thirdPersonController 的 defaultCameraState 决定，逻辑层不在此规定。
 }
 
 export type RendererCmd =
@@ -104,7 +102,7 @@ export interface RendererController {
 	tick: (dtSec: number) => void;
 	dispose: () => void;
 	// 提供给外部的查询接口：用于相机跟随
-	getEntityPose: (id: EntityId) => { pos: Vec3; yaw: number } | undefined;
+	getEntityPose: (id: string) => { pos: Vec3; yaw: number } | undefined;
 	// 首次同步时应用渲染快照（全量世界状态），与逻辑快照 getCurrentSnapshot 等区分
 	applyRenderSnapshot?: (renderSnapshot: RenderSnapshot) => void | Promise<void>;
 }

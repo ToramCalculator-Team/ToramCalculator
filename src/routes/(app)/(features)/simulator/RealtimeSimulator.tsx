@@ -23,7 +23,7 @@ import { type ControllerDomainEvent, createRealtimeConfig, type FrameSnapshot } 
 import type { MemberSerializeData } from "~/lib/engine/core/World/Member/Member";
 import { computeMemberFormation } from "~/lib/engine/core/World/Member/memberFormation";
 import { MemberStatusPanel } from "~/lib/engine/core/World/Member/MemberStatusPanel";
-import { type RealtimeSceneSession, useSceneRuntime } from "~/lib/engine/render/SceneRuntime";
+import { type RealtimeSceneSession, useSceneRuntime } from "~/lib/3dScene/SceneRuntime";
 import { store } from "~/store";
 import { useBusinessPhase } from "~/machines/AppActorContext";
 

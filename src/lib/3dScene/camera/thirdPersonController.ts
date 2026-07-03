@@ -1,62 +1,14 @@
 import { ArcRotateCamera, Vector3 } from "~/lib/babylon/runtime";
 import type { Scene } from "~/lib/babylon/runtime";
-import type { createRendererController } from "./RendererController";
-import type { EntityId } from "./RendererProtocol";
+import type { createRendererController } from "../RendererController";
+import { AnyCameraControlCmd, CameraFollowCmd, CameraSetAngleCmd, CameraSetDistanceCmd, CameraSetTargetCmd } from "./commands";
 
-// ==================== 相机控制指令类型定义 ====================
-
-export interface CameraControlCmd {
-	type: "camera_control";
-	entityId: EntityId;
-	subType: "follow" | "free" | "setDistance" | "setAngle" | "setTarget";
-	data: any;
-	seq: number;
-	ts: number;
-}
-
-export interface CameraFollowCmd extends CameraControlCmd {
-	subType: "follow";
-	data: {
-		followEntityId: EntityId;
-		distance?: number;
-		verticalAngle?: number;
-		horizontalAngle?: number;
-	};
-}
-
-export interface CameraSetDistanceCmd extends CameraControlCmd {
-	subType: "setDistance";
-	data: {
-		distance: number;
-		smooth?: boolean;
-	};
-}
-
-export interface CameraSetAngleCmd extends CameraControlCmd {
-	subType: "setAngle";
-	data: {
-		horizontalAngle?: number;
-		verticalAngle?: number;
-		smooth?: boolean;
-		delta?: boolean; // 是否为增量模式（用于FPS风格鼠标控制）
-	};
-}
-
-export interface CameraSetTargetCmd extends CameraControlCmd {
-	subType: "setTarget";
-	data: {
-		target: { x: number; y: number; z: number };
-		smooth?: boolean;
-	};
-}
-
-export type AnyCameraControlCmd = CameraFollowCmd | CameraSetDistanceCmd | CameraSetAngleCmd | CameraSetTargetCmd;
 
 // ==================== 相机状态 ====================
 
 export interface CameraState {
 	/** 当前跟随的实体ID */
-	followEntityId?: EntityId;
+	followEntityId?: string;
 	/** 相机距离 */
 	distance: number;
 	/** 水平角度（弧度） */
@@ -389,54 +341,5 @@ export class ThirdPersonCameraController {
 		});
 
 		console.log("🎥 无限地面已启用", this.infiniteGroundConfig);
-	}
-}
-
-// ==================== 工具函数 ====================
-
-/** 创建第三人称相机控制器的便捷函数 */
-export function createThirdPersonController(
-	scene: Scene,
-	canvas: HTMLCanvasElement,
-	rendererController: ReturnType<typeof createRendererController>,
-	followEntityId?: EntityId,
-	initialState?: Partial<CameraState>,
-): { camera: ArcRotateCamera; controller: ThirdPersonCameraController } {
-	// 创建ArcRotateCamera
-	const camera = new ArcRotateCamera(
-		"thirdPersonCamera",
-		Math.PI / 2, // alpha (水平角度)
-		Math.PI / 3, // beta (垂直角度)
-		8, // radius (距离)
-		Vector3.Zero(), // target
-		scene,
-	);
-
-	// 禁用默认控制
-	camera.setTarget(new Vector3(0, 0, 0));
-	// noPreventDefault=true：让 babylon 处理鼠标转向/滚轮缩放后不吞掉事件。
-	camera.attachControl(canvas, true);
-
-	// 同步缩放与俯仰限位到 babylon 相机本身，否则滚轮可把相机拉进目标内部或翻到地下。
-	camera.lowerRadiusLimit = defaultCameraState.minDistance;
-	camera.upperRadiusLimit = defaultCameraState.maxDistance;
-	camera.lowerBetaLimit = defaultCameraState.minVerticalAngle;
-	camera.upperBetaLimit = defaultCameraState.maxVerticalAngle;
-
-	// 创建控制器
-	const controller = new ThirdPersonCameraController(scene, camera, rendererController, {
-		followEntityId,
-		...initialState,
-	});
-
-	return { camera, controller };
-}
-
-// ==================== 扩展渲染协议 ====================
-
-// 扩展RendererCmd类型以包含相机控制
-declare module "./RendererProtocol" {
-	interface RendererCmdTypes {
-		camera_control: AnyCameraControlCmd;
 	}
 }

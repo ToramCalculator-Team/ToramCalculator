@@ -3,7 +3,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { type Actor, createActor } from "xstate";
 import { createLogger } from "~/lib/Logger";
 import { Random } from "~/lib/random";
-import type { RenderSnapshot, RenderSnapshotArea } from "../render/RendererProtocol";
+import type { RenderSnapshot, RenderSnapshotArea } from "./thread/RendererProtocol";
 import { ControlBindingManager } from "./Controller/ControlBindingManager";
 import { ControllerRegistry } from "./Controller/ControllerEndpoint";
 import { ControllerEventProjector } from "./DomainEvents/ControllerEventProjector";

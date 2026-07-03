@@ -1,6 +1,6 @@
 
 import type { Vec3 } from "./Area/types";
-import type { MemberManager } from "./Member/MemberManager";
+import type { MemberManager } from "./MemberManager";
 import type { WorldObservable } from "./observable";
 
 /**

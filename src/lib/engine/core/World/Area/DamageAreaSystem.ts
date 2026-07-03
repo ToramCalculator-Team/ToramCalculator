@@ -1,6 +1,6 @@
 import { createLogger } from "~/lib/Logger";
 import type { Checkpointable, DamageAreaSystemCheckpoint, SimulationTickContext } from "../../types";
-import type { MemberManager } from "../Member/MemberManager";
+import type { MemberManager } from "../MemberManager";
 import type { WorldObservable } from "../observable";
 import type { SpaceManager } from "../SpaceManager";
 import type { DamageAreaRequest, DamageDirection, DamageDispatchPayload, Vec3 } from "./types";
