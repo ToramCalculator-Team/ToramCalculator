@@ -6,7 +6,7 @@
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createEffect, createSignal, type JSX, on, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { Decorate } from "~/components/containers/dialog";
+import { Frame } from "~/components/containers/frame";
 import { store } from "~/store";
 
 
@@ -103,50 +103,16 @@ export const Card = (props: CardProps) => {
 						</div>
 					</Show>
 
-					{/* 内容区域 */}
-					<div class="Content flex h-full w-full justify-center overflow-hidden">
-						{/* 左侧装饰 */}
-						<div class="Left z-10 flex flex-none flex-col">
-							<Decorate class="" />
-							<div class="Divider bg-boundary-color ml-1 h-full w-px flex-1 rounded-full"></div>
-							<Decorate class="-scale-y-100" />
-						</div>
 
-						{/* 中间内容 */}
-						<div class="Center -mx-10 flex w-full flex-1 flex-col items-center">
-							{/* 上分割线 */}
-							<div
-								class="Divider bg-boundary-color mt-1 h-px w-full rounded-full"
-								style={{
-									width: "calc(100% - 80px)",
-								}}
-							></div>
-
-							{/* 滚动内容区域 */}
-							<OverlayScrollbarsComponent
-								element="div"
-								options={{ scrollbars: { autoHide: "scroll" } }}
-								class="border-primary-color h-full w-full flex-1 rounded border-8"
-							>
-								<div class="Children mx-3 my-6 flex flex-col gap-3">{props.children}</div>
-							</OverlayScrollbarsComponent>
-
-							{/* 下分割线 */}
-							<div
-								class="Divider bg-boundary-color mb-1 h-px w-full rounded-full"
-								style={{
-									width: "calc(100% - 80px)",
-								}}
-							></div>
-						</div>
-
-						{/* 右侧装饰 */}
-						<div class="Right z-10 flex flex-none -scale-x-100 flex-col">
-							<Decorate />
-							<div class="Divider bg-boundary-color ml-1 h-full w-px flex-1 rounded-full"></div>
-							<Decorate class="-scale-y-100" />
-						</div>
-					</div>
+					<Frame >
+						<OverlayScrollbarsComponent
+							element="div"
+							options={{ scrollbars: { autoHide: "scroll" } }}
+							class="w-full h-full flex-1 rounded border-8 border-primary-color"
+						>
+							<div class="Childern flex flex-col gap-3 mx-3 my-6">{props.children}</div>
+						</OverlayScrollbarsComponent>
+					</Frame>
 				</Motion.div>
 			</Show>
 		</Presence>

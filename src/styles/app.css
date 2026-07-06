@@ -9,3 +9,10 @@
 @import "./resourseLoadedAnimation.css";
 @import "./queryBuilder.css";
 @import "./mistreevousEditor.css";
+
+/* wiki 技能树卡片 ↔ 全屏面板的原位放大/还原 morph（View Transitions）。
+   给共享元素 group 指定曲线与时长，覆盖默认 250ms crossfade，让形变更利落。 */
+::view-transition-group(skill-tree-morph) {
+	animation-duration: 0.32s;
+	animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}

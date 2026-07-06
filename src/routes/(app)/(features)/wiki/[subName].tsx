@@ -530,9 +530,7 @@ export default function WikiSubPage() {
 								</div>
 								<Show
 									when={!wikiConfig()}
-									fallback={wikiConfig()?.mainContent(dictionary(), (item) => {
-										openCurrentTableCard(wikiStore.type, item as Record<string, unknown>);
-									})}
+									fallback={wikiConfig()?.mainContent()}
 								>
 									{(_) => {
 										return (

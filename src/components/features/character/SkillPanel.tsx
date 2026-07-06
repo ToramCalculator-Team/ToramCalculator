@@ -20,7 +20,8 @@ import {
 	getSkillGridX,
 	getSkillGridY,
 	getSkillTreeGridBounds,
-	SKILL_GRID_CELL_SIZE,
+	SKILL_GRID_CELL_WIDTH,
+	SKILL_GRID_CELL_HEIGHT,
 	type SkillTreeGridBounds,
 	SkillLinkCellBlock,
 } from "./skillTreeGrid";
@@ -528,8 +529,8 @@ export function SkillPanel(props: SkillPanelProps) {
 								<div
 									class="SkillTreeCanvas inline-grid min-h-full min-w-full overflow-visible bg-accent-color px-24 py-12"
 									style={{
-										"grid-template-columns": `repeat(${activeTreeGridBounds().columnCount}, ${SKILL_GRID_CELL_SIZE}px)`,
-										"grid-template-rows": `repeat(${activeTreeGridBounds().rowCount}, ${SKILL_GRID_CELL_SIZE}px)`,
+										"grid-template-columns": `repeat(${activeTreeGridBounds().columnCount}, ${SKILL_GRID_CELL_WIDTH}px)`,
+										"grid-template-rows": `repeat(${activeTreeGridBounds().rowCount}, ${SKILL_GRID_CELL_HEIGHT}px)`,
 									}}
 								>
 									<For each={activeTreeLinkCells()}>

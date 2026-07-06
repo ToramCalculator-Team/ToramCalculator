@@ -1,12 +1,10 @@
-import { selectAllSkills } from "@db/generated/repositories/skill";
 import type { skill } from "@db/generated/zod";
 import { SKILL_TREE_GROUP_TYPE, type SkillTreeType } from "@db/schema/enums";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { createMemo, createResource, createSignal, For, Index, Show } from "solid-js";
+import { createMemo, createSignal, For, Index, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import { Motion } from "solid-motionone";
-import { Decorate } from "~/components/containers/dialog";
-import { Sheet } from "~/components/containers/sheet";
+import { Frame } from "~/components/containers/frame";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { SKILL_TREE_MAP } from "~/components/features/character/SkillTreePickerSheet";
@@ -16,16 +14,36 @@ import {
 	getSkillGridX,
 	getSkillGridY,
 	getSkillTreeGridBounds,
-	SKILL_GRID_CELL_SIZE,
+	SKILL_GRID_CELL_HEIGHT,
+	SKILL_GRID_CELL_WIDTH,
 	SkillLinkCellBlock,
 	type SkillTreeGridBounds,
 } from "~/components/features/character/skillTreeGrid";
 import { Icons } from "~/components/icons";
-import type { Dictionary } from "~/locales/type";
+import { useDictionary } from "~/contexts/Dictionary";
+import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
 import { store } from "~/store";
 
+// 共享元素 morph 的 view-transition-name：卡片与全屏面板轮流持有它，浏览器据此把
+// 新旧快照配成一次形变（原位放大 / 还原）。同一帧内必须只有一个元素持有此名字。
+const SKILL_MORPH_NAME = "skill-tree-morph";
+
+// 用 View Transitions API 包裹一次状态切换：切换前拍旧快照、DOM 更新后拍新快照，
+// 动画跑在快照上，真实 DOM 已是终态——滚动被冻结，天然免疫“测量后布局漂移”与“看到两个卡片”。
+// 不支持该 API 或用户关闭动画时，直接同步切换（无动画降级）。
+function withViewTransition(update: () => void): void {
+	const doc = document as Document & {
+		startViewTransition?: (cb: () => void) => { finished: Promise<void> };
+	};
+	if (!store.settings.userInterface.isAnimationEnabled || typeof doc.startViewTransition !== "function") {
+		update();
+		return;
+	}
+	doc.startViewTransition(update);
+}
+
 // wiki 技能页只读浏览：卡片墙按技能树分组类型分区，每张卡片是一个技能树（占位图 + 名称 + 技能数量）。
-// 点击卡片打开只读网格 Sheet，点击节点交给页面统一的卡片入口（itemHandleClick）展示技能详情。
+// 点击卡片将该卡片原位放大到全屏 80% 面板展示技能树网格；点击背景遮罩还原。
 function SkillBrowseNode(props: { bounds: SkillTreeGridBounds; skill: skill; onSelect: () => void }) {
 	return (
 		<div
@@ -51,13 +69,17 @@ function SkillBrowseNode(props: { bounds: SkillTreeGridBounds; skill: skill; onS
 	);
 }
 
-export const SkillPage = (dic: Dictionary, itemHandleClick: (data: skill) => void) => {
-	const [skills] = createResource(() => selectAllSkills());
+export const SkillPage = () => {
+	const dic = useDictionary();
+	// 用 live query 而非一次性 selectAllSkills：删除/新增技能后卡片墙即时刷新，
+	// 避免陈旧列表仍渲染已删节点（点击会命中 getSkillWithVariants 的 NoResultError）。
+	const skillQuery = createLiveKyselyQuery<skill>((db) => db.selectFrom("skill").selectAll("skill"));
+	const skills = skillQuery.rows;
 
-	// 技能按技能树类型分桶，作为卡片统计（每棵树的技能数量）和 Sheet 网格渲染的数据源。
+	// 技能按技能树类型分桶，作为卡片统计（每棵树的技能数量）和全屏面板网格渲染的数据源。
 	const skillsByTreeType = createMemo(() => {
 		const map = new Map<SkillTreeType, skill[]>();
-		for (const skill of skills() ?? []) {
+		for (const skill of skills()) {
 			const bucket = map.get(skill.treeType) ?? [];
 			bucket.push(skill);
 			map.set(skill.treeType, bucket);
@@ -65,8 +87,19 @@ export const SkillPage = (dic: Dictionary, itemHandleClick: (data: skill) => voi
 		return map;
 	});
 
+	// activeTreeType 决定全屏面板是否展示；morphTreeType 单独记录“哪张卡片正在参与 morph”。
+	// 二者分离，是为了保证 morph 名字的唯一归属：面板挂载时(new 快照)只有面板持有名字，
+	// 卡片在旧快照里持有名字、新快照里让出——同一帧不会出现两个同名元素。
 	const [activeTreeType, setActiveTreeType] = createSignal<SkillTreeType | null>(null);
-	const closeSheet = () => setActiveTreeType(null);
+	const [morphTreeType, setMorphTreeType] = createSignal<SkillTreeType | null>(null);
+
+	const openTree = (treeType: SkillTreeType) => {
+		setMorphTreeType(treeType);
+		withViewTransition(() => setActiveTreeType(treeType));
+	};
+	const closeSheet = () => {
+		withViewTransition(() => setActiveTreeType(null));
+	};
 
 	const activeTreeSkills = createMemo(() => {
 		const treeType = activeTreeType();
@@ -81,7 +114,7 @@ export const SkillPage = (dic: Dictionary, itemHandleClick: (data: skill) => voi
 	return (
 		<div class="SkillPage flex h-full flex-col overflow-hidden">
 			<Show
-				when={!skills.loading}
+				when={skillQuery.status() !== "loading"}
 				fallback={
 					<div class="LoadingState flex h-full w-full flex-col items-center justify-center gap-3">
 						<LoadingBar class="w-1/2 min-w-[320px]" />
@@ -99,14 +132,16 @@ export const SkillPage = (dic: Dictionary, itemHandleClick: (data: skill) => voi
 							{(treeGroupType, groupIndex) => (
 								<Motion.section
 									animate={{
-										transform: ["translateY(-3%)", "translateY(0)"], opacity: [0, 1]
+										transform: ["translateY(-3%)", "translateY(0)"],
+										opacity: [0, 1],
 									}}
 									transition={{
 										duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0,
 									}}
-									class={`SkillGroup-${treeGroupType()} translate-y-0 flex w-full flex-col gap-2`}>
+									class={`SkillGroup-${treeGroupType()} translate-y-0 flex w-full flex-col gap-2`}
+								>
 									<h3 class="text-accent-color flex items-center gap-2 font-bold">
-										{dic.ui.character.tabs.skill.trees[treeGroupType()].selfName}
+										{dic().ui.character.tabs.skill.trees[treeGroupType()].selfName}
 										<div class="Divider bg-dividing-color h-px w-full flex-1" />
 									</h3>
 									<div class="Cards flex flex-wrap gap-3">
@@ -115,12 +150,17 @@ export const SkillPage = (dic: Dictionary, itemHandleClick: (data: skill) => voi
 												const treeType = skillTreeType();
 												const count = () => skillsByTreeType().get(treeType)?.length ?? 0;
 												const isEmpty = () => count() === 0;
-												const colorIndex = (groupIndex + index % 4) % 4;
-												const color = [" text-brand-color-1st", " text-brand-color-2nd", " text-brand-color-3rd", " text-brand-color-4th"][colorIndex]
+												const colorIndex = (groupIndex + (index % 4)) % 4;
+												const color = [
+													" text-brand-color-1st",
+													" text-brand-color-2nd",
+													" text-brand-color-3rd",
+													" text-brand-color-4th",
+												][colorIndex];
 												return (
 													<Motion.button
 														animate={{
-															transform: ["scale(1.05)", "scale(1)"]
+															transform: ["scale(1.05)", "scale(1)"],
 														}}
 														transition={{
 															duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0,
@@ -128,60 +168,28 @@ export const SkillPage = (dic: Dictionary, itemHandleClick: (data: skill) => voi
 														}}
 														type="button"
 														disabled={isEmpty()}
+														style={{
+															"view-transition-name":
+																morphTreeType() === treeType && activeTreeType() === null ? SKILL_MORPH_NAME : undefined,
+														}}
 														class={`SkillTreeCard p-2 bg-accent-color ${color} shadow-dividing-color relative flex w-40 portrait:w-[calc((100%-1.5rem)/3)] h-48 portrait:h-40 flex-col overflow-hidden rounded-md shadow-md ${isEmpty() ? "cursor-not-allowed opacity-40 saturate-50" : "cursor-pointer hover:shadow-xl hover:scale-105"}`}
 														onClick={() => {
-															if (!isEmpty()) setActiveTreeType(treeType);
+															if (!isEmpty()) openTree(treeType);
 														}}
 													>
-
-														<div class="Content flex h-full w-full justify-center overflow-hidden">
-															{/* 左侧装饰 */}
-															<div class="Left z-10 flex flex-none flex-col">
-																<Decorate class="" />
-																<div class="Divider bg-boundary-color ml-1 h-full w-px flex-1 rounded-full"></div>
-																<Decorate class="-scale-y-100" />
-															</div>
-
-															{/* 中间内容 */}
-															<div class="Center -mx-10 flex w-full flex-1 flex-col items-center">
-																{/* 上分割线 */}
-																<div
-																	class="Divider bg-boundary-color mt-1 h-px w-full rounded-full"
-																	style={{
-																		width: "calc(100% - 80px)",
-																	}}
-																></div>
-
-																{/* 滚动内容区域 */}
-																<div
-																	class="border-primary-color h-full w-full flex-1 rounded"
-																>
+														<Frame >
+															<div class="w-full h-full flex flex-col">
+																<div class="h-full w-full flex-1 rounded">
 																	<div class="Children mx-3 my-6 flex flex-col gap-3"></div>
 																</div>
-
 																<div class="Info flex flex-col gap-1 p-2">
 																	<span class="Name overflow-hidden font-bold text-nowrap text-ellipsis">
-																		{dic.db.skill.fields.treeType.enumMap[treeType]}
+																		{dic().db.skill.fields.treeType.enumMap[treeType]}
 																	</span>
 																	<span class="Count">{count()}</span>
 																</div>
-
-																{/* 下分割线 */}
-																<div
-																	class="Divider bg-boundary-color mb-1 h-px w-full rounded-full"
-																	style={{
-																		width: "calc(100% - 80px)",
-																	}}
-																></div>
 															</div>
-
-															{/* 右侧装饰 */}
-															<div class="Right z-10 flex flex-none -scale-x-100 flex-col">
-																<Decorate />
-																<div class="Divider bg-boundary-color ml-1 h-full w-px flex-1 rounded-full"></div>
-																<Decorate class="-scale-y-100" />
-															</div>
-														</div>
+														</Frame>
 													</Motion.button>
 												);
 											}}
@@ -195,48 +203,66 @@ export const SkillPage = (dic: Dictionary, itemHandleClick: (data: skill) => voi
 			</Show>
 
 			<Portal>
-				<Sheet state={activeTreeType() !== null} setState={(open) => !open && closeSheet()}>
-					<div class="flex portrait:h-[90dvh] h-full w-full flex-col gap-2 overflow-hidden p-6">
-						<div class="sheetTitle flex w-full items-center justify-between text-xl font-bold">
-							<Show when={activeTreeType()}>
-								{(treeType) => dic.db.skill.fields.treeType.enumMap[treeType()]}
-							</Show>
-							<Button
-								icon={<Icons.Outline.Close />}
-								level="quaternary"
-								class="rounded-none rounded-tr"
+				<Show when={activeTreeType()}>
+					{(treeType) => (
+						<Motion.div
+							animate={{ opacity: [0, 1] }}
+							transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+							class="SkillTreeOverlay fixed inset-0 z-50 flex items-end landscape:items-center justify-center backdrop-blur"
+						>
+							{/* 背景遮罩：模糊底层卡片墙 + 点击还原。不参与 morph，仅淡入淡出。 */}
+							<button
+								type="button"
+								aria-label="close"
+								class="SkillTreeOverlayScrim absolute inset-0 h-full w-full cursor-pointer bg-primary-color-10"
 								onClick={closeSheet}
 							/>
-						</div>
-						<OverlayScrollbarsComponent
-							element="div"
-							options={{ scrollbars: { autoHide: "scroll" } }}
-							class="SkillGroupConfig h-full w-full rounded"
-							defer
-						>
+
+							{/* 全屏 80% 面板：持有 morph 名字，与卡片配对成原位放大/还原形变。 */}
 							<div
-								class="SkillTreeCanvas inline-grid min-h-full min-w-full overflow-visible bg-accent-color px-24 py-12"
-								style={{
-									"grid-template-columns": `repeat(${activeTreeGridBounds().columnCount}, ${SKILL_GRID_CELL_SIZE}px)`,
-									"grid-template-rows": `repeat(${activeTreeGridBounds().rowCount}, ${SKILL_GRID_CELL_SIZE}px)`,
-								}}
+								style={{ "view-transition-name": SKILL_MORPH_NAME }}
+								class="SkillTreePanel bg-accent-color text-primary-color shadow-dialog shadow-dividing-color relative flex h-[90dvh] w-dvw landscape:w-[80dvw] flex-col gap-2 overflow-hidden landscape:rounded-md landscape:p-6"
 							>
-								<For each={activeTreeLinkCells()}>
-									{(cell) => <SkillLinkCellBlock cell={cell} bounds={activeTreeGridBounds()} />}
-								</For>
-								<For each={activeTreeSkills()}>
-									{(skill) => (
-										<SkillBrowseNode
-											bounds={activeTreeGridBounds()}
-											skill={skill}
-											onSelect={() => itemHandleClick(skill)}
-										/>
-									)}
-								</For>
+								<div class="PanelTitle z-10 absolute top-3 left-3 flex w-full items-center justify-between text-xl text-primary-color font-bold">
+									{dic().db.skill.fields.treeType.enumMap[treeType()]}
+								</div>
+								<Button
+									icon={<Icons.Outline.Close />}
+									level="quaternary"
+									class="hidden landscape:block z-10 absolute top-3 right-3"
+									onClick={closeSheet}
+								/>
+								<OverlayScrollbarsComponent
+									element="div"
+									options={{ scrollbars: { autoHide: "scroll" } }}
+									class="SkillGroupConfig h-full w-full rounded"
+									defer
+								>
+									<div
+										class="SkillTreeCanvas inline-grid min-h-full min-w-full overflow-visible bg-accent-color px-24 py-12"
+										style={{
+											"grid-template-columns": `repeat(${activeTreeGridBounds().columnCount}, ${SKILL_GRID_CELL_WIDTH}px)`,
+											"grid-template-rows": `repeat(${activeTreeGridBounds().rowCount}, ${SKILL_GRID_CELL_HEIGHT}px)`,
+										}}
+									>
+										<For each={activeTreeLinkCells()}>
+											{(cell) => <SkillLinkCellBlock cell={cell} bounds={activeTreeGridBounds()} />}
+										</For>
+										<For each={activeTreeSkills()}>
+											{(skill) => (
+												<SkillBrowseNode
+													bounds={activeTreeGridBounds()}
+													skill={skill}
+													onSelect={() => console.log(skill)}
+												/>
+											)}
+										</For>
+									</div>
+								</OverlayScrollbarsComponent>
 							</div>
-						</OverlayScrollbarsComponent>
-					</div>
-				</Sheet>
+						</Motion.div>
+					)}
+				</Show>
 			</Portal>
 		</div>
 	);

@@ -9,9 +9,11 @@ import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Select } from "~/components/controls/select";
 import { Icons } from "~/components/icons/index";
+import { useDictionary } from "~/contexts/Dictionary";
 import type { Dictionary } from "~/locales/type";
 
-export const AddressPage = (dic: Dictionary, itemHandleClick: (data: address) => void) => {
+export const AddressPage = () => {
+	const dic = useDictionary();
 	const [expandedAddresses, setExpandedAddresses] = createSignal<Set<string>>(new Set());
 	const [selectedWorldId, setSelectedWorldId] = createSignal<string>("Iruna World");
 	const [OverlayScrollbarsComponentRef, setOverlayScrollbarsComponentRef] = createSignal<
@@ -130,7 +132,7 @@ export const AddressPage = (dic: Dictionary, itemHandleClick: (data: address) =>
 							label: world.name,
 							value: world.id,
 						}))}
-						placeholder={`选择${dic.db.world.selfName}`}
+						placeholder={`选择${dic().db.world.selfName}`}
 					/>
 				</div>
 				<OverlayScrollbarsComponent
@@ -177,7 +179,7 @@ export const AddressPage = (dic: Dictionary, itemHandleClick: (data: address) =>
 															"grid-column": x - validGridInfo().minX + 1,
 															"grid-row": y - validGridInfo().minY + 1,
 														}}
-														onClick={() => itemHandleClick(address())}
+														onClick={() => console.log(address())}
 													>
 														<div class="Name overflow-hidden font-bold text-nowrap text-ellipsis p-2 bg-accent-color text-primary-color w-full">
 															{address().name}
