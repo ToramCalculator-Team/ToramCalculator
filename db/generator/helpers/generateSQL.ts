@@ -143,6 +143,12 @@ export class ClientSyncSqlFactory {
  * SQL 生成器
  */
 export class SQLGenerator {
+	// 基础设施表：不参与任何同步改造（既不注入 write_id，也不展开三件套）。
+	// 服务端与客户端两条派生路径共用此判定，避免各自维护一份跳过清单。
+	//   changes            = 本地上行变更日志（客户端手动追加）
+	//   _prisma_migrations = 迁移账本
+	private static readonly NON_SYNC_TABLES = new Set(["changes", "_prisma_migrations"]);
+
 	private tempSchemaPath: string;
 	private outputDir: string;
 	private tempPrismaConfigPath: string;
@@ -168,11 +174,15 @@ export class SQLGenerator {
 			// 1.1 写入临时 Prisma config（Prisma 7+ datasource url 不再写在 schema 中）
 			await this.writeTempPrismaConfig();
 
-			// 2. 生成服务端 SQL
-			const serverSQL = this.generateServerSQL();
+			// 2. 一次 diff 得到基础 SQL（纯业务 DDL，无同步改造）
+			const baseSQL = this.generateServerSQL();
 
-			// 3. 生成客户端 SQL（带同步架构转换）
-			const clientSQL = this.generateClientSQL(serverSQL);
+			// 3. 从同一份基础 SQL 派生两侧产物：
+			//    - 服务端：业务表注入 write_id（收敛环的服务端半边，见 ADR 0018）
+			//    - 客户端：业务表展开为 synced/local/view 三件套 + 触发器
+			//    两条路径共用分块与 isSyncableTable 判定，不各自维护跳过清单。
+			const serverSQL = this.buildServerSql(baseSQL);
+			const clientSQL = this.buildClientSql(baseSQL);
 
 			// 4. 写入输出文件
 			const serverSQLPath = path.join(this.outputDir, "server.sql");
@@ -235,7 +245,11 @@ export default defineConfig({
 				throw new Error(`临时 schema 文件不存在: ${this.tempSchemaPath}`);
 			}
 
-			const command = `npx --yes prisma migrate diff --from-empty --to-schema ${this.tempSchemaPath} --script --config ${this.tempPrismaConfigPath}`;
+			// 用本地已安装的 prisma bin，而非 `npx --yes prisma`：
+			// npx --yes 每次会向 npm registry 联网校验/可能拉包，网络不稳时会长时间挂起
+			// （见排障记录：D 状态卡在 registry/checkpoint 请求）。本地 bin 离线可用、更快更稳。
+			const prismaBin = this.resolvePrismaBin();
+			const command = `${prismaBin} migrate diff --from-empty --to-schema ${this.tempSchemaPath} --script --config ${this.tempPrismaConfigPath}`;
 			console.log(`执行命令: ${command}`);
 
 			const sql = execSync(command, {
@@ -246,6 +260,8 @@ export default defineConfig({
 					// Prisma 7 的 Migrate/Diff 会校验 URL 格式（即使不连接 DB）
 					// 这里提供一个兜底值，避免因未配置/格式不正确导致生成空 SQL
 					DATABASE_URL: process.env.DATABASE_URL || this.migrateDiffDatabaseUrlFallback,
+					// 禁用 Prisma 遥测（checkpoint.prisma.io）：该端点在网络不稳时会拖慢/挂起 CLI 启动。
+					CHECKPOINT_DISABLE: "1",
 				},
 				stdio: "pipe",
 			});
@@ -263,56 +279,37 @@ export default defineConfig({
 	}
 
 	/**
-	 * 生成客户端 SQL
+	 * 解析本地 prisma 可执行文件路径（node_modules/.bin/prisma）。
+	 * 用引号包裹以兼容路径中的空格；找不到时回退到 PATH 上的 `prisma`（仍不走 npx）。
 	 */
-	private generateClientSQL(baseSQL: string): string {
-		console.log("生成客户端 SQL...");
-		try {
-			// 转换客户端 SQL
-			const transformedSQL = this.transformClientSql(baseSQL);
-
-			console.log("客户端 SQL 生成成功");
-			return transformedSQL;
-		} catch (error) {
-			console.warn("⚠️  客户端 SQL 生成失败，使用默认 SQL:", error);
-			return this.getDefaultClientSQL();
-		}
+	private resolvePrismaBin(): string {
+		const binName = process.platform === "win32" ? "prisma.cmd" : "prisma";
+		const localBin = path.join(process.cwd(), "node_modules", ".bin", binName);
+		return fs.existsSync(localBin) ? JSON.stringify(localBin) : "prisma";
 	}
 
 	/**
-	 * 转换客户端 SQL 为同步架构
+	 * 是否为需要同步改造的业务表。
+	 * 服务端（注入 write_id）与客户端（展开三件套）两条派生路径共用此判定，
+	 * 保证「哪些表参与同步」只有一处真相。
 	 */
-	private transformClientSql(initContent: string): string {
-		console.log("转换客户端 SQL 为同步架构...");
-
-		// 删除外键约束和索引
-		let content = initContent;
-
-		// 删除所有 `ALTER TABLE` 语句中涉及 `FOREIGN KEY` 的行
-		content = content.replace(/ALTER TABLE .* FOREIGN KEY.*;\n?/g, "");
-
-		// 删除孤立的 `-- AddForeignKey` 行
-		content = content.replace(/-- AddForeignKey\s*\n?/g, "");
-
-		// 删除所有的 `CREATE INDEX` 语句
-		content = content.replace(/CREATE INDEX.*;\n?/g, "");
-		content = content.replace(/CREATE UNIQUE INDEX.*;\n?/g, "");
-
-		// 删除孤立的 `-- CreateIndex` 行
-		content = content.replace(/-- CreateIndex\s*\n?/g, "");
-
-		console.log("外键约束及索引已删除");
-
-		// 转换为同步架构
-		return this.convertToSyncArchitecture(content);
+	private isSyncableTable(tableName: string): boolean {
+		return !SQLGenerator.NON_SYNC_TABLES.has(tableName.toLowerCase());
 	}
 
 	/**
-	 * 将 SQL 转换为同步架构
+	 * 通用分块映射：把一段 SQL 拆成块，对每个 CREATE TABLE 块调用 transformTable，
+	 * 其余块原样保留。server/client 两侧共用同一套分块与业务表识别逻辑。
+	 *
+	 * @param transformTable 对可同步业务表的结构做转换；返回替换该块的 SQL。
+	 *   基础设施表（!isSyncableTable）不会进入此回调，由调用方决定如何原样保留。
 	 */
-	private convertToSyncArchitecture(initContent: string): string {
+	private mapTableBlocks(
+		sql: string,
+		transformTable: (parsed: TableStructure, originalBlock: string) => string,
+	): string {
 		// 匹配完整的 SQL 块（包括注释）
-		const blocks = initContent
+		const blocks = sql
 			.split(/(?=^--|^CREATE\s|^ALTER\s|^DROP\s)/gim)
 			.map((block) => block.trim())
 			.filter(Boolean);
@@ -320,30 +317,118 @@ export default defineConfig({
 		const output: string[] = [];
 
 		for (const block of blocks) {
-			if (/^CREATE\s+TABLE/i.test(block)) {
-				const parsed = this.parseCreateTable(block);
-				if (!parsed) {
-					output.push(`-- ⚠️ 无法解析的表定义保留如下：\n${block}`);
-					continue;
-				}
-
-				const { tableName } = parsed;
-
-				output.push(`-- ${tableName}`);
-
-				// 跳过系统表/视图（以 public."_" 前缀的中间表除外）
-				if (parsed.tableName && parsed.tableName.toLowerCase() !== "changes") {
-					output.push(this.generateSyncedTable(parsed));
-					output.push(this.generateLocalTable(parsed));
-					output.push(this.generateView(parsed));
-				}
-			} else {
-				// 其余 SQL 保留
+			if (!/^CREATE\s+TABLE/i.test(block)) {
 				output.push(block);
+				continue;
 			}
+
+			const parsed = this.parseCreateTable(block);
+			if (!parsed) {
+				output.push(`-- ⚠️ 无法解析的表定义保留如下：\n${block}`);
+				continue;
+			}
+
+			// 基础设施表（changes / 迁移账本）不做任何同步改造，原样保留。
+			if (!this.isSyncableTable(parsed.tableName)) {
+				output.push(block);
+				continue;
+			}
+
+			output.push(transformTable(parsed, block));
 		}
 
-		const changesTable = `CREATE TABLE IF NOT EXISTS changes (
+		return output.join("\n");
+	}
+
+	/**
+	 * 构建服务端 SQL：基础 DDL + 每张业务表注入 write_id 列（收敛环服务端半边）。
+	 *
+	 * write_id 由 Electric 逻辑复制回灌到客户端 <t>_synced，客户端清理触发器
+	 * 按 write_id 匹配删除本地乐观覆盖行，完成 rebasing 收敛。见 ADR 0018。
+	 */
+	private buildServerSql(baseSQL: string): string {
+		console.log("生成服务端 SQL（注入 write_id）...");
+		try {
+			return this.mapTableBlocks(baseSQL, (parsed, originalBlock) => this.injectWriteIdColumn(parsed, originalBlock));
+		} catch (error) {
+			console.warn("⚠️  服务端 SQL 注入 write_id 失败，回退基础 SQL:", error);
+			return baseSQL;
+		}
+	}
+
+	/**
+	 * 在服务端 CREATE TABLE 块的最后一个业务列后插入 "write_id" UUID（可空）。
+	 * 只改动列区，保留原始约束/主键/格式，避免重写整块引入格式漂移。
+	 */
+	private injectWriteIdColumn(parsed: TableStructure, originalBlock: string): string {
+		// 已存在则幂等跳过（防止重复运行注入两次）
+		if (/"write_id"\s+UUID/i.test(originalBlock)) {
+			return originalBlock;
+		}
+
+		// 在最后一个业务列定义后追加 write_id。业务列与约束之间通常有空行，
+		// 定位到最后一个业务列所在行，在其后插入。
+		const lastColumn = parsed.columns.at(-1);
+		if (!lastColumn) {
+			return originalBlock;
+		}
+
+		// 定位最后一个业务列所在行，在其后插入 write_id。
+		// 该列行尾可能带逗号（后有约束/其它列）或不带（无约束表的末列），两种都要处理：
+		//   带逗号  → 在逗号后追加新列行（新列自带逗号，若其后无约束则下方 pkless 分支不适用）
+		//   不带逗号 → 需给原末列补逗号，再追加 write_id（且 write_id 成为新的无逗号末列）
+		const columnName = lastColumn.split(/\s+/, 1)[0].replace(/^"|"$/g, "");
+		const withComma = new RegExp(`("${columnName}"[^\\n]*,)`);
+		if (withComma.test(originalBlock)) {
+			return originalBlock.replace(withComma, `$1\n    "write_id" UUID,`);
+		}
+		// 无逗号末列（无约束表）：给原列补逗号并把 write_id 作为新末列（不带逗号）。
+		const noComma = new RegExp(`("${columnName}"[^\\n]*?)(\\s*)$`, "m");
+		if (noComma.test(originalBlock)) {
+			return originalBlock.replace(noComma, `$1,\n    "write_id" UUID$2`);
+		}
+		// 兜底：无法定位则不注入，保留原块并告警（不静默吞掉表）。
+		console.warn(`⚠️  无法在表 ${parsed.tableName} 定位列 ${columnName} 以注入 write_id，跳过该表`);
+		return originalBlock;
+	}
+
+	/**
+	 * 构建客户端 SQL：删除外键/索引 → 每张业务表展开为 synced/local/view 三件套 + 触发器，
+	 * 末尾追加 changes 变更日志表。
+	 */
+	private buildClientSql(baseSQL: string): string {
+		console.log("生成客户端 SQL（展开同步三件套）...");
+		try {
+			// 删除外键约束和索引（客户端 synced/local 不需要）
+			let content = baseSQL;
+			content = content.replace(/ALTER TABLE .* FOREIGN KEY.*;\n?/g, "");
+			content = content.replace(/-- AddForeignKey\s*\n?/g, "");
+			content = content.replace(/CREATE INDEX.*;\n?/g, "");
+			content = content.replace(/CREATE UNIQUE INDEX.*;\n?/g, "");
+			content = content.replace(/-- CreateIndex\s*\n?/g, "");
+
+			const transformed = this.mapTableBlocks(content, (parsed) =>
+				[
+					`-- ${parsed.tableName}`,
+					this.generateSyncedTable(parsed),
+					this.generateLocalTable(parsed),
+					this.generateView(parsed),
+				].join("\n"),
+			);
+
+			console.log("客户端 SQL 生成成功");
+			return `${transformed}\n${this.buildChangesTable()}`;
+		} catch (error) {
+			console.warn("⚠️  客户端 SQL 生成失败，使用默认 SQL:", error);
+			return this.getDefaultClientSQL();
+		}
+	}
+
+	/**
+	 * 客户端本地上行变更日志表 + NOTIFY 触发器（驱动 ChangeLogSynchronizer）。
+	 */
+	private buildChangesTable(): string {
+		return `CREATE TABLE IF NOT EXISTS changes (
   id BIGSERIAL PRIMARY KEY,
   table_name TEXT NOT NULL,
   operation TEXT NOT NULL,
@@ -365,9 +450,6 @@ AFTER INSERT ON changes
 FOR EACH ROW
 EXECUTE FUNCTION changes_notify_trigger();
 `;
-
-		console.log("已转换客户端 SQL 为同步架构");
-		return `${output.join("\n")}\n${changesTable}`;
 	}
 
 	/**

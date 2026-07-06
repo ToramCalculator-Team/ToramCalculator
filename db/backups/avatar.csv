@@ -1,4 +1,4 @@
-id,name,type,modifiers,belongToPlayerId
-defaultAvatarTopId,defaultAvatarTop,Top,"{""str + 2%"",""pie.m + 9%""}",defaultPlayerId
-defaultAvatarBottomId,defaultAvaterBottom,Bottom,"{""pie.m + 7%"",""distanceDmg.short + 2%""}",defaultPlayerId
-defaultAvatarDecorationId,defaultAvatarDecoration,Decoration,"{""avoid + 6"",""pie.m + 7%""}",defaultPlayerId
+id,name,type,modifiers,belongToPlayerId,write_id
+defaultAvatarTopId,defaultAvatarTop,Top,"{""str + 2%"",""pie.m + 9%""}",defaultPlayerId,81ba6a37-e6b0-4f29-bc8b-19d0c77e34e9
+defaultAvatarBottomId,defaultAvaterBottom,Bottom,"{""pie.m + 7%"",""distanceDmg.short + 2%""}",defaultPlayerId,6e484931-93f2-41c1-8a2d-68f7d9ff684c
+defaultAvatarDecorationId,defaultAvatarDecoration,Decoration,"{""avoid + 6"",""pie.m + 7%""}",defaultPlayerId,3b8b3b71-4a71-4dd2-9e25-74536fc60165

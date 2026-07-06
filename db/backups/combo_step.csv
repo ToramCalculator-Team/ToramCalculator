@@ -1,3 +1,3 @@
-id,type,characterSkillId,belongToComboId
-defaultComboStep1,Start,defaultCharacterSkill,defaultCombo1
-defaultComboStep2,Rengeki,defaultCharacterSkill,defaultCombo1
+id,type,characterSkillId,belongToComboId,write_id
+defaultComboStep1,Start,defaultCharacterSkill,defaultCombo1,8bdaa1dd-ff75-4d7e-967c-bdd6455ae84a
+defaultComboStep2,Rengeki,defaultCharacterSkill,defaultCombo1,533c98ee-0d38-4e0c-a89f-1c5cd6d413ff

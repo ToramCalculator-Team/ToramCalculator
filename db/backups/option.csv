@@ -1,4 +1,4 @@
-name,baseAbi,modifiers,colorA,colorB,colorC,itemId
-铁魔女头冠,0,"{""mp.max + 300"",""cspd + 400"",""pie.m + 20%""}",0,0,0,defaultOptionItemId
-丝巾,1,"{""aspd + 5%""}",0,0,0,y1aa7tiq024pkrstrryekj08
-蝴蝶结,1,"{""ampr + 1""}",0,0,0,hjcvedqbrzvj495m8b249md1
+name,baseAbi,modifiers,colorA,colorB,colorC,itemId,write_id
+铁魔女头冠,0,"{""mp.max + 300"",""cspd + 400"",""pie.m + 20%""}",0,0,0,defaultOptionItemId,ca37792a-8b00-4e0b-bada-da9103b117df
+丝巾,1,"{""aspd + 5%""}",0,0,0,y1aa7tiq024pkrstrryekj08,12db7757-56c6-4f87-b33c-65a126f2580a
+蝴蝶结,1,"{""ampr + 1""}",0,0,0,hjcvedqbrzvj495m8b249md1,1ff73bb6-6580-4212-acfb-620331ceda32

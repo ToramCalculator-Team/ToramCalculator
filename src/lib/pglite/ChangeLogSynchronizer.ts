@@ -207,8 +207,13 @@ export class ChangeLogSynchronizer {
 	async send(changes: ChangeRecord[]): Promise<SyncResult> {
 		const path = "/changes";
 
+		// 按事务分组后，按事务内最小 changes.id 数值排序（见 ADR 0017 B-5）。
+		// 不能用 transaction_id.localeCompare：transaction_id 是 xid8 数字，字符串序下
+		// "1000" < "999"，会在 xid 跨十进制位数边界时打乱事务应用顺序 → 外键约束失败。
+		// changes.id 是 BIGSERIAL，天然反映写入顺序，且与 query() 的 ORDER BY id 一致。
 		const groups = Object.groupBy(changes, (x) => x.transaction_id);
-		const sorted = Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+		const minId = (rows: ChangeRecord[]) => rows.reduce((m, r) => (r.id < m ? r.id : m), rows[0].id);
+		const sorted = Object.entries(groups).sort((a, b) => minId(a[1] ?? []) - minId(b[1] ?? []));
 		const transactions: TransactionRecord[] = sorted.map(([transaction_id, changes]) => {
 			return {
 				id: transaction_id,
@@ -255,14 +260,28 @@ export class ChangeLogSynchronizer {
 	}
 
 	/*
-	 * 回滚：使用极其简单的策略，如果任何写入被拒绝，就清除整个本地状态
-	 * Rollback with an extremely naive strategy: if any write is rejected, simply
-	 * wipe the entire local state.
+	 * 回滚：恢复官方 pattern 4 的完整语义 —— 任一写被服务端拒绝时，清空整个本地态。
+	 * 官方原实现是 `DELETE from changes` + `DELETE from <t>_local` 两句一起，二者缺一
+	 * 则不自洽：只清 outbox 而留下 local 覆盖会让被拒的写从重试队列消失、却仍显示在视图上，
+	 * 造成永久静默发散（见 ADR 0017 B-4）。
+	 *
+	 * 因背景同步已丢失原始写入上下文，官方明确不做因果感知的定向回滚（"opens the door to
+	 * a lot of complexity"），而是粗暴清空本地态、由 Electric 从服务端重新收敛。此处遵循同一策略，
+	 * 并把官方硬编码的单表 `<t>_local` 泛化为「运行时自省所有 %_local 表」，不依赖生成期清单。
 	 */
 	async rollback(): Promise<void> {
 		await this.#db.transaction(async (tx) => {
 			await tx.sql`DELETE from changes`;
-			// await tx.sql`DELETE from todos_local`
+
+			// 动态发现所有本地乐观覆盖表（<t>_local），逐个清空。
+			const { rows } = await tx.query<{ tablename: string }>(
+				`SELECT tablename FROM pg_catalog.pg_tables
+				 WHERE schemaname = 'public' AND tablename LIKE '%\\_local'`,
+			);
+			for (const { tablename } of rows) {
+				// 表名来自 pg_catalog，非用户输入；用双引号包裹防止大小写/保留字问题。
+				await tx.exec(`DELETE FROM "${tablename}"`);
+			}
 		});
 	}
 

@@ -1,2 +1,2 @@
-id,type,value,probability,itemId,belongToTaskId
-defaultTaskRewardId,Item,0,0,defaultArmorItemId,defaultbelongToTaskId
+id,type,value,probability,itemId,belongToTaskId,write_id
+defaultTaskRewardId,Item,0,0,defaultArmorItemId,defaultbelongToTaskId,e0973038-1748-4659-982b-d1962d5e5824

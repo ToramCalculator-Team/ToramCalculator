@@ -1,2 +1,2 @@
-id,name,baseAbi,extraAbi,templateId,modifiers,belongToPlayerId
-defaultPlayerSpecialId,读星提灯,0,0,defaultSpecialItemId,"{""mp.max + 300"",""pie.m + 10%""}",defaultPlayerId
+id,name,baseAbi,extraAbi,templateId,modifiers,belongToPlayerId,write_id
+defaultPlayerSpecialId,读星提灯,0,0,defaultSpecialItemId,"{""mp.max + 300"",""pie.m + 10%""}",defaultPlayerId,46ce236c-1e8f-4fa8-99fb-0a97a76f5855

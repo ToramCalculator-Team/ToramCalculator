@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 import type { DB } from "@db/generated/zod/index";
 import { getDB } from "@db/repositories/database";
@@ -46,8 +47,13 @@ export async function POST(event: APIEvent) {
 	}
 
 	// -------- 安全校验与约束 --------
-	// 1) 允许的操作（默认禁用删除）
-	const ALLOWED_OPS = new Set(["insert", "update"] as const);
+	// 1) 允许的操作
+	//    delete 已启用：客户端视图删除（如 deleteCharacterSkill）会产生 delete 变更，
+	//    服务端若拒绝会导致上行队列 HOL 死锁（见 ADR 0017 B-2）。
+	//    信任模型：与 insert/update 一致，当前仅校验 JWT 有效性，不做行级归属校验。
+	//    这不新增相对现状的越权面（update 本已可越权）；归属校验（insert/update/delete
+	//    统一）留待 ADR 0017 A-1 处理。
+	const ALLOWED_OPS = new Set(["insert", "update", "delete"] as const);
 	// 2) 允许的表名（如需更细可维护一个白名单；这里先允许全部，但执行前做信息架构校验）
 	const SAFE_TABLE_NAME = /^[_a-zA-Z][_a-zA-Z0-9]*$/;
 	// 3) 负载 schema（宽松，但强约束关键字段与类型）
@@ -85,8 +91,7 @@ export async function POST(event: APIEvent) {
 						throw new Error(`非法表名: ${change.table_name}`);
 					}
 
-					if (!ALLOWED_OPS.has(change.operation as "insert" | "update")) {
-						// 若需要允许删除，可在此添加细粒度白名单或软删除逻辑
+					if (!ALLOWED_OPS.has(change.operation as "insert" | "update" | "delete")) {
 						throw new Error(`禁止的操作: ${change.operation}`);
 					}
 
@@ -108,16 +113,28 @@ export async function POST(event: APIEvent) {
 						if (v !== undefined) cleanValue[k] = v;
 					}
 
+					// 收敛环：持久化 write_id（见 ADR 0018）。客户端触发器总会带上 write_id，
+					// 缺失时兜底生成，保证服务端行的 write_id 非 NULL —— 否则 Electric 回灌后
+					// 客户端清理触发器 `write_id = NEW.write_id` 永不命中，本地乐观行永不清理。
+					const writeId = change.write_id ?? randomUUID();
+					// insert/update 落库时写入 write_id；delete 不需要（按主键删行）。
+					const valueWithWriteId: ChangeValue = { ...cleanValue, write_id: writeId };
+
 					switch (change.operation) {
-						case "insert":
+						case "insert": {
+							// 幂等 upsert（见 ADR 0017 B-3）：崩溃窗口重投同一 change 时，
+							// plain INSERT 会主键冲突 500 → 客户端无限 retry 死锁。
+							// ON CONFLICT DO UPDATE 使重投等价于覆盖成同值，天然幂等。
 							await trx
 								.insertInto(tableName)
-								.values(cleanValue as never)
+								.values(valueWithWriteId as never)
+								.onConflict((oc) => oc.columns(primaryKeys as never).doUpdateSet(valueWithWriteId as never))
 								.execute();
 							break;
+						}
 
 						case "update": {
-							let query = trx.updateTable(tableName).set(cleanValue);
+							let query = trx.updateTable(tableName).set(valueWithWriteId as never);
 							// 添加所有主键条件
 							for (const pk of primaryKeys) {
 								query = query.where(pk, "=", change.value[String(pk)] as never);

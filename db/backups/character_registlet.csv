@@ -1,2 +1,2 @@
-id,level,templateId,belongToCharacterId
-defaultRegistlet1,5,registlet.lingjiaoLingjiao,defaultCharacterId
+id,level,templateId,belongToCharacterId,write_id
+defaultRegistlet1,5,registlet.lingjiaoLingjiao,defaultCharacterId,1de9154e-346a-4406-a461-32031aa0518b

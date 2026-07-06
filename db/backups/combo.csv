@@ -1,2 +1,2 @@
-id,disable,name,belongToCharacterId
-defaultCombo1,f,defaultCombo,defaultCharacterId
+id,disable,name,belongToCharacterId,write_id
+defaultCombo1,f,defaultCombo,defaultCharacterId,39f51b9b-9012-4e32-ab69-1bcf8946452e
