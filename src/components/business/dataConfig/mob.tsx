@@ -319,6 +319,9 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 	},
 	card: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
+		relationOverrides: {
+			only: ["drop_item"]
+		},
 		before: (data, setData) => {
 			const [difficulty, setDifficulty] = createSignal<MobDifficultyFlag>(MOB_DIFFICULTY_FLAG[1]);
 
