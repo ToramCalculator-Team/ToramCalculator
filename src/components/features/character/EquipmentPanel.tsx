@@ -16,11 +16,11 @@ import { PLAYER_OPTION_DATA_CONFIG } from "~/components/business/dataConfig/play
 import { PLAYER_SPECIAL_DATA_CONFIG } from "~/components/business/dataConfig/player_special";
 import { PLAYER_WEAPON_DATA_CONFIG } from "~/components/business/dataConfig/player_weapon";
 import { Form } from "~/components/business/form/FormRenderer";
-import { globalFormGroup } from "~/components/business/form/globalFormGroup";
 import { ForeignKeyPickerSheet } from "~/components/business/table/ForeignKeyPickerSheet";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
+import { useOverlay } from "~/lib/overlay/OverlayContext";
 import { useIntentSnapshot, useVisualIntent } from "~/machines/AppActorContext";
 import type { EquipSlot } from "~/machines/intent/types";
 
@@ -154,6 +154,8 @@ const toRelationPatch = <S extends EquipmentSlot>(
 
 export function EquipmentPanel(props: EquipmentPanelProps) {
 	const dictionary = useDictionary();
+	// EquipmentPanel 渲染于角色页根作用域(非浮层内),openForm 新建根级表单层。
+	const overlay = useOverlay();
 	const intentActor = useVisualIntent();
 	const intent = useIntentSnapshot();
 
@@ -220,7 +222,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 
 		const initialValue = withBelongToPlayerId(config.defaultData, props.character.belongToPlayerId);
 
-		globalFormGroup.add({
+		overlay.openForm({
 			render: (api) => (
 				<Form<EquipmentSlotRow<S>, typeof config.dataSchema>
 					tableName={tableName}
@@ -329,9 +331,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 								openEquipmentCreateForm("weaponId");
 							}}
 						/>
-						<Show
-							when={props.character.weapon?.id}
-						>
+						<Show when={props.character.weapon?.id}>
 							<Button
 								icon={<Icons.Outline.Trash />}
 								level="quaternary"
@@ -392,9 +392,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 								openEquipmentCreateForm("subWeaponId");
 							}}
 						/>
-						<Show
-							when={props.character.subWeapon?.id}
-						>
+						<Show when={props.character.subWeapon?.id}>
 							<Button
 								icon={<Icons.Outline.Trash />}
 								level="quaternary"
@@ -455,9 +453,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 								openEquipmentCreateForm("armorId");
 							}}
 						/>
-						<Show
-							when={props.character.armor?.id}
-						>
+						<Show when={props.character.armor?.id}>
 							<Button
 								icon={<Icons.Outline.Trash />}
 								level="quaternary"
@@ -518,9 +514,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 								openEquipmentCreateForm("optionId");
 							}}
 						/>
-						<Show
-							when={props.character.option?.id}
-						>
+						<Show when={props.character.option?.id}>
 							<Button
 								icon={<Icons.Outline.Trash />}
 								level="quaternary"
@@ -581,9 +575,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 								openEquipmentCreateForm("specialId");
 							}}
 						/>
-						<Show
-							when={props.character.special?.id}
-						>
+						<Show when={props.character.special?.id}>
 							<Button
 								icon={<Icons.Outline.Trash />}
 								level="quaternary"

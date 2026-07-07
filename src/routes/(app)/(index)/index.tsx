@@ -7,21 +7,20 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createMemo, createSignal, For, Index, type JSX, onCleanup, onMount, Show, useContext } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { DataRenderer } from "~/components/business/card/DataRenderer";
-import { globalCardGroup } from "~/components/business/card/globalCardGroup";
 import { DATA_CONFIG } from "~/components/business/data-config";
 import { Form } from "~/components/business/form/FormRenderer";
-import { globalFormGroup } from "~/components/business/form/globalFormGroup";
 import { Sheet } from "~/components/containers/sheet";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Filing } from "~/components/features/filing";
 import { Icons } from "~/components/icons/index";
+import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
-import type { Dictionary } from "~/locales/type";
+import { type CardEntryInit, useOverlay } from "~/lib/overlay/OverlayContext";
 import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
+import type { Dictionary } from "~/locales/type";
 import { setStore, store } from "~/store";
 import { indexPageMachine } from "./indexPageMachine";
-import { useDictionary } from "~/contexts/Dictionary";
 
 export default function IndexPage() {
 	const [searchButtonRef, setSearchButtonRef] = createSignal<HTMLButtonElement | undefined>(undefined);
@@ -31,6 +30,8 @@ export default function IndexPage() {
 	const navigate = useNavigate();
 	// UI文本字典
 	const dictionary = useDictionary();
+	// 页面根作用域 overlay 句柄:搜索结果卡片从这里 openCard 新建卡片层。
+	const overlay = useOverlay();
 	// 媒体查询
 	const media = useContext(MediaContext);
 
@@ -65,25 +66,29 @@ export default function IndexPage() {
 	});
 
 	/**
-	 * 首页搜索结果卡片在首页场景内创建，递归关联继续沿用当前语言字典。
+	 * 构造搜索结果卡片 entry。render 在卡片层作用域内执行:
+	 * - 外键 drill(openCard) → pushCard 并入同组;editor → openForm 新建表单层。
+	 * 首页搜索结果卡片在首页场景内创建,递归关联继续沿用当前语言字典。
 	 */
-	const openSearchResultCard = (type: keyof DB, data: Record<string, unknown>) => {
+	const buildSearchResultCardEntry = (type: keyof DB, data: Record<string, unknown>): CardEntryInit => {
 		const config = DATA_CONFIG[type]?.(dictionary);
-		globalCardGroup.add({
+		return {
 			title: (data as { name?: unknown }).name?.toString() ?? "",
 			titleIcon: () => <Icons.Spirits iconName={type} />,
 			render: (cardApi) => {
 				if (!config) return <pre>{JSON.stringify(data, null, 2)}</pre>;
+				// 卡片层作用域句柄:drill 用 pushCard 并入同组,editor 用 openForm 新建表单层。
+				const cardOverlay = useOverlay();
 
 				return (
 					<DataRenderer
 						primaryKey={config.primaryKey}
 						dictionary={config.dictionary}
 						deleteCallback={config.card.deleteCallback}
-						openCard={openSearchResultCard}
+						openCard={(nextType, nextData) => cardOverlay.pushCard(buildSearchResultCardEntry(nextType, nextData))}
 						closeCard={cardApi.close}
 						openEditor={(nextData) => {
-							globalFormGroup.add({
+							cardOverlay.openForm({
 								render: (api) => (
 									<Form
 										tableName={type}
@@ -126,7 +131,12 @@ export default function IndexPage() {
 					/>
 				);
 			},
-		});
+		};
+	};
+
+	/** 搜索结果点击入口:从页面根作用域新建卡片层。 */
+	const openSearchResultCard = (type: keyof DB, data: Record<string, unknown>) => {
+		overlay.openCard(buildSearchResultCardEntry(type, data));
 	};
 
 	// 事件分发函数，调用状态机处理事件

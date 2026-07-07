@@ -9,10 +9,6 @@ export type WikiStore = {
 		columnVisibility: VisibilityState;
 		configSheetIsOpen: boolean;
 	};
-	form: {
-		data: Record<string, unknown> | undefined;
-		isOpen: boolean;
-	};
 };
 
 const [wikiStore, setWikiStore] = createStore<WikiStore>({
@@ -21,10 +17,6 @@ const [wikiStore, setWikiStore] = createStore<WikiStore>({
 		globalFilterStr: "",
 		columnVisibility: {},
 		configSheetIsOpen: false,
-	},
-	form: {
-		data: {},
-		isOpen: false,
 	},
 });
 

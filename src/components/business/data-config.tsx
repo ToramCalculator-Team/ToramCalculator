@@ -74,18 +74,6 @@ export type EmbedsDecl = {
 };
 
 /**
- * 对自动推导出的外键关联内容进行覆盖
- */
-export type RelationOverridesDecl = {
-	/** 黑名单：这些目标表的关联不显示 */
-	hide?: Array<keyof DB>;
-	/** 白名单：只显示这些目标表的关联（与 hide 互斥，同时声明时 only 优先） */
-	only?: Array<keyof DB>;
-	/** 按目标表覆盖关联前缀文案 */
-	prefix?: Partial<Record<keyof DB, keyof Dictionary["ui"]["relationPrefix"]>>;
-};
-
-/**
  * @typeParam T    数据实体完整形状（合并了 inheritsFrom 父表 / embeds 子表后的 runtime 类型）
  * @typeParam TDic 配置站点实际提供的字典形状，默认 = T。
  *                 当声明了 `inheritsFrom` 时，渲染器会在运行时自动合并父表字典，

@@ -17,10 +17,8 @@ import {
 } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { DataRenderer } from "~/components/business/card/DataRenderer";
-import { globalCardGroup } from "~/components/business/card/globalCardGroup";
 import { type AnyTableDataConfig, DATA_CONFIG } from "~/components/business/data-config";
 import { Form } from "~/components/business/form/FormRenderer";
-import { globalFormGroup } from "~/components/business/form/globalFormGroup";
 import { Dialog } from "~/components/containers/dialog";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
@@ -28,6 +26,8 @@ import { VirtualTable } from "~/components/dataDisplay/virtualTable";
 import { Icons } from "~/components/icons/index";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
+import { useOverlay } from "~/lib/overlay/OverlayContext";
+import type { CardEntryInit } from "~/lib/overlay/overlayStore";
 import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
 import { store } from "~/store";
 import { setWikiStore, wikiStore } from "./store";
@@ -44,6 +44,8 @@ type CommittedWikiTable = {
 export default function WikiSubPage() {
 	const media = useContext(MediaContext);
 	const dictionary = useDictionary();
+	// 页面根作用域的 overlay 句柄:列表点击从这里 openCard(新建卡片层)。
+	const overlay = useOverlay();
 	// url 参数
 	const params = useParams();
 	const navigate = useNavigate();
@@ -86,16 +88,21 @@ export default function WikiSubPage() {
 	});
 
 	/**
-	 * Wiki 页面在场景内组装卡片内容，卡片栈通过 globalCardGroup 记录运行时 JSX。
+	 * 构造一张卡片的 entry(不负责挂载)。render 在卡片层作用域内执行,故其内部 useOverlay()
+	 * 读到的是**当前卡片层**:
+	 * - 外键关联 drill(DataRenderer.openCard) → pushCard,并入同一卡片组(保留堆叠视觉)。
+	 * - 打开编辑器(openEditor) → openForm,在本卡片层下新建独立表单层。
 	 * 设计目的：字典、递归关联和编辑提交都来自当前页面上下文。
 	 */
-	const openCurrentTableCard = (type: keyof DB, data: Record<string, unknown>) => {
+	const buildCardEntry = (type: keyof DB, data: Record<string, unknown>): CardEntryInit => {
 		const config = DATA_CONFIG[type]?.(dictionary);
-		globalCardGroup.add({
+		return {
 			title: (data as { name?: unknown }).name?.toString() ?? "",
 			titleIcon: () => <Icons.Spirits iconName={type} />,
 			render: (cardApi) => {
 				if (!config) return <pre>{JSON.stringify(data, null, 2)}</pre>;
+				// 卡片层作用域句柄:drill 用 pushCard 并入同组,editor 用 openForm 新建表单层。
+				const cardOverlay = useOverlay();
 				const primaryKeyValue = data[config.primaryKey as string];
 				const [detailData] = createResource(
 					() => (primaryKeyValue == null ? data : String(primaryKeyValue)),
@@ -126,10 +133,10 @@ export default function WikiSubPage() {
 								primaryKey={config.primaryKey}
 								dictionary={config.dictionary}
 								deleteCallback={config.card.deleteCallback}
-								openCard={openCurrentTableCard}
+								openCard={(nextType, nextData) => cardOverlay.pushCard(buildCardEntry(nextType, nextData))}
 								closeCard={cardApi.close}
 								openEditor={(nextData) => {
-									globalFormGroup.add({
+									cardOverlay.openForm({
 										render: (api) => (
 											<Form
 												tableName={type}
@@ -174,14 +181,19 @@ export default function WikiSubPage() {
 					</Show>
 				);
 			},
-		});
+		};
+	};
+
+	/** 列表点击入口:从页面根作用域新建一个卡片层。 */
+	const openCurrentTableCard = (type: keyof DB, data: Record<string, unknown>) => {
+		overlay.openCard(buildCardEntry(type, data));
 	};
 
 	const openCreateForm = () => {
 		const request = tableConfigRequest();
 		if (!request) return;
 		const { type, config } = request;
-		globalFormGroup.add({
+		overlay.openForm({
 			render: (api) => (
 				<Form
 					tableName={type}
@@ -297,73 +309,73 @@ export default function WikiSubPage() {
 			icon: JSX.Element;
 		}[];
 	}[] = [
-			{
-				groupName: dictionary().ui.wiki.selector.groupName.combat,
-				groupFields: [
-					{
-						name: "mob",
-						icon: <Icons.Filled.Browser />,
-					},
-					{
-						name: "skill",
-						icon: <Icons.Filled.Basketball />,
-					},
-					{
-						name: "weapon",
-						icon: <Icons.Filled.Box2 />,
-					},
-					{
-						name: "armor",
-						icon: <Icons.Filled.Category2 />,
-					},
-					{
-						name: "option",
-						icon: <Icons.Filled.Layers />,
-					},
-					{
-						name: "special",
-						icon: <Icons.Filled.Layers />,
-					},
-					{
-						name: "crystal",
-						icon: <Icons.Filled.Layers />,
-					},
-				],
-			},
-			{
-				groupName: dictionary().ui.wiki.selector.groupName.daily,
-				groupFields: [
-					{
-						name: "address",
-						icon: <Icons.Filled.Layers />,
-					},
-					{
-						name: "zone",
-						icon: <Icons.Filled.Layers />,
-					},
-					{
-						name: "npc",
-						icon: <Icons.Filled.Layers />,
-					},
-					{
-						name: "consumable",
-						icon: <Icons.Filled.Layers />,
-					},
-					{
-						name: "material",
-						icon: <Icons.Filled.Layers />,
-					},
-					{
-						name: "task",
-						icon: <Icons.Filled.Layers />,
-					},
-					{
-						name: "activity",
-						icon: <Icons.Filled.Layers />,
-					},
-				],
-			},
-		];
+		{
+			groupName: dictionary().ui.wiki.selector.groupName.combat,
+			groupFields: [
+				{
+					name: "mob",
+					icon: <Icons.Filled.Browser />,
+				},
+				{
+					name: "skill",
+					icon: <Icons.Filled.Basketball />,
+				},
+				{
+					name: "weapon",
+					icon: <Icons.Filled.Box2 />,
+				},
+				{
+					name: "armor",
+					icon: <Icons.Filled.Category2 />,
+				},
+				{
+					name: "option",
+					icon: <Icons.Filled.Layers />,
+				},
+				{
+					name: "special",
+					icon: <Icons.Filled.Layers />,
+				},
+				{
+					name: "crystal",
+					icon: <Icons.Filled.Layers />,
+				},
+			],
+		},
+		{
+			groupName: dictionary().ui.wiki.selector.groupName.daily,
+			groupFields: [
+				{
+					name: "address",
+					icon: <Icons.Filled.Layers />,
+				},
+				{
+					name: "zone",
+					icon: <Icons.Filled.Layers />,
+				},
+				{
+					name: "npc",
+					icon: <Icons.Filled.Layers />,
+				},
+				{
+					name: "consumable",
+					icon: <Icons.Filled.Layers />,
+				},
+				{
+					name: "material",
+					icon: <Icons.Filled.Layers />,
+				},
+				{
+					name: "task",
+					icon: <Icons.Filled.Layers />,
+				},
+				{
+					name: "activity",
+					icon: <Icons.Filled.Layers />,
+				},
+			],
+		},
+	];
 
 	onMount(() => {
 		console.log(`--Wiki Page Mount`);
@@ -427,7 +439,7 @@ export default function WikiSubPage() {
 										size="sm"
 										icon={<Icons.Outline.InfoCircle />}
 										class="flex bg-transparent lg:hidden"
-										onClick={() => { }}
+										onClick={() => {}}
 									></Button>
 									<Show when={store.session.user?.id}>
 										<Button // 仅PC端显示
@@ -528,10 +540,7 @@ export default function WikiSubPage() {
 										}}
 									/>
 								</div>
-								<Show
-									when={!wikiConfig()}
-									fallback={wikiConfig()?.mainContent()}
-								>
+								<Show when={!wikiConfig()} fallback={wikiConfig()?.mainContent()}>
 									{(_) => {
 										return (
 											<Show when={currentCommittedTable()}>

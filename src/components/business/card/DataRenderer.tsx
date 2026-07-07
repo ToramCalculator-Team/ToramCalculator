@@ -14,7 +14,19 @@ import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
 import type { Dic, Dictionary, EnumFieldDetail } from "~/locales/type";
-import { DATA_CONFIG, type EmbedsDecl, type InheritsFromDecl, type RelationOverridesDecl } from "../data-config";
+import { DATA_CONFIG, type EmbedsDecl, type InheritsFromDecl } from "../data-config";
+
+/**
+ * 对自动推导出的外键关联内容进行覆盖
+ */
+export type RelationOverridesDecl = {
+	/** 黑名单：这些目标表的关联不显示 */
+	hide?: Array<keyof DB>;
+	/** 白名单：只显示这些目标表的关联（与 hide 互斥，同时声明时 only 优先） */
+	only?: Array<keyof DB>;
+	/** 按目标表覆盖关联前缀文案 */
+	prefix?: Partial<Record<keyof DB, keyof Dictionary["ui"]["relationPrefix"]>>;
+};
 
 export type DataRendererProps<
 	T extends Record<string, unknown>,
@@ -602,7 +614,8 @@ export function DataRenderer<T extends Record<string, unknown>, TSchema extends 
 							class="w-fit"
 							icon={<Icons.Outline.Edit />}
 							onclick={() => {
-								props.closeCard();
+								// 不关卡片:编辑表单作为当前卡片层的子层叠在其上(openEditor→openForm,parentId=卡片层)。
+								// 关表单回到卡片;关卡片会级联带走表单。若这里先 closeCard,表单会挂在正在关闭的父层下被级联清除。
 								props.openEditor(data());
 							}}
 						/>
