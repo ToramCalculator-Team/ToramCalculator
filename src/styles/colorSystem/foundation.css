@@ -115,9 +115,10 @@
  */
 @utility z-page-chrome { z-index: 40; } /* 页面骨架 / 导航 */
 @utility z-overlay     { z-index: 50; } /* dialog / sheet / BTEditor 等浮层 */
-@utility z-stack       { z-index: 60; } /* card / form 基准层 */
-@utility z-stack-top   { z-index: 61; } /* card / form 被激活时上浮 */
-@utility z-toast       { z-index: 70; } /* toast，始终盖过 card / form */
+@utility z-stack       { z-index: 60; } /* RealtimeSimulator 常驻层 */
+/* overlay 层树 (src/lib/overlay): z-index 由 layerZIndex 从 Z_BASE=70 起按打开顺序线性推导，
+   取代原来的 z-stack-top 二元切换。区间约 70–990（stride 10）。 */
+@utility z-toast       { z-index: 1000; } /* toast，始终盖过所有浮层 */
 @utility z-splash      { z-index: 80; } /* LoadingBG / 启动遮罩，挡住一切 */
 
 :root {

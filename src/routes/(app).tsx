@@ -1,34 +1,22 @@
 import hotkeys from "hotkeys-js";
-import { createEffect, createSignal, lazy, on, onMount, type ParentProps, Show, Suspense } from "solid-js";
+import { createEffect, on, onMount, type ParentProps } from "solid-js";
 import { Motion } from "solid-motionone";
-import { globalCardGroup } from "~/components/business/card/globalCardGroup";
-import { globalFormGroup } from "~/components/business/form/globalFormGroup";
 import { RandomBallBackground } from "~/components/effects/randomBg";
 import { LoginDialog } from "~/components/features/loginDialog";
 import { Setting } from "~/components/features/setting";
 import { MediaProvider } from "~/contexts/Media-component";
+import { SceneCanvas, SceneRuntimeProvider } from "~/lib/3dScene/SceneRuntime";
 import { BootstrapProvider } from "~/lib/bootstrap/BootstrapContext";
 import { EngineProvider } from "~/lib/engine/core/thread/EngineContext";
-import { SceneCanvas, SceneRuntimeProvider } from "~/lib/3dScene/SceneRuntime";
+import { OverlayRoot } from "~/lib/overlay/OverlayRoot";
+import { closeTopLayer } from "~/lib/overlay/overlayStore";
 import { AppActorProvider } from "~/machines/AppActorContext";
 import { SceneIntentBridge } from "~/machines/projections/SceneIntentBridge";
 import { setStore, store } from "~/store";
 import { applyColorSystem } from "~/styles/colorSystem/colorSystemController";
 
-const GlobalCardContainer = lazy(async () => {
-	const module = await import("~/components/business/card/GlobalCardContainer");
-	return { default: module.GlobalCardContainer };
-});
-
-const GlobalFormContainer = lazy(async () => {
-	const module = await import("~/components/business/form/GlobalFormContainer");
-	return { default: module.GlobalFormContainer };
-});
-
 export default function AppMainContet(props: ParentProps) {
 	let warmCacheScheduled = false;
-	const [globalCardRequested, setGlobalCardRequested] = createSignal(false);
-	const [globalFormRequested, setGlobalFormRequested] = createSignal(false);
 
 	const scheduleWarmCache = () => {
 		if (warmCacheScheduled || typeof window === "undefined" || !("serviceWorker" in navigator)) {
@@ -63,29 +51,17 @@ export default function AppMainContet(props: ParentProps) {
 		}
 	};
 	// 热键
-	hotkeys("ctrl+a,ctrl+b,r,f,enter,esc", (_event, handler) => {
-		switch (
-		handler.key
-		//   case "enter":
-		//     alert("you pressed enter!");
-		//     break;
-		//   case "esc":
-		//     alert("you pressed esc!");
-		//     break;
-		//   case "ctrl+a":
-		//     alert("you pressed ctrl+a!");
-		//     break;
-		// case "ctrl+b":
-		//   break;
-		//   case "r":
-		//     alert("you pressed r!");
-		//     break;
-		//   case "f":
-		//     alert("you pressed f!");
-		//     break;
-		//   default:
-		//     alert(event);
-		) {
+	hotkeys("ctrl+a,ctrl+b,r,f,enter,esc", (event, handler) => {
+		switch (handler.key) {
+			case "esc":
+				// Escape 关闭最顶层浮层(层树按打开顺序推导,cascade 关闭其后代)。
+				// 有浮层被关掉时阻止默认行为,避免误触其它 esc 语义。
+				if (closeTopLayer()) {
+					event.preventDefault();
+				}
+				break;
+			default:
+				break;
 		}
 	});
 
@@ -161,16 +137,6 @@ export default function AppMainContet(props: ParentProps) {
 		// console.log("本地存储更新");
 	});
 
-	// 非首屏弹层首次打开时才下载对应 chunk；下载后保持挂载，交给组件内部 Presence 处理退出动画。
-	createEffect(() => {
-		if (globalCardGroup.size() > 0) {
-			setGlobalCardRequested(true);
-		}
-		if (globalFormGroup.size() > 0) {
-			setGlobalFormRequested(true);
-		}
-	});
-
 	// 移除全局加载动画
 	// 此处移除是为了客户端在初次下载完资源时，将画面从加载过渡到正常页面，preload.js中的是为了保证之后的每次页面都不展示加载动画
 	createEffect(
@@ -231,12 +197,7 @@ export default function AppMainContet(props: ParentProps) {
 								<SceneIntentBridge />
 								{props.children}
 								<LoginDialog />
-								<Show when={globalCardRequested()}>
-									<GlobalCardContainer />
-								</Show>
-								<Show when={globalFormRequested()}>
-									<GlobalFormContainer />
-								</Show>
+								<OverlayRoot />
 							</Motion.div>
 							<Setting />
 						</SceneRuntimeProvider>

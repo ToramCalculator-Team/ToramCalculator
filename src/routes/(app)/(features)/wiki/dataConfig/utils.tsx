@@ -1,14 +1,5 @@
 import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 import type { DB } from "@db/generated/zod/index";
-import { getDB } from "@db/repositories/database";
-import type { Transaction } from "kysely";
-import { Show } from "solid-js";
-import { globalCardGroup } from "~/components/business/card/globalCardGroup";
-import { Button } from "~/components/controls/button";
-import { Icons } from "~/components/icons/index";
-import type { Dictionary } from "~/locales/type";
-import { store } from "~/store";
-import { setWikiStore } from "../store";
 
 export const arrayDiff = <T extends keyof DB>(props: { table: T; oldArray: DB[T][]; newArray: DB[T][] }) => {
 	const primaryKeys = getPrimaryKeys(props.table);
@@ -53,49 +44,6 @@ export const arrayDiff = <T extends keyof DB>(props: { table: T; oldArray: DB[T]
 		dataToRemove,
 		dataToUpdate,
 	};
-};
-
-export const CardSharedSection = <T extends object>(props: {
-	dic: Dictionary;
-	data: T & {
-		createdByAccountId: string | null;
-	};
-	delete: (trx: Transaction<DB>, data: T) => Promise<void>;
-}) => {
-	return (
-		<Show when={props.data.createdByAccountId === store.session.account.id}>
-			<section class="FunFieldGroup flex w-full flex-col gap-2">
-				<h3 class="text-accent-color flex items-center gap-2 font-bold">
-					{props.dic.ui.actions.operation}
-					<div class="Divider bg-dividing-color h-px w-full flex-1" />
-				</h3>
-				<div class="FunGroup flex gap-1">
-					<Button
-						class="w-fit"
-						icon={<Icons.Outline.Trash />}
-						onclick={async () => {
-							const db = await getDB();
-							await db.transaction().execute(async (trx) => {
-								await props.delete(trx, props.data);
-							});
-							// 关闭当前卡片
-							globalCardGroup.remove();
-						}}
-					/>
-					<Button
-						class="w-fit"
-						icon={<Icons.Outline.Edit />}
-						onclick={() => {
-							// 关闭当前卡片
-							globalCardGroup.remove();
-							// 打开表单
-							setWikiStore("form", { isOpen: true, data: props.data });
-						}}
-					/>
-				</div>
-			</section>
-		</Show>
-	);
 };
 
 /**

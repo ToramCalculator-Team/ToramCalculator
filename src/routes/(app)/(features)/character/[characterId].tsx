@@ -4,10 +4,8 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createEffect, createMemo, createSignal, onCleanup, onMount, Show, useContext } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { DataRenderer } from "~/components/business/card/DataRenderer";
-import { globalCardGroup } from "~/components/business/card/globalCardGroup";
 import { DATA_CONFIG } from "~/components/business/data-config";
 import { Form } from "~/components/business/form/FormRenderer";
-import { globalFormGroup } from "~/components/business/form/globalFormGroup";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Select } from "~/components/controls/select";
@@ -16,10 +14,11 @@ import { SkillPreviewPanel } from "~/components/features/character/SkillPreviewP
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
-import { useEngine } from "~/lib/engine/core/thread/EngineContext";
 import { type CharacterContentSession, useSceneRuntime } from "~/lib/3dScene/SceneRuntime";
+import { useEngine } from "~/lib/engine/core/thread/EngineContext";
 import { StatsRenderer } from "~/lib/engine/core/World/Member/MemberStatusPanel";
 import { createLogger } from "~/lib/Logger";
+import { type CardEntryInit, useOverlay } from "~/lib/overlay/OverlayContext";
 import { store } from "~/store";
 import { createCharacterPageModel } from "./characterPageModel";
 import { createCharacter } from "./createCharacter";
@@ -30,6 +29,8 @@ export default function CharactePage() {
 	const navigate = useNavigate();
 	const media = useContext(MediaContext);
 	const dictionary = useDictionary();
+	// 页面根作用域 overlay 句柄:预览卡片从这里 openCard 新建卡片层。
+	const overlay = useOverlay();
 	const params = useParams();
 	const engine = useEngine();
 	const sceneRuntime = useSceneRuntime();
@@ -75,27 +76,31 @@ export default function CharactePage() {
 		model.dispatch({ type: "character.patch", patch, relations });
 	};
 
-	const previewDataItem = (type: keyof DB, data: unknown) => {
+	/**
+	 * 构造预览卡片 entry。render 在卡片层作用域内执行:
+	 * - 外键 drill(openCard) → pushCard 并入同一卡片组;editor → openForm 新建表单层。
+	 * 角色页的预览卡片由当前场景创建,递归关联和编辑表单沿用同一个角色页上下文。
+	 */
+	const buildPreviewCardEntry = (type: keyof DB, data: unknown): CardEntryInit => {
 		const cardData = data as Record<string, unknown>;
 		const config = DATA_CONFIG[type]?.(dictionary);
-		/**
-		 * 角色页的预览卡片由当前场景创建，递归关联和编辑表单沿用同一个角色页上下文。
-		 */
-		globalCardGroup.add({
+		return {
 			title: (cardData as { name?: unknown }).name?.toString() ?? "",
 			titleIcon: () => <Icons.Spirits iconName={type} />,
 			render: (cardApi) => {
 				if (!config) return <pre>{JSON.stringify(cardData, null, 2)}</pre>;
+				// 卡片层作用域句柄:drill 用 pushCard 并入同组,editor 用 openForm 新建表单层。
+				const cardOverlay = useOverlay();
 
 				return (
 					<DataRenderer
 						primaryKey={config.primaryKey}
 						dictionary={config.dictionary}
 						deleteCallback={config.card.deleteCallback}
-						openCard={previewDataItem}
+						openCard={(nextType, nextData) => cardOverlay.pushCard(buildPreviewCardEntry(nextType, nextData))}
 						closeCard={cardApi.close}
 						openEditor={(nextData) => {
-							globalFormGroup.add({
+							cardOverlay.openForm({
 								render: (api) => (
 									<Form
 										tableName={type}
@@ -138,7 +143,12 @@ export default function CharactePage() {
 					/>
 				);
 			},
-		});
+		};
+	};
+
+	/** 预览入口:从页面根作用域新建卡片层。 */
+	const previewDataItem = (type: keyof DB, data: unknown) => {
+		overlay.openCard(buildPreviewCardEntry(type, data));
 	};
 
 	onMount(() => {
@@ -226,7 +236,7 @@ export default function CharactePage() {
 							defer
 							class={`CharacterConfigPanel landscape:basis-1/2 portrait:py-6`}
 							style={{
-								display: isConfigPanelVisible() ? "" : "none"
+								display: isConfigPanelVisible() ? "" : "none",
 							}}
 						>
 							<CharacterConfigPanel
@@ -237,28 +247,31 @@ export default function CharactePage() {
 							/>
 						</OverlayScrollbarsComponent>
 
-
-						<div class={`Divider landscape:bg-dividing-color flex-none portrait:hidden landscape:h-full landscape:w-px`} />
+						<div
+							class={`Divider landscape:bg-dividing-color flex-none portrait:hidden landscape:h-full landscape:w-px`}
+						/>
 						<OverlayScrollbarsComponent
 							element="div"
 							options={{ scrollbars: { autoHide: "scroll" } }}
 							defer
 							class={`MemberStats gap-2 landscape:basis-1/4 landscape:p-3`}
 							style={{
-								display: isAttrPreviewVisible() ? "flex" : "none"
+								display: isAttrPreviewVisible() ? "flex" : "none",
 							}}
 						>
 							<StatsRenderer data={primaryMember()?.attrs} />
 						</OverlayScrollbarsComponent>
 
-						<div class={`Divider landscape:bg-dividing-color flex-none portrait:hidden landscape:h-full landscape:w-px`} />
+						<div
+							class={`Divider landscape:bg-dividing-color flex-none portrait:hidden landscape:h-full landscape:w-px`}
+						/>
 						<OverlayScrollbarsComponent
 							element="div"
 							options={{ scrollbars: { autoHide: "scroll" } }}
 							defer
 							class={`SkillPreview gap-2 landscape:basis-1/4 landscape:p-3`}
 							style={{
-								display: isSkillPreviewVisible() ? "flex" : "none"
+								display: isSkillPreviewVisible() ? "flex" : "none",
 							}}
 						>
 							<SkillPreviewPanel
