@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { PlayerWeaponSchema, type player_weapon } from "@db/generated/zod";
 import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
 import { Icons } from "~/components/icons";
@@ -10,14 +10,7 @@ export const PLAYER_WEAPON_DATA_CONFIG: TableDataConfig<player_weapon> = (dictio
 	dataSchema: PlayerWeaponSchema,
 	primaryKey: "id",
 	defaultData: defaultData.player_weapon,
-	dataFetcher: {
-		get: repositoryMethods.player_weapon.select,
-		getAll: repositoryMethods.player_weapon.selectAll,
-		liveQuery: (db) => db.selectFrom("player_weapon").selectAll("player_weapon"),
-		insert: repositoryMethods.player_weapon.insert,
-		update: repositoryMethods.player_weapon.update,
-		delete: repositoryMethods.player_weapon.delete,
-	},
+	queries: repositoryQueries.player_weapon,
 	fieldGroupMap: {
 		ID: ["id"],
 		基础属性: ["type", "name", "baseAbi", "stability", "elementType"],

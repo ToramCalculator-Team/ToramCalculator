@@ -118,7 +118,7 @@ export default function IndexPage() {
 						}}
 						editAbleCallback={config.card.editAbleCallback}
 						tableName={type}
-						data={data}
+						data={() => data}
 						dataSchema={config.dataSchema}
 						hiddenFields={config.card.hiddenFields}
 						fieldGroupMap={config.fieldGroupMap}

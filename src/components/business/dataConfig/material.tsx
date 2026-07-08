@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { deleteItem, insertItem, updateItem } from "@db/generated/repositories/item";
 import { deleteMaterial, insertMaterial, updateMaterial } from "@db/generated/repositories/material";
 import { insertStatistic } from "@db/generated/repositories/statistic";
@@ -7,7 +7,7 @@ import { ItemSchema, MaterialSchema, type material } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
 import type { z } from "zod/v4";
-import type { TableDataConfig } from "../data-config";
+import type { QueryDB, TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
 const MaterialItemSchema = ItemSchema.extend(MaterialSchema.shape);
@@ -18,24 +18,16 @@ const MaterialItemDefaultData: MaterialItem = {
 	...defaultData.item,
 };
 
-const getMaterialItem = async (id: string): Promise<MaterialItem> => {
-	const db = await getDB();
-	const materialRow = await db.selectFrom("material").where("itemId", "=", id).selectAll().executeTakeFirstOrThrow();
-	const item = await db.selectFrom("item").where("id", "=", materialRow.itemId).selectAll().executeTakeFirstOrThrow();
-	return {
-		...materialRow,
-		...item,
-	};
-};
-
-const getAllMaterialItems = async (): Promise<MaterialItem[]> => {
-	const db = await getDB();
-	return await db
+/**
+ * 设计思路：material 在业务实体上继承 item 字段，列表订阅和详情读取必须共用同一条联合查询，避免列选择分裂。
+ * 函数职责：构造 material 与 item 合并后的业务实体查询。
+ */
+const selectMaterialItemQuery = (db: QueryDB) =>
+	db
 		.selectFrom("material")
 		.innerJoin("item", (join) => join.onRef("material.itemId", "=", "item.id"))
-		.selectAll()
-		.execute();
-};
+		.selectAll("item")
+		.select(["material.itemId", "material.type", "material.ptValue", "material.price"]);
 
 const insertMaterialItem = async (data: MaterialItem): Promise<MaterialItem> => {
 	const db = await getDB();
@@ -99,18 +91,11 @@ export const MATERIAL_DATA_CONFIG: TableDataConfig<MaterialItem, material> = (di
 	dataSchema: MaterialItemSchema,
 	primaryKey: "itemId",
 	defaultData: MaterialItemDefaultData,
-	dataFetcher: {
-		get: getMaterialItem,
-		getAll: getAllMaterialItems,
-		insert: insertMaterialItem,
-		update: updateMaterialItem,
-		delete: deleteMaterialItem,
-		liveQuery: (db) =>
-			db
-				.selectFrom("material")
-				.innerJoin("item", (join) => join.onRef("material.itemId", "=", "item.id"))
-				.selectAll("item")
-				.select(["material.itemId", "material.type", "material.ptValue", "material.price"]),
+	queries: {
+		get: (db, id) => selectMaterialItemQuery(db).where("material.itemId", "=", id),
+		getAll: selectMaterialItemQuery,
+		getParentsById: repositoryQueries.material.getParentsById,
+		getChildrenById: repositoryQueries.material.getChildrenById,
 	},
 	fieldGroupMap: {
 		基本信息: ["name", "type", "price", "ptValue", "itemSourceType", "dataSources", "details"],

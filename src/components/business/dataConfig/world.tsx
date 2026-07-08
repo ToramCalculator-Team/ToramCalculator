@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { insertStatistic } from "@db/generated/repositories/statistic";
 import { WorldSchema, type world } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
@@ -12,15 +12,7 @@ export const WORLD_DATA_CONFIG: TableDataConfig<world> = (dictionary) => ({
 	dataSchema: WorldSchema,
 	primaryKey: "id",
 	defaultData: defaultData.world,
-	dataFetcher: {
-		get: repositoryMethods.world.select,
-		getAll: repositoryMethods.world.selectAll,
-		insert: repositoryMethods.world.insert,
-		update: repositoryMethods.world.update,
-		delete: repositoryMethods.world.delete,
-		// 试点：用 PGlite live 订阅实现列表自动刷新
-		liveQuery: (db) => db.selectFrom("world").selectAll("world"),
-	},
+	queries: repositoryQueries.world,
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name"],

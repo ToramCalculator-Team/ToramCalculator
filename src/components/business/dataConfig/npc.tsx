@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { insertStatistic } from "@db/generated/repositories/statistic";
 import { NpcSchema, type npc } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
@@ -12,14 +12,7 @@ export const NPC_DATA_CONFIG: TableDataConfig<npc> = (dictionary) => ({
 	dataSchema: NpcSchema,
 	primaryKey: "id",
 	defaultData: defaultData.npc,
-	dataFetcher: {
-		get: repositoryMethods.npc.select,
-		getAll: repositoryMethods.npc.selectAll,
-		liveQuery: (db) => db.selectFrom("npc").selectAll("npc"),
-		insert: repositoryMethods.npc.insert,
-		update: repositoryMethods.npc.update,
-		delete: repositoryMethods.npc.delete,
-	},
+	queries: repositoryQueries.npc,
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name"],

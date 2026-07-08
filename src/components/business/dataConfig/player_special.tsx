@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { PlayerSpecialSchema, type player_special } from "@db/generated/zod";
 import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
 import type { TableDataConfig } from "../data-config";
@@ -9,14 +9,7 @@ export const PLAYER_SPECIAL_DATA_CONFIG: TableDataConfig<player_special> = (dict
 	dataSchema: PlayerSpecialSchema,
 	primaryKey: "id",
 	defaultData: defaultData.player_special,
-	dataFetcher: {
-		get: repositoryMethods.player_special.select,
-		getAll: repositoryMethods.player_special.selectAll,
-		liveQuery: (db) => db.selectFrom("player_special").selectAll("player_special"),
-		insert: repositoryMethods.player_special.insert,
-		update: repositoryMethods.player_special.update,
-		delete: repositoryMethods.player_special.delete,
-	},
+	queries: repositoryQueries.player_special,
 	fieldGroupMap: {
 		ID: ["id"],
 		基础属性: ["name", "baseAbi"],

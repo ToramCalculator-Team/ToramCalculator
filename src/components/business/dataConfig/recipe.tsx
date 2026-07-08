@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { insertStatistic } from "@db/generated/repositories/statistic";
 import { RecipeSchema, type recipe } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
@@ -12,14 +12,7 @@ export const RECIPE_DATA_CONFIG: TableDataConfig<recipe> = (dictionary) => ({
 	dataSchema: RecipeSchema,
 	primaryKey: "id",
 	defaultData: defaultData.recipe,
-	dataFetcher: {
-		get: repositoryMethods.recipe.select,
-		getAll: repositoryMethods.recipe.selectAll,
-		liveQuery: (db) => db.selectFrom("recipe").selectAll("recipe"),
-		insert: repositoryMethods.recipe.insert,
-		update: repositoryMethods.recipe.update,
-		delete: repositoryMethods.recipe.delete,
-	},
+	queries: repositoryQueries.recipe,
 	fieldGroupMap: {
 		ID: ["id"],
 		所属道具: ["itemId"],

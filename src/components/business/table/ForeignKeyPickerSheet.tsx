@@ -29,9 +29,9 @@ export function ForeignKeyPickerSheet<T extends Record<string, unknown>>(props: 
 		() => DATA_CONFIG[props.tableType]?.(dictionary) as ReturnType<TableDataConfig<T>> | undefined,
 	);
 	const liveRows = createLiveKyselyQuery<T>((db) => {
-		const liveQueryBuilder = config()?.dataFetcher.liveQuery;
-		if (!liveQueryBuilder) return null;
-		return liveQueryBuilder(db);
+		const getAllQuery = config()?.queries.getAll;
+		if (!getAllQuery) return null;
+		return getAllQuery(db);
 	});
 
 	const close = () => props.onOpenChange(false);

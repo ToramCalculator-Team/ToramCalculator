@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { RecipeIngredientSchema, type recipe_ingredient } from "@db/generated/zod";
 import type { TableDataConfig } from "../data-config";
 
@@ -8,14 +8,7 @@ export const RECIPE_INGREDIENT_DATA_CONFIG: TableDataConfig<recipe_ingredient> =
 	dataSchema: RecipeIngredientSchema,
 	primaryKey: "id",
 	defaultData: defaultData.recipe_ingredient,
-	dataFetcher: {
-		get: repositoryMethods.recipe_ingredient.select,
-		getAll: repositoryMethods.recipe_ingredient.selectAll,
-		liveQuery: (db) => db.selectFrom("recipe_ingredient").selectAll("recipe_ingredient"),
-		insert: repositoryMethods.recipe_ingredient.insert,
-		update: repositoryMethods.recipe_ingredient.update,
-		delete: repositoryMethods.recipe_ingredient.delete,
-	},
+	queries: repositoryQueries.recipe_ingredient,
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["count", "type", "itemId"],

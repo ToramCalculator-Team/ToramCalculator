@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { insertStatistic } from "@db/generated/repositories/statistic";
 import { ZoneSchema, type zone } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
@@ -12,14 +12,7 @@ export const ZONE_DATA_CONFIG: TableDataConfig<zone> = (dictionary) => ({
 	dataSchema: ZoneSchema,
 	primaryKey: "id",
 	defaultData: defaultData.zone,
-	dataFetcher: {
-		get: repositoryMethods.zone.select,
-		getAll: repositoryMethods.zone.selectAll,
-		liveQuery: (db) => db.selectFrom("zone").selectAll("zone"),
-		insert: repositoryMethods.zone.insert,
-		update: repositoryMethods.zone.update,
-		delete: repositoryMethods.zone.delete,
-	},
+	queries: repositoryQueries.zone,
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name", "rewardNodes"],

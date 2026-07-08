@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { deleteItem, insertItem, updateItem } from "@db/generated/repositories/item";
 import { insertStatistic } from "@db/generated/repositories/statistic";
 import { deleteWeapon, insertWeapon, updateWeapon } from "@db/generated/repositories/weapon";
@@ -11,7 +11,7 @@ import type { z } from "zod/v4";
 import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
 import { Select } from "~/components/controls/select";
 import { Icons } from "~/components/icons";
-import type { TableDataConfig } from "../data-config";
+import type { QueryDB, TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
 const WeaponItemSchema = ItemSchema.extend(WeaponSchema.shape);
@@ -22,25 +22,26 @@ const WeaponItemDefaultData: WeaponItem = {
 	...defaultData.item,
 };
 
-const getWeaponItem = async (id: string): Promise<WeaponItem> => {
-	const db = await getDB();
-	const weapon = await db.selectFrom("weapon").where("itemId", "=", id).selectAll().executeTakeFirstOrThrow();
-	const item = await db.selectFrom("item").where("id", "=", weapon.itemId).selectAll().executeTakeFirstOrThrow();
-	return {
-		...weapon,
-		...item,
-	};
-};
-
-const getAllWeaponItems = async (): Promise<WeaponItem[]> => {
-	const db = await getDB();
-	const weaponItems = await db
+/**
+ * 设计思路：weapon 在业务实体上继承 item 字段，列表订阅和详情读取必须共用同一条联合查询，避免列选择分裂。
+ * 函数职责：构造 weapon 与 item 合并后的业务实体查询。
+ */
+const selectWeaponItemQuery = (db: QueryDB) =>
+	db
 		.selectFrom("weapon")
 		.innerJoin("item", (join) => join.onRef("weapon.itemId", "=", "item.id"))
-		.selectAll()
-		.execute();
-	return weaponItems;
-};
+		.selectAll("item")
+		.select([
+			"weapon.itemId",
+			"weapon.type",
+			"weapon.elementType",
+			"weapon.baseAbi",
+			"weapon.stability",
+			"weapon.modifiers",
+			"weapon.colorA",
+			"weapon.colorB",
+			"weapon.colorC",
+		]);
 
 const insertWeaponItem = async (data: WeaponItem): Promise<WeaponItem> => {
 	const db = await getDB();
@@ -111,31 +112,11 @@ export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem, weapon> = (dictiona
 	dataSchema: WeaponItemSchema,
 	primaryKey: "itemId",
 	defaultData: WeaponItemDefaultData,
-	dataFetcher: {
-		get: getWeaponItem,
-		getAll: getAllWeaponItems,
-		insert: insertWeaponItem,
-		update: updateWeaponItem,
-		delete: deleteWeaponItem,
-		// weapon join item。两张表都有 name 列，live 订阅对重复列名严格，所以显式选列：
-		//   - item.*（item.name 作为最终 name）
-		//   - weapon 除 name 之外的列（name 由 item 提供即可）
-		liveQuery: (db) =>
-			db
-				.selectFrom("weapon")
-				.innerJoin("item", (join) => join.onRef("weapon.itemId", "=", "item.id"))
-				.selectAll("item")
-				.select([
-					"weapon.itemId",
-					"weapon.type",
-					"weapon.elementType",
-					"weapon.baseAbi",
-					"weapon.stability",
-					"weapon.modifiers",
-					"weapon.colorA",
-					"weapon.colorB",
-					"weapon.colorC",
-				]),
+	queries: {
+		get: (db, id) => selectWeaponItemQuery(db).where("weapon.itemId", "=", id),
+		getAll: selectWeaponItemQuery,
+		getParentsById: repositoryQueries.weapon.getParentsById,
+		getChildrenById: repositoryQueries.weapon.getChildrenById,
 	},
 	fieldGroupMap: {
 		基本信息: ["type", "name", "baseAbi", "stability", "itemSourceType", "dataSources", "details", "elementType"],

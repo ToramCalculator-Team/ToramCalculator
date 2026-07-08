@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { insertStatistic } from "@db/generated/repositories/statistic";
 import { TaskSchema, type task } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
@@ -12,14 +12,7 @@ export const TASK_DATA_CONFIG: TableDataConfig<task> = (dictionary) => ({
 	dataSchema: TaskSchema,
 	primaryKey: "id",
 	defaultData: defaultData.task,
-	dataFetcher: {
-		get: repositoryMethods.task.select,
-		getAll: repositoryMethods.task.selectAll,
-		liveQuery: (db) => db.selectFrom("task").selectAll("task"),
-		insert: repositoryMethods.task.insert,
-		update: repositoryMethods.task.update,
-		delete: repositoryMethods.task.delete,
-	},
+	queries: repositoryQueries.task,
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name", "lv", "type", "description"],

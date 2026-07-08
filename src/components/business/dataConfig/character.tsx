@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { insertStatistic } from "@db/generated/repositories/statistic";
 import { CharacterSchema, type character } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
@@ -12,14 +12,7 @@ export const CHARACTER_DATA_CONFIG: TableDataConfig<character> = (dictionary) =>
 	dataSchema: CharacterSchema,
 	primaryKey: "id",
 	defaultData: defaultData.character,
-	dataFetcher: {
-		get: repositoryMethods.character.select,
-		getAll: repositoryMethods.character.selectAll,
-		liveQuery: (db) => db.selectFrom("character").selectAll("character"),
-		insert: repositoryMethods.character.insert,
-		update: repositoryMethods.character.update,
-		delete: repositoryMethods.character.delete,
-	},
+	queries: repositoryQueries.character,
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name", "lv", "str", "int", "vit", "agi", "dex", "personalityType", "personalityValue"],

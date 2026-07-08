@@ -130,7 +130,7 @@ export default function CharactePage() {
 						}}
 						editAbleCallback={config.card.editAbleCallback}
 						tableName={type}
-						data={cardData}
+						data={() => cardData}
 						dataSchema={config.dataSchema}
 						hiddenFields={config.card.hiddenFields}
 						fieldGroupMap={config.fieldGroupMap}

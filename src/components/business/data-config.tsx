@@ -1,5 +1,5 @@
 import type { DB } from "@db/generated/zod";
-import type { Compilable, Kysely } from "kysely";
+import type { Compilable, Kysely, Transaction } from "kysely";
 import type { Accessor } from "solid-js";
 import type { ZodObject, ZodType } from "zod/v4";
 import type { Dic, Dictionary } from "~/locales/type";
@@ -34,6 +34,23 @@ import { ZONE_DATA_CONFIG } from "./dataConfig/zone";
 import type { FormProps } from "./form/FormRenderer";
 
 type SafeOmit<T, K extends keyof T> = Omit<T, K>;
+
+export type QueryDB = Kysely<DB> | Transaction<DB>;
+
+export type RelationQuery = { execute: () => Promise<unknown[]> };
+
+export type RelationQueryMap = Partial<Record<keyof DB, RelationQuery[]>>;
+
+type ExecutableQuery<T> = { execute: () => Promise<Array<T>> };
+
+type ExecutableTakeFirst<T> = { executeTakeFirst: () => Promise<T | undefined> };
+
+export type TableQueries<T extends Record<string, unknown>, TList extends Record<string, unknown> = T> = {
+	get: ((db: QueryDB, id: string) => Compilable<T> & ExecutableTakeFirst<T>) | null;
+	getAll: ((db: QueryDB) => Compilable<TList> & ExecutableQuery<TList>) | null;
+	getParentsById: ((db: QueryDB, id: string) => RelationQueryMap) | null;
+	getChildrenById: ((db: QueryDB, id: string) => RelationQueryMap) | null;
+};
 
 /**
  * 1:1 继承父表（当前表与父表在概念上是同一实体）
@@ -80,7 +97,7 @@ export type EmbedsDecl = {
  *                 此时 TDic 可收窄为"仅子表自己的字段类型"（如 `weapon` 而非 `WeaponItem`），
  *                 避免在配置里手动重复父表的字段字典。
  * @typeParam TList 列表页行数据形状，默认 = T。
- *                  列表可以只返回表格需要的轻量投影；详情和编辑仍通过 dataFetcher.get 获取完整 T。
+ *                  列表可以只返回表格需要的轻量投影；详情和编辑仍通过 queries.get 获取完整 T。
  */
 export type TableDataConfig<
 	T extends Record<string, unknown>,
@@ -91,20 +108,7 @@ export type TableDataConfig<
 	dataSchema: ZodObject<{ [K in keyof T]: ZodType }>;
 	primaryKey: keyof T;
 	defaultData: T;
-	dataFetcher: {
-		get: (id: string) => Promise<T | undefined>;
-		getAll: () => Promise<Array<T>>;
-		insert: (data: T) => Promise<T>;
-		update: (id: string, data: T) => Promise<T>;
-		delete: (id: string) => Promise<T | undefined>;
-		/**
-		 * 可选：返回一个可被 PGlite `live` 扩展订阅的 Kysely 查询构造器。
-		 * 提供后，wiki 列表页会改用 createLiveKyselyQuery 订阅式拉取，
-		 * 写入/同步导致的行变更将自动刷新列表，无需手动 invalidate。
-		 * 未提供时仍用 getAll 一次性拉取。
-		 */
-		liveQuery?: (db: Kysely<DB>) => Compilable<TList>;
-	};
+	queries: TableQueries<T, TList>;
 	fieldGroupMap: Record<string, Array<keyof T>>;
 	/** 继承关系声明（见 InheritsFromDecl） */
 	inheritsFrom?: InheritsFromDecl;

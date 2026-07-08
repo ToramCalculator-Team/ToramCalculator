@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { deleteItem, insertItem, updateItem } from "@db/generated/repositories/item";
 import { deleteSpecial, insertSpecial, updateSpecial } from "@db/generated/repositories/special";
 import { insertStatistic } from "@db/generated/repositories/statistic";
@@ -8,7 +8,7 @@ import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
 import type { z } from "zod/v4";
 import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
-import type { TableDataConfig } from "../data-config";
+import type { QueryDB, TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
 const SpecialItemSchema = ItemSchema.extend(SpecialSchema.shape);
@@ -19,24 +19,16 @@ const SpecialItemDefaultData: SpecialItem = {
 	...defaultData.item,
 };
 
-const getSpecialItem = async (id: string): Promise<SpecialItem> => {
-	const db = await getDB();
-	const specialRow = await db.selectFrom("special").where("itemId", "=", id).selectAll().executeTakeFirstOrThrow();
-	const item = await db.selectFrom("item").where("id", "=", specialRow.itemId).selectAll().executeTakeFirstOrThrow();
-	return {
-		...specialRow,
-		...item,
-	};
-};
-
-const getAllSpecialItems = async (): Promise<SpecialItem[]> => {
-	const db = await getDB();
-	return await db
+/**
+ * 设计思路：special 在业务实体上继承 item 字段，列表订阅和详情读取必须共用同一条联合查询，避免列选择分裂。
+ * 函数职责：构造 special 与 item 合并后的业务实体查询。
+ */
+const selectSpecialItemQuery = (db: QueryDB) =>
+	db
 		.selectFrom("special")
 		.innerJoin("item", (join) => join.onRef("special.itemId", "=", "item.id"))
-		.selectAll()
-		.execute();
-};
+		.selectAll("item")
+		.select(["special.itemId", "special.baseAbi", "special.modifiers"]);
 
 const insertSpecialItem = async (data: SpecialItem): Promise<SpecialItem> => {
 	const db = await getDB();
@@ -100,18 +92,11 @@ export const SPECIAL_DATA_CONFIG: TableDataConfig<SpecialItem, special> = (dicti
 	dataSchema: SpecialItemSchema,
 	primaryKey: "itemId",
 	defaultData: SpecialItemDefaultData,
-	dataFetcher: {
-		get: getSpecialItem,
-		getAll: getAllSpecialItems,
-		insert: insertSpecialItem,
-		update: updateSpecialItem,
-		delete: deleteSpecialItem,
-		liveQuery: (db) =>
-			db
-				.selectFrom("special")
-				.innerJoin("item", (join) => join.onRef("special.itemId", "=", "item.id"))
-				.selectAll("item")
-				.select(["special.itemId", "special.baseAbi", "special.modifiers"]),
+	queries: {
+		get: (db, id) => selectSpecialItemQuery(db).where("special.itemId", "=", id),
+		getAll: selectSpecialItemQuery,
+		getParentsById: repositoryQueries.special.getParentsById,
+		getChildrenById: repositoryQueries.special.getChildrenById,
 	},
 	fieldGroupMap: {
 		基本信息: ["name", "baseAbi", "itemSourceType", "dataSources", "details"],

@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { insertStatistic } from "@db/generated/repositories/statistic";
 import { MobSchema, type mob } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
@@ -23,14 +23,7 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 	dataSchema: MobSchema,
 	primaryKey: "id",
 	defaultData: defaultData.mob,
-	dataFetcher: {
-		get: repositoryMethods.mob.select,
-		getAll: repositoryMethods.mob.selectAll,
-		liveQuery: (db) => db.selectFrom("mob").selectAll("mob"),
-		insert: repositoryMethods.mob.insert,
-		update: repositoryMethods.mob.update,
-		delete: repositoryMethods.mob.delete,
-	},
+	queries: repositoryQueries.mob,
 	fieldGroupMap: {
 		ID: ["id"],
 		常规属性: ["name", "baseLv", "experience", "partsExperience", "maxhp"],
@@ -320,17 +313,17 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 	card: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
 		relationOverrides: {
-			only: ["drop_item"]
+			only: ["drop_item"],
 		},
-		before: (data, setData) => {
+		before: (data, setDisplayData) => {
 			const [difficulty, setDifficulty] = createSignal<MobDifficultyFlag>(MOB_DIFFICULTY_FLAG[1]);
 
 			createEffect(() => {
-				setData(generateBossDataByFlag(data, difficulty()));
+				setDisplayData(generateBossDataByFlag(data(), difficulty()));
 			});
 
 			return (
-				<Show when={data.type === "Boss"}>
+				<Show when={data().type === "Boss"}>
 					<Select
 						value={difficulty()}
 						setValue={(value) => {
@@ -369,7 +362,7 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 									</div>
 									<span class="text-accent-color">
 										Lv:
-										{data.baseLv +
+										{data().baseLv +
 											({
 												Easy: -1,
 												Normal: 0,

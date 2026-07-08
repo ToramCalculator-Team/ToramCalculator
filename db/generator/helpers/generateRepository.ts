@@ -2,9 +2,6 @@
  * @file generateRepository.ts
  * @description Repository 生成器
  * 从 Prisma DMMF 生成 Repository 文件
- *
- * TODO: 如果需要更复杂的功能（如级联删除分析、复杂验证等），
- * 可以参考 db/generators/generators/RepositoryGenerator.ts 的实现
  */
 
 import fs from "node:fs";
@@ -147,9 +144,6 @@ export class RepositoryGenerator {
 	 * 生成 repository 代码
 	 */
 	private async generateRepositoryCode(modelName: string): Promise<string> {
-		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = NamingRules.TypeName(modelName, modelName);
-		const camelName = NamingRules.VariableName(modelName);
 
 		// 生成各个部分
 		const imports = this.generateImports(modelName);
@@ -171,8 +165,6 @@ ${crudMethods}
 	 * 生成导入语句
 	 */
 	private generateImports(modelName: string): string {
-		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = NamingRules.TypeName(modelName, modelName);
 
 		// 计算相对路径
 		const relativePaths = this.calculateRelativePaths();
@@ -181,7 +173,7 @@ ${crudMethods}
 		const typeName = NamingRules.ZodTypeName(modelName);
 
 		const imports: string[] = [
-			`import { type Expression, type ExpressionBuilder, type Transaction, type Selectable, type Insertable, type Updateable } from "kysely";`,
+			`import { type Expression, type ExpressionBuilder, type Kysely, type Transaction, type Selectable, type Insertable, type Updateable } from "kysely";`,
 			`import { getDB } from "${relativePaths.database}";`,
 			`import { type DB, type ${typeName} } from "${relativePaths.zod}";`,
 		];
@@ -325,7 +317,7 @@ ${crudMethods}
 		// 收集所有唯一的循环（基于循环的节点集合去重）
 		const uniqueCycles = new Map<string, string[]>();
 
-		for (const [modelName, cycles] of this.allDetectedCycles.entries()) {
+		for (const [, cycles] of this.allDetectedCycles.entries()) {
 			for (const cycle of cycles) {
 				// 使用排序后的节点集合作为唯一键
 				const cycleKey = cycle
@@ -474,7 +466,10 @@ ${crudMethods}
 		return `// 1. 类型定义
 export type ${pascalName} = Selectable<${tableName}>;
 export type ${pascalName}Insert = Insertable<${tableName}>;
-export type ${pascalName}Update = Updateable<${tableName}>;`;
+export type ${pascalName}Update = Updateable<${tableName}>;
+export type ${pascalName}QueryDB = Kysely<DB> | Transaction<DB>;
+export type ${pascalName}RelationQuery = { execute: () => Promise<unknown[]> };
+export type ${pascalName}RelationQueryMap = Partial<{ [K in keyof DB]: ${pascalName}RelationQuery[] }>;`;
 	}
 
 	/**
@@ -729,9 +724,6 @@ ${joinChain}
 	 * 生成 CRUD 方法
 	 */
 	private generateCrudMethods(modelName: string): string {
-		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = NamingRules.TypeName(modelName, modelName);
-		const camelName = NamingRules.VariableName(modelName);
 
 		const methods: string[] = [];
 
@@ -739,33 +731,13 @@ ${joinChain}
 		const model = this.models.find((m) => m.name === modelName);
 		const hasPK = model ? this.hasPrimaryKey(model) : true;
 
-		// selectById - 只有有主键的模型才生成
 		if (hasPK) {
-			methods.push(this.generateSelectById(modelName));
-			// selectByIdWithRelations - 查询包含所有关系的完整数据
-			methods.push(this.generateSelectByIdWithRelations(modelName));
-		}
-
-		// selectAll
-		methods.push(this.generateSelectAll(modelName));
-
-		// insert
-		methods.push(this.generateInsert(modelName));
-
-		// 对于没有主键的模型，生成基于唯一约束的查询方法
-		if (!hasPK) {
+			methods.push(this.generateStandardCrudQueries(modelName));
+			methods.push(this.generateRelationQueryMethods(modelName));
+		} else {
+			methods.push(this.generateNoPrimaryKeyCrudQueries(modelName));
 			methods.push(this.generateFindByUniqueConstraint(modelName));
 			methods.push(this.generateDeleteByUniqueConstraint(modelName));
-		}
-
-		// update - 只有有主键的模型才生成
-		if (hasPK) {
-			methods.push(this.generateUpdate(modelName));
-		}
-
-		// delete - 只有有主键的模型才生成
-		if (hasPK) {
-			methods.push(this.generateDelete(modelName));
 		}
 
 		// canEdit - 只有有主键的模型才生成
@@ -780,12 +752,8 @@ ${joinChain}
 	}
 
 	/**
-	 * 生成按关系过滤的复数查询方法
-	 * 对当前模型中：
-	 * 1. 本表持有外键的关系
-	 * 2. 隐式多对多关系
-	 * 生成可直接按关联主键查询当前模型列表的方法。
-	 * export async function selectAll{PluralModel}By{ForeignKeyPascal}(id: string, trx?: Transaction<DB>)
+	 * 设计思路：按关系过滤的列表查询也需要同时支持 live 订阅和旧执行入口，因此生成 query builder 与薄包装两层。
+	 * 函数职责：为本表持有外键和隐式多对多关系生成 selectAll...By...Query 及兼容执行函数。
 	 */
 	private generateSelectAllByForeignKeys(modelName: string): string {
 		const model = this.allModels.find((m: DMMF.Model) => m.name === modelName);
@@ -796,13 +764,10 @@ ${joinChain}
 		const pluralName = this.pluralize(pascalName);
 		const currentPrimaryKey = this.getPrimaryKeyFieldFromModel(model);
 
-		// 找到当前模型上“本表持有外键”的关系字段
 		const ownForeignKeyRelations = model.fields.filter(
 			(field: DMMF.Field) =>
 				field.kind === "object" && Array.isArray(field.relationFromFields) && field.relationFromFields.length > 0,
 		);
-
-		// 找到当前模型上的隐式多对多关系字段
 		const manyToManyRelations = model.fields.filter(
 			(field: DMMF.Field) =>
 				field.kind === "object" && field.isList && this.determineRelationType(field, model) === "MANY_TO_MANY",
@@ -819,24 +784,23 @@ ${joinChain}
 		methods.push(
 			...ownForeignKeyRelations.map((rel: DMMF.Field) => {
 				const foreignKey = rel.relationFromFields?.[0];
-				if (!foreignKey) {
-					throw new Error(`Cannot determine foreign key for relation ${rel.name} in model ${modelName}`);
-				}
-
-				const targetModel = this.allModels.find((m) => m.name === rel.type);
-				if (!targetModel) {
-					throw new Error(`Target model ${rel.type} not found`);
-				}
-
+				if (!foreignKey) throw new Error(`Cannot determine foreign key for relation ${rel.name} in model ${modelName}`);
 				const methodName = `selectAll${pluralName}By${NamingRules.TypeName(foreignKey)}`;
-				return `// 按外键查询：${tableName}.${foreignKey} → ${rel.type}.${this.getPrimaryKeyFieldFromModel(targetModel)}
+				return `/**
+ * 设计思路：外键过滤列表是关系区和表单联动的复用查询，先暴露 builder 以便调用边界自行决定执行方式。
+ * 函数职责：构造按 ${tableName}.${foreignKey} 查询 ${tableName} 列表的 SQL。
+ */
+export function ${methodName}Query(db: ${pascalName}QueryDB, ${foreignKey}: string) {
+  return db.selectFrom("${tableName}").where("${tableName}.${foreignKey}", "=", ${foreignKey}).selectAll("${tableName}");
+}
+
+/**
+ * 设计思路：兼容旧的按外键查询执行函数，避免迁移期间调用点同时重写。
+ * 函数职责：执行 ${methodName}Query 并返回所有行。
+ */
 export async function ${methodName}(${foreignKey}: string, trx?: Transaction<DB>) {
   const db = trx || await getDB();
-  return await db
-    .selectFrom("${tableName}")
-    .where("${tableName}.${foreignKey}", "=", ${foreignKey})
-    .selectAll("${tableName}")
-    .execute();
+  return await ${methodName}Query(db, ${foreignKey}).execute();
 }`;
 			}),
 		);
@@ -844,15 +808,10 @@ export async function ${methodName}(${foreignKey}: string, trx?: Transaction<DB>
 		methods.push(
 			...manyToManyRelations.map((rel: DMMF.Field) => {
 				const intermediateTable = this.helpers.getManyToManyTableName(rel);
-				if (!intermediateTable) {
+				if (!intermediateTable)
 					throw new Error(`Cannot determine intermediate table for many-to-many relation: ${rel.relationName}`);
-				}
-
 				const targetModel = this.allModels.find((m: DMMF.Model) => m.name === rel.type);
-				if (!targetModel) {
-					throw new Error(`Target model ${rel.type} not found`);
-				}
-
+				if (!targetModel) throw new Error(`Target model ${rel.type} not found`);
 				const targetPrimaryKey = this.getPrimaryKeyFieldFromModel(targetModel);
 				const { selfJoinColumn, targetJoinColumn } = this.getManyToManyJoinColumns(rel, model);
 				const shouldDisambiguate = (manyToManyTargetTypeCounts.get(rel.type) || 0) > 1;
@@ -863,15 +822,25 @@ export async function ${methodName}(${foreignKey}: string, trx?: Transaction<DB>
 					? `selectAll${pluralName}By${NamingRules.TypeName(rel.name)}${NamingRules.TypeName(rel.type)}Id`
 					: `selectAll${pluralName}By${NamingRules.TypeName(rel.type)}Id`;
 
-				return `// 按多对多关系查询：${rel.type}.${targetPrimaryKey} ↔ ${intermediateTable} ↔ ${tableName}.${currentPrimaryKey}
-export async function ${methodName}(${targetParamName}: string, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await db
+				return `/**
+ * 设计思路：多对多过滤查询需要保留中间表方向规则，builder 化后可供列表、卡片和 live 订阅复用。
+ * 函数职责：构造通过 ${intermediateTable} 按 ${rel.type}.${targetPrimaryKey} 查询 ${tableName} 列表的 SQL。
+ */
+export function ${methodName}Query(db: ${pascalName}QueryDB, ${targetParamName}: string) {
+  return db
     .selectFrom("${intermediateTable}")
     .innerJoin("${tableName}", "${intermediateTable}.${selfJoinColumn}", "${tableName}.${currentPrimaryKey}")
     .where("${intermediateTable}.${targetJoinColumn}", "=", ${targetParamName})
-    .selectAll("${tableName}")
-    .execute();
+    .selectAll("${tableName}");
+}
+
+/**
+ * 设计思路：兼容旧的多对多过滤执行函数，把执行动作收敛到薄包装中。
+ * 函数职责：执行 ${methodName}Query 并返回所有行。
+ */
+export async function ${methodName}(${targetParamName}: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await ${methodName}Query(db, ${targetParamName}).execute();
 }`;
 			}),
 		);
@@ -880,80 +849,87 @@ export async function ${methodName}(${targetParamName}: string, trx?: Transactio
 	}
 
 	/**
-	 * 生成 index.ts
+	 * 设计思路：index 是 repository 的公开契约聚合点，需要同时导出旧执行包装和新的 query builder 集合。
+	 * 函数职责：生成 repositories/index.ts，包含 repositoryMethods、repositoryQueries 与类型映射。
 	 */
 	private async generateIndex(generatedFiles: string[]): Promise<void> {
 		const crudImports: string[] = [];
 		const typeImports: string[] = [];
 		const crudExports: Record<string, any> = {};
-
-		// 计算相对路径
+		const queryExports: Record<string, any> = {};
 		const relativePaths = this.calculateRelativePaths();
 
-		// 添加所有模型的类型导入
 		for (const model of this.models) {
 			const modelName = model.name;
-			const tableName = model.dbName || model.name; // 使用真实表名
 			const pascalName = NamingRules.TypeName(modelName, modelName);
 			const hasPK = this.hasPrimaryKey(model);
-			const fileName = NamingRules.TableNameLowerCase(modelName); // 用于文件路径
+			const fileName = NamingRules.TableNameLowerCase(modelName);
 
 			if (this.shouldSkipModel(modelName)) {
-				// 跳过的模型从 zod 导入基础类型
 				typeImports.push(`import { ${pascalName} } from "${relativePaths.zod}";`);
 			} else if (hasPK) {
-				// 有主键的模型导入基础类型
 				typeImports.push(`import { type ${pascalName} } from "./${fileName}";`);
 			}
 		}
 
-		// 添加中间表的类型导入
 		const intermediateTables = this.getIntermediateTables();
 		for (const tableName of intermediateTables) {
 			const pascalName = NamingRules.TypeName(tableName, tableName);
 			typeImports.push(`import { type ${pascalName} } from "${relativePaths.zod}";`);
 		}
 
-		// 只为实际生成的文件添加 CRUD 导入
 		for (const modelName of generatedFiles) {
-			const camelName = NamingRules.VariableName(modelName);
 			const pascalName = NamingRules.TypeName(modelName, modelName);
 			const model = this.models.find((m) => m.name === modelName);
 			const hasPK = model ? this.hasPrimaryKey(model) : true;
-			const tableName = model ? model.dbName || model.name : modelName; // 使用真实表名
-			const fileName = NamingRules.TableNameLowerCase(modelName); // 用于文件路径
+			const tableName = model ? model.dbName || model.name : modelName;
+			const fileName = NamingRules.TableNameLowerCase(modelName);
+			const pluralName = this.pluralize(pascalName);
 
 			if (hasPK) {
-				// 有主键的模型：标准 CRUD 方法
 				crudImports.push(
-					`import { insert${pascalName}, update${pascalName}, delete${pascalName}, select${pascalName}ById, selectAll${this.pluralize(pascalName)}, canEdit${pascalName} } from "./${fileName}";`,
+					`import { insert${pascalName}, insert${pascalName}Query, update${pascalName}, update${pascalName}Query, delete${pascalName}, delete${pascalName}Query, select${pascalName}ById, select${pascalName}ByIdQuery, selectAll${pluralName}, selectAll${pluralName}Query, get${pascalName}ParentsByIdQuery, get${pascalName}ChildrenByIdQuery, canEdit${pascalName} } from "./${fileName}";`,
 				);
-
 				crudExports[tableName] = {
 					insert: `insert${pascalName}`,
 					update: `update${pascalName}`,
 					delete: `delete${pascalName}`,
 					select: `select${pascalName}ById`,
-					selectAll: `selectAll${this.pluralize(pascalName)}`,
+					selectAll: `selectAll${pluralName}`,
 					canEdit: `canEdit${pascalName}`,
 				};
+				queryExports[tableName] = {
+					get: `select${pascalName}ByIdQuery`,
+					getAll: `selectAll${pluralName}Query`,
+					insert: `insert${pascalName}Query`,
+					update: `update${pascalName}Query`,
+					delete: `delete${pascalName}Query`,
+					getParentsById: `get${pascalName}ParentsByIdQuery`,
+					getChildrenById: `get${pascalName}ChildrenByIdQuery`,
+				};
 			} else {
-				// 无主键的模型：只有 insert 和 findAll，以及特殊的查询/删除方法
 				const specialMethods = this.getSpecialMethodsForNoPKModel(modelName);
 				crudImports.push(
-					`import { insert${pascalName}, selectAll${this.pluralize(pascalName)}${specialMethods} } from "./${fileName}";`,
+					`import { insert${pascalName}, insert${pascalName}Query, selectAll${pluralName}, selectAll${pluralName}Query${specialMethods} } from "./${fileName}";`,
 				);
-
 				const specialExports = this.getSpecialExportsForNoPKModel(modelName);
 				crudExports[tableName] = {
 					insert: `insert${pascalName}`,
-					selectAll: `selectAll${this.pluralize(pascalName)}`,
+					selectAll: `selectAll${pluralName}`,
 					...specialExports,
+				};
+				queryExports[tableName] = {
+					get: null,
+					getAll: `selectAll${pluralName}Query`,
+					insert: `insert${pascalName}Query`,
+					update: null,
+					delete: null,
+					getParentsById: null,
+					getChildrenById: null,
 				};
 			}
 		}
 
-		// 生成代码
 		const indexCode = `import { DB } from "${relativePaths.zod}";
 ${crudImports.join("\n")}
 ${typeImports.join("\n")}
@@ -965,6 +941,10 @@ ${this.generateTypeMapping(generatedFiles)}
 
 export const repositoryMethods = {
 ${this.generateCrudExports(crudExports)}
+} as const;
+
+export const repositoryQueries = {
+${this.generateQueryExports(queryExports)}
 } as const;
 `;
 
@@ -1045,24 +1025,6 @@ ${this.generateCrudExports(crudExports)}
 		}
 	}
 
-	/**
-	 * 检查是否有反向外键
-	 */
-	private hasReverseForeignKey(targetModelName: string, currentModelName: string): boolean {
-		const targetModel = this.allModels.find((m: DMMF.Model) => m.name === targetModelName);
-		if (!targetModel) {
-			return false;
-		}
-
-		// 检查目标模型是否有指向当前模型的关系字段
-		return targetModel.fields.some(
-			(field: DMMF.Field) =>
-				field.kind === "object" &&
-				field.type === currentModelName &&
-				field.relationFromFields &&
-				field.relationFromFields.length > 0,
-		);
-	}
 
 	/**
 	 * 获取主键字段
@@ -1120,14 +1082,11 @@ ${this.generateCrudExports(crudExports)}
 		const isSelfRelation = targetTable.toLowerCase() === model.name.toLowerCase();
 
 		// 只检查自引用关系
-		const shouldSkipImport = isSelfRelation;
 
 		// 获取当前模型的主键
-		const currentModelPrimaryKey = this.getPrimaryKeyFieldFromModel(model);
 
 		if (isParentRelation) {
 			// 父关系：外键在当前模型中，指向目标模型
-			const foreignKey = this.getRelationForeignKey(field, model, targetTable);
 			const isOptional = this.isRelationOptional(field, model);
 			const nullHandler = isOptional ? "" : ".$notNull()";
 			return `(eb: ExpressionBuilder<DB, "${NamingRules.ZodTypeName(model.name)}">, id: Expression<string>) =>
@@ -1210,7 +1169,6 @@ ${this.generateCrudExports(crudExports)}
 		const isSelfRelation = targetTable.toLowerCase() === model.name.toLowerCase();
 
 		// 只检查自引用关系
-		const shouldSkipImport = isSelfRelation;
 
 		// 获取当前模型的主键
 		const currentModelPrimaryKey = this.getPrimaryKeyFieldFromModel(model);
@@ -1303,7 +1261,6 @@ ${this.generateCrudExports(crudExports)}
 		const isSelfRelation = targetTable.toLowerCase() === model.name.toLowerCase();
 
 		// 只检查自引用关系
-		const shouldSkipImport = isSelfRelation;
 
 		// 获取当前模型的主键
 		const currentModelPrimaryKey = this.getPrimaryKeyFieldFromModel(model);
@@ -1499,7 +1456,8 @@ ${this.generateCrudExports(crudExports)}
 	}
 
 	/**
-	 * 获取模型的主键字段名
+	 * 设计思路：主键字段是按 id 查询、更新、删除和关联查询的共同锚点，集中读取可以避免各生成函数重复解析 DMMF。
+	 * 函数职责：根据模型名找到对应 DMMF 模型，并返回该模型的主键字段名。
 	 */
 	private getPrimaryKeyField(modelName: string): string {
 		const model = this.models.find((m) => m.name === modelName);
@@ -1509,236 +1467,404 @@ ${this.generateCrudExports(crudExports)}
 
 		return this.getPrimaryKeyFieldFromModel(model);
 	}
+	/**
+	 * 设计思路：无主键表不能提供按 id 的读写能力，但仍应提供列表和插入的 query builder，保持 queries 对象形态稳定。
+	 * 函数职责：生成无主键模型的 selectAll/insert query builder 与兼容执行包装。
+	 */
+	private generateNoPrimaryKeyCrudQueries(modelName: string): string {
+		const tableName = NamingRules.ZodTypeName(modelName);
+		const pascalName = NamingRules.TypeName(modelName, modelName);
+		const pluralName = this.pluralize(pascalName);
+		const schemaName = NamingRules.SchemaName(tableName);
 
-	private getScalarColumnNames(modelName: string): string[] {
-		const model = this.models.find((m: any) => m.name === modelName);
-		if (!model) return [];
-		return model.fields
-			.filter((f: any) => f.kind !== "object")
-			.map((f: any) => f.name);
+		return `/**
+ * 设计思路：无主键表仍可作为配置表或关系表读取，builder 化后与普通表列表查询保持同一入口。
+ * 函数职责：构造读取 ${tableName} 全量行的 SQL。
+ */
+export function selectAll${pluralName}Query(db: ${pascalName}QueryDB) {
+  return db.selectFrom("${tableName}").selectAll("${tableName}");
+}
+
+/**
+ * 设计思路：兼容旧无主键表列表读取，把执行动作留在包装层。
+ * 函数职责：执行 selectAll${pluralName}Query 并返回所有行。
+ */
+export async function selectAll${pluralName}(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await selectAll${pluralName}Query(db).execute();
+}
+
+/**
+ * 设计思路：基础 Zod schema 已经是表字段的运行时事实源，写入过滤复用 schema shape，避免生成第二份列名清单。
+ * 函数职责：保留输入对象中属于 ${schemaName} 的字段，供 insert query builder 使用。
+ */
+function pick${pascalName}SchemaFields<T>(data: T): T {
+  const filtered = Object.fromEntries(Object.entries(data as Record<string, unknown>).filter(([key]) => key in ${schemaName}.shape));
+  // 设计说明：Object.fromEntries 会丢失泛型对象形状；字段白名单由 ${schemaName}.shape 提供，这里只恢复调用方传入的写入类型。
+  return filtered as T;
+}
+
+/**
+ * 设计思路：无主键表插入仍按基础 schema 字段白名单过滤，避免配置层承担字段裁剪。
+ * 函数职责：构造插入 ${tableName} 并返回写入行的 SQL。
+ */
+export function insert${pascalName}Query(db: ${pascalName}QueryDB, data: ${pascalName}Insert) {
+  return db.insertInto("${tableName}").values(pick${pascalName}SchemaFields(data)).returningAll();
+}
+
+/**
+ * 设计思路：保留旧无主键表插入执行入口，迁移期间不破坏现有调用点。
+ * 函数职责：执行 insert${pascalName}Query 并要求返回写入行。
+ */
+export async function insert${pascalName}(data: ${pascalName}Insert, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await insert${pascalName}Query(db, data).executeTakeFirstOrThrow();
+}`;
 	}
 
 	/**
-	 * 生成基于唯一约束的查询方法（用于无主键表）
+	 * 设计思路：唯一约束方法有三种来源，先归一成字段列表，避免查询和删除生成逻辑分叉。
+	 * 函数职责：返回无主键模型可用于唯一定位的字段组与方法名后缀。
+	 */
+	private getUniqueConstraintDescriptor(modelName: string): { fieldNames: string[]; pascalFieldNames: string } | null {
+		const model = this.models.find((m) => m.name === modelName);
+		if (!model) return null;
+
+		const uniqueFields = model.fields.filter((field: any) => field.isUnique);
+		const uniqueIndexes = model.uniqueIndexes || [];
+
+		if (uniqueIndexes.length > 0) {
+			const fieldNames = uniqueIndexes[0].fields;
+			return { fieldNames, pascalFieldNames: fieldNames.map((f: any) => NamingRules.TypeName(f)).join("And") };
+		}
+		if (uniqueFields.length >= 2) {
+			const fieldNames = uniqueFields.map((f: any) => f.name);
+			return { fieldNames, pascalFieldNames: fieldNames.map((f: any) => NamingRules.TypeName(f)).join("And") };
+		}
+		if (uniqueFields.length === 1) {
+			const fieldNames = [uniqueFields[0].name];
+			return { fieldNames, pascalFieldNames: NamingRules.TypeName(uniqueFields[0].name) };
+		}
+
+		return null;
+	}
+
+	/**
+	 * 设计思路：无主键表的唯一约束查询也先生成 builder，保持执行动作只在调用边界发生。
+	 * 函数职责：生成基于唯一约束定位单行的 query builder 与兼容执行包装。
 	 */
 	private generateFindByUniqueConstraint(modelName: string): string {
 		const tableName = NamingRules.ZodTypeName(modelName);
 		const pascalName = NamingRules.TypeName(modelName, modelName);
+		const descriptor = this.getUniqueConstraintDescriptor(modelName);
+		if (!descriptor) return "";
 
-		// 获取模型的唯一约束字段
-		const model = this.models.find((m) => m.name === modelName);
-		if (!model) return "";
+		const fieldParams = descriptor.fieldNames.map((f: string) => `${f}: string`).join(", ");
+		const fieldArgs = descriptor.fieldNames.join(", ");
+		const whereConditions = descriptor.fieldNames.map((f: string) => `.where("${f}", "=", ${f})`).join("\n    ");
+		const methodName = `select${pascalName}By${descriptor.pascalFieldNames}`;
 
-		// 查找唯一约束字段（包括复合唯一约束）
-		const uniqueFields = model.fields.filter((field: any) => field.isUnique);
-		const uniqueIndexes = model.uniqueIndexes || [];
-
-		// 如果没有唯一字段和唯一索引，返回空
-		if (uniqueFields.length === 0 && uniqueIndexes.length === 0) return "";
-
-		// 优先处理复合唯一索引
-		if (uniqueIndexes.length > 0) {
-			const index = uniqueIndexes[0]; // 取第一个复合唯一索引
-			const fieldNames = index.fields; // fields 是字符串数组
-			const fieldParams = fieldNames.map((f: any) => `${f}: string`).join(", ");
-			const pascalFieldNames = fieldNames.map((f: any) => NamingRules.TypeName(f)).join("And");
-
-			const whereConditions = fieldNames.map((f: any) => `.where("${f}", "=", ${f})`).join("\n    ");
-
-			return `export async function select${pascalName}By${pascalFieldNames}(${fieldParams}, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await db.selectFrom("${tableName}")
+		return `/**
+ * 设计思路：无主键表的唯一约束查询也先生成 builder，保持执行动作只在调用边界发生。
+ * 函数职责：构造按 ${descriptor.fieldNames.join(", ")} 唯一定位 ${tableName} 的 SQL。
+ */
+export function ${methodName}Query(db: ${pascalName}QueryDB, ${fieldParams}) {
+  return db.selectFrom("${tableName}")
     ${whereConditions}
-    .selectAll("${tableName}")
-    .executeTakeFirst();
-}`;
-		} else if (uniqueFields.length >= 2) {
-			// 如果有多个唯一字段，生成基于所有唯一字段的查询方法
-			const fieldNames = uniqueFields.map((f: any) => f.name);
-			const fieldParams = fieldNames.map((f: any) => `${f.name}: string`).join(", ");
-			const pascalFieldNames = fieldNames.map((f: any) => NamingRules.TypeName(f.name)).join("And");
+    .selectAll("${tableName}");
+}
 
-			const whereConditions = fieldNames.map((f: any) => `.where("${f.name}", "=", ${f.name})`).join("\n    ");
-
-			return `export async function select${pascalName}By${pascalFieldNames}(${fieldParams}, trx?: Transaction<DB>) {
+/**
+ * 设计思路：兼容旧唯一约束查询函数，把 SQL 构造委托给 query builder 版本。
+ * 函数职责：执行 ${methodName}Query 并返回第一行。
+ */
+export async function ${methodName}(${fieldParams}, trx?: Transaction<DB>) {
   const db = trx || await getDB();
-  return await db.selectFrom("${tableName}")
-    ${whereConditions}
-    .selectAll("${tableName}")
-    .executeTakeFirst();
+  return await ${methodName}Query(db, ${fieldArgs}).executeTakeFirst();
 }`;
-		} else if (uniqueFields.length === 1) {
-			// 如果只有一个唯一字段，生成基于该字段的查询方法
-			const firstUniqueField = uniqueFields[0];
-			return `export async function select${pascalName}By${NamingRules.TypeName(firstUniqueField.name)}(${firstUniqueField.name}: string, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await db.selectFrom("${tableName}")
-    .where("${firstUniqueField.name}", "=", ${firstUniqueField.name})
-    .selectAll("${tableName}")
-    .executeTakeFirst();
-}`;
-		}
-
-		return "";
 	}
 
 	/**
-	 * 生成基于唯一约束的删除方法（用于无主键表）
+	 * 设计思路：无主键表删除只能依赖唯一约束定位，builder 化后仍由上层决定是否执行。
+	 * 函数职责：生成基于唯一约束删除单行的 query builder 与兼容执行包装。
 	 */
 	private generateDeleteByUniqueConstraint(modelName: string): string {
 		const tableName = NamingRules.ZodTypeName(modelName);
 		const pascalName = NamingRules.TypeName(modelName, modelName);
+		const descriptor = this.getUniqueConstraintDescriptor(modelName);
+		if (!descriptor) return "";
 
-		// 查找模型
-		const model = this.models.find((m) => m.name === modelName);
-		if (!model) return "";
+		const fieldParams = descriptor.fieldNames.map((f: string) => `${f}: string`).join(", ");
+		const fieldArgs = descriptor.fieldNames.join(", ");
+		const whereConditions = descriptor.fieldNames.map((f: string) => `.where("${f}", "=", ${f})`).join("\n    ");
+		const methodName = `delete${pascalName}By${descriptor.pascalFieldNames}`;
 
-		// 查找唯一约束字段（包括复合唯一约束）
-		const uniqueFields = model.fields.filter((field: any) => field.isUnique);
-		const uniqueIndexes = model.uniqueIndexes || [];
-
-		// 如果没有唯一字段和唯一索引，返回空
-		if (uniqueFields.length === 0 && uniqueIndexes.length === 0) return "";
-
-		// 优先处理复合唯一索引
-		if (uniqueIndexes.length > 0) {
-			const index = uniqueIndexes[0]; // 取第一个复合唯一索引
-			const fieldNames = index.fields; // fields 是字符串数组
-			const fieldParams = fieldNames.map((f: any) => `${f}: string`).join(", ");
-			const pascalFieldNames = fieldNames.map((f: any) => NamingRules.TypeName(f)).join("And");
-
-			const whereConditions = fieldNames.map((f: any) => `.where("${f}", "=", ${f})`).join("\n    ");
-
-			return `export async function delete${pascalName}By${pascalFieldNames}(${fieldParams}, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await db.deleteFrom("${tableName}")
+		return `/**
+ * 设计思路：无主键表删除只能依赖唯一约束定位，builder 化后仍由上层决定是否执行。
+ * 函数职责：构造按 ${descriptor.fieldNames.join(", ")} 删除 ${tableName} 并返回删除行的 SQL。
+ */
+export function ${methodName}Query(db: ${pascalName}QueryDB, ${fieldParams}) {
+  return db.deleteFrom("${tableName}")
     ${whereConditions}
-    .returningAll()
-    .executeTakeFirst();
-}`;
-		} else if (uniqueFields.length >= 2) {
-			// 如果有多个唯一字段，生成基于所有唯一字段的删除方法
-			const fieldNames = uniqueFields.map((f: any) => f.name);
-			const fieldParams = fieldNames.map((f: any) => `${f.name}: string`).join(", ");
-			const pascalFieldNames = fieldNames.map((f: any) => NamingRules.TypeName(f.name)).join("And");
+    .returningAll();
+}
 
-			const whereConditions = fieldNames.map((f: any) => `.where("${f.name}", "=", ${f.name})`).join("\n    ");
-
-			return `export async function delete${pascalName}By${pascalFieldNames}(${fieldParams}, trx?: Transaction<DB>) {
+/**
+ * 设计思路：兼容旧唯一约束删除函数，实际 SQL 构造集中到 query builder 版本。
+ * 函数职责：执行 ${methodName}Query 并返回删除行。
+ */
+export async function ${methodName}(${fieldParams}, trx?: Transaction<DB>) {
   const db = trx || await getDB();
-  return await db.deleteFrom("${tableName}")
-    ${whereConditions}
-    .returningAll()
-    .executeTakeFirst();
-}`;
-		} else if (uniqueFields.length === 1) {
-			// 如果只有一个唯一字段，生成基于该字段的删除方法
-			const firstUniqueField = uniqueFields[0];
-			return `export async function delete${pascalName}By${NamingRules.TypeName(firstUniqueField.name)}(${firstUniqueField.name}: string, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await db.deleteFrom("${tableName}")
-    .where("${firstUniqueField.name}", "=", ${firstUniqueField.name})
-    .returningAll()
-    .executeTakeFirst();
-}`;
-		}
-
-		return "";
-	}
-
-	/**
-	 * 生成 selectById 方法
-	 */
-	private generateSelectById(modelName: string): string {
-		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = NamingRules.TypeName(modelName, modelName);
-		const primaryKeyField = this.getPrimaryKeyField(modelName);
-
-		return `export async function select${pascalName}ById(id: string, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await db.selectFrom("${tableName}").where("${primaryKeyField}", "=", id).selectAll("${tableName}").executeTakeFirst();
+  return await ${methodName}Query(db, ${fieldArgs}).executeTakeFirst();
 }`;
 	}
 
 	/**
-	 * 生成 selectByIdWithRelations 方法
-	 * 查询包含所有子关系的完整数据
+	 * 生成标准 CRUD query builder 与兼容执行包装。
+	 * 设计思路：生成器负责声明“如何构造 SQL”，旧异步函数只保留执行边界，方便业务层逐步从 repositoryMethods 迁移到 repositoryQueries。
 	 */
-	private generateSelectByIdWithRelations(modelName: string): string {
+	private generateStandardCrudQueries(modelName: string): string {
 		const tableName = NamingRules.ZodTypeName(modelName);
 		const pascalName = NamingRules.TypeName(modelName, modelName);
 		const camelName = NamingRules.VariableName(modelName);
+		const pluralName = this.pluralize(pascalName);
 		const primaryKeyField = this.getPrimaryKeyField(modelName);
+		const schemaName = NamingRules.SchemaName(tableName);
 
-		return `export async function select${pascalName}ByIdWithRelations(id: string, trx?: Transaction<DB>) {
+		return `/**
+ * 设计思路：按主键查询是详情、卡片和编辑入口的统一读取原语；这里只返回 Kysely builder，让调用方决定一次性执行或 live 订阅。
+ * 函数职责：构造 ${tableName} 按 ${primaryKeyField} 查询单行的 SQL。
+ */
+export function select${pascalName}ByIdQuery(db: ${pascalName}QueryDB, id: string) {
+  return db.selectFrom("${tableName}").where("${primaryKeyField}", "=", id).selectAll("${tableName}");
+}
+
+/**
+ * 设计思路：兼容旧 repositoryMethods 调用，把执行动作限制在薄包装里，避免业务迁移被一次性打断。
+ * 函数职责：执行 select${pascalName}ByIdQuery 并返回第一行。
+ */
+export async function select${pascalName}ById(id: string, trx?: Transaction<DB>) {
   const db = trx || await getDB();
-  return await db
+  return await select${pascalName}ByIdQuery(db, id).executeTakeFirst();
+}
+
+/**
+ * 设计思路：WithRelations 是完整详情读取的构造器，保持与基础详情查询同源，方便卡片按需选择轻量或完整投影。
+ * 函数职责：构造 ${tableName} 按主键读取并拼入子关系投影的 SQL。
+ */
+export function select${pascalName}ByIdWithRelationsQuery(db: ${pascalName}QueryDB, id: string) {
+  return db
     .selectFrom("${tableName}")
     .where("${primaryKeyField}", "=", id)
     .selectAll("${tableName}")
-    .select((eb) => ${camelName}SubRelations(eb, eb.ref("${tableName}.${primaryKeyField}")))
-    .executeTakeFirst();
-}`;
-	}
+    .select((eb) => ${camelName}SubRelations(eb, eb.ref("${tableName}.${primaryKeyField}")));
+}
 
-	/**
-	 * 生成 selectAll 方法
-	 */
-	private generateSelectAll(modelName: string): string {
-		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = NamingRules.TypeName(modelName, modelName);
-		const pluralName = this.pluralize(pascalName);
-
-		return `export async function selectAll${pluralName}(trx?: Transaction<DB>) {
+/**
+ * 设计思路：保留旧完整详情执行入口，同时把 SQL 构造委托给 query builder 版本。
+ * 函数职责：执行 select${pascalName}ByIdWithRelationsQuery 并返回第一行。
+ */
+export async function select${pascalName}ByIdWithRelations(id: string, trx?: Transaction<DB>) {
   const db = trx || await getDB();
-  return await db.selectFrom("${tableName}").selectAll("${tableName}").execute();
-}`;
-	}
+  return await select${pascalName}ByIdWithRelationsQuery(db, id).executeTakeFirst();
+}
 
-	/**
-	 * 生成 insert 方法
-	 */
-	private generateInsert(modelName: string): string {
-		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = NamingRules.TypeName(modelName, modelName);
-		const columns = this.getScalarColumnNames(modelName);
+/**
+ * 设计思路：列表读取应与 live 订阅共用同一条查询构造路径，不再单独维护 liveQuery 字段。
+ * 函数职责：构造读取 ${tableName} 全量行的 SQL。
+ */
+export function selectAll${pluralName}Query(db: ${pascalName}QueryDB) {
+  return db.selectFrom("${tableName}").selectAll("${tableName}");
+}
 
-		return `const ${tableName}Columns = new Set(${JSON.stringify(columns)});
+/**
+ * 设计思路：兼容旧 getAll 执行语义，执行边界显式停留在包装函数。
+ * 函数职责：执行 selectAll${pluralName}Query 并返回所有行。
+ */
+export async function selectAll${pluralName}(trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await selectAll${pluralName}Query(db).execute();
+}
 
+/**
+ * 设计思路：基础 Zod schema 已经是表字段的运行时事实源，写入过滤复用 schema shape，避免生成第二份列名清单。
+ * 函数职责：保留输入对象中属于 ${schemaName} 的字段，供 insert/update query builder 使用。
+ */
+function pick${pascalName}SchemaFields<T>(data: T): T {
+  const filtered = Object.fromEntries(Object.entries(data as Record<string, unknown>).filter(([key]) => key in ${schemaName}.shape));
+  // 设计说明：Object.fromEntries 会丢失泛型对象形状；字段白名单由 ${schemaName}.shape 提供，这里只恢复调用方传入的写入类型。
+  return filtered as T;
+}
+
+/**
+ * 设计思路：写入 query builder 只关心本表可写字段过滤，不掺入账号、默认值或跨表事务等业务流程。
+ * 函数职责：构造插入 ${tableName} 并返回写入行的 SQL。
+ */
+export function insert${pascalName}Query(db: ${pascalName}QueryDB, data: ${pascalName}Insert) {
+  return db.insertInto("${tableName}").values(pick${pascalName}SchemaFields(data)).returningAll();
+}
+
+/**
+ * 设计思路：保留旧插入执行入口，业务层迁移完成前仍可在事务中直接调用。
+ * 函数职责：执行 insert${pascalName}Query 并要求返回写入行。
+ */
 export async function insert${pascalName}(data: ${pascalName}Insert, trx?: Transaction<DB>) {
   const db = trx || await getDB();
-  const filtered = Object.fromEntries(Object.entries(data).filter(([k]) => ${tableName}Columns.has(k))) as ${pascalName}Insert;
-  return await db.insertInto("${tableName}").values(filtered).returningAll().executeTakeFirstOrThrow();
+  return await insert${pascalName}Query(db, data).executeTakeFirstOrThrow();
+}
+
+/**
+ * 设计思路：更新 query builder 保持单表职责，只按主键定位并过滤可写列。
+ * 函数职责：构造更新 ${tableName} 指定主键行并返回更新行的 SQL。
+ */
+export function update${pascalName}Query(db: ${pascalName}QueryDB, id: string, data: ${pascalName}Update) {
+  return db.updateTable("${tableName}").set(pick${pascalName}SchemaFields(data)).where("${primaryKeyField}", "=", id).returningAll();
+}
+
+/**
+ * 设计思路：保留旧更新执行入口，实际 SQL 构造集中到 update${pascalName}Query。
+ * 函数职责：执行 update${pascalName}Query 并要求返回更新行。
+ */
+export async function update${pascalName}(id: string, data: ${pascalName}Update, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await update${pascalName}Query(db, id, data).executeTakeFirstOrThrow();
+}
+
+/**
+ * 设计思路：删除 query builder 只描述本表删除 SQL，是否允许删除由上层策略控制。
+ * 函数职责：构造删除 ${tableName} 指定主键行并返回删除行的 SQL。
+ */
+export function delete${pascalName}Query(db: ${pascalName}QueryDB, id: string) {
+  return db.deleteFrom("${tableName}").where("${primaryKeyField}", "=", id).returningAll();
+}
+
+/**
+ * 设计思路：保留旧删除执行入口，兼容当前配置里的 deleteCallback。
+ * 函数职责：执行 delete${pascalName}Query 并返回删除行。
+ */
+export async function delete${pascalName}(id: string, trx?: Transaction<DB>) {
+  const db = trx || await getDB();
+  return await delete${pascalName}Query(db, id).executeTakeFirst();
+}`;
+	}
+	/**
+	 * 设计思路：关联区需要静态 query builder 集合而不是运行时解释 DB_RELATION，因此在 repository 生成期把关系计划固化到每张表。
+	 * 函数职责：生成 getXXParentsByIdQuery 与 getXXChildrenByIdQuery，按目标表分桶返回 query builder 数组。
+	 */
+	private generateRelationQueryMethods(modelName: string): string {
+		const model = this.allModels.find((m: DMMF.Model) => m.name === modelName);
+		if (!model) return "";
+
+		const tableName = NamingRules.ZodTypeName(modelName);
+		const pascalName = NamingRules.TypeName(modelName, modelName);
+		const primaryKeyField = this.getPrimaryKeyFieldFromModel(model);
+		const parentEntries = this.generateRelationQueryEntries(model, "parents");
+		const childEntries = this.generateRelationQueryEntries(model, "children");
+
+		return `/**
+ * 设计思路：父关系查询按目标表分桶返回 builder，执行层统一合并和去重，避免 campA/campB 等多语义关系互相覆盖。
+ * 函数职责：构造 ${tableName} 指定主键行的父关系查询集合。
+ */
+export function get${pascalName}ParentsByIdQuery(db: ${pascalName}QueryDB, id: string): ${pascalName}RelationQueryMap {
+  const relationDb = db;
+  const selfTable = "${tableName}";
+  const selfPrimaryKey = "${primaryKeyField}";
+  return {
+${parentEntries}
+  };
+}
+
+/**
+ * 设计思路：子关系查询与父关系保持同样的分桶结构，后续可以直接把每个 builder 接入 live 查询。
+ * 函数职责：构造 ${tableName} 指定主键行的子关系查询集合。
+ */
+export function get${pascalName}ChildrenByIdQuery(db: ${pascalName}QueryDB, id: string): ${pascalName}RelationQueryMap {
+  const relationDb = db;
+  const selfTable = "${tableName}";
+  const selfPrimaryKey = "${primaryKeyField}";
+  return {
+${childEntries}
+  };
 }`;
 	}
 
 	/**
-	 * 生成 update 方法
+	 * 设计思路：父子关系的结构方向来自业务命名规则，而查询方向来自 FK/M2M 物理结构，两者需要在生成期合并。
+	 * 函数职责：筛选指定方向的关系字段，并生成按目标表分桶的 query builder 代码片段。
 	 */
-	private generateUpdate(modelName: string): string {
-		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = NamingRules.TypeName(modelName, modelName);
-		const primaryKeyField = this.getPrimaryKeyField(modelName);
+	private generateRelationQueryEntries(model: DMMF.Model, direction: "parents" | "children"): string {
+		const entriesByTarget = new Map<string, string[]>();
 
-		return `export async function update${pascalName}(id: string, data: ${pascalName}Update, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  const filtered = Object.fromEntries(Object.entries(data).filter(([k]) => ${tableName}Columns.has(k))) as ${pascalName}Update;
-  return await db.updateTable("${tableName}").set(filtered).where("${primaryKeyField}", "=", id).returningAll().executeTakeFirstOrThrow();
-}`;
+		for (const field of model.fields) {
+			if (field.kind !== "object") continue;
+			const isParent = this.isParentRelation(field.name);
+			if (direction === "parents" && !isParent) continue;
+			if (direction === "children" && isParent) continue;
+
+			const targetModel = this.allModels.find((m: DMMF.Model) => m.name === field.type);
+			if (!targetModel || this.shouldSkipModel(targetModel.name)) continue;
+
+			const targetTable = NamingRules.ZodTypeName(targetModel.dbName || targetModel.name);
+			const queries = this.generateRelationQueriesForField(model, field, targetModel);
+			if (queries.length === 0) continue;
+
+			if (!entriesByTarget.has(targetTable)) entriesByTarget.set(targetTable, []);
+			entriesByTarget.get(targetTable)?.push(...queries);
+		}
+
+		return Array.from(entriesByTarget.entries())
+			.map(
+				([targetTable, queries]) =>
+					`    ${targetTable}: [\n${queries.map((query) => `      ${query}`).join(",\n")}\n    ]`,
+			)
+			.join(",\n");
 	}
 
 	/**
-	 * 生成 delete 方法
+	 * 设计思路：单个关系字段可能对应 FK 查询、普通 M2M 查询或自关联双向 M2M 查询，统一返回数组可保留所有语义边。
+	 * 函数职责：为一个 DMMF 关系字段生成一个或多个 query builder 表达式。
 	 */
-	private generateDelete(modelName: string): string {
-		const tableName = NamingRules.ZodTypeName(modelName);
-		const pascalName = NamingRules.TypeName(modelName, modelName);
-		const primaryKeyField = this.getPrimaryKeyField(modelName);
+	private generateRelationQueriesForField(model: DMMF.Model, field: DMMF.Field, targetModel: DMMF.Model): string[] {
+		const targetTable = NamingRules.ZodTypeName(targetModel.dbName || targetModel.name);
+		const targetPrimaryKey = this.getPrimaryKeyFieldFromModel(targetModel);
+		const relationType = this.determineRelationType(field, model);
 
-		return `export async function delete${pascalName}(id: string, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await db.deleteFrom("${tableName}").where("${primaryKeyField}", "=", id).returningAll().executeTakeFirst();
-}`;
+		if (relationType === "MANY_TO_MANY") {
+			const intermediateTable = this.helpers.getManyToManyTableName(field);
+			if (!intermediateTable) return [];
+			const { selfJoinColumn, targetJoinColumn } = this.getManyToManyJoinColumns(field, model);
+			const isSelfRelation = model.name === targetModel.name;
+			const firstQuery = `relationDb.selectFrom("${targetTable}").innerJoin("${intermediateTable}", "${targetTable}.${targetPrimaryKey}", "${intermediateTable}.${targetJoinColumn}").where("${intermediateTable}.${selfJoinColumn}", "=", id).selectAll("${targetTable}")`;
+			if (!isSelfRelation) return [firstQuery];
+
+			return [
+				firstQuery,
+				`relationDb.selectFrom("${targetTable}").innerJoin("${intermediateTable}", "${targetTable}.${targetPrimaryKey}", "${intermediateTable}.${selfJoinColumn}").where("${intermediateTable}.${targetJoinColumn}", "=", id).selectAll("${targetTable}")`,
+			];
+		}
+
+		if (field.relationFromFields && field.relationFromFields.length > 0) {
+			const fkField = field.relationFromFields[0];
+			const referencedField = field.relationToFields?.[0] || targetPrimaryKey;
+			return [
+				`relationDb.selectFrom("${targetTable}").where("${targetTable}.${referencedField}", "in", (eb) => eb.selectFrom(selfTable).where(selfPrimaryKey, "=", id).select("${fkField}")).selectAll("${targetTable}")`,
+			];
+		}
+
+		const reverseField = targetModel.fields.find(
+			(f: DMMF.Field) =>
+				f.kind === "object" &&
+				f.type === model.name &&
+				f.relationName === field.relationName &&
+				Array.isArray(f.relationFromFields) &&
+				f.relationFromFields.length > 0,
+		);
+		const reverseForeignKey = reverseField?.relationFromFields?.[0];
+		if (!reverseForeignKey) return [];
+
+		return [
+			`relationDb.selectFrom("${targetTable}").where("${targetTable}.${reverseForeignKey}", "=", id).selectAll("${targetTable}")`,
+		];
 	}
 
 	/**
@@ -1760,42 +1886,6 @@ export async function insert${pascalName}(data: ${pascalName}Insert, trx?: Trans
 		return intermediateTables.sort();
 	}
 
-	/**
-	 * 判断是否为真正的多对多关系
-	 */
-	private isManyToManyRelation(field: any, model: any): boolean {
-		// 检查当前字段是否有显式的外键字段
-		if (field.relationFromFields && field.relationFromFields.length > 0) {
-			return false; // 有外键字段，不是多对多关系
-		}
-
-		// 检查目标模型的反向关系
-		const targetModel = this.models.find((m) => m.name === field.type);
-		if (!targetModel) {
-			return false;
-		}
-
-		// 找到反向关系字段
-		const reverseField = targetModel.fields.find(
-			(f: any) => f.relationName === field.relationName && f.name !== field.name,
-		);
-
-		if (!reverseField) {
-			return false;
-		}
-
-		// 反向关系也必须是 isList: true
-		if (!reverseField.isList) {
-			return false;
-		}
-
-		// 反向关系也不能有外键字段
-		if (reverseField.relationFromFields && reverseField.relationFromFields.length > 0) {
-			return false;
-		}
-
-		return true;
-	}
 
 	/**
 	 * 获取无主键模型的特殊方法导入字符串
@@ -1942,6 +2032,42 @@ ${methodLines.join(",\n")}
     select: null,
     selectAll: null,
     canEdit: null
+  }`);
+			}
+		}
+
+		return lines.join(",\n");
+	}
+
+	/**
+	 * 设计思路：repositoryQueries 是业务配置的新入口，字段集合固定可以让无能力表显式暴露 null，避免调用层猜测。
+	 * 函数职责：按所有 DB 表生成 queries 导出对象文本。
+	 */
+	private generateQueryExports(exports: Record<string, any>): string {
+		const allTables = this.getAllTableNames();
+		const lines: string[] = [];
+
+		for (const tableName of allTables) {
+			const queries = exports[tableName];
+			if (queries) {
+				lines.push(`  ${tableName}: {
+    get: ${queries.get || "null"},
+    getAll: ${queries.getAll || "null"},
+    insert: ${queries.insert || "null"},
+    update: ${queries.update || "null"},
+    delete: ${queries.delete || "null"},
+    getParentsById: ${queries.getParentsById || "null"},
+    getChildrenById: ${queries.getChildrenById || "null"}
+  }`);
+			} else {
+				lines.push(`  ${tableName}: {
+    get: null,
+    getAll: null,
+    insert: null,
+    update: null,
+    delete: null,
+    getParentsById: null,
+    getChildrenById: null
   }`);
 			}
 		}

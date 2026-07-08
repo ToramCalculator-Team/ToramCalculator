@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { PlayerArmorSchema, type player_armor } from "@db/generated/zod";
 import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
 import { Icons } from "~/components/icons";
@@ -10,14 +10,7 @@ export const PLAYER_ARMOR_DATA_CONFIG: TableDataConfig<player_armor> = (dictiona
 	dataSchema: PlayerArmorSchema,
 	primaryKey: "id",
 	defaultData: defaultData.player_armor,
-	dataFetcher: {
-		get: repositoryMethods.player_armor.select,
-		getAll: repositoryMethods.player_armor.selectAll,
-		liveQuery: (db) => db.selectFrom("player_armor").selectAll("player_armor"),
-		insert: repositoryMethods.player_armor.insert,
-		update: repositoryMethods.player_armor.update,
-		delete: repositoryMethods.player_armor.delete,
-	},
+	queries: repositoryQueries.player_armor,
 	fieldGroupMap: {
 		ID: ["id"],
 		基础属性: ["name", "baseAbi", "ability"],

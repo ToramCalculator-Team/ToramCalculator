@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import {
 	deleteBehaviorTree,
 	insertBehaviorTree,
@@ -35,7 +35,7 @@ import { Button } from "~/components/controls/button";
 import { Input } from "~/components/controls/input";
 import { BtEditor, type BtEditorValue } from "~/components/features/BtEditor/BtEditor";
 import type { Dictionary } from "~/locales/type";
-import type { TableDataConfig } from "../data-config";
+import type { QueryDB, TableDataConfig } from "../data-config";
 import { DefaultFieldClass, type FormFieldRendererContext, type FormRenderers } from "../form/SchemaFieldRenderer";
 
 const formatJson = (value: unknown): string => JSON.stringify(value ?? null, null, 2);
@@ -73,7 +73,11 @@ type SkillVariantBehaviorTrees = Pick<
 	"activeBehaviorTree" | "passiveBehaviorTree" | "registeredBehaviorTrees"
 >;
 
-const selectSkillVariantWithBehaviorTreesQuery = (db: Transaction<DB> | Awaited<ReturnType<typeof getDB>>) =>
+/**
+ * 设计思路：skill_variant 详情需要行为树子资源，将关联查询固化为 builder 便于卡片和后续实时化复用。
+ * 函数职责：构造带主动、被动和长期注册行为树的 skill_variant 查询。
+ */
+const selectSkillVariantWithBehaviorTreesQuery = (db: QueryDB) =>
 	db
 		.selectFrom("skill_variant")
 		.selectAll("skill_variant")
@@ -96,7 +100,8 @@ const selectSkillVariantWithBehaviorTreesQuery = (db: Transaction<DB> | Awaited<
 					.whereRef("behavior_tree.registeredOwnerId", "=", "skill_variant.id")
 					.selectAll("behavior_tree"),
 			).as("registeredBehaviorTrees"),
-		]);
+		])
+		.$castTo<SkillVariantWithBehaviorTrees>();
 
 export const getSkillVariantWithBehaviorTrees = async (
 	id: string,
@@ -487,13 +492,10 @@ export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<SkillVariantWithBehavior
 	dataSchema: SkillVariantWithBehaviorTreesSchema,
 	primaryKey: "id",
 	defaultData: defaultSkillVariantWithBehaviorTrees,
-	dataFetcher: {
-		get: getSkillVariantWithBehaviorTrees,
-		getAll: getAllSkillVariantsWithBehaviorTrees,
-		insert: insertSkillVariantWithBehaviorTrees,
-		update: updateSkillVariantWithBehaviorTrees,
-		delete: deleteSkillVariantWithBehaviorTrees,
-		liveQuery: (db) => db.selectFrom("skill_variant").selectAll("skill_variant"),
+	queries: {
+		...repositoryQueries.skill_variant,
+		get: (db, id) => selectSkillVariantWithBehaviorTreesQuery(db).where("skill_variant.id", "=", id),
+		getAll: repositoryQueries.skill_variant.getAll,
 	},
 	fieldGroupMap: {
 		ID: ["id"],

@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { deleteItem, insertItem, updateItem } from "@db/generated/repositories/item";
 import { deleteOption, insertOption, updateOption } from "@db/generated/repositories/option";
 import { insertStatistic } from "@db/generated/repositories/statistic";
@@ -8,7 +8,7 @@ import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
 import type { z } from "zod/v4";
 import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
-import type { TableDataConfig } from "../data-config";
+import type { QueryDB, TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
 const OptionItemSchema = ItemSchema.extend(OptionSchema.shape);
@@ -19,24 +19,16 @@ const OptionItemDefaultData: OptionItem = {
 	...defaultData.item,
 };
 
-const getOptionItem = async (id: string): Promise<OptionItem> => {
-	const db = await getDB();
-	const optionRow = await db.selectFrom("option").where("itemId", "=", id).selectAll().executeTakeFirstOrThrow();
-	const item = await db.selectFrom("item").where("id", "=", optionRow.itemId).selectAll().executeTakeFirstOrThrow();
-	return {
-		...optionRow,
-		...item,
-	};
-};
-
-const getAllOptionItems = async (): Promise<OptionItem[]> => {
-	const db = await getDB();
-	return await db
+/**
+ * 设计思路：option 在业务实体上继承 item 字段，列表订阅和详情读取必须共用同一条联合查询，避免列选择分裂。
+ * 函数职责：构造 option 与 item 合并后的业务实体查询。
+ */
+const selectOptionItemQuery = (db: QueryDB) =>
+	db
 		.selectFrom("option")
 		.innerJoin("item", (join) => join.onRef("option.itemId", "=", "item.id"))
-		.selectAll()
-		.execute();
-};
+		.selectAll("item")
+		.select(["option.itemId", "option.baseAbi", "option.modifiers", "option.colorA", "option.colorB", "option.colorC"]);
 
 const insertOptionItem = async (data: OptionItem): Promise<OptionItem> => {
 	const db = await getDB();
@@ -100,25 +92,11 @@ export const OPTION_DATA_CONFIG: TableDataConfig<OptionItem, option> = (dictiona
 	dataSchema: OptionItemSchema,
 	primaryKey: "itemId",
 	defaultData: OptionItemDefaultData,
-	dataFetcher: {
-		get: getOptionItem,
-		getAll: getAllOptionItems,
-		insert: insertOptionItem,
-		update: updateOptionItem,
-		delete: deleteOptionItem,
-		liveQuery: (db) =>
-			db
-				.selectFrom("option")
-				.innerJoin("item", (join) => join.onRef("option.itemId", "=", "item.id"))
-				.selectAll("item")
-				.select([
-					"option.itemId",
-					"option.baseAbi",
-					"option.modifiers",
-					"option.colorA",
-					"option.colorB",
-					"option.colorC",
-				]),
+	queries: {
+		get: (db, id) => selectOptionItemQuery(db).where("option.itemId", "=", id),
+		getAll: selectOptionItemQuery,
+		getParentsById: repositoryQueries.option.getParentsById,
+		getChildrenById: repositoryQueries.option.getChildrenById,
 	},
 	fieldGroupMap: {
 		基本信息: ["name", "baseAbi", "itemSourceType", "dataSources", "details"],

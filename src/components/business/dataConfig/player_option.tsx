@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { PlayerOptionSchema, type player_option } from "@db/generated/zod";
 import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
 import type { TableDataConfig } from "../data-config";
@@ -9,14 +9,7 @@ export const PLAYER_OPTION_DATA_CONFIG: TableDataConfig<player_option> = (dictio
 	dataSchema: PlayerOptionSchema,
 	primaryKey: "id",
 	defaultData: defaultData.player_option,
-	dataFetcher: {
-		get: repositoryMethods.player_option.select,
-		getAll: repositoryMethods.player_option.selectAll,
-		liveQuery: (db) => db.selectFrom("player_option").selectAll("player_option"),
-		insert: repositoryMethods.player_option.insert,
-		update: repositoryMethods.player_option.update,
-		delete: repositoryMethods.player_option.delete,
-	},
+	queries: repositoryQueries.player_option,
 	fieldGroupMap: {
 		ID: ["id"],
 		基础属性: ["name", "baseAbi"],

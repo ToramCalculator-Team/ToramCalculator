@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { deleteArmor, insertArmor, updateArmor } from "@db/generated/repositories/armor";
 import { deleteItem, insertItem, updateItem } from "@db/generated/repositories/item";
 import { insertStatistic } from "@db/generated/repositories/statistic";
@@ -8,7 +8,7 @@ import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
 import type { z } from "zod/v4";
 import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
-import type { TableDataConfig } from "../data-config";
+import type { QueryDB, TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
 const ArmorItemSchema = ItemSchema.extend(ArmorSchema.shape);
@@ -19,24 +19,16 @@ const ArmorItemDefaultData: ArmorItem = {
 	...defaultData.item,
 };
 
-const getArmorItem = async (id: string): Promise<ArmorItem> => {
-	const db = await getDB();
-	const armorRow = await db.selectFrom("armor").where("itemId", "=", id).selectAll().executeTakeFirstOrThrow();
-	const item = await db.selectFrom("item").where("id", "=", armorRow.itemId).selectAll().executeTakeFirstOrThrow();
-	return {
-		...armorRow,
-		...item,
-	};
-};
-
-const getAllArmorItems = async (): Promise<ArmorItem[]> => {
-	const db = await getDB();
-	return await db
+/**
+ * 设计思路：armor 在业务实体上继承 item 字段，列表订阅和详情读取必须共用同一条联合查询，避免列选择分裂。
+ * 函数职责：构造 armor 与 item 合并后的业务实体查询。
+ */
+const selectArmorItemQuery = (db: QueryDB) =>
+	db
 		.selectFrom("armor")
 		.innerJoin("item", (join) => join.onRef("armor.itemId", "=", "item.id"))
-		.selectAll()
-		.execute();
-};
+		.selectAll("item")
+		.select(["armor.itemId", "armor.baseAbi", "armor.modifiers", "armor.colorA", "armor.colorB", "armor.colorC"]);
 
 const insertArmorItem = async (data: ArmorItem): Promise<ArmorItem> => {
 	const db = await getDB();
@@ -100,18 +92,11 @@ export const ARMOR_DATA_CONFIG: TableDataConfig<ArmorItem, armor> = (dictionary)
 	dataSchema: ArmorItemSchema,
 	primaryKey: "itemId",
 	defaultData: ArmorItemDefaultData,
-	dataFetcher: {
-		get: getArmorItem,
-		getAll: getAllArmorItems,
-		insert: insertArmorItem,
-		update: updateArmorItem,
-		delete: deleteArmorItem,
-		liveQuery: (db) =>
-			db
-				.selectFrom("armor")
-				.innerJoin("item", (join) => join.onRef("armor.itemId", "=", "item.id"))
-				.selectAll("item")
-				.select(["armor.itemId", "armor.baseAbi", "armor.modifiers", "armor.colorA", "armor.colorB", "armor.colorC"]),
+	queries: {
+		get: (db, id) => selectArmorItemQuery(db).where("armor.itemId", "=", id),
+		getAll: selectArmorItemQuery,
+		getParentsById: repositoryQueries.armor.getParentsById,
+		getChildrenById: repositoryQueries.armor.getChildrenById,
 	},
 	fieldGroupMap: {
 		基本信息: ["name", "baseAbi", "itemSourceType", "dataSources", "details"],

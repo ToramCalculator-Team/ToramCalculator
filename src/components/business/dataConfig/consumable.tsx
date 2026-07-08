@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { deleteConsumable, insertConsumable, updateConsumable } from "@db/generated/repositories/consumable";
 import { deleteItem, insertItem, updateItem } from "@db/generated/repositories/item";
 import { insertStatistic } from "@db/generated/repositories/statistic";
@@ -7,7 +7,7 @@ import { ConsumableSchema, type consumable, ItemSchema } from "@db/generated/zod
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
 import type { z } from "zod/v4";
-import type { TableDataConfig } from "../data-config";
+import type { QueryDB, TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
 const ConsumableItemSchema = ItemSchema.extend(ConsumableSchema.shape);
@@ -18,28 +18,16 @@ const ConsumableItemDefaultData: ConsumableItem = {
 	...defaultData.item,
 };
 
-const getConsumableItem = async (id: string): Promise<ConsumableItem> => {
-	const db = await getDB();
-	const consumableRow = await db
-		.selectFrom("consumable")
-		.where("itemId", "=", id)
-		.selectAll()
-		.executeTakeFirstOrThrow();
-	const item = await db.selectFrom("item").where("id", "=", consumableRow.itemId).selectAll().executeTakeFirstOrThrow();
-	return {
-		...consumableRow,
-		...item,
-	};
-};
-
-const getAllConsumableItems = async (): Promise<ConsumableItem[]> => {
-	const db = await getDB();
-	return await db
+/**
+ * 设计思路：consumable 在业务实体上继承 item 字段，列表订阅和详情读取必须共用同一条联合查询，避免列选择分裂。
+ * 函数职责：构造 consumable 与 item 合并后的业务实体查询。
+ */
+const selectConsumableItemQuery = (db: QueryDB) =>
+	db
 		.selectFrom("consumable")
 		.innerJoin("item", (join) => join.onRef("consumable.itemId", "=", "item.id"))
-		.selectAll()
-		.execute();
-};
+		.selectAll("item")
+		.select(["consumable.itemId", "consumable.type", "consumable.effectDuration", "consumable.effects"]);
 
 const insertConsumableItem = async (data: ConsumableItem): Promise<ConsumableItem> => {
 	const db = await getDB();
@@ -103,18 +91,11 @@ export const CONSUMABLE_DATA_CONFIG: TableDataConfig<ConsumableItem, consumable>
 	dataSchema: ConsumableItemSchema,
 	primaryKey: "itemId",
 	defaultData: ConsumableItemDefaultData,
-	dataFetcher: {
-		get: getConsumableItem,
-		getAll: getAllConsumableItems,
-		insert: insertConsumableItem,
-		update: updateConsumableItem,
-		delete: deleteConsumableItem,
-		liveQuery: (db) =>
-			db
-				.selectFrom("consumable")
-				.innerJoin("item", (join) => join.onRef("consumable.itemId", "=", "item.id"))
-				.selectAll("item")
-				.select(["consumable.itemId", "consumable.type", "consumable.effectDuration", "consumable.effects"]),
+	queries: {
+		get: (db, id) => selectConsumableItemQuery(db).where("consumable.itemId", "=", id),
+		getAll: selectConsumableItemQuery,
+		getParentsById: repositoryQueries.consumable.getParentsById,
+		getChildrenById: repositoryQueries.consumable.getChildrenById,
 	},
 	fieldGroupMap: {
 		基本信息: ["name", "type", "itemSourceType", "dataSources", "details"],

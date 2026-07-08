@@ -1,10 +1,10 @@
 import { defaultData } from "@db/defaultData";
 import type { DB } from "@db/generated/zod/index";
+import { getDB } from "@db/repositories/database";
 import { A, useNavigate, useParams } from "@solidjs/router";
 import {
 	createEffect,
 	createMemo,
-	createResource,
 	createSignal,
 	For,
 	type JSX,
@@ -61,7 +61,7 @@ export default function WikiSubPage() {
 
 	/**
 	 * 表格配置和首包数据需要一起提交：配置变化后先等待对应数据源 ready，
-	 * 后续同 configKey 的 liveQuery 更新只刷新 rows，避免表头和表体使用不同版本。
+	 * 后续同 configKey 的 查询订阅 更新只刷新 rows，避免表头和表体使用不同版本。
 	 */
 	const tableConfigRequest = createMemo(() => {
 		const configFactory = dataConfig();
@@ -84,7 +84,7 @@ export default function WikiSubPage() {
 
 	const liveTableRows = createLiveKyselyQuery<Record<string, unknown>>((db) => {
 		const request = tableConfigRequest();
-		return request?.config.dataFetcher.liveQuery?.(db) ?? null;
+		return request?.config.queries.getAll?.(db) ?? null;
 	});
 
 	/**
@@ -104,21 +104,12 @@ export default function WikiSubPage() {
 				// 卡片层作用域句柄:drill 用 pushCard 并入同组,editor 用 openForm 新建表单层。
 				const cardOverlay = useOverlay();
 				const primaryKeyValue = data[config.primaryKey as string];
-				const [detailData] = createResource(
-					() => (primaryKeyValue == null ? data : String(primaryKeyValue)),
-					async (source: string | Record<string, unknown>) => {
-						if (typeof source !== "string") return source;
-						// 列表行可以是轻量投影；卡片和编辑器必须使用 dataFetcher.get 读取完整实体。
-						// 设计目的：把列表吞吐和详情实体边界分开，避免大表切页时一次性加载所有嵌套子表。
-						try {
-							return ((await config.dataFetcher.get(source)) ?? data) as Record<string, unknown>;
-						} catch (error) {
-							console.error("[WikiCard] 详情查询失败，回退到列表行数据", error);
-							return data;
-						}
-					},
-				);
-
+				const primaryKeyString = primaryKeyValue == null ? "" : String(primaryKeyValue);
+				const liveDetailData = createLiveKyselyQuery<Record<string, unknown>>((db) => {
+					if (!primaryKeyString) return null;
+					return config.queries.get?.(db, primaryKeyString) ?? null;
+				});
+				const detailData = createMemo(() => liveDetailData.rows()[0] ?? data);
 				return (
 					<Show
 						when={detailData()}
@@ -128,56 +119,54 @@ export default function WikiSubPage() {
 							</div>
 						}
 					>
-						{(validDetailData) => (
-							<DataRenderer
-								primaryKey={config.primaryKey}
-								dictionary={config.dictionary}
-								deleteCallback={config.card.deleteCallback}
-								openCard={(nextType, nextData) => cardOverlay.pushCard(buildCardEntry(nextType, nextData))}
-								closeCard={cardApi.close}
-								openEditor={(nextData) => {
-									cardOverlay.openForm({
-										render: (api) => (
-											<Form
-												tableName={type}
-												value={nextData}
-												primaryKey={config.primaryKey}
-												defaultValue={config.defaultData}
-												dataSchema={config.dataSchema}
-												dictionary={config.dictionary}
-												hiddenFields={config.form.hiddenFields}
-												fieldGroupMap={config.fieldGroupMap}
-												renderers={config.form.renderers}
-												inheritsFrom={config.inheritsFrom}
-												embeds={config.embeds}
-												onInsert={async (value) => {
-													const result = await config.form.onInsert(value);
-													api.close();
-													return result;
-												}}
-												onUpdate={async (primaryKeyValue, value) => {
-													const result = await config.form.onUpdate(primaryKeyValue, value);
-													api.close();
-													return result;
-												}}
-											/>
-										),
-									});
-								}}
-								editAbleCallback={config.card.editAbleCallback}
-								tableName={type}
-								data={validDetailData()}
-								dataSchema={config.dataSchema}
-								hiddenFields={config.card.hiddenFields}
-								fieldGroupMap={config.fieldGroupMap}
-								fieldGenerator={config.card.fieldGenerator}
-								inheritsFrom={config.inheritsFrom}
-								embeds={config.embeds}
-								relationOverrides={config.card.relationOverrides}
-								after={config.card.after}
-								before={config.card.before}
-							/>
-						)}
+						<DataRenderer
+							primaryKey={config.primaryKey}
+							dictionary={config.dictionary}
+							deleteCallback={config.card.deleteCallback}
+							openCard={(nextType, nextData) => cardOverlay.pushCard(buildCardEntry(nextType, nextData))}
+							closeCard={cardApi.close}
+							openEditor={(nextData) => {
+								cardOverlay.openForm({
+									render: (api) => (
+										<Form
+											tableName={type}
+											value={nextData}
+											primaryKey={config.primaryKey}
+											defaultValue={config.defaultData}
+											dataSchema={config.dataSchema}
+											dictionary={config.dictionary}
+											hiddenFields={config.form.hiddenFields}
+											fieldGroupMap={config.fieldGroupMap}
+											renderers={config.form.renderers}
+											inheritsFrom={config.inheritsFrom}
+											embeds={config.embeds}
+											onInsert={async (value) => {
+												const result = await config.form.onInsert(value);
+												api.close();
+												return result;
+											}}
+											onUpdate={async (primaryKeyValue, value) => {
+												const result = await config.form.onUpdate(primaryKeyValue, value);
+												api.close();
+												return result;
+											}}
+										/>
+									),
+								});
+							}}
+							editAbleCallback={config.card.editAbleCallback}
+							tableName={type}
+							data={detailData}
+							dataSchema={config.dataSchema}
+							hiddenFields={config.card.hiddenFields}
+							fieldGroupMap={config.fieldGroupMap}
+							fieldGenerator={config.card.fieldGenerator}
+							inheritsFrom={config.inheritsFrom}
+							embeds={config.embeds}
+							relationOverrides={config.card.relationOverrides}
+							after={config.card.after}
+							before={config.card.before}
+						/>
 					</Show>
 				);
 			},
@@ -225,11 +214,11 @@ export default function WikiSubPage() {
 	let liveLoadingConfigKey: string | undefined;
 	createEffect(() => {
 		const request = tableConfigRequest();
-		if (!request || !request.config.dataFetcher.liveQuery) return;
+		if (!request || !request.config.queries.getAll) return;
 
 		const status = liveTableRows.status();
 		if (status === "loading") {
-			// 记录本轮 liveQuery 对应的配置，ready 时只允许提交同一轮结果。
+			// 记录本轮 查询订阅 对应的配置，ready 时只允许提交同一轮结果。
 			liveLoadingConfigKey = request.configKey;
 			return;
 		}
@@ -249,13 +238,13 @@ export default function WikiSubPage() {
 
 	createEffect(() => {
 		const request = tableConfigRequest();
-		if (!request || request.config.dataFetcher.liveQuery) return;
+		if (!request || request.config.queries.getAll) return;
 
 		let disposed = false;
 		const configKey = request.configKey;
 		// getAll 是一次性异步查询；返回时校验 configKey，丢弃已经过期的结果。
-		void request.config.dataFetcher
-			.getAll()
+		void getDB()
+			.then((db) => request.config.queries.getAll?.(db).execute() ?? [])
 			.then((rows) => {
 				if (disposed || tableConfigRequest()?.configKey !== configKey) return;
 				setCommittedTable({

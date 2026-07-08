@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { insertStatistic } from "@db/generated/repositories/statistic";
 import { AddressSchema, type address } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
@@ -12,14 +12,7 @@ export const ADDRESS_DATA_CONFIG: TableDataConfig<address> = (dictionary) => ({
 	dataSchema: AddressSchema,
 	primaryKey: "id",
 	defaultData: defaultData.address,
-	dataFetcher: {
-		get: repositoryMethods.address.select,
-		getAll: repositoryMethods.address.selectAll,
-		liveQuery: (db) => db.selectFrom("address").selectAll("address"),
-		insert: repositoryMethods.address.insert,
-		update: repositoryMethods.address.update,
-		delete: repositoryMethods.address.delete,
-	},
+	queries: repositoryQueries.address,
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name", "type"],

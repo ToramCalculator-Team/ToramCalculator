@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { deleteCrystal, insertCrystal, updateCrystal } from "@db/generated/repositories/crystal";
 import { deleteItem, insertItem, updateItem } from "@db/generated/repositories/item";
 import { insertStatistic } from "@db/generated/repositories/statistic";
@@ -9,7 +9,7 @@ import { createId } from "@paralleldrive/cuid2";
 import type { z } from "zod/v4";
 import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
 import { Icons } from "~/components/icons";
-import type { TableDataConfig } from "../data-config";
+import type { QueryDB, TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
 const CrystalItemSchema = ItemSchema.extend(CrystalSchema.shape);
@@ -20,24 +20,16 @@ const CrystalItemDefaultData: CrystalItem = {
 	...defaultData.item,
 };
 
-const getCrystalItem = async (id: string): Promise<CrystalItem> => {
-	const db = await getDB();
-	const crystalRow = await db.selectFrom("crystal").where("itemId", "=", id).selectAll().executeTakeFirstOrThrow();
-	const item = await db.selectFrom("item").where("id", "=", crystalRow.itemId).selectAll().executeTakeFirstOrThrow();
-	return {
-		...crystalRow,
-		...item,
-	};
-};
-
-const getAllCrystalItems = async (): Promise<CrystalItem[]> => {
-	const db = await getDB();
-	return await db
+/**
+ * 设计思路：crystal 在业务实体上继承 item 字段，列表订阅和详情读取必须共用同一条联合查询，避免列选择分裂。
+ * 函数职责：构造 crystal 与 item 合并后的业务实体查询。
+ */
+const selectCrystalItemQuery = (db: QueryDB) =>
+	db
 		.selectFrom("crystal")
 		.innerJoin("item", (join) => join.onRef("crystal.itemId", "=", "item.id"))
-		.selectAll()
-		.execute();
-};
+		.selectAll("item")
+		.select(["crystal.itemId", "crystal.type", "crystal.modifiers"]);
 
 const insertCrystalItem = async (data: CrystalItem): Promise<CrystalItem> => {
 	const db = await getDB();
@@ -101,18 +93,11 @@ export const CRYSTAL_DATA_CONFIG: TableDataConfig<CrystalItem, crystal> = (dicti
 	dataSchema: CrystalItemSchema,
 	primaryKey: "itemId",
 	defaultData: CrystalItemDefaultData,
-	dataFetcher: {
-		get: getCrystalItem,
-		getAll: getAllCrystalItems,
-		insert: insertCrystalItem,
-		update: updateCrystalItem,
-		delete: deleteCrystalItem,
-		liveQuery: (db) =>
-			db
-				.selectFrom("crystal")
-				.innerJoin("item", (join) => join.onRef("crystal.itemId", "=", "item.id"))
-				.selectAll("item")
-				.select(["crystal.itemId", "crystal.type", "crystal.modifiers"]),
+	queries: {
+		get: (db, id) => selectCrystalItemQuery(db).where("crystal.itemId", "=", id),
+		getAll: selectCrystalItemQuery,
+		getParentsById: repositoryQueries.crystal.getParentsById,
+		getChildrenById: repositoryQueries.crystal.getChildrenById,
 	},
 	fieldGroupMap: {
 		基本信息: ["name", "type", "itemSourceType", "dataSources", "details", "modifiers"],

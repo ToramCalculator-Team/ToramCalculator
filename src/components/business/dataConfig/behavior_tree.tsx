@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { BehaviorTreeSchema, type behavior_tree } from "@db/generated/zod";
 import { createSignal } from "solid-js";
 import { Input } from "~/components/controls/input";
@@ -44,14 +44,7 @@ export const BEHAVIOR_TREE_DATA_CONFIG: TableDataConfig<behavior_tree> = (dictio
 	dataSchema: BehaviorTreeSchema,
 	primaryKey: "id",
 	defaultData: defaultData.behavior_tree,
-	dataFetcher: {
-		get: repositoryMethods.behavior_tree.select,
-		getAll: repositoryMethods.behavior_tree.selectAll,
-		liveQuery: (db) => db.selectFrom("behavior_tree").selectAll("behavior_tree"),
-		insert: repositoryMethods.behavior_tree.insert,
-		update: repositoryMethods.behavior_tree.update,
-		delete: repositoryMethods.behavior_tree.delete,
-	},
+	queries: repositoryQueries.behavior_tree,
 	fieldGroupMap: {
 		ID: ["id"],
 		基础信息: ["name", "definition", "agent", "attributeSlots"],

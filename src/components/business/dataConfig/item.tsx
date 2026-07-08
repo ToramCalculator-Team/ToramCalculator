@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { insertStatistic } from "@db/generated/repositories/statistic";
 import { ItemSchema, type item } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
@@ -13,14 +13,7 @@ export const ITEM_DATA_CONFIG: TableDataConfig<item> = (dictionary) => ({
 	dataSchema: ItemSchema,
 	primaryKey: "id",
 	defaultData: defaultData.item,
-	dataFetcher: {
-		get: repositoryMethods.item.select,
-		getAll: repositoryMethods.item.selectAll,
-		liveQuery: (db) => db.selectFrom("item").selectAll("item"),
-		insert: repositoryMethods.item.insert,
-		update: repositoryMethods.item.update,
-		delete: repositoryMethods.item.delete,
-	},
+	queries: repositoryQueries.item,
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name", "itemType", "itemSourceType"],

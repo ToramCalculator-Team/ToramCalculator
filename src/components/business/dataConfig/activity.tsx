@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { insertStatistic } from "@db/generated/repositories/statistic";
 import { ActivitySchema, type activity } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
@@ -12,14 +12,7 @@ export const ACTIVITY_DATA_CONFIG: TableDataConfig<activity> = (dictionary) => (
 	dataSchema: ActivitySchema,
 	primaryKey: "id",
 	defaultData: defaultData.activity,
-	dataFetcher: {
-		get: repositoryMethods.activity.select,
-		getAll: repositoryMethods.activity.selectAll,
-		liveQuery: (db) => db.selectFrom("activity").selectAll("activity"),
-		insert: repositoryMethods.activity.insert,
-		update: repositoryMethods.activity.update,
-		delete: repositoryMethods.activity.delete,
-	},
+	queries: repositoryQueries.activity,
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name"],

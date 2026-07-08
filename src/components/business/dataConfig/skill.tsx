@@ -1,22 +1,22 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods } from "@db/generated/repositories";
+import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { selectAllSkillVariantsByBelongtoskillid } from "@db/generated/repositories/skill_variant";
 import { insertStatistic } from "@db/generated/repositories/statistic";
 import { SkillSchema, type skill } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { SKILL_TREE_TYPE, type SkillTreeType } from "@db/schema/enums";
 import { createId } from "@paralleldrive/cuid2";
+import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import z from "zod/v4";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
-import type { TableDataConfig } from "../data-config";
+import type { QueryDB, TableDataConfig } from "../data-config";
 import { DefaultFieldClass } from "../form/SchemaFieldRenderer";
 import { getUserContext } from "../utils/context";
 import {
 	deleteSkillVariantWithBehaviorTrees,
 	SkillVariantWithBehaviorTreesSchema,
 	saveSkillVariantWithBehaviorTrees,
-	selectSkillVariantsWithBehaviorTreesByBelongToskillid,
 } from "./skill_variant";
 
 const SkillWithVariantsSchema = SkillSchema.extend({
@@ -31,25 +31,43 @@ const defaultDataWithVariants: SkillWithVariants = {
 	variants: [],
 };
 
-const getSkillWithVariants = async (id: string): Promise<SkillWithVariants> => {
-	const db = await getDB();
-	const skill = await db.selectFrom("skill").where("skill.id", "=", id).selectAll("skill").executeTakeFirstOrThrow();
-	return {
-		...skill,
-		variants: await selectSkillVariantsWithBehaviorTreesByBelongToskillid(id),
-	};
-};
-
-const getAllSkillWithVariants = async (): Promise<SkillWithVariants[]> => {
-	const db = await getDB();
-	const skills = await db.selectFrom("skill").selectAll("skill").execute();
-	return await Promise.all(
-		skills.map(async (skill) => ({
-			...skill,
-			variants: await selectSkillVariantsWithBehaviorTreesByBelongToskillid(skill.id),
-		})),
-	);
-};
+/**
+ * 设计思路：skill 详情需要保留 variants 聚合实体，但列表订阅只需主表行，因此详情查询单独固化为可编译的聚合 builder。
+ * 函数职责：构造 skill 按主键或列表读取时可复用的 variants 聚合查询。
+ */
+const selectSkillWithVariantsQuery = (db: QueryDB) =>
+	db
+		.selectFrom("skill")
+		.selectAll("skill")
+		.select((eb) => [
+			jsonArrayFrom(
+				eb
+					.selectFrom("skill_variant")
+					.whereRef("skill_variant.belongToskillId", "=", "skill.id")
+					.selectAll("skill_variant")
+					.select((variantEb) => [
+						jsonObjectFrom(
+							variantEb
+								.selectFrom("behavior_tree")
+								.whereRef("behavior_tree.activeOwnerId", "=", "skill_variant.id")
+								.selectAll("behavior_tree"),
+						).as("activeBehaviorTree"),
+						jsonObjectFrom(
+							variantEb
+								.selectFrom("behavior_tree")
+								.whereRef("behavior_tree.passiveOwnerId", "=", "skill_variant.id")
+								.selectAll("behavior_tree"),
+						).as("passiveBehaviorTree"),
+						jsonArrayFrom(
+							variantEb
+								.selectFrom("behavior_tree")
+								.whereRef("behavior_tree.registeredOwnerId", "=", "skill_variant.id")
+								.selectAll("behavior_tree"),
+						).as("registeredBehaviorTrees"),
+					]),
+			).as("variants"),
+		])
+		.$castTo<SkillWithVariants>();
 
 const insertSkillWithVariants = async (data: SkillWithVariants): Promise<SkillWithVariants> => {
 	const db = await getDB();
@@ -147,15 +165,10 @@ export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill, SkillL
 	dataSchema: SkillWithVariantsSchema,
 	primaryKey: "id",
 	defaultData: defaultDataWithVariants,
-	dataFetcher: {
-		get: getSkillWithVariants,
-		getAll: getAllSkillWithVariants,
-		insert: insertSkillWithVariants,
-		update: updateSkillWithVariants,
-		delete: deleteSkillWithVariants,
-		// 列表页只需要 skill 自身字段；variants 在打开详情或编辑时按主键读取完整实体。
-		// 设计目的：避免 wiki 快速切页时把 skill_variant 子表聚合进每个列表行，降低 PGlite 初始订阅压力。
-		liveQuery: (db) => db.selectFrom("skill").selectAll("skill"),
+	queries: {
+		...repositoryQueries.skill,
+		get: (db, id) => selectSkillWithVariantsQuery(db).where("skill.id", "=", id),
+		getAll: repositoryQueries.skill.getAll,
 	},
 	fieldGroupMap: {
 		ID: ["id"],
