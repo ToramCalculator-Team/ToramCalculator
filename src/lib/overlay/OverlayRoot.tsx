@@ -3,22 +3,83 @@
  * @description 应用级弹出层根容器。取代旧的 GlobalCardContainer + GlobalFormContainer。
  *
  * 职责:
- * - 遍历 overlayStore.layers,按 kind 渲染对应层容器(CardLayer / FormLayer)。
+ * - 遍历 overlayStore.layers,按 kind 渲染对应层容器(DialogLayer / SheetLayer)。
  * - 每层外包 OverlayScopeProvider,注入本层 scope 供层内 render 使用 useOverlay 时读取。
  * - z-index 从 layerZIndex 派生,退休原来的 topGroup 二元切换。
- * - 层内多条 entry 的堆叠视觉(旋转、偏移)由现有 Card / FormSheet 组件自己处理。
+ * - 层内多条 entry 的堆叠视觉(旋转、偏移)由 DialogLayer / SheetLayer 处理。
  */
-import { For, Show } from "solid-js";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
+import { createEffect, For, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { Card } from "~/components/business/card/Card";
-import { FormSheet } from "~/components/business/form/FormSheet";
+import { Dialog } from "~/components/containers/dialog";
+import { SheetSurface } from "~/components/containers/sheet";
+import { useMedia } from "~/contexts/Media-component";
 import { store } from "~/store";
 import { makeEntryApi, OverlayScopeProvider } from "./OverlayContext";
-import { commitEntryRemoval, commitLayerRemoval, layerZIndex, type OverlayLayer, overlayLayers } from "./overlayStore";
+import {
+	closeEntry,
+	commitEntryRemoval,
+	commitLayerRemoval,
+	layerZIndex,
+	type OverlayEntryState,
+	type OverlayLayer,
+	overlayLayers,
+} from "./overlayStore";
 
-function CardLayer(props: { layer: OverlayLayer }) {
+function DialogEntry(props: {
+	layerId: string;
+	entry: OverlayEntryState;
+	index: number;
+	activeSize: () => number;
+	total: () => number;
+}) {
+	const isVisible = () => props.total() - props.index < 5;
+	const rotation = () => (props.activeSize() - props.index - 1) * 2;
+	const closingDelay = () => (props.entry.closing ? Math.max(0, props.activeSize() - 1 - props.index) * 0.15 : 0);
+	const title = () => (typeof props.entry.title === "function" ? props.entry.title() : props.entry.title);
+
+	createEffect(() => {
+		if (props.entry.closing && !store.settings.userInterface.isAnimationEnabled) {
+			commitEntryRemoval(props.layerId, props.entry.id);
+		}
+	});
+
+	const api = makeEntryApi({
+		layerId: props.layerId,
+		entryId: props.entry.id,
+		index: () => props.index,
+		total: props.total,
+	});
+
+	return (
+		<Presence exitBeforeEnter>
+			<Show when={isVisible() && !props.entry.closing}>
+				<Motion.div
+					initial={{ transform: "translate(-50%, -50%) rotate(0deg)", opacity: 0 }}
+					animate={{ transform: `translate(-50%, -50%) rotate(${rotation()}deg)`, opacity: 1 }}
+					exit={{ transform: "translate(-50%, -50%) rotate(0deg)", opacity: 0 }}
+					transition={{
+						duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0,
+						delay: closingDelay(),
+					}}
+					onMotionComplete={() => {
+						if (props.entry.closing) commitEntryRemoval(props.layerId, props.entry.id);
+					}}
+					class="DialogEntry fixed top-1/2 left-1/2 max-h-[70vh] lg:max-w-240 w-full h-full max-w-[50vw] portrait:max-w-[90vw]"
+					style={{ "z-index": props.index }}
+					onClick={(e) => e.stopPropagation()}
+				>
+					<Dialog title={title()} titleIcon={props.entry.titleIcon} maxWith={props.entry.maxWith}>
+						{props.entry.render(api)}
+					</Dialog>
+				</Motion.div>
+			</Show>
+		</Presence>
+	);
+}
+
+function DialogLayer(props: { layer: OverlayLayer }) {
 	const entries = () => props.layer.entries;
-	// 层内堆叠角度用 activeSize(非 closing 的数量)计算,与旧行为一致
 	const activeSize = () => entries().filter((e) => !e.closing).length;
 
 	return (
@@ -31,38 +92,23 @@ function CardLayer(props: { layer: OverlayLayer }) {
 					class="DialogBG bg-primary-color-10 pointer-events-auto fixed top-0 left-0 grid h-dvh w-dvw transform place-items-center backdrop-blur"
 					style={{ "z-index": layerZIndex(props.layer.id) }}
 					onClick={() => {
-						// 遮罩点击关最顶部 entry(旧 GlobalCardContainer 行为一致)
-						const top = entries().findLast((e) => !e.closing);
-						if (top) commitEntryRemoval(props.layer.id, top.id);
+						closeEntry(props.layer.id);
 					}}
 					onMotionComplete={() => {
 						if (props.layer.closing) commitLayerRemoval(props.layer.id);
 					}}
 				>
-					<OverlayScopeProvider layerId={props.layer.id} kind="card">
+					<OverlayScopeProvider layerId={props.layer.id} kind="dialog">
 						<For each={entries()}>
-							{(entry, entryIndex) => {
-								const api = makeEntryApi({
-									layerId: props.layer.id,
-									entryId: entry.id,
-									index: () => entryIndex(),
-									total: () => entries().length,
-								});
-								const content = entry.render(api);
-								return (
-									<Card
-										display={entries().length - entryIndex() < 5}
-										index={entryIndex()}
-										total={activeSize()}
-										titleIcon={entry.titleIcon}
-										title={entry.title ?? ""}
-										closing={entry.closing}
-										onExitComplete={() => commitEntryRemoval(props.layer.id, entry.id)}
-									>
-										{content}
-									</Card>
-								);
-							}}
+							{(entry, entryIndex) => (
+								<DialogEntry
+									layerId={props.layer.id}
+									entry={entry}
+									index={entryIndex()}
+									activeSize={activeSize}
+									total={() => entries().length}
+								/>
+							)}
 						</For>
 					</OverlayScopeProvider>
 				</Motion.div>
@@ -71,7 +117,63 @@ function CardLayer(props: { layer: OverlayLayer }) {
 	);
 }
 
-function FormLayer(props: { layer: OverlayLayer }) {
+function SheetEntry(props: { layerId: string; entry: OverlayEntryState; index: number; total: () => number }) {
+	const media = useMedia();
+	const offsetLevel = () => props.total() - props.index - 1;
+
+	createEffect(() => {
+		if (props.entry.closing && !store.settings.userInterface.isAnimationEnabled) {
+			commitEntryRemoval(props.layerId, props.entry.id);
+		}
+	});
+
+	const api = makeEntryApi({
+		layerId: props.layerId,
+		entryId: props.entry.id,
+		index: () => props.index,
+		total: props.total,
+	});
+
+	return (
+		<Presence exitBeforeEnter>
+			<Show when={!props.entry.closing}>
+				<Motion.div
+					animate={{
+						transform: [media.orientation === "landscape" ? "translateX(10%)" : "translateY(5%)", "translateY(0)"],
+						filter: ["blur(12px)", "blur(0px)"],
+					}}
+					exit={{
+						transform: ["translateY(0)", media.orientation === "landscape" ? "translateX(10%)" : "translateY(5%)"],
+						filter: ["blur(0px)", "blur(12px)"],
+					}}
+					transition={{
+						duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0,
+					}}
+					onMotionComplete={() => {
+						if (props.entry.closing) commitEntryRemoval(props.layerId, props.entry.id);
+					}}
+					class="SheetContent absolute bg-primary-color shadow-dividing-color shadow-dialog flex flex-col items-center overflow-y-auto portrait:rounded-t-[12px] portrait:bottom-0 portrait:w-dvw landscape:right-0 landscape:h-dvh"
+					style={{
+						"z-index": props.index,
+						width: media.orientation === "landscape" ? `${offsetLevel() > 0 ? 100 : 90}vw` : "100vw",
+						height: media.orientation === "landscape" ? "100vh" : `${offsetLevel() > 0 ? 100 : 90}vh`,
+					}}
+					onClick={(e) => e.stopPropagation()}
+				>
+					<OverlayScrollbarsComponent
+						element="div"
+						options={{ scrollbars: { autoHide: "scroll" } }}
+						class="h-full w-full flex-1"
+					>
+						<SheetSurface>{props.entry.render(api)}</SheetSurface>
+					</OverlayScrollbarsComponent>
+				</Motion.div>
+			</Show>
+		</Presence>
+	);
+}
+
+function SheetLayer(props: { layer: OverlayLayer }) {
 	const entries = () => props.layer.entries;
 
 	return (
@@ -83,31 +185,21 @@ function FormLayer(props: { layer: OverlayLayer }) {
 					transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
 					class="GlobalFormContainer pointer-events-auto fixed top-0 left-0 h-dvh w-dvw"
 					style={{ "z-index": layerZIndex(props.layer.id) }}
+					onClick={() => closeEntry(props.layer.id)}
 					onMotionComplete={() => {
 						if (props.layer.closing) commitLayerRemoval(props.layer.id);
 					}}
 				>
-					<OverlayScopeProvider layerId={props.layer.id} kind="form">
+					<OverlayScopeProvider layerId={props.layer.id} kind="sheet">
 						<For each={entries()}>
-							{(entry, entryIndex) => {
-								const api = makeEntryApi({
-									layerId: props.layer.id,
-									entryId: entry.id,
-									index: () => entryIndex(),
-									total: () => entries().length,
-								});
-								return (
-									<FormSheet
-										display={!entry.closing}
-										index={entryIndex()}
-										total={entries().length}
-										onClose={api.closeTop}
-										onExitComplete={() => commitEntryRemoval(props.layer.id, entry.id)}
-									>
-										{entry.render(api)}
-									</FormSheet>
-								);
-							}}
+							{(entry, entryIndex) => (
+								<SheetEntry
+									layerId={props.layer.id}
+									entry={entry}
+									index={entryIndex()}
+									total={() => entries().length}
+								/>
+							)}
 						</For>
 					</OverlayScopeProvider>
 				</Motion.div>
@@ -120,8 +212,8 @@ export function OverlayRoot() {
 	return (
 		<For each={overlayLayers()}>
 			{(layer) => (
-				<Show when={layer.kind === "card"} fallback={<FormLayer layer={layer} />}>
-					<CardLayer layer={layer} />
+				<Show when={layer.kind === "dialog"} fallback={<SheetLayer layer={layer} />}>
+					<DialogLayer layer={layer} />
 				</Show>
 			)}
 		</For>

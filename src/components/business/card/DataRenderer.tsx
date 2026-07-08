@@ -44,7 +44,7 @@ export type DataRendererProps<
 		[K in keyof T]: (data: T, key: K, dictionary: Dic<T>) => JSX.Element;
 	}>;
 	/**
-	 * 当前表记录在卡片入口和关联入口里的显示名。
+	 * 当前表记录在详情入口和关联入口里的显示名。
 	 * 设计目的：把“某条记录如何被引用入口命名”的规则收敛到所属表配置，避免通用渲染器按字段顺序猜测业务文案。
 	 */
 	displayName?: (data: T, dictionary: Dictionary) => string;
@@ -58,15 +58,17 @@ export type DataRendererProps<
 	deleteCallback: (id: string) => Promise<T | undefined>;
 	// 编辑回调
 	openEditor: (data: T) => void;
-	// 关联卡片打开回调
-	openCard: (type: keyof DB, data: Record<string, unknown>) => void;
-	// 关闭当前卡片
-	closeCard: () => void;
+	// 关联记录选择回调；具体是 pushDialog、局部切换还是其它交互由外层决定
+	onOpenRecord?: (type: keyof DB, data: Record<string, unknown>) => void;
+	// 删除完成回调；具体是否关闭 dialog、清空选择或刷新局部状态由外层决定
+	onDeleted?: (data: T | undefined) => void;
 	// 编辑权限计算回调
 	editAbleCallback: (data: T) => Promise<boolean>;
-	// 前置内容，通常是卡片展示控制器
+	// 可选媒体内容
+	media?: JSX.Element;
+	// 前置内容，通常是当前记录的派生展示控制器
 	before?: (data: Accessor<T>, setDisplayData: (data: T | undefined) => void) => JSX.Element;
-	// 后置内容，通常是外键关联数据弹出按钮组
+	// 后置内容
 	after?: JSX.Element;
 };
 
@@ -91,7 +93,7 @@ function findNameSideRelation(fromTable: string) {
 
 /**
  * 设计思路：通用渲染器不假设所有表都有相同命名字段，因此按稳定优先级推导兜底名称。
- * 函数职责：从单条记录中提取一个适合卡片入口展示的文本。
+ * 函数职责：从单条记录中提取一个适合入口展示的文本。
  */
 function getReadableName(tableName: string, record: Record<string, unknown>): string {
 	if (typeof record?.name === "string" && record.name) return record.name;
@@ -114,7 +116,7 @@ function getReadableName(tableName: string, record: Record<string, unknown>): st
 
 /**
  * 设计思路：业务配置比通用字段猜测更了解某张表如何命名实体。
- * 函数职责：读取目标表卡片配置中的展示名规则。
+ * 函数职责：读取目标表详情配置中的展示名规则。
  */
 function getConfiguredDisplayName(
 	tableName: keyof DB,
@@ -192,7 +194,7 @@ function detectSiblingSubtypes(parentTable: keyof DB, selfTable: keyof DB): Arra
 type RelationRowsByTable = Partial<Record<keyof DB, unknown[]>>;
 
 /**
- * 设计思路：关联生成器返回的是按目标表分组的查询集合，执行边界应留在卡片关联区。
+ * 设计思路：关联生成器返回的是按目标表分组的查询集合，执行边界应留在数据库对象展示区。
  * 函数职责：执行一组关联查询，并保留目标表分组结构。
  */
 async function executeRelationQueryMap(queryMap: RelationQueryMap | null | undefined): Promise<RelationRowsByTable> {
@@ -213,7 +215,7 @@ async function executeRelationQueryMap(queryMap: RelationQueryMap | null | undef
 }
 
 /**
- * 设计思路：卡片只消费当前行访问器，所有数据库变化都通过查询订阅回流，局部派生展示只作为临时覆盖。
+ * 设计思路：DataRenderer 只消费当前行访问器，所有数据库变化都通过查询订阅回流，局部派生展示只作为临时覆盖。
  * 函数职责：渲染单条业务记录、内嵌子表、自动关联内容以及编辑删除入口。
  */
 export function DataRenderer<T extends Record<string, unknown>, TSchema extends ZodObject<{ [K in keyof T]: ZodType }>>(
@@ -539,7 +541,7 @@ export function DataRenderer<T extends Record<string, unknown>, TSchema extends 
 
 	return (
 		<div class="FieldGroupContainer flex w-full flex-1 flex-col gap-3">
-			<div class="Image bg-area-color h-[18vh] w-full rounded"></div>
+			<Show when={props.media}>{(media) => media()}</Show>
 			{/* 前置内容 */}
 			<Show when={props.before}>{(before) => before()(sourceData, setDisplayData)}</Show>
 			{/* 主内容 */}
@@ -595,7 +597,7 @@ export function DataRenderer<T extends Record<string, unknown>, TSchema extends 
 												<Button
 													level="default"
 													onclick={() => {
-														props.openCard(embed.table, item as Record<string, unknown>);
+														props.onOpenRecord?.(embed.table, item as Record<string, unknown>);
 													}}
 													class="lg:w-fit lg:border-dividing-color lg:border-2"
 												>
@@ -627,7 +629,7 @@ export function DataRenderer<T extends Record<string, unknown>, TSchema extends 
 												<Button
 													level={group.isParent ? "quaternary" : "default"}
 													onclick={() => {
-														props.openCard(group.tableName, item.data as Record<string, unknown>);
+														props.onOpenRecord?.(group.tableName, item.data as Record<string, unknown>);
 													}}
 													class="lg:w-fit lg:border-dividing-color lg:border-2"
 												>
@@ -656,16 +658,15 @@ export function DataRenderer<T extends Record<string, unknown>, TSchema extends 
 							class="w-fit"
 							icon={<Icons.Outline.Trash />}
 							onclick={async () => {
-								props.deleteCallback(data()[props.primaryKey] as string);
-								props.closeCard();
+								const deleted = await props.deleteCallback(data()[props.primaryKey] as string);
+								props.onDeleted?.(deleted);
 							}}
 						/>
 						<Button
 							class="w-fit"
 							icon={<Icons.Outline.Edit />}
 							onclick={() => {
-								// 不关卡片:编辑表单作为当前卡片层的子层叠在其上(openEditor→openForm,parentId=卡片层)。
-								// 关表单回到卡片;关卡片会级联带走表单。若这里先 closeCard,表单会挂在正在关闭的父层下被级联清除。
+								// 只发起编辑请求；具体使用 sheet、dialog 或局部编辑由外层 openEditor 决定。
 								props.openEditor(data());
 							}}
 						/>

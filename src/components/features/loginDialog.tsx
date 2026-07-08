@@ -5,14 +5,15 @@ import { Motion, Presence } from "solid-motionone";
 import { z } from "zod/v4";
 import defaultUserAvatarUrl from "~/../public/icons/512.png?url";
 import { Button } from "~/components/controls/button";
+import { useDictionary } from "~/contexts/Dictionary";
+import { useOverlay } from "~/lib/overlay/OverlayContext";
+import { closeLayer } from "~/lib/overlay/overlayStore";
 import { emailExists, getUserByCookie } from "~/lib/utils/session";
 import { clearSessionAccountStore, hydrateSessionAccountStore } from "~/session/sessionAccountStore";
 import { bindTemporaryAccountToUser, clearLocalChanges, ensureTemporaryAccount } from "~/session/temporaryAccount";
 import { setStore, store } from "~/store";
-import { Dialog } from "../containers/dialog";
 import type { InputStateType } from "../controls/input";
 import { Input } from "../controls/input";
-import { useDictionary } from "~/contexts/Dictionary";
 
 function fieldInfo(field: AnyFieldApi): string {
 	const errors =
@@ -47,6 +48,8 @@ export const LoginDialog = () => {
 
 	// UI文本字典
 	const dictionary = useDictionary();
+	const overlay = useOverlay();
+	let loginDialogLayerId: string | undefined;
 
 	const logIn = async (value: LoginFormProps) => {
 		try {
@@ -211,100 +214,59 @@ export const LoginDialog = () => {
 		},
 	}));
 
-	// 关闭弹出层时重置表单
-	createEffect(
-		on(
-			() => store.pages.loginDialogState,
-			() => {
-				setFormModule("unknown");
-				form.reset();
-			},
-		),
-	);
+	const resetDialogState = () => {
+		setFormModule("unknown");
+		form.reset();
+	};
 
-	return (
-		<Dialog
-			state={store.pages.loginDialogState}
-			setState={() => setStore("pages", "loginDialogState", false)}
-			title={formTitle()}
-			maxWith="480px"
-		>
-			<Show
-				when={!store.session.user?.id && store.pages.loginDialogState}
-				fallback={
-					// 登出弹窗
-					<div class="flex w-full flex-col items-center gap-4 lg:py-0">
-						<div class="flex w-full items-center gap-1">
-							<Button class="LoginOut flex-1" onClick={logOut}>
-								{dictionary().ui.actions.logOut}
-							</Button>
-						</div>
+	const renderLoginDialog = () => (
+		<Show
+			when={!store.session.user?.id}
+			fallback={
+				// 登出弹窗
+				<div class="flex w-full flex-col items-center gap-4 lg:py-0">
+					<div class="flex w-full items-center gap-1">
+						<Button class="LoginOut flex-1" onClick={logOut}>
+							{dictionary().ui.actions.logOut}
+						</Button>
 					</div>
-				}
+				</div>
+			}
+		>
+			<form
+				onSubmit={(e) => {
+					e.preventDefault();
+					e.stopPropagation();
+					form.handleSubmit();
+				}}
+				class="flex w-full flex-col"
 			>
-				<form
-					onSubmit={(e) => {
-						e.preventDefault();
-						e.stopPropagation();
-						form.handleSubmit();
+				<form.Field
+					name="email"
+					asyncDebounceMs={500}
+					validators={{
+						onChange: ({ value }) => {
+							const result = z.email().safeParse(value); // ✅ 使用 `safeParse` 避免抛出错误
+							if (!result.success) {
+								return "请输入正确的邮箱格式"; // ⬅️ 返回字符串，避免 `[object Object]`
+							}
+						},
+						onChangeAsync: async ({ value }) => {
+							const result = await emailExists(value);
+							if (result) {
+								setFormModule("logIn");
+							} else {
+								setFormModule("register");
+							}
+						},
 					}}
-					class="flex w-full flex-col"
-				>
-					<form.Field
-						name="email"
-						asyncDebounceMs={500}
-						validators={{
-							onChange: ({ value }) => {
-								const result = z.email().safeParse(value); // ✅ 使用 `safeParse` 避免抛出错误
-								if (!result.success) {
-									return "请输入正确的邮箱格式"; // ⬅️ 返回字符串，避免 `[object Object]`
-								}
-							},
-							onChangeAsync: async ({ value }) => {
-								const result = await emailExists(value);
-								if (result) {
-									setFormModule("logIn");
-								} else {
-									setFormModule("register");
-								}
-							},
-						}}
-						children={(field) => {
-							return (
-								<Input
-									title="邮箱"
-									// description="一定要填"
-									autocomplete="email"
-									type="text"
-									id={field().name}
-									name={field().name}
-									value={field().state.value}
-									onBlur={field().handleBlur}
-									onInput={(e) => field().handleChange(e.target.value)}
-									validationMessage={fieldInfo(field())}
-									class="w-full"
-								/>
-							);
-						}}
-					/>
-					<form.Field
-						name="password"
-						validators={{
-							onChange: ({ value }) => {
-								const result = z.string().min(6).safeParse(value); // ✅ 使用 `safeParse` 避免抛出错误
-								if (!result.success) {
-									return "密码至少6位"; // ⬅️ 返回字符串，避免 `[object Object]`
-								}
-							},
-						}}
-						children={(field) => (
+					children={(field) => {
+						return (
 							<Input
-								ref={setPasswordInputRef}
-								title="密码"
-								// description="也是个摆设"
-								state={passwordInputState()}
-								autocomplete="current-password"
-								type="password"
+								title="邮箱"
+								// description="一定要填"
+								autocomplete="email"
+								type="text"
 								id={field().name}
 								name={field().name}
 								value={field().state.value}
@@ -313,103 +275,161 @@ export const LoginDialog = () => {
 								validationMessage={fieldInfo(field())}
 								class="w-full"
 							/>
-						)}
-					/>
-					<Presence exitBeforeEnter>
-						<Show when={formModule() === "register"}>
-							<Motion.div
-								class={`grid`}
-								animate={{
-									gridTemplateRows: ["0fr", "1fr"],
-									paddingBlock: ["0rem", "0.75rem"],
-								}}
-								exit={{
-									paddingBlock: "0rem",
-									gridTemplateRows: ["1fr", "0fr"],
-								}}
-								transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-							>
-								<div class="h-full w-full overflow-hidden">
-									<form.Field
-										name="userName"
-										children={(field) => (
-											<Input
-												title="用户名"
-												// description="目前是个摆设"
-												autocomplete="off"
-												type="text"
-												id={field().name}
-												name={field().name}
-												value={field().state.value}
-												onBlur={field().handleBlur}
-												onInput={(e) => field().handleChange(e.target.value)}
-												validationMessage={fieldInfo(field())}
-												class="w-full"
-											/>
-										)}
-									/>
-									<form.Field
-										name="bindLocalAccount"
-										children={(field) => (
-											<Input
-												title="是否从本地数据创建"
-												// description="目前是个摆设"
-												autocomplete="off"
-												type="boolean"
-												id={field().name}
-												name={field().name}
-												onBlur={field().handleBlur}
-												onClick={() => {
-													field().setValue(!field().state.value);
-												}}
-												checked={field().state.value}
-												validationMessage={fieldInfo(field())}
-												class="w-full"
-											/>
-										)}
-									/>
-								</div>
-							</Motion.div>
-						</Show>
-					</Presence>
-					<form.Field
-						name="bindLocalAccount"
-						children={(field) => (
-							<Input
-								title="是否绑定本地数据"
-								type="boolean"
-								id={field().name}
-								name={field().name}
-								onBlur={field().handleBlur}
-								onClick={() => field().setValue((pre) => !pre)}
-								checked={field().state.value}
-								validationMessage={fieldInfo(field())}
-								class="w-full"
-							/>
-						)}
-					/>
-					<form.Subscribe
-						selector={(state) => ({
-							canSubmit: state.canSubmit,
-							isSubmitting: state.isSubmitting,
-						})}
-						children={(state) => {
-							return (
-								<div class="flex items-center gap-1 p-2">
-									<Button
-										level="primary"
-										class={`SubmitBtn flex-1`}
-										type="submit"
-										disabled={formModule() === "unknown" || !state().canSubmit}
-									>
-										{state().isSubmitting ? "..." : formTitle()}
-									</Button>
-								</div>
-							);
-						}}
-					/>
-				</form>
-			</Show>
-		</Dialog>
+						);
+					}}
+				/>
+				<form.Field
+					name="password"
+					validators={{
+						onChange: ({ value }) => {
+							const result = z.string().min(6).safeParse(value); // ✅ 使用 `safeParse` 避免抛出错误
+							if (!result.success) {
+								return "密码至少6位"; // ⬅️ 返回字符串，避免 `[object Object]`
+							}
+						},
+					}}
+					children={(field) => (
+						<Input
+							ref={setPasswordInputRef}
+							title="密码"
+							// description="也是个摆设"
+							state={passwordInputState()}
+							autocomplete="current-password"
+							type="password"
+							id={field().name}
+							name={field().name}
+							value={field().state.value}
+							onBlur={field().handleBlur}
+							onInput={(e) => field().handleChange(e.target.value)}
+							validationMessage={fieldInfo(field())}
+							class="w-full"
+						/>
+					)}
+				/>
+				<Presence exitBeforeEnter>
+					<Show when={formModule() === "register"}>
+						<Motion.div
+							class={`grid`}
+							animate={{
+								gridTemplateRows: ["0fr", "1fr"],
+								paddingBlock: ["0rem", "0.75rem"],
+							}}
+							exit={{
+								paddingBlock: "0rem",
+								gridTemplateRows: ["1fr", "0fr"],
+							}}
+							transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+						>
+							<div class="h-full w-full overflow-hidden">
+								<form.Field
+									name="userName"
+									children={(field) => (
+										<Input
+											title="用户名"
+											// description="目前是个摆设"
+											autocomplete="off"
+											type="text"
+											id={field().name}
+											name={field().name}
+											value={field().state.value}
+											onBlur={field().handleBlur}
+											onInput={(e) => field().handleChange(e.target.value)}
+											validationMessage={fieldInfo(field())}
+											class="w-full"
+										/>
+									)}
+								/>
+								<form.Field
+									name="bindLocalAccount"
+									children={(field) => (
+										<Input
+											title="是否从本地数据创建"
+											// description="目前是个摆设"
+											autocomplete="off"
+											type="boolean"
+											id={field().name}
+											name={field().name}
+											onBlur={field().handleBlur}
+											onClick={() => {
+												field().setValue(!field().state.value);
+											}}
+											checked={field().state.value}
+											validationMessage={fieldInfo(field())}
+											class="w-full"
+										/>
+									)}
+								/>
+							</div>
+						</Motion.div>
+					</Show>
+				</Presence>
+				<form.Field
+					name="bindLocalAccount"
+					children={(field) => (
+						<Input
+							title="是否绑定本地数据"
+							type="boolean"
+							id={field().name}
+							name={field().name}
+							onBlur={field().handleBlur}
+							onClick={() => field().setValue((pre) => !pre)}
+							checked={field().state.value}
+							validationMessage={fieldInfo(field())}
+							class="w-full"
+						/>
+					)}
+				/>
+				<form.Subscribe
+					selector={(state) => ({
+						canSubmit: state.canSubmit,
+						isSubmitting: state.isSubmitting,
+					})}
+					children={(state) => {
+						return (
+							<div class="flex items-center gap-1 p-2">
+								<Button
+									level="primary"
+									class={`SubmitBtn flex-1`}
+									type="submit"
+									disabled={formModule() === "unknown" || !state().canSubmit}
+								>
+									{state().isSubmitting ? "..." : formTitle()}
+								</Button>
+							</div>
+						);
+					}}
+				/>
+			</form>
+		</Show>
 	);
+
+	createEffect(
+		on(
+			() => store.pages.loginDialogState,
+			(isOpen) => {
+				if (isOpen) {
+					if (loginDialogLayerId) return;
+					loginDialogLayerId = overlay.openDialog({
+						title: formTitle,
+						maxWith: "480px",
+						render: renderLoginDialog,
+						onClose: () => {
+							loginDialogLayerId = undefined;
+							if (store.pages.loginDialogState) setStore("pages", "loginDialogState", false);
+							resetDialogState();
+						},
+					});
+					return;
+				}
+
+				if (!loginDialogLayerId) return;
+				const layerId = loginDialogLayerId;
+				loginDialogLayerId = undefined;
+				closeLayer(layerId);
+				resetDialogState();
+			},
+		),
+	);
+
+	return null;
 };

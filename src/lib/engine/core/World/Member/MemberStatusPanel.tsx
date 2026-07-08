@@ -11,9 +11,9 @@ import { createVirtualizer, type VirtualItem, type Virtualizer } from "@tanstack
 import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { type Accessor, createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
-import { Dialog } from "~/components/containers/dialog";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
+import { useOverlay } from "~/lib/overlay/OverlayContext";
 import { useEngine } from "../../thread/EngineContext";
 import type { EngineRPC } from "../../thread/protocol";
 import type { MemberSerializeData } from "./Member";
@@ -171,9 +171,7 @@ export const StatsRenderer = (props: { data?: object }) => {
 		});
 	const dom = createMemo(() => renderObject(props.data));
 
-	return (
-		<div class="RenderObject flex w-full flex-col gap-1">{dom()}</div>
-	);
+	return <div class="RenderObject flex w-full flex-col gap-1">{dom()}</div>;
 };
 
 // ============================== 虚拟化属性渲染 ==============================
@@ -438,6 +436,7 @@ export const VirtualStatsRenderer = (props: { data?: object }) => {
 export function MemberStatusPanel(props: { controllerId?: string; member: Accessor<MemberSerializeData | null> }) {
 	const engine = useEngine();
 	const runtimeEngine = engine.simulatorEngine();
+	const overlay = useOverlay();
 
 	const [liveAttrs, setLiveAttrs] = createSignal<object | undefined>(undefined);
 	const [subViewId, setSubViewId] = createSignal<string | null>(null);
@@ -469,7 +468,8 @@ export function MemberStatusPanel(props: { controllerId?: string; member: Access
 		const member = props.member();
 		const memberId = member?.id;
 		const controllerId = props.controllerId ?? "ui";
-		const shouldSubscribe = displayDetail() && activeTab() === "attrs" && typeof memberId === "string" && memberId.length > 0;
+		const shouldSubscribe =
+			displayDetail() && activeTab() === "attrs" && typeof memberId === "string" && memberId.length > 0;
 
 		const current = subViewId();
 		if (!shouldSubscribe) {
@@ -524,62 +524,74 @@ export function MemberStatusPanel(props: { controllerId?: string; member: Access
 			}
 		>
 			{/* 基础信息 */}
-			<Button onClick={() => setDisplayDetail(!displayDetail())} level="secondary" class="w-fit h-fit">
+			<Button
+				onClick={() => {
+					setDisplayDetail(true);
+					overlay.openDialog({
+						title: "成员详情",
+						maxWith: "80vw",
+						onClose: () => setDisplayDetail(false),
+						render: () => (
+							<div class="flex w-full flex-1 flex-col gap-1">
+								{/* Tab 切换 */}
+								<div class="border-dividing-color flex gap-2 border-b">
+									<button
+										type="button"
+										onClick={() => setActiveTab("attrs")}
+										class={`px-4 py-2 text-sm font-medium transition-colors ${
+											activeTab() === "attrs"
+												? "text-main-text-color border-b-2 border-brand-color-1st"
+												: "text-accent-color-70 hover:text-main-text-color"
+										}`}
+									>
+										属性
+									</button>
+									<button
+										type="button"
+										onClick={() => setActiveTab("buffs")}
+										class={`px-4 py-2 text-sm font-medium transition-colors ${
+											activeTab() === "buffs"
+												? "text-main-text-color border-b-2 border-brand-color-1st"
+												: "text-accent-color-70 hover:text-main-text-color"
+										}`}
+									>
+										Buff
+									</button>
+								</div>
+
+								{/* Tab 内容 */}
+								<div class="flex-1 overflow-auto">
+									<Show when={activeTab() === "attrs"}>
+										<div class="flex-1 rounded">
+											<VirtualStatsRenderer data={selectedMemberData()} />
+										</div>
+									</Show>
+									{/* <Show when={activeTab() === "buffs"}>
+			              <BuffTab buffs={props.member()?.buffs} />
+			            </Show> */}
+								</div>
+
+								{/* 调试信息 */}
+								<div class="bg-area-color rounded p-2">
+									<h4 class="text-md text-main-text-color mb-3 font-semibold">调试信息</h4>
+									<details class="text-xs">
+										<summary class="text-dividing-color hover:text-main-text-color cursor-pointer">
+											查看原始数据
+										</summary>
+										<pre class="bg-primary-color text-main-text-color mt-2 rounded p-2">
+											{JSON.stringify(props.member(), null, 2)}
+										</pre>
+									</details>
+								</div>
+							</div>
+						),
+					});
+				}}
+				level="secondary"
+				class="w-fit h-fit"
+			>
 				<Icons.Outline.InfoCircle />
 			</Button>
-
-			<Dialog state={displayDetail()} setState={setDisplayDetail} title="成员详情" maxWith="80vw">
-				<div class="flex w-full flex-1 flex-col gap-1">
-					{/* Tab 切换 */}
-					<div class="border-dividing-color flex gap-2 border-b">
-						<button
-							type="button"
-							onClick={() => setActiveTab("attrs")}
-							class={`px-4 py-2 text-sm font-medium transition-colors ${
-								activeTab() === "attrs"
-									? "text-main-text-color border-b-2 border-brand-color-1st"
-									: "text-accent-color-70 hover:text-main-text-color"
-							}`}
-						>
-							属性
-						</button>
-						<button
-							type="button"
-							onClick={() => setActiveTab("buffs")}
-							class={`px-4 py-2 text-sm font-medium transition-colors ${
-								activeTab() === "buffs"
-									? "text-main-text-color border-b-2 border-brand-color-1st"
-									: "text-accent-color-70 hover:text-main-text-color"
-							}`}
-						>
-							Buff
-						</button>
-					</div>
-
-					{/* Tab 内容 */}
-					<div class="flex-1 overflow-auto">
-						<Show when={activeTab() === "attrs"}>
-							<div class="flex-1 rounded">
-								<VirtualStatsRenderer data={selectedMemberData()} />
-							</div>
-						</Show>
-						{/* <Show when={activeTab() === "buffs"}>
-              <BuffTab buffs={props.member()?.buffs} />
-            </Show> */}
-					</div>
-
-					{/* 调试信息 */}
-					<div class="bg-area-color rounded p-2">
-						<h4 class="text-md text-main-text-color mb-3 font-semibold">调试信息</h4>
-						<details class="text-xs">
-							<summary class="text-dividing-color hover:text-main-text-color cursor-pointer">查看原始数据</summary>
-							<pre class="bg-primary-color text-main-text-color mt-2 rounded p-2">
-								{JSON.stringify(props.member(), null, 2)}
-							</pre>
-						</details>
-					</div>
-				</div>
-			</Dialog>
 		</Show>
 	);
 }

@@ -55,7 +55,7 @@ export type TableQueries<T extends Record<string, unknown>, TList extends Record
 /**
  * 1:1 继承父表（当前表与父表在概念上是同一实体）
  * 渲染器会自动：
- *  - 合并父表的 dictionary / 表单 renderers / 卡片 fieldGenerator（child 优先）
+ *  - 合并父表的 dictionary / 表单 renderers / 详情 fieldGenerator（child 优先）
  *  - 查询父表的反向关系并合并到当前表的关联内容中
  *  - 排除父表的兄弟子类（如 weapon 的 inheritsFrom=item，则 armor/consumable 等同级子类不会出现在关联内容里）
  */
@@ -75,7 +75,7 @@ export type InheritsFromDecl = {
  * 1:N 内嵌子表（当前实体的某个字段在逻辑上是子表数组）
  * 渲染器会：
  *  - 表单：渲染为嵌套数组编辑器（用子表自己的 dataConfig 递归渲染每项）
- *  - 卡片：内嵌展示子表列表
+ *  - 详情：内嵌展示子表列表
  *  - 自动把该字段从普通字段渲染流程中移除，避免被当成通用 array 处理
  *  - 不负责持久化拆解，由 config 的 onInsert / onUpdate 在事务内处理
  */
@@ -132,8 +132,8 @@ export type TableDataConfig<
 		| "dictionary"
 		| "fieldGroupMap"
 		| "openEditor"
-		| "openCard"
-		| "closeCard"
+		| "onOpenRecord"
+		| "onDeleted"
 	>;
 };
 

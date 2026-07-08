@@ -1,4 +1,4 @@
-import { getFkRefByColumn, isFkColumn, listFkColumns } from "@db/generated/dmmf-utils";
+import { getFkRefByColumn, listFkColumns } from "@db/generated/dmmf-utils";
 import { repositoryMethods } from "@db/generated/repositories";
 import type { DB } from "@db/generated/zod";
 import { createId } from "@paralleldrive/cuid2";
@@ -460,7 +460,3 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 		</div>
 	);
 };
-
-// 兼容保留：以前外部引用过 FieldRenderer。
-// 新代码不应使用它，embed/嵌套请使用 FormFieldBlock。
-export { isFkColumn };

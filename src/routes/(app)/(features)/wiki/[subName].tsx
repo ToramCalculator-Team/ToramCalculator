@@ -19,15 +19,13 @@ import { Motion, Presence } from "solid-motionone";
 import { DataRenderer } from "~/components/business/card/DataRenderer";
 import { type AnyTableDataConfig, DATA_CONFIG } from "~/components/business/data-config";
 import { Form } from "~/components/business/form/FormRenderer";
-import { Dialog } from "~/components/containers/dialog";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { VirtualTable } from "~/components/dataDisplay/virtualTable";
 import { Icons } from "~/components/icons/index";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
-import { useOverlay } from "~/lib/overlay/OverlayContext";
-import type { CardEntryInit } from "~/lib/overlay/overlayStore";
+import { type DialogEntryInit, useOverlay } from "~/lib/overlay/OverlayContext";
 import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
 import { store } from "~/store";
 import { setWikiStore, wikiStore } from "./store";
@@ -44,7 +42,7 @@ type CommittedWikiTable = {
 export default function WikiSubPage() {
 	const media = useContext(MediaContext);
 	const dictionary = useDictionary();
-	// 页面根作用域的 overlay 句柄:列表点击从这里 openCard(新建卡片层)。
+	// 页面根作用域的 overlay 句柄:列表点击从这里 openDialog 新建 dialog layer。
 	const overlay = useOverlay();
 	// url 参数
 	const params = useParams();
@@ -53,8 +51,6 @@ export default function WikiSubPage() {
 	// 状态管理参数
 	const [isMainContentFullscreen, setIsMainContentFullscreen] = createSignal(true);
 	const [activeBannerIndex, setActiveBannerIndex] = createSignal(0);
-
-	const [wikiSelectorIsOpen, setWikiSelectorIsOpen] = createSignal(false);
 
 	const dataConfig = createMemo(() => DATA_CONFIG[wikiStore.type]);
 	const wikiConfig = createMemo(() => wikiPageConfig[wikiStore.type]);
@@ -88,21 +84,21 @@ export default function WikiSubPage() {
 	});
 
 	/**
-	 * 构造一张卡片的 entry(不负责挂载)。render 在卡片层作用域内执行,故其内部 useOverlay()
-	 * 读到的是**当前卡片层**:
-	 * - 外键关联 drill(DataRenderer.openCard) → pushCard,并入同一卡片组(保留堆叠视觉)。
-	 * - 打开编辑器(openEditor) → openForm,在本卡片层下新建独立表单层。
+	 * 构造一条 dialog entry(不负责挂载)。render 在 dialog layer 作用域内执行,故其内部 useOverlay()
+	 * 读到的是**当前 dialog layer**:
+	 * - 外键关联 drill → pushDialog,并入同一 layer(保留堆叠视觉)。
+	 * - 打开编辑器(openEditor) → openSheet,在本 dialog layer 下新建独立 sheet layer。
 	 * 设计目的：字典、递归关联和编辑提交都来自当前页面上下文。
 	 */
-	const buildCardEntry = (type: keyof DB, data: Record<string, unknown>): CardEntryInit => {
+	const buildDialogEntry = (type: keyof DB, data: Record<string, unknown>): DialogEntryInit => {
 		const config = DATA_CONFIG[type]?.(dictionary);
 		return {
 			title: (data as { name?: unknown }).name?.toString() ?? "",
 			titleIcon: () => <Icons.Spirits iconName={type} />,
-			render: (cardApi) => {
+			render: (dialogApi) => {
 				if (!config) return <pre>{JSON.stringify(data, null, 2)}</pre>;
-				// 卡片层作用域句柄:drill 用 pushCard 并入同组,editor 用 openForm 新建表单层。
-				const cardOverlay = useOverlay();
+				// dialog layer 作用域句柄:drill 用 pushDialog 并入同层,editor 用 openSheet 新建子层。
+				const dialogOverlay = useOverlay();
 				const primaryKeyValue = data[config.primaryKey as string];
 				const primaryKeyString = primaryKeyValue == null ? "" : String(primaryKeyValue);
 				const liveDetailData = createLiveKyselyQuery<Record<string, unknown>>((db) => {
@@ -123,10 +119,10 @@ export default function WikiSubPage() {
 							primaryKey={config.primaryKey}
 							dictionary={config.dictionary}
 							deleteCallback={config.card.deleteCallback}
-							openCard={(nextType, nextData) => cardOverlay.pushCard(buildCardEntry(nextType, nextData))}
-							closeCard={cardApi.close}
+							onOpenRecord={(nextType, nextData) => dialogOverlay.pushDialog(buildDialogEntry(nextType, nextData))}
+							onDeleted={dialogApi.close}
 							openEditor={(nextData) => {
-								cardOverlay.openForm({
+								dialogOverlay.openSheet({
 									render: (api) => (
 										<Form
 											tableName={type}
@@ -173,16 +169,16 @@ export default function WikiSubPage() {
 		};
 	};
 
-	/** 列表点击入口:从页面根作用域新建一个卡片层。 */
+	/** 列表点击入口:从页面根作用域新建一个 dialog layer。 */
 	const openCurrentTableCard = (type: keyof DB, data: Record<string, unknown>) => {
-		overlay.openCard(buildCardEntry(type, data));
+		overlay.openDialog(buildDialogEntry(type, data));
 	};
 
 	const openCreateForm = () => {
 		const request = tableConfigRequest();
 		if (!request) return;
 		const { type, config } = request;
-		overlay.openForm({
+		overlay.openSheet({
 			render: (api) => (
 				<Form
 					tableName={type}
@@ -365,6 +361,53 @@ export default function WikiSubPage() {
 			],
 		},
 	];
+
+	const openTableConfigDialog = () => {
+		overlay.openDialog({
+			title: dictionary().ui.wiki.tableConfig.title,
+			render: () => <div class="flex h-52 w-2xs flex-col gap-3"></div>,
+		});
+	};
+
+	const openWikiSelectorDialog = () => {
+		overlay.openDialog({
+			title: dictionary().ui.wiki.selector.title,
+			render: (api) => (
+				<div class="flex flex-col gap-3">
+					<For each={wikiSelectorConfig}>
+						{(group) => {
+							return (
+								<div class="Group flex flex-col gap-2">
+									<div class="GroupTitle flex flex-col gap-3">
+										<h3 class="text-accent-color flex items-center gap-2 font-bold">
+											{group.groupName}
+											<div class="Divider bg-dividing-color h-px w-full flex-1" />
+										</h3>
+									</div>
+									<div class="GroupContent flex flex-wrap gap-2">
+										<For each={group.groupFields}>
+											{(field) => {
+												return (
+													<A
+														href={`/wiki/${field.name}`}
+														onClick={api.close}
+														class="bg-area-color hover:shadow-card shadow-dividing-color flex lg:w-[calc((100%-2rem)/5)] w-[calc((100%-1rem)/3)] flex-col items-center gap-2 rounded px-2 lg:py-6 py-3"
+													>
+														{field.icon}
+														<span class="text-nowrap text-ellipsis">{dictionary().db[field.name].selfName}</span>
+													</A>
+												);
+											}}
+										</For>
+									</div>
+								</div>
+							);
+						}}
+					</For>
+				</div>
+			),
+		});
+	};
 
 	onMount(() => {
 		console.log(`--Wiki Page Mount`);
@@ -622,7 +665,7 @@ export default function WikiSubPage() {
 										size="sm"
 										level="quaternary"
 										icon={<Icons.Outline.Swap />}
-										onClick={() => setWikiSelectorIsOpen((pre) => !pre)}
+										onClick={openWikiSelectorDialog}
 									></Button>
 									<Show when={store.session.user?.id}>
 										<Button // 仅PC端显示
@@ -648,67 +691,12 @@ export default function WikiSubPage() {
 									<Button
 										size="sm"
 										class="bg-transparent"
-										onclick={() => {
-											setWikiStore("table", {
-												configSheetIsOpen: !wikiStore.table.configSheetIsOpen,
-											});
-										}}
+										onclick={openTableConfigDialog}
 										icon={<Icons.Outline.Settings />}
 									/>
 								</Motion.div>
 							</Show>
 						</Presence>
-
-						{/* 表格配置 */}
-						<Dialog
-							state={wikiStore.table.configSheetIsOpen}
-							setState={(state) => setWikiStore("table", { configSheetIsOpen: state })}
-							title={dictionary().ui.wiki.tableConfig.title}
-						>
-							<div class="flex h-52 w-2xs flex-col gap-3"></div>
-						</Dialog>
-
-						{/* wiki选择器 */}
-						<Dialog
-							state={wikiSelectorIsOpen()}
-							setState={setWikiSelectorIsOpen}
-							title={dictionary().ui.wiki.selector.title}
-						>
-							<div class="flex flex-col gap-3">
-								<For each={wikiSelectorConfig}>
-									{(group) => {
-										return (
-											<div class="Group flex flex-col gap-2">
-												<div class="GroupTitle flex flex-col gap-3">
-													<h3 class="text-accent-color flex items-center gap-2 font-bold">
-														{group.groupName}
-														<div class="Divider bg-dividing-color h-px w-full flex-1" />
-													</h3>
-												</div>
-												<div class="GroupContent flex flex-wrap gap-2">
-													<For each={group.groupFields}>
-														{(field) => {
-															return (
-																<A
-																	href={`/wiki/${field.name}`}
-																	onClick={() => {
-																		setWikiSelectorIsOpen(false);
-																	}}
-																	class="bg-area-color hover:shadow-card shadow-dividing-color flex lg:w-[calc((100%-2rem)/5)] w-[calc((100%-1rem)/3)] flex-col items-center gap-2 rounded px-2 lg:py-6 py-3"
-																>
-																	{field.icon}
-																	<span class="text-nowrap text-ellipsis">{dictionary().db[field.name].selfName}</span>
-																</A>
-															);
-														}}
-													</For>
-												</div>
-											</div>
-										);
-									}}
-								</For>
-							</div>
-						</Dialog>
 					</Show>
 				);
 			}}

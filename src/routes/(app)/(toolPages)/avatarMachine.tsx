@@ -1,9 +1,9 @@
 import { createSignal, For, Index, Show } from "solid-js";
 import { Motion } from "solid-motionone";
-import { Dialog } from "~/components/containers/dialog";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
-import { PlayerAttrKey } from "~/lib/engine/core/World/Member/types/Player/PlayerAttrSchema";
+import type { PlayerAttrKey } from "~/lib/engine/core/World/Member/types/Player/PlayerAttrSchema";
+import { useOverlay } from "~/lib/overlay/OverlayContext";
 import { store } from "~/store";
 
 // 能力值【1~10】
@@ -117,7 +117,7 @@ const attrsMap = {
 	// 魔法值自回【1~10】
 	"mp.recovery": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "5%", "10%", "15%"],
 	// 攻回【1~10】
-	"ampr": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+	ampr: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
 	// 暴击率/爆伤【1~5】【1%~3%】
 	"c.rate.p": ["1", "2", "3", "4", "5", "1%", "2%", "3%"],
 	"c.dmg.p": ["1", "2", "3", "4", "5", "1%", "2%", "3%"],
@@ -252,7 +252,7 @@ const attrDisplayNames: Record<keyof typeof attrsMap, string> = {
 	cspd: "咏唱速度",
 	"hp.recovery": "体力值自然回复",
 	"mp.recovery": "魔法值自然回复",
-	"ampr": "攻击魔法回复",
+	ampr: "攻击魔法回复",
 	"c.rate.p": "暴击率",
 	"c.dmg.p": "暴击伤害",
 	antiVirus: "异常抗性",
@@ -314,7 +314,7 @@ const isMaxValue = (attrType: AttrType, attrValue: string): boolean => {
 
 export default function AvatarMachinePage() {
 	const [animationEnabled, setAnimationEnabled] = createSignal(false); // 控制动画是否启用
-	const [displayHistory, setDisplayHistory] = createSignal(false); // 控制是否显示历史记录
+	const overlay = useOverlay();
 	const [history, setHistory] = createSignal<
 		Record<
 			Postion,
@@ -535,7 +535,45 @@ export default function AvatarMachinePage() {
 						</div>
 					</Show>
 					<div class="ControlArea flex gap-1">
-						<Button icon={<Icons.Outline.Chart />} onClick={() => setDisplayHistory(!displayHistory())}></Button>
+						<Button
+							icon={<Icons.Outline.Chart />}
+							onClick={() => {
+								overlay.openDialog({
+									title: "剪刀历史记录",
+									render: () => (
+										<For each={history()}>
+											{(item, index) => {
+												return (
+													<div class="Field bg-primary-color border-dividing-color flex rounded border">
+														<div class="SerialNumber border-dividing-color grid w-12 place-items-center border-r">
+															{index() + 1}
+														</div>
+														<div class="Attrs flex w-full flex-col gap-1">
+															<For each={Object.values(item)}>
+																{(item, index) => {
+																	return (
+																		<div
+																			class={`Field border-dividing-color flex items-center gap-1 p-3 ${index() === 0 ? "" : "border-t"} ${
+																				isMaxValue(item.attrType, item.attrValue) ? "text-brand-color-3rd" : ""
+																			}`}
+																		>
+																			{attrDisplayNames[item.attrType] || item.attrType} + {item.attrValue}
+																			{isMaxValue(item.attrType, item.attrValue) && (
+																				<span class="text-brand-color-3rd ml-1">✨</span>
+																			)}
+																		</div>
+																	);
+																}}
+															</For>
+														</div>
+													</div>
+												);
+											}}
+										</For>
+									),
+								});
+							}}
+						></Button>
 						<Button
 							class="w-full"
 							onClick={() => {
@@ -564,38 +602,6 @@ export default function AvatarMachinePage() {
 					</div>
 				</div>
 			</div>
-
-			<Dialog state={displayHistory()} setState={setDisplayHistory} title="剪刀历史记录">
-				<For each={history()}>
-					{(item, index) => {
-						return (
-							<div class="Field bg-primary-color border-dividing-color flex rounded border">
-								<div class="SerialNumber border-dividing-color grid w-12 place-items-center border-r">
-									{index() + 1}
-								</div>
-								<div class="Attrs flex w-full flex-col gap-1">
-									<For each={Object.values(item)}>
-										{(item, index) => {
-											return (
-												<div
-													class={`Field border-dividing-color flex items-center gap-1 p-3 ${index() === 0 ? "" : "border-t"} ${
-														isMaxValue(item.attrType, item.attrValue) ? "text-brand-color-3rd" : ""
-													}`}
-												>
-													{attrDisplayNames[item.attrType] || item.attrType} + {item.attrValue}
-													{isMaxValue(item.attrType, item.attrValue) && (
-														<span class="text-brand-color-3rd ml-1">✨</span>
-													)}
-												</div>
-											);
-										}}
-									</For>
-								</div>
-							</div>
-						);
-					}}
-				</For>
-			</Dialog>
 		</div>
 	);
 }

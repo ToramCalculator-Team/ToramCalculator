@@ -154,7 +154,7 @@ const toRelationPatch = <S extends EquipmentSlot>(
 
 export function EquipmentPanel(props: EquipmentPanelProps) {
 	const dictionary = useDictionary();
-	// EquipmentPanel 渲染于角色页根作用域(非浮层内),openForm 新建根级表单层。
+	// EquipmentPanel 渲染于角色页根作用域(非浮层内),openSheet 新建根级 sheet layer。
 	const overlay = useOverlay();
 	const intentActor = useVisualIntent();
 	const intent = useIntentSnapshot();
@@ -222,7 +222,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 
 		const initialValue = withBelongToPlayerId(config.defaultData, props.character.belongToPlayerId);
 
-		overlay.openForm({
+		overlay.openSheet({
 			render: (api) => (
 				<Form<EquipmentSlotRow<S>, typeof config.dataSchema>
 					tableName={tableName}

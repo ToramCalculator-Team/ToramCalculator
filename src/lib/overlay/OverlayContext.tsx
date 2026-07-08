@@ -9,25 +9,25 @@
  *   - 在**层内**调用:scope 为当前层,`push*` 可用(带 kind 断言,类型不符 throw);
  *     `close/closeTop` 作用于本层。
  *   - 在**根级**(无 Provider)调用:scope=undefined,`open*` 用 parentId=null 挂在根;
- *     `push*` 因无 scope 抛错(告诉调用者:根级没有可 push 的组)。
+ *     `push*` 因无 scope 抛错(告诉调用者:根级没有可 push 的 layer)。
  * - 单文件 co-locate:context token + Provider + hook 全在此文件,与项目 6 月后新写的
  *   Engine/Scene/AppActor context 风格一致。
  */
 import { createContext, type ParentProps, useContext } from "solid-js";
 import {
-	type CardEntryInit,
 	closeEntry,
 	closeLayer,
 	closeTopLayer,
-	type FormEntryInit,
+	type DialogEntryInit,
 	type OverlayEntryApi,
 	type OverlayLayerKind,
 	openLayer,
 	pushEntry,
+	type SheetEntryInit,
 } from "./overlayStore";
 
 // 重新导出 entry 类型,让业务页面从单一入口(OverlayContext)导入 useOverlay + 类型。
-export type { CardEntryInit, FormEntryInit, OverlayEntryApi } from "./overlayStore";
+export type { DialogEntryInit, OverlayEntryApi, SheetEntryInit } from "./overlayStore";
 
 interface OverlayScope {
 	layerId: string;
@@ -46,18 +46,18 @@ export function OverlayScopeProvider(props: ParentProps<OverlayScope>) {
 }
 
 export interface OverlayApi {
-	/** 新建卡片层,作为当前 scope 的子层(或根)。用于从列表/表单/其它上下文打开一个独立卡片组。 */
-	openCard: (entry: CardEntryInit) => string;
-	/** 新建表单层,作为当前 scope 的子层(或根)。 */
-	openForm: (entry: FormEntryInit) => string;
+	/** 新建 dialog layer,作为当前 scope 的子层(或根)。 */
+	openDialog: (entry: DialogEntryInit) => string;
+	/** 新建 sheet layer,作为当前 scope 的子层(或根)。 */
+	openSheet: (entry: SheetEntryInit) => string;
 	/**
-	 * 并入**当前卡片层**再加一张卡(卡片组内 drill 关联数据的语义)。
-	 * 契约:当前 scope 必须是 kind="card" 的层,否则 throw ——
+	 * 并入**当前 dialog layer**再加一个 entry(dialog 内 drill 关联数据的语义)。
+	 * 契约:当前 scope 必须是 kind="dialog" 的层,否则 throw ——
 	 * 这种错误使用意味着调用点搞错了打开语义,应该显式暴露而不是静默降级。
 	 */
-	pushCard: (entry: CardEntryInit) => string;
-	/** 并入当前表单层追加一个表单 entry(通常表单层只有一条,较少用到)。 */
-	pushForm: (entry: FormEntryInit) => string;
+	pushDialog: (entry: DialogEntryInit) => string;
+	/** 并入当前 sheet layer 追加一个 sheet entry(通常 sheet layer 只有一条,较少用到)。 */
+	pushSheet: (entry: SheetEntryInit) => string;
 	/** 关闭当前层(级联关闭其所有后代层)。根级调用(无 scope)将 throw。 */
 	close: () => void;
 	/** 关闭最顶层(Escape / 遮罩点击场景)。任何 scope 下都可用。 */
@@ -68,35 +68,35 @@ export interface OverlayApi {
  * 读取当前 overlay 作用域并返回操作 API。
  *
  * 在 Provider 外(根级)调用时返回"根 scope 实现":`open*` 用 parentId=null 挂根;
- * `push*` 因无当前组抛错;`close` 因无当前层抛错(告知调用者应改用 closeTop 或指定层)。
+ * `push*` 因无当前 layer 抛错;`close` 因无当前层抛错(告知调用者应改用 closeTop 或指定层)。
  */
 export function useOverlay(): OverlayApi {
 	const scope = useContext(OverlayScopeContext);
 
 	return {
-		openCard(entry) {
-			const { layerId } = openLayer("card", entry, scope?.layerId ?? null);
+		openDialog(entry) {
+			const { layerId } = openLayer("dialog", entry, scope?.layerId ?? null);
 			return layerId;
 		},
-		openForm(entry) {
-			const { layerId } = openLayer("form", entry, scope?.layerId ?? null);
+		openSheet(entry) {
+			const { layerId } = openLayer("sheet", entry, scope?.layerId ?? null);
 			return layerId;
 		},
-		pushCard(entry) {
+		pushDialog(entry) {
 			if (!scope) {
-				throw new Error("pushCard 只能在卡片层内调用(根级请用 openCard 新建一层)");
+				throw new Error("pushDialog 只能在 dialog layer 内调用(根级请用 openDialog 新建一层)");
 			}
-			if (scope.kind !== "card") {
-				throw new Error(`pushCard 只能在卡片层内调用,当前层是 ${scope.kind};你可能想用 openCard 新建一层`);
+			if (scope.kind !== "dialog") {
+				throw new Error(`pushDialog 只能在 dialog layer 内调用,当前层是 ${scope.kind};你可能想用 openDialog 新建一层`);
 			}
 			return pushEntry(scope.layerId, entry);
 		},
-		pushForm(entry) {
+		pushSheet(entry) {
 			if (!scope) {
-				throw new Error("pushForm 只能在表单层内调用(根级请用 openForm 新建一层)");
+				throw new Error("pushSheet 只能在 sheet layer 内调用(根级请用 openSheet 新建一层)");
 			}
-			if (scope.kind !== "form") {
-				throw new Error(`pushForm 只能在表单层内调用,当前层是 ${scope.kind};你可能想用 openForm 新建一层`);
+			if (scope.kind !== "sheet") {
+				throw new Error(`pushSheet 只能在 sheet layer 内调用,当前层是 ${scope.kind};你可能想用 openSheet 新建一层`);
 			}
 			return pushEntry(scope.layerId, entry);
 		},
@@ -115,8 +115,7 @@ export function useOverlay(): OverlayApi {
 /**
  * 层内向调用者暴露的 entry-scoped API,由容器渲染 entry 时构造并传入 render(api)。
  * 与 useOverlay 不同:它作用于**具体 entry**而非层,用来在 render 闭包里 close 自己。
- * 保留这个 API 是为了迁移平滑 —— 旧 `globalCardGroup.add({ render: (api) => ... })`
- * 依赖 api.close/api.index/api.total,新 OverlayRoot 会保持相同形态传入。
+ * 保留 index/total 是为了让 layer 内 entry 栈动画在容器侧稳定派生。
  */
 export function makeEntryApi(deps: {
 	layerId: string;

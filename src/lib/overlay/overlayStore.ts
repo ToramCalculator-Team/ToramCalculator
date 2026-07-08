@@ -3,22 +3,21 @@
  * @description 应用级弹出层管理器 —— 层树数据结构。
  *
  * 设计要点(见 ADR 0017 后续 + 计划文档):
- * - 全局维护一个有序层数组 `layers`。**一个卡片组 = 一层,一个表单组 = 一层**;
+ * - 全局维护一个有序层数组 `layers`。**一个 dialog 栈 = 一层,一个 sheet 栈 = 一层**;
  *   层与层之间通过 `parentId` 形成打开来源的树关系。
- * - 层内多条 entry(卡片组的多张卡)由每层自己持有,层内堆叠视觉复用现有 `Card`/`FormSheet`
- *   的 `index/total` 语义,与全局层管理**解耦**。
+ * - 层内多条 entry 由每层自己持有,层内堆叠视觉由 `OverlayRoot` 的 DialogLayer/SheetLayer 负责。
  * - 关闭一层 = 级联关闭其所有后代层(cascade),避免用户先关表单却看到孤儿卡片。
  * - z-index 按层在数组中的顺序线性推导,取代原来 `z-stack`/`z-stack-top` 二元 hack。
  *
  * 与旧模型的对应关系:
- * - 旧 `globalCardGroup` (全局单例) → 新 `layers` 里 kind==="card" 的**多个层实例**
- * - 旧 `globalFormGroup` (全局单例) → 新 `layers` 里 kind==="form" 的**多个层实例**
+ * - 旧全局卡片单例 → 新 `layers` 里 kind==="dialog" 的**多个层实例**
+ * - 旧全局表单单例 → 新 `layers` 里 kind==="sheet" 的**多个层实例**
  * - 旧 `topGroup` 二元信号 → 由层数组顺序自然决定,不再需要
  */
-import type { JSX } from "solid-js";
+import type { Accessor, JSX } from "solid-js";
 import { createStore, produce } from "solid-js/store";
 
-export type OverlayLayerKind = "card" | "form";
+export type OverlayLayerKind = "dialog" | "sheet";
 
 /** 层内单条内容的 API,交给 render 回调调用。 */
 export interface OverlayEntryApi {
@@ -27,21 +26,22 @@ export interface OverlayEntryApi {
 	readonly total: number;
 	/** 关闭本 entry(触发退出动画,动画完成后由容器 commit 真删)。 */
 	close: () => void;
-	/** 关闭本层最顶部 entry(卡片组内 drill 场景常用)。 */
+	/** 关闭本层最顶部 entry(dialog drill 场景常用)。 */
 	closeTop: () => void;
 }
 
-/** 卡片层专属 entry(带 title/titleIcon)。 */
-export interface CardEntryInit {
+/** Dialog layer 专属 entry(带 title/titleIcon)。 */
+export interface DialogEntryInit {
 	id?: string;
-	title?: string;
+	title?: string | Accessor<string>;
 	titleIcon?: () => JSX.Element;
+	maxWith?: string;
 	render: (api: OverlayEntryApi) => JSX.Element;
 	onClose?: () => void;
 }
 
-/** 表单层专属 entry(通常层内单表单,但结构统一)。 */
-export interface FormEntryInit {
+/** Sheet layer 专属 entry(通常层内单表单,但结构统一)。 */
+export interface SheetEntryInit {
 	id?: string;
 	render: (api: OverlayEntryApi) => JSX.Element;
 	onClose?: () => void;
@@ -50,14 +50,15 @@ export interface FormEntryInit {
 /** 层内运行时状态(挂 id + closing 标志)。 */
 export interface OverlayEntryState {
 	id: string;
-	title?: string;
+	title?: string | Accessor<string>;
 	titleIcon?: () => JSX.Element;
+	maxWith?: string;
 	render: (api: OverlayEntryApi) => JSX.Element;
 	onClose?: () => void;
 	closing: boolean;
 }
 
-/** 一层(卡片组 / 表单组 / 未来其它 kind)。 */
+/** 一层(dialog stack / sheet stack / 未来其它 kind)。 */
 export interface OverlayLayer {
 	id: string;
 	kind: OverlayLayerKind;
@@ -89,15 +90,16 @@ export function overlayLayers(): readonly OverlayLayer[] {
 /** 打开新层。parentId = 打开来源层的 id,或 null(根级入口)。 */
 export function openLayer(
 	kind: OverlayLayerKind,
-	entry: CardEntryInit | FormEntryInit,
+	entry: DialogEntryInit | SheetEntryInit,
 	parentId: string | null,
 ): { layerId: string; entryId: string } {
 	const layerId = createLayerId();
 	const entryId = entry.id ?? createEntryId(kind);
 	const entryState: OverlayEntryState = {
 		id: entryId,
-		title: (entry as CardEntryInit).title,
-		titleIcon: (entry as CardEntryInit).titleIcon,
+		title: (entry as DialogEntryInit).title,
+		titleIcon: (entry as DialogEntryInit).titleIcon,
+		maxWith: (entry as DialogEntryInit).maxWith,
 		render: entry.render,
 		onClose: entry.onClose,
 		closing: false,
@@ -106,8 +108,8 @@ export function openLayer(
 	return { layerId, entryId };
 }
 
-/** 往已存在的层追加 entry(卡片组内 drill 关联数据)。 */
-export function pushEntry(layerId: string, entry: CardEntryInit | FormEntryInit): string {
+/** 往已存在的层追加 entry(dialog drill / sheet 递进编辑)。 */
+export function pushEntry(layerId: string, entry: DialogEntryInit | SheetEntryInit): string {
 	const layerIndex = layers.findIndex((l) => l.id === layerId);
 	if (layerIndex < 0) {
 		throw new Error(`pushEntry: 未找到 layerId=${layerId}`);
@@ -116,8 +118,9 @@ export function pushEntry(layerId: string, entry: CardEntryInit | FormEntryInit)
 	const entryId = entry.id ?? createEntryId(layer.kind);
 	const entryState: OverlayEntryState = {
 		id: entryId,
-		title: (entry as CardEntryInit).title,
-		titleIcon: (entry as CardEntryInit).titleIcon,
+		title: (entry as DialogEntryInit).title,
+		titleIcon: (entry as DialogEntryInit).titleIcon,
+		maxWith: (entry as DialogEntryInit).maxWith,
 		render: entry.render,
 		onClose: entry.onClose,
 		closing: false,

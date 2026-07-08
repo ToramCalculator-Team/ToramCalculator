@@ -18,7 +18,7 @@ import { type CharacterContentSession, useSceneRuntime } from "~/lib/3dScene/Sce
 import { useEngine } from "~/lib/engine/core/thread/EngineContext";
 import { StatsRenderer } from "~/lib/engine/core/World/Member/MemberStatusPanel";
 import { createLogger } from "~/lib/Logger";
-import { type CardEntryInit, useOverlay } from "~/lib/overlay/OverlayContext";
+import { type DialogEntryInit, useOverlay } from "~/lib/overlay/OverlayContext";
 import { store } from "~/store";
 import { createCharacterPageModel } from "./characterPageModel";
 import { createCharacter } from "./createCharacter";
@@ -29,7 +29,7 @@ export default function CharactePage() {
 	const navigate = useNavigate();
 	const media = useContext(MediaContext);
 	const dictionary = useDictionary();
-	// 页面根作用域 overlay 句柄:预览卡片从这里 openCard 新建卡片层。
+	// 页面根作用域 overlay 句柄:预览 dialog 从这里 openDialog 新建 layer。
 	const overlay = useOverlay();
 	const params = useParams();
 	const engine = useEngine();
@@ -77,30 +77,30 @@ export default function CharactePage() {
 	};
 
 	/**
-	 * 构造预览卡片 entry。render 在卡片层作用域内执行:
-	 * - 外键 drill(openCard) → pushCard 并入同一卡片组;editor → openForm 新建表单层。
-	 * 角色页的预览卡片由当前场景创建,递归关联和编辑表单沿用同一个角色页上下文。
+	 * 构造预览 dialog entry。render 在 dialog layer 作用域内执行:
+	 * - 外键 drill → pushDialog 并入同一 layer;editor → openSheet 新建子 layer。
+	 * 角色页的预览 dialog 由当前场景创建,递归关联和编辑表单沿用同一个角色页上下文。
 	 */
-	const buildPreviewCardEntry = (type: keyof DB, data: unknown): CardEntryInit => {
+	const buildPreviewDialogEntry = (type: keyof DB, data: unknown): DialogEntryInit => {
 		const cardData = data as Record<string, unknown>;
 		const config = DATA_CONFIG[type]?.(dictionary);
 		return {
 			title: (cardData as { name?: unknown }).name?.toString() ?? "",
 			titleIcon: () => <Icons.Spirits iconName={type} />,
-			render: (cardApi) => {
+			render: (dialogApi) => {
 				if (!config) return <pre>{JSON.stringify(cardData, null, 2)}</pre>;
-				// 卡片层作用域句柄:drill 用 pushCard 并入同组,editor 用 openForm 新建表单层。
-				const cardOverlay = useOverlay();
+				// dialog layer 作用域句柄:drill 用 pushDialog 并入同层,editor 用 openSheet 新建子层。
+				const dialogOverlay = useOverlay();
 
 				return (
 					<DataRenderer
 						primaryKey={config.primaryKey}
 						dictionary={config.dictionary}
 						deleteCallback={config.card.deleteCallback}
-						openCard={(nextType, nextData) => cardOverlay.pushCard(buildPreviewCardEntry(nextType, nextData))}
-						closeCard={cardApi.close}
+						onOpenRecord={(nextType, nextData) => dialogOverlay.pushDialog(buildPreviewDialogEntry(nextType, nextData))}
+						onDeleted={dialogApi.close}
 						openEditor={(nextData) => {
-							cardOverlay.openForm({
+							dialogOverlay.openSheet({
 								render: (api) => (
 									<Form
 										tableName={type}
@@ -146,9 +146,9 @@ export default function CharactePage() {
 		};
 	};
 
-	/** 预览入口:从页面根作用域新建卡片层。 */
+	/** 预览入口:从页面根作用域新建 dialog layer。 */
 	const previewDataItem = (type: keyof DB, data: unknown) => {
-		overlay.openCard(buildPreviewCardEntry(type, data));
+		overlay.openDialog(buildPreviewDialogEntry(type, data));
 	};
 
 	onMount(() => {
