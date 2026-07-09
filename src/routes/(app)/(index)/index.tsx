@@ -8,7 +8,7 @@ import { createMemo, createSignal, For, Index, type JSX, onCleanup, onMount, Sho
 import { Motion, Presence } from "solid-motionone";
 import { DataRenderer } from "~/components/business/card/DataRenderer";
 import { DATA_CONFIG } from "~/components/business/data-config";
-import { Form } from "~/components/business/form/FormRenderer";
+import { DataForm } from "~/components/business/form/DataForm";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Filing } from "~/components/features/filing";
@@ -92,7 +92,7 @@ export default function IndexPage() {
 						openEditor={(nextData) => {
 							dialogOverlay.openSheet({
 								render: (api) => (
-									<Form
+									<DataForm
 										tableName={type}
 										value={nextData}
 										primaryKey={config.primaryKey}

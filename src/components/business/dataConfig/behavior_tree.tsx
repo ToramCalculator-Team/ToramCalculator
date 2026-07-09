@@ -3,8 +3,8 @@ import { repositoryMethods, repositoryQueries } from "@db/generated/repositories
 import { BehaviorTreeSchema, type behavior_tree } from "@db/generated/zod";
 import { createSignal } from "solid-js";
 import { Input } from "~/components/controls/input";
+import type { FormFieldRendererContext } from "~/components/form/fields";
 import type { TableDataConfig } from "../data-config";
-import type { FormFieldRendererContext } from "../form/SchemaFieldRenderer";
 
 const formatJson = (value: unknown): string => JSON.stringify(value ?? [], null, 2);
 

@@ -15,7 +15,7 @@ import { PLAYER_ARMOR_DATA_CONFIG } from "~/components/business/dataConfig/playe
 import { PLAYER_OPTION_DATA_CONFIG } from "~/components/business/dataConfig/player_option";
 import { PLAYER_SPECIAL_DATA_CONFIG } from "~/components/business/dataConfig/player_special";
 import { PLAYER_WEAPON_DATA_CONFIG } from "~/components/business/dataConfig/player_weapon";
-import { Form } from "~/components/business/form/FormRenderer";
+import { DataForm } from "~/components/business/form/DataForm";
 import { ForeignKeyPickerSheetContent } from "~/components/business/table/ForeignKeyPickerSheet";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
@@ -214,7 +214,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 
 		overlay.openSheet({
 			render: (api) => (
-				<Form<EquipmentSlotRow<S>, typeof config.dataSchema>
+				<DataForm<EquipmentSlotRow<S>, typeof config.dataSchema>
 					tableName={tableName}
 					value={initialValue as EquipmentSlotRow<S>}
 					primaryKey={config.primaryKey}

@@ -1,5 +1,12 @@
-import type { AnyFieldApi, DeepKeys } from "@tanstack/solid-form";
-import { createMemo, For, Index, Show } from "solid-js";
+import type {
+	AnyFieldApi,
+	DeepKeys,
+	DeepValue,
+	FormAsyncValidateOrFn,
+	FormValidateOrFn,
+	SolidFormExtendedApi,
+} from "@tanstack/solid-form";
+import { createEffect, createMemo, createSignal, For, Index, Show, untrack } from "solid-js";
 import type { JSX } from "solid-js/jsx-runtime";
 import type { ZodType } from "zod/v4";
 import { Button } from "~/components/controls/button";
@@ -9,46 +16,313 @@ import { Select } from "~/components/controls/select";
 import { Toggle } from "~/components/controls/toggle";
 import { fieldInfo } from "~/components/dataDisplay/utils";
 import type { EnumFieldDetail, FieldDetail } from "~/locales/type";
-import { JsonValueEditor } from "./JsonValueEditor";
-import {
-	type FormContainerFrameOptions,
-	type FormContainerRendererContext,
-	type FormContainerRendererPath,
-	type FormFieldRendererContext,
-	type FormRendererFormApi,
-	type FormRendererPath,
-	type FormRendererPathValue,
-	type FormRendererRuntimePath,
-	type FormRenderers,
-	findRenderer,
-} from "./rendererTypes";
-import {
-	arrayElement,
-	createSchemaDefaultValue,
-	enumOptions,
-	isComplexType,
-	literalValue,
-	objectShape,
-	schemaType,
-	unionDiscriminator,
-	unionOptions,
-	unwrapSchema,
-} from "./schemaTree";
 
-export {
-	type FormContainerFrameOptions,
-	type FormContainerRendererContext,
-	type FormContainerRendererPath,
-	type FormFieldRendererContext,
-	type FormRendererFormApi,
-	type FormRendererPath,
-	type FormRendererPathValue,
-	type FormRendererRuntimePath,
-	type FormRenderers,
-	hasFieldRenderer,
-	normalizeRendererPath,
-} from "./rendererTypes";
-export { createSchemaDefaultValue } from "./schemaTree";
+type FormValidateSlot<TFormData> = FormValidateOrFn<TFormData> | undefined;
+type FormAsyncValidateSlot<TFormData> = FormAsyncValidateOrFn<TFormData> | undefined;
+
+export type FormRendererFormApi<TFormData> = Pick<
+	SolidFormExtendedApi<
+		TFormData,
+		FormValidateSlot<TFormData>,
+		FormValidateSlot<TFormData>,
+		FormAsyncValidateSlot<TFormData>,
+		FormValidateSlot<TFormData>,
+		FormAsyncValidateSlot<TFormData>,
+		FormValidateSlot<TFormData>,
+		FormAsyncValidateSlot<TFormData>,
+		FormValidateSlot<TFormData>,
+		FormAsyncValidateSlot<TFormData>,
+		FormAsyncValidateSlot<TFormData>,
+		unknown
+	>,
+	"Field"
+>;
+
+type StringDeepKeys<TFormData> = Extract<DeepKeys<TFormData>, string>;
+
+/**
+ * TanStack Form 的 DeepKeys 使用 `[${number}]` 表达数组项；配置侧额外允许 `[]`。
+ * 语义约定：`items` 指数组容器，`items[]` 指数组项；运行时具体下标会被归一化为 `[]` 做匹配。
+ */
+export type NormalizeArrayPath<TPath extends string> = TPath extends `${infer Head}[${number}]${infer Tail}`
+	? `${Head}[]${NormalizeArrayPath<Tail>}`
+	: TPath;
+
+export type DenormalizeArrayPath<TPath extends string> = TPath extends `${infer Head}[]${infer Tail}`
+	? `${Head}[${number}]${DenormalizeArrayPath<Tail>}`
+	: TPath;
+
+export type FormRendererPath<TFormData> =
+	StringDeepKeys<TFormData> extends infer TPath extends string ? TPath | NormalizeArrayPath<TPath> : never;
+
+export type FormRendererPathValue<
+	TFormData,
+	TPath extends string,
+> = DenormalizeArrayPath<TPath> extends DeepKeys<TFormData> ? DeepValue<TFormData, DenormalizeArrayPath<TPath>> : never;
+
+type NonNullablePathValue<TFormData, TPath extends FormRendererPath<TFormData>> = NonNullable<
+	FormRendererPathValue<TFormData, TPath>
+>;
+
+export type FormContainerRendererPath<TFormData> = {
+	[TPath in FormRendererPath<TFormData>]: NonNullablePathValue<TFormData, TPath> extends
+		| readonly unknown[]
+		| Record<string, unknown>
+		? TPath
+		: never;
+}[FormRendererPath<TFormData>];
+
+export type FormRendererRuntimePath<TPath extends string> = DenormalizeArrayPath<TPath>;
+
+export type FormContainerFrameOptions = {
+	/**
+	 * 只替换容器内部的子节点布局。外层标题、描述、校验信息、清空按钮仍由默认表单框架负责。
+	 */
+	children?: () => JSX.Element;
+};
+
+export type FormFieldRendererContext<TFormData, TPath extends FormRendererPath<TFormData>> = {
+	/** 配置路径命中后传入实际运行路径；数组项会带有真实下标。 */
+	path: FormRendererRuntimePath<TPath>;
+	/** TanStack Form 实际字段路径；embed 场景会包含父级数组索引。 */
+	name: string;
+	schema: ZodType;
+	value: () => FormRendererPathValue<TFormData, TPath>;
+	setValue: (value: FormRendererPathValue<TFormData, TPath>) => void;
+	validationMessage: string;
+	dictionary?: FieldDetail;
+	renderDefault: () => JSX.Element;
+};
+
+export type FormContainerRendererContext<
+	TFormData,
+	TPath extends FormContainerRendererPath<TFormData>,
+> = FormFieldRendererContext<TFormData, TPath> & {
+	kind: "object" | "array" | "union";
+	children: () => JSX.Element;
+	renderFrame: (options?: FormContainerFrameOptions) => JSX.Element;
+};
+
+export type FormFieldRendererMap<TFormData> = {
+	[TPath in FormRendererPath<TFormData>]?: (context: FormFieldRendererContext<TFormData, TPath>) => JSX.Element;
+};
+
+export type FormContainerRendererMap<TFormData> = {
+	[TPath in FormContainerRendererPath<TFormData>]?: (
+		context: FormContainerRendererContext<TFormData, TPath>,
+	) => JSX.Element;
+};
+
+export type FormRenderers<TFormData> = {
+	fields?: FormFieldRendererMap<TFormData>;
+	containers?: FormContainerRendererMap<TFormData>;
+};
+
+/**
+ * 渲染器配置以实体内的稳定逻辑路径表达；运行中的数组下标只影响 form name，
+ * 不应该迫使配置方为第 0、1、2 项分别注册 renderer。
+ */
+export function normalizeRendererPath(path: string): string {
+	return path.replace(/\[\d+\]/g, "[]");
+}
+
+export function findRenderer<T>(renderers: Partial<Record<string, T>> | undefined, path: string): T | undefined {
+	return renderers?.[path] ?? renderers?.[normalizeRendererPath(path)];
+}
+
+export type SchemaWrapperInfo = {
+	schema: ZodType;
+	nullable: boolean;
+	optional: boolean;
+	hasDefault: boolean;
+};
+
+type SchemaWithPublicParts = ZodType & {
+	type: string;
+	unwrap?: () => ZodType;
+	in?: ZodType;
+	shape?: Record<string, ZodType>;
+	element?: ZodType;
+	options?: readonly ZodType[] | readonly string[];
+	values?: Set<unknown>;
+	def?: {
+		discriminator?: string;
+	};
+};
+
+export function schemaType(schema: ZodType): string {
+	return (schema as SchemaWithPublicParts).type;
+}
+
+/**
+ * 表单只消费 Zod v4 的公开 schema tree 结构，不把 nullable/default 等 wrapper
+ * 当成真实 UI 节点。wrapper 信息单独返回，用于“创建/清空”和默认值生成。
+ */
+export function unwrapSchema(schema: ZodType): SchemaWrapperInfo {
+	let current = schema as SchemaWithPublicParts;
+	let nullable = false;
+	let optional = false;
+	let hasDefault = false;
+
+	while (true) {
+		switch (current.type) {
+			case "nullable":
+				nullable = true;
+				current = current.unwrap?.() as SchemaWithPublicParts;
+				continue;
+			case "optional":
+				optional = true;
+				current = current.unwrap?.() as SchemaWithPublicParts;
+				continue;
+			case "default":
+				hasDefault = true;
+				current = current.unwrap?.() as SchemaWithPublicParts;
+				continue;
+			case "pipe":
+				current = current.in as SchemaWithPublicParts;
+				continue;
+			default:
+				return { schema: current, nullable, optional, hasDefault };
+		}
+	}
+}
+
+export function objectShape(schema: ZodType): Record<string, ZodType> {
+	return ((schema as SchemaWithPublicParts).shape ?? {}) as Record<string, ZodType>;
+}
+
+export function arrayElement(schema: ZodType): ZodType {
+	return (schema as SchemaWithPublicParts).element as ZodType;
+}
+
+export function unionOptions(schema: ZodType): ZodType[] {
+	return ((schema as SchemaWithPublicParts).options ?? []) as ZodType[];
+}
+
+export function unionDiscriminator(schema: ZodType): string | undefined {
+	return (schema as SchemaWithPublicParts).def?.discriminator;
+}
+
+export function literalValue(schema: ZodType): unknown {
+	const values = (schema as SchemaWithPublicParts).values;
+	return values ? Array.from(values)[0] : undefined;
+}
+
+export function enumOptions(schema: ZodType): string[] {
+	return ((schema as SchemaWithPublicParts).options ?? []).map(String);
+}
+
+export function isComplexType(type: string): boolean {
+	return type === "object" || type === "array" || type === "union" || type === "record";
+}
+
+function arrayMinimumLength(schema: ZodType): number {
+	const emptyResult = schema.safeParse([]);
+	if (emptyResult.success) return 0;
+	const minimums = emptyResult.error.issues.map((issue) => {
+		if (issue.code !== "too_small" || issue.path.length !== 0) return 0;
+		const detail = issue as { origin?: unknown; minimum?: unknown };
+		return detail.origin === "array" && typeof detail.minimum === "number" ? detail.minimum : 0;
+	});
+	return Math.max(0, ...minimums);
+}
+
+/**
+ * 根据 schema 构造“开始编辑”时的最小值。
+ * `.default()` 优先交还给 Zod 计算；没有默认值时只补齐可编辑结构，
+ * 数组会读取 Zod 的 min length 检查来补足必需项，让“创建”出来的对象尽量是合法起点。
+ */
+export function createSchemaDefaultValue(schema: ZodType): unknown {
+	const defaultResult = schema.safeParse(undefined);
+	if (defaultResult.success) return defaultResult.data;
+
+	const { schema: unwrapped, optional } = unwrapSchema(schema);
+	switch (schemaType(unwrapped)) {
+		case "string":
+			return "";
+		case "number":
+			return 0;
+		case "boolean":
+			return false;
+		case "null":
+			return null;
+		case "enum":
+			return enumOptions(unwrapped)[0] ?? "";
+		case "literal":
+			return literalValue(unwrapped);
+		case "array":
+			return Array.from({ length: arrayMinimumLength(unwrapped) }, () =>
+				createSchemaDefaultValue(arrayElement(unwrapped)),
+			);
+		case "object": {
+			const value: Record<string, unknown> = {};
+			for (const [key, childSchema] of Object.entries(objectShape(unwrapped))) {
+				const childValue = createSchemaDefaultValue(childSchema);
+				const childInfo = unwrapSchema(childSchema);
+				if (childValue !== undefined || !childInfo.optional) {
+					value[key] = childValue;
+				}
+			}
+			const parsed = schema.safeParse(value);
+			return parsed.success ? parsed.data : value;
+		}
+		case "union":
+			return createSchemaDefaultValue(unionOptions(unwrapped)[0] ?? unwrapped);
+		case "record":
+			return {};
+		default:
+			return optional ? undefined : null;
+	}
+}
+
+function formatJson(value: unknown): string {
+	if (value === undefined) return "";
+	return JSON.stringify(value, null, 2);
+}
+
+export function JsonValueEditor(props: {
+	title: string;
+	description: string;
+	value: () => unknown;
+	setValue: (value: unknown) => void;
+	validationMessage: string;
+	class: string;
+}) {
+	const [draft, setDraft] = createSignal(formatJson(props.value()));
+	const [localError, setLocalError] = createSignal<string>();
+
+	createEffect(() => {
+		// 非法 JSON 期间保留用户草稿；一旦恢复合法输入，再跟随外部 form state 格式化同步。
+		if (localError()) return;
+		const nextDraft = formatJson(props.value());
+		if (untrack(draft) !== nextDraft) setDraft(nextDraft);
+	});
+
+	return (
+		<Input
+			title={props.title}
+			description={props.description}
+			validationMessage={localError() ?? props.validationMessage}
+			class={props.class}
+		>
+			<textarea
+				value={draft()}
+				spellcheck={false}
+				class="text-accent-color bg-area-color min-h-32 w-full resize-y rounded p-3 font-mono text-sm"
+				onInput={(event) => {
+					const nextDraft = event.currentTarget.value;
+					setDraft(nextDraft);
+					try {
+						props.setValue(JSON.parse(nextDraft));
+						setLocalError(undefined);
+					} catch (error) {
+						setLocalError(error instanceof Error ? error.message : String(error));
+					}
+				}}
+			/>
+		</Input>
+	);
+}
 
 // 顶层字段沿用原表单的分隔样式；嵌套节点使用更紧凑的无分隔布局。
 export const DefaultFieldClass = "first:border-none border-dividing-color border-t pt-3 w-full";
@@ -155,11 +429,11 @@ export function SchemaFieldNode<
 					const renderDefault = () => renderFrame();
 					return renderer
 						? renderer({
-							...baseContext(renderDefault),
-							kind,
-							children,
-							renderFrame,
-						} as FormContainerRendererContext<TRenderData, FormContainerRendererPath<TRenderData>>)
+								...baseContext(renderDefault),
+								kind,
+								children,
+								renderFrame,
+							} as FormContainerRendererContext<TRenderData, FormContainerRendererPath<TRenderData>>)
 						: renderDefault();
 				};
 

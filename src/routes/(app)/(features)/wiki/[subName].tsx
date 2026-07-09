@@ -18,7 +18,7 @@ import {
 import { Motion, Presence } from "solid-motionone";
 import { DataRenderer } from "~/components/business/card/DataRenderer";
 import { type AnyTableDataConfig, DATA_CONFIG } from "~/components/business/data-config";
-import { Form } from "~/components/business/form/FormRenderer";
+import { DataForm } from "~/components/business/form/DataForm";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { VirtualTable } from "~/components/dataDisplay/virtualTable";
@@ -125,7 +125,7 @@ export default function WikiSubPage() {
 							openEditor={(nextData) => {
 								dialogOverlay.openSheet({
 									render: (api) => (
-										<Form
+										<DataForm
 											tableName={type}
 											value={nextData}
 											primaryKey={config.primaryKey}
@@ -181,7 +181,7 @@ export default function WikiSubPage() {
 		const { type, config } = request;
 		overlay.openSheet({
 			render: (api) => (
-				<Form
+				<DataForm
 					tableName={type}
 					value={config.defaultData}
 					primaryKey={config.primaryKey}

@@ -10,8 +10,8 @@ import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
 import z from "zod/v4";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
+import { DefaultFieldClass } from "~/components/form/fields";
 import type { QueryDB, TableDataConfig } from "../data-config";
-import { DefaultFieldClass } from "../form/SchemaFieldRenderer";
 import { getUserContext } from "../utils/context";
 import {
 	deleteSkillVariantWithBehaviorTrees,
@@ -119,7 +119,7 @@ const updateSkillWithVariants = async (id: string, data: SkillWithVariants): Pro
 
 		// 表单里的 variants 是 skill 的完整子表快照：
 		// - 已存在的变体需要 update；
-		// - 表单新增的变体已经在 FormRenderer 中分配了真实 id，但数据库里还没有，需要 insert；
+		// - 表单新增的变体已经在 DataForm 中分配了真实 id，但数据库里还没有，需要 insert；
 		// - 从表单数组移除的变体也要同步删除，避免界面上删了但数据库仍残留。
 		const existingVariants = await selectAllSkillVariantsByBelongtoskillid(id, trx);
 		const submittedIds = new Set(data.variants.map((variant) => variant.id));

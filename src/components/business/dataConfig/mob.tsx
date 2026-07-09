@@ -11,11 +11,11 @@ import { BtEditorWrapper } from "~/components/business/utils/BTEditorWrapper";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
 import { BtEditor } from "~/components/features/BtEditor/BtEditor";
+import { DefaultFieldClass } from "~/components/form/fields";
 import { Icons } from "~/components/icons";
 import { generateBossDataByFlag } from "~/lib/utils/mob";
 import { store } from "~/store";
 import type { TableDataConfig } from "../data-config";
-import { DefaultFieldClass } from "../form/FormRenderer";
 import { getUserContext } from "../utils/context";
 
 export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({

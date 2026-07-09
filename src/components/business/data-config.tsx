@@ -31,7 +31,7 @@ import { TASK_DATA_CONFIG } from "./dataConfig/task";
 import { WEAPON_DATA_CONFIG } from "./dataConfig/weapon";
 import { WORLD_DATA_CONFIG } from "./dataConfig/world";
 import { ZONE_DATA_CONFIG } from "./dataConfig/zone";
-import type { FormProps } from "./form/FormRenderer";
+import type { DataFormProps } from "./form/DataForm";
 
 type SafeOmit<T, K extends keyof T> = Omit<T, K>;
 
@@ -119,7 +119,7 @@ export type TableDataConfig<
 		"data" | "primaryKey" | "dictionary" | "rowHandleClick" | "onColumnVisibilityChange" | "globalFilterStr"
 	>;
 	form: SafeOmit<
-		FormProps<T, ZodObject<{ [K in keyof T]: ZodType }>>,
+		DataFormProps<T, ZodObject<{ [K in keyof T]: ZodType }>>,
 		"value" | "dataSchema" | "tableName" | "primaryKey" | "defaultValue" | "dictionary" | "fieldGroupMap"
 	>;
 	// 卡片展示配置承载自动关联内容覆盖，避免把展示过滤规则混入实体结构声明。

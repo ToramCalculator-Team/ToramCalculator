@@ -34,9 +34,9 @@ import { BtEditorWrapper } from "~/components/business/utils/BTEditorWrapper";
 import { Button } from "~/components/controls/button";
 import { Input } from "~/components/controls/input";
 import { BtEditor, type BtEditorValue } from "~/components/features/BtEditor/BtEditor";
+import { DefaultFieldClass, type FormFieldRendererContext, type FormRenderers } from "~/components/form/fields";
 import type { Dictionary } from "~/locales/type";
 import type { QueryDB, TableDataConfig } from "../data-config";
-import { DefaultFieldClass, type FormFieldRendererContext, type FormRenderers } from "../form/SchemaFieldRenderer";
 
 const formatJson = (value: unknown): string => JSON.stringify(value ?? null, null, 2);
 

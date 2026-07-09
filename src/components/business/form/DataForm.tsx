@@ -2,28 +2,31 @@ import { getFkRefByColumn, listFkColumns } from "@db/generated/dmmf-utils";
 import { repositoryMethods } from "@db/generated/repositories";
 import type { DB } from "@db/generated/zod";
 import { createId } from "@paralleldrive/cuid2";
-import { type AnyFieldApi, createForm, type DeepKeys } from "@tanstack/solid-form";
+import { type AnyFieldApi, createForm } from "@tanstack/solid-form";
 import { createMemo, createResource, For, Index, Show } from "solid-js";
+import type { JSX } from "solid-js/jsx-runtime";
 import type { ZodObject, ZodType } from "zod/v4";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { Button } from "~/components/controls/button";
 import { Input } from "~/components/controls/input";
-import { fieldInfo } from "~/components/dataDisplay/utils";
-import { useDictionary } from "~/contexts/Dictionary";
-import type { Dic, FieldDetail } from "~/locales/type";
-import { DATA_CONFIG, type EmbedsDecl, type InheritsFromDecl } from "../data-config";
 import {
 	DefaultFieldClass,
+	type FormFieldRendererContext,
 	type FormRendererFormApi,
 	type FormRendererPath,
 	type FormRenderers,
-	hasFieldRenderer,
 	SchemaFieldNode,
-} from "./SchemaFieldRenderer";
+} from "~/components/form/fields";
+import { useDictionary } from "~/contexts/Dictionary";
+import type { Dic, FieldDetail } from "~/locales/type";
+import { type AnyTableDataConfig, DATA_CONFIG, type EmbedsDecl, type InheritsFromDecl } from "../data-config";
 
-export { DefaultFieldClass } from "./SchemaFieldRenderer";
+export { DefaultFieldClass } from "~/components/form/fields";
 
-export interface FormProps<T extends Record<string, unknown>, TSchema extends ZodObject<{ [K in keyof T]: ZodType }>> {
+export interface DataFormProps<
+	T extends Record<string, unknown>,
+	TSchema extends ZodObject<{ [K in keyof T]: ZodType }>,
+> {
 	// UI渲染表单名称时需要
 	tableName: string;
 	// 表单值
@@ -57,6 +60,24 @@ type ForeignKeyRenderInfo = {
 	referencedField: string;
 };
 
+type AnyResolvedDataConfig = ReturnType<AnyTableDataConfig>;
+
+function mergeRenderers<TFormData extends Record<string, unknown>>(
+	...renderers: Array<FormRenderers<TFormData> | undefined>
+): FormRenderers<TFormData> | undefined {
+	const fields = Object.assign({}, ...renderers.map((renderer) => renderer?.fields ?? {}));
+	const containers = Object.assign({}, ...renderers.map((renderer) => renderer?.containers ?? {}));
+	const hasFields = Object.keys(fields).length > 0;
+	const hasContainers = Object.keys(containers).length > 0;
+
+	if (!hasFields && !hasContainers) return undefined;
+
+	return {
+		fields: hasFields ? (fields as FormRenderers<TFormData>["fields"]) : undefined,
+		containers: hasContainers ? (containers as FormRenderers<TFormData>["containers"]) : undefined,
+	};
+}
+
 /**
  * 渲染单个字段（供主表单和 embed 内嵌数组共用）
  * - pathPrefix 为空时渲染顶层字段；否则渲染嵌套字段（如 "variants[0]"）
@@ -69,61 +90,13 @@ function FormFieldBlock<TFormData extends Record<string, unknown>, TItem extends
 	dataSchema: ZodObject<{ [K in keyof TItem]: ZodType }>;
 	dictionary: Dic<TItem>;
 	renderers?: FormRenderers<TItem>;
-	foreignKeyFieldMap: Map<string, ForeignKeyRenderInfo>;
-	fkOptionsByTable: () => Partial<Record<keyof DB, unknown[]>> | undefined;
 }) {
 	const key = props.fieldKey;
-	const fullName = (props.pathPrefix ? `${props.pathPrefix}.${key}` : key) as unknown as DeepKeys<
-		Record<string, unknown>
-	>;
+	const fullName = props.pathPrefix ? `${props.pathPrefix}.${key}` : key;
 	const schemaField = props.dataSchema.shape[key];
-	const fkInfo = props.foreignKeyFieldMap.get(String(key));
 	const fieldDic = (props.dictionary.fields as Record<string, FieldDetail | undefined>)[String(key)];
-	const inputTitle = fieldDic?.key ?? String(key);
-	const inputDescription = fieldDic?.formFieldDescription ?? "";
 
 	if (!schemaField) return null;
-
-	if (!hasFieldRenderer(props.renderers, String(key)) && fkInfo) {
-		return (
-			<props.form.Field
-				name={fullName}
-				validators={{
-					onChangeAsyncDebounceMs: 500,
-					onChangeAsync: schemaField,
-				}}
-			>
-				{(field: () => AnyFieldApi) => {
-					const options = () =>
-						(props.fkOptionsByTable()?.[fkInfo.referencedTable] ?? []) as Array<Record<string, unknown>>;
-					return (
-						<Input
-							title={inputTitle !== String(key) ? inputTitle : fkInfo.referencedTable}
-							description={inputDescription || `选择 ${fkInfo.referencedTable} 记录`}
-							validationMessage={fieldInfo(field())}
-							class={DefaultFieldClass}
-						>
-							<Autocomplete
-								id={String(fullName)}
-								options={options()}
-								value={field().state.value}
-								onChange={(value) => field().setValue(value as never)}
-								getOptionValue={(option: Record<string, unknown>) => option[fkInfo.referencedField]}
-								getOptionLabel={(option: Record<string, unknown>) => {
-									const name = option.name;
-									if (typeof name === "string") return name;
-									const byField = option[fkInfo.referencedField];
-									if (byField !== null && byField !== undefined) return String(byField);
-									const id = option.id;
-									return id !== null && id !== undefined ? String(id) : "";
-								}}
-							/>
-						</Input>
-					);
-				}}
-			</props.form.Field>
-		);
-	}
 
 	return (
 		<SchemaFieldNode<TFormData, TItem>
@@ -137,8 +110,58 @@ function FormFieldBlock<TFormData extends Record<string, unknown>, TItem extends
 	);
 }
 
-export const Form = <T extends Record<string, unknown>, TSchema extends ZodObject<{ [K in keyof T]: ZodType }>>(
-	props: FormProps<T, TSchema>,
+function createForeignKeyFieldRenderers<TItem extends Record<string, unknown>>(props: {
+	dictionary: Dic<TItem>;
+	foreignKeyFieldMap: Map<string, ForeignKeyRenderInfo>;
+	fkOptionsByTable: () => Partial<Record<keyof DB, unknown[]>> | undefined;
+}): NonNullable<FormRenderers<TItem>["fields"]> {
+	const renderers: Partial<
+		Record<string, (context: FormFieldRendererContext<TItem, FormRendererPath<TItem>>) => JSX.Element>
+	> = {};
+
+	for (const [fieldKey, fkInfo] of props.foreignKeyFieldMap.entries()) {
+		const fieldDic = (props.dictionary.fields as Record<string, FieldDetail | undefined>)[fieldKey];
+		const inputTitle = fieldDic?.key ?? fieldKey;
+		const inputDescription = fieldDic?.formFieldDescription ?? `选择 ${fkInfo.referencedTable} 记录`;
+
+		renderers[fieldKey as FormRendererPath<TItem>] = (context) => {
+			const options = () =>
+				(props.fkOptionsByTable()?.[fkInfo.referencedTable] ?? []) as Array<Record<string, unknown>>;
+			return (
+				<Input
+					title={inputTitle !== fieldKey ? inputTitle : String(fkInfo.referencedTable)}
+					description={inputDescription}
+					validationMessage={context.validationMessage}
+					class={DefaultFieldClass}
+				>
+					<Autocomplete
+						id={context.name}
+						options={options()}
+						value={context.value()}
+						// FK 选择器的运行时值来自 schema 路径，静态上无法仅靠 DMMF 元数据收窄到具体标量类型。
+						onChange={(value) => context.setValue(value as never)}
+						getOptionValue={(option: Record<string, unknown>) => option[fkInfo.referencedField]}
+						getOptionLabel={(option: Record<string, unknown>) => {
+							const name = option.name;
+							if (typeof name === "string") return name;
+							const byField = option[fkInfo.referencedField];
+							if (byField !== null && byField !== undefined) return String(byField);
+							const id = option.id;
+							return id !== null && id !== undefined ? String(id) : "";
+						}}
+					/>
+				</Input>
+			);
+		};
+	}
+
+	// 这里的 renderer 是按运行时字段名批量生成的；每个字段实际命中后仍会收到对应 path 的 context。
+	// TS 无法从 DMMF 的字符串列名反推出每个 path 的更窄泛型，因此只在返回口做一次类型收窄。
+	return renderers as NonNullable<FormRenderers<TItem>["fields"]>;
+}
+
+export const DataForm = <T extends Record<string, unknown>, TSchema extends ZodObject<{ [K in keyof T]: ZodType }>>(
+	props: DataFormProps<T, TSchema>,
 ) => {
 	const dictionary = useDictionary();
 
@@ -176,20 +199,9 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 		} as Dic<T>;
 	});
 
-	const mergedRenderers = createMemo<FormRenderers<T> | undefined>(() => {
-		const own = props.renderers;
-		if (!props.inheritsFrom) return own;
-		const parentForm = DATA_CONFIG[props.inheritsFrom.table]?.(dictionary).form;
-		return {
-			fields: {
-				...((parentForm?.renderers?.fields as object) ?? {}),
-				...((own?.fields as object) ?? {}),
-			},
-			containers: {
-				...((parentForm?.renderers?.containers as object) ?? {}),
-				...((own?.containers as object) ?? {}),
-			},
-		} as FormRenderers<T>;
+	const parentRenderers = createMemo<FormRenderers<T> | undefined>(() => {
+		if (!props.inheritsFrom) return undefined;
+		return DATA_CONFIG[props.inheritsFrom.table]?.(dictionary).form.renderers as FormRenderers<T> | undefined;
 	});
 
 	// ---------- 自动 FK 字段映射 ----------
@@ -227,6 +239,19 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 		return Object.fromEntries(entries) as Partial<Record<keyof DB, unknown[]>>;
 	});
 
+	const autoForeignKeyRenderers = createMemo<FormRenderers<T> | undefined>(() => {
+		const fields = createForeignKeyFieldRenderers<T>({
+			dictionary: mergedDictionary(),
+			foreignKeyFieldMap: foreignKeyFieldMap(),
+			fkOptionsByTable: () => fkOptionsByTable(),
+		});
+		return Object.keys(fields).length > 0 ? { fields } : undefined;
+	});
+
+	const mergedRenderers = createMemo<FormRenderers<T> | undefined>(() =>
+		mergeRenderers(autoForeignKeyRenderers(), parentRenderers(), props.renderers),
+	);
+
 	// ---------- 排除 embed 字段，防止被当成普通 array 渲染 ----------
 
 	const embedFieldNames = createMemo(() => new Set((props.embeds ?? []).map((e) => e.field)));
@@ -260,13 +285,67 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 						dataSchema={props.dataSchema}
 						dictionary={mergedDictionary()}
 						renderers={mergedRenderers()}
-						foreignKeyFieldMap={foreignKeyFieldMap()}
-						fkOptionsByTable={() => fkOptionsByTable()}
 					/>
 				);
 			}}
 		</For>
 	);
+
+	// 子表的 FK 字段映射缓存（排除回指父表的 via FK，避免用户在子表单里手选父表）
+	const childFkMapCache = new Map<string, Map<string, ForeignKeyRenderInfo>>();
+	const childFkMapFor = (childTable: keyof DB, viaFk: string): Map<string, ForeignKeyRenderInfo> => {
+		const key = `${String(childTable)}::${viaFk}`;
+		const cached = childFkMapCache.get(key);
+		if (cached) return cached;
+		const map = new Map<string, ForeignKeyRenderInfo>();
+		for (const fkCol of listFkColumns(childTable)) {
+			if (String(fkCol) === viaFk) continue;
+			const ref = getFkRefByColumn(childTable, fkCol);
+			if (!ref) continue;
+			map.set(String(fkCol), { referencedTable: ref.table, referencedField: ref.field });
+		}
+		childFkMapCache.set(key, map);
+		return map;
+	};
+
+	// DATA_CONFIG 在总表中已经擦除了具体实体泛型；embed 渲染阶段只把它恢复成“任意对象表单”的统一形状。
+	const childDictionaryFor = (childConfig: AnyResolvedDataConfig): Dic<Record<string, unknown>> => {
+		const ownDictionary = childConfig.dictionary as Dic<Record<string, unknown>>;
+		if (!childConfig.inheritsFrom) return ownDictionary;
+		const parentDic = dictionary().db[childConfig.inheritsFrom.table];
+		return {
+			...ownDictionary,
+			fields: {
+				...((parentDic?.fields as object) ?? {}),
+				...(ownDictionary.fields as object),
+			},
+		} as Dic<Record<string, unknown>>;
+	};
+
+	const childRenderersFor = (
+		childConfig: AnyResolvedDataConfig,
+		childTable: keyof DB,
+		viaFk: string,
+	): FormRenderers<Record<string, unknown>> | undefined => {
+		const childDictionary = childDictionaryFor(childConfig);
+		const autoForeignKeyFields = createForeignKeyFieldRenderers<Record<string, unknown>>({
+			dictionary: childDictionary,
+			foreignKeyFieldMap: childFkMapFor(childTable, viaFk),
+			fkOptionsByTable: () => fkOptionsByTable(),
+		});
+		const parentRenderers = childConfig.inheritsFrom
+			? (DATA_CONFIG[childConfig.inheritsFrom.table]?.(dictionary).form.renderers as
+					| FormRenderers<Record<string, unknown>>
+					| undefined)
+			: undefined;
+		const ownRenderers = childConfig.form.renderers as FormRenderers<Record<string, unknown>> | undefined;
+
+		return mergeRenderers(
+			Object.keys(autoForeignKeyFields).length > 0 ? { fields: autoForeignKeyFields } : undefined,
+			parentRenderers,
+			ownRenderers,
+		);
+	};
 
 	// ---------- embed 内嵌数组渲染 ----------
 
@@ -279,10 +358,13 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 				</section>
 			);
 		}
-		const childTableName = embed.table;
+
+		const childDictionary = childDictionaryFor(childConfig);
+		const childRenderers = childRenderersFor(childConfig, embed.table, embed.via);
+
 		return (
 			<section class="FieldGroup flex w-full flex-col gap-2 p-2 bg-primary-color rounded">
-				<h3 class="text-accent-color font-bold flex items-center gap-2 py-2">{childConfig.dictionary.selfName}</h3>
+				<h3 class="text-accent-color font-bold flex items-center gap-2 py-2">{childDictionary.selfName}</h3>
 				<form.Field name={embed.field} mode="array">
 					{(arrayField: () => AnyFieldApi) => {
 						const items = () => (arrayField().state.value as Array<Record<string, unknown>>) ?? [];
@@ -293,7 +375,7 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 										<div class="EmbedItem bg-area-color border-dividing-color flex flex-col gap-1 rounded-md border p-1">
 											<div class="flex items-center justify-between p-2 ">
 												<span class="text-accent-color font-bold">
-													{childConfig.dictionary.selfName} #{index + 1}
+													{childDictionary.selfName} #{index + 1}
 												</span>
 												<Button
 													onClick={() => {
@@ -315,10 +397,8 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 																	pathPrefix={`${embed.field}[${index}]`}
 																	fieldKey={childKey as never}
 																	dataSchema={childConfig.dataSchema}
-																	dictionary={childConfig.dictionary}
-																	renderers={childConfig.form.renderers}
-																	foreignKeyFieldMap={childFkMapFor(childTableName, embed.via)}
-																	fkOptionsByTable={() => fkOptionsByTable()}
+																	dictionary={childDictionary}
+																	renderers={childRenderers}
 																/>
 															);
 														}}
@@ -344,10 +424,8 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 																				pathPrefix={`${embed.field}[${index}]`}
 																				fieldKey={childKey as never}
 																				dataSchema={childConfig.dataSchema}
-																				dictionary={childConfig.dictionary}
-																				renderers={childConfig.form.renderers}
-																				foreignKeyFieldMap={childFkMapFor(childTableName, embed.via)}
-																				fkOptionsByTable={() => fkOptionsByTable()}
+																				dictionary={childDictionary}
+																				renderers={childRenderers}
 																			/>
 																		)}
 																	</For>
@@ -375,7 +453,7 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 										arrayField().pushValue(newItem as never);
 									}}
 								>
-									新增 {childConfig.dictionary.selfName}
+									新增 {childDictionary.selfName}
 								</Button>
 							</div>
 						);
@@ -383,23 +461,6 @@ export const Form = <T extends Record<string, unknown>, TSchema extends ZodObjec
 				</form.Field>
 			</section>
 		);
-	};
-
-	// 子表的 FK 字段映射缓存（排除回指父表的 via FK，避免用户在子表单里手选父表）
-	const childFkMapCache = new Map<string, Map<string, ForeignKeyRenderInfo>>();
-	const childFkMapFor = (childTable: keyof DB, viaFk: string): Map<string, ForeignKeyRenderInfo> => {
-		const key = `${String(childTable)}::${viaFk}`;
-		const cached = childFkMapCache.get(key);
-		if (cached) return cached;
-		const map = new Map<string, ForeignKeyRenderInfo>();
-		for (const fkCol of listFkColumns(childTable)) {
-			if (String(fkCol) === viaFk) continue;
-			const ref = getFkRefByColumn(childTable, fkCol);
-			if (!ref) continue;
-			map.set(String(fkCol), { referencedTable: ref.table, referencedField: ref.field });
-		}
-		childFkMapCache.set(key, map);
-		return map;
 	};
 
 	return (
