@@ -14,8 +14,8 @@
  * - 旧全局表单单例 → 新 `layers` 里 kind==="sheet" 的**多个层实例**
  * - 旧 `topGroup` 二元信号 → 由层数组顺序自然决定,不再需要
  */
-import type { Accessor, JSX } from "solid-js";
-import { createStore, produce } from "solid-js/store";
+import { type Accessor, batch, type JSX } from "solid-js";
+import { createStore } from "solid-js/store";
 
 export type OverlayLayerKind = "dialog" | "sheet";
 
@@ -24,48 +24,66 @@ export interface OverlayEntryApi {
 	readonly id: string;
 	readonly index: number;
 	readonly total: number;
-	/** 关闭本 entry(触发退出动画,动画完成后由容器 commit 真删)。 */
+	/** 关闭本 entry(触发退出动画,动画完成后由容器 complete 真删)。 */
 	close: () => void;
 	/** 关闭本层最顶部 entry(dialog drill 场景常用)。 */
 	closeTop: () => void;
 }
 
-/** Dialog layer 专属 entry(带 title/titleIcon)。 */
-export interface DialogEntryInit {
+interface OverlayEntryInitBase {
 	id?: string;
+	render: (api: OverlayEntryApi) => JSX.Element;
+	/** 关闭请求发起时调用,不等待退出动画完成。 */
+	onCloseRequest?: () => void;
+}
+
+/** Dialog layer 专属 entry(带 title/titleIcon)。 */
+export interface DialogLayerEntryInit extends OverlayEntryInitBase {
 	title?: string | Accessor<string>;
 	titleIcon?: () => JSX.Element;
-	maxWith?: string;
-	render: (api: OverlayEntryApi) => JSX.Element;
-	onClose?: () => void;
+	layout?: "content" | "fill";
+	maxWidth?: string;
 }
 
 /** Sheet layer 专属 entry(通常层内单表单,但结构统一)。 */
-export interface SheetEntryInit {
-	id?: string;
-	render: (api: OverlayEntryApi) => JSX.Element;
-	onClose?: () => void;
-}
+export interface SheetLayerEntryInit extends OverlayEntryInitBase {}
 
 /** 层内运行时状态(挂 id + closing 标志)。 */
-export interface OverlayEntryState {
+interface OverlayEntryStateBase {
 	id: string;
-	title?: string | Accessor<string>;
-	titleIcon?: () => JSX.Element;
-	maxWith?: string;
 	render: (api: OverlayEntryApi) => JSX.Element;
-	onClose?: () => void;
+	/** 关闭请求发起时调用,不等待退出动画完成。 */
+	onCloseRequest?: () => void;
 	closing: boolean;
 }
 
-/** 一层(dialog stack / sheet stack / 未来其它 kind)。 */
-export interface OverlayLayer {
+export interface DialogLayerEntryState extends OverlayEntryStateBase {
+	title?: string | Accessor<string>;
+	titleIcon?: () => JSX.Element;
+	layout?: "content" | "fill";
+	maxWidth?: string;
+}
+
+export interface SheetLayerEntryState extends OverlayEntryStateBase {}
+
+export type OverlayEntryState = DialogLayerEntryState | SheetLayerEntryState;
+
+interface OverlayLayerBase<TKind extends OverlayLayerKind, TEntry extends OverlayEntryState> {
 	id: string;
-	kind: OverlayLayerKind;
+	kind: TKind;
 	parentId: string | null;
 	closing: boolean;
-	entries: OverlayEntryState[];
+	entries: TEntry[];
 }
+
+/** 一层 dialog stack。 */
+export type DialogLayer = OverlayLayerBase<"dialog", DialogLayerEntryState>;
+
+/** 一层 sheet stack。 */
+export type SheetLayer = OverlayLayerBase<"sheet", SheetLayerEntryState>;
+
+/** 一层(dialog stack / sheet stack / 未来其它 kind)。 */
+export type OverlayLayer = DialogLayer | SheetLayer;
 
 let layerSerial = 0;
 let entrySerial = 0;
@@ -79,7 +97,7 @@ const [layers, setLayers] = createStore<OverlayLayer[]>([]);
  * 保证任意浮层都盖在实时模拟器之上;层级按打开顺序向上线性叠加。
  */
 const Z_BASE = 70;
-/** 单层内允许的 entry 数量上限的位宽,避免与相邻层的 z 重叠。 */
+/** 层级步长:为未来 layer 局部层级预留空间。 */
 const Z_STRIDE = 10;
 
 /** 只读的层数组访问器,供容器 For 遍历。 */
@@ -87,50 +105,60 @@ export function overlayLayers(): readonly OverlayLayer[] {
 	return layers;
 }
 
-/** 打开新层。parentId = 打开来源层的 id,或 null(根级入口)。 */
-export function openLayer(
-	kind: OverlayLayerKind,
-	entry: DialogEntryInit | SheetEntryInit,
+/** 打开新 dialog layer。parentId = 打开来源层的 id,或 null(根级入口)。 */
+export function openDialogLayer(
+	entry: DialogLayerEntryInit,
 	parentId: string | null,
 ): { layerId: string; entryId: string } {
 	const layerId = createLayerId();
-	const entryId = entry.id ?? createEntryId(kind);
-	const entryState: OverlayEntryState = {
-		id: entryId,
-		title: (entry as DialogEntryInit).title,
-		titleIcon: (entry as DialogEntryInit).titleIcon,
-		maxWith: (entry as DialogEntryInit).maxWith,
-		render: entry.render,
-		onClose: entry.onClose,
-		closing: false,
-	};
-	setLayers((prev) => [...prev, { id: layerId, kind, parentId, closing: false, entries: [entryState] }]);
-	return { layerId, entryId };
+	const entryState = createDialogEntryState(entry);
+	setLayers(layers.length, { id: layerId, kind: "dialog", parentId, closing: false, entries: [entryState] });
+	return { layerId, entryId: entryState.id };
+}
+
+/** 打开新 sheet layer。parentId = 打开来源层的 id,或 null(根级入口)。 */
+export function openSheetLayer(
+	entry: SheetLayerEntryInit,
+	parentId: string | null,
+): { layerId: string; entryId: string } {
+	const layerId = createLayerId();
+	const entryState = createSheetEntryState(entry);
+	setLayers(layers.length, { id: layerId, kind: "sheet", parentId, closing: false, entries: [entryState] });
+	return { layerId, entryId: entryState.id };
 }
 
 /** 往已存在的层追加 entry(dialog drill / sheet 递进编辑)。 */
-export function pushEntry(layerId: string, entry: DialogEntryInit | SheetEntryInit): string {
+export function pushDialogEntry(layerId: string, entry: DialogLayerEntryInit): string {
 	const layerIndex = layers.findIndex((l) => l.id === layerId);
 	if (layerIndex < 0) {
-		throw new Error(`pushEntry: 未找到 layerId=${layerId}`);
+		throw new Error(`pushDialogEntry: 未找到 layerId=${layerId}`);
 	}
 	const layer = layers[layerIndex];
-	const entryId = entry.id ?? createEntryId(layer.kind);
-	const entryState: OverlayEntryState = {
-		id: entryId,
-		title: (entry as DialogEntryInit).title,
-		titleIcon: (entry as DialogEntryInit).titleIcon,
-		maxWith: (entry as DialogEntryInit).maxWith,
-		render: entry.render,
-		onClose: entry.onClose,
-		closing: false,
-	};
+	if (layer.kind !== "dialog") {
+		throw new Error(`pushDialogEntry: layerId=${layerId} 是 ${layer.kind} layer`);
+	}
+	const entryState = createDialogEntryState(entry);
 	setLayers(layerIndex, "entries", (prev) => [...prev, entryState]);
-	return entryId;
+	return entryState.id;
+}
+
+/** 往已存在的 sheet 层追加 entry。 */
+export function pushSheetEntry(layerId: string, entry: SheetLayerEntryInit): string {
+	const layerIndex = layers.findIndex((l) => l.id === layerId);
+	if (layerIndex < 0) {
+		throw new Error(`pushSheetEntry: 未找到 layerId=${layerId}`);
+	}
+	const layer = layers[layerIndex];
+	if (layer.kind !== "sheet") {
+		throw new Error(`pushSheetEntry: layerId=${layerId} 是 ${layer.kind} layer`);
+	}
+	const entryState = createSheetEntryState(entry);
+	setLayers(layerIndex, "entries", (prev) => [...prev, entryState]);
+	return entryState.id;
 }
 
 /** 关闭层内指定 entry(默认关最顶部)。层内最后一条 entry 关闭 → 自动关本层。 */
-export function closeEntry(layerId: string, entryId?: string): void {
+export function requestCloseEntry(layerId: string, entryId?: string): void {
 	const layerIndex = layers.findIndex((l) => l.id === layerId);
 	if (layerIndex < 0) return;
 	const layer = layers[layerIndex];
@@ -139,68 +167,71 @@ export function closeEntry(layerId: string, entryId?: string): void {
 	if (targetIndex < 0) return;
 	const target = layer.entries[targetIndex];
 	if (!target || target.closing) return;
-	target.onClose?.();
+	const onCloseRequest = target.onCloseRequest;
 	setLayers(layerIndex, "entries", targetIndex, "closing", true);
+	onCloseRequest?.();
 }
 
 /** entry 退出动画完成时容器回调,真正从数组移除该 entry;若该层已无未关闭 entry,自动关层。 */
-export function commitEntryRemoval(layerId: string, entryId: string): void {
+export function completeEntryExit(layerId: string, entryId: string): void {
 	const layerIndex = layers.findIndex((l) => l.id === layerId);
 	if (layerIndex < 0) return;
-	setLayers(layerIndex, "entries", (prev) => prev.filter((e) => e.id !== entryId));
-	const remaining = layers[layerIndex]?.entries ?? [];
-	if (remaining.length === 0) {
-		closeLayer(layerId);
-	}
+	const willBeEmpty = layers[layerIndex].entries.every((entry) => entry.id === entryId);
+	batch(() => {
+		setLayers(layerIndex, "entries", (prev) => prev.filter((entry) => entry.id !== entryId));
+		if (willBeEmpty) requestCloseLayer(layerId);
+	});
 }
 
 /**
  * 关闭一层 —— 级联关闭其所有后代层(cascade)。
- * 只标记 closing,真正的移除等所有层内 entry 退出动画完成后由 commitLayer 提交。
+ * 只标记 closing,真正的移除等退出动画完成后由 completeLayerExit 提交。
  */
-export function closeLayer(layerId: string): void {
+export function requestCloseLayer(layerId: string): void {
 	const toClose = collectDescendants(layerId);
-	setLayers(
-		produce((draft) => {
-			for (const layer of draft) {
-				if (!toClose.has(layer.id) || layer.closing) continue;
-				layer.closing = true;
-				for (const entry of layer.entries) {
-					if (!entry.closing) {
-						entry.onClose?.();
-						entry.closing = true;
-					}
-				}
+	const onCloseRequests: Array<() => void> = [];
+	batch(() => {
+		for (let layerIndex = 0; layerIndex < layers.length; layerIndex++) {
+			const layer = layers[layerIndex];
+			if (!toClose.has(layer.id) || layer.closing) continue;
+			setLayers(layerIndex, "closing", true);
+			for (let entryIndex = 0; entryIndex < layer.entries.length; entryIndex++) {
+				const entry = layer.entries[entryIndex];
+				if (entry.closing) continue;
+				if (entry.onCloseRequest) onCloseRequests.push(entry.onCloseRequest);
+				setLayers(layerIndex, "entries", entryIndex, "closing", true);
 			}
-		}),
-	);
+		}
+	});
+	for (const onCloseRequest of onCloseRequests) {
+		onCloseRequest();
+	}
 }
 
 /** 层退出动画完成后由容器调用,真正从数组移除该层。 */
-export function commitLayerRemoval(layerId: string): void {
+export function completeLayerExit(layerId: string): void {
 	setLayers((prev) => prev.filter((l) => l.id !== layerId));
 }
 
-/** 关闭最顶层(Escape 用)。返回是否关掉了一个层。 */
-export function closeTopLayer(): boolean {
+/** 关闭最顶层(Escape 用)。返回事件是否被顶层消费。 */
+export function requestCloseTopLayer(): boolean {
 	const top = topLayer();
 	if (!top) return false;
-	closeLayer(top.id);
+	if (!top.closing) {
+		requestCloseLayer(top.id);
+	}
 	return true;
 }
 
-/** 当前最顶层(数组末尾且未 closing)。 */
+/** 当前视觉最顶层。closing 顶层也会消费 Escape,避免关闭事件穿透到下层。 */
 export function topLayer(): OverlayLayer | undefined {
-	for (let i = layers.length - 1; i >= 0; i--) {
-		if (!layers[i].closing) return layers[i];
-	}
-	return undefined;
+	return layers[layers.length - 1];
 }
 
 /**
  * 层的 z-index 值。按层在数组中的顺序线性分配:
  * - 越后打开(数组越靠后)z 越高
- * - 用 Z_STRIDE 步长为每层预留 z 空间,避免层内容 z-index 与相邻层混淆
+ * - 保持步长,为未来 layer 内部局部层级预留空间
  */
 export function layerZIndex(layerId: string): number {
 	const index = layers.findIndex((l) => l.id === layerId);
@@ -209,6 +240,28 @@ export function layerZIndex(layerId: string): number {
 }
 
 // ---- 内部工具 ----
+
+function createDialogEntryState(entry: DialogLayerEntryInit): DialogLayerEntryState {
+	return {
+		id: entry.id ?? createEntryId("dialog"),
+		title: entry.title,
+		titleIcon: entry.titleIcon,
+		layout: entry.layout,
+		maxWidth: entry.maxWidth,
+		render: entry.render,
+		onCloseRequest: entry.onCloseRequest,
+		closing: false,
+	};
+}
+
+function createSheetEntryState(entry: SheetLayerEntryInit): SheetLayerEntryState {
+	return {
+		id: entry.id ?? createEntryId("sheet"),
+		render: entry.render,
+		onCloseRequest: entry.onCloseRequest,
+		closing: false,
+	};
+}
 
 function findTopOpenEntryIndex(layer: OverlayLayer): number {
 	for (let i = layer.entries.length - 1; i >= 0; i--) {

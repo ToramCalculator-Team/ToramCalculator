@@ -1,29 +1,32 @@
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
-import { type Skill, type SkillWithRelations, selectAllSkills } from "@db/generated/repositories/skill";
+import {
+	type Skill,
+	type SkillWithRelations,
+	selectAllSkills,
+	skillSubRelations,
+} from "@db/generated/repositories/skill";
+import type { DB } from "@db/generated/zod/index";
+import { getDB } from "@db/repositories/database";
 import { SKILL_TREE_GROUP_TYPE, SKILL_TREE_TYPE, type SkillTreeType } from "@db/schema/enums";
 import { createId } from "@paralleldrive/cuid2";
+import type { Transaction } from "kysely";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createEffect, createMemo, createResource, createSignal, For, Index, on, onCleanup, Show } from "solid-js";
-import { Portal } from "solid-js/web";
-import { Sheet } from "~/components/containers/sheet";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
-import { SKILL_TREE_MAP, SkillTreePickerSheet } from "./SkillTreePickerSheet";
-import { skillSubRelations } from "@db/generated/repositories/skill";
-import type { DB } from "@db/generated/zod/index";
-import type { Transaction } from "kysely";
-import { getDB } from "@db/repositories/database";
+import { type OverlayLayerHandle, useOverlay } from "~/lib/overlay/OverlayContext";
+import { SKILL_TREE_MAP, SkillTreePickerSheetContent } from "./SkillTreePickerSheet";
 import {
 	buildSkillLinkCells,
 	getCssGridRow,
 	getSkillGridX,
 	getSkillGridY,
 	getSkillTreeGridBounds,
-	SKILL_GRID_CELL_WIDTH,
 	SKILL_GRID_CELL_HEIGHT,
-	type SkillTreeGridBounds,
+	SKILL_GRID_CELL_WIDTH,
 	SkillLinkCellBlock,
+	type SkillTreeGridBounds,
 } from "./skillTreeGrid";
 
 async function selectSkillsByIdsWithRelations(
@@ -41,7 +44,6 @@ async function selectSkillsByIdsWithRelations(
 		.select((eb) => skillSubRelations(eb, eb.ref("skill.id")))
 		.execute();
 }
-
 
 type SkillTreeEntry = {
 	templates: Skill[];
@@ -178,8 +180,9 @@ function SkillNodeCell(props: {
 
 export function SkillPanel(props: SkillPanelProps) {
 	const dictionary = useDictionary();
+	const overlay = useOverlay();
 	const [skillTemplates] = createResource(() => selectAllSkills());
-	const [skillTreePickerOpen, setSkillTreePickerOpen] = createSignal(false);
+	let skillTreePickerSheetHandle: OverlayLayerHandle | undefined;
 	const [visibleSkillTreeOverrides, setVisibleSkillTreeOverrides] = createSignal<VisibleSkillTreeOverrideMap>({});
 	const [focusedTreeSkillId, setFocusedTreeSkillId] = createSignal<string | null>(null);
 	// 设计说明：技能节点交互先写入面板局部映射；页面 model 负责 DB 提交和失败时通过 props.skills 回灌回滚状态。
@@ -219,13 +222,17 @@ export function SkillPanel(props: SkillPanelProps) {
 		}
 		return map;
 	});
-	const [skillTreeEditorSheetOpen, setSkillTreeEditorSheetOpen] = createSignal(false);
-	const openSkillTreeEditorSheet = (treeType: SkillTreeType) => {
-		setActiveSkillTreeType(treeType);
-		setFocusedTreeSkillId(null);
-		setSkillTreeEditorSheetOpen(true);
+	let skillTreeEditorSheetHandle: OverlayLayerHandle | undefined;
+	const closeSkillTreeEditorSheet = () => {
+		const handle = skillTreeEditorSheetHandle;
+		skillTreeEditorSheetHandle = undefined;
+		handle?.close();
 	};
-	const closeSkillTreeEditorSheet = () => setSkillTreeEditorSheetOpen(false);
+	const closeSkillTreePickerSheet = () => {
+		const handle = skillTreePickerSheetHandle;
+		skillTreePickerSheetHandle = undefined;
+		handle?.close();
+	};
 	let skillLevelMutationToken = 0;
 
 	const mergeSkillTemplateRelations = (templates: SkillWithRelations[]) => {
@@ -277,7 +284,7 @@ export function SkillPanel(props: SkillPanelProps) {
 		setFocusedTreeSkillId((focused) =>
 			focused && templates.some((template) => template.id === focused) ? null : focused,
 		);
-		if (activeSkillTreeType() === treeType) setSkillTreeEditorSheetOpen(false);
+		if (activeSkillTreeType() === treeType) closeSkillTreeEditorSheet();
 		setSkillLevelByTemplateId((levels) => {
 			const nextLevels = { ...levels };
 			for (const template of templates) {
@@ -311,6 +318,8 @@ export function SkillPanel(props: SkillPanelProps) {
 
 	onCleanup(() => {
 		skillLevelMutationToken += 1;
+		closeSkillTreeEditorSheet();
+		closeSkillTreePickerSheet();
 	});
 
 	createEffect(() => {
@@ -430,13 +439,100 @@ export function SkillPanel(props: SkillPanelProps) {
 		return currentLevel > 0;
 	};
 
+	const renderSkillTreeEditorSheet = () => (
+		<div class="flex portrait:h-[90dvh] h-full w-full flex-col gap-2 overflow-hidden p-6">
+			<div class="sheetTitle flex w-full items-center justify-between text-xl font-bold">
+				{dictionary().db.skill.fields.treeType.enumMap[activeSkillTreeType()]}
+				<Button
+					icon={<Icons.Outline.Close />}
+					level="quaternary"
+					class="rounded-none rounded-tr"
+					onClick={closeSkillTreeEditorSheet}
+				/>
+			</div>
+			{/* 不使用defer时会出现布局动画 */}
+			<OverlayScrollbarsComponent
+				element="div"
+				options={{ scrollbars: { autoHide: "scroll" } }}
+				class="SkillGroupConfig h-full w-full rounded"
+				defer
+			>
+				{/* 根据当前活动技能树模板绘制技能树网格；角色是否习得只影响节点等级和状态。 */}
+				<Show
+					when={activeTreeTemplates().length > 0}
+					fallback={
+						<div class="flex h-full w-full items-center justify-center rounded bg-area-color text-main-text-color">
+							{dictionary().db.skill.fields.treeType.enumMap[activeSkillTreeType()]}
+						</div>
+					}
+				>
+					<div
+						class="SkillTreeCanvas inline-grid min-h-full min-w-full overflow-visible bg-accent-color px-24 py-12"
+						style={{
+							"grid-template-columns": `repeat(${activeTreeGridBounds().columnCount}, ${SKILL_GRID_CELL_WIDTH}px)`,
+							"grid-template-rows": `repeat(${activeTreeGridBounds().rowCount}, ${SKILL_GRID_CELL_HEIGHT}px)`,
+						}}
+					>
+						<For each={activeTreeLinkCells()}>
+							{(cell) => <SkillLinkCellBlock cell={cell} bounds={activeTreeGridBounds()} />}
+						</For>
+						<For each={activeTreeTemplates()}>
+							{(template) => (
+								<SkillNodeCell
+									bounds={activeTreeGridBounds()}
+									canDecrease={canDecreaseSkill(template)}
+									canIncrease={templateLevel(template) < SKILL_MAX_LEVEL}
+									focused={focusedTreeSkillId() === template.id}
+									level={templateLevel(template)}
+									onDecrease={() => decreaseSkillLevel(template)}
+									onFocus={() => setFocusedTreeSkillId(template.id)}
+									onIncrease={() => increaseSkillLevel(template)}
+									template={template}
+								/>
+							)}
+						</For>
+					</div>
+				</Show>
+			</OverlayScrollbarsComponent>
+		</div>
+	);
+
+	const openSkillTreeEditorSheet = (treeType: SkillTreeType) => {
+		closeSkillTreeEditorSheet();
+		setActiveSkillTreeType(treeType);
+		setFocusedTreeSkillId(null);
+		skillTreeEditorSheetHandle = overlay.openSheet({
+			render: renderSkillTreeEditorSheet,
+			onCloseRequest: () => {
+				skillTreeEditorSheetHandle = undefined;
+			},
+		});
+	};
+
+	const openSkillTreePickerSheet = () => {
+		if (skillTreePickerSheetHandle) return;
+		skillTreePickerSheetHandle = overlay.openSheet({
+			render: (api) => (
+				<SkillTreePickerSheetContent
+					onClose={api.close}
+					hasSkills={hasSkillsInTree}
+					isDisplayed={isSkillTreeVisible}
+					onToggle={toggleSkillTreeDisplay}
+				/>
+			),
+			onCloseRequest: () => {
+				skillTreePickerSheetHandle = undefined;
+			},
+		});
+	};
+
 	return (
 		<div class="SkillConfig flex flex-col gap-2 w-full">
 			{/* 外层配置：选择角色启用的技能树种类；已有角色技能的树固定展示，未习得的树走本地显示开关。 */}
 			<div class="SkillTree flex flex-col">
 				<div class="SkillConfigLabel flex justify-between">
 					<span class="font-bold">{dictionary().ui.character.tabs.skill.treeSkill}</span>
-					<Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" onClick={() => setSkillTreePickerOpen(true)} />
+					<Button icon={<Icons.Outline.DocmentAdd />} level="quaternary" onClick={openSkillTreePickerSheet} />
 				</div>
 				<Index each={SKILL_TREE_GROUP_TYPE}>
 					{(treeGroupType) => (
@@ -496,74 +592,6 @@ export function SkillPanel(props: SkillPanelProps) {
 					)}
 				</For>
 			</div>
-
-			<Portal>
-				{/* 内层配置：编辑当前技能树内的技能等级，连线和前置规则都从技能模板坐标与 preSkillId 推导。 */}
-				<Sheet state={skillTreeEditorSheetOpen()} setState={setSkillTreeEditorSheetOpen}>
-					<div class="flex portrait:h-[90dvh] w-full h-full flex-col gap-2 p-6 overflow-hidden">
-						<div class="sheetTitle w-full text-xl font-bold flex items-center justify-between">
-							{dictionary().db.skill.fields.treeType.enumMap[activeSkillTreeType()]}
-							<Button
-								icon={<Icons.Outline.Close />}
-								level="quaternary"
-								class="rounded-none rounded-tr"
-								onClick={closeSkillTreeEditorSheet}
-							/>
-						</div>
-						{/* 不使用defer时会出现布局动画 */}
-						<OverlayScrollbarsComponent
-							element="div"
-							options={{ scrollbars: { autoHide: "scroll" } }}
-							class="SkillGroupConfig h-full w-full rounded"
-							defer
-						>
-							{/* 根据当前活动技能树模板绘制技能树网格；角色是否习得只影响节点等级和状态。 */}
-							<Show
-								when={activeTreeTemplates().length > 0}
-								fallback={
-									<div class="flex h-full w-full items-center justify-center rounded bg-area-color text-main-text-color">
-										{dictionary().db.skill.fields.treeType.enumMap[activeSkillTreeType()]}
-									</div>
-								}
-							>
-								<div
-									class="SkillTreeCanvas inline-grid min-h-full min-w-full overflow-visible bg-accent-color px-24 py-12"
-									style={{
-										"grid-template-columns": `repeat(${activeTreeGridBounds().columnCount}, ${SKILL_GRID_CELL_WIDTH}px)`,
-										"grid-template-rows": `repeat(${activeTreeGridBounds().rowCount}, ${SKILL_GRID_CELL_HEIGHT}px)`,
-									}}
-								>
-									<For each={activeTreeLinkCells()}>
-										{(cell) => <SkillLinkCellBlock cell={cell} bounds={activeTreeGridBounds()} />}
-									</For>
-									<For each={activeTreeTemplates()}>
-										{(template) => (
-											<SkillNodeCell
-												bounds={activeTreeGridBounds()}
-												canDecrease={canDecreaseSkill(template)}
-												canIncrease={templateLevel(template) < SKILL_MAX_LEVEL}
-												focused={focusedTreeSkillId() === template.id}
-												level={templateLevel(template)}
-												onDecrease={() => decreaseSkillLevel(template)}
-												onFocus={() => setFocusedTreeSkillId(template.id)}
-												onIncrease={() => increaseSkillLevel(template)}
-												template={template}
-											/>
-										)}
-									</For>
-								</div>
-							</Show>
-						</OverlayScrollbarsComponent>
-					</div>
-				</Sheet>
-			</Portal>
-			<SkillTreePickerSheet
-				open={skillTreePickerOpen()}
-				onOpenChange={(open) => setSkillTreePickerOpen(open)}
-				hasSkills={hasSkillsInTree}
-				isDisplayed={isSkillTreeVisible}
-				onToggle={toggleSkillTreeDisplay}
-			/>
 		</div>
 	);
 }

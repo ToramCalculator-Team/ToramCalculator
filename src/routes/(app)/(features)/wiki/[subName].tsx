@@ -25,7 +25,7 @@ import { VirtualTable } from "~/components/dataDisplay/virtualTable";
 import { Icons } from "~/components/icons/index";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
-import { type DialogEntryInit, useOverlay } from "~/lib/overlay/OverlayContext";
+import { type DialogLayerEntryInit, useOverlay } from "~/lib/overlay/OverlayContext";
 import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
 import { store } from "~/store";
 import { setWikiStore, wikiStore } from "./store";
@@ -90,11 +90,12 @@ export default function WikiSubPage() {
 	 * - 打开编辑器(openEditor) → openSheet,在本 dialog layer 下新建独立 sheet layer。
 	 * 设计目的：字典、递归关联和编辑提交都来自当前页面上下文。
 	 */
-	const buildDialogEntry = (type: keyof DB, data: Record<string, unknown>): DialogEntryInit => {
+	const buildDialogEntry = (type: keyof DB, data: Record<string, unknown>): DialogLayerEntryInit => {
 		const config = DATA_CONFIG[type]?.(dictionary);
 		return {
 			title: (data as { name?: unknown }).name?.toString() ?? "",
 			titleIcon: () => <Icons.Spirits iconName={type} />,
+			layout: "fill",
 			render: (dialogApi) => {
 				if (!config) return <pre>{JSON.stringify(data, null, 2)}</pre>;
 				// dialog layer 作用域句柄:drill 用 pushDialog 并入同层,editor 用 openSheet 新建子层。

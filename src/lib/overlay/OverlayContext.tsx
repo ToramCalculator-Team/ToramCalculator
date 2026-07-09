@@ -15,19 +15,21 @@
  */
 import { createContext, type ParentProps, useContext } from "solid-js";
 import {
-	closeEntry,
-	closeLayer,
-	closeTopLayer,
-	type DialogEntryInit,
+	type DialogLayerEntryInit,
 	type OverlayEntryApi,
 	type OverlayLayerKind,
-	openLayer,
-	pushEntry,
-	type SheetEntryInit,
+	openDialogLayer,
+	openSheetLayer,
+	pushDialogEntry,
+	pushSheetEntry,
+	requestCloseEntry,
+	requestCloseLayer,
+	requestCloseTopLayer,
+	type SheetLayerEntryInit,
 } from "./overlayStore";
 
 // 重新导出 entry 类型,让业务页面从单一入口(OverlayContext)导入 useOverlay + 类型。
-export type { DialogEntryInit, OverlayEntryApi, SheetEntryInit } from "./overlayStore";
+export type { DialogLayerEntryInit, OverlayEntryApi, SheetLayerEntryInit } from "./overlayStore";
 
 interface OverlayScope {
 	layerId: string;
@@ -47,21 +49,26 @@ export function OverlayScopeProvider(props: ParentProps<OverlayScope>) {
 
 export interface OverlayApi {
 	/** 新建 dialog layer,作为当前 scope 的子层(或根)。 */
-	openDialog: (entry: DialogEntryInit) => string;
+	openDialog: (entry: DialogLayerEntryInit) => OverlayLayerHandle;
 	/** 新建 sheet layer,作为当前 scope 的子层(或根)。 */
-	openSheet: (entry: SheetEntryInit) => string;
+	openSheet: (entry: SheetLayerEntryInit) => OverlayLayerHandle;
 	/**
 	 * 并入**当前 dialog layer**再加一个 entry(dialog 内 drill 关联数据的语义)。
 	 * 契约:当前 scope 必须是 kind="dialog" 的层,否则 throw ——
 	 * 这种错误使用意味着调用点搞错了打开语义,应该显式暴露而不是静默降级。
 	 */
-	pushDialog: (entry: DialogEntryInit) => string;
+	pushDialog: (entry: DialogLayerEntryInit) => string;
 	/** 并入当前 sheet layer 追加一个 sheet entry(通常 sheet layer 只有一条,较少用到)。 */
-	pushSheet: (entry: SheetEntryInit) => string;
+	pushSheet: (entry: SheetLayerEntryInit) => string;
 	/** 关闭当前层(级联关闭其所有后代层)。根级调用(无 scope)将 throw。 */
 	close: () => void;
 	/** 关闭最顶层(Escape / 遮罩点击场景)。任何 scope 下都可用。 */
 	closeTop: () => void;
+}
+
+export interface OverlayLayerHandle {
+	readonly layerId: string;
+	close: () => void;
 }
 
 /**
@@ -75,12 +82,12 @@ export function useOverlay(): OverlayApi {
 
 	return {
 		openDialog(entry) {
-			const { layerId } = openLayer("dialog", entry, scope?.layerId ?? null);
-			return layerId;
+			const { layerId } = openDialogLayer(entry, scope?.layerId ?? null);
+			return createLayerHandle(layerId);
 		},
 		openSheet(entry) {
-			const { layerId } = openLayer("sheet", entry, scope?.layerId ?? null);
-			return layerId;
+			const { layerId } = openSheetLayer(entry, scope?.layerId ?? null);
+			return createLayerHandle(layerId);
 		},
 		pushDialog(entry) {
 			if (!scope) {
@@ -89,7 +96,7 @@ export function useOverlay(): OverlayApi {
 			if (scope.kind !== "dialog") {
 				throw new Error(`pushDialog 只能在 dialog layer 内调用,当前层是 ${scope.kind};你可能想用 openDialog 新建一层`);
 			}
-			return pushEntry(scope.layerId, entry);
+			return pushDialogEntry(scope.layerId, entry);
 		},
 		pushSheet(entry) {
 			if (!scope) {
@@ -98,17 +105,24 @@ export function useOverlay(): OverlayApi {
 			if (scope.kind !== "sheet") {
 				throw new Error(`pushSheet 只能在 sheet layer 内调用,当前层是 ${scope.kind};你可能想用 openSheet 新建一层`);
 			}
-			return pushEntry(scope.layerId, entry);
+			return pushSheetEntry(scope.layerId, entry);
 		},
 		close() {
 			if (!scope) {
 				throw new Error("close 只能在层内调用(根级请用 closeTop 或指定 layerId)");
 			}
-			closeLayer(scope.layerId);
+			requestCloseLayer(scope.layerId);
 		},
 		closeTop() {
-			closeTopLayer();
+			requestCloseTopLayer();
 		},
+	};
+}
+
+function createLayerHandle(layerId: string): OverlayLayerHandle {
+	return {
+		layerId,
+		close: () => requestCloseLayer(layerId),
 	};
 }
 
@@ -133,7 +147,7 @@ export function makeEntryApi(deps: {
 		get total() {
 			return deps.total();
 		},
-		close: () => closeEntry(deps.layerId, deps.entryId),
-		closeTop: () => closeEntry(deps.layerId),
+		close: () => requestCloseEntry(deps.layerId, deps.entryId),
+		closeTop: () => requestCloseEntry(deps.layerId),
 	};
 }

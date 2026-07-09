@@ -2,13 +2,13 @@ import type { MemberType } from "@db/schema/enums";
 import { MEMBER_TYPE } from "@db/schema/enums";
 import type { AttributeSlotDeclarationData, MemberBTTree } from "@db/schema/jsons";
 import { type Component, createEffect, createMemo, createSignal, on, onCleanup, onMount, Show } from "solid-js";
-import { Sheet } from "~/components/containers/sheet";
 import { Button } from "~/components/controls/button";
 import { EnumSelect } from "~/components/controls/enumSelect";
 import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
 import { Icons } from "~/components/icons";
 import { State } from "~/lib/mistreevous/State";
+import { type OverlayLayerHandle, useOverlay } from "~/lib/overlay/OverlayContext";
 import {
 	Divider,
 	ExamplesMenuContent,
@@ -151,12 +151,28 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	const [definitionError, setDefinitionError] = createSignal(initialEditableDocument.error);
 	const [advancedOpen, setAdvancedOpen] = createSignal(false);
 	const [advancedPanel, setAdvancedPanel] = createSignal<AdvancedPanelKey>("definition");
-	const [mobileInspectorOpen, setMobileInspectorOpen] = createSignal(false);
+	const overlay = useOverlay();
+	let mobileInspectorSheetHandle: OverlayLayerHandle | undefined;
 	const [diagnosticsOpen, setDiagnosticsOpen] = createSignal(false);
 	const [debugConsoleOpen, setDebugConsoleOpen] = createSignal(false);
 	const [topMenuAnchorEl, setTopMenuAnchorEl] = createSignal<HTMLElement | null>(null);
 	const topMenuOpen = () => Boolean(topMenuAnchorEl());
 	const closeTopMenu = () => setTopMenuAnchorEl(null);
+	const closeMobileInspectorSheet = () => {
+		const handle = mobileInspectorSheetHandle;
+		mobileInspectorSheetHandle = undefined;
+		handle?.close();
+	};
+	const openMobileInspectorSheet = () => {
+		if (isReadOnly()) return;
+		if (mobileInspectorSheetHandle) return;
+		mobileInspectorSheetHandle = overlay.openSheet({
+			render: renderMobileInspectorSheet,
+			onCloseRequest: () => {
+				mobileInspectorSheetHandle = undefined;
+			},
+		});
+	};
 	const mdslIntellisense = createMemo(() => {
 		const config = getMdslProfileConfig(memberType());
 		return buildMdslIntellisenseRegistry(config, agent());
@@ -416,7 +432,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 			});
 			schedulePreviewRefresh();
 			setDefinitionError("");
-			setMobileInspectorOpen(false);
+			closeMobileInspectorSheet();
 		} catch (error) {
 			setDefinitionError(getErrorMessage(error));
 		}
@@ -455,7 +471,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		// 设计说明：root 切换会替换画布拓扑，先清理预览状态，避免旧运行态映射到新子树路径。
 		resetPreviewForEdit();
 		switchActiveRoot(rootKey);
-		setMobileInspectorOpen(false);
+		closeMobileInspectorSheet();
 	};
 
 	const handleRootNameChange = (root: EditableBtRoot, nextName: string) => {
@@ -501,7 +517,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		const targetRoot = findEditableRootByName(editableDocument(), ref);
 		if (!targetRoot) return;
 		switchActiveRoot(targetRoot.key, targetRoot.tree.root.id);
-		setMobileInspectorOpen(false);
+		closeMobileInspectorSheet();
 	};
 
 	const handleDiagnosticClick = (item: BtDiagnosticListItem) => {
@@ -510,7 +526,8 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		}
 		if (item.nodeId) setSelectedNodeId(item.nodeId);
 		setDiagnosticsOpen(false);
-		setMobileInspectorOpen(!!item.nodeId);
+		if (item.nodeId) openMobileInspectorSheet();
+		else closeMobileInspectorSheet();
 	};
 
 	const updateSelectedNode = (node: EditableBtNode) => {
@@ -529,7 +546,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		const nextTree = deleteEditableNode(activeTree(), id);
 		handleTreeChange(nextTree);
 		setSelectedNodeId(undefined);
-		setMobileInspectorOpen(false);
+		closeMobileInspectorSheet();
 	};
 
 	const moveSelectedNode = (direction: -1 | 1) => {
@@ -574,7 +591,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		getActiveTree: activeTree,
 		onTreeChange: handleTreeChange,
 		onSelectNode: setSelectedNodeId,
-		onOpenInspector: () => setMobileInspectorOpen(true),
+		onOpenInspector: () => openMobileInspectorSheet(),
 	});
 
 	const renderedEditableTree = createMemo(() => previewTree() ?? activeTree());
@@ -643,6 +660,9 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		window.removeEventListener("drop", clearDanglingNodeDrag);
 		window.removeEventListener("mouseup", clearDanglingNodeDrag);
 		window.removeEventListener("blur", clearDanglingNodeDrag);
+		const handle = mobileInspectorSheetHandle;
+		mobileInspectorSheetHandle = undefined;
+		handle?.close();
 	});
 
 	onMount(() => {
@@ -654,6 +674,31 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		window.addEventListener("blur", clearDanglingNodeDrag);
 		refreshPreview();
 	});
+
+	const renderMobileInspectorSheet = () => (
+		<div class="h-[90dvh] w-full overflow-hidden">
+			<NodeInspector
+				node={selectedNode()}
+				registry={mdslIntellisense()}
+				attributeSlots={attributeSlots()}
+				subtreeOptions={namedSubtreeOptions()}
+				nodeDiagnostics={selectedNodeDiagnostics()}
+				onChange={updateSelectedNode}
+				onOpenBranchTarget={handleOpenBranchTarget}
+				onDelete={() => {
+					deleteSelectedNode();
+				}}
+				onDuplicate={() => {
+					duplicateSelectedNode();
+				}}
+				onMove={(direction) => {
+					moveSelectedNode(direction);
+				}}
+				canDelete={!isReadOnly() && selectedNodeId() !== activeTree().root.id}
+				readOnly={isReadOnly()}
+			/>
+		</div>
+	);
 
 	// 设计说明：只读模式服务于技能卡片中的逻辑图展示，只保留画布浏览能力，不暴露编辑入口。
 	if (props.readOnly) {
@@ -787,19 +832,19 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 							onNodeDragEnd={clearNodeDrag}
 							onCanvasClick={() => {
 								setSelectedNodeId(undefined);
-								setMobileInspectorOpen(false);
+								closeMobileInspectorSheet();
 							}}
 							onNodeClick={(id) => {
 								setSelectedNodeId(id);
-								setMobileInspectorOpen(false);
+								closeMobileInspectorSheet();
 							}}
 							onNodeLongPress={(id) => {
 								setSelectedNodeId(id);
-								setMobileInspectorOpen(false);
+								closeMobileInspectorSheet();
 							}}
 							onNodeInspect={(id) => {
 								setSelectedNodeId(id);
-								setMobileInspectorOpen(true);
+								openMobileInspectorSheet();
 							}}
 							onNodeDelete={(id) => {
 								setSelectedNodeId(id);
@@ -846,32 +891,6 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 						readOnly={isReadOnly()}
 					/>
 				</aside>
-			</div>
-			<div class="lg:hidden">
-				<Sheet state={mobileInspectorOpen()} setState={setMobileInspectorOpen}>
-					<div class="h-[90dvh] w-full overflow-hidden">
-						<NodeInspector
-							node={selectedNode()}
-							registry={mdslIntellisense()}
-							attributeSlots={attributeSlots()}
-							subtreeOptions={namedSubtreeOptions()}
-							nodeDiagnostics={selectedNodeDiagnostics()}
-							onChange={updateSelectedNode}
-							onOpenBranchTarget={handleOpenBranchTarget}
-							onDelete={() => {
-								deleteSelectedNode();
-							}}
-							onDuplicate={() => {
-								duplicateSelectedNode();
-							}}
-							onMove={(direction) => {
-								moveSelectedNode(direction);
-							}}
-							canDelete={!isReadOnly() && selectedNodeId() !== activeTree().root.id}
-							readOnly={isReadOnly()}
-						/>
-					</div>
-				</Sheet>
 			</div>
 			<DebugConsole
 				open={debugConsoleOpen()}

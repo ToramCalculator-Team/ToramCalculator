@@ -9,7 +9,7 @@ import { SceneCanvas, SceneRuntimeProvider } from "~/lib/3dScene/SceneRuntime";
 import { BootstrapProvider } from "~/lib/bootstrap/BootstrapContext";
 import { EngineProvider } from "~/lib/engine/core/thread/EngineContext";
 import { OverlayRoot } from "~/lib/overlay/OverlayRoot";
-import { closeTopLayer } from "~/lib/overlay/overlayStore";
+import { requestCloseTopLayer } from "~/lib/overlay/overlayStore";
 import { AppActorProvider } from "~/machines/AppActorContext";
 import { SceneIntentBridge } from "~/machines/projections/SceneIntentBridge";
 import { setStore, store } from "~/store";
@@ -56,7 +56,7 @@ export default function AppMainContet(props: ParentProps) {
 			case "esc":
 				// Escape 关闭最顶层浮层(层树按打开顺序推导,cascade 关闭其后代)。
 				// 有浮层被关掉时阻止默认行为,避免误触其它 esc 语义。
-				if (closeTopLayer()) {
+				if (requestCloseTopLayer()) {
 					event.preventDefault();
 				}
 				break;

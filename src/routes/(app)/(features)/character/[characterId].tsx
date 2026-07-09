@@ -18,7 +18,7 @@ import { type CharacterContentSession, useSceneRuntime } from "~/lib/3dScene/Sce
 import { useEngine } from "~/lib/engine/core/thread/EngineContext";
 import { StatsRenderer } from "~/lib/engine/core/World/Member/MemberStatusPanel";
 import { createLogger } from "~/lib/Logger";
-import { type DialogEntryInit, useOverlay } from "~/lib/overlay/OverlayContext";
+import { type DialogLayerEntryInit, useOverlay } from "~/lib/overlay/OverlayContext";
 import { store } from "~/store";
 import { createCharacterPageModel } from "./characterPageModel";
 import { createCharacter } from "./createCharacter";
@@ -81,7 +81,7 @@ export default function CharactePage() {
 	 * - 外键 drill → pushDialog 并入同一 layer;editor → openSheet 新建子 layer。
 	 * 角色页的预览 dialog 由当前场景创建,递归关联和编辑表单沿用同一个角色页上下文。
 	 */
-	const buildPreviewDialogEntry = (type: keyof DB, data: unknown): DialogEntryInit => {
+	const buildPreviewDialogEntry = (type: keyof DB, data: unknown): DialogLayerEntryInit => {
 		const cardData = data as Record<string, unknown>;
 		const config = DATA_CONFIG[type]?.(dictionary);
 		return {

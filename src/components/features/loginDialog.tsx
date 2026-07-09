@@ -6,8 +6,7 @@ import { z } from "zod/v4";
 import defaultUserAvatarUrl from "~/../public/icons/512.png?url";
 import { Button } from "~/components/controls/button";
 import { useDictionary } from "~/contexts/Dictionary";
-import { useOverlay } from "~/lib/overlay/OverlayContext";
-import { closeLayer } from "~/lib/overlay/overlayStore";
+import { type OverlayLayerHandle, useOverlay } from "~/lib/overlay/OverlayContext";
 import { emailExists, getUserByCookie } from "~/lib/utils/session";
 import { clearSessionAccountStore, hydrateSessionAccountStore } from "~/session/sessionAccountStore";
 import { bindTemporaryAccountToUser, clearLocalChanges, ensureTemporaryAccount } from "~/session/temporaryAccount";
@@ -49,7 +48,7 @@ export const LoginDialog = () => {
 	// UI文本字典
 	const dictionary = useDictionary();
 	const overlay = useOverlay();
-	let loginDialogLayerId: string | undefined;
+	let loginDialogLayerHandle: OverlayLayerHandle | undefined;
 
 	const logIn = async (value: LoginFormProps) => {
 		try {
@@ -408,13 +407,14 @@ export const LoginDialog = () => {
 			() => store.pages.loginDialogState,
 			(isOpen) => {
 				if (isOpen) {
-					if (loginDialogLayerId) return;
-					loginDialogLayerId = overlay.openDialog({
+					if (loginDialogLayerHandle) return;
+					loginDialogLayerHandle = overlay.openDialog({
 						title: formTitle,
-						maxWith: "480px",
+						layout: "content",
+						maxWidth: "480px",
 						render: renderLoginDialog,
-						onClose: () => {
-							loginDialogLayerId = undefined;
+						onCloseRequest: () => {
+							loginDialogLayerHandle = undefined;
 							if (store.pages.loginDialogState) setStore("pages", "loginDialogState", false);
 							resetDialogState();
 						},
@@ -422,11 +422,10 @@ export const LoginDialog = () => {
 					return;
 				}
 
-				if (!loginDialogLayerId) return;
-				const layerId = loginDialogLayerId;
-				loginDialogLayerId = undefined;
-				closeLayer(layerId);
-				resetDialogState();
+				if (!loginDialogLayerHandle) return;
+				const dialogHandle = loginDialogLayerHandle;
+				loginDialogLayerHandle = undefined;
+				dialogHandle.close();
 			},
 		),
 	);

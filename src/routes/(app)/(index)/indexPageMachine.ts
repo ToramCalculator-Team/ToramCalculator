@@ -33,7 +33,8 @@ export type IndexPageEvent =
 	| { type: "SEARCH_CLEAR" } // 清除搜索
 	| { type: "TOGGLE_SEARCH_RESULTS" } // 切换搜索结果显示
 	| { type: "UPDATE_RESULT_LIST_STATE"; resultListState: boolean[] } // 更新结果列表状态
-	| { type: "TOGGLE_TOOL_MENU" } // 切换小工具菜单显示
+	| { type: "OPEN_TOOL_MENU" } // 打开小工具菜单
+	| { type: "CLOSE_TOOL_MENU" } // 关闭小工具菜单
 	| { type: "TOGGLE_ANIMATION" } // 切换动画开关
 	| { type: "RESET" }; // 重置所有状态
 
@@ -315,10 +316,16 @@ export const indexPageMachine = createMachine(
 		 * 这些事件不依赖于当前状态，可以在任何时候触发
 		 */
 		on: {
-			// 切换小工具菜单显示状态
-			TOGGLE_TOOL_MENU: {
+			// 小工具菜单状态仍归页面状态机管理；实际 sheet 挂载由事件处理器直接调用 overlay.openSheet。
+			OPEN_TOOL_MENU: {
 				actions: assign({
-					toolMenuIsOpen: ({ context }) => !context.toolMenuIsOpen,
+					toolMenuIsOpen: true,
+				}),
+			},
+
+			CLOSE_TOOL_MENU: {
+				actions: assign({
+					toolMenuIsOpen: false,
 				}),
 			},
 

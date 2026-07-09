@@ -86,7 +86,7 @@ export const Decorate = (props: JSX.IntrinsicElements["svg"]) => {
 };
 
 export const Frame = (props: { children: JSX.Element }) =>
-    <div class="Content grid grid-cols-[12px_minmax(0,1fr)_12px] grid-rows-[12px_minmax(0,1fr)_12px] place-items-center h-full w-full">
+    <div class="Content grid grid-cols-[12px_minmax(0,1fr)_12px] grid-rows-[12px_minmax(0,1fr)_12px] place-items-center h-full w-full overflow-hidden">
         <div class="Decorate flex"><Decorate class="rotate-0 translate-x-4 translate-y-4 w-11 h-11 flex-none" /></div>
         <div class="Divider bg-current h-px w-[calc(100%-72px)] rounded-full"></div>
         <div class="Decorate flex"><Decorate class="rotate-90 -translate-x-4 translate-y-4 w-11 h-11 flex-none" /></div>

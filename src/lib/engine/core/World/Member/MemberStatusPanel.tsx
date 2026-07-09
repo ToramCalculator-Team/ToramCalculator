@@ -529,8 +529,8 @@ export function MemberStatusPanel(props: { controllerId?: string; member: Access
 					setDisplayDetail(true);
 					overlay.openDialog({
 						title: "成员详情",
-						maxWith: "80vw",
-						onClose: () => setDisplayDetail(false),
+						maxWidth: "80vw",
+						onCloseRequest: () => setDisplayDetail(false),
 						render: () => (
 							<div class="flex w-full flex-1 flex-col gap-1">
 								{/* Tab 切换 */}

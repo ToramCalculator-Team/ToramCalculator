@@ -9,14 +9,13 @@ import { Motion, Presence } from "solid-motionone";
 import { DataRenderer } from "~/components/business/card/DataRenderer";
 import { DATA_CONFIG } from "~/components/business/data-config";
 import { Form } from "~/components/business/form/FormRenderer";
-import { Sheet } from "~/components/containers/sheet";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Filing } from "~/components/features/filing";
 import { Icons } from "~/components/icons/index";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
-import { type DialogEntryInit, useOverlay } from "~/lib/overlay/OverlayContext";
+import { type DialogLayerEntryInit, type OverlayLayerHandle, useOverlay } from "~/lib/overlay/OverlayContext";
 import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
 import type { Dictionary } from "~/locales/type";
 import { setStore, store } from "~/store";
@@ -32,6 +31,7 @@ export default function IndexPage() {
 	const dictionary = useDictionary();
 	// 页面根作用域 overlay 句柄:搜索结果 dialog 从这里 openDialog 新建 layer。
 	const overlay = useOverlay();
+	let toolMenuSheetHandle: OverlayLayerHandle | undefined;
 	// 媒体查询
 	const media = useContext(MediaContext);
 
@@ -70,7 +70,7 @@ export default function IndexPage() {
 	 * - 外键 drill → pushDialog 并入同层;editor → openSheet 新建子层。
 	 * 首页搜索结果 dialog 在首页场景内创建,递归关联继续沿用当前语言字典。
 	 */
-	const buildSearchResultDialogEntry = (type: keyof DB, data: Record<string, unknown>): DialogEntryInit => {
+	const buildSearchResultDialogEntry = (type: keyof DB, data: Record<string, unknown>): DialogLayerEntryInit => {
 		const config = DATA_CONFIG[type]?.(dictionary);
 		return {
 			title: (data as { name?: unknown }).name?.toString() ?? "",
@@ -189,6 +189,56 @@ export default function IndexPage() {
 			name: "查询构建器",
 		},
 	]);
+
+	const renderToolMenuSheet = (close: () => void) => (
+		<div class="grid h-[90dvh] w-full grid-cols-3 grid-rows-6 gap-2 p-6">
+			<Index each={toolMenuConfig()}>
+				{(config) => {
+					return (
+						<div class="ButtonContainer border-dividing-color col-span-1 row-span-1 flex flex-col items-center justify-center rounded border border-dashed">
+							<Button
+								class="h-full w-full flex-col items-center justify-center outline-hidden focus-within:outline-hidden"
+								level="quaternary"
+								onClick={() => {
+									close();
+									config().onClick();
+								}}
+								icon={config().icon}
+							>
+								<span class="text-sm text-nowrap text-ellipsis">{config().name}</span>
+							</Button>
+						</div>
+					);
+				}}
+			</Index>
+		</div>
+	);
+
+	const closeToolMenuSheet = () => {
+		const handle = toolMenuSheetHandle;
+		toolMenuSheetHandle = undefined;
+		if (context().toolMenuIsOpen) send({ type: "CLOSE_TOOL_MENU" });
+		handle?.close();
+	};
+
+	const openToolMenuSheet = () => {
+		if (context().toolMenuIsOpen) {
+			closeToolMenuSheet();
+			return;
+		}
+		send({ type: "OPEN_TOOL_MENU" });
+		toolMenuSheetHandle = overlay.openSheet({
+			render: (api) => renderToolMenuSheet(api.close),
+			onCloseRequest: () => {
+				toolMenuSheetHandle = undefined;
+				if (context().toolMenuIsOpen) send({ type: "CLOSE_TOOL_MENU" });
+			},
+		});
+	};
+
+	onCleanup(() => {
+		closeToolMenuSheet();
+	});
 
 	// 页面附加功能（右上角按钮组）配置
 	const extraFunctionConfig = createMemo<
@@ -395,7 +445,7 @@ export default function IndexPage() {
 					<Button
 						class="outline-hidden focus-within:outline-hidden"
 						level="quaternary"
-						onClick={() => send({ type: "TOGGLE_TOOL_MENU" })}
+						onClick={openToolMenuSheet}
 						icon={<Icons.Outline.Burger />}
 					></Button>
 					<div class="RightFun flex gap-1">
@@ -779,29 +829,6 @@ export default function IndexPage() {
 					</div>
 				</Show>
 			</Motion.div>
-
-			{/* 小工具菜单 */}
-			<Sheet state={context().toolMenuIsOpen} setState={() => send({ type: "TOGGLE_TOOL_MENU" })}>
-				<div class="grid h-[90dvh] w-full grid-cols-3 grid-rows-6 gap-2 p-6">
-					<Index each={toolMenuConfig()}>
-						{(config) => {
-							return (
-								<div class="ButtonContainer border-dividing-color col-span-1 row-span-1 flex flex-col items-center justify-center rounded border border-dashed">
-									<Button
-										class="h-full w-full flex-col items-center justify-center outline-hidden focus-within:outline-hidden"
-										level="quaternary"
-										onClick={config().onClick}
-										icon={config().icon}
-									>
-										<span class="text-sm text-nowrap text-ellipsis">{config().name}</span>
-									</Button>
-								</div>
-							);
-						}}
-					</Index>
-				</div>
-			</Sheet>
-
 			<Filing />
 		</MetaProvider>
 	);

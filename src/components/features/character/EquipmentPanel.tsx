@@ -9,18 +9,18 @@ import { selectPlayerSpecialByIdWithRelations } from "@db/generated/repositories
 import type { PlayerWeaponWithRelations } from "@db/generated/repositories/player_weapon";
 import { selectPlayerWeaponByIdWithRelations } from "@db/generated/repositories/player_weapon";
 import type { character, DB } from "@db/generated/zod";
-import { createMemo, Show } from "solid-js";
+import { createMemo, onCleanup, Show } from "solid-js";
 import type { TableDataConfig } from "~/components/business/data-config";
 import { PLAYER_ARMOR_DATA_CONFIG } from "~/components/business/dataConfig/player_armor";
 import { PLAYER_OPTION_DATA_CONFIG } from "~/components/business/dataConfig/player_option";
 import { PLAYER_SPECIAL_DATA_CONFIG } from "~/components/business/dataConfig/player_special";
 import { PLAYER_WEAPON_DATA_CONFIG } from "~/components/business/dataConfig/player_weapon";
 import { Form } from "~/components/business/form/FormRenderer";
-import { ForeignKeyPickerSheet } from "~/components/business/table/ForeignKeyPickerSheet";
+import { ForeignKeyPickerSheetContent } from "~/components/business/table/ForeignKeyPickerSheet";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
-import { useOverlay } from "~/lib/overlay/OverlayContext";
+import { type OverlayLayerHandle, useOverlay } from "~/lib/overlay/OverlayContext";
 import { useIntentSnapshot, useVisualIntent } from "~/machines/AppActorContext";
 import type { EquipSlot } from "~/machines/intent/types";
 
@@ -49,14 +49,6 @@ const slotToSemantic = {
 	optionId: "option",
 	specialId: "special",
 } as const satisfies Record<EquipmentSlot, EquipSlot>;
-
-const semanticToSlot = {
-	weapon: "weaponId",
-	subWeapon: "subWeaponId",
-	armor: "armorId",
-	option: "optionId",
-	special: "specialId",
-} as const satisfies Record<EquipSlot, EquipmentSlot>;
 
 const equipmentRelationKeyConfig = {
 	weaponId: "weapon",
@@ -158,6 +150,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 	const overlay = useOverlay();
 	const intentActor = useVisualIntent();
 	const intent = useIntentSnapshot();
+	let equipmentPickerSheetHandle: OverlayLayerHandle | undefined;
 
 	// 本角色的装备槽意图（target 为本角色 equipmentSlot 时取其语义槽名）。
 	const intentSlot = createMemo<EquipSlot | null>(() => {
@@ -175,15 +168,6 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 		const state = intentState();
 		if (state === "atRest" || state === "releasing") return null;
 		return intentSlot();
-	});
-
-	// 正在编辑的槽（engaging 态 + target 为本槽）→ picker 开。
-	const editingSlot = createMemo<EquipSlot | null>(() => (intentState() === "engaging" ? intentSlot() : null));
-
-	// picker 表类型由意图机 target.slot 经映射表得出。
-	const pickerTableType = createMemo(() => {
-		const slot = editingSlot();
-		return slot ? equipmentSlotConfig[semanticToSlot[slot]] : equipmentSlotConfig.weaponId;
 	});
 
 	// 意图输入：槽行点击 → ATTEND（检视）；编辑按钮 → ENGAGE（操纵）；关闭/Esc → RELEASE。
@@ -205,6 +189,12 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 
 	const releaseIntent = () => {
 		intentActor.send({ type: "RELEASE", source: "ui" });
+	};
+
+	const closeEquipmentPickerSheet = () => {
+		const handle = equipmentPickerSheetHandle;
+		equipmentPickerSheetHandle = undefined;
+		handle?.close();
 	};
 
 	// 聚焦高亮：本槽处于 focused 态时加 ring。
@@ -266,340 +256,342 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 		props.onItemPreviewRequested(equipmentSlotConfig[slot], item);
 	};
 
-	const pickEquipment = async (row: Record<string, unknown>) => {
-		const slot = editingSlot();
-		if (!slot) return;
-		const dbSlot = semanticToSlot[slot];
-		const tableType = pickerTableType();
+	const pickEquipment = async (slot: EquipmentSlot, row: Record<string, unknown>) => {
+		const tableType = equipmentSlotConfig[slot];
 		const primaryKey = getPrimaryKeys(tableType)[0];
 		if (!primaryKey) return;
 
 		const primaryValue = row[String(primaryKey)];
 		if (typeof primaryValue !== "string") return;
 
-		await props.onPatchRequested({ [dbSlot]: primaryValue } as Partial<character>);
+		await props.onPatchRequested({ [slot]: primaryValue } as Partial<character>);
 	};
 
+	const openEquipmentPickerSheet = (slot: EquipmentSlot) => {
+		closeEquipmentPickerSheet();
+		engageSlot(slot);
+		const tableType = equipmentSlotConfig[slot];
+		equipmentPickerSheetHandle = overlay.openSheet({
+			render: (api) => (
+				<ForeignKeyPickerSheetContent<Record<string, unknown>>
+					title={dictionary().db[tableType].selfName}
+					tableType={tableType}
+					onClose={api.close}
+					onPick={(row) => pickEquipment(slot, row)}
+				/>
+			),
+			onCloseRequest: () => {
+				equipmentPickerSheetHandle = undefined;
+				releaseIntent();
+			},
+		});
+	};
+
+	onCleanup(closeEquipmentPickerSheet);
+
 	return (
-		<>
-			<div class="flex w-full flex-none gap-3 portrait:flex-wrap landscape:flex-col">
-				{/* 主手 */}
-				<section
-					role="application"
-					onClick={() => {
-						attendSlot("weaponId");
-						if (props.character.weapon) {
-							previewEquipmentItem("weaponId", props.character.weapon);
-						}
-					}}
-					onKeyUp={(e) => {
-						if (e.key === "Enter" || e.key === " ") {
-							e.preventDefault();
-							e.stopPropagation();
-						}
-					}}
-					class={`MainHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border landscape:w-full landscape:border-b ${focusRing("weaponId")}`}
-				>
-					<div class="Label px-4 py-3">{dictionary().ui.character.tabs.equipment.mainHand}</div>
-					<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
-						<Show when={props.character.weapon} fallback={<Icons.Spirits iconName="unknown" size={36} />}>
-							{(mainWeapon) => (
-								<>
-									<Icons.Spirits iconName={mainWeapon().type ?? ""} size={36} />
-									{mainWeapon().name}
-								</>
-							)}
-						</Show>
-					</div>
-					<div class="Function flex flex-none">
-						<Button
-							icon={<Icons.Outline.Category />}
-							level="quaternary"
-							class="rounded-none"
-							onClick={(e) => {
-								e.stopPropagation();
-								// 编辑装备 → 操纵意图（ENGAGE），picker 由 editingSlot 派生
-								engageSlot("weaponId");
-							}}
-						/>
-						<Button
-							icon={<Icons.Outline.DocmentAdd />}
-							level="quaternary"
-							class="rounded-none rounded-tr"
-							onClick={(e) => {
-								e.stopPropagation();
-								openEquipmentCreateForm("weaponId");
-							}}
-						/>
-						<Show when={props.character.weapon?.id}>
-							<Button
-								icon={<Icons.Outline.Trash />}
-								level="quaternary"
-								class="rounded-none rounded-tr"
-								onClick={(e) => {
-									e.stopPropagation();
-									clearEquipmentSlot("weaponId");
-								}}
-							/>
-						</Show>
-					</div>
-				</section>
-				{/* 副手 */}
-				<section
-					role="application"
-					onClick={() => {
-						attendSlot("subWeaponId");
-						if (props.character.subWeapon) {
-							previewEquipmentItem("subWeaponId", props.character.subWeapon);
-						}
-					}}
-					onKeyUp={(e) => {
-						if (e.key === "Enter" || e.key === " ") {
-							e.preventDefault();
-							e.stopPropagation();
-						}
-					}}
-					class={`SubHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border landscape:w-full landscape:border-b ${focusRing("subWeaponId")}`}
-				>
-					<div class="Label px-4 py-3">{dictionary().ui.character.tabs.equipment.subHand}</div>
-					<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
-						<Show when={props.character.subWeapon} fallback={<Icons.Spirits iconName="unknown" size={36} />}>
-							{(subWeapon) => (
-								<>
-									<Icons.Spirits iconName={subWeapon().type ?? ""} size={36} />
-									{subWeapon().name}
-								</>
-							)}
-						</Show>
-					</div>
-					<div class="Function flex flex-none">
-						<Button
-							icon={<Icons.Outline.Category />}
-							level="quaternary"
-							class="rounded-none"
-							onClick={(e) => {
-								e.stopPropagation();
-								// 编辑装备 → 操纵意图（ENGAGE），picker 由 editingSlot 派生
-								engageSlot("subWeaponId");
-							}}
-						/>
-						<Button
-							icon={<Icons.Outline.DocmentAdd />}
-							level="quaternary"
-							class="rounded-none rounded-tr"
-							onClick={(e) => {
-								e.stopPropagation();
-								openEquipmentCreateForm("subWeaponId");
-							}}
-						/>
-						<Show when={props.character.subWeapon?.id}>
-							<Button
-								icon={<Icons.Outline.Trash />}
-								level="quaternary"
-								class="rounded-none rounded-tr"
-								onClick={(e) => {
-									e.stopPropagation();
-									clearEquipmentSlot("subWeaponId");
-								}}
-							/>
-						</Show>
-					</div>
-				</section>
-				{/* 防具 */}
-				<section
-					role="application"
-					onClick={() => {
-						attendSlot("armorId");
-						if (props.character.armor) {
-							previewEquipmentItem("armorId", props.character.armor);
-						}
-					}}
-					onKeyUp={(e) => {
-						if (e.key === "Enter" || e.key === " ") {
-							e.preventDefault();
-							e.stopPropagation();
-						}
-					}}
-					class={`Armor  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b ${focusRing("armorId")}`}
-				>
-					<div class="Label px-4 py-3 portrait:hidden">{dictionary().ui.character.tabs.equipment.armor}</div>
-					<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
-						<Show when={props.character.armor} fallback={<Icons.Spirits iconName="unknown" size={36} />}>
-							{(armor) => (
-								<>
-									<Icons.Spirits iconName={armor().ability ?? ""} size={36} />
-									{armor().name}
-								</>
-							)}
-						</Show>
-					</div>
-					<div class="Function flex flex-none">
-						<Button
-							icon={<Icons.Outline.Category />}
-							level="quaternary"
-							class="rounded-none"
-							onClick={(e) => {
-								e.stopPropagation();
-								// 编辑装备 → 操纵意图（ENGAGE），picker 由 editingSlot 派生
-								engageSlot("armorId");
-							}}
-						/>
-						<Button
-							icon={<Icons.Outline.DocmentAdd />}
-							level="quaternary"
-							class="rounded-none rounded-tr"
-							onClick={(e) => {
-								e.stopPropagation();
-								openEquipmentCreateForm("armorId");
-							}}
-						/>
-						<Show when={props.character.armor?.id}>
-							<Button
-								icon={<Icons.Outline.Trash />}
-								level="quaternary"
-								class="rounded-none rounded-tr"
-								onClick={(e) => {
-									e.stopPropagation();
-									clearEquipmentSlot("armorId");
-								}}
-							/>
-						</Show>
-					</div>
-				</section>
-				{/* 追加 */}
-				<section
-					role="application"
-					onClick={() => {
-						attendSlot("optionId");
-						if (props.character.option) {
-							previewEquipmentItem("optionId", props.character.option);
-						}
-					}}
-					onKeyUp={(e) => {
-						if (e.key === "Enter" || e.key === " ") {
-							e.preventDefault();
-							e.stopPropagation();
-						}
-					}}
-					class={`OptEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b ${focusRing("optionId")}`}
-				>
-					<div class="Label px-4 py-3 portrait:hidden">{dictionary().ui.character.tabs.equipment.option}</div>
-					<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
-						<Show when={props.character.option} fallback={<Icons.Spirits iconName="unknown" size={36} />}>
-							{(option) => (
-								<>
-									<Icons.Spirits iconName={"option"} size={36} />
-									{option().name}
-								</>
-							)}
-						</Show>
-					</div>
-					<div class="Function flex flex-none">
-						<Button
-							icon={<Icons.Outline.Category />}
-							level="quaternary"
-							class="rounded-none"
-							onClick={(e) => {
-								e.stopPropagation();
-								// 编辑装备 → 操纵意图（ENGAGE），picker 由 editingSlot 派生
-								engageSlot("optionId");
-							}}
-						/>
-						<Button
-							icon={<Icons.Outline.DocmentAdd />}
-							level="quaternary"
-							class="rounded-none rounded-tr"
-							onClick={(e) => {
-								e.stopPropagation();
-								openEquipmentCreateForm("optionId");
-							}}
-						/>
-						<Show when={props.character.option?.id}>
-							<Button
-								icon={<Icons.Outline.Trash />}
-								level="quaternary"
-								class="rounded-none rounded-tr"
-								onClick={(e) => {
-									e.stopPropagation();
-									clearEquipmentSlot("optionId");
-								}}
-							/>
-						</Show>
-					</div>
-				</section>
-				{/* 特殊 */}
-				<section
-					role="application"
-					onClick={() => {
-						attendSlot("specialId");
-						if (props.character.special) {
-							previewEquipmentItem("specialId", props.character.special);
-						}
-					}}
-					onKeyUp={(e) => {
-						if (e.key === "Enter" || e.key === " ") {
-							e.preventDefault();
-							e.stopPropagation();
-						}
-					}}
-					class={`SpeEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b ${focusRing("specialId")}`}
-				>
-					<div class="Label px-4 py-3 portrait:hidden">{dictionary().ui.character.tabs.equipment.special}</div>
-					<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
-						<Show when={props.character.special} fallback={<Icons.Spirits iconName="unknown" size={36} />}>
-							{(special) => (
-								<>
-									<Icons.Spirits iconName={"special"} size={36} />
-									{special().name}
-								</>
-							)}
-						</Show>
-					</div>
-					<div class="Function flex flex-none">
-						<Button
-							icon={<Icons.Outline.Category />}
-							level="quaternary"
-							class="rounded-none"
-							onClick={(e) => {
-								e.stopPropagation();
-								// 编辑装备 → 操纵意图（ENGAGE），picker 由 editingSlot 派生
-								engageSlot("specialId");
-							}}
-						/>
-						<Button
-							icon={<Icons.Outline.DocmentAdd />}
-							level="quaternary"
-							class="rounded-none rounded-tr"
-							onClick={(e) => {
-								e.stopPropagation();
-								openEquipmentCreateForm("specialId");
-							}}
-						/>
-						<Show when={props.character.special?.id}>
-							<Button
-								icon={<Icons.Outline.Trash />}
-								level="quaternary"
-								class="rounded-none rounded-tr"
-								onClick={(e) => {
-									e.stopPropagation();
-									clearEquipmentSlot("specialId");
-								}}
-							/>
-						</Show>
-					</div>
-				</section>
-				{/* 时装 */}
-			</div>
-			<ForeignKeyPickerSheet<Record<string, unknown>>
-				open={editingSlot() !== null}
-				title={dictionary().db[pickerTableType()].selfName}
-				tableType={pickerTableType()}
-				onOpenChange={(open) => {
-					// 关闭即释放意图（engaging → releasing）。打开由 ENGAGE 驱动，此处不处理。
-					if (!open) releaseIntent();
+		<div class="flex w-full flex-none gap-3 portrait:flex-wrap landscape:flex-col">
+			{/* 主手 */}
+			<section
+				role="application"
+				onClick={() => {
+					attendSlot("weaponId");
+					if (props.character.weapon) {
+						previewEquipmentItem("weaponId", props.character.weapon);
+					}
 				}}
-				onPick={pickEquipment}
-			/>
-		</>
+				onKeyUp={(e) => {
+					if (e.key === "Enter" || e.key === " ") {
+						e.preventDefault();
+						e.stopPropagation();
+					}
+				}}
+				class={`MainHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border landscape:w-full landscape:border-b ${focusRing("weaponId")}`}
+			>
+				<div class="Label px-4 py-3">{dictionary().ui.character.tabs.equipment.mainHand}</div>
+				<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
+					<Show when={props.character.weapon} fallback={<Icons.Spirits iconName="unknown" size={36} />}>
+						{(mainWeapon) => (
+							<>
+								<Icons.Spirits iconName={mainWeapon().type ?? ""} size={36} />
+								{mainWeapon().name}
+							</>
+						)}
+					</Show>
+				</div>
+				<div class="Function flex flex-none">
+					<Button
+						icon={<Icons.Outline.Category />}
+						level="quaternary"
+						class="rounded-none"
+						onClick={(e) => {
+							e.stopPropagation();
+							openEquipmentPickerSheet("weaponId");
+						}}
+					/>
+					<Button
+						icon={<Icons.Outline.DocmentAdd />}
+						level="quaternary"
+						class="rounded-none rounded-tr"
+						onClick={(e) => {
+							e.stopPropagation();
+							openEquipmentCreateForm("weaponId");
+						}}
+					/>
+					<Show when={props.character.weapon?.id}>
+						<Button
+							icon={<Icons.Outline.Trash />}
+							level="quaternary"
+							class="rounded-none rounded-tr"
+							onClick={(e) => {
+								e.stopPropagation();
+								clearEquipmentSlot("weaponId");
+							}}
+						/>
+					</Show>
+				</div>
+			</section>
+			{/* 副手 */}
+			<section
+				role="application"
+				onClick={() => {
+					attendSlot("subWeaponId");
+					if (props.character.subWeapon) {
+						previewEquipmentItem("subWeaponId", props.character.subWeapon);
+					}
+				}}
+				onKeyUp={(e) => {
+					if (e.key === "Enter" || e.key === " ") {
+						e.preventDefault();
+						e.stopPropagation();
+					}
+				}}
+				class={`SubHand  border-dividing-color flex flex-col gap-1 overflow-hidden backdrop-blur portrait:w-[calc(50%-6px)] portrait:rounded portrait:border landscape:w-full landscape:border-b ${focusRing("subWeaponId")}`}
+			>
+				<div class="Label px-4 py-3">{dictionary().ui.character.tabs.equipment.subHand}</div>
+				<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
+					<Show when={props.character.subWeapon} fallback={<Icons.Spirits iconName="unknown" size={36} />}>
+						{(subWeapon) => (
+							<>
+								<Icons.Spirits iconName={subWeapon().type ?? ""} size={36} />
+								{subWeapon().name}
+							</>
+						)}
+					</Show>
+				</div>
+				<div class="Function flex flex-none">
+					<Button
+						icon={<Icons.Outline.Category />}
+						level="quaternary"
+						class="rounded-none"
+						onClick={(e) => {
+							e.stopPropagation();
+							openEquipmentPickerSheet("subWeaponId");
+						}}
+					/>
+					<Button
+						icon={<Icons.Outline.DocmentAdd />}
+						level="quaternary"
+						class="rounded-none rounded-tr"
+						onClick={(e) => {
+							e.stopPropagation();
+							openEquipmentCreateForm("subWeaponId");
+						}}
+					/>
+					<Show when={props.character.subWeapon?.id}>
+						<Button
+							icon={<Icons.Outline.Trash />}
+							level="quaternary"
+							class="rounded-none rounded-tr"
+							onClick={(e) => {
+								e.stopPropagation();
+								clearEquipmentSlot("subWeaponId");
+							}}
+						/>
+					</Show>
+				</div>
+			</section>
+			{/* 防具 */}
+			<section
+				role="application"
+				onClick={() => {
+					attendSlot("armorId");
+					if (props.character.armor) {
+						previewEquipmentItem("armorId", props.character.armor);
+					}
+				}}
+				onKeyUp={(e) => {
+					if (e.key === "Enter" || e.key === " ") {
+						e.preventDefault();
+						e.stopPropagation();
+					}
+				}}
+				class={`Armor  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b ${focusRing("armorId")}`}
+			>
+				<div class="Label px-4 py-3 portrait:hidden">{dictionary().ui.character.tabs.equipment.armor}</div>
+				<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
+					<Show when={props.character.armor} fallback={<Icons.Spirits iconName="unknown" size={36} />}>
+						{(armor) => (
+							<>
+								<Icons.Spirits iconName={armor().ability ?? ""} size={36} />
+								{armor().name}
+							</>
+						)}
+					</Show>
+				</div>
+				<div class="Function flex flex-none">
+					<Button
+						icon={<Icons.Outline.Category />}
+						level="quaternary"
+						class="rounded-none"
+						onClick={(e) => {
+							e.stopPropagation();
+							openEquipmentPickerSheet("armorId");
+						}}
+					/>
+					<Button
+						icon={<Icons.Outline.DocmentAdd />}
+						level="quaternary"
+						class="rounded-none rounded-tr"
+						onClick={(e) => {
+							e.stopPropagation();
+							openEquipmentCreateForm("armorId");
+						}}
+					/>
+					<Show when={props.character.armor?.id}>
+						<Button
+							icon={<Icons.Outline.Trash />}
+							level="quaternary"
+							class="rounded-none rounded-tr"
+							onClick={(e) => {
+								e.stopPropagation();
+								clearEquipmentSlot("armorId");
+							}}
+						/>
+					</Show>
+				</div>
+			</section>
+			{/* 追加 */}
+			<section
+				role="application"
+				onClick={() => {
+					attendSlot("optionId");
+					if (props.character.option) {
+						previewEquipmentItem("optionId", props.character.option);
+					}
+				}}
+				onKeyUp={(e) => {
+					if (e.key === "Enter" || e.key === " ") {
+						e.preventDefault();
+						e.stopPropagation();
+					}
+				}}
+				class={`OptEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b ${focusRing("optionId")}`}
+			>
+				<div class="Label px-4 py-3 portrait:hidden">{dictionary().ui.character.tabs.equipment.option}</div>
+				<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
+					<Show when={props.character.option} fallback={<Icons.Spirits iconName="unknown" size={36} />}>
+						{(option) => (
+							<>
+								<Icons.Spirits iconName={"option"} size={36} />
+								{option().name}
+							</>
+						)}
+					</Show>
+				</div>
+				<div class="Function flex flex-none">
+					<Button
+						icon={<Icons.Outline.Category />}
+						level="quaternary"
+						class="rounded-none"
+						onClick={(e) => {
+							e.stopPropagation();
+							openEquipmentPickerSheet("optionId");
+						}}
+					/>
+					<Button
+						icon={<Icons.Outline.DocmentAdd />}
+						level="quaternary"
+						class="rounded-none rounded-tr"
+						onClick={(e) => {
+							e.stopPropagation();
+							openEquipmentCreateForm("optionId");
+						}}
+					/>
+					<Show when={props.character.option?.id}>
+						<Button
+							icon={<Icons.Outline.Trash />}
+							level="quaternary"
+							class="rounded-none rounded-tr"
+							onClick={(e) => {
+								e.stopPropagation();
+								clearEquipmentSlot("optionId");
+							}}
+						/>
+					</Show>
+				</div>
+			</section>
+			{/* 特殊 */}
+			<section
+				role="application"
+				onClick={() => {
+					attendSlot("specialId");
+					if (props.character.special) {
+						previewEquipmentItem("specialId", props.character.special);
+					}
+				}}
+				onKeyUp={(e) => {
+					if (e.key === "Enter" || e.key === " ") {
+						e.preventDefault();
+						e.stopPropagation();
+					}
+				}}
+				class={`SpeEquip  border-dividing-color flex w-full flex-col overflow-hidden backdrop-blur portrait:flex-row portrait:rounded portrait:border portrait:py-2 landscape:border-b ${focusRing("specialId")}`}
+			>
+				<div class="Label px-4 py-3 portrait:hidden">{dictionary().ui.character.tabs.equipment.special}</div>
+				<div class="Selector flex w-full items-center gap-2 overflow-hidden px-4 text-ellipsis whitespace-nowrap">
+					<Show when={props.character.special} fallback={<Icons.Spirits iconName="unknown" size={36} />}>
+						{(special) => (
+							<>
+								<Icons.Spirits iconName={"special"} size={36} />
+								{special().name}
+							</>
+						)}
+					</Show>
+				</div>
+				<div class="Function flex flex-none">
+					<Button
+						icon={<Icons.Outline.Category />}
+						level="quaternary"
+						class="rounded-none"
+						onClick={(e) => {
+							e.stopPropagation();
+							openEquipmentPickerSheet("specialId");
+						}}
+					/>
+					<Button
+						icon={<Icons.Outline.DocmentAdd />}
+						level="quaternary"
+						class="rounded-none rounded-tr"
+						onClick={(e) => {
+							e.stopPropagation();
+							openEquipmentCreateForm("specialId");
+						}}
+					/>
+					<Show when={props.character.special?.id}>
+						<Button
+							icon={<Icons.Outline.Trash />}
+							level="quaternary"
+							class="rounded-none rounded-tr"
+							onClick={(e) => {
+								e.stopPropagation();
+								clearEquipmentSlot("specialId");
+							}}
+						/>
+					</Show>
+				</div>
+			</section>
+			{/* 时装 */}
+		</div>
 	);
 }
