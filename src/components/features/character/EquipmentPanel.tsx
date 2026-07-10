@@ -9,7 +9,7 @@ import { selectPlayerSpecialByIdWithRelations } from "@db/generated/repositories
 import type { PlayerWeaponWithRelations } from "@db/generated/repositories/player_weapon";
 import { selectPlayerWeaponByIdWithRelations } from "@db/generated/repositories/player_weapon";
 import type { character, DB } from "@db/generated/zod";
-import { createMemo, onCleanup, Show } from "solid-js";
+import { createEffect, createMemo, onCleanup, Show } from "solid-js";
 import type { TableDataConfig } from "~/components/business/data-config";
 import { PLAYER_ARMOR_DATA_CONFIG } from "~/components/business/dataConfig/player_armor";
 import { PLAYER_OPTION_DATA_CONFIG } from "~/components/business/dataConfig/player_option";
@@ -21,8 +21,13 @@ import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
 import { type OverlayLayerHandle, useOverlay } from "~/lib/overlay/OverlayContext";
-import { useIntentSnapshot, useVisualIntent } from "~/machines/AppActorContext";
-import type { EquipSlot } from "~/machines/intent/types";
+import { useInterfaceActor, useInterfaceSnapshot } from "~/machines/AppActorContext";
+import {
+	createEditCharacterEquipmentEvent,
+	createInspectCharacterEquipmentEvent,
+	selectCharacterEquipmentInteraction,
+} from "~/machines/interfaceStateMachine";
+import type { CharacterEquipmentSlot } from "~/shared/interaction/characterEquipment";
 
 export type EquipmentSlot = "weaponId" | "subWeaponId" | "armorId" | "optionId" | "specialId";
 
@@ -40,15 +45,22 @@ const equipmentSlotConfig = {
 	specialId: "player_special",
 } as const satisfies Record<EquipmentSlot, keyof DB>;
 
-// 语义槽名（意图层 EquipSlot）↔ DB 外键列名（EquipmentSlot）的映射。
-// 仅本文件可见——意图层只表达"哪个槽"，列名结构是 character 表的私事（冲突 #8 的接缝）。
+// AUI 语义槽名 ↔ DB 外键列名的映射只留在消费侧；状态机不感知 character 表结构。
 const slotToSemantic = {
 	weaponId: "weapon",
 	subWeaponId: "subWeapon",
 	armorId: "armor",
 	optionId: "option",
 	specialId: "special",
-} as const satisfies Record<EquipmentSlot, EquipSlot>;
+} as const satisfies Record<EquipmentSlot, CharacterEquipmentSlot>;
+
+const semanticToSlot = {
+	weapon: "weaponId",
+	subWeapon: "subWeaponId",
+	armor: "armorId",
+	option: "optionId",
+	special: "specialId",
+} as const satisfies Record<CharacterEquipmentSlot, EquipmentSlot>;
 
 const equipmentRelationKeyConfig = {
 	weaponId: "weapon",
@@ -148,52 +160,34 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 	const dictionary = useDictionary();
 	// EquipmentPanel 渲染于角色页根作用域(非浮层内),openSheet 新建根级 sheet layer。
 	const overlay = useOverlay();
-	const intentActor = useVisualIntent();
-	const intent = useIntentSnapshot();
+	const interfaceActor = useInterfaceActor();
+	const interfaceState = useInterfaceSnapshot();
 	let equipmentPickerSheetHandle: OverlayLayerHandle | undefined;
+	let equipmentPickerSheetSlot: EquipmentSlot | undefined;
 
-	// 本角色的装备槽意图（target 为本角色 equipmentSlot 时取其语义槽名）。
-	const intentSlot = createMemo<EquipSlot | null>(() => {
-		const target = intent().context.target;
-		if (target?.kind === "equipmentSlot" && target.characterId === props.character.id) {
-			return target.slot;
-		}
-		return null;
+	const equipmentInteraction = createMemo(() => {
+		const interaction = selectCharacterEquipmentInteraction(interfaceState());
+		return interaction?.characterId === props.character.id ? interaction : null;
 	});
 
-	const intentState = createMemo(() => String(intent().value));
+	const focusedSlot = createMemo<CharacterEquipmentSlot | null>(() => equipmentInteraction()?.equipmentSlot ?? null);
 
-	// 聚焦中的槽（attending / acquiring / engaging 任一活跃态 + target 为本槽）。
-	const focusedSlot = createMemo<EquipSlot | null>(() => {
-		const state = intentState();
-		if (state === "atRest" || state === "releasing") return null;
-		return intentSlot();
-	});
-
-	// 意图输入：槽行点击 → ATTEND（检视）；编辑按钮 → ENGAGE（操纵）；关闭/Esc → RELEASE。
-	const attendSlot = (slot: EquipmentSlot) => {
-		intentActor.send({
-			type: "ATTEND",
-			target: { kind: "equipmentSlot", characterId: props.character.id, slot: slotToSemantic[slot] },
-			source: "ui",
-		});
+	const inspectSlot = (slot: EquipmentSlot) => {
+		interfaceActor.send(createInspectCharacterEquipmentEvent(props.character.id, slotToSemantic[slot]));
 	};
 
-	const engageSlot = (slot: EquipmentSlot) => {
-		intentActor.send({
-			type: "ENGAGE",
-			target: { kind: "equipmentSlot", characterId: props.character.id, slot: slotToSemantic[slot] },
-			source: "ui",
-		});
+	const editSlot = (slot: EquipmentSlot) => {
+		interfaceActor.send(createEditCharacterEquipmentEvent(props.character.id, slotToSemantic[slot]));
 	};
 
-	const releaseIntent = () => {
-		intentActor.send({ type: "RELEASE", source: "ui" });
+	const returnToCharacterOverview = () => {
+		interfaceActor.send({ type: "character.overview", characterId: props.character.id });
 	};
 
 	const closeEquipmentPickerSheet = () => {
 		const handle = equipmentPickerSheetHandle;
 		equipmentPickerSheetHandle = undefined;
+		equipmentPickerSheetSlot = undefined;
 		handle?.close();
 	};
 
@@ -267,11 +261,10 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 		await props.onPatchRequested({ [slot]: primaryValue } as Partial<character>);
 	};
 
-	const openEquipmentPickerSheet = (slot: EquipmentSlot) => {
-		closeEquipmentPickerSheet();
-		engageSlot(slot);
+	const projectEquipmentPickerSheet = (slot: EquipmentSlot) => {
 		const tableType = equipmentSlotConfig[slot];
-		equipmentPickerSheetHandle = overlay.openSheet({
+		let layerId: string | undefined;
+		const handle = overlay.openSheet({
 			render: (api) => (
 				<ForeignKeyPickerSheetContent<Record<string, unknown>>
 					title={dictionary().db[tableType].selfName}
@@ -281,13 +274,38 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 				/>
 			),
 			onCloseRequest: () => {
-				equipmentPickerSheetHandle = undefined;
-				releaseIntent();
+				if (equipmentPickerSheetHandle?.layerId === layerId) {
+					equipmentPickerSheetHandle = undefined;
+					equipmentPickerSheetSlot = undefined;
+				}
+				const interaction = equipmentInteraction();
+				if (interaction?.mode === "editing" && interaction.equipmentSlot === slotToSemantic[slot]) {
+					returnToCharacterOverview();
+				}
 			},
 		});
+		layerId = handle.layerId;
+		equipmentPickerSheetHandle = handle;
+		equipmentPickerSheetSlot = slot;
 	};
 
-	onCleanup(closeEquipmentPickerSheet);
+	// sheet 是 editing 状态的 UI 投影；点击处理器不直接操作 overlay。
+	createEffect(() => {
+		const interaction = equipmentInteraction();
+		const editingSlot = interaction?.mode === "editing" ? semanticToSlot[interaction.equipmentSlot] : undefined;
+		if (!editingSlot) {
+			closeEquipmentPickerSheet();
+			return;
+		}
+		if (equipmentPickerSheetHandle && equipmentPickerSheetSlot === editingSlot) return;
+		closeEquipmentPickerSheet();
+		projectEquipmentPickerSheet(editingSlot);
+	});
+
+	onCleanup(() => {
+		returnToCharacterOverview();
+		closeEquipmentPickerSheet();
+	});
 
 	return (
 		<div class="flex w-full flex-none gap-3 portrait:flex-wrap landscape:flex-col">
@@ -295,7 +313,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 			<section
 				role="application"
 				onClick={() => {
-					attendSlot("weaponId");
+					inspectSlot("weaponId");
 					if (props.character.weapon) {
 						previewEquipmentItem("weaponId", props.character.weapon);
 					}
@@ -326,7 +344,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 						class="rounded-none"
 						onClick={(e) => {
 							e.stopPropagation();
-							openEquipmentPickerSheet("weaponId");
+							editSlot("weaponId");
 						}}
 					/>
 					<Button
@@ -355,7 +373,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 			<section
 				role="application"
 				onClick={() => {
-					attendSlot("subWeaponId");
+					inspectSlot("subWeaponId");
 					if (props.character.subWeapon) {
 						previewEquipmentItem("subWeaponId", props.character.subWeapon);
 					}
@@ -386,7 +404,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 						class="rounded-none"
 						onClick={(e) => {
 							e.stopPropagation();
-							openEquipmentPickerSheet("subWeaponId");
+							editSlot("subWeaponId");
 						}}
 					/>
 					<Button
@@ -415,7 +433,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 			<section
 				role="application"
 				onClick={() => {
-					attendSlot("armorId");
+					inspectSlot("armorId");
 					if (props.character.armor) {
 						previewEquipmentItem("armorId", props.character.armor);
 					}
@@ -446,7 +464,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 						class="rounded-none"
 						onClick={(e) => {
 							e.stopPropagation();
-							openEquipmentPickerSheet("armorId");
+							editSlot("armorId");
 						}}
 					/>
 					<Button
@@ -475,7 +493,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 			<section
 				role="application"
 				onClick={() => {
-					attendSlot("optionId");
+					inspectSlot("optionId");
 					if (props.character.option) {
 						previewEquipmentItem("optionId", props.character.option);
 					}
@@ -506,7 +524,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 						class="rounded-none"
 						onClick={(e) => {
 							e.stopPropagation();
-							openEquipmentPickerSheet("optionId");
+							editSlot("optionId");
 						}}
 					/>
 					<Button
@@ -535,7 +553,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 			<section
 				role="application"
 				onClick={() => {
-					attendSlot("specialId");
+					inspectSlot("specialId");
 					if (props.character.special) {
 						previewEquipmentItem("specialId", props.character.special);
 					}
@@ -566,7 +584,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 						class="rounded-none"
 						onClick={(e) => {
 							e.stopPropagation();
-							openEquipmentPickerSheet("specialId");
+							editSlot("specialId");
 						}}
 					/>
 					<Button

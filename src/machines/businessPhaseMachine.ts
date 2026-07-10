@@ -6,12 +6,13 @@
  *   当前不绑定路由/UI/动画——等路由设计确定后再接入。
  *
  * 架构说明：
- *   [设计-验证-分析] 是模拟器的核心业务流，与注意力机（VisualIntentMachine）平级，
- *   二者都是 AppActorProvider 直接持有的顶层 actor，互不 invoke。
+ *   [设计-验证-分析] 是模拟器的核心业务流。ADR 0021 的 character 薄切片迁移期间，
+ *   本机仍由 AppActorProvider 独立持有；迁移 simulator 时这些阶段将并入 AUI 行为状态机，
+ *   避免两个 actor 保存同一阶段事实。
  *   应用启动就绪由 bootstrap 编排器（src/lib/bootstrap）表达，不由状态机承载——
  *   并发依赖 DAG 调度不是状态转移问题，手写编排器比状态机更贴合。
  *
- *   具体设计内容（装备槽、技能树等）取决于游戏 schema。项目级架构（阶段、注意力、
+ *   具体设计内容（装备槽、技能树等）取决于游戏 schema。项目级架构（阶段、交互状态、
  *   渲染）未来需要与游戏特定业务层解耦，使本项目可服务于多种游戏。当前先做分层命名。
  */
 
@@ -19,10 +20,7 @@ import { type ActorRefFrom, setup } from "xstate";
 
 export type Phase = "designing" | "simulating" | "analyzing";
 
-export type BusinessPhaseEvent =
-	| { type: "START_SIMULATION" }
-	| { type: "START_ANALYSIS" }
-	| { type: "BACK_TO_DESIGN" };
+export type BusinessPhaseEvent = { type: "START_SIMULATION" } | { type: "START_ANALYSIS" } | { type: "BACK_TO_DESIGN" };
 
 export const createBusinessPhaseMachine = () => {
 	const machineSetup = setup({

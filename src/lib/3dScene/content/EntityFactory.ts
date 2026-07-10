@@ -4,8 +4,8 @@
  * 负责创建不同类型的实体（角色、球体等）并管理GLB模型缓存。从 RendererController 拆出。
  */
 
+import type { AbstractMesh, AnimationGroup, Scene } from "~/lib/babylon/runtime";
 import {
-	AnimationGroup,
 	Color3,
 	DynamicTexture,
 	ImportMeshAsync,
@@ -14,7 +14,6 @@ import {
 	StandardMaterial,
 	Vector3,
 } from "~/lib/babylon/runtime";
-import type { AbstractMesh, Scene } from "~/lib/babylon/runtime";
 import { createLogger } from "~/lib/Logger";
 import type { SpawnCmd } from "../../engine/core/thread/RendererProtocol";
 import { CharacterAnimationController } from "./CharacterAnimationController";
@@ -58,9 +57,16 @@ export class EntityFactory {
 		// 1. createInstance() - 只能共享几何体，无法独立动画
 		// 2. clone() - 只复制单个网格，丢失骨骼层级
 		// 3. instantiateHierarchy() - 完整复制层级，支持独立动画
-		const instantiatedMeshes = modelData.meshes[0].instantiateHierarchy(null, {
-			doNotInstantiate: false, // 创建真正的副本，不是GPU实例
-		});
+		const instantiatedMeshes = modelData.meshes[0].instantiateHierarchy(
+			null,
+			{
+				doNotInstantiate: false,
+			},
+			(sourceNode, instantiatedNode) => {
+				// Babylon 的 InstancedMesh 不会自动复制 source metadata；显式保留 glTF extras 供装备槽拾取读取。
+				instantiatedNode.metadata = sourceNode.metadata;
+			},
+		);
 
 		if (!instantiatedMeshes) {
 			throw new Error("角色层级实例化失败");

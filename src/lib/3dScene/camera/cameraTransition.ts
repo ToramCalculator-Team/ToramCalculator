@@ -1,9 +1,9 @@
 /**
- * 单相机过渡动画（相机/注意力关注点）。
+ * 单相机过渡动画（SceneRuntime 内部相机关注点）。
  *
- * 从 SceneRuntimeCore 抽出：全程唯一 ArcRotateCamera 在观察位 / 跟随位 / 槽位特写之间的补间。
+ * 从 SceneRuntimeCore 抽出：全程唯一 ArcRotateCamera 在观察位与跟随位之间补间。
  * 纯执行工具——接收 scene/camera 句柄，读应用级动画开关，用 babylon Animation 补间，不持有场景状态。
- * 见 docs/decisions/0012-intent-first-visual-control.md（focusCamera/resetCamera 作为意图层场景投影）
+ * 只服务 SceneRuntime 自身的 realtime 进出过渡，不接受 AUI 装备状态直接驱动。
  */
 
 import type { ArcRotateCamera, Scene } from "~/lib/babylon/runtime";
@@ -45,7 +45,13 @@ export const animateCameraTo = (
 	ease.setEasingMode(EasingFunction.EASINGMODE_EASEINOUT);
 
 	const makeScalarAnim = (prop: "alpha" | "beta" | "radius", from: number, to: number) => {
-		const anim = new Animation(`cam-${prop}`, prop, fps, Animation.ANIMATIONTYPE_FLOAT, Animation.ANIMATIONLOOPMODE_CONSTANT);
+		const anim = new Animation(
+			`cam-${prop}`,
+			prop,
+			fps,
+			Animation.ANIMATIONTYPE_FLOAT,
+			Animation.ANIMATIONLOOPMODE_CONSTANT,
+		);
 		anim.setKeys([
 			{ frame: 0, value: from },
 			{ frame: frames, value: to },
@@ -53,7 +59,13 @@ export const animateCameraTo = (
 		anim.setEasingFunction(ease);
 		return anim;
 	};
-	const targetAnim = new Animation("cam-target", "target", fps, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CONSTANT);
+	const targetAnim = new Animation(
+		"cam-target",
+		"target",
+		fps,
+		Animation.ANIMATIONTYPE_VECTOR3,
+		Animation.ANIMATIONLOOPMODE_CONSTANT,
+	);
 	targetAnim.setKeys([
 		{ frame: 0, value: camera.getTarget().clone() },
 		{ frame: frames, value: dest.target.clone() },

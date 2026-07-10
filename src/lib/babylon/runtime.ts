@@ -8,6 +8,7 @@
 import "./registerBuiltinShaders";
 import "@babylonjs/core/Rendering/depthRendererSceneComponent";
 import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
+import "@babylonjs/core/Layers/effectLayerSceneComponent";
 // NodeMaterial snippet 反序列化依赖 RegisterClass 注册表；显式加载 #LLUXAC 使用的节点块，保证序列化类名能恢复为运行时节点。
 import "@babylonjs/core/Materials/Node/Blocks/Dual/textureBlock";
 import "@babylonjs/core/Materials/Node/Blocks/addBlock";
@@ -17,6 +18,7 @@ import "@babylonjs/core/Materials/Node/Blocks/scaleBlock";
 import "@babylonjs/core/Materials/Node/Blocks/vectorMergerBlock";
 import "@babylonjs/core/Materials/Node/Blocks/vectorSplitterBlock";
 import "@babylonjs/loaders/glTF/2.0/glTFLoader";
+import "@babylonjs/loaders/glTF/2.0/Extensions/ExtrasAsMetadata";
 import "@babylonjs/loaders/glTF/2.0/Extensions/KHR_draco_mesh_compression";
 
 export { Animation } from "@babylonjs/core/Animations/animation";
@@ -27,6 +29,8 @@ export { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
 export { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 export type { AbstractEngine } from "@babylonjs/core/Engines/abstractEngine";
 export { Engine } from "@babylonjs/core/Engines/engine";
+export { PointerEventTypes } from "@babylonjs/core/Events/pointerEvents";
+export { HighlightLayer } from "@babylonjs/core/Layers/highlightLayer";
 export { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
 export { SpotLight } from "@babylonjs/core/Lights/spotLight";
 export { AppendSceneAsync, ImportMeshAsync, SceneLoader } from "@babylonjs/core/Loading/sceneLoader";

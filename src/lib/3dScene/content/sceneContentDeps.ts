@@ -23,8 +23,12 @@ import { BuiltinAnimationType, type CharacterEntityRuntime, EntityFactory } from
  */
 export const disposeCharacterEntity = (entity: CharacterEntityRuntime) => {
 	entity.animationController.stopAllAnimations();
-	entity.builtinAnimations.forEach((group) => group.dispose());
-	entity.customAnimations.forEach((group) => group.dispose());
+	entity.builtinAnimations.forEach((group) => {
+		group.dispose();
+	});
+	entity.customAnimations.forEach((group) => {
+		group.dispose();
+	});
 	entity.builtinAnimations.clear();
 	entity.customAnimations.clear();
 	entity.mesh.dispose(false, true);
@@ -56,7 +60,7 @@ export const createCharacterContentDeps = (handles: {
 			if (!scene) throw new Error("SceneRuntime is not ready");
 			const seq = ++characterContentSeq;
 			characterFactory ??= new EntityFactory(scene);
-			// 角色站位原点（0,0,0）；SLOT_CAMERA_POSES 围绕此原点摆位。
+			// 角色静态内容统一放在场景原点；装备交互没有显式视角契约时不改变相机。
 			const entity = await characterFactory.createCharacter(characterId, characterId, new Vector3(0, 0, 0));
 			const characterRoot = handles.getCharacterRoot();
 			// 快速来回切换：异步加载期间若 seq 已被新请求/释放抢占，丢弃本次结果并完整清理。

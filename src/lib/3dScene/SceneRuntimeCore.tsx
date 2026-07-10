@@ -4,7 +4,7 @@
  * 职责：持有唯一 canvas、Babylon engine/scene、基础背景组和实时模拟 session。
  * 边界：业务层只能通过 SceneRuntime session 进入实时渲染，不能越过本文件直接改 scene。
  * 见 docs/decisions/0009-persistent-render-runtime.md
- *    docs/decisions/0012-intent-first-visual-control.md（focusCamera/resetCamera 作为意图层场景投影）
+ *    docs/decisions/0021-aui-interface-state-machine.md（装备高亮与拾取作为 AUI 场景投影端口）
  */
 
 import { createId } from "@paralleldrive/cuid2";
@@ -17,10 +17,13 @@ import {
 	Color3,
 	Color4,
 	Engine,
+	HighlightLayer,
 	LensRenderingPipeline,
 	Material,
 	Matrix,
+	Mesh,
 	MeshBuilder,
+	PointerEventTypes,
 	Scalar,
 	Scene,
 	ShadowGenerator,
@@ -32,25 +35,29 @@ import {
 import { createLogger } from "~/lib/Logger";
 import { store } from "~/store";
 import { resolveColorSystem } from "~/styles/colorSystem/colorSystemController";
-import { isPBRMaterial, registerVolumetricFogPlugin, VolumetricFogPluginMaterial } from "./materials/volumetricFog";
+import type { RendererCmd } from "../engine/core/thread/RendererProtocol";
+import { animateCameraTo, FOLLOW_POSE, OBSERVE_POSE } from "./camera/cameraTransition";
+import type { AnyCameraControlCmd } from "./camera/commands";
+import { ThirdPersonCameraController } from "./camera/thirdPersonController";
+import { readCharacterEquipmentSlotMetadata } from "./content/characterEquipmentMetadata";
 import { RendererCommunication } from "./content/RendererCommunication";
 import { createCharacterContentDeps } from "./content/sceneContentDeps";
+import {
+	isPBRMaterial,
+	registerVolumetricFogPlugin,
+	type VolumetricFogPluginMaterial,
+} from "./materials/volumetricFog";
 import { createRendererController } from "./RendererController";
-import type { RendererCmd } from "../engine/core/thread/RendererProtocol";
-import { createSceneMachine, type SceneMachine, type SceneMachineDeps } from "./sceneStateMachine";
 import type {
 	CharacterContentSession,
+	CharacterEquipmentPick,
 	RealtimeSceneConfig,
 	RealtimeSceneSession,
 	SceneRuntimeCoreApi,
 	SceneRuntimeMode,
 	ScreenPoint,
 } from "./SceneRuntime";
-import { animateCameraTo, FOLLOW_POSE, OBSERVE_POSE } from "./camera/cameraTransition";
-import {
-	ThirdPersonCameraController,
-} from "./camera/thirdPersonController";
-import { AnyCameraControlCmd } from "./camera/commands";
+import { createSceneMachine, type SceneMachine, type SceneMachineDeps } from "./sceneStateMachine";
 
 const log = createLogger("SceneRuntime");
 
@@ -68,6 +75,8 @@ export function SceneRuntimeCore(props: {
 	onReady: (api: SceneRuntimeCoreApi) => void;
 	onDisposed: (api: SceneRuntimeCoreApi) => void;
 	onModeChange: (mode: SceneRuntimeMode) => void;
+	onCharacterContentReadyChange: (ready: boolean) => void;
+	onCharacterEquipmentPick: (pick: CharacterEquipmentPick) => void;
 }): JSX.Element {
 	const colorSystem = createMemo(() =>
 		resolveColorSystem(store.settings.userInterface.theme, store.settings.userInterface.themeVersion),
@@ -75,7 +84,7 @@ export function SceneRuntimeCore(props: {
 	const themePrimaryColor = createMemo(() => new Color3(...colorSystem().colors.semantic.primary.rgb01));
 	const [ready, setReady] = createSignal(false);
 	const [mode, setLocalMode] = createSignal<SceneRuntimeMode>("loading");
-	const [cameraInputEnabled, setCameraInputEnabledSignal] = createSignal(false);
+	const [characterPickingEnabled, setCharacterPickingEnabled] = createSignal(false);
 
 	let canvas: HTMLCanvasElement | undefined;
 	let engine: AbstractEngine | undefined;
@@ -87,6 +96,7 @@ export function SceneRuntimeCore(props: {
 	// 单相机：全程唯一相机，观察态静态环绕，实时态由控制器跟随，态间用 babylon 动画补间。
 	let sceneCamera: ArcRotateCamera | undefined;
 	let lensPipeline: LensRenderingPipeline | undefined;
+	let equipmentHighlightLayer: HighlightLayer | undefined;
 	let rendererController: ReturnType<typeof createRendererController> | undefined;
 	let rendererCommunication: RendererCommunication | undefined;
 	let thirdPersonController: ThirdPersonCameraController | undefined;
@@ -118,7 +128,6 @@ export function SceneRuntimeCore(props: {
 		} else {
 			sceneCamera.detachControl();
 		}
-		setCameraInputEnabledSignal(enabled);
 	};
 
 	const syncThemeMaterials = () => {
@@ -178,7 +187,7 @@ export function SceneRuntimeCore(props: {
 		getCharacterRoot: () => characterRoot,
 	});
 
-	// 向控制器下发"跟随实体"指令（保留当前角度）。三处入口（startFollow/setFollowTarget/followEntity）共用。
+	// 向控制器下发"跟随实体"指令（保留当前角度）。实时会话的 startFollow/setFollowTarget 共用。
 	const sendFollowCommand = (entityId: string) => {
 		if (!thirdPersonController) return;
 		thirdPersonController.handleCameraCommand({
@@ -230,12 +239,11 @@ export function SceneRuntimeCore(props: {
 			thirdPersonController = undefined;
 			activeSessionId = null;
 			_activeControllerId = null;
-			setCameraInputEnabledSignal(false);
 			realtimeRoot?.getChildren().forEach((node) => {
 				node.dispose();
 			});
 		},
-		runCameraTransition: (direction, config, onDone) => {
+		runCameraTransition: (direction, _config, onDone) => {
 			if (direction === "leave") {
 				return animateCameraTo(scene, sceneCamera, { ...OBSERVE_POSE, target: OBSERVE_POSE.target.clone() }, onDone);
 			}
@@ -266,7 +274,7 @@ export function SceneRuntimeCore(props: {
 			case "loading":
 				return "loading";
 			case "idle":
-			// character 内容稳态对外复用 idle：属观察类，Nav 不隐藏、相机可被注意力机摆位。
+			// character 内容稳态对外复用 idle：属观察类，Nav 不隐藏；装备交互不隐式改变相机。
 			case "loadingCharacter":
 			case "character":
 			case "unloadingCharacter":
@@ -292,7 +300,10 @@ export function SceneRuntimeCore(props: {
 		const machine = createSceneMachine(sceneMachineDeps);
 		sceneMachineActor = createActor(machine);
 		sceneMachineActor.subscribe((snapshot) => {
-			setMode(modeFromMachineState(String(snapshot.value)));
+			const value = String(snapshot.value);
+			setMode(modeFromMachineState(value));
+			setCharacterPickingEnabled(value === "character");
+			props.onCharacterContentReadyChange(value === "character");
 		});
 		sceneMachineActor.start();
 		sceneMachineActor.send({ type: "READY" });
@@ -321,6 +332,17 @@ export function SceneRuntimeCore(props: {
 		sceneCamera.fov = 1;
 		sceneCamera.wheelDeltaPercentage = 0.05;
 		scene.activeCamera = sceneCamera;
+
+		scene.onPointerObservable.add((pointerInfo) => {
+			if (pointerInfo.type !== PointerEventTypes.POINTERPICK || !characterRoot) return;
+			const snapshot = sceneMachineActor?.getSnapshot();
+			if (!snapshot || String(snapshot.value) !== "character" || !snapshot.context.characterId) return;
+			const pickedMesh = pointerInfo.pickInfo?.pickedMesh;
+			if (!pickedMesh?.isDescendantOf(characterRoot)) return;
+			const equipmentSlot = readCharacterEquipmentSlotMetadata(pickedMesh);
+			if (!equipmentSlot) return;
+			props.onCharacterEquipmentPick({ characterId: snapshot.context.characterId, equipmentSlot });
+		});
 
 		lensPipeline = new LensRenderingPipeline(
 			"scene-lens",
@@ -471,8 +493,8 @@ export function SceneRuntimeCore(props: {
 			engine = new Engine(canvas, true);
 			engine.setHardwareScalingLevel(1 / window.devicePixelRatio);
 			engine.loadingScreen = {
-				displayLoadingUI: () => { },
-				hideLoadingUI: () => { },
+				displayLoadingUI: () => {},
+				hideLoadingUI: () => {},
 				loadingUIBackgroundColor: "#000000",
 				loadingUIText: "Loading...",
 			};
@@ -573,39 +595,22 @@ export function SceneRuntimeCore(props: {
 		mode,
 		acquireRealtimeSession,
 		acquireCharacterContent,
-		// ── 意图层场景投影（ADR 0012）：把相机补间到槽位锚姿态 / 复位观察位 ──────────────
-		// 统一相机模型（方案甲）：注意力机是 target→对焦姿态的唯一触发器，对 idle/character 稳态生效。
-		// 已移除 idle-only 守卫——realtime 下注意力对焦改走 followEntity（bridge 分流），不写 target 补间，
-		// 故此处补间不会与 controller target-lerp 同帧争用。animateCameraTo 是唯一补间器。
-		focusCamera: (pose, onDone) => {
-			if (!scene || !sceneCamera) {
-				onDone();
-				return () => {};
-			}
-			return animateCameraTo(
-				scene,
-				sceneCamera,
-				{ alpha: pose.alpha, beta: pose.beta, radius: pose.radius, target: new Vector3(pose.target.x, pose.target.y, pose.target.z) },
-				onDone,
+		highlightCharacterEquipment: (equipmentSlot) => {
+			if (!scene || !characterRoot) return () => {};
+			const root = characterRoot;
+			const highlightedMeshes = scene.meshes.filter(
+				(mesh): mesh is Mesh =>
+					mesh instanceof Mesh &&
+					mesh.isDescendantOf(root) &&
+					readCharacterEquipmentSlotMetadata(mesh) === equipmentSlot,
 			);
-		},
-		resetCamera: (onDone) => {
-			if (!scene || !sceneCamera) {
-				onDone();
-				return () => {};
-			}
-			return animateCameraTo(scene, sceneCamera, { ...OBSERVE_POSE, target: OBSERVE_POSE.target.clone() }, onDone);
-		},
-		// realtime 内容专用：设定 followEntityId（保留当前角度），随后控制器每帧跟随。跟随是持续态，回执建议性。
-		// 控制器未就绪（非 realtime 稳态）→ no-op + 立即回执。
-		followEntity: (entityId, onDone) => {
-			if (!thirdPersonController) {
-				onDone();
-				return () => {};
-			}
-			sendFollowCommand(entityId);
-			onDone();
-			return () => {};
+			if (highlightedMeshes.length === 0) return () => {};
+			equipmentHighlightLayer ??= new HighlightLayer("character-equipment-highlight", scene);
+			const color = themePrimaryColor();
+			for (const mesh of highlightedMeshes) equipmentHighlightLayer.addMesh(mesh, color);
+			return () => {
+				for (const mesh of highlightedMeshes) equipmentHighlightLayer?.removeMesh(mesh);
+			};
 		},
 		projectWorldToScreen: (position): ScreenPoint | null => {
 			if (!scene || !engine) return null;
@@ -631,6 +636,8 @@ export function SceneRuntimeCore(props: {
 			sceneMachineDeps.teardownCharacterContent();
 			sceneMachineActor?.stop();
 			sceneMachineActor = undefined;
+			equipmentHighlightLayer?.dispose();
+			equipmentHighlightLayer = undefined;
 			lensPipeline?.dispose();
 			lensPipeline = undefined;
 			scene?.dispose();
@@ -639,6 +646,8 @@ export function SceneRuntimeCore(props: {
 			engine = undefined;
 			props.onDisposed(api);
 			setReady(false);
+			setCharacterPickingEnabled(false);
+			props.onCharacterContentReadyChange(false);
 			setMode("idle");
 		},
 	};
@@ -657,8 +666,9 @@ export function SceneRuntimeCore(props: {
 			ref={(element) => {
 				canvas = element;
 			}}
-			class={`fixed left-0 top-0 z-0 h-dvh w-dvw bg-transparent transition-opacity ${ready() ? "opacity-100" : "opacity-0"
-				} ${mode() === "realtime" ? "pointer-events-auto" : "pointer-events-none"}`}
+			class={`fixed left-0 top-0 z-0 h-dvh w-dvw bg-transparent transition-opacity ${
+				ready() ? "opacity-100" : "opacity-0"
+			} ${mode() === "realtime" || characterPickingEnabled() ? "pointer-events-auto" : "pointer-events-none"}`}
 		>
 			当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
 		</canvas>

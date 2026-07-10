@@ -19,6 +19,7 @@ import {
 	Suspense,
 	useContext,
 } from "solid-js";
+import type { CharacterEquipmentSlot } from "~/shared/interaction/characterEquipment";
 import type { SimulationEngine } from "../engine/core/thread/SimulationEngine";
 
 export type SceneRuntimeMode = "booting" | "loading" | "idle" | "realtime" | "suspended" | "error";
@@ -52,16 +53,14 @@ export type CharacterContentSession = {
 	release: () => void;
 };
 
-/** 相机姿态：环绕相机的 alpha/beta/radius 与对准点。供意图层场景投影对焦使用。 */
-export type CameraPose = {
-	alpha: number;
-	beta: number;
-	radius: number;
-	target: { x: number; y: number; z: number };
+export type CharacterEquipmentPick = {
+	characterId: string;
+	equipmentSlot: CharacterEquipmentSlot;
 };
 
 export type SceneRuntimeContextValue = {
 	ready: () => boolean;
+	characterContentReady: () => boolean;
 	mode: () => SceneRuntimeMode;
 	acquireRealtimeSession: (config: RealtimeSceneConfig) => Promise<RealtimeSceneSession>;
 	/**
@@ -71,19 +70,16 @@ export type SceneRuntimeContextValue = {
 	 */
 	acquireCharacterContent: (characterId: string) => Promise<CharacterContentSession>;
 	projectWorldToScreen: (position: { x: number; y: number; z: number }) => ScreenPoint | null;
-	// 意图层场景投影：把相机补间到姿态 / 复位到观察位，完成调用 onDone，返回取消函数。
-	// 见 docs/decisions/0012-intent-first-visual-control.md
-	focusCamera: (pose: CameraPose, onDone: () => void) => () => void;
-	resetCamera: (onDone: () => void) => () => void;
-	/**
-	 * realtime 内容专用相机跟随入口：注意力机对焦 simEntity 时设定 followEntityId（保留当前角度），
-	 * 随后由 ThirdPersonCameraController 每帧跟随——不写 target 补间，规避与控制器 target-lerp 争用。
-	 * 跟随是持续态，回执建议性（立即调 onDone）。
-	 */
-	followEntity: (entityId: string, onDone: () => void) => () => void;
+	// AUI snapshot 的场景投影端口。返回值只用于清理旧高亮。
+	// 见 docs/decisions/0021-aui-interface-state-machine.md
+	highlightCharacterEquipment: (equipmentSlot: CharacterEquipmentSlot) => () => void;
+	subscribeCharacterEquipmentPick: (listener: (pick: CharacterEquipmentPick) => void) => () => void;
 };
 
-export type SceneRuntimeCoreApi = SceneRuntimeContextValue & {
+export type SceneRuntimeCoreApi = Omit<
+	SceneRuntimeContextValue,
+	"characterContentReady" | "subscribeCharacterEquipmentPick"
+> & {
 	dispose: () => void;
 };
 
@@ -101,6 +97,8 @@ const SceneRuntimeHostContext = createContext<{
 	onCoreReady: (api: SceneRuntimeCoreApi) => void;
 	onCoreDisposed: (api: SceneRuntimeCoreApi) => void;
 	onModeChange: (mode: SceneRuntimeMode) => void;
+	onCharacterContentReadyChange: (ready: boolean) => void;
+	onCharacterEquipmentPick: (pick: CharacterEquipmentPick) => void;
 }>();
 
 const createDisabledRealtimeSession = (
@@ -121,10 +119,12 @@ const createDisabledCharacterContentSession = (id: string): CharacterContentSess
 
 export function SceneRuntimeProvider(props: ParentProps<{ enabled: boolean }>) {
 	const [mode, setMode] = createSignal<SceneRuntimeMode>("booting");
+	const [characterContentReady, setCharacterContentReady] = createSignal(false);
 	const [shouldMountCore, setShouldMountCore] = createSignal(false);
 	let firstScreenReady = false;
 	let coreApi: SceneRuntimeCoreApi | null = null;
 	let disabledSessionId: string | null = null;
+	const characterEquipmentPickListeners = new Set<(pick: CharacterEquipmentPick) => void>();
 	const waiters: Array<{
 		resolve: (api: SceneRuntimeCoreApi) => void;
 		reject: (reason?: unknown) => void;
@@ -181,6 +181,7 @@ export function SceneRuntimeProvider(props: ParentProps<{ enabled: boolean }>) {
 			disabledSessionId = null;
 			rejectWaiters(new Error("3D scene runtime was disabled before it became ready"));
 			setMode(firstScreenReady ? "idle" : "booting");
+			setCharacterContentReady(false);
 			return;
 		}
 		if (firstScreenReady) {
@@ -194,10 +195,12 @@ export function SceneRuntimeProvider(props: ParentProps<{ enabled: boolean }>) {
 		coreApi?.dispose();
 		coreApi = null;
 		rejectWaiters(new Error("SceneRuntimeProvider was disposed before the core became ready"));
+		characterEquipmentPickListeners.clear();
 	});
 
 	const value: SceneRuntimeContextValue = {
 		ready: () => coreApi?.ready() ?? false,
+		characterContentReady,
 		mode,
 		acquireRealtimeSession: async (config) => {
 			if (!props.enabled) {
@@ -218,21 +221,13 @@ export function SceneRuntimeProvider(props: ParentProps<{ enabled: boolean }>) {
 			return api.acquireCharacterContent(characterId);
 		},
 		projectWorldToScreen: (position) => coreApi?.projectWorldToScreen(position) ?? null,
-		// 核心未就绪 / 3D 禁用时：no-op + 立即回执（建议性回执兜底，仿 createDisabledRealtimeSession）。
-		focusCamera: (pose, onDone) => {
-			if (coreApi) return coreApi.focusCamera(pose, onDone);
-			onDone();
+		highlightCharacterEquipment: (equipmentSlot) => {
+			if (coreApi) return coreApi.highlightCharacterEquipment(equipmentSlot);
 			return () => {};
 		},
-		resetCamera: (onDone) => {
-			if (coreApi) return coreApi.resetCamera(onDone);
-			onDone();
-			return () => {};
-		},
-		followEntity: (entityId, onDone) => {
-			if (coreApi) return coreApi.followEntity(entityId, onDone);
-			onDone();
-			return () => {};
+		subscribeCharacterEquipmentPick: (listener) => {
+			characterEquipmentPickListeners.add(listener);
+			return () => characterEquipmentPickListeners.delete(listener);
 		},
 	};
 
@@ -251,6 +246,10 @@ export function SceneRuntimeProvider(props: ParentProps<{ enabled: boolean }>) {
 					}
 				},
 				onModeChange: setMode,
+				onCharacterContentReadyChange: setCharacterContentReady,
+				onCharacterEquipmentPick: (pick) => {
+					for (const listener of characterEquipmentPickListeners) listener(pick);
+				},
 			}}
 		>
 			<SceneRuntimeContext.Provider value={value}>{props.children}</SceneRuntimeContext.Provider>
@@ -272,6 +271,8 @@ export function SceneCanvas(): JSX.Element {
 					onReady={host.onCoreReady}
 					onDisposed={host.onCoreDisposed}
 					onModeChange={host.onModeChange}
+					onCharacterContentReadyChange={host.onCharacterContentReadyChange}
+					onCharacterEquipmentPick={host.onCharacterEquipmentPick}
 				/>
 			</Suspense>
 		</Show>

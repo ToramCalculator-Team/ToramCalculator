@@ -19,6 +19,7 @@ import { useEngine } from "~/lib/engine/core/thread/EngineContext";
 import { StatsRenderer } from "~/lib/engine/core/World/Member/MemberStatusPanel";
 import { createLogger } from "~/lib/Logger";
 import { type DialogLayerEntryInit, useOverlay } from "~/lib/overlay/OverlayContext";
+import { useInterfaceActor } from "~/machines/AppActorContext";
 import { store } from "~/store";
 import { createCharacterPageModel } from "./characterPageModel";
 import { createCharacter } from "./createCharacter";
@@ -34,6 +35,7 @@ export default function CharactePage() {
 	const params = useParams();
 	const engine = useEngine();
 	const sceneRuntime = useSceneRuntime();
+	const interfaceActor = useInterfaceActor();
 
 	type PanelModeType = "Config" | "AttrPreview" | "SkillPreview";
 	const [panelMode, setPanelMode] = createSignal<PanelModeType>("Config");
@@ -61,6 +63,29 @@ export default function CharactePage() {
 
 	const character = createMemo(() => model.pageData.character);
 	const characters = createMemo(() => model.pageData.characters);
+	let activeInterfaceCharacterId: string | null = null;
+
+	// 路由页面只声明当前交互空间；装备检查/编辑由子面板发送更具体的语义事件。
+	createEffect(() => {
+		const characterId = character()?.id ?? null;
+		if (characterId === activeInterfaceCharacterId) return;
+		if (!characterId) {
+			if (activeInterfaceCharacterId) {
+				interfaceActor.send({ type: "character.close", characterId: activeInterfaceCharacterId });
+				activeInterfaceCharacterId = null;
+			}
+			return;
+		}
+		activeInterfaceCharacterId = characterId;
+		interfaceActor.send({ type: "character.open", characterId });
+	});
+
+	onCleanup(() => {
+		if (activeInterfaceCharacterId) {
+			interfaceActor.send({ type: "character.close", characterId: activeInterfaceCharacterId });
+			activeInterfaceCharacterId = null;
+		}
+	});
 
 	const primaryMember = createMemo(() => {
 		const list = engine.characterMembers();

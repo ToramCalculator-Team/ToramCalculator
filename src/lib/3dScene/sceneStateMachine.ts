@@ -95,58 +95,55 @@ export const createSceneMachine = (deps: SceneMachineDeps) => {
 		},
 		actors: {
 			// 建实时资源：异步（含 snapshot 拉取）。失败转 error。
-			setupResources: fromCallback<SceneMachineEvent, { config: RealtimeSceneConfig | null }>(
-				({ sendBack, input }) => {
-					let cancelled = false;
-					if (!input.config) {
-						sendBack({ type: "FAIL" });
-						return () => {};
-					}
-					deps
-						.setupRealtimeResources(input.config)
-						.then(() => {
-							if (!cancelled) sendBack({ type: "SETUP_DONE" });
-						})
-						.catch((error) => {
-							deps.onError(error);
-							if (!cancelled) sendBack({ type: "FAIL" });
-						});
-					return () => {
-						cancelled = true;
-					};
-				},
-			),
-			// 建角色内容：异步（含模型 HTTP 加载）。失败转 error。快速来回切换由 core 内 seq 失配丢弃。
-			setupCharacter: fromCallback<SceneMachineEvent, { characterId: string | null }>(
-				({ sendBack, input }) => {
-					let cancelled = false;
-					if (!input.characterId) {
-						sendBack({ type: "FAIL" });
-						return () => {};
-					}
-					deps
-						.setupCharacterContent(input.characterId)
-						.then(() => {
-							if (!cancelled) sendBack({ type: "SETUP_DONE" });
-						})
-						.catch((error) => {
-							deps.onError(error);
-							if (!cancelled) sendBack({ type: "FAIL" });
-						});
-					return () => {
-						cancelled = true;
-					};
-				},
-			),
-			// 相机过渡动画：babylon Animation 跑完回 ANIM_DONE；exit 时取消。
-			cameraTransition: fromCallback<SceneMachineEvent, { direction: "enter" | "leave"; config: RealtimeSceneConfig | null }>(
-				({ sendBack, input }) => {
-					const cancel = deps.runCameraTransition(input.direction, input.config, () => {
-						sendBack({ type: "ANIM_DONE" });
+			setupResources: fromCallback<SceneMachineEvent, { config: RealtimeSceneConfig | null }>(({ sendBack, input }) => {
+				let cancelled = false;
+				if (!input.config) {
+					sendBack({ type: "FAIL" });
+					return () => {};
+				}
+				deps
+					.setupRealtimeResources(input.config)
+					.then(() => {
+						if (!cancelled) sendBack({ type: "SETUP_DONE" });
+					})
+					.catch((error) => {
+						deps.onError(error);
+						if (!cancelled) sendBack({ type: "FAIL" });
 					});
-					return cancel;
-				},
-			),
+				return () => {
+					cancelled = true;
+				};
+			}),
+			// 建角色内容：异步（含模型 HTTP 加载）。失败转 error。快速来回切换由 core 内 seq 失配丢弃。
+			setupCharacter: fromCallback<SceneMachineEvent, { characterId: string | null }>(({ sendBack, input }) => {
+				let cancelled = false;
+				if (!input.characterId) {
+					sendBack({ type: "FAIL" });
+					return () => {};
+				}
+				deps
+					.setupCharacterContent(input.characterId)
+					.then(() => {
+						if (!cancelled) sendBack({ type: "SETUP_DONE" });
+					})
+					.catch((error) => {
+						deps.onError(error);
+						if (!cancelled) sendBack({ type: "FAIL" });
+					});
+				return () => {
+					cancelled = true;
+				};
+			}),
+			// 相机过渡动画：babylon Animation 跑完回 ANIM_DONE；exit 时取消。
+			cameraTransition: fromCallback<
+				SceneMachineEvent,
+				{ direction: "enter" | "leave"; config: RealtimeSceneConfig | null }
+			>(({ sendBack, input }) => {
+				const cancel = deps.runCameraTransition(input.direction, input.config, () => {
+					sendBack({ type: "ANIM_DONE" });
+				});
+				return cancel;
+			}),
 		},
 	});
 
@@ -190,7 +187,7 @@ export const createSceneMachine = (deps: SceneMachineDeps) => {
 					RELEASE_CONTENT: "unloadingCharacter",
 				},
 			},
-			// 角色内容稳态：静态装饰模型，相机可被注意力机摆位。对外报 idle（观察类）。
+			// 角色内容稳态：静态装饰模型；AUI snapshot 只投影有明确资产语义的表现。对外报 idle（观察类）。
 			character: {
 				on: {
 					RELEASE_CONTENT: "unloadingCharacter",
@@ -264,10 +261,7 @@ export const createSceneMachine = (deps: SceneMachineDeps) => {
 					ANIM_DONE: "idle",
 					FAIL: "error",
 				},
-				exit: [
-					"teardown",
-					machineSetup.assign({ config: null, contentSource: () => "none" as const }),
-				],
+				exit: ["teardown", machineSetup.assign({ config: null, contentSource: () => "none" as const })],
 			},
 			error: {
 				entry: ["teardown", "teardownCharacter"],

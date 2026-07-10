@@ -11,7 +11,7 @@ import { EngineProvider } from "~/lib/engine/core/thread/EngineContext";
 import { OverlayRoot } from "~/lib/overlay/OverlayRoot";
 import { requestCloseTopLayer } from "~/lib/overlay/overlayStore";
 import { AppActorProvider } from "~/machines/AppActorContext";
-import { SceneIntentBridge } from "~/machines/projections/SceneIntentBridge";
+import { SceneInterfaceBridge } from "~/machines/projections/SceneInterfaceBridge";
 import { setStore, store } from "~/store";
 import { applyColorSystem } from "~/styles/colorSystem/colorSystemController";
 
@@ -194,7 +194,7 @@ export default function AppMainContet(props: ParentProps) {
 								class={`fixed left-0 top-0 h-dvh w-dvw overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
 							>
 								<SceneCanvas />
-								<SceneIntentBridge />
+								<SceneInterfaceBridge />
 								{props.children}
 								<LoginDialog />
 								<OverlayRoot />
