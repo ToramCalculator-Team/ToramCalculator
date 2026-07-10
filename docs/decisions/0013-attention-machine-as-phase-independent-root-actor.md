@@ -1,10 +1,10 @@
 # 0013 - 注意力机作为阶段无关的根级 actor
 
-- **状态**: Accepted
+- **状态**: Superseded by 0021
 - **日期**: 2026-06-09
 - **决策层**: 跨层（应用层状态架构）
 - **相关代码**: `src/machines/AppActorContext.tsx`、`src/machines/businessPhaseMachine.ts`、`src/machines/intent/visualIntentMachine.ts`
-- **相关 ADR**: 0012
+- **相关 ADR**: 0012、0021
 
 ## 背景
 
@@ -49,3 +49,7 @@
 
 - XState actor 生命周期与 statechart 正交区域
 - ADR 0012：意图层作为 UI 与场景的单一事实源
+
+## 后续
+
+ADR 0021 将注意力改为 AUI 行为状态路径与 context 的派生含义，因此不再建立独立注意力 actor。本 ADR 的 actor 拆分决议由 0021 替代。
