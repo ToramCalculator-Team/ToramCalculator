@@ -3,89 +3,49 @@
 - **状态**: Accepted
 - **日期**: 2026-06-09
 - **决策层**: 跨层（应用层状态架构）
-- **相关代码**: `src/machines/`（规划落点：`appMachine.ts`、`visualIntentMachine.ts`）
+- **相关代码**: `src/machines/AppActorContext.tsx`、`src/machines/businessPhaseMachine.ts`、`src/machines/intent/visualIntentMachine.ts`
 - **相关 ADR**: 0012
 
 ## 背景
 
-应用的根源需求是降低玩家的验证成本，核心循环是 设计 → 验证 → 分析 → 再设计。三个阶段持续时间长、上下文自成一体，适合作为应用的顶层状态：
-
-```
-designing ──产物: Build──▶ simulating ──产物: SimResult──▶ analyzing
-    ▲                                                          │
-    └──────────────── 产物: Insight（回流改设计）────────────────┘
-```
-
-ADR 0012 确立了视觉意图机（注意力机）作为 UI 与场景的单一事实源。但注意力机与三个顶层阶段存在交叉：同一套视觉意图管理在设计与验证（乃至分析）中都要工作，而各阶段允许的意图词汇表不同（如分析态不允许编辑装备）。
-
-必须决定：注意力状态在状态架构中的位置——与阶段同机并行？嵌入各阶段子状态？还是独立 actor？
+设计、验证和分析会使用同一套注意力语义，但各阶段允许的目标和操作不同。注意力需要跨阶段保持连续，因此不能简单复制进每个阶段子状态；同时它又受到阶段能力约束，不能让并行区域互相窥探。
 
 ## 候选方案
 
-### A. 并行状态（同一机器内两个 region：阶段 × 注意力）
+### A. 阶段与注意力作为同一机器的并行区域
 
-- 优点：单机器，快照原子（一次订阅拿到全部状态）；statechart 可视化工具能完整呈现；无跨机器协议。
-- 缺点：并行区域的前提是正交，但阶段恰恰要约束注意力的合法词汇——region 间互相约束必须用 `in` guard 互窥兄弟区域，耦合以最隐蔽的方式回归；约束逻辑散落在各转移的 guard 上，没有单一落点；机器随功能增长不可分割地膨胀。
+- 优点：单快照、易整体可视化。
+- 缺点：阶段需要通过 guard 读取兄弟区域，正交性名存实亡。
 
-### B. 阶段子状态内嵌（designing 与 simulating 各嵌一份注意力子机）
+### B. 每个阶段内嵌注意力子机
 
-- 优点：约束天然成立——某阶段不合法的意图在该阶段的子状态里根本无定义，无需 guard；离开阶段自动清理注意力状态，无泄漏。
-- 缺点：结构重复（同一注意力生命周期写两份，或抽共享配置后 history/context 交接依然别扭）；**阶段切换强制销毁注意力**——"盯着这把武器设计完，切到验证还想看着它"无法表达，而设计↔验证的无缝循环正是产品核心体验；跨阶段共享的修复永远是补丁式的。
+- 优点：阶段能力天然受结构限制。
+- 缺点：生命周期重复，切换阶段会销毁注意力并破坏连续性。
 
-### C. 独立根级 actor + capability 纯函数
+### C. 独立根级 actor，阶段通过 capability 约束
 
-AppMachine（阶段机）在根级 invoke 注意力机（XState v5 根级 invoke 的 actor 生命周期 = 机器生命周期），以 `systemId` 注册供任意层获取。阶段切换时 AppMachine 向注意力机发 `PHASE_CHANGED`；阶段对意图的约束收敛为一个纯函数：
-
-```ts
-// 全系统 phase → 合法意图 的映射只存在于这一个函数
-capability(phase: Phase, target: Target, op: Operation): boolean
-```
-
-- 优点：actor 生命周期精确等于注意力需要存活的时长（跨阶段）；架构镜像用户认知的连续性；约束有唯一落点，新阶段/新意图只改一处；与引擎已有 actor 范式（Member、GameEngineSM）同构。
-- 缺点：跨机器事件协议需要维护和演进；全应用状态不再是单一原子快照（两个 actor 各自快照，调试需跨 actor 追踪）；XState 可视化工具无法在一张图上呈现全貌。
+- 优点：注意力生命周期跨阶段；合法性集中在纯函数；职责独立。
+- 缺点：需要跨 actor 协议，调试时要观察多个快照。
 
 ## 决议
 
-选 C。
+选 C：**注意力作为阶段无关、跨阶段存活的顶层 actor；阶段只限制哪些目标和操作合法。**
 
-理由：
-
-1. **判据：actor 的生命周期应等于其状态需要存活的时长。** 注意力需要跨越 designing↔simulating 存活（用户的注意力在阶段切换时是连续的），所以它必须活在阶段之上。方案 B 在根上违背此判据，方案 A 用结构并列回避了生命周期问题但引入区域互窥。
-2. **阶段不改变"谁管理注意力"，只改变"哪些意图合法"。** 这天然是数据约束（capability 函数 + guard）而非结构差异（子状态重复）。约束建模为输入，结构只写一份。
-3. `PHASE_CHANGED` 时若当前注意力在新阶段不合法，**降级而非清空**（engaging → attending → atRest，逐级回退到第一个合法层级），最大限度保住认知连续性。
-4. AppMachine 的 context 即产物链（`build` / `simResult`），阶段间传递的是产物引用，与注意力状态彻底分离——两机各自单一职责。
-5. 路由是阶段机的输入/输出之一而非被接管对象：路由变化 → `ROUTE_CHANGED` 事件；机器主动转阶段 → deps 注入的 `navigate()`（仿 `sceneStateMachine` 范式）。
+阶段变化时，若当前注意力不再合法，应逐级降级而不是无条件清空。业务阶段负责产物和阶段转换，注意力机只负责注意力状态，两者不共享内部结构。
 
 ## 代价
 
-- **协议维护成本**：AppMachine 与注意力机之间的事件协议是一条新的内部 API，演进需要两端同步；单机器方案没有这条边。
-- **可观测性碎片化**：调试一个"切阶段后相机行为异常"的问题需要同时看两个 actor 的事件日志；需要尽早建立统一的 actor 事件日志习惯。
-- **押注阶段间相似性**：capability 纯函数的前提是各阶段的意图结构基本同构、只是词汇表收窄。如果未来发现各阶段的意图结构根本不同（例如分析阶段需要完全异质的"时间轴刷取"交互，与注意力生命周期无法共用），capability 函数会膨胀成 switch 地狱——那时应重新评估方案 B（各阶段专属子机）并 Supersede 本 ADR。
+- 阶段与注意力之间需要稳定事件协议和统一日志。
+- 全应用状态不再是单一原子快照。
+- 若分析阶段最终需要完全不同的交互生命周期，统一注意力结构可能膨胀，需要重新评估阶段专属子机。
 
 ## 影响范围
 
-- 代码层面：新增 `src/machines/appMachine.ts`（阶段机，根级 invoke 注意力机，`systemId: "visualIntent"`）；app 入口以 SolidJS context provider 创建一次 `createActor`；UI 经 `@xstate/solid` 的 `useSelector` 订阅，场景经 `actor.system.get()` 获取。
-- 文档层面：与 ADR 0012 共同构成应用层状态架构基准。
-- 迁移：不迁移 `store.ts`（数据型状态保留）；不收编 dialog/sheet 管理器；worker 中的模拟引擎不感知这两个 actor。
+- 业务阶段机与注意力机都由应用级 provider 创建并保持稳定生命周期。
+- 应用启动由 bootstrap 编排器负责，不建立空壳 AppMachine。
+- 当前实现采用两个平级顶层 actor；阶段到注意力的合法性通知仍属于后续接线，不改变本 ADR 的生命周期决议。
 
 ## 参考
 
-- 与用户的架构讨论（2026-06-09）：并行状态 vs 子状态 vs 独立 actor 的取舍。
-- Statecharts（Harel）中并行区域的正交性前提；XState v5 根级 invoke 与 actor system 文档。
-- 项目内同构范式：`Member.ts` 的 actor 化、`GameEngineSM.ts` 的角色化机器、`sceneStateMachine.ts` 的 deps 注入。
-
-## 现状更新（2026-06-12）
-
-落地时取消了原方案里的"AppMachine（生命周期机）根级 invoke 注意力机"这层包装。原因：
-
-- 评估 bootstrap → XState 化（ADR 0012 笔记里的 B2）时确认，应用启动是**并发依赖 DAG 调度**，不是状态转移问题。手写编排器（`src/lib/bootstrap/orchestrator.ts`）比状态机更贴合，强行 XState 化是负优化。
-- 因此 AppMachine 退化为 `initializing --always--> ready` 的空壳，不承载任何真实等待逻辑——这层没有存在价值。
-
-调整后：
-
-- **业务阶段机与注意力机平级**，都是 `AppActorProvider` 直接 `createActor` 的顶层 actor，互不 invoke。各自以 `systemId`（`businessPhase` / `visualIntent`）注册供寻址。
-- 业务机不再被空壳父机 invoke，`useBusinessPhase()` 直接从 context 取，去掉了 `system.get` 的时序兜底（actor 恒定存在）。
-- 应用就绪由 `BootstrapContext` 的 `allReady(...)` 表达，与状态机解耦。
-- 文件 `appMachine.ts` 重命名为 `businessPhaseMachine.ts`，语义对齐。
-
-本 ADR 的核心决议（注意力机阶段无关、跨阶段存活、capability 降级而非清空）仍然成立——只是注意力机的创建方式从"被 AppMachine invoke"变为"由 provider 独立创建"，actor 生命周期等于其状态需要存活时长的判据依旧满足。`PHASE_CHANGED` 阶段→注意力通知协议尚未实现，留作后续工作。
+- XState actor 生命周期与 statechart 正交区域
+- ADR 0012：意图层作为 UI 与场景的单一事实源

@@ -87,6 +87,7 @@ export default function CharactePage() {
 		return {
 			title: (cardData as { name?: unknown }).name?.toString() ?? "",
 			titleIcon: () => <Icons.Spirits iconName={type} />,
+			layout: "fill",
 			render: (dialogApi) => {
 				if (!config) return <pre>{JSON.stringify(cardData, null, 2)}</pre>;
 				// dialog layer 作用域句柄:drill 用 pushDialog 并入同层,editor 用 openSheet 新建子层。

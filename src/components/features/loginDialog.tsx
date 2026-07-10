@@ -158,6 +158,9 @@ export const LoginDialog = () => {
 					const temporaryAccount = await ensureTemporaryAccount();
 					await bindTemporaryAccountToUser(temporaryAccount.id, user.id);
 					sessionAccount = temporaryAccount;
+				} else {
+					// 如果不绑定本地数据，则清空本地数据库内的changes内容
+					await clearLocalChanges();
 				}
 				setStore("session", "user", {
 					id: user.id,
@@ -167,7 +170,6 @@ export const LoginDialog = () => {
 				if (sessionAccount) {
 					await hydrateSessionAccountStore(sessionAccount);
 				}
-
 				// 启动数据同步
 				setStore("database", "sync", true);
 				console.log("注册成功");
