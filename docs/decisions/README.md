@@ -172,6 +172,7 @@ ADR 不应包含：
 | [0024](./0024-interactive-simulator-session-and-tasks.md) | 交互式 Simulator 会话与模拟任务分离 | Accepted | 跨层（应用状态 / 引擎 / UI） |
 | [0025](./0025-run-snapshot-at-validation-boundary.md) | 在验证边界捕获不可变运行快照 | Accepted | 跨层（数据 / 应用状态 / 引擎） |
 | [0026](./0026-simulator-owned-members-with-concrete-selection.md) | Simulator 独占成员编排并由 Member 选择具体参战配置 | Accepted | 跨层（数据 / 应用状态 / 引擎） |
+| [0027](./0027-scene-resolution-for-logic-and-visual-inputs.md) | 场景解析统一产出逻辑输入与静态世界资源 | Accepted | 跨层（数据 / 应用编排 / 引擎 / 渲染） |
 
 ## 待拆分清单
 

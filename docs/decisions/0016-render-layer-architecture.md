@@ -4,7 +4,7 @@
 - **日期**: 2026-06-15
 - **决策层**: 跨层（渲染 / 编排 / 通信）
 - **相关代码**: `src/lib/3dScene/SceneRuntime.tsx`、`src/lib/3dScene/SceneRuntimeCore.tsx`、`src/lib/3dScene/RendererController.ts`、`src/lib/3dScene/sceneStateMachine.ts`
-- **相关 ADR**: 0009、0012、0014、0015
+- **相关 ADR**: 0009、0012、0014、0015、0027
 
 ## 背景
 
@@ -35,11 +35,11 @@
 
 1. `RenderHost` 持有唯一 engine、scene、canvas、渲染循环和基础场景，不理解业务内容。
 2. `SceneAccess` 是业务层唯一接入闸门，页面不得直接操作 Babylon。
-3. `WorldContentDirector` 接收模态无关的 `worldResources`，通过 diff 决定实体延续、增删或替换；实时命令流只负责实体的持续运动和状态变化。
+3. `WorldContentDirector` 接收场景解析产生的模态无关 `worldResources`，通过 diff 决定实体延续、增删或替换；实时命令流只负责实体的持续运动和状态变化。
 4. `EntitySystem` 统一静态与实时实体的创建、注册、同步、动画和模型加载。
 5. `CameraDirector` 是唯一相机控制边界，接收语义 focus/follow/reset，不依赖世界内容来源。
 6. `sceneStateMachine` 只负责通用内容生命周期与单活动内容互斥，不承载页面业务类型。
-7. 模型替换属于静态态 EntitySystem 能力；实时命令协议可以携带 `modelId`，但不建立通用插件框架。
+7. 模型替换属于静态态 EntitySystem 能力；实时命令协议如需创建动态实体，只引用 `worldResources` 中预先解析的稳定资源标识，不独立携带原始模型配置，也不建立通用插件框架。
 
 依赖必须保持单向：SceneAccess、WorldContentDirector 和 CameraDirector 可以依赖 RenderHost；RenderHost 不反向依赖业务、内容或注意力。
 

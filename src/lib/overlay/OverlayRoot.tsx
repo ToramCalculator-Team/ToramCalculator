@@ -167,7 +167,7 @@ function DialogLayerView(props: { layer: DialogLayer }) {
 						props.layer.closing ? { transform: "scale(1.05)", opacity: 0 } : { transform: "scale(1)", opacity: 1 }
 					}
 					transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-					class="DialogLayerSurface bg-primary-color-10 pointer-events-auto absolute top-0 left-0 grid h-dvh w-dvw transform place-items-center"
+					class="DialogLayerSurface bg-primary-color-10 pointer-events-auto absolute top-0 left-0 grid h-dvh w-dvw transform place-items-center backdrop-blur"
 					onClick={() => {
 						requestCloseEntry(props.layer.id);
 					}}
@@ -225,17 +225,14 @@ function Sheet(props: { layerId: string; entry: SheetLayerEntryState; index: num
 				<Motion.div
 					initial={{
 						transform: media.orientation === "landscape" ? "translateX(10%)" : "translateY(5%)",
-						filter: "blur(12px)",
 					}}
 					animate={
 						props.entry.closing
 							? {
 									transform: media.orientation === "landscape" ? "translateX(10%)" : "translateY(5%)",
-									filter: "blur(12px)",
 								}
 							: {
 									transform: "translateY(0)",
-									filter: "blur(0px)",
 								}
 					}
 					transition={{
@@ -279,7 +276,7 @@ function SheetLayerView(props: { layer: SheetLayer }) {
 					initial={{ opacity: 0 }}
 					animate={{ opacity: props.layer.closing ? 0 : 1 }}
 					transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-					class="SheetLayerBackdrop bg-primary-color-10 pointer-events-auto absolute top-0 left-0 grid h-dvh w-dvw transform place-items-center backdrop-blur"
+					class="SheetLayerSurface bg-primary-color-10 pointer-events-auto absolute top-0 left-0 grid h-dvh w-dvw transform place-items-center backdrop-blur"
 					onClick={() => requestCloseEntry(props.layer.id)}
 					onMotionComplete={() => {
 						if (props.layer.closing) completeLayerExit(props.layer.id);

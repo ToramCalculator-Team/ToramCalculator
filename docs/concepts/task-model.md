@@ -44,11 +44,12 @@ simulator(scenario)
 ```
 
 Team 与 Member 由各自 Simulator 独占；不同 Simulator 可以拥有内容相同的独立编排，并引用同一个 Character 或 Mob 资源，但不共享同一 Team/Member 数据行（ADR 0026）。
-设计草稿中的 Player Member 只保存 `characterId`；从设计进入验证时解析 Character 的最新持久数据，验证和分析期间则只使用已冻结的运行快照。
+设计草稿中的 Player Member 只保存 `characterId`，Mob Member 只保存 `mobId` 与难度档位；从设计进入验证时解析 Character/Mob 的最新持久数据与模型资源，验证和分析期间则只使用已冻结的运行快照。
 
 派生物（不是持久实体）：
 - **设计草稿**：Simulator 会话在设计阶段维护的可变模拟输入。
-- **运行快照**：从设计进入验证时捕获的不可变输入；Character 或其他持久源的后续变更不热更新当前快照。
+- **已解析场景定义**：从设计草稿中的 Member 引用一次解析出同一版本的逻辑世界输入与静态 `worldResources`。
+- **运行快照**：从设计进入验证时捕获的不可变输入；包含当时解析的逻辑世界与静态 `worldResources`，Character 或其他持久源的后续变更不热更新当前快照。
 - **运行结果**：由 `(运行快照, seed)` **确定性产出**，内存态，不持久化。随机数统一后，种子 + 运行快照即可完全复现，分享带种子即可，无需存储。
 
 ---
@@ -137,7 +138,7 @@ simulator 页
 两个跨空间不变量（前面讨论已确立）：
 
 1. **顶层交互单元 = 交互空间，不是路由。** simulator 一个路由内含 4 个交互空间（设计2 + 验证 + 分析），是铁证。
-2. **世界内容（worldResources）与交互空间正交。** simulator 的 4 个空间共享同一份阵容世界；character 是另一份。「延续/重建」由 worldResources diff 决定，与切哪个空间无关（ADR 0016）。
+2. **世界内容（worldResources）与交互空间正交。** simulator 的 4 个空间共享同一份阵容世界；character 是另一份。设计阶段从当前草稿解析静态 `worldResources`，进入验证时与逻辑输入一起冻结；实体位置、动作和生命状态等动态仍由逻辑引擎驱动。「延续/重建」由 worldResources diff 决定，与切哪个空间无关（ADR 0016）。
 
 ---
 
