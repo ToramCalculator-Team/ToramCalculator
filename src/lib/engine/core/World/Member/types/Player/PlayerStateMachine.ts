@@ -1,7 +1,7 @@
-import type { EngineCharacterSkill } from "../../../../engineScenarioSchema";
 import { type EventObject, fromPromise, setup } from "xstate";
 import type { ExpressionContext } from "~/lib/engine/core/JSProcessor/types";
 import { createLogger } from "~/lib/Logger";
+import type { EngineCharacterSkill } from "../../../../engineScenarioSchema";
 import { ModifierType } from "../../runtime/StatContainer/StatContainer";
 import type {
 	MemberFSMContext,
@@ -18,21 +18,43 @@ const NEXT_SKILL_COST_SOURCE_ID_PREFIX = "skill.nextCost";
 
 // ─── 事件类型 ───────────────────────────────────────────────────────────────
 
-interface 死亡通知 extends EventObject { type: "死亡通知" }
-interface 受到控制 extends EventObject { type: "受到控制" }
-interface 控制结束 extends EventObject { type: "控制结束" }
-interface 复活 extends EventObject { type: "复活" }
-interface 使用格挡 extends EventObject { type: "使用格挡" }
-interface 结束格挡 extends EventObject { type: "结束格挡" }
-interface 使用闪躲 extends EventObject { type: "使用闪躲" }
-interface 收到闪躲持续时间结束通知 extends EventObject { type: "收到闪躲持续时间结束通知" }
+interface 死亡通知 extends EventObject {
+	type: "死亡通知";
+}
+interface 受到控制 extends EventObject {
+	type: "受到控制";
+}
+interface 控制结束 extends EventObject {
+	type: "控制结束";
+}
+interface 复活 extends EventObject {
+	type: "复活";
+}
+interface 使用格挡 extends EventObject {
+	type: "使用格挡";
+}
+interface 结束格挡 extends EventObject {
+	type: "结束格挡";
+}
+interface 使用闪躲 extends EventObject {
+	type: "使用闪躲";
+}
+interface 收到闪躲持续时间结束通知 extends EventObject {
+	type: "收到闪躲持续时间结束通知";
+}
 interface 使用技能 extends EventObject {
 	type: "使用技能";
 	data: { target: string; skillId: string };
 }
-interface 收到警告结束通知 extends EventObject { type: "收到警告结束通知" }
-interface 移动 extends EventObject { type: "移动" }
-interface 停止 extends EventObject { type: "停止" }
+interface 收到警告结束通知 extends EventObject {
+	type: "收到警告结束通知";
+}
+interface 移动 extends EventObject {
+	type: "移动";
+}
+interface 停止 extends EventObject {
+	type: "停止";
+}
 
 export type PlayerFSMEvent =
 	| MemberFSMEvent
@@ -55,8 +77,7 @@ export interface PlayerFSMContext extends MemberFSMContext {
 	canMove: boolean;
 }
 
-export interface PlayerFSMEnv
-	extends MemberStateMachineEnv<PlayerAttrKey, PlayerFSMEvent, PlayerRuntime> {
+export interface PlayerFSMEnv extends MemberStateMachineEnv<PlayerAttrKey, PlayerFSMEvent, PlayerRuntime> {
 	runtime: PlayerRuntime;
 }
 
@@ -122,9 +143,7 @@ function resolveCurrentSkillCost(env: PlayerFSMEnv): PlayerSkillCost | null {
 
 // ─── 工厂函数 ────────────────────────────────────────────────────────────────
 
-export const playerFSM = (
-	env: PlayerFSMEnv,
-): MemberStateMachine<PlayerFSMEvent, PlayerFSMContext> => {
+export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent, PlayerFSMContext> => {
 	const machineId = `${env.id}-FSM`;
 
 	const machineSetup = setup({
@@ -159,9 +178,7 @@ export const playerFSM = (
 				添加待处理技能: ({ event }) => {
 					const e = event as 使用技能;
 					const skillId = e.data.skillId;
-					const skill = env.runtime.data?.skills?.find(
-						(s: EngineCharacterSkill) => s.id === skillId,
-					);
+					const skill = env.runtime.data?.skills?.find((s: EngineCharacterSkill) => s.id === skillId);
 					if (!skill) {
 						log.error(`[${env.name}] 技能不存在: ${skillId}`);
 						throw new Error(`技能不存在: ${skillId}`);
@@ -186,8 +203,7 @@ export const playerFSM = (
 							runPipeline: (name, params) => env.runPipeline(name, params),
 						}),
 					};
-					const resolvedTargetId =
-						env.services.targetResolver?.(env.id, e.data.target) ?? e.data.target;
+					const resolvedTargetId = env.services.targetResolver?.(env.id, e.data.target) ?? e.data.target;
 					env.runtime.targetId = resolvedTargetId || env.id;
 					log.info(`[${env.name}] 已添加技能`, env.runtime.currentSkill);
 				},
@@ -231,7 +247,7 @@ export const playerFSM = (
 					if (!treeData) {
 						log.error(`[${env.name}] 技能逻辑不是有效的行为树`, treeDefinition);
 					}
-					log.info(`[${env.name}] 已添加待处理技能效果`, activeTree)
+					log.info(`[${env.name}] 已添加待处理技能效果`, activeTree);
 				},
 				技能消耗扣除: () => {
 					const cost = resolveCurrentSkillCost(env);
@@ -241,20 +257,30 @@ export const playerFSM = (
 					const sourceSkillId = skill?.id ?? "unknown";
 					if (cost.hpCost !== 0) {
 						env.statContainer.addModifier("hp.current", ModifierType.DYNAMIC_FIXED, -cost.hpCost, {
-							id: `skill.cost.hp.${sourceSkillId}`,
+							key: `skill.cost.hp.${sourceSkillId}`,
 							name: `${sourceName}.hpCost`,
 							type: "skill",
+							chain: [
+								{ kind: "member", id: env.id },
+								{ kind: "skill", id: sourceSkillId },
+								{ kind: "effect", id: "cost.hp" },
+							],
 						});
 					}
 					if (cost.mpCost !== 0) {
 						env.statContainer.addModifier("mp.current", ModifierType.DYNAMIC_FIXED, -cost.mpCost, {
-							id: `skill.cost.mp.${sourceSkillId}`,
+							key: `skill.cost.mp.${sourceSkillId}`,
 							name: `${sourceName}.mpCost`,
 							type: "skill",
+							chain: [
+								{ kind: "member", id: env.id },
+								{ kind: "skill", id: sourceSkillId },
+								{ kind: "effect", id: "cost.mp" },
+							],
 						});
 					}
 					// 下一技能消耗修正在扣费成功后消费；施法检查阶段也会运行 skill.cost，不能在管线内清理。
-					env.statContainer.removeModifiersBySourceIdPrefix(NEXT_SKILL_COST_SOURCE_ID_PREFIX);
+					env.statContainer.removeModifiersBySourceKeyPrefix(NEXT_SKILL_COST_SOURCE_ID_PREFIX);
 					log.info(`[${env.name}] 已扣除技能消耗：Hp-${cost.hpCost}, Mp-${cost.mpCost}`);
 				},
 				重置控制抵抗时间: () => {
@@ -353,10 +379,7 @@ export const playerFSM = (
 										},
 										使用技能中: {
 											initial: "初始化技能",
-											entry: [
-												{ type: "添加待处理技能" },
-												{ type: "更新可移动性" },
-											],
+											entry: [{ type: "添加待处理技能" }, { type: "更新可移动性" }],
 											exit: { type: "清空待处理技能" },
 											states: {
 												初始化技能: {
@@ -374,16 +397,10 @@ export const playerFSM = (
 															target: `#${machineId}.存活.可操作状态.动作状态.空闲状态`,
 														},
 													},
-													entry: [
-														{ type: "渲染警告信息" },
-														{ type: "创建警告结束通知" },
-													],
+													entry: [{ type: "渲染警告信息" }, { type: "创建警告结束通知" }],
 												},
 												技能执行过程: {
-													entry: [
-														{ type: "添加待处理技能效果" },
-														{ type: "技能消耗扣除" },
-													],
+													entry: [{ type: "添加待处理技能效果" }, { type: "技能消耗扣除" }],
 													invoke: {
 														src: "启动行为树",
 														onDone: [
@@ -425,11 +442,7 @@ export const playerFSM = (
 							on: {
 								控制结束: { target: "可操作状态" },
 							},
-							entry: [
-								{ type: "重置控制抵抗时间" },
-								{ type: "中断当前行为" },
-								{ type: "启动受控动画" },
-							],
+							entry: [{ type: "重置控制抵抗时间" }, { type: "中断当前行为" }, { type: "启动受控动画" }],
 						},
 					},
 				},

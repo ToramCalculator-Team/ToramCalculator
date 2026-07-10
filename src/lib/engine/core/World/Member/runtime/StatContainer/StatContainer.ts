@@ -26,12 +26,14 @@ export type {
 	DataStorages,
 	Modifier,
 	ModifierSource,
+	ModifierSourceRef,
 	StatModifierKind,
 	StatModifierParam,
 } from "./StatContainerTypes";
 export {
 	dynamicTotalValue,
 	isDataStorageType,
+	ModifierSourceRefKindSchema,
 	ModifierSourceTypeSchema,
 	ModifierType,
 	StatModifierKindSchema,
@@ -46,6 +48,32 @@ type PendingValueChange = {
 	oldValue: number;
 	newValue: number;
 };
+
+type ModifierSourceEntry = {
+	source: ModifierSource;
+	value: number;
+};
+
+type ModifierSourceIndexEntry = {
+	source: ModifierSource;
+	entryKeys: Set<number>;
+};
+
+function cloneModifierSource(source: ModifierSource): ModifierSource {
+	const [member, ...rest] = source.chain;
+	return {
+		...source,
+		chain: [{ ...member }, ...rest.map((ref) => ({ ...ref }))],
+	};
+}
+
+function hasSameProvenance(left: ModifierSource, right: ModifierSource): boolean {
+	if (left.type !== right.type || left.chain.length !== right.chain.length) return false;
+	return left.chain.every((ref, index) => {
+		const other = right.chain[index];
+		return ref.kind === other.kind && ref.id === other.id;
+	});
+}
 
 // ============================== 枚举映射生成 ==============================
 
@@ -102,11 +130,11 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 	/** 修饰符数据存储 - 5个数组分别存储不同类型的修饰符 */
 	private readonly modifierArrays: Float64Array[];
 
-	/** 修饰符来源聚合：按类型 -> 属性索引 -> sourceId -> value */
-	private readonly modifierSources: Map<ModifierType, Map<number, Map<string, number>>>;
+	/** 修饰符来源聚合：按类型 -> 属性索引 -> sourceKey -> 完整来源和值 */
+	private readonly modifierSources: Map<ModifierType, Map<number, Map<string, ModifierSourceEntry>>>;
 
-	/** sourceId 反向索引：sourceId -> (type * keyCount + attrIndex) 集合 */
-	private readonly sourceIndex: Map<string, Set<number>>;
+	/** sourceKey 反向索引：每个 key 的唯一规范来源及其属性槽集合。 */
+	private readonly sourceIndex: Map<string, ModifierSourceIndexEntry>;
 
 	/** 依赖图 */
 	private readonly dependencyGraph: DependencyGraph;
@@ -424,22 +452,34 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 		return type * this.values.length + attrIndex;
 	}
 
-	private addSourceIndexEntry(sourceId: string, entryKey: number): void {
-		let set = this.sourceIndex.get(sourceId);
-		if (!set) {
-			set = new Set();
-			this.sourceIndex.set(sourceId, set);
+	private addSourceIndexEntry(source: ModifierSource, entryKey: number): ModifierSource {
+		const existing = this.sourceIndex.get(source.key);
+		if (existing) {
+			this.assertCompatibleSource(existing.source, source);
+			existing.entryKeys.add(entryKey);
+			return existing.source;
 		}
-		set.add(entryKey);
+
+		const canonicalSource = cloneModifierSource(source);
+		this.sourceIndex.set(source.key, {
+			source: canonicalSource,
+			entryKeys: new Set([entryKey]),
+		});
+		return canonicalSource;
 	}
 
-	private removeSourceIndexEntry(sourceId: string, entryKey: number): void {
-		const set = this.sourceIndex.get(sourceId);
-		if (!set) return;
-		set.delete(entryKey);
-		if (set.size === 0) {
-			this.sourceIndex.delete(sourceId);
+	private removeSourceIndexEntry(sourceKey: string, entryKey: number): void {
+		const entry = this.sourceIndex.get(sourceKey);
+		if (!entry) return;
+		entry.entryKeys.delete(entryKey);
+		if (entry.entryKeys.size === 0) {
+			this.sourceIndex.delete(sourceKey);
 		}
+	}
+
+	private assertCompatibleSource(existing: ModifierSource, incoming: ModifierSource): void {
+		if (hasSameProvenance(existing, incoming)) return;
+		throw new Error(`Modifier source key 冲突: ${incoming.key}`);
 	}
 
 	/**
@@ -457,9 +497,11 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 		if (amount === 0) return;
 
 		const entryKey = this.getSourceEntryKey(type, index);
-		const sourceId = source.id;
+		const sourceKey = source.key;
+		const sourceIndexEntry = this.sourceIndex.get(sourceKey);
+		if (sourceIndexEntry) this.assertCompatibleSource(sourceIndexEntry.source, source);
 
-		// 来源聚合：记录 sourceId 的值并同步到累加数组
+		// 来源聚合：记录完整来源和值，并按稳定 key 同步到累加数组。
 		let perType = this.modifierSources.get(type);
 		if (!perType) {
 			perType = new Map();
@@ -470,7 +512,9 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 			perAttr = new Map();
 			perType.set(index, perAttr);
 		}
-		const prev = perAttr.get(sourceId) ?? 0;
+		const previousEntry = perAttr.get(sourceKey);
+		if (previousEntry) this.assertCompatibleSource(previousEntry.source, source);
+		const prev = previousEntry?.value ?? 0;
 		const next = prev + amount;
 		const delta = next - prev;
 		if (delta !== 0) {
@@ -478,17 +522,20 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 			this.markDirty(index);
 		}
 		if (next === 0) {
-			perAttr.delete(sourceId);
+			perAttr.delete(sourceKey);
 			if (perAttr.size === 0) {
 				perType.delete(index);
 				if (perType.size === 0) {
 					this.modifierSources.delete(type);
 				}
 			}
-			this.removeSourceIndexEntry(sourceId, entryKey);
+			this.removeSourceIndexEntry(sourceKey, entryKey);
 		} else {
-			perAttr.set(sourceId, next);
-			this.addSourceIndexEntry(sourceId, entryKey);
+			const canonicalSource = this.addSourceIndexEntry(source, entryKey);
+			perAttr.set(sourceKey, {
+				source: canonicalSource,
+				value: next,
+			});
 		}
 
 		// console.log(`✅ 成功添加修饰器: ${attr} ,位置${targetType.toString()} ,值${value} (来源: ${source.name})`);
@@ -514,7 +561,7 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 	/**
 	 * 移除修饰符
 	 */
-	removeModifier(attr: T, targetType: ModifierType, sourceId: string): void {
+	removeModifier(attr: T, targetType: ModifierType, sourceKey: string): void {
 		const index = this.keyToIndex.get(attr);
 		if (index === undefined) {
 			log.warn(`⚠️ 尝试为不存在的属性移除修饰器: ${attr}`);
@@ -525,51 +572,62 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 		// 来源级移除：从来源聚合删除并从累加数组扣减
 		const perType = this.modifierSources.get(targetType);
 		const perAttr = perType?.get(index);
-		if (!perType || !perAttr || !perAttr.has(sourceId)) return;
-		const amount = perAttr.get(sourceId) ?? 0;
+		const entry = perAttr?.get(sourceKey);
+		if (!perType || !perAttr || !entry) return;
+		const amount = entry.value;
 		this.modifierArrays[targetType][index] -= amount;
-		perAttr.delete(sourceId);
+		perAttr.delete(sourceKey);
 		if (perAttr.size === 0) {
 			perType.delete(index);
 			if (perType.size === 0) {
 				this.modifierSources.delete(targetType);
 			}
 		}
-		this.removeSourceIndexEntry(sourceId, entryKey);
+		this.removeSourceIndexEntry(sourceKey, entryKey);
 		this.markDirty(index);
-		log.debug(`✅ 成功移除修饰器: ${attr} -${amount} (来源: ${sourceId})`);
+		log.debug(`✅ 成功移除修饰器: ${attr} -${amount} (来源: ${sourceKey})`);
 	}
 
 	/**
-	 * 按 sourceId 查询其影响的所有修饰条目
+	 * 按 source key 查询其影响的所有修饰条目。
 	 */
-	getModifiersBySourceId(sourceId: string): Array<{ attr: T; targetType: ModifierType; value: number }> {
-		const keys = this.sourceIndex.get(sourceId);
-		if (!keys || keys.size === 0) return [];
+	getModifiersBySourceKey(
+		sourceKey: string,
+	): Array<{ attr: T; targetType: ModifierType; source: ModifierSource; value: number }> {
+		const indexEntry = this.sourceIndex.get(sourceKey);
+		if (!indexEntry || indexEntry.entryKeys.size === 0) return [];
 
-		const result: Array<{ attr: T; targetType: ModifierType; value: number }> = [];
+		const result: Array<{ attr: T; targetType: ModifierType; source: ModifierSource; value: number }> = [];
 		const keyCount = this.values.length;
 
-		for (const entryKey of keys) {
+		for (const entryKey of indexEntry.entryKeys) {
 			const type = Math.floor(entryKey / keyCount) as ModifierType;
 			const attrIndex = entryKey - type * keyCount;
-			const value = this.modifierSources.get(type)?.get(attrIndex)?.get(sourceId);
-			if (value === undefined || value === 0) continue;
-			result.push({ attr: this.indexToKey[attrIndex], targetType: type, value });
+			const entry = this.modifierSources.get(type)?.get(attrIndex)?.get(sourceKey);
+			if (!entry || entry.value === 0) continue;
+			result.push({
+				attr: this.indexToKey[attrIndex],
+				targetType: type,
+				source: cloneModifierSource(entry.source),
+				value: entry.value,
+			});
 		}
 
 		return result;
 	}
 
 	/**
-	 * 按 sourceId 覆盖更新一组修饰条目（会移除该 sourceId 旧的所有条目）
+	 * 按来源覆盖更新一组修饰条目（会移除该 source key 旧的所有条目）。
 	 *
-	 * 注意：暂不考虑同一 sourceId 下出现同 (attr, targetType) 的重复条目。
+	 * 注意：暂不考虑同一来源下出现同 (attr, targetType) 的重复条目。
 	 */
-	updateModifiersBySourceId(
-		sourceId: string,
+	updateModifiersBySource(
+		source: ModifierSource,
 		items: Array<{ attr: T; targetType: ModifierType; value: number }>,
 	): void {
+		const sourceKey = source.key;
+		const sourceIndexEntry = this.sourceIndex.get(sourceKey);
+		if (sourceIndexEntry) this.assertCompatibleSource(sourceIndexEntry.source, source);
 		const desired = new Map<number, number>();
 		const keyCount = this.values.length;
 
@@ -581,12 +639,12 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 			}
 			const entryKey = this.getSourceEntryKey(item.targetType, attrIndex);
 			if (desired.has(entryKey)) {
-				log.warn(`⚠️ updateModifiersBySourceId 收到重复条目: ${String(item.attr)} ${ModifierType[item.targetType]}`);
+				log.warn(`⚠️ updateModifiersBySource 收到重复条目: ${String(item.attr)} ${ModifierType[item.targetType]}`);
 			}
 			desired.set(entryKey, item.value);
 		}
 
-		const prevKeys = this.sourceIndex.get(sourceId);
+		const prevKeys = sourceIndexEntry?.entryKeys;
 		const allKeys = new Set<number>();
 		if (prevKeys) {
 			for (const k of prevKeys) allKeys.add(k);
@@ -598,20 +656,22 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 			const attrIndex = entryKey - type * keyCount;
 			const perType = this.modifierSources.get(type);
 			const perAttr = perType?.get(attrIndex);
-			const prev = perAttr?.get(sourceId) ?? 0;
+			const previousEntry = perAttr?.get(sourceKey);
+			if (previousEntry) this.assertCompatibleSource(previousEntry.source, source);
+			const prev = previousEntry?.value ?? 0;
 			const next = desired.get(entryKey) ?? 0;
 			if (prev === next) continue;
 
 			if (next === 0) {
-				if (perType && perAttr && perAttr.has(sourceId)) {
+				if (perType && perAttr && perAttr.has(sourceKey)) {
 					this.modifierArrays[type][attrIndex] -= prev;
-					perAttr.delete(sourceId);
+					perAttr.delete(sourceKey);
 					if (perAttr.size === 0) {
 						perType.delete(attrIndex);
 						if (perType.size === 0) this.modifierSources.delete(type);
 					}
 				}
-				this.removeSourceIndexEntry(sourceId, entryKey);
+				this.removeSourceIndexEntry(sourceKey, entryKey);
 			} else {
 				let ensuredPerType = perType;
 				if (!ensuredPerType) {
@@ -623,8 +683,11 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 					ensuredPerAttr = new Map();
 					ensuredPerType.set(attrIndex, ensuredPerAttr);
 				}
-				ensuredPerAttr.set(sourceId, next);
-				this.addSourceIndexEntry(sourceId, entryKey);
+				const canonicalSource = this.addSourceIndexEntry(source, entryKey);
+				ensuredPerAttr.set(sourceKey, {
+					source: canonicalSource,
+					value: next,
+				});
 				this.modifierArrays[type][attrIndex] += next - prev;
 			}
 
@@ -635,29 +698,36 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 	}
 
 	/**
-	 * 按 sourceId 移除其全部修饰条目
+	 * 按 source key 移除其全部修饰条目。
 	 */
-	removeModifiersBySourceId(sourceId: string): void {
-		this.updateModifiersBySourceId(sourceId, []);
+	removeModifiersBySourceKey(sourceKey: string): void {
+		const keys = Array.from(this.sourceIndex.get(sourceKey)?.entryKeys ?? []);
+		const keyCount = this.values.length;
+		for (const entryKey of keys) {
+			const type = Math.floor(entryKey / keyCount) as ModifierType;
+			const attrIndex = entryKey - type * keyCount;
+			this.removeModifier(this.indexToKey[attrIndex], type, sourceKey);
+		}
+		this.stats.batchUpdates++;
 	}
 
 	/**
-	 * 按 sourceId 前缀移除其全部修饰条目。
+	 * 按 source key 前缀移除其全部修饰条目。
 	 *
-	 * 用于 passive / buff 卸载：`passive.<id>` 前缀下的所有 sourceId（含动态后缀如
+	 * 用于 passive / buff 卸载：`passive.<id>` 前缀下的所有 source key（含动态后缀如
 	 * `passive.<id>.<suffix>.<frame>`）一次清理完。
 	 */
-	removeModifiersBySourceIdPrefix(sourceIdPrefix: string): void {
+	removeModifiersBySourceKeyPrefix(sourceKeyPrefix: string): void {
 		if (this.sourceIndex.size === 0) return;
 		// 拷贝 key 列表避免在迭代时改 map
-		const matchingIds: string[] = [];
-		for (const sourceId of this.sourceIndex.keys()) {
-			if (sourceId === sourceIdPrefix || sourceId.startsWith(`${sourceIdPrefix}.`)) {
-				matchingIds.push(sourceId);
+		const matchingKeys: string[] = [];
+		for (const sourceKey of this.sourceIndex.keys()) {
+			if (sourceKey === sourceKeyPrefix || sourceKey.startsWith(`${sourceKeyPrefix}.`)) {
+				matchingKeys.push(sourceKey);
 			}
 		}
-		for (const id of matchingIds) {
-			this.updateModifiersBySourceId(id, []);
+		for (const key of matchingKeys) {
+			this.removeModifiersBySourceKey(key);
 		}
 	}
 
@@ -684,13 +754,13 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 		const result: Record<string, unknown> = {};
 
 		// 收集指定类型在某属性索引下的全部来源条目
-		const collect = (type: ModifierType, attrIndex: number): Array<{ sourceId: string; value: number }> => {
+		const collect = (type: ModifierType, attrIndex: number): Array<{ source: ModifierSource; value: number }> => {
 			const perType = this.modifierSources.get(type);
 			const perAttr = perType?.get(attrIndex);
-			const out: Array<{ sourceId: string; value: number }> = [];
+			const out: Array<{ source: ModifierSource; value: number }> = [];
 			if (perAttr) {
-				for (const [sourceId, value] of perAttr) {
-					out.push({ sourceId, value });
+				for (const entry of perAttr.values()) {
+					out.push({ source: cloneModifierSource(entry.source), value: entry.value });
 				}
 			}
 			return out;
@@ -713,6 +783,7 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 				displayName: this.displayNames.get(attrPath as T) || attrPath,
 				expression: this.expressionStrings.get(attrPath as T) || "",
 				baseValue: 0,
+				baseSources: [],
 				actValue: Number.isFinite(value) ? value : 0,
 				static: { fixed: [], percentage: [] },
 				dynamic: { fixed: [], percentage: [] },
@@ -731,6 +802,7 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 					}
 				}
 				storage.baseValue = Number.isFinite(base) ? base : 0;
+				storage.baseSources = collect(ModifierType.BASE_VALUE, index);
 				storage.static.fixed = collect(ModifierType.STATIC_FIXED, index);
 				storage.static.percentage = collect(ModifierType.STATIC_PERCENTAGE, index);
 				storage.dynamic.fixed = collect(ModifierType.DYNAMIC_FIXED, index);
@@ -761,23 +833,24 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 		T,
 		{
 			baseValue: number;
+			baseSources: Array<{ source: ModifierSource; value: number }>;
 			static: {
-				fixed: Array<{ sourceId: string; value: number }>;
-				percentage: Array<{ sourceId: string; value: number }>;
+				fixed: Array<{ source: ModifierSource; value: number }>;
+				percentage: Array<{ source: ModifierSource; value: number }>;
 			};
 			dynamic: {
-				fixed: Array<{ sourceId: string; value: number }>;
-				percentage: Array<{ sourceId: string; value: number }>;
+				fixed: Array<{ source: ModifierSource; value: number }>;
+				percentage: Array<{ source: ModifierSource; value: number }>;
 			};
 		}
 	> {
-		const collect = (type: ModifierType, attrIndex: number): Array<{ sourceId: string; value: number }> => {
+		const collect = (type: ModifierType, attrIndex: number): Array<{ source: ModifierSource; value: number }> => {
 			const perType = this.modifierSources.get(type);
 			const perAttr = perType?.get(attrIndex);
-			const out: Array<{ sourceId: string; value: number }> = [];
+			const out: Array<{ source: ModifierSource; value: number }> = [];
 			if (perAttr) {
-				for (const [sourceId, value] of perAttr) {
-					out.push({ sourceId, value });
+				for (const entry of perAttr.values()) {
+					out.push({ source: cloneModifierSource(entry.source), value: entry.value });
 				}
 			}
 			return out;
@@ -787,13 +860,14 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 			T,
 			{
 				baseValue: number;
+				baseSources: Array<{ source: ModifierSource; value: number }>;
 				static: {
-					fixed: Array<{ sourceId: string; value: number }>;
-					percentage: Array<{ sourceId: string; value: number }>;
+					fixed: Array<{ source: ModifierSource; value: number }>;
+					percentage: Array<{ source: ModifierSource; value: number }>;
 				};
 				dynamic: {
-					fixed: Array<{ sourceId: string; value: number }>;
-					percentage: Array<{ sourceId: string; value: number }>;
+					fixed: Array<{ source: ModifierSource; value: number }>;
+					percentage: Array<{ source: ModifierSource; value: number }>;
 				};
 			}
 		>;
@@ -802,6 +876,7 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 			const key = this.indexToKey[i];
 			result[key] = {
 				baseValue: this.modifierArrays[ModifierType.BASE_VALUE][i],
+				baseSources: collect(ModifierType.BASE_VALUE, i),
 				static: {
 					fixed: collect(ModifierType.STATIC_FIXED, i),
 					percentage: collect(ModifierType.STATIC_PERCENTAGE, i),
@@ -1411,9 +1486,9 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 		for (const [modifierType, perType] of this.modifierSources) {
 			const entries: StatContainerCheckpoint["modifierSources"][number]["entries"] = [];
 			for (const [attrIndex, perAttr] of perType) {
-				const sources: Array<{ sourceId: string; value: number }> = [];
-				for (const [sourceId, value] of perAttr) {
-					sources.push({ sourceId, value });
+				const sources: Array<{ source: ModifierSource; value: number }> = [];
+				for (const entry of perAttr.values()) {
+					sources.push({ source: cloneModifierSource(entry.source), value: entry.value });
 				}
 				entries.push({ attrIndex, sources });
 			}
@@ -1448,20 +1523,16 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 
 		const keyCount = this.values.length;
 		for (const { modifierType, entries } of checkpoint.modifierSources) {
-			const perType = new Map<number, Map<string, number>>();
+			const perType = new Map<number, Map<string, ModifierSourceEntry>>();
 			this.modifierSources.set(modifierType as ModifierType, perType);
 			for (const { attrIndex, sources } of entries) {
-				const perAttr = new Map<string, number>();
+				const perAttr = new Map<string, ModifierSourceEntry>();
 				perType.set(attrIndex, perAttr);
-				for (const { sourceId, value } of sources) {
-					perAttr.set(sourceId, value);
+				for (const { source, value } of sources) {
+					const sourceKey = source.key;
 					const entryKey = modifierType * keyCount + attrIndex;
-					let set = this.sourceIndex.get(sourceId);
-					if (!set) {
-						set = new Set();
-						this.sourceIndex.set(sourceId, set);
-					}
-					set.add(entryKey);
+					const canonicalSource = this.addSourceIndexEntry(source, entryKey);
+					perAttr.set(sourceKey, { source: canonicalSource, value });
 				}
 			}
 		}

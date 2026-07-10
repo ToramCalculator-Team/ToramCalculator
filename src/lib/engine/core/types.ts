@@ -1,15 +1,16 @@
-import { EngineSimulatorSchema } from "./engineScenarioSchema";
 import { MEMBER_TYPE } from "@db/schema/enums";
 import { z } from "zod/v4";
 import type { EventCatalog } from "./Event/EventCatalog";
 import type { TagRegistry } from "./Event/TagRegistry";
 import { EventQueueConfigSchema, type QueueSnapshot, type QueueStats } from "./EventQueue/types";
+import { EngineSimulatorSchema } from "./engineScenarioSchema";
 import { FrameLoopConfigSchema, type FrameLoopSnapshot, type FrameLoopStats } from "./FrameLoop/types";
 import type { JSProcessor } from "./JSProcessor/JSProcessor";
 import type { MessageRouterStats } from "./MessageRouter/MessageRouter";
 import type { PipelineCatalog } from "./Pipeline/PipelineCatalog";
 import type { PipelineResolverService } from "./Pipeline/PipelineResolverService";
 import type { MemberSerializeData } from "./World/Member/Member";
+import type { ModifierSource } from "./World/Member/runtime/StatContainer/StatContainerTypes";
 
 /**
  * 引擎基础设施 -- 长期驻留的编译缓存和管线定义。
@@ -596,7 +597,7 @@ export interface StatContainerCheckpoint {
 		modifierType: number;
 		entries: Array<{
 			attrIndex: number;
-			sources: Array<{ sourceId: string; value: number }>;
+			sources: Array<{ source: ModifierSource; value: number }>;
 		}>;
 	}>;
 }
@@ -611,9 +612,7 @@ export interface StatusInstanceStoreCheckpoint {
 		appliedAtMs: number;
 		resolvedDurationMs?: number;
 		expiresAtMs?: number;
-		stacks?: number;
 		tags?: string[];
-		meta?: Record<string, unknown>;
 	}>;
 }
 

@@ -5,7 +5,12 @@ import * as CasterSnapshot from "../../../../Expression/CasterSnapshot";
 import { ExpressionTransformer } from "../../../../JSProcessor/ExpressionTransformer";
 import type { DamageAreaRequest } from "../../../Area/types";
 import type { MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
-import { ModifierSourceTypeSchema, ModifierType, StatModifierKindSchema } from "../StatContainer/StatContainer";
+import {
+	type ModifierSource,
+	ModifierSourceTypeSchema,
+	ModifierType,
+	StatModifierKindSchema,
+} from "../StatContainer/StatContainer";
 import type { MemberFSMEvent } from "../StateMachine/types";
 import type { MemberSharedRuntime } from "../types";
 import { type ActionPool, defineAction } from "./type";
@@ -15,6 +20,25 @@ const log = createLogger("Actions");
 
 type BtContext = MemberSharedRuntime;
 type BtCapabilities = MemberBtCapabilities<string, MemberFSMEvent>;
+
+function createActionModifierSource(
+	context: BtContext,
+	key: string,
+	name: string,
+	type: ModifierSource["type"],
+): ModifierSource {
+	const skillId = context.skill?.id ?? context.currentSkill?.data.id;
+	return {
+		key,
+		name,
+		type,
+		chain: [
+			{ kind: "member", id: context.memberId },
+			...(skillId ? [{ kind: "skill" as const, id: skillId }] : []),
+			{ kind: type === "skill" ? "effect" : type, id: key },
+		],
+	};
+}
 
 export const logLv = 0; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
 
@@ -164,6 +188,7 @@ function buildDamageRequest(
 	return {
 		identity: {
 			sourceId: context.memberId,
+			sourceSkillId: context.skill?.id ?? context.currentSkill?.data.id,
 			sourceCampId: context.campId,
 		},
 		lifetime: {
@@ -375,11 +400,13 @@ export const CommonActionPool = {
 			const capped = max > 0 ? Math.min(requested, Math.max(0, max - current)) : requested;
 			if (capped <= 0) return State.SUCCEEDED;
 			const sourceName = input.sourceName ?? skill?.name ?? currentSkillData?.template?.name ?? `hp-heal`;
-			capabilities.statContainer.addModifier(currentAttr, ModifierType.DYNAMIC_FIXED, capped, {
-				id: input.sourceId ?? `skill.heal.hp.${skill?.id ?? currentSkillData?.id ?? "unknown"}`,
-				name: sourceName,
-				type: input.sourceType ?? "skill",
-			});
+			const sourceKey = input.sourceId ?? `skill.heal.hp.${skill?.id ?? currentSkillData?.id ?? "unknown"}`;
+			capabilities.statContainer.addModifier(
+				currentAttr,
+				ModifierType.DYNAMIC_FIXED,
+				capped,
+				createActionModifierSource(context, sourceKey, sourceName, input.sourceType ?? "skill"),
+			);
 
 			const hp = current + capped;
 			const mp = capabilities.statContainer.getValue("mp.current");
@@ -434,11 +461,13 @@ export const CommonActionPool = {
 			const capped = max > 0 ? Math.min(requested, Math.max(0, max - current)) : requested;
 			if (capped <= 0) return State.SUCCEEDED;
 			const sourceName = input.sourceName ?? skill?.name ?? currentSkillData?.template?.name ?? `mp-heal`;
-			capabilities.statContainer.addModifier(currentAttr, ModifierType.DYNAMIC_FIXED, capped, {
-				id: input.sourceId ?? `skill.heal.mp.${skill?.id ?? currentSkillData?.id ?? "unknown"}`,
-				name: sourceName,
-				type: input.sourceType ?? "skill",
-			});
+			const sourceKey = input.sourceId ?? `skill.heal.mp.${skill?.id ?? currentSkillData?.id ?? "unknown"}`;
+			capabilities.statContainer.addModifier(
+				currentAttr,
+				ModifierType.DYNAMIC_FIXED,
+				capped,
+				createActionModifierSource(context, sourceKey, sourceName, input.sourceType ?? "skill"),
+			);
 
 			const hp = capabilities.statContainer.getValue("hp.current");
 			const mp = current + capped;
@@ -532,11 +561,12 @@ export const CommonActionPool = {
 					dynamicPercentage: ModifierType.DYNAMIC_PERCENTAGE,
 				}[input.type],
 				evaluated,
-				{
-					id: input.sourceId ?? skill?.id ?? currentSkillData?.id ?? input.attribute,
-					name: input.sourceName ?? skill?.name ?? currentSkillData?.template.name ?? "",
-					type: input.sourceType ?? "skill",
-				},
+				createActionModifierSource(
+					context,
+					input.sourceId ?? skill?.id ?? currentSkillData?.id ?? input.attribute,
+					input.sourceName ?? skill?.name ?? currentSkillData?.template.name ?? "",
+					input.sourceType ?? "skill",
+				),
 			);
 			return State.SUCCEEDED;
 		},
@@ -578,19 +608,27 @@ export const CommonActionPool = {
 				log.warn(`⚠️ [${context.name}] 覆盖属性修改表达式未返回有限数值`, input.expression, evaluated);
 				return State.FAILED;
 			}
-			capabilities.statContainer.updateModifiersBySourceId(input.sourceId, [
-				{
-					attr: input.attribute,
-					targetType: {
-						baseValue: ModifierType.BASE_VALUE,
-						staticFixed: ModifierType.STATIC_FIXED,
-						staticPercentage: ModifierType.STATIC_PERCENTAGE,
-						dynamicFixed: ModifierType.DYNAMIC_FIXED,
-						dynamicPercentage: ModifierType.DYNAMIC_PERCENTAGE,
-					}[input.type],
-					value: evaluated,
-				},
-			]);
+			capabilities.statContainer.updateModifiersBySource(
+				createActionModifierSource(
+					context,
+					input.sourceId,
+					skill?.name ?? currentSkillData?.template.name ?? input.attribute,
+					"skill",
+				),
+				[
+					{
+						attr: input.attribute,
+						targetType: {
+							baseValue: ModifierType.BASE_VALUE,
+							staticFixed: ModifierType.STATIC_FIXED,
+							staticPercentage: ModifierType.STATIC_PERCENTAGE,
+							dynamicFixed: ModifierType.DYNAMIC_FIXED,
+							dynamicPercentage: ModifierType.DYNAMIC_PERCENTAGE,
+						}[input.type],
+						value: evaluated,
+					},
+				],
+			);
 			return State.SUCCEEDED;
 		},
 	),
@@ -624,7 +662,7 @@ export const CommonActionPool = {
 					.meta({ description: "可选：StatContainer 属性槽路径，触发时 +1（供后续 BT 节点读取）" }),
 			})
 			.meta({ description: "订阅状态进入/离开事件" }),
-		(_context, input, capabilities) => {
+		(context, input, capabilities) => {
 			const eventNames: string[] = [];
 			if (input.direction === "entered" || input.direction === "both") eventNames.push("status.entered");
 			if (input.direction === "exited" || input.direction === "both") eventNames.push("status.exited");
@@ -640,11 +678,13 @@ export const CommonActionPool = {
 
 			capabilities.subscribeByName(input.sourceId, eventNames, predicate, (event) => {
 				if (!input.counterSlot) return;
-				capabilities.statContainer.addModifier(input.counterSlot, ModifierType.DYNAMIC_FIXED, 1, {
-					id: `${input.sourceId}.counter.${event.timeMs}`,
-					name: "subscribeStatus.counter",
-					type: "system",
-				});
+				const sourceKey = `${input.sourceId}.counter.${event.timeMs}`;
+				capabilities.statContainer.addModifier(
+					input.counterSlot,
+					ModifierType.DYNAMIC_FIXED,
+					1,
+					createActionModifierSource(context, sourceKey, "subscribeStatus.counter", "system"),
+				);
 			});
 			return State.SUCCEEDED;
 		},
@@ -668,7 +708,7 @@ export const CommonActionPool = {
 				counterSlot: z.string().optional(),
 			})
 			.meta({ description: "按事件名 + tag 过滤订阅通用 proc 事件" }),
-		(_context, input, capabilities) => {
+		(context, input, capabilities) => {
 			const tagFilter = new Set(input.requiredTags);
 			const predicate =
 				tagFilter.size === 0
@@ -684,11 +724,13 @@ export const CommonActionPool = {
 
 			capabilities.subscribeByName(input.sourceId, input.eventNames, predicate, (event) => {
 				if (!input.counterSlot) return;
-				capabilities.statContainer.addModifier(input.counterSlot, ModifierType.DYNAMIC_FIXED, 1, {
-					id: `${input.sourceId}.counter.${event.timeMs}`,
-					name: "subscribeProc.counter",
-					type: "system",
-				});
+				const sourceKey = `${input.sourceId}.counter.${event.timeMs}`;
+				capabilities.statContainer.addModifier(
+					input.counterSlot,
+					ModifierType.DYNAMIC_FIXED,
+					1,
+					createActionModifierSource(context, sourceKey, "subscribeProc.counter", "system"),
+				);
 			});
 			return State.SUCCEEDED;
 		},
@@ -711,7 +753,7 @@ export const CommonActionPool = {
 				fireOnRegister: z.boolean().default(false),
 			})
 			.meta({ description: "注册属性阈值 watcher" }),
-		(_context, input, capabilities) => {
+		(context, input, capabilities) => {
 			// 阈值穿越降格为 ProcBus 事件源（ADR 0010）：注册被监控点 + 订阅 attr.crossed。
 			// predicate 按 register 返回的 registrationId 精确匹配自己那一条注册，避免同
 			// (path, threshold) 多源订阅时被彼此的跨越事件重复 / 错向唤醒（ADR 0010 问题 A）。
@@ -729,11 +771,13 @@ export const CommonActionPool = {
 				(event) => {
 					if (!input.counterSlot) return;
 					const newValue = (event.payload as { newValue?: number }).newValue ?? 0;
-					capabilities.statContainer.addModifier(input.counterSlot, ModifierType.DYNAMIC_FIXED, 1, {
-						id: `${input.sourceId}.counter.${newValue}`,
-						name: "watchThreshold.counter",
-						type: "system",
-					});
+					const sourceKey = `${input.sourceId}.counter.${newValue}`;
+					capabilities.statContainer.addModifier(
+						input.counterSlot,
+						ModifierType.DYNAMIC_FIXED,
+						1,
+						createActionModifierSource(context, sourceKey, "watchThreshold.counter", "system"),
+					);
 				},
 			);
 			return State.SUCCEEDED;
@@ -749,7 +793,7 @@ export const CommonActionPool = {
 		(_context, input, capabilities) => {
 			capabilities.unsubscribeBySource(input.sourceId);
 			capabilities.unregisterThresholdBySource(input.sourceId);
-			capabilities.statContainer.removeModifiersBySourceIdPrefix(input.sourceId);
+			capabilities.statContainer.removeModifiersBySourceKeyPrefix(input.sourceId);
 			return State.SUCCEEDED;
 		},
 	),

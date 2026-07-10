@@ -5,24 +5,28 @@ export type DataStorage = {
 	displayName: string;
 	expression: string;
 	baseValue: number;
+	baseSources: {
+		source: ModifierSource;
+		value: number;
+	}[];
 	actValue: number;
 	static: {
 		fixed: {
-			sourceId: string;
+			source: ModifierSource;
 			value: number;
 		}[];
 		percentage: {
-			sourceId: string;
+			source: ModifierSource;
 			value: number;
 		}[];
 	};
 	dynamic: {
 		fixed: {
-			sourceId: string;
+			source: ModifierSource;
 			value: number;
 		}[];
 		percentage: {
-			sourceId: string;
+			source: ModifierSource;
 			value: number;
 		}[];
 	};
@@ -116,8 +120,31 @@ export const ModifierSourceTypeSchema = z.enum([
 	"item",
 	"system",
 ]);
-export interface ModifierSource {
+
+export const ModifierSourceRefKindSchema = z.enum([
+	"member",
+	"skill",
+	"equipment",
+	"buff",
+	"debuff",
+	"passive",
+	"registlet",
+	"item",
+	"status",
+	"damageArea",
+	"effect",
+	"pipeline",
+	"system",
+]);
+
+export interface ModifierSourceRef {
+	kind: z.output<typeof ModifierSourceRefKindSchema>;
 	id: string;
+}
+
+export interface ModifierSource {
+	/** 聚合、覆盖和卸载使用的稳定键，不承载因果语义。 */
+	key: string;
 	name: string;
 	/**
 	 * 来源类别：
@@ -129,6 +156,8 @@ export interface ModifierSource {
 	 * - `system`：系统赋予
 	 */
 	type: z.output<typeof ModifierSourceTypeSchema>;
+	/** 从来源成员到直接运行时载体的稳定 ID 引用链。 */
+	chain: [{ kind: "member"; id: string }, ...ModifierSourceRef[]];
 }
 
 export interface Modifier {

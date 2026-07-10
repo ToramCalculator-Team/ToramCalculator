@@ -11,7 +11,12 @@ import type { ModifierSource, ModifierType } from "../runtime/StatContainer/Stat
 import type { MemberSharedRuntime } from "../runtime/types";
 
 /** 泛化的 Member 类型别名，供战前附加效果安装器跨 Player / Mob 使用。FSM 类型参数用 any 放宽，因为 attachment 系统不操作 actor。 */
-export type RuntimeAttachmentMember<TExtraAttrKey extends string = string> = Member<TExtraAttrKey, any, any, MemberSharedRuntime<TExtraAttrKey>>;
+export type RuntimeAttachmentMember<TExtraAttrKey extends string = string> = Member<
+	TExtraAttrKey,
+	any,
+	any,
+	MemberSharedRuntime<TExtraAttrKey>
+>;
 
 export type RuntimeAttachmentSourceType = ModifierSource["type"];
 
@@ -58,6 +63,28 @@ export type RuntimeAttachmentValue = RegistletValue;
 
 export function runtimeAttachmentSourceId(source: RuntimeAttachmentSource): string {
 	return source.sourceId ?? `${source.type}.${source.id}`;
+}
+
+/**
+ * 将战前来源与所属成员组合为可独立解释的 modifier 来源链。
+ * effectId 只描述本次安装产生的直接效果，不参与 attachment 自身的卸载身份。
+ */
+export function runtimeAttachmentModifierSource(
+	memberId: string,
+	source: RuntimeAttachmentSource,
+	key = runtimeAttachmentSourceId(source),
+	effectId?: string,
+): ModifierSource {
+	return {
+		key,
+		name: source.name,
+		type: source.type,
+		chain: [
+			{ kind: "member", id: memberId },
+			{ kind: source.type, id: source.id },
+			...(effectId ? [{ kind: "effect" as const, id: effectId }] : []),
+		],
+	};
 }
 
 export function runtimeAttachmentLevel(source: RuntimeAttachmentSource): number {

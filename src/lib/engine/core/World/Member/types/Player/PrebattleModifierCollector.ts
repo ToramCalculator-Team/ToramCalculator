@@ -1,5 +1,5 @@
-import type { EngineCharacter, EngineMember } from "../../../../engineScenarioSchema";
 import * as Enums from "@db/schema/enums";
+import type { EngineCharacter, EngineMember } from "../../../../engineScenarioSchema";
 import type { RuntimeAttachment } from "../../attachments/RuntimeAttachment";
 import {
 	compileModifierDslLines,
@@ -142,9 +142,13 @@ function collectPrebattleAttachmentModifiers<TAttrKey extends string>(
 						toStringArray(v),
 						{ env },
 						{
-							id: fullPath,
+							key: fullPath,
 							name: fullPath,
 							type: "equipment" as const,
+							chain: [
+								{ kind: "member", id: memberData.id },
+								{ kind: "equipment", id: fullPath },
+							],
 						},
 					),
 				);
@@ -185,9 +189,13 @@ function collectPrebattleAttachmentModifiers<TAttrKey extends string>(
 				[...toStringArray(tpl.logic), ...toStringArray(tpl.modifiers)],
 				{ skill: { lv }, skillLv: lv, env },
 				{
-					id: `skill:${tpl.id ?? s.id ?? "unknown"}`,
+					key: `skill:${tpl.id ?? s.id ?? "unknown"}`,
 					name: String(tpl.name ?? "passive"),
-					type: "skill" as const,
+					type: "passive" as const,
+					chain: [
+						{ kind: "member", id: memberData.id },
+						{ kind: "passive", id: String(tpl.id ?? s.id ?? "unknown") },
+					],
 				},
 			),
 		);
@@ -200,7 +208,7 @@ function collectPrebattleAttachmentModifiers<TAttrKey extends string>(
  * 将战前常驻修正收敛为 RuntimeAttachment。
  *
  * 设计说明：
- * - 同一 ModifierSource 合并为一个 attachment，卸载前缀与历史 source.id 保持一致。
+ * - 同一 ModifierSource 合并为一个 attachment，卸载前缀与 source.key 保持一致。
  * - installer 统一写入 StatContainer，避免 Player 构造函数直接修改运行时组件。
  */
 export function collectPrebattleModifierAttachments<TAttrKey extends string>(
@@ -217,18 +225,18 @@ export function collectPrebattleModifierAttachments<TAttrKey extends string>(
 	};
 	const grouped = new Map<string, MutableModifierAttachment>();
 	for (const modifier of collectPrebattleAttachmentModifiers<TAttrKey>(memberData, activeCharacter)) {
-		let attachment = grouped.get(modifier.source.id);
+		let attachment = grouped.get(modifier.source.key);
 		if (!attachment) {
 			attachment = {
 				source: {
-					id: modifier.source.id,
+					id: modifier.source.chain.at(-1)?.id ?? modifier.source.key,
 					name: modifier.source.name,
 					type: modifier.source.type,
-					sourceId: modifier.source.id,
+					sourceId: modifier.source.key,
 				},
 				modifiers: [],
 			};
-			grouped.set(modifier.source.id, attachment);
+			grouped.set(modifier.source.key, attachment);
 		}
 		attachment.modifiers.push(modifier);
 	}

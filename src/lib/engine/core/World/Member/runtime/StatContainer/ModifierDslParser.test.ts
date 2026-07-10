@@ -6,10 +6,18 @@ import {
 	type ModifierDslCompileContext,
 	type ModifierDslIdentifierResolver,
 } from "./ModifierDslParser";
-import { ModifierType, type ModifierSource } from "./StatContainerTypes";
+import { type ModifierSource, ModifierType } from "./StatContainerTypes";
 
 // 测试用固定来源。
-const SOURCE: ModifierSource = { id: "src-1", name: "测试来源", type: "equipment" };
+const SOURCE: ModifierSource = {
+	key: "src-1",
+	name: "测试来源",
+	type: "equipment",
+	chain: [
+		{ kind: "member", id: "member-1" },
+		{ kind: "equipment", id: "src-1" },
+	],
+};
 
 // 便捷构造编译上下文；可选注入 resolver / scope。
 const ctx = (over: Partial<ModifierDslCompileContext> = {}): ModifierDslCompileContext => ({
@@ -150,10 +158,7 @@ describe("compileModifierDslLine — 条件（&&）", () => {
 			if (n === "Light") return 1;
 			return undefined;
 		};
-		const r = compileModifierDslLine(
-			"Light == 1 && distanceDmg.short + 11%",
-			ctx({ resolveIdentifier: resolve }),
-		);
+		const r = compileModifierDslLine("Light == 1 && distanceDmg.short + 11%", ctx({ resolveIdentifier: resolve }));
 		expect(r).not.toBeNull();
 		expect(r?.attribute).toBe("distanceDmg.short");
 		expect(r?.modifierType).toBe(ModifierType.STATIC_PERCENTAGE);

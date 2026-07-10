@@ -1,5 +1,5 @@
-import type { EngineCharacter, EngineMember } from "../../../engineScenarioSchema";
 import { createLogger } from "~/lib/Logger";
+import type { EngineCharacter, EngineMember } from "../../../engineScenarioSchema";
 import { BUILT_IN_REGISTLETS_BY_ID, type RegistletRow } from "../attachments/BuiltInRegistlets";
 import type { RuntimeAttachment } from "../attachments/RuntimeAttachment";
 import {
@@ -39,7 +39,7 @@ function resolveRegistletTemplate(ring: CharacterRegistletWithMaybeTemplate): Re
 	} as RegistletRow;
 }
 
-function collectRegistletAttachments(activeCharacter: EngineCharacter): RuntimeAttachment[] {
+function collectRegistletAttachments(activeCharacter: EngineCharacter, memberData: EngineMember): RuntimeAttachment[] {
 	const attachments: RuntimeAttachment[] = [];
 	for (const ring of activeCharacter.registlets as CharacterRegistletWithMaybeTemplate[]) {
 		const template = resolveRegistletTemplate(ring);
@@ -54,9 +54,13 @@ function collectRegistletAttachments(activeCharacter: EngineCharacter): RuntimeA
 			template.attrModifiers.map((line) => substituteRegistletLevel(line, level)),
 			{ skill: { lv: level }, skillLv: level },
 			{
-				id: sourceId,
+				key: sourceId,
 				name: template.name,
 				type: "registlet" as const,
+				chain: [
+					{ kind: "member", id: memberData.id },
+					{ kind: "registlet", id: template.id },
+				],
 			},
 		);
 
@@ -91,6 +95,6 @@ export function collectPlayerRuntimeAttachments<TAttrKey extends string = string
 ): RuntimeAttachment<TAttrKey>[] {
 	return [
 		...collectPrebattleModifierAttachments<TAttrKey>(memberData, activeCharacter),
-		...collectRegistletAttachments(activeCharacter),
+		...collectRegistletAttachments(activeCharacter, memberData),
 	] as RuntimeAttachment<TAttrKey>[];
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { NestedSchema, SchemaAttribute } from "./SchemaTypes";
-import { ModifierType, type ModifierSource } from "./StatContainerTypes";
 import { StatContainer } from "./StatContainer";
+import { type ModifierSource, ModifierType } from "./StatContainerTypes";
 
 // 便捷叶子构造器。
 const attr = (displayName: string, expression: string, noBaseValue?: boolean): SchemaAttribute => ({
@@ -10,7 +10,15 @@ const attr = (displayName: string, expression: string, noBaseValue?: boolean): S
 	...(noBaseValue ? { noBaseValue } : {}),
 });
 
-const src = (id: string): ModifierSource => ({ id, name: id, type: "equipment" });
+const src = (id: string): ModifierSource => ({
+	key: id,
+	name: id,
+	type: "equipment",
+	chain: [
+		{ kind: "member", id: "test-member" },
+		{ kind: "equipment", id },
+	],
+});
 
 describe("StatContainer — 基础值与常量表达式", () => {
 	it("常量表达式作为基础值读取", () => {
@@ -106,51 +114,78 @@ describe("StatContainer — 来源聚合与增删", () => {
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 10, src("a"));
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, -10, src("a"));
 		expect(sc.getValue("atk")).toBe(100);
-		expect(sc.getModifiersBySourceId("a")).toEqual([]);
+		expect(sc.getModifiersBySourceKey("a")).toEqual([]);
 	});
 
-	it("getModifiersBySourceId 返回该来源的全部条目", () => {
+	it("getModifiersBySourceKey 返回该来源的全部条目和完整来源链", () => {
 		const sc = new StatContainer<"atk" | "def">({
 			atk: attr("攻击", "100"),
 			def: attr("防御", "50"),
 		} as NestedSchema);
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 10, src("ring"));
 		sc.addModifier("def", ModifierType.STATIC_PERCENTAGE, 5, src("ring"));
-		const entries = sc.getModifiersBySourceId("ring");
+		const entries = sc.getModifiersBySourceKey("ring");
 		expect(entries).toHaveLength(2);
-		expect(entries).toContainEqual({ attr: "atk", targetType: ModifierType.STATIC_FIXED, value: 10 });
-		expect(entries).toContainEqual({ attr: "def", targetType: ModifierType.STATIC_PERCENTAGE, value: 5 });
+		expect(entries).toContainEqual({
+			attr: "atk",
+			targetType: ModifierType.STATIC_FIXED,
+			source: src("ring"),
+			value: 10,
+		});
+		expect(entries).toContainEqual({
+			attr: "def",
+			targetType: ModifierType.STATIC_PERCENTAGE,
+			source: src("ring"),
+			value: 5,
+		});
+	});
+
+	it("同 key 的不同来源链拒绝合并", () => {
+		const sc = new StatContainer<"atk" | "def">({
+			atk: attr("攻击", "100"),
+			def: attr("防御", "50"),
+		} as NestedSchema);
+		sc.addModifier("atk", ModifierType.STATIC_FIXED, 10, src("same"));
+		expect(() =>
+			sc.addModifier("def", ModifierType.STATIC_PERCENTAGE, 5, {
+				...src("same"),
+				chain: [
+					{ kind: "member", id: "another-member" },
+					{ kind: "equipment", id: "same" },
+				],
+			}),
+		).toThrow(/source key 冲突/);
 	});
 });
 
-describe("StatContainer — updateModifiersBySourceId 覆盖语义", () => {
+describe("StatContainer — updateModifiersBySource 覆盖语义", () => {
 	it("覆盖更新：移除旧条目、写入新条目", () => {
 		const sc = new StatContainer<"atk" | "def">({
 			atk: attr("攻击", "100"),
 			def: attr("防御", "100"),
 		} as NestedSchema);
-		sc.updateModifiersBySourceId("buff", [{ attr: "atk", targetType: ModifierType.STATIC_FIXED, value: 10 }]);
+		sc.updateModifiersBySource(src("buff"), [{ attr: "atk", targetType: ModifierType.STATIC_FIXED, value: 10 }]);
 		expect(sc.getValue("atk")).toBe(110);
 
 		// 覆盖为只影响 def；atk 的旧贡献应被移除。
-		sc.updateModifiersBySourceId("buff", [{ attr: "def", targetType: ModifierType.STATIC_FIXED, value: 20 }]);
+		sc.updateModifiersBySource(src("buff"), [{ attr: "def", targetType: ModifierType.STATIC_FIXED, value: 20 }]);
 		expect(sc.getValue("atk")).toBe(100);
 		expect(sc.getValue("def")).toBe(120);
 	});
 
-	it("removeModifiersBySourceId 清空该来源全部影响", () => {
+	it("removeModifiersBySourceKey 清空该来源全部影响", () => {
 		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 40, src("x"));
-		sc.removeModifiersBySourceId("x");
+		sc.removeModifiersBySourceKey("x");
 		expect(sc.getValue("atk")).toBe(100);
 	});
 
-	it("removeModifiersBySourceIdPrefix 按前缀批量清理", () => {
+	it("removeModifiersBySourceKeyPrefix 按前缀批量清理", () => {
 		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 10, src("passive.fire"));
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 20, src("passive.fire.stack.1"));
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 5, src("equipment.ring"));
-		sc.removeModifiersBySourceIdPrefix("passive.fire");
+		sc.removeModifiersBySourceKeyPrefix("passive.fire");
 		// 只剩 equipment.ring 的 +5
 		expect(sc.getValue("atk")).toBe(105);
 	});
@@ -251,9 +286,19 @@ describe("StatContainer — 导出", () => {
 
 	it("exportModifierDetails 按来源分类列出条目", () => {
 		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
+		sc.addModifier("atk", ModifierType.BASE_VALUE, 5, src("base"));
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 20, src("eq"));
 		const details = sc.exportModifierDetails();
-		expect(details.atk.static.fixed).toContainEqual({ sourceId: "eq", value: 20 });
+		expect(details.atk.baseSources).toContainEqual({ source: src("base"), value: 5 });
+		expect(details.atk.static.fixed).toContainEqual({ source: src("eq"), value: 20 });
+	});
+
+	it("exportNestedValues 保留基础值来源", () => {
+		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
+		sc.addModifier("atk", ModifierType.BASE_VALUE, 5, src("base"));
+		expect(sc.exportNestedValues()).toMatchObject({
+			atk: { baseSources: [{ source: src("base"), value: 5 }] },
+		});
 	});
 });
 
@@ -263,6 +308,7 @@ describe("StatContainer — checkpoint 往返", () => {
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 50, src("a"));
 		expect(sc.getValue("atk")).toBe(150);
 		const cp = sc.captureCheckpoint();
+		expect(cp.modifierSources[0]?.entries[0]?.sources[0]?.source).toEqual(src("a"));
 
 		// 继续改动，然后恢复。
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 100, src("b"));
@@ -270,6 +316,7 @@ describe("StatContainer — checkpoint 往返", () => {
 
 		sc.restoreCheckpoint(cp);
 		expect(sc.getValue("atk")).toBe(150);
+		expect(sc.getModifiersBySourceKey("a")[0]?.source).toEqual(src("a"));
 		// 来源索引也应恢复：移除 a 应回到 100。
 		sc.removeModifier("atk", ModifierType.STATIC_FIXED, "a");
 		expect(sc.getValue("atk")).toBe(100);

@@ -64,6 +64,8 @@ export interface DamageAreaRequest {
 	identity: {
 		/** 施法者ID */
 		sourceId: string;
+		/** 产生该区域的角色技能 ID；非技能来源可为空。 */
+		sourceSkillId?: string;
 		/** 施法者阵营ID */
 		sourceCampId: string;
 	};
@@ -135,6 +137,8 @@ export interface DamageAreaRequest {
 export interface DamageDispatchPayload {
 	/** 施法者ID */
 	sourceId: string;
+	/** 产生该伤害的角色技能 ID；非技能来源可为空。 */
+	sourceSkillId?: string;
 	/** 区域ID */
 	areaId: string;
 	/** 原始伤害表达式 */

@@ -10,9 +10,7 @@ export interface StatusInstance {
 	appliedAtMs: number;
 	resolvedDurationMs?: number;
 	expiresAtMs?: number;
-	stacks?: number;
 	tags?: string[];
-	meta?: Record<string, unknown>;
 }
 
 /**
@@ -170,9 +168,7 @@ export class InMemoryStatusInstanceStore
 					appliedAtMs: inst.appliedAtMs,
 					resolvedDurationMs: inst.resolvedDurationMs,
 					expiresAtMs: inst.expiresAtMs,
-					stacks: inst.stacks,
 					tags: inst.tags,
-					meta: inst.meta,
 				}),
 			);
 		}

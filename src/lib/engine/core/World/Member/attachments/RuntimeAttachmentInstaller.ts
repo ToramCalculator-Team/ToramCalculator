@@ -16,6 +16,7 @@ import {
 	type RuntimeAttachmentMember,
 	type RuntimeAttachmentSource,
 	runtimeAttachmentLevel,
+	runtimeAttachmentModifierSource,
 	runtimeAttachmentSourceId,
 } from "./RuntimeAttachment";
 
@@ -157,11 +158,12 @@ function runHandlers(
 						handler.lifetime === "bySource"
 							? (handler.sourceIdSuffix ?? "default")
 							: `${handler.sourceIdSuffix ?? "once"}.${eventCtx.timeMs}`;
-					const modifierSource: ModifierSource = {
-						id: sourceIdOf(source, suffix),
-						name: handler.attribute,
-						type: source.type,
-					};
+					const modifierSource: ModifierSource = runtimeAttachmentModifierSource(
+						member.id,
+						source,
+						sourceIdOf(source, suffix),
+						suffix,
+					);
 					member.statContainer.addModifier(
 						handler.attribute,
 						mapModifierType(handler.modifierType),
@@ -311,7 +313,7 @@ export function uninstallRuntimeAttachment(member: RuntimeAttachmentMember, sour
 	);
 	member.procBus?.unsubscribeBySource(sourceId);
 	member.attributeThresholdSource.unregisterBySource(sourceId);
-	member.statContainer.removeModifiersBySourceIdPrefix(sourceId);
+	member.statContainer.removeModifiersBySourceKeyPrefix(sourceId);
 }
 
 /**
@@ -323,19 +325,13 @@ export function uninstallRuntimeAttachment(member: RuntimeAttachmentMember, sour
  */
 export function installRuntimeAttachment<TExtraAttrKey extends string = string>(
 	member: RuntimeAttachmentMember<TExtraAttrKey>,
-	attachment: RuntimeAttachment<TExtraAttrKey>
+	attachment: RuntimeAttachment<TExtraAttrKey>,
 ): void {
 	uninstallRuntimeAttachment(member, attachment.source);
 	const level = runtimeAttachmentLevel(attachment.source);
 
 	for (const modifier of attachment.modifiers ?? []) {
-		const source =
-			modifier.source ??
-			{
-				id: runtimeAttachmentSourceId(attachment.source),
-				name: attachment.source.name,
-				type: attachment.source.type,
-			};
+		const source = modifier.source ?? runtimeAttachmentModifierSource(member.id, attachment.source);
 		member.statContainer.addModifier(modifier.attribute, modifier.modifierType, modifier.value, source);
 	}
 

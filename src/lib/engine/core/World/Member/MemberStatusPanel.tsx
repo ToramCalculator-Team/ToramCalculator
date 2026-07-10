@@ -17,7 +17,7 @@ import { useOverlay } from "~/lib/overlay/OverlayContext";
 import { useEngine } from "../../thread/EngineContext";
 import type { EngineRPC } from "../../thread/protocol";
 import type { MemberSerializeData } from "./Member";
-import { type DataStorage, isDataStorageType } from "./runtime/StatContainer/StatContainer";
+import { type DataStorage, isDataStorageType, type ModifierSource } from "./runtime/StatContainer/StatContainer";
 
 // ============================== 组件实现 ==============================
 
@@ -30,6 +30,8 @@ const originClass =
 // 由于tailwind编译时生成对应class，此处class将不会生效
 // const columns = 8;
 const columnsWidth = "";
+const formatModifierSource = (source: ModifierSource) =>
+	source.chain.map((ref) => `${ref.kind}:${ref.id}`).join(" -> ");
 // 用于递归遍历对象并生成DOM结构的组件（响应式）
 export const StatsRenderer = (props: { data?: object }) => {
 	const renderObject = (
@@ -100,7 +102,7 @@ export const StatsRenderer = (props: { data?: object }) => {
 																	class={`key=${`ModifierStaticFixed${index}`} ModifierStaticFixed group bg-transition-color-20 relative flex items-center gap-1 rounded-sm px-1 py-0.5`}
 																>
 																	<span class={` ${modifierStaticClass}`}>{mod.value}</span>
-																	<span class={` ${originClass}`}>来源：{mod.sourceId}</span>
+																	<span class={` ${originClass}`}>来源：{formatModifierSource(mod.source)}</span>
 																</div>
 															))}
 														</div>
@@ -112,7 +114,7 @@ export const StatsRenderer = (props: { data?: object }) => {
 																	class={`key=${`ModifierStaticPercentage${index}`} ModifierStaticPercentage group bg-transition-color-20 relative flex items-center gap-1 rounded-sm px-1 py-0.5`}
 																>
 																	<span class={` ${modifierStaticClass}`}>{mod.value}%</span>
-																	<span class={` ${originClass}`}>来源：{mod.sourceId}</span>
+																	<span class={` ${originClass}`}>来源：{formatModifierSource(mod.source)}</span>
 																</div>
 															))}
 														</div>
@@ -131,7 +133,7 @@ export const StatsRenderer = (props: { data?: object }) => {
 																	class={`key=${`ModifierDynamicFixed${index}`} ModifierDynamicFixed group bg-transition-color-20 relative flex items-center gap-1 rounded-sm px-1 py-0.5`}
 																>
 																	<span class={` ${modifierDynamicClass}`}>{mod.value}</span>
-																	<span class={` ${originClass}`}>来源：{mod.sourceId}</span>
+																	<span class={` ${originClass}`}>来源：{formatModifierSource(mod.source)}</span>
 																</div>
 															))}
 														</div>
@@ -143,7 +145,7 @@ export const StatsRenderer = (props: { data?: object }) => {
 																	class={`key=${`ModifierDynamicPercentage${index}`} ModifierDynamicPercentage group bg-transition-color-20 relative flex items-center gap-1 rounded-sm px-1 py-0.5`}
 																>
 																	<span class={` ${modifierDynamicClass}`}>{mod.value}%</span>
-																	<span class={` ${originClass}`}>来源：{mod.sourceId}</span>
+																	<span class={` ${originClass}`}>来源：{formatModifierSource(mod.source)}</span>
 																</div>
 															))}
 														</div>
@@ -236,7 +238,7 @@ const AttrRow = (props: { row: Extract<FlatStatRow, { kind: "attr" }> }) => {
 													{(mod) => (
 														<div class="ModifierStaticFixed group bg-transition-color-20 relative flex items-center gap-1 rounded-sm px-1 py-0.5">
 															<span class={` ${modifierStaticClass}`}>{mod.value}</span>
-															<span class={` ${originClass}`}>来源：{mod.sourceId}</span>
+															<span class={` ${originClass}`}>来源：{formatModifierSource(mod.source)}</span>
 														</div>
 													)}
 												</For>
@@ -248,7 +250,7 @@ const AttrRow = (props: { row: Extract<FlatStatRow, { kind: "attr" }> }) => {
 													{(mod) => (
 														<div class="ModifierStaticPercentage group bg-transition-color-20 relative flex items-center gap-1 rounded-sm px-1 py-0.5">
 															<span class={` ${modifierStaticClass}`}>{mod.value}%</span>
-															<span class={` ${originClass}`}>来源：{mod.sourceId}</span>
+															<span class={` ${originClass}`}>来源：{formatModifierSource(mod.source)}</span>
 														</div>
 													)}
 												</For>
@@ -267,7 +269,7 @@ const AttrRow = (props: { row: Extract<FlatStatRow, { kind: "attr" }> }) => {
 													{(mod) => (
 														<div class="ModifierDynamicFixed group bg-transition-color-20 relative flex items-center gap-1 rounded-sm px-1 py-0.5">
 															<span class={` ${modifierDynamicClass}`}>{mod.value}</span>
-															<span class={` ${originClass}`}>来源：{mod.sourceId}</span>
+															<span class={` ${originClass}`}>来源：{formatModifierSource(mod.source)}</span>
 														</div>
 													)}
 												</For>
@@ -279,7 +281,7 @@ const AttrRow = (props: { row: Extract<FlatStatRow, { kind: "attr" }> }) => {
 													{(mod) => (
 														<div class="ModifierDynamicPercentage group bg-transition-color-20 relative flex items-center gap-1 rounded-sm px-1 py-0.5">
 															<span class={` ${modifierDynamicClass}`}>{mod.value}%</span>
-															<span class={` ${originClass}`}>来源：{mod.sourceId}</span>
+															<span class={` ${originClass}`}>来源：{formatModifierSource(mod.source)}</span>
 														</div>
 													)}
 												</For>

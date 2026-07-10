@@ -1,16 +1,16 @@
 import { type EventObject, setup } from "xstate";
 import { createLogger } from "~/lib/Logger";
 import type { DamageDispatchPayload } from "../../../Area/types";
+import { ModifierType } from "../../runtime/StatContainer/StatContainer";
 import {
 	createHitSession,
 	type HitSession,
 	resolveDamageAndApply,
 	resolveHitCheck,
 } from "../../runtime/StateMachine/DamageResolution";
-import { ModifierType } from "../../runtime/StatContainer/StatContainer";
 import type {
-	MemberFSMEvent,
 	MemberFSMContext,
+	MemberFSMEvent,
 	MemberStateMachine,
 	MemberStateMachineEnv,
 } from "../../runtime/StateMachine/types";
@@ -317,15 +317,29 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 						() => env.statContainer.getValue("mp.current"),
 						(value) =>
 							env.statContainer.addModifier("hp.current", ModifierType.DYNAMIC_FIXED, value, {
-								id: `damage.hp.${session.damageRequest.areaId}`,
+								key: `damage.hp.${session.damageRequest.areaId}`,
 								name: "damage-hp",
-								type: "system",
+								type: session.damageRequest.sourceSkillId ? "skill" : "system",
+								chain: [
+									{ kind: "member", id: session.damageRequest.sourceId },
+									...(session.damageRequest.sourceSkillId
+										? [{ kind: "skill" as const, id: session.damageRequest.sourceSkillId }]
+										: []),
+									{ kind: "damageArea", id: session.damageRequest.areaId },
+								],
 							}),
 						(value) =>
 							env.statContainer.addModifier("mp.current", ModifierType.DYNAMIC_FIXED, value, {
-								id: `damage.mp.${session.damageRequest.areaId}`,
+								key: `damage.mp.${session.damageRequest.areaId}`,
 								name: "damage-mp",
-								type: "system",
+								type: session.damageRequest.sourceSkillId ? "skill" : "system",
+								chain: [
+									{ kind: "member", id: session.damageRequest.sourceId },
+									...(session.damageRequest.sourceSkillId
+										? [{ kind: "skill" as const, id: session.damageRequest.sourceSkillId }]
+										: []),
+									{ kind: "damageArea", id: session.damageRequest.areaId },
+								],
 							}),
 						env.notifyDomainEvent,
 						env.emitProc,
