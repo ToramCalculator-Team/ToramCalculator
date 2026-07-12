@@ -4,7 +4,7 @@
 - **日期**: 2026-07-10
 - **决策层**: 跨层（数据 / 应用编排 / 引擎 / 渲染）
 - **相关代码**: `db/repositories/simulatorEngine.ts`、`src/lib/engine/core/`、`src/lib/3dScene/`
-- **相关 ADR**: 补充 0016、0025、0026
+- **相关 ADR**: Depends on 0016、0026；Related to 0025
 
 ## 背景
 

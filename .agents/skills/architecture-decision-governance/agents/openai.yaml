@@ -1,0 +1,4 @@
+interface:
+  display_name: "Architecture Decision Governance"
+  short_description: "Classify, govern, and audit architecture decisions"
+  default_prompt: "Use $architecture-decision-governance to assess whether this design needs ADRs and organize the resulting decisions."

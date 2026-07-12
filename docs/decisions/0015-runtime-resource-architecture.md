@@ -4,7 +4,7 @@
 - **日期**: 2026-06-12
 - **决策层**: 跨层（引擎线程 / 渲染 / 视觉意图）
 - **相关代码**: `src/lib/engine/core/thread/EngineService.ts`、`src/lib/3dScene/SceneRuntime.tsx`、`src/machines/interfaceStateMachine.ts`
-- **相关 ADR**: 0009、0012、0013、0014、0021、0024
+- **相关 ADR**: Depends on 0009、0014；Related to 0012、0013、0021、0024
 
 ## 背景
 

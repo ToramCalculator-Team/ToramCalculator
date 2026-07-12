@@ -4,7 +4,7 @@
 - **日期**: 2026-07-10
 - **决策层**: 跨层（应用层状态 / UI / 渲染）
 - **相关代码**: `src/machines/`、`src/components/features/character/EquipmentPanel.tsx`、`src/lib/3dScene/`
-- **相关 ADR**: Supersedes 0012、0013；补充 0015
+- **相关 ADR**: Supersedes 0012、0013；Refines 0015
 
 ## 背景
 

@@ -1,6 +1,6 @@
 # 0003 - 技能消耗作为 Pipeline 契约
 
-- **状态**: Proposed
+- **状态**: Accepted
 - **日期**: 2026-05-15
 - **决策层**: 跨层
 - **相关代码**: `src/lib/engine/core/Pipeline/builtInBinaryOpPipelines.ts`、`src/lib/engine/core/World/Member/types/Player/PlayerStateMachine.ts`

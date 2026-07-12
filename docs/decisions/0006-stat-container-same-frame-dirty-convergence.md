@@ -4,7 +4,7 @@
 - **日期**: 2026-06-01
 - **决策层**: 数据层
 - **相关代码**: `src/lib/engine/core/World/Member/runtime/StatContainer/StatContainer.ts`、`src/lib/engine/core/World/Member/runtime/AttributeWatcher/AttributeWatcher.ts`
-- **相关 ADR**: 0001
+- **相关 ADR**: Refines 0001
 
 ## 背景
 

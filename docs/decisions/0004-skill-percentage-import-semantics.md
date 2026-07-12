@@ -1,10 +1,10 @@
 # 0004 - 技能 Behavior Tree 导入中的百分比修正语义
 
-- **状态**: Proposed
+- **状态**: Accepted
 - **日期**: 2026-05-28
 - **决策层**: 跨层
-- **相关代码**: `db/scripts/importToramSkillVariants.mjs`、`src/lib/engine/core/World/Member/runtime/StatContainer/StatContainer.ts`、`src/lib/engine/core/World/Member/attachments/RuntimeAttachment.ts`
-- **相关 ADR**: 0001、0002
+- **相关代码**: `db/scripts/importToramSkillBehaviors.mjs`、`src/lib/engine/core/World/Member/runtime/StatContainer/StatContainer.ts`、`src/lib/engine/core/World/Member/attachments/RuntimeAttachmentInstaller.ts`
+- **相关 ADR**: Depends on 0001、0002
 
 ## 背景
 

@@ -1,10 +1,10 @@
 # 0016 - 渲染层架构：应用级场景渲染器（三层模型 + 四关注点分离）
 
-- **状态**: Proposed
+- **状态**: Accepted
 - **日期**: 2026-06-15
 - **决策层**: 跨层（渲染 / 编排 / 通信）
 - **相关代码**: `src/lib/3dScene/SceneRuntime.tsx`、`src/lib/3dScene/SceneRuntimeCore.tsx`、`src/lib/3dScene/RendererController.ts`、`src/lib/3dScene/sceneStateMachine.ts`
-- **相关 ADR**: 0009、0012、0014、0015、0027
+- **相关 ADR**: Depends on 0009、0015；Related to 0012、0014、0027
 
 ## 背景
 

@@ -4,7 +4,7 @@
 - **日期**: 2026-05-14
 - **决策层**: 跨层
 - **相关代码**: `src/lib/engine/core/World/Member/attachments/RuntimeAttachment.ts`、`src/lib/engine/core/World/Member/attachments/RuntimeAttachmentInstaller.ts`、`src/lib/engine/core/World/Member/construction/collectPlayerRuntimeAttachments.ts`
-- **相关 ADR**: 0001
+- **相关 ADR**: Depends on 0001
 
 ## 背景
 

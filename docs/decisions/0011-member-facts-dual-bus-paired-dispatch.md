@@ -1,10 +1,10 @@
 # 0011 - 成员事实在结算点成对派发到两条总线
 
-- **状态**: Proposed
+- **状态**: Accepted
 - **日期**: 2026-06-05
 - **决策层**: 编排层 / 通信
-- **相关代码**: `src/lib/engine/core/World/Member/runtime/DamageResolution.ts`、`src/lib/engine/core/DomainEvents/DomainEventBus.ts`、`src/lib/engine/core/World/Member/runtime/ProcBus/ProcBus.ts`
-- **相关 ADR**: 0008、0010
+- **相关代码**: `src/lib/engine/core/World/Member/runtime/StateMachine/DamageResolution.ts`、`src/lib/engine/core/DomainEvents/DomainEventBus.ts`、`src/lib/engine/core/World/Member/runtime/ProcBus/ProcBus.ts`
+- **相关 ADR**: Depends on 0010；Related to 0008
 
 ## 背景
 

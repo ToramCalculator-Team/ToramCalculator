@@ -1,10 +1,10 @@
 # 0008 - 世界可观测属性作为空间介质
 
-- **状态**: Proposed
+- **状态**: Accepted
 - **日期**: 2026-06-02
 - **决策层**: 跨层（编排层 / 通信 / 计算层）
 - **相关代码**: `src/lib/engine/core/World/observable.ts`、`src/lib/engine/core/World/SpaceManager.ts`、`src/lib/engine/core/World/Area/DamageAreaSystem.ts`、`src/lib/engine/core/World/Member/Member.ts`
-- **相关 ADR**: 0005
+- **相关 ADR**: Related to 0005
 
 ## 背景
 

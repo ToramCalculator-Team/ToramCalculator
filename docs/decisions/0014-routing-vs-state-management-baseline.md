@@ -4,7 +4,7 @@
 - **日期**: 2026-06-12
 - **决策层**: 跨层（应用层状态架构）
 - **相关代码**: `src/routes/(app)/`、`src/machines/businessPhaseMachine.ts`、`src/store.ts`
-- **相关 ADR**: 0012、0013、0015
+- **相关 ADR**: Related to 0012、0013、0015
 
 ## 背景
 

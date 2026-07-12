@@ -4,7 +4,7 @@
 - **日期**: 2026-07-10
 - **决策层**: 跨层（应用状态 / 引擎 / UI）
 - **相关代码**: `src/machines/`、`src/routes/(app)/(features)/simulator/`、`src/lib/engine/core/thread/`
-- **相关 ADR**: 补充 0015、0021、0025
+- **相关 ADR**: Depends on 0015、0021；Related to 0025
 
 ## 背景
 

@@ -4,7 +4,7 @@
 - **日期**: 2026-07-06
 - **决策层**: 数据层 / 通信
 - **相关代码**: `db/generator/helpers/generateSQL.ts`、`src/routes/api/changes.ts`、`src/lib/pglite/ChangeLogSynchronizer.ts`
-- **相关 ADR**: 0017
+- **相关 ADR**: Related to 0017
 
 ## 背景
 

@@ -4,7 +4,7 @@
 - **日期**: 2026-07-10
 - **决策层**: 数据层 / 通信 / 应用层
 - **相关代码**: `db/schema/models/user.prisma`、`src/session/temporaryAccount.ts`、`src/components/features/loginDialog.tsx`、`src/lib/pglite/ChangeLogSynchronizer.ts`
-- **相关 ADR**: 0017、0018
+- **相关 ADR**: Depends on 0018；Related to 0017
 
 ## 背景
 

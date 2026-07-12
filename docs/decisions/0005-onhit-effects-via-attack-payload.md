@@ -1,10 +1,10 @@
 # 0005 - 命中后效果通过攻击 Payload 传递
 
-- **状态**: Proposed
+- **状态**: Withdrawn
 - **日期**: 2026-05-29
 - **决策层**: 编排层 / 通信
 - **相关代码**: `src/lib/engine/core/World/Member/runtime/Agent/CommonActions.ts`、`src/lib/engine/core/World/Member/runtime/DamageResolution.ts`
-- **相关 ADR**: 0004
+- **相关 ADR**: Related to 0004
 
 ## 背景
 
@@ -39,3 +39,7 @@
 - 攻击契约需要容纳命中后效果声明。
 - 伤害结算负责发布命中事实并触发声明式效果。
 - 技能导入器可以直接生成 `onHitEffects`，不再为固定模式构造订阅流程。
+
+## 后续
+
+2026-07-13：本提案没有进入当前攻击协议，也不再处于主动评审。现有成员响应继续通过 ProcBus 与显式订阅表达；若以后重新引入声明式命中效果，必须根据届时的攻击、事件和行为树契约重新执行 ADR 准入与权衡，不能把本草案视为当前权威。

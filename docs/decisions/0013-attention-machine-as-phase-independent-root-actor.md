@@ -4,7 +4,7 @@
 - **日期**: 2026-06-09
 - **决策层**: 跨层（应用层状态架构）
 - **相关代码**: `src/machines/AppActorContext.tsx`、`src/machines/businessPhaseMachine.ts`、`src/machines/intent/visualIntentMachine.ts`
-- **相关 ADR**: 0012、0021
+- **相关 ADR**: Depends on 0012；Superseded by 0021
 
 ## 背景
 

@@ -4,7 +4,7 @@
 - **日期**: 2026-07-10
 - **决策层**: 跨层（数据 / 应用 / 路由 / 生成器）
 - **相关代码**: `db/generator/utils/schemaCollector.ts`、`db/generator/enumInjector.ts`、`db/generator/generator.ts`、`src/routes/`、`src/lib/engine/`
-- **相关 ADR**: 0014、0017、0019
+- **相关 ADR**: Depends on 0019；Related to 0014、0017
 
 ## 背景
 

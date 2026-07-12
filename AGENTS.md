@@ -67,7 +67,7 @@
 - 服务端：PostgreSQL，通过 `pg` pool 访问。
 - 客户端：PGlite Web Worker（`src/lib/pglite/`），通过 ElectricSQL 同步。
 
-**变更 API**：`POST /api/changes`，这是 JWT 认证的写入端点；只允许 insert/update，禁止 delete。
+**变更 API**：`POST /api/changes`，这是 JWT 认证的写入端点；接受客户端同步产生的 insert、update 和 delete 变更。
 
 ## 基础设施
 
@@ -106,4 +106,5 @@ SW 版本号从 `src/store.ts` 的 `version` 字段提取。
 ## 文档与 ADR
 
 项目级 ADR 位于 `docs/decisions/`，覆盖应用层、引擎、数据层和跨层契约。
+评估、创建、修订、取代、整理或审计 ADR 时，必须先读取并遵守 `.agents/skills/architecture-decision-governance/SKILL.md`。
 修改 `src/lib/engine/` 时同时遵守 `src/lib/engine/AGENTS.md`。引擎历史文档通过 `src/lib/engine/document/` 保留。
