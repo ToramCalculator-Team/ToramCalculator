@@ -112,6 +112,38 @@ export class ClientSyncSqlFactory {
 		return clientSql.slice(start, next < 0 ? undefined : next).trim();
 	}
 
+	/**
+	 * 从当前完整客户端 schema 读取物理表的列定义。
+	 * 增量迁移以完整 schema 为目标事实源，避免自行删减约束后让 synced/local 两套表结构发生漂移。
+	 */
+	extractColumnDefinition(
+		clientSql: string,
+		tableName: string,
+		storage: "synced" | "local",
+		columnName: string,
+	): string {
+		const tableBlock = this.extractTableBlock(clientSql, tableName);
+		const createTableMarker = `CREATE TABLE IF NOT EXISTS "${tableName}_${storage}" (`;
+		const tableStart = tableBlock.indexOf(createTableMarker);
+		if (tableStart < 0) {
+			throw new Error(`无法在 generated client.sql 中找到客户端物理表: ${tableName}_${storage}`);
+		}
+		const columnsStart = tableStart + createTableMarker.length;
+		const tableEnd = tableBlock.indexOf("\n);", columnsStart);
+		if (tableEnd < 0) {
+			throw new Error(`无法解析 generated client.sql 中的客户端物理表: ${tableName}_${storage}`);
+		}
+
+		const escapedColumnName = columnName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+		const columnMatch = tableBlock
+			.slice(columnsStart, tableEnd)
+			.match(new RegExp(`^\\s*("${escapedColumnName}"\\s+.+?)(?:,)?$`, "m"));
+		if (!columnMatch) {
+			throw new Error(`无法在 generated client.sql 中找到客户端列: ${tableName}_${storage}.${columnName}`);
+		}
+		return columnMatch[1].trim();
+	}
+
 	extractViewAndTriggers(clientSql: string, tableName: string): string {
 		const tableBlock = this.extractTableBlock(clientSql, tableName);
 		const viewStart = tableBlock.indexOf(`CREATE OR REPLACE VIEW "${tableName}"`);

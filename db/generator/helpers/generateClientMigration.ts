@@ -50,8 +50,6 @@ const readJson = async <T>(filePath: string): Promise<T> => JSON.parse(await rea
 
 const toImportName = (id: string) => `migration_${id.replace(/[^a-zA-Z0-9_]/g, "_")}_Sql`;
 
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
 const getDbSchemaVersion = async (): Promise<number> => {
 	const content = await readFile(versionSchemaPath, "utf-8");
 	const match = content.match(/export const DB_SCHEMA_VERSION = (\d+);/);
@@ -90,28 +88,153 @@ const parseCreateTableName = (statement: string): string | undefined =>
 const parseDropTableName = (statement: string): string | undefined =>
 	statement.match(/DROP\s+TABLE\s+(?:"?[\w$]+"?\.)?"?([\w$]+)"?/i)?.[1];
 
-const parseAlterColumn = (statement: string, action: "ADD COLUMN" | "DROP COLUMN") => {
-	const match = statement.match(
-		new RegExp(`ALTER\\s+TABLE\\s+(?:"?[\\w$]+"?\\.)?"?([\\w$]+)"?\\s+${escapeRegExp(action)}\\s+([\\s\\S]+?);?$`, "i"),
-	);
-	if (!match) return;
-	return {
-		tableName: match[1],
-		columnSql: match[2].trim(),
-	};
+type AlterColumnAction = {
+	kind: "add" | "drop";
+	columnName: string;
 };
 
-const toLocalColumnSql = (columnSql: string) => {
-	const [name, type] = columnSql.split(/\s+/, 2);
-	if (!name || !type) return columnSql;
-	return `${name} ${type}`;
+type ParsedAlterTable = {
+	tableName: string;
+	actions: AlterColumnAction[];
+};
+
+/**
+ * 按 SQL 顶层逗号拆分 ALTER TABLE 动作。
+ * Prisma 会把多个列变更合并到同一语句；括号和字符串中的逗号仍属于类型、默认值或表达式。
+ */
+const splitTopLevelSqlList = (sql: string): string[] => {
+	const parts: string[] = [];
+	let start = 0;
+	let parenthesesDepth = 0;
+	let bracketsDepth = 0;
+	let quote: "'" | '"' | undefined;
+
+	for (let index = 0; index < sql.length; index += 1) {
+		const character = sql[index];
+		if (quote) {
+			if (character !== quote) continue;
+			if (sql[index + 1] === quote) {
+				index += 1;
+				continue;
+			}
+			quote = undefined;
+			continue;
+		}
+		if (character === "'" || character === '"') {
+			quote = character;
+			continue;
+		}
+		if (character === "(") parenthesesDepth += 1;
+		else if (character === ")") parenthesesDepth -= 1;
+		else if (character === "[") bracketsDepth += 1;
+		else if (character === "]") bracketsDepth -= 1;
+		else if (character === "," && parenthesesDepth === 0 && bracketsDepth === 0) {
+			parts.push(sql.slice(start, index).trim());
+			start = index + 1;
+		}
+	}
+
+	if (quote || parenthesesDepth !== 0 || bracketsDepth !== 0) {
+		throw new Error(`无法解析 ALTER TABLE 动作列表:\n${sql}`);
+	}
+	parts.push(sql.slice(start).trim());
+	return parts.filter(Boolean);
+};
+
+/**
+ * 将 Prisma 的复合 ALTER TABLE 解析为逐列动作。
+ * 当前客户端同步结构只接受列增删；其它 ALTER 动作必须显式实现，不能静默生成不完整迁移。
+ */
+const parseAlterTable = (statement: string): ParsedAlterTable | undefined => {
+	const match = statement.match(/^ALTER\s+TABLE\s+(?:"?[\w$]+"?\.)?"?([\w$]+)"?\s+([\s\S]+?);?$/i);
+	if (!match) return;
+
+	const actions = splitTopLevelSqlList(match[2]).map((action): AlterColumnAction => {
+		const actionMatch = action.match(
+			/^(ADD|DROP)\s+COLUMN\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(?:"([^"]+)"|([\w$]+))(?:\s+[\s\S]*)?$/i,
+		);
+		if (!actionMatch) {
+			throw new Error(`客户端迁移转换器暂不支持 ALTER TABLE 动作:\n${action}`);
+		}
+		return {
+			kind: actionMatch[1].toUpperCase() === "ADD" ? "add" : "drop",
+			columnName: actionMatch[2] ?? actionMatch[3],
+		};
+	});
+
+	return { tableName: match[1], actions };
 };
 
 const isSkippableServerOnlyBlock = (statement: string) =>
 	/^CREATE\s+(UNIQUE\s+)?INDEX/i.test(statement) ||
 	/^DROP\s+INDEX/i.test(statement) ||
 	/ALTER\s+TABLE[\s\S]+FOREIGN\s+KEY/i.test(statement) ||
-	/ALTER\s+TABLE[\s\S]+ADD\s+CONSTRAINT/i.test(statement);
+	/ALTER\s+TABLE[\s\S]+(?:ADD|DROP)\s+CONSTRAINT/i.test(statement);
+
+/**
+ * 把服务端 Prisma diff 转换为 synced/local 双表迁移。
+ * 每张受影响表只重建一次视图和触发器，并从完整客户端 schema 读取两种物理表各自的目标列定义。
+ */
+export const convertPrismaDiffToClientSql = (
+	prismaDiff: string,
+	generatedClientSql: string,
+	syncSqlFactory = new ClientSyncSqlFactory(),
+): string => {
+	const output: string[] = [];
+
+	for (const block of splitDiffBlocks(prismaDiff)) {
+		const statement = stripLeadingComments(block);
+		if (!statement) continue;
+		if (/^CREATE\s+TYPE/i.test(statement) || /^ALTER\s+TYPE[\s\S]+ADD\s+VALUE/i.test(statement)) {
+			output.push(block);
+			continue;
+		}
+		if (/^CREATE\s+TABLE/i.test(statement)) {
+			const tableName = parseCreateTableName(statement);
+			if (!tableName) throw new Error(`无法解析 CREATE TABLE: ${block}`);
+			output.push(`-- ${tableName}`);
+			output.push(syncSqlFactory.extractTableBlock(generatedClientSql, tableName));
+			continue;
+		}
+		if (/^DROP\s+TABLE/i.test(statement)) {
+			const tableName = parseDropTableName(statement);
+			if (!tableName) throw new Error(`无法解析 DROP TABLE: ${block}`);
+			output.push(`-- Drop client sync objects for ${tableName}`);
+			output.push(syncSqlFactory.generateDropClientTableObjects(tableName));
+			continue;
+		}
+		if (isSkippableServerOnlyBlock(statement)) continue;
+
+		const alterTable = parseAlterTable(statement);
+		if (alterTable) {
+			const { tableName, actions } = alterTable;
+			output.push(`-- Alter client columns for ${tableName}`);
+			output.push(syncSqlFactory.generateDropViewAndTriggers(tableName));
+			for (const storage of ["synced", "local"] as const) {
+				const alterActions = actions.map((action) => {
+					if (action.kind === "drop") return `DROP COLUMN "${action.columnName}"`;
+					const columnDefinition = syncSqlFactory.extractColumnDefinition(
+						generatedClientSql,
+						tableName,
+						storage,
+						action.columnName,
+					);
+					return `ADD COLUMN ${columnDefinition}`;
+				});
+				output.push(`ALTER TABLE "${tableName}_${storage}"\n${alterActions.join(",\n")};`);
+			}
+			output.push(syncSqlFactory.extractViewAndTriggers(generatedClientSql, tableName));
+			continue;
+		}
+
+		throw new Error(`客户端迁移转换器暂不支持该 Prisma diff:\n${block}`);
+	}
+
+	if (output.length === 0) {
+		throw new Error("Prisma diff 未生成可执行客户端迁移 SQL");
+	}
+	return `${output.join("\n\n")}\n`;
+};
 
 export class ClientMigrationGenerator {
 	private readonly syncSqlFactory = new ClientSyncSqlFactory();
@@ -139,7 +262,8 @@ export class ClientMigrationGenerator {
 		const toVersion = fromVersion + 1;
 		const id = this.createMigrationId(fromVersion, toVersion);
 		const prismaDiff = await this.generatePrismaDiff(previousSchemaPath);
-		const clientSql = await this.convertPrismaDiffToClientSql(prismaDiff);
+		const generatedClientSql = await readFile(PATHS.clientDBSQL, "utf-8");
+		const clientSql = convertPrismaDiffToClientSql(prismaDiff, generatedClientSql, this.syncSqlFactory);
 		const migrationDir = path.join(migrationsDir, id);
 
 		await mkdir(migrationDir, { recursive: false });
@@ -298,61 +422,5 @@ export default defineConfig({
 		} finally {
 			await rm(tempPrismaConfigPath, { force: true });
 		}
-	}
-
-	private async convertPrismaDiffToClientSql(prismaDiff: string): Promise<string> {
-		const generatedClientSql = await readFile(PATHS.clientDBSQL, "utf-8");
-		const output: string[] = [];
-
-		for (const block of splitDiffBlocks(prismaDiff)) {
-			const statement = stripLeadingComments(block);
-			if (!statement) continue;
-			if (/^CREATE\s+TYPE/i.test(statement) || /^ALTER\s+TYPE[\s\S]+ADD\s+VALUE/i.test(statement)) {
-				output.push(block);
-				continue;
-			}
-			if (/^CREATE\s+TABLE/i.test(statement)) {
-				const tableName = parseCreateTableName(statement);
-				if (!tableName) throw new Error(`无法解析 CREATE TABLE: ${block}`);
-				output.push(`-- ${tableName}`);
-				output.push(this.syncSqlFactory.extractTableBlock(generatedClientSql, tableName));
-				continue;
-			}
-			if (/^DROP\s+TABLE/i.test(statement)) {
-				const tableName = parseDropTableName(statement);
-				if (!tableName) throw new Error(`无法解析 DROP TABLE: ${block}`);
-				output.push(`-- Drop client sync objects for ${tableName}`);
-				output.push(this.syncSqlFactory.generateDropClientTableObjects(tableName));
-				continue;
-			}
-
-			const addColumn = parseAlterColumn(statement, "ADD COLUMN");
-			if (addColumn) {
-				output.push(`-- Add client column ${addColumn.tableName}.${addColumn.columnSql}`);
-				output.push(`ALTER TABLE "${addColumn.tableName}_synced" ADD COLUMN ${addColumn.columnSql};`);
-				output.push(`ALTER TABLE "${addColumn.tableName}_local" ADD COLUMN ${toLocalColumnSql(addColumn.columnSql)};`);
-				output.push(this.syncSqlFactory.generateDropViewAndTriggers(addColumn.tableName));
-				output.push(this.syncSqlFactory.extractViewAndTriggers(generatedClientSql, addColumn.tableName));
-				continue;
-			}
-
-			const dropColumn = parseAlterColumn(statement, "DROP COLUMN");
-			if (dropColumn) {
-				output.push(`-- Drop client column ${dropColumn.tableName}.${dropColumn.columnSql}`);
-				output.push(`ALTER TABLE "${dropColumn.tableName}_synced" DROP COLUMN ${dropColumn.columnSql};`);
-				output.push(`ALTER TABLE "${dropColumn.tableName}_local" DROP COLUMN ${dropColumn.columnSql};`);
-				output.push(this.syncSqlFactory.generateDropViewAndTriggers(dropColumn.tableName));
-				output.push(this.syncSqlFactory.extractViewAndTriggers(generatedClientSql, dropColumn.tableName));
-				continue;
-			}
-
-			if (isSkippableServerOnlyBlock(statement)) continue;
-			throw new Error(`客户端迁移转换器暂不支持该 Prisma diff:\n${block}`);
-		}
-
-		if (output.length === 0) {
-			throw new Error("Prisma diff 未生成可执行客户端迁移 SQL");
-		}
-		return `${output.join("\n\n")}\n`;
 	}
 }
