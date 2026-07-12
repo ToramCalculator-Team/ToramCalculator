@@ -738,7 +738,6 @@ model character {
     partnerSkillBType String // Enum PARTNER_SKILL_TYPE
     consumables       consumable[]
     combos            combo[]
-    actions           Json /// ZOD MemberBTSchema
     belongToPlayer    player                @relation(fields: [belongToPlayerId], references: [id], onDelete: Cascade)
     belongToPlayerId  String
 
@@ -852,7 +851,7 @@ model member {
     id String @id
 
     name              String
-    sequence          Int
+    formationOrder    Int
     type              String // Enum MEMBER_TYPE
     player            player?    @relation(fields: [playerId], references: [id])
     playerId          String?
@@ -863,6 +862,7 @@ model member {
     mob               mob?       @relation(fields: [mobId], references: [id])
     mobId             String?
     mobDifficultyFlag String // Enum MOB_DIFFICULTY_FLAG
+    behavior          Json /// ZOD MemberBTSchema
 
     belongToTeam   team   @relation(fields: [belongToTeamId], references: [id], onDelete: Cascade)
     belongToTeamId String
