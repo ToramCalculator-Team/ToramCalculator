@@ -3,13 +3,13 @@
  * @description 从 CSV 文件恢复数据库
  */
 
-import { type ChildProcessWithoutNullStreams, execSync, spawn } from "node:child_process";
+import { type ChildProcessWithoutNullStreams, execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
-import { MODEL_METADATA, RELATION_METADATA } from "../generated/dmmf-utils.js";
+import { MODEL_METADATA } from "../generated/dmmf-utils.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -170,38 +170,34 @@ export const isLocalDatabase = (host: string): boolean => {
 };
 
 /**
- * 执行 Docker 命令
- * @param command - 要执行的命令
- * @returns 命令输出
- */
-export const execDockerCommand = (command: string): string => {
-	try {
-		return execSync(command, { encoding: "utf-8" });
-	} catch (error) {
-		console.error(`命令执行失败: ${command}`, (error as Error).message);
-		throw error;
-	}
-};
-
-/**
  * 执行 PostgreSQL 命令
+ *
+ * SQL 通过 stdin 传给 psql，避免 shell 拼接在错误日志中泄露连接串或重复打印整段验证 SQL。
+ * ON_ERROR_STOP 保证约束验证抛出的 SQL 错误能够可靠传递给恢复流程。
+ *
  * @param sql - SQL 命令
  * @param config - 配置对象
  * @returns 命令输出
  */
 export const execPsql = (sql: string, config: Config): string => {
-	const escapedSql = sql.replace(/'/g, "'\"'\"'");
+	const localDatabase = isLocalDatabase(config.PG_HOST);
+	const pgUrl = localDatabase
+		? `postgresql://${config.PG_USERNAME}:${config.PG_PASSWORD}@/${config.PG_DBNAME}`
+		: `postgresql://${config.PG_USERNAME}:${config.PG_PASSWORD}@${config.PG_HOST}:${config.PG_PORT}/${config.PG_DBNAME}`;
+	const dockerArgs = localDatabase
+		? ["exec", "-i", config.PG_CONTAINER_NAME, "psql", "-v", "ON_ERROR_STOP=1", pgUrl]
+		: ["run", "--rm", "-i", "postgres:16-alpine", "psql", "-v", "ON_ERROR_STOP=1", pgUrl];
 
-	if (isLocalDatabase(config.PG_HOST)) {
-		// 本地数据库：通过 Docker 容器连接
-		const pgUrl = `postgresql://${config.PG_USERNAME}:${config.PG_PASSWORD}@/${config.PG_DBNAME}`;
-		const command = `echo '${escapedSql}' | docker exec -i ${config.PG_CONTAINER_NAME} psql "${pgUrl}"`;
-		return execDockerCommand(command);
-	} else {
-		// 远程数据库：使用 Docker 容器中的 psql 连接远程数据库
-		const pgUrl = `postgresql://${config.PG_USERNAME}:${config.PG_PASSWORD}@${config.PG_HOST}:${config.PG_PORT}/${config.PG_DBNAME}`;
-		const command = `echo '${escapedSql}' | docker run --rm -i postgres:16-alpine psql "${pgUrl}"`;
-		return execDockerCommand(command);
+	try {
+		return execFileSync("docker", dockerArgs, {
+			encoding: "utf-8",
+			input: sql,
+			stdio: ["pipe", "pipe", "pipe"],
+		});
+	} catch (error) {
+		const stderr =
+			error instanceof Error && "stderr" in error && typeof error.stderr === "string" ? error.stderr.trim() : "";
+		throw new Error(stderr || "PostgreSQL 命令执行失败", { cause: error });
 	}
 };
 
@@ -289,107 +285,20 @@ export const checkRemoteDatabaseSafety = (config: Config): Promise<void> => {
 };
 
 /**
- * 禁用外键约束
- * @param config - 配置对象
- */
-export const disableForeignKeys = (config: Config): void => {
-	console.log("🚫 禁用外键约束...");
-	execPsql("SET session_replication_role = 'replica';", config);
-};
-
-/**
- * 使用拓扑排序获取表的导入顺序
- * @returns 表名数组
- */
-export const getTopologicalOrder = (): string[] => {
-	const visited = new Set<string>();
-	const visiting = new Set<string>();
-	const result: string[] = [];
-
-	// 构建依赖关系映射
-	// 只有拥有外键的表才依赖被引用的表
-	const dependencyMap = new Map<string, Set<string>>();
-
-	for (const relation of RELATION_METADATA) {
-		// 自关联没有表级导入顺序；恢复阶段已禁用外键，行级引用交给数据完整性校验处理。
-		if (relation.from === relation.to) {
-			continue;
-		}
-		// ManyToMany 关系不产生直接依赖（通过中间表）
-		if (relation.type === "ManyToMany") {
-			continue;
-		}
-
-		// 只有 from 表有外键时，from 表才依赖 to 表
-		// 对于 OneToMany，外键在 to 表中（从 to 的角度看是 ManyToOne），所以这里不处理
-		if (relation.fromHasForeignKey && (relation.type === "ManyToOne" || relation.type === "OneToOne")) {
-			// from 表有外键，依赖 to 表
-			let dependencies = dependencyMap.get(relation.from);
-			if (!dependencies) {
-				dependencies = new Set();
-				dependencyMap.set(relation.from, dependencies);
-			}
-			dependencies.add(relation.to);
-		}
-	}
-
-	const visit = (tableName: string): void => {
-		if (visiting.has(tableName)) {
-			// 提供更详细的错误信息
-			const visitingList = Array.from(visiting);
-			const dependencies = dependencyMap.get(tableName);
-			throw new Error(
-				`循环依赖检测到: ${tableName}\n` +
-					`当前访问链: ${[...visitingList, tableName].join(" -> ")}\n` +
-					`表 ${tableName} 的依赖: ${dependencies ? Array.from(dependencies).join(", ") : "无"}`,
-			);
-		}
-		if (visited.has(tableName)) {
-			return;
-		}
-
-		visiting.add(tableName);
-
-		// 获取此表的依赖
-		const dependencies = dependencyMap.get(tableName);
-		if (dependencies) {
-			for (const depTable of dependencies) {
-				visit(depTable);
-			}
-		}
-
-		visiting.delete(tableName);
-		visited.add(tableName);
-		result.push(tableName);
-	};
-
-	// 遍历所有表
-	for (const model of MODEL_METADATA) {
-		visit(model.tableName);
-	}
-
-	return result;
-};
-
-/**
- * 获取表的正确导入顺序
+ * 获取稳定的表导入顺序
+ *
+ * 恢复时每个 \copy 会话都会关闭外键触发器，因此外键图不需要、也不一定能够拓扑排序。
+ * 直接使用生成元数据的确定顺序，循环引用统一交给导入后的完整性验证处理。
  * @returns 表名数组
  */
 export const getTableOrder = (): string[] => {
-	console.log("📌 获取表的正确导入顺序...");
+	console.log("📌 获取稳定的表导入顺序...");
+	const importOrder = MODEL_METADATA.map((model) => model.tableName);
 
-	try {
-		// 使用关系元数据中的依赖关系进行拓扑排序
-		const importOrder = getTopologicalOrder();
+	console.log(`📋 找到 ${importOrder.length} 个表`);
+	console.log(`📋 导入顺序: ${importOrder.slice(0, 5).join(" -> ")}${importOrder.length > 5 ? "..." : ""}`);
 
-		console.log(`📋 找到 ${importOrder.length} 个表`);
-		console.log(`📋 导入顺序: ${importOrder.slice(0, 5).join(" -> ")}${importOrder.length > 5 ? "..." : ""}`);
-
-		return importOrder;
-	} catch (error) {
-		console.error("获取表顺序失败:", error);
-		throw error;
-	}
+	return importOrder;
 };
 
 /**
@@ -494,7 +403,7 @@ export const importSingleCsvFile = (table: string, csvFile: string, config: Conf
  * @returns Promise<ImportResult> 导入结果
  */
 export const importCsvFiles = async (tables: string[], config: Config): Promise<ImportResult> => {
-	console.log("📥 按依赖顺序导入 CSV 文件...");
+	console.log("📥 按稳定顺序导入 CSV 文件...");
 
 	let importedCount = 0;
 	let skippedCount = 0;
@@ -529,17 +438,155 @@ export const importCsvFiles = async (tables: string[], config: Config): Promise<
 };
 
 /**
- * 恢复外键约束
+ * 验证恢复后的全部外键引用
+ *
+ * \copy 会话通过 session_replication_role 跳过了外键触发器，PostgreSQL 不会在会话结束后追溯检查。
+ * 因此这里从系统目录读取实际约束并逐一反查悬空引用，同时覆盖普通关系和 Prisma 隐式中间表。
+ *
  * @param config - 配置对象
  */
-export const restoreForeignKeys = (config: Config): void => {
-	console.log("🔄 恢复外键约束...");
-	try {
-		execPsql("SET session_replication_role = 'origin';", config);
-	} catch (error) {
-		console.error("⚠️ 恢复外键约束失败，但继续执行:", (error as Error).message);
-		// 不抛出错误，让流程继续
-	}
+export const validateForeignKeys = (config: Config): void => {
+	console.log("🔍 验证外键完整性...");
+
+	const validationSql = String.raw`
+CREATE TEMP TABLE foreign_key_validation_errors (
+	source_schema text NOT NULL,
+	source_table text NOT NULL,
+	constraint_name text NOT NULL,
+	source_columns text NOT NULL,
+	target_schema text NOT NULL,
+	target_table text NOT NULL,
+	target_columns text NOT NULL,
+	violation_count bigint NOT NULL
+);
+
+DO $validate_foreign_keys$
+DECLARE
+	foreign_key record;
+	all_source_columns_non_null text;
+	all_source_columns_null text;
+	referencing_row_condition text;
+	target_match_condition text;
+	source_columns text;
+	target_columns text;
+	violation_count bigint;
+BEGIN
+	FOR foreign_key IN
+		SELECT
+			constraint_entry.conname,
+			constraint_entry.conkey,
+			constraint_entry.confkey,
+			constraint_entry.confmatchtype,
+			constraint_entry.conrelid,
+			constraint_entry.confrelid,
+			source_namespace.nspname AS source_schema,
+			source_relation.relname AS source_table,
+			target_namespace.nspname AS target_schema,
+			target_relation.relname AS target_table
+		FROM pg_constraint AS constraint_entry
+		JOIN pg_class AS source_relation ON source_relation.oid = constraint_entry.conrelid
+		JOIN pg_namespace AS source_namespace ON source_namespace.oid = source_relation.relnamespace
+		JOIN pg_class AS target_relation ON target_relation.oid = constraint_entry.confrelid
+		JOIN pg_namespace AS target_namespace ON target_namespace.oid = target_relation.relnamespace
+		WHERE constraint_entry.contype = 'f'
+			AND source_namespace.nspname = current_schema()
+		ORDER BY source_relation.relname, constraint_entry.conname
+	LOOP
+		SELECT
+			string_agg(format('source.%I IS NOT NULL', source_column.attname), ' AND ' ORDER BY key_column.position),
+			string_agg(format('source.%I IS NULL', source_column.attname), ' AND ' ORDER BY key_column.position),
+			string_agg(format('source.%I = target.%I', source_column.attname, target_column.attname), ' AND ' ORDER BY key_column.position),
+			string_agg(format('source.%I IS NULL OR source.%I = target.%I', source_column.attname, source_column.attname, target_column.attname), ' AND ' ORDER BY key_column.position),
+			string_agg(format('%I', source_column.attname), ', ' ORDER BY key_column.position),
+			string_agg(format('%I', target_column.attname), ', ' ORDER BY key_column.position)
+		INTO
+			all_source_columns_non_null,
+			all_source_columns_null,
+			target_match_condition,
+			referencing_row_condition,
+			source_columns,
+			target_columns
+		FROM unnest(foreign_key.conkey, foreign_key.confkey) WITH ORDINALITY
+			AS key_column(source_attribute_number, target_attribute_number, position)
+		JOIN pg_attribute AS source_column
+			ON source_column.attrelid = foreign_key.conrelid
+			AND source_column.attnum = key_column.source_attribute_number
+		JOIN pg_attribute AS target_column
+			ON target_column.attrelid = foreign_key.confrelid
+			AND target_column.attnum = key_column.target_attribute_number;
+
+		IF foreign_key.confmatchtype = 'f' THEN
+			referencing_row_condition := format('NOT (%s)', all_source_columns_null);
+		ELSIF foreign_key.confmatchtype = 'p' THEN
+			target_match_condition := referencing_row_condition;
+			referencing_row_condition := format('NOT (%s)', all_source_columns_null);
+		ELSE
+			referencing_row_condition := all_source_columns_non_null;
+		END IF;
+
+		EXECUTE format(
+			'SELECT count(*) FROM %I.%I AS source WHERE %s AND NOT EXISTS (SELECT 1 FROM %I.%I AS target WHERE %s)',
+			foreign_key.source_schema,
+			foreign_key.source_table,
+			referencing_row_condition,
+			foreign_key.target_schema,
+			foreign_key.target_table,
+			target_match_condition
+		)
+		INTO violation_count;
+
+		IF violation_count > 0 THEN
+			INSERT INTO foreign_key_validation_errors VALUES (
+				foreign_key.source_schema,
+				foreign_key.source_table,
+				foreign_key.conname,
+				source_columns,
+				foreign_key.target_schema,
+				foreign_key.target_table,
+				target_columns,
+				violation_count
+			);
+		END IF;
+	END LOOP;
+END
+$validate_foreign_keys$;
+
+DO $report_foreign_key_errors$
+DECLARE
+	failed_constraint_count integer;
+	error_summary text;
+BEGIN
+	SELECT
+		count(*),
+		string_agg(
+			format(
+				'- %I.%I.%I (%s) -> %I.%I (%s): %s 行悬空引用',
+				source_schema,
+				source_table,
+				constraint_name,
+				source_columns,
+				target_schema,
+				target_table,
+				target_columns,
+				violation_count
+			),
+			E'\n'
+			ORDER BY source_schema, source_table, constraint_name
+		)
+	INTO failed_constraint_count, error_summary
+	FROM foreign_key_validation_errors;
+
+	IF failed_constraint_count > 0 THEN
+		RAISE EXCEPTION USING
+			ERRCODE = 'foreign_key_violation',
+			MESSAGE = format(E'外键完整性验证失败：%s 个约束存在违规数据\n%s', failed_constraint_count, error_summary);
+	END IF;
+END
+$report_foreign_key_errors$;
+`;
+
+	execPsql(validationSql, config);
+	console.log("✅ 外键完整性验证通过");
 };
 
 /**
@@ -553,21 +600,18 @@ export const restore = async (config: Config): Promise<void> => {
 		// 0. 安全检查（如果是远程数据库）
 		await checkRemoteDatabaseSafety(config);
 
-		// 1. 禁用外键约束
-		disableForeignKeys(config);
-
-		// 2. 获取表的正确导入顺序
+		// 1. 获取稳定的导入顺序。每个导入会话自行关闭外键触发器，不要求关系图无环。
 		const tables = getTableOrder();
 
-		// 3. 按顺序导入 CSV 文件
+		// 2. 按顺序导入 CSV 文件
 		const importResult = await importCsvFiles(tables, config);
-
-		// 4. 恢复外键约束
-		restoreForeignKeys(config);
 
 		if (importResult.failedTables.length > 0) {
 			throw new Error(formatImportFailureSummary(importResult.failedTables));
 		}
+
+		// 3. 外键触发器不会追溯验证 replica 会话写入的数据，导入完成后必须主动检查。
+		validateForeignKeys(config);
 
 		console.log("✅ 数据库恢复完成！");
 	} catch (error) {
