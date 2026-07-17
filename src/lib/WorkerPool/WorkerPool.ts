@@ -6,9 +6,9 @@ import {
 	type Result,
 	type Task,
 	type WorkerMessage,
-	type WorkerMessageEvent,
 	type WorkerSystemMessageEnvelope,
 	WorkerSystemMessageEnvelopeSchema,
+	WorkerTaskResponseEnvelopeSchema,
 } from "./type";
 
 // Worker性能指标
@@ -71,6 +71,8 @@ export interface PoolConfig<TPriority extends string> {
 	isWorkerReadyMessage?: (sys: WorkerSystemMessageEnvelope) => boolean;
 }
 
+type WorkerPoolLifecycle = "configured" | "started" | "stopping" | "stopped";
+
 /**
  * 通用线程池
  *
@@ -95,7 +97,7 @@ export interface PoolConfig<TPriority extends string> {
  */
 export class WorkerPool<
 	TTaskType extends string,
-	TTaskTypeMap extends Record<TTaskType, any>,
+	TTaskTypeMap extends Record<TTaskType, unknown>,
 	TPriority extends string,
 > extends EventEmitter {
 	// ==================== 私有属性 ====================
@@ -113,7 +115,7 @@ export class WorkerPool<
 	private taskMap = new Map<
 		string,
 		{
-			resolve: (result: any) => void; // Promise解析函数
+			resolve: (result: Result<unknown>) => void; // Promise解析函数
 			reject: (error: Error) => void; // Promise拒绝函数
 			timeout: NodeJS.Timeout; // 超时定时器
 			task: Task<TTaskType, TTaskTypeMap[keyof TTaskTypeMap], TPriority>; // 任务对象
@@ -132,23 +134,19 @@ export class WorkerPool<
 	/** 性能监控定时器 - 定期收集和上报性能指标 */
 	private monitorInterval?: NodeJS.Timeout;
 
-	/** 池状态标志 - 控制是否接受新任务 */
-	private accepting = true;
-
-	/** Worker初始化状态 - 控制延迟初始化 */
-	private workersInitialized = false;
+	private lifecycle: WorkerPoolLifecycle = "configured";
+	private shutdownPromise: Promise<void> | null = null;
 
 	/**
 	 * 构造函数
 	 *
-	 * 初始化通用线程池，设置配置参数并启动后台服务
+	 * 初始化通用线程池配置；物理 Worker 和后台服务只由 start() 创建。
 	 *
 	 * @param config 线程池配置参数
 	 *
 	 * 设计原则：
-	 * - 延迟初始化：Worker只在首次使用时创建，节省资源
 	 * - 配置验证：确保所有配置参数有效
-	 * - 后台服务：启动监控和清理进程，确保系统健康
+	 * - 显式生命周期：构造和读取都不能偷偷创建资源
 	 */
 	constructor(config: PoolConfig<TPriority>) {
 		super();
@@ -172,13 +170,6 @@ export class WorkerPool<
 			// ready 判定：默认不做判定（业务层应注入）
 			isWorkerReadyMessage: config.isWorkerReadyMessage ?? (() => false),
 		};
-
-		// 启动后台服务（不依赖Worker初始化）
-		this.startCleanupProcess(); // 资源清理服务
-		this.startMonitoring(); // 性能监控服务
-
-		// 延迟初始化Worker
-		this.workersInitialized = false;
 	}
 
 	/**
@@ -217,15 +208,27 @@ export class WorkerPool<
 		}
 	}
 
-	/**
-	 * 确保Worker已初始化
-	 *
-	 * 实现延迟初始化模式，只在首次使用时创建Worker
-	 */
-	private ensureWorkersInitialized(): void {
-		if (!this.workersInitialized) {
+	/** 唯一显式启动入口；构造、查询和任务提交都不会补启动。 */
+	start(): void {
+		if (this.lifecycle === "started") return;
+		if (this.lifecycle !== "configured") {
+			throw new Error(`WorkerPool 无法从 ${this.lifecycle} 状态启动`);
+		}
+
+		this.lifecycle = "started";
+		try {
 			this.initializeWorkers();
-			this.workersInitialized = true;
+			this.startCleanupProcess();
+			this.startMonitoring();
+		} catch (error) {
+			this.stopBackgroundServices();
+			for (const worker of this.workers) {
+				worker.port.close();
+				worker.worker.terminate();
+			}
+			this.workers.length = 0;
+			this.lifecycle = "stopped";
+			throw error;
 		}
 	}
 
@@ -254,7 +257,7 @@ export class WorkerPool<
 	 * - 性能监控：跟踪任务完成情况和处理时间
 	 * - 错误处理：Worker故障时自动替换
 	 */
-	private createWorker(): WorkerWrapper {
+	private createWorker(insertAt?: number): WorkerWrapper {
 		// 创建Web Worker实例
 		const worker = new Worker(this.config.workerUrl, { type: "module" });
 
@@ -316,9 +319,68 @@ export class WorkerPool<
 			this.handleWorkerError(wrapper, error);
 		};
 
-		// 将Worker添加到池中
-		this.workers.push(wrapper);
+		// 初始化追加，故障替换则原位插入，避免同一个 wrapper 被登记两次。
+		if (insertAt === undefined) {
+			this.workers.push(wrapper);
+		} else {
+			this.workers.splice(insertAt, 0, wrapper);
+		}
 		return wrapper;
+	}
+
+	private activeTaskIdForWorker(worker: WorkerWrapper): string | undefined {
+		return Array.from(this.taskToWorkerId.entries()).find(([, workerId]) => workerId === worker.id)?.[0];
+	}
+
+	/**
+	 * 统一结束一次基础设施失败，保证任务、Worker 占用和重试定时器同时收敛。
+	 * 协议信封非法时不重试原任务；超时、发送失败和 Worker 崩溃可以按通用配置重试。
+	 */
+	private failTask(
+		belongToTaskId: string,
+		error: Error,
+		options: { retryable: boolean; replaceWorker: boolean },
+	): void {
+		const callback = this.taskMap.get(belongToTaskId);
+		if (!callback) return;
+
+		clearTimeout(callback.timeout);
+		const workerId = this.taskToWorkerId.get(belongToTaskId);
+		const worker = workerId ? this.workers.find((candidate) => candidate.id === workerId) : undefined;
+		this.taskToWorkerId.delete(belongToTaskId);
+		this.taskQueue.remove(belongToTaskId);
+
+		if (options.retryable && callback.task.retriesLeft > 0) {
+			callback.task.retriesLeft--;
+			callback.timeout = this.createTaskTimeout(callback.task);
+			this.taskQueue.unshift(callback.task);
+			this.emit("task-retry", {
+				belongToTaskId,
+				retriesLeft: callback.task.retriesLeft,
+				error: error.message,
+			});
+		} else {
+			this.taskMap.delete(belongToTaskId);
+			callback.reject(error);
+			this.emit("task-failed", { belongToTaskId, error: error.message });
+		}
+
+		if (worker) {
+			this.updateWorkerMetrics(worker, "error");
+			if (options.replaceWorker) {
+				this.replaceWorker(worker);
+			} else {
+				worker.busy = false;
+				worker.lastUsed = Date.now();
+			}
+		}
+		this.processNextTask();
+	}
+
+	private createTaskTimeout(task: Task<TTaskType, TTaskTypeMap[keyof TTaskTypeMap], TPriority>): NodeJS.Timeout {
+		return setTimeout(() => {
+			this.failTask(task.id, new Error("Task timeout"), { retryable: true, replaceWorker: true });
+		}, task.timeout);
 	}
 
 	/**
@@ -340,13 +402,23 @@ export class WorkerPool<
 	 * - 性能监控：收集处理时间和成功率指标
 	 * - 事件驱动：通过事件通知外部系统状态变化
 	 */
-	private handleWorkerMessage<TResult, TData>(
-		worker: WorkerWrapper,
-		event: MessageEvent<WorkerMessageEvent<TResult, TTaskTypeMap, TData>>,
-	): void {
+	private handleWorkerMessage(worker: WorkerWrapper, event: MessageEvent<unknown>): void {
 		// console.log("收到worker消息", event.data);
-		// 使用类型约束解析消息数据
-		const messageData = event.data;
+		const parsed = WorkerTaskResponseEnvelopeSchema.safeParse(event.data);
+		if (!parsed.success) {
+			const activeTaskId = this.activeTaskIdForWorker(worker);
+			if (activeTaskId) {
+				this.failTask(activeTaskId, new Error(`Worker returned an invalid task response: ${parsed.error.message}`), {
+					retryable: false,
+					replaceWorker: true,
+				});
+			} else {
+				this.replaceWorker(worker);
+				this.processNextTask();
+			}
+			return;
+		}
+		const messageData = parsed.data;
 		const { belongToTaskId, result, error, metrics } = messageData;
 
 		// 发射原始消息事件，让子类处理业务逻辑
@@ -358,22 +430,26 @@ export class WorkerPool<
 				result,
 				error,
 				metrics,
-				// 系统消息相关字段（可选）
-				type: messageData.type,
-				data: messageData.data,
-				cmd: messageData.cmd,
-				cmds: messageData.cmds,
 			},
 		});
 
 		// 处理任务结果
 		const taskCallback = this.taskMap.get(belongToTaskId);
 		if (!taskCallback) {
-			// 任务不存在（可能已超时或被清理），忽略此消息
+			const activeTaskId = this.activeTaskIdForWorker(worker);
+			if (activeTaskId) {
+				this.failTask(activeTaskId, new Error(`Worker returned an unknown task id: ${belongToTaskId}`), {
+					retryable: false,
+					replaceWorker: true,
+				});
+			} else {
+				this.replaceWorker(worker);
+				this.processNextTask();
+			}
 			return;
 		}
 
-		const { resolve, reject, timeout, task } = taskCallback;
+		const { resolve, timeout } = taskCallback;
 		const processingTime = metrics?.duration || 0;
 
 		// 清除任务超时定时器，防止内存泄漏
@@ -382,26 +458,17 @@ export class WorkerPool<
 		// 更新Worker性能指标，用于负载均衡和故障检测
 		this.updateWorkerMetrics(worker, error ? "error" : "success", processingTime);
 
-		if (error) {
-			// 任务执行失败，实现智能重试机制
-			if (task.retriesLeft > 0) {
-				task.retriesLeft--;
-				this.taskQueue.unshift(task); // 重试任务优先执行，提高成功率
-				this.emit("task-retry", { belongToTaskId, retriesLeft: task.retriesLeft, error });
-			} else {
-				// 重试次数用完，任务最终失败
-				this.taskMap.delete(belongToTaskId);
-				reject(new Error(error));
-				this.emit("task-failed", { belongToTaskId, error });
-			}
+		if (error !== undefined && error !== null) {
+			this.failTask(belongToTaskId, new Error(error), { retryable: true, replaceWorker: true });
+			return;
 		} else {
 			// 任务执行成功，返回结果和性能指标
 			this.taskMap.delete(belongToTaskId);
-			const taskResult = {
+			const taskResult: Result<unknown> = {
 				success: true,
 				data: result,
 				metrics,
-			} as Result<TResult>;
+			};
 
 			resolve(taskResult);
 			this.emit("task-completed", { belongToTaskId, result, metrics });
@@ -419,49 +486,17 @@ export class WorkerPool<
 	}
 
 	private handleWorkerError(worker: WorkerWrapper, error: ErrorEvent): void {
-		this.updateWorkerMetrics(worker, "error");
-
-		// 查找该worker正在处理的任务
-		// 从映射表查找该 worker 当前处理的任务
-		const activeTask = Array.from(this.taskToWorkerId.entries()).find(([, workerId]) => workerId === worker.id);
-
-		if (activeTask) {
-			const [belongToTaskId] = activeTask;
-			const callback = this.taskMap.get(belongToTaskId);
-			if (callback) {
-				const { task } = callback;
-				clearTimeout(callback.timeout);
-
-				// 重试机制
-				if (task.retriesLeft > 0) {
-					task.retriesLeft--;
-					this.taskQueue.unshift(task);
-					this.emit("task-retry", { belongToTaskId, retriesLeft: task.retriesLeft, error: error.message });
-				} else {
-					this.taskMap.delete(belongToTaskId);
-					callback.reject(new Error(`Worker error: ${error.message}`));
-					this.emit("task-failed", { belongToTaskId, error: error.message });
-				}
-			}
-			this.taskToWorkerId.delete(belongToTaskId);
+		const activeTaskId = this.activeTaskIdForWorker(worker);
+		if (activeTaskId) {
+			this.failTask(activeTaskId, new Error(`Worker error: ${error.message}`), {
+				retryable: true,
+				replaceWorker: true,
+			});
+			return;
 		}
-
-		// 替换worker
+		this.updateWorkerMetrics(worker, "error");
 		this.replaceWorker(worker);
 		this.processNextTask();
-	}
-
-	private handleWorkerExit(worker: WorkerWrapper): void {
-		const index = this.workers.indexOf(worker);
-		if (index !== -1) {
-			this.workers.splice(index, 1);
-
-			if (this.accepting) {
-				const newWorker = this.createWorker();
-				this.workers.splice(index, 0, newWorker);
-				this.emit("worker-replaced", { oldId: worker.id, newId: newWorker.id });
-			}
-		}
 	}
 
 	private replaceWorker(worker: WorkerWrapper): void {
@@ -470,23 +505,15 @@ export class WorkerPool<
 			this.workers.splice(index, 1);
 			try {
 				worker.worker.terminate();
-			} catch (error) {
+			} catch {
 				// 忽略终止错误
 			}
 
-			if (this.accepting) {
-				const newWorker = this.createWorker();
-				this.workers.splice(index, 0, newWorker);
+			if (this.lifecycle === "started" || (this.lifecycle === "stopping" && this.taskMap.size > 0)) {
+				const newWorker = this.createWorker(index);
 				this.emit("worker-replaced", { oldId: worker.id, newId: newWorker.id });
 			}
 		}
-	}
-
-	private getWorkerForTask(task: Task<TTaskType, TTaskTypeMap[keyof TTaskTypeMap], TPriority>): WorkerWrapper | null {
-		// 通过 taskToWorkerId 映射进行精确查找
-		const workerId = this.taskToWorkerId.get(task.id);
-		if (!workerId) return null;
-		return this.workers.find((w) => w.id === workerId) || null;
 	}
 
 	private updateWorkerMetrics(worker: WorkerWrapper, status: "success" | "error", processingTime: number = 0): void {
@@ -520,22 +547,19 @@ export class WorkerPool<
 	 * // ❌ 编译错误：类型不匹配
 	 * pool.executeTask("engine_command", dataQueryCmd, "high");
 	 */
-	async executeTask<K extends TTaskType, TResult = any>(
+	async executeTask<K extends TTaskType>(
 		type: K,
 		payload: TTaskTypeMap[K],
 		priority: TPriority,
-	): Promise<Result<TResult>> {
-		if (!this.accepting) {
-			throw new Error("WorkerPool已关闭");
+	): Promise<Result<unknown>> {
+		if (this.lifecycle !== "started") {
+			throw new Error(`WorkerPool 尚未启动或已关闭: ${this.lifecycle}`);
 		}
-
-		// 确保 Worker 已初始化
-		this.ensureWorkersInitialized();
 
 		// 构建任务对象
 		const task: Task<K, TTaskTypeMap[K], TPriority> = {
 			id: createId(),
-			type: type as K,
+			type,
 			payload,
 			priority,
 			timestamp: Date.now(),
@@ -566,30 +590,10 @@ export class WorkerPool<
 	 * - 容错机制：超时重试和错误恢复
 	 * - 资源管理：防止内存溢出和资源泄漏
 	 */
-	private async processTask<TResult>(
-		task: Task<TTaskType, TTaskTypeMap[keyof TTaskTypeMap], TPriority>,
-	): Promise<Result<TResult>> {
+	private async processTask<K extends TTaskType>(task: Task<K, TTaskTypeMap[K], TPriority>): Promise<Result<unknown>> {
 		return new Promise((resolve, reject) => {
-			// 设置任务超时处理机制
-			const timeout = setTimeout(() => {
-				const callback = this.taskMap.get(task.id);
-				if (callback) {
-					// 超时重试逻辑：优先重试，提高成功率
-					if (task.retriesLeft > 0) {
-						task.retriesLeft--;
-						this.taskQueue.unshift(task); // 重试任务优先执行
-						this.emit("task-retry", { belongToTaskId: task.id, retriesLeft: task.retriesLeft, error: "timeout" });
-					} else {
-						// 重试次数用完，任务最终失败
-						this.taskMap.delete(task.id);
-						reject(new Error("Task timeout"));
-						this.emit("task-failed", { belongToTaskId: task.id, error: "timeout" });
-					}
-				}
-			}, task.timeout);
-
 			// 注册任务回调信息，用于后续处理
-			this.taskMap.set(task.id, { resolve, reject, timeout, task });
+			this.taskMap.set(task.id, { resolve, reject, timeout: this.createTaskTimeout(task), task });
 
 			// 队列大小检查，防止内存溢出
 			if (this.taskQueue.size() > this.config.maxQueueSize) {
@@ -693,30 +697,8 @@ export class WorkerPool<
 			this.taskToWorkerId.set(task.id, worker.id);
 			worker.port.postMessage(message, transferables);
 		} catch (error) {
-			// 发送失败，释放Worker状态
-			worker.busy = false;
-
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			const errorObj = error instanceof Error ? error : new Error(errorMessage);
-
-			// 任务发送失败重试机制
-			if (task.retriesLeft > 0) {
-				task.retriesLeft--;
-				this.taskQueue.unshift(task); // 重试任务优先执行
-				this.emit("task-retry", { belongToTaskId: task.id, retriesLeft: task.retriesLeft, error: errorMessage });
-			} else {
-				// 重试次数用完，任务最终失败
-				const callback = this.taskMap.get(task.id);
-				if (callback) {
-					this.taskMap.delete(task.id);
-					callback.reject(errorObj);
-					this.emit("task-failed", { belongToTaskId: task.id, error: errorMessage });
-				}
-			}
-			this.taskToWorkerId.delete(task.id);
-
-			// 关键：即使发送失败也要尝试处理下一个任务
-			this.processNextTask();
+			const errorObj = error instanceof Error ? error : new Error(String(error));
+			this.failTask(task.id, errorObj, { retryable: true, replaceWorker: true });
 		}
 	}
 
@@ -744,9 +726,7 @@ export class WorkerPool<
 	 * @returns 是否已准备好
 	 */
 	isReady(): boolean {
-		// 确保workers已初始化
-		this.ensureWorkersInitialized();
-		return this.workersInitialized && this.workers.length > 0;
+		return this.lifecycle === "started" && this.workers.length > 0 && this.workers.every((worker) => worker.ready);
 	}
 
 	/**
@@ -831,6 +811,13 @@ export class WorkerPool<
 		}, 60000); // 每分钟清理一次
 	}
 
+	private stopBackgroundServices(): void {
+		if (this.cleanupInterval) clearInterval(this.cleanupInterval);
+		if (this.monitorInterval) clearInterval(this.monitorInterval);
+		this.cleanupInterval = undefined;
+		this.monitorInterval = undefined;
+	}
+
 	/**
 	 * 优雅关闭线程池
 	 *
@@ -849,10 +836,24 @@ export class WorkerPool<
 	 * - 状态一致性：清理所有内部状态
 	 * - 事件通知：通知外部系统关闭完成
 	 */
-	async shutdown(): Promise<void> {
-		// 停止接受新任务，防止资源竞争
-		this.accepting = false;
+	shutdown(): Promise<void> {
+		if (this.shutdownPromise) return this.shutdownPromise;
+		if (this.lifecycle === "stopped") return Promise.resolve();
+		if (this.lifecycle === "configured") {
+			this.lifecycle = "stopped";
+			return Promise.resolve();
+		}
 
+		this.lifecycle = "stopping";
+		const shutdownPromise = this.shutdownStartedPool().finally(() => {
+			this.lifecycle = "stopped";
+			this.shutdownPromise = null;
+		});
+		this.shutdownPromise = shutdownPromise;
+		return shutdownPromise;
+	}
+
+	private async shutdownStartedPool(): Promise<void> {
 		// 等待所有活跃任务完成
 		const activePromises = Array.from(this.taskMap.values()).map(
 			(callback) =>
@@ -876,14 +877,7 @@ export class WorkerPool<
 		// 等待所有任务完成（成功或失败）
 		await Promise.all(activePromises);
 
-		// 清理后台服务
-		if (this.cleanupInterval) {
-			clearInterval(this.cleanupInterval);
-		}
-
-		if (this.monitorInterval) {
-			clearInterval(this.monitorInterval);
-		}
+		this.stopBackgroundServices();
 
 		// 终止所有Worker实例
 		await Promise.all(
@@ -901,6 +895,7 @@ export class WorkerPool<
 		// 清理内存和状态
 		this.workers.length = 0;
 		this.taskMap.clear();
+		this.taskToWorkerId.clear();
 
 		// 通知外部系统关闭完成
 		this.emit("shutdown");

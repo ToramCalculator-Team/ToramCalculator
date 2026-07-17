@@ -1,60 +1,97 @@
-import { createLogger } from "~/lib/Logger";
-import { type BranchResult, type BranchTask, SimulatorTaskPriority } from "./protocol";
+import { createId } from "@paralleldrive/cuid2";
+import { createLogger, LogLevel } from "~/lib/Logger";
+import type { PoolHealthMetrics } from "~/lib/WorkerPool/WorkerPool";
+import type { SimulationTask, SimulationTaskResult } from "../simulationTask";
+import { EngineWorkerClient } from "./EngineWorkerClient";
+import { EngineExecutionFailure, EngineTaskPriority } from "./protocol";
+import { type ManagedEngineWorkerClient, RealtimeEngineHandle } from "./RealtimeEngineHandle";
 import simulationWorker from "./Simulation.worker?worker&url";
-import { type SimulationEngine, SimulationEngineImpl } from "./SimulationEngine";
-import { SimulatorPool } from "./SimulatorPool";
+import { SimulationWorkerPool } from "./SimulationWorkerPool";
 
 const log = createLogger("EngineService");
 
-/** 主业务实时模拟常驻引擎 ID（ADR 0015）。 */
-export const SIMULATOR_ENGINE_ID = "simulator";
-/** 角色配置预览常驻引擎 ID（ADR 0015）。 */
-export const CHARACTER_ENGINE_ID = "character";
+export type EngineServiceInitOptions = {
+	/** 分支 Worker 内全部 logger 的最高输出等级；默认只输出 error。 */
+	branchLogLevel?: LogLevel;
+};
+
+type SimulationWorkerPoolResource = Pick<SimulationWorkerPool, "start" | "executeEngineRPC" | "getStatus" | "shutdown">;
+type EngineServiceLifecycle = "stopped" | "started" | "stopping";
+
+type RealtimeHandleResource = {
+	client: ManagedEngineWorkerClient;
+	handle: RealtimeEngineHandle;
+};
+
+export type EngineServiceDependencies = {
+	createEngineWorkerClient?: (clientId: string) => ManagedEngineWorkerClient;
+	createSimulationWorkerPool?: (
+		config: ConstructorParameters<typeof SimulationWorkerPool>[0],
+	) => SimulationWorkerPoolResource;
+	createHandleId?: () => string;
+};
+
+export type EngineServiceHealth = {
+	started: boolean;
+	realtimeHandleCount: number;
+	simulationWorkerPool: PoolHealthMetrics | null;
+};
+
+function branchWorkerUrl(logLevel: LogLevel): string {
+	const separator = simulationWorker.includes("?") ? "&" : "?";
+	return `${simulationWorker}${separator}engineLogLevel=${logLevel}`;
+}
 
 function getBranchWorkerLimit(): number {
 	const hardwareLimit = navigator.hardwareConcurrency || 4;
-	// 设计说明：开发环境每个 module worker 都会建立 Vite HMR 连接；技能预览保留小并发，避免页面刷新时连接和 CPU 峰值过高。
+	// 设计说明：开发环境每个 module worker 都会建立 Vite HMR 连接，因此限制并发以控制刷新时的连接和 CPU 峰值。
 	const devLimit = import.meta.env.DEV ? 2 : 6;
 	return Math.min(hardwareLimit, devLimit);
 }
 
 /**
- * 提供给 UI 页面与游戏引擎交互的主线程门面。
+ * 主线程非业务引擎基础设施边界。
  * 职责收敛为两件事：
- * 1. 引擎实例资源管理（创建 / 查询 / 销毁）
- * 2. 原子分支任务执行原语（executeBranchTask / executeBranchBatch）
+ * 1. 通用实时引擎资源的创建、租约登记与回收
+ * 2. 一次性模拟任务执行原语
  *
- * 编排逻辑（技能分组、结果聚合等）由页面级消费者负责。
+ * 业务步骤、结果解释和 Session 生命周期由应用层 Session 负责。
  */
 export class EngineService {
-	private static instance: EngineService | null = null;
+	private realtimeHandles = new Map<string, RealtimeHandleResource>();
+	private simulationWorkerPool: SimulationWorkerPoolResource | null = null;
+	private lifecycle: EngineServiceLifecycle = "stopped";
+	private shutdownPromise: Promise<void> | null = null;
+	private readonly createEngineWorkerClient: (clientId: string) => ManagedEngineWorkerClient;
+	private readonly createSimulationWorkerPool: (
+		config: ConstructorParameters<typeof SimulationWorkerPool>[0],
+	) => SimulationWorkerPoolResource;
+	private readonly createHandleId: () => string;
 
-	static getInstance(): EngineService {
-		if (!EngineService.instance) {
-			EngineService.instance = new EngineService();
-		}
-		return EngineService.instance;
-	}
-
-	private engines: Map<string, SimulationEngine> = new Map();
-	private batchPool: SimulatorPool | null = null;
-	private initialized = false;
-
-	private constructor() {
-		// 不做自动初始化：由 init() 显式调用
+	constructor(dependencies: EngineServiceDependencies = {}) {
+		this.createEngineWorkerClient =
+			dependencies.createEngineWorkerClient ?? ((clientId) => new EngineWorkerClient(clientId));
+		this.createSimulationWorkerPool =
+			dependencies.createSimulationWorkerPool ?? ((config) => new SimulationWorkerPool(config));
+		this.createHandleId = dependencies.createHandleId ?? createId;
 	}
 
 	/**
-	 * 显式初始化：创建 batchPool 和两个具名常驻引擎（simulator / character）。
-	 * 由 bootstrap 在 app 启动时调用。
+	 * 最终 bootstrap 入口：只启动非业务 EngineService 基础设施，不预建具名实时引擎。
 	 */
-	init(): void {
-		if (this.initialized) return;
-		this.initialized = true;
+	start(options: EngineServiceInitOptions = {}): void {
+		if (this.lifecycle === "started") return;
+		if (this.lifecycle === "stopping") {
+			throw new Error("EngineService 正在关闭，不能重新启动");
+		}
+		if (this.realtimeHandles.size > 0 || this.simulationWorkerPool) {
+			throw new Error("EngineService 存在未关闭资源，必须先重试 shutdown()");
+		}
+		const branchLogLevel = options.branchLogLevel ?? LogLevel.ERROR;
 
-		this.batchPool = new SimulatorPool({
-			workerUrl: simulationWorker,
-			priority: [...SimulatorTaskPriority],
+		const batchPool = this.createSimulationWorkerPool({
+			workerUrl: branchWorkerUrl(branchLogLevel),
+			priority: [...EngineTaskPriority],
 			maxWorkers: getBranchWorkerLimit(),
 			taskTimeout: 60000,
 			maxRetries: 1,
@@ -67,98 +104,115 @@ export class EngineService {
 				return data.type === "worker_ready";
 			},
 		});
-		// ADR 0015：两个常驻引擎在 init 期一次性建好，状态隔离、跨 URL 常驻。
-		this.engines.set(SIMULATOR_ENGINE_ID, new SimulationEngineImpl(SIMULATOR_ENGINE_ID));
-		this.engines.set(CHARACTER_ENGINE_ID, new SimulationEngineImpl(CHARACTER_ENGINE_ID));
+		batchPool.start();
+		this.simulationWorkerPool = batchPool;
+		this.lifecycle = "started";
 		log.info("EngineService 初始化完成");
-	}
-
-	isReady(): boolean {
-		return this.initialized;
 	}
 
 	// ==================== 引擎资源管理 ====================
 
-	/** 主业务实时模拟引擎（常驻）。 */
-	getSimulatorEngine(): SimulationEngine {
-		return this.requireEngine(SIMULATOR_ENGINE_ID);
-	}
-
-	/** 角色配置预览引擎（常驻）。 */
-	getCharacterEngine(): SimulationEngine {
-		return this.requireEngine(CHARACTER_ENGINE_ID);
-	}
-
 	private assertInitialized(): void {
-		// 唯一启动点是 bootstrap 的 engine 模块（modules.ts: service.init()）。
-		// 此处不再惰性 init——漏启动是编程错误，应显形而非被偷偷补救。
-		if (!this.initialized) {
-			throw new Error("EngineService 尚未初始化：必须先由 bootstrap engine 模块调用 init()");
+		// 唯一启动点是 bootstrap 的 engine 模块；读取和资源申请都不能惰性补启动。
+		if (this.lifecycle !== "started") {
+			throw new Error("EngineService 尚未启动：必须先由 bootstrap engine 模块调用 start()");
 		}
 	}
 
-	private requireEngine(engineId: string): SimulationEngine {
+	/** 为一个应用级 Session 打开并交付独立的通用实时引擎 Handle。 */
+	async openRealtimeEngine(): Promise<RealtimeEngineHandle> {
 		this.assertInitialized();
-		const engine = this.engines.get(engineId);
-		if (!engine) throw new Error(`engine not found: ${engineId}`);
-		return engine;
-	}
-
-	// ==================== 原子分支任务原语 ====================
-
-	/**
-	 * 执行单个原子分支任务。
-	 * 一次 WorkerPool.executeTask 调用，保证 [loadScenario → restore → patch → execute → collect] 在同一 Worker 上完成。
-	 *
-	 * @param task 分支任务描述（含 scenarioData、checkpoint、patches、runtimeConfig、outputSelector）
-	 * @returns 分支结果（success + data 或 success + error）
-	 */
-	async executeBranchTask(task: BranchTask): Promise<{ ok: true; data: BranchResult } | { ok: false; error: string }> {
-		this.assertInitialized();
+		const handleId = this.createHandleId();
+		if (this.realtimeHandles.has(handleId)) {
+			throw new Error(`RealtimeEngineHandle ID 冲突: ${handleId}`);
+		}
+		const client = this.createEngineWorkerClient(`realtime:${handleId}`);
+		const handle = new RealtimeEngineHandle(handleId, client, (id) => this.closeRealtimeEngine(id));
+		this.realtimeHandles.set(handleId, { client, handle });
 		try {
-			const pool = this.batchPool;
-			if (!pool) throw new Error("branch worker pool not initialized");
-			const result = await pool.executeTask("engine_rpc", { type: "branch_task", task } as never, "medium");
-			const rpcResult = result.data as { success?: boolean; data?: BranchResult; error?: string } | undefined;
-			if (!result.success || !rpcResult?.success) {
-				return { ok: false, error: rpcResult?.error ?? result.error ?? "branch_task failed" };
+			await client.whenReady();
+			if (this.lifecycle !== "started" || handle.isClosed()) {
+				throw new Error(`EngineService 在实时引擎就绪前已停止: ${handleId}`);
 			}
-			return { ok: true, data: rpcResult.data ?? { outputType: "unknown" } };
+			return handle;
 		} catch (error) {
-			return { ok: false, error: error instanceof Error ? error.message : "Unknown error" };
+			await handle.close().catch(() => undefined);
+			throw error;
 		}
 	}
 
-	/**
-	 * 批量执行原子分支任务（全并行）。
-	 * 每个 task 独立提交到 batchPool，由 pool 内负载均衡分配 Worker。
-	 *
-	 * @param tasks 分支任务数组
-	 * @returns 与输入顺序一致的结果数组
-	 */
-	async executeBranchBatch(
-		tasks: BranchTask[],
-	): Promise<Array<{ ok: true; data: BranchResult } | { ok: false; error: string }>> {
-		return Promise.all(tasks.map((t) => this.executeBranchTask(t)));
+	private async closeRealtimeEngine(handleId: string): Promise<void> {
+		const resource = this.realtimeHandles.get(handleId);
+		if (!resource) return;
+		await resource.client.dispose();
+		if (this.realtimeHandles.get(handleId) === resource) this.realtimeHandles.delete(handleId);
+	}
+
+	getHealth(): EngineServiceHealth {
+		return {
+			started: this.lifecycle === "started",
+			realtimeHandleCount: this.realtimeHandles.size,
+			simulationWorkerPool: this.simulationWorkerPool?.getStatus() ?? null,
+		};
+	}
+
+	// ==================== 一次性 SimulationTask ====================
+
+	/** 执行一个通用的一次性模拟任务；业务层只接收已校验结果或类型化基础设施错误。 */
+	async executeSimulationTask(
+		task: SimulationTask,
+		priority: EngineTaskPriority = "medium",
+	): Promise<SimulationTaskResult> {
+		this.assertInitialized();
+		const pool = this.simulationWorkerPool;
+		if (!pool) throw new Error("simulator worker pool not initialized");
+		const result = await pool.executeEngineRPC({ type: "execute_simulation_task", task }, priority);
+		if (!result.success) throw new EngineExecutionFailure(result.error);
+		return result.data;
+	}
+
+	/** 批量提交相互独立的通用任务；任务隔离和 Worker 分配由 SimulationWorkerPool 负责。 */
+	executeSimulationTasks(
+		tasks: SimulationTask[],
+		priority: EngineTaskPriority = "medium",
+	): Promise<SimulationTaskResult[]> {
+		return Promise.all(tasks.map((task) => this.executeSimulationTask(task, priority)));
 	}
 
 	// ==================== 生命周期 ====================
 
 	/**
-	 * 关闭所有资源并将 instance 置空，支持重新 init()。
+	 * 关闭所有自有资源。单个资源释放失败不会阻止其余资源清理；并发调用共享同一关闭过程。
 	 */
-	async shutdown(): Promise<void> {
-		if (!this.initialized) return;
-		for (const engine of this.engines.values()) {
-			await engine.dispose();
+	shutdown(): Promise<void> {
+		if (this.shutdownPromise) return this.shutdownPromise;
+		if (this.lifecycle === "stopped" && this.realtimeHandles.size === 0 && !this.simulationWorkerPool) {
+			return Promise.resolve();
 		}
-		this.engines.clear();
-		if (this.batchPool) {
-			await this.batchPool.shutdown();
-			this.batchPool = null;
+
+		this.lifecycle = "stopping";
+		const shutdownPromise = this.shutdownResources().finally(() => {
+			this.lifecycle = "stopped";
+			this.shutdownPromise = null;
+			log.info("EngineService 已关闭");
+		});
+		this.shutdownPromise = shutdownPromise;
+		return shutdownPromise;
+	}
+
+	private async shutdownResources(): Promise<void> {
+		const handles = Array.from(this.realtimeHandles.values(), ({ handle }) => handle);
+		const workerPool = this.simulationWorkerPool;
+		const handleResults = await Promise.allSettled(handles.map((handle) => handle.close()));
+		const poolResult = workerPool ? await Promise.allSettled([workerPool.shutdown()]) : [];
+		if (workerPool && poolResult[0]?.status === "fulfilled" && this.simulationWorkerPool === workerPool) {
+			this.simulationWorkerPool = null;
 		}
-		this.initialized = false;
-		EngineService.instance = null;
-		log.info("EngineService 已关闭");
+		const results = [...handleResults, ...poolResult];
+		const failures = results.flatMap((result) => (result.status === "rejected" ? [result.reason] : []));
+		if (failures.length === 1) throw failures[0];
+		if (failures.length > 1) {
+			throw new AggregateError(failures, "EngineService 关闭时有多个资源释放失败");
+		}
 	}
 }

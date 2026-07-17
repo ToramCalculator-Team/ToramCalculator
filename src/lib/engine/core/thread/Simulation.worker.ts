@@ -3,8 +3,8 @@
  * 将GameEngine运行在安全沙盒环境中
  */
 
-import type { EngineMember } from "../engineScenarioSchema";
-import { createLogger, LogLevel } from "~/lib/Logger";
+import { createActor } from "xstate";
+import { createLogger, LogLevel, setGlobalLogLevel } from "~/lib/Logger";
 import { prepareForTransfer, sanitizeForPostMessage } from "~/lib/WorkerPool/MessageSerializer";
 import type { WorkerMessage, WorkerMessageEvent } from "~/lib/WorkerPool/type";
 import { BUILT_IN_EVENTS } from "../Event/BuiltInEvents";
@@ -12,82 +12,60 @@ import { EventCatalog } from "../Event/EventCatalog";
 import { getBuiltInTags } from "../Event/TagConstants";
 import { TagRegistry } from "../Event/TagRegistry";
 import { GameEngine } from "../GameEngine";
-import { type EngineControlMessage, EngineControlMessageSchema } from "../GameEngineSM";
+import {
+	type EngineLifecycleCommand,
+	EngineLifecycleCommandSchema,
+	type EngineLifecycleResult,
+	type EngineLifecycleSnapshot,
+	GameEngineSM,
+	projectEngineLifecycleSnapshot,
+} from "../GameEngineSM";
 import { JSProcessor } from "../JSProcessor/JSProcessor";
 import { PipelineCatalog } from "../Pipeline/PipelineCatalog";
 import { PipelineResolverService } from "../Pipeline/PipelineResolverService";
-import { PreviewRunner } from "../Preview/PreviewRunner";
-import { resolvePreviewFastForwardTimeoutMs } from "../Preview/previewTimeout";
 import type { SimulatorSafeAPI } from "../sandboxGlobals";
-import { createPreviewConfig, type EngineInfrastructure, type EngineScenarioData, type RuntimeConfig } from "../types";
+import type { EngineInfrastructure } from "../types";
 import { DebugViewRegistry } from "./DebugViewRegistry";
+import { executeSimulationTask } from "./executeSimulationTask";
 import {
-	type BranchTask,
 	type EngineRPC,
 	EngineRPCSchema,
+	type EngineRPCWireResult,
+	type EngineTaskPriority,
+	type EngineWorkerTaskMap,
+	type EngineWorkerTaskResult,
+	type EngineWorkerTaskTypeMapValue,
+	engineLifecycleFailure,
+	engineLifecycleSuccess,
+	engineRPCFailure,
+	engineRPCSuccess,
 	type PushMessageType,
-	type SimulatorTaskMap,
-	type SimulatorTaskPriority,
-	type SimulatorTaskTypeMapValue,
 } from "./protocol";
 
-const log = createLogger("SimWorker");
-log.setLevel(LogLevel.ERROR);
-
-type PreviewRuntimeForSkill = {
-	character?: {
-		weapon?: { type?: unknown } | null;
-		subWeapon?: { type?: unknown } | null;
-		armor?: { ability?: unknown } | null;
-	} | null;
-	data?: {
-		weapon?: { type?: unknown } | null;
-		subWeapon?: { type?: unknown } | null;
-		armor?: { ability?: unknown } | null;
-	} | null;
-	skillList?: Array<{
-		id?: unknown;
-		template?: {
-			variants?: Array<{
-				targetMainWeaponType?: unknown;
-				targetSubWeaponType?: unknown;
-				targetArmorAbilityType?: unknown;
-			}>;
-		} | null;
-	}>;
-};
-
-function hasMatchingSkillVariant(
-	member: { runtime: unknown } | null | undefined,
-	skillId: string | undefined,
-): boolean | undefined {
-	if (!member || !skillId) return undefined;
-	const runtime = member.runtime as PreviewRuntimeForSkill;
-	const skill = runtime.skillList?.find((candidate) => candidate.id === skillId);
-	const variants = skill?.template?.variants;
-	if (!Array.isArray(variants)) return false;
-	const character = runtime.character ?? runtime.data;
-	const mainWeaponType = character?.weapon?.type;
-	const subWeaponType = character?.subWeapon?.type;
-	const armorAbilityType = character?.armor?.ability;
-	return variants.some((variant) => {
-		const mainWeaponMatched = variant.targetMainWeaponType === mainWeaponType || variant.targetMainWeaponType === "Any";
-		const subWeaponMatched = variant.targetSubWeaponType === subWeaponType || variant.targetSubWeaponType === "Any";
-		const armorMatched =
-			variant.targetArmorAbilityType === armorAbilityType || variant.targetArmorAbilityType === "Any";
-		return mainWeaponMatched && subWeaponMatched && armorMatched;
-	});
+function readConfiguredLogLevel(): LogLevel | null {
+	const raw = new URL(globalThis.location.href).searchParams.get("engineLogLevel");
+	switch (raw) {
+		case "0":
+			return LogLevel.SILENT;
+		case "1":
+			return LogLevel.ERROR;
+		case "2":
+			return LogLevel.WARN;
+		case "3":
+			return LogLevel.INFO;
+		case "4":
+			return LogLevel.DEBUG;
+		default:
+			return null;
+	}
 }
 
-function getPrimaryActionDurationMs(
-	gameEngine: GameEngine,
-	memberId: string | undefined,
-	skillId: string | undefined,
-): number | undefined {
-	if (!memberId || !skillId) return undefined;
-	return gameEngine.getComputedSkillInfos(memberId).find((skill) => skill.id === skillId)?.computed
-		.activeEffectDurationMs;
-}
+const configuredLogLevel = readConfiguredLogLevel();
+if (configuredLogLevel !== null) setGlobalLogLevel(configuredLogLevel);
+// 常驻 Worker 保持 SimWorker 自身仅报错；分支 Worker 则由 EngineService 的全局等级统一控制全部模块。
+const log = createLogger("SimWorker", {
+	level: configuredLogLevel === null ? LogLevel.ERROR : LogLevel.DEBUG,
+});
 
 // ==================== 沙盒环境初始化 ====================
 
@@ -178,6 +156,83 @@ const gameEngine = new GameEngine(
 	infra,
 );
 
+const executorActor = createActor(GameEngineSM, { input: { role: "executor" } });
+executorActor.start();
+
+const getExecutorSnapshot = (): EngineLifecycleSnapshot => projectEngineLifecycleSnapshot(executorActor.getSnapshot());
+
+function requireExecutorState(operation: string, allowed: readonly EngineLifecycleSnapshot["state"][]): void {
+	const state = getExecutorSnapshot().state;
+	if (allowed.includes(state)) return;
+	throw {
+		code: "invalid_engine_lifecycle_state",
+		message: `${operation} 不允许在 ${state} 状态执行`,
+		details: { operation, state, allowed },
+	};
+}
+
+/** 在 Worker 权威 actor 已接纳命令后执行原子副作用，并把实际结果送回同一 actor。 */
+function handleLifecycleCommand(command: EngineLifecycleCommand): EngineWorkerTaskResult {
+	executorActor.send(command);
+	const pending = getExecutorSnapshot().pending;
+	if (pending?.correlationId !== command.correlationId) {
+		return engineLifecycleFailure(
+			command,
+			{
+				code: "invalid_engine_lifecycle_transition",
+				message: `${command.type} 不允许在 ${getExecutorSnapshot().state} 状态执行`,
+			},
+			"invalid_engine_lifecycle_transition",
+		);
+	}
+
+	let result: EngineLifecycleResult;
+	try {
+		switch (command.type) {
+			case "CMD_INIT":
+				gameEngine.loadScenario(command.data);
+				result = engineLifecycleSuccess(command);
+				break;
+			case "CMD_START":
+				gameEngine.start();
+				result = engineLifecycleSuccess(command);
+				break;
+			case "CMD_PAUSE":
+				gameEngine.pause();
+				result = engineLifecycleSuccess(command);
+				break;
+			case "CMD_RESUME":
+				gameEngine.resume();
+				result = engineLifecycleSuccess(command);
+				break;
+			case "CMD_STOP":
+				gameEngine.stop();
+				result = engineLifecycleSuccess(command);
+				break;
+			case "CMD_RESET":
+				gameEngine.reset();
+				result = engineLifecycleSuccess(command);
+				break;
+			case "CMD_STEP":
+				gameEngine.step();
+				result = engineLifecycleSuccess(command);
+				break;
+			case "CMD_UNLOAD":
+				gameEngine.unloadScenario();
+				result = engineLifecycleSuccess(command);
+				break;
+			case "CMD_FAST_FORWARD":
+				result = engineLifecycleSuccess(command, gameEngine.fastForwardSync(command.options));
+				break;
+		}
+	} catch (error) {
+		result = engineLifecycleFailure(command, error);
+	}
+
+	executorActor.send(result);
+	return result;
+}
+
 // 创建调试视图注册表（井盖模式）
 const debugViewRegistry = new DebugViewRegistry();
 debugViewRegistry.setGameEngine(gameEngine);
@@ -186,390 +241,96 @@ debugViewRegistry.setGameEngine(gameEngine);
 
 // ==================== Engine RPC 处理函数 ====================
 
-/**
- * 处理引擎 RPC 请求
- */
-async function handleEngineRPC(rpc: EngineRPC): Promise<{ success: boolean; data?: unknown; error?: string }> {
+/** 处理已通过请求 Schema 校验的 Engine RPC，并按请求类型构造成功响应。 */
+async function handleEngineRPC(rpc: EngineRPC): Promise<EngineRPCWireResult> {
 	try {
 		switch (rpc.type) {
 			case "get_members": {
-				const members = gameEngine.getAllMemberData();
-				return { success: true, data: members };
+				requireExecutorState(rpc.type, ["ready", "running", "paused"]);
+				return engineRPCSuccess(rpc.type, gameEngine.getAllMemberData());
 			}
 			case "get_member_skill_list": {
-				const memberId = rpc.memberId;
-				if (!memberId) {
-					return { success: false, error: "memberId required" };
-				}
-				try {
-					return { success: true, data: gameEngine.getMemberSkillList(memberId) };
-				} catch (error) {
-					return {
-						success: false,
-						error: error instanceof Error ? error.message : "Unknown error",
-					};
-				}
-			}
-
-			case "get_stats": {
-				const stats = gameEngine.getStats();
-				return { success: true, data: stats };
-			}
-
-			case "get_snapshot": {
-				const snapshot = gameEngine.getCurrentSnapshot();
-				return { success: true, data: snapshot };
-			}
-			case "get_member_state": {
-				const memberId = rpc.memberId;
-				if (!memberId) {
-					return { success: false, error: "memberId required" };
-				}
-				const member = gameEngine.getMember(memberId);
-				if (!member) {
-					return { success: false, error: "member not found" };
-				}
-				try {
-					const snap = member.actor.getSnapshot();
-					const value = String(snap?.value ?? "");
-					return { success: true, data: { memberId, value } };
-				} catch (e) {
-					return {
-						success: false,
-						error: e instanceof Error ? e.message : "Unknown error",
-					};
-				}
+				requireExecutorState(rpc.type, ["ready", "running", "paused"]);
+				return engineRPCSuccess(rpc.type, gameEngine.getMemberSkillList(rpc.memberId));
 			}
 
 			case "send_intent": {
-				const intent = rpc.intent;
-				if (!intent || !intent.type) {
-					return { success: false, error: "Invalid intent data" };
-				}
-				try {
-					const result = await gameEngine.processIntent(intent);
-					return { success: result.success, error: result.error };
-				} catch (error) {
-					return {
-						success: false,
-						error: error instanceof Error ? error.message : "Unknown error",
-					};
-				}
+				requireExecutorState(rpc.type, ["ready", "running", "paused"]);
+				const result = await gameEngine.processIntent(rpc.intent);
+				return result.success
+					? engineRPCSuccess(rpc.type, undefined)
+					: engineRPCFailure(result.error ?? "intent failed");
+			}
+
+			case "start_run_output": {
+				requireExecutorState(rpc.type, ["ready"]);
+				gameEngine.startRunOutput(rpc.runId, rpc.recordingPolicy);
+				return engineRPCSuccess(rpc.type, undefined);
+			}
+
+			case "finish_run_output": {
+				requireExecutorState(rpc.type, ["ready"]);
+				return engineRPCSuccess(rpc.type, gameEngine.finishRunOutput(rpc.runId));
+			}
+
+			case "cancel_run_output": {
+				gameEngine.cancelRunOutput(rpc.runId);
+				return engineRPCSuccess(rpc.type, undefined);
+			}
+
+			case "acknowledge_run_output": {
+				gameEngine.acknowledgeRunOutput(rpc.runId);
+				return engineRPCSuccess(rpc.type, undefined);
+			}
+
+			case "set_realtime_snapshot_hz": {
+				requireExecutorState(rpc.type, ["idle", "ready", "running", "paused"]);
+				gameEngine.setRealtimeSnapshotHz(rpc.snapshotHz);
+				return engineRPCSuccess(rpc.type, undefined);
 			}
 
 			case "subscribe_debug_view": {
-				try {
-					const viewId = debugViewRegistry.subscribe({
-						controllerId: rpc.controllerId,
-						memberId: rpc.memberId,
-						viewType: rpc.viewType,
-						hz: rpc.hz ?? 10,
-						fields: rpc.fields,
-					});
-					return { success: true, data: { viewId } };
-				} catch (error) {
-					return {
-						success: false,
-						error: error instanceof Error ? error.message : "Unknown error",
-					};
-				}
+				const viewId = debugViewRegistry.subscribe({
+					controllerId: rpc.controllerId,
+					memberId: rpc.memberId,
+					viewType: rpc.viewType,
+					hz: rpc.hz ?? 10,
+					fields: rpc.fields,
+				});
+				return engineRPCSuccess(rpc.type, { viewId });
 			}
 
 			case "unsubscribe_debug_view": {
-				try {
-					const removed = debugViewRegistry.unsubscribe(rpc.viewId);
-					return { success: removed, error: removed ? undefined : "订阅不存在" };
-				} catch (error) {
-					return {
-						success: false,
-						error: error instanceof Error ? error.message : "Unknown error",
-					};
-				}
+				return debugViewRegistry.unsubscribe(rpc.viewId)
+					? engineRPCSuccess(rpc.type, undefined)
+					: engineRPCFailure("订阅不存在");
 			}
 
 			case "get_render_snapshot": {
-				try {
-					const renderSnapshot = gameEngine.getRenderSnapshot(rpc.includeAreas ?? false);
-					return { success: true, data: renderSnapshot };
-				} catch (error) {
-					return {
-						success: false,
-						error: error instanceof Error ? error.message : "Unknown error",
-					};
-				}
-			}
-
-			case "load_scenario": {
-				try {
-					gameEngine.loadScenario(rpc.data as EngineScenarioData);
-					return { success: true };
-				} catch (error) {
-					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
-				}
+				requireExecutorState(rpc.type, ["ready", "running", "paused"]);
+				return engineRPCSuccess(rpc.type, gameEngine.getRenderSnapshot(rpc.includeAreas ?? false));
 			}
 
 			case "set_runtime_config": {
-				try {
-					gameEngine.setRuntimeConfig(rpc.config as RuntimeConfig);
-					return { success: true };
-				} catch (error) {
-					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
-				}
+				requireExecutorState(rpc.type, ["idle", "ready"]);
+				gameEngine.setRuntimeConfig(rpc.config);
+				return engineRPCSuccess(rpc.type, undefined);
 			}
 
-			case "fast_forward": {
-				try {
-					const result = gameEngine.fastForwardSync(rpc.options as Parameters<typeof gameEngine.fastForwardSync>[0]);
-					return { success: true, data: result };
-				} catch (error) {
-					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
-				}
+			case "execute_simulation_task": {
+				requireExecutorState(rpc.type, ["idle"]);
+				return engineRPCSuccess(rpc.type, await executeSimulationTask(gameEngine, rpc.task));
 			}
 
 			case "patch_member": {
-				try {
-					const ok = gameEngine.patchMemberConfig(rpc.memberId, rpc.memberData as EngineMember);
-					return { success: ok, error: ok ? undefined : "patchMemberConfig failed" };
-				} catch (error) {
-					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
-				}
-			}
-
-			case "run_preview": {
-				try {
-					const runner = new PreviewRunner(gameEngine);
-					const report = runner.runPreview(rpc.memberId);
-					return { success: true, data: report };
-				} catch (error) {
-					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
-				}
-			}
-
-			case "get_computed_skills": {
-				try {
-					const skills = gameEngine.getComputedSkillInfos(rpc.memberId);
-					return { success: true, data: skills };
-				} catch (error) {
-					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
-				}
-			}
-
-			case "capture_checkpoint": {
-				try {
-					const checkpoint = gameEngine.captureCheckpoint();
-					return { success: true, data: checkpoint };
-				} catch (error) {
-					log.error("capture_checkpoint: FAILED", error);
-					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
-				}
-			}
-
-			case "get_initialization_data": {
-				try {
-					return { success: true, data: gameEngine.getInitializationData() };
-				} catch (error) {
-					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
-				}
-			}
-
-			case "restore_checkpoint": {
-				try {
-					gameEngine.restoreCheckpoint(rpc.checkpoint as Parameters<typeof gameEngine.restoreCheckpoint>[0]);
-					return { success: true };
-				} catch (error) {
-					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
-				}
-			}
-
-			case "export_expr_dict": {
-				try {
-					const entries = infra.jsProcessor.exportTransformedExprDict();
-					return { success: true, data: entries };
-				} catch (error) {
-					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
-				}
-			}
-
-			case "import_expr_dict": {
-				try {
-					infra.jsProcessor.importTransformedExprDict(rpc.entries as Array<[string, string]>);
-					return { success: true };
-				} catch (error) {
-					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
-				}
-			}
-
-			case "branch_task": {
-				try {
-					const task = (rpc as { task: BranchTask }).task;
-
-					// 1. import expression dictionary before scenario construction to keep compiled expressions deterministic.
-					if (task.exprDict && task.exprDict.length > 0) {
-						infra.jsProcessor.importTransformedExprDict(task.exprDict);
-					}
-
-					// 2. rebuild the branch object graph, then restore runtime state captured from the source engine.
-					gameEngine.loadScenario(task.scenarioData);
-					gameEngine.restoreCheckpoint(task.checkpoint as Parameters<typeof gameEngine.restoreCheckpoint>[0]);
-
-					// 3. apply runtimeConfig from a fresh preview baseline so previous branch tasks cannot leak policy.
-					gameEngine.setRuntimeConfig(createPreviewConfig(task.runtimeConfig as Partial<RuntimeConfig> | undefined));
-
-					// 4. apply patches + collect preview diagnostics from the same branch execution.
-					let primaryMemberId: string | undefined;
-					let primaryActionSkillId: string | undefined;
-					let primaryActionHasMatchingVariant: boolean | undefined;
-					const damageAreaCountBefore = gameEngine.getDamageAreaCreatedCount();
-
-					for (const patch of task.patches ?? []) {
-						if (patch.memberId) primaryMemberId = patch.memberId;
-
-						switch (patch.type) {
-							case "action_sequence": {
-								const member = gameEngine.getMember(patch.memberId);
-								if (member) {
-									for (const action of patch.sequence ?? []) {
-										if (!primaryActionSkillId) {
-											primaryActionSkillId = action.skillId;
-											primaryActionHasMatchingVariant = hasMatchingSkillVariant(member, action.skillId);
-										}
-										member.actor.send({
-											type: "使用技能",
-											data: { target: "", skillId: action.skillId },
-										});
-									}
-								}
-								break;
-							}
-							case "member_skills": {
-								// Future: restrict member skills
-								break;
-							}
-							case "member_config": {
-								gameEngine.patchMemberConfig(patch.memberId, patch.patch as EngineMember);
-								break;
-							}
-						}
-					}
-
-					// 5. fast-forward synchronously
-					const activeEffectDurationMs = getPrimaryActionDurationMs(gameEngine, primaryMemberId, primaryActionSkillId);
-					log.debug("branch_task: activeEffectDurationMs =", activeEffectDurationMs);
-					const previewTimeoutMs = resolvePreviewFastForwardTimeoutMs(activeEffectDurationMs);
-					const fastForward = gameEngine.fastForwardSync({ maxDurationMs: previewTimeoutMs });
-					const { ticksRun, elapsedMs } = fastForward;
-					const damageAreaCountAfter = gameEngine.getDamageAreaCreatedCount();
-					const damageAreaCount = Math.max(0, damageAreaCountAfter - damageAreaCountBefore);
-					log.debug(
-						`branch_task: ${ticksRun} ticks, ${elapsedMs}ms, damageAreas=${damageAreaCount}, reachedLimit=${fastForward.reachedLimit}`,
-					);
-
-					// 6. collect results based on outputSelector
-					const selector = task.outputSelector;
-					switch (selector.type) {
-						case "preview_report": {
-							if (!primaryMemberId) {
-								return { success: false, error: "preview_report outputSelector requires memberId in patches" };
-							}
-							const runner = new PreviewRunner(gameEngine);
-							const report = runner.runPreview(primaryMemberId);
-							return {
-								success: true,
-								data: { outputType: "preview_report", memberId: primaryMemberId, skillProbes: report.skillProbes },
-							};
-						}
-						case "dps_impact": {
-							const all = gameEngine.getAllMembers();
-							log.debug(
-								"dps_impact: all members:",
-								all.map((m) => ({ id: m.id, camp: m.campId })),
-							);
-							const opposingMembers = all.filter((m) => m.id !== primaryMemberId);
-							if (opposingMembers.length === 0) {
-								return {
-									success: true,
-									data: {
-										outputType: "dps_impact",
-										memberId: primaryMemberId,
-										damage: 0,
-										damageAreaCount,
-										ticksRun,
-										elapsedMs,
-										reason: "no_target",
-										error: "场景中没有敌对目标",
-									},
-								};
-							}
-							let totalDamage = 0;
-							for (const m of opposingMembers) {
-								const hpMax = m.statContainer.getValue("hp.max");
-								const hpCur = m.statContainer.getValue("hp.current");
-								const taken = Math.max(0, hpMax - hpCur);
-								log.debug(`dps_impact: target ${m.id} hp.max=${hpMax} hp.current=${hpCur} taken=${taken}`);
-								if (taken > 0) totalDamage += taken;
-							}
-							log.debug("dps_impact: totalDamage =", totalDamage);
-							const sourceMember = primaryMemberId ? gameEngine.getMember(primaryMemberId) : undefined;
-							const activeEffectStillRunning = !!sourceMember?.btManager.hasActiveEffectBt();
-							let reason: string | undefined;
-							let note: string | undefined;
-							let error: string | undefined;
-							if (fastForward.reachedLimit && activeEffectStillRunning) {
-								reason = "action_timeout";
-								error = `技能预览超过 ${previewTimeoutMs}ms 仍未结束`;
-							} else if (primaryActionHasMatchingVariant === false) {
-								reason = "no_variant";
-								note = "没有匹配当前装备的可执行变体";
-							} else if (damageAreaCount === 0) {
-								reason = "no_damage_area";
-								note = "技能当前段未产生伤害";
-							} else if (totalDamage === 0) {
-								reason = "zero_damage";
-								note = "技能已进入命中流程，最终伤害为 0";
-							}
-							return {
-								success: true,
-								data: {
-									outputType: "dps_impact",
-									memberId: primaryMemberId,
-									damage: totalDamage,
-									damageAreaCount,
-									ticksRun,
-									elapsedMs,
-									reason,
-									note,
-									error,
-									skillId: primaryActionSkillId,
-								},
-							};
-						}
-						case "member_attrs": {
-							const member = gameEngine.getMember(selector.memberId);
-							const attrs: Record<string, unknown> = {};
-							if (member) {
-								const all = member.statContainer.exportNestedValues();
-								for (const field of selector.fields ?? []) {
-									attrs[field] = (all as Record<string, unknown>)[field];
-								}
-							}
-							return { success: true, data: { outputType: "member_attrs", memberId: selector.memberId, attrs } };
-						}
-						default:
-							return {
-								success: false,
-								error: `unknown outputSelector type: ${(selector as { type?: string }).type ?? "unknown"}`,
-							};
-					}
-				} catch (error) {
-					return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
-				}
+				requireExecutorState(rpc.type, ["ready"]);
+				return gameEngine.patchMemberConfig(rpc.memberId, rpc.memberData)
+					? engineRPCSuccess(rpc.type, undefined)
+					: engineRPCFailure("patchMemberConfig failed");
 			}
 		}
 	} catch (error) {
-		return {
-			success: false,
-			error: error instanceof Error ? error.message : "Unknown error",
-		};
+		return engineRPCFailure(error);
 	}
 }
 
@@ -586,19 +347,14 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 				}
 				const messagePort: MessagePort = port;
 
-				// 设置引擎的对端通信发送器（executor → controller）
-				// 统一使用 postSystemMessage 发送 engine_state_machine
-				gameEngine.setMirrorSender((msg: EngineControlMessage) => {
-					try {
-						postSystemMessage(messagePort, "engine_state_machine", msg);
-					} catch (error) {
-						log.error("Worker: 发送对端消息失败:", error);
-					}
+				executorActor.subscribe((snapshot) => {
+					postSystemMessage(messagePort, "engine_lifecycle_snapshot", projectEngineLifecycleSnapshot(snapshot));
 				});
+				postSystemMessage(messagePort, "engine_lifecycle_snapshot", getExecutorSnapshot());
 
 				// 设置MessageChannel端口用于任务通信
 				messagePort.onmessage = async (
-					portEvent: MessageEvent<WorkerMessage<SimulatorTaskTypeMapValue, SimulatorTaskPriority>>,
+					portEvent: MessageEvent<WorkerMessage<EngineWorkerTaskTypeMapValue, EngineTaskPriority>>,
 				) => {
 					// console.log("🔌 Worker: 收到消息", portEvent.data);
 					const { belongToTaskId: portbelongToTaskId, payload } = portEvent.data;
@@ -610,17 +366,14 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 							throw new Error("命令不能为空");
 						}
 
-						let portResult: { success: boolean; data?: unknown; error?: string };
+						let portResult: EngineWorkerTaskResult;
 
 						// 使用 Zod Schema 验证命令类型
-						const engineCommandResult = EngineControlMessageSchema.safeParse(payload);
+						const engineCommandResult = EngineLifecycleCommandSchema.safeParse(payload);
 						const engineRPCResult = EngineRPCSchema.safeParse(payload);
 						if (engineCommandResult.success) {
-							// 状态机命令直接转发给引擎（controller → executor）
-							log.debug("收到状态机命令:", engineCommandResult.data);
-							gameEngine.sendCommand(engineCommandResult.data);
-							// console.log("命令已发送到引擎状态机");
-							portResult = { success: true };
+							log.debug("收到生命周期命令:", engineCommandResult.data);
+							portResult = handleLifecycleCommand(engineCommandResult.data);
 						} else if (engineRPCResult.success) {
 							log.debug("收到引擎 RPC:", engineRPCResult.data);
 							// Engine RPC 请求处理
@@ -641,8 +394,8 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 						const endTime = performance.now();
 						const duration = endTime - startTime;
 
-						// 返回结果给SimulatorPool
-						const response: WorkerMessageEvent<unknown, SimulatorTaskMap, unknown> = {
+						// 返回结果给SimulationWorkerPool
+						const response: WorkerMessageEvent<EngineWorkerTaskResult, EngineWorkerTaskMap, unknown> = {
 							belongToTaskId: portbelongToTaskId,
 							result: portResult,
 							error: null,
@@ -657,8 +410,8 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 						const endTime = performance.now();
 						const duration = endTime - startTime;
 
-						// 返回错误给SimulatorPool
-						const errorResponse: WorkerMessageEvent<unknown, SimulatorTaskMap, unknown> = {
+						// 返回错误给SimulationWorkerPool
+						const errorResponse: WorkerMessageEvent<EngineWorkerTaskResult, EngineWorkerTaskMap, unknown> = {
 							belongToTaskId: portbelongToTaskId,
 							result: null,
 							error: error instanceof Error ? error.message : String(error),
@@ -728,7 +481,6 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 					type: "worker_ready",
 					workerId: "main",
 				});
-
 				return;
 			}
 
@@ -754,7 +506,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
  * 统一的 Push/Stream 消息发送函数
  *
  * 支持所有顶层 push 消息类型：
- * - engine_state_machine: 引擎状态机镜像
+ * - engine_lifecycle_snapshot: 引擎生命周期只读快照
  * - render_cmd: 渲染指令
  * - domain_event_batch: 控制器领域事件批
  * - system_event: 系统事件（worker_ready/error/日志等）
@@ -762,8 +514,8 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
  * - debug_view_frame: 调试视图数据帧（订阅制）
  */
 function postSystemMessage(port: MessagePort, type: PushMessageType, data: unknown) {
-	// 使用共享的MessageSerializer确保数据可以安全地通过postMessage传递
-	const sanitizedData = sanitizeForPostMessage(data);
+	// FrameSnapshot 已在严格 schema 与构造边界保证为 plain data；热路径不得再 JSON 往返清洗。
+	const sanitizedData = type === "frame_snapshot" ? data : sanitizeForPostMessage(data);
 	const msg = { belongToTaskId: type, type, data: sanitizedData } as const;
 
 	try {
@@ -789,7 +541,8 @@ function startTelemetryLoop(port: MessagePort) {
 	telemetryTimer = setInterval(() => {
 		try {
 			// 仅在运行/暂停阶段推送遥测（避免 idle 时噪音）
-			if (!gameEngine.isRunning() && gameEngine.getSMState() !== "paused") return;
+			const state = getExecutorSnapshot().state;
+			if (state !== "running" && state !== "paused") return;
 			const frameLoopStats = gameEngine.getFrameLoopStats();
 			postSystemMessage(port, "engine_telemetry", {
 				tickIndex: gameEngine.getTickIndex(),

@@ -1,6 +1,6 @@
 /**
  * 消息序列化器 - 确保数据可以安全地通过postMessage传递
- * 
+ *
  * 设计原则：
  * 1. 类型安全：保持原始消息的类型信息
  * 2. 性能优化：自动检测和处理Transferable对象
@@ -15,7 +15,7 @@
  * @returns 是否为Transferable对象
  */
 export function isTransferable(obj: unknown): obj is Transferable {
-  return obj instanceof ArrayBuffer || obj instanceof MessagePort;
+	return obj instanceof ArrayBuffer || obj instanceof MessagePort;
 }
 
 /**
@@ -24,30 +24,32 @@ export function isTransferable(obj: unknown): obj is Transferable {
  * @returns 找到的所有Transferable对象数组
  */
 export function findTransferables(obj: unknown): Transferable[] {
-  const transferables = new Set<Transferable>();
+	const transferables = new Set<Transferable>();
 
-  function scan(item: unknown): void {
-    if (!item || typeof item !== "object") return;
+	function scan(item: unknown): void {
+		if (!item || typeof item !== "object") return;
+		// SAB 由 structured clone 共享底层字节，不属于 Transferable，也不能继续递归清洗或收集。
+		if (typeof SharedArrayBuffer !== "undefined" && item instanceof SharedArrayBuffer) return;
 
-    if (isTransferable(item)) {
-      transferables.add(item);
-      return;
-    }
+		if (isTransferable(item)) {
+			transferables.add(item);
+			return;
+		}
 
-    if (Array.isArray(item)) {
-      (item as unknown[]).forEach(scan);
-      return;
-    }
+		if (Array.isArray(item)) {
+			(item as unknown[]).forEach(scan);
+			return;
+		}
 
-    if (item && typeof item === "object" && item !== null) {
-      for (const value of Object.values(item)) {
-        scan(value);
-      }
-    }
-  }
+		if (item && typeof item === "object" && item !== null) {
+			for (const value of Object.values(item)) {
+				scan(value);
+			}
+		}
+	}
 
-  scan(obj);
-  return Array.from(transferables);
+	scan(obj);
+	return Array.from(transferables);
 }
 
 /**
@@ -57,11 +59,11 @@ export function findTransferables(obj: unknown): Transferable[] {
  * @returns 包含消息和可传输对象列表的传输结果
  */
 export function prepareForTransfer<T>(message: T): { message: T; transferables: Transferable[] } {
-  const transferables = findTransferables(message);
-  return {
-    message,
-    transferables,
-  };
+	const transferables = findTransferables(message);
+	return {
+		message,
+		transferables,
+	};
 }
 
 /**
@@ -71,15 +73,16 @@ export function prepareForTransfer<T>(message: T): { message: T; transferables: 
  * @param data 原始数据
  * @returns 清理后的安全数据
  */
-export function sanitizeForPostMessage(data: any): any {
-  try {
-    // 尝试JSON序列化和反序列化来检测不可序列化的内容
-    const serialized = JSON.stringify(data);
-    return JSON.parse(serialized);
-  } catch (error) {
-    // 如果JSON序列化失败，进行深度清理
-    return deepSanitizeData(data);
-  }
+export function sanitizeForPostMessage(data: unknown): unknown {
+	try {
+		// 尝试JSON序列化和反序列化来检测不可序列化的内容
+		const serialized = JSON.stringify(data);
+		const parsed: unknown = JSON.parse(serialized);
+		return parsed;
+	} catch {
+		// 如果JSON序列化失败，进行深度清理
+		return deepSanitizeData(data);
+	}
 }
 
 /**
@@ -89,54 +92,54 @@ export function sanitizeForPostMessage(data: any): any {
  * @param seen 已访问对象的WeakSet，防止循环引用
  * @returns 清理后的安全数据
  */
-function deepSanitizeData(data: any, seen = new WeakSet()): any {
-  // 处理基本类型
-  if (data === null || data === undefined) {
-    return data;
-  }
-  
-  if (typeof data === 'string' || typeof data === 'number' || typeof data === 'boolean') {
-    return data;
-  }
+function deepSanitizeData(data: unknown, seen = new WeakSet<object>()): unknown {
+	// 处理基本类型
+	if (data === null || data === undefined) {
+		return data;
+	}
 
-  // 处理函数类型
-  if (typeof data === 'function') {
-    return undefined; // 移除函数
-  }
+	if (typeof data === "string" || typeof data === "number" || typeof data === "boolean") {
+		return data;
+	}
 
-  // 处理Symbol类型
-  if (typeof data === 'symbol') {
-    return undefined; // 移除Symbol
-  }
+	// 处理函数类型
+	if (typeof data === "function") {
+		return undefined; // 移除函数
+	}
 
-  // 处理Date对象
-  if (data instanceof Date) {
-    return data.toISOString();
-  }
+	// 处理Symbol类型
+	if (typeof data === "symbol") {
+		return undefined; // 移除Symbol
+	}
 
-  // 处理数组
-  if (Array.isArray(data)) {
-    return data.map(item => deepSanitizeData(item, seen));
-  }
+	// 处理Date对象
+	if (data instanceof Date) {
+		return data.toISOString();
+	}
 
-  // 处理对象
-  if (typeof data === 'object') {
-    // 检查循环引用
-    if (seen.has(data)) {
-      return undefined; // 移除循环引用
-    }
-    seen.add(data);
+	// 处理数组
+	if (Array.isArray(data)) {
+		return data.map((item) => deepSanitizeData(item, seen));
+	}
 
-    const sanitized: Record<string, any> = {};
-    for (const [key, value] of Object.entries(data)) {
-      const sanitizedValue = deepSanitizeData(value, seen);
-      if (sanitizedValue !== undefined) {
-        sanitized[key] = sanitizedValue;
-      }
-    }
-    return sanitized;
-  }
+	// 处理对象
+	if (typeof data === "object") {
+		// 检查循环引用
+		if (seen.has(data)) {
+			return undefined; // 移除循环引用
+		}
+		seen.add(data);
 
-  // 其他类型（如BigInt等）
-  return undefined;
+		const sanitized: Record<string, unknown> = {};
+		for (const [key, value] of Object.entries(data)) {
+			const sanitizedValue = deepSanitizeData(value, seen);
+			if (sanitizedValue !== undefined) {
+				sanitized[key] = sanitizedValue;
+			}
+		}
+		return sanitized;
+	}
+
+	// 其他类型（如BigInt等）
+	return undefined;
 }

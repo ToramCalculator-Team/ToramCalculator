@@ -9,6 +9,38 @@ import { defineConfig } from "vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const crossOriginIsolationHeaders = {
+	"Cross-Origin-Opener-Policy": "same-origin",
+	"Cross-Origin-Embedder-Policy": "require-corp",
+};
+
+/**
+ * SolidStart 开发服务器会自行发送应用 Document，不经过 Vite 的静态响应头处理。
+ * 在 serve 链路最前面写入隔离头，确保 dev 与 Vite preview 的 Document 和资源使用同一约束。
+ */
+function createCrossOriginIsolationHeadersPlugin(): Plugin {
+	return {
+		name: "cross-origin-isolation-headers",
+		apply: "serve",
+		configureServer(server) {
+			server.middlewares.use((_request, response, next) => {
+				for (const [name, value] of Object.entries(crossOriginIsolationHeaders)) {
+					response.setHeader(name, value);
+				}
+				next();
+			});
+		},
+		configurePreviewServer(server) {
+			server.middlewares.use((_request, response, next) => {
+				for (const [name, value] of Object.entries(crossOriginIsolationHeaders)) {
+					response.setHeader(name, value);
+				}
+				next();
+			});
+		},
+	};
+}
+
 const getReleaseId = () => process.env.APP_RELEASE_ID ?? process.env.VITE_RELEASE_ID ?? "dev";
 const getGeneratedAt = () => process.env.APP_GENERATED_AT ?? new Date(0).toISOString();
 
@@ -217,9 +249,13 @@ export default defineConfig(() => {
 			include: ["@babylonjs/inspector"],
 		},
 		plugins: [
+			createCrossOriginIsolationHeadersPlugin(),
 			// SPA 模式用于避免 SSR 在 Node 里加载 monaco-editor 链上的 .css
 			solidStart({ ssr: false }),
 			nitroV2Plugin({
+				routeRules: {
+					"/**": { headers: crossOriginIsolationHeaders },
+				},
 				// 显式注册 Nitro plugin：服务端进程启动时执行一次，启动同步延迟探针心跳。
 				// 用绝对路径——Nitro 不解析 Vite 的 ~ 别名，传 ~ 会被当成绝对路径而 ERR_MODULE_NOT_FOUND。
 				plugins: [path.resolve(__dirname, "src/server/plugins/syncHeartbeat.ts")],

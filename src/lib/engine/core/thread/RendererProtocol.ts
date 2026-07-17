@@ -1,6 +1,16 @@
 // 消息驱动渲染协议（最小可用 + 可扩展）
 
-export type Vec3 = { x: number; y: number; z: number };
+import { z } from "zod/v4";
+
+export const Vec3Schema = z.object({ x: z.number(), y: z.number(), z: z.number() });
+export type Vec3 = z.output<typeof Vec3Schema>;
+
+/** SceneRuntime 消费的只读渲染流能力；不包含 Engine 生命周期或业务命令。 */
+export interface SimulationRenderSource {
+	getRenderSnapshot(includeAreas?: boolean): Promise<RenderSnapshot | null>;
+	on(event: "render_cmd", listener: (payload: { engineId: string; cmd: unknown }) => void): () => void;
+	off(event: "render_cmd", listener?: (payload: { engineId: string; cmd: unknown }) => void): void;
+}
 
 export interface CmdBase {
 	entityId: string;
@@ -11,15 +21,7 @@ export interface CmdBase {
 
 export interface SpawnCmd extends CmdBase {
 	type: "spawn";
-	name: string;
 	position: Vec3;
-	/** 渲染形态：character 走模型加载，sphere 走简易球体（如 mob）。默认 character。 */
-	entityType?: "character" | "sphere";
-	props?: {
-		color?: string;
-		radius?: number; // m，默认 0.2（直径 0.4）
-		visible?: boolean;
-	};
 }
 
 export interface DestroyCmd extends CmdBase {
@@ -49,24 +51,10 @@ export interface TeleportCmd extends CmdBase {
 	position: Vec3;
 }
 
-export interface SetNameCmd extends CmdBase {
-	type: "setName";
-	name: string;
-}
-
 export interface ActionCmd extends CmdBase {
 	type: "action";
 	name: string; // 仅名称，渲染端自行映射
 	params?: Record<string, unknown>;
-}
-
-export interface SetPropsCmd extends CmdBase {
-	type: "setProps";
-	props: {
-		color?: string;
-		radius?: number;
-		visible?: boolean;
-	};
 }
 
 export interface ReconcileCmd extends CmdBase {
@@ -90,50 +78,42 @@ export type RendererCmd =
 	| MoveStopCmd
 	| FaceCmd
 	| TeleportCmd
-	| SetNameCmd
 	| ActionCmd
-	| SetPropsCmd
 	| ReconcileCmd
 	| CameraFollowCmd
 	| { type: "batch"; cmds: RendererCmd[] };
 
-export interface RendererController {
-	send: (cmd: RendererCmd | RendererCmd[]) => void;
-	tick: (dtSec: number) => void;
-	dispose: () => void;
-	// 提供给外部的查询接口：用于相机跟随
-	getEntityPose: (id: string) => { pos: Vec3; yaw: number } | undefined;
-	// 首次同步时应用渲染快照（全量世界状态），与逻辑快照 getCurrentSnapshot 等区分
-	applyRenderSnapshot?: (renderSnapshot: RenderSnapshot) => void | Promise<void>;
-}
-
 // ==================== 渲染快照（全量状态同步） ====================
 
 /** 渲染快照中单条成员状态（仅视觉/位置/动画，与逻辑成员数据区分） */
-export interface RenderSnapshotMember {
-	id: string;
-	name: string;
-	position: Vec3;
-	yaw: number;
-	/** 渲染形态：sphere（如 mob）或 character。缺省按 character 处理。 */
-	entityType?: "character" | "sphere";
-	animation?: { name: string; progress: number };
-}
+export const RenderSnapshotMemberSchema = z.object({
+	id: z.string(),
+	position: Vec3Schema,
+	yaw: z.number(),
+	animation: z.object({ name: z.string(), progress: z.number() }).optional(),
+});
+export type RenderSnapshotMember = z.output<typeof RenderSnapshotMemberSchema>;
 
 /** 渲染快照中单条区域状态（仅视觉/形状/位置，与逻辑区域数据区分） */
-export interface RenderSnapshotArea {
-	id: string;
-	type: string;
-	position: Vec3;
-	shape: { radius?: number; width?: number; height?: number; [k: string]: unknown };
-	remainingTimeMs: number;
-}
+export const RenderSnapshotAreaSchema = z.object({
+	id: z.string(),
+	type: z.string(),
+	position: Vec3Schema,
+	shape: z.looseObject({
+		radius: z.number().optional(),
+		width: z.number().optional(),
+		height: z.number().optional(),
+	}),
+	remainingTimeMs: z.number(),
+});
+export type RenderSnapshotArea = z.output<typeof RenderSnapshotAreaSchema>;
 
 /** 当前世界渲染状态（声明式，用于渲染层首次同步；与 FrameSnapshot / GameEngineSnapshot 等逻辑快照区分） */
-export interface RenderSnapshot {
-	tickIndex: number;
-	currentTimeMs: number;
-	members: RenderSnapshotMember[];
-	areas?: RenderSnapshotArea[];
-	cameraFollowEntityId: string | null;
-}
+export const RenderSnapshotSchema = z.object({
+	tickIndex: z.number().int().nonnegative(),
+	currentTimeMs: z.number().nonnegative(),
+	members: z.array(RenderSnapshotMemberSchema),
+	areas: z.array(RenderSnapshotAreaSchema).optional(),
+	cameraFollowEntityId: z.string().nullable(),
+});
+export type RenderSnapshot = z.output<typeof RenderSnapshotSchema>;

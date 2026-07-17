@@ -1,818 +1,356 @@
-import { createId } from "@paralleldrive/cuid2";
-import { setup } from "xstate";
+import { assign, type SnapshotFrom, setup } from "xstate";
 import { z } from "zod/v4";
-import { createLogger } from "~/lib/Logger";
-import type { GameEngine } from "./GameEngine";
 import { EngineScenarioDataSchema } from "./types";
 
-const log = createLogger("EngineSM");
-log.setLevel(1);
+export const EngineExecutionErrorSchema = z.object({
+	code: z.string(),
+	message: z.string(),
+	details: z.unknown().optional(),
+});
+export type EngineExecutionError = z.output<typeof EngineExecutionErrorSchema>;
 
-// 命令类型（controller → executor）
-const CommandSchema = z.discriminatedUnion("type", [
-	z.object({
-		type: z.literal("CMD_INIT"),
-		data: EngineScenarioDataSchema,
-		sourceSide: z.literal("controller"),
-		seq: z.number(),
-		correlationId: z.string(),
-		operatorId: z.string(), // 操作者ID，用于权限校验
-	}),
-	z.object({
-		type: z.literal("CMD_START"),
-		sourceSide: z.literal("controller"),
-		seq: z.number(),
-		correlationId: z.string(),
-		operatorId: z.string(),
-	}),
-	z.object({
-		type: z.literal("CMD_PAUSE"),
-		sourceSide: z.literal("controller"),
-		seq: z.number(),
-		correlationId: z.string(),
-		operatorId: z.string(),
-	}),
-	z.object({
-		type: z.literal("CMD_RESUME"),
-		sourceSide: z.literal("controller"),
-		seq: z.number(),
-		correlationId: z.string(),
-		operatorId: z.string(),
-	}),
-	z.object({
-		type: z.literal("CMD_STOP"),
-		sourceSide: z.literal("controller"),
-		seq: z.number(),
-		correlationId: z.string(),
-		operatorId: z.string(),
-	}),
-	z.object({
-		type: z.literal("CMD_RESET"),
-		sourceSide: z.literal("controller"),
-		seq: z.number(),
-		correlationId: z.string(),
-		operatorId: z.string(),
-	}),
-	z.object({
-		type: z.literal("CMD_STEP"),
-		sourceSide: z.literal("controller"),
-		seq: z.number(),
-		correlationId: z.string(),
-		operatorId: z.string(),
-	}),
+export const FastForwardOptionsSchema = z
+	.object({
+		maxTicks: z.number().int().positive().optional(),
+		maxDurationMs: z.number().positive().optional(),
+	})
+	.strict();
+export type FastForwardOptions = z.output<typeof FastForwardOptionsSchema>;
+
+export const FastForwardResultSchema = z
+	.object({
+		ticksRun: z.number().int().nonnegative(),
+		elapsedMs: z.number().nonnegative(),
+		reachedLimit: z.boolean(),
+	})
+	.strict();
+export type FastForwardResult = z.output<typeof FastForwardResultSchema>;
+
+const CommandIdentityShape = {
+	sourceSide: z.literal("controller"),
+	correlationId: z.string().min(1),
+};
+
+export const EngineLifecycleCommandSchema = z.discriminatedUnion("type", [
+	z.object({ ...CommandIdentityShape, type: z.literal("CMD_INIT"), data: EngineScenarioDataSchema }).strict(),
+	z.object({ ...CommandIdentityShape, type: z.literal("CMD_START") }).strict(),
+	z.object({ ...CommandIdentityShape, type: z.literal("CMD_PAUSE") }).strict(),
+	z.object({ ...CommandIdentityShape, type: z.literal("CMD_RESUME") }).strict(),
+	z.object({ ...CommandIdentityShape, type: z.literal("CMD_STOP") }).strict(),
+	z.object({ ...CommandIdentityShape, type: z.literal("CMD_RESET") }).strict(),
+	z.object({ ...CommandIdentityShape, type: z.literal("CMD_STEP") }).strict(),
+	z.object({ ...CommandIdentityShape, type: z.literal("CMD_UNLOAD") }).strict(),
+	z
+		.object({
+			...CommandIdentityShape,
+			type: z.literal("CMD_FAST_FORWARD"),
+			options: FastForwardOptionsSchema.optional(),
+		})
+		.strict(),
+]);
+export type EngineLifecycleCommand = z.output<typeof EngineLifecycleCommandSchema>;
+export type EngineLifecycleCommandType = EngineLifecycleCommand["type"];
+
+const ResultIdentityShape = {
+	sourceSide: z.literal("executor"),
+	correlationId: z.string().min(1),
+};
+
+const lifecycleVoidResultSchema = <TType extends string>(type: TType) =>
+	z.discriminatedUnion("success", [
+		z.object({ ...ResultIdentityShape, type: z.literal(type), success: z.literal(true) }).strict(),
+		z
+			.object({
+				...ResultIdentityShape,
+				type: z.literal(type),
+				success: z.literal(false),
+				error: EngineExecutionErrorSchema,
+			})
+			.strict(),
+	]);
+
+const FastForwardLifecycleResultSchema = z.discriminatedUnion("success", [
+	z
+		.object({
+			...ResultIdentityShape,
+			type: z.literal("RESULT_FAST_FORWARD"),
+			success: z.literal(true),
+			data: FastForwardResultSchema,
+		})
+		.strict(),
+	z
+		.object({
+			...ResultIdentityShape,
+			type: z.literal("RESULT_FAST_FORWARD"),
+			success: z.literal(false),
+			error: EngineExecutionErrorSchema,
+		})
+		.strict(),
 ]);
 
-// 结果类型（executor → controller）
-const ResultSchema = z.discriminatedUnion("type", [
-	z.object({
-		type: z.literal("RESULT_INIT"),
-		sourceSide: z.literal("executor"),
-		seq: z.number(),
-		correlationId: z.string(),
-		success: z.boolean(),
-		error: z.string().optional(),
-	}),
-	z.object({
-		type: z.literal("RESULT_START"),
-		sourceSide: z.literal("executor"),
-		seq: z.number(),
-		correlationId: z.string(),
-		success: z.boolean(),
-		error: z.string().optional(),
-	}),
-	z.object({
-		type: z.literal("RESULT_PAUSE"),
-		sourceSide: z.literal("executor"),
-		seq: z.number(),
-		correlationId: z.string(),
-		success: z.boolean(),
-		error: z.string().optional(),
-	}),
-	z.object({
-		type: z.literal("RESULT_RESUME"),
-		sourceSide: z.literal("executor"),
-		seq: z.number(),
-		correlationId: z.string(),
-		success: z.boolean(),
-		error: z.string().optional(),
-	}),
-	z.object({
-		type: z.literal("RESULT_STOP"),
-		sourceSide: z.literal("executor"),
-		seq: z.number(),
-		correlationId: z.string(),
-		success: z.boolean(),
-		error: z.string().optional(),
-	}),
-	z.object({
-		type: z.literal("RESULT_RESET"),
-		sourceSide: z.literal("executor"),
-		seq: z.number(),
-		correlationId: z.string(),
-		success: z.boolean(),
-		error: z.string().optional(),
-	}),
-	z.object({
-		type: z.literal("RESULT_STEP"),
-		sourceSide: z.literal("executor"),
-		seq: z.number(),
-		correlationId: z.string(),
-		success: z.boolean(),
-		error: z.string().optional(),
-	}),
+export const EngineLifecycleResultSchema = z.union([
+	lifecycleVoidResultSchema("RESULT_INIT"),
+	lifecycleVoidResultSchema("RESULT_START"),
+	lifecycleVoidResultSchema("RESULT_PAUSE"),
+	lifecycleVoidResultSchema("RESULT_RESUME"),
+	lifecycleVoidResultSchema("RESULT_STOP"),
+	lifecycleVoidResultSchema("RESULT_RESET"),
+	lifecycleVoidResultSchema("RESULT_STEP"),
+	lifecycleVoidResultSchema("RESULT_UNLOAD"),
+	FastForwardLifecycleResultSchema,
 ]);
+export type EngineLifecycleResult = z.output<typeof EngineLifecycleResultSchema>;
+export type EngineLifecycleResultType = EngineLifecycleResult["type"];
 
-// 统一消息类型
-export const EngineControlMessageSchema = z.union([CommandSchema, ResultSchema]);
+export const EngineControlMessageSchema = z.union([EngineLifecycleCommandSchema, EngineLifecycleResultSchema]);
 export type EngineControlMessage = z.output<typeof EngineControlMessageSchema>;
 
-// 上下文类型
+export const LifecycleResultTypeByCommand = {
+	CMD_INIT: "RESULT_INIT",
+	CMD_START: "RESULT_START",
+	CMD_PAUSE: "RESULT_PAUSE",
+	CMD_RESUME: "RESULT_RESUME",
+	CMD_STOP: "RESULT_STOP",
+	CMD_RESET: "RESULT_RESET",
+	CMD_STEP: "RESULT_STEP",
+	CMD_UNLOAD: "RESULT_UNLOAD",
+	CMD_FAST_FORWARD: "RESULT_FAST_FORWARD",
+} as const satisfies Record<EngineLifecycleCommandType, EngineLifecycleResultType>;
+
+export function isMatchingLifecycleResult(command: EngineLifecycleCommand, result: EngineLifecycleResult): boolean {
+	return LifecycleResultTypeByCommand[command.type] === result.type && command.correlationId === result.correlationId;
+}
+
+export const EngineLifecycleStableStateSchema = z.enum(["idle", "ready", "running", "paused"]);
+export type EngineLifecycleStableState = z.output<typeof EngineLifecycleStableStateSchema>;
+
+export const EngineLifecycleStateSchema = z.enum([
+	"idle",
+	"initializing",
+	"ready",
+	"starting",
+	"running",
+	"pausing",
+	"paused",
+	"resuming",
+	"stopping",
+	"resetting",
+	"stepping",
+	"unloading",
+	"advancing",
+]);
+export type EngineLifecycleState = z.output<typeof EngineLifecycleStateSchema>;
+
+export const EngineLifecycleSnapshotSchema = z
+	.object({
+		state: EngineLifecycleStateSchema,
+		confirmedState: EngineLifecycleStableStateSchema,
+		pending: z
+			.object({
+				type: z.enum([
+					"CMD_INIT",
+					"CMD_START",
+					"CMD_PAUSE",
+					"CMD_RESUME",
+					"CMD_STOP",
+					"CMD_RESET",
+					"CMD_STEP",
+					"CMD_UNLOAD",
+					"CMD_FAST_FORWARD",
+				]),
+				correlationId: z.string(),
+			})
+			.strict()
+			.nullable(),
+	})
+	.strict();
+export type EngineLifecycleSnapshot = z.output<typeof EngineLifecycleSnapshotSchema>;
+
 export interface EngineSMContext {
-	role: "controller" | "executor"; // 角色：控制器或执行器
-	peer: { send: (msg: EngineControlMessage) => void | Promise<void> }; // 对端通信
-	engine?: GameEngine; // 引擎执行器（仅 executor 需要）
-	controller?: { showPaused?: () => void }; // 控制器UI（可选，不强依赖）
-	threadName?: string; // 线程标识：'main' 或 'worker'
-	// 权限管理
-	hostOperatorId?: string; // 主机操作者ID（仅 executor 需要，用于权限校验）
-	// 序列号生成器
-	nextSeq: () => number; // 生成下一个序列号
-	newCorrelationId: () => string; // 生成新的关联ID
-	// 内部状态
-	_seqCounter: number; // 序列号计数器
+	role: "controller" | "executor";
+	confirmedState: EngineLifecycleStableState;
+	pendingCommand: EngineLifecycleCommand | null;
+}
+
+function isLifecycleCommand(event: EngineControlMessage): event is EngineLifecycleCommand {
+	return event.sourceSide === "controller";
+}
+
+function isLifecycleResult(event: EngineControlMessage): event is EngineLifecycleResult {
+	return event.sourceSide === "executor";
+}
+
+function resultMatchesPending(context: EngineSMContext, event: EngineControlMessage): event is EngineLifecycleResult {
+	return (
+		context.pendingCommand !== null &&
+		isLifecycleResult(event) &&
+		isMatchingLifecycleResult(context.pendingCommand, event)
+	);
 }
 
 export const GameEngineSM = setup({
 	types: {} as {
 		context: EngineSMContext;
 		events: EngineControlMessage;
-		input: Omit<EngineSMContext, "_seqCounter"> & { _seqCounter?: number };
+		input: { role: EngineSMContext["role"] };
 	},
 	actions: {
-		// Controller 侧：发送命令到 executor
-		sendToExecutor: ({ context, event }) => {
-			if (context.role !== "controller") {
-				log.warn(`[${context.threadName || "unknown"}] GameEngineSM: sendToExecutor 只能由 controller 调用`);
-				return;
-			}
-			const prefix = context.threadName || "unknown";
-			log.info(`[${prefix}] GameEngineSM: Controller 发送命令到 Executor:`, event);
-			context.peer.send(event);
-		},
-		// 权限校验：检查 operatorId 是否为 host
-		checkOperatorPermission: ({ context, event }) => {
-			if (context.role !== "executor") return true; // controller 侧不需要校验
-			if (!context.hostOperatorId) return true; // 未设置 host 时允许所有操作（向后兼容）
-
-			const operatorId = "operatorId" in event ? event.operatorId : undefined;
-			if (operatorId !== context.hostOperatorId) {
-				const prefix = context.threadName || "unknown";
-				log.warn(`[${prefix}] GameEngineSM: 权限拒绝 - operatorId ${operatorId} 不是 host (${context.hostOperatorId})`);
-				return false;
-			}
-			return true;
-		},
-		// Executor 侧：从非idle状态重新初始化（先cleanup再init）
-		runIfExecutorReinit: ({ context, event }) => {
-			if (context.role !== "executor") {
-				log.warn(`[${context.threadName || "unknown"}] GameEngineSM: runIfExecutorReinit 只能由 executor 调用`);
-				return;
-			}
-			const prefix = context.threadName || "unknown";
-			log.info(`[${prefix}] GameEngineSM: Executor 从非idle状态重新初始化`);
-
-			// 先清理旧引擎状态
-			try {
-				context.engine?.cleanup?.();
-			} catch (e) {
-				log.warn(`[${prefix}] GameEngineSM: 清理旧引擎失败（可忽略）:`, e);
-			}
-			// 清除旧host权限
-			context.hostOperatorId = undefined;
-
-			// 然后执行正常的init流程
-			if (event.type === "CMD_INIT" && "operatorId" in event) {
-				context.hostOperatorId = event.operatorId;
-				log.info(`[${prefix}] GameEngineSM: 设置新 hostOperatorId: ${event.operatorId}`);
-			}
-
-			try {
-				if (event.type === "CMD_INIT" && event.data) {
-					context.engine?.loadScenario(event.data);
-					log.info(`[${prefix}] GameEngineSM: Executor 重新 INIT 完成`);
-					context.peer.send({
-						type: "RESULT_INIT",
-						sourceSide: "executor",
-						seq: context.nextSeq(),
-						correlationId: event.correlationId,
-						success: true,
-					});
-				} else {
-					throw new Error("CMD_INIT 必须提供数据");
-				}
-			} catch (error) {
-				log.error(`[${prefix}] GameEngineSM: Executor 重新 INIT 失败:`, error);
-				context.peer.send({
-					type: "RESULT_INIT",
-					sourceSide: "executor",
-					seq: context.nextSeq(),
-					correlationId: event.correlationId,
-					success: false,
-					error: error instanceof Error ? error.message : String(error),
-				});
-				throw error;
-			}
-		},
-		// Executor 侧：执行副作用并回传结果
-		runIfExecutorInit: ({ context, event }) => {
-			if (context.role !== "executor") {
-				log.warn(`[${context.threadName || "unknown"}] GameEngineSM: runIfExecutorInit 只能由 executor 调用`);
-				return;
-			}
-			const prefix = context.threadName || "unknown";
-
-			// 权限校验
-			if (!context.hostOperatorId) {
-				// 首次初始化时，将第一个 operatorId 设为 host
-				if (event.type === "CMD_INIT" && "operatorId" in event) {
-					context.hostOperatorId = event.operatorId;
-					log.info(`[${prefix}] GameEngineSM: 设置 hostOperatorId: ${event.operatorId}`);
-				}
-			} else {
-				// 检查权限
-				const operatorId = "operatorId" in event ? event.operatorId : undefined;
-				if (operatorId !== context.hostOperatorId) {
-					log.warn(
-						`[${prefix}] GameEngineSM: INIT 权限拒绝 - operatorId ${operatorId} 不是 host (${context.hostOperatorId})`,
-					);
-					context.peer.send({
-						type: "RESULT_INIT",
-						sourceSide: "executor",
-						seq: context.nextSeq(),
-						correlationId: event.correlationId,
-						success: false,
-						error: `权限拒绝: operatorId ${operatorId} 不是 host`,
-					});
-					return;
-				}
-			}
-
-			try {
-				if (event.type === "CMD_INIT" && event.data) {
-					context.engine?.loadScenario(event.data);
-					log.info(`[${prefix}] GameEngineSM: Executor 执行 INIT 完成`);
-					context.peer.send({
-						type: "RESULT_INIT",
-						sourceSide: "executor",
-						seq: context.nextSeq(),
-						correlationId: event.correlationId,
-						success: true,
-					});
-				} else {
-					throw new Error("CMD_INIT 必须提供数据");
-				}
-			} catch (error) {
-				log.error(`[${prefix}] GameEngineSM: Executor 执行 INIT 失败:`, error);
-				context.peer.send({
-					type: "RESULT_INIT",
-					sourceSide: "executor",
-					seq: context.nextSeq(),
-					correlationId: event.correlationId,
-					success: false,
-					error: error instanceof Error ? error.message : String(error),
-				});
-				throw error;
-			}
-		},
-		runIfExecutorStart: ({ context, event }) => {
-			if (context.role !== "executor") return;
-			const prefix = context.threadName || "unknown";
-
-			// 权限校验
-			const operatorId = "operatorId" in event ? event.operatorId : undefined;
-			if (context.hostOperatorId && operatorId !== context.hostOperatorId) {
-				log.warn(
-					`[${prefix}] GameEngineSM: START 权限拒绝 - operatorId ${operatorId} 不是 host (${context.hostOperatorId})`,
-				);
-				context.peer.send({
-					type: "RESULT_START",
-					sourceSide: "executor",
-					seq: context.nextSeq(),
-					correlationId: event.correlationId,
-					success: false,
-					error: `权限拒绝: operatorId ${operatorId} 不是 host`,
-				});
-				return;
-			}
-
-			context.engine?.start();
-			log.info(`[${prefix}] GameEngineSM: Executor 执行 START 完成`);
-			context.peer.send({
-				type: "RESULT_START",
-				sourceSide: "executor",
-				seq: context.nextSeq(),
-				correlationId: event.correlationId,
-				success: true,
-			});
-		},
-		runIfExecutorPause: ({ context, event }) => {
-			if (context.role !== "executor") return;
-			const prefix = context.threadName || "unknown";
-
-			// 权限校验
-			const operatorId = "operatorId" in event ? event.operatorId : undefined;
-			if (context.hostOperatorId && operatorId !== context.hostOperatorId) {
-				log.warn(
-					`[${prefix}] GameEngineSM: PAUSE 权限拒绝 - operatorId ${operatorId} 不是 host (${context.hostOperatorId})`,
-				);
-				context.peer.send({
-					type: "RESULT_PAUSE",
-					sourceSide: "executor",
-					seq: context.nextSeq(),
-					correlationId: event.correlationId,
-					success: false,
-					error: `权限拒绝: operatorId ${operatorId} 不是 host`,
-				});
-				return;
-			}
-
-			context.engine?.pause();
-			context.controller?.showPaused?.();
-			log.info(`[${prefix}] GameEngineSM: Executor 执行 PAUSE 完成`);
-			context.peer.send({
-				type: "RESULT_PAUSE",
-				sourceSide: "executor",
-				seq: context.nextSeq(),
-				correlationId: event.correlationId,
-				success: true,
-			});
-		},
-		runIfExecutorResume: ({ context, event }) => {
-			if (context.role !== "executor") return;
-			const prefix = context.threadName || "unknown";
-
-			// 权限校验
-			const operatorId = "operatorId" in event ? event.operatorId : undefined;
-			if (context.hostOperatorId && operatorId !== context.hostOperatorId) {
-				log.warn(
-					`[${prefix}] GameEngineSM: RESUME 权限拒绝 - operatorId ${operatorId} 不是 host (${context.hostOperatorId})`,
-				);
-				context.peer.send({
-					type: "RESULT_RESUME",
-					sourceSide: "executor",
-					seq: context.nextSeq(),
-					correlationId: event.correlationId,
-					success: false,
-					error: `权限拒绝: operatorId ${operatorId} 不是 host`,
-				});
-				return;
-			}
-
-			context.engine?.resume();
-			log.info(`[${prefix}] GameEngineSM: Executor 执行 RESUME 完成`);
-			context.peer.send({
-				type: "RESULT_RESUME",
-				sourceSide: "executor",
-				seq: context.nextSeq(),
-				correlationId: event.correlationId,
-				success: true,
-			});
-		},
-		runIfExecutorStop: ({ context, event }) => {
-			if (context.role !== "executor") return;
-			const prefix = context.threadName || "unknown";
-
-			// 权限校验
-			const operatorId = "operatorId" in event ? event.operatorId : undefined;
-			if (context.hostOperatorId && operatorId !== context.hostOperatorId) {
-				log.warn(
-					`[${prefix}] GameEngineSM: STOP 权限拒绝 - operatorId ${operatorId} 不是 host (${context.hostOperatorId})`,
-				);
-				context.peer.send({
-					type: "RESULT_STOP",
-					sourceSide: "executor",
-					seq: context.nextSeq(),
-					correlationId: event.correlationId,
-					success: false,
-					error: `权限拒绝: operatorId ${operatorId} 不是 host`,
-				});
-				return;
-			}
-
-			context.engine?.stop();
-			log.info(`[${prefix}] GameEngineSM: Executor 执行 STOP 完成`);
-			context.peer.send({
-				type: "RESULT_STOP",
-				sourceSide: "executor",
-				seq: context.nextSeq(),
-				correlationId: event.correlationId,
-				success: true,
-			});
-		},
-		runIfExecutorReset: ({ context, event }) => {
-			if (context.role !== "executor") return;
-			const prefix = context.threadName || "unknown";
-
-			// 权限校验
-			const operatorId = "operatorId" in event ? event.operatorId : undefined;
-			if (context.hostOperatorId && operatorId !== context.hostOperatorId) {
-				log.warn(
-					`[${prefix}] GameEngineSM: RESET 权限拒绝 - operatorId ${operatorId} 不是 host (${context.hostOperatorId})`,
-				);
-				context.peer.send({
-					type: "RESULT_RESET",
-					sourceSide: "executor",
-					seq: context.nextSeq(),
-					correlationId: event.correlationId,
-					success: false,
-					error: `权限拒绝: operatorId ${operatorId} 不是 host`,
-				});
-				return;
-			}
-
-			context.engine?.reset?.();
-			// 重置host权限，允许下一个controller接管
-			context.hostOperatorId = undefined;
-			log.info(`[${prefix}] GameEngineSM: Executor 执行 RESET 完成，hostOperatorId 已清除`);
-			context.peer.send({
-				type: "RESULT_RESET",
-				sourceSide: "executor",
-				seq: context.nextSeq(),
-				correlationId: event.correlationId,
-				success: true,
-			});
-		},
-		runIfExecutorResetAndReady: ({ context, event }) => {
-			if (context.role !== "executor") return;
-			const prefix = context.threadName || "unknown";
-
-			// 权限校验
-			const operatorId = "operatorId" in event ? event.operatorId : undefined;
-			if (context.hostOperatorId && operatorId !== context.hostOperatorId) {
-				log.warn(
-					`[${prefix}] GameEngineSM: RESET 权限拒绝 - operatorId ${operatorId} 不是 host (${context.hostOperatorId})`,
-				);
-				context.peer.send({
-					type: "RESULT_RESET",
-					sourceSide: "executor",
-					seq: context.nextSeq(),
-					correlationId: event.correlationId,
-					success: false,
-					error: `权限拒绝: operatorId ${operatorId} 不是 host`,
-				});
-				return;
-			}
-
-			context.engine?.reset?.();
-			// 重置host权限，允许下一个controller接管
-			context.hostOperatorId = undefined;
-			log.info(`[${prefix}] GameEngineSM: Executor 执行 RESET 完成，hostOperatorId 已清除`);
-			context.peer.send({
-				type: "RESULT_RESET",
-				sourceSide: "executor",
-				seq: context.nextSeq(),
-				correlationId: event.correlationId,
-				success: true,
-			});
-			// 重置后自动转换到 ready 状态：executor 直接进入 ready，不需要再发 CMD_INIT
-			// 因为 reset 后引擎已经处于初始化状态，可以直接进入 ready
-		},
-		runIfExecutorStep: ({ context, event }) => {
-			if (context.role !== "executor") return;
-			const prefix = context.threadName || "unknown";
-
-			// 权限校验
-			const operatorId = "operatorId" in event ? event.operatorId : undefined;
-			if (context.hostOperatorId && operatorId !== context.hostOperatorId) {
-				log.warn(
-					`[${prefix}] GameEngineSM: STEP 权限拒绝 - operatorId ${operatorId} 不是 host (${context.hostOperatorId})`,
-				);
-				context.peer.send({
-					type: "RESULT_STEP",
-					sourceSide: "executor",
-					seq: context.nextSeq(),
-					correlationId: event.correlationId,
-					success: false,
-					error: `权限拒绝: operatorId ${operatorId} 不是 host`,
-				});
-				return;
-			}
-
-			context.engine?.step?.();
-			log.info(`[${prefix}] GameEngineSM: Executor 执行 STEP 完成`);
-			context.peer.send({
-				type: "RESULT_STEP",
-				sourceSide: "executor",
-				seq: context.nextSeq(),
-				correlationId: event.correlationId,
-				success: true,
-			});
-		},
+		beginCommand: assign({
+			pendingCommand: ({ event }) => (isLifecycleCommand(event) ? event : null),
+		}),
+		enterIdle: assign({ confirmedState: () => "idle", pendingCommand: () => null }),
+		enterReady: assign({ confirmedState: () => "ready", pendingCommand: () => null }),
+		enterRunning: assign({ confirmedState: () => "running", pendingCommand: () => null }),
+		enterPaused: assign({ confirmedState: () => "paused", pendingCommand: () => null }),
+	},
+	guards: {
+		matchingSuccess: ({ context, event }) => resultMatchesPending(context, event) && event.success,
+		matchingFailureToIdle: ({ context, event }) =>
+			resultMatchesPending(context, event) && !event.success && context.confirmedState === "idle",
+		matchingFailureToReady: ({ context, event }) =>
+			resultMatchesPending(context, event) && !event.success && context.confirmedState === "ready",
+		matchingFailureToRunning: ({ context, event }) =>
+			resultMatchesPending(context, event) && !event.success && context.confirmedState === "running",
+		matchingFailureToPaused: ({ context, event }) =>
+			resultMatchesPending(context, event) && !event.success && context.confirmedState === "paused",
 	},
 }).createMachine({
-	id: "engine",
+	id: "engine-lifecycle",
 	initial: "idle",
-	context: ({ input }) => ({
-		...input,
-		_seqCounter: input._seqCounter ?? 0,
-		nextSeq:
-			input.nextSeq ??
-			(() => {
-				let counter = input._seqCounter ?? 0;
-				return () => ++counter;
-			})(),
-		newCorrelationId: input.newCorrelationId ?? (() => createId),
-	}),
+	context: ({ input }) => ({ role: input.role, confirmedState: "idle", pendingCommand: null }),
 	states: {
 		idle: {
+			entry: "enterIdle",
 			on: {
-				CMD_INIT: [
-					{
-						guard: ({ context }) => context.role === "controller",
-						target: "initializing",
-						actions: ["sendToExecutor"],
-					},
-					{
-						guard: ({ context }) => context.role === "executor",
-						target: "ready",
-						actions: ["runIfExecutorInit"],
-					},
-				],
-				RESULT_RESET: [
-					{
-						guard: ({ event, context }) =>
-							context.role === "controller" && event.sourceSide === "executor" && event.success,
-						target: "ready",
-					},
-				],
+				CMD_INIT: { target: "initializing", actions: "beginCommand" },
+				CMD_UNLOAD: { target: "unloading", actions: "beginCommand" },
 			},
 		},
-
 		initializing: {
 			on: {
 				RESULT_INIT: [
-					{
-						guard: ({ event, context }) =>
-							context.role === "controller" && event.sourceSide === "executor" && event.success,
-						target: "ready",
-					},
-					{
-						guard: ({ event, context }) =>
-							context.role === "controller" && event.sourceSide === "executor" && !event.success,
-						target: "idle",
-					},
+					{ guard: "matchingSuccess", target: "ready" },
+					{ guard: "matchingFailureToIdle", target: "idle" },
+					{ guard: "matchingFailureToReady", target: "ready" },
 				],
 			},
-			// 添加超时保护，如果长时间没有收到 RESULT，自动回到 idle
-			after: {
-				10000: {
-					target: "idle",
-					actions: ({ context }) => {
-						const prefix = context.threadName || "unknown";
-						log.warn(`[${prefix}] GameEngineSM: 初始化超时，返回 idle 状态`);
-					},
-				},
-			},
 		},
-
 		ready: {
+			entry: "enterReady",
 			on: {
-				CMD_INIT: [
-					{
-						guard: ({ context }) => context.role === "controller",
-						target: "initializing",
-						actions: ["sendToExecutor"],
-					},
-					{
-						guard: ({ context }) => context.role === "executor",
-						target: "ready",
-						actions: ["runIfExecutorReinit"],
-					},
-				],
-				CMD_START: [
-					{
-						guard: ({ context }) => context.role === "controller",
-						target: "starting",
-						actions: ["sendToExecutor"],
-					},
-					{
-						guard: ({ context }) => context.role === "executor",
-						target: "running",
-						actions: ["runIfExecutorStart"],
-					},
-				],
-				CMD_RESET: [
-					{
-						guard: ({ context }) => context.role === "controller",
-						target: "idle",
-						actions: ["sendToExecutor"],
-					},
-					{
-						guard: ({ context }) => context.role === "executor",
-						target: "ready",
-						actions: ["runIfExecutorResetAndReady"],
-					},
-				],
+				CMD_INIT: { target: "initializing", actions: "beginCommand" },
+				CMD_START: { target: "starting", actions: "beginCommand" },
+				CMD_STOP: { target: "stopping", actions: "beginCommand" },
+				CMD_RESET: { target: "resetting", actions: "beginCommand" },
+				CMD_UNLOAD: { target: "unloading", actions: "beginCommand" },
+				CMD_FAST_FORWARD: { target: "advancing", actions: "beginCommand" },
 			},
 		},
-
 		starting: {
 			on: {
-				RESULT_START: {
-					guard: ({ event, context }) =>
-						context.role === "controller" && event.sourceSide === "executor" && event.success,
-					target: "running",
-				},
-				CMD_RESET: [
-					{
-						guard: ({ context }) => context.role === "controller",
-						target: "idle",
-						actions: ["sendToExecutor"],
-					},
-					{
-						guard: ({ context }) => context.role === "executor",
-						target: "ready",
-						actions: ["runIfExecutorResetAndReady"],
-					},
+				RESULT_START: [
+					{ guard: "matchingSuccess", target: "running" },
+					{ guard: "matchingFailureToReady", target: "ready" },
 				],
 			},
 		},
-
 		running: {
+			entry: "enterRunning",
 			on: {
-				CMD_PAUSE: [
-					{
-						guard: ({ context }) => context.role === "controller",
-						target: "pausing",
-						actions: ["sendToExecutor"],
-					},
-					{
-						guard: ({ context }) => context.role === "executor",
-						target: "paused",
-						actions: ["runIfExecutorPause"],
-					},
-				],
-				CMD_STOP: [
-					{
-						guard: ({ context }) => context.role === "controller",
-						target: "stopping",
-						actions: ["sendToExecutor"],
-					},
-					{
-						guard: ({ context }) => context.role === "executor",
-						target: "stopped",
-						actions: ["runIfExecutorStop"],
-					},
-				],
-				CMD_RESET: [
-					{
-						guard: ({ context }) => context.role === "controller",
-						target: "idle",
-						actions: ["sendToExecutor"],
-					},
-					{
-						guard: ({ context }) => context.role === "executor",
-						target: "ready",
-						actions: ["runIfExecutorResetAndReady"],
-					},
-				],
+				CMD_PAUSE: { target: "pausing", actions: "beginCommand" },
+				CMD_STOP: { target: "stopping", actions: "beginCommand" },
+				CMD_RESET: { target: "resetting", actions: "beginCommand" },
+				CMD_UNLOAD: { target: "unloading", actions: "beginCommand" },
 			},
 		},
-
 		pausing: {
 			on: {
-				RESULT_PAUSE: {
-					guard: ({ event, context }) =>
-						context.role === "controller" && event.sourceSide === "executor" && event.success,
-					target: "paused",
-				},
-				CMD_RESET: [
-					{
-						guard: ({ context }) => context.role === "controller",
-						target: "idle",
-						actions: ["sendToExecutor"],
-					},
-					{
-						guard: ({ context }) => context.role === "executor",
-						target: "ready",
-						actions: ["runIfExecutorResetAndReady"],
-					},
+				RESULT_PAUSE: [
+					{ guard: "matchingSuccess", target: "paused" },
+					{ guard: "matchingFailureToRunning", target: "running" },
 				],
 			},
 		},
-
 		paused: {
+			entry: "enterPaused",
 			on: {
-				CMD_RESUME: [
-					{
-						guard: ({ context }) => context.role === "controller",
-						target: "resuming",
-						actions: ["sendToExecutor"],
-					},
-					{
-						guard: ({ context }) => context.role === "executor",
-						target: "running",
-						actions: ["runIfExecutorResume"],
-					},
-				],
-				CMD_STEP: [
-					{
-						guard: ({ context }) => context.role === "controller",
-						target: "paused",
-						actions: ["sendToExecutor"],
-					},
-					{
-						guard: ({ context }) => context.role === "executor",
-						target: "paused",
-						actions: ["runIfExecutorStep"],
-					},
-				],
-				CMD_STOP: [
-					{
-						guard: ({ context }) => context.role === "controller",
-						target: "stopping",
-						actions: ["sendToExecutor"],
-					},
-					{
-						guard: ({ context }) => context.role === "executor",
-						target: "stopped",
-						actions: ["runIfExecutorStop"],
-					},
-				],
-				CMD_RESET: [
-					{
-						guard: ({ context }) => context.role === "controller",
-						target: "idle",
-						actions: ["sendToExecutor"],
-					},
-					{
-						guard: ({ context }) => context.role === "executor",
-						target: "ready",
-						actions: ["runIfExecutorResetAndReady"],
-					},
-				],
+				CMD_RESUME: { target: "resuming", actions: "beginCommand" },
+				CMD_STOP: { target: "stopping", actions: "beginCommand" },
+				CMD_RESET: { target: "resetting", actions: "beginCommand" },
+				CMD_STEP: { target: "stepping", actions: "beginCommand" },
+				CMD_UNLOAD: { target: "unloading", actions: "beginCommand" },
 			},
 		},
-
 		resuming: {
 			on: {
-				RESULT_RESUME: {
-					guard: ({ event, context }) =>
-						context.role === "controller" && event.sourceSide === "executor" && event.success,
-					target: "running",
-				},
-				CMD_RESET: [
-					{
-						guard: ({ context }) => context.role === "controller",
-						target: "idle",
-						actions: ["sendToExecutor"],
-					},
-					{
-						guard: ({ context }) => context.role === "executor",
-						target: "ready",
-						actions: ["runIfExecutorResetAndReady"],
-					},
+				RESULT_RESUME: [
+					{ guard: "matchingSuccess", target: "running" },
+					{ guard: "matchingFailureToPaused", target: "paused" },
 				],
 			},
 		},
-
 		stopping: {
 			on: {
-				RESULT_STOP: {
-					guard: ({ event, context }) =>
-						context.role === "controller" && event.sourceSide === "executor" && event.success,
-					target: "stopped",
-				},
-				CMD_RESET: [
-					{
-						guard: ({ context }) => context.role === "controller",
-						target: "idle",
-						actions: ["sendToExecutor"],
-					},
-					{
-						guard: ({ context }) => context.role === "executor",
-						target: "ready",
-						actions: ["runIfExecutorResetAndReady"],
-					},
+				RESULT_STOP: [
+					{ guard: "matchingSuccess", target: "ready" },
+					{ guard: "matchingFailureToReady", target: "ready" },
+					{ guard: "matchingFailureToRunning", target: "running" },
+					{ guard: "matchingFailureToPaused", target: "paused" },
 				],
 			},
 		},
-
-		stopped: {
+		resetting: {
 			on: {
-				CMD_RESET: [
-					{
-						guard: ({ context }) => context.role === "controller",
-						target: "idle",
-						actions: ["sendToExecutor"],
-					},
-					{
-						guard: ({ context }) => context.role === "executor",
-						target: "ready",
-						actions: ["runIfExecutorResetAndReady"],
-					},
+				RESULT_RESET: [
+					{ guard: "matchingSuccess", target: "ready" },
+					{ guard: "matchingFailureToReady", target: "ready" },
+					{ guard: "matchingFailureToRunning", target: "running" },
+					{ guard: "matchingFailureToPaused", target: "paused" },
+				],
+			},
+		},
+		stepping: {
+			on: {
+				RESULT_STEP: [
+					{ guard: "matchingSuccess", target: "paused" },
+					{ guard: "matchingFailureToPaused", target: "paused" },
+				],
+			},
+		},
+		unloading: {
+			on: {
+				RESULT_UNLOAD: [
+					{ guard: "matchingSuccess", target: "idle" },
+					{ guard: "matchingFailureToIdle", target: "idle" },
+					{ guard: "matchingFailureToReady", target: "ready" },
+					{ guard: "matchingFailureToRunning", target: "running" },
+					{ guard: "matchingFailureToPaused", target: "paused" },
+				],
+			},
+		},
+		advancing: {
+			on: {
+				RESULT_FAST_FORWARD: [
+					{ guard: "matchingSuccess", target: "ready" },
+					{ guard: "matchingFailureToReady", target: "ready" },
 				],
 			},
 		},
 	},
 });
+
+/** 将 actor 内部 snapshot 收窄为 Handle 可以安全公开的只读协议视图。 */
+export function projectEngineLifecycleSnapshot(snapshot: SnapshotFrom<typeof GameEngineSM>): EngineLifecycleSnapshot {
+	const state = EngineLifecycleStateSchema.parse(snapshot.value);
+	const pending = snapshot.context.pendingCommand
+		? {
+				type: snapshot.context.pendingCommand.type,
+				correlationId: snapshot.context.pendingCommand.correlationId,
+			}
+		: null;
+	return EngineLifecycleSnapshotSchema.parse({
+		state,
+		confirmedState: snapshot.context.confirmedState,
+		pending,
+	});
+}

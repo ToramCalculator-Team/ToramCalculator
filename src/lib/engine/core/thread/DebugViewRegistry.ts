@@ -219,16 +219,14 @@ export class DebugViewRegistry {
 
 	/** 调试数据发送器（由 worker 设置） */
 	private debugFrameSender:
-		| ((
-				frame: {
-					viewId: string;
-					controllerId: string;
-					memberId: string;
-					tickIndex: number;
-					currentTimeMs: number;
-					data: unknown;
-				},
-		  ) => void)
+		| ((frame: {
+				viewId: string;
+				controllerId: string;
+				memberId: string;
+				tickIndex: number;
+				currentTimeMs: number;
+				data: unknown;
+		  }) => void)
 		| null = null;
 
 	/**
@@ -236,16 +234,14 @@ export class DebugViewRegistry {
 	 */
 	setDebugFrameSender(
 		sender:
-			| ((
-					frame: {
-						viewId: string;
-						controllerId: string;
-						memberId: string;
-						tickIndex: number;
-						currentTimeMs: number;
-						data: unknown;
-					},
-			  ) => void)
+			| ((frame: {
+					viewId: string;
+					controllerId: string;
+					memberId: string;
+					tickIndex: number;
+					currentTimeMs: number;
+					data: unknown;
+			  }) => void)
 			| null,
 	): void {
 		this.debugFrameSender = sender;
@@ -254,9 +250,9 @@ export class DebugViewRegistry {
 	/**
 	 * 清理所有订阅
 	 */
-		clear(): void {
-			this.subscriptions.clear();
-			this.lastSentAt.clear();
-			this.stopDebugLoop();
-		}
+	clear(): void {
+		this.subscriptions.clear();
+		this.lastSentAt.clear();
+		this.stopDebugLoop();
 	}
+}
