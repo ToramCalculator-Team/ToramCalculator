@@ -1,6 +1,6 @@
-import { gzipSync } from "node:zlib";
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { gzipSync } from "node:zlib";
 
 // 构建后处理：为 chunk-manifest 的每个条目补充 gzip 后字节数（gzipSize）。
 // 设计目的：Nginx 反代默认以 gzip 下发，进度条需用压缩后字节作分母才准确。

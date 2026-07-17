@@ -145,123 +145,123 @@
 // ==================== 类型定义 ====================
 
 export interface PerformanceEvent {
-  id: string;
-  operation: string;
-  startTime: number;
-  endTime: number;
-  duration: number;
-  metadata?: Record<string, any>;
+	id: string;
+	operation: string;
+	startTime: number;
+	endTime: number;
+	duration: number;
+	metadata?: Record<string, any>;
 }
 
 export interface PerformanceObserver {
-  onPerformanceEvent(event: PerformanceEvent): void;
+	onPerformanceEvent(event: PerformanceEvent): void;
 }
 
 export interface PerformanceConfig {
-  // 控制台日志级别
-  consoleLevel: "none" | "error" | "warn" | "info" | "debug";
-  // 是否启用统计收集
-  enableStats: boolean;
-  // 是否启用事件存储
-  enableEventStorage: boolean;
-  // 操作过滤（只监控包含指定关键词的操作）
-  operationFilter?: string;
-  // 最小记录时间（毫秒），低于此时间的操作不记录
-  minRecordTime: number;
+	// 控制台日志级别
+	consoleLevel: "none" | "error" | "warn" | "info" | "debug";
+	// 是否启用统计收集
+	enableStats: boolean;
+	// 是否启用事件存储
+	enableEventStorage: boolean;
+	// 操作过滤（只监控包含指定关键词的操作）
+	operationFilter?: string;
+	// 最小记录时间（毫秒），低于此时间的操作不记录
+	minRecordTime: number;
 }
 
 export interface SearchPerformanceData {
-  searchId: string;
-  keyword: string;
-  totalTime: number;
-  dbConnectionTime: number;
-  importTime: number;
-  searchTime: number;
-  processTime: number;
-  tableMetrics: Record<
-    string,
-    {
-      queryTime: number;
-      dataFetchTime: number;
-      resultCount: number;
-    }
-  >;
-  totalResults: number;
+	searchId: string;
+	keyword: string;
+	totalTime: number;
+	dbConnectionTime: number;
+	importTime: number;
+	searchTime: number;
+	processTime: number;
+	tableMetrics: Record<
+		string,
+		{
+			queryTime: number;
+			dataFetchTime: number;
+			resultCount: number;
+		}
+	>;
+	totalResults: number;
 }
 
 // ==================== 全局配置 ====================
 
 let globalConfig: PerformanceConfig = {
-  consoleLevel: "info",
-  enableStats: true,
-  enableEventStorage: true,
-  minRecordTime: 0,
+	consoleLevel: "info",
+	enableStats: true,
+	enableEventStorage: true,
+	minRecordTime: 0,
 };
 
 /**
  * 设置全局性能监控配置
  */
 export function setConfig(config: Partial<PerformanceConfig>) {
-  globalConfig = { ...globalConfig, ...config };
-  console.log(`🔧 [性能监控] 配置已更新:`, globalConfig);
+	globalConfig = { ...globalConfig, ...config };
+	console.log(`🔧 [性能监控] 配置已更新:`, globalConfig);
 }
 
 /**
  * 获取当前配置
  */
 export function getConfig(): PerformanceConfig {
-  return { ...globalConfig };
+	return { ...globalConfig };
 }
 
 // ==================== 事件发射器 ====================
 
 class PerformanceEventEmitter {
-  private static observers: PerformanceObserver[] = [];
-  private static events: PerformanceEvent[] = [];
-  private static maxEvents = 1000;
+	private static observers: PerformanceObserver[] = [];
+	private static events: PerformanceEvent[] = [];
+	private static maxEvents = 1000;
 
-  static addObserver(observer: PerformanceObserver) {
-    this.observers.push(observer);
-  }
+	static addObserver(observer: PerformanceObserver) {
+		PerformanceEventEmitter.observers.push(observer);
+	}
 
-  static removeObserver(observer: PerformanceObserver) {
-    const index = this.observers.indexOf(observer);
-    if (index > -1) {
-      this.observers.splice(index, 1);
-    }
-  }
+	static removeObserver(observer: PerformanceObserver) {
+		const index = PerformanceEventEmitter.observers.indexOf(observer);
+		if (index > -1) {
+			PerformanceEventEmitter.observers.splice(index, 1);
+		}
+	}
 
-  static emit(event: PerformanceEvent) {
-    // 检查操作过滤
-    if (globalConfig.operationFilter && !event.operation.includes(globalConfig.operationFilter)) {
-      return;
-    }
+	static emit(event: PerformanceEvent) {
+		// 检查操作过滤
+		if (globalConfig.operationFilter && !event.operation.includes(globalConfig.operationFilter)) {
+			return;
+		}
 
-    // 存储事件
-    if (globalConfig.enableEventStorage) {
-      this.events.push(event);
-      if (this.events.length > this.maxEvents) {
-        this.events = this.events.slice(-this.maxEvents);
-      }
-    }
+		// 存储事件
+		if (globalConfig.enableEventStorage) {
+			PerformanceEventEmitter.events.push(event);
+			if (PerformanceEventEmitter.events.length > PerformanceEventEmitter.maxEvents) {
+				PerformanceEventEmitter.events = PerformanceEventEmitter.events.slice(-PerformanceEventEmitter.maxEvents);
+			}
+		}
 
-    // 通知所有观察者
-    this.observers.forEach((observer) => {
-      try {
-        observer.onPerformanceEvent(event);
-      } catch (error) {
-        console.warn("Performance observer error:", error);
-      }
-    });
-  }
+		// 通知所有观察者
+		PerformanceEventEmitter.observers.forEach((observer) => {
+			try {
+				observer.onPerformanceEvent(event);
+			} catch (error) {
+				console.warn("Performance observer error:", error);
+			}
+		});
+	}
 
-  static getEvents(): PerformanceEvent[] {
-    return [...this.events];
-  }
+	static getEvents(): PerformanceEvent[] {
+		return [...PerformanceEventEmitter.events];
+	}
 
-  static clearEvents() {
-    this.events = [];
-  }
+	static clearEvents() {
+		PerformanceEventEmitter.events = [];
+	}
 }
 
 // ==================== 观察者实现 ====================
@@ -270,138 +270,138 @@ class PerformanceEventEmitter {
  * 控制台性能观察者
  */
 export class ConsoleObserver implements PerformanceObserver {
-  private enabled = true;
-  private operationFilter?: string;
+	private enabled = true;
+	private operationFilter?: string;
 
-  constructor(options?: { enabled?: boolean; operationFilter?: string }) {
-    this.enabled = options?.enabled ?? true;
-    this.operationFilter = options?.operationFilter;
-  }
+	constructor(options?: { enabled?: boolean; operationFilter?: string }) {
+		this.enabled = options?.enabled ?? true;
+		this.operationFilter = options?.operationFilter;
+	}
 
-  onPerformanceEvent(event: PerformanceEvent) {
-    if (!this.enabled) return;
-    if (this.operationFilter && !event.operation.includes(this.operationFilter)) return;
+	onPerformanceEvent(event: PerformanceEvent) {
+		if (!this.enabled) return;
+		if (this.operationFilter && !event.operation.includes(this.operationFilter)) return;
 
-    // 根据配置的日志级别决定是否输出
-    const level = globalConfig.consoleLevel;
-    if (level === "none") return;
+		// 根据配置的日志级别决定是否输出
+		const level = globalConfig.consoleLevel;
+		if (level === "none") return;
 
-    const emoji = this.getOperationEmoji(event.operation);
-    const message = `${emoji} [性能监控] ${event.operation}: ${event.duration.toFixed(2)}ms`;
+		const emoji = this.getOperationEmoji(event.operation);
+		const message = `${emoji} [性能监控] ${event.operation}: ${event.duration.toFixed(2)}ms`;
 
-    // 根据操作类型和耗时决定日志级别
-    let shouldLog = false;
-    let logLevel = "info";
+		// 根据操作类型和耗时决定日志级别
+		let shouldLog = false;
+		let logLevel = "info";
 
-    if (event.metadata?.success === false) {
-      shouldLog = level === "error" || level === "warn" || level === "info" || level === "debug";
-      logLevel = "error";
-    } else if (event.duration > 1000) {
-      shouldLog = level === "warn" || level === "info" || level === "debug";
-      logLevel = "warn";
-    } else if (event.duration > 100) {
-      shouldLog = level === "info" || level === "debug";
-      logLevel = "info";
-    } else {
-      shouldLog = level === "debug";
-      logLevel = "debug";
-    }
+		if (event.metadata?.success === false) {
+			shouldLog = level === "error" || level === "warn" || level === "info" || level === "debug";
+			logLevel = "error";
+		} else if (event.duration > 1000) {
+			shouldLog = level === "warn" || level === "info" || level === "debug";
+			logLevel = "warn";
+		} else if (event.duration > 100) {
+			shouldLog = level === "info" || level === "debug";
+			logLevel = "info";
+		} else {
+			shouldLog = level === "debug";
+			logLevel = "debug";
+		}
 
-    if (shouldLog) {
-      switch (logLevel) {
-        case "error":
-          console.error(message);
-          break;
-        case "warn":
-          console.warn(message);
-          break;
-        case "debug":
-          console.debug(message);
-          break;
-        default:
-          console.log(message);
-      }
-    }
-  }
+		if (shouldLog) {
+			switch (logLevel) {
+				case "error":
+					console.error(message);
+					break;
+				case "warn":
+					console.warn(message);
+					break;
+				case "debug":
+					console.debug(message);
+					break;
+				default:
+					console.log(message);
+			}
+		}
+	}
 
-  private getOperationEmoji(operation: string): string {
-    if (operation.includes("db")) return "🗄️";
-    if (operation.includes("search")) return "🔍";
-    if (operation.includes("import")) return "📦";
-    if (operation.includes("fetch")) return "📡";
-    if (operation.includes("process")) return "⚙️";
-    return "⏱️";
-  }
+	private getOperationEmoji(operation: string): string {
+		if (operation.includes("db")) return "🗄️";
+		if (operation.includes("search")) return "🔍";
+		if (operation.includes("import")) return "📦";
+		if (operation.includes("fetch")) return "📡";
+		if (operation.includes("process")) return "⚙️";
+		return "⏱️";
+	}
 
-  setEnabled(enabled: boolean) {
-    this.enabled = enabled;
-  }
+	setEnabled(enabled: boolean) {
+		this.enabled = enabled;
+	}
 
-  setOperationFilter(filter: string) {
-    this.operationFilter = filter;
-  }
+	setOperationFilter(filter: string) {
+		this.operationFilter = filter;
+	}
 }
 
 /**
  * 统计性能观察者
  */
 export class StatisticsObserver implements PerformanceObserver {
-  private stats: Map<string, { count: number; totalTime: number; minTime: number; maxTime: number }> = new Map();
+	private stats: Map<string, { count: number; totalTime: number; minTime: number; maxTime: number }> = new Map();
 
-  onPerformanceEvent(event: PerformanceEvent) {
-    if (!globalConfig.enableStats) return;
+	onPerformanceEvent(event: PerformanceEvent) {
+		if (!globalConfig.enableStats) return;
 
-    const key = event.operation;
-    const current = this.stats.get(key) || { count: 0, totalTime: 0, minTime: Infinity, maxTime: 0 };
+		const key = event.operation;
+		const current = this.stats.get(key) || { count: 0, totalTime: 0, minTime: Infinity, maxTime: 0 };
 
-    current.count++;
-    current.totalTime += event.duration;
-    current.minTime = Math.min(current.minTime, event.duration);
-    current.maxTime = Math.max(current.maxTime, event.duration);
+		current.count++;
+		current.totalTime += event.duration;
+		current.minTime = Math.min(current.minTime, event.duration);
+		current.maxTime = Math.max(current.maxTime, event.duration);
 
-    this.stats.set(key, current);
-  }
+		this.stats.set(key, current);
+	}
 
-  getStats() {
-    const result: Record<
-      string,
-      { count: number; avgTime: number; minTime: number; maxTime: number; totalTime: number }
-    > = {};
+	getStats() {
+		const result: Record<
+			string,
+			{ count: number; avgTime: number; minTime: number; maxTime: number; totalTime: number }
+		> = {};
 
-    this.stats.forEach((value, key) => {
-      result[key] = {
-        count: value.count,
-        avgTime: value.totalTime / value.count,
-        minTime: value.minTime,
-        maxTime: value.maxTime,
-        totalTime: value.totalTime,
-      };
-    });
+		this.stats.forEach((value, key) => {
+			result[key] = {
+				count: value.count,
+				avgTime: value.totalTime / value.count,
+				minTime: value.minTime,
+				maxTime: value.maxTime,
+				totalTime: value.totalTime,
+			};
+		});
 
-    return result;
-  }
+		return result;
+	}
 
-  printStats() {
-    const stats = this.getStats();
-    console.log("\n📊 ===== 性能统计 =====");
+	printStats() {
+		const stats = this.getStats();
+		console.log("\n📊 ===== 性能统计 =====");
 
-    Object.entries(stats)
-      .sort(([, a], [, b]) => b.totalTime - a.totalTime)
-      .forEach(([operation, stat]) => {
-        console.log(`${operation}:`);
-        console.log(`  调用次数: ${stat.count}`);
-        console.log(`  平均时间: ${stat.avgTime.toFixed(2)}ms`);
-        console.log(`  最小时间: ${stat.minTime.toFixed(2)}ms`);
-        console.log(`  最大时间: ${stat.maxTime.toFixed(2)}ms`);
-        console.log(`  总时间: ${stat.totalTime.toFixed(2)}ms`);
-      });
+		Object.entries(stats)
+			.sort(([, a], [, b]) => b.totalTime - a.totalTime)
+			.forEach(([operation, stat]) => {
+				console.log(`${operation}:`);
+				console.log(`  调用次数: ${stat.count}`);
+				console.log(`  平均时间: ${stat.avgTime.toFixed(2)}ms`);
+				console.log(`  最小时间: ${stat.minTime.toFixed(2)}ms`);
+				console.log(`  最大时间: ${stat.maxTime.toFixed(2)}ms`);
+				console.log(`  总时间: ${stat.totalTime.toFixed(2)}ms`);
+			});
 
-    console.log("📊 ====================\n");
-  }
+		console.log("📊 ====================\n");
+	}
 
-  clear() {
-    this.stats.clear();
-  }
+	clear() {
+		this.stats.clear();
+	}
 }
 
 // ==================== 装饰器 ====================
@@ -410,98 +410,98 @@ export class StatisticsObserver implements PerformanceObserver {
  * 性能监控装饰器（类方法）
  */
 export function performanceMonitor(operation: string) {
-  return function (target: any, propertyName: string, descriptor: PropertyDescriptor) {
-    const method = descriptor.value;
+	return (target: any, propertyName: string, descriptor: PropertyDescriptor) => {
+		const method = descriptor.value;
 
-    descriptor.value = async function (...args: any[]) {
-      const eventId = `${operation}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const startTime = performance.now();
+		descriptor.value = async function (...args: any[]) {
+			const eventId = `${operation}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+			const startTime = performance.now();
 
-      try {
-        const result = await method.apply(this, args);
-        const endTime = performance.now();
-        const duration = endTime - startTime;
+			try {
+				const result = await method.apply(this, args);
+				const endTime = performance.now();
+				const duration = endTime - startTime;
 
-        // 检查最小记录时间
-        if (duration >= globalConfig.minRecordTime) {
-          PerformanceEventEmitter.emit({
-            id: eventId,
-            operation,
-            startTime,
-            endTime,
-            duration,
-            metadata: { args: args.length, success: true },
-          });
-        }
+				// 检查最小记录时间
+				if (duration >= globalConfig.minRecordTime) {
+					PerformanceEventEmitter.emit({
+						id: eventId,
+						operation,
+						startTime,
+						endTime,
+						duration,
+						metadata: { args: args.length, success: true },
+					});
+				}
 
-        return result;
-      } catch (error) {
-        const endTime = performance.now();
-        const duration = endTime - startTime;
+				return result;
+			} catch (error) {
+				const endTime = performance.now();
+				const duration = endTime - startTime;
 
-        // 错误总是记录
-        PerformanceEventEmitter.emit({
-          id: eventId,
-          operation,
-          startTime,
-          endTime,
-          duration,
-          metadata: {
-            args: args.length,
-            success: false,
-            error: error instanceof Error ? error.message : String(error),
-          },
-        });
+				// 错误总是记录
+				PerformanceEventEmitter.emit({
+					id: eventId,
+					operation,
+					startTime,
+					endTime,
+					duration,
+					metadata: {
+						args: args.length,
+						success: false,
+						error: error instanceof Error ? error.message : String(error),
+					},
+				});
 
-        throw error;
-      }
-    };
-  };
+				throw error;
+			}
+		};
+	};
 }
 
 /**
  * 性能监控函数装饰器
  */
 export function monitorPerformance<T extends (...args: any[]) => any>(operation: string, fn: T): T {
-  return (async (...args: Parameters<T>): Promise<ReturnType<T>> => {
-    const eventId = `${operation}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const startTime = performance.now();
+	return (async (...args: Parameters<T>): Promise<ReturnType<T>> => {
+		const eventId = `${operation}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+		const startTime = performance.now();
 
-    try {
-      const result = await fn(...args);
-      const endTime = performance.now();
-      const duration = endTime - startTime;
+		try {
+			const result = await fn(...args);
+			const endTime = performance.now();
+			const duration = endTime - startTime;
 
-      // 检查最小记录时间
-      if (duration >= globalConfig.minRecordTime) {
-        PerformanceEventEmitter.emit({
-          id: eventId,
-          operation,
-          startTime,
-          endTime,
-          duration,
-          metadata: { args: args.length, success: true },
-        });
-      }
+			// 检查最小记录时间
+			if (duration >= globalConfig.minRecordTime) {
+				PerformanceEventEmitter.emit({
+					id: eventId,
+					operation,
+					startTime,
+					endTime,
+					duration,
+					metadata: { args: args.length, success: true },
+				});
+			}
 
-      return result;
-    } catch (error) {
-      const endTime = performance.now();
-      const duration = endTime - startTime;
+			return result;
+		} catch (error) {
+			const endTime = performance.now();
+			const duration = endTime - startTime;
 
-      // 错误总是记录
-      PerformanceEventEmitter.emit({
-        id: eventId,
-        operation,
-        startTime,
-        endTime,
-        duration,
-        metadata: { args: args.length, success: false, error: error instanceof Error ? error.message : String(error) },
-      });
+			// 错误总是记录
+			PerformanceEventEmitter.emit({
+				id: eventId,
+				operation,
+				startTime,
+				endTime,
+				duration,
+				metadata: { args: args.length, success: false, error: error instanceof Error ? error.message : String(error) },
+			});
 
-      throw error;
-    }
-  }) as T;
+			throw error;
+		}
+	}) as T;
 }
 
 // ==================== 搜索性能监控 ====================
@@ -510,58 +510,58 @@ export function monitorPerformance<T extends (...args: any[]) => any>(operation:
  * 搜索性能数据收集器
  */
 class SearchPerformanceCollector {
-  private searchData: SearchPerformanceData[] = [];
+	private searchData: SearchPerformanceData[] = [];
 
-  recordSearchData(data: SearchPerformanceData) {
-    this.searchData.push(data);
-    if (this.searchData.length > 100) {
-      this.searchData = this.searchData.slice(-100);
-    }
-  }
+	recordSearchData(data: SearchPerformanceData) {
+		this.searchData.push(data);
+		if (this.searchData.length > 100) {
+			this.searchData = this.searchData.slice(-100);
+		}
+	}
 
-  getSearchStats() {
-    if (this.searchData.length === 0) {
-      return {
-        totalSearches: 0,
-        averageSearchTime: 0,
-        averageResults: 0,
-        slowestSearch: null,
-        fastestSearch: null,
-      };
-    }
+	getSearchStats() {
+		if (this.searchData.length === 0) {
+			return {
+				totalSearches: 0,
+				averageSearchTime: 0,
+				averageResults: 0,
+				slowestSearch: null,
+				fastestSearch: null,
+			};
+		}
 
-    const totalTime = this.searchData.reduce((sum, data) => sum + data.totalTime, 0);
-    const totalResults = this.searchData.reduce((sum, data) => sum + data.totalResults, 0);
-    const slowest = this.searchData.reduce((max, data) => (data.totalTime > max.totalTime ? data : max));
-    const fastest = this.searchData.reduce((min, data) => (data.totalTime < min.totalTime ? data : min));
+		const totalTime = this.searchData.reduce((sum, data) => sum + data.totalTime, 0);
+		const totalResults = this.searchData.reduce((sum, data) => sum + data.totalResults, 0);
+		const slowest = this.searchData.reduce((max, data) => (data.totalTime > max.totalTime ? data : max));
+		const fastest = this.searchData.reduce((min, data) => (data.totalTime < min.totalTime ? data : min));
 
-    return {
-      totalSearches: this.searchData.length,
-      averageSearchTime: totalTime / this.searchData.length,
-      averageResults: totalResults / this.searchData.length,
-      slowestSearch: slowest,
-      fastestSearch: fastest,
-    };
-  }
+		return {
+			totalSearches: this.searchData.length,
+			averageSearchTime: totalTime / this.searchData.length,
+			averageResults: totalResults / this.searchData.length,
+			slowestSearch: slowest,
+			fastestSearch: fastest,
+		};
+	}
 
-  printSearchStats() {
-    const stats = this.getSearchStats();
-    console.log("\n🔍 ===== 搜索性能统计 =====");
-    console.log(`总搜索次数: ${stats.totalSearches}`);
-    console.log(`平均搜索时间: ${stats.averageSearchTime.toFixed(2)}ms`);
-    console.log(`平均结果数量: ${stats.averageResults.toFixed(1)}条`);
-    if (stats.slowestSearch) {
-      console.log(`最慢搜索: "${stats.slowestSearch.keyword}" (${stats.slowestSearch.totalTime.toFixed(2)}ms)`);
-    }
-    if (stats.fastestSearch) {
-      console.log(`最快搜索: "${stats.fastestSearch.keyword}" (${stats.fastestSearch.totalTime.toFixed(2)}ms)`);
-    }
-    console.log("🔍 ========================\n");
-  }
+	printSearchStats() {
+		const stats = this.getSearchStats();
+		console.log("\n🔍 ===== 搜索性能统计 =====");
+		console.log(`总搜索次数: ${stats.totalSearches}`);
+		console.log(`平均搜索时间: ${stats.averageSearchTime.toFixed(2)}ms`);
+		console.log(`平均结果数量: ${stats.averageResults.toFixed(1)}条`);
+		if (stats.slowestSearch) {
+			console.log(`最慢搜索: "${stats.slowestSearch.keyword}" (${stats.slowestSearch.totalTime.toFixed(2)}ms)`);
+		}
+		if (stats.fastestSearch) {
+			console.log(`最快搜索: "${stats.fastestSearch.keyword}" (${stats.fastestSearch.totalTime.toFixed(2)}ms)`);
+		}
+		console.log("🔍 ========================\n");
+	}
 
-  clear() {
-    this.searchData = [];
-  }
+	clear() {
+		this.searchData = [];
+	}
 }
 
 // ==================== 实例创建 ====================
@@ -580,42 +580,42 @@ PerformanceEventEmitter.addObserver(statisticsObserver);
  * 统一性能监控API
  */
 export const Performance = {
-  // 配置管理
-  setConfig,
-  getConfig,
+	// 配置管理
+	setConfig,
+	getConfig,
 
-  // 装饰器
-  monitor: monitorPerformance,
-  decorator: performanceMonitor,
+	// 装饰器
+	monitor: monitorPerformance,
+	decorator: performanceMonitor,
 
-  // 观察者管理
-  addObserver: (observer: PerformanceObserver) => PerformanceEventEmitter.addObserver(observer),
-  removeObserver: (observer: PerformanceObserver) => PerformanceEventEmitter.removeObserver(observer),
+	// 观察者管理
+	addObserver: (observer: PerformanceObserver) => PerformanceEventEmitter.addObserver(observer),
+	removeObserver: (observer: PerformanceObserver) => PerformanceEventEmitter.removeObserver(observer),
 
-  // 事件管理
-  getEvents: () => PerformanceEventEmitter.getEvents(),
-  clearEvents: () => PerformanceEventEmitter.clearEvents(),
+	// 事件管理
+	getEvents: () => PerformanceEventEmitter.getEvents(),
+	clearEvents: () => PerformanceEventEmitter.clearEvents(),
 
-  // 统计管理
-  getStats: () => statisticsObserver.getStats(),
-  printStats: () => statisticsObserver.printStats(),
-  clearStats: () => statisticsObserver.clear(),
+	// 统计管理
+	getStats: () => statisticsObserver.getStats(),
+	printStats: () => statisticsObserver.printStats(),
+	clearStats: () => statisticsObserver.clear(),
 
-  // 搜索性能
-  recordSearch: (data: SearchPerformanceData) => searchCollector.recordSearchData(data),
-  getSearchStats: () => searchCollector.getSearchStats(),
-  printSearchStats: () => searchCollector.printSearchStats(),
-  clearSearchStats: () => searchCollector.clear(),
+	// 搜索性能
+	recordSearch: (data: SearchPerformanceData) => searchCollector.recordSearchData(data),
+	getSearchStats: () => searchCollector.getSearchStats(),
+	printSearchStats: () => searchCollector.printSearchStats(),
+	clearSearchStats: () => searchCollector.clear(),
 
-  // 控制台控制
-  setConsoleEnabled: (enabled: boolean) => consoleObserver.setEnabled(enabled),
-  setOperationFilter: (filter: string) => consoleObserver.setOperationFilter(filter),
+	// 控制台控制
+	setConsoleEnabled: (enabled: boolean) => consoleObserver.setEnabled(enabled),
+	setOperationFilter: (filter: string) => consoleObserver.setOperationFilter(filter),
 
-  // 快捷配置方法
-  setLogLevel: (level: "none" | "error" | "warn" | "info" | "debug") => setConfig({ consoleLevel: level }),
-  setMinRecordTime: (time: number) => setConfig({ minRecordTime: time }),
-  enableStats: (enabled: boolean) => setConfig({ enableStats: enabled }),
-  enableEventStorage: (enabled: boolean) => setConfig({ enableEventStorage: enabled }),
+	// 快捷配置方法
+	setLogLevel: (level: "none" | "error" | "warn" | "info" | "debug") => setConfig({ consoleLevel: level }),
+	setMinRecordTime: (time: number) => setConfig({ minRecordTime: time }),
+	enableStats: (enabled: boolean) => setConfig({ enableStats: enabled }),
+	enableEventStorage: (enabled: boolean) => setConfig({ enableEventStorage: enabled }),
 };
 
 // ==================== 快捷配置 ====================
@@ -624,40 +624,40 @@ export const Performance = {
  * 预设配置
  */
 export const PerformanceConfig = {
-  // 开发模式：显示详细信息
-  dev: () =>
-    setConfig({
-      consoleLevel: "info",
-      enableStats: true,
-      enableEventStorage: true,
-      minRecordTime: 10,
-    }),
+	// 开发模式：显示详细信息
+	dev: () =>
+		setConfig({
+			consoleLevel: "info",
+			enableStats: true,
+			enableEventStorage: true,
+			minRecordTime: 10,
+		}),
 
-  // 生产模式：只显示错误
-  prod: () =>
-    setConfig({
-      consoleLevel: "error",
-      enableStats: true,
-      enableEventStorage: false,
-      minRecordTime: 100,
-    }),
+	// 生产模式：只显示错误
+	prod: () =>
+		setConfig({
+			consoleLevel: "error",
+			enableStats: true,
+			enableEventStorage: false,
+			minRecordTime: 100,
+		}),
 
-  // 调试模式：显示所有信息
-  debug: () =>
-    setConfig({
-      consoleLevel: "debug",
-      enableStats: true,
-      enableEventStorage: true,
-      minRecordTime: 0,
-    }),
+	// 调试模式：显示所有信息
+	debug: () =>
+		setConfig({
+			consoleLevel: "debug",
+			enableStats: true,
+			enableEventStorage: true,
+			minRecordTime: 0,
+		}),
 
-  // 静默模式：关闭所有日志
-  silent: () => setConfig({ consoleLevel: "none" }),
+	// 静默模式：关闭所有日志
+	silent: () => setConfig({ consoleLevel: "none" }),
 
-  // 只显示慢操作（>100ms）
-  slowOnly: () =>
-    setConfig({
-      consoleLevel: "warn",
-      minRecordTime: 100,
-    }),
+	// 只显示慢操作（>100ms）
+	slowOnly: () =>
+		setConfig({
+			consoleLevel: "warn",
+			minRecordTime: 100,
+		}),
 };

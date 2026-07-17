@@ -4,15 +4,15 @@ import type { ZodType } from "zod/v4";
 const schemaTypeCache = new WeakMap<ZodType, ZodType["type"]>();
 
 export function getZodType(schema?: ZodType) {
-  if (!schema) return "undefined";
+	if (!schema) return "undefined";
 
-  const cachedType = schemaTypeCache.get(schema);
-  if (cachedType) {
-    return cachedType;
-  }
-  
-  const type = schema.type;
-  
-  schemaTypeCache.set(schema, type);
-  return type;
+	const cachedType = schemaTypeCache.get(schema);
+	if (cachedType) {
+		return cachedType;
+	}
+
+	const type = schema.type;
+
+	schemaTypeCache.set(schema, type);
+	return type;
 }
