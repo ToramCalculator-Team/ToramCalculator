@@ -1,11 +1,16 @@
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
-import type { character, DB } from "@db/generated/zod";
+import type { DB } from "@db/generated/zod";
+import type { SkillTreeType } from "@db/schema/enums";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createSignal, For, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
-import type { CharacterPageCommand } from "~/routes/(app)/(features)/character/characterPageModel";
+import type {
+	CharacterEdit,
+	CharacterFieldPatch,
+	CharacterNumericField,
+} from "~/features/character/edit/characterEditProtocol";
 import { AbilityPanel } from "./AbilityPanel";
 import { BasePanel } from "./BasePanel";
 import { EquipmentPanel } from "./EquipmentPanel";
@@ -13,9 +18,10 @@ import { SkillPanel } from "./SkillPanel";
 
 export type CharacterConfigPanelProps = {
 	character: CharacterWithRelations;
-	onPatchRequested: (patch: Partial<character>, relations?: Partial<CharacterWithRelations>) => void;
+	onEditRequested: (edit: CharacterEdit) => void;
 	onItemPreviewRequested: (type: keyof DB, data: unknown) => void;
-	onCommand: (command: CharacterPageCommand) => void;
+	onSkillLevelAdjustRequested: (payload: { templateId: string; delta: -1 | 1 }) => void;
+	onSkillTreeRemoveRequested: (treeType: SkillTreeType) => void;
 };
 
 export function CharacterConfigPanel(props: CharacterConfigPanelProps) {
@@ -36,6 +42,12 @@ export function CharacterConfigPanel(props: CharacterConfigPanelProps) {
 	] as const;
 	type CharacterConfigTab = (typeof tabs)[number]["key"];
 	const [activeTab, setActiveTab] = createSignal<CharacterConfigTab>("equipment");
+	const requestPatch = (patch: CharacterFieldPatch) =>
+		props.onEditRequested({ type: "character.fields.update", patch });
+	const requestNumericSet = (field: CharacterNumericField, value: number) =>
+		props.onEditRequested({ type: "character.numeric.set", field, value });
+	const requestNumericAdjust = (field: CharacterNumericField, delta: -1 | 1) =>
+		props.onEditRequested({ type: "character.numeric.adjust", field, delta });
 
 	return (
 		<div class="flex portrait:flex-col w-full h-full portrait:gap-6">
@@ -72,12 +84,12 @@ export function CharacterConfigPanel(props: CharacterConfigPanelProps) {
 					<Show when={activeTab() === "equipment"}>
 						<EquipmentPanel
 							character={props.character}
-							onPatchRequested={props.onPatchRequested}
+							onPatchRequested={requestPatch}
 							onItemPreviewRequested={props.onItemPreviewRequested}
 						/>
 					</Show>
 					<Show when={activeTab() === "base"}>
-						<BasePanel name={props.character.name} onPatchRequested={props.onPatchRequested} />
+						<BasePanel name={props.character.name} onPatchRequested={requestPatch} />
 					</Show>
 					<Show when={activeTab() === "ability"}>
 						<AbilityPanel
@@ -91,23 +103,17 @@ export function CharacterConfigPanel(props: CharacterConfigPanelProps) {
 								personalityType: props.character.personalityType,
 								personalityValue: props.character.personalityValue,
 							}}
-							onChangeRequested={(slot, value) => {
-								const patch = { [slot]: value } as Partial<character>;
-								props.onPatchRequested(patch);
-							}}
+							onNumericSetRequested={requestNumericSet}
+							onNumericAdjustRequested={requestNumericAdjust}
+							onPersonalityTypeSetRequested={(value) =>
+								props.onEditRequested({ type: "character.personality.setType", value })
+							}
 						/>
 					</Show>
 					<Show when={activeTab() === "skill"}>
 						<SkillPanel
-							characterId={props.character.id}
-							onSkillLevelsChangeRequested={(changes) => props.onCommand({ type: "skills.setLevels", changes })}
-							onSkillTreeRemoveRequested={(payload) =>
-								props.onCommand({
-									type: "skills.removeTree",
-									templateIds: payload.templateIds,
-									characterSkillIds: payload.characterSkillIds,
-								})
-							}
+							onSkillLevelAdjustRequested={props.onSkillLevelAdjustRequested}
+							onSkillTreeRemoveRequested={props.onSkillTreeRemoveRequested}
 							skills={props.character.skills}
 						/>
 					</Show>

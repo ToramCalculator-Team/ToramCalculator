@@ -14,6 +14,7 @@ interface RangeInputProps
 	validationMessage?: string;
 	value: number;
 	setValue: (value: number) => void;
+	adjustValue: (direction: -1 | 1) => void;
 	min?: number;
 	max?: number;
 	step?: number;
@@ -78,25 +79,23 @@ export const RangeInput = (props: RangeInputProps) => {
 	const [isEditing, setIsEditing] = createSignal(false);
 
 	const step = createMemo(() => (typeof props.step === "number" && props.step > 0 ? props.step : 1));
-	const formatValue = (value: number) => (props.formatValue ? props.formatValue(value) : defaultFormatter(value, step()));
-	const normalizedValue = createMemo(() => clampValue(Number.isFinite(props.value) ? props.value : 0, props.min, props.max));
-	// displayValue 作为本地展示值，避免异步外部回写前输入框回滚到旧值。
-	const [displayValue, setDisplayValue] = createSignal(normalizedValue());
-	const [draftValue, setDraftValue] = createSignal(formatValue(displayValue()));
+	const formatValue = (value: number) =>
+		props.formatValue ? props.formatValue(value) : defaultFormatter(value, step());
+	const normalizedValue = createMemo(() =>
+		clampValue(Number.isFinite(props.value) ? props.value : 0, props.min, props.max),
+	);
+	const [draftValue, setDraftValue] = createSignal(formatValue(normalizedValue()));
 	const [sliderDraftValue, setSliderDraftValue] = createSignal<number | null>(null);
 
 	createEffect(() => {
-		setDisplayValue(normalizedValue());
-	});
-
-	createEffect(() => {
 		if (!isEditing()) {
-			setDraftValue(formatValue(displayValue()));
+			setDraftValue(formatValue(normalizedValue()));
 		}
 	});
 
 	const showButtons = () => props.showButtons !== false;
-	const hasFiniteBounds = () => typeof props.min === "number" && typeof props.max === "number" && props.min <= props.max;
+	const hasFiniteBounds = () =>
+		typeof props.min === "number" && typeof props.max === "number" && props.min <= props.max;
 	const showSlider = () => (props.showSlider ?? true) && hasFiniteBounds();
 
 	const getSizeClass = () => {
@@ -140,13 +139,11 @@ export const RangeInput = (props: RangeInputProps) => {
 		// 统一提交入口：所有最终生效的数值都先经过 clamp + step 对齐，
 		// 然后才调用外层 setValue（通常会触发持久化/重算等较重逻辑）。
 		const snappedValue = snapToStep(clampValue(nextValue, props.min, props.max), step(), props.min);
-		setDisplayValue(snappedValue);
 		props.setValue(snappedValue);
-		setDraftValue(formatValue(snappedValue));
 	};
 
 	const stepValue = (direction: -1 | 1) => {
-		commitValue(displayValue() + direction * step());
+		props.adjustValue(direction);
 	};
 
 	const commitDraftValue = () => {
@@ -154,13 +151,13 @@ export const RangeInput = (props: RangeInputProps) => {
 		// 只有 blur / Enter 才会进入 commitValue。
 		const parsedValue = parseInputValue(draftValue());
 		if (parsedValue === null) {
-			setDraftValue(formatValue(displayValue()));
+			setDraftValue(formatValue(normalizedValue()));
 			return;
 		}
 		commitValue(parsedValue);
 	};
 
-	const currentSliderValue = () => (sliderDraftValue() ?? displayValue());
+	const currentSliderValue = () => sliderDraftValue() ?? normalizedValue();
 
 	const progress = () => {
 		if (!hasFiniteBounds()) return 0;
@@ -169,8 +166,8 @@ export const RangeInput = (props: RangeInputProps) => {
 		return ((currentSliderValue() - (props.min ?? 0)) / span) * 100;
 	};
 
-	const canDecrement = () => (typeof props.min !== "number" ? true : displayValue() > props.min);
-	const canIncrement = () => (typeof props.max !== "number" ? true : displayValue() < props.max);
+	const canDecrement = () => (typeof props.min !== "number" ? true : normalizedValue() > props.min);
+	const canIncrement = () => (typeof props.max !== "number" ? true : normalizedValue() < props.max);
 
 	return (
 		<div class={`flex flex-1 flex-col items-start gap-2 ${props.class ?? ""}`}>
@@ -236,16 +233,20 @@ export const RangeInput = (props: RangeInputProps) => {
 								if (event.key === "Escape") {
 									event.preventDefault();
 									setIsEditing(false);
-									setDraftValue(formatValue(displayValue()));
+									setDraftValue(formatValue(normalizedValue()));
 									event.currentTarget.blur();
 								}
 								if (event.key === "ArrowUp") {
 									event.preventDefault();
 									stepValue(1);
+									setIsEditing(false);
+									event.currentTarget.blur();
 								}
 								if (event.key === "ArrowDown") {
 									event.preventDefault();
 									stepValue(-1);
+									setIsEditing(false);
+									event.currentTarget.blur();
 								}
 							}}
 						/>

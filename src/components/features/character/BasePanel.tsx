@@ -1,10 +1,10 @@
-import type { character } from "@db/generated/zod";
 import { Input } from "~/components/controls/input";
 import { useDictionary } from "~/contexts/Dictionary";
+import type { CharacterFieldPatch } from "~/features/character/edit/characterEditProtocol";
 
 export type BasePanelProps = {
 	name: string;
-	onPatchRequested: (patch: Partial<character>) => Promise<void> | void;
+	onPatchRequested: (patch: CharacterFieldPatch) => Promise<void> | void;
 };
 
 export function BasePanel(props: BasePanelProps) {

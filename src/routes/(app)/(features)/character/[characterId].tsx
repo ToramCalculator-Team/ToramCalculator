@@ -1,4 +1,5 @@
-import type { character, DB } from "@db/generated/zod";
+import type { DB } from "@db/generated/zod";
+import type { SkillTreeType } from "@db/schema/enums";
 import { useNavigate, useParams } from "@solidjs/router";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createEffect, createMemo, createSignal, onCleanup, onMount, Show, useContext } from "solid-js";
@@ -14,14 +15,15 @@ import { SkillPreviewPanel } from "~/components/features/character/SkillPreviewP
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
+import { createDefaultCharacterWorldResource } from "~/lib/3dScene/resources/defaultCharacterResource";
 import { type CharacterContentSession, useSceneRuntime } from "~/lib/3dScene/SceneRuntime";
-import { useEngine } from "~/lib/engine/core/thread/EngineContext";
+import type { CharacterEdit } from "~/features/character/edit/characterEditProtocol";
+import { useCharacterSession } from "~/features/character/session/CharacterSession";
 import { StatsRenderer } from "~/lib/engine/core/World/Member/MemberStatusPanel";
 import { createLogger } from "~/lib/Logger";
 import { type DialogLayerEntryInit, useOverlay } from "~/lib/overlay/OverlayContext";
 import { useInterfaceActor } from "~/machines/AppActorContext";
 import { store } from "~/store";
-import { createCharacterPageModel } from "./characterPageModel";
 import { createCharacter } from "./createCharacter";
 
 const logger = createLogger("CharacterPage");
@@ -33,9 +35,9 @@ export default function CharactePage() {
 	// 页面根作用域 overlay 句柄:预览 dialog 从这里 openDialog 新建 layer。
 	const overlay = useOverlay();
 	const params = useParams();
-	const engine = useEngine();
 	const sceneRuntime = useSceneRuntime();
 	const interfaceActor = useInterfaceActor();
+	const session = useCharacterSession();
 
 	type PanelModeType = "Config" | "AttrPreview" | "SkillPreview";
 	const [panelMode, setPanelMode] = createSignal<PanelModeType>("Config");
@@ -43,27 +45,44 @@ export default function CharactePage() {
 	const isAttrPreviewVisible = createMemo(() => panelMode() === "AttrPreview" || media.width >= 1024);
 	const isSkillPreviewVisible = createMemo(() => panelMode() === "SkillPreview" || media.width >= 1024);
 
-	const previewTeamAId = "CHARACTER_PREVIEW_TEAM_A";
-	const previewTeamBId = "CHARACTER_PREVIEW_TEAM_B";
-	const previewMemberId = "CHARACTER_PREVIEW_MEMBER";
-	const previewStatisticId = "CHARACTER_PREVIEW_STATISTIC";
+	const failedEdit = createMemo(() => {
+		const edits = session.edits();
+		return edits.status === "failed" ? edits : null;
+	});
+	const aggregate = createMemo(() => session.character()?.aggregate ?? null);
+	const character = createMemo(() => aggregate()?.character ?? null);
+	const characters = createMemo(() => aggregate()?.characters ?? []);
+	const [pendingNavigation, setPendingNavigation] = createSignal<string | null>(null);
+	let activeInterfaceCharacterId: string | null = null;
 
-	// 角色配置变化后同步预览引擎；配置面板只提交 command，预览生命周期由页面 model 统一调度。
-	const model = createCharacterPageModel({
-		playerId: () => store.session.account.player?.id,
-		characterId: () => params.characterId,
-		engine,
-		previewIds: {
-			teamAId: previewTeamAId,
-			teamBId: previewTeamBId,
-			memberId: previewMemberId,
-			statisticId: previewStatisticId,
-		},
+	createEffect(() => {
+		if (pendingNavigation()) return;
+		const playerId = store.session.account.player?.id;
+		const characterId = params.characterId;
+		if (!playerId || !characterId) return;
+		const current = session.identity();
+		if (!current) {
+			session.send({ type: "character.load", playerId, characterId });
+			return;
+		}
+		if (current.playerId !== playerId || current.characterId !== characterId) {
+			session.send({ type: "character.switch.requested", playerId, characterId });
+		}
 	});
 
-	const character = createMemo(() => model.pageData.character);
-	const characters = createMemo(() => model.pageData.characters);
-	let activeInterfaceCharacterId: string | null = null;
+	createEffect(() => {
+		const target = pendingNavigation();
+		if (!target) return;
+		if (session.identity()?.characterId === target) {
+			if (params.characterId !== target) {
+				navigate(`/character/${target}`);
+				return;
+			}
+			setPendingNavigation(null);
+			return;
+		}
+		if (session.error()?.operation === "switch") setPendingNavigation(null);
+	});
 
 	// 路由页面只声明当前交互空间；装备检查/编辑由子面板发送更具体的语义事件。
 	createEffect(() => {
@@ -87,18 +106,16 @@ export default function CharactePage() {
 		}
 	});
 
-	const primaryMember = createMemo(() => {
-		const list = engine.characterMembers();
-		const primaryMember = list.find((member) => member.id === previewMemberId);
-		logger.info("primaryMember", primaryMember);
-		return primaryMember;
-	});
+	const primaryMember = createMemo(() => session.validation().members.find((member) => member.type === "Player"));
 
-	const dispatchCharacterPatch = (
-		patch: Partial<character>,
-		relations?: Partial<NonNullable<typeof model.pageData.character>>,
-	) => {
-		model.dispatch({ type: "character.patch", patch, relations });
+	const dispatchCharacterEdit = (edit: CharacterEdit) => {
+		session.send({ type: "character.edit.submit", edit });
+	};
+	const dispatchSkillLevelAdjust = (payload: { templateId: string; delta: -1 | 1 }) => {
+		session.send({ type: "character.edit.submit", edit: { type: "skills.adjustLevel", ...payload } });
+	};
+	const dispatchSkillTreeRemove = (treeType: SkillTreeType) => {
+		session.send({ type: "character.edit.submit", edit: { type: "skills.removeTree", treeType } });
 	};
 
 	/**
@@ -181,18 +198,23 @@ export default function CharactePage() {
 		logger.info("--CharacterIdPage render");
 	});
 
-	// 共享常驻场景的角色内容：随当前有效角色 id 申请/释放（对称于 RealtimeSimulator 的 realtime session）。
+	// 共享常驻场景的角色内容：随当前有效角色资源申请/释放（对称于 RealtimeSimulator 的 realtime session）。
 	// 模型经全屏共享背景层渲染（不再内嵌配置面板小窗）。
 	let contentSession: CharacterContentSession | null = null;
 	let contentRequestSeq = 0;
 	createEffect(() => {
-		const id = character()?.id;
+		const currentCharacter = character();
 		const requestSeq = ++contentRequestSeq;
 		// 先释放旧来源（id 变化 / 卸载），保证内容互斥。
 		contentSession?.release();
 		contentSession = null;
-		if (!id) return;
-		void sceneRuntime.acquireCharacterContent(id).then((session) => {
+		if (!currentCharacter) return;
+		const resource = createDefaultCharacterWorldResource({
+			memberId: currentCharacter.id,
+			resourceId: currentCharacter.id,
+			displayName: currentCharacter.name,
+		});
+		void sceneRuntime.acquireCharacterContent(resource).then((session) => {
 			// 异步加载期间若已被新请求/卸载抢占，立即释放本次结果。
 			if (requestSeq !== contentRequestSeq) {
 				session.release();
@@ -209,143 +231,190 @@ export default function CharactePage() {
 
 	return (
 		<Show
-			when={character()}
+			when={character()?.id}
+			keyed
 			fallback={
 				<div class="LoadingState flex h-full w-full flex-col items-center justify-center gap-3">
 					<LoadingBar center class="h-12 w-1/2 min-w-[320px]" />
-					<Show when={model.status() === "error"}>
-						<div class="text-sm text-accent-color">角色数据加载失败</div>
+					<Show when={session.error()}>
+						{(error) => <div class="text-danger-color text-sm">{error().message}</div>}
 					</Show>
 				</div>
 			}
 		>
-			{(validCharacter) => (
-				<Motion.div
-					animate={{ opacity: [0, 1] }}
-					exit={{ opacity: 0 }}
-					transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-					class="CharacterPage relative flex h-full w-full flex-col overflow-hidden"
-				>
-					<div class="Title w-full flex">
-						<Show when={characters().length > 0} fallback={<LoadingBar class="w-full h-12" />}>
-							<Select
-								value={validCharacter().id}
-								setValue={(value) => navigate(`/character/${value}`)}
-								options={characters().map((character) => ({ label: character.name, value: character.id }))}
-								optionGenerator={(option, selected, onclick) => (
-									<button
-										type="button"
-										class={`w-full py-1 px-6 text-accent-color text-start ${selected ? "font-bold text-2xl" : ""} `}
-										onClick={onclick}
-									>
-										{option.label ?? "---"}
-									</button>
-								)}
-								placeholder={validCharacter().name}
-								styleLess
-							/>
+			{(activeCharacterId) => {
+				const initialCharacter = character();
+				if (!initialCharacter || initialCharacter.id !== activeCharacterId) return null;
+				// keyed 分支只按身份重建；同一角色继续读取最新 live 值，退出阶段则保留初始快照供异步清理读取。
+				const displayedCharacter = createMemo(() => {
+					const current = character();
+					return current?.id === activeCharacterId ? current : initialCharacter;
+				});
+
+				return (
+					<Motion.div
+						animate={{ opacity: [0, 1] }}
+						exit={{ opacity: 0 }}
+						transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+						class="CharacterPage relative flex h-full w-full flex-col overflow-hidden"
+					>
+						<Show when={session.error()}>
+							{(error) => (
+								<div class="border-danger-color flex items-center justify-between gap-2 border-b px-6 py-2 text-sm text-danger-color">
+									<span class="min-w-0 truncate">
+										{error().operation}: {error().message}
+									</span>
+									<Show when={failedEdit()}>
+										<div class="flex shrink-0 items-center gap-2">
+											<Button
+												size="sm"
+												level="secondary"
+												onClick={() => session.send({ type: "character.edits.retryFailed" })}
+											>
+												重试失败修改
+											</Button>
+											<Button
+												size="sm"
+												level="quaternary"
+												onClick={() => session.send({ type: "character.edits.discardFailed" })}
+											>
+												放弃失败修改
+											</Button>
+										</div>
+									</Show>
+								</div>
+							)}
 						</Show>
-						<Button
-							icon={<Icons.Outline.AddUser />}
-							level="quaternary"
-							onClick={async () => {
-								const character = await createCharacter();
-								navigate(`/character/${character.id}`);
-							}}
-							class="absolute right-6 top-0"
-						/>
-					</div>
-					<div class="Content flex h-full w-full flex-1 flex-col overflow-hidden p-6 landscape:flex-row">
-						<OverlayScrollbarsComponent
-							element="div"
-							options={{ scrollbars: { autoHide: "scroll" } }}
-							defer
-							class={`CharacterConfigPanel landscape:basis-1/2 portrait:py-6`}
-							style={{
-								display: isConfigPanelVisible() ? "" : "none",
-							}}
-						>
-							<CharacterConfigPanel
-								character={validCharacter()}
-								onPatchRequested={dispatchCharacterPatch}
-								onItemPreviewRequested={previewDataItem}
-								onCommand={model.dispatch}
-							/>
-						</OverlayScrollbarsComponent>
-
-						<div
-							class={`Divider landscape:bg-dividing-color flex-none portrait:hidden landscape:h-full landscape:w-px`}
-						/>
-						<OverlayScrollbarsComponent
-							element="div"
-							options={{ scrollbars: { autoHide: "scroll" } }}
-							defer
-							class={`MemberStats gap-2 landscape:basis-1/4 landscape:p-3`}
-							style={{
-								display: isAttrPreviewVisible() ? "flex" : "none",
-							}}
-						>
-							<StatsRenderer data={primaryMember()?.attrs} />
-						</OverlayScrollbarsComponent>
-
-						<div
-							class={`Divider landscape:bg-dividing-color flex-none portrait:hidden landscape:h-full landscape:w-px`}
-						/>
-						<OverlayScrollbarsComponent
-							element="div"
-							options={{ scrollbars: { autoHide: "scroll" } }}
-							defer
-							class={`SkillPreview gap-2 landscape:basis-1/4 landscape:p-3`}
-							style={{
-								display: isSkillPreviewVisible() ? "flex" : "none",
-							}}
-						>
-							<SkillPreviewPanel
-								memberId={previewMemberId}
-								learnedSkills={validCharacter().skills ?? []}
-								dataSource={model.skillPreviewDataSource}
-							/>
-						</OverlayScrollbarsComponent>
-
-						{/* 模式切换器 */}
-						<Presence exitBeforeEnter>
-							<Show when={media.width < 1024}>
-								<Motion.div
-									class="ModuleSwitcher bg-primary-color shadow-dividing-color shadow-dialog absolute bottom-3 left-1/2 z-10 flex gap-1 rounded p-1 landscape:bottom-6"
-									animate={{
-										opacity: [0, 1],
-										transform: ["translateX(-50%)", "translateX(-50%)"],
+						<div class="Title w-full flex">
+							<Show when={characters().length > 0} fallback={<LoadingBar class="w-full h-12" />}>
+								<Select
+									value={displayedCharacter().id}
+									setValue={(value) => {
+										const playerId = store.session.account.player?.id;
+										if (!playerId || !value || value === session.identity()?.characterId) return;
+										setPendingNavigation(value);
+										session.send({ type: "character.switch.requested", playerId, characterId: value });
 									}}
-									exit={{ opacity: 0, transform: "translateX(-50%)" }}
-									transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-								>
-									<Button
-										size="sm"
-										level="quaternary"
-										icon={<Icons.Outline.Edit />}
-										onClick={() => setPanelMode("Config")}
-										active={panelMode() === "Config"}
-									/>
-									<Button
-										size="sm"
-										level="quaternary"
-										icon={<Icons.Outline.Chart />}
-										onClick={() => setPanelMode("AttrPreview")}
-										active={panelMode() === "AttrPreview"}
-									/>
-									<Button
-										size="sm"
-										level="quaternary"
-										icon={<Icons.Outline.Basketball />}
-										onClick={() => setPanelMode("SkillPreview")}
-										active={panelMode() === "SkillPreview"}
-									/>
-								</Motion.div>
+									options={characters().map((character) => ({ label: character.name, value: character.id }))}
+									optionGenerator={(option, selected, onclick) => (
+										<button
+											type="button"
+											class={`w-full py-1 px-6 text-accent-color text-start ${selected ? "font-bold text-2xl" : ""} `}
+											onClick={onclick}
+										>
+											{option.label ?? "---"}
+										</button>
+									)}
+									placeholder={displayedCharacter().name}
+									styleLess
+								/>
 							</Show>
-						</Presence>
-					</div>
-				</Motion.div>
-			)}
+							<Button
+								icon={<Icons.Outline.AddUser />}
+								level="quaternary"
+								onClick={async () => {
+									const createdCharacter = await createCharacter();
+									const playerId = store.session.account.player?.id;
+									if (!playerId) return;
+									setPendingNavigation(createdCharacter.id);
+									session.send({
+										type: "character.switch.requested",
+										playerId,
+										characterId: createdCharacter.id,
+									});
+								}}
+								class="absolute right-6 top-0"
+							/>
+						</div>
+						<div class="Content flex h-full w-full flex-1 flex-col overflow-hidden p-6 landscape:flex-row">
+							<OverlayScrollbarsComponent
+								element="div"
+								options={{ scrollbars: { autoHide: "scroll" } }}
+								defer
+								class={`CharacterConfigPanel landscape:basis-1/2 portrait:py-6`}
+								style={{
+									display: isConfigPanelVisible() ? "" : "none",
+								}}
+							>
+								<CharacterConfigPanel
+									character={displayedCharacter()}
+									onEditRequested={dispatchCharacterEdit}
+									onItemPreviewRequested={previewDataItem}
+									onSkillLevelAdjustRequested={dispatchSkillLevelAdjust}
+									onSkillTreeRemoveRequested={dispatchSkillTreeRemove}
+								/>
+							</OverlayScrollbarsComponent>
+
+							<div
+								class={`Divider landscape:bg-dividing-color flex-none portrait:hidden landscape:h-full landscape:w-px`}
+							/>
+							<OverlayScrollbarsComponent
+								element="div"
+								options={{ scrollbars: { autoHide: "scroll" } }}
+								defer
+								class={`MemberStats gap-2 landscape:basis-1/4 landscape:p-3`}
+								style={{
+									display: isAttrPreviewVisible() ? "flex" : "none",
+								}}
+							>
+								<StatsRenderer data={primaryMember()?.attrs} />
+							</OverlayScrollbarsComponent>
+
+							<div
+								class={`Divider landscape:bg-dividing-color flex-none portrait:hidden landscape:h-full landscape:w-px`}
+							/>
+							<OverlayScrollbarsComponent
+								element="div"
+								options={{ scrollbars: { autoHide: "scroll" } }}
+								defer
+								class={`SkillPreview gap-2 landscape:basis-1/4 landscape:p-3`}
+								style={{
+									display: isSkillPreviewVisible() ? "flex" : "none",
+								}}
+							>
+								<SkillPreviewPanel learnedSkills={displayedCharacter().skills ?? []} />
+							</OverlayScrollbarsComponent>
+
+							{/* 模式切换器 */}
+							<Presence exitBeforeEnter>
+								<Show when={media.width < 1024}>
+									<Motion.div
+										class="ModuleSwitcher bg-primary-color shadow-dividing-color shadow-dialog absolute bottom-3 left-1/2 z-10 flex gap-1 rounded p-1 landscape:bottom-6"
+										animate={{
+											opacity: [0, 1],
+											transform: ["translateX(-50%)", "translateX(-50%)"],
+										}}
+										exit={{ opacity: 0, transform: "translateX(-50%)" }}
+										transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
+									>
+										<Button
+											size="sm"
+											level="quaternary"
+											icon={<Icons.Outline.Edit />}
+											onClick={() => setPanelMode("Config")}
+											active={panelMode() === "Config"}
+										/>
+										<Button
+											size="sm"
+											level="quaternary"
+											icon={<Icons.Outline.Chart />}
+											onClick={() => setPanelMode("AttrPreview")}
+											active={panelMode() === "AttrPreview"}
+										/>
+										<Button
+											size="sm"
+											level="quaternary"
+											icon={<Icons.Outline.Basketball />}
+											onClick={() => setPanelMode("SkillPreview")}
+											active={panelMode() === "SkillPreview"}
+										/>
+									</Motion.div>
+								</Show>
+							</Presence>
+						</div>
+					</Motion.div>
+				);
+			}}
 		</Show>
 	);
 }

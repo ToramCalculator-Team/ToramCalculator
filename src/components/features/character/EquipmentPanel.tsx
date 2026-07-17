@@ -1,13 +1,9 @@
 import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import type { PlayerArmorWithRelations } from "@db/generated/repositories/player_armor";
-import { selectPlayerArmorByIdWithRelations } from "@db/generated/repositories/player_armor";
 import type { PlayerOptionWithRelations } from "@db/generated/repositories/player_option";
-import { selectPlayerOptionByIdWithRelations } from "@db/generated/repositories/player_option";
 import type { PlayerSpecialWithRelations } from "@db/generated/repositories/player_special";
-import { selectPlayerSpecialByIdWithRelations } from "@db/generated/repositories/player_special";
 import type { PlayerWeaponWithRelations } from "@db/generated/repositories/player_weapon";
-import { selectPlayerWeaponByIdWithRelations } from "@db/generated/repositories/player_weapon";
 import type { character, DB } from "@db/generated/zod";
 import { createEffect, createMemo, onCleanup, Show } from "solid-js";
 import type { TableDataConfig } from "~/components/business/data-config";
@@ -20,20 +16,21 @@ import { ForeignKeyPickerSheetContent } from "~/components/business/table/Foreig
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
+import type { CharacterFieldPatch } from "~/features/character/edit/characterEditProtocol";
 import { type OverlayLayerHandle, useOverlay } from "~/lib/overlay/OverlayContext";
 import { useInterfaceActor, useInterfaceSnapshot } from "~/machines/AppActorContext";
+import type { CharacterEquipmentSlot } from "~/machines/interface/characterEquipment";
 import {
 	createEditCharacterEquipmentEvent,
 	createInspectCharacterEquipmentEvent,
 	selectCharacterEquipmentInteraction,
 } from "~/machines/interfaceStateMachine";
-import type { CharacterEquipmentSlot } from "~/shared/interaction/characterEquipment";
 
 export type EquipmentSlot = "weaponId" | "subWeaponId" | "armorId" | "optionId" | "specialId";
 
 export type EquipmentPanelProps = {
 	character: CharacterWithRelations;
-	onPatchRequested: (patch: Partial<character>, relations?: Partial<CharacterWithRelations>) => Promise<void> | void;
+	onPatchRequested: (patch: CharacterFieldPatch) => Promise<void> | void;
 	onItemPreviewRequested: (type: keyof DB, data: unknown) => void;
 };
 
@@ -62,27 +59,10 @@ const semanticToSlot = {
 	special: "specialId",
 } as const satisfies Record<CharacterEquipmentSlot, EquipmentSlot>;
 
-const equipmentRelationKeyConfig = {
-	weaponId: "weapon",
-	subWeaponId: "subWeapon",
-	armorId: "armor",
-	optionId: "option",
-	specialId: "special",
-} as const satisfies Record<EquipmentSlot, keyof CharacterWithRelations>;
-
 type EquipmentTableName = (typeof equipmentSlotConfig)[EquipmentSlot];
 type EquipmentSlotTable<S extends EquipmentSlot> = (typeof equipmentSlotConfig)[S];
 type EquipmentTableRow<T extends EquipmentTableName> = DB[T];
 type EquipmentSlotRow<S extends EquipmentSlot> = EquipmentTableRow<EquipmentSlotTable<S>>;
-
-type EquipmentRelationByTable = {
-	player_weapon: PlayerWeaponWithRelations;
-	player_armor: PlayerArmorWithRelations;
-	player_option: PlayerOptionWithRelations;
-	player_special: PlayerSpecialWithRelations;
-};
-
-type EquipmentRelation<T extends EquipmentTableName> = EquipmentRelationByTable[T];
 
 const withBelongToPlayerId = <T extends EquipmentTableName>(
 	value: EquipmentTableRow<T>,
@@ -108,20 +88,6 @@ const equipmentDataConfigFactories = {
 	player_special: PLAYER_SPECIAL_DATA_CONFIG,
 } as const satisfies { [T in EquipmentTableName]: TableDataConfig<EquipmentTableRow<T>> };
 
-const equipmentRelationLoaders = {
-	player_weapon: selectPlayerWeaponByIdWithRelations,
-	player_armor: selectPlayerArmorByIdWithRelations,
-	player_option: selectPlayerOptionByIdWithRelations,
-	player_special: selectPlayerSpecialByIdWithRelations,
-} as const satisfies { [T in EquipmentTableName]: (id: string) => Promise<EquipmentRelation<T> | undefined> };
-
-const equipmentRelationFallbacks = {
-	player_weapon: (inserted) => ({ ...inserted, template: null, crystals: [] }),
-	player_armor: (inserted) => ({ ...inserted, template: null, crystals: [] }),
-	player_option: (inserted) => ({ ...inserted, template: null, crystals: [] }),
-	player_special: (inserted) => ({ ...inserted, template: null, crystals: [] }),
-} satisfies { [T in EquipmentTableName]: (inserted: EquipmentTableRow<T>) => EquipmentRelation<T> };
-
 const getEquipmentDataConfig = <T extends EquipmentTableName>(
 	tableName: T,
 	dictionary: Parameters<TableDataConfig<EquipmentTableRow<T>>>[0],
@@ -131,29 +97,8 @@ const getEquipmentDataConfig = <T extends EquipmentTableName>(
 	return configFactory(dictionary);
 };
 
-const loadEquipmentWithRelations = async <T extends EquipmentTableName>(
-	tableName: T,
-	id: string,
-	inserted: EquipmentTableRow<T>,
-): Promise<EquipmentRelation<T>> => {
-	const selectWithRelations = equipmentRelationLoaders[tableName] as (
-		id: string,
-	) => Promise<EquipmentRelation<T> | undefined>;
-	const fallbackWithRelations = equipmentRelationFallbacks[tableName] as unknown as (
-		inserted: EquipmentTableRow<T>,
-	) => EquipmentRelation<T>;
-	return (await selectWithRelations(id)) ?? fallbackWithRelations(inserted);
-};
-
 const toCharacterPatch = <S extends EquipmentSlot>(slot: S, id: string): Pick<character, S> => {
 	return { [slot]: id } as Pick<character, S>;
-};
-
-const toRelationPatch = <S extends EquipmentSlot>(
-	slot: S,
-	relation: EquipmentRelation<EquipmentSlotTable<S>>,
-): Partial<CharacterWithRelations> => {
-	return { [equipmentRelationKeyConfig[slot]]: relation } as Partial<CharacterWithRelations>;
 };
 
 export function EquipmentPanel(props: EquipmentPanelProps) {
@@ -197,7 +142,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 
 	const clearEquipmentSlot = (slot: EquipmentSlot) => {
 		// data.prisma 将装备外键定义为 String?；清空装备用 NULL 表达无关联。
-		void props.onPatchRequested({ [slot]: null } as Partial<character>);
+		void props.onPatchRequested({ [slot]: null } as CharacterFieldPatch);
 	};
 
 	const openEquipmentCreateForm = <S extends EquipmentSlot>(slot: S) => {
@@ -224,12 +169,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 						// 设计说明：装备槽位依赖刚创建记录的真实主键，因此先插入装备，再回写 character FK。
 						const inserted = await config.form.onInsert(value);
 						const primaryValue = readInsertedEquipmentId(inserted, tableName);
-						const insertedEquipment = await loadEquipmentWithRelations(tableName, primaryValue, inserted);
-						// 设计说明：新增装备写库后立即把 relation 回填到角色页工作副本，避免 FK 已变更但槽位 UI 等待整页重载。
-						await props.onPatchRequested(
-							toCharacterPatch(slot, primaryValue),
-							toRelationPatch(slot, insertedEquipment),
-						);
+						await props.onPatchRequested(toCharacterPatch(slot, primaryValue));
 						api.close();
 						return inserted;
 					}}
@@ -258,7 +198,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 		const primaryValue = row[String(primaryKey)];
 		if (typeof primaryValue !== "string") return;
 
-		await props.onPatchRequested({ [slot]: primaryValue } as Partial<character>);
+		await props.onPatchRequested({ [slot]: primaryValue } as CharacterFieldPatch);
 	};
 
 	const projectEquipmentPickerSheet = (slot: EquipmentSlot) => {

@@ -1,17 +1,8 @@
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
-import {
-	type Skill,
-	type SkillWithRelations,
-	selectAllSkills,
-	skillSubRelations,
-} from "@db/generated/repositories/skill";
-import type { DB } from "@db/generated/zod/index";
-import { getDB } from "@db/repositories/database";
+import { type Skill, selectAllSkills } from "@db/generated/repositories/skill";
 import { SKILL_TREE_GROUP_TYPE, SKILL_TREE_TYPE, type SkillTreeType } from "@db/schema/enums";
-import { createId } from "@paralleldrive/cuid2";
-import type { Transaction } from "kysely";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { createEffect, createMemo, createResource, createSignal, For, Index, on, onCleanup, Show } from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, For, Index, onCleanup, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
@@ -29,22 +20,6 @@ import {
 	type SkillTreeGridBounds,
 } from "./skillTreeGrid";
 
-async function selectSkillsByIdsWithRelations(
-	skillIds: string[],
-	trx?: Transaction<DB>,
-): Promise<SkillWithRelations[]> {
-	if (skillIds.length === 0) return [];
-
-	const db = trx || (await getDB());
-	// 设计说明：只在技能被真正写入角色技能时补齐关系；面板首屏只读基础技能树，减少打开成本。
-	return await db
-		.selectFrom("skill")
-		.where("skill.id", "in", skillIds)
-		.selectAll("skill")
-		.select((eb) => skillSubRelations(eb, eb.ref("skill.id")))
-		.execute();
-}
-
 type SkillTreeEntry = {
 	templates: Skill[];
 };
@@ -53,25 +28,14 @@ type SkillTemplateTreeIndex = Record<SkillTreeType, SkillTreeEntry>;
 
 type VisibleSkillTreeOverrideMap = Partial<Record<SkillTreeType, boolean>>;
 
-type SkillLevelState = {
-	characterSkillId?: string;
-	lv: number;
-};
-
-type SkillLevelByTemplateId = Record<string, SkillLevelState>;
-
 export type SkillPanelProps = {
-	characterId: string;
 	skills: CharacterSkillWithRelations[];
-	onSkillLevelsChangeRequested: (
-		changes: Array<{ template: SkillWithRelations; lv: number; characterSkillId?: string }>,
-	) => void;
-	onSkillTreeRemoveRequested: (payload: { templateIds: string[]; characterSkillIds: string[] }) => void;
+	onSkillLevelAdjustRequested: (payload: { templateId: string; delta: -1 | 1 }) => void;
+	onSkillTreeRemoveRequested: (treeType: SkillTreeType) => void;
 };
 
 const SKILL_MAX_LEVEL = 10;
 const SKILL_LEARNED_LEVEL = 1;
-const SKILL_PREREQUISITE_LEVEL = 5;
 
 function createEmptySkillTemplateTreeIndex(): SkillTemplateTreeIndex {
 	// skill 模板是技能树结构的唯一事实来源；character_skill 只记录某个角色在模板上的等级。
@@ -80,18 +44,6 @@ function createEmptySkillTemplateTreeIndex(): SkillTemplateTreeIndex {
 		tree[treeType] = { templates: [] };
 	}
 	return tree;
-}
-
-function createSkillLevelByTemplateId(skills: CharacterSkillWithRelations[]): SkillLevelByTemplateId {
-	return Object.fromEntries(
-		skills
-			.filter((skill) => !skill.isStarGem)
-			.map((skill) => [skill.templateId, { characterSkillId: skill.id, lv: skill.lv }]),
-	);
-}
-
-function indexById<T extends { id: string }>(rows: T[]): Record<string, T> {
-	return Object.fromEntries(rows.map((row) => [row.id, row]));
 }
 
 function SkillLevelAdjustButton(props: {
@@ -185,12 +137,8 @@ export function SkillPanel(props: SkillPanelProps) {
 	let skillTreePickerSheetHandle: OverlayLayerHandle | undefined;
 	const [visibleSkillTreeOverrides, setVisibleSkillTreeOverrides] = createSignal<VisibleSkillTreeOverrideMap>({});
 	const [focusedTreeSkillId, setFocusedTreeSkillId] = createSignal<string | null>(null);
-	// 设计说明：技能节点交互先写入面板局部映射；页面 model 负责 DB 提交和失败时通过 props.skills 回灌回滚状态。
-	const [skillLevelByTemplateId, setSkillLevelByTemplateId] = createSignal<SkillLevelByTemplateId>(
-		createSkillLevelByTemplateId(props.skills),
-	);
-	const [skillTemplateRelationsById, setSkillTemplateRelationsById] = createSignal<Record<string, SkillWithRelations>>(
-		indexById(props.skills.map((skill) => skill.template)),
+	const ordinarySkillByTemplateId = createMemo(
+		() => new Map(props.skills.filter((skill) => !skill.isStarGem).map((skill) => [skill.templateId, skill])),
 	);
 
 	const skillTemplateTreeIndex = createMemo<SkillTemplateTreeIndex>(() => {
@@ -208,20 +156,6 @@ export function SkillPanel(props: SkillPanelProps) {
 	);
 	const activeTreeGridBounds = createMemo(() => getSkillTreeGridBounds(activeTreeTemplates()));
 	const activeTreeLinkCells = createMemo(() => buildSkillLinkCells(activeTreeTemplates()));
-	const skillTemplateById = createMemo(
-		() => new Map((skillTemplates() ?? []).map((template) => [template.id, template])),
-	);
-	const dependentTemplatesByPreTemplateId = createMemo(() => {
-		const map = new Map<string, Skill[]>();
-		for (const template of skillTemplates() ?? []) {
-			const preSkillId = template.preSkillId;
-			if (!preSkillId) continue;
-			const children = map.get(preSkillId) ?? [];
-			children.push(template);
-			map.set(preSkillId, children);
-		}
-		return map;
-	});
 	let skillTreeEditorSheetHandle: OverlayLayerHandle | undefined;
 	const closeSkillTreeEditorSheet = () => {
 		const handle = skillTreeEditorSheetHandle;
@@ -233,31 +167,7 @@ export function SkillPanel(props: SkillPanelProps) {
 		skillTreePickerSheetHandle = undefined;
 		handle?.close();
 	};
-	let skillLevelMutationToken = 0;
-
-	const mergeSkillTemplateRelations = (templates: SkillWithRelations[]) => {
-		if (templates.length === 0) return;
-		setSkillTemplateRelationsById((current) => ({ ...current, ...indexById(templates) }));
-	};
-
-	const hydrateSkillTemplates = async (templates: Skill[]): Promise<SkillWithRelations[]> => {
-		const cache = skillTemplateRelationsById();
-		const missingIds = templates.filter((template) => !cache[template.id]).map((template) => template.id);
-		if (missingIds.length > 0) {
-			const loadedTemplates = await selectSkillsByIdsWithRelations(missingIds);
-			mergeSkillTemplateRelations(loadedTemplates);
-		}
-		const refreshedCache = skillTemplateRelationsById();
-		return templates.map((template) => {
-			const hydrated = refreshedCache[template.id];
-			if (!hydrated) {
-				throw new Error(`技能模板关系缺失: ${template.id}`);
-			}
-			return hydrated;
-		});
-	};
-
-	const templateLevel = (template: Skill) => skillLevelByTemplateId()[template.id]?.lv ?? 0;
+	const templateLevel = (template: Skill) => ordinarySkillByTemplateId().get(template.id)?.lv ?? 0;
 	const hasSkillsInTree = (treeType: SkillTreeType) =>
 		skillTemplateTreeIndex()[treeType].templates.some((template) => templateLevel(template) >= SKILL_LEARNED_LEVEL);
 	const isSkillTreeVisible = (treeType: SkillTreeType) =>
@@ -274,50 +184,16 @@ export function SkillPanel(props: SkillPanelProps) {
 	// 设计说明：删除技能树条目表示移除该角色在这个树类型下的普通技能配置；星石技能属于独立配置，不跟随技能树删除。
 	const removeSkillTreeFromCharacter = (treeType: SkillTreeType) => {
 		const templates = skillTemplateTreeIndex()[treeType].templates;
-		const previousLevels = skillLevelByTemplateId();
-		const characterSkillIds = templates
-			.map((template) => previousLevels[template.id]?.characterSkillId)
-			.filter((id): id is string => Boolean(id));
-		const templateIds = templates.map((template) => template.id);
 
 		setVisibleSkillTreeOverrides((pre) => ({ ...pre, [treeType]: false }));
 		setFocusedTreeSkillId((focused) =>
 			focused && templates.some((template) => template.id === focused) ? null : focused,
 		);
 		if (activeSkillTreeType() === treeType) closeSkillTreeEditorSheet();
-		setSkillLevelByTemplateId((levels) => {
-			const nextLevels = { ...levels };
-			for (const template of templates) {
-				delete nextLevels[template.id];
-			}
-			return nextLevels;
-		});
-		props.onSkillTreeRemoveRequested({ templateIds, characterSkillIds });
+		props.onSkillTreeRemoveRequested(treeType);
 	};
 
-	createEffect(
-		on(
-			() => props.characterId,
-			() => {
-				skillLevelMutationToken += 1;
-				setVisibleSkillTreeOverrides({});
-				setSkillTemplateRelationsById(indexById(props.skills.map((skill) => skill.template)));
-			},
-		),
-	);
-
-	createEffect(
-		on(
-			() => props.skills.map((skill) => `${skill.id}:${skill.lv}:${skill.template.id}`).join("|"),
-			() => {
-				setSkillLevelByTemplateId(createSkillLevelByTemplateId(props.skills));
-				mergeSkillTemplateRelations(props.skills.map((skill) => skill.template));
-			},
-		),
-	);
-
 	onCleanup(() => {
-		skillLevelMutationToken += 1;
 		closeSkillTreeEditorSheet();
 		closeSkillTreePickerSheet();
 	});
@@ -329,109 +205,14 @@ export function SkillPanel(props: SkillPanelProps) {
 		if (focused && !templates.some((template) => template.id === focused)) setFocusedTreeSkillId(null);
 	});
 
-	const prerequisiteChain = (template: Skill): Skill[] => {
-		const chain: Skill[] = [];
-		const visitedTemplateIds = new Set<string>();
-		let preSkillId = template.preSkillId;
-		while (preSkillId) {
-			if (visitedTemplateIds.has(preSkillId)) break;
-			visitedTemplateIds.add(preSkillId);
-			const preSkill = skillTemplateById().get(preSkillId);
-			if (!preSkill) break;
-			chain.push(preSkill);
-			preSkillId = preSkill.preSkillId;
-		}
-		return chain;
-	};
-
-	const dependentBranch = (template: Skill): Skill[] => {
-		const branch: Skill[] = [];
-		const visitedTemplateIds = new Set<string>();
-		const collect = (templateId: string) => {
-			if (visitedTemplateIds.has(templateId)) return;
-			visitedTemplateIds.add(templateId);
-			for (const child of dependentTemplatesByPreTemplateId().get(templateId) ?? []) {
-				branch.push(child);
-				collect(child.id);
-			}
-		};
-		collect(template.id);
-		return branch;
-	};
-
-	const persistSkillLevels = (changes: Array<{ template: Skill; lv: number }>) => {
-		if (changes.length === 0) return;
-		const mutationToken = ++skillLevelMutationToken;
-		const previousLevels = skillLevelByTemplateId();
-		const preparedChanges = changes.map((change) => {
-			const currentState = previousLevels[change.template.id];
-			return {
-				...change,
-				characterSkillId: currentState?.characterSkillId ?? (change.lv > 0 ? createId() : undefined),
-			};
-		});
-		setSkillLevelByTemplateId((levels) => {
-			const nextLevels = { ...levels };
-			for (const change of preparedChanges) {
-				nextLevels[change.template.id] = {
-					characterSkillId: change.characterSkillId,
-					lv: change.lv,
-				};
-			}
-			return nextLevels;
-		});
-		void (async () => {
-			try {
-				const hydratedTemplates = await hydrateSkillTemplates(preparedChanges.map((change) => change.template));
-				if (mutationToken !== skillLevelMutationToken) return;
-				const hydratedChanges = hydratedTemplates.map((template, index) => {
-					const preparedChange = preparedChanges[index];
-					if (!preparedChange) {
-						throw new Error("技能变更补齐失败");
-					}
-					return {
-						template,
-						lv: preparedChange.lv,
-						characterSkillId: preparedChange.characterSkillId,
-					};
-				});
-				props.onSkillLevelsChangeRequested(hydratedChanges);
-			} catch (error) {
-				if (mutationToken !== skillLevelMutationToken) return;
-				setSkillLevelByTemplateId(previousLevels);
-				console.error("SkillPanel 技能关系补齐失败", error);
-			}
-		})();
-	};
-
 	const increaseSkillLevel = (template: Skill) => {
-		const nextLevel = Math.min(SKILL_MAX_LEVEL, templateLevel(template) + 1);
-		const changeMap = new Map<string, { template: Skill; lv: number }>();
-		if (nextLevel === templateLevel(template)) return;
-
-		// 设计说明：学习某个技能时补齐前置链，保证“能点目标技能”与“满足前置等级”作为同一次配置变更落库。
-		for (const preSkill of prerequisiteChain(template)) {
-			if (templateLevel(preSkill) < SKILL_PREREQUISITE_LEVEL) {
-				changeMap.set(preSkill.id, { template: preSkill, lv: SKILL_PREREQUISITE_LEVEL });
-			}
-		}
-		changeMap.set(template.id, { template, lv: nextLevel });
-		persistSkillLevels(Array.from(changeMap.values()));
+		if (templateLevel(template) >= SKILL_MAX_LEVEL) return;
+		props.onSkillLevelAdjustRequested({ templateId: template.id, delta: 1 });
 	};
 
 	const decreaseSkillLevel = (template: Skill) => {
-		const currentLevel = templateLevel(template);
-		if (currentLevel <= 0) return;
-		const nextLevel = Math.max(0, currentLevel - 1);
-		const changeMap = new Map<string, { template: Skill; lv: number }>([[template.id, { template, lv: nextLevel }]]);
-
-		// 设计说明：前置技能低于 lv5 时，所有后继技能都不再满足学习条件；降级操作同时清空整条后继分支，避免留下无效配置。
-		if (nextLevel < SKILL_PREREQUISITE_LEVEL) {
-			for (const dependent of dependentBranch(template)) {
-				if (templateLevel(dependent) > 0) changeMap.set(dependent.id, { template: dependent, lv: 0 });
-			}
-		}
-		persistSkillLevels(Array.from(changeMap.values()));
+		if (templateLevel(template) <= 0) return;
+		props.onSkillLevelAdjustRequested({ templateId: template.id, delta: -1 });
 	};
 
 	const canDecreaseSkill = (template: Skill) => {
