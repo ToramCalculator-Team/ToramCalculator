@@ -17,7 +17,7 @@ let pgWorkerInstance: AppPgWorker | undefined;
 
 /**
  * 设计目标：把 worker 内部的同步进度桥接到前端全局 store，供页面按表级 ready 做门控。
- * 函数职责：监听 PGlite worker 消息，只在表 initial sync 成功时更新 tableSyncState。
+ * 函数职责：监听 PGlite worker 消息，只在表 initial sync 成功时更新 hasInitialSnapshot。
  */
 const bindSyncMessageBridge = (host: Worker) => {
 	host.onmessage = (e) => {
@@ -27,7 +27,7 @@ const bindSyncMessageBridge = (host: Worker) => {
 				const data = (e.data as syncMessage).data;
 				// 设计目的：后台同步会显式报告 fail；只有 initial sync 成功的表才能进入页面 ready 门控。
 				if (data.state === "success") {
-					setStore("database", "tableSyncState", data.tableName, true);
+					setStore("database", "hasInitialSnapshot", data.tableName, true);
 				}
 				// console.log(data.tableName + "已同步完毕");
 			}

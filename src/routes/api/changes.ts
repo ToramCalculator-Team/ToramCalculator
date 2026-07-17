@@ -7,11 +7,18 @@ import { getCookie } from "@solidjs/start/http";
 import type { APIEvent } from "@solidjs/start/server";
 import type { JWTPayload } from "jose";
 import { jwtVerify } from "jose";
-import { z } from "zod/v4";
+import { ChangesRequestSchema } from "~/lib/writeSync/changesContract";
 
 // ==================== API 处理函数 ====================
 
 type ChangeValue = Record<string, unknown>;
+
+/** 确定性的数据库约束冲突必须触发客户端 rollback，不能作为 500 永久占住 outbox 队首。 */
+export const statusForChangeError = (error: unknown): 409 | 500 => {
+	if (typeof error !== "object" || error === null || !("code" in error)) return 500;
+	const code = error.code;
+	return typeof code === "string" && code.startsWith("23") ? 409 : 500;
+};
 
 export async function POST(event: APIEvent) {
 	const token = getCookie("jwt");
@@ -46,32 +53,13 @@ export async function POST(event: APIEvent) {
 		return new Response("未认证用户，终止数据写入", { status: 401 });
 	}
 
-	// -------- 安全校验与约束 --------
-	// 1) 允许的操作
-	//    delete 已启用：客户端视图删除（如 deleteCharacterSkill）会产生 delete 变更，
-	//    服务端若拒绝会导致上行队列 HOL 死锁（见 ADR 0017 B-2）。
-	//    信任模型：与 insert/update 一致，当前仅校验 JWT 有效性，不做行级归属校验。
-	//    这不新增相对现状的越权面（update 本已可越权）；归属校验（insert/update/delete
-	//    统一）留待 ADR 0017 A-1 处理。
-	const ALLOWED_OPS = new Set(["insert", "update", "delete"] as const);
-	// 2) 允许的表名（如需更细可维护一个白名单；这里先允许全部，但执行前做信息架构校验）
-	const SAFE_TABLE_NAME = /^[_a-zA-Z][_a-zA-Z0-9]*$/;
-	// 3) 负载 schema（宽松，但强约束关键字段与类型）
-	const ChangeSchema = z.object({
-		table_name: z.string().regex(SAFE_TABLE_NAME, "非法表名"),
-		operation: z.union([z.literal("insert"), z.literal("update"), z.literal("delete")]),
-		value: z.record(z.string(), z.unknown()),
-		write_id: z.string().min(1).optional(),
-		transaction_id: z.string().min(1).optional(),
-	});
-	const TxSchema = z.array(z.object({ id: z.string().optional(), changes: z.array(ChangeSchema) }));
-
-	let body: z.infer<typeof TxSchema>;
-	try {
-		body = TxSchema.parse(requestBody);
-	} catch {
+	// 客户端从同一 schema 推导请求类型，服务端在事务前执行运行时校验；协议不再维护两套结构。
+	// 当前仍只校验 JWT 有效性，不做行级归属校验；该安全边界由后续加固计划处理。
+	const parsedRequest = ChangesRequestSchema.safeParse(requestBody);
+	if (!parsedRequest.success) {
 		return new Response("请求结构非法", { status: 400 });
 	}
+	const body = parsedRequest.data;
 
 	console.log(`用户:${user.name} 变更数据,body:`, JSON.stringify(body, null, 2));
 
@@ -86,15 +74,6 @@ export async function POST(event: APIEvent) {
 		await db.transaction().execute(async (trx) => {
 			for (const transaction of body) {
 				for (const change of transaction.changes) {
-					// 基础安全策略：禁止未授权操作 & 限制表名格式
-					if (!SAFE_TABLE_NAME.test(change.table_name)) {
-						throw new Error(`非法表名: ${change.table_name}`);
-					}
-
-					if (!ALLOWED_OPS.has(change.operation as "insert" | "update" | "delete")) {
-						throw new Error(`禁止的操作: ${change.operation}`);
-					}
-
 					// 类型断言：已通过安全校验的表名
 					const tableName = change.table_name as keyof DB;
 
@@ -122,7 +101,7 @@ export async function POST(event: APIEvent) {
 
 					switch (change.operation) {
 						case "insert": {
-							// 幂等 upsert（见 ADR 0017 B-3）：崩溃窗口重投同一 change 时，
+							// 幂等 upsert（见 ADR 0018）：崩溃窗口重投同一 change 时，
 							// plain INSERT 会主键冲突 500 → 客户端无限 retry 死锁。
 							// ON CONFLICT DO UPDATE 使重投等价于覆盖成同值，天然幂等。
 							await trx
@@ -163,6 +142,7 @@ export async function POST(event: APIEvent) {
 		return new Response("操作成功", { status: 200 });
 	} catch (err) {
 		console.error("❌ 数据处理错误:", err);
-		return new Response("服务器内部错误", { status: 500 });
+		const status = statusForChangeError(err);
+		return new Response(status === 409 ? "数据约束冲突" : "服务器内部错误", { status });
 	}
 }

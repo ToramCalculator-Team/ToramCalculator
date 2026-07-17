@@ -421,10 +421,10 @@ export default function WikiSubPage() {
 	return (
 		<Show when={dataConfig()}>
 			{(_validDataConfig) => {
-				// console.log("syncState", JSON.stringify(store.database.tableSyncState, null, 2), "wikiStore.type", JSON.stringify(wikiStore.type), "validDataConfig", validDataConfig());
+				// console.log("syncState", JSON.stringify(store.database.hasInitialSnapshot, null, 2), "wikiStore.type", JSON.stringify(wikiStore.type), "validDataConfig", validDataConfig());
 				return (
 					<Show
-						when={store.database.tableSyncState[wikiStore.type]}
+						when={store.database.hasInitialSnapshot[wikiStore.type]}
 						fallback={
 							<Motion.div
 								animate={{ opacity: [0, 1] }}

@@ -12,8 +12,8 @@ import type { Locale } from "~/locales/i18n";
 type DatabaseState = {
 	/** 本地数据库是否初始化 */
 	inited: boolean;
-	/** 本地数据库表同步状态 */
-	tableSyncState: Partial<Record<keyof DB, boolean>>;
+	/** 本地数据库表否至少成功同步过一次*/
+	hasInitialSnapshot: Partial<Record<keyof DB, boolean>>;
 	/** 是否启动数据同步 */
 	sync: boolean;
 };
@@ -139,7 +139,7 @@ export const initialStore: Store = {
 	version: STORE_SCHEMA_VERSION,
 	database: {
 		inited: false,
-		tableSyncState: {
+		hasInitialSnapshot: {
 			account: false,
 			account_create_data: false,
 			account_update_data: false,

@@ -1,208 +1,108 @@
-/**
- * @file liveQuery.ts
- * @description 把 Kysely 的编译查询接到 PGlite `live` 扩展，得到响应式行数据。
- *
- * 设计要点：
- * - Kysely 负责类型安全和 SQL 构造，`.compile()` 得到 { sql, parameters }
- * - PGlite live.query 订阅这条 SQL 的结果；当涉及表发生任何写入（Kysely 写入 / electric-sync 拉回 / PGlite DDL 等）
- *   都会触发回调，无需手动失效
- * - Solid 的 `createEffect` 同步调用 queryFn 收集依赖；signal 变化时重建订阅
- * - 异步资源（db 获取、pgworker 构造）内化到本文件，保证 queryFn 纯同步读 signal
- * - onCleanup 保证订阅释放
- *
- * 为什么不直接返回 createResource：
- * - createResource 面向"一次性 Promise"模型，需要手动 refetch
- * - live.query 天然是订阅模型，直接包成 Signal 更贴合 Solid 反应式
- *
- * SSR 安全：
- * - createEffect 在服务端不执行；pgWorker 走动态 import 避免污染 SSR bundle
- */
+/** 把 Kysely 编译查询直接接到 PGlite live subscription，并投影为 Solid accessor。 */
 
 import type { DB } from "@db/generated/zod/index";
 import { getDB } from "@db/repositories/database";
 import type { Compilable, Kysely } from "kysely";
 import { type Accessor, createEffect, createSignal, onCleanup } from "solid-js";
 import { waitFor } from "~/lib/bootstrap/context-standalone";
+import { createKyselyLiveQuerySource, type LiveQuerySubscription } from "./kyselyLiveQuerySource";
 
 export type LiveQueryStatus = "idle" | "loading" | "ready" | "error";
 
 export interface LiveKyselyQueryResult<T> {
-	/** 查询结果（初始为空数组） */
 	rows: Accessor<T[]>;
-	/** 当前状态 */
 	status: Accessor<LiveQueryStatus>;
-	/** 若发生错误，这里会有 Error 对象 */
 	error: Accessor<Error | undefined>;
-	/** 手动重新执行当前查询；live 订阅不可用时使用同一条 SQL 做一次性校准。 */
-	refresh: () => Promise<void>;
 }
 
-export type LiveKyselyQueryOptions = {
-	/**
-	 * live.query 需要把 SQL 包装成临时 view 并解析依赖表。
-	 * 复杂 SQL 在普通查询可执行时仍可能订阅失败；开启后降级为一次性查询。
-	 */
-	fallbackOnLiveError?: boolean;
-	/** 查询切换时是否保留上一版 rows；默认清空以避免跨表残留。 */
-	keepRowsOnLoading?: boolean;
-};
-
-type LiveQueryAdapter = {
-	live: {
-		query: (
-			sql: string,
-			params: unknown[],
-			cb: (res: { rows: unknown[] }) => void,
-		) => Promise<{
-			initialResults: { rows: unknown[] };
-			refresh: () => Promise<void>;
-			unsubscribe: (cb?: (res: unknown) => void) => Promise<void>;
-		}>;
-	};
-};
-// 说明：PGliteWorker 的库类型没有完整暴露 live.query 泛型签名，
-// 这里使用窄适配类型，仅覆盖当前文件真实依赖的最小接口。
-
-/**
- * 把一个 Kysely 查询构造器挂到 PGlite live 订阅上。
- *
- * 重要：queryFn 必须是**同步**函数，且所有响应式 signal 必须在 queryFn 内同步读取。
- * 这样 Solid 的 createEffect 才能追踪依赖，signal 变化时自动重建订阅。
- * 异步资源（db 实例、pgworker）由本函数内部统一处理，调用方无需关心。
- *
- * @example
- * ```ts
- * const { rows, status } = createLiveKyselyQuery((db) => {
- *   const type = wikiStore.type;        // 同步读 signal，会被追踪
- *   if (!type) return null;
- *   return db.selectFrom(type).selectAll();
- * });
- * ```
- */
+/** 把一个 Kysely 查询构造器挂到本地 PGlite live 订阅。 */
 export function createLiveKyselyQuery<T>(
 	queryFn: (db: Kysely<DB>) => Compilable<T> | null | undefined,
-	options: LiveKyselyQueryOptions = {},
 ): LiveKyselyQueryResult<T> {
 	const [rows, setRows] = createSignal<T[]>([]);
 	const [status, setStatus] = createSignal<LiveQueryStatus>("idle");
 	const [error, setError] = createSignal<Error | undefined>();
-	const fallbackOnLiveError = options.fallbackOnLiveError ?? true;
-	let refreshCurrent: () => Promise<void> = async () => {};
-
-	// db 实例以 signal 持有：异步就绪后 setDb 会触发 effect 重跑，建立首次订阅。
 	const [db, setDb] = createSignal<Kysely<DB> | undefined>();
 
-	// 异步初始化 db（只跑一次，后续复用缓存）
 	void (async () => {
 		try {
 			await waitFor("pgworker");
 			const instance = await getDB();
 			setDb(() => instance);
-		} catch (e) {
-			setError(e instanceof Error ? e : new Error(String(e)));
+		} catch (cause) {
+			setRows([]);
+			setError(cause instanceof Error ? cause : new Error(String(cause)));
 			setStatus("error");
-			console.error("[liveQuery] db 初始化失败", e);
 		}
 	})();
 
 	createEffect(() => {
 		const kysely = db();
-		// db 未就绪时保持 loading，db 到位后 effect 会重跑。
 		if (!kysely) {
 			setStatus("loading");
 			return;
 		}
 
-		// 同步调用 queryFn —— 这里读取的所有 signal 都会被 effect 追踪
 		let compilable: Compilable<T> | null | undefined;
 		try {
 			compilable = queryFn(kysely);
-		} catch (e) {
-			setError(e instanceof Error ? e : new Error(String(e)));
+		} catch (cause) {
+			setRows([]);
+			setError(cause instanceof Error ? cause : new Error(String(cause)));
 			setStatus("error");
-			setRows(() => []);
-			console.error("[liveQuery] queryFn 执行失败", e);
 			return;
-		}
-
-		// 切换查询时进入 loading；默认清空 rows，调用方可用 keepRowsOnLoading 保留上一版。
-		setStatus("loading");
-		setError(undefined);
-		if (!options.keepRowsOnLoading) {
-			setRows(() => []);
 		}
 
 		if (!compilable) {
-			refreshCurrent = async () => {};
-			setRows(() => []);
+			setRows([]);
 			setStatus("idle");
+			setError(undefined);
 			return;
 		}
 
-		const compiled = compilable.compile();
+		let compiled: ReturnType<Compilable<T>["compile"]>;
+		try {
+			compiled = compilable.compile();
+		} catch (cause) {
+			setRows([]);
+			setError(cause instanceof Error ? cause : new Error(String(cause)));
+			setStatus("error");
+			return;
+		}
 
 		let disposed = false;
-		let liveSub: { unsubscribe: (cb?: (res: unknown) => void) => Promise<void> } | undefined;
-		const runFallbackQuery = async () => {
-			const result = await kysely.executeQuery<T>(compiled);
-			if (disposed) return;
-			setError(undefined);
-			setRows(() => result.rows);
-			setStatus("ready");
-		};
-		refreshCurrent = runFallbackQuery;
-
-		void (async () => {
-			try {
-				// 动态导入，避免 SSR 触发 Worker 构造
-				const { createPgWorker } = await import("~/lib/pglite/pg");
-				const pgWorker = (await createPgWorker()) as unknown as LiveQueryAdapter;
-				if (disposed) return;
-
-				const sub = await pgWorker.live.query(
-					compiled.sql,
-					[...compiled.parameters] as unknown[],
-					(res) => {
-						if (disposed) return;
-						setRows(() => res.rows as T[]);
-						setStatus("ready");
-					},
-				);
-				if (!disposed) {
-					setRows(() => sub.initialResults.rows as T[]);
+		let subscription: LiveQuerySubscription<T> | null = null;
+		setRows([]);
+		setError(undefined);
+		setStatus("loading");
+		void createKyselyLiveQuerySource<DB, T>(kysely, compiled)
+			.then((source) =>
+				source.subscribe((nextRows) => {
+					if (disposed) return;
+					setRows([...nextRows]);
+					setError(undefined);
 					setStatus("ready");
-					refreshCurrent = async () => {
-						await sub.refresh();
-					};
-				}
-
+				}),
+			)
+			.then(async (nextSubscription) => {
 				if (disposed) {
-					await sub.unsubscribe();
+					await nextSubscription.unsubscribe().catch(() => undefined);
 					return;
 				}
-				liveSub = sub;
-			} catch (e) {
+				subscription = nextSubscription;
+				setRows([...nextSubscription.initialRows]);
+				setError(undefined);
+				setStatus("ready");
+			})
+			.catch((cause) => {
 				if (disposed) return;
-				setError(e instanceof Error ? e : new Error(String(e)));
-				console.error("[liveQuery] 订阅失败", e);
-				if (fallbackOnLiveError) {
-					try {
-						await runFallbackQuery();
-						return;
-					} catch (fallbackError) {
-						if (disposed) return;
-						setError(fallbackError instanceof Error ? fallbackError : new Error(String(fallbackError)));
-					}
-				}
+				setError(cause instanceof Error ? cause : new Error(String(cause)));
 				setStatus("error");
-			}
-		})();
+			});
 
 		onCleanup(() => {
 			disposed = true;
-			liveSub?.unsubscribe().catch(() => {
-				/* ignore */
-			});
+			void subscription?.unsubscribe().catch(() => undefined);
 		});
 	});
 
@@ -210,6 +110,5 @@ export function createLiveKyselyQuery<T>(
 		rows,
 		status,
 		error,
-		refresh: () => refreshCurrent(),
 	};
 }

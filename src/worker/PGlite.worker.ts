@@ -7,8 +7,8 @@ import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import { live } from "@electric-sql/pglite/live";
 import { worker } from "@electric-sql/pglite/worker";
 import { electricSync } from "@electric-sql/pglite-sync";
-import { ChangeLogSynchronizer } from "~/lib/pglite/ChangeLogSynchronizer";
 import { DB_SCHEMA_VERSION, MIN_COMPATIBLE_DB_SCHEMA_VERSION } from "~/lib/version/schema";
+import { createChangeLogSynchronizer } from "~/lib/writeSync/ChangeLogSynchronizer";
 
 const ELECTRIC_HOST =
 	import.meta.env.VITE_SERVER_HOST === "localhost"
@@ -106,15 +106,26 @@ const ELECTRIC_SYNC_TABLE_CONFIGS = {
 		urlParams: `"_characterToconsumable"`,
 	},
 	character_skill: { tableName: "character_skill", primaryKey: ["id"] },
+	registlet: { tableName: "registlet", primaryKey: ["id"] },
+	character_registlet: { tableName: "character_registlet", primaryKey: ["id"] },
 	consumable: { tableName: "consumable", primaryKey: ["itemId"] },
 	material: { tableName: "material", primaryKey: ["itemId"] },
 	combo: { tableName: "combo", primaryKey: ["id"] },
+	combo_step: { tableName: "combo_step", primaryKey: ["id"] },
 	character: { tableName: "character", primaryKey: ["id"] },
 	mercenary: { tableName: "mercenary", primaryKey: ["templateId"] },
 	member: { tableName: "member", primaryKey: ["id"] },
 	team: { tableName: "team", primaryKey: ["id"] },
-	_campA: { tableName: "_campA", primaryKey: ["A", "B"], urlParams: `"_campA"` },
-	_campB: { tableName: "_campB", primaryKey: ["A", "B"], urlParams: `"_campB"` },
+	_simulatorAnalysisSources: {
+		tableName: "_simulatorAnalysisSources",
+		primaryKey: ["A", "B"],
+		urlParams: `"_simulatorAnalysisSources"`,
+	},
+	_simulatorAnalysisTargets: {
+		tableName: "_simulatorAnalysisTargets",
+		primaryKey: ["A", "B"],
+		urlParams: `"_simulatorAnalysisTargets"`,
+	},
 	simulator: { tableName: "simulator", primaryKey: ["id"] },
 	sync_heartbeat: { tableName: "sync_heartbeat", primaryKey: ["id"] },
 } satisfies Record<string, ElectricSyncTableConfig>;
@@ -150,14 +161,17 @@ const EARLY_ELECTRIC_SYNC_TABLES: ElectricSyncTableConfig[] = [
 	ELECTRIC_SYNC_TABLE_CONFIGS.player_pet,
 	ELECTRIC_SYNC_TABLE_CONFIGS._characterToconsumable,
 	ELECTRIC_SYNC_TABLE_CONFIGS.character_skill,
+	ELECTRIC_SYNC_TABLE_CONFIGS.registlet,
+	ELECTRIC_SYNC_TABLE_CONFIGS.character_registlet,
 	ELECTRIC_SYNC_TABLE_CONFIGS.consumable,
 	ELECTRIC_SYNC_TABLE_CONFIGS.combo,
+	ELECTRIC_SYNC_TABLE_CONFIGS.combo_step,
 	ELECTRIC_SYNC_TABLE_CONFIGS.character,
 	ELECTRIC_SYNC_TABLE_CONFIGS.mercenary,
 	ELECTRIC_SYNC_TABLE_CONFIGS.member,
 	ELECTRIC_SYNC_TABLE_CONFIGS.team,
-	ELECTRIC_SYNC_TABLE_CONFIGS._campA,
-	ELECTRIC_SYNC_TABLE_CONFIGS._campB,
+	ELECTRIC_SYNC_TABLE_CONFIGS._simulatorAnalysisSources,
+	ELECTRIC_SYNC_TABLE_CONFIGS._simulatorAnalysisTargets,
 	ELECTRIC_SYNC_TABLE_CONFIGS.simulator,
 ];
 
@@ -416,15 +430,15 @@ const openSchemaReadyDatabase = async (): Promise<WorkerPGlite> => {
 
 // 用 syncShapesToTables 一次注册整组 shape，由库在单连接上并发拉取，取代逐表串行。
 // onInitialSync 是整组一次性回调：组内全部表 initial sync 完成时，把本组所有表一并标记 success，
-// 逐表 tableSyncState flag 仍逐个置真，wiki/bootstrap 的单表门控不受影响。
+// 逐表 hasInitialSnapshot flag 仍逐个置真，wiki/bootstrap 的单表门控不受影响。
 const syncTableGroup = async (pg: WorkerPGlite, groupName: string, configs: ElectricSyncTableConfig[]) => {
 	const shapes: Record<string, Parameters<typeof pg.electric.syncShapesToTables>[0]["shapes"][string]> = {};
 	for (const { tableName, primaryKey, urlParams } of configs) {
 		shapes[tableName] = {
 			shape: {
 				url: ELECTRIC_HOST,
-				// liveSse: true, 
-				params: { table: urlParams ?? tableName }
+				// liveSse: true,
+				params: { table: urlParams ?? tableName },
 			},
 			table: `${tableName}_synced`,
 			primaryKey,
@@ -493,7 +507,7 @@ const runElectricSyncPlan = async (pg: WorkerPGlite) => {
  * 函数职责：注册 start/stop 消息监听，并把 ChangeLogSynchronizer 的异常限制在控制命令内。
  */
 const registerSyncControlHandler = (pg: WorkerPGlite) => {
-	const writePathSync = new ChangeLogSynchronizer(pg);
+	const writePathSync = createChangeLogSynchronizer(pg);
 	// 不立即启动同步器，等待主线程控制
 	// writePathSync.start()
 
