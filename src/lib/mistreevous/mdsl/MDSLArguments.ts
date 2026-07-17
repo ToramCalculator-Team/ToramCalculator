@@ -119,9 +119,7 @@ export function getArgumentJsonValue(arg: AnyArgument): any {
 		return arg.value.map(getArgumentJsonValue);
 	}
 	if (arg.type === "object") {
-		return Object.fromEntries(
-			Object.entries(arg.value).map(([k, v]) => [k, getArgumentJsonValue(v)]),
-		);
+		return Object.fromEntries(Object.entries(arg.value).map(([k, v]) => [k, getArgumentJsonValue(v)]));
 	}
 	return arg.value;
 }

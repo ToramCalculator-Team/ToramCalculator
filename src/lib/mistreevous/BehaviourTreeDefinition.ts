@@ -1,4 +1,11 @@
-export type NodeArgument = string | number | boolean | null | { $: string } | NodeArgument[] | { [key: string]: NodeArgument };
+export type NodeArgument =
+	| string
+	| number
+	| boolean
+	| null
+	| { $: string }
+	| NodeArgument[]
+	| { [key: string]: NodeArgument };
 
 export type WaitDurationArgument = number | { $: string };
 export type LottoWeightArgument = number | { $: string };
@@ -136,12 +143,10 @@ export interface WaitNodeDefinition extends NodeDefinition {
 	 */
 	type: "wait";
 	/**
-	 * The duration to wait in milliseconds if defined as a single integer (or an agent property reference),
-	 * or the lower and upper duration bounds if defined as an array containing two integer values (or references).
+	 * The duration to wait in simulation milliseconds if defined as a number (or an agent property reference),
+	 * or the lower and upper duration bounds if defined as an array containing two values (or references).
 	 */
-	duration?:
-		| WaitDurationArgument
-		| [WaitDurationArgument, WaitDurationArgument];
+	duration?: WaitDurationArgument | [WaitDurationArgument, WaitDurationArgument];
 }
 
 /**
@@ -304,7 +309,4 @@ export type AnyNodeDefinition =
 /**
  * A type defining any node type that can be a child of composite parent node.
  */
-export type AnyChildNodeDefinition = Exclude<
-	AnyNodeDefinition,
-	RootNodeDefinition
->;
+export type AnyChildNodeDefinition = Exclude<AnyNodeDefinition, RootNodeDefinition>;

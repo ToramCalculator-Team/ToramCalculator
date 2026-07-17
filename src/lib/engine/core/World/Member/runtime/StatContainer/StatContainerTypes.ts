@@ -137,15 +137,15 @@ export const ModifierSourceRefKindSchema = z.enum([
 	"system",
 ]);
 
-export interface ModifierSourceRef {
-	kind: z.output<typeof ModifierSourceRefKindSchema>;
-	id: string;
-}
+export const ModifierSourceRefSchema = z.object({
+	kind: ModifierSourceRefKindSchema,
+	id: z.string(),
+});
 
-export interface ModifierSource {
+export const ModifierSourceSchema = z.object({
 	/** 聚合、覆盖和卸载使用的稳定键，不承载因果语义。 */
-	key: string;
-	name: string;
+	key: z.string(),
+	name: z.string(),
 	/**
 	 * 来源类别：
 	 * - `equipment`：装备（武器/防具/锻晶等）
@@ -155,15 +155,61 @@ export interface ModifierSource {
 	 * - `registlet`：雷吉斯托环
 	 * - `system`：系统赋予
 	 */
-	type: z.output<typeof ModifierSourceTypeSchema>;
+	type: ModifierSourceTypeSchema,
 	/** 从来源成员到直接运行时载体的稳定 ID 引用链。 */
-	chain: [{ kind: "member"; id: string }, ...ModifierSourceRef[]];
-}
+	chain: z.tuple([z.object({ kind: z.literal("member"), id: z.string() })], ModifierSourceRefSchema),
+});
 
-export interface Modifier {
-	value: number;
-	source: ModifierSource;
+export const ModifierSnapshotEntrySchema = z.object({
+	value: z.number(),
+	source: ModifierSourceSchema,
+});
+
+export const AttributeSnapshotLeafSchema = z.object({
+	displayName: z.string(),
+	expression: z.string(),
+	baseValue: z.number(),
+	baseSources: z.array(ModifierSnapshotEntrySchema),
+	actValue: z.number(),
+	static: z.object({
+		fixed: z.array(ModifierSnapshotEntrySchema),
+		percentage: z.array(ModifierSnapshotEntrySchema),
+	}),
+	dynamic: z.object({
+		fixed: z.array(ModifierSnapshotEntrySchema),
+		percentage: z.array(ModifierSnapshotEntrySchema),
+	}),
+});
+
+export const AttributeSnapshotSchema = z.record(z.string(), AttributeSnapshotLeafSchema);
+
+export type ModifierSourceRef = z.output<typeof ModifierSourceRefSchema>;
+export type ModifierSource = z.output<typeof ModifierSourceSchema>;
+
+/** 无分配遍历单个属性修饰来源时使用的只读访问函数。 */
+export type StatModifierVisitor = (source: ModifierSource, value: number) => void;
+
+/** 按稳定属性索引遍历 schema 元数据时使用的只读访问函数。 */
+export type StatSchemaVisitor = (index: number, path: string, displayName: string, expression: string) => void;
+
+/**
+ * StatContainer 的通用索引读取契约。
+ *
+ * 调用方先执行 `prepareIndexedRead()` 收敛脏值，再在同一同步调用栈内读取；
+ * visitor 收到的 ModifierSource 是容器持有的规范引用，不得保存或修改。
+ */
+export interface StatIndexedReadSource {
+	prepareIndexedRead(): void;
+	getAttributeCount(): number;
+	visitAttributeSchema(visitor: StatSchemaVisitor): void;
+	getBaseValueAt(index: number): number;
+	getValueAt(index: number): number;
+	getModifierCountAt(index: number, type: ModifierType): number;
+	visitModifiersAt(index: number, type: ModifierType, visitor: StatModifierVisitor): void;
 }
+export type Modifier = z.output<typeof ModifierSnapshotEntrySchema>;
+export type AttributeSnapshotLeaf = z.output<typeof AttributeSnapshotLeafSchema>;
+export type AttributeSnapshot = z.output<typeof AttributeSnapshotSchema>;
 
 /**
  * 修饰符类型映射到数组索引

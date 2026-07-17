@@ -3,6 +3,7 @@ import type { RootNodeDefinition } from "./BehaviourTreeDefinition";
 import {
 	flattenDefinition,
 	isBranchNodeDefinition,
+	isFiniteNumber,
 	isInteger,
 } from "./BehaviourTreeDefinitionUtilities";
 import { convertMDSLToJSON } from "./mdsl/MDSLDefinitionParser";
@@ -30,9 +31,7 @@ export type DefinitionValidationResult = {
  * @param definition The behaviour tree definition in the form of JSON or MDSL.
  * @returns An object representing the result of validating the given tree definition.
  */
-export function validateDefinition(
-	definition: any,
-): DefinitionValidationResult {
+export function validateDefinition(definition: any): DefinitionValidationResult {
 	// The definition must be defined.
 	if (definition === null || typeof definition === "undefined") {
 		return createValidationFailureResult("definition is null or undefined");
@@ -49,9 +48,7 @@ export function validateDefinition(
 		// The definition will either be an array (of root node definitions) or an object (the single primary root node definition).
 		return validateJSONDefinition(definition);
 	} else {
-		return createValidationFailureResult(
-			`unexpected definition type of '${typeof definition}'`,
-		);
+		return createValidationFailureResult(`unexpected definition type of '${typeof definition}'`);
 	}
 }
 
@@ -60,9 +57,7 @@ export function validateDefinition(
  * @param definition The behaviour tree definition in the form of MDSL.
  * @returns An object representing the result of validating the given tree definition.
  */
-function validateMDSLDefinition(
-	definition: string,
-): DefinitionValidationResult {
+function validateMDSLDefinition(definition: string): DefinitionValidationResult {
 	let rootNodeDefinitions: RootNodeDefinition[];
 
 	// The first thing the we need to do is to attempt to convert our MDSL into JSON.
@@ -75,18 +70,12 @@ function validateMDSLDefinition(
 	}
 
 	// Unpack all of the root node definitions into arrays of main ('id' defined) and sub ('id' not defined) root node definitions.
-	const mainRootNodeDefinitions = rootNodeDefinitions.filter(
-		({ id }) => typeof id === "undefined",
-	);
-	const subRootNodeDefinitions = rootNodeDefinitions.filter(
-		({ id }) => typeof id === "string" && id.length > 0,
-	);
+	const mainRootNodeDefinitions = rootNodeDefinitions.filter(({ id }) => typeof id === "undefined");
+	const subRootNodeDefinitions = rootNodeDefinitions.filter(({ id }) => typeof id === "string" && id.length > 0);
 
 	// We should ALWAYS have exactly one root node definition without an 'id' property defined, which is out main root node definition.
 	if (mainRootNodeDefinitions.length !== 1) {
-		return createValidationFailureResult(
-			"expected single unnamed root node at base of definition to act as main root",
-		);
+		return createValidationFailureResult("expected single unnamed root node at base of definition to act as main root");
 	}
 
 	// We should never have duplicate 'id' properties across our sub root node definitions.
@@ -94,9 +83,7 @@ function validateMDSLDefinition(
 	for (const { id } of subRootNodeDefinitions) {
 		// Have we already come across this 'id' property value?
 		if (subRootNodeIdenitifers.includes(id!)) {
-			return createValidationFailureResult(
-				`multiple root nodes found with duplicate name '${id}'`,
-			);
+			return createValidationFailureResult(`multiple root nodes found with duplicate name '${id}'`);
 		}
 
 		subRootNodeIdenitifers.push(id!);
@@ -125,9 +112,7 @@ export function validateJSONDefinition(
 	definition: RootNodeDefinition | RootNodeDefinition[],
 ): DefinitionValidationResult {
 	// The definition will either be an array (of root node definitions) or an object (the single primary root node definition).
-	const rootNodeDefinitions = Array.isArray(definition)
-		? definition
-		: [definition];
+	const rootNodeDefinitions = Array.isArray(definition) ? definition : [definition];
 
 	// Iterate over our array of root nodes and call validateNode for each, passing an initial depth of 0, wrapped in a try catch to handle validation failures.
 	try {
@@ -145,18 +130,12 @@ export function validateJSONDefinition(
 	}
 
 	// Unpack all of the root node definitions into arrays of main ('id' defined) and sub ('id' not defined) root node definitions.
-	const mainRootNodeDefinitions = rootNodeDefinitions.filter(
-		({ id }) => typeof id === "undefined",
-	);
-	const subRootNodeDefinitions = rootNodeDefinitions.filter(
-		({ id }) => typeof id === "string" && id.length > 0,
-	);
+	const mainRootNodeDefinitions = rootNodeDefinitions.filter(({ id }) => typeof id === "undefined");
+	const subRootNodeDefinitions = rootNodeDefinitions.filter(({ id }) => typeof id === "string" && id.length > 0);
 
 	// We should ALWAYS have exactly one root node definition without an 'id' property defined, which is out main root node definition.
 	if (mainRootNodeDefinitions.length !== 1) {
-		return createValidationFailureResult(
-			"expected single root node without 'id' property defined to act as main root",
-		);
+		return createValidationFailureResult("expected single root node without 'id' property defined to act as main root");
 	}
 
 	// We should never have duplicate 'id' properties across our sub root node definitions.
@@ -164,9 +143,7 @@ export function validateJSONDefinition(
 	for (const { id } of subRootNodeDefinitions) {
 		// Have we already come across this 'id' property value?
 		if (subRootNodeIdenitifers.includes(id!)) {
-			return createValidationFailureResult(
-				`multiple root nodes found with duplicate 'id' property value of '${id}'`,
-			);
+			return createValidationFailureResult(`multiple root nodes found with duplicate 'id' property value of '${id}'`);
 		}
 
 		subRootNodeIdenitifers.push(id!);
@@ -193,40 +170,31 @@ export function validateJSONDefinition(
  * @param rootNodeDefinitions The array of root node definitions.
  * @param includesGlobalSubtrees A flag defining whether the array includes all global subtree root node definitions.
  */
-export function validateBranchSubtreeLinks(
-	rootNodeDefinitions: RootNodeDefinition[],
-	includesGlobalSubtrees: boolean,
-) {
+export function validateBranchSubtreeLinks(rootNodeDefinitions: RootNodeDefinition[], includesGlobalSubtrees: boolean) {
 	// Create a mapping of root node identifiers to other root nodes that they reference via branch nodes.
 	// Below is an example of a mapping that includes a circular dependency (root => a => b => c => a)
 	// [{ refs: ["a", "b"] }, { id: "a", refs: ["b"] }, { id: "b", refs: ["c"] }, { id: "c", refs: ["a"] }]
-	const rootNodeMappings: { id: string | undefined; refs: string[] }[] =
-		rootNodeDefinitions.map((rootNodeDefinition) => ({
+	const rootNodeMappings: { id: string | undefined; refs: string[] }[] = rootNodeDefinitions.map(
+		(rootNodeDefinition) => ({
 			id: rootNodeDefinition.id,
 			refs: flattenDefinition(rootNodeDefinition)
 				.filter(isBranchNodeDefinition)
 				.map(({ ref }) => ref),
-		}));
+		}),
+	);
 
 	// A recursive function to walk through the mappings, keeping track of which root nodes we have visited in the form of a path of root node identifiers.
-	const followRefs = (
-		mapping: { id: string | undefined; refs: string[] },
-		path: (string | undefined)[] = [],
-	) => {
+	const followRefs = (mapping: { id: string | undefined; refs: string[] }, path: (string | undefined)[] = []) => {
 		// Have we found a circular dependency?
 		if (path.includes(mapping.id)) {
 			// We found a circular dependency! Get the bad path of root node identifiers.
 			const badPath = [...path, mapping.id];
 
 			// Create the formatted path value. [undefined, "a", "b", "c", "a"] would be formatted as "a -> b -> c -> a".
-			const badPathFormatted = badPath
-				.filter((element) => !!element)
-				.join(" => ");
+			const badPathFormatted = badPath.filter((element) => !!element).join(" => ");
 
 			// No need to continue, we found a circular dependency.
-			throw new Error(
-				`circular dependency found in branch node references: ${badPathFormatted}`,
-			);
+			throw new Error(`circular dependency found in branch node references: ${badPathFormatted}`);
 		}
 
 		for (const ref of mapping.refs) {
@@ -248,9 +216,7 @@ export function validateBranchSubtreeLinks(
 	};
 
 	// Start looking for circular dependencies and broken references from the primary root node definition.
-	followRefs(
-		rootNodeMappings.find((mapping) => typeof mapping.id === "undefined")!,
-	);
+	followRefs(rootNodeMappings.find((mapping) => typeof mapping.id === "undefined")!);
 }
 
 /**
@@ -260,11 +226,7 @@ export function validateBranchSubtreeLinks(
  */
 function validateNode(definition: any, depth: number): void {
 	// Every node must be valid object and have a non-empty 'type' string property.
-	if (
-		typeof definition !== "object" ||
-		typeof definition.type !== "string" ||
-		definition.type.length === 0
-	) {
+	if (typeof definition !== "object" || typeof definition.type !== "string" || definition.type.length === 0) {
 		throw new Error(
 			`node definition is not an object or 'type' property is not a non-empty string at depth '${depth}'`,
 		);
@@ -272,9 +234,7 @@ function validateNode(definition: any, depth: number): void {
 
 	// If this node is at the very base of the definition then it MUST be a root node.
 	if (depth === 0 && definition.type !== "root") {
-		throw new Error(
-			`expected root node at base of definition but got node of type '${definition.type}'`,
-		);
+		throw new Error(`expected root node at base of definition but got node of type '${definition.type}'`);
 	}
 
 	// How we validate this node definition will depend on its type.
@@ -344,9 +304,7 @@ function validateNode(definition: any, depth: number): void {
 			break;
 
 		default:
-			throw new Error(
-				`unexpected node type of '${definition.type}' at depth '${depth}'`,
-			);
+			throw new Error(`unexpected node type of '${definition.type}' at depth '${depth}'`);
 	}
 }
 
@@ -374,20 +332,14 @@ function validateNodeAttributes(definition: any, depth: number): void {
 		}
 
 		// The 'call' property must be defined for any attribute definition.
-		if (
-			typeof attributeDefinition.call !== "string" ||
-			attributeDefinition.call.length === 0
-		) {
+		if (typeof attributeDefinition.call !== "string" || attributeDefinition.call.length === 0) {
 			throw new Error(
 				`expected 'call' property for attribute '${attributeName}' to be a non-empty string for '${definition.type}' node at depth '${depth}'`,
 			);
 		}
 
 		// If any node attribute arguments have been defined then they must have been defined in an array.
-		if (
-			typeof attributeDefinition.args !== "undefined" &&
-			!Array.isArray(attributeDefinition.args)
-		) {
+		if (typeof attributeDefinition.args !== "undefined" && !Array.isArray(attributeDefinition.args)) {
 			throw new Error(
 				`expected 'args' property for attribute '${attributeName}' to be an array for '${definition.type}' node at depth '${depth}'`,
 			);
@@ -412,13 +364,8 @@ function validateRootNode(definition: any, depth: number): void {
 	}
 
 	// Check that, if the root node 'id' property is defined, it is a non-empty string.
-	if (
-		typeof definition.id !== "undefined" &&
-		(typeof definition.id !== "string" || definition.id.length === 0)
-	) {
-		throw new Error(
-			"expected non-empty string for 'id' property if defined for root node",
-		);
+	if (typeof definition.id !== "undefined" && (typeof definition.id !== "string" || definition.id.length === 0)) {
+		throw new Error("expected non-empty string for 'id' property if defined for root node");
 	}
 
 	// A root node is a decorator node, so must have a child node defined.
@@ -441,16 +388,12 @@ function validateRootNode(definition: any, depth: number): void {
 function validateSucceedNode(definition: any, depth: number): void {
 	// Check that the node type is correct.
 	if (definition.type !== "succeed") {
-		throw new Error(
-			`expected node type of 'succeed' for succeed node at depth '${depth}'`,
-		);
+		throw new Error(`expected node type of 'succeed' for succeed node at depth '${depth}'`);
 	}
 
 	// A succeed node is a decorator node, so must have a child node defined.
 	if (typeof definition.child === "undefined") {
-		throw new Error(
-			`expected property 'child' to be defined for succeed node at depth '${depth}'`,
-		);
+		throw new Error(`expected property 'child' to be defined for succeed node at depth '${depth}'`);
 	}
 
 	// Validate the node attributes.
@@ -468,16 +411,12 @@ function validateSucceedNode(definition: any, depth: number): void {
 function validateFailNode(definition: any, depth: number): void {
 	// Check that the node type is correct.
 	if (definition.type !== "fail") {
-		throw new Error(
-			`expected node type of 'fail' for fail node at depth '${depth}'`,
-		);
+		throw new Error(`expected node type of 'fail' for fail node at depth '${depth}'`);
 	}
 
 	// A fail node is a decorator node, so must have a child node defined.
 	if (typeof definition.child === "undefined") {
-		throw new Error(
-			`expected property 'child' to be defined for fail node at depth '${depth}'`,
-		);
+		throw new Error(`expected property 'child' to be defined for fail node at depth '${depth}'`);
 	}
 
 	// Validate the node attributes.
@@ -495,16 +434,12 @@ function validateFailNode(definition: any, depth: number): void {
 function validateFlipNode(definition: any, depth: number): void {
 	// Check that the node type is correct.
 	if (definition.type !== "flip") {
-		throw new Error(
-			`expected node type of 'flip' for flip node at depth '${depth}'`,
-		);
+		throw new Error(`expected node type of 'flip' for flip node at depth '${depth}'`);
 	}
 
 	// A flip node is a decorator node, so must have a child node defined.
 	if (typeof definition.child === "undefined") {
-		throw new Error(
-			`expected property 'child' to be defined for flip node at depth '${depth}'`,
-		);
+		throw new Error(`expected property 'child' to be defined for flip node at depth '${depth}'`);
 	}
 
 	// Validate the node attributes.
@@ -522,25 +457,19 @@ function validateFlipNode(definition: any, depth: number): void {
 function validateRepeatNode(definition: any, depth: number): void {
 	// Check that the node type is correct.
 	if (definition.type !== "repeat") {
-		throw new Error(
-			`expected node type of 'repeat' for repeat node at depth '${depth}'`,
-		);
+		throw new Error(`expected node type of 'repeat' for repeat node at depth '${depth}'`);
 	}
 
 	// A repeat node is a decorator node, so must have a child node defined.
 	if (typeof definition.child === "undefined") {
-		throw new Error(
-			`expected property 'child' to be defined for repeat node at depth '${depth}'`,
-		);
+		throw new Error(`expected property 'child' to be defined for repeat node at depth '${depth}'`);
 	}
 
 	// Check whether an 'iterations' property has been defined, it may not have been if this node is to repeat indefinitely.
 	if (typeof definition.iterations !== "undefined") {
 		if (Array.isArray(definition.iterations)) {
 			// Check whether any elements of the array are not integer values.
-			const containsNonInteger = !!definition.iterations.filter(
-				(value: unknown) => !isInteger(value),
-			).length;
+			const containsNonInteger = !!definition.iterations.filter((value: unknown) => !isInteger(value)).length;
 
 			// If the 'iterations' property is an array then it MUST contain two integer values.
 			if (definition.iterations.length !== 2 || containsNonInteger) {
@@ -591,25 +520,19 @@ function validateRepeatNode(definition: any, depth: number): void {
 function validateRetryNode(definition: any, depth: number): void {
 	// Check that the node type is correct.
 	if (definition.type !== "retry") {
-		throw new Error(
-			`expected node type of 'retry' for retry node at depth '${depth}'`,
-		);
+		throw new Error(`expected node type of 'retry' for retry node at depth '${depth}'`);
 	}
 
 	// A retry node is a decorator node, so must have a child node defined.
 	if (typeof definition.child === "undefined") {
-		throw new Error(
-			`expected property 'child' to be defined for retry node at depth '${depth}'`,
-		);
+		throw new Error(`expected property 'child' to be defined for retry node at depth '${depth}'`);
 	}
 
 	// Check whether an 'attempts' property has been defined, it may not have been if this node is to retry indefinitely.
 	if (typeof definition.attempts !== "undefined") {
 		if (Array.isArray(definition.attempts)) {
 			// Check whether any elements of the array are not integer values.
-			const containsNonInteger = !!definition.attempts.filter(
-				(value: unknown) => !isInteger(value),
-			).length;
+			const containsNonInteger = !!definition.attempts.filter((value: unknown) => !isInteger(value)).length;
 
 			// If the 'attempts' property is an array then it MUST contain two integer values.
 			if (definition.attempts.length !== 2 || containsNonInteger) {
@@ -660,16 +583,12 @@ function validateRetryNode(definition: any, depth: number): void {
 function validateBranchNode(definition: any, depth: number): void {
 	// Check that the node type is correct.
 	if (definition.type !== "branch") {
-		throw new Error(
-			`expected node type of 'branch' for branch node at depth '${depth}'`,
-		);
+		throw new Error(`expected node type of 'branch' for branch node at depth '${depth}'`);
 	}
 
 	// Check that the branch node 'ref' property is defined and is a non-empty string.
 	if (typeof definition.ref !== "string" || definition.ref.length === 0) {
-		throw new Error(
-			`expected non-empty string for 'ref' property for branch node at depth '${depth}'`,
-		);
+		throw new Error(`expected non-empty string for 'ref' property for branch node at depth '${depth}'`);
 	}
 
 	// It is invalid to define guard attributes for a branch node as they should be defined on the referenced root node.
@@ -699,26 +618,17 @@ function validateBranchNode(definition: any, depth: number): void {
 function validateActionNode(definition: any, depth: number): void {
 	// Check that the node type is correct.
 	if (definition.type !== "action") {
-		throw new Error(
-			`expected node type of 'action' for action node at depth '${depth}'`,
-		);
+		throw new Error(`expected node type of 'action' for action node at depth '${depth}'`);
 	}
 
 	// The 'call' property must be defined for a action node definition.
 	if (typeof definition.call !== "string" || definition.call.length === 0) {
-		throw new Error(
-			`expected non-empty string for 'call' property of action node at depth '${depth}'`,
-		);
+		throw new Error(`expected non-empty string for 'call' property of action node at depth '${depth}'`);
 	}
 
 	// If any action function arguments have been defined then they must have been defined in an array.
-	if (
-		typeof definition.args !== "undefined" &&
-		!Array.isArray(definition.args)
-	) {
-		throw new Error(
-			`expected array for 'args' property if defined for action node at depth '${depth}'`,
-		);
+	if (typeof definition.args !== "undefined" && !Array.isArray(definition.args)) {
+		throw new Error(`expected array for 'args' property if defined for action node at depth '${depth}'`);
 	}
 
 	// Validate the node attributes.
@@ -733,26 +643,17 @@ function validateActionNode(definition: any, depth: number): void {
 function validateConditionNode(definition: any, depth: number): void {
 	// Check that the node type is correct.
 	if (definition.type !== "condition") {
-		throw new Error(
-			`expected node type of 'condition' for condition node at depth '${depth}'`,
-		);
+		throw new Error(`expected node type of 'condition' for condition node at depth '${depth}'`);
 	}
 
 	// The 'call' property must be defined for a condition node definition.
 	if (typeof definition.call !== "string" || definition.call.length === 0) {
-		throw new Error(
-			`expected non-empty string for 'call' property of condition node at depth '${depth}'`,
-		);
+		throw new Error(`expected non-empty string for 'call' property of condition node at depth '${depth}'`);
 	}
 
 	// If any condition function arguments have been defined then they must have been defined in an array.
-	if (
-		typeof definition.args !== "undefined" &&
-		!Array.isArray(definition.args)
-	) {
-		throw new Error(
-			`expected array for 'args' property if defined for condition node at depth '${depth}'`,
-		);
+	if (typeof definition.args !== "undefined" && !Array.isArray(definition.args)) {
+		throw new Error(`expected array for 'args' property if defined for condition node at depth '${depth}'`);
 	}
 
 	// Validate the node attributes.
@@ -767,60 +668,47 @@ function validateConditionNode(definition: any, depth: number): void {
 function validateWaitNode(definition: any, depth: number): void {
 	// Check that the node type is correct.
 	if (definition.type !== "wait") {
-		throw new Error(
-			`expected node type of 'wait' for wait node at depth '${depth}'`,
-		);
+		throw new Error(`expected node type of 'wait' for wait node at depth '${depth}'`);
 	}
 
 	// Check whether a 'duration' property has been defined, it may not have been if this node is to wait indefinitely.
 	if (typeof definition.duration !== "undefined") {
 		if (Array.isArray(definition.duration)) {
-			// If the 'duration' property is an array then it MUST contain two integer values (or property references).
+			// If the 'duration' property is an array then it MUST contain two finite values (or property references).
 			if (definition.duration.length !== 2) {
 				throw new Error(
 					`expected array containing two values for 'duration' property if defined for wait node at depth '${depth}'`,
 				);
 			}
 
-			const [minDuration, maxDuration] = definition.duration as [
-				unknown,
-				unknown,
-			];
-			const isValidDurationValue = (value: unknown) =>
-				isInteger(value) || isAgentPropertyReference(value);
+			const [minDuration, maxDuration] = definition.duration as [unknown, unknown];
+			const isValidDurationValue = (value: unknown) => isFiniteNumber(value) || isAgentPropertyReference(value);
 
-			if (
-				!isValidDurationValue(minDuration) ||
-				!isValidDurationValue(maxDuration)
-			) {
+			if (!isValidDurationValue(minDuration) || !isValidDurationValue(maxDuration)) {
 				throw new Error(
-					`expected integer value or agent property reference for 'duration' array values if defined for wait node at depth '${depth}'`,
+					`expected finite number or agent property reference for 'duration' array values if defined for wait node at depth '${depth}'`,
 				);
 			}
 
 			// A wait node must have a positive min and max duration value if they are defined as numbers.
-			if (isInteger(minDuration) && minDuration < 0) {
+			if (isFiniteNumber(minDuration) && minDuration < 0) {
 				throw new Error(
 					`expected positive minimum and maximum duration for 'duration' property if defined for wait node at depth '${depth}'`,
 				);
 			}
-			if (isInteger(maxDuration) && maxDuration < 0) {
+			if (isFiniteNumber(maxDuration) && maxDuration < 0) {
 				throw new Error(
 					`expected positive minimum and maximum duration for 'duration' property if defined for wait node at depth '${depth}'`,
 				);
 			}
 
 			// A wait node must not have a minimum duration value that exceeds the maximum duration value (when both are numeric).
-			if (
-				isInteger(minDuration) &&
-				isInteger(maxDuration) &&
-				minDuration > maxDuration
-			) {
+			if (isFiniteNumber(minDuration) && isFiniteNumber(maxDuration) && minDuration > maxDuration) {
 				throw new Error(
 					`expected minimum duration value that does not exceed the maximum duration value for 'duration' property if defined for wait node at depth '${depth}'`,
 				);
 			}
-		} else if (isInteger(definition.duration)) {
+		} else if (isFiniteNumber(definition.duration)) {
 			// A wait node must have a positive duration value if defined.
 			if (definition.duration < 0) {
 				throw new Error(
@@ -831,7 +719,7 @@ function validateWaitNode(definition: any, depth: number): void {
 			// ok - will be resolved at runtime
 		} else {
 			throw new Error(
-				`expected integer value, agent property reference, or array containing two values for 'duration' property if defined for wait node at depth '${depth}'`,
+				`expected finite number, agent property reference, or array containing two values for 'duration' property if defined for wait node at depth '${depth}'`,
 			);
 		}
 	}
@@ -848,16 +736,12 @@ function validateWaitNode(definition: any, depth: number): void {
 function validateSequenceNode(definition: any, depth: number): void {
 	// Check that the node type is correct.
 	if (definition.type !== "sequence") {
-		throw new Error(
-			`expected node type of 'sequence' for sequence node at depth '${depth}'`,
-		);
+		throw new Error(`expected node type of 'sequence' for sequence node at depth '${depth}'`);
 	}
 
 	// A sequence node is a composite node, so must have a children nodes array defined.
 	if (!Array.isArray(definition.children) || definition.children.length === 0) {
-		throw new Error(
-			`expected non-empty 'children' array to be defined for sequence node at depth '${depth}'`,
-		);
+		throw new Error(`expected non-empty 'children' array to be defined for sequence node at depth '${depth}'`);
 	}
 
 	// Validate the node attributes.
@@ -877,16 +761,12 @@ function validateSequenceNode(definition: any, depth: number): void {
 function validateSelectorNode(definition: any, depth: number): void {
 	// Check that the node type is correct.
 	if (definition.type !== "selector") {
-		throw new Error(
-			`expected node type of 'selector' for selector node at depth '${depth}'`,
-		);
+		throw new Error(`expected node type of 'selector' for selector node at depth '${depth}'`);
 	}
 
 	// A selector node is a composite node, so must have a children nodes array defined.
 	if (!Array.isArray(definition.children) || definition.children.length === 0) {
-		throw new Error(
-			`expected non-empty 'children' array to be defined for selector node at depth '${depth}'`,
-		);
+		throw new Error(`expected non-empty 'children' array to be defined for selector node at depth '${depth}'`);
 	}
 
 	// Validate the node attributes.
@@ -906,16 +786,12 @@ function validateSelectorNode(definition: any, depth: number): void {
 function validateParallelNode(definition: any, depth: number): void {
 	// Check that the node type is correct.
 	if (definition.type !== "parallel") {
-		throw new Error(
-			`expected node type of 'parallel' for parallel node at depth '${depth}'`,
-		);
+		throw new Error(`expected node type of 'parallel' for parallel node at depth '${depth}'`);
 	}
 
 	// A parallel node is a composite node, so must have a children nodes array defined.
 	if (!Array.isArray(definition.children) || definition.children.length === 0) {
-		throw new Error(
-			`expected non-empty 'children' array to be defined for parallel node at depth '${depth}'`,
-		);
+		throw new Error(`expected non-empty 'children' array to be defined for parallel node at depth '${depth}'`);
 	}
 
 	// Validate the node attributes.
@@ -935,16 +811,12 @@ function validateParallelNode(definition: any, depth: number): void {
 function validateRaceNode(definition: any, depth: number): void {
 	// Check that the node type is correct.
 	if (definition.type !== "race") {
-		throw new Error(
-			`expected node type of 'race' for race node at depth '${depth}'`,
-		);
+		throw new Error(`expected node type of 'race' for race node at depth '${depth}'`);
 	}
 
 	// A race node is a composite node, so must have a children nodes array defined.
 	if (!Array.isArray(definition.children) || definition.children.length === 0) {
-		throw new Error(
-			`expected non-empty 'children' array to be defined for race node at depth '${depth}'`,
-		);
+		throw new Error(`expected non-empty 'children' array to be defined for race node at depth '${depth}'`);
 	}
 
 	// Validate the node attributes.
@@ -964,16 +836,12 @@ function validateRaceNode(definition: any, depth: number): void {
 function validateAllNode(definition: any, depth: number): void {
 	// Check that the node type is correct.
 	if (definition.type !== "all") {
-		throw new Error(
-			`expected node type of 'all' for all node at depth '${depth}'`,
-		);
+		throw new Error(`expected node type of 'all' for all node at depth '${depth}'`);
 	}
 
 	// A all node is a composite node, so must have a children nodes array defined.
 	if (!Array.isArray(definition.children) || definition.children.length === 0) {
-		throw new Error(
-			`expected non-empty 'children' array to be defined for all node at depth '${depth}'`,
-		);
+		throw new Error(`expected non-empty 'children' array to be defined for all node at depth '${depth}'`);
 	}
 
 	// Validate the node attributes.
@@ -993,48 +861,33 @@ function validateAllNode(definition: any, depth: number): void {
 function validateLottoNode(definition: any, depth: number): void {
 	// Check that the node type is correct.
 	if (definition.type !== "lotto") {
-		throw new Error(
-			`expected node type of 'lotto' for lotto node at depth '${depth}'`,
-		);
+		throw new Error(`expected node type of 'lotto' for lotto node at depth '${depth}'`);
 	}
 
 	// A lotto node is a composite node, so must have a children nodes array defined.
 	if (!Array.isArray(definition.children) || definition.children.length === 0) {
-		throw new Error(
-			`expected non-empty 'children' array to be defined for lotto node at depth '${depth}'`,
-		);
+		throw new Error(`expected non-empty 'children' array to be defined for lotto node at depth '${depth}'`);
 	}
 
 	// Check whether a 'weights' property has been defined, if it has we expect it to be an array of weights.
 	if (typeof definition.weights !== "undefined") {
 		// Check that the weights property is an array of non-negative integer values (or agent property references)
 		// with an element for each child node element.
-		if (
-			!Array.isArray(definition.weights) ||
-			definition.weights.length !== definition.children.length
-		) {
+		if (!Array.isArray(definition.weights) || definition.weights.length !== definition.children.length) {
 			throw new Error(
 				`expected an array of non-negative integer weight values or agent property references with a length matching the number of child nodes for 'weights' property if defined for lotto node at depth '${depth}'`,
 			);
 		}
 
-		const isValidWeightValue = (value: unknown) =>
-			isInteger(value) || isAgentPropertyReference(value);
-		if (
-			definition.weights.filter((value: unknown) => !isValidWeightValue(value))
-				.length
-		) {
+		const isValidWeightValue = (value: unknown) => isInteger(value) || isAgentPropertyReference(value);
+		if (definition.weights.filter((value: unknown) => !isValidWeightValue(value)).length) {
 			throw new Error(
 				`expected integer value or agent property reference for 'weights' array values if defined for lotto node at depth '${depth}'`,
 			);
 		}
 
 		// Only validate non-negativity when numeric.
-		if (
-			definition.weights.filter(
-				(value: unknown) => isInteger(value) && (value as number) < 0,
-			).length
-		) {
+		if (definition.weights.filter((value: unknown) => isInteger(value) && (value as number) < 0).length) {
 			throw new Error(
 				`expected non-negative integer weight values for 'weights' property if defined for lotto node at depth '${depth}'`,
 			);
@@ -1055,8 +908,6 @@ function validateLottoNode(definition: any, depth: number): void {
  * @param errorMessage The validation failure error message.
  * @returns A failure validation result with the given error message.
  */
-function createValidationFailureResult(
-	errorMessage: string,
-): DefinitionValidationResult {
+function createValidationFailureResult(errorMessage: string): DefinitionValidationResult {
 	return { succeeded: false, errorMessage };
 }

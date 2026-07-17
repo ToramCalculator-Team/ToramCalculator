@@ -1,6 +1,11 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { IntentMessage } from "../core/MessageRouter/MessageRouter";
-import type { SimulationEngine } from "../core/thread/SimulationEngine";
+
+/** MemberController 只需要向目标发送意图，不依赖 Worker 生命周期或低层 RPC。 */
+export interface MemberIntentTarget {
+	readonly id: string;
+	sendIntent(intent: IntentMessage): Promise<{ success: boolean; error?: string }>;
+}
 
 /**
  * 成员控制器
@@ -10,17 +15,14 @@ import type { SimulationEngine } from "../core/thread/SimulationEngine";
  */
 export class MemberController {
 	public readonly controllerId: string;
-	private targets: SimulationEngine[];
+	private targets: MemberIntentTarget[];
 
-	constructor(
-		targets: SimulationEngine | SimulationEngine[],
-		controllerId?: string,
-	) {
+	constructor(targets: MemberIntentTarget | MemberIntentTarget[], controllerId?: string) {
 		this.targets = Array.isArray(targets) ? [...targets] : [targets];
 		this.controllerId = controllerId ?? createId();
 	}
 
-	addTarget(engine: SimulationEngine): void {
+	addTarget(engine: MemberIntentTarget): void {
 		if (!this.targets.some((item) => item.id === engine.id)) {
 			this.targets.push(engine);
 		}
@@ -30,15 +32,17 @@ export class MemberController {
 		this.targets = this.targets.filter((item) => item.id !== engineId);
 	}
 
-	setTargets(engines: SimulationEngine[]): void {
+	setTargets(engines: MemberIntentTarget[]): void {
 		this.targets = [...engines];
 	}
 
-	getPrimaryTarget(): SimulationEngine | null {
+	getPrimaryTarget(): MemberIntentTarget | null {
 		return this.targets[0] ?? null;
 	}
 
-	private async broadcastIntent(intent: IntentMessage): Promise<Array<{ engineId: string; success: boolean; error?: string }>> {
+	private async broadcastIntent(
+		intent: IntentMessage,
+	): Promise<Array<{ engineId: string; success: boolean; error?: string }>> {
 		return await Promise.all(
 			this.targets.map(async (engine) => {
 				const result = await engine.sendIntent(intent);
@@ -113,5 +117,3 @@ export class MemberController {
 		return await this.broadcastIntent(intent);
 	}
 }
-
-

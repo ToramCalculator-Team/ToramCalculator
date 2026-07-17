@@ -3,8 +3,7 @@ import type { NestedSchema, SchemaAttribute } from "../World/Member/runtime/Stat
 import { ExpressionTransformer } from "./ExpressionTransformer";
 
 // 构造一个合法叶子 SchemaAttribute（isSchemaAttribute 要求 displayName + expression 均为字符串）。
-const leaf = (name: string): SchemaAttribute =>
-	({ displayName: name, expression: "0" }) as unknown as SchemaAttribute;
+const leaf = (name: string): SchemaAttribute => ({ displayName: name, expression: "0" }) as unknown as SchemaAttribute;
 
 // 测试用嵌套 schema：self 拥有 atk（叶子）与 mainWeapon.range（嵌套叶子）。
 const selfSchema: NestedSchema = {
@@ -106,9 +105,7 @@ describe("transformToGetValue — 改写为 statContainer.getValue 调用", () =
 
 	it("self 与 target 分别改写", () => {
 		const r = ExpressionTransformer.transformToGetValue("self.atk - target.def");
-		expect(r.compiledExpression).toBe(
-			"self.statContainer.getValue('atk') - target.statContainer.getValue('def')",
-		);
+		expect(r.compiledExpression).toBe("self.statContainer.getValue('atk') - target.statContainer.getValue('def')");
 	});
 
 	it("嵌套路径整体改写为单次 getValue", () => {

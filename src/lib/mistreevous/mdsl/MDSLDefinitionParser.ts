@@ -726,18 +726,18 @@ function createWaitNode(tokens: string[], stringLiteralPlaceholders: StringLiter
 	// - 一个节点参数，这将是明确的等待持续时间。
 	// - 两个节点参数，定义最小和最大持续时间边界，从中将随机选择持续时间。
 	if (nodeArguments.length) {
-		// 所有等待节点参数必须是整数数字或 agent 属性引用（$xxx）。
+		// 所有等待节点参数必须是有限数字或 agent 属性引用（$xxx）。
 		nodeArguments.forEach((arg) => {
 			if (arg.type === "number") {
-				if (!arg.isInteger) {
-					throw new Error(`wait node durations must be integer values`);
+				if (!Number.isFinite(arg.value)) {
+					throw new Error(`wait node durations must be finite numbers`);
 				}
 				return;
 			}
 			if (arg.type === "property_reference") {
 				return;
 			}
-			throw new Error(`wait node durations must be integer values or agent property references`);
+			throw new Error(`wait node durations must be finite numbers or agent property references`);
 		});
 
 		// 我们可能有：

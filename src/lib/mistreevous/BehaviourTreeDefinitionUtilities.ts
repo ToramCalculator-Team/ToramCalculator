@@ -12,9 +12,7 @@ import type {
  * @param node The node.
  * @returns A value of true if the specified node satisfies the RootNodeDefinition type.
  */
-export function isRootNodeDefinition(
-	node: NodeDefinition,
-): node is RootNodeDefinition {
+export function isRootNodeDefinition(node: NodeDefinition): node is RootNodeDefinition {
 	return node.type === "root";
 }
 
@@ -23,9 +21,7 @@ export function isRootNodeDefinition(
  * @param node The node.
  * @returns A value of true if the specified node satisfies the BranchNodeDefinition type.
  */
-export function isBranchNodeDefinition(
-	node: NodeDefinition,
-): node is BranchNodeDefinition {
+export function isBranchNodeDefinition(node: NodeDefinition): node is BranchNodeDefinition {
 	return node.type === "branch";
 }
 
@@ -34,9 +30,7 @@ export function isBranchNodeDefinition(
  * @param node The node.
  * @returns A value of true if the specified node satisfies the NodeDefinition type.
  */
-export function isLeafNodeDefinition(
-	node: NodeDefinition,
-): node is NodeDefinition {
+export function isLeafNodeDefinition(node: NodeDefinition): node is NodeDefinition {
 	return ["branch", "action", "condition", "wait"].includes(node.type);
 }
 
@@ -45,12 +39,8 @@ export function isLeafNodeDefinition(
  * @param node The node.
  * @returns A value of true if the specified node satisfies the DecoratorNodeDefinition type.
  */
-export function isDecoratorNodeDefinition(
-	node: NodeDefinition,
-): node is DecoratorNodeDefinition {
-	return ["root", "repeat", "retry", "flip", "succeed", "fail"].includes(
-		node.type,
-	);
+export function isDecoratorNodeDefinition(node: NodeDefinition): node is DecoratorNodeDefinition {
+	return ["root", "repeat", "retry", "flip", "succeed", "fail"].includes(node.type);
 }
 
 /**
@@ -58,12 +48,8 @@ export function isDecoratorNodeDefinition(
  * @param node The node.
  * @returns A value of true if the specified node satisfies the CompositeNodeDefinition type.
  */
-export function isCompositeNodeDefinition(
-	node: NodeDefinition,
-): node is CompositeNodeDefinition {
-	return ["sequence", "selector", "lotto", "parallel", "race", "all"].includes(
-		node.type,
-	);
+export function isCompositeNodeDefinition(node: NodeDefinition): node is CompositeNodeDefinition {
+	return ["sequence", "selector", "lotto", "parallel", "race", "all"].includes(node.type);
 }
 
 /**
@@ -71,9 +57,7 @@ export function isCompositeNodeDefinition(
  * @param nodeDefinition The node definition to flatten.
  * @returns An array of all of nested node definitions.
  */
-export function flattenDefinition(
-	nodeDefinition: AnyNodeDefinition,
-): AnyNodeDefinition[] {
+export function flattenDefinition(nodeDefinition: AnyNodeDefinition): AnyNodeDefinition[] {
 	const nodes: AnyNodeDefinition[] = [];
 
 	const processNode = (currentNodeDefinition: AnyNodeDefinition) => {
@@ -98,6 +82,11 @@ export function flattenDefinition(
  */
 export function isInteger(value: unknown): value is number {
 	return typeof value === "number" && Math.floor(value) === value;
+}
+
+/** 判断值是否为可用于行为树持续时间的有限数值。 */
+export function isFiniteNumber(value: unknown): value is number {
+	return typeof value === "number" && Number.isFinite(value);
 }
 
 /**

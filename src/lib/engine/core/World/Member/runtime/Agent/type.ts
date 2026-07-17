@@ -16,10 +16,7 @@ export type Action<
 	TContext extends Record<string, any>,
 	TExtraAttrKey extends string = never,
 	TFSMEvent extends EventObject = MemberFSMEvent,
-	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TFSMEvent> = MemberBtCapabilities<
-		TExtraAttrKey,
-		TFSMEvent
-	>,
+	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TFSMEvent> = MemberBtCapabilities<TExtraAttrKey, TFSMEvent>,
 > = readonly [TInput, (context: TContext, actionInput: z.output<TInput>, capabilities: TCapabilities) => State];
 
 /**
@@ -30,10 +27,7 @@ export type ActionPool<
 	TContext extends Record<string, any>,
 	TExtraAttrKey extends string = never,
 	TFSMEvent extends EventObject = MemberFSMEvent,
-	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TFSMEvent> = MemberBtCapabilities<
-		TExtraAttrKey,
-		TFSMEvent
-	>,
+	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TFSMEvent> = MemberBtCapabilities<TExtraAttrKey, TFSMEvent>,
 > = {
 	readonly [actionName: string]: Action<any, TContext, TExtraAttrKey, TFSMEvent, TCapabilities>;
 };
@@ -70,10 +64,7 @@ export const defineAction = <
 	TContext extends Record<string, any>,
 	TExtraAttrKey extends string = never,
 	TFSMEvent extends EventObject = MemberFSMEvent,
-	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TFSMEvent> = MemberBtCapabilities<
-		TExtraAttrKey,
-		TFSMEvent
-	>,
+	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TFSMEvent> = MemberBtCapabilities<TExtraAttrKey, TFSMEvent>,
 >(
 	inputSchema: TInput,
 	impl: (context: TContext, actionInput: z.output<TInput>, capabilities: TCapabilities) => State,
@@ -93,10 +84,7 @@ export type Condition<
 	TContext extends Record<string, any>,
 	TExtraAttrKey extends string = never,
 	TFSMEvent extends EventObject = MemberFSMEvent,
-	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TFSMEvent> = MemberBtCapabilities<
-		TExtraAttrKey,
-		TFSMEvent
-	>,
+	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TFSMEvent> = MemberBtCapabilities<TExtraAttrKey, TFSMEvent>,
 > = readonly [TInput, (context: TContext, actionInput: z.output<TInput>, capabilities: TCapabilities) => boolean];
 
 /**
@@ -107,10 +95,7 @@ export type ConditionPool<
 	TContext extends Record<string, any>,
 	TExtraAttrKey extends string = never,
 	TFSMEvent extends EventObject = MemberFSMEvent,
-	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TFSMEvent> = MemberBtCapabilities<
-		TExtraAttrKey,
-		TFSMEvent
-	>,
+	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TFSMEvent> = MemberBtCapabilities<TExtraAttrKey, TFSMEvent>,
 > = {
 	readonly [conditionName: string]: Condition<any, TContext, TExtraAttrKey, TFSMEvent, TCapabilities>;
 };
@@ -142,10 +127,7 @@ export const defineCondition = <
 	TContext extends Record<string, any> = Record<string, any>,
 	TExtraAttrKey extends string = never,
 	TFSMEvent extends EventObject = MemberFSMEvent,
-	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TFSMEvent> = MemberBtCapabilities<
-		TExtraAttrKey,
-		TFSMEvent
-	>,
+	TCapabilities extends MemberBtCapabilities<TExtraAttrKey, TFSMEvent> = MemberBtCapabilities<TExtraAttrKey, TFSMEvent>,
 >(
 	inputSchema: TInput,
 	impl: (context: TContext, actionInput: z.output<TInput>, capabilities: TCapabilities) => boolean,

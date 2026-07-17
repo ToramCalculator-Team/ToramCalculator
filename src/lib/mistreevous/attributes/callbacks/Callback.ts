@@ -46,9 +46,5 @@ export abstract class Callback extends Attribute<CallbackAttributeDetails> {
 	 * Attempt to call the agent function that this callback refers to.
 	 * @param agent The agent.
 	 */
-	abstract callAgentFunction: (
-		agent: Agent,
-		isSuccess: boolean,
-		isAborted: boolean,
-	) => void;
+	abstract callAgentFunction: (agent: Agent, isSuccess: boolean, isAborted: boolean) => void;
 }

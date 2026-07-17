@@ -26,4 +26,3 @@ export interface PipelineOverlay {
 	pipelineName: string;
 	operations: readonly OverlayOperation[];
 }
-

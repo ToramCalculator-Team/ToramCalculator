@@ -4,7 +4,7 @@ import { computeMemberFormation, type FormationTeam } from "./memberFormation";
 
 // 唯一 id 队伍工厂：给定前缀与成员数，生成不重名成员。
 const teamN = (prefix: string, count: number): FormationTeam => ({
-	members: Array.from({ length: count }, (_, i) => ({ id: `${prefix}_${i}`, sequence: i })),
+	members: Array.from({ length: count }, (_, i) => ({ id: `${prefix}_${i}`, formationOrder: i })),
 });
 
 const dist = (p: { x: number; z: number }) => Math.hypot(p.x, p.z);

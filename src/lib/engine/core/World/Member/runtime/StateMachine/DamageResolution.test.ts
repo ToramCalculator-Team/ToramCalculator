@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { StageData } from "../../../../Pipeline/stageEnv";
 import type { DamageDispatchPayload } from "../../../Area/types";
-import { createHitSession, resolveDamageAndApply, resolveHitCheck, type HitSession } from "./DamageResolution";
+import { createHitSession, type HitSession, resolveDamageAndApply, resolveHitCheck } from "./DamageResolution";
 
 // 构造一个合法的受击载荷；各测试按需覆盖字段。
 const makePayload = (over: Partial<DamageDispatchPayload> = {}): DamageDispatchPayload => ({

@@ -2,7 +2,7 @@ import type { InstructionOp } from "./instruction";
 
 /**
  * 运算符实现注册表。
- * 
+ *
  * 说明：
  * - get/eval/select 等需要访问 env/上下文的运算符不在此处实现
  * - 这里仅放“纯函数”数值运算
@@ -37,4 +37,3 @@ export const binaryOperators: Partial<Record<InstructionOp, BinaryOpImpl>> = {
 	and: (a, b) => (a && b ? 1 : 0),
 	or: (a, b) => (a || b ? 1 : 0),
 };
-

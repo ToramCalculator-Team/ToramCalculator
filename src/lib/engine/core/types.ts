@@ -1,16 +1,18 @@
 import { MEMBER_TYPE } from "@db/schema/enums";
+import type { EventObject } from "xstate";
 import { z } from "zod/v4";
 import type { EventCatalog } from "./Event/EventCatalog";
 import type { TagRegistry } from "./Event/TagRegistry";
 import { EventQueueConfigSchema, type QueueSnapshot, type QueueStats } from "./EventQueue/types";
-import { EngineSimulatorSchema } from "./engineScenarioSchema";
+import { EngineScenarioSchema } from "./engineScenarioSchema";
 import { FrameLoopConfigSchema, type FrameLoopSnapshot, type FrameLoopStats } from "./FrameLoop/types";
 import type { JSProcessor } from "./JSProcessor/JSProcessor";
 import type { MessageRouterStats } from "./MessageRouter/MessageRouter";
 import type { PipelineCatalog } from "./Pipeline/PipelineCatalog";
 import type { PipelineResolverService } from "./Pipeline/PipelineResolverService";
-import type { MemberSerializeData } from "./World/Member/Member";
+import type { MemberSnapshot } from "./World/Member/Member";
 import type { ModifierSource } from "./World/Member/runtime/StatContainer/StatContainerTypes";
+import { AttributeSnapshotSchema } from "./World/Member/runtime/StatContainer/StatContainerTypes";
 
 /**
  * 引擎基础设施 -- 长期驻留的编译缓存和管线定义。
@@ -26,66 +28,38 @@ export interface EngineInfrastructure {
 	eventCatalog: EventCatalog;
 }
 
-/**
- * 引擎状态枚举
- */
-export type EngineState =
-	| "unInitialized" // 未初始化
-	| "initialized" // 已初始化
-	| "running" // 运行中
-	| "paused" // 已暂停
-	| "stopped"; // 已停止
-
 // ==================== RuntimeConfig ====================
 
 /** 帧驱动方式 */
-export type DriveMode = "clocked" | "unclocked";
-
-/** 执行语义 */
-export type ExecutionSemantics = "full" | "previewSafe";
+export const DriveModeSchema = z.enum(["clocked", "unclocked"]);
+export type DriveMode = z.output<typeof DriveModeSchema>;
 
 /** 停止策略 */
-export type StopPolicy =
-	| { kind: "manual" }
-	| { kind: "untilTimeMs"; targetTimeMs: number }
-	| { kind: "untilBattleEnd" }
-	| { kind: "untilSequencesDone" }
-	| { kind: "untilMemberActionEnds"; memberId: string };
-
-/**
- * 输出策略（设计意图；部分分支仍在 GameEngine 中逐步接入）。
- *
- * - `streamRealtime`：面向实时 UI 的持续输出语义。
- * - `collectFrameSnapshots`：面向批量/回放类输出的收集语义。
- * - `returnPreviewReport`：面向机体/技能预览的一次性报告语义。
- */
-export type OutputPolicy = "streamRealtime" | "collectFrameSnapshots" | "returnPreviewReport";
-
-/** 探针策略 */
-export type ProbePolicy = "disabled" | "rollbackAfterSkillProbe";
+export const StopPolicySchema = z.discriminatedUnion("kind", [
+	z.object({ kind: z.literal("manual") }),
+	z.object({ kind: z.literal("untilTimeMs"), targetTimeMs: z.number().nonnegative() }),
+	z.object({ kind: z.literal("untilBattleEnd") }),
+	z.object({ kind: z.literal("untilSequencesDone") }),
+	z.object({ kind: z.literal("untilMemberActionEnds"), memberId: z.string() }),
+	z.object({ kind: z.literal("untilMemberFlowEnds"), memberId: z.string() }),
+]);
+export type StopPolicy = z.output<typeof StopPolicySchema>;
 
 /**
  * 引擎运行配置描述符。
  *
- * 常用预设：
- * - {@link createRealtimeConfig} — 时钟驱动、可接外部意图、实时快照流语义
- * - {@link createFastForwardConfig} — 非时钟快进、不接外部意图、适合全 AI 推演
- * - {@link createPreviewConfig} — 预览语义、探针回滚、产出预览报告
- *
- * 说明：`outputPolicy` 与部分字段的精细分支仍在引擎内对齐中；高频 `frame_snapshot`
- * 由 GameEngine 内快照观察器节流推送至主线程（非严格「每逻辑帧」），供 UI / 多控制器视图使用。
+ * 本契约只描述引擎执行机制。实时投影频率和执行记录策略使用各自独立契约，
+ * 不能通过业务用途模式改变运行语义。
  */
-export interface RuntimeConfig {
-	driveMode: DriveMode;
-	executionSemantics: ExecutionSemantics;
-	stopPolicy: StopPolicy;
-	outputPolicy: OutputPolicy;
-	probePolicy: ProbePolicy;
-	acceptExternalIntents: boolean;
-	logicHz: number;
-	timeScale: number;
-	maxTickSkip: number;
-}
+export const RuntimeConfigSchema = z.object({
+	driveMode: DriveModeSchema,
+	stopPolicy: StopPolicySchema,
+	acceptExternalIntents: z.boolean(),
+	logicHz: z.number().positive(),
+	timeScale: z.number().positive(),
+	maxTickSkip: z.number().int().nonnegative(),
+});
+export type RuntimeConfig = z.output<typeof RuntimeConfigSchema>;
 
 /**
  * 单次逻辑 tick 的权威时间上下文。
@@ -114,10 +88,7 @@ export interface SimulationTickContext {
 export function createRealtimeConfig(overrides?: Partial<RuntimeConfig>): RuntimeConfig {
 	return {
 		driveMode: "clocked",
-		executionSemantics: "full",
 		stopPolicy: { kind: "manual" },
-		outputPolicy: "streamRealtime",
-		probePolicy: "disabled",
 		acceptExternalIntents: true,
 		logicHz: 60,
 		timeScale: 1,
@@ -125,71 +96,10 @@ export function createRealtimeConfig(overrides?: Partial<RuntimeConfig>): Runtim
 		...overrides,
 	};
 }
-
-/**
- * 预设：快速流程模式（`driveMode: "unclocked"`）。
- *
- * 不等待墙钟：在单帧工作完成后尽快进入下一帧（分片推进以防长时间独占线程）。
- *
- * **使用预期**：场景内成员宜均由 AI 行为树驱动；若存在长期无 BT、无外部意图的成员，可能出现持续闲置（引擎不据此自动暂停，除非另行实现）。
- *
- * 1. 快进式推进（`unclocked`）。
- * 2. 当前实现下不因成员闲置而自动停帧。
- * 3. `outputPolicy: "collectFrameSnapshots"` 表示设计上的批量快照语义；具体收集与下发仍以 GameEngine 实现为准。主线程侧仍可能按快照观察器节流收到 `frame_snapshot`。
- * 4. `acceptExternalIntents: false`，不接受外部操控意图。
- */
-
-export function createFastForwardConfig(
-	stopPolicy: StopPolicy = { kind: "untilBattleEnd" },
-	overrides?: Partial<RuntimeConfig>,
-): RuntimeConfig {
-	return {
-		driveMode: "unclocked",
-		executionSemantics: "full",
-		stopPolicy,
-		outputPolicy: "collectFrameSnapshots",
-		probePolicy: "disabled",
-		acceptExternalIntents: false,
-		logicHz: 60,
-		timeScale: 1,
-		maxTickSkip: 5,
-		...overrides,
-	};
-}
-
-/**
- * 预设：预览模式（`executionSemantics: "previewSafe"`）。
- *
- * 用于机体/装备变更后的属性与技能效果预览：在 `previewSafe` 下 Buff 等走简化语义，伤害类可出可读结果；配合 `probePolicy: "rollbackAfterSkillProbe"` 做探针后回滚。
- *
- * 1. 非时钟驱动（`unclocked`），按 `stopPolicy: untilSequencesDone` 等在短流程内跑完。
- * 2. 预览流程通常不强调「战斗闲置」语义；停步由停止策略与序列结束条件决定。
- * 3. **主输出**为预览报告（`outputPolicy: "returnPreviewReport"` / `PreviewReport` 路径），而非实时操控流；需要时仍可有节流的 `frame_snapshot` 供 UI，但不应理解为「每帧喂给控制器」。
- * 4. `acceptExternalIntents: false`，不接受外部操控意图。
- */
-
-export function createPreviewConfig(overrides?: Partial<RuntimeConfig>): RuntimeConfig {
-	return {
-		driveMode: "unclocked",
-		executionSemantics: "previewSafe",
-		stopPolicy: { kind: "untilSequencesDone" },
-		outputPolicy: "returnPreviewReport",
-		probePolicy: "rollbackAfterSkillProbe",
-		acceptExternalIntents: false,
-		logicHz: 60,
-		timeScale: 1,
-		maxTickSkip: 5,
-		...overrides,
-	};
-}
-
 // ==================== EngineScenarioData ====================
 
 export const EngineScenarioDataSchema = z.object({
-	simulator: EngineSimulatorSchema,
-	runtimeSelection: z.object({
-		primaryMemberId: z.string(),
-	}),
+	scenario: EngineScenarioSchema,
 });
 
 export type EngineScenarioData = z.output<typeof EngineScenarioDataSchema>;
@@ -209,8 +119,6 @@ export type EngineConfig = z.output<typeof EngineConfigSchema>;
  * 引擎统计信息接口
  */
 export interface EngineStats {
-	/** 引擎状态 */
-	SMState: string; // 待优化
 	/** 当前逻辑 tick 序号 */
 	tickIndex: number;
 	/** 当前模拟时间（毫秒） */
@@ -218,7 +126,7 @@ export interface EngineStats {
 	/** 运行时间（毫秒） */
 	runTime: number;
 	/** 成员 */
-	members: MemberSerializeData[];
+	members: MemberSnapshot[];
 	/** 事件队列统计 */
 	eventQueueStats: QueueStats;
 	/** 帧循环统计 */
@@ -248,27 +156,22 @@ export interface TickStepResult {
 	pendingTickTasks: number;
 }
 
-/**
- * 技能计算数据 - 预计算的动态值，用于UI显示
- */
-export const ComputedSkillInfoSchema = z.object({
-	id: z.string(),
-	name: z.string(),
-	level: z.number(),
-	computed: z.object({
-		mpCost: z.number(),
-		hpCost: z.number(),
-		castingRange: z.number(),
-		cooldownRemaining: z.number(),
-		isAvailable: z.boolean(),
-		startup: z.number(),
-		charging: z.number(),
-		chanting: z.number(),
-		action: z.number(),
-		activeEffectDurationMs: z.number(),
-	}),
-});
-export type ComputedSkillInfo = z.output<typeof ComputedSkillInfoSchema>;
+/** Member FSM 对技能输入的稳定拒绝原因；预览、运行记录和 UI 只消费该事实，不重复推导条件。 */
+export const SkillRejectionReasonSchema = z.enum([
+	"skill_not_found",
+	"variant_not_found",
+	"no_active_behavior",
+	"cooldown_active",
+	"cost_resolution_failed",
+	"insufficient_hp",
+	"insufficient_mp",
+	"member_busy",
+]);
+export type SkillRejectionReason = z.output<typeof SkillRejectionReasonSchema>;
+
+/** Member FSM 对目标切换输入的稳定拒绝原因。 */
+export const TargetSelectionRejectionReasonSchema = z.enum(["target_not_found", "target_unchanged"]);
+export type TargetSelectionRejectionReason = z.output<typeof TargetSelectionRejectionReasonSchema>;
 
 /**
  * 帧快照接口 - 包含引擎和所有成员的完整状态
@@ -285,7 +188,7 @@ export interface GameEngineSnapshot {
 		eventQueue: QueueSnapshot;
 		memberCount: number;
 	};
-	members: MemberSerializeData[];
+	members: MemberSnapshot[];
 }
 
 /**
@@ -311,6 +214,7 @@ export const RealtimeMemberSnapshotSchema = z.object({
 		current: z.number(),
 		max: z.number(),
 	}),
+	attrs: AttributeSnapshotSchema,
 });
 
 export type RealtimeMemberSnapshot = z.output<typeof RealtimeMemberSnapshotSchema>;
@@ -351,7 +255,7 @@ export const FrameSnapshotSchema = z.object({
 	tickIndex: z.number(),
 	/** 当前模拟时间（毫秒） */
 	currentTimeMs: z.number(),
-	/** 发送时间戳（毫秒） */
+	/** 与 currentTimeMs 同源的确定性模拟时间戳（毫秒） */
 	timestamp: z.number(),
 	engine: z.object({
 		tickIndex: z.number(),
@@ -375,19 +279,17 @@ export const FrameSnapshotSchema = z.object({
 				/** 绑定的成员详细视图（属性 + Buff） */
 				boundMemberDetail: z
 					.object({
-						attrs: z.record(z.string(), z.unknown()),
+						attrs: AttributeSnapshotSchema,
 						buffs: z.array(BuffViewDataSchema).optional(),
 					})
 					.nullable()
 					.optional(),
-				/** 绑定的成员技能计算结果 */
-				boundMemberSkills: z.array(ComputedSkillInfoSchema),
 			}),
 		)
 		.optional(),
 	selectedMemberDetail: z
 		.object({
-			attrs: z.record(z.string(), z.unknown()),
+			attrs: AttributeSnapshotSchema,
 			buffs: z.array(BuffViewDataSchema).optional(),
 		})
 		.nullable()
@@ -416,8 +318,37 @@ export const MemberDomainEventSchema = z.discriminatedUnion("type", [
 	z.object({
 		type: z.literal("hit"),
 		memberId: z.string(),
+		sourceMemberId: z.string(),
+		sourceSkillId: z.string().nullable(),
 		damage: z.number(),
 		hp: z.number().nullable(),
+	}),
+	z.object({
+		type: z.literal("skill_cast_accepted"),
+		memberId: z.string(),
+		skillId: z.string(),
+		targetId: z.string(),
+		inputId: z.string().optional(),
+	}),
+	z.object({
+		type: z.literal("skill_input_rejected"),
+		memberId: z.string(),
+		skillId: z.string(),
+		inputId: z.string().optional(),
+		reason: SkillRejectionReasonSchema,
+	}),
+	z.object({
+		type: z.literal("target_selection_accepted"),
+		memberId: z.string(),
+		targetId: z.string(),
+		inputId: z.string(),
+	}),
+	z.object({
+		type: z.literal("target_selection_rejected"),
+		memberId: z.string(),
+		requestedTargetId: z.string(),
+		inputId: z.string(),
+		reason: TargetSelectionRejectionReasonSchema,
 	}),
 	z.object({
 		type: z.literal("death"),
@@ -448,16 +379,10 @@ export const MemberDomainEventSchema = z.discriminatedUnion("type", [
 		progress: z.number(), // 0~1
 	}),
 	z.object({
-		type: z.literal("skill_availability_changed"),
-		memberId: z.string(),
-		skillId: z.string(),
-		available: z.boolean(),
-	}),
-	z.object({
 		type: z.literal("skill_cast_denied"),
 		memberId: z.string(),
 		skillId: z.string(),
-		reason: z.string(),
+		reason: SkillRejectionReasonSchema,
 	}),
 ]);
 
@@ -521,11 +446,35 @@ export const ControllerDomainEventSchema = z.discriminatedUnion("type", [
 		progress: z.number(),
 	}),
 	z.object({
-		type: z.literal("skill_availability_changed"),
+		type: z.literal("skill_cast_accepted"),
 		controllerId: z.string(),
 		memberId: z.string(),
 		skillId: z.string(),
-		available: z.boolean(),
+		targetId: z.string(),
+		inputId: z.string().optional(),
+	}),
+	z.object({
+		type: z.literal("skill_input_rejected"),
+		controllerId: z.string(),
+		memberId: z.string(),
+		skillId: z.string(),
+		inputId: z.string().optional(),
+		reason: SkillRejectionReasonSchema,
+	}),
+	z.object({
+		type: z.literal("target_selection_accepted"),
+		controllerId: z.string(),
+		memberId: z.string(),
+		targetId: z.string(),
+		inputId: z.string(),
+	}),
+	z.object({
+		type: z.literal("target_selection_rejected"),
+		controllerId: z.string(),
+		memberId: z.string(),
+		requestedTargetId: z.string(),
+		inputId: z.string(),
+		reason: TargetSelectionRejectionReasonSchema,
 	}),
 	z.object({
 		type: z.literal("skill_cast_denied"),
@@ -576,8 +525,7 @@ export interface EventQueueCheckpoint {
 		type: string;
 		processed: boolean;
 		targetMemberId: string;
-		fsmEventType: string;
-		payload?: unknown;
+		fsmEvent: EventObject;
 	}>;
 	totalSize: number;
 	stats: {
@@ -699,7 +647,7 @@ export interface BattleSnapshot {
 	/** 当前模拟时间（毫秒） */
 	currentTimeMs: number;
 	/** 所有成员状态 */
-	members: Array<MemberSerializeData>;
+	members: Array<MemberSnapshot>;
 	/** 战斗状态 */
 	battleStatus: {
 		isEnded: boolean;

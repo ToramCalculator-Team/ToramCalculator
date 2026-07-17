@@ -1,6 +1,6 @@
-import type { EngineCharacter, EngineMember } from "../../../../engineScenarioSchema";
 import type { MemberBTTree } from "@db/schema/jsons";
 import { createLogger } from "~/lib/Logger";
+import type { EngineCharacter, EngineMember } from "../../../../engineScenarioSchema";
 import type { RuntimeAttachment } from "../../attachments/RuntimeAttachment";
 import { collectAttachmentSlots } from "../../attachments/RuntimeAttachment";
 import { installRuntimeAttachment } from "../../attachments/RuntimeAttachmentInstaller";
@@ -12,12 +12,12 @@ import { StatContainer } from "../../runtime/StatContainer/StatContainer";
 import type { PlayerRuntime } from "../../runtime/types";
 import { createPlayerBtBindings } from "./Agents/BtBindings";
 import { type PlayerAttrKey, PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
-import { type PlayerFSMContext, type PlayerFSMEvent, playerFSM } from "./PlayerStateMachine";
+import { type PlayerFSMContext, type PlayerSpecificEvent, playerFSM } from "./PlayerStateMachine";
 import { selectPlayerSkillVariant } from "./skillLifecycle";
 
 const log = createLogger("Player");
 
-export class Player extends Member<PlayerAttrKey, PlayerFSMEvent, PlayerFSMContext, PlayerRuntime> {
+export class Player extends Member<PlayerAttrKey, PlayerSpecificEvent, PlayerFSMContext, PlayerRuntime> {
 	activeCharacter: EngineCharacter;
 	private readonly runtimeAttachments: RuntimeAttachment<PlayerAttrKey>[];
 
@@ -28,20 +28,8 @@ export class Player extends Member<PlayerAttrKey, PlayerFSMEvent, PlayerFSMConte
 		position?: { x: number; y: number; z: number },
 	) {
 		log.info("Player constructor", memberData);
-		if (!memberData.player) {
-			throw new Error("Player数据缺失");
-		}
-		const activeCharacterId = memberData.player?.useIn;
-		let activeCharacter = activeCharacterId
-			? memberData.player.characters.find((character) => character.id === activeCharacterId)
-			: undefined;
-		if (!activeCharacterId) {
-			log.warn("Player数据缺失useIn，将使用第一个角色");
-			activeCharacter = memberData.player.characters[0];
-		}
-		if (!activeCharacter) {
-			throw new Error("未在Player.Characters中找到useIn对应的Character");
-		}
+		const activeCharacter = memberData.character;
+		if (!activeCharacter) throw new Error("Player Member 缺少 Character");
 
 		const runtimeAttachments = collectPlayerRuntimeAttachments<PlayerAttrKey>(activeCharacter, memberData);
 		const baseSchema = PlayerAttrSchemaGenerator(activeCharacter);
@@ -128,7 +116,7 @@ export class Player extends Member<PlayerAttrKey, PlayerFSMEvent, PlayerFSMConte
 	 * 收集所有需要在 StatContainer 上预分配的属性槽。
 	 *
 	 * 来源：
-	 * - 当前角色自身 `actions` 行为树声明（如 AI 行动计数器）
+	 * - 当前 Member 流程声明（如 AI 行动计数器）
 	 * - 角色已学技能的自定义行为树与默认行为 DSL 的 `attributeSlots` 声明（如爆能的咏咒层数）
 	 * - 装备的托环 / passive 的 `attributeSlots` 声明（如 HP 紧急回复的 lastTriggeredFrame）
 	 * - 长期注册行为树的 `attributeSlots` 声明（如弧光剑舞层数）
@@ -138,13 +126,13 @@ export class Player extends Member<PlayerAttrKey, PlayerFSMEvent, PlayerFSMConte
 	 */
 	private static collectAttributeSlots(
 		activeCharacter: EngineCharacter,
-		_memberData: EngineMember,
+		memberData: EngineMember,
 		runtimeAttachments: readonly RuntimeAttachment[],
 	): SlotDeclaration[] {
 		const slots: SlotDeclaration[] = collectAttachmentSlots(runtimeAttachments);
 		// 设计说明：BT agent 实例字段只承载当前执行对象，跨帧变量通过行为树数据声明槽并并入 StatContainer。
 		// 这里收集所有已学技能变体，保证战斗中切换分支或装备匹配变体时不会触发运行期扩容。
-		Player.collectBtAttributeSlots(slots, activeCharacter.actions);
+		Player.collectBtAttributeSlots(slots, memberData.resolvedBehavior);
 		for (const skill of activeCharacter.skills) {
 			for (const variant of skill.template.variants) {
 				Player.collectBehaviorTreeAttributeSlots(slots, variant.activeBehaviorTree);

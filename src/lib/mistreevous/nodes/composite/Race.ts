@@ -15,11 +15,7 @@ export class Race extends Composite {
 	 * @param options 行为树选项。
 	 * @param children 子节点。
 	 */
-	constructor(
-		attributes: Attribute[],
-		options: BehaviourTreeOptions,
-		children: Node[],
-	) {
+	constructor(attributes: Attribute[], options: BehaviourTreeOptions, children: Node[]) {
 		super("race", attributes, options, children);
 	}
 
@@ -31,10 +27,7 @@ export class Race extends Composite {
 		// 遍历此节点的所有子节点，更新任何未处于稳定状态的子节点。
 		for (const child of this.children) {
 			// 如果子节点从未被更新或正在运行，则需要立即更新它。
-			if (
-				child.getState() === State.READY ||
-				child.getState() === State.RUNNING
-			) {
+			if (child.getState() === State.READY || child.getState() === State.RUNNING) {
 				// 更新此节点的子节点。
 				child.update(agent);
 			}

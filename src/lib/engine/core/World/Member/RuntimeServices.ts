@@ -28,8 +28,8 @@ export interface MemberRuntimeServices {
 	 * 目标解析器。
 	 *
 	 * 设计说明：
-	 * - 技能进入 BT 前先把空 target / 自己 target 收敛成一个真实目标。
-	 * - 这样 BT、日志和后续伤害动作会消费同一个最终 targetId，不再在动作层各自补救。
+	 * - 未指定目标时为场景装配选择确定的初始目标。
+	 * - 显式目标只做成员身份解析；技能只读取已经保存在 runtime 中的 targetId。
 	 */
 	targetResolver: MemberTargetResolver | null;
 	/** 引擎级随机数生成器（seeded PRNG），用于命中判定等确定性模拟 */

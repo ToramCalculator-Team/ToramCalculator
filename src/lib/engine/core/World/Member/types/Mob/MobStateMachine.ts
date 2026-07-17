@@ -8,9 +8,11 @@ import {
 	resolveDamageAndApply,
 	resolveHitCheck,
 } from "../../runtime/StateMachine/DamageResolution";
+import { applyMemberTargetSelection } from "../../runtime/StateMachine/targetSelection";
 import type {
 	MemberFSMContext,
 	MemberFSMEvent,
+	MemberSelectTargetEvent,
 	MemberStateMachine,
 	MemberStateMachineEnv,
 } from "../../runtime/StateMachine/types";
@@ -23,19 +25,6 @@ const log = createLogger("MobSM");
  * Mob特有的事件类型
  * 扩展MemberFSMEvent，包含Mob特有的状态机事件
  */
-interface 复活 extends EventObject {
-	type: "复活";
-}
-interface 移动 extends EventObject {
-	type: "移动";
-}
-interface 停止移动 extends EventObject {
-	type: "停止移动";
-}
-interface 使用技能 extends EventObject {
-	type: "使用技能";
-	data: { skillId: string };
-}
 interface 修改属性 extends EventObject {
 	type: "修改属性";
 	data: { attr: string; value: number };
@@ -94,14 +83,9 @@ interface 收到蓄力结束通知 extends EventObject {
 	type: "收到蓄力结束通知";
 }
 
-export type MobFSMEvent =
-	| MemberFSMEvent
-	| 复活
-	| 移动
+export type MobSpecificEvent =
 	| 修改buff
-	| 使用技能
 	| 修改属性
-	| 停止移动
 	| 受到攻击
 	| 受到治疗
 	| 应用控制
@@ -116,6 +100,13 @@ export type MobFSMEvent =
 	| 收到蓄力结束通知
 	| 收到快照请求
 	| 收到目标快照;
+
+export type MobFSMEvent = MemberFSMEvent<MobSpecificEvent>;
+
+function requireSelectTargetEvent(event: MobFSMEvent): MemberSelectTargetEvent {
+	if (event.type !== "切换目标") throw new Error(`Mob FSM 期望切换目标事件，实际收到 ${event.type}`);
+	return event;
+}
 
 /** hitCheck → damageCalc → applyDamage 三管线之间的中间结果缓存。 */
 export interface MobPendingHitResult {
@@ -172,6 +163,9 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 	return mobMachineSetup
 		.extend({
 			actions: {
+				切换当前目标: ({ event }) => {
+					applyMemberTargetSelection(env, requireSelectTargetEvent(event));
+				},
 				根据配置生成初始状态: ({ context, event }) => {
 					// Add your action code here
 					// ...
@@ -403,6 +397,9 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 			initial: "存活",
 			entry: {
 				type: "根据配置生成初始状态",
+			},
+			on: {
+				切换目标: { actions: { type: "切换当前目标" } },
 			},
 			states: {
 				存活: {

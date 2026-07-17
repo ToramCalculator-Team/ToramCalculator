@@ -3,7 +3,7 @@ import type { PipelineCatalog as PipelineCatalogType, PipelineName } from "./cat
 import type { PipelineInstruction } from "./instruction";
 
 /**
- * 说明： 
+ * 说明：
  * - Catalog 在引擎初始化时构建一次
  * - 构建后只读（无 register/replace）
  */
@@ -34,4 +34,3 @@ export class PipelineCatalog implements PipelineCatalogType {
 		return this.names;
 	}
 }
-

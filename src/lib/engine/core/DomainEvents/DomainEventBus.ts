@@ -56,23 +56,20 @@ export class DomainEventBus implements Checkpointable<DomainEventBusCheckpoint> 
 	 * @param tickIndex 当前 tick 序号
 	 */
 	flush(tickIndex: number): void {
-		if (tickIndex !== this.tickIndex) {
-			this.tickIndex = tickIndex;
+		this.tickIndex = tickIndex;
 
-			// 分发所有缓存的事件
-			for (const event of this.currentTickEvents.values()) {
-				for (const listener of this.listeners) {
-					try {
-						listener(event);
-					} catch (error) {
-						log.error("DomainEventBus: 事件监听器执行失败:", error);
-					}
+		// 每个逻辑 tick 只调用一次 flush；即使事件在该 tick 开始前同步产生，也必须投影出去。
+		for (const event of this.currentTickEvents.values()) {
+			for (const listener of this.listeners) {
+				try {
+					listener(event);
+				} catch (error) {
+					log.error("DomainEventBus: 事件监听器执行失败:", error);
 				}
 			}
-
-			// 清空缓存
-			this.currentTickEvents.clear();
 		}
+
+		this.currentTickEvents.clear();
 	}
 
 	/**
@@ -80,7 +77,7 @@ export class DomainEventBus implements Checkpointable<DomainEventBusCheckpoint> 
 	 * 格式：`{type}_{memberId}_{skillId?}`
 	 */
 	private getEventKey(event: MemberDomainEvent): string {
-		if (event.type === "cast_progress" || event.type === "skill_availability_changed") {
+		if (event.type === "cast_progress") {
 			return `${event.type}_${event.memberId}_${event.skillId}`;
 		}
 		return `${event.type}_${event.memberId}`;
@@ -101,6 +98,12 @@ export class DomainEventBus implements Checkpointable<DomainEventBusCheckpoint> 
 		for (const [key, event] of checkpoint.currentTickEvents) {
 			this.currentTickEvents.set(key, structuredClone(event));
 		}
+	}
+
+	/** 重建场景时只清理事件状态，保留固定投影订阅。 */
+	reset(): void {
+		this.tickIndex = 0;
+		this.currentTickEvents.clear();
 	}
 
 	/**

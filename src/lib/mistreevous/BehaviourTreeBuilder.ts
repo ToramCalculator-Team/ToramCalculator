@@ -1,7 +1,4 @@
-import {
-	type AgentPropertyReference,
-	isAgentPropertyReference,
-} from "./AgentPropertyReference";
+import { type AgentPropertyReference, isAgentPropertyReference } from "./AgentPropertyReference";
 import type { Attribute } from "./attributes/Attribute";
 import { Entry } from "./attributes/callbacks/Entry";
 import { Exit } from "./attributes/callbacks/Exit";
@@ -10,11 +7,8 @@ import { Guard } from "./attributes/guards/Guard";
 import { GuardPath, type GuardPathPart } from "./attributes/guards/GuardPath";
 import { Until } from "./attributes/guards/Until";
 import { While } from "./attributes/guards/While";
-import type {
-	AnyNodeDefinition,
-	RootNodeDefinition,
-} from "./BehaviourTreeDefinition";
-import { isInteger } from "./BehaviourTreeDefinitionUtilities";
+import type { AnyNodeDefinition, RootNodeDefinition } from "./BehaviourTreeDefinition";
+import { isFiniteNumber, isInteger } from "./BehaviourTreeDefinitionUtilities";
 import { validateBranchSubtreeLinks } from "./BehaviourTreeDefinitionValidator";
 import type { BehaviourTreeOptions } from "./BehaviourTreeOptions";
 import { Lookup } from "./Lookup";
@@ -74,10 +68,7 @@ const MAIN_ROOT_NODE_KEY = Symbol("__root__");
  * @param options The behaviour tree options.
  * @returns The built and populated root node definitions.
  */
-export function buildRootNode(
-	definition: RootNodeDefinition[],
-	options: BehaviourTreeOptions,
-): Root {
+export function buildRootNode(definition: RootNodeDefinition[], options: BehaviourTreeOptions): Root {
 	// Create a mapping of root node identifers to root node definitions, including globally registered subtree root node definitions.
 	const rootNodeDefinitionMap = createRootNodeDefinitionMap(definition);
 
@@ -85,19 +76,12 @@ export function buildRootNode(
 	// we should validate the branch-subtree links. This will also double-check that we dont have any circular dependencies
 	// in our branch-subtree references and that we have no broken branch-subtree links.
 	validateBranchSubtreeLinks(
-		[
-			rootNodeDefinitionMap[MAIN_ROOT_NODE_KEY],
-			...Object.values(rootNodeDefinitionMap),
-		],
+		[rootNodeDefinitionMap[MAIN_ROOT_NODE_KEY], ...Object.values(rootNodeDefinitionMap)],
 		true,
 	);
 
 	// Create our populated tree of node instances, starting with our main root node.
-	const rootNode = nodeFactory(
-		rootNodeDefinitionMap[MAIN_ROOT_NODE_KEY],
-		rootNodeDefinitionMap,
-		options,
-	) as Root;
+	const rootNode = nodeFactory(rootNodeDefinitionMap[MAIN_ROOT_NODE_KEY], rootNodeDefinitionMap, options) as Root;
 
 	// Set a guard path on every leaf of the tree to evaluate as part of each update.
 	applyLeafNodeGuardPaths(rootNode);
@@ -124,11 +108,7 @@ function nodeFactory(
 	// Create the node instance based on the definition type.
 	switch (definition.type) {
 		case "root":
-			return new Root(
-				attributes,
-				options,
-				nodeFactory(definition.child, rootNodeDefinitionMap, options),
-			);
+			return new Root(attributes, options, nodeFactory(definition.child, rootNodeDefinitionMap, options));
 
 		case "repeat": {
 			let iterations: number | null = null;
@@ -175,69 +155,47 @@ function nodeFactory(
 		}
 
 		case "flip":
-			return new Flip(
-				attributes,
-				options,
-				nodeFactory(definition.child, rootNodeDefinitionMap, options),
-			);
+			return new Flip(attributes, options, nodeFactory(definition.child, rootNodeDefinitionMap, options));
 
 		case "succeed":
-			return new Succeed(
-				attributes,
-				options,
-				nodeFactory(definition.child, rootNodeDefinitionMap, options),
-			);
+			return new Succeed(attributes, options, nodeFactory(definition.child, rootNodeDefinitionMap, options));
 
 		case "fail":
-			return new Fail(
-				attributes,
-				options,
-				nodeFactory(definition.child, rootNodeDefinitionMap, options),
-			);
+			return new Fail(attributes, options, nodeFactory(definition.child, rootNodeDefinitionMap, options));
 
 		case "sequence":
 			return new Sequence(
 				attributes,
 				options,
-				definition.children.map((child) =>
-					nodeFactory(child, rootNodeDefinitionMap, options),
-				),
+				definition.children.map((child) => nodeFactory(child, rootNodeDefinitionMap, options)),
 			);
 
 		case "selector":
 			return new Selector(
 				attributes,
 				options,
-				definition.children.map((child) =>
-					nodeFactory(child, rootNodeDefinitionMap, options),
-				),
+				definition.children.map((child) => nodeFactory(child, rootNodeDefinitionMap, options)),
 			);
 
 		case "parallel":
 			return new Parallel(
 				attributes,
 				options,
-				definition.children.map((child) =>
-					nodeFactory(child, rootNodeDefinitionMap, options),
-				),
+				definition.children.map((child) => nodeFactory(child, rootNodeDefinitionMap, options)),
 			);
 
 		case "race":
 			return new Race(
 				attributes,
 				options,
-				definition.children.map((child) =>
-					nodeFactory(child, rootNodeDefinitionMap, options),
-				),
+				definition.children.map((child) => nodeFactory(child, rootNodeDefinitionMap, options)),
 			);
 
 		case "all":
 			return new All(
 				attributes,
 				options,
-				definition.children.map((child) =>
-					nodeFactory(child, rootNodeDefinitionMap, options),
-				),
+				definition.children.map((child) => nodeFactory(child, rootNodeDefinitionMap, options)),
 			);
 
 		case "lotto":
@@ -245,33 +203,17 @@ function nodeFactory(
 				attributes,
 				options,
 				definition.weights,
-				definition.children.map((child) =>
-					nodeFactory(child, rootNodeDefinitionMap, options),
-				),
+				definition.children.map((child) => nodeFactory(child, rootNodeDefinitionMap, options)),
 			);
 
 		case "branch":
-			return nodeFactory(
-				rootNodeDefinitionMap[definition.ref].child,
-				rootNodeDefinitionMap,
-				options,
-			);
+			return nodeFactory(rootNodeDefinitionMap[definition.ref].child, rootNodeDefinitionMap, options);
 
 		case "action":
-			return new Action(
-				attributes,
-				options,
-				definition.call,
-				definition.args || [],
-			);
+			return new Action(attributes, options, definition.call, definition.args || []);
 
 		case "condition":
-			return new Condition(
-				attributes,
-				options,
-				definition.call,
-				definition.args || [],
-			);
+			return new Condition(attributes, options, definition.call, definition.args || []);
 
 		case "wait": {
 			let duration: number | AgentPropertyReference | null = null;
@@ -281,7 +223,7 @@ function nodeFactory(
 			if (Array.isArray(definition.duration)) {
 				durationMin = definition.duration[0];
 				durationMax = definition.duration[1];
-			} else if (isInteger(definition.duration)) {
+			} else if (isFiniteNumber(definition.duration)) {
 				duration = definition.duration;
 			} else if (isAgentPropertyReference(definition.duration)) {
 				duration = definition.duration;
@@ -309,9 +251,7 @@ function createNodeAttributes(definition: AnyNodeDefinition): Attribute[] {
 	}
 
 	if (definition.entry) {
-		attributes.push(
-			new Entry(definition.entry.call, definition.entry.args ?? []),
-		);
+		attributes.push(new Entry(definition.entry.call, definition.entry.args ?? []));
 	}
 
 	if (definition.step) {
@@ -330,16 +270,12 @@ function createNodeAttributes(definition: AnyNodeDefinition): Attribute[] {
  * @param definition The root node definitions.
  * @returns A mapping of root node identifers to root node definitions, including globally registered subtree root node definitions.
  */
-function createRootNodeDefinitionMap(
-	definition: RootNodeDefinition[],
-): RootNodeDefinitionMap {
+function createRootNodeDefinitionMap(definition: RootNodeDefinition[]): RootNodeDefinitionMap {
 	// Create a mapping of root node identifers to root node definitions.
 	const rootNodeMap: RootNodeDefinitionMap = {};
 
 	// Add in any registered subtree root node definitions.
-	for (const [name, rootNodeDefinition] of Object.entries(
-		Lookup.getSubtrees(),
-	)) {
+	for (const [name, rootNodeDefinition] of Object.entries(Lookup.getSubtrees())) {
 		// The name used when registering the subtree will be used as the root node identifier.
 		rootNodeMap[name] = { ...rootNodeDefinition, id: name };
 	}
@@ -347,8 +283,7 @@ function createRootNodeDefinitionMap(
 	// Populate the map with the root node definitions that were included with the tree definition.
 	// We do this after adding any registered subtrees as we want these to take presedence.
 	for (const rootNodeDefinition of definition) {
-		rootNodeMap[rootNodeDefinition.id ?? MAIN_ROOT_NODE_KEY] =
-			rootNodeDefinition;
+		rootNodeMap[rootNodeDefinition.id ?? MAIN_ROOT_NODE_KEY] = rootNodeDefinition;
 	}
 
 	return rootNodeMap;
@@ -395,9 +330,7 @@ function applyLeafNodeGuardPaths(root: Root) {
 					.slice(0, depth + 1)
 					.map<GuardPathPart>((node) => ({
 						node,
-						guards: node
-							.getAttributes()
-							.filter((attribute) => attribute instanceof Guard),
+						guards: node.getAttributes().filter((attribute) => attribute instanceof Guard),
 					}))
 					.filter((details) => details.guards.length > 0),
 			);

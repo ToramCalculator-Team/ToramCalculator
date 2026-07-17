@@ -11,7 +11,7 @@ import { type Accessor, createEffect, createSignal, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Select } from "~/components/controls/select";
-import type { MemberSerializeData } from "../core/World/Member/Member";
+import type { MemberSnapshot } from "../core/World/Member/Member";
 
 // ============================== 控制面板组件 ==============================
 
@@ -95,7 +95,7 @@ export function ControlPanel(props: ControlPanelProps) {
 // ============================== 成员管理组件 ==============================
 
 interface MemberSelectProps {
-	members: Accessor<MemberSerializeData[]>;
+	members: Accessor<MemberSnapshot[]>;
 	selectedId: Accessor<string | null>;
 	onSelect: (memberId: string) => void;
 	placeholder?: string;

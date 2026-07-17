@@ -7,7 +7,7 @@ import type { MemberRuntimeServices } from "../../RuntimeServices";
 import type { RegisterOptions, ThresholdDirection } from "../AttributeWatcher/AttributeThresholdSource";
 import type { ProcHandler, ProcPredicate, ProcSubscriptionId } from "../ProcBus/ProcBus";
 import type { StatContainer } from "../StatContainer/StatContainer";
-import type { MemberFSMEvent } from "../StateMachine/types";
+import type { MemberControlEvent, MemberFSMEvent } from "../StateMachine/types";
 import type { MemberSharedRuntime } from "../types";
 
 export interface BtTreeController {
@@ -87,6 +87,8 @@ export interface MemberBtCapabilities<
 	unregisterThresholdBySource(sourceId: string): void;
 	/** 出 UI 投影；双总线残留，待 ADR 消除（见类注释）。 */
 	notifyDomainEvent(event: MemberDomainEvent): void;
+	/** 提交可形成最终输入记录的成员控制事件；先登记输入，再交给 FSM 裁决。 */
+	submitControlInput(event: MemberControlEvent): void;
 	send(event: TFSMEvent): void;
 }
 

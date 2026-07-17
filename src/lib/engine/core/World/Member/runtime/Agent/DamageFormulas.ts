@@ -22,7 +22,9 @@ export const vAtkMD = "((self.lv - target.lv + self.atk.md) * (1 - target.red.m)
 /**
  * 根据 expResolutionType 选择对应的有效攻击力公式
  */
-export function getEffectiveAtkFormula(resolutionType: "physical" | "magic" | "normal" | "dualWield" | "magicDevice"): string {
+export function getEffectiveAtkFormula(
+	resolutionType: "physical" | "magic" | "normal" | "dualWield" | "magicDevice",
+): string {
 	switch (resolutionType) {
 		case "physical":
 			return vAtkP;
@@ -43,7 +45,11 @@ export function getEffectiveAtkFormula(resolutionType: "physical" | "magic" | "n
  * @param constant 技能常数表达式（可含 skillLv）
  * @param multiplier 技能倍率表达式（可含 skillLv）
  */
-export function buildDamageFormula(resolutionType: "physical" | "magic" | "normal" | "dualWield" | "magicDevice", constant: string, multiplier: string): string {
+export function buildDamageFormula(
+	resolutionType: "physical" | "magic" | "normal" | "dualWield" | "magicDevice",
+	constant: string,
+	multiplier: string,
+): string {
 	const vAtk = getEffectiveAtkFormula(resolutionType);
 	return `(${vAtk} + ${constant}) * (${multiplier}) / 100`;
 }

@@ -40,16 +40,36 @@ export class Random {
 	public static setSeed(seed?: number): void {
 		Random.defaultInstance().setSeed(seed);
 	}
-	public static value(): number { return Random.defaultInstance().value(); }
-	public static range(min: number = 0, max: number = 1): number { return Random.defaultInstance().range(min, max); }
-	public static integer(min: number, max: number): number { return Random.defaultInstance().integer(min, max); }
-	public static boolean(): boolean { return Random.defaultInstance().boolean(); }
-	public static chance(probability: number): boolean { return Random.defaultInstance().chance(probability); }
-	public static choice<T>(array: T[]): T { return Random.defaultInstance().choice(array); }
-	public static sample<T>(array: T[], count: number): T[] { return Random.defaultInstance().sample(array, count); }
-	public static gaussian(mean: number = 0, standardDeviation: number = 1): number { return Random.defaultInstance().gaussian(mean, standardDeviation); }
-	public static getState(): { x: number; y: number; z: number; w: number } { return Random.defaultInstance().getState(); }
-	public static setState(state: { x: number; y: number; z: number; w: number }): void { Random.defaultInstance().setState(state); }
+	public static value(): number {
+		return Random.defaultInstance().value();
+	}
+	public static range(min: number = 0, max: number = 1): number {
+		return Random.defaultInstance().range(min, max);
+	}
+	public static integer(min: number, max: number): number {
+		return Random.defaultInstance().integer(min, max);
+	}
+	public static boolean(): boolean {
+		return Random.defaultInstance().boolean();
+	}
+	public static chance(probability: number): boolean {
+		return Random.defaultInstance().chance(probability);
+	}
+	public static choice<T>(array: T[]): T {
+		return Random.defaultInstance().choice(array);
+	}
+	public static sample<T>(array: T[], count: number): T[] {
+		return Random.defaultInstance().sample(array, count);
+	}
+	public static gaussian(mean: number = 0, standardDeviation: number = 1): number {
+		return Random.defaultInstance().gaussian(mean, standardDeviation);
+	}
+	public static getState(): { x: number; y: number; z: number; w: number } {
+		return Random.defaultInstance().getState();
+	}
+	public static setState(state: { x: number; y: number; z: number; w: number }): void {
+		Random.defaultInstance().setState(state);
+	}
 
 	// ==================== 实例 ====================
 
@@ -95,7 +115,7 @@ export class Random {
 		this._x = this._y;
 		this._y = this._z;
 		this._z = this._w;
-		this._w = (this._w ^ (this._w >>> 19)) ^ (t ^ (t >>> 8));
+		this._w = this._w ^ (this._w >>> 19) ^ (t ^ (t >>> 8));
 		return this._w >>> 0;
 	}
 

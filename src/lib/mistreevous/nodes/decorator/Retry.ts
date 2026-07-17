@@ -143,15 +143,10 @@ export class Retry extends Decorator {
 		} else if (this.attemptsMin !== null && this.attemptsMax !== null) {
 			// We will be picking a random attempt count between a min and max attempt count, if the optional 'random'
 			// behaviour tree function option is defined then we will be using that, otherwise we will fall back to using Math.random.
-			const random =
-				typeof this.options.random === "function"
-					? this.options.random
-					: Math.random;
+			const random = typeof this.options.random === "function" ? this.options.random : Math.random;
 
 			// Pick a random attempt count between a min and max attempt count.
-			this.targetAttemptCount = Math.floor(
-				random() * (this.attemptsMax - this.attemptsMin + 1) + this.attemptsMin,
-			);
+			this.targetAttemptCount = Math.floor(random() * (this.attemptsMax - this.attemptsMin + 1) + this.attemptsMin);
 		} else {
 			this.targetAttemptCount = null;
 		}

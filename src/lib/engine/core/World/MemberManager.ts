@@ -1,14 +1,13 @@
-import type { EngineMember, EngineTeam } from "../engineScenarioSchema";
 import type { MemberType } from "@db/schema/enums";
 import type { Actor, AnyActorLogic } from "xstate";
 import { createLogger } from "~/lib/Logger";
 import type { EventCatalog } from "../Event/EventCatalog";
+import type { EngineMember, EngineTeam } from "../engineScenarioSchema";
 import type { ExpressionContext } from "../JSProcessor/types";
 import type { PipelineResolverService } from "../Pipeline/PipelineResolverService";
 import type { MemberCheckpoint, MemberDomainEvent } from "../types";
 import type { DamageAreaRequest } from "./Area/types";
-import type { Member } from "./Member/Member";
-import type { MemberFSMEvent, MemberFSMContext } from "./Member/runtime/StateMachine/types";
+import type { Member, MemberControlInputRecorder } from "./Member/Member";
 import type { MemberSharedRuntime } from "./Member/runtime/types";
 import { Mob } from "./Member/types/Mob/Mob";
 import { Player } from "./Member/types/Player/Player";
@@ -17,7 +16,7 @@ const log = createLogger("MemberMgr");
 
 // ============================== 类型定义 ==============================
 
-// 避免 any：用通用基类型承载不同成员实现。FSM 类型参数用 any 放宽以允许子类扩展事件/上下文。
+// Player/Mob 的 XState 事件与上下文泛型彼此不兼容；管理器只使用 Member 公共能力，因此在异构容器边界擦除这两个参数。
 export type AnyMemberEntry = Member<string, any, any, MemberSharedRuntime<string>>;
 
 // ============================== 成员管理器类 ==============================
@@ -42,6 +41,8 @@ export class MemberManager {
 	private renderMessageSender: ((payload: unknown) => void) | null = null;
 	/** 域事件发射器 */
 	private domainEventSender: ((event: MemberDomainEvent) => void) | null = null;
+	/** member-flow 控制输入登记器 */
+	private controlInputRecorder: MemberControlInputRecorder | null = null;
 	/** 表达式求值器（由引擎注入） */
 	private evaluateExpression: ((expression: string, context: ExpressionContext) => number | boolean) | null = null;
 	/** 伤害请求处理器（由引擎注入） */
@@ -74,6 +75,14 @@ export class MemberManager {
 		this.domainEventSender = domainEventSender;
 		for (const member of this.members.values()) {
 			member.setDomainEventSender(domainEventSender);
+		}
+	}
+
+	/** 为当前及后续创建的成员注入同一个 member-flow 输入登记入口。 */
+	setControlInputRecorder(recorder: MemberControlInputRecorder | null): void {
+		this.controlInputRecorder = recorder;
+		for (const member of this.members.values()) {
+			member.setControlInputRecorder(recorder);
 		}
 	}
 
@@ -165,8 +174,8 @@ export class MemberManager {
 	 * 解析成员技能目标。
 	 *
 	 * 设计说明：
-	 * - 用户没有显式指定目标，或目标落到自己身上时，优先收敛到第一个敌对成员。
-	 * - 如果场景里暂时没有敌对成员，则保留原始目标，让后续流程维持可诊断的状态。
+	 * - 未显式指定目标时，为场景装配选择第一个敌对成员作为确定的初始目标。
+	 * - 显式目标（包括自己）只在成员存在时接纳，不用默认目标掩盖非法身份。
 	 */
 	private resolveTargetId(sourceMemberId: string, requestedTargetId?: string | null): string | null {
 		const source = this.members.get(sourceMemberId);
@@ -174,9 +183,7 @@ export class MemberManager {
 
 		if (requested) {
 			const target = this.members.get(requested);
-			if (target && target.id !== sourceMemberId) {
-				return target.id;
-			}
+			return target?.id ?? null;
 		}
 
 		if (source) {
@@ -188,6 +195,22 @@ export class MemberManager {
 		}
 
 		return sourceMemberId;
+	}
+
+	/**
+	 * 场景装配完成后直接建立 Member 初始目标。
+	 * 初始目标是运行时初始状态，不发送 FSM 控制事件，也不生成输入判决或行动录制。
+	 */
+	initializeMemberTargets(initialTargetIds: Readonly<Record<string, string>> = {}): void {
+		for (const [memberId, targetId] of Object.entries(initialTargetIds)) {
+			if (!this.members.has(memberId)) throw new Error(`初始目标配置引用了不存在的成员: ${memberId}`);
+			if (!this.members.has(targetId)) throw new Error(`成员 ${memberId} 的初始目标不存在: ${targetId}`);
+		}
+		for (const member of this.members.values()) {
+			const targetId = this.resolveTargetId(member.id, initialTargetIds[member.id]);
+			if (!targetId) throw new Error(`成员 ${member.id} 无法解析初始目标`);
+			member.runtime.targetId = targetId;
+		}
 	}
 
 	// ==================== 公共接口 ====================
@@ -211,6 +234,7 @@ export class MemberManager {
 				const player = new Player(memberData, campId, teamId, position);
 				// 设置域事件发射器
 				player.setDomainEventSender(this.domainEventSender);
+				player.setControlInputRecorder(this.controlInputRecorder);
 				player.setTargetResolver(this.resolveTargetId.bind(this));
 				player.setEvaluateExpression(this.evaluateExpression);
 				player.setDamageRequestHandler(this.damageRequestHandler);
@@ -243,6 +267,7 @@ export class MemberManager {
 				const mob = new Mob(memberData, campId, teamId, position);
 				// 设置域事件发射器
 				mob.setDomainEventSender(this.domainEventSender);
+				mob.setControlInputRecorder(this.controlInputRecorder);
 				mob.setTargetResolver(this.resolveTargetId.bind(this));
 				mob.setEvaluateExpression(this.evaluateExpression);
 				mob.setDamageRequestHandler(this.damageRequestHandler);
@@ -303,11 +328,6 @@ export class MemberManager {
 		}
 		this.membersByTeam.get(teamId)?.add(memberData.id);
 
-		// 自动选择主控目标（如果还没有设置的话）
-		if (!this.primaryMemberId) {
-			this.autoSelectPrimaryMember();
-		}
-
 		return true;
 	}
 
@@ -315,7 +335,7 @@ export class MemberManager {
 	 * 以相同 memberId 热替换成员实例。
 	 *
 	 * 目的：
-	 * - Character 页面配置变化需要重建 Player/StatContainer 等底层结构。
+	 * - 成员配置变化需要重建 Player/StatContainer 等底层结构。
 	 * - 替换期间保留成员身份、阵营队伍索引和主控目标，避免渲染层收到无意义的 null 主控切换。
 	 */
 	replaceMember(memberId: string, memberData: EngineMember): boolean {
@@ -360,10 +380,9 @@ export class MemberManager {
 			value.delete(memberId);
 		});
 
-		// 如果被删除的成员是当前主控目标，重新选择目标
+		// 删除主控成员后让缺失配置显形，由会话在下一次加载设计时明确指定。
 		if (this.primaryMemberId === memberId) {
-			log.info(`🎯 当前主控目标被删除，重新选择目标`);
-			this.autoSelectPrimaryMember();
+			this.setPrimaryMember(null);
 		}
 
 		return true;
@@ -610,28 +629,6 @@ export class MemberManager {
 		} catch {
 			return 0;
 		}
-	}
-
-	/** 自动选择主控目标：优先Player，其次第一个成员 */
-	autoSelectPrimaryMember(): void {
-		const allMembers = Array.from(this.members.values());
-
-		// 优先选择Player类型的成员
-		const playerMember = allMembers.find((member) => member.type === "Player");
-		if (playerMember) {
-			this.setPrimaryMember(playerMember.id);
-			return;
-		}
-
-		// 如果没有Player，选择第一个成员
-		const firstMember = allMembers[0];
-		if (firstMember) {
-			this.setPrimaryMember(firstMember.id);
-			return;
-		}
-
-		// 没有成员时清空目标
-		this.setPrimaryMember(null);
 	}
 
 	/** 获取主控目标的成员信息 */

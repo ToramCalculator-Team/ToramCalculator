@@ -1,5 +1,4 @@
 import { type ZodType, z } from "zod/v4";
-import type { ActionPool, ConditionPool } from "~/lib/engine/core/World/Member/runtime/Agent/type";
 
 export type MdslPrimitiveType = "string" | "number" | "boolean" | "null" | "unknown";
 
@@ -148,7 +147,9 @@ const flattenObjectSchemaToParams = (schema: ZodType, prefix = ""): MdslParamSpe
 		if (isZodObject(childUnwrapped)) {
 			const nested = flattenObjectSchemaToParams(childUnwrapped, label);
 			if (optional) {
-				nested.forEach((p) => (p.optional = true));
+				nested.forEach((param) => {
+					param.optional = true;
+				});
 			}
 			result.push(...nested);
 		} else {
@@ -196,21 +197,21 @@ const inferPropertyTypesFromObject = (propertyObject: Record<string, unknown>): 
  * 从 actionPool 和 conditionPool 构建 actions/conditions specs
  */
 const buildCallableSpecsFromPools = (
-	actionPool: ActionPool<any>,
-	conditionPool: ConditionPool<any>,
+	actionPool: MdslCallablePool,
+	conditionPool: MdslCallablePool,
 ): {
 	actions: Record<string, MdslCallableSpec>;
 	conditions: Record<string, MdslCallableSpec>;
 } => {
 	const actions: Record<string, MdslCallableSpec> = {};
 	for (const [name, action] of Object.entries(actionPool)) {
-		const inputSchema = action[0] as ZodType;
+		const inputSchema = action[0];
 		actions[name] = buildCallableSpec("action", name, inputSchema);
 	}
 
 	const conditions: Record<string, MdslCallableSpec> = {};
 	for (const [name, cond] of Object.entries(conditionPool)) {
-		const inputSchema = cond[0] as ZodType;
+		const inputSchema = cond[0];
 		conditions[name] = buildCallableSpec("condition", name, inputSchema);
 	}
 
@@ -218,16 +219,15 @@ const buildCallableSpecsFromPools = (
 };
 
 /** 获取 spec 的必填参数数量 */
-export const getRequiredParamCount = (spec: MdslCallableSpec): number =>
-	spec.params.filter((p) => !p.optional).length;
+export const getRequiredParamCount = (spec: MdslCallableSpec): number => spec.params.filter((p) => !p.optional).length;
 
 /**
  * 参数化构建 MDSL IntelliSense Registry
  */
 export const buildMdslIntellisenseRegistry = (
 	config: {
-		actionPool: ActionPool<any>;
-		conditionPool: ConditionPool<any>;
+		actionPool: MdslCallablePool;
+		conditionPool: MdslCallablePool;
 		propertyObject: Record<string, unknown>;
 	},
 	agentSource?: string,
@@ -411,3 +411,5 @@ export const mergeMdslRegistryWithAgentSource = (
 
 	return next;
 };
+/** IntelliSense 只读取 Zod schema；运行函数签名在此边界故意保持 opaque。 */
+export type MdslCallablePool = Record<string, readonly [ZodType, unknown]>;

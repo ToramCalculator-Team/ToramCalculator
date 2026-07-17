@@ -1,12 +1,7 @@
 /**
  * An example definition and board combination.
  */
-export type ExampleCategory =
-	| "advanced"
-	| "leaf"
-	| "composite"
-	| "decorator"
-	| "misc";
+export type ExampleCategory = "advanced" | "leaf" | "composite" | "decorator" | "misc";
 
 /**
  * An example definition and board combination.

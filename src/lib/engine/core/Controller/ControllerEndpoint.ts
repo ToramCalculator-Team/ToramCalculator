@@ -16,8 +16,7 @@ export type ControllerFeedbackEvent =
 	| { type: "move_started"; memberId: string }
 	| { type: "move_stopped"; memberId: string }
 	| { type: "hit"; memberId: string; damage: number }
-	| { type: "died"; memberId: string }
-	| { type: "skill_availability_changed"; memberId: string; skillId: string; available: boolean };
+	| { type: "died"; memberId: string };
 
 /**
  * 控制器端点接口
@@ -32,9 +31,9 @@ export interface ControllerEndpoint {
 
 /**
  * 控制器注册表
- * 
+ *
  * 职责：仅管理控制器反馈端点（ControllerEndpoint），用于向控制器发送反馈事件
- * 
+ *
  * 注意：
  * - 不用于管理"控制器列表"或"绑定关系"
  * - 控制器列表和绑定关系由 ControlBindingManager 管理
@@ -98,4 +97,3 @@ export class ControllerRegistry {
 		log.info("🧹 清空所有控制器注册");
 	}
 }
-

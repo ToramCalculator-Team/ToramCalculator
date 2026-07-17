@@ -59,9 +59,7 @@ export class Lotto extends Composite {
 				return resolveAgentNonNegativeInteger(
 					agent,
 					weight,
-					typeof weight === "number"
-						? `lotto 节点权重[${index}]`
-						: `lotto 节点引用的 agent 属性 '${weight.$}'（权重）`,
+					typeof weight === "number" ? `lotto 节点权重[${index}]` : `lotto 节点引用的 agent 属性 '${weight.$}'（权重）`,
 					this.options.resolveProperty,
 				);
 			});
@@ -71,10 +69,7 @@ export class Lotto extends Composite {
 				// Hook up the optional 'random' behaviour tree function option to the one used by 'lotto-draw'.
 				random: this.options.random,
 				// Pass in each child node as a participant in the lotto draw with their respective ticket count.
-				participants: this.children.map((child, index) => [
-					child,
-					this.resolvedWeights?.[index] ?? 1,
-				]),
+				participants: this.children.map((child, index) => [child, this.resolvedWeights?.[index] ?? 1]),
 			});
 
 			// Randomly pick a child based on ticket weighting, this will become the active child for this composite node.
@@ -87,10 +82,7 @@ export class Lotto extends Composite {
 		}
 
 		// If the selected child has never been updated or is running then we will need to update it now.
-		if (
-			this.selectedChild.getState() === State.READY ||
-			this.selectedChild.getState() === State.RUNNING
-		) {
+		if (this.selectedChild.getState() === State.READY || this.selectedChild.getState() === State.RUNNING) {
 			this.selectedChild.update(agent);
 		}
 
@@ -102,10 +94,7 @@ export class Lotto extends Composite {
 	 * Gets the name of the node.
 	 */
 	getName = () => {
-		const formatWeight = (w: LottoWeightArg) =>
-			typeof w === "number" ? `${w}` : `$${w.$}`;
-		return this.weights
-			? `随机执行 [${this.weights.map(formatWeight).join(",")}]`
-			: "随机执行";
+		const formatWeight = (w: LottoWeightArg) => (typeof w === "number" ? `${w}` : `$${w.$}`);
+		return this.weights ? `随机执行 [${this.weights.map(formatWeight).join(",")}]` : "随机执行";
 	};
 }

@@ -1,8 +1,9 @@
-import type { EngineMember } from "../../engineScenarioSchema";
-import type { MemberType } from "@db/schema/enums";
-import { createActor } from "xstate";
+import { MEMBER_TYPE, type MemberType } from "@db/schema/enums";
+import { createActor, type EventObject } from "xstate";
+import { z } from "zod/v4";
 import { createLogger } from "~/lib/Logger";
 import type { EventCatalog } from "../../Event/EventCatalog";
+import type { EngineMember } from "../../engineScenarioSchema";
 import type { ExpressionContext } from "../../JSProcessor/types";
 import type { PipelineOverlay } from "../../Pipeline/overlay";
 import type { PipelineResolverService } from "../../Pipeline/PipelineResolverService";
@@ -17,12 +18,14 @@ import { AttributeThresholdSource } from "./runtime/AttributeWatcher/AttributeTh
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
 import type { MemberBtCapabilities, MemberBtManagerEnv } from "./runtime/BehaviourTree/BtManagerEnv";
 import { ProcBus } from "./runtime/ProcBus/ProcBus";
-import type { NestedSchema, SchemaStructure } from "./runtime/StatContainer/SchemaTypes";
+import type { NestedSchema } from "./runtime/StatContainer/SchemaTypes";
 import type { StatContainer } from "./runtime/StatContainer/StatContainer";
+import { AttributeSnapshotSchema } from "./runtime/StatContainer/StatContainerTypes";
 import type {
 	MemberActor,
-	MemberFSMEvent,
+	MemberControlEvent,
 	MemberFSMContext,
+	MemberFSMEvent,
 	MemberStateMachine,
 	MemberStateMachineEnv,
 } from "./runtime/StateMachine/types";
@@ -35,23 +38,30 @@ import type { MemberSharedRuntime } from "./runtime/types";
 
 const log = createLogger("Member");
 
-export interface MemberSerializeData {
-	attrs: Record<string, unknown>;
-	id: string;
-	type: MemberType;
-	name: string;
-	campId: string;
-	teamId: string;
-	position: {
-		x: number;
-		y: number;
-		z: number;
-	};
-}
+export const MemberSnapshotSchema = z.object({
+	attrs: AttributeSnapshotSchema,
+	id: z.string(),
+	type: z.enum(MEMBER_TYPE),
+	name: z.string(),
+	campId: z.string(),
+	teamId: z.string(),
+	position: z.object({
+		x: z.number(),
+		y: z.number(),
+		z: z.number(),
+	}),
+});
 
+export type MemberSnapshot = z.output<typeof MemberSnapshotSchema>;
+export type MemberControlInputRecorder = (memberId: string, event: MemberControlEvent) => void;
+
+/**
+ * 成员基类只接收具体成员新增的 FSM 事件；公共事件由 MemberFSMEvent 在唯一位置组合。
+ * 这样 Member 自身发送 update、死亡通知等公共事件时不需要类型断言。
+ */
 export class Member<
 	TExtraAttrKey extends string,
-	TFSMEvent extends MemberFSMEvent,
+	TSpecificEvent extends EventObject,
 	TFSMContext extends MemberFSMContext,
 	TRuntime extends MemberSharedRuntime<TExtraAttrKey>,
 > implements WorldObservable
@@ -67,7 +77,7 @@ export class Member<
 	runtime: TRuntime;
 	/** 引擎注入 services（不可序列化） */
 	services: MemberRuntimeServices;
-	btManager: BtManager<TExtraAttrKey, TRuntime, TFSMEvent>;
+	btManager: BtManager<TExtraAttrKey, TRuntime, MemberFSMEvent<TSpecificEvent>>;
 	/** 成员级持久 overlays（纯数据，可 checkpoint） */
 	pipelineOverlays: PipelineOverlay[] = [];
 	private pipelineResolverService: PipelineResolverService | null = null;
@@ -82,7 +92,7 @@ export class Member<
 	 * `attr.crossed` 事件；emitter 在 setEventCatalog 接通 ProcBus 后注入。
 	 */
 	attributeThresholdSource: AttributeThresholdSource<MemberBaseAttrKey | TExtraAttrKey>;
-	actor: MemberActor<TFSMEvent, TFSMContext>;
+	actor: MemberActor<MemberFSMEvent<TSpecificEvent>, TFSMContext>;
 	private actorStarted = false;
 	data: EngineMember;
 	get position(): { x: number; y: number; z: number } {
@@ -146,6 +156,7 @@ export class Member<
 	renderState: { lastAction?: { name: string; ts: number; params?: Record<string, unknown> } } = {};
 	private renderMessageSender: ((payload: unknown) => void) | null = null;
 	private domainEventSender: ((event: MemberDomainEvent) => void) | null = null;
+	private controlInputRecorder: MemberControlInputRecorder | null = null;
 
 	private getRenderCommandTiming(): { seq: number; ts: number } {
 		let seq = this.runtime.tickIndex;
@@ -161,8 +172,8 @@ export class Member<
 
 	constructor(
 		stateMachine: (
-			env: MemberStateMachineEnv<TExtraAttrKey, TFSMEvent, TRuntime>,
-		) => MemberStateMachine<TFSMEvent, TFSMContext>,
+			env: MemberStateMachineEnv<TExtraAttrKey, MemberFSMEvent<TSpecificEvent>, TRuntime>,
+		) => MemberStateMachine<MemberFSMEvent<TSpecificEvent>, TFSMContext>,
 		campId: string,
 		teamId: string,
 		memberData: EngineMember,
@@ -172,7 +183,7 @@ export class Member<
 		services: MemberRuntimeServices = MemberRuntimeServicesDefaults,
 		position?: { x: number; y: number; z: number },
 		btContextBindings: (
-			capabilities: MemberBtCapabilities<TExtraAttrKey, TFSMEvent>,
+			capabilities: MemberBtCapabilities<TExtraAttrKey, MemberFSMEvent<TSpecificEvent>>,
 		) => Record<string, unknown> = () => ({}),
 	) {
 		this.id = memberData.id;
@@ -201,6 +212,11 @@ export class Member<
 		}
 
 		this.actor = createActor(stateMachine(this.createStateMachineEnv()));
+		this.btManager.registerParallelBt(
+			"member-flow",
+			memberData.resolvedBehavior.definition,
+			memberData.resolvedBehavior.agent,
+		);
 	}
 
 	/**
@@ -210,7 +226,7 @@ export class Member<
 	 * - getter 让 checkpoint restore 替换 runtime 后，状态机闭包继续读取 Member 当前字段。
 	 * - 方法用箭头函数转发，避免 XState action 调用时丢失 Member.this。
 	 */
-	private createStateMachineEnv(): MemberStateMachineEnv<TExtraAttrKey, TFSMEvent, TRuntime> {
+	private createStateMachineEnv(): MemberStateMachineEnv<TExtraAttrKey, MemberFSMEvent<TSpecificEvent>, TRuntime> {
 		const self = this;
 		return {
 			get id() {
@@ -248,7 +264,7 @@ export class Member<
 	 * - getter 让 checkpoint restore 替换 runtime / procBus 后，BT 继续读取 Member 当前字段。
 	 * - send 封装 actor 访问，使 BtManager 不依赖完整 Member 类。
 	 */
-	private createBtCapabilities(): MemberBtCapabilities<TExtraAttrKey, TFSMEvent> {
+	private createBtCapabilities(): MemberBtCapabilities<TExtraAttrKey, MemberFSMEvent<TSpecificEvent>> {
 		const self = this;
 		return {
 			get services() {
@@ -260,7 +276,8 @@ export class Member<
 			get renderState() {
 				return self.renderState;
 			},
-			registerParallelBt: (name, definition, agent, localContext) => self.btManager.registerParallelBt(name, definition, agent, localContext),
+			registerParallelBt: (name, definition, agent, localContext) =>
+				self.btManager.registerParallelBt(name, definition, agent, localContext),
 			unregisterParallelBt: (name) => self.btManager.unregisterParallelBt(name),
 			hasParallelBt: (name) => self.btManager.hasBuff(name),
 			subscribeByName: (sourceId, eventNames, predicate, handler) => {
@@ -277,6 +294,7 @@ export class Member<
 				self.attributeThresholdSource.register(sourceId, path, threshold, direction, options),
 			unregisterThresholdBySource: (sourceId) => self.attributeThresholdSource.unregisterBySource(sourceId),
 			notifyDomainEvent: (event) => self.notifyDomainEvent(event),
+			submitControlInput: (event) => self.submitControlInput(event),
 			// 不暴露 runPipeline：管线属计算层，由 FSM / DamageResolution 调用；BT 叶子不直接跑管线。
 			send: (event) => self.actor.send(event),
 		};
@@ -290,8 +308,8 @@ export class Member<
 	 * - action/condition 的副作用能力由 bindings 闭包持有，不进入可 checkpoint runtime。
 	 */
 	private createBtEnv(
-		capabilities: MemberBtCapabilities<TExtraAttrKey, TFSMEvent>,
-	): MemberBtManagerEnv<TFSMEvent, TExtraAttrKey, TRuntime> {
+		capabilities: MemberBtCapabilities<TExtraAttrKey, MemberFSMEvent<TSpecificEvent>>,
+	): MemberBtManagerEnv<MemberFSMEvent<TSpecificEvent>, TExtraAttrKey, TRuntime> {
 		const self = this;
 		return {
 			get name() {
@@ -310,9 +328,9 @@ export class Member<
 		this.actorStarted = true;
 	}
 
-	serialize(): MemberSerializeData {
+	serialize(): MemberSnapshot {
 		return {
-			attrs: this.statContainer.exportNestedValues(),
+			attrs: this.statContainer.exportAttributeSnapshot(),
 			id: this.id,
 			type: this.type,
 			name: this.name,
@@ -327,17 +345,12 @@ export class Member<
 		this.services.renderMessageSender = renderMessageSender;
 		const timing = this.getRenderCommandTiming();
 
-		// Mob 暂以白色球体渲染（无角色模型）；其余成员走角色模型。
-		const isMob = this.type === "Mob";
 		const spawnCmd = {
 			type: "render:cmd" as const,
 			cmd: {
 				type: "spawn" as const,
 				entityId: this.id,
-				name: this.name,
 				position: this.position,
-				entityType: isMob ? ("sphere" as const) : ("character" as const),
-				...(isMob ? { props: { color: "#ffffff", radius: 0.4 } } : {}),
 				seq: timing.seq,
 				ts: timing.ts,
 			},
@@ -353,6 +366,11 @@ export class Member<
 	setDomainEventSender(domainEventSender: ((event: MemberDomainEvent) => void) | null): void {
 		this.domainEventSender = domainEventSender;
 		this.services.domainEventSender = domainEventSender;
+	}
+
+	/** 注入 member-flow 输入登记器；它只登记 pending，最终判决仍由成员 FSM 产生。 */
+	setControlInputRecorder(recorder: MemberControlInputRecorder | null): void {
+		this.controlInputRecorder = recorder;
 	}
 
 	setTargetResolver(targetResolver: MemberTargetResolver | null): void {
@@ -444,7 +462,7 @@ export class Member<
 		// 致死事件（统一死亡转换）：成员级订阅 damage.fatal，转发给 FSM 触发死亡转换。
 		// 订阅无状态，checkpoint restore 后由本方法重新装配；卸载分支已由 procBus.clear() 清理。
 		bus.subscribeByName(`member:${this.id}:death`, ["damage.fatal"], null, (event) => {
-			this.actor.send({ type: "死亡通知", data: event.payload } as TFSMEvent);
+			this.actor.send({ type: "死亡通知", data: event.payload });
 		});
 	}
 
@@ -541,6 +559,15 @@ export class Member<
 		}
 	}
 
+	/**
+	 * 提交来自 member-flow 的控制输入。
+	 * Recorder 必须先看到 pending 输入，FSM 同步产生的接纳或拒绝事实才能封闭同一 inputId。
+	 */
+	private submitControlInput(event: MemberControlEvent): void {
+		this.controlInputRecorder?.(this.id, event);
+		this.actor.send(event);
+	}
+
 	/** 派发成员内事件到本成员 ProcBus（供 passive/registlet 响应，ADR-0011）。 */
 	emitProc(eventName: string, payload: unknown): void {
 		if (!this.procBus) {
@@ -565,7 +592,7 @@ export class Member<
 		this.runtime.deltaTimeMs = tick.deltaTimeMs;
 		this.statusStore.purgeExpired(tick.currentTimeMs);
 		this.syncStatusTags();
-		this.actor.send({ type: "update", timestamp: tick.currentTimeMs } as TFSMEvent);
+		this.actor.send({ type: "update", timestamp: tick.currentTimeMs });
 		this.btManager.tickAll();
 		// 让阈值 watcher 及时响应 modifier 导致的数值变化：把本帧累计的脏值刷出。
 		this.statContainer.flushDirtyValues();
@@ -580,7 +607,11 @@ export class Member<
 		} catch (e) {
 			const uncloneable: string[] = [];
 			for (const [key, value] of Object.entries(this.runtime)) {
-				try { structuredClone(value); } catch { uncloneable.push(`${key}(${typeof value})`); }
+				try {
+					structuredClone(value);
+				} catch {
+					uncloneable.push(`${key}(${typeof value})`);
+				}
 			}
 			log.error(`[${this.name}] runtime structuredClone failed. Uncloneable keys: ${uncloneable.join(", ")}`);
 			throw e;

@@ -50,10 +50,7 @@ export class JSProcessor {
 	 * 通用替换（不执行）：
 	 * - 分布式伤害计算中使用：施法者替换 self，受击者替换 target
 	 */
-	transformExpression(
-		expression: string,
-		options: TransformExpressionOptions,
-	): TransformExpressionResult {
+	transformExpression(expression: string, options: TransformExpressionOptions): TransformExpressionResult {
 		return ExpressionTransformer.transform(expression, options);
 	}
 
@@ -96,10 +93,7 @@ export class JSProcessor {
 				}
 			}
 
-			const cacheKey = this.generateRunnerCacheKey(
-				expressionToRun,
-				hasAccessor ? cacheScope : "global",
-			);
+			const cacheKey = this.generateRunnerCacheKey(expressionToRun, hasAccessor ? cacheScope : "global");
 
 			let runner = this.runnerCache.get(cacheKey)?.runner;
 			if (!runner) {
@@ -199,13 +193,9 @@ export class JSProcessor {
 	 * - 表达式要求为单行，并能在 with 作用域下运行
 	 * - 通过 `new Function` 在 Worker 沙盒中安全执行
 	 */
-	private createRunner(
-		expression: string,
-	): (ctx: ExpressionContext) => unknown {
+	private createRunner(expression: string): (ctx: ExpressionContext) => unknown {
 		const wrappedCode = `with (ctx) { return ${expression}; }`;
-		return new Function("ctx", wrappedCode) as (
-			ctx: ExpressionContext,
-		) => unknown;
+		return new Function("ctx", wrappedCode) as (ctx: ExpressionContext) => unknown;
 	}
 
 	/**
@@ -260,4 +250,3 @@ export class JSProcessor {
 		return Math.abs(hash).toString(36);
 	}
 }
-

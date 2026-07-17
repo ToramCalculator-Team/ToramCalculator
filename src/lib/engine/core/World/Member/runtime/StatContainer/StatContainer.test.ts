@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { NestedSchema, SchemaAttribute } from "./SchemaTypes";
 import { StatContainer } from "./StatContainer";
-import { type ModifierSource, ModifierType } from "./StatContainerTypes";
+import { AttributeSnapshotSchema, type ModifierSource, ModifierType } from "./StatContainerTypes";
 
 // 便捷叶子构造器。
 const attr = (displayName: string, expression: string, noBaseValue?: boolean): SchemaAttribute => ({
@@ -21,6 +21,17 @@ const src = (id: string): ModifierSource => ({
 });
 
 describe("StatContainer — 基础值与常量表达式", () => {
+	it("直接导出严格扁平属性快照并保留 modifier 来源", () => {
+		const sc = new StatContainer<"atk.p">({ atk: { p: attr("物理攻击", "100") } } as NestedSchema);
+		sc.addModifier("atk.p", ModifierType.STATIC_FIXED, 20, src("weapon-1"));
+		const snapshot = AttributeSnapshotSchema.parse(sc.exportAttributeSnapshot());
+		expect(Object.keys(snapshot)).toEqual(["atk.p"]);
+		expect(snapshot["atk.p"]?.actValue).toBe(120);
+		expect(snapshot["atk.p"]?.static.fixed[0]?.source.chain).toEqual([
+			{ kind: "member", id: "test-member" },
+			{ kind: "equipment", id: "weapon-1" },
+		]);
+	});
 	it("常量表达式作为基础值读取", () => {
 		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
 		expect(sc.getValue("atk")).toBe(100);

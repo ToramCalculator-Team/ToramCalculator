@@ -12,12 +12,12 @@
  *   避免之前 `pendingDamage / pendingHitResult / pendingDamageResult` 三级 optional 字段。
  */
 
-import { createLogger } from "~/lib/Logger";
 import * as CasterSnapshot from "~/lib/engine/core/Expression/CasterSnapshot";
 import type { ExpressionContext } from "~/lib/engine/core/JSProcessor/types";
 import type { StageData } from "~/lib/engine/core/Pipeline/stageEnv";
 import type { MemberDomainEvent } from "~/lib/engine/core/types";
 import type { DamageDispatchPayload } from "~/lib/engine/core/World/Area/types";
+import { createLogger } from "~/lib/Logger";
 
 const log = createLogger("DamageResolution");
 
@@ -147,6 +147,8 @@ export function resolveDamageAndApply(
 		notifyDomainEvent({
 			type: "hit",
 			memberId: id,
+			sourceMemberId: req.sourceId,
+			sourceSkillId: req.sourceSkillId ?? null,
 			damage: 0,
 			hp: session.hpAfter,
 		});
@@ -239,6 +241,8 @@ export function resolveDamageAndApply(
 	notifyDomainEvent({
 		type: "hit",
 		memberId: id,
+		sourceMemberId: req.sourceId,
+		sourceSkillId: req.sourceSkillId ?? null,
 		damage: segmentFinalDamage,
 		hp: hpAfter,
 	});

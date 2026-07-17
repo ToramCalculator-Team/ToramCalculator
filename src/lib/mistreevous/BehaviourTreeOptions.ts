@@ -59,6 +59,13 @@ export interface BehaviourTreeOptions {
 	getDeltaTimeMs?(): number;
 
 	/**
+	 * Gets the current monotonic simulation time in milliseconds.
+	 * Engine-hosted `wait` nodes use this clock so they complete on the first
+	 * logical boundary at or after their target simulation time.
+	 */
+	getCurrentTimeMs?(): number;
+
+	/**
 	 * Gets a pseudo-random floating-point number between 0 (inclusive) and 1 (exclusive) for use in operations such as:
 	 *  - The selection of active children for any `lotto` nodes.
 	 *  - The selection of durations for `wait` nodes,

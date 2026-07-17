@@ -3,9 +3,7 @@ import type { Agent } from "./Agent";
 // 约定：形如 { $: "prop" } 的对象代表“取 agent[prop]”的引用
 export type AgentPropertyReference = { $: string };
 
-export function isAgentPropertyReference(
-	value: unknown,
-): value is AgentPropertyReference {
+export function isAgentPropertyReference(value: unknown): value is AgentPropertyReference {
 	if (typeof value !== "object" || value === null) {
 		return false;
 	}
@@ -45,15 +43,37 @@ export function resolveAgentNonNegativeInteger(
 		}
 	}
 
-	if (
-		typeof resolved !== "number" ||
-		Number.isNaN(resolved) ||
-		Math.floor(resolved) !== resolved
-	) {
+	if (typeof resolved !== "number" || Number.isNaN(resolved) || Math.floor(resolved) !== resolved) {
 		throw new Error(`${label} 必须是整数`);
 	}
 	if (resolved < 0) {
 		throw new Error(`${label} 必须是非负整数`);
+	}
+
+	return resolved;
+}
+
+export function resolveAgentNonNegativeNumber(
+	agent: Agent,
+	value: number | AgentPropertyReference,
+	label: string,
+	resolveProperty?: (path: string) => unknown,
+): number {
+	let resolved: unknown;
+	if (typeof value === "number") {
+		resolved = value;
+	} else {
+		resolved = resolveAgentProperty(agent, value.$);
+		if (resolved === undefined && resolveProperty) {
+			resolved = resolveProperty(value.$);
+		}
+	}
+
+	if (typeof resolved !== "number" || !Number.isFinite(resolved)) {
+		throw new Error(`${label} 必须是有限数值`);
+	}
+	if (resolved < 0) {
+		throw new Error(`${label} 必须是非负数`);
 	}
 
 	return resolved;

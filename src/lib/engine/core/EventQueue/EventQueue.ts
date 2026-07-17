@@ -18,7 +18,7 @@ import type { Checkpointable, EventQueueCheckpoint } from "../types";
 import type { EventQueueConfig, QueueEvent, QueueEventType, QueueSnapshot, QueueStats } from "./types";
 
 const log = createLogger("EventQueue");
-log.setLevel(1)
+log.setLevel(1);
 
 export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 	/** 事件队列配置 */
@@ -398,11 +398,8 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 					type: e.type,
 					processed: e.processed,
 					targetMemberId: e.targetMemberId,
-					fsmEventType: e.fsmEventType,
+					fsmEvent: structuredClone(e.fsmEvent),
 				};
-				if (e.payload !== undefined) {
-					row.payload = structuredClone(e.payload);
-				}
 				events.push(row);
 			}
 		}
@@ -428,12 +425,9 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 				type: row.type as QueueEventType,
 				processed: row.processed,
 				targetMemberId: row.targetMemberId,
-				fsmEventType: row.fsmEventType,
+				fsmEvent: structuredClone(row.fsmEvent),
 				source: "未知来源",
 			};
-			if (row.payload !== undefined) {
-				e.payload = structuredClone(row.payload);
-			}
 			const list = this.buckets.get(e.executeAtMs) ?? [];
 			list.push(e);
 			this.buckets.set(e.executeAtMs, list);

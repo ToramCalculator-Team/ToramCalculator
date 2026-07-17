@@ -80,9 +80,7 @@ export class Action extends Leaf {
 				return;
 			} else {
 				// Promise 被拒绝，这不太好。
-				throw new Error(
-					`action function '${this.actionName}' promise rejected with '${value}'`,
-				);
+				throw new Error(`action function '${this.actionName}' promise rejected with '${value}'`);
 			}
 		}
 
@@ -103,15 +101,11 @@ export class Action extends Leaf {
 			// - 此动作节点的完成状态。
 			// - 返回完成节点状态的 Promise。
 			// - 如果节点应保持运行状态，则为 undefined。
-			actionFunctionResult = actionFuncInvoker(this.actionArguments) as
-				| CompleteState
-				| Promise<CompleteState>;
+			actionFunctionResult = actionFuncInvoker(this.actionArguments) as CompleteState | Promise<CompleteState>;
 		} catch (error) {
 			// 抛出了未捕获的错误。
 			if (error instanceof Error) {
-				throw new Error(
-					`action function '${this.actionName}' threw: ${error.stack}`,
-				);
+				throw new Error(`action function '${this.actionName}' threw: ${error.stack}`);
 			} else {
 				throw new Error(`action function '${this.actionName}' threw: ${error}`);
 			}

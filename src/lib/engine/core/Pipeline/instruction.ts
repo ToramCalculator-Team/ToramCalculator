@@ -54,4 +54,3 @@ export {
 	serializeInstruction,
 	serializePipeline,
 } from "./InstructionParser";
-

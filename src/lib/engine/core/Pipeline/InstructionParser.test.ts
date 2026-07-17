@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import type { PipelineInstruction } from "./instruction";
 import {
 	parseInstruction,
 	parseOperand,
@@ -7,6 +6,7 @@ import {
 	serializeInstruction,
 	serializePipeline,
 } from "./InstructionParser";
+import type { PipelineInstruction } from "./instruction";
 
 describe("parseOperand", () => {
 	it("将整数字面量解析为 number", () => {
@@ -181,9 +181,7 @@ describe("serializeInstruction", () => {
 	});
 
 	it("含空白的字符串操作数用 JSON 引号包裹", () => {
-		expect(serializeInstruction({ target: "r", op: "select", a: "c", b: "yes no" })).toBe(
-			'r = c select "yes no"',
-		);
+		expect(serializeInstruction({ target: "r", op: "select", a: "c", b: "yes no" })).toBe('r = c select "yes no"');
 	});
 
 	it("空 target 报错", () => {

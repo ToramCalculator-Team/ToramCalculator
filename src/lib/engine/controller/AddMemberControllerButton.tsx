@@ -11,10 +11,10 @@ import { createSignal, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Select } from "~/components/controls/select";
 import { Icons } from "~/components/icons";
-import type { MemberSerializeData } from "../core/World/Member/Member";
+import type { MemberSnapshot } from "../core/World/Member/Member";
 
 interface AddMemberControllerButtonProps {
-	unboundMembers: () => MemberSerializeData[];
+	unboundMembers: () => MemberSnapshot[];
 	onAdd: (memberId: string) => Promise<void>;
 }
 

@@ -110,4 +110,3 @@ export class ControlBindingManager {
 		log.info("🧹 清空所有控制器绑定");
 	}
 }
-

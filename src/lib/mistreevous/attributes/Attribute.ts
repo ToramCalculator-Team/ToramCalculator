@@ -9,9 +9,7 @@ export type AttributeDetails = {
 /**
  * A base node attribute.
  */
-export abstract class Attribute<
-	TAttributeDetails extends AttributeDetails = AttributeDetails,
-> {
+export abstract class Attribute<TAttributeDetails extends AttributeDetails = AttributeDetails> {
 	/**
 	 * @param type The node attribute type.
 	 * @param args The array of attribute arguments.

@@ -1,7 +1,6 @@
-import type { EngineCharacter, EngineCharacterSkill, EngineSkillVariant } from "../../../../engineScenarioSchema";
-
 import type { ExpressionContext } from "~/lib/engine/core/JSProcessor/types";
 import type { StageData } from "~/lib/engine/core/Pipeline/stageEnv";
+import type { EngineCharacter, EngineCharacterSkill, EngineSkillVariant } from "../../../../engineScenarioSchema";
 
 export interface PlayerSkillLifecycle {
 	chanting: number;

@@ -126,6 +126,7 @@ export const createPreviewBtRuntime = (memberType: MemberType): PreviewBtRuntime
 		registerThreshold: () => undefined,
 		unregisterThresholdBySource: () => undefined,
 		notifyDomainEvent: () => undefined,
+		submitControlInput: () => undefined,
 		send: () => undefined,
 	};
 

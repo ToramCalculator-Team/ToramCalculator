@@ -1,18 +1,17 @@
 import type { MemberType } from "@db/schema/enums";
-import type { BtContext } from "~/lib/engine/core/World/Member/runtime/BehaviourTree/BtManagerEnv";
 import { CommonActionPool } from "~/lib/engine/core/World/Member/runtime/Agent/CommonActions";
 import { CommonConditionPool } from "~/lib/engine/core/World/Member/runtime/Agent/CommonCondition";
-import type { ActionPool, ConditionPool } from "~/lib/engine/core/World/Member/runtime/Agent/type";
+import { DefaultMemberSharedRuntime } from "~/lib/engine/core/World/Member/runtime/types";
 import { MobActionPool } from "~/lib/engine/core/World/Member/types/Mob/Agents/Actions";
 import { MobConditionPool } from "~/lib/engine/core/World/Member/types/Mob/Agents/Condition";
 import { PlayerActionPool } from "~/lib/engine/core/World/Member/types/Player/Agents/Actions";
 import { PlayerConditionPool } from "~/lib/engine/core/World/Member/types/Player/Agents/Condition";
-import { DefaultMemberSharedRuntime } from "~/lib/engine/core/World/Member/runtime/types";
+import type { MdslCallablePool } from "./mdslIntellisense";
 
 export type MdslProfileConfig = {
 	memberType: MemberType;
-	actionPool: ActionPool<BtContext & Record<string, unknown>>;
-	conditionPool: ConditionPool<BtContext & Record<string, unknown>>;
+	actionPool: MdslCallablePool;
+	conditionPool: MdslCallablePool;
 	propertyObject: Record<string, unknown>;
 };
 
@@ -51,8 +50,6 @@ export const getMdslProfileConfig = (memberType: MemberType): MdslProfileConfig 
 					...DefaultMemberSharedRuntime,
 				},
 			};
-		case "Partner":
-		case "Mercenary":
 		default:
 			// Partner/Mercenary 回退到 Common
 			return {

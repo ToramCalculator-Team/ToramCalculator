@@ -2,10 +2,7 @@ import type { Agent, GlobalFunction } from "./Agent";
 import { buildRootNode } from "./BehaviourTreeBuilder";
 import type { RootNodeDefinition } from "./BehaviourTreeDefinition";
 import { isNullOrUndefined } from "./BehaviourTreeDefinitionUtilities";
-import {
-	validateDefinition,
-	validateJSONDefinition,
-} from "./BehaviourTreeDefinitionValidator";
+import { validateDefinition, validateJSONDefinition } from "./BehaviourTreeDefinitionValidator";
 import type { BehaviourTreeOptions } from "./BehaviourTreeOptions";
 import { Lookup } from "./Lookup";
 import { convertMDSLToJSON } from "./mdsl/MDSLDefinitionParser";
@@ -53,9 +50,7 @@ export class BehaviourTree {
 
 		// 再次检查我们是否确实在定义验证过程中获得了 json 定义。
 		if (!json) {
-			throw new Error(
-				"expected json definition to be returned as part of successful definition validation response",
-			);
+			throw new Error("expected json definition to be returned as part of successful definition validation response");
 		}
 
 		try {
@@ -93,10 +88,7 @@ export class BehaviourTree {
 	 */
 	public step(): void {
 		// 如果根节点已经执行完成，那么我们需要重置它。
-		if (
-			this._rootNode.getState() === State.SUCCEEDED ||
-			this._rootNode.getState() === State.FAILED
-		) {
+		if (this._rootNode.getState() === State.SUCCEEDED || this._rootNode.getState() === State.FAILED) {
 			this._rootNode.reset();
 		}
 
@@ -127,10 +119,7 @@ export class BehaviourTree {
 	 * @param name 要注册的函数或子树的名称。
 	 * @param value 要注册的函数或子树定义。
 	 */
-	static register(
-		name: string,
-		value: GlobalFunction | string | RootNodeDefinition,
-	) {
+	static register(name: string, value: GlobalFunction | string | RootNodeDefinition) {
 		// 我们要注册一个动作/条件/守卫/回调函数吗？
 		if (typeof value === "function") {
 			Lookup.setFunc(name, value);
@@ -145,35 +134,24 @@ export class BehaviourTree {
 			try {
 				rootNodeDefinitions = convertMDSLToJSON(value);
 			} catch (exception) {
-				throw new Error(
-					`error registering definition, invalid MDSL: ${(exception as Error).message}`,
-				);
+				throw new Error(`error registering definition, invalid MDSL: ${(exception as Error).message}`);
 			}
 
 			// 此函数应该只使用包含单个未命名根节点的定义来调用。
-			if (
-				rootNodeDefinitions.length !== 1 ||
-				typeof rootNodeDefinitions[0].id !== "undefined"
-			) {
-				throw new Error(
-					"error registering definition: expected a single unnamed root node",
-				);
+			if (rootNodeDefinitions.length !== 1 || typeof rootNodeDefinitions[0].id !== "undefined") {
+				throw new Error("error registering definition: expected a single unnamed root node");
 			}
 
 			try {
 				// 我们应该验证子树，因为我们不希望通过查找提供无效的子树。
-				const { succeeded, errorMessage } = validateJSONDefinition(
-					rootNodeDefinitions[0],
-				);
+				const { succeeded, errorMessage } = validateJSONDefinition(rootNodeDefinitions[0]);
 
 				// 验证是否失败？
 				if (!succeeded) {
 					throw new Error(errorMessage);
 				}
 			} catch (exception) {
-				throw new Error(
-					`error registering definition: ${(exception as Error).message}`,
-				);
+				throw new Error(`error registering definition: ${(exception as Error).message}`);
 			}
 
 			// 一切看起来都没问题，注册子树。
@@ -190,17 +168,13 @@ export class BehaviourTree {
 					throw new Error(errorMessage);
 				}
 			} catch (exception) {
-				throw new Error(
-					`error registering definition: ${(exception as Error).message}`,
-				);
+				throw new Error(`error registering definition: ${(exception as Error).message}`);
 			}
 
 			// 一切看起来都没问题，注册子树。
 			Lookup.setSubtree(name, value);
 		} else {
-			throw new Error(
-				"unexpected value, expected string mdsl definition, root node json definition or function",
-			);
+			throw new Error("unexpected value, expected string mdsl definition, root node json definition or function");
 		}
 	}
 

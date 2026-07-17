@@ -2,7 +2,7 @@ import type { InstructionOp, Operand, PipelineInstruction, PipelineInstructionSt
 
 /**
  * 指令解析/序列化。
- * 
+ *
  * 支持的输入形式：
  * - 规范形式：`target = a op b`
  * - 一元函数形式：`target = floor(x)` / `target = abs(x)` / `target = not(x)`
@@ -147,4 +147,3 @@ export function serializeInstruction(instr: PipelineInstruction): PipelineInstru
 export function serializePipeline(instrs: readonly PipelineInstruction[]): string {
 	return instrs.map(serializeInstruction).join("\n");
 }
-

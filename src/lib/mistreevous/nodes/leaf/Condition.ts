@@ -32,11 +32,7 @@ export class Condition extends Leaf {
 	 */
 	protected onUpdate(agent: Agent): void {
 		// 尝试获取条件函数的调用器。
-		const conditionFuncInvoker = Lookup.getFuncInvoker(
-			agent,
-			this.conditionName,
-			this.options.resolveProperty,
-		);
+		const conditionFuncInvoker = Lookup.getFuncInvoker(agent, this.conditionName, this.options.resolveProperty);
 
 		// 条件函数应该已定义。
 		if (conditionFuncInvoker === null) {
@@ -53,13 +49,9 @@ export class Condition extends Leaf {
 		} catch (error) {
 			// 抛出了未捕获的错误。
 			if (error instanceof Error) {
-				throw new Error(
-					`condition function '${this.conditionName}' threw: ${error.stack}`,
-				);
+				throw new Error(`condition function '${this.conditionName}' threw: ${error.stack}`);
 			} else {
-				throw new Error(
-					`condition function '${this.conditionName}' threw: ${error}`,
-				);
+				throw new Error(`condition function '${this.conditionName}' threw: ${error}`);
 			}
 		}
 

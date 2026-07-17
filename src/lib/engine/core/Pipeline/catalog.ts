@@ -21,4 +21,3 @@ export interface PipelineCatalog {
 	/** 枚举所有基础管线名称。 */
 	getNames(): readonly PipelineName[];
 }
-

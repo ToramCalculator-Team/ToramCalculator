@@ -15,11 +15,13 @@
  * - 状态同步：统一管理所有对外通信
  */
 
-import { z } from "zod/v4";
+import { createLogger } from "~/lib/Logger";
 import type { ControlBindingManager } from "../Controller/ControlBindingManager";
 import type { GameEngine } from "../GameEngine";
-import { createLogger } from "~/lib/Logger";
+import type { PlayerControlEvent } from "../World/Member/types/Player/PlayerStateMachine";
+
 const log = createLogger("MsgRouter");
+const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 // ==================== 消息路由核心类型定义 ====================
 
@@ -33,44 +35,30 @@ const log = createLogger("MsgRouter");
  * 4. 防御操作事件 - 格挡、闪躲 (Player 特有)
  * 5. 目标管理事件 - 切换目标
  */
-export const IntentMessageTypeEnum = z.enum([
-	// === 生命周期事件 ===
-	"复活",
+type IntentRouting = {
+	controllerId: string;
+	timestamp: number;
+};
 
-	// === 移动控制事件 ===
-	"移动",
-	"停止移动",
+export type RoutedMemberControlEvent = PlayerControlEvent & IntentRouting;
 
-	// === 技能使用事件 ===
-	"使用技能",
+export type ControllerBindingIntent =
+	| {
+			id: string;
+			type: "绑定控制对象";
+			controllerId: string;
+			timestamp: number;
+			data: { memberId: string };
+	  }
+	| {
+			id: string;
+			type: "解绑控制对象";
+			controllerId: string;
+			timestamp: number;
+			data: Record<string, never>;
+	  };
 
-	// === 防御操作事件 (Player 特有) ===
-	"使用格挡",
-	"结束格挡",
-	"使用闪躲",
-
-	// === 目标管理事件 ===
-	"切换目标",
-
-	// === 控制器绑定管理事件 ===
-	"绑定控制对象",
-	"解绑控制对象",
-]);
-
-export type IntentMessageType = z.output<typeof IntentMessageTypeEnum>;
-
-/**
- * 意图消息Schema
- */
-export const IntentMessageSchema = z.object({
-	id: z.string(),
-	type: IntentMessageTypeEnum,
-	controllerId: z.string(), // 控制器ID，通过 binding 解析到 memberId
-	timestamp: z.number(),
-	data: z.any(),
-});
-
-export type IntentMessage = z.output<typeof IntentMessageSchema>;
+export type IntentMessage = RoutedMemberControlEvent | ControllerBindingIntent;
 
 /**
  * 消息处理结果
@@ -143,15 +131,6 @@ export class MessageRouter {
 			this.stats.totalMessagesProcessed++;
 			this.stats.lastProcessedTimestamp = Date.now();
 
-			// 验证消息格式
-			if (!this.validateMessage(message)) {
-				return {
-					success: false,
-					message: "消息格式无效",
-					error: "Invalid message format",
-				};
-			}
-
 			// 处理控制器绑定管理意图
 			if (message.type === "绑定控制对象") {
 				try {
@@ -176,14 +155,15 @@ export class MessageRouter {
 						message: `控制器 ${message.controllerId} 已绑定到成员 ${memberId}`,
 						error: undefined,
 					};
-				} catch (error: any) {
+				} catch (error) {
 					this.stats.failedMessages++;
 					log.warn(`MessageRouter: 绑定控制对象失败:`, error);
+					const message = errorMessage(error);
 
 					return {
 						success: false,
-						message: `绑定控制对象失败: ${error.message}`,
-						error: error.message,
+						message: `绑定控制对象失败: ${message}`,
+						error: message,
 					};
 				}
 			}
@@ -199,14 +179,15 @@ export class MessageRouter {
 						message: `控制器 ${message.controllerId} 已解绑`,
 						error: undefined,
 					};
-				} catch (error: any) {
+				} catch (error) {
 					this.stats.failedMessages++;
 					log.warn(`MessageRouter: 解绑控制对象失败:`, error);
+					const message = errorMessage(error);
 
 					return {
 						success: false,
-						message: `解绑控制对象失败: ${error.message}`,
-						error: error.message,
+						message: `解绑控制对象失败: ${message}`,
+						error: message,
 					};
 				}
 			}
@@ -230,7 +211,7 @@ export class MessageRouter {
 				};
 			}
 
-			this.engine.dispatchMemberEvent(targetMember.id, message.type, message.data, 0, {
+			this.engine.dispatchMemberEvent(targetMember.id, message, 0, {
 				source: `message:${message.type}`,
 			});
 			this.stats.successfulMessages++;
@@ -240,33 +221,16 @@ export class MessageRouter {
 				message: `消息已分发到 ${targetMember.id}`,
 				error: undefined,
 			};
-		} catch (error: any) {
+		} catch (error) {
 			this.stats.failedMessages++;
 			log.error("MessageRouter: 分发消息时发生错误:", error);
 
 			return {
 				success: false,
 				message: "分发消息时发生内部错误",
-				error: error.message,
+				error: errorMessage(error),
 			};
 		}
-	}
-
-	/**
-	 * 批量处理消息
-	 *
-	 * @param messages 消息数组
-	 * @returns 处理结果数组
-	 */
-	async processMessages(messages: IntentMessage[]): Promise<MessageProcessResult[]> {
-		const results: MessageProcessResult[] = [];
-
-		for (const message of messages) {
-			const result = await this.processMessage(message);
-			results.push(result);
-		}
-
-		return results;
 	}
 
 	/**
@@ -298,34 +262,5 @@ export class MessageRouter {
 			lastProcessedTimestamp: 0,
 			successRate: "0%",
 		};
-	}
-
-	/**
-	 * 获取支持的消息类型
-	 *
-	 * @returns 支持的消息类型数组
-	 */
-	getSupportedMessageTypes(): IntentMessageType[] {
-		// 返回所有支持的事件类型（基于当前的 IntentMessageTypeEnum）
-		return IntentMessageTypeEnum.options;
-	}
-
-	/**
-	 * 检查是否支持指定消息类型
-	 *
-	 * @param messageType 消息类型
-	 * @returns 是否支持
-	 */
-	supportsMessageType(messageType: IntentMessageType): boolean {
-		return this.getSupportedMessageTypes().includes(messageType);
-	}
-
-	// ==================== 私有方法 ====================
-
-	/**
-	 * 验证消息格式
-	 */
-	private validateMessage(message: IntentMessage): boolean {
-		return IntentMessageSchema.safeParse(message).success;
 	}
 }

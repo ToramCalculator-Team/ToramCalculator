@@ -1,4 +1,9 @@
-import type { EngineCharacter, EngineCharacterSkill, EngineMob, EngineSkillVariant } from "../../../engineScenarioSchema";
+import type {
+	EngineCharacter,
+	EngineCharacterSkill,
+	EngineMob,
+	EngineSkillVariant,
+} from "../../../engineScenarioSchema";
 import type { MobAttrKey } from "../types/Mob/MobAttrSchema";
 import type { PlayerAttrKey } from "../types/Player/PlayerAttrSchema";
 

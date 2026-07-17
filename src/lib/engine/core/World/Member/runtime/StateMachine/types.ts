@@ -21,15 +21,52 @@ export interface MemberUpdateEvent extends EventObject {
 	type: "update";
 	timestamp: number;
 }
-export interface MemberCustomEvent extends EventObject {
-	type: string;
-	data?: Record<string, unknown>;
+export interface MemberDeathEvent extends EventObject {
+	type: "死亡通知";
+	data?: unknown;
 }
-export type MemberFSMEvent =
+
+export interface MemberReviveEvent extends EventObject {
+	id: string;
+	type: "复活";
+	data: Record<string, never>;
+}
+export interface MemberMoveEvent extends EventObject {
+	id: string;
+	type: "移动";
+	data: { position: { x: number; y: number } };
+}
+export interface MemberStopMoveEvent extends EventObject {
+	id: string;
+	type: "停止移动";
+	data: Record<string, never>;
+}
+export interface MemberUseSkillEvent extends EventObject {
+	id: string;
+	type: "使用技能";
+	data: { skillId: string };
+}
+export interface MemberSelectTargetEvent extends EventObject {
+	id: string;
+	type: "切换目标";
+	data: { targetId: string };
+}
+
+/** 成员状态机公开接纳的公共控制事件；Player/Mob 专属事件通过 MemberFSMEvent 泛型显式组合。 */
+export type MemberControlEvent =
+	| MemberReviveEvent
+	| MemberMoveEvent
+	| MemberStopMoveEvent
+	| MemberUseSkillEvent
+	| MemberSelectTargetEvent;
+
+export type MemberFSMEvent<TSpecificEvent extends EventObject = never> =
 	| MemberCreateEvent // 创建事件
 	| MemberDestroyEvent // 销毁事件
 	| MemberUpdateEvent // 更新事件
-	| MemberCustomEvent; // 自定义事件
+	| MemberDeathEvent // 统一致死转换
+	| MemberControlEvent
+	| TSpecificEvent;
 
 /**
  * 成员状态机类型
@@ -61,7 +98,7 @@ export type MemberStateMachine<
 // 状态机执行动作时需要的外部能力
 export interface MemberStateMachineEnv<
 	TExtraAttrKey extends string,
-	TFSMEvent extends MemberFSMEvent,
+	TFSMEvent extends EventObject,
 	TRuntime extends MemberSharedRuntime<TExtraAttrKey>,
 > {
 	id: string;

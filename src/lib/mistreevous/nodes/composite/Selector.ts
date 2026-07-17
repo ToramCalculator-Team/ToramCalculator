@@ -31,10 +31,7 @@ export class Selector extends Composite {
 		// 遍历此节点的所有子节点。
 		for (const child of this.children) {
 			// 如果子节点从未被更新或正在运行，则需要立即更新它。
-			if (
-				child.getState() === State.READY ||
-				child.getState() === State.RUNNING
-			) {
+			if (child.getState() === State.READY || child.getState() === State.RUNNING) {
 				// 更新此节点的子节点。
 				child.update(agent);
 			}

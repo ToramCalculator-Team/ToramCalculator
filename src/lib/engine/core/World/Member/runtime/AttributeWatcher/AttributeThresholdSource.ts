@@ -151,12 +151,7 @@ export class AttributeThresholdSource<TAttrKey extends string = string> {
 		}
 	}
 
-	private fire(
-		entry: ThresholdEntry,
-		oldValue: number,
-		newValue: number,
-		direction: "rising" | "falling",
-	): void {
+	private fire(entry: ThresholdEntry, oldValue: number, newValue: number, direction: "rising" | "falling"): void {
 		if (!this.emit) {
 			log.warn(`attr.crossed 派发失败：emitter 未注入 (source=${entry.sourceId}, path=${entry.path})`);
 			return;

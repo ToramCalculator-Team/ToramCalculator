@@ -1,8 +1,9 @@
 /**
  * 玩家数据配置
  */
-import type { EngineCharacter } from "../../../../engineScenarioSchema";
+
 import type { MainHandType, SubHandType } from "@db/schema/enums";
+import type { EngineCharacter } from "../../../../engineScenarioSchema";
 import { MemberBaseNestedSchema, MemberBaseStructure } from "../../MemberBaseSchema";
 import type {
 	ConvertToNestedSchema,

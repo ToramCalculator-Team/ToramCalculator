@@ -1,31 +1,30 @@
-import { z } from "zod/v4";
 import {
-	SimulatorSchema,
-	TeamSchema,
-	MemberSchema,
-	PlayerSchema,
+	ArmorSchema,
+	AvatarSchema,
+	BehaviorTreeSchema,
+	CharacterRegistletSchema,
 	CharacterSchema,
-	PlayerWeaponSchema,
+	CharacterSkillSchema,
+	ComboSchema,
+	ComboStepSchema,
+	ConsumableSchema,
+	CrystalSchema,
+	MemberSchema,
+	MobSchema,
+	OptionSchema,
 	PlayerArmorSchema,
 	PlayerOptionSchema,
 	PlayerSpecialSchema,
-	CrystalSchema,
-	WeaponSchema,
-	ArmorSchema,
-	OptionSchema,
-	SpecialSchema,
-	CharacterSkillSchema,
+	PlayerWeaponSchema,
+	RegistletSchema,
 	SkillSchema,
 	SkillVariantSchema,
-	BehaviorTreeSchema,
-	CharacterRegistletSchema,
-	RegistletSchema,
-	AvatarSchema,
-	ConsumableSchema,
-	ComboSchema,
-	ComboStepSchema,
-	MobSchema,
+	SpecialSchema,
+	TeamSchema,
+	WeaponSchema,
 } from "@db/generated/zod/index";
+import { MemberBTSchema } from "@db/schema/jsons";
+import { z } from "zod/v4";
 
 /**
  * 引擎场景数据契约（性能优先的精确裁剪版）。
@@ -102,7 +101,7 @@ const EngineComboSchema = ComboSchema.extend({
 	content: z.array(ComboStepSchema),
 });
 
-// ---- character：基础 schema 含 lv/str/.../modifiers/cooking/actions 标量 ----
+// ---- character：基础 schema 含 lv/str/.../modifiers/cooking 标量 ----
 const EngineCharacterSchema = CharacterSchema.extend({
 	weapon: EnginePlayerWeaponSchema,
 	subWeapon: EnginePlayerWeaponSchema,
@@ -116,36 +115,36 @@ const EngineCharacterSchema = CharacterSchema.extend({
 	combos: z.array(EngineComboSchema),
 });
 
-// ---- player：只需 useIn + characters，库存(pets/weapons/...)不取 ----
-const EnginePlayerSchema = PlayerSchema.extend({
-	characters: z.array(EngineCharacterSchema),
-}).nullable();
-
 // ---- mob：探针仅触达 baseLv/maxhp/physicalDefense/magicalDefense/actions，基础 schema 已含 ----
 const EngineMobSchema = MobSchema.nullable();
 
-// ---- member：按 type 取 player 或 mob；partner/mercenary 未实现，不取 ----
-const EngineMemberSchema = MemberSchema.extend({
-	player: EnginePlayerSchema,
+// ---- Engine 输入：Member 已由上层解析出唯一行为来源 ----
+export const EngineMemberSchema = MemberSchema.extend({
+	character: EngineCharacterSchema.nullable(),
 	mob: EngineMobSchema,
+	resolvedBehavior: MemberBTSchema,
 });
 
 const EngineTeamSchema = TeamSchema.extend({
 	members: z.array(EngineMemberSchema),
 });
 
-export const EngineSimulatorSchema = SimulatorSchema.extend({
+export const EngineScenarioSchema = z.object({
+	randomSeed: z.number().int(),
+	logicHz: z.number().positive(),
+	primaryMemberId: z.string(),
+	/** 场景装配时直接写入 Member 运行时状态，不生成控制输入或行动录制。 */
+	initialTargetIds: z.record(z.string().min(1), z.string().min(1)).default({}),
 	campA: z.array(EngineTeamSchema),
 	campB: z.array(EngineTeamSchema),
 });
 
-export type EngineSimulator = z.output<typeof EngineSimulatorSchema>;
+export type EngineScenario = z.output<typeof EngineScenarioSchema>;
 
 // ---- 引擎内部各层类型（替换 XxxWithRelations 注解用）----
 // 经 .nullable() 包裹的层导出非空版本，供 null 检查后的引擎代码使用。
 export type EngineTeam = z.output<typeof EngineTeamSchema>;
 export type EngineMember = z.output<typeof EngineMemberSchema>;
-export type EnginePlayer = NonNullable<z.output<typeof EnginePlayerSchema>>;
 export type EngineMob = NonNullable<z.output<typeof EngineMobSchema>>;
 export type EngineCharacter = z.output<typeof EngineCharacterSchema>;
 export type EngineCharacterSkill = z.output<typeof EngineCharacterSkillSchema>;
@@ -155,5 +154,3 @@ export type EnginePlayerWeapon = NonNullable<z.output<typeof EnginePlayerWeaponS
 export type EnginePlayerArmor = NonNullable<z.output<typeof EnginePlayerArmorSchema>>;
 export type EnginePlayerOption = NonNullable<z.output<typeof EnginePlayerOptionSchema>>;
 export type EnginePlayerSpecial = NonNullable<z.output<typeof EnginePlayerSpecialSchema>>;
-
-

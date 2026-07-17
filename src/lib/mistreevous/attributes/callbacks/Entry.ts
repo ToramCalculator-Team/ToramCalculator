@@ -20,10 +20,7 @@ export class Entry extends Callback {
 	 */
 	callAgentFunction = (agent: Agent) => {
 		// Attempt to get the invoker for the callback function.
-		const callbackFuncInvoker = Lookup.getFuncInvoker(
-			agent,
-			this.getFunctionName(),
-		);
+		const callbackFuncInvoker = Lookup.getFuncInvoker(agent, this.getFunctionName());
 
 		// The callback function should be defined.
 		if (callbackFuncInvoker === null) {

@@ -143,15 +143,11 @@ export class Repeat extends Decorator {
 		} else if (this.iterationsMin !== null && this.iterationsMax !== null) {
 			// We will be picking a random iteration count between a min and max iteration count, if the optional 'random'
 			// behaviour tree function option is defined then we will be using that, otherwise we will fall back to using Math.random.
-			const random =
-				typeof this.options.random === "function"
-					? this.options.random
-					: Math.random;
+			const random = typeof this.options.random === "function" ? this.options.random : Math.random;
 
 			// Pick a random iteration count between a min and max iteration count.
 			this.targetIterationCount = Math.floor(
-				random() * (this.iterationsMax - this.iterationsMin + 1) +
-					this.iterationsMin,
+				random() * (this.iterationsMax - this.iterationsMin + 1) + this.iterationsMin,
 			);
 		} else {
 			this.targetIterationCount = null;

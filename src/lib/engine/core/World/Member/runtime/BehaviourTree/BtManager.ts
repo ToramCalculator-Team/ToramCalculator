@@ -1,11 +1,12 @@
+import type { EventObject } from "xstate";
 import { createLogger } from "~/lib/Logger";
 import { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import type { BehaviourTreeOptions } from "~/lib/mistreevous/BehaviourTreeOptions";
 import { State } from "~/lib/mistreevous/State";
 import type { BtManagerCheckpoint, Checkpointable } from "../../../../types";
-import type { MemberFSMEvent } from "../StateMachine/types";
 import { ModifierType } from "../StatContainer/StatContainer";
+import type { MemberFSMEvent } from "../StateMachine/types";
 import type { MemberSharedRuntime } from "../types";
 import type { MemberBtManagerEnv } from "./BtManagerEnv";
 
@@ -18,13 +19,12 @@ type BtEntry = {
 export class BtManager<
 	TExtraAttrKey extends string = never,
 	TContext extends MemberSharedRuntime<TExtraAttrKey> = MemberSharedRuntime<TExtraAttrKey>,
-	TFSMEvent extends MemberFSMEvent = MemberFSMEvent,
+	TFSMEvent extends EventObject = MemberFSMEvent,
 > implements Checkpointable<BtManagerCheckpoint>
 {
 	private activeEffectEntry: BtEntry | undefined;
 	private parallelEntries: Map<string, BtEntry> = new Map();
 	private btOptions: BehaviourTreeOptions = {};
-	private _activeEffectDoneCallback: (() => void) | null = null;
 
 	constructor(
 		private env: MemberBtManagerEnv<TFSMEvent, TExtraAttrKey, TContext>,
@@ -39,23 +39,26 @@ export class BtManager<
 		this.btOptions = { ...this.btOptions, random: randomFn };
 	}
 
-	onActiveEffectDone(callback: () => void): void {
-		this._activeEffectDoneCallback = callback;
-	}
-
 	private createBtOptions(): BehaviourTreeOptions {
 		return {
 			...this.btOptions,
 			getDeltaTimeMs: () => this.env.getDeltaTimeMs(),
+			getCurrentTimeMs: () => this.env.getCapabilities().services.getCurrentTimeMs(),
 			resolveProperty: (path: string) => {
 				const stat = this.env.getCapabilities().statContainer;
-				if (stat.hasKey(path)) return stat.getValue(path as any);
+				if (stat.hasKey(path)) {
+					// hasKey 已在运行时确认动态 MDSL 路径属于当前 StatContainer；类型系统无法从 boolean 推导泛型键。
+					return stat.getValue(path as Parameters<typeof stat.getValue>[0]);
+				}
 				return undefined;
 			},
 		};
 	}
 
-	private buildExecutionContext(agent?: string, localContext?: Record<string, unknown>): TContext & Record<string, unknown> {
+	private buildExecutionContext(
+		agent?: string,
+		localContext?: Record<string, unknown>,
+	): TContext & Record<string, unknown> {
 		const executionContext = Object.create(this.env.getContext()) as TContext & Record<string, unknown>;
 		// 注入 per-tree 本地上下文（如 skill 信息），优先级高于共享 runtime
 		if (localContext) {
@@ -143,13 +146,9 @@ export class BtManager<
 			const state = this.activeEffectEntry.bt.getState();
 			if (state === State.SUCCEEDED || state === State.FAILED) {
 				this.activeEffectEntry = undefined;
-				if (this._activeEffectDoneCallback) {
-					const cb = this._activeEffectDoneCallback;
-					this._activeEffectDoneCallback = null;
-					cb();
-				} else {
-					this.env.send({ type: "技能执行完成" } as TFSMEvent);
-				}
+				// 技能生命周期必须在同一个引擎 Tick 内同步收敛，连续快进不得依赖 Promise 微任务。
+				// BtManager 的通用 FSM 泛型无法枚举 Player 专属完成事件；active effect 只由 Player 技能路径注册。
+				this.env.send({ type: "技能执行完成" } as TFSMEvent);
 			} else {
 				this.activeEffectEntry.bt.step();
 			}
@@ -209,13 +208,18 @@ export class BtManager<
 	}
 
 	hasRunningParallelBt(): boolean {
-		for (const entry of this.parallelEntries.values()) {
-			const state = entry.bt.getState();
-			if (state !== State.SUCCEEDED && state !== State.FAILED) {
-				return true;
-			}
+		for (const name of this.parallelEntries.keys()) {
+			if (this.isParallelBtRunning(name)) return true;
 		}
 		return false;
+	}
+
+	/** 只观察具名并行行为，供停止策略区分 member-flow 与长期 Buff 等其他并行树。 */
+	isParallelBtRunning(name: string): boolean {
+		const entry = this.parallelEntries.get(name);
+		if (!entry) return false;
+		const state = entry.bt.getState();
+		return state !== State.SUCCEEDED && state !== State.FAILED;
 	}
 
 	hasBuff(name: string): boolean {

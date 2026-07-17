@@ -202,9 +202,8 @@ function validateCalls(document: EditableBtDocument, registry: MdslIntellisenseR
 		}
 		const requiredCount = getRequiredParamCount(spec);
 		if (args.length < requiredCount || args.length > spec.params.length) {
-			const expected = requiredCount === spec.params.length
-				? `${spec.params.length}`
-				: `${requiredCount}~${spec.params.length}`;
+			const expected =
+				requiredCount === spec.params.length ? `${spec.params.length}` : `${requiredCount}~${spec.params.length}`;
 			diagnostics.push({
 				severity: "error",
 				code: `${kind}.arg.count`,

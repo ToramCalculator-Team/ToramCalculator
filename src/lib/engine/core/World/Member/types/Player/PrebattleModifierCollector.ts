@@ -112,7 +112,7 @@ function collectPrebattleAttachmentModifiers<TAttrKey extends string>(
 	memberData: EngineMember,
 	activeCharacter?: EngineCharacter | null,
 ) {
-	const character = activeCharacter ?? memberData.player?.characters?.[0] ?? null;
+	const character = activeCharacter ?? memberData.character;
 	const all: {
 		attribute: TAttrKey;
 		modifierType: ModifierType;

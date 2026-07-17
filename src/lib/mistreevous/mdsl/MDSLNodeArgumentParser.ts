@@ -35,10 +35,7 @@ function parseCommaSeparatedArgs(
 	return args;
 }
 
-function parseSingleArgument(
-	tokens: string[],
-	placeholders: StringLiteralPlaceholders,
-): AnyArgument {
+function parseSingleArgument(tokens: string[], placeholders: StringLiteralPlaceholders): AnyArgument {
 	if (!tokens.length) {
 		throw new Error("unexpected end of tokens while parsing argument");
 	}
@@ -56,10 +53,7 @@ function parseSingleArgument(
 	return getArgumentDefinition(token, placeholders);
 }
 
-function parseObjectFields(
-	tokens: string[],
-	placeholders: StringLiteralPlaceholders,
-): Record<string, AnyArgument> {
+function parseObjectFields(tokens: string[], placeholders: StringLiteralPlaceholders): Record<string, AnyArgument> {
 	const fields: Record<string, AnyArgument> = {};
 	while (tokens.length && tokens[0] !== "}") {
 		if (Object.keys(fields).length > 0) {

@@ -1,11 +1,11 @@
 import type { PipelineName } from "./catalog";
 import { type CompiledPipeline, compilePipeline } from "./InstructionCompiler";
-import type { PipelineInstruction } from "./instruction"; 
+import type { PipelineInstruction } from "./instruction";
 import type { OverlayOperation, PipelineOverlay } from "./overlay";
 import type { PipelineCatalog } from "./PipelineCatalog";
 import type { ResolvedPipeline } from "./resolver";
 import type { StageData, StageEnv } from "./stageEnv";
- 
+
 /**
  * 职责：
  * - 从 Catalog 取基础指令序列
@@ -78,7 +78,10 @@ function applyOverlayOperation(
 	trace: readonly { target: string; source: "base" | "overlay"; sourceId?: string }[],
 	op: OverlayOperation,
 	sourceId: string,
-): { instructions: PipelineInstruction[]; trace: Array<{ target: string; source: "base" | "overlay"; sourceId?: string }> } {
+): {
+	instructions: PipelineInstruction[];
+	trace: Array<{ target: string; source: "base" | "overlay"; sourceId?: string }>;
+} {
 	let next = cloneInstrs(instructions);
 	let nextTrace = [...trace];
 
@@ -157,4 +160,3 @@ function hashInstructions(pipelineName: string, instrs: readonly PipelineInstruc
 	// 转成无符号 32bit
 	return `p:${pipelineName}:h:${(h >>> 0).toString(16)}`;
 }
-

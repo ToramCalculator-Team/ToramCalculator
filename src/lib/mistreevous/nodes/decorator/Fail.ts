@@ -15,11 +15,7 @@ export class Fail extends Decorator {
 	 * @param options The behaviour tree options.
 	 * @param child The child node.
 	 */
-	constructor(
-		attributes: Attribute[],
-		options: BehaviourTreeOptions,
-		child: Node,
-	) {
+	constructor(attributes: Attribute[], options: BehaviourTreeOptions, child: Node) {
 		super("fail", attributes, options, child);
 	}
 
@@ -29,10 +25,7 @@ export class Fail extends Decorator {
 	 */
 	protected onUpdate(agent: Agent): void {
 		// If the child has never been updated or is running then we will need to update it now.
-		if (
-			this.child.getState() === State.READY ||
-			this.child.getState() === State.RUNNING
-		) {
+		if (this.child.getState() === State.READY || this.child.getState() === State.RUNNING) {
 			this.child.update(agent);
 		}
 

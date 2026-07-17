@@ -1,7 +1,7 @@
+import type { EventObject } from "xstate";
 import { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import { State } from "~/lib/mistreevous/State";
 import { ModifierType } from "../StatContainer/StatContainer";
-import type { MemberFSMEvent } from "../StateMachine/types";
 import type { MemberSharedRuntime } from "../types";
 import type { BtContext, MemberBtManagerEnv } from "./BtManagerEnv";
 
@@ -13,7 +13,7 @@ export type BtContextFactoryWarning = {
 };
 
 export type CreateBtContextOptions<
-	TFSMEvent extends MemberFSMEvent,
+	TFSMEvent extends EventObject,
 	TExtraAttrKey extends string = string,
 	TContext extends MemberSharedRuntime<TExtraAttrKey> = MemberSharedRuntime<TExtraAttrKey>,
 > = {
@@ -42,12 +42,10 @@ export type CreateBtContextResult<
  * 不再做 getter 代理 —— runtime 本身就是 BT 的 this。
  */
 export function createBtContext<
-	TFSMEvent extends MemberFSMEvent,
+	TFSMEvent extends EventObject,
 	TExtraAttrKey extends string,
 	TContext extends MemberSharedRuntime<TExtraAttrKey>,
->(
-	options: CreateBtContextOptions<TFSMEvent, TExtraAttrKey, TContext>,
-): CreateBtContextResult<TExtraAttrKey, TContext> {
+>(options: CreateBtContextOptions<TFSMEvent, TExtraAttrKey, TContext>): CreateBtContextResult<TExtraAttrKey, TContext> {
 	const { env, btBindings = {}, agent, onWarning } = options;
 	const warnings: BtContextFactoryWarning[] = [];
 	const btContext = env.getContext();
@@ -91,7 +89,7 @@ function mergeBtBindings<TExtraAttrKey extends string>(
  * 已存在的 key 跳过并 warn。
  */
 function mergeAgentMembers<
-	TFSMEvent extends MemberFSMEvent,
+	TFSMEvent extends EventObject,
 	TExtraAttrKey extends string,
 	TContext extends MemberSharedRuntime<TExtraAttrKey>,
 >(

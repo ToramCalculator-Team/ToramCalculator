@@ -39,13 +39,9 @@ export class Until extends Guard {
 		} catch (error) {
 			// An uncaught error was thrown.
 			if (error instanceof Error) {
-				throw new Error(
-					`guard condition function '${this.condition}' threw: ${error.stack}`,
-				);
+				throw new Error(`guard condition function '${this.condition}' threw: ${error.stack}`);
 			} else {
-				throw new Error(
-					`guard condition function '${this.condition}' threw: ${error}`,
-				);
+				throw new Error(`guard condition function '${this.condition}' threw: ${error}`);
 			}
 		}
 

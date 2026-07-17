@@ -15,11 +15,7 @@ export class Parallel extends Composite {
 	 * @param options The behaviour tree options.
 	 * @param children The child nodes.
 	 */
-	constructor(
-		attributes: Attribute[],
-		options: BehaviourTreeOptions,
-		children: Node[],
-	) {
+	constructor(attributes: Attribute[], options: BehaviourTreeOptions, children: Node[]) {
 		super("parallel", attributes, options, children);
 	}
 
@@ -31,10 +27,7 @@ export class Parallel extends Composite {
 		// Iterate over all of the children of this node, updating any that aren't in a settled state.
 		for (const child of this.children) {
 			// If the child has never been updated or is running then we will need to update it now.
-			if (
-				child.getState() === State.READY ||
-				child.getState() === State.RUNNING
-			) {
+			if (child.getState() === State.READY || child.getState() === State.RUNNING) {
 				// Update the child of this node.
 				child.update(agent);
 			}

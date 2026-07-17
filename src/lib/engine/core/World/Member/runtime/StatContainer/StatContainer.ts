@@ -15,32 +15,48 @@ import { DependencyGraph } from "./DependencyGraph";
 import type { AttributeExpression, NestedSchema } from "./SchemaTypes";
 import { SchemaFlattener } from "./SchemaTypes";
 import { StatContainerASTCompiler } from "./StatContainerAST";
-import type { AttributeChangeListener, DataStorage, ModifierSource } from "./StatContainerTypes";
+import type {
+	AttributeChangeListener,
+	AttributeSnapshot,
+	DataStorage,
+	ModifierSource,
+	StatModifierVisitor,
+	StatSchemaVisitor,
+} from "./StatContainerTypes";
 import { ModifierType } from "./StatContainerTypes";
 
 export { AttributeFlags, BitFlags } from "./BitFlags";
 export { DependencyGraph } from "./DependencyGraph";
 export type {
 	AttributeChangeListener,
+	AttributeSnapshot,
+	AttributeSnapshotLeaf,
 	DataStorage,
 	DataStorages,
 	Modifier,
 	ModifierSource,
 	ModifierSourceRef,
+	StatIndexedReadSource,
 	StatModifierKind,
 	StatModifierParam,
+	StatModifierVisitor,
+	StatSchemaVisitor,
 } from "./StatContainerTypes";
 export {
+	AttributeSnapshotLeafSchema,
+	AttributeSnapshotSchema,
 	dynamicTotalValue,
 	isDataStorageType,
+	ModifierSnapshotEntrySchema,
 	ModifierSourceRefKindSchema,
+	ModifierSourceRefSchema,
+	ModifierSourceSchema,
 	ModifierSourceTypeSchema,
 	ModifierType,
 	StatModifierKindSchema,
 	StatModifierParamSchema,
 } from "./StatContainerTypes";
 
-// 见 docs/decisions/0006-stat-container-same-frame-dirty-convergence.md
 const log = createLogger("StatContainer");
 
 type PendingValueChange = {
@@ -739,6 +755,74 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 	 */
 	public exportFlatValues(): Record<T, number> {
 		return this.getValues();
+	}
+
+	/**
+	 * 暴露与消费者无关的只读索引化状态。
+	 *
+	 * 该边界允许状态记录和调试工具直接读取连续数组与来源 Map，避免先构造
+	 * `AttributeSnapshot` 对象。调用方不能保存或修改 visitor 收到的 ModifierSource 引用。
+	 */
+	public prepareIndexedRead(): void {
+		this.flushDirtyValues();
+	}
+
+	public getAttributeCount(): number {
+		return this.indexToKey.length;
+	}
+
+	public visitAttributeSchema(visitor: StatSchemaVisitor): void {
+		for (let index = 0; index < this.indexToKey.length; index++) {
+			const path = this.indexToKey[index];
+			visitor(index, path, this.displayNames.get(path) ?? path, this.expressionStrings.get(path) ?? "");
+		}
+	}
+
+	public getBaseValueAt(index: number): number {
+		const key = this.indexToKey[index];
+		if (key === undefined) throw new Error(`属性索引越界: ${index}`);
+		return this.getBaseValue(key);
+	}
+
+	public getValueAt(index: number): number {
+		if (index < 0 || index >= this.values.length) throw new Error(`属性索引越界: ${index}`);
+		return this.values[index];
+	}
+
+	public getModifierCountAt(index: number, type: ModifierType): number {
+		return this.modifierSources.get(type)?.get(index)?.size ?? 0;
+	}
+
+	public visitModifiersAt(index: number, type: ModifierType, visitor: StatModifierVisitor): void {
+		const entries = this.modifierSources.get(type)?.get(index);
+		if (!entries) return;
+		for (const entry of entries.values()) visitor(entry.source, entry.value);
+	}
+
+	/**
+	 * 直接从扁平索引导出线程协议属性快照，避免权威 Tick 热路径先构造嵌套展示树再递归展开。
+	 */
+	public exportAttributeSnapshot(): AttributeSnapshot {
+		if (this.hasDirtyValues() || this.pendingNotifications.length > 0) {
+			this.updateDirtyValues();
+		}
+		const details = this.exportModifierDetails();
+		const result: AttributeSnapshot = {};
+		for (let index = 0; index < this.indexToKey.length; index++) {
+			const key = this.indexToKey[index];
+			const detail = details[key];
+			const baseValue = this.getBaseValue(key);
+			result[key] = {
+				displayName: this.displayNames.get(key) ?? key,
+				expression: this.expressionStrings.get(key) ?? "",
+				baseValue: Number.isFinite(baseValue) ? baseValue : 0,
+				baseSources: detail.baseSources,
+				actValue: Number.isFinite(this.values[index]) ? this.values[index] : 0,
+				static: detail.static,
+				dynamic: detail.dynamic,
+			};
+		}
+		return result;
 	}
 
 	/**

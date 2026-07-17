@@ -146,19 +146,13 @@ export interface FlattenedSchema<T extends string> {
  * 直接使用DSL路径，不再进行小驼峰转换
  * 支持嵌套属性的点号分隔路径
  */
-export type ExtractAttrPaths<
-	T extends NestedSchema,
-	Path extends string = "",
-> = {
+export type ExtractAttrPaths<T extends NestedSchema, Path extends string = ""> = {
 	[K in keyof T]: T[K] extends SchemaAttribute
 		? Path extends ""
 			? K & string
 			: `${Path}.${K & string}`
 		: T[K] extends NestedSchema
-			? ExtractAttrPaths<
-					T[K],
-					Path extends "" ? K & string : `${Path}.${K & string}`
-				>
+			? ExtractAttrPaths<T[K], Path extends "" ? K & string : `${Path}.${K & string}`>
 			: never;
 }[keyof T];
 
@@ -173,10 +167,7 @@ export type SchemaToAttrType<T extends NestedSchema> = ExtractAttrPaths<T>;
  * 包含所有属性键和对应的number类型
  * 用于类型安全的属性值存储
  */
-export type SchemaToAttrRecord<T extends NestedSchema> = Record<
-	SchemaToAttrType<T>,
-	number
->;
+export type SchemaToAttrRecord<T extends NestedSchema> = Record<SchemaToAttrType<T>, number>;
 
 // ============================== Schema工具函数 ==============================
 
@@ -282,11 +273,6 @@ export const SchemaFlattener = {
 	 * @returns 如果对象是SchemaAttribute则返回true，否则返回false
 	 */
 	isSchemaAttribute(obj: any): obj is SchemaAttribute {
-		return (
-			obj &&
-			typeof obj === "object" &&
-			typeof obj.displayName === "string" &&
-			typeof obj.expression === "string"
-		);
+		return obj && typeof obj === "object" && typeof obj.displayName === "string" && typeof obj.expression === "string";
 	},
 };

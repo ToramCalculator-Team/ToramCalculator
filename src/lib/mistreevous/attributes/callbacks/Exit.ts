@@ -20,16 +20,9 @@ export class Exit extends Callback {
 	 * @param isSuccess Whether the decorated node was left with a success state.
 	 * @param isAborted Whether the decorated node was aborted.
 	 */
-	callAgentFunction = (
-		agent: Agent,
-		isSuccess: boolean,
-		isAborted: boolean,
-	) => {
+	callAgentFunction = (agent: Agent, isSuccess: boolean, isAborted: boolean) => {
 		// Attempt to get the invoker for the callback function.
-		const callbackFuncInvoker = Lookup.getFuncInvoker(
-			agent,
-			this.getFunctionName(),
-		);
+		const callbackFuncInvoker = Lookup.getFuncInvoker(agent, this.getFunctionName());
 
 		// The callback function should be defined.
 		if (callbackFuncInvoker === null) {
@@ -39,9 +32,6 @@ export class Exit extends Callback {
 		}
 
 		// Call the callback function
-		callbackFuncInvoker([
-			{ succeeded: isSuccess, aborted: isAborted },
-			...this.args,
-		]);
+		callbackFuncInvoker([{ succeeded: isSuccess, aborted: isAborted }, ...this.args]);
 	};
 }

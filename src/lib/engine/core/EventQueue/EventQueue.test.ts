@@ -10,7 +10,7 @@ const makeEvent = (id: string, executeAtMs: number, over: Partial<QueueEvent> = 
 	type: "member_fsm_event",
 	processed: false,
 	targetMemberId: "m1",
-	fsmEventType: "TICK",
+	fsmEvent: { type: "TICK" },
 	source: "test",
 	...over,
 });
@@ -38,11 +38,11 @@ describe("EventQueue — 插入与大小一致性", () => {
 	});
 
 	it("相同 id 重复插入保持幂等（先移除旧的），size 不增长", () => {
-		q.insert(makeEvent("a", 100, { fsmEventType: "OLD" }));
-		q.insert(makeEvent("a", 200, { fsmEventType: "NEW" }));
+		q.insert(makeEvent("a", 100, { fsmEvent: { type: "OLD" } }));
+		q.insert(makeEvent("a", 200, { fsmEvent: { type: "NEW" } }));
 		expect(q.size()).toBe(1);
 		// 新事件覆盖旧事件，且改了执行时间桶。
-		expect(q.get("a")?.fsmEventType).toBe("NEW");
+		expect(q.get("a")?.fsmEvent.type).toBe("NEW");
 		expect(q.get("a")?.executeAtMs).toBe(200);
 		expect(q.getDue(300)).toHaveLength(1);
 	});
@@ -180,11 +180,8 @@ describe("EventQueue — clear", () => {
 describe("EventQueue — checkpoint 往返", () => {
 	it("captureCheckpoint / restoreCheckpoint 保持事件与统计", () => {
 		const src = new EventQueue({}, () => 0);
-		src.insertBatch([
-			makeEvent("a", 100, { payload: { dmg: 10 } }),
-			makeEvent("b", 200),
-			makeEvent("c", 100),
-		]);
+		const damageEvent = { type: "受到攻击", data: { dmg: 10 } };
+		src.insertBatch([makeEvent("a", 100, { fsmEvent: damageEvent }), makeEvent("b", 200), makeEvent("c", 100)]);
 		src.markAsProcessed("a");
 
 		const cp = src.captureCheckpoint();
@@ -196,7 +193,7 @@ describe("EventQueue — checkpoint 往返", () => {
 
 		expect(dst.size()).toBe(3);
 		expect(dst.get("a")?.processed).toBe(true);
-		expect(dst.get("a")?.payload).toEqual({ dmg: 10 });
+		expect(dst.get("a")?.fsmEvent).toEqual({ type: "受到攻击", data: { dmg: 10 } });
 		expect(dst.getDue(500).map((e) => e.id)).toEqual(["a", "c", "b"]);
 		expect(dst.getStats().totalProcessed).toBe(1);
 	});
@@ -208,13 +205,13 @@ describe("EventQueue — checkpoint 往返", () => {
 		expect(cp.events.map((e) => e.id)).toEqual(["early", "late"]);
 	});
 
-	it("payload 深拷贝隔离，修改源不影响 checkpoint", () => {
+	it("FSM 事件深拷贝隔离，修改源不影响 checkpoint", () => {
 		const src = new EventQueue({}, () => 0);
-		const payload = { nested: { v: 1 } };
-		src.insert(makeEvent("a", 100, { payload }));
+		const fsmEvent = { type: "测试事件", data: { nested: { v: 1 } } };
+		src.insert(makeEvent("a", 100, { fsmEvent }));
 		const cp = src.captureCheckpoint();
-		payload.nested.v = 999;
-		expect((cp.events[0].payload as { nested: { v: number } }).nested.v).toBe(1);
+		fsmEvent.data.nested.v = 999;
+		expect((cp.events[0].fsmEvent as typeof fsmEvent).data.nested.v).toBe(1);
 	});
 });
 

@@ -31,10 +31,7 @@ export class Sequence extends Composite {
 		// Iterate over all of the children of this node.
 		for (const child of this.children) {
 			// If the child has never been updated or is running then we will need to update it now.
-			if (
-				child.getState() === State.READY ||
-				child.getState() === State.RUNNING
-			) {
+			if (child.getState() === State.READY || child.getState() === State.RUNNING) {
 				// Update the child of this node.
 				child.update(agent);
 			}

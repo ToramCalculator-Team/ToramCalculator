@@ -39,5 +39,3 @@ declare global {
 	 */
 	var safeAPI: SimulatorSafeAPI | undefined;
 }
-
-

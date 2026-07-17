@@ -1,7 +1,7 @@
 import type { PipelineName } from "./catalog";
 import type { PipelineInstruction } from "./instruction";
 import type { PipelineOverlay } from "./overlay";
- 
+
 /**
  * Resolver 相关类型。
  */
@@ -22,4 +22,3 @@ export interface ResolvedPipeline {
 export interface PipelineResolverService {
 	resolve(pipelineName: PipelineName, overlays: readonly PipelineOverlay[]): ResolvedPipeline;
 }
-

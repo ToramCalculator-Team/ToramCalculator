@@ -174,8 +174,7 @@ export abstract class Node {
 	/**
 	 * Gets the node attributes.
 	 */
-	getAttributes = () =>
-		Object.values(this.attributes).filter((attribute) => !!attribute);
+	getAttributes = () => Object.values(this.attributes).filter((attribute) => !!attribute);
 
 	/**
 	 * Sets the guard path to evaluate as part of a node update.
@@ -247,25 +246,16 @@ export abstract class Node {
 
 			// If this node is now in a 'SUCCEEDED' or 'FAILED' state then call the EXIT for this node if it exists.
 			if (this.is(State.SUCCEEDED) || this.is(State.FAILED)) {
-				this.attributes.exit?.callAgentFunction(
-					agent,
-					this.is(State.SUCCEEDED),
-					false,
-				);
+				this.attributes.exit?.callAgentFunction(agent, this.is(State.SUCCEEDED), false);
 			}
 		} catch (error) {
 			// If the error is a GuardUnsatisfiedException then we need to determine if this node is the source.
-			if (
-				error instanceof GuardUnsatisifedException &&
-				error.isSourceNode(this)
-			) {
+			if (error instanceof GuardUnsatisifedException && error.isSourceNode(this)) {
 				// Abort the current node.
 				this.abort(agent);
 
 				// Any node that is the source of an abort will move to a resolved state.
-				this.setState(
-					error.guard.succeedOnAbort ? State.SUCCEEDED : State.FAILED,
-				);
+				this.setState(error.guard.succeedOnAbort ? State.SUCCEEDED : State.FAILED);
 			} else {
 				throw error;
 			}

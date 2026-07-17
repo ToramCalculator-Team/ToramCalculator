@@ -1,3 +1,4 @@
+import type { EventObject } from "xstate";
 import { z } from "zod/v4";
 
 /** 队列事件类型枚举 */
@@ -20,12 +21,10 @@ export interface QueueEvent {
 	processed: boolean;
 	/** 目标成员ID */
 	targetMemberId: string;
-	/** FSM事件类型 */
-	fsmEventType: string;
+	/** 已由生产者构造完成的 FSM 事件 */
+	fsmEvent: EventObject;
 	/** 事件来源 */
 	source: string;
-	/** 事件数据（完全开放） */
-	payload?: unknown;
 }
 
 /**

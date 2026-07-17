@@ -29,7 +29,7 @@ export interface FormationPose {
 /** 公式只需成员 id 与队内顺序，刻意用最小输入类型，避免耦合庞大的 MemberWithRelations。 */
 export interface FormationMember {
 	id: string;
-	sequence: number;
+	formationOrder: number;
 }
 
 export interface FormationTeam {
@@ -80,8 +80,13 @@ function pickInnerOuter(
 }
 
 /** 队内成员绕锚点小同心圆分布，朝向与队伍一致（teamYaw）。 */
-function placeTeamMembers(team: FormationTeam, anchor: FormationVec3, teamYaw: number, out: Map<string, FormationPose>): void {
-	const ordered = [...team.members].sort((a, b) => a.sequence - b.sequence);
+function placeTeamMembers(
+	team: FormationTeam,
+	anchor: FormationVec3,
+	teamYaw: number,
+	out: Map<string, FormationPose>,
+): void {
+	const ordered = [...team.members].sort((a, b) => a.formationOrder - b.formationOrder);
 	const m = ordered.length;
 	if (m === 0) return;
 	if (m === 1) {
@@ -126,13 +131,18 @@ function placeInnerCamp(inner: FormationTeam[], origin: FormationVec3, out: Map<
 }
 
 /**
- * 外圈阵营：位置与内圈无关，全部成员（team→sequence 排序）在更大同心圆上等角分布，
+ * 外圈阵营：位置与内圈无关，全部成员（team→formationOrder 排序）在更大同心圆上等角分布，
  * 一律朝内（yaw=θ+π，指向原点）。
  */
-function placeOuterCamp(outer: FormationTeam[], origin: FormationVec3, innerReach: number, out: Map<string, FormationPose>): void {
+function placeOuterCamp(
+	outer: FormationTeam[],
+	origin: FormationVec3,
+	innerReach: number,
+	out: Map<string, FormationPose>,
+): void {
 	const flat: FormationMember[] = [];
 	for (const team of outer) {
-		for (const member of [...team.members].sort((a, b) => a.sequence - b.sequence)) flat.push(member);
+		for (const member of [...team.members].sort((a, b) => a.formationOrder - b.formationOrder)) flat.push(member);
 	}
 	const k = flat.length;
 	if (k === 0) return;
@@ -154,10 +164,7 @@ function placeOuterCamp(outer: FormationTeam[], origin: FormationVec3, innerReac
  * 计算全部成员的初始位姿。
  * @returns Map<memberId, { position, yaw }>
  */
-export function computeMemberFormation(
-	campA: FormationTeam[],
-	campB: FormationTeam[],
-): Map<string, FormationPose> {
+export function computeMemberFormation(campA: FormationTeam[], campB: FormationTeam[]): Map<string, FormationPose> {
 	const out = new Map<string, FormationPose>();
 	const origin: FormationVec3 = { x: 0, y: 0, z: 0 };
 	const { inner, outer } = pickInnerOuter(campA, campB);

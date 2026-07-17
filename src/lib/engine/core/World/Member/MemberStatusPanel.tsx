@@ -10,13 +10,11 @@
 import { createVirtualizer, type VirtualItem, type Virtualizer } from "@tanstack/solid-virtual";
 import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { type Accessor, createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import { type Accessor, createMemo, createSignal, For, onMount, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import { useOverlay } from "~/lib/overlay/OverlayContext";
-import { useEngine } from "../../thread/EngineContext";
-import type { EngineRPC } from "../../thread/protocol";
-import type { MemberSerializeData } from "./Member";
+import type { MemberSnapshot } from "./Member";
 import { type DataStorage, isDataStorageType, type ModifierSource } from "./runtime/StatContainer/StatContainer";
 
 // ============================== 组件实现 ==============================
@@ -435,83 +433,11 @@ export const VirtualStatsRenderer = (props: { data?: object }) => {
 	);
 };
 
-export function MemberStatusPanel(props: { controllerId?: string; member: Accessor<MemberSerializeData | null> }) {
-	const engine = useEngine();
-	const runtimeEngine = engine.simulatorEngine();
+export function MemberStatusPanel(props: { controllerId?: string; member: Accessor<MemberSnapshot | null> }) {
 	const overlay = useOverlay();
-
-	const [liveAttrs, setLiveAttrs] = createSignal<object | undefined>(undefined);
-	const [subViewId, setSubViewId] = createSignal<string | null>(null);
-
-	const selectedMemberData = createMemo(() => {
-		return liveAttrs() ?? props.member()?.attrs;
-	});
-	const [displayDetail, setDisplayDetail] = createSignal(false);
+	const selectedMemberData = createMemo(() => props.member()?.attrs);
+	const [, setDisplayDetail] = createSignal(false);
 	const [activeTab, setActiveTab] = createSignal<"attrs" | "buffs">("attrs");
-
-	const handleDebugViewFrame = (data: { engineId: string; frame: unknown }) => {
-		const currentViewId = subViewId();
-		if (!currentViewId) return;
-		const evt = data.frame as { viewId?: unknown; data?: unknown };
-		if (evt && evt.viewId === currentViewId && evt.data && typeof evt.data === "object") {
-			setLiveAttrs(evt.data as object);
-		}
-	};
-
-	createEffect(() => {
-		const listener = handleDebugViewFrame as (payload: { engineId: string; frame: unknown }) => void;
-		runtimeEngine?.on("debug_view_frame", listener);
-		onCleanup(() => {
-			runtimeEngine?.off("debug_view_frame", listener);
-		});
-	});
-
-	createEffect(() => {
-		const member = props.member();
-		const memberId = member?.id;
-		const controllerId = props.controllerId ?? "ui";
-		const shouldSubscribe =
-			displayDetail() && activeTab() === "attrs" && typeof memberId === "string" && memberId.length > 0;
-
-		const current = subViewId();
-		if (!shouldSubscribe) {
-			if (current) {
-				const rpc: EngineRPC = { type: "unsubscribe_debug_view", viewId: current };
-				runtimeEngine?.executeEngineRPC(rpc, "low").catch(console.error);
-				setSubViewId(null);
-				setLiveAttrs(undefined);
-			}
-			return;
-		}
-
-		if (!current) {
-			const rpc: EngineRPC = {
-				type: "subscribe_debug_view",
-				controllerId,
-				memberId,
-				viewType: "stat_container_export",
-				hz: 10,
-			};
-			runtimeEngine
-				?.executeEngineRPC(rpc, "low")
-				.then((res) => {
-					if (res?.success && res.data && typeof res.data === "object" && "viewId" in res.data) {
-						setSubViewId((res.data as { viewId: string }).viewId);
-					} else {
-						console.warn("订阅成员属性面板失败:", res?.error);
-					}
-				})
-				.catch(console.error);
-		}
-	});
-
-	onCleanup(() => {
-		const current = subViewId();
-		if (current) {
-			const rpc: EngineRPC = { type: "unsubscribe_debug_view", viewId: current };
-			runtimeEngine?.executeEngineRPC(rpc, "low").catch(console.error);
-		}
-	});
 
 	return (
 		<Show
