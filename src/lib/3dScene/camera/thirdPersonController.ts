@@ -1,8 +1,13 @@
-import { ArcRotateCamera, Vector3 } from "~/lib/babylon/runtime";
 import type { Scene } from "~/lib/babylon/runtime";
+import { type ArcRotateCamera, Vector3 } from "~/lib/babylon/runtime";
 import type { createRendererController } from "../RendererController";
-import { AnyCameraControlCmd, CameraFollowCmd, CameraSetAngleCmd, CameraSetDistanceCmd, CameraSetTargetCmd } from "./commands";
-
+import type {
+	AnyCameraControlCmd,
+	CameraFollowCmd,
+	CameraSetAngleCmd,
+	CameraSetDistanceCmd,
+	CameraSetTargetCmd,
+} from "./commands";
 
 // ==================== 相机状态 ====================
 
@@ -120,7 +125,6 @@ export class ThirdPersonCameraController {
 
 		// 把 state 应用到真实相机：恢复缺失的跟随与入场动画。
 		this.applyStateToCamera(deltaTime);
-
 	}
 
 	/**

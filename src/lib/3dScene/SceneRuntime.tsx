@@ -19,8 +19,10 @@ import {
 	Suspense,
 	useContext,
 } from "solid-js";
-import type { CharacterEquipmentSlot } from "~/shared/interaction/characterEquipment";
-import type { SimulationEngine } from "../engine/core/thread/SimulationEngine";
+import type { CharacterEquipmentSlot } from "~/machines/interface/characterEquipment";
+import type { SimulationRenderSource } from "../engine/core/thread/RendererProtocol";
+import type { WorldResourcePose } from "./contracts/worldContent";
+import type { CharacterWorldResource, WorldResource } from "./contracts/worldResource";
 
 export type SceneRuntimeMode = "booting" | "loading" | "idle" | "realtime" | "suspended" | "error";
 
@@ -31,7 +33,11 @@ export type ScreenPoint = {
 };
 
 export type RealtimeSceneConfig = {
-	engine: SimulationEngine;
+	renderSource: SimulationRenderSource;
+	/** 与当前 DesignCopy 同版本的静态视觉资源；逻辑引擎不再选择模型或外观。 */
+	worldResources: WorldResource[];
+	/** 设计态初始阵型；进入验证后由引擎动态位置覆盖。 */
+	initialWorldPoses: WorldResourcePose[];
 	followEntityId?: string;
 	activeControllerId?: string | null;
 	controllerIds?: string[];
@@ -64,11 +70,11 @@ export type SceneRuntimeContextValue = {
 	mode: () => SceneRuntimeMode;
 	acquireRealtimeSession: (config: RealtimeSceneConfig) => Promise<RealtimeSceneSession>;
 	/**
-	 * 申请把角色内容渲染进共享常驻场景，返回可释放 session。与 acquireRealtimeSession 同构：
+	 * 申请把已解析角色资源渲染进共享常驻场景，返回可释放 session。与 acquireRealtimeSession 同构：
 	 * 页面是内容来源的申请方，SceneRuntime 是不归任何页面所有的共享服务。
 	 * character/realtime 内容互斥，由 core sceneMachine 仲裁（新 acquire 自动释放旧来源）。
 	 */
-	acquireCharacterContent: (characterId: string) => Promise<CharacterContentSession>;
+	acquireCharacterContent: (resource: CharacterWorldResource) => Promise<CharacterContentSession>;
 	projectWorldToScreen: (position: { x: number; y: number; z: number }) => ScreenPoint | null;
 	// AUI snapshot 的场景投影端口。返回值只用于清理旧高亮。
 	// 见 docs/decisions/0021-aui-interface-state-machine.md
@@ -212,13 +218,13 @@ export function SceneRuntimeProvider(props: ParentProps<{ enabled: boolean }>) {
 			const api = await ensureCore();
 			return api.acquireRealtimeSession(config);
 		},
-		acquireCharacterContent: async (characterId) => {
+		acquireCharacterContent: async (resource) => {
 			if (!props.enabled) {
 				const sessionId = `disabled-character-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 				return createDisabledCharacterContentSession(sessionId);
 			}
 			const api = await ensureCore();
-			return api.acquireCharacterContent(characterId);
+			return api.acquireCharacterContent(resource);
 		},
 		projectWorldToScreen: (position) => coreApi?.projectWorldToScreen(position) ?? null,
 		highlightCharacterEquipment: (equipmentSlot) => {

@@ -21,6 +21,7 @@
  */
 
 import { type ActorRefFrom, assign, fromCallback, setup } from "xstate";
+import type { CharacterWorldResource } from "./contracts/worldResource";
 import type { RealtimeSceneConfig } from "./SceneRuntime";
 
 export type SceneContentSource = "none" | "character" | "realtime";
@@ -30,14 +31,14 @@ export type SceneMachineContext = {
 	config: RealtimeSceneConfig | null;
 	/** 当前内容来源；character/realtime 互斥，回到观察空场时为 none。 */
 	contentSource: SceneContentSource;
-	/** 当前角色内容的 characterId；contentSource==="character" 时有效，否则 null。 */
-	characterId: string | null;
+	/** 当前角色内容的完整静态资源；contentSource==="character" 时有效，否则 null。 */
+	characterResource: CharacterWorldResource | null;
 };
 
 export type SceneMachineEvent =
 	| { type: "READY" }
 	| { type: "ACQUIRE"; config: RealtimeSceneConfig }
-	| { type: "LOAD_CHARACTER"; characterId: string }
+	| { type: "LOAD_CHARACTER"; resource: CharacterWorldResource }
 	| { type: "RELEASE_CONTENT" }
 	| { type: "SETUP_DONE" }
 	| { type: "ANIM_DONE" }
@@ -47,12 +48,12 @@ export type SceneMachineEvent =
 /**
  * 注入给机器的 babylon 副作用回调。SceneRuntimeCore 实现这些，机器只负责按状态调用。
  * - setupRealtimeResources：建 rendererController/communication、应用 snapshot、预摆位相机。返回 Promise（含异步 snapshot）。
- * - teardownRealtimeResources：拆除上述资源、清理 realtimeRoot 子节点、相机输入 detach。
+ * - teardownRealtimeResources：拆除上述资源并关闭相机输入。
  * - runCameraTransition：用 babylon Animation 把相机补间到目标位（"enter" 飞入跟随位 / "leave" 飞回观察位），完成调用 onDone。返回取消函数。
  * - attachCameraInput / detachCameraInput：实时稳态启用 / 过渡期禁用鼠标输入。
  * - startFollow / stopFollow：让 ThirdPersonCameraController 开始 / 停止驱动相机跟随。
- * - setupCharacterContent：建角色内容（EntityFactory.createCharacter 加载模型、挂 characterRoot、播 IDLE）。返回 Promise。
- * - teardownCharacterContent：dispose characterRoot 子树、清角色内容句柄。
+ * - setupCharacterContent：通过统一 RendererController 投影角色静态资源。返回 Promise。
+ * - teardownCharacterContent：清空角色世界内容控制器。
  */
 export type SceneMachineDeps = {
 	setupRealtimeResources: (config: RealtimeSceneConfig) => Promise<void>;
@@ -66,7 +67,7 @@ export type SceneMachineDeps = {
 	detachCameraInput: () => void;
 	startFollow: (config: RealtimeSceneConfig | null) => void;
 	stopFollow: () => void;
-	setupCharacterContent: (characterId: string) => Promise<void>;
+	setupCharacterContent: (resource: CharacterWorldResource) => Promise<void>;
 	teardownCharacterContent: () => void;
 	onError: (error: unknown) => void;
 };
@@ -90,7 +91,7 @@ export const createSceneMachine = (deps: SceneMachineDeps) => {
 			resetContentContext: assign({
 				config: null,
 				contentSource: () => "none" as const,
-				characterId: () => null,
+				characterResource: () => null,
 			}),
 		},
 		actors: {
@@ -115,25 +116,27 @@ export const createSceneMachine = (deps: SceneMachineDeps) => {
 				};
 			}),
 			// 建角色内容：异步（含模型 HTTP 加载）。失败转 error。快速来回切换由 core 内 seq 失配丢弃。
-			setupCharacter: fromCallback<SceneMachineEvent, { characterId: string | null }>(({ sendBack, input }) => {
-				let cancelled = false;
-				if (!input.characterId) {
-					sendBack({ type: "FAIL" });
-					return () => {};
-				}
-				deps
-					.setupCharacterContent(input.characterId)
-					.then(() => {
-						if (!cancelled) sendBack({ type: "SETUP_DONE" });
-					})
-					.catch((error) => {
-						deps.onError(error);
-						if (!cancelled) sendBack({ type: "FAIL" });
-					});
-				return () => {
-					cancelled = true;
-				};
-			}),
+			setupCharacter: fromCallback<SceneMachineEvent, { resource: CharacterWorldResource | null }>(
+				({ sendBack, input }) => {
+					let cancelled = false;
+					if (!input.resource) {
+						sendBack({ type: "FAIL" });
+						return () => {};
+					}
+					deps
+						.setupCharacterContent(input.resource)
+						.then(() => {
+							if (!cancelled) sendBack({ type: "SETUP_DONE" });
+						})
+						.catch((error) => {
+							deps.onError(error);
+							if (!cancelled) sendBack({ type: "FAIL" });
+						});
+					return () => {
+						cancelled = true;
+					};
+				},
+			),
 			// 相机过渡动画：babylon Animation 跑完回 ANIM_DONE；exit 时取消。
 			cameraTransition: fromCallback<
 				SceneMachineEvent,
@@ -150,7 +153,7 @@ export const createSceneMachine = (deps: SceneMachineDeps) => {
 	return machineSetup.createMachine({
 		id: "scene",
 		initial: "loading",
-		context: { config: null, contentSource: "none", characterId: null },
+		context: { config: null, contentSource: "none", characterResource: null },
 		states: {
 			loading: {
 				on: { READY: "idle", FAIL: "error" },
@@ -167,7 +170,7 @@ export const createSceneMachine = (deps: SceneMachineDeps) => {
 					LOAD_CHARACTER: {
 						target: "loadingCharacter",
 						actions: machineSetup.assign({
-							characterId: ({ event }) => (event.type === "LOAD_CHARACTER" ? event.characterId : null),
+							characterResource: ({ event }) => (event.type === "LOAD_CHARACTER" ? event.resource : null),
 						}),
 					},
 				},
@@ -176,9 +179,19 @@ export const createSceneMachine = (deps: SceneMachineDeps) => {
 			loadingCharacter: {
 				invoke: {
 					src: "setupCharacter",
-					input: ({ context }) => ({ characterId: context.characterId }),
+					input: ({ context }) => ({ resource: context.characterResource }),
 				},
 				on: {
+					LOAD_CHARACTER: {
+						target: "loadingCharacter",
+						reenter: true,
+						actions: [
+							"teardownCharacter",
+							machineSetup.assign({
+								characterResource: ({ event }) => (event.type === "LOAD_CHARACTER" ? event.resource : null),
+							}),
+						],
+					},
 					SETUP_DONE: {
 						target: "character",
 						actions: machineSetup.assign({ contentSource: () => "character" as const }),
@@ -191,6 +204,16 @@ export const createSceneMachine = (deps: SceneMachineDeps) => {
 			character: {
 				on: {
 					RELEASE_CONTENT: "unloadingCharacter",
+					LOAD_CHARACTER: {
+						target: "loadingCharacter",
+						actions: [
+							"teardownCharacter",
+							machineSetup.assign({
+								contentSource: () => "none" as const,
+								characterResource: ({ event }) => (event.type === "LOAD_CHARACTER" ? event.resource : null),
+							}),
+						],
+					},
 					// 切到 realtime：先拆角色内容，再走 preparing（内容互斥）。
 					ACQUIRE: {
 						target: "preparing",
@@ -199,7 +222,7 @@ export const createSceneMachine = (deps: SceneMachineDeps) => {
 							machineSetup.assign({
 								config: ({ event }) => (event.type === "ACQUIRE" ? event.config : null),
 								contentSource: () => "none" as const,
-								characterId: () => null,
+								characterResource: () => null,
 							}),
 						],
 					},
@@ -213,7 +236,7 @@ export const createSceneMachine = (deps: SceneMachineDeps) => {
 					target: "idle",
 					actions: machineSetup.assign({
 						contentSource: () => "none" as const,
-						characterId: () => null,
+						characterResource: () => null,
 					}),
 				},
 			},

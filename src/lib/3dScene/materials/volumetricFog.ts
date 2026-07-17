@@ -8,13 +8,13 @@
 import type { MaterialDefines, Mesh, Nullable } from "~/lib/babylon/runtime";
 import {
 	Color3,
-	Engine,
-	Material,
+	type Engine,
+	type Material,
 	MaterialPluginBase,
-	type PBRMaterial,
 	PBRBaseMaterial,
+	type PBRMaterial,
 	RegisterMaterialPlugin,
-	Scene,
+	type Scene,
 	type SubMesh,
 	Vector3,
 } from "~/lib/babylon/runtime";
@@ -92,7 +92,7 @@ export class VolumetricFogPluginMaterial extends MaterialPluginBase {
 		return shaderType === "vertex"
 			? null
 			: {
-				CUSTOM_FRAGMENT_BEFORE_FRAGCOLOR: `
+					CUSTOM_FRAGMENT_BEFORE_FRAGCOLOR: `
             #ifdef VOLUMETRIC_FOG
               float volFogRadius2 = volFogRadius * volFogRadius;
               float distCamToPos = distance(vPositionW.xyz, vEyePosition.xyz);
@@ -118,7 +118,7 @@ export class VolumetricFogPluginMaterial extends MaterialPluginBase {
               }
             #endif
           `,
-			};
+				};
 	}
 }
 

@@ -8,27 +8,35 @@
  * - 实体状态通过命令模式更新，确保时序正确性。
  *
  * 本文件只做子系统组装；具体实现拆分在 content/ 下：
- * - entityTypes.ts：共享类型 + BuiltinAnimationType
+ * - entityTypes.ts：共享实体与动画系统类型
  * - CharacterAnimationController.ts：角色动画控制
  * - EntityFactory.ts：实体创建 + GLB 模型缓存
  * - CommandHandler.ts：渲染命令 → Babylon 操作 + 快照应用
  * - RenderSyncSystem.ts：physics → mesh 同步
  */
 
-import type { Scene } from "~/lib/babylon/runtime";
+import type { Scene, TransformNode } from "~/lib/babylon/runtime";
 import { createLogger } from "~/lib/Logger";
-import type { RendererCmd, RendererController, RenderSnapshot } from "../engine/core/thread/RendererProtocol";
+import type { RendererCmd, RenderSnapshot } from "../engine/core/thread/RendererProtocol";
 import { CommandHandler } from "./content/CommandHandler";
 import { EntityFactory } from "./content/EntityFactory";
 import type { EntityRuntime } from "./content/entityTypes";
 import { RenderSyncSystem } from "./content/RenderSyncSystem";
+import type { RendererController, WorldResourcePose } from "./contracts/worldContent";
+import type { WorldResource } from "./contracts/worldResource";
 
 const logger = createLogger("RenderController");
 logger.setLevel(0);
 
-export function createRendererController(scene: Scene): RendererController {
+export type RendererControllerOptions = {
+	contentRoot?: TransformNode;
+	/** Character 内容的短会话共享模型模板缓存，但每个会话仍拥有独立 controller 状态。 */
+	entityFactory?: EntityFactory;
+};
+
+export function createRendererController(scene: Scene, options: RendererControllerOptions = {}): RendererController {
 	const entities = new Map<string, EntityRuntime>();
-	const factory = new EntityFactory(scene);
+	const factory = options.entityFactory ?? new EntityFactory(scene, options.contentRoot);
 	const commandHandler = new CommandHandler(entities, factory, scene);
 	const renderSyncSystem = new RenderSyncSystem();
 
@@ -50,24 +58,15 @@ export function createRendererController(scene: Scene): RendererController {
 	 * 渲染帧更新 - 仅同步实体状态到渲染网格
 	 * 不进行物理计算，物理计算应该在GameEngine中完成
 	 */
-	function tick(dtSec: number): void {
+	function tick(_dtSec: number): void {
 		// 注意：这里不再进行物理计算，只同步渲染状态
 		renderSyncSystem.syncEntities(entities);
 	}
 
 	/** 销毁所有实体并清理资源 */
 	function dispose(): void {
+		commandHandler.clearWorldResources();
 		commandHandler.disposeAreaVisuals();
-		// 为每个实体发送销毁命令，复用现有逻辑
-		entities.forEach((entity, id) => {
-			commandHandler.handle({
-				type: "destroy",
-				entityId: id,
-				seq: Number.MAX_SAFE_INTEGER, // 使用最大序列号确保执行
-				ts: 0,
-			});
-		});
-		entities.clear();
 	}
 
 	function getEntityPose(id: string) {
@@ -87,15 +86,18 @@ export function createRendererController(scene: Scene): RendererController {
 		return commandHandler.applyRenderSnapshot(renderSnapshot);
 	}
 
-	return { send, tick, dispose, getEntityPose, applyRenderSnapshot };
+	function applyWorldResources(resources: WorldResource[], poses: WorldResourcePose[]): Promise<void> {
+		return commandHandler.applyWorldResources(resources, poses);
+	}
+
+	return { send, tick, dispose, getEntityPose, applyWorldResources, applyRenderSnapshot };
 }
 
 // ==================== 导出接口 ====================
-// 保持对外导出面不变：消费者仍可从本入口拿到工厂 / 动画控制器 / 类型 / 枚举。
+// 消费者可从本入口拿到工厂、动画控制器与共享类型。
 
 export { CharacterAnimationController } from "./content/CharacterAnimationController";
 export { EntityFactory } from "./content/EntityFactory";
-export { BuiltinAnimationType } from "./content/entityTypes";
 export type {
 	AnimationPlayRequest,
 	BaseEntityRuntime,

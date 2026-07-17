@@ -1,27 +1,15 @@
 /**
  * 渲染实体运行时类型（内容编排关注点）。
  *
- * 从 RendererController 拆出的共享类型：动画系统类型 + 实体运行时类型 + 内置动画枚举。
+ * 从 RendererController 拆出的共享类型：动画系统类型 + 实体运行时类型。
  * 各子系统（动画控制器 / 实体工厂 / 命令处理 / 渲染同步）共同引用本模块，避免相互直接耦合。
  */
 
 import type { AbstractMesh, AnimationGroup, DynamicTexture, Mesh, TransformNode, Vector3 } from "~/lib/babylon/runtime";
+import type { CharacterAnimationClips } from "../contracts/worldResource";
 import type { CharacterAnimationController } from "./CharacterAnimationController";
 
 // ==================== 动画系统类型 ====================
-
-/**
- * 内置动画类型 - GLB文件中包含的基础运动动画
- * 这些动画应该在character.glb模型文件中预定义
- */
-export enum BuiltinAnimationType {
-	IDLE = "idle",
-	WALK = "walk",
-	RUN = "run",
-	JUMP = "jump",
-	FALL = "fall",
-	LAND = "land",
-}
 
 /**
  * 自定义动画数据 - 从数据库获取的关键帧数据
@@ -108,6 +96,8 @@ export interface BaseEntityRuntime {
  */
 export interface CharacterEntityRuntime extends BaseEntityRuntime {
 	type: "character";
+	/** 语义动作到当前模型内嵌动画片段的映射，来自同版本 worldResources。 */
+	animationClips: CharacterAnimationClips;
 	/** GLB模型中的动画组 */
 	builtinAnimations: Map<string, AnimationGroup>;
 	/** 自定义动画（运行时生成） */
@@ -117,6 +107,9 @@ export interface CharacterEntityRuntime extends BaseEntityRuntime {
 	/** 动画控制器 */
 	animationController: CharacterAnimationController;
 }
+
+/** 创建动画控制器时的最小实体视图，解除实体与控制器之间的循环初始化。 */
+export type CharacterAnimationTarget = Omit<CharacterEntityRuntime, "animationController">;
 
 /**
  * 简单实体 - 球体等基础几何体

@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { createActor } from "xstate";
-import { createSceneMachine, type SceneMachineDeps } from "./sceneStateMachine";
+import { createDefaultCharacterWorldResource } from "./resources/defaultCharacterResource";
 import type { RealtimeSceneConfig } from "./SceneRuntime";
+import { createSceneMachine, type SceneMachineDeps } from "./sceneStateMachine";
 
 // ─── 测试桩 deps ──────────────────────────────────────────────────────────────
 // 机器只负责编排，所有 babylon 副作用经注入 deps；测试用同步可控的 promise 句柄替身。
@@ -67,16 +68,26 @@ const startIdle = (deps: SceneMachineDeps) => {
 	return actor;
 };
 
-const dummyConfig = { engine: {} as never } as RealtimeSceneConfig;
+const dummyConfig: RealtimeSceneConfig = { renderSource: {} as never, worldResources: [], initialWorldPoses: [] };
+const dummyCharacterResource = createDefaultCharacterWorldResource({
+	memberId: "char-1",
+	resourceId: "char-1",
+	displayName: "Character",
+});
+const secondCharacterResource = createDefaultCharacterWorldResource({
+	memberId: "char-2",
+	resourceId: "char-2",
+	displayName: "Second Character",
+});
 
 test("idle --LOAD_CHARACTER--> loadingCharacter --SETUP_DONE--> character", async () => {
 	const h = makeDeps();
 	const actor = startIdle(h.deps);
 	assert.equal(actor.getSnapshot().value, "idle");
 
-	actor.send({ type: "LOAD_CHARACTER", characterId: "char-1" });
+	actor.send({ type: "LOAD_CHARACTER", resource: dummyCharacterResource });
 	assert.equal(actor.getSnapshot().value, "loadingCharacter");
-	assert.equal(actor.getSnapshot().context.characterId, "char-1");
+	assert.equal(actor.getSnapshot().context.characterResource, dummyCharacterResource);
 	assert.ok(h.calls.includes("setupCharacterContent"));
 
 	h.resolveCharacter();
@@ -88,7 +99,7 @@ test("idle --LOAD_CHARACTER--> loadingCharacter --SETUP_DONE--> character", asyn
 test("character --RELEASE_CONTENT--> unloadingCharacter --> idle（teardown + 清 contentSource）", async () => {
 	const h = makeDeps();
 	const actor = startIdle(h.deps);
-	actor.send({ type: "LOAD_CHARACTER", characterId: "char-1" });
+	actor.send({ type: "LOAD_CHARACTER", resource: dummyCharacterResource });
 	h.resolveCharacter();
 	await flush();
 	assert.equal(actor.getSnapshot().value, "character");
@@ -97,14 +108,30 @@ test("character --RELEASE_CONTENT--> unloadingCharacter --> idle（teardown + �
 	// unloadingCharacter 的 always 立即转回 idle。
 	assert.equal(actor.getSnapshot().value, "idle");
 	assert.equal(actor.getSnapshot().context.contentSource, "none");
-	assert.equal(actor.getSnapshot().context.characterId, null);
+	assert.equal(actor.getSnapshot().context.characterResource, null);
 	assert.ok(h.calls.includes("teardownCharacterContent"));
+});
+
+test("loadingCharacter 接受新资源并抢占在途加载", async () => {
+	const h = makeDeps();
+	const actor = startIdle(h.deps);
+	actor.send({ type: "LOAD_CHARACTER", resource: dummyCharacterResource });
+	actor.send({ type: "LOAD_CHARACTER", resource: secondCharacterResource });
+
+	assert.equal(actor.getSnapshot().value, "loadingCharacter");
+	assert.equal(actor.getSnapshot().context.characterResource, secondCharacterResource);
+	assert.equal(h.calls.filter((call) => call === "setupCharacterContent").length, 2);
+	assert.ok(h.calls.includes("teardownCharacterContent"));
+
+	h.resolveCharacter();
+	await flush();
+	assert.equal(actor.getSnapshot().value, "character");
 });
 
 test("character --ACQUIRE--> 先拆角色内容再走 realtime（内容互斥）", async () => {
 	const h = makeDeps();
 	const actor = startIdle(h.deps);
-	actor.send({ type: "LOAD_CHARACTER", characterId: "char-1" });
+	actor.send({ type: "LOAD_CHARACTER", resource: dummyCharacterResource });
 	h.resolveCharacter();
 	await flush();
 	assert.equal(actor.getSnapshot().value, "character");
@@ -112,7 +139,7 @@ test("character --ACQUIRE--> 先拆角色内容再走 realtime（内容互斥）
 	actor.send({ type: "ACQUIRE", config: dummyConfig });
 	// 切到 realtime 路径：先 teardownCharacter，再 preparing。
 	assert.equal(actor.getSnapshot().value, "preparing");
-	assert.equal(actor.getSnapshot().context.characterId, null);
+	assert.equal(actor.getSnapshot().context.characterResource, null);
 	const teardownIdx = h.calls.indexOf("teardownCharacterContent");
 	const setupIdx = h.calls.indexOf("setupRealtimeResources");
 	assert.ok(teardownIdx >= 0 && setupIdx >= 0 && teardownIdx < setupIdx, "应先拆角色内容再建实时资源");
@@ -128,7 +155,7 @@ test("character --ACQUIRE--> 先拆角色内容再走 realtime（内容互斥）
 test("loadingCharacter 失败 --FAIL--> error，error 清理两类内容", async () => {
 	const h = makeDeps();
 	const actor = startIdle(h.deps);
-	actor.send({ type: "LOAD_CHARACTER", characterId: "char-1" });
+	actor.send({ type: "LOAD_CHARACTER", resource: dummyCharacterResource });
 	h.rejectCharacter(new Error("boom"));
 	await flush();
 	assert.equal(actor.getSnapshot().value, "error");

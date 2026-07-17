@@ -4,7 +4,7 @@
  * 负责创建不同类型的实体（角色、球体等）并管理GLB模型缓存。从 RendererController 拆出。
  */
 
-import type { AbstractMesh, AnimationGroup, Scene } from "~/lib/babylon/runtime";
+import type { AbstractMesh, AnimationGroup, Scene, TransformNode } from "~/lib/babylon/runtime";
 import {
 	Color3,
 	DynamicTexture,
@@ -15,19 +15,29 @@ import {
 	Vector3,
 } from "~/lib/babylon/runtime";
 import { createLogger } from "~/lib/Logger";
-import type { SpawnCmd } from "../../engine/core/thread/RendererProtocol";
+import type { CharacterWorldResource, MobWorldResource } from "../contracts/worldResource";
 import { CharacterAnimationController } from "./CharacterAnimationController";
-import { BuiltinAnimationType, type CharacterEntityRuntime, type SimpleEntityRuntime } from "./entityTypes";
+import type { CharacterAnimationTarget, CharacterEntityRuntime, SimpleEntityRuntime } from "./entityTypes";
 
 const logger = createLogger("RenderController");
 logger.setLevel(0);
 
+type CharacterModelTemplate = { meshes: AbstractMesh[]; animationGroups: AnimationGroup[] };
+type RenderHierarchyNode = {
+	name: string;
+	setEnabled: (enabled: boolean) => void;
+	getChildren: () => RenderHierarchyNode[];
+	isVisible?: boolean;
+};
+
 export class EntityFactory {
 	private scene: Scene;
-	private characterModelCache: Map<string, { meshes: AbstractMesh[]; animationGroups: AnimationGroup[] }> = new Map();
+	private contentRoot?: TransformNode;
+	private characterModelCache = new Map<string, Promise<CharacterModelTemplate>>();
 
-	constructor(scene: Scene) {
+	constructor(scene: Scene, contentRoot?: TransformNode) {
 		this.scene = scene;
+		this.contentRoot = contentRoot;
 	}
 
 	/** 创建角色实体 */
@@ -35,10 +45,10 @@ export class EntityFactory {
 		id: string,
 		name: string,
 		position: Vector3,
-		props?: SpawnCmd["props"],
+		resource: CharacterWorldResource,
 	): Promise<CharacterEntityRuntime> {
 		// 加载GLB模型
-		const modelData = await this.loadCharacterModel();
+		const modelData = await this.loadCharacterModel(resource.model.uri);
 
 		if (!modelData.meshes.length) {
 			throw new Error("角色模型加载失败：没有找到网格");
@@ -76,39 +86,25 @@ export class EntityFactory {
 		const rootMesh = instantiatedMeshes;
 		rootMesh.name = `character:${id}`;
 		rootMesh.id = `character:${id}`;
+		rootMesh.parent = this.contentRoot ?? null;
 
-		if (rootMesh) {
-			// 设置位置
-			rootMesh.position.copyFrom(position);
+		rootMesh.position.copyFrom(position);
+		rootMesh.scaling.scaleInPlace(resource.appearance.scale);
 
-			// 启用实例化的网格层级（优化版：只处理可见网格和关键骨骼）
-			const enableInstantiatedMeshes = (mesh: any, depth: number = 0) => {
-				const meshType = mesh.constructor.name;
-				const hasGeometry = mesh.geometry && mesh.geometry.getTotalVertices && mesh.geometry.getTotalVertices() > 0;
-				const isVisibleMesh = hasGeometry || meshType.includes("InstancedMesh");
+		// 模板节点默认隐藏；实例层级需要整体启用，并仅对真实 mesh 恢复可见性。
+		const enableInstantiatedMeshes = (node: RenderHierarchyNode) => {
+			node.setEnabled(true);
+			if (typeof node.isVisible === "boolean") node.isVisible = true;
+			node.getChildren().forEach(enableInstantiatedMeshes);
+		};
 
-				// 启用网格
-				mesh.setEnabled(true);
-				if (mesh.isVisible !== undefined) {
-					mesh.isVisible = true;
-				}
-
-				// 递归处理子网格
-				const children = mesh.getChildren();
-
-				children.forEach((child: any) => {
-					enableInstantiatedMeshes(child, depth + 1);
-				});
-			};
-
-			enableInstantiatedMeshes(rootMesh);
-		}
+		enableInstantiatedMeshes(rootMesh);
 
 		// 克隆动画组，去除重复
 		const builtinAnimations = new Map<string, AnimationGroup>();
 		const processedAnimations = new Set<string>(); // 防止重复动画
 
-		modelData.animationGroups.forEach((originalGroup, index) => {
+		modelData.animationGroups.forEach((originalGroup) => {
 			// 跳过已处理的动画（防止重复）
 			if (processedAnimations.has(originalGroup.name)) {
 				logger.warn(`⚠️ 跳过重复动画: ${originalGroup.name}`);
@@ -116,33 +112,28 @@ export class EntityFactory {
 			}
 			processedAnimations.add(originalGroup.name);
 
-			// 统计动画目标映射情况
-			let mappedTargets = 0;
 			let unmappedTargets = 0;
 
 			// 克隆动画组，重新映射到实例化的网格
 			const clonedGroup = originalGroup.clone(`${originalGroup.name}_${id}`, (oldTarget) => {
-				const targetName = (oldTarget as any).name;
+				const targetName = typeof oldTarget?.name === "string" ? oldTarget.name : "";
 
 				// 使用场景的getNodeByName来查找实例化的骨骼
 				const clonedTarget = this.scene.getNodeByName(targetName);
 
 				if (clonedTarget) {
-					mappedTargets++;
 					return clonedTarget;
 				}
 
 				// 如果场景中找不到，再尝试递归查找
-				const findInHierarchy = (parentMesh: any, targetName: string): any => {
-					if (parentMesh.name === targetName) {
-						return parentMesh;
+				const findInHierarchy = (parent: RenderHierarchyNode, name: string): RenderHierarchyNode | null => {
+					if (parent.name === name) {
+						return parent;
 					}
 
-					if (parentMesh.getChildren) {
-						for (const child of parentMesh.getChildren()) {
-							const found = findInHierarchy(child, targetName);
-							if (found) return found;
-						}
+					for (const child of parent.getChildren()) {
+						const found = findInHierarchy(child, name);
+						if (found) return found;
 					}
 
 					return null;
@@ -151,7 +142,6 @@ export class EntityFactory {
 				const hierarchyTarget = findInHierarchy(rootMesh, targetName);
 
 				if (hierarchyTarget) {
-					mappedTargets++;
 					return hierarchyTarget;
 				}
 
@@ -174,10 +164,11 @@ export class EntityFactory {
 		const { label, texture } = this.createLabel(id, name, position, 0.2);
 
 		// 创建实体
-		const entity: CharacterEntityRuntime = {
+		const entity: CharacterAnimationTarget = {
 			id,
 			type: "character",
-			mesh: rootMesh!,
+			animationClips: resource.animation.clips,
+			mesh: rootMesh,
 			label,
 			labelTexture: texture,
 			lastSeq: -1,
@@ -199,30 +190,32 @@ export class EntityFactory {
 				transitioning: false,
 				previous: null,
 			},
-			animationController: null as any, // 稍后设置
 		};
 
-		// 创建动画控制器
-		entity.animationController = new CharacterAnimationController(entity, this.scene);
+		const animationController = new CharacterAnimationController(entity, this.scene);
 
 		// 播放默认idle动画（循环）
-		entity.animationController.playBuiltinAnimation(BuiltinAnimationType.IDLE, {
+		animationController.playBuiltinAnimation(resource.animation.clips.idle, {
 			mode: "loop",
 		});
-		return entity;
+		return { ...entity, animationController };
 	}
 
 	/** 创建球体实体（向后兼容） */
-	createSphere(id: string, name: string, position: Vector3, props?: SpawnCmd["props"]): SimpleEntityRuntime {
-		const radius = props?.radius || 0.2;
+	createSphere(
+		id: string,
+		name: string,
+		position: Vector3,
+		appearance: MobWorldResource["appearance"],
+	): SimpleEntityRuntime {
+		const { radius, color } = appearance;
 		const sphere = MeshBuilder.CreateSphere(`sphere:${id}`, { diameter: radius * 2 }, this.scene);
+		sphere.parent = this.contentRoot ?? null;
 		sphere.position.copyFrom(position);
 
 		// 材质
 		const mat = new StandardMaterial(`mat:${id}`, this.scene);
-		const baseColor = props?.color
-			? Color3.FromHexString(props.color.startsWith("#") ? props.color : `#${props.color}`)
-			: Color3.FromHexString("#3aa6ff");
+		const baseColor = Color3.FromHexString(color);
 		mat.diffuseColor = baseColor;
 		mat.emissiveColor = baseColor.scale(0.2);
 		sphere.material = mat;
@@ -253,6 +246,7 @@ export class EntityFactory {
 	/** 创建标签 */
 	createLabel(id: string, name: string, position: Vector3, radius: number): { label: Mesh; texture: DynamicTexture } {
 		const label = MeshBuilder.CreatePlane(`label:${id}`, { size: radius * 4 }, this.scene);
+		label.parent = this.contentRoot ?? null;
 		label.billboardMode = Mesh.BILLBOARDMODE_ALL;
 		label.position = position.add(new Vector3(0, radius * 3, 0));
 
@@ -276,15 +270,12 @@ export class EntityFactory {
 	}
 
 	/** 加载角色模型 */
-	private async loadCharacterModel(): Promise<{ meshes: AbstractMesh[]; animationGroups: AnimationGroup[] }> {
-		const cacheKey = "character";
+	private async loadCharacterModel(modelUri: string): Promise<CharacterModelTemplate> {
+		const cached = this.characterModelCache.get(modelUri);
+		if (cached) return cached;
 
-		if (this.characterModelCache.has(cacheKey)) {
-			return this.characterModelCache.get(cacheKey)!;
-		}
-
-		try {
-			const result = await ImportMeshAsync("/models/character.glb", this.scene);
+		const loading = (async (): Promise<CharacterModelTemplate> => {
+			const result = await ImportMeshAsync(modelUri, this.scene);
 
 			// 隐藏原始模型，只用作模板
 			result.meshes.forEach((mesh) => {
@@ -308,14 +299,17 @@ export class EntityFactory {
 				}
 			});
 
-			const modelData = {
+			return {
 				meshes: result.meshes,
 				animationGroups: uniqueAnimationGroups, // 使用去重后的动画组
 			};
-			this.characterModelCache.set(cacheKey, modelData);
+		})();
+		this.characterModelCache.set(modelUri, loading);
 
-			return modelData;
+		try {
+			return await loading;
 		} catch (error) {
+			if (this.characterModelCache.get(modelUri) === loading) this.characterModelCache.delete(modelUri);
 			logger.error(`❌ 角色模型加载失败:`, error);
 			throw error;
 		}

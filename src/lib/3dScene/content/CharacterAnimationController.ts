@@ -6,27 +6,22 @@
 
 import { AnimationGroup, type Scene } from "~/lib/babylon/runtime";
 import { createLogger } from "~/lib/Logger";
-import {
-	type AnimationPlayRequest,
-	BuiltinAnimationType,
-	type CharacterEntityRuntime,
-	type CustomAnimationData,
-} from "./entityTypes";
+import type { AnimationPlayRequest, CharacterAnimationTarget, CustomAnimationData } from "./entityTypes";
 
 const logger = createLogger("RenderController");
 logger.setLevel(0);
 
 export class CharacterAnimationController {
-	private entity: CharacterEntityRuntime;
+	private entity: CharacterAnimationTarget;
 	private scene: Scene;
 
-	constructor(entity: CharacterEntityRuntime, scene: Scene) {
+	constructor(entity: CharacterAnimationTarget, scene: Scene) {
 		this.entity = entity;
 		this.scene = scene;
 	}
 
 	/** 播放内置动画 */
-	playBuiltinAnimation(type: BuiltinAnimationType, options?: Partial<AnimationPlayRequest>): void {
+	playBuiltinAnimation(type: string, options?: Partial<AnimationPlayRequest>): void {
 		const animationGroup = this.entity.builtinAnimations.get(type);
 		if (!animationGroup) {
 			logger.warn(`Character ${this.entity.id}: 内置动画 ${type} 不存在`);
@@ -110,7 +105,6 @@ export class CharacterAnimationController {
 				break;
 			case "play":
 			case "loop":
-			default:
 				this.startAnimation(request);
 				break;
 		}

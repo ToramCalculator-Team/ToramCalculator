@@ -5,8 +5,8 @@
  * 也承担首帧渲染快照的全量应用。从 RendererController 拆出。
  */
 
-import { Color3, Mesh, MeshBuilder, StandardMaterial, TransformNode, Vector3 } from "~/lib/babylon/runtime";
 import type { Scene } from "~/lib/babylon/runtime";
+import { Color3, Mesh, MeshBuilder, StandardMaterial, TransformNode, Vector3 } from "~/lib/babylon/runtime";
 import { createLogger } from "~/lib/Logger";
 import type {
 	ActionCmd,
@@ -19,13 +19,14 @@ import type {
 	RendererCmd,
 	RenderSnapshot,
 	RenderSnapshotArea,
-	SetNameCmd,
-	SetPropsCmd,
 	SpawnCmd,
 	TeleportCmd,
 } from "../../engine/core/thread/RendererProtocol";
+import type { WorldResourcePose } from "../contracts/worldContent";
+import type { WorldResource } from "../contracts/worldResource";
 import type { EntityFactory } from "./EntityFactory";
-import { BuiltinAnimationType, type CharacterEntityRuntime, type CustomAnimationData, type EntityRuntime } from "./entityTypes";
+import type { CharacterEntityRuntime, CustomAnimationData, EntityRuntime } from "./entityTypes";
+import { canReuseWorldResource } from "./worldResourceDiff";
 
 const logger = createLogger("RenderController");
 logger.setLevel(0);
@@ -34,12 +35,43 @@ export class CommandHandler {
 	private entities: Map<string, EntityRuntime>;
 	private factory: EntityFactory;
 	private scene: Scene;
+	private worldResources: Map<string, WorldResource>;
 	private areaVisuals: Map<string, Mesh> = new Map();
 
 	constructor(entities: Map<string, EntityRuntime>, factory: EntityFactory, scene: Scene) {
 		this.entities = entities;
 		this.factory = factory;
 		this.scene = scene;
+		this.worldResources = new Map();
+	}
+
+	/**
+	 * 投影同一解析版本的静态资源。设计态直接调用；进入验证后动态命令只更新这些实体的运行状态。
+	 */
+	async applyWorldResources(resources: WorldResource[], poses: WorldResourcePose[]): Promise<void> {
+		const nextResources = new Map(resources.map((resource) => [resource.memberId, resource]));
+		if (nextResources.size !== resources.length) throw new Error("worldResources 中存在重复 memberId");
+
+		for (const memberId of [...this.entities.keys()]) {
+			const previous = this.worldResources.get(memberId);
+			const next = nextResources.get(memberId);
+			if (!previous || !next || !canReuseWorldResource(previous, next)) this.disposeEntity(memberId);
+		}
+		this.worldResources = nextResources;
+		const posesByMemberId = new Map(poses.map((pose) => [pose.memberId, pose]));
+		for (const resource of resources) {
+			const pose = posesByMemberId.get(resource.memberId);
+			await this.handle({
+				type: "spawn",
+				entityId: resource.memberId,
+				position: pose?.position ?? { x: 0, y: 0, z: 0 },
+				seq: -1,
+				ts: 0,
+			});
+			if (pose) {
+				await this.handle({ type: "face", entityId: resource.memberId, yaw: pose.yaw, seq: -1, ts: 0 });
+			}
+		}
 	}
 
 	async handle(cmd: RendererCmd): Promise<void> {
@@ -71,12 +103,6 @@ export class CommandHandler {
 			case "teleport":
 				this.handleTeleport(cmd, entity);
 				break;
-			case "setName":
-				this.handleSetName(cmd, entity);
-				break;
-			case "setProps":
-				this.handleSetProps(cmd, entity);
-				break;
 			case "action":
 				this.handleAction(cmd, entity);
 				break;
@@ -95,14 +121,10 @@ export class CommandHandler {
 		const ts = renderSnapshot.currentTimeMs;
 		for (const member of renderSnapshot.members) {
 			if (!this.entities.has(member.id)) {
-				const isSphere = member.entityType === "sphere";
 				await this.handle({
 					type: "spawn",
 					entityId: member.id,
-					name: member.name,
 					position: member.position,
-					entityType: member.entityType,
-					...(isSphere ? { props: { color: "#ffffff", radius: 0.4 } } : {}),
 					seq,
 					ts,
 				});
@@ -184,9 +206,17 @@ export class CommandHandler {
 		this.areaVisuals.clear();
 	}
 
-	/** 生成实体 - 优先创建角色模型，失败则回退到球体 */
+	/** 清空当前世界投影；模型模板缓存由 EntityFactory 保留，供后续内容会话复用。 */
+	clearWorldResources(): void {
+		for (const memberId of [...this.entities.keys()]) this.disposeEntity(memberId);
+		this.worldResources.clear();
+	}
+
+	/** 按静态 worldResources 生成实体；动态命令不得自行选择模型或外观。 */
 	private async handleSpawn(cmd: SpawnCmd): Promise<void> {
 		logger.info(`🎬 处理spawn命令:`, cmd);
+		const resource = this.worldResources.get(cmd.entityId);
+		if (!resource) throw new Error(`实体 ${cmd.entityId} 没有已解析的 worldResource`);
 
 		const exists = this.entities.get(cmd.entityId);
 		if (exists && exists.lastSeq > cmd.seq) {
@@ -195,35 +225,27 @@ export class CommandHandler {
 		}
 
 		if (exists) {
-			logger.info(`🎬 销毁已存在的实体: ${cmd.entityId}`);
-			this.disposeEntity(cmd.entityId);
+			exists.lastSeq = cmd.seq;
+			exists.physics.pos.copyFromFloats(cmd.position.x, cmd.position.y, cmd.position.z);
+			exists.mesh.position.copyFrom(exists.physics.pos);
+			return;
 		}
 
 		const pos = new Vector3(cmd.position.x, cmd.position.y, cmd.position.z);
 
-		// sphere 形态（如 mob）直接走简易球体；character 形态走模型加载，失败回退球体。
-		if (cmd.entityType === "sphere") {
-			const entity = this.factory.createSphere(cmd.entityId, cmd.name, pos, cmd.props);
+		if (resource.kind === "mob") {
+			const entity = this.factory.createSphere(cmd.entityId, resource.displayName, pos, resource.appearance);
 			entity.lastSeq = cmd.seq;
 			this.entities.set(cmd.entityId, entity);
-			logger.info(`🎬 球体创建成功(sphere 形态): ${cmd.entityId}`);
+			logger.info(`🎬 Mob 静态资源创建成功: ${cmd.entityId}`);
 			return;
 		}
 
-		try {
-			logger.info(`🎬 开始创建角色: ${cmd.entityId}`);
-			// 默认创建角色，如果失败则回退到球体
-			const entity = await this.factory.createCharacter(cmd.entityId, cmd.name, pos, cmd.props);
-			entity.lastSeq = cmd.seq;
-			this.entities.set(cmd.entityId, entity);
-			logger.info(`🎬 角色创建成功: ${cmd.entityId}`);
-		} catch (error) {
-			logger.warn(`🎬 角色创建失败，回退到球体模式:`, error);
-			const entity = this.factory.createSphere(cmd.entityId, cmd.name, pos, cmd.props);
-			entity.lastSeq = cmd.seq;
-			this.entities.set(cmd.entityId, entity);
-			logger.info(`🎬 球体创建成功: ${cmd.entityId}`);
-		}
+		logger.info(`🎬 开始创建角色: ${cmd.entityId}`);
+		const entity = await this.factory.createCharacter(cmd.entityId, resource.displayName, pos, resource);
+		entity.lastSeq = cmd.seq;
+		this.entities.set(cmd.entityId, entity);
+		logger.info(`🎬 角色创建成功: ${cmd.entityId}`);
 	}
 
 	/**
@@ -241,7 +263,7 @@ export class CommandHandler {
 		// 动画控制：根据速度切换动画
 		if (entity.type === "character") {
 			const charEntity = entity as CharacterEntityRuntime;
-			const animationType = cmd.speed > 3 ? BuiltinAnimationType.RUN : BuiltinAnimationType.WALK;
+			const animationType = cmd.speed > 3 ? charEntity.animationClips.run : charEntity.animationClips.walk;
 			charEntity.animationController.playBuiltinAnimation(animationType);
 		}
 	}
@@ -258,7 +280,7 @@ export class CommandHandler {
 		// 动画控制：切换到idle
 		if (entity.type === "character") {
 			const charEntity = entity as CharacterEntityRuntime;
-			charEntity.animationController.playBuiltinAnimation(BuiltinAnimationType.IDLE);
+			charEntity.animationController.playBuiltinAnimation(charEntity.animationClips.idle);
 		}
 	}
 
@@ -271,6 +293,7 @@ export class CommandHandler {
 		// 处理角色动作
 		if (entity.type === "character") {
 			const charEntity = entity as CharacterEntityRuntime;
+			const clips = charEntity.animationClips;
 			const progress = typeof cmd.params?.progress === "number" ? cmd.params.progress : undefined;
 
 			const playWithSeek = (animationId: string, loop: boolean) => {
@@ -294,21 +317,21 @@ export class CommandHandler {
 
 			switch (cmd.name) {
 				case "jump":
-					charEntity.animationController.playBuiltinAnimation(BuiltinAnimationType.JUMP, {
+					charEntity.animationController.playBuiltinAnimation(clips.jump, {
 						mode: "interrupt",
 						onComplete: () => {
-							charEntity.animationController.playBuiltinAnimation(BuiltinAnimationType.IDLE);
+							charEntity.animationController.playBuiltinAnimation(clips.idle);
 						},
 					});
 					break;
 				case "idle":
-					playWithSeek(BuiltinAnimationType.IDLE, true);
+					playWithSeek(clips.idle, true);
 					break;
 				case "walk":
-					playWithSeek(BuiltinAnimationType.WALK, true);
+					playWithSeek(clips.walk, true);
 					break;
 				case "run":
-					playWithSeek(BuiltinAnimationType.RUN, true);
+					playWithSeek(clips.run, true);
 					break;
 				case "skill":
 					// 如果有自定义动画数据，播放自定义动画
@@ -316,7 +339,7 @@ export class CommandHandler {
 						charEntity.animationController.playCustomAnimation(cmd.params.animationData as CustomAnimationData, {
 							mode: "interrupt",
 							onComplete: () => {
-								charEntity.animationController.playBuiltinAnimation(BuiltinAnimationType.IDLE);
+								charEntity.animationController.playBuiltinAnimation(clips.idle);
 							},
 						});
 					}
@@ -358,54 +381,6 @@ export class CommandHandler {
 		entity.mesh.position.copyFrom(entity.physics.pos);
 		if (entity.label) {
 			entity.label.position = entity.physics.pos.add(new Vector3(0, 0.6, 0));
-		}
-	}
-
-	/** 更新实体名称 */
-	private handleSetName(cmd: SetNameCmd, entity?: EntityRuntime): void {
-		if (!entity || entity.lastSeq > cmd.seq) return;
-		entity.lastSeq = cmd.seq;
-
-		if (entity.label && entity.labelTexture) {
-			const ctx = entity.labelTexture.getContext();
-			ctx.clearRect(0, 0, entity.labelTexture.getSize().width, entity.labelTexture.getSize().height);
-			ctx.font = "bold 28px system-ui, sans-serif";
-			ctx.fillStyle = "#fff";
-			ctx.strokeStyle = "#000";
-			ctx.lineWidth = 4;
-			ctx.strokeText(cmd.name, 8, 42);
-			ctx.fillText(cmd.name, 8, 42);
-			entity.labelTexture.update();
-		}
-	}
-
-	/** 更新实体属性 */
-	private handleSetProps(cmd: SetPropsCmd, entity?: EntityRuntime): void {
-		if (!entity || entity.lastSeq > cmd.seq) return;
-		entity.lastSeq = cmd.seq;
-
-		// 设置可见性
-		if (cmd.props.visible !== undefined) {
-			entity.mesh.setEnabled(cmd.props.visible);
-			entity.label?.setEnabled(cmd.props.visible);
-		}
-
-		// 设置颜色（仅对球体有效）
-		if (cmd.props.color && entity.type === "sphere") {
-			const c = Color3.FromHexString(cmd.props.color.startsWith("#") ? cmd.props.color : `#${cmd.props.color}`);
-			let mat = (entity.mesh as Mesh).material as StandardMaterial | null;
-			if (!(mat instanceof StandardMaterial) || !mat) {
-				mat = new StandardMaterial(`mat:${cmd.entityId}`, this.scene);
-				(entity.mesh as Mesh).material = mat;
-			}
-			mat.diffuseColor = c;
-			mat.emissiveColor = c.scale(0.2);
-		}
-
-		// 设置半径（仅对球体有效）
-		if (cmd.props.radius && entity.type === "sphere") {
-			// TODO: 实现球体半径动态调整
-			logger.warn("球体半径动态调整暂未实现");
 		}
 	}
 

@@ -42,6 +42,7 @@ import { ThirdPersonCameraController } from "./camera/thirdPersonController";
 import { readCharacterEquipmentSlotMetadata } from "./content/characterEquipmentMetadata";
 import { RendererCommunication } from "./content/RendererCommunication";
 import { createCharacterContentDeps } from "./content/sceneContentDeps";
+import type { CharacterWorldResource } from "./contracts/worldResource";
 import {
 	isPBRMaterial,
 	registerVolumetricFogPlugin,
@@ -102,6 +103,7 @@ export function SceneRuntimeCore(props: {
 	let thirdPersonController: ThirdPersonCameraController | undefined;
 	let defPBR: PBRMaterial | undefined;
 	let activeSessionId: string | null = null;
+	let activeCharacterSessionId: string | null = null;
 	let _activeControllerId: string | null = null;
 	// 跟随门控：仅 realtime 稳态为 true，控制器 update 才驱动相机；过渡/观察期为 false，避免与动画打架。
 	let followActive = false;
@@ -152,7 +154,7 @@ export function SceneRuntimeCore(props: {
 		if (!rendererController) return;
 		try {
 			if (Array.isArray(payload)) {
-				// 类型说明：Worker 渲染协议已经由 SimulationEngine 边界产出，这里只在渲染端恢复命令联合类型。
+				// 类型说明：Worker 渲染协议已经由 EngineWorkerClient 边界产出，这里只在渲染端恢复命令联合类型。
 				rendererController.send(payload as RendererCmd[]);
 				return;
 			}
@@ -203,12 +205,14 @@ export function SceneRuntimeCore(props: {
 	// ─── 机器副作用依赖 ──────────────────────────────────────────────────────────
 	const sceneMachineDeps: SceneMachineDeps = {
 		setupRealtimeResources: async (config) => {
-			if (!scene || !canvas) throw new Error("SceneRuntime is not ready");
-			rendererController = createRendererController(scene);
+			const camera = sceneCamera;
+			if (!scene || !canvas || !camera) throw new Error("SceneRuntime is not ready");
+			rendererController = createRendererController(scene, { contentRoot: realtimeRoot });
+			await rendererController.applyWorldResources(config.worldResources, config.initialWorldPoses);
 			rendererCommunication = new RendererCommunication();
 			rendererCommunication.setRenderHandler(handleRenderPayload);
-			rendererCommunication.initialize(config.engine);
-			const renderSnapshot = await config.engine.getRenderSnapshot(true);
+			rendererCommunication.initialize(config.renderSource);
+			const renderSnapshot = await config.renderSource.getRenderSnapshot(true);
 			if (renderSnapshot && rendererController.applyRenderSnapshot) {
 				await rendererController.applyRenderSnapshot(renderSnapshot);
 			}
@@ -217,17 +221,17 @@ export function SceneRuntimeCore(props: {
 				? new Vector3(config.initialCameraTarget.x, config.initialCameraTarget.y + 1, config.initialCameraTarget.z)
 				: undefined;
 			// 控制器复用唯一 sceneCamera，不再 new 第二台相机。
-			thirdPersonController = new ThirdPersonCameraController(scene, sceneCamera!, rendererController, {
+			thirdPersonController = new ThirdPersonCameraController(scene, camera, rendererController, {
 				followEntityId: config.followEntityId,
 				distance: FOLLOW_POSE.radius,
 				smoothTransition: true,
 				...(initialTarget ? { target: initialTarget } : {}),
 			});
 			// 控制器构造时会把相机 target 设到成员位；重置回观察位，让"飞入"动画从观察位起步。
-			sceneCamera!.alpha = OBSERVE_POSE.alpha;
-			sceneCamera!.beta = OBSERVE_POSE.beta;
-			sceneCamera!.radius = OBSERVE_POSE.radius;
-			sceneCamera!.setTarget(OBSERVE_POSE.target.clone());
+			camera.alpha = OBSERVE_POSE.alpha;
+			camera.beta = OBSERVE_POSE.beta;
+			camera.radius = OBSERVE_POSE.radius;
+			camera.setTarget(OBSERVE_POSE.target.clone());
 		},
 		teardownRealtimeResources: () => {
 			window.removeEventListener("cameraControl", handleCameraControl as EventListener);
@@ -239,9 +243,6 @@ export function SceneRuntimeCore(props: {
 			thirdPersonController = undefined;
 			activeSessionId = null;
 			_activeControllerId = null;
-			realtimeRoot?.getChildren().forEach((node) => {
-				node.dispose();
-			});
 		},
 		runCameraTransition: (direction, _config, onDone) => {
 			if (direction === "leave") {
@@ -263,7 +264,7 @@ export function SceneRuntimeCore(props: {
 		stopFollow: () => {
 			followActive = false;
 		},
-		setupCharacterContent: (characterId) => characterContentDeps.setupCharacterContent(characterId),
+		setupCharacterContent: (resource) => characterContentDeps.setupCharacterContent(resource),
 		teardownCharacterContent: () => characterContentDeps.teardownCharacterContent(),
 		onError: (error) => log.error("场景实时会话失败", error),
 	};
@@ -336,12 +337,15 @@ export function SceneRuntimeCore(props: {
 		scene.onPointerObservable.add((pointerInfo) => {
 			if (pointerInfo.type !== PointerEventTypes.POINTERPICK || !characterRoot) return;
 			const snapshot = sceneMachineActor?.getSnapshot();
-			if (!snapshot || String(snapshot.value) !== "character" || !snapshot.context.characterId) return;
+			if (!snapshot || String(snapshot.value) !== "character" || !snapshot.context.characterResource) return;
 			const pickedMesh = pointerInfo.pickInfo?.pickedMesh;
 			if (!pickedMesh?.isDescendantOf(characterRoot)) return;
 			const equipmentSlot = readCharacterEquipmentSlotMetadata(pickedMesh);
 			if (!equipmentSlot) return;
-			props.onCharacterEquipmentPick({ characterId: snapshot.context.characterId, equipmentSlot });
+			props.onCharacterEquipmentPick({
+				characterId: snapshot.context.characterResource.resourceId,
+				equipmentSlot,
+			});
 		});
 
 		lensPipeline = new LensRenderingPipeline(
@@ -501,6 +505,7 @@ export function SceneRuntimeCore(props: {
 			scene = new Scene(engine);
 			await createBaseScene();
 			if (disposed || !scene || !engine) return;
+			const initializedScene = scene;
 			engine.runRenderLoop(() => {
 				if (!scene || !engine) return;
 				const dt = engine.getDeltaTime() / 1000;
@@ -513,7 +518,7 @@ export function SceneRuntimeCore(props: {
 			// 等到 babylon 场景真正 ready（setReady(true) 已执行）后再让 initialize 完成，
 			// 否则 acquireRealtimeSession 只 await initializationPromise 时会撞上 ready() 仍为 false 的窗口。
 			await new Promise<void>((resolve) => {
-				scene!.executeWhenReady(() => {
+				initializedScene.executeWhenReady(() => {
 					if (!disposed) {
 						engine?.resize();
 						setReady(true);
@@ -549,6 +554,7 @@ export function SceneRuntimeCore(props: {
 			throw new Error("SceneRuntime is not ready");
 		}
 		const sessionId = createId();
+		activeCharacterSessionId = null;
 		activeSessionId = sessionId;
 		_activeControllerId = config.activeControllerId ?? null;
 		// 若已有活动会话，先释放（机器从 realtime→leaving→idle 后再接受新 ACQUIRE）。
@@ -574,17 +580,20 @@ export function SceneRuntimeCore(props: {
 		};
 	};
 
-	const acquireCharacterContent = async (characterId: string): Promise<CharacterContentSession> => {
+	const acquireCharacterContent = async (resource: CharacterWorldResource): Promise<CharacterContentSession> => {
 		await initializationPromise;
 		if (!ready() || !scene || !sceneMachineActor) {
 			throw new Error("SceneRuntime is not ready");
 		}
 		const sessionId = createId();
-		// 互斥由机器仲裁：idle 接受 LOAD_CHARACTER；非 idle（如 realtime/已有角色内容）时页面应先 release。
-		sceneMachineActor.send({ type: "LOAD_CHARACTER", characterId });
+		activeCharacterSessionId = sessionId;
+		// Character 内容允许新 acquire 抢占正在加载或已稳定的旧资源；realtime 仍由机器保持互斥。
+		sceneMachineActor.send({ type: "LOAD_CHARACTER", resource });
 		return {
 			id: sessionId,
 			release: () => {
+				if (activeCharacterSessionId !== sessionId) return;
+				activeCharacterSessionId = null;
 				sceneMachineActor?.send({ type: "RELEASE_CONTENT" });
 			},
 		};

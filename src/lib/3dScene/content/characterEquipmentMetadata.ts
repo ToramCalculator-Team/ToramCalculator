@@ -5,7 +5,7 @@
  * Babylon glTF loader 会把 extras 暴露为 `node.metadata.gltf.extras`；子 mesh 可继承祖先标记。
  */
 
-import { type CharacterEquipmentSlot, isCharacterEquipmentSlot } from "~/shared/interaction/characterEquipment";
+import { type CharacterEquipmentSlot, isCharacterEquipmentSlot } from "~/machines/interface/characterEquipment";
 
 export const CHARACTER_EQUIPMENT_SLOT_EXTRA = "equipmentSlot";
 

@@ -9,48 +9,48 @@
 // ==================== 相机控制指令类型定义 ====================
 
 export interface CameraControlCmd {
-    type: "camera_control";
-    entityId: string;
-    subType: "follow" | "free" | "setDistance" | "setAngle" | "setTarget";
-    data: any;
-    seq: number;
-    ts: number;
+	type: "camera_control";
+	entityId: string;
+	subType: "follow" | "free" | "setDistance" | "setAngle" | "setTarget";
+	data: any;
+	seq: number;
+	ts: number;
 }
 
 export interface CameraFollowCmd extends CameraControlCmd {
-    subType: "follow";
-    data: {
-        followEntityId: string;
-        distance?: number;
-        verticalAngle?: number;
-        horizontalAngle?: number;
-    };
+	subType: "follow";
+	data: {
+		followEntityId: string;
+		distance?: number;
+		verticalAngle?: number;
+		horizontalAngle?: number;
+	};
 }
 
 export interface CameraSetDistanceCmd extends CameraControlCmd {
-    subType: "setDistance";
-    data: {
-        distance: number;
-        smooth?: boolean;
-    };
+	subType: "setDistance";
+	data: {
+		distance: number;
+		smooth?: boolean;
+	};
 }
 
 export interface CameraSetAngleCmd extends CameraControlCmd {
-    subType: "setAngle";
-    data: {
-        horizontalAngle?: number;
-        verticalAngle?: number;
-        smooth?: boolean;
-        delta?: boolean; // 是否为增量模式（用于FPS风格鼠标控制）
-    };
+	subType: "setAngle";
+	data: {
+		horizontalAngle?: number;
+		verticalAngle?: number;
+		smooth?: boolean;
+		delta?: boolean; // 是否为增量模式（用于FPS风格鼠标控制）
+	};
 }
 
 export interface CameraSetTargetCmd extends CameraControlCmd {
-    subType: "setTarget";
-    data: {
-        target: { x: number; y: number; z: number };
-        smooth?: boolean;
-    };
+	subType: "setTarget";
+	data: {
+		target: { x: number; y: number; z: number };
+		smooth?: boolean;
+	};
 }
 
 export type AnyCameraControlCmd = CameraFollowCmd | CameraSetDistanceCmd | CameraSetAngleCmd | CameraSetTargetCmd;
