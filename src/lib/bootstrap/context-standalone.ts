@@ -3,8 +3,8 @@ import { bootstrapModules } from "./modules";
 import { BootstrapOrchestrator } from "./orchestrator";
 import type { BootstrapState, ModuleStatus } from "./types";
 
-const logger = createLogger("Bootstrap")
-logger.setLevel(1)
+const logger = createLogger("Bootstrap");
+logger.setLevel(1);
 
 // 组件树外的单例入口（应用级唯一真相源）：
 // - 触发：startBootstrap() 在入口（entry-client）显式调用一次，是唯一的启动触发点。
@@ -68,6 +68,9 @@ export const subscribeBootstrap = (listener: (state: BootstrapState) => void) =>
 export const getBootstrapState = () => getRuntime().getState();
 
 export const getStatus = (name: string): ModuleStatus => getRuntime().getState().status[name] ?? "idle";
+
+/** 读取已完成 bootstrap 模块的类型化产物；只读且不触发模块启动。 */
+export const getBootstrapValue = <T>(name: string): T | undefined => getRuntime().getValue<T>(name);
 
 // waitFor 不再懒触发启动（路线 A）：唯一触发点是 startBootstrap。
 // 仅挂等待——若 startBootstrap 未先行（编程错误），等待将保持 pending 直到启动。

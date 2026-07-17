@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { createActor } from "xstate";
+import { createActor, createMachine } from "xstate";
 import {
 	createEditCharacterEquipmentEvent,
 	createInspectCharacterEquipmentEvent,
@@ -8,8 +8,11 @@ import {
 } from "../interfaceStateMachine";
 import { createSceneInterfaceProjection } from "./sceneInterfaceProjection";
 
+const createTestInterfaceMachine = () =>
+	createInterfaceStateMachine({ simulatorSession: createMachine({}), characterSession: createMachine({}) });
+
 test("场景只从 snapshot 投影装备高亮，editing 不重复创建投影", () => {
-	const actor = createActor(createInterfaceStateMachine());
+	const actor = createActor(createTestInterfaceMachine());
 	actor.start();
 	actor.send({ type: "character.open", characterId: "char-1" });
 
@@ -36,7 +39,7 @@ test("场景只从 snapshot 投影装备高亮，editing 不重复创建投影",
 });
 
 test("场景投影重挂载时仅凭当前 snapshot 恢复装备目标", () => {
-	const actor = createActor(createInterfaceStateMachine());
+	const actor = createActor(createTestInterfaceMachine());
 	actor.start();
 	actor.send({ type: "character.open", characterId: "char-1" });
 	actor.send(createInspectCharacterEquipmentEvent("char-1", "special"));

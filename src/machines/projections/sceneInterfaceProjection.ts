@@ -5,7 +5,7 @@
  * 投影只读取 snapshot，不向状态机回传渲染完成事件；唯一局部状态是当前高亮的清理句柄。
  */
 
-import type { CharacterEquipmentSlot } from "~/shared/interaction/characterEquipment";
+import type { CharacterEquipmentSlot } from "~/machines/interface/characterEquipment";
 import type { InterfaceStateActorRef } from "../interfaceStateMachine";
 import { selectCharacterEquipmentInteraction } from "../interfaceStateMachine";
 

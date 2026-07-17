@@ -34,7 +34,10 @@ export function BootstrapProvider(props: ParentProps) {
 	const value: BootstrapContextValue = {
 		status: (name) => () => state.status[name] ?? "idle",
 		ready: (name) => () => (state.status[name] ?? "idle") === "ready",
-		allReady: (...names) => () => names.every((name) => (state.status[name] ?? "idle") === "ready"),
+		allReady:
+			(...names) =>
+			() =>
+				names.every((name) => (state.status[name] ?? "idle") === "ready"),
 		error: (name) => () => state.errors[name],
 		waitFor,
 	};

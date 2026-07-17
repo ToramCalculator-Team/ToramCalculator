@@ -3,10 +3,11 @@ import { createEffect, createRoot } from "solid-js";
 import { runStartupGate } from "~/lib/version/startupGate";
 import { ensureTemporaryAccount } from "~/session/temporaryAccount";
 import { store } from "~/store";
+import { waitForElectricTables } from "./electricReadiness";
 import type { BootstrapModule } from "./types";
 
 // Electric 的“全库首轮同步完成”判定清单。
-// 设计目的：全库同步完成用于缓存预热和诊断；页面外壳只依赖 pgworker，表级内容继续读取 tableSyncState。
+// 设计目的：全库同步完成用于缓存预热和诊断；页面外壳只依赖 pgworker，表级内容继续读取 hasInitialSnapshot。
 const ELECTRIC_SYNC_TABLES: Array<keyof DB> = [
 	"account",
 	"account_create_data",
@@ -51,49 +52,21 @@ const ELECTRIC_SYNC_TABLES: Array<keyof DB> = [
 	"player_pet",
 	"_characterToconsumable",
 	"character_skill",
+	"registlet",
+	"character_registlet",
 	"consumable",
 	"material",
 	"combo",
+	"combo_step",
 	"character",
 	"mercenary",
 	"member",
 	"team",
-	"_campA",
-	"_campB",
+	"_simulatorAnalysisSources",
+	"_simulatorAnalysisTargets",
 	"simulator",
 	"sync_heartbeat",
 ];
-
-/**
- * 设计目标：把“表组是否 ready”的判断从具体页面/模块中抽出来，避免各处重复拼接门控逻辑。
- * 函数职责：检查传入表集合是否都完成首轮 Electric initial sync。
- */
-const areElectricTablesReady = (tableNames: Array<keyof DB>) =>
-	tableNames.every((tableName) => store.database.tableSyncState[tableName] === true);
-
-/**
- * 设计目标：让依赖少量同步表的启动模块只等待自己的最小数据集合。
- * 函数职责：监听表组 ready 状态，并在满足条件后销毁独立 Solid root。
- */
-const waitForElectricTables = (tableNames: Array<keyof DB>): Promise<void> => {
-	if (typeof window === "undefined" || areElectricTablesReady(tableNames)) {
-		return Promise.resolve();
-	}
-
-	return new Promise<void>((resolve) => {
-		createRoot((dispose) => {
-			// 独立 root：只监听到“表组 ready”这一刻就销毁，不污染组件树生命周期。
-			createEffect(() => {
-				if (!areElectricTablesReady(tableNames)) {
-					return;
-				}
-
-				dispose();
-				resolve();
-			});
-		});
-	});
-};
 
 /**
  * 设计目标：保留“全库首轮同步完成”的后台模块语义，服务缓存预热和诊断。
@@ -229,12 +202,9 @@ export const bootstrapModules: BootstrapModule<unknown>[] = [
 				log(`data priority gate failed before engine init: ${String(error)}`);
 			}
 			const { EngineService } = await import("~/lib/engine/core/thread/EngineService");
-			const service = EngineService.getInstance();
-			service.init();
-			await Promise.all([
-				service.getSimulatorEngine().whenReady(),
-				service.getCharacterEngine().whenReady(),
-			]);
+			const engineService = new EngineService();
+			engineService.start();
+			return engineService;
 		},
 	},
 	{

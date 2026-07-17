@@ -7,7 +7,6 @@ import { Setting } from "~/components/features/setting";
 import { MediaProvider } from "~/contexts/Media-component";
 import { SceneCanvas, SceneRuntimeProvider } from "~/lib/3dScene/SceneRuntime";
 import { BootstrapProvider } from "~/lib/bootstrap/BootstrapContext";
-import { EngineProvider } from "~/lib/engine/core/thread/EngineContext";
 import { OverlayRoot } from "~/lib/overlay/OverlayRoot";
 import { requestCloseTopLayer } from "~/lib/overlay/overlayStore";
 import { AppActorProvider } from "~/machines/AppActorContext";
@@ -185,24 +184,22 @@ export default function AppMainContet(props: ParentProps) {
 	return (
 		<BootstrapProvider>
 			<MediaProvider>
-				<EngineProvider>
-					<AppActorProvider>
-						<SceneRuntimeProvider enabled={store.settings.userInterface.is3DSceneEnabled}>
-							<RandomBallBackground />
-							<Motion.div
-								id="AppMainContet"
-								class={`fixed left-0 top-0 h-dvh w-dvw overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
-							>
-								<SceneCanvas />
-								<SceneInterfaceBridge />
-								{props.children}
-								<LoginDialog />
-								<OverlayRoot />
-							</Motion.div>
-							<Setting />
-						</SceneRuntimeProvider>
-					</AppActorProvider>
-				</EngineProvider>
+				<AppActorProvider>
+					<SceneRuntimeProvider enabled={store.settings.userInterface.is3DSceneEnabled}>
+						<RandomBallBackground />
+						<Motion.div
+							id="AppMainContet"
+							class={`fixed left-0 top-0 h-dvh w-dvw overflow-hidden ${store.pages.settingsDialogState ? "scale-[95%] opacity-0 blur-xs" : "blur-0 scale-100 opacity-100"}`}
+						>
+							<SceneCanvas />
+							<SceneInterfaceBridge />
+							{props.children}
+							<LoginDialog />
+							<OverlayRoot />
+						</Motion.div>
+						<Setting />
+					</SceneRuntimeProvider>
+				</AppActorProvider>
 			</MediaProvider>
 		</BootstrapProvider>
 	);
