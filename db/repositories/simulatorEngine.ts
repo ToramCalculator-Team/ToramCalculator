@@ -1,7 +1,7 @@
-import { type ExpressionBuilder, type Transaction } from "kysely";
-import { getDB } from "./database";
-import { type DB } from "../generated/zod/index";
+import type { ExpressionBuilder, Transaction } from "kysely";
 import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
+import type { DB } from "../generated/zod/index";
+import { getDB } from "./database";
 
 /**
  * 引擎专用 simulator 查询（性能优先路径）。
@@ -11,8 +11,8 @@ import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";
  * 只取引擎 loadScenario 真正消费的关系，砍掉 wiki 空分支（drops/item/recipe/task/npc/zone）。
  *
  * 关系树形（依据字段访问探针实测裁剪，叶子处只 selectAll）：
- *   simulator → campA/campB(team[]) → members(member[])
- *     member.player → characters[] →
+ *   simulator → teams(team[]) → members(member[])
+ *     member.character →
  *        weapon/subWeapon/armor/option/special → crystals[] + template
  *        skills[] → template(skill) → variants[] → active/passive/registeredBehaviorTrees
  *        registlets[] → template(registlet)
@@ -48,9 +48,9 @@ const armorCrystals = (eb: ExpressionBuilder<DB, "player_armor">) =>
 	).as("crystals");
 
 const armorTemplate = (eb: ExpressionBuilder<DB, "player_armor">) =>
-	jsonObjectFrom(
-		eb.selectFrom("armor").whereRef("armor.itemId", "=", "player_armor.templateId").selectAll("armor"),
-	).as("template");
+	jsonObjectFrom(eb.selectFrom("armor").whereRef("armor.itemId", "=", "player_armor.templateId").selectAll("armor")).as(
+		"template",
+	);
 
 const optionCrystals = (eb: ExpressionBuilder<DB, "player_option">) =>
 	jsonArrayFrom(
@@ -90,15 +90,21 @@ const skillVariants = (eb: ExpressionBuilder<DB, "skill">) =>
 			.selectAll("skill_variant")
 			.select((v) => [
 				jsonObjectFrom(
-					v.selectFrom("behavior_tree").whereRef("behavior_tree.activeOwnerId", "=", "skill_variant.id")
+					v
+						.selectFrom("behavior_tree")
+						.whereRef("behavior_tree.activeOwnerId", "=", "skill_variant.id")
 						.selectAll("behavior_tree"),
 				).as("activeBehaviorTree"),
 				jsonObjectFrom(
-					v.selectFrom("behavior_tree").whereRef("behavior_tree.passiveOwnerId", "=", "skill_variant.id")
+					v
+						.selectFrom("behavior_tree")
+						.whereRef("behavior_tree.passiveOwnerId", "=", "skill_variant.id")
 						.selectAll("behavior_tree"),
 				).as("passiveBehaviorTree"),
 				jsonArrayFrom(
-					v.selectFrom("behavior_tree").whereRef("behavior_tree.registeredOwnerId", "=", "skill_variant.id")
+					v
+						.selectFrom("behavior_tree")
+						.whereRef("behavior_tree.registeredOwnerId", "=", "skill_variant.id")
 						.selectAll("behavior_tree"),
 				).as("registeredBehaviorTrees"),
 			]),
@@ -112,9 +118,14 @@ const skillsOf = (eb: ExpressionBuilder<DB, "character">) =>
 			.selectAll("character_skill")
 			.select((s) => [
 				jsonObjectFrom(
-					s.selectFrom("skill").whereRef("skill.id", "=", "character_skill.templateId")
-						.selectAll("skill").select((sk) => skillVariants(sk)),
-				).$notNull().as("template"),
+					s
+						.selectFrom("skill")
+						.whereRef("skill.id", "=", "character_skill.templateId")
+						.selectAll("skill")
+						.select((sk) => skillVariants(sk)),
+				)
+					.$notNull()
+					.as("template"),
 			]),
 	).as("skills");
 
@@ -127,7 +138,9 @@ const registletsOf = (eb: ExpressionBuilder<DB, "character">) =>
 			.select((r) => [
 				// template 可空：内置托环在 wiki registlet 表无对应行，引擎走内置表解析，不依赖此 join。
 				jsonObjectFrom(
-					r.selectFrom("registlet").whereRef("registlet.id", "=", "character_registlet.templateId")
+					r
+						.selectFrom("registlet")
+						.whereRef("registlet.id", "=", "character_registlet.templateId")
 						.selectAll("registlet"),
 				).as("template"),
 			]),
@@ -146,60 +159,69 @@ const combosOf = (eb: ExpressionBuilder<DB, "character">) =>
 			]),
 	).as("combos");
 
-const charactersOf = (eb: ExpressionBuilder<DB, "player">) =>
-	jsonArrayFrom(
+const characterOf = (eb: ExpressionBuilder<DB, "member">) =>
+	jsonObjectFrom(
 		eb
 			.selectFrom("character")
-			.whereRef("character.belongToPlayerId", "=", "player.id")
+			.whereRef("character.id", "=", "member.characterId")
 			.selectAll("character")
 			.select((eb2) => [
 				jsonObjectFrom(
-					eb2.selectFrom("player_weapon").whereRef("player_weapon.id", "=", "character.weaponId")
-						.selectAll("player_weapon").select((e) => [weaponCrystals(e), weaponTemplate(e)]),
+					eb2
+						.selectFrom("player_weapon")
+						.whereRef("player_weapon.id", "=", "character.weaponId")
+						.selectAll("player_weapon")
+						.select((e) => [weaponCrystals(e), weaponTemplate(e)]),
 				).as("weapon"),
 				jsonObjectFrom(
-					eb2.selectFrom("player_weapon").whereRef("player_weapon.id", "=", "character.subWeaponId")
-						.selectAll("player_weapon").select((e) => [weaponCrystals(e), weaponTemplate(e)]),
+					eb2
+						.selectFrom("player_weapon")
+						.whereRef("player_weapon.id", "=", "character.subWeaponId")
+						.selectAll("player_weapon")
+						.select((e) => [weaponCrystals(e), weaponTemplate(e)]),
 				).as("subWeapon"),
 				jsonObjectFrom(
-					eb2.selectFrom("player_armor").whereRef("player_armor.id", "=", "character.armorId")
-						.selectAll("player_armor").select((e) => [armorCrystals(e), armorTemplate(e)]),
+					eb2
+						.selectFrom("player_armor")
+						.whereRef("player_armor.id", "=", "character.armorId")
+						.selectAll("player_armor")
+						.select((e) => [armorCrystals(e), armorTemplate(e)]),
 				).as("armor"),
 				jsonObjectFrom(
-					eb2.selectFrom("player_option").whereRef("player_option.id", "=", "character.optionId")
-						.selectAll("player_option").select((e) => [optionCrystals(e), optionTemplate(e)]),
+					eb2
+						.selectFrom("player_option")
+						.whereRef("player_option.id", "=", "character.optionId")
+						.selectAll("player_option")
+						.select((e) => [optionCrystals(e), optionTemplate(e)]),
 				).as("option"),
 				jsonObjectFrom(
-					eb2.selectFrom("player_special").whereRef("player_special.id", "=", "character.specialId")
-						.selectAll("player_special").select((e) => [specialCrystals(e), specialTemplate(e)]),
+					eb2
+						.selectFrom("player_special")
+						.whereRef("player_special.id", "=", "character.specialId")
+						.selectAll("player_special")
+						.select((e) => [specialCrystals(e), specialTemplate(e)]),
 				).as("special"),
 				jsonArrayFrom(
-					eb2.selectFrom("_avatarTocharacter").innerJoin("avatar", "_avatarTocharacter.A", "avatar.id")
-						.whereRef("_avatarTocharacter.B", "=", "character.id").selectAll("avatar"),
+					eb2
+						.selectFrom("_avatarTocharacter")
+						.innerJoin("avatar", "_avatarTocharacter.A", "avatar.id")
+						.whereRef("_avatarTocharacter.B", "=", "character.id")
+						.selectAll("avatar"),
 				).as("avatars"),
 				skillsOf(eb2),
 				registletsOf(eb2),
 				jsonArrayFrom(
-					eb2.selectFrom("_characterToconsumable").innerJoin("consumable", "_characterToconsumable.B", "consumable.itemId")
-						.whereRef("_characterToconsumable.A", "=", "character.id").selectAll("consumable"),
+					eb2
+						.selectFrom("_characterToconsumable")
+						.innerJoin("consumable", "_characterToconsumable.B", "consumable.itemId")
+						.whereRef("_characterToconsumable.A", "=", "character.id")
+						.selectAll("consumable"),
 				).as("consumables"),
 				combosOf(eb2),
 			]),
-	).as("characters");
+	).as("character");
 
-// member.player → characters(子树)；库存(pets/weapons/...)引擎不消费，不取
-const playerOf = (eb: ExpressionBuilder<DB, "member">) =>
-	jsonObjectFrom(
-		eb
-			.selectFrom("player")
-			.whereRef("player.id", "=", "member.playerId")
-			.selectAll("player")
-			.select((eb2) => [
-				charactersOf(eb2),
-			]),
-	).as("player");
-
-// member 子树：player(深) + partner/mercenary/mob(浅取，引擎暂不深入)
+// member 子树：character(深) + mob(浅取)；partner/mercenary 运行时尚未实现。
 const membersOf = (eb: ExpressionBuilder<DB, "team">) =>
 	jsonArrayFrom(
 		eb
@@ -207,34 +229,31 @@ const membersOf = (eb: ExpressionBuilder<DB, "team">) =>
 			.whereRef("member.belongToTeamId", "=", "team.id")
 			.selectAll("member")
 			.select((eb2) => [
-				playerOf(eb2),
-				jsonObjectFrom(
-					eb2.selectFrom("mob").whereRef("mob.id", "=", "member.mobId").selectAll("mob"),
-				).as("mob"),
+				characterOf(eb2),
+				jsonObjectFrom(eb2.selectFrom("mob").whereRef("mob.id", "=", "member.mobId").selectAll("mob")).as("mob"),
 			]),
 	).as("members");
-
-// camp(team[])：M2M _campA/_campB，simulator 在 A 列、team 在 B 列。
-// 联合类型无法泛化列引用，campA/campB 各写一个。
-const campA = (eb: ExpressionBuilder<DB, "simulator">) =>
+const teamsOf = (eb: ExpressionBuilder<DB, "simulator">) =>
 	jsonArrayFrom(
 		eb
-			.selectFrom("_campA")
-			.innerJoin("team", "_campA.B", "team.id")
-			.whereRef("_campA.A", "=", "simulator.id")
+			.selectFrom("team")
+			.whereRef("team.belongToSimulatorId", "=", "simulator.id")
 			.selectAll("team")
 			.select((eb2) => membersOf(eb2)),
-	).as("campA");
+	).as("teams");
 
-const campB = (eb: ExpressionBuilder<DB, "simulator">) =>
+const analysisMembersOf = (
+	eb: ExpressionBuilder<DB, "simulator">,
+	table: "_simulatorAnalysisSources" | "_simulatorAnalysisTargets",
+	alias: "analysisSourceMembers" | "analysisTargetMembers",
+) =>
 	jsonArrayFrom(
 		eb
-			.selectFrom("_campB")
-			.innerJoin("team", "_campB.B", "team.id")
-			.whereRef("_campB.A", "=", "simulator.id")
-			.selectAll("team")
-			.select((eb2) => membersOf(eb2)),
-	).as("campB");
+			.selectFrom(table)
+			.innerJoin("member", `${table}.A`, "member.id")
+			.whereRef(`${table}.B`, "=", "simulator.id")
+			.select("member.id"),
+	).as(alias);
 
 /**
  * 引擎专用：按 id 取裁剪后的 simulator 关系树。
@@ -246,7 +265,10 @@ export async function selectSimulatorForEngine(id: string, trx?: Transaction<DB>
 		.selectFrom("simulator")
 		.where("simulator.id", "=", id)
 		.selectAll("simulator")
-		.select((eb) => [campA(eb), campB(eb)])
+		.select((eb) => [
+			teamsOf(eb),
+			analysisMembersOf(eb, "_simulatorAnalysisSources", "analysisSourceMembers"),
+			analysisMembersOf(eb, "_simulatorAnalysisTargets", "analysisTargetMembers"),
+		])
 		.executeTakeFirst();
 }
-

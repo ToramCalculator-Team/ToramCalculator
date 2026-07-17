@@ -1,6 +1,7 @@
 import baselineSql from "../baseline/client.sql?raw";
 import migration_20260608_080648_v1_to_v2_Sql from "./20260608_080648_v1_to_v2/client.sql?raw";
 import migration_20260712_174440_v2_to_v3_Sql from "./20260712_174440_v2_to_v3/client.sql?raw";
+import migration_20260713_022543_v3_to_v4_Sql from "./20260713_022543_v3_to_v4/client.sql?raw";
 
 export type ClientDbBaseline = {
 	id: string;
@@ -40,5 +41,12 @@ export const CLIENT_DB_MIGRATIONS: ClientDbMigration[] = [
 		toVersion: 3,
 		checksum: "11456f27",
 		sql: migration_20260712_174440_v2_to_v3_Sql,
+	},
+	{
+		id: "20260713_022543_v3_to_v4",
+		fromVersion: 3,
+		toVersion: 4,
+		checksum: "e20c729f",
+		sql: migration_20260713_022543_v3_to_v4_Sql,
 	},
 ];

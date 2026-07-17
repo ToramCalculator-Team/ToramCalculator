@@ -613,7 +613,6 @@ model player {
     belongToAccount   account @relation(fields: [belongToAccountId], references: [id], onDelete: Cascade)
     belongToAccountId String
 
-    usedByMembers member[]
 }
 
 // 玩家自定义武器
@@ -778,6 +777,7 @@ model character {
     details String?
 
     usedByMercenary mercenary?
+    usedByMembers   member[]
 
     statistic   statistic @relation(fields: [statisticId], references: [id])
     statisticId String    @unique
@@ -853,9 +853,16 @@ model mercenary {
 model simulator {
     id String @id
 
-    name  String
-    campA team[] @relation("campA")
-    campB team[] @relation("campB")
+    name       String
+    teams      team[]
+    randomSeed Int      @default(1)
+    logicHz    Int      @default(60)
+
+    primaryMember   member? @relation("simulatorPrimaryMember", fields: [primaryMemberId], references: [id], onDelete: SetNull)
+    primaryMemberId String? @unique
+
+    analysisSourceMembers member[] @relation("simulatorAnalysisSources")
+    analysisTargetMembers member[] @relation("simulatorAnalysisTargets")
 
     details String?
 
@@ -875,9 +882,10 @@ model team {
     name    String?
     members member[]
     gems    String[]
+    camp    SimulatorCamp   // Enum SIMULATOR_CAMP
 
-    usedByCampAs simulator[] @relation("campA")
-    usedByCampBs simulator[] @relation("campB")
+    belongToSimulator   simulator @relation(fields: [belongToSimulatorId], references: [id], onDelete: Cascade)
+    belongToSimulatorId String
 }
 
 // 队伍成员
@@ -887,16 +895,20 @@ model member {
     name              String
     formationOrder    Int
     type              MemberType // Enum MEMBER_TYPE
-    player            player?    @relation(fields: [playerId], references: [id])
-    playerId          String?
+    character         character? @relation(fields: [characterId], references: [id])
+    characterId       String?
     partner           mercenary? @relation("partner", fields: [partnerId], references: [templateId])
     partnerId         String?
     mercenary         mercenary? @relation("mercenary", fields: [mercenaryId], references: [templateId])
     mercenaryId       String?
     mob               mob?       @relation(fields: [mobId], references: [id])
     mobId             String?
-    mobDifficultyFlag MobDifficultyFlag // Enum MOB_DIFFICULTY_FLAG
-    behavior          Json /// ZOD MemberBTSchema
+    mobDifficultyFlag MobDifficultyFlag? // Enum MOB_DIFFICULTY_FLAG
+    behavior          Json? /// ZOD MemberBTSchema
+
+    primaryForSimulator       simulator?  @relation("simulatorPrimaryMember")
+    analysisSourceForSimulator simulator[] @relation("simulatorAnalysisSources")
+    analysisTargetForSimulator simulator[] @relation("simulatorAnalysisTargets")
 
     belongToTeam   team   @relation(fields: [belongToTeamId], references: [id], onDelete: Cascade)
     belongToTeamId String
@@ -1437,6 +1449,11 @@ enum RegisletType {
   MagicWallEnhance
   SmashEnhance
   SonicWaveEnhance
+}
+
+enum SimulatorCamp {
+    A
+  B
 }
 
 enum SkillAttackTyp {

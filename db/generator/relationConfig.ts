@@ -29,4 +29,6 @@ export const RELATION_BREAK_POINTS: Record<string, string[]> = {
 	account: ["user"],
 	// behavior_tree 的 owner 反查只用于定位归属，不继续展开 skill_variant，避免行为树资源与技能变体形成递归查询。
 	behavior_tree: ["activeOwner", "passiveOwner", "registeredOwner"],
+	// Simulator 正向拥有 Team/Member 设计树；Member 上的反向主控/分析关系只用于维护引用，不应递归展开整个 Simulator。
+	member: ["primaryForSimulator", "analysisSourceForSimulator", "analysisTargetForSimulator"],
 };

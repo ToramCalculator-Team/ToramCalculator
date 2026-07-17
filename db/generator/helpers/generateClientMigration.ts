@@ -46,6 +46,10 @@ const exists = async (filePath: string): Promise<boolean> =>
 		.then(() => true)
 		.catch(() => false);
 
+/** Prisma schema 文件末尾换行不承载结构语义，不应因此生成空迁移。 */
+export const haveEquivalentPrismaSchemaText = (left: string, right: string): boolean =>
+	left.trimEnd() === right.trimEnd();
+
 const readJson = async <T>(filePath: string): Promise<T> => JSON.parse(await readFile(filePath, "utf-8")) as T;
 
 const toImportName = (id: string) => `migration_${id.replace(/[^a-zA-Z0-9_]/g, "_")}_Sql`;
@@ -89,7 +93,7 @@ const parseDropTableName = (statement: string): string | undefined =>
 	statement.match(/DROP\s+TABLE\s+(?:"?[\w$]+"?\.)?"?([\w$]+)"?/i)?.[1];
 
 type AlterColumnAction = {
-	kind: "add" | "drop";
+	kind: "add" | "drop" | "nullability";
 	columnName: string;
 };
 
@@ -143,7 +147,7 @@ const splitTopLevelSqlList = (sql: string): string[] => {
 
 /**
  * 将 Prisma 的复合 ALTER TABLE 解析为逐列动作。
- * 当前客户端同步结构只接受列增删；其它 ALTER 动作必须显式实现，不能静默生成不完整迁移。
+ * 当前客户端同步结构接受列增删和可空性变化；其它 ALTER 动作必须显式实现，不能静默生成不完整迁移。
  */
 const parseAlterTable = (statement: string): ParsedAlterTable | undefined => {
 	const match = statement.match(/^ALTER\s+TABLE\s+(?:"?[\w$]+"?\.)?"?([\w$]+)"?\s+([\s\S]+?);?$/i);
@@ -153,13 +157,19 @@ const parseAlterTable = (statement: string): ParsedAlterTable | undefined => {
 		const actionMatch = action.match(
 			/^(ADD|DROP)\s+COLUMN\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(?:"([^"]+)"|([\w$]+))(?:\s+[\s\S]*)?$/i,
 		);
-		if (!actionMatch) {
-			throw new Error(`客户端迁移转换器暂不支持 ALTER TABLE 动作:\n${action}`);
+		if (actionMatch) {
+			return {
+				kind: actionMatch[1].toUpperCase() === "ADD" ? "add" : "drop",
+				columnName: actionMatch[2] ?? actionMatch[3],
+			};
 		}
-		return {
-			kind: actionMatch[1].toUpperCase() === "ADD" ? "add" : "drop",
-			columnName: actionMatch[2] ?? actionMatch[3],
-		};
+
+		const nullabilityMatch = action.match(/^ALTER\s+COLUMN\s+(?:"([^"]+)"|([\w$]+))\s+(?:DROP|SET)\s+NOT\s+NULL$/i);
+		if (nullabilityMatch) {
+			return { kind: "nullability", columnName: nullabilityMatch[1] ?? nullabilityMatch[2] };
+		}
+
+		throw new Error(`客户端迁移转换器暂不支持 ALTER TABLE 动作:\n${action}`);
 	});
 
 	return { tableName: match[1], actions };
@@ -219,7 +229,9 @@ export const convertPrismaDiffToClientSql = (
 						storage,
 						action.columnName,
 					);
-					return `ADD COLUMN ${columnDefinition}`;
+					if (action.kind === "add") return `ADD COLUMN ${columnDefinition}`;
+					const targetIsNotNull = /\bNOT\s+NULL\b/i.test(columnDefinition);
+					return `ALTER COLUMN "${action.columnName}" ${targetIsNotNull ? "SET" : "DROP"} NOT NULL`;
 				});
 				output.push(`ALTER TABLE "${tableName}_${storage}"\n${alterActions.join(",\n")};`);
 			}
@@ -251,7 +263,8 @@ export class ClientMigrationGenerator {
 
 		const previousSchema = await readFile(previousSchemaPath, "utf-8");
 		const currentSchema = await readFile(PATHS.tempSchema, "utf-8");
-		if (previousSchema === currentSchema) {
+		if (haveEquivalentPrismaSchemaText(previousSchema, currentSchema)) {
+			if (previousSchema !== currentSchema) await writeFileSafely(previousSchemaPath, currentSchema);
 			await this.writeMigrationIndex();
 			console.log("客户端 schema 无变化，跳过迁移生成");
 			return;

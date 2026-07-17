@@ -448,7 +448,7 @@ export const importCsvFiles = async (tables: string[], config: Config): Promise<
 export const validateForeignKeys = (config: Config): void => {
 	console.log("🔍 验证外键完整性...");
 
-	const validationSql = String.raw`
+	const validationSql = `
 CREATE TEMP TABLE foreign_key_validation_errors (
 	source_schema text NOT NULL,
 	source_table text NOT NULL,
@@ -590,6 +590,44 @@ $report_foreign_key_errors$;
 };
 
 /**
+ * 验证备份恢复后的机体配置满足当前产品规则。
+ *
+ * 机体数值范围不是 Prisma schema 能表达的结构约束，因此在权威备份进入开发数据库时集中拒绝非法数据，
+ * 避免把数据治理责任分散到每个客户端的升级流程。
+ *
+ * @param config - 配置对象
+ */
+export const validateCharacterConfigurations = (config: Config): void => {
+	console.log("🔍 验证机体配置...");
+
+	const validationSql = `
+DO $validate_character_configurations$
+DECLARE
+	violation_count bigint;
+BEGIN
+	SELECT count(*)
+	INTO violation_count
+	FROM "character"
+	WHERE
+		"lv" < 1 OR "lv" > 300 OR
+		"str" < 1 OR "int" < 1 OR "vit" < 1 OR "agi" < 1 OR "dex" < 1 OR
+		("personalityType" = 'None' AND "personalityValue" <> 0) OR
+		("personalityType" <> 'None' AND ("personalityValue" < 1 OR "personalityValue" > 255));
+
+	IF violation_count > 0 THEN
+		RAISE EXCEPTION USING
+			ERRCODE = 'check_violation',
+			MESSAGE = format('机体配置验证失败：%s 条非法数据，请修复 db/backups/character.csv', violation_count);
+	END IF;
+END
+$validate_character_configurations$;
+`;
+
+	execPsql(validationSql, config);
+	console.log("✅ 机体配置验证通过");
+};
+
+/**
  * 执行完整的恢复流程
  * @param config - 配置对象
  */
@@ -612,6 +650,9 @@ export const restore = async (config: Config): Promise<void> => {
 
 		// 3. 外键触发器不会追溯验证 replica 会话写入的数据，导入完成后必须主动检查。
 		validateForeignKeys(config);
+
+		// 4. 产品规则不属于 schema diff，权威备份必须在恢复边界显式验证。
+		validateCharacterConfigurations(config);
 
 		console.log("✅ 数据库恢复完成！");
 	} catch (error) {

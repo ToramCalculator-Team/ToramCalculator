@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { convertPrismaDiffToClientSql } from "./generateClientMigration";
+import { convertPrismaDiffToClientSql, haveEquivalentPrismaSchemaText } from "./generateClientMigration";
 
 const generatedClientSql = `-- member
 CREATE TABLE IF NOT EXISTS "member_synced" (
@@ -43,5 +43,42 @@ ADD COLUMN "behavior" JSONB,
 ADD COLUMN "formationOrder" INTEGER;`);
 		expect(sql).not.toMatch(/(?:^|;\n\n)ADD COLUMN/);
 		expect(sql.match(/CREATE OR REPLACE VIEW "member"/g)).toHaveLength(1);
+	});
+
+	it("按 synced/local 的目标列定义转换可空性变化", () => {
+		const prismaDiff = `-- AlterTable
+ALTER TABLE "member" ALTER COLUMN "behavior" DROP NOT NULL;
+`;
+		const nullableGeneratedClientSql = generatedClientSql.replace(
+			'  "behavior" JSONB NOT NULL,',
+			'  "behavior" JSONB,',
+		);
+
+		const sql = convertPrismaDiffToClientSql(prismaDiff, nullableGeneratedClientSql);
+
+		expect(sql).toContain(`ALTER TABLE "member_synced"
+ALTER COLUMN "behavior" DROP NOT NULL;`);
+		expect(sql).toContain(`ALTER TABLE "member_local"
+ALTER COLUMN "behavior" DROP NOT NULL;`);
+	});
+
+	it("目标 synced 列必填时设置约束，同时保持 local 覆盖列可空", () => {
+		const prismaDiff = `-- AlterTable
+ALTER TABLE "member" ALTER COLUMN "behavior" SET NOT NULL;
+`;
+
+		const sql = convertPrismaDiffToClientSql(prismaDiff, generatedClientSql);
+
+		expect(sql).toContain(`ALTER TABLE "member_synced"
+ALTER COLUMN "behavior" SET NOT NULL;`);
+		expect(sql).toContain(`ALTER TABLE "member_local"
+ALTER COLUMN "behavior" DROP NOT NULL;`);
+	});
+});
+
+describe("Prisma schema 迁移等价判断", () => {
+	it("忽略文件末尾换行，避免产生空迁移", () => {
+		expect(haveEquivalentPrismaSchemaText("model a {}\n", "model a {}")).toBe(true);
+		expect(haveEquivalentPrismaSchemaText("model a {}", "model b {}")).toBe(false);
 	});
 });

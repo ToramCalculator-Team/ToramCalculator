@@ -758,7 +758,7 @@ const dictionary: Dictionary = {
 			},
 			description: "记录对象之间的反向关联关系",
 		},
-		_campA: {
+		_simulatorAnalysisSources: {
 			selfName: "阵营A关联",
 			fields: {
 				A: {
@@ -774,7 +774,7 @@ const dictionary: Dictionary = {
 			},
 			description: "记录阵营A的关联关系",
 		},
-		_campB: {
+		_simulatorAnalysisTargets: {
 			selfName: "阵营B关联",
 			fields: {
 				A: {
@@ -1300,78 +1300,6 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "角色的属性修正值",
 					formFieldDescription: "请输入属性修正值",
 				},
-				actions: {
-					key: "行为",
-					tableFieldDescription: "角色的行为",
-					formFieldDescription: "请输入角色的行为",
-					fields: {
-						name: {
-							key: "行为树名称",
-							tableFieldDescription: "行为树的名称",
-							formFieldDescription: "行为树的名称",
-						},
-						definition: {
-							key: "行为树定义",
-							tableFieldDescription: "MDSL 行为树定义",
-							formFieldDescription: "MDSL 行为树定义",
-						},
-						agent: {
-							key: "可调用函数集",
-							tableFieldDescription: "行为树可调用函数集",
-							formFieldDescription: "行为树可调用函数集",
-						},
-						memberType: {
-							key: "成员类型",
-							tableFieldDescription: "成员类型",
-							formFieldDescription: "成员类型",
-							enumMap: {
-								Player: "玩家",
-								Partner: "伙伴",
-								Mercenary: "佣兵",
-								Mob: "怪物",
-							},
-						},
-						attributeSlots: {
-							key: "属性槽",
-							tableFieldDescription: "需要并入 StatContainer 的持久化属性槽",
-							formFieldDescription: "需要并入 StatContainer 的持久化属性槽",
-							item: {
-								key: "",
-								tableFieldDescription: "",
-								formFieldDescription: "",
-								fields: {
-									path: {
-										key: "属性路径",
-										tableFieldDescription: "点号分隔的完整属性路径",
-										formFieldDescription: "点号分隔的完整属性路径",
-									},
-									attribute: {
-										key: "属性定义",
-										tableFieldDescription: "属性定义",
-										formFieldDescription: "属性定义",
-										fields: {
-											displayName: {
-												key: "展示名",
-												tableFieldDescription: "属性展示名",
-												formFieldDescription: "属性展示名",
-											},
-											expression: {
-												key: "初始表达式",
-												tableFieldDescription: "属性初始表达式",
-												formFieldDescription: "属性初始表达式",
-											},
-											noBaseValue: {
-												key: "不参与乘法",
-												tableFieldDescription: "百分比修正不参与乘法",
-												formFieldDescription: "百分比修正不参与乘法",
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
 				partnerSkillAId: {
 					key: "伙伴技能A ID",
 					tableFieldDescription: "伙伴技能A的ID",
@@ -1742,15 +1670,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "成员的名称",
 					formFieldDescription: "请输入成员的名称",
 				},
-				sequence: {
+				formationOrder: {
 					key: "顺序",
 					tableFieldDescription: "成员的顺序",
 					formFieldDescription: "请输入成员的顺序",
 				},
-				playerId: {
-					key: "玩家ID",
-					tableFieldDescription: "成员的玩家ID",
-					formFieldDescription: "选择成员的玩家",
+				characterId: {
+					key: "角色ID",
+					tableFieldDescription: "成员使用的角色ID",
+					formFieldDescription: "选择成员使用的角色",
 				},
 				partnerId: {
 					key: "伙伴ID",
@@ -1777,6 +1705,78 @@ const dictionary: Dictionary = {
 						Hard: "二星",
 						Lunatic: "三星",
 						Ultimate: "四星",
+					},
+				},
+				behavior: {
+					key: "成员流程",
+					tableFieldDescription: "Simulator 中可选的成员流程",
+					formFieldDescription: "配置成员流程",
+					fields: {
+						name: {
+							key: "行为树名称",
+							tableFieldDescription: "行为树的名称",
+							formFieldDescription: "行为树的名称",
+						},
+						definition: {
+							key: "行为树定义",
+							tableFieldDescription: "MDSL 行为树定义",
+							formFieldDescription: "MDSL 行为树定义",
+						},
+						agent: {
+							key: "可调用函数集",
+							tableFieldDescription: "行为树可调用函数集",
+							formFieldDescription: "行为树可调用函数集",
+						},
+						memberType: {
+							key: "成员类型",
+							tableFieldDescription: "成员类型",
+							formFieldDescription: "成员类型",
+							enumMap: {
+								Player: "玩家",
+								Partner: "伙伴",
+								Mercenary: "佣兵",
+								Mob: "怪物",
+							},
+						},
+						attributeSlots: {
+							key: "属性槽",
+							tableFieldDescription: "需要并入 StatContainer 的持久化属性槽",
+							formFieldDescription: "需要并入 StatContainer 的持久化属性槽",
+							item: {
+								key: "",
+								tableFieldDescription: "",
+								formFieldDescription: "",
+								fields: {
+									path: {
+										key: "属性路径",
+										tableFieldDescription: "点号分隔的完整属性路径",
+										formFieldDescription: "点号分隔的完整属性路径",
+									},
+									attribute: {
+										key: "属性定义",
+										tableFieldDescription: "属性定义",
+										formFieldDescription: "属性定义",
+										fields: {
+											displayName: {
+												key: "展示名",
+												tableFieldDescription: "属性展示名",
+												formFieldDescription: "属性展示名",
+											},
+											expression: {
+												key: "初始表达式",
+												tableFieldDescription: "属性初始表达式",
+												formFieldDescription: "属性初始表达式",
+											},
+											noBaseValue: {
+												key: "不参与乘法",
+												tableFieldDescription: "百分比修正不参与乘法",
+												formFieldDescription: "百分比修正不参与乘法",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				belongToTeamId: {
@@ -2613,6 +2613,21 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "模拟器的名称",
 					formFieldDescription: "请输入模拟器的名称",
 				},
+				randomSeed: {
+					key: "随机种子",
+					tableFieldDescription: "用于确定性模拟的随机种子",
+					formFieldDescription: "请输入随机种子",
+				},
+				logicHz: {
+					key: "逻辑频率",
+					tableFieldDescription: "每秒执行的逻辑 Tick 数",
+					formFieldDescription: "请输入逻辑频率",
+				},
+				primaryMemberId: {
+					key: "主控成员",
+					tableFieldDescription: "预期接受手动控制的成员",
+					formFieldDescription: "请选择主控成员",
+				},
 				details: {
 					key: "详情",
 					tableFieldDescription: "模拟器的详情",
@@ -3131,6 +3146,17 @@ const dictionary: Dictionary = {
 					key: "宝石",
 					tableFieldDescription: "队伍的宝石配置",
 					formFieldDescription: "请输入队伍的宝石配置",
+				},
+				camp: {
+					key: "阵营",
+					tableFieldDescription: "队伍所属阵营",
+					formFieldDescription: "请选择队伍阵营",
+					enumMap: { A: "A", B: "B" },
+				},
+				belongToSimulatorId: {
+					key: "模拟器ID",
+					tableFieldDescription: "拥有该队伍的模拟器",
+					formFieldDescription: "请选择所属模拟器",
 				},
 			},
 			description: "队伍信息",

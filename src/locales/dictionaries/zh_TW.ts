@@ -808,7 +808,7 @@ const dictionary: Dictionary = {
 			},
 			description: "记录对象之间的反向关联关系",
 		},
-		_campA: {
+		_simulatorAnalysisSources: {
 			selfName: "阵营A关联",
 			fields: {
 				A: {
@@ -824,7 +824,7 @@ const dictionary: Dictionary = {
 			},
 			description: "记录阵营A的关联关系",
 		},
-		_campB: {
+		_simulatorAnalysisTargets: {
 			selfName: "阵营B关联",
 			fields: {
 				A: {
@@ -1350,78 +1350,6 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "機體的屬性修正值",
 					formFieldDescription: "請輸入機體的屬性修正值",
 				},
-				actions: {
-					key: "行動",
-					tableFieldDescription: "機體的行動",
-					formFieldDescription: "請輸入機體的行動",
-					fields: {
-						name: {
-							key: "行為樹名稱",
-							tableFieldDescription: "行為樹的名稱",
-							formFieldDescription: "行為樹的名稱",
-						},
-						definition: {
-							key: "行為樹定義",
-							tableFieldDescription: "MDSL 行為樹定義",
-							formFieldDescription: "MDSL 行為樹定義",
-						},
-						agent: {
-							key: "Agent 函式集",
-							tableFieldDescription: "行為樹可呼叫函式集",
-							formFieldDescription: "行為樹可呼叫函式集",
-						},
-						memberType: {
-							key: "成員類型",
-							tableFieldDescription: "此行為所屬的成員類型",
-							formFieldDescription: "此行為所屬的成員類型",
-							enumMap: {
-								Player: "玩家",
-								Partner: "夥伴",
-								Mercenary: "傭兵",
-								Mob: "怪物",
-							},
-						},
-						attributeSlots: {
-							key: "屬性槽",
-							tableFieldDescription: "需要併入 StatContainer 的持久化屬性槽",
-							formFieldDescription: "需要併入 StatContainer 的持久化屬性槽",
-							item: {
-								key: "",
-								tableFieldDescription: "",
-								formFieldDescription: "",
-								fields: {
-									path: {
-										key: "屬性路徑",
-										tableFieldDescription: "點號分隔的完整屬性路徑",
-										formFieldDescription: "點號分隔的完整屬性路徑",
-									},
-									attribute: {
-										key: "屬性定義",
-										tableFieldDescription: "屬性定義",
-										formFieldDescription: "屬性定義",
-										fields: {
-											displayName: {
-												key: "顯示名稱",
-												tableFieldDescription: "屬性顯示名稱",
-												formFieldDescription: "屬性顯示名稱",
-											},
-											expression: {
-												key: "初始表達式",
-												tableFieldDescription: "屬性初始表達式",
-												formFieldDescription: "屬性初始表達式",
-											},
-											noBaseValue: {
-												key: "不參與乘法",
-												tableFieldDescription: "百分比修正不參與乘法",
-												formFieldDescription: "百分比修正不參與乘法",
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
 				partnerSkillAId: {
 					key: "伙伴技能A ID",
 					tableFieldDescription: "伙伴技能A的ID",
@@ -1792,15 +1720,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "成員的名称",
 					formFieldDescription: "請輸入成員的名称",
 				},
-				sequence: {
+				formationOrder: {
 					key: "順序",
 					tableFieldDescription: "成員的順序",
 					formFieldDescription: "請輸入成員的順序",
 				},
-				playerId: {
-					key: "玩家ID",
-					tableFieldDescription: "成員的玩家ID",
-					formFieldDescription: "選择成員的玩家",
+				characterId: {
+					key: "角色ID",
+					tableFieldDescription: "成員使用的角色ID",
+					formFieldDescription: "選擇成員使用的角色",
 				},
 				partnerId: {
 					key: "伙伴ID",
@@ -1827,6 +1755,78 @@ const dictionary: Dictionary = {
 						Hard: "",
 						Lunatic: "",
 						Ultimate: "",
+					},
+				},
+				behavior: {
+					key: "成員流程",
+					tableFieldDescription: "Simulator 中可選的成員流程",
+					formFieldDescription: "設定成員流程",
+					fields: {
+						name: {
+							key: "行為樹名稱",
+							tableFieldDescription: "行為樹的名稱",
+							formFieldDescription: "行為樹的名稱",
+						},
+						definition: {
+							key: "行為樹定義",
+							tableFieldDescription: "MDSL 行為樹定義",
+							formFieldDescription: "MDSL 行為樹定義",
+						},
+						agent: {
+							key: "Agent 函式集",
+							tableFieldDescription: "行為樹可呼叫函式集",
+							formFieldDescription: "行為樹可呼叫函式集",
+						},
+						memberType: {
+							key: "成員類型",
+							tableFieldDescription: "此行為所屬的成員類型",
+							formFieldDescription: "此行為所屬的成員類型",
+							enumMap: {
+								Player: "玩家",
+								Partner: "夥伴",
+								Mercenary: "傭兵",
+								Mob: "怪物",
+							},
+						},
+						attributeSlots: {
+							key: "屬性槽",
+							tableFieldDescription: "需要併入 StatContainer 的持久化屬性槽",
+							formFieldDescription: "需要併入 StatContainer 的持久化屬性槽",
+							item: {
+								key: "",
+								tableFieldDescription: "",
+								formFieldDescription: "",
+								fields: {
+									path: {
+										key: "屬性路徑",
+										tableFieldDescription: "點號分隔的完整屬性路徑",
+										formFieldDescription: "點號分隔的完整屬性路徑",
+									},
+									attribute: {
+										key: "屬性定義",
+										tableFieldDescription: "屬性定義",
+										formFieldDescription: "屬性定義",
+										fields: {
+											displayName: {
+												key: "顯示名稱",
+												tableFieldDescription: "屬性顯示名稱",
+												formFieldDescription: "屬性顯示名稱",
+											},
+											expression: {
+												key: "初始表達式",
+												tableFieldDescription: "屬性初始表達式",
+												formFieldDescription: "屬性初始表達式",
+											},
+											noBaseValue: {
+												key: "不參與乘法",
+												tableFieldDescription: "百分比修正不參與乘法",
+												formFieldDescription: "百分比修正不參與乘法",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				belongToTeamId: {
@@ -2656,6 +2656,21 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "模擬器的名称",
 					formFieldDescription: "請輸入模擬器的名称",
 				},
+				randomSeed: {
+					key: "隨機種子",
+					tableFieldDescription: "用於確定性模擬的隨機種子",
+					formFieldDescription: "請輸入隨機種子",
+				},
+				logicHz: {
+					key: "邏輯頻率",
+					tableFieldDescription: "每秒執行的邏輯 Tick 數",
+					formFieldDescription: "請輸入邏輯頻率",
+				},
+				primaryMemberId: {
+					key: "主控成員",
+					tableFieldDescription: "預期接受手動控制的成員",
+					formFieldDescription: "請選擇主控成員",
+				},
 				details: {
 					key: "詳情",
 					tableFieldDescription: "模擬器的詳情",
@@ -3173,6 +3188,17 @@ const dictionary: Dictionary = {
 					key: "宝石",
 					tableFieldDescription: "队伍的宝石配置",
 					formFieldDescription: "請輸入队伍的宝石配置",
+				},
+				camp: {
+					key: "陣營",
+					tableFieldDescription: "隊伍所屬陣營",
+					formFieldDescription: "請選擇隊伍陣營",
+					enumMap: { A: "A", B: "B" },
+				},
+				belongToSimulatorId: {
+					key: "模擬器ID",
+					tableFieldDescription: "擁有該隊伍的模擬器",
+					formFieldDescription: "請選擇所屬模擬器",
 				},
 			},
 			description: "隊伍資訊",

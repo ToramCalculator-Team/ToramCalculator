@@ -40,35 +40,6 @@ MagicCannonVariant1Id__registered_bt_1,魔法炮充能buff,"root {
     }
   }
 }","","[{""path"": ""buff.magicCannon.charge"", ""attribute"": {""expression"": ""0"", ""displayName"": ""魔法炮充能数""}}]",,,biqvrva0zpgc6wiojl4pho82,d8dc02ea-34db-498c-8f40-544928eb62d8
-xdv0qzto85gqzs9ciku5jxcw__active_bt,default,"root {
-	sequence{
-		action [animation, ""咏唱动画"",$currentSkill.lifecycle.chanting]
-		wait [$currentSkill.lifecycle.chanting]
-		action [animation,""蓄力动画"",$currentSkill.lifecycle.charging]
-		wait [$currentSkill.lifecycle.charging]
-		action [animation,""施法前摇"",$currentSkill.lifecycle.startup]
-		wait [$currentSkill.lifecycle.startup]
-        branch [mainAction]
-		action [animation, ""施法后摇"", $currentSkill.lifecycle.recovery]
-		wait [$currentSkill.lifecycle.recovery]
-    }
-}
-
-root [mainAction] {
-    sequence {
-        action [singleAttack, $targetId,""magic"",""magic"",$伤害计算公式,1,$伤害标签,[],""none""]
-    }
-}","class Agent {
-    get 伤害标签() {
-        // 伤害归因标签。commonAttackSchema.damageTags；受击 Pipeline 的 overlay/proc 订阅依据之一。
-        // 物理类 rangeAttack 默认给 [""physical""]；后续可加元素/特殊 tag。
-        return [""magical""];
-    }
-    get 伤害计算公式() {
-        const 有效魔攻 = ""(self.lv - target.lv + self.atk.m) * target.red.m - target.def.m * (1 - self.pie.m)"";
-        return `${有效魔攻} + (90 + skillLv * 5)`
-    }
-}",[],xdv0qzto85gqzs9ciku5jxcw,,,d0697ac8-fb7d-435c-bc54-e38a5b2e14bd
 k8pmbl65hjsr1poonb9q3age__passive_bt,劍術要領 被动属性,"root {
 	/* toram-skill-import:passive-attribute-v1; sourceTree=劍術技能; sourceSkill=劍術要領 */
 	sequence {

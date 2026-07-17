@@ -762,7 +762,7 @@ const dictionary: Dictionary = {
 			},
 			description: "クリスタル間の逆関連を記録",
 		},
-		_campA: {
+		_simulatorAnalysisSources: {
 			selfName: "陣営A関連",
 			fields: {
 				A: {
@@ -778,7 +778,7 @@ const dictionary: Dictionary = {
 			},
 			description: "陣営Aの関連を記録",
 		},
-		_campB: {
+		_simulatorAnalysisTargets: {
 			selfName: "陣営B関連",
 			fields: {
 				A: {
@@ -1304,78 +1304,6 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "キャラクターの修正値",
 					formFieldDescription: "キャラクターの修正値を入力してください。",
 				},
-				actions: {
-					key: "行動",
-					tableFieldDescription: "キャラクターの行動",
-					formFieldDescription: "キャラクターの行動を入力してください。",
-					fields: {
-						name: {
-							key: "ビヘイビアツリー名",
-							tableFieldDescription: "ビヘイビアツリーの名前",
-							formFieldDescription: "ビヘイビアツリーの名前",
-						},
-						definition: {
-							key: "ビヘイビアツリー定義",
-							tableFieldDescription: "MDSL ビヘイビアツリー定義",
-							formFieldDescription: "MDSL ビヘイビアツリー定義",
-						},
-						agent: {
-							key: "Agent関数",
-							tableFieldDescription: "ビヘイビアツリーの呼び出し可能関数群",
-							formFieldDescription: "ビヘイビアツリーの呼び出し可能関数群",
-						},
-						memberType: {
-							key: "メンバータイプ",
-							tableFieldDescription: "この行動が属するメンバータイプ",
-							formFieldDescription: "この行動が属するメンバータイプ",
-							enumMap: {
-								Player: "プレイヤー",
-								Partner: "パートナー",
-								Mercenary: "傭兵",
-								Mob: "モブ",
-							},
-						},
-						attributeSlots: {
-							key: "属性スロット",
-							tableFieldDescription: "StatContainer に追加する永続属性スロット",
-							formFieldDescription: "StatContainer に追加する永続属性スロット",
-							item: {
-								key: "",
-								tableFieldDescription: "",
-								formFieldDescription: "",
-								fields: {
-									path: {
-										key: "属性パス",
-										tableFieldDescription: "ドット区切りの完全な属性パス",
-										formFieldDescription: "ドット区切りの完全な属性パス",
-									},
-									attribute: {
-										key: "属性定義",
-										tableFieldDescription: "属性定義",
-										formFieldDescription: "属性定義",
-										fields: {
-											displayName: {
-												key: "表示名",
-												tableFieldDescription: "属性の表示名",
-												formFieldDescription: "属性の表示名",
-											},
-											expression: {
-												key: "初期式",
-												tableFieldDescription: "属性の初期式",
-												formFieldDescription: "属性の初期式",
-											},
-											noBaseValue: {
-												key: "乗算除外",
-												tableFieldDescription: "パーセンテージ補正が乗算に参加しない",
-												formFieldDescription: "パーセンテージ補正が乗算に参加しない",
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
 				partnerSkillAId: {
 					key: "パートナー技能A ID",
 					tableFieldDescription: "キャラクターのパートナー技能A ID",
@@ -1746,15 +1674,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "成员的名称",
 					formFieldDescription: "请输入成员的名称",
 				},
-				sequence: {
+				formationOrder: {
 					key: "顺序",
 					tableFieldDescription: "成员的顺序",
 					formFieldDescription: "请输入成员的顺序",
 				},
-				playerId: {
-					key: "玩家ID",
-					tableFieldDescription: "成员的玩家ID",
-					formFieldDescription: "选择成员的玩家",
+				characterId: {
+					key: "キャラクターID",
+					tableFieldDescription: "メンバーが使用するキャラクターID",
+					formFieldDescription: "メンバーのキャラクターを選択してください",
 				},
 				partnerId: {
 					key: "伙伴ID",
@@ -1781,6 +1709,78 @@ const dictionary: Dictionary = {
 						Hard: "",
 						Lunatic: "",
 						Ultimate: "",
+					},
+				},
+				behavior: {
+					key: "メンバー行動",
+					tableFieldDescription: "任意のメンバーフロー",
+					formFieldDescription: "メンバーフローを設定してください",
+					fields: {
+						name: {
+							key: "ビヘイビアツリー名",
+							tableFieldDescription: "ビヘイビアツリーの名前",
+							formFieldDescription: "ビヘイビアツリーの名前",
+						},
+						definition: {
+							key: "ビヘイビアツリー定義",
+							tableFieldDescription: "MDSL ビヘイビアツリー定義",
+							formFieldDescription: "MDSL ビヘイビアツリー定義",
+						},
+						agent: {
+							key: "Agent関数",
+							tableFieldDescription: "ビヘイビアツリーの呼び出し可能関数群",
+							formFieldDescription: "ビヘイビアツリーの呼び出し可能関数群",
+						},
+						memberType: {
+							key: "メンバータイプ",
+							tableFieldDescription: "この行動が属するメンバータイプ",
+							formFieldDescription: "この行動が属するメンバータイプ",
+							enumMap: {
+								Player: "プレイヤー",
+								Partner: "パートナー",
+								Mercenary: "傭兵",
+								Mob: "モブ",
+							},
+						},
+						attributeSlots: {
+							key: "属性スロット",
+							tableFieldDescription: "StatContainer に追加する永続属性スロット",
+							formFieldDescription: "StatContainer に追加する永続属性スロット",
+							item: {
+								key: "",
+								tableFieldDescription: "",
+								formFieldDescription: "",
+								fields: {
+									path: {
+										key: "属性パス",
+										tableFieldDescription: "ドット区切りの完全な属性パス",
+										formFieldDescription: "ドット区切りの完全な属性パス",
+									},
+									attribute: {
+										key: "属性定義",
+										tableFieldDescription: "属性定義",
+										formFieldDescription: "属性定義",
+										fields: {
+											displayName: {
+												key: "表示名",
+												tableFieldDescription: "属性の表示名",
+												formFieldDescription: "属性の表示名",
+											},
+											expression: {
+												key: "初期式",
+												tableFieldDescription: "属性の初期式",
+												formFieldDescription: "属性の初期式",
+											},
+											noBaseValue: {
+												key: "乗算除外",
+												tableFieldDescription: "パーセンテージ補正が乗算に参加しない",
+												formFieldDescription: "パーセンテージ補正が乗算に参加しない",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				belongToTeamId: {
@@ -2618,6 +2618,21 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "模拟器的名称",
 					formFieldDescription: "请输入模拟器的名称",
 				},
+				randomSeed: {
+					key: "乱数シード",
+					tableFieldDescription: "再現可能なシミュレーション用シード",
+					formFieldDescription: "乱数シードを入力してください",
+				},
+				logicHz: {
+					key: "ロジック周波数",
+					tableFieldDescription: "1秒あたりのロジックTick数",
+					formFieldDescription: "ロジック周波数を入力してください",
+				},
+				primaryMemberId: {
+					key: "主操作メンバー",
+					tableFieldDescription: "手動操作するメンバー",
+					formFieldDescription: "主操作メンバーを選択してください",
+				},
 				details: {
 					key: "详情",
 					tableFieldDescription: "模拟器的详情",
@@ -3139,6 +3154,17 @@ const dictionary: Dictionary = {
 					key: "宝石",
 					tableFieldDescription: "队伍的宝石配置",
 					formFieldDescription: "请输入队伍的宝石配置",
+				},
+				camp: {
+					key: "陣営",
+					tableFieldDescription: "チームの陣営",
+					formFieldDescription: "チームの陣営を選択してください",
+					enumMap: { A: "A", B: "B" },
+				},
+				belongToSimulatorId: {
+					key: "シミュレーターID",
+					tableFieldDescription: "このチームを所有するシミュレーター",
+					formFieldDescription: "シミュレーターを選択してください",
 				},
 			},
 			description: "チーム情報",

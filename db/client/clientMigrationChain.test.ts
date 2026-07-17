@@ -48,15 +48,19 @@ describe("客户端数据库迁移链", () => {
       SELECT table_name, column_name, is_nullable
       FROM information_schema.columns
       WHERE table_name IN ('member_synced', 'member_local')
-        AND column_name IN ('sequence', 'behavior', 'formationOrder')
+		AND column_name IN ('sequence', 'playerId', 'behavior', 'characterId', 'formationOrder', 'mobDifficultyFlag')
       ORDER BY table_name, column_name;
     `);
 
 		expect(columns.rows).toEqual([
 			{ table_name: "member_local", column_name: "behavior", is_nullable: "YES" },
+			{ table_name: "member_local", column_name: "characterId", is_nullable: "YES" },
 			{ table_name: "member_local", column_name: "formationOrder", is_nullable: "YES" },
-			{ table_name: "member_synced", column_name: "behavior", is_nullable: "NO" },
+			{ table_name: "member_local", column_name: "mobDifficultyFlag", is_nullable: "YES" },
+			{ table_name: "member_synced", column_name: "behavior", is_nullable: "YES" },
+			{ table_name: "member_synced", column_name: "characterId", is_nullable: "YES" },
 			{ table_name: "member_synced", column_name: "formationOrder", is_nullable: "NO" },
+			{ table_name: "member_synced", column_name: "mobDifficultyFlag", is_nullable: "YES" },
 		]);
 	});
 });

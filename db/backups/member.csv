@@ -1,4 +1,3 @@
-id,name,formationOrder,type,playerId,partnerId,mercenaryId,mobId,mobDifficultyFlag,belongToTeamId,behavior,write_id
-defaultMember1Id,defaultMember1,0,Player,defaultPlayerId,,,,Easy,"{""name"": ""default"", ""agent"": """", ""definition"": """", ""memberType"": ""Player""}",defaultTeamAId,0e22c49f-5dd2-4e44-b9d7-7e26a4deb13b
-defaultMember2Id,defaultMember2,0,Mob,,,,uc4jncckmmcpd6i2tc743pcu,Easy,"{""name"": ""default"", ""agent"": """", ""definition"": """", ""memberType"": ""Mob""}",defaultTeamBId,f0e00194-ad9d-4544-9b0f-7dd4a39eeaa1
-defaultMember3Id,defaultMember3,0,Mob,,,,clui55nha000111myotjx9ia0,Easy,"{""name"": ""default"", ""agent"": """", ""definition"": """", ""memberType"": ""Mob""}",defaultTeamBId,cf2946e7-9a4a-4dea-ab08-fac9e14a5336
+id,name,formationOrder,type,characterId,partnerId,mercenaryId,mobId,mobDifficultyFlag,behavior,belongToTeamId,write_id
+defaultMember1Id,defaultMember1,0,Player,defaultCharacterId,,,,,,defaultTeamAId,0e22c49f-5dd2-4e44-b9d7-7e26a4deb13b
+defaultMember2Id,训练木桩,0,Mob,,,,defaultTrainingDummyMobId,Normal,,defaultTeamBId,f0e00194-ad9d-4544-9b0f-7dd4a39eeaa1

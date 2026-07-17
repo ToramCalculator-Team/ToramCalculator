@@ -104,6 +104,10 @@ export type MercenaryType = (typeof MERCENARY_TYPE)[number];
 export const MEMBER_TYPE = ["Player", "Partner", "Mercenary", "Mob"] as const;
 export type MemberType = (typeof MEMBER_TYPE)[number];
 
+// 模拟器阵营
+export const SIMULATOR_CAMP = ["A", "B"] as const;
+export type SimulatorCamp = (typeof SIMULATOR_CAMP)[number];
+
 // 其他用户可见性
 export const VISIBILITY = ["Public", "Private"] as const;
 export type Visibility = (typeof VISIBILITY)[number];

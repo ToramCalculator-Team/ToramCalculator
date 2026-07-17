@@ -1,3 +1,3 @@
-id,name,gems,write_id
-defaultTeamAId,defaultTeamA,{},3616ef8c-abd9-4627-b816-de422c02f619
-defaultTeamBId,defaultTeamB,{},a66f654e-db05-4284-bf8c-4cb826fcaef7
+id,name,gems,camp,belongToSimulatorId,write_id
+defaultTeamAId,defaultTeamA,{},A,defaultSimulatorId,3616ef8c-abd9-4627-b816-de422c02f619
+defaultTeamBId,defaultTeamB,{},B,defaultSimulatorId,a66f654e-db05-4284-bf8c-4cb826fcaef7

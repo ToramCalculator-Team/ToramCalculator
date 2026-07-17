@@ -1,7 +1,6 @@
 id,targetMainWeaponType,targetSubWeaponType,targetArmorAbilityType,comboCompatible,hpCost,mpCost,range,castTimeType,distanceType,targetType,chantingFixedMs,chantingModifiedMs,chargingFixedMs,chargingModifiedMs,actionFixedMs,actionModifiedMs,startupRatio,description,activeBehavior,passiveBehavior,registeredBehavior,details,belongToskillId,write_id
 defaultSkillEffectId,Magictool,Any,Any,t,,100,,Instant,Both,Enemy,,,,,1000,0,0.5,null,,{},{},null,defaultSkillId,abb2740d-5864-4609-a4ae-96fae3b09eaa
 MagicCannonVariant1Id,Magictool,Any,Any,t,,hasBuff('magic_cannon_charge') ? 700 : 0	,,Instant,Both,Enemy,,,,,1000,0,0.5,null,,{},{},null,vh6phwi59yl8isvadjw6ybyu,34ef72d1-2e49-402b-9be6-ad3b1a5d7bdc
-xdv0qzto85gqzs9ciku5jxcw,Magictool,Any,Any,t,,100,,Instant,Both,Enemy,,,,,1000,0,0.5,null,,{},{},null,edb34ygvosutw7qb2kl6rt7j,221fd7b9-b635-4f1d-9d9b-707f5da88728
 o3zxw4p28k2gtfltcxj1qer5,OneHandSword,Any,Any,t,,100,main,Instant,Both,Enemy,,,,,583,333,0.5,null,,{},{},null,wuvsmsiux5piir2kttdf7bfc,4b2cd2f5-5540-4a61-a893-bebeca9ec2ed
 yna0gvnu2ky3nwdbhmiyd6ia,OneHandSword,OneHandSword,Any,t,,100,main,Instant,Both,Enemy,,,,,583,333,0.5,null,,{},{},null,wuvsmsiux5piir2kttdf7bfc,12e59739-3961-405a-87aa-21d0fda47e23
 wf9yxuvxambh39slj61pqnms,TwoHandSword,Any,Any,t,,100,main,Instant,Both,Enemy,,,,,583,333,0.5,null,,{},{},null,wuvsmsiux5piir2kttdf7bfc,3ff7b382-9938-4c6f-9324-8cc0440a9fb9

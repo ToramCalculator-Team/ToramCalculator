@@ -665,7 +665,7 @@ const dictionary: Dictionary = {
 			},
 			description: "Records the back relation between crystals",
 		},
-		_campA: {
+		_simulatorAnalysisSources: {
 			selfName: "Camp A Relation",
 			fields: {
 				A: {
@@ -681,7 +681,7 @@ const dictionary: Dictionary = {
 			},
 			description: "Records the Camp A relation",
 		},
-		_campB: {
+		_simulatorAnalysisTargets: {
 			selfName: "Camp B Relation",
 			fields: {
 				A: {
@@ -1209,78 +1209,6 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "The modifiers of the character.",
 					formFieldDescription: "Please enter the modifiers of the character.",
 				},
-				actions: {
-					key: "Actions",
-					tableFieldDescription: "The actions of the character.",
-					formFieldDescription: "Please enter the actions of the character.",
-					fields: {
-						name: {
-							key: "Behavior Tree Name",
-							tableFieldDescription: "Name of the behavior tree",
-							formFieldDescription: "Name of the behavior tree",
-						},
-						definition: {
-							key: "Behavior Tree Definition",
-							tableFieldDescription: "MDSL behavior tree definition",
-							formFieldDescription: "MDSL behavior tree definition",
-						},
-						agent: {
-							key: "Agent Functions",
-							tableFieldDescription: "Callable behavior tree functions",
-							formFieldDescription: "Callable behavior tree functions",
-						},
-						memberType: {
-							key: "Member Type",
-							tableFieldDescription: "The member type this action belongs to",
-							formFieldDescription: "The member type this action belongs to",
-							enumMap: {
-								Player: "Player",
-								Partner: "Partner",
-								Mercenary: "Mercenary",
-								Mob: "Mob",
-							},
-						},
-						attributeSlots: {
-							key: "Attribute Slots",
-							tableFieldDescription: "Persistent StatContainer slots declared by this tree",
-							formFieldDescription: "Persistent StatContainer slots declared by this tree",
-							item: {
-								key: "",
-								tableFieldDescription: "",
-								formFieldDescription: "",
-								fields: {
-									path: {
-										key: "Attribute Path",
-										tableFieldDescription: "Dot separated full attribute path",
-										formFieldDescription: "Dot separated full attribute path",
-									},
-									attribute: {
-										key: "Attribute Definition",
-										tableFieldDescription: "Attribute definition",
-										formFieldDescription: "Attribute definition",
-										fields: {
-											displayName: {
-												key: "Display Name",
-												tableFieldDescription: "Attribute display name",
-												formFieldDescription: "Attribute display name",
-											},
-											expression: {
-												key: "Initial Expression",
-												tableFieldDescription: "Attribute initial expression",
-												formFieldDescription: "Attribute initial expression",
-											},
-											noBaseValue: {
-												key: "No Base Value",
-												tableFieldDescription: "Percentage modifier does not participate in multiplication",
-												formFieldDescription: "Percentage modifier does not participate in multiplication",
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
 				partnerSkillAId: {
 					key: "Partner Skill A ID",
 					tableFieldDescription: "The ID of the partner skill A the character is equipped with.",
@@ -1651,15 +1579,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "成员的名称",
 					formFieldDescription: "请输入成员的名称",
 				},
-				sequence: {
+				formationOrder: {
 					key: "Order",
 					tableFieldDescription: "成员的顺序",
 					formFieldDescription: "请输入成员的顺序",
 				},
-				playerId: {
-					key: "Player ID",
-					tableFieldDescription: "成员的玩家ID",
-					formFieldDescription: "选择成员的玩家",
+				characterId: {
+					key: "Character ID",
+					tableFieldDescription: "The selected character ID.",
+					formFieldDescription: "Select the member character.",
 				},
 				partnerId: {
 					key: "Partner ID",
@@ -1686,6 +1614,78 @@ const dictionary: Dictionary = {
 						Hard: "Hard",
 						Lunatic: "Lunatic",
 						Ultimate: "Ultimate",
+					},
+				},
+				behavior: {
+					key: "Member Behavior",
+					tableFieldDescription: "The optional member flow.",
+					formFieldDescription: "Configure the member flow.",
+					fields: {
+						name: {
+							key: "Behavior Tree Name",
+							tableFieldDescription: "Name of the behavior tree",
+							formFieldDescription: "Name of the behavior tree",
+						},
+						definition: {
+							key: "Behavior Tree Definition",
+							tableFieldDescription: "MDSL behavior tree definition",
+							formFieldDescription: "MDSL behavior tree definition",
+						},
+						agent: {
+							key: "Agent Functions",
+							tableFieldDescription: "Callable behavior tree functions",
+							formFieldDescription: "Callable behavior tree functions",
+						},
+						memberType: {
+							key: "Member Type",
+							tableFieldDescription: "The member type this action belongs to",
+							formFieldDescription: "The member type this action belongs to",
+							enumMap: {
+								Player: "Player",
+								Partner: "Partner",
+								Mercenary: "Mercenary",
+								Mob: "Mob",
+							},
+						},
+						attributeSlots: {
+							key: "Attribute Slots",
+							tableFieldDescription: "Persistent StatContainer slots declared by this tree",
+							formFieldDescription: "Persistent StatContainer slots declared by this tree",
+							item: {
+								key: "",
+								tableFieldDescription: "",
+								formFieldDescription: "",
+								fields: {
+									path: {
+										key: "Attribute Path",
+										tableFieldDescription: "Dot separated full attribute path",
+										formFieldDescription: "Dot separated full attribute path",
+									},
+									attribute: {
+										key: "Attribute Definition",
+										tableFieldDescription: "Attribute definition",
+										formFieldDescription: "Attribute definition",
+										fields: {
+											displayName: {
+												key: "Display Name",
+												tableFieldDescription: "Attribute display name",
+												formFieldDescription: "Attribute display name",
+											},
+											expression: {
+												key: "Initial Expression",
+												tableFieldDescription: "Attribute initial expression",
+												formFieldDescription: "Attribute initial expression",
+											},
+											noBaseValue: {
+												key: "No Base Value",
+												tableFieldDescription: "Percentage modifier does not participate in multiplication",
+												formFieldDescription: "Percentage modifier does not participate in multiplication",
+											},
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 				belongToTeamId: {
@@ -2526,6 +2526,21 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "模拟器的名称",
 					formFieldDescription: "请输入模拟器的名称",
 				},
+				randomSeed: {
+					key: "Random Seed",
+					tableFieldDescription: "The deterministic simulation seed.",
+					formFieldDescription: "Enter a random seed.",
+				},
+				logicHz: {
+					key: "Logic Rate",
+					tableFieldDescription: "Simulation logic ticks per second.",
+					formFieldDescription: "Enter the logic rate.",
+				},
+				primaryMemberId: {
+					key: "Primary Member",
+					tableFieldDescription: "The member expected to receive manual control.",
+					formFieldDescription: "Select the primary member.",
+				},
 				details: {
 					key: "Details",
 					tableFieldDescription: "模拟器的详情",
@@ -3050,6 +3065,17 @@ const dictionary: Dictionary = {
 					key: "宝石",
 					tableFieldDescription: "队伍的宝石配置",
 					formFieldDescription: "请输入队伍的宝石配置",
+				},
+				camp: {
+					key: "Camp",
+					tableFieldDescription: "The team camp.",
+					formFieldDescription: "Select the team camp.",
+					enumMap: { A: "A", B: "B" },
+				},
+				belongToSimulatorId: {
+					key: "Simulator ID",
+					tableFieldDescription: "The Simulator that owns this team.",
+					formFieldDescription: "Select the owning Simulator.",
 				},
 			},
 			description: "Team information",
