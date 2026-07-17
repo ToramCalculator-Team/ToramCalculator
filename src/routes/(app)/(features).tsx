@@ -1,3 +1,4 @@
+import { useLocation } from "@solidjs/router";
 import { onMount, type ParentProps, Show } from "solid-js";
 import { Motion } from "solid-motionone";
 import { Nav } from "~/components/features/nav";
@@ -6,13 +7,15 @@ import { store } from "~/store";
 
 export default function FunctionPage(props: ParentProps) {
 	const sceneRuntime = useSceneRuntime();
+	const location = useLocation();
+	const isSimulatorLanding = () => location.pathname === "/simulator";
 	onMount(() => {
 		console.log("--FunctionPage Render");
 	});
 
 	return (
 		<Motion.main class="flex h-full w-full flex-col-reverse landscape:flex-row">
-			<Show when={sceneRuntime.mode() !== "realtime"}>
+			<Show when={sceneRuntime.mode() !== "realtime" && !isSimulatorLanding()}>
 				<Nav />
 			</Show>
 			{/* <OverlayScrollbarsComponent
@@ -29,7 +32,9 @@ export default function FunctionPage(props: ParentProps) {
 				animate={{ opacity: [0, 1] }}
 				transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0 }}
 				id="mainContent"
-				class={`Content z-40 flex h-full w-full flex-col overflow-hidden ${sceneRuntime.mode() === "realtime" ? "pointer-events-none" : "lg:landscape:px-12"}`}
+				class={`Content z-40 flex h-full w-full flex-col overflow-hidden ${
+					sceneRuntime.mode() === "realtime" ? "pointer-events-none" : isSimulatorLanding() ? "" : "lg:landscape:px-12"
+				}`}
 			>
 				{props.children}
 			</Motion.div>

@@ -59,7 +59,7 @@ export const Nav = () => {
 		}
 		return condition ? "bg-area-color lg:bg-brand-color-1st" : "";
 	};
-	
+
 	const _navHiddenTables: (keyof DB)[] = [
 		"verification_token",
 		"account",
@@ -211,17 +211,13 @@ export const Nav = () => {
 						</div>
 						<Divider />
 						<div class="CalculatorGroup flex items-center landscape:flex-col landscape:gap-0">
-							<button
-								type="button"
-								class={`ModuleSwitcher flex w-[20dvw] items-center justify-center landscape:hidden`}
-								onClick={() => console.log("/simulator/defaultSimulatorId")}
-							>
+							<A href="/simulator" class={`ModuleSwitcher flex w-[20dvw] items-center justify-center landscape:hidden`}>
 								<div class="Btn bg-accent-color h-12 w-12 rounded-full p-1">
 									<div class="Ring border-primary-color text-primary-color flex h-full w-full items-center justify-center rounded-full border">
 										53
 									</div>
 								</div>
-							</button>
+							</A>
 							<NavBtn
 								config={{
 									btnName: dictionary().ui.nav.character,
@@ -235,7 +231,7 @@ export const Nav = () => {
 								config={{
 									btnName: dictionary().ui.nav.simulator,
 									icon: <Icons.Outline.Filter />,
-									url: "/simulator/defaultSimulatorId",
+									url: "/simulator",
 								}}
 								active={active}
 								class={`hidden w-[20dvw] landscape:flex landscape:w-auto`}
