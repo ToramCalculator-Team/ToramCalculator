@@ -27,10 +27,10 @@
 
 ## 2. 领域概念（任务作用的对象）
 
-任务动词的宾语，来自 `engineScenarioSchema` / `characterPageModel.ts:761` / db schema：
+任务动词的宾语来自当前领域词汇与模拟场景模型：
 
 ```
-simulator(scenario)
+SimulationDesign
 ├── campA / campB（阵营）
 │   └── team（队伍）
 │       └── member（Simulator 独占的成员配置）
@@ -44,13 +44,12 @@ simulator(scenario)
 ```
 
 Team 与 Member 由各自 Simulator 独占；不同 Simulator 可以拥有内容相同的独立编排，并引用同一个 Character 或 Mob 资源，但不共享同一 Team/Member 数据行（ADR 0026）。
-设计草稿中的 Player Member 只保存 `characterId`，Mob Member 只保存 `mobId` 与难度档位；从设计进入验证时解析 Character/Mob 的最新持久数据与模型资源，验证和分析期间则只使用已冻结的运行快照。
+正式 SimulationDesign 中的 Player Member 明确引用 Character，Mob Member 明确引用 Mob 与难度档位；DesignCopy 在进入验证前已经包含本次运行所需的完整设计值。
 
 派生物（不是持久实体）：
-- **设计草稿**：Simulator 会话在设计阶段维护的可变模拟输入。
-- **已解析场景定义**：从设计草稿中的 Member 引用一次解析出同一版本的逻辑世界输入与静态 `worldResources`。
-- **运行快照**：从设计进入验证时捕获的不可变输入；包含当时解析的逻辑世界与静态 `worldResources`，Character 或其他持久源的后续变更不热更新当前快照。
-- **运行结果**：由 `(运行快照, seed)` **确定性产出**，内存态，不持久化。随机数统一后，种子 + 运行快照即可完全复现，分享带种子即可，无需存储。
+- **设计副本**：Simulator 会话中的完整、可运行 SimulationDesign 副本；产生运行记录后保持原值，后续编辑形成新副本。
+- **已解析场景定义**：从 DesignCopy 一次派生出同一版本的逻辑世界输入与静态 `worldResources`。
+- **引擎运行产出**：由 DesignCopy 派生场景和语义输入确定，属于当前会话内存态，不作为独立设计对象持久化。
 
 ---
 
@@ -76,9 +75,9 @@ Team 与 Member 由各自 Simulator 独占；不同 Simulator 可以拥有内容
     └── 看 dps 影响                           [反馈]（dps_impact，有据）
 ```
 
-### 3.2 simulator 页（三相位，共享同一 worldResources）
+### 3.2 simulator 页（三阶段，共享同一 worldResources）
 
-由 `businessPhaseMachine` 管三相位（designing / simulating / analyzing）。三个相位空间共享**同一份编排好的阵容**（worldResources），允许的用户意图与主要反馈随相位变化。
+AUI 持有 `designing / validating / analyzing` 应用级行为阶段，Simulator 会话持有各阶段所需的局部设计、运行与错误状态。三个阶段共享**同一份编排好的阵容**（worldResources），允许的用户意图与主要反馈随阶段变化。
 
 ```
 simulator 页
@@ -90,7 +89,7 @@ simulator 页
 │   └── 流程设计：编辑主控成员 AI 行为
 │       └── 编辑行为树（BtEditor）              [意图：编辑]（待细化）
 │
-├── 验证空间（simulating）
+├── 验证空间（validating）
 │   ├── 给主控动作
 │   │   ├── 移动                               [意图：连续控制]
 │   │   └── 释放技能                           [意图：触发]（受 skillAvailability 约束，有据）
@@ -104,7 +103,7 @@ simulator 页
 │   └── 检查模拟成员                           [意图：检查]（C4，有据）
 │
 └── 分析空间（analyzing）
-    ├── 操作对象：本次运行结果（(scenario, seed) 确定性产出，内存态）
+    ├── 操作对象：本次运行记录（DesignCopy + 输入轨迹 + 引擎运行产出，内存态）
     ├── 看结果可视化（图表/统计/时间线）          [反馈]（维度待细化）
     ├── 检查数据点 / 时间线事件                  [意图：检查]
     └── 回放                                    （从检查点重启模拟，复用验证空间世界渲染，非新驱动源）
@@ -132,13 +131,13 @@ simulator 页
 | 机体设计 | character 页（独立） | 设计-验证-分析近同步 | 选机体/换装/配锻晶/调技能/检查装备槽·技能树 | 角色模型 + 属性/预览/dps |
 | 初始场景设计 | simulator 页 | designing | 增删成员/编排队伍/指定主控 | 阵容布阵世界 |
 | 流程设计 | simulator 页 | designing | 编辑主控 AI 行为树 | （行为树视图） |
-| 验证（模拟） | simulator 页 | simulating | 移动/技能/切主控/进程控制/检查成员 | 战斗世界 + 主控状态 + 遥测 |
+| 验证（模拟） | simulator 页 | validating | 移动/技能/切主控/进程控制/检查成员 | 战斗世界 + 主控状态 + 遥测 |
 | 分析 | simulator 页 | analyzing | 选结果/检查时间线事件/回放控制 | 结果可视化 + 回放世界 |
 
 两个跨空间不变量（前面讨论已确立）：
 
 1. **顶层交互单元 = 交互空间，不是路由。** simulator 一个路由内含 4 个交互空间（设计2 + 验证 + 分析），是铁证。
-2. **世界内容（worldResources）与交互空间正交。** simulator 的 4 个空间共享同一份阵容世界；character 是另一份。设计阶段从当前草稿解析静态 `worldResources`，进入验证时与逻辑输入一起冻结；实体位置、动作和生命状态等动态仍由逻辑引擎驱动。「延续/重建」由 worldResources diff 决定，与切哪个空间无关（ADR 0016）。
+2. **世界内容（worldResources）与交互空间正交。** simulator 的 4 个空间共享同一份阵容世界；character 是另一份。设计阶段从当前 DesignCopy 解析静态 `worldResources`，验证使用同一副本派生的逻辑输入；实体位置、动作和生命状态等动态仍由逻辑引擎驱动。「延续/重建」由 worldResources diff 决定，与切哪个空间无关（ADR 0016、0036）。
 
 ---
 

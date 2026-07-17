@@ -3,7 +3,7 @@
 - **状态**: Withdrawn
 - **日期**: 2026-07-06
 - **决策层**: 数据层 / 通信
-- **相关代码**: `src/lib/pglite/ChangeLogSynchronizer.ts`、`src/routes/api/changes.ts`
+- **相关代码**: `src/lib/writeSync/ChangeLogSynchronizer.ts`、`src/routes/api/changes.ts`
 - **相关 ADR**: Related to 0018、0019、0020
 
 ## 决策问题

@@ -4,7 +4,7 @@
 - **日期**: 2026-07-10
 - **决策层**: 跨层（应用层状态 / UI / 渲染）
 - **相关代码**: `src/machines/`、`src/components/features/character/EquipmentPanel.tsx`、`src/lib/3dScene/`
-- **相关 ADR**: Supersedes 0012、0013；Refines 0015
+- **相关 ADR**: Supersedes 0012
 
 ## 背景
 
@@ -42,7 +42,7 @@ MBUI 的分层思想有助于区分任务、模态无关行为和具体表现，
 5. 相机补间、overlay 动画、资源加载等 CUI 状态由投影自行管理，不通过完成回执驱动 AUI 状态。
 6. 状态机只持有跨模态共享的交互状态；领域数据、`SceneRuntime` 生命周期和局部 UI 状态仍由原模块负责。
 
-本决议继承 ADR 0012 的“共享交互语义只有一个事实源”，但替换其 `Target + Operation + attention lifecycle` 模型；同时替换 ADR 0013 的独立注意力 actor。
+本决议继承 ADR 0012 的“共享交互语义只有一个事实源”，但替换其 `Target + Operation + attention lifecycle` 模型，并明确不建立独立注意力 actor。
 
 ## 代价
 
@@ -62,4 +62,4 @@ MBUI 的分层思想有助于区分任务、模态无关行为和具体表现，
 
 - MBUI 的 Task & Concepts / AUI / CUI 分层思想
 - `docs/concepts/task-model.md`
-- ADR 0012、0013、0015
+- ADR 0012、0015

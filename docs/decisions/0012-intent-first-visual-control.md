@@ -4,7 +4,7 @@
 - **日期**: 2026-06-09
 - **决策层**: 跨层（应用层 UI / 渲染 / 状态）
 - **相关代码**: `src/machines/intent/visualIntentMachine.ts`、`src/machines/projections/SceneIntentBridge.tsx`
-- **相关 ADR**: Depends on 0009；Related to 0013；Superseded by 0021
+- **相关 ADR**: Depends on 0009；Superseded by 0021
 
 ## 背景
 

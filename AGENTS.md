@@ -1,6 +1,8 @@
 # ToramCalculator — 代理工作指南
 
 - 输出请务必使用中文
+- 回复时尽量不要使用比喻等修辞，直接输出正论，不举反例
+- 尽量使用常用术语和已有概念以降低认知负荷
 
 ## 核心原则
 
@@ -107,4 +109,5 @@ SW 版本号从 `src/store.ts` 的 `version` 字段提取。
 
 项目级 ADR 位于 `docs/decisions/`，覆盖应用层、引擎、数据层和跨层契约。
 评估、创建、修订、取代、整理或审计 ADR 时，必须先读取并遵守 `.agents/skills/architecture-decision-governance/SKILL.md`。
+`docs/plans/` 只保存尚未完成的实施计划；计划执行完成后直接删除，不提交到 Git 历史。长期有效的领域事实、架构决策和代码契约分别迁移到概念文档、ADR 和代码。
 修改 `src/lib/engine/` 时同时遵守 `src/lib/engine/AGENTS.md`。引擎历史文档通过 `src/lib/engine/document/` 保留。
