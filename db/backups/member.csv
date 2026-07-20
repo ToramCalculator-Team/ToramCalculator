@@ -1,3 +1,5 @@
 id,name,formationOrder,type,characterId,partnerId,mercenaryId,mobId,mobDifficultyFlag,behavior,belongToTeamId,write_id
 defaultMember1Id,defaultMember1,0,Player,defaultCharacterId,,,,,,defaultTeamAId,0e22c49f-5dd2-4e44-b9d7-7e26a4deb13b
 defaultMember2Id,训练木桩,0,Mob,,,,defaultTrainingDummyMobId,Normal,,defaultTeamBId,f0e00194-ad9d-4544-9b0f-7dd4a39eeaa1
+edbwdz7lz4crz90erfri765l,ID魔导,0,Player,bs2ajdsm2q1gvg926rmoby69,,,,,,dumfz94dutuq0g2toxkd19nn,b909d08b-2ffd-40f1-88ac-0f1347250e92
+ejenkly2avzbvrubdzydpbvd,训练木桩,0,Mob,,,,defaultTrainingDummyMobId,Normal,,goy02il4wi76efsdofobber9,e9e60163-6966-4c87-b5cb-f49916d7e1b0
