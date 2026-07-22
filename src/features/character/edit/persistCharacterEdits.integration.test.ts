@@ -15,11 +15,6 @@ let pglite: PGlite;
 let db: Kysely<DB>;
 
 const createCharacter = async (id: string) => {
-	const statisticId = `${id}-statistic`;
-	await db
-		.insertInto("statistic")
-		.values({ ...defaultData.statistic, id: statisticId })
-		.execute();
 	await db
 		.insertInto("character")
 		.values({
@@ -27,7 +22,6 @@ const createCharacter = async (id: string) => {
 			id,
 			name: id,
 			belongToPlayerId: PLAYER_ID,
-			statisticId,
 		})
 		.execute();
 };
@@ -139,12 +133,8 @@ describe("persistCharacterEditBatch", () => {
 		const skillId = "persist-skill-template";
 		await createCharacter(characterId);
 		await db
-			.insertInto("statistic")
-			.values({ ...defaultData.statistic, id: "persist-skill-statistic" })
-			.execute();
-		await db
 			.insertInto("skill")
-			.values({ ...defaultData.skill, id: skillId, statisticId: "persist-skill-statistic" })
+			.values({ ...defaultData.skill, id: skillId })
 			.execute();
 
 		await persistCharacterEditBatch(

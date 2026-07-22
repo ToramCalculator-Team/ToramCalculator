@@ -27,7 +27,6 @@ export type CharacterLiveSnapshot = {
 // Character 聚合查询展开的同步表。已有本地行时不会等待；只有空结果需要这组门闩确认“确实不存在”。
 const CHARACTER_AGGREGATE_SYNC_TABLES = [
 	"player",
-	"statistic",
 	"item",
 	"weapon",
 	"armor",

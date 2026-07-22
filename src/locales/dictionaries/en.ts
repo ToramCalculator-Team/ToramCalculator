@@ -975,10 +975,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "活动的名称",
 					formFieldDescription: "请输入活动名称",
 				},
-				statisticId: {
-					key: "Statistic ID",
-					tableFieldDescription: "关联的统计信息",
-					formFieldDescription: "选择关联的统计信息",
+				createdAt: {
+					key: "Creation Time",
+					tableFieldDescription: "The time when this record was created.",
+					formFieldDescription: "Creation time is maintained by the system.",
+				},
+				updatedAt: {
+					key: "Update Time",
+					tableFieldDescription: "The time when this record was last updated.",
+					formFieldDescription: "Update time is maintained by the system.",
 				},
 				updatedByAccountId: {
 					key: "Updated By",
@@ -1028,10 +1033,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "The ID of the world this address belongs to.",
 					formFieldDescription: "Please select the world this address belongs to.",
 				},
-				statisticId: {
-					key: "Statistic ID",
-					tableFieldDescription: "关联的统计信息",
-					formFieldDescription: "选择关联的统计信息",
+				createdAt: {
+					key: "Creation Time",
+					tableFieldDescription: "The time when this record was created.",
+					formFieldDescription: "Creation time is maintained by the system.",
+				},
+				updatedAt: {
+					key: "Update Time",
+					tableFieldDescription: "The time when this record was last updated.",
+					formFieldDescription: "Update time is maintained by the system.",
 				},
 				updatedByAccountId: {
 					key: "Updated By",
@@ -1241,10 +1251,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "The details of the character.",
 					formFieldDescription: "Please enter the details of the character.",
 				},
-				statisticId: {
-					key: "Statistic ID",
-					tableFieldDescription: "The ID of the statistic of the character.",
-					formFieldDescription: "Please select the statistic of the character.",
+				createdAt: {
+					key: "Creation Time",
+					tableFieldDescription: "The time when this record was created.",
+					formFieldDescription: "Creation time is maintained by the system.",
+				},
+				updatedAt: {
+					key: "Update Time",
+					tableFieldDescription: "The time when this record was last updated.",
+					formFieldDescription: "Update time is maintained by the system.",
 				},
 			},
 			description: "Character information",
@@ -1505,10 +1520,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "道具的详细描述",
 					formFieldDescription: "道具的详细描述",
 				},
-				statisticId: {
-					key: "Statistic ID",
-					tableFieldDescription: "道具的统计ID",
-					formFieldDescription: "道具的统计ID",
+				createdAt: {
+					key: "Creation Time",
+					tableFieldDescription: "The time when this record was created.",
+					formFieldDescription: "Creation time is maintained by the system.",
+				},
+				updatedAt: {
+					key: "Update Time",
+					tableFieldDescription: "The time when this record was last updated.",
+					formFieldDescription: "Update time is maintained by the system.",
 				},
 				updatedByAccountId: {
 					key: "最后更新者",
@@ -1953,11 +1973,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "The person or organization that measured this data.",
 					formFieldDescription: "The person or organization that measured this data.",
 				},
-				statisticId: {
-					key: "Statistic ID",
-					tableFieldDescription: "This is the monster's statistics database ID. Generally, you shouldn't see this.",
-					formFieldDescription:
-						"This is the monster's statistics database ID. If you are asked to input this, please report it to the developers. This is not normal.",
+				createdAt: {
+					key: "Creation Time",
+					tableFieldDescription: "The time when this record was created.",
+					formFieldDescription: "Creation time is maintained by the system.",
+				},
+				updatedAt: {
+					key: "Update Time",
+					tableFieldDescription: "The time when this record was last updated.",
+					formFieldDescription: "Update time is maintained by the system.",
 				},
 				updatedByAccountId: {
 					key: "Updated By Account ID",
@@ -1992,10 +2016,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "npc站着的地方啦，比如某某街道第三区域啥的",
 					formFieldDescription: "npc站着的地方啦，比如某某街道第三区域啥的",
 				},
-				statisticId: {
-					key: "Statistic ID",
-					tableFieldDescription: "关联的统计信息",
-					formFieldDescription: "选择关联的统计信息",
+				createdAt: {
+					key: "Creation Time",
+					tableFieldDescription: "The time when this record was created.",
+					formFieldDescription: "Creation time is maintained by the system.",
+				},
+				updatedAt: {
+					key: "Update Time",
+					tableFieldDescription: "The time when this record was last updated.",
+					formFieldDescription: "Update time is maintained by the system.",
 				},
 				updatedByAccountId: {
 					key: "Updated By",
@@ -2437,10 +2466,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "所属活动",
 					formFieldDescription: "所属活动",
 				},
-				statisticId: {
-					key: "Statistic ID",
-					tableFieldDescription: "关联的统计信息",
-					formFieldDescription: "选择关联的统计信息",
+				createdAt: {
+					key: "Creation Time",
+					tableFieldDescription: "The time when this record was created.",
+					formFieldDescription: "Creation time is maintained by the system.",
+				},
+				updatedAt: {
+					key: "Update Time",
+					tableFieldDescription: "The time when this record was last updated.",
+					formFieldDescription: "Update time is maintained by the system.",
 				},
 				updatedByAccountId: {
 					key: "Updated By",
@@ -2546,10 +2580,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "模拟器的详情",
 					formFieldDescription: "请输入模拟器的详情",
 				},
-				statisticId: {
-					key: "Statistic ID",
-					tableFieldDescription: "关联的统计信息",
-					formFieldDescription: "选择关联的统计信息",
+				createdAt: {
+					key: "Creation Time",
+					tableFieldDescription: "The time when this record was created.",
+					formFieldDescription: "Creation time is maintained by the system.",
+				},
+				updatedAt: {
+					key: "Update Time",
+					tableFieldDescription: "The time when this record was last updated.",
+					formFieldDescription: "Update time is maintained by the system.",
 				},
 				updatedByAccountId: {
 					key: "Updated By",
@@ -2612,11 +2651,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "The person or organization that measured this data",
 					formFieldDescription: "The person or organization that measured this data",
 				},
-				statisticId: {
-					key: "Statistic ID",
-					tableFieldDescription: "This is the statistics database ID. Generally, you shouldn't see this.",
-					formFieldDescription:
-						"This is the statistics database ID. If you are asked to input this, please report it to the developers. This is not normal.",
+				createdAt: {
+					key: "Creation Time",
+					tableFieldDescription: "The time when this record was created.",
+					formFieldDescription: "Creation time is maintained by the system.",
+				},
+				updatedAt: {
+					key: "Update Time",
+					tableFieldDescription: "The time when this record was last updated.",
+					formFieldDescription: "Update time is maintained by the system.",
 				},
 				preSkillId: {
 					key: "Prerequisite Skill ID",
@@ -2876,37 +2919,6 @@ const dictionary: Dictionary = {
 			},
 			description: "Special equipment information in the game",
 		},
-		statistic: {
-			selfName: "Statistic",
-			fields: {
-				id: {
-					key: "ID",
-					tableFieldDescription: "统计信息的唯一标识符",
-					formFieldDescription: "统计信息的唯一标识符",
-				},
-				updatedAt: {
-					key: "Update Time",
-					tableFieldDescription: "统计信息的更新时间",
-					formFieldDescription: "Please enter update time",
-				},
-				createdAt: {
-					key: "Creation Time",
-					tableFieldDescription: "统计信息的创建时间",
-					formFieldDescription: "Please enter creation time",
-				},
-				usageTimestamps: {
-					key: "使用时间戳",
-					tableFieldDescription: "使用时间戳列表",
-					formFieldDescription: "请输入使用时间戳",
-				},
-				viewTimestamps: {
-					key: "查看时间戳",
-					tableFieldDescription: "查看时间戳列表",
-					formFieldDescription: "请输入查看时间戳",
-				},
-			},
-			description: "Statistics tracking fields",
-		},
 		task: {
 			selfName: "Task",
 			fields: {
@@ -2941,10 +2953,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "任务所属的NPC",
 					formFieldDescription: "任务所属的NPC",
 				},
-				statisticId: {
-					key: "Statistic ID",
-					tableFieldDescription: "关联的统计信息",
-					formFieldDescription: "选择关联的统计信息",
+				createdAt: {
+					key: "Creation Time",
+					tableFieldDescription: "The time when this record was created.",
+					formFieldDescription: "Creation time is maintained by the system.",
+				},
+				updatedAt: {
+					key: "Update Time",
+					tableFieldDescription: "The time when this record was last updated.",
+					formFieldDescription: "Update time is maintained by the system.",
 				},
 				updatedByAccountId: {
 					key: "Updated By",
@@ -3208,10 +3225,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "世界的名称",
 					formFieldDescription: "世界的名称",
 				},
-				statisticId: {
-					key: "Statistic ID",
-					tableFieldDescription: "关联的统计信息",
-					formFieldDescription: "选择关联的统计信息",
+				createdAt: {
+					key: "Creation Time",
+					tableFieldDescription: "The time when this record was created.",
+					formFieldDescription: "Creation time is maintained by the system.",
+				},
+				updatedAt: {
+					key: "Update Time",
+					tableFieldDescription: "The time when this record was last updated.",
+					formFieldDescription: "Update time is maintained by the system.",
 				},
 				updatedByAccountId: {
 					key: "Updated By",
@@ -3254,10 +3276,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "ID of the map this zone belongs to",
 					formFieldDescription: "Select the map this zone belongs to",
 				},
-				statisticId: {
-					key: "Statistic ID",
-					tableFieldDescription: "关联的统计信息",
-					formFieldDescription: "选择关联的统计信息",
+				createdAt: {
+					key: "Creation Time",
+					tableFieldDescription: "The time when this record was created.",
+					formFieldDescription: "Creation time is maintained by the system.",
+				},
+				updatedAt: {
+					key: "Update Time",
+					tableFieldDescription: "The time when this record was last updated.",
+					formFieldDescription: "Update time is maintained by the system.",
 				},
 				updatedByAccountId: {
 					key: "Updated By",

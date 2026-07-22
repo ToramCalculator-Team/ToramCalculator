@@ -25,7 +25,6 @@ const createAggregate = (name: string): CharacterLiveAggregate => {
 		registlets: [],
 		consumables: [],
 		combos: [],
-		statistic: defaultData.statistic,
 	});
 	return {
 		player,

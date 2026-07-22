@@ -2,7 +2,6 @@ import { defaultData } from "@db/defaultData";
 import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { deleteArmor, insertArmor, updateArmor } from "@db/generated/repositories/armor";
 import { deleteItem, insertItem, updateItem } from "@db/generated/repositories/item";
-import { insertStatistic } from "@db/generated/repositories/statistic";
 import { ArmorSchema, type armor, ItemSchema } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -34,18 +33,10 @@ const insertArmorItem = async (data: ArmorItem): Promise<ArmorItem> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
 		const { account } = await getUserContext(trx);
-		const statistic = await insertStatistic(
-			{
-				...defaultData.statistic,
-				id: createId(),
-			},
-			trx,
-		);
 		const item = await insertItem(
 			{
 				...ItemSchema.parse(data),
 				id: createId(),
-				statisticId: statistic.id,
 				createdByAccountId: account.id,
 				updatedByAccountId: account.id,
 			},
@@ -122,7 +113,7 @@ export const ARMOR_DATA_CONFIG: TableDataConfig<ArmorItem, armor> = (dictionary)
 	},
 	card: {
 		relationOverrides: {
-			hide: ["player_armor", "statistic", "account_create_data", "account_update_data"],
+			hide: ["player_armor", "account_create_data", "account_update_data"],
 		},
 		hiddenFields: [],
 		fieldGenerator: {},

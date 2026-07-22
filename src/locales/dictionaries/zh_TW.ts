@@ -1118,10 +1118,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "活動的名称",
 					formFieldDescription: "請輸入活動名称",
 				},
-				statisticId: {
-					key: "统计ID",
-					tableFieldDescription: "關聯的统计信息",
-					formFieldDescription: "選择關聯的统计信息",
+				createdAt: {
+					key: "建立時間",
+					tableFieldDescription: "該記錄的建立時間",
+					formFieldDescription: "建立時間由系統維護",
+				},
+				updatedAt: {
+					key: "更新時間",
+					tableFieldDescription: "該記錄的最後更新時間",
+					formFieldDescription: "更新時間由系統維護",
 				},
 				updatedByAccountId: {
 					key: "更新者",
@@ -1170,10 +1175,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "地址所屬世界的ID。",
 					formFieldDescription: "請選擇地址所屬的世界。",
 				},
-				statisticId: {
-					key: "统计ID",
-					tableFieldDescription: "關聯的统计信息",
-					formFieldDescription: "選择關聯的统计信息",
+				createdAt: {
+					key: "建立時間",
+					tableFieldDescription: "該記錄的建立時間",
+					formFieldDescription: "建立時間由系統維護",
+				},
+				updatedAt: {
+					key: "更新時間",
+					tableFieldDescription: "該記錄的最後更新時間",
+					formFieldDescription: "更新時間由系統維護",
 				},
 				updatedByAccountId: {
 					key: "更新者",
@@ -1382,10 +1392,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "機體的詳細資料",
 					formFieldDescription: "請輸入機體的詳細資料",
 				},
-				statisticId: {
-					key: "統計ID",
-					tableFieldDescription: "機體的統計ID",
-					formFieldDescription: "請選擇機體的統計",
+				createdAt: {
+					key: "建立時間",
+					tableFieldDescription: "該記錄的建立時間",
+					formFieldDescription: "建立時間由系統維護",
+				},
+				updatedAt: {
+					key: "更新時間",
+					tableFieldDescription: "該記錄的最後更新時間",
+					formFieldDescription: "更新時間由系統維護",
 				},
 			},
 			description: "角色資訊",
@@ -1640,10 +1655,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "詳細資料",
 					formFieldDescription: "詳細資料",
 				},
-				statisticId: {
-					key: "統計ID",
-					tableFieldDescription: "統計ID",
-					formFieldDescription: "統計ID",
+				createdAt: {
+					key: "建立時間",
+					tableFieldDescription: "該記錄的建立時間",
+					formFieldDescription: "建立時間由系統維護",
+				},
+				updatedAt: {
+					key: "更新時間",
+					tableFieldDescription: "該記錄的最後更新時間",
+					formFieldDescription: "更新時間由系統維護",
 				},
 				updatedByAccountId: {
 					key: "更新者ID",
@@ -2083,11 +2103,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "此數據的實際測量者或者組織",
 					formFieldDescription: "此數據的實際測量者或者組織",
 				},
-				statisticId: {
-					key: "統計信息ID",
-					tableFieldDescription: "這是怪物的統計信息欄位資料庫id，一般來說，你應該不可能看到這個",
-					formFieldDescription:
-						"這是怪物的統計信息欄位資料庫id，如果有哪裡需要你輸入這個，請給開發人員回饋。這是不正常的情況。",
+				createdAt: {
+					key: "建立時間",
+					tableFieldDescription: "該記錄的建立時間",
+					formFieldDescription: "建立時間由系統維護",
+				},
+				updatedAt: {
+					key: "更新時間",
+					tableFieldDescription: "該記錄的最後更新時間",
+					formFieldDescription: "更新時間由系統維護",
 				},
 				updatedByAccountId: {
 					key: "更新者ID",
@@ -2122,10 +2146,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "npc站着的地方啦，比如某某街道第三區域啥的",
 					formFieldDescription: "npc站着的地方啦，比如某某街道第三區域啥的",
 				},
-				statisticId: {
-					key: "统计ID",
-					tableFieldDescription: "關聯的统计信息",
-					formFieldDescription: "選择關聯的统计信息",
+				createdAt: {
+					key: "建立時間",
+					tableFieldDescription: "該記錄的建立時間",
+					formFieldDescription: "建立時間由系統維護",
+				},
+				updatedAt: {
+					key: "更新時間",
+					tableFieldDescription: "該記錄的最後更新時間",
+					formFieldDescription: "更新時間由系統維護",
 				},
 				updatedByAccountId: {
 					key: "更新者",
@@ -2567,10 +2596,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "所屬活動",
 					formFieldDescription: "所屬活動",
 				},
-				statisticId: {
-					key: "统计ID",
-					tableFieldDescription: "關聯的统计信息",
-					formFieldDescription: "選择關聯的统计信息",
+				createdAt: {
+					key: "建立時間",
+					tableFieldDescription: "該記錄的建立時間",
+					formFieldDescription: "建立時間由系統維護",
+				},
+				updatedAt: {
+					key: "更新時間",
+					tableFieldDescription: "該記錄的最後更新時間",
+					formFieldDescription: "更新時間由系統維護",
 				},
 				updatedByAccountId: {
 					key: "更新者",
@@ -2676,10 +2710,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "模擬器的詳情",
 					formFieldDescription: "請輸入模擬器的詳情",
 				},
-				statisticId: {
-					key: "统计ID",
-					tableFieldDescription: "關聯的统计信息",
-					formFieldDescription: "選择關聯的统计信息",
+				createdAt: {
+					key: "建立時間",
+					tableFieldDescription: "該記錄的建立時間",
+					formFieldDescription: "建立時間由系統維護",
+				},
+				updatedAt: {
+					key: "更新時間",
+					tableFieldDescription: "該記錄的最後更新時間",
+					formFieldDescription: "更新時間由系統維護",
 				},
 				updatedByAccountId: {
 					key: "更新者",
@@ -2738,10 +2777,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "測量這些數據的人員或組織",
 					formFieldDescription: "測量這些數據的人員或組織",
 				},
-				statisticId: {
-					key: "統計ID",
-					tableFieldDescription: "這是統計資料庫的ID。通常，這不會顯示。",
-					formFieldDescription: "這是統計資料庫的ID。如果系統要求您輸入這個，請向開發者報告。這不是正常情況。",
+				createdAt: {
+					key: "建立時間",
+					tableFieldDescription: "該記錄的建立時間",
+					formFieldDescription: "建立時間由系統維護",
+				},
+				updatedAt: {
+					key: "更新時間",
+					tableFieldDescription: "該記錄的最後更新時間",
+					formFieldDescription: "更新時間由系統維護",
 				},
 				preSkillId: {
 					key: "前置技能ID",
@@ -2999,37 +3043,6 @@ const dictionary: Dictionary = {
 			},
 			description: "遊戲中的特殊裝備資訊",
 		},
-		statistic: {
-			selfName: "統計資訊",
-			fields: {
-				id: {
-					key: "ID",
-					tableFieldDescription: "统计信息的唯一標識符",
-					formFieldDescription: "统计信息的唯一標識符",
-				},
-				updatedAt: {
-					key: "更新時間",
-					tableFieldDescription: "统计信息的更新時間",
-					formFieldDescription: "請輸入更新時間",
-				},
-				createdAt: {
-					key: "創建時間",
-					tableFieldDescription: "统计信息的創建時間",
-					formFieldDescription: "請輸入創建時間",
-				},
-				usageTimestamps: {
-					key: "使用時間戳",
-					tableFieldDescription: "使用時間戳列表",
-					formFieldDescription: "請輸入使用時間戳",
-				},
-				viewTimestamps: {
-					key: "查看時間戳",
-					tableFieldDescription: "查看時間戳列表",
-					formFieldDescription: "請輸入查看時間戳",
-				},
-			},
-			description: "遊戲的統計欄位",
-		},
 		task: {
 			selfName: "任務",
 			fields: {
@@ -3064,10 +3077,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "任务所屬的NPC",
 					formFieldDescription: "任务所屬的NPC",
 				},
-				statisticId: {
-					key: "统计ID",
-					tableFieldDescription: "關聯的统计信息",
-					formFieldDescription: "選择關聯的统计信息",
+				createdAt: {
+					key: "建立時間",
+					tableFieldDescription: "該記錄的建立時間",
+					formFieldDescription: "建立時間由系統維護",
+				},
+				updatedAt: {
+					key: "更新時間",
+					tableFieldDescription: "該記錄的最後更新時間",
+					formFieldDescription: "更新時間由系統維護",
 				},
 				updatedByAccountId: {
 					key: "更新者",
@@ -3331,10 +3349,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "世界的名称",
 					formFieldDescription: "世界的名称",
 				},
-				statisticId: {
-					key: "统计ID",
-					tableFieldDescription: "關聯的统计信息",
-					formFieldDescription: "選择關聯的统计信息",
+				createdAt: {
+					key: "建立時間",
+					tableFieldDescription: "該記錄的建立時間",
+					formFieldDescription: "建立時間由系統維護",
+				},
+				updatedAt: {
+					key: "更新時間",
+					tableFieldDescription: "該記錄的最後更新時間",
+					formFieldDescription: "更新時間由系統維護",
 				},
 				updatedByAccountId: {
 					key: "更新者",
@@ -3377,10 +3400,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "此區域所屬的地圖ID",
 					formFieldDescription: "選擇此區域所屬的地圖",
 				},
-				statisticId: {
-					key: "统计ID",
-					tableFieldDescription: "關聯的统计信息",
-					formFieldDescription: "選择關聯的统计信息",
+				createdAt: {
+					key: "建立時間",
+					tableFieldDescription: "該記錄的建立時間",
+					formFieldDescription: "建立時間由系統維護",
+				},
+				updatedAt: {
+					key: "更新時間",
+					tableFieldDescription: "該記錄的最後更新時間",
+					formFieldDescription: "更新時間由系統維護",
 				},
 				updatedByAccountId: {
 					key: "更新者",

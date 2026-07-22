@@ -1,6 +1,5 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
-import { insertStatistic } from "@db/generated/repositories/statistic";
 import { TaskSchema, type task } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -16,8 +15,7 @@ export const TASK_DATA_CONFIG: TableDataConfig<task> = (dictionary) => ({
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name", "lv", "type", "description"],
-		统计信息: ["statisticId"],
-		创建和更新信息: ["createdByAccountId", "updatedByAccountId"],
+		创建和更新信息: ["createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
 	},
 	table: {
 		columnsDef: [
@@ -52,28 +50,20 @@ export const TASK_DATA_CONFIG: TableDataConfig<task> = (dictionary) => ({
 				size: 160,
 			},
 		],
-		hiddenColumnDef: ["id", "createdByAccountId", "updatedByAccountId", "statisticId", "belongToNpcId"],
+		hiddenColumnDef: ["id", "createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId", "belongToNpcId"],
 		defaultSort: { field: "name", desc: false },
 		tdGenerator: {},
 	},
 	form: {
-		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
+		hiddenFields: ["id", "createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
 		onInsert: async (data) => {
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				const statistic = await insertStatistic(
-					{
-						...defaultData.statistic,
-						id: createId(),
-					},
-					trx,
-				);
 				return repositoryMethods.task.insert(
 					{
 						...data,
 						id: createId(),
-						statisticId: statistic.id,
 						createdByAccountId: account.id,
 						updatedByAccountId: account.id,
 					},
@@ -90,7 +80,7 @@ export const TASK_DATA_CONFIG: TableDataConfig<task> = (dictionary) => ({
 		},
 	},
 	card: {
-		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
+		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
 		fieldGenerator: {},
 		deleteCallback: repositoryMethods.task.delete,
 		editAbleCallback: (data) => repositoryMethods.task.canEdit(data.id),

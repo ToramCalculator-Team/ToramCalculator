@@ -1,7 +1,6 @@
 import { defaultData } from "@db/defaultData";
 import { type Character, insertCharacter } from "@db/generated/repositories/character";
 import { updatePlayer } from "@db/generated/repositories/player";
-import { insertStatistic } from "@db/generated/repositories/statistic";
 import type { Account } from "@db/repositories/account";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -18,19 +17,11 @@ export const createCharacter = async (): Promise<Character> => {
 		// 设计说明：player 由账号上下文保证存在，创建机体只负责挂载 character 图谱。
 		const player = await ensureAccountPlayer(account.id, trx);
 		console.log("player", player);
-		const characterStatistic = await insertStatistic(
-			{
-				...defaultData.statistic,
-				id: createId(),
-			},
-			trx,
-		);
 		const character = await insertCharacter(
 			{
 				...defaultData.character,
 				id: createId(),
 				belongToPlayerId: player.id,
-				statisticId: characterStatistic.id,
 			},
 			trx,
 		);

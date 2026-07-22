@@ -1,8 +1,6 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
-import { insertStatistic } from "@db/generated/repositories/statistic";
 import { CharacterSchema, type character } from "@db/generated/zod";
-import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
 import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
 import type { TableDataConfig } from "../data-config";
@@ -18,7 +16,7 @@ export const CHARACTER_DATA_CONFIG: TableDataConfig<character> = (dictionary) =>
 		基本信息: ["name", "lv", "str", "int", "vit", "agi", "dex", "personalityType", "personalityValue"],
 		装备信息: ["weaponId", "subWeaponId", "armorId", "optionId", "specialId"],
 		其他信息: ["modifiers", "cooking"],
-		统计信息: ["statisticId"],
+		创建和更新信息: ["createdAt", "updatedAt"],
 	},
 	table: {
 		columnsDef: [
@@ -39,9 +37,8 @@ export const CHARACTER_DATA_CONFIG: TableDataConfig<character> = (dictionary) =>
 			{ accessorKey: "specialId", cell: (info) => info.getValue(), size: 100 },
 			{ accessorKey: "modifiers", cell: (info) => info.getValue(), size: 360 },
 			{ accessorKey: "cooking", cell: (info) => info.getValue(), size: 100 },
-			{ accessorKey: "statisticId", cell: (info) => info.getValue(), size: 100 },
 		],
-		hiddenColumnDef: ["id", "statisticId"],
+		hiddenColumnDef: ["id", "createdAt", "updatedAt"],
 		tdGenerator: {
 			modifiers: (props) => <ModifiersRenderer data={props.cell.getValue() as Array<string>} />,
 		},
@@ -51,27 +48,8 @@ export const CHARACTER_DATA_CONFIG: TableDataConfig<character> = (dictionary) =>
 		},
 	},
 	form: {
-		hiddenFields: ["id", "statisticId"],
-		onInsert: async (data) => {
-			const db = await getDB();
-			return db.transaction().execute(async (trx) => {
-				const statistic = await insertStatistic(
-					{
-						...defaultData.statistic,
-						id: createId(),
-					},
-					trx,
-				);
-				return repositoryMethods.character.insert(
-					{
-						...data,
-						id: createId(),
-						statisticId: statistic.id,
-					},
-					trx,
-				);
-			});
-		},
+		hiddenFields: ["id", "createdAt", "updatedAt"],
+		onInsert: (data) => repositoryMethods.character.insert({ ...data, id: createId() }),
 		onUpdate: repositoryMethods.character.update,
 	},
 	card: {

@@ -1,6 +1,5 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
-import { insertStatistic } from "@db/generated/repositories/statistic";
 import { RecipeSchema, type recipe } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -17,8 +16,7 @@ export const RECIPE_DATA_CONFIG: TableDataConfig<recipe> = (dictionary) => ({
 		ID: ["id"],
 		所属道具: ["itemId"],
 		所属活动: ["activityId"],
-		统计信息: ["statisticId"],
-		创建和更新信息: ["createdByAccountId", "updatedByAccountId"],
+		创建和更新信息: ["createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
 	},
 	table: {
 		columnsDef: [],
@@ -27,23 +25,15 @@ export const RECIPE_DATA_CONFIG: TableDataConfig<recipe> = (dictionary) => ({
 		tdGenerator: {},
 	},
 	form: {
-		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
+		hiddenFields: ["id", "createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
 		onInsert: async (data) => {
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				const statistic = await insertStatistic(
-					{
-						...defaultData.statistic,
-						id: createId(),
-					},
-					trx,
-				);
 				return repositoryMethods.recipe.insert(
 					{
 						...data,
 						id: createId(),
-						statisticId: statistic.id,
 						createdByAccountId: account.id,
 						updatedByAccountId: account.id,
 					},
@@ -61,9 +51,9 @@ export const RECIPE_DATA_CONFIG: TableDataConfig<recipe> = (dictionary) => ({
 	},
 	card: {
 		relationOverrides: {
-			hide: ["statistic", "account_create_data", "account_update_data"],
+			hide: ["account_create_data", "account_update_data"],
 		},
-		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
+		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
 		fieldGenerator: {},
 		deleteCallback: repositoryMethods.recipe.delete,
 		editAbleCallback: (data) => repositoryMethods.recipe.canEdit(data.id),

@@ -13,7 +13,6 @@ const ELECTRIC_SYNC_TABLES: Array<keyof DB> = [
 	"account_create_data",
 	"account_update_data",
 	"player",
-	"statistic",
 	"image",
 	"world",
 	"activity",

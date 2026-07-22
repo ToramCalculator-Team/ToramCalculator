@@ -84,7 +84,6 @@ export const Nav = () => {
 		"recipe_ingredient",
 		"session",
 		"skill_variant",
-		"statistic",
 		"task_collect_require",
 		"task_kill_requirement",
 		"task_reward",

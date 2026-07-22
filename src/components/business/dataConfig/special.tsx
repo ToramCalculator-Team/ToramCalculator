@@ -2,7 +2,6 @@ import { defaultData } from "@db/defaultData";
 import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { deleteItem, insertItem, updateItem } from "@db/generated/repositories/item";
 import { deleteSpecial, insertSpecial, updateSpecial } from "@db/generated/repositories/special";
-import { insertStatistic } from "@db/generated/repositories/statistic";
 import { ItemSchema, SpecialSchema, type special } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -34,18 +33,10 @@ const insertSpecialItem = async (data: SpecialItem): Promise<SpecialItem> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
 		const { account } = await getUserContext(trx);
-		const statistic = await insertStatistic(
-			{
-				...defaultData.statistic,
-				id: createId(),
-			},
-			trx,
-		);
 		const item = await insertItem(
 			{
 				...ItemSchema.parse(data),
 				id: createId(),
-				statisticId: statistic.id,
 				createdByAccountId: account.id,
 				updatedByAccountId: account.id,
 			},
@@ -126,7 +117,7 @@ export const SPECIAL_DATA_CONFIG: TableDataConfig<SpecialItem, special> = (dicti
 	},
 	card: {
 		relationOverrides: {
-			hide: ["player_special", "statistic", "account_create_data", "account_update_data"],
+			hide: ["player_special", "account_create_data", "account_update_data"],
 		},
 		hiddenFields: [],
 		fieldGenerator: {},

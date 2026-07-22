@@ -1,27 +1,27 @@
-id,itemType,itemSourceType,name,dataSources,details,statisticId,updatedByAccountId,createdByAccountId,write_id
-defaultWeaponItemId,Weapon,Mob,defaultWeaponItem,system,null,defaultItemWeaponStatisticId,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,cb647dcf-eab2-490e-893f-86eb5f86da3d
-defaultSubWeaponItemId,Weapon,Mob,defaultSubWeaponItem,system,null,defaultItemSubWeaponStatisticId,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,eaed1f5b-1e5b-42fa-8690-3227f1b1f787
-defaultArmorItemId,Armor,Mob,defaultArmorItem,system,null,defaultIteamArmorStatisticId,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,7b074ab5-4d31-419c-b864-e8b2dcf9bbcf
-defaultOptionItemId,Option,Mob,defaultOptionIdItem,system,null,defaultIteamOptionStatisticId,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,08f9eaeb-9586-4be8-87b2-f048e0cb0674
-defaultSpecialItemId,Special,Mob,defaultSpecialItem,system,null,defaultItemSpecialStatisticId,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,633ca613-238a-41c9-b2f2-b5e11fc5dc39
-defaultConsumableItemId,Consumable,Mob,defaultItemConsumableItem,system,null,defaultItemConsumableStatisticId,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,726702f0-622f-47f5-816a-8e6b89a295ff
-defaultMaterialMetalItemId,Material,Mob,defaultItemMaterialMetalItem,system,null,defaultItemMaterialMetalStatisticId,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,90e40d77-1437-401b-8e71-fff71cb15f3d
-hurdth139z0hy8r0noyd41go,Material,Mob,鸟类翅膀,托拉姆物语WIKI,null,jsex0ofo2t3qz5j9th92mbu2,,,b88fdec0-82e2-4be2-b89c-c07d3c6006c2
-x13a3xk2l7ttdv2ylaa1mhoe,Material,Mob,细长鸟喙,托拉姆物语WIKI,null,ix7rtel6ixwk8lffvbbj5xw4,,,d3faf3b6-686a-4073-884b-da66acc7cb67
-nyvipotk1oya1bb8kxb5p3y7,Material,Mob,切风羽毛,托拉姆物语WIKI,null,y21bhfkr2tz49gf68cpuj7hx,,,59ef49ae-df10-4a6a-89ab-610edc94d0a3
-jkuk4nn43fstnzel0f1oos82,Material,Mob,毛绒绒皮草,托拉姆物语WIKI,null,xg995d8wcbufjkhk3lh8njn4,,,ac97a653-3b9f-4127-9abe-0bf69b18567a
-y1aa7tiq024pkrstrryekj08,Option,Mob,丝巾,托拉姆物语WIKI,null,x7otnhn14bm5gtk0jimiug7x,,,b49a24e5-2a61-439f-881a-870509c9c46b
-k9jd6hbs1n76ozeupht3d7n1,Material,Mob,动物的皮,托拉姆物语WIKI,null,gu2ymmng49nzwosqfm93dwkp,,,4e24fe9e-cf32-48a2-8562-425b3bbe13ce
-xfb2oey0fedo2rxovqrdsx49,Material,Mob,软绵绵的毛,托拉姆物语WIKI,null,nvzobb4jp0vicekgrvfqlkbm,,,3b2449a1-fc79-4faa-92eb-5237525e2a6e
-vk1ps62ymxe8dm63l0m53cla,Material,Mob,稚嫩的爪子,托拉姆物语WIKI,null,wrrxkwmn1qvhzbx9hum2ph07,,,2064f0d8-9784-40f5-b88d-c40d0f3fb2df
-mm17jw5kykup5dq4imvkhmpe,Weapon,Mob,弓,托拉姆物语WIKI,null,kkdgf2qoixhegbyucu77i5r1,,,a6223f5f-1f47-496a-9004-91c83dce8243
-hjcvedqbrzvj495m8b249md1,Option,Mob,蝴蝶结,托拉姆物语WIKI,null,mp0ay3gs1s4ywfw0zbfnadl7,,,d584ac11-4618-458c-bcd0-5887e365d908
-uexlb0x01symqc3oiytuiq74,Weapon,Mob,短剑,托拉姆物语WIKI,null,gw55bdif5a2anq2756ldrhm6,q6gowl4pci6oi0hmvks4nl7f,q6gowl4pci6oi0hmvks4nl7f,5ea0d1dd-23e5-4934-befd-170b77f23fd0
-defaultArmorCrystalAItemId,Crystal,Mob,盖格纳,system,null,defaultItemArmorCrystalAStatisticId,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,e6d7d04e-b8cc-4cf5-b87a-f4ea49d7e3b4
-defaultArmorCrystalBItemId,Crystal,Mob,阿鲁塔达尔,system,null,defaultItemArmorCrystalBStatisticId,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,06f4a14c-be5e-410b-9f39-79d639587035
-defaultOptionCrystalAItemId,Crystal,Mob,卡斯蒂利亚,system,null,defaultItemOptionCrystalAStatisticId,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,8e348e59-115a-4bb2-b64d-d19ff7cefd59
-defaultOptionCrystalBItemId,Crystal,Mob,大尺码佩鲁鲁,system,null,defaultItemOptionCrystalBStatisticId,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,480ebb3d-325b-40c2-988f-49f80e40e9fc
-defaultSpecialCrystalAItemId,Crystal,Mob,星之魔导士,system,null,defaultItemSpecialCrystalAStatisticId,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,4912cd8b-673a-45af-8e1b-3e36d0fc1993
-defaultSpecialCrystalBItemId,Crystal,Mob,尉龙,system,null,defaultItemSpecialCrystalBStatisticId,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,9a832d0e-8adb-4012-9a26-7d6c74a3ba29
-defaultWeaponCrystalAItemId,Crystal,Mob,迪亚克,system,null,defaultItemWeaponCrystalAStatisticId,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,975b688c-b598-485f-84d7-682524cf0e40
-defaultWeaponCrystalBItemId,Crystal,Mob,巴图德,system,null,defaultItemWeaponCrystalBStatisticId,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,84496072-9110-4ea0-8f25-254a7057bd58
+id,itemType,itemSourceType,name,dataSources,details,createdAt,updatedAt,updatedByAccountId,createdByAccountId,write_id
+defaultWeaponItemId,Weapon,Mob,defaultWeaponItem,system,null,1970-01-01 00:00:00,2025-03-18 11:04:25.832,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,cb647dcf-eab2-490e-893f-86eb5f86da3d
+defaultSubWeaponItemId,Weapon,Mob,defaultSubWeaponItem,system,null,1970-01-01 00:00:00,2025-03-18 11:02:11.838,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,eaed1f5b-1e5b-42fa-8690-3227f1b1f787
+defaultArmorItemId,Armor,Mob,defaultArmorItem,system,null,1970-01-01 00:00:00,2025-03-18 11:29:34.807,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,7b074ab5-4d31-419c-b864-e8b2dcf9bbcf
+defaultOptionItemId,Option,Mob,defaultOptionIdItem,system,null,1970-01-01 00:00:00,2025-03-18 11:03:40.348,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,08f9eaeb-9586-4be8-87b2-f048e0cb0674
+defaultSpecialItemId,Special,Mob,defaultSpecialItem,system,null,1970-01-01 00:00:00,2025-03-18 11:02:33.705,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,633ca613-238a-41c9-b2f2-b5e11fc5dc39
+defaultConsumableItemId,Consumable,Mob,defaultItemConsumableItem,system,null,1970-01-01 00:00:00,2025-03-18 11:29:44.14,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,726702f0-622f-47f5-816a-8e6b89a295ff
+defaultMaterialMetalItemId,Material,Mob,defaultItemMaterialMetalItem,system,null,1970-01-01 00:00:00,2025-03-18 11:05:13.268,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,90e40d77-1437-401b-8e71-fff71cb15f3d
+hurdth139z0hy8r0noyd41go,Material,Mob,鸟类翅膀,托拉姆物语WIKI,null,2025-05-19 10:17:19.004,2025-05-19 10:17:19.004,,,b88fdec0-82e2-4be2-b89c-c07d3c6006c2
+x13a3xk2l7ttdv2ylaa1mhoe,Material,Mob,细长鸟喙,托拉姆物语WIKI,null,2025-05-19 10:18:09.453,2025-05-19 10:18:09.453,,,d3faf3b6-686a-4073-884b-da66acc7cb67
+nyvipotk1oya1bb8kxb5p3y7,Material,Mob,切风羽毛,托拉姆物语WIKI,null,2025-05-19 10:21:43.56,2025-05-19 10:21:43.56,,,59ef49ae-df10-4a6a-89ab-610edc94d0a3
+jkuk4nn43fstnzel0f1oos82,Material,Mob,毛绒绒皮草,托拉姆物语WIKI,null,2025-05-19 10:52:16.066,2025-05-19 10:52:16.066,,,ac97a653-3b9f-4127-9abe-0bf69b18567a
+y1aa7tiq024pkrstrryekj08,Option,Mob,丝巾,托拉姆物语WIKI,null,2025-05-20 10:09:50.799,2025-05-20 10:09:50.799,,,b49a24e5-2a61-439f-881a-870509c9c46b
+k9jd6hbs1n76ozeupht3d7n1,Material,Mob,动物的皮,托拉姆物语WIKI,null,2025-05-20 10:23:55.681,2025-05-20 10:23:55.681,,,4e24fe9e-cf32-48a2-8562-425b3bbe13ce
+xfb2oey0fedo2rxovqrdsx49,Material,Mob,软绵绵的毛,托拉姆物语WIKI,null,2025-05-20 10:24:35.012,2025-05-20 10:24:35.012,,,3b2449a1-fc79-4faa-92eb-5237525e2a6e
+vk1ps62ymxe8dm63l0m53cla,Material,Mob,稚嫩的爪子,托拉姆物语WIKI,null,2025-05-20 10:25:00.643,2025-05-20 10:25:00.643,,,2064f0d8-9784-40f5-b88d-c40d0f3fb2df
+mm17jw5kykup5dq4imvkhmpe,Weapon,Mob,弓,托拉姆物语WIKI,null,2025-05-20 10:26:01.284,2025-05-20 10:26:01.284,,,a6223f5f-1f47-496a-9004-91c83dce8243
+hjcvedqbrzvj495m8b249md1,Option,Mob,蝴蝶结,托拉姆物语WIKI,null,2025-05-20 10:28:13.423,2025-05-20 10:28:13.423,,,d584ac11-4618-458c-bcd0-5887e365d908
+uexlb0x01symqc3oiytuiq74,Weapon,Mob,短剑,托拉姆物语WIKI,null,2025-06-30 06:20:54.506,2025-06-30 06:20:54.506,q6gowl4pci6oi0hmvks4nl7f,q6gowl4pci6oi0hmvks4nl7f,5ea0d1dd-23e5-4934-befd-170b77f23fd0
+defaultArmorCrystalAItemId,Crystal,Mob,盖格纳,system,null,1970-01-01 00:00:00,2025-03-18 11:04:37.337,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,e6d7d04e-b8cc-4cf5-b87a-f4ea49d7e3b4
+defaultArmorCrystalBItemId,Crystal,Mob,阿鲁塔达尔,system,null,1970-01-01 00:00:00,2025-03-18 11:04:42.423,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,06f4a14c-be5e-410b-9f39-79d639587035
+defaultOptionCrystalAItemId,Crystal,Mob,卡斯蒂利亚,system,null,1970-01-01 00:00:00,2025-03-18 11:06:16.186,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,8e348e59-115a-4bb2-b64d-d19ff7cefd59
+defaultOptionCrystalBItemId,Crystal,Mob,大尺码佩鲁鲁,system,null,1970-01-01 00:00:00,2025-03-18 11:04:03.221,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,480ebb3d-325b-40c2-988f-49f80e40e9fc
+defaultSpecialCrystalAItemId,Crystal,Mob,星之魔导士,system,null,1970-01-01 00:00:00,2025-03-18 11:04:09.278,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,4912cd8b-673a-45af-8e1b-3e36d0fc1993
+defaultSpecialCrystalBItemId,Crystal,Mob,尉龙,system,null,1970-01-01 00:00:00,2025-03-18 11:04:31.985,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,9a832d0e-8adb-4012-9a26-7d6c74a3ba29
+defaultWeaponCrystalAItemId,Crystal,Mob,迪亚克,system,null,1970-01-01 00:00:00,2025-03-18 11:04:14.006,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,975b688c-b598-485f-84d7-682524cf0e40
+defaultWeaponCrystalBItemId,Crystal,Mob,巴图德,system,null,1970-01-01 00:00:00,2025-03-18 11:04:19.815,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,84496072-9110-4ea0-8f25-254a7057bd58

@@ -144,7 +144,7 @@ export class ZodGenerator {
 				zodType = "z.boolean()";
 				break;
 			case "DateTime":
-				zodType = "z.string()";
+				zodType = "DateTimeSchema";
 				break;
 			case "Json": {
 				const fieldKey = `${tableName}.${field.name}`;
@@ -416,6 +416,9 @@ export type Whereable<T> = Partial<T>;
 
 import { z } from "zod/v4";
 ${jsonSchemaImports}
+
+// PostgreSQL 驱动可能返回 Date；应用层统一消费可序列化的 ISO 字符串。
+const DateTimeSchema = z.preprocess((value) => value instanceof Date ? value.toISOString() : value, z.string());
 
 // ===== 枚举 Schemas =====
 ${enumSchemas}

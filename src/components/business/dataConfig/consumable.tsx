@@ -2,7 +2,6 @@ import { defaultData } from "@db/defaultData";
 import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { deleteConsumable, insertConsumable, updateConsumable } from "@db/generated/repositories/consumable";
 import { deleteItem, insertItem, updateItem } from "@db/generated/repositories/item";
-import { insertStatistic } from "@db/generated/repositories/statistic";
 import { ConsumableSchema, type consumable, ItemSchema } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -33,18 +32,10 @@ const insertConsumableItem = async (data: ConsumableItem): Promise<ConsumableIte
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
 		const { account } = await getUserContext(trx);
-		const statistic = await insertStatistic(
-			{
-				...defaultData.statistic,
-				id: createId(),
-			},
-			trx,
-		);
 		const item = await insertItem(
 			{
 				...ItemSchema.parse(data),
 				id: createId(),
-				statisticId: statistic.id,
 				createdByAccountId: account.id,
 				updatedByAccountId: account.id,
 			},
@@ -124,7 +115,7 @@ export const CONSUMABLE_DATA_CONFIG: TableDataConfig<ConsumableItem, consumable>
 	},
 	card: {
 		relationOverrides: {
-			hide: ["statistic", "account_create_data", "account_update_data"],
+			hide: ["account_create_data", "account_update_data"],
 		},
 		hiddenFields: [],
 		fieldGenerator: {},

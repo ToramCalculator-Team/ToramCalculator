@@ -1,6 +1,5 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
-import { insertStatistic } from "@db/generated/repositories/statistic";
 import { MobSchema, type mob } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import type { ElementType, MemberType, MobType } from "@db/schema/enums";
@@ -44,8 +43,7 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 		额外说明: ["details"],
 		怪物行为: ["actions"],
 		词条信息: ["dataSources"],
-		统计信息: ["statisticId"],
-		创建和更新信息: ["createdByAccountId", "updatedByAccountId"],
+		创建和更新信息: ["createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
 	},
 	table: {
 		measure: {
@@ -219,7 +217,7 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 				}[store.settings.userInterface.language],
 			},
 		],
-		hiddenColumnDef: ["id", "type", "actions", "createdByAccountId", "updatedByAccountId"],
+		hiddenColumnDef: ["id", "type", "actions", "createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
 		defaultSort: { field: "experience", desc: true },
 		tdGenerator: {
 			initialElement: (props) =>
@@ -241,7 +239,7 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 		},
 	},
 	form: {
-		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
+		hiddenFields: ["id", "createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
 		renderers: {
 			fields: {
 				actions: ({ value, setValue, validationMessage }) => {
@@ -288,18 +286,10 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				const statistic = await insertStatistic(
-					{
-						...defaultData.statistic,
-						id: createId(),
-					},
-					trx,
-				);
 				const mob = await repositoryMethods.mob.insert(
 					{
 						...data,
 						id: createId(),
-						statisticId: statistic.id,
 						createdByAccountId: account.id,
 						updatedByAccountId: account.id,
 					},
@@ -311,7 +301,7 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 		onUpdate: repositoryMethods.mob.update,
 	},
 	card: {
-		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
+		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
 		relationOverrides: {
 			only: ["drop_item"],
 		},

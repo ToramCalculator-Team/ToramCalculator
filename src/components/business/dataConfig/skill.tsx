@@ -1,7 +1,6 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { selectAllSkillVariantsByBelongtoskillid } from "@db/generated/repositories/skill_variant";
-import { insertStatistic } from "@db/generated/repositories/statistic";
 import { SkillSchema, type skill } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { SKILL_TREE_TYPE, type SkillTreeType } from "@db/schema/enums";
@@ -72,20 +71,12 @@ const selectSkillWithVariantsQuery = (db: QueryDB) =>
 const insertSkillWithVariants = async (data: SkillWithVariants): Promise<SkillWithVariants> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
-		const statistic = await insertStatistic(
-			{
-				...defaultData.statistic,
-				id: createId(),
-			},
-			trx,
-		);
 		const { account } = await getUserContext(trx);
 		const skillData = SkillSchema.parse(data);
 		const skill = await repositoryMethods.skill.insert(
 			{
 				...skillData,
 				id: createId(),
-				statisticId: statistic.id,
 				createdByAccountId: account.id,
 				updatedByAccountId: account.id,
 			},
@@ -174,8 +165,7 @@ export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill, SkillL
 		ID: ["id"],
 		基本信息: ["name", "treeType", "tier", "posX", "posY"],
 		其他信息: ["preSkillId", "dataSources", "details"],
-		统计信息: ["statisticId"],
-		创建和更新信息: ["createdByAccountId", "updatedByAccountId"],
+		创建和更新信息: ["createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
 	},
 	table: {
 		columnsDef: [
@@ -222,7 +212,7 @@ export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill, SkillL
 				size: 160,
 			},
 		],
-		hiddenColumnDef: ["id", "preSkillId", "statisticId", "createdByAccountId", "updatedByAccountId"],
+		hiddenColumnDef: ["id", "preSkillId", "createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
 		defaultSort: {
 			field: "name",
 			desc: false,
@@ -230,7 +220,7 @@ export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill, SkillL
 		tdGenerator: {},
 	},
 	form: {
-		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
+		hiddenFields: ["id", "createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
 		renderers: {
 			fields: {
 				treeType: ({ value, setValue, validationMessage }) => {
@@ -266,7 +256,7 @@ export const SKILL_DATA_CONFIG: TableDataConfig<SkillWithVariants, skill, SkillL
 		relationOverrides: {
 			only: ["skill_variant"],
 		},
-		hiddenFields: ["id", "statisticId", "createdByAccountId", "updatedByAccountId"],
+		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
 		fieldGenerator: {},
 		deleteCallback: deleteSkillWithVariants,
 		editAbleCallback: (data) => repositoryMethods.skill.canEdit(data.id),

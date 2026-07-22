@@ -30,14 +30,14 @@ import { z } from "zod/v4";
  * 引擎场景数据契约（性能优先的精确裁剪版）。
  *
  * 背景：原契约直接复用全展开的 SimulatorWithRelationsSchema，带入大量引擎不消费的
- * 分支（statistic、审计字段、玩家库存、mob.drops/images、wiki 反查等），导致配套查询
+ * 分支（账号审计关系、玩家库存、mob.drops/images、wiki 反查等），导致配套查询
  * 生成 ~1.3MB SQL、Postgres 规划耗时 ~1.6s。
  *
  * 本 schema 依据「字段访问探针」实测结果裁剪（见 GameEngine.loadScenario 临时探针，427 条触达路径）：
  * - 从基础表 XxxSchema 出发（自带全部标量列：modifiers/cooking/actions 等），手工挂引擎需要的关系。
  * - 关键保留：装备 + crystals.modifiers（战前 DSL 通用递归 visit 消费）、
  *   skills→template→variants→behaviorTree（attributeSlots 语义消费）、registlets→template。
- * - 砍除：各级 statistic、审计字段、player 库存、partner/mercenary、mob.drops/images。
+ * - 不挂载：账号审计关系、player 库存、partner/mercenary、mob.drops/images。
  * - 保守保留（测试数据为空、visit 通用递归可能消费 modifiers）：avatars / consumables / combos。
  */
 

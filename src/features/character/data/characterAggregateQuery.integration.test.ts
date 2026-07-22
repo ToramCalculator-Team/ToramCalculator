@@ -33,13 +33,6 @@ beforeAll(async () => {
 		.values({ ...defaultData.player, id: PLAYER_ID })
 		.execute();
 	await db
-		.insertInto("statistic")
-		.values([
-			{ ...defaultData.statistic, id: "aggregate-stat-a" },
-			{ ...defaultData.statistic, id: "aggregate-stat-b" },
-		])
-		.execute();
-	await db
 		.insertInto("player_weapon")
 		.values([
 			{
@@ -64,14 +57,12 @@ beforeAll(async () => {
 				id: "aggregate-character-b",
 				name: "Character B",
 				belongToPlayerId: PLAYER_ID,
-				statisticId: "aggregate-stat-b",
 			},
 			{
 				...defaultData.character,
 				id: CHARACTER_ID,
 				name: "Character A",
 				belongToPlayerId: PLAYER_ID,
-				statisticId: "aggregate-stat-a",
 				weaponId: "aggregate-weapon-a",
 			},
 		])
@@ -153,12 +144,8 @@ describe("Character scoped aggregate query", () => {
 		const comboStepId = "aggregate-combo-step";
 		const skillId = "aggregate-skill";
 		await db
-			.insertInto("statistic")
-			.values({ ...defaultData.statistic, id: "aggregate-skill-stat" })
-			.execute();
-		await db
 			.insertInto("skill")
-			.values({ ...defaultData.skill, id: skillId, statisticId: "aggregate-skill-stat" })
+			.values({ ...defaultData.skill, id: skillId })
 			.execute();
 		await db
 			.insertInto("character_skill")

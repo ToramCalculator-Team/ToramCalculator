@@ -115,11 +115,27 @@ export class RepositoryGenerator {
 
 		// 生成 index.ts
 		await this.generateIndex(generatedFiles);
+		this.removeStaleRepositories(generatedFiles);
 
 		// 统一打印所有检测到的循环（去重后）
 		this.printAllCycles();
 
 		console.log(`Repository 生成完成！共生成 ${generatedFiles.length} 个文件`);
+	}
+
+	/**
+	 * Repository 目录完全由生成器拥有；Prisma 模型被删除后，对应旧文件也必须同步删除。
+	 * 否则旧文件仍会参与 TypeScript 检查，并引用已经不存在的表和类型。
+	 */
+	private removeStaleRepositories(generatedFiles: string[]): void {
+		const repositoriesDir = path.join("db", "generated", "repositories");
+		const expectedFiles = new Set(["index.ts", ...generatedFiles.map((name) => NamingRules.FileName(name))]);
+
+		for (const fileName of fs.readdirSync(repositoriesDir)) {
+			if (!fileName.endsWith(".ts") || expectedFiles.has(fileName)) continue;
+			fs.unlinkSync(path.join(repositoriesDir, fileName));
+			console.log(`删除陈旧 Repository 文件: ${fileName}`);
+		}
 	}
 
 	/**
@@ -144,7 +160,6 @@ export class RepositoryGenerator {
 	 * 生成 repository 代码
 	 */
 	private async generateRepositoryCode(modelName: string): Promise<string> {
-
 		// 生成各个部分
 		const imports = this.generateImports(modelName);
 		const types = this.generateTypes(modelName);
@@ -165,7 +180,6 @@ ${crudMethods}
 	 * 生成导入语句
 	 */
 	private generateImports(modelName: string): string {
-
 		// 计算相对路径
 		const relativePaths = this.calculateRelativePaths();
 
@@ -462,11 +476,24 @@ ${crudMethods}
 	private generateTypes(modelName: string): string {
 		const tableName = NamingRules.ZodTypeName(modelName);
 		const pascalName = NamingRules.TypeName(modelName, modelName);
+		const model = this.allModels.find((candidate) => (candidate.dbName || candidate.name) === modelName);
+		const managedTimestampFields = model?.fields
+			.filter(
+				(field) =>
+					field.kind === "scalar" && field.type === "DateTime" && ["createdAt", "updatedAt"].includes(field.name),
+			)
+			.map((field) => `"${field.name}"`);
+		const insertType = managedTimestampFields?.length
+			? `Omit<Insertable<${tableName}>, ${managedTimestampFields.join(" | ")}>`
+			: `Insertable<${tableName}>`;
+		const updateType = managedTimestampFields?.length
+			? `Omit<Updateable<${tableName}>, ${managedTimestampFields.join(" | ")}>`
+			: `Updateable<${tableName}>`;
 
 		return `// 1. 类型定义
 export type ${pascalName} = Selectable<${tableName}>;
-export type ${pascalName}Insert = Insertable<${tableName}>;
-export type ${pascalName}Update = Updateable<${tableName}>;
+export type ${pascalName}Insert = ${insertType};
+export type ${pascalName}Update = ${updateType};
 export type ${pascalName}QueryDB = Kysely<DB> | Transaction<DB>;
 export type ${pascalName}RelationQuery = { execute: () => Promise<unknown[]> };
 export type ${pascalName}RelationQueryMap = Partial<{ [K in keyof DB]: ${pascalName}RelationQuery[] }>;`;
@@ -724,7 +751,6 @@ ${joinChain}
 	 * 生成 CRUD 方法
 	 */
 	private generateCrudMethods(modelName: string): string {
-
 		const methods: string[] = [];
 
 		// 检查模型是否有主键
@@ -1024,7 +1050,6 @@ ${this.generateQueryExports(queryExports)}
 				return "ONE_TO_ONE";
 		}
 	}
-
 
 	/**
 	 * 获取主键字段
@@ -1630,6 +1655,29 @@ export async function ${methodName}(${fieldParams}, trx?: Transaction<DB>) {
 		const pluralName = this.pluralize(pascalName);
 		const primaryKeyField = this.getPrimaryKeyField(modelName);
 		const schemaName = NamingRules.SchemaName(tableName);
+		const model = this.allModels.find((candidate) => (candidate.dbName || candidate.name) === modelName);
+		const hasCreatedAt = model?.fields.some(
+			(field) => field.kind === "scalar" && field.type === "DateTime" && field.name === "createdAt",
+		);
+		const hasUpdatedAt = model?.fields.some(
+			(field) => field.kind === "scalar" && field.type === "DateTime" && field.name === "updatedAt",
+		);
+		const managedTimestampNames = [hasCreatedAt ? '"createdAt"' : "", hasUpdatedAt ? '"updatedAt"' : ""].filter(
+			Boolean,
+		);
+		const writableFieldCondition = managedTimestampNames.length
+			? `key in ${schemaName}.shape && ![${managedTimestampNames.join(", ")}].includes(key)`
+			: `key in ${schemaName}.shape`;
+		const insertTimestampFields = [hasCreatedAt ? "createdAt: now" : "", hasUpdatedAt ? "updatedAt: now" : ""]
+			.filter(Boolean)
+			.join(", ");
+		const insertValues = insertTimestampFields
+			? `{ ...pick${pascalName}SchemaFields(data), ${insertTimestampFields} }`
+			: `pick${pascalName}SchemaFields(data)`;
+		const updateValues = hasUpdatedAt
+			? `{ ...pick${pascalName}SchemaFields(data), updatedAt: new Date().toISOString() }`
+			: `pick${pascalName}SchemaFields(data)`;
+		const insertNowDeclaration = insertTimestampFields ? "\n  const now = new Date().toISOString();" : "";
 
 		return `/**
  * 设计思路：按主键查询是详情、卡片和编辑入口的统一读取原语；这里只返回 Kysely builder，让调用方决定一次性执行或 live 订阅。
@@ -1691,7 +1739,7 @@ export async function selectAll${pluralName}(trx?: Transaction<DB>) {
  * 函数职责：保留输入对象中属于 ${schemaName} 的字段，供 insert/update query builder 使用。
  */
 function pick${pascalName}SchemaFields<T>(data: T): T {
-  const filtered = Object.fromEntries(Object.entries(data as Record<string, unknown>).filter(([key]) => key in ${schemaName}.shape));
+  const filtered = Object.fromEntries(Object.entries(data as Record<string, unknown>).filter(([key]) => ${writableFieldCondition}));
   // 设计说明：Object.fromEntries 会丢失泛型对象形状；字段白名单由 ${schemaName}.shape 提供，这里只恢复调用方传入的写入类型。
   return filtered as T;
 }
@@ -1701,7 +1749,8 @@ function pick${pascalName}SchemaFields<T>(data: T): T {
  * 函数职责：构造插入 ${tableName} 并返回写入行的 SQL。
  */
 export function insert${pascalName}Query(db: ${pascalName}QueryDB, data: ${pascalName}Insert) {
-  return db.insertInto("${tableName}").values(pick${pascalName}SchemaFields(data)).returningAll();
+  ${insertNowDeclaration.trimStart()}
+  return db.insertInto("${tableName}").values(${insertValues}).returningAll();
 }
 
 /**
@@ -1718,7 +1767,7 @@ export async function insert${pascalName}(data: ${pascalName}Insert, trx?: Trans
  * 函数职责：构造更新 ${tableName} 指定主键行并返回更新行的 SQL。
  */
 export function update${pascalName}Query(db: ${pascalName}QueryDB, id: string, data: ${pascalName}Update) {
-  return db.updateTable("${tableName}").set(pick${pascalName}SchemaFields(data)).where("${primaryKeyField}", "=", id).returningAll();
+  return db.updateTable("${tableName}").set(${updateValues}).where("${primaryKeyField}", "=", id).returningAll();
 }
 
 /**
@@ -1885,7 +1934,6 @@ ${childEntries}
 
 		return intermediateTables.sort();
 	}
-
 
 	/**
 	 * 获取无主键模型的特殊方法导入字符串

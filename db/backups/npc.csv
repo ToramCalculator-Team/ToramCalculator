@@ -1,2 +1,2 @@
-id,name,zoneId,statisticId,updatedByAccountId,createdByAccountId,write_id
-defaultbelongToNpcId,defaultNpc,defaultZoneAId,123,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,e066659a-c105-4971-bfc4-f51dd52978f4
+id,name,zoneId,createdAt,updatedAt,updatedByAccountId,createdByAccountId,write_id
+defaultbelongToNpcId,defaultNpc,defaultZoneAId,2024-04-11 07:47:29.523,2024-04-11 07:47:29.523,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,e066659a-c105-4971-bfc4-f51dd52978f4

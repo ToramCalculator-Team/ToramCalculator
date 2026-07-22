@@ -13,7 +13,6 @@ const createTemplate = (
 		name: id,
 		preSkillId: options.preSkillId ?? null,
 		treeType: options.treeType ?? "MagicSkill",
-		statisticId: `${id}-statistic`,
 	});
 
 const createCharacterSkill = (id: string, templateId: string, lv: number, options: { isStarGem?: boolean } = {}) =>

@@ -1,6 +1,5 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
-import { insertStatistic } from "@db/generated/repositories/statistic";
 import { NpcSchema, type npc } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -17,8 +16,7 @@ export const NPC_DATA_CONFIG: TableDataConfig<npc> = (dictionary) => ({
 		ID: ["id"],
 		基本信息: ["name"],
 		所属区域: ["zoneId"],
-		统计信息: ["statisticId"],
-		创建和更新信息: ["createdByAccountId", "updatedByAccountId"],
+		创建和更新信息: ["createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
 	},
 	table: {
 		columnsDef: [
@@ -26,28 +24,20 @@ export const NPC_DATA_CONFIG: TableDataConfig<npc> = (dictionary) => ({
 			{ accessorKey: "name", cell: (info) => info.getValue(), size: 200 },
 			{ accessorKey: "zoneId", cell: (info) => info.getValue(), size: 200 },
 		],
-		hiddenColumnDef: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
+		hiddenColumnDef: ["id", "createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
 		defaultSort: { field: "name", desc: false },
 		tdGenerator: {},
 	},
 	form: {
-		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
+		hiddenFields: ["id", "createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
 		onInsert: async (data) => {
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				const statistic = await insertStatistic(
-					{
-						...defaultData.statistic,
-						id: createId(),
-					},
-					trx,
-				);
 				return repositoryMethods.npc.insert(
 					{
 						...data,
 						id: createId(),
-						statisticId: statistic.id,
 						createdByAccountId: account.id,
 						updatedByAccountId: account.id,
 					},
@@ -64,7 +54,7 @@ export const NPC_DATA_CONFIG: TableDataConfig<npc> = (dictionary) => ({
 		},
 	},
 	card: {
-		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
+		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
 		fieldGenerator: {},
 		deleteCallback: repositoryMethods.npc.delete,
 		editAbleCallback: (data) => repositoryMethods.npc.canEdit(data.id),

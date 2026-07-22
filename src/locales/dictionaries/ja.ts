@@ -1072,10 +1072,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "活动的名称",
 					formFieldDescription: "请输入活动名称",
 				},
-				statisticId: {
-					key: "统计ID",
-					tableFieldDescription: "关联的统计信息",
-					formFieldDescription: "选择关联的统计信息",
+				createdAt: {
+					key: "作成日時",
+					tableFieldDescription: "このレコードの作成日時",
+					formFieldDescription: "作成日時はシステムが管理します",
+				},
+				updatedAt: {
+					key: "更新日時",
+					tableFieldDescription: "このレコードの最終更新日時",
+					formFieldDescription: "更新日時はシステムが管理します",
 				},
 				updatedByAccountId: {
 					key: "更新者",
@@ -1125,10 +1130,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "アドレスが所属するワールドのIDです。",
 					formFieldDescription: "アドレスが所属するワールドを選択してください。",
 				},
-				statisticId: {
-					key: "统计ID",
-					tableFieldDescription: "关联的统计信息",
-					formFieldDescription: "选择关联的统计信息",
+				createdAt: {
+					key: "作成日時",
+					tableFieldDescription: "このレコードの作成日時",
+					formFieldDescription: "作成日時はシステムが管理します",
+				},
+				updatedAt: {
+					key: "更新日時",
+					tableFieldDescription: "このレコードの最終更新日時",
+					formFieldDescription: "更新日時はシステムが管理します",
 				},
 				updatedByAccountId: {
 					key: "更新者",
@@ -1336,10 +1346,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "キャラクターの詳細情報",
 					formFieldDescription: "キャラクターの詳細情報を入力してください。",
 				},
-				statisticId: {
-					key: "統計ID",
-					tableFieldDescription: "キャラクターの統計ID",
-					formFieldDescription: "キャラクターの統計を選択してください。",
+				createdAt: {
+					key: "作成日時",
+					tableFieldDescription: "このレコードの作成日時",
+					formFieldDescription: "作成日時はシステムが管理します",
+				},
+				updatedAt: {
+					key: "更新日時",
+					tableFieldDescription: "このレコードの最終更新日時",
+					formFieldDescription: "更新日時はシステムが管理します",
 				},
 			},
 			description: "キャラクター情報",
@@ -1600,10 +1615,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "道具的详细描述",
 					formFieldDescription: "道具的详细描述",
 				},
-				statisticId: {
-					key: "统计ID",
-					tableFieldDescription: "道具的统计ID",
-					formFieldDescription: "道具的统计ID",
+				createdAt: {
+					key: "作成日時",
+					tableFieldDescription: "このレコードの作成日時",
+					formFieldDescription: "作成日時はシステムが管理します",
+				},
+				updatedAt: {
+					key: "更新日時",
+					tableFieldDescription: "このレコードの最終更新日時",
+					formFieldDescription: "更新日時はシステムが管理します",
 				},
 				updatedByAccountId: {
 					key: "最后更新者",
@@ -2045,11 +2065,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "このデータを測定した人または組織です。",
 					formFieldDescription: "このデータを測定した人または組織です。",
 				},
-				statisticId: {
-					key: "統計情報ID",
-					tableFieldDescription: "これはモンスターの統計情報のデータベースIDです。普通は見ることはありません。",
-					formFieldDescription:
-						"これはモンスターの統計情報のデータベースIDです。もし入力を求められた場合、開発者に報告してください。これは異常な状況です。",
+				createdAt: {
+					key: "作成日時",
+					tableFieldDescription: "このレコードの作成日時",
+					formFieldDescription: "作成日時はシステムが管理します",
+				},
+				updatedAt: {
+					key: "更新日時",
+					tableFieldDescription: "このレコードの最終更新日時",
+					formFieldDescription: "更新日時はシステムが管理します",
 				},
 				updatedByAccountId: {
 					key: "更新者ID",
@@ -2085,10 +2109,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "NPCが所属するゾーンのIDです。",
 					formFieldDescription: "NPCが所属するゾーンを選択してください。",
 				},
-				statisticId: {
-					key: "统计ID",
-					tableFieldDescription: "关联的统计信息",
-					formFieldDescription: "选择关联的统计信息",
+				createdAt: {
+					key: "作成日時",
+					tableFieldDescription: "このレコードの作成日時",
+					formFieldDescription: "作成日時はシステムが管理します",
+				},
+				updatedAt: {
+					key: "更新日時",
+					tableFieldDescription: "このレコードの最終更新日時",
+					formFieldDescription: "更新日時はシステムが管理します",
 				},
 				updatedByAccountId: {
 					key: "更新者",
@@ -2529,10 +2558,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "所属活动",
 					formFieldDescription: "所属活动",
 				},
-				statisticId: {
-					key: "统计ID",
-					tableFieldDescription: "关联的统计信息",
-					formFieldDescription: "选择关联的统计信息",
+				createdAt: {
+					key: "作成日時",
+					tableFieldDescription: "このレコードの作成日時",
+					formFieldDescription: "作成日時はシステムが管理します",
+				},
+				updatedAt: {
+					key: "更新日時",
+					tableFieldDescription: "このレコードの最終更新日時",
+					formFieldDescription: "更新日時はシステムが管理します",
 				},
 				updatedByAccountId: {
 					key: "更新者",
@@ -2638,10 +2672,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "模拟器的详情",
 					formFieldDescription: "请输入模拟器的详情",
 				},
-				statisticId: {
-					key: "统计ID",
-					tableFieldDescription: "关联的统计信息",
-					formFieldDescription: "选择关联的统计信息",
+				createdAt: {
+					key: "作成日時",
+					tableFieldDescription: "このレコードの作成日時",
+					formFieldDescription: "作成日時はシステムが管理します",
+				},
+				updatedAt: {
+					key: "更新日時",
+					tableFieldDescription: "このレコードの最終更新日時",
+					formFieldDescription: "更新日時はシステムが管理します",
 				},
 				updatedByAccountId: {
 					key: "更新者",
@@ -2701,11 +2740,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "このデータを測定した人物または組織",
 					formFieldDescription: "このデータを測定した人物または組織",
 				},
-				statisticId: {
-					key: "統計ID",
-					tableFieldDescription: "これは統計データベースのIDです。通常、これは表示されません。",
-					formFieldDescription:
-						"これは統計データベースのIDです。これを入力するように求められた場合は、開発者に報告してください。これは正常ではありません。",
+				createdAt: {
+					key: "作成日時",
+					tableFieldDescription: "このレコードの作成日時",
+					formFieldDescription: "作成日時はシステムが管理します",
+				},
+				updatedAt: {
+					key: "更新日時",
+					tableFieldDescription: "このレコードの最終更新日時",
+					formFieldDescription: "更新日時はシステムが管理します",
 				},
 				preSkillId: {
 					key: "前置技能ID",
@@ -2965,37 +3008,6 @@ const dictionary: Dictionary = {
 			},
 			description: "特殊装備情報",
 		},
-		statistic: {
-			selfName: "統計",
-			fields: {
-				id: {
-					key: "ID",
-					tableFieldDescription: "统计信息的唯一标识符",
-					formFieldDescription: "统计信息的唯一标识符",
-				},
-				updatedAt: {
-					key: "更新时间",
-					tableFieldDescription: "统计信息的更新时间",
-					formFieldDescription: "请输入更新时间",
-				},
-				createdAt: {
-					key: "创建时间",
-					tableFieldDescription: "统计信息的创建时间",
-					formFieldDescription: "请输入创建时间",
-				},
-				usageTimestamps: {
-					key: "使用时间戳",
-					tableFieldDescription: "使用时间戳列表",
-					formFieldDescription: "请输入使用时间戳",
-				},
-				viewTimestamps: {
-					key: "查看时间戳",
-					tableFieldDescription: "查看时间戳列表",
-					formFieldDescription: "请输入查看时间戳",
-				},
-			},
-			description: "統計情報",
-		},
 		task: {
 			selfName: "タスク",
 			fields: {
@@ -3030,10 +3042,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "任务所属的NPC",
 					formFieldDescription: "任务所属的NPC",
 				},
-				statisticId: {
-					key: "统计ID",
-					tableFieldDescription: "关联的统计信息",
-					formFieldDescription: "选择关联的统计信息",
+				createdAt: {
+					key: "作成日時",
+					tableFieldDescription: "このレコードの作成日時",
+					formFieldDescription: "作成日時はシステムが管理します",
+				},
+				updatedAt: {
+					key: "更新日時",
+					tableFieldDescription: "このレコードの最終更新日時",
+					formFieldDescription: "更新日時はシステムが管理します",
 				},
 				updatedByAccountId: {
 					key: "更新者",
@@ -3297,10 +3314,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "世界的名称",
 					formFieldDescription: "世界的名称",
 				},
-				statisticId: {
-					key: "统计ID",
-					tableFieldDescription: "关联的统计信息",
-					formFieldDescription: "选择关联的统计信息",
+				createdAt: {
+					key: "作成日時",
+					tableFieldDescription: "このレコードの作成日時",
+					formFieldDescription: "作成日時はシステムが管理します",
+				},
+				updatedAt: {
+					key: "更新日時",
+					tableFieldDescription: "このレコードの最終更新日時",
+					formFieldDescription: "更新日時はシステムが管理します",
 				},
 				updatedByAccountId: {
 					key: "更新者",
@@ -3343,10 +3365,15 @@ const dictionary: Dictionary = {
 					tableFieldDescription: "このゾーンが属するマップのID",
 					formFieldDescription: "このゾーンが属するマップを選択してください",
 				},
-				statisticId: {
-					key: "统计ID",
-					tableFieldDescription: "关联的统计信息",
-					formFieldDescription: "选择关联的统计信息",
+				createdAt: {
+					key: "作成日時",
+					tableFieldDescription: "このレコードの作成日時",
+					formFieldDescription: "作成日時はシステムが管理します",
+				},
+				updatedAt: {
+					key: "更新日時",
+					tableFieldDescription: "このレコードの最終更新日時",
+					formFieldDescription: "更新日時はシステムが管理します",
 				},
 				updatedByAccountId: {
 					key: "更新者",

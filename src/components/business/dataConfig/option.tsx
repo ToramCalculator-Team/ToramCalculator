@@ -2,7 +2,6 @@ import { defaultData } from "@db/defaultData";
 import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { deleteItem, insertItem, updateItem } from "@db/generated/repositories/item";
 import { deleteOption, insertOption, updateOption } from "@db/generated/repositories/option";
-import { insertStatistic } from "@db/generated/repositories/statistic";
 import { ItemSchema, OptionSchema, type option } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -34,18 +33,10 @@ const insertOptionItem = async (data: OptionItem): Promise<OptionItem> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
 		const { account } = await getUserContext(trx);
-		const statistic = await insertStatistic(
-			{
-				...defaultData.statistic,
-				id: createId(),
-			},
-			trx,
-		);
 		const item = await insertItem(
 			{
 				...ItemSchema.parse(data),
 				id: createId(),
-				statisticId: statistic.id,
 				createdByAccountId: account.id,
 				updatedByAccountId: account.id,
 			},
@@ -133,7 +124,7 @@ export const OPTION_DATA_CONFIG: TableDataConfig<OptionItem, option> = (dictiona
 	},
 	card: {
 		relationOverrides: {
-			hide: ["player_option", "statistic", "account_create_data", "account_update_data"],
+			hide: ["player_option", "account_create_data", "account_update_data"],
 		},
 		hiddenFields: [],
 		fieldGenerator: {},

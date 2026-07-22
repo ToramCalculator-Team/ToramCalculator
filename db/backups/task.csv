@@ -1,2 +1,2 @@
-id,lv,name,type,description,belongToNpcId,statisticId,updatedByAccountId,createdByAccountId,write_id
-defaultbelongToTaskId,0,defaultTask,Collect,默认任务（缺省值）,defaultbelongToNpcId,125,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,0cde40a1-6da2-48e2-ba32-f1480f819fe7
+id,lv,name,type,description,belongToNpcId,createdAt,updatedAt,updatedByAccountId,createdByAccountId,write_id
+defaultbelongToTaskId,0,defaultTask,Collect,默认任务（缺省值）,defaultbelongToNpcId,2024-04-11 07:47:29.523,2024-04-11 07:47:29.523,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,0cde40a1-6da2-48e2-ba32-f1480f819fe7

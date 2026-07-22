@@ -1,2 +1,2 @@
-id,name,statisticId,updatedByAccountId,createdByAccountId,write_id
-defaultActivityId,defaultActivity,102,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,84758bb2-e18d-4dc3-9f42-bec9750b552e
+id,name,createdAt,updatedAt,updatedByAccountId,createdByAccountId,write_id
+defaultActivityId,defaultActivity,2024-04-11 07:47:29.523,2024-04-11 07:47:29.523,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,84758bb2-e18d-4dc3-9f42-bec9750b552e

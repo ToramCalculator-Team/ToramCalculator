@@ -1,7 +1,6 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
 import { deleteItem, insertItem, updateItem } from "@db/generated/repositories/item";
-import { insertStatistic } from "@db/generated/repositories/statistic";
 import { deleteWeapon, insertWeapon, updateWeapon } from "@db/generated/repositories/weapon";
 import { ItemSchema, WeaponSchema, type weapon } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
@@ -47,18 +46,10 @@ const insertWeaponItem = async (data: WeaponItem): Promise<WeaponItem> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
 		const { account } = await getUserContext(trx);
-		const statistic = await insertStatistic(
-			{
-				...defaultData.statistic,
-				id: createId(),
-			},
-			trx,
-		);
 		const item = await insertItem(
 			{
 				...ItemSchema.parse(data),
 				id: createId(),
-				statisticId: statistic.id,
 				createdByAccountId: account.id,
 				updatedByAccountId: account.id,
 			},
@@ -106,7 +97,7 @@ export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem, weapon> = (dictiona
 	// 声明 weapon 与 item 是 1:1 继承关系；渲染器会自动：
 	//   - 合并 item 的字典/字段生成器到 weapon（child 优先）
 	//   - 从关联内容中排除 item 以及 armor/consumable 等同级子类（兄弟表自动推导）
-	//   - 把 item 的父级关系（如 statistic、account）作为 weapon 的关联一并展示
+	//   - 把 item 的父级关系（如 account）作为 weapon 的关联一并展示
 	inheritsFrom: { table: "item", via: "itemId" },
 	dictionary: dictionary().db.weapon,
 	dataSchema: WeaponItemSchema,
@@ -195,7 +186,7 @@ export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem, weapon> = (dictiona
 	},
 	card: {
 		relationOverrides: {
-			hide: ["player_weapon", "statistic", "account_create_data", "account_update_data"],
+			hide: ["player_weapon", "account_create_data", "account_update_data"],
 		},
 		hiddenFields: [],
 		fieldGenerator: {},

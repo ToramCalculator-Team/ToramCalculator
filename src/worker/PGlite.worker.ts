@@ -47,7 +47,6 @@ const ELECTRIC_SYNC_TABLE_CONFIGS = {
 	account_create_data: { tableName: "account_create_data", primaryKey: ["userId"] },
 	account_update_data: { tableName: "account_update_data", primaryKey: ["userId"] },
 	player: { tableName: "player", primaryKey: ["id"] },
-	statistic: { tableName: "statistic", primaryKey: ["id"] },
 	image: { tableName: "image", primaryKey: ["id"] },
 	world: { tableName: "world", primaryKey: ["id"] },
 	activity: { tableName: "activity", primaryKey: ["id"] },
@@ -135,7 +134,6 @@ const ELECTRIC_SYNC_TABLE_CONFIGS = {
 const EARLY_ELECTRIC_SYNC_TABLES: ElectricSyncTableConfig[] = [
 	ELECTRIC_SYNC_TABLE_CONFIGS.account,
 	ELECTRIC_SYNC_TABLE_CONFIGS.player,
-	ELECTRIC_SYNC_TABLE_CONFIGS.statistic,
 	ELECTRIC_SYNC_TABLE_CONFIGS.image,
 	ELECTRIC_SYNC_TABLE_CONFIGS.mob,
 	ELECTRIC_SYNC_TABLE_CONFIGS.drop_item,

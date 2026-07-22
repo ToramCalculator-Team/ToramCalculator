@@ -2,7 +2,6 @@ import { defaultData } from "@db/defaultData";
 import { insertMember } from "@db/generated/repositories/member";
 import { selectMobById } from "@db/generated/repositories/mob";
 import { insertSimulator, type Simulator, updateSimulator } from "@db/generated/repositories/simulator";
-import { insertStatistic } from "@db/generated/repositories/statistic";
 import { insertTeam } from "@db/generated/repositories/team";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -43,22 +42,10 @@ export async function createTrainingSimulator(input: CreateTrainingSimulatorInpu
 		if (!trainingDummy) throw new Error("训练木桩数据尚未同步，请稍后重试");
 
 		const simulatorId = createId();
-		const statisticId = createId();
 		const teamAId = createId();
 		const teamBId = createId();
 		const playerMemberId = createId();
 		const targetMemberId = createId();
-		const now = new Date().toISOString();
-
-		await insertStatistic(
-			{
-				...defaultData.statistic,
-				id: statisticId,
-				createdAt: now,
-				updatedAt: now,
-			},
-			trx,
-		);
 		await insertSimulator(
 			{
 				...defaultData.simulator,
@@ -68,7 +55,6 @@ export async function createTrainingSimulator(input: CreateTrainingSimulatorInpu
 				logicHz: 60,
 				primaryMemberId: null,
 				details: "一名手动 Player 对固定训练木桩",
-				statisticId,
 				createdByAccountId: account.id,
 				updatedByAccountId: account.id,
 			},

@@ -1,4 +1,4 @@
-id,name,statisticId,updatedByAccountId,createdByAccountId,write_id
-defaultWorldId,defaultWorld,126,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,a29cf813-171d-44e0-b025-728d678be5bf
-toramWorldId,Toram World,127,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,58ed8aa3-8e41-4518-8467-297bb72a2646
-irunaWorldId,Iruna World,128,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,71816e54-0469-45ab-bac7-e136d09c5e1e
+id,name,createdAt,updatedAt,updatedByAccountId,createdByAccountId,write_id
+defaultWorldId,defaultWorld,2024-04-11 07:47:29.523,2024-04-11 07:47:29.523,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,a29cf813-171d-44e0-b025-728d678be5bf
+toramWorldId,Toram World,2024-04-11 07:47:29.523,2024-04-11 07:47:29.523,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,58ed8aa3-8e41-4518-8467-297bb72a2646
+irunaWorldId,Iruna World,2024-04-11 07:47:29.523,2024-04-11 07:47:29.523,cluhz95c5000078elg5r46i83,cluhz95c5000078elg5r46i83,71816e54-0469-45ab-bac7-e136d09c5e1e

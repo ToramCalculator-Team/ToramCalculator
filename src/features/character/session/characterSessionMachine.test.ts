@@ -49,7 +49,6 @@ const createAggregate = (
 				...defaultData.skill,
 				id: `${skill.id}:template`,
 				name: skill.id,
-				statistic: defaultData.statistic,
 				preSkill: null,
 				nextSkills: [],
 				variants: [],
@@ -70,7 +69,6 @@ const createAggregate = (
 		registlets: [],
 		consumables: [],
 		combos: [],
-		statistic: defaultData.statistic,
 	});
 	return {
 		player: PlayerSchema.parse({ ...defaultData.player, id: identity.playerId }),
@@ -515,7 +513,6 @@ describe("CharacterSession 状态机", () => {
 			...defaultData.character,
 			id: identityB.characterId,
 			belongToPlayerId: identityB.playerId,
-			statisticId: "unrelated-statistic",
 		});
 		const unrelatedWeapon = PlayerWeaponWithRelationsSchema.parse({
 			...defaultData.player_weapon,

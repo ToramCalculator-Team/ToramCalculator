@@ -145,7 +145,6 @@ export const initialStore: Store = {
 			account_update_data: false,
 			image: false,
 			mob: false,
-			statistic: false,
 			user: false,
 		},
 		sync: false,

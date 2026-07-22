@@ -1,6 +1,5 @@
 import { defaultData } from "@db/defaultData";
 import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
-import { insertStatistic } from "@db/generated/repositories/statistic";
 import { ZoneSchema, type zone } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -18,8 +17,7 @@ export const ZONE_DATA_CONFIG: TableDataConfig<zone> = (dictionary) => ({
 		基本信息: ["name", "rewardNodes"],
 		所属活动: ["activityId"],
 		所属地点: ["addressId"],
-		统计信息: ["statisticId"],
-		创建和更新信息: ["createdByAccountId", "updatedByAccountId"],
+		创建和更新信息: ["createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
 	},
 	table: {
 		columnsDef: [
@@ -54,28 +52,28 @@ export const ZONE_DATA_CONFIG: TableDataConfig<zone> = (dictionary) => ({
 				size: 160,
 			},
 		],
-		hiddenColumnDef: ["id", "activityId", "addressId", "createdByAccountId", "updatedByAccountId", "statisticId"],
+		hiddenColumnDef: [
+			"id",
+			"activityId",
+			"addressId",
+			"createdAt",
+			"updatedAt",
+			"createdByAccountId",
+			"updatedByAccountId",
+		],
 		defaultSort: { field: "name", desc: false },
 		tdGenerator: {},
 	},
 	form: {
-		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
+		hiddenFields: ["id", "createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
 		onInsert: async (data) => {
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				const statistic = await insertStatistic(
-					{
-						...defaultData.statistic,
-						id: createId(),
-					},
-					trx,
-				);
 				return repositoryMethods.zone.insert(
 					{
 						...data,
 						id: createId(),
-						statisticId: statistic.id,
 						createdByAccountId: account.id,
 						updatedByAccountId: account.id,
 					},
@@ -92,7 +90,7 @@ export const ZONE_DATA_CONFIG: TableDataConfig<zone> = (dictionary) => ({
 		},
 	},
 	card: {
-		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId", "statisticId"],
+		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
 		fieldGenerator: {},
 		deleteCallback: repositoryMethods.zone.delete,
 		editAbleCallback: (data) => repositoryMethods.zone.canEdit(data.id),

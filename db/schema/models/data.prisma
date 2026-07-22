@@ -5,8 +5,8 @@ model world {
     name      String
     addresses address[]
 
-    statistic   statistic @relation(fields: [statisticId], references: [id])
-    statisticId String    @unique
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
 
     updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
     updatedByAccountId String?
@@ -28,8 +28,8 @@ model address {
     belongToWorld world  @relation(fields: [worldId], references: [id])
     worldId       String
 
-    statistic   statistic @relation(fields: [statisticId], references: [id])
-    statisticId String    @unique
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
 
     updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
     updatedByAccountId String?
@@ -45,8 +45,8 @@ model activity {
     zones   zone[]
     recipes recipe[]
 
-    statistic   statistic @relation(fields: [statisticId], references: [id])
-    statisticId String    @unique
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
 
     updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
     updatedByAccountId String?
@@ -71,8 +71,8 @@ model zone {
     link       zone[] @relation("linkZones")
     usedBylink zone[] @relation("linkZones")
 
-    statistic   statistic @relation(fields: [statisticId], references: [id])
-    statisticId String    @unique
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
 
     updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
     updatedByAccountId String?
@@ -95,29 +95,6 @@ model image {
     optionId       String?
     belongToMob    mob?    @relation(fields: [mobId], references: [id], onDelete: Cascade)
     mobId          String?
-}
-
-// 统计字段
-model statistic {
-    id String @id
-
-    updatedAt       DateTime @updatedAt
-    createdAt       DateTime
-    usageTimestamps String[]
-    viewTimestamps  String[]
-
-    belongToMob       mob?
-    belongToItem      item?
-    belongToSkill     skill?
-    belongToCharacter character?
-    belongToSimulator simulator?
-    belongToWorld     world?
-    belongToAddress   address?
-    belongToActivity  activity?
-    belongToZone      zone?
-    belongToRecipe    recipe?
-    belongToNpc       npc?
-    belongToTask      task?
 }
 
 // 怪物
@@ -151,9 +128,9 @@ model mob {
     details     String?
     dataSources String
 
-    statistic   statistic @relation(fields: [statisticId], references: [id])
-    statisticId String    @unique
-    images      image[]
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
+    images    image[]
 
     usedByZones                zone[]
     usedByTaskKillRequirements task_kill_requirement[]
@@ -191,8 +168,8 @@ model item {
     usedByRewardItems  task_reward[]
     usedByTaskRequires task_collect_require[]
 
-    statistic   statistic @relation(fields: [statisticId], references: [id])
-    statisticId String    @unique
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
 
     updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
     updatedByAccountId String?
@@ -331,8 +308,8 @@ model recipe {
     belongToActivity activity? @relation(fields: [activityId], references: [id])
     activityId       String?
 
-    statistic   statistic @relation(fields: [statisticId], references: [id])
-    statisticId String    @unique
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
 
     updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
     updatedByAccountId String?
@@ -381,8 +358,8 @@ model npc {
     belongToZone zone   @relation(fields: [zoneId], references: [id])
     zoneId       String
 
-    statistic   statistic @relation(fields: [statisticId], references: [id])
-    statisticId String    @unique
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
 
     updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
     updatedByAccountId String?
@@ -405,8 +382,8 @@ model task {
     belongToNpc   npc    @relation(fields: [belongToNpcId], references: [id])
     belongToNpcId String
 
-    statistic   statistic @relation(fields: [statisticId], references: [id])
-    statisticId String    @unique
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
 
     updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
     updatedByAccountId String?
@@ -467,8 +444,8 @@ model skill {
     details     String
     dataSources String
 
-    statistic   statistic @relation(fields: [statisticId], references: [id])
-    statisticId String    @unique
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
     preSkill    skill?    @relation("SkillPrerequisite", fields: [preSkillId], references: [id], onDelete: SetNull)
     preSkillId  String?
 
@@ -745,8 +722,8 @@ model character {
     usedByMercenary mercenary?
     usedByMembers   member[]
 
-    statistic   statistic @relation(fields: [statisticId], references: [id])
-    statisticId String    @unique
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
 }
 
 // 角色习得技能
@@ -832,8 +809,8 @@ model simulator {
 
     details String?
 
-    statistic   statistic @relation(fields: [statisticId], references: [id])
-    statisticId String    @unique
+    createdAt DateTime @default(now())
+    updatedAt DateTime @default(now()) @updatedAt
 
     updatedBy          account_update_data? @relation(fields: [updatedByAccountId], references: [accountId], onDelete: Cascade)
     updatedByAccountId String?
