@@ -50,6 +50,10 @@ const exists = async (filePath: string): Promise<boolean> =>
 export const haveEquivalentPrismaSchemaText = (left: string, right: string): boolean =>
 	left.trimEnd() === right.trimEnd();
 
+/** Prisma 已完成语义比较，仅含空白或注释的 diff 不包含数据库结构变化。 */
+export const hasExecutablePrismaDiff = (prismaDiff: string): boolean =>
+	prismaDiff.split("\n").some((line) => line.trim().length > 0 && !line.trim().startsWith("--"));
+
 const readJson = async <T>(filePath: string): Promise<T> => JSON.parse(await readFile(filePath, "utf-8")) as T;
 
 const toImportName = (id: string) => `migration_${id.replace(/[^a-zA-Z0-9_]/g, "_")}_Sql`;
@@ -275,6 +279,14 @@ export class ClientMigrationGenerator {
 		const toVersion = fromVersion + 1;
 		const id = this.createMigrationId(fromVersion, toVersion);
 		const prismaDiff = await this.generatePrismaDiff(previousSchemaPath);
+		if (!hasExecutablePrismaDiff(prismaDiff)) {
+			// Prisma 可能只输出注释，表示文本快照变化但数据库结构等价。
+			// 此时推进 previous-schema 快照即可；创建迁移或增加版本会制造不存在的客户端结构变更。
+			await writeFileSafely(previousSchemaPath, currentSchema);
+			await this.writeMigrationIndex();
+			console.log("客户端 schema 无结构变化，跳过迁移生成");
+			return;
+		}
 		const generatedClientSql = await readFile(PATHS.clientDBSQL, "utf-8");
 		const clientSql = convertPrismaDiffToClientSql(prismaDiff, generatedClientSql, this.syncSqlFactory);
 		const migrationDir = path.join(migrationsDir, id);

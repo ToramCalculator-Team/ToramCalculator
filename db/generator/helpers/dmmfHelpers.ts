@@ -7,6 +7,15 @@
 import type { DMMF } from "@prisma/generator-helper";
 
 /**
+ * 返回模型声明的全部主键字段。
+ * 单字段主键记录在 field.isId，复合主键记录在 model.primaryKey，两个入口必须统一处理。
+ */
+export function getDMMFPrimaryKeys(model: DMMF.Model): string[] {
+	if (model.primaryKey) return [...model.primaryKey.fields];
+	return model.fields.filter((field) => field.isId).map((field) => field.name);
+}
+
+/**
  * DMMF 辅助工具类
  */
 export class DMMFHelpers {
@@ -35,7 +44,7 @@ export class DMMFHelpers {
 		const model = this.getModel(modelOrTableName);
 		if (!model) return [];
 
-		return model.fields.filter((field) => field.isId).map((field) => field.name);
+		return getDMMFPrimaryKeys(model);
 	}
 
 	/**

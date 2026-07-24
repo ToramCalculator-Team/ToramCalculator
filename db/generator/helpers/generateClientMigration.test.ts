@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { convertPrismaDiffToClientSql, haveEquivalentPrismaSchemaText } from "./generateClientMigration";
+import {
+	convertPrismaDiffToClientSql,
+	hasExecutablePrismaDiff,
+	haveEquivalentPrismaSchemaText,
+} from "./generateClientMigration";
 
 const generatedClientSql = `-- member
 CREATE TABLE IF NOT EXISTS "member_synced" (
@@ -80,5 +84,11 @@ describe("Prisma schema 迁移等价判断", () => {
 	it("忽略文件末尾换行，避免产生空迁移", () => {
 		expect(haveEquivalentPrismaSchemaText("model a {}\n", "model a {}")).toBe(true);
 		expect(haveEquivalentPrismaSchemaText("model a {}", "model b {}")).toBe(false);
+	});
+
+	it("Prisma 返回空 diff 时不生成迁移版本", () => {
+		expect(hasExecutablePrismaDiff("\n")).toBe(false);
+		expect(hasExecutablePrismaDiff("-- This is an empty migration.\n")).toBe(false);
+		expect(hasExecutablePrismaDiff('ALTER TABLE "a" ADD COLUMN "name" TEXT;')).toBe(true);
 	});
 });

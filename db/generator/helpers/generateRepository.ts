@@ -10,7 +10,15 @@ import type { DMMF } from "@prisma/generator-helper";
 import { RELATION_BREAK_POINTS } from "../relationConfig";
 import { NamingRules } from "../utils/namingRules";
 import { writeFileSafely } from "../utils/writeFileSafely";
+import {
+	findReverseRelationField,
+	getBusinessRelationDirection,
+	isBusinessParentRelationField,
+} from "./businessRelation";
 import { DMMFHelpers } from "./dmmfHelpers";
+
+type WriterExport = Partial<Record<"create" | "update" | "delete" | "canEdit", string>>;
+type ReaderExport = Partial<Record<"get" | "getAll" | "getParentsById" | "getChildrenById", string | null>>;
 
 /**
  * Repository 生成器
@@ -113,7 +121,8 @@ export class RepositoryGenerator {
 			}
 		}
 
-		// 生成 index.ts
+		// 生成共享类型 _shared.ts 与聚合 index.ts
+		this.generateSharedTypes();
 		await this.generateIndex(generatedFiles);
 		this.removeStaleRepositories(generatedFiles);
 
@@ -129,7 +138,11 @@ export class RepositoryGenerator {
 	 */
 	private removeStaleRepositories(generatedFiles: string[]): void {
 		const repositoriesDir = path.join("db", "generated", "repositories");
-		const expectedFiles = new Set(["index.ts", ...generatedFiles.map((name) => NamingRules.FileName(name))]);
+		const expectedFiles = new Set([
+			"index.ts",
+			"_shared.ts",
+			...generatedFiles.map((name) => NamingRules.FileName(name)),
+		]);
 
 		for (const fileName of fs.readdirSync(repositoriesDir)) {
 			if (!fileName.endsWith(".ts") || expectedFiles.has(fileName)) continue;
@@ -186,17 +199,23 @@ ${crudMethods}
 		// 使用 ZodTypeName 规范（从 zod 导入的 snake_case 类型）
 		const typeName = NamingRules.ZodTypeName(modelName);
 
+		// 仅有主键的表会生成父/子关系查询，才需要 RepositoryRelationQueryMap
+		const model = this.models.find((m) => m.name === modelName);
+		const hasPK = model ? this.hasPrimaryKey(model) : true;
+		const sharedTypeImports = hasPK
+			? "type RepositoryQueryDB, type RepositoryRelationQueryMap"
+			: "type RepositoryQueryDB";
+
 		const imports: string[] = [
-			`import { type Expression, type ExpressionBuilder, type Kysely, type Transaction, type Selectable, type Insertable, type Updateable } from "kysely";`,
+			`import { type Expression, type ExpressionBuilder, type Selectable, type Insertable, type Updateable } from "kysely";`,
 			`import { getDB } from "${relativePaths.database}";`,
+			`import { RepositoryAuthorizationError, type RepositoryWriterContext } from "../../repositories/repositoryWriter";`,
+			`import { ${sharedTypeImports} } from "./_shared";`,
 			`import { type DB, type ${typeName} } from "${relativePaths.zod}";`,
 		];
 
 		// 添加 kysely helpers
 		imports.push(`import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";`);
-
-		// 添加 cuid2
-		imports.push(`import { createId } from "@paralleldrive/cuid2";`);
 
 		// 添加 zod
 		imports.push(`import { z } from "zod/v4";`);
@@ -217,9 +236,6 @@ ${crudMethods}
 				imports.push(importStatement);
 			}
 		}
-
-		// 添加 store（用于 canEdit 方法）
-		imports.push(`import { store } from "~/store";`);
 
 		return imports.join("\n");
 	}
@@ -245,25 +261,6 @@ ${crudMethods}
 				.relative(outputDir, path.join(repositoriesDir, "subRelationFactory"))
 				.replace(/\\/g, "/"),
 		};
-	}
-
-	/**
-	 * 判断是否是父级关系
-	 */
-	private isParentRelation(fieldName: string): boolean {
-		return (
-			fieldName.startsWith("belongTo") ||
-			fieldName.startsWith("usedBy") ||
-			fieldName === "createdBy" ||
-			fieldName === "updatedBy"
-		);
-	}
-
-	/**
-	 * 判断是否是业务父级关系
-	 */
-	private isBusinessParentRelation(fieldName: string): boolean {
-		return this.isParentRelation(fieldName);
 	}
 
 	/**
@@ -302,7 +299,7 @@ ${crudMethods}
 				(field) =>
 					field.kind === "object" &&
 					field.type.toLowerCase() === targetModel.toLowerCase() &&
-					!this.isBusinessParentRelation(field.name),
+					getBusinessRelationDirection(this.allModels, sourceModelObj, field) === "child",
 			);
 
 			if (!relationField) continue;
@@ -426,20 +423,17 @@ ${crudMethods}
 			path.push(actualModelName);
 			visitedInCurrentPath.add(actualModelNameLower);
 
-			// 获取所有子关系（非父关系）
-			// 注意：这里的"子关系"是指会生成嵌套查询的关系，即非业务父关系的关系
-			// 即使外键在当前表中（如 account.user），只要不是业务父关系，也会生成嵌套查询
+			// 循环只可能沿实际会递归生成的 child 边发生；把 parent 或普通引用纳入会产生无效告警。
 			const childRelations = model.fields
 				.filter((field) => {
 					if (field.kind !== "object") return false;
-					// 跳过业务父关系（belongTo、usedBy、createdBy、updatedBy）
-					if (this.isBusinessParentRelation(field.name)) return false;
+					if (getBusinessRelationDirection(this.allModels, model, field) !== "child") return false;
 					// 跳过自引用关系（已在生成代码时处理，避免无限递归）
 					// field.type 就是目标模型的名称，直接比较即可
 					if (field.type.toLowerCase() === actualModelNameLower) {
 						return false;
 					}
-					// 其他关系都认为是子关系，会生成嵌套查询
+					// 经过共享分类器筛选后，剩余关系都是会生成嵌套查询的 child。
 					return true;
 				})
 				.map((field) => {
@@ -493,10 +487,7 @@ ${crudMethods}
 		return `// 1. 类型定义
 export type ${pascalName} = Selectable<${tableName}>;
 export type ${pascalName}Insert = ${insertType};
-export type ${pascalName}Update = ${updateType};
-export type ${pascalName}QueryDB = Kysely<DB> | Transaction<DB>;
-export type ${pascalName}RelationQuery = { execute: () => Promise<unknown[]> };
-export type ${pascalName}RelationQueryMap = Partial<{ [K in keyof DB]: ${pascalName}RelationQuery[] }>;`;
+export type ${pascalName}Update = ${updateType};`;
 	}
 
 	/**
@@ -520,11 +511,8 @@ export type ${pascalName}RelationQueryMap = Partial<{ [K in keyof DB]: ${pascalN
 		const actualModelName = actualModel?.name || modelName;
 		this.detectAndWarnCycles(actualModelName);
 
-		// 过滤掉父级关系，只保留子级关系用于 SubRelationDefs
-		const childRelations = generatedRelations.filter((rel) => !this.isBusinessParentRelation(rel.name));
-
-		// 生成 defineRelations - 即使为空也要生成
-		const relationDefs = childRelations
+		// generateAllRelations 已只保留明确的 child；空定义也要生成，以保持所有 repository 的导出形状一致。
+		const relationDefs = generatedRelations
 			.map((rel) => {
 				return `  ${rel.name}: {
     build: ${rel.buildCode},
@@ -594,10 +582,7 @@ export type ${pascalName}WithRelations = z.output<typeof ${pascalName}WithRelati
 		const imports: string[] = [];
 		const relations = this.getModelRelations(modelName);
 
-		// 只处理子关系（非父关系）
-		const childRelations = relations.filter((rel) => !this.isBusinessParentRelation(rel.name));
-
-		for (const relation of childRelations) {
+		for (const relation of relations) {
 			if (this.shouldSkipSubRelation(modelName, relation.name)) {
 				continue;
 			}
@@ -627,7 +612,7 @@ export type ${pascalName}WithRelations = z.output<typeof ${pascalName}WithRelati
 	 * 生成逻辑说明：
 	 * 1. 递归查找父表路径，直到找到包含 createdByAccountId 或 belongToAccountId 的表
 	 * 2. 对于没有 accountId 字段的表，返回 false（不可编辑）
-	 * 3. 对于有 accountId 字段的表，查询对应的 accountId 并与当前用户的 account.id 对比
+	 * 3. 对于有 accountId 字段的表，查询对应的 accountId 并与显式 WriterContext 对比
 	 * 4. 判断规则：
 	 *    - Admin 类型的账号可以编辑任何内容
 	 *    - 普通用户只能编辑自己创建的内容（accountId 匹配）
@@ -645,7 +630,7 @@ export type ${pascalName}WithRelations = z.output<typeof ${pascalName}WithRelati
 		if (result === null) {
 			return `// 判断当前用户是否可以编辑此数据
 // 注意：此表没有 accountId 字段，返回 false（不可编辑）
-export async function canEdit${pascalName}(id: string, trx?: Transaction<DB>): Promise<boolean> {
+export async function canEdit${pascalName}(_context: RepositoryWriterContext, _id: string, _trx?: RepositoryQueryDB): Promise<boolean> {
   return false;
 }`;
 		}
@@ -663,7 +648,7 @@ export async function canEdit${pascalName}(id: string, trx?: Transaction<DB>): P
 			}
 
 			return `${pathComment}
-export async function canEdit${pascalName}(id: string, trx?: Transaction<DB>): Promise<boolean> {
+export async function canEdit${pascalName}(context: RepositoryWriterContext, id: string, trx?: RepositoryQueryDB): Promise<boolean> {
   const db = trx || await getDB();
   const data = await db.selectFrom("${tableName}")
     .where("${primaryKeyField}", "=", id)
@@ -672,16 +657,13 @@ export async function canEdit${pascalName}(id: string, trx?: Transaction<DB>): P
   
   if (!data) return false;
   
-  const currentAccountId = store.session.account.id;
-  const currentAccountType = store.session.account.type;
-  
-  if (!currentAccountId) return false;
+  if (!context.accountId) return false;
   
   // Admin 可以编辑任何内容
-  if (currentAccountType === "Admin") return true;
+  if (context.accountType === "Admin") return true;
   
   // 创建者/所有者可以编辑
-  return data.${accountIdField} === currentAccountId;
+  return data.${accountIdField} === context.accountId;
 }`;
 		}
 
@@ -724,7 +706,7 @@ export async function canEdit${pascalName}(id: string, trx?: Transaction<DB>): P
 		}
 
 		return `${pathComment}
-export async function canEdit${pascalName}(id: string, trx?: Transaction<DB>): Promise<boolean> {
+export async function canEdit${pascalName}(context: RepositoryWriterContext, id: string, trx?: RepositoryQueryDB): Promise<boolean> {
   const db = trx || await getDB();
   const data = await db.selectFrom("${tableName}")
 ${joinChain}
@@ -734,16 +716,13 @@ ${joinChain}
   
   if (!data) return false;
   
-  const currentAccountId = store.session.account.id;
-  const currentAccountType = store.session.account.type;
-  
-  if (!currentAccountId) return false;
+  if (!context.accountId) return false;
   
   // Admin 可以编辑任何内容
-  if (currentAccountType === "Admin") return true;
+  if (context.accountType === "Admin") return true;
   
   // 创建者/所有者可以编辑
-  return data.${accountIdField} === currentAccountId;
+  return data.${accountIdField} === context.accountId;
 }`;
 	}
 
@@ -778,8 +757,8 @@ ${joinChain}
 	}
 
 	/**
-	 * 设计思路：按关系过滤的列表查询也需要同时支持 live 订阅和旧执行入口，因此生成 query builder 与薄包装两层。
-	 * 函数职责：为本表持有外键和隐式多对多关系生成 selectAll...By...Query 及兼容执行函数。
+	 * 设计思路：按关系过滤的列表查询是正式持久读路径，只生成可交给 live query 或写命令执行的 builder。
+	 * 函数职责：为本表持有外键和隐式多对多关系生成 selectAll...By...Query。
 	 */
 	private generateSelectAllByForeignKeys(modelName: string): string {
 		const model = this.allModels.find((m: DMMF.Model) => m.name === modelName);
@@ -816,17 +795,8 @@ ${joinChain}
  * 设计思路：外键过滤列表是关系区和表单联动的复用查询，先暴露 builder 以便调用边界自行决定执行方式。
  * 函数职责：构造按 ${tableName}.${foreignKey} 查询 ${tableName} 列表的 SQL。
  */
-export function ${methodName}Query(db: ${pascalName}QueryDB, ${foreignKey}: string) {
+export function ${methodName}Query(db: RepositoryQueryDB, ${foreignKey}: string) {
   return db.selectFrom("${tableName}").where("${tableName}.${foreignKey}", "=", ${foreignKey}).selectAll("${tableName}");
-}
-
-/**
- * 设计思路：兼容旧的按外键查询执行函数，避免迁移期间调用点同时重写。
- * 函数职责：执行 ${methodName}Query 并返回所有行。
- */
-export async function ${methodName}(${foreignKey}: string, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await ${methodName}Query(db, ${foreignKey}).execute();
 }`;
 			}),
 		);
@@ -852,21 +822,12 @@ export async function ${methodName}(${foreignKey}: string, trx?: Transaction<DB>
  * 设计思路：多对多过滤查询需要保留中间表方向规则，builder 化后可供列表、卡片和 live 订阅复用。
  * 函数职责：构造通过 ${intermediateTable} 按 ${rel.type}.${targetPrimaryKey} 查询 ${tableName} 列表的 SQL。
  */
-export function ${methodName}Query(db: ${pascalName}QueryDB, ${targetParamName}: string) {
+export function ${methodName}Query(db: RepositoryQueryDB, ${targetParamName}: string) {
   return db
     .selectFrom("${intermediateTable}")
     .innerJoin("${tableName}", "${intermediateTable}.${selfJoinColumn}", "${tableName}.${currentPrimaryKey}")
     .where("${intermediateTable}.${targetJoinColumn}", "=", ${targetParamName})
     .selectAll("${tableName}");
-}
-
-/**
- * 设计思路：兼容旧的多对多过滤执行函数，把执行动作收敛到薄包装中。
- * 函数职责：执行 ${methodName}Query 并返回所有行。
- */
-export async function ${methodName}(${targetParamName}: string, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await ${methodName}Query(db, ${targetParamName}).execute();
 }`;
 			}),
 		);
@@ -875,14 +836,38 @@ export async function ${methodName}(${targetParamName}: string, trx?: Transactio
 	}
 
 	/**
-	 * 设计思路：index 是 repository 的公开契约聚合点，需要同时导出旧执行包装和新的 query builder 集合。
-	 * 函数职责：生成 repositories/index.ts，包含 repositoryMethods、repositoryQueries 与类型映射。
+	 * 设计思路：QueryDB 句柄与关系查询集合在每张表结构上完全一致，集中到 _shared 以消除逐表重复定义，
+	 *          并让 index 的 RepositoryReaders 映射类型与各表读取函数共享同一套锚点类型。
+	 * 函数职责：生成 repositories/_shared.ts，导出 RepositoryQueryDB / RepositoryRelationQuery(Map)。
+	 */
+	private generateSharedTypes(): void {
+		const relativePaths = this.calculateRelativePaths();
+		const code = `import { type Kysely, type Transaction } from "kysely";
+import { type DB } from "${relativePaths.zod}";
+
+/** 所有仓库读写函数共享的数据库句柄：直连或事务。 */
+export type RepositoryQueryDB = Kysely<DB> | Transaction<DB>;
+
+/** 单条关系查询：仅暴露 execute，行类型交由执行层决定。 */
+export type RepositoryRelationQuery = { execute: () => Promise<unknown[]> };
+
+/** 按目标表名分桶的关系查询集合，父/子关系查询统一返回此结构。 */
+export type RepositoryRelationQueryMap = Partial<{ [K in keyof DB]: RepositoryRelationQuery[] }>;
+`;
+		const outputPath = path.join("db", "generated", "repositories", "_shared.ts");
+		writeFileSafely(outputPath, code);
+		console.log("生成 _shared.ts");
+	}
+
+	/**
+	 * 设计思路：index 按读取描述和写命令分组，禁止把可执行读取与写 builder 混入公共聚合契约。
+	 * 函数职责：生成 repositories/index.ts，包含 repositoryReaders、repositoryWriters 与类型映射。
 	 */
 	private async generateIndex(generatedFiles: string[]): Promise<void> {
 		const crudImports: string[] = [];
 		const typeImports: string[] = [];
-		const crudExports: Record<string, any> = {};
-		const queryExports: Record<string, any> = {};
+		const writerExports: Record<string, WriterExport> = {};
+		const readerExports: Record<string, ReaderExport> = {};
 		const relativePaths = this.calculateRelativePaths();
 
 		for (const model of this.models) {
@@ -914,49 +899,38 @@ export async function ${methodName}(${targetParamName}: string, trx?: Transactio
 
 			if (hasPK) {
 				crudImports.push(
-					`import { insert${pascalName}, insert${pascalName}Query, update${pascalName}, update${pascalName}Query, delete${pascalName}, delete${pascalName}Query, select${pascalName}ById, select${pascalName}ByIdQuery, selectAll${pluralName}, selectAll${pluralName}Query, get${pascalName}ParentsByIdQuery, get${pascalName}ChildrenByIdQuery, canEdit${pascalName} } from "./${fileName}";`,
+					`import { create${pascalName}, update${pascalName}, delete${pascalName}, select${pascalName}ByIdQuery, selectAll${pluralName}Query, get${pascalName}ParentsByIdQuery, get${pascalName}ChildrenByIdQuery, canEdit${pascalName} } from "./${fileName}";`,
 				);
-				crudExports[tableName] = {
-					insert: `insert${pascalName}`,
+				writerExports[tableName] = {
+					create: `create${pascalName}`,
 					update: `update${pascalName}`,
 					delete: `delete${pascalName}`,
-					select: `select${pascalName}ById`,
-					selectAll: `selectAll${pluralName}`,
 					canEdit: `canEdit${pascalName}`,
 				};
-				queryExports[tableName] = {
+				readerExports[tableName] = {
 					get: `select${pascalName}ByIdQuery`,
 					getAll: `selectAll${pluralName}Query`,
-					insert: `insert${pascalName}Query`,
-					update: `update${pascalName}Query`,
-					delete: `delete${pascalName}Query`,
 					getParentsById: `get${pascalName}ParentsByIdQuery`,
 					getChildrenById: `get${pascalName}ChildrenByIdQuery`,
 				};
 			} else {
-				const specialMethods = this.getSpecialMethodsForNoPKModel(modelName);
-				crudImports.push(
-					`import { insert${pascalName}, insert${pascalName}Query, selectAll${pluralName}, selectAll${pluralName}Query${specialMethods} } from "./${fileName}";`,
-				);
-				const specialExports = this.getSpecialExportsForNoPKModel(modelName);
-				crudExports[tableName] = {
-					insert: `insert${pascalName}`,
-					selectAll: `selectAll${pluralName}`,
-					...specialExports,
+				crudImports.push(`import { create${pascalName}, selectAll${pluralName}Query } from "./${fileName}";`);
+				writerExports[tableName] = {
+					create: `create${pascalName}`,
 				};
-				queryExports[tableName] = {
+				readerExports[tableName] = {
 					get: null,
 					getAll: `selectAll${pluralName}Query`,
-					insert: `insert${pascalName}Query`,
-					update: null,
-					delete: null,
 					getParentsById: null,
 					getChildrenById: null,
 				};
 			}
 		}
 
-		const indexCode = `import { DB } from "${relativePaths.zod}";
+		const indexCode = `import { type SelectQueryBuilder, type Selectable } from "kysely";
+import { DB } from "${relativePaths.zod}";
+import { type RepositoryQueryDB, type RepositoryRelationQueryMap } from "./_shared";
+export type { RepositoryQueryDB, RepositoryRelationQuery, RepositoryRelationQueryMap } from "./_shared";
 ${crudImports.join("\n")}
 ${typeImports.join("\n")}
 
@@ -965,13 +939,40 @@ export type DBWithRelations = {
 ${this.generateTypeMapping(generatedFiles)}
 };
 
-export const repositoryMethods = {
-${this.generateCrudExports(crudExports)}
-} as const;
+export type { RepositoryWriterContext } from "../../repositories/repositoryWriter";
+export { RepositoryAuthorizationError } from "../../repositories/repositoryWriter";
 
-export const repositoryQueries = {
-${this.generateQueryExports(queryExports)}
-} as const;
+export const repositoryReaders = {
+${this.generateReaderExports(readerExports)}
+} as const satisfies RepositoryReaders;
+
+export const repositoryWriters = {
+${this.generateWriterExports(writerExports)}
+} as const satisfies RepositoryWriters;
+
+/**
+ * 按数据库表名对齐每张表的 reader 能力：get/getAll 返回该表精确的 SelectQueryBuilder，
+ * 父/子关系查询返回统一的 RepositoryRelationQueryMap；null 表示该表不具备对应能力。
+ * 该映射类型即读取契约，配合 repositoryReaders 上的 satisfies 防止生成物与契约漂移。
+ */
+export type RepositoryReaders = {
+  [K in keyof DB]: {
+    get: ((db: RepositoryQueryDB, id: string) => SelectQueryBuilder<DB, K, Selectable<DB[K]>>) | null;
+    getAll: ((db: RepositoryQueryDB) => SelectQueryBuilder<DB, K, Selectable<DB[K]>>) | null;
+    getParentsById: ((db: RepositoryQueryDB, id: string) => RepositoryRelationQueryMap) | null;
+    getChildrenById: ((db: RepositoryQueryDB, id: string) => RepositoryRelationQueryMap) | null;
+  };
+};
+export type RepositoryReader<TTableName extends keyof RepositoryReaders> = RepositoryReaders[TTableName];
+
+/**
+ * 按数据库表名保留每张表的精确 writer 命令和参数类型。
+ * writer 的入参包含审计字段剔除等生成期策略，不能用裸 Insertable/Updateable 统一替代。
+ */
+export type RepositoryWriters = {
+${this.generateWriterTypeMapping(writerExports)}
+};
+export type RepositoryWriter<TTableName extends keyof RepositoryWriters> = RepositoryWriters[TTableName];
 `;
 
 		const outputPath = path.join("db", "generated", "repositories", "index.ts");
@@ -980,14 +981,21 @@ ${this.generateQueryExports(queryExports)}
 	}
 
 	/**
-	 * 获取模型关系
+	 * 获取需要嵌入 WithRelations 的业务子关系。
+	 *
+	 * parent 用于从当前数据定位其业务依赖，普通引用用于关系导航；二者都
+	 * 不属于当前记录的递归详情。因此这里只消费共享分类器明确返回的 child，
+	 * 防止单表 schema 被无关外部数据扩张。
 	 */
 	private getModelRelations(modelName: string): any[] {
 		const model = this.allModels.find((m: DMMF.Model) => m.name === modelName);
 		if (!model) return [];
 
 		return model.fields
-			.filter((field: DMMF.Field) => field.kind === "object")
+			.filter(
+				(field: DMMF.Field) =>
+					field.kind === "object" && getBusinessRelationDirection(this.allModels, model, field) === "child",
+			)
 			.map((field: DMMF.Field) => {
 				const relationType = this.determineRelationType(field, model);
 				const targetTable = NamingRules.ZodTypeName(field.type);
@@ -1065,20 +1073,18 @@ ${this.generateQueryExports(queryExports)}
 	/**
 	 * 生成 Schema 代码
 	 * 使用 SchemaName 规范确保正确的 Schema 名称
-	 * 对于子关系（非父关系），使用 WithRelations 版本的 schema
-	 * 对于自引用关系，使用基础 schema 避免无限递归
+	 * 当前输入已经限定为 child；普通 child 使用 WithRelations 继续表达其
+	 * 业务依赖，自引用和人工断点使用基础 schema 终止递归。
 	 */
 	private generateSchemaCode(field: DMMF.Field, model: DMMF.Model, targetTable: string): string {
-		const isParentRelation = this.isBusinessParentRelation(field.name);
 		const isSelfRelation = targetTable.toLowerCase() === model.name.toLowerCase();
 		const isBreakPoint = this.shouldSkipSubRelation(model.name, field.name);
 		const isOptional = this.isRelationOptional(field, model);
 
-		// 对于子关系，使用 WithRelations schema（因为它们包含嵌套的子关系数据）
-		// 对于父关系、自引用关系或配置的断点关系，使用基础 schema
+		// 自引用关系或配置的断点使用基础 schema，其余 child 继续携带自身依赖。
 		const baseSchemaName = NamingRules.SchemaName(targetTable);
 		const schemaName =
-			isParentRelation || isSelfRelation || isBreakPoint
+			isSelfRelation || isBreakPoint
 				? baseSchemaName
 				: `${NamingRules.TypeName(targetTable, targetTable)}WithRelationsSchema`;
 
@@ -1101,82 +1107,49 @@ ${this.generateQueryExports(queryExports)}
 		targetTable: string,
 		targetPrimaryKey: string,
 	): string {
-		const isParentRelation = this.isBusinessParentRelation(field.name);
-
-		// 检查是否是自关系
 		const isSelfRelation = targetTable.toLowerCase() === model.name.toLowerCase();
 
-		// 只检查自引用关系
-
-		// 获取当前模型的主键
-
-		if (isParentRelation) {
-			// 父关系：外键在当前模型中，指向目标模型
+		if (field.relationFromFields && field.relationFromFields.length > 0) {
+			// 业务 child 也可能由当前表持有 FK；此时必须引用当前查询行的 FK，不能拿当前行主键代替。
+			const foreignKey = field.relationFromFields[0];
+			const currentTableName = NamingRules.ZodTypeName(model.name);
+			const targetCamelName = NamingRules.VariableName(targetTable);
 			const isOptional = this.isRelationOptional(field, model);
 			const nullHandler = isOptional ? "" : ".$notNull()";
-			return `(eb: ExpressionBuilder<DB, "${NamingRules.ZodTypeName(model.name)}">, id: Expression<string>) =>
-        jsonObjectFrom(
-          eb
-            .selectFrom("${targetTable}")
-            .where("${targetTable}.${targetPrimaryKey}", "=", id)
-            .selectAll("${targetTable}")
-        )${nullHandler}.as("${field.name}")`;
-		} else {
-			// 子关系：检查是否有 relationFromFields
-			if (field.relationFromFields && field.relationFromFields.length > 0) {
-				// 外键在当前模型中，指向目标模型
-				// 使用 whereRef 引用当前查询上下文中的外键字段，而不是使用 id 参数
-				const foreignKey = field.relationFromFields[0];
-				const currentTableName = NamingRules.ZodTypeName(model.name);
-				const targetCamelName = NamingRules.VariableName(targetTable);
-				const isOptional = this.isRelationOptional(field, model);
-				const nullHandler = isOptional ? "" : ".$notNull()";
-				// 自引用关系或配置的断点关系不生成嵌套子关系调用，避免无限递归
-				const shouldSkip = isSelfRelation || this.shouldSkipSubRelation(model.name, field.name);
-				const subRelationCode = shouldSkip
-					? ""
-					: `\n              .select((eb) => ${targetCamelName}SubRelations(eb, eb.ref("${targetTable}.${targetPrimaryKey}")))`;
-				return `(eb: ExpressionBuilder<DB, "${currentTableName}">, id: Expression<string>) =>
-          jsonObjectFrom(
-            eb
-              .selectFrom("${targetTable}")
-              .whereRef("${targetTable}.${targetPrimaryKey}", "=", "${currentTableName}.${foreignKey}")
-              .selectAll("${targetTable}")${subRelationCode}
-          )${nullHandler}.as("${field.name}")`;
-			} else {
-				// 外键在目标表中，指向当前模型
-				const targetModel = this.models.find((m) => m.name.toLowerCase() === targetTable.toLowerCase());
-				const reverseField = targetModel?.fields.find(
-					(f: any) =>
-						f.kind === "object" &&
-						f.type === model.name &&
-						f.relationName === field.relationName &&
-						f.relationFromFields &&
-						f.relationFromFields.length > 0,
-				);
-				if (!reverseField || !reverseField.relationFromFields || reverseField.relationFromFields.length === 0) {
-					throw new Error(`Cannot find reverse relation field from ${targetTable} to ${model.name}`);
-				}
-				// 设计说明：一对一子关系的外键常位于目标表，字段名不一定是 <source>Id。
-				// 这里按 relationName 定位反向字段，保证 activeOwnerId/passiveOwnerId 这类语义化外键能生成正确查询。
-				const reverseForeignKey = reverseField.relationFromFields[0];
-				const targetCamelName = NamingRules.VariableName(targetTable);
-				const isOptional = this.isRelationOptional(field, model);
-				const nullHandler = isOptional ? "" : ".$notNull()";
-				// 自引用关系或配置的断点关系不生成嵌套子关系调用，避免无限递归
-				const shouldSkip = isSelfRelation || this.shouldSkipSubRelation(model.name, field.name);
-				const subRelationCode = shouldSkip
-					? ""
-					: `\n              .select((eb) => ${targetCamelName}SubRelations(eb, eb.ref("${targetTable}.${targetPrimaryKey}")))`;
-				return `(eb: ExpressionBuilder<DB, "${NamingRules.ZodTypeName(model.name)}">, id: Expression<string>) =>
-          jsonObjectFrom(
-            eb
-              .selectFrom("${targetTable}")
-              .where("${targetTable}.${reverseForeignKey}", "=", id)
-              .selectAll("${targetTable}")${subRelationCode}
-          )${nullHandler}.as("${field.name}")`;
-			}
+			const shouldSkip = isSelfRelation || this.shouldSkipSubRelation(model.name, field.name);
+			const subRelationCode = shouldSkip
+				? ""
+				: `\n              .select((eb) => ${targetCamelName}SubRelations(eb, eb.ref("${targetTable}.${targetPrimaryKey}")))`;
+			return `(eb: ExpressionBuilder<DB, "${currentTableName}">, id: Expression<string>) =>
+	        jsonObjectFrom(
+	          eb
+	            .selectFrom("${targetTable}")
+	            .whereRef("${targetTable}.${targetPrimaryKey}", "=", "${currentTableName}.${foreignKey}")
+	            .selectAll("${targetTable}")${subRelationCode}
+	        )${nullHandler}.as("${field.name}")`;
 		}
+
+		// 当前表没有 FK 时按 relationName 找到目标表上的反向字段，兼容同一对表之间存在多条关系。
+		const reverseField = findReverseRelationField(this.allModels, model, field);
+		const reverseForeignKey = reverseField?.relationFromFields?.[0];
+		if (!reverseForeignKey) {
+			throw new Error(`Cannot find reverse relation field from ${targetTable} to ${model.name}`);
+		}
+
+		const targetCamelName = NamingRules.VariableName(targetTable);
+		const isOptional = this.isRelationOptional(field, model);
+		const nullHandler = isOptional ? "" : ".$notNull()";
+		const shouldSkip = isSelfRelation || this.shouldSkipSubRelation(model.name, field.name);
+		const subRelationCode = shouldSkip
+			? ""
+			: `\n              .select((eb) => ${targetCamelName}SubRelations(eb, eb.ref("${targetTable}.${targetPrimaryKey}")))`;
+		return `(eb: ExpressionBuilder<DB, "${NamingRules.ZodTypeName(model.name)}">, id: Expression<string>) =>
+	          jsonObjectFrom(
+	            eb
+	              .selectFrom("${targetTable}")
+	              .where("${targetTable}.${reverseForeignKey}", "=", id)
+	              .selectAll("${targetTable}")${subRelationCode}
+	          )${nullHandler}.as("${field.name}")`;
 	}
 
 	/**
@@ -1188,83 +1161,28 @@ ${this.generateQueryExports(queryExports)}
 		targetTable: string,
 		targetPrimaryKey: string,
 	): string {
-		const isParentRelation = this.isBusinessParentRelation(field.name);
-
-		// 检查是否是自关系
 		const isSelfRelation = targetTable.toLowerCase() === model.name.toLowerCase();
-
-		// 只检查自引用关系
-
-		// 获取当前模型的主键
 		const currentModelPrimaryKey = this.getPrimaryKeyFieldFromModel(model);
-
-		if (isParentRelation) {
-			// 父关系：外键在目标表中，指向当前模型
-			// 从目标模型中查找指向当前模型的关系字段
-			const targetModel = this.models.find((m) => m.name.toLowerCase() === targetTable.toLowerCase());
-			if (!targetModel) {
-				throw new Error(`Target model ${targetTable} not found`);
-			}
-
-			const reverseField = targetModel.fields.find(
-				(f: any) =>
-					f.kind === "object" &&
-					f.type === model.name &&
-					f.relationName === field.relationName &&
-					f.relationFromFields &&
-					f.relationFromFields.length > 0,
-			);
-
-			if (!reverseField || !reverseField.relationFromFields || reverseField.relationFromFields.length === 0) {
-				throw new Error(`Cannot find reverse relation field from ${targetTable} to ${model.name}`);
-			}
-
-			const reverseForeignKey = reverseField.relationFromFields[0];
-			const currentTableName = NamingRules.ZodTypeName(model.name);
-			return `(eb: ExpressionBuilder<DB, "${currentTableName}">, id: Expression<string>) =>
-        jsonArrayFrom(
-          eb
-            .selectFrom("${targetTable}")
-            .whereRef("${targetTable}.${reverseForeignKey}", "=", "${currentTableName}.${currentModelPrimaryKey}")
-            .selectAll("${targetTable}")
-        ).as("${field.name}")`;
-		} else {
-			// 子关系：外键在目标表中，指向当前模型
-			// 从目标模型中查找指向当前模型的关系字段
-			const targetModel = this.models.find((m) => m.name.toLowerCase() === targetTable.toLowerCase());
-			if (!targetModel) {
-				throw new Error(`Target model ${targetTable} not found`);
-			}
-
-			const reverseField = targetModel.fields.find(
-				(f: any) =>
-					f.kind === "object" &&
-					f.type === model.name &&
-					f.relationName === field.relationName &&
-					f.relationFromFields &&
-					f.relationFromFields.length > 0,
-			);
-
-			if (!reverseField || !reverseField.relationFromFields || reverseField.relationFromFields.length === 0) {
-				throw new Error(`Cannot find reverse relation field from ${targetTable} to ${model.name}`);
-			}
-
-			const reverseForeignKey = reverseField.relationFromFields[0];
-			const currentTableName = NamingRules.ZodTypeName(model.name);
-			const targetCamelName = NamingRules.VariableName(targetTable);
-			// 自引用关系或配置的断点关系不生成嵌套子关系调用，避免无限递归
-			const shouldSkip = isSelfRelation || this.shouldSkipSubRelation(model.name, field.name);
-			const subRelationCode = shouldSkip
-				? ""
-				: `\n            .select((eb) => ${targetCamelName}SubRelations(eb, eb.ref("${targetTable}.${targetPrimaryKey}")))`;
-			return `(eb: ExpressionBuilder<DB, "${currentTableName}">, id: Expression<string>) =>
-        jsonArrayFrom(
-          eb
-            .selectFrom("${targetTable}")
-            .whereRef("${targetTable}.${reverseForeignKey}", "=", "${currentTableName}.${currentModelPrimaryKey}")
-            .selectAll("${targetTable}")${subRelationCode}
-        ).as("${field.name}")`;
+		// 一对多 child 的 FK 位于目标表，不能根据字段名猜测；必须读取配对关系的 relationFromFields。
+		const reverseField = findReverseRelationField(this.allModels, model, field);
+		const reverseForeignKey = reverseField?.relationFromFields?.[0];
+		if (!reverseForeignKey) {
+			throw new Error(`Cannot find reverse relation field from ${targetTable} to ${model.name}`);
 		}
+
+		const currentTableName = NamingRules.ZodTypeName(model.name);
+		const targetCamelName = NamingRules.VariableName(targetTable);
+		const shouldSkip = isSelfRelation || this.shouldSkipSubRelation(model.name, field.name);
+		const subRelationCode = shouldSkip
+			? ""
+			: `\n            .select((eb) => ${targetCamelName}SubRelations(eb, eb.ref("${targetTable}.${targetPrimaryKey}")))`;
+		return `(eb: ExpressionBuilder<DB, "${currentTableName}">, id: Expression<string>) =>
+	        jsonArrayFrom(
+	          eb
+	            .selectFrom("${targetTable}")
+	            .whereRef("${targetTable}.${reverseForeignKey}", "=", "${currentTableName}.${currentModelPrimaryKey}")
+	            .selectAll("${targetTable}")${subRelationCode}
+	        ).as("${field.name}")`;
 	}
 
 	/**
@@ -1433,9 +1351,9 @@ ${this.generateQueryExports(queryExports)}
 			return { path: [], accountIdField: "belongToAccountId" };
 		}
 
-		// 查找父关系字段（belongTo/createdBy/updatedBy 开头的关系）
+		// 查找当前字段名明确声明的业务父关系。
 		const parentRelations = model.fields.filter(
-			(field: any) => field.kind === "object" && this.isParentRelation(field.name),
+			(field: any) => field.kind === "object" && isBusinessParentRelationField(field.name),
 		);
 
 		for (const field of parentRelations) {
@@ -1493,8 +1411,8 @@ ${this.generateQueryExports(queryExports)}
 		return this.getPrimaryKeyFieldFromModel(model);
 	}
 	/**
-	 * 设计思路：无主键表不能提供按 id 的读写能力，但仍应提供列表和插入的 query builder，保持 queries 对象形态稳定。
-	 * 函数职责：生成无主键模型的 selectAll/insert query builder 与兼容执行包装。
+	 * 设计思路：无主键表不能提供按 id 的读写能力，但仍应提供列表 builder 和 create writer。
+	 * 函数职责：生成无主键模型的 selectAll builder、insert builder 与 create writer。
 	 */
 	private generateNoPrimaryKeyCrudQueries(modelName: string): string {
 		const tableName = NamingRules.ZodTypeName(modelName);
@@ -1506,17 +1424,8 @@ ${this.generateQueryExports(queryExports)}
  * 设计思路：无主键表仍可作为配置表或关系表读取，builder 化后与普通表列表查询保持同一入口。
  * 函数职责：构造读取 ${tableName} 全量行的 SQL。
  */
-export function selectAll${pluralName}Query(db: ${pascalName}QueryDB) {
+export function selectAll${pluralName}Query(db: RepositoryQueryDB) {
   return db.selectFrom("${tableName}").selectAll("${tableName}");
-}
-
-/**
- * 设计思路：兼容旧无主键表列表读取，把执行动作留在包装层。
- * 函数职责：执行 selectAll${pluralName}Query 并返回所有行。
- */
-export async function selectAll${pluralName}(trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await selectAll${pluralName}Query(db).execute();
 }
 
 /**
@@ -1533,15 +1442,15 @@ function pick${pascalName}SchemaFields<T>(data: T): T {
  * 设计思路：无主键表插入仍按基础 schema 字段白名单过滤，避免配置层承担字段裁剪。
  * 函数职责：构造插入 ${tableName} 并返回写入行的 SQL。
  */
-export function insert${pascalName}Query(db: ${pascalName}QueryDB, data: ${pascalName}Insert) {
+export function insert${pascalName}Query(db: RepositoryQueryDB, data: ${pascalName}Insert) {
   return db.insertInto("${tableName}").values(pick${pascalName}SchemaFields(data)).returningAll();
 }
 
 /**
- * 设计思路：保留旧无主键表插入执行入口，迁移期间不破坏现有调用点。
+ * 设计思路：无主键表也通过显式 writer context 进入命令边界；具体字段仍由 schema 白名单约束。
  * 函数职责：执行 insert${pascalName}Query 并要求返回写入行。
  */
-export async function insert${pascalName}(data: ${pascalName}Insert, trx?: Transaction<DB>) {
+export async function create${pascalName}(_context: RepositoryWriterContext, data: ${pascalName}Insert, trx?: RepositoryQueryDB) {
   const db = trx || await getDB();
   return await insert${pascalName}Query(db, data).executeTakeFirstOrThrow();
 }`;
@@ -1576,7 +1485,7 @@ export async function insert${pascalName}(data: ${pascalName}Insert, trx?: Trans
 
 	/**
 	 * 设计思路：无主键表的唯一约束查询也先生成 builder，保持执行动作只在调用边界发生。
-	 * 函数职责：生成基于唯一约束定位单行的 query builder 与兼容执行包装。
+	 * 函数职责：生成基于唯一约束定位单行的 query builder。
 	 */
 	private generateFindByUniqueConstraint(modelName: string): string {
 		const tableName = NamingRules.ZodTypeName(modelName);
@@ -1585,7 +1494,6 @@ export async function insert${pascalName}(data: ${pascalName}Insert, trx?: Trans
 		if (!descriptor) return "";
 
 		const fieldParams = descriptor.fieldNames.map((f: string) => `${f}: string`).join(", ");
-		const fieldArgs = descriptor.fieldNames.join(", ");
 		const whereConditions = descriptor.fieldNames.map((f: string) => `.where("${f}", "=", ${f})`).join("\n    ");
 		const methodName = `select${pascalName}By${descriptor.pascalFieldNames}`;
 
@@ -1593,19 +1501,10 @@ export async function insert${pascalName}(data: ${pascalName}Insert, trx?: Trans
  * 设计思路：无主键表的唯一约束查询也先生成 builder，保持执行动作只在调用边界发生。
  * 函数职责：构造按 ${descriptor.fieldNames.join(", ")} 唯一定位 ${tableName} 的 SQL。
  */
-export function ${methodName}Query(db: ${pascalName}QueryDB, ${fieldParams}) {
+export function ${methodName}Query(db: RepositoryQueryDB, ${fieldParams}) {
   return db.selectFrom("${tableName}")
     ${whereConditions}
     .selectAll("${tableName}");
-}
-
-/**
- * 设计思路：兼容旧唯一约束查询函数，把 SQL 构造委托给 query builder 版本。
- * 函数职责：执行 ${methodName}Query 并返回第一行。
- */
-export async function ${methodName}(${fieldParams}, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await ${methodName}Query(db, ${fieldArgs}).executeTakeFirst();
 }`;
 	}
 
@@ -1628,7 +1527,7 @@ export async function ${methodName}(${fieldParams}, trx?: Transaction<DB>) {
  * 设计思路：无主键表删除只能依赖唯一约束定位，builder 化后仍由上层决定是否执行。
  * 函数职责：构造按 ${descriptor.fieldNames.join(", ")} 删除 ${tableName} 并返回删除行的 SQL。
  */
-export function ${methodName}Query(db: ${pascalName}QueryDB, ${fieldParams}) {
+export function ${methodName}Query(db: RepositoryQueryDB, ${fieldParams}) {
   return db.deleteFrom("${tableName}")
     ${whereConditions}
     .returningAll();
@@ -1638,15 +1537,15 @@ export function ${methodName}Query(db: ${pascalName}QueryDB, ${fieldParams}) {
  * 设计思路：兼容旧唯一约束删除函数，实际 SQL 构造集中到 query builder 版本。
  * 函数职责：执行 ${methodName}Query 并返回删除行。
  */
-export async function ${methodName}(${fieldParams}, trx?: Transaction<DB>) {
+export async function ${methodName}(${fieldParams}, trx?: RepositoryQueryDB) {
   const db = trx || await getDB();
   return await ${methodName}Query(db, ${fieldArgs}).executeTakeFirst();
 }`;
 	}
 
 	/**
-	 * 生成标准 CRUD query builder 与兼容执行包装。
-	 * 设计思路：生成器负责声明“如何构造 SQL”，旧异步函数只保留执行边界，方便业务层逐步从 repositoryMethods 迁移到 repositoryQueries。
+	 * 生成标准读取/写入 builder 与写命令。
+	 * 设计思路：正式读取只暴露 builder；写命令显式执行、维护审计字段并强制授权。
 	 */
 	private generateStandardCrudQueries(modelName: string): string {
 		const tableName = NamingRules.ZodTypeName(modelName);
@@ -1662,6 +1561,12 @@ export async function ${methodName}(${fieldParams}, trx?: Transaction<DB>) {
 		const hasUpdatedAt = model?.fields.some(
 			(field) => field.kind === "scalar" && field.type === "DateTime" && field.name === "updatedAt",
 		);
+		const hasCreatedByAccountId = model?.fields.some(
+			(field) => field.kind === "scalar" && field.name === "createdByAccountId",
+		);
+		const hasUpdatedByAccountId = model?.fields.some(
+			(field) => field.kind === "scalar" && field.name === "updatedByAccountId",
+		);
 		const managedTimestampNames = [hasCreatedAt ? '"createdAt"' : "", hasUpdatedAt ? '"updatedAt"' : ""].filter(
 			Boolean,
 		);
@@ -1674,33 +1579,30 @@ export async function ${methodName}(${fieldParams}, trx?: Transaction<DB>) {
 		const insertValues = insertTimestampFields
 			? `{ ...pick${pascalName}SchemaFields(data), ${insertTimestampFields} }`
 			: `pick${pascalName}SchemaFields(data)`;
-		const updateValues = hasUpdatedAt
-			? `{ ...pick${pascalName}SchemaFields(data), updatedAt: new Date().toISOString() }`
-			: `pick${pascalName}SchemaFields(data)`;
+		const updateValues = hasUpdatedAt ? `{ ...writableData, updatedAt: new Date().toISOString() }` : `writableData`;
 		const insertNowDeclaration = insertTimestampFields ? "\n  const now = new Date().toISOString();" : "";
+		const createAuditFields = [
+			hasCreatedByAccountId ? "createdByAccountId: context.accountId" : "",
+			hasUpdatedByAccountId ? "updatedByAccountId: context.accountId" : "",
+		]
+			.filter(Boolean)
+			.join(", ");
+		const createCommandData = createAuditFields ? `{ ...data, ${createAuditFields} }` : "data";
+		const updateCommandData = hasUpdatedByAccountId ? `{ ...data, updatedByAccountId: context.accountId }` : "data";
 
 		return `/**
- * 设计思路：按主键查询是详情、卡片和编辑入口的统一读取原语；这里只返回 Kysely builder，让调用方决定一次性执行或 live 订阅。
+ * 设计思路：按主键查询是详情、卡片和编辑入口的统一读取原语；这里只返回 Kysely builder，正式读取由 live 订阅消费。
  * 函数职责：构造 ${tableName} 按 ${primaryKeyField} 查询单行的 SQL。
  */
-export function select${pascalName}ByIdQuery(db: ${pascalName}QueryDB, id: string) {
+export function select${pascalName}ByIdQuery(db: RepositoryQueryDB, id: string) {
   return db.selectFrom("${tableName}").where("${primaryKeyField}", "=", id).selectAll("${tableName}");
-}
-
-/**
- * 设计思路：兼容旧 repositoryMethods 调用，把执行动作限制在薄包装里，避免业务迁移被一次性打断。
- * 函数职责：执行 select${pascalName}ByIdQuery 并返回第一行。
- */
-export async function select${pascalName}ById(id: string, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await select${pascalName}ByIdQuery(db, id).executeTakeFirst();
 }
 
 /**
  * 设计思路：WithRelations 是完整详情读取的构造器，保持与基础详情查询同源，方便卡片按需选择轻量或完整投影。
  * 函数职责：构造 ${tableName} 按主键读取并拼入子关系投影的 SQL。
  */
-export function select${pascalName}ByIdWithRelationsQuery(db: ${pascalName}QueryDB, id: string) {
+export function select${pascalName}ByIdWithRelationsQuery(db: RepositoryQueryDB, id: string) {
   return db
     .selectFrom("${tableName}")
     .where("${primaryKeyField}", "=", id)
@@ -1709,29 +1611,11 @@ export function select${pascalName}ByIdWithRelationsQuery(db: ${pascalName}Query
 }
 
 /**
- * 设计思路：保留旧完整详情执行入口，同时把 SQL 构造委托给 query builder 版本。
- * 函数职责：执行 select${pascalName}ByIdWithRelationsQuery 并返回第一行。
- */
-export async function select${pascalName}ByIdWithRelations(id: string, trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await select${pascalName}ByIdWithRelationsQuery(db, id).executeTakeFirst();
-}
-
-/**
  * 设计思路：列表读取应与 live 订阅共用同一条查询构造路径，不再单独维护 liveQuery 字段。
  * 函数职责：构造读取 ${tableName} 全量行的 SQL。
  */
-export function selectAll${pluralName}Query(db: ${pascalName}QueryDB) {
+export function selectAll${pluralName}Query(db: RepositoryQueryDB) {
   return db.selectFrom("${tableName}").selectAll("${tableName}");
-}
-
-/**
- * 设计思路：兼容旧 getAll 执行语义，执行边界显式停留在包装函数。
- * 函数职责：执行 selectAll${pluralName}Query 并返回所有行。
- */
-export async function selectAll${pluralName}(trx?: Transaction<DB>) {
-  const db = trx || await getDB();
-  return await selectAll${pluralName}Query(db).execute();
 }
 
 /**
@@ -1748,51 +1632,57 @@ function pick${pascalName}SchemaFields<T>(data: T): T {
  * 设计思路：写入 query builder 只关心本表可写字段过滤，不掺入账号、默认值或跨表事务等业务流程。
  * 函数职责：构造插入 ${tableName} 并返回写入行的 SQL。
  */
-export function insert${pascalName}Query(db: ${pascalName}QueryDB, data: ${pascalName}Insert) {
+export function insert${pascalName}Query(db: RepositoryQueryDB, data: ${pascalName}Insert) {
   ${insertNowDeclaration.trimStart()}
   return db.insertInto("${tableName}").values(${insertValues}).returningAll();
 }
 
 /**
- * 设计思路：保留旧插入执行入口，业务层迁移完成前仍可在事务中直接调用。
- * 函数职责：执行 insert${pascalName}Query 并要求返回写入行。
+ * 设计思路：create writer 覆盖调用方传入的账号审计字段，防止资源创建者身份被伪造。
+ * 函数职责：使用显式写入身份创建 ${tableName} 并返回写入行。
  */
-export async function insert${pascalName}(data: ${pascalName}Insert, trx?: Transaction<DB>) {
+export async function create${pascalName}(context: RepositoryWriterContext, data: ${pascalName}Insert, trx?: RepositoryQueryDB) {
+  if (!context.accountId) throw new RepositoryAuthorizationError("${tableName}", "create");
   const db = trx || await getDB();
-  return await insert${pascalName}Query(db, data).executeTakeFirstOrThrow();
+  return await insert${pascalName}Query(db, ${createCommandData}).executeTakeFirstOrThrow();
 }
 
 /**
  * 设计思路：更新 query builder 保持单表职责，只按主键定位并过滤可写列。
  * 函数职责：构造更新 ${tableName} 指定主键行并返回更新行的 SQL。
  */
-export function update${pascalName}Query(db: ${pascalName}QueryDB, id: string, data: ${pascalName}Update) {
+export function update${pascalName}Query(db: RepositoryQueryDB, id: string, data: ${pascalName}Update) {
+	const writableData = { ...pick${pascalName}SchemaFields(data) };
+	delete writableData.${primaryKeyField};
+${hasCreatedByAccountId ? "\tdelete writableData.createdByAccountId;" : ""}
   return db.updateTable("${tableName}").set(${updateValues}).where("${primaryKeyField}", "=", id).returningAll();
 }
 
 /**
- * 设计思路：保留旧更新执行入口，实际 SQL 构造集中到 update${pascalName}Query。
- * 函数职责：执行 update${pascalName}Query 并要求返回更新行。
+ * 设计思路：update writer 与 canEdit 共用一条归属策略，并由 writer 覆盖更新者身份。
+ * 函数职责：授权后更新 ${tableName} 指定主键行并返回结果。
  */
-export async function update${pascalName}(id: string, data: ${pascalName}Update, trx?: Transaction<DB>) {
+export async function update${pascalName}(context: RepositoryWriterContext, id: string, data: ${pascalName}Update, trx?: RepositoryQueryDB) {
   const db = trx || await getDB();
-  return await update${pascalName}Query(db, id, data).executeTakeFirstOrThrow();
+  if (!await canEdit${pascalName}(context, id, db)) throw new RepositoryAuthorizationError("${tableName}", id);
+  return await update${pascalName}Query(db, id, ${updateCommandData}).executeTakeFirstOrThrow();
 }
 
 /**
  * 设计思路：删除 query builder 只描述本表删除 SQL，是否允许删除由上层策略控制。
  * 函数职责：构造删除 ${tableName} 指定主键行并返回删除行的 SQL。
  */
-export function delete${pascalName}Query(db: ${pascalName}QueryDB, id: string) {
+export function delete${pascalName}Query(db: RepositoryQueryDB, id: string) {
   return db.deleteFrom("${tableName}").where("${primaryKeyField}", "=", id).returningAll();
 }
 
 /**
- * 设计思路：保留旧删除执行入口，兼容当前配置里的 deleteCallback。
- * 函数职责：执行 delete${pascalName}Query 并返回删除行。
+ * 设计思路：delete writer 与 update 使用相同授权规则，数据库级联只负责关系一致性。
+ * 函数职责：授权后删除 ${tableName} 指定主键行并返回结果。
  */
-export async function delete${pascalName}(id: string, trx?: Transaction<DB>) {
+export async function delete${pascalName}(context: RepositoryWriterContext, id: string, trx?: RepositoryQueryDB) {
   const db = trx || await getDB();
+  if (!await canEdit${pascalName}(context, id, db)) throw new RepositoryAuthorizationError("${tableName}", id);
   return await delete${pascalName}Query(db, id).executeTakeFirst();
 }`;
 	}
@@ -1814,7 +1704,7 @@ export async function delete${pascalName}(id: string, trx?: Transaction<DB>) {
  * 设计思路：父关系查询按目标表分桶返回 builder，执行层统一合并和去重，避免 campA/campB 等多语义关系互相覆盖。
  * 函数职责：构造 ${tableName} 指定主键行的父关系查询集合。
  */
-export function get${pascalName}ParentsByIdQuery(db: ${pascalName}QueryDB, id: string): ${pascalName}RelationQueryMap {
+export function get${pascalName}ParentsByIdQuery(db: RepositoryQueryDB, id: string): RepositoryRelationQueryMap {
   const relationDb = db;
   const selfTable = "${tableName}";
   const selfPrimaryKey = "${primaryKeyField}";
@@ -1827,7 +1717,7 @@ ${parentEntries}
  * 设计思路：子关系查询与父关系保持同样的分桶结构，后续可以直接把每个 builder 接入 live 查询。
  * 函数职责：构造 ${tableName} 指定主键行的子关系查询集合。
  */
-export function get${pascalName}ChildrenByIdQuery(db: ${pascalName}QueryDB, id: string): ${pascalName}RelationQueryMap {
+export function get${pascalName}ChildrenByIdQuery(db: RepositoryQueryDB, id: string): RepositoryRelationQueryMap {
   const relationDb = db;
   const selfTable = "${tableName}";
   const selfPrimaryKey = "${primaryKeyField}";
@@ -1846,9 +1736,9 @@ ${childEntries}
 
 		for (const field of model.fields) {
 			if (field.kind !== "object") continue;
-			const isParent = this.isParentRelation(field.name);
-			if (direction === "parents" && !isParent) continue;
-			if (direction === "children" && isParent) continue;
+			const relationDirection = getBusinessRelationDirection(this.allModels, model, field);
+			if (direction === "parents" && relationDirection !== "parent") continue;
+			if (direction === "children" && relationDirection !== "child") continue;
 
 			const targetModel = this.allModels.find((m: DMMF.Model) => m.name === field.type);
 			if (!targetModel || this.shouldSkipModel(targetModel.name)) continue;
@@ -1871,6 +1761,7 @@ ${childEntries}
 
 	/**
 	 * 设计思路：单个关系字段可能对应 FK 查询、普通 M2M 查询或自关联双向 M2M 查询，统一返回数组可保留所有语义边。
+	 * 业务父子方向已经由调用方筛选；本函数只根据 FK 位于当前表、目标表或中间表生成物理查询。
 	 * 函数职责：为一个 DMMF 关系字段生成一个或多个 query builder 表达式。
 	 */
 	private generateRelationQueriesForField(model: DMMF.Model, field: DMMF.Field, targetModel: DMMF.Model): string[] {
@@ -1936,80 +1827,6 @@ ${childEntries}
 	}
 
 	/**
-	 * 获取无主键模型的特殊方法导入字符串
-	 */
-	private getSpecialMethodsForNoPKModel(modelName: string): string {
-		const pascalName = NamingRules.TypeName(modelName, modelName);
-
-		// 查找模型
-		const model = this.models.find((m) => m.name === modelName);
-		if (!model) return "";
-
-		// 查找唯一约束字段（包括复合唯一约束）
-		const uniqueFields = model.fields.filter((field: any) => field.isUnique);
-		const uniqueIndexes = model.uniqueIndexes || [];
-
-		// 如果没有唯一字段和唯一索引，返回空
-		if (uniqueFields.length === 0 && uniqueIndexes.length === 0) return "";
-
-		// 优先处理复合唯一索引
-		if (uniqueIndexes.length > 0) {
-			const index = uniqueIndexes[0]; // 取第一个复合唯一索引
-			const fieldNames = index.fields; // fields 是字符串数组
-			const pascalFieldNames = fieldNames.map((f: any) => NamingRules.TypeName(f)).join("And");
-			return `, delete${pascalName}By${pascalFieldNames}`;
-		} else if (uniqueFields.length >= 2) {
-			const pascalFieldNames = uniqueFields.map((f: any) => NamingRules.TypeName(f.name)).join("And");
-			return `, delete${pascalName}By${pascalFieldNames}`;
-		} else if (uniqueFields.length === 1) {
-			const firstUniqueField = uniqueFields[0];
-			return `, delete${pascalName}By${NamingRules.TypeName(firstUniqueField.name)}`;
-		}
-
-		return "";
-	}
-
-	/**
-	 * 获取无主键模型的特殊导出对象
-	 */
-	private getSpecialExportsForNoPKModel(modelName: string): Record<string, string> {
-		const pascalName = NamingRules.TypeName(modelName, modelName);
-
-		// 查找模型
-		const model = this.models.find((m) => m.name === modelName);
-		if (!model) return {};
-
-		// 查找唯一约束字段（包括复合唯一约束）
-		const uniqueFields = model.fields.filter((field: any) => field.isUnique);
-		const uniqueIndexes = model.uniqueIndexes || [];
-
-		// 如果没有唯一字段和唯一索引，返回空
-		if (uniqueFields.length === 0 && uniqueIndexes.length === 0) return {};
-
-		// 优先处理复合唯一索引
-		if (uniqueIndexes.length > 0) {
-			const index = uniqueIndexes[0]; // 取第一个复合唯一索引
-			const fieldNames = index.fields; // fields 是字符串数组
-			const pascalFieldNames = fieldNames.map((f: any) => NamingRules.TypeName(f)).join("And");
-			return {
-				deleteByUniqueFields: `delete${pascalName}By${pascalFieldNames}`,
-			};
-		} else if (uniqueFields.length >= 2) {
-			const pascalFieldNames = uniqueFields.map((f: any) => NamingRules.TypeName(f.name)).join("And");
-			return {
-				deleteByUniqueFields: `delete${pascalName}By${pascalFieldNames}`,
-			};
-		} else if (uniqueFields.length === 1) {
-			const firstUniqueField = uniqueFields[0];
-			return {
-				deleteByUniqueField: `delete${pascalName}By${NamingRules.TypeName(firstUniqueField.name)}`,
-			};
-		}
-
-		return {};
-	}
-
-	/**
 	 * 生成类型映射
 	 */
 	private generateTypeMapping(generatedFiles: string[]): string {
@@ -2042,31 +1859,22 @@ ${childEntries}
 	}
 
 	/**
-	 * 生成 CRUD 导出对象
+	 * 生成 writer 导出对象
 	 */
-	private generateCrudExports(exports: Record<string, any>): string {
+	private generateWriterExports(exports: Record<string, WriterExport>): string {
 		// 读取所有表名（包括跳过的表和中间表）
 		const allTables = this.getAllTableNames();
 
 		const lines: string[] = [];
 		for (const tableName of allTables) {
-			const crudMethods = exports[tableName];
-			if (crudMethods) {
+			const writers = exports[tableName];
+			if (writers) {
 				// 确保所有标准字段都存在，不存在的用 null 表示
 				const methodLines: string[] = [];
-				methodLines.push(`    insert: ${crudMethods.insert || "null"}`);
-				methodLines.push(`    update: ${crudMethods.update || "null"}`);
-				methodLines.push(`    delete: ${crudMethods.delete || "null"}`);
-				methodLines.push(`    select: ${crudMethods.select || "null"}`);
-				methodLines.push(`    selectAll: ${crudMethods.selectAll || "null"}`);
-				methodLines.push(`    canEdit: ${crudMethods.canEdit || "null"}`);
-
-				// 添加特殊方法
-				Object.keys(crudMethods).forEach((key) => {
-					if (!["insert", "update", "delete", "select", "selectAll", "canEdit"].includes(key)) {
-						methodLines.push(`    ${key}: ${crudMethods[key]}`);
-					}
-				});
+				methodLines.push(`    create: ${writers.create || "null"}`);
+				methodLines.push(`    update: ${writers.update || "null"}`);
+				methodLines.push(`    delete: ${writers.delete || "null"}`);
+				methodLines.push(`    canEdit: ${writers.canEdit || "null"}`);
 
 				lines.push(`  ${tableName}: {
 ${methodLines.join(",\n")}
@@ -2074,12 +1882,10 @@ ${methodLines.join(",\n")}
 			} else {
 				// 对于跳过的表和中间表，所有方法都设置为 null
 				lines.push(`  ${tableName}: {
-    insert: null,
-    update: null,
-    delete: null,
-    select: null,
-    selectAll: null,
-    canEdit: null
+					create: null,
+					update: null,
+					delete: null,
+					canEdit: null
   }`);
 			}
 		}
@@ -2088,10 +1894,32 @@ ${methodLines.join(",\n")}
 	}
 
 	/**
-	 * 设计思路：repositoryQueries 是业务配置的新入口，字段集合固定可以让无能力表显式暴露 null，避免调用层猜测。
-	 * 函数职责：按所有 DB 表生成 queries 导出对象文本。
+	 * 设计思路：writer 的参数类型来自逐表生成结果，例如审计字段会在 Insert/Update 类型中被剔除。
+	 * 函数职责：生成按 DB 表名索引的精确 writer 类型映射，并让 repositoryWriters 通过 satisfies 校验。
 	 */
-	private generateQueryExports(exports: Record<string, any>): string {
+	private generateWriterTypeMapping(exports: Record<string, WriterExport>): string {
+		const allTables = this.getAllTableNames();
+		const lines: string[] = [];
+		const writerType = (method?: string | null) => (method ? `typeof ${method}` : "null");
+
+		for (const tableName of allTables) {
+			const writers = exports[tableName];
+			lines.push(`  ${tableName}: {
+    create: ${writerType(writers?.create)};
+    update: ${writerType(writers?.update)};
+    delete: ${writerType(writers?.delete)};
+    canEdit: ${writerType(writers?.canEdit)};
+  };`);
+		}
+
+		return lines.join("\n");
+	}
+
+	/**
+	 * 设计思路：repositoryReaders 的固定能力集合让动态表名仍可安全判断 builder 是否存在。
+	 * 函数职责：按所有 DB 表生成 reader 导出对象文本。
+	 */
+	private generateReaderExports(exports: Record<string, ReaderExport>): string {
 		const allTables = this.getAllTableNames();
 		const lines: string[] = [];
 
@@ -2099,22 +1927,16 @@ ${methodLines.join(",\n")}
 			const queries = exports[tableName];
 			if (queries) {
 				lines.push(`  ${tableName}: {
-    get: ${queries.get || "null"},
-    getAll: ${queries.getAll || "null"},
-    insert: ${queries.insert || "null"},
-    update: ${queries.update || "null"},
-    delete: ${queries.delete || "null"},
-    getParentsById: ${queries.getParentsById || "null"},
+					get: ${queries.get || "null"},
+					getAll: ${queries.getAll || "null"},
+					getParentsById: ${queries.getParentsById || "null"},
     getChildrenById: ${queries.getChildrenById || "null"}
   }`);
 			} else {
 				lines.push(`  ${tableName}: {
-    get: null,
-    getAll: null,
-    insert: null,
-    update: null,
-    delete: null,
-    getParentsById: null,
+					get: null,
+					getAll: null,
+					getParentsById: null,
     getChildrenById: null
   }`);
 			}
