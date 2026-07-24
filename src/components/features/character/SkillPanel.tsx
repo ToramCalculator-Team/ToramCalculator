@@ -1,12 +1,13 @@
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
-import { type Skill, selectAllSkills } from "@db/generated/repositories/skill";
+import { type Skill, selectAllSkillsQuery } from "@db/generated/repositories/skill";
 import { SKILL_TREE_GROUP_TYPE, SKILL_TREE_TYPE, type SkillTreeType } from "@db/schema/enums";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { createEffect, createMemo, createResource, createSignal, For, Index, onCleanup, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Index, onCleanup, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
 import { type OverlayLayerHandle, useOverlay } from "~/lib/overlay/OverlayContext";
+import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
 import { SKILL_TREE_MAP, SkillTreePickerSheetContent } from "./SkillTreePickerSheet";
 import {
 	buildSkillLinkCells,
@@ -133,7 +134,7 @@ function SkillNodeCell(props: {
 export function SkillPanel(props: SkillPanelProps) {
 	const dictionary = useDictionary();
 	const overlay = useOverlay();
-	const [skillTemplates] = createResource(() => selectAllSkills());
+	const skillTemplates = createLiveKyselyQuery<Skill>((db) => selectAllSkillsQuery(db));
 	let skillTreePickerSheetHandle: OverlayLayerHandle | undefined;
 	const [visibleSkillTreeOverrides, setVisibleSkillTreeOverrides] = createSignal<VisibleSkillTreeOverrideMap>({});
 	const [focusedTreeSkillId, setFocusedTreeSkillId] = createSignal<string | null>(null);
@@ -143,7 +144,7 @@ export function SkillPanel(props: SkillPanelProps) {
 
 	const skillTemplateTreeIndex = createMemo<SkillTemplateTreeIndex>(() => {
 		const tree = createEmptySkillTemplateTreeIndex();
-		for (const template of skillTemplates() ?? []) {
+		for (const template of skillTemplates.rows()) {
 			tree[template.treeType].templates.push(template);
 		}
 		return tree;

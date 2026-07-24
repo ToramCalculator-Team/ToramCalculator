@@ -1,23 +1,30 @@
+import { defaultData } from "@db/defaultData";
 import { getPrimaryKeys } from "@db/generated/dmmf-utils";
+import { type RepositoryWriterContext, repositoryReaders, repositoryWriters } from "@db/generated/repositories";
 import type { CharacterWithRelations } from "@db/generated/repositories/character";
 import type { PlayerArmorWithRelations } from "@db/generated/repositories/player_armor";
 import type { PlayerOptionWithRelations } from "@db/generated/repositories/player_option";
 import type { PlayerSpecialWithRelations } from "@db/generated/repositories/player_special";
 import type { PlayerWeaponWithRelations } from "@db/generated/repositories/player_weapon";
-import type { character, DB } from "@db/generated/zod";
-import { createEffect, createMemo, onCleanup, Show } from "solid-js";
-import type { TableDataConfig } from "~/components/business/data-config";
+import { type character, type DB, DBSchema } from "@db/generated/zod";
+import type { VisibilityState } from "@tanstack/solid-table";
+import { createEffect, createMemo, createSignal, onCleanup, Show } from "solid-js";
+import type { TableDataConfig, TableDataConfigurator } from "~/components/business/data-config";
 import { PLAYER_ARMOR_DATA_CONFIG } from "~/components/business/dataConfig/player_armor";
 import { PLAYER_OPTION_DATA_CONFIG } from "~/components/business/dataConfig/player_option";
 import { PLAYER_SPECIAL_DATA_CONFIG } from "~/components/business/dataConfig/player_special";
 import { PLAYER_WEAPON_DATA_CONFIG } from "~/components/business/dataConfig/player_weapon";
-import { DataForm } from "~/components/business/form/DataForm";
-import { ForeignKeyPickerSheetContent } from "~/components/business/table/ForeignKeyPickerSheet";
 import { Button } from "~/components/controls/button";
+import { Input } from "~/components/controls/input";
+import { VirtualTable } from "~/components/dataDisplay/virtualTable";
+import { Form } from "~/components/form/Form";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
 import type { CharacterFieldPatch } from "~/features/character/edit/characterEditProtocol";
 import { type OverlayLayerHandle, useOverlay } from "~/lib/overlay/OverlayContext";
+import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
+import type { ZodSchemaFor } from "~/lib/utils/zod";
+import type { Dic } from "~/locales/type";
 import { useInterfaceActor, useInterfaceSnapshot } from "~/machines/AppActorContext";
 import type { CharacterEquipmentSlot } from "~/machines/interface/characterEquipment";
 import {
@@ -25,6 +32,7 @@ import {
 	createInspectCharacterEquipmentEvent,
 	selectCharacterEquipmentInteraction,
 } from "~/machines/interfaceStateMachine";
+import { store } from "~/store";
 
 export type EquipmentSlot = "weaponId" | "subWeaponId" | "armorId" | "optionId" | "specialId";
 
@@ -81,20 +89,36 @@ const readInsertedEquipmentId = (row: { id: unknown }, tableName: string): strin
 	return primaryValue;
 };
 
+/**
+ * 装备配置绑定对象：把 schema、dic、defaultData 和 UIConfig 捆绑在同一个泛型 T 下，
+ * 保证 Form 的各 prop 类型一致，无需在调用点散落 as never 断言。
+ * 同 wiki/[subName].tsx 的 createTableConfig 模式。
+ */
+type EquipmentConfig<T extends EquipmentTableName> = {
+	schema: ZodSchemaFor<DB[T]>;
+	dic: Dic<DB[T]>;
+	defaultData: DB[T];
+	uiConfig: TableDataConfig<T, DB[T]>;
+};
+
 const equipmentDataConfigFactories = {
 	player_weapon: PLAYER_WEAPON_DATA_CONFIG,
 	player_armor: PLAYER_ARMOR_DATA_CONFIG,
 	player_option: PLAYER_OPTION_DATA_CONFIG,
 	player_special: PLAYER_SPECIAL_DATA_CONFIG,
-} as const satisfies { [T in EquipmentTableName]: TableDataConfig<EquipmentTableRow<T>> };
+} as const satisfies { [T in EquipmentTableName]: TableDataConfigurator<T, EquipmentTableRow<T>> };
 
-const getEquipmentDataConfig = <T extends EquipmentTableName>(
+const getEquipmentConfig = <T extends EquipmentTableName>(
 	tableName: T,
-	dictionary: Parameters<TableDataConfig<EquipmentTableRow<T>>>[0],
-): ReturnType<TableDataConfig<EquipmentTableRow<T>>> => {
-	// 设计说明：配置表已用 satisfies 校验 tableName 与 row 类型对应关系；这里保留泛型索引后的字面量关联。
-	const configFactory = equipmentDataConfigFactories[tableName] as unknown as TableDataConfig<EquipmentTableRow<T>>;
-	return configFactory(dictionary);
+	dict: ReturnType<ReturnType<typeof useDictionary>>,
+): EquipmentConfig<T> => {
+	const configFactory = equipmentDataConfigFactories[tableName] as unknown as TableDataConfigurator<T, DB[T]>;
+	return {
+		schema: DBSchema[tableName],
+		dic: dict.db[tableName],
+		defaultData: defaultData[tableName],
+		uiConfig: configFactory(dict),
+	} as EquipmentConfig<T>; // 单一断言：动态索引无法静态证明键集一致，集中处理
 };
 
 const toCharacterPatch = <S extends EquipmentSlot>(slot: S, id: string): Pick<character, S> => {
@@ -147,36 +171,35 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 
 	const openEquipmentCreateForm = <S extends EquipmentSlot>(slot: S) => {
 		const tableName = equipmentSlotConfig[slot];
-		const config = getEquipmentDataConfig(tableName, dictionary);
-
-		const initialValue = withBelongToPlayerId(config.defaultData, props.character.belongToPlayerId);
+		const config = getEquipmentConfig(tableName, dictionary());
+		const initialValue = withBelongToPlayerId(
+			config.defaultData as EquipmentTableRow<typeof tableName>,
+			props.character.belongToPlayerId,
+		);
 
 		overlay.openSheet({
 			render: (api) => (
-				<DataForm<EquipmentSlotRow<S>, typeof config.dataSchema>
-					tableName={tableName}
-					value={initialValue as EquipmentSlotRow<S>}
-					primaryKey={config.primaryKey}
-					defaultValue={config.defaultData as EquipmentSlotRow<S>}
-					dataSchema={config.dataSchema}
-					dictionary={config.dictionary}
-					hiddenFields={config.form.hiddenFields}
-					fieldGroupMap={config.fieldGroupMap}
-					renderers={config.form.renderers}
-					inheritsFrom={config.inheritsFrom}
-					embeds={config.embeds}
-					onInsert={async (value) => {
-						// 设计说明：装备槽位依赖刚创建记录的真实主键，因此先插入装备，再回写 character FK。
-						const inserted = await config.form.onInsert(value);
-						const primaryValue = readInsertedEquipmentId(inserted, tableName);
+				<Form<DB[typeof tableName]>
+					mode="create"
+					value={initialValue}
+					defaultValue={config.defaultData}
+					dataSchema={config.schema}
+					dictionary={config.dic}
+					hiddenFields={config.uiConfig.form.hiddenFields}
+					fieldGroupMap={config.uiConfig.fieldGroupMap}
+					renderers={config.uiConfig.form.renderers}
+					onSubmit={async (value) => {
+						// 装备槽位依赖刚创建记录的真实主键，先插入装备再回写 character FK。
+						const context: RepositoryWriterContext = {
+							accountId: store.session.account.id,
+							accountType: store.session.account.type,
+						};
+						const writer = repositoryWriters[tableName];
+						if (!writer?.create) throw new Error(`${tableName} 不支持创建`);
+						const inserted = await writer.create(context, value as never);
+						const primaryValue = readInsertedEquipmentId(inserted as { id: unknown }, tableName);
 						await props.onPatchRequested(toCharacterPatch(slot, primaryValue));
 						api.close();
-						return inserted;
-					}}
-					onUpdate={async (primaryKeyValue, value) => {
-						const result = await config.form.onUpdate(primaryKeyValue, value);
-						api.close();
-						return result;
 					}}
 				/>
 			),
@@ -203,16 +226,49 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 
 	const projectEquipmentPickerSheet = (slot: EquipmentSlot) => {
 		const tableType = equipmentSlotConfig[slot];
+		const dict = dictionary();
+		const config = getEquipmentConfig(tableType, dict);
+		const primaryKey = getPrimaryKeys(tableType)[0] as keyof EquipmentTableRow<typeof tableType>;
+
 		let layerId: string | undefined;
 		const handle = overlay.openSheet({
-			render: (api) => (
-				<ForeignKeyPickerSheetContent<Record<string, unknown>>
-					title={dictionary().db[tableType].selfName}
-					tableType={tableType}
-					onClose={api.close}
-					onPick={(row) => pickEquipment(slot, row)}
-				/>
-			),
+			render: (api) => {
+				const [filterText, setFilterText] = createSignal("");
+				const [columnVisibility, setColumnVisibility] = createSignal<VisibilityState>({});
+
+				return (
+					<div class="flex portrait:h-[90dvh] w-full h-full flex-col gap-2 p-6">
+						<div class="sheetTitle w-full text-xl font-bold flex items-center justify-between">
+							{dict.db[tableType].selfName}
+							<Button
+								icon={<Icons.Outline.Close />}
+								level="quaternary"
+								class="rounded-none rounded-tr"
+								onClick={api.close}
+							/>
+						</div>
+						<div class="TableBox p-3 rounded border-dividing-color border w-full h-full">
+							<VirtualTable<EquipmentTableRow<typeof tableType>>
+								measure={config.uiConfig.table.measure}
+								query={(db) => repositoryReaders[tableType]?.getAll?.(db) ?? null}
+								primaryKey={primaryKey}
+								columnsDef={config.uiConfig.table.columnsDef}
+								hiddenColumnDef={config.uiConfig.table.hiddenColumnDef}
+								tdGenerator={config.uiConfig.table.tdGenerator}
+								defaultSort={config.uiConfig.table.defaultSort}
+								dictionary={config.dic as never}
+								globalFilterStr={filterText}
+								rowHandleClick={(row) => void pickEquipment(slot, row as Record<string, unknown>)}
+								columnVisibility={columnVisibility()}
+								onColumnVisibilityChange={(updater) => {
+									if (typeof updater === "function") setColumnVisibility(updater(columnVisibility()));
+								}}
+							/>
+						</div>
+						<Input type="text" value={filterText()} onInput={(e) => setFilterText(e.currentTarget.value)} />
+					</div>
+				);
+			},
 			onCloseRequest: () => {
 				if (equipmentPickerSheetHandle?.layerId === layerId) {
 					equipmentPickerSheetHandle = undefined;

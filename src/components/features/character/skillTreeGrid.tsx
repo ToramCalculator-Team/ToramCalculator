@@ -85,7 +85,10 @@ function appendVerticalSkillLinkPath(path: Array<{ x: number; y: number }>, x: n
 	}
 }
 
-function buildSkillLinkPath(preSkill: SkillTreeGridNode, nextSkill: SkillTreeGridNode): Array<{ x: number; y: number }> {
+function buildSkillLinkPath(
+	preSkill: SkillTreeGridNode,
+	nextSkill: SkillTreeGridNode,
+): Array<{ x: number; y: number }> {
 	const from = { x: getSkillGridX(preSkill), y: getSkillGridY(preSkill) };
 	const to = { x: getSkillGridX(nextSkill), y: getSkillGridY(nextSkill) };
 	const path = [from];
@@ -193,28 +196,40 @@ export function SkillLinkCellBlock(props: { cell: SkillLinkCell; bounds: SkillTr
 			}}
 		>
 			<Show when={props.cell.left}>
-				<div class={`absolute left-0 top-[calc(50%-1px)] bg-brand-color-1st`} style={{
-					"width": `${SKILL_GRID_CELL_WIDTH * 0.5}px`,
-					"height": `2px`,
-				}} />
+				<div
+					class={`absolute left-0 top-[calc(50%-1px)] bg-brand-color-1st`}
+					style={{
+						width: `${SKILL_GRID_CELL_WIDTH * 0.5}px`,
+						height: `2px`,
+					}}
+				/>
 			</Show>
 			<Show when={props.cell.right}>
-				<div class={`absolute right-0 top-[calc(50%-1px)] bg-brand-color-1st`} style={{
-					"width": `${SKILL_GRID_CELL_WIDTH * 0.5}px`,
-					"height": `2px`,
-				}} />
+				<div
+					class={`absolute right-0 top-[calc(50%-1px)] bg-brand-color-1st`}
+					style={{
+						width: `${SKILL_GRID_CELL_WIDTH * 0.5}px`,
+						height: `2px`,
+					}}
+				/>
 			</Show>
 			<Show when={props.cell.top}>
-				<div class={`absolute left-[calc(50%-1px)] top-0 bg-brand-color-1st`} style={{
-					"width": `2px`,
-					"height": `${SKILL_GRID_CELL_HEIGHT * 0.5}px`,
-				}} />
+				<div
+					class={`absolute left-[calc(50%-1px)] top-0 bg-brand-color-1st`}
+					style={{
+						width: `2px`,
+						height: `${SKILL_GRID_CELL_HEIGHT * 0.5}px`,
+					}}
+				/>
 			</Show>
 			<Show when={props.cell.bottom}>
-				<div class={`absolute bottom-0 left-[calc(50%-1px)] bg-brand-color-1st`} style={{
-					"width": `2px`,
-					"height": `${SKILL_GRID_CELL_HEIGHT * 0.5}px`,
-				}} />
+				<div
+					class={`absolute bottom-0 left-[calc(50%-1px)] bg-brand-color-1st`}
+					style={{
+						width: `2px`,
+						height: `${SKILL_GRID_CELL_HEIGHT * 0.5}px`,
+					}}
+				/>
 			</Show>
 			<Show when={props.cell.hasJunction}>
 				<div class="absolute left-1/2 top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-[2px] bg-brand-color-1st" />

@@ -1,24 +1,27 @@
-import type { DB } from "@db/generated/zod";
+import { type DB, DBSchema } from "@db/generated/zod";
+import { repositoryReaders, type RepositoryReader } from "@db/generated/repositories";
+import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 import type { SkillTreeType } from "@db/schema/enums";
 import { useNavigate, useParams } from "@solidjs/router";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createEffect, createMemo, createSignal, onCleanup, onMount, Show, useContext } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { DataRenderer } from "~/components/business/card/DataRenderer";
-import { DATA_CONFIG } from "~/components/business/data-config";
-import { DataForm } from "~/components/business/form/DataForm";
+import { DATA_CONFIG, type TableDataConfig } from "~/components/business/data-config";
+import type { ZodSchemaFor } from "~/lib/utils/zod";
+import type { Dic } from "~/locales/type";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Select } from "~/components/controls/select";
+import { ObjRenderer } from "~/components/dataDisplay/ObjRenderer";
 import { CharacterConfigPanel } from "~/components/features/character/CharacterConfigPanel";
 import { SkillPreviewPanel } from "~/components/features/character/SkillPreviewPanel";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
-import { createDefaultCharacterWorldResource } from "~/lib/3dScene/resources/defaultCharacterResource";
-import { type CharacterContentSession, useSceneRuntime } from "~/lib/3dScene/SceneRuntime";
 import type { CharacterEdit } from "~/features/character/edit/characterEditProtocol";
 import { useCharacterSession } from "~/features/character/session/CharacterSession";
+import { createDefaultCharacterWorldResource } from "~/lib/3dScene/resources/defaultCharacterResource";
+import { type CharacterContentSession, useSceneRuntime } from "~/lib/3dScene/SceneRuntime";
 import { StatsRenderer } from "~/lib/engine/core/World/Member/MemberStatusPanel";
 import { createLogger } from "~/lib/Logger";
 import { type DialogLayerEntryInit, useOverlay } from "~/lib/overlay/OverlayContext";
@@ -123,68 +126,64 @@ export default function CharactePage() {
 	 * - 外键 drill → pushDialog 并入同一 layer;editor → openSheet 新建子 layer。
 	 * 角色页的预览 dialog 由当前场景创建,递归关联和编辑表单沿用同一个角色页上下文。
 	 */
+
+	// 预览卡片所需的最小配置子集，同 index.tsx 的 SearchResultConfig 模式。
+	type PreviewConfig<TTableName extends keyof DB, T extends DB[TTableName] = DB[TTableName]> = {
+		schema: ZodSchemaFor<T>;
+		dic: Dic<T>;
+		readers: RepositoryReader<TTableName>;
+		card: TableDataConfig<TTableName, T>["card"];
+		fieldGroupMap: TableDataConfig<TTableName, T>["fieldGroupMap"];
+	};
+
+	const buildPreviewConfig = <TTableName extends keyof DB>(
+		type: TTableName,
+		dict: ReturnType<typeof dictionary>,
+	): PreviewConfig<TTableName> | undefined => {
+		const uiConfig = DATA_CONFIG[type]?.(dict);
+		if (!uiConfig) return undefined;
+		return {
+			schema: DBSchema[type],
+			dic: dict.db[type],
+			readers: repositoryReaders[type],
+			card: uiConfig.card,
+			fieldGroupMap: uiConfig.fieldGroupMap,
+		} as PreviewConfig<TTableName>;
+	};
+
+	// 泛型子组件：在泛型上下文中使用 config，TypeScript 能证明各 prop 属于同一 TTableName。
+	const CharacterPreviewCard = <TTableName extends keyof DB>(props: {
+		id: string;
+		config: PreviewConfig<TTableName>;
+	}) => (
+		<ObjRenderer
+			title={props.config.card.title}
+			query={(db) => props.config.readers.get?.(db, props.id) ?? null}
+			dataSchema={props.config.schema}
+			dictionary={props.config.dic}
+			hiddenFields={props.config.card.hiddenFields}
+			fieldGroupMap={props.config.fieldGroupMap}
+			renderers={props.config.card.renderers}
+			after={props.config.card.after}
+			before={props.config.card.before}
+		/>
+	);
+
 	const buildPreviewDialogEntry = (type: keyof DB, data: unknown): DialogLayerEntryInit => {
 		const cardData = data as Record<string, unknown>;
-		const config = DATA_CONFIG[type]?.(dictionary);
+		const config = buildPreviewConfig(type, dictionary());
+		const getTablePrimaryKey = <TTableName extends keyof DB>(tableName: TTableName): keyof DB[TTableName] =>
+		(getPrimaryKeys(tableName)[0] ?? "id") as keyof DB[TTableName];
+		const primaryKey = getTablePrimaryKey(type);
+		const id = String(cardData[primaryKey]);
+
 		return {
 			title: (cardData as { name?: unknown }).name?.toString() ?? "",
 			titleIcon: () => <Icons.Spirits iconName={type} />,
 			layout: "fill",
-			render: (dialogApi) => {
+			render: () => {
 				if (!config) return <pre>{JSON.stringify(cardData, null, 2)}</pre>;
-				// dialog layer 作用域句柄:drill 用 pushDialog 并入同层,editor 用 openSheet 新建子层。
-				const dialogOverlay = useOverlay();
-
-				return (
-					<DataRenderer
-						primaryKey={config.primaryKey}
-						dictionary={config.dictionary}
-						deleteCallback={config.card.deleteCallback}
-						onOpenRecord={(nextType, nextData) => dialogOverlay.pushDialog(buildPreviewDialogEntry(nextType, nextData))}
-						onDeleted={dialogApi.close}
-						openEditor={(nextData) => {
-							dialogOverlay.openSheet({
-								render: (api) => (
-									<DataForm
-										tableName={type}
-										value={nextData}
-										primaryKey={config.primaryKey}
-										defaultValue={config.defaultData}
-										dataSchema={config.dataSchema}
-										dictionary={config.dictionary}
-										hiddenFields={config.form.hiddenFields}
-										fieldGroupMap={config.fieldGroupMap}
-										renderers={config.form.renderers}
-										inheritsFrom={config.inheritsFrom}
-										embeds={config.embeds}
-										onInsert={async (value) => {
-											const result = await config.form.onInsert(value);
-											api.close();
-											return result;
-										}}
-										onUpdate={async (primaryKeyValue, value) => {
-											const result = await config.form.onUpdate(primaryKeyValue, value);
-											api.close();
-											return result;
-										}}
-									/>
-								),
-							});
-						}}
-						editAbleCallback={config.card.editAbleCallback}
-						tableName={type}
-						data={() => cardData}
-						dataSchema={config.dataSchema}
-						hiddenFields={config.card.hiddenFields}
-						fieldGroupMap={config.fieldGroupMap}
-						fieldGenerator={config.card.fieldGenerator}
-						inheritsFrom={config.inheritsFrom}
-						embeds={config.embeds}
-						relationOverrides={config.card.relationOverrides}
-						after={config.card.after}
-						before={config.card.before}
-					/>
-				);
+				return <CharacterPreviewCard id={id} config={config} />;
 			},
 		};
 	};
