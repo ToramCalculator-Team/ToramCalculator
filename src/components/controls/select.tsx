@@ -1,4 +1,14 @@
-import { createEffect, createMemo, createResource, createSignal, For, type JSX, onCleanup, onMount, Show } from "solid-js";
+import {
+	createEffect,
+	createMemo,
+	createResource,
+	createSignal,
+	For,
+	type JSX,
+	onCleanup,
+	onMount,
+	Show,
+} from "solid-js";
 
 export type SelectOption = {
 	label: string;
@@ -29,7 +39,9 @@ export function Select(props: SelectProps) {
 		() => props.optionsFetcher,
 		async (optionsFetcher) => (optionsFetcher ? optionsFetcher("") : []),
 	);
-	const currentOptions = createMemo(() => (props.optionsFetcher ? fetchedOptions.latest ?? [] : props.options ?? []));
+	const currentOptions = createMemo(() =>
+		props.optionsFetcher ? (fetchedOptions.latest ?? []) : (props.options ?? []),
+	);
 
 	createEffect(() => {
 		const option = currentOptions().find((opt) => opt.value === props.value);

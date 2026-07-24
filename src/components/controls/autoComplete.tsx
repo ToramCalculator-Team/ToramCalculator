@@ -8,16 +8,7 @@
  */
 
 import { useMachine } from "@xstate/solid";
-import {
-	createEffect,
-	createMemo,
-	createSignal,
-	For,
-	type JSX,
-	onCleanup,
-	onMount,
-	Show,
-} from "solid-js";
+import { createEffect, createMemo, createSignal, For, type JSX, onCleanup, onMount, Show } from "solid-js";
 import { assign, createMachine } from "xstate";
 
 type NativeInputProps = Omit<JSX.InputHTMLAttributes<HTMLInputElement>, "value" | "onInput" | "onChange">;
@@ -60,77 +51,75 @@ type Ctx = {
 	highlightedIndex: number;
 };
 
-const machine = createMachine(
-	{
-		id: "autocomplete",
-		initial: "closed",
-		context: {
-			inputValue: "",
-			isOpen: false,
-			highlightedIndex: -1,
-		} as Ctx,
-		states: {
-			closed: {
-				entry: assign({ isOpen: false, highlightedIndex: -1 }),
-				on: {
-					FOCUS: { target: "open" },
-					OPEN: { target: "open" },
-					SYNC_INPUT: {
-						actions: assign({
-							inputValue: ({ event }) => (event.type === "SYNC_INPUT" ? event.value : ""),
-						}),
-					},
+const machine = createMachine({
+	id: "autocomplete",
+	initial: "closed",
+	context: {
+		inputValue: "",
+		isOpen: false,
+		highlightedIndex: -1,
+	} as Ctx,
+	states: {
+		closed: {
+			entry: assign({ isOpen: false, highlightedIndex: -1 }),
+			on: {
+				FOCUS: { target: "open" },
+				OPEN: { target: "open" },
+				SYNC_INPUT: {
+					actions: assign({
+						inputValue: ({ event }) => (event.type === "SYNC_INPUT" ? event.value : ""),
+					}),
 				},
 			},
-			open: {
-				entry: assign({ isOpen: true }),
-				on: {
-					CLOSE: { target: "closed" },
-					INPUT_CHANGE: {
-						actions: assign({
-							inputValue: ({ event }) => (event.type === "INPUT_CHANGE" ? event.value : ""),
-							highlightedIndex: () => -1,
-						}),
-					},
-					SYNC_INPUT: {
-						actions: assign({
-							inputValue: ({ event }) => (event.type === "SYNC_INPUT" ? event.value : ""),
-						}),
-					},
-					HIGHLIGHT_NEXT: {
-						actions: assign({
-							highlightedIndex: ({ context, event }) => {
-								if (event.type !== "HIGHLIGHT_NEXT") return context.highlightedIndex;
-								if (event.max <= 0) return -1;
-								const next = context.highlightedIndex < 0 ? 0 : context.highlightedIndex + 1;
-								return Math.min(next, event.max - 1);
-							},
-						}),
-					},
-					HIGHLIGHT_PREV: {
-						actions: assign({
-							highlightedIndex: ({ context, event }) => {
-								if (event.type !== "HIGHLIGHT_PREV") return context.highlightedIndex;
-								if (event.max <= 0) return -1;
-								const prev = context.highlightedIndex < 0 ? event.max - 1 : context.highlightedIndex - 1;
-								return Math.max(prev, 0);
-							},
-						}),
-					},
-					HIGHLIGHT_SET: {
-						actions: assign({
-							highlightedIndex: ({ event }) => {
-								if (event.type !== "HIGHLIGHT_SET") return -1;
-								if (event.max <= 0) return -1;
-								return Math.max(0, Math.min(event.index, event.max - 1));
-							},
-						}),
-					},
+		},
+		open: {
+			entry: assign({ isOpen: true }),
+			on: {
+				CLOSE: { target: "closed" },
+				INPUT_CHANGE: {
+					actions: assign({
+						inputValue: ({ event }) => (event.type === "INPUT_CHANGE" ? event.value : ""),
+						highlightedIndex: () => -1,
+					}),
+				},
+				SYNC_INPUT: {
+					actions: assign({
+						inputValue: ({ event }) => (event.type === "SYNC_INPUT" ? event.value : ""),
+					}),
+				},
+				HIGHLIGHT_NEXT: {
+					actions: assign({
+						highlightedIndex: ({ context, event }) => {
+							if (event.type !== "HIGHLIGHT_NEXT") return context.highlightedIndex;
+							if (event.max <= 0) return -1;
+							const next = context.highlightedIndex < 0 ? 0 : context.highlightedIndex + 1;
+							return Math.min(next, event.max - 1);
+						},
+					}),
+				},
+				HIGHLIGHT_PREV: {
+					actions: assign({
+						highlightedIndex: ({ context, event }) => {
+							if (event.type !== "HIGHLIGHT_PREV") return context.highlightedIndex;
+							if (event.max <= 0) return -1;
+							const prev = context.highlightedIndex < 0 ? event.max - 1 : context.highlightedIndex - 1;
+							return Math.max(prev, 0);
+						},
+					}),
+				},
+				HIGHLIGHT_SET: {
+					actions: assign({
+						highlightedIndex: ({ event }) => {
+							if (event.type !== "HIGHLIGHT_SET") return -1;
+							if (event.max <= 0) return -1;
+							return Math.max(0, Math.min(event.index, event.max - 1));
+						},
+					}),
 				},
 			},
 		},
 	},
-);
+});
 
 export function Autocomplete<TOption, TValue>(props: AutocompleteProps<TOption, TValue>) {
 	const {
@@ -189,8 +178,10 @@ export function Autocomplete<TOption, TValue>(props: AutocompleteProps<TOption, 
 	onMount(() => {
 		const handleClickOutside = (event: MouseEvent) => {
 			if (
-				(listRef() && !listRef()?.contains(event.target as Node)) &&
-				(inputRef() && !inputRef()?.contains(event.target as Node))
+				listRef() &&
+				!listRef()?.contains(event.target as Node) &&
+				inputRef() &&
+				!inputRef()?.contains(event.target as Node)
 			) {
 				send({ type: "CLOSE" });
 			}
@@ -249,9 +240,7 @@ export function Autocomplete<TOption, TValue>(props: AutocompleteProps<TOption, 
 				>
 					<Show
 						when={filteredOptions().length > 0}
-						fallback={
-							<div class="text-accent-color px-4 py-2 text-sm">{props.emptyText ?? <span>无可选项</span>}</div>
-						}
+						fallback={<div class="text-accent-color px-4 py-2 text-sm">{props.emptyText ?? <span>无可选项</span>}</div>}
 					>
 						<For each={filteredOptions()}>
 							{(option, index) => {
@@ -264,9 +253,7 @@ export function Autocomplete<TOption, TValue>(props: AutocompleteProps<TOption, 
 										class={`relative flex w-full items-center px-4 py-2 text-left hover:bg-gray-100 ${
 											highlighted() ? "bg-gray-100" : ""
 										}`}
-										onMouseEnter={() =>
-											send({ type: "HIGHLIGHT_SET", index: index(), max: filteredOptions().length })
-										}
+										onMouseEnter={() => send({ type: "HIGHLIGHT_SET", index: index(), max: filteredOptions().length })}
 										onClick={(e) => {
 											e.preventDefault();
 											e.stopPropagation();
@@ -289,5 +276,3 @@ export function Autocomplete<TOption, TValue>(props: AutocompleteProps<TOption, 
 		</div>
 	);
 }
-
-

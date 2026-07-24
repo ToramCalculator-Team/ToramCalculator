@@ -1,27 +1,27 @@
 import { createForm } from "@tanstack/solid-form";
 import { For, type JSX, Show } from "solid-js";
-import type { ZodObject, ZodType } from "zod/v4";
 import { Button } from "~/components/controls/button";
 import { useDictionary } from "~/contexts/Dictionary";
+import type { ZodSchemaFor } from "~/lib/utils/zod";
 import type { Dic } from "~/locales/type";
 import { type FormRendererPath, type FormRenderers, SchemaFieldNode } from "./fields";
 
-export interface FormProps<T extends Record<string, unknown>, TSchema extends ZodObject<{ [K in keyof T]: ZodType }>> {
-	title?: string;
+export interface FormProps<T extends object> {
 	value: T;
-	dataSchema: TSchema;
+	defaultValue: T;
+	dataSchema: ZodSchemaFor<T>;
 	dictionary: Dic<T>;
 	hiddenFields?: Array<keyof T>;
 	fieldGroupMap?: Record<string, Array<keyof T>>;
 	renderers?: FormRenderers<T>;
 	extraSections?: JSX.Element;
+	/** 表单模式：create = 新增，update = 编辑。默认 update。影响提交按钮默认文本。 */
+	mode?: "create" | "update";
 	submitLabel?: (state: { isSubmitting: boolean }) => string;
 	onSubmit: (values: T) => void | Promise<void>;
 }
 
-export function Form<T extends Record<string, unknown>, TSchema extends ZodObject<{ [K in keyof T]: ZodType }>>(
-	props: FormProps<T, TSchema>,
-) {
+export function Form<T extends object>(props: FormProps<T>) {
 	const dictionary = useDictionary();
 	const form = createForm(() => ({
 		defaultValues: props.value,
@@ -43,7 +43,7 @@ export function Form<T extends Record<string, unknown>, TSchema extends ZodObjec
 						name={String(key)}
 						path={String(key) as FormRendererPath<T>}
 						schema={schemaField}
-						dictionary={props.dictionary.fields[String(key)]}
+						dictionary={props.dictionary.fields[key]}
 						renderers={props.renderers}
 					/>
 				);
@@ -54,7 +54,7 @@ export function Form<T extends Record<string, unknown>, TSchema extends ZodObjec
 	return (
 		<div class="FormBox flex w-full flex-col">
 			<div class="Title flex items-center p-2 portrait:p-6">
-				<h1 class="FormTitle text-2xl font-black">{props.title ?? props.dictionary.selfName ?? ""}</h1>
+				<h1 class="FormTitle text-2xl font-black">{props.dictionary.selfName}</h1>
 			</div>
 			<form
 				onSubmit={(event) => {
@@ -92,7 +92,11 @@ export function Form<T extends Record<string, unknown>, TSchema extends ZodObjec
 						<div class="flex items-center gap-1">
 							<Button level="primary" class="SubmitBtn flex-1" type="submit" disabled={!state().canSubmit}>
 								{props.submitLabel?.({ isSubmitting: state().isSubmitting }) ??
-									(state().isSubmitting ? "..." : dictionary().ui.actions.update)}
+									(state().isSubmitting
+										? "..."
+										: props.mode === "create"
+											? dictionary().ui.actions.create
+											: dictionary().ui.actions.update)}
 							</Button>
 						</div>
 					)}

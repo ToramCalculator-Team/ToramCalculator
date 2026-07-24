@@ -1,3 +1,4 @@
+import type { DB } from "@db/generated/zod/index";
 import { debounce } from "@solid-primitives/scheduled";
 import type { Column } from "@tanstack/solid-table";
 import {
@@ -14,6 +15,7 @@ import {
 	type VisibilityState,
 } from "@tanstack/solid-table";
 import { createVirtualizer, type VirtualItem, type Virtualizer } from "@tanstack/solid-virtual";
+import type { Compilable, Kysely } from "kysely";
 import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import {
@@ -28,20 +30,21 @@ import {
 	Show,
 } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
+import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
 import type { Dic, EnumFieldDetail } from "~/locales/type";
 import { store } from "~/store";
 import { Button } from "../controls/button";
 
-export interface VirtualTableProps<T extends Record<string, unknown>> {
+export interface VirtualTableProps<T extends object> {
 	primaryKey: keyof T;
 	// 行高预测
 	measure?: {
 		estimateSize: number;
 	};
-	// 数据（由父组件提供的响应式访问器）
-	data: Accessor<T[]>;
-	// 列定义
-	columnsDef: ColumnDef<T>[];
+	// 查询构建器
+	query: (db: Kysely<DB>) => Compilable<T> | null | undefined;
+	// 列定义 - 强制 id 必须是 T 的键
+	columnsDef: Array<ColumnDef<T> & { id: keyof T }>;
 	// 隐藏列定义
 	hiddenColumnDef: Array<keyof T>;
 	// 单元格渲染器
@@ -62,7 +65,11 @@ export interface VirtualTableProps<T extends Record<string, unknown>> {
 	onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
 }
 
-export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTableProps<T>) {
+export function VirtualTable<T extends object>(props: VirtualTableProps<T>) {
+	// 组件内部处理 live query
+	const liveResult = createLiveKyselyQuery(props.query);
+	const data = () => liveResult.rows();
+
 	const ROW_DRAG_THRESHOLD = 3;
 	const VIRTUAL_TABLE_DEBUG_QUERY_KEY = "debugVirtualTable";
 	const VIRTUAL_TABLE_DEBUG_STORAGE_KEY = "VirtualTableDebug";
@@ -115,7 +122,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 	// 过滤字符串
 	createEffect(() => debounceSetGlobalFilter(props.globalFilterStr()));
 	createEffect(() => {
-		const res = props.data();
+		const res = data();
 		debugVirtualTable("dataChanged", {
 			length: res.length,
 			firstRowId: res[0]?.[props.primaryKey],
@@ -127,8 +134,7 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 	// 创建一次 table，用 reactive getter 保持响应式
 	const table = createSolidTable({
 		get data() {
-			const res = props.data();
-			return res;
+			return data();
 		},
 		get columns() {
 			return props.columnsDef;
@@ -643,11 +649,11 @@ export function VirtualTable<T extends Record<string, unknown>>(props: VirtualTa
 															<For
 																each={currentRow()
 																	?.getVisibleCells()
-																	.filter((cell) => !props.hiddenColumnDef.includes(cell.column.id))}
+																	.filter((cell) => !props.hiddenColumnDef.includes(cell.column.id as keyof T))}
 															>
 																{(cell) => {
-																	const columnId = cell.column.id;
-																	let columnKey = columnId;
+																	const columnId = cell.column.id as keyof T;
+																	let columnKey: string = String(columnId);
 																	const isEnum = "enumMap" in props.dictionary.fields[columnId];
 																	try {
 																		columnKey = isEnum

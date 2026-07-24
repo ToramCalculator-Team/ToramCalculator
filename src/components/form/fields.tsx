@@ -15,7 +15,52 @@ import { Input } from "~/components/controls/input";
 import { Select } from "~/components/controls/select";
 import { Toggle } from "~/components/controls/toggle";
 import { fieldInfo } from "~/components/dataDisplay/utils";
+import { findRenderer } from "~/lib/utils/rendererPath";
+import {
+	arrayElement,
+	enumOptions,
+	getZodType,
+	isComplexType,
+	literalValue,
+	objectShape,
+	unionDiscriminator,
+	unionOptions,
+	unwrapSchema,
+} from "~/lib/utils/zod";
 import type { EnumFieldDetail, FieldDetail } from "~/locales/type";
+
+type StringDeepKeys<TFormData> = Extract<DeepKeys<TFormData>, string>;
+
+/** 配置中的数组项使用稳定的 `[]`，TanStack Form 的运行路径使用具体数字下标。 */
+type NormalizeFormArrayPath<TPath extends string> = TPath extends `${infer Head}[${number}]${infer Tail}`
+	? `${Head}[]${NormalizeFormArrayPath<Tail>}`
+	: TPath;
+
+type DenormalizeFormArrayPath<TPath extends string> = TPath extends `${infer Head}[]${infer Tail}`
+	? `${Head}[${number}]${DenormalizeFormArrayPath<Tail>}`
+	: TPath;
+
+export type FormRendererPath<TFormData> =
+	StringDeepKeys<TFormData> extends infer TPath extends string ? TPath | NormalizeFormArrayPath<TPath> : never;
+
+export type FormRendererPathValue<
+	TFormData,
+	TPath extends string,
+> = DenormalizeFormArrayPath<TPath> extends DeepKeys<TFormData>
+	? DeepValue<TFormData, DenormalizeFormArrayPath<TPath>>
+	: never;
+
+export type FormRendererRuntimePath<TPath extends string> = DenormalizeFormArrayPath<TPath>;
+
+type FormContainerValue = readonly unknown[] | Record<string, unknown>;
+
+export type FormContainerRendererPath<TFormData> = {
+	[TPath in FormRendererPath<TFormData>]: NonNullable<
+		FormRendererPathValue<TFormData, TPath>
+	> extends FormContainerValue
+		? TPath
+		: never;
+}[FormRendererPath<TFormData>];
 
 type FormValidateSlot<TFormData> = FormValidateOrFn<TFormData> | undefined;
 type FormAsyncValidateSlot<TFormData> = FormAsyncValidateOrFn<TFormData> | undefined;
@@ -37,42 +82,6 @@ export type FormRendererFormApi<TFormData> = Pick<
 	>,
 	"Field"
 >;
-
-type StringDeepKeys<TFormData> = Extract<DeepKeys<TFormData>, string>;
-
-/**
- * TanStack Form 的 DeepKeys 使用 `[${number}]` 表达数组项；配置侧额外允许 `[]`。
- * 语义约定：`items` 指数组容器，`items[]` 指数组项；运行时具体下标会被归一化为 `[]` 做匹配。
- */
-export type NormalizeArrayPath<TPath extends string> = TPath extends `${infer Head}[${number}]${infer Tail}`
-	? `${Head}[]${NormalizeArrayPath<Tail>}`
-	: TPath;
-
-export type DenormalizeArrayPath<TPath extends string> = TPath extends `${infer Head}[]${infer Tail}`
-	? `${Head}[${number}]${DenormalizeArrayPath<Tail>}`
-	: TPath;
-
-export type FormRendererPath<TFormData> =
-	StringDeepKeys<TFormData> extends infer TPath extends string ? TPath | NormalizeArrayPath<TPath> : never;
-
-export type FormRendererPathValue<
-	TFormData,
-	TPath extends string,
-> = DenormalizeArrayPath<TPath> extends DeepKeys<TFormData> ? DeepValue<TFormData, DenormalizeArrayPath<TPath>> : never;
-
-type NonNullablePathValue<TFormData, TPath extends FormRendererPath<TFormData>> = NonNullable<
-	FormRendererPathValue<TFormData, TPath>
->;
-
-export type FormContainerRendererPath<TFormData> = {
-	[TPath in FormRendererPath<TFormData>]: NonNullablePathValue<TFormData, TPath> extends
-		| readonly unknown[]
-		| Record<string, unknown>
-		? TPath
-		: never;
-}[FormRendererPath<TFormData>];
-
-export type FormRendererRuntimePath<TPath extends string> = DenormalizeArrayPath<TPath>;
 
 export type FormContainerFrameOptions = {
 	/**
@@ -118,104 +127,6 @@ export type FormRenderers<TFormData> = {
 	containers?: FormContainerRendererMap<TFormData>;
 };
 
-/**
- * 渲染器配置以实体内的稳定逻辑路径表达；运行中的数组下标只影响 form name，
- * 不应该迫使配置方为第 0、1、2 项分别注册 renderer。
- */
-export function normalizeRendererPath(path: string): string {
-	return path.replace(/\[\d+\]/g, "[]");
-}
-
-export function findRenderer<T>(renderers: Partial<Record<string, T>> | undefined, path: string): T | undefined {
-	return renderers?.[path] ?? renderers?.[normalizeRendererPath(path)];
-}
-
-export type SchemaWrapperInfo = {
-	schema: ZodType;
-	nullable: boolean;
-	optional: boolean;
-	hasDefault: boolean;
-};
-
-type SchemaWithPublicParts = ZodType & {
-	type: string;
-	unwrap?: () => ZodType;
-	in?: ZodType;
-	shape?: Record<string, ZodType>;
-	element?: ZodType;
-	options?: readonly ZodType[] | readonly string[];
-	values?: Set<unknown>;
-	def?: {
-		discriminator?: string;
-	};
-};
-
-export function schemaType(schema: ZodType): string {
-	return (schema as SchemaWithPublicParts).type;
-}
-
-/**
- * 表单只消费 Zod v4 的公开 schema tree 结构，不把 nullable/default 等 wrapper
- * 当成真实 UI 节点。wrapper 信息单独返回，用于“创建/清空”和默认值生成。
- */
-export function unwrapSchema(schema: ZodType): SchemaWrapperInfo {
-	let current = schema as SchemaWithPublicParts;
-	let nullable = false;
-	let optional = false;
-	let hasDefault = false;
-
-	while (true) {
-		switch (current.type) {
-			case "nullable":
-				nullable = true;
-				current = current.unwrap?.() as SchemaWithPublicParts;
-				continue;
-			case "optional":
-				optional = true;
-				current = current.unwrap?.() as SchemaWithPublicParts;
-				continue;
-			case "default":
-				hasDefault = true;
-				current = current.unwrap?.() as SchemaWithPublicParts;
-				continue;
-			case "pipe":
-				current = current.in as SchemaWithPublicParts;
-				continue;
-			default:
-				return { schema: current, nullable, optional, hasDefault };
-		}
-	}
-}
-
-export function objectShape(schema: ZodType): Record<string, ZodType> {
-	return ((schema as SchemaWithPublicParts).shape ?? {}) as Record<string, ZodType>;
-}
-
-export function arrayElement(schema: ZodType): ZodType {
-	return (schema as SchemaWithPublicParts).element as ZodType;
-}
-
-export function unionOptions(schema: ZodType): ZodType[] {
-	return ((schema as SchemaWithPublicParts).options ?? []) as ZodType[];
-}
-
-export function unionDiscriminator(schema: ZodType): string | undefined {
-	return (schema as SchemaWithPublicParts).def?.discriminator;
-}
-
-export function literalValue(schema: ZodType): unknown {
-	const values = (schema as SchemaWithPublicParts).values;
-	return values ? Array.from(values)[0] : undefined;
-}
-
-export function enumOptions(schema: ZodType): string[] {
-	return ((schema as SchemaWithPublicParts).options ?? []).map(String);
-}
-
-export function isComplexType(type: string): boolean {
-	return type === "object" || type === "array" || type === "union" || type === "record";
-}
-
 function arrayMinimumLength(schema: ZodType): number {
 	const emptyResult = schema.safeParse([]);
 	if (emptyResult.success) return 0;
@@ -237,7 +148,7 @@ export function createSchemaDefaultValue(schema: ZodType): unknown {
 	if (defaultResult.success) return defaultResult.data;
 
 	const { schema: unwrapped, optional } = unwrapSchema(schema);
-	switch (schemaType(unwrapped)) {
+	switch (getZodType(unwrapped)) {
 		case "string":
 			return "";
 		case "number":
@@ -345,8 +256,8 @@ function childDictionary(dictionary: FieldDetail | undefined, key: string): Fiel
 }
 
 type SchemaFieldNodeProps<
-	TFormData extends Record<string, unknown>,
-	TRenderData,
+	TFormData extends object,
+	TRenderData extends object,
 	TPath extends FormRendererPath<TRenderData> = FormRendererPath<TRenderData>,
 > = {
 	form: FormRendererFormApi<TFormData>;
@@ -368,6 +279,7 @@ type ContainerRendererFn<TRenderData> = (
 	context: FormContainerRendererContext<TRenderData, FormContainerRendererPath<TRenderData>>,
 ) => JSX.Element;
 
+/** 配置入口按具体 path 保留 context 类型；运行时字符串查找只在这里擦除 mapped type 的键关联。 */
 function getFieldRenderer<TRenderData, TPath extends FormRendererPath<TRenderData>>(
 	renderers: FormRenderers<TRenderData> | undefined,
 	path: string,
@@ -391,16 +303,19 @@ function getContainerRenderer<TRenderData>(
 /**
  * Zod schema tree 的唯一默认渲染入口。
  * 职责：把数据库 JSON 字段与普通字段统一为同一种递归数据流，避免业务配置手写对象/数组表单。
+ * schema 遍历保证拼接出的片段属于实际字段；TypeScript 无法把运行时 schema 与 DeepKeys 关联，
+ * 因此路径和值只在这个递归边界恢复为 TanStack Form 类型。
  */
 export function SchemaFieldNode<
-	TFormData extends Record<string, unknown>,
-	TRenderData extends Record<string, unknown>,
+	TFormData extends object,
+	TRenderData extends object,
 	TPath extends FormRendererPath<TRenderData> = FormRendererPath<TRenderData>,
 >(props: SchemaFieldNodeProps<TFormData, TRenderData, TPath>) {
 	const depth = () => props.depth ?? 0;
 
 	return (
 		<props.form.Field
+			// embed 的完整名称由运行时父路径拼接；schema 递归保证每个片段均来自实际字段。
 			name={props.name as unknown as DeepKeys<Record<string, unknown>>}
 			validators={{
 				onChangeAsyncDebounceMs: 500,
@@ -427,20 +342,21 @@ export function SchemaFieldNode<
 				) => {
 					const renderer = getContainerRenderer(props.renderers, props.path);
 					const renderDefault = () => renderFrame();
+					// 运行时 schema 已确认当前节点是容器；泛型 path 无法根据该分支自动收窄，因此在调用边界恢复容器上下文。
 					return renderer
 						? renderer({
 								...baseContext(renderDefault),
 								kind,
 								children,
 								renderFrame,
-							} as FormContainerRendererContext<TRenderData, FormContainerRendererPath<TRenderData>>)
+							} as unknown as FormContainerRendererContext<TRenderData, FormContainerRendererPath<TRenderData>>)
 						: renderDefault();
 				};
 
 				const renderNode = (): JSX.Element => {
 					const wrapper = unwrapSchema(props.schema);
 					const unwrapped = wrapper.schema;
-					const type = schemaType(unwrapped);
+					const type = getZodType(unwrapped);
 					const title = nodeTitle(props.path, props.dictionary);
 					const description = props.dictionary?.formFieldDescription ?? "";
 					const className = nodeClass(depth());
