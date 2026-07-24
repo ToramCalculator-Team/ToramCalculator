@@ -1,7 +1,7 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
-import { deleteItem, insertItem, updateItem } from "@db/generated/repositories/item";
-import { deleteSpecial, insertSpecial, updateSpecial } from "@db/generated/repositories/special";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
+import { deleteItemQuery, insertItemQuery, updateItemQuery } from "@db/generated/repositories/item";
+import { deleteSpecialQuery, insertSpecialQuery, updateSpecialQuery } from "@db/generated/repositories/special";
 import { ItemSchema, SpecialSchema, type special } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -33,22 +33,16 @@ const insertSpecialItem = async (data: SpecialItem): Promise<SpecialItem> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
 		const { account } = await getUserContext(trx);
-		const item = await insertItem(
-			{
-				...ItemSchema.parse(data),
-				id: createId(),
-				createdByAccountId: account.id,
-				updatedByAccountId: account.id,
-			},
-			trx,
-		);
-		const specialRow = await insertSpecial(
-			{
-				...SpecialSchema.parse(data),
-				itemId: item.id,
-			},
-			trx,
-		);
+		const item = await insertItemQuery(trx, {
+			...ItemSchema.parse(data),
+			id: createId(),
+			createdByAccountId: account.id,
+			updatedByAccountId: account.id,
+		}).executeTakeFirstOrThrow();
+		const specialRow = await insertSpecialQuery(trx, {
+			...SpecialSchema.parse(data),
+			itemId: item.id,
+		}).executeTakeFirstOrThrow();
 		return {
 			...specialRow,
 			...item,
@@ -59,8 +53,8 @@ const insertSpecialItem = async (data: SpecialItem): Promise<SpecialItem> => {
 const updateSpecialItem = async (id: string, data: Partial<SpecialItem>): Promise<SpecialItem> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
-		const specialRow = await updateSpecial(id, SpecialSchema.parse(data), trx);
-		const item = await updateItem(id, ItemSchema.parse(data), trx);
+		const specialRow = await updateSpecialQuery(trx, id, SpecialSchema.parse(data)).executeTakeFirstOrThrow();
+		const item = await updateItemQuery(trx, id, ItemSchema.parse(data)).executeTakeFirstOrThrow();
 		return {
 			...specialRow,
 			...item,
@@ -71,13 +65,14 @@ const updateSpecialItem = async (id: string, data: Partial<SpecialItem>): Promis
 const deleteSpecialItem = async (id: string): Promise<SpecialItem | undefined> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
-		await deleteSpecial(id, trx);
-		await deleteItem(id, trx);
+		await deleteSpecialQuery(trx, id).executeTakeFirst();
+		await deleteItemQuery(trx, id).executeTakeFirst();
 		return undefined;
 	});
 };
 
 export const SPECIAL_DATA_CONFIG: TableDataConfig<SpecialItem, special> = (dictionary) => ({
+	tableName: "special",
 	inheritsFrom: { table: "item", via: "itemId" },
 	dictionary: dictionary().db.special,
 	dataSchema: SpecialItemSchema,
@@ -86,8 +81,8 @@ export const SPECIAL_DATA_CONFIG: TableDataConfig<SpecialItem, special> = (dicti
 	queries: {
 		get: (db, id) => selectSpecialItemQuery(db).where("special.itemId", "=", id),
 		getAll: selectSpecialItemQuery,
-		getParentsById: repositoryQueries.special.getParentsById,
-		getChildrenById: repositoryQueries.special.getChildrenById,
+		getParentsById: repositoryReaders.special.getParentsById,
+		getChildrenById: repositoryReaders.special.getChildrenById,
 	},
 	fieldGroupMap: {
 		基本信息: ["name", "baseAbi", "itemSourceType", "dataSources", "details"],
@@ -122,6 +117,6 @@ export const SPECIAL_DATA_CONFIG: TableDataConfig<SpecialItem, special> = (dicti
 		hiddenFields: [],
 		fieldGenerator: {},
 		deleteCallback: deleteSpecialItem,
-		editAbleCallback: (data) => repositoryMethods.special.canEdit(data.itemId),
+		editAbleCallback: (data) => repositoryWriters.special.canEdit(data.itemId),
 	},
 });

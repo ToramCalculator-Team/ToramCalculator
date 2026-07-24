@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
 import { ItemSchema, type item } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -7,12 +7,13 @@ import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
 export const ITEM_DATA_CONFIG: TableDataConfig<item> = (dictionary) => ({
+	tableName: "item",
 	embeds: [{ field: "recipe", table: "recipe", via: "itemId" }],
 	dictionary: dictionary().db.item,
 	dataSchema: ItemSchema,
 	primaryKey: "id",
 	defaultData: defaultData.item,
-	queries: repositoryQueries.item,
+	queries: repositoryReaders.item,
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name", "itemType", "itemSourceType"],
@@ -45,7 +46,7 @@ export const ITEM_DATA_CONFIG: TableDataConfig<item> = (dictionary) => ({
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				return repositoryMethods.item.insert(
+				return repositoryWriters.item.create(
 					{
 						...data,
 						id: createId(),
@@ -60,14 +61,14 @@ export const ITEM_DATA_CONFIG: TableDataConfig<item> = (dictionary) => ({
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				return repositoryMethods.item.update(id, { ...data, updatedByAccountId: account.id }, trx);
+				return repositoryWriters.item.update(id, { ...data, updatedByAccountId: account.id }, trx);
 			});
 		},
 	},
 	card: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
 		fieldGenerator: {},
-		deleteCallback: repositoryMethods.item.delete,
-		editAbleCallback: (data) => repositoryMethods.item.canEdit(data.id),
+		deleteCallback: repositoryWriters.item.delete,
+		editAbleCallback: (data) => repositoryWriters.item.canEdit(data.id),
 	},
 });

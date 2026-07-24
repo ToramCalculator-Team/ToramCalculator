@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
 import { AddressSchema, type address } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -7,11 +7,12 @@ import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
 export const ADDRESS_DATA_CONFIG: TableDataConfig<address> = (dictionary) => ({
+	tableName: "address",
 	dictionary: dictionary().db.address,
 	dataSchema: AddressSchema,
 	primaryKey: "id",
 	defaultData: defaultData.address,
-	queries: repositoryQueries.address,
+	queries: repositoryReaders.address,
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name", "type"],
@@ -37,7 +38,7 @@ export const ADDRESS_DATA_CONFIG: TableDataConfig<address> = (dictionary) => ({
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				const address = await repositoryMethods.address.insert(
+				const address = await repositoryWriters.address.create(
 					{
 						...data,
 						id: createId(),
@@ -49,12 +50,12 @@ export const ADDRESS_DATA_CONFIG: TableDataConfig<address> = (dictionary) => ({
 				return address;
 			});
 		},
-		onUpdate: repositoryMethods.address.update,
+		onUpdate: repositoryWriters.address.update,
 	},
 	card: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
 		fieldGenerator: {},
-		deleteCallback: repositoryMethods.address.delete,
-		editAbleCallback: (data) => repositoryMethods.address.canEdit(data.id),
+		deleteCallback: repositoryWriters.address.delete,
+		editAbleCallback: (data) => repositoryWriters.address.canEdit(data.id),
 	},
 });

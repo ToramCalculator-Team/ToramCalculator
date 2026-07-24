@@ -1,7 +1,7 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
-import { deleteItem, insertItem, updateItem } from "@db/generated/repositories/item";
-import { deleteWeapon, insertWeapon, updateWeapon } from "@db/generated/repositories/weapon";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
+import { deleteItemQuery, insertItemQuery, updateItemQuery } from "@db/generated/repositories/item";
+import { deleteWeaponQuery, insertWeaponQuery, updateWeaponQuery } from "@db/generated/repositories/weapon";
 import { ItemSchema, WeaponSchema, type weapon } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { type ElementType, WEAPON_TYPE, type WeaponType } from "@db/schema/enums";
@@ -46,22 +46,16 @@ const insertWeaponItem = async (data: WeaponItem): Promise<WeaponItem> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
 		const { account } = await getUserContext(trx);
-		const item = await insertItem(
-			{
-				...ItemSchema.parse(data),
-				id: createId(),
-				createdByAccountId: account.id,
-				updatedByAccountId: account.id,
-			},
-			trx,
-		);
-		const weapon = await insertWeapon(
-			{
-				...WeaponSchema.parse(data),
-				itemId: item.id,
-			},
-			trx,
-		);
+		const item = await insertItemQuery(trx, {
+			...ItemSchema.parse(data),
+			id: createId(),
+			createdByAccountId: account.id,
+			updatedByAccountId: account.id,
+		}).executeTakeFirstOrThrow();
+		const weapon = await insertWeaponQuery(trx, {
+			...WeaponSchema.parse(data),
+			itemId: item.id,
+		}).executeTakeFirstOrThrow();
 		return {
 			...weapon,
 			...item,
@@ -72,8 +66,8 @@ const insertWeaponItem = async (data: WeaponItem): Promise<WeaponItem> => {
 const updateWeaponItem = async (id: string, data: Partial<WeaponItem>): Promise<WeaponItem> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
-		const weapon = await updateWeapon(id, WeaponSchema.parse(data), trx);
-		const item = await updateItem(id, ItemSchema.parse(data), trx);
+		const weapon = await updateWeaponQuery(trx, id, WeaponSchema.parse(data)).executeTakeFirstOrThrow();
+		const item = await updateItemQuery(trx, id, ItemSchema.parse(data)).executeTakeFirstOrThrow();
 		return {
 			...weapon,
 			...item,
@@ -84,8 +78,8 @@ const updateWeaponItem = async (id: string, data: Partial<WeaponItem>): Promise<
 const deleteWeaponItem = async (id: string): Promise<WeaponItem | undefined> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
-		await deleteWeapon(id, trx);
-		await deleteItem(id, trx);
+		await deleteWeaponQuery(trx, id).executeTakeFirst();
+		await deleteItemQuery(trx, id).executeTakeFirst();
 		// 不知道为什么返回值的时候类型错误说id有问题，懒得写了
 		return undefined;
 	});
@@ -98,6 +92,7 @@ export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem, weapon> = (dictiona
 	//   - 合并 item 的字典/字段生成器到 weapon（child 优先）
 	//   - 从关联内容中排除 item 以及 armor/consumable 等同级子类（兄弟表自动推导）
 	//   - 把 item 的父级关系（如 account）作为 weapon 的关联一并展示
+	tableName: "weapon",
 	inheritsFrom: { table: "item", via: "itemId" },
 	dictionary: dictionary().db.weapon,
 	dataSchema: WeaponItemSchema,
@@ -106,8 +101,8 @@ export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem, weapon> = (dictiona
 	queries: {
 		get: (db, id) => selectWeaponItemQuery(db).where("weapon.itemId", "=", id),
 		getAll: selectWeaponItemQuery,
-		getParentsById: repositoryQueries.weapon.getParentsById,
-		getChildrenById: repositoryQueries.weapon.getChildrenById,
+		getParentsById: repositoryReaders.weapon.getParentsById,
+		getChildrenById: repositoryReaders.weapon.getChildrenById,
 	},
 	fieldGroupMap: {
 		基本信息: ["type", "name", "baseAbi", "stability", "itemSourceType", "dataSources", "details", "elementType"],
@@ -191,6 +186,6 @@ export const WEAPON_DATA_CONFIG: TableDataConfig<WeaponItem, weapon> = (dictiona
 		hiddenFields: [],
 		fieldGenerator: {},
 		deleteCallback: deleteWeaponItem,
-		editAbleCallback: (data) => repositoryMethods.weapon.canEdit(data.itemId),
+		editAbleCallback: (data) => repositoryWriters.weapon.canEdit(data.itemId),
 	},
 });

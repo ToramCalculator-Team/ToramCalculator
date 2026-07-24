@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
 import { WorldSchema, type world } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -7,11 +7,12 @@ import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
 export const WORLD_DATA_CONFIG: TableDataConfig<world> = (dictionary) => ({
+	tableName: "world",
 	dictionary: dictionary().db.world,
 	dataSchema: WorldSchema,
 	primaryKey: "id",
 	defaultData: defaultData.world,
-	queries: repositoryQueries.world,
+	queries: repositoryReaders.world,
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name"],
@@ -29,7 +30,7 @@ export const WORLD_DATA_CONFIG: TableDataConfig<world> = (dictionary) => ({
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				const world = await repositoryMethods.world.insert(
+				const world = await repositoryWriters.world.create(
 					{
 						...data,
 						id: createId(),
@@ -41,12 +42,12 @@ export const WORLD_DATA_CONFIG: TableDataConfig<world> = (dictionary) => ({
 				return world;
 			});
 		},
-		onUpdate: repositoryMethods.world.update,
+		onUpdate: repositoryWriters.world.update,
 	},
 	card: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
 		fieldGenerator: {},
-		deleteCallback: repositoryMethods.world.delete,
-		editAbleCallback: (data) => repositoryMethods.world.canEdit(data.id),
+		deleteCallback: repositoryWriters.world.delete,
+		editAbleCallback: (data) => repositoryWriters.world.canEdit(data.id),
 	},
 });

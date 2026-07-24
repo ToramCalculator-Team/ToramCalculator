@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
 import { RecipeSchema, type recipe } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -7,11 +7,12 @@ import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
 export const RECIPE_DATA_CONFIG: TableDataConfig<recipe> = (dictionary) => ({
+	tableName: "recipe",
 	dictionary: dictionary().db.recipe,
 	dataSchema: RecipeSchema,
 	primaryKey: "id",
 	defaultData: defaultData.recipe,
-	queries: repositoryQueries.recipe,
+	queries: repositoryReaders.recipe,
 	fieldGroupMap: {
 		ID: ["id"],
 		所属道具: ["itemId"],
@@ -30,7 +31,7 @@ export const RECIPE_DATA_CONFIG: TableDataConfig<recipe> = (dictionary) => ({
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				return repositoryMethods.recipe.insert(
+				return repositoryWriters.recipe.create(
 					{
 						...data,
 						id: createId(),
@@ -45,7 +46,7 @@ export const RECIPE_DATA_CONFIG: TableDataConfig<recipe> = (dictionary) => ({
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				return repositoryMethods.recipe.update(id, { ...data, updatedByAccountId: account.id }, trx);
+				return repositoryWriters.recipe.update(id, { ...data, updatedByAccountId: account.id }, trx);
 			});
 		},
 	},
@@ -55,7 +56,7 @@ export const RECIPE_DATA_CONFIG: TableDataConfig<recipe> = (dictionary) => ({
 		},
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
 		fieldGenerator: {},
-		deleteCallback: repositoryMethods.recipe.delete,
-		editAbleCallback: (data) => repositoryMethods.recipe.canEdit(data.id),
+		deleteCallback: repositoryWriters.recipe.delete,
+		editAbleCallback: (data) => repositoryWriters.recipe.canEdit(data.id),
 	},
 });

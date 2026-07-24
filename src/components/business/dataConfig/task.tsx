@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
 import { TaskSchema, type task } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -7,11 +7,12 @@ import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
 export const TASK_DATA_CONFIG: TableDataConfig<task> = (dictionary) => ({
+	tableName: "task",
 	dictionary: dictionary().db.task,
 	dataSchema: TaskSchema,
 	primaryKey: "id",
 	defaultData: defaultData.task,
-	queries: repositoryQueries.task,
+	queries: repositoryReaders.task,
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name", "lv", "type", "description"],
@@ -60,7 +61,7 @@ export const TASK_DATA_CONFIG: TableDataConfig<task> = (dictionary) => ({
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				return repositoryMethods.task.insert(
+				return repositoryWriters.task.create(
 					{
 						...data,
 						id: createId(),
@@ -75,14 +76,14 @@ export const TASK_DATA_CONFIG: TableDataConfig<task> = (dictionary) => ({
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				return repositoryMethods.task.update(id, { ...data, updatedByAccountId: account.id }, trx);
+				return repositoryWriters.task.update(id, { ...data, updatedByAccountId: account.id }, trx);
 			});
 		},
 	},
 	card: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
 		fieldGenerator: {},
-		deleteCallback: repositoryMethods.task.delete,
-		editAbleCallback: (data) => repositoryMethods.task.canEdit(data.id),
+		deleteCallback: repositoryWriters.task.delete,
+		editAbleCallback: (data) => repositoryWriters.task.canEdit(data.id),
 	},
 });

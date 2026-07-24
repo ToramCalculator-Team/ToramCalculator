@@ -1,7 +1,7 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
-import { deleteItem, insertItem, updateItem } from "@db/generated/repositories/item";
-import { deleteOption, insertOption, updateOption } from "@db/generated/repositories/option";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
+import { deleteItemQuery, insertItemQuery, updateItemQuery } from "@db/generated/repositories/item";
+import { deleteOptionQuery, insertOptionQuery, updateOptionQuery } from "@db/generated/repositories/option";
 import { ItemSchema, OptionSchema, type option } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -33,22 +33,16 @@ const insertOptionItem = async (data: OptionItem): Promise<OptionItem> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
 		const { account } = await getUserContext(trx);
-		const item = await insertItem(
-			{
-				...ItemSchema.parse(data),
-				id: createId(),
-				createdByAccountId: account.id,
-				updatedByAccountId: account.id,
-			},
-			trx,
-		);
-		const optionRow = await insertOption(
-			{
-				...OptionSchema.parse(data),
-				itemId: item.id,
-			},
-			trx,
-		);
+		const item = await insertItemQuery(trx, {
+			...ItemSchema.parse(data),
+			id: createId(),
+			createdByAccountId: account.id,
+			updatedByAccountId: account.id,
+		}).executeTakeFirstOrThrow();
+		const optionRow = await insertOptionQuery(trx, {
+			...OptionSchema.parse(data),
+			itemId: item.id,
+		}).executeTakeFirstOrThrow();
 		return {
 			...optionRow,
 			...item,
@@ -59,8 +53,8 @@ const insertOptionItem = async (data: OptionItem): Promise<OptionItem> => {
 const updateOptionItem = async (id: string, data: Partial<OptionItem>): Promise<OptionItem> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
-		const optionRow = await updateOption(id, OptionSchema.parse(data), trx);
-		const item = await updateItem(id, ItemSchema.parse(data), trx);
+		const optionRow = await updateOptionQuery(trx, id, OptionSchema.parse(data)).executeTakeFirstOrThrow();
+		const item = await updateItemQuery(trx, id, ItemSchema.parse(data)).executeTakeFirstOrThrow();
 		return {
 			...optionRow,
 			...item,
@@ -71,13 +65,14 @@ const updateOptionItem = async (id: string, data: Partial<OptionItem>): Promise<
 const deleteOptionItem = async (id: string): Promise<OptionItem | undefined> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
-		await deleteOption(id, trx);
-		await deleteItem(id, trx);
+		await deleteOptionQuery(trx, id).executeTakeFirst();
+		await deleteItemQuery(trx, id).executeTakeFirst();
 		return undefined;
 	});
 };
 
 export const OPTION_DATA_CONFIG: TableDataConfig<OptionItem, option> = (dictionary) => ({
+	tableName: "option",
 	inheritsFrom: { table: "item", via: "itemId" },
 	dictionary: dictionary().db.option,
 	dataSchema: OptionItemSchema,
@@ -86,8 +81,8 @@ export const OPTION_DATA_CONFIG: TableDataConfig<OptionItem, option> = (dictiona
 	queries: {
 		get: (db, id) => selectOptionItemQuery(db).where("option.itemId", "=", id),
 		getAll: selectOptionItemQuery,
-		getParentsById: repositoryQueries.option.getParentsById,
-		getChildrenById: repositoryQueries.option.getChildrenById,
+		getParentsById: repositoryReaders.option.getParentsById,
+		getChildrenById: repositoryReaders.option.getChildrenById,
 	},
 	fieldGroupMap: {
 		基本信息: ["name", "baseAbi", "itemSourceType", "dataSources", "details"],
@@ -129,6 +124,6 @@ export const OPTION_DATA_CONFIG: TableDataConfig<OptionItem, option> = (dictiona
 		hiddenFields: [],
 		fieldGenerator: {},
 		deleteCallback: deleteOptionItem,
-		editAbleCallback: (data) => repositoryMethods.option.canEdit(data.itemId),
+		editAbleCallback: (data) => repositoryWriters.option.canEdit(data.itemId),
 	},
 });

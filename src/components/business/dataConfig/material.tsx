@@ -1,7 +1,7 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
-import { deleteItem, insertItem, updateItem } from "@db/generated/repositories/item";
-import { deleteMaterial, insertMaterial, updateMaterial } from "@db/generated/repositories/material";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
+import { deleteItemQuery, insertItemQuery, updateItemQuery } from "@db/generated/repositories/item";
+import { deleteMaterialQuery, insertMaterialQuery, updateMaterialQuery } from "@db/generated/repositories/material";
 import { ItemSchema, MaterialSchema, type material } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -32,22 +32,16 @@ const insertMaterialItem = async (data: MaterialItem): Promise<MaterialItem> => 
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
 		const { account } = await getUserContext(trx);
-		const item = await insertItem(
-			{
-				...ItemSchema.parse(data),
-				id: createId(),
-				createdByAccountId: account.id,
-				updatedByAccountId: account.id,
-			},
-			trx,
-		);
-		const materialRow = await insertMaterial(
-			{
-				...MaterialSchema.parse(data),
-				itemId: item.id,
-			},
-			trx,
-		);
+		const item = await insertItemQuery(trx, {
+			...ItemSchema.parse(data),
+			id: createId(),
+			createdByAccountId: account.id,
+			updatedByAccountId: account.id,
+		}).executeTakeFirstOrThrow();
+		const materialRow = await insertMaterialQuery(trx, {
+			...MaterialSchema.parse(data),
+			itemId: item.id,
+		}).executeTakeFirstOrThrow();
 		return {
 			...materialRow,
 			...item,
@@ -58,8 +52,8 @@ const insertMaterialItem = async (data: MaterialItem): Promise<MaterialItem> => 
 const updateMaterialItem = async (id: string, data: Partial<MaterialItem>): Promise<MaterialItem> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
-		const materialRow = await updateMaterial(id, MaterialSchema.parse(data), trx);
-		const item = await updateItem(id, ItemSchema.parse(data), trx);
+		const materialRow = await updateMaterialQuery(trx, id, MaterialSchema.parse(data)).executeTakeFirstOrThrow();
+		const item = await updateItemQuery(trx, id, ItemSchema.parse(data)).executeTakeFirstOrThrow();
 		return {
 			...materialRow,
 			...item,
@@ -70,13 +64,14 @@ const updateMaterialItem = async (id: string, data: Partial<MaterialItem>): Prom
 const deleteMaterialItem = async (id: string): Promise<MaterialItem | undefined> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
-		await deleteMaterial(id, trx);
-		await deleteItem(id, trx);
+		await deleteMaterialQuery(trx, id).executeTakeFirst();
+		await deleteItemQuery(trx, id).executeTakeFirst();
 		return undefined;
 	});
 };
 
 export const MATERIAL_DATA_CONFIG: TableDataConfig<MaterialItem, material> = (dictionary) => ({
+	tableName: "material",
 	inheritsFrom: { table: "item", via: "itemId" },
 	dictionary: dictionary().db.material,
 	dataSchema: MaterialItemSchema,
@@ -85,8 +80,8 @@ export const MATERIAL_DATA_CONFIG: TableDataConfig<MaterialItem, material> = (di
 	queries: {
 		get: (db, id) => selectMaterialItemQuery(db).where("material.itemId", "=", id),
 		getAll: selectMaterialItemQuery,
-		getParentsById: repositoryQueries.material.getParentsById,
-		getChildrenById: repositoryQueries.material.getChildrenById,
+		getParentsById: repositoryReaders.material.getParentsById,
+		getChildrenById: repositoryReaders.material.getChildrenById,
 	},
 	fieldGroupMap: {
 		基本信息: ["name", "type", "price", "ptValue", "itemSourceType", "dataSources", "details"],
@@ -115,6 +110,6 @@ export const MATERIAL_DATA_CONFIG: TableDataConfig<MaterialItem, material> = (di
 		hiddenFields: [],
 		fieldGenerator: {},
 		deleteCallback: deleteMaterialItem,
-		editAbleCallback: (data) => repositoryMethods.material.canEdit(data.itemId),
+		editAbleCallback: (data) => repositoryWriters.material.canEdit(data.itemId),
 	},
 });

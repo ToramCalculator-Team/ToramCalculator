@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
 import { BehaviorTreeSchema, type behavior_tree } from "@db/generated/zod";
 import { createSignal } from "solid-js";
 import { Input } from "~/components/controls/input";
@@ -40,11 +40,12 @@ const createAttributeSlotsField = (context: FormFieldRendererContext<behavior_tr
 };
 
 export const BEHAVIOR_TREE_DATA_CONFIG: TableDataConfig<behavior_tree> = (dictionary) => ({
+	tableName: "behavior_tree",
 	dictionary: dictionary().db.behavior_tree,
 	dataSchema: BehaviorTreeSchema,
 	primaryKey: "id",
 	defaultData: defaultData.behavior_tree,
-	queries: repositoryQueries.behavior_tree,
+	queries: repositoryReaders.behavior_tree,
 	fieldGroupMap: {
 		ID: ["id"],
 		基础信息: ["name", "definition", "agent", "attributeSlots"],
@@ -84,8 +85,8 @@ export const BEHAVIOR_TREE_DATA_CONFIG: TableDataConfig<behavior_tree> = (dictio
 				attributeSlots: createAttributeSlotsField,
 			},
 		},
-		onInsert: repositoryMethods.behavior_tree.insert,
-		onUpdate: repositoryMethods.behavior_tree.update,
+		onInsert: repositoryWriters.behavior_tree.create,
+		onUpdate: repositoryWriters.behavior_tree.update,
 	},
 	card: {
 		hiddenFields: ["id"],
@@ -94,7 +95,7 @@ export const BEHAVIOR_TREE_DATA_CONFIG: TableDataConfig<behavior_tree> = (dictio
 				<pre class="bg-area-color max-h-[50vh] w-full overflow-auto rounded p-3 text-sm">{formatJson(field[key])}</pre>
 			),
 		},
-		deleteCallback: repositoryMethods.behavior_tree.delete,
-		editAbleCallback: (data) => repositoryMethods.behavior_tree.canEdit(data.id),
+		deleteCallback: repositoryWriters.behavior_tree.delete,
+		editAbleCallback: (data) => repositoryWriters.behavior_tree.canEdit(data.id),
 	},
 });

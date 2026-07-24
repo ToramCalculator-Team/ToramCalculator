@@ -1,16 +1,17 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
 import { CharacterSchema, type character } from "@db/generated/zod";
 import { createId } from "@paralleldrive/cuid2";
 import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
 import type { TableDataConfig } from "../data-config";
 
 export const CHARACTER_DATA_CONFIG: TableDataConfig<character> = (dictionary) => ({
+	tableName: "character",
 	dictionary: dictionary().db.character,
 	dataSchema: CharacterSchema,
 	primaryKey: "id",
 	defaultData: defaultData.character,
-	queries: repositoryQueries.character,
+	queries: repositoryReaders.character,
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name", "lv", "str", "int", "vit", "agi", "dex", "personalityType", "personalityValue"],
@@ -49,13 +50,13 @@ export const CHARACTER_DATA_CONFIG: TableDataConfig<character> = (dictionary) =>
 	},
 	form: {
 		hiddenFields: ["id", "createdAt", "updatedAt"],
-		onInsert: (data) => repositoryMethods.character.insert({ ...data, id: createId() }),
-		onUpdate: repositoryMethods.character.update,
+		onInsert: (data) => repositoryWriters.character.create({ ...data, id: createId() }),
+		onUpdate: repositoryWriters.character.update,
 	},
 	card: {
 		hiddenFields: [],
 		fieldGenerator: {},
-		deleteCallback: repositoryMethods.character.delete,
-		editAbleCallback: (data) => repositoryMethods.character.canEdit(data.id),
+		deleteCallback: repositoryWriters.character.delete,
+		editAbleCallback: (data) => repositoryWriters.character.canEdit(data.id),
 	},
 });

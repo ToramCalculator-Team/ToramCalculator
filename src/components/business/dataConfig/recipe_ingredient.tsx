@@ -1,14 +1,15 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
 import { RecipeIngredientSchema, type recipe_ingredient } from "@db/generated/zod";
 import type { TableDataConfig } from "../data-config";
 
 export const RECIPE_INGREDIENT_DATA_CONFIG: TableDataConfig<recipe_ingredient> = (dictionary) => ({
+	tableName: "recipe_ingredient",
 	dictionary: dictionary().db.recipe_ingredient,
 	dataSchema: RecipeIngredientSchema,
 	primaryKey: "id",
 	defaultData: defaultData.recipe_ingredient,
-	queries: repositoryQueries.recipe_ingredient,
+	queries: repositoryReaders.recipe_ingredient,
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["count", "type", "itemId"],
@@ -26,13 +27,13 @@ export const RECIPE_INGREDIENT_DATA_CONFIG: TableDataConfig<recipe_ingredient> =
 	},
 	form: {
 		hiddenFields: ["id"],
-		onInsert: repositoryMethods.recipe_ingredient.insert,
-		onUpdate: repositoryMethods.recipe_ingredient.update,
+		onInsert: repositoryWriters.recipe_ingredient.create,
+		onUpdate: repositoryWriters.recipe_ingredient.update,
 	},
 	card: {
 		hiddenFields: ["id"],
 		fieldGenerator: {},
-		deleteCallback: repositoryMethods.recipe_ingredient.delete,
-		editAbleCallback: (data) => repositoryMethods.recipe_ingredient.canEdit(data.id),
+		deleteCallback: repositoryWriters.recipe_ingredient.delete,
+		editAbleCallback: (data) => repositoryWriters.recipe_ingredient.canEdit(data.id),
 	},
 });

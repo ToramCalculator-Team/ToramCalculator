@@ -1,7 +1,7 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
-import { deleteCrystal, insertCrystal, updateCrystal } from "@db/generated/repositories/crystal";
-import { deleteItem, insertItem, updateItem } from "@db/generated/repositories/item";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
+import { deleteCrystalQuery, insertCrystalQuery, updateCrystalQuery } from "@db/generated/repositories/crystal";
+import { deleteItemQuery, insertItemQuery, updateItemQuery } from "@db/generated/repositories/item";
 import { CrystalSchema, type crystal, ItemSchema } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -34,22 +34,16 @@ const insertCrystalItem = async (data: CrystalItem): Promise<CrystalItem> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
 		const { account } = await getUserContext(trx);
-		const item = await insertItem(
-			{
-				...ItemSchema.parse(data),
-				id: createId(),
-				createdByAccountId: account.id,
-				updatedByAccountId: account.id,
-			},
-			trx,
-		);
-		const crystalRow = await insertCrystal(
-			{
-				...CrystalSchema.parse(data),
-				itemId: item.id,
-			},
-			trx,
-		);
+		const item = await insertItemQuery(trx, {
+			...ItemSchema.parse(data),
+			id: createId(),
+			createdByAccountId: account.id,
+			updatedByAccountId: account.id,
+		}).executeTakeFirstOrThrow();
+		const crystalRow = await insertCrystalQuery(trx, {
+			...CrystalSchema.parse(data),
+			itemId: item.id,
+		}).executeTakeFirstOrThrow();
 		return {
 			...crystalRow,
 			...item,
@@ -60,8 +54,8 @@ const insertCrystalItem = async (data: CrystalItem): Promise<CrystalItem> => {
 const updateCrystalItem = async (id: string, data: Partial<CrystalItem>): Promise<CrystalItem> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
-		const crystalRow = await updateCrystal(id, CrystalSchema.parse(data), trx);
-		const item = await updateItem(id, ItemSchema.parse(data), trx);
+		const crystalRow = await updateCrystalQuery(trx, id, CrystalSchema.parse(data)).executeTakeFirstOrThrow();
+		const item = await updateItemQuery(trx, id, ItemSchema.parse(data)).executeTakeFirstOrThrow();
 		return {
 			...crystalRow,
 			...item,
@@ -72,13 +66,14 @@ const updateCrystalItem = async (id: string, data: Partial<CrystalItem>): Promis
 const deleteCrystalItem = async (id: string): Promise<CrystalItem | undefined> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
-		await deleteCrystal(id, trx);
-		await deleteItem(id, trx);
+		await deleteCrystalQuery(trx, id).executeTakeFirst();
+		await deleteItemQuery(trx, id).executeTakeFirst();
 		return undefined;
 	});
 };
 
 export const CRYSTAL_DATA_CONFIG: TableDataConfig<CrystalItem, crystal> = (dictionary) => ({
+	tableName: "crystal",
 	inheritsFrom: { table: "item", via: "itemId" },
 	dictionary: dictionary().db.crystal,
 	dataSchema: CrystalItemSchema,
@@ -87,8 +82,8 @@ export const CRYSTAL_DATA_CONFIG: TableDataConfig<CrystalItem, crystal> = (dicti
 	queries: {
 		get: (db, id) => selectCrystalItemQuery(db).where("crystal.itemId", "=", id),
 		getAll: selectCrystalItemQuery,
-		getParentsById: repositoryQueries.crystal.getParentsById,
-		getChildrenById: repositoryQueries.crystal.getChildrenById,
+		getParentsById: repositoryReaders.crystal.getParentsById,
+		getChildrenById: repositoryReaders.crystal.getChildrenById,
 	},
 	fieldGroupMap: {
 		基本信息: ["name", "type", "itemSourceType", "dataSources", "details", "modifiers"],
@@ -144,6 +139,6 @@ export const CRYSTAL_DATA_CONFIG: TableDataConfig<CrystalItem, crystal> = (dicti
 			},
 		},
 		deleteCallback: deleteCrystalItem,
-		editAbleCallback: (data) => repositoryMethods.crystal.canEdit(data.itemId),
+		editAbleCallback: (data) => repositoryWriters.crystal.canEdit(data.itemId),
 	},
 });

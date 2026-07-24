@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
 import { ZoneSchema, type zone } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -7,11 +7,12 @@ import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
 export const ZONE_DATA_CONFIG: TableDataConfig<zone> = (dictionary) => ({
+	tableName: "zone",
 	dictionary: dictionary().db.zone,
 	dataSchema: ZoneSchema,
 	primaryKey: "id",
 	defaultData: defaultData.zone,
-	queries: repositoryQueries.zone,
+	queries: repositoryReaders.zone,
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name", "rewardNodes"],
@@ -70,7 +71,7 @@ export const ZONE_DATA_CONFIG: TableDataConfig<zone> = (dictionary) => ({
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				return repositoryMethods.zone.insert(
+				return repositoryWriters.zone.create(
 					{
 						...data,
 						id: createId(),
@@ -85,14 +86,14 @@ export const ZONE_DATA_CONFIG: TableDataConfig<zone> = (dictionary) => ({
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				return repositoryMethods.zone.update(id, { ...data, updatedByAccountId: account.id }, trx);
+				return repositoryWriters.zone.update(id, { ...data, updatedByAccountId: account.id }, trx);
 			});
 		},
 	},
 	card: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
 		fieldGenerator: {},
-		deleteCallback: repositoryMethods.zone.delete,
-		editAbleCallback: (data) => repositoryMethods.zone.canEdit(data.id),
+		deleteCallback: repositoryWriters.zone.delete,
+		editAbleCallback: (data) => repositoryWriters.zone.canEdit(data.id),
 	},
 });

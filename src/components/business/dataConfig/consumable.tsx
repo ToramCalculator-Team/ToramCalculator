@@ -1,7 +1,11 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
-import { deleteConsumable, insertConsumable, updateConsumable } from "@db/generated/repositories/consumable";
-import { deleteItem, insertItem, updateItem } from "@db/generated/repositories/item";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
+import {
+	deleteConsumableQuery,
+	insertConsumableQuery,
+	updateConsumableQuery,
+} from "@db/generated/repositories/consumable";
+import { deleteItemQuery, insertItemQuery, updateItemQuery } from "@db/generated/repositories/item";
 import { ConsumableSchema, type consumable, ItemSchema } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -32,22 +36,16 @@ const insertConsumableItem = async (data: ConsumableItem): Promise<ConsumableIte
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
 		const { account } = await getUserContext(trx);
-		const item = await insertItem(
-			{
-				...ItemSchema.parse(data),
-				id: createId(),
-				createdByAccountId: account.id,
-				updatedByAccountId: account.id,
-			},
-			trx,
-		);
-		const consumableRow = await insertConsumable(
-			{
-				...ConsumableSchema.parse(data),
-				itemId: item.id,
-			},
-			trx,
-		);
+		const item = await insertItemQuery(trx, {
+			...ItemSchema.parse(data),
+			id: createId(),
+			createdByAccountId: account.id,
+			updatedByAccountId: account.id,
+		}).executeTakeFirstOrThrow();
+		const consumableRow = await insertConsumableQuery(trx, {
+			...ConsumableSchema.parse(data),
+			itemId: item.id,
+		}).executeTakeFirstOrThrow();
 		return {
 			...consumableRow,
 			...item,
@@ -58,8 +56,8 @@ const insertConsumableItem = async (data: ConsumableItem): Promise<ConsumableIte
 const updateConsumableItem = async (id: string, data: Partial<ConsumableItem>): Promise<ConsumableItem> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
-		const consumableRow = await updateConsumable(id, ConsumableSchema.parse(data), trx);
-		const item = await updateItem(id, ItemSchema.parse(data), trx);
+		const consumableRow = await updateConsumableQuery(trx, id, ConsumableSchema.parse(data)).executeTakeFirstOrThrow();
+		const item = await updateItemQuery(trx, id, ItemSchema.parse(data)).executeTakeFirstOrThrow();
 		return {
 			...consumableRow,
 			...item,
@@ -70,13 +68,14 @@ const updateConsumableItem = async (id: string, data: Partial<ConsumableItem>): 
 const deleteConsumableItem = async (id: string): Promise<ConsumableItem | undefined> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
-		await deleteConsumable(id, trx);
-		await deleteItem(id, trx);
+		await deleteConsumableQuery(trx, id).executeTakeFirst();
+		await deleteItemQuery(trx, id).executeTakeFirst();
 		return undefined;
 	});
 };
 
 export const CONSUMABLE_DATA_CONFIG: TableDataConfig<ConsumableItem, consumable> = (dictionary) => ({
+	tableName: "consumable",
 	inheritsFrom: { table: "item", via: "itemId" },
 	dictionary: dictionary().db.consumable,
 	dataSchema: ConsumableItemSchema,
@@ -85,8 +84,8 @@ export const CONSUMABLE_DATA_CONFIG: TableDataConfig<ConsumableItem, consumable>
 	queries: {
 		get: (db, id) => selectConsumableItemQuery(db).where("consumable.itemId", "=", id),
 		getAll: selectConsumableItemQuery,
-		getParentsById: repositoryQueries.consumable.getParentsById,
-		getChildrenById: repositoryQueries.consumable.getChildrenById,
+		getParentsById: repositoryReaders.consumable.getParentsById,
+		getChildrenById: repositoryReaders.consumable.getChildrenById,
 	},
 	fieldGroupMap: {
 		基本信息: ["name", "type", "itemSourceType", "dataSources", "details"],
@@ -120,6 +119,6 @@ export const CONSUMABLE_DATA_CONFIG: TableDataConfig<ConsumableItem, consumable>
 		hiddenFields: [],
 		fieldGenerator: {},
 		deleteCallback: deleteConsumableItem,
-		editAbleCallback: (data) => repositoryMethods.consumable.canEdit(data.itemId),
+		editAbleCallback: (data) => repositoryWriters.consumable.canEdit(data.itemId),
 	},
 });

@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
 import { ActivitySchema, type activity } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -7,11 +7,12 @@ import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
 export const ACTIVITY_DATA_CONFIG: TableDataConfig<activity> = (dictionary) => ({
+	tableName: "activity",
 	dictionary: dictionary().db.activity,
 	dataSchema: ActivitySchema,
 	primaryKey: "id",
 	defaultData: defaultData.activity,
-	queries: repositoryQueries.activity,
+	queries: repositoryReaders.activity,
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name"],
@@ -40,7 +41,7 @@ export const ACTIVITY_DATA_CONFIG: TableDataConfig<activity> = (dictionary) => (
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				const activity = await repositoryMethods.activity.insert(
+				const activity = await repositoryWriters.activity.create(
 					{
 						...data,
 						id: createId(),
@@ -52,12 +53,12 @@ export const ACTIVITY_DATA_CONFIG: TableDataConfig<activity> = (dictionary) => (
 				return activity;
 			});
 		},
-		onUpdate: repositoryMethods.activity.update,
+		onUpdate: repositoryWriters.activity.update,
 	},
 	card: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
 		fieldGenerator: {},
-		deleteCallback: repositoryMethods.activity.delete,
-		editAbleCallback: (data) => repositoryMethods.activity.canEdit(data.id),
+		deleteCallback: repositoryWriters.activity.delete,
+		editAbleCallback: (data) => repositoryWriters.activity.canEdit(data.id),
 	},
 });

@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
 import { NpcSchema, type npc } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -7,11 +7,12 @@ import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
 export const NPC_DATA_CONFIG: TableDataConfig<npc> = (dictionary) => ({
+	tableName: "npc",
 	dictionary: dictionary().db.npc,
 	dataSchema: NpcSchema,
 	primaryKey: "id",
 	defaultData: defaultData.npc,
-	queries: repositoryQueries.npc,
+	queries: repositoryReaders.npc,
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["name"],
@@ -34,7 +35,7 @@ export const NPC_DATA_CONFIG: TableDataConfig<npc> = (dictionary) => ({
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				return repositoryMethods.npc.insert(
+				return repositoryWriters.npc.create(
 					{
 						...data,
 						id: createId(),
@@ -49,14 +50,14 @@ export const NPC_DATA_CONFIG: TableDataConfig<npc> = (dictionary) => ({
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				return repositoryMethods.npc.update(id, { ...data, updatedByAccountId: account.id }, trx);
+				return repositoryWriters.npc.update(id, { ...data, updatedByAccountId: account.id }, trx);
 			});
 		},
 	},
 	card: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
 		fieldGenerator: {},
-		deleteCallback: repositoryMethods.npc.delete,
-		editAbleCallback: (data) => repositoryMethods.npc.canEdit(data.id),
+		deleteCallback: repositoryWriters.npc.delete,
+		editAbleCallback: (data) => repositoryWriters.npc.canEdit(data.id),
 	},
 });

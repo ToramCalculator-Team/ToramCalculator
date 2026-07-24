@@ -1,14 +1,15 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
 import { DropItemSchema, type drop_item } from "@db/generated/zod";
 import type { TableDataConfig } from "../data-config";
 
 export const DROP_ITEM_DATA_CONFIG: TableDataConfig<drop_item> = (dictionary) => ({
+	tableName: "drop_item",
 	dictionary: dictionary().db.drop_item,
 	dataSchema: DropItemSchema,
 	primaryKey: "id",
 	defaultData: defaultData.drop_item,
-	queries: repositoryQueries.drop_item,
+	queries: repositoryReaders.drop_item,
 	fieldGroupMap: {
 		ID: ["id"],
 		基本信息: ["probability", "relatedPartType", "relatedPartInfo", "breakRewardType"],
@@ -23,13 +24,13 @@ export const DROP_ITEM_DATA_CONFIG: TableDataConfig<drop_item> = (dictionary) =>
 	},
 	form: {
 		hiddenFields: ["id"],
-		onInsert: repositoryMethods.drop_item.insert,
-		onUpdate: repositoryMethods.drop_item.update,
+		onInsert: repositoryWriters.drop_item.create,
+		onUpdate: repositoryWriters.drop_item.update,
 	},
 	card: {
 		hiddenFields: ["id"],
 		fieldGenerator: {},
-		deleteCallback: repositoryMethods.drop_item.delete,
-		editAbleCallback: (data) => repositoryMethods.drop_item.canEdit(data.id),
+		deleteCallback: repositoryWriters.drop_item.delete,
+		editAbleCallback: (data) => repositoryWriters.drop_item.canEdit(data.id),
 	},
 });

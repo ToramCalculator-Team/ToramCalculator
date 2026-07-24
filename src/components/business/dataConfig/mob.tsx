@@ -1,5 +1,5 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
 import { MobSchema, type mob } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import type { ElementType, MemberType, MobType } from "@db/schema/enums";
@@ -18,11 +18,12 @@ import type { TableDataConfig } from "../data-config";
 import { getUserContext } from "../utils/context";
 
 export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
+	tableName: "mob",
 	dictionary: dictionary().db.mob,
 	dataSchema: MobSchema,
 	primaryKey: "id",
 	defaultData: defaultData.mob,
-	queries: repositoryQueries.mob,
+	queries: repositoryReaders.mob,
 	fieldGroupMap: {
 		ID: ["id"],
 		常规属性: ["name", "baseLv", "experience", "partsExperience", "maxhp"],
@@ -286,7 +287,7 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 			const db = await getDB();
 			return db.transaction().execute(async (trx) => {
 				const { account } = await getUserContext(trx);
-				const mob = await repositoryMethods.mob.insert(
+				const mob = await repositoryWriters.mob.create(
 					{
 						...data,
 						id: createId(),
@@ -298,7 +299,7 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 				return mob;
 			});
 		},
-		onUpdate: repositoryMethods.mob.update,
+		onUpdate: repositoryWriters.mob.update,
 	},
 	card: {
 		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
@@ -370,7 +371,7 @@ export const MOB_DATA_CONFIG: TableDataConfig<mob> = (dictionary) => ({
 			);
 		},
 		fieldGenerator: {},
-		deleteCallback: repositoryMethods.mob.delete,
-		editAbleCallback: (data) => repositoryMethods.mob.canEdit(data.id),
+		deleteCallback: repositoryWriters.mob.delete,
+		editAbleCallback: (data) => repositoryWriters.mob.canEdit(data.id),
 	},
 });

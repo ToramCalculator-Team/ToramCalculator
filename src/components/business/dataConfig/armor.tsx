@@ -1,7 +1,7 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
-import { deleteArmor, insertArmor, updateArmor } from "@db/generated/repositories/armor";
-import { deleteItem, insertItem, updateItem } from "@db/generated/repositories/item";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
+import { deleteArmorQuery, insertArmorQuery, updateArmorQuery } from "@db/generated/repositories/armor";
+import { deleteItemQuery, insertItemQuery, updateItemQuery } from "@db/generated/repositories/item";
 import { ArmorSchema, type armor, ItemSchema } from "@db/generated/zod";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
@@ -33,22 +33,16 @@ const insertArmorItem = async (data: ArmorItem): Promise<ArmorItem> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
 		const { account } = await getUserContext(trx);
-		const item = await insertItem(
-			{
-				...ItemSchema.parse(data),
-				id: createId(),
-				createdByAccountId: account.id,
-				updatedByAccountId: account.id,
-			},
-			trx,
-		);
-		const armorRow = await insertArmor(
-			{
-				...ArmorSchema.parse(data),
-				itemId: item.id,
-			},
-			trx,
-		);
+		const item = await insertItemQuery(trx, {
+			...ItemSchema.parse(data),
+			id: createId(),
+			createdByAccountId: account.id,
+			updatedByAccountId: account.id,
+		}).executeTakeFirstOrThrow();
+		const armorRow = await insertArmorQuery(trx, {
+			...ArmorSchema.parse(data),
+			itemId: item.id,
+		}).executeTakeFirstOrThrow();
 		return {
 			...armorRow,
 			...item,
@@ -59,8 +53,8 @@ const insertArmorItem = async (data: ArmorItem): Promise<ArmorItem> => {
 const updateArmorItem = async (id: string, data: Partial<ArmorItem>): Promise<ArmorItem> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
-		const armorRow = await updateArmor(id, ArmorSchema.parse(data), trx);
-		const item = await updateItem(id, ItemSchema.parse(data), trx);
+		const armorRow = await updateArmorQuery(trx, id, ArmorSchema.parse(data)).executeTakeFirstOrThrow();
+		const item = await updateItemQuery(trx, id, ItemSchema.parse(data)).executeTakeFirstOrThrow();
 		return {
 			...armorRow,
 			...item,
@@ -71,13 +65,14 @@ const updateArmorItem = async (id: string, data: Partial<ArmorItem>): Promise<Ar
 const deleteArmorItem = async (id: string): Promise<ArmorItem | undefined> => {
 	const db = await getDB();
 	return await db.transaction().execute(async (trx) => {
-		await deleteArmor(id, trx);
-		await deleteItem(id, trx);
+		await deleteArmorQuery(trx, id).executeTakeFirst();
+		await deleteItemQuery(trx, id).executeTakeFirst();
 		return undefined;
 	});
 };
 
 export const ARMOR_DATA_CONFIG: TableDataConfig<ArmorItem, armor> = (dictionary) => ({
+	tableName: "armor",
 	inheritsFrom: { table: "item", via: "itemId" },
 	dictionary: dictionary().db.armor,
 	dataSchema: ArmorItemSchema,
@@ -86,8 +81,8 @@ export const ARMOR_DATA_CONFIG: TableDataConfig<ArmorItem, armor> = (dictionary)
 	queries: {
 		get: (db, id) => selectArmorItemQuery(db).where("armor.itemId", "=", id),
 		getAll: selectArmorItemQuery,
-		getParentsById: repositoryQueries.armor.getParentsById,
-		getChildrenById: repositoryQueries.armor.getChildrenById,
+		getParentsById: repositoryReaders.armor.getParentsById,
+		getChildrenById: repositoryReaders.armor.getChildrenById,
 	},
 	fieldGroupMap: {
 		基本信息: ["name", "baseAbi", "itemSourceType", "dataSources", "details"],
@@ -118,6 +113,6 @@ export const ARMOR_DATA_CONFIG: TableDataConfig<ArmorItem, armor> = (dictionary)
 		hiddenFields: [],
 		fieldGenerator: {},
 		deleteCallback: deleteArmorItem,
-		editAbleCallback: (data) => repositoryMethods.armor.canEdit(data.itemId),
+		editAbleCallback: (data) => repositoryWriters.armor.canEdit(data.itemId),
 	},
 });
