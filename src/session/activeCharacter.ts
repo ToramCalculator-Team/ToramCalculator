@@ -1,7 +1,8 @@
-import { type Character, selectAllCharactersByBelongtoplayerid } from "@db/generated/repositories/character";
+import { type Character, selectAllCharactersByBelongtoplayeridQuery } from "@db/generated/repositories/character";
 import type { Player } from "@db/generated/repositories/player";
 import type { DB } from "@db/generated/zod/index";
 import { findAccountById } from "@db/repositories/account";
+import { getDB } from "@db/repositories/database";
 import type { Transaction } from "kysely";
 import { ensureAccountPlayer } from "./accountPlayer";
 
@@ -15,7 +16,8 @@ const sortById = <T extends { id: string }>(rows: T[]): T[] => {
 };
 
 export async function resolvePlayerActiveCharacter(player: Player, trx?: Transaction<DB>): Promise<Character | null> {
-	const characters = await selectAllCharactersByBelongtoplayerid(player.id, trx);
+	const db = trx || (await getDB());
+	const characters = await selectAllCharactersByBelongtoplayeridQuery(db, player.id).execute();
 	if (characters.length === 0) return null;
 
 	const activeCharacter = player.useIn ? characters.find((candidate) => candidate.id === player.useIn) : undefined;

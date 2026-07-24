@@ -39,9 +39,7 @@ export const SubtreeNavBar: Component<{
 							<div
 								data-bt-subtree-root-key={item().rootKey}
 								class={`group flex h-full max-w-56 min-w-28 items-center border-r border-dividing-color ${
-									active()
-										? "bg-primary-color border-b-4 border-b-accent-color"
-										: "bg-area-color"
+									active() ? "bg-primary-color border-b-4 border-b-accent-color" : "bg-area-color"
 								}`}
 							>
 								<button

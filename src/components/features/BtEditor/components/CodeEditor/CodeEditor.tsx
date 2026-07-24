@@ -336,9 +336,8 @@ const validateMdslModel = (model: monaco.editor.ITextModel) => {
 			const providedArgs = args.slice(1);
 			const requiredCount = getRequiredParamCount(spec);
 			if (providedArgs.length < requiredCount || providedArgs.length > spec.params.length) {
-				const expected = requiredCount === spec.params.length
-					? `${spec.params.length}`
-					: `${requiredCount}~${spec.params.length}`;
+				const expected =
+					requiredCount === spec.params.length ? `${spec.params.length}` : `${requiredCount}~${spec.params.length}`;
 				pushMarker(
 					monaco.MarkerSeverity.Error,
 					`${kind === "action" ? "动作" : "条件"}「${name}」参数数量不匹配：期望 ${expected} 个，实际 ${providedArgs.length} 个`,
@@ -393,9 +392,8 @@ const validateMdslModel = (model: monaco.editor.ITextModel) => {
 			const providedArgs = args.slice(1);
 			const requiredCount = getRequiredParamCount(spec);
 			if (providedArgs.length < requiredCount || providedArgs.length > spec.params.length) {
-				const expected = requiredCount === spec.params.length
-					? `${spec.params.length}`
-					: `${requiredCount}~${spec.params.length}`;
+				const expected =
+					requiredCount === spec.params.length ? `${spec.params.length}` : `${requiredCount}~${spec.params.length}`;
 				pushMarker(
 					monaco.MarkerSeverity.Error,
 					`${kw}「${name}」参数数量不匹配：期望 ${expected} 个，实际 ${providedArgs.length} 个`,

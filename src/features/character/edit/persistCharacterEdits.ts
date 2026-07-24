@@ -1,8 +1,8 @@
-import { updateCharacter } from "@db/generated/repositories/character";
+import { updateCharacterQuery } from "@db/generated/repositories/character";
 import {
-	deleteCharacterSkill,
-	insertCharacterSkill,
-	updateCharacterSkill,
+	deleteCharacterSkillQuery,
+	insertCharacterSkillQuery,
+	updateCharacterSkillQuery,
 } from "@db/generated/repositories/character_skill";
 import type { character, DB } from "@db/generated/zod/index";
 import { createId } from "@paralleldrive/cuid2";
@@ -26,22 +26,21 @@ async function persistCharacterSkillPlan(
 	if (plan.deletes.length > 0) {
 		// combo_step 依赖 character_skill；同一事务先删除引用行，使服务端仍能按合法外键顺序重放。
 		await transaction.deleteFrom("combo_step").where("characterSkillId", "in", plan.deletes).execute();
-		for (const characterSkillId of plan.deletes) await deleteCharacterSkill(characterSkillId, transaction);
+		for (const characterSkillId of plan.deletes) {
+			await deleteCharacterSkillQuery(transaction, characterSkillId).executeTakeFirst();
+		}
 	}
 	for (const update of plan.updates) {
-		await updateCharacterSkill(update.characterSkillId, { lv: update.lv }, transaction);
+		await updateCharacterSkillQuery(transaction, update.characterSkillId, { lv: update.lv }).executeTakeFirstOrThrow();
 	}
 	for (const insert of plan.inserts) {
-		await insertCharacterSkill(
-			{
-				id: createCharacterSkillId(),
-				lv: insert.lv,
-				isStarGem: false,
-				templateId: insert.templateId,
-				belongToCharacterId: characterId,
-			},
-			transaction,
-		);
+		await insertCharacterSkillQuery(transaction, {
+			id: createCharacterSkillId(),
+			lv: insert.lv,
+			isStarGem: false,
+			templateId: insert.templateId,
+			belongToCharacterId: characterId,
+		}).executeTakeFirstOrThrow();
 	}
 }
 
@@ -55,7 +54,7 @@ async function updateNumericField(
 	if (current[field] === nextValue) return;
 	// 类型说明：field 已由 CharacterNumericField 白名单约束，计算属性只可能生成一个合法数值列 patch。
 	const patch = { [field]: nextValue } as Pick<character, CharacterNumericField>;
-	await updateCharacter(characterId, patch, transaction);
+	await updateCharacterQuery(transaction, characterId, patch).executeTakeFirstOrThrow();
 	current[field] = nextValue;
 }
 
@@ -102,7 +101,7 @@ export async function persistCharacterEditBatch(
 
 			if (edit.type === "character.fields.update") {
 				if (Object.keys(edit.patch).length === 0) continue;
-				await updateCharacter(characterId, edit.patch, transaction);
+				await updateCharacterQuery(transaction, characterId, edit.patch).executeTakeFirstOrThrow();
 				Object.assign(current, edit.patch);
 				continue;
 			}
@@ -111,7 +110,7 @@ export async function persistCharacterEditBatch(
 				if (current.personalityType === next.personalityType && current.personalityValue === next.personalityValue) {
 					continue;
 				}
-				await updateCharacter(characterId, next, transaction);
+				await updateCharacterQuery(transaction, characterId, next).executeTakeFirstOrThrow();
 				current.personalityType = next.personalityType;
 				current.personalityValue = next.personalityValue;
 				continue;

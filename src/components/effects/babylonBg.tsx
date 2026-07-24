@@ -6,6 +6,7 @@
 
 import { createEffect, createMemo, createSignal, type JSX, onCleanup, onMount } from "solid-js";
 import { LoadingBar } from "~/components/controls/loadingBar";
+import type { AbstractEngine, MaterialDefines, Mesh, Nullable, PBRMaterial, SubMesh } from "~/lib/babylon/runtime";
 import {
 	Animation,
 	ArcRotateCamera,
@@ -26,7 +27,6 @@ import {
 	SpotLight,
 	Vector3,
 } from "~/lib/babylon/runtime";
-import type { AbstractEngine, MaterialDefines, Mesh, Nullable, PBRMaterial, SubMesh } from "~/lib/babylon/runtime";
 import { store } from "~/store";
 import { resolveColorSystem } from "~/styles/colorSystem/colorSystemController";
 
@@ -455,9 +455,10 @@ export function BabylonBg(): JSX.Element {
 						defPBR.albedoColor = currentColor;
 						defPBR.markAsDirty(Material.TextureDirtyFlag);
 					}
-					const volumetricFog = defPBR.pluginManager?.getPlugin(
-						"VolumetricFog",
-					) as VolumetricFogPluginMaterial | undefined | null;
+					const volumetricFog = defPBR.pluginManager?.getPlugin("VolumetricFog") as
+						| VolumetricFogPluginMaterial
+						| undefined
+						| null;
 					if (volumetricFog && !volumetricFog.color.equals(currentColor)) {
 						volumetricFog.color = currentColor;
 					}

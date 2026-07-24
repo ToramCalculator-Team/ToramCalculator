@@ -1012,7 +1012,7 @@ function attributeToDefinition(
 	return result;
 }
 
-function withOptionalArgs<T extends Record<string, unknown>>(target: T, args: NodeArgument[]): T {
+function withOptionalArgs<T extends object>(target: T, args: NodeArgument[]): T {
 	if (args.length) {
 		return {
 			...target,

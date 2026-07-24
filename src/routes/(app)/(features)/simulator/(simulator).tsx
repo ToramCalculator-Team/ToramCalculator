@@ -1,7 +1,7 @@
-import { selectAllCharactersByBelongtoplayerid } from "@db/generated/repositories/character";
-import { selectAllSimulators } from "@db/generated/repositories/simulator";
+import { type Character, selectAllCharactersByBelongtoplayeridQuery } from "@db/generated/repositories/character";
+import { type Simulator, selectAllSimulatorsQuery } from "@db/generated/repositories/simulator";
 import { A, useLocation, useNavigate } from "@solidjs/router";
-import { createEffect, createMemo, createResource, createSignal, For, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { Motion } from "solid-motionone";
 import { ConcaveFrame } from "~/components/containers/concaveFrame";
 import { Button } from "~/components/controls/button";
@@ -11,6 +11,7 @@ import { Select } from "~/components/controls/select";
 import { Icons } from "~/components/icons";
 import { createTrainingSimulator } from "~/features/simulator/createTrainingSimulator";
 import { useSimulatorSession } from "~/features/simulator/SimulatorSession";
+import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
 import { setStore, store } from "~/store";
 
 /** 持久 Simulator 选择入口；路由只选择投影身份，会话由应用级 Provider 拥有。 */
@@ -18,14 +19,13 @@ export default function SimulatorPage() {
 	const location = useLocation();
 	const navigate = useNavigate();
 	const session = useSimulatorSession();
-	const [simulators, { refetch: refetchSimulators }] = createResource(
-		() => store.database.hasInitialSnapshot.simulator,
-		async (ready) => (ready ? await selectAllSimulators() : []),
+	const simulators = createLiveKyselyQuery<Simulator>((db) =>
+		store.database.hasInitialSnapshot.simulator ? selectAllSimulatorsQuery(db) : null,
 	);
-	const [characters] = createResource(
-		() => store.session.account.player?.id,
-		async (playerId) => await selectAllCharactersByBelongtoplayerid(playerId),
-	);
+	const characters = createLiveKyselyQuery<Character>((db) => {
+		const playerId = store.session.account.player?.id;
+		return playerId ? selectAllCharactersByBelongtoplayeridQuery(db, playerId) : null;
+	});
 	const [createOpen, setCreateOpen] = createSignal(false);
 	const [name, setName] = createSignal("木桩验证方案");
 	const [characterId, setCharacterId] = createSignal("");
@@ -36,7 +36,7 @@ export default function SimulatorPage() {
 		() => session.snapshot().matches("inactive") || session.snapshot().matches("ready"),
 	);
 	const characterOptions = createMemo(() =>
-		(characters() ?? []).map((character) => ({
+		characters.rows().map((character) => ({
 			label: character.name || "未命名 Character",
 			value: character.id,
 		})),
@@ -69,7 +69,6 @@ export default function SimulatorPage() {
 		try {
 			if (!simulatorDataReady()) throw new Error("Simulator 数据尚未完成首轮同步，请稍后重试");
 			const simulator = await createTrainingSimulator({ name: name(), characterId: characterId() });
-			await refetchSimulators();
 			openSimulator(simulator.id);
 		} catch (error) {
 			setPageError(error instanceof Error ? error.message : String(error));
@@ -175,8 +174,8 @@ export default function SimulatorPage() {
 										value={characterId()}
 										setValue={setCharacterId}
 										options={characterOptions()}
-										placeholder={characters.loading ? "正在加载 Character" : "请选择 Character"}
-										disabled={characters.loading || characterOptions().length === 0}
+										placeholder={characters.status() === "loading" ? "正在加载 Character" : "请选择 Character"}
+										disabled={characters.status() === "loading" || characterOptions().length === 0}
 									/>
 								</div>
 								<Show
@@ -206,7 +205,7 @@ export default function SimulatorPage() {
 						</Show>
 
 						<Show
-							when={simulatorDataReady() && !simulators.loading}
+							when={simulatorDataReady() && simulators.status() !== "loading"}
 							fallback={
 								<ConcaveFrame
 									class="h-[239px] w-full"
@@ -218,7 +217,7 @@ export default function SimulatorPage() {
 							}
 						>
 							<div class="flex landscape:justify-end w-full snap-x snap-mandatory gap-3 overflow-x-auto pb-2">
-								<For each={simulators()}>
+								<For each={simulators.rows()}>
 									{(simulator, index) => (
 										<button
 											type="button"
@@ -273,7 +272,7 @@ export default function SimulatorPage() {
 									>
 										<Icons.Outline.DocmentAdd class="size-8" />
 										<span class="font-bold">创建方案</span>
-										<Show when={(simulators()?.length ?? 0) === 0}>
+										<Show when={simulators.rows().length === 0}>
 											<span class="text-boundary-color px-5 text-xs leading-5">当前还没有可加载的方案</span>
 										</Show>
 									</ConcaveFrame>

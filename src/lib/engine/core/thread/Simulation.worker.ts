@@ -237,8 +237,6 @@ function handleLifecycleCommand(command: EngineLifecycleCommand): EngineWorkerTa
 const debugViewRegistry = new DebugViewRegistry();
 debugViewRegistry.setGameEngine(gameEngine);
 
-// 注释：引擎状态机现在已集成到 GameEngine 内部，不再需要单独的 Actor
-
 // ==================== Engine RPC 处理函数 ====================
 
 /** 处理已通过请求 Schema 校验的 Engine RPC，并按请求类型构造成功响应。 */

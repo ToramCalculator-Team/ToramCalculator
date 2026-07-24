@@ -4,7 +4,7 @@ export const FillIcons = {
 	Browser: (props: JSX.IntrinsicElements["svg"]) => {
 		return (
 			<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-        <title>Browser</title>
+				<title>Browser</title>
 				<path
 					d="M1.25 7.75V17C1.25 20.1756 3.82436 22.75 7 22.75H17C20.1756 22.75 22.75 20.1756 22.75 17V7.75H1.25Z"
 					fill="currentColor"
@@ -21,7 +21,7 @@ export const FillIcons = {
 	Basketball: (props: JSX.IntrinsicElements["svg"]) => {
 		return (
 			<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-        <title>Basketball</title>
+				<title>Basketball</title>
 				<rect opacity="0.3" x="1.99985" y="1.99985" width="20" height="20" rx="10" fill="currentColor" />
 				<path
 					fill-rule="evenodd"
@@ -36,7 +36,7 @@ export const FillIcons = {
 	Category2: (props: JSX.IntrinsicElements["svg"]) => {
 		return (
 			<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-        <title>Category2</title>
+				<title>Category2</title>
 				<rect x="4" y="4" width="7" height="4" rx="2" fill="currentColor" />
 				<rect x="4" y="11" width="7" height="10" rx="2.5" fill="currentColor" />
 				<rect opacity="0.3" x="14" y="4" width="7" height="10" rx="2.5" fill="currentColor" />
@@ -48,7 +48,7 @@ export const FillIcons = {
 	Box2: (props: JSX.IntrinsicElements["svg"]) => {
 		return (
 			<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-        <title>Box2</title>
+				<title>Box2</title>
 				<path
 					d="M2.00024 17.1668C2.00024 17.5705 2.24298 17.9346 2.61563 18.0899L11.2501 21.6876V10.83L6.20939 8.69134L2.00024 6.93753V17.1668Z"
 					fill="currentColor"
@@ -74,7 +74,7 @@ export const FillIcons = {
 	Heart: (props: JSX.IntrinsicElements["svg"]) => {
 		return (
 			<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-        <title>Heart</title>
+				<title>Heart</title>
 				<path
 					d="M12 4.00021C9.47336 1.59045 5.55446 1.66908 3.11869 4.23612C0.627102 6.86197 0.627103 11.1038 3.11869 13.7297L9.27971 20.2227C10.0191 21.0019 11.0095 21.3915 12 21.3915V4.00021Z"
 					fill="currentColor"
@@ -91,7 +91,7 @@ export const FillIcons = {
 	Layers: (props: JSX.IntrinsicElements["svg"]) => {
 		return (
 			<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-        <title>Layers</title>
+				<title>Layers</title>
 				<path
 					d="M14.6198 1.93606C12.9917 1.02131 11.0083 1.02131 9.38018 1.93606L3.34356 5.32762C1.88548 6.14682 1.88548 8.25428 3.34356 9.07348L9.38018 12.465C11.0083 13.3798 12.9917 13.3798 14.6198 12.465L20.6564 9.07348C22.1145 8.25428 22.1145 6.14682 20.6564 5.32762L14.6198 1.93606Z"
 					fill="currentColor"
@@ -113,7 +113,7 @@ export const FillIcons = {
 	Gamepad: (props: JSX.IntrinsicElements["svg"]) => {
 		return (
 			<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-        <title>Gamepad</title>
+				<title>Gamepad</title>
 				<path
 					opacity="0.3"
 					fill-rule="evenodd"
@@ -144,7 +144,7 @@ export const FillIcons = {
 	Star: (props: JSX.IntrinsicElements["svg"]) => {
 		return (
 			<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-        <title>Star</title>
+				<title>Star</title>
 				<path
 					d="M10.9718 2.70846C11.4382 1.93348 12.5618 1.93348 13.0282 2.70847L15.3586 6.58087C15.5262 6.85928 15.7995 7.05784 16.116 7.13116L20.5191 8.15091C21.4002 8.35499 21.7474 9.42356 21.1545 10.1066L18.1918 13.5196C17.9788 13.765 17.8744 14.0863 17.9025 14.41L18.2932 18.9127C18.3714 19.8138 17.4625 20.4742 16.6296 20.1214L12.4681 18.3583C12.1689 18.2316 11.8311 18.2316 11.5319 18.3583L7.37038 20.1214C6.53754 20.4742 5.62856 19.8138 5.70677 18.9127L6.09754 14.41C6.12563 14.0863 6.02124 13.765 5.80823 13.5196L2.8455 10.1066C2.25257 9.42356 2.59977 8.35499 3.48095 8.15091L7.88397 7.13116C8.20053 7.05784 8.47383 6.85928 8.64138 6.58087L10.9718 2.70846Z"
 					// fill="currentColor"
@@ -158,7 +158,7 @@ export const FillIcons = {
 	User: (props: JSX.IntrinsicElements["svg"]) => {
 		return (
 			<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-        <title>User</title>
+				<title>User</title>
 				<circle
 					opacity="0.3"
 					cx="4"

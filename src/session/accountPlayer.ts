@@ -1,7 +1,12 @@
 import { defaultData } from "@db/defaultData";
-import { insertPlayer, type Player, selectAllPlayersByBelongtoaccountid } from "@db/generated/repositories/player";
+import {
+	insertPlayerQuery,
+	type Player,
+	selectAllPlayersByBelongtoaccountidQuery,
+} from "@db/generated/repositories/player";
 import type { DB } from "@db/generated/zod/index";
 import { findAccountById } from "@db/repositories/account";
+import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
 import type { Transaction } from "kysely";
 
@@ -10,7 +15,8 @@ const sortById = <T extends { id: string }>(rows: T[]): T[] => {
 };
 
 export async function selectFirstAccountPlayer(accountId: string, trx?: Transaction<DB>): Promise<Player | null> {
-	const players = await selectAllPlayersByBelongtoaccountid(accountId, trx);
+	const db = trx || (await getDB());
+	const players = await selectAllPlayersByBelongtoaccountidQuery(db, accountId).execute();
 	return sortById(players)[0] ?? null;
 }
 
@@ -24,12 +30,10 @@ export async function ensureAccountPlayer(accountId: string, trx?: Transaction<D
 	const existingPlayer = await selectFirstAccountPlayer(accountId, trx);
 	if (existingPlayer) return existingPlayer;
 
-	return await insertPlayer(
-		{
-			...defaultData.player,
-			id: createId(),
-			belongToAccountId: accountId,
-		},
-		trx,
-	);
+	const db = trx || (await getDB());
+	return await insertPlayerQuery(db, {
+		...defaultData.player,
+		id: createId(),
+		belongToAccountId: accountId,
+	}).executeTakeFirstOrThrow();
 }

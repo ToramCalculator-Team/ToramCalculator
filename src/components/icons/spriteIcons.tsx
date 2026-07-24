@@ -12,9 +12,10 @@ const spriteIconMap = {
 };
 
 export const getSpriteIcon = (props: { iconName: string; size?: number; outline?: boolean }) => {
-	const sprite = createMemo(() =>{
-		const iconName = props.iconName in spriteIconMap ? spriteIconMap[props.iconName as keyof typeof spriteIconMap] : props.iconName;
-		return sprites.find((sprite) => sprite.name.toLowerCase() === (iconName ?? "").toLowerCase())
+	const sprite = createMemo(() => {
+		const iconName =
+			props.iconName in spriteIconMap ? spriteIconMap[props.iconName as keyof typeof spriteIconMap] : props.iconName;
+		return sprites.find((sprite) => sprite.name.toLowerCase() === (iconName ?? "").toLowerCase());
 	});
 	const actSize = createMemo(() => props.size ?? 24);
 

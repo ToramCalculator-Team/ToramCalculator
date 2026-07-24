@@ -96,9 +96,7 @@ export function LogicEditor(props: LogicEditorProps) {
 
 				const toolbox = {
 					kind: "categoryToolbox",
-					contents: [
-						...baseToolBoxConfig.contents,
-					],
+					contents: [...baseToolBoxConfig.contents],
 				};
 				setLocale(location);
 				const isReadOnly = !!props.readOnly;

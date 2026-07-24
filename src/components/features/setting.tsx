@@ -1,8 +1,8 @@
+import { getDB } from "@db/repositories/database";
 import { A } from "@solidjs/router";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createResource, createSignal, Index, type JSX, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { getDB } from "@db/repositories/database";
 import { Button } from "~/components/controls/button";
 import { CheckBox } from "~/components/controls/checkBox";
 import { Input, type InputComponentType } from "~/components/controls/input";
@@ -79,11 +79,7 @@ export const Setting = () => {
 
 			// 写入探测行：客户端 sync_heartbeat 是 view（synced + local），无唯一约束，不能用 ON CONFLICT。
 			// 先查存在性，再走 INSERT 或 UPDATE 触发器；固定 PROBE_ID 避免本地表行无限增长。
-			const existing = await db
-				.selectFrom("sync_heartbeat")
-				.select("id")
-				.where("id", "=", PROBE_ID)
-				.executeTakeFirst();
+			const existing = await db.selectFrom("sync_heartbeat").select("id").where("id", "=", PROBE_ID).executeTakeFirst();
 			if (existing) {
 				await db
 					.updateTable("sync_heartbeat")
