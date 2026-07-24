@@ -1,16 +1,15 @@
-import { selectAllWorlds } from "@db/generated/repositories/world";
-import type { address } from "@db/generated/zod";
-import { getDB } from "@db/repositories/database";
+import { selectAllWorldsQuery, type World } from "@db/generated/repositories/world";
+import type { address, zone } from "@db/generated/zod";
 import { jsonArrayFrom } from "kysely/helpers/postgres";
 import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { createEffect, createMemo, createResource, createSignal, For, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { Select } from "~/components/controls/select";
 import { Icons } from "~/components/icons/index";
 import { useDictionary } from "~/contexts/Dictionary";
-import type { Dictionary } from "~/locales/type";
+import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
 
 export const AddressPage = () => {
 	const dic = useDictionary();
@@ -20,10 +19,10 @@ export const AddressPage = () => {
 		OverlayScrollbarsComponentRef | undefined
 	>(undefined);
 
-	const [worlds] = createResource(() => selectAllWorlds());
+	const worlds = createLiveKyselyQuery<World>((db) => selectAllWorldsQuery(db));
 
 	createEffect(() => {
-		const worldList = worlds();
+		const worldList = worlds.rows();
 		if (!worldList || worldList.length === 0) return;
 
 		const currentWorldId = selectedWorldId();
@@ -33,11 +32,10 @@ export const AddressPage = () => {
 		}
 	});
 
-	const [addresses] = createResource(selectedWorldId, async (worldId) => {
-		if (!worldId) return [];
-
-		const db = await getDB();
-		return await db
+	const addresses = createLiveKyselyQuery<address & { zones: zone[] }>((db) => {
+		const worldId = selectedWorldId();
+		if (!worldId) return null;
+		return db
 			.selectFrom("address")
 			.where("address.worldId", "=", worldId)
 			.select((eb) => [
@@ -47,12 +45,11 @@ export const AddressPage = () => {
 			])
 			.selectAll("address")
 			.orderBy("address.posY", "asc")
-			.orderBy("address.posX", "asc")
-			.execute();
+			.orderBy("address.posX", "asc");
 	});
 
 	const gridInfo = createMemo(() => {
-		const addressesData = addresses() || [];
+		const addressesData = addresses.rows();
 		if (!addressesData || addressesData.length === 0) return null;
 		const posX = addressesData.map((a) => a.posX);
 		const posY = addressesData.map((a) => a.posY);
@@ -103,7 +100,8 @@ export const AddressPage = () => {
 	createEffect(() => {
 		const currentWorldId = selectedWorldId();
 		const currentGridInfo = gridInfo();
-		if (!currentWorldId || !currentGridInfo || worlds.loading || addresses.loading) return;
+		if (!currentWorldId || !currentGridInfo || worlds.status() === "loading" || addresses.status() === "loading")
+			return;
 
 		requestAnimationFrame(() => {
 			requestAnimationFrame(() => {
@@ -115,7 +113,7 @@ export const AddressPage = () => {
 	return (
 		<div class="AddressPage flex h-full w-full flex-col">
 			<Show
-				when={!worlds.loading && !addresses.loading}
+				when={worlds.status() !== "loading" && addresses.status() !== "loading"}
 				fallback={
 					<div class="LoadingState flex h-full w-full flex-col items-center justify-center gap-3">
 						<LoadingBar class="w-1/2 min-w-[320px]" />
@@ -128,7 +126,7 @@ export const AddressPage = () => {
 						class="w-full"
 						value={selectedWorldId()}
 						setValue={setSelectedWorldId}
-						options={(worlds() ?? []).map((world) => ({
+						options={worlds.rows().map((world) => ({
 							label: world.name,
 							value: world.id,
 						}))}

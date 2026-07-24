@@ -1,6 +1,5 @@
 import type { DB } from "@db/generated/zod";
 import type { JSX } from "solid-js/jsx-runtime";
-import type { Dictionary } from "~/locales/type";
 import { AddressPage } from "./address";
 import { SkillPage } from "./skill";
 
@@ -14,7 +13,7 @@ export const wikiPageConfig: Partial<{
 	address: {
 		mainContent: AddressPage,
 	},
-	skill: {
-		mainContent: SkillPage,
-	},
+	// skill: {
+	// 	mainContent: SkillPage,
+	// },
 };

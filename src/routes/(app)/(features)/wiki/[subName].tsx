@@ -1,7 +1,14 @@
 import { defaultData } from "@db/defaultData";
-import type { DB } from "@db/generated/zod/index";
-import { getDB } from "@db/repositories/database";
-import { A, useNavigate, useParams } from "@solidjs/router";
+import { getPrimaryKeys } from "@db/generated/dmmf-utils";
+import {
+	type RepositoryReader,
+	type RepositoryWriter,
+	type RepositoryWriterContext,
+	repositoryReaders,
+	repositoryWriters,
+} from "@db/generated/repositories";
+import { type DB, DBSchema } from "@db/generated/zod/index";
+import { A, useNavigate, useParams, useSearchParams } from "@solidjs/router";
 import {
 	createEffect,
 	createMemo,
@@ -12,32 +19,25 @@ import {
 	onCleanup,
 	onMount,
 	Show,
-	untrack,
 	useContext,
 } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { DataRenderer } from "~/components/business/card/DataRenderer";
-import { type AnyTableDataConfig, DATA_CONFIG } from "~/components/business/data-config";
-import { DataForm } from "~/components/business/form/DataForm";
+import { DATA_CONFIG, type TableDataConfig } from "~/components/business/data-config";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
+import { ObjRenderer } from "~/components/dataDisplay/ObjRenderer";
 import { VirtualTable } from "~/components/dataDisplay/virtualTable";
+import { Form } from "~/components/form/Form";
 import { Icons } from "~/components/icons/index";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
-import { type DialogLayerEntryInit, useOverlay } from "~/lib/overlay/OverlayContext";
-import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
+import { useOverlay } from "~/lib/overlay/OverlayContext";
+import type { ZodSchemaFor } from "~/lib/utils/zod";
+import type { Dic } from "~/locales/type";
 import { store } from "~/store";
 import { setWikiStore, wikiStore } from "./store";
-import { wikiPageConfig } from "./wikiPage/wikiPageConfig";
-
-type WikiTableConfig = ReturnType<AnyTableDataConfig>;
-type CommittedWikiTable = {
-	configKey: string;
-	type: keyof DB;
-	config: WikiTableConfig;
-	rows: Record<string, unknown>[];
-};
+import { type WikiPageConfig, wikiPageConfig } from "./wikiPage/wikiPageConfig";
+import { buildFKCardRenderers, buildFKFormRenderers, ReferencedBySection } from "./fkRenderers";
 
 export default function WikiSubPage() {
 	const media = useContext(MediaContext);
@@ -47,219 +47,390 @@ export default function WikiSubPage() {
 	// url 参数
 	const params = useParams();
 	const navigate = useNavigate();
+	const [searchParams, setSearchParams] = useSearchParams();
 
 	// 状态管理参数
 	const [isMainContentFullscreen, setIsMainContentFullscreen] = createSignal(true);
 	const [activeBannerIndex, setActiveBannerIndex] = createSignal(0);
 
-	const dataConfig = createMemo(() => DATA_CONFIG[wikiStore.type]);
-	const wikiConfig = createMemo(() => wikiPageConfig[wikiStore.type]);
+	type TableConfig<TTableName extends keyof DB, T extends DB[TTableName] = DB[TTableName]> = {
+		tableName: TTableName;
+		schema: ZodSchemaFor<T>;
+		dic: Dic<T>;
+		readers: RepositoryReader<TTableName>;
+		writers: RepositoryWriter<TTableName>;
+		defaultData: T;
+		wikiConfig: WikiPageConfig | undefined;
+		UIConfig: TableDataConfig<TTableName, T>;
+	};
 
 	/**
-	 * 表格配置和首包数据需要一起提交：配置变化后先等待对应数据源 ready，
-	 * 后续同 configKey 的 查询订阅 更新只刷新 rows，避免表头和表体使用不同版本。
+	 * 设计思路：动态路由表名会让 schema、字典、默认值、UI 配置和 repository 的泛型关联丢失。
+	 * 函数职责：在页面入口把这些来源重新绑定成同一个表配置对象，后续 DOM 层只传递该绑定结果。
 	 */
-	const tableConfigRequest = createMemo(() => {
-		const configFactory = dataConfig();
-		if (!configFactory) return;
-		const type = wikiStore.type;
+	const createTableConfig = <TTableName extends keyof DB>(
+		tableName: TTableName,
+	): TableConfig<TTableName> | undefined => {
+		const UIConfig = DATA_CONFIG[tableName]?.(dictionary());
+		if (!UIConfig) return;
+
+		// 设计说明：TypeScript 不能从同一个动态索引证明多个映射对象的 K 完全相同。
+		// 这里集中恢复表名与各配置源的关联，避免在表格、卡片和表单调用点散落类型断言。
 		return {
-			configKey: String(type),
-			type,
-			config: configFactory(dictionary),
-		};
-	});
+			tableName,
+			schema: DBSchema[tableName],
+			dic: dictionary().db[tableName],
+			readers: repositoryReaders[tableName],
+			writers: repositoryWriters[tableName],
+			defaultData: defaultData[tableName],
+			wikiConfig: wikiPageConfig[tableName],
+			UIConfig,
+		} as TableConfig<TTableName>;
+	};
 
-	const [committedTable, setCommittedTable] = createSignal<CommittedWikiTable>();
-	const currentCommittedTable = createMemo(() => {
-		const request = tableConfigRequest();
-		const table = committedTable();
-		if (!request || !table || request.configKey !== table.configKey) return;
-		return table;
-	});
+	const currentTableConfig = createMemo(() => createTableConfig(wikiStore.type));
 
-	const liveTableRows = createLiveKyselyQuery<Record<string, unknown>>((db) => {
-		const request = tableConfigRequest();
-		return request?.config.queries.getAll?.(db) ?? null;
-	});
+	const getTablePrimaryKey = <TTableName extends keyof DB>(tableName: TTableName): keyof DB[TTableName] =>
+		(getPrimaryKeys(tableName)[0] ?? "id") as keyof DB[TTableName];
 
 	/**
-	 * 构造一条 dialog entry(不负责挂载)。render 在 dialog layer 作用域内执行,故其内部 useOverlay()
-	 * 读到的是**当前 dialog layer**:
-	 * - 外键关联 drill → pushDialog,并入同一 layer(保留堆叠视觉)。
-	 * - 打开编辑器(openEditor) → openSheet,在本 dialog layer 下新建独立 sheet layer。
-	 * 设计目的：字典、递归关联和编辑提交都来自当前页面上下文。
+	 * 页面通用表单只负责收集字段；持久化由生成的 writer 负责授权和审计字段。
+	 * 动态表名会让异构 writer 函数形成联合类型，这里收窄为统一的记录写入边界，
+	 * 不把具体表的 writer 细节重新复制到页面层。
 	 */
-	const buildDialogEntry = (type: keyof DB, data: Record<string, unknown>): DialogLayerEntryInit => {
-		const config = DATA_CONFIG[type]?.(dictionary);
-		return {
-			title: (data as { name?: unknown }).name?.toString() ?? "",
-			titleIcon: () => <Icons.Spirits iconName={type} />,
-			layout: "fill",
-			render: (dialogApi) => {
-				if (!config) return <pre>{JSON.stringify(data, null, 2)}</pre>;
-				// dialog layer 作用域句柄:drill 用 pushDialog 并入同层,editor 用 openSheet 新建子层。
-				const dialogOverlay = useOverlay();
-				const primaryKeyValue = data[config.primaryKey as string];
-				const primaryKeyString = primaryKeyValue == null ? "" : String(primaryKeyValue);
-				const liveDetailData = createLiveKyselyQuery<Record<string, unknown>>((db) => {
-					if (!primaryKeyString) return null;
-					return config.queries.get?.(db, primaryKeyString) ?? null;
-				});
-				const detailData = createMemo(() => liveDetailData.rows()[0] ?? data);
-				return (
-					<Show
-						when={detailData()}
-						fallback={
-							<div class="LoadingState flex min-h-32 w-full flex-col items-center justify-center gap-3">
-								<LoadingBar class="w-1/2 min-w-60" />
-							</div>
-						}
-					>
-						<DataRenderer
-							primaryKey={config.primaryKey}
-							dictionary={config.dictionary}
-							deleteCallback={config.card.deleteCallback}
-							onOpenRecord={(nextType, nextData) => dialogOverlay.pushDialog(buildDialogEntry(nextType, nextData))}
-							onDeleted={dialogApi.close}
-							openEditor={(nextData) => {
-								dialogOverlay.openSheet({
-									render: (api) => (
-										<DataForm
-											tableName={type}
-											value={nextData}
-											primaryKey={config.primaryKey}
-											defaultValue={config.defaultData}
-											dataSchema={config.dataSchema}
-											dictionary={config.dictionary}
-											hiddenFields={config.form.hiddenFields}
-											fieldGroupMap={config.fieldGroupMap}
-											renderers={config.form.renderers}
-											inheritsFrom={config.inheritsFrom}
-											embeds={config.embeds}
-											onInsert={async (value) => {
-												const result = await config.form.onInsert(value);
-												api.close();
-												return result;
-											}}
-											onUpdate={async (primaryKeyValue, value) => {
-												const result = await config.form.onUpdate(primaryKeyValue, value);
-												api.close();
-												return result;
-											}}
-										/>
-									),
-								});
-							}}
-							editAbleCallback={config.card.editAbleCallback}
-							tableName={type}
-							data={detailData}
-							dataSchema={config.dataSchema}
-							hiddenFields={config.card.hiddenFields}
-							fieldGroupMap={config.fieldGroupMap}
-							fieldGenerator={config.card.fieldGenerator}
-							inheritsFrom={config.inheritsFrom}
-							embeds={config.embeds}
-							relationOverrides={config.card.relationOverrides}
-							after={config.card.after}
-							before={config.card.before}
-						/>
-					</Show>
-				);
-			},
+	const submitRecord = async <TTableName extends keyof DB>(
+		tableConfig: TableConfig<TTableName>,
+		id: string | undefined,
+		value: DB[TTableName],
+	): Promise<void> => {
+		const context: RepositoryWriterContext = {
+			accountId: store.session.account.id,
+			accountType: store.session.account.type,
 		};
+		const writer = tableConfig.writers;
+
+		// 生成器按表生成不同的 Insert/Update 类型；页面已由对应 DBSchema 校验字段。
+		// 这里是通用表单到逐表 writer 的唯一动态边界，避免调用点重复处理异构函数签名。
+		if (id) {
+			if (!writer.update) throw new Error(`表 ${String(tableConfig.tableName)} 不支持更新`);
+			await writer.update(context, id, value as never);
+			return;
+		}
+		if (!writer.create) throw new Error(`表 ${String(tableConfig.tableName)} 不支持创建`);
+		await writer.create(context, value as never);
 	};
 
 	/** 列表点击入口:从页面根作用域新建一个 dialog layer。 */
-	const openCurrentTableCard = (type: keyof DB, data: Record<string, unknown>) => {
-		overlay.openDialog(buildDialogEntry(type, data));
+	const openCurrentTableCard = <TTableName extends keyof DB>(
+		type: TTableName,
+		data: DB[TTableName],
+		tableConfig: TableConfig<TTableName>,
+	) => {
+		overlay.openDialog({
+			title: "name" in data ? String(data.name) : "",
+			titleIcon: () => <Icons.Spirits iconName={type} />,
+			layout: "fill",
+			render: () => {
+				// 编辑 sheet 必须挂在当前 dialog layer 下，不能使用页面根层的 overlay 句柄。
+				const dialogOverlay = useOverlay();
+				const primaryKey = getTablePrimaryKey(type);
+				const primaryKeyValue = data[primaryKey];
+				const primaryKeyString = primaryKeyValue == null ? "" : String(primaryKeyValue);
+
+				// FK列自动检测（跳过 hiddenFields 里的列）
+				const fkCardRenderers = buildFKCardRenderers(
+					type,
+					tableConfig.UIConfig.card.hiddenFields ?? [],
+					dictionary(),
+					(relatedTable, id) => openRelatedCard(relatedTable, id, dialogOverlay),
+				);
+
+				return (
+					<ObjRenderer
+						query={(db) => {
+							if (!primaryKeyString) return null;
+							return tableConfig.readers.get?.(db, primaryKeyString) ?? null;
+						}}
+						dataSchema={tableConfig.schema}
+						dictionary={tableConfig.dic}
+						hiddenFields={tableConfig.UIConfig.card.hiddenFields}
+						fieldGroupMap={tableConfig.UIConfig.fieldGroupMap}
+						renderers={{
+							fields: {
+								...fkCardRenderers.fields,
+								...tableConfig.UIConfig.card.renderers?.fields,
+							},
+							containers: tableConfig.UIConfig.card.renderers?.containers,
+						}}
+						// 卡片操作属于页面 DOM 编排层，ObjRenderer 只负责数据内容展示。
+						after={(currentData) => (
+							<>
+							{/* 被引用方关联记录区块（来自 data-config 显式声明） */}
+								<ReferencedBySection
+									tableName={type}
+									referencedBy={tableConfig.UIConfig.card.referencedBy}
+									data={currentData}
+									dictionary={dictionary()}
+									onOpenCard={(relatedTable, rowData) => {
+										const pk = getTablePrimaryKey(relatedTable);
+										const id = String(rowData[pk as keyof typeof rowData] ?? "");
+										if (id) openRelatedCard(relatedTable, id, dialogOverlay);
+									}}
+								/>
+								<div class="CardActions border-dividing-color flex flex-wrap items-center gap-2 border-t pt-3">
+									<Button
+										icon={<Icons.Outline.Edit />}
+										onClick={() => {
+											const dataSnapshot = currentData();
+											if (!dataSnapshot) return;
+
+									// FK列自动检测（跳过 hiddenFields 里的列）
+								const fkFormRenderers = buildFKFormRenderers(
+									type,
+									tableConfig.UIConfig.form.hiddenFields ?? [],
+												dictionary(),
+												(relatedTable, id) => openRelatedCard(relatedTable, id, dialogOverlay, "open"),
+											);
+
+											dialogOverlay.openSheet({
+												render: (api) => (
+													<Form
+														value={dataSnapshot}
+														defaultValue={tableConfig.defaultData}
+														dataSchema={tableConfig.schema}
+														dictionary={tableConfig.dic}
+														hiddenFields={tableConfig.UIConfig.form.hiddenFields}
+														fieldGroupMap={tableConfig.UIConfig.fieldGroupMap}
+														renderers={{
+															fields: {
+																...fkFormRenderers.fields,
+																...tableConfig.UIConfig.form.renderers?.fields,
+															},
+															containers: tableConfig.UIConfig.form.renderers?.containers,
+														}}
+														onSubmit={async (value) => {
+															await submitRecord(tableConfig, primaryKeyString, value);
+															api.close();
+														}}
+													/>
+												),
+											});
+										}}
+									>
+										编辑
+									</Button>
+								</div>
+							</>
+						)}
+					/>
+				);
+			},
+		});
 	};
 
-	const openCreateForm = () => {
-		const request = tableConfigRequest();
-		if (!request) return;
-		const { type, config } = request;
+	/**
+	 * FK 导航入口：从已知表名 + id 打开关联记录的只读卡片。
+	 *
+	 * mode:
+	 *  "push" — 压入当前 dialog 层（breadcrumb 导航，用于卡片内的 FK 跳转）
+	 *  "open" — 新建一个 dialog 层（用于 form 内的 FK 打开，叠在 form 上方）
+	 *
+	 * 无需 DATA_CONFIG：如果没有完整的 UIConfig，用 schema + dic 降级渲染（没有自定义分组和隐藏字段）。
+	 */
+	const openRelatedCard = (
+		relatedTable: keyof DB,
+		id: string,
+		parentOverlay: ReturnType<typeof useOverlay>,
+		mode: "push" | "open" = "push",
+	) => {
+		const relatedConfig = createTableConfig(relatedTable);
+		const dic = dictionary().db[relatedTable];
+
+		// 未配置 DATA_CONFIG 时打开警告卡，不降级渲染原始数据
+		if (!relatedConfig) {
+			const entry: Parameters<typeof parentOverlay.openDialog>[0] = {
+				title: dic?.selfName ?? String(relatedTable),
+				titleIcon: () => <Icons.Spirits iconName={relatedTable} />,
+				render: () => (
+					<div class="flex flex-col gap-3 p-6">
+						<p class="text-boundary-color text-sm">
+							表 <code class="bg-area-color rounded px-1">{String(relatedTable)}</code> 暂无 UI 配置，无法预览。
+						</p>
+						<p class="text-boundary-color text-sm">如需显示此表数据，请在 data-config 中添加对应配置。</p>
+					</div>
+				),
+			};
+			if (mode === "open") parentOverlay.openDialog(entry);
+			else parentOverlay.pushDialog(entry);
+			return;
+		}
+
+		const hiddenFields = relatedConfig.UIConfig.card.hiddenFields ?? [];
+
+		const entry: Parameters<typeof parentOverlay.openDialog>[0] = {
+			title: dic?.selfName ?? String(relatedTable),
+			titleIcon: () => <Icons.Spirits iconName={relatedTable} />,
+			layout: "fill",
+			render: () => {
+				const dialogOverlay = useOverlay();
+
+				const fkCardRenderers = buildFKCardRenderers(
+					relatedTable,
+					hiddenFields,
+					dictionary(),
+					(nextTable, nextId) => openRelatedCard(nextTable, nextId, dialogOverlay),
+				);
+
+				return (
+					<ObjRenderer
+						query={(db) => relatedConfig.readers.get?.(db, id) ?? null}
+						dataSchema={relatedConfig.schema}
+						dictionary={relatedConfig.dic}
+						hiddenFields={hiddenFields}
+						fieldGroupMap={relatedConfig.UIConfig.fieldGroupMap}
+						renderers={{
+							fields: {
+								...fkCardRenderers.fields,
+								...relatedConfig.UIConfig.card.renderers?.fields,
+							},
+							containers: relatedConfig.UIConfig.card.renderers?.containers,
+						}}
+						after={(currentData) => (
+							<ReferencedBySection
+								tableName={relatedTable}
+								referencedBy={relatedConfig.UIConfig.card.referencedBy}
+								data={currentData}
+								dictionary={dictionary()}
+								onOpenCard={(nextTable, rowData) => {
+									const pk = getTablePrimaryKey(nextTable);
+									const nextId = String(rowData[pk as keyof typeof rowData] ?? "");
+									if (nextId) openRelatedCard(nextTable, nextId, dialogOverlay);
+								}}
+							/>
+						)}
+					/>
+				);
+			},
+		};
+
+		if (mode === "open") parentOverlay.openDialog(entry);
+		else parentOverlay.pushDialog(entry);
+	};
+
+	const openCreateForm = <TTableName extends keyof DB>(tableConfig: TableConfig<TTableName>) => {
 		overlay.openSheet({
+			render: (api) => {
+				const fkFormRenderers = buildFKFormRenderers(
+					tableConfig.tableName,
+					tableConfig.UIConfig.form.hiddenFields ?? [],
+					dictionary(),
+					(relatedTable, id) => openRelatedCard(relatedTable, id, overlay, "open"),
+				);
+
+				return (
+					<Form
+						value={tableConfig.defaultData}
+						defaultValue={tableConfig.defaultData}
+						dataSchema={tableConfig.schema}
+						dictionary={tableConfig.dic}
+						hiddenFields={tableConfig.UIConfig.form.hiddenFields}
+						fieldGroupMap={tableConfig.UIConfig.fieldGroupMap}
+						renderers={{
+							fields: {
+								...fkFormRenderers.fields,
+								...tableConfig.UIConfig.form.renderers?.fields,
+							},
+							containers: tableConfig.UIConfig.form.renderers?.containers,
+						}}
+						mode="create"
+						onSubmit={async (value) => {
+							await submitRecord(tableConfig, undefined, value);
+							api.close();
+						}}
+					/>
+				);
+			},
+		});
+	};
+
+	/**
+	 * 设计思路：VirtualTable 需要同一个 T 同时约束主键、列配置、字典和点击数据。
+	 * 函数职责：在泛型组件体内消费已绑定的 TableConfig，避免 keyof DB 联合类型让 keyof T 收缩成 never。
+	 */
+	const CurrentVirtualTable = <TTableName extends keyof DB>(props: {
+		tableName: TTableName;
+		tableConfig: TableConfig<TTableName>;
+	}) => {
+		return (
+			<VirtualTable<DB[TTableName]>
+				measure={props.tableConfig.UIConfig.table.measure}
+				query={(db) => props.tableConfig.readers.getAll?.(db) ?? null}
+				primaryKey={getTablePrimaryKey(props.tableName)}
+				columnsDef={props.tableConfig.UIConfig.table.columnsDef}
+				hiddenColumnDef={props.tableConfig.UIConfig.table.hiddenColumnDef}
+				tdGenerator={props.tableConfig.UIConfig.table.tdGenerator}
+				defaultSort={props.tableConfig.UIConfig.table.defaultSort}
+				dictionary={props.tableConfig.dic}
+				globalFilterStr={() => wikiStore.table.globalFilterStr}
+				rowHandleClick={(data) => openCurrentTableCard(props.tableName, data, props.tableConfig)}
+				columnVisibility={wikiStore.table.columnVisibility}
+				onColumnVisibilityChange={(updater) => {
+					if (typeof updater === "function") {
+						setWikiStore("table", {
+							columnVisibility: updater(wikiStore.table.columnVisibility),
+						});
+					}
+				}}
+			/>
+		);
+	};
+
+	const openTableConfigDialog = () => {
+		overlay.openDialog({
+			title: dictionary().ui.wiki.tableConfig.title,
+			render: () => <div class="flex h-52 w-2xs flex-col gap-3"></div>,
+		});
+	};
+
+	const openWikiSelectorDialog = () => {
+		overlay.openDialog({
+			title: dictionary().ui.wiki.selector.title,
 			render: (api) => (
-				<DataForm
-					tableName={type}
-					value={config.defaultData}
-					primaryKey={config.primaryKey}
-					defaultValue={config.defaultData}
-					dataSchema={config.dataSchema}
-					dictionary={config.dictionary}
-					hiddenFields={config.form.hiddenFields}
-					fieldGroupMap={config.fieldGroupMap}
-					renderers={config.form.renderers}
-					inheritsFrom={config.inheritsFrom}
-					embeds={config.embeds}
-					onInsert={async (value) => {
-						const result = await config.form.onInsert(value);
-						api.close();
-						return result;
-					}}
-					onUpdate={async (primaryKeyValue, value) => {
-						const result = await config.form.onUpdate(primaryKeyValue, value);
-						api.close();
-						return result;
-					}}
-				/>
+				<div class="flex flex-col gap-3">
+					<For each={wikiSelectorConfig}>
+						{(group) => {
+							return (
+								<div class="Group flex flex-col gap-2">
+									<div class="GroupTitle flex flex-col gap-3">
+										<h3 class="text-accent-color flex items-center gap-2 font-bold">
+											{group.groupName}
+											<div class="Divider bg-dividing-color h-px w-full flex-1" />
+										</h3>
+									</div>
+									<div class="GroupContent flex flex-wrap gap-2">
+										<For each={group.groupFields}>
+											{(field) => {
+												return (
+													<A
+														href={`/wiki/${field.name}`}
+														onClick={api.close}
+														class="bg-area-color hover:shadow-card shadow-dividing-color flex lg:w-[calc((100%-2rem)/5)] w-[calc((100%-1rem)/3)] flex-col items-center gap-2 rounded px-2 lg:py-6 py-3"
+													>
+														{field.icon}
+														<span class="text-nowrap text-ellipsis">{dictionary().db[field.name].selfName}</span>
+													</A>
+												);
+											}}
+										</For>
+									</div>
+								</div>
+							);
+						}}
+					</For>
+				</div>
 			),
 		});
 	};
-
-	let liveLoadingConfigKey: string | undefined;
-	createEffect(() => {
-		const request = tableConfigRequest();
-		if (!request || !request.config.queries.getAll) return;
-
-		const status = liveTableRows.status();
-		if (status === "loading") {
-			// 记录本轮 查询订阅 对应的配置，ready 时只允许提交同一轮结果。
-			liveLoadingConfigKey = request.configKey;
-			return;
-		}
-		if (status !== "ready") return;
-
-		// 这里读取 committedTable 只是做守卫，不能让当前 effect 订阅自己写入的 signal。
-		const committedConfigKey = untrack(() => committedTable()?.configKey);
-		if (committedConfigKey !== request.configKey && liveLoadingConfigKey !== request.configKey) return;
-
-		setCommittedTable({
-			configKey: request.configKey,
-			type: request.type,
-			config: request.config,
-			rows: liveTableRows.rows() as Record<string, unknown>[],
-		});
-	});
-
-	createEffect(() => {
-		const request = tableConfigRequest();
-		if (!request || request.config.queries.getAll) return;
-
-		let disposed = false;
-		const configKey = request.configKey;
-		// getAll 是一次性异步查询；返回时校验 configKey，丢弃已经过期的结果。
-		void getDB()
-			.then((db) => request.config.queries.getAll?.(db).execute() ?? [])
-			.then((rows) => {
-				if (disposed || tableConfigRequest()?.configKey !== configKey) return;
-				setCommittedTable({
-					configKey,
-					type: request.type,
-					config: request.config,
-					rows: rows as Record<string, unknown>[],
-				});
-			})
-			.catch((error) => {
-				if (disposed) return;
-				console.error("[WikiTable] getAll 查询失败", error);
-			});
-
-		onCleanup(() => {
-			disposed = true;
-		});
-	});
 
 	// 监听url参数变化, 初始化页面状态
 	createEffect(
@@ -271,9 +442,10 @@ export default function WikiSubPage() {
 					const tabkeName = params.subName as keyof DB;
 					// 重置页面状态
 					setWikiStore("type", tabkeName);
-					// 重置表状态，避免旧表的过滤/列可见性泄漏到新表
+					// 重置表状态，避免旧表的过滤/列可见性泄漏到新表；过滤值从 URL ?q= 读取，
+					// 支持分享已过滤的视图，切表时由于导航链接不带 ?q= 所以自然归零。
 					setWikiStore("table", {
-						globalFilterStr: "",
+						globalFilterStr: typeof searchParams.q === "string" ? searchParams.q : "",
 						columnVisibility: {},
 						configSheetIsOpen: false,
 					});
@@ -286,6 +458,12 @@ export default function WikiSubPage() {
 			},
 		),
 	);
+
+	// 同步过滤值到 URL：globalFilterStr 变化时写入 ?q= 参数，使过滤后的视图可分享。
+	createEffect(() => {
+		const q = wikiStore.table.globalFilterStr;
+		setSearchParams({ q: q || undefined });
+	});
 
 	// wiki 选择器(弹出层)配置
 	const wikiSelectorConfig: {
@@ -363,53 +541,6 @@ export default function WikiSubPage() {
 		},
 	];
 
-	const openTableConfigDialog = () => {
-		overlay.openDialog({
-			title: dictionary().ui.wiki.tableConfig.title,
-			render: () => <div class="flex h-52 w-2xs flex-col gap-3"></div>,
-		});
-	};
-
-	const openWikiSelectorDialog = () => {
-		overlay.openDialog({
-			title: dictionary().ui.wiki.selector.title,
-			render: (api) => (
-				<div class="flex flex-col gap-3">
-					<For each={wikiSelectorConfig}>
-						{(group) => {
-							return (
-								<div class="Group flex flex-col gap-2">
-									<div class="GroupTitle flex flex-col gap-3">
-										<h3 class="text-accent-color flex items-center gap-2 font-bold">
-											{group.groupName}
-											<div class="Divider bg-dividing-color h-px w-full flex-1" />
-										</h3>
-									</div>
-									<div class="GroupContent flex flex-wrap gap-2">
-										<For each={group.groupFields}>
-											{(field) => {
-												return (
-													<A
-														href={`/wiki/${field.name}`}
-														onClick={api.close}
-														class="bg-area-color hover:shadow-card shadow-dividing-color flex lg:w-[calc((100%-2rem)/5)] w-[calc((100%-1rem)/3)] flex-col items-center gap-2 rounded px-2 lg:py-6 py-3"
-													>
-														{field.icon}
-														<span class="text-nowrap text-ellipsis">{dictionary().db[field.name].selfName}</span>
-													</A>
-												);
-											}}
-										</For>
-									</div>
-								</div>
-							);
-						}}
-					</For>
-				</div>
-			),
-		});
-	};
-
 	onMount(() => {
 		console.log(`--Wiki Page Mount`);
 	});
@@ -419,8 +550,9 @@ export default function WikiSubPage() {
 	});
 
 	return (
-		<Show when={dataConfig()}>
-			{(_validDataConfig) => {
+		<Show when={currentTableConfig()} fallback={<p>Current Table UI Config is Undefined</p>}>
+			{(validCurrentTableConfig) => {
+				const tableConfig = validCurrentTableConfig();
 				// console.log("syncState", JSON.stringify(store.database.hasInitialSnapshot, null, 2), "wikiStore.type", JSON.stringify(wikiStore.type), "validDataConfig", validDataConfig());
 				return (
 					<Show
@@ -465,7 +597,7 @@ export default function WikiSubPage() {
 											size="sm"
 											icon={<Icons.Outline.CloudUpload />}
 											class="flex bg-transparent lg:hidden"
-											onClick={openCreateForm}
+											onClick={() => openCreateForm(tableConfig)}
 										></Button>
 									</Show>
 									<Button // 仅移动端显示
@@ -478,7 +610,7 @@ export default function WikiSubPage() {
 										<Button // 仅PC端显示
 											icon={<Icons.Outline.CloudUpload />}
 											class="hidden lg:flex"
-											onClick={openCreateForm}
+											onClick={() => openCreateForm(tableConfig)}
 										>
 											{dictionary().ui.actions.add}
 										</Button>
@@ -573,46 +705,17 @@ export default function WikiSubPage() {
 										}}
 									/>
 								</div>
-								<Show when={!wikiConfig()} fallback={wikiConfig()?.mainContent()}>
-									{(_) => {
-										return (
-											<Show when={currentCommittedTable()}>
-												{(table) => (
-													<Motion.div
-														animate={{
-															opacity: [0, 1],
-														}}
-														transition={{
-															duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
-														}}
-														class="VirtualTableAnimationBox w-full h-full"
-													>
-														<VirtualTable
-															measure={table().config.table.measure}
-															data={() => table().rows}
-															primaryKey={table().config.primaryKey}
-															columnsDef={table().config.table.columnsDef}
-															hiddenColumnDef={table().config.table.hiddenColumnDef}
-															tdGenerator={table().config.table.tdGenerator}
-															defaultSort={table().config.table.defaultSort}
-															dictionary={table().config.dictionary}
-															globalFilterStr={() => wikiStore.table.globalFilterStr}
-															rowHandleClick={(data) => openCurrentTableCard(table().type, data)}
-															columnVisibility={wikiStore.table.columnVisibility}
-															onColumnVisibilityChange={(updater) => {
-																if (typeof updater === "function") {
-																	setWikiStore("table", {
-																		columnVisibility: updater(wikiStore.table.columnVisibility),
-																	});
-																}
-															}}
-														/>
-													</Motion.div>
-												)}
-											</Show>
-										);
+								<Motion.div
+									animate={{
+										opacity: [0, 1],
 									}}
-								</Show>
+									transition={{
+										duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+									}}
+									class="VirtualTableAnimationBox w-full h-full"
+								>
+									<CurrentVirtualTable tableName={tableConfig.tableName} tableConfig={tableConfig} />
+								</Motion.div>
 							</div>
 							<Presence exitBeforeEnter>
 								<Show when={!isMainContentFullscreen()}>
@@ -674,7 +777,7 @@ export default function WikiSubPage() {
 											level="quaternary"
 											icon={<Icons.Outline.CloudUpload />}
 											class="hidden lg:flex"
-											onClick={openCreateForm}
+											onClick={() => openCreateForm(tableConfig)}
 										></Button>
 									</Show>
 									<input
