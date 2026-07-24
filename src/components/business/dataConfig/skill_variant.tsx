@@ -1,19 +1,19 @@
 import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
+import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
 import {
-	deleteBehaviorTree,
-	insertBehaviorTree,
-	selectAllBehaviorTreesByActiveownerid,
-	selectAllBehaviorTreesByPassiveownerid,
-	selectAllBehaviorTreesByRegisteredownerid,
-	selectBehaviorTreeById,
-	updateBehaviorTree,
+	deleteBehaviorTreeQuery,
+	insertBehaviorTreeQuery,
+	selectAllBehaviorTreesByActiveowneridQuery,
+	selectAllBehaviorTreesByPassiveowneridQuery,
+	selectAllBehaviorTreesByRegisteredowneridQuery,
+	selectBehaviorTreeByIdQuery,
+	updateBehaviorTreeQuery,
 } from "@db/generated/repositories/behavior_tree";
 import {
-	deleteSkillVariant,
-	insertSkillVariant,
-	selectSkillVariantById,
-	updateSkillVariant,
+	deleteSkillVariantQuery,
+	insertSkillVariantQuery,
+	selectSkillVariantByIdQuery,
+	updateSkillVariantQuery,
 } from "@db/generated/repositories/skill_variant";
 import {
 	BehaviorTreeSchema,
@@ -103,30 +103,13 @@ const selectSkillVariantWithBehaviorTreesQuery = (db: QueryDB) =>
 		])
 		.$castTo<SkillVariantWithBehaviorTrees>();
 
-export const getSkillVariantWithBehaviorTrees = async (
+const loadSkillVariantWithBehaviorTrees = async (
 	id: string,
 	trx?: Transaction<DB>,
 ): Promise<SkillVariantWithBehaviorTrees | undefined> => {
 	const db = trx || (await getDB());
 	const res = await selectSkillVariantWithBehaviorTreesQuery(db).where("skill_variant.id", "=", id).executeTakeFirst();
 	return res ? SkillVariantWithBehaviorTreesSchema.parse(res) : undefined;
-};
-
-export const getAllSkillVariantsWithBehaviorTrees = async (): Promise<SkillVariantWithBehaviorTrees[]> => {
-	const db = await getDB();
-	const res = await selectSkillVariantWithBehaviorTreesQuery(db).execute();
-	return res.map((variant) => SkillVariantWithBehaviorTreesSchema.parse(variant));
-};
-
-export const selectSkillVariantsWithBehaviorTreesByBelongToskillid = async (
-	belongToskillId: string,
-	trx?: Transaction<DB>,
-): Promise<SkillVariantWithBehaviorTrees[]> => {
-	const db = trx || (await getDB());
-	const res = await selectSkillVariantWithBehaviorTreesQuery(db)
-		.where("skill_variant.belongToskillId", "=", belongToskillId)
-		.execute();
-	return res.map((variant) => SkillVariantWithBehaviorTreesSchema.parse(variant));
 };
 
 const selectBehaviorTreesByOwner = async (
@@ -136,11 +119,11 @@ const selectBehaviorTreesByOwner = async (
 ): Promise<behavior_tree[]> => {
 	switch (kind) {
 		case "active":
-			return await selectAllBehaviorTreesByActiveownerid(variantId, trx);
+			return await selectAllBehaviorTreesByActiveowneridQuery(trx, variantId).execute();
 		case "passive":
-			return await selectAllBehaviorTreesByPassiveownerid(variantId, trx);
+			return await selectAllBehaviorTreesByPassiveowneridQuery(trx, variantId).execute();
 		case "registered":
-			return await selectAllBehaviorTreesByRegisteredownerid(variantId, trx);
+			return await selectAllBehaviorTreesByRegisteredowneridQuery(trx, variantId).execute();
 	}
 };
 
@@ -170,9 +153,9 @@ const upsertBehaviorTree = async (
 	trx: Transaction<DB>,
 ): Promise<behavior_tree> => {
 	const row = toBehaviorTreeRow(tree, kind, variantId);
-	const existing = await selectBehaviorTreeById(row.id, trx);
-	if (existing) return await updateBehaviorTree(row.id, row, trx);
-	return await insertBehaviorTree(row, trx);
+	const existing = await selectBehaviorTreeByIdQuery(trx, row.id).executeTakeFirst();
+	if (existing) return await updateBehaviorTreeQuery(trx, row.id, row).executeTakeFirstOrThrow();
+	return await insertBehaviorTreeQuery(trx, row).executeTakeFirstOrThrow();
 };
 
 const syncSingleBehaviorTree = async (
@@ -185,7 +168,7 @@ const syncSingleBehaviorTree = async (
 	const targetId = tree?.id;
 	// active/passive 在数据库中用 unique owner FK 表达 1:1；先清理旧行，避免唯一约束占位。
 	for (const existing of existingTrees) {
-		if (existing.id !== targetId) await deleteBehaviorTree(existing.id, trx);
+		if (existing.id !== targetId) await deleteBehaviorTreeQuery(trx, existing.id).executeTakeFirst();
 	}
 	if (!tree) return null;
 	return await upsertBehaviorTree(tree, kind, variantId, trx);
@@ -200,7 +183,7 @@ const syncRegisteredBehaviorTrees = async (
 	const submittedIds = new Set(trees.map((tree) => tree.id));
 	// registered 是 1:N 快照；表单删除的树同步删除，避免旧注册行为继续挂在技能变体上。
 	for (const existing of existingTrees) {
-		if (!submittedIds.has(existing.id)) await deleteBehaviorTree(existing.id, trx);
+		if (!submittedIds.has(existing.id)) await deleteBehaviorTreeQuery(trx, existing.id).executeTakeFirst();
 	}
 
 	const saved: behavior_tree[] = [];
@@ -237,10 +220,10 @@ export const saveSkillVariantWithBehaviorTrees = async (
 		registeredBehaviorTrees: data.registeredBehaviorTrees ?? [],
 	});
 	const variantRow = SkillVariantSchema.parse(entity);
-	const existing = await selectSkillVariantById(variantRow.id, trx);
+	const existing = await selectSkillVariantByIdQuery(trx, variantRow.id).executeTakeFirst();
 	const savedVariant = existing
-		? await updateSkillVariant(variantRow.id, variantRow, trx)
-		: await insertSkillVariant(variantRow, trx);
+		? await updateSkillVariantQuery(trx, variantRow.id, variantRow).executeTakeFirstOrThrow()
+		: await insertSkillVariantQuery(trx, variantRow).executeTakeFirstOrThrow();
 	const behaviorTrees = await syncSkillVariantBehaviorTrees(
 		{
 			...entity,
@@ -275,12 +258,12 @@ export const deleteSkillVariantWithBehaviorTrees = async (
 	trx?: Transaction<DB>,
 ): Promise<SkillVariantWithBehaviorTrees | undefined> => {
 	const deleteInTransaction = async (transaction: Transaction<DB>) => {
-		const variant = await getSkillVariantWithBehaviorTrees(id, transaction);
+		const variant = await loadSkillVariantWithBehaviorTrees(id, transaction);
 		if (!variant) return undefined;
 		for (const tree of [variant.activeBehaviorTree, variant.passiveBehaviorTree, ...variant.registeredBehaviorTrees]) {
-			if (tree) await deleteBehaviorTree(tree.id, transaction);
+			if (tree) await deleteBehaviorTreeQuery(transaction, tree.id).executeTakeFirst();
 		}
-		await deleteSkillVariant(id, transaction);
+		await deleteSkillVariantQuery(transaction, id).executeTakeFirst();
 		return variant;
 	};
 
@@ -488,14 +471,15 @@ const renderBehaviorTreeCard = (
 export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<SkillVariantWithBehaviorTrees, skill_variant, skill_variant> = (
 	dictionary,
 ) => ({
+	tableName: "skill_variant",
 	dictionary: dictionary().db.skill_variant,
 	dataSchema: SkillVariantWithBehaviorTreesSchema,
 	primaryKey: "id",
 	defaultData: defaultSkillVariantWithBehaviorTrees,
 	queries: {
-		...repositoryQueries.skill_variant,
+		...repositoryReaders.skill_variant,
 		get: (db, id) => selectSkillVariantWithBehaviorTreesQuery(db).where("skill_variant.id", "=", id),
-		getAll: repositoryQueries.skill_variant.getAll,
+		getAll: repositoryReaders.skill_variant.getAll,
 	},
 	fieldGroupMap: {
 		ID: ["id"],
@@ -578,6 +562,6 @@ export const SKILL_VARIANT_DATA_CONFIG: TableDataConfig<SkillVariantWithBehavior
 			),
 		},
 		deleteCallback: deleteSkillVariantWithBehaviorTrees,
-		editAbleCallback: (data) => repositoryMethods.skill_variant.canEdit(data.id),
+		editAbleCallback: (data) => repositoryWriters.skill_variant.canEdit(data.id),
 	},
 });

@@ -1,50 +1,45 @@
-import { defaultData } from "@db/defaultData";
-import { repositoryMethods, repositoryQueries } from "@db/generated/repositories";
-import { PlayerSpecialSchema, type player_special } from "@db/generated/zod";
+import type { player_special } from "@db/generated/zod";
 import { ModifiersRenderer } from "~/components/business/utils/ModifiersRenderer";
-import type { TableDataConfig } from "../data-config";
+import type { TableDataConfig, TableDataConfigurator } from "../data-config";
 
-export const PLAYER_SPECIAL_DATA_CONFIG: TableDataConfig<player_special> = (dictionary) => ({
-	dictionary: dictionary().db.player_special,
-	dataSchema: PlayerSpecialSchema,
-	primaryKey: "id",
-	defaultData: defaultData.player_special,
-	queries: repositoryQueries.player_special,
-	fieldGroupMap: {
-		ID: ["id"],
-		基础属性: ["name", "baseAbi"],
-		附加属性: ["extraAbi", "templateId", "modifiers"],
-		所属玩家: ["belongToPlayerId"],
-	},
-	table: {
-		columnsDef: [
-			{ accessorKey: "id", cell: (info) => info.getValue(), size: 200 },
-			{ accessorKey: "name", cell: (info) => info.getValue(), size: 180 },
-			{ accessorKey: "baseAbi", cell: (info) => info.getValue(), size: 100 },
-			{ accessorKey: "extraAbi", cell: (info) => info.getValue(), size: 100 },
-			{ accessorKey: "templateId", cell: (info) => info.getValue(), size: 100 },
-			{ accessorKey: "modifiers", cell: (info) => info.getValue(), size: 360 },
-			{ accessorKey: "belongToPlayerId", cell: (info) => info.getValue(), size: 100 },
-		],
-		hiddenColumnDef: ["id", "belongToPlayerId", "templateId"],
-		defaultSort: { field: "name", desc: false },
-		tdGenerator: {
-			modifiers: (props) => <ModifiersRenderer data={props.cell.getValue() as Array<string>} />,
+export const PLAYER_SPECIAL_DATA_CONFIG: TableDataConfigurator<"player_special", player_special> = (_dictionary) =>
+	({
+		fieldGroupMap: {
+			ID: ["id"],
+			基础属性: ["name", "baseAbi"],
+			附加属性: ["extraAbi", "templateId", "modifiers"],
+			所属玩家: ["belongToPlayerId"],
 		},
-	},
-	form: {
-		// 创建资产时，通常player从上下文中获取，不另外编辑
-		hiddenFields: ["id", "belongToPlayerId"],
-		onInsert: repositoryMethods.player_special.insert,
-		onUpdate: repositoryMethods.player_special.update,
-	},
-	card: {
-		relationOverrides: {
-			only: ["special"],
+		table: {
+			measure: { estimateSize: 80 },
+			columnsDef: [
+				{ id: "id", accessorFn: (row) => row.id, cell: (info) => info.getValue(), size: 200 },
+				{ id: "name", accessorFn: (row) => row.name, cell: (info) => info.getValue(), size: 180 },
+				{ id: "baseAbi", accessorFn: (row) => row.baseAbi, cell: (info) => info.getValue(), size: 100 },
+				{ id: "extraAbi", accessorFn: (row) => row.extraAbi, cell: (info) => info.getValue(), size: 100 },
+				{ id: "templateId", accessorFn: (row) => row.templateId, cell: (info) => info.getValue(), size: 100 },
+				{ id: "modifiers", accessorFn: (row) => row.modifiers, cell: (info) => info.getValue(), size: 360 },
+				{
+					id: "belongToPlayerId",
+					accessorFn: (row) => row.belongToPlayerId,
+					cell: (info) => info.getValue(),
+					size: 100,
+				},
+			],
+			hiddenColumnDef: ["id", "belongToPlayerId", "templateId"],
+			defaultSort: { field: "name", desc: false },
+			tdGenerator: {
+				modifiers: (props) => <ModifiersRenderer data={props.cell.getValue() as Array<string>} />,
+			},
 		},
-		hiddenFields: ["id"],
-		fieldGenerator: {},
-		deleteCallback: repositoryMethods.player_special.delete,
-		editAbleCallback: (data) => repositoryMethods.player_special.canEdit(data.id),
-	},
-});
+		form: {
+			hiddenFields: ["id", "belongToPlayerId"],
+			references: [],
+			referencedBy: [],
+		},
+		card: {
+			hiddenFields: ["id"],
+			references: [],
+			referencedBy: [],
+		},
+	}) satisfies TableDataConfig<"player_special", player_special>;

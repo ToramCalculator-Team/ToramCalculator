@@ -1,10 +1,26 @@
+/**
+ * 数据表的表格、卡片、表单UI配置
+ *
+ * @design-note 字段级配置分散
+ * 当前：hiddenFields（数组）、renderers.fields（Record）、fieldGroupMap（Record）三处分散。
+ * 未来可能演进为 fields: Partial<Record<keyof T, { hidden?, render?, ... }>>（逐字段树）以降低认知负荷。
+ * 当前保留扁平结构，因为：
+ *  1. renderers 支持嵌套路径（如 "skills[0].name"），树形 Record<keyof T> 无法表达
+ *  2. 迁移所有调用方和组件的成本较高
+ *  3. fieldGroupMap（组→字段列表）天然是组中心结构，与字段树正交
+ * 权衡：以扁平为主，FK 级联自动检测尊重 hiddenFields 过滤。
+ */
+
+import type { ReferenceDecl, ReferencedByDecl } from "@db/generated/dmmf-utils";
 import type { DB } from "@db/generated/zod";
 import type { Compilable, Kysely, Transaction } from "kysely";
 import type { Accessor } from "solid-js";
-import type { ZodObject, ZodType } from "zod/v4";
+import type { JSX } from "solid-js/jsx-runtime";
+import type { ZodSchemaFor } from "~/lib/utils/zod";
 import type { Dic, Dictionary } from "~/locales/type";
+import type { ObjRendererProps } from "../dataDisplay/ObjRenderer";
 import type { VirtualTableProps } from "../dataDisplay/virtualTable";
-import type { DataRendererProps } from "./card/DataRenderer";
+import type { FormProps } from "../form/Form";
 import { ACTIVITY_DATA_CONFIG } from "./dataConfig/activity";
 import { ADDRESS_DATA_CONFIG } from "./dataConfig/address";
 import { ARMOR_DATA_CONFIG } from "./dataConfig/armor";
@@ -31,9 +47,14 @@ import { TASK_DATA_CONFIG } from "./dataConfig/task";
 import { WEAPON_DATA_CONFIG } from "./dataConfig/weapon";
 import { WORLD_DATA_CONFIG } from "./dataConfig/world";
 import { ZONE_DATA_CONFIG } from "./dataConfig/zone";
-import type { DataFormProps } from "./form/DataForm";
 
 type SafeOmit<T, K extends keyof T> = Omit<T, K>;
+type TableReferenceDecl<T extends keyof DB> = ReferenceDecl<T> & { icon?: JSX.Element };
+type TableReferencedByDecl<T extends keyof DB> = ReferencedByDecl<T> & { icon?: JSX.Element };
+
+/**
+ * 数据接口工具类型
+ */
 
 export type QueryDB = Kysely<DB> | Transaction<DB>;
 
@@ -45,129 +66,76 @@ type ExecutableQuery<T> = { execute: () => Promise<Array<T>> };
 
 type ExecutableTakeFirst<T> = { executeTakeFirst: () => Promise<T | undefined> };
 
-export type TableQueries<T extends Record<string, unknown>, TList extends Record<string, unknown> = T> = {
+export type TableQueries<T extends object, TList extends object = T> = {
 	get: ((db: QueryDB, id: string) => Compilable<T> & ExecutableTakeFirst<T>) | null;
 	getAll: ((db: QueryDB) => Compilable<TList> & ExecutableQuery<TList>) | null;
 	getParentsById: ((db: QueryDB, id: string) => RelationQueryMap) | null;
 	getChildrenById: ((db: QueryDB, id: string) => RelationQueryMap) | null;
 };
 
-/**
- * 1:1 继承父表（当前表与父表在概念上是同一实体）
- * 渲染器会自动：
- *  - 合并父表的 dictionary / 表单 renderers / 详情 fieldGenerator（child 优先）
- *  - 查询父表的反向关系并合并到当前表的关联内容中
- *  - 排除父表的兄弟子类（如 weapon 的 inheritsFrom=item，则 armor/consumable 等同级子类不会出现在关联内容里）
- */
-export type InheritsFromDecl = {
-	/** 父表名，如 "item" */
-	table: keyof DB;
-	/** 当前表指向父表主键的外键列名，如 "itemId" */
-	via: string;
-	/**
-	 * 可选：手动声明需要从父表反向关系中排除的同级子类表。
-	 * 未声明时渲染器会自动推导——所有以 (PK==父表FK) 形式 1:1 继承同一父表的表。
-	 */
-	excludeSiblings?: Array<keyof DB>;
+export type TableCommands<T extends object> = {
+	insert: (value: T) => Promise<T>;
+	update: (pk: string, value: T) => Promise<T>;
+	delete: (pk: string) => Promise<T | undefined>;
 };
 
-/**
- * 1:N 内嵌子表（当前实体的某个字段在逻辑上是子表数组）
- * 渲染器会：
- *  - 表单：渲染为嵌套数组编辑器（用子表自己的 dataConfig 递归渲染每项）
- *  - 详情：内嵌展示子表列表
- *  - 自动把该字段从普通字段渲染流程中移除，避免被当成通用 array 处理
- *  - 不负责持久化拆解，由 config 的 onInsert / onUpdate 在事务内处理
- */
-export type EmbedsDecl = {
-	/** 统一 schema 上承载子表数组的字段名，如 "variants" */
-	field: string;
-	/** 子表名，如 "skill_variant" */
-	table: keyof DB;
-	/** 子表指向当前表主键的外键列名，如 "belongToskillId" */
-	via: string;
-	/** 展示模式，默认 "inline" */
-	mode?: "inline" | "buttons";
-};
-
-/**
- * @typeParam T    数据实体完整形状（合并了 inheritsFrom 父表 / embeds 子表后的 runtime 类型）
- * @typeParam TDic 配置站点实际提供的字典形状，默认 = T。
- *                 当声明了 `inheritsFrom` 时，渲染器会在运行时自动合并父表字典，
- *                 此时 TDic 可收窄为"仅子表自己的字段类型"（如 `weapon` 而非 `WeaponItem`），
- *                 避免在配置里手动重复父表的字段字典。
- * @typeParam TList 列表页行数据形状，默认 = T。
- *                  列表可以只返回表格需要的轻量投影；详情和编辑仍通过 queries.get 获取完整 T。
- */
-export type TableDataConfig<
-	T extends Record<string, unknown>,
-	TDic extends Record<string, unknown> = T,
-	TList extends Record<string, unknown> = T,
-> = (dictionary: Accessor<Dictionary>) => {
-	dictionary: Dic<TDic>;
-	dataSchema: ZodObject<{ [K in keyof T]: ZodType }>;
-	primaryKey: keyof T;
-	defaultData: T;
-	queries: TableQueries<T, TList>;
+export type TableDataConfig<TTableName extends keyof DB, T extends DB[TTableName]> = {
+	// 渲染时的分组配置
 	fieldGroupMap: Record<string, Array<keyof T>>;
-	/** 继承关系声明（见 InheritsFromDecl） */
-	inheritsFrom?: InheritsFromDecl;
-	/** 内嵌子表声明（见 EmbedsDecl） */
-	embeds?: EmbedsDecl[];
+	// 表格配置
 	table: SafeOmit<
-		VirtualTableProps<TList>,
-		"data" | "primaryKey" | "dictionary" | "rowHandleClick" | "onColumnVisibilityChange" | "globalFilterStr"
+		VirtualTableProps<T>,
+		"query" | "primaryKey" | "dictionary" | "rowHandleClick" | "onColumnVisibilityChange" | "globalFilterStr"
 	>;
+	// 表单配置
 	form: SafeOmit<
-		DataFormProps<T, ZodObject<{ [K in keyof T]: ZodType }>>,
-		"value" | "dataSchema" | "tableName" | "primaryKey" | "defaultValue" | "dictionary" | "fieldGroupMap"
-	>;
-	// 卡片展示配置承载自动关联内容覆盖，避免把展示过滤规则混入实体结构声明。
-	card: SafeOmit<
-		DataRendererProps<T, ZodObject<{ [K in keyof T]: ZodType }>>,
-		| "data"
-		| "tableName"
-		| "primaryKey"
-		| "dataSchema"
-		| "dictionary"
-		| "fieldGroupMap"
-		| "openEditor"
-		| "onOpenRecord"
-		| "onDeleted"
-	>;
+		FormProps<T>,
+		"value" | "dataSchema" | "defaultValue" | "dictionary" | "fieldGroupMap" | "onSubmit"
+	> & {
+		// 需要渲染的外部关系
+		references: TableReferenceDecl<TTableName>[];
+		referencedBy: TableReferencedByDecl<TTableName>[];
+	};
+	// 卡片配置
+	card: SafeOmit<ObjRendererProps<T>, "query" | "dataSchema" | "dictionary" | "fieldGroupMap"> & {
+		// 需要关联编辑的外部关系
+		references: TableReferenceDecl<TTableName>[];
+		referencedBy: TableReferencedByDecl<TTableName>[];
+	};
 };
 
-// 擦除类型后的存储版本
-// 函数参数用 any 消除逆变问题，这是唯一需要 any 的地方
-export type AnyTableDataConfig = TableDataConfig<any, any, any>;
+// 配置函数
+export type TableDataConfigurator<TTable extends keyof DB, T extends DB[TTable]> = (
+	dictionary: Dictionary,
+) => TableDataConfig<TTable, T>;
 
-export type DataConfig = Partial<Record<keyof DB, AnyTableDataConfig>>;
-
-export const DATA_CONFIG: DataConfig = {
-	activity: ACTIVITY_DATA_CONFIG,
-	address: ADDRESS_DATA_CONFIG,
-	armor: ARMOR_DATA_CONFIG,
-	behavior_tree: BEHAVIOR_TREE_DATA_CONFIG,
-	character: CHARACTER_DATA_CONFIG,
-	consumable: CONSUMABLE_DATA_CONFIG,
-	crystal: CRYSTAL_DATA_CONFIG,
-	drop_item: DROP_ITEM_DATA_CONFIG,
-	item: ITEM_DATA_CONFIG,
-	material: MATERIAL_DATA_CONFIG,
-	mob: MOB_DATA_CONFIG,
-	npc: NPC_DATA_CONFIG,
-	option: OPTION_DATA_CONFIG,
-	player_weapon: PLAYER_WEAPON_DATA_CONFIG,
-	player_armor: PLAYER_ARMOR_DATA_CONFIG,
-	player_option: PLAYER_OPTION_DATA_CONFIG,
-	player_special: PLAYER_SPECIAL_DATA_CONFIG,
-	recipe: RECIPE_DATA_CONFIG,
-	recipe_ingredient: RECIPE_INGREDIENT_DATA_CONFIG,
+export const DATA_CONFIG: Partial<{
+	[K in keyof DB]?: TableDataConfigurator<K, DB[K]>;
+}> = {
+	// activity: ACTIVITY_DATA_CONFIG,
+	// address: ADDRESS_DATA_CONFIG,
+	// armor: ARMOR_DATA_CONFIG,
+	// behavior_tree: BEHAVIOR_TREE_DATA_CONFIG,
+	// character: CHARACTER_DATA_CONFIG,
+	// consumable: CONSUMABLE_DATA_CONFIG,
+	// crystal: CRYSTAL_DATA_CONFIG,
+	// drop_item: DROP_ITEM_DATA_CONFIG,
+	// item: ITEM_DATA_CONFIG,
+	// material: MATERIAL_DATA_CONFIG,
+	// mob: MOB_DATA_CONFIG,
+	// npc: NPC_DATA_CONFIG,
+	// option: OPTION_DATA_CONFIG,
+	// player_weapon: PLAYER_WEAPON_DATA_CONFIG,
+	// player_armor: PLAYER_ARMOR_DATA_CONFIG,
+	// player_option: PLAYER_OPTION_DATA_CONFIG,
+	// player_special: PLAYER_SPECIAL_DATA_CONFIG,
+	// recipe: RECIPE_DATA_CONFIG,
+	// recipe_ingredient: RECIPE_INGREDIENT_DATA_CONFIG,
 	skill: SKILL_DATA_CONFIG,
-	skill_variant: SKILL_VARIANT_DATA_CONFIG,
-	special: SPECIAL_DATA_CONFIG,
-	task: TASK_DATA_CONFIG,
-	weapon: WEAPON_DATA_CONFIG,
-	world: WORLD_DATA_CONFIG,
-	zone: ZONE_DATA_CONFIG,
+	// skill_variant: SKILL_VARIANT_DATA_CONFIG,
+	// special: SPECIAL_DATA_CONFIG,
+	// task: TASK_DATA_CONFIG,
+	// weapon: WEAPON_DATA_CONFIG,
+	// world: WORLD_DATA_CONFIG,
+	// zone: ZONE_DATA_CONFIG,
 };

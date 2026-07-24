@@ -444,10 +444,10 @@ model skill {
     details     String
     dataSources String
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @default(now()) @updatedAt
-    preSkill    skill?    @relation("SkillPrerequisite", fields: [preSkillId], references: [id], onDelete: SetNull)
-    preSkillId  String?
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @default(now()) @updatedAt
+    preSkill   skill?   @relation("SkillPrerequisite", fields: [preSkillId], references: [id], onDelete: SetNull)
+    preSkillId String?
 
     nextSkills skill[] @relation("SkillPrerequisite")
 
@@ -463,9 +463,9 @@ model skill {
 model skill_variant {
     id String @id
 
-    targetMainWeaponType   String // Enum MAIN_HAND_TYPE_LIMIT
-    targetSubWeaponType    String // Enum SUB_HAND_TYPE_LIMIT
-    targetArmorAbilityType String // Enum PLAYER_ARMOR_ABILITY_TYPE_LIMIT
+    targetMainWeaponType   String /// @displayName Enum MAIN_HAND_TYPE_LIMIT
+    targetSubWeaponType    String /// @displayName Enum SUB_HAND_TYPE_LIMIT
+    targetArmorAbilityType String /// @displayName Enum PLAYER_ARMOR_ABILITY_TYPE_LIMIT
     comboCompatible        Boolean
     hpCost                 String?
     mpCost                 String?
@@ -555,7 +555,6 @@ model player {
 
     belongToAccount   account @relation(fields: [belongToAccountId], references: [id], onDelete: Cascade)
     belongToAccountId String
-
 }
 
 // 玩家自定义武器
@@ -798,8 +797,8 @@ model simulator {
 
     name       String
     teams      team[]
-    randomSeed Int      @default(1)
-    logicHz    Int      @default(60)
+    randomSeed Int    @default(1)
+    logicHz    Int    @default(60)
 
     primaryMember   member? @relation("simulatorPrimaryMember", fields: [primaryMemberId], references: [id], onDelete: SetNull)
     primaryMemberId String? @unique
@@ -825,7 +824,7 @@ model team {
     name    String?
     members member[]
     gems    String[]
-    camp    String   // Enum SIMULATOR_CAMP
+    camp    String // Enum SIMULATOR_CAMP
 
     belongToSimulator   simulator @relation(fields: [belongToSimulatorId], references: [id], onDelete: Cascade)
     belongToSimulatorId String
@@ -849,7 +848,7 @@ model member {
     mobDifficultyFlag String? // Enum MOB_DIFFICULTY_FLAG
     behavior          Json? /// ZOD MemberBTSchema
 
-    primaryForSimulator       simulator?  @relation("simulatorPrimaryMember")
+    primaryForSimulator        simulator?  @relation("simulatorPrimaryMember")
     analysisSourceForSimulator simulator[] @relation("simulatorAnalysisSources")
     analysisTargetForSimulator simulator[] @relation("simulatorAnalysisTargets")
 

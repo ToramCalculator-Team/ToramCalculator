@@ -6,6 +6,31 @@
 
 import type { DMMF } from "@prisma/generator-helper";
 import { writeFileSafely } from "../utils/writeFileSafely";
+import { findReverseRelationField, getBusinessRelationDirection } from "./businessRelation";
+import { getDMMFPrimaryKeys } from "./dmmfHelpers";
+
+/**
+ * 规范化的物理外键关系事实。
+ *
+ * Prisma DMMF 会在关系对象字段上同时提供 relationFromFields 和
+ * relationToFields。这里保留完整的列对，避免复合外键被错误拆成多条
+ * 独立关系；业务层级关系（belongTo/usedBy 等）不参与该事实构建。
+ */
+type ForeignKeyRelation = {
+	sourceTable: string;
+	targetTable: string;
+	relationName: string;
+	relationField: string;
+	sourceColumns: string[];
+	targetColumns: string[];
+	cardinality: "one-to-one" | "many-to-one";
+	onDelete: string | null;
+};
+
+type ForeignKeyIndexEntry = Pick<
+	ForeignKeyRelation,
+	"sourceTable" | "targetTable" | "relationName" | "relationField" | "cardinality" | "onDelete"
+>;
 
 /**
  * DMMF 工具生成器
@@ -43,7 +68,10 @@ export class DMMFUtilsGenerator {
 		return this.allModels.map((model) => ({
 			name: model.name,
 			tableName: model.dbName || model.name,
-			primaryKeys: model.fields.filter((f) => f.isId).map((f) => f.name),
+			primaryKeys: getDMMFPrimaryKeys(model),
+			displayFields: model.fields
+				.filter((field) => field.documentation?.includes("@displayName"))
+				.map((field) => field.name),
 			fields: model.fields.map((field) => ({
 				name: field.name,
 				kind: field.kind,
@@ -117,61 +145,40 @@ export class DMMFUtilsGenerator {
 	}
 
 	/**
-	 * 判断字段名是否表示父关系（基于前缀规则）
-	 */
-	private isParentRelation(fieldName: string): boolean {
-		const parentPrefixes = ["belongTo", "usedBy", "createdBy", "updatedBy"];
-		return parentPrefixes.some((prefix) => fieldName.startsWith(prefix));
-	}
-
-	/**
-	 * 构建数据层级关系（DB_RELATION）
+	 * 构建业务数据依赖层级（DB_RELATION）。
+	 *
+	 * 父子方向由关系两端的字段命名共同决定；onDelete 是独立的数据库
+	 * 引用动作，不参与业务依赖分类。
 	 */
 	private buildDBRelation() {
-		const metadata = this.buildMetadata();
-		const modelToTableMap = new Map<string, string>(
-			metadata.map((m) => [m.name, m.tableName]),
-		);
-		const tableToModelMap = new Map<string, typeof metadata[0]>(
-			metadata.map((m) => [m.tableName, m]),
-		);
-
 		// 注意：同一对表可能存在多条语义不同的关系（如 campA/campB, weapon/subWeapon）。
 		// 因此 parents/children 的 value 必须是数组，避免被覆盖。
 		const dbRelation: Record<string, { parents: Record<string, any[]>; children: Record<string, any[]> }> = {};
 
 		// 初始化所有表的 parents 和 children
-		for (const model of metadata) {
-			dbRelation[model.tableName] = {
+		for (const model of this.allModels) {
+			const tableName = model.dbName || model.name;
+			dbRelation[tableName] = {
 				parents: {},
 				children: {},
 			};
 		}
 
-		// 遍历所有模型的关系字段
-		for (const model of metadata) {
+		for (const model of this.allModels) {
+			const tableName = model.dbName || model.name;
+
 			for (const field of model.fields) {
 				if (field.kind !== "object") continue;
 
-				const targetTableName = modelToTableMap.get(field.type);
-				if (!targetTableName) continue;
-
-				const targetModel = tableToModelMap.get(targetTableName);
+				const targetModel = this.allModels.find((candidate) => candidate.name === field.type);
 				if (!targetModel) continue;
+				const targetTableName = targetModel.dbName || targetModel.name;
 
-				// 找到反向字段
-				const reverseField = targetModel.fields.find(
-					(f) =>
-						f.kind === "object" &&
-						f.name !== field.name &&
-						f.relationName === field.relationName &&
-						f.type === model.name,
-				);
+				const reverseField = findReverseRelationField(this.allModels, model, field);
+				const direction = getBusinessRelationDirection(this.allModels, model, field);
+				if (!direction) continue;
 
-				// 判断结构方向（基于字段名前缀）
-				const isParent = this.isParentRelation(field.name);
-
-				// 构建查询计划
+				// 业务方向决定放入 parents/children；外键所在侧只决定如何查询，二者不能互相推导。
 				let queryPlan: any;
 
 				// 判断是否为多对多
@@ -198,7 +205,8 @@ export class DMMFUtilsGenerator {
 						// FK 在本表
 						const fkField = field.relationFromFields?.[0];
 						if (!fkField) continue;
-						const referencedField = field.relationToFields?.[0] || targetModel.primaryKeys[0] || "id";
+						const referencedField =
+							field.relationToFields?.[0] || targetModel.fields.find((candidate) => candidate.isId)?.name || "id";
 						queryPlan = {
 							kind: "fk",
 							fkOn: "self",
@@ -209,7 +217,8 @@ export class DMMFUtilsGenerator {
 						// FK 在对表
 						const fkField = reverseField.relationFromFields?.[0];
 						if (!fkField) continue;
-						const referencedField = reverseField.relationToFields?.[0] || model.primaryKeys[0] || "id";
+						const referencedField =
+							reverseField.relationToFields?.[0] || model.fields.find((candidate) => candidate.isId)?.name || "id";
 						queryPlan = {
 							kind: "fk",
 							fkOn: "other",
@@ -224,28 +233,112 @@ export class DMMFUtilsGenerator {
 
 				// 构建关系条目
 				const relationEntry = {
-					structure: isParent ? "parent" : "child",
+					structure: direction,
 					relationFieldOnSelf: field.name,
 					relationName: field.relationName || `${model.name}_${targetModel.name}`,
 					query: queryPlan,
 				};
 
 				// 根据结构方向放入对应的 parents 或 children（按目标表名分桶，桶内允许多条关系）
-				if (isParent) {
-					if (!dbRelation[model.tableName].parents[targetTableName]) {
-						dbRelation[model.tableName].parents[targetTableName] = [];
+				if (direction === "parent") {
+					if (!dbRelation[tableName].parents[targetTableName]) {
+						dbRelation[tableName].parents[targetTableName] = [];
 					}
-					dbRelation[model.tableName].parents[targetTableName].push(relationEntry);
+					dbRelation[tableName].parents[targetTableName].push(relationEntry);
 				} else {
-					if (!dbRelation[model.tableName].children[targetTableName]) {
-						dbRelation[model.tableName].children[targetTableName] = [];
+					if (!dbRelation[tableName].children[targetTableName]) {
+						dbRelation[tableName].children[targetTableName] = [];
 					}
-					dbRelation[model.tableName].children[targetTableName].push(relationEntry);
+					dbRelation[tableName].children[targetTableName].push(relationEntry);
 				}
 			}
 		}
 
 		return dbRelation;
+	}
+
+	/**
+	 * 构建物理外键关系事实。
+	 *
+	 * 只有携带 relationFromFields 的关系对象字段才表示当前模型持有
+	 * 外键。隐式多对多关系没有这组字段，因此不会被误判为 references；
+	 * 复合外键则以完整的列对数组保留。`onDelete` 属于这组物理事实，
+	 * 不进入 DB_RELATION，避免把删除生命周期误当成业务依赖方向。
+	 */
+	private buildForeignKeyRelations(): ForeignKeyRelation[] {
+		const modelByName = new Map(this.allModels.map((model) => [model.name, model]));
+		const relations: ForeignKeyRelation[] = [];
+
+		for (const model of this.allModels) {
+			for (const field of model.fields) {
+				if (field.kind !== "object" || field.isList || !field.relationFromFields?.length) {
+					continue;
+				}
+
+				const targetModel = modelByName.get(field.type);
+				if (!targetModel) {
+					throw new Error(`外键关系 ${model.name}.${field.name} 指向未知模型 ${field.type}`);
+				}
+
+				const sourceColumns = [...field.relationFromFields];
+				const targetColumns = [...(field.relationToFields ?? [])];
+				if (targetColumns.length !== sourceColumns.length || targetColumns.length === 0) {
+					throw new Error(`外键关系 ${model.name}.${field.name} 的 relationFromFields/relationToFields 不匹配`);
+				}
+
+				const reverseField = findReverseRelationField(this.allModels, model, field);
+
+				relations.push({
+					sourceTable: model.dbName || model.name,
+					targetTable: targetModel.dbName || targetModel.name,
+					relationName: field.relationName || `${model.name}To${targetModel.name}`,
+					relationField: field.name,
+					sourceColumns,
+					targetColumns,
+					cardinality: reverseField?.isList ? "many-to-one" : "one-to-one",
+					onDelete: field.relationOnDelete ?? null,
+				});
+			}
+		}
+
+		return relations.sort((a, b) => {
+			const source = a.sourceTable.localeCompare(b.sourceTable);
+			if (source !== 0) return source;
+			return a.relationField.localeCompare(b.relationField);
+		});
+	}
+
+	/**
+	 * 从同一份外键事实构建正向和反向索引。
+	 *
+	 * 索引值只保留定位和类型推导所需的轻量信息，完整列对统一存放在
+	 * FOREIGN_KEY_RELATIONS 中。正向索引按当前表和关系字段定位，反向
+	 * 索引按目标表和“来源表.关系字段”定位，避免同一对表的多条外键覆盖。
+	 */
+	private buildForeignKeyIndexes(relations: ForeignKeyRelation[]) {
+		const references: Record<string, Record<string, ForeignKeyIndexEntry>> = {};
+		const referencedBy: Record<string, Record<string, ForeignKeyIndexEntry>> = {};
+
+		for (const model of this.allModels) {
+			const tableName = model.dbName || model.name;
+			references[tableName] = {};
+			referencedBy[tableName] = {};
+		}
+
+		for (const relation of relations) {
+			const indexEntry: ForeignKeyIndexEntry = {
+				sourceTable: relation.sourceTable,
+				targetTable: relation.targetTable,
+				relationName: relation.relationName,
+				relationField: relation.relationField,
+				cardinality: relation.cardinality,
+				onDelete: relation.onDelete,
+			};
+			references[relation.sourceTable][relation.relationField] = indexEntry;
+			referencedBy[relation.targetTable][`${relation.sourceTable}.${relation.relationField}`] = indexEntry;
+		}
+
+		return { references, referencedBy };
 	}
 
 	/**
@@ -255,9 +348,19 @@ export class DMMFUtilsGenerator {
 		const metadata = this.buildMetadata();
 		const relations = this.buildRelations();
 		const dbRelation = this.buildDBRelation();
+		const foreignKeyRelations = this.buildForeignKeyRelations();
+		const { references, referencedBy } = this.buildForeignKeyIndexes(foreignKeyRelations);
 		const metadataJson = JSON.stringify(metadata, null, 2);
 		const relationsJson = JSON.stringify(relations, null, 2);
 		const dbRelationJson = JSON.stringify(dbRelation, null, 2);
+		const foreignKeyRelationsJson = JSON.stringify(foreignKeyRelations, null, 2);
+		const referencesJson = JSON.stringify(references, null, 2);
+		const referencedByJson = JSON.stringify(referencedBy, null, 2);
+		const primaryKeysJson = JSON.stringify(
+			Object.fromEntries(metadata.map((model) => [model.tableName, model.primaryKeys])),
+			null,
+			2,
+		);
 
 		return `/**
  * @file dmmf-utils.ts
@@ -294,6 +397,10 @@ export interface ModelMetadata {
   tableName: string;
   primaryKeys: string[];
   fields: FieldMetadata[];
+  /** 用于显示名称的字段列表（来自 Prisma 字段的 \`/// @displayName\` 注释）。
+   * 多个字段按声明顺序拼接，以 " / " 分隔。
+   * 未标记时为空数组，运行时降级取 name 字段或主键。 */
+  displayFields: string[];
 }
 
 export interface FieldMetadata {
@@ -321,6 +428,21 @@ export interface RelationMetadata {
   toField?: string;
   joinTable?: string;
   fromHasForeignKey?: boolean;
+}
+
+/**
+ * 物理外键关系事实。
+ * sourceTable 持有 sourceColumns，并引用 targetTable 的 targetColumns。
+ */
+export interface ForeignKeyRelationMetadata {
+  sourceTable: keyof DB;
+  targetTable: keyof DB;
+  relationName: string;
+  relationField: string;
+  sourceColumns: readonly string[];
+  targetColumns: readonly string[];
+  cardinality: "one-to-one" | "many-to-one";
+  onDelete: string | null;
 }
 
 /**
@@ -363,12 +485,16 @@ export type DBRelation = {
 /**
  * 获取子表类型（用于类型安全的配置）
  */
-export type ChildTableOf<T extends keyof DB> = keyof DBRelation[T]["children"];
+export type ChildTableOf<T extends keyof DB> = T extends keyof typeof DB_RELATION
+	  ? keyof typeof DB_RELATION_DEFINITION[T]["children"]
+	  : never;
 
 /**
  * 获取父表类型（用于类型安全的配置）
  */
-export type ParentTableOf<T extends keyof DB> = keyof DBRelation[T]["parents"];
+export type ParentTableOf<T extends keyof DB> = T extends keyof typeof DB_RELATION
+	  ? keyof typeof DB_RELATION_DEFINITION[T]["parents"]
+	  : never;
 
 /**
  * 模型元数据（精简，不包含完整 DMMF）
@@ -376,14 +502,103 @@ export type ParentTableOf<T extends keyof DB> = keyof DBRelation[T]["parents"];
 export const MODEL_METADATA: ModelMetadata[] = ${metadataJson};
 
 /**
+ * 每张表实际声明的主键字段。
+ * 保留字面量元组，使单表和联合表名都能推导出对应的主键，而不是退化为所有表的公共字段。
+ */
+export const PRIMARY_KEYS = ${primaryKeysJson} as const satisfies {
+  [T in keyof DB]: readonly (keyof DB[T])[];
+};
+
+/** 指定表的主键字段名。 */
+export type PrimaryKeyOf<T extends keyof DB> = (typeof PRIMARY_KEYS)[T][number];
+
+/**
  * 关系元数据
  */
 export const RELATION_METADATA: RelationMetadata[] = ${relationsJson};
 
 /**
- * 数据层级关系（基于字段名前缀规则）
+ * 业务数据依赖层级（由关系两端的命名约定决定，不表达删除所有权）。
  */
-export const DB_RELATION: DBRelation = ${dbRelationJson} as DBRelation;
+const DB_RELATION_DEFINITION = ${dbRelationJson} satisfies DBRelation;
+
+/**
+ * 动态表名访问使用完整 DBRelation 接口；精确父子表类型从私有字面量
+ * DB_RELATION_DEFINITION 推导。两者分开是为了同时支持运行时的 keyof DB
+ * 索引和配置声明时的精确表名补全，避免宽类型把 ChildTableOf/ParentTableOf
+ * 退化为 keyof DB。
+ */
+export const DB_RELATION: DBRelation = DB_RELATION_DEFINITION;
+
+/**
+ * 物理外键关系事实（与业务层级 DB_RELATION 分离）。
+ */
+export const FOREIGN_KEY_RELATIONS: readonly ForeignKeyRelationMetadata[] = ${foreignKeyRelationsJson};
+
+/**
+ * 当前表通过外键指向的目标表关系（轻量索引，完整列对见 FOREIGN_KEY_RELATIONS）。
+ * 键为当前表，第二级键为当前表上的关系字段。
+ */
+export const DB_REFERENCES = ${referencesJson} as const;
+
+/**
+ * 通过外键指向当前表的来源关系（轻量索引，完整列对见 FOREIGN_KEY_RELATIONS）。
+ * 键为目标表，第二级键为“来源表.关系字段”，避免同表多关系覆盖。
+ */
+export const DB_REFERENCED_BY = ${referencedByJson} as const;
+
+/** 当前表 references 的关系字段名。 */
+export type ReferenceRelationOf<T extends keyof DB> = T extends keyof typeof DB_REFERENCES
+  ? keyof typeof DB_REFERENCES[T]
+  : never;
+
+type ReferenceEntryOf<T extends keyof DB, R extends PropertyKey> = T extends keyof typeof DB_REFERENCES
+  ? R extends keyof typeof DB_REFERENCES[T]
+    ? typeof DB_REFERENCES[T][R]
+    : never
+  : never;
+
+/** 当前表指定关系字段对应的真实目标表。 */
+export type ReferenceTableOf<
+  T extends keyof DB,
+  R extends ReferenceRelationOf<T> = ReferenceRelationOf<T>,
+> = ReferenceEntryOf<T, R> extends { targetTable: infer U } ? Extract<U, keyof DB> : never;
+
+/** 当前表的关系声明，relation 与 tableName 必须保持对应。 */
+export type ReferenceDecl<T extends keyof DB> = {
+  [R in ReferenceRelationOf<T>]: {
+    relation: R;
+    tableName: ReferenceTableOf<T, R>;
+  };
+}[ReferenceRelationOf<T>];
+
+/** 指向当前表的来源关系键。 */
+export type ReferencedByRelationOf<T extends keyof DB> = T extends keyof typeof DB_REFERENCED_BY
+  ? keyof typeof DB_REFERENCED_BY[T]
+  : never;
+
+type ReferencedByEntryOf<T extends keyof DB, R extends PropertyKey> = T extends keyof typeof DB_REFERENCED_BY
+  ? R extends keyof typeof DB_REFERENCED_BY[T]
+    ? typeof DB_REFERENCED_BY[T][R]
+    : never
+  : never;
+
+/** 当前表指定来源关系对应的真实来源表。 */
+export type ReferencedByTableOf<
+  T extends keyof DB,
+  R extends ReferencedByRelationOf<T> = ReferencedByRelationOf<T>,
+> = ReferencedByEntryOf<T, R> extends { sourceTable: infer U } ? Extract<U, keyof DB> : never;
+
+/** 指向当前表的来源关系声明，relation 与 tableName 必须保持对应。 */
+export type ReferencedByDecl<T extends keyof DB> = {
+  [R in ReferencedByRelationOf<T>]: {
+    relation: R;
+    tableName: ReferencedByTableOf<T, R>;
+  };
+}[ReferencedByRelationOf<T>];
+
+/** 兼容旧名称：当前表可用的物理外键关系字段名。 */
+export type ReferenceRelationFieldOf<T extends keyof DB> = ReferenceRelationOf<T>;
 
 /**
  * 模型映射表：模型名 -> 表名
@@ -402,20 +617,10 @@ const TABLE_TO_MODEL_MAP = new Map<string, ModelMetadata>(
 /**
  * 获取表的主键字段
  * @param tableName 表名
- * @returns 主键字段名数组
+ * @returns 该表的主键字段元组
  */
-export function getPrimaryKeys<T extends keyof DB>(tableName: T): Array<keyof DB[T]> {
-  const model = TABLE_TO_MODEL_MAP.get(tableName as string);
-  if (!model) {
-    console.warn(\`Table \${String(tableName)} not found in DMMF\`);
-    return [];
-  }
-
-  const primaryKeys = model.fields
-    .filter((field) => field.isId)
-    .map((field) => field.name);
-
-  return primaryKeys as Array<keyof DB[T]>;
+export function getPrimaryKeys<T extends keyof DB>(tableName: T): (typeof PRIMARY_KEYS)[T] {
+  return PRIMARY_KEYS[tableName];
 }
 
 /**
@@ -424,23 +629,12 @@ export function getPrimaryKeys<T extends keyof DB>(tableName: T): Array<keyof DB
  * @returns 子关系表名数组
  */
 export function getChildRelationNames(tableName: string): string[] {
-  const model = TABLE_TO_MODEL_MAP.get(tableName);
-  if (!model) {
-    console.warn(\`Table \${tableName} not found in metadata\`);
-    return [];
-  }
+	  if (!(tableName in DB_RELATION)) {
+	    console.warn(\`Table \${tableName} not found in DB_RELATION\`);
+	    return [];
+	  }
 
-  // 查找所有关系字段（kind === 'object' 且 isList === true）
-  const childRelations = model.fields
-    .filter((field) => field.kind === "object" && field.isList)
-    .map((field) => {
-      // 获取关系目标表名
-      const targetModel = MODEL_METADATA.find((m) => m.name === field.type);
-      return targetModel ? targetModel.tableName : field.type;
-    })
-    .filter((name, index, self) => self.indexOf(name) === index); // 去重
-
-  return childRelations;
+	  return Object.keys(DB_RELATION[tableName as keyof typeof DB_RELATION].children);
 }
 
 /**
@@ -562,100 +756,8 @@ export async function getChildRelations<T extends keyof DB>(
   tableName: T,
   primaryKey: string | number
 ): Promise<Partial<{ [K in keyof DB]: DB[K][] }>> {
-  const childRelationNames = getChildRelationNames(tableName as string);
-  const primaryKeys = getPrimaryKeys(tableName);
-
-  if (primaryKeys.length === 0) {
-    console.warn(\`No primary key found for table \${String(tableName)}\`);
-    return {};
-  }
-
-  const primaryKeyField = primaryKeys[0] as string;
-  const result: Partial<{ [K in keyof DB]: DB[K][] }> = {};
-
-  // 并行查询所有子关系
-  await Promise.all(
-    childRelationNames.map(async (childTableName) => {
-      try {
-        const relationType = getRelationType(tableName as string, childTableName);
-
-        if (relationType === "OneToMany" || relationType === "ManyToMany") {
-          let query;
-
-          if (relationType === "ManyToMany") {
-            // 多对多：需要通过中间表查询
-            const joinTableName = getManyToManyTableName(
-              tableName as string,
-              childTableName
-            );
-
-            if (!joinTableName) {
-              console.warn(\`Join table not found for \${String(tableName)} -> \${childTableName}\`);
-              return;
-            }
-
-            // 动态构建查询
-            const childPrimaryKeys = getPrimaryKeys(childTableName as keyof DB);
-            if (childPrimaryKeys.length === 0) {
-              console.warn(\`No primary key found for child table \${childTableName}\`);
-              return;
-            }
-
-            const childPrimaryKeyField = childPrimaryKeys[0] as string;
-
-            // 使用 any 类型绕过 kysely 类型检查，因为中间表可能不在 DB 类型中
-            query = (db as any)
-              .selectFrom(childTableName)
-              .innerJoin(
-                joinTableName,
-                \`\${childTableName}.\${childPrimaryKeyField}\`,
-                \`\${joinTableName}.B\`
-              )
-              .where(\`\${joinTableName}.A\`, "=", primaryKey)
-              .selectAll(childTableName);
-          } else {
-            // 一对多：直接查询外键
-            const childModel = TABLE_TO_MODEL_MAP.get(childTableName);
-            if (!childModel) {
-              return;
-            }
-
-            // 查找指向父表的外键字段
-            const parentModel = TABLE_TO_MODEL_MAP.get(tableName as string);
-            if (!parentModel) {
-              return;
-            }
-
-            const foreignKeyField = childModel.fields.find(
-              (f) =>
-                f.kind === "object" &&
-                f.type === parentModel.name &&
-                f.relationFromFields &&
-                f.relationFromFields.length > 0
-            );
-
-            if (!foreignKeyField || !foreignKeyField.relationFromFields) {
-              return;
-            }
-
-            const fkFieldName = foreignKeyField.relationFromFields[0];
-
-            query = (db as any)
-              .selectFrom(childTableName)
-              .where(fkFieldName, "=", primaryKey)
-              .selectAll();
-          }
-
-          const data = await query.execute();
-          result[childTableName as keyof DB] = data as any;
-        }
-      } catch (error) {
-        console.error(\`Error querying child relation \${childTableName}:\`, error);
-      }
-    })
-  );
-
-  return result;
+  // 兼容旧调用入口；父子分类和查询实现必须只有 getChildrenDatas 一份事实源。
+  return getChildrenDatas(db, tableName, primaryKey);
 }
 
 /**
@@ -729,7 +831,7 @@ export function listFkRelationFields<T extends keyof DB>(tableName: T): (keyof D
  */
 export function isPrimaryKeyField<T extends keyof DB>(tableName: T, fieldName: keyof DB[T]): boolean {
   const primaryKeys = getPrimaryKeys(tableName);
-  return primaryKeys.includes(fieldName);
+  return primaryKeys.some((primaryKey) => primaryKey === fieldName);
 }
 
 /**
