@@ -1,4 +1,6 @@
-import type { DB } from "@db/generated/zod/index";
+import { type DB, DBSchema } from "@db/generated/zod/index";
+import { getPrimaryKeys } from "@db/generated/dmmf-utils";
+import { repositoryReaders, type RepositoryReader } from "@db/generated/repositories";
 import { MetaProvider, Title } from "@solidjs/meta";
 import { useNavigate } from "@solidjs/router";
 import { useMachine } from "@xstate/solid";
@@ -6,18 +8,18 @@ import { sql } from "kysely";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createMemo, createSignal, For, Index, type JSX, onCleanup, onMount, Show, useContext } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { DataRenderer } from "~/components/business/card/DataRenderer";
-import { DATA_CONFIG } from "~/components/business/data-config";
-import { DataForm } from "~/components/business/form/DataForm";
+import { DATA_CONFIG, type TableDataConfig } from "~/components/business/data-config";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
+import { ObjRenderer } from "~/components/dataDisplay/ObjRenderer";
 import { Filing } from "~/components/features/filing";
 import { Icons } from "~/components/icons/index";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
 import { type DialogLayerEntryInit, type OverlayLayerHandle, useOverlay } from "~/lib/overlay/OverlayContext";
 import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
-import type { Dictionary } from "~/locales/type";
+import type { Dictionary, Dic } from "~/locales/type";
+import type { ZodSchemaFor } from "~/lib/utils/zod";
 import { setStore, store } from "~/store";
 import { indexPageMachine } from "./indexPageMachine";
 
@@ -70,69 +72,75 @@ export default function IndexPage() {
 	 * - 外键 drill → pushDialog 并入同层;editor → openSheet 新建子层。
 	 * 首页搜索结果 dialog 在首页场景内创建,递归关联继续沿用当前语言字典。
 	 */
+	/**
+	 * 搜索结果卡片所需的最小配置子集。
+	 * 设计思路同 wiki/[subName].tsx 的 TableConfig：用单一泛型参数收拢各配置源，
+	 * 避免 TS 在使用点把动态索引展开为 keyof DB 联合类型导致的 prop 不兼容错误。
+	 */
+	type SearchResultConfig<TTableName extends keyof DB, T extends DB[TTableName] = DB[TTableName]> = {
+		tableName: TTableName;
+		schema: ZodSchemaFor<T>;
+		dic: Dic<T>;
+		readers: RepositoryReader<TTableName>;
+		UIConfig: TableDataConfig<TTableName, T>;
+	};
+
+	const buildSearchResultConfig = <TTableName extends keyof DB>(
+		tableName: TTableName,
+	): SearchResultConfig<TTableName> | undefined => {
+		const UIConfig = DATA_CONFIG[tableName]?.(dictionary());
+		if (!UIConfig) return undefined;
+		// 同 createTableConfig：TypeScript 无法从动态索引自动证明各映射对象 K 相同，集中断言。
+		return {
+			tableName,
+			schema: DBSchema[tableName],
+			dic: dictionary().db[tableName],
+			readers: repositoryReaders[tableName],
+			UIConfig,
+		} as SearchResultConfig<TTableName>;
+	};
+
+	/**
+	 * 泛型子组件：在泛型上下文中使用 config 的各字段，
+	 * TS 能从单一 TTableName 推断出所有 prop 类型一致，不会展开为联合类型。
+	 * 对应 wiki/[subName].tsx 中的 CurrentVirtualTable 模式。
+	 */
+	const SearchResultCard = <TTableName extends keyof DB>(props: {
+		id: string;
+		config: SearchResultConfig<TTableName>;
+	}) => (
+		<ObjRenderer
+			query={(db) => props.config.readers.get?.(db, props.id) ?? null}
+			dataSchema={props.config.schema}
+			dictionary={props.config.dic}
+			hiddenFields={props.config.UIConfig.card.hiddenFields}
+			fieldGroupMap={props.config.UIConfig.fieldGroupMap}
+			renderers={props.config.UIConfig.card.renderers}
+			after={props.config.UIConfig.card.after}
+			before={props.config.UIConfig.card.before}
+		/>
+	);
+
 	const buildSearchResultDialogEntry = (type: keyof DB, data: Record<string, unknown>): DialogLayerEntryInit => {
-		const config = DATA_CONFIG[type]?.(dictionary);
+		const config = buildSearchResultConfig(type);
+		const primaryKey = getPrimaryKeys(type)[0];
+
+		if (!primaryKey)
+			return {
+				title: (data as { name?: unknown }).name?.toString() ?? "",
+				titleIcon: () => <Icons.Spirits iconName={type} />,
+				render() {
+					return <div>primary key is undefined</div>;
+				},
+			};
+
+		const id = String(data[primaryKey]);
+
 		return {
 			title: (data as { name?: unknown }).name?.toString() ?? "",
 			titleIcon: () => <Icons.Spirits iconName={type} />,
-			render: (dialogApi) => {
-				if (!config) return <pre>{JSON.stringify(data, null, 2)}</pre>;
-				// dialog layer 作用域句柄:drill 用 pushDialog 并入同层,editor 用 openSheet 新建子层。
-				const dialogOverlay = useOverlay();
-
-				return (
-					<DataRenderer
-						primaryKey={config.primaryKey}
-						dictionary={config.dictionary}
-						deleteCallback={config.card.deleteCallback}
-						onOpenRecord={(nextType, nextData) =>
-							dialogOverlay.pushDialog(buildSearchResultDialogEntry(nextType, nextData))
-						}
-						onDeleted={dialogApi.close}
-						openEditor={(nextData) => {
-							dialogOverlay.openSheet({
-								render: (api) => (
-									<DataForm
-										tableName={type}
-										value={nextData}
-										primaryKey={config.primaryKey}
-										defaultValue={config.defaultData}
-										dataSchema={config.dataSchema}
-										dictionary={config.dictionary}
-										hiddenFields={config.form.hiddenFields}
-										fieldGroupMap={config.fieldGroupMap}
-										renderers={config.form.renderers}
-										inheritsFrom={config.inheritsFrom}
-										embeds={config.embeds}
-										onInsert={async (value) => {
-											const result = await config.form.onInsert(value);
-											api.close();
-											return result;
-										}}
-										onUpdate={async (primaryKeyValue, value) => {
-											const result = await config.form.onUpdate(primaryKeyValue, value);
-											api.close();
-											return result;
-										}}
-									/>
-								),
-							});
-						}}
-						editAbleCallback={config.card.editAbleCallback}
-						tableName={type}
-						data={() => data}
-						dataSchema={config.dataSchema}
-						hiddenFields={config.card.hiddenFields}
-						fieldGroupMap={config.fieldGroupMap}
-						fieldGenerator={config.card.fieldGenerator}
-						inheritsFrom={config.inheritsFrom}
-						embeds={config.embeds}
-						relationOverrides={config.card.relationOverrides}
-						after={config.card.after}
-						before={config.card.before}
-					/>
-				);
-			},
+			render: () =>
+				config ? <SearchResultCard id={id} config={config} /> : <div>此表暂无 UI 配置</div>,
 		};
 	};
 
