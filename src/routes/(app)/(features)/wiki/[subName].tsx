@@ -552,7 +552,6 @@ export default function WikiSubPage() {
 	return (
 		<Show when={currentTableConfig()} fallback={<p>Current Table UI Config is Undefined</p>}>
 			{(validCurrentTableConfig) => {
-				const tableConfig = validCurrentTableConfig();
 				// console.log("syncState", JSON.stringify(store.database.hasInitialSnapshot, null, 2), "wikiStore.type", JSON.stringify(wikiStore.type), "validDataConfig", validDataConfig());
 				return (
 					<Show
@@ -597,7 +596,7 @@ export default function WikiSubPage() {
 											size="sm"
 											icon={<Icons.Outline.CloudUpload />}
 											class="flex bg-transparent lg:hidden"
-											onClick={() => openCreateForm(tableConfig)}
+											onClick={() => openCreateForm(validCurrentTableConfig())}
 										></Button>
 									</Show>
 									<Button // 仅移动端显示
@@ -610,7 +609,7 @@ export default function WikiSubPage() {
 										<Button // 仅PC端显示
 											icon={<Icons.Outline.CloudUpload />}
 											class="hidden lg:flex"
-											onClick={() => openCreateForm(tableConfig)}
+											onClick={() => openCreateForm(validCurrentTableConfig())}
 										>
 											{dictionary().ui.actions.add}
 										</Button>
@@ -714,7 +713,13 @@ export default function WikiSubPage() {
 									}}
 									class="VirtualTableAnimationBox w-full h-full"
 								>
-									<CurrentVirtualTable tableName={tableConfig.tableName} tableConfig={tableConfig} />
+									{/* 排序、滚动位置和行高缓存都是单表作用域的状态，按表名 keyed 重建，
+									    否则切表后列定义已换成新表，排序里仍留着旧表字段。 */}
+									<Show when={validCurrentTableConfig().tableName} keyed>
+										{(tableName) => (
+											<CurrentVirtualTable tableName={tableName} tableConfig={validCurrentTableConfig()} />
+										)}
+									</Show>
 								</Motion.div>
 							</div>
 							<Presence exitBeforeEnter>
@@ -777,7 +782,7 @@ export default function WikiSubPage() {
 											level="quaternary"
 											icon={<Icons.Outline.CloudUpload />}
 											class="hidden lg:flex"
-											onClick={() => openCreateForm(tableConfig)}
+											onClick={() => openCreateForm(validCurrentTableConfig())}
 										></Button>
 									</Show>
 									<input

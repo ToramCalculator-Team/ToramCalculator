@@ -1,74 +1,85 @@
-import { defaultData } from "@db/defaultData";
-import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
-import { ItemSchema, type item } from "@db/generated/zod";
-import { getDB } from "@db/repositories/database";
-import { createId } from "@paralleldrive/cuid2";
-import type { TableDataConfig } from "../data-config";
-import { getUserContext } from "../utils/context";
+import type { item } from "@db/generated/zod";
+import type { TableDataConfig, TableDataConfigurator } from "../data-config";
+import { Icons } from "~/components/icons";
 
-export const ITEM_DATA_CONFIG: TableDataConfig<item> = (dictionary) => ({
-	tableName: "item",
-	embeds: [{ field: "recipe", table: "recipe", via: "itemId" }],
-	dictionary: dictionary().db.item,
-	dataSchema: ItemSchema,
-	primaryKey: "id",
-	defaultData: defaultData.item,
-	queries: repositoryReaders.item,
-	fieldGroupMap: {
-		ID: ["id"],
-		基本信息: ["name", "itemType", "itemSourceType"],
-		其他属性: ["dataSources", "details"],
-		创建和更新信息: ["createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
-	},
-	table: {
-		columnsDef: [
-			{ accessorKey: "name", cell: (info) => info.getValue(), size: 200 },
-			{ accessorKey: "itemType", cell: (info) => info.getValue(), size: 150 },
-			{
-				accessorKey: "itemSourceType",
-				cell: (info) => info.getValue(),
-				size: 150,
-			},
-			{
-				accessorKey: "dataSources",
-				cell: (info) => info.getValue(),
-				size: 150,
-			},
-			{ accessorKey: "details", cell: (info) => info.getValue(), size: 150 },
-		],
-		hiddenColumnDef: ["id", "createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
-		defaultSort: { field: "id", desc: false },
-		tdGenerator: {},
-	},
-	form: {
-		hiddenFields: ["id", "createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
-		onInsert: async (data) => {
-			const db = await getDB();
-			return db.transaction().execute(async (trx) => {
-				const { account } = await getUserContext(trx);
-				return repositoryWriters.item.create(
-					{
-						...data,
-						id: createId(),
-						createdByAccountId: account.id,
-						updatedByAccountId: account.id,
-					},
-					trx,
-				);
-			});
+export const ITEM_DATA_CONFIG: TableDataConfigurator<"item", item> = (_dictionary) =>
+	({
+		fieldGroupMap: {
+			ID: ["id"],
+			基本信息: ["name", "itemType", "itemSourceType"],
+			其他属性: ["dataSources", "details"],
+			创建和更新信息: ["createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
 		},
-		onUpdate: async (id, data) => {
-			const db = await getDB();
-			return db.transaction().execute(async (trx) => {
-				const { account } = await getUserContext(trx);
-				return repositoryWriters.item.update(id, { ...data, updatedByAccountId: account.id }, trx);
-			});
+		table: {
+			columnsDef: [
+				{ id: "name", accessorFn: (row) => row.name, cell: (info) => info.getValue(), size: 200 },
+				{ id: "itemType", accessorFn: (row) => row.itemType, cell: (info) => info.getValue(), size: 150 },
+				{
+					id: "itemSourceType",
+					accessorFn: (row) => row.itemSourceType,
+					cell: (info) => info.getValue(),
+					size: 150,
+				},
+				{
+					id: "dataSources",
+					accessorFn: (row) => row.dataSources,
+					cell: (info) => info.getValue(),
+					size: 150,
+				},
+				{ id: "details", accessorFn: (row) => row.details, cell: (info) => info.getValue(), size: 150 },
+			],
+			hiddenColumnDef: ["id", "createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
+			defaultSort: { field: "id", desc: false },
+			tdGenerator: {},
 		},
-	},
-	card: {
-		hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
-		fieldGenerator: {},
-		deleteCallback: repositoryWriters.item.delete,
-		editAbleCallback: (data) => repositoryWriters.item.canEdit(data.id),
-	},
-});
+		form: {
+			hiddenFields: ["id", "createdAt", "updatedAt", "createdByAccountId", "updatedByAccountId"],
+			references: [],
+			referencedBy: [],
+		},
+		card: {
+			hiddenFields: ["id", "createdByAccountId", "updatedByAccountId"],
+			references: [],
+			referencedBy: [{
+				icon: <Icons.Spirits iconName="weapon" />,
+				relation: "weapon.belongToItem",
+				tableName: "weapon"
+			},{
+				icon: <Icons.Spirits iconName="armor" />,
+				relation: "armor.belongToItem",
+				tableName: "armor"
+			},{
+				icon: <Icons.Spirits iconName="option" />,
+				relation: "option.belongToItem",
+				tableName: "option"
+			},{
+				icon: <Icons.Spirits iconName="special" />,
+				relation: "special.belongToItem",
+				tableName: "special"
+			},{
+				icon: <Icons.Spirits iconName="crystal" />,
+				relation: "crystal.belongToItem",
+				tableName: "crystal"
+			},{
+				icon: <Icons.Spirits iconName="consumable" />,
+				relation: "consumable.belongToItem",
+				tableName: "consumable"
+			},{
+				icon: <Icons.Spirits iconName="material" />,
+				relation: "material.belongToItem",
+				tableName: "material"
+			},{
+				icon: <Icons.Spirits iconName="recipe" />,
+				relation: "recipe.belongToItem",
+				tableName: "recipe"
+			},{
+				icon: <Icons.Spirits iconName="task_reward" />,
+				relation: "task_reward.item",
+				tableName: "task_reward"
+			},{
+				icon: <Icons.Spirits iconName="task_collect_require" />,
+				relation: "task_collect_require.item",
+				tableName: "task_collect_require"
+			}],
+		},
+	}) satisfies TableDataConfig<"item", item>;

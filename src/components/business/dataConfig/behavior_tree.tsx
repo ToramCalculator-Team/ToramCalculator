@@ -1,10 +1,8 @@
-import { defaultData } from "@db/defaultData";
-import { repositoryReaders, repositoryWriters } from "@db/generated/repositories";
-import { BehaviorTreeSchema, type behavior_tree } from "@db/generated/zod";
+import type { behavior_tree } from "@db/generated/zod";
 import { createSignal } from "solid-js";
 import { Input } from "~/components/controls/input";
 import type { FormFieldRendererContext } from "~/components/form/fields";
-import type { TableDataConfig } from "../data-config";
+import type { TableDataConfig, TableDataConfigurator } from "../data-config";
 
 const formatJson = (value: unknown): string => JSON.stringify(value ?? [], null, 2);
 
@@ -39,63 +37,95 @@ const createAttributeSlotsField = (context: FormFieldRendererContext<behavior_tr
 	);
 };
 
-export const BEHAVIOR_TREE_DATA_CONFIG: TableDataConfig<behavior_tree> = (dictionary) => ({
-	tableName: "behavior_tree",
-	dictionary: dictionary().db.behavior_tree,
-	dataSchema: BehaviorTreeSchema,
-	primaryKey: "id",
-	defaultData: defaultData.behavior_tree,
-	queries: repositoryReaders.behavior_tree,
-	fieldGroupMap: {
-		ID: ["id"],
-		基础信息: ["name", "definition", "agent", "attributeSlots"],
-		归属: ["activeOwnerId", "passiveOwnerId", "registeredOwnerId"],
-	},
-	table: {
-		columnsDef: [
-			{
-				accessorKey: "name",
-				cell: (info) => info.getValue(),
-				size: 220,
+export const BEHAVIOR_TREE_DATA_CONFIG: TableDataConfigurator<"behavior_tree", behavior_tree> = (_dictionary) =>
+	({
+		fieldGroupMap: {
+			ID: ["id"],
+			基础信息: ["name", "definition", "agent", "attributeSlots"],
+			归属: ["activeOwnerId", "passiveOwnerId", "registeredOwnerId"],
+		},
+		table: {
+			columnsDef: [
+				{
+					id: "name",
+					accessorFn: (row) => row.name,
+					cell: (info) => info.getValue(),
+					size: 220,
+				},
+				{
+					id: "activeOwnerId",
+					accessorFn: (row) => row.activeOwnerId,
+					cell: (info) => info.getValue(),
+					size: 220,
+				},
+				{
+					id: "passiveOwnerId",
+					accessorFn: (row) => row.passiveOwnerId,
+					cell: (info) => info.getValue(),
+					size: 220,
+				},
+				{
+					id: "registeredOwnerId",
+					accessorFn: (row) => row.registeredOwnerId,
+					cell: (info) => info.getValue(),
+					size: 220,
+				},
+			],
+			hiddenColumnDef: ["id", "definition", "agent", "attributeSlots"],
+			defaultSort: { field: "id", desc: false },
+			tdGenerator: {},
+		},
+		form: {
+			hiddenFields: ["id"],
+			renderers: {
+				fields: {
+					attributeSlots: createAttributeSlotsField,
+				},
 			},
-			{
-				accessorKey: "activeOwnerId",
-				cell: (info) => info.getValue(),
-				size: 220,
-			},
-			{
-				accessorKey: "passiveOwnerId",
-				cell: (info) => info.getValue(),
-				size: 220,
-			},
-			{
-				accessorKey: "registeredOwnerId",
-				cell: (info) => info.getValue(),
-				size: 220,
-			},
-		],
-		hiddenColumnDef: ["id", "definition", "agent", "attributeSlots"],
-		defaultSort: { field: "id", desc: false },
-		tdGenerator: {},
-	},
-	form: {
-		hiddenFields: ["id"],
-		renderers: {
-			fields: {
-				attributeSlots: createAttributeSlotsField,
+			references: [
+				{
+					relation: "activeOwner",
+					tableName: "skill_variant",
+				},
+				{
+					relation: "passiveOwner",
+					tableName: "skill_variant",
+				},
+				{
+					relation: "registeredOwner",
+					tableName: "skill_variant",
+				},
+			],
+			referencedBy: [],
+		},
+		card: {
+			hiddenFields: ["id"],
+			references: [
+				{
+					relation: "activeOwner",
+					tableName: "skill_variant",
+				},
+				{
+					relation: "passiveOwner",
+					tableName: "skill_variant",
+				},
+				{
+					relation: "registeredOwner",
+					tableName: "skill_variant",
+				},
+			],
+			referencedBy: [],
+			renderers: {
+				fields: {
+					attributeSlots: ({ value, dictionary }) => (
+						<div class="Field flex flex-col gap-2">
+							<span class="Title text-main-text-color text-nowrap">{dictionary?.key ?? "attributeSlots"}</span>
+							<pre class="bg-area-color max-h-[50vh] w-full overflow-auto rounded p-3 text-sm">
+								{formatJson(value())}
+							</pre>
+						</div>
+					),
+				},
 			},
 		},
-		onInsert: repositoryWriters.behavior_tree.create,
-		onUpdate: repositoryWriters.behavior_tree.update,
-	},
-	card: {
-		hiddenFields: ["id"],
-		fieldGenerator: {
-			attributeSlots: (field, key) => (
-				<pre class="bg-area-color max-h-[50vh] w-full overflow-auto rounded p-3 text-sm">{formatJson(field[key])}</pre>
-			),
-		},
-		deleteCallback: repositoryWriters.behavior_tree.delete,
-		editAbleCallback: (data) => repositoryWriters.behavior_tree.canEdit(data.id),
-	},
-});
+	}) satisfies TableDataConfig<"behavior_tree", behavior_tree>;
