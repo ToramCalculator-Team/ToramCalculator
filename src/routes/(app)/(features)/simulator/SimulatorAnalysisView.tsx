@@ -3,11 +3,11 @@ import { createMemo, createResource, For, onMount, Show } from "solid-js";
 import { Button } from "~/components/controls/button";
 import { Select } from "~/components/controls/select";
 import { Icons } from "~/components/icons";
-import type { RunInputRecord } from "~/lib/engine/core/runOutput";
-import { collectTickStateHistoryDiagnostics } from "~/lib/engine/core/tickStateHistory";
 import { projectRunComparisonMetrics, type RunComparisonMetric } from "~/features/simulator/analysis";
 import { useSimulatorSession } from "~/features/simulator/SimulatorSession";
 import { completeSimulatorPerformanceMeasureAfterPaint } from "~/features/simulator/simulatorPerformance";
+import type { RunInputRecord } from "~/lib/engine/core/runOutput";
+import { collectTickStateHistoryDiagnostics } from "~/lib/engine/core/tickStateHistory";
 
 const inputActionLabel = (input: RunInputRecord) => {
 	return "skillId" in input.action.payload

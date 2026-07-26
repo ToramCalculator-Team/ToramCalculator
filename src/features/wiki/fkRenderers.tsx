@@ -16,7 +16,7 @@
 import { FOREIGN_KEY_RELATIONS, getPrimaryKeys, MODEL_METADATA } from "@db/generated/dmmf-utils";
 import { repositoryReaders } from "@db/generated/repositories";
 import type { DB } from "@db/generated/zod/index";
-import { For, Show, type Accessor, type JSX } from "solid-js";
+import { type Accessor, For, type JSX, Show } from "solid-js";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { Button } from "~/components/controls/button";
 import { Input } from "~/components/controls/input";
@@ -34,26 +34,24 @@ import type { Dictionary } from "~/locales/type";
  * 根据表名和行数据推断显示名称。
  * 优先取 `name` 字段；其次按 `@displayName` 注释标记的字段拼接（" / "）；最终降级为主键值。
  */
-export function getDisplayName(
-	tableName: keyof DB,
-	row: Record<string, unknown>,
-	dictionary?: Dictionary,
-): string {
+export function getDisplayName(tableName: keyof DB, row: Record<string, unknown>, dictionary?: Dictionary): string {
 	if (typeof row.name === "string" && row.name) return row.name;
 
 	const meta = MODEL_METADATA.find((m) => m.tableName === tableName);
 	const displayFields = (meta as { displayFields?: string[] }).displayFields ?? [];
 	if (displayFields.length > 0) {
-		const parts = displayFields.map((f) => {
-			const rawValue = row[f];
-			if (rawValue == null) return undefined;
-			// 通过字典 enumMap 做 i18n 翻译，无映射时降级到原始值
-			const fieldDic = (dictionary?.db[tableName] as Record<string, unknown> | undefined)?.fields as
-				| Record<string, { enumMap?: Record<string, string> }>
-				| undefined;
-			const translated = fieldDic?.[f]?.enumMap?.[String(rawValue)];
-			return translated ?? String(rawValue);
-		}).filter(Boolean);
+		const parts = displayFields
+			.map((f) => {
+				const rawValue = row[f];
+				if (rawValue == null) return undefined;
+				// 通过字典 enumMap 做 i18n 翻译，无映射时降级到原始值
+				const fieldDic = (dictionary?.db[tableName] as Record<string, unknown> | undefined)?.fields as
+					| Record<string, { enumMap?: Record<string, string> }>
+					| undefined;
+				const translated = fieldDic?.[f]?.enumMap?.[String(rawValue)];
+				return translated ?? String(rawValue);
+			})
+			.filter(Boolean);
 		if (parts.length > 0) return parts.join(" / ");
 	}
 
@@ -115,7 +113,12 @@ export function buildFKCardRenderers<TTableName extends keyof DB>(
 ): ObjRenderers<DB[TTableName]> {
 	const fields: Record<
 		string,
-		(ctx: { value: Accessor<unknown>; renderDefault: () => JSX.Element; dictionary?: { key?: string }; path: string }) => JSX.Element
+		(ctx: {
+			value: Accessor<unknown>;
+			renderDefault: () => JSX.Element;
+			dictionary?: { key?: string };
+			path: string;
+		}) => JSX.Element
 	> = {};
 
 	const hiddenSet = new Set(hiddenFields.map(String));
@@ -169,14 +172,10 @@ function FKFormField(props: {
 	setValue: (v: unknown) => void;
 	onOpenRelated: (id: string) => void;
 }) {
-	const allOptions = createLiveKyselyQuery(
-		(db) => repositoryReaders[props.relatedTable]?.getAll?.(db) ?? null,
-	);
+	const allOptions = createLiveKyselyQuery((db) => repositoryReaders[props.relatedTable]?.getAll?.(db) ?? null);
 
 	const selectedOption = () =>
-		props.pk
-			? allOptions.rows().find((o) => String(o[props.pk! as keyof typeof o]) === props.value())
-			: undefined;
+		props.pk ? allOptions.rows().find((o) => String(o[props.pk! as keyof typeof o]) === props.value()) : undefined;
 
 	const relatedDic = () => props.dictionary.db[props.relatedTable];
 
@@ -222,7 +221,11 @@ export function buildFKFormRenderers<TTableName extends keyof DB>(
 ): FormRenderers<DB[TTableName]> {
 	const fields: Record<
 		string,
-		(ctx: { value: () => unknown; setValue: (v: unknown) => void; dictionary?: { key?: string; formFieldDescription?: string } }) => JSX.Element
+		(ctx: {
+			value: () => unknown;
+			setValue: (v: unknown) => void;
+			dictionary?: { key?: string; formFieldDescription?: string };
+		}) => JSX.Element
 	> = {};
 
 	const hiddenSet = new Set(hiddenFields.map(String));
@@ -315,17 +318,13 @@ function ReferencedByEntry<TTableName extends keyof DB>(props: {
 	const sourcePK = getPrimaryKeys(props.sourceTable)[0];
 
 	// 全量拉取子表记录
-	const allRows = createLiveKyselyQuery(
-		(db) => repositoryReaders[props.sourceTable]?.getAll?.(db) ?? null,
-	);
+	const allRows = createLiveKyselyQuery((db) => repositoryReaders[props.sourceTable]?.getAll?.(db) ?? null);
 
 	// 内存过滤：只保留 FK 指向当前记录的行
 	const filteredRows = () => {
 		const selfId = selfPK ? String(props.data()?.[selfPK as keyof DB[TTableName]] ?? "") : "";
 		if (!fkColumn || !selfId) return [];
-		return (allRows.rows() as Record<string, unknown>[]).filter(
-			(row) => String(row[fkColumn] ?? "") === selfId,
-		);
+		return (allRows.rows() as Record<string, unknown>[]).filter((row) => String(row[fkColumn] ?? "") === selfId);
 	};
 
 	const relatedDic = props.dictionary.db[props.sourceTable];
@@ -337,7 +336,7 @@ function ReferencedByEntry<TTableName extends keyof DB>(props: {
 				<div class="flex flex-wrap gap-1">
 					<For each={filteredRows()}>
 						{(row) => {
-			const displayName = () => getDisplayName(props.sourceTable, row, props.dictionary);
+							const displayName = () => getDisplayName(props.sourceTable, row, props.dictionary);
 							return (
 								<Button level="secondary" onClick={() => props.onOpenCard(props.sourceTable, row)}>
 									{displayName()}

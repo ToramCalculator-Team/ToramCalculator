@@ -7,9 +7,9 @@
 import { useNavigate } from "@solidjs/router";
 import { createEffect, createMemo, createSignal, onCleanup, Show, untrack } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
+import { useSimulatorRuntimeProjection, useSimulatorSession } from "~/features/simulator/SimulatorSession";
 import { type RealtimeSceneSession, useSceneRuntime } from "~/lib/3dScene/SceneRuntime";
 import { computeMemberFormation } from "~/lib/engine/core/World/Member/memberFormation";
-import { useSimulatorRuntimeProjection, useSimulatorSession } from "~/features/simulator/SimulatorSession";
 import { useInterfaceSnapshot } from "~/machines/AppActorContext";
 import { SimulatorAnalysisView } from "~/routes/(app)/(features)/simulator/SimulatorAnalysisView";
 import { SimulatorDesignView } from "~/routes/(app)/(features)/simulator/SimulatorDesignView";

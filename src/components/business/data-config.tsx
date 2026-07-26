@@ -14,10 +14,8 @@
 import type { ReferenceDecl, ReferencedByDecl } from "@db/generated/dmmf-utils";
 import type { DB } from "@db/generated/zod";
 import type { Compilable, Kysely, Transaction } from "kysely";
-import type { Accessor } from "solid-js";
 import type { JSX } from "solid-js/jsx-runtime";
-import type { ZodSchemaFor } from "~/lib/utils/zod";
-import type { Dic, Dictionary } from "~/locales/type";
+import type { Dictionary } from "~/locales/type";
 import type { ObjRendererProps } from "../dataDisplay/ObjRenderer";
 import type { VirtualTableProps } from "../dataDisplay/virtualTable";
 import type { FormProps } from "../form/Form";
