@@ -1,13 +1,12 @@
 import { defaultData } from "@db/defaultData";
 import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 import {
-	type RepositoryReader,
 	type RepositoryWriter,
 	type RepositoryWriterContext,
 	repositoryReaders,
 	repositoryWriters,
 } from "@db/generated/repositories";
-import { type DB, DBSchema } from "@db/generated/zod/index";
+import { type DB } from "@db/generated/zod/index";
 import { A, useNavigate, useParams, useSearchParams } from "@solidjs/router";
 import {
 	createEffect,
@@ -22,7 +21,7 @@ import {
 	useContext,
 } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { DATA_CONFIG, type TableDataConfig } from "~/components/business/data-config";
+import { DATA_CONFIG } from "~/components/business/data-config";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { ObjRenderer } from "~/components/dataDisplay/ObjRenderer";
@@ -32,18 +31,18 @@ import { Icons } from "~/components/icons/index";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
 import { useOverlay } from "~/lib/overlay/OverlayContext";
-import type { ZodSchemaFor } from "~/lib/utils/zod";
-import type { Dic } from "~/locales/type";
 import { store } from "~/store";
 import { setWikiStore, wikiStore } from "./store";
-import { type WikiPageConfig, wikiPageConfig } from "./wikiPage/wikiPageConfig";
+import { wikiPageConfig } from "./wikiPage/wikiPageConfig";
 import { buildFKCardRenderers, buildFKFormRenderers, ReferencedBySection } from "./fkRenderers";
+import { type TableConfig, createTableConfig, createOpenRelatedCard } from "./wikiCardNav";
 
 export default function WikiSubPage() {
 	const media = useContext(MediaContext);
 	const dictionary = useDictionary();
 	// 页面根作用域的 overlay 句柄:列表点击从这里 openDialog 新建 dialog layer。
 	const overlay = useOverlay();
+	const openRelatedCard = createOpenRelatedCard(dictionary);
 	// url 参数
 	const params = useParams();
 	const navigate = useNavigate();
@@ -53,42 +52,7 @@ export default function WikiSubPage() {
 	const [isMainContentFullscreen, setIsMainContentFullscreen] = createSignal(true);
 	const [activeBannerIndex, setActiveBannerIndex] = createSignal(0);
 
-	type TableConfig<TTableName extends keyof DB, T extends DB[TTableName] = DB[TTableName]> = {
-		tableName: TTableName;
-		schema: ZodSchemaFor<T>;
-		dic: Dic<T>;
-		readers: RepositoryReader<TTableName>;
-		writers: RepositoryWriter<TTableName>;
-		defaultData: T;
-		wikiConfig: WikiPageConfig | undefined;
-		UIConfig: TableDataConfig<TTableName, T>;
-	};
-
-	/**
-	 * 设计思路：动态路由表名会让 schema、字典、默认值、UI 配置和 repository 的泛型关联丢失。
-	 * 函数职责：在页面入口把这些来源重新绑定成同一个表配置对象，后续 DOM 层只传递该绑定结果。
-	 */
-	const createTableConfig = <TTableName extends keyof DB>(
-		tableName: TTableName,
-	): TableConfig<TTableName> | undefined => {
-		const UIConfig = DATA_CONFIG[tableName]?.(dictionary());
-		if (!UIConfig) return;
-
-		// 设计说明：TypeScript 不能从同一个动态索引证明多个映射对象的 K 完全相同。
-		// 这里集中恢复表名与各配置源的关联，避免在表格、卡片和表单调用点散落类型断言。
-		return {
-			tableName,
-			schema: DBSchema[tableName],
-			dic: dictionary().db[tableName],
-			readers: repositoryReaders[tableName],
-			writers: repositoryWriters[tableName],
-			defaultData: defaultData[tableName],
-			wikiConfig: wikiPageConfig[tableName],
-			UIConfig,
-		} as TableConfig<TTableName>;
-	};
-
-	const currentTableConfig = createMemo(() => createTableConfig(wikiStore.type));
+	const currentTableConfig = createMemo(() => createTableConfig(wikiStore.type, dictionary()));
 
 	const getTablePrimaryKey = <TTableName extends keyof DB>(tableName: TTableName): keyof DB[TTableName] =>
 		(getPrimaryKeys(tableName)[0] ?? "id") as keyof DB[TTableName];
@@ -165,7 +129,7 @@ export default function WikiSubPage() {
 						// 卡片操作属于页面 DOM 编排层，ObjRenderer 只负责数据内容展示。
 						after={(currentData) => (
 							<>
-							{/* 被引用方关联记录区块（来自 data-config 显式声明） */}
+								{/* 被引用方关联记录区块（来自 data-config 显式声明） */}
 								<ReferencedBySection
 									tableName={type}
 									referencedBy={tableConfig.UIConfig.card.referencedBy}
@@ -184,10 +148,10 @@ export default function WikiSubPage() {
 											const dataSnapshot = currentData();
 											if (!dataSnapshot) return;
 
-									// FK列自动检测（跳过 hiddenFields 里的列）
-								const fkFormRenderers = buildFKFormRenderers(
-									type,
-									tableConfig.UIConfig.form.hiddenFields ?? [],
+											// FK列自动检测（跳过 hiddenFields 里的列）
+											const fkFormRenderers = buildFKFormRenderers(
+												type,
+												tableConfig.UIConfig.form.hiddenFields ?? [],
 												dictionary(),
 												(relatedTable, id) => openRelatedCard(relatedTable, id, dialogOverlay, "open"),
 											);
@@ -226,95 +190,6 @@ export default function WikiSubPage() {
 				);
 			},
 		});
-	};
-
-	/**
-	 * FK 导航入口：从已知表名 + id 打开关联记录的只读卡片。
-	 *
-	 * mode:
-	 *  "push" — 压入当前 dialog 层（breadcrumb 导航，用于卡片内的 FK 跳转）
-	 *  "open" — 新建一个 dialog 层（用于 form 内的 FK 打开，叠在 form 上方）
-	 *
-	 * 无需 DATA_CONFIG：如果没有完整的 UIConfig，用 schema + dic 降级渲染（没有自定义分组和隐藏字段）。
-	 */
-	const openRelatedCard = (
-		relatedTable: keyof DB,
-		id: string,
-		parentOverlay: ReturnType<typeof useOverlay>,
-		mode: "push" | "open" = "push",
-	) => {
-		const relatedConfig = createTableConfig(relatedTable);
-		const dic = dictionary().db[relatedTable];
-
-		// 未配置 DATA_CONFIG 时打开警告卡，不降级渲染原始数据
-		if (!relatedConfig) {
-			const entry: Parameters<typeof parentOverlay.openDialog>[0] = {
-				title: dic?.selfName ?? String(relatedTable),
-				titleIcon: () => <Icons.Spirits iconName={relatedTable} />,
-				render: () => (
-					<div class="flex flex-col gap-3 p-6">
-						<p class="text-boundary-color text-sm">
-							表 <code class="bg-area-color rounded px-1">{String(relatedTable)}</code> 暂无 UI 配置，无法预览。
-						</p>
-						<p class="text-boundary-color text-sm">如需显示此表数据，请在 data-config 中添加对应配置。</p>
-					</div>
-				),
-			};
-			if (mode === "open") parentOverlay.openDialog(entry);
-			else parentOverlay.pushDialog(entry);
-			return;
-		}
-
-		const hiddenFields = relatedConfig.UIConfig.card.hiddenFields ?? [];
-
-		const entry: Parameters<typeof parentOverlay.openDialog>[0] = {
-			title: dic?.selfName ?? String(relatedTable),
-			titleIcon: () => <Icons.Spirits iconName={relatedTable} />,
-			layout: "fill",
-			render: () => {
-				const dialogOverlay = useOverlay();
-
-				const fkCardRenderers = buildFKCardRenderers(
-					relatedTable,
-					hiddenFields,
-					dictionary(),
-					(nextTable, nextId) => openRelatedCard(nextTable, nextId, dialogOverlay),
-				);
-
-				return (
-					<ObjRenderer
-						query={(db) => relatedConfig.readers.get?.(db, id) ?? null}
-						dataSchema={relatedConfig.schema}
-						dictionary={relatedConfig.dic}
-						hiddenFields={hiddenFields}
-						fieldGroupMap={relatedConfig.UIConfig.fieldGroupMap}
-						renderers={{
-							fields: {
-								...fkCardRenderers.fields,
-								...relatedConfig.UIConfig.card.renderers?.fields,
-							},
-							containers: relatedConfig.UIConfig.card.renderers?.containers,
-						}}
-						after={(currentData) => (
-							<ReferencedBySection
-								tableName={relatedTable}
-								referencedBy={relatedConfig.UIConfig.card.referencedBy}
-								data={currentData}
-								dictionary={dictionary()}
-								onOpenCard={(nextTable, rowData) => {
-									const pk = getTablePrimaryKey(nextTable);
-									const nextId = String(rowData[pk as keyof typeof rowData] ?? "");
-									if (nextId) openRelatedCard(nextTable, nextId, dialogOverlay);
-								}}
-							/>
-						)}
-					/>
-				);
-			},
-		};
-
-		if (mode === "open") parentOverlay.openDialog(entry);
-		else parentOverlay.pushDialog(entry);
 	};
 
 	const openCreateForm = <TTableName extends keyof DB>(tableConfig: TableConfig<TTableName>) => {
@@ -704,23 +579,30 @@ export default function WikiSubPage() {
 										}}
 									/>
 								</div>
-								<Motion.div
-									animate={{
-										opacity: [0, 1],
-									}}
-									transition={{
-										duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
-									}}
-									class="VirtualTableAnimationBox w-full h-full"
-								>
-									{/* 排序、滚动位置和行高缓存都是单表作用域的状态，按表名 keyed 重建，
+								<Show
+									when={wikiPageConfig[wikiStore.type]}
+									fallback={
+										<Motion.div
+											animate={{
+												opacity: [0, 1],
+											}}
+											transition={{
+												duration: store.settings.userInterface.isAnimationEnabled ? 0.7 : 0,
+											}}
+											class="VirtualTableAnimationBox w-full h-full"
+										>
+											{/* 排序、滚动位置和行高缓存都是单表作用域的状态，按表名 keyed 重建，
 									    否则切表后列定义已换成新表，排序里仍留着旧表字段。 */}
-									<Show when={validCurrentTableConfig().tableName} keyed>
-										{(tableName) => (
-											<CurrentVirtualTable tableName={tableName} tableConfig={validCurrentTableConfig()} />
-										)}
-									</Show>
-								</Motion.div>
+											<Show when={validCurrentTableConfig().tableName} keyed>
+												{(tableName) => (
+													<CurrentVirtualTable tableName={tableName} tableConfig={validCurrentTableConfig()} />
+												)}
+											</Show>
+										</Motion.div>
+									}
+								>
+									{wikiPageConfig[wikiStore.type]?.mainContent()}
+								</Show>
 							</div>
 							<Presence exitBeforeEnter>
 								<Show when={!isMainContentFullscreen()}>

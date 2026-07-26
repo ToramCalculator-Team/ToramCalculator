@@ -194,9 +194,9 @@ export default function AppMainContet(props: ParentProps) {
 							<SceneCanvas />
 							<SceneInterfaceBridge />
 							{props.children}
-							<LoginDialog />
-							<OverlayRoot />
 						</Motion.div>
+						<LoginDialog />
+						<OverlayRoot />
 						<Setting />
 					</SceneRuntimeProvider>
 				</AppActorProvider>

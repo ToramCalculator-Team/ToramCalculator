@@ -75,6 +75,38 @@ export function getDisplayName(
  * @param dictionary   全局字典（取关联表 selfName 作为按钮提示）
  * @param onOpenCard   点击按钮的回调，由 wiki 页面层传入（负责打开 overlay）
  */
+function FKCardField(props: {
+	fkId: Accessor<string | null | undefined>;
+	relatedTable: keyof DB;
+	relatedPK: string | undefined;
+	fieldLabel: string;
+	dictionary: Dictionary;
+	onOpenCard: (id: string) => void;
+}) {
+	const relatedRecord = createLiveKyselyQuery((db) => {
+		const id = props.fkId();
+		if (!id || !props.relatedPK) return null;
+		return repositoryReaders[props.relatedTable]?.get?.(db, id) ?? null;
+	});
+
+	const displayName = () => {
+		const row = relatedRecord.rows()[0] as Record<string, unknown> | undefined;
+		if (!row) return props.fkId() ?? "";
+		return getDisplayName(props.relatedTable, row, props.dictionary);
+	};
+
+	return (
+		<div class="FKField flex gap-2 items-center">
+			<span class="text-main-text-color text-nowrap">{props.fieldLabel}</span>:
+			<Show when={props.fkId()} fallback={<span class="text-boundary-color text-sm">—</span>}>
+				<Button level="secondary" onClick={() => props.onOpenCard(props.fkId()!)}>
+					{displayName()}
+				</Button>
+			</Show>
+		</div>
+	);
+}
+
 export function buildFKCardRenderers<TTableName extends keyof DB>(
 	tableName: TTableName,
 	hiddenFields: Array<keyof DB[TTableName]>,
@@ -87,8 +119,6 @@ export function buildFKCardRenderers<TTableName extends keyof DB>(
 	> = {};
 
 	const hiddenSet = new Set(hiddenFields.map(String));
-
-	// 自动检测当前表的所有FK列
 	const fkRelations = FOREIGN_KEY_RELATIONS.filter((r) => r.sourceTable === tableName);
 
 	for (const fk of fkRelations) {
@@ -96,43 +126,18 @@ export function buildFKCardRenderers<TTableName extends keyof DB>(
 		if (!fkColumn || hiddenSet.has(fkColumn)) continue;
 
 		const relatedTable = fk.targetTable;
-		const relatedDic = dictionary.db[relatedTable];
 		const relatedPK = getPrimaryKeys(relatedTable)[0];
 
-		fields[fkColumn] = ({ value, dictionary: fieldDic, path }) => {
-			const fkId = () => value() as string | null | undefined;
-
-			const relatedRecord = createLiveKyselyQuery((db) => {
-				const id = fkId();
-				if (!id || !relatedPK) return null;
-				return repositoryReaders[relatedTable]?.get?.(db, id) ?? null;
-			});
-
-			const displayName = () => {
-				const row = relatedRecord.rows()[0] as Record<string, unknown> | undefined;
-				if (!row) return fkId() ?? "";
-				return getDisplayName(relatedTable, row, dictionary);
-			};
-
-			const fieldLabel = fieldDic?.key ?? path;
-
-			return (
-				<div class="FKField flex gap-2 items-center">
-					<span class="text-main-text-color text-nowrap">{fieldLabel}</span>:
-					<Show
-						when={fkId()}
-						fallback={<span class="text-boundary-color text-sm">—</span>}
-					>
-						<Button
-							level="secondary"
-							onClick={() => onOpenCard(relatedTable, fkId()!)}
-						>
-							{displayName()}
-						</Button>
-					</Show>
-				</div>
-			);
-		};
+		fields[fkColumn] = ({ value, dictionary: fieldDic, path }) => (
+			<FKCardField
+				fkId={() => value() as string | null | undefined}
+				relatedTable={relatedTable}
+				relatedPK={relatedPK}
+				fieldLabel={fieldDic?.key ?? path}
+				dictionary={dictionary}
+				onOpenCard={(id) => onOpenCard(relatedTable, id)}
+			/>
+		);
 	}
 
 	return { fields } as ObjRenderers<DB[TTableName]>;
@@ -152,6 +157,63 @@ export function buildFKCardRenderers<TTableName extends keyof DB>(
  * @param dictionary     全局字典
  * @param onOpenRelated  点击"打开"按钮的回调
  */
+function FKFormField(props: {
+	tableName: keyof DB;
+	fkColumn: string;
+	relatedTable: keyof DB;
+	pk: string | undefined;
+	fieldLabel: string;
+	fieldDesc: string;
+	dictionary: Dictionary;
+	value: Accessor<string | null | undefined>;
+	setValue: (v: unknown) => void;
+	onOpenRelated: (id: string) => void;
+}) {
+	const allOptions = createLiveKyselyQuery(
+		(db) => repositoryReaders[props.relatedTable]?.getAll?.(db) ?? null,
+	);
+
+	const selectedOption = () =>
+		props.pk
+			? allOptions.rows().find((o) => String(o[props.pk! as keyof typeof o]) === props.value())
+			: undefined;
+
+	const relatedDic = () => props.dictionary.db[props.relatedTable];
+
+	return (
+		<Input title={props.fieldLabel} description={props.fieldDesc}>
+			<div class="FKFormField flex items-center gap-2">
+				<div class="min-w-0 flex-1">
+					<Autocomplete
+						id={`fk-${String(props.tableName)}-${props.fkColumn}`}
+						options={allOptions.rows()}
+						value={props.value() ?? undefined}
+						onChange={(id) => props.setValue(id)}
+						getOptionValue={(o) => (props.pk ? String(o[props.pk as keyof typeof o]) : "")}
+						getOptionLabel={(o) => {
+							const row = o as Record<string, unknown>;
+							if (typeof row.name === "string" && row.name) return row.name;
+							return props.pk ? String(row[String(props.pk)] ?? "") : "";
+						}}
+					/>
+				</div>
+				<Show when={selectedOption()}>
+					<Button
+						level="quaternary"
+						title={`打开 ${relatedDic()?.selfName ?? String(props.relatedTable)}`}
+						onClick={() => {
+							const id = props.value();
+							if (id) props.onOpenRelated(id);
+						}}
+					>
+						<Icons.Outline.ZoomIn />
+					</Button>
+				</Show>
+			</div>
+		</Input>
+	);
+}
+
 export function buildFKFormRenderers<TTableName extends keyof DB>(
 	tableName: TTableName,
 	hiddenFields: Array<keyof DB[TTableName]>,
@@ -171,58 +233,22 @@ export function buildFKFormRenderers<TTableName extends keyof DB>(
 		if (!fkColumn || hiddenSet.has(fkColumn)) continue;
 
 		const relatedTable = fk.targetTable;
-		const relatedDic = dictionary.db[relatedTable];
 		const pk = getPrimaryKeys(relatedTable)[0];
 
-		fields[fkColumn] = (ctx) => {
-			const allOptions = createLiveKyselyQuery(
-				(db) => repositoryReaders[relatedTable]?.getAll?.(db) ?? null,
-			);
-
-			const currentId = () => ctx.value() as string | null | undefined;
-
-			const selectedOption = () =>
-				pk
-					? allOptions.rows().find((o) => String(o[pk as keyof typeof o]) === currentId())
-					: undefined;
-
-			// label/description 来自字典，与默认字段渲染保持一致
-			const fieldLabel = ctx.dictionary?.key ?? fkColumn;
-			const fieldDesc = ctx.dictionary?.formFieldDescription ?? "";
-
-			return (
-				<Input title={fieldLabel} description={fieldDesc}>
-					<div class="FKFormField flex items-center gap-2">
-						<div class="min-w-0 flex-1">
-							<Autocomplete
-								id={`fk-${String(tableName)}-${fkColumn}`}
-								options={allOptions.rows()}
-								value={currentId() ?? undefined}
-								onChange={(id) => ctx.setValue(id)}
-								getOptionValue={(o) => (pk ? String(o[pk as keyof typeof o]) : "")}
-								getOptionLabel={(o) => {
-									const row = o as Record<string, unknown>;
-									if (typeof row.name === "string" && row.name) return row.name;
-									return pk ? String(row[String(pk)] ?? "") : "";
-								}}
-							/>
-						</div>
-						<Show when={selectedOption()}>
-							<Button
-								level="quaternary"
-								title={`打开 ${relatedDic?.selfName ?? String(relatedTable)}`}
-								onClick={() => {
-									const id = currentId();
-									if (id) onOpenRelated(relatedTable, id);
-								}}
-							>
-								<Icons.Outline.ZoomIn />
-							</Button>
-						</Show>
-					</div>
-				</Input>
-			);
-		};
+		fields[fkColumn] = (ctx) => (
+			<FKFormField
+				tableName={tableName}
+				fkColumn={fkColumn}
+				relatedTable={relatedTable}
+				pk={pk}
+				fieldLabel={ctx.dictionary?.key ?? fkColumn}
+				fieldDesc={ctx.dictionary?.formFieldDescription ?? ""}
+				dictionary={dictionary}
+				value={() => ctx.value() as string | null | undefined}
+				setValue={ctx.setValue}
+				onOpenRelated={(id) => onOpenRelated(relatedTable, id)}
+			/>
+		);
 	}
 
 	return { fields } as FormRenderers<DB[TTableName]>;

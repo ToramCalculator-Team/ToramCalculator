@@ -1,9 +1,8 @@
-import { DBSchema, type skill } from "@db/generated/zod";
+import { DB, DBSchema, type skill } from "@db/generated/zod";
 import { repositoryReaders } from "@db/generated/repositories";
 import { SKILL_TREE_GROUP_TYPE, type SkillTreeType } from "@db/schema/enums";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createMemo, createSignal, For, Index, Show } from "solid-js";
-import { Portal } from "solid-js/web";
 import { Motion } from "solid-motionone";
 import { SKILL_DATA_CONFIG } from "~/components/business/dataConfig/skill";
 import { Frame } from "~/components/containers/frame";
@@ -26,6 +25,14 @@ import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
 import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
 import { store } from "~/store";
+import { buildFKCardRenderers, ReferencedBySection } from "../fkRenderers";
+import { createOpenRelatedCard } from "../wikiCardNav";
+import { getPrimaryKeys } from "@db/generated/dmmf-utils";
+import { useOverlay } from "~/lib/overlay/OverlayContext";
+import { Portal } from "solid-js/web";
+
+const getTablePrimaryKey = <TTableName extends keyof DB>(tableName: TTableName): keyof DB[TTableName] =>
+	(getPrimaryKeys(tableName)[0] ?? "id") as keyof DB[TTableName];
 
 // 共享元素 morph 的 view-transition-name：卡片与全屏面板轮流持有它，浏览器据此把
 // 新旧快照配成一次形变（原位放大 / 还原）。同一帧内必须只有一个元素持有此名字。
@@ -73,8 +80,10 @@ function SkillBrowseNode(props: { bounds: SkillTreeGridBounds; skill: skill; onS
 }
 
 export const SkillPage = () => {
-	const dic = useDictionary();
-	const skillConfig = SKILL_DATA_CONFIG(dic());
+	const dictionary = useDictionary();
+	const overlay = useOverlay();
+	const openRelatedCard = createOpenRelatedCard(dictionary);
+	const skillConfig = SKILL_DATA_CONFIG(dictionary());
 	// 用 live query 而非一次性 selectAllSkills：删除/新增技能后卡片墙即时刷新，
 	// 避免陈旧列表仍渲染已删节点（点击会命中 getSkillWithVariants 的 NoResultError）。
 	const skillQuery = createLiveKyselyQuery<skill>((db) => db.selectFrom("skill").selectAll("skill"));
@@ -147,7 +156,7 @@ export const SkillPage = () => {
 									class={`SkillGroup-${treeGroupType()} translate-y-0 flex w-full flex-col gap-2`}
 								>
 									<h3 class="text-accent-color flex items-center gap-2 font-bold">
-										{dic().ui.character.tabs.skill.trees[treeGroupType()].selfName}
+										{dictionary().ui.character.tabs.skill.trees[treeGroupType()].selfName}
 										<div class="Divider bg-dividing-color h-px w-full flex-1" />
 									</h3>
 									<div class="Cards flex flex-wrap gap-3">
@@ -187,12 +196,10 @@ export const SkillPage = () => {
 													>
 														<Frame>
 															<div class="w-full h-full flex flex-col">
-																<div class="h-full w-full flex-1 rounded">
-																	<div class="Children mx-3 my-6 flex flex-col gap-3"></div>
-																</div>
-																<div class="Info flex flex-col gap-1 p-2">
-																	<span class="Name overflow-hidden font-bold text-nowrap text-ellipsis">
-																		{dic().db.skill.fields.treeType.enumMap[treeType]}
+																<div class="w-full flex-1"></div>
+																<div class="Info flex flex-col gap-1 py-2">
+																	<span class="Name overflow-hidden font-bold">
+																		{dictionary().db.skill.fields.treeType.enumMap[treeType]}
 																	</span>
 																	<span class="Count">{count()}</span>
 																</div>
@@ -209,14 +216,13 @@ export const SkillPage = () => {
 					</div>
 				</OverlayScrollbarsComponent>
 			</Show>
-
 			<Portal>
 				<Show when={activeTreeType()}>
 					{(treeType) => (
 						<Motion.div
 							animate={{ opacity: [0, 1] }}
 							transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
-							class="SkillTreeOverlay fixed inset-0 z-50 flex items-end landscape:items-center justify-center backdrop-blur"
+							class="SkillTreeOverlay fixed inset-0 z-stack flex items-end landscape:items-center justify-center backdrop-blur"
 						>
 							{/* 背景遮罩：模糊底层卡片墙 + 点击还原。不参与 morph，仅淡入淡出。 */}
 							<button
@@ -232,7 +238,7 @@ export const SkillPage = () => {
 								class="SkillTreePanel bg-accent-color shadow-dialog shadow-dividing-color relative flex h-[90dvh] w-dvw landscape:w-[80dvw] flex-col gap-2 overflow-hidden landscape:rounded-md landscape:p-6"
 							>
 								<div class="PanelTitle z-10 absolute top-3 left-3 flex w-full items-center justify-between text-xl text-primary-color font-bold">
-									{dic().db.skill.fields.treeType.enumMap[treeType()]}
+									{dictionary().db.skill.fields.treeType.enumMap[treeType()]}
 								</div>
 								<Button
 									icon={<Icons.Outline.Close />}
@@ -275,19 +281,41 @@ export const SkillPage = () => {
 										defer
 									>
 										<ObjRenderer
-											title={dic().db.skill.selfName}
+											title={dictionary().db.skill.selfName}
 											query={(db) => {
 												const id = activeSkillId();
 												if (!id) return null;
 												return repositoryReaders.skill.get?.(db, id) ?? null;
 											}}
 											dataSchema={DBSchema.skill}
-											dictionary={dic().db.skill}
+											dictionary={dictionary().db.skill}
 											hiddenFields={skillConfig.card.hiddenFields}
 											fieldGroupMap={skillConfig.fieldGroupMap}
-											renderers={skillConfig.card.renderers}
-											after={skillConfig.card.after}
-											before={skillConfig.card.before}
+											renderers={{
+												fields: {
+													...buildFKCardRenderers(
+														"skill",
+														skillConfig.card.hiddenFields ?? [],
+														dictionary(),
+														(relatedTable, id) => openRelatedCard(relatedTable, id, overlay, "open"),
+													).fields,
+													...skillConfig.card.renderers?.fields,
+												},
+												containers: skillConfig.card.renderers?.containers,
+											}}
+											after={(currentData) => (
+												<ReferencedBySection
+													tableName={"skill"}
+													referencedBy={skillConfig.card.referencedBy}
+													data={currentData}
+													dictionary={dictionary()}
+													onOpenCard={(nextTable, rowData) => {
+														const pk = getTablePrimaryKey(nextTable);
+														const nextId = String(rowData[pk as keyof typeof rowData] ?? "");
+														if (nextId) openRelatedCard(nextTable, nextId, overlay, "open");
+													}}
+												/>
+											)}
 										/>
 									</OverlayScrollbarsComponent>
 								</Show>

@@ -13,7 +13,7 @@ export const wikiPageConfig: Partial<{
 	address: {
 		mainContent: AddressPage,
 	},
-	// skill: {
-	// 	mainContent: SkillPage,
-	// },
+	skill: {
+		mainContent: SkillPage,
+	},
 };

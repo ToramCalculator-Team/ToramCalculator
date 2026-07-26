@@ -91,8 +91,8 @@ const mobType: Record<Enums.MobType, string> = {
 const itemType: Record<Enums.ItemType, string> = {
 	Weapon: "Weapon",
 	Armor: "Armor",
-	Option: "Additional Equipment",
-	Special: "Special Equipment",
+	Option: "Additional",
+	Special: "Special",
 	Crystal: "Crystal",
 	Consumable: "Consumable",
 	Material: "Material",
@@ -2040,7 +2040,7 @@ const dictionary: Dictionary = {
 			description: "NPC information in the game",
 		},
 		option: {
-			selfName: "Option Equipment",
+			selfName: "Option",
 			fields: {
 				name: {
 					key: "Name",
@@ -2894,7 +2894,7 @@ const dictionary: Dictionary = {
 			description: "Custom behavior tree resources owned by skill variants",
 		},
 		special: {
-			selfName: "Special Equipment",
+			selfName: "Special",
 			fields: {
 				name: {
 					key: "Name",
