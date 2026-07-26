@@ -1,12 +1,7 @@
 import { defaultData } from "@db/defaultData";
 import { getPrimaryKeys } from "@db/generated/dmmf-utils";
-import {
-	type RepositoryWriter,
-	type RepositoryWriterContext,
-	repositoryReaders,
-	repositoryWriters,
-} from "@db/generated/repositories";
-import { type DB } from "@db/generated/zod/index";
+import type { RepositoryWriterContext } from "@db/generated/repositories";
+import type { DB } from "@db/generated/zod/index";
 import { A, useNavigate, useParams, useSearchParams } from "@solidjs/router";
 import {
 	createEffect,
@@ -21,7 +16,6 @@ import {
 	useContext,
 } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { DATA_CONFIG } from "~/components/business/data-config";
 import { Button } from "~/components/controls/button";
 import { LoadingBar } from "~/components/controls/loadingBar";
 import { ObjRenderer } from "~/components/dataDisplay/ObjRenderer";
@@ -30,12 +24,12 @@ import { Form } from "~/components/form/Form";
 import { Icons } from "~/components/icons/index";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
+import { buildFKCardRenderers, buildFKFormRenderers, ReferencedBySection } from "~/features/wiki/fkRenderers";
+import { setWikiStore, wikiStore } from "~/features/wiki/store";
+import { createOpenRelatedCard, createTableConfig, type TableConfig } from "~/features/wiki/wikiCardNav";
+import { wikiPageConfig } from "~/features/wiki/wikiPage/wikiPageConfig";
 import { useOverlay } from "~/lib/overlay/OverlayContext";
 import { store } from "~/store";
-import { setWikiStore, wikiStore } from "./store";
-import { wikiPageConfig } from "./wikiPage/wikiPageConfig";
-import { buildFKCardRenderers, buildFKFormRenderers, ReferencedBySection } from "./fkRenderers";
-import { type TableConfig, createTableConfig, createOpenRelatedCard } from "./wikiCardNav";
 
 export default function WikiSubPage() {
 	const media = useContext(MediaContext);

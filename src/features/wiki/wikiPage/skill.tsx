@@ -1,8 +1,9 @@
-import { DB, DBSchema, type skill } from "@db/generated/zod";
+import { type DB, DBSchema, type skill } from "@db/generated/zod";
 import { repositoryReaders } from "@db/generated/repositories";
 import { SKILL_TREE_GROUP_TYPE, type SkillTreeType } from "@db/schema/enums";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createMemo, createSignal, For, Index, Show } from "solid-js";
+import { Portal } from "solid-js/web";
 import { Motion } from "solid-motionone";
 import { SKILL_DATA_CONFIG } from "~/components/business/dataConfig/skill";
 import { Frame } from "~/components/containers/frame";
@@ -23,13 +24,12 @@ import {
 } from "~/components/features/character/skillTreeGrid";
 import { Icons } from "~/components/icons";
 import { useDictionary } from "~/contexts/Dictionary";
+import { buildFKCardRenderers, ReferencedBySection } from "~/features/wiki/fkRenderers";
+import { createOpenRelatedCard } from "~/features/wiki/wikiCardNav";
 import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
 import { store } from "~/store";
-import { buildFKCardRenderers, ReferencedBySection } from "../fkRenderers";
-import { createOpenRelatedCard } from "../wikiCardNav";
 import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 import { useOverlay } from "~/lib/overlay/OverlayContext";
-import { Portal } from "solid-js/web";
 
 const getTablePrimaryKey = <TTableName extends keyof DB>(tableName: TTableName): keyof DB[TTableName] =>
 	(getPrimaryKeys(tableName)[0] ?? "id") as keyof DB[TTableName];
