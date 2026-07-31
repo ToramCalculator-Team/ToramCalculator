@@ -91,6 +91,7 @@ export class BtManager<
 	 * 设计说明：
 	 * - 每棵 BT 使用独立 executionContext，避免把 agent 成员写回 checkpoint runtime。
 	 * - 冲突时保留 runtime / bindings 的既有槽位，agent 只补充缺失成员。
+	 * - agent 通过 `new Function` 编译，只适用于受信任的引擎配置；Worker 受限全局对象不是强安全沙箱。
 	 */
 	private mergeAgentMembers(context: Record<string, unknown>, agent: string | undefined): void {
 		if (!agent) return;

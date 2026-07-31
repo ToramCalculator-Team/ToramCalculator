@@ -191,7 +191,7 @@ export class JSProcessor {
 	 * 说明：
 	 * - 使用 `with (ctx)` 将上下文字段暴露为局部变量
 	 * - 表达式要求为单行，并能在 with 作用域下运行
-	 * - 通过 `new Function` 在 Worker 沙盒中安全执行
+	 * - 通过 `new Function` 在 Worker 受限全局环境中执行；表达式必须来自受信任的引擎配置
 	 */
 	private createRunner(expression: string): (ctx: ExpressionContext) => unknown {
 		const wrappedCode = `with (ctx) { return ${expression}; }`;

@@ -1,6 +1,7 @@
 /**
- * 沙盒化的模拟器Worker
- * 将GameEngine运行在安全沙盒环境中
+ * 模拟器 Worker。
+ *
+ * GameEngine 运行在 Worker 内，并屏蔽部分全局对象；这里不是强安全沙箱。
  */
 
 import { createActor } from "xstate";
@@ -67,13 +68,15 @@ const log = createLogger("SimWorker", {
 	level: configuredLogLevel === null ? LogLevel.ERROR : LogLevel.DEBUG,
 });
 
-// ==================== 沙盒环境初始化 ====================
+// ==================== Worker 受限环境初始化 ====================
 
 /**
- * 初始化Worker沙盒环境
- * 屏蔽危险的全局对象，确保JS片段执行安全
+ * 初始化 Worker 受限全局对象。
+ *
+ * 这里的边界是 Worker 隔离 + 屏蔽部分全局对象，不是强安全沙箱。
+ * 表达式或 BT agent 若来自不可信输入，必须先经过额外的策略限制。
  */
-function initializeWorkerSandbox() {
+function initializeRestrictedWorkerEnvironment() {
 	// 2. 屏蔽危险的全局对象
 	// 使用 Reflect.set(target, prop, value) 可以避免类型不兼容报错，无需 as any
 	// 注意：'this' 是保留关键字，必须使用字符串索引访问
@@ -94,7 +97,7 @@ function initializeWorkerSandbox() {
 		Reflect.set(globalThis, key, undefined);
 	});
 
-	// 3. 提供安全的 API
+	// 3. 提供受限 API
 	// 现在 globalThis.safeAPI 拥有完整的类型推断
 	const sandboxGlobal = globalThis as typeof globalThis & { safeAPI: SimulatorSafeAPI };
 	sandboxGlobal.safeAPI = {
@@ -120,11 +123,11 @@ function initializeWorkerSandbox() {
 		now: () => Date.now(),
 	};
 
-	// console.log("🛡️ Worker沙盒环境已初始化");
+	// console.log("Worker 受限环境已初始化");
 }
 
-// 初始化沙盒环境
-initializeWorkerSandbox();
+// 初始化 Worker 受限环境
+initializeRestrictedWorkerEnvironment();
 
 // Worker 级长期持有的基础设施 -- 跨 engine reset/cleanup 存活
 const pipelineCatalog = new PipelineCatalog();
