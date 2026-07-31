@@ -324,6 +324,20 @@ export const MemberDomainEventSchema = z.discriminatedUnion("type", [
 		hp: z.number().nullable(),
 	}),
 	z.object({
+		type: z.literal("status_entered"),
+		memberId: z.string(),
+		statusType: z.string(),
+		sourceId: z.string().optional(),
+		timeMs: z.number(),
+	}),
+	z.object({
+		type: z.literal("status_exited"),
+		memberId: z.string(),
+		statusType: z.string(),
+		reason: z.enum(["expired", "removed"]),
+		timeMs: z.number(),
+	}),
+	z.object({
 		type: z.literal("skill_cast_accepted"),
 		memberId: z.string(),
 		skillId: z.string(),
@@ -412,6 +426,22 @@ export const ControllerDomainEventSchema = z.discriminatedUnion("type", [
 		memberId: z.string(),
 		damage: z.number(),
 		hp: z.number().nullable(),
+	}),
+	z.object({
+		type: z.literal("status_entered"),
+		controllerId: z.string(),
+		memberId: z.string(),
+		statusType: z.string(),
+		sourceId: z.string().optional(),
+		timeMs: z.number(),
+	}),
+	z.object({
+		type: z.literal("status_exited"),
+		controllerId: z.string(),
+		memberId: z.string(),
+		statusType: z.string(),
+		reason: z.enum(["expired", "removed"]),
+		timeMs: z.number(),
 	}),
 	z.object({
 		type: z.literal("death"),

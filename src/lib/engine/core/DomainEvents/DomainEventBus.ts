@@ -74,11 +74,14 @@ export class DomainEventBus implements Checkpointable<DomainEventBusCheckpoint> 
 
 	/**
 	 * 生成事件唯一键（用于同 tick 合并）
-	 * 格式：`{type}_{memberId}_{skillId?}`
+	 * 格式：`{type}_{memberId}_{skillId/statusType?}`
 	 */
 	private getEventKey(event: MemberDomainEvent): string {
 		if (event.type === "cast_progress") {
 			return `${event.type}_${event.memberId}_${event.skillId}`;
+		}
+		if (event.type === "status_entered" || event.type === "status_exited") {
+			return `${event.type}_${event.memberId}_${event.statusType}`;
 		}
 		return `${event.type}_${event.memberId}`;
 	}

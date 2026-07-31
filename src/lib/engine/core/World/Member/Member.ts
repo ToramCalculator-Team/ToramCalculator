@@ -404,6 +404,61 @@ export class Member<
 	}
 
 	/**
+	 * 派发状态进入事实。
+	 *
+	 * 同一权威状态变更点必须同时写入成员内响应总线和对外投影总线（ADR 0011），
+	 * 所以这里把两条派发路径收在一个 helper 内，避免后续只补其中一条。
+	 */
+	private dispatchStatusEnteredFact(bus: ProcBus, instance: StatusInstance, timeMs: number): void {
+		bus.emit(
+			"status.entered",
+			{
+				type: instance.type,
+				sourceId: instance.sourceId,
+				timeMs,
+			},
+			timeMs,
+		);
+		this.notifyDomainEvent({
+			type: "status_entered",
+			memberId: this.id,
+			statusType: instance.type,
+			sourceId: instance.sourceId,
+			timeMs,
+		});
+	}
+
+	/**
+	 * 派发状态离开事实。
+	 *
+	 * 这是 status.entered 的对称 helper，保持 ProcBus 与 DomainEventBus 的事实来源一致。
+	 */
+	private dispatchStatusExitedFact(
+		bus: ProcBus,
+		instance: StatusInstance,
+		reason: "expired" | "removed" | undefined,
+		timeMs: number,
+	): void {
+		const resolvedReason = reason ?? "removed";
+		bus.emit(
+			"status.exited",
+			{
+				type: instance.type,
+				reason: resolvedReason,
+				timeMs,
+			},
+			timeMs,
+		);
+		this.notifyDomainEvent({
+			type: "status_exited",
+			memberId: this.id,
+			statusType: instance.type,
+			reason: resolvedReason,
+			timeMs,
+		});
+	}
+
+	/**
 	 * 注入引擎级 EventCatalog，并在首次注入时完成以下装配：
 	 *  1. 创建本成员的 ProcBus（每成员独立）。
 	 *  2. 把 StatusInstanceStore 的变更事件路由到 ProcBus，派发 `status.entered` / `status.exited`。
@@ -426,25 +481,9 @@ export class Member<
 		const bus = this.procBus;
 		this.statusStore.setChangeListener((change) => {
 			if (change.kind === "entered") {
-				bus.emit(
-					"status.entered",
-					{
-						type: change.instance.type,
-						sourceId: change.instance.sourceId,
-						timeMs: change.timeMs,
-					},
-					change.timeMs,
-				);
+				this.dispatchStatusEnteredFact(bus, change.instance, change.timeMs);
 			} else {
-				bus.emit(
-					"status.exited",
-					{
-						type: change.instance.type,
-						reason: change.reason ?? "removed",
-						timeMs: change.timeMs,
-					},
-					change.timeMs,
-				);
+				this.dispatchStatusExitedFact(bus, change.instance, change.reason, change.timeMs);
 			}
 		});
 

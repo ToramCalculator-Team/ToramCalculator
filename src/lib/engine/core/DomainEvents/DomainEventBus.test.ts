@@ -60,4 +60,19 @@ describe("DomainEventBus", () => {
 
 		expect(received).toEqual([{ type: "death", memberId: "current-member" }]);
 	});
+
+	it("status 域事件按 statusType 合并，不覆盖同 tick 的不同状态", () => {
+		const bus = new DomainEventBus();
+		const received: MemberDomainEvent[] = [];
+		bus.subscribe((event) => received.push(event));
+
+		bus.emit({ type: "status_entered", memberId: "member-1", statusType: "Flinch", timeMs: 100 });
+		bus.emit({ type: "status_entered", memberId: "member-1", statusType: "Ignition", timeMs: 100 });
+		bus.flush(1);
+
+		expect(received).toEqual([
+			{ type: "status_entered", memberId: "member-1", statusType: "Flinch", timeMs: 100 },
+			{ type: "status_entered", memberId: "member-1", statusType: "Ignition", timeMs: 100 },
+		]);
+	});
 });

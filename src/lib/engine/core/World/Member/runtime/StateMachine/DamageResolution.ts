@@ -21,6 +21,34 @@ import { createLogger } from "~/lib/Logger";
 
 const log = createLogger("DamageResolution");
 
+type HitDomainEvent = Extract<MemberDomainEvent, { type: "hit" }>;
+
+interface DamageReceivedProcPayload {
+	finalDamage: number;
+	hit: boolean;
+	crit: boolean;
+	isFatal: boolean;
+	sourceId: string;
+	damageTags: string[];
+	frame: number;
+}
+
+/**
+ * 派发受击结算事实。
+ *
+ * ADR 0011 要求权威结算点同时派发对外的 hit 域事件与成员内的 damage.received。
+ * 使用 helper 把两条路径绑定在同一次调用里，避免后续新增分支时漏发其中一条。
+ */
+function dispatchDamageReceivedFact(
+	notifyDomainEvent: (event: MemberDomainEvent) => void,
+	emitProc: (eventName: string, payload: unknown) => void,
+	domainEvent: HitDomainEvent,
+	procPayload: DamageReceivedProcPayload,
+): void {
+	notifyDomainEvent(domainEvent);
+	emitProc("damage.received", procPayload);
+}
+
 /**
  * 单次受击的完整事务对象。
  *
@@ -144,25 +172,27 @@ export function resolveDamageAndApply(
 		session.crit = false;
 		session.hpAfter = hpGetter();
 		session.mpAfter = mpGetter();
-		notifyDomainEvent({
-			type: "hit",
-			memberId: id,
-			sourceMemberId: req.sourceId,
-			sourceSkillId: req.sourceSkillId ?? null,
-			damage: 0,
-			hp: session.hpAfter,
-		});
-		// 对内（ProcBus）：受击事实供 passive/registlet 响应（ADR-0011）。
-		// 与上面对外的 notifyDomainEvent(hit) 成对：两者消费方不同，不是冗余双发。
-		emitProc("damage.received", {
-			finalDamage: 0,
-			hit: false,
-			crit: false,
-			isFatal: false,
-			sourceId: req.sourceId,
-			damageTags: req.damageTags,
-			frame: tickIndex,
-		});
+		dispatchDamageReceivedFact(
+			notifyDomainEvent,
+			emitProc,
+			{
+				type: "hit",
+				memberId: id,
+				sourceMemberId: req.sourceId,
+				sourceSkillId: req.sourceSkillId ?? null,
+				damage: 0,
+				hp: session.hpAfter,
+			},
+			{
+				finalDamage: 0,
+				hit: false,
+				crit: false,
+				isFatal: false,
+				sourceId: req.sourceId,
+				damageTags: req.damageTags,
+				frame: tickIndex,
+			},
+		);
 		log.info("未命中");
 		return session;
 	}
@@ -238,25 +268,27 @@ export function resolveDamageAndApply(
 		mpApplyer(mpDelta);
 	}
 
-	notifyDomainEvent({
-		type: "hit",
-		memberId: id,
-		sourceMemberId: req.sourceId,
-		sourceSkillId: req.sourceSkillId ?? null,
-		damage: segmentFinalDamage,
-		hp: hpAfter,
-	});
-	// 对内（ProcBus）：受击事实供 passive/registlet 响应（ADR-0011）。
-	// 与上面对外的 notifyDomainEvent(hit) 成对：两者消费方不同，不是冗余双发。
-	emitProc("damage.received", {
-		finalDamage: segmentFinalDamage,
-		hit: true,
-		crit,
-		isFatal,
-		sourceId: req.sourceId,
-		damageTags: req.damageTags,
-		frame: tickIndex,
-	});
+	dispatchDamageReceivedFact(
+		notifyDomainEvent,
+		emitProc,
+		{
+			type: "hit",
+			memberId: id,
+			sourceMemberId: req.sourceId,
+			sourceSkillId: req.sourceSkillId ?? null,
+			damage: segmentFinalDamage,
+			hp: hpAfter,
+		},
+		{
+			finalDamage: segmentFinalDamage,
+			hit: true,
+			crit,
+			isFatal,
+			sourceId: req.sourceId,
+			damageTags: req.damageTags,
+			frame: tickIndex,
+		},
+	);
 	// 致死事实（hpAfter<=0）：单独派发，统一驱动 FSM 死亡转换（Member 订阅后 actor.send 死亡通知）
 	// 并供「最后的抵抗」托环消费。仅命中且致死时发；未命中分支 isFatal 恒 false，不发。
 	if (isFatal) {
