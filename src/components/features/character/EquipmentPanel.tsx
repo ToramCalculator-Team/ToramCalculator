@@ -222,6 +222,8 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 		if (typeof primaryValue !== "string") return;
 
 		await props.onPatchRequested({ [slot]: primaryValue } as CharacterFieldPatch);
+		closeEquipmentPickerSheet();
+		returnToCharacterOverview();
 	};
 
 	const projectEquipmentPickerSheet = (slot: EquipmentSlot) => {
