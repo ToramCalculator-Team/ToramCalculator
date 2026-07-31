@@ -2,6 +2,8 @@
 
 本文档记录围绕 `额外逻辑hook点.txt`（托环/被动逻辑）与 `技能效果参考.txt`（特殊技能逻辑）对引擎分层的分析与决议。命名细节待定。
 
+> 历史快照提示：本文保留早期 hook 分层讨论，不是当前代码契约。当前 Pipeline 已收敛为纯计算；事件派发由 `StatusInstanceStore`、`AttributeThresholdSource`、`DamageResolution` 等权威结算点喂入 ProcBus / DomainEventBus，不采用本文早期的 `Pipeline.emit` 设想。
+
 ## 1. 分层与对称结构
 
 引擎沿用 **数据 / 计算 / 编排** 三层，但把分类轴从"层"单独存在，重述成**每层具备对称的三件套**：
@@ -9,7 +11,7 @@
 | 层 | 静态注册表 | 运行时实例 | 扩展原语（passive/skill 安装时写入） |
 |---|---|---|---|
 | **数据** | `AttributeSchema`（属性槽）<br>`StatusTypeRegistry`（状态类型） | `AttributeContainer`<br>`StatusInstanceStore`<br>`MemberSharedRuntime` | 声明属性槽（咏咒层数、lastTriggeredFrame）<br>声明状态类型（着火、昏厥、出血） |
-| **计算** | `PipelineCatalog` | `PipelineResolverService` 按成员合成 | 向管线插 overlay 指令（包括 `emit` 派发事件） |
+| **计算** | `PipelineCatalog` | `PipelineResolverService` 按成员合成 | 向管线插纯计算 overlay 指令（早期讨论中的 `emit` 派发已不作为当前方案） |
 | **编排** | `EventCatalog`<br>BT 定义库<br>FSM 定义 | `BtManager`（active + parallel）<br>订阅表（proc mask + watcher） | 注册 BT / 订阅事件 / 绑定属性 watcher |
 
 **事件订阅不是第四层**——它是编排层内部的通信机制，和 actor 消息、BT 叶子动作同属一类。`EventCatalog` 与 `PipelineCatalog`、`AttributeSchema` 地位对称，都是"该层的静态配置入口"。
@@ -92,11 +94,11 @@
 
 （燃烧的斗志、猛毒恢复、魔力失火、HP 紧急回复等改判到编排层，见 §2.3.3 / §2.3.4。）
 
-#### 2.2.2 emit 指令：管线里的事件派发点
+#### 2.2.2 emit 指令：管线里的事件派发点（历史设想，当前未采用）
 
-为 Pipeline 加一条 `emit` 算子，让 overlay 可以在管线特定阶段插入事件派发。例如"暴击判定段后 emit `crit_received`"。
+早期设想是为 Pipeline 加一条 `emit` 算子，让 overlay 可以在管线特定阶段插入事件派发。例如"暴击判定段后 emit `crit_received`"。
 
-这是计算层对编排层的唯一"主动通知"通路——事件目录由编排层管理（`EventCatalog`），但派发点可以通过 overlay 增量挂载到任意管线阶段。
+当前代码没有采用该设想。Pipeline 保持纯计算，成员内事件由权威状态变更、属性阈值穿越和受击结算等位置显式派发。
 
 ### 2.3 编排层
 
@@ -302,7 +304,7 @@ UI / Renderer / 观察者
 ### 阶段 2 — 计算层落地
 
 4. 实现 `hitResolve` / `applyDamage` 管线，并把 `DamageAreaSystem` 派发的 "受到攻击" FSM 事件接到这段管线上。
-5. Pipeline 加 `emit` 算子。
+5. Pipeline 加 `emit` 算子。（历史设想；当前代码保持 Pipeline 纯计算。）
 6. 清理：移除 `Member.runPipeline` 的 `peerStats` 参数。
 
 ### 阶段 3 — 编排层订阅机制
