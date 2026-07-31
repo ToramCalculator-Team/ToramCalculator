@@ -39,7 +39,7 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 
 | 决策 | 当前权威边界 |
 |---|---|
-| [0001](./0001-stat-container-as-unified-persistence-slot.md)、[0022](./0022-structured-modifier-provenance.md) | StatContainer 是持久属性槽与结构化 modifier 来源的统一载体 |
+| [0001](./0001-stat-container-as-unified-persistence-slot.md)、[0022](./0022-structured-modifier-provenance.md) | AttributeContainer 是持久属性槽与结构化 modifier 来源的统一载体 |
 | [0002](./0002-member-runtime-attachments-as-prebattle-assembly-contract.md) | RuntimeAttachment 是成员战前装配契约 |
 | [0003](./0003-skill-cost-as-pipeline-contract.md)、[0007](./0007-next-skill-cost-modifier-contract.md) | 技能消耗由纯 Pipeline 计算，成功扣费后由 FSM 消费一次性修正 |
 | [0004](./0004-skill-percentage-import-semantics.md) | 外部技能百分比修正统一映射到静态百分比通道 |
@@ -89,7 +89,7 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 - 行动录制：`0033` -> `0043`。
 - 持久数据响应式读源：`0041` -> `0048`。
 - `0005`：声明式 `onHitEffects` payload 提案未采用，已撤回。
-- `0006`：`StatContainer` 内部刷新算法误归类为 ADR，已撤回；约束由代码、测试和注释维护。
+- `0006`：`AttributeContainer` 内部刷新算法误归类为 ADR，已撤回；约束由代码、测试和注释维护。
 - `0013`：AUI 决策过程中的 actor 布局方案被过度拆分，已撤回；当前边界见 `0021`。
 - `0017`：同步与授权问题清单误归类为 ADR，已撤回；活跃事项见 `docs/plans/sync-and-auth-hardening.md`。
 
@@ -97,12 +97,12 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 
 | 编号 | 标题 | 状态 | 主要问题域 |
 |---|---|---|---|
-| [0001](./0001-stat-container-as-unified-persistence-slot.md) | StatContainer 作为持久化槽的统一载体 | Accepted | 引擎数据 |
+| [0001](./0001-stat-container-as-unified-persistence-slot.md) | AttributeContainer 作为持久化槽的统一载体 | Accepted | 引擎数据 |
 | [0002](./0002-member-runtime-attachments-as-prebattle-assembly-contract.md) | Member runtime attachments as prebattle assembly contract | Accepted | 引擎装配 |
 | [0003](./0003-skill-cost-as-pipeline-contract.md) | 技能消耗作为 Pipeline 契约 | Accepted | 技能计算 |
 | [0004](./0004-skill-percentage-import-semantics.md) | 技能 Behavior Tree 导入中的百分比修正语义 | Accepted | 数据导入 |
 | [0005](./0005-onhit-effects-via-attack-payload.md) | 命中后效果通过攻击 Payload 传递 | Withdrawn | 攻击通信 |
-| [0006](./0006-stat-container-same-frame-dirty-convergence.md) | StatContainer 同帧脏值定点收敛 | Withdrawn | 实现算法误分类 |
+| [0006](./0006-stat-container-same-frame-dirty-convergence.md) | AttributeContainer 同帧脏值定点收敛 | Withdrawn | 实现算法误分类 |
 | [0007](./0007-next-skill-cost-modifier-contract.md) | 下一技能消耗修正契约 | Accepted | 技能计算 |
 | [0008](./0008-world-observable-as-spatial-medium.md) | 世界可观测属性作为空间介质 | Accepted | 世界模型 |
 | [0009](./0009-persistent-render-runtime.md) | 常驻渲染运行时作为应用级场景底座 | Accepted | 渲染 |
@@ -118,7 +118,7 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 | [0019](./0019-progressive-login-game-profile-sync-boundary.md) | 渐进式登录与 game_profile 同步边界 | Accepted | 数据同步 |
 | [0020](./0020-multi-game-domain-packaging.md) | 多游戏领域源码与生成命名空间隔离 | Accepted | 领域打包 |
 | [0021](./0021-aui-interface-state-machine.md) | AUI 行为状态机作为跨模态交互状态源 | Accepted | 应用状态 |
-| [0022](./0022-structured-modifier-provenance.md) | StatContainer 使用结构化 Modifier 来源链 | Accepted | 引擎数据 |
+| [0022](./0022-structured-modifier-provenance.md) | AttributeContainer 使用结构化 Modifier 来源链 | Accepted | 引擎数据 |
 | [0023](./0023-simulator-session-snapshot-isolation.md) | Simulator 会话采用方案快照隔离 | Superseded by 0025 | Simulator |
 | [0024](./0024-interactive-simulator-session-and-tasks.md) | 交互式 Simulator 会话与模拟任务分离 | Accepted | Simulator |
 | [0025](./0025-run-snapshot-at-validation-boundary.md) | 在验证边界捕获不可变运行快照 | Superseded by 0036 | Simulator |

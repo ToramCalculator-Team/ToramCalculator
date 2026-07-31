@@ -15,7 +15,11 @@ import { Button } from "~/components/controls/button";
 import { Icons } from "~/components/icons";
 import { useOverlay } from "~/lib/overlay/OverlayContext";
 import type { MemberSnapshot } from "./Member";
-import { type DataStorage, isDataStorageType, type ModifierSource } from "./runtime/StatContainer/StatContainer";
+import {
+	type DataStorage,
+	isDataStorageType,
+	type ModifierSource,
+} from "./runtime/AttributeContainer/AttributeContainer";
 
 // ============================== 组件实现 ==============================
 
@@ -182,7 +186,7 @@ type FlatStatRow =
 	| { kind: "attr"; id: string; depth: number; key: string; storage: DataStorage }
 	| { kind: "string"; id: string; depth: number; key: string; value: string };
 
-// 将 StatContainer.exportNestedValues() 生成的任意深度嵌套树扁平化为线性行列表。
+// 将 AttributeContainer.exportNestedValues() 生成的任意深度嵌套树扁平化为线性行列表。
 // 分组节点先产出标题行再递归子节点；DataStorage 叶子产出 attr 行；其余标量产出 string 行。
 function flattenStats(obj: unknown, path: string[] = [], depth = 0, acc: FlatStatRow[] = []): FlatStatRow[] {
 	for (const [key, value] of Object.entries(obj ?? {})) {

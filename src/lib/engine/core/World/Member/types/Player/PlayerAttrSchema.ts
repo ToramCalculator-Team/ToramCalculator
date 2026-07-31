@@ -9,7 +9,7 @@ import type {
 	ConvertToNestedSchema,
 	ConvertToNestedSchemaDic,
 	ExtractAttrPaths,
-} from "../../runtime/StatContainer/SchemaTypes";
+} from "../../runtime/AttributeContainer/SchemaTypes";
 
 // ============================== 其他玩家数据 ==============================
 

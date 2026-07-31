@@ -5,12 +5,12 @@
  * 此文件主要用于定义数据库中出现的 Json 类型，生成器会将这里的内容补充到生成的zod/index.ts文件中。
  */
 import { z } from "zod/v4";
+import { SchemaAttributeSchema } from "~/lib/engine/core/World/Member/runtime/AttributeContainer/SchemaTypes";
 import { MEMBER_TYPE } from "./enums";
-import { SchemaAttributeSchema } from "~/lib/engine/core/World/Member/runtime/StatContainer/SchemaTypes";
 
 // ==================================================================== 行为树 ==============================================================
 
-// 行为树声明的持久化属性槽；跨帧变量必须写入 StatContainer。
+// 行为树声明的持久化属性槽；跨帧变量必须写入 AttributeContainer。
 export const AttributeSlotDeclarationSchema = z.object({
 	// 点号分隔的完整属性路径，前缀由 SchemaMerge 统一校验。
 	path: z.string(),
@@ -166,7 +166,7 @@ export type SkillBranchActivatorEffect = z.output<typeof SkillBranchActivatorEff
  */
 export const RegistletHandlerSchema = z.discriminatedUnion("type", [
 	/**
-	 * 往 StatContainer 加一个 modifier。
+	 * 往 AttributeContainer 加一个 modifier。
 	 *
 	 * lifetime：
 	 * - `once`：每次触发都加一次（sourceId 带本次事件帧号保证唯一）
@@ -182,7 +182,7 @@ export const RegistletHandlerSchema = z.discriminatedUnion("type", [
 		sourceIdSuffix: z.string().optional(),
 	}),
 	/**
-	 * 按 (registlet id + suffix) 组合的 sourceId 移除 StatContainer 上的 modifier。
+	 * 按 (registlet id + suffix) 组合的 sourceId 移除 AttributeContainer 上的 modifier。
 	 * 典型用法：配合 `status.exited` 订阅，把 `status.entered` 时加的 modifier 撤掉。
 	 */
 	z.object({

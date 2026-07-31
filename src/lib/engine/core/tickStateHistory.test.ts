@@ -8,8 +8,11 @@ import {
 	TickStateHistoryWriter,
 	type TickStateMemberSource,
 } from "./tickStateHistory";
-import type { ModifierSource, StatIndexedReadSource } from "./World/Member/runtime/StatContainer/StatContainerTypes";
-import { ModifierType } from "./World/Member/runtime/StatContainer/StatContainerTypes";
+import type {
+	ModifierSource,
+	StatIndexedReadSource,
+} from "./World/Member/runtime/AttributeContainer/AttributeContainerTypes";
+import { ModifierType } from "./World/Member/runtime/AttributeContainer/AttributeContainerTypes";
 
 const source: ModifierSource = {
 	key: "skill.power",
@@ -54,7 +57,7 @@ class FakeStatSource implements StatIndexedReadSource {
 }
 
 const createMember = (
-	statContainer: StatIndexedReadSource,
+	AttributeContainer: StatIndexedReadSource,
 ): TickStateMemberSource & {
 	position: { x: number; y: number; z: number };
 } => ({
@@ -64,7 +67,7 @@ const createMember = (
 	campId: "camp-a",
 	teamId: "team-a",
 	position: { x: 1, y: 2, z: 3 },
-	statContainer,
+	AttributeContainer,
 });
 
 describe("TickStateHistory", () => {

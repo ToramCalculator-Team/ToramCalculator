@@ -1484,8 +1484,8 @@ hgif2mtxu55oq9nh1lwqv8k9__active_bt,魔力灌充 主动行为,"root {
 	get 魔力灌充咏唱毫秒() {
 		const lifecycle = owner.getContext()?.currentSkill?.lifecycle;
 		const baseMs = Number(lifecycle?.chanting ?? 0);
-		const statContainer = owner.getCapabilities().statContainer;
-		const chargeLv = Number(statContainer.getValue(""buff.magicCharge.level"") ?? 0);
+		const attributeContainer = owner.getCapabilities().attributeContainer;
+		const chargeLv = Number(attributeContainer.getValue(""buff.magicCharge.level"") ?? 0);
 		const value = Math.max(0, Math.floor(baseMs - chargeLv * 1000));
 		return Number.isFinite(value) ? value : 0;
 	}
@@ -1506,8 +1506,8 @@ y4lvylo8zne5asp1czx6ad2t__active_bt,魔力灌充 主动行为,"root {
 	get 魔力灌充咏唱毫秒() {
 		const lifecycle = owner.getContext()?.currentSkill?.lifecycle;
 		const baseMs = Number(lifecycle?.chanting ?? 0);
-		const statContainer = owner.getCapabilities().statContainer;
-		const chargeLv = Number(statContainer.getValue(""buff.magicCharge.level"") ?? 0);
+		const attributeContainer = owner.getCapabilities().attributeContainer;
+		const chargeLv = Number(attributeContainer.getValue(""buff.magicCharge.level"") ?? 0);
 		const value = Math.max(0, Math.floor(baseMs - chargeLv * 1000));
 		return Number.isFinite(value) ? value : 0;
 	}
@@ -1528,8 +1528,8 @@ x1zkrxl6x1n79s0xlh9y22c5__active_bt,魔力灌充 主动行为,"root {
 	get 魔力灌充咏唱毫秒() {
 		const lifecycle = owner.getContext()?.currentSkill?.lifecycle;
 		const baseMs = Number(lifecycle?.chanting ?? 0);
-		const statContainer = owner.getCapabilities().statContainer;
-		const chargeLv = Number(statContainer.getValue(""buff.magicCharge.level"") ?? 0);
+		const attributeContainer = owner.getCapabilities().attributeContainer;
+		const chargeLv = Number(attributeContainer.getValue(""buff.magicCharge.level"") ?? 0);
 		const value = Math.max(0, Math.floor(baseMs - chargeLv * 1000));
 		return Number.isFinite(value) ? value : 0;
 	}
@@ -1550,8 +1550,8 @@ bk3nm2zritded47pm8lyiuo6__active_bt,魔力灌充 主动行为,"root {
 	get 魔力灌充咏唱毫秒() {
 		const lifecycle = owner.getContext()?.currentSkill?.lifecycle;
 		const baseMs = Number(lifecycle?.chanting ?? 0);
-		const statContainer = owner.getCapabilities().statContainer;
-		const chargeLv = Number(statContainer.getValue(""buff.magicCharge.level"") ?? 0);
+		const attributeContainer = owner.getCapabilities().attributeContainer;
+		const chargeLv = Number(attributeContainer.getValue(""buff.magicCharge.level"") ?? 0);
 		const value = Math.max(0, Math.floor(baseMs - chargeLv * 1000));
 		return Number.isFinite(value) ? value : 0;
 	}

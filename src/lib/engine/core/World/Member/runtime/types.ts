@@ -12,7 +12,7 @@ import type { PlayerAttrKey } from "../types/Player/PlayerAttrSchema";
  *
  * 设计说明：
  * - 所有字段一律扁平，命名直接对应 BT 黑板契约与 MDSL 引用（$currentSkill / $currentTimeMs 等）。
- * - BT 执行期直接消费这些字段；StatContainer、services、订阅器等成员组件通过 capabilities 注入。
+ * - BT 执行期直接消费这些字段；AttributeContainer、services、订阅器等成员组件通过 capabilities 注入。
  * - FSM 为这些字段的唯一写入方；BT action 通过 capabilities 请求外部组件执行副作用。
  */
 export interface MemberSharedRuntime<_TExtraAttrKey extends string = never> extends Record<string, unknown> {

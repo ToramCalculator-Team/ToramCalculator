@@ -2,9 +2,9 @@
  * 属性槽合并工具。
  *
  * 背景：
- * - `StatContainer` 在构造时一次性从 `NestedSchema` 扁平化、分配 `Float64Array`，
+ * - `AttributeContainer` 在构造时一次性从 `NestedSchema` 扁平化、分配 `Float64Array`，
  *   战斗中不能动态增减属性。因此所有"技能 / 托环 / buff 需要的持久化属性槽"
- *   必须在 `new StatContainer(schema)` 之前并入基础 schema。
+ *   必须在 `new AttributeContainer(schema)` 之前并入基础 schema。
  * - 本模块提供一个纯函数 `mergeSchema(base, slots)`，把若干槽声明合并进基础 schema。
  *
  * 命名约定（本版冻结）：

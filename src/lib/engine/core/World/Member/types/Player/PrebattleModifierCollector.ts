@@ -1,11 +1,11 @@
 import * as Enums from "@db/schema/enums";
 import type { EngineCharacter, EngineMember } from "../../../../engineScenarioSchema";
 import type { RuntimeAttachment } from "../../attachments/RuntimeAttachment";
+import type { ModifierSource, ModifierType } from "../../runtime/AttributeContainer/AttributeContainer";
 import {
 	compileModifierDslLines,
 	type ModifierDslIdentifierResolver,
-} from "../../runtime/StatContainer/ModifierDslParser";
-import type { ModifierSource, ModifierType } from "../../runtime/StatContainer/StatContainer";
+} from "../../runtime/AttributeContainer/ModifierDslParser";
 
 /**
  * Prebattle modifier collector
@@ -209,7 +209,7 @@ function collectPrebattleAttachmentModifiers<TAttrKey extends string>(
  *
  * 设计说明：
  * - 同一 ModifierSource 合并为一个 attachment，卸载前缀与 source.key 保持一致。
- * - installer 统一写入 StatContainer，避免 Player 构造函数直接修改运行时组件。
+ * - installer 统一写入 AttributeContainer，避免 Player 构造函数直接修改运行时组件。
  */
 export function collectPrebattleModifierAttachments<TAttrKey extends string>(
 	memberData: EngineMember,

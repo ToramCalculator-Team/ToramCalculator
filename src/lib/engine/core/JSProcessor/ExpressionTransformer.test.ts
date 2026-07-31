@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { NestedSchema, SchemaAttribute } from "../World/Member/runtime/StatContainer/SchemaTypes";
+import type { NestedSchema, SchemaAttribute } from "../World/Member/runtime/AttributeContainer/SchemaTypes";
 import { ExpressionTransformer } from "./ExpressionTransformer";
 
 // 构造一个合法叶子 SchemaAttribute（isSchemaAttribute 要求 displayName + expression 均为字符串）。
@@ -89,28 +89,30 @@ describe("transform — 将访问器替换为数值字面量", () => {
 	});
 });
 
-describe("transformToGetValue — 改写为 statContainer.getValue 调用", () => {
-	it("self.atk → self.statContainer.getValue('atk')", () => {
+describe("transformToGetValue — 改写为 attributeContainer.getValue 调用", () => {
+	it("self.atk → self.attributeContainer.getValue('atk')", () => {
 		const r = ExpressionTransformer.transformToGetValue("self.atk + 1");
 		expect(r.success).toBe(true);
-		expect(r.compiledExpression).toBe("self.statContainer.getValue('atk') + 1");
+		expect(r.compiledExpression).toBe("self.attributeContainer.getValue('atk') + 1");
 		expect(r.dependencies).toEqual(["atk"]);
 	});
 
 	it("基础值前缀 _ 改写为 getBaseValue 且 key 去前缀", () => {
 		const r = ExpressionTransformer.transformToGetValue("self._atk");
-		expect(r.compiledExpression).toBe("self.statContainer.getBaseValue('atk')");
+		expect(r.compiledExpression).toBe("self.attributeContainer.getBaseValue('atk')");
 		expect(r.dependencies).toEqual(["atk"]);
 	});
 
 	it("self 与 target 分别改写", () => {
 		const r = ExpressionTransformer.transformToGetValue("self.atk - target.def");
-		expect(r.compiledExpression).toBe("self.statContainer.getValue('atk') - target.statContainer.getValue('def')");
+		expect(r.compiledExpression).toBe(
+			"self.attributeContainer.getValue('atk') - target.attributeContainer.getValue('def')",
+		);
 	});
 
 	it("嵌套路径整体改写为单次 getValue", () => {
 		const r = ExpressionTransformer.transformToGetValue("self.mainWeapon.range");
-		expect(r.compiledExpression).toBe("self.statContainer.getValue('mainWeapon.range')");
+		expect(r.compiledExpression).toBe("self.attributeContainer.getValue('mainWeapon.range')");
 	});
 
 	it("schema 校验：路径不存在则失败", () => {

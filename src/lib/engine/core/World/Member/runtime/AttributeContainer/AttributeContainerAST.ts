@@ -1,7 +1,7 @@
 /**
- * StatContainer专用AST编译器 - 精确属性路径解析
+ * AttributeContainer专用AST编译器 - 精确属性路径解析
  *
- * 专门处理StatContainer中的属性表达式，所有表达式都以自身为目标
+ * 专门处理AttributeContainer中的属性表达式，所有表达式都以自身为目标
  * 支持：abi.vit, weapon.attack.physical, lv, str 等属性路径
  */
 
@@ -20,7 +20,7 @@ export interface ASTCompileResult {
 	replacements: number;
 }
 
-export class StatContainerASTCompiler {
+export class AttributeContainerASTCompiler {
 	private knownAttributes: Set<string>;
 	private currentAttributeName?: string;
 

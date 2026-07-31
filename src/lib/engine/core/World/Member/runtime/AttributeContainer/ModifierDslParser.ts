@@ -1,6 +1,6 @@
 import { parse, tokenizer } from "acorn";
 import { createLogger } from "~/lib/Logger";
-import { type ModifierSource, ModifierType } from "./StatContainerTypes";
+import { type ModifierSource, ModifierType } from "./AttributeContainerTypes";
 
 const log = createLogger("ModifierDslParser");
 
@@ -13,7 +13,7 @@ export interface ModifierDslCompileContext {
 	resolveIdentifier?: ModifierDslIdentifierResolver;
 }
 
-/** DSL 编译结果直接对齐 `StatContainer.addModifier` 需要的业务参数。 */
+/** DSL 编译结果直接对齐 `AttributeContainer.addModifier` 需要的业务参数。 */
 export interface CompiledModifierDsl<TAttrKey extends string = string> {
 	attribute: TAttrKey;
 	modifierType: ModifierType;

@@ -4,9 +4,9 @@ import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefiniti
 import type { MemberDomainEvent } from "../../../../types";
 import type { MemberBaseAttrKey } from "../../MemberBaseSchema";
 import type { MemberRuntimeServices } from "../../RuntimeServices";
+import type { AttributeContainer } from "../AttributeContainer/AttributeContainer";
 import type { RegisterOptions, ThresholdDirection } from "../AttributeWatcher/AttributeThresholdSource";
 import type { ProcHandler, ProcPredicate, ProcSubscriptionId } from "../ProcBus/ProcBus";
-import type { StatContainer } from "../StatContainer/StatContainer";
 import type { MemberControlEvent, MemberFSMEvent } from "../StateMachine/types";
 import type { MemberSharedRuntime } from "../types";
 
@@ -51,7 +51,7 @@ export interface MemberBtCapabilities<
 	TExtraAttrKey extends string = never,
 	TFSMEvent extends EventObject = MemberFSMEvent,
 > {
-	readonly statContainer: StatContainer<TExtraAttrKey | MemberBaseAttrKey>;
+	readonly attributeContainer: AttributeContainer<TExtraAttrKey | MemberBaseAttrKey>;
 	readonly services: MemberRuntimeServices;
 	readonly renderState: { lastAction?: { name: string; ts: number; params?: Record<string, unknown> } };
 	registerParallelBt(

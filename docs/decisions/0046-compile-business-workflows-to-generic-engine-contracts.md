@@ -44,7 +44,7 @@ Simulator 的设计、验证、分析循环和 Character 技能预览都会调�
 3. Simulator 实操验证显式请求逐 Tick 状态历史，并在建立 RunRecord 前断言历史存在；Character 技能预览不请求状态历史，只解释输入判决、伤害和任务统计。
 4. 实时 UI 投影继续由独立的快照推送频率控制，不通过执行记录策略表达。
 5. Engine 使用“Tick 状态历史”等技术术语；“Tick 分析快照”、分析范围、摘要和对比只属于 Simulator 业务层。
-6. StatContainer 可以提供与消费者无关的索引读取契约，但不能以 Analysis、Preview 或具体 Writer 命名，也不能承担输出归一化策略。
+6. AttributeContainer 可以提供与消费者无关的索引读取契约，但不能以 Analysis、Preview 或具体 Writer 命名，也不能承担输出归一化策略。
 7. SharedArrayBuffer 能力只在请求逐 Tick 状态历史的功能边界校验，不能阻止不使用该能力的 EngineService、实时句柄或模拟任务启动。
 
 ## 代价

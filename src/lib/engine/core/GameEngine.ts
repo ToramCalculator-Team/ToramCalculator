@@ -465,10 +465,10 @@ export class GameEngine {
 
 		// 所有成员的高频视图
 		const members = this.world.memberManager.getAllMembers().map((member) => {
-			const hpCurrent = member.statContainer?.getValue("hp.current") ?? 0;
-			const hpMax = member.statContainer?.getValue("hp.max") ?? 0;
-			const mpCurrent = member.statContainer?.getValue("mp.current") ?? 0;
-			const mpMax = member.statContainer?.getValue("mp.max") ?? 0;
+			const hpCurrent = member.AttributeContainer?.getValue("hp.current") ?? 0;
+			const hpMax = member.AttributeContainer?.getValue("hp.max") ?? 0;
+			const mpCurrent = member.AttributeContainer?.getValue("mp.current") ?? 0;
+			const mpMax = member.AttributeContainer?.getValue("mp.max") ?? 0;
 
 			return {
 				id: member.id,
@@ -485,7 +485,7 @@ export class GameEngine {
 					current: mpCurrent,
 					max: mpMax,
 				},
-				attrs: member.statContainer.exportAttributeSnapshot(),
+				attrs: member.AttributeContainer.exportAttributeSnapshot(),
 			};
 		});
 
@@ -1488,7 +1488,7 @@ export class GameEngine {
 				if (allMembers.length === 0) return true;
 				const camps = new Set<string>();
 				for (const m of allMembers) {
-					if (m.statContainer.getValue("hp.current") > 0) {
+					if (m.AttributeContainer.getValue("hp.current") > 0) {
 						camps.add(m.campId);
 					}
 				}

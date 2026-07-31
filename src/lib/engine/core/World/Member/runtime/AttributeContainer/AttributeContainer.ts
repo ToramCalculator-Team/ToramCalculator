@@ -9,12 +9,8 @@
  */
 import * as Enums from "@db/schema/enums";
 import { createLogger } from "~/lib/Logger";
-import type { Checkpointable, StatContainerCheckpoint } from "../../../../types";
-import { AttributeFlags, BitFlags } from "./BitFlags";
-import { DependencyGraph } from "./DependencyGraph";
-import type { AttributeExpression, NestedSchema } from "./SchemaTypes";
-import { SchemaFlattener } from "./SchemaTypes";
-import { StatContainerASTCompiler } from "./StatContainerAST";
+import type { AttributeContainerCheckpoint, Checkpointable } from "../../../../types";
+import { AttributeContainerASTCompiler } from "./AttributeContainerAST";
 import type {
 	AttributeChangeListener,
 	AttributeSnapshot,
@@ -22,11 +18,13 @@ import type {
 	ModifierSource,
 	StatModifierVisitor,
 	StatSchemaVisitor,
-} from "./StatContainerTypes";
-import { ModifierType } from "./StatContainerTypes";
+} from "./AttributeContainerTypes";
+import { ModifierType } from "./AttributeContainerTypes";
+import { AttributeFlags, BitFlags } from "./BitFlags";
+import { DependencyGraph } from "./DependencyGraph";
+import type { AttributeExpression, NestedSchema } from "./SchemaTypes";
+import { SchemaFlattener } from "./SchemaTypes";
 
-export { AttributeFlags, BitFlags } from "./BitFlags";
-export { DependencyGraph } from "./DependencyGraph";
 export type {
 	AttributeChangeListener,
 	AttributeSnapshot,
@@ -41,7 +39,7 @@ export type {
 	StatModifierParam,
 	StatModifierVisitor,
 	StatSchemaVisitor,
-} from "./StatContainerTypes";
+} from "./AttributeContainerTypes";
 export {
 	AttributeSnapshotLeafSchema,
 	AttributeSnapshotSchema,
@@ -55,9 +53,11 @@ export {
 	ModifierType,
 	StatModifierKindSchema,
 	StatModifierParamSchema,
-} from "./StatContainerTypes";
+} from "./AttributeContainerTypes";
+export { AttributeFlags, BitFlags } from "./BitFlags";
+export { DependencyGraph } from "./DependencyGraph";
 
-const log = createLogger("StatContainer");
+const log = createLogger("AttributeContainer");
 
 type PendingValueChange = {
 	index: number;
@@ -125,7 +125,7 @@ const ENUM_MAPPINGS = createEnumMappings();
 /**
  * 基于TypedArray的高性能响应式数据管理器
  */
-export class StatContainer<T extends string> implements Checkpointable<StatContainerCheckpoint> {
+export class AttributeContainer<T extends string> implements Checkpointable<AttributeContainerCheckpoint> {
 	// ==================== 核心数据结构 ====================
 
 	/** 主要属性值存储 - 连续内存布局 */
@@ -210,7 +210,7 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 	 * @param schema 嵌套的Schema结构
 	 */
 	constructor(schema: NestedSchema) {
-		// console.log("🚀 StatContainer 构造函数", schema);
+		// console.log("🚀 AttributeContainer 构造函数", schema);
 		const flattened = SchemaFlattener.flatten<T>(schema);
 		const attrKeys = flattened.attrKeys;
 		const expressions = flattened.expressions;
@@ -274,8 +274,8 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 		// 标记所有属性为脏值
 		this.markAllDirty();
 
-		// console.log(`🚀 StatContainer 初始化完成:`, this);
-		log.info(`🚀 StatContainer 初始化完成:`, this.exportFlatValues());
+		// console.log(`🚀 AttributeContainer 初始化完成:`, this);
+		log.info(`🚀 AttributeContainer 初始化完成:`, this.exportFlatValues());
 	}
 
 	// ==================== 公共API - 属性访问 ====================
@@ -427,7 +427,7 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 	/**
 	 * 记录 onChange 事件；仅在属性已被观测过且值真正改变时入队。
 	 *
-	 * @internal 供 StatContainer 内部各写入路径调用。
+	 * @internal 供 AttributeContainer 内部各写入路径调用。
 	 */
 	private queueValueChange(index: number, oldValue: number, newValue: number, pending: PendingValueChange[]): void {
 		const arrayIndex = index >>> 5;
@@ -456,7 +456,7 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 				try {
 					cb(change.oldValue, change.newValue, path);
 				} catch (error) {
-					log.error(`StatContainer.onChange 监听器抛错 (${path})：`, error);
+					log.error(`AttributeContainer.onChange 监听器抛错 (${path})：`, error);
 				}
 			}
 		}
@@ -1073,7 +1073,7 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 		// 4) AST 编译，一次性得到 code 与 deps
 		try {
 			const knownAttributes = Array.from(this.keyToIndex.keys()).map((attr) => String(attr));
-			const compiler = new StatContainerASTCompiler(knownAttributes, String(currentAttr));
+			const compiler = new AttributeContainerASTCompiler(knownAttributes, String(currentAttr));
 			const result = compiler.compile(expression);
 			if (!result.success) {
 				log.error(`❌ AST编译失败: ${expression}`, result.error);
@@ -1303,7 +1303,7 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 	private reportDirtyOscillation(pass: number): void {
 		const dirtyAttrs = this.collectDirtyAttributeNames();
 		const pendingAttrs = this.pendingNotifications.map((change) => String(this.indexToKey[change.index]));
-		log.error(`⚠️ StatContainer 刷新超过 ${this.maxFlushPasses} 轮，疑似监听器写回振荡`, {
+		log.error(`⚠️ AttributeContainer 刷新超过 ${this.maxFlushPasses} 轮，疑似监听器写回振荡`, {
 			pass,
 			dirtyAttrs,
 			pendingAttrs,
@@ -1565,10 +1565,10 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 
 	// ==================== Checkpoint / Restore ====================
 
-	captureCheckpoint(): StatContainerCheckpoint {
-		const modifierSources: StatContainerCheckpoint["modifierSources"] = [];
+	captureCheckpoint(): AttributeContainerCheckpoint {
+		const modifierSources: AttributeContainerCheckpoint["modifierSources"] = [];
 		for (const [modifierType, perType] of this.modifierSources) {
-			const entries: StatContainerCheckpoint["modifierSources"][number]["entries"] = [];
+			const entries: AttributeContainerCheckpoint["modifierSources"][number]["entries"] = [];
 			for (const [attrIndex, perAttr] of perType) {
 				const sources: Array<{ source: ModifierSource; value: number }> = [];
 				for (const entry of perAttr.values()) {
@@ -1588,7 +1588,7 @@ export class StatContainer<T extends string> implements Checkpointable<StatConta
 		};
 	}
 
-	restoreCheckpoint(checkpoint: StatContainerCheckpoint): void {
+	restoreCheckpoint(checkpoint: AttributeContainerCheckpoint): void {
 		this.values.set(checkpoint.values);
 		this.flags.set(checkpoint.flags);
 		this.dirtyBitmap.set(checkpoint.dirtyBitmap);

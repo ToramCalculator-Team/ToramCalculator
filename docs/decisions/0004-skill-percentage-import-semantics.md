@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-05-28
 - **决策层**: 跨层
-- **相关代码**: `db/scripts/importToramSkillBehaviors.mjs`、`src/lib/engine/core/World/Member/runtime/StatContainer/StatContainer.ts`、`src/lib/engine/core/World/Member/attachments/RuntimeAttachmentInstaller.ts`
+- **相关代码**: `db/scripts/importToramSkillBehaviors.mjs`、`src/lib/engine/core/World/Member/runtime/AttributeContainer/AttributeContainer.ts`、`src/lib/engine/core/World/Member/attachments/RuntimeAttachmentInstaller.ts`
 - **相关 ADR**: Depends on 0001、0002
 
 ## 背景
@@ -19,7 +19,7 @@
 
 ### B. 根据目标属性的 noBaseValue 选择通道
 
-- 优点：更贴近 `StatContainer` 的计算语义。
+- 优点：更贴近 `AttributeContainer` 的计算语义。
 - 缺点：导入器需要依赖属性元数据，尚未验证资料源是否稳定表达这种差异。
 
 ### C. 为每个外部属性维护显式通道映射
@@ -44,10 +44,10 @@
 ## 影响范围
 
 - 技能资料导入器必须遵守统一的百分比映射语义。
-- `StatContainer` 运行时语义不因本决议改变。
+- `AttributeContainer` 运行时语义不因本决议改变。
 - 技能导入的阶段、任务和验收不属于本 ADR。
 
 ## 参考
 
-- ADR 0001：StatContainer 作为持久化槽的统一载体
+- ADR 0001：AttributeContainer 作为持久化槽的统一载体
 - ADR 0002：RuntimeAttachment 战前装配契约

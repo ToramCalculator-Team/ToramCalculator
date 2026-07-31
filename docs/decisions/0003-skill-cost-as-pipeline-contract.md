@@ -42,7 +42,7 @@
 
 - 技能可用性检查、实际扣费和 UI 预览应复用同一消耗结果。
 - passive、buff 和装备对技能消耗的修正统一挂在 `skill.cost`。
-- `StatContainer` 的实际写回仍属于 FSM 编排职责。
+- `AttributeContainer` 的实际写回仍属于 FSM 编排职责。
 
 ## 参考
 

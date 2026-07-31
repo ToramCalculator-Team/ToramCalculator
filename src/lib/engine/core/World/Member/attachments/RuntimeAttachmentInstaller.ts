@@ -9,7 +9,7 @@ import { createLogger } from "~/lib/Logger";
 import type { ExpressionContext } from "../../../JSProcessor/types";
 import type { PipelineInstruction } from "../../../Pipeline/instruction";
 import type { PipelineOverlay } from "../../../Pipeline/overlay";
-import { type ModifierSource, ModifierType } from "../runtime/StatContainer/StatContainer";
+import { type ModifierSource, ModifierType } from "../runtime/AttributeContainer/AttributeContainer";
 import {
 	type RuntimeAttachment,
 	type RuntimeAttachmentHandler,
@@ -164,7 +164,7 @@ function runHandlers(
 						sourceIdOf(source, suffix),
 						suffix,
 					);
-					member.statContainer.addModifier(
+					member.AttributeContainer.addModifier(
 						handler.attribute,
 						mapModifierType(handler.modifierType),
 						value,
@@ -181,7 +181,7 @@ function runHandlers(
 						ModifierType.STATIC_FIXED,
 						ModifierType.STATIC_PERCENTAGE,
 					]) {
-						member.statContainer.removeModifier(handler.attribute, type, sid);
+						member.AttributeContainer.removeModifier(handler.attribute, type, sid);
 					}
 					break;
 				}
@@ -313,7 +313,7 @@ export function uninstallRuntimeAttachment(member: RuntimeAttachmentMember, sour
 	);
 	member.procBus?.unsubscribeBySource(sourceId);
 	member.attributeThresholdSource.unregisterBySource(sourceId);
-	member.statContainer.removeModifiersBySourceKeyPrefix(sourceId);
+	member.AttributeContainer.removeModifiersBySourceKeyPrefix(sourceId);
 }
 
 /**
@@ -321,7 +321,7 @@ export function uninstallRuntimeAttachment(member: RuntimeAttachmentMember, sour
  *
  * 设计说明：
  * - 安装前按 sourceId 清理旧条目，使热替换和重复安装保持幂等。
- * - `attributeSlots` 已在 StatContainer 构造前消费，此处不再处理。
+ * - `attributeSlots` 已在 AttributeContainer 构造前消费，此处不再处理。
  */
 export function installRuntimeAttachment<TExtraAttrKey extends string = string>(
 	member: RuntimeAttachmentMember<TExtraAttrKey>,
@@ -332,7 +332,7 @@ export function installRuntimeAttachment<TExtraAttrKey extends string = string>(
 
 	for (const modifier of attachment.modifiers ?? []) {
 		const source = modifier.source ?? runtimeAttachmentModifierSource(member.id, attachment.source);
-		member.statContainer.addModifier(modifier.attribute, modifier.modifierType, modifier.value, source);
+		member.AttributeContainer.addModifier(modifier.attribute, modifier.modifierType, modifier.value, source);
 	}
 
 	for (const patch of attachment.pipelinePatches ?? []) {

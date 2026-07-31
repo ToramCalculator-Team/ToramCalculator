@@ -13,7 +13,7 @@
  */
 
 import { type Identifier, type MemberExpression, type Node, parse } from "acorn";
-import type { NestedSchema, SchemaAttribute } from "../World/Member/runtime/StatContainer/SchemaTypes";
+import type { NestedSchema, SchemaAttribute } from "../World/Member/runtime/AttributeContainer/SchemaTypes";
 
 export interface TransformOptions {
 	/** 要替换的访问器类型：self 或 target */
@@ -138,7 +138,7 @@ export const ExpressionTransformer = {
 	 *   而非受击结算时读施法者实时 buff。本方法在快照构造期收集需要预求值的 buff id。
 	 * - 仅识别裸调用形态 `hasBuff('X')`（求值时由注入的 ctx.hasBuff 解析，默认查询 self）；
 	 *   `self.hasBuff(...)` 不是有效形态——它会被 transformToGetValue 误改写为
-	 *   `self.statContainer.getValue('hasBuff')(...)`，因此不在此识别。
+	 *   `self.attributeContainer.getValue('hasBuff')(...)`，因此不在此识别。
 	 * - 仅识别参数为字符串字面量的调用（静态可提取）；动态参数（变量/拼接）无法静态提取，
 	 *   由调用方 fallback 告警处理。
 	 *
@@ -173,7 +173,7 @@ export const ExpressionTransformer = {
 	},
 
 	/**
-	 * 转换表达式：将 self.xxx / target.xxx 改写为 *.statContainer.getValue('xxx')
+	 * 转换表达式：将 self.xxx / target.xxx 改写为 *.attributeContainer.getValue('xxx')
 	 *
 	 * 说明：
 	 * - 不注入 self/target 变量；要求运行时通过 ctx.self/ctx.target 提供变量
@@ -210,7 +210,7 @@ export const ExpressionTransformer = {
 				replacements.push({
 					start: access.start,
 					end: access.end,
-					replacement: `${access.root}.statContainer.${method}('${resolvedKey}')`,
+					replacement: `${access.root}.attributeContainer.${method}('${resolvedKey}')`,
 				});
 				dependencies.add(resolvedKey);
 			}

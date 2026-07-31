@@ -34,7 +34,7 @@
 核心约束：
 
 1. collector 只把来源数据翻译成统一契约，不直接修改运行时组件。
-2. `attributeSlots` 必须先合入 schema，再构造 `StatContainer`。
+2. `attributeSlots` 必须先合入 schema，再构造 `AttributeContainer`。
 3. modifier、pipeline patch、subscription 和 threshold watcher 各自只有一条安装路径。
 4. 稳定 `sourceId` 是跨能力的追踪和卸载边界。
 5. `MemberManager` 只负责装配阶段，不感知具体数据来源。
@@ -53,5 +53,5 @@
 
 ## 参考
 
-- ADR 0001：StatContainer 作为持久化槽的统一载体
+- ADR 0001：AttributeContainer 作为持久化槽的统一载体
 - `src/lib/engine/document/hook与触发层设计讨论结论.md` §2.2–2.3

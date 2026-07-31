@@ -164,7 +164,7 @@
 ### 工作项
 
 - [x] 按 ADR 0029 为 `ModifierSource`、modifier 条目、`AttributeSnapshotLeaf` 和属性快照建立统一 Zod schema，公开类型全部从 schema 推导。
-- [x] StatContainer 直接导出扁平 `AttributePath -> AttributeSnapshotLeaf`，保留当前值、基础值及完整 modifier 来源，不先构造嵌套树。
+- [x] AttributeContainer 直接导出扁平 `AttributePath -> AttributeSnapshotLeaf`，保留当前值、基础值及完整 modifier 来源，不先构造嵌套树。
 - [x] `MemberSerializeData`、`FrameSnapshot` 和 Worker 协议共用该属性契约；快照覆盖分析所需成员，不依赖当前控制器绑定或 UI 选中对象。
 - [x] 调整 Tick 收尾顺序：结算完成后无条件创建一次权威 FrameSnapshot，并写入当前 Engine 运行产出收集器；之后才判断是否向 UI 推送最新帧。
 - [x] 从 `frame_snapshot` 热路径移除 `JSON.stringify/parse` 式清洗；不可结构化克隆的数据在 schema 与构造边界解决。

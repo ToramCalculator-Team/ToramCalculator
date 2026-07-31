@@ -10,7 +10,7 @@
 
 跨 actor 数据只走两条既有通道，介质都不参与：
 - **某次命中的攻方战斗值** → 施放瞬间快照进 payload（`casterSnapshot`，时间锁定）。
-- **持续外部增益（光环 / 地形）** → 推 modifier 进目标 StatContainer。
+- **持续外部增益（光环 / 地形）** → 推 modifier 进目标 AttributeContainer。
 
 因此“空间层穿透读取真实 Member”**不是偏差，而是正确设计的雏形**（介质本就该查询时整合而非自存）。真正要做的是把它从“读具体 `Member` 类”收敛到“读一个统一的 `WorldObservable` 通信契约”。
 
@@ -25,7 +25,7 @@
 Actor 负责：
 
 - 发出意图：使用技能、移动、选择目标、取消、复活。
-- 持有私有状态：StatContainer、HP/MP、Status、Buff、技能上下文、状态机。
+- 持有私有状态：AttributeContainer、HP/MP、Status、Buff、技能上下文、状态机。
 - 决定最终写入：受击 Actor 接收世界派发的 impact payload 后，执行命中、减伤、HP/MP 写回、死亡转换。
 - 发布可观测事实：位置、阵营、是否存活、是否可被选中、公开状态标签。
 
@@ -92,7 +92,7 @@ Actor 负责：
 - 通过 `getMemberById` 同步读取真实 `self` 和 `target`。
 - 为 `self` / `target` 包一层 `Object.create(member)`，再注入 `hasBuff`。
 - `target.hasBuff` 直接读取目标 `btManager`。
-- `JSProcessor` 会把 `self.xxx` / `target.xxx` 改写成 `*.statContainer.getValue("xxx")`。
+- `JSProcessor` 会把 `self.xxx` / `target.xxx` 改写成 `*.AttributeContainer.getValue("xxx")`。
 - 这条路径绕过了 `Member.runPipeline` 的跨 Actor 读取限制。
 
 ### Member / FSM
@@ -201,8 +201,8 @@ interface MemberObservableAttributes {
 建议执行契约：
 
 - `damageFormula` 中的 `self.xxx` 读取 `casterSnapshot`。
-- `damageFormula` 中的 `target.xxx` 读取受击 Actor 当前 StatContainer。
-- 受击求值时构造 `self` 快照 facade，提供 `statContainer.getValue/getBaseValue`。
+- `damageFormula` 中的 `target.xxx` 读取受击 Actor 当前 AttributeContainer。
+- 受击求值时构造 `self` 快照 facade，提供 `AttributeContainer.getValue/getBaseValue`。
 - 伤害结算期禁止通过 `getMemberById` 读取施法者真实 Member。
 
 ### 阶段 4：抽象世界实体
@@ -235,13 +235,13 @@ Player 和 Mob 应共享：
 
 ## 伤害计算分段判断
 
-> 注：本节早期把“可观测 / 内部”当成 StatContainer 上的**属性二分**来写，已与最终模型冲突，下面重述。
-> 关键澄清：`self.*`（“自身属性”引用语义）与“可观测性”（介质/他人能否感知）是**两条独立的轴**，不要混。可观测面是一个**对外读接口**，不是给战斗数值打的标签；StatContainer **不分区**。
+> 注：本节早期把“可观测 / 内部”当成 AttributeContainer 上的**属性二分**来写，已与最终模型冲突，下面重述。
+> 关键澄清：`self.*`（“自身属性”引用语义）与“可观测性”（介质/他人能否感知）是**两条独立的轴**，不要混。可观测面是一个**对外读接口**，不是给战斗数值打的标签；AttributeContainer **不分区**。
 
 结论：两段式计算（空间算关系量 / 目标算减免与扣血）已忠实于“谁有权改状态谁做最后计算”，**不重做**。要做的只是把边界**显式化**：
 
 1. **关系量（空间注入 vars）**：distance、direction、targetCount、碰撞、路径遮挡——介质在 settle 相位现场算，零持有。
-2. **私有结算量（目标 pipeline）**：def/avoid/resist、护盾、无敌、死亡保护、HP/MP 写回——目标 actor 的 StatContainer/pipeline 算。
+2. **私有结算量（目标 pipeline）**：def/avoid/resist、护盾、无敌、死亡保护、HP/MP 写回——目标 actor 的 AttributeContainer/pipeline 算。
 
 “可观测”不是属性分类，而是按**来源**分两类事实（见“可观测属性的权威设计”节）：内在投影类（position/alive/camp/facing/radius/公开 tags，actor 是唯一持有者）与关系派生类（距离/遮挡/视线/AOI 成员，介质现场整合、actor 连声明都没有）。战斗有效值**两类都不是**，它是纯内部属性 → 介质永不提供 `getEffectiveDefense`。
 
@@ -273,13 +273,13 @@ Player 和 Mob 应共享：
 - `DamageAreaSystem` 已经承担了距离、方向、targetCount，这属于第一段空间计算。
 - `buildDamageRequest` 已经尝试生成 `casterSnapshot`，但 `damageFormula` 的 `self` 执行语义需要修正。
 - `DamageResolution` 当前承担命中、伤害、写回，后续可以接收更明确的伤害事件包。
-- 防御力、回避、抗性默认留给受击 Actor 的 StatContainer / pipeline 计算。
+- 防御力、回避、抗性默认留给受击 Actor 的 AttributeContainer / pipeline 计算。
 
 建议 ADR 明确一个边界：空间层输出伤害事件包和空间关系变量；目标 Actor 拥有战斗计算与最终结算权。
 
 ## 可观测属性的权威设计（修正）
 
-结论：当前引擎应采用薄读模型。Actor 权威维护自身状态和已发布事实；世界级服务缓存这些事实、计算空间关系、持有环境状态。战斗有效值留在 Actor 的 StatContainer / pipeline / modifier 链路内。
+结论：当前引擎应采用薄读模型。Actor 权威维护自身状态和已发布事实；世界级服务缓存这些事实、计算空间关系、持有环境状态。战斗有效值留在 Actor 的 AttributeContainer / pipeline / modifier 链路内。
 
 “可观测”需要拆成两种情况：
 
@@ -302,11 +302,11 @@ Actor 应维护并发布：
 例子：
 
 - 衣服颜色这种表现层现象可以由材质和光照共同决定；这类需求不应推导出世界负责战斗有效值。
-- 地形或光环影响防御时，环境系统应通过 Area / BuffArea 向 Actor 的 StatContainer 推 modifier，Actor 的 StatContainer 产出有效防御。
+- 地形或光环影响防御时，环境系统应通过 Area / BuffArea 向 Actor 的 AttributeContainer 推 modifier，Actor 的 AttributeContainer 产出有效防御。
 - HP 当前值由 Actor 维护；`alive`、`targetable` 由 Actor 发布，世界缓存并用于目标查询。
 - 当前引擎里 position 可作为 Actor 发布事实；如果未来引入物理碰撞权威，再单独讨论 position 是否迁移给世界。
 
-因此，世界级服务不提供 `getEffectiveDefense` 这类战斗有效值接口。环境依赖通过“Area / BuffArea -> modifier -> StatContainer”进入 Actor，保持战斗计算权威在 Actor。
+因此，世界级服务不提供 `getEffectiveDefense` 这类战斗有效值接口。环境依赖通过“Area / BuffArea -> modifier -> AttributeContainer”进入 Actor，保持战斗计算权威在 Actor。
 
 需要商量的设计点：
 
@@ -344,7 +344,7 @@ Actor 应维护并发布：
 
 ## World 不 actor 化 / 实体统一模型
 
-**World 保持确定性相位调度器，不用 `invoke` 托管成员。** 理由：World 的核心职责是“相位调度”（member 带 settle → projectile 带 → query），这个**显式顺序就是确定性来源**；XState 的 invoke/spawn 给的是异步监督树，不保证跨 actor 处理顺序，套上来要么丢相位边界（回放不确定）要么纯属多一层队列。且 Member 大量状态在 FSM 之外（StatContainer/ProcBus/BtManager/statusStore），actor 化只会让 checkpoint 多一套“actor 树持久化 + sidecar 持久化”要对齐。
+**World 保持确定性相位调度器，不用 `invoke` 托管成员。** 理由：World 的核心职责是“相位调度”（member 带 settle → projectile 带 → query），这个**显式顺序就是确定性来源**；XState 的 invoke/spawn 给的是异步监督树，不保证跨 actor 处理顺序，套上来要么丢相位边界（回放不确定）要么纯属多一层队列。且 Member 大量状态在 FSM 之外（AttributeContainer/ProcBus/BtManager/statusStore），actor 化只会让 checkpoint 多一套“actor 树持久化 + sidecar 持久化”要对齐。
 
 **实体统一靠最小 `WorldEntity` 契约 + 组合，不靠 FSM 继承。** 基类的**唯一**职责是“与介质双向通信”：
 
@@ -359,7 +359,7 @@ interface WorldEntity {
 }
 ```
 
-- `Damageable`/`StatContainer`/`BT` → 仅 Member，**不进基类**。
+- `Damageable`/`AttributeContainer`/`BT` → 仅 Member，**不进基类**。
 - `Velocity`/`Collider` → 仅投射物，**不进基类**。
 - 能力不对称（火球不可被伤害、Member 不需运动学）是“组合 over 继承”的决定性信号；单一继承链必然漏污染或塞死重。
 

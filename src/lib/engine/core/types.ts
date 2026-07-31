@@ -11,8 +11,8 @@ import type { MessageRouterStats } from "./MessageRouter/MessageRouter";
 import type { PipelineCatalog } from "./Pipeline/PipelineCatalog";
 import type { PipelineResolverService } from "./Pipeline/PipelineResolverService";
 import type { MemberSnapshot } from "./World/Member/Member";
-import type { ModifierSource } from "./World/Member/runtime/StatContainer/StatContainerTypes";
-import { AttributeSnapshotSchema } from "./World/Member/runtime/StatContainer/StatContainerTypes";
+import type { ModifierSource } from "./World/Member/runtime/AttributeContainer/AttributeContainerTypes";
+import { AttributeSnapshotSchema } from "./World/Member/runtime/AttributeContainer/AttributeContainerTypes";
 
 /**
  * 引擎基础设施 -- 长期驻留的编译缓存和管线定义。
@@ -535,8 +535,8 @@ export interface EventQueueCheckpoint {
 	};
 }
 
-/** StatContainer 检查点：修饰符层 + 值 + 脏位 */
-export interface StatContainerCheckpoint {
+/** AttributeContainer 检查点：修饰符层 + 值 + 脏位 */
+export interface AttributeContainerCheckpoint {
 	values: Float64Array;
 	flags: Uint32Array;
 	dirtyBitmap: Uint32Array;
@@ -571,7 +571,7 @@ export type MemberFSMCheckpoint = unknown;
  * BtManager 检查点。
  *
  * 设计说明：BT agent 普通字段不承载可 checkpoint 状态；跨帧数值状态通过行为树
- * `attributeSlots` 进入成员 StatContainer，并随 `MemberCheckpoint.statContainer` 保存。
+ * `attributeSlots` 进入成员 AttributeContainer，并随 `MemberCheckpoint.AttributeContainer` 保存。
  */
 export interface BtManagerCheckpoint {
 	hasActiveEffect: boolean;
@@ -608,7 +608,7 @@ export interface ControllerEventProjectorCheckpoint {
 export interface MemberCheckpoint {
 	memberId: string;
 	fsm: MemberFSMCheckpoint;
-	statContainer: StatContainerCheckpoint;
+	AttributeContainer: AttributeContainerCheckpoint;
 	statusStore: StatusInstanceStoreCheckpoint;
 	btManager: BtManagerCheckpoint;
 	pipelineOverlays: unknown;

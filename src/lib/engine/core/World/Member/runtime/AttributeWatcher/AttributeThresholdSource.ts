@@ -3,7 +3,7 @@
  *
  * 职责（与旧 `AttributeWatcherRegistry` 的区别）：
  * - 旧 watcher 是**独立订阅系统**：业务 handler 直接挂在它上面，跨越即调 handler。
- * - 本组件是**喂 ProcBus 的适配器**：它只订阅 `StatContainer.onChange`、检测跨越，
+ * - 本组件是**喂 ProcBus 的适配器**：它只订阅 `AttributeContainer.onChange`、检测跨越，
  *   跨越的那一刻 `emit("attr.crossed", payload)` 到成员内总线。业务响应统一改为
  *   订阅 ProcBus 的 `attr.crossed` 事件（在 predicate 里按 path + 阈值过滤）。
  *
@@ -12,7 +12,7 @@
  */
 
 import { createLogger } from "~/lib/Logger";
-import type { StatContainer } from "../StatContainer/StatContainer";
+import type { AttributeContainer } from "../AttributeContainer/AttributeContainer";
 
 const log = createLogger("AttrThresholdSource");
 
@@ -37,7 +37,7 @@ interface ThresholdEntry {
 	path: string;
 	threshold: number;
 	direction: ThresholdDirection;
-	/** StatContainer.onChange 返回的取消函数。 */
+	/** AttributeContainer.onChange 返回的取消函数。 */
 	unsubscribe: () => void;
 }
 
@@ -53,7 +53,7 @@ export class AttributeThresholdSource<TAttrKey extends string = string> {
 	private nextId = 1;
 
 	constructor(
-		private readonly container: StatContainer<TAttrKey>,
+		private readonly container: AttributeContainer<TAttrKey>,
 		private emit: AttrCrossedEmitter | null,
 	) {}
 

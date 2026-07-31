@@ -2,9 +2,9 @@ import type { MemberBTTree } from "@db/schema/jsons";
 import type { EngineMember } from "../../../../engineScenarioSchema";
 import { Member } from "../../Member";
 import { MemberRuntimeServicesDefaults } from "../../RuntimeServices";
-import { mergeSchema, type SlotDeclaration } from "../../runtime/StatContainer/SchemaMerge";
-import type { ExtractAttrPaths } from "../../runtime/StatContainer/SchemaTypes";
-import { StatContainer } from "../../runtime/StatContainer/StatContainer";
+import { AttributeContainer } from "../../runtime/AttributeContainer/AttributeContainer";
+import { mergeSchema, type SlotDeclaration } from "../../runtime/AttributeContainer/SchemaMerge";
+import type { ExtractAttrPaths } from "../../runtime/AttributeContainer/SchemaTypes";
 import type { MobRuntime } from "../../runtime/types";
 import { createMobBtBindings } from "./Agents/BtBindings";
 import { MobAttrSchema } from "./MobAttrSchema";
@@ -23,10 +23,10 @@ export class Mob extends Member<MobAttrKey, MobSpecificEvent, MobFSMContext, Mob
 			throw new Error("Mob数据缺失");
 		}
 		const baseSchema = MobAttrSchema(memberData.mob);
-		// Mob 没有托环安装阶段；解析后的固有 AI 属性槽仍需在构造 StatContainer 前声明。
+		// Mob 没有托环安装阶段；解析后的固有 AI 属性槽仍需在构造 AttributeContainer 前声明。
 		const slotDeclarations = Mob.collectAttributeSlots(memberData);
 		const attrSchema = mergeSchema(baseSchema, slotDeclarations);
-		const statContainer = new StatContainer<MobAttrKey>(attrSchema);
+		const attributeContainer = new AttributeContainer<MobAttrKey>(attrSchema);
 
 		const runtime: MobRuntime = {
 			type: "Mob",
@@ -53,7 +53,7 @@ export class Mob extends Member<MobAttrKey, MobSpecificEvent, MobFSMContext, Mob
 			teamId,
 			memberData,
 			attrSchema,
-			statContainer,
+			attributeContainer,
 			runtime,
 			MemberRuntimeServicesDefaults,
 			position,
@@ -61,7 +61,7 @@ export class Mob extends Member<MobAttrKey, MobSpecificEvent, MobFSMContext, Mob
 		);
 	}
 
-	/** 收集 Mob 行为树声明的持久化属性槽，保证 BT 变量随 StatContainer checkpoint。 */
+	/** 收集 Mob 行为树声明的持久化属性槽，保证 BT 变量随 AttributeContainer checkpoint。 */
 	private static collectAttributeSlots(memberData: EngineMember): SlotDeclaration[] {
 		const slots: SlotDeclaration[] = [];
 		Mob.collectBtAttributeSlots(slots, memberData.resolvedBehavior);

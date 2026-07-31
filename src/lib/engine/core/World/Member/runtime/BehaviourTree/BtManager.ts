@@ -5,7 +5,7 @@ import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefiniti
 import type { BehaviourTreeOptions } from "~/lib/mistreevous/BehaviourTreeOptions";
 import { State } from "~/lib/mistreevous/State";
 import type { BtManagerCheckpoint, Checkpointable } from "../../../../types";
-import { ModifierType } from "../StatContainer/StatContainer";
+import { ModifierType } from "../AttributeContainer/AttributeContainer";
 import type { MemberFSMEvent } from "../StateMachine/types";
 import type { MemberSharedRuntime } from "../types";
 import type { MemberBtManagerEnv } from "./BtManagerEnv";
@@ -45,9 +45,9 @@ export class BtManager<
 			getDeltaTimeMs: () => this.env.getDeltaTimeMs(),
 			getCurrentTimeMs: () => this.env.getCapabilities().services.getCurrentTimeMs(),
 			resolveProperty: (path: string) => {
-				const stat = this.env.getCapabilities().statContainer;
+				const stat = this.env.getCapabilities().attributeContainer;
 				if (stat.hasKey(path)) {
-					// hasKey 已在运行时确认动态 MDSL 路径属于当前 StatContainer；类型系统无法从 boolean 推导泛型键。
+					// hasKey 已在运行时确认动态 MDSL 路径属于当前 AttributeContainer；类型系统无法从 boolean 推导泛型键。
 					return stat.getValue(path as Parameters<typeof stat.getValue>[0]);
 				}
 				return undefined;

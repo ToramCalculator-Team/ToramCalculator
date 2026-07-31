@@ -83,8 +83,8 @@ const SimulationDesignTeamSchema = TeamSchema.extend({
 /** SimulatorSession 持有的完整本地业务设计，是 DesignCopy 的唯一输入形状。 */
 export const SimulationDesignSchema = SimulatorSchema.extend({
 	teams: z.array(SimulationDesignTeamSchema),
-	analysisSourceMembers: z.array(z.object({ id: z.string() })),
-	analysisTargetMembers: z.array(z.object({ id: z.string() })),
+	analysisSourceMembers: z.array(z.object({ id: z.string() })).min(1, "Simulator 分析来源不能为空"),
+	analysisTargetMembers: z.array(z.object({ id: z.string() })).min(1, "Simulator 分析目标不能为空"),
 });
 
 export type SimulationDesign = z.output<typeof SimulationDesignSchema>;

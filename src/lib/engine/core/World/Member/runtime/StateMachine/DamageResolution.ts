@@ -5,7 +5,7 @@
  * 让 FSM action 只剩一次函数调用 + context 更新。
  *
  * 设计原则：
- * - **纯函数**：不修改 FSM context；只依赖 `Member` 实例本身（member 内部有权修改 StatContainer / 发事件）。
+ * - **纯函数**：不修改 FSM context；只依赖 `Member` 实例本身（member 内部有权修改 AttributeContainer / 发事件）。
  * - **按阶段拆分**：`resolveHitCheck` 处理命中判定 + 投掷；`resolveDamageAndApply` 处理伤害数值 +
  *   应用 HP/MP + 上报 domain event。FSM 在各自的状态 entry 调用对应函数，中间把结果穿到 `HitSession`。
  * - **跨帧缓存**：整个受击流程的中间结果打包成 `HitSession` 对象，FSM context 持有一个 slot 即可，
@@ -116,7 +116,7 @@ export function resolveHitCheck(
 }
 
 /**
- * 命中后计算伤害数值并应用到 StatContainer；同时上报 `hit` domain event。
+ * 命中后计算伤害数值并应用到 AttributeContainer；同时上报 `hit` domain event。
  *
  * 未命中分支：直接上报 0 伤害的 hit event，不改 HP/MP。
  */

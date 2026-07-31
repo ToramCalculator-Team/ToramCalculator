@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { type ModifierSource, ModifierType } from "./AttributeContainerTypes";
 import {
 	compileModifierDslLine,
 	compileModifierDslLines,
@@ -6,7 +7,6 @@ import {
 	type ModifierDslCompileContext,
 	type ModifierDslIdentifierResolver,
 } from "./ModifierDslParser";
-import { type ModifierSource, ModifierType } from "./StatContainerTypes";
 
 // 测试用固定来源。
 const SOURCE: ModifierSource = {

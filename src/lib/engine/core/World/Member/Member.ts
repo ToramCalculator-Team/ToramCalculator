@@ -14,13 +14,13 @@ import type { WorldObservable } from "../observable";
 import type { MemberBaseAttrKey } from "./MemberBaseSchema";
 import type { MemberRuntimeServices, MemberTargetResolver } from "./RuntimeServices";
 import { MemberRuntimeServicesDefaults } from "./RuntimeServices";
+import type { AttributeContainer } from "./runtime/AttributeContainer/AttributeContainer";
+import { AttributeSnapshotSchema } from "./runtime/AttributeContainer/AttributeContainerTypes";
+import type { NestedSchema } from "./runtime/AttributeContainer/SchemaTypes";
 import { AttributeThresholdSource } from "./runtime/AttributeWatcher/AttributeThresholdSource";
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
 import type { MemberBtCapabilities, MemberBtManagerEnv } from "./runtime/BehaviourTree/BtManagerEnv";
 import { ProcBus } from "./runtime/ProcBus/ProcBus";
-import type { NestedSchema } from "./runtime/StatContainer/SchemaTypes";
-import type { StatContainer } from "./runtime/StatContainer/StatContainer";
-import { AttributeSnapshotSchema } from "./runtime/StatContainer/StatContainerTypes";
 import type {
 	MemberActor,
 	MemberControlEvent,
@@ -72,7 +72,7 @@ export class Member<
 	campId: string;
 	teamId: string;
 	dataSchema: NestedSchema;
-	statContainer: StatContainer<MemberBaseAttrKey | TExtraAttrKey>;
+	AttributeContainer: AttributeContainer<MemberBaseAttrKey | TExtraAttrKey>;
 	/** 共享 runtime（可序列化，可进 checkpoint） */
 	runtime: TRuntime;
 	/** 引擎注入 services（不可序列化） */
@@ -88,7 +88,7 @@ export class Member<
 	 */
 	procBus: ProcBus | null = null;
 	/**
-	 * 属性阈值事件源（ADR 0010）：订阅 StatContainer 变更，把阈值穿越派发为 ProcBus 的
+	 * 属性阈值事件源（ADR 0010）：订阅 AttributeContainer 变更，把阈值穿越派发为 ProcBus 的
 	 * `attr.crossed` 事件；emitter 在 setEventCatalog 接通 ProcBus 后注入。
 	 */
 	attributeThresholdSource: AttributeThresholdSource<MemberBaseAttrKey | TExtraAttrKey>;
@@ -143,7 +143,7 @@ export class Member<
 				return snapshot.matches("死亡" as never);
 			}
 			// 回退：无死亡状态机的成员以 HP 判定
-			return this.statContainer.getValue("hp.current") <= 0;
+			return this.AttributeContainer.getValue("hp.current") <= 0;
 		} catch {
 			// actor 尚未启动或快照不可读时，保守视为存活
 			return false;
@@ -178,7 +178,7 @@ export class Member<
 		teamId: string,
 		memberData: EngineMember,
 		dataSchema: NestedSchema,
-		statContainer: StatContainer<MemberBaseAttrKey | TExtraAttrKey>,
+		AttributeContainer: AttributeContainer<MemberBaseAttrKey | TExtraAttrKey>,
 		runtime: TRuntime,
 		services: MemberRuntimeServices = MemberRuntimeServicesDefaults,
 		position?: { x: number; y: number; z: number },
@@ -195,12 +195,12 @@ export class Member<
 		this.services = { ...services };
 		this.dataSchema = dataSchema;
 		this.data = memberData;
-		this.statContainer = statContainer;
+		this.AttributeContainer = AttributeContainer;
 
 		this.statusStore = new InMemoryStatusInstanceStore(() => this.services.getCurrentTimeMs());
 		// 阈值事件源（ADR 0010）：emitter 在 setEventCatalog 接通 ProcBus 后注入，构造期先置空。
 		this.attributeThresholdSource = new AttributeThresholdSource<MemberBaseAttrKey | TExtraAttrKey>(
-			this.statContainer,
+			this.AttributeContainer,
 			null,
 		);
 		const btCapabilities = this.createBtCapabilities();
@@ -241,8 +241,8 @@ export class Member<
 			get runtime() {
 				return self.runtime;
 			},
-			get statContainer() {
-				return self.statContainer;
+			get AttributeContainer() {
+				return self.AttributeContainer;
 			},
 			get services() {
 				return self.services;
@@ -270,8 +270,8 @@ export class Member<
 			get services() {
 				return self.services;
 			},
-			get statContainer() {
-				return self.statContainer;
+			get attributeContainer() {
+				return self.AttributeContainer;
 			},
 			get renderState() {
 				return self.renderState;
@@ -330,7 +330,7 @@ export class Member<
 
 	serialize(): MemberSnapshot {
 		return {
-			attrs: this.statContainer.exportAttributeSnapshot(),
+			attrs: this.AttributeContainer.exportAttributeSnapshot(),
 			id: this.id,
 			type: this.type,
 			name: this.name,
@@ -498,7 +498,7 @@ export class Member<
 			tickIndex,
 			stats: (memberIdOrSelector: string, path: string) => {
 				if (memberIdOrSelector === "self" || memberIdOrSelector === this.id) {
-					return this.statContainer.getValue(path as MemberBaseAttrKey | TExtraAttrKey);
+					return this.AttributeContainer.getValue(path as MemberBaseAttrKey | TExtraAttrKey);
 				}
 				log.warn(
 					`runPipeline(${pipelineName})：拒绝跨 actor 属性读取 (${memberIdOrSelector}.${path})；跨成员数据必须随事件 payload 传入`,
@@ -595,7 +595,7 @@ export class Member<
 		this.actor.send({ type: "update", timestamp: tick.currentTimeMs });
 		this.btManager.tickAll();
 		// 让阈值 watcher 及时响应 modifier 导致的数值变化：把本帧累计的脏值刷出。
-		this.statContainer.flushDirtyValues();
+		this.AttributeContainer.flushDirtyValues();
 	}
 
 	// ==================== Checkpoint ====================
@@ -619,7 +619,7 @@ export class Member<
 		return {
 			memberId: this.id,
 			fsm: this.actor.getPersistedSnapshot(),
-			statContainer: this.statContainer.captureCheckpoint(),
+			AttributeContainer: this.AttributeContainer.captureCheckpoint(),
 			statusStore: this.statusStore.captureCheckpoint(),
 			btManager: this.btManager.captureCheckpoint(),
 			pipelineOverlays: structuredClone(this.pipelineOverlays),
@@ -629,7 +629,7 @@ export class Member<
 	}
 
 	restoreCheckpoint(checkpoint: MemberCheckpoint): void {
-		this.statContainer.restoreCheckpoint(checkpoint.statContainer);
+		this.AttributeContainer.restoreCheckpoint(checkpoint.AttributeContainer);
 		this.statusStore.restoreCheckpoint(checkpoint.statusStore);
 		this.btManager.restoreCheckpoint(checkpoint.btManager);
 		const overlayCp = checkpoint as unknown as { pipelineOverlays?: PipelineOverlay[] };

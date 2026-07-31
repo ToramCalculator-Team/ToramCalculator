@@ -1,9 +1,9 @@
-# 0001 - StatContainer 作为持久化槽的统一载体
+# 0001 - AttributeContainer 作为持久化槽的统一载体
 
 - **状态**: Accepted
 - **日期**: 2026-05（从 `hook与触发层设计讨论结论.md` §2.1.1 拆出）
 - **决策层**: 数据层
-- **相关代码**: `src/lib/engine/core/World/Member/runtime/StatContainer/StatContainer.ts`、`src/lib/engine/core/World/Member/runtime/StatContainer/SchemaTypes.ts`、`src/lib/engine/core/World/Member/runtime/Status/StatusInstanceStore.ts`
+- **相关代码**: `src/lib/engine/core/World/Member/runtime/AttributeContainer/AttributeContainer.ts`、`src/lib/engine/core/World/Member/runtime/AttributeContainer/SchemaTypes.ts`、`src/lib/engine/core/World/Member/runtime/Status/StatusInstanceStore.ts`
 
 ## 背景
 
@@ -16,7 +16,7 @@
 - 优点：所有附加状态集中管理。
 - 缺点：可见状态和不透明数值槽混合；冷却依赖“状态不存在”的特殊语义；公式与 checkpoint 需要第二套读写和序列化路径。
 
-### B. 持久数值放入 StatContainer
+### B. 持久数值放入 AttributeContainer
 
 - 优点：复用属性计算、统一读取语法和既有 checkpoint；可见状态的标签语义保持纯粹。
 - 缺点：schema 会增加技能和被动的私有槽；需要稳定命名空间和冲突检测。
@@ -28,7 +28,7 @@
 
 ## 决议
 
-选 B：**所有需要 checkpoint 的持久数值槽统一放入 `StatContainer`；`StatusInstanceStore` 只承载游戏内可见状态。**
+选 B：**所有需要 checkpoint 的持久数值槽统一放入 `AttributeContainer`；`StatusInstanceStore` 只承载游戏内可见状态。**
 
 核心约束：
 
@@ -39,7 +39,7 @@
 
 ## 代价
 
-- `StatContainer` schema 会随能力种类增长，需要关注容量和命名冲突。
+- `AttributeContainer` schema 会随能力种类增长，需要关注容量和命名冲突。
 - 哨兵值和命名前缀是跨模块约定，需要通过辅助函数或类型固化。
 - 可见状态与持久数值分属两个组件，排查成员完整状态时需要同时查看两处。
 
@@ -47,9 +47,9 @@
 
 ## 影响范围
 
-- `StatContainer` 与 schema 合并机制负责持久数值槽及其冲突检测。
+- `AttributeContainer` 与 schema 合并机制负责持久数值槽及其冲突检测。
 - `StatusInstanceStore` 不提供通用冷却或计数器存储能力。
-- 所有能力安装入口必须在 `StatContainer` 构造前收集属性槽。
+- 所有能力安装入口必须在 `AttributeContainer` 构造前收集属性槽。
 
 ## 参考
 

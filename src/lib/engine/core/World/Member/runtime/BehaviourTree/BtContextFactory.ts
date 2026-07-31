@@ -1,7 +1,7 @@
 import type { EventObject } from "xstate";
 import { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import { State } from "~/lib/mistreevous/State";
-import { ModifierType } from "../StatContainer/StatContainer";
+import { ModifierType } from "../AttributeContainer/AttributeContainer";
 import type { MemberSharedRuntime } from "../types";
 import type { BtContext, MemberBtManagerEnv } from "./BtManagerEnv";
 

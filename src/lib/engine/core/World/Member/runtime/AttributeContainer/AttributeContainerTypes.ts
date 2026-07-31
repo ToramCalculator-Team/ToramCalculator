@@ -193,7 +193,7 @@ export type StatModifierVisitor = (source: ModifierSource, value: number) => voi
 export type StatSchemaVisitor = (index: number, path: string, displayName: string, expression: string) => void;
 
 /**
- * StatContainer 的通用索引读取契约。
+ * AttributeContainer 的通用索引读取契约。
  *
  * 调用方先执行 `prepareIndexedRead()` 收敛脏值，再在同一同步调用栈内读取；
  * visitor 收到的 ModifierSource 是容器持有的规范引用，不得保存或修改。
@@ -223,7 +223,7 @@ export enum ModifierType {
 	MODIFIER_ARRAYS_COUNT = 5,
 }
 
-// 运行时 modifier 的数据化入口使用字符串，加载进 StatContainer 前再映射为 ModifierType 数字枚举。
+// 运行时 modifier 的数据化入口使用字符串，加载进 AttributeContainer 前再映射为 ModifierType 数字枚举。
 export const StatModifierKindSchema = z.enum([
 	"baseValue",
 	"staticFixed",

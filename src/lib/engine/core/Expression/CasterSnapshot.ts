@@ -21,7 +21,7 @@ export type CasterSnapshot = Record<string, number>;
 
 /** 表达式求值时 `self` 暴露的只读视图（与实时 Member 的取值面对齐）。 */
 export interface SelfFacade {
-	statContainer: {
+	AttributeContainer: {
 		getValue(key: string): number;
 		getBaseValue(key: string): number;
 	};
@@ -59,7 +59,7 @@ export function createSelfFacade(snapshot: CasterSnapshot, onMissing?: (key: str
 		return 0;
 	};
 	return {
-		statContainer: {
+		AttributeContainer: {
 			getValue: (key) => read(key),
 			getBaseValue: (key) => read(`${BASE_VALUE_PREFIX}${key}`),
 		},

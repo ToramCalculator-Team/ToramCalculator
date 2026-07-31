@@ -4,8 +4,8 @@ import type {
 	AttributeSnapshot,
 	ModifierSource,
 	StatIndexedReadSource,
-} from "./World/Member/runtime/StatContainer/StatContainerTypes";
-import { ModifierSourceSchema, ModifierType } from "./World/Member/runtime/StatContainer/StatContainerTypes";
+} from "./World/Member/runtime/AttributeContainer/AttributeContainerTypes";
+import { ModifierSourceSchema, ModifierType } from "./World/Member/runtime/AttributeContainer/AttributeContainerTypes";
 
 export const TICK_STATE_HISTORY_LAYOUT_VERSION: 1 = 1;
 
@@ -78,7 +78,7 @@ export interface TickStateMemberSource {
 	readonly campId: string;
 	readonly teamId: string;
 	readonly position: { readonly x: number; readonly y: number; readonly z: number };
-	readonly statContainer: StatIndexedReadSource;
+	readonly AttributeContainer: StatIndexedReadSource;
 }
 
 export type TickStateMemberSnapshot = {
@@ -245,7 +245,7 @@ export const TickStateHistoryDirectorySchema =
 /**
  * Worker 内唯一的 Tick 状态历史写入器。
  *
- * Writer 直接读取成员和 StatContainer 的稳定索引化状态，每段首 Tick 写完整基准，
+ * Writer 直接读取成员和 AttributeContainer 的稳定索引化状态，每段首 Tick 写完整基准，
  * 后续 Tick 只写变化。运行结束只封闭最后分段并返回目录，不重新扫描历史字节。
  */
 export class TickStateHistoryWriter {
@@ -291,7 +291,7 @@ export class TickStateHistoryWriter {
 
 		if (!this.initialized) this.initializeSources(sources);
 		this.assertStableMembers(sources);
-		for (const source of sources) source.statContainer.prepareIndexedRead();
+		for (const source of sources) source.AttributeContainer.prepareIndexedRead();
 
 		let baseline = this.openSegment === null;
 		let recordBytes = this.measureRecord(sources, baseline);
@@ -341,11 +341,11 @@ export class TickStateHistoryWriter {
 	private initializeSources(sources: readonly TickStateMemberSource[]): void {
 		for (const source of sources) {
 			const attributes: TickStateAttributeDescriptor[] = [];
-			source.statContainer.visitAttributeSchema((index, path, displayName, expression) => {
+			source.AttributeContainer.visitAttributeSchema((index, path, displayName, expression) => {
 				if (index !== attributes.length) throw new Error(`属性 Schema 索引不连续: ${index}`);
 				attributes.push({ path, displayName, expression });
 			});
-			const attributeCount = source.statContainer.getAttributeCount();
+			const attributeCount = source.AttributeContainer.getAttributeCount();
 			if (attributes.length !== attributeCount) throw new Error(`成员 ${source.id} 属性 Schema 数量不一致`);
 			this.members.push({
 				id: source.id,
@@ -370,7 +370,7 @@ export class TickStateHistoryWriter {
 			const source = sources[index];
 			const descriptor = this.members[index];
 			if (source.id !== descriptor.id) throw new Error(`运行期间成员顺序发生变化: ${source.id}`);
-			if (source.statContainer.getAttributeCount() !== descriptor.attributes.length) {
+			if (source.AttributeContainer.getAttributeCount() !== descriptor.attributes.length) {
 				throw new Error(`运行期间成员 ${source.id} 属性 Schema 发生变化`);
 			}
 		}
@@ -379,7 +379,7 @@ export class TickStateHistoryWriter {
 	private measureRecord(sources: readonly TickStateMemberSource[], baseline: boolean): number {
 		let bytes = TICK_RECORD_HEADER_BYTES + sources.length * MEMBER_RECORD_BYTES;
 		for (let memberIndex = 0; memberIndex < sources.length; memberIndex++) {
-			const source = sources[memberIndex].statContainer;
+			const source = sources[memberIndex].AttributeContainer;
 			const previous = this.previousMembers[memberIndex];
 			for (let attributeIndex = 0; attributeIndex < source.getAttributeCount(); attributeIndex++) {
 				const flags = this.attributeFlags(source, previous, attributeIndex, baseline);
@@ -480,7 +480,7 @@ export class TickStateHistoryWriter {
 
 		for (let memberIndex = 0; memberIndex < sources.length; memberIndex++) {
 			const member = sources[memberIndex];
-			const source = member.statContainer;
+			const source = member.AttributeContainer;
 			const previous = this.previousMembers[memberIndex];
 			segment.view.setUint32(cursor, memberIndex, true);
 			cursor += 4;

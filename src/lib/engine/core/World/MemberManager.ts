@@ -335,7 +335,7 @@ export class MemberManager {
 	 * 以相同 memberId 热替换成员实例。
 	 *
 	 * 目的：
-	 * - 成员配置变化需要重建 Player/StatContainer 等底层结构。
+	 * - 成员配置变化需要重建 Player/AttributeContainer 等底层结构。
 	 * - 替换期间保留成员身份、阵营队伍索引和主控目标，避免渲染层收到无意义的 null 主控切换。
 	 */
 	replaceMember(memberId: string, memberData: EngineMember): boolean {

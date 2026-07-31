@@ -6,8 +6,8 @@ import type {
 	ThresholdWatcherEffect,
 } from "@db/schema/jsons";
 import type { Member } from "../Member";
-import type { SlotDeclaration } from "../runtime/StatContainer/SchemaMerge";
-import type { ModifierSource, ModifierType } from "../runtime/StatContainer/StatContainer";
+import type { ModifierSource, ModifierType } from "../runtime/AttributeContainer/AttributeContainer";
+import type { SlotDeclaration } from "../runtime/AttributeContainer/SchemaMerge";
 import type { MemberSharedRuntime } from "../runtime/types";
 
 /** 泛化的 Member 类型别名，供战前附加效果安装器跨 Player / Mob 使用。FSM 类型参数用 any 放宽，因为 attachment 系统不操作 actor。 */

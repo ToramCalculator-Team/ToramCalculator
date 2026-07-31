@@ -7,8 +7,8 @@ import { installRuntimeAttachment } from "../../attachments/RuntimeAttachmentIns
 import { collectPlayerRuntimeAttachments } from "../../construction/collectPlayerRuntimeAttachments";
 import { Member } from "../../Member";
 import { MemberRuntimeServicesDefaults } from "../../RuntimeServices";
-import { mergeSchema, type SlotDeclaration } from "../../runtime/StatContainer/SchemaMerge";
-import { StatContainer } from "../../runtime/StatContainer/StatContainer";
+import { AttributeContainer } from "../../runtime/AttributeContainer/AttributeContainer";
+import { mergeSchema, type SlotDeclaration } from "../../runtime/AttributeContainer/SchemaMerge";
 import type { PlayerRuntime } from "../../runtime/types";
 import { createPlayerBtBindings } from "./Agents/BtBindings";
 import { type PlayerAttrKey, PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
@@ -34,10 +34,10 @@ export class Player extends Member<PlayerAttrKey, PlayerSpecificEvent, PlayerFSM
 		const runtimeAttachments = collectPlayerRuntimeAttachments<PlayerAttrKey>(activeCharacter, memberData);
 		const baseSchema = PlayerAttrSchemaGenerator(activeCharacter);
 		// 技能 / 托环 / buff 可能需要额外属性槽（咏咒层数、冷却时间戳等）。
-		// 必须在 StatContainer 构造前并入 schema，战斗中不能再扩容（Float64Array 固定长度）。
+		// 必须在 AttributeContainer 构造前并入 schema，战斗中不能再扩容（Float64Array 固定长度）。
 		const slotDeclarations = Player.collectAttributeSlots(activeCharacter, memberData, runtimeAttachments);
 		const attrSchema = mergeSchema(baseSchema, slotDeclarations);
-		const statContainer = new StatContainer<PlayerAttrKey>(attrSchema);
+		const attributeContainer = new AttributeContainer<PlayerAttrKey>(attrSchema);
 		const initialSkillList = activeCharacter.skills;
 
 		if (!initialSkillList) {
@@ -69,7 +69,7 @@ export class Player extends Member<PlayerAttrKey, PlayerSpecificEvent, PlayerFSM
 			teamId,
 			memberData,
 			attrSchema,
-			statContainer,
+			attributeContainer,
 			runtime,
 			MemberRuntimeServicesDefaults,
 			position,
@@ -113,7 +113,7 @@ export class Player extends Member<PlayerAttrKey, PlayerSpecificEvent, PlayerFSM
 	}
 
 	/**
-	 * 收集所有需要在 StatContainer 上预分配的属性槽。
+	 * 收集所有需要在 AttributeContainer 上预分配的属性槽。
 	 *
 	 * 来源：
 	 * - 当前 Member 流程声明（如 AI 行动计数器）
@@ -130,7 +130,7 @@ export class Player extends Member<PlayerAttrKey, PlayerSpecificEvent, PlayerFSM
 		runtimeAttachments: readonly RuntimeAttachment[],
 	): SlotDeclaration[] {
 		const slots: SlotDeclaration[] = collectAttachmentSlots(runtimeAttachments);
-		// 设计说明：BT agent 实例字段只承载当前执行对象，跨帧变量通过行为树数据声明槽并并入 StatContainer。
+		// 设计说明：BT agent 实例字段只承载当前执行对象，跨帧变量通过行为树数据声明槽并并入 AttributeContainer。
 		// 这里收集所有已学技能变体，保证战斗中切换分支或装备匹配变体时不会触发运行期扩容。
 		Player.collectBtAttributeSlots(slots, memberData.resolvedBehavior);
 		for (const skill of activeCharacter.skills) {

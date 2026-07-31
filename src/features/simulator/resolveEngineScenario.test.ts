@@ -93,6 +93,13 @@ describe("Simulator 设计解析", () => {
 		expect(() => deriveEngineScenarioInput(design)).toThrow("当前 Simulator 之外");
 	});
 
+	it("在设计解析阶段拒绝空分析来源或目标", () => {
+		const design = createDesign();
+		design.analysisSourceMembers = [];
+
+		expect(() => resolveSimulatorScene(design, "copy-1")).toThrow("Simulator 分析来源不能为空");
+	});
+
 	it("从同一设计版本派生逻辑输入与完整静态视觉资源", () => {
 		const scene = resolveSimulatorScene(createDesign(), "copy-1");
 

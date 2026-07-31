@@ -1,7 +1,7 @@
 import type { MemberType } from "@db/schema/enums";
 import type { AttributeSlotDeclarationData } from "@db/schema/jsons";
+import { validateSlotDeclarationPath } from "~/lib/engine/core/World/Member/runtime/AttributeContainer/SchemaMerge";
 import { createBtContext } from "~/lib/engine/core/World/Member/runtime/BehaviourTree/BtContextFactory";
-import { validateSlotDeclarationPath } from "~/lib/engine/core/World/Member/runtime/StatContainer/SchemaMerge";
 import { validateDefinition } from "~/lib/mistreevous";
 import type { NodeArgument } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import type { MdslIntellisenseRegistry } from "../modes/mdslIntellisense";

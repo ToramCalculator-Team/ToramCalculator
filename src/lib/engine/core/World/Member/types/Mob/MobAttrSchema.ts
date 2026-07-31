@@ -7,7 +7,7 @@ import type {
 	ConvertToNestedSchema,
 	ConvertToNestedSchemaDic,
 	ExtractAttrPaths,
-} from "../../runtime/StatContainer/SchemaTypes";
+} from "../../runtime/AttributeContainer/SchemaTypes";
 
 // ============================== 基础结构定义 ==============================
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
+import { AttributeContainer } from "./AttributeContainer";
+import { AttributeSnapshotSchema, type ModifierSource, ModifierType } from "./AttributeContainerTypes";
 import type { NestedSchema, SchemaAttribute } from "./SchemaTypes";
-import { StatContainer } from "./StatContainer";
-import { AttributeSnapshotSchema, type ModifierSource, ModifierType } from "./StatContainerTypes";
 
 // 便捷叶子构造器。
 const attr = (displayName: string, expression: string, noBaseValue?: boolean): SchemaAttribute => ({
@@ -20,9 +20,9 @@ const src = (id: string): ModifierSource => ({
 	],
 });
 
-describe("StatContainer — 基础值与常量表达式", () => {
+describe("AttributeContainer — 基础值与常量表达式", () => {
 	it("直接导出严格扁平属性快照并保留 modifier 来源", () => {
-		const sc = new StatContainer<"atk.p">({ atk: { p: attr("物理攻击", "100") } } as NestedSchema);
+		const sc = new AttributeContainer<"atk.p">({ atk: { p: attr("物理攻击", "100") } } as NestedSchema);
 		sc.addModifier("atk.p", ModifierType.STATIC_FIXED, 20, src("weapon-1"));
 		const snapshot = AttributeSnapshotSchema.parse(sc.exportAttributeSnapshot());
 		expect(Object.keys(snapshot)).toEqual(["atk.p"]);
@@ -33,20 +33,20 @@ describe("StatContainer — 基础值与常量表达式", () => {
 		]);
 	});
 	it("常量表达式作为基础值读取", () => {
-		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
+		const sc = new AttributeContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
 		expect(sc.getValue("atk")).toBe(100);
 		expect(sc.getBaseValue("atk")).toBe(100);
 	});
 
 	it("读取不存在属性返回 0", () => {
-		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
+		const sc = new AttributeContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
 		expect(sc.getValue("ghost" as "atk")).toBe(0);
 		expect(sc.hasKey("atk")).toBe(true);
 		expect(sc.hasKey("ghost")).toBe(false);
 	});
 
 	it("getAllKeys 返回全部属性键", () => {
-		const sc = new StatContainer<"atk" | "def">({
+		const sc = new AttributeContainer<"atk" | "def">({
 			atk: attr("攻击", "100"),
 			def: attr("防御", "50"),
 		} as NestedSchema);
@@ -54,22 +54,22 @@ describe("StatContainer — 基础值与常量表达式", () => {
 	});
 });
 
-describe("StatContainer — 修饰符叠加公式 floor(base*(1+%/100)+fixed)", () => {
+describe("AttributeContainer — 修饰符叠加公式 floor(base*(1+%/100)+fixed)", () => {
 	it("固定值加算", () => {
-		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
+		const sc = new AttributeContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 50, src("eq1"));
 		expect(sc.getValue("atk")).toBe(150);
 	});
 
 	it("百分比按基础值乘算", () => {
-		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
+		const sc = new AttributeContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
 		sc.addModifier("atk", ModifierType.STATIC_PERCENTAGE, 20, src("eq1"));
 		// 100 * (1 + 20/100) = 120
 		expect(sc.getValue("atk")).toBe(120);
 	});
 
 	it("百分比与固定值组合：base*(1+%)+fixed 再向下取整", () => {
-		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
+		const sc = new AttributeContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
 		sc.addModifier("atk", ModifierType.STATIC_PERCENTAGE, 25, src("p"));
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 7, src("f"));
 		// floor(100 * 1.25 + 7) = 132
@@ -77,7 +77,7 @@ describe("StatContainer — 修饰符叠加公式 floor(base*(1+%/100)+fixed)", 
 	});
 
 	it("static 与 dynamic 百分比/固定值合并计算", () => {
-		const sc = new StatContainer<"atk">({ atk: attr("攻击", "200") } as NestedSchema);
+		const sc = new AttributeContainer<"atk">({ atk: attr("攻击", "200") } as NestedSchema);
 		sc.addModifier("atk", ModifierType.STATIC_PERCENTAGE, 10, src("sp"));
 		sc.addModifier("atk", ModifierType.DYNAMIC_PERCENTAGE, 10, src("dp"));
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 5, src("sf"));
@@ -87,23 +87,23 @@ describe("StatContainer — 修饰符叠加公式 floor(base*(1+%/100)+fixed)", 
 	});
 
 	it("结果向下取整（非整数被 floor）", () => {
-		const sc = new StatContainer<"atk">({ atk: attr("攻击", "10") } as NestedSchema);
+		const sc = new AttributeContainer<"atk">({ atk: attr("攻击", "10") } as NestedSchema);
 		sc.addModifier("atk", ModifierType.STATIC_PERCENTAGE, 15, src("p"));
 		// floor(10 * 1.15) = floor(11.5) = 11
 		expect(sc.getValue("atk")).toBe(11);
 	});
 });
 
-describe("StatContainer — 来源聚合与增删", () => {
+describe("AttributeContainer — 来源聚合与增删", () => {
 	it("同属性多来源固定值累加", () => {
-		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
+		const sc = new AttributeContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 30, src("a"));
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 20, src("b"));
 		expect(sc.getValue("atk")).toBe(150);
 	});
 
 	it("移除某来源后其贡献被扣除", () => {
-		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
+		const sc = new AttributeContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 30, src("a"));
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 20, src("b"));
 		sc.removeModifier("atk", ModifierType.STATIC_FIXED, "a");
@@ -111,7 +111,7 @@ describe("StatContainer — 来源聚合与增删", () => {
 	});
 
 	it("同来源多次 addModifier 累加到该来源", () => {
-		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
+		const sc = new AttributeContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 10, src("a"));
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 15, src("a"));
 		expect(sc.getValue("atk")).toBe(125);
@@ -121,7 +121,7 @@ describe("StatContainer — 来源聚合与增删", () => {
 	});
 
 	it("同来源累加到 0 时自动清除该来源条目", () => {
-		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
+		const sc = new AttributeContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 10, src("a"));
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, -10, src("a"));
 		expect(sc.getValue("atk")).toBe(100);
@@ -129,7 +129,7 @@ describe("StatContainer — 来源聚合与增删", () => {
 	});
 
 	it("getModifiersBySourceKey 返回该来源的全部条目和完整来源链", () => {
-		const sc = new StatContainer<"atk" | "def">({
+		const sc = new AttributeContainer<"atk" | "def">({
 			atk: attr("攻击", "100"),
 			def: attr("防御", "50"),
 		} as NestedSchema);
@@ -152,7 +152,7 @@ describe("StatContainer — 来源聚合与增删", () => {
 	});
 
 	it("同 key 的不同来源链拒绝合并", () => {
-		const sc = new StatContainer<"atk" | "def">({
+		const sc = new AttributeContainer<"atk" | "def">({
 			atk: attr("攻击", "100"),
 			def: attr("防御", "50"),
 		} as NestedSchema);
@@ -169,9 +169,9 @@ describe("StatContainer — 来源聚合与增删", () => {
 	});
 });
 
-describe("StatContainer — updateModifiersBySource 覆盖语义", () => {
+describe("AttributeContainer — updateModifiersBySource 覆盖语义", () => {
 	it("覆盖更新：移除旧条目、写入新条目", () => {
-		const sc = new StatContainer<"atk" | "def">({
+		const sc = new AttributeContainer<"atk" | "def">({
 			atk: attr("攻击", "100"),
 			def: attr("防御", "100"),
 		} as NestedSchema);
@@ -185,14 +185,14 @@ describe("StatContainer — updateModifiersBySource 覆盖语义", () => {
 	});
 
 	it("removeModifiersBySourceKey 清空该来源全部影响", () => {
-		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
+		const sc = new AttributeContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 40, src("x"));
 		sc.removeModifiersBySourceKey("x");
 		expect(sc.getValue("atk")).toBe(100);
 	});
 
 	it("removeModifiersBySourceKeyPrefix 按前缀批量清理", () => {
-		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
+		const sc = new AttributeContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 10, src("passive.fire"));
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 20, src("passive.fire.stack.1"));
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 5, src("equipment.ring"));
@@ -202,9 +202,9 @@ describe("StatContainer — updateModifiersBySource 覆盖语义", () => {
 	});
 });
 
-describe("StatContainer — 计算属性与依赖传播", () => {
+describe("AttributeContainer — 计算属性与依赖传播", () => {
 	it("表达式引用其他属性", () => {
-		const sc = new StatContainer<"str" | "atk">({
+		const sc = new AttributeContainer<"str" | "atk">({
 			str: attr("力量", "50"),
 			atk: attr("攻击", "str * 2"),
 		} as NestedSchema);
@@ -212,7 +212,7 @@ describe("StatContainer — 计算属性与依赖传播", () => {
 	});
 
 	it("上游属性变更后下游计算属性自动更新", () => {
-		const sc = new StatContainer<"str" | "atk">({
+		const sc = new AttributeContainer<"str" | "atk">({
 			str: attr("力量", "50"),
 			atk: attr("攻击", "str * 2"),
 		} as NestedSchema);
@@ -224,7 +224,7 @@ describe("StatContainer — 计算属性与依赖传播", () => {
 	});
 
 	it("多级依赖链传播", () => {
-		const sc = new StatContainer<"a" | "b" | "c">({
+		const sc = new AttributeContainer<"a" | "b" | "c">({
 			a: attr("A", "10"),
 			b: attr("B", "a * 2"),
 			c: attr("C", "b + 5"),
@@ -236,9 +236,9 @@ describe("StatContainer — 计算属性与依赖传播", () => {
 	});
 });
 
-describe("StatContainer — noBaseValue 纯加法路径", () => {
+describe("AttributeContainer — noBaseValue 纯加法路径", () => {
 	it("noBaseValue 属性百分比只做加法而非乘算", () => {
-		const sc = new StatContainer<"crit">({ crit: attr("暴击", "0", true) } as NestedSchema);
+		const sc = new AttributeContainer<"crit">({ crit: attr("暴击", "0", true) } as NestedSchema);
 		sc.addModifier("crit", ModifierType.STATIC_PERCENTAGE, 30, src("a"));
 		sc.addModifier("crit", ModifierType.STATIC_FIXED, 5, src("b"));
 		// noBaseValue: base(0) + fixed(5) + percentage(30) = 35（不做 *(1+%)）
@@ -246,9 +246,9 @@ describe("StatContainer — noBaseValue 纯加法路径", () => {
 	});
 });
 
-describe("StatContainer — onChange 订阅", () => {
+describe("AttributeContainer — onChange 订阅", () => {
 	it("构造期初始化不触发（未观测过），后续变更才触发", () => {
-		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
+		const sc = new AttributeContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
 		const listener = vi.fn();
 		sc.onChange("atk", listener);
 		// 先观测一次（0→100 的首次不报，因为订阅前尚未观测；这里读取即观测）
@@ -262,7 +262,7 @@ describe("StatContainer — onChange 订阅", () => {
 	});
 
 	it("取消订阅后不再触发", () => {
-		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
+		const sc = new AttributeContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
 		const listener = vi.fn();
 		const unsub = sc.onChange("atk", listener);
 		sc.getValue("atk");
@@ -273,7 +273,7 @@ describe("StatContainer — onChange 订阅", () => {
 	});
 
 	it("值未变化不触发", () => {
-		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
+		const sc = new AttributeContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
 		const listener = vi.fn();
 		sc.onChange("atk", listener);
 		sc.getValue("atk");
@@ -285,9 +285,9 @@ describe("StatContainer — onChange 订阅", () => {
 	});
 });
 
-describe("StatContainer — 导出", () => {
+describe("AttributeContainer — 导出", () => {
 	it("exportFlatValues 返回扁平数值映射", () => {
-		const sc = new StatContainer<"atk" | "def">({
+		const sc = new AttributeContainer<"atk" | "def">({
 			atk: attr("攻击", "100"),
 			def: attr("防御", "50"),
 		} as NestedSchema);
@@ -296,7 +296,7 @@ describe("StatContainer — 导出", () => {
 	});
 
 	it("exportModifierDetails 按来源分类列出条目", () => {
-		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
+		const sc = new AttributeContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
 		sc.addModifier("atk", ModifierType.BASE_VALUE, 5, src("base"));
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 20, src("eq"));
 		const details = sc.exportModifierDetails();
@@ -305,7 +305,7 @@ describe("StatContainer — 导出", () => {
 	});
 
 	it("exportNestedValues 保留基础值来源", () => {
-		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
+		const sc = new AttributeContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
 		sc.addModifier("atk", ModifierType.BASE_VALUE, 5, src("base"));
 		expect(sc.exportNestedValues()).toMatchObject({
 			atk: { baseSources: [{ source: src("base"), value: 5 }] },
@@ -313,9 +313,9 @@ describe("StatContainer — 导出", () => {
 	});
 });
 
-describe("StatContainer — checkpoint 往返", () => {
+describe("AttributeContainer — checkpoint 往返", () => {
 	it("capture/restore 保持值与修饰符来源", () => {
-		const sc = new StatContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
+		const sc = new AttributeContainer<"atk">({ atk: attr("攻击", "100") } as NestedSchema);
 		sc.addModifier("atk", ModifierType.STATIC_FIXED, 50, src("a"));
 		expect(sc.getValue("atk")).toBe(150);
 		const cp = sc.captureCheckpoint();

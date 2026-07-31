@@ -171,8 +171,8 @@ export class DebugViewRegistry {
 			let data: unknown = null;
 			switch (subscription.viewType) {
 				case "stat_container_export": {
-					// 导出 StatContainer 的结构化数据
-					data = this.exportStatContainer(member, subscription.fields);
+					// 导出 AttributeContainer 的结构化数据
+					data = this.exportAttributeContainer(member, subscription.fields);
 					break;
 				}
 				default:
@@ -197,22 +197,22 @@ export class DebugViewRegistry {
 	}
 
 	/**
-	 * 导出 StatContainer 数据
+	 * 导出 AttributeContainer 数据
 	 */
-	private exportStatContainer(
-		member: { statContainer?: { exportNestedValues: () => Record<string, unknown> } },
+	private exportAttributeContainer(
+		member: { attributeContainer?: { exportNestedValues: () => Record<string, unknown> } },
 		_fields?: string[],
 	): Record<string, unknown> {
 		// 目前 MemberStatusPanel 的 StatsRenderer 需要 DataStorage 嵌套结构，
-		// 直接复用 StatContainer.exportNestedValues() 作为“结构化导出”。
+		// 直接复用 AttributeContainer.exportNestedValues() 作为“结构化导出”。
 		// fields 过滤后续再做（避免在这里做深层裁剪带来的复杂度）。
-		if (!member.statContainer) {
+		if (!member.attributeContainer) {
 			return {};
 		}
 		try {
-			return member.statContainer.exportNestedValues();
+			return member.attributeContainer.exportNestedValues();
 		} catch (error) {
-			log.error("🔍 DebugViewRegistry: 导出 StatContainer 失败:", error);
+			log.error("🔍 DebugViewRegistry: 导出 AttributeContainer 失败:", error);
 			return {};
 		}
 	}

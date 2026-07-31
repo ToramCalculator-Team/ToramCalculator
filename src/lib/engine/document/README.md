@@ -42,7 +42,7 @@ document/
 
 | Catalog | 位置 | 职责 |
 |---|---|---|
-| `AttributeSchema` | `core/World/Member/runtime/StatContainer/SchemaTypes.ts` | 属性槽契约 |
+| `AttributeSchema` | `core/World/Member/runtime/AttributeContainer/SchemaTypes.ts` | 属性槽契约 |
 | `StatusTypeRegistry` | `core/World/Member/runtime/Status/` | 可见状态类型契约 |
 | `PipelineCatalog` | `core/Pipeline/PipelineCatalog.ts` | 计算管线契约 |
 | `EventCatalog` | `core/Event/`（建设中） | 事件契约 |

@@ -31,7 +31,7 @@
 1. **空间介质不缓存 actor 属性。** 查询发生在稳定相位，通过只读接口读取当前真值。
 2. **查询只返回 `WorldObservable`。** 最小字段包括身份、阵营、位置、存活和碰撞半径；空间层不认识具体 `Member`。
 3. **空间层只计算关系量。** 距离、方向、目标数量和碰撞属于空间；防御、抗性、护盾和 HP 写回仍由目标 actor 结算。
-4. **跨 actor 战斗值走既有两条通道。** 施放瞬间值进入 payload 快照，持续外部影响通过 modifier 进入目标 `StatContainer`。
+4. **跨 actor 战斗值走既有两条通道。** 施放瞬间值进入 payload 快照，持续外部影响通过 modifier 进入目标 `AttributeContainer`。
 5. **World 保持确定性相位调度器。** `tickPriority` 表达 member settle、projectile 和 query 等相位，不用 XState invoke 托管顺序。
 6. **实体能力通过组合表达。** `WorldEntity` 只定义与介质通信的最小契约，不承载通用战斗能力。
 

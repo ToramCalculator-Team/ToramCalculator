@@ -53,7 +53,7 @@ export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstructi
 		// 比例修正锚点。半耗、免耗、倍率类效果优先挂这里，避免覆写基础公式。
 		{ target: "hpCostRate", op: "+", a: 1, b: 0 },
 		{ target: "mpCostRate", op: "+", a: 1, b: 0 },
-		// 下一技能消耗修正由 StatContainer 持有；管线只读取数值，消费清理由 FSM 扣费成功后执行。
+		// 下一技能消耗修正由 AttributeContainer 持有；管线只读取数值，消费清理由 FSM 扣费成功后执行。
 		{ target: "nextMpCostRateModifier", op: "get", a: "self", b: "skill.nextCost.mpCostRate" },
 		{ target: "effectiveMpCostRate", op: "+", a: "mpCostRate", b: "nextMpCostRateModifier" },
 
@@ -221,7 +221,7 @@ export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstructi
 	// ======================================================================
 	// 伤害应用（applyDamage）
 	// ======================================================================
-	// 纯计算：给出 hpAfter / mpAfter，由 FSM 负责写回 StatContainer。
+	// 纯计算：给出 hpAfter / mpAfter，由 FSM 负责写回 AttributeContainer。
 	// 致死拦截类（"最后的抵抗"等）overlay 在此管线前半（damage 锚点）挂条件覆写。
 	//
 	// 输入：

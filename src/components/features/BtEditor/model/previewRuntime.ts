@@ -1,12 +1,12 @@
 import type { MemberType } from "@db/schema/enums";
 import { MemberBaseNestedSchema } from "~/lib/engine/core/World/Member/MemberBaseSchema";
 import type { MemberRuntimeServices } from "~/lib/engine/core/World/Member/RuntimeServices";
+import { AttributeContainer } from "~/lib/engine/core/World/Member/runtime/AttributeContainer/AttributeContainer";
 import { createBtContext } from "~/lib/engine/core/World/Member/runtime/BehaviourTree/BtContextFactory";
 import type {
 	MemberBtCapabilities,
 	MemberBtManagerEnv,
 } from "~/lib/engine/core/World/Member/runtime/BehaviourTree/BtManagerEnv";
-import { StatContainer } from "~/lib/engine/core/World/Member/runtime/StatContainer/StatContainer";
 import type { MemberFSMEvent } from "~/lib/engine/core/World/Member/runtime/StateMachine/types";
 import type { MemberSharedRuntime, MobRuntime, PlayerRuntime } from "~/lib/engine/core/World/Member/runtime/types";
 import { createMobBtBindings } from "~/lib/engine/core/World/Member/types/Mob/Agents/BtBindings";
@@ -105,12 +105,12 @@ export const createPreviewBtRuntime = (memberType: MemberType): PreviewBtRuntime
 		random: () => 0.5,
 	};
 
-	const statContainer = new StatContainer<string>(MemberBaseNestedSchema);
+	const attributeContainer = new AttributeContainer<string>(MemberBaseNestedSchema);
 	const renderState: MemberBtCapabilities<string, MemberFSMEvent>["renderState"] = {};
 	const parallelBts = new Set<string>();
 
 	const capabilities: MemberBtCapabilities<string, MemberFSMEvent> = {
-		statContainer,
+		attributeContainer,
 		services,
 		renderState,
 		registerParallelBt: (name) => {

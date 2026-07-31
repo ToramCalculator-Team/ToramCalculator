@@ -115,7 +115,7 @@ SAB 没有应用级手动释放 API；这里的“释放”指所有者删除目
 
 - [x] `RunOutputRecorder.start()` 根据技术记录策略按需创建 TickStateHistoryWriter，并让取消、完成、待确认和 acknowledge 生命周期与现有单槽产出状态一致。
 - [x] 在 Tick 全部结算完成后，从稳定成员状态直接写入历史；不先调用 `createFrameSnapshot()`、`exportAttributeSnapshot()` 构造完整对象再编码。
-- [x] StatContainer 提供历史写入所需的只读索引化投影，复用既有属性索引、数值存储和 modifier 来源，不建立第二套属性事实。
+- [x] AttributeContainer 提供历史写入所需的只读索引化投影，复用既有属性索引、数值存储和 modifier 来源，不建立第二套属性事实。
 - [x] `createFrameSnapshot()` 只服务节流后的实时 UI push；历史捕获不依赖控制器绑定或 UI 选中状态。
 - [x] 历史按成员身份保存规范状态，不再复制 `byController.boundMemberDetail.attrs`。
 - [x] Simulator 验证显式请求 `tickStateHistory: "everyTick"`；不需要逐 Tick 状态的通用 SimulationTask 使用 `none`，不创建 Writer。

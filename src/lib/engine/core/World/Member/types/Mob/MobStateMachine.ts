@@ -1,7 +1,7 @@
 import { type EventObject, setup } from "xstate";
 import { createLogger } from "~/lib/Logger";
 import type { DamageDispatchPayload } from "../../../Area/types";
-import { ModifierType } from "../../runtime/StatContainer/StatContainer";
+import { ModifierType } from "../../runtime/AttributeContainer/AttributeContainer";
 import {
 	createHitSession,
 	type HitSession,
@@ -307,10 +307,10 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 						env.id,
 						env.services.getCurrentTimeMs(),
 						env.services.getTickIndex(),
-						() => env.statContainer.getValue("hp.current"),
-						() => env.statContainer.getValue("mp.current"),
+						() => env.AttributeContainer.getValue("hp.current"),
+						() => env.AttributeContainer.getValue("mp.current"),
 						(value) =>
-							env.statContainer.addModifier("hp.current", ModifierType.DYNAMIC_FIXED, value, {
+							env.AttributeContainer.addModifier("hp.current", ModifierType.DYNAMIC_FIXED, value, {
 								key: `damage.hp.${session.damageRequest.areaId}`,
 								name: "damage-hp",
 								type: session.damageRequest.sourceSkillId ? "skill" : "system",
@@ -323,7 +323,7 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 								],
 							}),
 						(value) =>
-							env.statContainer.addModifier("mp.current", ModifierType.DYNAMIC_FIXED, value, {
+							env.AttributeContainer.addModifier("mp.current", ModifierType.DYNAMIC_FIXED, value, {
 								key: `damage.mp.${session.damageRequest.areaId}`,
 								name: "damage-mp",
 								type: session.damageRequest.sourceSkillId ? "skill" : "system",

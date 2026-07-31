@@ -8,7 +8,7 @@
 
 | 层 | 静态注册表 | 运行时实例 | 扩展原语（passive/skill 安装时写入） |
 |---|---|---|---|
-| **数据** | `AttributeSchema`（属性槽）<br>`StatusTypeRegistry`（状态类型） | `StatContainer`<br>`StatusInstanceStore`<br>`MemberSharedRuntime` | 声明属性槽（咏咒层数、lastTriggeredFrame）<br>声明状态类型（着火、昏厥、出血） |
+| **数据** | `AttributeSchema`（属性槽）<br>`StatusTypeRegistry`（状态类型） | `AttributeContainer`<br>`StatusInstanceStore`<br>`MemberSharedRuntime` | 声明属性槽（咏咒层数、lastTriggeredFrame）<br>声明状态类型（着火、昏厥、出血） |
 | **计算** | `PipelineCatalog` | `PipelineResolverService` 按成员合成 | 向管线插 overlay 指令（包括 `emit` 派发事件） |
 | **编排** | `EventCatalog`<br>BT 定义库<br>FSM 定义 | `BtManager`（active + parallel）<br>订阅表（proc mask + watcher） | 注册 BT / 订阅事件 / 绑定属性 watcher |
 
@@ -20,9 +20,9 @@
 
 ### 2.1 数据层
 
-#### 2.1.1 StatContainer 作为持久化槽的统一载体
+#### 2.1.1 AttributeContainer 作为持久化槽的统一载体
 
-技能 / 托环 / buff 在安装时向 StatContainer **声明自己需要的属性槽**，所有跨技能层数、冷却时间戳、计数器都走统一的属性读取语法。
+技能 / 托环 / buff 在安装时向 AttributeContainer **声明自己需要的属性槽**，所有跨技能层数、冷却时间戳、计数器都走统一的属性读取语法。
 
 - 爆能的 `咏咒层数`、魔法炮的 `充能百分比`、弧光剑舞的 `灵光层数` 等跨技能数据，统一落成属性槽。
 - Passive 的冷却（HP 紧急回复 60s、起跑冲刺 60s、转让 180s）存 `lastTriggeredFrame` 到属性槽，触发判定为 `$currentFrame - $lastTriggeredFrame >= CD`。不再用 BT `wait` 做计时。
@@ -103,7 +103,7 @@
 #### 2.3.1 FSM / BT 分工保留
 
 - **FSM**（XState）：状态机，唯一的 `runtime` 字段写入方。
-- **BT**（mistreevous）：`activeEffectEntry` 单活动技能 + `parallelEntries` 并行 buff；所有持久化数据落 StatContainer 属性槽，BT 自身不持有需要 checkpoint 的状态。
+- **BT**（mistreevous）：`activeEffectEntry` 单活动技能 + `parallelEntries` 并行 buff；所有持久化数据落 AttributeContainer 属性槽，BT 自身不持有需要 checkpoint 的状态。
 
 #### 2.3.2 订阅子系统：混合模型
 
@@ -121,7 +121,7 @@
 
 #### 2.3.3 属性变更委托（借 Unreal GAS `OnGameplayAttributeValueChange`）
 
-StatContainer 支持 `watchThreshold(path, threshold, handler)`。属性写入时比对新旧值，**只有真正跨越注册阈值时才唤醒 handler**，其余写入 O(1) 比对后 no-op。成本与注册阈值数成正比，与 passive 总数无关。
+AttributeContainer 支持 `watchThreshold(path, threshold, handler)`。属性写入时比对新旧值，**只有真正跨越注册阈值时才唤醒 handler**，其余写入 O(1) 比对后 no-op。成本与注册阈值数成正比，与 passive 总数无关。
 
 数据层提供纯被动的 `onChange(path, cb)` 机制，**注册表在编排侧**，保持"数据写 → 编排读"的单向耦合。
 
@@ -215,7 +215,7 @@ DamageAreaSystem (World/Area/)                        [引擎级]
   │    │                                                   殿后 / 红蓝区 / 领教领教 / 稳如泰山 / 浴血奋战后半 …]
   │    ├─ runPipeline("applyDamage", { finalDamage, mpCost, damageTags })
   │    │    └─ 输出 hpAfter / mpAfter / died            [最后的抵抗 overlay 挂这里拦截]
-  │    ├─ StatContainer.addModifier('hp.current', DYNAMIC_FIXED, hpDelta, …)  [数据层写入]
+  │    ├─ AttributeContainer.addModifier('hp.current', DYNAMIC_FIXED, hpDelta, …)  [数据层写入]
   │    └─ member.notifyDomainEvent({ type:"hit", damage, hp })
   │
   │  action "发送属性修改事件给自己" → actor.send({ type:"修改属性", data:{ attr, value:hitSession.hpAfter } })
@@ -235,7 +235,7 @@ ControllerEventProjector
   ▼
 UI / Renderer / 观察者
 
-# 副轴 1: StatContainer 写入 hp.current → onChange 通知
+# 副轴 1: AttributeContainer 写入 hp.current → onChange 通知
 #         ├─ AttributeWatcherRegistry 检测阈值穿越（HP 紧急回复在这里触发）
 #         └─ watcher handler → addModifier / emit 自定义事件
 #
@@ -255,7 +255,7 @@ UI / Renderer / 观察者
 - 管线骨架：`Pipeline/builtInBinaryOpPipelines.ts`（hitCheck / damageCalc / applyDamage）
 - Overlay 挂载：`Registlets/RegistletLoader.ts` + `Registlets/BuiltInRegistlets.ts`
 - 订阅路由：`Member/runtime/ProcBus/` + `Event/EventCatalog` + `Event/BuiltInEvents`
-- 阈值观察：`Member/runtime/AttributeWatcher/` + `StatContainer.onChange`
+- 阈值观察：`Member/runtime/AttributeWatcher/` + `AttributeContainer.onChange`
 
 **当前骨架的局限**（需要将来补）：
 - Mob 侧还保留旧的 inline action；暂未接 DamageResolution 抽出来的 resolveX 函数
@@ -296,7 +296,7 @@ UI / Renderer / 观察者
 ### 阶段 1 — 数据层前置
 
 1. `DamageDispatchPayload` 扩展 `damageTags / warningZone / direction / 致死标记` 等字段。
-2. StatContainer 属性槽命名前缀约定 + 技能/托环安装时的声明接口。
+2. AttributeContainer 属性槽命名前缀约定 + 技能/托环安装时的声明接口。
 3. 初始化期把标签字符串集合映射为 bitfield 位索引（供 §2.3.4 proc mask 复用）。
 
 ### 阶段 2 — 计算层落地
@@ -307,7 +307,7 @@ UI / Renderer / 观察者
 
 ### 阶段 3 — 编排层订阅机制
 
-7. **属性变更委托**：StatContainer 暴露 `onChange` 纯机制；编排层维护阈值注册表，阈值列表进 checkpoint。
+7. **属性变更委托**：AttributeContainer 暴露 `onChange` 纯机制；编排层维护阈值注册表，阈值列表进 checkpoint。
 8. **Proc mask 事件总线**：定义 `EventCatalog`；优先实现状态进出事件源（来自 StatusInstanceStore apply / removeByType），BT 提供叶子节点声明式订阅。
 9. 按需扩展事件源到伤害类别（借已有 `damageTags`）、仇恨变化、队伍成员事件、技能生命周期。
 

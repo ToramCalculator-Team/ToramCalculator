@@ -4,13 +4,13 @@ import { State } from "~/lib/mistreevous/State";
 import * as CasterSnapshot from "../../../../Expression/CasterSnapshot";
 import { ExpressionTransformer } from "../../../../JSProcessor/ExpressionTransformer";
 import type { DamageAreaRequest } from "../../../Area/types";
-import type { MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
 import {
 	type ModifierSource,
 	ModifierSourceTypeSchema,
 	ModifierType,
 	StatModifierKindSchema,
-} from "../StatContainer/StatContainer";
+} from "../AttributeContainer/AttributeContainer";
+import type { MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
 import type { MemberFSMEvent } from "../StateMachine/types";
 import type { MemberSharedRuntime } from "../types";
 import { type ActionPool, defineAction } from "./type";
@@ -157,10 +157,10 @@ function buildDamageRequest(
 
 	const casterSnapshot: CasterSnapshot.CasterSnapshot = {};
 	for (const key of dependencies.selfDependencies) {
-		CasterSnapshot.setStat(casterSnapshot, key, capabilities.statContainer.getValue(key));
+		CasterSnapshot.setStat(casterSnapshot, key, capabilities.attributeContainer.getValue(key));
 	}
 	for (const key of dependencies.selfBaseValueDependencies) {
-		CasterSnapshot.setBaseValue(casterSnapshot, key, capabilities.statContainer.getBaseValue(key));
+		CasterSnapshot.setBaseValue(casterSnapshot, key, capabilities.attributeContainer.getBaseValue(key));
 	}
 	// capabilities.hasParallelBt 即 self.btManager.hasBuff（见 Member.ts capabilities 装配），
 	// 与求值器实时路径同源，保证锁存值与实时语义一致。
@@ -395,13 +395,13 @@ export const CommonActionPool = {
 
 			const currentAttr = `hp.current`;
 			const maxAttr = `hp.max`;
-			const current = capabilities.statContainer.getValue(currentAttr);
-			const max = capabilities.statContainer.getValue(maxAttr);
+			const current = capabilities.attributeContainer.getValue(currentAttr);
+			const max = capabilities.attributeContainer.getValue(maxAttr);
 			const capped = max > 0 ? Math.min(requested, Math.max(0, max - current)) : requested;
 			if (capped <= 0) return State.SUCCEEDED;
 			const sourceName = input.sourceName ?? skill?.name ?? currentSkillData?.template?.name ?? `hp-heal`;
 			const sourceKey = input.sourceId ?? `skill.heal.hp.${skill?.id ?? currentSkillData?.id ?? "unknown"}`;
-			capabilities.statContainer.addModifier(
+			capabilities.attributeContainer.addModifier(
 				currentAttr,
 				ModifierType.DYNAMIC_FIXED,
 				capped,
@@ -409,7 +409,7 @@ export const CommonActionPool = {
 			);
 
 			const hp = current + capped;
-			const mp = capabilities.statContainer.getValue("mp.current");
+			const mp = capabilities.attributeContainer.getValue("mp.current");
 
 			capabilities.notifyDomainEvent({
 				type: "state_changed",
@@ -456,20 +456,20 @@ export const CommonActionPool = {
 
 			const currentAttr = `mp.current`;
 			const maxAttr = `mp.max`;
-			const current = capabilities.statContainer.getValue(currentAttr);
-			const max = capabilities.statContainer.getValue(maxAttr);
+			const current = capabilities.attributeContainer.getValue(currentAttr);
+			const max = capabilities.attributeContainer.getValue(maxAttr);
 			const capped = max > 0 ? Math.min(requested, Math.max(0, max - current)) : requested;
 			if (capped <= 0) return State.SUCCEEDED;
 			const sourceName = input.sourceName ?? skill?.name ?? currentSkillData?.template?.name ?? `mp-heal`;
 			const sourceKey = input.sourceId ?? `skill.heal.mp.${skill?.id ?? currentSkillData?.id ?? "unknown"}`;
-			capabilities.statContainer.addModifier(
+			capabilities.attributeContainer.addModifier(
 				currentAttr,
 				ModifierType.DYNAMIC_FIXED,
 				capped,
 				createActionModifierSource(context, sourceKey, sourceName, input.sourceType ?? "skill"),
 			);
 
-			const hp = capabilities.statContainer.getValue("hp.current");
+			const hp = capabilities.attributeContainer.getValue("hp.current");
 			const mp = current + capped;
 
 			capabilities.notifyDomainEvent({
@@ -551,7 +551,7 @@ export const CommonActionPool = {
 				log.warn(`⚠️ [${context.name}] 属性修改表达式未返回数值`, input.expression, evaluated);
 				return State.FAILED;
 			}
-			capabilities.statContainer.addModifier(
+			capabilities.attributeContainer.addModifier(
 				input.attribute,
 				{
 					baseValue: ModifierType.BASE_VALUE,
@@ -578,7 +578,7 @@ export const CommonActionPool = {
 	 * 设计说明：
 	 * - `modifyAttribute` 是累加语义，适合“增加一层/加一段值”。
 	 * - 刷新型一次性效果需要同一 sourceId 重复施加时保持幂等，例如冲击波刷新下一技能半耗。
-	 * - 这里直接对齐 StatContainer 的 sourceId 覆盖更新能力，避免用当前总属性值反推 delta。
+	 * - 这里直接对齐 AttributeContainer 的 sourceId 覆盖更新能力，避免用当前总属性值反推 delta。
 	 */
 	setAttributeModifier: defineAction(
 		z
@@ -608,7 +608,7 @@ export const CommonActionPool = {
 				log.warn(`⚠️ [${context.name}] 覆盖属性修改表达式未返回有限数值`, input.expression, evaluated);
 				return State.FAILED;
 			}
-			capabilities.statContainer.updateModifiersBySource(
+			capabilities.attributeContainer.updateModifiersBySource(
 				createActionModifierSource(
 					context,
 					input.sourceId,
@@ -659,7 +659,7 @@ export const CommonActionPool = {
 				counterSlot: z
 					.string()
 					.optional()
-					.meta({ description: "可选：StatContainer 属性槽路径，触发时 +1（供后续 BT 节点读取）" }),
+					.meta({ description: "可选：AttributeContainer 属性槽路径，触发时 +1（供后续 BT 节点读取）" }),
 			})
 			.meta({ description: "订阅状态进入/离开事件" }),
 		(context, input, capabilities) => {
@@ -679,7 +679,7 @@ export const CommonActionPool = {
 			capabilities.subscribeByName(input.sourceId, eventNames, predicate, (event) => {
 				if (!input.counterSlot) return;
 				const sourceKey = `${input.sourceId}.counter.${event.timeMs}`;
-				capabilities.statContainer.addModifier(
+				capabilities.attributeContainer.addModifier(
 					input.counterSlot,
 					ModifierType.DYNAMIC_FIXED,
 					1,
@@ -725,7 +725,7 @@ export const CommonActionPool = {
 			capabilities.subscribeByName(input.sourceId, input.eventNames, predicate, (event) => {
 				if (!input.counterSlot) return;
 				const sourceKey = `${input.sourceId}.counter.${event.timeMs}`;
-				capabilities.statContainer.addModifier(
+				capabilities.attributeContainer.addModifier(
 					input.counterSlot,
 					ModifierType.DYNAMIC_FIXED,
 					1,
@@ -772,7 +772,7 @@ export const CommonActionPool = {
 					if (!input.counterSlot) return;
 					const newValue = (event.payload as { newValue?: number }).newValue ?? 0;
 					const sourceKey = `${input.sourceId}.counter.${newValue}`;
-					capabilities.statContainer.addModifier(
+					capabilities.attributeContainer.addModifier(
 						input.counterSlot,
 						ModifierType.DYNAMIC_FIXED,
 						1,
@@ -793,7 +793,7 @@ export const CommonActionPool = {
 		(_context, input, capabilities) => {
 			capabilities.unsubscribeBySource(input.sourceId);
 			capabilities.unregisterThresholdBySource(input.sourceId);
-			capabilities.statContainer.removeModifiersBySourceKeyPrefix(input.sourceId);
+			capabilities.attributeContainer.removeModifiersBySourceKeyPrefix(input.sourceId);
 			return State.SUCCEEDED;
 		},
 	),
