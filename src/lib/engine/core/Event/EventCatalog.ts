@@ -9,8 +9,8 @@
  *   或在计算层的 `emit` 算子（向已有事件派发）。新增事件类型须在此目录注册。
  * - 位索引：基于 `TagRegistry` 同种算法——对事件名字符串排序后分配稳定 bit，
  *   跨启动稳定（checkpoint 回放必要条件）。
- * - payload 形状：Zod schema。事件派发侧与订阅侧都可用它做校验；本版只存不校验，
- *   校验开关可在开发模式打开。
+ * - payload 形状：Zod schema。事件派发侧与订阅侧都可用它做校验；ProcBus 在开发 /
+ *   测试环境启用校验，避免事件目录与实际派发继续漂移。
  */
 
 import type { z } from "zod/v4";
@@ -62,6 +62,22 @@ export class EventCatalog {
 	/** 取事件定义；未注册则返回 undefined（调用方自行处理）。 */
 	get(name: string): EventDefinition | undefined {
 		return this.byName.get(name);
+	}
+
+	/** 校验事件 payload；未注册或形状不匹配都抛错，让契约漂移在开发 / 测试期显形。 */
+	validatePayload(name: string, payload: unknown): void {
+		const def = this.byName.get(name);
+		if (!def) {
+			throw new Error(`EventCatalog: 未注册的事件 "${name}"`);
+		}
+
+		const result = def.payloadSchema.safeParse(payload);
+		if (result.success) return;
+
+		const details = result.error.issues
+			.map((issue) => `${issue.path.join(".") || "<root>"}: ${issue.message}`)
+			.join("; ");
+		throw new Error(`EventCatalog: 事件 "${name}" payload 不匹配：${details}`);
 	}
 
 	/** 取事件的 bit 索引；未注册抛错（避免 proc mask 悄无声息失效）。 */

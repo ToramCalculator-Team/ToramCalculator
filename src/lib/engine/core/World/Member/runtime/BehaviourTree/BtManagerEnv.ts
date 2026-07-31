@@ -74,7 +74,7 @@ export interface MemberBtCapabilities<
 	/**
 	 * @internal 仅供 CommonActions.watchThreshold 封装调用，叶子勿直接用。
 	 * 注册一个被监控的属性阈值点；穿越时由 AttributeThresholdSource 派发 `attr.crossed` 到 ProcBus。
-	 * 业务响应通过 `subscribeByName(["attr.crossed"], ...)` 订阅，不依赖本方法返回值。
+	 * 返回本次注册的 registrationId；watchThreshold 用它过滤自己那一条 `attr.crossed` 事件。
 	 */
 	registerThreshold(
 		sourceId: string,
@@ -82,7 +82,7 @@ export interface MemberBtCapabilities<
 		threshold: number,
 		direction: ThresholdDirection,
 		options?: RegisterOptions,
-	): void;
+	): number;
 	/** @internal 仅供 CommonActions.unsubscribeBySource 封装调用：清理该来源的阈值监控点。 */
 	unregisterThresholdBySource(sourceId: string): void;
 	/** 出 UI 投影；双总线残留，待 ADR 消除（见类注释）。 */

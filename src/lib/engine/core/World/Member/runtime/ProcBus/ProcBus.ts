@@ -28,13 +28,15 @@ import type { EventCatalog } from "~/lib/engine/core/Event/EventCatalog";
 import { createLogger } from "~/lib/Logger";
 
 const log = createLogger("ProcBus");
+const metaEnv = (import.meta as ImportMeta & { env?: { DEV?: boolean; MODE?: string } }).env;
+const SHOULD_VALIDATE_PAYLOAD = metaEnv?.DEV === true || metaEnv?.MODE === "test";
 
 export interface ProcEvent<TPayload = unknown> {
 	/** 事件名（EventCatalog 中注册的 key）。 */
 	name: string;
 	/** 单事件 mask = 1 << bit。派发时由 ProcBus 内部计算，订阅时的 mask 可多位合并。 */
 	mask: bigint;
-	/** payload；形状由 EventCatalog 中对应的 zod schema 约束（本版不强制校验）。 */
+	/** payload；形状由 EventCatalog 中对应的 zod schema 约束，开发 / 测试环境会在 emit 时校验。 */
 	payload: TPayload;
 	/** 派发模拟时间（毫秒）。 */
 	timeMs: number;
@@ -128,6 +130,9 @@ export class ProcBus {
 	 */
 	emit(name: string, payload: unknown, timeMs: number): void {
 		const bit = this.catalog.getBit(name);
+		if (SHOULD_VALIDATE_PAYLOAD) {
+			this.catalog.validatePayload(name, payload);
+		}
 		const mask = 1n << BigInt(bit);
 		const event: ProcEvent = { name, mask, payload, timeMs };
 

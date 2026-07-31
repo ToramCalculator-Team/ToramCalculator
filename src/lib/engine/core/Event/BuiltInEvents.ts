@@ -16,8 +16,8 @@ export const StatusEnteredPayloadSchema = z.object({
 	type: z.string(),
 	/** 来源（施法者 id / registlet id 等）。 */
 	sourceId: z.string().optional(),
-	/** 该次 apply 所在帧号。 */
-	frame: z.number(),
+	/** 状态进入时的模拟时间（毫秒）。 */
+	timeMs: z.number(),
 });
 
 /** 状态离开事件（自然到期 / 被主动移除）。 */
@@ -25,7 +25,8 @@ export const StatusExitedPayloadSchema = z.object({
 	type: z.string(),
 	/** 离开原因。`expired` 到期，`removed` 主动移除。 */
 	reason: z.enum(["expired", "removed"]),
-	frame: z.number(),
+	/** 状态离开时的模拟时间（毫秒）。 */
+	timeMs: z.number(),
 });
 
 /** 受击事件（受击管线结算完毕后派发）。 */
