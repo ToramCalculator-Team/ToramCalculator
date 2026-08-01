@@ -573,8 +573,9 @@ export default function WikiSubPage() {
 										}}
 									/>
 								</div>
+								{/* rowPage=true 是调试参数：强制显示基础虚拟表，跳过专用页面配置 */}
 								<Show
-									when={wikiPageConfig[wikiStore.type]}
+									when={wikiPageConfig[wikiStore.type] && searchParams.rowPage !== "true"}
 									fallback={
 										<Motion.div
 											animate={{

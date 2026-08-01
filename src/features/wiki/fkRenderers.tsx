@@ -181,7 +181,7 @@ function FKFormField(props: {
 
 	return (
 		<Input title={props.fieldLabel} description={props.fieldDesc}>
-			<div class="FKFormField flex items-center gap-2">
+			<div class="FKFormField w-full flex items-center gap-2">
 				<div class="min-w-0 flex-1">
 					<Autocomplete
 						id={`fk-${String(props.tableName)}-${props.fkColumn}`}
