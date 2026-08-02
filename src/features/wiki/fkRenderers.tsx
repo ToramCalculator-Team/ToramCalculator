@@ -16,7 +16,7 @@
 import { FOREIGN_KEY_RELATIONS, getPrimaryKeys, MODEL_METADATA } from "@db/generated/dmmf-utils";
 import { repositoryReaders } from "@db/generated/repositories";
 import type { DB } from "@db/generated/zod/index";
-import { type Accessor, For, type JSX, Show } from "solid-js";
+import { type Accessor, createMemo, For, type JSX, Show } from "solid-js";
 import { Autocomplete } from "~/components/controls/autoComplete";
 import { Button } from "~/components/controls/button";
 import { Input } from "~/components/controls/input";
@@ -25,6 +25,7 @@ import type { FormRenderers } from "~/components/form/fields";
 import { Icons } from "~/components/icons/index";
 import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
 import type { Dictionary } from "~/locales/type";
+import { getRowPrimaryKeyValue } from "./tableConfig";
 
 // ---------------------------------------------------------------------------
 // 通用：从 MODEL_METADATA.displayFields 或 name 字段取显示名称
@@ -258,21 +259,109 @@ export function buildFKFormRenderers<TTableName extends keyof DB>(
 }
 
 // ---------------------------------------------------------------------------
-// ReferencedBySection — after 槽中展示指向当前记录的子表条目
+// ReferencedBySection — 卡片/表单底部展示指向当前记录的子表条目
 // ---------------------------------------------------------------------------
 
+/** 声明形如 `{ relation: "skill_variant.belongToSkill", tableName: "skill_variant" }`。 */
+type ReferencedByDecl = { relation: string; tableName: keyof DB };
+
+/** 声明里的 relation 可能带 `表名.` 前缀，取关系字段名部分。 */
+const declRelationField = (decl: ReferencedByDecl): string => decl.relation.split(".")[1] ?? decl.relation;
+
 /**
- * 在 ObjRenderer 或 Form 的 after 槽中展示「被引用方」关联记录列表。
- * 使用 data-config 中显式声明的 referencedBy 列表，不做自动检测。
- * 声明为 [] 则不渲染任何内容。
+ * 查询「FK 指向当前记录」的子表行。
+ * 全量拉取后在内存过滤（PGlite 本地 DB，适合小型游戏数据集）。
+ *
+ * 卡片视图与表单视图共用同一查询语义，差异只在主键从哪来、点击做什么。
+ */
+function useReferencedByRows(props: {
+	sourceTable: keyof DB;
+	relationField: string;
+	selfId: Accessor<string | undefined>;
+}) {
+	// 子表持有的 FK 列名（指向当前表）
+	const fkColumn = createMemo(
+		() =>
+			FOREIGN_KEY_RELATIONS.find((r) => r.sourceTable === props.sourceTable && r.relationField === props.relationField)
+				?.sourceColumns[0],
+	);
+
+	const allRows = createLiveKyselyQuery((db) => repositoryReaders[props.sourceTable]?.getAll?.(db) ?? null);
+
+	const rows = () => {
+		const selfId = props.selfId();
+		const column = fkColumn();
+		if (!column || !selfId) return [];
+		return (allRows.rows() as Record<string, unknown>[]).filter((row) => String(row[column] ?? "") === selfId);
+	};
+
+	return { fkColumn, rows };
+}
+
+/**
+ * 单个 referencedBy 条目：一行「子表名: [条目按钮...] [新增]」。
+ * 传 onCreate 时才渲染新增按钮（表单模式独有，卡片是只读视图）。
+ */
+function ReferencedByEntry(props: {
+	sourceTable: keyof DB;
+	relationField: string;
+	selfId: Accessor<string | undefined>;
+	dictionary: Dictionary;
+	onOpen: (sourceTable: keyof DB, rowData: Record<string, unknown>) => void;
+	onCreate?: (sourceTable: keyof DB, fkColumn: string) => void;
+}) {
+	const { fkColumn, rows } = useReferencedByRows(props);
+
+	const relatedDic = props.dictionary.db[props.sourceTable];
+	// 新增按钮需要知道往哪个列写当前主键；FK 列解析不出来时只能退化成只读列表。
+	const canCreate = () => Boolean(props.onCreate && fkColumn() && props.selfId());
+
+	return (
+		<Show when={rows().length > 0 || canCreate()}>
+			<div class="ReferencedByGroup flex flex-col gap-1">
+				<span class="text-main-text-color text-nowrap">{relatedDic?.selfName ?? String(props.sourceTable)}:</span>
+				<div class="flex flex-wrap items-center gap-1">
+					<For each={rows()}>
+						{(row) => {
+							const displayName = () => getDisplayName(props.sourceTable, row, props.dictionary);
+							return (
+								<Button level="secondary" onClick={() => props.onOpen(props.sourceTable, row)}>
+									{displayName()}
+								</Button>
+							);
+						}}
+					</For>
+					<Show when={canCreate()}>
+						<Button
+							level="quaternary"
+							icon={<Icons.Outline.DocmentAdd />}
+							onClick={() => {
+								const column = fkColumn();
+								if (column) props.onCreate?.(props.sourceTable, column);
+							}}
+						>
+							{props.dictionary.ui.actions.add}
+						</Button>
+					</Show>
+				</div>
+			</div>
+		</Show>
+	);
+}
+
+/**
+ * 卡片（ObjRenderer.after 槽）里的被引用方列表 —— 只读，点条目打开子记录卡片。
+ * 使用 data-config 中显式声明的 referencedBy 列表，不做自动检测；声明为 [] 则不渲染。
  */
 export function ReferencedBySection<TTableName extends keyof DB>(props: {
 	tableName: TTableName;
-	referencedBy: Array<{ relation: string; tableName: keyof DB }>;
+	referencedBy: ReferencedByDecl[];
 	data: Accessor<DB[TTableName] | undefined>;
 	dictionary: Dictionary;
 	onOpenCard: (relatedTable: keyof DB, rowData: Record<string, unknown>) => void;
 }) {
+	const selfId = () => getRowPrimaryKeyValue(props.tableName, props.data() as Record<string, unknown> | undefined);
+
 	return (
 		<Show when={props.referencedBy.length > 0}>
 			<div class="ReferencedBySection border-dividing-color flex flex-col gap-2 border-t pt-3">
@@ -280,11 +369,10 @@ export function ReferencedBySection<TTableName extends keyof DB>(props: {
 					{(ref) => (
 						<ReferencedByEntry
 							sourceTable={ref.tableName}
-							relationField={ref.relation.split(".")[1] ?? ref.relation}
-							selfTable={props.tableName}
-							data={props.data}
+							relationField={declRelationField(ref)}
+							selfId={selfId}
 							dictionary={props.dictionary}
-							onOpenCard={props.onOpenCard}
+							onOpen={props.onOpenCard}
 						/>
 					)}
 				</For>
@@ -293,58 +381,35 @@ export function ReferencedBySection<TTableName extends keyof DB>(props: {
 	);
 }
 
-// ---------------------------------------------------------------------------
-// 内部组件：单个 referencedBy 条目
-// ---------------------------------------------------------------------------
-
 /**
- * 查询并渲染单个 referencedBy 条目对应的子表记录列表。
- * 全量拉取后在内存过滤（PGlite 本地 DB，适合小型游戏数据集）。
+ * 表单（Form.extraSections 槽）里的被引用方列表 —— 可编辑：
+ *  - 点条目打开该子记录的**编辑表单**
+ *  - 点新增打开子表新建表单，并预填指向当前记录的 FK 列
+ *
+ * selfId 为空（新建模式，记录还没主键）时整块不渲染：此时没有任何行能引用它。
  */
-function ReferencedByEntry<TTableName extends keyof DB>(props: {
-	sourceTable: keyof DB;
-	relationField: string;
-	selfTable: TTableName;
-	data: Accessor<DB[TTableName] | undefined>;
+export function ReferencedByFormSection(props: {
+	referencedBy: ReferencedByDecl[];
+	selfId: Accessor<string | undefined>;
 	dictionary: Dictionary;
-	onOpenCard: (relatedTable: keyof DB, rowData: Record<string, unknown>) => void;
+	onOpenRecord: (sourceTable: keyof DB, rowData: Record<string, unknown>) => void;
+	onCreateRecord: (sourceTable: keyof DB, fkColumn: string) => void;
 }) {
-	// 找到子表持有的 FK 列名（指向当前表）
-	const fkColumn = FOREIGN_KEY_RELATIONS.find(
-		(r) => r.sourceTable === props.sourceTable && r.relationField === props.relationField,
-	)?.sourceColumns[0];
-
-	const selfPK = getPrimaryKeys(props.selfTable)[0];
-	const sourcePK = getPrimaryKeys(props.sourceTable)[0];
-
-	// 全量拉取子表记录
-	const allRows = createLiveKyselyQuery((db) => repositoryReaders[props.sourceTable]?.getAll?.(db) ?? null);
-
-	// 内存过滤：只保留 FK 指向当前记录的行
-	const filteredRows = () => {
-		const selfId = selfPK ? String(props.data()?.[selfPK as keyof DB[TTableName]] ?? "") : "";
-		if (!fkColumn || !selfId) return [];
-		return (allRows.rows() as Record<string, unknown>[]).filter((row) => String(row[fkColumn] ?? "") === selfId);
-	};
-
-	const relatedDic = props.dictionary.db[props.sourceTable];
-
 	return (
-		<Show when={filteredRows().length > 0}>
-			<div class="ReferencedByGroup flex flex-col gap-1">
-				<span class="text-main-text-color text-nowrap">{relatedDic?.selfName ?? String(props.sourceTable)}:</span>
-				<div class="flex flex-wrap gap-1">
-					<For each={filteredRows()}>
-						{(row) => {
-							const displayName = () => getDisplayName(props.sourceTable, row, props.dictionary);
-							return (
-								<Button level="secondary" onClick={() => props.onOpenCard(props.sourceTable, row)}>
-									{displayName()}
-								</Button>
-							);
-						}}
-					</For>
-				</div>
+		<Show when={props.referencedBy.length > 0 && props.selfId()}>
+			<div class="ReferencedByFormSection border-dividing-color mx-3 flex flex-col gap-2 border-t pt-3 pb-3">
+				<For each={props.referencedBy}>
+					{(ref) => (
+						<ReferencedByEntry
+							sourceTable={ref.tableName}
+							relationField={declRelationField(ref)}
+							selfId={props.selfId}
+							dictionary={props.dictionary}
+							onOpen={props.onOpenRecord}
+							onCreate={props.onCreateRecord}
+						/>
+					)}
+				</For>
 			</div>
 		</Show>
 	);

@@ -218,8 +218,8 @@ function Sheet(props: { layerId: string; entry: SheetLayerEntryState; index: num
 				class="SheetHost absolute portrait:bottom-0 portrait:w-dvw landscape:right-0 landscape:h-dvh"
 				style={{
 					"z-index": props.index,
-					width: media.orientation === "landscape" ? `${offsetLevel() > 0 ? 100 : 90}vw` : "100vw",
-					height: media.orientation === "landscape" ? "100vh" : `${offsetLevel() > 0 ? 100 : 90}vh`,
+					width: media.orientation === "landscape" ? `${offsetLevel() === 0 ? 90 : 100}vw` : "100vw",
+					height: media.orientation === "landscape" ? "100vh" : `${offsetLevel() === 0 ? 90 : 100}vh`,
 				}}
 			>
 				<Motion.div
@@ -241,13 +241,27 @@ function Sheet(props: { layerId: string; entry: SheetLayerEntryState; index: num
 					onMotionComplete={() => {
 						if (props.entry.closing) completeEntryExit(props.layerId, props.entry.id);
 					}}
-					class="SheetContent bg-primary-color shadow-dividing-color shadow-dialog flex h-full w-full flex-col items-center overflow-y-auto portrait:rounded-t-[12px]"
-					onClick={(e) => e.stopPropagation()}
+					class={`SheetContent bg-primary-color shadow-dividing-color shadow-dialog flex h-full w-full flex-col items-center overflow-y-auto portrait:rounded-t-[12px]`}
+					style={{
+						// 不知道为什么此属性会导致此Motion.div进入initial状态
+						// cursor: offsetLevel() === 0 ? "auto" : "pointer"
+					}}
+					onClick={(e) => {
+						if (offsetLevel() !== 0) {
+							// 关闭顶层sheet
+							console.log("close", offsetLevel());
+							requestCloseEntry(props.layerId);
+						}
+						e.stopPropagation();
+					}}
 				>
 					<OverlayScrollbarsComponent
 						element="div"
 						options={{ scrollbars: { autoHide: "scroll" } }}
-						class="h-full w-full flex-1"
+						class={`h-full w-full flex-1 ${offsetLevel() !== 0 ? " blur pointer-events-none" : ""}`}
+						onClick={(e) => {
+							e.stopPropagation();
+						}}
 					>
 						<SheetSurface>{props.entry.render(api)}</SheetSurface>
 					</OverlayScrollbarsComponent>
