@@ -3,8 +3,8 @@ import type { StageData } from "~/engine/core/Pipeline/stageEnv";
 import type { MemberDomainEvent } from "~/engine/core/types";
 import type { MemberBaseAttrKey } from "../../MemberBaseSchema";
 import type { MemberRuntimeServices } from "../../RuntimeServices";
+import type { AttributeContainer } from "../AttributeContainer/AttributeContainer";
 import type { BtManager } from "../BehaviourTree/BtManager";
-import type { StatContainer } from "../StatContainer/StatContainer";
 import type { MemberSharedRuntime } from "../types";
 
 /**
@@ -105,7 +105,7 @@ export interface MemberStateMachineEnv<
 	name: string;
 	position: { x: number; y: number; z: number };
 	runtime: TRuntime;
-	statContainer: StatContainer<MemberBaseAttrKey | TExtraAttrKey>;
+	statContainer: AttributeContainer<MemberBaseAttrKey | TExtraAttrKey>;
 	services: MemberRuntimeServices;
 	btManager: BtManager<TExtraAttrKey, TRuntime, TFSMEvent>;
 	notifyDomainEvent(event: MemberDomainEvent): void;
