@@ -1,6 +1,4 @@
 import { defaultData } from "@db/defaultData";
-import { getPrimaryKeys } from "@db/generated/dmmf-utils";
-import type { RepositoryWriterContext } from "@db/generated/repositories";
 import type { DB } from "@db/generated/zod/index";
 import { A, useNavigate, useParams, useSearchParams } from "@solidjs/router";
 import {
@@ -20,14 +18,15 @@ import { Button } from "~/components/ui/controls/button";
 import { LoadingBar } from "~/components/ui/controls/loadingBar";
 import { ObjRenderer } from "~/components/ui/dataDisplay/ObjRenderer";
 import { VirtualTable } from "~/components/ui/dataDisplay/virtualTable";
-import { Form } from "~/components/ui/form/Form";
 import { Icons } from "~/components/ui/icons/index";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
 import { useOverlay } from "~/contexts/overlay/OverlayContext";
-import { buildFKCardRenderers, buildFKFormRenderers, ReferencedBySection } from "~/features/wiki/fkRenderers";
+import { buildFKCardRenderers, ReferencedBySection } from "~/features/wiki/fkRenderers";
 import { setWikiStore, wikiStore } from "~/features/wiki/store";
-import { createOpenRelatedCard, createTableConfig, type TableConfig } from "~/features/wiki/wikiCardNav";
+import { createTableConfig, getTablePrimaryKey, type TableConfig } from "~/features/wiki/tableConfig";
+import { createOpenRelatedCard } from "~/features/wiki/wikiCardNav";
+import { createOpenRecordForm } from "~/features/wiki/wikiFormSheet";
 import { wikiPageConfig } from "~/features/wiki/wikiPage/wikiPageConfig";
 import { store } from "~/store";
 
@@ -37,6 +36,7 @@ export default function WikiSubPage() {
 	// 页面根作用域的 overlay 句柄:列表点击从这里 openDialog 新建 dialog layer。
 	const overlay = useOverlay();
 	const openRelatedCard = createOpenRelatedCard(dictionary);
+	const openRecordForm = createOpenRecordForm(dictionary, openRelatedCard);
 	// url 参数
 	const params = useParams();
 	const navigate = useNavigate();
@@ -47,36 +47,6 @@ export default function WikiSubPage() {
 	const [activeBannerIndex, setActiveBannerIndex] = createSignal(0);
 
 	const currentTableConfig = createMemo(() => createTableConfig(wikiStore.type, dictionary()));
-
-	const getTablePrimaryKey = <TTableName extends keyof DB>(tableName: TTableName): keyof DB[TTableName] =>
-		(getPrimaryKeys(tableName)[0] ?? "id") as keyof DB[TTableName];
-
-	/**
-	 * 页面通用表单只负责收集字段；持久化由生成的 writer 负责授权和审计字段。
-	 * 动态表名会让异构 writer 函数形成联合类型，这里收窄为统一的记录写入边界，
-	 * 不把具体表的 writer 细节重新复制到页面层。
-	 */
-	const submitRecord = async <TTableName extends keyof DB>(
-		tableConfig: TableConfig<TTableName>,
-		id: string | undefined,
-		value: DB[TTableName],
-	): Promise<void> => {
-		const context: RepositoryWriterContext = {
-			accountId: store.session.account.id,
-			accountType: store.session.account.type,
-		};
-		const writer = tableConfig.writers;
-
-		// 生成器按表生成不同的 Insert/Update 类型；页面已由对应 DBSchema 校验字段。
-		// 这里是通用表单到逐表 writer 的唯一动态边界，避免调用点重复处理异构函数签名。
-		if (id) {
-			if (!writer.update) throw new Error(`表 ${String(tableConfig.tableName)} 不支持更新`);
-			await writer.update(context, id, value as never);
-			return;
-		}
-		if (!writer.create) throw new Error(`表 ${String(tableConfig.tableName)} 不支持创建`);
-		await writer.create(context, value as never);
-	};
 
 	/** 列表点击入口:从页面根作用域新建一个 dialog layer。 */
 	const openCurrentTableCard = <TTableName extends keyof DB>(
@@ -136,47 +106,18 @@ export default function WikiSubPage() {
 									}}
 								/>
 								<div class="CardActions border-dividing-color flex flex-wrap items-center gap-2 border-t pt-3">
-									<Button
-										icon={<Icons.Outline.Edit />}
-										onClick={() => {
-											const dataSnapshot = currentData();
-											if (!dataSnapshot) return;
-
-											// FK列自动检测（跳过 hiddenFields 里的列）
-											const fkFormRenderers = buildFKFormRenderers(
-												type,
-												tableConfig.UIConfig.form.hiddenFields ?? [],
-												dictionary(),
-												(relatedTable, id) => openRelatedCard(relatedTable, id, dialogOverlay, "open"),
-											);
-
-											dialogOverlay.openSheet({
-												render: (api) => (
-													<Form
-														value={dataSnapshot}
-														defaultValue={tableConfig.defaultData}
-														dataSchema={tableConfig.schema}
-														dictionary={tableConfig.dic}
-														hiddenFields={tableConfig.UIConfig.form.hiddenFields}
-														fieldGroupMap={tableConfig.UIConfig.fieldGroupMap}
-														renderers={{
-															fields: {
-																...fkFormRenderers.fields,
-																...tableConfig.UIConfig.form.renderers?.fields,
-															},
-															containers: tableConfig.UIConfig.form.renderers?.containers,
-														}}
-														onSubmit={async (value) => {
-															await submitRecord(tableConfig, primaryKeyString, value);
-															api.close();
-														}}
-													/>
-												),
-											});
-										}}
-									>
-										编辑
-									</Button>
+									<Show when={primaryKeyString}>
+										<Button
+											icon={<Icons.Outline.Edit />}
+											// 表单 sheet 必须挂在当前 dialog layer 下（关掉卡片会级联关掉表单），
+											// 所以传 dialogOverlay 而非页面根层句柄。
+											onClick={() =>
+												openRecordForm({ mode: "update", tableName: type, id: primaryKeyString }, dialogOverlay, "open")
+											}
+										>
+											{dictionary().ui.actions.modify}
+										</Button>
+									</Show>
 								</div>
 							</>
 						)}
@@ -186,40 +127,9 @@ export default function WikiSubPage() {
 		});
 	};
 
+	/** 顶栏/控制栏的新建入口:从页面根作用域新建一个 sheet layer。 */
 	const openCreateForm = <TTableName extends keyof DB>(tableConfig: TableConfig<TTableName>) => {
-		overlay.openSheet({
-			render: (api) => {
-				const fkFormRenderers = buildFKFormRenderers(
-					tableConfig.tableName,
-					tableConfig.UIConfig.form.hiddenFields ?? [],
-					dictionary(),
-					(relatedTable, id) => openRelatedCard(relatedTable, id, overlay, "open"),
-				);
-
-				return (
-					<Form
-						value={tableConfig.defaultData}
-						defaultValue={tableConfig.defaultData}
-						dataSchema={tableConfig.schema}
-						dictionary={tableConfig.dic}
-						hiddenFields={tableConfig.UIConfig.form.hiddenFields}
-						fieldGroupMap={tableConfig.UIConfig.fieldGroupMap}
-						renderers={{
-							fields: {
-								...fkFormRenderers.fields,
-								...tableConfig.UIConfig.form.renderers?.fields,
-							},
-							containers: tableConfig.UIConfig.form.renderers?.containers,
-						}}
-						mode="create"
-						onSubmit={async (value) => {
-							await submitRecord(tableConfig, undefined, value);
-							api.close();
-						}}
-					/>
-				);
-			},
-		});
+		openRecordForm({ mode: "create", tableName: tableConfig.tableName }, overlay, "open");
 	};
 
 	/**
@@ -573,8 +483,9 @@ export default function WikiSubPage() {
 										}}
 									/>
 								</div>
+								{/* rowPage=true 是调试参数：强制显示基础虚拟表，跳过专用页面配置 */}
 								<Show
-									when={wikiPageConfig[wikiStore.type]}
+									when={wikiPageConfig[wikiStore.type] && searchParams.rowPage !== "true"}
 									fallback={
 										<Motion.div
 											animate={{

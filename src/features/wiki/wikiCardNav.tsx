@@ -1,50 +1,11 @@
-import { defaultData } from "@db/defaultData";
-import { getPrimaryKeys } from "@db/generated/dmmf-utils";
-import {
-	type RepositoryReader,
-	type RepositoryWriter,
-	repositoryReaders,
-	repositoryWriters,
-} from "@db/generated/repositories";
-import { type DB, DBSchema } from "@db/generated/zod/index";
+import type { DB } from "@db/generated/zod/index";
 import type { Accessor } from "solid-js";
 import { ObjRenderer } from "~/components/ui/dataDisplay/ObjRenderer";
 import { Icons } from "~/components/ui/icons/index";
 import { useOverlay } from "~/contexts/overlay/OverlayContext";
-import { DATA_CONFIG, type TableDataConfig } from "~/dataConfig/data-config";
-import type { ZodSchemaFor } from "~/lib/utils/zod";
-import type { Dic, Dictionary } from "~/locales/type";
+import type { Dictionary } from "~/locales/type";
 import { buildFKCardRenderers, ReferencedBySection } from "./fkRenderers";
-import { type WikiPageConfig, wikiPageConfig } from "./wikiPage/wikiPageConfig";
-
-export type TableConfig<TTableName extends keyof DB, T extends DB[TTableName] = DB[TTableName]> = {
-	tableName: TTableName;
-	schema: ZodSchemaFor<T>;
-	dic: Dic<T>;
-	readers: RepositoryReader<TTableName>;
-	writers: RepositoryWriter<TTableName>;
-	defaultData: T;
-	wikiConfig: WikiPageConfig | undefined;
-	UIConfig: TableDataConfig<TTableName, T>;
-};
-
-export function createTableConfig<TTableName extends keyof DB>(
-	tableName: TTableName,
-	dictionary: Dictionary,
-): TableConfig<TTableName> | undefined {
-	const UIConfig = DATA_CONFIG[tableName]?.(dictionary);
-	if (!UIConfig) return;
-	return {
-		tableName,
-		schema: DBSchema[tableName],
-		dic: dictionary.db[tableName],
-		readers: repositoryReaders[tableName],
-		writers: repositoryWriters[tableName],
-		defaultData: defaultData[tableName],
-		wikiConfig: wikiPageConfig[tableName],
-		UIConfig,
-	} as TableConfig<TTableName>;
-}
+import { createTableConfig, getRowPrimaryKeyValue } from "./tableConfig";
 
 /**
  * 创建 FK 卡片导航函数。
@@ -53,8 +14,6 @@ export function createTableConfig<TTableName extends keyof DB>(
  *   mode="push"  — 压入当前 dialog 层（面包屑导航，默认）
  */
 export function createOpenRelatedCard(dictionary: Accessor<Dictionary>) {
-	const getTablePrimaryKey = <T extends keyof DB>(t: T): keyof DB[T] => (getPrimaryKeys(t)[0] ?? "id") as keyof DB[T];
-
 	function openRelatedCard(
 		relatedTable: keyof DB,
 		id: string,
@@ -116,8 +75,7 @@ export function createOpenRelatedCard(dictionary: Accessor<Dictionary>) {
 								data={currentData}
 								dictionary={dictionary()}
 								onOpenCard={(nextTable, rowData) => {
-									const pk = getTablePrimaryKey(nextTable);
-									const nextId = String(rowData[pk as keyof typeof rowData] ?? "");
+									const nextId = getRowPrimaryKeyValue(nextTable, rowData);
 									if (nextId) openRelatedCard(nextTable, nextId, dialogOverlay);
 								}}
 							/>

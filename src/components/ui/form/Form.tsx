@@ -81,8 +81,6 @@ export function Form<T extends object>(props: FormProps<T>) {
 					)}
 				</Show>
 
-				{props.extraSections}
-
 				<form.Subscribe
 					selector={(state) => ({
 						canSubmit: state.canSubmit,
@@ -102,6 +100,7 @@ export function Form<T extends object>(props: FormProps<T>) {
 					)}
 				/>
 			</form>
+			{props.extraSections}
 		</div>
 	);
 }

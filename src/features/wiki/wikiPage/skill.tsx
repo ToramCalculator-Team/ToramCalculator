@@ -1,6 +1,5 @@
-import { getPrimaryKeys } from "@db/generated/dmmf-utils";
 import { repositoryReaders } from "@db/generated/repositories";
-import { type DB, DBSchema, type skill } from "@db/generated/zod";
+import { DBSchema, type skill } from "@db/generated/zod";
 import { SKILL_TREE_GROUP_TYPE, type SkillTreeType } from "@db/schema/enums";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createMemo, createSignal, For, Index, Show } from "solid-js";
@@ -27,12 +26,11 @@ import {
 	type SkillTreeGridBounds,
 } from "~/features/character/ui/skillTreeGrid";
 import { buildFKCardRenderers, ReferencedBySection } from "~/features/wiki/fkRenderers";
+import { getTablePrimaryKey } from "~/features/wiki/tableConfig";
 import { createOpenRelatedCard } from "~/features/wiki/wikiCardNav";
+import { createOpenRecordForm } from "~/features/wiki/wikiFormSheet";
 import { createLiveKyselyQuery } from "~/platform/pglite/liveQuery";
 import { store } from "~/store";
-
-const getTablePrimaryKey = <TTableName extends keyof DB>(tableName: TTableName): keyof DB[TTableName] =>
-	(getPrimaryKeys(tableName)[0] ?? "id") as keyof DB[TTableName];
 
 // 共享元素 morph 的 view-transition-name：卡片与全屏面板轮流持有它，浏览器据此把
 // 新旧快照配成一次形变（原位放大 / 还原）。同一帧内必须只有一个元素持有此名字。
@@ -83,6 +81,7 @@ export const SkillPage = () => {
 	const dictionary = useDictionary();
 	const overlay = useOverlay();
 	const openRelatedCard = createOpenRelatedCard(dictionary);
+	const openRecordForm = createOpenRecordForm(dictionary, openRelatedCard);
 	const skillConfig = SKILL_DATA_CONFIG(dictionary());
 	// 用 live query 而非一次性 selectAllSkills：删除/新增技能后卡片墙即时刷新，
 	// 避免陈旧列表仍渲染已删节点（点击会命中 getSkillWithVariants 的 NoResultError）。
@@ -304,17 +303,34 @@ export const SkillPage = () => {
 												containers: skillConfig.card.renderers?.containers,
 											}}
 											after={(currentData) => (
-												<ReferencedBySection
-													tableName={"skill"}
-													referencedBy={skillConfig.card.referencedBy}
-													data={currentData}
-													dictionary={dictionary()}
-													onOpenCard={(nextTable, rowData) => {
-														const pk = getTablePrimaryKey(nextTable);
-														const nextId = String(rowData[pk as keyof typeof rowData] ?? "");
-														if (nextId) openRelatedCard(nextTable, nextId, overlay, "open");
-													}}
-												/>
+												<>
+													<ReferencedBySection
+														tableName={"skill"}
+														referencedBy={skillConfig.card.referencedBy}
+														data={currentData}
+														dictionary={dictionary()}
+														onOpenCard={(nextTable, rowData) => {
+															const pk = getTablePrimaryKey(nextTable);
+															const nextId = String(rowData[pk as keyof typeof rowData] ?? "");
+															if (nextId) openRelatedCard(nextTable, nextId, overlay, "open");
+														}}
+													/>
+													{/* 技能树面板是自绘 Portal（非 dialog 层），编辑表单只能从页面根层新开 sheet。 */}
+													<div class="CardActions border-dividing-color flex flex-wrap items-center gap-2 border-t pt-3">
+														<Show when={activeSkillId()}>
+															{(id) => (
+																<Button
+																	icon={<Icons.Outline.Edit />}
+																	onClick={() =>
+																		openRecordForm({ mode: "update", tableName: "skill", id: id() }, overlay, "open")
+																	}
+																>
+																	{dictionary().ui.actions.modify}
+																</Button>
+															)}
+														</Show>
+													</div>
+												</>
 											)}
 										/>
 									</OverlayScrollbarsComponent>
