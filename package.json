@@ -4,6 +4,7 @@
 	"scripts": {
 		"setup": "pnpm generate && pnpm infra:reset",
 		"dev": "vite dev",
+		"typecheck": "tsc --noEmit --pretty false",
 		"test": "vitest run",
 		"start": "PORT=3001 node .output/server/index.mjs",
 		"generate": "pnpm generate:inject && pnpm generate:schema && pnpm generate:colorSystem",

@@ -601,7 +601,7 @@ export type MemberFSMCheckpoint = unknown;
  * BtManager 检查点。
  *
  * 设计说明：BT agent 普通字段不承载可 checkpoint 状态；跨帧数值状态通过行为树
- * `attributeSlots` 进入成员 AttributeContainer，并随 `MemberCheckpoint.AttributeContainer` 保存。
+	 * `attributeSlots` 进入成员 AttributeContainer，并随 `MemberCheckpoint.attributeContainer` 保存。
  */
 export interface BtManagerCheckpoint {
 	hasActiveEffect: boolean;
@@ -638,7 +638,7 @@ export interface ControllerEventProjectorCheckpoint {
 export interface MemberCheckpoint {
 	memberId: string;
 	fsm: MemberFSMCheckpoint;
-	AttributeContainer: AttributeContainerCheckpoint;
+	attributeContainer: AttributeContainerCheckpoint;
 	statusStore: StatusInstanceStoreCheckpoint;
 	btManager: BtManagerCheckpoint;
 	pipelineOverlays: unknown;

@@ -1,12 +1,12 @@
 import type { DB } from "@db/generated/zod/index";
-import type { VisibilityState } from "@tanstack/solid-table";
+import type { ColumnVisibilityState } from "@tanstack/solid-table";
 import { createStore } from "solid-js/store";
 
 export type WikiStore = {
 	type: keyof DB;
 	table: {
 		globalFilterStr: string;
-		columnVisibility: VisibilityState;
+		columnVisibility: ColumnVisibilityState;
 		configSheetIsOpen: boolean;
 	};
 };

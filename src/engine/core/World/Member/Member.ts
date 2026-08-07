@@ -72,7 +72,7 @@ export class Member<
 	campId: string;
 	teamId: string;
 	dataSchema: NestedSchema;
-	AttributeContainer: AttributeContainer<MemberBaseAttrKey | TExtraAttrKey>;
+	attributeContainer: AttributeContainer<MemberBaseAttrKey | TExtraAttrKey>;
 	/** 共享 runtime（可序列化，可进 checkpoint） */
 	runtime: TRuntime;
 	/** 引擎注入 services（不可序列化） */
@@ -143,7 +143,7 @@ export class Member<
 				return snapshot.matches("死亡" as never);
 			}
 			// 回退：无死亡状态机的成员以 HP 判定
-			return this.AttributeContainer.getValue("hp.current") <= 0;
+			return this.attributeContainer.getValue("hp.current") <= 0;
 		} catch {
 			// actor 尚未启动或快照不可读时，保守视为存活
 			return false;
@@ -178,7 +178,7 @@ export class Member<
 		teamId: string,
 		memberData: EngineMember,
 		dataSchema: NestedSchema,
-		AttributeContainer: AttributeContainer<MemberBaseAttrKey | TExtraAttrKey>,
+		attributeContainer: AttributeContainer<MemberBaseAttrKey | TExtraAttrKey>,
 		runtime: TRuntime,
 		services: MemberRuntimeServices = MemberRuntimeServicesDefaults,
 		position?: { x: number; y: number; z: number },
@@ -195,12 +195,12 @@ export class Member<
 		this.services = { ...services };
 		this.dataSchema = dataSchema;
 		this.data = memberData;
-		this.AttributeContainer = AttributeContainer;
+		this.attributeContainer = attributeContainer;
 
 		this.statusStore = new InMemoryStatusInstanceStore(() => this.services.getCurrentTimeMs());
 		// 阈值事件源（ADR 0010）：emitter 在 setEventCatalog 接通 ProcBus 后注入，构造期先置空。
 		this.attributeThresholdSource = new AttributeThresholdSource<MemberBaseAttrKey | TExtraAttrKey>(
-			this.AttributeContainer,
+			this.attributeContainer,
 			null,
 		);
 		const btCapabilities = this.createBtCapabilities();
@@ -241,8 +241,8 @@ export class Member<
 			get runtime() {
 				return self.runtime;
 			},
-			get AttributeContainer() {
-				return self.AttributeContainer;
+			get attributeContainer() {
+				return self.attributeContainer;
 			},
 			get services() {
 				return self.services;
@@ -271,7 +271,7 @@ export class Member<
 				return self.services;
 			},
 			get attributeContainer() {
-				return self.AttributeContainer;
+				return self.attributeContainer;
 			},
 			get renderState() {
 				return self.renderState;
@@ -330,7 +330,7 @@ export class Member<
 
 	serialize(): MemberSnapshot {
 		return {
-			attrs: this.AttributeContainer.exportAttributeSnapshot(),
+		attrs: this.attributeContainer.exportAttributeSnapshot(),
 			id: this.id,
 			type: this.type,
 			name: this.name,
@@ -537,7 +537,7 @@ export class Member<
 			tickIndex,
 			stats: (memberIdOrSelector: string, path: string) => {
 				if (memberIdOrSelector === "self" || memberIdOrSelector === this.id) {
-					return this.AttributeContainer.getValue(path as MemberBaseAttrKey | TExtraAttrKey);
+					return this.attributeContainer.getValue(path as MemberBaseAttrKey | TExtraAttrKey);
 				}
 				log.warn(
 					`runPipeline(${pipelineName})：拒绝跨 actor 属性读取 (${memberIdOrSelector}.${path})；跨成员数据必须随事件 payload 传入`,
@@ -634,7 +634,7 @@ export class Member<
 		this.actor.send({ type: "update", timestamp: tick.currentTimeMs });
 		this.btManager.tickAll();
 		// 让阈值 watcher 及时响应 modifier 导致的数值变化：把本帧累计的脏值刷出。
-		this.AttributeContainer.flushDirtyValues();
+		this.attributeContainer.flushDirtyValues();
 	}
 
 	// ==================== Checkpoint ====================
@@ -658,7 +658,7 @@ export class Member<
 		return {
 			memberId: this.id,
 			fsm: this.actor.getPersistedSnapshot(),
-			AttributeContainer: this.AttributeContainer.captureCheckpoint(),
+			attributeContainer: this.attributeContainer.captureCheckpoint(),
 			statusStore: this.statusStore.captureCheckpoint(),
 			btManager: this.btManager.captureCheckpoint(),
 			pipelineOverlays: structuredClone(this.pipelineOverlays),
@@ -668,7 +668,7 @@ export class Member<
 	}
 
 	restoreCheckpoint(checkpoint: MemberCheckpoint): void {
-		this.AttributeContainer.restoreCheckpoint(checkpoint.AttributeContainer);
+		this.attributeContainer.restoreCheckpoint(checkpoint.attributeContainer);
 		this.statusStore.restoreCheckpoint(checkpoint.statusStore);
 		this.btManager.restoreCheckpoint(checkpoint.btManager);
 		const overlayCp = checkpoint as unknown as { pipelineOverlays?: PipelineOverlay[] };

@@ -78,7 +78,7 @@ export interface TickStateMemberSource {
 	readonly campId: string;
 	readonly teamId: string;
 	readonly position: { readonly x: number; readonly y: number; readonly z: number };
-	readonly AttributeContainer: StatIndexedReadSource;
+	readonly attributeContainer: StatIndexedReadSource;
 }
 
 export type TickStateMemberSnapshot = {
@@ -291,7 +291,7 @@ export class TickStateHistoryWriter {
 
 		if (!this.initialized) this.initializeSources(sources);
 		this.assertStableMembers(sources);
-		for (const source of sources) source.AttributeContainer.prepareIndexedRead();
+		for (const source of sources) source.attributeContainer.prepareIndexedRead();
 
 		let baseline = this.openSegment === null;
 		let recordBytes = this.measureRecord(sources, baseline);
@@ -341,11 +341,11 @@ export class TickStateHistoryWriter {
 	private initializeSources(sources: readonly TickStateMemberSource[]): void {
 		for (const source of sources) {
 			const attributes: TickStateAttributeDescriptor[] = [];
-			source.AttributeContainer.visitAttributeSchema((index, path, displayName, expression) => {
+			source.attributeContainer.visitAttributeSchema((index, path, displayName, expression) => {
 				if (index !== attributes.length) throw new Error(`属性 Schema 索引不连续: ${index}`);
 				attributes.push({ path, displayName, expression });
 			});
-			const attributeCount = source.AttributeContainer.getAttributeCount();
+			const attributeCount = source.attributeContainer.getAttributeCount();
 			if (attributes.length !== attributeCount) throw new Error(`成员 ${source.id} 属性 Schema 数量不一致`);
 			this.members.push({
 				id: source.id,
@@ -370,7 +370,7 @@ export class TickStateHistoryWriter {
 			const source = sources[index];
 			const descriptor = this.members[index];
 			if (source.id !== descriptor.id) throw new Error(`运行期间成员顺序发生变化: ${source.id}`);
-			if (source.AttributeContainer.getAttributeCount() !== descriptor.attributes.length) {
+			if (source.attributeContainer.getAttributeCount() !== descriptor.attributes.length) {
 				throw new Error(`运行期间成员 ${source.id} 属性 Schema 发生变化`);
 			}
 		}
@@ -379,7 +379,7 @@ export class TickStateHistoryWriter {
 	private measureRecord(sources: readonly TickStateMemberSource[], baseline: boolean): number {
 		let bytes = TICK_RECORD_HEADER_BYTES + sources.length * MEMBER_RECORD_BYTES;
 		for (let memberIndex = 0; memberIndex < sources.length; memberIndex++) {
-			const source = sources[memberIndex].AttributeContainer;
+			const source = sources[memberIndex].attributeContainer;
 			const previous = this.previousMembers[memberIndex];
 			for (let attributeIndex = 0; attributeIndex < source.getAttributeCount(); attributeIndex++) {
 				const flags = this.attributeFlags(source, previous, attributeIndex, baseline);
@@ -480,7 +480,7 @@ export class TickStateHistoryWriter {
 
 		for (let memberIndex = 0; memberIndex < sources.length; memberIndex++) {
 			const member = sources[memberIndex];
-			const source = member.AttributeContainer;
+			const source = member.attributeContainer;
 			const previous = this.previousMembers[memberIndex];
 			segment.view.setUint32(cursor, memberIndex, true);
 			cursor += 4;

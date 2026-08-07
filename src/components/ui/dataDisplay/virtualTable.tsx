@@ -1,18 +1,26 @@
 import type { DB } from "@db/generated/zod/index";
 import { debounce } from "@solid-primitives/scheduled";
-import type { Column } from "@tanstack/solid-table";
 import {
 	type Cell,
 	type ColumnDef,
-	createSolidTable,
-	getCoreRowModel,
-	getFacetedMinMaxValues,
-	getFacetedRowModel,
-	getFacetedUniqueValues,
-	getFilteredRowModel,
-	getSortedRowModel,
+	columnFacetingFeature,
+	columnFilteringFeature,
+	columnPinningFeature,
+	columnSizingFeature,
+	columnVisibilityFeature,
+	createFacetedMinMaxValues,
+	createFacetedRowModel,
+	createFacetedUniqueValues,
+	createFilteredRowModel,
+	createSortedRowModel,
+	createTable,
+	filterFn_includesString,
+	globalFilteringFeature,
 	type OnChangeFn,
-	type VisibilityState,
+	rowSortingFeature,
+	tableFeatures,
+	type Column,
+	type ColumnVisibilityState,
 } from "@tanstack/solid-table";
 import { createVirtualizer, type VirtualItem, type Virtualizer } from "@tanstack/solid-virtual";
 import type { Compilable, Kysely } from "kysely";
@@ -35,6 +43,24 @@ import type { Dic, EnumFieldDetail } from "~/locales/type";
 import { store } from "~/store";
 import { Button } from "../controls/button";
 
+const virtualTableFeatures = tableFeatures({
+	columnFacetingFeature,
+	columnFilteringFeature,
+	columnPinningFeature,
+	columnSizingFeature,
+	columnVisibilityFeature,
+	globalFilteringFeature,
+	rowSortingFeature,
+	filteredRowModel: createFilteredRowModel(),
+	sortedRowModel: createSortedRowModel(),
+	facetedRowModel: createFacetedRowModel(),
+	facetedUniqueValues: createFacetedUniqueValues(),
+	facetedMinMaxValues: createFacetedMinMaxValues(),
+	filterFns: { includesString: filterFn_includesString },
+});
+
+export type VirtualTableFeatures = typeof virtualTableFeatures;
+
 export interface VirtualTableProps<T extends object> {
 	primaryKey: keyof T;
 	// 行高预测
@@ -44,12 +70,12 @@ export interface VirtualTableProps<T extends object> {
 	// 查询构建器
 	query: (db: Kysely<DB>) => Compilable<T> | null | undefined;
 	// 列定义 - 强制 id 必须是 T 的键
-	columnsDef: Array<ColumnDef<T> & { id: keyof T }>;
+	columnsDef: Array<ColumnDef<VirtualTableFeatures, T> & { id: keyof T }>;
 	// 隐藏列定义
 	hiddenColumnDef: Array<keyof T>;
 	// 单元格渲染器
 	tdGenerator: Partial<{
-		[K in keyof T]: (props: { cell: Cell<T, unknown>; dic: Dic<T> }) => JSX.Element;
+		[K in keyof T]: (props: { cell: Cell<VirtualTableFeatures, T, unknown>; dic: Dic<T> }) => JSX.Element;
 	}>;
 	// 默认排序
 	defaultSort: { field: keyof T; desc: boolean };
@@ -60,9 +86,9 @@ export interface VirtualTableProps<T extends object> {
 	// 行点击处理
 	rowHandleClick: (data: T) => void;
 	// 列可见性
-	columnVisibility?: VisibilityState;
+	columnVisibility?: ColumnVisibilityState;
 	// 列可见性变化处理
-	onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
+	onColumnVisibilityChange?: OnChangeFn<ColumnVisibilityState>;
 }
 
 export function VirtualTable<T extends object>(props: VirtualTableProps<T>) {
@@ -132,7 +158,8 @@ export function VirtualTable<T extends object>(props: VirtualTableProps<T>) {
 	});
 
 	// 创建一次 table，用 reactive getter 保持响应式
-	const table = createSolidTable({
+	const table = createTable({
+		features: virtualTableFeatures,
 		get data() {
 			return data();
 		},
@@ -140,8 +167,6 @@ export function VirtualTable<T extends object>(props: VirtualTableProps<T>) {
 			return props.columnsDef;
 		},
 		getRowId: (row) => String(row[props.primaryKey]),
-		getCoreRowModel: getCoreRowModel(),
-		getSortedRowModel: getSortedRowModel(),
 		state: {
 			get globalFilter() {
 				return globalFilter();
@@ -153,10 +178,6 @@ export function VirtualTable<T extends object>(props: VirtualTableProps<T>) {
 		onColumnVisibilityChange: props.onColumnVisibilityChange,
 		onGlobalFilterChange: setGlobalFilter,
 		globalFilterFn: "includesString",
-		getFilteredRowModel: getFilteredRowModel(),
-		getFacetedRowModel: getFacetedRowModel(),
-		getFacetedUniqueValues: getFacetedUniqueValues(),
-		getFacetedMinMaxValues: getFacetedMinMaxValues(),
 		debugTable: true,
 		debugHeaders: false,
 		debugColumns: false,
@@ -195,14 +216,14 @@ export function VirtualTable<T extends object>(props: VirtualTableProps<T>) {
 	onMount(() => {
 		console.log("VirtualTable onMount");
 		debugVirtualTable("mount", {
-			rowCount: table.getRowCount(),
+			rowCount: table.getRowModel().rows.length,
 			columnCount: table.getAllColumns().length,
 			estimateSize: estimateRowSize(),
 			animationEnabled: store.settings.userInterface.isAnimationEnabled,
 		});
 		const v = createVirtualizer({
 			get count() {
-				return table.getRowCount();
+				return table.getRowModel().rows.length;
 			},
 			getItemKey: (index) => {
 				const row = table.getRowModel().rows[index];
@@ -271,7 +292,7 @@ export function VirtualTable<T extends object>(props: VirtualTableProps<T>) {
 						changeCount: virtualizerChangeCount,
 						sync,
 						totalSize: Math.round(instance.getTotalSize()),
-						rowCount: table.getRowCount(),
+						rowCount: table.getRowModel().rows.length,
 						visibleCount: nextVirtualItems.length,
 						range: nextVirtualItems.map((item) => ({
 							index: item.index,
@@ -701,19 +722,19 @@ export function VirtualTable<T extends object>(props: VirtualTableProps<T>) {
 }
 
 // 获取表头样式
-export const getCommonPinningStyles = <T,>(column: Column<T>): JSX.CSSProperties => {
+export const getCommonPinningStyles = <T extends object>(column: Column<VirtualTableFeatures, T>): JSX.CSSProperties => {
 	const isPinned = column.getIsPinned();
-	const isLastLeft = isPinned === "left" && column.getIsLastColumn("left");
-	const isFirstRight = isPinned === "right" && column.getIsFirstColumn("right");
+	const isLastStart = isPinned === "start" && column.getAfter("start") === 0;
+	const isFirstEnd = isPinned === "end" && column.getStart("end") === 0;
 	const styles: JSX.CSSProperties = {
 		position: isPinned ? "sticky" : "relative",
 		width: column.getSize().toString(),
 		"z-index": isPinned ? 1 : 0,
 	};
 	if (isPinned) {
-		styles.left = isLastLeft ? `${column.getStart("left")}px` : undefined;
-		styles.right = isFirstRight ? `${column.getAfter("right")}px` : undefined;
-		styles["border-width"] = isLastLeft ? "0px 2px 0px 0px" : isFirstRight ? "0px 0px 0px 2px" : undefined;
+		styles.left = isPinned === "start" ? `${column.getStart("start")}px` : undefined;
+		styles.right = isPinned === "end" ? `${column.getAfter("end")}px` : undefined;
+		styles["border-width"] = isLastStart ? "0px 2px 0px 0px" : isFirstEnd ? "0px 0px 0px 2px" : undefined;
 	}
 	return styles;
 };

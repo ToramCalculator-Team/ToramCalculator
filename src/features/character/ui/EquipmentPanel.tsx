@@ -7,7 +7,7 @@ import type { PlayerOptionWithRelations } from "@db/generated/repositories/playe
 import type { PlayerSpecialWithRelations } from "@db/generated/repositories/player_special";
 import type { PlayerWeaponWithRelations } from "@db/generated/repositories/player_weapon";
 import { type character, type DB, DBSchema } from "@db/generated/zod";
-import type { VisibilityState } from "@tanstack/solid-table";
+import type { ColumnVisibilityState } from "@tanstack/solid-table";
 import { createEffect, createMemo, createSignal, onCleanup, Show } from "solid-js";
 import { Button } from "~/components/ui/controls/button";
 import { Input } from "~/components/ui/controls/input";
@@ -235,7 +235,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 		const handle = overlay.openSheet({
 			render: (api) => {
 				const [filterText, setFilterText] = createSignal("");
-				const [columnVisibility, setColumnVisibility] = createSignal<VisibilityState>({});
+			const [columnVisibility, setColumnVisibility] = createSignal<ColumnVisibilityState>({});
 
 				return (
 					<div class="flex portrait:h-[90dvh] w-full h-full flex-col gap-2 p-6">

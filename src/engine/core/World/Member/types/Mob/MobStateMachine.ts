@@ -307,10 +307,10 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 						env.id,
 						env.services.getCurrentTimeMs(),
 						env.services.getTickIndex(),
-						() => env.AttributeContainer.getValue("hp.current"),
-						() => env.AttributeContainer.getValue("mp.current"),
+						() => env.attributeContainer.getValue("hp.current"),
+						() => env.attributeContainer.getValue("mp.current"),
 						(value) =>
-							env.AttributeContainer.addModifier("hp.current", ModifierType.DYNAMIC_FIXED, value, {
+							env.attributeContainer.addModifier("hp.current", ModifierType.DYNAMIC_FIXED, value, {
 								key: `damage.hp.${session.damageRequest.areaId}`,
 								name: "damage-hp",
 								type: session.damageRequest.sourceSkillId ? "skill" : "system",
@@ -323,7 +323,7 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 								],
 							}),
 						(value) =>
-							env.AttributeContainer.addModifier("mp.current", ModifierType.DYNAMIC_FIXED, value, {
+							env.attributeContainer.addModifier("mp.current", ModifierType.DYNAMIC_FIXED, value, {
 								key: `damage.mp.${session.damageRequest.areaId}`,
 								name: "damage-mp",
 								type: session.damageRequest.sourceSkillId ? "skill" : "system",

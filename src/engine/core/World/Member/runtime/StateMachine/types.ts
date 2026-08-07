@@ -105,7 +105,7 @@ export interface MemberStateMachineEnv<
 	name: string;
 	position: { x: number; y: number; z: number };
 	runtime: TRuntime;
-	statContainer: AttributeContainer<MemberBaseAttrKey | TExtraAttrKey>;
+	attributeContainer: AttributeContainer<MemberBaseAttrKey | TExtraAttrKey>;
 	services: MemberRuntimeServices;
 	btManager: BtManager<TExtraAttrKey, TRuntime, TFSMEvent>;
 	notifyDomainEvent(event: MemberDomainEvent): void;

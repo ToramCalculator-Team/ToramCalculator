@@ -170,8 +170,8 @@ function getSkillRejectionReason(env: PlayerFSMEnv, event: MemberUseSkillEvent):
 
 	const cost = resolveCurrentSkillCost(env);
 	if (!cost) return "cost_resolution_failed";
-	if (cost.hpCost > env.AttributeContainer.getValue("hp.current")) return "insufficient_hp";
-	if (cost.mpCost > env.AttributeContainer.getValue("mp.current")) return "insufficient_mp";
+	if (cost.hpCost > env.attributeContainer.getValue("hp.current")) return "insufficient_hp";
+	if (cost.mpCost > env.attributeContainer.getValue("mp.current")) return "insufficient_mp";
 	return null;
 }
 
@@ -322,7 +322,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 					const sourceName = skill?.template?.name ?? "skill-cost";
 					const sourceSkillId = skill?.id ?? "unknown";
 					if (cost.hpCost !== 0) {
-						env.AttributeContainer.addModifier("hp.current", ModifierType.DYNAMIC_FIXED, -cost.hpCost, {
+						env.attributeContainer.addModifier("hp.current", ModifierType.DYNAMIC_FIXED, -cost.hpCost, {
 							key: `skill.cost.hp.${sourceSkillId}`,
 							name: `${sourceName}.hpCost`,
 							type: "skill",
@@ -334,7 +334,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 						});
 					}
 					if (cost.mpCost !== 0) {
-						env.AttributeContainer.addModifier("mp.current", ModifierType.DYNAMIC_FIXED, -cost.mpCost, {
+						env.attributeContainer.addModifier("mp.current", ModifierType.DYNAMIC_FIXED, -cost.mpCost, {
 							key: `skill.cost.mp.${sourceSkillId}`,
 							name: `${sourceName}.mpCost`,
 							type: "skill",
@@ -346,7 +346,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 						});
 					}
 					// 下一技能消耗修正在扣费成功后消费；施法检查阶段也会运行 skill.cost，不能在管线内清理。
-					env.AttributeContainer.removeModifiersBySourceKeyPrefix(NEXT_SKILL_COST_SOURCE_ID_PREFIX);
+						env.attributeContainer.removeModifiersBySourceKeyPrefix(NEXT_SKILL_COST_SOURCE_ID_PREFIX);
 					log.info(`[${env.name}] 已扣除技能消耗：Hp-${cost.hpCost}, Mp-${cost.mpCost}`);
 				},
 				重置控制抵抗时间: () => {

@@ -108,6 +108,7 @@ export const createPreviewBtRuntime = (memberType: MemberType): PreviewBtRuntime
 	const attributeContainer = new AttributeContainer<string>(MemberBaseNestedSchema);
 	const renderState: MemberBtCapabilities<string, MemberFSMEvent>["renderState"] = {};
 	const parallelBts = new Set<string>();
+	let nextThresholdRegistrationId = 1;
 
 	const capabilities: MemberBtCapabilities<string, MemberFSMEvent> = {
 		attributeContainer,
@@ -123,7 +124,8 @@ export const createPreviewBtRuntime = (memberType: MemberType): PreviewBtRuntime
 		hasParallelBt: (name) => parallelBts.has(name),
 		subscribeByName: () => 0,
 		unsubscribeBySource: () => undefined,
-		registerThreshold: () => undefined,
+		// 预览不运行真实 ProcBus，但必须返回稳定的注册 ID，保持 watchThreshold 的能力契约。
+		registerThreshold: () => nextThresholdRegistrationId++,
 		unregisterThresholdBySource: () => undefined,
 		notifyDomainEvent: () => undefined,
 		submitControlInput: () => undefined,

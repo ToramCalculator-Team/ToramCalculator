@@ -57,7 +57,7 @@ class FakeStatSource implements StatIndexedReadSource {
 }
 
 const createMember = (
-	AttributeContainer: StatIndexedReadSource,
+	attributeContainer: StatIndexedReadSource,
 ): TickStateMemberSource & {
 	position: { x: number; y: number; z: number };
 } => ({
@@ -67,7 +67,7 @@ const createMember = (
 	campId: "camp-a",
 	teamId: "team-a",
 	position: { x: 1, y: 2, z: 3 },
-	AttributeContainer,
+	attributeContainer,
 });
 
 describe("TickStateHistory", () => {

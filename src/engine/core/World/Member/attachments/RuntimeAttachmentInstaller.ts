@@ -164,7 +164,7 @@ function runHandlers(
 						sourceIdOf(source, suffix),
 						suffix,
 					);
-					member.AttributeContainer.addModifier(
+					member.attributeContainer.addModifier(
 						handler.attribute,
 						mapModifierType(handler.modifierType),
 						value,
@@ -181,7 +181,7 @@ function runHandlers(
 						ModifierType.STATIC_FIXED,
 						ModifierType.STATIC_PERCENTAGE,
 					]) {
-						member.AttributeContainer.removeModifier(handler.attribute, type, sid);
+						member.attributeContainer.removeModifier(handler.attribute, type, sid);
 					}
 					break;
 				}
@@ -313,7 +313,7 @@ export function uninstallRuntimeAttachment(member: RuntimeAttachmentMember, sour
 	);
 	member.procBus?.unsubscribeBySource(sourceId);
 	member.attributeThresholdSource.unregisterBySource(sourceId);
-	member.AttributeContainer.removeModifiersBySourceKeyPrefix(sourceId);
+	member.attributeContainer.removeModifiersBySourceKeyPrefix(sourceId);
 }
 
 /**
@@ -332,7 +332,7 @@ export function installRuntimeAttachment<TExtraAttrKey extends string = string>(
 
 	for (const modifier of attachment.modifiers ?? []) {
 		const source = modifier.source ?? runtimeAttachmentModifierSource(member.id, attachment.source);
-		member.AttributeContainer.addModifier(modifier.attribute, modifier.modifierType, modifier.value, source);
+		member.attributeContainer.addModifier(modifier.attribute, modifier.modifierType, modifier.value, source);
 	}
 
 	for (const patch of attachment.pipelinePatches ?? []) {
