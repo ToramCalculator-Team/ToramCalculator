@@ -25,6 +25,7 @@ import { useOverlay } from "~/contexts/overlay/OverlayContext";
 import { buildFKCardRenderers, ReferencedBySection } from "~/features/wiki/fkRenderers";
 import { setWikiStore, wikiStore } from "~/features/wiki/store";
 import { createTableConfig, getTablePrimaryKey, type TableConfig } from "~/features/wiki/tableConfig";
+import { useCanEditRecord } from "~/features/wiki/useCanEditRecord";
 import { createOpenRelatedCard } from "~/features/wiki/wikiCardNav";
 import { createOpenRecordForm } from "~/features/wiki/wikiFormSheet";
 import { wikiPageConfig } from "~/features/wiki/wikiPage/wikiPageConfig";
@@ -64,6 +65,8 @@ export default function WikiSubPage() {
 				const primaryKey = getTablePrimaryKey(type);
 				const primaryKeyValue = data[primaryKey];
 				const primaryKeyString = primaryKeyValue == null ? "" : String(primaryKeyValue);
+				// 编辑权判定：未登录、非管理员、非资源所有者都不显示编辑按钮（规则见生成层 canEdit）。
+				const canEditRecord = useCanEditRecord(type, () => primaryKeyString || undefined);
 
 				// FK列自动检测（跳过 hiddenFields 里的列）
 				const fkCardRenderers = buildFKCardRenderers(
@@ -106,7 +109,7 @@ export default function WikiSubPage() {
 									}}
 								/>
 								<div class="CardActions border-dividing-color flex flex-wrap items-center gap-2 border-t pt-3">
-									<Show when={primaryKeyString}>
+									<Show when={canEditRecord()}>
 										<Button
 											icon={<Icons.Outline.Edit />}
 											// 表单 sheet 必须挂在当前 dialog layer 下（关掉卡片会级联关掉表单），

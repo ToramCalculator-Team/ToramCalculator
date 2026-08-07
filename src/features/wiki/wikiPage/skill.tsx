@@ -27,6 +27,7 @@ import {
 } from "~/features/character/ui/skillTreeGrid";
 import { buildFKCardRenderers, ReferencedBySection } from "~/features/wiki/fkRenderers";
 import { getTablePrimaryKey } from "~/features/wiki/tableConfig";
+import { useCanEditRecord } from "~/features/wiki/useCanEditRecord";
 import { createOpenRelatedCard } from "~/features/wiki/wikiCardNav";
 import { createOpenRecordForm } from "~/features/wiki/wikiFormSheet";
 import { createLiveKyselyQuery } from "~/platform/pglite/liveQuery";
@@ -105,6 +106,8 @@ export const SkillPage = () => {
 	const [activeTreeType, setActiveTreeType] = createSignal<SkillTreeType | null>(null);
 	const [morphTreeType, setMorphTreeType] = createSignal<SkillTreeType | null>(null);
 	const [activeSkillId, setActiveSkillId] = createSignal<string | null>(null);
+	// 编辑权判定：未登录、非管理员、非资源所有者都不显示编辑按钮（规则见生成层 canEdit）。
+	const canEditActiveSkill = useCanEditRecord("skill", activeSkillId);
 
 	const openTree = (treeType: SkillTreeType) => {
 		setActiveSkillId(null);
@@ -317,17 +320,16 @@ export const SkillPage = () => {
 													/>
 													{/* 技能树面板是自绘 Portal（非 dialog 层），编辑表单只能从页面根层新开 sheet。 */}
 													<div class="CardActions border-dividing-color flex flex-wrap items-center gap-2 border-t pt-3">
-														<Show when={activeSkillId()}>
-															{(id) => (
-																<Button
-																	icon={<Icons.Outline.Edit />}
-																	onClick={() =>
-																		openRecordForm({ mode: "update", tableName: "skill", id: id() }, overlay, "open")
-																	}
-																>
-																	{dictionary().ui.actions.modify}
-																</Button>
-															)}
+														<Show when={canEditActiveSkill()}>
+															<Button
+																icon={<Icons.Outline.Edit />}
+																onClick={() => {
+																	const id = activeSkillId();
+																	if (id) openRecordForm({ mode: "update", tableName: "skill", id }, overlay, "open");
+																}}
+															>
+																{dictionary().ui.actions.modify}
+															</Button>
 														</Show>
 													</div>
 												</>
