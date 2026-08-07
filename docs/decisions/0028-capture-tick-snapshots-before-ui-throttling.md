@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-07-11
 - **决策层**: 跨层（引擎 / 通信 / 分析数据 / UI）
-- **相关代码**: `src/lib/engine/core/GameEngine.ts`、`src/lib/engine/core/types.ts`、`src/lib/engine/core/thread/Simulation.worker.ts`
+- **相关代码**: `src/engine/core/GameEngine.ts`、`src/engine/core/types.ts`、`src/engine/core/thread/Simulation.worker.ts`
 - **相关 ADR**: Depends on 0024
 
 ## 背景

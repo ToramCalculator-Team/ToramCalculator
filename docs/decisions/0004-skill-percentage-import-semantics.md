@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-05-28
 - **决策层**: 跨层
-- **相关代码**: `db/scripts/importToramSkillBehaviors.mjs`、`src/lib/engine/core/World/Member/runtime/AttributeContainer/AttributeContainer.ts`、`src/lib/engine/core/World/Member/attachments/RuntimeAttachmentInstaller.ts`
+- **相关代码**: `db/scripts/importToramSkillBehaviors.mjs`、`src/engine/core/World/Member/runtime/AttributeContainer/AttributeContainer.ts`、`src/engine/core/World/Member/attachments/RuntimeAttachmentInstaller.ts`
 - **相关 ADR**: Depends on 0001、0002
 
 ## 背景

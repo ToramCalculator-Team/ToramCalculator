@@ -1,7 +1,7 @@
 import type { DB } from "@db/generated/zod/index";
 import type { AccountType } from "@db/schema/enums";
 import { createStore } from "solid-js/store";
-import { STORE_SCHEMA_VERSION } from "~/lib/version/schema";
+import { STORE_SCHEMA_VERSION } from "~/platform/version/schema";
 import type { Locale } from "~/locales/i18n";
 
 /**

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { EngineRunOutput, RunInputRecord } from "~/lib/engine/core/runOutput";
-import type { SimulationTaskResult } from "~/lib/engine/core/simulationTask";
-import { memberFlowInputId } from "~/lib/engine/core/World/Member/memberFlowInput";
+import type { EngineRunOutput, RunInputRecord } from "~/engine/core/runOutput";
+import type { SimulationTaskResult } from "~/engine/core/simulationTask";
+import { memberFlowInputId } from "~/engine/core/World/Member/memberFlowInput";
 import {
 	CHARACTER_PREVIEW_CANDIDATE_INPUT_KEY,
 	type CharacterPreviewPolicy,

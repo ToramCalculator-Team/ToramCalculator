@@ -3,15 +3,15 @@ import { type Simulator, selectAllSimulatorsQuery } from "@db/generated/reposito
 import { A, useLocation, useNavigate } from "@solidjs/router";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { Motion } from "solid-motionone";
-import { ConcaveFrame } from "~/components/containers/concaveFrame";
-import { Button } from "~/components/controls/button";
-import { Input } from "~/components/controls/input";
-import { LoadingBar } from "~/components/controls/loadingBar";
-import { Select } from "~/components/controls/select";
-import { Icons } from "~/components/icons";
+import { ConcaveFrame } from "~/components/ui/containers/concaveFrame";
+import { Button } from "~/components/ui/controls/button";
+import { Input } from "~/components/ui/controls/input";
+import { LoadingBar } from "~/components/ui/controls/loadingBar";
+import { Select } from "~/components/ui/controls/select";
+import { Icons } from "~/components/ui/icons";
 import { createTrainingSimulator } from "~/features/simulator/createTrainingSimulator";
-import { useSimulatorSession } from "~/features/simulator/SimulatorSession";
-import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
+import { useSimulatorSession } from "~/features/simulator/session/SimulatorSession";
+import { createLiveKyselyQuery } from "~/platform/pglite/liveQuery";
 import { setStore, store } from "~/store";
 
 /** 持久 Simulator 选择入口；路由只选择投影身份，会话由应用级 Provider 拥有。 */

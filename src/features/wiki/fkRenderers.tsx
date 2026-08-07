@@ -17,13 +17,13 @@ import { FOREIGN_KEY_RELATIONS, getPrimaryKeys, MODEL_METADATA } from "@db/gener
 import { repositoryReaders } from "@db/generated/repositories";
 import type { DB } from "@db/generated/zod/index";
 import { type Accessor, For, type JSX, Show } from "solid-js";
-import { Autocomplete } from "~/components/controls/autoComplete";
-import { Button } from "~/components/controls/button";
-import { Input } from "~/components/controls/input";
-import type { ObjRenderers } from "~/components/dataDisplay/ObjRenderer";
-import type { FormRenderers } from "~/components/form/fields";
-import { Icons } from "~/components/icons/index";
-import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
+import { Autocomplete } from "~/components/ui/controls/autoComplete";
+import { Button } from "~/components/ui/controls/button";
+import { Input } from "~/components/ui/controls/input";
+import type { ObjRenderers } from "~/components/ui/dataDisplay/ObjRenderer";
+import type { FormRenderers } from "~/components/ui/form/fields";
+import { Icons } from "~/components/ui/icons/index";
+import { createLiveKyselyQuery } from "~/platform/pglite/liveQuery";
 import type { Dictionary } from "~/locales/type";
 
 // ---------------------------------------------------------------------------

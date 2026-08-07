@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-07-17
 - **决策层**: 跨层（应用用例 / 引擎服务 / Worker 协议 / 运行时记录）
-- **相关代码**: `src/features/character/preview/`、`src/features/simulator/`、`src/lib/engine/core/`
+- **相关代码**: `src/features/character/preview/`、`src/features/simulator/`、`src/engine/core/`
 - **相关 ADR**: Refines 0024、0028；Depends on 0042
 
 ## 决策问题

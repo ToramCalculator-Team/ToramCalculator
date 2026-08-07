@@ -1,5 +1,5 @@
 import { createSignal, onCleanup, onMount } from "solid-js";
-import { LoadingBar } from "~/components/controls/loadingBar";
+import { LoadingBar } from "~/components/ui/controls/loadingBar";
 import { useDictionary } from "~/contexts/Dictionary";
 
 export default function Loading() {

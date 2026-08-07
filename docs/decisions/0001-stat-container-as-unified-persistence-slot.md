@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-05（从 `hook与触发层设计讨论结论.md` §2.1.1 拆出）
 - **决策层**: 数据层
-- **相关代码**: `src/lib/engine/core/World/Member/runtime/AttributeContainer/AttributeContainer.ts`、`src/lib/engine/core/World/Member/runtime/AttributeContainer/SchemaTypes.ts`、`src/lib/engine/core/World/Member/runtime/Status/StatusInstanceStore.ts`
+- **相关代码**: `src/engine/core/World/Member/runtime/AttributeContainer/AttributeContainer.ts`、`src/engine/core/World/Member/runtime/AttributeContainer/SchemaTypes.ts`、`src/engine/core/World/Member/runtime/Status/StatusInstanceStore.ts`
 
 ## 背景
 
@@ -53,5 +53,5 @@
 
 ## 参考
 
-- `src/lib/engine/document/hook与触发层设计讨论结论.md` §2.1.1
+- `src/engine/document/hook与触发层设计讨论结论.md` §2.1.1
 - Unreal GAS 中 GameplayAttribute 与 GameplayEffect 的职责分离

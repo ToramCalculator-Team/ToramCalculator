@@ -1,9 +1,9 @@
 import { defaultData } from "@db/defaultData";
 import { MemberBTSchema, type MemberBTTree } from "@db/schema/jsons";
 import { z } from "zod/v4";
-import { type EngineMember, EngineMemberSchema, type EngineTeam } from "~/lib/engine/core/engineScenarioSchema";
-import { type SimulationTask, SimulationTaskSchema } from "~/lib/engine/core/simulationTask";
-import { type EngineScenarioData, EngineScenarioDataSchema } from "~/lib/engine/core/types";
+import { type EngineMember, EngineMemberSchema, type EngineTeam } from "~/engine/core/engineScenarioSchema";
+import { type SimulationTask, SimulationTaskSchema } from "~/engine/core/simulationTask";
+import { type EngineScenarioData, EngineScenarioDataSchema } from "~/engine/core/types";
 import type { CharacterLiveAggregate } from "../data/characterAggregateQuery";
 import {
 	type CharacterPreviewPolicy,

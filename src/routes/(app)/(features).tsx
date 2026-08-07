@@ -1,8 +1,8 @@
 import { useLocation } from "@solidjs/router";
 import { onMount, type ParentProps, Show } from "solid-js";
 import { Motion } from "solid-motionone";
-import { Nav } from "~/components/features/nav";
-import { useSceneRuntime } from "~/lib/3dScene/SceneRuntime";
+import { Nav } from "~/components/app/nav";
+import { useSceneRuntime } from "~/platform/render/scene/SceneRuntime";
 import { store } from "~/store";
 
 export default function FunctionPage(props: ParentProps) {

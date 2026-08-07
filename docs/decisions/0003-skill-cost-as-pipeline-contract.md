@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-05-15
 - **决策层**: 跨层
-- **相关代码**: `src/lib/engine/core/Pipeline/builtInBinaryOpPipelines.ts`、`src/lib/engine/core/World/Member/types/Player/PlayerStateMachine.ts`
+- **相关代码**: `src/engine/core/Pipeline/builtInBinaryOpPipelines.ts`、`src/engine/core/World/Member/types/Player/PlayerStateMachine.ts`
 
 ## 背景
 
@@ -46,4 +46,4 @@
 
 ## 参考
 
-- `src/lib/engine/document/hook与触发层设计讨论结论.md`
+- `src/engine/document/hook与触发层设计讨论结论.md`

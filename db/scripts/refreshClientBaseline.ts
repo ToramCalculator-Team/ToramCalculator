@@ -1,7 +1,7 @@
 import { copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { DB_SCHEMA_VERSION } from "../../src/lib/version/schema";
+import { DB_SCHEMA_VERSION } from "../../src/platform/version/schema";
 import { ClientMigrationGenerator } from "../generator/helpers/generateClientMigration";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -12,7 +12,7 @@ const targetPath = path.join(baselineDir, "client.sql");
 const baselineMetaPath = path.join(baselineDir, "meta.json");
 const migrationsDir = path.join(rootDir, "db/client/migrations");
 const previousSchemaPath = path.join(rootDir, "db/client/previous-schema.prisma");
-const versionSchemaPath = path.join(rootDir, "src/lib/version/schema.ts");
+const versionSchemaPath = path.join(rootDir, "src/platform/version/schema.ts");
 
 const checksum = (content: string): string => {
 	let hash = 2166136261;

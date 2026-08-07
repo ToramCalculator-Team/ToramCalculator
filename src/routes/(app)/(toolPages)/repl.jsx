@@ -1,5 +1,5 @@
 import { onMount } from "solid-js";
-import { createPgWorker } from "~/lib/pglite/pg";
+import { createPgWorker } from "~/platform/pglite/pg";
 
 export default function Repl() {
 	onMount(async () => {

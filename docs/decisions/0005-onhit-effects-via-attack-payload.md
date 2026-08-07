@@ -3,7 +3,7 @@
 - **状态**: Withdrawn
 - **日期**: 2026-05-29
 - **决策层**: 编排层 / 通信
-- **相关代码**: `src/lib/engine/core/World/Member/runtime/Agent/CommonActions.ts`、`src/lib/engine/core/World/Member/runtime/DamageResolution.ts`
+- **相关代码**: `src/engine/core/World/Member/runtime/Agent/CommonActions.ts`、`src/engine/core/World/Member/runtime/DamageResolution.ts`
 - **相关 ADR**: Related to 0004
 
 ## 背景

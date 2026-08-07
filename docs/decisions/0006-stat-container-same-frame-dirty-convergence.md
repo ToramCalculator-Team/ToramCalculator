@@ -3,7 +3,7 @@
 - **状态**: Withdrawn
 - **日期**: 2026-06-01
 - **决策层**: 计算层
-- **相关代码**: `src/lib/engine/core/World/Member/runtime/AttributeContainer/AttributeContainer.ts`、`src/lib/engine/core/World/Member/runtime/AttributeContainer/AttributeContainer.test.ts`
+- **相关代码**: `src/engine/core/World/Member/runtime/AttributeContainer/AttributeContainer.ts`、`src/engine/core/World/Member/runtime/AttributeContainer/AttributeContainer.test.ts`
 
 ## 决策问题
 

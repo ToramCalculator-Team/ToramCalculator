@@ -1,9 +1,9 @@
 import { createSignal, For, Index, Show } from "solid-js";
 import { Motion } from "solid-motionone";
-import { Button } from "~/components/controls/button";
-import { Icons } from "~/components/icons";
-import type { PlayerAttrKey } from "~/lib/engine/core/World/Member/types/Player/PlayerAttrSchema";
-import { useOverlay } from "~/lib/overlay/OverlayContext";
+import { Button } from "~/components/ui/controls/button";
+import { Icons } from "~/components/ui/icons";
+import { useOverlay } from "~/contexts/overlay/OverlayContext";
+import type { PlayerAttrKey } from "~/engine/core/World/Member/types/Player/PlayerAttrSchema";
 import { store } from "~/store";
 
 // 能力值【1~10】

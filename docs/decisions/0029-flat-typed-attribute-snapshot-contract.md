@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-07-11
 - **决策层**: 跨层（数据 / 引擎 / 通信 / UI）
-- **相关代码**: `src/lib/engine/core/World/Member/runtime/AttributeContainer/`、`src/lib/engine/core/World/Member/Member.ts`、`src/lib/engine/core/types.ts`
+- **相关代码**: `src/engine/core/World/Member/runtime/AttributeContainer/`、`src/engine/core/World/Member/Member.ts`、`src/engine/core/types.ts`
 - **相关 ADR**: Depends on 0022；Refines 0028
 
 ## 背景

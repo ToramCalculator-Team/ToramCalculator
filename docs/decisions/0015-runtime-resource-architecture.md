@@ -3,7 +3,7 @@
 - **状态**: Superseded by 0042
 - **日期**: 2026-06-12
 - **决策层**: 跨层（引擎线程 / 渲染 / 视觉意图）
-- **相关代码**: `src/lib/engine/core/thread/EngineService.ts`、`src/lib/3dScene/SceneRuntime.tsx`、`src/machines/interfaceStateMachine.ts`
+- **相关代码**: `src/engine/core/thread/EngineService.ts`、`src/platform/render/scene/SceneRuntime.tsx`、`src/machines/interfaceStateMachine.ts`
 - **相关 ADR**: Depends on 0009、0014；Superseded by 0042
 
 ## 背景

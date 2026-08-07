@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-06-03
 - **决策层**: 跨层（渲染 / 通信 / UI）
-- **相关代码**: `src/lib/3dScene/SceneRuntime.tsx`、`src/lib/3dScene/SceneRuntimeCore.tsx`、`src/routes/(app)/(features)/simulator/RealtimeSimulator.tsx`
+- **相关代码**: `src/platform/render/scene/SceneRuntime.tsx`、`src/platform/render/scene/SceneRuntimeCore.tsx`、`src/routes/(app)/(features)/simulator/RealtimeSimulator.tsx`
 - **相关 ADR**: Related to 0008
 
 ## 背景

@@ -5,7 +5,7 @@
  */
 
 import { createEffect, onCleanup } from "solid-js";
-import { useSceneRuntime } from "~/lib/3dScene/SceneRuntime";
+import { useSceneRuntime } from "~/platform/render/scene/SceneRuntime";
 import { useInterfaceActor } from "../AppActorContext";
 import { createInspectCharacterEquipmentEvent } from "../interfaceStateMachine";
 import { createSceneInterfaceProjection } from "./sceneInterfaceProjection";

@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-06-01
 - **决策层**: 跨层
-- **相关代码**: `src/lib/engine/core/World/Member/MemberBaseSchema.ts`、`src/lib/engine/core/Pipeline/builtInBinaryOpPipelines.ts`、`src/lib/engine/core/World/Member/types/Player/PlayerStateMachine.ts`
+- **相关代码**: `src/engine/core/World/Member/MemberBaseSchema.ts`、`src/engine/core/Pipeline/builtInBinaryOpPipelines.ts`、`src/engine/core/World/Member/types/Player/PlayerStateMachine.ts`
 - **相关 ADR**: Refines 0003
 
 ## 背景

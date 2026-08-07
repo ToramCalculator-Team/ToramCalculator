@@ -2,14 +2,14 @@ import { selectSimulatorForEngine } from "@db/repositories/simulatorEngine";
 import { useNavigate, useParams } from "@solidjs/router";
 import { createEffect, createMemo, createResource, Match, on, onCleanup, onMount, Show, Switch } from "solid-js";
 import { Motion } from "solid-motionone";
-import { Button } from "~/components/controls/button";
-import { LoadingBar } from "~/components/controls/loadingBar";
-import { useSimulatorSession } from "~/features/simulator/SimulatorSession";
+import { Button } from "~/components/ui/controls/button";
+import { LoadingBar } from "~/components/ui/controls/loadingBar";
+import { useSimulatorSession } from "~/features/simulator/session/SimulatorSession";
 import {
 	type SimulatorRouteSessionPhase,
 	selectSimulatorRouteProjection,
 } from "~/features/simulator/simulatorRouteProjection";
-import { RealtimeSimulator } from "~/routes/(app)/(features)/simulator/RealtimeSimulator";
+import { RealtimeSimulator } from "~/features/simulator/ui/RealtimeSimulator";
 import { setStore, store } from "~/store";
 
 /** Simulator 路由仅加载持久设计并挂载会话投影，不拥有引擎或运行记录生命周期。 */

@@ -4,12 +4,12 @@ import { jsonArrayFrom } from "kysely/helpers/postgres";
 import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
-import { Button } from "~/components/controls/button";
-import { LoadingBar } from "~/components/controls/loadingBar";
-import { Select } from "~/components/controls/select";
-import { Icons } from "~/components/icons/index";
+import { Button } from "~/components/ui/controls/button";
+import { LoadingBar } from "~/components/ui/controls/loadingBar";
+import { Select } from "~/components/ui/controls/select";
+import { Icons } from "~/components/ui/icons/index";
 import { useDictionary } from "~/contexts/Dictionary";
-import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
+import { createLiveKyselyQuery } from "~/platform/pglite/liveQuery";
 
 export const AddressPage = () => {
 	const dic = useDictionary();

@@ -1,9 +1,9 @@
 import { useNavigate } from "@solidjs/router";
-import { createMemo, Show } from "solid-js";
-import { Button } from "~/components/controls/button";
-import { setStore, store } from "~/store";
-import { createCharacter } from "./createCharacter";
+import { Show } from "solid-js";
+import { Button } from "~/components/ui/controls/button";
 import { useDictionary } from "~/contexts/Dictionary";
+import { setStore, store } from "~/store";
+import { createCharacter } from "../../../../features/character/createCharacter";
 
 export default function CreateCharacterPage() {
 	// UI文本字典

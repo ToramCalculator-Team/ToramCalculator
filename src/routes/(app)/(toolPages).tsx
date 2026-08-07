@@ -1,6 +1,6 @@
 import { onMount, type ParentProps } from "solid-js";
 import { Motion } from "solid-motionone";
-import { Nav } from "~/components/features/nav";
+import { Nav } from "~/components/app/nav";
 import { store } from "~/store";
 
 export default function ToolPage(props: ParentProps) {

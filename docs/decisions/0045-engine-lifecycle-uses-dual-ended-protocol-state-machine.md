@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-07-17
 - **决策层**: 跨层（引擎 / 通信 / 应用状态）
-- **相关代码**: `src/lib/engine/core/GameEngineSM.ts`、`src/lib/engine/core/GameEngine.ts`、`src/lib/engine/core/thread/`、`src/features/simulator/simulatorSessionMachine.ts`
+- **相关代码**: `src/engine/core/GameEngineSM.ts`、`src/engine/core/GameEngine.ts`、`src/engine/core/thread/`、`src/features/simulator/simulatorSessionMachine.ts`
 - **相关 ADR**: Depends on 0040；Refines 0042
 
 ## 决策问题

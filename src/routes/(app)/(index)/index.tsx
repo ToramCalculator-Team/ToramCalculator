@@ -1,25 +1,23 @@
-import { type DB, DBSchema } from "@db/generated/zod/index";
 import { getPrimaryKeys } from "@db/generated/dmmf-utils";
-import { repositoryReaders, type RepositoryReader } from "@db/generated/repositories";
+import { type RepositoryReader, repositoryReaders } from "@db/generated/repositories";
+import { type DB, DBSchema } from "@db/generated/zod/index";
 import { MetaProvider, Title } from "@solidjs/meta";
 import { useNavigate } from "@solidjs/router";
 import { useMachine } from "@xstate/solid";
-import { sql } from "kysely";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createMemo, createSignal, For, Index, type JSX, onCleanup, onMount, Show, useContext } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { DATA_CONFIG, type TableDataConfig } from "~/components/business/data-config";
-import { Button } from "~/components/controls/button";
-import { LoadingBar } from "~/components/controls/loadingBar";
-import { ObjRenderer } from "~/components/dataDisplay/ObjRenderer";
-import { Filing } from "~/components/features/filing";
-import { Icons } from "~/components/icons/index";
+import { Filing } from "~/components/app/filing";
+import { Button } from "~/components/ui/controls/button";
+import { LoadingBar } from "~/components/ui/controls/loadingBar";
+import { ObjRenderer } from "~/components/ui/dataDisplay/ObjRenderer";
+import { Icons } from "~/components/ui/icons/index";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
-import { type DialogLayerEntryInit, type OverlayLayerHandle, useOverlay } from "~/lib/overlay/OverlayContext";
-import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
-import type { Dictionary, Dic } from "~/locales/type";
+import { type DialogLayerEntryInit, type OverlayLayerHandle, useOverlay } from "~/contexts/overlay/OverlayContext";
+import { DATA_CONFIG, type TableDataConfig } from "~/dataConfig/data-config";
 import type { ZodSchemaFor } from "~/lib/utils/zod";
+import type { Dic, Dictionary } from "~/locales/type";
 import { setStore, store } from "~/store";
 import { indexPageMachine } from "./indexPageMachine";
 
@@ -40,32 +38,6 @@ export default function IndexPage() {
 	// 使用状态机管理此页面状态
 	const [state, send] = useMachine(indexPageMachine);
 	const context = () => state.context;
-
-	// 数据同步延迟探针：live 订阅 sync_heartbeat，服务端每 3s 刷新 emitted_at（PG now()，UTC）。
-	// _synced 表被 electric-sync 写入时 live.query 自动回调，用本地时钟与 emitted_at 求差估算读路径端到端延迟。
-	//
-	// 注意：若读数停滞不刷新，根因是 shape tail 没把更新送达 _synced（本地 HTTP/1.1 6 连接上限会饿死
-	// tail 连接），而非 live 订阅本身——live 订阅依赖 _synced 实际发生写入。远端 HTTP/2 无此并发限制。
-	//
-	// 时区处理：emitted_at 列是 timestamp without time zone，存的是 UTC 字面值。
-	// PGlite 把该列解析成 Date 时会按“客户端本地时区”误读字面值（如 UTC+8 会偏 8 小时）。
-	// 故用 to_char 把列取成明确的 UTC ISO 字符串，自己补 Z 按 UTC 解析，绕开 PGlite 的本地时区 Date 行为。
-	const heartbeat = createLiveKyselyQuery<{ emitted_utc: string }>((db) =>
-		db
-			.selectFrom("sync_heartbeat")
-			.select(sql<string>`to_char(emitted_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS')`.as("emitted_utc"))
-			.limit(1),
-	);
-	const syncLatencyMs = createMemo<number | undefined>(() => {
-		const row = heartbeat.rows()[0];
-		if (!row?.emitted_utc) return undefined;
-		// emitted_utc 是 UTC 字面值（无时区后缀），补 Z 强制按 UTC 解析。
-		const emittedMs = Date.parse(`${row.emitted_utc}Z`);
-		if (Number.isNaN(emittedMs)) return undefined;
-		const delta = Date.now() - emittedMs;
-		// 客户端与服务端可能存在时钟偏移，负值统一钳为 0，避免显示负延迟。
-		return delta < 0 ? 0 : delta;
-	});
 
 	/**
 	 * 构造搜索结果 dialog entry。render 在 dialog layer 作用域内执行:
@@ -129,6 +101,7 @@ export default function IndexPage() {
 			return {
 				title: (data as { name?: unknown }).name?.toString() ?? "",
 				titleIcon: () => <Icons.Spirits iconName={type} />,
+				layout: "fill",
 				render() {
 					return <div>primary key is undefined</div>;
 				},
@@ -139,8 +112,8 @@ export default function IndexPage() {
 		return {
 			title: (data as { name?: unknown }).name?.toString() ?? "",
 			titleIcon: () => <Icons.Spirits iconName={type} />,
-			render: () =>
-				config ? <SearchResultCard id={id} config={config} /> : <div>此表暂无 UI 配置</div>,
+			layout: "fill",
+			render: () => (config ? <SearchResultCard id={id} config={config} /> : <div>此表暂无 UI 配置</div>),
 		};
 	};
 
@@ -828,14 +801,6 @@ export default function IndexPage() {
 						</Motion.div>
 					</Show>
 				</Presence>
-				{/* 数据同步延迟（左下角） */}
-				<Show when={syncLatencyMs() !== undefined}>
-					<div
-						class={`SyncLatency text-boundary-color pointer-events-none absolute bottom-2 left-3 z-10 text-xs ${context().searchResultOpened ? "opacity-0" : "opacity-100"}`}
-					>
-						数据同步延迟：{syncLatencyMs()}ms
-					</div>
-				</Show>
 			</Motion.div>
 			<Filing />
 		</MetaProvider>

@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-06-02
 - **决策层**: 跨层（编排层 / 通信 / 计算层）
-- **相关代码**: `src/lib/engine/core/World/observable.ts`、`src/lib/engine/core/World/SpaceManager.ts`、`src/lib/engine/core/World/Area/DamageAreaSystem.ts`、`src/lib/engine/core/World/Member/Member.ts`
+- **相关代码**: `src/engine/core/World/observable.ts`、`src/engine/core/World/SpaceManager.ts`、`src/engine/core/World/Area/DamageAreaSystem.ts`、`src/engine/core/World/Member/Member.ts`
 - **相关 ADR**: Related to 0005
 
 ## 背景
@@ -54,6 +54,6 @@ AoI 不作为当前模型的一部分。实体规模增长时可在查询内部�
 
 ## 参考
 
-- `src/lib/engine/document/world-medium-analysis.tmp.md`
+- `src/engine/document/world-medium-analysis.tmp.md`
 - ADR 0005：命中后效果通过攻击 Payload 传递
-- `src/lib/engine/document/WorldAreaSystem.md`
+- `src/engine/document/WorldAreaSystem.md`

@@ -1,0 +1,8 @@
+{
+	"id": "20260806_093301_v6_to_v7",
+	"fromVersion": 6,
+	"toVersion": 7,
+	"sqlChecksum": "e1bbc4e7",
+	"prismaDiffChecksum": "96480742",
+	"generatedAt": "2026-08-06T09:33:04.445Z"
+}

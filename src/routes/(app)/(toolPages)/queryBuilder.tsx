@@ -3,11 +3,10 @@ import * as QueryBuilderRules from "@db/generated/queryBuilderRules";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
 import { type Fields, QueryBuilder, type RuleGroupType } from "@query-builder/solid-query-builder";
-import { createMemo, createSignal, Show } from "solid-js";
-import { Button } from "~/components/controls/button";
-import { Select } from "~/components/controls/select";
+import { createSignal, Show } from "solid-js";
+import { Button } from "~/components/ui/controls/button";
+import { Select } from "~/components/ui/controls/select";
 import { useDictionary } from "~/contexts/Dictionary";
-import { store } from "~/store";
 
 export default function Repl() {
 	// UI文本字典

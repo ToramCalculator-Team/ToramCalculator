@@ -49,6 +49,15 @@
 - **3D**：Babylon.js 8.53（core、loaders、materials；inspector 仅开发时使用）。
 - **3D vendor chunk**：`babylon-runtime`、`babylon-debug`（后者包含 inspector 所需的 React/FluentUI）。
 
+## 源码分层
+
+`src/` 下按"是否携带应用语义"划分目录归属，判据：代码原样搬到另一个项目能否不改直接工作。
+
+- `src/lib/`：**通用机制**，零应用语义（`logger`、`random`、`workerPool`、`mistreevous`、`utils`）。新代码放进 lib 前必须能通过上述判据。
+- `src/platform/`：**应用平台机制**，携带应用语义但不属于单一功能：`bootstrap/`（启动编排）、`version/`（发布与 schema 版本契约）、`pglite/`（本地数据库访问与读同步）、`writeSync/`（变更写回服务端）、`render/`（`babylon` vendor 门面、`scene` 3D 场景运行时）。平台机制平级排列，不用宽泛分类目录归并。
+- `src/engine/`：**领域核心**，游戏引擎，遵守 `src/engine/AGENTS.md`。
+- `scripts/build/`：Node 构建脚本（`runBuild.mjs`、`serviceWorker.mjs`、`appendAssetSizes.mjs`），不进入应用产物，不要放回 `src/`。
+
 ## 数据库与代码生成
 
 **生成代码**位于 `db/generated/`，该目录被 git 忽略。需要重新生成时运行 `pnpm generate`。
@@ -67,7 +76,7 @@
 **数据库访问**：使用 Kysely（`kysely`），类型来自 `@db/generated/zod/index`。
 
 - 服务端：PostgreSQL，通过 `pg` pool 访问。
-- 客户端：PGlite Web Worker（`src/lib/pglite/`），通过 ElectricSQL 同步。
+- 客户端：PGlite Web Worker（`src/platform/pglite/`），通过 ElectricSQL 同步。
 
 **变更 API**：`POST /api/changes`，这是 JWT 认证的写入端点；接受客户端同步产生的 insert、update 和 delete 变更。
 
@@ -81,7 +90,7 @@
 
 `pnpm build` 执行两步：
 
-1. Service Worker 构建：`node src/worker/sw/build.mjs`（使用 esbuild，输出 `public/service.worker.js`）。
+1. Service Worker 构建：`node scripts/build/serviceWorker.mjs`（使用 esbuild，输出 `public/service.worker.js`）。
 2. Vite 构建：`NODE_OPTIONS=--max-old-space-size=4096 vite build`。
 
 SW 版本号从 `src/store.ts` 的 `version` 字段提取。
@@ -110,4 +119,4 @@ SW 版本号从 `src/store.ts` 的 `version` 字段提取。
 项目级 ADR 位于 `docs/decisions/`，覆盖应用层、引擎、数据层和跨层契约。
 评估、创建、修订、取代、整理或审计 ADR 时，必须先读取并遵守 `.agents/skills/architecture-decision-governance/SKILL.md`。
 `docs/plans/` 只保存尚未完成的实施计划；计划执行完成后直接删除，不提交到 Git 历史。长期有效的领域事实、架构决策和代码契约分别迁移到概念文档、ADR 和代码。
-修改 `src/lib/engine/` 时同时遵守 `src/lib/engine/AGENTS.md`。引擎历史文档通过 `src/lib/engine/document/` 保留。
+修改 `src/engine/` 时同时遵守 `src/engine/AGENTS.md`。引擎历史文档通过 `src/engine/document/` 保留。

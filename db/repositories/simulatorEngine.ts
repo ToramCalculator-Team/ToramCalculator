@@ -19,7 +19,7 @@ import { getDB } from "./database";
  *        avatars[]、consumables[]、combos[] → content[]（保守保留）
  *     member.mob（浅取标量）；partner/mercenary 未实现，不取
  *   注：character/装备/crystal 的 cooking/modifiers 是 String[] 标量列，selectAll 已包含。
- *   与 src/lib/engine/core/engineScenarioSchema.ts 的 EngineSimulatorSchema 形状对齐。
+ *   与 src/engine/core/engineScenarioSchema.ts 的 EngineSimulatorSchema 形状对齐。
  */
 
 // crystals: M2M。每种装备的 join 表不同，crystal 在 A 列、装备在 B 列。

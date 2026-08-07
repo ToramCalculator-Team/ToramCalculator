@@ -1,14 +1,14 @@
 import hotkeys from "hotkeys-js";
 import { createEffect, on, onMount, type ParentProps } from "solid-js";
 import { Motion } from "solid-motionone";
-import { RandomBallBackground } from "~/components/effects/randomBg";
-import { LoginDialog } from "~/components/features/loginDialog";
-import { Setting } from "~/components/features/setting";
+import { LoginDialog } from "~/components/app/loginDialog";
+import { Setting } from "~/components/app/setting";
+import { RandomBallBackground } from "~/components/ui/effects/randomBg";
 import { MediaProvider } from "~/contexts/Media-component";
-import { SceneCanvas, SceneRuntimeProvider } from "~/lib/3dScene/SceneRuntime";
-import { BootstrapProvider } from "~/lib/bootstrap/BootstrapContext";
-import { OverlayRoot } from "~/lib/overlay/OverlayRoot";
-import { requestCloseTopLayer } from "~/lib/overlay/overlayStore";
+import { OverlayRoot } from "~/contexts/overlay/OverlayRoot";
+import { requestCloseTopLayer } from "~/contexts/overlay/overlayStore";
+import { SceneCanvas, SceneRuntimeProvider } from "~/platform/render/scene/SceneRuntime";
+import { BootstrapProvider } from "~/platform/bootstrap/BootstrapContext";
 import { AppActorProvider } from "~/machines/AppActorContext";
 import { SceneInterfaceBridge } from "~/machines/projections/SceneInterfaceBridge";
 import { setStore, store } from "~/store";
@@ -30,7 +30,7 @@ export default function AppMainContet(props: ParentProps) {
 		warmCacheScheduled = true;
 		const startWarmCache = async () => {
 			try {
-				const { waitFor } = await import("~/lib/bootstrap/context-standalone");
+				const { waitFor } = await import("~/platform/bootstrap/context-standalone");
 				// 设计目的：离线缓存会批量下载工具页、Worker、wasm 和图片；等待首轮数据同步后再启动，保证数据搜索先获得网络资源。
 				await waitFor("electricInitialSync");
 			} catch (error) {

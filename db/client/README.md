@@ -10,7 +10,7 @@
 
 设计说明：PGlite Worker 只能消费版本化 SQL，避免日常 `pnpm generate` 改写历史基线，导致已打开过网站的客户端缺少可追溯升级路径。
 
-正式发布前可以硬重订客户端数据库基线；该动作需要同步更新 `src/lib/version/schema.ts`、`baseline/` 和 `migrations/index.ts`。
+正式发布前可以硬重订客户端数据库基线；该动作需要同步更新 `src/platform/version/schema.ts`、`baseline/` 和 `migrations/index.ts`。
 
 日常 schema 变更采用增量迁移：
 

@@ -3,9 +3,9 @@ import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
 import type { Kysely } from "kysely";
 import { type ActorRefFrom, assign, fromCallback, raise, type SnapshotFrom, setup } from "xstate";
-import type { EngineService } from "~/lib/engine/core/thread/EngineService";
-import type { RealtimeEngineHandle } from "~/lib/engine/core/thread/RealtimeEngineHandle";
-import type { MemberSnapshot } from "~/lib/engine/core/World/Member/Member";
+import type { EngineService } from "~/engine/core/thread/EngineService";
+import type { RealtimeEngineHandle } from "~/engine/core/thread/RealtimeEngineHandle";
+import type { MemberSnapshot } from "~/engine/core/World/Member/Member";
 import {
 	type CharacterLiveModel,
 	type CharacterLiveSnapshot,

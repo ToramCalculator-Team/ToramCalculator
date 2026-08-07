@@ -16,19 +16,19 @@ import {
 	useContext,
 } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { Button } from "~/components/controls/button";
-import { LoadingBar } from "~/components/controls/loadingBar";
-import { ObjRenderer } from "~/components/dataDisplay/ObjRenderer";
-import { VirtualTable } from "~/components/dataDisplay/virtualTable";
-import { Form } from "~/components/form/Form";
-import { Icons } from "~/components/icons/index";
+import { Button } from "~/components/ui/controls/button";
+import { LoadingBar } from "~/components/ui/controls/loadingBar";
+import { ObjRenderer } from "~/components/ui/dataDisplay/ObjRenderer";
+import { VirtualTable } from "~/components/ui/dataDisplay/virtualTable";
+import { Form } from "~/components/ui/form/Form";
+import { Icons } from "~/components/ui/icons/index";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
+import { useOverlay } from "~/contexts/overlay/OverlayContext";
 import { buildFKCardRenderers, buildFKFormRenderers, ReferencedBySection } from "~/features/wiki/fkRenderers";
 import { setWikiStore, wikiStore } from "~/features/wiki/store";
 import { createOpenRelatedCard, createTableConfig, type TableConfig } from "~/features/wiki/wikiCardNav";
 import { wikiPageConfig } from "~/features/wiki/wikiPage/wikiPageConfig";
-import { useOverlay } from "~/lib/overlay/OverlayContext";
 import { store } from "~/store";
 
 export default function WikiSubPage() {

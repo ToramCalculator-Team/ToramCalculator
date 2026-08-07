@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-07-12
 - **决策层**: 跨层（数据 / 场景解析 / 引擎）
-- **相关代码**: `db/schema/models/data.prisma`、`db/schema/jsons.ts`、`src/lib/engine/core/engineScenarioSchema.ts`、`src/lib/engine/core/World/Member/`
+- **相关代码**: `db/schema/models/data.prisma`、`db/schema/jsons.ts`、`src/engine/core/engineScenarioSchema.ts`、`src/engine/core/World/Member/`
 - **相关 ADR**: Depends on 0031；Refines 0027
 
 ## 背景

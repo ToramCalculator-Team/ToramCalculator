@@ -567,7 +567,7 @@ const ailmentNameMap = {
 };
 
 const loadEffectiveAtkFormulas = () => {
-	const sourcePath = path.join(repoRoot, "src/lib/engine/core/World/Member/runtime/Agent/DamageFormulas.ts");
+	const sourcePath = path.join(repoRoot, "src/engine/core/World/Member/runtime/Agent/DamageFormulas.ts");
 	const source = fs.readFileSync(sourcePath, "utf8");
 	const readConst = (name) => {
 		const match = source.match(new RegExp(`export const ${name} = "([^"]+)"`));

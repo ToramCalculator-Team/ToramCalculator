@@ -1,5 +1,6 @@
 import { createEffect, createMemo, createSignal, type JSX, onCleanup, onMount } from "solid-js";
-import { LoadingBar } from "~/components/controls/loadingBar";
+import { LoadingBar } from "~/components/ui/controls/loadingBar";
+import type { AbstractEngine } from "~/platform/render/babylon/runtime";
 import {
 	AppendSceneAsync,
 	Color3,
@@ -14,8 +15,7 @@ import {
 	SpotLight,
 	UniversalCamera,
 	Vector3,
-} from "~/lib/babylon/runtime";
-import type { AbstractEngine } from "~/lib/babylon/runtime";
+} from "~/platform/render/babylon/runtime";
 import { store } from "~/store";
 import { resolveColorSystem } from "~/styles/colorSystem/colorSystemController";
 

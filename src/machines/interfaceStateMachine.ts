@@ -9,7 +9,7 @@
  */
 
 import { type ActorRefFrom, type AnyActorLogic, assign, type SnapshotFrom, sendTo, setup } from "xstate";
-import type { SimulatorSessionParentEvent } from "~/features/simulator/simulatorSessionProtocol";
+import type { SimulatorSessionParentEvent } from "~/features/simulator/session/simulatorSessionProtocol";
 import type { CharacterEquipmentSlot } from "~/machines/interface/characterEquipment";
 
 export type { CharacterEquipmentSlot } from "~/machines/interface/characterEquipment";

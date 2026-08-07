@@ -6,12 +6,15 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createMemo, createSignal, For, Index, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import { Motion } from "solid-motionone";
-import { SKILL_DATA_CONFIG } from "~/components/business/dataConfig/skill";
-import { Frame } from "~/components/containers/frame";
-import { Button } from "~/components/controls/button";
-import { LoadingBar } from "~/components/controls/loadingBar";
-import { ObjRenderer } from "~/components/dataDisplay/ObjRenderer";
-import { SKILL_TREE_MAP } from "~/components/features/character/SkillTreePickerSheet";
+import { Frame } from "~/components/ui/containers/frame";
+import { Button } from "~/components/ui/controls/button";
+import { LoadingBar } from "~/components/ui/controls/loadingBar";
+import { ObjRenderer } from "~/components/ui/dataDisplay/ObjRenderer";
+import { Icons } from "~/components/ui/icons";
+import { useDictionary } from "~/contexts/Dictionary";
+import { useOverlay } from "~/contexts/overlay/OverlayContext";
+import { SKILL_DATA_CONFIG } from "~/dataConfig/configs/skill";
+import { SKILL_TREE_MAP } from "~/features/character/ui/SkillTreePickerSheet";
 import {
 	buildSkillLinkCells,
 	getCssGridRow,
@@ -22,13 +25,10 @@ import {
 	SKILL_GRID_CELL_WIDTH,
 	SkillLinkCellBlock,
 	type SkillTreeGridBounds,
-} from "~/components/features/character/skillTreeGrid";
-import { Icons } from "~/components/icons";
-import { useDictionary } from "~/contexts/Dictionary";
+} from "~/features/character/ui/skillTreeGrid";
 import { buildFKCardRenderers, ReferencedBySection } from "~/features/wiki/fkRenderers";
 import { createOpenRelatedCard } from "~/features/wiki/wikiCardNav";
-import { useOverlay } from "~/lib/overlay/OverlayContext";
-import { createLiveKyselyQuery } from "~/lib/pglite/liveQuery";
+import { createLiveKyselyQuery } from "~/platform/pglite/liveQuery";
 import { store } from "~/store";
 
 const getTablePrimaryKey = <TTableName extends keyof DB>(tableName: TTableName): keyof DB[TTableName] =>

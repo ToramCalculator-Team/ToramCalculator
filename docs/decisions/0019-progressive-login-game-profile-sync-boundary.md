@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-07-10
 - **决策层**: 数据层 / 通信 / 应用层
-- **相关代码**: `db/schema/models/user.prisma`、`src/session/temporaryAccount.ts`、`src/components/features/loginDialog.tsx`、`src/lib/writeSync/ChangeLogSynchronizer.ts`
+- **相关代码**: `db/schema/models/user.prisma`、`src/session/temporaryAccount.ts`、`src/components/features/loginDialog.tsx`、`src/platform/writeSync/ChangeLogSynchronizer.ts`
 - **相关 ADR**: Depends on 0018；Related to 0017
 
 ## 背景
@@ -47,8 +47,7 @@ user
 6. 选择保留云端时删除本地匿名主体及其待上传私有数据；选择保留本地时替换云端私有主体，并转移公共资源的贡献归属。
 7. profile 替换属于受控服务端事务，不通过通用 `/api/changes` 编排。
 8. `changes` 是本地变更池，不是全局可发送队列；同步器只发送能解析到 `Synced` profile 的变更，并按批次 ID 精确提交或回滚。
-9. `sync_heartbeat` 作为系统探针由明确白名单放行。
-10. 公共资源直接记录创建和更新它们的 `game_profile`，不再通过中间聚合表表达贡献归属。
+9. 公共资源直接记录创建和更新它们的 `game_profile`，不再通过中间聚合表表达贡献归属。
 
 ## 代价
 

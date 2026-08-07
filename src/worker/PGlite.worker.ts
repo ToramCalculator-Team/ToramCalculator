@@ -7,8 +7,8 @@ import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import { live } from "@electric-sql/pglite/live";
 import { worker } from "@electric-sql/pglite/worker";
 import { electricSync } from "@electric-sql/pglite-sync";
-import { DB_SCHEMA_VERSION, MIN_COMPATIBLE_DB_SCHEMA_VERSION } from "~/lib/version/schema";
-import { createChangeLogSynchronizer } from "~/lib/writeSync/ChangeLogSynchronizer";
+import { DB_SCHEMA_VERSION, MIN_COMPATIBLE_DB_SCHEMA_VERSION } from "~/platform/version/schema";
+import { createChangeLogSynchronizer } from "~/platform/writeSync/ChangeLogSynchronizer";
 
 const ELECTRIC_HOST =
 	import.meta.env.VITE_SERVER_HOST === "localhost"
@@ -126,7 +126,6 @@ const ELECTRIC_SYNC_TABLE_CONFIGS = {
 		urlParams: `"_simulatorAnalysisTargets"`,
 	},
 	simulator: { tableName: "simulator", primaryKey: ["id"] },
-	sync_heartbeat: { tableName: "sync_heartbeat", primaryKey: ["id"] },
 } satisfies Record<string, ElectricSyncTableConfig>;
 
 // 同步优先级：账号表服务本地会话初始化；实时模拟表组服务 simulator 首屏。
@@ -178,17 +177,9 @@ const EARLY_ELECTRIC_SYNC_TABLE_NAME_SET = new Set<keyof DB>(
 );
 
 // 后台同步表组：不参与 PGlite 可查询门槛，完成后仍会逐表通知主线程，供 wiki/缓存预热等模块使用。
-// 排除 sync_heartbeat：它是高频延迟探针，单独同步（见 HEARTBEAT_SYNC_TABLE），不能混进任何批量组——
-// syncShapesToTables 用“组内最小 lsn”做提交门控，组内任一静默表不推进 lsn 就会压住心跳的实时回传。
 const BACKGROUND_ELECTRIC_SYNC_TABLES = Object.values(ELECTRIC_SYNC_TABLE_CONFIGS).filter(
-	(config) =>
-		!EARLY_ELECTRIC_SYNC_TABLE_NAME_SET.has(config.tableName) &&
-		config.tableName !== ELECTRIC_SYNC_TABLE_CONFIGS.sync_heartbeat.tableName,
+	(config) => !EARLY_ELECTRIC_SYNC_TABLE_NAME_SET.has(config.tableName),
 );
-
-// 心跳探针单独同步：单表组的水位线只由它自己决定，每 3s 的新 lsn 立即 flush 到 _synced，
-// 不被任何其他表的同步进度拖累。
-const HEARTBEAT_SYNC_TABLE = ELECTRIC_SYNC_TABLE_CONFIGS.sync_heartbeat;
 
 /**
  * 设计目标：把 worker 内部的表级同步进度转换成主线程可观察的 store 更新。
@@ -473,13 +464,6 @@ const syncTableGroup = async (pg: WorkerPGlite, groupName: string, configs: Elec
 const runElectricSyncPlan = async (pg: WorkerPGlite) => {
 	let earlySyncSucceeded = false;
 	let backgroundSyncSucceeded = false;
-
-	// 心跳探针独立成组并提前并行启动：单表组水位线只由自己决定，保证每 3s 的新值能持续 flush 到
-	// _synced，让首页 live 订阅持续刷新延迟读数。不 await，避免被早期/后台组的 initial sync 拖慢启动。
-	// 失败只影响延迟显示，不阻断其余同步。
-	void syncTableGroup(pg, "心跳", [HEARTBEAT_SYNC_TABLE]).catch((error) => {
-		console.warn("PGlite 心跳表同步中断:", error);
-	});
 
 	try {
 		await syncTableGroup(pg, "早期", EARLY_ELECTRIC_SYNC_TABLES);

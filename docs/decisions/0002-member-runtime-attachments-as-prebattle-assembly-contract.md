@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-05-14
 - **决策层**: 跨层
-- **相关代码**: `src/lib/engine/core/World/Member/attachments/RuntimeAttachment.ts`、`src/lib/engine/core/World/Member/attachments/RuntimeAttachmentInstaller.ts`、`src/lib/engine/core/World/Member/construction/collectPlayerRuntimeAttachments.ts`
+- **相关代码**: `src/engine/core/World/Member/attachments/RuntimeAttachment.ts`、`src/engine/core/World/Member/attachments/RuntimeAttachmentInstaller.ts`、`src/engine/core/World/Member/construction/collectPlayerRuntimeAttachments.ts`
 - **相关 ADR**: Depends on 0001
 
 ## 背景
@@ -54,4 +54,4 @@
 ## 参考
 
 - ADR 0001：AttributeContainer 作为持久化槽的统一载体
-- `src/lib/engine/document/hook与触发层设计讨论结论.md` §2.2–2.3
+- `src/engine/document/hook与触发层设计讨论结论.md` §2.2–2.3

@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-07-12
 - **决策层**: 跨层（数据 / 应用状态 / 引擎 / 同步）
-- **相关代码**: `db/schema/models/data.prisma`、`src/routes/(app)/(features)/simulator/`、`src/lib/engine/core/`
+- **相关代码**: `db/schema/models/data.prisma`、`src/routes/(app)/(features)/simulator/`、`src/engine/core/`
 - **相关 ADR**: Refines 0024；Related to 0036
 
 ## 背景

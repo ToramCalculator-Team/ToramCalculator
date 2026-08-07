@@ -1,33 +1,33 @@
-import { type DB, DBSchema } from "@db/generated/zod";
-import { repositoryReaders, type RepositoryReader } from "@db/generated/repositories";
 import { getPrimaryKeys } from "@db/generated/dmmf-utils";
+import { type RepositoryReader, repositoryReaders } from "@db/generated/repositories";
+import { type DB, DBSchema } from "@db/generated/zod";
 import type { SkillTreeType } from "@db/schema/enums";
 import { useNavigate, useParams } from "@solidjs/router";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { createEffect, createMemo, createSignal, onCleanup, onMount, Show, useContext } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { DATA_CONFIG, type TableDataConfig } from "~/components/business/data-config";
-import type { ZodSchemaFor } from "~/lib/utils/zod";
-import type { Dic } from "~/locales/type";
-import { Button } from "~/components/controls/button";
-import { LoadingBar } from "~/components/controls/loadingBar";
-import { Select } from "~/components/controls/select";
-import { ObjRenderer } from "~/components/dataDisplay/ObjRenderer";
-import { CharacterConfigPanel } from "~/components/features/character/CharacterConfigPanel";
-import { SkillPreviewPanel } from "~/components/features/character/SkillPreviewPanel";
-import { Icons } from "~/components/icons";
+import { Button } from "~/components/ui/controls/button";
+import { LoadingBar } from "~/components/ui/controls/loadingBar";
+import { Select } from "~/components/ui/controls/select";
+import { ObjRenderer } from "~/components/ui/dataDisplay/ObjRenderer";
+import { Icons } from "~/components/ui/icons";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
+import { type DialogLayerEntryInit, useOverlay } from "~/contexts/overlay/OverlayContext";
+import { DATA_CONFIG, type TableDataConfig } from "~/dataConfig/data-config";
 import type { CharacterEdit } from "~/features/character/edit/characterEditProtocol";
 import { useCharacterSession } from "~/features/character/session/CharacterSession";
-import { createDefaultCharacterWorldResource } from "~/lib/3dScene/resources/defaultCharacterResource";
-import { type CharacterContentSession, useSceneRuntime } from "~/lib/3dScene/SceneRuntime";
-import { StatsRenderer } from "~/lib/engine/core/World/Member/MemberStatusPanel";
-import { createLogger } from "~/lib/Logger";
-import { type DialogLayerEntryInit, useOverlay } from "~/lib/overlay/OverlayContext";
+import { CharacterConfigPanel } from "~/features/character/ui/CharacterConfigPanel";
+import { SkillPreviewPanel } from "~/features/character/ui/SkillPreviewPanel";
+import { createDefaultCharacterWorldResource } from "~/platform/render/scene/resources/defaultCharacterResource";
+import { type CharacterContentSession, useSceneRuntime } from "~/platform/render/scene/SceneRuntime";
+import { StatsRenderer } from "~/engine/core/World/Member/MemberStatusPanel";
+import { createLogger } from "~/lib/logger";
+import type { ZodSchemaFor } from "~/lib/utils/zod";
+import type { Dic } from "~/locales/type";
 import { useInterfaceActor } from "~/machines/AppActorContext";
 import { store } from "~/store";
-import { createCharacter } from "./createCharacter";
+import { createCharacter } from "../../../../features/character/createCharacter";
 
 const logger = createLogger("CharacterPage");
 
@@ -173,7 +173,7 @@ export default function CharactePage() {
 		const cardData = data as Record<string, unknown>;
 		const config = buildPreviewConfig(type, dictionary());
 		const getTablePrimaryKey = <TTableName extends keyof DB>(tableName: TTableName): keyof DB[TTableName] =>
-		(getPrimaryKeys(tableName)[0] ?? "id") as keyof DB[TTableName];
+			(getPrimaryKeys(tableName)[0] ?? "id") as keyof DB[TTableName];
 		const primaryKey = getTablePrimaryKey(type);
 		const id = String(cardData[primaryKey]);
 

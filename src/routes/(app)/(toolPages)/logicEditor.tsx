@@ -1,6 +1,6 @@
 import { createSignal, onMount, Show } from "solid-js";
-import defaultData from "~/components/features/logicEditor/defaultData.json";
-import { LogicEditor } from "~/components/features/logicEditor/LogicEditor";
+import defaultData from "~/components/tools/logicEditor/defaultData.json";
+import { LogicEditor } from "~/components/tools/logicEditor/LogicEditor";
 
 export default function LogicEditorTestPage() {
 	// 是否显示调试布局

@@ -8,10 +8,10 @@ import {
 } from "@db/generated/repositories";
 import { type DB, DBSchema } from "@db/generated/zod/index";
 import type { Accessor } from "solid-js";
-import { DATA_CONFIG, type TableDataConfig } from "~/components/business/data-config";
-import { ObjRenderer } from "~/components/dataDisplay/ObjRenderer";
-import { Icons } from "~/components/icons/index";
-import { useOverlay } from "~/lib/overlay/OverlayContext";
+import { ObjRenderer } from "~/components/ui/dataDisplay/ObjRenderer";
+import { Icons } from "~/components/ui/icons/index";
+import { useOverlay } from "~/contexts/overlay/OverlayContext";
+import { DATA_CONFIG, type TableDataConfig } from "~/dataConfig/data-config";
 import type { ZodSchemaFor } from "~/lib/utils/zod";
 import type { Dic, Dictionary } from "~/locales/type";
 import { buildFKCardRenderers, ReferencedBySection } from "./fkRenderers";
@@ -53,8 +53,7 @@ export function createTableConfig<TTableName extends keyof DB>(
  *   mode="push"  — 压入当前 dialog 层（面包屑导航，默认）
  */
 export function createOpenRelatedCard(dictionary: Accessor<Dictionary>) {
-	const getTablePrimaryKey = <T extends keyof DB>(t: T): keyof DB[T] =>
-		(getPrimaryKeys(t)[0] ?? "id") as keyof DB[T];
+	const getTablePrimaryKey = <T extends keyof DB>(t: T): keyof DB[T] => (getPrimaryKeys(t)[0] ?? "id") as keyof DB[T];
 
 	function openRelatedCard(
 		relatedTable: keyof DB,
@@ -92,11 +91,8 @@ export function createOpenRelatedCard(dictionary: Accessor<Dictionary>) {
 			render: () => {
 				const dialogOverlay = useOverlay();
 
-				const fkCardRenderers = buildFKCardRenderers(
-					relatedTable,
-					hiddenFields,
-					dictionary(),
-					(nextTable, nextId) => openRelatedCard(nextTable, nextId, dialogOverlay),
+				const fkCardRenderers = buildFKCardRenderers(relatedTable, hiddenFields, dictionary(), (nextTable, nextId) =>
+					openRelatedCard(nextTable, nextId, dialogOverlay),
 				);
 
 				return (

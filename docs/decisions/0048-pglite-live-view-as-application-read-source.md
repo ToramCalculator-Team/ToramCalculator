@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-07-23
 - **决策层**: 数据层 / 应用层
-- **相关代码**: `db/generator/helpers/generateRepository.ts`、`src/lib/pglite/liveQuery.ts`
+- **相关代码**: `db/generator/helpers/generateRepository.ts`、`src/platform/pglite/liveQuery.ts`
 - **相关 ADR**: Supersedes 0041; Depends on 0018
 
 ## 决策问题

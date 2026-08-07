@@ -8,7 +8,7 @@
  * 修复前本文件断言的是缺陷(delete 被拒、字符串序);现在断言修复后的正确行为。
  */
 import { describe, expect, it } from "vitest";
-import { ChangeOperationSchema, ChangesRequestSchema } from "~/lib/writeSync/changesContract";
+import { ChangeOperationSchema, ChangesRequestSchema } from "~/platform/writeSync/changesContract";
 import { statusForChangeError } from "./changes";
 
 /**

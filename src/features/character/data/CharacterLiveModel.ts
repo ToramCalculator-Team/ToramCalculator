@@ -1,13 +1,13 @@
 import type { DB } from "@db/generated/zod/index";
 import { getDB } from "@db/repositories/database";
-import { waitFor } from "~/lib/bootstrap/context-standalone";
-import { waitForElectricTables } from "~/lib/bootstrap/electricReadiness";
+import { waitFor } from "~/platform/bootstrap/context-standalone";
+import { waitForElectricTables } from "~/platform/bootstrap/electricReadiness";
 import {
 	createKyselyLiveQuerySource,
 	type LiveQuerySource,
 	type LiveQuerySubscription,
-} from "~/lib/pglite/kyselyLiveQuerySource";
-import type { LiveQueryStatus } from "~/lib/pglite/liveQuery";
+} from "~/platform/pglite/kyselyLiveQuerySource";
+import type { LiveQueryStatus } from "~/platform/pglite/liveQuery";
 import {
 	type CharacterAggregateIdentity,
 	type CharacterLiveAggregate,

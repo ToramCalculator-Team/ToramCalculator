@@ -2,7 +2,7 @@
  * 应用 actor 的 SolidJS provider + 消费 hooks。
  *
  * InterfaceStateMachine 是应用内唯一 AUI actor，同时保存跨模态交互语义与当前
- * Simulator 会话阶段。应用启动就绪由 bootstrap 编排器表达（见 src/lib/bootstrap）。
+ * Simulator 会话阶段。应用启动就绪由 bootstrap 编排器表达（见 src/platform/bootstrap）。
  * systemId 保留，供场景/其他 actor 通过 actor.system.get() 寻址。
  */
 
@@ -19,19 +19,19 @@ import {
 	useContext,
 } from "solid-js";
 import { type Actor, createActor } from "xstate";
-import { useBootstrap } from "~/lib/bootstrap/BootstrapContext";
-import { getBootstrapValue } from "~/lib/bootstrap/context-standalone";
 import {
 	type CharacterSessionActorRef,
 	type CharacterSessionRuntime,
 	createCharacterSessionRuntime,
 } from "~/features/character/session/characterSessionMachine";
-import type { EngineService } from "~/lib/engine/core/thread/EngineService";
 import {
 	createSimulatorSessionRuntime,
 	type SimulatorSessionActorRef,
 	type SimulatorSessionRuntime,
-} from "~/features/simulator/simulatorSessionMachine";
+} from "~/features/simulator/session/simulatorSessionMachine";
+import { useBootstrap } from "~/platform/bootstrap/BootstrapContext";
+import { getBootstrapValue } from "~/platform/bootstrap/context-standalone";
+import type { EngineService } from "~/engine/core/thread/EngineService";
 import {
 	createInterfaceStateMachine,
 	type InterfaceStateMachine,

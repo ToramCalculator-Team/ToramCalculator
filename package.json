@@ -18,7 +18,7 @@
 		"db:backup": "tsx db/scripts/backup.ts",
 		"db:restore": "tsx db/scripts/restore.ts",
 		"db:client:baseline:refresh": "tsx db/scripts/refreshClientBaseline.ts",
-		"build": "node src/lib/version/runBuild.mjs",
+		"build": "node scripts/build/runBuild.mjs",
 		"clean": "pnpm clean:build && pnpm clean:generated",
 		"clean:generated": "rm -rf db/generated",
 		"clean:build": "rm -rf dist .output .nitro bundle.tar.gz public/service.worker.js public/chunk-manifest.json",

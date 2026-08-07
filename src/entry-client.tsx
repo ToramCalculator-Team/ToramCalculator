@@ -3,10 +3,10 @@ import "~/styles/app.css";
 import "overlayscrollbars/overlayscrollbars.css";
 import { mount, StartClient } from "@solidjs/start/client";
 import { ClickScrollPlugin, OverlayScrollbars } from "overlayscrollbars";
-import { ResourcesLoader } from "./components/effects/resourcesLoder";
-import { startBootstrap } from "./lib/bootstrap/context-standalone";
-import { LogLevel, setGlobalLogLevel } from "./lib/Logger";
-import { runStartupGate } from "./lib/version/startupGate";
+import { ResourcesLoader } from "~/components/ui/effects/resourcesLoder";
+import { startBootstrap } from "./platform/bootstrap/context-standalone";
+import { LogLevel, setGlobalLogLevel } from "./lib/logger";
+import { runStartupGate } from "./platform/version/startupGate";
 import { setStore, store } from "./store";
 
 // =========================

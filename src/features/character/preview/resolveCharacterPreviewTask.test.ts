@@ -2,7 +2,7 @@ import { defaultData } from "@db/defaultData";
 import { CharacterWithRelationsSchema } from "@db/generated/repositories/character";
 import { CharacterSchema, PlayerSchema } from "@db/generated/zod/index";
 import { describe, expect, it } from "vitest";
-import { SimulationTaskSchema } from "~/lib/engine/core/simulationTask";
+import { SimulationTaskSchema } from "~/engine/core/simulationTask";
 import type { CharacterLiveAggregate } from "../data/characterAggregateQuery";
 import { CHARACTER_PREVIEW_CANDIDATE_INPUT_KEY } from "./compileCharacterPreviewBehavior";
 import {

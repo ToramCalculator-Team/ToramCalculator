@@ -3,7 +3,7 @@
 - **状态**: Superseded by 0025
 - **日期**: 2026-07-10
 - **决策层**: 跨层（数据 / 应用状态 / 引擎）
-- **相关代码**: `src/routes/(app)/(features)/simulator/`、`src/lib/engine/core/thread/`
+- **相关代码**: `src/routes/(app)/(features)/simulator/`、`src/engine/core/thread/`
 - **相关 ADR**: Depends on 0015、0021
 
 ## 背景

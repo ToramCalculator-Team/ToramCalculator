@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-06-05
 - **决策层**: 编排层 / 通信
-- **相关代码**: `src/lib/engine/core/World/Member/runtime/ProcBus/ProcBus.ts`、`src/lib/engine/core/World/Member/runtime/AttributeWatcher/AttributeThresholdSource.ts`、`src/lib/engine/core/Event/BuiltInEvents.ts`
+- **相关代码**: `src/engine/core/World/Member/runtime/ProcBus/ProcBus.ts`、`src/engine/core/World/Member/runtime/AttributeWatcher/AttributeThresholdSource.ts`、`src/engine/core/Event/BuiltInEvents.ts`
 
 ## 背景
 

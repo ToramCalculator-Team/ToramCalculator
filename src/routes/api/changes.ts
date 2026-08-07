@@ -7,7 +7,7 @@ import { getCookie } from "@solidjs/start/http";
 import type { APIEvent } from "@solidjs/start/server";
 import type { JWTPayload } from "jose";
 import { jwtVerify } from "jose";
-import { ChangesRequestSchema } from "~/lib/writeSync/changesContract";
+import { ChangesRequestSchema } from "~/platform/writeSync/changesContract";
 
 // ==================== API 处理函数 ====================
 

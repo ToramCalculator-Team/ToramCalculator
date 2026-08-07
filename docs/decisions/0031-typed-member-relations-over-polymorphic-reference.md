@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-07-12
 - **决策层**: 跨层（数据 / 查询 / 同步 / 场景解析）
-- **相关代码**: `db/schema/models/data.prisma`、`db/repositories/simulatorEngine.ts`、`src/lib/engine/core/engineScenarioSchema.ts`
+- **相关代码**: `db/schema/models/data.prisma`、`db/repositories/simulatorEngine.ts`、`src/engine/core/engineScenarioSchema.ts`
 - **相关 ADR**: Refines 0026
 
 ## 背景

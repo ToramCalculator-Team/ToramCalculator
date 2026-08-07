@@ -4,6 +4,7 @@ import migration_20260712_174440_v2_to_v3_Sql from "./20260712_174440_v2_to_v3/c
 import migration_20260713_022543_v3_to_v4_Sql from "./20260713_022543_v3_to_v4/client.sql?raw";
 import migration_20260722_064153_v4_to_v5_Sql from "./20260722_064153_v4_to_v5/client.sql?raw";
 import migration_20260724_093217_v5_to_v6_Sql from "./20260724_093217_v5_to_v6/client.sql?raw";
+import migration_20260806_093301_v6_to_v7_Sql from "./20260806_093301_v6_to_v7/client.sql?raw";
 
 export type ClientDbBaseline = {
 	id: string;
@@ -64,5 +65,12 @@ export const CLIENT_DB_MIGRATIONS: ClientDbMigration[] = [
 		toVersion: 6,
 		checksum: "9c2612d2",
 		sql: migration_20260724_093217_v5_to_v6_Sql,
+	},
+	{
+		id: "20260806_093301_v6_to_v7",
+		fromVersion: 6,
+		toVersion: 7,
+		checksum: "e1bbc4e7",
+		sql: migration_20260806_093301_v6_to_v7_Sql,
 	},
 ];

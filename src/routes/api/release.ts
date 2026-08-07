@@ -1,4 +1,4 @@
-import { getCurrentReleaseManifest } from "~/lib/version/release";
+import { getCurrentReleaseManifest } from "~/platform/version/release";
 
 export function GET() {
 	return new Response(JSON.stringify(getCurrentReleaseManifest()), {

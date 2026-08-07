@@ -2,7 +2,7 @@ import { defaultData } from "@db/defaultData";
 import { CharacterWithRelationsSchema } from "@db/generated/repositories/character";
 import { CharacterSchema, PlayerSchema } from "@db/generated/zod/index";
 import { describe, expect, it, vi } from "vitest";
-import type { LiveQuerySource, LiveQuerySubscription } from "~/lib/pglite/kyselyLiveQuerySource";
+import type { LiveQuerySource, LiveQuerySubscription } from "~/platform/pglite/kyselyLiveQuerySource";
 import { CharacterLiveModel } from "./CharacterLiveModel";
 import type { CharacterLiveAggregate } from "./characterAggregateQuery";
 

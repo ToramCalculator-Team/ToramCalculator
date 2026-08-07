@@ -28,7 +28,7 @@ const baselineMetaPath = path.join(baselineDir, "meta.json");
 const previousSchemaPath = path.join(clientDir, "previous-schema.prisma");
 const migrationsDir = path.join(clientDir, "migrations");
 const migrationsIndexPath = path.join(migrationsDir, "index.ts");
-const versionSchemaPath = path.join(rootDir, "src/lib/version/schema.ts");
+const versionSchemaPath = path.join(rootDir, "src/platform/version/schema.ts");
 const tempPrismaConfigPath = path.join(PATHS.generatedFolder, "client-migration.prisma.config.ts");
 const migrateDiffDatabaseUrlFallback = "postgresql://user:pass@localhost:5432/db?schema=public";
 
