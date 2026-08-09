@@ -41,7 +41,7 @@ const NavBtn = (props: {
 
 const Divider = () => (
 	<div class={"Divider hidden py-2 lg:flex lg:justify-center"}>
-		<div class="Line bg-brand-color-1st h-[2px] w-12"></div>
+		<div class="Line bg-brand-color-1st h-0.5 w-12"></div>
 	</div>
 );
 

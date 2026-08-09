@@ -2,7 +2,9 @@ import type { DB } from "@db/generated/zod/index";
 import { debounce } from "@solid-primitives/scheduled";
 import {
 	type Cell,
+	type Column,
 	type ColumnDef,
+	type ColumnVisibilityState,
 	columnFacetingFeature,
 	columnFilteringFeature,
 	columnPinningFeature,
@@ -19,27 +21,15 @@ import {
 	type OnChangeFn,
 	rowSortingFeature,
 	tableFeatures,
-	type Column,
-	type ColumnVisibilityState,
 } from "@tanstack/solid-table";
-import { createVirtualizer, type VirtualItem, type Virtualizer } from "@tanstack/solid-virtual";
+import { createVirtualizer, type Virtualizer } from "@tanstack/solid-virtual";
 import type { Compilable, Kysely } from "kysely";
 import type { OverlayScrollbarsComponentRef } from "overlayscrollbars-solid";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import {
-	type Accessor,
-	createEffect,
-	createMemo,
-	createSignal,
-	For,
-	type JSX,
-	onCleanup,
-	onMount,
-	Show,
-} from "solid-js";
+import { type Accessor, createEffect, createSignal, For, type JSX, onCleanup, onMount, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
-import { createLiveKyselyQuery } from "~/platform/pglite/liveQuery";
 import type { Dic, EnumFieldDetail } from "~/locales/type";
+import { createLiveKyselyQuery } from "~/platform/pglite/liveQuery";
 import { store } from "~/store";
 import { Button } from "../controls/button";
 
@@ -99,13 +89,6 @@ export function VirtualTable<T extends object>(props: VirtualTableProps<T>) {
 	const ROW_DRAG_THRESHOLD = 3;
 	const VIRTUAL_TABLE_DEBUG_QUERY_KEY = "debugVirtualTable";
 	const VIRTUAL_TABLE_DEBUG_STORAGE_KEY = "VirtualTableDebug";
-
-	const rowRenderCountById = new Map<string, number>();
-	const rowDomMountCountById = new Map<string, number>();
-	const rowMeasureCountById = new Map<string, number>();
-	const lastMeasuredHeightById = new Map<string, number>();
-	let virtualizerChangeCount = 0;
-	let lastVirtualRangeSignature = "";
 
 	// 诊断日志默认关闭，避免大表滚动和逐行测量时刷屏。
 	// 设计目的：把“列表行重新渲染”和“虚拟器重新测量”拆开观察，定位高度修正造成的二次布局。
@@ -203,15 +186,6 @@ export function VirtualTable<T extends object>(props: VirtualTableProps<T>) {
 
 	const [virtualScrollRef, setVirtualScrollRef] = createSignal<OverlayScrollbarsComponentRef | undefined>(undefined);
 	const [virtualer, setVirtualer] = createSignal<Virtualizer<HTMLElement, Element> | null>(null);
-	const [virtualItems, setVirtualItems] = createSignal<VirtualItem[]>([]);
-	const virtualItemKeys = createMemo(() => virtualItems().map((item) => String(item.key)));
-	const virtualItemByKey = createMemo(() => {
-		const itemMap = new Map<string, VirtualItem>();
-		for (const item of virtualItems()) {
-			itemMap.set(String(item.key), item);
-		}
-		return itemMap;
-	});
 
 	onMount(() => {
 		console.log("VirtualTable onMount");
@@ -232,78 +206,27 @@ export function VirtualTable<T extends object>(props: VirtualTableProps<T>) {
 			getScrollElement: () => virtualScrollRef()?.osInstance()?.elements().viewport ?? null,
 			estimateSize: estimateRowSize,
 			overscan: 5,
+			// 测量防御：卸载元素 / 0 高度返回估计值，避免把无效高度写入尺寸缓存。
+			// v3 的 RO 回调与 ref 同步测量都会走这里（默认实现还会优先返回缓存，缺少实测兜底）。
 			measureElement: (element) => {
-				const index = element.getAttribute("data-index");
-				const rowId = element.getAttribute("data-row-id") ?? index ?? "unknown";
-				const virtualKey = element.getAttribute("data-virtual-key");
-				// ResizeObserver 可能在元素卸载后仍然回调；此时测量值为 0，不能写入 virtualizer 的尺寸缓存。
-				if (!element.isConnected || !document.body.contains(element)) {
-					debugVirtualTable("skipDisconnectedMeasure", {
-						index,
-						rowId,
-						virtualKey,
-						datasetMeasured: element.getAttribute("data-measured"),
-					});
-					return estimateRowSize();
-				}
+				if (!element.isConnected || !document.body.contains(element)) return estimateRowSize();
 				const measuredHeight = element.getBoundingClientRect().height;
-				if (measuredHeight <= 0) {
-					const htmlElement = element instanceof HTMLElement ? element : undefined;
-					debugVirtualTable("skipZeroHeightMeasure", {
-						index,
-						rowId,
-						virtualKey,
-						offsetHeight: htmlElement?.offsetHeight,
-						clientHeight: htmlElement?.clientHeight,
-						scrollHeight: htmlElement?.scrollHeight,
-						childElementCount: htmlElement?.childElementCount,
-					});
-					return estimateRowSize();
-				}
-				const htmlElement = element instanceof HTMLElement ? element : undefined;
-				const previousHeight = lastMeasuredHeightById.get(rowId);
-				const measureCount = (rowMeasureCountById.get(rowId) ?? 0) + 1;
-				rowMeasureCountById.set(rowId, measureCount);
-				lastMeasuredHeightById.set(rowId, measuredHeight);
-				debugVirtualTable("measureElement", {
-					index,
-					rowId,
-					virtualKey,
-					measureCount,
-					measuredHeight,
-					previousHeight,
-					deltaFromPrevious: previousHeight === undefined ? undefined : measuredHeight - previousHeight,
-					deltaFromEstimate: measuredHeight - estimateRowSize(),
-					offsetHeight: htmlElement?.offsetHeight,
-					scrollHeight: htmlElement?.scrollHeight,
-					childElementCount: htmlElement?.childElementCount,
-				});
-				return measuredHeight;
+				return measuredHeight > 0 ? measuredHeight : estimateRowSize();
 			},
 			onChange: (instance, sync) => {
-				const nextVirtualItems = instance.getVirtualItems();
-				const rangeSignature = nextVirtualItems
-					.map((item) => `${item.index}:${Math.round(item.start)}:${Math.round(item.size)}`)
-					.join("|");
-				if (rangeSignature !== lastVirtualRangeSignature) {
-					virtualizerChangeCount += 1;
-					lastVirtualRangeSignature = rangeSignature;
-					debugVirtualTable("virtualizerChange", {
-						changeCount: virtualizerChangeCount,
-						sync,
-						totalSize: Math.round(instance.getTotalSize()),
-						rowCount: table.getRowModel().rows.length,
-						visibleCount: nextVirtualItems.length,
-						range: nextVirtualItems.map((item) => ({
-							index: item.index,
-							key: String(item.key),
-							start: Math.round(item.start),
-							size: Math.round(item.size),
-							end: Math.round(item.end),
-						})),
-					});
-				}
-				setVirtualItems(nextVirtualItems);
+				debugVirtualTable("virtualizerChange", {
+					sync,
+					totalSize: Math.round(instance.getTotalSize()),
+					rowCount: table.getRowModel().rows.length,
+					visibleCount: instance.getVirtualItems().length,
+					range: instance.getVirtualItems().map((item) => ({
+						index: item.index,
+						key: String(item.key),
+						start: Math.round(item.start),
+						size: Math.round(item.size),
+						end: Math.round(item.end),
+					})),
+				});
 			},
 			useAnimationFrameWithResizeObserver: true,
 		});
@@ -546,43 +469,20 @@ export function VirtualTable<T extends object>(props: VirtualTableProps<T>) {
 							{(validVirtualer) => {
 								return (
 									<div style={{ height: `${validVirtualer().getTotalSize()}px` }} class={`TableBody relative`}>
-										<For each={virtualItemKeys()}>
-											{(virtualKey, index) => {
+										{/* 直接消费 solid-virtual 内部响应式 store（getVirtualItems），
+										    数据/滚动变化由 createVirtualizer 的 createComputed 自动 reconcile，
+										    不再维护组件的第二套 virtualItems 状态。 */}
+										<For each={validVirtualer().getVirtualItems()}>
+											{(virtualRow, index) => {
 												try {
-													const currentVirtualRow = () => virtualItemByKey().get(virtualKey);
-													const currentRow = () => {
-														const virtualRow = currentVirtualRow();
-														if (!virtualRow) return;
-														return table.getRowModel().rows[virtualRow.index];
-													};
-													const currentRowId = () => currentRow()?.id ?? virtualKey;
-													const currentVirtualIndex = () => currentVirtualRow()?.index ?? -1;
-
-													createEffect(() => {
-														const virtualRow = currentVirtualRow();
-														const row = currentRow();
-														if (!virtualRow || !row) return;
-														const rowId = row.id;
-														const renderCount = (rowRenderCountById.get(rowId) ?? 0) + 1;
-														rowRenderCountById.set(rowId, renderCount);
-														debugVirtualTable("rowRender", {
-															rowId,
-															renderCount,
-															virtualIndex: virtualRow.index,
-															virtualKey,
-															virtualStart: Math.round(virtualRow.start),
-															virtualSize: Math.round(virtualRow.size),
-															virtualEnd: Math.round(virtualRow.end),
-															visiblePosition: index(),
-															cellCount: row.getVisibleCells().length,
-														});
-													});
+													const currentRow = () => table.getRowModel().rows[virtualRow.index];
+													const currentRowId = () => currentRow()?.id ?? String(virtualRow.key);
 													return (
 														<Motion.button
 															type="button"
-															data-index={currentVirtualIndex()}
+															data-index={virtualRow.index}
 															data-row-id={currentRowId()}
-															data-virtual-key={virtualKey}
+															data-virtual-key={virtualRow.key}
 															animate={{
 																opacity: [0, 1],
 																transform: ["translateY(30px)", "translateY(0)"],
@@ -595,65 +495,20 @@ export function VirtualTable<T extends object>(props: VirtualTableProps<T>) {
 																		: 0
 																	: 0,
 															}}
+															// 仅首次挂载时延迟一帧测量：行内容（图片等）渲染完成后才有准确高度，
+															// 避免把布局未完成的高度写入尺寸缓存；内容后续变化由 v3 的 RO 观察自动重测。
 															ref={(el) => {
-																const virtualRow = currentVirtualRow();
-																const row = currentRow();
-																if (!virtualRow || !row) return;
-																const rowId = row.id;
-																el.setAttribute("data-index", virtualRow.index.toString());
-																el.setAttribute("data-row-id", rowId);
-																el.setAttribute("data-virtual-key", virtualKey);
-																const mountCount = (rowDomMountCountById.get(rowId) ?? 0) + 1;
-																rowDomMountCountById.set(rowId, mountCount);
-																debugVirtualTable("rowRef", {
-																	rowId,
-																	mountCount,
-																	renderCount: rowRenderCountById.get(rowId),
-																	virtualIndex: virtualRow.index,
-																	virtualKey,
-																	virtualStart: Math.round(virtualRow.start),
-																	virtualSize: Math.round(virtualRow.size),
-																	dataMeasured: el.dataset.measured,
-																	isConnected: el.isConnected,
-																	offsetHeight: el.offsetHeight,
-																	scrollHeight: el.scrollHeight,
-																});
-																// 仅在该 DOM 首次挂载时测量一次，避免重复测量触发 RO loop 警告。
-																if (el.dataset.measured === "1") {
-																	debugVirtualTable("skipAlreadyMeasuredRef", {
-																		rowId,
-																		virtualIndex: virtualRow.index,
-																		virtualKey,
-																		mountCount,
-																	});
-																	return;
-																}
+																if (el.dataset.measured === "1") return;
 																el.dataset.measured = "1";
 																requestAnimationFrame(() => {
-																	// rAF 延迟期间，虚拟列表可能已经卸载该 DOM；跳过过期元素，避免 0 高度污染尺寸缓存。
-																	if (!el.isConnected || !document.body.contains(el)) {
-																		debugVirtualTable("skipDisconnectedRafMeasure", {
-																			rowId,
-																			virtualIndex: virtualRow.index,
-																			virtualKey,
-																			datasetIndex: el.getAttribute("data-index"),
-																		});
-																		return;
-																	}
-																	debugVirtualTable("rafMeasure", {
-																		rowId,
-																		virtualIndex: virtualRow.index,
-																		virtualKey,
-																		beforeHeight: el.getBoundingClientRect().height,
-																		offsetHeight: el.offsetHeight,
-																		scrollHeight: el.scrollHeight,
-																	});
+																	// rAF 延迟期间行可能已被虚拟列表卸载；跳过过期元素，避免 0 高度污染尺寸缓存。
+																	if (!el.isConnected || !document.body.contains(el)) return;
 																	validVirtualer().measureElement(el);
 																});
 															}}
 															style={{
 																position: "absolute",
-																top: `${currentVirtualRow()?.start ?? 0}px`,
+																top: `${virtualRow.start}px`,
 																"border-bottom": "1px solid transparent",
 																"border-image":
 																	"repeating-linear-gradient(to right, var(--color-dividing-color) 0 3px, transparent 3px 6px) 1",
@@ -706,7 +561,7 @@ export function VirtualTable<T extends object>(props: VirtualTableProps<T>) {
 														</Motion.button>
 													);
 												} catch (error) {
-													console.log("virtualKey", virtualKey, error);
+													console.log("virtualKey", virtualRow.key, error);
 												}
 											}}
 										</For>
@@ -722,7 +577,9 @@ export function VirtualTable<T extends object>(props: VirtualTableProps<T>) {
 }
 
 // 获取表头样式
-export const getCommonPinningStyles = <T extends object>(column: Column<VirtualTableFeatures, T>): JSX.CSSProperties => {
+export const getCommonPinningStyles = <T extends object>(
+	column: Column<VirtualTableFeatures, T>,
+): JSX.CSSProperties => {
 	const isPinned = column.getIsPinned();
 	const isLastStart = isPinned === "start" && column.getAfter("start") === 0;
 	const isFirstEnd = isPinned === "end" && column.getStart("end") === 0;

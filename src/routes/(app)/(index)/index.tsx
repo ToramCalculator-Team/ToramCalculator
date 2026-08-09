@@ -1,5 +1,5 @@
 import { type Character, selectAllCharactersByBelongtoplayeridQuery } from "@db/generated/repositories/character";
-import { type Simulator, selectAllSimulatorsQuery } from "@db/generated/repositories/simulator";
+import { type Simulator, selectAllSimulatorsByCreatedbyaccountidQuery } from "@db/generated/repositories/simulator";
 import { A, useLocation, useNavigate } from "@solidjs/router";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { Motion } from "solid-motionone";
@@ -19,9 +19,13 @@ export default function SimulatorPage() {
 	const location = useLocation();
 	const navigate = useNavigate();
 	const session = useSimulatorSession();
-	const simulators = createLiveKyselyQuery<Simulator>((db) =>
-		store.database.hasInitialSnapshot.simulator ? selectAllSimulatorsQuery(db) : null,
-	);
+	// 方案列表按当前账号过滤：simulator 以 createdByAccountId 归属创建者，只列出本账号持有的方案。
+	const simulators = createLiveKyselyQuery<Simulator>((db) => {
+		const accountId = store.session.account.id;
+		return accountId && store.database.hasInitialSnapshot.simulator
+			? selectAllSimulatorsByCreatedbyaccountidQuery(db, accountId)
+			: null;
+	});
 	const characters = createLiveKyselyQuery<Character>((db) => {
 		const playerId = store.session.account.player?.id;
 		return playerId ? selectAllCharactersByBelongtoplayeridQuery(db, playerId) : null;
