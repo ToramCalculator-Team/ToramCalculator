@@ -5,9 +5,6 @@
  * 也承担首帧渲染快照的全量应用。从 RendererController 拆出。
  */
 
-import type { Scene } from "~/platform/render/babylon/runtime";
-import { Color3, Mesh, MeshBuilder, StandardMaterial, TransformNode, Vector3 } from "~/platform/render/babylon/runtime";
-import { createLogger } from "~/lib/logger";
 import type {
 	ActionCmd,
 	CameraFollowCmd,
@@ -22,6 +19,9 @@ import type {
 	SpawnCmd,
 	TeleportCmd,
 } from "~/engine/core/thread/RendererProtocol";
+import { createLogger } from "~/lib/logger";
+import type { Scene } from "~/platform/render/babylon/runtime";
+import { Color3, Mesh, MeshBuilder, StandardMaterial, TransformNode, Vector3 } from "~/platform/render/babylon/runtime";
 import type { WorldResourcePose } from "../contracts/worldContent";
 import type { WorldResource } from "../contracts/worldResource";
 import type { EntityFactory } from "./EntityFactory";

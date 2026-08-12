@@ -5,7 +5,14 @@
  * 各子系统（动画控制器 / 实体工厂 / 命令处理 / 渲染同步）共同引用本模块，避免相互直接耦合。
  */
 
-import type { AbstractMesh, AnimationGroup, DynamicTexture, Mesh, TransformNode, Vector3 } from "~/platform/render/babylon/runtime";
+import type {
+	AbstractMesh,
+	AnimationGroup,
+	DynamicTexture,
+	Mesh,
+	TransformNode,
+	Vector3,
+} from "~/platform/render/babylon/runtime";
 import type { CharacterAnimationClips } from "../contracts/worldResource";
 import type { CharacterAnimationController } from "./CharacterAnimationController";
 

@@ -4,8 +4,8 @@
  * 负责管理角色的内置动画和自定义动画的播放、队列、过渡等。从 RendererController 拆出。
  */
 
-import { AnimationGroup, type Scene } from "~/platform/render/babylon/runtime";
 import { createLogger } from "~/lib/logger";
+import { AnimationGroup, type Scene } from "~/platform/render/babylon/runtime";
 import type { AnimationPlayRequest, CharacterAnimationTarget, CustomAnimationData } from "./entityTypes";
 
 const logger = createLogger("RenderController");

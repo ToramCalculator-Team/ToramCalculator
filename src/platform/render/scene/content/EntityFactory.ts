@@ -4,6 +4,7 @@
  * 负责创建不同类型的实体（角色、球体等）并管理GLB模型缓存。从 RendererController 拆出。
  */
 
+import { createLogger } from "~/lib/logger";
 import type { AbstractMesh, AnimationGroup, Scene, TransformNode } from "~/platform/render/babylon/runtime";
 import {
 	Color3,
@@ -14,7 +15,6 @@ import {
 	StandardMaterial,
 	Vector3,
 } from "~/platform/render/babylon/runtime";
-import { createLogger } from "~/lib/logger";
 import type { CharacterWorldResource, MobWorldResource } from "../contracts/worldResource";
 import { CharacterAnimationController } from "./CharacterAnimationController";
 import type { CharacterAnimationTarget, CharacterEntityRuntime, SimpleEntityRuntime } from "./entityTypes";

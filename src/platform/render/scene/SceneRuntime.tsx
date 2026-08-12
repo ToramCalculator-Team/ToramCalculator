@@ -19,8 +19,8 @@ import {
 	Suspense,
 	useContext,
 } from "solid-js";
-import type { CharacterEquipmentSlot } from "~/machines/interface/characterEquipment";
 import type { SimulationRenderSource } from "~/engine/core/thread/RendererProtocol";
+import type { CharacterEquipmentSlot } from "~/machines/interface/characterEquipment";
 import type { WorldResourcePose } from "./contracts/worldContent";
 import type { CharacterWorldResource, WorldResource } from "./contracts/worldResource";
 
