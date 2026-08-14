@@ -10,8 +10,6 @@ import type {
 	CameraFollowCmd,
 	DestroyCmd,
 	FaceCmd,
-	MoveStartCmd,
-	MoveStopCmd,
 	ReconcileCmd,
 	RendererCmd,
 	RenderSnapshot,
@@ -25,7 +23,7 @@ import { Color3, Mesh, MeshBuilder, StandardMaterial, TransformNode, Vector3 } f
 import type { WorldResourcePose } from "../contracts/worldContent";
 import type { WorldResource } from "../contracts/worldResource";
 import type { EntityFactory } from "./EntityFactory";
-import type { CharacterEntityRuntime, CustomAnimationData, EntityRuntime } from "./entityTypes";
+import type { CustomAnimationData, EntityRuntime } from "./entityTypes";
 import { canReuseWorldResource } from "./worldResourceDiff";
 
 const logger = createLogger("RenderController");
@@ -38,7 +36,15 @@ export class CommandHandler {
 	private worldResources: Map<string, WorldResource>;
 	private areaVisuals: Map<string, Mesh> = new Map();
 
-	constructor(entities: Map<string, EntityRuntime>, factory: EntityFactory, scene: Scene) {
+	constructor(
+		entities: Map<string, EntityRuntime>,
+		factory: EntityFactory,
+		scene: Scene,
+		private readonly lifecycle: {
+			onPoseDiscontinuity: (entityId: string) => void;
+			onEntityRemoved: (entityId: string) => void;
+		},
+	) {
 		this.entities = entities;
 		this.factory = factory;
 		this.scene = scene;
@@ -91,12 +97,6 @@ export class CommandHandler {
 			case "destroy":
 				this.handleDestroy(cmd, entity);
 				break;
-			case "moveStart":
-				this.handleMoveStart(cmd, entity);
-				break;
-			case "moveStop":
-				this.handleMoveStop(cmd, entity);
-				break;
 			case "face":
 				this.handleFace(cmd, entity);
 				break;
@@ -104,7 +104,7 @@ export class CommandHandler {
 				this.handleTeleport(cmd, entity);
 				break;
 			case "action":
-				this.handleAction(cmd, entity);
+				await this.handleAction(cmd, entity);
 				break;
 			case "reconcile":
 				this.handleReconcile(cmd, entity);
@@ -228,6 +228,7 @@ export class CommandHandler {
 			exists.lastSeq = cmd.seq;
 			exists.physics.pos.copyFromFloats(cmd.position.x, cmd.position.y, cmd.position.z);
 			exists.mesh.position.copyFrom(exists.physics.pos);
+			this.lifecycle.onPoseDiscontinuity(cmd.entityId);
 			return;
 		}
 
@@ -248,105 +249,36 @@ export class CommandHandler {
 		logger.info(`🎬 角色创建成功: ${cmd.entityId}`);
 	}
 
-	/**
-	 * 开始移动 - 仅处理动画切换
-	 * 物理状态应该由GameEngine更新，这里只处理视觉效果
-	 */
-	private handleMoveStart(cmd: MoveStartCmd, entity?: EntityRuntime): void {
-		if (!entity || entity.lastSeq > cmd.seq) return;
-
-		entity.lastSeq = cmd.seq;
-
-		// 只更新朝向，其他物理状态由GameEngine管理
-		entity.physics.yaw = Math.atan2(cmd.dir.x, cmd.dir.z);
-
-		// 动画控制：根据速度切换动画
-		if (entity.type === "character") {
-			const charEntity = entity as CharacterEntityRuntime;
-			const animationType = cmd.speed > 3 ? charEntity.animationClips.run : charEntity.animationClips.walk;
-			charEntity.animationController.playBuiltinAnimation(animationType);
-		}
-	}
-
-	/**
-	 * 停止移动 - 仅处理动画切换
-	 * 物理状态由GameEngine管理，这里只处理视觉效果
-	 */
-	private handleMoveStop(cmd: MoveStopCmd, entity?: EntityRuntime): void {
-		if (!entity || entity.lastSeq > cmd.seq) return;
-
-		entity.lastSeq = cmd.seq;
-
-		// 动画控制：切换到idle
-		if (entity.type === "character") {
-			const charEntity = entity as CharacterEntityRuntime;
-			charEntity.animationController.playBuiltinAnimation(charEntity.animationClips.idle);
-		}
-	}
-
 	/** 执行动作/技能；支持 params.progress（0..1）用于渲染快照应用时按进度恢复动画 seek */
-	private handleAction(cmd: ActionCmd, entity?: EntityRuntime): void {
+	private async handleAction(cmd: ActionCmd, entity?: EntityRuntime): Promise<void> {
 		if (!entity || entity.lastSeq > cmd.seq) return;
 
 		entity.lastSeq = cmd.seq;
 
-		// 处理角色动作
 		if (entity.type === "character") {
-			const charEntity = entity as CharacterEntityRuntime;
-			const clips = charEntity.animationClips;
 			const progress = typeof cmd.params?.progress === "number" ? cmd.params.progress : undefined;
-
-			const playWithSeek = (animationId: string, loop: boolean) => {
-				const group = charEntity.builtinAnimations.get(animationId) || charEntity.customAnimations.get(animationId);
-				if (!group) return;
-				charEntity.animationController.stopAllAnimations();
-				if (progress !== undefined && progress >= 0 && progress < 1) {
-					try {
-						const keys = group.targetedAnimations?.flatMap(
-							(ta: { animation: { getKeys?: () => Array<{ frame: number }> } }) => ta.animation.getKeys?.() ?? [],
-						);
-						const maxFrame = keys.length ? Math.max(...keys.map((k) => k.frame)) : 60;
-						group.goToFrame(progress * maxFrame);
-					} catch {
-						// 无法 seek 时降级从头播
-					}
-				}
-				group.play(loop);
-				charEntity.animationState.current = animationId;
-			};
 
 			switch (cmd.name) {
 				case "jump":
-					charEntity.animationController.playBuiltinAnimation(clips.jump, {
-						mode: "interrupt",
-						onComplete: () => {
-							charEntity.animationController.playBuiltinAnimation(clips.idle);
-						},
-					});
+					entity.animationController.playJump(progress);
 					break;
 				case "idle":
-					playWithSeek(clips.idle, true);
+					entity.animationController.setLocomotion("idle", progress);
 					break;
 				case "walk":
-					playWithSeek(clips.walk, true);
+					entity.animationController.setLocomotion("walk", progress);
 					break;
 				case "run":
-					playWithSeek(clips.run, true);
+					entity.animationController.setLocomotion("run", progress);
 					break;
 				case "skill":
-					// 如果有自定义动画数据，播放自定义动画
 					if (cmd.params?.animationData) {
-						charEntity.animationController.playCustomAnimation(cmd.params.animationData as CustomAnimationData, {
-							mode: "interrupt",
-							onComplete: () => {
-								charEntity.animationController.playBuiltinAnimation(clips.idle);
-							},
-						});
+						// RendererProtocol 尚未固化自定义关键帧结构，这里只在渲染命令边界恢复预留类型。
+						await entity.animationController.playCustomAction(cmd.params.animationData as CustomAnimationData);
 					}
 					break;
 				default:
-					// 尝试按名称作为 builtin/custom 动画 id 播放（含 seek）
-					playWithSeek(cmd.name, false);
+					entity.animationController.playAction(cmd.name, progress);
 			}
 		}
 	}
@@ -379,9 +311,7 @@ export class CommandHandler {
 
 		// 立即同步到渲染网格
 		entity.mesh.position.copyFrom(entity.physics.pos);
-		if (entity.label) {
-			entity.label.position = entity.physics.pos.add(new Vector3(0, 0.6, 0));
-		}
+		this.lifecycle.onPoseDiscontinuity(cmd.entityId);
 	}
 
 	/**
@@ -402,9 +332,7 @@ export class CommandHandler {
 		if (cmd.hard) {
 			// 硬校正：立即同步到渲染
 			entity.mesh.position.copyFrom(entity.physics.pos);
-			if (entity.label) {
-				entity.label.position = entity.physics.pos.add(new Vector3(0, 0.6, 0));
-			}
+			this.lifecycle.onPoseDiscontinuity(cmd.entityId);
 		}
 		// 软校正由渲染同步系统在下一帧处理
 	}
@@ -442,19 +370,25 @@ export class CommandHandler {
 
 		// 清理动画和动画组
 		if (entity.type === "character") {
-			const charEntity = entity as CharacterEntityRuntime;
-			charEntity.animationController.stopAllAnimations();
+			entity.animationController.stopAllAnimations();
 
 			// 清理动画组
-			charEntity.builtinAnimations.forEach((group) => {
+			entity.builtinAnimations.forEach((group) => {
 				group.dispose();
 			});
-			charEntity.customAnimations.forEach((group) => {
+			entity.customAnimations.forEach((group) => {
 				group.dispose();
 			});
-			charEntity.builtinAnimations.clear();
-			charEntity.customAnimations.clear();
+			entity.builtinAnimations.clear();
+			entity.customAnimations.clear();
+			entity.ownedSkeletons.forEach((skeleton) => {
+				skeleton.dispose();
+			});
+			entity.ownedSkeletons.length = 0;
 		}
+
+		// 标签材质独占动态纹理，先于实体父节点释放，避免递归销毁后丢失纹理所有权。
+		entity.label?.dispose(false, true);
 
 		// 清理网格
 		if (entity.mesh instanceof Mesh) {
@@ -463,12 +397,9 @@ export class CommandHandler {
 			entity.mesh.dispose();
 		}
 
-		// 清理UI相关资源
-		entity.label?.dispose(false, true);
-		entity.labelTexture?.dispose();
-
 		// 从实体映射中移除
 		this.entities.delete(id);
+		this.lifecycle.onEntityRemoved(id);
 
 		logger.info(`✅ 实体清理完成: ${id}`);
 	}

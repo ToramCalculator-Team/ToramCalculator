@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createActor } from "xstate";
 import { createCharacterSessionRuntime } from "~/features/character/session/characterSessionMachine";
 import { createSimulatorSessionRuntime } from "~/features/simulator/session/simulatorSessionMachine";
+import { DEFAULT_TERRAIN_DEFINITION } from "~/lib/terrain";
 import type { PoolHealthMetrics } from "~/lib/workerPool/WorkerPool";
 import { createInterfaceStateMachine } from "~/machines/interfaceStateMachine";
 import type { EngineMember } from "../engineScenarioSchema";
@@ -56,6 +57,9 @@ class FakeRealtimeEngine {
 	async unbindAllMemberControllers(): Promise<void> {}
 	async selectMemberTarget(_controllerId: string, _targetMemberId: string): Promise<void> {}
 	async castMemberSkill(_controllerId: string, _skillId: string): Promise<void> {}
+	async jumpMember(_controllerId: string): Promise<void> {}
+	async attachControllerInput(_controllerId: string, _buffer: SharedArrayBuffer): Promise<void> {}
+	async detachControllerInput(_controllerId: string): Promise<void> {}
 	async getMembers() {
 		return [];
 	}
@@ -64,6 +68,14 @@ class FakeRealtimeEngine {
 	}
 	async getRenderSnapshot(): Promise<never> {
 		throw new Error("unused in handle lifecycle test");
+	}
+	async startWorldStateProjection(): Promise<void> {}
+	async stopWorldStateProjection(): Promise<void> {}
+	getWorldStateReader() {
+		return null;
+	}
+	getWorldStateSlotIndex() {
+		return null;
 	}
 	async patchMemberConfig(_memberId: string, _data: EngineMember): Promise<void> {}
 	async fastForward() {
@@ -149,6 +161,7 @@ const createSimulationTask = (runId: string) =>
 	SimulationTaskSchema.parse({
 		runId,
 		scenarioData: {
+			terrain: DEFAULT_TERRAIN_DEFINITION,
 			scenario: { randomSeed: 1, logicHz: 60, primaryMemberId: "member-1", campA: [], campB: [] },
 		},
 		runtimeConfig: {

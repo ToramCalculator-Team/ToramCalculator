@@ -479,6 +479,7 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 							description: "可响应输入操作",
 							states: {
 								空闲状态: {
+									tags: "movement-input-enabled",
 									initial: "静止",
 									on: {
 										使用技能: {

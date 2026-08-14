@@ -7,13 +7,13 @@
 import { useNavigate } from "@solidjs/router";
 import { createEffect, createMemo, createSignal, onCleanup, Show, untrack } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
+import { computeMemberFormation } from "~/engine/core/World/Member/memberFormation";
 import { useSimulatorRuntimeProjection, useSimulatorSession } from "~/features/simulator/session/SimulatorSession";
 import { SimulatorAnalysisView } from "~/features/simulator/ui/SimulatorAnalysisView";
 import { SimulatorDesignView } from "~/features/simulator/ui/SimulatorDesignView";
 import { SimulatorValidationView } from "~/features/simulator/ui/SimulatorValidationView";
-import { type RealtimeSceneSession, useSceneRuntime } from "~/platform/render/scene/SceneRuntime";
-import { computeMemberFormation } from "~/engine/core/World/Member/memberFormation";
 import { useInterfaceSnapshot } from "~/machines/AppActorContext";
+import { type RealtimeSceneSession, useSceneRuntime } from "~/platform/render/scene/SceneRuntime";
 import { store } from "~/store";
 
 export function RealtimeSimulator() {
@@ -56,32 +56,64 @@ export function RealtimeSimulator() {
 		// AUI 提交 validating 时，Session 已完成场景准备；阶段内的暂停、选人等局部变化不得重建 3D session。
 		const copy = untrack(() => session.currentDesignCopy());
 		if (!copy) return;
-		const controller = untrack(activeController);
+		// 响应式读取：绑定控制器在 startValidation onDone 写入，AUI 的 validating 可能先于
+		// session 快照推送触发本 effect；未就绪时等待下一帧重跑，避免无端口重建场景。
+		const controller = activeController();
+		if (!controller) {
+			return;
+		}
 		const controllerIds = untrack(() => session.controllers().map((entry) => entry.controllerId));
+		const primarySkillId = untrack(() => session.activeSkills()[0]?.id);
+		const movementSink = runtime.getControllerMovementSink(controller.controllerId);
+		if (!movementSink) return;
 		const request = ++sceneRequest;
 		const followId = controller?.boundMemberId ?? copy.design.primaryMemberId ?? undefined;
 		const formation = computeMemberFormation(
 			copy.resolvedScene.engineInput.scenario.campA,
 			copy.resolvedScene.engineInput.scenario.campB,
 		);
+		const engineMembers = new Map(untrack(() => session.members()).map((member) => [member.id, member]));
 		const initialWorldPoses = copy.resolvedScene.worldResources.map((resource) => {
-			const pose = formation.get(resource.memberId);
+			const member = engineMembers.get(resource.memberId);
+			if (!member) throw new Error(`引擎初始状态缺少世界资源对应成员: ${resource.memberId}`);
 			return {
 				memberId: resource.memberId,
-				position: pose?.position ?? { x: 0, y: 0, z: 0 },
-				yaw: pose?.yaw ?? 0,
+				position: member.position,
+				yaw: formation.get(resource.memberId)?.yaw ?? 0,
 			};
 		});
+		const initialCameraTarget = followId ? engineMembers.get(followId)?.position : undefined;
 		releaseSceneSession();
 		void sceneRuntime
 			.acquireRealtimeSession({
 				renderSource: runtime.renderSource(),
+				terrain: copy.resolvedScene.engineInput.terrain,
 				worldResources: copy.resolvedScene.worldResources,
 				initialWorldPoses,
 				followEntityId: followId,
 				activeControllerId: controller?.controllerId ?? null,
 				controllerIds,
-				initialCameraTarget: followId ? formation.get(followId)?.position : undefined,
+				initialCameraTarget,
+				controllerInput: controller
+					? {
+							movementSink,
+							onAction: (action) => {
+								switch (action.type) {
+									case "skill_triggered":
+										session.send({ type: "skill.cast.requested", skillId: action.skillId });
+										break;
+									case "jump_triggered":
+										session.send({ type: "jump.requested" });
+										break;
+									default: {
+										const unreachableAction: never = action;
+										throw new Error(`未知控制器动作: ${JSON.stringify(unreachableAction)}`);
+									}
+								}
+							},
+							skillBindings: primarySkillId ? { Digit1: primarySkillId } : undefined,
+						}
+					: undefined,
 			})
 			.then((next) => {
 				if (disposed || request !== sceneRequest) {

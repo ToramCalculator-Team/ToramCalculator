@@ -1,8 +1,9 @@
 import { MemberBTSchema } from "@db/schema/jsons";
 import { z } from "zod/v4";
+import { type EngineMember, EngineScenarioSchema } from "~/engine/core/engineScenarioSchema";
+import { DEFAULT_TERRAIN_DEFINITION, TerrainDefinitionSchema } from "~/lib/terrain";
 import { WorldResourceSchema } from "~/platform/render/scene/contracts/worldResource";
 import { createDefaultCharacterWorldResource } from "~/platform/render/scene/resources/defaultCharacterResource";
-import { type EngineMember, EngineScenarioSchema } from "~/engine/core/engineScenarioSchema";
 import {
 	type SimulationDesign,
 	type SimulationDesignMember,
@@ -11,7 +12,7 @@ import {
 
 export const ResolvedSimulatorSceneSchema = z.object({
 	resolutionVersion: z.string(),
-	engineInput: z.object({ scenario: EngineScenarioSchema }),
+	engineInput: z.object({ scenario: EngineScenarioSchema, terrain: TerrainDefinitionSchema }),
 	worldResources: z.array(WorldResourceSchema),
 });
 
@@ -106,7 +107,7 @@ export function resolveSimulatorScene(input: unknown, resolutionVersion: string)
 	);
 	return ResolvedSimulatorSceneSchema.parse({
 		resolutionVersion,
-		engineInput: { scenario },
+		engineInput: { scenario, terrain: DEFAULT_TERRAIN_DEFINITION },
 		worldResources,
 	});
 }

@@ -1,5 +1,6 @@
 import type { MemberBTTree } from "@db/schema/jsons";
 import { createLogger } from "~/lib/logger";
+import { PlayerLocomotionProfile } from "~/game/locomotion";
 import type { EngineCharacter, EngineMember } from "../../../../engineScenarioSchema";
 import type { RuntimeAttachment } from "../../attachments/RuntimeAttachment";
 import { collectAttachmentSlots } from "../../attachments/RuntimeAttachment";
@@ -55,6 +56,16 @@ export class Player extends Member<PlayerAttrKey, PlayerSpecificEvent, PlayerFSM
 			deltaTimeMs: 0,
 			position: position ?? { x: 0, y: 0, z: 0 },
 			targetId: memberData.id,
+			yaw: 0,
+			movement: null,
+			verticalVelocity: 0,
+			grounded: true,
+			locomotion: {
+				walkSpeed: PlayerLocomotionProfile.WALK_SPEED,
+				runSpeed: PlayerLocomotionProfile.RUN_SPEED,
+				gravity: PlayerLocomotionProfile.GRAVITY,
+				jumpSpeed: PlayerLocomotionProfile.JUMP_SPEED,
+			},
 			statusTags: [],
 			currentSkill: null,
 			previousSkill: null,

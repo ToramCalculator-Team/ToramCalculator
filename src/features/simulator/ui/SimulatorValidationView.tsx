@@ -3,8 +3,8 @@ import { createMemo, For, Show } from "solid-js";
 import { Button } from "~/components/ui/controls/button";
 import { Select } from "~/components/ui/controls/select";
 import { Icons } from "~/components/ui/icons";
-import { useSimulatorRuntimeProjection, useSimulatorSession } from "~/features/simulator/session/SimulatorSession";
 import { MemberStatusPanel } from "~/engine/core/World/Member/MemberStatusPanel";
+import { useSimulatorRuntimeProjection, useSimulatorSession } from "~/features/simulator/session/SimulatorSession";
 
 export function SimulatorValidationView() {
 	const session = useSimulatorSession();

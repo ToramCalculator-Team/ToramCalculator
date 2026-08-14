@@ -15,9 +15,10 @@
  * - RenderSyncSystem.ts：physics → mesh 同步
  */
 
-import type { Scene, TransformNode } from "~/platform/render/babylon/runtime";
-import { createLogger } from "~/lib/logger";
 import type { RendererCmd, RenderSnapshot } from "~/engine/core/thread/RendererProtocol";
+import type { MemberSlotIndex, WorldStateReader } from "~/engine/core/thread/worldStateBuffer";
+import { createLogger } from "~/lib/logger";
+import type { Scene, TransformNode } from "~/platform/render/babylon/runtime";
 import { CommandHandler } from "./content/CommandHandler";
 import { EntityFactory } from "./content/EntityFactory";
 import type { EntityRuntime } from "./content/entityTypes";
@@ -32,13 +33,23 @@ export type RendererControllerOptions = {
 	contentRoot?: TransformNode;
 	/** Character 内容的短会话共享模型模板缓存，但每个会话仍拥有独立 controller 状态。 */
 	entityFactory?: EntityFactory;
+	/** SAB 世界状态读取器；提供时 RenderSyncSystem 每帧从 SAB 读取权威位置/yaw + 指数平滑。 */
+	worldStateReader?: WorldStateReader | null;
+	/** memberId → SAB 槽位下标映射；与 worldStateReader 同生命周期。 */
+	worldStateSlotIndex?: MemberSlotIndex | null;
 };
 
 export function createRendererController(scene: Scene, options: RendererControllerOptions = {}): RendererController {
 	const entities = new Map<string, EntityRuntime>();
 	const factory = options.entityFactory ?? new EntityFactory(scene, options.contentRoot);
-	const commandHandler = new CommandHandler(entities, factory, scene);
-	const renderSyncSystem = new RenderSyncSystem();
+	const renderSyncSystem = new RenderSyncSystem(
+		options.worldStateReader,
+		options.worldStateSlotIndex,
+	);
+	const commandHandler = new CommandHandler(entities, factory, scene, {
+		onPoseDiscontinuity: (entityId) => renderSyncSystem.resetEntity(entityId),
+		onEntityRemoved: (entityId) => renderSyncSystem.removeEntity(entityId),
+	});
 
 	function send(cmd: RendererCmd | RendererCmd[]): void {
 		if (Array.isArray(cmd)) {
@@ -58,9 +69,8 @@ export function createRendererController(scene: Scene, options: RendererControll
 	 * 渲染帧更新 - 仅同步实体状态到渲染网格
 	 * 不进行物理计算，物理计算应该在GameEngine中完成
 	 */
-	function tick(_dtSec: number): void {
-		// 注意：这里不再进行物理计算，只同步渲染状态
-		renderSyncSystem.syncEntities(entities);
+	function tick(dtSec: number): void {
+		renderSyncSystem.syncEntities(entities, dtSec);
 	}
 
 	/** 销毁所有实体并清理资源 */
@@ -74,9 +84,9 @@ export function createRendererController(scene: Scene, options: RendererControll
 		if (!entity) return undefined;
 		return {
 			pos: {
-				x: entity.physics.pos.x,
-				y: entity.physics.pos.y,
-				z: entity.physics.pos.z,
+				x: entity.mesh.position.x,
+				y: entity.mesh.position.y,
+				z: entity.mesh.position.z,
 			},
 			yaw: entity.physics.yaw,
 		};
@@ -99,7 +109,6 @@ export function createRendererController(scene: Scene, options: RendererControll
 export { CharacterAnimationController } from "./content/CharacterAnimationController";
 export { EntityFactory } from "./content/EntityFactory";
 export type {
-	AnimationPlayRequest,
 	BaseEntityRuntime,
 	CharacterEntityRuntime,
 	CustomAnimationData,

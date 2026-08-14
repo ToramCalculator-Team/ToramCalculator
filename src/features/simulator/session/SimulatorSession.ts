@@ -6,6 +6,7 @@
  */
 import { fromActorRef } from "@xstate/solid";
 import { type Accessor, createMemo, createSignal, onCleanup } from "solid-js";
+import type { MovementStateSink } from "~/engine/controller/controllerInput";
 import type { EngineTelemetry } from "~/engine/core/thread/protocol";
 import type { SimulationRenderSource } from "~/engine/core/thread/RendererProtocol";
 import { readTickStateRange, readTickStateSnapshot, type TickStateSnapshot } from "~/engine/core/tickStateHistory";
@@ -50,6 +51,7 @@ export type SimulatorRuntimeProjection = {
 	telemetry: () => EngineTelemetry | null;
 	isRunning: () => boolean;
 	renderSource: () => SimulationRenderSource;
+	getControllerMovementSink: (controllerId: string) => MovementStateSink | null;
 };
 
 /** 返回直接投影 child snapshot 的会话读面与语义意图入口。 */
@@ -126,5 +128,6 @@ export function useSimulatorRuntimeProjection(): SimulatorRuntimeProjection {
 		telemetry: () => snapshot().telemetry,
 		isRunning: () => snapshot().isRunning,
 		renderSource: () => runtime.renderSource,
+		getControllerMovementSink: runtime.getControllerMovementSink,
 	};
 }

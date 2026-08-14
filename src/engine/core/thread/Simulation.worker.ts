@@ -26,6 +26,8 @@ import { PipelineCatalog } from "../Pipeline/PipelineCatalog";
 import { PipelineResolverService } from "../Pipeline/PipelineResolverService";
 import type { SimulatorSafeAPI } from "../sandboxGlobals";
 import type { EngineInfrastructure } from "../types";
+import type { MemberMovementInput } from "../World/Member/runtime/types";
+import { readSharedMovementState, type SharedMovementStateSnapshot } from "./controllerInputBuffer";
 import { DebugViewRegistry } from "./DebugViewRegistry";
 import { executeSimulationTask } from "./executeSimulationTask";
 import {
@@ -42,6 +44,12 @@ import {
 	engineRPCSuccess,
 	type PushMessageType,
 } from "./protocol";
+import {
+	MemberSlotIndex,
+	STATE_FLAG_AIRBORNE,
+	STATE_FLAG_MOVING,
+	WorldStateWriter,
+} from "./worldStateBuffer";
 
 function readConfiguredLogLevel(): LogLevel | null {
 	const raw = new URL(globalThis.location.href).searchParams.get("engineLogLevel");
@@ -162,6 +170,23 @@ const gameEngine = new GameEngine(
 const executorActor = createActor(GameEngineSM, { input: { role: "executor" } });
 executorActor.start();
 
+// ─── SAB 世界状态写入器（Worker 侧，loadScenario 后由主线程 RPC 初始化） ──────
+let worldStateWriter: WorldStateWriter | null = null;
+const controllerInputReaders = new Map<
+	string,
+	{ buffer: SharedArrayBuffer; lastStableState: SharedMovementStateSnapshot | null }
+>();
+
+gameEngine.setControllerMovementInputSource((controllerId): MemberMovementInput | null => {
+	const reader = controllerInputReaders.get(controllerId);
+	if (!reader) return null;
+	const current = readSharedMovementState(reader.buffer);
+	if (current !== null) reader.lastStableState = current;
+	const state = reader.lastStableState;
+	if (!state?.enabled || !state.moving) return null;
+	return { direction: state.direction, intensity: state.intensity };
+});
+
 const getExecutorSnapshot = (): EngineLifecycleSnapshot => projectEngineLifecycleSnapshot(executorActor.getSnapshot());
 
 function requireExecutorState(operation: string, allowed: readonly EngineLifecycleSnapshot["state"][]): void {
@@ -222,6 +247,9 @@ function handleLifecycleCommand(command: EngineLifecycleCommand): EngineWorkerTa
 				break;
 			case "CMD_UNLOAD":
 				gameEngine.unloadScenario();
+				controllerInputReaders.clear();
+				worldStateWriter = null;
+				gameEngine.setPostTickCallback(null);
 				result = engineLifecycleSuccess(command);
 				break;
 			case "CMD_FAST_FORWARD":
@@ -328,6 +356,49 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<EngineRPCWireResult> {
 				return gameEngine.patchMemberConfig(rpc.memberId, rpc.memberData)
 					? engineRPCSuccess(rpc.type, undefined)
 					: engineRPCFailure("patchMemberConfig failed");
+			}
+
+			case "attach_controller_input": {
+				const initialState = readSharedMovementState(rpc.buffer);
+				controllerInputReaders.set(rpc.controllerId, {
+					buffer: rpc.buffer,
+					lastStableState: initialState,
+				});
+				return engineRPCSuccess(rpc.type, undefined);
+			}
+
+			case "detach_controller_input": {
+				controllerInputReaders.delete(rpc.controllerId);
+				return engineRPCSuccess(rpc.type, undefined);
+			}
+
+			case "attach_world_state_buffer": {
+				const slotIndex = new MemberSlotIndex(rpc.memberIds);
+				worldStateWriter = new WorldStateWriter(rpc.buffer, slotIndex);
+				const writeWorldState = () => {
+					if (!worldStateWriter) return;
+					const members = gameEngine.getAllMembers();
+					worldStateWriter.write(
+						members.map((m) => ({
+							id: m.id,
+							position: m.position,
+							yaw: m.runtime.yaw,
+							speed: m.runtime.movement?.speed ?? 0,
+							stateFlags:
+								(m.runtime.movement ? STATE_FLAG_MOVING : 0) |
+								(!m.runtime.grounded ? STATE_FLAG_AIRBORNE : 0),
+						})),
+					);
+				};
+				gameEngine.setPostTickCallback(writeWorldState);
+				writeWorldState();
+				return engineRPCSuccess(rpc.type, undefined);
+			}
+
+			case "detach_world_state_buffer": {
+				worldStateWriter = null;
+				gameEngine.setPostTickCallback(null);
+				return engineRPCSuccess(rpc.type, undefined);
 			}
 		}
 	} catch (error) {

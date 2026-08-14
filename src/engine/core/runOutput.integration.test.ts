@@ -1,5 +1,6 @@
 import { defaultData } from "@db/defaultData";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { DEFAULT_TERRAIN_DEFINITION } from "~/lib/terrain";
 import { BUILT_IN_EVENTS } from "./Event/BuiltInEvents";
 import { EventCatalog } from "./Event/EventCatalog";
 import { getBuiltInTags } from "./Event/TagConstants";
@@ -12,6 +13,7 @@ import { readTickStateRange } from "./tickStateHistory";
 import { type EngineInfrastructure, EngineScenarioDataSchema } from "./types";
 
 const scenario = EngineScenarioDataSchema.parse({
+	terrain: DEFAULT_TERRAIN_DEFINITION,
 	scenario: {
 		...defaultData.simulator,
 		logicHz: 60,

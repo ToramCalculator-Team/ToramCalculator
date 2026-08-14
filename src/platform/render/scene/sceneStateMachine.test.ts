@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { createActor } from "xstate";
+import { DEFAULT_TERRAIN_DEFINITION } from "~/lib/terrain";
 import { createDefaultCharacterWorldResource } from "./resources/defaultCharacterResource";
 import type { RealtimeSceneConfig } from "./SceneRuntime";
 import { createSceneMachine, type SceneMachineDeps } from "./sceneStateMachine";
@@ -68,7 +69,12 @@ const startIdle = (deps: SceneMachineDeps) => {
 	return actor;
 };
 
-const dummyConfig: RealtimeSceneConfig = { renderSource: {} as never, worldResources: [], initialWorldPoses: [] };
+const dummyConfig: RealtimeSceneConfig = {
+	renderSource: {} as never,
+	terrain: DEFAULT_TERRAIN_DEFINITION,
+	worldResources: [],
+	initialWorldPoses: [],
+};
 const dummyCharacterResource = createDefaultCharacterWorldResource({
 	memberId: "char-1",
 	resourceId: "char-1",

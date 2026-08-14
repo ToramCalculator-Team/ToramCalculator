@@ -1,6 +1,7 @@
 import { MEMBER_TYPE } from "@db/schema/enums";
 import type { EventObject } from "xstate";
 import { z } from "zod/v4";
+import { TerrainDefinitionSchema } from "~/lib/terrain";
 import type { EventCatalog } from "./Event/EventCatalog";
 import type { TagRegistry } from "./Event/TagRegistry";
 import { EventQueueConfigSchema, type QueueSnapshot, type QueueStats } from "./EventQueue/types";
@@ -100,6 +101,7 @@ export function createRealtimeConfig(overrides?: Partial<RuntimeConfig>): Runtim
 
 export const EngineScenarioDataSchema = z.object({
 	scenario: EngineScenarioSchema,
+	terrain: TerrainDefinitionSchema,
 });
 
 export type EngineScenarioData = z.output<typeof EngineScenarioDataSchema>;

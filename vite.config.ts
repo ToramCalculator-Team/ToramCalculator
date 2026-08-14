@@ -4,8 +4,7 @@ import { solidStart } from "@solidjs/start/config";
 import { nitroV2Plugin } from "@solidjs/vite-plugin-nitro-2";
 import tailwindcss from "@tailwindcss/vite";
 import type { OutputAsset, OutputChunk } from "rollup";
-import type { Plugin } from "vite";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

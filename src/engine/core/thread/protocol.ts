@@ -126,6 +126,11 @@ const IntentMessageWireSchema = z.discriminatedUnion("type", [
 	}),
 	z.object({
 		...IntentWireBaseShape,
+		type: z.literal("跳跃"),
+		data: z.object({}).strict(),
+	}),
+	z.object({
+		...IntentWireBaseShape,
 		type: z.literal("使用技能"),
 		data: z.object({ skillId: z.string().min(1) }).strict(),
 	}),
@@ -187,6 +192,25 @@ export const EngineRPCSchema = z.discriminatedUnion("type", [
 	z.object({ type: z.literal("cancel_run_output"), runId: z.string() }),
 	z.object({ type: z.literal("acknowledge_run_output"), runId: z.string() }),
 	z.object({ type: z.literal("set_realtime_snapshot_hz"), snapshotHz: z.number().nonnegative() }),
+	z.object({
+		type: z.literal("attach_controller_input"),
+		controllerId: z.string().min(1),
+		buffer: z.custom<SharedArrayBuffer>(
+			(value) => typeof SharedArrayBuffer !== "undefined" && value instanceof SharedArrayBuffer,
+			{ message: "buffer 必须是 SharedArrayBuffer" },
+		),
+	}),
+	z.object({ type: z.literal("detach_controller_input"), controllerId: z.string().min(1) }),
+	/** Session 显式附加世界状态 latest-state 通道；无渲染消费者的场景不调用。 */
+	z.object({
+		type: z.literal("attach_world_state_buffer"),
+		buffer: z.custom<SharedArrayBuffer>(
+			(v) => typeof SharedArrayBuffer !== "undefined" && v instanceof SharedArrayBuffer,
+			{ message: "buffer 必须是 SharedArrayBuffer" },
+		),
+		memberIds: z.array(z.string()),
+	}),
+	z.object({ type: z.literal("detach_world_state_buffer") }),
 ]);
 export type EngineRPC = z.output<typeof EngineRPCSchema>;
 export type EngineRPCType = EngineRPC["type"];
@@ -208,6 +232,10 @@ export const EngineRPCDataSchemaByType = {
 	cancel_run_output: z.undefined(),
 	acknowledge_run_output: z.undefined(),
 	set_realtime_snapshot_hz: z.undefined(),
+	attach_controller_input: z.undefined(),
+	detach_controller_input: z.undefined(),
+	attach_world_state_buffer: z.undefined(),
+	detach_world_state_buffer: z.undefined(),
 } as const satisfies Record<EngineRPCType, z.ZodType>;
 
 export type EngineRPCData<TType extends EngineRPCType> = z.output<(typeof EngineRPCDataSchemaByType)[TType]>;

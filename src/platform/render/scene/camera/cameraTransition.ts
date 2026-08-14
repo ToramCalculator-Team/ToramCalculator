@@ -8,10 +8,14 @@
 
 import type { ArcRotateCamera, Scene } from "~/platform/render/babylon/runtime";
 import { Animation, CubicEase, EasingFunction, Vector3 } from "~/platform/render/babylon/runtime";
+import { PlayerBodyProfile } from "~/game/locomotion";
 import { store } from "~/store";
 
+/** 所有相机状态共用的缩放范围，命令设置和 ArcRotateCamera 输入必须使用同一约束。 */
+export const CAMERA_RADIUS_LIMITS = { min: 2, max: 11.2 } as const;
+
 /** 观察位（背景相机初始姿态），过渡动画的"离开终点 / 进入起点"。 */
-export const OBSERVE_POSE = { alpha: 1.58, beta: 1.6, radius: 3.12, target: new Vector3(0, 0.43, 0) };
+export const OBSERVE_POSE = { alpha: 1.58, beta: 1.6, radius: 3.12, target: new Vector3(0, PlayerBodyProfile.CAMERA_IDLE_TARGET_Y, 0) };
 
 /** 进入跟随位的固定角度/距离（与 ThirdPersonCameraController 默认一致）。 */
 export const FOLLOW_POSE = { alpha: Math.PI / 2, beta: Math.PI / 3, radius: 8 };

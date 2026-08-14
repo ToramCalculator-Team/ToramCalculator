@@ -7,6 +7,7 @@ import type { MemberSnapshot } from "../World/Member/Member";
 import type { EngineWorkerClient, EngineWorkerClientEventMap } from "./EngineWorkerClient";
 import type { FastForwardResult, MemberSkillSummary } from "./protocol";
 import type { RenderSnapshot } from "./RendererProtocol";
+import type { MemberSlotIndex, WorldStateReader } from "./worldStateBuffer";
 
 export type ManagedEngineWorkerClient = Pick<
 	EngineWorkerClient,
@@ -29,9 +30,16 @@ export type ManagedEngineWorkerClient = Pick<
 	| "unbindAllMemberControllers"
 	| "selectMemberTarget"
 	| "castMemberSkill"
+	| "jumpMember"
+	| "attachControllerInput"
+	| "detachControllerInput"
 	| "getMembers"
 	| "getMemberSkillList"
 	| "getRenderSnapshot"
+	| "startWorldStateProjection"
+	| "stopWorldStateProjection"
+	| "getWorldStateReader"
+	| "getWorldStateSlotIndex"
 	| "patchMemberConfig"
 	| "fastForward"
 	| "startRunOutput"
@@ -159,6 +167,21 @@ export class RealtimeEngineHandle {
 		await this.client.castMemberSkill(controllerId, skillId);
 	}
 
+	async jumpMember(controllerId: string): Promise<void> {
+		this.assertActive();
+		await this.client.jumpMember(controllerId);
+	}
+
+	async attachControllerInput(controllerId: string, buffer: SharedArrayBuffer): Promise<void> {
+		this.assertActive();
+		await this.client.attachControllerInput(controllerId, buffer);
+	}
+
+	async detachControllerInput(controllerId: string): Promise<void> {
+		this.assertActive();
+		await this.client.detachControllerInput(controllerId);
+	}
+
 	async getMembers(): Promise<MemberSnapshot[]> {
 		this.assertActive();
 		return await this.client.getMembers();
@@ -172,6 +195,26 @@ export class RealtimeEngineHandle {
 	async getRenderSnapshot(includeAreas = false): Promise<RenderSnapshot> {
 		this.assertActive();
 		return await this.client.getRenderSnapshot(includeAreas);
+	}
+
+	async startWorldStateProjection(): Promise<void> {
+		this.assertActive();
+		await this.client.startWorldStateProjection();
+	}
+
+	async stopWorldStateProjection(): Promise<void> {
+		this.assertActive();
+		await this.client.stopWorldStateProjection();
+	}
+
+	getWorldStateReader(): WorldStateReader | null {
+		this.assertActive();
+		return this.client.getWorldStateReader();
+	}
+
+	getWorldStateSlotIndex(): MemberSlotIndex | null {
+		this.assertActive();
+		return this.client.getWorldStateSlotIndex();
 	}
 
 	async patchMemberConfig(memberId: string, data: EngineMember): Promise<void> {

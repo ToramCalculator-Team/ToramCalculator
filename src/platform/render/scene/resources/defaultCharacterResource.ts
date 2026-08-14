@@ -3,12 +3,13 @@ import type { CharacterWorldResource } from "../contracts/worldResource";
 export const DEFAULT_CHARACTER_MODEL_URI = "/models/character.glb";
 
 export const DEFAULT_CHARACTER_ANIMATION_CLIPS = {
-	idle: "idle",
-	walk: "walk",
-	run: "run",
-	jump: "jump",
-	fall: "fall",
-	land: "land",
+	// character.glb 的内嵌动画使用资产原名；逻辑动作仍使用稳定的语义键。
+	idle: "Idle",
+	walk: "Walk",
+	run: "Run",
+	jump: "Jump_start",
+	fall: "Jump_start",
+	land: "Jump_end",
 } as const satisfies CharacterWorldResource["animation"]["clips"];
 
 /**

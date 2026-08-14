@@ -1,6 +1,8 @@
 import type { Scene } from "~/platform/render/babylon/runtime";
 import { type ArcRotateCamera, Vector3 } from "~/platform/render/babylon/runtime";
 import type { createRendererController } from "../RendererController";
+import { PlayerBodyProfile } from "~/game/locomotion";
+import { CAMERA_RADIUS_LIMITS } from "./cameraTransition";
 import type {
 	AnyCameraControlCmd,
 	CameraFollowCmd,
@@ -40,10 +42,10 @@ const defaultCameraState: CameraState = {
 	distance: 3.12,
 	horizontalAngle: 1.58,
 	verticalAngle: 1.5,
-	target: new Vector3(0, 0.43, 0),
+	target: new Vector3(0, PlayerBodyProfile.CAMERA_IDLE_TARGET_Y, 0),
 	smoothTransition: false, // 暂时禁用平滑过渡，提高响应性
-	minDistance: 2,
-	maxDistance: 20,
+	minDistance: CAMERA_RADIUS_LIMITS.min,
+	maxDistance: CAMERA_RADIUS_LIMITS.max,
 	minVerticalAngle: -Math.PI / 2 + 0.1,
 	maxVerticalAngle: Math.PI / 2 - 0.1,
 };
@@ -130,12 +132,14 @@ export class ThirdPersonCameraController {
 	/**
 	 * 把内部 state 应用到真实 ArcRotateCamera。
 	 * - target：代码独占维度（鼠标只改 alpha/beta/radius），每帧朝 state.target 平滑插值，产生跟随与初始入场动画。
+	 * - setTarget 必须传 cloneAlphaBetaRadius=true：默认 setTarget 会 rebuildAnglesAndRadius（固定相机位置、
+	 *   转头看目标），表现为"相机停在原地"；保持球面参数不变时相机位置随 target 平移，才是真正的跟随。
 	 * - distance/angle：仅在过渡进行时由代码驱动；过渡结束后交还鼠标控制，避免与用户输入打架。
 	 */
 	private applyStateToCamera(deltaTime: number): void {
 		const lerp = this.state.smoothTransition ? Math.min(1, this.transitionSpeed * deltaTime) : 1;
 		const nextTarget = Vector3.Lerp(this.camera.getTarget(), this.state.target, lerp);
-		this.camera.setTarget(nextTarget);
+		this.camera.setTarget(nextTarget, false, false, true);
 
 		if (this.isTransitioning) {
 			this.camera.radius = this.state.distance;
@@ -252,7 +256,7 @@ export class ThirdPersonCameraController {
 		const pose = this.rendererController.getEntityPose(this.state.followEntityId);
 		if (pose) {
 			// 设置目标位置为实体位置上方一点
-			this.state.target.copyFromFloats(pose.pos.x, pose.pos.y + 1, pose.pos.z);
+			this.state.target.copyFromFloats(pose.pos.x, pose.pos.y + PlayerBodyProfile.CAMERA_FOLLOW_EYE_OFFSET, pose.pos.z);
 		}
 	}
 

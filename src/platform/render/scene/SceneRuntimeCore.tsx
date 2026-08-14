@@ -8,47 +8,43 @@
  */
 
 import { createId } from "@paralleldrive/cuid2";
-import { createMemo, createSignal, type JSX, onCleanup, onMount } from "solid-js";
+import { createEffect, createMemo, createSignal, type JSX, onCleanup, onMount } from "solid-js";
 import { type Actor, createActor } from "xstate";
-import type { AbstractEngine, PBRMaterial } from "~/platform/render/babylon/runtime";
+import type { RendererCmd } from "~/engine/core/thread/RendererProtocol";
+import { createLogger } from "~/lib/logger";
+import { DEFAULT_TERRAIN_DEFINITION, type TerrainDefinition } from "~/lib/terrain";
+import type { AbstractEngine } from "~/platform/render/babylon/runtime";
 import {
-	AppendSceneAsync,
 	ArcRotateCamera,
 	Color3,
 	Color4,
+	DirectionalLight,
 	Engine,
+	HemisphericLight,
 	HighlightLayer,
 	LensRenderingPipeline,
-	Material,
 	Matrix,
 	Mesh,
-	MeshBuilder,
 	PointerEventTypes,
-	Scalar,
 	Scene,
 	ShadowGenerator,
-	SolidParticleSystem,
-	SpotLight,
 	TransformNode,
 	Vector3,
 } from "~/platform/render/babylon/runtime";
-import { createLogger } from "~/lib/logger";
+import { DEFAULT_TERRAIN_RENDER_CONFIG, WorldTerrain } from "~/platform/terrain";
 import { store } from "~/store";
 import { resolveColorSystem } from "~/styles/colorSystem/colorSystemController";
-import type { RendererCmd } from "~/engine/core/thread/RendererProtocol";
-import { animateCameraTo, FOLLOW_POSE, OBSERVE_POSE } from "./camera/cameraTransition";
+import { animateCameraTo, CAMERA_RADIUS_LIMITS, FOLLOW_POSE, OBSERVE_POSE } from "./camera/cameraTransition";
 import type { AnyCameraControlCmd } from "./camera/commands";
 import { ThirdPersonCameraController } from "./camera/thirdPersonController";
 import { readCharacterEquipmentSlotMetadata } from "./content/characterEquipmentMetadata";
 import { RendererCommunication } from "./content/RendererCommunication";
 import { createCharacterContentDeps } from "./content/sceneContentDeps";
 import type { CharacterWorldResource } from "./contracts/worldResource";
-import {
-	isPBRMaterial,
-	registerVolumetricFogPlugin,
-	type VolumetricFogPluginMaterial,
-} from "./materials/volumetricFog";
+import { SceneInputController } from "./input/controller";
+import { registerFogOfWarMaterialPlugin, setFogOfWarCenter, setFogOfWarColor } from "./materials/fogOfWar";
 import { createRendererController } from "./RendererController";
+import { createProceduralStarSkybox, type ProceduralSkybox } from "./resources/proceduralStarSkybox";
 import type {
 	CharacterContentSession,
 	CharacterEquipmentPick,
@@ -72,6 +68,11 @@ function isRenderCommandPacket(value: unknown): value is { type?: unknown; cmd?:
 	return typeof value === "object" && value !== null;
 }
 
+const LIGHT_TERRAIN_MAIN_COLOR = new Color3(0.23, 0.36, 0.19);
+const LIGHT_TERRAIN_LINE_COLOR = new Color3(0.08, 0.12, 0.08);
+const DARK_TERRAIN_MAIN_COLOR = Color3.Black();
+const DARK_TERRAIN_LINE_COLOR = Color3.White();
+
 export function SceneRuntimeCore(props: {
 	onReady: (api: SceneRuntimeCoreApi) => void;
 	onDisposed: (api: SceneRuntimeCoreApi) => void;
@@ -83,6 +84,9 @@ export function SceneRuntimeCore(props: {
 		resolveColorSystem(store.settings.userInterface.theme, store.settings.userInterface.themeVersion),
 	);
 	const themePrimaryColor = createMemo(() => new Color3(...colorSystem().colors.semantic.primary.rgb01));
+	const worldFogColor = createMemo(() =>
+		store.settings.userInterface.theme === "light" ? Color3.White() : Color3.Black(),
+	);
 	const [ready, setReady] = createSignal(false);
 	const [mode, setLocalMode] = createSignal<SceneRuntimeMode>("loading");
 	const [characterPickingEnabled, setCharacterPickingEnabled] = createSignal(false);
@@ -90,21 +94,25 @@ export function SceneRuntimeCore(props: {
 	let canvas: HTMLCanvasElement | undefined;
 	let engine: AbstractEngine | undefined;
 	let scene: Scene | undefined;
-	let backgroundRoot: TransformNode | undefined;
 	let realtimeRoot: TransformNode | undefined;
 	// 角色内容根：character 内容稳态下挂角色模型；切换/释放时 dispose 子树。
 	let characterRoot: TransformNode | undefined;
 	// 单相机：全程唯一相机，观察态静态环绕，实时态由控制器跟随，态间用 babylon 动画补间。
 	let sceneCamera: ArcRotateCamera | undefined;
 	let lensPipeline: LensRenderingPipeline | undefined;
+	let worldSkybox: ProceduralSkybox | undefined;
 	let equipmentHighlightLayer: HighlightLayer | undefined;
 	let rendererController: ReturnType<typeof createRendererController> | undefined;
 	let rendererCommunication: RendererCommunication | undefined;
 	let thirdPersonController: ThirdPersonCameraController | undefined;
-	let defPBR: PBRMaterial | undefined;
 	let activeSessionId: string | null = null;
 	let activeCharacterSessionId: string | null = null;
 	let _activeControllerId: string | null = null;
+	// 程序化世界地形：基础场景常驻部分，realtime 会话的实体通过它贴合地表。
+	let worldTerrain: WorldTerrain | undefined;
+	// realtime 稳态的场景输入；跟随场景会话生命周期。
+	let sceneInputController: SceneInputController | undefined;
+	let detachSceneInput: (() => void) | undefined;
 	// 跟随门控：仅 realtime 稳态为 true，控制器 update 才驱动相机；过渡/观察期为 false，避免与动画打架。
 	let followActive = false;
 	let sceneMachineActor: Actor<SceneMachine> | undefined;
@@ -132,23 +140,23 @@ export function SceneRuntimeCore(props: {
 		}
 	};
 
-	const syncThemeMaterials = () => {
+	/** 将应用颜色模式投影到场景背景、雾和地形材质。 */
+	const applySceneTheme = () => {
+		const darkMode = store.settings.userInterface.theme === "dark";
+		const ambientColor = themePrimaryColor();
+		const fogColor = worldFogColor();
 		if (!scene) return;
-		const currentColor = themePrimaryColor();
-		scene.ambientColor = currentColor;
-		if (!defPBR) return;
-		if (!defPBR.albedoColor.equals(currentColor)) {
-			defPBR.albedoColor = currentColor;
-			defPBR.markAsDirty(Material.TextureDirtyFlag);
-		}
-		const volumetricFog = defPBR.pluginManager?.getPlugin("VolumetricFog") as
-			| VolumetricFogPluginMaterial
-			| undefined
-			| null;
-		if (volumetricFog && !volumetricFog.color.equals(currentColor)) {
-			volumetricFog.color = currentColor;
-		}
+		scene.ambientColor = ambientColor;
+		setFogOfWarColor(fogColor);
+		worldSkybox?.setDarkMode(darkMode);
+		worldTerrain?.setRenderColors(
+			darkMode ? DARK_TERRAIN_MAIN_COLOR : LIGHT_TERRAIN_MAIN_COLOR,
+			darkMode ? DARK_TERRAIN_LINE_COLOR : LIGHT_TERRAIN_LINE_COLOR,
+			fogColor,
+		);
 	};
+
+	createEffect(applySceneTheme);
 
 	const handleRenderPayload = (payload: unknown) => {
 		if (!rendererController) return;
@@ -187,7 +195,27 @@ export function SceneRuntimeCore(props: {
 	const characterContentDeps = createCharacterContentDeps({
 		getScene: () => scene,
 		getCharacterRoot: () => characterRoot,
+		getGroundHeight: (x, z) => worldTerrain?.getHeightAt(x, z) ?? 0,
 	});
+
+	const mountWorldTerrain = async (definition: TerrainDefinition): Promise<void> => {
+		if (!scene) throw new Error("SceneRuntime is not ready");
+		const current = worldTerrain?.config.definition;
+		if (
+			current &&
+			current.algorithmVersion === definition.algorithmVersion &&
+			current.seed === definition.seed &&
+			current.chunkSize === definition.chunkSize &&
+			current.chunkResolution === definition.chunkResolution &&
+			current.heightScale === definition.heightScale
+		) {
+			return;
+		}
+		worldTerrain?.dispose();
+		worldTerrain = WorldTerrain.start({ definition, render: DEFAULT_TERRAIN_RENDER_CONFIG });
+		await worldTerrain.mount(scene);
+		applySceneTheme();
+	};
 
 	// 向控制器下发"跟随实体"指令（保留当前角度）。实时会话的 startFollow/setFollowTarget 共用。
 	const sendFollowCommand = (entityId: string) => {
@@ -207,7 +235,12 @@ export function SceneRuntimeCore(props: {
 		setupRealtimeResources: async (config) => {
 			const camera = sceneCamera;
 			if (!scene || !canvas || !camera) throw new Error("SceneRuntime is not ready");
-			rendererController = createRendererController(scene, { contentRoot: realtimeRoot });
+			await mountWorldTerrain(config.terrain);
+			rendererController = createRendererController(scene, {
+				contentRoot: realtimeRoot,
+				worldStateReader: config.renderSource.getWorldStateReader(),
+				worldStateSlotIndex: config.renderSource.getWorldStateSlotIndex(),
+			});
 			await rendererController.applyWorldResources(config.worldResources, config.initialWorldPoses);
 			rendererCommunication = new RendererCommunication();
 			rendererCommunication.setRenderHandler(handleRenderPayload);
@@ -227,6 +260,30 @@ export function SceneRuntimeCore(props: {
 				smoothTransition: true,
 				...(initialTarget ? { target: initialTarget } : {}),
 			});
+			if (config.controllerInput) {
+				const input = config.controllerInput;
+				const nextController = new SceneInputController({
+					movementSink: input.movementSink,
+					getCameraBasis: () => {
+						const forward = camera.getDirection(Vector3.Forward());
+						forward.y = 0;
+						forward.normalize();
+						const right = Vector3.Cross(Vector3.Up(), forward).normalize();
+						return {
+							forward: { x: forward.x, z: forward.z },
+							right: { x: right.x, z: right.z },
+						};
+					},
+					onAction: (action) => {
+						input.onAction(action);
+					},
+					skillBindings: input.skillBindings,
+				});
+				sceneInputController = nextController;
+				detachSceneInput = () => {
+					nextController.dispose();
+				};
+			}
 			// 控制器构造时会把相机 target 设到成员位；重置回观察位，让"飞入"动画从观察位起步。
 			camera.alpha = OBSERVE_POSE.alpha;
 			camera.beta = OBSERVE_POSE.beta;
@@ -235,6 +292,9 @@ export function SceneRuntimeCore(props: {
 		},
 		teardownRealtimeResources: () => {
 			window.removeEventListener("cameraControl", handleCameraControl as EventListener);
+			detachSceneInput?.();
+			detachSceneInput = undefined;
+			sceneInputController = undefined;
 			rendererCommunication?.dispose();
 			rendererCommunication = undefined;
 			rendererController?.dispose();
@@ -312,9 +372,6 @@ export function SceneRuntimeCore(props: {
 
 	const createBaseScene = async () => {
 		if (!scene || !engine) return;
-		const runtimeEngine = engine;
-		registerVolumetricFogPlugin();
-		backgroundRoot = new TransformNode("render-group:background", scene);
 		realtimeRoot = new TransformNode("render-group:realtime", scene);
 		characterRoot = new TransformNode("render-group:character", scene);
 
@@ -332,7 +389,12 @@ export function SceneRuntimeCore(props: {
 		sceneCamera.minZ = 0.1;
 		sceneCamera.fov = 1;
 		sceneCamera.wheelDeltaPercentage = 0.05;
+		sceneCamera.lowerRadiusLimit = CAMERA_RADIUS_LIMITS.min;
+		sceneCamera.upperRadiusLimit = CAMERA_RADIUS_LIMITS.max;
 		scene.activeCamera = sceneCamera;
+		worldSkybox = createProceduralStarSkybox(scene);
+		registerFogOfWarMaterialPlugin();
+		applySceneTheme();
 
 		scene.onPointerObservable.add((pointerInfo) => {
 			if (pointerInfo.type !== PointerEventTypes.POINTERPICK || !characterRoot) return;
@@ -367,126 +429,35 @@ export function SceneRuntimeCore(props: {
 			[sceneCamera],
 		);
 
-		const mainSpotLight = new SpotLight(
-			"mainSpotLight",
-			new Vector3(0, 30, 0),
-			new Vector3(0, -1, 0),
-			Math.PI / 4,
-			2,
-			scene,
-		);
-		mainSpotLight.id = "mainSpotLight";
-		mainSpotLight.intensity = 300;
-		mainSpotLight.radius = 10;
+		// 世界日光与环境光：日光负责阴影，环境光提供基础照明。
+		const sunLight = new DirectionalLight("sunLight", new Vector3(0.5, -1, 0.35), scene);
+		sunLight.intensity = 3;
+		const ambientLight = new HemisphericLight("ambientLight", new Vector3(0, 1, 0), scene);
+		ambientLight.intensity = 0.4;
+		ambientLight.groundColor = new Color3(0.15, 0.15, 0.2);
 
-		const stageSpotLight = new SpotLight(
-			"stageSpotLight",
-			new Vector3(0, 4.5, 2.5),
-			new Vector3(0, -1, 0),
-			Math.PI / 4,
-			2,
-			scene,
-		);
-		stageSpotLight.id = "stageSpotLight";
-		stageSpotLight.intensity = 40;
-		stageSpotLight.radius = 10;
-
-		const shadowGenerator = new ShadowGenerator(1024, mainSpotLight);
-		shadowGenerator.bias = 0.000001;
-		shadowGenerator.darkness = 0.5;
+		const shadowGenerator = new ShadowGenerator(2048, sunLight);
+		shadowGenerator.bias = 0.0001;
+		shadowGenerator.darkness = 0.4;
 		shadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
 		shadowGenerator.filter = ShadowGenerator.FILTER_PCSS;
 		shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_LOW;
 
-		const spsPositionL = { x: -7, y: 0, z: -6 };
-		const spsPositionR = { x: 7, y: 0, z: -6 };
-		const spsSizeXZ = 2;
-		const spsSizeY = 10;
-		const spsNumber = 1000;
-		const SPS = new SolidParticleSystem("SPS", scene);
-		const particle = MeshBuilder.CreateBox("particle", {});
-		SPS.addShape(particle, spsNumber);
-		particle.dispose();
-		const spsMesh = SPS.buildMesh();
-		spsMesh.name = "spsMesh";
-		spsMesh.parent = backgroundRoot;
-		spsMesh.rotation = new Vector3((Math.PI * -1) / 12, 0, 0);
-		const particlePosY: number[] = [];
-
-		SPS.initParticles = () => {
-			for (let p = 0; p < SPS.nbParticles; p++) {
-				const currentParticle = SPS.particles[p];
-				if (!currentParticle) continue;
-				const currY = Scalar.RandomRange(0, spsPositionL.y + spsSizeY);
-				particlePosY.push(currY);
-				if (p % 2 === 0) {
-					currentParticle.position.x = Scalar.RandomRange(spsPositionL.x - spsSizeXZ, spsPositionL.x + spsSizeXZ);
-					currentParticle.position.z = Scalar.RandomRange(spsPositionL.z - spsSizeXZ, spsPositionL.z + spsSizeXZ);
-				} else {
-					currentParticle.position.x = Scalar.RandomRange(spsPositionR.x - spsSizeXZ, spsPositionR.x + spsSizeXZ);
-					currentParticle.position.z = Scalar.RandomRange(spsPositionR.z - spsSizeXZ, spsPositionR.z + spsSizeXZ);
-				}
-				currentParticle.position.y = currY;
-				const scale = Scalar.RandomRange(0.15, 0.2);
-				currentParticle.scale.x = scale;
-				currentParticle.scale.y = scale;
-				currentParticle.scale.z = scale;
-				currentParticle.rotation.x = Scalar.RandomRange(0, Math.PI);
-				currentParticle.rotation.y = Scalar.RandomRange(0, Math.PI);
-				currentParticle.rotation.z = Scalar.RandomRange(0, Math.PI);
+		// 阴影归属统一入口：新 mesh 默认接收阴影；实时内容（角色/怪物）作为阴影投射源注册。
+		scene.onNewMeshAddedObservable.add((mesh) => {
+			mesh.receiveShadows = true;
+			if (realtimeRoot && mesh.isDescendantOf(realtimeRoot)) {
+				shadowGenerator.addShadowCaster(mesh);
 			}
-		};
-
-		SPS.initParticles();
-		SPS.setParticles();
-		SPS.updateParticle = (currentParticle) => {
-			if (currentParticle.position.y >= spsSizeY) {
-				currentParticle.position.y = (-Math.random() * spsSizeY) / 2;
-			} else {
-				const mirroredY = particlePosY[spsNumber - currentParticle.idx] ?? 0;
-				const ownY = particlePosY[currentParticle.idx] ?? 0;
-				currentParticle.position.y += (0.04 * mirroredY + 0.025) / runtimeEngine.getFps();
-				currentParticle.rotation.y += (0.05 * ownY) / runtimeEngine.getFps();
-			}
-			return currentParticle;
-		};
-		scene.registerAfterRender(() => {
-			SPS.setParticles();
 		});
-
 		try {
-			await AppendSceneAsync("/models/bg.glb", scene);
-			const defaultMat = scene.getMaterialByName("__GLTFLoader._default");
-			if (defaultMat) {
-				defaultMat.backFaceCulling = false;
-			}
-			if (isPBRMaterial(defaultMat)) {
-				defPBR = defaultMat;
-				defPBR.albedoColor = themePrimaryColor();
-				defPBR.ambientColor = new Color3(0.008, 0.01, 0.01);
-			}
-			// 类型说明：pluginManager 只能按基类返回插件；名称已由本文件注册，恢复为体积雾插件以同步主题色。
-			const mat = defPBR?.pluginManager?.getPlugin("VolumetricFog") as VolumetricFogPluginMaterial | undefined | null;
-			if (mat) {
-				mat.center = new Vector3(0, 0, -6);
-				mat.isEnabled = true;
-				mat.color = themePrimaryColor();
-				mat.radius = 8;
-				mat.density = 0.5;
-			}
-			scene.meshes.forEach((mesh) => {
-				if (mesh.name === "__root__") return;
-				mesh.receiveShadows = true;
-				shadowGenerator.addShadowCaster(mesh, true);
-				if (defPBR) {
-					mesh.material = defPBR;
-				}
-				if (!mesh.parent && backgroundRoot) {
-					mesh.parent = backgroundRoot;
-				}
-			});
+			await mountWorldTerrain(DEFAULT_TERRAIN_DEFINITION);
+			applySceneTheme();
+			const revealCenter = sceneCamera.getTarget();
+			setFogOfWarCenter(revealCenter);
+			worldTerrain?.update(sceneCamera.position, revealCenter);
 		} catch (error) {
-			log.error("背景模型加载失败，保留空基础场景继续运行", error);
+			log.error("程序化世界生成失败，模拟场景将在平面地表运行", error);
 		}
 	};
 
@@ -512,7 +483,12 @@ export function SceneRuntimeCore(props: {
 				rendererController?.tick(dt);
 				// 仅 realtime 稳态驱动跟随；过渡期相机由 babylon 动画控制，避免两者打架。
 				if (followActive) thirdPersonController?.update(dt);
-				syncThemeMaterials();
+				sceneInputController?.updateMovementState();
+				if (sceneCamera) {
+					const revealCenter = sceneCamera.getTarget();
+					setFogOfWarCenter(revealCenter);
+					worldTerrain?.update(sceneCamera.position, revealCenter);
+				}
 				scene.render();
 			});
 			// 等到 babylon 场景真正 ready（setReady(true) 已执行）后再让 initialize 完成，
@@ -645,6 +621,10 @@ export function SceneRuntimeCore(props: {
 			sceneMachineDeps.teardownCharacterContent();
 			sceneMachineActor?.stop();
 			sceneMachineActor = undefined;
+			worldTerrain?.dispose();
+			worldTerrain = undefined;
+			worldSkybox?.dispose();
+			worldSkybox = undefined;
 			equipmentHighlightLayer?.dispose();
 			equipmentHighlightLayer = undefined;
 			lensPipeline?.dispose();

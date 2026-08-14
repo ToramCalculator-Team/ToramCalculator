@@ -1,6 +1,8 @@
 import { createId } from "@paralleldrive/cuid2";
 import { type ActorRefFrom, assign, fromCallback, fromPromise, type SnapshotFrom, sendParent, setup } from "xstate";
+import type { ControllerMovementState, MovementStateSink } from "~/engine/controller/controllerInput";
 import type { EngineRunOutput } from "~/engine/core/runOutput";
+import { SharedMovementStateWriter } from "~/engine/core/thread/controllerInputBuffer";
 import type { EngineTelemetry } from "~/engine/core/thread/protocol";
 import type { RealtimeEngineHandle } from "~/engine/core/thread/RealtimeEngineHandle";
 import type { SimulationRenderSource } from "~/engine/core/thread/RendererProtocol";
@@ -45,8 +47,15 @@ export type SimulatorSessionRealtimeHandlePort = Pick<
 	| "resume"
 	| "step"
 	| "castMemberSkill"
+	| "jumpMember"
+	| "attachControllerInput"
+	| "detachControllerInput"
 	| "unloadScenario"
 	| "getRenderSnapshot"
+	| "startWorldStateProjection"
+	| "stopWorldStateProjection"
+	| "getWorldStateReader"
+	| "getWorldStateSlotIndex"
 	| "on"
 	| "off"
 	| "close"
@@ -166,6 +175,7 @@ const editCurrentCopy = (
 /** 创建不依赖 Solid、路由或具体 AUI actor 的 SimulatorSession 运行时。 */
 export function createSimulatorSessionRuntime(engineService: SimulatorSessionEngineServicePort) {
 	let realtimeHandle: SimulatorSessionRealtimeHandlePort | null = null;
+	const movementSinks = new Map<string, MovementStateSink>();
 	let runtimeSnapshot: SimulatorRuntimeSnapshot = { latestFrame: null, telemetry: null, isRunning: false };
 	const runtimeListeners = new Set<(snapshot: SimulatorRuntimeSnapshot) => void>();
 	const emitRuntime = (patch: Partial<SimulatorRuntimeSnapshot>) => {
@@ -179,6 +189,8 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 	const releaseSessionResources = async () => {
 		const handle = realtimeHandle;
 		if (!handle) return;
+		movementSinks.clear();
+		await handle.stopWorldStateProjection();
 		await handle.unbindAllMemberControllers();
 		await handle.unloadScenario();
 	};
@@ -187,6 +199,8 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 			realtimeHandle ? await realtimeHandle.getRenderSnapshot(includeAreas) : null,
 		on: (_event, listener) => realtimeHandle?.on("render_cmd", listener) ?? (() => {}),
 		off: (_event, listener) => realtimeHandle?.off("render_cmd", listener),
+		getWorldStateReader: () => realtimeHandle?.getWorldStateReader() ?? null,
+		getWorldStateSlotIndex: () => realtimeHandle?.getWorldStateSlotIndex() ?? null,
 	};
 	const machineSetup = setup({
 		types: {
@@ -226,6 +240,7 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 					releaseEvents();
 					const handle = realtimeHandle;
 					realtimeHandle = null;
+					movementSinks.clear();
 					emitRuntime({ latestFrame: null, telemetry: null, isRunning: false });
 					if (handle) {
 						void (async () => {
@@ -259,9 +274,18 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 						maxTickSkip: 5,
 					});
 					await handle.setRealtimeSnapshotHz(10);
+					await handle.startWorldStateProjection();
 					const members = await handle.getMembers();
 					await handle.unbindAllMemberControllers();
 					const controller = await handle.bindMemberController(primaryMemberId);
+					const movementWriter = new SharedMovementStateWriter();
+					await handle.attachControllerInput(controller.controllerId, movementWriter.buffer);
+					const movementSink: MovementStateSink = Object.freeze({
+						write: (nextState: ControllerMovementState) => {
+							movementWriter.write(nextState);
+						},
+					});
+					movementSinks.set(controller.controllerId, movementSink);
 					const skills = await handle.getMemberSkillList(primaryMemberId);
 					await handle.startRunOutput(runId, { tickStateHistory: "everyTick" });
 					collectorStarted = true;
@@ -278,7 +302,11 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 			finishValidation: fromPromise(async ({ input }: { input: string }) => {
 				const handle = requireHandle();
 				await handle.stop();
-				return await handle.finishRunOutput(input);
+				const output = await handle.finishRunOutput(input);
+				movementSinks.clear();
+				await handle.stopWorldStateProjection();
+				await handle.unbindAllMemberControllers();
+				return output;
 			}),
 			acknowledgeOutput: fromPromise(async ({ input }: { input: string }) => {
 				await requireHandle().acknowledgeRunOutput(input);
@@ -288,12 +316,16 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 				async ({
 					input,
 				}: {
-					input: { command: "pause" | "resume" | "step" | "cast"; controllerId?: string; skillId?: string };
+					input: { command: "pause" | "resume" | "step" | "cast" | "jump"; controllerId?: string; skillId?: string };
 				}) => {
 					const handle = requireHandle();
 					if (input.command === "pause") return await handle.pause();
 					if (input.command === "resume") return await handle.resume();
 					if (input.command === "step") return await handle.step();
+					if (input.command === "jump") {
+						if (!input.controllerId) throw new Error("跳跃缺少控制器身份");
+						return await handle.jumpMember(input.controllerId);
+					}
 					if (!input.controllerId || !input.skillId) throw new Error("施放技能缺少控制器或技能身份");
 					return await handle.castMemberSkill(input.controllerId, input.skillId);
 				},
@@ -698,6 +730,7 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 					"validation.resume.requested": "controllingEngine",
 					"validation.step.requested": "controllingEngine",
 					"skill.cast.requested": "controllingEngine",
+					"jump.requested": "controllingEngine",
 					"controller.selected": { actions: "selectController" },
 				},
 			},
@@ -780,6 +813,9 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 								controllerId: requireActiveControllerId(context),
 								skillId: event.skillId,
 							};
+						}
+						if (event.type === "jump.requested") {
+							return { command: "jump" as const, controllerId: requireActiveControllerId(context) };
 						}
 						throw new Error("未知引擎控制命令");
 					},
@@ -930,6 +966,8 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 			return () => runtimeListeners.delete(listener);
 		},
 		renderSource,
+		getControllerMovementSink: (controllerId: string): MovementStateSink | null =>
+			movementSinks.get(controllerId) ?? null,
 	};
 }
 

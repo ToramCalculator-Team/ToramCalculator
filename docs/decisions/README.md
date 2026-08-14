@@ -54,6 +54,8 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 | [0014](./0014-routing-vs-state-management-baseline.md) | 路由表达主业务位置，状态机表达跨路由业务与服务生命周期 |
 | [0021](./0021-aui-interface-state-machine.md) | AUI 状态机是跨模态交互状态的唯一来源 |
 | [0037](./0037-aui-supervises-local-session-actors.md) | AUI 作为顶层 actor 统辖局部 Session child，具体输入先进入 child，控制向下、提案与事实向上 |
+| [0049](./0049-engine-owns-terrain-physical-state.md) | 场景解析提供同源地形定义，引擎拥有地形上的完整物理位置权威，渲染层只生成网格并投影状态 |
+| [0050](./0050-realtime-state-transport-semantics.md) | 连续状态走 latest-state 单槽通道，离散动作走事件队列；Session 拥有通道生命周期，CUI 不持有 Engine Handle 能力 |
 
 ### 数据、同步与领域打包
 
@@ -145,6 +147,8 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 | [0046](./0046-compile-business-workflows-to-generic-engine-contracts.md) | 业务工作流编译为通用引擎执行与记录契约 | Accepted | 应用与引擎边界 |
 | [0047](./0047-resource-row-owns-lifecycle-metadata.md) | 资源行直接拥有生命周期元信息 | Accepted | 数据所有权与持久化 |
 | [0048](./0048-pglite-live-view-as-application-read-source.md) | PGlite business view 作为应用持久数据的唯一响应式读源 | Accepted | 应用数据读取 |
+| [0049](./0049-engine-owns-terrain-physical-state.md) | 引擎拥有地形物理状态权威 | Accepted | 世界模型与渲染 |
+| [0050](./0050-realtime-state-transport-semantics.md) | 实时状态的传输语义分类：连续状态走 latest-state 通道，离散动作走事件队列 | Accepted | 实时交互与线程通信 |
 
 ## 决策候选与实施计划
 

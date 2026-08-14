@@ -22,6 +22,7 @@ export type CharacterContentDeps = {
 export const createCharacterContentDeps = (handles: {
 	getScene: () => Scene | undefined;
 	getCharacterRoot: () => TransformNode | undefined;
+	getGroundHeight: (x: number, z: number) => number;
 }): CharacterContentDeps => {
 	let characterFactory: EntityFactory | undefined;
 	let activeController: ReturnType<typeof createRendererController> | undefined;
@@ -42,7 +43,13 @@ export const createCharacterContentDeps = (handles: {
 			try {
 				await contentController.applyWorldResources(
 					[resource],
-					[{ memberId: resource.memberId, position: { x: 0, y: 0, z: 0 }, yaw: 0 }],
+					[
+						{
+							memberId: resource.memberId,
+							position: { x: 0, y: handles.getGroundHeight(0, 0), z: 0 },
+							yaw: 0,
+						},
+					],
 				);
 			} catch (error) {
 				contentController.dispose();

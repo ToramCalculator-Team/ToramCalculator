@@ -12,6 +12,7 @@ export type SimulatorSessionIntent =
 	| { type: "validation.retry.requested" }
 	| { type: "validation.returnToDesign.requested" }
 	| { type: "skill.cast.requested"; skillId: string }
+	| { type: "jump.requested" }
 	| { type: "controller.selected"; controllerId: string }
 	| { type: "design.copy.selected"; copyId: string }
 	| { type: "run.selected"; side: "A" | "B"; runId: string | null }

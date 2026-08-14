@@ -30,7 +30,7 @@ const errorMessage = (error: unknown) => (error instanceof Error ? error.message
  *
  * 用户可输入的意图消息类型：
  * 1. 生命周期事件 - 复活
- * 2. 移动控制事件 - 移动、停止移动
+ * 2. 运动控制事件 - 移动、停止移动、跳跃
  * 3. 技能使用事件 - 使用技能
  * 4. 防御操作事件 - 格挡、闪躲 (Player 特有)
  * 5. 目标管理事件 - 切换目标

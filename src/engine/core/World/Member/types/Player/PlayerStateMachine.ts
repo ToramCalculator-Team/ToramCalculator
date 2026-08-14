@@ -198,6 +198,11 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 				更新可移动性: machineSetup.assign(() => {
 					return { canMove: false };
 				}),
+				开始跳跃: () => {
+					if (!env.runtime.grounded) return;
+					env.runtime.grounded = false;
+					env.runtime.verticalVelocity = env.runtime.locomotion.jumpSpeed;
+				},
 				切换当前目标: ({ event }) => {
 					applyMemberTargetSelection(env, requireSelectTargetEvent(event));
 				},
@@ -346,7 +351,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 						});
 					}
 					// 下一技能消耗修正在扣费成功后消费；施法检查阶段也会运行 skill.cost，不能在管线内清理。
-						env.attributeContainer.removeModifiersBySourceKeyPrefix(NEXT_SKILL_COST_SOURCE_ID_PREFIX);
+					env.attributeContainer.removeModifiersBySourceKeyPrefix(NEXT_SKILL_COST_SOURCE_ID_PREFIX);
 					log.info(`[${env.name}] 已扣除技能消耗：Hp-${cost.hpCost}, Mp-${cost.mpCost}`);
 				},
 				重置控制抵抗时间: () => {
@@ -404,6 +409,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 									},
 									states: {
 										空闲状态: {
+											tags: "movement-input-enabled",
 											on: {
 												使用格挡: { target: "格挡中" },
 												使用闪躲: { target: "闪躲中" },
@@ -484,6 +490,24 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 											on: {
 												停止移动: { target: "静止" },
 											},
+										},
+									},
+								},
+								垂直状态: {
+									initial: "着地",
+									states: {
+										着地: {
+											on: {
+												跳跃: {
+													target: "腾空",
+													guard: () => env.runtime.grounded,
+													actions: { type: "开始跳跃" },
+												},
+											},
+										},
+										腾空: {
+											tags: "airborne",
+											on: { 落地: { target: "着地" } },
 										},
 									},
 								},

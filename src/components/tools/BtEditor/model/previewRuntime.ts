@@ -1,4 +1,5 @@
 import type { MemberType } from "@db/schema/enums";
+import { PlayerLocomotionProfile } from "~/game/locomotion";
 import { MemberBaseNestedSchema } from "~/engine/core/World/Member/MemberBaseSchema";
 import type { MemberRuntimeServices } from "~/engine/core/World/Member/RuntimeServices";
 import { AttributeContainer } from "~/engine/core/World/Member/runtime/AttributeContainer/AttributeContainer";
@@ -57,6 +58,16 @@ const createPreviewRuntime = (memberType: MemberType): PreviewRuntime => {
 		deltaTimeMs: 1000 / 60,
 		position: { x: 0, y: 0, z: 0 },
 		targetId: "preview-target",
+		yaw: 0,
+		movement: null,
+		verticalVelocity: 0,
+		grounded: true,
+		locomotion: {
+			walkSpeed: PlayerLocomotionProfile.WALK_SPEED,
+			runSpeed: PlayerLocomotionProfile.RUN_SPEED,
+			gravity: PlayerLocomotionProfile.GRAVITY,
+			jumpSpeed: PlayerLocomotionProfile.JUMP_SPEED,
+		},
 		statusTags: [],
 		currentSkill: null,
 		previousSkill: null,

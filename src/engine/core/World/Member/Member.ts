@@ -34,9 +34,10 @@ import {
 	type MutableStatusInstanceStore,
 	type StatusInstance,
 } from "./runtime/Status/StatusInstanceStore";
-import type { MemberSharedRuntime } from "./runtime/types";
+import type { MemberMovementInput, MemberSharedRuntime } from "./runtime/types";
 
 const log = createLogger("Member");
+const MOVEMENT_EPSILON = 0.0001;
 
 export const MemberSnapshotSchema = z.object({
 	attrs: AttributeSnapshotSchema,
@@ -330,7 +331,7 @@ export class Member<
 
 	serialize(): MemberSnapshot {
 		return {
-		attrs: this.attributeContainer.exportAttributeSnapshot(),
+			attrs: this.attributeContainer.exportAttributeSnapshot(),
 			id: this.id,
 			type: this.type,
 			name: this.name,
@@ -622,7 +623,7 @@ export class Member<
 		this.procBus.emit(eventName, payload, timeMs);
 	}
 
-	tick(tick: SimulationTickContext): void {
+	tick(tick: SimulationTickContext, movementInput: MemberMovementInput | null = null): void {
 		if (!this.actorStarted) {
 			throw new Error(`member actor not started: ${this.id}`);
 		}
@@ -632,9 +633,74 @@ export class Member<
 		this.statusStore.purgeExpired(tick.currentTimeMs);
 		this.syncStatusTags();
 		this.actor.send({ type: "update", timestamp: tick.currentTimeMs });
+		this.resolveMovementInput(movementInput);
+		this.integrateMovement(tick);
 		this.btManager.tickAll();
 		// 让阈值 watcher 及时响应 modifier 导致的数值变化：把本帧累计的脏值刷出。
 		this.attributeContainer.flushDirtyValues();
+	}
+
+	/**
+	 * 将本 Tick 的控制状态解析为成员移动状态。
+	 *
+	 * 输入每 Tick 重新判定，按键状态没有变化时也会响应 FSM 可移动性的变化；输入未附加、
+	 * 控制器停用或当前成员状态禁止移动时都直接清空，不通过外部意图或事件队列保存连续状态。
+	 */
+	private resolveMovementInput(input: MemberMovementInput | null): void {
+		if (!input || !this.actor.getSnapshot().hasTag("movement-input-enabled")) {
+			this.runtime.movement = null;
+			return;
+		}
+
+		const length = Math.hypot(input.direction.x, input.direction.z);
+		const intensity = Math.min(1, Math.max(0, input.intensity));
+		if (!Number.isFinite(length) || length <= MOVEMENT_EPSILON || !Number.isFinite(intensity) || intensity === 0) {
+			this.runtime.movement = null;
+			return;
+		}
+
+		const baseSpeed = intensity >= 0.75
+			? this.runtime.locomotion.runSpeed
+			: this.runtime.locomotion.walkSpeed;
+		this.runtime.movement = {
+			dir: { x: input.direction.x / length, z: input.direction.z / length },
+			speed: baseSpeed,
+		};
+	}
+
+	/**
+	 * 积分当前 Tick 已接纳的移动状态；成员位置、朝向和步态事实始终由引擎持有，
+	 * 实时渲染统一从世界状态 latest-state 通道读取，不再维护并行的移动命令状态。
+	 */
+	private integrateMovement(tick: SimulationTickContext): void {
+		const movement = this.runtime.movement;
+		if (!movement) return;
+
+		this.runtime.position.x += (movement.dir.x * movement.speed * tick.deltaTimeMs) / 1000;
+		this.runtime.position.z += (movement.dir.z * movement.speed * tick.deltaTimeMs) / 1000;
+		this.runtime.yaw = Math.atan2(movement.dir.x, movement.dir.z);
+	}
+
+	/**
+	 * 在水平积分完成后，根据权威地形高度推进垂直状态。
+	 * grounded 时直接跟随地面；腾空时只由重力和状态机设置的初速度决定，落地事实回送成员 FSM。
+	 */
+	integrateTerrainHeight(groundY: number, tick: SimulationTickContext): void {
+		if (this.runtime.grounded) {
+			this.runtime.position.y = groundY;
+			this.runtime.verticalVelocity = 0;
+			return;
+		}
+
+		const deltaSeconds = tick.deltaTimeMs / 1000;
+		this.runtime.verticalVelocity -= this.runtime.locomotion.gravity * deltaSeconds;
+		this.runtime.position.y += this.runtime.verticalVelocity * deltaSeconds;
+		if (this.runtime.position.y > groundY) return;
+
+		this.runtime.position.y = groundY;
+		this.runtime.verticalVelocity = 0;
+		this.runtime.grounded = true;
+		this.actor.send({ type: "落地" });
 	}
 
 	// ==================== Checkpoint ====================

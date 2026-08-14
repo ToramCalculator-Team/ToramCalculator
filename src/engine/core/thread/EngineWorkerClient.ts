@@ -45,6 +45,7 @@ import {
 } from "./protocol";
 import type { RenderSnapshot } from "./RendererProtocol";
 import simulationWorker from "./Simulation.worker?worker&url";
+import { createWorldStateBuffer, MemberSlotIndex, WorldStateReader } from "./worldStateBuffer";
 
 const log = createLogger("EngineWorkerClient");
 
@@ -65,6 +66,11 @@ type PendingTask = {
 	timeout: number;
 };
 
+const collectScenarioMemberIds = (data: EngineScenarioData): string[] =>
+	[data.scenario.campA, data.scenario.campB].flatMap((camp) =>
+		camp.flatMap((team) => team.members.map((member) => member.id)),
+	);
+
 export class EngineWorkerClient {
 	private readonly lifecycleActor: Actor<typeof GameEngineSM>;
 	private readonly worker: Worker;
@@ -78,6 +84,11 @@ export class EngineWorkerClient {
 	private readonly readyPromise: Promise<void>;
 	private resolveReady: (() => void) | null = null;
 	private rejectReady: ((error: Error) => void) | null = null;
+	/** 仅在实时 Session 显式申请投影后存在。 */
+	private worldStateReader: WorldStateReader | null = null;
+	/** SAB 槽位索引（memberId → slotIdx），与 worker 侧保持相同顺序。 */
+	private worldStateSlotIndex: MemberSlotIndex | null = null;
+	private loadedMemberIds: string[] = [];
 
 	constructor(public readonly id: string) {
 		this.worker = new Worker(simulationWorker, { type: "module" });
@@ -303,12 +314,45 @@ export class EngineWorkerClient {
 	}
 
 	async loadScenario(data: EngineScenarioData): Promise<void> {
+		await this.stopWorldStateProjection();
 		await this.dispatchLifecycleControl({
 			type: "CMD_INIT",
 			data,
 			sourceSide: "controller",
 			correlationId: createId(),
 		});
+		this.loadedMemberIds = collectScenarioMemberIds(data);
+	}
+
+	/**
+	 * 创建 SAB 并通过 RPC 传给 Worker；同时在主线程侧持有 reader 供渲染层消费。
+	 * SAB 是共享引用，postMessage 时不克隆，Worker 和主线程指向同一内存。
+	 */
+	async startWorldStateProjection(): Promise<void> {
+		if (this.worldStateReader) return;
+		if (typeof SharedArrayBuffer === "undefined") {
+			throw new Error("实时世界状态投影需要 SharedArrayBuffer");
+		}
+		const memberIds = this.loadedMemberIds;
+		if (memberIds.length === 0) return;
+
+		const buf = createWorldStateBuffer(memberIds.length);
+		const slotIndex = new MemberSlotIndex(memberIds);
+		const reader = new WorldStateReader(buf);
+
+		// SharedArrayBuffer 经结构化克隆后仍指向同一共享内存，不放入 transferable 列表。
+		const result = await this.executeEngineRPC({ type: "attach_world_state_buffer", buffer: buf, memberIds });
+		if (!result.success) throw new EngineExecutionFailure(result.error);
+		this.worldStateSlotIndex = slotIndex;
+		this.worldStateReader = reader;
+	}
+
+	async stopWorldStateProjection(): Promise<void> {
+		if (!this.worldStateReader && !this.worldStateSlotIndex) return;
+		const result = await this.executeEngineRPC({ type: "detach_world_state_buffer" });
+		if (!result.success) throw new EngineExecutionFailure(result.error);
+		this.worldStateReader = null;
+		this.worldStateSlotIndex = null;
 	}
 
 	async setRuntimeConfig(config: RuntimeConfig): Promise<void> {
@@ -340,7 +384,9 @@ export class EngineWorkerClient {
 	}
 
 	async unloadScenario(): Promise<void> {
+		await this.stopWorldStateProjection();
 		await this.dispatchLifecycleControl({ type: "CMD_UNLOAD", sourceSide: "controller", correlationId: createId() });
+		this.loadedMemberIds = [];
 	}
 
 	async fastForward(options?: { maxTicks?: number; maxDurationMs?: number }): Promise<FastForwardResult> {
@@ -374,6 +420,7 @@ export class EngineWorkerClient {
 	async unbindMemberController(controllerId: string): Promise<void> {
 		const entry = this.memberControllers.get(controllerId);
 		if (!entry) return;
+		await this.detachControllerInput(controllerId);
 		await entry.controller.unbind();
 		this.memberControllers.delete(controllerId);
 	}
@@ -396,6 +443,24 @@ export class EngineWorkerClient {
 		if (!entry) throw new Error(`控制器不存在: ${controllerId}`);
 		const failed = (await entry.controller.castSkill(skillId)).find((result) => !result.success);
 		if (failed) throw new Error(failed.error ?? `技能施放失败: ${skillId}`);
+	}
+
+	async jumpMember(controllerId: string): Promise<void> {
+		const entry = this.memberControllers.get(controllerId);
+		if (!entry) throw new Error(`控制器不存在: ${controllerId}`);
+		const failed = (await entry.controller.jump()).find((result) => !result.success);
+		if (failed) throw new Error(failed.error ?? "跳跃请求失败");
+	}
+
+	/** 将 latest-wins 控制状态缓冲附加到已绑定控制器。 */
+	async attachControllerInput(controllerId: string, buffer: SharedArrayBuffer): Promise<void> {
+		if (!this.memberControllers.has(controllerId)) throw new Error(`控制器不存在: ${controllerId}`);
+		await this.requireRPC({ type: "attach_controller_input", controllerId, buffer });
+	}
+
+	/** 解除控制状态缓冲；重复解除保持幂等。 */
+	async detachControllerInput(controllerId: string): Promise<void> {
+		await this.requireRPC({ type: "detach_controller_input", controllerId });
 	}
 
 	async getMembers(): Promise<MemberSnapshot[]> {
@@ -450,12 +515,25 @@ export class EngineWorkerClient {
 		this.emitter.off(event, listener);
 	}
 
+	/** Session 启动实时世界投影后可用。 */
+	getWorldStateReader(): WorldStateReader | null {
+		return this.worldStateReader;
+	}
+
+	/** SAB 槽位索引（memberId → slotIdx）；与 worldStateReader 同生命周期。 */
+	getWorldStateSlotIndex(): MemberSlotIndex | null {
+		return this.worldStateSlotIndex;
+	}
+
 	async dispose(): Promise<void> {
 		if (this.disposed) return;
 		this.disposed = true;
 		this.memberControllers.clear();
 		this.lifecycleActor.stop();
 		this.rejectAllPending(new Error(`[${this.id}] disposed`));
+		this.worldStateReader = null;
+		this.worldStateSlotIndex = null;
+		this.loadedMemberIds = [];
 		this.port.close();
 		this.worker.terminate();
 		this.emitter.emit("disposed", { engineId: this.id });

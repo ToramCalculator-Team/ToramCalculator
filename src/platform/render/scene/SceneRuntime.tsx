@@ -19,10 +19,13 @@ import {
 	Suspense,
 	useContext,
 } from "solid-js";
+import type { MovementStateSink } from "~/engine/controller/controllerInput";
 import type { SimulationRenderSource } from "~/engine/core/thread/RendererProtocol";
+import type { TerrainDefinition } from "~/lib/terrain";
 import type { CharacterEquipmentSlot } from "~/machines/interface/characterEquipment";
 import type { WorldResourcePose } from "./contracts/worldContent";
 import type { CharacterWorldResource, WorldResource } from "./contracts/worldResource";
+import type { ControllerActionEvent } from "./input/controllerTypes";
 
 export type SceneRuntimeMode = "booting" | "loading" | "idle" | "realtime" | "suspended" | "error";
 
@@ -34,6 +37,8 @@ export type ScreenPoint = {
 
 export type RealtimeSceneConfig = {
 	renderSource: SimulationRenderSource;
+	/** 与 EngineScenarioData 同一份确定性地形定义。 */
+	terrain: TerrainDefinition;
 	/** 与当前 DesignCopy 同版本的静态视觉资源；逻辑引擎不再选择模型或外观。 */
 	worldResources: WorldResource[];
 	/** 设计态初始阵型；进入验证后由引擎动态位置覆盖。 */
@@ -43,6 +48,12 @@ export type RealtimeSceneConfig = {
 	controllerIds?: string[];
 	/** 主控成员初始位置（由队形纯函数预先算出），用于相机创建时即对准目标，无需等引擎首帧 snapshot。 */
 	initialCameraTarget?: { x: number; y: number; z: number };
+	/** 场景输入附件：连续移动共享最新状态，离散动作逐次交给 Session。 */
+	controllerInput?: {
+		movementSink: MovementStateSink;
+		onAction: (action: ControllerActionEvent) => void;
+		skillBindings?: Readonly<Record<string, string>>;
+	};
 };
 
 export type RealtimeSceneSession = {

@@ -30,6 +30,7 @@ const moveActionSchema = z
 	})
 	.strict();
 const stopMoveActionSchema = z.object({ type: z.literal("停止移动"), payload: emptyPayloadSchema }).strict();
+const jumpActionSchema = z.object({ type: z.literal("跳跃"), payload: emptyPayloadSchema }).strict();
 const skillActionSchema = z
 	.object({ type: z.literal("使用技能"), payload: z.object({ skillId: z.string().min(1) }).strict() })
 	.strict();
@@ -45,6 +46,7 @@ export const RunInputActionSchema = z.discriminatedUnion("type", [
 	reviveActionSchema,
 	moveActionSchema,
 	stopMoveActionSchema,
+	jumpActionSchema,
 	skillActionSchema,
 	startGuardActionSchema,
 	stopGuardActionSchema,

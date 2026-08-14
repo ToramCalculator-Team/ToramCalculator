@@ -1,6 +1,5 @@
-// 消息驱动渲染协议（最小可用 + 可扩展）
-
 import { z } from "zod/v4";
+import type { MemberSlotIndex, WorldStateReader } from "./worldStateBuffer";
 
 export const Vec3Schema = z.object({ x: z.number(), y: z.number(), z: z.number() });
 export type Vec3 = z.output<typeof Vec3Schema>;
@@ -10,6 +9,10 @@ export interface SimulationRenderSource {
 	getRenderSnapshot(includeAreas?: boolean): Promise<RenderSnapshot | null>;
 	on(event: "render_cmd", listener: (payload: { engineId: string; cmd: unknown }) => void): () => void;
 	off(event: "render_cmd", listener?: (payload: { engineId: string; cmd: unknown }) => void): void;
+	/** SAB 世界状态读取器；实时 Session 显式启动投影后可用，未附加时返回 null。 */
+	getWorldStateReader(): WorldStateReader | null;
+	/** SAB 槽位索引（memberId → slotIdx）；与 getWorldStateReader() 同生命周期。 */
+	getWorldStateSlotIndex(): MemberSlotIndex | null;
 }
 
 export interface CmdBase {
@@ -26,19 +29,6 @@ export interface SpawnCmd extends CmdBase {
 
 export interface DestroyCmd extends CmdBase {
 	type: "destroy";
-}
-
-export interface MoveStartCmd extends CmdBase {
-	type: "moveStart";
-	dir: { x: number; z: number }; // 归一化目标方向（水平面）
-	speed: number; // m/s
-	accel?: number; // m/s^2，默认 0（立即达到）
-}
-
-export interface MoveStopCmd extends CmdBase {
-	type: "moveStop";
-	decel?: number; // m/s^2，默认立即停止
-	snapToStop?: boolean; // true => 立即停止（忽略 decel）
 }
 
 export interface FaceCmd extends CmdBase {
@@ -74,8 +64,6 @@ export interface CameraFollowCmd extends CmdBase {
 export type RendererCmd =
 	| SpawnCmd
 	| DestroyCmd
-	| MoveStartCmd
-	| MoveStopCmd
 	| FaceCmd
 	| TeleportCmd
 	| ActionCmd

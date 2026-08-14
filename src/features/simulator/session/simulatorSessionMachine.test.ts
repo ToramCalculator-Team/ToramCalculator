@@ -121,6 +121,9 @@ class FakeRealtimeHandle implements SimulatorSessionRealtimeHandlePort {
 	resume = vi.fn(async () => this.setLifecycle("running"));
 	step = vi.fn(async () => undefined);
 	castMemberSkill = vi.fn(async () => undefined);
+	jumpMember = vi.fn(async () => undefined);
+	attachControllerInput = vi.fn(async () => undefined);
+	detachControllerInput = vi.fn(async () => undefined);
 	unloadScenario = vi.fn(async () => this.setLifecycle("idle"));
 	getRenderSnapshot = vi.fn(async () => ({
 		tickIndex: 0,
@@ -129,6 +132,10 @@ class FakeRealtimeHandle implements SimulatorSessionRealtimeHandlePort {
 		areas: [],
 		cameraFollowEntityId: null,
 	}));
+	getWorldStateReader = vi.fn(() => null);
+	getWorldStateSlotIndex = vi.fn(() => null);
+	startWorldStateProjection = vi.fn(async () => undefined);
+	stopWorldStateProjection = vi.fn(async () => undefined);
 	close = vi.fn(async () => undefined);
 
 	subscribeLifecycle(listener: (snapshot: EngineLifecycleSnapshot) => void): () => void {

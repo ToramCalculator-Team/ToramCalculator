@@ -51,6 +51,14 @@ export interface MemberSelectTargetEvent extends EventObject {
 	type: "切换目标";
 	data: { targetId: string };
 }
+export interface MemberJumpEvent extends EventObject {
+	id: string;
+	type: "跳跃";
+	data: Record<string, never>;
+}
+export interface MemberLandedEvent extends EventObject {
+	type: "落地";
+}
 
 /** 成员状态机公开接纳的公共控制事件；Player/Mob 专属事件通过 MemberFSMEvent 泛型显式组合。 */
 export type MemberControlEvent =
@@ -58,13 +66,15 @@ export type MemberControlEvent =
 	| MemberMoveEvent
 	| MemberStopMoveEvent
 	| MemberUseSkillEvent
-	| MemberSelectTargetEvent;
+	| MemberSelectTargetEvent
+	| MemberJumpEvent;
 
 export type MemberFSMEvent<TSpecificEvent extends EventObject = never> =
 	| MemberCreateEvent // 创建事件
 	| MemberDestroyEvent // 销毁事件
 	| MemberUpdateEvent // 更新事件
 	| MemberDeathEvent // 统一致死转换
+	| MemberLandedEvent
 	| MemberControlEvent
 	| TSpecificEvent;
 

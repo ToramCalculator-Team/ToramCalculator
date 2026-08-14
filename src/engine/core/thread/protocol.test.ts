@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_TERRAIN_DEFINITION } from "~/lib/terrain";
 import { WorkerTaskResponseEnvelopeSchema } from "~/lib/workerPool/type";
 import { EngineLifecycleCommandSchema } from "../GameEngineSM";
 import { SimulationTaskExecutionError, SimulationTaskSchema } from "../simulationTask";
@@ -54,6 +55,35 @@ describe("parseEngineRPCResult", () => {
 				intent: { ...baseIntent, type: "切换目标", data: { targetId: "mob-1" } },
 			}).success,
 		).toBe(true);
+		expect(
+			EngineRPCSchema.safeParse({
+				type: "send_intent",
+				intent: { ...baseIntent, type: "跳跃", data: {} },
+			}).success,
+		).toBe(true);
+		expect(
+			EngineRPCSchema.safeParse({
+				type: "send_intent",
+				intent: { ...baseIntent, type: "方向移动", data: { dir: { x: 1, z: 0 }, speed: 5 } },
+			}).success,
+		).toBe(false);
+	});
+
+	it("控制输入附件只接受 SharedArrayBuffer", () => {
+		expect(
+			EngineRPCSchema.safeParse({
+				type: "attach_controller_input",
+				controllerId: "controller-1",
+				buffer: new SharedArrayBuffer(32),
+			}).success,
+		).toBe(true);
+		expect(
+			EngineRPCSchema.safeParse({
+				type: "attach_controller_input",
+				controllerId: "controller-1",
+				buffer: new ArrayBuffer(32),
+			}).success,
+		).toBe(false);
 	});
 
 	it("按请求类型解析技能列表成功响应", () => {
@@ -95,7 +125,10 @@ describe("parseEngineRPCResult", () => {
 
 		const taskBase = {
 			runId: "run-1",
-			scenarioData: { scenario: { randomSeed: 1, logicHz: 60, primaryMemberId: "m", campA: [], campB: [] } },
+			scenarioData: {
+				terrain: DEFAULT_TERRAIN_DEFINITION,
+				scenario: { randomSeed: 1, logicHz: 60, primaryMemberId: "m", campA: [], campB: [] },
+			},
 			runtimeConfig: {
 				driveMode: "unclocked",
 				acceptExternalIntents: false,

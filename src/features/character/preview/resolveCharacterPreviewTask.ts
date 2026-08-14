@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 import { type EngineMember, EngineMemberSchema, type EngineTeam } from "~/engine/core/engineScenarioSchema";
 import { type SimulationTask, SimulationTaskSchema } from "~/engine/core/simulationTask";
 import { type EngineScenarioData, EngineScenarioDataSchema } from "~/engine/core/types";
+import { DEFAULT_TERRAIN_DEFINITION } from "~/lib/terrain";
 import type { CharacterLiveAggregate } from "../data/characterAggregateQuery";
 import {
 	type CharacterPreviewPolicy,
@@ -110,6 +111,7 @@ const resolveScene = (
 	return {
 		member,
 		scenarioData: EngineScenarioDataSchema.parse({
+			terrain: DEFAULT_TERRAIN_DEFINITION,
 			scenario: {
 				randomSeed: 1,
 				logicHz: DEFAULT_LOGIC_HZ,

@@ -43,6 +43,7 @@ import { createRealtimeConfig } from "./types";
 import type { MemberSnapshot } from "./World/Member/Member";
 import { computeMemberFormation } from "./World/Member/memberFormation";
 import type { MemberControlEvent } from "./World/Member/runtime/StateMachine/types";
+import type { MemberMovementInput } from "./World/Member/runtime/types";
 import { Player } from "./World/Member/types/Player/Player";
 import { World } from "./World/World";
 
@@ -170,6 +171,10 @@ export class GameEngine {
 	private systemMessageSender: ((payload: unknown) => void) | null = null;
 	/** 帧快照发送器 - 用于发送帧快照到主线程 */
 	private frameSnapshotSender: ((snapshot: FrameSnapshot) => void) | null = null;
+	/** tick 后回调（SAB 世界状态写入等低延迟通道） */
+	private postTickCallback: (() => void) | null = null;
+	/** Worker 注入的连续控制状态读取边界；引擎本身不依赖具体线程传输实现。 */
+	private controllerMovementInputSource: ((controllerId: string) => MemberMovementInput | null) | null = null;
 	/** 当前挂起的 tick 内任务数量（用于防止跨 tick 未完成任务） */
 	private pendingTickTasksCount: number = 0;
 
@@ -314,6 +319,7 @@ export class GameEngine {
 
 		// 清理上一个场景的世界数据
 		this.world.clear();
+		this.world.setTerrainDefinition(data.terrain);
 		this.eventQueue.clear();
 		this.domainEventBus.reset();
 		this.controllerEventProjector.clear();
@@ -326,7 +332,13 @@ export class GameEngine {
 		data.scenario.campA.forEach((team) => {
 			this.addTeam("campA", team);
 			team.members.forEach((member) => {
-				this.addMember("campA", team.id, member, formation.get(member.id)?.position);
+				const formationPosition = formation.get(member.id)?.position;
+				this.addMember(
+					"campA",
+					team.id,
+					member,
+					formationPosition ? this.world.projectToGround(formationPosition) : undefined,
+				);
 			});
 		});
 
@@ -335,7 +347,13 @@ export class GameEngine {
 		data.scenario.campB.forEach((team) => {
 			this.addTeam("campB", team);
 			team.members.forEach((member) => {
-				this.addMember("campB", team.id, member, formation.get(member.id)?.position);
+				const formationPosition = formation.get(member.id)?.position;
+				this.addMember(
+					"campB",
+					team.id,
+					member,
+					formationPosition ? this.world.projectToGround(formationPosition) : undefined,
+				);
 			});
 		});
 		this.world.memberManager.setPrimaryMember(data.scenario.primaryMemberId);
@@ -560,6 +578,8 @@ export class GameEngine {
 	 */
 	setRenderMessageSender(sender: (payload: unknown) => void): void {
 		this.renderMessageSender = sender;
+		// World 在构造时拿到的是初始引用；发送器在引擎构造后才注入，必须转发给成员链路。
+		this.world.setRenderMessageSender(sender);
 	}
 
 	/**
@@ -596,6 +616,23 @@ export class GameEngine {
 	 */
 	setFrameSnapshotSender(sender: (snapshot: FrameSnapshot) => void): void {
 		this.frameSnapshotSender = sender;
+	}
+
+	/**
+	 * 注册 tick 后回调（SAB 世界状态写入等低延迟通道用）。
+	 * Worker 层在 attach_world_state_buffer RPC 后注入；引擎不依赖 SAB 实现，保持跨环境可测试。
+	 */
+	setPostTickCallback(callback: (() => void) | null): void {
+		this.postTickCallback = callback;
+	}
+
+	/**
+	 * 注入按 controllerId 读取最新移动状态的边界。
+	 *
+	 * 每个逻辑 Tick 都会重新读取并结合当前绑定解析为 memberId 输入；读取方不应在这里排队或派发意图。
+	 */
+	setControllerMovementInputSource(source: ((controllerId: string) => MemberMovementInput | null) | null): void {
+		this.controllerMovementInputSource = source;
 	}
 
 	/**
@@ -1139,8 +1176,16 @@ export class GameEngine {
 			eventsProcessed++;
 		}
 
-		// 2. 成员/区域更新（驱动 BT/SM/Buff 等）
-		this.world.tick({ tickIndex, currentTimeMs, deltaTimeMs });
+		// 2. 按当前绑定采样连续控制状态，再驱动成员/区域更新。
+		// 每 tick 先采样最新的连续输入，再推进世界，保证移动响应实时且不产生跨 tick 的输入积压。
+		const movementInputs = new Map<string, MemberMovementInput>();
+		if (this.controllerMovementInputSource) {
+			for (const { controllerId, memberId } of this.bindingManager.getAllBindings()) {
+				const input = this.controllerMovementInputSource(controllerId);
+				if (input) movementInputs.set(memberId, input);
+			}
+		}
+		this.world.tick({ tickIndex, currentTimeMs, deltaTimeMs }, movementInputs);
 		const membersUpdated = this.world.memberManager.getAllMembers().length;
 
 		const duration = performance.now() - tickStartTime;
@@ -1267,7 +1312,7 @@ export class GameEngine {
 			return {
 				id: member.id,
 				position: member.position,
-				yaw: 0,
+				yaw: member.runtime.yaw,
 				...(animation && { animation }),
 			};
 		});
@@ -1469,6 +1514,7 @@ export class GameEngine {
 			);
 		}
 		this.emitFrameSnapshotIfNeeded(completedTick);
+		this.postTickCallback?.();
 
 		return stepResult;
 	}

@@ -91,6 +91,26 @@ describe("RunOutputRecorder", () => {
 		expect("acceptedActions" in output).toBe(false);
 	});
 
+	it("跳跃输入可以通过运行记录契约并形成接纳事实", () => {
+		const recorder = new RunOutputRecorder();
+		recorder.start("run-1", 0, 0, { tickStateHistory: "none" });
+		recorder.appendInput({
+			inputId: "jump-input",
+			memberId: "member-1",
+			timeMs: 100,
+			action: { type: "跳跃", payload: {} },
+		});
+		recorder.acceptInput("jump-input", 100);
+
+		const output = recorder.finish("run-1", 200);
+		expect(output.inputs).toEqual([
+			expect.objectContaining({
+				status: "accepted",
+				action: { type: "跳跃", payload: {} },
+			}),
+		]);
+	});
+
 	it("封闭时把未决输入转为明确拒绝，公开 Schema 不接受 pending", () => {
 		const recorder = new RunOutputRecorder();
 		recorder.start("run-1", 0, 0, { tickStateHistory: "none" });

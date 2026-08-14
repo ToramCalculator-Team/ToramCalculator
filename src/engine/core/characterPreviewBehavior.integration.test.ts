@@ -1,5 +1,6 @@
 import { defaultData } from "@db/defaultData";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { DEFAULT_TERRAIN_DEFINITION } from "~/lib/terrain";
 import {
 	CHARACTER_PREVIEW_CANDIDATE_INPUT_KEY,
 	type CharacterPreviewPolicy,
@@ -76,6 +77,7 @@ const previewPolicy: CharacterPreviewPolicy = {
 const previewBehavior = compileCharacterPreviewBehavior(previewPolicy, "candidate-skill");
 
 const scenario = EngineScenarioDataSchema.parse({
+	terrain: DEFAULT_TERRAIN_DEFINITION,
 	scenario: {
 		...defaultData.simulator,
 		randomSeed: 7,

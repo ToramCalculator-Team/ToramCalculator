@@ -8,15 +8,13 @@
 import type {
 	AbstractMesh,
 	AnimationGroup,
-	DynamicTexture,
 	Mesh,
+	Skeleton,
 	TransformNode,
 	Vector3,
 } from "~/platform/render/babylon/runtime";
 import type { CharacterAnimationClips } from "../contracts/worldResource";
 import type { CharacterAnimationController } from "./CharacterAnimationController";
-
-// ==================== 动画系统类型 ====================
 
 /**
  * 自定义动画数据 - 从数据库获取的关键帧数据
@@ -39,32 +37,6 @@ export interface CustomAnimationData {
 	priority: number;
 }
 
-/** 动画播放请求 */
-export interface AnimationPlayRequest {
-	/** 动画标识 */
-	animationId: string;
-	/** 播放模式 */
-	mode: "play" | "loop" | "interrupt" | "queue";
-	/** 过渡时间（秒） */
-	transitionTime?: number;
-	/** 播放速度倍率 */
-	speed?: number;
-	/** 完成回调 */
-	onComplete?: () => void;
-}
-
-/** 动画状态 */
-export interface AnimationState {
-	/** 当前播放的动画 */
-	current: string | null;
-	/** 排队的动画 */
-	queue: AnimationPlayRequest[];
-	/** 是否正在过渡 */
-	transitioning: boolean;
-	/** 上一个动画（用于过渡） */
-	previous: string | null;
-}
-
 // ==================== 实体系统类型 ====================
 
 /**
@@ -76,24 +48,19 @@ export interface BaseEntityRuntime {
 	id: string;
 	/** 实体类型 */
 	type: "character" | "sphere" | "prop";
-	/** 主要网格对象 */
+	/** 实体世界变换根节点；不得携带模型资产自身的缩放或坐标轴转换。 */
 	mesh: AbstractMesh | TransformNode;
 	/** 名称标签 */
 	label?: Mesh;
-	/** 标签纹理 */
-	labelTexture?: DynamicTexture;
 	/** 最后更新序列号 */
 	lastSeq: number;
 	/** 物理状态 */
 	physics: {
 		pos: Vector3;
 		vel: Vector3;
-		dir: { x: number; z: number };
 		speed: number;
-		accel: number;
 		moving: boolean;
 		yaw: number;
-		decel: number;
 	};
 }
 
@@ -109,8 +76,8 @@ export interface CharacterEntityRuntime extends BaseEntityRuntime {
 	builtinAnimations: Map<string, AnimationGroup>;
 	/** 自定义动画（运行时生成） */
 	customAnimations: Map<string, AnimationGroup>;
-	/** 动画状态 */
-	animationState: AnimationState;
+	/** 当前角色独占的骨架；网格共享几何数据，但骨骼状态不能与模板或其他角色共享。 */
+	ownedSkeletons: Skeleton[];
 	/** 动画控制器 */
 	animationController: CharacterAnimationController;
 }

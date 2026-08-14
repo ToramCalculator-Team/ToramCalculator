@@ -24,6 +24,25 @@ export interface MemberSharedRuntime<_TExtraAttrKey extends string = never> exte
 	currentTimeMs: number;
 	deltaTimeMs: number;
 	position: { x: number; y: number; z: number };
+	/** 当前朝向（弧度，绕 y 轴）；移动时由移动方向派生，静止时保持最后朝向。 */
+	yaw: number;
+	/** 当前 Tick 已接纳的移动状态；由控制输入采样与成员状态共同决定。 */
+	movement: { dir: { x: number; z: number }; speed: number } | null;
+	/** 垂直运动由成员状态机和 Tick 积分共同维护，渲染层不能改写。 */
+	verticalVelocity: number;
+	grounded: boolean;
+	/**
+	 * 成员物理参数（游戏层在场景装配时注入，引擎不硬编码具体数值）。
+	 * - walkSpeed / runSpeed：对应 intensity 0.5 / 1.0 时的基础速度（m/s），应用 buff/debuff 前。
+	 * - gravity：世界重力加速度（m/s²）。
+	 * - jumpSpeed：起跳瞬间垂直初速（m/s）。
+	 */
+	locomotion: {
+		walkSpeed: number;
+		runSpeed: number;
+		gravity: number;
+		jumpSpeed: number;
+	};
 	targetId: string;
 	statusTags: string[];
 	skillCooldowns: number[];
@@ -44,6 +63,12 @@ export interface MemberSharedRuntime<_TExtraAttrKey extends string = never> exte
 	/** per-tree 注入的所属技能上下文（注册行为树时由 localContext 提供）。 */
 	skill?: { id: string; lv: number; name: string };
 }
+
+/** 引擎 Tick 已从控制器最新状态中解析出的成员移动输入。 */
+export interface MemberMovementInput {
+	direction: { x: number; z: number };
+	intensity: number;
+}
 export const DefaultMemberSharedRuntime: MemberSharedRuntime = {
 	memberId: "",
 	name: "",
@@ -53,6 +78,16 @@ export const DefaultMemberSharedRuntime: MemberSharedRuntime = {
 	currentTimeMs: 0,
 	deltaTimeMs: 0,
 	position: { x: 0, y: 0, z: 0 },
+	yaw: 0,
+	movement: null,
+	verticalVelocity: 0,
+	grounded: true,
+	locomotion: {
+		walkSpeed: 1,
+		runSpeed: 2,
+		gravity: 9.8,
+		jumpSpeed: 3,
+	},
 	targetId: "",
 	statusTags: [],
 	skillCooldowns: [],

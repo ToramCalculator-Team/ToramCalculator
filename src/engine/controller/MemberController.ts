@@ -9,7 +9,7 @@ export interface MemberIntentTarget {
 
 /**
  * 成员控制器
- * - 只负责成员意图（move/skill/target/stop/复活 等）
+ * - 只负责成员意图（移动、跳跃、技能、目标、复活等）
  * - 通过 controllerId + binding 路由到目标成员
  * - 与引擎生命周期（operatorId）解耦
  */
@@ -91,6 +91,17 @@ export class MemberController {
 			type: "使用技能",
 			controllerId: this.controllerId,
 			data: { skillId },
+		};
+		return await this.broadcastIntent(intent);
+	}
+
+	async jump() {
+		const intent: IntentMessage = {
+			id: createId(),
+			timestamp: Date.now(),
+			type: "跳跃",
+			controllerId: this.controllerId,
+			data: {},
 		};
 		return await this.broadcastIntent(intent);
 	}

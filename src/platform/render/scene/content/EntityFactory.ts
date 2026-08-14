@@ -4,8 +4,9 @@
  * 负责创建不同类型的实体（角色、球体等）并管理GLB模型缓存。从 RendererController 拆出。
  */
 
+import { PlayerBodyProfile } from "~/game/locomotion";
 import { createLogger } from "~/lib/logger";
-import type { AbstractMesh, AnimationGroup, Scene, TransformNode } from "~/platform/render/babylon/runtime";
+import type { AbstractMesh, AnimationGroup, Scene } from "~/platform/render/babylon/runtime";
 import {
 	Color3,
 	DynamicTexture,
@@ -13,22 +14,19 @@ import {
 	Mesh,
 	MeshBuilder,
 	StandardMaterial,
+	TransformNode,
 	Vector3,
 } from "~/platform/render/babylon/runtime";
 import type { CharacterWorldResource, MobWorldResource } from "../contracts/worldResource";
+import { applyCharacterModelOrientation } from "../resources/characterVisual";
 import { CharacterAnimationController } from "./CharacterAnimationController";
 import type { CharacterAnimationTarget, CharacterEntityRuntime, SimpleEntityRuntime } from "./entityTypes";
 
 const logger = createLogger("RenderController");
 logger.setLevel(0);
+const LABEL_MODEL_GAP = 0.3;
 
 type CharacterModelTemplate = { meshes: AbstractMesh[]; animationGroups: AnimationGroup[] };
-type RenderHierarchyNode = {
-	name: string;
-	setEnabled: (enabled: boolean) => void;
-	getChildren: () => RenderHierarchyNode[];
-	isVisible?: boolean;
-};
 
 export class EntityFactory {
 	private scene: Scene;
@@ -62,19 +60,19 @@ export class EntityFactory {
 			);
 		});
 
-		// 使用instantiateHierarchy来正确复制整个层级结构
-		// 选择理由：
-		// 1. createInstance() - 只能共享几何体，无法独立动画
-		// 2. clone() - 只复制单个网格，丢失骨骼层级
-		// 3. instantiateHierarchy() - 完整复制层级，支持独立动画
+		// 克隆完整节点层级；几何缓冲仍由 Mesh clone 共享，但角色变换节点和骨架必须独立。
+		const instanceNodesBySource = new Map<TransformNode, TransformNode>();
+		const instanceNodesBySourceName = new Map<string, TransformNode>();
 		const instantiatedMeshes = modelData.meshes[0].instantiateHierarchy(
 			null,
 			{
-				doNotInstantiate: false,
+				doNotInstantiate: true,
 			},
 			(sourceNode, instantiatedNode) => {
-				// Babylon 的 InstancedMesh 不会自动复制 source metadata；显式保留 glTF extras 供装备槽拾取读取。
+				// Babylon 的层级克隆不会可靠传播 source metadata；显式保留 glTF extras 供装备槽拾取读取。
 				instantiatedNode.metadata = sourceNode.metadata;
+				instanceNodesBySource.set(sourceNode, instantiatedNode);
+				if (sourceNode.name) instanceNodesBySourceName.set(sourceNode.name, instantiatedNode);
 			},
 		);
 
@@ -82,23 +80,50 @@ export class EntityFactory {
 			throw new Error("角色层级实例化失败");
 		}
 
-		// 重命名实例化的网格
-		const rootMesh = instantiatedMeshes;
-		rootMesh.name = `character:${id}`;
-		rootMesh.id = `character:${id}`;
-		rootMesh.parent = this.contentRoot ?? null;
+		const modelRoot = instantiatedMeshes;
+		modelRoot.name = `character-model:${id}`;
+		modelRoot.id = `character-model:${id}`;
 
-		rootMesh.position.copyFrom(position);
-		rootMesh.scaling.scaleInPlace(resource.appearance.scale);
+		modelRoot.computeWorldMatrix(true);
+		const bounds = modelRoot.getHierarchyBoundingVectors(true);
+		const modelHeight = bounds.max.y - bounds.min.y;
+		const heightScale = modelHeight > 0 ? PlayerBodyProfile.HEIGHT / modelHeight : 1;
+		modelRoot.scaling.scaleInPlace(resource.appearance.scale * heightScale);
+
+		// 世界变换与资产变换分层：模型保留 GLB 坐标系，实体根节点只承载位置和逻辑朝向。
+		const entityRoot = new TransformNode(`character:${id}`, this.scene);
+		entityRoot.id = `character:${id}`;
+		entityRoot.parent = this.contentRoot ?? null;
+		entityRoot.position.copyFrom(position);
+		modelRoot.parent = entityRoot;
+		applyCharacterModelOrientation(modelRoot);
 
 		// 模板节点默认隐藏；实例层级需要整体启用，并仅对真实 mesh 恢复可见性。
-		const enableInstantiatedMeshes = (node: RenderHierarchyNode) => {
+		instanceNodesBySource.forEach((node) => {
 			node.setEnabled(true);
-			if (typeof node.isVisible === "boolean") node.isVisible = true;
-			node.getChildren().forEach(enableInstantiatedMeshes);
-		};
+			if (node instanceof Mesh) node.isVisible = true;
+		});
+		modelRoot.setEnabled(true);
 
-		enableInstantiatedMeshes(rootMesh);
+		// Babylon 的层级克隆仍会复用源 Skeleton，必须为角色克隆骨架并重新链接到当前节点。
+		const clonedSkeletons = new Map<NonNullable<AbstractMesh["skeleton"]>, NonNullable<AbstractMesh["skeleton"]>>();
+		modelData.meshes.forEach((sourceMesh) => {
+			const sourceSkeleton = sourceMesh.skeleton;
+			const instantiatedMesh = instanceNodesBySource.get(sourceMesh);
+			if (!sourceSkeleton || !(instantiatedMesh instanceof Mesh)) return;
+
+			let clonedSkeleton = clonedSkeletons.get(sourceSkeleton);
+			if (!clonedSkeleton) {
+				clonedSkeleton = sourceSkeleton.clone(`${sourceSkeleton.name}_${id}`);
+				sourceSkeleton.bones.forEach((sourceBone, index) => {
+					const sourceTransform = sourceBone.getTransformNode();
+					const clonedTransform = sourceTransform ? (instanceNodesBySource.get(sourceTransform) ?? null) : null;
+					clonedSkeleton?.bones[index]?.linkTransformNode(clonedTransform);
+				});
+				clonedSkeletons.set(sourceSkeleton, clonedSkeleton);
+			}
+			instantiatedMesh.skeleton = clonedSkeleton;
+		});
 
 		// 克隆动画组，去除重复
 		const builtinAnimations = new Map<string, AnimationGroup>();
@@ -118,39 +143,18 @@ export class EntityFactory {
 			const clonedGroup = originalGroup.clone(`${originalGroup.name}_${id}`, (oldTarget) => {
 				const targetName = typeof oldTarget?.name === "string" ? oldTarget.name : "";
 
-				// 使用场景的getNodeByName来查找实例化的骨骼
-				const clonedTarget = this.scene.getNodeByName(targetName);
-
-				if (clonedTarget) {
-					return clonedTarget;
-				}
-
-				// 如果场景中找不到，再尝试递归查找
-				const findInHierarchy = (parent: RenderHierarchyNode, name: string): RenderHierarchyNode | null => {
-					if (parent.name === name) {
-						return parent;
-					}
-
-					for (const child of parent.getChildren()) {
-						const found = findInHierarchy(child, name);
-						if (found) return found;
-					}
-
-					return null;
-				};
-
-				const hierarchyTarget = findInHierarchy(rootMesh, targetName);
-
-				if (hierarchyTarget) {
-					return hierarchyTarget;
-				}
+				// 优先按源节点身份映射；名称只用于兼容非 TransformNode 的动画目标。
+				const instanceTarget =
+					(oldTarget instanceof TransformNode ? instanceNodesBySource.get(oldTarget) : undefined) ??
+					instanceNodesBySourceName.get(targetName);
+				if (instanceTarget) return instanceTarget;
 
 				unmappedTargets++;
 				if (unmappedTargets <= 3) {
 					// 只显示前3个未找到的目标
 					logger.warn(`⚠️ 动画目标未找到: ${targetName}`);
 				}
-				return rootMesh;
+				return null;
 			});
 
 			if (clonedGroup) {
@@ -160,44 +164,40 @@ export class EntityFactory {
 			}
 		});
 
-		// 创建标签
-		const { label, texture } = this.createLabel(id, name, position, 0.2);
+		modelRoot.computeWorldMatrix(true);
+		const unalignedBounds = modelRoot.getHierarchyBoundingVectors(true);
+		const rootWorldY = entityRoot.getAbsolutePosition().y;
+		modelRoot.position.y -= unalignedBounds.min.y - rootWorldY;
+		modelRoot.computeWorldMatrix(true);
+		const scaledBounds = modelRoot.getHierarchyBoundingVectors(true);
+		const modelTopOffsetY = Math.max(0, scaledBounds.max.y - entityRoot.getAbsolutePosition().y);
+
+		const label = this.createLabel(id, name, entityRoot, 1.2, modelTopOffsetY);
 
 		// 创建实体
 		const entity: CharacterAnimationTarget = {
 			id,
 			type: "character",
 			animationClips: resource.animation.clips,
-			mesh: rootMesh,
+			mesh: entityRoot,
 			label,
-			labelTexture: texture,
 			lastSeq: -1,
 			physics: {
 				pos: position.clone(),
 				vel: Vector3.Zero(),
-				dir: { x: 0, z: 0 },
 				speed: 0,
-				accel: 0,
 				moving: false,
 				yaw: 0,
-				decel: 0,
 			},
 			builtinAnimations,
 			customAnimations: new Map(),
-			animationState: {
-				current: null,
-				queue: [],
-				transitioning: false,
-				previous: null,
-			},
+			ownedSkeletons: [...clonedSkeletons.values()],
 		};
 
 		const animationController = new CharacterAnimationController(entity, this.scene);
 
 		// 播放默认idle动画（循环）
-		animationController.playBuiltinAnimation(resource.animation.clips.idle, {
-			mode: "loop",
-		});
+		animationController.setLocomotion("idle");
 		return { ...entity, animationController };
 	}
 
@@ -209,9 +209,12 @@ export class EntityFactory {
 		appearance: MobWorldResource["appearance"],
 	): SimpleEntityRuntime {
 		const { radius, color } = appearance;
+		const entityRoot = new TransformNode(`mob:${id}`, this.scene);
+		entityRoot.parent = this.contentRoot ?? null;
+		entityRoot.position.copyFrom(position);
 		const sphere = MeshBuilder.CreateSphere(`sphere:${id}`, { diameter: radius * 2 }, this.scene);
-		sphere.parent = this.contentRoot ?? null;
-		sphere.position.copyFrom(position);
+		sphere.parent = entityRoot;
+		sphere.position.y = radius;
 
 		// 材质
 		const mat = new StandardMaterial(`mat:${id}`, this.scene);
@@ -220,53 +223,75 @@ export class EntityFactory {
 		mat.emissiveColor = baseColor.scale(0.2);
 		sphere.material = mat;
 
-		// 标签
-		const { label, texture } = this.createLabel(id, name, position, radius);
+		const label = this.createLabel(id, name, entityRoot, radius * 4, radius * 2);
 
 		return {
 			id,
 			type: "sphere",
-			mesh: sphere,
+			mesh: entityRoot,
 			label,
-			labelTexture: texture,
 			lastSeq: -1,
 			physics: {
 				pos: position.clone(),
 				vel: Vector3.Zero(),
-				dir: { x: 0, z: 0 },
 				speed: 0,
-				accel: 0,
 				moving: false,
 				yaw: 0,
-				decel: 0,
 			},
 		};
 	}
 
-	/** 创建标签 */
-	createLabel(id: string, name: string, position: Vector3, radius: number): { label: Mesh; texture: DynamicTexture } {
-		const label = MeshBuilder.CreatePlane(`label:${id}`, { size: radius * 4 }, this.scene);
-		label.parent = this.contentRoot ?? null;
+	/**
+	 * 创建名称标签并绑定到实体世界根节点。
+	 * 世界根节点不携带资产变换，因此标签只需使用稳定的局部高度即可自动跟随实体。
+	 */
+	createLabel(id: string, name: string, parent: TransformNode, width: number, modelTopOffsetY: number): Mesh {
+		const labelWidth = Math.max(1.2, width);
+		const labelHeight = labelWidth / 4;
+		const offsetY = modelTopOffsetY + LABEL_MODEL_GAP + labelHeight / 2;
+		const label = MeshBuilder.CreatePlane(`label:${id}`, { width: labelWidth, height: labelHeight }, this.scene);
+		label.parent = parent;
+		label.position.set(0, offsetY, 0);
 		label.billboardMode = Mesh.BILLBOARDMODE_ALL;
-		label.position = position.add(new Vector3(0, radius * 3, 0));
+		label.isPickable = false;
 
-		const texture = new DynamicTexture(`lbl:${id}`, { width: 256, height: 64 }, this.scene, false);
+		const textureWidth = 256;
+		const textureHeight = 64;
+		const texture = new DynamicTexture(`lbl:${id}`, { width: textureWidth, height: textureHeight }, this.scene, false);
+		texture.hasAlpha = true;
 		const ctx = texture.getContext();
-		ctx.font = "bold 28px system-ui, sans-serif";
+		ctx.clearRect(0, 0, textureWidth, textureHeight);
+		ctx.lineJoin = "round";
+		let fontSize = 28;
+		ctx.font = `bold ${fontSize}px system-ui, sans-serif`;
+		while (fontSize > 14 && ctx.measureText(name).width > textureWidth - 16) {
+			fontSize -= 2;
+			ctx.font = `bold ${fontSize}px system-ui, sans-serif`;
+		}
 		ctx.fillStyle = "#fff";
 		ctx.strokeStyle = "#000";
 		ctx.lineWidth = 4;
-		ctx.strokeText(name, 8, 42);
-		ctx.fillText(name, 8, 42);
+		const metrics = ctx.measureText(name);
+		const measuredHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+		const textX = (textureWidth - metrics.width) / 2;
+		const textY =
+			measuredHeight > 0
+				? (textureHeight - measuredHeight) / 2 + metrics.actualBoundingBoxAscent
+				: textureHeight / 2 + fontSize * 0.35;
+		ctx.strokeText(name, textX, textY);
+		ctx.fillText(name, textX, textY);
 		texture.update();
 
 		const lblMat = new StandardMaterial(`lblMat:${id}`, this.scene);
 		lblMat.diffuseTexture = texture;
+		lblMat.emissiveTexture = texture;
 		lblMat.emissiveColor = Color3.White();
+		lblMat.useAlphaFromDiffuseTexture = true;
+		lblMat.disableLighting = true;
 		lblMat.backFaceCulling = false;
 		label.material = lblMat;
 
-		return { label, texture };
+		return label;
 	}
 
 	/** 加载角色模型 */

@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_TERRAIN_DEFINITION } from "~/lib/terrain";
 import type { EngineLifecycleCommand, EngineLifecycleSnapshot } from "../GameEngineSM";
 import { EngineScenarioDataSchema } from "../types";
 import { EngineWorkerClient } from "./EngineWorkerClient";
 import { engineLifecycleFailure, engineLifecycleSuccess } from "./protocol";
 
 const scenario = EngineScenarioDataSchema.parse({
+	terrain: DEFAULT_TERRAIN_DEFINITION,
 	scenario: {
 		randomSeed: 1,
 		logicHz: 60,

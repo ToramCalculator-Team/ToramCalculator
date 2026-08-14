@@ -1,6 +1,11 @@
 import { createSignal, For, type JSX, onCleanup, onMount, Show } from "solid-js";
 import { Button } from "~/components/ui/controls/button";
 import {
+	readSharedMovementState,
+	type SharedMovementStateSnapshot,
+	SharedMovementStateWriter,
+} from "~/engine/core/thread/controllerInputBuffer";
+import {
 	ArcRotateCamera,
 	Color3,
 	Color4,
@@ -10,8 +15,8 @@ import {
 	StandardMaterial,
 	Vector3,
 } from "~/platform/render/babylon/runtime";
-import { readSharedMovementState, SceneInputController } from "~/platform/render/scene/input/controller";
-import type { ControllerActionEvent, SharedMovementStateSnapshot } from "~/platform/render/scene/input/controllerTypes";
+import { SceneInputController } from "~/platform/render/scene/input/controller";
+import type { ControllerActionEvent } from "~/platform/render/scene/input/controllerTypes";
 
 const TEST_TICK_HZ = 20;
 const MAX_LOG_ENTRIES = 30;
@@ -106,14 +111,14 @@ export default function ControllerTestPage(): JSX.Element {
 				};
 			};
 
+			const movementWriter = new SharedMovementStateWriter();
 			controller = new SceneInputController({
-				controllerId: "controller-test",
-				source: "keyboard",
+				movementSink: movementWriter,
 				getCameraBasis,
-				skillBindings: { Space: "basic_attack" },
+				skillBindings: { Digit1: "basic_attack" },
 				onAction: appendAction,
 			});
-			const movementBuffer = controller.getMovementStateBuffer();
+			const movementBuffer = movementWriter.buffer;
 			let lastProducerRevision = 0;
 			let lastConsumedRevision = 0;
 			let tickSequence = 0;
