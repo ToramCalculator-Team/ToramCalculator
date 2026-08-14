@@ -8,7 +8,7 @@ import { store } from "~/store";
 export default function FunctionPage(props: ParentProps) {
 	const sceneRuntime = useSceneRuntime();
 	const location = useLocation();
-	const isSimulatorLanding = () => location.pathname === "/simulator";
+	const isSimulatorLanding = () => location.pathname === "/";
 	onMount(() => {
 		console.log("--FunctionPage Render");
 	});

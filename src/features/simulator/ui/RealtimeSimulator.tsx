@@ -126,7 +126,7 @@ export function RealtimeSimulator() {
 	});
 
 	createEffect(() => {
-		if (session.snapshot().matches("inactive")) navigate("/simulator");
+		if (session.snapshot().matches("inactive")) navigate("/");
 	});
 
 	createEffect(() => {

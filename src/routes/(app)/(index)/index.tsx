@@ -117,9 +117,9 @@ export default function SimulatorPage() {
 							机体构建平台
 						</A>
 						<A
-							href="/simulator"
-							aria-current={isMenuItemActive("/simulator") ? "page" : undefined}
-							class={menuItemClass("/simulator")}
+							href="/"
+							aria-current={isMenuItemActive("/") ? "page" : undefined}
+							class={menuItemClass("/")}
 						>
 							实战模拟场景
 						</A>
@@ -165,7 +165,7 @@ export default function SimulatorPage() {
 						</div>
 
 						<Show when={createOpen()}>
-							<div class="border-accent-color bg-primary-color-90 grid w-full gap-3 border-t-2 px-1 pt-4 lg:landscape:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:landscape:items-end">
+							<div class="grid w-full gap-3 border-t-2 px-1 pt-4 lg:landscape:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:landscape:items-end">
 								<Input
 									type="text"
 									title="方案名称"

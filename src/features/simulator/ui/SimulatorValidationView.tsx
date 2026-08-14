@@ -56,7 +56,7 @@ export function SimulatorValidationView() {
 		<>
 			<div class="pointer-events-none absolute inset-x-3 top-3 flex items-start justify-between gap-3 portrait:flex-col">
 				<div class="pointer-events-auto flex max-w-[min(92vw,720px)] items-start gap-2 portrait:w-full portrait:max-w-none">
-					<A href="/simulator" class="bg-primary-color-60 hidden rounded px-3 py-2 backdrop-blur-md landscape:flex">
+					<A href="/" class="bg-primary-color-60 hidden rounded px-3 py-2 backdrop-blur-md landscape:flex">
 						<Icons.Brand.NoPaddingLogoText class="h-6 w-40" />
 					</A>
 					<div class="bg-primary-color-70 border-dividing-color flex min-w-72 flex-1 flex-col gap-2 rounded border p-2 backdrop-blur-md">

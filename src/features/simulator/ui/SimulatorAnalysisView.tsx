@@ -97,7 +97,7 @@ export function SimulatorAnalysisView() {
 	return (
 		<>
 			<div class="pointer-events-auto absolute left-3 top-3 flex max-w-[min(94vw,760px)] items-start gap-2">
-				<A href="/simulator" class="bg-primary-color-70 hidden rounded px-3 py-2 backdrop-blur-md landscape:flex">
+				<A href="/" class="bg-primary-color-70 hidden rounded px-3 py-2 backdrop-blur-md landscape:flex">
 					<Icons.Brand.NoPaddingLogoText class="h-6 w-40" />
 				</A>
 				<div class="bg-primary-color-80 border-dividing-color flex min-w-72 flex-col gap-2 rounded border p-3 backdrop-blur-md">

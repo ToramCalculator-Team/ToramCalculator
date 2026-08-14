@@ -142,7 +142,7 @@ export default function SimulatorPage() {
 									onClick={() =>
 										projection.currentSimulatorId
 											? returnToCurrentSession(projection.currentSimulatorId)
-											: navigate("/simulator", { replace: true })
+											: navigate("/", { replace: true })
 									}
 								>
 									{projection.currentSimulatorId ? "返回当前会话" : "返回方案列表"}
