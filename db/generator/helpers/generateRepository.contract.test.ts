@@ -52,4 +52,22 @@ describe("generated repository contract", () => {
 		expect(skill).toContain("canEditSkill(context, id, db)");
 		expect(skill).toContain('throw new RepositoryAuthorizationError("skill", id)');
 	});
+
+	it("keeps primary keys in low-level inserts but excludes them from create data", () => {
+		const playerWeapon = fs.readFileSync(repositoryPath("player_weapon.ts"), "utf8");
+		const weapon = fs.readFileSync(repositoryPath("weapon.ts"), "utf8");
+
+		expect(playerWeapon).toContain(
+			"export function insertPlayerWeaponQuery(db: RepositoryQueryDB, data: PlayerWeaponInsert)",
+		);
+		expect(playerWeapon).toContain(
+			'export async function createPlayerWeapon(context: RepositoryWriterContext, data: Omit<PlayerWeaponInsert, "id"> & { id?: never }, options: { id?: PlayerWeaponInsert["id"]; trx?: RepositoryQueryDB } = {})',
+		);
+		expect(playerWeapon).toContain("id: options.id ?? createId()");
+		expect(weapon).toContain(
+			'export async function createWeapon(context: RepositoryWriterContext, data: Omit<WeaponInsert, "itemId"> & { itemId?: never }, options: { id: WeaponInsert["itemId"]; trx?: RepositoryQueryDB })',
+		);
+		expect(weapon).toContain("itemId: options.id");
+		expect(weapon).not.toContain('from "@paralleldrive/cuid2"');
+	});
 });

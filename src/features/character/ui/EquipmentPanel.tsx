@@ -195,7 +195,9 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 						};
 						const writer = repositoryWriters[tableName];
 						if (!writer?.create) throw new Error(`${tableName} 不支持创建`);
-						const inserted = await writer.create(context, value as never);
+						// create writer 负责主键生成；表单值里的默认主键只属于完整行模板，不能进入创建 data。
+						const { id: _ignoredId, ...createData } = value as Record<string, unknown>;
+						const inserted = await writer.create(context, createData as never);
 						const primaryValue = readInsertedEquipmentId(inserted as { id: unknown }, tableName);
 						await props.onPatchRequested(toCharacterPatch(slot, primaryValue));
 						api.close();

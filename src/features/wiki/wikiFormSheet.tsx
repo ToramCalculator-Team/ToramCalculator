@@ -12,7 +12,6 @@
 
 import type { RepositoryWriterContext } from "@db/generated/repositories";
 import type { DB } from "@db/generated/zod/index";
-import { createId } from "@paralleldrive/cuid2";
 import { type Accessor, Show } from "solid-js";
 import { LoadingBar } from "~/components/ui/controls/loadingBar";
 import { Form } from "~/components/ui/form/Form";
@@ -65,33 +64,10 @@ async function submitRecord<TTableName extends keyof DB>(
 		return;
 	}
 	if (!writer.create) throw new Error(`表 ${String(tableConfig.tableName)} 不支持创建`);
-	await writer.create(context, value as never);
-}
-
-/**
- * 新建时补齐主键。
- *
- * 本项目的 `id` 列在 schema 里没有 default，主键由写入方提供；而 defaultData 里存的是
- * 形如 `"defaultSkillId"` 的占位值，且 `id` 通常在 form.hiddenFields 内（用户改不到）。
- * 直接提交会让第一条记录占用占位主键、第二条撞主键冲突。
- *
- * 只在两个前提同时成立时替换：
- *  - 主键不是指向别表的外键（子类型表的 itemId 必须沿用父记录主键）
- *  - 提交值仍等于 defaultData 里的占位值或为空（说明没人显式设置过它）
- */
-function withGeneratedPrimaryKey<TTableName extends keyof DB>(
-	tableConfig: TableConfig<TTableName>,
-	value: DB[TTableName],
-): DB[TTableName] {
-	if (isPrimaryKeyForeign(tableConfig.tableName)) return value;
-
-	const pk = String(getTablePrimaryKey(tableConfig.tableName));
-	const submitted = (value as Record<string, unknown>)[pk];
-	const placeholder = (tableConfig.defaultData as Record<string, unknown>)[pk];
-	const isUntouched = submitted == null || submitted === "" || submitted === placeholder;
-	if (!isUntouched) return value;
-
-	return { ...(value as Record<string, unknown>), [pk]: createId() } as DB[TTableName];
+	const primaryKey = String(getTablePrimaryKey(tableConfig.tableName));
+	const { [primaryKey]: providedPrimaryKey, ...createData } = value as Record<string, unknown>;
+	const createOptions = isPrimaryKeyForeign(tableConfig.tableName) ? { id: providedPrimaryKey } : undefined;
+	await writer.create(context, createData as never, createOptions as never);
 }
 
 /**
@@ -272,7 +248,7 @@ export function createOpenRecordForm(
 						mode="create"
 						selfId={() => undefined}
 						onSubmit={async (value) => {
-							await submitRecord(tableConfig, undefined, withGeneratedPrimaryKey(tableConfig, value));
+							await submitRecord(tableConfig, undefined, value);
 							api.close();
 						}}
 					/>

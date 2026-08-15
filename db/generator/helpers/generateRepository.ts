@@ -200,8 +200,9 @@ ${crudMethods}
 		const typeName = NamingRules.ZodTypeName(modelName);
 
 		// 仅有主键的表会生成父/子关系查询，才需要 RepositoryRelationQueryMap
-		const model = this.models.find((m) => m.name === modelName);
+		const model = this.allModels.find((candidate) => (candidate.dbName || candidate.name) === modelName);
 		const hasPK = model ? this.hasPrimaryKey(model) : true;
+		const primaryKeyIsForeign = model ? this.isPrimaryKeyForeign(model) : false;
 		const sharedTypeImports = hasPK
 			? "type RepositoryQueryDB, type RepositoryRelationQueryMap"
 			: "type RepositoryQueryDB";
@@ -213,6 +214,9 @@ ${crudMethods}
 			`import { ${sharedTypeImports} } from "./_shared";`,
 			`import { type DB, type ${typeName} } from "${relativePaths.zod}";`,
 		];
+		if (hasPK && !primaryKeyIsForeign) {
+			imports.push(`import { createId } from "@paralleldrive/cuid2";`);
+		}
 
 		// 添加 kysely helpers
 		imports.push(`import { jsonArrayFrom, jsonObjectFrom } from "kysely/helpers/postgres";`);
@@ -1071,6 +1075,19 @@ export type RepositoryWriter<TTableName extends keyof RepositoryWriters> = Repos
 	}
 
 	/**
+	 * 主键如果同时是关系字段的来源列，就不能由 create writer 自动生成。
+	 * 这类表（例如 weapon.itemId）必须沿用父记录身份；普通自有主键才由 writer 负责补齐。
+	 */
+	private isPrimaryKeyForeign(model: DMMF.Model): boolean {
+		const primaryKeys = this.helpers.getPrimaryKeys(model.name);
+		return model.fields.some(
+			(field) =>
+				field.kind === "object" &&
+				field.relationFromFields?.some((foreignKey) => primaryKeys.includes(foreignKey)),
+		);
+	}
+
+	/**
 	 * 生成 Schema 代码
 	 * 使用 SchemaName 规范确保正确的 Schema 名称
 	 * 当前输入已经限定为 child；普通 child 使用 WithRelations 继续表达其
@@ -1555,6 +1572,14 @@ export async function ${methodName}(${fieldParams}, trx?: RepositoryQueryDB) {
 		const primaryKeyField = this.getPrimaryKeyField(modelName);
 		const schemaName = NamingRules.SchemaName(tableName);
 		const model = this.allModels.find((candidate) => (candidate.dbName || candidate.name) === modelName);
+		const primaryKeyIsForeign = model ? this.isPrimaryKeyForeign(model) : false;
+		const primaryKeyType = `${pascalName}Insert["${primaryKeyField}"]`;
+		const createDataType = `Omit<${pascalName}Insert, "${primaryKeyField}"> & { ${primaryKeyField}?: never }`;
+		const createOptionsType = primaryKeyIsForeign
+			? `{ id: ${primaryKeyType}; trx?: RepositoryQueryDB }`
+			: `{ id?: ${primaryKeyType}; trx?: RepositoryQueryDB }`;
+		const createOptionsDefault = primaryKeyIsForeign ? "" : " = {}";
+		const createPrimaryKeyExpression = primaryKeyIsForeign ? "options.id" : "options.id ?? createId()";
 		const hasCreatedAt = model?.fields.some(
 			(field) => field.kind === "scalar" && field.type === "DateTime" && field.name === "createdAt",
 		);
@@ -1587,7 +1612,7 @@ export async function ${methodName}(${fieldParams}, trx?: RepositoryQueryDB) {
 		]
 			.filter(Boolean)
 			.join(", ");
-		const createCommandData = createAuditFields ? `{ ...data, ${createAuditFields} }` : "data";
+		const createCommandData = `{ ...data${createAuditFields ? `, ${createAuditFields}` : ""}, ${primaryKeyField}: ${createPrimaryKeyExpression} }`;
 		const updateCommandData = hasUpdatedByAccountId ? `{ ...data, updatedByAccountId: context.accountId }` : "data";
 
 		return `/**
@@ -1638,12 +1663,12 @@ export function insert${pascalName}Query(db: RepositoryQueryDB, data: ${pascalNa
 }
 
 /**
- * 设计思路：create writer 覆盖调用方传入的账号审计字段，防止资源创建者身份被伪造。
- * 函数职责：使用显式写入身份创建 ${tableName} 并返回写入行。
+ * 设计思路：create writer 的业务输入不携带主键；自有主键由 writer 生成或由 options 显式指定，外键主键必须由 options 提供。
+ * 函数职责：使用显式写入身份和主键策略创建 ${tableName} 并返回写入行。
  */
-export async function create${pascalName}(context: RepositoryWriterContext, data: ${pascalName}Insert, trx?: RepositoryQueryDB) {
+export async function create${pascalName}(context: RepositoryWriterContext, data: ${createDataType}, options: ${createOptionsType}${createOptionsDefault}) {
   if (!context.accountId) throw new RepositoryAuthorizationError("${tableName}", "create");
-  const db = trx || await getDB();
+  const db = options.trx || await getDB();
   return await insert${pascalName}Query(db, ${createCommandData}).executeTakeFirstOrThrow();
 }
 
