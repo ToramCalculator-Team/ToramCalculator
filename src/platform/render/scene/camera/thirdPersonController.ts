@@ -2,7 +2,7 @@ import { PlayerBodyProfile } from "~/game/locomotion";
 import type { Scene } from "~/platform/render/babylon/runtime";
 import { type ArcRotateCamera, Vector3 } from "~/platform/render/babylon/runtime";
 import type { createRendererController } from "../RendererController";
-import { CAMERA_EFFECTIVE_RADIUS_MIN, CAMERA_RADIUS_LIMITS } from "./cameraTransition";
+import { CAMERA_EFFECTIVE_RADIUS_MIN, CAMERA_RADIUS_LIMITS, FOLLOW_POSE } from "./cameraTransition";
 import type {
 	AnyCameraControlCmd,
 	CameraFollowCmd,
@@ -94,7 +94,7 @@ export interface CameraState {
 
 const defaultCameraState: CameraState = {
 	distance: 3.12,
-	horizontalAngle: 1.58,
+	horizontalAngle: FOLLOW_POSE.alpha,
 	verticalAngle: 1.5,
 	target: new Vector3(0, PlayerBodyProfile.CAMERA_IDLE_TARGET_Y, 0),
 	smoothTransition: false, // 暂时禁用平滑过渡，提高响应性

@@ -19,14 +19,15 @@ export const CAMERA_EFFECTIVE_RADIUS_MIN = 0;
 
 /** 观察位（背景相机初始姿态），过渡动画的"离开终点 / 进入起点"。 */
 export const OBSERVE_POSE = {
-	alpha: 1.58,
+	// 队形中木桩位于玩家的 +Z 方向；相机放在玩家后方的 -Z 侧，才能朝木桩观察。
+	alpha: -1.58,
 	beta: 1.6,
 	radius: 3.12,
 	target: new Vector3(0, PlayerBodyProfile.CAMERA_IDLE_TARGET_Y, 0),
 };
 
 /** 进入跟随位的固定角度/距离（与 ThirdPersonCameraController 默认一致）。 */
-export const FOLLOW_POSE = { alpha: Math.PI / 2, beta: Math.PI / 3, radius: 8 };
+export const FOLLOW_POSE = { alpha: -Math.PI / 2, beta: Math.PI / 3, radius: 8 };
 
 export type CameraDest = { alpha: number; beta: number; radius: number; target: Vector3 };
 
