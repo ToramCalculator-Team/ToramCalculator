@@ -1,8 +1,8 @@
+import { PlayerBodyProfile } from "~/game/locomotion";
 import type { Scene } from "~/platform/render/babylon/runtime";
 import { type ArcRotateCamera, Vector3 } from "~/platform/render/babylon/runtime";
 import type { createRendererController } from "../RendererController";
-import { PlayerBodyProfile } from "~/game/locomotion";
-import { CAMERA_RADIUS_LIMITS } from "./cameraTransition";
+import { CAMERA_EFFECTIVE_RADIUS_MIN, CAMERA_RADIUS_LIMITS } from "./cameraTransition";
 import type {
 	AnyCameraControlCmd,
 	CameraFollowCmd,
@@ -10,6 +10,60 @@ import type {
 	CameraSetDistanceCmd,
 	CameraSetTargetCmd,
 } from "./commands";
+
+// ==================== 相机-地形碰撞 ====================
+
+/** 视线步进间隔：地形是平滑高度场，0.5 步长配合二分细化足够精确。 */
+const CAMERA_GROUND_COLLISION_STEP = 0.5;
+/** 相机离地感应间距：视线距离地面不足 0.1m 时就开始收缩半径，避免贴地后再硬拉。 */
+const CAMERA_GROUND_CLEARANCE = 0.1;
+/** 碰撞解除后半径向命令距离恢复的 lerp 速率（/秒）。 */
+const CAMERA_RADIUS_RECOVERY_SPEED = 8;
+
+export type CameraCollisionVector = Readonly<{ x: number; y: number; z: number }>;
+export type CameraTerrainHeightSampler = (x: number, z: number) => number;
+
+/**
+ * 在给定视线方向上求地形的首次交点。
+ *
+ * 该函数只处理高度场求交，不读取 Babylon 状态；控制器可以在普通帧和动画帧复用同一算法，
+ * 测试也可以直接验证安全距离而不需要创建 WebGL 场景。direction 必须是单位向量。
+ */
+export function computeTerrainCollisionLimit(
+	target: CameraCollisionVector,
+	direction: CameraCollisionVector,
+	currentDistance: number,
+	desiredDistance: number,
+	terrainHeightAt: CameraTerrainHeightSampler,
+): number {
+	const probeDistance = Math.max(Math.max(0, currentDistance), desiredDistance);
+	if (probeDistance < 1e-3) return Number.POSITIVE_INFINITY;
+
+	let hitDistance = -1;
+	for (let d = 0; d <= probeDistance; d += CAMERA_GROUND_COLLISION_STEP) {
+		const pointX = target.x + direction.x * d;
+		const pointY = target.y + direction.y * d;
+		const pointZ = target.z + direction.z * d;
+		if (pointY < terrainHeightAt(pointX, pointZ) + CAMERA_GROUND_CLEARANCE) {
+			hitDistance = d;
+			break;
+		}
+	}
+	if (hitDistance < 0) return Number.POSITIVE_INFINITY;
+
+	// 在 [hit-STEP, hit] 内二分细化碰撞点，极限取最后一个安全位置。
+	let safe = Math.max(0, hitDistance - CAMERA_GROUND_COLLISION_STEP);
+	let hit = hitDistance;
+	for (let i = 0; i < 6; i += 1) {
+		const mid = (safe + hit) / 2;
+		const pointX = target.x + direction.x * mid;
+		const pointY = target.y + direction.y * mid;
+		const pointZ = target.z + direction.z * mid;
+		if (pointY < terrainHeightAt(pointX, pointZ) + CAMERA_GROUND_CLEARANCE) hit = mid;
+		else safe = mid;
+	}
+	return Math.max(safe, CAMERA_EFFECTIVE_RADIUS_MIN);
+}
 
 // ==================== 相机状态 ====================
 
@@ -57,6 +111,8 @@ export class ThirdPersonCameraController {
 	private camera: ArcRotateCamera;
 	private rendererController: ReturnType<typeof createRendererController>;
 	private state: CameraState;
+	/** 地形高度采样器：由宿主注入 WorldTerrain.getHeightAt，用于相机-地形碰撞。 */
+	private terrainHeightAt?: CameraTerrainHeightSampler;
 
 	// 平滑过渡相关
 	private targetState: Partial<CameraState> = {};
@@ -76,11 +132,13 @@ export class ThirdPersonCameraController {
 		camera: ArcRotateCamera,
 		rendererController: ReturnType<typeof createRendererController>,
 		initialState: Partial<CameraState> = {},
+		terrainHeightAt?: CameraTerrainHeightSampler,
 	) {
 		this.scene = scene;
 		this.camera = camera;
 		this.rendererController = rendererController;
 		this.state = { ...defaultCameraState, ...initialState };
+		this.terrainHeightAt = terrainHeightAt;
 
 		// 初始化相机位置
 		this.updateCameraAngle();
@@ -127,6 +185,42 @@ export class ThirdPersonCameraController {
 
 		// 把 state 应用到真实相机：恢复缺失的跟随与入场动画。
 		this.applyStateToCamera(deltaTime);
+
+		// 相机-地形约束：碰撞极限由视线方向唯一决定（与当前半径解耦），
+		// 恢复只朝 min(命令距离, 碰撞极限) 收敛。若恢复目标是命令距离而碰撞持续，
+		// "恢复拉远-碰撞压回"每帧互相打架，会产生可见抖动。
+		const collisionLimit = this.computeCollisionLimit();
+		this.applyCollisionLimit(collisionLimit);
+		if (!this.isTransitioning) {
+			this.recoverRadius(deltaTime, collisionLimit);
+		}
+	}
+
+	/**
+	 * 只施加地形碰撞的硬上限，不改变用户命令距离。
+	 *
+	 * 场景过渡动画由 Babylon 直接写入相机，动画期间不会调用 update；SceneRuntime
+	 * 会在相机绘制前调用此入口，因此进入/离开场景也使用同一碰撞约束。
+	 */
+	constrainCamera(): void {
+		this.applyCollisionLimit(this.computeCollisionLimit());
+	}
+
+	/**
+	 * 用户滚轮 zoom 入口：更新命令距离而非直接改 camera.radius。
+	 * 配合 recoverRadius，碰撞压缩后的半径能随 state.distance 恢复，且不与恢复逻辑打架。
+	 */
+	zoomBy(factor: number): void {
+		if (!Number.isFinite(factor) || factor <= 0) return;
+		const next = this.state.distance * factor;
+		this.state.distance = Math.max(this.state.minDistance, Math.min(this.state.maxDistance, next));
+	}
+
+	/** 将 Babylon 已归一化的半径增量写入 desired distance，正值表示拉远。 */
+	adjustDistanceBy(delta: number): void {
+		if (!Number.isFinite(delta)) return;
+		const next = this.state.distance + delta;
+		this.state.distance = Math.max(this.state.minDistance, Math.min(this.state.maxDistance, next));
 	}
 
 	/**
@@ -319,6 +413,49 @@ export class ThirdPersonCameraController {
 	}
 
 	// ==================== 私有方法 ====================
+
+	/** 非过渡期把相机半径朝 min(命令距离, 碰撞极限) 平滑插值：碰撞中收敛于极限，解除后逐步回位。 */
+	private recoverRadius(deltaTime: number, collisionLimit: number): void {
+		if (this.isTransitioning) return;
+		const target = Math.min(this.state.distance, collisionLimit);
+		const current = this.camera.radius;
+		if (Math.abs(current - target) < 0.01) return;
+		const next = current + (target - current) * Math.min(1, CAMERA_RADIUS_RECOVERY_SPEED * deltaTime);
+		this.camera.radius = next;
+	}
+
+	/** 地形碰撞只约束实际半径，不能改写 state.distance 这一用户命令状态。 */
+	private applyCollisionLimit(collisionLimit: number): void {
+		if (this.camera.radius > collisionLimit) this.camera.radius = collisionLimit;
+	}
+
+	/**
+	 * 计算本视线方向（alpha/beta/target）下的碰撞极限：沿 target→相机 方向步进采样地面高度，
+	 * 视线距地面不足 CAMERA_GROUND_CLEARANCE 处即碰撞点，返回允许的最大视线距离（无碰撞返回 Infinity）。
+	 * 检测范围取 max(当前距离, 命令距离)，使极限只由视线方向决定、与当前半径解耦——
+	 * 相机停在极限处时每帧结果是确定性的，不会因"恢复拉远-碰撞压回"而振荡。
+	 * 选择高度场采样而非 mesh raycast：逻辑地形是纯 heightmap（无洞穴/悬垂），且不依赖
+	 * chunk mesh 是否已异步生成。渲染网格是高度场的离散近似，clearance 负责吸收少量表示误差。
+	 */
+	private computeCollisionLimit(): number {
+		if (!this.terrainHeightAt) return Number.POSITIVE_INFINITY;
+		// camera.position 在 Babylon 的相机更新阶段才会根据 alpha/beta/radius 重建；
+		// 控制器和相机绘制前约束都可能在该阶段之前运行，因此不能读取上一帧位置。
+		const sinBeta = Math.sin(this.camera.beta);
+		const direction = new Vector3(
+			Math.cos(this.camera.alpha) * sinBeta,
+			Math.cos(this.camera.beta),
+			Math.sin(this.camera.alpha) * sinBeta,
+		);
+		const target = this.camera.getTarget();
+		return computeTerrainCollisionLimit(
+			target,
+			direction,
+			this.camera.radius,
+			this.state.distance,
+			this.terrainHeightAt,
+		);
+	}
 
 	/** 设置无限地面逻辑 */
 	private setupInfiniteGround(): void {

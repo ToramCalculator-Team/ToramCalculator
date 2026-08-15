@@ -6,16 +6,24 @@
  * 只服务 SceneRuntime 自身的 realtime 进出过渡，不接受 AUI 装备状态直接驱动。
  */
 
+import { PlayerBodyProfile } from "~/game/locomotion";
 import type { ArcRotateCamera, Scene } from "~/platform/render/babylon/runtime";
 import { Animation, CubicEase, EasingFunction, Vector3 } from "~/platform/render/babylon/runtime";
-import { PlayerBodyProfile } from "~/game/locomotion";
 import { store } from "~/store";
 
-/** 所有相机状态共用的缩放范围，命令设置和 ArcRotateCamera 输入必须使用同一约束。 */
+/** 用户期望距离共用的缩放范围；地形碰撞产生的有效半径可以低于该范围。 */
 export const CAMERA_RADIUS_LIMITS = { min: 2, max: 11.2 } as const;
 
+/** 允许相机与目标重合，只阻止 ArcRotateCamera 半径变成负数，不代表用户缩放下限。 */
+export const CAMERA_EFFECTIVE_RADIUS_MIN = 0;
+
 /** 观察位（背景相机初始姿态），过渡动画的"离开终点 / 进入起点"。 */
-export const OBSERVE_POSE = { alpha: 1.58, beta: 1.6, radius: 3.12, target: new Vector3(0, PlayerBodyProfile.CAMERA_IDLE_TARGET_Y, 0) };
+export const OBSERVE_POSE = {
+	alpha: 1.58,
+	beta: 1.6,
+	radius: 3.12,
+	target: new Vector3(0, PlayerBodyProfile.CAMERA_IDLE_TARGET_Y, 0),
+};
 
 /** 进入跟随位的固定角度/距离（与 ThirdPersonCameraController 默认一致）。 */
 export const FOLLOW_POSE = { alpha: Math.PI / 2, beta: Math.PI / 3, radius: 8 };

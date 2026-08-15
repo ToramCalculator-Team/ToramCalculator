@@ -27,6 +27,7 @@ export type { IAnimationKey } from "@babylonjs/core/Animations/animationKey";
 export { CubicEase, EasingFunction } from "@babylonjs/core/Animations/easing";
 export type { Skeleton } from "@babylonjs/core/Bones/skeleton";
 export { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
+export type { ArcRotateCameraMouseWheelInput } from "@babylonjs/core/Cameras/Inputs/arcRotateCameraMouseWheelInput";
 export { UniversalCamera } from "@babylonjs/core/Cameras/universalCamera";
 export type { AbstractEngine } from "@babylonjs/core/Engines/abstractEngine";
 export { Engine } from "@babylonjs/core/Engines/engine";

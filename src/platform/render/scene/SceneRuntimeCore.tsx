@@ -13,7 +13,7 @@ import { type Actor, createActor } from "xstate";
 import type { RendererCmd } from "~/engine/core/thread/RendererProtocol";
 import { createLogger } from "~/lib/logger";
 import { DEFAULT_TERRAIN_DEFINITION, type TerrainDefinition } from "~/lib/terrain";
-import type { AbstractEngine } from "~/platform/render/babylon/runtime";
+import type { AbstractEngine, ArcRotateCameraMouseWheelInput } from "~/platform/render/babylon/runtime";
 import {
 	ArcRotateCamera,
 	Color3,
@@ -34,7 +34,13 @@ import {
 import { DEFAULT_TERRAIN_RENDER_CONFIG, WorldTerrain } from "~/platform/terrain";
 import { store } from "~/store";
 import { resolveColorSystem } from "~/styles/colorSystem/colorSystemController";
-import { animateCameraTo, CAMERA_RADIUS_LIMITS, FOLLOW_POSE, OBSERVE_POSE } from "./camera/cameraTransition";
+import {
+	animateCameraTo,
+	CAMERA_EFFECTIVE_RADIUS_MIN,
+	CAMERA_RADIUS_LIMITS,
+	FOLLOW_POSE,
+	OBSERVE_POSE,
+} from "./camera/cameraTransition";
 import type { AnyCameraControlCmd } from "./camera/commands";
 import { ThirdPersonCameraController } from "./camera/thirdPersonController";
 import { readCharacterEquipmentSlotMetadata } from "./content/characterEquipmentMetadata";
@@ -131,12 +137,39 @@ export function SceneRuntimeCore(props: {
 		props.onReady(api);
 	};
 
+	/**
+	 * 将 Babylon 的滚轮输入改为更新控制器的 desired distance。
+	 * Babylon 已完成 deltaMode 归一化；这里复用其百分比缩放公式，但返回 0，
+	 * 避免默认输入再直接修改 camera.radius。
+	 */
+	const configureCameraWheelInput = () => {
+		if (!sceneCamera) return;
+		// Babylon 的 inputs map 按字符串暴露具体输入类型，运行时已确认 mousewheel 的实际类型。
+		const wheelInput = sceneCamera.inputs.attached.mousewheel as ArcRotateCameraMouseWheelInput | undefined;
+		if (!wheelInput) return;
+		wheelInput.customComputeDeltaFromMouseWheel = (wheelDelta, _input, event) => {
+			event.preventDefault();
+			if (!thirdPersonController) return 0;
+			const distance = thirdPersonController.getCameraState().distance;
+			const percentage = sceneCamera?.wheelDeltaPercentage ?? 0;
+			if (!Number.isFinite(distance) || distance <= 0 || !Number.isFinite(wheelDelta)) return 0;
+			let radiusDelta = wheelDelta * 0.01 * percentage * distance;
+			if (wheelDelta > 0) radiusDelta /= 1 + percentage;
+			else radiusDelta *= 1 + percentage;
+			thirdPersonController.adjustDistanceBy(-radiusDelta);
+			return 0;
+		};
+	};
+
 	const setCameraInputEnabled = (enabled: boolean) => {
 		if (!canvas || !sceneCamera) return;
 		if (enabled) {
 			sceneCamera.attachControl(canvas, true);
+			configureCameraWheelInput();
 		} else {
 			sceneCamera.detachControl();
+			const wheelInput = sceneCamera.inputs.attached.mousewheel as ArcRotateCameraMouseWheelInput | undefined;
+			if (wheelInput) wheelInput.customComputeDeltaFromMouseWheel = null;
 		}
 	};
 
@@ -254,12 +287,19 @@ export function SceneRuntimeCore(props: {
 				? new Vector3(config.initialCameraTarget.x, config.initialCameraTarget.y + 1, config.initialCameraTarget.z)
 				: undefined;
 			// 控制器复用唯一 sceneCamera，不再 new 第二台相机。
-			thirdPersonController = new ThirdPersonCameraController(scene, camera, rendererController, {
-				followEntityId: config.followEntityId,
-				distance: FOLLOW_POSE.radius,
-				smoothTransition: true,
-				...(initialTarget ? { target: initialTarget } : {}),
-			});
+			thirdPersonController = new ThirdPersonCameraController(
+				scene,
+				camera,
+				rendererController,
+				{
+					followEntityId: config.followEntityId,
+					distance: FOLLOW_POSE.radius,
+					smoothTransition: true,
+					...(initialTarget ? { target: initialTarget } : {}),
+				},
+				// mountWorldTerrain 已在本函数前置完成；没有地形时不伪造 y=0 地面。
+				worldTerrain?.getHeightAt,
+			);
 			if (config.controllerInput) {
 				const input = config.controllerInput;
 				const nextController = new SceneInputController({
@@ -292,6 +332,7 @@ export function SceneRuntimeCore(props: {
 		},
 		teardownRealtimeResources: () => {
 			window.removeEventListener("cameraControl", handleCameraControl as EventListener);
+			setCameraInputEnabled(false);
 			detachSceneInput?.();
 			detachSceneInput = undefined;
 			sceneInputController = undefined;
@@ -389,9 +430,16 @@ export function SceneRuntimeCore(props: {
 		sceneCamera.minZ = 0.1;
 		sceneCamera.fov = 1;
 		sceneCamera.wheelDeltaPercentage = 0.05;
-		sceneCamera.lowerRadiusLimit = CAMERA_RADIUS_LIMITS.min;
+		// CAMERA_RADIUS_LIMITS.min 约束 desired distance；有效半径还需要允许因地形碰撞低于该值。
+		sceneCamera.lowerRadiusLimit = CAMERA_EFFECTIVE_RADIUS_MIN;
 		sceneCamera.upperRadiusLimit = CAMERA_RADIUS_LIMITS.max;
 		scene.activeCamera = sceneCamera;
+		// Babylon 先执行动画和输入，再进入相机绘制；这里施加最终硬碰撞上限，覆盖所有直接写入。
+		scene.onBeforeCameraRenderObservable.add(() => {
+			thirdPersonController?.constrainCamera();
+			// 回调发生在 Babylon 本帧默认变换矩阵计算之后，半径被钳制后需要重新计算矩阵。
+			scene?.updateTransformMatrix(true);
+		});
 		worldSkybox = createProceduralStarSkybox(scene);
 		registerFogOfWarMaterialPlugin();
 		applySceneTheme();
@@ -655,7 +703,7 @@ export function SceneRuntimeCore(props: {
 			ref={(element) => {
 				canvas = element;
 			}}
-			class={`fixed left-0 top-0 z-0 h-dvh w-dvw bg-transparent transition-opacity ${
+			class={`fixed left-0 top-0 z-0 h-dvh w-dvw bg-transparent transition-opacity focus-within:outline-none ${
 				ready() ? "opacity-100" : "opacity-0"
 			} ${mode() === "realtime" || characterPickingEnabled() ? "pointer-events-auto" : "pointer-events-none"}`}
 		>
