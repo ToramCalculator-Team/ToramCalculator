@@ -149,6 +149,7 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 | [0048](./0048-pglite-live-view-as-application-read-source.md) | PGlite business view 作为应用持久数据的唯一响应式读源 | Accepted | 应用数据读取 |
 | [0049](./0049-engine-owns-terrain-physical-state.md) | 引擎拥有地形物理状态权威 | Accepted | 世界模型与渲染 |
 | [0050](./0050-realtime-state-transport-semantics.md) | 实时状态的传输语义分类：连续状态走 latest-state 通道，离散动作走事件队列 | Accepted | 实时交互与线程通信 |
+| [0052](./0052-realtime-world-state-uses-unified-sab.md) | 高频世界状态统一使用实时状态 SAB | Accepted | 实时交互与线程通信 |
 
 ## 决策候选与实施计划
 
@@ -157,3 +158,4 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 - [Simulator 最小验证闭环](../plans/minimum-validation-loop.md)
 - [AUI 行为状态机迁移计划](../plans/0021-aui-interface-state-migration.md)
 - [Simulator Tick 状态历史 SAB 性能重构计划](../plans/simulator-tick-state-history-sab-performance.md)
+- [实时世界状态 SAB 迁移计划](../plans/realtime-world-state-sab-migration.md)
