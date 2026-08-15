@@ -9,8 +9,8 @@ import { type Accessor, createMemo, createSignal, onCleanup } from "solid-js";
 import type { MovementStateSink } from "~/engine/controller/controllerInput";
 import type { EngineTelemetry } from "~/engine/core/thread/protocol";
 import type { SimulationRenderSource } from "~/engine/core/thread/RendererProtocol";
+import type { WorldStateSnapshot } from "~/engine/core/thread/worldStateBuffer";
 import { readTickStateRange, readTickStateSnapshot, type TickStateSnapshot } from "~/engine/core/tickStateHistory";
-import type { FrameSnapshot } from "~/engine/core/types";
 import type { MemberSnapshot } from "~/engine/core/World/Member/Member";
 import { useSimulatorSessionActor, useSimulatorSessionRuntime } from "~/machines/AppActorContext";
 import type { SimulationDesign } from "../data/simulationDesignSchema";
@@ -47,7 +47,7 @@ export type SimulatorSessionValue = {
 };
 
 export type SimulatorRuntimeProjection = {
-	latestFrame: () => FrameSnapshot | null;
+	worldState: () => WorldStateSnapshot | null;
 	telemetry: () => EngineTelemetry | null;
 	isRunning: () => boolean;
 	renderSource: () => SimulationRenderSource;
@@ -124,7 +124,7 @@ export function useSimulatorRuntimeProjection(): SimulatorRuntimeProjection {
 	const release = runtime.subscribeRuntimeProjection(setSnapshot);
 	onCleanup(release);
 	return {
-		latestFrame: () => snapshot().latestFrame,
+		worldState: () => snapshot().worldState,
 		telemetry: () => snapshot().telemetry,
 		isRunning: () => snapshot().isRunning,
 		renderSource: () => runtime.renderSource,

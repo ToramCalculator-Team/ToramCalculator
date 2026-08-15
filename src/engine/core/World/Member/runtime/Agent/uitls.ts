@@ -1,11 +1,8 @@
 import type { EventObject } from "xstate";
 import { type ZodType, z } from "zod/v4";
-import { createLogger } from "~/lib/logger";
 import type { State } from "~/lib/mistreevous/State";
 import type { BtContext, MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
 import type { ActionPool, ConditionPool } from "./type";
-
-const log = createLogger("AgentUtils");
 
 const unwrapSchema = (schema: ZodType): ZodType => {
 	let current: ZodType = schema;
@@ -163,37 +160,15 @@ export const maxMin = (min: number, value: number, max: number) => {
 	return Math.max(min, Math.min(value, max));
 };
 
-/**
- * 发送渲染指令
- * @param context 成员共享 runtime
- * @param actionName 动作名称
- * @param params 参数
- */
-export const sendRenderCommand = <TExtraAttrKey extends string, TFSMEvent extends EventObject>(
+/** 记录成员当前动画时间线；Worker 在 Tick 收尾把该事实写入统一实时状态。 */
+export const setCurrentAnimationTimeline = <TExtraAttrKey extends string, TFSMEvent extends EventObject>(
 	context: BtContext<TExtraAttrKey>,
 	capabilities: MemberBtCapabilities<TExtraAttrKey, TFSMEvent>,
 	actionName: string,
 	params?: Record<string, unknown>,
 ) => {
-	const renderMessageSender = capabilities.services.renderMessageSender;
-	if (!renderMessageSender) {
-		log.warn(`⚠️ [${context.name}] 无法获取渲染消息接口，无法发送渲染指令: ${actionName}`);
-		return;
-	}
+	// 动画事实写入成员运行时私有时间线，由实时状态 SAB 在 Tick 收尾发布；
+	// 渲染器不接收动作事件，也不维护第二个跨线程动画源。
 	const ts = capabilities.services.getCurrentTimeMs?.() ?? context.currentTimeMs;
-	const seq = capabilities.services.getTickIndex?.() ?? context.tickIndex;
-	const renderCmd = {
-		type: "render:cmd" as const,
-		cmd: {
-			type: "action" as const,
-			entityId: context.memberId,
-			name: actionName,
-			seq,
-			ts,
-			params,
-		},
-	};
-	renderMessageSender(renderCmd);
-	// 记录最后一次渲染动作，供渲染快照推算 animation.progress
-	capabilities.renderState.lastAction = { name: actionName, ts, params };
+	capabilities.animationState.lastAction = { name: actionName, ts, params };
 };

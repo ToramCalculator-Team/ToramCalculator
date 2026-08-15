@@ -14,7 +14,7 @@ import type { MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
 import type { MemberFSMEvent } from "../StateMachine/types";
 import type { MemberSharedRuntime } from "../types";
 import { type ActionPool, defineAction } from "./type";
-import { sendRenderCommand } from "./uitls";
+import { setCurrentAnimationTimeline } from "./uitls";
 
 const log = createLogger("Actions");
 
@@ -258,7 +258,7 @@ export const CommonActionPool = {
 			.meta({ description: "播放动画" }),
 		(context, input, capabilities) => {
 			log.debug(`👤 [${context.name}] animation`, input);
-			sendRenderCommand(context, capabilities, input.name, { duration: input.duration });
+			setCurrentAnimationTimeline(context, capabilities, input.name, { duration: input.duration });
 			return State.SUCCEEDED;
 		},
 	),

@@ -1,5 +1,4 @@
 import type { MemberType } from "@db/schema/enums";
-import { PlayerLocomotionProfile } from "~/game/locomotion";
 import { MemberBaseNestedSchema } from "~/engine/core/World/Member/MemberBaseSchema";
 import type { MemberRuntimeServices } from "~/engine/core/World/Member/RuntimeServices";
 import { AttributeContainer } from "~/engine/core/World/Member/runtime/AttributeContainer/AttributeContainer";
@@ -16,6 +15,7 @@ import type { MobFSMEvent } from "~/engine/core/World/Member/types/Mob/MobStateM
 import { createPlayerBtBindings } from "~/engine/core/World/Member/types/Player/Agents/BtBindings";
 import type { PlayerAttrKey } from "~/engine/core/World/Member/types/Player/PlayerAttrSchema";
 import type { PlayerFSMEvent } from "~/engine/core/World/Member/types/Player/PlayerStateMachine";
+import { PlayerLocomotionProfile } from "~/game/locomotion";
 import { BehaviourTree, type BehaviourTreeOptions, State } from "~/lib/mistreevous";
 import type { Agent } from "~/lib/mistreevous/Agent";
 import type {
@@ -110,21 +110,20 @@ export const createPreviewBtRuntime = (memberType: MemberType): PreviewBtRuntime
 		getTickIndex: () => runtime.tickIndex,
 		expressionEvaluator: () => 0,
 		damageRequestHandler: () => undefined,
-		renderMessageSender: () => undefined,
 		domainEventSender: () => undefined,
 		targetResolver: (_sourceMemberId, requestedTargetId) => requestedTargetId ?? "preview-target",
 		random: () => 0.5,
 	};
 
 	const attributeContainer = new AttributeContainer<string>(MemberBaseNestedSchema);
-	const renderState: MemberBtCapabilities<string, MemberFSMEvent>["renderState"] = {};
+	const animationState: MemberBtCapabilities<string, MemberFSMEvent>["animationState"] = {};
 	const parallelBts = new Set<string>();
 	let nextThresholdRegistrationId = 1;
 
 	const capabilities: MemberBtCapabilities<string, MemberFSMEvent> = {
 		attributeContainer,
 		services,
-		renderState,
+		animationState,
 		registerParallelBt: (name) => {
 			parallelBts.add(name);
 			return undefined;

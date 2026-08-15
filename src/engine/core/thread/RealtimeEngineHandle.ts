@@ -6,8 +6,7 @@ import type { EngineScenarioData, RuntimeConfig } from "../types";
 import type { MemberSnapshot } from "../World/Member/Member";
 import type { EngineWorkerClient, EngineWorkerClientEventMap } from "./EngineWorkerClient";
 import type { FastForwardResult, MemberSkillSummary } from "./protocol";
-import type { RenderSnapshot } from "./RendererProtocol";
-import type { MemberSlotIndex, WorldStateReader } from "./worldStateBuffer";
+import type { WorldStateLayoutDescriptor, WorldStateReader } from "./worldStateBuffer";
 
 export type ManagedEngineWorkerClient = Pick<
 	EngineWorkerClient,
@@ -35,23 +34,22 @@ export type ManagedEngineWorkerClient = Pick<
 	| "detachControllerInput"
 	| "getMembers"
 	| "getMemberSkillList"
-	| "getRenderSnapshot"
 	| "startWorldStateProjection"
 	| "stopWorldStateProjection"
 	| "getWorldStateReader"
-	| "getWorldStateSlotIndex"
 	| "patchMemberConfig"
 	| "fastForward"
 	| "startRunOutput"
 	| "finishRunOutput"
 	| "cancelRunOutput"
 	| "acknowledgeRunOutput"
-	| "setRealtimeSnapshotHz"
 	| "unloadScenario"
 	| "on"
 	| "off"
 	| "dispose"
->;
+> & {
+	getWorldStateLayout?: () => WorldStateLayoutDescriptor | null;
+};
 
 /**
  * Session 持有的通用实时引擎使用权。
@@ -192,11 +190,6 @@ export class RealtimeEngineHandle {
 		return await this.client.getMemberSkillList(memberId);
 	}
 
-	async getRenderSnapshot(includeAreas = false): Promise<RenderSnapshot> {
-		this.assertActive();
-		return await this.client.getRenderSnapshot(includeAreas);
-	}
-
 	async startWorldStateProjection(): Promise<void> {
 		this.assertActive();
 		await this.client.startWorldStateProjection();
@@ -212,9 +205,9 @@ export class RealtimeEngineHandle {
 		return this.client.getWorldStateReader();
 	}
 
-	getWorldStateSlotIndex(): MemberSlotIndex | null {
+	getWorldStateLayout(): WorldStateLayoutDescriptor | null {
 		this.assertActive();
-		return this.client.getWorldStateSlotIndex();
+		return this.client.getWorldStateLayout?.() ?? null;
 	}
 
 	async patchMemberConfig(memberId: string, data: EngineMember): Promise<void> {
@@ -245,11 +238,6 @@ export class RealtimeEngineHandle {
 	async acknowledgeRunOutput(runId: string): Promise<void> {
 		this.assertActive();
 		await this.client.acknowledgeRunOutput(runId);
-	}
-
-	async setRealtimeSnapshotHz(snapshotHz: number): Promise<void> {
-		this.assertActive();
-		await this.client.setRealtimeSnapshotHz(snapshotHz);
 	}
 
 	async unloadScenario(): Promise<void> {

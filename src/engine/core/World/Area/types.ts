@@ -4,6 +4,10 @@
 
 import type { DamageRangeType } from "@db/schema/enums";
 
+/** 实时世界区域的首版固定容量；领域创建与 SAB 布局共同遵守此边界。 */
+export const WORLD_AREA_CAPACITY = 256;
+export const WORLD_AREA_CAPACITY_EXCEEDED_CODE = "realtime_area_capacity_exceeded";
+
 /**
  * 三维向量
  */

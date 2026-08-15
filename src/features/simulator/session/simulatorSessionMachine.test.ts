@@ -88,7 +88,6 @@ class FakeRealtimeHandle implements SimulatorSessionRealtimeHandlePort {
 	}
 	loadScenario = vi.fn(async () => this.setLifecycle("ready"));
 	setRuntimeConfig = vi.fn(async () => undefined);
-	setRealtimeSnapshotHz = vi.fn(async () => undefined);
 	getMembers = vi.fn(async () => []);
 	bindMemberController = vi.fn(async () => ({ controllerId: "controller-1", boundMemberId: "member-player" }));
 	unbindAllMemberControllers = vi.fn(async () => undefined);
@@ -125,15 +124,7 @@ class FakeRealtimeHandle implements SimulatorSessionRealtimeHandlePort {
 	attachControllerInput = vi.fn(async () => undefined);
 	detachControllerInput = vi.fn(async () => undefined);
 	unloadScenario = vi.fn(async () => this.setLifecycle("idle"));
-	getRenderSnapshot = vi.fn(async () => ({
-		tickIndex: 0,
-		currentTimeMs: 0,
-		members: [],
-		areas: [],
-		cameraFollowEntityId: null,
-	}));
 	getWorldStateReader = vi.fn(() => null);
-	getWorldStateSlotIndex = vi.fn(() => null);
 	startWorldStateProjection = vi.fn(async () => undefined);
 	stopWorldStateProjection = vi.fn(async () => undefined);
 	close = vi.fn(async () => undefined);
@@ -206,6 +197,7 @@ describe("SimulatorSession 父子提交协议", () => {
 		expect(session.runRecords[0]?.designCopyId).toBe(session.designCopies[0]?.id);
 		expect(session.runRecords[0]?.output.runId).toBe(session.runRecords[0]?.id);
 		expect(handle.acknowledgeRunOutput).toHaveBeenCalledOnce();
+		expect(handle.stopWorldStateProjection).toHaveBeenCalledOnce();
 
 		child.send({ type: "validation.start.requested" });
 		await waitFor(
@@ -267,6 +259,7 @@ describe("SimulatorSession 父子提交协议", () => {
 
 		expect(parent.getSnapshot().matches({ simulator: "designing" })).toBe(true);
 		expect(handle.cancelRunOutput).toHaveBeenCalledOnce();
+		expect(handle.stopWorldStateProjection).toHaveBeenCalledOnce();
 		expect(child.getSnapshot().context.activeRun).toBeNull();
 
 		parent.stop();
@@ -445,5 +438,9 @@ describe("SimulatorSession 生命周期只读投影", () => {
 		expect(runtime.getRuntimeSnapshot().isRunning).toBe(false);
 
 		actor.stop();
+		await vi.waitFor(() => {
+			expect(handle.stopWorldStateProjection).toHaveBeenCalledOnce();
+			expect(handle.close).toHaveBeenCalledOnce();
+		});
 	});
 });

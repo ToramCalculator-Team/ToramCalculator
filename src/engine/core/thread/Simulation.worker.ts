@@ -26,6 +26,7 @@ import { PipelineCatalog } from "../Pipeline/PipelineCatalog";
 import { PipelineResolverService } from "../Pipeline/PipelineResolverService";
 import type { SimulatorSafeAPI } from "../sandboxGlobals";
 import type { EngineInfrastructure } from "../types";
+import { ModifierType } from "../World/Member/runtime/AttributeContainer/AttributeContainer";
 import type { MemberMovementInput } from "../World/Member/runtime/types";
 import { readSharedMovementState, type SharedMovementStateSnapshot } from "./controllerInputBuffer";
 import { DebugViewRegistry } from "./DebugViewRegistry";
@@ -45,10 +46,14 @@ import {
 	type PushMessageType,
 } from "./protocol";
 import {
-	MemberSlotIndex,
 	STATE_FLAG_AIRBORNE,
 	STATE_FLAG_MOVING,
+	WorldStateAreaShapeKind,
+	WorldStateAreaType,
+	type WorldStateCommit,
+	WorldStateEntityType,
 	WorldStateWriter,
+	worldStateStringId,
 } from "./worldStateBuffer";
 
 function readConfiguredLogLevel(): LogLevel | null {
@@ -176,6 +181,104 @@ const controllerInputReaders = new Map<
 	string,
 	{ buffer: SharedArrayBuffer; lastStableState: SharedMovementStateSnapshot | null }
 >();
+
+/** 在 Tick 收尾一次性收集所有实时表，确保属性、动画和区域来自同一提交。 */
+function createWorldStateCommit(): WorldStateCommit {
+	const currentTimeMs = gameEngine.getCurrentTimeMs();
+	const modifierSources: Array<{ idHash: number; type: number }> = [];
+	const modifierChains: Array<{ sourceIndex: number; parentIndex: number }> = [];
+	const sourceIndexes = new Map<string, number>();
+	const members = gameEngine
+		.getWorld()
+		.memberManager.getAllMembers()
+		.map((member) => {
+			const container = member.attributeContainer;
+			container.prepareIndexedRead();
+			const attributes = {
+				base: Array.from({ length: container.getAttributeCount() }, (_, index) => container.getBaseValueAt(index)),
+				act: Array.from({ length: container.getAttributeCount() }, (_, index) => container.getValueAt(index)),
+			};
+			const modifiers: Array<{
+				attributeIndex: number;
+				type: number;
+				value: number;
+				sourceIndex: number;
+				chainIndex: number;
+			}> = [];
+			for (let index = 0; index < container.getAttributeCount(); index++) {
+				for (const type of [
+					ModifierType.BASE_VALUE,
+					ModifierType.STATIC_FIXED,
+					ModifierType.STATIC_PERCENTAGE,
+					ModifierType.DYNAMIC_FIXED,
+					ModifierType.DYNAMIC_PERCENTAGE,
+				]) {
+					container.visitModifiersAt(index, type, (source, value) => {
+						let sourceIndex = sourceIndexes.get(source.key);
+						if (sourceIndex === undefined) {
+							sourceIndex = modifierSources.length;
+							sourceIndexes.set(source.key, sourceIndex);
+							modifierSources.push({ idHash: worldStateStringId(source.key), type: worldStateStringId(source.type) });
+							modifierChains.push({ sourceIndex, parentIndex: -1 });
+						}
+						modifiers.push({ attributeIndex: index, type, value, sourceIndex, chainIndex: sourceIndex });
+					});
+				}
+			}
+			const lastAction = member.animationState.lastAction;
+			const duration =
+				typeof lastAction?.params?.duration === "number" && lastAction.params.duration > 0
+					? lastAction.params.duration
+					: 1000;
+			const progress = lastAction ? Math.min(1, Math.max(0, (currentTimeMs - lastAction.ts) / duration)) : 0;
+			const entityType =
+				member.type === "Mob"
+					? WorldStateEntityType.MOB
+					: member.type === "Player"
+						? WorldStateEntityType.PLAYER
+						: WorldStateEntityType.SUMMON;
+			return {
+				id: member.id,
+				entityType,
+				visualProfileId: worldStateStringId(member.id),
+				active: true,
+				position: member.position,
+				yaw: member.runtime.yaw,
+				speed: member.runtime.movement?.speed ?? 0,
+				stateFlags:
+					(member.runtime.movement ? STATE_FLAG_MOVING : 0) | (!member.runtime.grounded ? STATE_FLAG_AIRBORNE : 0),
+				animation: {
+					id: lastAction ? worldStateStringId(lastAction.name) : 0,
+					progress,
+					logicTimeMs: lastAction?.ts ?? currentTimeMs,
+					loop: !lastAction,
+					ended: !!lastAction && progress >= 1,
+				},
+				attributes,
+				modifiers,
+			};
+		});
+	const areaSnapshots = gameEngine.getWorld().areaManager.damageAreaSystem.getAreaSnapshot(currentTimeMs);
+	return {
+		logicalTimeMs: currentTimeMs,
+		tickIndex: gameEngine.getTickIndex(),
+		members,
+		modifierSources,
+		modifierChains,
+		areas: areaSnapshots.map((area) => ({
+			id: area.id,
+			active: true,
+			type: WorldStateAreaType.DAMAGE,
+			position: area.position,
+			shape: {
+				kind: area.shape.kind === "point" ? WorldStateAreaShapeKind.POINT : WorldStateAreaShapeKind.CIRCLE,
+				radius: area.shape.radius,
+			},
+			remainingTimeMs: area.remainingTimeMs,
+			sourceMemberId: area.sourceMemberId,
+		})),
+	};
+}
 
 gameEngine.setControllerMovementInputSource((controllerId): MemberMovementInput | null => {
 	const reader = controllerInputReaders.get(controllerId);
@@ -312,12 +415,6 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<EngineRPCWireResult> {
 				return engineRPCSuccess(rpc.type, undefined);
 			}
 
-			case "set_realtime_snapshot_hz": {
-				requireExecutorState(rpc.type, ["idle", "ready", "running", "paused"]);
-				gameEngine.setRealtimeSnapshotHz(rpc.snapshotHz);
-				return engineRPCSuccess(rpc.type, undefined);
-			}
-
 			case "subscribe_debug_view": {
 				const viewId = debugViewRegistry.subscribe({
 					controllerId: rpc.controllerId,
@@ -335,9 +432,9 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<EngineRPCWireResult> {
 					: engineRPCFailure("订阅不存在");
 			}
 
-			case "get_render_snapshot": {
+			case "get_world_state_layout": {
 				requireExecutorState(rpc.type, ["ready", "running", "paused"]);
-				return engineRPCSuccess(rpc.type, gameEngine.getRenderSnapshot(rpc.includeAreas ?? false));
+				return engineRPCSuccess(rpc.type, gameEngine.getRealtimeWorldStateLayout());
 			}
 
 			case "set_runtime_config": {
@@ -373,22 +470,10 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<EngineRPCWireResult> {
 			}
 
 			case "attach_world_state_buffer": {
-				const slotIndex = new MemberSlotIndex(rpc.memberIds);
-				worldStateWriter = new WorldStateWriter(rpc.buffer, slotIndex);
+				worldStateWriter = new WorldStateWriter(rpc.buffer, rpc.descriptor);
 				const writeWorldState = () => {
 					if (!worldStateWriter) return;
-					const members = gameEngine.getAllMembers();
-					worldStateWriter.write(
-						members.map((m) => ({
-							id: m.id,
-							position: m.position,
-							yaw: m.runtime.yaw,
-							speed: m.runtime.movement?.speed ?? 0,
-							stateFlags:
-								(m.runtime.movement ? STATE_FLAG_MOVING : 0) |
-								(!m.runtime.grounded ? STATE_FLAG_AIRBORNE : 0),
-						})),
-					);
+					worldStateWriter.write(createWorldStateCommit());
 				};
 				gameEngine.setPostTickCallback(writeWorldState);
 				writeWorldState();
@@ -496,16 +581,6 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 					}
 				};
 
-				// 设置渲染消息发送器：用于FSM发送渲染指令（通过系统消息格式）
-				gameEngine.setRenderMessageSender((payload: unknown) => {
-					try {
-						// console.log("🔌 Worker: 发送渲染消息到主线程", payload);
-						postSystemMessage(messagePort, "render_cmd", payload);
-					} catch (error) {
-						log.error("Worker: 发送渲染消息失败:", error);
-					}
-				});
-
 				// 设置系统消息发送器：用于发送系统级事件到控制器（worker_ready/error/日志等）
 				gameEngine.setSystemMessageSender((payload: unknown) => {
 					try {
@@ -535,16 +610,7 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
 					}
 				});
 
-				// 设置帧快照发送器：用于发送帧快照到主线程（向后兼容）
-				gameEngine.setFrameSnapshotSender((snapshot) => {
-					try {
-						postSystemMessage(messagePort, "frame_snapshot", snapshot);
-					} catch (error) {
-						log.error("Worker: 发送帧快照失败:", error);
-					}
-				});
-
-				// 启动引擎遥测推送（轻量指标，独立于 frame_snapshot）
+				// 启动引擎遥测推送；连续世界状态由 SAB 读取，不通过消息补充。
 				startTelemetryLoop(messagePort);
 
 				// 发送 Worker 初始化完成消息
@@ -579,15 +645,12 @@ self.onmessage = async (event: MessageEvent<{ type: "init"; port?: MessagePort }
  *
  * 支持所有顶层 push 消息类型：
  * - engine_lifecycle_snapshot: 引擎生命周期只读快照
- * - render_cmd: 渲染指令
  * - domain_event_batch: 控制器领域事件批
  * - system_event: 系统事件（worker_ready/error/日志等）
- * - frame_snapshot: 帧快照
  * - debug_view_frame: 调试视图数据帧（订阅制）
  */
 function postSystemMessage(port: MessagePort, type: PushMessageType, data: unknown) {
-	// FrameSnapshot 已在严格 schema 与构造边界保证为 plain data；热路径不得再 JSON 往返清洗。
-	const sanitizedData = type === "frame_snapshot" ? data : sanitizeForPostMessage(data);
+	const sanitizedData = sanitizeForPostMessage(data);
 	const msg = { belongToTaskId: type, type, data: sanitizedData } as const;
 
 	try {

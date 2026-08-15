@@ -23,7 +23,7 @@ import {
 } from "../GameEngineSM";
 import type { IntentMessage } from "../MessageRouter/MessageRouter";
 import type { EngineRunOutput, ExecutionRecordingPolicy } from "../runOutput";
-import { type EngineScenarioData, type FrameSnapshot, FrameSnapshotSchema, type RuntimeConfig } from "../types";
+import type { EngineScenarioData, RuntimeConfig } from "../types";
 import type { MemberSnapshot } from "../World/Member/Member";
 import {
 	EngineExecutionFailure,
@@ -42,18 +42,16 @@ import {
 	parseEngineRPCResult,
 	type WorkerSystemMessage,
 	WorkerSystemMessageSchema,
+	WorldStateLayoutDescriptorSchema,
 } from "./protocol";
-import type { RenderSnapshot } from "./RendererProtocol";
 import simulationWorker from "./Simulation.worker?worker&url";
-import { createWorldStateBuffer, MemberSlotIndex, WorldStateReader } from "./worldStateBuffer";
+import { createWorldStateBuffer, type WorldStateLayoutDescriptor, WorldStateReader } from "./worldStateBuffer";
 
 const log = createLogger("EngineWorkerClient");
 
 export interface EngineWorkerClientEventMap {
 	engine_telemetry: { engineId: string; telemetry: EngineTelemetry };
-	frame_snapshot: { engineId: string; snapshot: FrameSnapshot };
 	domain_event_batch: { engineId: string; batch: unknown };
-	render_cmd: { engineId: string; cmd: unknown };
 	debug_view_frame: { engineId: string; frame: unknown };
 	system_event: { engineId: string; event: unknown };
 	disposed: { engineId: string };
@@ -65,11 +63,6 @@ type PendingTask = {
 	reject: (error: Error) => void;
 	timeout: number;
 };
-
-const collectScenarioMemberIds = (data: EngineScenarioData): string[] =>
-	[data.scenario.campA, data.scenario.campB].flatMap((camp) =>
-		camp.flatMap((team) => team.members.map((member) => member.id)),
-	);
 
 export class EngineWorkerClient {
 	private readonly lifecycleActor: Actor<typeof GameEngineSM>;
@@ -86,9 +79,7 @@ export class EngineWorkerClient {
 	private rejectReady: ((error: Error) => void) | null = null;
 	/** 仅在实时 Session 显式申请投影后存在。 */
 	private worldStateReader: WorldStateReader | null = null;
-	/** SAB 槽位索引（memberId → slotIdx），与 worker 侧保持相同顺序。 */
-	private worldStateSlotIndex: MemberSlotIndex | null = null;
-	private loadedMemberIds: string[] = [];
+	private worldStateLayout: WorldStateLayoutDescriptor | null = null;
 
 	constructor(public readonly id: string) {
 		this.worker = new Worker(simulationWorker, { type: "module" });
@@ -199,12 +190,8 @@ export class EngineWorkerClient {
 		switch (type) {
 			case "engine_telemetry":
 				return { engineId: this.id, telemetry: EngineTelemetrySchema.parse(data) };
-			case "frame_snapshot":
-				return { engineId: this.id, snapshot: FrameSnapshotSchema.parse(data) };
 			case "domain_event_batch":
 				return { engineId: this.id, batch: data };
-			case "render_cmd":
-				return { engineId: this.id, cmd: data };
 			case "debug_view_frame":
 				return { engineId: this.id, frame: data };
 			default:
@@ -321,7 +308,6 @@ export class EngineWorkerClient {
 			sourceSide: "controller",
 			correlationId: createId(),
 		});
-		this.loadedMemberIds = collectScenarioMemberIds(data);
 	}
 
 	/**
@@ -333,26 +319,24 @@ export class EngineWorkerClient {
 		if (typeof SharedArrayBuffer === "undefined") {
 			throw new Error("实时世界状态投影需要 SharedArrayBuffer");
 		}
-		const memberIds = this.loadedMemberIds;
-		if (memberIds.length === 0) return;
-
-		const buf = createWorldStateBuffer(memberIds.length);
-		const slotIndex = new MemberSlotIndex(memberIds);
-		const reader = new WorldStateReader(buf);
+		const layoutWire = await this.requireRPC({ type: "get_world_state_layout" });
+		const layout = WorldStateLayoutDescriptorSchema.parse(layoutWire) as WorldStateLayoutDescriptor;
+		const buf = createWorldStateBuffer(layout);
+		const reader = new WorldStateReader(buf, layout);
 
 		// SharedArrayBuffer 经结构化克隆后仍指向同一共享内存，不放入 transferable 列表。
-		const result = await this.executeEngineRPC({ type: "attach_world_state_buffer", buffer: buf, memberIds });
+		const result = await this.executeEngineRPC({ type: "attach_world_state_buffer", buffer: buf, descriptor: layout });
 		if (!result.success) throw new EngineExecutionFailure(result.error);
-		this.worldStateSlotIndex = slotIndex;
+		this.worldStateLayout = layout;
 		this.worldStateReader = reader;
 	}
 
 	async stopWorldStateProjection(): Promise<void> {
-		if (!this.worldStateReader && !this.worldStateSlotIndex) return;
+		if (!this.worldStateReader) return;
 		const result = await this.executeEngineRPC({ type: "detach_world_state_buffer" });
 		if (!result.success) throw new EngineExecutionFailure(result.error);
 		this.worldStateReader = null;
-		this.worldStateSlotIndex = null;
+		this.worldStateLayout = null;
 	}
 
 	async setRuntimeConfig(config: RuntimeConfig): Promise<void> {
@@ -386,7 +370,6 @@ export class EngineWorkerClient {
 	async unloadScenario(): Promise<void> {
 		await this.stopWorldStateProjection();
 		await this.dispatchLifecycleControl({ type: "CMD_UNLOAD", sourceSide: "controller", correlationId: createId() });
-		this.loadedMemberIds = [];
 	}
 
 	async fastForward(options?: { maxTicks?: number; maxDurationMs?: number }): Promise<FastForwardResult> {
@@ -471,10 +454,6 @@ export class EngineWorkerClient {
 		return await this.requireRPC({ type: "get_member_skill_list", memberId }, "low");
 	}
 
-	async getRenderSnapshot(includeAreas = false): Promise<RenderSnapshot> {
-		return await this.requireRPC({ type: "get_render_snapshot", includeAreas }, "high");
-	}
-
 	async patchMemberConfig(memberId: string, data: EngineMember): Promise<void> {
 		await this.requireRPC({ type: "patch_member", memberId, memberData: data });
 	}
@@ -493,10 +472,6 @@ export class EngineWorkerClient {
 
 	async acknowledgeRunOutput(runId: string): Promise<void> {
 		await this.requireRPC({ type: "acknowledge_run_output", runId });
-	}
-
-	async setRealtimeSnapshotHz(snapshotHz: number): Promise<void> {
-		await this.requireRPC({ type: "set_realtime_snapshot_hz", snapshotHz });
 	}
 
 	on<K extends keyof EngineWorkerClientEventMap>(
@@ -520,9 +495,8 @@ export class EngineWorkerClient {
 		return this.worldStateReader;
 	}
 
-	/** SAB 槽位索引（memberId → slotIdx）；与 worldStateReader 同生命周期。 */
-	getWorldStateSlotIndex(): MemberSlotIndex | null {
-		return this.worldStateSlotIndex;
+	getWorldStateLayout(): WorldStateLayoutDescriptor | null {
+		return this.worldStateLayout;
 	}
 
 	async dispose(): Promise<void> {
@@ -532,8 +506,7 @@ export class EngineWorkerClient {
 		this.lifecycleActor.stop();
 		this.rejectAllPending(new Error(`[${this.id}] disposed`));
 		this.worldStateReader = null;
-		this.worldStateSlotIndex = null;
-		this.loadedMemberIds = [];
+		this.worldStateLayout = null;
 		this.port.close();
 		this.worker.terminate();
 		this.emitter.emit("disposed", { engineId: this.id });

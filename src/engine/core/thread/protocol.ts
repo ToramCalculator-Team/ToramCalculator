@@ -23,17 +23,16 @@ import { EngineRunOutputSchema, ExecutionRecordingPolicySchema } from "../runOut
 import { SimulationTaskResultSchema, SimulationTaskSchema } from "../simulationTask";
 import { RuntimeConfigSchema } from "../types";
 import { MemberSnapshotSchema } from "../World/Member/Member";
-import { RenderSnapshotSchema } from "./RendererProtocol";
+import { ModifierSourceSchema } from "../World/Member/runtime/AttributeContainer/AttributeContainerTypes";
+import { WORLD_STATE_LAYOUT_VERSION } from "./worldStateBuffer";
 
 // ==================== Push / Stream ====================
 
 export const PushMessageType = [
 	"engine_lifecycle_snapshot",
 	"engine_telemetry",
-	"render_cmd",
 	"domain_event_batch",
 	"system_event",
-	"frame_snapshot",
 	"debug_view_frame",
 ] as const;
 export type PushMessageType = (typeof PushMessageType)[number];
@@ -53,6 +52,34 @@ export const EngineTelemetrySchema = z.object({
 	memberCount: z.number(),
 });
 export type EngineTelemetry = z.output<typeof EngineTelemetrySchema>;
+
+const WorldStateLayoutMemberSchema = z.object({
+	id: z.string(),
+	entityType: z.number().int(),
+	visualProfileId: z.number().int(),
+	attributeOffset: z.number().int().nonnegative(),
+	attributeCount: z.number().int().nonnegative(),
+	modifierOffset: z.number().int().nonnegative(),
+	modifierCapacity: z.number().int().nonnegative(),
+});
+const WorldStateAttributeSchemaEntrySchema = z.object({
+	index: z.number().int().nonnegative(),
+	path: z.string(),
+	displayName: z.string(),
+	expression: z.string(),
+});
+export const WorldStateLayoutDescriptorSchema = z.object({
+	layoutVersion: z.literal(WORLD_STATE_LAYOUT_VERSION),
+	memberCapacity: z.number().int().nonnegative(),
+	areaCapacity: z.number().int().nonnegative(),
+	memberDirectory: z.array(WorldStateLayoutMemberSchema),
+	attributeSchema: z.array(WorldStateAttributeSchemaEntrySchema),
+	modifierSourceMetadata: z.array(z.object({ idHash: z.number().int(), source: ModifierSourceSchema })),
+	modifierSourceCapacity: z.number().int().nonnegative(),
+	modifierChainCapacity: z.number().int().nonnegative(),
+	byteLength: z.number().int().positive(),
+});
+export type WorldStateLayoutWire = z.output<typeof WorldStateLayoutDescriptorSchema>;
 
 export const ControllerDomainEventBatchSchema = z.object({
 	type: z.literal("controller_domain_event_batch"),
@@ -179,7 +206,7 @@ export const EngineRPCSchema = z.discriminatedUnion("type", [
 		fields: z.array(z.string()).optional(),
 	}),
 	z.object({ type: z.literal("unsubscribe_debug_view"), viewId: z.string() }),
-	z.object({ type: z.literal("get_render_snapshot"), includeAreas: z.boolean().optional() }),
+	z.object({ type: z.literal("get_world_state_layout") }),
 	z.object({ type: z.literal("set_runtime_config"), config: RuntimeConfigSchema }),
 	z.object({ type: z.literal("patch_member"), memberId: z.string(), memberData: EngineMemberSchema }),
 	z.object({ type: z.literal("execute_simulation_task"), task: SimulationTaskSchema }),
@@ -191,7 +218,6 @@ export const EngineRPCSchema = z.discriminatedUnion("type", [
 	z.object({ type: z.literal("finish_run_output"), runId: z.string() }),
 	z.object({ type: z.literal("cancel_run_output"), runId: z.string() }),
 	z.object({ type: z.literal("acknowledge_run_output"), runId: z.string() }),
-	z.object({ type: z.literal("set_realtime_snapshot_hz"), snapshotHz: z.number().nonnegative() }),
 	z.object({
 		type: z.literal("attach_controller_input"),
 		controllerId: z.string().min(1),
@@ -208,7 +234,7 @@ export const EngineRPCSchema = z.discriminatedUnion("type", [
 			(v) => typeof SharedArrayBuffer !== "undefined" && v instanceof SharedArrayBuffer,
 			{ message: "buffer 必须是 SharedArrayBuffer" },
 		),
-		memberIds: z.array(z.string()),
+		descriptor: WorldStateLayoutDescriptorSchema,
 	}),
 	z.object({ type: z.literal("detach_world_state_buffer") }),
 ]);
@@ -223,7 +249,7 @@ export const EngineRPCDataSchemaByType = {
 	send_intent: z.undefined(),
 	subscribe_debug_view: z.object({ viewId: z.string() }),
 	unsubscribe_debug_view: z.undefined(),
-	get_render_snapshot: RenderSnapshotSchema,
+	get_world_state_layout: WorldStateLayoutDescriptorSchema,
 	set_runtime_config: z.undefined(),
 	patch_member: z.undefined(),
 	execute_simulation_task: SimulationTaskResultSchema,
@@ -231,7 +257,6 @@ export const EngineRPCDataSchemaByType = {
 	finish_run_output: EngineRunOutputSchema,
 	cancel_run_output: z.undefined(),
 	acknowledge_run_output: z.undefined(),
-	set_realtime_snapshot_hz: z.undefined(),
 	attach_controller_input: z.undefined(),
 	detach_controller_input: z.undefined(),
 	attach_world_state_buffer: z.undefined(),

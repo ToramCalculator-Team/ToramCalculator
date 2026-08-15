@@ -157,4 +157,3 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 - [同步与写入授权加固计划](../plans/sync-and-auth-hardening.md)
 - [Simulator 最小验证闭环](../plans/minimum-validation-loop.md)
 - [Simulator Tick 状态历史 SAB 性能重构计划](../plans/simulator-tick-state-history-sab-performance.md)
-- [实时世界状态 SAB 迁移计划](../plans/realtime-world-state-sab-migration.md)

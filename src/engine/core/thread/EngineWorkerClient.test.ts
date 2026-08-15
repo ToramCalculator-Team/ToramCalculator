@@ -3,7 +3,10 @@ import { DEFAULT_TERRAIN_DEFINITION } from "~/lib/terrain";
 import type { EngineLifecycleCommand, EngineLifecycleSnapshot } from "../GameEngineSM";
 import { EngineScenarioDataSchema } from "../types";
 import { EngineWorkerClient } from "./EngineWorkerClient";
-import { engineLifecycleFailure, engineLifecycleSuccess } from "./protocol";
+import { type EngineRPC, engineLifecycleFailure, engineLifecycleSuccess } from "./protocol";
+import { createWorldStateLayoutDescriptor, WorldStateWriter } from "./worldStateBuffer";
+
+const worldStateLayout = createWorldStateLayoutDescriptor([], { memberCapacity: 1, areaCapacity: 1 });
 
 const scenario = EngineScenarioDataSchema.parse({
 	terrain: DEFAULT_TERRAIN_DEFINITION,
@@ -62,23 +65,30 @@ class FakeWorker {
 	}
 
 	private handleTask(message: { belongToTaskId: string; payload: unknown }): void {
-		const command = message.payload as EngineLifecycleCommand;
+		const command = message.payload as EngineLifecycleCommand | EngineRPC;
 		if (!command.type.startsWith("CMD_")) {
+			let data: unknown;
+			if (command.type === "get_world_state_layout") data = worldStateLayout;
+			if (command.type === "attach_world_state_buffer") {
+				const writer = new WorldStateWriter(command.buffer, command.descriptor);
+				writer.write({ logicalTimeMs: 25, tickIndex: 2, members: [], areas: [] });
+			}
 			this.port?.postMessage({
 				belongToTaskId: message.belongToTaskId,
-				result: { success: true, data: undefined },
+				result: { success: true, data },
 				error: null,
 			});
 			return;
 		}
 
-		const failed = FakeWorker.failCommand === command.type;
+		const lifecycleCommand = command as EngineLifecycleCommand;
+		const failed = FakeWorker.failCommand === lifecycleCommand.type;
 		const result = failed
-			? engineLifecycleFailure(command, { code: "fake_failure", message: `${command.type} failed` })
-			: command.type === "CMD_FAST_FORWARD"
-				? engineLifecycleSuccess(command, { ticksRun: 5, elapsedMs: 100, reachedLimit: true })
-				: engineLifecycleSuccess(command);
-		if (!failed) this.state = this.targetState(command);
+			? engineLifecycleFailure(lifecycleCommand, { code: "fake_failure", message: `${lifecycleCommand.type} failed` })
+			: lifecycleCommand.type === "CMD_FAST_FORWARD"
+				? engineLifecycleSuccess(lifecycleCommand, { ticksRun: 5, elapsedMs: 100, reachedLimit: true })
+				: engineLifecycleSuccess(lifecycleCommand);
+		if (!failed) this.state = this.targetState(lifecycleCommand);
 		this.pushSnapshot();
 		this.port?.postMessage({ belongToTaskId: message.belongToTaskId, result, error: null });
 	}
@@ -132,6 +142,25 @@ describe("EngineWorkerClient lifecycle controller", () => {
 			executionError: { code: "fake_failure" },
 		});
 		expect(client.getLifecycleSnapshot()).toMatchObject({ state: "ready", confirmedState: "ready", pending: null });
+		await client.dispose();
+	});
+
+	it("两阶段附件完成后立即暴露稳定提交，并在 unload 时解除 reader", async () => {
+		const client = new EngineWorkerClient("engine-world-state");
+		await client.whenReady();
+		await client.loadScenario(scenario);
+		await client.startWorldStateProjection();
+
+		expect(client.getWorldStateLayout()).toEqual(worldStateLayout);
+		expect(client.getWorldStateReader()?.readLatest()).toMatchObject({
+			commitVersion: 2,
+			logicalTimeMs: 25,
+			tickIndex: 2,
+		});
+
+		await client.unloadScenario();
+		expect(client.getWorldStateReader()).toBeNull();
+		expect(client.getWorldStateLayout()).toBeNull();
 		await client.dispose();
 	});
 });

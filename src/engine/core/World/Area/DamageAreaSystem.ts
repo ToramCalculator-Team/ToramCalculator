@@ -3,7 +3,14 @@ import type { Checkpointable, DamageAreaSystemCheckpoint, SimulationTickContext 
 import type { MemberManager } from "../MemberManager";
 import type { WorldObservable } from "../observable";
 import type { SpaceManager } from "../SpaceManager";
-import type { DamageAreaRequest, DamageDirection, DamageDispatchPayload, Vec3 } from "./types";
+import {
+	type DamageAreaRequest,
+	type DamageDirection,
+	type DamageDispatchPayload,
+	type Vec3,
+	WORLD_AREA_CAPACITY,
+	WORLD_AREA_CAPACITY_EXCEEDED_CODE,
+} from "./types";
 
 const log = createLogger("DmgArea");
 
@@ -38,6 +45,14 @@ interface DamageAreaInstance {
 	damageCountByTargetId: Map<string, number>;
 }
 
+export interface DamageAreaRealtimeState {
+	id: string;
+	position: Vec3;
+	shape: { kind: "point" | "circle"; radius: number };
+	remainingTimeMs: number;
+	sourceMemberId: string;
+}
+
 /**
  * 伤害区域系统
  * 管理跨帧伤害区域实例，负责命中检测、节流、动态变量注入和事件派发
@@ -55,6 +70,11 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 	 * 添加伤害区域
 	 */
 	add(request: DamageAreaRequest): string {
+		if (this.instances.size >= WORLD_AREA_CAPACITY) {
+			throw new Error(
+				`[${WORLD_AREA_CAPACITY_EXCEEDED_CODE}] damage area 容量超限: ${this.instances.size + 1} > ${WORLD_AREA_CAPACITY}`,
+			);
+		}
 		const areaId = `damage_${this.nextAreaId++}`;
 		const { shape, trajectory } = this.deriveShapeAndTrajectory(request);
 
@@ -147,7 +167,7 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 				// 单体/无范围：锁定 targetId，不经空间查询。
 				// 仍取 Member（getMember 返回富类，本身即 WorldObservable），但只读取投影字段。
 				const singleTarget = request.targetId ? this.memberManager.getMember(request.targetId) : null;
-				if (singleTarget && singleTarget.alive && singleTarget.campId !== request.identity.sourceCampId) {
+				if (singleTarget?.alive && singleTarget.campId !== request.identity.sourceCampId) {
 					const segmentIndexes = collectSegmentIndexes(singleTarget.id);
 					if (segmentIndexes.length > 0) {
 						segmentIndexesByTargetId.set(singleTarget.id, segmentIndexes);
@@ -369,14 +389,9 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 		this.instances.clear();
 	}
 
-	/**
-	 * 导出当前存活区域状态（用于渲染快照）
-	 * @param currentTimeMs 当前模拟时间（毫秒）
-	 */
-	getAreaSnapshot(
-		currentTimeMs: number,
-	): Array<{ id: string; position: Vec3; shape: { radius: number }; remainingTimeMs: number }> {
-		const result: Array<{ id: string; position: Vec3; shape: { radius: number }; remainingTimeMs: number }> = [];
+	/** 导出当前存活区域，供 Worker 写入统一实时世界状态。 */
+	getAreaSnapshot(currentTimeMs: number): DamageAreaRealtimeState[] {
+		const result: DamageAreaRealtimeState[] = [];
 		for (const instance of this.instances.values()) {
 			const { request } = instance;
 			const { startTimeMs, durationMs } = request.lifetime;
@@ -386,8 +401,12 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 			result.push({
 				id: instance.areaId,
 				position,
-				shape: { radius: instance.shape.radius },
+				shape: {
+					kind: request.range.rangeKind === "Single" || request.range.rangeKind === "None" ? "point" : "circle",
+					radius: instance.shape.radius,
+				},
 				remainingTimeMs,
+				sourceMemberId: request.identity.sourceId,
 			});
 		}
 		return result;

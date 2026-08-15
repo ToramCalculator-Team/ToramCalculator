@@ -37,8 +37,6 @@ export class MemberManager {
 	/** 队伍 -> 成员ID集合 索引 */
 	private membersByTeam: Map<string, Set<string>> = new Map();
 
-	/** 渲染消息发射器 */
-	private renderMessageSender: ((payload: unknown) => void) | null = null;
 	/** 域事件发射器 */
 	private domainEventSender: ((event: MemberDomainEvent) => void) | null = null;
 	/** member-flow 控制输入登记器 */
@@ -62,11 +60,6 @@ export class MemberManager {
 
 	/** 当前主控目标ID - 用户操作的成员，相机跟随的目标 */
 	private primaryMemberId: string | null = null;
-
-	// ==================== 构造函数 ====================
-	constructor(renderMessageSender: ((payload: unknown) => void) | null) {
-		this.renderMessageSender = renderMessageSender;
-	}
 
 	/**
 	 * 设置域事件发射器
@@ -125,16 +118,6 @@ export class MemberManager {
 		this.getTickIndex = getTickIndex;
 		for (const member of this.members.values()) {
 			member.setGetTickIndex(getTickIndex);
-		}
-	}
-
-	/**
-	 * 设置渲染消息发射器（由引擎注入）
-	 */
-	setRenderMessageSender(renderMessageSender: ((payload: unknown) => void) | null): void {
-		this.renderMessageSender = renderMessageSender;
-		for (const member of this.members.values()) {
-			member.setRenderMessageSender(renderMessageSender);
 		}
 	}
 
@@ -240,7 +223,6 @@ export class MemberManager {
 				player.setDamageRequestHandler(this.damageRequestHandler);
 				player.setGetCurrentTimeMs(this.getCurrentTimeMs);
 				player.setGetTickIndex(this.getTickIndex);
-				player.setRenderMessageSender(this.renderMessageSender);
 				if (this.randomFn) {
 					player.services.random = this.randomFn;
 					player.btManager.setRandom(this.randomFn);
@@ -273,7 +255,6 @@ export class MemberManager {
 				mob.setDamageRequestHandler(this.damageRequestHandler);
 				mob.setGetCurrentTimeMs(this.getCurrentTimeMs);
 				mob.setGetTickIndex(this.getTickIndex);
-				mob.setRenderMessageSender(this.renderMessageSender);
 				if (this.randomFn) {
 					mob.services.random = this.randomFn;
 					mob.btManager.setRandom(this.randomFn);
@@ -590,44 +571,6 @@ export class MemberManager {
 
 		if (oldMemberId !== memberId) {
 			log.info(`🎯 主控目标切换: ${oldMemberId} -> ${memberId}`);
-
-			// 通知渲染层相机跟随新目标（仅用于渲染层，不用于控制器层）
-			// 注意：多控制器架构下，主控目标概念仅用于渲染层（相机跟随），不再通知控制器层
-			if (memberId) {
-				const tickIndex = this.getCurrentTickIndexOrZero();
-				const currentTimeMs = this.getCurrentTimeMsOrZero();
-				this.renderMessageSender?.({
-					type: "render:cmd",
-					// 只传"跟随目标"这一逻辑事实；距离/角度由渲染层相机控制器自行决定
-					// （defaultCameraState），逻辑层不越权规定相机表现。
-					cmd: {
-						type: "camera_follow",
-						entityId: memberId,
-						seq: tickIndex,
-						ts: currentTimeMs,
-					},
-				});
-			}
-
-			// 已移除：primary_target_changed 系统事件发送
-			// 原因：多控制器架构下，每个控制器独立绑定成员，不存在"主控目标"概念
-			// 控制器层应通过 byController[controllerId] 获取绑定成员数据
-		}
-	}
-
-	private getCurrentTimeMsOrZero(): number {
-		try {
-			return this.getCurrentTimeMs?.() ?? 0;
-		} catch {
-			return 0;
-		}
-	}
-
-	private getCurrentTickIndexOrZero(): number {
-		try {
-			return this.getTickIndex?.() ?? 0;
-		} catch {
-			return 0;
 		}
 	}
 

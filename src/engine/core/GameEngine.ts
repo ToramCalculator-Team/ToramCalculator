@@ -24,16 +24,20 @@ import {
 	RunInputActionSchema,
 	RunOutputRecorder,
 } from "./runOutput";
-import type { RenderSnapshot, RenderSnapshotArea } from "./thread/RendererProtocol";
+import {
+	calculateModifierCapacity,
+	createWorldStateLayoutDescriptor,
+	WorldStateEntityType,
+	type WorldStateLayoutDescriptor,
+	worldStateStringId,
+} from "./thread/worldStateBuffer";
 import type {
-	BuffViewDataSnapshot,
 	ControllerDomainEvent,
 	EngineCheckpoint,
 	EngineConfig,
 	EngineInfrastructure,
 	EngineScenarioData,
 	EngineStats,
-	FrameSnapshot,
 	GameEngineSnapshot,
 	MemberDomainEvent,
 	RuntimeConfig,
@@ -42,6 +46,8 @@ import type {
 import { createRealtimeConfig } from "./types";
 import type { MemberSnapshot } from "./World/Member/Member";
 import { computeMemberFormation } from "./World/Member/memberFormation";
+import { ModifierType } from "./World/Member/runtime/AttributeContainer/AttributeContainer";
+import type { ModifierSource } from "./World/Member/runtime/AttributeContainer/AttributeContainerTypes";
 import type { MemberControlEvent } from "./World/Member/runtime/StateMachine/types";
 import type { MemberMovementInput } from "./World/Member/runtime/types";
 import { Player } from "./World/Member/types/Player/Player";
@@ -165,30 +171,14 @@ export class GameEngine {
 
 	// ==================== 通信 ====================
 
-	/** 渲染消息发送器 - 用于发送渲染指令到主线程 */
-	private renderMessageSender: ((payload: unknown) => void) | null = null;
 	/** 系统消息发送器 - 用于发送系统指令到主线程 */
 	private systemMessageSender: ((payload: unknown) => void) | null = null;
-	/** 帧快照发送器 - 用于发送帧快照到主线程 */
-	private frameSnapshotSender: ((snapshot: FrameSnapshot) => void) | null = null;
 	/** tick 后回调（SAB 世界状态写入等低延迟通道） */
 	private postTickCallback: (() => void) | null = null;
 	/** Worker 注入的连续控制状态读取边界；引擎本身不依赖具体线程传输实现。 */
 	private controllerMovementInputSource: ((controllerId: string) => MemberMovementInput | null) | null = null;
 	/** 当前挂起的 tick 内任务数量（用于防止跨 tick 未完成任务） */
 	private pendingTickTasksCount: number = 0;
-
-	/**
-	 * 快照观察器。
-	 * 说明：
-	 * - 快照节流属于引擎观察职责，不再放在底层时钟里
-	 * - 第一轮仍保持默认关闭，避免引入额外高频负载
-	 */
-	private snapshotObserver = {
-		snapshotHz: 0,
-		snapshotIntervalMs: Number.POSITIVE_INFINITY,
-		lastSnapshotTime: 0,
-	};
 
 	// ==================== 静态方法 ====================
 
@@ -254,7 +244,7 @@ export class GameEngine {
 		this.frameLoop = new FrameLoop(this.config.frameLoopConfig);
 
 		// World 相关
-		this.world = new World(this.renderMessageSender);
+		this.world = new World();
 
 		// 初始化表达式求值器（把 world/self/target 绑定收敛到一个服务）
 		this.expressionEvaluator = new ExpressionEvaluator({
@@ -309,7 +299,6 @@ export class GameEngine {
 		this.deltaTimeMs = 0;
 		this.pendingTickTasksCount = 0;
 		this.resetEngineFrameLoopStats("manual");
-		this.resetSnapshotObserver();
 		this.snapshots = [];
 		this.stats = {
 			totalSnapshots: 0,
@@ -421,13 +410,6 @@ export class GameEngine {
 		this.setRuntimeConfig({ ...policy, logicHz: this.runtimeConfig.logicHz });
 	}
 
-	/** 设置仅影响主线程实时投影的快照频率；权威每 Tick 记录不读取此值。 */
-	setRealtimeSnapshotHz(snapshotHz: number): void {
-		if (!Number.isFinite(snapshotHz) || snapshotHz < 0) throw new Error("snapshotHz 必须是非负有限数");
-		this.snapshotObserver.snapshotHz = snapshotHz;
-		this.resetSnapshotObserver();
-	}
-
 	getRuntimeConfig(): RuntimeConfig {
 		return { ...this.runtimeConfig };
 	}
@@ -442,9 +424,7 @@ export class GameEngine {
 		this.world.clear();
 		this.eventQueue.clear();
 
-		this.renderMessageSender = null;
 		this.systemMessageSender = null;
-		this.frameSnapshotSender = null;
 
 		this.scenarioData = null;
 		this.snapshots = [];
@@ -468,119 +448,6 @@ export class GameEngine {
 	}
 
 	// ===============================  外部方法 ===============================
-
-	/**
-	 * 创建当前帧的高频快照
-	 * 用于 frame_snapshot 通道（UI 实时渲染 & 技能栏状态）
-	 */
-	public createFrameSnapshot(completedTick?: { tickIndex: number; currentTimeMs: number }): FrameSnapshot {
-		const tickIndex = completedTick?.tickIndex ?? this.getTickIndex();
-		const currentTimeMs = completedTick?.currentTimeMs ?? this.getCurrentTimeMs();
-		const timestamp = currentTimeMs;
-
-		// 引擎级状态
-		// 引擎级循环统计：这里读取的是 GameEngine 汇总后的逻辑帧统计，而不是底层时钟回调次数。
-
-		// 所有成员的高频视图
-		const members = this.world.memberManager.getAllMembers().map((member) => {
-			const hpCurrent = member.attributeContainer?.getValue("hp.current") ?? 0;
-			const hpMax = member.attributeContainer?.getValue("hp.max") ?? 0;
-			const mpCurrent = member.attributeContainer?.getValue("mp.current") ?? 0;
-			const mpMax = member.attributeContainer?.getValue("mp.max") ?? 0;
-
-			return {
-				id: member.id,
-				type: member.type,
-				name: member.name,
-				position: member.position,
-				campId: member.campId,
-				teamId: member.teamId,
-				hp: {
-					current: hpCurrent,
-					max: hpMax,
-				},
-				mp: {
-					current: mpCurrent,
-					max: mpMax,
-				},
-				attrs: member.attributeContainer.exportAttributeSnapshot(),
-			};
-		});
-
-		// 多控制器：按 controller 生成绑定成员视图（挂到同一个 FrameSnapshot 上，作为可选字段）
-		// 注意：controllerId 的来源必须以 binding 为准（绑定即存在），而不是 ControllerRegistry（那是 endpoint 注册表）
-		const controllerIds = this.bindingManager.getAllControllerIds();
-		const byController: NonNullable<FrameSnapshot["byController"]> = {};
-		for (const controllerId of controllerIds) {
-			const boundMemberId = this.bindingManager.getBoundMemberId(controllerId) ?? null;
-
-			let boundMemberDetail: {
-				attrs: FrameSnapshot["members"][number]["attrs"];
-				buffs?: BuffViewDataSnapshot[];
-			} | null = null;
-
-			if (boundMemberId) {
-				const boundMember = this.world.memberManager.getMember(boundMemberId);
-				if (boundMember) {
-					try {
-						const serialized = boundMember.serialize();
-						boundMemberDetail = { attrs: serialized.attrs };
-					} catch (error) {
-						log.warn(`创建控制器 ${controllerId} 绑定成员详细快照失败:`, error);
-					}
-				}
-			}
-
-			byController[controllerId] = {
-				boundMemberId,
-				boundMemberDetail,
-			};
-		}
-
-		const snapshot: FrameSnapshot = {
-			tickIndex,
-			currentTimeMs,
-			timestamp,
-			engine: {
-				tickIndex,
-				currentTimeMs,
-				runTime: currentTimeMs,
-				ticksPerSecond: this.runtimeConfig.logicHz,
-			},
-			members,
-			byController: controllerIds.length > 0 ? byController : undefined,
-		};
-
-		return snapshot;
-	}
-
-	/**
-	 * 发送帧快照到主线程
-	 * 通过注入的发送器发送帧快照
-	 */
-	public sendFrameSnapshot(snapshot: FrameSnapshot): void {
-		if (!this.frameSnapshotSender) {
-			log.warn("GameEngine: 帧快照发送器未设置，无法发送帧快照");
-			return;
-		}
-
-		try {
-			this.frameSnapshotSender(snapshot);
-		} catch (error) {
-			log.error("GameEngine: 发送帧快照失败:", error);
-		}
-	}
-
-	/**
-	 * 设置渲染消息发送器
-	 *
-	 * @param sender 渲染消息发送函数，通常由Worker环境中的MessagePort提供
-	 */
-	setRenderMessageSender(sender: (payload: unknown) => void): void {
-		this.renderMessageSender = sender;
-		// World 在构造时拿到的是初始引用；发送器在引擎构造后才注入，必须转发给成员链路。
-		this.world.setRenderMessageSender(sender);
-	}
 
 	/**
 	 * 设置系统消息发送器
@@ -610,15 +477,6 @@ export class GameEngine {
 	}
 
 	/**
-	 * 设置帧快照发送器
-	 *
-	 * @param sender 帧快照发送函数，用于发送帧快照到主线程
-	 */
-	setFrameSnapshotSender(sender: (snapshot: FrameSnapshot) => void): void {
-		this.frameSnapshotSender = sender;
-	}
-
-	/**
 	 * 注册 tick 后回调（SAB 世界状态写入等低延迟通道用）。
 	 * Worker 层在 attach_world_state_buffer RPC 后注入；引擎不依赖 SAB 实现，保持跨环境可测试。
 	 */
@@ -633,24 +491,6 @@ export class GameEngine {
 	 */
 	setControllerMovementInputSource(source: ((controllerId: string) => MemberMovementInput | null) | null): void {
 		this.controllerMovementInputSource = source;
-	}
-
-	/**
-	 * 发送渲染指令到主线程
-	 *
-	 * @param payload 渲染指令负载，可以是单个指令或指令数组
-	 */
-	postRenderMessage(payload: unknown): void {
-		if (!this.renderMessageSender) {
-			log.warn("GameEngine: 渲染消息发送器未设置，无法发送渲染指令");
-			return;
-		}
-
-		try {
-			this.renderMessageSender(payload);
-		} catch (error) {
-			log.error("GameEngine: 发送渲染指令失败:", error);
-		}
 	}
 
 	/**
@@ -759,7 +599,6 @@ export class GameEngine {
 
 		this.startTime = performance.now();
 		this.resetEngineFrameLoopStats("raf");
-		this.resetSnapshotObserver();
 		this.frameLoop.start((tick) => {
 			this.handleFrameLoopTick(tick);
 		});
@@ -1292,55 +1131,6 @@ export class GameEngine {
 	}
 
 	/**
-	 * 获取当前世界渲染快照（供渲染层首次同步用，与 getCurrentSnapshot / createFrameSnapshot 等逻辑快照区分）。
-	 * 渲染层晚于引擎就绪时拉取，用于首次全量状态同步。
-	 * @param includeAreas 是否包含区域状态，默认 false
-	 */
-	getRenderSnapshot(includeAreas = false): RenderSnapshot {
-		const tickIndex = this.getTickIndex();
-		const currentTimeMs = this.getCurrentTimeMs();
-		const members = this.world.memberManager.getAllMembers().map((member) => {
-			const lastAction = member.renderState?.lastAction;
-			let animation: { name: string; progress: number } | undefined;
-			if (lastAction) {
-				const elapsed = currentTimeMs - lastAction.ts;
-				const rawDurationMs = lastAction.params?.duration;
-				const durationMs = typeof rawDurationMs === "number" && rawDurationMs > 0 ? rawDurationMs : 1000;
-				const progress = Math.min(1, Math.max(0, elapsed / durationMs));
-				animation = { name: lastAction.name, progress };
-			}
-			return {
-				id: member.id,
-				position: member.position,
-				yaw: member.runtime.yaw,
-				...(animation && { animation }),
-			};
-		});
-		const areas = includeAreas ? this.collectRenderAreaSnapshot() : [];
-		const cameraFollowEntityId = this.world.memberManager.getPrimaryMemberId();
-		return {
-			tickIndex,
-			currentTimeMs,
-			members,
-			areas,
-			cameraFollowEntityId,
-		};
-	}
-
-	/** 收集当前存活区域状态，用于构建渲染快照（供 getRenderSnapshot 使用，与逻辑快照区分） */
-	private collectRenderAreaSnapshot(): RenderSnapshotArea[] {
-		const currentTimeMs = this.getCurrentTimeMs();
-		const damage = this.world.areaManager.damageAreaSystem.getAreaSnapshot(currentTimeMs).map((a) => ({
-			id: a.id,
-			type: "damage",
-			position: a.position,
-			shape: a.shape,
-			remainingTimeMs: a.remainingTimeMs,
-		}));
-		return damage;
-	}
-
-	/**
 	 * 按阵营获取成员数据（外部使用 - 序列化）
 	 *
 	 * @param campId 阵营ID
@@ -1404,6 +1194,55 @@ export class GameEngine {
 		return this.frameLoop;
 	}
 
+	/**
+	 * 在成员装配完成后生成实时状态 SAB 的唯一布局协商结果。
+	 * 属性索引和 modifier 容量只能在此边界确定，运行中不通过消息扩容。
+	 */
+	getRealtimeWorldStateLayout(): WorldStateLayoutDescriptor {
+		const inputs = this.world.memberManager.getAllMembers().map((member) => {
+			member.attributeContainer.prepareIndexedRead();
+			const attributePaths: Array<{ index: number; path: string; displayName: string; expression: string }> = [];
+			member.attributeContainer.visitAttributeSchema((index, path, displayName, expression) => {
+				attributePaths.push({ index, path, displayName, expression });
+			});
+			let modifierCount = 0;
+			const modifierSourceMetadata = new Map<number, { idHash: number; source: ModifierSource }>();
+			for (let index = 0; index < member.attributeContainer.getAttributeCount(); index++) {
+				for (const type of [
+					ModifierType.BASE_VALUE,
+					ModifierType.STATIC_FIXED,
+					ModifierType.STATIC_PERCENTAGE,
+					ModifierType.DYNAMIC_FIXED,
+					ModifierType.DYNAMIC_PERCENTAGE,
+				]) {
+					modifierCount += member.attributeContainer.getModifierCountAt(index, type);
+					member.attributeContainer.visitModifiersAt(index, type, (source) => {
+						const idHash = worldStateStringId(source.key);
+						modifierSourceMetadata.set(idHash, {
+							idHash,
+							source,
+						});
+					});
+				}
+			}
+			const entityType =
+				member.type === "Mob"
+					? WorldStateEntityType.MOB
+					: member.type === "Player"
+						? WorldStateEntityType.PLAYER
+						: WorldStateEntityType.SUMMON;
+			return {
+				id: member.id,
+				entityType,
+				visualProfileId: worldStateStringId(member.id),
+				attributePaths,
+				modifierSourceMetadata: Array.from(modifierSourceMetadata.values()),
+				modifierCapacity: calculateModifierCapacity(modifierCount),
+			};
+		});
+		return createWorldStateLayoutDescriptor(inputs);
+	}
+
 	// ==================== 私有方法 ====================
 
 	/**
@@ -1421,16 +1260,6 @@ export class GameEngine {
 			skippedTicks: 0,
 			timeoutTicks: 0,
 		};
-	}
-
-	/**
-	 * 重置快照观察器。
-	 * 第一轮仍默认关闭快照节流发送，但职责已经回到引擎侧。
-	 */
-	private resetSnapshotObserver(): void {
-		this.snapshotObserver.lastSnapshotTime = 0;
-		this.snapshotObserver.snapshotIntervalMs =
-			this.snapshotObserver.snapshotHz > 0 ? 1000 / this.snapshotObserver.snapshotHz : Number.POSITIVE_INFINITY;
 	}
 
 	/**
@@ -1513,7 +1342,6 @@ export class GameEngine {
 				this.world.memberManager.getAllMembers(),
 			);
 		}
-		this.emitFrameSnapshotIfNeeded(completedTick);
 		this.postTickCallback?.();
 
 		return stepResult;
@@ -1570,24 +1398,6 @@ export class GameEngine {
 			default:
 				return false;
 		}
-	}
-
-	/**
-	 * 引擎侧快照节流。
-	 * 这层负责决定“每完成一个 tick 后是否需要对外发高频快照”。
-	 */
-	private emitFrameSnapshotIfNeeded(completedTick: { tickIndex: number; currentTimeMs: number }): void {
-		if (this.snapshotObserver.snapshotHz <= 0 || !this.frameSnapshotSender) {
-			return;
-		}
-
-		const now = performance.now();
-		if (now - this.snapshotObserver.lastSnapshotTime < this.snapshotObserver.snapshotIntervalMs) {
-			return;
-		}
-
-		this.sendFrameSnapshot(this.createFrameSnapshot(completedTick));
-		this.snapshotObserver.lastSnapshotTime = now;
 	}
 
 	/** 开始收集当前运行的权威原始产出。 */
@@ -1722,4 +1532,3 @@ export class GameEngine {
 }
 
 // 透出类型给主线程 UI 使用
-export type { FrameSnapshot } from "./types";

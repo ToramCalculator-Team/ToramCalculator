@@ -38,6 +38,15 @@ export class CharacterAnimationController {
 	}
 
 	/**
+	 * 使用同一提交中的 mspd 调整本地动画播放倍率；该派生值只存在 Babylon 本地。
+	 */
+	setMotionSpeed(mspd: number): void {
+		const actionDurationRatio = Math.max(0.5, 1 - mspd / 100);
+		const current = this.getAnimation(this.currentAnimationId ?? "");
+		if (current) current.speedRatio = 1 / actionDurationRatio;
+	}
+
+	/**
 	 * 设置持续移动状态。
 	 * 一次性动作播放期间只记录目标状态，动作结束后再恢复，避免移动帧覆盖攻击或跳跃动画。
 	 */
@@ -98,11 +107,6 @@ export class CharacterAnimationController {
 			},
 			airborne ? 1 : LANDING_SPEED_RATIO,
 		);
-	}
-
-	/** 兼容离散渲染命令；实时场景的结束时机仍由后续 setAirborne(false) 决定。 */
-	playJump(progress?: number): void {
-		this.setAirborne(true, progress);
 	}
 
 	/** 创建并播放自定义一次性动作。 */

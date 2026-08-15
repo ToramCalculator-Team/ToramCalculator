@@ -1,29 +1,25 @@
 /**
- * 渲染命令处理器（内容编排关注点）。
+ * 实时世界内容处理器（内容编排关注点）。
  *
- * 将高级渲染命令转换为具体的Babylon.js操作，支持序列号验证防止过期命令执行。
- * 也承担首帧渲染快照的全量应用。从 RendererController 拆出。
+ * 静态视觉资源只在 Session 初始化时注册；实体和区域运行状态来自实时状态 SAB。
  */
 
-import type {
-	ActionCmd,
-	CameraFollowCmd,
-	DestroyCmd,
-	FaceCmd,
-	ReconcileCmd,
-	RendererCmd,
-	RenderSnapshot,
-	RenderSnapshotArea,
-	SpawnCmd,
-	TeleportCmd,
-} from "~/engine/core/thread/RendererProtocol";
+import {
+	type WorldStateArea,
+	WorldStateAreaShapeKind,
+	type WorldStateLayoutDescriptor,
+	type WorldStateReader,
+	type WorldStateSnapshot,
+	worldStateStringId,
+} from "~/engine/core/thread/worldStateBuffer";
 import { createLogger } from "~/lib/logger";
 import type { Scene } from "~/platform/render/babylon/runtime";
 import { Color3, Mesh, MeshBuilder, StandardMaterial, TransformNode, Vector3 } from "~/platform/render/babylon/runtime";
 import type { WorldResourcePose } from "../contracts/worldContent";
 import type { WorldResource } from "../contracts/worldResource";
+import { VisualProfileRegistry } from "../resources/visualProfileRegistry";
 import type { EntityFactory } from "./EntityFactory";
-import type { CustomAnimationData, EntityRuntime } from "./entityTypes";
+import type { EntityRuntime } from "./entityTypes";
 import { canReuseWorldResource } from "./worldResourceDiff";
 
 const logger = createLogger("RenderController");
@@ -35,6 +31,9 @@ export class CommandHandler {
 	private scene: Scene;
 	private worldResources: Map<string, WorldResource>;
 	private areaVisuals: Map<string, Mesh> = new Map();
+	private readonly visualProfiles = new VisualProfileRegistry();
+	private readonly animationTimelines = new Map<string, string>();
+	private readonly entityCreations = new Map<string, Promise<void>>();
 
 	constructor(
 		entities: Map<string, EntityRuntime>,
@@ -52,9 +51,15 @@ export class CommandHandler {
 	}
 
 	/**
-	 * 投影同一解析版本的静态资源。设计态直接调用；进入验证后动态命令只更新这些实体的运行状态。
+	 * 投影同一解析版本的静态资源；进入验证后实体运行状态只从统一 SAB 更新。
 	 */
-	async applyWorldResources(resources: WorldResource[], poses: WorldResourcePose[]): Promise<void> {
+	async applyWorldResources(
+		resources: WorldResource[],
+		poses: WorldResourcePose[],
+		contentMode: "static" | "realtime",
+	): Promise<void> {
+		this.visualProfiles.clear();
+		this.visualProfiles.register(resources);
 		const nextResources = new Map(resources.map((resource) => [resource.memberId, resource]));
 		if (nextResources.size !== resources.length) throw new Error("worldResources 中存在重复 memberId");
 
@@ -64,126 +69,119 @@ export class CommandHandler {
 			if (!previous || !next || !canReuseWorldResource(previous, next)) this.disposeEntity(memberId);
 		}
 		this.worldResources = nextResources;
+		if (contentMode === "realtime") return;
 		const posesByMemberId = new Map(poses.map((pose) => [pose.memberId, pose]));
 		for (const resource of resources) {
 			const pose = posesByMemberId.get(resource.memberId);
-			await this.handle({
-				type: "spawn",
-				entityId: resource.memberId,
-				position: pose?.position ?? { x: 0, y: 0, z: 0 },
-				seq: -1,
-				ts: 0,
-			});
-			if (pose) {
-				await this.handle({ type: "face", entityId: resource.memberId, yaw: pose.yaw, seq: -1, ts: 0 });
-			}
+			await this.createEntity(resource.memberId, pose?.position ?? { x: 0, y: 0, z: 0 }, -1);
+			const entity = this.entities.get(resource.memberId);
+			if (entity && pose) entity.physics.yaw = pose.yaw;
 		}
 	}
 
-	async handle(cmd: RendererCmd): Promise<void> {
-		if (cmd.type === "batch") {
-			for (const c of cmd.cmds) {
-				await this.handle(c);
-			}
-			return;
+	/** 由实时状态目录发现新活动槽位时，按同一静态注册表创建实体。 */
+	async ensureEntityFromVisualProfile(
+		entityId: string,
+		visualProfileId: number,
+		position: WorldResourcePose["position"],
+		seq: number,
+	): Promise<void> {
+		if (this.entities.has(entityId)) return;
+		const pending = this.entityCreations.get(entityId);
+		if (pending) return pending;
+		const profile = this.visualProfiles.resolve(visualProfileId);
+		if (!profile) return;
+		const resource = { ...profile.resource, memberId: entityId };
+		this.worldResources.set(entityId, resource);
+		const creation = this.createEntity(entityId, position, seq)
+			.then(() => {
+				if (!this.worldResources.has(entityId)) this.disposeEntity(entityId);
+			})
+			.finally(() => this.entityCreations.delete(entityId));
+		this.entityCreations.set(entityId, creation);
+		await creation;
+	}
+
+	/** 以一个 SAB 提交同步全部区域，过期槽位立即清理。 */
+	syncAreas(areas: readonly WorldStateArea[]): void {
+		const activeIds = new Set<string>();
+		for (const [slot, area] of areas.entries()) {
+			if (!area.active) continue;
+			const id = `area:${slot}:${area.generation}:${area.idHash}`;
+			activeIds.add(id);
+			this.createOrUpdateAreaVisual({
+				id,
+				position: area.position,
+				shape: area.shape,
+			});
 		}
-
-		const entity = this.entities.get(cmd.entityId);
-
-		switch (cmd.type) {
-			case "spawn":
-				await this.handleSpawn(cmd);
-				break;
-			case "destroy":
-				this.handleDestroy(cmd, entity);
-				break;
-			case "face":
-				this.handleFace(cmd, entity);
-				break;
-			case "teleport":
-				this.handleTeleport(cmd, entity);
-				break;
-			case "action":
-				await this.handleAction(cmd, entity);
-				break;
-			case "reconcile":
-				this.handleReconcile(cmd, entity);
-				break;
-			case "camera_follow":
-				this.handleCameraFollow(cmd);
-				break;
+		for (const [id, mesh] of this.areaVisuals) {
+			if (activeIds.has(id)) continue;
+			mesh.dispose();
+			this.areaVisuals.delete(id);
 		}
 	}
 
-	/** 应用渲染快照（首次同步时按全量世界状态创建/更新实体与区域，与逻辑快照区分） */
-	async applyRenderSnapshot(renderSnapshot: RenderSnapshot): Promise<void> {
-		const seq = renderSnapshot.tickIndex;
-		const ts = renderSnapshot.currentTimeMs;
-		for (const member of renderSnapshot.members) {
-			if (!this.entities.has(member.id)) {
-				await this.handle({
-					type: "spawn",
-					entityId: member.id,
-					position: member.position,
-					seq,
-					ts,
-				});
+	/** 从任意稳定提交重建当前动画基线，后续帧交给 Babylon 本地时钟推进。 */
+	syncMemberAnimations(
+		snapshot: WorldStateSnapshot,
+		layout: WorldStateLayoutDescriptor,
+		reader: WorldStateReader,
+		entitySlots: ReadonlyMap<string, number>,
+	): void {
+		const entityIdsBySlot = new Map(Array.from(entitySlots, ([entityId, slot]) => [slot, entityId]));
+		snapshot.members.forEach((member, slot) => {
+			const entityId = entityIdsBySlot.get(slot);
+			if (!entityId) return;
+			if (!member.active || member.animation.id === 0 || member.animation.ended) {
+				this.animationTimelines.delete(entityId);
+				return;
 			}
-			await this.handle({
-				type: "teleport",
-				entityId: member.id,
-				position: member.position,
-				seq,
-				ts,
-			});
-			await this.handle({
-				type: "face",
-				entityId: member.id,
-				yaw: member.yaw,
-				seq,
-				ts,
-			});
-			if (member.animation) {
-				await this.handle({
-					type: "action",
-					entityId: member.id,
-					name: member.animation.name,
-					params: { progress: member.animation.progress, currentTimeMs: renderSnapshot.currentTimeMs },
-					seq,
-					ts,
-				});
+			const memberLayout = layout.memberDirectory[slot];
+			const entity = memberLayout ? this.entities.get(entityId) : undefined;
+			const resource = memberLayout ? this.worldResources.get(entityId) : undefined;
+			if (!memberLayout || !entity || entity.type !== "character" || resource?.kind !== "character") return;
+			const timelineVersion = `${member.generation}:${member.animation.id}:${member.animation.logicTimeMs}`;
+			if (this.animationTimelines.get(entityId) === timelineVersion) return;
+			this.animationTimelines.set(entityId, timelineVersion);
+			const mapping = Object.entries(resource.animation.clips).find(
+				([semantic, clip]) =>
+					worldStateStringId(semantic) === member.animation.id || worldStateStringId(clip) === member.animation.id,
+			);
+			if (!mapping) return;
+			const [semantic, clip] = mapping;
+			const mspd = reader.readMspd(slot, snapshot) ?? 0;
+			const progress = member.animation.progress;
+			entity.animationController.setMotionSpeed(mspd);
+			if (semantic === "idle" || semantic === "walk" || semantic === "run") {
+				entity.animationController.setLocomotion(semantic, progress);
+			} else if (semantic === "jump" || semantic === "fall") {
+				entity.animationController.setAirborne(true, progress);
+			} else if (semantic === "land") {
+				entity.animationController.setAirborne(false, progress);
+			} else {
+				entity.animationController.playAction(clip, progress);
 			}
-		}
-		if (renderSnapshot.cameraFollowEntityId) {
-			await this.handle({
-				type: "camera_follow",
-				entityId: renderSnapshot.cameraFollowEntityId,
-				seq,
-				ts,
-			});
-		}
-		if (renderSnapshot.areas?.length) {
-			const areaIds = new Set(renderSnapshot.areas.map((a) => a.id));
-			for (const [id, mesh] of this.areaVisuals) {
-				if (!areaIds.has(id)) {
-					mesh.dispose();
-					this.areaVisuals.delete(id);
-				}
-			}
-			for (const area of renderSnapshot.areas) {
-				this.createOrUpdateAreaVisual(area);
-			}
-		}
+		});
 	}
 
-	private createOrUpdateAreaVisual(area: RenderSnapshotArea): void {
-		const radius = (area.shape?.radius as number) ?? 1;
-		const safeRadius = Math.max(0.1, radius);
+	/** 由实时成员目录确认槽位失活或代次变化时删除实体。 */
+	removeEntity(entityId: string): void {
+		this.disposeEntity(entityId);
+		this.worldResources.delete(entityId);
+	}
+
+	private createOrUpdateAreaVisual(area: {
+		id: string;
+		position: { x: number; y: number; z: number };
+		shape: { kind: number; radius: number; width: number; height: number };
+	}): void {
+		const radius = area.shape.kind === WorldStateAreaShapeKind.POINT ? 0.18 : Math.max(0.1, area.shape.radius);
 		let mesh = this.areaVisuals.get(area.id);
 		if (!mesh) {
-			mesh = MeshBuilder.CreateDisc(`area:${area.id}`, { radius: safeRadius, tessellation: 32 }, this.scene);
+			mesh = MeshBuilder.CreateDisc(`area:${area.id}`, { radius, tessellation: 32 }, this.scene);
 			mesh.rotation.x = Math.PI / 2;
-			(mesh as Mesh & { __baseRadius?: number }).__baseRadius = safeRadius;
+			(mesh as Mesh & { __baseRadius?: number }).__baseRadius = radius;
 			const mat = new StandardMaterial(`areaMat:${area.id}`, this.scene);
 			mat.alpha = 0.35;
 			mat.diffuseColor = new Color3(1, 0.2, 0.2);
@@ -192,7 +190,7 @@ export class CommandHandler {
 			this.areaVisuals.set(area.id, mesh);
 		}
 		mesh.position.set(area.position.x, area.position.y, area.position.z);
-		const base = (mesh as Mesh & { __baseRadius?: number }).__baseRadius ?? safeRadius;
+		const base = (mesh as Mesh & { __baseRadius?: number }).__baseRadius ?? radius;
 		const scale = radius / base;
 		mesh.scaling.x = scale;
 		mesh.scaling.y = 1;
@@ -210,152 +208,49 @@ export class CommandHandler {
 	clearWorldResources(): void {
 		for (const memberId of [...this.entities.keys()]) this.disposeEntity(memberId);
 		this.worldResources.clear();
+		this.visualProfiles.clear();
+		this.animationTimelines.clear();
+		this.entityCreations.clear();
 	}
 
-	/** 按静态 worldResources 生成实体；动态命令不得自行选择模型或外观。 */
-	private async handleSpawn(cmd: SpawnCmd): Promise<void> {
-		logger.info(`🎬 处理spawn命令:`, cmd);
-		const resource = this.worldResources.get(cmd.entityId);
-		if (!resource) throw new Error(`实体 ${cmd.entityId} 没有已解析的 worldResource`);
+	/** 按静态注册表创建实体；运行状态只由 SAB 提供。 */
+	private async createEntity(
+		entityId: string,
+		position: { x: number; y: number; z: number },
+		seq: number,
+	): Promise<void> {
+		const resource = this.worldResources.get(entityId);
+		if (!resource) throw new Error(`实体 ${entityId} 没有已解析的静态视觉资源`);
 
-		const exists = this.entities.get(cmd.entityId);
-		if (exists && exists.lastSeq > cmd.seq) {
-			logger.info(`🎬 跳过旧序列号的spawn命令: ${cmd.entityId}`);
+		const exists = this.entities.get(entityId);
+		if (exists && exists.lastSeq > seq) {
+			logger.info(`跳过旧提交的实体创建: ${entityId}`);
 			return;
 		}
 
 		if (exists) {
-			exists.lastSeq = cmd.seq;
-			exists.physics.pos.copyFromFloats(cmd.position.x, cmd.position.y, cmd.position.z);
+			exists.lastSeq = seq;
+			exists.physics.pos.copyFromFloats(position.x, position.y, position.z);
 			exists.mesh.position.copyFrom(exists.physics.pos);
-			this.lifecycle.onPoseDiscontinuity(cmd.entityId);
+			this.lifecycle.onPoseDiscontinuity(entityId);
 			return;
 		}
 
-		const pos = new Vector3(cmd.position.x, cmd.position.y, cmd.position.z);
+		const pos = new Vector3(position.x, position.y, position.z);
 
 		if (resource.kind === "mob") {
-			const entity = this.factory.createSphere(cmd.entityId, resource.displayName, pos, resource.appearance);
-			entity.lastSeq = cmd.seq;
-			this.entities.set(cmd.entityId, entity);
-			logger.info(`🎬 Mob 静态资源创建成功: ${cmd.entityId}`);
+			const entity = this.factory.createSphere(entityId, resource.displayName, pos, resource.appearance);
+			entity.lastSeq = seq;
+			this.entities.set(entityId, entity);
+			logger.info(`Mob 静态资源创建成功: ${entityId}`);
 			return;
 		}
 
-		logger.info(`🎬 开始创建角色: ${cmd.entityId}`);
-		const entity = await this.factory.createCharacter(cmd.entityId, resource.displayName, pos, resource);
-		entity.lastSeq = cmd.seq;
-		this.entities.set(cmd.entityId, entity);
-		logger.info(`🎬 角色创建成功: ${cmd.entityId}`);
-	}
-
-	/** 执行动作/技能；支持 params.progress（0..1）用于渲染快照应用时按进度恢复动画 seek */
-	private async handleAction(cmd: ActionCmd, entity?: EntityRuntime): Promise<void> {
-		if (!entity || entity.lastSeq > cmd.seq) return;
-
-		entity.lastSeq = cmd.seq;
-
-		if (entity.type === "character") {
-			const progress = typeof cmd.params?.progress === "number" ? cmd.params.progress : undefined;
-
-			switch (cmd.name) {
-				case "jump":
-					entity.animationController.playJump(progress);
-					break;
-				case "idle":
-					entity.animationController.setLocomotion("idle", progress);
-					break;
-				case "walk":
-					entity.animationController.setLocomotion("walk", progress);
-					break;
-				case "run":
-					entity.animationController.setLocomotion("run", progress);
-					break;
-				case "skill":
-					if (cmd.params?.animationData) {
-						// RendererProtocol 尚未固化自定义关键帧结构，这里只在渲染命令边界恢复预留类型。
-						await entity.animationController.playCustomAction(cmd.params.animationData as CustomAnimationData);
-					}
-					break;
-				default:
-					entity.animationController.playAction(cmd.name, progress);
-			}
-		}
-	}
-
-	// ==================== 命令处理函数 ====================
-	/** 销毁实体 */
-	private handleDestroy(cmd: DestroyCmd, entity?: EntityRuntime): void {
-		if (entity && entity.lastSeq <= cmd.seq) {
-			this.disposeEntity(cmd.entityId);
-		}
-	}
-
-	/** 改变朝向 */
-	private handleFace(cmd: FaceCmd, entity?: EntityRuntime): void {
-		if (!entity || entity.lastSeq > cmd.seq) return;
-		entity.lastSeq = cmd.seq;
-		entity.physics.yaw = cmd.yaw;
-	}
-
-	/**
-	 * 瞬移传送 - 立即更新实体位置
-	 * 这是一个立即生效的位置更新，不经过物理系统
-	 */
-	private handleTeleport(cmd: TeleportCmd, entity?: EntityRuntime): void {
-		if (!entity || entity.lastSeq > cmd.seq) return;
-		entity.lastSeq = cmd.seq;
-
-		// 直接更新位置（瞬移是立即生效的）
-		entity.physics.pos.copyFromFloats(cmd.position.x, cmd.position.y, cmd.position.z);
-
-		// 立即同步到渲染网格
-		entity.mesh.position.copyFrom(entity.physics.pos);
-		this.lifecycle.onPoseDiscontinuity(cmd.entityId);
-	}
-
-	/**
-	 * 位置校正 - 同步权威状态
-	 * 用于修正客户端与服务端的位置差异
-	 */
-	private handleReconcile(cmd: ReconcileCmd, entity?: EntityRuntime): void {
-		if (!entity || entity.lastSeq > cmd.seq) return;
-		entity.lastSeq = cmd.seq;
-
-		// 更新实体的物理状态
-		entity.physics.pos.copyFromFloats(cmd.position.x, cmd.position.y, cmd.position.z);
-
-		if (cmd.velocity) {
-			entity.physics.vel.copyFromFloats(cmd.velocity.x, cmd.velocity.y, cmd.velocity.z);
-		}
-
-		if (cmd.hard) {
-			// 硬校正：立即同步到渲染
-			entity.mesh.position.copyFrom(entity.physics.pos);
-			this.lifecycle.onPoseDiscontinuity(cmd.entityId);
-		}
-		// 软校正由渲染同步系统在下一帧处理
-	}
-
-	/** 相机跟随命令 - 转发给相机控制器 */
-	private handleCameraFollow(cmd: CameraFollowCmd): void {
-		// 将相机跟随命令转发给第三人称相机控制器
-		if (typeof window !== "undefined") {
-			// 只转发"跟随目标"，不带距离/角度：由相机控制器保持当前视角与默认距离。
-			const cameraCmd = {
-				type: "camera_control",
-				subType: "follow",
-				data: {
-					followEntityId: cmd.entityId,
-				},
-			};
-			window.dispatchEvent(
-				new CustomEvent("cameraControl", {
-					detail: cameraCmd,
-				}),
-			);
-			logger.info(`📹 发送相机跟随命令: ${cmd.entityId}，保持当前视角`, cameraCmd);
-		}
+		logger.info(`开始创建角色: ${entityId}`);
+		const entity = await this.factory.createCharacter(entityId, resource.displayName, pos, resource);
+		entity.lastSeq = seq;
+		this.entities.set(entityId, entity);
+		logger.info(`角色创建成功: ${entityId}`);
 	}
 
 	/**
@@ -365,6 +260,7 @@ export class CommandHandler {
 	private disposeEntity(id: string): void {
 		const entity = this.entities.get(id);
 		if (!entity) return;
+		this.animationTimelines.delete(id);
 
 		logger.info(`🗑️ 开始清理实体: ${id}`);
 

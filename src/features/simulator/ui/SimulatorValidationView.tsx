@@ -4,11 +4,18 @@ import { Button } from "~/components/ui/controls/button";
 import { Select } from "~/components/ui/controls/select";
 import { Icons } from "~/components/ui/icons";
 import { MemberStatusPanel } from "~/engine/core/World/Member/MemberStatusPanel";
+import {
+	type AttributeSnapshot,
+	type DataStorage,
+	type ModifierSource,
+	ModifierType,
+} from "~/engine/core/World/Member/runtime/AttributeContainer/AttributeContainer";
 import { useSimulatorRuntimeProjection, useSimulatorSession } from "~/features/simulator/session/SimulatorSession";
 
 export function SimulatorValidationView() {
 	const session = useSimulatorSession();
 	const runtime = useSimulatorRuntimeProjection();
+	const modifierSourceCaches = new WeakMap<object, Map<string, ModifierSource>>();
 	const activeController = createMemo(
 		() =>
 			session.controllers().find((entry) => entry.controllerId === session.activeControllerId()) ??
@@ -18,19 +25,79 @@ export function SimulatorValidationView() {
 	const activeMember = createMemo(() => {
 		const entry = activeController();
 		if (!entry) return null;
-		const frameMember = runtime.latestFrame()?.members.find((member) => member.id === entry.boundMemberId);
-		if (frameMember) {
+		const staticMember = session.members().find((member) => member.id === entry.boundMemberId);
+		const layout = runtime.renderSource().getWorldStateLayout();
+		const slotIndex = layout?.memberDirectory.findIndex((member) => member.id === entry.boundMemberId) ?? -1;
+		const worldState = runtime.worldState();
+		const stateMember = slotIndex < 0 ? null : (worldState?.members[slotIndex] ?? null);
+		if (staticMember && stateMember && layout && slotIndex >= 0) {
+			let modifierSourceCache = modifierSourceCaches.get(layout);
+			if (!modifierSourceCache) {
+				modifierSourceCache = new Map();
+				modifierSourceCaches.set(layout, modifierSourceCache);
+			}
+			const memberLayout = layout.memberDirectory[slotIndex];
+			const attrs: AttributeSnapshot = { ...staticMember.attrs };
+			const projectedAttributes: DataStorage[] = [];
+			for (let index = 0; index < memberLayout.attributeCount; index++) {
+				const schema = layout.attributeSchema[memberLayout.attributeOffset + index];
+				const value = stateMember.attributes[index];
+				if (!schema || !value) continue;
+				const previous = attrs[schema.path];
+				if (!previous) continue;
+				const projected: DataStorage = {
+					...previous,
+					baseValue: value.base,
+					actValue: value.act,
+					baseSources: [],
+					static: { fixed: [], percentage: [] },
+					dynamic: { fixed: [], percentage: [] },
+				};
+				attrs[schema.path] = projected;
+				projectedAttributes[index] = projected;
+			}
+			for (const modifier of stateMember.modifiers) {
+				const attribute = projectedAttributes[modifier.attributeIndex];
+				if (!attribute) continue;
+				const sourceEntry = worldState?.modifierSources[modifier.sourceIndex ?? -1];
+				const sourceHash = sourceEntry?.idHash ?? 0;
+				const cacheKey = `${entry.boundMemberId}:${sourceHash}`;
+				let source = modifierSourceCache.get(cacheKey);
+				if (!source) {
+					source = layout.modifierSourceMetadata.find((metadata) => metadata.idHash === sourceHash)?.source ?? {
+						key: `realtime:${sourceHash}`,
+						name: `来源 ${sourceHash}`,
+						type: "system",
+						chain: [{ kind: "member", id: entry.boundMemberId }],
+					};
+					modifierSourceCache.set(cacheKey, source);
+				}
+				const projectedModifier = { source, value: modifier.value };
+				switch (modifier.type) {
+					case ModifierType.BASE_VALUE:
+						attribute.baseSources.push(projectedModifier);
+						break;
+					case ModifierType.STATIC_FIXED:
+						attribute.static.fixed.push(projectedModifier);
+						break;
+					case ModifierType.STATIC_PERCENTAGE:
+						attribute.static.percentage.push(projectedModifier);
+						break;
+					case ModifierType.DYNAMIC_FIXED:
+						attribute.dynamic.fixed.push(projectedModifier);
+						break;
+					case ModifierType.DYNAMIC_PERCENTAGE:
+						attribute.dynamic.percentage.push(projectedModifier);
+						break;
+				}
+			}
 			return {
-				id: frameMember.id,
-				type: frameMember.type,
-				name: frameMember.name,
-				campId: frameMember.campId,
-				teamId: frameMember.teamId,
-				position: frameMember.position,
-				attrs: frameMember.attrs,
+				...staticMember,
+				position: stateMember.position,
+				attrs,
 			};
 		}
-		return session.members().find((member) => member.id === entry.boundMemberId) ?? null;
+		return staticMember ?? null;
 	});
 	const controllerOptions = createMemo(() =>
 		session.controllers().map((entry, index) => ({

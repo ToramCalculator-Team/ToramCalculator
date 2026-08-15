@@ -1,4 +1,3 @@
-import { MEMBER_TYPE } from "@db/schema/enums";
 import type { EventObject } from "xstate";
 import { z } from "zod/v4";
 import { TerrainDefinitionSchema } from "~/lib/terrain";
@@ -13,7 +12,6 @@ import type { PipelineCatalog } from "./Pipeline/PipelineCatalog";
 import type { PipelineResolverService } from "./Pipeline/PipelineResolverService";
 import type { MemberSnapshot } from "./World/Member/Member";
 import type { ModifierSource } from "./World/Member/runtime/AttributeContainer/AttributeContainerTypes";
-import { AttributeSnapshotSchema } from "./World/Member/runtime/AttributeContainer/AttributeContainerTypes";
 
 /**
  * 引擎基础设施 -- 长期驻留的编译缓存和管线定义。
@@ -83,7 +81,7 @@ export interface SimulationTickContext {
  *
  * 1. 时钟驱动、近似恒定节拍推进（受 `timeScale` / 跳帧上限等影响）。
  * 2. 当前实现下不因成员闲置而自动停帧；若后续增加「同步手动成员」类开关，行为以该字段为准。
- * 3. 按引擎内快照策略向主线程推送 `frame_snapshot`（节流），供 UI 与绑定成员视图，并非严格每逻辑帧、也不专指某一控制器类。
+ * 3. 实时 Session 显式附加 latest-state SAB，UI 与渲染器允许跳过中间提交。
  * 4. `acceptExternalIntents: true`，成员可接收外部意图（如 `MemberController`）。
  */
 export function createRealtimeConfig(overrides?: Partial<RuntimeConfig>): RuntimeConfig {
@@ -192,113 +190,6 @@ export interface GameEngineSnapshot {
 	};
 	members: MemberSnapshot[];
 }
-
-/**
- * 高频成员快照 - 面向渲染和即时交互
- * 仅包含 UI 需要的基础字段（位置 / HP / MP 等）
- */
-export const RealtimeMemberSnapshotSchema = z.object({
-	id: z.string(),
-	type: z.enum(MEMBER_TYPE),
-	name: z.string(),
-	position: z.object({
-		x: z.number(),
-		y: z.number(),
-		z: z.number(),
-	}),
-	campId: z.string(),
-	teamId: z.string(),
-	hp: z.object({
-		current: z.number(),
-		max: z.number(),
-	}),
-	mp: z.object({
-		current: z.number(),
-		max: z.number(),
-	}),
-	attrs: AttributeSnapshotSchema,
-});
-
-export type RealtimeMemberSnapshot = z.output<typeof RealtimeMemberSnapshotSchema>;
-
-/**
- * Buff 视图数据 Schema - 与 BuffViewData 对齐
- */
-export const BuffViewDataSchema = z.object({
-	id: z.string(),
-	name: z.string(),
-	duration: z.number(),
-	startTime: z.number(),
-	currentStacks: z.number().optional(),
-	maxStacks: z.number().optional(),
-	source: z.string().optional(),
-	description: z.string().optional(),
-	variables: z.record(z.string(), z.number()).optional(),
-	dynamicEffects: z
-		.array(
-			z.object({
-				pipelineName: z.string(),
-				afterStageName: z.string(),
-				priority: z.number().optional(),
-			}),
-		)
-		.optional(),
-	activeDynamicActions: z.any().optional(),
-});
-
-export type BuffViewDataSnapshot = z.output<typeof BuffViewDataSchema>;
-
-/**
- * 高频状态快照 - 用于 frame_snapshot 通道。
- * 设计说明：通道名沿用 frame_snapshot，payload 只暴露 tickIndex/currentTimeMs，避免规则层重新依赖物理帧语义。
- */
-export const FrameSnapshotSchema = z.object({
-	/** 逻辑 tick 序号 */
-	tickIndex: z.number(),
-	/** 当前模拟时间（毫秒） */
-	currentTimeMs: z.number(),
-	/** 与 currentTimeMs 同源的确定性模拟时间戳（毫秒） */
-	timestamp: z.number(),
-	engine: z.object({
-		tickIndex: z.number(),
-		currentTimeMs: z.number(),
-		runTime: z.number(),
-		ticksPerSecond: z.number(),
-	}),
-	/** 所有成员的高频视图 */
-	members: z.array(RealtimeMemberSnapshotSchema),
-	/**
-	 * 按控制器分组的快照（多控制器）
-	 * - key: controllerId
-	 * - value: 该控制器绑定成员的视图
-	 */
-	byController: z
-		.record(
-			z.string(),
-			z.object({
-				/** 绑定的成员ID */
-				boundMemberId: z.string().nullable(),
-				/** 绑定的成员详细视图（属性 + Buff） */
-				boundMemberDetail: z
-					.object({
-						attrs: AttributeSnapshotSchema,
-						buffs: z.array(BuffViewDataSchema).optional(),
-					})
-					.nullable()
-					.optional(),
-			}),
-		)
-		.optional(),
-	selectedMemberDetail: z
-		.object({
-			attrs: AttributeSnapshotSchema,
-			buffs: z.array(BuffViewDataSchema).optional(),
-		})
-		.nullable()
-		.optional(),
-});
-
-export type FrameSnapshot = z.output<typeof FrameSnapshotSchema>;
 
 /**
  * 成员域事件（引擎内部）
@@ -603,7 +494,7 @@ export type MemberFSMCheckpoint = unknown;
  * BtManager 检查点。
  *
  * 设计说明：BT agent 普通字段不承载可 checkpoint 状态；跨帧数值状态通过行为树
-	 * `attributeSlots` 进入成员 AttributeContainer，并随 `MemberCheckpoint.attributeContainer` 保存。
+ * `attributeSlots` 进入成员 AttributeContainer，并随 `MemberCheckpoint.attributeContainer` 保存。
  */
 export interface BtManagerCheckpoint {
 	hasActiveEffect: boolean;

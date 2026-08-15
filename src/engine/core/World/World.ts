@@ -13,8 +13,8 @@ export class World {
 	spaceManager: SpaceManager;
 	areaManager: AreaManager;
 	private sampleTerrainHeight: (x: number, z: number) => number = () => 0;
-	constructor(renderMessageSender: ((payload: unknown) => void) | null) {
-		this.memberManager = new MemberManager(renderMessageSender);
+	constructor() {
+		this.memberManager = new MemberManager();
 		this.spaceManager = new SpaceManager(this.memberManager);
 		this.areaManager = new AreaManager(this.spaceManager, this.memberManager);
 	}
@@ -46,10 +46,6 @@ export class World {
 	clear(): void {
 		this.memberManager.clear();
 		this.areaManager.clear();
-	}
-
-	setRenderMessageSender(renderMessageSender: ((payload: unknown) => void) | null): void {
-		this.memberManager.setRenderMessageSender(renderMessageSender);
 	}
 
 	// ==================== Checkpoint ====================

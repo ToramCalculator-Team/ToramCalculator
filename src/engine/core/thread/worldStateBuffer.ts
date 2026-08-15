@@ -1,251 +1,1109 @@
 /**
- * SAB 世界状态缓冲区（World State Buffer）。
+ * 实时世界状态 SAB。
  *
- * 用于 Worker（引擎）与主线程（渲染层）之间高频共享成员位置/朝向，
- * 替代 postMessage reconcile 消息流。
- *
- * 协议设计：
- * - 实时 Session 在场景加载后显式创建 SAB，通过 RPC 附加给 Worker。
- * - Worker 每 tick 末以 seqlock 写入所有成员位置/yaw。
- * - 渲染端每帧以 seqlock 读取，失败时重试（写入冲突极短，一般 0-1 次重试）。
- * - 渲染端维护"渲染位置"，每帧 lerp 向权威位置（指数平滑），消除 tick 间隙抖动。
- *
- * 内存布局（全 SAB 大小 = HEADER_BYTES + memberCount * SLOT_BYTES）：
- *   [Int32 ×4]  header: magic, layoutVersion, memberCount, seqVersion（Atomics seqlock）
- *   [Float32 ×6 per member]  pos.x, pos.y, pos.z, yaw, speed, stateFlags
- *
- * seqlock 约定：
- *   - 偶数 = 稳定（可读）；奇数 = 写入中（不可读）。
- *   - 写：Atomics.add(seqArr, SEQ_IDX, 1) → 写数据 → Atomics.add(seqArr, SEQ_IDX, 1)
- *   - 读：v1=load; if odd→retry; readData; v2=load; if v1!==v2→retry
- *
- * stateFlags（Float32 视为 Uint32 位域）：
- *   bit 0 = moving
- *   bit 1 = airborne
+ * 该文件是 Worker、UI 和渲染器共同使用的唯一连续状态协议。所有表由同一个
+ * seqlock 提交号保护，消费者读取完整提交后可以跳过中间提交。离散事件、Tick
+ * 历史和静态视觉资源不进入此缓冲区。
  */
 
-/** 识别合法 SAB 的 magic 标记，ASCII "WST1" */
-export const WORLD_STATE_MAGIC = 0x57535431;
-/** 布局版本号；若改变任何字段偏移则递增 */
-export const WORLD_STATE_LAYOUT_VERSION = 2;
+import { WORLD_AREA_CAPACITY, WORLD_AREA_CAPACITY_EXCEEDED_CODE } from "../World/Area/types";
+import type { ModifierSource } from "../World/Member/runtime/AttributeContainer/AttributeContainerTypes";
 
-// ─── 内存布局常量 ────────────────────────────────────────────────────────────
+export const WORLD_STATE_MAGIC = 0x57535432;
+export const WORLD_STATE_LAYOUT_VERSION = 3;
+export const WORLD_STATE_PLAYER_ATTRIBUTE_COUNT = 138;
+export const WORLD_STATE_MOB_ATTRIBUTE_COUNT = 31;
+export const WORLD_STATE_DEFAULT_MEMBER_CAPACITY = 8;
+export const WORLD_STATE_DEFAULT_AREA_CAPACITY = WORLD_AREA_CAPACITY;
+export const WORLD_STATE_MAX_MODIFIER_CAPACITY = 512;
+export const WORLD_STATE_MAX_AREA_CAPACITY = WORLD_AREA_CAPACITY;
 
-/** 头部字节数（4 × Int32 = 16） */
-const HEADER_BYTES = 16;
-/** 头部 Int32 索引 */
-const HDR_MAGIC = 0;
-const HDR_VERSION = 1;
-const HDR_MEMBER_COUNT = 2;
-/** seqlock 计数器在 Int32Array 里的索引 */
-export const SEQ_IDX = 3;
+export const WORLD_STATE_ERROR_CODES = {
+	LAYOUT_VERSION_MISMATCH: "realtime_layout_version_mismatch",
+	LAYOUT_SIZE_MISMATCH: "realtime_layout_size_mismatch",
+	MODIFIER_CAPACITY_EXCEEDED: "realtime_modifier_capacity_exceeded",
+	MEMBER_CAPACITY_EXCEEDED: "realtime_member_capacity_exceeded",
+	AREA_CAPACITY_EXCEEDED: WORLD_AREA_CAPACITY_EXCEEDED_CODE,
+} as const;
 
-/** 每个成员槽的 Float32 字段数 */
-const SLOT_FLOATS = 6;
-/** 每个成员槽的字节数 */
-export const SLOT_BYTES = SLOT_FLOATS * 4;
+export class WorldStateProtocolError extends Error {
+	constructor(
+		readonly code: string,
+		message: string,
+	) {
+		super(`[${code}] ${message}`);
+		this.name = "WorldStateProtocolError";
+	}
+}
 
-/** 槽内 Float32 偏移 */
-const F_POS_X = 0;
-const F_POS_Y = 1;
-const F_POS_Z = 2;
-const F_YAW = 3;
-const F_SPEED = 4;
-const F_STATE_FLAGS = 5;
-
-/** stateFlags 位掩码 */
 export const STATE_FLAG_MOVING = 1 << 0;
 export const STATE_FLAG_AIRBORNE = 1 << 1;
 
-// ─── 工具函数 ────────────────────────────────────────────────────────────────
-
-/** 计算指定成员槽在 Float32Array 里的起始索引（Float32 单元，非字节）。 */
-function slotF32Offset(memberIndex: number): number {
-	// header 占 HEADER_BYTES / 4 = 4 个 Float32 单元；然后每成员 SLOT_FLOATS 个
-	return HEADER_BYTES / 4 + memberIndex * SLOT_FLOATS;
+export enum WorldStateEntityType {
+	PLAYER = 1,
+	MOB = 2,
+	SUMMON = 3,
 }
 
-/** 计算所需 SAB 字节大小。 */
-export function calcWorldStateBufferBytes(memberCount: number): number {
-	if (!Number.isInteger(memberCount) || memberCount < 0) throw new Error(`非法世界状态成员数: ${memberCount}`);
-	return HEADER_BYTES + memberCount * SLOT_BYTES;
+export enum WorldStateAreaType {
+	DAMAGE = 1,
 }
 
-/** 在线程附件边界验证完整布局，避免非法 SAB 延迟表现为成员位置错位。 */
-function readWorldStateMemberCount(buf: SharedArrayBuffer): number {
-	if (buf.byteLength < HEADER_BYTES) throw new Error(`世界状态 SAB 长度不足: ${buf.byteLength}`);
-	const header = new Int32Array(buf, 0, HEADER_BYTES / Int32Array.BYTES_PER_ELEMENT);
-	const magic = Atomics.load(header, HDR_MAGIC);
-	if (magic !== WORLD_STATE_MAGIC) throw new Error(`非法世界状态 SAB magic: ${magic}`);
-	const layoutVersion = Atomics.load(header, HDR_VERSION);
-	if (layoutVersion !== WORLD_STATE_LAYOUT_VERSION) {
-		throw new Error(`不支持的世界状态 SAB 布局版本: ${layoutVersion}`);
-	}
-	const memberCount = Atomics.load(header, HDR_MEMBER_COUNT);
-	const expectedBytes = calcWorldStateBufferBytes(memberCount);
-	if (buf.byteLength !== expectedBytes) {
-		throw new Error(`世界状态 SAB 长度不匹配: ${buf.byteLength}，期望 ${expectedBytes}`);
-	}
-	return memberCount;
+export enum WorldStateAreaShapeKind {
+	POINT = 1,
+	CIRCLE = 2,
+	RECTANGLE = 3,
 }
 
-/** 创建并初始化 SAB（主线程调用，loadScenario 后成员数固定时）。 */
-export function createWorldStateBuffer(memberCount: number): SharedArrayBuffer {
-	const buf = new SharedArrayBuffer(calcWorldStateBufferBytes(memberCount));
-	const i32 = new Int32Array(buf);
-	i32[HDR_MAGIC] = WORLD_STATE_MAGIC;
-	i32[HDR_VERSION] = WORLD_STATE_LAYOUT_VERSION;
-	i32[HDR_MEMBER_COUNT] = memberCount;
-	Atomics.store(i32, SEQ_IDX, 0); // 初始稳定版本
-	return buf;
-}
+export type VisualProfileId = number;
 
-// ─── 成员索引映射 ─────────────────────────────────────────────────────────────
+export type WorldStateAttributeSchemaEntry = {
+	index: number;
+	path: string;
+	displayName: string;
+	expression: string;
+};
 
-/**
- * 成员槽位索引映射（memberId → 槽位下标）。
- * loadScenario 后由主线程和 worker 分别按相同顺序构造，无需额外同步。
- * 字符串 memberId 只在映射构造时使用，SAB 内部不存储字符串。
- */
-export class MemberSlotIndex {
-	private readonly map = new Map<string, number>();
-
-	constructor(memberIds: string[]) {
-		memberIds.forEach((id, i) => {
-			if (this.map.has(id)) throw new Error(`世界状态成员 ID 重复: ${id}`);
-			this.map.set(id, i);
-		});
-	}
-
-	get(memberId: string): number | undefined {
-		return this.map.get(memberId);
-	}
-
-	get size(): number {
-		return this.map.size;
-	}
-}
-
-// ─── Writer（Worker 侧） ─────────────────────────────────────────────────────
-
-export interface WorldStateMemberData {
+export type WorldStateMemberLayout = {
 	id: string;
+	entityType: WorldStateEntityType;
+	visualProfileId: VisualProfileId;
+	attributeOffset: number;
+	attributeCount: number;
+	modifierOffset: number;
+	modifierCapacity: number;
+};
+
+export type WorldStateLayoutDescriptor = {
+	layoutVersion: typeof WORLD_STATE_LAYOUT_VERSION;
+	memberCapacity: number;
+	areaCapacity: number;
+	memberDirectory: WorldStateMemberLayout[];
+	attributeSchema: WorldStateAttributeSchemaEntry[];
+	modifierSourceMetadata: WorldStateModifierSourceMetadata[];
+	modifierSourceCapacity: number;
+	modifierChainCapacity: number;
+	byteLength: number;
+};
+
+export type WorldStateLayoutMemberInput = Omit<
+	WorldStateMemberLayout,
+	"attributeOffset" | "modifierOffset" | "attributeCount" | "modifierCapacity"
+> & {
+	attributePaths: readonly WorldStateAttributeSchemaEntry[];
+	modifierSourceMetadata?: readonly WorldStateModifierSourceMetadata[];
+	modifierCount?: number;
+	modifierCapacity?: number;
+};
+
+export type WorldStateMemberData = {
+	id: string;
+	entityType?: WorldStateEntityType;
+	visualProfileId?: number;
+	active?: boolean;
+	position: { x: number; y: number; z: number };
+	yaw: number;
+	speed?: number;
+	stateFlags?: number;
+	animation?: {
+		id: number;
+		progress: number;
+		logicTimeMs: number;
+		loop: boolean;
+		ended: boolean;
+	};
+	attributes?: {
+		base: readonly number[];
+		act: readonly number[];
+	};
+	modifiers?: readonly WorldStateModifierData[];
+};
+
+export type WorldStateModifierData = {
+	attributeIndex: number;
+	type: number;
+	value: number;
+	sourceIndex?: number;
+	chainIndex?: number;
+};
+
+export type WorldStateAreaData = {
+	id: string;
+	active?: boolean;
+	type?: number;
+	position: { x: number; y: number; z: number };
+	shape?: { kind?: number; radius?: number; width?: number; height?: number };
+	remainingTimeMs: number;
+	sourceMemberId?: string;
+};
+
+export type WorldStateCommit = {
+	logicalTimeMs: number;
+	tickIndex: number;
+	members: readonly WorldStateMemberData[];
+	areas?: readonly WorldStateAreaData[];
+	modifierSources?: readonly WorldStateModifierSource[];
+	modifierChains?: readonly WorldStateModifierChain[];
+};
+
+export type WorldStateModifierSource = { idHash: number; type: number };
+export type WorldStateModifierChain = { sourceIndex: number; parentIndex: number };
+export type WorldStateModifierSourceMetadata = { idHash: number; source: ModifierSource };
+
+export type WorldStateMember = {
+	entityIdHash: number;
+	active: boolean;
+	generation: number;
+	entityType: WorldStateEntityType;
+	visualProfileId: number;
 	position: { x: number; y: number; z: number };
 	yaw: number;
 	speed: number;
-	/** bit0 = moving, bit1 = airborne */
-	stateFlags?: number;
-}
-
-/**
- * SAB 写入器，在 Worker 线程内每 tick 末调用 write()。
- * seqlock 包围写入，保证主线程读取的原子性。
- */
-export class WorldStateWriter {
-	private readonly i32: Int32Array;
-	private readonly f32: Float32Array;
-	private readonly memberCount: number;
-
-	constructor(
-		buf: SharedArrayBuffer,
-		private readonly slotIndex: MemberSlotIndex,
-	) {
-		this.memberCount = readWorldStateMemberCount(buf);
-		if (this.memberCount !== slotIndex.size) {
-			throw new Error(`世界状态成员索引数量不匹配: ${slotIndex.size}，期望 ${this.memberCount}`);
-		}
-		this.i32 = new Int32Array(buf);
-		this.f32 = new Float32Array(buf);
-	}
-
-	/**
-	 * 以 seqlock 写入所有成员状态。
-	 * 调用者保证每 tick 只调用一次（单写者）。
-	 */
-	write(members: readonly WorldStateMemberData[]): void {
-		// seqlock: 开始写（奇数）
-		Atomics.add(this.i32, SEQ_IDX, 1);
-
-		for (const member of members) {
-			const slotIdx = this.slotIndex.get(member.id);
-			if (slotIdx === undefined || slotIdx >= this.memberCount) continue;
-			const f32Off = slotF32Offset(slotIdx);
-			this.f32[f32Off + F_POS_X] = member.position.x;
-			this.f32[f32Off + F_POS_Y] = member.position.y;
-			this.f32[f32Off + F_POS_Z] = member.position.z;
-			this.f32[f32Off + F_YAW] = member.yaw;
-			this.f32[f32Off + F_SPEED] = member.speed;
-			this.f32[f32Off + F_STATE_FLAGS] = member.stateFlags ?? 0;
-		}
-
-		// seqlock: 结束写（偶数）
-		Atomics.add(this.i32, SEQ_IDX, 1);
-	}
-}
-
-// ─── Reader（主线程侧） ──────────────────────────────────────────────────────
-
-export interface WorldStateSlot {
-	posX: number;
-	posY: number;
-	posZ: number;
-	yaw: number;
-	speed: number;
-	/** bit0 = moving, bit1 = airborne */
 	stateFlags: number;
-}
+	animation: {
+		id: number;
+		progress: number;
+		logicTimeMs: number;
+		loop: boolean;
+		ended: boolean;
+	};
+	attributes: { base: number; act: number }[];
+	modifiers: WorldStateModifierData[];
+};
 
-/** 读取单个槽位时的临时缓冲（避免每次 read 分配对象）。 */
-const _tmpSlot: WorldStateSlot = { posX: 0, posY: 0, posZ: 0, yaw: 0, speed: 0, stateFlags: 0 };
+export type WorldStateArea = {
+	idHash: number;
+	active: boolean;
+	generation: number;
+	type: number;
+	position: { x: number; y: number; z: number };
+	shape: { kind: number; radius: number; width: number; height: number };
+	remainingTimeMs: number;
+	sourceMemberIndex: number;
+};
+
+export type WorldStateSnapshot = {
+	commitVersion: number;
+	logicalTimeMs: number;
+	tickIndex: number;
+	members: WorldStateMember[];
+	areas: WorldStateArea[];
+	modifierSources: WorldStateModifierSource[];
+	modifierChains: WorldStateModifierChain[];
+};
+
+const HEADER_BYTES = 64;
+const HEADER_INT32_COUNT = HEADER_BYTES / Int32Array.BYTES_PER_ELEMENT;
+const HDR_MAGIC = 0;
+const HDR_VERSION = 1;
+const HDR_MEMBER_CAPACITY = 2;
+const HDR_AREA_CAPACITY = 3;
+const HDR_ATTRIBUTE_COUNT = 4;
+const HDR_COMMIT_VERSION = 5;
+const HDR_LOGICAL_TIME_MS = 6;
+const HDR_TICK_INDEX = 7;
+const HDR_SOURCE_CAPACITY = 8;
+const HDR_CHAIN_CAPACITY = 9;
+const HDR_SOURCE_COUNT = 10;
+const HDR_CHAIN_COUNT = 11;
+
+const DIRECTORY_INT32_FIELDS = 9;
+const DIRECTORY_BYTES = DIRECTORY_INT32_FIELDS * Int32Array.BYTES_PER_ELEMENT;
+const DIR_ACTIVE = 0;
+const DIR_GENERATION = 1;
+const DIR_ENTITY_TYPE = 2;
+const DIR_VISUAL_PROFILE = 3;
+const DIR_ATTRIBUTE_OFFSET = 4;
+const DIR_ATTRIBUTE_COUNT = 5;
+const DIR_MODIFIER_OFFSET = 6;
+const DIR_MODIFIER_CAPACITY = 7;
+const DIR_ENTITY_ID_HASH = 8;
+
+const ATTRIBUTE_FLOAT_FIELDS = 2;
+const ATTRIBUTE_BYTES = ATTRIBUTE_FLOAT_FIELDS * Float64Array.BYTES_PER_ELEMENT;
+
+const STATE_INT_FIELDS = 2;
+const STATE_FLOAT_FIELDS = 9;
+const STATE_BYTES =
+	STATE_INT_FIELDS * Int32Array.BYTES_PER_ELEMENT + STATE_FLOAT_FIELDS * Float64Array.BYTES_PER_ELEMENT;
+const STATE_INT_ANIMATION_ID = 0;
+const STATE_INT_FLAGS = 1;
+const STATE_FLOAT_X = 0;
+const STATE_FLOAT_Y = 1;
+const STATE_FLOAT_Z = 2;
+const STATE_FLOAT_YAW = 3;
+const STATE_FLOAT_SPEED = 4;
+const STATE_FLOAT_PROGRESS = 5;
+const STATE_FLOAT_LOGIC_TIME = 6;
+const STATE_FLOAT_LOOP = 7;
+const STATE_FLOAT_ENDED = 8;
+
+const MODIFIER_FLOAT_FIELDS = 1;
+const MODIFIER_INT_FIELDS = 4;
+const MODIFIER_BYTES =
+	MODIFIER_FLOAT_FIELDS * Float64Array.BYTES_PER_ELEMENT + MODIFIER_INT_FIELDS * Int32Array.BYTES_PER_ELEMENT;
+const MODIFIER_INT_ATTRIBUTE = 0;
+const MODIFIER_INT_TYPE = 1;
+const MODIFIER_INT_SOURCE = 2;
+const MODIFIER_INT_CHAIN = 3;
+const SOURCE_BYTES = 8;
+const CHAIN_BYTES = 8;
+
+const AREA_INT_FIELDS = 6;
+const AREA_FLOAT_FIELDS = 7;
+const AREA_BYTES = AREA_INT_FIELDS * Int32Array.BYTES_PER_ELEMENT + AREA_FLOAT_FIELDS * Float64Array.BYTES_PER_ELEMENT;
+const AREA_INT_ACTIVE = 0;
+const AREA_INT_GENERATION = 1;
+const AREA_INT_TYPE = 2;
+const AREA_INT_SHAPE = 3;
+const AREA_INT_SOURCE_MEMBER = 4;
+const AREA_INT_ID_HASH = 5;
+const AREA_FLOAT_X = 0;
+const AREA_FLOAT_Y = 1;
+const AREA_FLOAT_Z = 2;
+const AREA_FLOAT_RADIUS = 3;
+const AREA_FLOAT_WIDTH = 4;
+const AREA_FLOAT_HEIGHT = 5;
+const AREA_FLOAT_REMAINING = 6;
 
 const MAX_SEQLOCK_RETRIES = 8;
 
-/**
- * SAB 读取器，在主线程渲染帧内每帧调用 readSlot()。
- * seqlock 重试保证读到一致状态（写入冲突极短，一般 0-1 次重试）。
- */
-export class WorldStateReader {
-	private readonly i32: Int32Array;
-	private readonly f32: Float32Array;
-	readonly memberCount: number;
+function align(value: number, alignment: number): number {
+	return Math.ceil(value / alignment) * alignment;
+}
 
-	constructor(buf: SharedArrayBuffer) {
-		this.memberCount = readWorldStateMemberCount(buf);
-		this.i32 = new Int32Array(buf);
-		this.f32 = new Float32Array(buf);
+function nextPowerOfTwo(value: number): number {
+	let result = 1;
+	while (result < value) result *= 2;
+	return result;
+}
+
+export function worldStateStringId(value: string): number {
+	let hash = 2166136261;
+	for (let index = 0; index < value.length; index++) {
+		hash ^= value.charCodeAt(index);
+		hash = Math.imul(hash, 16777619);
 	}
+	return hash & 0x7fffffff || 1;
+}
 
-	/**
-	 * seqlock 读取指定槽位，写入 out 对象（默认复用内部临时对象避免分配）。
-	 * 返回 null 表示重试超限（极低概率），调用方应跳过本帧更新。
-	 */
-	readSlot(slotIdx: number, out: WorldStateSlot = _tmpSlot): WorldStateSlot | null {
-		if (slotIdx < 0 || slotIdx >= this.memberCount) return null;
-		const f32Off = slotF32Offset(slotIdx);
+export function calculateModifierCapacity(entryCount: number): number {
+	if (!Number.isInteger(entryCount) || entryCount < 0) throw new Error(`非法 modifier entry 数量: ${entryCount}`);
+	const capacity = nextPowerOfTwo(Math.max(128, entryCount + 80));
+	if (capacity > WORLD_STATE_MAX_MODIFIER_CAPACITY) {
+		throw new WorldStateProtocolError(
+			WORLD_STATE_ERROR_CODES.MODIFIER_CAPACITY_EXCEEDED,
+			`modifier 容量超限: ${capacity} > ${WORLD_STATE_MAX_MODIFIER_CAPACITY}`,
+		);
+	}
+	return capacity;
+}
 
-		for (let retry = 0; retry < MAX_SEQLOCK_RETRIES; retry++) {
-			const v1 = Atomics.load(this.i32, SEQ_IDX);
-			if (v1 & 1) continue; // 写入中，自旋重试
+function layoutByteLength(
+	memberCapacity: number,
+	attributeCount: number,
+	modifierCapacity: number,
+	sourceCapacity: number,
+	chainCapacity: number,
+	areaCapacity: number,
+): number {
+	let offset = HEADER_BYTES;
+	offset = align(offset + memberCapacity * DIRECTORY_BYTES, 8);
+	offset = align(offset + attributeCount * ATTRIBUTE_BYTES, 8);
+	offset = align(offset + memberCapacity * STATE_BYTES, 8);
+	offset = align(offset + modifierCapacity * MODIFIER_BYTES, 8);
+	offset = align(offset + sourceCapacity * SOURCE_BYTES, 8);
+	offset = align(offset + chainCapacity * CHAIN_BYTES, 8);
+	offset = align(offset + areaCapacity * AREA_BYTES, 8);
+	return offset;
+}
 
-			out.posX = this.f32[f32Off + F_POS_X];
-			out.posY = this.f32[f32Off + F_POS_Y];
-			out.posZ = this.f32[f32Off + F_POS_Z];
-			out.yaw = this.f32[f32Off + F_YAW];
-			out.speed = this.f32[f32Off + F_SPEED];
-			out.stateFlags = this.f32[f32Off + F_STATE_FLAGS];
+function validateCapacity(memberCapacity: number, areaCapacity: number): void {
+	if (!Number.isInteger(memberCapacity) || memberCapacity < 0) throw new Error(`非法成员容量: ${memberCapacity}`);
+	if (!Number.isInteger(areaCapacity) || areaCapacity < 0 || areaCapacity > WORLD_STATE_MAX_AREA_CAPACITY) {
+		throw new WorldStateProtocolError(
+			WORLD_STATE_ERROR_CODES.AREA_CAPACITY_EXCEEDED,
+			`area 容量超限: ${areaCapacity} > ${WORLD_STATE_MAX_AREA_CAPACITY}`,
+		);
+	}
+}
 
-			const v2 = Atomics.load(this.i32, SEQ_IDX);
-			if (v1 === v2) return out; // 一致，读取成功
-			// 写入跨越了读取，重试
+/** 根据场景装配后的属性和 modifier 条目生成一次性布局。 */
+export function createWorldStateLayoutDescriptor(
+	members: readonly WorldStateLayoutMemberInput[],
+	options: { memberCapacity?: number; areaCapacity?: number } = {},
+): WorldStateLayoutDescriptor {
+	const memberCapacity = Math.max(members.length, options.memberCapacity ?? WORLD_STATE_DEFAULT_MEMBER_CAPACITY);
+	const areaCapacity = options.areaCapacity ?? WORLD_STATE_DEFAULT_AREA_CAPACITY;
+	validateCapacity(memberCapacity, areaCapacity);
+	const memberDirectory: WorldStateMemberLayout[] = [];
+	const attributeSchema: WorldStateAttributeSchemaEntry[] = [];
+	const memberIds = new Set<string>();
+	const modifierSourceMetadata = new Map<number, WorldStateModifierSourceMetadata>();
+	let attributeOffset = 0;
+	let modifierOffset = 0;
+	for (const member of members) {
+		if (memberIds.has(member.id)) throw new Error(`实时世界状态成员 ID 重复: ${member.id}`);
+		memberIds.add(member.id);
+		for (const metadata of member.modifierSourceMetadata ?? []) {
+			const previous = modifierSourceMetadata.get(metadata.idHash);
+			if (previous && previous.source.key !== metadata.source.key) {
+				throw new Error(`modifier 来源 hash 冲突: ${previous.source.key} / ${metadata.source.key}`);
+			}
+			modifierSourceMetadata.set(metadata.idHash, metadata);
 		}
-		return null; // 重试耗尽
+		const paths = Array.from(new Map(member.attributePaths.map((entry) => [entry.path, entry])).values());
+		const count = paths.length;
+		const schemaOffset = attributeSchema.length;
+		attributeSchema.push(...paths.map((entry, index) => ({ ...entry, index: schemaOffset + index })));
+		const modifierCapacity = member.modifierCapacity ?? calculateModifierCapacity(member.modifierCount ?? 0);
+		if (
+			!Number.isInteger(modifierCapacity) ||
+			modifierCapacity < 0 ||
+			modifierCapacity > WORLD_STATE_MAX_MODIFIER_CAPACITY
+		) {
+			throw new WorldStateProtocolError(
+				WORLD_STATE_ERROR_CODES.MODIFIER_CAPACITY_EXCEEDED,
+				`成员 ${member.id} 的 modifier 容量非法: ${modifierCapacity}`,
+			);
+		}
+		memberDirectory.push({
+			id: member.id,
+			entityType: member.entityType,
+			visualProfileId: member.visualProfileId,
+			attributeOffset,
+			attributeCount: count,
+			modifierOffset,
+			modifierCapacity,
+		});
+		attributeOffset += count;
+		modifierOffset += modifierCapacity;
+	}
+	while (memberDirectory.length < memberCapacity) {
+		memberDirectory.push({
+			id: `__empty_${memberDirectory.length}`,
+			entityType: WorldStateEntityType.SUMMON,
+			visualProfileId: 0,
+			attributeOffset,
+			attributeCount: 0,
+			modifierOffset,
+			modifierCapacity: 0,
+		});
+	}
+	const modifierSourceCapacity = Math.max(1, modifierOffset);
+	const modifierChainCapacity = modifierSourceCapacity;
+	return {
+		layoutVersion: WORLD_STATE_LAYOUT_VERSION,
+		memberCapacity,
+		areaCapacity,
+		memberDirectory,
+		attributeSchema,
+		modifierSourceMetadata: Array.from(modifierSourceMetadata.values()),
+		modifierSourceCapacity,
+		modifierChainCapacity,
+		byteLength: layoutByteLength(
+			memberCapacity,
+			attributeSchema.length,
+			modifierOffset,
+			modifierSourceCapacity,
+			modifierChainCapacity,
+			areaCapacity,
+		),
+	};
+}
+
+function offsets(descriptor: WorldStateLayoutDescriptor) {
+	let offset = HEADER_BYTES;
+	const directoryOffset = offset;
+	offset = align(offset + descriptor.memberCapacity * DIRECTORY_BYTES, 8);
+	const attributeOffset = offset;
+	offset = align(offset + descriptor.attributeSchema.length * ATTRIBUTE_BYTES, 8);
+	const stateOffset = offset;
+	offset = align(offset + descriptor.memberCapacity * STATE_BYTES, 8);
+	const modifierOffset = offset;
+	offset = align(
+		offset + descriptor.memberDirectory.reduce((sum, member) => sum + member.modifierCapacity, 0) * MODIFIER_BYTES,
+		8,
+	);
+	const modifierSourceOffset = offset;
+	offset = align(offset + descriptor.modifierSourceCapacity * SOURCE_BYTES, 8);
+	const modifierChainOffset = offset;
+	offset = align(offset + descriptor.modifierChainCapacity * CHAIN_BYTES, 8);
+	const areaOffset = offset;
+	return {
+		directoryOffset,
+		attributeOffset,
+		stateOffset,
+		modifierOffset,
+		modifierSourceOffset,
+		modifierChainOffset,
+		areaOffset,
+	};
+}
+
+function validateDescriptor(descriptor: WorldStateLayoutDescriptor): void {
+	if (descriptor.layoutVersion !== WORLD_STATE_LAYOUT_VERSION) {
+		throw new WorldStateProtocolError(
+			WORLD_STATE_ERROR_CODES.LAYOUT_VERSION_MISMATCH,
+			`不支持的布局版本: ${descriptor.layoutVersion}`,
+		);
+	}
+	validateCapacity(descriptor.memberCapacity, descriptor.areaCapacity);
+	if (descriptor.memberDirectory.length !== descriptor.memberCapacity) throw new Error("成员目录长度与容量不一致");
+	if (
+		!Number.isInteger(descriptor.modifierSourceCapacity) ||
+		!Number.isInteger(descriptor.modifierChainCapacity) ||
+		descriptor.modifierSourceCapacity < 0 ||
+		descriptor.modifierChainCapacity < 0
+	)
+		throw new Error("modifier 来源表容量非法");
+	if (
+		descriptor.byteLength !==
+		layoutByteLength(
+			descriptor.memberCapacity,
+			descriptor.attributeSchema.length,
+			descriptor.memberDirectory.reduce((sum, member) => sum + member.modifierCapacity, 0),
+			descriptor.modifierSourceCapacity,
+			descriptor.modifierChainCapacity,
+			descriptor.areaCapacity,
+		)
+	) {
+		throw new WorldStateProtocolError(WORLD_STATE_ERROR_CODES.LAYOUT_SIZE_MISMATCH, "实时世界状态布局长度不一致");
+	}
+	const memberIds = new Set<string>();
+	let attributeOffset = 0;
+	let modifierOffset = 0;
+	for (const member of descriptor.memberDirectory) {
+		if (memberIds.has(member.id)) throw new Error(`实时世界状态成员 ID 重复: ${member.id}`);
+		memberIds.add(member.id);
+		if (
+			!Number.isInteger(member.attributeOffset) ||
+			!Number.isInteger(member.attributeCount) ||
+			!Number.isInteger(member.modifierOffset) ||
+			!Number.isInteger(member.modifierCapacity) ||
+			member.attributeOffset !== attributeOffset ||
+			member.modifierOffset !== modifierOffset
+		)
+			throw new Error("实时世界状态目录 offset 不连续");
+		if (
+			member.attributeCount < 0 ||
+			member.modifierCapacity < 0 ||
+			member.modifierCapacity > WORLD_STATE_MAX_MODIFIER_CAPACITY
+		) {
+			throw new WorldStateProtocolError(
+				WORLD_STATE_ERROR_CODES.MODIFIER_CAPACITY_EXCEEDED,
+				`成员 ${member.id} 的布局容量非法`,
+			);
+		}
+		attributeOffset += member.attributeCount;
+		modifierOffset += member.modifierCapacity;
+	}
+	if (attributeOffset !== descriptor.attributeSchema.length) throw new Error("属性目录数量与 schema 不一致");
+	descriptor.attributeSchema.forEach((entry, index) => {
+		if (entry.index !== index) throw new Error(`属性 schema 索引不连续: ${entry.index}，期望 ${index}`);
+	});
+	const sourceHashes = new Set<number>();
+	for (const metadata of descriptor.modifierSourceMetadata) {
+		if (sourceHashes.has(metadata.idHash)) throw new Error(`modifier 来源元数据 hash 重复: ${metadata.idHash}`);
+		sourceHashes.add(metadata.idHash);
+	}
+}
+
+export function createWorldStateBuffer(descriptor: WorldStateLayoutDescriptor): SharedArrayBuffer {
+	validateDescriptor(descriptor);
+	const buffer = new SharedArrayBuffer(descriptor.byteLength);
+	const header = new Int32Array(buffer, 0, HEADER_INT32_COUNT);
+	header[HDR_MAGIC] = WORLD_STATE_MAGIC;
+	header[HDR_VERSION] = descriptor.layoutVersion;
+	header[HDR_MEMBER_CAPACITY] = descriptor.memberCapacity;
+	header[HDR_AREA_CAPACITY] = descriptor.areaCapacity;
+	header[HDR_ATTRIBUTE_COUNT] = descriptor.attributeSchema.length;
+	header[HDR_SOURCE_CAPACITY] = descriptor.modifierSourceCapacity;
+	header[HDR_CHAIN_CAPACITY] = descriptor.modifierChainCapacity;
+	Atomics.store(header, HDR_COMMIT_VERSION, 0);
+	Atomics.store(header, HDR_LOGICAL_TIME_MS, 0);
+	Atomics.store(header, HDR_TICK_INDEX, 0);
+	Atomics.store(header, HDR_SOURCE_COUNT, 0);
+	Atomics.store(header, HDR_CHAIN_COUNT, 0);
+	const view = new DataView(buffer);
+	const bufferOffsets = offsets(descriptor);
+	for (let index = 0; index < descriptor.memberDirectory.length; index++) {
+		const member = descriptor.memberDirectory[index];
+		const base = bufferOffsets.directoryOffset + index * DIRECTORY_BYTES;
+		view.setInt32(base + DIR_ACTIVE * 4, 0, true);
+		view.setInt32(base + DIR_GENERATION * 4, 0, true);
+		view.setInt32(base + DIR_ENTITY_TYPE * 4, member.entityType, true);
+		view.setInt32(base + DIR_VISUAL_PROFILE * 4, member.visualProfileId, true);
+		view.setInt32(base + DIR_ATTRIBUTE_OFFSET * 4, member.attributeOffset, true);
+		view.setInt32(base + DIR_ATTRIBUTE_COUNT * 4, member.attributeCount, true);
+		view.setInt32(base + DIR_MODIFIER_OFFSET * 4, member.modifierOffset, true);
+		view.setInt32(base + DIR_MODIFIER_CAPACITY * 4, member.modifierCapacity, true);
+		view.setInt32(
+			base + DIR_ENTITY_ID_HASH * 4,
+			member.id.startsWith("__empty_") ? 0 : worldStateStringId(member.id),
+			true,
+		);
+	}
+	const modifierCapacity = descriptor.memberDirectory.reduce((sum, member) => sum + member.modifierCapacity, 0);
+	for (let index = 0; index < modifierCapacity; index++) {
+		view.setInt32(bufferOffsets.modifierOffset + index * MODIFIER_BYTES + MODIFIER_INT_ATTRIBUTE * 4, -1, true);
+	}
+	return buffer;
+}
+
+function readHeader(buffer: SharedArrayBuffer) {
+	if (buffer.byteLength < HEADER_BYTES)
+		throw new Error(`非法实时世界状态 SAB magic: buffer 长度不足 (${buffer.byteLength})`);
+	const header = new Int32Array(buffer, 0, HEADER_INT32_COUNT);
+	if (Atomics.load(header, HDR_MAGIC) !== WORLD_STATE_MAGIC) throw new Error("非法实时世界状态 SAB magic");
+	if (Atomics.load(header, HDR_VERSION) !== WORLD_STATE_LAYOUT_VERSION) {
+		throw new WorldStateProtocolError(WORLD_STATE_ERROR_CODES.LAYOUT_VERSION_MISMATCH, "不支持的实时世界状态布局版本");
+	}
+	const memberCapacity = Atomics.load(header, HDR_MEMBER_CAPACITY);
+	const areaCapacity = Atomics.load(header, HDR_AREA_CAPACITY);
+	const attributeCount = Atomics.load(header, HDR_ATTRIBUTE_COUNT);
+	validateCapacity(memberCapacity, areaCapacity);
+	return {
+		header,
+		memberCapacity,
+		areaCapacity,
+		attributeCount,
+		modifierSourceCapacity: Atomics.load(header, HDR_SOURCE_CAPACITY),
+		modifierChainCapacity: Atomics.load(header, HDR_CHAIN_CAPACITY),
+	};
+}
+
+export class WorldStateWriter {
+	private readonly header: Int32Array;
+	private readonly data: DataView;
+	private readonly descriptor: WorldStateLayoutDescriptor;
+	private readonly memberOffsets: ReturnType<typeof offsets>;
+	private readonly fixedMemberSlots = new Map<string, number>();
+	private readonly dynamicMemberSlots = new Map<string, number>();
+	private readonly memberSlotOwners: Array<string | null>;
+	private readonly memberSlotGenerations: number[];
+	private readonly memberSlotActive: boolean[];
+	private readonly areaSlots = new Map<string, number>();
+	private readonly areaSlotOwners: Array<string | null>;
+	private readonly areaSlotGenerations: number[];
+
+	constructor(buffer: SharedArrayBuffer, descriptor: WorldStateLayoutDescriptor) {
+		const header = readHeader(buffer);
+		validateDescriptor(descriptor);
+		if (
+			buffer.byteLength !== descriptor.byteLength ||
+			header.memberCapacity !== descriptor.memberCapacity ||
+			header.areaCapacity !== descriptor.areaCapacity ||
+			header.attributeCount !== descriptor.attributeSchema.length ||
+			header.modifierSourceCapacity !== descriptor.modifierSourceCapacity ||
+			header.modifierChainCapacity !== descriptor.modifierChainCapacity
+		) {
+			throw new WorldStateProtocolError(
+				WORLD_STATE_ERROR_CODES.LAYOUT_SIZE_MISMATCH,
+				"实时世界状态 SAB 与布局描述符不匹配",
+			);
+		}
+		this.header = header.header;
+		this.data = new DataView(buffer);
+		this.descriptor = descriptor;
+		this.memberOffsets = offsets(descriptor);
+		this.memberSlotOwners = descriptor.memberDirectory.map((member, slot) => {
+			if (member.id.startsWith("__empty_")) return null;
+			this.fixedMemberSlots.set(member.id, slot);
+			return member.id;
+		});
+		this.memberSlotGenerations = descriptor.memberDirectory.map(() => 0);
+		this.memberSlotActive = descriptor.memberDirectory.map(() => false);
+		this.areaSlotOwners = Array.from({ length: descriptor.areaCapacity }, () => null);
+		this.areaSlotGenerations = Array.from({ length: descriptor.areaCapacity }, () => 0);
 	}
 
-	/**
-	 * 返回当前 seqlock 版本号（偶数=稳定，奇数=写入中）。
-	 * 可用于调试或跳帧检测。
-	 */
-	getSeqVersion(): number {
-		return Atomics.load(this.i32, SEQ_IDX);
+	/** 以单个提交序号写入成员、属性、modifier、区域和时间线。 */
+	write(payload: WorldStateCommit): void {
+		const sources = payload.modifierSources ?? [];
+		const chains = payload.modifierChains ?? [];
+		const areas = payload.areas ?? [];
+		if (
+			sources.length > this.descriptor.modifierSourceCapacity ||
+			chains.length > this.descriptor.modifierChainCapacity
+		) {
+			throw new WorldStateProtocolError(
+				WORLD_STATE_ERROR_CODES.MODIFIER_CAPACITY_EXCEEDED,
+				"modifier 来源或链表容量不足",
+			);
+		}
+		if (areas.filter((area) => area.active !== false).length > this.descriptor.areaCapacity) {
+			throw new WorldStateProtocolError(
+				WORLD_STATE_ERROR_CODES.AREA_CAPACITY_EXCEEDED,
+				`area 数量超出布局: ${areas.length} > ${this.descriptor.areaCapacity}`,
+			);
+		}
+		this.validateModifierChains(chains, sources.length);
+		const memberPlan = this.planMembers(payload.members, sources.length, chains.length);
+		const areaPlan = this.planAreas(areas, new Map(memberPlan.map(({ member, slot }) => [member.id, slot])));
+
+		Atomics.add(this.header, HDR_COMMIT_VERSION, 1);
+		try {
+			Atomics.store(this.header, HDR_LOGICAL_TIME_MS, Math.trunc(payload.logicalTimeMs));
+			Atomics.store(this.header, HDR_TICK_INDEX, Math.trunc(payload.tickIndex));
+			Atomics.store(this.header, HDR_SOURCE_COUNT, sources.length);
+			Atomics.store(this.header, HDR_CHAIN_COUNT, chains.length);
+			this.applyMemberPlan(memberPlan);
+			this.writeModifierMetadata(sources, chains);
+			this.applyAreaPlan(areaPlan);
+		} finally {
+			Atomics.add(this.header, HDR_COMMIT_VERSION, 1);
+		}
+	}
+
+	/** modifier 链属于同一个原子提交，引用错误必须在进入 seqlock 前显形。 */
+	private validateModifierChains(chains: readonly WorldStateModifierChain[], sourceCount: number): void {
+		for (const [index, chain] of chains.entries()) {
+			if (!Number.isInteger(chain.sourceIndex) || chain.sourceIndex < 0 || chain.sourceIndex >= sourceCount) {
+				throw new Error(`modifier 链 ${index} 的来源索引越界: ${chain.sourceIndex}`);
+			}
+			if (!Number.isInteger(chain.parentIndex) || chain.parentIndex < -1 || chain.parentIndex >= chains.length) {
+				throw new Error(`modifier 链 ${index} 的父链索引越界: ${chain.parentIndex}`);
+			}
+		}
+	}
+
+	private planMembers(
+		members: readonly WorldStateMemberData[],
+		sourceCount: number,
+		chainCount: number,
+	): Array<{ member: WorldStateMemberData; slot: number; newOwner: boolean }> {
+		const activeMembers = members.filter((member) => member.active !== false);
+		const submittedIds = new Set<string>();
+		for (const member of members) {
+			if (submittedIds.has(member.id)) throw new Error(`实时世界状态提交包含重复成员 ID: ${member.id}`);
+			submittedIds.add(member.id);
+		}
+		const activeIds = new Set(activeMembers.map((member) => member.id));
+		const freeSlots = this.memberSlotOwners.flatMap((owner, slot) => {
+			if (owner === null) return [slot];
+			return this.dynamicMemberSlots.get(owner) === slot && !activeIds.has(owner) ? [slot] : [];
+		});
+		const reserved = new Set<number>();
+		return activeMembers.map((member) => {
+			const fixed = this.fixedMemberSlots.get(member.id);
+			const dynamic = this.dynamicMemberSlots.get(member.id);
+			let slot = fixed ?? dynamic;
+			let newOwner = false;
+			if (slot === undefined) {
+				slot = freeSlots.find((candidate) => !reserved.has(candidate));
+				if (slot === undefined) {
+					throw new WorldStateProtocolError(
+						WORLD_STATE_ERROR_CODES.MEMBER_CAPACITY_EXCEEDED,
+						`成员 ${member.id} 无可用实时状态槽位`,
+					);
+				}
+				reserved.add(slot);
+				newOwner = true;
+			}
+			const layout = this.descriptor.memberDirectory[slot];
+			const attributes = member.attributes;
+			if (
+				attributes &&
+				(attributes.base.length !== layout.attributeCount || attributes.act.length !== layout.attributeCount)
+			) {
+				throw new Error(`成员 ${member.id} 属性数量与槽位布局不一致`);
+			}
+			const modifiers = member.modifiers ?? [];
+			if (modifiers.length > layout.modifierCapacity) {
+				throw new WorldStateProtocolError(
+					WORLD_STATE_ERROR_CODES.MODIFIER_CAPACITY_EXCEEDED,
+					`成员 ${member.id} modifier entry 超出容量: ${modifiers.length} > ${layout.modifierCapacity}`,
+				);
+			}
+			for (const modifier of modifiers) {
+				if (
+					!Number.isInteger(modifier.attributeIndex) ||
+					modifier.attributeIndex < 0 ||
+					modifier.attributeIndex >= layout.attributeCount
+				) {
+					throw new Error(`成员 ${member.id} modifier 属性索引越界: ${modifier.attributeIndex}`);
+				}
+				const sourceIndex = modifier.sourceIndex ?? -1;
+				const chainIndex = modifier.chainIndex ?? -1;
+				if (
+					!Number.isInteger(sourceIndex) ||
+					sourceIndex < -1 ||
+					sourceIndex >= sourceCount ||
+					!Number.isInteger(chainIndex) ||
+					chainIndex < -1 ||
+					chainIndex >= chainCount
+				) {
+					throw new Error(`成员 ${member.id} modifier 来源索引越界`);
+				}
+			}
+			return { member, slot, newOwner };
+		});
+	}
+
+	private applyMemberPlan(plan: Array<{ member: WorldStateMemberData; slot: number; newOwner: boolean }>): void {
+		const seenSlots = new Set(plan.map((entry) => entry.slot));
+		for (let slot = 0; slot < this.descriptor.memberCapacity; slot++) {
+			if (seenSlots.has(slot)) continue;
+			this.deactivateMemberSlot(slot);
+		}
+		for (const { member, slot, newOwner } of plan) {
+			if (newOwner) {
+				const previousOwner = this.memberSlotOwners[slot];
+				if (previousOwner) this.dynamicMemberSlots.delete(previousOwner);
+				this.memberSlotOwners[slot] = member.id;
+				this.dynamicMemberSlots.set(member.id, slot);
+				this.memberSlotGenerations[slot]++;
+			} else if (!this.memberSlotActive[slot]) {
+				this.memberSlotGenerations[slot]++;
+			}
+			this.memberSlotActive[slot] = true;
+			this.writeMember(slot, member, this.memberSlotGenerations[slot]);
+		}
+	}
+
+	private deactivateMemberSlot(slot: number): void {
+		const directory = this.memberOffsets.directoryOffset + slot * DIRECTORY_BYTES;
+		const state = this.memberOffsets.stateOffset + slot * STATE_BYTES;
+		this.data.setInt32(directory + DIR_ACTIVE * 4, 0, true);
+		this.data.setInt32(state + STATE_INT_ANIMATION_ID * 4, 0, true);
+		this.data.setInt32(state + STATE_INT_FLAGS * 4, 0, true);
+		this.memberSlotActive[slot] = false;
+		const owner = this.memberSlotOwners[slot];
+		if (owner && this.dynamicMemberSlots.get(owner) === slot) {
+			this.dynamicMemberSlots.delete(owner);
+			this.memberSlotOwners[slot] = null;
+			this.data.setInt32(directory + DIR_ENTITY_ID_HASH * 4, 0, true);
+		}
+	}
+
+	private writeMember(slot: number, member: WorldStateMemberData, generation: number): void {
+		const layout = this.descriptor.memberDirectory[slot];
+		const directory = this.memberOffsets.directoryOffset + slot * DIRECTORY_BYTES;
+		const state = this.memberOffsets.stateOffset + slot * STATE_BYTES;
+		const animation = member.animation ?? { id: 0, progress: 0, logicTimeMs: 0, loop: true, ended: false };
+		this.data.setInt32(directory + DIR_ACTIVE * 4, 1, true);
+		this.data.setInt32(directory + DIR_GENERATION * 4, generation, true);
+		this.data.setInt32(directory + DIR_ENTITY_TYPE * 4, member.entityType ?? layout.entityType, true);
+		this.data.setInt32(directory + DIR_VISUAL_PROFILE * 4, member.visualProfileId ?? layout.visualProfileId, true);
+		this.data.setInt32(directory + DIR_ENTITY_ID_HASH * 4, worldStateStringId(member.id), true);
+		this.data.setInt32(state + STATE_INT_ANIMATION_ID * 4, animation.id, true);
+		this.data.setInt32(state + STATE_INT_FLAGS * 4, member.stateFlags ?? 0, true);
+		const floats = [
+			member.position.x,
+			member.position.y,
+			member.position.z,
+			member.yaw,
+			member.speed ?? 0,
+			animation.progress,
+			animation.logicTimeMs,
+			animation.loop ? 1 : 0,
+			animation.ended ? 1 : 0,
+		];
+		for (let index = 0; index < floats.length; index++)
+			this.data.setFloat64(state + STATE_INT_FIELDS * 4 + index * 8, floats[index], true);
+		const attrs = member.attributes;
+		for (let index = 0; index < layout.attributeCount; index++) {
+			const offset = this.memberOffsets.attributeOffset + (layout.attributeOffset + index) * ATTRIBUTE_BYTES;
+			this.data.setFloat64(offset, attrs?.base[index] ?? 0, true);
+			this.data.setFloat64(offset + 8, attrs?.act[index] ?? 0, true);
+		}
+		const modifiers = member.modifiers ?? [];
+		for (let index = 0; index < layout.modifierCapacity; index++) {
+			const offset = this.memberOffsets.modifierOffset + (layout.modifierOffset + index) * MODIFIER_BYTES;
+			const modifier = modifiers[index];
+			this.data.setInt32(offset + MODIFIER_INT_ATTRIBUTE * 4, modifier?.attributeIndex ?? -1, true);
+			this.data.setInt32(offset + MODIFIER_INT_TYPE * 4, modifier?.type ?? 0, true);
+			this.data.setInt32(offset + MODIFIER_INT_SOURCE * 4, modifier?.sourceIndex ?? -1, true);
+			this.data.setInt32(offset + MODIFIER_INT_CHAIN * 4, modifier?.chainIndex ?? -1, true);
+			this.data.setFloat64(offset + MODIFIER_INT_FIELDS * 4, modifier?.value ?? 0, true);
+		}
+	}
+
+	private writeModifierMetadata(
+		sources: readonly WorldStateModifierSource[],
+		chains: readonly WorldStateModifierChain[],
+	): void {
+		for (let index = 0; index < this.descriptor.modifierSourceCapacity; index++) {
+			const offset = this.memberOffsets.modifierSourceOffset + index * SOURCE_BYTES;
+			this.data.setInt32(offset, sources[index]?.idHash ?? 0, true);
+			this.data.setInt32(offset + 4, sources[index]?.type ?? 0, true);
+		}
+		for (let index = 0; index < this.descriptor.modifierChainCapacity; index++) {
+			const offset = this.memberOffsets.modifierChainOffset + index * CHAIN_BYTES;
+			this.data.setInt32(offset, chains[index]?.sourceIndex ?? -1, true);
+			this.data.setInt32(offset + 4, chains[index]?.parentIndex ?? -1, true);
+		}
+	}
+
+	private planAreas(
+		areas: readonly WorldStateAreaData[],
+		memberSlots: ReadonlyMap<string, number>,
+	): Array<{ area: WorldStateAreaData; slot: number; newOwner: boolean; sourceMemberIndex: number }> {
+		const activeAreas = areas.filter((area) => area.active !== false);
+		const submittedIds = new Set<string>();
+		for (const area of areas) {
+			if (submittedIds.has(area.id)) throw new Error(`实时世界状态提交包含重复区域 ID: ${area.id}`);
+			submittedIds.add(area.id);
+		}
+		const activeIds = new Set(activeAreas.map((area) => area.id));
+		const freeSlots = this.areaSlotOwners.flatMap((owner, slot) =>
+			owner === null || !activeIds.has(owner) ? [slot] : [],
+		);
+		const reserved = new Set<number>();
+		return activeAreas.map((area) => {
+			let slot = this.areaSlots.get(area.id);
+			let newOwner = false;
+			if (slot === undefined) {
+				slot = freeSlots.find((candidate) => !reserved.has(candidate));
+				if (slot === undefined) {
+					throw new WorldStateProtocolError(
+						WORLD_STATE_ERROR_CODES.AREA_CAPACITY_EXCEEDED,
+						`区域 ${area.id} 无可用实时状态槽位`,
+					);
+				}
+				reserved.add(slot);
+				newOwner = true;
+			}
+			const sourceMemberIndex = area.sourceMemberId ? (memberSlots.get(area.sourceMemberId) ?? -1) : -1;
+			return { area, slot, newOwner, sourceMemberIndex };
+		});
+	}
+
+	private applyAreaPlan(
+		plan: Array<{ area: WorldStateAreaData; slot: number; newOwner: boolean; sourceMemberIndex: number }>,
+	): void {
+		const seenSlots = new Set(plan.map((entry) => entry.slot));
+		for (let slot = 0; slot < this.descriptor.areaCapacity; slot++) {
+			if (seenSlots.has(slot)) continue;
+			const owner = this.areaSlotOwners[slot];
+			if (owner) this.areaSlots.delete(owner);
+			this.areaSlotOwners[slot] = null;
+			this.writeArea(slot);
+		}
+		for (const { area, slot, newOwner, sourceMemberIndex } of plan) {
+			if (newOwner) {
+				const previousOwner = this.areaSlotOwners[slot];
+				if (previousOwner) this.areaSlots.delete(previousOwner);
+				this.areaSlotOwners[slot] = area.id;
+				this.areaSlots.set(area.id, slot);
+				this.areaSlotGenerations[slot]++;
+			}
+			this.writeArea(slot, area, this.areaSlotGenerations[slot], sourceMemberIndex);
+		}
+	}
+
+	private writeArea(index: number, area?: WorldStateAreaData, generation = 0, sourceMemberIndex = -1): void {
+		const offset = this.memberOffsets.areaOffset + index * AREA_BYTES;
+		const active = area ? area.active !== false : false;
+		this.data.setInt32(offset + AREA_INT_ACTIVE * 4, active ? 1 : 0, true);
+		this.data.setInt32(offset + AREA_INT_GENERATION * 4, generation, true);
+		this.data.setInt32(offset + AREA_INT_TYPE * 4, area?.type ?? 0, true);
+		this.data.setInt32(offset + AREA_INT_SHAPE * 4, area?.shape?.kind ?? 0, true);
+		this.data.setInt32(offset + AREA_INT_SOURCE_MEMBER * 4, sourceMemberIndex, true);
+		this.data.setInt32(offset + AREA_INT_ID_HASH * 4, area ? worldStateStringId(area.id) : 0, true);
+		const shape = area?.shape;
+		const values = [
+			area?.position.x ?? 0,
+			area?.position.y ?? 0,
+			area?.position.z ?? 0,
+			shape?.radius ?? 0,
+			shape?.width ?? 0,
+			shape?.height ?? 0,
+			area?.remainingTimeMs ?? 0,
+		];
+		for (let field = 0; field < values.length; field++)
+			this.data.setFloat64(offset + AREA_INT_FIELDS * 4 + field * 8, values[field], true);
+	}
+}
+
+function emptyMember(layout: WorldStateMemberLayout): WorldStateMember {
+	return {
+		entityIdHash: 0,
+		active: false,
+		generation: 0,
+		entityType: layout.entityType,
+		visualProfileId: layout.visualProfileId,
+		position: { x: 0, y: 0, z: 0 },
+		yaw: 0,
+		speed: 0,
+		stateFlags: 0,
+		animation: { id: 0, progress: 0, logicTimeMs: 0, loop: true, ended: false },
+		attributes: Array.from({ length: layout.attributeCount }, () => ({ base: 0, act: 0 })),
+		modifiers: [],
+	};
+}
+
+export class WorldStateReader {
+	private readonly header: Int32Array;
+	private readonly data: DataView;
+	private readonly descriptor: WorldStateLayoutDescriptor;
+	private readonly memberOffsets: ReturnType<typeof offsets>;
+	readonly memberCount: number;
+	readonly areaCapacity: number;
+
+	constructor(buffer: SharedArrayBuffer, descriptor: WorldStateLayoutDescriptor) {
+		const header = readHeader(buffer);
+		validateDescriptor(descriptor);
+		if (
+			buffer.byteLength !== descriptor.byteLength ||
+			header.memberCapacity !== descriptor.memberCapacity ||
+			header.areaCapacity !== descriptor.areaCapacity ||
+			header.attributeCount !== descriptor.attributeSchema.length ||
+			header.modifierSourceCapacity !== descriptor.modifierSourceCapacity ||
+			header.modifierChainCapacity !== descriptor.modifierChainCapacity
+		) {
+			throw new WorldStateProtocolError(
+				WORLD_STATE_ERROR_CODES.LAYOUT_SIZE_MISMATCH,
+				"实时世界状态 SAB 与布局描述符不匹配",
+			);
+		}
+		this.header = header.header;
+		this.data = new DataView(buffer);
+		this.descriptor = descriptor;
+		this.memberOffsets = offsets(descriptor);
+		this.memberCount = descriptor.memberCapacity;
+		this.areaCapacity = descriptor.areaCapacity;
+	}
+
+	getLayout(): WorldStateLayoutDescriptor {
+		return this.descriptor;
+	}
+	getCommitVersion(): number {
+		return Atomics.load(this.header, HDR_COMMIT_VERSION);
+	}
+
+	/** 返回成员 mspd 在该布局中的稳定索引；动画倍率不得复制成独立字段。 */
+	getMspdAttributeIndex(memberSlot: number): number | null {
+		const layout = this.descriptor.memberDirectory[memberSlot];
+		if (!layout) return null;
+		const index = this.descriptor.attributeSchema
+			.slice(layout.attributeOffset, layout.attributeOffset + layout.attributeCount)
+			.findIndex((entry) => entry.path === "mspd");
+		return index >= 0 ? index : null;
+	}
+
+	readMspd(memberSlot: number, snapshot = this.readLatest()): number | null {
+		if (!snapshot) return null;
+		const index = this.getMspdAttributeIndex(memberSlot);
+		return index === null ? null : (snapshot.members[memberSlot]?.attributes[index]?.act ?? null);
+	}
+
+	/** 读取一个完整稳定提交，禁止成员、区域分表读取造成跨提交混合。 */
+	readLatest(): WorldStateSnapshot | null {
+		for (let retry = 0; retry < MAX_SEQLOCK_RETRIES; retry++) {
+			const first = Atomics.load(this.header, HDR_COMMIT_VERSION);
+			if (first & 1) continue;
+			const sourceCount = Atomics.load(this.header, HDR_SOURCE_COUNT);
+			const chainCount = Atomics.load(this.header, HDR_CHAIN_COUNT);
+			if (
+				sourceCount < 0 ||
+				sourceCount > this.descriptor.modifierSourceCapacity ||
+				chainCount < 0 ||
+				chainCount > this.descriptor.modifierChainCapacity
+			)
+				continue;
+			const snapshot: WorldStateSnapshot = {
+				commitVersion: first,
+				logicalTimeMs: Atomics.load(this.header, HDR_LOGICAL_TIME_MS),
+				tickIndex: Atomics.load(this.header, HDR_TICK_INDEX),
+				members: this.readMembers(),
+				areas: this.readAreas(),
+				modifierSources: this.readModifierSources(sourceCount),
+				modifierChains: this.readModifierChains(chainCount),
+			};
+			const second = Atomics.load(this.header, HDR_COMMIT_VERSION);
+			if (first === second) return snapshot;
+		}
+		return null;
+	}
+
+	private readMembers(): WorldStateMember[] {
+		return this.descriptor.memberDirectory.map((layout, slot) => {
+			const directory = this.memberOffsets.directoryOffset + slot * DIRECTORY_BYTES;
+			const state = this.memberOffsets.stateOffset + slot * STATE_BYTES;
+			const member = emptyMember(layout);
+			member.active = this.data.getInt32(directory + DIR_ACTIVE * 4, true) !== 0;
+			member.entityIdHash = this.data.getInt32(directory + DIR_ENTITY_ID_HASH * 4, true);
+			member.generation = this.data.getInt32(directory + DIR_GENERATION * 4, true);
+			member.entityType = this.data.getInt32(directory + DIR_ENTITY_TYPE * 4, true) as WorldStateEntityType;
+			member.visualProfileId = this.data.getInt32(directory + DIR_VISUAL_PROFILE * 4, true);
+			member.stateFlags = this.data.getInt32(state + STATE_INT_FLAGS * 4, true);
+			member.animation.id = this.data.getInt32(state + STATE_INT_ANIMATION_ID * 4, true);
+			const floats = Array.from({ length: STATE_FLOAT_FIELDS }, (_, index) =>
+				this.data.getFloat64(state + STATE_INT_FIELDS * 4 + index * 8, true),
+			);
+			member.position = { x: floats[STATE_FLOAT_X], y: floats[STATE_FLOAT_Y], z: floats[STATE_FLOAT_Z] };
+			member.yaw = floats[STATE_FLOAT_YAW];
+			member.speed = floats[STATE_FLOAT_SPEED];
+			member.animation.progress = floats[STATE_FLOAT_PROGRESS];
+			member.animation.logicTimeMs = floats[STATE_FLOAT_LOGIC_TIME];
+			member.animation.loop = floats[STATE_FLOAT_LOOP] !== 0;
+			member.animation.ended = floats[STATE_FLOAT_ENDED] !== 0;
+			for (let index = 0; index < layout.attributeCount; index++) {
+				const offset = this.memberOffsets.attributeOffset + (layout.attributeOffset + index) * ATTRIBUTE_BYTES;
+				member.attributes[index] = {
+					base: this.data.getFloat64(offset, true),
+					act: this.data.getFloat64(offset + 8, true),
+				};
+			}
+			for (let index = 0; index < layout.modifierCapacity; index++) {
+				const offset = this.memberOffsets.modifierOffset + (layout.modifierOffset + index) * MODIFIER_BYTES;
+				const attributeIndex = this.data.getInt32(offset + MODIFIER_INT_ATTRIBUTE * 4, true);
+				if (attributeIndex < 0) continue;
+				member.modifiers.push({
+					attributeIndex,
+					type: this.data.getInt32(offset + MODIFIER_INT_TYPE * 4, true),
+					sourceIndex: this.data.getInt32(offset + MODIFIER_INT_SOURCE * 4, true),
+					chainIndex: this.data.getInt32(offset + MODIFIER_INT_CHAIN * 4, true),
+					value: this.data.getFloat64(offset + MODIFIER_INT_FIELDS * 4, true),
+				});
+			}
+			return member;
+		});
+	}
+
+	private readAreas(): WorldStateArea[] {
+		const result: WorldStateArea[] = [];
+		for (let index = 0; index < this.descriptor.areaCapacity; index++) {
+			const offset = this.memberOffsets.areaOffset + index * AREA_BYTES;
+			const active = this.data.getInt32(offset + AREA_INT_ACTIVE * 4, true) !== 0;
+			const values = Array.from({ length: AREA_FLOAT_FIELDS }, (_, field) =>
+				this.data.getFloat64(offset + AREA_INT_FIELDS * 4 + field * 8, true),
+			);
+			result.push({
+				idHash: this.data.getInt32(offset + AREA_INT_ID_HASH * 4, true),
+				active,
+				generation: this.data.getInt32(offset + AREA_INT_GENERATION * 4, true),
+				type: this.data.getInt32(offset + AREA_INT_TYPE * 4, true),
+				position: { x: values[AREA_FLOAT_X], y: values[AREA_FLOAT_Y], z: values[AREA_FLOAT_Z] },
+				shape: {
+					kind: this.data.getInt32(offset + AREA_INT_SHAPE * 4, true),
+					radius: values[AREA_FLOAT_RADIUS],
+					width: values[AREA_FLOAT_WIDTH],
+					height: values[AREA_FLOAT_HEIGHT],
+				},
+				remainingTimeMs: values[AREA_FLOAT_REMAINING],
+				sourceMemberIndex: this.data.getInt32(offset + AREA_INT_SOURCE_MEMBER * 4, true),
+			});
+		}
+		return result;
+	}
+
+	private readModifierSources(count: number): WorldStateModifierSource[] {
+		return Array.from({ length: count }, (_, index) => {
+			const offset = this.memberOffsets.modifierSourceOffset + index * SOURCE_BYTES;
+			return { idHash: this.data.getInt32(offset, true), type: this.data.getInt32(offset + 4, true) };
+		});
+	}
+
+	private readModifierChains(count: number): WorldStateModifierChain[] {
+		return Array.from({ length: count }, (_, index) => {
+			const offset = this.memberOffsets.modifierChainOffset + index * CHAIN_BYTES;
+			return {
+				sourceIndex: this.data.getInt32(offset, true),
+				parentIndex: this.data.getInt32(offset + 4, true),
+			};
+		});
 	}
 }

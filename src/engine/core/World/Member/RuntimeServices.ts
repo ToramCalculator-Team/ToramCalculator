@@ -20,8 +20,6 @@ export interface MemberRuntimeServices {
 	expressionEvaluator: ((expression: string, context: ExpressionContext) => number | boolean) | null;
 	/** 伤害请求处理器 */
 	damageRequestHandler: ((damageRequest: DamageAreaRequest) => void) | null;
-	/** 渲染消息发射器 */
-	renderMessageSender: ((payload: unknown) => void) | null;
 	/** 域事件发射器 */
 	domainEventSender: ((event: MemberDomainEvent) => void) | null;
 	/**
@@ -48,9 +46,6 @@ export const MemberRuntimeServicesDefaults: MemberRuntimeServices = {
 	},
 	damageRequestHandler: (damageRequest: DamageAreaRequest) => {
 		throw new Error(`damageRequestHandler 未注入：${damageRequest}`);
-	},
-	renderMessageSender: (payload: unknown) => {
-		throw new Error(`renderMessageSender 未注入：${payload}`);
 	},
 	domainEventSender: (event: MemberDomainEvent) => {
 		throw new Error(`domainEventSender 未注入：${event}`);

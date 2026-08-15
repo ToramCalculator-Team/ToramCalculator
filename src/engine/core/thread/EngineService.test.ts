@@ -66,15 +66,9 @@ class FakeRealtimeEngine {
 	async getMemberSkillList(_memberId: string) {
 		return [];
 	}
-	async getRenderSnapshot(): Promise<never> {
-		throw new Error("unused in handle lifecycle test");
-	}
 	async startWorldStateProjection(): Promise<void> {}
 	async stopWorldStateProjection(): Promise<void> {}
 	getWorldStateReader() {
-		return null;
-	}
-	getWorldStateSlotIndex() {
 		return null;
 	}
 	async patchMemberConfig(_memberId: string, _data: EngineMember): Promise<void> {}
@@ -87,7 +81,6 @@ class FakeRealtimeEngine {
 	}
 	async cancelRunOutput(_runId: string): Promise<void> {}
 	async acknowledgeRunOutput(_runId: string): Promise<void> {}
-	async setRealtimeSnapshotHz(_snapshotHz: number): Promise<void> {}
 	async unloadScenario(): Promise<void> {}
 	on<K extends keyof EngineWorkerClientEventMap>(
 		event: K,

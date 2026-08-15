@@ -7,8 +7,8 @@ import type { EngineTelemetry } from "~/engine/core/thread/protocol";
 import type { RealtimeEngineHandle } from "~/engine/core/thread/RealtimeEngineHandle";
 import type { SimulationRenderSource } from "~/engine/core/thread/RendererProtocol";
 import { assertSharedMemorySupport, readSharedMemoryCapabilities } from "~/engine/core/thread/sharedMemorySupport";
+import type { WorldStateSnapshot } from "~/engine/core/thread/worldStateBuffer";
 import type { TickStateHistoryDirectory } from "~/engine/core/tickStateHistory";
-import type { FrameSnapshot } from "~/engine/core/types";
 import type { MemberSnapshot } from "~/engine/core/World/Member/Member";
 import { applyDesignCopyToPersistentDesign } from "../data/designPersistence";
 import { type SimulationDesign, SimulationDesignSchema } from "../data/simulationDesignSchema";
@@ -32,7 +32,6 @@ export type SimulatorSessionRealtimeHandlePort = Pick<
 	| "loadScenario"
 	| "subscribeLifecycle"
 	| "setRuntimeConfig"
-	| "setRealtimeSnapshotHz"
 	| "getMembers"
 	| "unbindAllMemberControllers"
 	| "bindMemberController"
@@ -51,22 +50,20 @@ export type SimulatorSessionRealtimeHandlePort = Pick<
 	| "attachControllerInput"
 	| "detachControllerInput"
 	| "unloadScenario"
-	| "getRenderSnapshot"
 	| "startWorldStateProjection"
 	| "stopWorldStateProjection"
 	| "getWorldStateReader"
-	| "getWorldStateSlotIndex"
 	| "on"
 	| "off"
 	| "close"
->;
+> & { getWorldStateLayout?: RealtimeEngineHandle["getWorldStateLayout"] };
 
 export type SimulatorSessionEngineServicePort = {
 	openRealtimeEngine(): Promise<SimulatorSessionRealtimeHandlePort>;
 };
 
 export type SimulatorRuntimeSnapshot = {
-	latestFrame: FrameSnapshot | null;
+	worldState: WorldStateSnapshot | null;
 	telemetry: EngineTelemetry | null;
 	isRunning: boolean;
 };
@@ -176,7 +173,9 @@ const editCurrentCopy = (
 export function createSimulatorSessionRuntime(engineService: SimulatorSessionEngineServicePort) {
 	let realtimeHandle: SimulatorSessionRealtimeHandlePort | null = null;
 	const movementSinks = new Map<string, MovementStateSink>();
-	let runtimeSnapshot: SimulatorRuntimeSnapshot = { latestFrame: null, telemetry: null, isRunning: false };
+	let runtimeSnapshot: SimulatorRuntimeSnapshot = { worldState: null, telemetry: null, isRunning: false };
+	let worldStateTimer: ReturnType<typeof setInterval> | null = null;
+	let lastWorldStateCommitVersion: number | null = null;
 	const runtimeListeners = new Set<(snapshot: SimulatorRuntimeSnapshot) => void>();
 	const emitRuntime = (patch: Partial<SimulatorRuntimeSnapshot>) => {
 		runtimeSnapshot = { ...runtimeSnapshot, ...patch };
@@ -186,21 +185,26 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 		if (!realtimeHandle) throw new Error("SimulatorSession 实时引擎 Handle 尚未就绪");
 		return realtimeHandle;
 	};
+	const stopWorldStateProjection = async (handle: SimulatorSessionRealtimeHandlePort) => {
+		if (worldStateTimer !== null) {
+			clearInterval(worldStateTimer);
+			worldStateTimer = null;
+		}
+		lastWorldStateCommitVersion = null;
+		emitRuntime({ worldState: null });
+		await handle.stopWorldStateProjection();
+	};
 	const releaseSessionResources = async () => {
 		const handle = realtimeHandle;
 		if (!handle) return;
 		movementSinks.clear();
-		await handle.stopWorldStateProjection();
+		await stopWorldStateProjection(handle);
 		await handle.unbindAllMemberControllers();
 		await handle.unloadScenario();
 	};
 	const renderSource: SimulationRenderSource = {
-		getRenderSnapshot: async (includeAreas) =>
-			realtimeHandle ? await realtimeHandle.getRenderSnapshot(includeAreas) : null,
-		on: (_event, listener) => realtimeHandle?.on("render_cmd", listener) ?? (() => {}),
-		off: (_event, listener) => realtimeHandle?.off("render_cmd", listener),
 		getWorldStateReader: () => realtimeHandle?.getWorldStateReader() ?? null,
-		getWorldStateSlotIndex: () => realtimeHandle?.getWorldStateSlotIndex() ?? null,
+		getWorldStateLayout: () => realtimeHandle?.getWorldStateLayout?.() ?? null,
 	};
 	const machineSetup = setup({
 		types: {
@@ -221,7 +225,6 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 						realtimeHandle = handle;
 						const releases = [
 							handle.on("runtime_failure", ({ reason }) => sendBack({ type: "engine.runtimeFailed", reason })),
-							handle.on("frame_snapshot", ({ snapshot }) => emitRuntime({ latestFrame: snapshot })),
 							handle.on("engine_telemetry", ({ telemetry }) => emitRuntime({ telemetry })),
 							handle.subscribeLifecycle((snapshot) => {
 								emitRuntime({ isRunning: snapshot.confirmedState === "running" });
@@ -241,9 +244,15 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 					const handle = realtimeHandle;
 					realtimeHandle = null;
 					movementSinks.clear();
-					emitRuntime({ latestFrame: null, telemetry: null, isRunning: false });
+					if (worldStateTimer !== null) {
+						clearInterval(worldStateTimer);
+						worldStateTimer = null;
+					}
+					lastWorldStateCommitVersion = null;
+					emitRuntime({ worldState: null, telemetry: null, isRunning: false });
 					if (handle) {
 						void (async () => {
+							await handle.stopWorldStateProjection().catch(() => undefined);
 							await handle.unbindAllMemberControllers().catch(() => undefined);
 							await handle.unloadScenario().catch(() => undefined);
 							await handle.close();
@@ -273,8 +282,15 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 						timeScale: 1,
 						maxTickSkip: 5,
 					});
-					await handle.setRealtimeSnapshotHz(10);
 					await handle.startWorldStateProjection();
+					if (worldStateTimer !== null) clearInterval(worldStateTimer);
+					lastWorldStateCommitVersion = null;
+					worldStateTimer = setInterval(() => {
+						const state = realtimeHandle?.getWorldStateReader()?.readLatest() ?? null;
+						if (!state || state.commitVersion === lastWorldStateCommitVersion) return;
+						lastWorldStateCommitVersion = state.commitVersion;
+						emitRuntime({ worldState: state });
+					}, 16);
 					const members = await handle.getMembers();
 					await handle.unbindAllMemberControllers();
 					const controller = await handle.bindMemberController(primaryMemberId);
@@ -294,6 +310,7 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 				} catch (error) {
 					const handle = realtimeHandle;
 					if (collectorStarted) await handle?.cancelRunOutput(runId).catch(() => undefined);
+					if (handle) await stopWorldStateProjection(handle).catch(() => undefined);
 					await handle?.unbindAllMemberControllers().catch(() => undefined);
 					await handle?.unloadScenario().catch(() => undefined);
 					throw error;
@@ -304,7 +321,7 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 				await handle.stop();
 				const output = await handle.finishRunOutput(input);
 				movementSinks.clear();
-				await handle.stopWorldStateProjection();
+				await stopWorldStateProjection(handle);
 				await handle.unbindAllMemberControllers();
 				return output;
 			}),

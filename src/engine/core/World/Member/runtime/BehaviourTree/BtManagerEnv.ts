@@ -53,7 +53,7 @@ export interface MemberBtCapabilities<
 > {
 	readonly attributeContainer: AttributeContainer<TExtraAttrKey | MemberBaseAttrKey>;
 	readonly services: MemberRuntimeServices;
-	readonly renderState: { lastAction?: { name: string; ts: number; params?: Record<string, unknown> } };
+	readonly animationState: { lastAction?: { name: string; ts: number; params?: Record<string, unknown> } };
 	registerParallelBt(
 		name: string,
 		definition: string | RootNodeDefinition | RootNodeDefinition[],

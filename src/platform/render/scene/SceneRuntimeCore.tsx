@@ -10,7 +10,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import { createEffect, createMemo, createSignal, type JSX, onCleanup, onMount } from "solid-js";
 import { type Actor, createActor } from "xstate";
-import type { RendererCmd } from "~/engine/core/thread/RendererProtocol";
 import { createLogger } from "~/lib/logger";
 import { DEFAULT_TERRAIN_DEFINITION, type TerrainDefinition } from "~/lib/terrain";
 import type { AbstractEngine, ArcRotateCameraMouseWheelInput } from "~/platform/render/babylon/runtime";
@@ -44,7 +43,6 @@ import {
 import type { AnyCameraControlCmd } from "./camera/commands";
 import { ThirdPersonCameraController } from "./camera/thirdPersonController";
 import { readCharacterEquipmentSlotMetadata } from "./content/characterEquipmentMetadata";
-import { RendererCommunication } from "./content/RendererCommunication";
 import { createCharacterContentDeps } from "./content/sceneContentDeps";
 import type { CharacterWorldResource } from "./contracts/worldResource";
 import { SceneInputController } from "./input/controller";
@@ -68,10 +66,6 @@ function isCameraControlCommand(value: unknown): value is AnyCameraControlCmd {
 	if (typeof value !== "object" || value === null) return false;
 	const candidate = value as { type?: unknown; subType?: unknown; data?: unknown };
 	return candidate.type === "camera_control" && typeof candidate.subType === "string" && candidate.data !== undefined;
-}
-
-function isRenderCommandPacket(value: unknown): value is { type?: unknown; cmd?: unknown; cmds?: unknown[] } {
-	return typeof value === "object" && value !== null;
 }
 
 const LIGHT_TERRAIN_MAIN_COLOR = new Color3(0.23, 0.36, 0.19);
@@ -109,7 +103,6 @@ export function SceneRuntimeCore(props: {
 	let worldSkybox: ProceduralSkybox | undefined;
 	let equipmentHighlightLayer: HighlightLayer | undefined;
 	let rendererController: ReturnType<typeof createRendererController> | undefined;
-	let rendererCommunication: RendererCommunication | undefined;
 	let thirdPersonController: ThirdPersonCameraController | undefined;
 	let activeSessionId: string | null = null;
 	let activeCharacterSessionId: string | null = null;
@@ -191,33 +184,6 @@ export function SceneRuntimeCore(props: {
 
 	createEffect(applySceneTheme);
 
-	const handleRenderPayload = (payload: unknown) => {
-		if (!rendererController) return;
-		try {
-			if (Array.isArray(payload)) {
-				// 类型说明：Worker 渲染协议已经由 EngineWorkerClient 边界产出，这里只在渲染端恢复命令联合类型。
-				rendererController.send(payload as RendererCmd[]);
-				return;
-			}
-			if (isRenderCommandPacket(payload)) {
-				if (payload.type === "render:cmd" && payload.cmd) {
-					// 类型说明：payload 由 RendererCommunication 从 WorkerSystemMessage 中拆包，运行时协议保证 cmd 形状。
-					rendererController.send(payload.cmd as RendererCmd);
-					return;
-				}
-				if (payload.type === "render:cmds" && Array.isArray(payload.cmds)) {
-					// 类型说明：同上，批量命令在进入渲染控制器前恢复为 RendererCmd[]。
-					rendererController.send(payload.cmds as RendererCmd[]);
-					return;
-				}
-			}
-			// 类型说明：兼容历史直接发送 RendererCmd 的路径。
-			rendererController.send(payload as RendererCmd);
-		} catch (error) {
-			log.error("处理渲染指令失败", error);
-		}
-	};
-
 	const handleCameraControl = (event: CustomEvent) => {
 		const command = event.detail?.cmd ?? event.detail;
 		if (!thirdPersonController || !isCameraControlCommand(command)) return;
@@ -272,17 +238,9 @@ export function SceneRuntimeCore(props: {
 			rendererController = createRendererController(scene, {
 				contentRoot: realtimeRoot,
 				worldStateReader: config.renderSource.getWorldStateReader(),
-				worldStateSlotIndex: config.renderSource.getWorldStateSlotIndex(),
+				worldStateLayout: config.renderSource.getWorldStateLayout(),
 			});
 			await rendererController.applyWorldResources(config.worldResources, config.initialWorldPoses);
-			rendererCommunication = new RendererCommunication();
-			rendererCommunication.setRenderHandler(handleRenderPayload);
-			rendererCommunication.initialize(config.renderSource);
-			const renderSnapshot = await config.renderSource.getRenderSnapshot(true);
-			if (renderSnapshot && rendererController.applyRenderSnapshot) {
-				await rendererController.applyRenderSnapshot(renderSnapshot);
-			}
-			rendererCommunication.markRenderSnapshotApplied();
 			const initialTarget = config.initialCameraTarget
 				? new Vector3(config.initialCameraTarget.x, config.initialCameraTarget.y + 1, config.initialCameraTarget.z)
 				: undefined;
@@ -336,8 +294,6 @@ export function SceneRuntimeCore(props: {
 			detachSceneInput?.();
 			detachSceneInput = undefined;
 			sceneInputController = undefined;
-			rendererCommunication?.dispose();
-			rendererCommunication = undefined;
 			rendererController?.dispose();
 			rendererController = undefined;
 			thirdPersonController?.dispose();

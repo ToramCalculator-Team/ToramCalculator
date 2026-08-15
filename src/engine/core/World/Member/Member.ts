@@ -151,25 +151,12 @@ export class Member<
 		}
 	}
 	/**
-	 * 渲染侧私有状态（不序列化、不进入 checkpoint）。
-	 * 用于渲染快照推断动画进度等 UI-only 信息。
+	 * 当前动画时间线（不序列化、不进入 checkpoint）。
+	 * Worker 在 Tick 收尾把它与成员属性一起写入统一实时世界状态。
 	 */
-	renderState: { lastAction?: { name: string; ts: number; params?: Record<string, unknown> } } = {};
-	private renderMessageSender: ((payload: unknown) => void) | null = null;
+	animationState: { lastAction?: { name: string; ts: number; params?: Record<string, unknown> } } = {};
 	private domainEventSender: ((event: MemberDomainEvent) => void) | null = null;
 	private controlInputRecorder: MemberControlInputRecorder | null = null;
-
-	private getRenderCommandTiming(): { seq: number; ts: number } {
-		let seq = this.runtime.tickIndex;
-		let ts = this.runtime.currentTimeMs;
-		try {
-			seq = this.services.getTickIndex();
-			ts = this.services.getCurrentTimeMs();
-		} catch {
-			// 渲染初始化可能早于引擎时间服务注入；此时使用 runtime 初始时间。
-		}
-		return { seq, ts };
-	}
 
 	constructor(
 		stateMachine: (
@@ -274,8 +261,8 @@ export class Member<
 			get attributeContainer() {
 				return self.attributeContainer;
 			},
-			get renderState() {
-				return self.renderState;
+			get animationState() {
+				return self.animationState;
 			},
 			registerParallelBt: (name, definition, agent, localContext) =>
 				self.btManager.registerParallelBt(name, definition, agent, localContext),
@@ -339,25 +326,6 @@ export class Member<
 			teamId: this.teamId,
 			position: this.position,
 		};
-	}
-
-	setRenderMessageSender(renderMessageSender: ((payload: unknown) => void) | null): void {
-		this.renderMessageSender = renderMessageSender;
-		this.services.renderMessageSender = renderMessageSender;
-		const timing = this.getRenderCommandTiming();
-
-		const spawnCmd = {
-			type: "render:cmd" as const,
-			cmd: {
-				type: "spawn" as const,
-				entityId: this.id,
-				position: this.position,
-				seq: timing.seq,
-				ts: timing.ts,
-			},
-		};
-		this.renderMessageSender?.(spawnCmd);
-		log.info(`member ${this.name} sent spawn render command`);
 	}
 
 	/**
@@ -659,9 +627,7 @@ export class Member<
 			return;
 		}
 
-		const baseSpeed = intensity >= 0.75
-			? this.runtime.locomotion.runSpeed
-			: this.runtime.locomotion.walkSpeed;
+		const baseSpeed = intensity >= 0.75 ? this.runtime.locomotion.runSpeed : this.runtime.locomotion.walkSpeed;
 		this.runtime.movement = {
 			dir: { x: input.direction.x / length, z: input.direction.z / length },
 			speed: baseSpeed,

@@ -48,33 +48,27 @@ const createEngine = () => {
 	);
 };
 
-const runWithSnapshotHz = (snapshotHz: number) => {
+const runOutput = () => {
 	const engine = createEngine();
-	let pushedFrames = 0;
 	engine.loadScenario(scenario);
-	engine.setFrameSnapshotSender(() => pushedFrames++);
-	engine.setRealtimeSnapshotHz(snapshotHz);
 	engine.startRunOutput("run-1", { tickStateHistory: "everyTick" });
 	for (let tick = 0; tick < 8; tick++) engine.step();
 	const record = engine.finishRunOutput("run-1");
 	engine.acknowledgeRunOutput("run-1");
 	engine.cleanup();
-	return { pushedFrames, record };
+	return record;
 };
 
-describe("逐 Tick 运行输出记录与 UI 快照节流", () => {
+describe("逐 Tick 运行输出记录", () => {
 	beforeAll(() => GameEngine.enableForTesting());
 	afterAll(() => GameEngine.disableForTesting());
 
-	it("低频和高频 UI 投影不改变 Worker 权威历史", () => {
-		const silent = runWithSnapshotHz(0);
-		const frequent = runWithSnapshotHz(1_000_000);
-
-		expect(silent.pushedFrames).toBe(0);
-		expect(frequent.pushedFrames).toBeGreaterThan(0);
-		expect(frequent.record.stateHistory?.tickCount).toBe(silent.record.stateHistory?.tickCount);
-		if (!silent.record.stateHistory) throw new Error("逐 Tick 记录缺少状态历史");
-		expect(readTickStateRange(silent.record.stateHistory, 0, 8).map((frame) => frame.tickIndex)).toEqual([
+	it("实时状态投影不改变 Worker 权威历史", () => {
+		const first = runOutput();
+		const second = runOutput();
+		expect(first.stateHistory?.tickCount).toBe(second.stateHistory?.tickCount);
+		if (!first.stateHistory) throw new Error("逐 Tick 记录缺少状态历史");
+		expect(readTickStateRange(first.stateHistory, 0, 8).map((frame) => frame.tickIndex)).toEqual([
 			0, 1, 2, 3, 4, 5, 6, 7,
 		]);
 	});

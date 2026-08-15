@@ -2,11 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import { MemberManager } from "../MemberManager";
 import { SpaceManager } from "../SpaceManager";
 import { DamageAreaSystem } from "./DamageAreaSystem";
-import type { DamageAreaRequest } from "./types";
+import { type DamageAreaRequest, WORLD_AREA_CAPACITY, WORLD_AREA_CAPACITY_EXCEEDED_CODE } from "./types";
 
 describe("DamageAreaSystem - 伤害来源透传", () => {
 	it("将 member、skill 和 area 身份派发给受击者", () => {
-		const memberManager = new MemberManager(null);
+		const memberManager = new MemberManager();
 		const caster = {
 			id: "member-caster",
 			campId: "camp-a",
@@ -61,5 +61,35 @@ describe("DamageAreaSystem - 伤害来源透传", () => {
 				}),
 			},
 		});
+	});
+
+	it("在创建第 257 个区域时使用稳定诊断码拒绝", () => {
+		const memberManager = new MemberManager();
+		vi.spyOn(memberManager, "getMember").mockReturnValue({
+			id: "member-caster",
+			campId: "camp-a",
+			position: { x: 0, y: 0, z: 0 },
+			alive: true,
+		} as never);
+		const system = new DamageAreaSystem(new SpaceManager(memberManager), memberManager);
+		const request = {
+			identity: { sourceId: "member-caster", sourceCampId: "camp-a" },
+			lifetime: { startTimeMs: 0, durationMs: 1000 },
+			hitPolicy: { hitIntervalMs: 0 },
+			attackSemantics: { damageCount: 1 },
+			range: { rangeKind: "Single", rangeParams: {} },
+			payload: {
+				damageFormula: "100",
+				casterSnapshot: {},
+				skillLv: 1,
+				damageTags: [],
+				warningZone: "none",
+				lockCasterAttributes: true,
+			},
+			casterId: "member-caster",
+		} satisfies DamageAreaRequest;
+
+		for (let index = 0; index < WORLD_AREA_CAPACITY; index++) system.add(request);
+		expect(() => system.add(request)).toThrow(WORLD_AREA_CAPACITY_EXCEEDED_CODE);
 	});
 });

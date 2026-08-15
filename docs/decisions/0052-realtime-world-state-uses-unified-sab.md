@@ -131,6 +131,5 @@ AreaStateTable
 - [ADR 0050：实时状态的传输语义分类](./0050-realtime-state-transport-semantics.md)
 - [ADR 0029：属性快照采用扁平路径与严格叶节点契约](./0029-flat-typed-attribute-snapshot-contract.md)
 - [ADR 0044：Tick 状态历史采用 SAB-only 分段增量存储](./0044-store-tick-state-history-in-sab-segments.md)
-- [实时世界状态 SAB 迁移计划](../plans/realtime-world-state-sab-migration.md)
 - `src/engine/core/World/Member/runtime/AttributeContainer/AttributeContainerTypes.ts`
 - `src/engine/core/thread/worldStateBuffer.ts`
