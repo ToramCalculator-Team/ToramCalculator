@@ -4,7 +4,7 @@
 - **日期**: 2026-07-10
 - **决策层**: 跨层（数据 / 应用状态 / 引擎）
 - **相关代码**: `db/schema/models/data.prisma`、`db/repositories/simulatorEngine.ts`、`src/engine/core/`
-- **相关 ADR**: Refines 0024；Related to 0025
+- **相关 ADR**: Refines 0024；Related to 0036
 
 ## 背景
 
@@ -43,5 +43,4 @@
 - Simulator 聚合负责 Team/Member 的创建、修改和移除。
 - 引擎输入按 Member 的具体选择裁剪数据，不再加载 Player 的全部 `characters[]` 后读取 `player.useIn`。
 - Character 仍是可独立寻址和编辑的持久资源；Member 只持有对它的明确引用。
-- 设计草稿与运行快照按 ADR 0025 保留具体 Member 配置与 Character 引用解析结果。
-- 迁移与验收见 `docs/plans/0021-aui-interface-state-migration.md`。
+- 设计草稿与运行输入按 ADR 0036 保留具体 Member 配置与 Character 引用解析结果。

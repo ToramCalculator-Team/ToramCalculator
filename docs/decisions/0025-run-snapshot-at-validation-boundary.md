@@ -41,7 +41,6 @@ Simulator 会话包含设计、验证和分析三个阶段。若会话加载时�
 - AUI 状态转移需要把“进入验证”作为显式冻结边界，但运行快照本身仍由 Simulator 会话领域模块拥有。
 - 引擎加载、运行、分析与回放必须使用同一运行快照身份。
 - Character、Wiki 和模拟任务不得修改活跃会话的运行快照。
-- 迁移与验收见 `docs/plans/0021-aui-interface-state-migration.md`。
 
 ## 后续
 

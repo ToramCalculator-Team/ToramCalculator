@@ -40,7 +40,6 @@ Simulator 会话可以在打开 Wiki 或 Character 工作面时完整保留。Ch
 - Character 与 Simulator 不建立持久数据变更的热更新通道。
 - Simulator 会话边界必须同时拥有方案快照身份、业务阶段和运行状态，不能只保留阶段标签。
 - 引擎加载、重置、分析与回放都必须引用当前会话的方案快照。
-- 迁移与验收见 `docs/plans/0021-aui-interface-state-migration.md`。
 
 ## 后续
 

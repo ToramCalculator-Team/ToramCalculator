@@ -4,7 +4,7 @@
 - **日期**: 2026-07-16
 - **决策层**: 跨层（引擎 / 通信 / 应用状态 / 部署）
 - **相关代码**: `src/engine/core/tickStateHistory.ts`、`src/engine/core/runOutput.ts`、`src/engine/core/thread/`、`src/features/simulator/simulatorSessionMachine.ts`、`vite.config.ts`
-- **相关 ADR**: Refines 0028、0038；Depends on 0029、0046
+- **相关 ADR**: Refines 0028、0038；Depends on 0029；Related to 0046
 
 ## 决策问题
 

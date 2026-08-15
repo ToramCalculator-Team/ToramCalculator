@@ -4,7 +4,7 @@
 - **日期**: 2026-06-15
 - **决策层**: 跨层（渲染 / 编排 / 通信）
 - **相关代码**: `src/platform/render/scene/SceneRuntime.tsx`、`src/platform/render/scene/SceneRuntimeCore.tsx`、`src/platform/render/scene/RendererController.ts`、`src/platform/render/scene/sceneStateMachine.ts`
-- **相关 ADR**: Depends on 0009、0015；Related to 0012、0014、0027
+- **相关 ADR**: Depends on 0009；Related to 0012、0014、0027、0042
 
 ## 背景
 
@@ -59,4 +59,4 @@
 ## 参考
 
 - `src/engine/document/渲染层需求分析.md`
-- ADR 0009、0015
+- ADR 0009、0042

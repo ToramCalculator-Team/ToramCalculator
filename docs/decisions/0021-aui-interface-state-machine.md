@@ -55,11 +55,11 @@ MBUI 的分层思想有助于区分任务、模态无关行为和具体表现，
 
 - 应用层只保留一套跨模态行为状态模型，不再并列维护视觉意图机和注意力 actor。
 - UI 与场景的依赖方向统一为“语义事件进入状态机，snapshot 流向投影”。
-- ADR 0015 的双引擎常驻、共享 `SceneRuntime` 和显式生命周期入口继续有效；其中注意力机相关表述以本决议为准。
-- 需求边界见 `docs/concepts/interface-state-requirements.md`，迁移步骤见 `docs/plans/0021-aui-interface-state-migration.md`。
+- 常驻 `SceneRuntime` 与唯一显式生命周期入口遵守 ADR 0009；EngineService 资源所有权与 Session 句柄边界遵守 ADR 0042，其中注意力机相关表述以本决议为准。
+- 需求边界见 `docs/concepts/interface-state-requirements.md`。
 
 ## 参考
 
 - MBUI 的 Task & Concepts / AUI / CUI 分层思想
 - `docs/concepts/task-model.md`
-- ADR 0012、0015
+- ADR 0012、0009、0042

@@ -4,7 +4,7 @@
 - **日期**: 2026-07-10
 - **决策层**: 跨层（数据 / 应用编排 / 引擎 / 渲染）
 - **相关代码**: `db/repositories/simulatorEngine.ts`、`src/engine/core/`、`src/platform/render/scene/`
-- **相关 ADR**: Depends on 0016、0026；Related to 0025
+- **相关 ADR**: Depends on 0016、0026；Related to 0036
 
 ## 背景
 
@@ -46,4 +46,3 @@ Simulator Member 只保存 Character 或 Mob 等领域资源的明确引用。�
 - `RendererProtocol` 中只有 `character | sphere` 的实体描述以及 `EntityFactory` 的硬编码模型路径不能作为最终模型契约。
 - `WorldContentDirector`/`EntitySystem` 消费静态 `worldResources`，实时命令流只更新动态状态。
 - Character/Mob 模型绑定属于被场景解析读取的领域资源，不复制进 Simulator Member。
-- 迁移与验收见 `docs/plans/0021-aui-interface-state-migration.md`。

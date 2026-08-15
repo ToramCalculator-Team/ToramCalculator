@@ -155,4 +155,4 @@ simulator 页
 
 按 ADR 0021，从本文识别每个交互空间的有限状态路径、允许的语义事件和必要的动态 context，再由现有 GUI 与 3D 场景投影同一 snapshot。
 
-本文不产出 AUI 组件树、原语声明或 reification 表，也不要求从 AUI 生成 CUI。状态建模先从已有真实交互的 character 装备薄切片开始，验证后再扩展 skill 和 simulator；实施顺序见 `docs/plans/0021-aui-interface-state-migration.md`。
+本文不产出 AUI 组件树、原语声明或 reification 表，也不要求从 AUI 生成 CUI。状态建模先从已有真实交互的 character 装备薄切片开始，验证后再扩展 skill 和 simulator；实施范围见 `docs/plans/minimum-validation-loop.md`。

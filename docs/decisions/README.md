@@ -56,6 +56,7 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 | [0037](./0037-aui-supervises-local-session-actors.md) | AUI 作为顶层 actor 统辖局部 Session child，具体输入先进入 child，控制向下、提案与事实向上 |
 | [0049](./0049-engine-owns-terrain-physical-state.md) | 场景解析提供同源地形定义，引擎拥有地形上的完整物理位置权威，渲染层只生成网格并投影状态 |
 | [0050](./0050-realtime-state-transport-semantics.md) | 连续状态走 latest-state 单槽通道，离散动作走事件队列；Session 拥有通道生命周期，CUI 不持有 Engine Handle 能力 |
+| [0052](./0052-realtime-world-state-uses-unified-sab.md) | 成员和区域的连续世界状态统一写入实时状态 SAB；UI 与渲染器只读一致的最新提交，渲染器动画由 SAB 时间线重建且不接收离散视觉事件 |
 
 ### 数据、同步与领域打包
 
@@ -153,9 +154,7 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 
 ## 决策候选与实施计划
 
-- [引擎决策候选清单](../plans/engine-decision-backlog.md)
 - [同步与写入授权加固计划](../plans/sync-and-auth-hardening.md)
 - [Simulator 最小验证闭环](../plans/minimum-validation-loop.md)
-- [AUI 行为状态机迁移计划](../plans/0021-aui-interface-state-migration.md)
 - [Simulator Tick 状态历史 SAB 性能重构计划](../plans/simulator-tick-state-history-sab-performance.md)
 - [实时世界状态 SAB 迁移计划](../plans/realtime-world-state-sab-migration.md)

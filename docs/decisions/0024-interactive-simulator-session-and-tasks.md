@@ -4,7 +4,7 @@
 - **日期**: 2026-07-10
 - **决策层**: 跨层（应用状态 / 引擎 / UI）
 - **相关代码**: `src/machines/`、`src/routes/(app)/(features)/simulator/`、`src/engine/core/thread/`
-- **相关 ADR**: Depends on 0015、0021；Related to 0025
+- **相关 ADR**: Depends on 0021；Related to 0036
 
 ## 背景
 
@@ -42,5 +42,4 @@
 - Simulator 页面从会话所有者降为输入与投影边界，页面卸载不再等价于会话结束。
 - Character 技能预览继续通过一次性模拟任务并行计算；Wiki 模拟复用同一任务能力，不创建额外 Simulator 会话。
 - “最多一个”只约束交互式 Simulator 会话，不约束受 Worker 池容量控制的模拟任务数量。
-- 会话的设计草稿与运行快照边界遵守 ADR 0025。
-- 迁移与验收见 `docs/plans/0021-aui-interface-state-migration.md`。
+- 会话的设计草稿与运行输入边界遵守 ADR 0036。
