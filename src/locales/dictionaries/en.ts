@@ -1646,6 +1646,58 @@ const dictionary: Dictionary = {
 								Mob: "Mob",
 							},
 						},
+						movementBehaviors: {
+							key: "Movement behaviors",
+							tableFieldDescription: "Continuous movement behavior records for AI replay",
+							formFieldDescription: "Continuous movement behavior records for AI replay",
+							item: {
+								key: "",
+								tableFieldDescription: "",
+								formFieldDescription: "",
+								fields: {
+									source: {
+										key: "Source",
+										tableFieldDescription: "Input source",
+										formFieldDescription: "Input source",
+										enumMap: {
+											controller: "Controller",
+											ai: "AI",
+										},
+									},
+									startTimeMs: {
+										key: "Start time",
+										tableFieldDescription: "Start time (ms)",
+										formFieldDescription: "Start time (ms)",
+									},
+									samples: {
+										key: "Samples",
+										tableFieldDescription: "Movement samples",
+										formFieldDescription: "Movement samples",
+										item: {
+											key: "",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												direction: {
+													key: "Direction",
+													tableFieldDescription: "Direction",
+													formFieldDescription: "Direction",
+													fields: {
+														x: { key: "X", tableFieldDescription: "X", formFieldDescription: "X" },
+														z: { key: "Z", tableFieldDescription: "Z", formFieldDescription: "Z" },
+													},
+												},
+												intensity: {
+													key: "Intensity",
+													tableFieldDescription: "Intensity",
+													formFieldDescription: "Intensity",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
 						attributeSlots: {
 							key: "Attribute Slots",
 							tableFieldDescription: "Persistent StatContainer slots declared by this tree",
@@ -1804,6 +1856,58 @@ const dictionary: Dictionary = {
 								Partner: "Partner",
 								Mercenary: "Mercenary",
 								Mob: "Mob",
+							},
+						},
+						movementBehaviors: {
+							key: "Movement behaviors",
+							tableFieldDescription: "Continuous movement behavior records for AI replay",
+							formFieldDescription: "Continuous movement behavior records for AI replay",
+							item: {
+								key: "",
+								tableFieldDescription: "",
+								formFieldDescription: "",
+								fields: {
+									source: {
+										key: "Source",
+										tableFieldDescription: "Input source",
+										formFieldDescription: "Input source",
+										enumMap: {
+											controller: "Controller",
+											ai: "AI",
+										},
+									},
+									startTimeMs: {
+										key: "Start time",
+										tableFieldDescription: "Start time (ms)",
+										formFieldDescription: "Start time (ms)",
+									},
+									samples: {
+										key: "Samples",
+										tableFieldDescription: "Movement samples",
+										formFieldDescription: "Movement samples",
+										item: {
+											key: "",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												direction: {
+													key: "Direction",
+													tableFieldDescription: "Direction",
+													formFieldDescription: "Direction",
+													fields: {
+														x: { key: "X", tableFieldDescription: "X", formFieldDescription: "X" },
+														z: { key: "Z", tableFieldDescription: "Z", formFieldDescription: "Z" },
+													},
+												},
+												intensity: {
+													key: "Intensity",
+													tableFieldDescription: "Intensity",
+													formFieldDescription: "Intensity",
+												},
+											},
+										},
+									},
+								},
 							},
 						},
 						attributeSlots: {

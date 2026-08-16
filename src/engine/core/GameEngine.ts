@@ -21,6 +21,7 @@ import type { PipelineResolverService } from "./Pipeline/PipelineResolverService
 import {
 	type EngineRunOutput,
 	type ExecutionRecordingPolicy,
+	type MovementBehaviorSource,
 	RunInputActionSchema,
 	RunOutputRecorder,
 } from "./runOutput";
@@ -260,8 +261,8 @@ export class GameEngine {
 		this.world.memberManager.setDomainEventSender((event) => {
 			this.emitDomainEvent(event);
 		});
-		this.world.memberManager.setControlInputRecorder((memberId, event) => {
-			this.recordMemberControlInput(memberId, event);
+		this.world.memberManager.setControlInputRecorder((memberId, event, disposition, reason) => {
+			this.recordMemberControlInput(memberId, event, disposition, reason);
 		});
 		// 设置引擎时间读取函数到 MemberManager（引擎时间为唯一真相）
 		this.world.memberManager.setGetCurrentTimeMs(() => this.getCurrentTimeMs());
@@ -786,8 +787,28 @@ export class GameEngine {
 		}
 
 		const memberId = this.bindingManager.getBoundMemberId(message.controllerId) ?? null;
+		const member = memberId ? this.world.memberManager.getMember(memberId) : undefined;
 		const shouldRecord = this.runOutput.isRecording() && !["绑定控制对象", "解绑控制对象"].includes(message.type);
-		if (shouldRecord) {
+		if (!member && shouldRecord) {
+			this.runOutput.appendInput({
+				inputId: message.id,
+				memberId,
+				timeMs: this.getCurrentTimeMs(),
+				action: RunInputActionSchema.parse({ type: message.type, payload: structuredClone(message.data) }),
+			});
+		}
+		if (member && shouldRecord && member.controlMode !== "controlled") {
+			const timeMs = this.getCurrentTimeMs();
+			this.runOutput.appendInput({
+				inputId: message.id,
+				memberId,
+				timeMs,
+				action: RunInputActionSchema.parse({ type: message.type, payload: structuredClone(message.data) }),
+			});
+			this.runOutput.rejectInput(message.id, timeMs, "control_source_not_active");
+			return { success: false, message: "成员不在受控模式", error: "control_source_not_active" };
+		}
+		if (member && shouldRecord) {
 			this.runOutput.appendInput({
 				inputId: message.id,
 				memberId,
@@ -822,17 +843,25 @@ export class GameEngine {
 	// ==================== 子组件功能封装：JS编译和执行 ====================
 
 	/**
-	 * 登记 member-flow 提交的控制输入。
-	 * 成员会在登记完成后同步交给 FSM，最终状态只由 FSM 的领域事实封闭。
+	 * 登记 AI 行为树提交的控制输入。
+	 * 成员统一输入入口会先登记 pending，再把事件同步交给 FSM；源不匹配时直接登记拒绝。
 	 */
-	private recordMemberControlInput(memberId: string, event: MemberControlEvent): void {
+	private recordMemberControlInput(
+		memberId: string,
+		event: MemberControlEvent,
+		disposition: "pending" | "rejected",
+		reason?: string,
+	): void {
 		if (!this.runOutput.isRecording()) return;
-		this.runOutput.appendInput({
-			inputId: event.id,
-			memberId,
-			timeMs: this.getCurrentTimeMs(),
-			action: RunInputActionSchema.parse({ type: event.type, payload: structuredClone(event.data) }),
-		});
+		const timeMs = this.getCurrentTimeMs();
+		const action = RunInputActionSchema.parse({ type: event.type, payload: structuredClone(event.data) });
+		if (disposition === "pending" && this.runOutput.hasPendingInput(event.id)) return;
+		if (disposition === "rejected") {
+			this.runOutput.appendInput({ inputId: event.id, memberId, timeMs, action });
+			this.runOutput.rejectInput(event.id, timeMs, reason ?? "control_source_not_active");
+			return;
+		}
+		this.runOutput.appendInput({ inputId: event.id, memberId, timeMs, action });
 	}
 
 	/**
@@ -999,8 +1028,11 @@ export class GameEngine {
 
 						const member = this.world.memberManager.getMember(targetMemberId);
 						if (member) {
-							// 将队列事件转发为 FSM 事件，由成员自己的状态机处理
-							member.actor.send(event.fsmEvent);
+							if (event.source === "controller-input") {
+								member.submitExternalControlInput(event.fsmEvent as MemberControlEvent);
+							} else {
+								member.actor.send(event.fsmEvent);
+							}
 						} else {
 							log.warn(`⚠️ stepTick: 目标成员不存在: ${targetMemberId}`);
 						}
@@ -1015,13 +1047,35 @@ export class GameEngine {
 			eventsProcessed++;
 		}
 
-		// 2. 按当前绑定采样连续控制状态，再驱动成员/区域更新。
-		// 每 tick 先采样最新的连续输入，再推进世界，保证移动响应实时且不产生跨 tick 的输入积压。
+		// 2. 按成员控制模式采样连续控制状态，再驱动成员/区域更新。
+		// controlled 成员读 SAB 最新状态；ai 成员从行为移动段按逻辑 Tick 取样本。
 		const movementInputs = new Map<string, MemberMovementInput>();
-		if (this.controllerMovementInputSource) {
-			for (const { controllerId, memberId } of this.bindingManager.getAllBindings()) {
-				const input = this.controllerMovementInputSource(controllerId);
-				if (input) movementInputs.set(memberId, input);
+		const movementSources = new Map<string, MovementBehaviorSource>();
+		const logicStepMs = this.getLogicStepMs();
+		for (const member of this.world.memberManager.getAllMembers()) {
+			let input: MemberMovementInput | null = null;
+			if (member.controlMode === "ai") {
+				input = member.sampleAiMovementInput(currentTimeMs, logicStepMs);
+				if (input) {
+					movementInputs.set(member.id, input);
+					movementSources.set(member.id, "ai");
+				}
+			} else if (this.controllerMovementInputSource) {
+				const controllerId = this.bindingManager.getControllerIdByMemberId(member.id);
+				if (controllerId) input = this.controllerMovementInputSource(controllerId);
+				if (input) {
+					movementInputs.set(member.id, input);
+					movementSources.set(member.id, "controller");
+				}
+			}
+			if (this.runOutput.isRecording()) {
+				const source = movementSources.get(member.id) ?? (member.controlMode === "ai" ? "ai" : "controller");
+				this.runOutput.appendMovementSample(
+					member.id,
+					source,
+					currentTimeMs,
+					input ? { direction: { ...input.direction }, intensity: input.intensity } : null,
+				);
 			}
 		}
 		this.world.tick({ tickIndex, currentTimeMs, deltaTimeMs }, movementInputs);
@@ -1376,6 +1430,9 @@ export class GameEngine {
 					if (runtime.actionQueue && runtime.actionQueue.length > 0) {
 						return false;
 					}
+					if (m.isAiBehaviorRunning()) {
+						return false;
+					}
 					if (m.btManager.hasRunningParallelBt()) {
 						return false;
 					}
@@ -1390,10 +1447,10 @@ export class GameEngine {
 				const hasActiveEffectBt = m.btManager.hasActiveEffectBt();
 				return !hasQueuedAction && !hasActiveEffectBt;
 			}
-			case "untilMemberFlowEnds": {
+			case "untilMemberAiBehaviorEnds": {
 				const member = this.world.memberManager.getMember(policy.memberId);
 				if (!member) return true;
-				return !member.btManager.isParallelBtRunning("member-flow");
+				return !member.isAiBehaviorRunning();
 			}
 			default:
 				return false;

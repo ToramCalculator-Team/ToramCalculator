@@ -19,15 +19,6 @@ const DEFAULT_MAX_DURATION_MS = 15_000;
 /** Character 验证只消费当前机体及查询层已经解析到机体上的关系。 */
 export type CharacterValidationInput = CharacterLiveAggregate["character"];
 
-const characterIdleBehavior = (): MemberBTTree =>
-	MemberBTSchema.parse({
-		name: "Character Preview Idle",
-		definition: "root { wait [1] }",
-		agent: "",
-		memberType: "Player",
-		attributeSlots: [],
-	});
-
 const trainingTargetBehavior = (): MemberBTTree =>
 	MemberBTSchema.parse({
 		name: "Character Preview Target Idle",
@@ -50,7 +41,7 @@ export function createDefaultCharacterPreviewPolicy(characterId: string): Charac
 const resolveScene = (
 	character: CharacterValidationInput,
 	policy: CharacterPreviewPolicy,
-	memberBehavior: MemberBTTree,
+	memberBehavior: MemberBTTree | null,
 ): { scenarioData: EngineScenarioData; member: EngineMember } => {
 	const parsedPolicy = CharacterPreviewPolicySchema.parse(policy);
 	const simulatorId = `character-preview:${character.id}:simulator`;
@@ -128,7 +119,7 @@ export function resolveCharacterRealtimeScenario(
 	character: CharacterValidationInput,
 	policy: CharacterPreviewPolicy,
 ): { scenarioData: EngineScenarioData; member: EngineMember } {
-	return resolveScene(character, policy, characterIdleBehavior());
+	return resolveScene(character, policy, null);
 }
 
 export type ResolveCharacterPreviewTaskInput = {
@@ -162,7 +153,7 @@ export function resolveCharacterPreviewTask(input: ResolveCharacterPreviewTaskIn
 			maxTickSkip: 5,
 		},
 		recordingPolicy: { tickStateHistory: "none" },
-		stopPolicy: { kind: "untilMemberFlowEnds", memberId: policy.memberId },
+		stopPolicy: { kind: "untilMemberAiBehaviorEnds", memberId: policy.memberId },
 		budget: {
 			maxTicks: input.budget?.maxTicks ?? DEFAULT_MAX_TICKS,
 			maxDurationMs: input.budget?.maxDurationMs ?? DEFAULT_MAX_DURATION_MS,

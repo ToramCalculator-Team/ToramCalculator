@@ -39,7 +39,7 @@ export class MemberManager {
 
 	/** 域事件发射器 */
 	private domainEventSender: ((event: MemberDomainEvent) => void) | null = null;
-	/** member-flow 控制输入登记器 */
+	/** 成员控制输入登记器 */
 	private controlInputRecorder: MemberControlInputRecorder | null = null;
 	/** 表达式求值器（由引擎注入） */
 	private evaluateExpression: ((expression: string, context: ExpressionContext) => number | boolean) | null = null;
@@ -71,7 +71,7 @@ export class MemberManager {
 		}
 	}
 
-	/** 为当前及后续创建的成员注入同一个 member-flow 输入登记入口。 */
+	/** 为当前及后续创建的成员注入同一个控制输入登记入口。 */
 	setControlInputRecorder(recorder: MemberControlInputRecorder | null): void {
 		this.controlInputRecorder = recorder;
 		for (const member of this.members.values()) {

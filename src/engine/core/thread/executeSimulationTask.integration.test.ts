@@ -76,7 +76,7 @@ const createTask = (
 			maxTickSkip: 1,
 		},
 		recordingPolicy: { tickStateHistory: "everyTick" },
-		stopPolicy: { kind: "untilMemberFlowEnds", memberId },
+		stopPolicy: { kind: "untilMemberAiBehaviorEnds", memberId },
 		budget,
 	});
 
@@ -139,7 +139,7 @@ describe("通用 SimulationTask 执行器", () => {
 		engine.cleanup();
 	});
 
-	it("只等待目标 member-flow，不被其他成员的长期并行行为阻塞", async () => {
+	it("只等待目标 AI 行为树，不被其他成员的长期并行行为阻塞", async () => {
 		const engine = createEngine();
 		const task = createTask("target-flow-run", [
 			{ id: "target-mob", definition: "root { wait [1] }" },

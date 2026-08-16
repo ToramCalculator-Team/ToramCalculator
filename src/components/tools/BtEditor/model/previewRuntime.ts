@@ -124,7 +124,6 @@ export const createPreviewBtRuntime = (memberType: MemberType): PreviewBtRuntime
 		services,
 		declareState: () => undefined,
 		clearActiveEffectStateDeclaration: () => undefined,
-		clearMemberFlowStateDeclaration: () => undefined,
 		registerParallelBt: (name) => {
 			parallelBts.add(name);
 			return undefined;

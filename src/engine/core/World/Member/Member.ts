@@ -1,4 +1,5 @@
 import { MEMBER_TYPE, type MemberType } from "@db/schema/enums";
+import type { MovementBehaviorRecordData } from "@db/schema/jsons";
 import { createActor, type EventObject } from "xstate";
 import { z } from "zod/v4";
 import { createLogger } from "~/lib/logger";
@@ -18,6 +19,8 @@ import type { AttributeContainer } from "./runtime/AttributeContainer/AttributeC
 import { AttributeSnapshotSchema } from "./runtime/AttributeContainer/AttributeContainerTypes";
 import type { NestedSchema } from "./runtime/AttributeContainer/SchemaTypes";
 import { AttributeThresholdSource } from "./runtime/AttributeWatcher/AttributeThresholdSource";
+import { AiBehaviorRuntime } from "./runtime/Behavior/AiBehaviorRuntime";
+import type { MemberControlMode } from "./runtime/Behavior/MemberControlMode";
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
 import type { MemberBtCapabilities, MemberBtManagerEnv } from "./runtime/BehaviourTree/BtManagerEnv";
 import { ProcBus } from "./runtime/ProcBus/ProcBus";
@@ -55,7 +58,12 @@ export const MemberSnapshotSchema = z.object({
 });
 
 export type MemberSnapshot = z.output<typeof MemberSnapshotSchema>;
-export type MemberControlInputRecorder = (memberId: string, event: MemberControlEvent) => void;
+export type MemberControlInputRecorder = (
+	memberId: string,
+	event: MemberControlEvent,
+	disposition: "pending" | "rejected",
+	reason?: string,
+) => void;
 
 /**
  * 成员基类只接收具体成员新增的 FSM 事件；公共事件由 MemberFSMEvent 在唯一位置组合。
@@ -71,6 +79,12 @@ export abstract class Member<
 	id: string;
 	type: MemberType;
 	name: string;
+	/** 成员控制模式（ADR 0054）。 */
+	controlMode: MemberControlMode;
+	/** AI 控制行为树；由 Member 持有，不在 BtManager 管理。 */
+	aiBehavior: AiBehaviorRuntime | null = null;
+	/** ai 模式下的连续移动行为；回放时逐逻辑 Tick 读取。 */
+	aiMovementBehaviors: MovementBehaviorRecordData[] = [];
 	/** 子类用 XState snapshot.matches 把当前 FSM 动作状态投影为稳定状态名。 */
 	protected abstract resolveFsmState(): MemberStateName;
 	campId: string;
@@ -161,7 +175,6 @@ export abstract class Member<
 		nextInstance: 0,
 	};
 	private activeEffectStateDeclaration: MemberStateDeclaration | null = null;
-	private memberFlowStateDeclaration: MemberStateDeclaration | null = null;
 	private nextBtStateSequence = 0;
 	private lastAcceptedStateKey: string | null = null;
 	private domainEventSender: ((event: MemberDomainEvent) => void) | null = null;
@@ -186,6 +199,7 @@ export abstract class Member<
 		this.id = memberData.id;
 		this.type = memberData.type;
 		this.name = memberData.name;
+		this.controlMode = memberData.resolvedBehavior ? "ai" : "controlled";
 		this.campId = campId;
 		this.teamId = teamId;
 		this.runtime = runtime;
@@ -209,11 +223,25 @@ export abstract class Member<
 		}
 
 		this.actor = createActor(stateMachine(this.createStateMachineEnv()));
-		this.btManager.registerParallelBt(
-			"member-flow",
-			memberData.resolvedBehavior.definition,
-			memberData.resolvedBehavior.agent,
-		);
+		this.aiMovementBehaviors = memberData.resolvedBehavior?.movementBehaviors ?? [];
+		if (this.controlMode === "ai" && memberData.resolvedBehavior) {
+			this.aiBehavior = new AiBehaviorRuntime(
+				memberData.resolvedBehavior.definition,
+				memberData.resolvedBehavior.agent,
+				btContextBindings(btCapabilities),
+				runtime,
+				{
+					getDeltaTimeMs: () => this.runtime.deltaTimeMs,
+					getCurrentTimeMs: () => this.services.getCurrentTimeMs(),
+					resolveProperty: (path) => {
+						if (this.attributeContainer.hasKey(path)) {
+							return this.attributeContainer.getValue(path as Parameters<typeof this.attributeContainer.getValue>[0]);
+						}
+						return undefined;
+					},
+				},
+			);
+		}
 	}
 
 	/**
@@ -274,9 +302,6 @@ export abstract class Member<
 			clearActiveEffectStateDeclaration: () => {
 				self.activeEffectStateDeclaration = null;
 			},
-			clearMemberFlowStateDeclaration: () => {
-				self.memberFlowStateDeclaration = null;
-			},
 			registerParallelBt: (name, definition, agent, localContext) =>
 				self.btManager.registerParallelBt(name, definition, agent, localContext),
 			unregisterParallelBt: (name) => self.btManager.unregisterParallelBt(name),
@@ -295,7 +320,7 @@ export abstract class Member<
 				self.attributeThresholdSource.register(sourceId, path, threshold, direction, options),
 			unregisterThresholdBySource: (sourceId) => self.attributeThresholdSource.unregisterBySource(sourceId),
 			notifyDomainEvent: (event) => self.notifyDomainEvent(event),
-			submitControlInput: (event) => self.submitControlInput(event),
+			submitControlInput: (event) => self.submitControlInput(event, "ai"),
 			// 不暴露 runPipeline：管线属计算层，由 FSM / DamageResolution 调用；BT 叶子不直接跑管线。
 			send: (event) => self.actor.send(event),
 		};
@@ -324,8 +349,9 @@ export abstract class Member<
 	}
 
 	/**
-	 * 供行为流程 BT 的 state 叶子提交本 Tick 状态声明。
-	 * active effect 与 member-flow 两种执行上下文可以声明；passive/parallel buff BT 不能声明。
+	/**
+	 * 供 active effect BT 的 state 叶子提交本 Tick 状态声明。
+	 * AI 行为树和其他 parallel BT 不发布成员动作状态。
 	 */
 	private declareState(name: MemberStateName): void {
 		const timeMs = this.getLogicalTimeMs();
@@ -334,11 +360,7 @@ export abstract class Member<
 			this.activeEffectStateDeclaration = { name, timeMs, sequence };
 			return;
 		}
-		if (this.btManager.isSteppingMemberFlow()) {
-			this.memberFlowStateDeclaration = { name, timeMs, sequence };
-			return;
-		}
-		log.warn(`member ${this.name} 的并行 buff BT 不能声明成员动作状态: ${name}`);
+		log.warn(`member ${this.name} 的非技能 BT 不能声明成员动作状态: ${name}`);
 	}
 
 	/**
@@ -347,7 +369,7 @@ export abstract class Member<
 	 * 选择规则来自状态结构而不是全局优先级：
 	 * - FSM 的 blocking/dead 状态直接胜出；
 	 * - FSM 处于技能执行状态时，active effect BT 细化技能阶段；
-	 * - FSM 处于 idle 时，member-flow BT 可声明 AI 驱动的动作状态。
+
 	 */
 	private refreshPresentationState(): void {
 		if (!this.btManager.hasActiveEffectBt()) {
@@ -361,10 +383,6 @@ export abstract class Member<
 			selectedName = this.activeEffectStateDeclaration.name;
 			selectedTimeMs = this.activeEffectStateDeclaration.timeMs;
 			stateKey = `active-effect:${this.activeEffectStateDeclaration.sequence}`;
-		} else if (fsmName === "idle" && this.memberFlowStateDeclaration) {
-			selectedName = this.memberFlowStateDeclaration.name;
-			selectedTimeMs = this.memberFlowStateDeclaration.timeMs;
-			stateKey = `member-flow:${this.memberFlowStateDeclaration.sequence}`;
 		}
 		if (this.lastAcceptedStateKey === stateKey && this.presentationState.current) return;
 
@@ -415,7 +433,7 @@ export abstract class Member<
 		this.services.domainEventSender = domainEventSender;
 	}
 
-	/** 注入 member-flow 输入登记器；它只登记 pending，最终判决仍由成员 FSM 产生。 */
+	/** 注入控制输入登记器；它只登记 pending 或源不匹配拒绝，FSM 接纳/拒绝仍由成员事实封闭。 */
 	setControlInputRecorder(recorder: MemberControlInputRecorder | null): void {
 		this.controlInputRecorder = recorder;
 	}
@@ -645,12 +663,57 @@ export abstract class Member<
 		}
 	}
 
+	/** 外部控制器输入入口；只在 controlled 模式下有效。 */
+	submitExternalControlInput(event: MemberControlEvent): void {
+		this.submitControlInput(event, "controlled");
+	}
+
+	/** 切换控制模式；ai -> controlled 暂停 AI 行为树，controlled -> ai 恢复。 */
+	setControlMode(mode: MemberControlMode): void {
+		if (this.controlMode === mode) return;
+		this.controlMode = mode;
+		if (mode === "controlled") {
+			this.aiBehavior?.pause();
+		} else if (!this.aiBehavior) {
+			log.warn(`member ${this.name} 没有 AI 行为树，无法进入 ai 模式`);
+		} else {
+			this.aiBehavior.resume();
+		}
+	}
+
+	/** 设置 ai 模式下的连续移动行为记录；替换旧记录。 */
+	setAiMovementBehaviors(records: MovementBehaviorRecordData[]): void {
+		this.aiMovementBehaviors = records;
+	}
+
+	/** ai 模式下按逻辑时间读取当前移动样本。 */
+	sampleAiMovementInput(currentTimeMs: number, logicStepMs: number): MemberMovementInput | null {
+		if (logicStepMs <= 0) return null;
+		for (const record of this.aiMovementBehaviors) {
+			const index = Math.floor((currentTimeMs - record.startTimeMs) / logicStepMs);
+			if (index < 0) continue;
+			const sample = record.samples[index];
+			if (!sample) continue;
+			return { direction: { x: sample.direction.x, z: sample.direction.z }, intensity: sample.intensity };
+		}
+		return null;
+	}
+
+	/** AI 行为树是否仍在运行；停止策略用它判断成员行为序列是否结束。 */
+	isAiBehaviorRunning(): boolean {
+		return this.aiBehavior?.isRunning() ?? false;
+	}
+
 	/**
-	 * 提交来自 member-flow 的控制输入。
+	 * 统一控制输入入口（ADR 0054）。
 	 * Recorder 必须先看到 pending 输入，FSM 同步产生的接纳或拒绝事实才能封闭同一 inputId。
 	 */
-	private submitControlInput(event: MemberControlEvent): void {
-		this.controlInputRecorder?.(this.id, event);
+	private submitControlInput(event: MemberControlEvent, source: MemberControlMode): void {
+		if (source !== this.controlMode) {
+			this.controlInputRecorder?.(this.id, event, "rejected", "control_source_not_active");
+			return;
+		}
+		this.controlInputRecorder?.(this.id, event, "pending");
 		this.actor.send(event);
 	}
 
@@ -682,6 +745,7 @@ export abstract class Member<
 		this.resolveMovementInput(movementInput);
 		this.integrateMovement(tick);
 		this.btManager.tickAll();
+		if (this.controlMode === "ai") this.aiBehavior?.step();
 		this.refreshPresentationState();
 		// 让阈值 watcher 及时响应 modifier 导致的数值变化：把本帧累计的脏值刷出。
 		this.attributeContainer.flushDirtyValues();

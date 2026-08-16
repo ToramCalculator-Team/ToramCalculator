@@ -1,7 +1,7 @@
 import type { EngineRunOutput } from "~/engine/core/runOutput";
 import type { SimulationTaskResult } from "~/engine/core/simulationTask";
 import { type SkillRejectionReason, SkillRejectionReasonSchema } from "~/engine/core/types";
-import { memberFlowInputId } from "~/engine/core/World/Member/memberFlowInput";
+import { memberControlInputId } from "~/engine/core/World/Member/memberControlInput";
 import {
 	CHARACTER_PREVIEW_CANDIDATE_INPUT_KEY,
 	type CharacterPreviewPolicy,
@@ -51,7 +51,7 @@ export function interpretCharacterPreviewResult(
 	candidateSkillId: string,
 ): CharacterPreviewResult {
 	for (const [index, setup] of policy.setupSkills.entries()) {
-		const inputId = memberFlowInputId(policy.memberId, characterPreviewSetupInputKey(index));
+		const inputId = memberControlInputId(policy.memberId, characterPreviewSetupInputKey(index));
 		const fact = findInput(result.output, inputId);
 		if (!fact) {
 			return {
@@ -71,7 +71,7 @@ export function interpretCharacterPreviewResult(
 		}
 	}
 
-	const candidateInputId = memberFlowInputId(policy.memberId, CHARACTER_PREVIEW_CANDIDATE_INPUT_KEY);
+	const candidateInputId = memberControlInputId(policy.memberId, CHARACTER_PREVIEW_CANDIDATE_INPUT_KEY);
 	const candidateFact = findInput(result.output, candidateInputId);
 	if (!candidateFact) {
 		throw new CharacterPreviewOutputError(`候选技能 ${candidateSkillId} 缺少最终 FSM 判决`);

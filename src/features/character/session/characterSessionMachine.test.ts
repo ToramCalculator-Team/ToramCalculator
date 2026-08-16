@@ -4,9 +4,9 @@ import { PlayerWeaponWithRelationsSchema } from "@db/generated/repositories/play
 import { CharacterSchema, PlayerSchema } from "@db/generated/zod/index";
 import { describe, expect, it, vi } from "vitest";
 import { createActor, waitFor } from "xstate";
-import { CHARACTER_PREVIEW_CANDIDATE_INPUT_KEY } from "~/features/character/preview/compileCharacterPreviewBehavior";
 import type { SimulationTaskResult } from "~/engine/core/simulationTask";
-import { memberFlowInputId } from "~/engine/core/World/Member/memberFlowInput";
+import { memberControlInputId } from "~/engine/core/World/Member/memberControlInput";
+import { CHARACTER_PREVIEW_CANDIDATE_INPUT_KEY } from "~/features/character/preview/compileCharacterPreviewBehavior";
 import type { CharacterLiveSnapshot } from "../data/CharacterLiveModel";
 import type { CharacterAggregateIdentity, CharacterLiveAggregate } from "../data/characterAggregateQuery";
 import type {
@@ -21,7 +21,7 @@ const identityA = { playerId: "player-1", characterId: "character-a" };
 const identityB = { playerId: "player-1", characterId: "character-b" };
 const identityC = { playerId: "player-1", characterId: "character-c" };
 const previewMemberId = `character-preview:${identityA.characterId}:member`;
-const previewCandidateInputId = memberFlowInputId(previewMemberId, CHARACTER_PREVIEW_CANDIDATE_INPUT_KEY);
+const previewCandidateInputId = memberControlInputId(previewMemberId, CHARACTER_PREVIEW_CANDIDATE_INPUT_KEY);
 
 const createDeferred = <T>() => {
 	let resolvePromise = (_value: T): void => {

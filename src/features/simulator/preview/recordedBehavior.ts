@@ -1,4 +1,4 @@
-import { MemberBTSchema, type MemberBTTree } from "@db/schema/jsons";
+import { MemberBTSchema, type MemberBTTree, type MovementBehaviorRecordData } from "@db/schema/jsons";
 import type { AcceptedRunInputRecord, EngineRunOutput, RunInputRecord } from "~/engine/core/runOutput";
 import { createDesignCopy, type DesignCopy } from "../edit/designCopy";
 
@@ -12,7 +12,10 @@ export const selectAcceptedRunInputs = (inputs: readonly RunInputRecord[]): Acce
  * 将一次运行中真正接纳的目标切换与技能行动机械编译为固定模拟时刻成员流程。
  * 编译只保留相对时序，不推断冷却等待、重试或失败后的控制流。
  */
-export function compileRecordedActionsToMemberBehavior(actions: AcceptedRunInputRecord[]): MemberBTTree {
+export function compileRecordedActionsToMemberBehavior(
+	actions: AcceptedRunInputRecord[],
+	movementBehaviors: MovementBehaviorRecordData[] = [],
+): MemberBTTree {
 	const recordedActions = actions
 		.map((action, order) => ({ action, order }))
 		.sort((left, right) => left.action.timeMs - right.action.timeMs || left.order - right.order)
@@ -40,18 +43,19 @@ export function compileRecordedActionsToMemberBehavior(actions: AcceptedRunInput
 	}
 	lines.push("\t}", "}");
 	return MemberBTSchema.parse({
-		name: "recorded-member-flow",
+		name: "recorded-ai-behavior",
 		definition: lines.join("\n"),
 		agent: "",
 		memberType: "Player",
 		attributeSlots: [],
+		movementBehaviors,
 	});
 }
 
 type RecordedBehaviorRun = {
 	id: string;
 	designCopyId: string;
-	output: Pick<EngineRunOutput, "inputs">;
+	output: Pick<EngineRunOutput, "inputs" | "movementBehaviors">;
 };
 
 export type RecordedBehaviorBranchResult = { ok: true; copy: DesignCopy } | { ok: false; error: string };
@@ -75,7 +79,11 @@ export function createRecordedBehaviorDesignCopy(
 		return { ok: false, error: `源 DesignCopy ${source.id} 缺少 Player 主控成员` };
 	}
 	try {
-		primary.behavior = compileRecordedActionsToMemberBehavior(selectAcceptedRunInputs(record.output.inputs));
+		const acceptedInputs = selectAcceptedRunInputs(record.output.inputs);
+		const movementBehaviors = (record.output.movementBehaviors ?? [])
+			.filter((behavior) => behavior.memberId === primary.id)
+			.map(({ source, startTimeMs, samples }) => ({ source, startTimeMs, samples }));
+		primary.behavior = compileRecordedActionsToMemberBehavior(acceptedInputs, movementBehaviors);
 		return { ok: true, copy: createDesignCopy(draft, source.id) };
 	} catch (error) {
 		return { ok: false, error: error instanceof Error ? error.message : String(error) };

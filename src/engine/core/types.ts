@@ -40,7 +40,7 @@ export const StopPolicySchema = z.discriminatedUnion("kind", [
 	z.object({ kind: z.literal("untilBattleEnd") }),
 	z.object({ kind: z.literal("untilSequencesDone") }),
 	z.object({ kind: z.literal("untilMemberActionEnds"), memberId: z.string() }),
-	z.object({ kind: z.literal("untilMemberFlowEnds"), memberId: z.string() }),
+	z.object({ kind: z.literal("untilMemberAiBehaviorEnds"), memberId: z.string() }),
 ]);
 export type StopPolicy = z.output<typeof StopPolicySchema>;
 

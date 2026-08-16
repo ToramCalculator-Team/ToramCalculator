@@ -1,4 +1,3 @@
-import { MemberBTSchema } from "@db/schema/jsons";
 import { z } from "zod/v4";
 import { type EngineMember, EngineScenarioSchema } from "~/engine/core/engineScenarioSchema";
 import { DEFAULT_TERRAIN_DEFINITION, TerrainDefinitionSchema } from "~/lib/terrain";
@@ -17,14 +16,6 @@ export const ResolvedSimulatorSceneSchema = z.object({
 });
 
 export type ResolvedSimulatorScene = z.output<typeof ResolvedSimulatorSceneSchema>;
-
-const MANUAL_IDLE_BEHAVIOR = MemberBTSchema.parse({
-	name: "manual-idle",
-	definition: "root { wait [1] }",
-	agent: "",
-	memberType: "Player",
-	attributeSlots: [],
-});
 
 /** 把一个已校验 DesignCopy 纯派生为 Engine 的完整逻辑输入。 */
 export function deriveEngineScenarioInput(design: SimulationDesign) {
@@ -54,7 +45,7 @@ export function deriveEngineScenarioInput(design: SimulationDesign) {
 				throw new Error(`同一 Simulator 不能重复配置 Player: ${member.character.belongToPlayerId}`);
 			}
 			playerIds.add(member.character.belongToPlayerId);
-			return { ...member, resolvedBehavior: member.behavior ?? MANUAL_IDLE_BEHAVIOR };
+			return { ...member, resolvedBehavior: member.behavior ?? null };
 		}
 		if (member.type === "Mob") {
 			if (!member.mob || member.characterId || member.partnerId || member.mercenaryId || member.behavior) {

@@ -1787,6 +1787,58 @@ const dictionary: Dictionary = {
 								Mob: "怪物",
 							},
 						},
+						movementBehaviors: {
+							key: "移動行為",
+							tableFieldDescription: "AI 回放使用的連續移動行為記錄",
+							formFieldDescription: "AI 回放使用的連續移動行為記錄",
+							item: {
+								key: "",
+								tableFieldDescription: "",
+								formFieldDescription: "",
+								fields: {
+									source: {
+										key: "輸入源",
+										tableFieldDescription: "輸入源",
+										formFieldDescription: "輸入源",
+										enumMap: {
+											controller: "控制器",
+											ai: "AI",
+										},
+									},
+									startTimeMs: {
+										key: "開始時間",
+										tableFieldDescription: "開始時間 (ms)",
+										formFieldDescription: "開始時間 (ms)",
+									},
+									samples: {
+										key: "移動樣本",
+										tableFieldDescription: "移動樣本",
+										formFieldDescription: "移動樣本",
+										item: {
+											key: "",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												direction: {
+													key: "方向",
+													tableFieldDescription: "方向",
+													formFieldDescription: "方向",
+													fields: {
+														x: { key: "X", tableFieldDescription: "X", formFieldDescription: "X" },
+														z: { key: "Z", tableFieldDescription: "Z", formFieldDescription: "Z" },
+													},
+												},
+												intensity: {
+													key: "強度",
+													tableFieldDescription: "強度",
+													formFieldDescription: "強度",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
 						attributeSlots: {
 							key: "屬性槽",
 							tableFieldDescription: "需要併入 StatContainer 的持久化屬性槽",
@@ -1941,6 +1993,58 @@ const dictionary: Dictionary = {
 								Partner: "夥伴",
 								Mercenary: "傭兵",
 								Mob: "怪物",
+							},
+						},
+						movementBehaviors: {
+							key: "移動行為",
+							tableFieldDescription: "AI 回放使用的連續移動行為記錄",
+							formFieldDescription: "AI 回放使用的連續移動行為記錄",
+							item: {
+								key: "",
+								tableFieldDescription: "",
+								formFieldDescription: "",
+								fields: {
+									source: {
+										key: "輸入源",
+										tableFieldDescription: "輸入源",
+										formFieldDescription: "輸入源",
+										enumMap: {
+											controller: "控制器",
+											ai: "AI",
+										},
+									},
+									startTimeMs: {
+										key: "開始時間",
+										tableFieldDescription: "開始時間 (ms)",
+										formFieldDescription: "開始時間 (ms)",
+									},
+									samples: {
+										key: "移動樣本",
+										tableFieldDescription: "移動樣本",
+										formFieldDescription: "移動樣本",
+										item: {
+											key: "",
+											tableFieldDescription: "",
+											formFieldDescription: "",
+											fields: {
+												direction: {
+													key: "方向",
+													tableFieldDescription: "方向",
+													formFieldDescription: "方向",
+													fields: {
+														x: { key: "X", tableFieldDescription: "X", formFieldDescription: "X" },
+														z: { key: "Z", tableFieldDescription: "Z", formFieldDescription: "Z" },
+													},
+												},
+												intensity: {
+													key: "強度",
+													tableFieldDescription: "強度",
+													formFieldDescription: "強度",
+												},
+											},
+										},
+									},
+								},
 							},
 						},
 						attributeSlots: {

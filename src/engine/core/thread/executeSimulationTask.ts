@@ -45,7 +45,7 @@ export async function executeSimulationTask(
 	try {
 		engine.loadScenario(task.scenarioData);
 		scenarioLoaded = true;
-		if (task.stopPolicy.kind === "untilMemberFlowEnds" && !engine.getMember(task.stopPolicy.memberId)) {
+		if (task.stopPolicy.kind === "untilMemberAiBehaviorEnds" && !engine.getMember(task.stopPolicy.memberId)) {
 			throw new SimulationTaskExecutionError(
 				"simulation_task_member_not_found",
 				`SimulationTask stop member not found: ${task.stopPolicy.memberId}`,

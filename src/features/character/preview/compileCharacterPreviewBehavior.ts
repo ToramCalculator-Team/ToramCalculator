@@ -44,7 +44,7 @@ const waitUntilActionSettledNode = (): ActionNodeDefinition => ({
 });
 
 /**
- * 把 Character 预览策略编译为普通 Player member-flow。
+ * 把 Character 预览策略编译为 Player AI 行为树。
  * 编译器只决定动作顺序、独立目标切换和稳定输入身份，不调用引擎，也不提前判断技能是否可用。
  */
 export function compileCharacterPreviewBehavior(

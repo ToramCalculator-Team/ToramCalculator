@@ -75,7 +75,7 @@ export class Mob extends Member<MobAttrKey, MobSpecificEvent, MobFSMContext, Mob
 
 	/**
 	 * 使用 XState snapshot.matches 读取 FSM 当前动作状态。
-	 * Mob 不再在 FSM 里定义技能阶段；技能状态由 member-flow BT 声明。
+	 * Mob 不在 FSM 里定义技能阶段；视觉状态由技能效果 BT 声明，控制输入由 AI 行为树提交。
 	 */
 	protected resolveFsmState(): MemberStateName {
 		const snapshot = this.actor.getSnapshot();
@@ -87,7 +87,7 @@ export class Mob extends Member<MobAttrKey, MobSpecificEvent, MobFSMContext, Mob
 	/** 收集 Mob 行为树声明的持久化属性槽，保证 BT 变量随 AttributeContainer checkpoint。 */
 	private static collectAttributeSlots(memberData: EngineMember): SlotDeclaration[] {
 		const slots: SlotDeclaration[] = [];
-		Mob.collectBtAttributeSlots(slots, memberData.resolvedBehavior);
+		if (memberData.resolvedBehavior) Mob.collectBtAttributeSlots(slots, memberData.resolvedBehavior);
 		return slots;
 	}
 

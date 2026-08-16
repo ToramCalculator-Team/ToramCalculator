@@ -54,12 +54,10 @@ export interface MemberBtCapabilities<
 > {
 	readonly attributeContainer: AttributeContainer<TExtraAttrKey | MemberBaseAttrKey>;
 	readonly services: MemberRuntimeServices;
-	/** 仅供 active effect 或 member-flow BT 的 state 叶子调用；其他 parallel BT 不得声明成员动作状态。 */
+	/** 仅供 active effect BT 的 state 叶子调用；AI 行为树和 parallel BT 不得声明成员动作状态。 */
 	declareState(name: MemberStateName): void;
 	/** 供 BtManager 在 active effect 结束、中断或替换时清空状态声明。 */
 	clearActiveEffectStateDeclaration(): void;
-	/** 供 BtManager 在 member-flow 结束、中断或替换时清空状态声明。 */
-	clearMemberFlowStateDeclaration(): void;
 	registerParallelBt(
 		name: string,
 		definition: string | RootNodeDefinition | RootNodeDefinition[],

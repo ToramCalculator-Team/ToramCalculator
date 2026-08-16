@@ -164,7 +164,7 @@ const createSimulationTask = (runId: string) =>
 			maxTickSkip: 1,
 		},
 		recordingPolicy: { tickStateHistory: "none" },
-		stopPolicy: { kind: "untilMemberFlowEnds", memberId: "member-1" },
+		stopPolicy: { kind: "untilMemberAiBehaviorEnds", memberId: "member-1" },
 		budget: { maxTicks: 10 },
 	});
 

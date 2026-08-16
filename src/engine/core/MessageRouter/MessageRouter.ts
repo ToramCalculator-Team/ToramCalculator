@@ -212,7 +212,7 @@ export class MessageRouter {
 			}
 
 			this.engine.dispatchMemberEvent(targetMember.id, message, 0, {
-				source: `message:${message.type}`,
+				source: "controller-input",
 			});
 			this.stats.successfulMessages++;
 

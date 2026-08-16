@@ -22,6 +22,17 @@ export const ExecutionRecordingPolicySchema = z
 export type ExecutionRecordingPolicy = z.output<typeof ExecutionRecordingPolicySchema>;
 
 const emptyPayloadSchema = z.object({}).strict();
+const movementBehaviorSourceSchema = z.enum(["controller", "ai"]);
+const movementBehaviorSampleSchema = z.object({
+	direction: z.object({ x: z.number().finite(), z: z.number().finite() }).strict(),
+	intensity: z.number().finite(),
+});
+const movementBehaviorRecordSchema = z.object({
+	memberId: z.string().min(1),
+	source: movementBehaviorSourceSchema,
+	startTimeMs: z.number().finite().nonnegative(),
+	samples: z.array(movementBehaviorSampleSchema),
+});
 const reviveActionSchema = z.object({ type: z.literal("复活"), payload: emptyPayloadSchema }).strict();
 const moveActionSchema = z
 	.object({
@@ -98,10 +109,14 @@ export const EngineRunOutputSchema = z.object({
 	durationMs: z.number().finite().nonnegative(),
 	stateHistory: TickStateHistoryDirectorySchema.nullable(),
 	inputs: z.array(RunInputRecordSchema),
+	movementBehaviors: z.array(movementBehaviorRecordSchema).default([]).optional(),
 	skillReleases: z.array(SkillReleaseRecordSchema),
 	damage: z.array(DamageRecordSchema),
 });
 
+export type MovementBehaviorSource = z.output<typeof movementBehaviorSourceSchema>;
+export type MovementBehaviorSample = z.output<typeof movementBehaviorSampleSchema>;
+export type MovementBehaviorRecord = z.output<typeof movementBehaviorRecordSchema>;
 export type RunInputAction = z.output<typeof RunInputActionSchema>;
 export type AcceptedRunInputRecord = z.output<typeof AcceptedRunInputRecordSchema>;
 export type RejectedRunInputRecord = z.output<typeof RejectedRunInputRecordSchema>;
@@ -124,6 +139,7 @@ type ActiveRunOutput = {
 	startedAtTimeMs: number;
 	stateHistory: TickStateHistoryWriter | null;
 	inputs: Array<PendingRunInput | RunInputRecord>;
+	movementBehaviors: MovementBehaviorRecord[];
 	skillReleases: SkillReleaseRecord[];
 	damage: DamageRecord[];
 };
@@ -136,6 +152,7 @@ export class RunOutputRecorder {
 	private activeOutput: ActiveRunOutput | null = null;
 	private pendingTransfer: EngineRunOutput | null = null;
 	private lastTransferredRunId: string | null = null;
+	private readonly openMovementBehaviors = new Map<string, MovementBehaviorRecord>();
 
 	isRecording(): boolean {
 		return this.activeOutput !== null;
@@ -171,9 +188,11 @@ export class RunOutputRecorder {
 					? new TickStateHistoryWriter(startedAtTick, startedAtTimeMs, runId)
 					: null,
 			inputs: [],
+			movementBehaviors: [],
 			skillReleases: [],
 			damage: [],
 		};
+		this.openMovementBehaviors.clear();
 	}
 
 	appendTick(tickIndex: number, currentTimeMs: number, members: readonly TickStateMemberSource[]): void {
@@ -235,6 +254,47 @@ export class RunOutputRecorder {
 		this.requireActive().damage.push(record);
 	}
 
+	/**
+	 * 记录当前 Tick 采样到的原始移动控制状态。
+	 * 采样为 null 时封闭当前移动段；输入源切换时封闭旧段并开启新段。
+	 */
+	appendMovementSample(
+		memberId: string,
+		source: MovementBehaviorSource,
+		timeMs: number,
+		sample: MovementBehaviorSample | null,
+	): void {
+		const output = this.requireActive();
+		const open = this.openMovementBehaviors.get(memberId);
+		if (!sample) {
+			if (open) {
+				output.movementBehaviors.push(open);
+				this.openMovementBehaviors.delete(memberId);
+			}
+			return;
+		}
+		if (open) {
+			if (open.source !== source) {
+				output.movementBehaviors.push(open);
+				this.openMovementBehaviors.set(memberId, {
+					memberId,
+					source,
+					startTimeMs: timeMs,
+					samples: [structuredClone(sample)],
+				});
+			} else {
+				open.samples.push(structuredClone(sample));
+			}
+			return;
+		}
+		this.openMovementBehaviors.set(memberId, {
+			memberId,
+			source,
+			startTimeMs: timeMs,
+			samples: [structuredClone(sample)],
+		});
+	}
+
 	/** 封闭一次活动运行；重复结束同一 runId 返回同一条待移交结果。 */
 	finish(runId: string, endedAtTimeMs: number): EngineRunOutput {
 		if (this.pendingTransfer) {
@@ -253,6 +313,10 @@ export class RunOutputRecorder {
 			}
 			return timeMs - active.startedAtTimeMs;
 		};
+		for (const open of this.openMovementBehaviors.values()) {
+			active.movementBehaviors.push(open);
+		}
+		this.openMovementBehaviors.clear();
 		const inputs: RunInputRecord[] = active.inputs.map((input) => {
 			if (input.status === "pending") {
 				return {
@@ -269,6 +333,10 @@ export class RunOutputRecorder {
 			durationMs: toRelativeTime(endedAtTimeMs),
 			stateHistory: active.stateHistory?.finish() ?? null,
 			inputs,
+			movementBehaviors: active.movementBehaviors.map((record) => ({
+				...record,
+				startTimeMs: toRelativeTime(record.startTimeMs),
+			})),
 			skillReleases: active.skillReleases.map((record) => ({
 				...record,
 				timeMs: toRelativeTime(record.timeMs),
@@ -284,6 +352,7 @@ export class RunOutputRecorder {
 	cancel(runId: string): void {
 		if (!this.activeOutput || this.activeOutput.runId !== runId) return;
 		this.activeOutput = null;
+		this.openMovementBehaviors.clear();
 	}
 
 	/** 调用方确认接收后释放待移交结果；确认后 Engine 不再保留结果。 */

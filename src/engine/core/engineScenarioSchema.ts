@@ -122,7 +122,8 @@ const EngineMobSchema = MobSchema.nullable();
 export const EngineMemberSchema = MemberSchema.extend({
 	character: EngineCharacterSchema.nullable(),
 	mob: EngineMobSchema,
-	resolvedBehavior: MemberBTSchema,
+	/** AI 行为源；为空表示成员由外部控制器驱动（ADR 0054）。 */
+	resolvedBehavior: MemberBTSchema.nullable().default(null),
 });
 
 const EngineTeamSchema = TeamSchema.extend({

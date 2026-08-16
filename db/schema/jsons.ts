@@ -35,11 +35,25 @@ export const BTSchema = z.object({
 });
 export type BTTree = z.output<typeof BTSchema>;
 
+// 连续移动行为记录；回放时按逻辑 Tick 读取样本（ADR 0054）。
+export const MovementBehaviorSampleSchema = z.object({
+	direction: z.object({ x: z.number(), z: z.number() }).strict(),
+	intensity: z.number(),
+});
+export const MovementBehaviorRecordSchema = z.object({
+	source: z.enum(["controller", "ai"]),
+	startTimeMs: z.number().nonnegative(),
+	samples: z.array(MovementBehaviorSampleSchema),
+});
+export type MovementBehaviorRecordData = z.output<typeof MovementBehaviorRecordSchema>;
+
 // 成员行为树
 export const MemberBTSchema = z.object({
 	...BTSchema.shape,
 	// 执行者类型
 	memberType: z.enum(MEMBER_TYPE).default("Player"),
+	// AI 模式下的连续移动行为；controlled 成员没有 AI 行为树，数组为空。
+	movementBehaviors: z.array(MovementBehaviorRecordSchema).optional(),
 });
 export type MemberBTTree = z.output<typeof MemberBTSchema>;
 

@@ -160,7 +160,7 @@ export class Player extends Member<PlayerAttrKey, PlayerSpecificEvent, PlayerFSM
 		const slots: SlotDeclaration[] = collectAttachmentSlots(runtimeAttachments);
 		// 设计说明：BT agent 实例字段只承载当前执行对象，跨帧变量通过行为树数据声明槽并并入 AttributeContainer。
 		// 这里收集所有已学技能变体，保证战斗中切换分支或装备匹配变体时不会触发运行期扩容。
-		Player.collectBtAttributeSlots(slots, memberData.resolvedBehavior);
+		if (memberData.resolvedBehavior) Player.collectBtAttributeSlots(slots, memberData.resolvedBehavior);
 		for (const skill of activeCharacter.skills) {
 			for (const variant of skill.template.variants) {
 				Player.collectBehaviorTreeAttributeSlots(slots, variant.activeBehaviorTree);

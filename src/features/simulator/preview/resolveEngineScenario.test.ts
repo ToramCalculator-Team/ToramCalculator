@@ -72,7 +72,7 @@ describe("Simulator 设计解析", () => {
 	it("按 MemberType 解析唯一行为来源并保留分析范围", () => {
 		const result = deriveEngineScenarioInput(createDesign());
 
-		expect(result.campA[0].members[0].resolvedBehavior.name).toBe("manual-idle");
+		expect(result.campA[0].members[0].resolvedBehavior).toBeNull();
 		expect(result.campB[0].members[0].resolvedBehavior).toEqual(defaultData.mob.actions);
 		expect(result.initialTargetIds).toEqual({ [playerMemberId]: mobMemberId });
 		expect(result).not.toHaveProperty("analysisSourceMemberIds");

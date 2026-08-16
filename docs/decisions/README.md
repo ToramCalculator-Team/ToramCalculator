@@ -58,6 +58,7 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 | [0050](./0050-realtime-state-transport-semantics.md) | 连续状态走 latest-state 单槽通道，离散动作走事件队列；Session 拥有通道生命周期，CUI 不持有 Engine Handle 能力 |
 | [0052](./0052-realtime-world-state-uses-unified-sab.md) | 成员和区域的连续世界状态统一写入实时状态 SAB；UI 与渲染器只读一致的最新提交，渲染器不接收离散视觉事件 |
 | [0053](./0053-logical-state-output-and-render-mapping.md) | 逻辑引擎逐 Tick 输出成员逻辑状态描述；FSM 与行为流程 BT 汇合为单一动作状态，渲染器按状态名映射并推进动画，SAB 不携带动画时长、片段、进度或倍率 |
+| [0054](./0054-member-control-mode-and-behavior-sequence.md) | 成员控制收敛为 controlled/ai 互斥模式；控制器与 AI 行为树通过唯一输入入口提交，FSM 即时裁决，行为序列只记录；AI 行为树由 Member 持有，BtManager 只承载技能效果与 buff/passive |
 
 ### 数据、同步与领域打包
 
@@ -153,9 +154,11 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 | [0050](./0050-realtime-state-transport-semantics.md) | 实时状态的传输语义分类：连续状态走 latest-state 通道，离散动作走事件队列 | Accepted | 实时交互与线程通信 |
 | [0052](./0052-realtime-world-state-uses-unified-sab.md) | 高频世界状态统一使用实时状态 SAB | Accepted | 实时交互与线程通信 |
 | [0053](./0053-logical-state-output-and-render-mapping.md) | 成员逻辑状态输出与渲染映射边界 | Accepted | 逻辑引擎与渲染边界 |
+| [0054](./0054-member-control-mode-and-behavior-sequence.md) | 成员控制模式与行为序列 | Accepted | 引擎控制与运行记录 |
 
 ## 决策候选与实施计划
 
 - [同步与写入授权加固计划](../plans/sync-and-auth-hardening.md)
 - [Simulator 最小验证闭环](../plans/minimum-validation-loop.md)
 - [Simulator Tick 状态历史 SAB 性能重构计划](../plans/simulator-tick-state-history-sab-performance.md)
+- [Member 控制模式与行为序列迁移计划](../plans/member-control-mode-behavior-sequence-migration.md)

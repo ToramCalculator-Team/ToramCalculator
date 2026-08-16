@@ -209,7 +209,7 @@ export function createCharacterSessionRuntime(dependencies: CharacterSessionDepe
 				assertCurrent();
 				await handle.setRuntimeConfig({
 					driveMode: "unclocked",
-					stopPolicy: { kind: "untilMemberFlowEnds", memberId: policy.memberId },
+					stopPolicy: { kind: "untilMemberAiBehaviorEnds", memberId: policy.memberId },
 					acceptExternalIntents: false,
 					logicHz: 60,
 					timeScale: 1,

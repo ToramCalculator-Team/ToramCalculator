@@ -25,8 +25,8 @@ export class BtManager<
 	private activeEffectEntry: BtEntry | undefined;
 	private parallelEntries: Map<string, BtEntry> = new Map();
 	private btOptions: BehaviourTreeOptions = {};
-	/** 当前 step 的执行上下文；state 声明只允许 active effect 和 member-flow 写入。 */
-	private steppingContext: "none" | "active-effect" | "member-flow" = "none";
+	/** 当前 step 是否来自 active effect BT；只有它能声明技能视觉状态。 */
+	private steppingContext: "none" | "active-effect" = "none";
 
 	constructor(
 		private env: MemberBtManagerEnv<TFSMEvent, TExtraAttrKey, TContext>,
@@ -167,14 +167,8 @@ export class BtManager<
 			const state = entry.bt.getState();
 			if (state === State.SUCCEEDED || state === State.FAILED) {
 				this.parallelEntries.delete(name);
-				if (name === "member-flow") this.clearMemberFlowStateDeclaration();
 			} else {
-				this.steppingContext = name === "member-flow" ? "member-flow" : "none";
-				try {
-					entry.bt.step();
-				} finally {
-					this.steppingContext = "none";
-				}
+				entry.bt.step();
 			}
 		});
 	}
@@ -197,7 +191,6 @@ export class BtManager<
 		agent?: string,
 		localContext?: Record<string, unknown>,
 	): BehaviourTree | undefined {
-		if (name === "member-flow") this.clearMemberFlowStateDeclaration();
 		const bt = new BehaviourTree(definition, this.buildExecutionContext(agent, localContext), this.createBtOptions());
 		this.parallelEntries.set(name, { bt });
 		return bt;
@@ -210,7 +203,6 @@ export class BtManager<
 
 	unregisterParallelBt(name: string): void {
 		this.parallelEntries.delete(name);
-		if (name === "member-flow") this.clearMemberFlowStateDeclaration();
 	}
 
 	getParallelBt(name: string): BehaviourTree | undefined {
@@ -233,7 +225,7 @@ export class BtManager<
 		return false;
 	}
 
-	/** 只观察具名并行行为，供停止策略区分 member-flow 与长期 Buff 等其他并行树。 */
+	/** 观察具名并行 buff/passive 行为是否仍在运行。 */
 	isParallelBtRunning(name: string): boolean {
 		const entry = this.parallelEntries.get(name);
 		if (!entry) return false;
@@ -249,31 +241,20 @@ export class BtManager<
 		this.activeEffectEntry = undefined;
 		this.parallelEntries.clear();
 		this.clearActiveEffectStateDeclaration();
-		this.clearMemberFlowStateDeclaration();
 	}
 
-	/** state 叶子只允许 active effect 与 member-flow 两种执行上下文写入。 */
+	/** state 叶子只允许 active effect BT 写入。 */
 	isSteppingActiveEffect(): boolean {
 		return this.steppingContext === "active-effect";
 	}
 
-	/** member-flow 是 Mob 与自动流程 BT 的动作状态来源。 */
-	isSteppingMemberFlow(): boolean {
-		return this.steppingContext === "member-flow";
-	}
-
-	/** 供 FSM 中断动作清空当前视觉状态声明，不销毁行为树实例。 */
+	/** 供 FSM 中断动作清空当前技能视觉状态声明，不销毁行为树实例。 */
 	clearStateDeclarations(): void {
 		this.clearActiveEffectStateDeclaration();
-		this.clearMemberFlowStateDeclaration();
 	}
 
 	private clearActiveEffectStateDeclaration(): void {
 		this.env.getCapabilities().clearActiveEffectStateDeclaration();
-	}
-
-	private clearMemberFlowStateDeclaration(): void {
-		this.env.getCapabilities().clearMemberFlowStateDeclaration();
 	}
 
 	private deriveBtId(bt: BehaviourTree): string {
@@ -311,6 +292,5 @@ export class BtManager<
 		this.activeEffectEntry = undefined;
 		this.parallelEntries.clear();
 		this.clearActiveEffectStateDeclaration();
-		this.clearMemberFlowStateDeclaration();
 	}
 }

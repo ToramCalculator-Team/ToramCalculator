@@ -136,7 +136,7 @@ describe("parseEngineRPCResult", () => {
 				maxTickSkip: 0,
 			},
 			recordingPolicy: { tickStateHistory: "everyTick" },
-			stopPolicy: { kind: "untilMemberFlowEnds", memberId: "m" },
+			stopPolicy: { kind: "untilMemberAiBehaviorEnds", memberId: "m" },
 			budget: { maxTicks: 1 },
 		};
 		expect(SimulationTaskSchema.safeParse(taskBase).success).toBe(true);

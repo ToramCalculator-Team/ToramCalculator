@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 import { State } from "~/lib/mistreevous/State";
-import { memberFlowInputId } from "../../../memberFlowInput";
+import { memberControlInputId } from "../../../memberControlInput";
 import type { ActionPool } from "../../../runtime/Agent/type";
 import { defineAction } from "../../../runtime/Agent/type";
 import type { PlayerAttrKey } from "../PlayerAttrSchema";
@@ -25,7 +25,7 @@ export const PlayerActionPool = {
 		selectTargetInputSchema,
 		(context, input, capabilities) => {
 			capabilities.submitControlInput({
-				id: memberFlowInputId(context.memberId, input.inputKey ?? `${context.tickIndex}:target:${input.targetId}`),
+				id: memberControlInputId(context.memberId, input.inputKey ?? `${context.tickIndex}:target:${input.targetId}`),
 				type: "切换目标",
 				data: { targetId: input.targetId },
 			});
@@ -36,7 +36,7 @@ export const PlayerActionPool = {
 		castSkillInputSchema,
 		(context, input, capabilities) => {
 			const inputKey = input.inputKey ?? `${context.tickIndex}:${input.skillId}`;
-			const inputId = memberFlowInputId(context.memberId, inputKey);
+			const inputId = memberControlInputId(context.memberId, inputKey);
 			capabilities.submitControlInput({
 				id: inputId,
 				type: "使用技能",

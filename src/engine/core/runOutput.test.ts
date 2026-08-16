@@ -131,6 +131,34 @@ describe("RunOutputRecorder", () => {
 		).toThrow();
 	});
 
+	it("移动样本按停止与输入源切换封闭为独立移动段", () => {
+		const recorder = new RunOutputRecorder();
+		recorder.start("run-1", 0, 1000, { tickStateHistory: "none" });
+		recorder.appendMovementSample("member-1", "controller", 1000, { direction: { x: 1, z: 0 }, intensity: 1 });
+		recorder.appendMovementSample("member-1", "controller", 1100, { direction: { x: 1, z: 0 }, intensity: 1 });
+		recorder.appendMovementSample("member-1", "controller", 1200, null);
+		recorder.appendMovementSample("member-1", "ai", 1300, { direction: { x: 0, z: 1 }, intensity: 0.5 });
+
+		const output = recorder.finish("run-1", 1400);
+		expect(output.movementBehaviors).toEqual([
+			{
+				memberId: "member-1",
+				source: "controller",
+				startTimeMs: 0,
+				samples: [
+					{ direction: { x: 1, z: 0 }, intensity: 1 },
+					{ direction: { x: 1, z: 0 }, intensity: 1 },
+				],
+			},
+			{
+				memberId: "member-1",
+				source: "ai",
+				startTimeMs: 300,
+				samples: [{ direction: { x: 0, z: 1 }, intensity: 0.5 }],
+			},
+		]);
+	});
+
 	it("重复或未知回执直接失败，接纳输入必须有成员身份", () => {
 		const recorder = new RunOutputRecorder();
 		recorder.start("run-1", 0, 0, { tickStateHistory: "none" });

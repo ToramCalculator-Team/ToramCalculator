@@ -62,11 +62,11 @@ describe("resolveCharacterPreviewTask", () => {
 		});
 
 		expect(SimulationTaskSchema.parse(task)).toEqual(task);
-		expect(task.stopPolicy).toEqual({ kind: "untilMemberFlowEnds", memberId: policy.memberId });
+		expect(task.stopPolicy).toEqual({ kind: "untilMemberAiBehaviorEnds", memberId: policy.memberId });
 		expect(task.runtimeConfig).toMatchObject({ driveMode: "unclocked", acceptExternalIntents: false });
 		expect(task.scenarioData.scenario.primaryMemberId).toBe(policy.memberId);
 		expect(task.scenarioData.scenario.campB[0]?.members[0]?.id).toBe(policy.trainingTargetMemberId);
-		expect(task.scenarioData.scenario.campA[0]?.members[0]?.resolvedBehavior.definition).toContain(
+		expect(task.scenarioData.scenario.campA[0]?.members[0]?.resolvedBehavior?.definition).toContain(
 			CHARACTER_PREVIEW_CANDIDATE_INPUT_KEY,
 		);
 		expect(aggregate).toEqual(original);
@@ -92,7 +92,7 @@ describe("resolveCharacterPreviewTask", () => {
 
 		expect(resolved.member.id).toBe(policy.memberId);
 		expect(resolved.member.character?.id).toBe(aggregate.character.id);
-		expect(resolved.member.resolvedBehavior.definition).toBe("root { wait [1] }");
+		expect(resolved.member.resolvedBehavior).toBeNull();
 		expect(resolved.scenarioData.scenario.campA[0]?.members).toEqual([resolved.member]);
 	});
 

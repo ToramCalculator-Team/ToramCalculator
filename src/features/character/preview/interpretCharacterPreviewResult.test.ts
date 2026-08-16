@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { EngineRunOutput, RunInputRecord } from "~/engine/core/runOutput";
 import type { SimulationTaskResult } from "~/engine/core/simulationTask";
-import { memberFlowInputId } from "~/engine/core/World/Member/memberFlowInput";
+import { memberControlInputId } from "~/engine/core/World/Member/memberControlInput";
 import {
 	CHARACTER_PREVIEW_CANDIDATE_INPUT_KEY,
 	type CharacterPreviewPolicy,
@@ -15,7 +15,7 @@ const policy: CharacterPreviewPolicy = {
 	setupSkills: [{ skillId: "setup-a" }, { skillId: "setup-b" }],
 };
 
-const previewInputId = (inputKey: string): string => memberFlowInputId(policy.memberId, inputKey);
+const previewInputId = (inputKey: string): string => memberControlInputId(policy.memberId, inputKey);
 
 const input = (inputId: string, status: RunInputRecord["status"], reason?: string): RunInputRecord => {
 	const base = {
