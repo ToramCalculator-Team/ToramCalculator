@@ -1,6 +1,6 @@
 import type { MemberBTTree } from "@db/schema/jsons";
-import { createLogger } from "~/lib/logger";
 import { PlayerLocomotionProfile } from "~/game/locomotion";
+import { createLogger } from "~/lib/logger";
 import type { EngineCharacter, EngineMember } from "../../../../engineScenarioSchema";
 import type { RuntimeAttachment } from "../../attachments/RuntimeAttachment";
 import { collectAttachmentSlots } from "../../attachments/RuntimeAttachment";
