@@ -4,7 +4,7 @@
 - **日期**: 2026-08-15
 - **决策层**: 跨层（引擎 / Worker / Session / UI / 渲染）
 - **相关代码**: `src/engine/core/thread/`、`src/engine/core/World/Member/`、`src/engine/core/World/Area/`、`src/features/simulator/session/`、`src/platform/render/scene/`
-- **相关 ADR**: Refines 0050；Depends on 0029；Depends on 0044
+- **相关 ADR**: Refines 0050；Depends on 0029；Depends on 0044；Related to 0053
 
 ## 决策问题
 

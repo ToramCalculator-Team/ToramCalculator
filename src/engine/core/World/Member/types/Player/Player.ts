@@ -10,6 +10,7 @@ import { Member } from "../../Member";
 import { MemberRuntimeServicesDefaults } from "../../RuntimeServices";
 import { AttributeContainer } from "../../runtime/AttributeContainer/AttributeContainer";
 import { mergeSchema, type SlotDeclaration } from "../../runtime/AttributeContainer/SchemaMerge";
+import type { MemberStateName } from "../../runtime/State/MemberState";
 import type { PlayerRuntime } from "../../runtime/types";
 import { createPlayerBtBindings } from "./Agents/BtBindings";
 import { type PlayerAttrKey, PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
@@ -89,6 +90,22 @@ export class Player extends Member<PlayerAttrKey, PlayerSpecificEvent, PlayerFSM
 		this.activeCharacter = activeCharacter;
 		this.runtimeAttachments = runtimeAttachments;
 		this.installPassiveBehaviorTrees();
+	}
+
+	/**
+	 * 使用 XState snapshot.matches 读取 FSM 当前动作状态。
+	 * parallel 状态值不需要自定义遍历，只匹配动作维度。
+	 */
+	protected resolveFsmState(): MemberStateName {
+		const snapshot = this.actor.getSnapshot();
+		if (snapshot.matches("死亡")) return "dead";
+		if (snapshot.matches({ 存活: "受控状态" })) return "controlled";
+		if (snapshot.matches({ 存活: { 可操作状态: { 动作状态: "格挡中" } } })) return "block";
+		if (snapshot.matches({ 存活: { 可操作状态: { 动作状态: "闪躲中" } } })) return "dodge";
+		if (snapshot.matches({ 存活: { 可操作状态: { 动作状态: { 使用技能中: "技能执行过程" } } } })) {
+			return "skill.busy";
+		}
+		return "idle";
 	}
 
 	private installPassiveBehaviorTrees(): void {

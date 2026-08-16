@@ -127,7 +127,7 @@ describe("worldStateBuffer", () => {
 		);
 	});
 
-	it("在一个稳定提交中读取成员、动画、mspd、modifier 来源链和区域", () => {
+	it("在一个稳定提交中读取成员、动作状态、mspd、modifier 来源链和区域", () => {
 		const layout = createWorldStateLayoutDescriptor(
 			[
 				{
@@ -171,7 +171,7 @@ describe("worldStateBuffer", () => {
 					yaw: 0.5,
 					speed: 2.1,
 					stateFlags: STATE_FLAG_MOVING | STATE_FLAG_AIRBORNE,
-					animation: { id: 7, progress: 0.25, logicTimeMs: 80, loop: false, ended: false },
+					state: { id: 7, instance: 3, startedAtLogicalTimeMs: 80 },
 					attributes: { base: [10], act: [12] },
 					modifiers: [{ attributeIndex: 0, type: 1, value: 2, sourceIndex: 0, chainIndex: 0 }],
 				},
@@ -203,10 +203,10 @@ describe("worldStateBuffer", () => {
 			generation: 1,
 			entityIdHash: worldStateStringId("player"),
 			position: { x: 1, y: 2, z: 3 },
-			animation: { id: 7, progress: 0.25, logicTimeMs: 80, loop: false, ended: false },
+			state: { id: 7, instance: 3, startedAtLogicalTimeMs: 80 },
 		});
-		expect(reader.getMspdAttributeIndex(0)).toBe(0);
-		expect(reader.readMspd(0, snapshot)).toBe(12);
+		expect(layout.attributeSchema[0]?.path).toBe("mspd");
+		expect(snapshot?.members[0]?.attributes[0]).toEqual({ base: 10, act: 12 });
 		expect(layout.modifierSourceMetadata[0]?.source.name).toBe("测试技能");
 		expect(snapshot?.members[0]?.modifiers[0]).toMatchObject({ sourceIndex: 0, chainIndex: 0, value: 2 });
 		expect(snapshot?.areas[0]).toMatchObject({

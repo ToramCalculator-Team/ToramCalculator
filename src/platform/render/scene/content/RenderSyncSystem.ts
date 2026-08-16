@@ -11,12 +11,7 @@
  * 无 reader 的控制器只服务静态内容，不提供第二套实时运动降级路径。
  */
 
-import {
-	STATE_FLAG_AIRBORNE,
-	STATE_FLAG_MOVING,
-	type WorldStateReader,
-	type WorldStateSnapshot,
-} from "~/engine/core/thread/worldStateBuffer";
+import { STATE_FLAG_AIRBORNE, STATE_FLAG_MOVING, type WorldStateSnapshot } from "~/engine/core/thread/worldStateBuffer";
 import type { EntityRuntime } from "./entityTypes";
 
 /**
@@ -38,8 +33,6 @@ export class RenderSyncSystem {
 	private readonly smoothed = new Map<string, { x: number; y: number; z: number; yaw: number }>();
 	/** 槽位代次变化表示实体重建，必须丢弃旧插值。 */
 	private readonly generations = new Map<string, number>();
-
-	constructor(private worldStateReader?: WorldStateReader | null) {}
 
 	/**
 	 * 同步所有实体的渲染状态（每帧调用）。
@@ -76,10 +69,6 @@ export class RenderSyncSystem {
 						entity.physics.yaw = slot.yaw;
 						entity.physics.moving = (slot.stateFlags & STATE_FLAG_MOVING) !== 0;
 						entity.physics.speed = slot.speed;
-						if (entity.type === "character") {
-							const mspd = this.worldStateReader?.readMspd(slotIdx, snapshot);
-							if (mspd !== null && mspd !== undefined) entity.animationController.setMotionSpeed(mspd);
-						}
 					}
 				}
 			}

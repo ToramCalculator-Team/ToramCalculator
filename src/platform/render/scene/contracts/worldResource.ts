@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+import { type MemberStateName, MemberStateNameSchema } from "~/engine/core/World/Member/runtime/State/MemberState";
 
 export const CharacterAnimationClipsSchema = z.object({
 	idle: z.string().min(1),
@@ -8,6 +9,16 @@ export const CharacterAnimationClipsSchema = z.object({
 	fall: z.string().min(1),
 	land: z.string().min(1),
 });
+
+export const StatePlayModeSchema = z.enum(["once", "loop", "hold"]);
+export const StateAnimationMappingSchema = z.record(
+	MemberStateNameSchema,
+	z.object({
+		clip: z.string().min(1),
+		durationMs: z.number().positive(),
+		play: StatePlayModeSchema.default("once"),
+	}),
+);
 
 const WorldResourceBaseSchema = z.object({
 	memberId: z.string(),
@@ -21,7 +32,11 @@ const CharacterWorldResourceSchema = WorldResourceBaseSchema.extend({
 	kind: z.literal("character"),
 	model: z.object({ type: z.literal("gltf"), uri: z.string().min(1) }),
 	appearance: z.object({ scale: z.number().positive() }),
-	animation: z.object({ type: z.literal("embedded"), clips: CharacterAnimationClipsSchema }),
+	animation: z.object({
+		type: z.literal("embedded"),
+		clips: CharacterAnimationClipsSchema,
+		states: StateAnimationMappingSchema,
+	}),
 });
 
 const MobWorldResourceSchema = WorldResourceBaseSchema.extend({
@@ -40,6 +55,9 @@ const MobWorldResourceSchema = WorldResourceBaseSchema.extend({
 export const WorldResourceSchema = z.discriminatedUnion("kind", [CharacterWorldResourceSchema, MobWorldResourceSchema]);
 
 export type CharacterAnimationClips = z.output<typeof CharacterAnimationClipsSchema>;
+export type StatePlayMode = z.output<typeof StatePlayModeSchema>;
+export type StateAnimationMapping = z.output<typeof StateAnimationMappingSchema>;
+export type StateAnimationEntry = StateAnimationMapping[MemberStateName];
 export type WorldResource = z.output<typeof WorldResourceSchema>;
 export type CharacterWorldResource = Extract<WorldResource, { kind: "character" }>;
 export type MobWorldResource = Extract<WorldResource, { kind: "mob" }>;

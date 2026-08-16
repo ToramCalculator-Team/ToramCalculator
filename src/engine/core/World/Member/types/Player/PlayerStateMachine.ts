@@ -359,9 +359,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 				},
 				中断当前行为: () => {
 					log.debug(`[${env.name}] 中断当前行为`);
-				},
-				启动受控动画: () => {
-					log.debug(`[${env.name}] 启动受控动画`);
+					env.btManager.clearStateDeclarations();
 				},
 			},
 			guards: {
@@ -517,7 +515,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 							on: {
 								控制结束: { target: "可操作状态" },
 							},
-							entry: [{ type: "重置控制抵抗时间" }, { type: "中断当前行为" }, { type: "启动受控动画" }],
+							entry: [{ type: "重置控制抵抗时间" }, { type: "中断当前行为" }],
 						},
 					},
 				},

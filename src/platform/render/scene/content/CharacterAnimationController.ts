@@ -8,6 +8,7 @@
 import { PlayerLocomotionProfile } from "~/game/locomotion";
 import { createLogger } from "~/lib/logger";
 import { AnimationGroup, type Scene } from "~/platform/render/babylon/runtime";
+import type { StatePlayMode } from "../contracts/worldResource";
 import type { CharacterAnimationTarget, CustomAnimationData } from "./entityTypes";
 
 const logger = createLogger("RenderController");
@@ -17,13 +18,12 @@ export type CharacterLocomotionState = "idle" | "walk" | "run";
 
 /** 移动与起跳之间保留一个短的姿态混合，避免按下空格时直接切断当前动作。 */
 const ANIMATION_BLENDING_SPEED = 0.08;
-/** 落地片段使用较低速度，给角色留出明确的回落过程。 */
-const LANDING_SPEED_RATIO = 0.65;
 
 export class CharacterAnimationController {
 	private currentAnimationId: string | null = null;
 	private locomotionState: CharacterLocomotionState = "idle";
 	private activeActionId: string | null = null;
+	private activeActionPlayMode: StatePlayMode = "once";
 	private actionVersion = 0;
 	private airborne = false;
 
@@ -35,15 +35,6 @@ export class CharacterAnimationController {
 	/** 将引擎移动事实集中投影为角色移动动画状态。 */
 	setMovement(moving: boolean, speed: number): void {
 		this.setLocomotion(!moving ? "idle" : speed >= PlayerLocomotionProfile.RUN_ANIMATION_THRESHOLD ? "run" : "walk");
-	}
-
-	/**
-	 * 使用同一提交中的 mspd 调整本地动画播放倍率；该派生值只存在 Babylon 本地。
-	 */
-	setMotionSpeed(mspd: number): void {
-		const actionDurationRatio = Math.max(0.5, 1 - mspd / 100);
-		const current = this.getAnimation(this.currentAnimationId ?? "");
-		if (current) current.speedRatio = 1 / actionDurationRatio;
 	}
 
 	/**
@@ -69,12 +60,50 @@ export class CharacterAnimationController {
 	}
 
 	/**
+	 * 启动由 SAB 状态描述的逻辑动画。Babylon 不负责推进这类动画，
+	 * 每次同步都由 updateStateTimelineProgress 定位到逻辑时间对应的帧。
+	 */
+	playTimeline(animationId: string, progress: number): void {
+		this.playStateTimeline(animationId, progress, "once");
+	}
+
+	/** 按静态资源里的播放策略启动状态动画。 */
+	playStateTimeline(animationId: string, progress: number, playMode: StatePlayMode): void {
+		if (!this.getAnimation(animationId)) {
+			logger.warn(`Character ${this.entity.id}: 动画 ${animationId} 不存在`);
+			return;
+		}
+		this.actionVersion++;
+		this.activeActionId = animationId;
+		this.activeActionPlayMode = playMode;
+		this.startAnimation(animationId, false, this.normalizeProgress(progress, playMode), undefined, 1, true);
+	}
+
+	/** 更新当前状态动画的帧位置；动画生命周期由逻辑状态切换或清除。 */
+	updateTimelineProgress(progress: number): void {
+		this.updateStateTimelineProgress(progress);
+	}
+
+	/** 按当前播放策略更新帧位置；loop 策略按片段长度取模。 */
+	updateStateTimelineProgress(progress: number): void {
+		if (!this.activeActionId) return;
+		const animation = this.getAnimation(this.activeActionId);
+		if (!animation) return;
+		animation.goToFrame(
+			animation.from + (animation.to - animation.from) * this.normalizeProgress(progress, this.activeActionPlayMode),
+		);
+		animation.pause();
+	}
+
+	/**
 	 * 将引擎的垂直运动事实投影为起跳、滞空和落地动画。
 	 * 起跳片段结束后保持终态帧，实际落地时机只由引擎状态决定。
 	 */
 	setAirborne(airborne: boolean, progress?: number): void {
 		if (this.airborne === airborne) return;
 		this.airborne = airborne;
+		// 技能时间线由逻辑引擎控制，移动状态变化只记录到本地事实，不能覆盖当前技能动作。
+		if (this.activeActionId) return;
 
 		const jumpAnimationId = this.entity.animationClips.jump;
 		const landAnimationId = this.entity.animationClips.land;
@@ -105,7 +134,7 @@ export class CharacterAnimationController {
 				this.currentAnimationId = null;
 				this.setLocomotion(this.locomotionState);
 			},
-			airborne ? 1 : LANDING_SPEED_RATIO,
+			1,
 		);
 	}
 
@@ -124,6 +153,7 @@ export class CharacterAnimationController {
 		this.actionVersion++;
 		this.airborne = false;
 		this.activeActionId = null;
+		this.activeActionPlayMode = "once";
 		this.stopAnimationGroups();
 		this.currentAnimationId = null;
 	}
@@ -160,12 +190,20 @@ export class CharacterAnimationController {
 		this.setLocomotion(this.locomotionState);
 	}
 
+	private normalizeProgress(progress: number, playMode: StatePlayMode): number {
+		if (playMode === "loop") {
+			return ((progress % 1) + 1) % 1;
+		}
+		return Math.min(1, Math.max(0, progress));
+	}
+
 	private startAnimation(
 		animationId: string,
 		loop: boolean,
 		progress?: number,
 		onComplete?: () => void,
 		speedRatio = 1,
+		manualProgress = false,
 	): void {
 		const animationGroup = this.getAnimation(animationId);
 		if (!animationGroup) {
@@ -183,8 +221,10 @@ export class CharacterAnimationController {
 		if (onComplete) animationGroup.onAnimationGroupEndObservable.addOnce(onComplete);
 		animationGroup.play(loop);
 
-		if (progress !== undefined && progress >= 0 && progress < 1) {
-			animationGroup.goToFrame(animationGroup.from + (animationGroup.to - animationGroup.from) * progress);
+		if (progress !== undefined) {
+			const clamped = Math.min(1, Math.max(0, progress));
+			animationGroup.goToFrame(animationGroup.from + (animationGroup.to - animationGroup.from) * clamped);
+			if (manualProgress) animationGroup.pause();
 		}
 	}
 

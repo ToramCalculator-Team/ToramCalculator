@@ -16,10 +16,13 @@ import type { EntityRuntime } from "./entityTypes";
 function createHarness() {
 	const entities = new Map<string, EntityRuntime>();
 	const animationController = {
-		setMotionSpeed: vi.fn(),
 		setLocomotion: vi.fn(),
 		setAirborne: vi.fn(),
 		playAction: vi.fn(),
+		playTimeline: vi.fn(),
+		playStateTimeline: vi.fn(),
+		updateTimelineProgress: vi.fn(),
+		updateStateTimelineProgress: vi.fn(),
 		stopAllAnimations: vi.fn(),
 	};
 	const entity = {
@@ -67,7 +70,7 @@ describe("CommandHandler 实时世界投影", () => {
 		expect(entities.has("unknown")).toBe(false);
 	});
 
-	it("同一动画时间线不重复启动，结束动作不补播", async () => {
+	it("按逻辑时间定位状态动画，实例变化才重启，清除描述后停止", async () => {
 		const { handler, animationController } = createHarness();
 		const resource = createDefaultCharacterWorldResource({
 			memberId: "player",
@@ -91,40 +94,58 @@ describe("CommandHandler 实时世界投影", () => {
 		const buffer = createWorldStateBuffer(layout);
 		const writer = new WorldStateWriter(buffer, layout);
 		const reader = new WorldStateReader(buffer, layout);
-		const writeTimeline = (ended: boolean) =>
+		const writeTimeline = (logicalTimeMs: number, instance = 1, active = true) =>
 			writer.write({
-				logicalTimeMs: ended ? 200 : 100,
-				tickIndex: ended ? 2 : 1,
+				logicalTimeMs,
+				tickIndex: logicalTimeMs / 50,
 				members: [
 					{
 						id: "player",
 						position: { x: 0, y: 0, z: 0 },
 						yaw: 0,
 						attributes: { base: [50], act: [50] },
-						animation: {
-							id: worldStateStringId("jump"),
-							progress: ended ? 1 : 0.25,
-							logicTimeMs: 50,
-							loop: false,
-							ended,
-						},
+						...(active
+							? {
+									state: {
+										id: worldStateStringId("skill.startup"),
+										instance,
+										startedAtLogicalTimeMs: 50,
+									},
+								}
+							: {}),
 					},
 				],
 			});
 
-		writeTimeline(false);
+		writeTimeline(100);
 		const snapshot = reader.readLatest();
 		if (!snapshot) throw new Error("预期读到稳定世界状态提交");
 		const slots = new Map([["player", 0]]);
-		handler.syncMemberAnimations(snapshot, layout, reader, slots);
-		handler.syncMemberAnimations(snapshot, layout, reader, slots);
-		expect(animationController.setAirborne).toHaveBeenCalledOnce();
-		expect(animationController.setAirborne).toHaveBeenCalledWith(true, 0.25);
+		handler.syncMemberStates(snapshot, layout, slots);
+		handler.syncMemberStates(snapshot, layout, slots);
+		expect(animationController.playStateTimeline).toHaveBeenCalledOnce();
+		expect(animationController.playStateTimeline).toHaveBeenCalledWith("Jump_start", 0.25, "once");
+		expect(animationController.updateStateTimelineProgress).toHaveBeenCalledWith(0.25);
 
-		writeTimeline(true);
-		const endedSnapshot = reader.readLatest();
-		if (!endedSnapshot) throw new Error("预期读到结束动作提交");
-		handler.syncMemberAnimations(endedSnapshot, layout, reader, slots);
-		expect(animationController.setAirborne).toHaveBeenCalledOnce();
+		writeTimeline(150);
+		const middleSnapshot = reader.readLatest();
+		if (!middleSnapshot) throw new Error("预期读到稳定世界状态提交");
+		handler.syncMemberStates(middleSnapshot, layout, slots);
+		expect(animationController.playStateTimeline).toHaveBeenCalledOnce();
+		expect(animationController.updateStateTimelineProgress).toHaveBeenLastCalledWith(0.5);
+
+		writeTimeline(150, 2);
+		const nextSnapshot = reader.readLatest();
+		if (!nextSnapshot) throw new Error("预期读到稳定世界状态提交");
+		handler.syncMemberStates(nextSnapshot, layout, slots);
+		expect(animationController.playStateTimeline).toHaveBeenCalledTimes(2);
+
+		writeTimeline(200, 2, false);
+		const clearedSnapshot = reader.readLatest();
+		if (!clearedSnapshot) throw new Error("预期读到稳定世界状态提交");
+		handler.syncMemberStates(clearedSnapshot, layout, slots);
+		expect(animationController.stopAllAnimations).toHaveBeenCalledOnce();
+		handler.syncMemberStates(clearedSnapshot, layout, slots);
+		expect(animationController.stopAllAnimations).toHaveBeenCalledOnce();
 	});
 });

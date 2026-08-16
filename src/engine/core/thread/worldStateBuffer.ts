@@ -10,7 +10,7 @@ import { WORLD_AREA_CAPACITY, WORLD_AREA_CAPACITY_EXCEEDED_CODE } from "../World
 import type { ModifierSource } from "../World/Member/runtime/AttributeContainer/AttributeContainerTypes";
 
 export const WORLD_STATE_MAGIC = 0x57535432;
-export const WORLD_STATE_LAYOUT_VERSION = 3;
+export const WORLD_STATE_LAYOUT_VERSION = 5;
 export const WORLD_STATE_PLAYER_ATTRIBUTE_COUNT = 138;
 export const WORLD_STATE_MOB_ATTRIBUTE_COUNT = 31;
 export const WORLD_STATE_DEFAULT_MEMBER_CAPACITY = 8;
@@ -105,12 +105,11 @@ export type WorldStateMemberData = {
 	yaw: number;
 	speed?: number;
 	stateFlags?: number;
-	animation?: {
+	/** 成员动作状态槽（ADR 0053）：只含状态名 hash、实例和逻辑起始时间，不包含动画描述。 */
+	state?: {
 		id: number;
-		progress: number;
-		logicTimeMs: number;
-		loop: boolean;
-		ended: boolean;
+		instance: number;
+		startedAtLogicalTimeMs: number;
 	};
 	attributes?: {
 		base: readonly number[];
@@ -160,12 +159,10 @@ export type WorldStateMember = {
 	yaw: number;
 	speed: number;
 	stateFlags: number;
-	animation: {
+	state: {
 		id: number;
-		progress: number;
-		logicTimeMs: number;
-		loop: boolean;
-		ended: boolean;
+		instance: number;
+		startedAtLogicalTimeMs: number;
 	};
 	attributes: { base: number; act: number }[];
 	modifiers: WorldStateModifierData[];
@@ -222,21 +219,20 @@ const DIR_ENTITY_ID_HASH = 8;
 const ATTRIBUTE_FLOAT_FIELDS = 2;
 const ATTRIBUTE_BYTES = ATTRIBUTE_FLOAT_FIELDS * Float64Array.BYTES_PER_ELEMENT;
 
-const STATE_INT_FIELDS = 2;
-const STATE_FLOAT_FIELDS = 9;
+// 3 个业务 int 字段后保留一个 int，使后续 Float64 字段保持 8 字节对齐。
+const STATE_INT_FIELDS = 4;
+const STATE_FLOAT_FIELDS = 6;
 const STATE_BYTES =
 	STATE_INT_FIELDS * Int32Array.BYTES_PER_ELEMENT + STATE_FLOAT_FIELDS * Float64Array.BYTES_PER_ELEMENT;
-const STATE_INT_ANIMATION_ID = 0;
-const STATE_INT_FLAGS = 1;
+const STATE_INT_STATE_ID = 0;
+const STATE_INT_STATE_INSTANCE = 1;
+const STATE_INT_FLAGS = 2;
 const STATE_FLOAT_X = 0;
 const STATE_FLOAT_Y = 1;
 const STATE_FLOAT_Z = 2;
 const STATE_FLOAT_YAW = 3;
 const STATE_FLOAT_SPEED = 4;
-const STATE_FLOAT_PROGRESS = 5;
-const STATE_FLOAT_LOGIC_TIME = 6;
-const STATE_FLOAT_LOOP = 7;
-const STATE_FLOAT_ENDED = 8;
+const STATE_FLOAT_STATE_STARTED_AT = 5;
 
 const MODIFIER_FLOAT_FIELDS = 1;
 const MODIFIER_INT_FIELDS = 4;
@@ -618,7 +614,7 @@ export class WorldStateWriter {
 		this.areaSlotGenerations = Array.from({ length: descriptor.areaCapacity }, () => 0);
 	}
 
-	/** 以单个提交序号写入成员、属性、modifier、区域和时间线。 */
+	/** 以单个提交序号写入成员、属性、modifier、区域和动作状态。 */
 	write(payload: WorldStateCommit): void {
 		const sources = payload.modifierSources ?? [];
 		const chains = payload.modifierChains ?? [];
@@ -766,7 +762,8 @@ export class WorldStateWriter {
 		const directory = this.memberOffsets.directoryOffset + slot * DIRECTORY_BYTES;
 		const state = this.memberOffsets.stateOffset + slot * STATE_BYTES;
 		this.data.setInt32(directory + DIR_ACTIVE * 4, 0, true);
-		this.data.setInt32(state + STATE_INT_ANIMATION_ID * 4, 0, true);
+		this.data.setInt32(state + STATE_INT_STATE_ID * 4, 0, true);
+		this.data.setInt32(state + STATE_INT_STATE_INSTANCE * 4, 0, true);
 		this.data.setInt32(state + STATE_INT_FLAGS * 4, 0, true);
 		this.memberSlotActive[slot] = false;
 		const owner = this.memberSlotOwners[slot];
@@ -780,28 +777,26 @@ export class WorldStateWriter {
 	private writeMember(slot: number, member: WorldStateMemberData, generation: number): void {
 		const layout = this.descriptor.memberDirectory[slot];
 		const directory = this.memberOffsets.directoryOffset + slot * DIRECTORY_BYTES;
-		const state = this.memberOffsets.stateOffset + slot * STATE_BYTES;
-		const animation = member.animation ?? { id: 0, progress: 0, logicTimeMs: 0, loop: true, ended: false };
+		const stateOffset = this.memberOffsets.stateOffset + slot * STATE_BYTES;
+		const state = member.state ?? { id: 0, instance: 0, startedAtLogicalTimeMs: 0 };
 		this.data.setInt32(directory + DIR_ACTIVE * 4, 1, true);
 		this.data.setInt32(directory + DIR_GENERATION * 4, generation, true);
 		this.data.setInt32(directory + DIR_ENTITY_TYPE * 4, member.entityType ?? layout.entityType, true);
 		this.data.setInt32(directory + DIR_VISUAL_PROFILE * 4, member.visualProfileId ?? layout.visualProfileId, true);
 		this.data.setInt32(directory + DIR_ENTITY_ID_HASH * 4, worldStateStringId(member.id), true);
-		this.data.setInt32(state + STATE_INT_ANIMATION_ID * 4, animation.id, true);
-		this.data.setInt32(state + STATE_INT_FLAGS * 4, member.stateFlags ?? 0, true);
+		this.data.setInt32(stateOffset + STATE_INT_STATE_ID * 4, state.id, true);
+		this.data.setInt32(stateOffset + STATE_INT_STATE_INSTANCE * 4, state.instance, true);
+		this.data.setInt32(stateOffset + STATE_INT_FLAGS * 4, member.stateFlags ?? 0, true);
 		const floats = [
 			member.position.x,
 			member.position.y,
 			member.position.z,
 			member.yaw,
 			member.speed ?? 0,
-			animation.progress,
-			animation.logicTimeMs,
-			animation.loop ? 1 : 0,
-			animation.ended ? 1 : 0,
+			state.startedAtLogicalTimeMs,
 		];
 		for (let index = 0; index < floats.length; index++)
-			this.data.setFloat64(state + STATE_INT_FIELDS * 4 + index * 8, floats[index], true);
+			this.data.setFloat64(stateOffset + STATE_INT_FIELDS * 4 + index * 8, floats[index], true);
 		const attrs = member.attributes;
 		for (let index = 0; index < layout.attributeCount; index++) {
 			const offset = this.memberOffsets.attributeOffset + (layout.attributeOffset + index) * ATTRIBUTE_BYTES;
@@ -928,7 +923,7 @@ function emptyMember(layout: WorldStateMemberLayout): WorldStateMember {
 		yaw: 0,
 		speed: 0,
 		stateFlags: 0,
-		animation: { id: 0, progress: 0, logicTimeMs: 0, loop: true, ended: false },
+		state: { id: 0, instance: 0, startedAtLogicalTimeMs: 0 },
 		attributes: Array.from({ length: layout.attributeCount }, () => ({ base: 0, act: 0 })),
 		modifiers: [],
 	};
@@ -973,22 +968,6 @@ export class WorldStateReader {
 		return Atomics.load(this.header, HDR_COMMIT_VERSION);
 	}
 
-	/** 返回成员 mspd 在该布局中的稳定索引；动画倍率不得复制成独立字段。 */
-	getMspdAttributeIndex(memberSlot: number): number | null {
-		const layout = this.descriptor.memberDirectory[memberSlot];
-		if (!layout) return null;
-		const index = this.descriptor.attributeSchema
-			.slice(layout.attributeOffset, layout.attributeOffset + layout.attributeCount)
-			.findIndex((entry) => entry.path === "mspd");
-		return index >= 0 ? index : null;
-	}
-
-	readMspd(memberSlot: number, snapshot = this.readLatest()): number | null {
-		if (!snapshot) return null;
-		const index = this.getMspdAttributeIndex(memberSlot);
-		return index === null ? null : (snapshot.members[memberSlot]?.attributes[index]?.act ?? null);
-	}
-
 	/** 读取一个完整稳定提交，禁止成员、区域分表读取造成跨提交混合。 */
 	readLatest(): WorldStateSnapshot | null {
 		for (let retry = 0; retry < MAX_SEQLOCK_RETRIES; retry++) {
@@ -1029,17 +1008,16 @@ export class WorldStateReader {
 			member.entityType = this.data.getInt32(directory + DIR_ENTITY_TYPE * 4, true) as WorldStateEntityType;
 			member.visualProfileId = this.data.getInt32(directory + DIR_VISUAL_PROFILE * 4, true);
 			member.stateFlags = this.data.getInt32(state + STATE_INT_FLAGS * 4, true);
-			member.animation.id = this.data.getInt32(state + STATE_INT_ANIMATION_ID * 4, true);
+			member.state.id = this.data.getInt32(state + STATE_INT_STATE_ID * 4, true);
+			member.state.instance = this.data.getInt32(state + STATE_INT_STATE_INSTANCE * 4, true);
 			const floats = Array.from({ length: STATE_FLOAT_FIELDS }, (_, index) =>
 				this.data.getFloat64(state + STATE_INT_FIELDS * 4 + index * 8, true),
 			);
 			member.position = { x: floats[STATE_FLOAT_X], y: floats[STATE_FLOAT_Y], z: floats[STATE_FLOAT_Z] };
 			member.yaw = floats[STATE_FLOAT_YAW];
 			member.speed = floats[STATE_FLOAT_SPEED];
-			member.animation.progress = floats[STATE_FLOAT_PROGRESS];
-			member.animation.logicTimeMs = floats[STATE_FLOAT_LOGIC_TIME];
-			member.animation.loop = floats[STATE_FLOAT_LOOP] !== 0;
-			member.animation.ended = floats[STATE_FLOAT_ENDED] !== 0;
+			member.state.startedAtLogicalTimeMs = floats[STATE_FLOAT_STATE_STARTED_AT];
+
 			for (let index = 0; index < layout.attributeCount; index++) {
 				const offset = this.memberOffsets.attributeOffset + (layout.attributeOffset + index) * ATTRIBUTE_BYTES;
 				member.attributes[index] = {

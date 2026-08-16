@@ -8,7 +8,6 @@ import {
 	type WorldStateArea,
 	WorldStateAreaShapeKind,
 	type WorldStateLayoutDescriptor,
-	type WorldStateReader,
 	type WorldStateSnapshot,
 	worldStateStringId,
 } from "~/engine/core/thread/worldStateBuffer";
@@ -16,7 +15,7 @@ import { createLogger } from "~/lib/logger";
 import type { Scene } from "~/platform/render/babylon/runtime";
 import { Color3, Mesh, MeshBuilder, StandardMaterial, TransformNode, Vector3 } from "~/platform/render/babylon/runtime";
 import type { WorldResourcePose } from "../contracts/worldContent";
-import type { WorldResource } from "../contracts/worldResource";
+import type { StateAnimationEntry, WorldResource } from "../contracts/worldResource";
 import { VisualProfileRegistry } from "../resources/visualProfileRegistry";
 import type { EntityFactory } from "./EntityFactory";
 import type { EntityRuntime } from "./entityTypes";
@@ -32,7 +31,11 @@ export class CommandHandler {
 	private worldResources: Map<string, WorldResource>;
 	private areaVisuals: Map<string, Mesh> = new Map();
 	private readonly visualProfiles = new VisualProfileRegistry();
-	private readonly animationTimelines = new Map<string, string>();
+	private readonly stateTimelines = new Map<string, string>();
+	private readonly stateAnimationMappings = new Map<
+		string,
+		Map<number, { name: string; entry: StateAnimationEntry }>
+	>();
 	private readonly entityCreations = new Map<string, Promise<void>>();
 
 	constructor(
@@ -69,6 +72,7 @@ export class CommandHandler {
 			if (!previous || !next || !canReuseWorldResource(previous, next)) this.disposeEntity(memberId);
 		}
 		this.worldResources = nextResources;
+		this.rebuildStateAnimationMappings();
 		if (contentMode === "realtime") return;
 		const posesByMemberId = new Map(poses.map((pose) => [pose.memberId, pose]));
 		for (const resource of resources) {
@@ -93,6 +97,7 @@ export class CommandHandler {
 		if (!profile) return;
 		const resource = { ...profile.resource, memberId: entityId };
 		this.worldResources.set(entityId, resource);
+		this.rebuildStateAnimationMappings();
 		const creation = this.createEntity(entityId, position, seq)
 			.then(() => {
 				if (!this.worldResources.has(entityId)) this.disposeEntity(entityId);
@@ -122,47 +127,65 @@ export class CommandHandler {
 		}
 	}
 
-	/** 从任意稳定提交重建当前动画基线，后续帧交给 Babylon 本地时钟推进。 */
-	syncMemberAnimations(
+	/** 从统一 SAB 描述重建成员状态表现；进度由逻辑时间差和本地静态资源计算。 */
+	syncMemberStates(
 		snapshot: WorldStateSnapshot,
 		layout: WorldStateLayoutDescriptor,
-		reader: WorldStateReader,
 		entitySlots: ReadonlyMap<string, number>,
 	): void {
 		const entityIdsBySlot = new Map(Array.from(entitySlots, ([entityId, slot]) => [slot, entityId]));
 		snapshot.members.forEach((member, slot) => {
 			const entityId = entityIdsBySlot.get(slot);
 			if (!entityId) return;
-			if (!member.active || member.animation.id === 0 || member.animation.ended) {
-				this.animationTimelines.delete(entityId);
-				return;
-			}
 			const memberLayout = layout.memberDirectory[slot];
 			const entity = memberLayout ? this.entities.get(entityId) : undefined;
+			if (!member.active || member.state.id === 0) {
+				if (this.stateTimelines.delete(entityId) && entity?.type === "character") {
+					entity.animationController.stopAllAnimations();
+				}
+				return;
+			}
 			const resource = memberLayout ? this.worldResources.get(entityId) : undefined;
 			if (!memberLayout || !entity || entity.type !== "character" || resource?.kind !== "character") return;
-			const timelineVersion = `${member.generation}:${member.animation.id}:${member.animation.logicTimeMs}`;
-			if (this.animationTimelines.get(entityId) === timelineVersion) return;
-			this.animationTimelines.set(entityId, timelineVersion);
-			const mapping = Object.entries(resource.animation.clips).find(
-				([semantic, clip]) =>
-					worldStateStringId(semantic) === member.animation.id || worldStateStringId(clip) === member.animation.id,
+			const mapping = this.stateAnimationMappings.get(entityId)?.get(member.state.id);
+			if (!mapping) {
+				if (this.stateTimelines.delete(entityId)) entity.animationController.stopAllAnimations();
+				return;
+			}
+			const timelineVersion = `${member.generation}:${member.state.id}:${member.state.instance}`;
+			if (mapping.name === "idle") {
+				if (this.stateTimelines.delete(entityId)) entity.animationController.stopAllAnimations();
+				return;
+			}
+			const progress = Math.max(
+				0,
+				(snapshot.logicalTimeMs - member.state.startedAtLogicalTimeMs) / mapping.entry.durationMs,
 			);
-			if (!mapping) return;
-			const [semantic, clip] = mapping;
-			const mspd = reader.readMspd(slot, snapshot) ?? 0;
-			const progress = member.animation.progress;
-			entity.animationController.setMotionSpeed(mspd);
-			if (semantic === "idle" || semantic === "walk" || semantic === "run") {
-				entity.animationController.setLocomotion(semantic, progress);
-			} else if (semantic === "jump" || semantic === "fall") {
-				entity.animationController.setAirborne(true, progress);
-			} else if (semantic === "land") {
-				entity.animationController.setAirborne(false, progress);
+			if (this.stateTimelines.get(entityId) !== timelineVersion) {
+				this.stateTimelines.set(entityId, timelineVersion);
+				entity.animationController.playStateTimeline(mapping.entry.clip, progress, mapping.entry.play);
 			} else {
-				entity.animationController.playAction(clip, progress);
+				entity.animationController.updateStateTimelineProgress(progress);
 			}
 		});
+	}
+
+	/** 在静态资源版本落地时建立 stateId 到动画资源的反向索引。 */
+	private rebuildStateAnimationMappings(): void {
+		this.stateAnimationMappings.clear();
+		for (const [memberId, resource] of this.worldResources) {
+			if (resource.kind !== "character") continue;
+			const byStateId = new Map<number, { name: string; entry: StateAnimationEntry }>();
+			for (const [name, entry] of Object.entries(resource.animation.states)) {
+				const stateId = worldStateStringId(name);
+				const previous = byStateId.get(stateId);
+				if (previous && previous.name !== name) {
+					throw new Error(`状态名 hash 冲突: ${previous.name} / ${name}`);
+				}
+				byStateId.set(stateId, { name, entry });
+			}
+			this.stateAnimationMappings.set(memberId, byStateId);
+		}
 	}
 
 	/** 由实时成员目录确认槽位失活或代次变化时删除实体。 */
@@ -209,7 +232,8 @@ export class CommandHandler {
 		for (const memberId of [...this.entities.keys()]) this.disposeEntity(memberId);
 		this.worldResources.clear();
 		this.visualProfiles.clear();
-		this.animationTimelines.clear();
+		this.stateTimelines.clear();
+		this.stateAnimationMappings.clear();
 		this.entityCreations.clear();
 	}
 
@@ -260,7 +284,7 @@ export class CommandHandler {
 	private disposeEntity(id: string): void {
 		const entity = this.entities.get(id);
 		if (!entity) return;
-		this.animationTimelines.delete(id);
+		this.stateTimelines.delete(id);
 
 		logger.info(`🗑️ 开始清理实体: ${id}`);
 

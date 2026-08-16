@@ -1,7 +1,7 @@
 import type { EventObject } from "xstate";
 import { type ZodType, z } from "zod/v4";
 import type { State } from "~/lib/mistreevous/State";
-import type { BtContext, MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
+import type { MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
 import type { ActionPool, ConditionPool } from "./type";
 
 const unwrapSchema = (schema: ZodType): ZodType => {
@@ -158,17 +158,4 @@ export const conditionPoolToInvokers = <
 // 阈值描述函数
 export const maxMin = (min: number, value: number, max: number) => {
 	return Math.max(min, Math.min(value, max));
-};
-
-/** 记录成员当前动画时间线；Worker 在 Tick 收尾把该事实写入统一实时状态。 */
-export const setCurrentAnimationTimeline = <TExtraAttrKey extends string, TFSMEvent extends EventObject>(
-	context: BtContext<TExtraAttrKey>,
-	capabilities: MemberBtCapabilities<TExtraAttrKey, TFSMEvent>,
-	actionName: string,
-	params?: Record<string, unknown>,
-) => {
-	// 动画事实写入成员运行时私有时间线，由实时状态 SAB 在 Tick 收尾发布；
-	// 渲染器不接收动作事件，也不维护第二个跨线程动画源。
-	const ts = capabilities.services.getCurrentTimeMs?.() ?? context.currentTimeMs;
-	capabilities.animationState.lastAction = { name: actionName, ts, params };
 };

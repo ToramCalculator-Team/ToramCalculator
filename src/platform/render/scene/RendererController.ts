@@ -45,7 +45,7 @@ export function createRendererController(scene: Scene, options: RendererControll
 	const entities = new Map<string, EntityRuntime>();
 	const entitySlots = new Map<string, number>();
 	const factory = options.entityFactory ?? new EntityFactory(scene, options.contentRoot);
-	const renderSyncSystem = new RenderSyncSystem(worldStateReader);
+	const renderSyncSystem = new RenderSyncSystem();
 	const commandHandler = new CommandHandler(entities, factory, scene, {
 		onPoseDiscontinuity: (entityId) => renderSyncSystem.resetEntity(entityId),
 		onEntityRemoved: (entityId) => renderSyncSystem.removeEntity(entityId),
@@ -84,7 +84,7 @@ export function createRendererController(scene: Scene, options: RendererControll
 			}
 			entitySlots.clear();
 			for (const [entityId, slot] of nextEntitySlots) entitySlots.set(entityId, slot);
-			if (worldStateReader) commandHandler.syncMemberAnimations(snapshot, layout, worldStateReader, entitySlots);
+			if (worldStateReader) commandHandler.syncMemberStates(snapshot, layout, entitySlots);
 		}
 		renderSyncSystem.syncEntities(entities, entitySlots, snapshot, dtSec);
 	}

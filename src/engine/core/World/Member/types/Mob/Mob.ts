@@ -6,6 +6,7 @@ import { MemberRuntimeServicesDefaults } from "../../RuntimeServices";
 import { AttributeContainer } from "../../runtime/AttributeContainer/AttributeContainer";
 import { mergeSchema, type SlotDeclaration } from "../../runtime/AttributeContainer/SchemaMerge";
 import type { ExtractAttrPaths } from "../../runtime/AttributeContainer/SchemaTypes";
+import type { MemberStateName } from "../../runtime/State/MemberState";
 import type { MobRuntime } from "../../runtime/types";
 import { createMobBtBindings } from "./Agents/BtBindings";
 import { MobAttrSchema } from "./MobAttrSchema";
@@ -70,6 +71,17 @@ export class Mob extends Member<MobAttrKey, MobSpecificEvent, MobFSMContext, Mob
 			position,
 			createMobBtBindings,
 		);
+	}
+
+	/**
+	 * 使用 XState snapshot.matches 读取 FSM 当前动作状态。
+	 * Mob 不再在 FSM 里定义技能阶段；技能状态由 member-flow BT 声明。
+	 */
+	protected resolveFsmState(): MemberStateName {
+		const snapshot = this.actor.getSnapshot();
+		if (snapshot.matches("死亡")) return "dead";
+		if (snapshot.matches({ 存活: { 可操作状态: "控制状态" } })) return "controlled";
+		return "idle";
 	}
 
 	/** 收集 Mob 行为树声明的持久化属性槽，保证 BT 变量随 AttributeContainer checkpoint。 */

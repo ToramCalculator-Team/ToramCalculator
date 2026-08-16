@@ -21,6 +21,7 @@ import { AttributeThresholdSource } from "./runtime/AttributeWatcher/AttributeTh
 import { BtManager } from "./runtime/BehaviourTree/BtManager";
 import type { MemberBtCapabilities, MemberBtManagerEnv } from "./runtime/BehaviourTree/BtManagerEnv";
 import { ProcBus } from "./runtime/ProcBus/ProcBus";
+import type { MemberStateDeclaration, MemberStateFrameEntry, MemberStateName } from "./runtime/State/MemberState";
 import type {
 	MemberActor,
 	MemberControlEvent,
@@ -60,7 +61,7 @@ export type MemberControlInputRecorder = (memberId: string, event: MemberControl
  * 成员基类只接收具体成员新增的 FSM 事件；公共事件由 MemberFSMEvent 在唯一位置组合。
  * 这样 Member 自身发送 update、死亡通知等公共事件时不需要类型断言。
  */
-export class Member<
+export abstract class Member<
 	TExtraAttrKey extends string,
 	TSpecificEvent extends EventObject,
 	TFSMContext extends MemberFSMContext,
@@ -70,6 +71,8 @@ export class Member<
 	id: string;
 	type: MemberType;
 	name: string;
+	/** 子类用 XState snapshot.matches 把当前 FSM 动作状态投影为稳定状态名。 */
+	protected abstract resolveFsmState(): MemberStateName;
 	campId: string;
 	teamId: string;
 	dataSchema: NestedSchema;
@@ -151,10 +154,16 @@ export class Member<
 		}
 	}
 	/**
-	 * 当前动画时间线（不序列化、不进入 checkpoint）。
-	 * Worker 在 Tick 收尾把它与成员属性一起写入统一实时世界状态。
+	 * 每 Tick 投影后的成员动作状态帧（ADR 0053）。
+	 * FSM 与行为流程 BT 在 refreshPresentationState 汇合；这里只保存最终输出。
 	 */
-	animationState: { lastAction?: { name: string; ts: number; params?: Record<string, unknown> } } = {};
+	presentationState: { current?: MemberStateFrameEntry; nextInstance: number } = {
+		nextInstance: 0,
+	};
+	private activeEffectStateDeclaration: MemberStateDeclaration | null = null;
+	private memberFlowStateDeclaration: MemberStateDeclaration | null = null;
+	private nextBtStateSequence = 0;
+	private lastAcceptedStateKey: string | null = null;
 	private domainEventSender: ((event: MemberDomainEvent) => void) | null = null;
 	private controlInputRecorder: MemberControlInputRecorder | null = null;
 
@@ -261,8 +270,12 @@ export class Member<
 			get attributeContainer() {
 				return self.attributeContainer;
 			},
-			get animationState() {
-				return self.animationState;
+			declareState: (name) => self.declareState(name),
+			clearActiveEffectStateDeclaration: () => {
+				self.activeEffectStateDeclaration = null;
+			},
+			clearMemberFlowStateDeclaration: () => {
+				self.memberFlowStateDeclaration = null;
 			},
 			registerParallelBt: (name, definition, agent, localContext) =>
 				self.btManager.registerParallelBt(name, definition, agent, localContext),
@@ -310,10 +323,75 @@ export class Member<
 		};
 	}
 
+	/**
+	 * 供行为流程 BT 的 state 叶子提交本 Tick 状态声明。
+	 * active effect 与 member-flow 两种执行上下文可以声明；passive/parallel buff BT 不能声明。
+	 */
+	private declareState(name: MemberStateName): void {
+		const timeMs = this.getLogicalTimeMs();
+		const sequence = ++this.nextBtStateSequence;
+		if (this.btManager.isSteppingActiveEffect()) {
+			this.activeEffectStateDeclaration = { name, timeMs, sequence };
+			return;
+		}
+		if (this.btManager.isSteppingMemberFlow()) {
+			this.memberFlowStateDeclaration = { name, timeMs, sequence };
+			return;
+		}
+		log.warn(`member ${this.name} 的并行 buff BT 不能声明成员动作状态: ${name}`);
+	}
+
+	/**
+	 * 在 Tick 收尾把 FSM 与行为流程 BT 汇合为单一状态帧。
+	 *
+	 * 选择规则来自状态结构而不是全局优先级：
+	 * - FSM 的 blocking/dead 状态直接胜出；
+	 * - FSM 处于技能执行状态时，active effect BT 细化技能阶段；
+	 * - FSM 处于 idle 时，member-flow BT 可声明 AI 驱动的动作状态。
+	 */
+	private refreshPresentationState(): void {
+		if (!this.btManager.hasActiveEffectBt()) {
+			this.activeEffectStateDeclaration = null;
+		}
+		const fsmName = this.resolveFsmState();
+		let selectedName = fsmName;
+		let selectedTimeMs = this.getLogicalTimeMs();
+		let stateKey = `fsm:${selectedName}`;
+		if (fsmName === "skill.busy" && this.activeEffectStateDeclaration) {
+			selectedName = this.activeEffectStateDeclaration.name;
+			selectedTimeMs = this.activeEffectStateDeclaration.timeMs;
+			stateKey = `active-effect:${this.activeEffectStateDeclaration.sequence}`;
+		} else if (fsmName === "idle" && this.memberFlowStateDeclaration) {
+			selectedName = this.memberFlowStateDeclaration.name;
+			selectedTimeMs = this.memberFlowStateDeclaration.timeMs;
+			stateKey = `member-flow:${this.memberFlowStateDeclaration.sequence}`;
+		}
+		if (this.lastAcceptedStateKey === stateKey && this.presentationState.current) return;
+
+		const instance = this.presentationState.nextInstance + 1;
+		this.presentationState.nextInstance = instance;
+		this.presentationState.current = {
+			name: selectedName,
+			instance,
+			startedAtLogicalTimeMs: selectedTimeMs,
+		};
+		this.lastAcceptedStateKey = stateKey;
+	}
+
+	/** 读取当前逻辑时间；时间服务未注入时回退 runtime 快照值。 */
+	private getLogicalTimeMs(): number {
+		try {
+			return this.services.getCurrentTimeMs();
+		} catch {
+			return this.runtime.currentTimeMs;
+		}
+	}
+
 	start(): void {
 		if (this.actorStarted) return;
 		this.actor.start();
 		this.actorStarted = true;
+		this.refreshPresentationState();
 	}
 
 	serialize(): MemberSnapshot {
@@ -604,6 +682,7 @@ export class Member<
 		this.resolveMovementInput(movementInput);
 		this.integrateMovement(tick);
 		this.btManager.tickAll();
+		this.refreshPresentationState();
 		// 让阈值 watcher 及时响应 modifier 导致的数值变化：把本帧累计的脏值刷出。
 		this.attributeContainer.flushDirtyValues();
 	}

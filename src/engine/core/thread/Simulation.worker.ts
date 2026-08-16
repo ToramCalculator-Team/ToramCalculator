@@ -182,7 +182,7 @@ const controllerInputReaders = new Map<
 	{ buffer: SharedArrayBuffer; lastStableState: SharedMovementStateSnapshot | null }
 >();
 
-/** 在 Tick 收尾一次性收集所有实时表，确保属性、动画和区域来自同一提交。 */
+/** 在 Tick 收尾一次性收集所有实时表，确保属性、动作状态和区域来自同一提交。 */
 function createWorldStateCommit(): WorldStateCommit {
 	const currentTimeMs = gameEngine.getCurrentTimeMs();
 	const modifierSources: Array<{ idHash: number; type: number }> = [];
@@ -225,12 +225,7 @@ function createWorldStateCommit(): WorldStateCommit {
 					});
 				}
 			}
-			const lastAction = member.animationState.lastAction;
-			const duration =
-				typeof lastAction?.params?.duration === "number" && lastAction.params.duration > 0
-					? lastAction.params.duration
-					: 1000;
-			const progress = lastAction ? Math.min(1, Math.max(0, (currentTimeMs - lastAction.ts) / duration)) : 0;
+			const currentState = member.presentationState.current;
 			const entityType =
 				member.type === "Mob"
 					? WorldStateEntityType.MOB
@@ -247,12 +242,10 @@ function createWorldStateCommit(): WorldStateCommit {
 				speed: member.runtime.movement?.speed ?? 0,
 				stateFlags:
 					(member.runtime.movement ? STATE_FLAG_MOVING : 0) | (!member.runtime.grounded ? STATE_FLAG_AIRBORNE : 0),
-				animation: {
-					id: lastAction ? worldStateStringId(lastAction.name) : 0,
-					progress,
-					logicTimeMs: lastAction?.ts ?? currentTimeMs,
-					loop: !lastAction,
-					ended: !!lastAction && progress >= 1,
+				state: {
+					id: currentState ? worldStateStringId(currentState.name) : 0,
+					instance: currentState?.instance ?? 0,
+					startedAtLogicalTimeMs: currentState?.startedAtLogicalTimeMs ?? currentTimeMs,
 				},
 				attributes,
 				modifiers,

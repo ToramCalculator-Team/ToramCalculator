@@ -25,6 +25,8 @@ export class BtManager<
 	private activeEffectEntry: BtEntry | undefined;
 	private parallelEntries: Map<string, BtEntry> = new Map();
 	private btOptions: BehaviourTreeOptions = {};
+	/** 当前 step 的执行上下文；state 声明只允许 active effect 和 member-flow 写入。 */
+	private steppingContext: "none" | "active-effect" | "member-flow" = "none";
 
 	constructor(
 		private env: MemberBtManagerEnv<TFSMEvent, TExtraAttrKey, TContext>,
@@ -147,11 +149,17 @@ export class BtManager<
 			const state = this.activeEffectEntry.bt.getState();
 			if (state === State.SUCCEEDED || state === State.FAILED) {
 				this.activeEffectEntry = undefined;
+				this.clearActiveEffectStateDeclaration();
 				// 技能生命周期必须在同一个引擎 Tick 内同步收敛，连续快进不得依赖 Promise 微任务。
 				// BtManager 的通用 FSM 泛型无法枚举 Player 专属完成事件；active effect 只由 Player 技能路径注册。
 				this.env.send({ type: "技能执行完成" } as TFSMEvent);
 			} else {
-				this.activeEffectEntry.bt.step();
+				this.steppingContext = "active-effect";
+				try {
+					this.activeEffectEntry.bt.step();
+				} finally {
+					this.steppingContext = "none";
+				}
 			}
 		}
 
@@ -159,8 +167,14 @@ export class BtManager<
 			const state = entry.bt.getState();
 			if (state === State.SUCCEEDED || state === State.FAILED) {
 				this.parallelEntries.delete(name);
+				if (name === "member-flow") this.clearMemberFlowStateDeclaration();
 			} else {
-				entry.bt.step();
+				this.steppingContext = name === "member-flow" ? "member-flow" : "none";
+				try {
+					entry.bt.step();
+				} finally {
+					this.steppingContext = "none";
+				}
 			}
 		});
 	}
@@ -171,6 +185,7 @@ export class BtManager<
 		localContext?: Record<string, unknown>,
 	): BehaviourTree | undefined {
 		if (!definition) return undefined;
+		this.clearActiveEffectStateDeclaration();
 		const bt = new BehaviourTree(definition, this.buildExecutionContext(agent, localContext), this.createBtOptions());
 		this.activeEffectEntry = { bt };
 		return bt;
@@ -182,6 +197,7 @@ export class BtManager<
 		agent?: string,
 		localContext?: Record<string, unknown>,
 	): BehaviourTree | undefined {
+		if (name === "member-flow") this.clearMemberFlowStateDeclaration();
 		const bt = new BehaviourTree(definition, this.buildExecutionContext(agent, localContext), this.createBtOptions());
 		this.parallelEntries.set(name, { bt });
 		return bt;
@@ -189,10 +205,12 @@ export class BtManager<
 
 	unregisterActiveEffectBt(): void {
 		this.activeEffectEntry = undefined;
+		this.clearActiveEffectStateDeclaration();
 	}
 
 	unregisterParallelBt(name: string): void {
 		this.parallelEntries.delete(name);
+		if (name === "member-flow") this.clearMemberFlowStateDeclaration();
 	}
 
 	getParallelBt(name: string): BehaviourTree | undefined {
@@ -230,6 +248,32 @@ export class BtManager<
 	clear(): void {
 		this.activeEffectEntry = undefined;
 		this.parallelEntries.clear();
+		this.clearActiveEffectStateDeclaration();
+		this.clearMemberFlowStateDeclaration();
+	}
+
+	/** state 叶子只允许 active effect 与 member-flow 两种执行上下文写入。 */
+	isSteppingActiveEffect(): boolean {
+		return this.steppingContext === "active-effect";
+	}
+
+	/** member-flow 是 Mob 与自动流程 BT 的动作状态来源。 */
+	isSteppingMemberFlow(): boolean {
+		return this.steppingContext === "member-flow";
+	}
+
+	/** 供 FSM 中断动作清空当前视觉状态声明，不销毁行为树实例。 */
+	clearStateDeclarations(): void {
+		this.clearActiveEffectStateDeclaration();
+		this.clearMemberFlowStateDeclaration();
+	}
+
+	private clearActiveEffectStateDeclaration(): void {
+		this.env.getCapabilities().clearActiveEffectStateDeclaration();
+	}
+
+	private clearMemberFlowStateDeclaration(): void {
+		this.env.getCapabilities().clearMemberFlowStateDeclaration();
 	}
 
 	private deriveBtId(bt: BehaviourTree): string {
@@ -266,5 +310,7 @@ export class BtManager<
 	restoreCheckpoint(_checkpoint: BtManagerCheckpoint): void {
 		this.activeEffectEntry = undefined;
 		this.parallelEntries.clear();
+		this.clearActiveEffectStateDeclaration();
+		this.clearMemberFlowStateDeclaration();
 	}
 }

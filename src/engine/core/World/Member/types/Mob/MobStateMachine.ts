@@ -70,17 +70,26 @@ interface 收到buff增删事件 extends EventObject {
 	type: "收到buff增删事件";
 	data: { buffId: string; value: number };
 }
-interface 收到前摇结束通知 extends EventObject {
-	type: "收到前摇结束通知";
+interface 收到快照请求 extends EventObject {
+	type: "收到快照请求";
+	data: { senderId: string };
 }
-interface 收到发动结束通知 extends EventObject {
-	type: "收到发动结束通知";
+interface 收到目标快照 extends EventObject {
+	type: "收到目标快照";
+	data: { senderId: string };
 }
-interface 收到咏唱结束通知 extends EventObject {
-	type: "收到咏唱结束通知";
+interface 进行伤害计算 extends EventObject {
+	type: "进行伤害计算";
 }
-interface 收到蓄力结束通知 extends EventObject {
-	type: "收到蓄力结束通知";
+interface 进行命中判定 extends EventObject {
+	type: "进行命中判定";
+}
+interface 进行控制判定 extends EventObject {
+	type: "进行控制判定";
+}
+interface 收到buff增删事件 extends EventObject {
+	type: "收到buff增删事件";
+	data: { buffId: string; value: number };
 }
 
 export type MobSpecificEvent =
@@ -94,10 +103,6 @@ export type MobSpecificEvent =
 	| 进行命中判定
 	| 进行控制判定
 	| 收到buff增删事件
-	| 收到前摇结束通知
-	| 收到发动结束通知
-	| 收到咏唱结束通知
-	| 收到蓄力结束通知
 	| 收到快照请求
 	| 收到目标快照;
 
@@ -171,81 +176,6 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 					// ...
 					log.debug(`👹 [${env.name}] 根据配置生成初始状态`, event);
 				},
-				启用站立动画: ({ context, event }) => {
-					// Add your action code here
-					// ...
-					log.debug(`👹 [${env.name}] 启用站立动画`, event);
-				},
-				启用移动动画: ({ context, event }) => {
-					// Add your action code here
-					// ...
-					log.debug(`👹 [${env.name}] 启用移动动画`, event);
-				},
-				启用前摇动画: ({ context, event }) => {
-					// Add your action code here
-					// ...
-					log.debug(`👹 [${env.name}] 启用前摇动画`, event);
-				},
-				计算前摇时长: ({ context, event }) => {
-					// Add your action code here
-					// ...
-					log.debug(`👹 [${env.name}] 计算前摇时长`, event);
-				},
-				创建前摇结束通知: ({ context, event }) => {
-					// Add your action code here
-					// ...
-					log.debug(`👹 [${env.name}] 创建前摇结束通知`, event);
-				},
-				启用蓄力动画: ({ context, event }) => {
-					// Add your action code here
-					// ...
-					log.debug(`👹 [${env.name}] 启用蓄力动画`, event);
-				},
-				计算蓄力时长: ({ context, event }) => {
-					// Add your action code here
-					// ...
-					log.debug(`👹 [${env.name}] 计算蓄力时长`, event);
-				},
-				创建蓄力结束通知: ({ context, event }) => {
-					// Add your action code here
-					// ...
-					log.debug(`👹 [${env.name}] 创建蓄力结束通知`, event);
-				},
-				启用咏唱动画: ({ context, event }) => {
-					// Add your action code here
-					// ...
-					log.debug(`👹 [${env.name}] 启用咏唱动画`, event);
-				},
-				计算咏唱时长: ({ context, event }) => {
-					// Add your action code here
-					// ...
-					log.debug(`👹 [${env.name}] 计算咏唱时长`, event);
-				},
-				创建咏唱结束通知: ({ context, event }) => {
-					// Add your action code here
-					// ...
-					log.debug(`👹 [${env.name}] 创建咏唱结束通知`, event);
-				},
-				启用技能发动动画: ({ context, event }) => {
-					// Add your action code here
-					// ...
-					log.debug(`👹 [${env.name}] 启用技能发动动画`, event);
-				},
-				计算发动时长: ({ context, event }) => {
-					// Add your action code here
-					// ...
-					log.debug(`👹 [${env.name}] 计算发动时长`, event);
-				},
-				创建发动结束通知: ({ context, event }) => {
-					// Add your action code here
-					// ...
-					log.debug(`👹 [${env.name}] 创建发动结束通知`, event);
-				},
-				技能效果管线: ({ context, event }) => {
-					// Add your action code here
-					// ...
-					log.debug(`👹 [${env.name}] 技能效果管线`, event);
-				},
 				重置控制抵抗时间: ({ context, event }) => {
 					// Add your action code here
 					// ...
@@ -255,11 +185,7 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 					// Add your action code here
 					// ...
 					log.debug(`👹 [${env.name}] 中断当前行为`, event);
-				},
-				启动受控动画: ({ context, event }) => {
-					// Add your action code here
-					// ...
-					log.debug(`👹 [${env.name}] 启动受控动画`, event);
+					env.btManager.clearStateDeclarations();
 				},
 				重置到复活状态: ({ context, event }) => {
 					// Add your action code here
@@ -364,21 +290,6 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 				},
 			},
 			guards: {
-				存在蓄力阶段: ({ context, event }) => {
-					log.debug(`👹 [${env.name}] 存在蓄力阶段`, event);
-					// Add your guard condition here
-					return true;
-				},
-				存在咏唱阶段: ({ context, event }) => {
-					log.debug(`👹 [${env.name}] 存在咏唱阶段`, event);
-					// Add your guard condition here
-					return true;
-				},
-				存在后续连击: ({ context, event }) => {
-					log.debug(`👹 [${env.name}] 存在后续连击`, event);
-					// Add your guard condition here
-					return true;
-				},
 				是物理伤害: ({ context, event }) => {
 					const damageRequest = (event as 受到攻击).data?.damageRequest ?? context.hitSession?.damageRequest;
 					const res = damageRequest?.damageTags.includes("physical") ?? false;
@@ -481,11 +392,6 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 								空闲状态: {
 									tags: "movement-input-enabled",
 									initial: "静止",
-									on: {
-										使用技能: {
-											target: "技能处理状态",
-										},
-									},
 									states: {
 										静止: {
 											on: {
@@ -493,137 +399,11 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 													target: "移动中",
 												},
 											},
-											entry: {
-												type: "启用站立动画",
-											},
 										},
 										移动中: {
 											on: {
 												停止移动: {
 													target: "静止",
-												},
-											},
-											entry: {
-												type: "启用移动动画",
-											},
-										},
-									},
-								},
-								技能处理状态: {
-									initial: "初始化技能",
-									states: {
-										初始化技能: {
-											always: {
-												target: "执行技能中",
-											},
-										},
-										执行技能中: {
-											initial: "前摇中",
-											states: {
-												前摇中: {
-													on: {
-														收到前摇结束通知: [
-															{
-																target: "蓄力中",
-																guard: {
-																	type: "存在蓄力阶段",
-																},
-															},
-															{
-																target: "咏唱中",
-																guard: {
-																	type: "存在咏唱阶段",
-																},
-															},
-															{
-																target: "发动中",
-															},
-														],
-													},
-													entry: [
-														{
-															type: "启用前摇动画",
-														},
-														{
-															type: "计算前摇时长",
-														},
-														{
-															type: "创建前摇结束通知",
-														},
-													],
-												},
-												蓄力中: {
-													on: {
-														收到蓄力结束通知: [
-															{
-																target: "咏唱中",
-																guard: {
-																	type: "存在咏唱阶段",
-																},
-															},
-															{
-																target: "发动中",
-															},
-														],
-													},
-													entry: [
-														{
-															type: "启用蓄力动画",
-														},
-														{
-															type: "计算蓄力时长",
-														},
-														{
-															type: "创建蓄力结束通知",
-														},
-													],
-												},
-												咏唱中: {
-													on: {
-														收到咏唱结束通知: {
-															target: "发动中",
-														},
-													},
-													entry: [
-														{
-															type: "启用咏唱动画",
-														},
-														{
-															type: "计算咏唱时长",
-														},
-														{
-															type: "创建咏唱结束通知",
-														},
-													],
-												},
-												发动中: {
-													on: {
-														收到发动结束通知: [
-															{
-																target: `#${machineId}.存活.可操作状态.技能处理状态.初始化技能`,
-																guard: {
-																	type: "存在后续连击",
-																},
-															},
-															{
-																target: `#${machineId}.存活.可操作状态.空闲状态`,
-															},
-														],
-													},
-													entry: [
-														{
-															type: "启用技能发动动画",
-														},
-														{
-															type: "计算发动时长",
-														},
-														{
-															type: "创建发动结束通知",
-														},
-														{
-															type: "技能效果管线",
-														},
-													],
 												},
 											},
 										},
@@ -643,9 +423,6 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 								},
 								{
 									type: "中断当前行为",
-								},
-								{
-									type: "启动受控动画",
 								},
 							],
 						},

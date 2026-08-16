@@ -13,12 +13,12 @@ import type { PipelineInstruction } from "./instruction";
  * - 解析/编译/执行由 `PipelineResolverService` 负责
  *
  * 技能生命周期管线（skill.charging / skill.chanting / skill.action）约定：
- * - 动画时序：chanting(咏唱) → charging(蓄力) → startup(前摇) → recovery(后摇)。
+ * - 阶段时序：chanting(咏唱) → charging(蓄力) → startup(前摇) → recovery(后摇)。
  * - skill.action 输出拆分前动作总时长；FSM 将其拆为 startup + recovery，二者才写入 runtime lifecycle。
  * - 由编排层（FSM action “添加待处理技能”）预求值 variant 上的字符串公式并转为毫秒，
  *   以 `input.fixed` + `input.modified` 传入。
  * - charging / action 套用 mspd 行动速度修正：rate = max(0.5, 1 - mspd/100)。
- * - chanting 额外套用 cspr 咏唱缩减：chantRate = max(0, 1 - cspr/100)，再叠加 mspd 动画修正。
+ * - chanting 额外套用 cspr 咏唱缩减：chantRate = max(0, 1 - cspr/100)，再叠加 mspd 行动速度修正。
  * - FSM 再把管线输出 `durationMs` 写入 `runtime.currentSkill.lifecycle`。
  */
 
@@ -76,7 +76,7 @@ export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstructi
 		{ target: "durationMs", op: "floor", a: "rawDurationMs" },
 	],
 
-	// 咏唱：chantingFixedMs 不受速度影响；chantingModifiedMs 先受 CSPD 咏唱缩减，再受行动速度动画修正。
+	// 咏唱：chantingFixedMs 不受速度影响；chantingModifiedMs 先受 CSPD 咏唱缩减，再受行动速度修正。
 	// 输入：input.fixed, input.modified（毫秒）
 	"skill.chanting": [
 		...mspdRateInstructions,

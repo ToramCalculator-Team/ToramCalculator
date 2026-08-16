@@ -116,14 +116,15 @@ export const createPreviewBtRuntime = (memberType: MemberType): PreviewBtRuntime
 	};
 
 	const attributeContainer = new AttributeContainer<string>(MemberBaseNestedSchema);
-	const animationState: MemberBtCapabilities<string, MemberFSMEvent>["animationState"] = {};
 	const parallelBts = new Set<string>();
 	let nextThresholdRegistrationId = 1;
 
 	const capabilities: MemberBtCapabilities<string, MemberFSMEvent> = {
 		attributeContainer,
 		services,
-		animationState,
+		declareState: () => undefined,
+		clearActiveEffectStateDeclaration: () => undefined,
+		clearMemberFlowStateDeclaration: () => undefined,
 		registerParallelBt: (name) => {
 			parallelBts.add(name);
 			return undefined;

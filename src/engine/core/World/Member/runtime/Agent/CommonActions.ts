@@ -11,10 +11,10 @@ import {
 	StatModifierKindSchema,
 } from "../AttributeContainer/AttributeContainer";
 import type { MemberBtCapabilities } from "../BehaviourTree/BtManagerEnv";
+import { MemberStateNameSchema } from "../State/MemberState";
 import type { MemberFSMEvent } from "../StateMachine/types";
 import type { MemberSharedRuntime } from "../types";
 import { type ActionPool, defineAction } from "./type";
-import { setCurrentAnimationTimeline } from "./uitls";
 
 const log = createLogger("Actions");
 
@@ -248,17 +248,16 @@ export const CommonActionPool = {
 		},
 	),
 
-	/** 播放动画 */
-	animation: defineAction(
+	/** 发布成员动作状态；只有 active effect BT 的声明会被投影器采纳。 */
+	state: defineAction(
 		z
 			.object({
-				name: z.string().meta({ description: "动画名称" }),
-				duration: z.number().meta({ description: "动画时长" }),
+				name: MemberStateNameSchema.meta({ description: "成员动作状态名" }),
 			})
-			.meta({ description: "播放动画" }),
+			.meta({ description: "发布成员动作状态" }),
 		(context, input, capabilities) => {
-			log.debug(`👤 [${context.name}] animation`, input);
-			setCurrentAnimationTimeline(context, capabilities, input.name, { duration: input.duration });
+			log.debug(`👤 [${context.name}] state`, input.name);
+			capabilities.declareState(input.name);
 			return State.SUCCEEDED;
 		},
 	),

@@ -7,6 +7,7 @@ import type { MemberRuntimeServices } from "../../RuntimeServices";
 import type { AttributeContainer } from "../AttributeContainer/AttributeContainer";
 import type { RegisterOptions, ThresholdDirection } from "../AttributeWatcher/AttributeThresholdSource";
 import type { ProcHandler, ProcPredicate, ProcSubscriptionId } from "../ProcBus/ProcBus";
+import type { MemberStateName } from "../State/MemberState";
 import type { MemberControlEvent, MemberFSMEvent } from "../StateMachine/types";
 import type { MemberSharedRuntime } from "../types";
 
@@ -53,7 +54,12 @@ export interface MemberBtCapabilities<
 > {
 	readonly attributeContainer: AttributeContainer<TExtraAttrKey | MemberBaseAttrKey>;
 	readonly services: MemberRuntimeServices;
-	readonly animationState: { lastAction?: { name: string; ts: number; params?: Record<string, unknown> } };
+	/** 仅供 active effect 或 member-flow BT 的 state 叶子调用；其他 parallel BT 不得声明成员动作状态。 */
+	declareState(name: MemberStateName): void;
+	/** 供 BtManager 在 active effect 结束、中断或替换时清空状态声明。 */
+	clearActiveEffectStateDeclaration(): void;
+	/** 供 BtManager 在 member-flow 结束、中断或替换时清空状态声明。 */
+	clearMemberFlowStateDeclaration(): void;
 	registerParallelBt(
 		name: string,
 		definition: string | RootNodeDefinition | RootNodeDefinition[],

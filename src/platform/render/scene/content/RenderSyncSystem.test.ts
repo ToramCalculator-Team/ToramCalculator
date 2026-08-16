@@ -13,7 +13,6 @@ import { RenderSyncSystem } from "./RenderSyncSystem";
 function createEntity() {
 	const renderPosition = { x: 0, y: 0, z: 0 };
 	const animationController = {
-		setMotionSpeed: vi.fn(),
 		setMovement: vi.fn(),
 		setAirborne: vi.fn(),
 	};
@@ -47,7 +46,7 @@ describe("RenderSyncSystem", () => {
 					id: "player",
 					entityType: WorldStateEntityType.PLAYER,
 					visualProfileId: 1,
-					attributePaths: [{ index: 0, path: "mspd", displayName: "mspd", expression: "" }],
+					attributePaths: [],
 					modifierCapacity: 0,
 				},
 			],
@@ -57,11 +56,11 @@ describe("RenderSyncSystem", () => {
 		const writer = new WorldStateWriter(buffer, layout);
 		const reader = new WorldStateReader(buffer, layout);
 		const readLatest = vi.spyOn(reader, "readLatest");
-		const system = new RenderSyncSystem(reader);
+		const system = new RenderSyncSystem();
 		const { entity, mesh, renderPosition, animationController } = createEntity();
 		const entities = new Map([[entity.id, entity]]);
 		const entitySlots = new Map([[entity.id, 0]]);
-		const writePlayer = (x: number, mspd: number) =>
+		const writePlayer = (x: number) =>
 			writer.write({
 				logicalTimeMs: 100,
 				tickIndex: 1,
@@ -72,31 +71,29 @@ describe("RenderSyncSystem", () => {
 						yaw: 0,
 						speed: 2,
 						stateFlags: STATE_FLAG_MOVING,
-						attributes: { base: [mspd], act: [mspd] },
+						attributes: { base: [], act: [] },
 					},
 				],
 			});
 
-		writePlayer(0, 20);
+		writePlayer(0);
 		const first = reader.readLatest();
 		system.syncEntities(entities, entitySlots, first, 1 / 60);
 		expect(readLatest).toHaveBeenCalledTimes(1);
 		expect(renderPosition.x).toBe(0);
-		expect(animationController.setMotionSpeed).toHaveBeenLastCalledWith(20);
 
-		writePlayer(10, 30);
+		writePlayer(10);
 		const second = reader.readLatest();
 		system.syncEntities(entities, entitySlots, second, 1 / 60);
 		expect(readLatest).toHaveBeenCalledTimes(2);
 		expect(renderPosition.x).toBeGreaterThan(0);
 		expect(renderPosition.x).toBeLessThan(10);
-		expect(animationController.setMotionSpeed).toHaveBeenLastCalledWith(30);
 
 		writer.write({ logicalTimeMs: 120, tickIndex: 2, members: [] });
 		system.syncEntities(entities, entitySlots, reader.readLatest(), 1 / 60);
 		expect(mesh.setEnabled).toHaveBeenLastCalledWith(false);
 
-		writePlayer(20, 30);
+		writePlayer(20);
 		const rebuilt = reader.readLatest();
 		expect(rebuilt?.members[0]?.generation).toBe(2);
 		system.syncEntities(entities, entitySlots, rebuilt, 1 / 60);
