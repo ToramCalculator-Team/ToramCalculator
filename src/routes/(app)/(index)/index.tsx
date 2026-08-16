@@ -1,7 +1,7 @@
 import { type Character, selectAllCharactersByBelongtoplayeridQuery } from "@db/generated/repositories/character";
 import { type Simulator, selectAllSimulatorsByCreatedbyaccountidQuery } from "@db/generated/repositories/simulator";
 import { A, useLocation, useNavigate } from "@solidjs/router";
-import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Index, type JSX, onCleanup, Show } from "solid-js";
 import { Motion } from "solid-motionone";
 import { ConcaveFrame } from "~/components/ui/containers/concaveFrame";
 import { Button } from "~/components/ui/controls/button";
@@ -9,6 +9,7 @@ import { Input } from "~/components/ui/controls/input";
 import { LoadingBar } from "~/components/ui/controls/loadingBar";
 import { Select } from "~/components/ui/controls/select";
 import { Icons } from "~/components/ui/icons";
+import { type OverlayLayerHandle, useOverlay } from "~/contexts/overlay/OverlayContext";
 import { createTrainingSimulator } from "~/features/simulator/createTrainingSimulator";
 import { useSimulatorSession } from "~/features/simulator/session/SimulatorSession";
 import { createLiveKyselyQuery } from "~/platform/pglite/liveQuery";
@@ -18,6 +19,8 @@ import { setStore, store } from "~/store";
 export default function SimulatorPage() {
 	const location = useLocation();
 	const navigate = useNavigate();
+	const overlay = useOverlay();
+	let toolMenuSheetHandle: OverlayLayerHandle | undefined;
 	const session = useSimulatorSession();
 	// 方案列表按当前账号过滤：simulator 以 createdByAccountId 归属创建者，只列出本账号持有的方案。
 	const simulators = createLiveKyselyQuery<Simulator>((db) => {
@@ -81,6 +84,72 @@ export default function SimulatorPage() {
 		}
 	};
 
+	const toolMenuConfig: { onClick: () => void; icon: JSX.Element; name: string }[] = [
+		{
+			onClick: () => navigate("/btEditor"),
+			icon: <Icons.Outline.Box2 />,
+			name: "行为树编辑器",
+		},
+		{
+			onClick: () => navigate("/avatarMachine"),
+			icon: <Icons.Outline.Flag />,
+			name: "非酋测试机",
+		},
+		{
+			onClick: () => navigate("/logicEditor"),
+			icon: <Icons.Outline.Gamepad />,
+			name: "逻辑编辑器",
+		},
+		{
+			onClick: () => navigate("/queryBuilder"),
+			icon: <Icons.Outline.Basketball />,
+			name: "查询构建器",
+		},
+	];
+
+	const renderToolMenuSheet = (close: () => void) => (
+		<div class="grid h-[90dvh] w-full grid-cols-3 grid-rows-6 gap-2 p-6">
+			<Index each={toolMenuConfig}>
+				{(config) => (
+					<div class="ButtonContainer border-dividing-color col-span-1 row-span-1 flex flex-col items-center justify-center rounded border border-dashed">
+						<Button
+							class="h-full w-full flex-col items-center justify-center outline-hidden focus-within:outline-hidden"
+							level="quaternary"
+							onClick={() => {
+								close();
+								config().onClick();
+							}}
+							icon={config().icon}
+						>
+							<span class="text-sm text-nowrap text-ellipsis">{config().name}</span>
+						</Button>
+					</div>
+				)}
+			</Index>
+		</div>
+	);
+
+	const closeToolMenuSheet = () => {
+		const handle = toolMenuSheetHandle;
+		toolMenuSheetHandle = undefined;
+		handle?.close();
+	};
+
+	const openToolMenuSheet = () => {
+		if (toolMenuSheetHandle) {
+			closeToolMenuSheet();
+			return;
+		}
+		toolMenuSheetHandle = overlay.openSheet({
+			render: (api) => renderToolMenuSheet(api.close),
+			onCloseRequest: () => {
+				toolMenuSheetHandle = undefined;
+			},
+		});
+	};
+
+	onCleanup(closeToolMenuSheet);
+
 	return (
 		<Motion.div
 			animate={{ opacity: [0, 1] }}
@@ -88,14 +157,45 @@ export default function SimulatorPage() {
 			transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.3 : 0 }}
 			class="SimulatorPage relative flex h-full w-full flex-col overflow-hidden"
 		>
-			<div class="mx-auto flex  w-full flex-col gap-6 p-6 landscape:px-12 lg:landscape:min-h-full lg:landscape:px-24 lg:landscape:py-12">
-				<header class="border-accent-color w-fit border-b-2 p-4 landscape:p-6">
-					<A href="/" aria-label="返回首页" class="block">
-						<Icons.Brand.LogoText class="h-auto w-[366px] max-w-[70vw]" />
-					</A>
-				</header>
+			<div class="Config absolute top-6 right-6 z-10 flex gap-1">
+				<Button
+					class="outline-hidden focus-within:outline-hidden"
+					level="quaternary"
+					onClick={openToolMenuSheet}
+					icon={<Icons.Outline.Burger />}
+					title="工具菜单"
+					aria-label="工具菜单"
+				/>
+				<Button
+					class="outline-hidden focus-within:outline-hidden"
+					level="quaternary"
+					onClick={() =>
+						setStore(
+							"settings",
+							"userInterface",
+							"theme",
+							store.settings.userInterface.theme === "dark" ? "light" : "dark",
+						)
+					}
+					icon={<Icons.Outline.Light />}
+					title="切换颜色模式"
+					aria-label="切换颜色模式"
+				/>
+			</div>
 
-				<div class="min-h-12 flex-1" />
+			<div class="mx-auto flex  w-full flex-col gap-6 p-6 landscape:px-12 lg:landscape:min-h-full lg:landscape:px-24 lg:landscape:py-12">
+				<div class="min-h-12 flex-1 flex flex-col items-center justify-center">
+					<header class="border-accent-color w-fit border-b-2 p-4 landscape:p-6">
+						<button
+							type="button"
+							aria-label="登录"
+							class="block cursor-pointer"
+							onClick={() => setStore("pages", "loginDialogState", true)}
+						>
+							<Icons.Brand.LogoText class="h-auto w-[50vw]" />
+						</button>
+					</header>
+				</div>
 
 				<div class="flex w-full flex-col items-start gap-10 lg:landscape:flex-row lg:landscape:items-center lg:landscape:justify-between lg:landscape:gap-16 lg:landscape:p-6">
 					<nav
@@ -116,11 +216,7 @@ export default function SimulatorPage() {
 						>
 							机体构建平台
 						</A>
-						<A
-							href="/"
-							aria-current={isMenuItemActive("/") ? "page" : undefined}
-							class={menuItemClass("/")}
-						>
+						<A href="/" aria-current={isMenuItemActive("/") ? "page" : undefined} class={menuItemClass("/")}>
 							实战模拟场景
 						</A>
 						<button
@@ -214,7 +310,7 @@ export default function SimulatorPage() {
 								<ConcaveFrame
 									class="h-[239px] w-full"
 									contentClass="flex items-center justify-center"
-									decorationClass="text-dividing-color"
+									decorationClass="text-accent-color"
 								>
 									<LoadingBar class="w-full max-w-80" />
 								</ConcaveFrame>
@@ -238,7 +334,7 @@ export default function SimulatorPage() {
 										>
 											<ConcaveFrame
 												contentClass="flex flex-col justify-between"
-												decorationClass="text-dividing-color group-hover:text-brand-color-3rd"
+												decorationClass="text-accent-color group-hover:text-brand-color-1st"
 											>
 												<span class="text-boundary-color text-xs font-bold">
 													方案 {String(index() + 1).padStart(2, "0")}

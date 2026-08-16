@@ -5,7 +5,7 @@ import { MetaProvider, Title } from "@solidjs/meta";
 import { useNavigate } from "@solidjs/router";
 import { useMachine } from "@xstate/solid";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
-import { createMemo, createSignal, For, Index, type JSX, onCleanup, onMount, Show, useContext } from "solid-js";
+import { createSignal, For, onCleanup, onMount, Show, useContext } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import { Filing } from "~/components/app/filing";
 import { Button } from "~/components/ui/controls/button";
@@ -14,7 +14,7 @@ import { ObjRenderer } from "~/components/ui/dataDisplay/ObjRenderer";
 import { Icons } from "~/components/ui/icons/index";
 import { useDictionary } from "~/contexts/Dictionary";
 import { MediaContext } from "~/contexts/Media";
-import { type DialogLayerEntryInit, type OverlayLayerHandle, useOverlay } from "~/contexts/overlay/OverlayContext";
+import { type DialogLayerEntryInit, useOverlay } from "~/contexts/overlay/OverlayContext";
 import { DATA_CONFIG, type TableDataConfig } from "~/dataConfig/data-config";
 import type { ZodSchemaFor } from "~/lib/utils/zod";
 import type { Dic, Dictionary } from "~/locales/type";
@@ -31,7 +31,6 @@ export default function IndexPage() {
 	const dictionary = useDictionary();
 	// 页面根作用域 overlay 句柄:搜索结果 dialog 从这里 openDialog 新建 layer。
 	const overlay = useOverlay();
-	let toolMenuSheetHandle: OverlayLayerHandle | undefined;
 	// 媒体查询
 	const media = useContext(MediaContext);
 
@@ -133,120 +132,6 @@ export default function IndexPage() {
 		send({ type: "TOGGLE_SEARCH_RESULTS" });
 	};
 
-	// 小工具菜单配置
-	const [toolMenuConfig] = createSignal<
-		{
-			onClick: () => void;
-			icon: JSX.Element;
-			name: string;
-		}[]
-	>([
-		{
-			onClick: () => {
-				navigate("btEditor");
-			},
-			icon: <Icons.Outline.Box2 />,
-			name: "行为树编辑器",
-		},
-		{
-			onClick: () => {
-				navigate("avatarMachine");
-			},
-			icon: <Icons.Outline.Flag />,
-			name: "非酋测试机",
-		},
-		{
-			onClick: () => {
-				navigate("logicEditor");
-			},
-			icon: <Icons.Outline.Gamepad />,
-			name: "逻辑编辑器",
-		},
-		{
-			onClick: () => {
-				navigate("queryBuilder");
-			},
-			icon: <Icons.Outline.Basketball />,
-			name: "查询构建器",
-		},
-	]);
-
-	const renderToolMenuSheet = (close: () => void) => (
-		<div class="grid h-[90dvh] w-full grid-cols-3 grid-rows-6 gap-2 p-6">
-			<Index each={toolMenuConfig()}>
-				{(config) => {
-					return (
-						<div class="ButtonContainer border-dividing-color col-span-1 row-span-1 flex flex-col items-center justify-center rounded border border-dashed">
-							<Button
-								class="h-full w-full flex-col items-center justify-center outline-hidden focus-within:outline-hidden"
-								level="quaternary"
-								onClick={() => {
-									close();
-									config().onClick();
-								}}
-								icon={config().icon}
-							>
-								<span class="text-sm text-nowrap text-ellipsis">{config().name}</span>
-							</Button>
-						</div>
-					);
-				}}
-			</Index>
-		</div>
-	);
-
-	const closeToolMenuSheet = () => {
-		const handle = toolMenuSheetHandle;
-		toolMenuSheetHandle = undefined;
-		if (context().toolMenuIsOpen) send({ type: "CLOSE_TOOL_MENU" });
-		handle?.close();
-	};
-
-	const openToolMenuSheet = () => {
-		if (context().toolMenuIsOpen) {
-			closeToolMenuSheet();
-			return;
-		}
-		send({ type: "OPEN_TOOL_MENU" });
-		toolMenuSheetHandle = overlay.openSheet({
-			render: (api) => renderToolMenuSheet(api.close),
-			onCloseRequest: () => {
-				toolMenuSheetHandle = undefined;
-				if (context().toolMenuIsOpen) send({ type: "CLOSE_TOOL_MENU" });
-			},
-		});
-	};
-
-	onCleanup(() => {
-		closeToolMenuSheet();
-	});
-
-	// 页面附加功能（右上角按钮组）配置
-	const extraFunctionConfig = createMemo<
-		{
-			onClick: () => void;
-			icon: JSX.Element;
-			title: string;
-		}[]
-	>(() => [
-		{
-			onClick: () =>
-				setStore(
-					"settings",
-					"userInterface",
-					"theme",
-					store.settings.userInterface.theme === "dark" ? "light" : "dark",
-				),
-			icon: <Icons.Outline.Light />,
-			title: dictionary().ui.settings.userInterface.colorTheme.title,
-		},
-		{
-			onClick: () => setStore("pages", "settingsDialogState", !store.pages.settingsDialogState),
-			icon: <Icons.Outline.Settings />,
-			title: dictionary().ui.settings.title,
-		},
-	]);
-
 	type CustomMenuConfig = {
 		groupType: "wiki" | "appPages";
 		title: keyof Dictionary["db"] | keyof Dictionary["ui"]["nav"];
@@ -280,13 +165,13 @@ export default function IndexPage() {
 				icon: "Box2",
 			},
 			{
-				groupType: "appPages",
-				title: "character",
+				groupType: "wiki",
+				title: "armor",
 				icon: "User",
 			},
 			{
-				groupType: "appPages",
-				title: "simulator",
+				groupType: "wiki",
+				title: "option",
 				icon: "Gamepad",
 			},
 		],
@@ -322,13 +207,13 @@ export default function IndexPage() {
 				icon: "Layers",
 			},
 			{
-				groupType: "appPages",
-				title: "character",
+				groupType: "wiki",
+				title: "armor",
 				icon: "User",
 			},
 			{
 				groupType: "appPages",
-				title: "simulator",
+				title: "option",
 				icon: "Gamepad",
 			},
 		],
@@ -419,32 +304,16 @@ export default function IndexPage() {
 				}}
 				class={`Client relative flex h-full w-full flex-col justify-between opacity-0`}
 			>
-				{/* 顶部工具栏 */}
-				<div
-					class={`Config absolute top-6 left-6 flex w-[calc(100%-3rem)] justify-between gap-1 ${context().searchResultOpened ? `z-0 opacity-0` : `z-10 opacity-100`}`}
-				>
+				{/* 顶部返回入口 */}
+				<div class="Config absolute top-6 left-6 z-10">
 					<Button
 						class="outline-hidden focus-within:outline-hidden"
 						level="quaternary"
-						onClick={openToolMenuSheet}
-						icon={<Icons.Outline.Burger />}
-					></Button>
-					<div class="RightFun flex gap-1">
-						<For each={extraFunctionConfig()}>
-							{(config) => {
-								return (
-									<Button
-										class="outline-hidden focus-within:outline-hidden"
-										level="quaternary"
-										onClick={config.onClick}
-										icon={config.icon}
-										title={config.title}
-										aria-label={config.title}
-									></Button>
-								);
-							}}
-						</For>
-					</div>
+						onClick={() => navigate("/")}
+						icon={<Icons.Outline.Home />}
+						title="返回首页"
+						aria-label="返回首页"
+					/>
 				</div>
 
 				{/* 顶部 */}

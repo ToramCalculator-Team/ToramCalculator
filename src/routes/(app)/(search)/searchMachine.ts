@@ -18,7 +18,6 @@ export interface IndexPageContext {
 
 	// UI 状态
 	searchResultOpened: boolean; // 是否显示搜索结果面板
-	toolMenuIsOpen: boolean; // 小工具菜单是否打开
 
 	// 动画相关状态
 	isAnimationEnabled: boolean; // 是否启用动画效果
@@ -33,8 +32,6 @@ export type IndexPageEvent =
 	| { type: "SEARCH_CLEAR" } // 清除搜索
 	| { type: "TOGGLE_SEARCH_RESULTS" } // 切换搜索结果显示
 	| { type: "UPDATE_RESULT_LIST_STATE"; resultListState: boolean[] } // 更新结果列表状态
-	| { type: "OPEN_TOOL_MENU" } // 打开小工具菜单
-	| { type: "CLOSE_TOOL_MENU" } // 关闭小工具菜单
 	| { type: "TOGGLE_ANIMATION" } // 切换动画开关
 	| { type: "RESET" }; // 重置所有状态
 
@@ -51,7 +48,6 @@ export const indexPageMachine = createMachine(
 			isNullResult: true,
 			resultListState: [],
 			searchResultOpened: false,
-			toolMenuIsOpen: false,
 			isAnimationEnabled: true,
 			error: null,
 		} as IndexPageContext,
@@ -316,19 +312,6 @@ export const indexPageMachine = createMachine(
 		 * 这些事件不依赖于当前状态，可以在任何时候触发
 		 */
 		on: {
-			// 小工具菜单状态仍归页面状态机管理；实际 sheet 挂载由事件处理器直接调用 overlay.openSheet。
-			OPEN_TOOL_MENU: {
-				actions: assign({
-					toolMenuIsOpen: true,
-				}),
-			},
-
-			CLOSE_TOOL_MENU: {
-				actions: assign({
-					toolMenuIsOpen: false,
-				}),
-			},
-
 			// 切换动画设置
 			TOGGLE_ANIMATION: {
 				actions: assign({
