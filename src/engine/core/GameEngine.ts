@@ -855,7 +855,7 @@ export class GameEngine {
 		if (!this.runOutput.isRecording()) return;
 		const timeMs = this.getCurrentTimeMs();
 		const action = RunInputActionSchema.parse({ type: event.type, payload: structuredClone(event.data) });
-		if (disposition === "pending" && this.runOutput.hasPendingInput(event.id)) return;
+		if (disposition === "pending" && this.runOutput.hasInput(event.id)) return;
 		if (disposition === "rejected") {
 			this.runOutput.appendInput({ inputId: event.id, memberId, timeMs, action });
 			this.runOutput.rejectInput(event.id, timeMs, reason ?? "control_source_not_active");

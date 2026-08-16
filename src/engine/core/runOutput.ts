@@ -216,6 +216,11 @@ export class RunOutputRecorder {
 		return this.activeOutput?.inputs.some((input) => input.inputId === inputId && input.status === "pending") ?? false;
 	}
 
+	/** 判断当前运行是否已经登记过该输入；外部路径可能已在 processIntent 中封闭判决。 */
+	hasInput(inputId: string): boolean {
+		return this.activeOutput?.inputs.some((input) => input.inputId === inputId) ?? false;
+	}
+
 	private requirePendingInput(inputId: string): {
 		output: ActiveRunOutput;
 		inputIndex: number;
