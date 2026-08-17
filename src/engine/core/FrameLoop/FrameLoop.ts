@@ -1,248 +1,179 @@
 /**
- * 薄时钟驱动器。
- * 目标：
- * - 只负责 wall-clock 调度、固定步长换算、补帧裁剪
- * - 不再直接调用 GameEngine.stepTick
- * - 不再承载快照发送、运行模式语义、业务终止规则
+ * Worker 独占的实时会话时钟。
+ *
+ * Real Time 只观测单调时间；Virtual Time 负责倍率与过载裁剪；Fixed Time 把
+ * Virtual Time 离散为固定 Tick。底层 timer 只负责唤醒，不能成为模拟时间事实源。
  */
 
 import { createLogger } from "~/lib/logger";
-import type { FrameLoopConfig, FrameLoopSnapshot, FrameLoopState, FrameLoopStats, FrameLoopTick } from "./types";
+import type {
+	FrameLoopClockSnapshot,
+	FrameLoopConfig,
+	FrameLoopSnapshot,
+	FrameLoopState,
+	FrameLoopStats,
+	FrameLoopTick,
+} from "./types";
 
 const log = createLogger("FrameLoop");
+const FIXED_TIME_EPSILON_FACTOR = 1e-9;
+
+const monotonicEpochNow = (now: number): number => performance.timeOrigin + now;
 
 export class FrameLoop {
-	/** 底层时钟驱动的当前状态 */
 	private state: FrameLoopState = "stopped";
-
-	/** 时钟层配置 */
 	private config: FrameLoopConfig;
-
-	/** 当前挂起的计时器 ID（raf 或 timeout） */
-	private frameTimer: number | null = null;
-
-	/** 当前使用的底层时钟类型 */
-	private clockKind: "raf" | "timeout" = "raf";
-
-	/** 固定逻辑步长（模拟毫秒） */
-	private logicStepMs: number = 1000 / 60;
-
-	/** 累积的 wall-clock 时间 */
-	private tickAccumulatorMs: number = 0;
-
-	/** 因累积时间过大而被裁剪掉的补 tick 次数 */
-	private tickSkipCount: number = 0;
-
-	/** 本轮启动时间 */
-	private startTime: number = 0;
-
-	/** 上一次 tick 的时间戳 */
-	private lastFrameTime: number = 0;
-
-	/** 时间倍率，仅影响 realtime 驱动 */
-	private timeScale: number = 1.0;
-
-	/** 由 GameEngine 注入的 tick 回调 */
+	private timer: ReturnType<typeof setTimeout> | null = null;
+	private fixedStepMs = 1000 / 60;
+	private virtualAccumulatorMs = 0;
+	private lastRealTimeMs = 0;
+	private startTimeMs: number | null = null;
+	private timeScale = 1;
+	private clockRevision = 0;
 	private onTick: ((tick: FrameLoopTick) => void) | null = null;
-
-	/** 时钟层可观测统计 */
-	private performanceStats: FrameLoopStats = {
+	private stats: FrameLoopStats = {
 		averageTicksPerSecond: 0,
 		totalTicks: 0,
 		totalRunTime: 0,
-		clockKind: "raf",
-		skippedTicks: 0,
-		timeoutTicks: 0,
+		clockKind: "deadline",
+		discardedVirtualTimeMs: 0,
+		overstepMs: 0,
 	};
-
-	/** 主线程 rAF 信号 SAB（Int32Array），用于替代 setTimeout 驱动 */
-	private tickSignalView: Int32Array | null = null;
-	/** 控制 Atomics 循环的停止标志 */
-	private atomicsLoopRunning = false;
 
 	constructor(config: Partial<FrameLoopConfig> = {}) {
 		this.config = {
 			logicHz: 60,
-			enableTickSkip: true,
-			maxTickSkip: 5,
+			maxCatchUpTicks: 5,
 			enablePerformanceMonitoring: true,
-			timeScale: 1.0,
+			timeScale: 1,
 			maxEventsPerTick: 100,
 			...config,
 		};
-
 		this.timeScale = this.config.timeScale;
-		this.logicStepMs = 1000 / this.config.logicHz;
+		this.fixedStepMs = 1000 / this.config.logicHz;
 	}
 
-	/**
-	 * 启动底层时钟，并把每次 tick 的"推进建议"交给上层。
-	 * 这里不关心引擎到底跑几帧，只负责告诉上层"现在该推进多少逻辑步长"。
-	 */
+	/** 启动唯一 deadline 驱动；每次回调只产生固定步长推进建议。 */
 	start(onTick: (tick: FrameLoopTick) => void): void {
 		if (this.state === "running") {
-			log.warn("⏱️ 帧驱动已在运行中");
+			log.warn("逻辑时钟已在运行中");
 			return;
 		}
-
 		const now = performance.now();
-
 		this.onTick = onTick;
 		this.state = "running";
-		this.startTime = now;
-		this.lastFrameTime = now;
-		this.resolveClockKind();
-		this.resetFrameLoopStats();
-
-		log.info(`⏱️ 启动逻辑时钟 - 逻辑频率: ${this.config.logicHz}Hz, 时钟: ${this.clockKind}`);
-
-		// 如果已附加 tick signal，使用 Atomics 驱动；否则回退到 setTimeout/rAF
-		if (this.tickSignalView) {
-			this.startAtomicsLoop();
-		} else {
-			this.scheduleNextFrame();
-		}
+		this.startTimeMs = now;
+		this.lastRealTimeMs = now;
+		this.virtualAccumulatorMs = 0;
+		this.clockRevision += 1;
+		this.resetStats();
+		this.scheduleNextTurn();
 	}
 
-	/**
-	 * 停止时钟驱动。
-	 * 说明：
-	 * - 这里只取消底层调度
-	 * - 不再承担"停止引擎运行语义"的职责
-	 */
+	/** 停止前结算当前可接受的 Virtual Time，避免生命周期命令边界丢失已到期 Tick。 */
 	stop(): void {
-		if (this.state === "stopped") {
-			log.warn("⏱️ 帧驱动已停止");
-			return;
-		}
-
+		if (this.state === "stopped") return;
+		if (this.state === "running") this.processRealTime(performance.now());
 		this.state = "stopped";
-		this.cancelScheduledFrame();
-		this.stopAtomicsLoop();
-		this.updateFrameLoopStats();
+		this.clockRevision += 1;
+		this.cancelTimer();
+		this.updateStats();
 		this.onTick = null;
-
-		log.info(
-			`⏱️ 停止逻辑时钟 - 推进建议数: ${this.performanceStats.totalTicks}, 运行时间: ${(performance.now() - this.startTime).toFixed(2)}ms`,
-		);
 	}
 
-	/**
-	 * 暂停底层时钟。
-	 * 暂停后不会再产生新的 tick 建议，但不会清空上层注入的回调。
-	 */
+	/** 暂停保留 Fixed Time 的 overstep，恢复后从同一逻辑相位继续。 */
 	pause(): void {
 		if (this.state !== "running") {
-			log.warn("⏱️ 帧驱动未在运行，无法暂停");
+			log.warn("逻辑时钟未在运行，无法暂停");
 			return;
 		}
-
+		this.processRealTime(performance.now());
 		this.state = "paused";
-		this.cancelScheduledFrame();
-
-		log.info("⏸️ 帧驱动已暂停");
+		this.clockRevision += 1;
+		this.cancelTimer();
 	}
 
-	/**
-	 * 恢复底层时钟。
-	 * 恢复时会重置上一帧时间戳，避免把暂停期间的 wall-clock 时间一次性补回。
-	 */
 	resume(): void {
-		if (this.state !== "paused") {
-			log.warn("⏱️ 帧驱动未暂停，无法恢复");
+		if (this.state !== "paused" || !this.onTick) {
+			log.warn("逻辑时钟未暂停，无法恢复");
 			return;
 		}
-
-		if (!this.onTick) {
-			log.warn("⏱️ 帧驱动缺少 onTick 回调，无法恢复");
-			return;
-		}
-
 		this.state = "running";
-		this.lastFrameTime = performance.now();
-
-		log.info("▶️ 帧驱动已恢复");
-		this.scheduleNextFrame();
+		this.lastRealTimeMs = performance.now();
+		this.clockRevision += 1;
+		this.scheduleNextTurn();
 	}
 
-	/**
-	 * 设置时间倍率。
-	 * 这里只影响 realtime 时钟换算，不决定引擎模式。
-	 */
+	/** 先按旧倍率结算到当前时刻，再建立新的 Virtual Time 倍率段。 */
 	setTimeScale(scale: number): void {
-		if (scale < 0) {
-			log.warn("⏱️ 时间倍率不能为负数");
-			return;
-		}
-
+		if (!Number.isFinite(scale) || scale <= 0) throw new Error("timeScale 必须是正有限数");
+		if (this.state === "running") this.processRealTime(performance.now());
 		this.timeScale = scale;
 		this.config.timeScale = scale;
-
-		if (scale === 0 && this.state === "running") {
-			this.pause();
-		} else if (this.state === "paused" && scale > 0) {
-			this.resume();
-		}
-
-		log.info(`⏱️ 设置时间倍率: ${scale}x`);
-	}
-
-	/**
-	 * 更新逻辑频率，并同步固定步长。
-	 */
-	setLogicHz(logicHz: number): void {
-		if (logicHz <= 0 || logicHz > 240) {
-			log.warn("⏱️ 无效的逻辑频率:", logicHz);
-			return;
-		}
-
-		this.config.logicHz = logicHz;
-		this.logicStepMs = 1000 / logicHz;
-
-		// 运行中切换逻辑频率时，重新排一次时钟，避免旧 delay 继续生效。
+		this.lastRealTimeMs = performance.now();
+		this.clockRevision += 1;
 		if (this.state === "running") {
-			this.cancelScheduledFrame();
-			this.lastFrameTime = performance.now();
-			this.scheduleNextFrame();
+			this.cancelTimer();
+			this.scheduleNextTurn();
 		}
-
-		log.info(`⏱️ 逻辑频率已更新: ${logicHz}Hz`);
 	}
 
-	/**
-	 * 更新补 tick 裁剪策略。
-	 * GameEngine 切换 RuntimeConfig 时调用，使时钟层只保存调度策略，不参与运行语义判断。
-	 */
-	setTickSkipConfig(config: { enableTickSkip?: boolean; maxTickSkip?: number }): void {
-		if (typeof config.enableTickSkip === "boolean") {
-			this.config.enableTickSkip = config.enableTickSkip;
+	/** 逻辑频率只改变后续 Fixed Time 步长；运行时切换前先结算旧频率。 */
+	setLogicHz(logicHz: number): void {
+		if (!Number.isFinite(logicHz) || logicHz <= 0 || logicHz > 240) {
+			throw new Error(`logicHz 必须位于 (0, 240]，收到 ${logicHz}`);
 		}
-		if (typeof config.maxTickSkip === "number") {
-			if (config.maxTickSkip < 1) {
-				log.warn("⏱️ maxTickSkip 必须大于等于 1:", config.maxTickSkip);
-				return;
-			}
-			this.config.maxTickSkip = config.maxTickSkip;
+		if (this.state === "running") this.processRealTime(performance.now());
+		this.config.logicHz = logicHz;
+		this.fixedStepMs = 1000 / logicHz;
+		this.virtualAccumulatorMs = Math.min(this.virtualAccumulatorMs, this.fixedStepMs);
+		this.lastRealTimeMs = performance.now();
+		this.clockRevision += 1;
+		if (this.state === "running") {
+			this.cancelTimer();
+			this.scheduleNextTurn();
 		}
+	}
+
+	setMaxCatchUpTicks(maxCatchUpTicks: number): void {
+		if (!Number.isInteger(maxCatchUpTicks) || maxCatchUpTicks < 1) {
+			throw new Error(`maxCatchUpTicks 必须是正整数，收到 ${maxCatchUpTicks}`);
+		}
+		this.config.maxCatchUpTicks = maxCatchUpTicks;
 	}
 
 	getState(): FrameLoopState {
 		return this.state;
 	}
 
-	/**
-	 * 兼容保留的快照接口。
-	 * 它描述的是"驱动层观测值"，不是引擎语义快照。
-	 */
 	getSnapshot(): FrameLoopSnapshot {
 		return {
-			tickIndex: this.performanceStats.totalTicks,
-			ticksPerSecond: this.performanceStats.averageTicksPerSecond,
+			tickIndex: this.stats.totalTicks,
+			ticksPerSecond: this.stats.averageTicksPerSecond,
 		};
 	}
 
 	getFrameLoopStats(): FrameLoopStats {
-		return { ...this.performanceStats };
+		this.updateStats();
+		return { ...this.stats };
+	}
+
+	/**
+	 * 把已完成逻辑时间与当前 overstep 组合成渲染可读取的共享时间轴映射。
+	 * sampledAtEpochMs 使用跨 Window / Worker 可比较的 timeOrigin 坐标。
+	 */
+	getClockSnapshot(completedLogicalTimeMs: number): FrameLoopClockSnapshot {
+		const now = performance.now();
+		const pendingVirtualTimeMs =
+			this.state === "running" ? this.acceptedVirtualDelta(Math.max(0, now - this.lastRealTimeMs)) : 0;
+		return {
+			state: this.state,
+			revision: this.clockRevision,
+			sampledAtEpochMs: monotonicEpochNow(now),
+			timelineTimeMs: completedLogicalTimeMs + this.virtualAccumulatorMs + pendingVirtualTimeMs,
+			timeScale: this.timeScale,
+			fixedStepMs: this.fixedStepMs,
+		};
 	}
 
 	isRunning(): boolean {
@@ -253,195 +184,77 @@ export class FrameLoop {
 		return this.state === "paused";
 	}
 
-	private resolveClockKind(): void {
-		const hasRAF =
-			typeof globalThis.requestAnimationFrame === "function" && typeof globalThis.cancelAnimationFrame === "function";
-
-		this.clockKind = hasRAF ? "raf" : "timeout";
-		this.performanceStats.clockKind = this.clockKind;
+	private cancelTimer(): void {
+		if (this.timer === null) return;
+		clearTimeout(this.timer);
+		this.timer = null;
 	}
 
-	private cancelScheduledFrame(): void {
-		if (this.frameTimer === null) {
-			return;
-		}
-
-		if (this.clockKind === "raf" && typeof globalThis.cancelAnimationFrame === "function") {
-			globalThis.cancelAnimationFrame(this.frameTimer);
-		} else {
-			clearTimeout(this.frameTimer);
-		}
-
-		this.frameTimer = null;
+	/** timer 只安排下一次检查；实际推进量始终由 Real -> Virtual -> Fixed 换算决定。 */
+	private scheduleNextTurn(): void {
+		if (this.state !== "running" || this.timer !== null) return;
+		const pendingRealTimeMs = Math.max(0, performance.now() - this.lastRealTimeMs);
+		const pendingVirtualTimeMs = this.acceptedVirtualDelta(pendingRealTimeMs);
+		const remainingVirtualMs = Math.max(0, this.fixedStepMs - this.virtualAccumulatorMs - pendingVirtualTimeMs);
+		const delayMs = remainingVirtualMs / this.timeScale;
+		this.timer = setTimeout(() => {
+			this.timer = null;
+			this.processRealTime(performance.now());
+			this.scheduleNextTurn();
+		}, delayMs);
 	}
 
-	private scheduleNextFrame(): void {
-		if (this.state !== "running") {
-			return;
-		}
-
-		if (this.clockKind === "raf" && typeof globalThis.requestAnimationFrame === "function") {
-			this.frameTimer = globalThis.requestAnimationFrame((timestamp: number) => {
-				this.processFrameLoop(timestamp);
-			});
-			return;
-		}
-
-		this.frameTimer = setTimeout(() => {
-			this.processFrameLoop(performance.now());
-		}, this.logicStepMs) as unknown as number;
+	private acceptedVirtualDelta(realDeltaMs: number): number {
+		const virtualDeltaMs = realDeltaMs * this.timeScale;
+		return Math.min(virtualDeltaMs, this.fixedStepMs * this.config.maxCatchUpTicks);
 	}
 
-	/**
-	 * 把真实时间换算成固定步长建议，并交给 GameEngine 自己决定怎么跑。
-	 */
-	private processFrameLoop(timestamp: number): void {
-		if (this.state !== "running" || !this.onTick) {
-			return;
-		}
+	/** 把一次不均匀的 Worker 唤醒换算为零个或多个均匀 Fixed Tick。 */
+	private processRealTime(now: number): void {
+		if (this.state !== "running" || !this.onTick) return;
+		const realDeltaMs = Math.max(0, now - this.lastRealTimeMs);
+		this.lastRealTimeMs = now;
+		const virtualDeltaMs = realDeltaMs * this.timeScale;
+		const acceptedVirtualTimeMs = this.acceptedVirtualDelta(realDeltaMs);
+		this.stats.discardedVirtualTimeMs += virtualDeltaMs - acceptedVirtualTimeMs;
+		this.virtualAccumulatorMs += acceptedVirtualTimeMs;
 
-		const deltaTime = timestamp - this.lastFrameTime;
-		this.lastFrameTime = timestamp;
-
-		this.tickAccumulatorMs += deltaTime * this.timeScale;
-
-		if (this.config.enableTickSkip) {
-			const maxAccumulatedTime = this.logicStepMs * Math.max(1, this.config.maxTickSkip);
-			if (this.tickAccumulatorMs > maxAccumulatedTime) {
-				this.tickAccumulatorMs = this.logicStepMs;
-				this.tickSkipCount += 1;
-			}
-		}
-
-		const dueTicks = Math.floor(this.tickAccumulatorMs / this.logicStepMs);
+		const dueTicks = Math.min(
+			Math.floor((this.virtualAccumulatorMs + this.fixedStepMs * FIXED_TIME_EPSILON_FACTOR) / this.fixedStepMs),
+			this.config.maxCatchUpTicks,
+		);
 		if (dueTicks > 0) {
-			this.tickAccumulatorMs -= dueTicks * this.logicStepMs;
-			this.performanceStats.totalTicks += dueTicks;
-			if (this.clockKind === "timeout") {
-				this.performanceStats.timeoutTicks += dueTicks;
-			}
-		}
-
-		this.updateFrameLoopStats();
-
-		if (dueTicks > 0) {
+			this.virtualAccumulatorMs = Math.max(0, this.virtualAccumulatorMs - dueTicks * this.fixedStepMs);
+			this.stats.totalTicks += dueTicks;
 			this.onTick({
-				timestamp,
-				deltaTime,
-				logicStepMs: this.logicStepMs,
+				sampledAtEpochMs: monotonicEpochNow(now),
+				fixedStepMs: this.fixedStepMs,
 				dueTicks,
-				clockKind: this.clockKind,
-				skippedTicks: this.tickSkipCount,
+				clockKind: "deadline",
+				discardedVirtualTimeMs: this.stats.discardedVirtualTimeMs,
 			});
 		}
-
-		this.scheduleNextFrame();
+		this.stats.overstepMs = this.virtualAccumulatorMs;
+		this.updateStats();
 	}
 
-	private updateFrameLoopStats(): void {
-		if (!this.config.enablePerformanceMonitoring) {
-			return;
-		}
-
-		const totalRunTime = performance.now() - this.startTime;
-		this.performanceStats.totalRunTime = totalRunTime;
-		this.performanceStats.clockKind = this.clockKind;
-		this.performanceStats.skippedTicks = this.tickSkipCount;
-
+	private updateStats(): void {
+		if (!this.config.enablePerformanceMonitoring || this.startTimeMs === null) return;
+		const totalRunTime = Math.max(0, performance.now() - this.startTimeMs);
+		this.stats.totalRunTime = totalRunTime;
+		this.stats.overstepMs = this.virtualAccumulatorMs;
 		const seconds = totalRunTime / 1000;
-		this.performanceStats.averageTicksPerSecond = seconds > 0 ? this.performanceStats.totalTicks / seconds : 0;
+		this.stats.averageTicksPerSecond = seconds > 0 ? this.stats.totalTicks / seconds : 0;
 	}
 
-	private resetFrameLoopStats(): void {
-		this.performanceStats = {
+	private resetStats(): void {
+		this.stats = {
 			averageTicksPerSecond: 0,
 			totalTicks: 0,
 			totalRunTime: 0,
-			clockKind: this.clockKind,
-			skippedTicks: 0,
-			timeoutTicks: 0,
+			clockKind: "deadline",
+			discardedVirtualTimeMs: 0,
+			overstepMs: 0,
 		};
-		this.tickAccumulatorMs = 0;
-		this.tickSkipCount = 0;
-	}
-
-	/**
-	 * 附加主线程 rAF 信号 SAB，启用 Atomics 驱动（替代 setTimeout）。
-	 * 必须在 start() 之前或停止状态下调用。
-	 */
-	attachTickSignal(tickSignalView: Int32Array): void {
-		if (this.state === "running") {
-			log.warn("⏱️ 无法在运行中附加 tick signal，请先停止");
-			return;
-		}
-		this.tickSignalView = tickSignalView;
-		log.info("⏱️ 已附加主线程 rAF tick signal，将使用 Atomics 驱动");
-	}
-
-	/**
-	 * 分离 tick signal，回退到 setTimeout/rAF 驱动。
-	 */
-	detachTickSignal(): void {
-		if (this.state === "running") {
-			log.warn("⏱️ 无法在运行中分离 tick signal，请先停止");
-			return;
-		}
-		this.tickSignalView = null;
-		log.info("⏱️ 已分离 tick signal，将回退到 setTimeout/rAF 驱动");
-	}
-
-	/**
-	 * 启动 Atomics.waitAsync 驱动循环。
-	 *
-	 * 不能用同步的 Atomics.wait——它会阻塞 Worker 整个 event loop，
-	 * 导致 postMessage / RPC 全部卡死。
-	 * 改用 Atomics.waitAsync：注册一个 Promise，收到通知时异步回调，
-	 * Worker 的消息队列始终畅通。
-	 */
-	private startAtomicsLoop(): void {
-		if (!this.tickSignalView) {
-			log.warn("⏱️ 无 tick signal，无法启动 Atomics 循环");
-			return;
-		}
-
-		this.atomicsLoopRunning = true;
-		const signalView = this.tickSignalView;
-
-		const scheduleNext = () => {
-			if (!this.atomicsLoopRunning || this.state !== "running") return;
-
-			const currentValue = Atomics.load(signalView, 0);
-			const result = Atomics.waitAsync(signalView, 0, currentValue, 100);
-
-			if (result.async) {
-				// 异步等待信号：收到通知后执行一帧逻辑，然后再次等待
-				// waitAsync 的 Promise 只 resolve "ok"（信号到达）或 "timed-out"（超时）
-				void result.value.then((outcome) => {
-					if (!this.atomicsLoopRunning || this.state !== "running") return;
-					if (outcome === "ok") {
-						this.processFrameLoop(performance.now());
-					}
-					// timed-out 时也继续循环（避免信号丢失导致永久挂起）
-					scheduleNext();
-				});
-			} else {
-				// 同步返回（值已变化，即 result.value === "not-equal"）：直接推进一帧
-				this.processFrameLoop(performance.now());
-				scheduleNext();
-			}
-		};
-
-		scheduleNext();
-		log.info("⏱️ Atomics.waitAsync 驱动循环已启动");
-	}
-
-	/**
-	 * 停止 Atomics 驱动循环。
-	 * atomicsLoopRunning 置 false 后，下一次 scheduleNext 检查时自然退出。
-	 */
-	private stopAtomicsLoop(): void {
-		if (!this.atomicsLoopRunning) return;
-		this.atomicsLoopRunning = false;
-		log.info("⏱️ Atomics.waitAsync 驱动循环已停止");
 	}
 }

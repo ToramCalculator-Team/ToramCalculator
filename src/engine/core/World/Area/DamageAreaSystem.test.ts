@@ -93,3 +93,58 @@ describe("DamageAreaSystem - 伤害来源透传", () => {
 		expect(() => system.add(request)).toThrow(WORLD_AREA_CAPACITY_EXCEEDED_CODE);
 	});
 });
+
+describe("DamageAreaSystem - 实时区域生命周期", () => {
+	it("单体弹道到达后在伤害窗口结束前继续输出终点区域", () => {
+		const memberManager = new MemberManager();
+		const caster = {
+			id: "member-caster",
+			campId: "camp-a",
+			position: { x: 0, y: 0, z: 0 },
+			alive: true,
+		};
+		const target = {
+			id: "member-target",
+			campId: "camp-b",
+			position: { x: 4, y: 0, z: 0 },
+			alive: true,
+		};
+		vi.spyOn(memberManager, "getMember").mockImplementation((memberId) => {
+			// 本测试只验证区域生命周期，DamageAreaSystem 实际只读取 WorldObservable 字段。
+			return (memberId === caster.id ? caster : memberId === target.id ? target : null) as never;
+		});
+		const system = new DamageAreaSystem(new SpaceManager(memberManager), memberManager);
+		const request = {
+			identity: { sourceId: caster.id, sourceCampId: caster.campId },
+			lifetime: { startTimeMs: 100, durationMs: 500 },
+			hitPolicy: { hitIntervalMs: 500 },
+			attackSemantics: { damageCount: 2 },
+			range: { rangeKind: "Single", rangeParams: {} },
+			shape: { kind: "point" },
+			trajectory: {
+				kind: "segment",
+				from: { kind: "caster" },
+				to: { kind: "target" },
+				speed: 10,
+			},
+			payload: {
+				damageFormula: "100",
+				casterSnapshot: {},
+				skillLv: 1,
+				damageTags: ["magical"],
+				warningZone: "none",
+				lockCasterAttributes: true,
+			},
+			casterId: caster.id,
+			targetId: target.id,
+		} satisfies DamageAreaRequest;
+
+		system.add(request);
+
+		// 距离 4m、速度 10m/s，400ms 到达；随后保留 500ms 伤害窗口。
+		expect(system.getAreaSnapshot(499)).toHaveLength(1);
+		expect(system.getAreaSnapshot(500)).toHaveLength(1);
+		expect(system.getAreaSnapshot(999)).toHaveLength(1);
+		expect(system.getAreaSnapshot(1000)).toHaveLength(0);
+	});
+});

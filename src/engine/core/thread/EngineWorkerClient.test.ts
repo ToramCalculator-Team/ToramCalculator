@@ -71,7 +71,20 @@ class FakeWorker {
 			if (command.type === "get_world_state_layout") data = worldStateLayout;
 			if (command.type === "attach_world_state_buffer") {
 				const writer = new WorldStateWriter(command.buffer, command.descriptor);
-				writer.write({ logicalTimeMs: 25, tickIndex: 2, members: [], areas: [] });
+				writer.write({
+					logicalTimeMs: 25,
+					tickIndex: 2,
+					clock: {
+						state: "running",
+						revision: 1,
+						sampledAtEpochMs: 10_000,
+						timelineTimeMs: 25,
+						timeScale: 1,
+						fixedStepMs: 1000 / 60,
+					},
+					members: [],
+					areas: [],
+				});
 			}
 			this.port?.postMessage({
 				belongToTaskId: message.belongToTaskId,

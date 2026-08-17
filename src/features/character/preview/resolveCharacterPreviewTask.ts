@@ -150,7 +150,7 @@ export function resolveCharacterPreviewTask(input: ResolveCharacterPreviewTaskIn
 			driveMode: "unclocked",
 			acceptExternalIntents: false,
 			timeScale: 1,
-			maxTickSkip: 5,
+			maxCatchUpTicks: 5,
 		},
 		recordingPolicy: { tickStateHistory: "none" },
 		stopPolicy: { kind: "untilMemberAiBehaviorEnds", memberId: policy.memberId },

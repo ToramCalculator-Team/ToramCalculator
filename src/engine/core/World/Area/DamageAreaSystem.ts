@@ -431,13 +431,17 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 		this.instances.clear();
 	}
 
-	/** 导出当前存活区域，供 Worker 写入统一实时世界状态。 */
+	/**
+	 * 导出当前存活区域，供 Worker 写入统一实时世界状态。
+	 * 单体移动轨迹到达后仍处于伤害窗口；此时共享轨迹求值会稳定返回终点，
+	 * 让渲染投影与实际伤害实例保持同一生命周期。
+	 */
 	getAreaSnapshot(currentTimeMs: number): DamageAreaRealtimeState[] {
 		const result: DamageAreaRealtimeState[] = [];
 		for (const instance of this.instances.values()) {
 			const { request } = instance;
 			const { startTimeMs } = request.lifetime;
-			if (currentTimeMs < startTimeMs || currentTimeMs >= startTimeMs + instance.trajectoryDurationMs) continue;
+			if (currentTimeMs < startTimeMs || currentTimeMs >= startTimeMs + instance.instanceDurationMs) continue;
 			result.push({
 				id: instance.areaId,
 				shape: {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { FrameLoopClockSnapshot, FrameLoopState } from "../FrameLoop/types";
 import {
 	calculateModifierCapacity,
 	createWorldStateBuffer,
@@ -30,12 +31,22 @@ const attributes = (count: number, prefix: string): WorldStateAttributeSchemaEnt
 		expression: "",
 	}));
 
+const clockSnapshot = (timelineTimeMs: number, state: FrameLoopState = "running"): FrameLoopClockSnapshot => ({
+	state,
+	revision: 3,
+	sampledAtEpochMs: 10_000,
+	timelineTimeMs,
+	timeScale: 1,
+	fixedStepMs: 1000 / 60,
+});
+
 const emptyCommit = (
 	members: WorldStateCommit["members"],
 	areas: WorldStateCommit["areas"] = [],
 ): WorldStateCommit => ({
 	logicalTimeMs: 100,
 	tickIndex: 4,
+	clock: clockSnapshot(100),
 	members,
 	areas,
 });
@@ -164,6 +175,7 @@ describe("worldStateBuffer", () => {
 		writer.write({
 			logicalTimeMs: 100,
 			tickIndex: 4,
+			clock: clockSnapshot(100),
 			members: [
 				{
 					id: "player",
@@ -217,6 +229,37 @@ describe("worldStateBuffer", () => {
 			shape: { kind: WorldStateAreaShapeKind.CIRCLE, radius: 2 },
 			spawnTimeMs: 50,
 			sourceMemberIndex: 0,
+		});
+	});
+
+	it("以 Float64 原样提交逻辑时间和共享时钟映射", () => {
+		const layout = createWorldStateLayoutDescriptor([], { memberCapacity: 0, areaCapacity: 0 });
+		const buffer = createWorldStateBuffer(layout);
+		const writer = new WorldStateWriter(buffer, layout);
+		const reader = new WorldStateReader(buffer, layout);
+		const fixedStepMs = 1000 / 60;
+
+		writer.write({
+			logicalTimeMs: fixedStepMs,
+			tickIndex: 1,
+			clock: {
+				...clockSnapshot(fixedStepMs + 0.375, "paused"),
+				revision: 7,
+				sampledAtEpochMs: 1_725_000_000_000.125,
+				timeScale: 1.5,
+			},
+			members: [],
+		});
+
+		const snapshot = reader.readLatest();
+		expect(snapshot?.logicalTimeMs).toBe(fixedStepMs);
+		expect(snapshot?.clock).toEqual({
+			state: "paused",
+			revision: 7,
+			sampledAtEpochMs: 1_725_000_000_000.125,
+			timelineTimeMs: fixedStepMs + 0.375,
+			timeScale: 1.5,
+			fixedStepMs,
 		});
 	});
 
@@ -391,6 +434,7 @@ describe("worldStateBuffer", () => {
 		writer.write({
 			logicalTimeMs: 1000,
 			tickIndex: 1,
+			clock: clockSnapshot(1000),
 			members: [{ id: "player", position: { x: 0, y: 0, z: 0 }, yaw: 0 }],
 			areas: [
 				{
@@ -447,6 +491,7 @@ describe("worldStateBuffer", () => {
 			writer.write({
 				logicalTimeMs: tick * (1000 / 60),
 				tickIndex: tick,
+				clock: clockSnapshot(tick * (1000 / 60)),
 				members: memberInputs.map((member, index) => ({
 					id: member.id,
 					position: { x: tick + index, y: 0, z: index },

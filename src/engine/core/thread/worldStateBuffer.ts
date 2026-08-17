@@ -6,12 +6,13 @@
  * 历史和静态视觉资源不进入此缓冲区。
  */
 
+import type { FrameLoopClockSnapshot, FrameLoopState } from "../FrameLoop/types";
 import { evalTrajectory, type Trajectory } from "../World/Area/trajectory";
 import { WORLD_AREA_CAPACITY, WORLD_AREA_CAPACITY_EXCEEDED_CODE } from "../World/Area/types";
 import type { ModifierSource } from "../World/Member/runtime/AttributeContainer/AttributeContainerTypes";
 
 export const WORLD_STATE_MAGIC = 0x57535432;
-export const WORLD_STATE_LAYOUT_VERSION = 6;
+export const WORLD_STATE_LAYOUT_VERSION = 7;
 export const WORLD_STATE_PLAYER_ATTRIBUTE_COUNT = 138;
 export const WORLD_STATE_MOB_ATTRIBUTE_COUNT = 31;
 export const WORLD_STATE_DEFAULT_MEMBER_CAPACITY = 8;
@@ -143,6 +144,7 @@ export type WorldStateAreaData = {
 export type WorldStateCommit = {
 	logicalTimeMs: number;
 	tickIndex: number;
+	clock: FrameLoopClockSnapshot;
 	members: readonly WorldStateMemberData[];
 	areas?: readonly WorldStateAreaData[];
 	modifierSources?: readonly WorldStateModifierSource[];
@@ -191,6 +193,7 @@ export type WorldStateSnapshot = {
 	commitVersion: number;
 	logicalTimeMs: number;
 	tickIndex: number;
+	clock: FrameLoopClockSnapshot;
 	members: WorldStateMember[];
 	areas: WorldStateArea[];
 	modifierSources: WorldStateModifierSource[];
@@ -206,7 +209,7 @@ export type WorldStateReadStats = {
 	nullReturns: number;
 };
 
-const HEADER_BYTES = 64;
+const HEADER_BYTES = 96;
 const HEADER_INT32_COUNT = HEADER_BYTES / Int32Array.BYTES_PER_ELEMENT;
 const HDR_MAGIC = 0;
 const HDR_VERSION = 1;
@@ -214,12 +217,35 @@ const HDR_MEMBER_CAPACITY = 2;
 const HDR_AREA_CAPACITY = 3;
 const HDR_ATTRIBUTE_COUNT = 4;
 const HDR_COMMIT_VERSION = 5;
-const HDR_LOGICAL_TIME_MS = 6;
-const HDR_TICK_INDEX = 7;
-const HDR_SOURCE_CAPACITY = 8;
-const HDR_CHAIN_CAPACITY = 9;
-const HDR_SOURCE_COUNT = 10;
-const HDR_CHAIN_COUNT = 11;
+const HDR_TICK_INDEX = 6;
+const HDR_SOURCE_CAPACITY = 7;
+const HDR_CHAIN_CAPACITY = 8;
+const HDR_SOURCE_COUNT = 9;
+const HDR_CHAIN_COUNT = 10;
+const HDR_CLOCK_STATE = 11;
+const HDR_CLOCK_REVISION = 12;
+const HDR_FLOAT_LOGICAL_TIME_MS = 56;
+const HDR_FLOAT_CLOCK_SAMPLED_AT_EPOCH_MS = 64;
+const HDR_FLOAT_CLOCK_TIMELINE_TIME_MS = 72;
+const HDR_FLOAT_CLOCK_TIME_SCALE = 80;
+const HDR_FLOAT_CLOCK_FIXED_STEP_MS = 88;
+
+const CLOCK_STATE_CODE: Record<FrameLoopState, number> = {
+	stopped: 0,
+	running: 1,
+	paused: 2,
+};
+
+function decodeClockState(code: number): FrameLoopState {
+	switch (code) {
+		case 1:
+			return "running";
+		case 2:
+			return "paused";
+		default:
+			return "stopped";
+	}
+}
 
 const DIRECTORY_INT32_FIELDS = 9;
 const DIRECTORY_BYTES = DIRECTORY_INT32_FIELDS * Int32Array.BYTES_PER_ELEMENT;
@@ -615,11 +641,17 @@ export function createWorldStateBuffer(descriptor: WorldStateLayoutDescriptor): 
 	header[HDR_SOURCE_CAPACITY] = descriptor.modifierSourceCapacity;
 	header[HDR_CHAIN_CAPACITY] = descriptor.modifierChainCapacity;
 	Atomics.store(header, HDR_COMMIT_VERSION, 0);
-	Atomics.store(header, HDR_LOGICAL_TIME_MS, 0);
 	Atomics.store(header, HDR_TICK_INDEX, 0);
 	Atomics.store(header, HDR_SOURCE_COUNT, 0);
 	Atomics.store(header, HDR_CHAIN_COUNT, 0);
+	Atomics.store(header, HDR_CLOCK_STATE, CLOCK_STATE_CODE.stopped);
+	Atomics.store(header, HDR_CLOCK_REVISION, 0);
 	const view = new DataView(buffer);
+	view.setFloat64(HDR_FLOAT_LOGICAL_TIME_MS, 0, true);
+	view.setFloat64(HDR_FLOAT_CLOCK_SAMPLED_AT_EPOCH_MS, 0, true);
+	view.setFloat64(HDR_FLOAT_CLOCK_TIMELINE_TIME_MS, 0, true);
+	view.setFloat64(HDR_FLOAT_CLOCK_TIME_SCALE, 1, true);
+	view.setFloat64(HDR_FLOAT_CLOCK_FIXED_STEP_MS, 1000 / 60, true);
 	const bufferOffsets = offsets(descriptor);
 	for (let index = 0; index < descriptor.memberDirectory.length; index++) {
 		const member = descriptor.memberDirectory[index];
@@ -738,10 +770,16 @@ export class WorldStateWriter {
 
 		Atomics.add(this.header, HDR_COMMIT_VERSION, 1);
 		try {
-			Atomics.store(this.header, HDR_LOGICAL_TIME_MS, Math.trunc(payload.logicalTimeMs));
 			Atomics.store(this.header, HDR_TICK_INDEX, Math.trunc(payload.tickIndex));
 			Atomics.store(this.header, HDR_SOURCE_COUNT, sources.length);
 			Atomics.store(this.header, HDR_CHAIN_COUNT, chains.length);
+			Atomics.store(this.header, HDR_CLOCK_STATE, CLOCK_STATE_CODE[payload.clock.state]);
+			Atomics.store(this.header, HDR_CLOCK_REVISION, payload.clock.revision);
+			this.data.setFloat64(HDR_FLOAT_LOGICAL_TIME_MS, payload.logicalTimeMs, true);
+			this.data.setFloat64(HDR_FLOAT_CLOCK_SAMPLED_AT_EPOCH_MS, payload.clock.sampledAtEpochMs, true);
+			this.data.setFloat64(HDR_FLOAT_CLOCK_TIMELINE_TIME_MS, payload.clock.timelineTimeMs, true);
+			this.data.setFloat64(HDR_FLOAT_CLOCK_TIME_SCALE, payload.clock.timeScale, true);
+			this.data.setFloat64(HDR_FLOAT_CLOCK_FIXED_STEP_MS, payload.clock.fixedStepMs, true);
 			this.applyMemberPlan(memberPlan);
 			this.writeModifierMetadata(sources, chains);
 			this.applyAreaPlan(areaPlan);
@@ -1181,22 +1219,30 @@ export class WorldStateReader {
 				chainCount > this.descriptor.modifierChainCapacity
 			)
 				continue;
+			const logicalTimeMs = this.data.getFloat64(HDR_FLOAT_LOGICAL_TIME_MS, true);
 			const members = this.readMembers();
 			const areas = this.readAreas();
 			for (const area of areas) {
 				if (!area.active) continue;
 				const sourcePos = members[area.sourceMemberIndex]?.position ?? { x: 0, y: 0, z: 0 };
 				const targetPos = members[area.targetMemberIndex]?.position ?? sourcePos;
-				area.position = evalTrajectory(
-					area.trajectory,
-					Math.max(0, Atomics.load(this.header, HDR_LOGICAL_TIME_MS) - area.spawnTimeMs),
-					{ source: sourcePos, target: targetPos },
-				);
+				area.position = evalTrajectory(area.trajectory, Math.max(0, logicalTimeMs - area.spawnTimeMs), {
+					source: sourcePos,
+					target: targetPos,
+				});
 			}
 			const snapshot: WorldStateSnapshot = {
 				commitVersion: first,
-				logicalTimeMs: Atomics.load(this.header, HDR_LOGICAL_TIME_MS),
+				logicalTimeMs,
 				tickIndex: Atomics.load(this.header, HDR_TICK_INDEX),
+				clock: {
+					state: decodeClockState(Atomics.load(this.header, HDR_CLOCK_STATE)),
+					revision: Atomics.load(this.header, HDR_CLOCK_REVISION),
+					sampledAtEpochMs: this.data.getFloat64(HDR_FLOAT_CLOCK_SAMPLED_AT_EPOCH_MS, true),
+					timelineTimeMs: this.data.getFloat64(HDR_FLOAT_CLOCK_TIMELINE_TIME_MS, true),
+					timeScale: this.data.getFloat64(HDR_FLOAT_CLOCK_TIME_SCALE, true),
+					fixedStepMs: this.data.getFloat64(HDR_FLOAT_CLOCK_FIXED_STEP_MS, true),
+				},
 				members,
 				areas,
 				modifierSources: this.readModifierSources(sourceCount),

@@ -280,7 +280,7 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 						acceptExternalIntents: true,
 						logicHz: input.design.logicHz,
 						timeScale: 1,
-						maxTickSkip: 5,
+						maxCatchUpTicks: 5,
 					});
 					await handle.startWorldStateProjection();
 					if (worldStateTimer !== null) clearInterval(worldStateTimer);

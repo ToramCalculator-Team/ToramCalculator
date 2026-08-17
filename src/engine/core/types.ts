@@ -56,7 +56,7 @@ export const RuntimeConfigSchema = z.object({
 	acceptExternalIntents: z.boolean(),
 	logicHz: z.number().positive(),
 	timeScale: z.number().positive(),
-	maxTickSkip: z.number().int().nonnegative(),
+	maxCatchUpTicks: z.number().int().positive(),
 });
 export type RuntimeConfig = z.output<typeof RuntimeConfigSchema>;
 
@@ -91,7 +91,7 @@ export function createRealtimeConfig(overrides?: Partial<RuntimeConfig>): Runtim
 		acceptExternalIntents: true,
 		logicHz: 60,
 		timeScale: 1,
-		maxTickSkip: 5,
+		maxCatchUpTicks: 5,
 		...overrides,
 	};
 }

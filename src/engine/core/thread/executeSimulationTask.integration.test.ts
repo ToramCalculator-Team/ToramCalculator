@@ -73,7 +73,7 @@ const createTask = (
 			driveMode: "unclocked",
 			acceptExternalIntents: false,
 			timeScale: 1,
-			maxTickSkip: 1,
+			maxCatchUpTicks: 1,
 		},
 		recordingPolicy: { tickStateHistory: "everyTick" },
 		stopPolicy: { kind: "untilMemberAiBehaviorEnds", memberId },
@@ -94,8 +94,7 @@ const createEngine = () => {
 			eventQueueConfig: { maxQueueSize: 100, enablePerformanceMonitoring: false },
 			frameLoopConfig: {
 				logicHz: 60,
-				enableTickSkip: false,
-				maxTickSkip: 0,
+				maxCatchUpTicks: 1,
 				enablePerformanceMonitoring: false,
 				timeScale: 1,
 				maxEventsPerTick: 10,

@@ -80,10 +80,6 @@ export class EngineWorkerClient {
 	/** 仅在实时 Session 显式申请投影后存在。 */
 	private worldStateReader: WorldStateReader | null = null;
 	private worldStateLayout: WorldStateLayoutDescriptor | null = null;
-	/** 主线程 rAF 驱动 Worker 时钟的信号 SAB */
-	private tickSignalBuffer: SharedArrayBuffer | null = null;
-	private tickSignalView: Int32Array | null = null;
-	private tickSignalRafId: number | null = null;
 
 	constructor(public readonly id: string) {
 		this.worker = new Worker(simulationWorker, { type: "module" });
@@ -333,68 +329,15 @@ export class EngineWorkerClient {
 		if (!result.success) throw new EngineExecutionFailure(result.error);
 		this.worldStateLayout = layout;
 		this.worldStateReader = reader;
-
-		// 附加 tick signal SAB，启用主线程 rAF 驱动 Worker 时钟
-		await this.startTickSignal();
 	}
 
 	async stopWorldStateProjection(): Promise<void> {
 		if (!this.worldStateReader) return;
 
-		// 先停止 tick signal
-		await this.stopTickSignal();
-
 		const result = await this.executeEngineRPC({ type: "detach_world_state_buffer" });
 		if (!result.success) throw new EngineExecutionFailure(result.error);
 		this.worldStateReader = null;
 		this.worldStateLayout = null;
-	}
-
-	/**
-	 * 创建 tick signal SAB，通知 Worker 使用 Atomics 驱动，
-	 * 并在主线程 rAF 里每帧发信号。
-	 */
-	private async startTickSignal(): Promise<void> {
-		if (this.tickSignalBuffer) return;
-		if (typeof SharedArrayBuffer === "undefined") return;
-		// 非浏览器环境（Node 测试）不启用 rAF 驱动
-		if (typeof requestAnimationFrame === "undefined") return;
-
-		// 4 字节单调递增计数器：主线程每帧 +1，Worker 读到变化即推进一次 tick
-		this.tickSignalBuffer = new SharedArrayBuffer(4);
-		this.tickSignalView = new Int32Array(this.tickSignalBuffer);
-
-		const rpcResult = await this.executeEngineRPC({ type: "attach_tick_signal", buffer: this.tickSignalBuffer });
-		if (!rpcResult.success) {
-			// 失败时不影响主流程，退回 setTimeout 驱动
-			this.tickSignalBuffer = null;
-			this.tickSignalView = null;
-			return;
-		}
-
-		// 主线程 rAF 循环：每帧递增计数器并唤醒 Worker
-		const signalView = this.tickSignalView;
-		const rafLoop = () => {
-			Atomics.add(signalView, 0, 1);
-			Atomics.notify(signalView, 0, 1);
-			this.tickSignalRafId = requestAnimationFrame(rafLoop);
-		};
-		this.tickSignalRafId = requestAnimationFrame(rafLoop);
-	}
-
-	/**
-	 * 停止 tick signal：取消 rAF，通知 Worker 恢复 setTimeout 驱动。
-	 */
-	private async stopTickSignal(): Promise<void> {
-		if (this.tickSignalRafId !== null) {
-			cancelAnimationFrame(this.tickSignalRafId);
-			this.tickSignalRafId = null;
-		}
-		if (this.tickSignalBuffer) {
-			await this.executeEngineRPC({ type: "detach_tick_signal" });
-			this.tickSignalBuffer = null;
-			this.tickSignalView = null;
-		}
 	}
 
 	async setRuntimeConfig(config: RuntimeConfig): Promise<void> {

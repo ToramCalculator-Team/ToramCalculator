@@ -156,8 +156,8 @@ export class GameEngine {
 		totalTicks: 0,
 		totalRunTime: 0,
 		clockKind: "manual",
-		skippedTicks: 0,
-		timeoutTicks: 0,
+		discardedVirtualTimeMs: 0,
+		overstepMs: 0,
 	};
 
 	/** 快照历史 */
@@ -177,8 +177,8 @@ export class GameEngine {
 
 	/** 系统消息发送器 - 用于发送系统指令到主线程 */
 	private systemMessageSender: ((payload: unknown) => void) | null = null;
-	/** tick 后回调（SAB 世界状态写入等低延迟通道） */
-	private postTickCallback: (() => void) | null = null;
+	/** 实时状态提交回调；Tick 和时钟生命周期转换共用同一原子投影入口。 */
+	private realtimeStateCommitCallback: (() => void) | null = null;
 	/** Worker 注入的连续控制状态读取边界；引擎本身不依赖具体线程传输实现。 */
 	private controllerMovementInputSource: ((controllerId: string) => MemberMovementInput | null) | null = null;
 	/** 当前挂起的 tick 内任务数量（用于防止跨 tick 未完成任务） */
@@ -402,10 +402,10 @@ export class GameEngine {
 		this.runtimeConfig = config;
 		this.config.frameLoopConfig.logicHz = config.logicHz;
 		this.config.frameLoopConfig.timeScale = config.timeScale;
-		this.config.frameLoopConfig.maxTickSkip = config.maxTickSkip;
+		this.config.frameLoopConfig.maxCatchUpTicks = config.maxCatchUpTicks;
 		this.frameLoop.setLogicHz(config.logicHz);
 		this.frameLoop.setTimeScale(config.timeScale);
-		this.frameLoop.setTickSkipConfig({ maxTickSkip: config.maxTickSkip });
+		this.frameLoop.setMaxCatchUpTicks(config.maxCatchUpTicks);
 		log.info(`GameEngine: runtimeConfig 已切换 (driveMode=${config.driveMode})`);
 	}
 
@@ -481,11 +481,11 @@ export class GameEngine {
 	}
 
 	/**
-	 * 注册 tick 后回调（SAB 世界状态写入等低延迟通道用）。
+	 * 注册实时状态提交回调（SAB 世界状态写入等低延迟通道用）。
 	 * Worker 层在 attach_world_state_buffer RPC 后注入；引擎不依赖 SAB 实现，保持跨环境可测试。
 	 */
-	setPostTickCallback(callback: (() => void) | null): void {
-		this.postTickCallback = callback;
+	setRealtimeStateCommitCallback(callback: (() => void) | null): void {
+		this.realtimeStateCommitCallback = callback;
 	}
 
 	/**
@@ -549,6 +549,11 @@ export class GameEngine {
 		return { ...this.frameLoopStats };
 	}
 
+	/** 为实时状态提交生成与当前已完成逻辑时间一致的共享时间轴映射。 */
+	getRealtimeClockSnapshot() {
+		return this.frameLoop.getClockSnapshot(this.currentTimeMs);
+	}
+
 	/**
 	 * 获取引擎运行时间（毫秒）
 	 * 轻量：不触发成员序列化
@@ -607,11 +612,12 @@ export class GameEngine {
 		}
 
 		this.startTime = performance.now();
-		this.resetEngineFrameLoopStats("raf");
+		this.resetEngineFrameLoopStats("deadline");
 		this.frameLoop.start((tick) => {
 			this.handleFrameLoopTick(tick);
 		});
 		this.syncFrameLoopDriverStats();
+		this.realtimeStateCommitCallback?.();
 	}
 
 	/**
@@ -620,6 +626,7 @@ export class GameEngine {
 	stop(): void {
 		if (this.frameLoop.isRunning() || this.frameLoop.isPaused()) {
 			this.frameLoop.stop();
+			this.realtimeStateCommitCallback?.();
 		}
 		this.syncFrameLoopDriverStats();
 	}
@@ -631,12 +638,14 @@ export class GameEngine {
 		if (this.runtimeConfig.driveMode !== "clocked") throw new Error("GameEngine: unclocked 执行不可暂停");
 		this.frameLoop.pause();
 		this.syncFrameLoopDriverStats();
+		this.realtimeStateCommitCallback?.();
 	}
 
 	resume(): void {
 		if (this.runtimeConfig.driveMode !== "clocked") throw new Error("GameEngine: unclocked 执行不可恢复");
 		this.frameLoop.resume();
 		this.syncFrameLoopDriverStats();
+		this.realtimeStateCommitCallback?.();
 	}
 
 	/**
@@ -1319,22 +1328,22 @@ export class GameEngine {
 			totalTicks: 0,
 			totalRunTime: 0,
 			clockKind,
-			skippedTicks: 0,
-			timeoutTicks: 0,
+			discardedVirtualTimeMs: 0,
+			overstepMs: 0,
 		};
 	}
 
 	/**
 	 * 把底层时钟驱动统计同步到引擎级统计里。
 	 * 说明：
-	 * - clockKind / skippedTicks / timeoutTicks 仍来自底层 FrameLoop
+	 * - clockKind / discardedVirtualTimeMs / overstepMs 仍来自底层 FrameLoop
 	 * - totalTicks / averageTicksPerSecond / totalRunTime 由引擎自己根据 stepTick 结果维护
 	 */
 	private syncFrameLoopDriverStats(): void {
 		const driverStats = this.frameLoop.getFrameLoopStats();
 		this.frameLoopStats.clockKind = driverStats.clockKind;
-		this.frameLoopStats.skippedTicks = driverStats.skippedTicks;
-		this.frameLoopStats.timeoutTicks = driverStats.timeoutTicks;
+		this.frameLoopStats.discardedVirtualTimeMs = driverStats.discardedVirtualTimeMs;
+		this.frameLoopStats.overstepMs = driverStats.overstepMs;
 	}
 
 	/**
@@ -1375,7 +1384,7 @@ export class GameEngine {
 		this.syncFrameLoopDriverStats();
 
 		for (let index = 0; index < tick.dueTicks; index++) {
-			this.runSingleTick(tick.clockKind, tick.logicStepMs);
+			this.runSingleTick(tick.clockKind, tick.fixedStepMs);
 		}
 
 		this.syncFrameLoopDriverStats();
@@ -1405,7 +1414,7 @@ export class GameEngine {
 				this.world.memberManager.getAllMembers(),
 			);
 		}
-		this.postTickCallback?.();
+		this.realtimeStateCommitCallback?.();
 
 		return stepResult;
 	}

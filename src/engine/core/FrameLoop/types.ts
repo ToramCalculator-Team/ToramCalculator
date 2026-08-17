@@ -15,10 +15,9 @@ export type FrameLoopState = "stopped" | "running" | "paused";
  */
 export const FrameLoopConfigSchema = z.object({
 	logicHz: z.number(),
-	enableTickSkip: z.boolean(),
-	maxTickSkip: z.number(),
+	maxCatchUpTicks: z.number().int().positive(),
 	enablePerformanceMonitoring: z.boolean(),
-	timeScale: z.number(),
+	timeScale: z.number().positive(),
 	maxEventsPerTick: z.number(),
 });
 export type FrameLoopConfig = z.output<typeof FrameLoopConfigSchema>;
@@ -28,18 +27,26 @@ export type FrameLoopConfig = z.output<typeof FrameLoopConfigSchema>;
  * GameEngine 会根据 dueTicks 决定实际调用多少次 stepTick。
  */
 export interface FrameLoopTick {
-	/** 当前 wall-clock 时间戳（毫秒） */
-	timestamp: number;
-	/** 距离上一次 tick 的真实时间差（毫秒） */
-	deltaTime: number;
+	/** 本次 Worker 唤醒对应的跨线程单调时间坐标。 */
+	sampledAtEpochMs: number;
 	/** 固定逻辑步长对应的模拟毫秒数 */
-	logicStepMs: number;
+	fixedStepMs: number;
 	/** 本次 tick 建议推进的逻辑 tick 数 */
 	dueTicks: number;
-	/** 当前驱动使用的底层时钟类型 */
-	clockKind: "raf" | "timeout";
-	/** 由于累积时间过大而被裁剪掉的补 tick 次数 */
-	skippedTicks: number;
+	clockKind: "deadline";
+	/** 因单轮追帧上限而未进入 Virtual Time 的累计时长。 */
+	discardedVirtualTimeMs: number;
+}
+
+/** 随实时世界状态提交的共享时间轴映射。 */
+export interface FrameLoopClockSnapshot {
+	state: FrameLoopState;
+	revision: number;
+	sampledAtEpochMs: number;
+	/** 已完成逻辑时间与当前 Fixed Time overstep 之和。 */
+	timelineTimeMs: number;
+	timeScale: number;
+	fixedStepMs: number;
 }
 
 /**
@@ -65,9 +72,9 @@ export interface FrameLoopStats {
 	/** 总运行时间 */
 	totalRunTime: number;
 	/** 调度/驱动来源 */
-	clockKind: "raf" | "timeout" | "manual";
-	/** 累积跳 tick 次数 */
-	skippedTicks: number;
-	/** 使用 timeout 时累计推进的 tick 数 */
-	timeoutTicks: number;
+	clockKind: "deadline" | "manual";
+	/** 未进入 Virtual Time 的累计时长；逻辑 Tick 本身从不跳过。 */
+	discardedVirtualTimeMs: number;
+	/** 当前 Fixed Time 累加器中尚不足一个 Tick 的时长。 */
+	overstepMs: number;
 }

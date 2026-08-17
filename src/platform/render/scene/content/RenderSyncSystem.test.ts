@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { FrameLoopClockSnapshot } from "~/engine/core/FrameLoop/types";
 import {
 	createWorldStateBuffer,
 	createWorldStateLayoutDescriptor,
@@ -8,7 +9,16 @@ import {
 	WorldStateWriter,
 } from "~/engine/core/thread/worldStateBuffer";
 import type { EntityRuntime } from "./entityTypes";
-import { RenderSyncSystem } from "./RenderSyncSystem";
+import { RenderSyncSystem, sampleWorldStateMembers } from "./RenderSyncSystem";
+
+const clockSnapshot = (timelineTimeMs: number): FrameLoopClockSnapshot => ({
+	state: "running",
+	revision: 1,
+	sampledAtEpochMs: 10_000,
+	timelineTimeMs,
+	timeScale: 1,
+	fixedStepMs: 1000 / 60,
+});
 
 function createEntity() {
 	const renderPosition = { x: 0, y: 0, z: 0 };
@@ -23,6 +33,7 @@ function createEntity() {
 		},
 		rotation: { y: 0 },
 	};
+	// 测试替身只覆盖 RenderSyncSystem 读取的实体字段。
 	const entity = {
 		id: "player",
 		type: "character",
@@ -35,11 +46,66 @@ function createEntity() {
 			speed: 0,
 		},
 	} as unknown as EntityRuntime;
-	return { entity, mesh, renderPosition, animationController };
+	return { entity, mesh, renderPosition };
 }
 
 describe("RenderSyncSystem", () => {
-	it("只消费调用方提供的完整提交，并在代次变化时丢弃旧状态", () => {
+	it("按统一渲染逻辑时间插值，并在 latest 之后按权威速度外推", () => {
+		const fixedStepMs = 1000 / 60;
+		const layout = createWorldStateLayoutDescriptor(
+			[
+				{
+					id: "player",
+					entityType: WorldStateEntityType.PLAYER,
+					visualProfileId: 1,
+					attributePaths: [],
+					modifierCapacity: 0,
+				},
+			],
+			{ memberCapacity: 1, areaCapacity: 0 },
+		);
+		const buffer = createWorldStateBuffer(layout);
+		const writer = new WorldStateWriter(buffer, layout);
+		const reader = new WorldStateReader(buffer, layout);
+		const system = new RenderSyncSystem();
+		const { entity, renderPosition } = createEntity();
+		const entities = new Map([[entity.id, entity]]);
+		const entitySlots = new Map([[entity.id, 0]]);
+		const writePlayer = (logicalTimeMs: number, x: number) =>
+			writer.write({
+				logicalTimeMs,
+				tickIndex: Math.round(logicalTimeMs / fixedStepMs),
+				clock: clockSnapshot(logicalTimeMs),
+				members: [
+					{
+						id: "player",
+						position: { x, y: 0, z: 0 },
+						yaw: Math.PI / 2,
+						speed: 60,
+						stateFlags: STATE_FLAG_MOVING,
+						attributes: { base: [], act: [] },
+					},
+				],
+			});
+
+		writePlayer(100, 10);
+		const previous = reader.readLatest();
+		writePlayer(100 + fixedStepMs, 20);
+		const latest = reader.readLatest();
+		if (!previous || !latest) throw new Error("预期读到相邻的稳定世界状态提交");
+
+		system.syncEntities(entities, entitySlots, sampleWorldStateMembers(previous, latest, 100 + fixedStepMs / 2));
+		expect(renderPosition.x).toBeCloseTo(15, 5);
+
+		system.syncEntities(
+			entities,
+			entitySlots,
+			sampleWorldStateMembers(previous, latest, latest.logicalTimeMs + fixedStepMs / 2),
+		);
+		expect(renderPosition.x).toBeCloseTo(20.5, 5);
+	});
+
+	it("代次变化和槽位失活都在 latest 逻辑边界切换", () => {
 		const layout = createWorldStateLayoutDescriptor(
 			[
 				{
@@ -60,55 +126,35 @@ describe("RenderSyncSystem", () => {
 		const entities = new Map([[entity.id, entity]]);
 		const entitySlots = new Map([[entity.id, 0]]);
 
-		const writePlayer = (x: number, speed = 2, moving = true) =>
-			writer.write({
-				logicalTimeMs: 100,
-				tickIndex: 1,
-				members: [
-					{
-						id: "player",
-						position: { x, y: 0, z: 0 },
-						yaw: 0,
-						speed,
-						stateFlags: moving ? STATE_FLAG_MOVING : 0,
-						attributes: { base: [], act: [] },
-					},
-				],
-			});
-
-		// 首帧：直接跳到权威位置
-		writePlayer(10);
-		const first = reader.readLatest();
-		system.syncEntities(entities, entitySlots, first, 1 / 60);
+		writer.write({
+			logicalTimeMs: 100,
+			tickIndex: 6,
+			clock: clockSnapshot(100),
+			members: [{ id: "player", position: { x: 10, y: 0, z: 0 }, yaw: 0 }],
+		});
+		const oldGeneration = reader.readLatest();
+		writer.write({ logicalTimeMs: 110, tickIndex: 7, clock: clockSnapshot(110), members: [] });
+		const inactive = reader.readLatest();
+		if (!oldGeneration || !inactive) throw new Error("预期读到稳定世界状态提交");
+		system.syncEntities(entities, entitySlots, sampleWorldStateMembers(oldGeneration, inactive, 105));
+		expect(mesh.setEnabled).toHaveBeenLastCalledWith(true);
 		expect(renderPosition.x).toBe(10);
-
-		// 版本变化：瞬间校正到新位置
-		writePlayer(20);
-		const second = reader.readLatest();
-		system.syncEntities(entities, entitySlots, second, 1 / 60);
-		expect(renderPosition.x).toBe(20);
-
-		// 版本不变：基于权威速度外推（speed=2, yaw=0 → vz=2, 1/60秒 → z 移动 2/60）
-		system.syncEntities(entities, entitySlots, second, 1 / 60);
-		expect(renderPosition.x).toBe(20); // x 不变（yaw=0 时速度在 z 方向）
-		expect(renderPosition.z).toBeCloseTo(2 / 60, 5);
-
-		// 再次版本不变：继续外推
-		system.syncEntities(entities, entitySlots, second, 1 / 60);
-		expect(renderPosition.z).toBeCloseTo(4 / 60, 5);
-
-		// 实体失活
-		writer.write({ logicalTimeMs: 120, tickIndex: 2, members: [] });
-		system.syncEntities(entities, entitySlots, reader.readLatest(), 1 / 60);
+		system.syncEntities(entities, entitySlots, sampleWorldStateMembers(oldGeneration, inactive, 110));
 		expect(mesh.setEnabled).toHaveBeenLastCalledWith(false);
 
-		// 代次变化（重建）：瞬间跳到新位置，旧的外推状态被丢弃
-		writePlayer(30);
+		writer.write({
+			logicalTimeMs: 120,
+			tickIndex: 8,
+			clock: clockSnapshot(120),
+			members: [{ id: "player", position: { x: 30, y: 0, z: 0 }, yaw: 0 }],
+		});
 		const rebuilt = reader.readLatest();
-		expect(rebuilt?.members[0]?.generation).toBe(2);
-		system.syncEntities(entities, entitySlots, rebuilt, 1 / 60);
+		if (!rebuilt) throw new Error("预期读到重建后的稳定世界状态提交");
+		expect(rebuilt.members[0]?.generation).toBe(2);
+		system.syncEntities(entities, entitySlots, sampleWorldStateMembers(oldGeneration, rebuilt, 115));
+		expect(renderPosition.x).toBe(10);
+		system.syncEntities(entities, entitySlots, sampleWorldStateMembers(oldGeneration, rebuilt, 120));
 		expect(mesh.setEnabled).toHaveBeenLastCalledWith(true);
 		expect(renderPosition.x).toBe(30);
-		expect(renderPosition.z).toBe(0);
 	});
 });
