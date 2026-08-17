@@ -1,5 +1,5 @@
 import type { MemberBTTree } from "@db/schema/jsons";
-import { PlayerLocomotionProfile } from "~/game/locomotion";
+import { DefaultMobLocomotionProfile } from "~/game/locomotion";
 import type { EngineMember } from "../../../../engineScenarioSchema";
 import { Member } from "../../Member";
 import { MemberRuntimeServicesDefaults } from "../../RuntimeServices";
@@ -46,10 +46,10 @@ export class Mob extends Member<MobAttrKey, MobSpecificEvent, MobFSMContext, Mob
 			verticalVelocity: 0,
 			grounded: true,
 			locomotion: {
-				walkSpeed: PlayerLocomotionProfile.WALK_SPEED,
-				runSpeed: PlayerLocomotionProfile.RUN_SPEED,
-				gravity: PlayerLocomotionProfile.GRAVITY,
-				jumpSpeed: PlayerLocomotionProfile.JUMP_SPEED,
+				walkSpeed: DefaultMobLocomotionProfile.WALK_SPEED,
+				runSpeed: DefaultMobLocomotionProfile.RUN_SPEED,
+				gravity: DefaultMobLocomotionProfile.GRAVITY,
+				jumpSpeed: DefaultMobLocomotionProfile.JUMP_SPEED,
 			},
 			statusTags: [],
 			skillList: [],

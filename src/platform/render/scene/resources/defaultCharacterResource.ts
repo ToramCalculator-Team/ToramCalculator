@@ -12,6 +12,12 @@ export const DEFAULT_CHARACTER_ANIMATION_CLIPS = {
 	land: "Jump_end",
 } as const satisfies CharacterWorldResource["animation"]["clips"];
 
+/** 当前角色 Walk/Run 片段在 1 倍速播放时已经校准匹配的世界速度。 */
+export const DEFAULT_CHARACTER_LOCOMOTION_ANIMATION = {
+	walkReferenceSpeed: 1.05,
+	runReferenceSpeed: 2.1,
+} as const satisfies CharacterWorldResource["animation"]["locomotion"];
+
 /** 逻辑状态到内嵌动画片段的默认映射；真实资产绑定后由场景解析覆盖。 */
 export const DEFAULT_CHARACTER_STATE_ANIMATIONS = {
 	idle: { clip: "Idle", durationMs: 1000, play: "loop" },
@@ -44,6 +50,7 @@ export function createDefaultCharacterWorldResource(input: {
 		animation: {
 			type: "embedded",
 			clips: DEFAULT_CHARACTER_ANIMATION_CLIPS,
+			locomotion: DEFAULT_CHARACTER_LOCOMOTION_ANIMATION,
 			states: DEFAULT_CHARACTER_STATE_ANIMATIONS,
 		},
 	};

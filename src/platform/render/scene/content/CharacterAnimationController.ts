@@ -22,6 +22,7 @@ const ANIMATION_BLENDING_SPEED = 0.08;
 export class CharacterAnimationController {
 	private currentAnimationId: string | null = null;
 	private locomotionState: CharacterLocomotionState = "idle";
+	private locomotionSpeedRatio = 1;
 	private activeActionId: string | null = null;
 	private activeActionPlayMode: StatePlayMode = "once";
 	private actionVersion = 0;
@@ -34,20 +35,34 @@ export class CharacterAnimationController {
 
 	/** 将引擎移动事实集中投影为角色移动动画状态。 */
 	setMovement(moving: boolean, speed: number): void {
-		this.setLocomotion(!moving ? "idle" : speed >= PlayerLocomotionProfile.RUN_ANIMATION_THRESHOLD ? "run" : "walk");
+		if (!moving) {
+			this.setLocomotion("idle", undefined, 1);
+			return;
+		}
+		const state = speed >= PlayerLocomotionProfile.RUN_ANIMATION_THRESHOLD ? "run" : "walk";
+		const referenceSpeed =
+			state === "run"
+				? this.entity.locomotionAnimation.runReferenceSpeed
+				: this.entity.locomotionAnimation.walkReferenceSpeed;
+		this.setLocomotion(state, undefined, Math.max(0, speed) / referenceSpeed);
 	}
 
 	/**
 	 * 设置持续移动状态。
 	 * 一次性动作播放期间只记录目标状态，动作结束后再恢复，避免移动帧覆盖攻击或跳跃动画。
 	 */
-	setLocomotion(state: CharacterLocomotionState, progress?: number): void {
+	setLocomotion(state: CharacterLocomotionState, progress?: number, speedRatio = 1): void {
 		this.locomotionState = state;
+		this.locomotionSpeedRatio = speedRatio;
 		if (this.activeActionId) return;
 
 		const animationId = this.entity.animationClips[state];
-		if (this.currentAnimationId === animationId && progress === undefined) return;
-		this.startAnimation(animationId, true, progress);
+		if (this.currentAnimationId === animationId && progress === undefined) {
+			const animation = this.getAnimation(animationId);
+			if (animation) animation.speedRatio = speedRatio;
+			return;
+		}
+		this.startAnimation(animationId, true, progress, undefined, speedRatio);
 	}
 
 	/** 播放一次性动作，并在结束后恢复最新移动状态。 */
@@ -111,7 +126,7 @@ export class CharacterAnimationController {
 			logger.warn(`Character ${this.entity.id}: 跳跃动画缺少起跳或落地片段`);
 			this.activeActionId = null;
 			this.currentAnimationId = null;
-			this.setLocomotion(this.locomotionState);
+			this.setLocomotion(this.locomotionState, undefined, this.locomotionSpeedRatio);
 			return;
 		}
 
@@ -132,7 +147,7 @@ export class CharacterAnimationController {
 				}
 				this.activeActionId = null;
 				this.currentAnimationId = null;
-				this.setLocomotion(this.locomotionState);
+				this.setLocomotion(this.locomotionState, undefined, this.locomotionSpeedRatio);
 			},
 			1,
 		);
@@ -187,7 +202,7 @@ export class CharacterAnimationController {
 			}
 		}
 		this.activeActionId = null;
-		this.setLocomotion(this.locomotionState);
+		this.setLocomotion(this.locomotionState, undefined, this.locomotionSpeedRatio);
 	}
 
 	private normalizeProgress(progress: number, playMode: StatePlayMode): number {

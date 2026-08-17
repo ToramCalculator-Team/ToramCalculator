@@ -13,7 +13,7 @@ import type { MemberCheckpoint, MemberDomainEvent, SimulationTickContext } from 
 import type { DamageAreaRequest } from "../Area/types";
 import type { WorldObservable } from "../observable";
 import type { MemberBaseAttrKey } from "./MemberBaseSchema";
-import type { MemberRuntimeServices, MemberTargetResolver } from "./RuntimeServices";
+import type { MemberRuntimeServices, MemberTargetDirectionResolver, MemberTargetResolver } from "./RuntimeServices";
 import { MemberRuntimeServicesDefaults } from "./RuntimeServices";
 import type { AttributeContainer } from "./runtime/AttributeContainer/AttributeContainer";
 import { AttributeSnapshotSchema } from "./runtime/AttributeContainer/AttributeContainerTypes";
@@ -277,6 +277,7 @@ export abstract class Member<
 			},
 			notifyDomainEvent: (event) => self.notifyDomainEvent(event),
 			emitProc: (eventName, payload) => self.emitProc(eventName, payload),
+			faceCurrentTarget: () => self.faceCurrentTarget(),
 			runPipeline: (pipelineName, params) => self.runPipeline(pipelineName, params),
 			send: (event) => self.actor.send(event),
 		};
@@ -440,6 +441,10 @@ export abstract class Member<
 
 	setTargetResolver(targetResolver: MemberTargetResolver | null): void {
 		this.services.targetResolver = targetResolver;
+	}
+
+	setTargetDirectionResolver(targetDirectionResolver: MemberTargetDirectionResolver | null): void {
+		this.services.targetDirectionResolver = targetDirectionResolver;
 	}
 
 	setEvaluateExpression(
@@ -778,6 +783,27 @@ export abstract class Member<
 	}
 
 	/**
+	 * 把水平单位方向写为成员权威朝向。
+	 * 所有即时转向都经过本入口，统一处理非法方向和零长度方向。
+	 */
+	private faceDirection(direction: { x: number; z: number }): boolean {
+		const length = Math.hypot(direction.x, direction.z);
+		if (!Number.isFinite(length) || length <= MOVEMENT_EPSILON) return false;
+		this.runtime.yaw = Math.atan2(direction.x / length, direction.z / length);
+		return true;
+	}
+
+	/**
+	 * 在动作接纳边界朝向当前目标。
+	 * World 服务只返回跨成员空间方向，最终 yaw 始终由本 Member 写入。
+	 */
+	private faceCurrentTarget(): boolean {
+		const targetId = this.runtime.targetId;
+		const direction = targetId ? this.services.targetDirectionResolver?.(this.id, targetId) : null;
+		return direction ? this.faceDirection(direction) : false;
+	}
+
+	/**
 	 * 积分当前 Tick 已接纳的移动状态；成员位置、朝向和步态事实始终由引擎持有，
 	 * 实时渲染统一从世界状态 latest-state 通道读取，不再维护并行的移动命令状态。
 	 */
@@ -787,7 +813,7 @@ export abstract class Member<
 
 		this.runtime.position.x += (movement.dir.x * movement.speed * tick.deltaTimeMs) / 1000;
 		this.runtime.position.z += (movement.dir.z * movement.speed * tick.deltaTimeMs) / 1000;
-		this.runtime.yaw = Math.atan2(movement.dir.x, movement.dir.z);
+		this.faceDirection(movement.dir);
 	}
 
 	/**

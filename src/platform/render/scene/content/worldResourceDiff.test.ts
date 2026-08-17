@@ -54,6 +54,15 @@ describe("canReuseWorldResource", () => {
 				...characterResource,
 				animation: {
 					...characterResource.animation,
+					locomotion: { ...characterResource.animation.locomotion, runReferenceSpeed: 4.5 },
+				},
+			}),
+		).toBe(false);
+		expect(
+			canReuseWorldResource(characterResource, {
+				...characterResource,
+				animation: {
+					...characterResource.animation,
 					states: {
 						...characterResource.animation.states,
 						"skill.startup": { ...characterResource.animation.states["skill.startup"], durationMs: 300 },

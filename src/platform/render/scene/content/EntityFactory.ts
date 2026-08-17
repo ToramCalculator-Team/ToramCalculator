@@ -179,6 +179,7 @@ export class EntityFactory {
 			id,
 			type: "character",
 			animationClips: resource.animation.clips,
+			locomotionAnimation: resource.animation.locomotion,
 			mesh: entityRoot,
 			label,
 			lastSeq: -1,

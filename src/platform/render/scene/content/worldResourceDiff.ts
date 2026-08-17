@@ -43,6 +43,8 @@ export function canReuseWorldResource(previous: WorldResource, next: WorldResour
 			previous.model.uri === next.model.uri &&
 			previous.appearance.scale === next.appearance.scale &&
 			haveSameAnimationClips(previous.animation.clips, next.animation.clips) &&
+			previous.animation.locomotion.walkReferenceSpeed === next.animation.locomotion.walkReferenceSpeed &&
+			previous.animation.locomotion.runReferenceSpeed === next.animation.locomotion.runReferenceSpeed &&
 			haveSameStateAnimations(previous.animation.states, next.animation.states)
 		);
 	}

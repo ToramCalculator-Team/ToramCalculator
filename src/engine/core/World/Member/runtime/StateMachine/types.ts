@@ -121,6 +121,8 @@ export interface MemberStateMachineEnv<
 	notifyDomainEvent(event: MemberDomainEvent): void;
 	/** 派发成员内事件到本成员 ProcBus（供 passive/registlet 响应，ADR-0011）。 */
 	emitProc(eventName: string, payload: unknown): void;
+	/** 按当前动作目标即时更新成员权威朝向；目标无效或重合时保持原朝向。 */
+	faceCurrentTarget(): boolean;
 	runPipeline(pipelineName: string, params?: Record<string, unknown>): StageData;
 	send(event: TFSMEvent): void;
 }

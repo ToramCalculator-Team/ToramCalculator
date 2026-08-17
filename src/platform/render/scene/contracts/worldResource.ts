@@ -10,6 +10,13 @@ export const CharacterAnimationClipsSchema = z.object({
 	land: z.string().min(1),
 });
 
+export const CharacterLocomotionAnimationSchema = z.object({
+	/** 当前 Walk 片段以 1 倍播放时对应的视觉移动速度（m/s）。 */
+	walkReferenceSpeed: z.number().positive(),
+	/** 当前 Run 片段以 1 倍播放时对应的视觉移动速度（m/s）。 */
+	runReferenceSpeed: z.number().positive(),
+});
+
 export const StatePlayModeSchema = z.enum(["once", "loop", "hold"]);
 export const StateAnimationMappingSchema = z.record(
 	MemberStateNameSchema,
@@ -35,6 +42,7 @@ const CharacterWorldResourceSchema = WorldResourceBaseSchema.extend({
 	animation: z.object({
 		type: z.literal("embedded"),
 		clips: CharacterAnimationClipsSchema,
+		locomotion: CharacterLocomotionAnimationSchema,
 		states: StateAnimationMappingSchema,
 	}),
 });
@@ -55,6 +63,7 @@ const MobWorldResourceSchema = WorldResourceBaseSchema.extend({
 export const WorldResourceSchema = z.discriminatedUnion("kind", [CharacterWorldResourceSchema, MobWorldResourceSchema]);
 
 export type CharacterAnimationClips = z.output<typeof CharacterAnimationClipsSchema>;
+export type CharacterLocomotionAnimation = z.output<typeof CharacterLocomotionAnimationSchema>;
 export type StatePlayMode = z.output<typeof StatePlayModeSchema>;
 export type StateAnimationMapping = z.output<typeof StateAnimationMappingSchema>;
 export type StateAnimationEntry = StateAnimationMapping[MemberStateName];
