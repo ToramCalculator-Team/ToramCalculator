@@ -55,6 +55,11 @@ export class FrameLoop {
 		timeoutTicks: 0,
 	};
 
+	/** 主线程 rAF 信号 SAB（Int32Array），用于替代 setTimeout 驱动 */
+	private tickSignalView: Int32Array | null = null;
+	/** 控制 Atomics 循环的停止标志 */
+	private atomicsLoopRunning = false;
+
 	constructor(config: Partial<FrameLoopConfig> = {}) {
 		this.config = {
 			logicHz: 60,
@@ -71,8 +76,8 @@ export class FrameLoop {
 	}
 
 	/**
-	 * 启动底层时钟，并把每次 tick 的“推进建议”交给上层。
-	 * 这里不关心引擎到底跑几帧，只负责告诉上层“现在该推进多少逻辑步长”。
+	 * 启动底层时钟，并把每次 tick 的"推进建议"交给上层。
+	 * 这里不关心引擎到底跑几帧，只负责告诉上层"现在该推进多少逻辑步长"。
 	 */
 	start(onTick: (tick: FrameLoopTick) => void): void {
 		if (this.state === "running") {
@@ -90,14 +95,20 @@ export class FrameLoop {
 		this.resetFrameLoopStats();
 
 		log.info(`⏱️ 启动逻辑时钟 - 逻辑频率: ${this.config.logicHz}Hz, 时钟: ${this.clockKind}`);
-		this.scheduleNextFrame();
+
+		// 如果已附加 tick signal，使用 Atomics 驱动；否则回退到 setTimeout/rAF
+		if (this.tickSignalView) {
+			this.startAtomicsLoop();
+		} else {
+			this.scheduleNextFrame();
+		}
 	}
 
 	/**
 	 * 停止时钟驱动。
 	 * 说明：
 	 * - 这里只取消底层调度
-	 * - 不再承担“停止引擎运行语义”的职责
+	 * - 不再承担"停止引擎运行语义"的职责
 	 */
 	stop(): void {
 		if (this.state === "stopped") {
@@ -107,6 +118,7 @@ export class FrameLoop {
 
 		this.state = "stopped";
 		this.cancelScheduledFrame();
+		this.stopAtomicsLoop();
 		this.updateFrameLoopStats();
 		this.onTick = null;
 
@@ -220,7 +232,7 @@ export class FrameLoop {
 
 	/**
 	 * 兼容保留的快照接口。
-	 * 它描述的是“驱动层观测值”，不是引擎语义快照。
+	 * 它描述的是"驱动层观测值"，不是引擎语义快照。
 	 */
 	getSnapshot(): FrameLoopSnapshot {
 		return {
@@ -351,5 +363,85 @@ export class FrameLoop {
 		};
 		this.tickAccumulatorMs = 0;
 		this.tickSkipCount = 0;
+	}
+
+	/**
+	 * 附加主线程 rAF 信号 SAB，启用 Atomics 驱动（替代 setTimeout）。
+	 * 必须在 start() 之前或停止状态下调用。
+	 */
+	attachTickSignal(tickSignalView: Int32Array): void {
+		if (this.state === "running") {
+			log.warn("⏱️ 无法在运行中附加 tick signal，请先停止");
+			return;
+		}
+		this.tickSignalView = tickSignalView;
+		log.info("⏱️ 已附加主线程 rAF tick signal，将使用 Atomics 驱动");
+	}
+
+	/**
+	 * 分离 tick signal，回退到 setTimeout/rAF 驱动。
+	 */
+	detachTickSignal(): void {
+		if (this.state === "running") {
+			log.warn("⏱️ 无法在运行中分离 tick signal，请先停止");
+			return;
+		}
+		this.tickSignalView = null;
+		log.info("⏱️ 已分离 tick signal，将回退到 setTimeout/rAF 驱动");
+	}
+
+	/**
+	 * 启动 Atomics.waitAsync 驱动循环。
+	 *
+	 * 不能用同步的 Atomics.wait——它会阻塞 Worker 整个 event loop，
+	 * 导致 postMessage / RPC 全部卡死。
+	 * 改用 Atomics.waitAsync：注册一个 Promise，收到通知时异步回调，
+	 * Worker 的消息队列始终畅通。
+	 */
+	private startAtomicsLoop(): void {
+		if (!this.tickSignalView) {
+			log.warn("⏱️ 无 tick signal，无法启动 Atomics 循环");
+			return;
+		}
+
+		this.atomicsLoopRunning = true;
+		const signalView = this.tickSignalView;
+
+		const scheduleNext = () => {
+			if (!this.atomicsLoopRunning || this.state !== "running") return;
+
+			const currentValue = Atomics.load(signalView, 0);
+			const result = Atomics.waitAsync(signalView, 0, currentValue, 100);
+
+			if (result.async) {
+				// 异步等待信号：收到通知后执行一帧逻辑，然后再次等待
+				// waitAsync 的 Promise 只 resolve "ok"（信号到达）或 "timed-out"（超时）
+				void result.value.then((outcome) => {
+					if (!this.atomicsLoopRunning || this.state !== "running") return;
+					if (outcome === "ok") {
+						this.processFrameLoop(performance.now());
+					}
+					// timed-out 时也继续循环（避免信号丢失导致永久挂起）
+					scheduleNext();
+				});
+			} else {
+				// 同步返回（值已变化，即 result.value === "not-equal"）：直接推进一帧
+				this.processFrameLoop(performance.now());
+				scheduleNext();
+			}
+		};
+
+		scheduleNext();
+		log.info("⏱️ Atomics.waitAsync 驱动循环已启动");
+	}
+
+	/**
+	 * 停止 Atomics 驱动循环。
+	 * atomicsLoopRunning 置 false 后，下一次 scheduleNext 检查时自然退出。
+	 */
+	private stopAtomicsLoop(): void {
+		if (!this.atomicsLoopRunning) return;
+		this.atomicsLoopRunning = false;
+		log.info("⏱️ Atomics.waitAsync 驱动循环已停止");
 	}
 }

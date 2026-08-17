@@ -39,7 +39,7 @@ function createEntity() {
 }
 
 describe("RenderSyncSystem", () => {
-	it("只消费调用方提供的完整提交，并在代次变化时丢弃旧插值", () => {
+	it("只消费调用方提供的完整提交，并在代次变化时丢弃旧状态", () => {
 		const layout = createWorldStateLayoutDescriptor(
 			[
 				{
@@ -55,12 +55,12 @@ describe("RenderSyncSystem", () => {
 		const buffer = createWorldStateBuffer(layout);
 		const writer = new WorldStateWriter(buffer, layout);
 		const reader = new WorldStateReader(buffer, layout);
-		const readLatest = vi.spyOn(reader, "readLatest");
 		const system = new RenderSyncSystem();
-		const { entity, mesh, renderPosition, animationController } = createEntity();
+		const { entity, mesh, renderPosition } = createEntity();
 		const entities = new Map([[entity.id, entity]]);
 		const entitySlots = new Map([[entity.id, 0]]);
-		const writePlayer = (x: number) =>
+
+		const writePlayer = (x: number, speed = 2, moving = true) =>
 			writer.write({
 				logicalTimeMs: 100,
 				tickIndex: 1,
@@ -69,35 +69,46 @@ describe("RenderSyncSystem", () => {
 						id: "player",
 						position: { x, y: 0, z: 0 },
 						yaw: 0,
-						speed: 2,
-						stateFlags: STATE_FLAG_MOVING,
+						speed,
+						stateFlags: moving ? STATE_FLAG_MOVING : 0,
 						attributes: { base: [], act: [] },
 					},
 				],
 			});
 
-		writePlayer(0);
+		// 首帧：直接跳到权威位置
+		writePlayer(10);
 		const first = reader.readLatest();
 		system.syncEntities(entities, entitySlots, first, 1 / 60);
-		expect(readLatest).toHaveBeenCalledTimes(1);
-		expect(renderPosition.x).toBe(0);
+		expect(renderPosition.x).toBe(10);
 
-		writePlayer(10);
+		// 版本变化：瞬间校正到新位置
+		writePlayer(20);
 		const second = reader.readLatest();
 		system.syncEntities(entities, entitySlots, second, 1 / 60);
-		expect(readLatest).toHaveBeenCalledTimes(2);
-		expect(renderPosition.x).toBeGreaterThan(0);
-		expect(renderPosition.x).toBeLessThan(10);
+		expect(renderPosition.x).toBe(20);
 
+		// 版本不变：基于权威速度外推（speed=2, yaw=0 → vz=2, 1/60秒 → z 移动 2/60）
+		system.syncEntities(entities, entitySlots, second, 1 / 60);
+		expect(renderPosition.x).toBe(20); // x 不变（yaw=0 时速度在 z 方向）
+		expect(renderPosition.z).toBeCloseTo(2 / 60, 5);
+
+		// 再次版本不变：继续外推
+		system.syncEntities(entities, entitySlots, second, 1 / 60);
+		expect(renderPosition.z).toBeCloseTo(4 / 60, 5);
+
+		// 实体失活
 		writer.write({ logicalTimeMs: 120, tickIndex: 2, members: [] });
 		system.syncEntities(entities, entitySlots, reader.readLatest(), 1 / 60);
 		expect(mesh.setEnabled).toHaveBeenLastCalledWith(false);
 
-		writePlayer(20);
+		// 代次变化（重建）：瞬间跳到新位置，旧的外推状态被丢弃
+		writePlayer(30);
 		const rebuilt = reader.readLatest();
 		expect(rebuilt?.members[0]?.generation).toBe(2);
 		system.syncEntities(entities, entitySlots, rebuilt, 1 / 60);
 		expect(mesh.setEnabled).toHaveBeenLastCalledWith(true);
-		expect(renderPosition.x).toBe(20);
+		expect(renderPosition.x).toBe(30);
+		expect(renderPosition.z).toBe(0);
 	});
 });

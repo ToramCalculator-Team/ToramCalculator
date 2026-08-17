@@ -239,6 +239,15 @@ export const EngineRPCSchema = z.discriminatedUnion("type", [
 		descriptor: WorldStateLayoutDescriptorSchema,
 	}),
 	z.object({ type: z.literal("detach_world_state_buffer") }),
+	/** 主线程附加 tick 信号 SAB，用于 rAF 驱动 Worker 时钟（替代 setTimeout）。 */
+	z.object({
+		type: z.literal("attach_tick_signal"),
+		buffer: z.custom<SharedArrayBuffer>(
+			(v) => typeof SharedArrayBuffer !== "undefined" && v instanceof SharedArrayBuffer,
+			{ message: "buffer 必须是 SharedArrayBuffer" },
+		),
+	}),
+	z.object({ type: z.literal("detach_tick_signal") }),
 ]);
 export type EngineRPC = z.output<typeof EngineRPCSchema>;
 export type EngineRPCType = EngineRPC["type"];
@@ -263,6 +272,8 @@ export const EngineRPCDataSchemaByType = {
 	detach_controller_input: z.undefined(),
 	attach_world_state_buffer: z.undefined(),
 	detach_world_state_buffer: z.undefined(),
+	attach_tick_signal: z.undefined(),
+	detach_tick_signal: z.undefined(),
 } as const satisfies Record<EngineRPCType, z.ZodType>;
 
 export type EngineRPCData<TType extends EngineRPCType> = z.output<(typeof EngineRPCDataSchemaByType)[TType]>;

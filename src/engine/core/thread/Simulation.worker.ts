@@ -486,6 +486,17 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<EngineRPCWireResult> {
 				gameEngine.setPostTickCallback(null);
 				return engineRPCSuccess(rpc.type, undefined);
 			}
+
+			case "attach_tick_signal": {
+				const tickSignalView = new Int32Array(rpc.buffer);
+				gameEngine.getFrameLoop().attachTickSignal(tickSignalView);
+				return engineRPCSuccess(rpc.type, undefined);
+			}
+
+			case "detach_tick_signal": {
+				gameEngine.getFrameLoop().detachTickSignal();
+				return engineRPCSuccess(rpc.type, undefined);
+			}
 		}
 	} catch (error) {
 		return engineRPCFailure(error);
