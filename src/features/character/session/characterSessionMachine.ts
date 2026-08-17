@@ -213,7 +213,7 @@ export function createCharacterSessionRuntime(dependencies: CharacterSessionDepe
 					acceptExternalIntents: false,
 					logicHz: 60,
 					timeScale: 1,
-					maxTickSkip: 5,
+					maxCatchUpTicks: 5,
 				});
 				realtimeSceneIdentity = sceneIdentity;
 			}

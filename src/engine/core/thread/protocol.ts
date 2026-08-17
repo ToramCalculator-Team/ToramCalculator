@@ -50,6 +50,8 @@ export const EngineTelemetrySchema = z.object({
 	runTime: z.number(),
 	ticksPerSecond: z.number(),
 	memberCount: z.number(),
+	discardedVirtualTimeMs: z.number(),
+	lastStepTickDurationMs: z.number(),
 });
 export type EngineTelemetry = z.output<typeof EngineTelemetrySchema>;
 

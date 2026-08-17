@@ -31,11 +31,20 @@ type CharacterModelTemplate = { meshes: AbstractMesh[]; animationGroups: Animati
 export class EntityFactory {
 	private scene: Scene;
 	private contentRoot?: TransformNode;
+	private onMemberMeshCreated?: (mesh: AbstractMesh) => void;
 	private characterModelCache = new Map<string, Promise<CharacterModelTemplate>>();
 
-	constructor(scene: Scene, contentRoot?: TransformNode) {
+	constructor(scene: Scene, contentRoot?: TransformNode, onMemberMeshCreated?: (mesh: AbstractMesh) => void) {
 		this.scene = scene;
 		this.contentRoot = contentRoot;
+		this.onMemberMeshCreated = onMemberMeshCreated;
+	}
+
+	/** 成员装配完成后统一发布真实模型网格；名称标签在此之后创建，不会进入成员渲染能力。 */
+	private publishMemberMeshes(modelRoot: TransformNode): void {
+		if (!this.onMemberMeshCreated) return;
+		if (modelRoot instanceof Mesh) this.onMemberMeshCreated(modelRoot);
+		for (const mesh of modelRoot.getChildMeshes(false)) this.onMemberMeshCreated(mesh);
 	}
 
 	/** 创建角色实体 */
@@ -172,6 +181,7 @@ export class EntityFactory {
 		const scaledBounds = modelRoot.getHierarchyBoundingVectors(true);
 		const modelTopOffsetY = Math.max(0, scaledBounds.max.y - entityRoot.getAbsolutePosition().y);
 
+		this.publishMemberMeshes(modelRoot);
 		const label = this.createLabel(id, name, entityRoot, 1.2, modelTopOffsetY);
 
 		// 创建实体
@@ -179,6 +189,7 @@ export class EntityFactory {
 			id,
 			type: "character",
 			animationClips: resource.animation.clips,
+			locomotionAnimation: resource.animation.locomotion,
 			mesh: entityRoot,
 			label,
 			lastSeq: -1,
@@ -223,6 +234,7 @@ export class EntityFactory {
 		mat.emissiveColor = baseColor.scale(0.2);
 		sphere.material = mat;
 
+		this.publishMemberMeshes(sphere);
 		const label = this.createLabel(id, name, entityRoot, radius * 4, radius * 2);
 
 		return {

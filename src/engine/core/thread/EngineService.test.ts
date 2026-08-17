@@ -161,7 +161,7 @@ const createSimulationTask = (runId: string) =>
 			driveMode: "unclocked",
 			acceptExternalIntents: false,
 			timeScale: 1,
-			maxTickSkip: 1,
+			maxCatchUpTicks: 1,
 		},
 		recordingPolicy: { tickStateHistory: "none" },
 		stopPolicy: { kind: "untilMemberAiBehaviorEnds", memberId: "member-1" },

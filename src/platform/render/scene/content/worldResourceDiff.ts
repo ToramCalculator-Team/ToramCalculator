@@ -1,5 +1,10 @@
 import type { MemberStateName } from "~/engine/core/World/Member/runtime/State/MemberState";
-import type { CharacterAnimationClips, StateAnimationMapping, WorldResource } from "../contracts/worldResource";
+import type {
+	CharacterAnimationClips,
+	StateAnimationEntry,
+	StateAnimationMapping,
+	WorldResource,
+} from "../contracts/worldResource";
 
 const haveSameAnimationClips = (left: CharacterAnimationClips, right: CharacterAnimationClips): boolean =>
 	left.idle === right.idle &&
@@ -8,6 +13,9 @@ const haveSameAnimationClips = (left: CharacterAnimationClips, right: CharacterA
 	left.jump === right.jump &&
 	left.fall === right.fall &&
 	left.land === right.land;
+
+const haveSameAnimationRange = (left: StateAnimationEntry["range"], right: StateAnimationEntry["range"]): boolean =>
+	(left?.start ?? 0) === (right?.start ?? 0) && (left?.end ?? 1) === (right?.end ?? 1);
 
 const haveSameStateAnimations = (left: StateAnimationMapping, right: StateAnimationMapping): boolean => {
 	const leftEntries = Object.entries(left);
@@ -19,7 +27,8 @@ const haveSameStateAnimations = (left: StateAnimationMapping, right: StateAnimat
 			other !== undefined &&
 			other.clip === entry.clip &&
 			other.durationMs === entry.durationMs &&
-			other.play === entry.play
+			other.play === entry.play &&
+			haveSameAnimationRange(other.range, entry.range)
 		);
 	});
 };
@@ -43,6 +52,8 @@ export function canReuseWorldResource(previous: WorldResource, next: WorldResour
 			previous.model.uri === next.model.uri &&
 			previous.appearance.scale === next.appearance.scale &&
 			haveSameAnimationClips(previous.animation.clips, next.animation.clips) &&
+			previous.animation.locomotion.walkReferenceSpeed === next.animation.locomotion.walkReferenceSpeed &&
+			previous.animation.locomotion.runReferenceSpeed === next.animation.locomotion.runReferenceSpeed &&
 			haveSameStateAnimations(previous.animation.states, next.animation.states)
 		);
 	}

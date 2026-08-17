@@ -1,4 +1,5 @@
 import type { Vec3 } from "~/engine/core/thread/RendererProtocol";
+import type { RenderFrameStats } from "../renderFrameStats";
 import type { WorldResource } from "./worldResource";
 
 export interface WorldResourcePose {
@@ -18,4 +19,5 @@ export interface RendererController {
 	dispose: () => void;
 	getEntityPose: (id: string) => { pos: Vec3; yaw: number } | undefined;
 	applyWorldResources: (resources: WorldResource[], poses: WorldResourcePose[]) => Promise<void>;
+	getFrameStats: () => RenderFrameStats;
 }

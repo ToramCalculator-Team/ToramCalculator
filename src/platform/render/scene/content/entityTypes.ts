@@ -13,7 +13,7 @@ import type {
 	TransformNode,
 	Vector3,
 } from "~/platform/render/babylon/runtime";
-import type { CharacterAnimationClips } from "../contracts/worldResource";
+import type { CharacterAnimationClips, CharacterLocomotionAnimation } from "../contracts/worldResource";
 import type { CharacterAnimationController } from "./CharacterAnimationController";
 
 /**
@@ -72,6 +72,8 @@ export interface CharacterEntityRuntime extends BaseEntityRuntime {
 	type: "character";
 	/** 语义动作到当前模型内嵌动画片段的映射，来自同版本 worldResources。 */
 	animationClips: CharacterAnimationClips;
+	/** 当前模型步态片段在 1 倍播放时对应的参考速度。 */
+	locomotionAnimation: CharacterLocomotionAnimation;
 	/** GLB模型中的动画组 */
 	builtinAnimations: Map<string, AnimationGroup>;
 	/** 自定义动画（运行时生成） */

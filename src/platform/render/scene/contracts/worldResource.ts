@@ -10,13 +10,31 @@ export const CharacterAnimationClipsSchema = z.object({
 	land: z.string().min(1),
 });
 
+export const CharacterLocomotionAnimationSchema = z.object({
+	/** 当前 Walk 片段以 1 倍播放时对应的视觉移动速度（m/s）。 */
+	walkReferenceSpeed: z.number().positive(),
+	/** 当前 Run 片段以 1 倍播放时对应的视觉移动速度（m/s）。 */
+	runReferenceSpeed: z.number().positive(),
+});
+
 export const StatePlayModeSchema = z.enum(["once", "loop", "hold"]);
+export const StateAnimationRangeSchema = z
+	.object({
+		start: z.number().min(0).max(1),
+		end: z.number().min(0).max(1),
+	})
+	.refine((range) => range.start <= range.end, {
+		message: "动画片段区间的 end 不能小于 start",
+		path: ["end"],
+	});
 export const StateAnimationMappingSchema = z.record(
 	MemberStateNameSchema,
 	z.object({
 		clip: z.string().min(1),
 		durationMs: z.number().positive(),
 		play: StatePlayModeSchema.default("once"),
+		/** 在内嵌动画片段中使用的归一化区间；未设置时使用完整片段。 */
+		range: StateAnimationRangeSchema.optional(),
 	}),
 );
 
@@ -35,6 +53,7 @@ const CharacterWorldResourceSchema = WorldResourceBaseSchema.extend({
 	animation: z.object({
 		type: z.literal("embedded"),
 		clips: CharacterAnimationClipsSchema,
+		locomotion: CharacterLocomotionAnimationSchema,
 		states: StateAnimationMappingSchema,
 	}),
 });
@@ -55,6 +74,7 @@ const MobWorldResourceSchema = WorldResourceBaseSchema.extend({
 export const WorldResourceSchema = z.discriminatedUnion("kind", [CharacterWorldResourceSchema, MobWorldResourceSchema]);
 
 export type CharacterAnimationClips = z.output<typeof CharacterAnimationClipsSchema>;
+export type CharacterLocomotionAnimation = z.output<typeof CharacterLocomotionAnimationSchema>;
 export type StatePlayMode = z.output<typeof StatePlayModeSchema>;
 export type StateAnimationMapping = z.output<typeof StateAnimationMappingSchema>;
 export type StateAnimationEntry = StateAnimationMapping[MemberStateName];

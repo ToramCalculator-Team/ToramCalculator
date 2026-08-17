@@ -8,20 +8,31 @@
  * 引擎层将 intensity 映射到这里的速度值并叠加 buff/debuff，
  * 渲染层用 RUN_ANIMATION_THRESHOLD 把最终速度映射回步态动画。
  */
+const PLAYER_WALK_SPEED = 2.25;
+const PLAYER_RUN_SPEED = 4.5;
+
 export const PlayerLocomotionProfile = {
 	/** 行走基础速度（m/s），对应 intensity = WALK_INTENSITY (0.5)。 */
-	WALK_SPEED: 1.05,
+	WALK_SPEED: PLAYER_WALK_SPEED,
 	/** 奔跑基础速度（m/s），对应 intensity = RUN_INTENSITY (1.0)。 */
-	RUN_SPEED: 2.1,
+	RUN_SPEED: PLAYER_RUN_SPEED,
 	/**
 	 * 动画步态切换阈值（m/s）。
 	 * 设在走路与奔跑速度的中点，使 debuff 缓慢降速时动画过渡更自然，
 	 * 而不是实际速度一低于奔跑速度就立刻切回走路动画。
 	 */
-	RUN_ANIMATION_THRESHOLD: 1.575,
+	RUN_ANIMATION_THRESHOLD: (PLAYER_WALK_SPEED + PLAYER_RUN_SPEED) / 2,
 	/** 起跳瞬间的垂直速度（m/s）。 */
 	JUMP_SPEED: 3.4,
 	/** 世界重力加速度（m/s²）。 */
+	GRAVITY: 9.8,
+} as const;
+
+/** Mob 尚未接入按类型配置的移动参数，默认保持原有速度，避免玩家调速改变全部敌人。 */
+export const DefaultMobLocomotionProfile = {
+	WALK_SPEED: 1.05,
+	RUN_SPEED: 2.1,
+	JUMP_SPEED: 3.4,
 	GRAVITY: 9.8,
 } as const;
 

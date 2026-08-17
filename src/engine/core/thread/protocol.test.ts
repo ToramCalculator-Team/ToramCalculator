@@ -133,7 +133,7 @@ describe("parseEngineRPCResult", () => {
 				driveMode: "unclocked",
 				acceptExternalIntents: false,
 				timeScale: 1,
-				maxTickSkip: 0,
+				maxCatchUpTicks: 1,
 			},
 			recordingPolicy: { tickStateHistory: "everyTick" },
 			stopPolicy: { kind: "untilMemberAiBehaviorEnds", memberId: "m" },

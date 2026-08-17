@@ -181,6 +181,22 @@ export class MemberManager {
 	}
 
 	/**
+	 * 解析两个成员当前权威位置之间的水平单位方向。
+	 * 这里只读取世界关系，不修改任何成员；朝向写入仍由源 Member 自身完成。
+	 */
+	private resolveTargetDirection(sourceMemberId: string, targetMemberId: string): { x: number; z: number } | null {
+		const source = this.members.get(sourceMemberId);
+		const target = this.members.get(targetMemberId);
+		if (!source || !target) return null;
+
+		const x = target.position.x - source.position.x;
+		const z = target.position.z - source.position.z;
+		const length = Math.hypot(x, z);
+		if (!Number.isFinite(length) || length <= Number.EPSILON) return null;
+		return { x: x / length, z: z / length };
+	}
+
+	/**
 	 * 场景装配完成后直接建立 Member 初始目标。
 	 * 初始目标是运行时初始状态，不发送 FSM 控制事件，也不生成输入判决或行动录制。
 	 */
@@ -219,6 +235,7 @@ export class MemberManager {
 				player.setDomainEventSender(this.domainEventSender);
 				player.setControlInputRecorder(this.controlInputRecorder);
 				player.setTargetResolver(this.resolveTargetId.bind(this));
+				player.setTargetDirectionResolver(this.resolveTargetDirection.bind(this));
 				player.setEvaluateExpression(this.evaluateExpression);
 				player.setDamageRequestHandler(this.damageRequestHandler);
 				player.setGetCurrentTimeMs(this.getCurrentTimeMs);
@@ -251,6 +268,7 @@ export class MemberManager {
 				mob.setDomainEventSender(this.domainEventSender);
 				mob.setControlInputRecorder(this.controlInputRecorder);
 				mob.setTargetResolver(this.resolveTargetId.bind(this));
+				mob.setTargetDirectionResolver(this.resolveTargetDirection.bind(this));
 				mob.setEvaluateExpression(this.evaluateExpression);
 				mob.setDamageRequestHandler(this.damageRequestHandler);
 				mob.setGetCurrentTimeMs(this.getCurrentTimeMs);

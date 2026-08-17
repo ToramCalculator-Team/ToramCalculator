@@ -162,8 +162,7 @@ const gameEngine = new GameEngine(
 		},
 		frameLoopConfig: {
 			logicHz: 60,
-			enableTickSkip: true,
-			maxTickSkip: 5,
+			maxCatchUpTicks: 5,
 			enablePerformanceMonitoring: false,
 			timeScale: 1,
 			maxEventsPerTick: 10,
@@ -255,6 +254,7 @@ function createWorldStateCommit(): WorldStateCommit {
 	return {
 		logicalTimeMs: currentTimeMs,
 		tickIndex: gameEngine.getTickIndex(),
+		clock: gameEngine.getRealtimeClockSnapshot(),
 		members,
 		modifierSources,
 		modifierChains,
@@ -262,13 +262,21 @@ function createWorldStateCommit(): WorldStateCommit {
 			id: area.id,
 			active: true,
 			type: WorldStateAreaType.DAMAGE,
-			position: area.position,
 			shape: {
-				kind: area.shape.kind === "point" ? WorldStateAreaShapeKind.POINT : WorldStateAreaShapeKind.CIRCLE,
+				kind:
+					area.shape.kind === "point"
+						? WorldStateAreaShapeKind.POINT
+						: area.shape.kind === "rect"
+							? WorldStateAreaShapeKind.RECTANGLE
+							: WorldStateAreaShapeKind.CIRCLE,
 				radius: area.shape.radius,
+				width: area.shape.width,
+				height: area.shape.height,
 			},
-			remainingTimeMs: area.remainingTimeMs,
+			spawnTimeMs: area.spawnTimeMs,
+			trajectory: area.trajectory,
 			sourceMemberId: area.sourceMemberId,
+			targetMemberId: area.targetMemberId,
 		})),
 	};
 }
@@ -345,7 +353,7 @@ function handleLifecycleCommand(command: EngineLifecycleCommand): EngineWorkerTa
 				gameEngine.unloadScenario();
 				controllerInputReaders.clear();
 				worldStateWriter = null;
-				gameEngine.setPostTickCallback(null);
+				gameEngine.setRealtimeStateCommitCallback(null);
 				result = engineLifecycleSuccess(command);
 				break;
 			case "CMD_FAST_FORWARD":
@@ -468,14 +476,14 @@ async function handleEngineRPC(rpc: EngineRPC): Promise<EngineRPCWireResult> {
 					if (!worldStateWriter) return;
 					worldStateWriter.write(createWorldStateCommit());
 				};
-				gameEngine.setPostTickCallback(writeWorldState);
+				gameEngine.setRealtimeStateCommitCallback(writeWorldState);
 				writeWorldState();
 				return engineRPCSuccess(rpc.type, undefined);
 			}
 
 			case "detach_world_state_buffer": {
 				worldStateWriter = null;
-				gameEngine.setPostTickCallback(null);
+				gameEngine.setRealtimeStateCommitCallback(null);
 				return engineRPCSuccess(rpc.type, undefined);
 			}
 		}
@@ -678,6 +686,8 @@ function startTelemetryLoop(port: MessagePort) {
 				runTime: gameEngine.getRunTimeMs(),
 				ticksPerSecond: frameLoopStats.averageTicksPerSecond,
 				memberCount: gameEngine.getMemberCount(),
+				discardedVirtualTimeMs: frameLoopStats.discardedVirtualTimeMs,
+				lastStepTickDurationMs: gameEngine.getLastStepTickDurationMs(),
 			});
 		} catch {
 			// 遥测失败不应影响主流程

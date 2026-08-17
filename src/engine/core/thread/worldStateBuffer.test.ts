@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { FrameLoopClockSnapshot, FrameLoopState } from "../FrameLoop/types";
 import {
 	calculateModifierCapacity,
 	createWorldStateBuffer,
@@ -30,12 +31,22 @@ const attributes = (count: number, prefix: string): WorldStateAttributeSchemaEnt
 		expression: "",
 	}));
 
+const clockSnapshot = (timelineTimeMs: number, state: FrameLoopState = "running"): FrameLoopClockSnapshot => ({
+	state,
+	revision: 3,
+	sampledAtEpochMs: 10_000,
+	timelineTimeMs,
+	timeScale: 1,
+	fixedStepMs: 1000 / 60,
+});
+
 const emptyCommit = (
 	members: WorldStateCommit["members"],
 	areas: WorldStateCommit["areas"] = [],
 ): WorldStateCommit => ({
 	logicalTimeMs: 100,
 	tickIndex: 4,
+	clock: clockSnapshot(100),
 	members,
 	areas,
 });
@@ -164,6 +175,7 @@ describe("worldStateBuffer", () => {
 		writer.write({
 			logicalTimeMs: 100,
 			tickIndex: 4,
+			clock: clockSnapshot(100),
 			members: [
 				{
 					id: "player",
@@ -180,9 +192,9 @@ describe("worldStateBuffer", () => {
 				{
 					id: "area-1",
 					type: WorldStateAreaType.DAMAGE,
-					position: { x: 4, y: 0, z: 5 },
 					shape: { kind: WorldStateAreaShapeKind.CIRCLE, radius: 2 },
-					remainingTimeMs: 50,
+					spawnTimeMs: 50,
+					trajectory: { kind: "static" as const, center: { x: 4, y: 0, z: 5 }, lifetimeMs: 100 },
 					sourceMemberId: "player",
 				},
 			],
@@ -213,9 +225,41 @@ describe("worldStateBuffer", () => {
 			active: true,
 			generation: 1,
 			type: WorldStateAreaType.DAMAGE,
+			position: { x: 4, y: 0, z: 5 },
 			shape: { kind: WorldStateAreaShapeKind.CIRCLE, radius: 2 },
-			remainingTimeMs: 50,
+			spawnTimeMs: 50,
 			sourceMemberIndex: 0,
+		});
+	});
+
+	it("以 Float64 原样提交逻辑时间和共享时钟映射", () => {
+		const layout = createWorldStateLayoutDescriptor([], { memberCapacity: 0, areaCapacity: 0 });
+		const buffer = createWorldStateBuffer(layout);
+		const writer = new WorldStateWriter(buffer, layout);
+		const reader = new WorldStateReader(buffer, layout);
+		const fixedStepMs = 1000 / 60;
+
+		writer.write({
+			logicalTimeMs: fixedStepMs,
+			tickIndex: 1,
+			clock: {
+				...clockSnapshot(fixedStepMs + 0.375, "paused"),
+				revision: 7,
+				sampledAtEpochMs: 1_725_000_000_000.125,
+				timeScale: 1.5,
+			},
+			members: [],
+		});
+
+		const snapshot = reader.readLatest();
+		expect(snapshot?.logicalTimeMs).toBe(fixedStepMs);
+		expect(snapshot?.clock).toEqual({
+			state: "paused",
+			revision: 7,
+			sampledAtEpochMs: 1_725_000_000_000.125,
+			timelineTimeMs: fixedStepMs + 0.375,
+			timeScale: 1.5,
+			fixedStepMs,
 		});
 	});
 
@@ -330,8 +374,17 @@ describe("worldStateBuffer", () => {
 				emptyCommit(
 					[],
 					[
-						{ id: "area", position: { x: 0, y: 0, z: 0 }, remainingTimeMs: 1 },
-						{ id: "area", active: false, position: { x: 0, y: 0, z: 0 }, remainingTimeMs: 0 },
+						{
+							id: "area",
+							spawnTimeMs: 0,
+							trajectory: { kind: "static" as const, center: { x: 0, y: 0, z: 0 }, lifetimeMs: 1 },
+						},
+						{
+							id: "area",
+							active: false,
+							spawnTimeMs: 0,
+							trajectory: { kind: "static", center: { x: 0, y: 0, z: 0 }, lifetimeMs: 0 },
+						},
 					],
 				),
 			),
@@ -344,7 +397,11 @@ describe("worldStateBuffer", () => {
 		const buffer = createWorldStateBuffer(layout);
 		const writer = new WorldStateWriter(buffer, layout);
 		const reader = new WorldStateReader(buffer, layout);
-		const area = (id: string) => ({ id, position: { x: 0, y: 0, z: 0 }, remainingTimeMs: 100 });
+		const area = (id: string) => ({
+			id,
+			spawnTimeMs: 0,
+			trajectory: { kind: "static" as const, center: { x: 0, y: 0, z: 0 }, lifetimeMs: 100 },
+		});
 
 		writer.write(emptyCommit([], [area("area-a"), area("area-b")]));
 		const first = reader.readLatest();
@@ -355,6 +412,57 @@ describe("worldStateBuffer", () => {
 		const second = reader.readLatest();
 		expect(second?.areas[areaBSlot]).toMatchObject({ idHash: worldStateStringId("area-b"), generation: 1 });
 		expect(second?.areas.find((entry) => entry.idHash === worldStateStringId("area-c"))?.generation).toBe(2);
+	});
+
+	it("Area 轨迹描述符在 SAB 中往返并本地求值", () => {
+		const layout = createWorldStateLayoutDescriptor(
+			[
+				{
+					id: "player",
+					entityType: WorldStateEntityType.PLAYER,
+					visualProfileId: 1,
+					attributePaths: [],
+					modifierCapacity: 0,
+				},
+			],
+			{ memberCapacity: 1, areaCapacity: 2 },
+		);
+		const buffer = createWorldStateBuffer(layout);
+		const writer = new WorldStateWriter(buffer, layout);
+		const reader = new WorldStateReader(buffer, layout);
+
+		writer.write({
+			logicalTimeMs: 1000,
+			tickIndex: 1,
+			clock: clockSnapshot(1000),
+			members: [{ id: "player", position: { x: 0, y: 0, z: 0 }, yaw: 0 }],
+			areas: [
+				{
+					id: "area-seg",
+					spawnTimeMs: 0,
+					trajectory: {
+						kind: "segment" as const,
+						from: { x: 0, y: 0, z: 0 },
+						to: { x: 10, y: 0, z: 0 },
+						speed: 5,
+					},
+					sourceMemberId: "player",
+				},
+			],
+		});
+
+		const snapshot = reader.readLatest();
+		expect(snapshot?.areas[0]).toMatchObject({
+			active: true,
+			position: { x: 5, y: 0, z: 0 },
+			spawnTimeMs: 0,
+		});
+		expect(snapshot?.areas[0]?.trajectory).toMatchObject({
+			kind: "segment",
+			from: { x: 0, y: 0, z: 0 },
+			to: { x: 10, y: 0, z: 0 },
+			speed: 5,
+		});
 	});
 
 	it("附件边界拒绝非法 magic 和 descriptor 长度", () => {
@@ -383,6 +491,7 @@ describe("worldStateBuffer", () => {
 			writer.write({
 				logicalTimeMs: tick * (1000 / 60),
 				tickIndex: tick,
+				clock: clockSnapshot(tick * (1000 / 60)),
 				members: memberInputs.map((member, index) => ({
 					id: member.id,
 					position: { x: tick + index, y: 0, z: index },
@@ -390,8 +499,8 @@ describe("worldStateBuffer", () => {
 				})),
 				areas: Array.from({ length: 64 }, (_, index) => ({
 					id: `area-${tick % 4}-${index}`,
-					position: { x: index, y: 0, z: tick },
-					remainingTimeMs: 100,
+					spawnTimeMs: tick * (1000 / 60),
+					trajectory: { kind: "static" as const, center: { x: index, y: 0, z: tick }, lifetimeMs: 100 },
 				})),
 			});
 			const snapshot = reader.readLatest();

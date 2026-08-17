@@ -96,7 +96,7 @@ ${this.colorVariable}.rgb = mix(fogOfWarColor, ${this.colorVariable}.rgb, fogOfW
 	}
 }
 
-/** 注册到之后创建的 Standard/PBR 材质；天空盒和自定义地形着色器分别自行处理。 */
+/** 注册到之后创建的 Standard/PBR 材质；天空盒不参与战争迷雾。 */
 export function registerFogOfWarMaterialPlugin(): void {
 	RegisterMaterialPlugin("FogOfWar", (material) => {
 		if (material.name === "world-skybox-material") return null;

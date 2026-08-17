@@ -333,6 +333,7 @@ export class EngineWorkerClient {
 
 	async stopWorldStateProjection(): Promise<void> {
 		if (!this.worldStateReader) return;
+
 		const result = await this.executeEngineRPC({ type: "detach_world_state_buffer" });
 		if (!result.success) throw new EngineExecutionFailure(result.error);
 		this.worldStateReader = null;

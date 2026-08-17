@@ -1189,7 +1189,7 @@ y3aozau8arlv902fdp9jhtnd__active_bt,法術/飛箭 主动行为,"root {
 		wait [$currentSkill.lifecycle.chanting]
 		action [state,""skill.startup"", $currentSkill.lifecycle.startup]
 		wait [$currentSkill.lifecycle.startup]
-		action [singleAttack, $targetId, ""magic"", ""magic"", ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 90+skillLv*5) * (90+skillLv*6) / 100"", ""Math.floor((skillLv-1)/2)+2"", [""is_place""], [], ""none"", ""(0.5)*1000""]
+		action [areaAttack, $targetId, ""magic"", ""magic"", ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 90+skillLv*5) * (90+skillLv*6) / 100"", ""Math.floor((skillLv-1)/2)+2"", [""is_place""], [], ""none"", true, ""(0.5)*1000"", [{delayMs:0, targetMode:""single"", shape:{kind:""point""}, trajectory:{kind:""segment"", from:{kind:""caster""}, to:{kind:""target""}, speed:12}}]]
 		action [state,""skill.recovery"", $currentSkill.lifecycle.recovery]
 		wait [$currentSkill.lifecycle.recovery]
 	}
@@ -1201,7 +1201,7 @@ r8tvr8ts35ln6m1cy3o5pd55__active_bt,法術/飛箭 主动行为,"root {
 		wait [$currentSkill.lifecycle.chanting]
 		action [state,""skill.startup"", $currentSkill.lifecycle.startup]
 		wait [$currentSkill.lifecycle.startup]
-		action [singleAttack, $targetId, ""magic"", ""magic"", ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 90+skillLv*5) * (65+skillLv*6) / 100"", ""Math.floor((skillLv-1)/2)+4"", [""is_place""], [], ""none"", ""(0.5)*1000""]
+		action [areaAttack, $targetId, ""magic"", ""magic"", ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 90+skillLv*5) * (65+skillLv*6) / 100"", ""Math.floor((skillLv-1)/2)+4"", [""is_place""], [], ""none"", true, ""(0.5)*1000"", [{delayMs:0, targetMode:""single"", shape:{kind:""point""}, trajectory:{kind:""segment"", from:{kind:""caster""}, to:{kind:""target""}, speed:12}}]]
 		action [state,""skill.recovery"", $currentSkill.lifecycle.recovery]
 		wait [$currentSkill.lifecycle.recovery]
 	}
@@ -1213,7 +1213,7 @@ kdoikqi7x1kd3ecettrj3s7g__active_bt,法術/飛箭 主动行为,"root {
 		wait [$currentSkill.lifecycle.chanting]
 		action [state,""skill.startup"", $currentSkill.lifecycle.startup]
 		wait [$currentSkill.lifecycle.startup]
-		action [singleAttack, $targetId, ""magic"", ""magic"", ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 90+skillLv*5) * (65+skillLv*6) / 100"", ""Math.floor((skillLv-1)/2)+4"", [""is_place""], [], ""none"", ""(0.5)*1000""]
+		action [areaAttack, $targetId, ""magic"", ""magic"", ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 90+skillLv*5) * (65+skillLv*6) / 100"", ""Math.floor((skillLv-1)/2)+4"", [""is_place""], [], ""none"", true, ""(0.5)*1000"", [{delayMs:0, targetMode:""single"", shape:{kind:""point""}, trajectory:{kind:""segment"", from:{kind:""caster""}, to:{kind:""target""}, speed:12}}]]
 		action [state,""skill.recovery"", $currentSkill.lifecycle.recovery]
 		wait [$currentSkill.lifecycle.recovery]
 	}
@@ -1225,7 +1225,7 @@ u4hjvb7u2kfukt5ri1nwz085__active_bt,法術/飛箭 主动行为,"root {
 		wait [$currentSkill.lifecycle.chanting]
 		action [state,""skill.startup"", $currentSkill.lifecycle.startup]
 		wait [$currentSkill.lifecycle.startup]
-		action [singleAttack, $targetId, ""magic"", ""magic"", ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 90+skillLv*5) * (65+skillLv*6) / 100"", ""Math.floor((skillLv-1)/2)+2"", [""is_place""], [], ""none"", ""(0.5)*1000""]
+		action [areaAttack, $targetId, ""magic"", ""magic"", ""(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 90+skillLv*5) * (65+skillLv*6) / 100"", ""Math.floor((skillLv-1)/2)+2"", [""is_place""], [], ""none"", true, ""(0.5)*1000"", [{delayMs:0, targetMode:""single"", shape:{kind:""point""}, trajectory:{kind:""segment"", from:{kind:""caster""}, to:{kind:""target""}, speed:12}}]]
 		action [state,""skill.recovery"", $currentSkill.lifecycle.recovery]
 		wait [$currentSkill.lifecycle.recovery]
 	}

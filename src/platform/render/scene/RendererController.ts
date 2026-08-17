@@ -18,20 +18,23 @@ import type {
 	WorldStateLayoutDescriptor,
 	WorldStateMember,
 	WorldStateReader,
+	WorldStateSnapshot,
 } from "~/engine/core/thread/worldStateBuffer";
 import type { Scene, TransformNode } from "~/platform/render/babylon/runtime";
 import { CommandHandler } from "./content/CommandHandler";
 import { EntityFactory } from "./content/EntityFactory";
 import type { EntityRuntime } from "./content/entityTypes";
-import { RenderSyncSystem } from "./content/RenderSyncSystem";
+import { RenderSyncSystem, sampleWorldStateMembers } from "./content/RenderSyncSystem";
 import type { RendererController, WorldResourcePose } from "./contracts/worldContent";
 import type { WorldResource } from "./contracts/worldResource";
+import { getRenderFrameStats, recordRenderFrame } from "./renderFrameStats";
+import { monotonicEpochNowMs, resolveRenderLogicalTime, resolveRenderStateSnapshot } from "./renderTimeline";
 
 export type RendererControllerOptions = {
 	contentRoot?: TransformNode;
 	/** Character 内容的短会话共享模型模板缓存，但每个会话仍拥有独立 controller 状态。 */
 	entityFactory?: EntityFactory;
-	/** SAB 世界状态读取器；提供时 RenderSyncSystem 每帧从 SAB 读取权威位置/yaw + 指数平滑。 */
+	/** SAB 世界状态读取器；提供时每帧按共享逻辑时间采样权威状态。 */
 	worldStateReader?: WorldStateReader | null;
 	worldStateLayout?: WorldStateLayoutDescriptor | null;
 };
@@ -44,12 +47,12 @@ export function createRendererController(scene: Scene, options: RendererControll
 	}
 	const entities = new Map<string, EntityRuntime>();
 	const entitySlots = new Map<string, number>();
+	let previousWorldState: WorldStateSnapshot | null = null;
+	let latestWorldState: WorldStateSnapshot | null = null;
+
 	const factory = options.entityFactory ?? new EntityFactory(scene, options.contentRoot);
 	const renderSyncSystem = new RenderSyncSystem();
-	const commandHandler = new CommandHandler(entities, factory, scene, {
-		onPoseDiscontinuity: (entityId) => renderSyncSystem.resetEntity(entityId),
-		onEntityRemoved: (entityId) => renderSyncSystem.removeEntity(entityId),
-	});
+	const commandHandler = new CommandHandler(entities, factory, scene);
 	const entityIdForSlot = (layoutId: string, slot: number, member: WorldStateMember) =>
 		layoutId.startsWith("__empty_") ? `world-slot:${slot}:${member.generation}:${member.entityIdHash}` : layoutId;
 
@@ -58,13 +61,26 @@ export function createRendererController(scene: Scene, options: RendererControll
 	 * 不进行物理计算，物理计算应该在GameEngine中完成
 	 */
 	function tick(dtSec: number): void {
+		recordRenderFrame(dtSec);
 		const snapshot = worldStateReader?.readLatest() ?? null;
+		if (snapshot && snapshot.commitVersion !== latestWorldState?.commitVersion) {
+			previousWorldState = latestWorldState;
+			latestWorldState = snapshot;
+		}
+		const latest = latestWorldState;
+		const renderLogicalTimeMs = latest ? resolveRenderLogicalTime(latest, monotonicEpochNowMs()) : 0;
+		const sampledMembers = latest ? sampleWorldStateMembers(previousWorldState, latest, renderLogicalTimeMs) : [];
+		const renderState = latest ? resolveRenderStateSnapshot(previousWorldState, latest, renderLogicalTimeMs) : null;
 		const layout = worldStateLayout;
-		if (snapshot && layout) {
-			commandHandler.syncAreas(snapshot.areas);
+		if (renderState && layout) {
+			commandHandler.syncAreas(
+				renderState,
+				renderLogicalTimeMs,
+				sampledMembers.map((sampled) => sampled?.pose ?? null),
+			);
 			const previousEntityIds = new Set(entitySlots.keys());
 			const nextEntitySlots = new Map<string, number>();
-			snapshot.members.forEach((member, slot) => {
+			renderState.members.forEach((member, slot) => {
 				const memberLayout = layout.memberDirectory[slot];
 				if (!memberLayout) return;
 				if (!memberLayout.id.startsWith("__empty_")) previousEntityIds.add(memberLayout.id);
@@ -76,7 +92,7 @@ export function createRendererController(scene: Scene, options: RendererControll
 					entityId,
 					member.visualProfileId,
 					member.position,
-					snapshot.tickIndex,
+					renderState.tickIndex,
 				);
 			});
 			for (const entityId of previousEntityIds) {
@@ -84,13 +100,15 @@ export function createRendererController(scene: Scene, options: RendererControll
 			}
 			entitySlots.clear();
 			for (const [entityId, slot] of nextEntitySlots) entitySlots.set(entityId, slot);
-			if (worldStateReader) commandHandler.syncMemberStates(snapshot, layout, entitySlots);
+			if (worldStateReader) commandHandler.syncMemberStates(renderState, layout, entitySlots, renderLogicalTimeMs);
 		}
-		renderSyncSystem.syncEntities(entities, entitySlots, snapshot, dtSec);
+		renderSyncSystem.syncEntities(entities, entitySlots, sampledMembers);
 	}
 
 	/** 销毁所有实体并清理资源 */
 	function dispose(): void {
+		previousWorldState = null;
+		latestWorldState = null;
 		commandHandler.clearWorldResources();
 		commandHandler.disposeAreaVisuals();
 	}
@@ -112,7 +130,13 @@ export function createRendererController(scene: Scene, options: RendererControll
 		return commandHandler.applyWorldResources(resources, poses, worldStateReader ? "realtime" : "static");
 	}
 
-	return { tick, dispose, getEntityPose, applyWorldResources };
+	return {
+		tick,
+		dispose,
+		getEntityPose,
+		applyWorldResources,
+		getFrameStats: () => getRenderFrameStats(),
+	};
 }
 
 // ==================== 导出接口 ====================

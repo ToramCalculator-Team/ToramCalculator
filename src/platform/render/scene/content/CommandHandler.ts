@@ -5,12 +5,12 @@
  */
 
 import {
-	type WorldStateArea,
 	WorldStateAreaShapeKind,
 	type WorldStateLayoutDescriptor,
 	type WorldStateSnapshot,
 	worldStateStringId,
 } from "~/engine/core/thread/worldStateBuffer";
+import { evalTrajectory } from "~/engine/core/World/Area/trajectory";
 import { createLogger } from "~/lib/logger";
 import type { Scene } from "~/platform/render/babylon/runtime";
 import { Color3, Mesh, MeshBuilder, StandardMaterial, TransformNode, Vector3 } from "~/platform/render/babylon/runtime";
@@ -23,6 +23,9 @@ import { canReuseWorldResource } from "./worldResourceDiff";
 
 const logger = createLogger("RenderController");
 logger.setLevel(0);
+
+/** 伤害区域统一离开逻辑地面，避免透明圆盘与地形共面产生深度冲突。 */
+const AREA_VISUAL_GROUND_OFFSET_METERS = 0.1;
 
 export class CommandHandler {
 	private entities: Map<string, EntityRuntime>;
@@ -38,15 +41,7 @@ export class CommandHandler {
 	>();
 	private readonly entityCreations = new Map<string, Promise<void>>();
 
-	constructor(
-		entities: Map<string, EntityRuntime>,
-		factory: EntityFactory,
-		scene: Scene,
-		private readonly lifecycle: {
-			onPoseDiscontinuity: (entityId: string) => void;
-			onEntityRemoved: (entityId: string) => void;
-		},
-	) {
+	constructor(entities: Map<string, EntityRuntime>, factory: EntityFactory, scene: Scene) {
 		this.entities = entities;
 		this.factory = factory;
 		this.scene = scene;
@@ -108,15 +103,25 @@ export class CommandHandler {
 	}
 
 	/** 以一个 SAB 提交同步全部区域，过期槽位立即清理。 */
-	syncAreas(areas: readonly WorldStateArea[]): void {
+	syncAreas(
+		snapshot: WorldStateSnapshot,
+		renderLogicalTimeMs: number,
+		sampledMemberPositions: ReadonlyArray<{ x: number; y: number; z: number } | null>,
+	): void {
 		const activeIds = new Set<string>();
-		for (const [slot, area] of areas.entries()) {
+		for (const [slot, area] of snapshot.areas.entries()) {
 			if (!area.active) continue;
 			const id = `area:${slot}:${area.generation}:${area.idHash}`;
 			activeIds.add(id);
+			const sourcePos = sampledMemberPositions[area.sourceMemberIndex] ?? { x: 0, y: 0, z: 0 };
+			const targetPos = sampledMemberPositions[area.targetMemberIndex] ?? sourcePos;
+			const position = evalTrajectory(area.trajectory, Math.max(0, renderLogicalTimeMs - area.spawnTimeMs), {
+				source: sourcePos,
+				target: targetPos,
+			});
 			this.createOrUpdateAreaVisual({
 				id,
-				position: area.position,
+				position,
 				shape: area.shape,
 			});
 		}
@@ -132,6 +137,7 @@ export class CommandHandler {
 		snapshot: WorldStateSnapshot,
 		layout: WorldStateLayoutDescriptor,
 		entitySlots: ReadonlyMap<string, number>,
+		renderLogicalTimeMs: number,
 	): void {
 		const entityIdsBySlot = new Map(Array.from(entitySlots, ([entityId, slot]) => [slot, entityId]));
 		snapshot.members.forEach((member, slot) => {
@@ -159,11 +165,11 @@ export class CommandHandler {
 			}
 			const progress = Math.max(
 				0,
-				(snapshot.logicalTimeMs - member.state.startedAtLogicalTimeMs) / mapping.entry.durationMs,
+				(renderLogicalTimeMs - member.state.startedAtLogicalTimeMs) / mapping.entry.durationMs,
 			);
 			if (this.stateTimelines.get(entityId) !== timelineVersion) {
 				this.stateTimelines.set(entityId, timelineVersion);
-				entity.animationController.playStateTimeline(mapping.entry.clip, progress, mapping.entry.play);
+				entity.animationController.playStateTimeline(mapping.entry, progress);
 			} else {
 				entity.animationController.updateStateTimelineProgress(progress);
 			}
@@ -212,7 +218,7 @@ export class CommandHandler {
 			mesh.material = mat;
 			this.areaVisuals.set(area.id, mesh);
 		}
-		mesh.position.set(area.position.x, area.position.y, area.position.z);
+		mesh.position.set(area.position.x, area.position.y + AREA_VISUAL_GROUND_OFFSET_METERS, area.position.z);
 		const base = (mesh as Mesh & { __baseRadius?: number }).__baseRadius ?? radius;
 		const scale = radius / base;
 		mesh.scaling.x = scale;
@@ -256,7 +262,6 @@ export class CommandHandler {
 			exists.lastSeq = seq;
 			exists.physics.pos.copyFromFloats(position.x, position.y, position.z);
 			exists.mesh.position.copyFrom(exists.physics.pos);
-			this.lifecycle.onPoseDiscontinuity(entityId);
 			return;
 		}
 
@@ -319,7 +324,6 @@ export class CommandHandler {
 
 		// 从实体映射中移除
 		this.entities.delete(id);
-		this.lifecycle.onEntityRemoved(id);
 
 		logger.info(`✅ 实体清理完成: ${id}`);
 	}

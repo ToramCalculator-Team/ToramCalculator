@@ -203,6 +203,9 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 					env.runtime.grounded = false;
 					env.runtime.verticalVelocity = env.runtime.locomotion.jumpSpeed;
 				},
+				朝向当前目标: () => {
+					env.faceCurrentTarget();
+				},
 				切换当前目标: ({ event }) => {
 					applyMemberTargetSelection(env, requireSelectTargetEvent(event));
 				},
@@ -419,7 +422,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 											on: {
 												结束格挡: { target: "空闲状态" },
 											},
-											entry: { type: "设置禁止移动" },
+											entry: [{ type: "朝向当前目标" }, { type: "设置禁止移动" }],
 										},
 										闪躲中: {
 											on: {
@@ -441,7 +444,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 														},
 														{
 															target: "技能执行过程",
-															actions: { type: "发布技能接纳事实" },
+															actions: [{ type: "发布技能接纳事实" }, { type: "朝向当前目标" }],
 														},
 													],
 												},

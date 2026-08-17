@@ -3,6 +3,10 @@ import type { MemberDomainEvent } from "../../types";
 import type { DamageAreaRequest } from "../Area/types";
 
 export type MemberTargetResolver = (sourceMemberId: string, requestedTargetId?: string | null) => string | null;
+export type MemberTargetDirectionResolver = (
+	sourceMemberId: string,
+	targetMemberId: string,
+) => { x: number; z: number } | null;
 
 /**
  * 成员运行时服务接口。
@@ -30,6 +34,13 @@ export interface MemberRuntimeServices {
 	 * - 显式目标只做成员身份解析；技能只读取已经保存在 runtime 中的 targetId。
 	 */
 	targetResolver: MemberTargetResolver | null;
+	/**
+	 * 目标水平方向解析器。
+	 *
+	 * World 读取两个成员的权威位置并返回单位方向；Member 只负责把方向写为自身 yaw，
+	 * 从而保持跨成员空间读取与成员物理状态写入的职责边界。
+	 */
+	targetDirectionResolver: MemberTargetDirectionResolver | null;
 	/** 引擎级随机数生成器（seeded PRNG），用于命中判定等确定性模拟 */
 	random: () => number;
 }
@@ -51,5 +62,6 @@ export const MemberRuntimeServicesDefaults: MemberRuntimeServices = {
 		throw new Error(`domainEventSender 未注入：${event}`);
 	},
 	targetResolver: null,
+	targetDirectionResolver: null,
 	random: Math.random,
 };

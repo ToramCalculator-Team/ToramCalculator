@@ -126,21 +126,19 @@ export function SimulatorValidationView() {
 					<A href="/" class="bg-primary-color-60 hidden rounded px-3 py-2 backdrop-blur-md landscape:flex">
 						<Icons.Brand.NoPaddingLogoText class="h-6 w-40" />
 					</A>
-					<div class="bg-primary-color-70 border-dividing-color flex min-w-72 flex-1 flex-col gap-2 rounded border p-2 backdrop-blur-md">
+					<div class="flex min-w-72 flex-1 flex-col gap-2 p-2">
 						<div class="flex items-center justify-between gap-2 text-sm">
 							<span class="font-bold">{statusText()}</span>
 							<Show when={runtime.telemetry()}>
 								{(telemetry) => (
 									<span class="text-accent-color-70">
-										TPS {telemetry().ticksPerSecond.toFixed(0)} · {telemetry().memberCount} 成员
+										TPS {telemetry().ticksPerSecond.toFixed(0)} · 舍弃时间{" "}
+										{telemetry().discardedVirtualTimeMs.toFixed(0)}ms · tick耗时{" "}
+										{telemetry().lastStepTickDurationMs.toFixed(1)}ms · {telemetry().memberCount} 成员
 									</span>
 								)}
 							</Show>
 						</div>
-						<MemberStatusPanel
-							controllerId={activeController()?.controllerId ?? "active-controller"}
-							member={() => activeMember()}
-						/>
 					</div>
 				</div>
 
@@ -152,6 +150,10 @@ export function SimulatorValidationView() {
 							options={controllerOptions()}
 							placeholder="选择主控成员"
 							class="min-w-0 flex-1"
+						/>
+						<MemberStatusPanel
+							controllerId={activeController()?.controllerId ?? "active-controller"}
+							member={() => activeMember()}
 						/>
 					</div>
 					<Show when={session.controllers().length > 1}>

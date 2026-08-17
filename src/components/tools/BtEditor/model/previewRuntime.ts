@@ -15,7 +15,7 @@ import type { MobFSMEvent } from "~/engine/core/World/Member/types/Mob/MobStateM
 import { createPlayerBtBindings } from "~/engine/core/World/Member/types/Player/Agents/BtBindings";
 import type { PlayerAttrKey } from "~/engine/core/World/Member/types/Player/PlayerAttrSchema";
 import type { PlayerFSMEvent } from "~/engine/core/World/Member/types/Player/PlayerStateMachine";
-import { PlayerLocomotionProfile } from "~/game/locomotion";
+import { DefaultMobLocomotionProfile, PlayerLocomotionProfile } from "~/game/locomotion";
 import { BehaviourTree, type BehaviourTreeOptions, State } from "~/lib/mistreevous";
 import type { Agent } from "~/lib/mistreevous/Agent";
 import type {
@@ -48,6 +48,7 @@ type PreviewFallbackCalls = {
 };
 
 const createPreviewRuntime = (memberType: MemberType): PreviewRuntime => {
+	const locomotionProfile = memberType === "Mob" ? DefaultMobLocomotionProfile : PlayerLocomotionProfile;
 	const common: MemberSharedRuntime<string> = {
 		memberId: "preview-member-id",
 		name: "PreviewMember",
@@ -63,10 +64,10 @@ const createPreviewRuntime = (memberType: MemberType): PreviewRuntime => {
 		verticalVelocity: 0,
 		grounded: true,
 		locomotion: {
-			walkSpeed: PlayerLocomotionProfile.WALK_SPEED,
-			runSpeed: PlayerLocomotionProfile.RUN_SPEED,
-			gravity: PlayerLocomotionProfile.GRAVITY,
-			jumpSpeed: PlayerLocomotionProfile.JUMP_SPEED,
+			walkSpeed: locomotionProfile.WALK_SPEED,
+			runSpeed: locomotionProfile.RUN_SPEED,
+			gravity: locomotionProfile.GRAVITY,
+			jumpSpeed: locomotionProfile.JUMP_SPEED,
 		},
 		statusTags: [],
 		currentSkill: null,
@@ -112,6 +113,7 @@ export const createPreviewBtRuntime = (memberType: MemberType): PreviewBtRuntime
 		damageRequestHandler: () => undefined,
 		domainEventSender: () => undefined,
 		targetResolver: (_sourceMemberId, requestedTargetId) => requestedTargetId ?? "preview-target",
+		targetDirectionResolver: null,
 		random: () => 0.5,
 	};
 
