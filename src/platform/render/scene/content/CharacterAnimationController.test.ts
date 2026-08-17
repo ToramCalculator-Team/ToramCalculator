@@ -76,9 +76,9 @@ describe("CharacterAnimationController", () => {
 		const animation = createAnimation();
 		const controller = new CharacterAnimationController(createEntity({ idle: animation }), {} as Scene);
 
-		controller.playTimeline("idle", 0.25);
+		controller.playStateTimeline({ clip: "idle", durationMs: 1000, play: "once" }, 0.25);
 		expect(animation.goToFrame).toHaveBeenLastCalledWith(25);
-		controller.updateTimelineProgress(0.75);
+		controller.updateStateTimelineProgress(0.75);
 		expect(animation.goToFrame).toHaveBeenLastCalledWith(75);
 	});
 
@@ -86,11 +86,49 @@ describe("CharacterAnimationController", () => {
 		const animation = createAnimation();
 		const controller = new CharacterAnimationController(createEntity({ idle: animation }), {} as Scene);
 
-		controller.playStateTimeline("idle", 1.25, "loop");
+		controller.playStateTimeline({ clip: "idle", durationMs: 1000, play: "loop" }, 1.25);
 		expect(animation.goToFrame).toHaveBeenLastCalledWith(25);
 		controller.updateStateTimelineProgress(1.75);
 		expect(animation.goToFrame).toHaveBeenLastCalledWith(75);
-		controller.playStateTimeline("idle", 1.25, "hold");
+		controller.playStateTimeline({ clip: "idle", durationMs: 1000, play: "hold" }, 1.25);
 		expect(animation.goToFrame).toHaveBeenLastCalledWith(100);
+	});
+
+	it("状态进度只定位到资源声明的动画片段区间", () => {
+		const skillAttack = createAnimation();
+		const controller = new CharacterAnimationController(createEntity({ Skill_attack: skillAttack }), {} as Scene);
+
+		controller.playStateTimeline(
+			{
+				clip: "Skill_attack",
+				durationMs: 1150,
+				play: "once",
+				range: { start: 0, end: 0.5 },
+			},
+			0.5,
+		);
+		expect(skillAttack.goToFrame).toHaveBeenLastCalledWith(25);
+
+		controller.playStateTimeline(
+			{
+				clip: "Skill_attack",
+				durationMs: 1150,
+				play: "once",
+				range: { start: 0.5, end: 1 },
+			},
+			0.5,
+		);
+		expect(skillAttack.goToFrame).toHaveBeenLastCalledWith(75);
+
+		controller.playStateTimeline(
+			{
+				clip: "Skill_attack",
+				durationMs: 100,
+				play: "hold",
+				range: { start: 0.5, end: 0.5 },
+			},
+			1,
+		);
+		expect(skillAttack.goToFrame).toHaveBeenLastCalledWith(50);
 	});
 });

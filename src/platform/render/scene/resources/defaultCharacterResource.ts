@@ -18,6 +18,9 @@ export const DEFAULT_CHARACTER_LOCOMOTION_ANIMATION = {
 	runReferenceSpeed: 2.1,
 } as const satisfies CharacterWorldResource["animation"]["locomotion"];
 
+const SKILL_ATTACK_DURATION_MS = 2300;
+const SKILL_ATTACK_IMPACT_PROGRESS = 0.5;
+
 /** 逻辑状态到内嵌动画片段的默认映射；真实资产绑定后由场景解析覆盖。 */
 export const DEFAULT_CHARACTER_STATE_ANIMATIONS = {
 	idle: { clip: "Idle", durationMs: 1000, play: "loop" },
@@ -28,9 +31,24 @@ export const DEFAULT_CHARACTER_STATE_ANIMATIONS = {
 	"skill.busy": { clip: "Idle", durationMs: 1000, play: "loop" },
 	"skill.chanting": { clip: "Idle", durationMs: 1000, play: "loop" },
 	"skill.charging": { clip: "Idle", durationMs: 1000, play: "loop" },
-	"skill.startup": { clip: "Jump_start", durationMs: 200, play: "once" },
-	"skill.active": { clip: "Jump_start", durationMs: 500, play: "once" },
-	"skill.recovery": { clip: "Jump_end", durationMs: 500, play: "once" },
+	"skill.startup": {
+		clip: "Skill_attack",
+		durationMs: SKILL_ATTACK_DURATION_MS * SKILL_ATTACK_IMPACT_PROGRESS,
+		play: "once",
+		range: { start: 0, end: SKILL_ATTACK_IMPACT_PROGRESS },
+	},
+	"skill.active": {
+		clip: "Skill_attack",
+		durationMs: 100,
+		play: "hold",
+		range: { start: SKILL_ATTACK_IMPACT_PROGRESS, end: SKILL_ATTACK_IMPACT_PROGRESS },
+	},
+	"skill.recovery": {
+		clip: "Skill_attack",
+		durationMs: SKILL_ATTACK_DURATION_MS * (1 - SKILL_ATTACK_IMPACT_PROGRESS),
+		play: "once",
+		range: { start: SKILL_ATTACK_IMPACT_PROGRESS, end: 1 },
+	},
 } as const satisfies CharacterWorldResource["animation"]["states"];
 
 /**

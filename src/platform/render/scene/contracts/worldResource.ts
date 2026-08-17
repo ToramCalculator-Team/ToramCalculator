@@ -18,12 +18,23 @@ export const CharacterLocomotionAnimationSchema = z.object({
 });
 
 export const StatePlayModeSchema = z.enum(["once", "loop", "hold"]);
+export const StateAnimationRangeSchema = z
+	.object({
+		start: z.number().min(0).max(1),
+		end: z.number().min(0).max(1),
+	})
+	.refine((range) => range.start <= range.end, {
+		message: "动画片段区间的 end 不能小于 start",
+		path: ["end"],
+	});
 export const StateAnimationMappingSchema = z.record(
 	MemberStateNameSchema,
 	z.object({
 		clip: z.string().min(1),
 		durationMs: z.number().positive(),
 		play: StatePlayModeSchema.default("once"),
+		/** 在内嵌动画片段中使用的归一化区间；未设置时使用完整片段。 */
+		range: StateAnimationRangeSchema.optional(),
 	}),
 );
 

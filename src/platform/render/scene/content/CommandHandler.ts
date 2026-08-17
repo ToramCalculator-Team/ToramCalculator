@@ -169,7 +169,7 @@ export class CommandHandler {
 			);
 			if (this.stateTimelines.get(entityId) !== timelineVersion) {
 				this.stateTimelines.set(entityId, timelineVersion);
-				entity.animationController.playStateTimeline(mapping.entry.clip, progress, mapping.entry.play);
+				entity.animationController.playStateTimeline(mapping.entry, progress);
 			} else {
 				entity.animationController.updateStateTimelineProgress(progress);
 			}

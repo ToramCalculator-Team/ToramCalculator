@@ -32,9 +32,7 @@ function createHarness() {
 		setLocomotion: vi.fn(),
 		setAirborne: vi.fn(),
 		playAction: vi.fn(),
-		playTimeline: vi.fn(),
 		playStateTimeline: vi.fn(),
-		updateTimelineProgress: vi.fn(),
 		updateStateTimelineProgress: vi.fn(),
 		stopAllAnimations: vi.fn(),
 	};
@@ -134,16 +132,18 @@ describe("CommandHandler 实时世界投影", () => {
 		const slots = new Map([["player", 0]]);
 		handler.syncMemberStates(snapshot, layout, slots, 90);
 		handler.syncMemberStates(snapshot, layout, slots, 90);
+		const startupMapping = resource.animation.states["skill.startup"];
+		const initialProgress = 40 / startupMapping.durationMs;
 		expect(animationController.playStateTimeline).toHaveBeenCalledOnce();
-		expect(animationController.playStateTimeline).toHaveBeenCalledWith("Jump_start", 0.2, "once");
-		expect(animationController.updateStateTimelineProgress).toHaveBeenCalledWith(0.2);
+		expect(animationController.playStateTimeline).toHaveBeenCalledWith(startupMapping, initialProgress);
+		expect(animationController.updateStateTimelineProgress).toHaveBeenCalledWith(initialProgress);
 
 		writeTimeline(150);
 		const middleSnapshot = reader.readLatest();
 		if (!middleSnapshot) throw new Error("预期读到稳定世界状态提交");
 		handler.syncMemberStates(middleSnapshot, layout, slots, 125);
 		expect(animationController.playStateTimeline).toHaveBeenCalledOnce();
-		expect(animationController.updateStateTimelineProgress).toHaveBeenLastCalledWith(0.375);
+		expect(animationController.updateStateTimelineProgress).toHaveBeenLastCalledWith(75 / startupMapping.durationMs);
 
 		writeTimeline(150, 2);
 		const nextSnapshot = reader.readLatest();

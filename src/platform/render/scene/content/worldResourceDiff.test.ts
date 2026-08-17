@@ -70,6 +70,21 @@ describe("canReuseWorldResource", () => {
 				},
 			}),
 		).toBe(false);
+		expect(
+			canReuseWorldResource(characterResource, {
+				...characterResource,
+				animation: {
+					...characterResource.animation,
+					states: {
+						...characterResource.animation.states,
+						"skill.startup": {
+							...characterResource.animation.states["skill.startup"],
+							range: { start: 0, end: 0.4 },
+						},
+					},
+				},
+			}),
+		).toBe(false);
 	});
 
 	it("资源种类或 Mob 外观变化时要求替换", () => {
