@@ -132,7 +132,8 @@ export function SimulatorValidationView() {
 							<Show when={runtime.telemetry()}>
 								{(telemetry) => (
 									<span class="text-accent-color-70">
-										TPS {telemetry().ticksPerSecond.toFixed(0)} · {telemetry().memberCount} 成员
+										TPS {telemetry().ticksPerSecond.toFixed(0)} · 跳tick {telemetry().skippedTicks} · tick耗时{" "}
+										{telemetry().lastStepTickDurationMs.toFixed(1)}ms · {telemetry().memberCount} 成员
 									</span>
 								)}
 							</Show>

@@ -4,6 +4,14 @@ import type { MemberManager } from "../MemberManager";
 import type { WorldObservable } from "../observable";
 import type { SpaceManager } from "../SpaceManager";
 import {
+	evalTrajectory,
+	resolveTrajectory,
+	type Trajectory,
+	type TrajectoryAnchors,
+	trajectoryDurationMs,
+	vec3Normalize,
+} from "./trajectory";
+import {
 	type DamageAreaRequest,
 	type DamageDirection,
 	type DamageDispatchPayload,
@@ -27,18 +35,16 @@ interface DamageAreaInstance {
 		type: "circle";
 		radius: number;
 	};
-	/** 轨迹：static 或 linear */
-	trajectory: {
-		type: "static" | "linear";
-		/** 静态中心（static 时使用） */
-		center?: Vec3;
-		/** 线性起点（linear 时使用） */
-		start?: Vec3;
-		/** 线性方向（linear 时使用，单位向量） */
-		dir?: Vec3;
-		/** 线性速度（linear 时使用） */
-		speed?: number;
-	};
+	/** 生成时解析好的具体轨迹；逻辑与渲染共用同一求值函数。 */
+	trajectory: Trajectory;
+	/** 轨迹路径生命周期（毫秒）。移动轨迹由弧长推导，static/attach 为显式 lifetimeMs。 */
+	trajectoryDurationMs: number;
+	/**
+	 * 实例存活生命周期（毫秒）。在轨迹路径生命周期基础上，为多段伤害保留后续结算窗口：
+	 * - static/attach / 区域检索：max(路径时长, 原伤害窗口)
+	 * - 单体弹道：路径时长 + 原伤害窗口（到达后才开始结算）
+	 */
+	instanceDurationMs: number;
 	/** 每个目标的最后命中时间（用于 hitIntervalMs 节流） */
 	lastHitTimeMsByTargetId: Map<string, number>;
 	/** 每个目标已派发的伤害段数（用于 damageCount 上限） */
@@ -47,10 +53,12 @@ interface DamageAreaInstance {
 
 export interface DamageAreaRealtimeState {
 	id: string;
-	position: Vec3;
-	shape: { kind: "point" | "circle"; radius: number };
-	remainingTimeMs: number;
+	shape: { kind: "point" | "circle" | "rect"; radius: number; width?: number; height?: number };
+	spawnTimeMs: number;
+	trajectory: Trajectory;
 	sourceMemberId: string;
+	targetMemberId?: string;
+	visualProfileId?: string;
 }
 
 /**
@@ -76,13 +84,15 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 			);
 		}
 		const areaId = `damage_${this.nextAreaId++}`;
-		const { shape, trajectory } = this.deriveShapeAndTrajectory(request);
+		const { shape, trajectory, trajectoryDurationMs, instanceDurationMs } = this.deriveShapeAndTrajectory(request);
 
 		const instance: DamageAreaInstance = {
 			areaId,
 			request,
 			shape,
 			trajectory,
+			trajectoryDurationMs,
+			instanceDurationMs,
 			lastHitTimeMsByTargetId: new Map(),
 			damageCountByTargetId: new Map(),
 		};
@@ -126,19 +136,26 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 
 		for (const instance of this.instances.values()) {
 			const { request, shape } = instance;
-			const { startTimeMs, durationMs } = request.lifetime;
+			const { startTimeMs } = request.lifetime;
 
 			// 检查生命周期
 			if (currentTimeMs < startTimeMs) {
 				continue; // 尚未开始
 			}
-			if (currentTimeMs >= startTimeMs + durationMs) {
+			if (currentTimeMs >= startTimeMs + instance.instanceDurationMs) {
 				instancesToRemove.push(instance.areaId);
 				continue; // 已过期
 			}
 
 			// 计算当前中心点
 			const currentCenter = this.computeCurrentCenter(instance, currentTimeMs);
+
+			// 单体锁定检索需要等待弹道到达；static/attach 视为立即到达。
+			const elapsedMs = Math.max(0, currentTimeMs - startTimeMs);
+			const hasArrived =
+				instance.trajectory.kind === "static" ||
+				instance.trajectory.kind === "attach" ||
+				elapsedMs + Math.max(1, tick.deltaTimeMs) >= instance.trajectoryDurationMs;
 
 			const hitIntervalMs = request.hitPolicy.hitIntervalMs;
 			const damageCount = Math.max(1, Math.floor(request.attackSemantics.damageCount));
@@ -166,17 +183,21 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 			if (request.range.rangeKind === "Single" || request.range.rangeKind === "None") {
 				// 单体/无范围：锁定 targetId，不经空间查询。
 				// 仍取 Member（getMember 返回富类，本身即 WorldObservable），但只读取投影字段。
-				const singleTarget = request.targetId ? this.memberManager.getMember(request.targetId) : null;
-				if (singleTarget?.alive && singleTarget.campId !== request.identity.sourceCampId) {
-					const segmentIndexes = collectSegmentIndexes(singleTarget.id);
-					if (segmentIndexes.length > 0) {
-						segmentIndexesByTargetId.set(singleTarget.id, segmentIndexes);
-						validTargets = [singleTarget];
+				if (!hasArrived) {
+					validTargets = [];
+				} else {
+					const singleTarget = request.targetId ? this.memberManager.getMember(request.targetId) : null;
+					if (singleTarget?.alive && singleTarget.campId !== request.identity.sourceCampId) {
+						const segmentIndexes = collectSegmentIndexes(singleTarget.id);
+						if (segmentIndexes.length > 0) {
+							segmentIndexesByTargetId.set(singleTarget.id, segmentIndexes);
+							validTargets = [singleTarget];
+						} else {
+							validTargets = [];
+						}
 					} else {
 						validTargets = [];
 					}
-				} else {
-					validTargets = [];
 				}
 			} else {
 				// 查询范围内的候选目标。存活过滤就地下沉给介质，敌我关系在此判定。
@@ -251,28 +272,17 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 	private computeCurrentCenter(instance: DamageAreaInstance, currentTimeMs: number): Vec3 {
 		const { trajectory, request } = instance;
 		const { startTimeMs } = request.lifetime;
+		const anchors = this.getTrajectoryAnchors(request);
+		return evalTrajectory(trajectory, Math.max(0, currentTimeMs - startTimeMs), anchors);
+	}
+
+	/** 读取 attach 轨迹所需的锚点位置。 */
+	private getTrajectoryAnchors(request: DamageAreaRequest): TrajectoryAnchors {
 		const caster = this.memberManager.getMember(request.identity.sourceId);
-		if (!caster) {
-			throw new Error(`DamageAreaSystem: 施法者不存在: ${request.identity.sourceId}`);
-		}
-
-		if (trajectory.type === "static") {
-			return trajectory.center ?? caster.position;
-		}
-
-		// linear
-		const elapsedTimeSeconds = Math.max(0, currentTimeMs - startTimeMs) / 1000;
-		const { start, dir, speed } = trajectory;
-
-		if (!start || !dir || speed === undefined) {
-			return caster.position;
-		}
-
-		return {
-			x: start.x + dir.x * speed * elapsedTimeSeconds,
-			y: start.y + dir.y * speed * elapsedTimeSeconds,
-			z: start.z + dir.z * speed * elapsedTimeSeconds,
-		};
+		const target = request.targetId ? this.memberManager.getMember(request.targetId) : undefined;
+		const sourcePos = caster?.position ?? { x: 0, y: 0, z: 0 };
+		const targetPos = target?.position ?? sourcePos;
+		return { source: sourcePos, target: targetPos };
 	}
 
 	/**
@@ -323,12 +333,14 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 
 		for (const entry of checkpoint.instances) {
 			const request = entry.requestPayload as DamageAreaRequest;
-			const { shape, trajectory } = this.deriveShapeAndTrajectory(request);
+			const { shape, trajectory, trajectoryDurationMs, instanceDurationMs } = this.deriveShapeAndTrajectory(request);
 			const instance: DamageAreaInstance = {
 				areaId: entry.areaId,
 				request,
 				shape,
 				trajectory,
+				trajectoryDurationMs,
+				instanceDurationMs,
 				lastHitTimeMsByTargetId: new Map(entry.lastHitTimeMsByTargetId),
 				damageCountByTargetId: new Map(entry.damageCountByTargetId ?? []),
 			};
@@ -336,7 +348,9 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 		}
 	}
 
-	private deriveShapeAndTrajectory(request: DamageAreaRequest): Pick<DamageAreaInstance, "shape" | "trajectory"> {
+	private deriveShapeAndTrajectory(
+		request: DamageAreaRequest,
+	): Pick<DamageAreaInstance, "shape" | "trajectory" | "trajectoryDurationMs" | "instanceDurationMs"> {
 		const { rangeKind, rangeParams } = request.range;
 		const caster = this.memberManager.getMember(request.identity.sourceId);
 
@@ -344,45 +358,73 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 			throw new Error(`DamageAreaSystem: 施法者不存在: ${request.identity.sourceId}`);
 		}
 
-		switch (rangeKind) {
-			case "Single":
-			case "None":
-				return {
-					shape: { type: "circle", radius: 0 },
-					// 设计说明：单体攻击不通过空间查询筛选目标，但 distance 仍应表达施法者到目标的距离。
-					trajectory: { type: "static", center: caster.position },
-				};
-			case "Enemy":
-				return {
-					shape: { type: "circle", radius: rangeParams.radius ?? 0 },
-					trajectory: { type: "static", center: caster.position },
-				};
-			case "Range": {
-				const target = request.targetId ? this.memberManager.getMember(request.targetId) : caster;
-				if (!target) {
-					throw new Error(`DamageAreaSystem: 目标不存在: ${request.targetId}`);
-				}
-				return {
-					shape: { type: "circle", radius: rangeParams.radius ?? 0 },
-					trajectory: { type: "static", center: target.position },
-				};
-			}
-			case "MoveAttack":
-				return {
-					shape: { type: "circle", radius: rangeParams.width ? rangeParams.width / 2 : 0 },
-					trajectory: {
-						type: "linear",
-						start: caster.position,
-						dir: rangeParams.dir ?? { x: 1, y: 0, z: 0 },
-						speed: rangeParams.speed ?? 0,
-					},
-				};
-			default:
-				return {
-					shape: { type: "circle", radius: rangeParams.radius ?? 0 },
-					trajectory: { type: "static", center: caster.position },
-				};
+		const durationMs = Math.max(0, request.lifetime.durationMs);
+		const target = request.targetId ? this.memberManager.getMember(request.targetId) : undefined;
+		const targetPos = target?.position ?? caster.position;
+
+		let shape: DamageAreaInstance["shape"];
+		if (request.shape) {
+			shape = {
+				type: "circle",
+				radius:
+					request.shape.kind === "rect"
+						? Math.max(request.shape.width ?? 0, request.shape.height ?? 0) / 2
+						: (request.shape.radius ?? 0),
+			};
+		} else {
+			shape = {
+				type: "circle",
+				radius:
+					rangeKind === "MoveAttack" ? (rangeParams.width ? rangeParams.width / 2 : 0) : (rangeParams.radius ?? 0),
+			};
 		}
+
+		let trajectory: Trajectory;
+		if (request.trajectory) {
+			trajectory = resolveTrajectory(request.trajectory, caster.position, targetPos);
+		} else {
+			switch (rangeKind) {
+				case "Single":
+				case "None":
+					// 设计说明：单体攻击不通过空间查询筛选目标，但 distance 仍应表达施法者到目标的距离。
+					trajectory = { kind: "static", center: caster.position, lifetimeMs: durationMs };
+					break;
+				case "Enemy":
+					trajectory = { kind: "static", center: caster.position, lifetimeMs: durationMs };
+					break;
+				case "Range":
+					trajectory = { kind: "static", center: targetPos, lifetimeMs: durationMs };
+					break;
+				case "MoveAttack": {
+					const dir = vec3Normalize(rangeParams.dir ?? { x: 1, y: 0, z: 0 });
+					const speed = rangeParams.speed ?? 0;
+					trajectory = {
+						kind: "ray",
+						from: caster.position,
+						dir,
+						speed,
+						maxDistance: speed * (durationMs / 1000),
+					};
+					break;
+				}
+				default:
+					trajectory = { kind: "static", center: caster.position, lifetimeMs: durationMs };
+					break;
+			}
+		}
+
+		const pathDurationMs = trajectoryDurationMs(trajectory);
+		const damageWindowMs = Math.max(0, request.lifetime.durationMs);
+		let instanceDurationMs = pathDurationMs;
+		if (request.trajectory) {
+			const isSingleTarget = rangeKind === "Single" || rangeKind === "None";
+			if (isSingleTarget) {
+				instanceDurationMs = pathDurationMs + damageWindowMs;
+			} else {
+				instanceDurationMs = Math.max(pathDurationMs, damageWindowMs);
+			}
+		}
+		return { shape, trajectory, trajectoryDurationMs: pathDurationMs, instanceDurationMs };
 	}
 
 	clear(): void {
@@ -394,19 +436,23 @@ export class DamageAreaSystem implements Checkpointable<DamageAreaSystemCheckpoi
 		const result: DamageAreaRealtimeState[] = [];
 		for (const instance of this.instances.values()) {
 			const { request } = instance;
-			const { startTimeMs, durationMs } = request.lifetime;
-			if (currentTimeMs < startTimeMs || currentTimeMs >= startTimeMs + durationMs) continue;
-			const position = this.computeCurrentCenter(instance, currentTimeMs);
-			const remainingTimeMs = Math.max(0, startTimeMs + durationMs - currentTimeMs);
+			const { startTimeMs } = request.lifetime;
+			if (currentTimeMs < startTimeMs || currentTimeMs >= startTimeMs + instance.trajectoryDurationMs) continue;
 			result.push({
 				id: instance.areaId,
-				position,
 				shape: {
-					kind: request.range.rangeKind === "Single" || request.range.rangeKind === "None" ? "point" : "circle",
+					kind:
+						request.shape?.kind ??
+						(request.range.rangeKind === "Single" || request.range.rangeKind === "None" ? "point" : "circle"),
 					radius: instance.shape.radius,
+					width: request.shape?.width,
+					height: request.shape?.height,
 				},
-				remainingTimeMs,
+				spawnTimeMs: startTimeMs,
+				trajectory: instance.trajectory,
 				sourceMemberId: request.identity.sourceId,
+				targetMemberId: request.targetId,
+				visualProfileId: request.visualProfileId,
 			});
 		}
 		return result;

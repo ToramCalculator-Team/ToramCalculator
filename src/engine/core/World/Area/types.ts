@@ -3,6 +3,7 @@
  */
 
 import type { DamageRangeType } from "@db/schema/enums";
+import type { TrajectoryTemplate } from "./trajectory";
 
 /** 实时世界区域的首版固定容量；领域创建与 SAB 布局共同遵守此边界。 */
 export const WORLD_AREA_CAPACITY = 256;
@@ -97,6 +98,26 @@ export interface DamageAreaRequest {
 		/** 范围参数 */
 		rangeParams: DamageRangeParams;
 	};
+	/**
+	 * 区域形状（可选）。由伤害节点生成计划提供；缺省时按 rangeKind 推导。
+	 * - point 用于单体/无范围；circle / rect 用于区域检索与渲染。
+	 */
+	shape?: {
+		kind: "point" | "circle" | "rect";
+		radius?: number;
+		width?: number;
+		height?: number;
+	};
+	/**
+	 * 区域轨迹模板（可选）。
+	 *
+	 * 提供时，DamageAreaSystem 在生成区域时把模板解析为具体轨迹，
+	 * 并按轨迹弧长与速度推导生命周期（static/attach 使用模板内 lifetimeMs）。
+	 * 缺省时按 range.rangeKind 推导旧版 static/linear 轨迹。
+	 */
+	trajectory?: TrajectoryTemplate;
+	/** 视觉资源引用（可选）；写入 SAB 供渲染层选择区域表现。 */
+	visualProfileId?: string;
 	/** 伤害载荷 */
 	payload: {
 		/** 原始伤害表达式（保留 self/target/skill.lv/distance/targetCount 等变量） */

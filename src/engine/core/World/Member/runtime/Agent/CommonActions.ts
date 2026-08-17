@@ -3,6 +3,8 @@ import { createLogger } from "~/lib/logger";
 import { State } from "~/lib/mistreevous/State";
 import * as CasterSnapshot from "../../../../Expression/CasterSnapshot";
 import { ExpressionTransformer } from "../../../../JSProcessor/ExpressionTransformer";
+import type { TrajectoryTemplate } from "../../../Area/trajectory";
+import { areaSpawnEntrySchema } from "../../../Area/trajectorySchema";
 import type { DamageAreaRequest } from "../../../Area/types";
 import {
 	type ModifierSource,
@@ -99,6 +101,13 @@ const moveAttackSchema = z.object({
 	...damageIntervalSchemaShape,
 });
 
+/** 区域生成计划攻击：节点内声明区域队列数组，每项含延迟、形状、轨迹与目标检索模式。 */
+const areaAttackSchema = z.object({
+	...commonAttackBaseSchema.shape,
+	...damageIntervalSchemaShape,
+	areas: z.array(areaSpawnEntrySchema).min(1).meta({ description: "区域生成计划数组" }),
+});
+
 /**
  * 基于 expResolutionType 自动派生基础伤害类别标签。
  * 技能作者传入的 damageTags 会与此合并，重复的 tag 会被去重。
@@ -137,6 +146,13 @@ function evaluateActionNumberExpression(
 	return fallback;
 }
 
+type DamageRequestBuildOptions = {
+	startTimeMs?: number;
+	shape?: DamageAreaRequest["shape"];
+	trajectory?: TrajectoryTemplate;
+	visualProfileId?: string;
+};
+
 function buildDamageRequest(
 	context: BtContext,
 	input: z.output<typeof commonAttackSchema>,
@@ -144,6 +160,7 @@ function buildDamageRequest(
 	rangeKind: DamageAreaRequest["range"]["rangeKind"],
 	rangeParams: DamageAreaRequest["range"]["rangeParams"],
 	targetId?: string,
+	options?: DamageRequestBuildOptions,
 ): DamageAreaRequest {
 	// 施法者属性在生成伤害区域时快照（施放瞬间值）。结算侧是否采用该快照由 lockCasterAttributes 决定：
 	// 锁定时 self.* 读此快照（脱手不回溯），实时时 self.* 读结算瞬间的施法者。
@@ -192,7 +209,7 @@ function buildDamageRequest(
 			sourceCampId: context.campId,
 		},
 		lifetime: {
-			startTimeMs: capabilities.services.getCurrentTimeMs(),
+			startTimeMs: options?.startTimeMs ?? capabilities.services.getCurrentTimeMs(),
 			durationMs,
 		},
 		hitPolicy: {
@@ -215,6 +232,9 @@ function buildDamageRequest(
 		},
 		casterId: context.memberId,
 		targetId,
+		...(options?.shape ? { shape: options.shape } : {}),
+		...(options?.trajectory ? { trajectory: options.trajectory } : {}),
+		...(options?.visualProfileId ? { visualProfileId: options.visualProfileId } : {}),
 	};
 }
 
@@ -325,6 +345,43 @@ export const CommonActionPool = {
 		// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
 		return State.SUCCEEDED;
 	}),
+
+	/** 按区域生成计划创建多个伤害区域；区域轨迹由 trajectory 描述符决定。 */
+	areaAttack: defineAction(
+		areaAttackSchema.meta({ description: "区域生成计划攻击" }),
+		(context, input, capabilities) => {
+			log.debug(`👤 [${context.name}] areaAttack`, input);
+
+			const targetId = capabilities.services.targetResolver?.(context.memberId, input.targetId) ?? input.targetId;
+			if (!targetId || targetId === context.memberId) {
+				log.warn(`⚠️ [${context.name}] 区域生成计划缺少有效敌对目标`, input);
+				return State.FAILED;
+			}
+
+			const currentTimeMs = capabilities.services.getCurrentTimeMs();
+			for (const entry of input.areas) {
+				const delayMs = Math.max(
+					0,
+					Math.floor(evaluateActionNumberExpression(context, capabilities, entry.delayMs, 0, "delayMs", targetId)),
+				);
+				const startTimeMs = currentTimeMs + delayMs;
+				const radius =
+					entry.shape.kind === "rect"
+						? Math.max(entry.shape.width ?? 0, entry.shape.height ?? 0) / 2
+						: (entry.shape.radius ?? 0);
+				const rangeKind = entry.targetMode === "single" ? "Single" : "Enemy";
+				const damageRequest = buildDamageRequest(context, input, capabilities, rangeKind, { radius }, targetId, {
+					startTimeMs,
+					shape: entry.shape,
+					trajectory: entry.trajectory,
+					visualProfileId: entry.visualProfileId,
+				});
+				capabilities.services.damageRequestHandler?.(damageRequest);
+			}
+
+			return State.SUCCEEDED;
+		},
+	),
 
 	/** 陨石伤害 */
 	verticalAttack: defineAction(

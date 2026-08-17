@@ -5,12 +5,12 @@
  */
 
 import {
-	type WorldStateArea,
 	WorldStateAreaShapeKind,
 	type WorldStateLayoutDescriptor,
 	type WorldStateSnapshot,
 	worldStateStringId,
 } from "~/engine/core/thread/worldStateBuffer";
+import { evalTrajectory } from "~/engine/core/World/Area/trajectory";
 import { createLogger } from "~/lib/logger";
 import type { Scene } from "~/platform/render/babylon/runtime";
 import { Color3, Mesh, MeshBuilder, StandardMaterial, TransformNode, Vector3 } from "~/platform/render/babylon/runtime";
@@ -108,15 +108,21 @@ export class CommandHandler {
 	}
 
 	/** 以一个 SAB 提交同步全部区域，过期槽位立即清理。 */
-	syncAreas(areas: readonly WorldStateArea[]): void {
+	syncAreas(snapshot: WorldStateSnapshot): void {
 		const activeIds = new Set<string>();
-		for (const [slot, area] of areas.entries()) {
+		for (const [slot, area] of snapshot.areas.entries()) {
 			if (!area.active) continue;
 			const id = `area:${slot}:${area.generation}:${area.idHash}`;
 			activeIds.add(id);
+			const sourcePos = snapshot.members[area.sourceMemberIndex]?.position ?? { x: 0, y: 0, z: 0 };
+			const targetPos = snapshot.members[area.targetMemberIndex]?.position ?? sourcePos;
+			const position = evalTrajectory(area.trajectory, Math.max(0, snapshot.logicalTimeMs - area.spawnTimeMs), {
+				source: sourcePos,
+				target: targetPos,
+			});
 			this.createOrUpdateAreaVisual({
 				id,
-				position: area.position,
+				position,
 				shape: area.shape,
 			});
 		}

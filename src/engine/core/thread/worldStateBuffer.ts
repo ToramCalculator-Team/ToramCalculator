@@ -6,11 +6,12 @@
  * 历史和静态视觉资源不进入此缓冲区。
  */
 
+import { evalTrajectory, type Trajectory } from "../World/Area/trajectory";
 import { WORLD_AREA_CAPACITY, WORLD_AREA_CAPACITY_EXCEEDED_CODE } from "../World/Area/types";
 import type { ModifierSource } from "../World/Member/runtime/AttributeContainer/AttributeContainerTypes";
 
 export const WORLD_STATE_MAGIC = 0x57535432;
-export const WORLD_STATE_LAYOUT_VERSION = 5;
+export const WORLD_STATE_LAYOUT_VERSION = 6;
 export const WORLD_STATE_PLAYER_ATTRIBUTE_COUNT = 138;
 export const WORLD_STATE_MOB_ATTRIBUTE_COUNT = 31;
 export const WORLD_STATE_DEFAULT_MEMBER_CAPACITY = 8;
@@ -130,10 +131,13 @@ export type WorldStateAreaData = {
 	id: string;
 	active?: boolean;
 	type?: number;
-	position: { x: number; y: number; z: number };
 	shape?: { kind?: number; radius?: number; width?: number; height?: number };
-	remainingTimeMs: number;
 	sourceMemberId?: string;
+	targetMemberId?: string;
+	/** 区域生成时的逻辑时间（毫秒）。渲染层据此 + trajectory 本地求值。 */
+	spawnTimeMs: number;
+	/** 生成时已解析的具体轨迹；与逻辑层共用同一套描述符。 */
+	trajectory: Trajectory;
 };
 
 export type WorldStateCommit = {
@@ -173,10 +177,14 @@ export type WorldStateArea = {
 	active: boolean;
 	generation: number;
 	type: number;
+	/** 由 reader 按 snapshot.logicalTimeMs 与 trajectory 计算，保留给旧消费者与调试。 */
 	position: { x: number; y: number; z: number };
 	shape: { kind: number; radius: number; width: number; height: number };
-	remainingTimeMs: number;
+	spawnTimeMs: number;
+	trajectory: Trajectory;
 	sourceMemberIndex: number;
+	targetMemberIndex: number;
+	anchorMemberIndex: number;
 };
 
 export type WorldStateSnapshot = {
@@ -187,6 +195,15 @@ export type WorldStateSnapshot = {
 	areas: WorldStateArea[];
 	modifierSources: WorldStateModifierSource[];
 	modifierChains: WorldStateModifierChain[];
+};
+
+export type WorldStateReadStats = {
+	/** 调用 readLatest 的总次数 */
+	reads: number;
+	/** seqlock 首读与末读不一致导致的重试次数 */
+	retries: number;
+	/** 重试上限内未读到稳定提交而返回 null 的次数 */
+	nullReturns: number;
 };
 
 const HEADER_BYTES = 64;
@@ -245,22 +262,103 @@ const MODIFIER_INT_CHAIN = 3;
 const SOURCE_BYTES = 8;
 const CHAIN_BYTES = 8;
 
-const AREA_INT_FIELDS = 6;
-const AREA_FLOAT_FIELDS = 7;
+const AREA_INT_FIELDS = 10;
+const AREA_FLOAT_FIELDS = 15;
 const AREA_BYTES = AREA_INT_FIELDS * Int32Array.BYTES_PER_ELEMENT + AREA_FLOAT_FIELDS * Float64Array.BYTES_PER_ELEMENT;
 const AREA_INT_ACTIVE = 0;
 const AREA_INT_GENERATION = 1;
 const AREA_INT_TYPE = 2;
 const AREA_INT_SHAPE = 3;
 const AREA_INT_SOURCE_MEMBER = 4;
-const AREA_INT_ID_HASH = 5;
-const AREA_FLOAT_X = 0;
-const AREA_FLOAT_Y = 1;
-const AREA_FLOAT_Z = 2;
-const AREA_FLOAT_RADIUS = 3;
-const AREA_FLOAT_WIDTH = 4;
-const AREA_FLOAT_HEIGHT = 5;
-const AREA_FLOAT_REMAINING = 6;
+const AREA_INT_TARGET_MEMBER = 5;
+const AREA_INT_ANCHOR_MEMBER = 6;
+const AREA_INT_TRAJECTORY_KIND = 7;
+const AREA_INT_ID_HASH = 8;
+const AREA_INT_RESERVED = 9;
+const AREA_FLOAT_A_X = 0;
+const AREA_FLOAT_A_Y = 1;
+const AREA_FLOAT_A_Z = 2;
+const AREA_FLOAT_B_X = 3;
+const AREA_FLOAT_B_Y = 4;
+const AREA_FLOAT_B_Z = 5;
+const AREA_FLOAT_S0 = 6;
+const AREA_FLOAT_S1 = 7;
+const AREA_FLOAT_S2 = 8;
+const AREA_FLOAT_S3 = 9;
+const AREA_FLOAT_S4 = 10;
+const AREA_FLOAT_SPAWN_TIME = 11;
+const AREA_FLOAT_SHAPE_RADIUS = 12;
+const AREA_FLOAT_SHAPE_WIDTH = 13;
+const AREA_FLOAT_SHAPE_HEIGHT = 14;
+
+const AREA_TRAJECTORY_KIND = {
+	STATIC: 1,
+	ATTACH: 2,
+	SEGMENT: 3,
+	RAY: 4,
+	ARC: 5,
+	SPIRAL: 6,
+} as const;
+
+function areaTrajectoryKindCode(kind: Trajectory["kind"]): number {
+	switch (kind) {
+		case "static":
+			return AREA_TRAJECTORY_KIND.STATIC;
+		case "attach":
+			return AREA_TRAJECTORY_KIND.ATTACH;
+		case "segment":
+			return AREA_TRAJECTORY_KIND.SEGMENT;
+		case "ray":
+			return AREA_TRAJECTORY_KIND.RAY;
+		case "arc":
+			return AREA_TRAJECTORY_KIND.ARC;
+		case "spiral":
+			return AREA_TRAJECTORY_KIND.SPIRAL;
+	}
+}
+
+function decodeAreaTrajectory(kindCode: number, floats: Float64Array): Trajectory {
+	const a = { x: floats[AREA_FLOAT_A_X], y: floats[AREA_FLOAT_A_Y], z: floats[AREA_FLOAT_A_Z] };
+	const b = { x: floats[AREA_FLOAT_B_X], y: floats[AREA_FLOAT_B_Y], z: floats[AREA_FLOAT_B_Z] };
+	switch (kindCode) {
+		case AREA_TRAJECTORY_KIND.STATIC:
+			return { kind: "static", center: a, lifetimeMs: floats[AREA_FLOAT_S0] };
+		case AREA_TRAJECTORY_KIND.ATTACH:
+			return {
+				kind: "attach",
+				anchor: "source",
+				offset: a,
+				lifetimeMs: floats[AREA_FLOAT_S0],
+			};
+		case AREA_TRAJECTORY_KIND.SEGMENT:
+			return { kind: "segment", from: a, to: b, speed: floats[AREA_FLOAT_S0] };
+		case AREA_TRAJECTORY_KIND.RAY:
+			return { kind: "ray", from: a, dir: b, speed: floats[AREA_FLOAT_S0], maxDistance: floats[AREA_FLOAT_S1] };
+		case AREA_TRAJECTORY_KIND.ARC:
+			return {
+				kind: "arc",
+				center: a,
+				normal: b,
+				radius: floats[AREA_FLOAT_S0],
+				startAngle: floats[AREA_FLOAT_S1],
+				endAngle: floats[AREA_FLOAT_S2],
+				speed: floats[AREA_FLOAT_S3],
+			};
+		case AREA_TRAJECTORY_KIND.SPIRAL:
+			return {
+				kind: "spiral",
+				center: a,
+				normal: b,
+				startAngle: floats[AREA_FLOAT_S0],
+				startRadius: floats[AREA_FLOAT_S1],
+				endRadius: floats[AREA_FLOAT_S2],
+				radiusGrowthPerRadian: floats[AREA_FLOAT_S3],
+				speed: floats[AREA_FLOAT_S4],
+			};
+		default:
+			return { kind: "static", center: { x: 0, y: 0, z: 0 }, lifetimeMs: 0 };
+	}
+}
 
 const MAX_SEQLOCK_RETRIES = 8;
 
@@ -834,7 +932,13 @@ export class WorldStateWriter {
 	private planAreas(
 		areas: readonly WorldStateAreaData[],
 		memberSlots: ReadonlyMap<string, number>,
-	): Array<{ area: WorldStateAreaData; slot: number; newOwner: boolean; sourceMemberIndex: number }> {
+	): Array<{
+		area: WorldStateAreaData;
+		slot: number;
+		newOwner: boolean;
+		sourceMemberIndex: number;
+		targetMemberIndex: number;
+	}> {
 		const activeAreas = areas.filter((area) => area.active !== false);
 		const submittedIds = new Set<string>();
 		for (const area of areas) {
@@ -861,12 +965,19 @@ export class WorldStateWriter {
 				newOwner = true;
 			}
 			const sourceMemberIndex = area.sourceMemberId ? (memberSlots.get(area.sourceMemberId) ?? -1) : -1;
-			return { area, slot, newOwner, sourceMemberIndex };
+			const targetMemberIndex = area.targetMemberId ? (memberSlots.get(area.targetMemberId) ?? -1) : -1;
+			return { area, slot, newOwner, sourceMemberIndex, targetMemberIndex };
 		});
 	}
 
 	private applyAreaPlan(
-		plan: Array<{ area: WorldStateAreaData; slot: number; newOwner: boolean; sourceMemberIndex: number }>,
+		plan: Array<{
+			area: WorldStateAreaData;
+			slot: number;
+			newOwner: boolean;
+			sourceMemberIndex: number;
+			targetMemberIndex: number;
+		}>,
 	): void {
 		const seenSlots = new Set(plan.map((entry) => entry.slot));
 		for (let slot = 0; slot < this.descriptor.areaCapacity; slot++) {
@@ -876,7 +987,7 @@ export class WorldStateWriter {
 			this.areaSlotOwners[slot] = null;
 			this.writeArea(slot);
 		}
-		for (const { area, slot, newOwner, sourceMemberIndex } of plan) {
+		for (const { area, slot, newOwner, sourceMemberIndex, targetMemberIndex } of plan) {
 			if (newOwner) {
 				const previousOwner = this.areaSlotOwners[slot];
 				if (previousOwner) this.areaSlots.delete(previousOwner);
@@ -884,31 +995,107 @@ export class WorldStateWriter {
 				this.areaSlots.set(area.id, slot);
 				this.areaSlotGenerations[slot]++;
 			}
-			this.writeArea(slot, area, this.areaSlotGenerations[slot], sourceMemberIndex);
+			this.writeArea(slot, area, this.areaSlotGenerations[slot], sourceMemberIndex, targetMemberIndex);
 		}
 	}
 
-	private writeArea(index: number, area?: WorldStateAreaData, generation = 0, sourceMemberIndex = -1): void {
+	private writeArea(
+		index: number,
+		area?: WorldStateAreaData,
+		generation = 0,
+		sourceMemberIndex = -1,
+		targetMemberIndex = -1,
+	): void {
 		const offset = this.memberOffsets.areaOffset + index * AREA_BYTES;
 		const active = area ? area.active !== false : false;
+		const trajectory = area?.trajectory;
 		this.data.setInt32(offset + AREA_INT_ACTIVE * 4, active ? 1 : 0, true);
 		this.data.setInt32(offset + AREA_INT_GENERATION * 4, generation, true);
 		this.data.setInt32(offset + AREA_INT_TYPE * 4, area?.type ?? 0, true);
 		this.data.setInt32(offset + AREA_INT_SHAPE * 4, area?.shape?.kind ?? 0, true);
 		this.data.setInt32(offset + AREA_INT_SOURCE_MEMBER * 4, sourceMemberIndex, true);
+		this.data.setInt32(offset + AREA_INT_TARGET_MEMBER * 4, targetMemberIndex, true);
+		this.data.setInt32(
+			offset + AREA_INT_ANCHOR_MEMBER * 4,
+			trajectory?.kind === "attach" ? (trajectory.anchor === "source" ? sourceMemberIndex : targetMemberIndex) : -1,
+			true,
+		);
+		this.data.setInt32(
+			offset + AREA_INT_TRAJECTORY_KIND * 4,
+			trajectory ? areaTrajectoryKindCode(trajectory.kind) : 0,
+			true,
+		);
 		this.data.setInt32(offset + AREA_INT_ID_HASH * 4, area ? worldStateStringId(area.id) : 0, true);
+		this.data.setInt32(offset + AREA_INT_RESERVED * 4, 0, true);
+
 		const shape = area?.shape;
-		const values = [
-			area?.position.x ?? 0,
-			area?.position.y ?? 0,
-			area?.position.z ?? 0,
-			shape?.radius ?? 0,
-			shape?.width ?? 0,
-			shape?.height ?? 0,
-			area?.remainingTimeMs ?? 0,
-		];
-		for (let field = 0; field < values.length; field++)
-			this.data.setFloat64(offset + AREA_INT_FIELDS * 4 + field * 8, values[field], true);
+		const floats = new Float64Array(AREA_FLOAT_FIELDS);
+		floats[AREA_FLOAT_SPAWN_TIME] = area?.spawnTimeMs ?? 0;
+		if (trajectory) {
+			switch (trajectory.kind) {
+				case "static":
+					floats[AREA_FLOAT_A_X] = trajectory.center.x;
+					floats[AREA_FLOAT_A_Y] = trajectory.center.y;
+					floats[AREA_FLOAT_A_Z] = trajectory.center.z;
+					floats[AREA_FLOAT_S0] = trajectory.lifetimeMs;
+					break;
+				case "attach":
+					floats[AREA_FLOAT_A_X] = trajectory.offset.x;
+					floats[AREA_FLOAT_A_Y] = trajectory.offset.y;
+					floats[AREA_FLOAT_A_Z] = trajectory.offset.z;
+					floats[AREA_FLOAT_S0] = trajectory.lifetimeMs;
+					break;
+				case "segment":
+					floats[AREA_FLOAT_A_X] = trajectory.from.x;
+					floats[AREA_FLOAT_A_Y] = trajectory.from.y;
+					floats[AREA_FLOAT_A_Z] = trajectory.from.z;
+					floats[AREA_FLOAT_B_X] = trajectory.to.x;
+					floats[AREA_FLOAT_B_Y] = trajectory.to.y;
+					floats[AREA_FLOAT_B_Z] = trajectory.to.z;
+					floats[AREA_FLOAT_S0] = trajectory.speed;
+					break;
+				case "ray":
+					floats[AREA_FLOAT_A_X] = trajectory.from.x;
+					floats[AREA_FLOAT_A_Y] = trajectory.from.y;
+					floats[AREA_FLOAT_A_Z] = trajectory.from.z;
+					floats[AREA_FLOAT_B_X] = trajectory.dir.x;
+					floats[AREA_FLOAT_B_Y] = trajectory.dir.y;
+					floats[AREA_FLOAT_B_Z] = trajectory.dir.z;
+					floats[AREA_FLOAT_S0] = trajectory.speed;
+					floats[AREA_FLOAT_S1] = trajectory.maxDistance;
+					break;
+				case "arc":
+					floats[AREA_FLOAT_A_X] = trajectory.center.x;
+					floats[AREA_FLOAT_A_Y] = trajectory.center.y;
+					floats[AREA_FLOAT_A_Z] = trajectory.center.z;
+					floats[AREA_FLOAT_B_X] = trajectory.normal.x;
+					floats[AREA_FLOAT_B_Y] = trajectory.normal.y;
+					floats[AREA_FLOAT_B_Z] = trajectory.normal.z;
+					floats[AREA_FLOAT_S0] = trajectory.radius;
+					floats[AREA_FLOAT_S1] = trajectory.startAngle;
+					floats[AREA_FLOAT_S2] = trajectory.endAngle;
+					floats[AREA_FLOAT_S3] = trajectory.speed;
+					break;
+				case "spiral":
+					floats[AREA_FLOAT_A_X] = trajectory.center.x;
+					floats[AREA_FLOAT_A_Y] = trajectory.center.y;
+					floats[AREA_FLOAT_A_Z] = trajectory.center.z;
+					floats[AREA_FLOAT_B_X] = trajectory.normal.x;
+					floats[AREA_FLOAT_B_Y] = trajectory.normal.y;
+					floats[AREA_FLOAT_B_Z] = trajectory.normal.z;
+					floats[AREA_FLOAT_S0] = trajectory.startAngle;
+					floats[AREA_FLOAT_S1] = trajectory.startRadius;
+					floats[AREA_FLOAT_S2] = trajectory.endRadius;
+					floats[AREA_FLOAT_S3] = trajectory.radiusGrowthPerRadian;
+					floats[AREA_FLOAT_S4] = trajectory.speed;
+					break;
+			}
+		}
+		floats[AREA_FLOAT_SHAPE_RADIUS] = shape?.radius ?? 0;
+		floats[AREA_FLOAT_SHAPE_WIDTH] = shape?.width ?? 0;
+		floats[AREA_FLOAT_SHAPE_HEIGHT] = shape?.height ?? 0;
+		for (let field = 0; field < AREA_FLOAT_FIELDS; field++)
+			this.data.setFloat64(offset + AREA_INT_FIELDS * 4 + field * 8, floats[field] ?? 0, true);
 	}
 }
 
@@ -934,6 +1121,7 @@ export class WorldStateReader {
 	private readonly data: DataView;
 	private readonly descriptor: WorldStateLayoutDescriptor;
 	private readonly memberOffsets: ReturnType<typeof offsets>;
+	private readStats: WorldStateReadStats = { reads: 0, retries: 0, nullReturns: 0 };
 	readonly memberCount: number;
 	readonly areaCapacity: number;
 
@@ -968,9 +1156,20 @@ export class WorldStateReader {
 		return Atomics.load(this.header, HDR_COMMIT_VERSION);
 	}
 
+	/** 读取诊断统计：readLatest 调用次数、seqlock 重试次数、null 返回次数。 */
+	getReadStats(): WorldStateReadStats {
+		return { ...this.readStats };
+	}
+
+	resetReadStats(): void {
+		this.readStats = { reads: 0, retries: 0, nullReturns: 0 };
+	}
+
 	/** 读取一个完整稳定提交，禁止成员、区域分表读取造成跨提交混合。 */
 	readLatest(): WorldStateSnapshot | null {
+		this.readStats.reads += 1;
 		for (let retry = 0; retry < MAX_SEQLOCK_RETRIES; retry++) {
+			if (retry > 0) this.readStats.retries += 1;
 			const first = Atomics.load(this.header, HDR_COMMIT_VERSION);
 			if (first & 1) continue;
 			const sourceCount = Atomics.load(this.header, HDR_SOURCE_COUNT);
@@ -982,18 +1181,31 @@ export class WorldStateReader {
 				chainCount > this.descriptor.modifierChainCapacity
 			)
 				continue;
+			const members = this.readMembers();
+			const areas = this.readAreas();
+			for (const area of areas) {
+				if (!area.active) continue;
+				const sourcePos = members[area.sourceMemberIndex]?.position ?? { x: 0, y: 0, z: 0 };
+				const targetPos = members[area.targetMemberIndex]?.position ?? sourcePos;
+				area.position = evalTrajectory(
+					area.trajectory,
+					Math.max(0, Atomics.load(this.header, HDR_LOGICAL_TIME_MS) - area.spawnTimeMs),
+					{ source: sourcePos, target: targetPos },
+				);
+			}
 			const snapshot: WorldStateSnapshot = {
 				commitVersion: first,
 				logicalTimeMs: Atomics.load(this.header, HDR_LOGICAL_TIME_MS),
 				tickIndex: Atomics.load(this.header, HDR_TICK_INDEX),
-				members: this.readMembers(),
-				areas: this.readAreas(),
+				members,
+				areas,
 				modifierSources: this.readModifierSources(sourceCount),
 				modifierChains: this.readModifierChains(chainCount),
 			};
 			const second = Atomics.load(this.header, HDR_COMMIT_VERSION);
 			if (first === second) return snapshot;
 		}
+		this.readStats.nullReturns += 1;
 		return null;
 	}
 
@@ -1043,26 +1255,58 @@ export class WorldStateReader {
 
 	private readAreas(): WorldStateArea[] {
 		const result: WorldStateArea[] = [];
+		const floats = new Float64Array(AREA_FLOAT_FIELDS);
 		for (let index = 0; index < this.descriptor.areaCapacity; index++) {
 			const offset = this.memberOffsets.areaOffset + index * AREA_BYTES;
 			const active = this.data.getInt32(offset + AREA_INT_ACTIVE * 4, true) !== 0;
-			const values = Array.from({ length: AREA_FLOAT_FIELDS }, (_, field) =>
-				this.data.getFloat64(offset + AREA_INT_FIELDS * 4 + field * 8, true),
-			);
+			if (!active) {
+				result.push({
+					idHash: this.data.getInt32(offset + AREA_INT_ID_HASH * 4, true),
+					active: false,
+					generation: this.data.getInt32(offset + AREA_INT_GENERATION * 4, true),
+					type: this.data.getInt32(offset + AREA_INT_TYPE * 4, true),
+					position: { x: 0, y: 0, z: 0 },
+					shape: {
+						kind: this.data.getInt32(offset + AREA_INT_SHAPE * 4, true),
+						radius: 0,
+						width: 0,
+						height: 0,
+					},
+					spawnTimeMs: 0,
+					trajectory: { kind: "static", center: { x: 0, y: 0, z: 0 }, lifetimeMs: 0 },
+					sourceMemberIndex: -1,
+					targetMemberIndex: -1,
+					anchorMemberIndex: -1,
+				});
+				continue;
+			}
+			const sourceMemberIndex = this.data.getInt32(offset + AREA_INT_SOURCE_MEMBER * 4, true);
+			const targetMemberIndex = this.data.getInt32(offset + AREA_INT_TARGET_MEMBER * 4, true);
+			const anchorMemberIndex = this.data.getInt32(offset + AREA_INT_ANCHOR_MEMBER * 4, true);
+			for (let field = 0; field < AREA_FLOAT_FIELDS; field++) {
+				floats[field] = this.data.getFloat64(offset + AREA_INT_FIELDS * 4 + field * 8, true);
+			}
+			const trajectory = decodeAreaTrajectory(this.data.getInt32(offset + AREA_INT_TRAJECTORY_KIND * 4, true), floats);
+			if (trajectory.kind === "attach" && anchorMemberIndex >= 0 && anchorMemberIndex === targetMemberIndex) {
+				trajectory.anchor = "target";
+			}
 			result.push({
 				idHash: this.data.getInt32(offset + AREA_INT_ID_HASH * 4, true),
 				active,
 				generation: this.data.getInt32(offset + AREA_INT_GENERATION * 4, true),
 				type: this.data.getInt32(offset + AREA_INT_TYPE * 4, true),
-				position: { x: values[AREA_FLOAT_X], y: values[AREA_FLOAT_Y], z: values[AREA_FLOAT_Z] },
+				position: { x: 0, y: 0, z: 0 },
 				shape: {
 					kind: this.data.getInt32(offset + AREA_INT_SHAPE * 4, true),
-					radius: values[AREA_FLOAT_RADIUS],
-					width: values[AREA_FLOAT_WIDTH],
-					height: values[AREA_FLOAT_HEIGHT],
+					radius: floats[AREA_FLOAT_SHAPE_RADIUS],
+					width: floats[AREA_FLOAT_SHAPE_WIDTH],
+					height: floats[AREA_FLOAT_SHAPE_HEIGHT],
 				},
-				remainingTimeMs: values[AREA_FLOAT_REMAINING],
-				sourceMemberIndex: this.data.getInt32(offset + AREA_INT_SOURCE_MEMBER * 4, true),
+				spawnTimeMs: floats[AREA_FLOAT_SPAWN_TIME],
+				trajectory,
+				sourceMemberIndex,
+				targetMemberIndex,
+				anchorMemberIndex,
 			});
 		}
 		return result;

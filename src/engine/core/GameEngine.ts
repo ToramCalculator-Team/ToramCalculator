@@ -142,6 +142,9 @@ export class GameEngine {
 	/** 当前 tick 的模拟时间跨度（毫秒） */
 	private deltaTimeMs: number = 0;
 
+	/** 最近一次 stepTick 的 wall-clock 耗时（毫秒），用于实时性诊断。 */
+	private lastStepTickDurationMs: number = 0;
+
 	/**
 	 * 引擎级循环统计。
 	 * 说明：
@@ -537,6 +540,11 @@ export class GameEngine {
 	 * - 给 worker 遥测、快照、调试接口提供统一入口
 	 * - 避免外部再深拿到底层 FrameLoop 的内部统计
 	 */
+	/** 最近一次 stepTick 耗时（毫秒）。 */
+	getLastStepTickDurationMs(): number {
+		return this.lastStepTickDurationMs;
+	}
+
 	getFrameLoopStats(): FrameLoopStats {
 		return { ...this.frameLoopStats };
 	}
@@ -1383,6 +1391,7 @@ export class GameEngine {
 			deltaTimeMs,
 		});
 
+		this.lastStepTickDurationMs = stepResult.duration;
 		this.stats.totalEventsProcessed += stepResult.eventsProcessed;
 		this.updateEngineFrameLoopStats(clockKind);
 		const completedTick = {

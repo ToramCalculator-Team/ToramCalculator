@@ -180,9 +180,9 @@ describe("worldStateBuffer", () => {
 				{
 					id: "area-1",
 					type: WorldStateAreaType.DAMAGE,
-					position: { x: 4, y: 0, z: 5 },
 					shape: { kind: WorldStateAreaShapeKind.CIRCLE, radius: 2 },
-					remainingTimeMs: 50,
+					spawnTimeMs: 50,
+					trajectory: { kind: "static" as const, center: { x: 4, y: 0, z: 5 }, lifetimeMs: 100 },
 					sourceMemberId: "player",
 				},
 			],
@@ -213,8 +213,9 @@ describe("worldStateBuffer", () => {
 			active: true,
 			generation: 1,
 			type: WorldStateAreaType.DAMAGE,
+			position: { x: 4, y: 0, z: 5 },
 			shape: { kind: WorldStateAreaShapeKind.CIRCLE, radius: 2 },
-			remainingTimeMs: 50,
+			spawnTimeMs: 50,
 			sourceMemberIndex: 0,
 		});
 	});
@@ -330,8 +331,17 @@ describe("worldStateBuffer", () => {
 				emptyCommit(
 					[],
 					[
-						{ id: "area", position: { x: 0, y: 0, z: 0 }, remainingTimeMs: 1 },
-						{ id: "area", active: false, position: { x: 0, y: 0, z: 0 }, remainingTimeMs: 0 },
+						{
+							id: "area",
+							spawnTimeMs: 0,
+							trajectory: { kind: "static" as const, center: { x: 0, y: 0, z: 0 }, lifetimeMs: 1 },
+						},
+						{
+							id: "area",
+							active: false,
+							spawnTimeMs: 0,
+							trajectory: { kind: "static", center: { x: 0, y: 0, z: 0 }, lifetimeMs: 0 },
+						},
 					],
 				),
 			),
@@ -344,7 +354,11 @@ describe("worldStateBuffer", () => {
 		const buffer = createWorldStateBuffer(layout);
 		const writer = new WorldStateWriter(buffer, layout);
 		const reader = new WorldStateReader(buffer, layout);
-		const area = (id: string) => ({ id, position: { x: 0, y: 0, z: 0 }, remainingTimeMs: 100 });
+		const area = (id: string) => ({
+			id,
+			spawnTimeMs: 0,
+			trajectory: { kind: "static" as const, center: { x: 0, y: 0, z: 0 }, lifetimeMs: 100 },
+		});
 
 		writer.write(emptyCommit([], [area("area-a"), area("area-b")]));
 		const first = reader.readLatest();
@@ -355,6 +369,56 @@ describe("worldStateBuffer", () => {
 		const second = reader.readLatest();
 		expect(second?.areas[areaBSlot]).toMatchObject({ idHash: worldStateStringId("area-b"), generation: 1 });
 		expect(second?.areas.find((entry) => entry.idHash === worldStateStringId("area-c"))?.generation).toBe(2);
+	});
+
+	it("Area 轨迹描述符在 SAB 中往返并本地求值", () => {
+		const layout = createWorldStateLayoutDescriptor(
+			[
+				{
+					id: "player",
+					entityType: WorldStateEntityType.PLAYER,
+					visualProfileId: 1,
+					attributePaths: [],
+					modifierCapacity: 0,
+				},
+			],
+			{ memberCapacity: 1, areaCapacity: 2 },
+		);
+		const buffer = createWorldStateBuffer(layout);
+		const writer = new WorldStateWriter(buffer, layout);
+		const reader = new WorldStateReader(buffer, layout);
+
+		writer.write({
+			logicalTimeMs: 1000,
+			tickIndex: 1,
+			members: [{ id: "player", position: { x: 0, y: 0, z: 0 }, yaw: 0 }],
+			areas: [
+				{
+					id: "area-seg",
+					spawnTimeMs: 0,
+					trajectory: {
+						kind: "segment" as const,
+						from: { x: 0, y: 0, z: 0 },
+						to: { x: 10, y: 0, z: 0 },
+						speed: 5,
+					},
+					sourceMemberId: "player",
+				},
+			],
+		});
+
+		const snapshot = reader.readLatest();
+		expect(snapshot?.areas[0]).toMatchObject({
+			active: true,
+			position: { x: 5, y: 0, z: 0 },
+			spawnTimeMs: 0,
+		});
+		expect(snapshot?.areas[0]?.trajectory).toMatchObject({
+			kind: "segment",
+			from: { x: 0, y: 0, z: 0 },
+			to: { x: 10, y: 0, z: 0 },
+			speed: 5,
+		});
 	});
 
 	it("附件边界拒绝非法 magic 和 descriptor 长度", () => {
@@ -390,8 +454,8 @@ describe("worldStateBuffer", () => {
 				})),
 				areas: Array.from({ length: 64 }, (_, index) => ({
 					id: `area-${tick % 4}-${index}`,
-					position: { x: index, y: 0, z: tick },
-					remainingTimeMs: 100,
+					spawnTimeMs: tick * (1000 / 60),
+					trajectory: { kind: "static" as const, center: { x: index, y: 0, z: tick }, lifetimeMs: 100 },
 				})),
 			});
 			const snapshot = reader.readLatest();

@@ -181,6 +181,14 @@ export default function SimulatorPage() {
 					title="切换颜色模式"
 					aria-label="切换颜色模式"
 				/>
+				<Button
+					class="outline-hidden focus-within:outline-hidden"
+					level="quaternary"
+					onClick={() => setStore("pages", "settingsDialogState", true)}
+					icon={<Icons.Outline.Settings />}
+					title="设置"
+					aria-label="设置"
+				/>
 			</div>
 
 			<div class="mx-auto flex  w-full flex-col gap-6 p-6 landscape:px-12 lg:landscape:min-h-full lg:landscape:px-24 lg:landscape:py-12">
@@ -219,21 +227,7 @@ export default function SimulatorPage() {
 						<A href="/" aria-current={isMenuItemActive("/") ? "page" : undefined} class={menuItemClass("/")}>
 							实战模拟场景
 						</A>
-						<button
-							type="button"
-							class="hover:border-accent-color w-fit cursor-pointer border-b border-transparent px-1 py-2 text-left"
-							onClick={() => setStore("pages", "settingsDialogState", true)}
-						>
-							系统设置
-						</button>
-						<a
-							href="https://github.com/ToramCalculator-Team/ToramCalculator"
-							target="_blank"
-							rel="noreferrer"
-							class="hover:border-accent-color w-fit border-b border-transparent px-1 py-2"
-						>
-							关于此项目
-						</a>
+						<A href="https://github.com/ToramCalculator-Team/ToramCalculator">关于此项目</A>
 					</nav>
 
 					<section

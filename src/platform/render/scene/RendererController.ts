@@ -26,6 +26,7 @@ import type { EntityRuntime } from "./content/entityTypes";
 import { RenderSyncSystem } from "./content/RenderSyncSystem";
 import type { RendererController, WorldResourcePose } from "./contracts/worldContent";
 import type { WorldResource } from "./contracts/worldResource";
+import { getRenderFrameStats, recordRenderFrame } from "./renderFrameStats";
 
 export type RendererControllerOptions = {
 	contentRoot?: TransformNode;
@@ -44,6 +45,7 @@ export function createRendererController(scene: Scene, options: RendererControll
 	}
 	const entities = new Map<string, EntityRuntime>();
 	const entitySlots = new Map<string, number>();
+
 	const factory = options.entityFactory ?? new EntityFactory(scene, options.contentRoot);
 	const renderSyncSystem = new RenderSyncSystem();
 	const commandHandler = new CommandHandler(entities, factory, scene, {
@@ -58,10 +60,11 @@ export function createRendererController(scene: Scene, options: RendererControll
 	 * 不进行物理计算，物理计算应该在GameEngine中完成
 	 */
 	function tick(dtSec: number): void {
+		recordRenderFrame(dtSec);
 		const snapshot = worldStateReader?.readLatest() ?? null;
 		const layout = worldStateLayout;
 		if (snapshot && layout) {
-			commandHandler.syncAreas(snapshot.areas);
+			commandHandler.syncAreas(snapshot);
 			const previousEntityIds = new Set(entitySlots.keys());
 			const nextEntitySlots = new Map<string, number>();
 			snapshot.members.forEach((member, slot) => {
@@ -112,7 +115,13 @@ export function createRendererController(scene: Scene, options: RendererControll
 		return commandHandler.applyWorldResources(resources, poses, worldStateReader ? "realtime" : "static");
 	}
 
-	return { tick, dispose, getEntityPose, applyWorldResources };
+	return {
+		tick,
+		dispose,
+		getEntityPose,
+		applyWorldResources,
+		getFrameStats: () => getRenderFrameStats(),
+	};
 }
 
 // ==================== 导出接口 ====================

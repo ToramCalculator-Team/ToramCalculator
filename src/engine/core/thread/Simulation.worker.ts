@@ -262,13 +262,21 @@ function createWorldStateCommit(): WorldStateCommit {
 			id: area.id,
 			active: true,
 			type: WorldStateAreaType.DAMAGE,
-			position: area.position,
 			shape: {
-				kind: area.shape.kind === "point" ? WorldStateAreaShapeKind.POINT : WorldStateAreaShapeKind.CIRCLE,
+				kind:
+					area.shape.kind === "point"
+						? WorldStateAreaShapeKind.POINT
+						: area.shape.kind === "rect"
+							? WorldStateAreaShapeKind.RECTANGLE
+							: WorldStateAreaShapeKind.CIRCLE,
 				radius: area.shape.radius,
+				width: area.shape.width,
+				height: area.shape.height,
 			},
-			remainingTimeMs: area.remainingTimeMs,
+			spawnTimeMs: area.spawnTimeMs,
+			trajectory: area.trajectory,
 			sourceMemberId: area.sourceMemberId,
+			targetMemberId: area.targetMemberId,
 		})),
 	};
 }
@@ -678,6 +686,8 @@ function startTelemetryLoop(port: MessagePort) {
 				runTime: gameEngine.getRunTimeMs(),
 				ticksPerSecond: frameLoopStats.averageTicksPerSecond,
 				memberCount: gameEngine.getMemberCount(),
+				skippedTicks: frameLoopStats.skippedTicks,
+				lastStepTickDurationMs: gameEngine.getLastStepTickDurationMs(),
 			});
 		} catch {
 			// 遥测失败不应影响主流程
