@@ -65,7 +65,14 @@ function createStarFaces(): Uint8Array[] {
 
 export interface ProceduralSkybox {
 	setDarkMode(darkMode: boolean): void;
+	update(elapsedSeconds: number): void;
 	dispose(): void;
+}
+
+/** 计算星空纹理亮度；浅色主题固定关闭，深色主题只做低幅非同步变化。 */
+export function resolveStarTextureLevel(elapsedSeconds: number, darkMode: boolean): number {
+	if (!darkMode) return 0;
+	return 0.9 + Math.sin(elapsedSeconds * 0.47) * 0.065 + Math.sin(elapsedSeconds * 1.13 + 1.7) * 0.025;
 }
 
 /**
@@ -90,12 +97,19 @@ export function createProceduralStarSkybox(scene: Scene): ProceduralSkybox {
 	skybox.isPickable = false;
 	skybox.applyFog = false;
 	skybox.receiveShadows = false;
+	let darkModeEnabled = false;
 	return {
 		setDarkMode(darkMode) {
+			darkModeEnabled = darkMode;
 			const backgroundColor = darkMode ? Color3.Black() : Color3.White();
 			material.diffuseColor.copyFrom(backgroundColor);
 			material.emissiveColor.copyFrom(backgroundColor);
-			texture.level = darkMode ? 1 : 0;
+			texture.level = resolveStarTextureLevel(0, darkMode);
+		},
+		update(elapsedSeconds) {
+			if (!darkModeEnabled) return;
+			// 单纹理级别的低幅变化只更新一个材质参数，不重写天空纹理或增加额外天空层。
+			texture.level = resolveStarTextureLevel(elapsedSeconds, true);
 		},
 		dispose() {
 			skybox.dispose(false, true);

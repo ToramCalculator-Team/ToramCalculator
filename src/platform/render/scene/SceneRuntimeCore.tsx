@@ -8,7 +8,7 @@
  */
 
 import { createId } from "@paralleldrive/cuid2";
-import { createEffect, createMemo, createSignal, type JSX, onCleanup, onMount } from "solid-js";
+import { createEffect, createMemo, createSignal, type JSX, onCleanup, onMount, Show } from "solid-js";
 import { type Actor, createActor } from "xstate";
 import { createLogger } from "~/lib/logger";
 import { DEFAULT_TERRAIN_DEFINITION, type TerrainDefinition } from "~/lib/terrain";
@@ -43,11 +43,13 @@ import {
 import type { AnyCameraControlCmd } from "./camera/commands";
 import { ThirdPersonCameraController } from "./camera/thirdPersonController";
 import { readCharacterEquipmentSlotMetadata } from "./content/characterEquipmentMetadata";
+import { EntityFactory } from "./content/EntityFactory";
 import { createCharacterContentDeps } from "./content/sceneContentDeps";
 import type { CharacterWorldResource } from "./contracts/worldResource";
 import { SceneInputController } from "./input/controller";
 import { registerFogOfWarMaterialPlugin, setFogOfWarCenter, setFogOfWarColor } from "./materials/fogOfWar";
 import { createRendererController } from "./RendererController";
+import { type AmbientMotes, createAmbientMotes } from "./resources/ambientMotes";
 import { createProceduralStarSkybox, type ProceduralSkybox } from "./resources/proceduralStarSkybox";
 import type {
 	CharacterContentSession,
@@ -70,8 +72,12 @@ function isCameraControlCommand(value: unknown): value is AnyCameraControlCmd {
 
 const LIGHT_TERRAIN_MAIN_COLOR = new Color3(0.23, 0.36, 0.19);
 const LIGHT_TERRAIN_LINE_COLOR = new Color3(0.08, 0.12, 0.08);
-const DARK_TERRAIN_MAIN_COLOR = Color3.Black();
-const DARK_TERRAIN_LINE_COLOR = Color3.White();
+const DARK_TERRAIN_MAIN_COLOR = new Color3(0.075, 0.08, 0.085);
+const DARK_TERRAIN_LINE_COLOR = new Color3(0.72, 0.74, 0.76);
+const SUN_DIRECTION = new Vector3(0.5, -1, 0.35).normalize();
+const MEMBER_SHADOW_LIGHT_DISTANCE = 64;
+const MEMBER_SHADOW_DEPTH_RANGE = MEMBER_SHADOW_LIGHT_DISTANCE * 2;
+const FPS_DISPLAY_SAMPLE_INTERVAL_MS = 250;
 
 export function SceneRuntimeCore(props: {
 	onReady: (api: SceneRuntimeCoreApi) => void;
@@ -90,6 +96,7 @@ export function SceneRuntimeCore(props: {
 	const [ready, setReady] = createSignal(false);
 	const [mode, setLocalMode] = createSignal<SceneRuntimeMode>("loading");
 	const [characterPickingEnabled, setCharacterPickingEnabled] = createSignal(false);
+	const [renderFps, setRenderFps] = createSignal(0);
 
 	let canvas: HTMLCanvasElement | undefined;
 	let engine: AbstractEngine | undefined;
@@ -101,6 +108,12 @@ export function SceneRuntimeCore(props: {
 	let sceneCamera: ArcRotateCamera | undefined;
 	let lensPipeline: LensRenderingPipeline | undefined;
 	let worldSkybox: ProceduralSkybox | undefined;
+	let ambientMotes: AmbientMotes | undefined;
+	let environmentElapsedSeconds = 0;
+	let lastFpsDisplaySampleMs = 0;
+	let memberShadowLight: DirectionalLight | undefined;
+	let memberShadowLightOffset: Vector3 | undefined;
+	let memberShadowGenerator: ShadowGenerator | undefined;
 	let equipmentHighlightLayer: HighlightLayer | undefined;
 	let rendererController: ReturnType<typeof createRendererController> | undefined;
 	let thirdPersonController: ThirdPersonCameraController | undefined;
@@ -175,10 +188,10 @@ export function SceneRuntimeCore(props: {
 		scene.ambientColor = ambientColor;
 		setFogOfWarColor(fogColor);
 		worldSkybox?.setDarkMode(darkMode);
+		ambientMotes?.setTheme(ambientColor, darkMode);
 		worldTerrain?.setRenderColors(
 			darkMode ? DARK_TERRAIN_MAIN_COLOR : LIGHT_TERRAIN_MAIN_COLOR,
 			darkMode ? DARK_TERRAIN_LINE_COLOR : LIGHT_TERRAIN_LINE_COLOR,
-			fogColor,
 		);
 	};
 
@@ -196,6 +209,7 @@ export function SceneRuntimeCore(props: {
 		getCharacterRoot: () => characterRoot,
 		getGroundHeight: (x, z) => worldTerrain?.getHeightAt(x, z) ?? 0,
 	});
+	const getWorldGroundHeight = (x: number, z: number): number => worldTerrain?.getHeightAt(x, z) ?? 0;
 
 	const mountWorldTerrain = async (definition: TerrainDefinition): Promise<void> => {
 		if (!scene) throw new Error("SceneRuntime is not ready");
@@ -235,8 +249,15 @@ export function SceneRuntimeCore(props: {
 			const camera = sceneCamera;
 			if (!scene || !canvas || !camera) throw new Error("SceneRuntime is not ready");
 			await mountWorldTerrain(config.terrain);
+			const entityFactory = new EntityFactory(scene, realtimeRoot, (mesh) => {
+				const shadowGenerator = memberShadowGenerator;
+				if (!shadowGenerator) return;
+				mesh.receiveShadows = true;
+				shadowGenerator.addShadowCaster(mesh, false);
+				mesh.onDisposeObservable.addOnce(() => shadowGenerator.removeShadowCaster(mesh, false));
+			});
 			rendererController = createRendererController(scene, {
-				contentRoot: realtimeRoot,
+				entityFactory,
 				worldStateReader: config.renderSource.getWorldStateReader(),
 				worldStateLayout: config.renderSource.getWorldStateLayout(),
 			});
@@ -398,6 +419,7 @@ export function SceneRuntimeCore(props: {
 		});
 		worldSkybox = createProceduralStarSkybox(scene);
 		registerFogOfWarMaterialPlugin();
+		ambientMotes = createAmbientMotes(scene);
 		applySceneTheme();
 
 		scene.onPointerObservable.add((pointerInfo) => {
@@ -434,32 +456,28 @@ export function SceneRuntimeCore(props: {
 		);
 
 		// 世界日光与环境光：日光负责阴影，环境光提供基础照明。
-		const sunLight = new DirectionalLight("sunLight", new Vector3(0.5, -1, 0.35), scene);
-		sunLight.intensity = 3;
+		memberShadowLight = new DirectionalLight("sunLight", SUN_DIRECTION, scene);
+		memberShadowLight.intensity = 3;
+		memberShadowLight.shadowMinZ = 0.1;
+		memberShadowLight.shadowMaxZ = MEMBER_SHADOW_DEPTH_RANGE;
+		memberShadowLightOffset = SUN_DIRECTION.scale(-MEMBER_SHADOW_LIGHT_DISTANCE);
 		const ambientLight = new HemisphericLight("ambientLight", new Vector3(0, 1, 0), scene);
 		ambientLight.intensity = 0.4;
 		ambientLight.groundColor = new Color3(0.15, 0.15, 0.2);
 
-		const shadowGenerator = new ShadowGenerator(2048, sunLight);
-		shadowGenerator.bias = 0.0001;
-		shadowGenerator.darkness = 0.4;
-		shadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
-		shadowGenerator.filter = ShadowGenerator.FILTER_PCSS;
-		shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_LOW;
-
-		// 阴影归属统一入口：新 mesh 默认接收阴影；实时内容（角色/怪物）作为阴影投射源注册。
-		scene.onNewMeshAddedObservable.add((mesh) => {
-			mesh.receiveShadows = true;
-			if (realtimeRoot && mesh.isDescendantOf(realtimeRoot)) {
-				shadowGenerator.addShadowCaster(mesh);
-			}
-		});
+		memberShadowGenerator = new ShadowGenerator(2048, memberShadowLight);
+		memberShadowGenerator.bias = 0.0001;
+		// 主光强度为 3；阴影保留过多主光会让 StandardMaterial 在阴影区仍然饱和，视觉上等同无阴影。
+		memberShadowGenerator.darkness = 0.1;
+		memberShadowGenerator.contactHardeningLightSizeUVRatio = 0.085;
+		memberShadowGenerator.filter = ShadowGenerator.FILTER_PCSS;
+		memberShadowGenerator.filteringQuality = ShadowGenerator.QUALITY_LOW;
 		try {
 			await mountWorldTerrain(DEFAULT_TERRAIN_DEFINITION);
 			applySceneTheme();
 			const revealCenter = sceneCamera.getTarget();
 			setFogOfWarCenter(revealCenter);
-			worldTerrain?.update(sceneCamera.position, revealCenter);
+			worldTerrain?.update(sceneCamera.position);
 		} catch (error) {
 			log.error("程序化世界生成失败，模拟场景将在平面地表运行", error);
 		}
@@ -484,14 +502,25 @@ export function SceneRuntimeCore(props: {
 			engine.runRenderLoop(() => {
 				if (!scene || !engine) return;
 				const dt = engine.getDeltaTime() / 1000;
+				const nowMs = performance.now();
+				if (nowMs - lastFpsDisplaySampleMs >= FPS_DISPLAY_SAMPLE_INTERVAL_MS) {
+					lastFpsDisplaySampleMs = nowMs;
+					setRenderFps(engine.getFps());
+				}
+				environmentElapsedSeconds += Math.min(Math.max(dt, 0), 0.1);
+				worldSkybox?.update(environmentElapsedSeconds);
 				rendererController?.tick(dt);
 				// 仅 realtime 稳态驱动跟随；过渡期相机由 babylon 动画控制，避免两者打架。
 				if (followActive) thirdPersonController?.update(dt);
 				sceneInputController?.updateMovementState();
 				if (sceneCamera) {
 					const revealCenter = sceneCamera.getTarget();
+					if (memberShadowLight && memberShadowLightOffset) {
+						memberShadowLight.position.copyFrom(revealCenter).addInPlace(memberShadowLightOffset);
+					}
 					setFogOfWarCenter(revealCenter);
-					worldTerrain?.update(sceneCamera.position, revealCenter);
+					ambientMotes?.update(dt, revealCenter, getWorldGroundHeight);
+					worldTerrain?.update(sceneCamera.position);
 				}
 				scene.render();
 			});
@@ -629,16 +658,23 @@ export function SceneRuntimeCore(props: {
 			worldTerrain = undefined;
 			worldSkybox?.dispose();
 			worldSkybox = undefined;
+			ambientMotes?.dispose();
+			ambientMotes = undefined;
 			equipmentHighlightLayer?.dispose();
 			equipmentHighlightLayer = undefined;
 			lensPipeline?.dispose();
 			lensPipeline = undefined;
+			memberShadowGenerator?.dispose();
+			memberShadowGenerator = undefined;
+			memberShadowLight = undefined;
+			memberShadowLightOffset = undefined;
 			scene?.dispose();
 			scene = undefined;
 			engine?.dispose();
 			engine = undefined;
 			props.onDisposed(api);
 			setReady(false);
+			setRenderFps(0);
 			setCharacterPickingEnabled(false);
 			props.onCharacterContentReadyChange(false);
 			setMode("idle");
@@ -655,15 +691,25 @@ export function SceneRuntimeCore(props: {
 	});
 
 	return (
-		<canvas
-			ref={(element) => {
-				canvas = element;
-			}}
-			class={`fixed left-0 top-0 z-0 h-dvh w-dvw bg-transparent transition-opacity focus-within:outline-none ${
-				ready() ? "opacity-100" : "opacity-0"
-			} ${mode() === "realtime" || characterPickingEnabled() ? "pointer-events-auto" : "pointer-events-none"}`}
-		>
-			当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
-		</canvas>
+		<>
+			<canvas
+				ref={(element) => {
+					canvas = element;
+				}}
+				class={`fixed left-0 top-0 z-0 h-dvh w-dvw bg-transparent transition-opacity focus-within:outline-none ${
+					ready() ? "opacity-100" : "opacity-0"
+				} ${mode() === "realtime" || characterPickingEnabled() ? "pointer-events-auto" : "pointer-events-none"}`}
+			>
+				当前浏览器不支持canvas，尝试更换Google Chrome浏览器尝试
+			</canvas>
+			<Show when={ready() && mode() === "realtime"}>
+				<output
+					class="border-dividing-color bg-primary-color text-accent-color pointer-events-none fixed bottom-3 right-3 z-30 w-[5.5rem] rounded-sm border px-2 py-1 text-center font-mono text-xs tabular-nums"
+					aria-label={`当前渲染帧率 ${Math.round(renderFps())} FPS`}
+				>
+					FPS {renderFps() > 0 ? Math.round(renderFps()) : "--"}
+				</output>
+			</Show>
+		</>
 	);
 }
