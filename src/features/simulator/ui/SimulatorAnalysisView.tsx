@@ -111,9 +111,6 @@ export function SimulatorAnalysisView() {
 						options={copyOptions()}
 						placeholder="选择设计副本"
 					/>
-					<Button level="secondary" onClick={() => session.send({ type: "session.end.requested" })}>
-						结束会话
-					</Button>
 					<Show when={session.error()}>{(message) => <p class="text-danger-color text-sm">{message()}</p>}</Show>
 				</div>
 			</div>

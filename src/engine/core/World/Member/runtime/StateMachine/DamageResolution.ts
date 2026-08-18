@@ -204,7 +204,7 @@ export function resolveDamageAndApply(
 	let baseDamage = 0;
 	if (evaluator && req.damageFormula) {
 		const selfOverride = req.lockCasterAttributes
-			? CasterSnapshot.createSelfFacade(req.casterSnapshot, (key) =>
+			? CasterSnapshot.createExpressionSelf(req.casterSnapshot, (key) =>
 					log.warn(`casterSnapshot 缺少键: ${key}（公式依赖与快照不一致，按 0 处理）：${req.damageFormula}`),
 				)
 			: undefined;

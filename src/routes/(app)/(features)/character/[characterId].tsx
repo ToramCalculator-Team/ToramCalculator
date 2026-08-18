@@ -17,15 +17,15 @@ import { type DialogLayerEntryInit, useOverlay } from "~/contexts/overlay/Overla
 import { DATA_CONFIG, type TableDataConfig } from "~/dataConfig/data-config";
 import type { CharacterEdit } from "~/features/character/edit/characterEditProtocol";
 import { useCharacterSession } from "~/features/character/session/CharacterSession";
+import { CharacterAttributePreviewPanel } from "~/features/character/ui/CharacterAttributePreviewPanel";
 import { CharacterConfigPanel } from "~/features/character/ui/CharacterConfigPanel";
 import { SkillPreviewPanel } from "~/features/character/ui/SkillPreviewPanel";
-import { createDefaultCharacterWorldResource } from "~/platform/render/scene/resources/defaultCharacterResource";
-import { type CharacterContentSession, useSceneRuntime } from "~/platform/render/scene/SceneRuntime";
-import { StatsRenderer } from "~/engine/core/World/Member/MemberStatusPanel";
 import { createLogger } from "~/lib/logger";
 import type { ZodSchemaFor } from "~/lib/utils/zod";
 import type { Dic } from "~/locales/type";
 import { useInterfaceActor } from "~/machines/AppActorContext";
+import { createDefaultCharacterWorldResource } from "~/platform/render/scene/resources/defaultCharacterResource";
+import { type CharacterContentSession, useSceneRuntime } from "~/platform/render/scene/SceneRuntime";
 import { store } from "~/store";
 import { createCharacter } from "../../../../features/character/createCharacter";
 
@@ -356,7 +356,7 @@ export default function CharactePage() {
 									display: isAttrPreviewVisible() ? "flex" : "none",
 								}}
 							>
-								<StatsRenderer data={primaryMember()?.attrs} />
+								<CharacterAttributePreviewPanel data={primaryMember()?.attrs} />
 							</OverlayScrollbarsComponent>
 
 							<div
@@ -371,7 +371,14 @@ export default function CharactePage() {
 									display: isSkillPreviewVisible() ? "flex" : "none",
 								}}
 							>
-								<SkillPreviewPanel learnedSkills={displayedCharacter().skills ?? []} />
+								<SkillPreviewPanel
+									learnedSkills={displayedCharacter().skills ?? []}
+									previews={session.validation().previews}
+									status={session.validation().status}
+									error={session.validation().error}
+									onRefreshRequested={() => session.send({ type: "character.preview.refresh" })}
+									onRetryFailedRequested={() => session.send({ type: "character.preview.retryFailed" })}
+								/>
 							</OverlayScrollbarsComponent>
 
 							{/* 模式切换器 */}

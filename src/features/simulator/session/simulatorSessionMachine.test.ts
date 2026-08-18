@@ -165,6 +165,93 @@ const createParentMachine = (handle: FakeRealtimeHandle) =>
 	});
 
 describe("SimulatorSession 父子提交协议", () => {
+	it("新增设计从当前副本分支并切换当前选择", async () => {
+		const handle = new FakeRealtimeHandle();
+		const parent = createActor(createParentMachine(handle));
+		parent.start();
+		const childRef = parent.system.get("simulatorSession");
+		if (!childRef) throw new Error("SimulatorSession child 未启动");
+		const child = childRef as SimulatorSessionActorRef;
+
+		child.send({ type: "session.initialLoad.requested", design: createDesign() });
+		await waitFor(parent, (snapshot) => snapshot.matches({ simulator: "designing" }));
+		const before = child.getSnapshot().context;
+		const source = before.designCopies[0];
+		if (!source) throw new Error("测试源 DesignCopy 缺失");
+
+		child.send({ type: "design.copy.create.requested" });
+
+		const after = child.getSnapshot().context;
+		const current = after.designCopies.find((copy) => copy.id === after.currentDesignCopyId);
+		expect(after.designCopies).toHaveLength(2);
+		expect(current?.createdFromId).toBe(source.id);
+		expect(current?.hasRun).toBe(false);
+		expect(current?.design).toEqual(source.design);
+		parent.stop();
+	});
+
+	it("编辑已验证设计时自动分支并切换当前选择", async () => {
+		const handle = new FakeRealtimeHandle();
+		const parent = createActor(createParentMachine(handle));
+		parent.start();
+		const childRef = parent.system.get("simulatorSession");
+		if (!childRef) throw new Error("SimulatorSession child 未启动");
+		const child = childRef as SimulatorSessionActorRef;
+
+		child.send({ type: "session.initialLoad.requested", design: createDesign() });
+		await waitFor(parent, (snapshot) => snapshot.matches({ simulator: "designing" }));
+		const sourceId = child.getSnapshot().context.currentDesignCopyId;
+		if (!sourceId) throw new Error("测试源 DesignCopy 缺失");
+
+		child.send({ type: "validation.start.requested" });
+		await waitFor(parent, (snapshot) => snapshot.matches({ simulator: "validating" }));
+		child.send({ type: "validation.finish.requested" });
+		await waitFor(parent, (snapshot) => snapshot.matches({ simulator: "analyzing" }));
+		child.send({ type: "validation.returnToDesign.requested" });
+		await waitFor(parent, (snapshot) => snapshot.matches({ simulator: "designing" }));
+
+		child.send({ type: "design.simulatorNumber.changed", field: "randomSeed", value: 42 });
+
+		const context = child.getSnapshot().context;
+		const source = context.designCopies.find((copy) => copy.id === sourceId);
+		const current = context.designCopies.find((copy) => copy.id === context.currentDesignCopyId);
+		expect(context.designCopies).toHaveLength(2);
+		expect(source?.hasRun).toBe(true);
+		expect(source?.design.randomSeed).not.toBe(42);
+		expect(current?.id).not.toBe(sourceId);
+		expect(current?.createdFromId).toBe(sourceId);
+		expect(current?.hasRun).toBe(false);
+		expect(current?.design.randomSeed).toBe(42);
+		parent.stop();
+	});
+
+	it("成员机体编辑只更新当前 DesignCopy，不改 baseline", async () => {
+		const handle = new FakeRealtimeHandle();
+		const parent = createActor(createParentMachine(handle));
+		parent.start();
+		const childRef = parent.system.get("simulatorSession");
+		if (!childRef) throw new Error("SimulatorSession child 未启动");
+		const child = childRef as SimulatorSessionActorRef;
+
+		child.send({ type: "session.initialLoad.requested", design: createDesign() });
+		await waitFor(parent, (snapshot) => snapshot.matches({ simulator: "designing" }));
+		const before = child.getSnapshot().context;
+		const current = before.designCopies[0]?.design.teams[0]?.members[0]?.character;
+		if (!current) throw new Error("测试机体缺失");
+
+		child.send({
+			type: "design.character.updated",
+			memberId: "member-player",
+			character: { ...structuredClone(current), lv: 255 },
+		});
+
+		const after = child.getSnapshot().context;
+		const candidate = after.designCopies[0]?.design.teams[0]?.members[0]?.character;
+		expect(candidate?.lv).toBe(255);
+		expect(after.baseline?.teams[0]?.members[0]?.character?.lv).toBe(current.lv);
+		parent.stop();
+	});
+
 	it("AUI 只在验证启动和产出移交成功事实后切换稳定阶段", async () => {
 		const handle = new FakeRealtimeHandle();
 		const parent = createActor(createParentMachine(handle));

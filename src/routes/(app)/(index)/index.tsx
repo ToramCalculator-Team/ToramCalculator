@@ -50,7 +50,7 @@ export default function SimulatorPage() {
 	);
 	const isMenuItemActive = (path: string) => location.pathname.includes(path);
 	const menuItemClass = (path: string) =>
-		`w-fit border-b px-1 py-2 ${
+		`w-fit border-b px-1 py-1 ${
 			isMenuItemActive(path) ? "border-accent-color font-bold" : "border-transparent hover:border-accent-color"
 		}`;
 
@@ -298,18 +298,7 @@ export default function SimulatorPage() {
 							{(message) => <p class="text-brand-color-3rd w-full text-sm">{message()}</p>}
 						</Show>
 
-						<Show
-							when={simulatorDataReady() && simulators.status() !== "loading"}
-							fallback={
-								<ConcaveFrame
-									class="h-[239px] w-full"
-									contentClass="flex items-center justify-center"
-									decorationClass="text-accent-color"
-								>
-									<LoadingBar class="w-full max-w-80" />
-								</ConcaveFrame>
-							}
-						>
+						<Show when={simulatorDataReady() && simulators.status() !== "loading"}>
 							<div class="flex landscape:justify-end w-full snap-x snap-mandatory gap-3 overflow-x-auto pb-2">
 								<For each={simulators.rows()}>
 									{(simulator, index) => (

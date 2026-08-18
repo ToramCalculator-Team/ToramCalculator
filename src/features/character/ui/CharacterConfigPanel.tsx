@@ -19,9 +19,10 @@ import { SkillPanel } from "./SkillPanel";
 export type CharacterConfigPanelProps = {
 	character: CharacterWithRelations;
 	onEditRequested: (edit: CharacterEdit) => void;
-	onItemPreviewRequested: (type: keyof DB, data: unknown) => void;
+	onItemPreviewRequested?: (type: keyof DB, data: unknown) => void;
 	onSkillLevelAdjustRequested: (payload: { templateId: string; delta: -1 | 1 }) => void;
 	onSkillTreeRemoveRequested: (treeType: SkillTreeType) => void;
+	mode?: "persistent" | "draft";
 };
 
 export function CharacterConfigPanel(props: CharacterConfigPanelProps) {
@@ -86,6 +87,7 @@ export function CharacterConfigPanel(props: CharacterConfigPanelProps) {
 							character={props.character}
 							onPatchRequested={requestPatch}
 							onItemPreviewRequested={props.onItemPreviewRequested}
+							mode={props.mode}
 						/>
 					</Show>
 					<Show when={activeTab() === "base"}>

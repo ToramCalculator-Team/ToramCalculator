@@ -16,17 +16,10 @@
  *   - buff 命中  `hasBuff:id`     （0/1，对应 hasBuff('id')）
  */
 
+import type { ExpressionSelf } from "../JSProcessor/types";
+
 /** 施法者快照数据（纯数据，可序列化、可进 checkpoint）。 */
 export type CasterSnapshot = Record<string, number>;
-
-/** 表达式求值时 `self` 暴露的只读视图（与实时 Member 的取值面对齐）。 */
-export interface SelfFacade {
-	AttributeContainer: {
-		getValue(key: string): number;
-		getBaseValue(key: string): number;
-	};
-	hasBuff(id: string): boolean;
-}
 
 const BASE_VALUE_PREFIX = "_";
 const HAS_BUFF_PREFIX = "hasBuff:";
@@ -47,19 +40,19 @@ export function setHasBuff(snapshot: CasterSnapshot, id: string, present: boolea
 }
 
 /**
- * 基于快照构造 `self` 只读视图。
+ * 将快照构造成公式运行时的 `self`。
  *
  * 缺键回退 0 并通过 onMissing 上报（构造侧的依赖分析应已覆盖所有用到的键，
  * 缺键通常意味着依赖分析与公式不一致，是可诊断的 bug 信号）。
  */
-export function createSelfFacade(snapshot: CasterSnapshot, onMissing?: (key: string) => void): SelfFacade {
+export function createExpressionSelf(snapshot: CasterSnapshot, onMissing?: (key: string) => void): ExpressionSelf {
 	const read = (key: string): number => {
 		if (key in snapshot) return snapshot[key];
 		onMissing?.(key);
 		return 0;
 	};
 	return {
-		AttributeContainer: {
+		attributeContainer: {
 			getValue: (key) => read(key),
 			getBaseValue: (key) => read(`${BASE_VALUE_PREFIX}${key}`),
 		},

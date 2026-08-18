@@ -151,10 +151,10 @@ export function RealtimeSimulator() {
 						animate={{ opacity: [0, 1] }}
 						exit={{ opacity: [1, 0] }}
 						transition={{ duration: store.settings.userInterface.isAnimationEnabled ? 0.35 : 0 }}
-						class="pointer-events-none fixed inset-0 z-stack h-dvh w-dvw overflow-hidden"
+						class="pointer-events-none inset-0 z-stack h-full w-full overflow-hidden"
 					>
 						<Show when={phase() === "designing"}>
-							<SimulatorDesignView copy={copy()} />
+							<SimulatorDesignView copy={copy} />
 						</Show>
 						<Show when={phase() === "validating"}>
 							<SimulatorValidationView />

@@ -1,4 +1,6 @@
 /** Simulator CUI 可提交给 Session child 的具体语义意图。 */
+import type { SimulatorCharacter } from "../data/simulationDesignSchema";
+
 export type SimulatorSessionIntent =
 	| { type: "session.initialLoad.requested"; design: unknown }
 	| { type: "session.switch.requested"; design: unknown }
@@ -15,6 +17,8 @@ export type SimulatorSessionIntent =
 	| { type: "jump.requested" }
 	| { type: "controller.selected"; controllerId: string }
 	| { type: "design.copy.selected"; copyId: string }
+	| { type: "design.copy.create.requested" }
+	| { type: "design.character.updated"; memberId: string; character: SimulatorCharacter }
 	| { type: "run.selected"; side: "A" | "B"; runId: string | null }
 	| {
 			type: "design.characterNumber.changed";

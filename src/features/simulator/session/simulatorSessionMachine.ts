@@ -12,7 +12,7 @@ import type { TickStateHistoryDirectory } from "~/engine/core/tickStateHistory";
 import type { MemberSnapshot } from "~/engine/core/World/Member/Member";
 import { applyDesignCopyToPersistentDesign } from "../data/designPersistence";
 import { type SimulationDesign, SimulationDesignSchema } from "../data/simulationDesignSchema";
-import { createDesignCopy, type DesignCopy, editDesignCopy } from "../edit/designCopy";
+import { createDesignCopy, type DesignCopy, editDesignCopy, forkDesignCopy } from "../edit/designCopy";
 import { createRecordedBehaviorDesignCopy } from "../preview/recordedBehavior";
 import type { SimulatorSessionEvent } from "./simulatorSessionProtocol";
 
@@ -437,6 +437,18 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 					? { currentDesignCopyId: event.copyId, error: null }
 					: {},
 			),
+			createDesignCopyFromCurrent: assign(({ context }) => {
+				const current = selectCurrentDesignCopy(context);
+				if (!current) {
+					return { error: { operation: "load" as const, message: "尚未加载 DesignCopy" } };
+				}
+				const next = forkDesignCopy(current);
+				return {
+					designCopies: [...context.designCopies, next],
+					currentDesignCopyId: next.id,
+					error: null,
+				};
+			}),
 			selectRun: assign(({ context, event }) => {
 				if (event.type !== "run.selected") return {};
 				if (event.runId && !context.runRecords.some((record) => record.id === event.runId)) return {};
@@ -446,6 +458,17 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 							? ([event.runId, context.selectedRunIds[1]] as [string | null, string | null])
 							: ([context.selectedRunIds[0], event.runId] as [string | null, string | null]),
 				};
+			}),
+			editDesignCharacter: assign(({ context, event }) => {
+				if (event.type !== "design.character.updated") return {};
+				return editCurrentCopy(context, (design) => {
+					const member = design.teams
+						.flatMap((team) => team.members)
+						.find((candidate) => candidate.id === event.memberId);
+					if (!member || member.type !== "Player")
+						throw new Error(`Simulator 成员 ${event.memberId} 不是可编辑的 Player`);
+					member.character = structuredClone(event.character);
+				});
 			}),
 			editDesignNumber: assign(({ context, event }) => {
 				if (event.type === "design.characterNumber.changed") {
@@ -573,6 +596,8 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 						})),
 					},
 					"design.copy.selected": { actions: "selectDesignCopy" },
+					"design.copy.create.requested": { actions: "createDesignCopyFromCurrent" },
+					"design.character.updated": { actions: "editDesignCharacter" },
 					"run.selected": { actions: "selectRun" },
 					"design.characterNumber.changed": { actions: "editDesignNumber" },
 					"design.simulatorNumber.changed": { actions: "editDesignNumber" },

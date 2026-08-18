@@ -1,6 +1,24 @@
 import type { NestedSchema } from "../World/Member/runtime/AttributeContainer/SchemaTypes";
 
 /**
+ * 表达式中的 `self.xxx` / `target.xxx` 经 AST 编译后统一读取此接口。
+ * 真实 Member 与脱手技能的快照适配器必须都满足它，避免同一表达式在两条取值路径上使用不同字段名。
+ */
+export interface ExpressionAttributeReader {
+	getValue(key: string): number;
+	getBaseValue(key: string): number;
+}
+
+/**
+ * 公式运行时绑定到 `self` 的最小读取面。
+ * `selfOverride` 用于脱手结算，使快照与实时 Member 共享同一份表达式编译结果。
+ */
+export interface ExpressionSelf {
+	attributeContainer: ExpressionAttributeReader;
+	hasBuff(id: string): boolean;
+}
+
+/**
  * 表达式/脚本执行基础上下文
  *
  * 说明：
@@ -23,9 +41,9 @@ export interface ExpressionContext {
 	 *
 	 * 缺省时由 ExpressionEvaluator 按 casterId 取实时施法者。
 	 * 调用方需要锁定取值（如脱手技能读施放瞬间快照）时，传入预构造视图覆盖实时取值。
-	 * 类型保持 unknown：求值时通过 `with(ctx)` 暴露给表达式，求值器不约束其形状。
+	 * 该视图必须与 ExpressionTransformer 输出的 attributeContainer 访问契约一致。
 	 */
-	selfOverride?: unknown;
+	selfOverride?: ExpressionSelf;
 	/** 其他自定义变量 */
 	[key: string]: unknown;
 }

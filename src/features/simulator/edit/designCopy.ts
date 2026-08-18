@@ -24,6 +24,11 @@ export function createDesignCopy(design: SimulationDesign, createdFromId: string
 	};
 }
 
+/** 从现有 DesignCopy 分支出一个可编辑副本；新副本继承设计数据但不继承验证状态。 */
+export function forkDesignCopy(copy: DesignCopy): DesignCopy {
+	return createDesignCopy(copy.design, copy.id);
+}
+
 /**
  * 未运行副本保持身份并原地演进；已被 RunRecord 引用的副本通过新身份 copy-on-write。
  */

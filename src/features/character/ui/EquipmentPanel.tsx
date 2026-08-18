@@ -38,7 +38,9 @@ export type EquipmentSlot = "weaponId" | "subWeaponId" | "armorId" | "optionId" 
 export type EquipmentPanelProps = {
 	character: CharacterWithRelations;
 	onPatchRequested: (patch: CharacterFieldPatch) => Promise<void> | void;
-	onItemPreviewRequested: (type: keyof DB, data: unknown) => void;
+	onItemPreviewRequested?: (type: keyof DB, data: unknown) => void;
+	/** draft 模式只在当前配置表单内管理装备选择，不触发 Character 页面 AUI 或正式写入。 */
+	mode?: "persistent" | "draft";
 };
 
 const equipmentSlotConfig = {
@@ -67,9 +69,7 @@ const semanticToSlot = {
 } as const satisfies Record<CharacterEquipmentSlot, EquipmentSlot>;
 
 type EquipmentTableName = (typeof equipmentSlotConfig)[EquipmentSlot];
-type EquipmentSlotTable<S extends EquipmentSlot> = (typeof equipmentSlotConfig)[S];
 type EquipmentTableRow<T extends EquipmentTableName> = DB[T];
-type EquipmentSlotRow<S extends EquipmentSlot> = EquipmentTableRow<EquipmentSlotTable<S>>;
 
 const withBelongToPlayerId = <T extends EquipmentTableName>(
 	value: EquipmentTableRow<T>,
@@ -128,12 +128,26 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 	const dictionary = useDictionary();
 	// EquipmentPanel 渲染于角色页根作用域(非浮层内),openSheet 新建根级 sheet layer。
 	const overlay = useOverlay();
-	const interfaceActor = useInterfaceActor();
-	const interfaceState = useInterfaceSnapshot();
+	// Simulator 的 draft 表单位于 OverlayRoot，而 OverlayRoot 在 AppActorProvider 外部；
+	// 草稿模式不参与 Character 页面的 AUI，因此不能初始化全局 Interface actor 依赖。
+	const interfaceActor = props.mode === "draft" ? null : useInterfaceActor();
+	const interfaceState = props.mode === "draft" ? null : useInterfaceSnapshot();
+	const [draftEquipmentSlot, setDraftEquipmentSlot] = createSignal<EquipmentSlot | null>(null);
 	let equipmentPickerSheetHandle: OverlayLayerHandle | undefined;
 	let equipmentPickerSheetSlot: EquipmentSlot | undefined;
 
 	const equipmentInteraction = createMemo(() => {
+		if (props.mode === "draft") {
+			const slot = draftEquipmentSlot();
+			return slot
+				? {
+						mode: "editing" as const,
+						characterId: props.character.id,
+						equipmentSlot: slotToSemantic[slot],
+					}
+				: null;
+		}
+		if (!interfaceState) return null;
 		const interaction = selectCharacterEquipmentInteraction(interfaceState());
 		return interaction?.characterId === props.character.id ? interaction : null;
 	});
@@ -141,14 +155,26 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 	const focusedSlot = createMemo<CharacterEquipmentSlot | null>(() => equipmentInteraction()?.equipmentSlot ?? null);
 
 	const inspectSlot = (slot: EquipmentSlot) => {
+		if (props.mode === "draft") return;
+		if (!interfaceActor) throw new Error("持久化装备面板缺少 Interface actor");
 		interfaceActor.send(createInspectCharacterEquipmentEvent(props.character.id, slotToSemantic[slot]));
 	};
 
 	const editSlot = (slot: EquipmentSlot) => {
+		if (props.mode === "draft") {
+			setDraftEquipmentSlot(slot);
+			return;
+		}
+		if (!interfaceActor) throw new Error("持久化装备面板缺少 Interface actor");
 		interfaceActor.send(createEditCharacterEquipmentEvent(props.character.id, slotToSemantic[slot]));
 	};
 
 	const returnToCharacterOverview = () => {
+		if (props.mode === "draft") {
+			setDraftEquipmentSlot(null);
+			return;
+		}
+		if (!interfaceActor) throw new Error("持久化装备面板缺少 Interface actor");
 		interfaceActor.send({ type: "character.overview", characterId: props.character.id });
 	};
 
@@ -169,6 +195,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 	};
 
 	const openEquipmentCreateForm = <S extends EquipmentSlot>(slot: S) => {
+		if (props.mode === "draft") return;
 		const tableName = equipmentSlotConfig[slot];
 		const config = getEquipmentConfig(tableName, dictionary());
 		const initialValue = withBelongToPlayerId(
@@ -211,7 +238,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 		slot: EquipmentSlot,
 		item: PlayerWeaponWithRelations | PlayerArmorWithRelations | PlayerOptionWithRelations | PlayerSpecialWithRelations,
 	) => {
-		props.onItemPreviewRequested(equipmentSlotConfig[slot], item);
+		props.onItemPreviewRequested?.(equipmentSlotConfig[slot], item);
 	};
 
 	const pickEquipment = async (slot: EquipmentSlot, row: Record<string, unknown>) => {
@@ -237,7 +264,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 		const handle = overlay.openSheet({
 			render: (api) => {
 				const [filterText, setFilterText] = createSignal("");
-			const [columnVisibility, setColumnVisibility] = createSignal<ColumnVisibilityState>({});
+				const [columnVisibility, setColumnVisibility] = createSignal<ColumnVisibilityState>({});
 
 				return (
 					<div class="flex portrait:h-[90dvh] w-full h-full flex-col gap-2 p-6">
@@ -349,6 +376,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 					<Button
 						icon={<Icons.Outline.DocmentAdd />}
 						level="quaternary"
+						disabled={props.mode === "draft"}
 						class="rounded-none rounded-tr"
 						onClick={(e) => {
 							e.stopPropagation();
@@ -409,6 +437,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 					<Button
 						icon={<Icons.Outline.DocmentAdd />}
 						level="quaternary"
+						disabled={props.mode === "draft"}
 						class="rounded-none rounded-tr"
 						onClick={(e) => {
 							e.stopPropagation();
@@ -469,6 +498,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 					<Button
 						icon={<Icons.Outline.DocmentAdd />}
 						level="quaternary"
+						disabled={props.mode === "draft"}
 						class="rounded-none rounded-tr"
 						onClick={(e) => {
 							e.stopPropagation();
@@ -529,6 +559,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 					<Button
 						icon={<Icons.Outline.DocmentAdd />}
 						level="quaternary"
+						disabled={props.mode === "draft"}
 						class="rounded-none rounded-tr"
 						onClick={(e) => {
 							e.stopPropagation();
@@ -589,6 +620,7 @@ export function EquipmentPanel(props: EquipmentPanelProps) {
 					<Button
 						icon={<Icons.Outline.DocmentAdd />}
 						level="quaternary"
+						disabled={props.mode === "draft"}
 						class="rounded-none rounded-tr"
 						onClick={(e) => {
 							e.stopPropagation();

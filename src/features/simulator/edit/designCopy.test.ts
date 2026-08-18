@@ -1,7 +1,7 @@
 import { defaultData } from "@db/defaultData";
 import { describe, expect, it } from "vitest";
 import { SimulationDesignSchema } from "../data/simulationDesignSchema";
-import { diffDesignCopies } from "./designCopy";
+import { createDesignCopy, diffDesignCopies, editDesignCopy, forkDesignCopy } from "./designCopy";
 
 const baseline = SimulationDesignSchema.parse({
 	...defaultData.simulator,
@@ -51,6 +51,28 @@ const baseline = SimulationDesignSchema.parse({
 });
 
 describe("DesignCopy 差异", () => {
+	it("从当前 DesignCopy 新增副本并记录来源", () => {
+		const source = createDesignCopy(baseline);
+		const next = forkDesignCopy(source);
+
+		expect(next.id).not.toBe(source.id);
+		expect(next.createdFromId).toBe(source.id);
+		expect(next.hasRun).toBe(false);
+		expect(next.design).toEqual(source.design);
+	});
+
+	it("编辑已验证副本时生成新副本并记录来源", () => {
+		const source = { ...createDesignCopy(baseline), hasRun: true };
+		const next = editDesignCopy(source, (draft) => {
+			draft.randomSeed = 42;
+		});
+
+		expect(next.id).not.toBe(source.id);
+		expect(next.createdFromId).toBe(source.id);
+		expect(next.hasRun).toBe(false);
+		expect(next.design.randomSeed).toBe(42);
+	});
+
 	it("成员跨队移动按稳定 Member 身份显示 FK 变化", () => {
 		const candidate = structuredClone(baseline);
 		const member = candidate.teams[0].members.pop();

@@ -1,9 +1,8 @@
 import type { CharacterSkillWithRelations } from "@db/generated/repositories/character_skill";
 import { createMemo, For, Show } from "solid-js";
 import { Button } from "~/components/ui/controls/button";
-import { useCharacterSession } from "~/features/character/session/CharacterSession";
-import type { CharacterPreviewTaskState } from "~/features/character/session/characterSessionMachine";
 import type { SkillRejectionReason } from "~/engine/core/types";
+import type { CharacterPreviewTaskState } from "~/features/character/session/characterSessionMachine";
 
 const rejectionReasonText: Record<SkillRejectionReason, string> = {
 	skill_not_found: "技能未装载到成员运行时",
@@ -16,7 +15,7 @@ const rejectionReasonText: Record<SkillRejectionReason, string> = {
 	member_busy: "前一动作尚未结束",
 };
 
-type SkillRow = {
+export type CharacterSkillPreviewRow = {
 	id: string;
 	name: string;
 	level: number;
@@ -26,10 +25,10 @@ type SkillRow = {
 	note?: string;
 };
 
-const projectSkillState = (
+export const projectCharacterSkillPreviewRow = (
 	skill: CharacterSkillWithRelations,
 	state: CharacterPreviewTaskState | undefined,
-): SkillRow => {
+): CharacterSkillPreviewRow => {
 	const base = {
 		id: skill.id,
 		name: skill.template?.name ?? skill.id,
@@ -54,14 +53,19 @@ const projectSkillState = (
 	return { ...base, loading: false, damage: result.damage, note: result.note };
 };
 
-/** 技能预览只渲染 CharacterSession 已编排的结果，不构造任务、不管理 token 或 debounce。 */
-export function SkillPreviewPanel(props: { learnedSkills?: CharacterSkillWithRelations[] }) {
-	const session = useCharacterSession();
-	const validation = session.validation;
+/** 技能预览只渲染调用方提供的结果，不构造任务、不管理 token 或 debounce。 */
+export function SkillPreviewPanel(props: {
+	learnedSkills?: CharacterSkillWithRelations[];
+	previews?: Readonly<Record<string, CharacterPreviewTaskState>>;
+	status?: "idle" | "running" | "ready" | "partial" | "failed";
+	error?: string;
+	onRefreshRequested?: () => void;
+	onRetryFailedRequested?: () => void;
+}) {
 	const rows = createMemo(() =>
 		(props.learnedSkills ?? [])
 			.filter((skill) => skill.lv > 0)
-			.map((skill) => projectSkillState(skill, validation().previews[skill.id])),
+			.map((skill) => projectCharacterSkillPreviewRow(skill, props.previews?.[skill.id])),
 	);
 
 	return (
@@ -70,32 +74,28 @@ export function SkillPreviewPanel(props: { learnedSkills?: CharacterSkillWithRel
 				<h2 class="text-lg font-bold">技能伤害预览</h2>
 				<Show when={rows().length > 0}>
 					<Button
-						onClick={() => session.send({ type: "character.preview.refresh" })}
+						onClick={props.onRefreshRequested}
 						class="text-link-color text-xs hover:underline"
-						disabled={validation().status === "running"}
+						disabled={props.status === "running"}
 					>
-						{validation().status === "running" ? "计算中..." : "重新计算"}
+						{props.status === "running" ? "计算中..." : "重新计算"}
 					</Button>
 				</Show>
 			</div>
 
-			<Show when={validation().status === "running"}>
+			<Show when={props.status === "running"}>
 				<div class="text-muted-color flex items-center gap-2 text-sm">
 					<span class="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
 					计算中...
 				</div>
 			</Show>
 
-			<Show when={validation().error}>
+			<Show when={props.error}>
 				{(error) => (
 					<div class="bg-error-bg text-error-color rounded p-2 text-sm">
 						{error()}
-						<Show when={Object.values(validation().previews).some((state) => state.status === "failed")}>
-							<Button
-								level="quaternary"
-								onClick={() => session.send({ type: "character.preview.retryFailed" })}
-								class="ml-2 text-xs"
-							>
+						<Show when={Object.values(props.previews ?? {}).some((state) => state.status === "failed")}>
+							<Button level="quaternary" onClick={props.onRetryFailedRequested} class="ml-2 text-xs">
 								重试失败项
 							</Button>
 						</Show>

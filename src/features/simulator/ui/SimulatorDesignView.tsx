@@ -1,15 +1,16 @@
-import { createMemo, createSignal, For, onMount, Show } from "solid-js";
+import { type Accessor, createMemo, createSignal, For, onMount, Show } from "solid-js";
 import { Button } from "~/components/ui/controls/button";
 import { Select } from "~/components/ui/controls/select";
 import { Icons } from "~/components/ui/icons";
+import { useOverlay } from "~/contexts/overlay/OverlayContext";
 import type { SimulationDesignMember } from "~/features/simulator/data/simulationDesignSchema";
 import { useSimulatorSession } from "~/features/simulator/session/SimulatorSession";
 import { completeSimulatorPerformanceMeasureAfterPaint } from "~/features/simulator/simulatorPerformance";
 import type { DesignCopy } from "../edit/designCopy";
+import { SimulatorMemberEditorSheet } from "./SimulatorMemberEditorSheet";
+import { SimulatorSettingsDialog } from "./SimulatorSettingsDialog";
 
 type Camp = "A" | "B";
-
-const characterFields = ["lv", "str", "int", "vit", "agi", "dex"] as const;
 
 const memberTypeLabel = (member: SimulationDesignMember) => {
 	switch (member.type) {
@@ -37,7 +38,12 @@ const memberDescription = (member: SimulationDesignMember) => {
 	return "成员配置";
 };
 
-function MemberCard(props: { member: SimulationDesignMember; primaryMemberId: string | null; expanded: boolean }) {
+function MemberCard(props: {
+	member: SimulationDesignMember;
+	primaryMemberId: string | null;
+	expanded: boolean;
+	onEditRequested: (member: SimulationDesignMember) => void;
+}) {
 	const isPrimary = () => props.member.id === props.primaryMemberId;
 	return (
 		<article
@@ -70,9 +76,10 @@ function MemberCard(props: { member: SimulationDesignMember; primaryMemberId: st
 			</div>
 			<button
 				type="button"
-				disabled
-				class="rounded-lg p-3 opacity-45"
-				title="成员配置编辑尚未接入当前会话"
+				disabled={props.member.type !== "Player" || !props.member.character}
+				onClick={() => props.onEditRequested(props.member)}
+				class="rounded-lg p-3 enabled:hover:bg-primary-color disabled:cursor-not-allowed disabled:opacity-45"
+				title={props.member.type === "Player" ? "编辑当前设计中的机体配置" : "当前成员类型暂不支持机体配置"}
 				aria-label="成员配置"
 			>
 				<Icons.Outline.Category class="h-6 w-6" />
@@ -81,16 +88,33 @@ function MemberCard(props: { member: SimulationDesignMember; primaryMemberId: st
 	);
 }
 
-function CampPanel(props: { camp: Camp; copy: DesignCopy }) {
-	const teams = createMemo(() => props.copy.design.teams.filter((team) => team.camp === props.camp));
+/**
+ * 通过访问器读取当前 DesignCopy。未验证副本编辑时会保持同一个 id，若传递普通对象，成员编辑器会继续看到旧快照。
+ */
+function CampPanel(props: { camp: Camp; copy: Accessor<DesignCopy> }) {
+	const overlay = useOverlay();
+	const session = useSimulatorSession();
+	const teams = createMemo(() => props.copy().design.teams.filter((team) => team.camp === props.camp));
 	const [selectedTeamId, setSelectedTeamId] = createSignal<string | null>(null);
 	const selectedTeam = createMemo(() => {
 		const available = teams();
 		return available.find((team) => team.id === selectedTeamId()) ?? available[0] ?? null;
 	});
+	const openMemberEditor = (member: SimulationDesignMember) => {
+		if (member.type !== "Player" || !member.character) return;
+		overlay.openSheet({
+			render: (api) => (
+				<SimulatorMemberEditorSheet
+					member={member}
+					onClose={api.close}
+					onSave={(character) => session.send({ type: "design.character.updated", memberId: member.id, character })}
+				/>
+			),
+		});
+	};
 
 	return (
-		<section class="flex min-w-0 flex-col gap-3 lg:min-h-[40rem]">
+		<section class="flex min-w-0 flex-col gap-3 lg:min-h-[40rem] landscape:border-y-accent-color landscape:border-y-2 p-3">
 			<h2 class="px-2 py-1 text-center text-xl font-bold">阵营{props.camp}</h2>
 			<div class="flex min-h-14 items-center gap-1 overflow-x-auto rounded-lg p-1">
 				<For each={teams()}>
@@ -121,8 +145,9 @@ function CampPanel(props: { camp: Camp; copy: DesignCopy }) {
 								{(member) => (
 									<MemberCard
 										member={member}
-										primaryMemberId={props.copy.design.primaryMemberId}
+										primaryMemberId={props.copy().design.primaryMemberId}
 										expanded={team().members.length === 1}
+										onEditRequested={openMemberEditor}
 									/>
 								)}
 							</For>
@@ -156,148 +181,65 @@ function CampPanel(props: { camp: Camp; copy: DesignCopy }) {
 	);
 }
 
-export function SimulatorDesignView(props: { copy: DesignCopy }) {
+export function SimulatorDesignView(props: { copy: Accessor<DesignCopy> }) {
 	const session = useSimulatorSession();
+	const overlay = useOverlay();
 	onMount(() => completeSimulatorPerformanceMeasureAfterPaint("return-to-design"));
-	const [settingsOpen, setSettingsOpen] = createSignal(false);
 	const copyOptions = createMemo(() =>
 		session.designCopies().map((copy, index) => ({
 			value: copy.id,
 			label: `${copy.design.name || `设计副本 ${index + 1}`}${copy.hasRun ? " · 已验证" : ""}`,
 		})),
 	);
-	const currentDifferences = createMemo(() => session.previewCurrentDifferences());
-	const primaryCharacter = createMemo(
-		() =>
-			props.copy.design.teams
-				.flatMap((team) => team.members)
-				.find((member) => member.id === props.copy.design.primaryMemberId)?.character ?? null,
-	);
-
-	const editCharacterNumber = (field: (typeof characterFields)[number], value: number) => {
-		if (Number.isFinite(value)) session.send({ type: "design.characterNumber.changed", field, value });
-	};
 	const editSimulatorNumber = (field: "randomSeed" | "logicHz", value: number) => {
 		if (Number.isFinite(value)) session.send({ type: "design.simulatorNumber.changed", field, value });
+	};
+	const openSettings = () => {
+		overlay.openDialog({
+			title: "Simulator 设置",
+			maxWidth: "min(42rem, 92vw)",
+			render: () => (
+				<SimulatorSettingsDialog
+					copy={session.currentDesignCopy}
+					differences={session.previewCurrentDifferences}
+					error={session.error}
+					onNumberChange={editSimulatorNumber}
+					onApply={() => session.send({ type: "design.apply.requested" })}
+				/>
+			),
+		});
 	};
 
 	return (
 		<div class="pointer-events-auto absolute inset-0 overflow-y-auto">
 			<div class="mx-auto flex min-h-full w-full flex-col gap-6 px-4 py-5 sm:px-8 lg:px-12 lg:py-8 xl:px-24">
-				<header class="relative z-20 grid grid-cols-[minmax(0,1fr)_3.5rem] items-center gap-3">
-					<div class="border-dividing-color rounded-lg border p-1">
-						<Select
-							value={props.copy.id}
-							setValue={(copyId) => session.send({ type: "design.copy.selected", copyId })}
-							options={copyOptions()}
-							placeholder="选择 Simulator 设计"
-						/>
+				<header class="relative z-20 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+					<Select
+						value={props.copy().id}
+						setValue={(copyId) => session.send({ type: "design.copy.selected", copyId })}
+						options={copyOptions()}
+						placeholder="选择 Simulator 设计"
+					/>
+					<div class="flex items-center gap-1">
+						<button
+							type="button"
+							onClick={() => session.send({ type: "design.copy.create.requested" })}
+							class="hover:bg-area-color flex h-12 w-12 items-center justify-center rounded-lg"
+							title="新增设计"
+							aria-label="新增设计"
+						>
+							<Icons.Outline.DocmentAdd />
+						</button>
+						<button
+							type="button"
+							onClick={openSettings}
+							class="hover:bg-area-color flex h-12 w-12 items-center justify-center rounded-lg"
+							title="Simulator 设置"
+							aria-label="Simulator 设置"
+						>
+							<Icons.Outline.Settings />
+						</button>
 					</div>
-					<button
-						type="button"
-						onClick={() => setSettingsOpen((open) => !open)}
-						class={`flex h-12 w-12 items-center justify-center rounded-lg ${settingsOpen() ? "bg-area-color" : "hover:bg-area-color"}`}
-						aria-label="Simulator 设置"
-						aria-expanded={settingsOpen()}
-					>
-						<Icons.Outline.Settings />
-					</button>
-					<Show when={settingsOpen()}>
-						<aside class="bg-primary-color border-dividing-color shadow-dividing-color absolute right-0 top-16 z-50 flex max-h-[calc(100dvh-6rem)] w-[min(92vw,28rem)] flex-col gap-4 overflow-y-auto rounded-lg border p-4 shadow-card">
-							<div class="flex items-center justify-between gap-3">
-								<div class="min-w-0">
-									<strong class="block truncate">{props.copy.design.name || "未命名 Simulator"}</strong>
-									<span class="text-accent-color-70 text-sm">设计设置</span>
-								</div>
-								<button
-									type="button"
-									onClick={() => setSettingsOpen(false)}
-									class="hover:bg-area-color rounded-lg p-3"
-									aria-label="关闭设置"
-								>
-									<Icons.Outline.Close />
-								</button>
-							</div>
-							<section class="grid grid-cols-2 gap-3">
-								<label class="flex min-w-0 flex-col gap-1 text-sm">
-									随机种子
-									<input
-										type="number"
-										value={props.copy.design.randomSeed}
-										onInput={(event) => editSimulatorNumber("randomSeed", Number(event.currentTarget.value))}
-										class="border-dividing-color bg-area-color min-w-0 rounded-lg border px-3 py-2"
-									/>
-								</label>
-								<label class="flex min-w-0 flex-col gap-1 text-sm">
-									逻辑频率
-									<input
-										type="number"
-										min="1"
-										value={props.copy.design.logicHz}
-										onInput={(event) => editSimulatorNumber("logicHz", Number(event.currentTarget.value))}
-										class="border-dividing-color bg-area-color min-w-0 rounded-lg border px-3 py-2"
-									/>
-								</label>
-							</section>
-							<Show when={primaryCharacter()}>
-								{(character) => (
-									<section>
-										<h3 class="mb-2 text-sm font-bold">主控 Character</h3>
-										<div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-											<For each={characterFields}>
-												{(field) => (
-													<label class="flex min-w-0 items-center justify-between gap-2 text-xs uppercase">
-														{field}
-														<input
-															type="number"
-															value={character()[field]}
-															onInput={(event) => editCharacterNumber(field, Number(event.currentTarget.value))}
-															class="border-dividing-color bg-area-color min-w-0 w-20 rounded-lg border px-2 py-1 text-right"
-														/>
-													</label>
-												)}
-											</For>
-										</div>
-									</section>
-								)}
-							</Show>
-							<Show when={currentDifferences().length > 0}>
-								<section>
-									<h3 class="mb-2 text-sm font-bold">正式设计差异</h3>
-									<div class="max-h-40 overflow-y-auto">
-										<For each={currentDifferences()}>
-											{(difference) => (
-												<div class="border-dividing-color grid grid-cols-[1fr_auto] gap-2 border-b py-2 text-xs">
-													<span>
-														{difference.entityType}.{difference.field}
-													</span>
-													<span>
-														{String(difference.before)} → {String(difference.after)}
-													</span>
-												</div>
-											)}
-										</For>
-									</div>
-									<Button
-										level="secondary"
-										onClick={() => session.send({ type: "design.apply.requested" })}
-										class="mt-3 w-full"
-									>
-										应用为正式设计
-									</Button>
-								</section>
-							</Show>
-							<Show when={session.error()}>{(message) => <p class="text-danger-color text-sm">{message()}</p>}</Show>
-							<Button
-								level="secondary"
-								icon={<Icons.Outline.Stop />}
-								onClick={() => session.send({ type: "session.end.requested" })}
-								class="w-full"
-							>
-								结束会话
-							</Button>
-						</aside>
-					</Show>
 				</header>
 
 				<main class="grid min-h-0 flex-1 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_10rem_minmax(0,1fr)] lg:gap-6">
@@ -315,7 +257,7 @@ export function SimulatorDesignView(props: { copy: DesignCopy }) {
 								<strong class="text-3xl">START</strong>
 							</button>
 							<span class="border-dividing-color bg-area-color rounded-lg border px-4 py-2 text-sm">
-								{props.copy.design.logicHz} Hz
+								{props.copy().design.logicHz} Hz
 							</span>
 						</div>
 					</div>
