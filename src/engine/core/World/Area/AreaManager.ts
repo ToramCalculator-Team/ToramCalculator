@@ -4,6 +4,7 @@ import type { SpaceManager } from "../SpaceManager";
 import { BuffAreaSystem } from "./BuffAreaSystem";
 import { DamageAreaSystem } from "./DamageAreaSystem";
 import { TrapAreaSystem } from "./TrapAreaSystem";
+import type { DamageAreaSpec } from "./types";
 
 /**
  * AreaManager
@@ -19,6 +20,11 @@ export class AreaManager {
 		this.damageAreaSystem = new DamageAreaSystem(spaceManager, memberManager);
 		this.buffAreaSystem = new BuffAreaSystem(spaceManager, memberManager);
 		this.trapAreaSystem = new TrapAreaSystem(spaceManager, memberManager);
+	}
+
+	/** 持续伤害统一从 AreaManager 注册到现有 DamageAreaSystem。 */
+	createDamageArea(spec: DamageAreaSpec): string {
+		return this.damageAreaSystem.createDamageArea(spec);
 	}
 
 	/**

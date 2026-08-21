@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-	evalTrajectory,
-	resolveTrajectory,
-	type Trajectory,
-	trajectoryDurationMs,
-	trajectoryPresets,
-} from "./trajectory";
+import { evalTrajectory, resolveTrajectory, trajectoryDurationMs, trajectoryPresets } from "./trajectory";
 
 const source = { x: 0, y: 0, z: 0 };
 const target = { x: 10, y: 0, z: 0 };
@@ -40,27 +34,21 @@ describe("trajectory", () => {
 		if (resolved.kind !== "spiral") return;
 		const duration = trajectoryDurationMs(resolved);
 		expect(duration).toBeGreaterThan(0);
+		if (duration == null) return;
 		const start = evalTrajectory(resolved, 0, { source, target });
 		const end = evalTrajectory(resolved, duration, { source, target });
 		expect(Math.hypot(start.x - source.x, start.z - source.z)).toBeCloseTo(1, 5);
 		expect(Math.hypot(end.x - source.x, end.z - source.z)).toBeCloseTo(5, 5);
 	});
 
-	it("静态预设与附着预设的解析", () => {
-		const staticResolved = resolveTrajectory(
-			trajectoryPresets.staticAtTarget(1000, { x: 0, y: 1, z: 0 }),
-			source,
-			target,
-		);
-		expect(staticResolved).toEqual({ kind: "static", center: { x: 10, y: 1, z: 0 }, lifetimeMs: 1000 });
-
-		const attachResolved = resolveTrajectory(trajectoryPresets.attachToSelf(1000), source, target);
+	it("附着轨迹只描述锚点运动，不携带区域生命周期", () => {
+		const attachResolved = resolveTrajectory(trajectoryPresets.attachToSelf(), source, target);
 		expect(attachResolved).toEqual({
 			kind: "attach",
 			anchor: "source",
 			offset: { x: 0, y: 0, z: 0 },
-			lifetimeMs: 1000,
 		});
-		expect(evalTrajectory(attachResolved as Trajectory, 500, { source, target })).toEqual(source);
+		expect(trajectoryDurationMs(attachResolved)).toBeNull();
+		expect(evalTrajectory(attachResolved, 500, { source, target })).toEqual(source);
 	});
 });

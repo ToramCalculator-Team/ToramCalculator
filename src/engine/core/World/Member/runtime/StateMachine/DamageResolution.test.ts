@@ -1,19 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 import type { StageData } from "../../../../Pipeline/stageEnv";
-import type { DamageDispatchPayload } from "../../../Area/types";
+import { type DamageDispatchPayload, damageSourceKey } from "../../../Damage/types";
 import { createHitSession, type HitSession, resolveDamageAndApply, resolveHitCheck } from "./DamageResolution";
 
 // 构造一个合法的受击载荷；各测试按需覆盖字段。
 const makePayload = (over: Partial<DamageDispatchPayload> = {}): DamageDispatchPayload => ({
 	sourceId: "caster-1",
-	areaId: "area-1",
+	sourceTeamId: "team-1",
+	origin: { kind: "area", areaId: "area-1" },
 	damageFormula: "self.atk",
 	casterSnapshot: { hit: 500, atk: 1000 },
 	skillLv: 10,
 	damageCount: 1,
 	damageIndex: 0,
 	damageTags: [],
-	warningZone: "none" as DamageDispatchPayload["warningZone"],
 	lockCasterAttributes: false,
 	direction: "front" as DamageDispatchPayload["direction"],
 	isFatal: false,
@@ -27,6 +27,17 @@ const stubPipeline = (byName: Record<string, Record<string, unknown>>) =>
 		pipelineName: string,
 		params?: Record<string, unknown>,
 	) => StageData;
+
+describe("damageSourceKey", () => {
+	it("按队伍、施法成员和技能或普通攻击聚合", () => {
+		expect(damageSourceKey({ sourceTeamId: "team-1", sourceId: "member-1", sourceSkillId: "skill-1" })).toBe(
+			"team:team-1/member:member-1/skill:skill-1",
+		);
+		expect(damageSourceKey({ sourceTeamId: "team-1", sourceId: "member-1" })).toBe(
+			"team:team-1/member:member-1/normalAtk",
+		);
+	});
+});
 
 describe("createHitSession", () => {
 	it("初始化所有结果字段为 null，持有原始请求", () => {

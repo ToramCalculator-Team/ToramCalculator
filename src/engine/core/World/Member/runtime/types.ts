@@ -48,6 +48,7 @@ export interface MemberSharedRuntime<_TExtraAttrKey extends string = never> exte
 	skillCooldowns: number[];
 	/** 当前正在处理的技能（FSM 在"添加待处理技能"时写入，"清空待处理技能"时清空）。 */
 	currentSkill: {
+		executionInstance: number;
 		data: EngineCharacterSkill;
 		activeVariant: EngineSkillVariant;
 		lifecycle: {
@@ -58,6 +59,7 @@ export interface MemberSharedRuntime<_TExtraAttrKey extends string = never> exte
 			recovery: number;
 		};
 	} | null;
+	nextSkillExecutionInstance: number;
 	/** 上一次释放的技能，用于连击判定等。 */
 	previousSkill: EngineCharacterSkill | null;
 	/** per-tree 注入的所属技能上下文（注册行为树时由 localContext 提供）。 */
@@ -92,6 +94,7 @@ export const DefaultMemberSharedRuntime: MemberSharedRuntime = {
 	statusTags: [],
 	skillCooldowns: [],
 	currentSkill: null,
+	nextSkillExecutionInstance: 0,
 	previousSkill: null,
 };
 

@@ -1,4 +1,4 @@
-import type { Vec3 } from "./Area/types";
+import type { Vec3 } from "./EffectRange/types";
 import type { MemberManager } from "./MemberManager";
 import type { WorldObservable } from "./observable";
 
@@ -24,6 +24,8 @@ export interface QueryCircleOptions {
 	/** 自定义过滤谓词，作用于只读视图 */
 	readonly filter?: (observable: WorldObservable) => boolean;
 }
+
+export interface QueryRectangleOptions extends QueryCircleOptions {}
 
 /**
  * SpaceManager
@@ -66,5 +68,33 @@ export class SpaceManager {
 		return {
 			members: membersInRange,
 		};
+	}
+
+	/**
+	 * 查询有方向的矩形范围。矩形宽度沿局部 X，长度沿局部 Z，yaw 为绕 Y 轴旋转。
+	 * 该查询与 queryCircle 共享同一只读成员视图，区域系统只负责选择几何形状和业务过滤。
+	 */
+	queryRectangle(
+		center: { x: number; y: number; z: number },
+		width: number,
+		height: number,
+		yaw: number,
+		opts?: QueryRectangleOptions,
+	): { members: WorldObservable[] } {
+		const halfWidth = Math.max(0, width) / 2;
+		const halfHeight = Math.max(0, height) / 2;
+		const cos = Math.cos(yaw);
+		const sin = Math.sin(yaw);
+		const membersInRange = this.memberManager.getAllMembers().filter((member) => {
+			const dx = member.position.x - center.x;
+			const dz = member.position.z - center.z;
+			const localX = dx * cos - dz * sin;
+			const localZ = dx * sin + dz * cos;
+			if (Math.abs(localX) > halfWidth || Math.abs(localZ) > halfHeight) return false;
+			if (opts?.aliveOnly && !member.alive) return false;
+			if (opts?.filter && !opts.filter(member)) return false;
+			return true;
+		});
+		return { members: membersInRange };
 	}
 }

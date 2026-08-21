@@ -2,52 +2,69 @@ import { describe, expect, it, vi } from "vitest";
 import { MemberManager } from "../MemberManager";
 import { SpaceManager } from "../SpaceManager";
 import { DamageAreaSystem } from "./DamageAreaSystem";
-import { type DamageAreaRequest, WORLD_AREA_CAPACITY, WORLD_AREA_CAPACITY_EXCEEDED_CODE } from "./types";
+import { type DamageAreaSpec, WORLD_AREA_CAPACITY, WORLD_AREA_CAPACITY_EXCEEDED_CODE } from "./types";
 
-describe("DamageAreaSystem - 伤害来源透传", () => {
-	it("将 member、skill 和 area 身份派发给受击者", () => {
-		const memberManager = new MemberManager();
-		const caster = {
-			id: "member-caster",
-			campId: "camp-a",
-			position: { x: 0, y: 0, z: 0 },
-			alive: true,
-		};
-		const target = {
-			id: "member-target",
-			campId: "camp-b",
-			position: { x: 3, y: 0, z: 0 },
-			alive: true,
-		};
-		vi.spyOn(memberManager, "getMember").mockImplementation((memberId) => {
-			// 本测试只验证区域派发契约，DamageAreaSystem 实际只读取 WorldObservable 字段。
-			return (memberId === caster.id ? caster : memberId === target.id ? target : null) as never;
-		});
+const caster = {
+	id: "member-caster",
+	campId: "camp-a",
+	position: { x: 0, y: 0, z: 0 },
+	alive: true,
+};
+
+const target = {
+	id: "member-target",
+	campId: "camp-b",
+	position: { x: 3, y: 0, z: 0 },
+	alive: true,
+};
+
+function createMembers() {
+	const caster = { id: "member-caster", campId: "camp-a", position: { x: 0, y: 0, z: 0 }, alive: true };
+	const target = { id: "member-target", campId: "camp-b", position: { x: 3, y: 0, z: 0 }, alive: true };
+	const memberManager = new MemberManager();
+	vi.spyOn(memberManager, "getAllMembers").mockReturnValue([caster, target] as never);
+	vi.spyOn(memberManager, "getMember").mockImplementation((memberId) => {
+		return (memberId === caster.id ? caster : memberId === target.id ? target : null) as never;
+	});
+	return memberManager;
+}
+
+function createSpec(over: Partial<DamageAreaSpec> = {}): DamageAreaSpec {
+	return {
+		identity: {
+			sourceId: caster.id,
+			sourceSkillId: "skill-magic-arrow",
+			sourceCampId: caster.campId,
+			sourceTeamId: "team-a",
+		},
+		attackSemantics: { damageCount: 1, damageIntervalMs: 0 },
+		payload: {
+			damageFormula: "100",
+			casterSnapshot: {},
+			skillLv: 10,
+			damageTags: ["magical"],
+			lockCasterAttributes: true,
+		},
+		targetId: target.id,
+		rangeKind: "GroundFixed",
+		range: {
+			shape: { kind: "circle", radius: 1 },
+			anchor: { kind: "target" },
+			yaw: 0,
+		},
+		lifetime: { startTimeMs: 100, durationMs: 1000 },
+		hitPolicy: { hitIntervalMs: 0 },
+		...over,
+	};
+}
+
+describe("DamageAreaSystem", () => {
+	it("只为真正持续区域注册实例，并显式派发 area 来源", () => {
+		const memberManager = createMembers();
 		const sendTo = vi.spyOn(memberManager, "sendTo").mockImplementation(() => undefined);
 		const system = new DamageAreaSystem(new SpaceManager(memberManager), memberManager);
-		const request = {
-			identity: {
-				sourceId: caster.id,
-				sourceSkillId: "skill-magic-arrow",
-				sourceCampId: caster.campId,
-			},
-			lifetime: { startTimeMs: 100, durationMs: 1000 },
-			hitPolicy: { hitIntervalMs: 0 },
-			attackSemantics: { damageCount: 1 },
-			range: { rangeKind: "Single", rangeParams: {} },
-			payload: {
-				damageFormula: "100",
-				casterSnapshot: {},
-				skillLv: 10,
-				damageTags: ["magical"],
-				warningZone: "none",
-				lockCasterAttributes: true,
-			},
-			casterId: caster.id,
-			targetId: target.id,
-		} satisfies DamageAreaRequest;
+		const areaId = system.createDamageArea(createSpec());
 
-		const areaId = system.add(request);
 		system.tick({ tickIndex: 1, currentTimeMs: 100, deltaTimeMs: 16 });
 
 		expect(sendTo).toHaveBeenCalledOnce();
@@ -57,94 +74,208 @@ describe("DamageAreaSystem - 伤害来源透传", () => {
 				damageRequest: expect.objectContaining({
 					sourceId: caster.id,
 					sourceSkillId: "skill-magic-arrow",
-					areaId,
+					sourceTeamId: "team-a",
+					origin: { kind: "area", areaId },
 				}),
 			},
 		});
 	});
 
-	it("在创建第 257 个区域时使用稳定诊断码拒绝", () => {
-		const memberManager = new MemberManager();
-		vi.spyOn(memberManager, "getMember").mockReturnValue({
-			id: "member-caster",
-			campId: "camp-a",
-			position: { x: 0, y: 0, z: 0 },
-			alive: true,
-		} as never);
+	it("容量超限时使用稳定诊断码拒绝创建", () => {
+		const memberManager = createMembers();
 		const system = new DamageAreaSystem(new SpaceManager(memberManager), memberManager);
-		const request = {
-			identity: { sourceId: "member-caster", sourceCampId: "camp-a" },
-			lifetime: { startTimeMs: 0, durationMs: 1000 },
-			hitPolicy: { hitIntervalMs: 0 },
-			attackSemantics: { damageCount: 1 },
-			range: { rangeKind: "Single", rangeParams: {} },
-			payload: {
-				damageFormula: "100",
-				casterSnapshot: {},
-				skillLv: 1,
-				damageTags: [],
-				warningZone: "none",
-				lockCasterAttributes: true,
-			},
-			casterId: "member-caster",
-		} satisfies DamageAreaRequest;
+		const spec = createSpec();
 
-		for (let index = 0; index < WORLD_AREA_CAPACITY; index++) system.add(request);
-		expect(() => system.add(request)).toThrow(WORLD_AREA_CAPACITY_EXCEEDED_CODE);
+		for (let index = 0; index < WORLD_AREA_CAPACITY; index++) system.createDamageArea(spec);
+		expect(() => system.createDamageArea(spec)).toThrow(WORLD_AREA_CAPACITY_EXCEEDED_CODE);
 	});
-});
 
-describe("DamageAreaSystem - 实时区域生命周期", () => {
-	it("单体弹道到达后在伤害窗口结束前继续输出终点区域", () => {
-		const memberManager = new MemberManager();
-		const caster = {
-			id: "member-caster",
-			campId: "camp-a",
-			position: { x: 0, y: 0, z: 0 },
-			alive: true,
-		};
-		const target = {
-			id: "member-target",
-			campId: "camp-b",
-			position: { x: 4, y: 0, z: 0 },
-			alive: true,
-		};
-		vi.spyOn(memberManager, "getMember").mockImplementation((memberId) => {
-			// 本测试只验证区域生命周期，DamageAreaSystem 实际只读取 WorldObservable 字段。
-			return (memberId === caster.id ? caster : memberId === target.id ? target : null) as never;
-		});
+	it("静止区域要求正数 durationMs，并导出解析后的矩形范围", () => {
+		const memberManager = createMembers();
 		const system = new DamageAreaSystem(new SpaceManager(memberManager), memberManager);
-		const request = {
-			identity: { sourceId: caster.id, sourceCampId: caster.campId },
-			lifetime: { startTimeMs: 100, durationMs: 500 },
-			hitPolicy: { hitIntervalMs: 500 },
-			attackSemantics: { damageCount: 2 },
-			range: { rangeKind: "Single", rangeParams: {} },
-			shape: { kind: "point" },
-			trajectory: {
-				kind: "segment",
-				from: { kind: "caster" },
-				to: { kind: "target" },
-				speed: 10,
-			},
-			payload: {
-				damageFormula: "100",
-				casterSnapshot: {},
-				skillLv: 1,
-				damageTags: ["magical"],
-				warningZone: "none",
-				lockCasterAttributes: true,
-			},
-			casterId: caster.id,
-			targetId: target.id,
-		} satisfies DamageAreaRequest;
+		const areaId = system.createDamageArea(
+			createSpec({
+				rangeKind: "Line",
+				range: {
+					shape: { kind: "rect", width: 3, height: "sourceToTarget" },
+					anchor: { kind: "betweenSourceAndTarget" },
+					yaw: "sourceToTarget",
+				},
+				lifetime: { startTimeMs: 100, durationMs: 16 },
+			}),
+		);
 
-		system.add(request);
+		expect(system.getAreaSnapshot(100)).toMatchObject([
+			{
+				id: areaId,
+				rangeKind: "Line",
+				position: { x: 1.5, y: 0, z: 0 },
+				shape: { kind: "rect", width: 3, height: 3 },
+			},
+		]);
+		expect(() => system.createDamageArea(createSpec({ lifetime: { startTimeMs: 0, durationMs: 0 } }))).toThrow(
+			"durationMs",
+		);
+	});
 
-		// 距离 4m、速度 10m/s，400ms 到达；随后保留 500ms 伤害窗口。
-		expect(system.getAreaSnapshot(499)).toHaveLength(1);
-		expect(system.getAreaSnapshot(500)).toHaveLength(1);
-		expect(system.getAreaSnapshot(999)).toHaveLength(1);
-		expect(system.getAreaSnapshot(1000)).toHaveLength(0);
+	it("移动区域生命周期由轨迹长度和速度推导", () => {
+		const memberManager = createMembers();
+		const spaceManager = new SpaceManager(memberManager);
+		const queryCircle = vi
+			.spyOn(spaceManager, "queryCircle")
+			.mockImplementation((center) => ({ members: center.x >= target.position.x ? [target] : [] }) as never);
+		const sendTo = vi.spyOn(memberManager, "sendTo").mockImplementation(() => undefined);
+		const system = new DamageAreaSystem(spaceManager, memberManager);
+
+		system.createDamageArea(
+			createSpec({
+				rangeKind: "Bullet",
+				range: {
+					shape: { kind: "circle", radius: 0.5 },
+					anchor: { kind: "caster" },
+					yaw: "sourceToTarget",
+					trajectory: {
+						kind: "segment",
+						from: { kind: "caster" },
+						to: { kind: "target" },
+						speed: 10,
+					},
+				},
+				lifetime: { startTimeMs: 100, durationMs: 5000 },
+			}),
+		);
+
+		expect(system.getAreaSnapshot(399)).toHaveLength(1);
+		expect(system.getAreaSnapshot(400)).toHaveLength(0);
+		system.tick({ tickIndex: 1, currentTimeMs: 401, deltaTimeMs: 16 });
+
+		expect(queryCircle).toHaveBeenCalled();
+		expect(sendTo).toHaveBeenCalledOnce();
+		expect(system.getAreaSnapshot(401)).toHaveLength(0);
+	});
+
+	it("每个目标维护独立命中时间轴", () => {
+		const memberManager = createMembers();
+		const sendTo = vi.spyOn(memberManager, "sendTo").mockImplementation(() => undefined);
+		const system = new DamageAreaSystem(new SpaceManager(memberManager), memberManager);
+		system.createDamageArea(
+			createSpec({
+				attackSemantics: { damageCount: 2, damageIntervalMs: 0 },
+				hitPolicy: { hitIntervalMs: 500 },
+			}),
+		);
+
+		system.tick({ tickIndex: 1, currentTimeMs: 100, deltaTimeMs: 100 });
+		system.tick({ tickIndex: 2, currentTimeMs: 200, deltaTimeMs: 100 });
+		system.tick({ tickIndex: 3, currentTimeMs: 600, deltaTimeMs: 400 });
+
+		expect(sendTo).toHaveBeenCalledTimes(2);
+		expect(
+			sendTo.mock.calls.map(
+				([, event]) => (event as { data: { damageRequest: { damageIndex: number } } }).data.damageRequest.damageIndex,
+			),
+		).toEqual([0, 1]);
+	});
+
+	it("checkpoint 恢复使用创建时解析的范围和生命周期", () => {
+		const memberManager = createMembers();
+		const system = new DamageAreaSystem(new SpaceManager(memberManager), memberManager);
+		system.createDamageArea(createSpec());
+		const checkpoint = system.captureCheckpoint();
+		const targetMember = memberManager.getMember(target.id);
+		if (!targetMember) throw new Error("测试目标不存在");
+		targetMember.position.x = 20;
+
+		system.restoreCheckpoint(checkpoint);
+		expect(system.getAreaSnapshot(100)[0]?.position).toEqual({ x: 3, y: 0, z: 0 });
+	});
+
+	it("checkpoint 恢复不会按成员新位置重算已锁定轨迹", () => {
+		const memberManager = createMembers();
+		const system = new DamageAreaSystem(new SpaceManager(memberManager), memberManager);
+		system.createDamageArea(
+			createSpec({
+				rangeKind: "Bullet",
+				range: {
+					shape: { kind: "circle", radius: 0.5 },
+					anchor: { kind: "caster" },
+					yaw: "sourceToTarget",
+					trajectory: {
+						kind: "segment",
+						from: { kind: "caster" },
+						to: { kind: "target" },
+						speed: 10,
+					},
+				},
+			}),
+		);
+		const checkpoint = system.captureCheckpoint();
+		const targetMember = memberManager.getMember(target.id);
+		if (!targetMember) throw new Error("测试目标不存在");
+		targetMember.position.x = 20;
+
+		system.restoreCheckpoint(checkpoint);
+		expect(system.getAreaSnapshot(100)[0]?.trajectory).toMatchObject({
+			kind: "segment",
+			from: { x: 0, y: 0, z: 0 },
+			to: { x: 3, y: 0, z: 0 },
+		});
+		expect(system.getAreaSnapshot(399)).toHaveLength(1);
+		expect(system.getAreaSnapshot(400)).toHaveLength(0);
+	});
+
+	it("旧 checkpoint 缺少已解析范围时拒绝恢复", () => {
+		const memberManager = createMembers();
+		const system = new DamageAreaSystem(new SpaceManager(memberManager), memberManager);
+		system.createDamageArea(createSpec());
+		const checkpoint = system.captureCheckpoint();
+		const entry = checkpoint.instances[0];
+		if (!entry) throw new Error("测试 checkpoint 实例不存在");
+		Reflect.deleteProperty(entry, "resolvedRange");
+
+		expect(() => system.restoreCheckpoint(checkpoint)).toThrow("checkpoint 缺少已解析范围");
+	});
+
+	it("checkpoint 恢复保留每目标命中时间轴", () => {
+		const memberManager = createMembers();
+		const sendTo = vi.spyOn(memberManager, "sendTo").mockImplementation(() => undefined);
+		const system = new DamageAreaSystem(new SpaceManager(memberManager), memberManager);
+		system.createDamageArea(
+			createSpec({
+				attackSemantics: { damageCount: 2, damageIntervalMs: 0 },
+				hitPolicy: { hitIntervalMs: 500 },
+			}),
+		);
+		system.tick({ tickIndex: 1, currentTimeMs: 100, deltaTimeMs: 100 });
+		system.restoreCheckpoint(system.captureCheckpoint());
+
+		system.tick({ tickIndex: 2, currentTimeMs: 200, deltaTimeMs: 100 });
+		system.tick({ tickIndex: 3, currentTimeMs: 600, deltaTimeMs: 400 });
+		expect(sendTo).toHaveBeenCalledTimes(2);
+	});
+
+	it("attach 轨迹恢复后仍动态读取锚点位置", () => {
+		const memberManager = createMembers();
+		const spaceManager = new SpaceManager(memberManager);
+		const queryCircle = vi.spyOn(spaceManager, "queryCircle").mockReturnValue({ members: [] });
+		const system = new DamageAreaSystem(spaceManager, memberManager);
+		system.createDamageArea(
+			createSpec({
+				range: {
+					shape: { kind: "circle", radius: 1 },
+					anchor: { kind: "target" },
+					yaw: 0,
+					trajectory: { kind: "attach", anchor: { kind: "target" } },
+				},
+			}),
+		);
+		const checkpoint = system.captureCheckpoint();
+		const targetMember = memberManager.getMember(target.id);
+		if (!targetMember) throw new Error("测试目标不存在");
+		targetMember.position.x = 20;
+		system.restoreCheckpoint(checkpoint);
+
+		system.tick({ tickIndex: 1, currentTimeMs: 100, deltaTimeMs: 16 });
+		expect(queryCircle).toHaveBeenCalledWith({ x: 20, y: 0, z: 0 }, 1, expect.any(Object));
 	});
 });

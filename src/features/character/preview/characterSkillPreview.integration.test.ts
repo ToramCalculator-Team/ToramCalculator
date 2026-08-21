@@ -24,12 +24,12 @@ const MAGIC_CANNON_TEMPLATE_ID = "vh6phwi59yl8isvadjw6ybyu";
 
 const magicArrowActiveDefinition = `root {
 	sequence {
-		action [state,"skill.chanting", $currentSkill.lifecycle.chanting]
+		action [animation,"skill.chanting"]
 		wait [$currentSkill.lifecycle.chanting]
-		action [state,"skill.startup", $currentSkill.lifecycle.startup]
+		action [animation,"skill.startup"]
 		wait [$currentSkill.lifecycle.startup]
-		action [areaAttack, $targetId, "magic", "magic", "(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 90+skillLv*5) * (65+skillLv*6) / 100", "Math.floor((skillLv-1)/2)+4", ["is_place"], [], "none", true, "(0.5)*1000", [{delayMs:0, targetMode:"single", shape:{kind:"point"}, trajectory:{kind:"segment", from:{kind:"caster"}, to:{kind:"target"}, speed:12}}]]
-		action [state,"skill.recovery", $currentSkill.lifecycle.recovery]
+		action [singleAttack, $targetId, "magic", "magic", "(((self.lv - target.lv + self.atk.m) * (1 - target.red.m) - target.def.m * (1 - self.pie.m)) + 90+skillLv*5) * (65+skillLv*6) / 100", "Math.floor((skillLv-1)/2)+4", ["is_place"], [], true, "(0.5)*1000"]
+		action [animation,"skill.recovery"]
 		wait [$currentSkill.lifecycle.recovery]
 	}
 }`;
@@ -38,18 +38,18 @@ const magicCannonActiveDefinition = `root {
 	selector {
 		sequence {
 			condition [hasBuff,"魔法炮充能buff"]
-			action [state,"skill.startup",$currentSkill.lifecycle.startup]
+			action [animation,"skill.startup"]
 			wait [$currentSkill.lifecycle.startup]
-			action [rangeAttack,$targetId,"magic","magic",$伤害计算公式,1,$伤害标签,[],"none",3]
+			action [lineAttack,$targetId,"magic","magic",$伤害计算公式,1,$伤害标签,[],true,3]
 			action [removeBuff,"魔法炮充能buff"]
-			action [state,"skill.recovery",$currentSkill.lifecycle.recovery]
+			action [animation,"skill.recovery"]
 			wait [$currentSkill.lifecycle.recovery]
 		}
 		sequence {
-			action [state,"skill.startup",$currentSkill.lifecycle.startup]
+			action [animation,"skill.startup"]
 			wait [$currentSkill.lifecycle.startup]
 			action [addBuff,"魔法炮充能buff"]
-			action [state,"skill.recovery",$currentSkill.lifecycle.recovery]
+			action [animation,"skill.recovery"]
 			wait [$currentSkill.lifecycle.recovery]
 		}
 	}
@@ -278,14 +278,14 @@ describe("SkillPreviewPanel 真实技能伤害", () => {
 			status: "accepted",
 			candidateSkillId: MAGIC_ARROW_SKILL_ID,
 		});
-		expect(preview.taskResult.output.damage).toHaveLength(2);
+		expect(preview.taskResult.output.damage).toHaveLength(3);
 		expect(preview.row).toMatchObject({
 			id: MAGIC_ARROW_SKILL_ID,
 			name: "法术/飞箭",
 			level: 5,
 			loading: false,
 		});
-		expect(preview.row.damage).toBeCloseTo(454.4166666666667);
+		expect(preview.row.damage).toBeCloseTo(681.625);
 	});
 
 	it("先充能再发射魔法炮，并只把候选发射伤害投影到技能面板", async () => {

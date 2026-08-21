@@ -1,5 +1,5 @@
 import type { MemberType } from "@db/schema/enums";
-import type { Vec3 } from "./Area/types";
+import type { Vec3 } from "./EffectRange/types";
 
 /**
  * WorldObservable —— 世界实体的统一只读观测接口

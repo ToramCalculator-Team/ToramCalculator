@@ -270,9 +270,11 @@ export class GameEngine {
 		// 设置引擎时间读取函数到 MemberManager（引擎时间为唯一真相）
 		this.world.memberManager.setGetCurrentTimeMs(() => this.getCurrentTimeMs());
 		this.world.memberManager.setGetTickIndex(() => this.getTickIndex());
-		// 设置伤害请求处理器到 MemberManager（成员创建时会注入到成员 context.damageRequestHandler）
-		this.world.memberManager.setDamageRequestHandler((damageRequest) => {
-			this.world.areaManager.damageAreaSystem.add(damageRequest);
+		this.world.memberManager.setDamageExecutionHandlers({
+			executeInstantDamage: (effect) => {
+				this.world.damageSystem.queueInstantDamage(effect);
+			},
+			createDamageArea: (spec) => this.world.areaManager.createDamageArea(spec),
 		});
 		// 设置引擎级 pipeline resolver 到 MemberManager（成员创建时注入到成员）
 		this.world.memberManager.setPipelineResolverService(this.pipelineResolverService);
@@ -946,7 +948,12 @@ export class GameEngine {
 	 * @param delayMs       延迟毫秒（默认 0，表示当前时间片）
 	 * @param meta          调试元信息（例如 source）
 	 */
-	dispatchMemberEvent(memberId: string, event: EventObject, delayMs: number = 0, meta?: { source?: string }): void {
+	dispatchMemberEvent<TEvent extends EventObject>(
+		memberId: string,
+		event: TEvent,
+		delayMs: number = 0,
+		meta?: { source?: string },
+	): void {
 		const currentTimeMs = this.getCurrentTimeMs();
 		const executeAtMs = currentTimeMs + Math.max(0, delayMs);
 
@@ -1095,7 +1102,15 @@ export class GameEngine {
 				);
 			}
 		}
-		this.world.tick({ tickIndex, currentTimeMs, deltaTimeMs }, movementInputs);
+		this.world.tick({ tickIndex, currentTimeMs, deltaTimeMs }, movementInputs, (targetId, payload, delayMs) => {
+			if (delayMs <= 0) {
+				this.world.memberManager.sendTo(targetId, { type: "受到攻击", data: { damageRequest: payload } });
+				return;
+			}
+			this.dispatchMemberEvent(targetId, { type: "受到攻击", data: { damageRequest: payload } }, delayMs, {
+				source: "instant-damage-segment",
+			});
+		});
 		const membersUpdated = this.world.memberManager.getAllMembers().length;
 
 		const duration = performance.now() - tickStartTime;

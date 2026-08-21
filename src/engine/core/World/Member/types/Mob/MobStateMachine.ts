@@ -1,6 +1,6 @@
 import { type EventObject, setup } from "xstate";
 import { createLogger } from "~/lib/logger";
-import type { DamageDispatchPayload } from "../../../Area/types";
+import { type DamageDispatchPayload, damageSourceKey } from "../../../Damage/types";
 import { ModifierType } from "../../runtime/AttributeContainer/AttributeContainer";
 import {
 	createHitSession,
@@ -237,7 +237,7 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 						() => env.attributeContainer.getValue("mp.current"),
 						(value) =>
 							env.attributeContainer.addModifier("hp.current", ModifierType.DYNAMIC_FIXED, value, {
-								key: `damage.hp.${session.damageRequest.areaId}`,
+								key: `damage.hp.${damageSourceKey(session.damageRequest)}`,
 								name: "damage-hp",
 								type: session.damageRequest.sourceSkillId ? "skill" : "system",
 								chain: [
@@ -245,12 +245,11 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 									...(session.damageRequest.sourceSkillId
 										? [{ kind: "skill" as const, id: session.damageRequest.sourceSkillId }]
 										: []),
-									{ kind: "damageArea", id: session.damageRequest.areaId },
 								],
 							}),
 						(value) =>
 							env.attributeContainer.addModifier("mp.current", ModifierType.DYNAMIC_FIXED, value, {
-								key: `damage.mp.${session.damageRequest.areaId}`,
+								key: `damage.mp.${damageSourceKey(session.damageRequest)}`,
 								name: "damage-mp",
 								type: session.damageRequest.sourceSkillId ? "skill" : "system",
 								chain: [
@@ -258,7 +257,6 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 									...(session.damageRequest.sourceSkillId
 										? [{ kind: "skill" as const, id: session.damageRequest.sourceSkillId }]
 										: []),
-									{ kind: "damageArea", id: session.damageRequest.areaId },
 								],
 							}),
 						env.notifyDomainEvent,

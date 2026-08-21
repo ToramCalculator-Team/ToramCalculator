@@ -222,7 +222,10 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 						log.error(`[${env.name}] 技能变体不存在: ${skillId}`);
 						return;
 					}
+					const executionInstance = env.runtime.nextSkillExecutionInstance + 1;
+					env.runtime.nextSkillExecutionInstance = executionInstance;
 					env.runtime.currentSkill = {
+						executionInstance,
 						data: skill,
 						activeVariant: skillVariant,
 						lifecycle: computePlayerSkillLifecycle({

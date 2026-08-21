@@ -35,14 +35,17 @@ export const trajectoryPositionSourceSchema = z
 export const trajectoryTemplateSchema = z
 	.discriminatedUnion("kind", [
 		z.object({
-			kind: z.literal("static"),
-			center: trajectoryPositionSourceSchema,
-			lifetimeMs: z.number().meta({ description: "持续时间（毫秒）" }),
-		}),
-		z.object({
 			kind: z.literal("attach"),
-			anchor: trajectoryPositionSourceSchema,
-			lifetimeMs: z.number().meta({ description: "持续时间（毫秒）" }),
+			anchor: z.union([
+				z.object({
+					kind: z.literal("caster"),
+					offset: trajectoryVec3Schema.optional().meta({ description: "相对施法者位置的偏移" }),
+				}),
+				z.object({
+					kind: z.literal("target"),
+					offset: trajectoryVec3Schema.optional().meta({ description: "相对目标位置的偏移" }),
+				}),
+			]),
 		}),
 		z.object({
 			kind: z.literal("segment"),
@@ -78,24 +81,3 @@ export const trajectoryTemplateSchema = z
 		}),
 	])
 	.meta({ description: "区域轨迹模板" });
-
-export const areaSpawnEntrySchema = z
-	.object({
-		delayMs: z.union([z.string(), z.number()]).default(0).meta({ description: "相对节点执行时间的延迟（毫秒）" }),
-		targetMode: z
-			.enum(["single", "area"])
-			.default("area")
-			.meta({ description: "目标检索模式：single 锁定节点目标，area 按形状范围检索" }),
-		visualProfileId: z.string().optional().meta({ description: "视觉资源引用；缺省由区域类型决定" }),
-		shape: z
-			.object({
-				kind: z.enum(["point", "circle", "rect"]).meta({ description: "形状：点 / 圆 / 矩形" }),
-				radius: z.number().optional().meta({ description: "圆半径" }),
-				width: z.number().optional().meta({ description: "矩形宽" }),
-				height: z.number().optional().meta({ description: "矩形高" }),
-			})
-			.default({ kind: "circle", radius: 1 })
-			.meta({ description: "区域形状" }),
-		trajectory: trajectoryTemplateSchema,
-	})
-	.meta({ description: "单个伤害区域的生成计划项" });

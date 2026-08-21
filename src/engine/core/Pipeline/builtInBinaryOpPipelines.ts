@@ -182,7 +182,7 @@ export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstructi
 	//
 	// 输入：
 	//  - input.baseDamage：施法者侧求值后的原始伤害。
-	//  - input.damageTags / warningZone / direction / skillLv：归因信息（overlay 条件依据）。
+	//  - input.damageTags / direction / skillLv：归因信息（overlay 条件依据）。
 	//
 	// 阶段 anchor（供 overlay 精准挂载）：
 	//  invincible           → 无敌判定（0/1，默认 0；"系统无敌"类 status 对应 overlay 改写为 1）
@@ -190,7 +190,7 @@ export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstructi
 	//  crit                 → 暴击判定（默认 0）
 	//  blocked              → 格挡判定（默认 0）
 	//  blockReduction       → 格挡减伤量（默认 0）
-	//  baseDamageReduction  → 通用减伤汇总锚点（红/蓝区、殿后、浴血奋战、弧光减伤 等 hook 首选挂点）
+	//  baseDamageReduction  → 通用减伤汇总锚点（殿后、浴血奋战、弧光减伤等 hook 首选挂点）
 	//  damage               → 减伤后中间值
 	//  finalDamage          → 最终伤害输出（领教领教 clamp 到 target.hp.max*1%）
 	//  isFatal              → 致死预判（最后的抵抗 overlay 在此之前拦截）

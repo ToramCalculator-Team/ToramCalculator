@@ -3,9 +3,9 @@ import { createLogger } from "~/lib/logger";
 import { State } from "~/lib/mistreevous/State";
 import * as CasterSnapshot from "../../../../Expression/CasterSnapshot";
 import { ExpressionTransformer } from "../../../../JSProcessor/ExpressionTransformer";
-import type { TrajectoryTemplate } from "../../../Area/trajectory";
-import { areaSpawnEntrySchema } from "../../../Area/trajectorySchema";
-import type { DamageAreaRequest } from "../../../Area/types";
+import type { DamageAreaSpec } from "../../../Area/types";
+import type { DamageDefinition, ResolvedDamageEffect } from "../../../Damage/types";
+import type { EffectRange } from "../../../EffectRange/types";
 import {
 	type ModifierSource,
 	ModifierSourceTypeSchema,
@@ -50,7 +50,10 @@ const vec2Schema = z.object({
 	y: z.number().meta({ description: "Y坐标" }),
 });
 
-// 通用攻击基础参数
+// 多段伤害技能的实现方式建议
+// 1.多段伤害结果完全不一样时，应该多次调用伤害节点以保证判定采用不同随机数实现完全不一样的结果。
+// 2.多段伤害结果一样但浮动不同时，使用多区域来产生多段伤害
+// 3.单次伤害，但拆分开显示时，用 damageCount + damageInterval 来拆分伤害
 const commonAttackBaseSchema = z.object({
 	targetId: z.string().meta({ description: "目标ID" }),
 	expApplicationType: z.enum(["physical", "magic", "normal", "none"]).meta({ description: "惯性施加类型" }),
@@ -65,10 +68,6 @@ const commonAttackBaseSchema = z.object({
 		.array(z.object({ type: z.string(), chance: z.string() }))
 		.default([])
 		.meta({ description: "伤害附带异常列表，每项包含异常类型(AbnormalType)和概率表达式" }),
-	warningZone: z
-		.enum(["red", "blue", "none"])
-		.default("none")
-		.meta({ description: "警告区域类型（红/蓝区护盾识别依据）" }),
 	lockCasterAttributes: z.boolean().default(true).meta({
 		description:
 			"是否脱手锁定施法者属性。true（默认）：弹道/延迟/分段伤害结算时 self.* 读施放瞬间快照，不随施法者后续变化；false：结算时 self.* 实时读施法者当前属性（持续光束、引导类技能需要）",
@@ -101,11 +100,31 @@ const moveAttackSchema = z.object({
 	...damageIntervalSchemaShape,
 });
 
-/** 区域生成计划攻击：节点内声明区域队列数组，每项含延迟、形状、轨迹与目标检索模式。 */
-const areaAttackSchema = z.object({
+const lineAttackSchema = z.object({
 	...commonAttackBaseSchema.shape,
+	width: z.number().meta({ description: "攻击宽度" }),
 	...damageIntervalSchemaShape,
-	areas: z.array(areaSpawnEntrySchema).min(1).meta({ description: "区域生成计划数组" }),
+});
+
+const movingGroundAttackSchema = z.object({
+	...commonAttackBaseSchema.shape,
+	width: z.number().meta({ description: "贴地范围宽度" }),
+	speed: z.number().meta({ description: "贴地移动速度" }),
+	...damageIntervalSchemaShape,
+});
+
+const bulletAttackSchema = z.object({
+	...commonAttackBaseSchema.shape,
+	radius: z.number().meta({ description: "子弹判定半径" }),
+	speed: z.number().meta({ description: "子弹移动速度" }),
+	...damageIntervalSchemaShape,
+});
+
+const persistentRangeAttackSchema = z.object({
+	...commonAttackBaseSchema.shape,
+	radius: z.number().meta({ description: "伤害范围" }),
+	durationMs: z.union([z.string(), z.number()]).meta({ description: "区域持续时间（毫秒），必须为正数" }),
+	...damageIntervalSchemaShape,
 });
 
 /**
@@ -146,22 +165,12 @@ function evaluateActionNumberExpression(
 	return fallback;
 }
 
-type DamageRequestBuildOptions = {
-	startTimeMs?: number;
-	shape?: DamageAreaRequest["shape"];
-	trajectory?: TrajectoryTemplate;
-	visualProfileId?: string;
-};
-
-function buildDamageRequest(
+function buildDamageDefinition(
 	context: BtContext,
 	input: z.output<typeof commonAttackSchema>,
 	capabilities: BtCapabilities,
-	rangeKind: DamageAreaRequest["range"]["rangeKind"],
-	rangeParams: DamageAreaRequest["range"]["rangeParams"],
 	targetId?: string,
-	options?: DamageRequestBuildOptions,
-): DamageAreaRequest {
+): DamageDefinition {
 	// 施法者属性在生成伤害区域时快照（施放瞬间值）。结算侧是否采用该快照由 lockCasterAttributes 决定：
 	// 锁定时 self.* 读此快照（脱手不回溯），实时时 self.* 读结算瞬间的施法者。
 	// 快照始终构造：命中判定（hitCheck）也依赖其中的 hit / skill.mpCost。
@@ -186,7 +195,6 @@ function buildDamageRequest(
 	}
 
 	const skillLv = context.skill?.lv ?? context.currentSkill?.data.lv ?? 0;
-	const tickDurationMs = Math.max(1, Math.floor(context.deltaTimeMs || 1));
 	const damageCount = Math.max(
 		1,
 		Math.floor(evaluateActionNumberExpression(context, capabilities, input.damageCount, 1, "damageCount", targetId)),
@@ -197,9 +205,6 @@ function buildDamageRequest(
 			evaluateActionNumberExpression(context, capabilities, input.damageInterval, 0, "damageInterval", targetId),
 		),
 	);
-	const durationMs =
-		damageCount <= 1 ? tickDurationMs : Math.max(tickDurationMs, (damageCount - 1) * damageIntervalMs + tickDurationMs);
-
 	log.debug(`👤 [${context.name}] 施法者快照:`, casterSnapshot, `技能等级: ${skillLv}`);
 
 	return {
@@ -207,36 +212,212 @@ function buildDamageRequest(
 			sourceId: context.memberId,
 			sourceSkillId: context.skill?.id ?? context.currentSkill?.data.id,
 			sourceCampId: context.campId,
-		},
-		lifetime: {
-			startTimeMs: options?.startTimeMs ?? capabilities.services.getCurrentTimeMs(),
-			durationMs,
-		},
-		hitPolicy: {
-			hitIntervalMs: damageIntervalMs,
+			sourceTeamId: context.teamId,
 		},
 		attackSemantics: {
 			damageCount,
-		},
-		range: {
-			rangeKind,
-			rangeParams,
+			damageIntervalMs,
 		},
 		payload: {
 			damageFormula: input.damageFormula,
 			casterSnapshot,
 			skillLv,
 			damageTags: Array.from(new Set([...deriveBaseDamageTags(input.expResolutionType), ...(input.damageTags ?? [])])),
-			warningZone: input.warningZone ?? "none",
 			lockCasterAttributes: input.lockCasterAttributes ?? true,
 		},
-		casterId: context.memberId,
 		targetId,
-		...(options?.shape ? { shape: options.shape } : {}),
-		...(options?.trajectory ? { trajectory: options.trajectory } : {}),
-		...(options?.visualProfileId ? { visualProfileId: options.visualProfileId } : {}),
 	};
 }
+
+type AttackActionDefinition<TSchema extends z.ZodType> = {
+	schema: TSchema;
+	rangeKind: DamageAreaSpec["rangeKind"];
+	executionMode: "instant" | "area";
+	requiresTarget: boolean;
+	resolveRange(input: z.output<TSchema>): EffectRange;
+};
+
+function defineAttackAction<TSchema extends z.ZodType>(
+	definition: AttackActionDefinition<TSchema>,
+): AttackActionDefinition<TSchema> {
+	return definition;
+}
+
+/** 攻击节点 schema、空间范围和执行模式的唯一来源。 */
+export const ATTACK_ACTION_DEFINITIONS = {
+	singleAttack: defineAttackAction({
+		schema: commonAttackSchema.meta({ description: "单体攻击" }),
+		rangeKind: "Single",
+		executionMode: "instant",
+		requiresTarget: true,
+		resolveRange: () => ({ shape: { kind: "point" }, anchor: { kind: "target" }, yaw: 0 }),
+	}),
+	rangeAttack: defineAttackAction({
+		schema: rangeAttackSchema.meta({ description: "范围攻击" }),
+		rangeKind: "Range",
+		executionMode: "instant",
+		requiresTarget: true,
+		resolveRange: (input) => ({
+			shape: { kind: "circle", radius: Math.max(0, input.radius) },
+			anchor: { kind: "target" },
+			yaw: 0,
+		}),
+	}),
+	surroundingsAttack: defineAttackAction({
+		schema: rangeAttackSchema.meta({ description: "周围攻击" }),
+		rangeKind: "Enemy",
+		executionMode: "instant",
+		requiresTarget: false,
+		resolveRange: (input) => ({
+			shape: { kind: "circle", radius: Math.max(0, input.radius) },
+			anchor: { kind: "caster" },
+			yaw: 0,
+		}),
+	}),
+	moveAttack: defineAttackAction({
+		schema: moveAttackSchema.meta({ description: "冲撞攻击" }),
+		rangeKind: "MoveAttack",
+		executionMode: "area",
+		requiresTarget: true,
+		resolveRange: (input) => ({
+			shape: { kind: "circle", radius: Math.max(0, input.width / 2) },
+			anchor: { kind: "caster" },
+			yaw: "sourceToTarget",
+			trajectory: {
+				kind: "segment",
+				from: { kind: "caster" },
+				to: { kind: "target" },
+				speed: input.speed,
+			},
+		}),
+	}),
+	lineAttack: defineAttackAction({
+		schema: lineAttackSchema.meta({ description: "直线攻击" }),
+		rangeKind: "Line",
+		executionMode: "instant",
+		requiresTarget: true,
+		resolveRange: (input) => ({
+			shape: { kind: "rect", width: Math.max(0, input.width), height: "sourceToTarget" },
+			anchor: { kind: "betweenSourceAndTarget" },
+			yaw: "sourceToTarget",
+		}),
+	}),
+	groundLineAttack: defineAttackAction({
+		schema: movingGroundAttackSchema.meta({ description: "贴地移动伤害" }),
+		rangeKind: "Ground",
+		executionMode: "area",
+		requiresTarget: true,
+		resolveRange: (input) => ({
+			shape: { kind: "circle", radius: Math.max(0, input.width / 2) },
+			anchor: { kind: "caster" },
+			yaw: "sourceToTarget",
+			trajectory: {
+				kind: "segment",
+				from: { kind: "caster" },
+				to: { kind: "target" },
+				speed: input.speed,
+			},
+		}),
+	}),
+	bulletAttack: defineAttackAction({
+		schema: bulletAttackSchema.meta({ description: "子弹伤害" }),
+		rangeKind: "Bullet",
+		executionMode: "area",
+		requiresTarget: true,
+		resolveRange: (input) => ({
+			shape: { kind: "circle", radius: Math.max(0, input.radius) },
+			anchor: { kind: "caster" },
+			yaw: "sourceToTarget",
+			trajectory: {
+				kind: "segment",
+				from: { kind: "caster" },
+				to: { kind: "target" },
+				speed: input.speed,
+			},
+		}),
+	}),
+	groundAttack: persistentDefinition("GroundFixed", "地面伤害"),
+	meteorAttack: persistentDefinition("Meteor", "陨石伤害"),
+	explosionAttack: persistentDefinition("Explosion", "爆炸伤害"),
+	attractionAttack: persistentDefinition("Attraction", "吸引伤害"),
+} as const;
+
+function persistentDefinition(
+	rangeKind: "GroundFixed" | "Meteor" | "Explosion" | "Attraction",
+	description: string,
+): AttackActionDefinition<typeof persistentRangeAttackSchema> {
+	return {
+		schema: persistentRangeAttackSchema.meta({ description }),
+		rangeKind,
+		executionMode: "area",
+		requiresTarget: true,
+		resolveRange: (input) => ({
+			shape: { kind: "circle", radius: Math.max(0, input.radius) },
+			anchor: { kind: "target" },
+			yaw: 0,
+		}),
+	};
+}
+
+export type AttackActionName = keyof typeof ATTACK_ACTION_DEFINITIONS;
+
+function createAttackAction<TSchema extends z.ZodType>(
+	actionName: AttackActionName,
+	definition: AttackActionDefinition<TSchema>,
+) {
+	return defineAction<TSchema, BtContext, string, MemberFSMEvent, BtCapabilities>(
+		definition.schema,
+		(context, input, capabilities) => {
+			const requestedTargetId = (input as { targetId?: string }).targetId;
+			const targetId = capabilities.services.targetResolver?.(context.memberId, requestedTargetId) ?? requestedTargetId;
+			if (definition.requiresTarget && (!targetId || targetId === context.memberId)) {
+				log.warn(`⚠️ [${context.name}] ${actionName} 缺少有效敌对目标`);
+				return State.FAILED;
+			}
+			const commonInput = input as z.output<typeof commonAttackSchema>;
+			const damage = buildDamageDefinition(context, commonInput, capabilities, targetId);
+			const range = definition.resolveRange(input);
+			if (definition.executionMode === "instant") {
+				const effect: ResolvedDamageEffect = {
+					...damage,
+					rangeKind: definition.rangeKind,
+					range,
+				};
+				capabilities.services.executeInstantDamage?.(effect);
+				return State.SUCCEEDED;
+			}
+			const durationRaw = (input as { durationMs?: string | number }).durationMs;
+			const durationMs = range.trajectory
+				? 0
+				: Math.floor(evaluateActionNumberExpression(context, capabilities, durationRaw, 0, "durationMs", targetId));
+			if (!range.trajectory && durationMs <= 0) {
+				throw new Error(`${actionName}: 静止持续攻击必须提供正数 durationMs`);
+			}
+			capabilities.services.createDamageArea?.({
+				...damage,
+				rangeKind: definition.rangeKind,
+				range,
+				lifetime: { startTimeMs: capabilities.services.getCurrentTimeMs(), durationMs },
+				hitPolicy: { hitIntervalMs: damage.attackSemantics.damageIntervalMs },
+			});
+			return State.SUCCEEDED;
+		},
+	);
+}
+
+const attackActionPool = {
+	singleAttack: createAttackAction("singleAttack", ATTACK_ACTION_DEFINITIONS.singleAttack),
+	rangeAttack: createAttackAction("rangeAttack", ATTACK_ACTION_DEFINITIONS.rangeAttack),
+	surroundingsAttack: createAttackAction("surroundingsAttack", ATTACK_ACTION_DEFINITIONS.surroundingsAttack),
+	moveAttack: createAttackAction("moveAttack", ATTACK_ACTION_DEFINITIONS.moveAttack),
+	lineAttack: createAttackAction("lineAttack", ATTACK_ACTION_DEFINITIONS.lineAttack),
+	groundLineAttack: createAttackAction("groundLineAttack", ATTACK_ACTION_DEFINITIONS.groundLineAttack),
+	bulletAttack: createAttackAction("bulletAttack", ATTACK_ACTION_DEFINITIONS.bulletAttack),
+	groundAttack: createAttackAction("groundAttack", ATTACK_ACTION_DEFINITIONS.groundAttack),
+	meteorAttack: createAttackAction("meteorAttack", ATTACK_ACTION_DEFINITIONS.meteorAttack),
+	explosionAttack: createAttackAction("explosionAttack", ATTACK_ACTION_DEFINITIONS.explosionAttack),
+	attractionAttack: createAttackAction("attractionAttack", ATTACK_ACTION_DEFINITIONS.attractionAttack),
+};
 
 /**
  * 通用动作池
@@ -268,154 +449,21 @@ export const CommonActionPool = {
 		},
 	),
 
-	/** 发布成员动作状态；只有 active effect BT 的声明会被投影器采纳。 */
-	state: defineAction(
+	/** 技能作者使用的语义阶段节点；只发布逻辑状态，不携带动画资源或时长。 */
+	animation: defineAction(
 		z
 			.object({
-				name: MemberStateNameSchema.meta({ description: "成员动作状态名" }),
+				name: MemberStateNameSchema.meta({ description: "成员动作阶段名" }),
 			})
-			.meta({ description: "发布成员动作状态" }),
+			.meta({ description: "发布成员动作阶段；不携带动画资源或时长" }),
 		(context, input, capabilities) => {
-			log.debug(`👤 [${context.name}] state`, input.name);
+			log.debug(`👤 [${context.name}] animation`, input.name);
 			capabilities.declareState(input.name);
 			return State.SUCCEEDED;
 		},
 	),
 
-	/** 单体攻击 */
-	singleAttack: defineAction(commonAttackSchema.meta({ description: "单体攻击" }), (context, input, capabilities) => {
-		log.debug(`👤 [${context.name}] generateSingleAttack`, input);
-		const targetId = capabilities.services.targetResolver?.(context.memberId, input.targetId) ?? input.targetId;
-		if (!targetId || targetId === context.memberId) {
-			log.warn(`⚠️ [${context.name}] 单体攻击缺少有效敌对目标`, input);
-			return State.FAILED;
-		}
-
-		// 将伤害表达式和伤害区域数据移交给区域管理器处理，区域管理器负责派发受击事件。
-		const damageRequest = buildDamageRequest(context, input, capabilities, "Single", {}, targetId);
-		capabilities.services.damageRequestHandler?.(damageRequest);
-
-		return State.SUCCEEDED;
-	}),
-
-	/** 范围攻击 */
-	rangeAttack: defineAction(rangeAttackSchema.meta({ description: "范围攻击" }), (context, input, capabilities) => {
-		log.debug(`👤 [${context.name}] 范围攻击`, input);
-
-		const targetId = capabilities.services.targetResolver?.(context.memberId, input.targetId) ?? input.targetId;
-		if (!targetId || targetId === context.memberId) {
-			log.warn(`⚠️ [${context.name}] 范围攻击缺少有效敌对目标`, input);
-			return State.FAILED;
-		}
-
-		// 将伤害表达式和伤害区域数据移交给区域管理器处理，区域管理器负责派发受击事件。
-		const damageRequest = buildDamageRequest(context, input, capabilities, "Range", { radius: input.radius }, targetId);
-		capabilities.services.damageRequestHandler?.(damageRequest);
-
-		return State.SUCCEEDED;
-	}),
-
-	/** 周围攻击 */
-	surroundingsAttack: defineAction(
-		rangeAttackSchema.meta({ description: "周围攻击" }),
-		(context, input, capabilities) => {
-			log.debug(`👤 [${context.name}] generateEnemyAttack`, input);
-
-			// 周围攻击以施法者为圆心，targetId 只保留给表达式求值上下文，不参与范围中心选择。
-			const expressionTargetId =
-				capabilities.services.targetResolver?.(context.memberId, input.targetId) ?? input.targetId;
-			const damageRequest = buildDamageRequest(
-				context,
-				input,
-				capabilities,
-				"Enemy",
-				{ radius: input.radius },
-				expressionTargetId,
-			);
-			capabilities.services.damageRequestHandler?.(damageRequest);
-			return State.SUCCEEDED;
-		},
-	),
-
-	/** 冲撞攻击 */
-	moveAttack: defineAction(moveAttackSchema.meta({ description: "冲撞攻击" }), (context, input) => {
-		log.debug(`👤 [${context.name}] generateMoveAttack`, input);
-		// 解析伤害表达式，将所需的self变量放入参数列表
-
-		// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
-		return State.SUCCEEDED;
-	}),
-
-	/** 按区域生成计划创建多个伤害区域；区域轨迹由 trajectory 描述符决定。 */
-	areaAttack: defineAction(
-		areaAttackSchema.meta({ description: "区域生成计划攻击" }),
-		(context, input, capabilities) => {
-			log.debug(`👤 [${context.name}] areaAttack`, input);
-
-			const targetId = capabilities.services.targetResolver?.(context.memberId, input.targetId) ?? input.targetId;
-			if (!targetId || targetId === context.memberId) {
-				log.warn(`⚠️ [${context.name}] 区域生成计划缺少有效敌对目标`, input);
-				return State.FAILED;
-			}
-
-			const currentTimeMs = capabilities.services.getCurrentTimeMs();
-			for (const entry of input.areas) {
-				const delayMs = Math.max(
-					0,
-					Math.floor(evaluateActionNumberExpression(context, capabilities, entry.delayMs, 0, "delayMs", targetId)),
-				);
-				const startTimeMs = currentTimeMs + delayMs;
-				const radius =
-					entry.shape.kind === "rect"
-						? Math.max(entry.shape.width ?? 0, entry.shape.height ?? 0) / 2
-						: (entry.shape.radius ?? 0);
-				const rangeKind = entry.targetMode === "single" ? "Single" : "Enemy";
-				const damageRequest = buildDamageRequest(context, input, capabilities, rangeKind, { radius }, targetId, {
-					startTimeMs,
-					shape: entry.shape,
-					trajectory: entry.trajectory,
-					visualProfileId: entry.visualProfileId,
-				});
-				capabilities.services.damageRequestHandler?.(damageRequest);
-			}
-
-			return State.SUCCEEDED;
-		},
-	),
-
-	/** 陨石伤害 */
-	verticalAttack: defineAction(
-		z
-			.object({
-				radius: z.number().meta({ description: "伤害半径" }),
-			})
-			.meta({ description: "陨石伤害" }),
-		(context, input) => {
-			log.debug(`👤 [${context.name}] generateVerticalAttack`, input);
-			// 解析伤害表达式，将所需的self变量放入参数列表
-
-			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
-			return State.SUCCEEDED;
-		},
-	),
-
-	/** 贴地伤害 */
-
-	/** 地面伤害 */
-	groundAttack: defineAction(
-		z
-			.object({
-				...commonAttackSchema.shape,
-			})
-			.meta({ description: "地面伤害" }),
-		(context, input) => {
-			log.debug(`👤 [${context.name}] generateGroundAttack`, input);
-			// 解析伤害表达式，将所需的self变量放入参数列表
-
-			// 将伤害表达式和伤害区域数据移交给区域管理器处理,区域管理器将负责代替发送伤害事件
-			return State.SUCCEEDED;
-		},
-	),
+	...attackActionPool,
 
 	/** 回复 HP */
 	healHp: defineAction(

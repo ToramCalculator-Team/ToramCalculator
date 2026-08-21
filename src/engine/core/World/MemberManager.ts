@@ -6,7 +6,8 @@ import type { EngineMember, EngineTeam } from "../engineScenarioSchema";
 import type { ExpressionContext } from "../JSProcessor/types";
 import type { PipelineResolverService } from "../Pipeline/PipelineResolverService";
 import type { MemberCheckpoint, MemberDomainEvent } from "../types";
-import type { DamageAreaRequest } from "./Area/types";
+import type { DamageAreaSpec } from "./Area/types";
+import type { ResolvedDamageEffect } from "./Damage/types";
 import type { Member, MemberControlInputRecorder } from "./Member/Member";
 import type { MemberSharedRuntime } from "./Member/runtime/types";
 import { Mob } from "./Member/types/Mob/Mob";
@@ -44,7 +45,10 @@ export class MemberManager {
 	/** 表达式求值器（由引擎注入） */
 	private evaluateExpression: ((expression: string, context: ExpressionContext) => number | boolean) | null = null;
 	/** 伤害请求处理器（由引擎注入） */
-	private damageRequestHandler: ((damageRequest: DamageAreaRequest) => void) | null = null;
+	private damageExecutionHandlers: {
+		executeInstantDamage: ((effect: ResolvedDamageEffect) => void) | null;
+		createDamageArea: ((spec: DamageAreaSpec) => string) | null;
+	} = { executeInstantDamage: null, createDamageArea: null };
 	/** 当前模拟时间读取函数（由引擎注入） */
 	private getCurrentTimeMs: (() => number) | null = null;
 	/** 当前逻辑 tick 序号读取函数（由引擎注入） */
@@ -94,10 +98,13 @@ export class MemberManager {
 	/**
 	 * 设置伤害请求处理器（由引擎注入）
 	 */
-	setDamageRequestHandler(damageRequestHandler: ((damageRequest: DamageAreaRequest) => void) | null): void {
-		this.damageRequestHandler = damageRequestHandler;
+	setDamageExecutionHandlers(handlers: {
+		executeInstantDamage: ((effect: ResolvedDamageEffect) => void) | null;
+		createDamageArea: ((spec: DamageAreaSpec) => string) | null;
+	}): void {
+		this.damageExecutionHandlers = handlers;
 		for (const member of this.members.values()) {
-			member.setDamageRequestHandler(damageRequestHandler);
+			member.setDamageExecutionHandlers(handlers);
 		}
 	}
 
@@ -237,7 +244,7 @@ export class MemberManager {
 				player.setTargetResolver(this.resolveTargetId.bind(this));
 				player.setTargetDirectionResolver(this.resolveTargetDirection.bind(this));
 				player.setEvaluateExpression(this.evaluateExpression);
-				player.setDamageRequestHandler(this.damageRequestHandler);
+				player.setDamageExecutionHandlers(this.damageExecutionHandlers);
 				player.setGetCurrentTimeMs(this.getCurrentTimeMs);
 				player.setGetTickIndex(this.getTickIndex);
 				if (this.randomFn) {
@@ -270,7 +277,7 @@ export class MemberManager {
 				mob.setTargetResolver(this.resolveTargetId.bind(this));
 				mob.setTargetDirectionResolver(this.resolveTargetDirection.bind(this));
 				mob.setEvaluateExpression(this.evaluateExpression);
-				mob.setDamageRequestHandler(this.damageRequestHandler);
+				mob.setDamageExecutionHandlers(this.damageExecutionHandlers);
 				mob.setGetCurrentTimeMs(this.getCurrentTimeMs);
 				mob.setGetTickIndex(this.getTickIndex);
 				if (this.randomFn) {

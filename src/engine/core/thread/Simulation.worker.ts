@@ -4,6 +4,7 @@
  * GameEngine 运行在 Worker 内，并屏蔽部分全局对象；这里不是强安全沙箱。
  */
 
+import type { DamageRangeType } from "@db/schema/enums";
 import { createActor } from "xstate";
 import { createLogger, LogLevel, setGlobalLogLevel } from "~/lib/logger";
 import { prepareForTransfer, sanitizeForPostMessage } from "~/lib/workerPool/MessageSerializer";
@@ -51,10 +52,39 @@ import {
 	WorldStateAreaShapeKind,
 	WorldStateAreaType,
 	type WorldStateCommit,
+	WorldStateDamageRangeKind,
 	WorldStateEntityType,
 	WorldStateWriter,
 	worldStateStringId,
 } from "./worldStateBuffer";
+
+function toWorldStateDamageRangeKind(rangeKind: DamageRangeType): WorldStateDamageRangeKind {
+	switch (rangeKind) {
+		case "Single":
+		case "None":
+			return WorldStateDamageRangeKind.SINGLE;
+		case "Range":
+			return WorldStateDamageRangeKind.RANGE;
+		case "Enemy":
+			return WorldStateDamageRangeKind.SURROUNDINGS;
+		case "MoveAttack":
+			return WorldStateDamageRangeKind.MOVE_ATTACK;
+		case "Line":
+			return WorldStateDamageRangeKind.LINE;
+		case "Ground":
+			return WorldStateDamageRangeKind.GROUND;
+		case "Bullet":
+			return WorldStateDamageRangeKind.BULLET;
+		case "GroundFixed":
+			return WorldStateDamageRangeKind.GROUND_FIXED;
+		case "Meteor":
+			return WorldStateDamageRangeKind.METEOR;
+		case "Explosion":
+			return WorldStateDamageRangeKind.EXPLOSION;
+		case "Attraction":
+			return WorldStateDamageRangeKind.ATTRACTION;
+	}
+}
 
 function readConfiguredLogLevel(): LogLevel | null {
 	const raw = new URL(globalThis.location.href).searchParams.get("engineLogLevel");
@@ -246,6 +276,12 @@ function createWorldStateCommit(): WorldStateCommit {
 					instance: currentState?.instance ?? 0,
 					startedAtLogicalTimeMs: currentState?.startedAtLogicalTimeMs ?? currentTimeMs,
 				},
+				skillExecution: member.runtime.currentSkill
+					? {
+							instance: member.runtime.currentSkill.executionInstance,
+							lifecycle: member.runtime.currentSkill.lifecycle,
+						}
+					: undefined,
 				attributes,
 				modifiers,
 			};
@@ -262,18 +298,22 @@ function createWorldStateCommit(): WorldStateCommit {
 			id: area.id,
 			active: true,
 			type: WorldStateAreaType.DAMAGE,
-			shape: {
-				kind:
-					area.shape.kind === "point"
-						? WorldStateAreaShapeKind.POINT
-						: area.shape.kind === "rect"
-							? WorldStateAreaShapeKind.RECTANGLE
-							: WorldStateAreaShapeKind.CIRCLE,
-				radius: area.shape.radius,
-				width: area.shape.width,
-				height: area.shape.height,
-			},
+			rangeKind: toWorldStateDamageRangeKind(area.rangeKind),
+			position: area.position,
+			yaw: area.yaw,
+			shape:
+				area.shape.kind === "point"
+					? { kind: WorldStateAreaShapeKind.POINT, radius: 0, width: 0, height: 0 }
+					: area.shape.kind === "circle"
+						? { kind: WorldStateAreaShapeKind.CIRCLE, radius: area.shape.radius, width: 0, height: 0 }
+						: {
+								kind: WorldStateAreaShapeKind.RECTANGLE,
+								radius: 0,
+								width: area.shape.width,
+								height: area.shape.height,
+							},
 			spawnTimeMs: area.spawnTimeMs,
+			durationMs: area.durationMs,
 			trajectory: area.trajectory,
 			sourceMemberId: area.sourceMemberId,
 			targetMemberId: area.targetMemberId,

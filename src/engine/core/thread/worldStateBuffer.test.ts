@@ -11,10 +11,12 @@ import {
 	WORLD_STATE_MAX_AREA_CAPACITY,
 	WORLD_STATE_MOB_ATTRIBUTE_COUNT,
 	WORLD_STATE_PLAYER_ATTRIBUTE_COUNT,
+	type WorldStateAreaData,
 	WorldStateAreaShapeKind,
 	WorldStateAreaType,
 	type WorldStateAttributeSchemaEntry,
 	type WorldStateCommit,
+	WorldStateDamageRangeKind,
 	WorldStateEntityType,
 	type WorldStateLayoutDescriptor,
 	WorldStateProtocolError,
@@ -55,6 +57,18 @@ const inactiveMember = (id: string) => ({
 	id,
 	position: { x: 0, y: 0, z: 0 },
 	yaw: 0,
+});
+
+const areaState = (
+	id: string,
+	position: { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 },
+): WorldStateAreaData => ({
+	id,
+	rangeKind: WorldStateDamageRangeKind.RANGE,
+	position,
+	yaw: 0,
+	spawnTimeMs: 0,
+	durationMs: 100,
 });
 
 describe("worldStateBuffer", () => {
@@ -183,7 +197,15 @@ describe("worldStateBuffer", () => {
 					yaw: 0.5,
 					speed: 2.1,
 					stateFlags: STATE_FLAG_MOVING | STATE_FLAG_AIRBORNE,
-					state: { id: 7, instance: 3, startedAtLogicalTimeMs: 80 },
+					state: {
+						id: 7,
+						instance: 3,
+						startedAtLogicalTimeMs: 80,
+					},
+					skillExecution: {
+						instance: 2,
+						lifecycle: { charging: 10, chanting: 20, startup: 30, recovery: 40 },
+					},
 					attributes: { base: [10], act: [12] },
 					modifiers: [{ attributeIndex: 0, type: 1, value: 2, sourceIndex: 0, chainIndex: 0 }],
 				},
@@ -192,9 +214,12 @@ describe("worldStateBuffer", () => {
 				{
 					id: "area-1",
 					type: WorldStateAreaType.DAMAGE,
+					rangeKind: WorldStateDamageRangeKind.RANGE,
 					shape: { kind: WorldStateAreaShapeKind.CIRCLE, radius: 2 },
+					position: { x: 4, y: 0, z: 5 },
+					yaw: 0.25,
 					spawnTimeMs: 50,
-					trajectory: { kind: "static" as const, center: { x: 4, y: 0, z: 5 }, lifetimeMs: 100 },
+					durationMs: 100,
 					sourceMemberId: "player",
 				},
 			],
@@ -216,6 +241,7 @@ describe("worldStateBuffer", () => {
 			entityIdHash: worldStateStringId("player"),
 			position: { x: 1, y: 2, z: 3 },
 			state: { id: 7, instance: 3, startedAtLogicalTimeMs: 80 },
+			skillExecution: { instance: 2, lifecycle: { charging: 10, chanting: 20, startup: 30, recovery: 40 } },
 		});
 		expect(layout.attributeSchema[0]?.path).toBe("mspd");
 		expect(snapshot?.members[0]?.attributes[0]).toEqual({ base: 10, act: 12 });
@@ -227,7 +253,9 @@ describe("worldStateBuffer", () => {
 			type: WorldStateAreaType.DAMAGE,
 			position: { x: 4, y: 0, z: 5 },
 			shape: { kind: WorldStateAreaShapeKind.CIRCLE, radius: 2 },
+			yaw: 0.25,
 			spawnTimeMs: 50,
+			durationMs: 100,
 			sourceMemberIndex: 0,
 		});
 	});
@@ -293,7 +321,10 @@ describe("worldStateBuffer", () => {
 		});
 
 		writer.write(emptyCommit([inactiveMember("fixed")]));
-		expect(reader.readLatest()?.members[1]?.active).toBe(false);
+		expect(reader.readLatest()?.members[1]).toMatchObject({
+			active: false,
+			state: { id: 0 },
+		});
 
 		writer.write(
 			emptyCommit([
@@ -369,26 +400,9 @@ describe("worldStateBuffer", () => {
 				]),
 			),
 		).toThrow("重复成员 ID");
-		expect(() =>
-			writer.write(
-				emptyCommit(
-					[],
-					[
-						{
-							id: "area",
-							spawnTimeMs: 0,
-							trajectory: { kind: "static" as const, center: { x: 0, y: 0, z: 0 }, lifetimeMs: 1 },
-						},
-						{
-							id: "area",
-							active: false,
-							spawnTimeMs: 0,
-							trajectory: { kind: "static", center: { x: 0, y: 0, z: 0 }, lifetimeMs: 0 },
-						},
-					],
-				),
-			),
-		).toThrow("重复区域 ID");
+		expect(() => writer.write(emptyCommit([], [areaState("area"), { ...areaState("area"), active: false }]))).toThrow(
+			"重复区域 ID",
+		);
 		expect(reader.getCommitVersion()).toBe(0);
 	});
 
@@ -397,11 +411,7 @@ describe("worldStateBuffer", () => {
 		const buffer = createWorldStateBuffer(layout);
 		const writer = new WorldStateWriter(buffer, layout);
 		const reader = new WorldStateReader(buffer, layout);
-		const area = (id: string) => ({
-			id,
-			spawnTimeMs: 0,
-			trajectory: { kind: "static" as const, center: { x: 0, y: 0, z: 0 }, lifetimeMs: 100 },
-		});
+		const area = (id: string) => areaState(id);
 
 		writer.write(emptyCommit([], [area("area-a"), area("area-b")]));
 		const first = reader.readLatest();
@@ -439,7 +449,11 @@ describe("worldStateBuffer", () => {
 			areas: [
 				{
 					id: "area-seg",
+					rangeKind: WorldStateDamageRangeKind.BULLET,
+					position: { x: 0, y: 0, z: 0 },
+					yaw: Math.PI / 2,
 					spawnTimeMs: 0,
+					durationMs: 2000,
 					trajectory: {
 						kind: "segment" as const,
 						from: { x: 0, y: 0, z: 0 },
@@ -498,9 +512,8 @@ describe("worldStateBuffer", () => {
 					yaw: 0,
 				})),
 				areas: Array.from({ length: 64 }, (_, index) => ({
-					id: `area-${tick % 4}-${index}`,
+					...areaState(`area-${tick % 4}-${index}`, { x: index, y: 0, z: tick }),
 					spawnTimeMs: tick * (1000 / 60),
-					trajectory: { kind: "static" as const, center: { x: index, y: 0, z: tick }, lifetimeMs: 100 },
 				})),
 			});
 			const snapshot = reader.readLatest();

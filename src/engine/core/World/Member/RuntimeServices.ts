@@ -1,6 +1,7 @@
 import type { ExpressionContext } from "../../JSProcessor/types";
 import type { MemberDomainEvent } from "../../types";
-import type { DamageAreaRequest } from "../Area/types";
+import type { DamageAreaSpec } from "../Area/types";
+import type { ResolvedDamageEffect } from "../Damage/types";
 
 export type MemberTargetResolver = (sourceMemberId: string, requestedTargetId?: string | null) => string | null;
 export type MemberTargetDirectionResolver = (
@@ -22,8 +23,10 @@ export interface MemberRuntimeServices {
 	getTickIndex: () => number;
 	/** 表达式求值器 */
 	expressionEvaluator: ((expression: string, context: ExpressionContext) => number | boolean) | null;
-	/** 伤害请求处理器 */
-	damageRequestHandler: ((damageRequest: DamageAreaRequest) => void) | null;
+	/** 瞬时伤害执行入口：只查询一次范围，不创建 Area。 */
+	executeInstantDamage: ((effect: ResolvedDamageEffect) => void) | null;
+	/** 持续 Area 创建入口。 */
+	createDamageArea: ((spec: DamageAreaSpec) => string) | null;
 	/** 域事件发射器 */
 	domainEventSender: ((event: MemberDomainEvent) => void) | null;
 	/**
@@ -55,8 +58,11 @@ export const MemberRuntimeServicesDefaults: MemberRuntimeServices = {
 	expressionEvaluator: (expression: string) => {
 		throw new Error(`expressionEvaluator 未注入：${expression}`);
 	},
-	damageRequestHandler: (damageRequest: DamageAreaRequest) => {
-		throw new Error(`damageRequestHandler 未注入：${damageRequest}`);
+	executeInstantDamage: (effect: ResolvedDamageEffect) => {
+		throw new Error(`executeInstantDamage 未注入：${effect.rangeKind}`);
+	},
+	createDamageArea: (spec: DamageAreaSpec) => {
+		throw new Error(`createDamageArea 未注入：${spec.rangeKind}`);
 	},
 	domainEventSender: (event: MemberDomainEvent) => {
 		throw new Error(`domainEventSender 未注入：${event}`);

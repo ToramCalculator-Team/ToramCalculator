@@ -1,248 +1,44 @@
-/**
- * World Area 子系统类型定义
- */
-
 import type { DamageRangeType } from "@db/schema/enums";
-import type { TrajectoryTemplate } from "./trajectory";
+import type { DamageDefinition } from "../Damage/types";
+import type { EffectRange, DamageRangeParams, Vec3 } from "../EffectRange/types";
 
-/** 实时世界区域的首版固定容量；领域创建与 SAB 布局共同遵守此边界。 */
+/** Area 是跨 Tick 持续实体，容量与 SAB 区域表共同遵守此边界。 */
 export const WORLD_AREA_CAPACITY = 256;
 export const WORLD_AREA_CAPACITY_EXCEEDED_CODE = "realtime_area_capacity_exceeded";
 
-/**
- * 三维向量
- */
-export interface Vec3 {
-	x: number;
-	y: number;
-	z: number;
-}
-
-/**
- * 计算两点之间的距离
- */
-export function distance(a: Vec3, b: Vec3): number {
-	const dx = a.x - b.x;
-	const dy = a.y - b.y;
-	const dz = a.z - b.z;
-	return Math.sqrt(dx * dx + dy * dy + dz * dz);
-}
-
-/**
- * 伤害范围参数
- */
-export interface DamageRangeParams {
-	/** 半径（用于 range/surroundings） */
-	radius?: number;
-	/** 速度（用于 move） */
-	speed?: number;
-	/** 方向（用于 move，Vec3 单位向量） */
-	dir?: Vec3;
-	/** 宽度（用于 move） */
-	width?: number;
-	/** 自定义参数 */
-	[key: string]: unknown;
-}
-
-/**
- * 警告区域类型。
- *
- * 用于红/蓝区护盾等按警告圈染色的 hook 识别来源。
- * - `red` / `blue`：红/蓝色警告范围攻击（怪物 AoE 告警区）
- * - `none`：非警告区攻击（普攻、直射技能等）
- */
-export type DamageWarningZone = "red" | "blue" | "none";
-
-/**
- * 命中目标相对施法者的方位（基于目标朝向）。
- *
- * 用于「殿后（镜头朝向后方受击减伤）」等方向类 hook。
- * 初版仅四向；后续可扩展为连续角度。
- */
-export type DamageDirection = "front" | "back" | "left" | "right";
-
-/**
- * 伤害区域请求（施法者侧构造）
- */
-export interface DamageAreaRequest {
-	/** 身份信息 */
-	identity: {
-		/** 施法者ID */
-		sourceId: string;
-		/** 产生该区域的角色技能 ID；非技能来源可为空。 */
-		sourceSkillId?: string;
-		/** 施法者阵营ID */
-		sourceCampId: string;
-	};
-	/** 生命周期 */
+/** 只有持续伤害 Area 才需要的额外生命周期和命中策略。 */
+export interface DamageAreaSpec extends DamageDefinition {
+	rangeKind: DamageRangeType;
+	range: EffectRange;
 	lifetime: {
-		/** 开始模拟时间（毫秒） */
 		startTimeMs: number;
-		/** 持续时间（毫秒） */
 		durationMs: number;
 	};
-	/** 命中策略 */
 	hitPolicy: {
-		/** 同一目标分段伤害生效间隔（毫秒） */
 		hitIntervalMs: number;
 	};
-	/** 攻击语义 */
-	attackSemantics: {
-		/** 伤害拆分段数；每段共享同一伤害公式并在结算后按段数拆分 */
-		damageCount: number;
-	};
-	/** 范围配置 */
-	range: {
-		/** 范围类型 */
-		rangeKind: DamageRangeType;
-		/** 范围参数 */
-		rangeParams: DamageRangeParams;
-	};
-	/**
-	 * 区域形状（可选）。由伤害节点生成计划提供；缺省时按 rangeKind 推导。
-	 * - point 用于单体/无范围；circle / rect 用于区域检索与渲染。
-	 */
-	shape?: {
-		kind: "point" | "circle" | "rect";
-		radius?: number;
-		width?: number;
-		height?: number;
-	};
-	/**
-	 * 区域轨迹模板（可选）。
-	 *
-	 * 提供时，DamageAreaSystem 在生成区域时把模板解析为具体轨迹，
-	 * 并按轨迹弧长与速度推导生命周期（static/attach 使用模板内 lifetimeMs）。
-	 * 缺省时按 range.rangeKind 推导旧版 static/linear 轨迹。
-	 */
-	trajectory?: TrajectoryTemplate;
-	/** 视觉资源引用（可选）；写入 SAB 供渲染层选择区域表现。 */
-	visualProfileId?: string;
-	/** 伤害载荷 */
-	payload: {
-		/** 原始伤害表达式（保留 self/target/skill.lv/distance/targetCount 等变量） */
-		damageFormula: string;
-		/** 施法者属性快照（施法时捕获的 self.xxx 属性值） */
-		casterSnapshot: Record<string, number>;
-		/** 技能等级 */
-		skillLv: number;
-		/**
-		 * 伤害归因标签。供受击 Pipeline 的 overlay / proc mask 订阅判定。
-		 * 约定集合（非穷举）：
-		 * - 元素：fire / water / earth / wind / light / dark / normal
-		 * - 性质：physical / magical / percentage
-		 * - 异常衍生伤害：ignition / poison / bleed / magicalExplosion
-		 * - 特殊类型：controlEnhance（锤击·控制强化）
-		 */
-		damageTags: string[];
-		/** 警告区域类型（红/蓝区护盾识别依据） */
-		warningZone: DamageWarningZone;
-		/**
-		 * 是否脱手锁定施法者属性。
-		 * - true：结算时 self.* 读 casterSnapshot（施放瞬间值），脱手后不随施法者变化回溯。
-		 * - false：结算时 self.* 实时读施法者当前属性（持续光束、引导类技能）。
-		 */
-		lockCasterAttributes: boolean;
-	};
-	/** 施法时的位置（用于计算轨迹） */
-	casterId: string;
-	/** 目标成员（用于 singleAttack 锁定目标 / rangeAttack 锁定中心） */
-	targetId?: string;
 }
 
-/**
- * 伤害派发载荷（派发给受击者）
- *
- * 受击 Pipeline（`hitResolve` / `applyDamage`）消费本 payload；
- * 绝大多数按伤害来源判定的 passive / 托环（燃烧的斗志、红区护盾、殿后 …）
- * 依赖 `damageTags` / `warningZone` / `direction` 做条件分支。
- *
- * 字段由 `DamageAreaSystem.tick` 从 `DamageAreaRequest` 透传并追加动态变量（距离、方向）。
- */
-export interface DamageDispatchPayload {
-	/** 施法者ID */
-	sourceId: string;
-	/** 产生该伤害的角色技能 ID；非技能来源可为空。 */
-	sourceSkillId?: string;
-	/** 区域ID */
-	areaId: string;
-	/** 原始伤害表达式 */
-	damageFormula: string;
-	/** 施法者属性快照 */
-	casterSnapshot: Record<string, number>;
-	/** 技能等级 */
-	skillLv: number;
-	/** 伤害拆分段数 */
-	damageCount: number;
-	/** 当前伤害段序号，从 0 开始 */
-	damageIndex: number;
-	/** 伤害归因标签（见 DamageAreaRequest.payload.damageTags 说明） */
-	damageTags: string[];
-	/** 警告区域类型 */
-	warningZone: DamageWarningZone;
-	/**
-	 * 是否脱手锁定施法者属性。
-	 * - true：结算时 self.* 读 casterSnapshot（施放瞬间值）。
-	 * - false：结算时 self.* 实时读施法者当前属性。
-	 */
-	lockCasterAttributes: boolean;
-	/** 目标相对施法者的方位（由 DamageAreaSystem 基于几何位置计算） */
-	direction: DamageDirection;
-	/**
-	 * 是否致死。派发时初值为 `false`；由受击 Pipeline 计算出最终伤害后，
-	 * 若 `damage >= target.hp.current` 则置 `true`，供"最后的抵抗 / 最后的意志"等
-	 * 致死拦截类 overlay 与 `death.incoming` 订阅读取。
-	 */
-	isFatal: boolean;
-	/** 动态变量 */
-	vars: {
-		/** 距离（中心到目标位置） */
-		distance: number;
-		/** 目标数量（本 tick 实际命中的目标数） */
-		targetCount: number;
-	};
-}
-
-/**
- * Buff 区域请求（占位类型）
- */
 export interface BuffAreaRequest {
-	/** 区域ID */
 	areaId: string;
-	/** 施法者ID */
 	sourceId: string;
-	/** 施法者阵营ID */
 	sourceCampId: string;
-	/** 开始模拟时间（毫秒） */
 	startTimeMs: number;
-	/** 持续时间（毫秒） */
 	durationMs: number;
-	/** 范围类型 */
 	rangeKind: DamageRangeType;
-	/** 范围参数 */
 	rangeParams: DamageRangeParams;
-	/** 施法位置 */
 	castPosition: Vec3;
 }
 
-/**
- * 陷阱区域请求（占位类型）
- */
 export interface TrapAreaRequest {
-	/** 区域ID */
 	areaId: string;
-	/** 施法者ID */
 	sourceId: string;
-	/** 施法者阵营ID */
 	sourceCampId: string;
-	/** 开始模拟时间（毫秒） */
 	startTimeMs: number;
-	/** 持续时间（毫秒） */
 	durationMs: number;
-	/** 范围类型 */
 	rangeKind: DamageRangeType;
-	/** 范围参数 */
 	rangeParams: DamageRangeParams;
-	/** 施法位置 */
 	castPosition: Vec3;
 }
+
+export type { DamageRangeParams, EffectRange, Vec3 } from "../EffectRange/types";

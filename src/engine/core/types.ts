@@ -511,8 +511,10 @@ export interface DamageAreaSystemCheckpoint {
 	instances: Array<{
 		areaId: string;
 		requestPayload: unknown;
+		resolvedRange: unknown;
+		durationMs: number;
 		lastHitTimeMsByTargetId: Array<[string, number]>;
-		damageCountByTargetId?: Array<[string, number]>;
+		damageCountByTargetId: Array<[string, number]>;
 	}>;
 }
 

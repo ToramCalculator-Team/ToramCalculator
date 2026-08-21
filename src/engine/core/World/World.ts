@@ -1,6 +1,7 @@
 import { createPhysicalTerrainGenerator, type TerrainDefinition } from "~/lib/terrain";
 import type { SimulationTickContext, WorldCheckpoint } from "../types";
 import { AreaManager } from "./Area/AreaManager";
+import { DamageSystem, type InstantDamageScheduler } from "./Damage/DamageSystem";
 import type { MemberMovementInput } from "./Member/runtime/types";
 import { MemberManager } from "./MemberManager";
 import { SpaceManager } from "./SpaceManager";
@@ -12,10 +13,12 @@ export class World {
 	memberManager: MemberManager;
 	spaceManager: SpaceManager;
 	areaManager: AreaManager;
+	damageSystem: DamageSystem;
 	private sampleTerrainHeight: (x: number, z: number) => number = () => 0;
 	constructor() {
 		this.memberManager = new MemberManager();
 		this.spaceManager = new SpaceManager(this.memberManager);
+		this.damageSystem = new DamageSystem(this.spaceManager, this.memberManager);
 		this.areaManager = new AreaManager(this.spaceManager, this.memberManager);
 	}
 
@@ -29,9 +32,13 @@ export class World {
 	}
 
 	/**
-	 * 每 tick 更新：成员 → 区域 → 统一执行 Intent。
+	 * 每 Tick 更新：成员 → 瞬时伤害同步结算点 → 持续区域。
 	 */
-	tick(tick: SimulationTickContext, movementInputs?: ReadonlyMap<string, MemberMovementInput>): void {
+	tick(
+		tick: SimulationTickContext,
+		movementInputs: ReadonlyMap<string, MemberMovementInput> | undefined,
+		instantDamageScheduler: InstantDamageScheduler,
+	): void {
 		// console.log(`🌍 [World] tick: ${tick.tickIndex}`);
 		const members = this.memberManager.getAllMembers();
 		for (const member of members) {
@@ -39,12 +46,15 @@ export class World {
 			member.integrateTerrainHeight(this.sampleTerrainHeight(member.position.x, member.position.z), tick);
 		}
 
+		this.damageSystem.flushInstantDamage(instantDamageScheduler);
+
 		// 区域更新（AreaManager 调度三个子系统）
 		this.areaManager.tick(tick);
 	}
 
 	clear(): void {
 		this.memberManager.clear();
+		this.damageSystem.clear();
 		this.areaManager.clear();
 	}
 

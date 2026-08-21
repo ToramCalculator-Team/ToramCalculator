@@ -10,7 +10,8 @@ import type { PipelineOverlay } from "../../Pipeline/overlay";
 import type { PipelineResolverService } from "../../Pipeline/PipelineResolverService";
 import type { StageData, StageEnv } from "../../Pipeline/stageEnv";
 import type { MemberCheckpoint, MemberDomainEvent, SimulationTickContext } from "../../types";
-import type { DamageAreaRequest } from "../Area/types";
+import type { DamageAreaSpec } from "../Area/types";
+import type { ResolvedDamageEffect } from "../Damage/types";
 import type { WorldObservable } from "../observable";
 import type { MemberBaseAttrKey } from "./MemberBaseSchema";
 import type { MemberRuntimeServices, MemberTargetDirectionResolver, MemberTargetResolver } from "./RuntimeServices";
@@ -350,15 +351,18 @@ export abstract class Member<
 	}
 
 	/**
-	/**
-	 * 供 active effect BT 的 state 叶子提交本 Tick 状态声明。
+	 * 供 active effect BT 的 animation 叶子提交本 Tick 状态声明。
 	 * AI 行为树和其他 parallel BT 不发布成员动作状态。
 	 */
 	private declareState(name: MemberStateName): void {
 		const timeMs = this.getLogicalTimeMs();
 		const sequence = ++this.nextBtStateSequence;
 		if (this.btManager.isSteppingActiveEffect()) {
-			this.activeEffectStateDeclaration = { name, timeMs, sequence };
+			this.activeEffectStateDeclaration = {
+				name,
+				timeMs,
+				sequence,
+			};
 			return;
 		}
 		log.warn(`member ${this.name} 的非技能 BT 不能声明成员动作状态: ${name}`);
@@ -453,8 +457,12 @@ export abstract class Member<
 		this.services.expressionEvaluator = evaluateExpression;
 	}
 
-	setDamageRequestHandler(damageRequestHandler: ((damageRequest: DamageAreaRequest) => void) | null): void {
-		this.services.damageRequestHandler = damageRequestHandler;
+	setDamageExecutionHandlers(handlers: {
+		executeInstantDamage: ((effect: ResolvedDamageEffect) => void) | null;
+		createDamageArea: ((spec: DamageAreaSpec) => string) | null;
+	}): void {
+		this.services.executeInstantDamage = handlers.executeInstantDamage;
+		this.services.createDamageArea = handlers.createDamageArea;
 	}
 
 	setGetCurrentTimeMs(getCurrentTimeMs: (() => number) | null): void {

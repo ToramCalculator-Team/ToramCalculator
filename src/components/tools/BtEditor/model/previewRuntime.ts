@@ -71,6 +71,7 @@ const createPreviewRuntime = (memberType: MemberType): PreviewRuntime => {
 		},
 		statusTags: [],
 		currentSkill: null,
+		nextSkillExecutionInstance: 0,
 		previousSkill: null,
 		skillCooldowns: [],
 	};
@@ -110,7 +111,8 @@ export const createPreviewBtRuntime = (memberType: MemberType): PreviewBtRuntime
 		getCurrentTimeMs: () => runtime.currentTimeMs,
 		getTickIndex: () => runtime.tickIndex,
 		expressionEvaluator: () => 0,
-		damageRequestHandler: () => undefined,
+		executeInstantDamage: null,
+		createDamageArea: null,
 		domainEventSender: () => undefined,
 		targetResolver: (_sourceMemberId, requestedTargetId) => requestedTargetId ?? "preview-target",
 		targetDirectionResolver: null,

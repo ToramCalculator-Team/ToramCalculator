@@ -16,7 +16,7 @@ import * as CasterSnapshot from "~/engine/core/Expression/CasterSnapshot";
 import type { ExpressionContext } from "~/engine/core/JSProcessor/types";
 import type { StageData } from "~/engine/core/Pipeline/stageEnv";
 import type { MemberDomainEvent } from "~/engine/core/types";
-import type { DamageDispatchPayload } from "~/engine/core/World/Area/types";
+import type { DamageDispatchPayload } from "~/engine/core/World/Damage/types";
 import { createLogger } from "~/lib/logger";
 
 const log = createLogger("DamageResolution");
@@ -94,7 +94,7 @@ export function createHitSession(damageRequest: DamageDispatchPayload): HitSessi
 }
 
 /**
- * 把 damageRequest 的方位 / 警告区字符串预先数值化，供 pipeline operand 消费。
+ * 把 damageRequest 的方位字符串预先数值化，供 pipeline operand 消费。
  * Pipeline compiler 的 operand 只支持 number/string，字符串分支无法参与算术，
  * 这里先展平成 0/1 数值 input。
  */
@@ -102,8 +102,6 @@ function buildDirectionalInputs(damageRequest: DamageDispatchPayload): Record<st
 	return {
 		isBack: damageRequest.direction === "back" ? 1 : 0,
 		isFront: damageRequest.direction === "front" ? 1 : 0,
-		isRedZone: damageRequest.warningZone === "red" ? 1 : 0,
-		isBlueZone: damageRequest.warningZone === "blue" ? 1 : 0,
 	};
 }
 
@@ -232,7 +230,6 @@ export function resolveDamageAndApply(
 	const damageOutput = runPipeline("damageCalc", {
 		baseDamage,
 		damageTags: req.damageTags,
-		warningZone: req.warningZone,
 		direction: req.direction,
 		...directionalInputs,
 		skillLv: req.skillLv,

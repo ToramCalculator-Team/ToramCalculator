@@ -7,15 +7,13 @@
  * - `resolveTrajectory` 在区域生成时把模板解析为具体轨迹；
  * - `evalTrajectory` 是纯函数，逻辑层与渲染层用同一份代码求当前帧位置。
  *
- * 所有移动轨迹都以「路径弧长 = speed * t」推进，距离越长飞行时间越长；
- * static / attach 没有路径长度，因此显式携带 lifetimeMs。
+ * 所有移动轨迹都以「路径弧长 = speed * t」推进，距离越长飞行时间越长。
+ * 静止区域的位置和生命周期由 Area 保存，不通过轨迹伪造。
  */
 
-export type Vec3 = {
-	x: number;
-	y: number;
-	z: number;
-};
+import type { Vec3 } from "./types";
+
+export type { Vec3 } from "./types";
 
 /** 作者侧位置来源。 */
 export type PositionSource =
@@ -25,8 +23,7 @@ export type PositionSource =
 
 /** 作者侧轨迹模板。 */
 export type TrajectoryTemplate =
-	| { kind: "static"; center: PositionSource; lifetimeMs: number }
-	| { kind: "attach"; anchor: PositionSource; lifetimeMs: number }
+	| { kind: "attach"; anchor: Exclude<PositionSource, { kind: "explicit" }> }
 	| { kind: "segment"; from: PositionSource; to: PositionSource; speed: number }
 	| { kind: "ray"; from: PositionSource; dir: Vec3 | "toTarget"; speed: number; maxDistance: number }
 	| {
@@ -51,8 +48,7 @@ export type TrajectoryTemplate =
 
 /** 生成时解析后的具体轨迹；可直接写入 SAB。 */
 export type Trajectory =
-	| { kind: "static"; center: Vec3; lifetimeMs: number }
-	| { kind: "attach"; anchor: "source" | "target"; offset: Vec3; lifetimeMs: number }
+	| { kind: "attach"; anchor: "source" | "target"; offset: Vec3 }
 	| { kind: "segment"; from: Vec3; to: Vec3; speed: number }
 	| { kind: "ray"; from: Vec3; dir: Vec3; speed: number; maxDistance: number }
 	| { kind: "arc"; center: Vec3; normal: Vec3; radius: number; startAngle: number; endAngle: number; speed: number }
@@ -106,7 +102,7 @@ export function vec3Lerp(a: Vec3, b: Vec3, t: number): Vec3 {
 	};
 }
 
-function resolvePositionSource(source: PositionSource, anchors: TrajectoryAnchors): Vec3 {
+export function resolvePositionSource(source: PositionSource, anchors: TrajectoryAnchors): Vec3 {
 	switch (source.kind) {
 		case "caster":
 			return vec3Add(anchors.source, source.offset ?? ZERO);
@@ -127,22 +123,15 @@ function resolvePositionSource(source: PositionSource, anchors: TrajectoryAnchor
 export function resolveTrajectory(template: TrajectoryTemplate, source: Vec3, target: Vec3): Trajectory {
 	const anchors: TrajectoryAnchors = { source, target };
 	switch (template.kind) {
-		case "static":
-			return {
-				kind: "static",
-				center: resolvePositionSource(template.center, anchors),
-				lifetimeMs: template.lifetimeMs,
-			};
 		case "attach": {
 			const anchor = template.anchor;
 			if (anchor.kind === "caster") {
-				return { kind: "attach", anchor: "source", offset: anchor.offset ?? ZERO, lifetimeMs: template.lifetimeMs };
+				return { kind: "attach", anchor: "source", offset: anchor.offset ?? ZERO };
 			}
 			if (anchor.kind === "target") {
-				return { kind: "attach", anchor: "target", offset: anchor.offset ?? ZERO, lifetimeMs: template.lifetimeMs };
+				return { kind: "attach", anchor: "target", offset: anchor.offset ?? ZERO };
 			}
-			// 显式点无法跟随移动，退化为静止区域。
-			return { kind: "static", center: anchor.point, lifetimeMs: template.lifetimeMs };
+			throw new Error("attach 轨迹必须绑定施法者或目标");
 		}
 		case "segment": {
 			const from = resolvePositionSource(template.from, anchors);
@@ -244,8 +233,6 @@ function solveSpiralTheta(
 export function evalTrajectory(trajectory: Trajectory, elapsedMs: number, anchors: TrajectoryAnchors): Vec3 {
 	const elapsedSec = Math.max(0, elapsedMs) / 1000;
 	switch (trajectory.kind) {
-		case "static":
-			return trajectory.center;
 		case "attach": {
 			const anchor = trajectory.anchor === "source" ? anchors.source : anchors.target;
 			return vec3Add(anchor, trajectory.offset);
@@ -268,8 +255,9 @@ export function evalTrajectory(trajectory: Trajectory, elapsedMs: number, anchor
 			const maxAngle = Math.abs(delta);
 			const theta = direction * Math.min(maxAngle, travelled);
 			const { u, v } = buildOrthonormalBasis(trajectory.normal);
-			const x = Math.cos(theta) * radius;
-			const y = Math.sin(theta) * radius;
+			const angle = trajectory.startAngle + theta;
+			const x = Math.cos(angle) * radius;
+			const y = Math.sin(angle) * radius;
 			return {
 				x: trajectory.center.x + u.x * x + v.x * y,
 				y: trajectory.center.y + u.y * x + v.y * y,
@@ -307,11 +295,10 @@ export function evalTrajectory(trajectory: Trajectory, elapsedMs: number, anchor
 }
 
 /** 轨迹生命周期（毫秒）。移动轨迹由路径长度与速度推导，不单独指定。 */
-export function trajectoryDurationMs(trajectory: Trajectory): number {
+export function trajectoryDurationMs(trajectory: Trajectory): number | null {
 	switch (trajectory.kind) {
-		case "static":
 		case "attach":
-			return trajectory.lifetimeMs;
+			return null;
 		case "segment": {
 			const distance = vec3Length(vec3Sub(trajectory.to, trajectory.from));
 			return trajectory.speed > 0 ? (distance / trajectory.speed) * 1000 : 0;
@@ -333,29 +320,22 @@ export function trajectoryDurationMs(trajectory: Trajectory): number {
 }
 
 /** 轨迹结束时间（毫秒）。 */
-export function trajectoryEndTimeMs(trajectory: Trajectory, spawnTimeMs: number): number {
-	return spawnTimeMs + trajectoryDurationMs(trajectory);
+export function trajectoryEndTimeMs(trajectory: Trajectory, spawnTimeMs: number): number | null {
+	const durationMs = trajectoryDurationMs(trajectory);
+	return durationMs == null ? null : spawnTimeMs + durationMs;
 }
 
 /**
  * 常用轨迹预设。供 BT/DSL 伤害节点和区域动画编辑器引用。
  */
 export const trajectoryPresets = {
-	/** 自身位置静止区域 */
-	staticAtSelf(lifetimeMs: number, offset?: Vec3): TrajectoryTemplate {
-		return { kind: "static", center: { kind: "caster", offset }, lifetimeMs };
+	/** 附着自身移动；区域生命周期由 Area.lifetime 管理。 */
+	attachToSelf(offset?: Vec3): TrajectoryTemplate {
+		return { kind: "attach", anchor: { kind: "caster", offset } };
 	},
-	/** 目标位置静止区域 */
-	staticAtTarget(lifetimeMs: number, offset?: Vec3): TrajectoryTemplate {
-		return { kind: "static", center: { kind: "target", offset }, lifetimeMs };
-	},
-	/** 附着自身移动 */
-	attachToSelf(lifetimeMs: number, offset?: Vec3): TrajectoryTemplate {
-		return { kind: "attach", anchor: { kind: "caster", offset }, lifetimeMs };
-	},
-	/** 附着目标移动 */
-	attachToTarget(lifetimeMs: number, offset?: Vec3): TrajectoryTemplate {
-		return { kind: "attach", anchor: { kind: "target", offset }, lifetimeMs };
+	/** 附着目标移动；区域生命周期由 Area.lifetime 管理。 */
+	attachToTarget(offset?: Vec3): TrajectoryTemplate {
+		return { kind: "attach", anchor: { kind: "target", offset } };
 	},
 	/** 飞箭：从施法者位置飞向目标位置，距离越长飞行时间越长。 */
 	projectileToTarget(speed: number): TrajectoryTemplate {

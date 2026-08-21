@@ -56,6 +56,7 @@ export class Mob extends Member<MobAttrKey, MobSpecificEvent, MobFSMContext, Mob
 			skillCooldowns: [],
 			data: null,
 			currentSkill: null,
+			nextSkillExecutionInstance: 0,
 			previousSkill: null,
 		};
 

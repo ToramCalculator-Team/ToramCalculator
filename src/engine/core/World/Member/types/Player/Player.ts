@@ -69,6 +69,7 @@ export class Player extends Member<PlayerAttrKey, PlayerSpecificEvent, PlayerFSM
 			},
 			statusTags: [],
 			currentSkill: null,
+			nextSkillExecutionInstance: 0,
 			previousSkill: null,
 			skillList: initialSkillList,
 			skillCooldowns: initialSkillList.map(() => 0),

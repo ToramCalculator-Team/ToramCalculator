@@ -7,12 +7,12 @@
  */
 
 import type { FrameLoopClockSnapshot, FrameLoopState } from "../FrameLoop/types";
-import { evalTrajectory, type Trajectory } from "../World/Area/trajectory";
 import { WORLD_AREA_CAPACITY, WORLD_AREA_CAPACITY_EXCEEDED_CODE } from "../World/Area/types";
+import { evalTrajectory, type Trajectory } from "../World/EffectRange/trajectory";
 import type { ModifierSource } from "../World/Member/runtime/AttributeContainer/AttributeContainerTypes";
 
 export const WORLD_STATE_MAGIC = 0x57535432;
-export const WORLD_STATE_LAYOUT_VERSION = 7;
+export const WORLD_STATE_LAYOUT_VERSION = 10;
 export const WORLD_STATE_PLAYER_ATTRIBUTE_COUNT = 138;
 export const WORLD_STATE_MOB_ATTRIBUTE_COUNT = 31;
 export const WORLD_STATE_DEFAULT_MEMBER_CAPACITY = 8;
@@ -55,6 +55,20 @@ export enum WorldStateAreaShapeKind {
 	POINT = 1,
 	CIRCLE = 2,
 	RECTANGLE = 3,
+}
+
+export enum WorldStateDamageRangeKind {
+	SINGLE = 1,
+	RANGE = 2,
+	SURROUNDINGS = 3,
+	MOVE_ATTACK = 4,
+	LINE = 5,
+	GROUND = 6,
+	BULLET = 7,
+	GROUND_FIXED = 8,
+	METEOR = 9,
+	EXPLOSION = 10,
+	ATTRACTION = 11,
 }
 
 export type VisualProfileId = number;
@@ -107,11 +121,15 @@ export type WorldStateMemberData = {
 	yaw: number;
 	speed?: number;
 	stateFlags?: number;
-	/** 成员动作状态槽（ADR 0053）：只含状态名 hash、实例和逻辑起始时间，不包含动画描述。 */
+	/** 成员动作状态槽：只含状态标识、实例和逻辑开始时间。 */
 	state?: {
 		id: number;
 		instance: number;
 		startedAtLogicalTimeMs: number;
+	};
+	skillExecution?: {
+		instance: number;
+		lifecycle: { charging: number; chanting: number; startup: number; recovery: number };
 	};
 	attributes?: {
 		base: readonly number[];
@@ -132,13 +150,17 @@ export type WorldStateAreaData = {
 	id: string;
 	active?: boolean;
 	type?: number;
+	rangeKind: WorldStateDamageRangeKind;
 	shape?: { kind?: number; radius?: number; width?: number; height?: number };
+	position: { x: number; y: number; z: number };
+	yaw: number;
 	sourceMemberId?: string;
 	targetMemberId?: string;
 	/** 区域生成时的逻辑时间（毫秒）。渲染层据此 + trajectory 本地求值。 */
 	spawnTimeMs: number;
+	durationMs: number;
 	/** 生成时已解析的具体轨迹；与逻辑层共用同一套描述符。 */
-	trajectory: Trajectory;
+	trajectory?: Trajectory;
 };
 
 export type WorldStateCommit = {
@@ -170,6 +192,10 @@ export type WorldStateMember = {
 		instance: number;
 		startedAtLogicalTimeMs: number;
 	};
+	skillExecution?: {
+		instance: number;
+		lifecycle: { charging: number; chanting: number; startup: number; recovery: number };
+	};
 	attributes: { base: number; act: number }[];
 	modifiers: WorldStateModifierData[];
 };
@@ -179,11 +205,14 @@ export type WorldStateArea = {
 	active: boolean;
 	generation: number;
 	type: number;
-	/** 由 reader 按 snapshot.logicalTimeMs 与 trajectory 计算，保留给旧消费者与调试。 */
+	rangeKind: WorldStateDamageRangeKind;
+	/** 无轨迹时为区域位置；有轨迹时由 reader 按逻辑时间求值。 */
 	position: { x: number; y: number; z: number };
+	yaw: number;
 	shape: { kind: number; radius: number; width: number; height: number };
 	spawnTimeMs: number;
-	trajectory: Trajectory;
+	durationMs: number;
+	trajectory?: Trajectory;
 	sourceMemberIndex: number;
 	targetMemberIndex: number;
 	anchorMemberIndex: number;
@@ -264,18 +293,23 @@ const ATTRIBUTE_BYTES = ATTRIBUTE_FLOAT_FIELDS * Float64Array.BYTES_PER_ELEMENT;
 
 // 3 个业务 int 字段后保留一个 int，使后续 Float64 字段保持 8 字节对齐。
 const STATE_INT_FIELDS = 4;
-const STATE_FLOAT_FIELDS = 6;
+const STATE_FLOAT_FIELDS = 10;
 const STATE_BYTES =
 	STATE_INT_FIELDS * Int32Array.BYTES_PER_ELEMENT + STATE_FLOAT_FIELDS * Float64Array.BYTES_PER_ELEMENT;
 const STATE_INT_STATE_ID = 0;
 const STATE_INT_STATE_INSTANCE = 1;
 const STATE_INT_FLAGS = 2;
+const STATE_INT_SKILL_EXECUTION_INSTANCE = 3;
 const STATE_FLOAT_X = 0;
 const STATE_FLOAT_Y = 1;
 const STATE_FLOAT_Z = 2;
 const STATE_FLOAT_YAW = 3;
 const STATE_FLOAT_SPEED = 4;
 const STATE_FLOAT_STATE_STARTED_AT = 5;
+const STATE_FLOAT_SKILL_CHARGING = 6;
+const STATE_FLOAT_SKILL_CHANTING = 7;
+const STATE_FLOAT_SKILL_STARTUP = 8;
+const STATE_FLOAT_SKILL_RECOVERY = 9;
 
 const MODIFIER_FLOAT_FIELDS = 1;
 const MODIFIER_INT_FIELDS = 4;
@@ -288,8 +322,8 @@ const MODIFIER_INT_CHAIN = 3;
 const SOURCE_BYTES = 8;
 const CHAIN_BYTES = 8;
 
-const AREA_INT_FIELDS = 10;
-const AREA_FLOAT_FIELDS = 15;
+const AREA_INT_FIELDS = 12;
+const AREA_FLOAT_FIELDS = 20;
 const AREA_BYTES = AREA_INT_FIELDS * Int32Array.BYTES_PER_ELEMENT + AREA_FLOAT_FIELDS * Float64Array.BYTES_PER_ELEMENT;
 const AREA_INT_ACTIVE = 0;
 const AREA_INT_GENERATION = 1;
@@ -300,7 +334,9 @@ const AREA_INT_TARGET_MEMBER = 5;
 const AREA_INT_ANCHOR_MEMBER = 6;
 const AREA_INT_TRAJECTORY_KIND = 7;
 const AREA_INT_ID_HASH = 8;
-const AREA_INT_RESERVED = 9;
+const AREA_INT_RANGE_KIND = 9;
+const AREA_INT_RESERVED_0 = 10;
+const AREA_INT_RESERVED_1 = 11;
 const AREA_FLOAT_A_X = 0;
 const AREA_FLOAT_A_Y = 1;
 const AREA_FLOAT_A_Z = 2;
@@ -312,24 +348,26 @@ const AREA_FLOAT_S1 = 7;
 const AREA_FLOAT_S2 = 8;
 const AREA_FLOAT_S3 = 9;
 const AREA_FLOAT_S4 = 10;
-const AREA_FLOAT_SPAWN_TIME = 11;
-const AREA_FLOAT_SHAPE_RADIUS = 12;
-const AREA_FLOAT_SHAPE_WIDTH = 13;
-const AREA_FLOAT_SHAPE_HEIGHT = 14;
+const AREA_FLOAT_POSITION_X = 11;
+const AREA_FLOAT_POSITION_Y = 12;
+const AREA_FLOAT_POSITION_Z = 13;
+const AREA_FLOAT_YAW = 14;
+const AREA_FLOAT_SPAWN_TIME = 15;
+const AREA_FLOAT_DURATION = 16;
+const AREA_FLOAT_SHAPE_RADIUS = 17;
+const AREA_FLOAT_SHAPE_WIDTH = 18;
+const AREA_FLOAT_SHAPE_HEIGHT = 19;
 
 const AREA_TRAJECTORY_KIND = {
-	STATIC: 1,
-	ATTACH: 2,
-	SEGMENT: 3,
-	RAY: 4,
-	ARC: 5,
-	SPIRAL: 6,
+	ATTACH: 1,
+	SEGMENT: 2,
+	RAY: 3,
+	ARC: 4,
+	SPIRAL: 5,
 } as const;
 
 function areaTrajectoryKindCode(kind: Trajectory["kind"]): number {
 	switch (kind) {
-		case "static":
-			return AREA_TRAJECTORY_KIND.STATIC;
 		case "attach":
 			return AREA_TRAJECTORY_KIND.ATTACH;
 		case "segment":
@@ -343,18 +381,15 @@ function areaTrajectoryKindCode(kind: Trajectory["kind"]): number {
 	}
 }
 
-function decodeAreaTrajectory(kindCode: number, floats: Float64Array): Trajectory {
+function decodeAreaTrajectory(kindCode: number, floats: Float64Array): Trajectory | undefined {
 	const a = { x: floats[AREA_FLOAT_A_X], y: floats[AREA_FLOAT_A_Y], z: floats[AREA_FLOAT_A_Z] };
 	const b = { x: floats[AREA_FLOAT_B_X], y: floats[AREA_FLOAT_B_Y], z: floats[AREA_FLOAT_B_Z] };
 	switch (kindCode) {
-		case AREA_TRAJECTORY_KIND.STATIC:
-			return { kind: "static", center: a, lifetimeMs: floats[AREA_FLOAT_S0] };
 		case AREA_TRAJECTORY_KIND.ATTACH:
 			return {
 				kind: "attach",
 				anchor: "source",
 				offset: a,
-				lifetimeMs: floats[AREA_FLOAT_S0],
 			};
 		case AREA_TRAJECTORY_KIND.SEGMENT:
 			return { kind: "segment", from: a, to: b, speed: floats[AREA_FLOAT_S0] };
@@ -382,7 +417,7 @@ function decodeAreaTrajectory(kindCode: number, floats: Float64Array): Trajector
 				speed: floats[AREA_FLOAT_S4],
 			};
 		default:
-			return { kind: "static", center: { x: 0, y: 0, z: 0 }, lifetimeMs: 0 };
+			return undefined;
 	}
 }
 
@@ -656,6 +691,7 @@ export function createWorldStateBuffer(descriptor: WorldStateLayoutDescriptor): 
 	for (let index = 0; index < descriptor.memberDirectory.length; index++) {
 		const member = descriptor.memberDirectory[index];
 		const base = bufferOffsets.directoryOffset + index * DIRECTORY_BYTES;
+		const state = bufferOffsets.stateOffset + index * STATE_BYTES;
 		view.setInt32(base + DIR_ACTIVE * 4, 0, true);
 		view.setInt32(base + DIR_GENERATION * 4, 0, true);
 		view.setInt32(base + DIR_ENTITY_TYPE * 4, member.entityType, true);
@@ -669,6 +705,7 @@ export function createWorldStateBuffer(descriptor: WorldStateLayoutDescriptor): 
 			member.id.startsWith("__empty_") ? 0 : worldStateStringId(member.id),
 			true,
 		);
+		view.setFloat64(state + STATE_INT_FIELDS * 4 + STATE_FLOAT_SKILL_CHARGING * 8, 0, true);
 	}
 	const modifierCapacity = descriptor.memberDirectory.reduce((sum, member) => sum + member.modifierCapacity, 0);
 	for (let index = 0; index < modifierCapacity; index++) {
@@ -901,6 +938,10 @@ export class WorldStateWriter {
 		this.data.setInt32(state + STATE_INT_STATE_ID * 4, 0, true);
 		this.data.setInt32(state + STATE_INT_STATE_INSTANCE * 4, 0, true);
 		this.data.setInt32(state + STATE_INT_FLAGS * 4, 0, true);
+		this.data.setInt32(state + STATE_INT_SKILL_EXECUTION_INSTANCE * 4, 0, true);
+		this.data.setFloat64(state + STATE_INT_FIELDS * 4 + STATE_FLOAT_STATE_STARTED_AT * 8, 0, true);
+		for (let index = STATE_FLOAT_SKILL_CHARGING; index < STATE_FLOAT_FIELDS; index++)
+			this.data.setFloat64(state + STATE_INT_FIELDS * 4 + index * 8, 0, true);
 		this.memberSlotActive[slot] = false;
 		const owner = this.memberSlotOwners[slot];
 		if (owner && this.dynamicMemberSlots.get(owner) === slot) {
@@ -914,7 +955,12 @@ export class WorldStateWriter {
 		const layout = this.descriptor.memberDirectory[slot];
 		const directory = this.memberOffsets.directoryOffset + slot * DIRECTORY_BYTES;
 		const stateOffset = this.memberOffsets.stateOffset + slot * STATE_BYTES;
-		const state = member.state ?? { id: 0, instance: 0, startedAtLogicalTimeMs: 0 };
+		const state = member.state ?? {
+			id: 0,
+			instance: 0,
+			startedAtLogicalTimeMs: 0,
+		};
+		const skillExecution = member.skillExecution;
 		this.data.setInt32(directory + DIR_ACTIVE * 4, 1, true);
 		this.data.setInt32(directory + DIR_GENERATION * 4, generation, true);
 		this.data.setInt32(directory + DIR_ENTITY_TYPE * 4, member.entityType ?? layout.entityType, true);
@@ -923,6 +969,7 @@ export class WorldStateWriter {
 		this.data.setInt32(stateOffset + STATE_INT_STATE_ID * 4, state.id, true);
 		this.data.setInt32(stateOffset + STATE_INT_STATE_INSTANCE * 4, state.instance, true);
 		this.data.setInt32(stateOffset + STATE_INT_FLAGS * 4, member.stateFlags ?? 0, true);
+		this.data.setInt32(stateOffset + STATE_INT_SKILL_EXECUTION_INSTANCE * 4, skillExecution?.instance ?? 0, true);
 		const floats = [
 			member.position.x,
 			member.position.y,
@@ -930,6 +977,10 @@ export class WorldStateWriter {
 			member.yaw,
 			member.speed ?? 0,
 			state.startedAtLogicalTimeMs,
+			skillExecution?.lifecycle.charging ?? 0,
+			skillExecution?.lifecycle.chanting ?? 0,
+			skillExecution?.lifecycle.startup ?? 0,
+			skillExecution?.lifecycle.recovery ?? 0,
 		];
 		for (let index = 0; index < floats.length; index++)
 			this.data.setFloat64(stateOffset + STATE_INT_FIELDS * 4 + index * 8, floats[index], true);
@@ -1050,6 +1101,7 @@ export class WorldStateWriter {
 		this.data.setInt32(offset + AREA_INT_ACTIVE * 4, active ? 1 : 0, true);
 		this.data.setInt32(offset + AREA_INT_GENERATION * 4, generation, true);
 		this.data.setInt32(offset + AREA_INT_TYPE * 4, area?.type ?? 0, true);
+		this.data.setInt32(offset + AREA_INT_RANGE_KIND * 4, area?.rangeKind ?? 0, true);
 		this.data.setInt32(offset + AREA_INT_SHAPE * 4, area?.shape?.kind ?? 0, true);
 		this.data.setInt32(offset + AREA_INT_SOURCE_MEMBER * 4, sourceMemberIndex, true);
 		this.data.setInt32(offset + AREA_INT_TARGET_MEMBER * 4, targetMemberIndex, true);
@@ -1064,24 +1116,23 @@ export class WorldStateWriter {
 			true,
 		);
 		this.data.setInt32(offset + AREA_INT_ID_HASH * 4, area ? worldStateStringId(area.id) : 0, true);
-		this.data.setInt32(offset + AREA_INT_RESERVED * 4, 0, true);
+		this.data.setInt32(offset + AREA_INT_RESERVED_0 * 4, 0, true);
+		this.data.setInt32(offset + AREA_INT_RESERVED_1 * 4, 0, true);
 
 		const shape = area?.shape;
 		const floats = new Float64Array(AREA_FLOAT_FIELDS);
+		floats[AREA_FLOAT_POSITION_X] = area?.position.x ?? 0;
+		floats[AREA_FLOAT_POSITION_Y] = area?.position.y ?? 0;
+		floats[AREA_FLOAT_POSITION_Z] = area?.position.z ?? 0;
+		floats[AREA_FLOAT_YAW] = area?.yaw ?? 0;
 		floats[AREA_FLOAT_SPAWN_TIME] = area?.spawnTimeMs ?? 0;
+		floats[AREA_FLOAT_DURATION] = area?.durationMs ?? 0;
 		if (trajectory) {
 			switch (trajectory.kind) {
-				case "static":
-					floats[AREA_FLOAT_A_X] = trajectory.center.x;
-					floats[AREA_FLOAT_A_Y] = trajectory.center.y;
-					floats[AREA_FLOAT_A_Z] = trajectory.center.z;
-					floats[AREA_FLOAT_S0] = trajectory.lifetimeMs;
-					break;
 				case "attach":
 					floats[AREA_FLOAT_A_X] = trajectory.offset.x;
 					floats[AREA_FLOAT_A_Y] = trajectory.offset.y;
 					floats[AREA_FLOAT_A_Z] = trajectory.offset.z;
-					floats[AREA_FLOAT_S0] = trajectory.lifetimeMs;
 					break;
 				case "segment":
 					floats[AREA_FLOAT_A_X] = trajectory.from.x;
@@ -1226,10 +1277,12 @@ export class WorldStateReader {
 				if (!area.active) continue;
 				const sourcePos = members[area.sourceMemberIndex]?.position ?? { x: 0, y: 0, z: 0 };
 				const targetPos = members[area.targetMemberIndex]?.position ?? sourcePos;
-				area.position = evalTrajectory(area.trajectory, Math.max(0, logicalTimeMs - area.spawnTimeMs), {
-					source: sourcePos,
-					target: targetPos,
-				});
+				if (area.trajectory) {
+					area.position = evalTrajectory(area.trajectory, Math.max(0, logicalTimeMs - area.spawnTimeMs), {
+						source: sourcePos,
+						target: targetPos,
+					});
+				}
 			}
 			const snapshot: WorldStateSnapshot = {
 				commitVersion: first,
@@ -1268,6 +1321,7 @@ export class WorldStateReader {
 			member.stateFlags = this.data.getInt32(state + STATE_INT_FLAGS * 4, true);
 			member.state.id = this.data.getInt32(state + STATE_INT_STATE_ID * 4, true);
 			member.state.instance = this.data.getInt32(state + STATE_INT_STATE_INSTANCE * 4, true);
+			const skillExecutionInstance = this.data.getInt32(state + STATE_INT_SKILL_EXECUTION_INSTANCE * 4, true);
 			const floats = Array.from({ length: STATE_FLOAT_FIELDS }, (_, index) =>
 				this.data.getFloat64(state + STATE_INT_FIELDS * 4 + index * 8, true),
 			);
@@ -1275,6 +1329,17 @@ export class WorldStateReader {
 			member.yaw = floats[STATE_FLOAT_YAW];
 			member.speed = floats[STATE_FLOAT_SPEED];
 			member.state.startedAtLogicalTimeMs = floats[STATE_FLOAT_STATE_STARTED_AT];
+			if (skillExecutionInstance > 0) {
+				member.skillExecution = {
+					instance: skillExecutionInstance,
+					lifecycle: {
+						charging: floats[STATE_FLOAT_SKILL_CHARGING],
+						chanting: floats[STATE_FLOAT_SKILL_CHANTING],
+						startup: floats[STATE_FLOAT_SKILL_STARTUP],
+						recovery: floats[STATE_FLOAT_SKILL_RECOVERY],
+					},
+				};
+			}
 
 			for (let index = 0; index < layout.attributeCount; index++) {
 				const offset = this.memberOffsets.attributeOffset + (layout.attributeOffset + index) * ATTRIBUTE_BYTES;
@@ -1311,7 +1376,9 @@ export class WorldStateReader {
 					active: false,
 					generation: this.data.getInt32(offset + AREA_INT_GENERATION * 4, true),
 					type: this.data.getInt32(offset + AREA_INT_TYPE * 4, true),
+					rangeKind: this.data.getInt32(offset + AREA_INT_RANGE_KIND * 4, true),
 					position: { x: 0, y: 0, z: 0 },
+					yaw: 0,
 					shape: {
 						kind: this.data.getInt32(offset + AREA_INT_SHAPE * 4, true),
 						radius: 0,
@@ -1319,7 +1386,7 @@ export class WorldStateReader {
 						height: 0,
 					},
 					spawnTimeMs: 0,
-					trajectory: { kind: "static", center: { x: 0, y: 0, z: 0 }, lifetimeMs: 0 },
+					durationMs: 0,
 					sourceMemberIndex: -1,
 					targetMemberIndex: -1,
 					anchorMemberIndex: -1,
@@ -1333,7 +1400,7 @@ export class WorldStateReader {
 				floats[field] = this.data.getFloat64(offset + AREA_INT_FIELDS * 4 + field * 8, true);
 			}
 			const trajectory = decodeAreaTrajectory(this.data.getInt32(offset + AREA_INT_TRAJECTORY_KIND * 4, true), floats);
-			if (trajectory.kind === "attach" && anchorMemberIndex >= 0 && anchorMemberIndex === targetMemberIndex) {
+			if (trajectory?.kind === "attach" && anchorMemberIndex >= 0 && anchorMemberIndex === targetMemberIndex) {
 				trajectory.anchor = "target";
 			}
 			result.push({
@@ -1341,7 +1408,13 @@ export class WorldStateReader {
 				active,
 				generation: this.data.getInt32(offset + AREA_INT_GENERATION * 4, true),
 				type: this.data.getInt32(offset + AREA_INT_TYPE * 4, true),
-				position: { x: 0, y: 0, z: 0 },
+				rangeKind: this.data.getInt32(offset + AREA_INT_RANGE_KIND * 4, true),
+				position: {
+					x: floats[AREA_FLOAT_POSITION_X],
+					y: floats[AREA_FLOAT_POSITION_Y],
+					z: floats[AREA_FLOAT_POSITION_Z],
+				},
+				yaw: floats[AREA_FLOAT_YAW],
 				shape: {
 					kind: this.data.getInt32(offset + AREA_INT_SHAPE * 4, true),
 					radius: floats[AREA_FLOAT_SHAPE_RADIUS],
@@ -1349,6 +1422,7 @@ export class WorldStateReader {
 					height: floats[AREA_FLOAT_SHAPE_HEIGHT],
 				},
 				spawnTimeMs: floats[AREA_FLOAT_SPAWN_TIME],
+				durationMs: floats[AREA_FLOAT_DURATION],
 				trajectory,
 				sourceMemberIndex,
 				targetMemberIndex,
