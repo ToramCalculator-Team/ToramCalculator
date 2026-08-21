@@ -6,6 +6,7 @@ import {
 	createWorldStateLayoutDescriptor,
 	WorldStateAreaShapeKind,
 	WorldStateAreaType,
+	WorldStateDamageRangeKind,
 	WorldStateEntityType,
 	WorldStateReader,
 	WorldStateWriter,
@@ -197,13 +198,12 @@ describe("CommandHandler 实时世界投影", () => {
 					{
 						id: "damage-1",
 						type: WorldStateAreaType.DAMAGE,
-						shape: { kind: WorldStateAreaShapeKind.POINT, radius: 0 },
+						rangeKind: WorldStateDamageRangeKind.RANGE,
+						shape: { kind: WorldStateAreaShapeKind.CIRCLE, radius: 2 },
+						position: { x: 4, y: 2, z: 5 },
+						yaw: 0,
 						spawnTimeMs: 100,
-						trajectory: {
-							kind: "static",
-							center: { x: 4, y: 2, z: 5 },
-							lifetimeMs: 500,
-						},
+						durationMs: 500,
 						sourceMemberId: "player",
 					},
 				],
@@ -216,6 +216,73 @@ describe("CommandHandler 实时世界投影", () => {
 			expect(scene.meshes).toHaveLength(1);
 			expect(scene.meshes[0]?.position).toMatchObject({ x: 4, z: 5 });
 			expect(scene.meshes[0]?.position.y).toBeCloseTo(2.1);
+		} finally {
+			handler.disposeAreaVisuals();
+			scene.dispose();
+			engine.dispose();
+		}
+	});
+
+	it("直线区域快照创建矩形 Ground 网格", () => {
+		const engine = new NullEngine();
+		const scene = new Scene(engine);
+		const handler = new CommandHandler(new Map(), {} as EntityFactory, scene);
+		const layout = createWorldStateLayoutDescriptor(
+			[
+				{
+					id: "player",
+					entityType: WorldStateEntityType.PLAYER,
+					visualProfileId: worldStateStringId("player"),
+					attributePaths: [],
+					modifierCapacity: 0,
+				},
+			],
+			{ memberCapacity: 1, areaCapacity: 1 },
+		);
+		const buffer = createWorldStateBuffer(layout);
+		const writer = new WorldStateWriter(buffer, layout);
+		const reader = new WorldStateReader(buffer, layout);
+
+		try {
+			writer.write({
+				logicalTimeMs: 100,
+				tickIndex: 6,
+				clock: clockSnapshot(100),
+				members: [
+					{
+						id: "player",
+						position: { x: 0, y: 0, z: 0 },
+						yaw: 0,
+						attributes: { base: [], act: [] },
+					},
+				],
+				areas: [
+					{
+						id: "line-1",
+						type: WorldStateAreaType.DAMAGE,
+						rangeKind: WorldStateDamageRangeKind.LINE,
+						shape: { kind: WorldStateAreaShapeKind.RECTANGLE, width: 3, height: 4 },
+						position: { x: 2, y: 0, z: 0 },
+						yaw: Math.PI / 2,
+						spawnTimeMs: 100,
+						durationMs: 16,
+						sourceMemberId: "player",
+					},
+				],
+			});
+			const snapshot = reader.readLatest();
+			if (!snapshot) throw new Error("预期读到稳定世界状态提交");
+
+			handler.syncAreas(snapshot, 100, [{ x: 0, y: 0, z: 0 }]);
+
+			expect(scene.meshes).toHaveLength(1);
+			const mesh = scene.meshes[0];
+			expect(mesh?.getClassName()).toBe("GroundMesh");
+			expect(mesh?.position).toMatchObject({ x: 2, z: 0 });
+			expect(mesh?.rotation.y).toBeCloseTo(Math.PI / 2);
+			const extendSize = mesh?.getBoundingInfo().boundingBox.extendSize;
+			expect(extendSize?.x).toBeCloseTo(1.5);
+			expect(extendSize?.z).toBeCloseTo(2);
 		} finally {
 			handler.disposeAreaVisuals();
 			scene.dispose();

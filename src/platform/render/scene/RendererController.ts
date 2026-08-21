@@ -12,6 +12,8 @@
  * - EntityFactory.ts：实体创建 + GLB 模型缓存
  * - CommandHandler.ts：静态资源注册与 Babylon 实体生命周期
  * - RenderSyncSystem.ts：physics → mesh 同步
+ * - AttributeChangeVisualSystem.ts：属性提交差分与本地变化表现
+ * - StateProgressVisualSystem.ts：成员状态逻辑进度与本地扇形表现
  */
 
 import type {
@@ -21,10 +23,12 @@ import type {
 	WorldStateSnapshot,
 } from "~/engine/core/thread/worldStateBuffer";
 import type { Scene, TransformNode } from "~/platform/render/babylon/runtime";
+import { AttributeChangeVisualSystem } from "./content/AttributeChangeVisualSystem";
 import { CommandHandler } from "./content/CommandHandler";
 import { EntityFactory } from "./content/EntityFactory";
 import type { EntityRuntime } from "./content/entityTypes";
 import { RenderSyncSystem, sampleWorldStateMembers } from "./content/RenderSyncSystem";
+import { StateProgressVisualSystem } from "./content/StateProgressVisualSystem";
 import type { RendererController, WorldResourcePose } from "./contracts/worldContent";
 import type { WorldResource } from "./contracts/worldResource";
 import { getRenderFrameStats, recordRenderFrame } from "./renderFrameStats";
@@ -52,6 +56,8 @@ export function createRendererController(scene: Scene, options: RendererControll
 
 	const factory = options.entityFactory ?? new EntityFactory(scene, options.contentRoot);
 	const renderSyncSystem = new RenderSyncSystem();
+	const attributeChangeVisualSystem = new AttributeChangeVisualSystem(scene);
+	const stateProgressVisualSystem = new StateProgressVisualSystem(scene);
 	const commandHandler = new CommandHandler(entities, factory, scene);
 	const entityIdForSlot = (layoutId: string, slot: number, member: WorldStateMember) =>
 		layoutId.startsWith("__empty_") ? `world-slot:${slot}:${member.generation}:${member.entityIdHash}` : layoutId;
@@ -66,6 +72,7 @@ export function createRendererController(scene: Scene, options: RendererControll
 		if (snapshot && snapshot.commitVersion !== latestWorldState?.commitVersion) {
 			previousWorldState = latestWorldState;
 			latestWorldState = snapshot;
+			if (worldStateLayout) attributeChangeVisualSystem.collect(previousWorldState, snapshot, worldStateLayout);
 		}
 		const latest = latestWorldState;
 		const renderLogicalTimeMs = latest ? resolveRenderLogicalTime(latest, monotonicEpochNowMs()) : 0;
@@ -103,12 +110,16 @@ export function createRendererController(scene: Scene, options: RendererControll
 			if (worldStateReader) commandHandler.syncMemberStates(renderState, layout, entitySlots, renderLogicalTimeMs);
 		}
 		renderSyncSystem.syncEntities(entities, entitySlots, sampledMembers);
+		if (renderState) stateProgressVisualSystem.sync(entities, entitySlots, renderState.members, renderLogicalTimeMs);
+		if (latest) attributeChangeVisualSystem.sync(entities, entitySlots, latest.members, renderLogicalTimeMs);
 	}
 
 	/** 销毁所有实体并清理资源 */
 	function dispose(): void {
 		previousWorldState = null;
 		latestWorldState = null;
+		attributeChangeVisualSystem.clear();
+		stateProgressVisualSystem.clear();
 		commandHandler.clearWorldResources();
 		commandHandler.disposeAreaVisuals();
 	}

@@ -5,15 +5,25 @@
  */
 
 import {
+	type WorldStateArea,
 	WorldStateAreaShapeKind,
+	WorldStateDamageRangeKind,
 	type WorldStateLayoutDescriptor,
 	type WorldStateSnapshot,
 	worldStateStringId,
 } from "~/engine/core/thread/worldStateBuffer";
-import { evalTrajectory } from "~/engine/core/World/Area/trajectory";
+import { evalTrajectory, type TrajectoryAnchors, trajectoryDurationMs } from "~/engine/core/World/EffectRange/trajectory";
 import { createLogger } from "~/lib/logger";
 import type { Scene } from "~/platform/render/babylon/runtime";
-import { Color3, Mesh, MeshBuilder, StandardMaterial, TransformNode, Vector3 } from "~/platform/render/babylon/runtime";
+import {
+	type AbstractMesh,
+	Color3,
+	Mesh,
+	MeshBuilder,
+	StandardMaterial,
+	TransformNode,
+	Vector3,
+} from "~/platform/render/babylon/runtime";
 import type { WorldResourcePose } from "../contracts/worldContent";
 import type { StateAnimationEntry, WorldResource } from "../contracts/worldResource";
 import { VisualProfileRegistry } from "../resources/visualProfileRegistry";
@@ -27,12 +37,17 @@ logger.setLevel(0);
 /** 伤害区域统一离开逻辑地面，避免透明圆盘与地形共面产生深度冲突。 */
 const AREA_VISUAL_GROUND_OFFSET_METERS = 0.1;
 
+type AreaVisual = {
+	meshes: AbstractMesh[];
+	dynamicMesh?: Mesh;
+};
+
 export class CommandHandler {
 	private entities: Map<string, EntityRuntime>;
 	private factory: EntityFactory;
 	private scene: Scene;
 	private worldResources: Map<string, WorldResource>;
-	private areaVisuals: Map<string, Mesh> = new Map();
+	private areaVisuals: Map<string, AreaVisual> = new Map();
 	private readonly visualProfiles = new VisualProfileRegistry();
 	private readonly stateTimelines = new Map<string, string>();
 	private readonly stateAnimationMappings = new Map<
@@ -115,19 +130,21 @@ export class CommandHandler {
 			activeIds.add(id);
 			const sourcePos = sampledMemberPositions[area.sourceMemberIndex] ?? { x: 0, y: 0, z: 0 };
 			const targetPos = sampledMemberPositions[area.targetMemberIndex] ?? sourcePos;
-			const position = evalTrajectory(area.trajectory, Math.max(0, renderLogicalTimeMs - area.spawnTimeMs), {
-				source: sourcePos,
-				target: targetPos,
-			});
+			const anchors = { source: sourcePos, target: targetPos };
+			const position = area.trajectory
+				? evalTrajectory(area.trajectory, Math.max(0, renderLogicalTimeMs - area.spawnTimeMs), anchors)
+				: area.position;
+			if (area.rangeKind === WorldStateDamageRangeKind.SINGLE) continue;
 			this.createOrUpdateAreaVisual({
 				id,
 				position,
-				shape: area.shape,
+				area,
+				anchors,
 			});
 		}
-		for (const [id, mesh] of this.areaVisuals) {
+		for (const [id, visual] of this.areaVisuals) {
 			if (activeIds.has(id)) continue;
-			mesh.dispose();
+			this.disposeAreaVisual(visual);
 			this.areaVisuals.delete(id);
 		}
 	}
@@ -203,33 +220,124 @@ export class CommandHandler {
 	private createOrUpdateAreaVisual(area: {
 		id: string;
 		position: { x: number; y: number; z: number };
-		shape: { kind: number; radius: number; width: number; height: number };
+		area: WorldStateArea;
+		anchors: TrajectoryAnchors;
 	}): void {
-		const radius = area.shape.kind === WorldStateAreaShapeKind.POINT ? 0.18 : Math.max(0.1, area.shape.radius);
-		let mesh = this.areaVisuals.get(area.id);
-		if (!mesh) {
-			mesh = MeshBuilder.CreateDisc(`area:${area.id}`, { radius, tessellation: 32 }, this.scene);
-			mesh.rotation.x = Math.PI / 2;
-			(mesh as Mesh & { __baseRadius?: number }).__baseRadius = radius;
-			const mat = new StandardMaterial(`areaMat:${area.id}`, this.scene);
-			mat.alpha = 0.35;
-			mat.diffuseColor = new Color3(1, 0.2, 0.2);
-			mat.backFaceCulling = false;
-			mesh.material = mat;
-			this.areaVisuals.set(area.id, mesh);
+		let visual = this.areaVisuals.get(area.id);
+		if (!visual) {
+			visual = this.createAreaVisual(area.id, area.area, area.anchors);
+			this.areaVisuals.set(area.id, visual);
 		}
+		const mesh = visual.dynamicMesh;
+		if (!mesh) return;
 		mesh.position.set(area.position.x, area.position.y + AREA_VISUAL_GROUND_OFFSET_METERS, area.position.z);
-		const base = (mesh as Mesh & { __baseRadius?: number }).__baseRadius ?? radius;
-		const scale = radius / base;
-		mesh.scaling.x = scale;
-		mesh.scaling.y = 1;
-		mesh.scaling.z = scale;
+		mesh.rotation.y = area.area.yaw;
+	}
+
+	/** 一个逻辑 Area 可以投影为多个图元，但这些图元共享同一创建和销毁生命周期。 */
+	private createAreaVisual(id: string, area: WorldStateArea, anchors: TrajectoryAnchors): AreaVisual {
+		const meshes: AbstractMesh[] = [];
+		let dynamicMesh: Mesh | undefined;
+		if (area.rangeKind === WorldStateDamageRangeKind.MOVE_ATTACK) {
+			const path = this.createTrajectoryRectangle(id, area);
+			if (path) meshes.push(path);
+			dynamicMesh = this.createShapeMesh(`${id}:range`, area);
+		} else if (area.rangeKind === WorldStateDamageRangeKind.GROUND) {
+			const path = this.createTrajectoryLine(id, area, anchors);
+			if (path) meshes.push(path);
+			dynamicMesh = this.createShapeMesh(`${id}:range`, area);
+		} else {
+			dynamicMesh = this.createShapeMesh(`${id}:range`, area);
+		}
+		if (dynamicMesh) meshes.push(dynamicMesh);
+		return { meshes, dynamicMesh };
+	}
+
+	private createShapeMesh(id: string, area: WorldStateArea): Mesh | undefined {
+		let mesh: Mesh;
+		if (area.shape.kind === WorldStateAreaShapeKind.RECTANGLE) {
+			mesh = MeshBuilder.CreateGround(
+				id,
+				{ width: Math.max(0.1, area.shape.width), height: Math.max(0.1, area.shape.height) },
+				this.scene,
+			);
+		} else if (area.shape.kind === WorldStateAreaShapeKind.CIRCLE) {
+			mesh = MeshBuilder.CreateDisc(id, { radius: Math.max(0.1, area.shape.radius), tessellation: 32 }, this.scene);
+			mesh.rotation.x = Math.PI / 2;
+		} else {
+			return undefined;
+		}
+		mesh.material = this.createAreaMaterial(`${id}:material`, new Color3(1, 0.2, 0.2), 0.35);
+		return mesh;
+	}
+
+	private createTrajectoryRectangle(id: string, area: WorldStateArea): Mesh | undefined {
+		const endpoints = this.getLinearTrajectoryEndpoints(area);
+		if (!endpoints) return undefined;
+		const dx = endpoints.to.x - endpoints.from.x;
+		const dz = endpoints.to.z - endpoints.from.z;
+		const length = Math.hypot(dx, dz);
+		if (length <= 0) return undefined;
+		const width = Math.max(0.1, area.shape.radius * 2 || area.shape.width);
+		const mesh = MeshBuilder.CreateGround(`${id}:trajectory`, { width, height: length }, this.scene);
+		mesh.position.set(
+			(endpoints.from.x + endpoints.to.x) / 2,
+			(endpoints.from.y + endpoints.to.y) / 2 + AREA_VISUAL_GROUND_OFFSET_METERS,
+			(endpoints.from.z + endpoints.to.z) / 2,
+		);
+		mesh.rotation.y = Math.atan2(dx, dz);
+		mesh.material = this.createAreaMaterial(`${id}:trajectory:material`, new Color3(1, 0.55, 0.1), 0.22);
+		return mesh;
+	}
+
+	private createTrajectoryLine(id: string, area: WorldStateArea, anchors: TrajectoryAnchors): AbstractMesh | undefined {
+		const trajectory = area.trajectory;
+		if (!trajectory) return undefined;
+		const durationMs = trajectoryDurationMs(trajectory);
+		if (durationMs == null || durationMs <= 0) return undefined;
+		const points = Array.from({ length: 33 }, (_, index) => {
+			const point = evalTrajectory(trajectory, (durationMs * index) / 32, anchors);
+			return new Vector3(point.x, point.y + AREA_VISUAL_GROUND_OFFSET_METERS, point.z);
+		});
+		const line = MeshBuilder.CreateLines(`${id}:trajectory`, { points }, this.scene);
+		line.color = new Color3(1, 0.55, 0.1);
+		line.alpha = 0.75;
+		return line;
+	}
+
+	private getLinearTrajectoryEndpoints(
+		area: WorldStateArea,
+	): { from: WorldStateArea["position"]; to: WorldStateArea["position"] } | null {
+		const trajectory = area.trajectory;
+		if (!trajectory) return null;
+		if (trajectory.kind === "segment") return { from: trajectory.from, to: trajectory.to };
+		if (trajectory.kind === "ray") {
+			return {
+				from: trajectory.from,
+				to: {
+					x: trajectory.from.x + trajectory.dir.x * trajectory.maxDistance,
+					y: trajectory.from.y + trajectory.dir.y * trajectory.maxDistance,
+					z: trajectory.from.z + trajectory.dir.z * trajectory.maxDistance,
+				},
+			};
+		}
+		return null;
+	}
+
+	private createAreaMaterial(id: string, color: Color3, alpha: number): StandardMaterial {
+		const material = new StandardMaterial(id, this.scene);
+		material.alpha = alpha;
+		material.diffuseColor = color;
+		material.backFaceCulling = false;
+		return material;
+	}
+
+	private disposeAreaVisual(visual: AreaVisual): void {
+		for (const mesh of visual.meshes) mesh.dispose(false, true);
 	}
 
 	disposeAreaVisuals(): void {
-		for (const mesh of this.areaVisuals.values()) {
-			mesh.dispose();
-		}
+		for (const visual of this.areaVisuals.values()) this.disposeAreaVisual(visual);
 		this.areaVisuals.clear();
 	}
 
