@@ -69,7 +69,7 @@ BtManager：
 ```text
 activeEffectEntry:
   技能效果 BT
-  唯一允许使用 action [state, ...] 的 BT
+  唯一允许使用 action [animation, ...] 声明语义动作阶段的 BT
 
 parallelEntries:
   passive:* BT

@@ -18,7 +18,8 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 - 新 ADR 取当前最大已发布编号加一。未发布草稿可以重写、合并、删除和重新编号。
 - 允许状态为 `Proposed`、`Accepted`、`Rejected`、`Superseded by NNNN`、`Deprecated`、`Withdrawn`。
 - `Proposed` 只用于正在主动评审的决策；实现进度不写入状态。
-- `Accepted` 决议不改写。结论变化时创建新 ADR，并建立双向 `Supersedes` / `Superseded by` 关系。
+- `Accepted` ADR 的架构问题、候选方案或长期边界发生变化时，创建新 ADR，并建立双向 `Supersedes` / `Superseded by` 关系。
+- 若长期架构边界未变，只是删除误写入 ADR 的字段、算法、类型变体或迁移细节，或修正与同一边界冲突的实现描述，可在用户明确确认后直接修订原 ADR，并留下简短修订说明。
 - 关系优先使用 `Supersedes`、`Depends on`、`Refines`、`Conflicts with`，不把模糊的“相关”作为默认关系。
 - 代码或提交只在“为什么这样写不明显”时引用 ADR，不要求每个受影响文件都添加引用。
 
