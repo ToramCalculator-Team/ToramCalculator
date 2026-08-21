@@ -113,23 +113,50 @@ export function SimulatorValidationView() {
 			session.snapshot().matches("validationFailedDecision"),
 	);
 	const outputReleaseFailed = createMemo(() => session.snapshot().matches("outputReleaseFailed"));
-	const statusText = createMemo(() => {
-		if (validationFailed()) return "验证异常";
-		if (!controlsEnabled()) return "处理中";
-		return runtime.isRunning() ? "运行中" : "已暂停";
-	});
 
 	return (
 		<>
-			<div class="pointer-events-none absolute inset-x-3 top-3 flex items-start justify-between gap-3 portrait:flex-col">
-				<div class="pointer-events-auto flex max-w-[min(92vw,720px)] items-start gap-2 portrait:w-full portrait:max-w-none">
+			<div class="pointer-events-none absolute inset-x-3 top-3 flex items-center gap-3 portrait:flex-col">
+				<div class="pointer-events-auto flex flex-none items-center gap-2 portrait:w-full portrait:max-w-none">
 					<A href="/" class="bg-primary-color-60 hidden rounded px-3 py-2 backdrop-blur-md landscape:flex">
 						<Icons.Brand.NoPaddingLogoText class="h-6 w-40" />
 					</A>
-					<div class="flex min-w-72 flex-1 flex-col gap-2 p-2">
-						<div class="flex items-center justify-between gap-2 text-sm">
-							<span class="font-bold">{statusText()}</span>
-							<Show when={runtime.telemetry()}>
+					<div class="flex items-center justify-between gap-2 text-sm">
+						<div class="flex gap-2">
+							<Button
+								level="secondary"
+								icon={runtime.isRunning() ? <Icons.Outline.Pause /> : <Icons.Outline.Play />}
+								disabled={!controlsEnabled()}
+								onClick={() =>
+									session.send({
+										type: runtime.isRunning() ? "validation.pause.requested" : "validation.resume.requested",
+									})
+								}
+								class="min-w-0 w-fit flex-1"
+								title={runtime.isRunning() ? "暂停" : "继续"}
+								aria-label={runtime.isRunning() ? "暂停" : "继续"}
+							></Button>
+							<Button
+								level="secondary"
+								icon={<Icons.Outline.Stop />}
+								disabled={!controlsEnabled()}
+								onClick={() => session.send({ type: "validation.finish.requested" })}
+								class="min-w-0 w-fit flex-1"
+								title="结束验证"
+								aria-label="结束验证"
+							></Button>
+							<Button
+								level="secondary"
+								icon={<Icons.Outline.Replay />}
+								disabled={!controlsEnabled() || runtime.isRunning()}
+								onClick={() => session.send({ type: "validation.step.requested" })}
+								class="min-w-0 w-fit flex-1"
+								title="单步推进"
+								aria-label="单步推进"
+							></Button>
+						</div>
+						{/* <span class="font-bold">{statusText()}</span> */}
+						{/* <Show when={runtime.telemetry()}>
 								{(telemetry) => (
 									<span class="text-accent-color-70">
 										TPS {telemetry().ticksPerSecond.toFixed(0)} · 舍弃时间{" "}
@@ -137,13 +164,12 @@ export function SimulatorValidationView() {
 										{telemetry().lastStepTickDurationMs.toFixed(1)}ms · {telemetry().memberCount} 成员
 									</span>
 								)}
-							</Show>
-						</div>
+							</Show> */}
 					</div>
 				</div>
-
-				<div class="pointer-events-auto flex w-[min(92vw,360px)] flex-col gap-2 portrait:w-full">
-					<div class="bg-primary-color-70 border-dividing-color flex items-center gap-2 rounded border p-2 backdrop-blur-md">
+				<div class={`Hp&MP w-full h-full flex items-center justify-center`}></div>
+				<div class="pointer-events-auto flex flex-none flex-col gap-2 portrait:w-full">
+					<div class="flex items-center gap-2 p-2">
 						<Select
 							value={activeController()?.controllerId ?? ""}
 							setValue={(controllerId) => controllerId && session.send({ type: "controller.selected", controllerId })}
@@ -216,43 +242,6 @@ export function SimulatorValidationView() {
 			</Show>
 
 			<div class="pointer-events-auto absolute bottom-3 left-1/2 flex w-[min(96vw,960px)] -translate-x-1/2 flex-col gap-2">
-				<div class="bg-primary-color-70 border-dividing-color flex gap-2 rounded border p-2 backdrop-blur-md">
-					<Button
-						level="secondary"
-						icon={runtime.isRunning() ? <Icons.Outline.Pause /> : <Icons.Outline.Play />}
-						disabled={!controlsEnabled()}
-						onClick={() =>
-							session.send({ type: runtime.isRunning() ? "validation.pause.requested" : "validation.resume.requested" })
-						}
-						class="min-w-0 flex-1"
-						title={runtime.isRunning() ? "暂停" : "继续"}
-						aria-label={runtime.isRunning() ? "暂停" : "继续"}
-					>
-						<span class="hidden sm:inline">{runtime.isRunning() ? "暂停" : "继续"}</span>
-					</Button>
-					<Button
-						level="primary"
-						icon={<Icons.Outline.Stop />}
-						disabled={!controlsEnabled()}
-						onClick={() => session.send({ type: "validation.finish.requested" })}
-						class="min-w-0 flex-1"
-						title="结束验证"
-						aria-label="结束验证"
-					>
-						<span class="hidden sm:inline">结束验证</span>
-					</Button>
-					<Button
-						level="secondary"
-						icon={<Icons.Outline.Replay />}
-						disabled={!controlsEnabled() || runtime.isRunning()}
-						onClick={() => session.send({ type: "validation.step.requested" })}
-						class="min-w-0 flex-1"
-						title="单步推进"
-						aria-label="单步推进"
-					>
-						<span class="hidden sm:inline">单步推进</span>
-					</Button>
-				</div>
 				<div class="bg-primary-color-70 border-dividing-color grid min-h-16 grid-flow-col grid-rows-1 gap-2 overflow-x-auto rounded border p-2 backdrop-blur-md auto-cols-[minmax(5.5rem,1fr)]">
 					<Show
 						when={session.activeSkills().length > 0}

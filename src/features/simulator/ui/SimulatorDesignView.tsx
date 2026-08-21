@@ -115,8 +115,8 @@ function CampPanel(props: { camp: Camp; copy: Accessor<DesignCopy> }) {
 
 	return (
 		<section class="flex min-w-0 flex-col gap-3 lg:min-h-[40rem] landscape:border-y-accent-color landscape:border-y-2 p-3">
-			<h2 class="px-2 py-1 text-center text-xl font-bold">阵营{props.camp}</h2>
 			<div class="flex min-h-14 items-center gap-1 overflow-x-auto rounded-lg p-1">
+				<h2 class="px-2 py-1 text-center text-xl font-bold">阵营{props.camp}</h2>
 				<For each={teams()}>
 					{(team, index) => (
 						<Button
