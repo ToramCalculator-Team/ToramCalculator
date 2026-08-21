@@ -758,12 +758,12 @@ const buildAttackActionLine = ({ actionName, types, formula, damageCount, tags, 
 		toMdslString(damageCount),
 		toMdslStringArrayLiteral(tags),
 		toMdslAilmentsLiteral(ailments),
-		toMdslString("none"),
+		"true",
 	];
 	if (actionName === "rangeAttack" || actionName === "surroundingsAttack") {
 		args.push(String(radius));
 	}
-	if (damageInterval) {
+	if (damageInterval != null) {
 		args.push(toMdslString(damageInterval));
 	}
 	return `\t\t${args.join(", ")}]`;
@@ -807,8 +807,8 @@ const buildDamageActionLines = (dmgAttrs, types, formula, summary, context) => {
 	}
 
 	if (dmgAttrs.judgment === "common") {
-		const damageInterval = dmgAttrs.cycle ? normalizeSecondsExpressionToMs(dmgAttrs.cycle) : null;
-		if (dmgAttrs.cycle && !damageInterval) {
+		const repeatInterval = dmgAttrs.cycle ? normalizeSecondsExpressionToMs(dmgAttrs.cycle) : "0";
+		if (dmgAttrs.cycle && !repeatInterval) {
 			addActiveUnsupported(summary, "unsupportedDamageIntervalExpression", { ...context, cycle: dmgAttrs.cycle });
 			return null;
 		}
@@ -821,7 +821,7 @@ const buildDamageActionLines = (dmgAttrs, types, formula, summary, context) => {
 				tags,
 				ailments,
 				radius,
-				damageInterval,
+				damageInterval: repeatInterval,
 			}),
 		];
 	}
@@ -1052,7 +1052,7 @@ const hasLifecycleTiming = (...values) =>
 	});
 
 const buildLifecyclePhaseLines = (name, durationArg) => [
-	`\t\taction [state, ${toMdslString(`skill.${name}`)}]`,
+	`\t\taction [animation, ${toMdslString(`skill.${name}`)}]`,
 	`\t\twait [${durationArg}]`,
 ];
 

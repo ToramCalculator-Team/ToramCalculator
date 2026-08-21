@@ -3,14 +3,14 @@ import type { SkillExample } from "../types";
 
 const defaultSkillDefinition = `root {
 	sequence{
-		action [state,"skill.charging"]
+		action [animation,"skill.charging"]
 		wait [$currentSkill.lifecycle.charging]
-		action [state,"skill.chanting"]
+		action [animation,"skill.chanting"]
 		wait [$currentSkill.lifecycle.chanting]
-		action [state,"skill.startup"]
+		action [animation,"skill.startup"]
 		wait [$currentSkill.lifecycle.startup]
         branch [mainAction]
-		action [state,"skill.recovery"]
+		action [animation,"skill.recovery"]
 		wait [$currentSkill.lifecycle.recovery]
     }
 }
