@@ -1,7 +1,7 @@
 import type { DB } from "@db/generated/zod/index";
 import { createEffect, createRoot } from "solid-js";
+import { ensureTemporaryAccount } from "~/platform/session/temporaryAccount";
 import { runStartupGate } from "~/platform/version/startupGate";
-import { ensureTemporaryAccount } from "~/session/temporaryAccount";
 import { store } from "~/store";
 import { waitForElectricTables } from "./electricReadiness";
 import type { BootstrapModule } from "./types";

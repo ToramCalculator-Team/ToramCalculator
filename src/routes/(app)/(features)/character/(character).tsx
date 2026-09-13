@@ -1,6 +1,6 @@
 import { useNavigate } from "@solidjs/router";
 import { onCleanup, onMount } from "solid-js";
-import { hydrateSessionAccountStore } from "~/session/sessionAccountStore";
+import { hydrateSessionAccountStore } from "~/platform/session/sessionAccountStore";
 import { store } from "~/store";
 
 // 此页面仅作为中转

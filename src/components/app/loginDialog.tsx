@@ -9,9 +9,9 @@ import type { InputStateType } from "~/components/ui/controls/input";
 import { Input } from "~/components/ui/controls/input";
 import { useDictionary } from "~/contexts/Dictionary";
 import { type OverlayLayerHandle, useOverlay } from "~/contexts/overlay/OverlayContext";
-import { emailExists, getUserByCookie } from "~/session/authUser";
-import { clearSessionAccountStore, hydrateSessionAccountStore } from "~/session/sessionAccountStore";
-import { bindTemporaryAccountToUser, clearLocalChanges, ensureTemporaryAccount } from "~/session/temporaryAccount";
+import { emailExists, getUserByCookie } from "~/platform/session/authUser";
+import { clearSessionAccountStore, hydrateSessionAccountStore } from "~/platform/session/sessionAccountStore";
+import { bindTemporaryAccountToUser, clearLocalChanges, ensureTemporaryAccount } from "~/platform/session/temporaryAccount";
 import { setStore, store } from "~/store";
 
 function fieldInfo(field: AnyFieldApi): string {

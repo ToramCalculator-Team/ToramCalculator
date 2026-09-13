@@ -5,8 +5,8 @@ import { insertSimulatorQuery, type Simulator, updateSimulatorQuery } from "@db/
 import { insertTeamQuery } from "@db/generated/repositories/team";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
-import { ensureAccountPlayer } from "~/session/accountPlayer";
-import { ensureTemporaryAccount } from "~/session/temporaryAccount";
+import { ensureAccountPlayer } from "~/platform/session/accountPlayer";
+import { ensureTemporaryAccount } from "~/platform/session/temporaryAccount";
 
 export const TRAINING_DUMMY_MOB_ID = "defaultTrainingDummyMobId";
 

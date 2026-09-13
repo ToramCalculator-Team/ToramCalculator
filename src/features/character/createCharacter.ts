@@ -4,9 +4,9 @@ import { updatePlayerQuery } from "@db/generated/repositories/player";
 import type { Account } from "@db/repositories/account";
 import { getDB } from "@db/repositories/database";
 import { createId } from "@paralleldrive/cuid2";
-import { ensureAccountPlayer } from "~/session/accountPlayer";
-import { hydrateSessionAccountStore } from "~/session/sessionAccountStore";
-import { ensureTemporaryAccount } from "~/session/temporaryAccount";
+import { ensureAccountPlayer } from "~/platform/session/accountPlayer";
+import { hydrateSessionAccountStore } from "~/platform/session/sessionAccountStore";
+import { ensureTemporaryAccount } from "~/platform/session/temporaryAccount";
 
 // 根据当前账户创建角色
 export const createCharacter = async (): Promise<Character> => {

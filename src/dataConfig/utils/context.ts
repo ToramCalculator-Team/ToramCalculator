@@ -1,5 +1,5 @@
-export type { CurrentUserContext as UserContext } from "~/session/currentUserContext";
+export type { CurrentUserContext as UserContext } from "~/platform/session/currentUserContext";
 export {
 	getCurrentUserContext as ensureUserPlayer,
 	getCurrentUserContext as getUserContext,
-} from "~/session/currentUserContext";
+} from "~/platform/session/currentUserContext";
