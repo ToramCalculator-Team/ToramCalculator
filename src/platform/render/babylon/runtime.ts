@@ -6,6 +6,9 @@
  * 懒加载页面不会在运行时继续追加 Babylon 深层依赖，减少 Outdated Optimize Dep。
  */
 import "./registerBuiltinShaders";
+// Scene.beginAnimation 由 Animatable 副作用模块扩展到 Scene 原型；仅导入 Animation
+// 类型/类不会注册该运行时方法，tree-shaking 后会留下不执行回调的占位 stub。
+import "@babylonjs/core/Animations/animatable";
 import "@babylonjs/core/Rendering/depthRendererSceneComponent";
 import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
 import "@babylonjs/core/Layers/effectLayerSceneComponent";
