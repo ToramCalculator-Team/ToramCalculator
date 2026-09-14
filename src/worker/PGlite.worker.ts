@@ -203,7 +203,7 @@ const notifySyncProgress = (tableName: keyof DB, state: syncMessage["data"]["sta
 const createDatabase = async () =>
 	await PGlite.create({
 		dataDir: PGLITE_DATA_DIR,
-		relaxedDurability: true,
+		// relaxedDurability: true,
 		// debug: 1,
 		extensions: {
 			live,
