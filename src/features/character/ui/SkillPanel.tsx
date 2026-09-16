@@ -7,7 +7,7 @@ import { Button } from "~/components/ui/controls/button";
 import { Icons } from "~/components/ui/icons";
 import { useDictionary } from "~/contexts/Dictionary";
 import { type OverlayLayerHandle, useOverlay } from "~/contexts/overlay/OverlayContext";
-import { createLiveKyselyQuery } from "~/platform/pglite/liveQuery";
+import { createLiveKyselyQuery } from "~/platform/dataQuery/liveQuery";
 import { SKILL_TREE_MAP, SkillTreePickerSheetContent } from "./SkillTreePickerSheet";
 import {
 	buildSkillLinkCells,

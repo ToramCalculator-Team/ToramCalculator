@@ -29,7 +29,7 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-solid";
 import { type Accessor, createEffect, createSignal, For, type JSX, onCleanup, onMount, Show } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 import type { Dic, EnumFieldDetail } from "~/locales/type";
-import { createLiveKyselyQuery } from "~/platform/pglite/liveQuery";
+import { createLiveKyselyQuery } from "~/platform/dataQuery/liveQuery";
 import { store } from "~/store";
 import { Button } from "../controls/button";
 

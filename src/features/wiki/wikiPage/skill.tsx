@@ -30,7 +30,7 @@ import { getTablePrimaryKey } from "~/features/wiki/tableConfig";
 import { useCanEditRecord } from "~/features/wiki/useCanEditRecord";
 import { createOpenRelatedCard } from "~/features/wiki/wikiCardNav";
 import { createOpenRecordForm } from "~/features/wiki/wikiFormSheet";
-import { createLiveKyselyQuery } from "~/platform/pglite/liveQuery";
+import { createLiveKyselyQuery } from "~/platform/dataQuery/liveQuery";
 import { store } from "~/store";
 
 // 共享元素 morph 的 view-transition-name：卡片与全屏面板轮流持有它，浏览器据此把

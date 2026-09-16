@@ -24,7 +24,7 @@ import type { ObjRenderers } from "~/components/ui/dataDisplay/ObjRenderer";
 import type { FormRenderers } from "~/components/ui/form/fields";
 import { Icons } from "~/components/ui/icons/index";
 import type { Dictionary } from "~/locales/type";
-import { createLiveKyselyQuery } from "~/platform/pglite/liveQuery";
+import { createLiveKyselyQuery } from "~/platform/dataQuery/liveQuery";
 import { getRowPrimaryKeyValue } from "./tableConfig";
 
 // ---------------------------------------------------------------------------

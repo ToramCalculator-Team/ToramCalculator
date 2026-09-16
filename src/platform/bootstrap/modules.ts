@@ -164,7 +164,7 @@ export const bootstrapModules: BootstrapModule<unknown>[] = [
 		timeout: 60_000,
 		init: async () => {
 			// Phase B 起由 bootstrap 主动创建 worker，避免调用方各自抢跑初始化。
-			const { createPgWorker } = await import("~/platform/pglite/pg");
+			const { createPgWorker } = await import("~/platform/dataQuery/pg");
 			await createPgWorker();
 		},
 	},
@@ -210,7 +210,7 @@ export const bootstrapModules: BootstrapModule<unknown>[] = [
 		deps: ["pgworker", "temporaryAccount"],
 		optional: true,
 		init: async () => {
-			const { syncControl } = await import("~/platform/pglite/pg");
+			const { syncControl } = await import("~/platform/dataQuery/pg");
 
 			createRoot(() => {
 				createEffect(() => {

@@ -6,8 +6,8 @@ import {
 	createKyselyLiveQuerySource,
 	type LiveQuerySource,
 	type LiveQuerySubscription,
-} from "~/platform/pglite/kyselyLiveQuerySource";
-import type { LiveQueryStatus } from "~/platform/pglite/liveQuery";
+} from "~/platform/dataQuery/kyselyLiveQuerySource";
+import type { LiveQueryStatus } from "~/platform/dataQuery/liveQuery";
 import {
 	type CharacterAggregateIdentity,
 	type CharacterLiveAggregate,

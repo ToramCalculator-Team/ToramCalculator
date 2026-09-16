@@ -9,7 +9,7 @@ import { LoadingBar } from "~/components/ui/controls/loadingBar";
 import { Select } from "~/components/ui/controls/select";
 import { Icons } from "~/components/ui/icons/index";
 import { useDictionary } from "~/contexts/Dictionary";
-import { createLiveKyselyQuery } from "~/platform/pglite/liveQuery";
+import { createLiveKyselyQuery } from "~/platform/dataQuery/liveQuery";
 
 export const AddressPage = () => {
 	const dic = useDictionary();

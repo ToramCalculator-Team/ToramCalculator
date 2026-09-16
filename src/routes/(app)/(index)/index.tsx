@@ -12,7 +12,7 @@ import { Icons } from "~/components/ui/icons";
 import { type OverlayLayerHandle, useOverlay } from "~/contexts/overlay/OverlayContext";
 import { createTrainingSimulator } from "~/features/simulator/createTrainingSimulator";
 import { useSimulatorSession } from "~/features/simulator/session/SimulatorSession";
-import { createLiveKyselyQuery } from "~/platform/pglite/liveQuery";
+import { createLiveKyselyQuery } from "~/platform/dataQuery/liveQuery";
 import { setStore, store } from "~/store";
 
 /** 持久 Simulator 选择入口；路由只选择投影身份，会话由应用级 Provider 拥有。 */

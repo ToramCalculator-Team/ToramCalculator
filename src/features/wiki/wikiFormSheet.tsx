@@ -17,7 +17,7 @@ import { LoadingBar } from "~/components/ui/controls/loadingBar";
 import { Form } from "~/components/ui/form/Form";
 import { useOverlay } from "~/contexts/overlay/OverlayContext";
 import type { Dictionary } from "~/locales/type";
-import { createLiveKyselyQuery } from "~/platform/pglite/liveQuery";
+import { createLiveKyselyQuery } from "~/platform/dataQuery/liveQuery";
 import { store } from "~/store";
 import { buildFKFormRenderers, ReferencedByFormSection } from "./fkRenderers";
 import {

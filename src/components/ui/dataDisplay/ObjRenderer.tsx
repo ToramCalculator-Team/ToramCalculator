@@ -2,7 +2,6 @@ import type { DB } from "@db/generated/zod/index";
 import type { Compilable, Kysely } from "kysely";
 import { type Accessor, createMemo, For, Index, type JSX, Show } from "solid-js";
 import type { ZodType } from "zod/v4";
-import { createLiveKyselyQuery } from "~/platform/pglite/liveQuery";
 import { findRenderer } from "~/components/ui/rendererPath";
 import {
 	arrayElement,
@@ -15,6 +14,7 @@ import {
 	type ZodSchemaFor,
 } from "~/lib/utils/zod";
 import type { Dic, FieldDetail } from "~/locales/type";
+import { createLiveKyselyQuery } from "~/platform/dataQuery/liveQuery";
 
 export type ObjContainerFrameOptions = {
 	/** 只替换容器内部布局，标题和默认外框继续由 ObjRenderer 负责。 */
