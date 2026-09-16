@@ -28,7 +28,7 @@ export async function createKyselyLiveQuerySource<TDatabase, T>(
 	kysely: Kysely<TDatabase>,
 	compiled: CompiledQuery<T>,
 ): Promise<LiveQuerySource<T>> {
-	const { createPgWorker } = await import("~/platform/pglite/pg");
+	const { createPgWorker } = await import("~/platform/dataQuery/pg");
 	// PGliteWorker 的公开类型未携带扩展 namespace；运行实例由 pg.ts 明确以 live 扩展创建。
 	const pgWorker = (await createPgWorker()) as unknown as LiveQueryAdapter;
 	return {

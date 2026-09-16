@@ -76,7 +76,7 @@
 **数据库访问**：使用 Kysely（`kysely`），类型来自 `@db/generated/zod/index`。
 
 - 服务端：PostgreSQL，通过 `pg` pool 访问。
-- 客户端：PGlite Web Worker（`src/platform/pglite/`），通过 ElectricSQL 同步。
+- 客户端：PGlite Web Worker（`src/platform/dataQuery/`），通过 ElectricSQL 同步。
 
 **变更 API**：`POST /api/changes`，这是 JWT 认证的写入端点；接受客户端同步产生的 insert、update 和 delete 变更。
 
