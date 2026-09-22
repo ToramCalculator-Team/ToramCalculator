@@ -27,5 +27,11 @@ pnpm-lock.yaml
 public/chunk-manifest.json
 public/service.worker.js
 
-#db
+# db
 db/generated/
+
+# agent
+.pi/code-maps/.access.json
+.pi/npm/
+.pi/git/
+.pi/sessions/
