@@ -1,5 +1,5 @@
 {
   "extensions": [
-    ".agents/skills/project-code-maps/index.ts"
+    "../.agents/skills/project-code-maps/index.ts"
   ]
 }
