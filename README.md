@@ -27,7 +27,7 @@ pnpm install
 cp .env.example .env
 
 # 3. 初始化本地环境
-pnpm setup
+pnpm run setup
 
 # 4. 启动开发服务器
 pnpm dev

@@ -27,7 +27,7 @@ pnpm install
 cp .env.example .env
 
 # 3. Initialize the local environment
-pnpm setup
+pnpm run setup
 
 # 4. Start the development server
 pnpm dev
