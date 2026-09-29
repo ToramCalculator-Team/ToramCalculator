@@ -1,5 +1,4 @@
 import { type Component, createEffect, type JSX, onCleanup, Show } from "solid-js";
-import { Portal } from "solid-js/web";
 
 export type MenuProps = {
 	anchorEl?: HTMLElement | null;
@@ -26,11 +25,8 @@ const Menu: Component<MenuProps> = (props) => {
 	};
 
 	createEffect(() => {
-		if (props.open) {
-			document.addEventListener("mousedown", handleClickOutside);
-		} else {
-			document.removeEventListener("mousedown", handleClickOutside);
-		}
+		if (props.open) document.addEventListener("mousedown", handleClickOutside);
+		else document.removeEventListener("mousedown", handleClickOutside);
 	});
 
 	onCleanup(() => {
@@ -39,19 +35,13 @@ const Menu: Component<MenuProps> = (props) => {
 
 	return (
 		<Show when={props.open}>
-			<Portal>
-				<div
-					ref={menuRef}
-					class={`fixed z-50 mt-1 bg-primary-color rounded shadow-lg border border-dividing-color min-w-[320px] max-h-[90vh] overflow-y-auto ${props.class || ""}`}
-					style={{
-						top: props.anchorEl ? `${props.anchorEl.getBoundingClientRect().bottom}px` : "0",
-						left: props.anchorEl ? `${props.anchorEl.getBoundingClientRect().left}px` : "0",
-					}}
-					role="menu"
-				>
-					{props.children}
-				</div>
-			</Portal>
+			<div
+				ref={menuRef}
+				class={`absolute left-0 top-full z-50 mt-1 min-w-[320px] max-w-[calc(100vw-16px)] max-h-[90vh] overflow-y-auto rounded border border-dividing-color bg-primary-color shadow-lg ${props.class || ""}`}
+				role="menu"
+			>
+				{props.children}
+			</div>
 		</Show>
 	);
 };

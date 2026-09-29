@@ -69,13 +69,13 @@ export const SkillLogicExamplesMenu: Component<SkillLogicExamplesMenuProps> = (p
 	};
 
 	return (
-		<>
+		<div class="relative">
 			<Button level="quaternary" aria-label="打开技能示例" title="技能示例" onClick={handleClick}>
 				<Icons.Outline.Basketball />
 			</Button>
 			<Menu anchorEl={anchorEl()} open={open()} onClose={handleClose}>
 				<SkillLogicExamplesMenuContent onMDSLInsert={props.onMDSLInsert} onSelect={handleClose} />
 			</Menu>
-		</>
+		</div>
 	);
 };

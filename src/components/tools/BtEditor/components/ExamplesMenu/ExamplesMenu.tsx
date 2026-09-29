@@ -107,13 +107,13 @@ export const ExamplesMenu: Component<ExamplesMenuProps> = (props) => {
 	};
 
 	return (
-		<>
+		<div class="relative">
 			<Button level="quaternary" aria-label="打开通用示例" title="通用示例" onClick={handleClick}>
 				<Icons.Outline.Receipt />
 			</Button>
 			<Menu anchorEl={anchorEl()} open={open()} onClose={handleClose}>
 				<ExamplesMenuContent onMDSLInsert={props.onMDSLInsert} onSelect={handleClose} />
 			</Menu>
-		</>
+		</div>
 	);
 };

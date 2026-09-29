@@ -729,7 +729,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	return (
 		<div id="BtEditor" class="BtEditor bg-primary-color relative flex h-full w-full flex-col overflow-hidden">
 			<div class="border-dividing-color flex min-h-12 items-center border-b bg-primary-color">
-				<div class="flex h-full shrink-0 items-center px-2">
+				<div class="relative flex h-full shrink-0 items-center px-2">
 					<Button
 						level="quaternary"
 						class="h-10 min-h-10 px-3 py-2"
@@ -739,6 +739,21 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 					>
 						<Icons.Outline.Burger />
 					</Button>
+					<BtEditorTopMenu
+						anchorEl={topMenuAnchorEl()}
+						open={topMenuOpen()}
+						title={props.title}
+						treeName={treeName()}
+						memberType={memberType()}
+						activeRoot={activeRoot()}
+						readOnly={isReadOnly()}
+						onClose={closeTopMenu}
+						onTreeNameChange={handleTreeNameChange}
+						onMemberTypeChange={handleMemberTypeChange}
+						onRootNameChange={handleRootNameChange}
+						onOpenAdvanced={openAdvancedPanel}
+						onMDSLInsert={handleMDSLInsert}
+					/>
 				</div>
 				<SubtreeNavBar
 					items={subtreeNavItems()}
@@ -761,21 +776,6 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 						</Button>
 					</div>
 				</Show>
-				<BtEditorTopMenu
-					anchorEl={topMenuAnchorEl()}
-					open={topMenuOpen()}
-					title={props.title}
-					treeName={treeName()}
-					memberType={memberType()}
-					activeRoot={activeRoot()}
-					readOnly={isReadOnly()}
-					onClose={closeTopMenu}
-					onTreeNameChange={handleTreeNameChange}
-					onMemberTypeChange={handleMemberTypeChange}
-					onRootNameChange={handleRootNameChange}
-					onOpenAdvanced={openAdvancedPanel}
-					onMDSLInsert={handleMDSLInsert}
-				/>
 			</div>
 			<Show when={diagnosticListItems().length > 0}>
 				<DiagnosticsStatusBar
