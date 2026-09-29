@@ -106,9 +106,6 @@ generatorHandler({
 				await clientMigrationGenerator.generate();
 			}
 
-			// 跳过 types.ts 生成，因为类型应该从 zod 导出
-			console.log("跳过 types.ts 生成，类型从 zod/index.ts 导出");
-
 			console.log("Prisma 生成器流程完成");
 		} catch (error) {
 			console.error("Prisma 生成器流程失败:", error);
