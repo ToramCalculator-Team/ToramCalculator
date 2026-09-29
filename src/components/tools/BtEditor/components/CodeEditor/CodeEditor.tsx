@@ -7,8 +7,8 @@ import TsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker&
 import { type Component, createEffect, onCleanup, onMount } from "solid-js";
 import { CommonActionPool } from "~/engine/core/World/Member/runtime/Agent/CommonActions";
 import { CommonConditionPool } from "~/engine/core/World/Member/runtime/Agent/CommonCondition";
-import { rgbToBase16 } from "~/lib/utils/color";
 import { store } from "~/store";
+import { resolveColorSystem } from "~/styles/colorSystem/colorSystemController";
 import { mdslLanguageDefinition } from "../../modes/mdsl";
 import {
 	buildMdslIntellisenseRegistry,
@@ -747,122 +747,36 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
 
 	const darkTheme = "app-theme-dark";
 	const lightTheme = "app-theme-light";
-
-	const colorTokens = {
-		/* 背景色 */
-		white: [255, 255, 255],
-		black: [0, 0, 0],
-		grey: [40, 40, 40],
-		/* 对比度控制颜色 */
-		brown: [47, 26, 73],
-		/* 品牌色 */
-		greenBlue: [110, 221, 229],
-		yellow: [255, 153, 25],
-		orange: [253, 116, 66],
-		navyBlue: [78, 133, 226],
-		/* 装饰色 */
-		water: [0, 140, 229],
-		fire: [233, 62, 38],
-		earth: [255, 151, 54],
-		wind: [0, 143, 84],
-		light: [248, 193, 56],
-		dark: [141, 56, 240],
-	} as const satisfies Record<string, [number, number, number]>;
-
-	const darkThemeTokens = {
-		accent: colorTokens.white,
-		primary: colorTokens.grey,
-		transition: colorTokens.black,
-		brand1st: colorTokens.greenBlue,
-		brand2nd: colorTokens.yellow,
-		brand3rd: colorTokens.orange,
-		brand4th: colorTokens.navyBlue,
+	const getThemeColors = () => {
+		const colors = resolveColorSystem(store.settings.userInterface.theme, store.settings.userInterface.themeVersion)
+			.colors.semantic;
+		return {
+			brand1st: colors.brand1st.hex,
+			brand2nd: colors.brand2nd.hex,
+			brand3rd: colors.brand3rd.hex,
+			brand4th: colors.brand4th.hex,
+			accent: colors.accent.hex,
+			transition: colors.dividing.hex,
+			primary: colors.primary.hex,
+		};
+	};
+	const defineEditorThemes = () => {
+		const colors = getThemeColors();
+		monaco.editor.defineTheme(darkTheme, {
+			base: "vs-dark",
+			inherit: true,
+			rules: [{ token: "keyword", foreground: colors.accent.slice(1), fontStyle: "bold" }],
+			colors: { "editor.background": colors.primary },
+		});
+		monaco.editor.defineTheme(lightTheme, {
+			base: "vs",
+			inherit: true,
+			rules: [{ token: "keyword", foreground: colors.accent.slice(1), fontStyle: "bold" }],
+			colors: { "editor.background": colors.primary, "editor.foreground": colors.accent },
+		});
 	};
 
-	const lightThemeTokens = {
-		accent: colorTokens.brown,
-		primary: colorTokens.white,
-		transition: colorTokens.navyBlue,
-		brand1st: colorTokens.greenBlue,
-		brand2nd: colorTokens.yellow,
-		brand3rd: colorTokens.orange,
-		brand4th: colorTokens.navyBlue,
-	};
-
-	const darkThemeBase16Colors = {
-		brand1st: rgbToBase16(darkThemeTokens.brand1st),
-		brand2nd: rgbToBase16(darkThemeTokens.brand2nd),
-		brand3rd: rgbToBase16(darkThemeTokens.brand3rd),
-		accent: rgbToBase16(darkThemeTokens.accent),
-		transition: rgbToBase16(darkThemeTokens.transition),
-		primary: rgbToBase16(darkThemeTokens.primary),
-	};
-
-	const lightThemeBase16Colors = {
-		brand1st: rgbToBase16(lightThemeTokens.brand1st),
-		brand2nd: rgbToBase16(lightThemeTokens.brand2nd),
-		brand3rd: rgbToBase16(lightThemeTokens.brand3rd),
-		accent: rgbToBase16(lightThemeTokens.accent),
-		transition: rgbToBase16(lightThemeTokens.transition),
-		primary: rgbToBase16(lightThemeTokens.primary),
-	};
-
-	// 颜色值应该是base16的值
-	monaco.editor.defineTheme(darkTheme, {
-		base: "vs-dark",
-		inherit: true,
-		rules: [
-			// // 所有语法高亮颜色都使用 CSS 变量中的品牌色
-			{
-				token: "keyword",
-				foreground: darkThemeBase16Colors.accent,
-				fontStyle: "bold",
-			},
-			// { token: "operator", foreground: darkThemeBase16Colors.accent },
-			// { token: "identifier", foreground: darkThemeBase16Colors.accent },
-			// { token: "support.function", foreground: darkThemeBase16Colors.brand2nd },
-			// { token: "variable.language", foreground: darkThemeBase16Colors.brand1st },
-			// { token: "constant.language", foreground: darkThemeBase16Colors.brand3rd },
-			// // 注释、字符串、数字等使用 base 主题的默认颜色（会根据 vs/vs-dark 自动调整）
-		],
-		colors: {
-			"editor.background": darkThemeBase16Colors.primary,
-			// "editor.foreground": darkThemeBase16Colors.accent,
-			// "editorLineNumber.foreground": darkThemeBase16Colors.transition,
-			// "editor.selectionBackground": 'rgba(0, 0, 0, 0.5)',
-			// "editor.lineHighlightBackground": `#red`,
-			// "editorCursor.foreground": darkThemeBase16Colors.accent,
-			// "editorWhitespace.foreground": darkThemeBase16Colors.transition,
-		},
-	});
-
-	monaco.editor.defineTheme(lightTheme, {
-		base: "vs",
-		inherit: true,
-		rules: [
-			// // 所有语法高亮颜色都使用 CSS 变量中的品牌色
-			{
-				token: "keyword",
-				foreground: lightThemeBase16Colors.accent,
-				fontStyle: "bold",
-			},
-			// { token: "operator", foreground: lightThemeBase16Colors.accent },
-			// { token: "identifier", foreground: lightThemeBase16Colors.accent },
-			// { token: "support.function", foreground: lightThemeBase16Colors.brand2nd },
-			// { token: "variable.language", foreground: lightThemeBase16Colors.brand1st },
-			// { token: "constant.language", foreground: lightThemeBase16Colors.brand3rd },
-			// // 注释、字符串、数字等使用 base 主题的默认颜色（会根据 vs/vs-dark 自动调整）
-		],
-		colors: {
-			"editor.background": `#F3F7FD`,
-			"editor.foreground": lightThemeBase16Colors.accent,
-			// "editorLineNumber.foreground": lightThemeBase16Colors.transition,
-			// "editor.selectionBackground": 'rgba(0, 0, 0, 0.5)',
-			// "editor.lineHighlightBackground": `#red`,
-			// "editorCursor.foreground": lightThemeBase16Colors.accent,
-			// "editorWhitespace.foreground": lightThemeBase16Colors.transition,
-		},
-	});
+	defineEditorThemes();
 
 	onMount(() => {
 		if (!editorRef) return;
@@ -925,7 +839,7 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
 	});
 
 	createEffect(() => {
-		// 设置主题
+		defineEditorThemes();
 		monaco.editor.setTheme(store.settings.userInterface.theme === "dark" ? darkTheme : lightTheme);
 	});
 
