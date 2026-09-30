@@ -153,6 +153,19 @@ export class Action extends Leaf {
 		}
 	}
 
+	protected captureRuntimeState(): unknown {
+		if (this.isUsingUpdatePromise) {
+			throw new Error(`cannot capture checkpoint while action '${this.actionName}' is waiting for a Promise`);
+		}
+		return undefined;
+	}
+
+	protected validateRuntimeState(): void {
+		if (this.isUsingUpdatePromise) {
+			throw new Error(`cannot restore checkpoint while action '${this.actionName}' is waiting for a Promise`);
+		}
+	}
+
 	/**
 	 * 获取节点的名称。
 	 */

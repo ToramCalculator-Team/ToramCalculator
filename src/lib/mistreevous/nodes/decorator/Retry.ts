@@ -92,6 +92,23 @@ export class Retry extends Decorator {
 		}
 	}
 
+	protected captureRuntimeState(): unknown {
+		return {
+			targetAttemptCount: this.targetAttemptCount,
+			currentAttemptCount: this.currentAttemptCount,
+		};
+	}
+
+	protected restoreRuntimeState(data: unknown): void {
+		const state = readRetryRuntimeState(data);
+		this.targetAttemptCount = state.targetAttemptCount;
+		this.currentAttemptCount = state.currentAttemptCount;
+	}
+
+	protected validateRuntimeState(data: unknown): void {
+		readRetryRuntimeState(data);
+	}
+
 	/**
 	 * Gets the name of the node.
 	 */
@@ -112,7 +129,8 @@ export class Retry extends Decorator {
 		// Reset the state of this node.
 		this.setState(State.READY);
 
-		// Reset the current attempt count.
+		// Reset the current attempt count and the selected target.
+		this.targetAttemptCount = null;
 		this.currentAttemptCount = 0;
 
 		// Reset the child node.
@@ -150,5 +168,31 @@ export class Retry extends Decorator {
 		} else {
 			this.targetAttemptCount = null;
 		}
+	};
+}
+
+function readRetryRuntimeState(data: unknown): {
+	targetAttemptCount: number | null;
+	currentAttemptCount: number;
+} {
+	if (!data || typeof data !== "object") throw new Error("retry checkpoint data must be an object");
+	const value = data as Record<string, unknown>;
+	const targetAttemptCount = value.targetAttemptCount;
+	const currentAttemptCount = value.currentAttemptCount;
+	if (
+		targetAttemptCount !== null &&
+		(typeof targetAttemptCount !== "number" || !Number.isInteger(targetAttemptCount) || targetAttemptCount < 0)
+	) {
+		throw new Error("retry checkpoint targetAttemptCount must be a non-negative integer or null");
+	}
+	if (typeof currentAttemptCount !== "number" || !Number.isInteger(currentAttemptCount) || currentAttemptCount < 0) {
+		throw new Error("retry checkpoint currentAttemptCount must be a non-negative integer");
+	}
+	if (targetAttemptCount !== null && currentAttemptCount > targetAttemptCount) {
+		throw new Error("retry checkpoint currentAttemptCount cannot exceed targetAttemptCount");
+	}
+	return {
+		targetAttemptCount: targetAttemptCount as number | null,
+		currentAttemptCount,
 	};
 }

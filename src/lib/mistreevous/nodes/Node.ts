@@ -16,6 +16,15 @@ import { createUid } from "../Utilities";
 /**
  * Details of a tree node instance.
  */
+export type NodeCheckpoint = {
+	formatVersion: 1;
+	path: number[];
+	type: string;
+	state: AnyState;
+	data?: unknown;
+	children?: NodeCheckpoint[];
+};
+
 export type NodeDetails = {
 	/**
 	 * The tree node identifier.
@@ -204,6 +213,86 @@ export abstract class Node {
 	}
 
 	/**
+	 * 捕获节点自身及其子树的可恢复运行状态。
+	 * @param path 当前节点在行为树中的结构路径。
+	 */
+	public captureCheckpoint(path: number[] = []): NodeCheckpoint {
+		const children = this.getChildrenForCheckpoint();
+		const checkpoint: NodeCheckpoint = {
+			formatVersion: 1,
+			path: [...path],
+			type: this.type,
+			state: this._state,
+		};
+		const data = this.captureRuntimeState();
+		if (data !== undefined) checkpoint.data = structuredClone(data);
+		if (children.length > 0) {
+			checkpoint.children = children.map((child, index) => child.captureCheckpoint([...path, index]));
+		}
+		return checkpoint;
+	}
+
+	/**
+	 * 校验节点检查点是否与当前节点结构匹配。
+	 */
+	public validateCheckpoint(checkpoint: NodeCheckpoint, path: number[] = []): void {
+		if (!checkpoint || checkpoint.formatVersion !== 1) {
+			throw new Error(`invalid checkpoint format at node path ${formatNodePath(path)}`);
+		}
+		if (!samePath(checkpoint.path, path)) {
+			throw new Error(`checkpoint path mismatch at node path ${formatNodePath(path)}`);
+		}
+		if (checkpoint.type !== this.type) {
+			throw new Error(
+				`checkpoint node type mismatch at ${formatNodePath(path)}: expected '${this.type}', received '${checkpoint.type}'`,
+			);
+		}
+		if (!isNodeState(checkpoint.state)) {
+			throw new Error(`invalid checkpoint state at node path ${formatNodePath(path)}`);
+		}
+		this.validateRuntimeState(checkpoint.data);
+		const children = this.getChildrenForCheckpoint();
+		const checkpointChildren = checkpoint.children ?? [];
+		if (children.length !== checkpointChildren.length) {
+			throw new Error(`checkpoint child count mismatch at node path ${formatNodePath(path)}`);
+		}
+		children.forEach((child, index) => {
+			child.validateCheckpoint(checkpointChildren[index], [...path, index]);
+		});
+	}
+
+	/**
+	 * 应用已通过校验的节点检查点。此方法不会触发节点状态变化回调。
+	 */
+	public restoreCheckpoint(checkpoint: NodeCheckpoint): void {
+		this._state = checkpoint.state;
+		this.restoreRuntimeState(checkpoint.data);
+		const children = this.getChildrenForCheckpoint();
+		const checkpointChildren = checkpoint.children ?? [];
+		children.forEach((child, index) => {
+			child.restoreCheckpoint(checkpointChildren[index]);
+		});
+	}
+
+	/**
+	 * 返回节点的结构化子节点。复合节点和装饰节点覆盖此方法。
+	 */
+	protected getChildrenForCheckpoint(): Node[] {
+		return [];
+	}
+
+	/** 捕获节点专属的运行状态。 */
+	protected captureRuntimeState(): unknown {
+		return undefined;
+	}
+
+	/** 恢复节点专属的运行状态。 */
+	protected restoreRuntimeState(_data: unknown): void {}
+
+	/** 校验节点专属的运行状态。 */
+	protected validateRuntimeState(_data: unknown): void {}
+
+	/**
 	 * Abort the running of this node.
 	 * @param agent The agent.
 	 */
@@ -298,4 +387,16 @@ export abstract class Node {
 			state: this._state,
 		});
 	}
+}
+
+function isNodeState(value: unknown): value is AnyState {
+	return value === State.READY || value === State.RUNNING || value === State.SUCCEEDED || value === State.FAILED;
+}
+
+function samePath(left: number[], right: number[]): boolean {
+	return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function formatNodePath(path: number[]): string {
+	return path.length === 0 ? "root" : path.join(".");
 }

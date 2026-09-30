@@ -90,11 +90,69 @@ export class Lotto extends Composite {
 		this.setState(this.selectedChild.getState());
 	}
 
+	protected captureRuntimeState(): unknown {
+		return {
+			selectedChildIndex: this.selectedChild ? this.children.indexOf(this.selectedChild) : null,
+			resolvedWeights: this.resolvedWeights ?? null,
+		};
+	}
+
+	protected restoreRuntimeState(data: unknown): void {
+		const state = readLottoRuntimeState(data, this.children.length);
+		this.selectedChild = state.selectedChildIndex === null ? undefined : this.children[state.selectedChildIndex];
+		this.resolvedWeights = state.resolvedWeights ?? undefined;
+	}
+
+	protected validateRuntimeState(data: unknown): void {
+		readLottoRuntimeState(data, this.children.length);
+	}
+
+	reset = () => {
+		this.setState(State.READY);
+		this.children.forEach((child) => {
+			child.reset();
+		});
+		this.selectedChild = undefined;
+		this.resolvedWeights = undefined;
+	};
+
 	/**
 	 * Gets the name of the node.
 	 */
 	getName = () => {
 		const formatWeight = (w: LottoWeightArg) => (typeof w === "number" ? `${w}` : `$${w.$}`);
 		return this.weights ? `随机执行 [${this.weights.map(formatWeight).join(",")}]` : "随机执行";
+	};
+}
+
+function readLottoRuntimeState(
+	data: unknown,
+	childCount: number,
+): {
+	selectedChildIndex: number | null;
+	resolvedWeights: number[] | null;
+} {
+	if (!data || typeof data !== "object") throw new Error("lotto checkpoint data must be an object");
+	const value = data as Record<string, unknown>;
+	const selectedChildIndex = value.selectedChildIndex;
+	const resolvedWeights = value.resolvedWeights;
+	if (
+		selectedChildIndex !== null &&
+		(!Number.isInteger(selectedChildIndex) ||
+			(selectedChildIndex as number) < 0 ||
+			(selectedChildIndex as number) >= childCount)
+	) {
+		throw new Error("lotto checkpoint selectedChildIndex is out of range");
+	}
+	if (
+		resolvedWeights !== null &&
+		(!Array.isArray(resolvedWeights) ||
+			resolvedWeights.some((weight) => !Number.isInteger(weight) || (weight as number) < 0))
+	) {
+		throw new Error("lotto checkpoint resolvedWeights must be non-negative integers or null");
+	}
+	return {
+		selectedChildIndex: selectedChildIndex as number | null,
+		resolvedWeights: resolvedWeights as number[] | null,
 	};
 }

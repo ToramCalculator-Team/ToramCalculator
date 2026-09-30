@@ -92,6 +92,23 @@ export class Repeat extends Decorator {
 		}
 	}
 
+	protected captureRuntimeState(): unknown {
+		return {
+			targetIterationCount: this.targetIterationCount,
+			currentIterationCount: this.currentIterationCount,
+		};
+	}
+
+	protected restoreRuntimeState(data: unknown): void {
+		const state = readRepeatRuntimeState(data);
+		this.targetIterationCount = state.targetIterationCount;
+		this.currentIterationCount = state.currentIterationCount;
+	}
+
+	protected validateRuntimeState(data: unknown): void {
+		readRepeatRuntimeState(data);
+	}
+
 	/**
 	 * Gets the name of the node.
 	 */
@@ -112,7 +129,8 @@ export class Repeat extends Decorator {
 		// Reset the state of this node.
 		this.setState(State.READY);
 
-		// Reset the current iteration count.
+		// Reset the selected target and current iteration count.
+		this.targetIterationCount = null;
 		this.currentIterationCount = 0;
 
 		// Reset the child node.
@@ -152,5 +170,35 @@ export class Repeat extends Decorator {
 		} else {
 			this.targetIterationCount = null;
 		}
+	};
+}
+
+function readRepeatRuntimeState(data: unknown): {
+	targetIterationCount: number | null;
+	currentIterationCount: number;
+} {
+	if (!data || typeof data !== "object") throw new Error("repeat checkpoint data must be an object");
+	const value = data as Record<string, unknown>;
+	const targetIterationCount = value.targetIterationCount;
+	const currentIterationCount = value.currentIterationCount;
+	if (
+		targetIterationCount !== null &&
+		(typeof targetIterationCount !== "number" || !Number.isInteger(targetIterationCount) || targetIterationCount < 0)
+	) {
+		throw new Error("repeat checkpoint targetIterationCount must be a non-negative integer or null");
+	}
+	if (
+		typeof currentIterationCount !== "number" ||
+		!Number.isInteger(currentIterationCount) ||
+		currentIterationCount < 0
+	) {
+		throw new Error("repeat checkpoint currentIterationCount must be a non-negative integer");
+	}
+	if (targetIterationCount !== null && currentIterationCount > targetIterationCount) {
+		throw new Error("repeat checkpoint currentIterationCount cannot exceed targetIterationCount");
+	}
+	return {
+		targetIterationCount: targetIterationCount as number | null,
+		currentIterationCount,
 	};
 }

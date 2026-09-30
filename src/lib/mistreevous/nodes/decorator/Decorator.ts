@@ -28,6 +28,10 @@ export abstract class Decorator extends Node {
 	 */
 	getChildren = () => [this.child];
 
+	protected getChildrenForCheckpoint(): Node[] {
+		return [this.child];
+	}
+
 	/**
 	 * Reset the state of the node.
 	 */

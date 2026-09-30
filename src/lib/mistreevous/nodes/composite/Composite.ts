@@ -28,6 +28,10 @@ export abstract class Composite extends Node {
 	 */
 	getChildren = () => this.children;
 
+	protected getChildrenForCheckpoint(): Node[] {
+		return this.children;
+	}
+
 	/**
 	 * 重置节点的状态。
 	 */

@@ -7,8 +7,14 @@ import type { BehaviourTreeOptions } from "./BehaviourTreeOptions";
 import { Lookup } from "./Lookup";
 import { convertMDSLToJSON } from "./mdsl/MDSLDefinitionParser";
 import type { Root } from "./nodes/decorator/Root";
-import type { NodeDetails } from "./nodes/Node";
+import type { NodeCheckpoint, NodeDetails } from "./nodes/Node";
 import { State } from "./State";
+
+export type BehaviourTreeCheckpoint = {
+	formatVersion: 1;
+	definitionSignature: string;
+	root: NodeCheckpoint;
+};
 
 /**
  * 行为树的表示。
@@ -18,6 +24,7 @@ export class BehaviourTree {
 	 * 主根树节点。
 	 */
 	private readonly _rootNode: Root;
+	private readonly definitionSignature: string;
 
 	/**
 	 * 创建 BehaviourTree 类的新实例。
@@ -52,6 +59,7 @@ export class BehaviourTree {
 		if (!json) {
 			throw new Error("expected json definition to be returned as part of successful definition validation response");
 		}
+		this.definitionSignature = createDefinitionSignature(json);
 
 		try {
 			// 创建填充的行为树节点树并获取根节点。
@@ -112,6 +120,29 @@ export class BehaviourTree {
 	 */
 	public getTreeNodeDetails(): NodeDetails {
 		return this._rootNode.getDetails();
+	}
+
+	/** 捕获当前行为树的可恢复运行状态。 */
+	public captureCheckpoint(): BehaviourTreeCheckpoint {
+		return {
+			formatVersion: 1,
+			definitionSignature: this.definitionSignature,
+			root: this._rootNode.captureCheckpoint(),
+		};
+	}
+
+	/**
+	 * 恢复行为树运行状态。恢复前会完整校验树定义和所有节点状态，失败时不会修改当前树。
+	 */
+	public restoreCheckpoint(checkpoint: BehaviourTreeCheckpoint): void {
+		if (!checkpoint || checkpoint.formatVersion !== 1) {
+			throw new Error("invalid behaviour tree checkpoint format");
+		}
+		if (checkpoint.definitionSignature !== this.definitionSignature) {
+			throw new Error("behaviour tree checkpoint definition mismatch");
+		}
+		this._rootNode.validateCheckpoint(checkpoint.root);
+		this._rootNode.restoreCheckpoint(checkpoint.root);
 	}
 
 	/**
@@ -192,4 +223,21 @@ export class BehaviourTree {
 	static unregisterAll(): void {
 		Lookup.empty();
 	}
+}
+
+function createDefinitionSignature(definition: RootNodeDefinition[]): string {
+	return JSON.stringify({
+		definition: normalizeForSignature(definition),
+		subtrees: normalizeForSignature(Lookup.getSubtrees()),
+	});
+}
+
+function normalizeForSignature(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map(normalizeForSignature);
+	if (!value || typeof value !== "object") return value;
+	return Object.fromEntries(
+		Object.entries(value as Record<string, unknown>)
+			.sort(([left], [right]) => left.localeCompare(right))
+			.map(([key, entry]) => [key, normalizeForSignature(entry)]),
+	);
 }

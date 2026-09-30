@@ -142,6 +142,25 @@ export class Wait extends Leaf {
 		}
 	}
 
+	protected captureRuntimeState(): unknown {
+		return {
+			initialUpdateTime: this.initialUpdateTime,
+			totalDuration: this.totalDuration,
+			waitedDuration: this.waitedDuration,
+		};
+	}
+
+	protected restoreRuntimeState(data: unknown): void {
+		const state = readWaitRuntimeState(data);
+		this.initialUpdateTime = state.initialUpdateTime;
+		this.totalDuration = state.totalDuration;
+		this.waitedDuration = state.waitedDuration;
+	}
+
+	protected validateRuntimeState(data: unknown): void {
+		readWaitRuntimeState(data);
+	}
+
 	private readCurrentTimeMs(): number {
 		const currentTimeMs = this.options.getCurrentTimeMs?.() ?? Date.now();
 		if (!Number.isFinite(currentTimeMs) || currentTimeMs < 0) {
@@ -163,4 +182,29 @@ export class Wait extends Leaf {
 			return "等待";
 		}
 	};
+}
+
+function readWaitRuntimeState(data: unknown): {
+	initialUpdateTime: number;
+	totalDuration: number | null;
+	waitedDuration: number;
+} {
+	if (!data || typeof data !== "object") throw new Error("wait checkpoint data must be an object");
+	const value = data as Record<string, unknown>;
+	const initialUpdateTime = value.initialUpdateTime;
+	const totalDuration = value.totalDuration;
+	const waitedDuration = value.waitedDuration;
+	if (typeof initialUpdateTime !== "number" || !Number.isFinite(initialUpdateTime) || initialUpdateTime < 0) {
+		throw new Error("wait checkpoint initialUpdateTime must be a non-negative finite number");
+	}
+	if (
+		totalDuration !== null &&
+		(typeof totalDuration !== "number" || !Number.isFinite(totalDuration) || totalDuration < 0)
+	) {
+		throw new Error("wait checkpoint totalDuration must be a non-negative finite number or null");
+	}
+	if (typeof waitedDuration !== "number" || !Number.isFinite(waitedDuration) || waitedDuration < 0) {
+		throw new Error("wait checkpoint waitedDuration must be a non-negative finite number");
+	}
+	return { initialUpdateTime, totalDuration: totalDuration as number | null, waitedDuration };
 }
