@@ -48,10 +48,10 @@ export function deriveEngineScenarioInput(design: SimulationDesign) {
 			return { ...member, resolvedBehavior: member.behavior ?? null };
 		}
 		if (member.type === "Mob") {
-			if (!member.mob || member.characterId || member.partnerId || member.mercenaryId || member.behavior) {
+			if (!member.mob || member.characterId || member.partnerId || member.mercenaryId) {
 				throw new Error(`Mob Member ${member.id} 的类型关系不合法`);
 			}
-			return { ...member, resolvedBehavior: member.mob.actions };
+			return { ...member, resolvedBehavior: member.behavior ?? member.mob.actions };
 		}
 		throw new Error(`当前引擎尚不支持 ${member.type} Member`);
 	};

@@ -1,4 +1,5 @@
 /** Simulator CUI 可提交给 Session child 的具体语义意图。 */
+import type { MemberBTTree } from "@db/schema/jsons";
 import type { SimulatorCharacter } from "../data/simulationDesignSchema";
 
 export type SimulatorSessionIntent =
@@ -19,6 +20,7 @@ export type SimulatorSessionIntent =
 	| { type: "design.copy.selected"; copyId: string }
 	| { type: "design.copy.create.requested" }
 	| { type: "design.character.updated"; memberId: string; character: SimulatorCharacter }
+	| { type: "design.memberBehavior.updated"; memberId: string; behavior: MemberBTTree | null }
 	| { type: "run.selected"; side: "A" | "B"; runId: string | null }
 	| {
 			type: "design.characterNumber.changed";

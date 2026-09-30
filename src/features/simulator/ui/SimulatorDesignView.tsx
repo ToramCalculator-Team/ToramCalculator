@@ -1,4 +1,6 @@
+import type { MemberBTTree } from "@db/schema/jsons";
 import { type Accessor, createMemo, createSignal, For, onMount, Show } from "solid-js";
+import { BtEditor } from "~/components/tools/BtEditor/BtEditor";
 import { Button } from "~/components/ui/controls/button";
 import { Select } from "~/components/ui/controls/select";
 import { Icons } from "~/components/ui/icons";
@@ -43,6 +45,7 @@ function MemberCard(props: {
 	primaryMemberId: string | null;
 	expanded: boolean;
 	onEditRequested: (member: SimulationDesignMember) => void;
+	onBehaviorEditRequested: (member: SimulationDesignMember) => void;
 }) {
 	const isPrimary = () => props.member.id === props.primaryMemberId;
 	return (
@@ -72,6 +75,13 @@ function MemberCard(props: {
 				<div class="min-w-0">
 					<strong class="block truncate">{memberTitle(props.member)}</strong>
 					<span class="text-accent-color-70 block truncate text-sm">{memberDescription(props.member)}</span>
+					<span class="text-accent-color-70 block truncate text-xs">
+						{props.member.behavior
+							? "自定义行为"
+							: props.member.type === "Mob" && props.member.mob
+								? "使用 Mob 默认行为"
+								: "未配置行为"}
+					</span>
 				</div>
 			</div>
 			<button
@@ -83,6 +93,15 @@ function MemberCard(props: {
 				aria-label="成员配置"
 			>
 				<Icons.Outline.Category class="h-6 w-6" />
+			</button>
+			<button
+				type="button"
+				onClick={() => props.onBehaviorEditRequested(props.member)}
+				class="rounded-lg p-3 hover:bg-primary-color"
+				title="编辑成员行为树"
+				aria-label="编辑成员行为树"
+			>
+				<Icons.Outline.Edit class="h-6 w-6" />
 			</button>
 		</article>
 	);
@@ -100,6 +119,23 @@ function CampPanel(props: { camp: Camp; copy: Accessor<DesignCopy> }) {
 		const available = teams();
 		return available.find((team) => team.id === selectedTeamId()) ?? available[0] ?? null;
 	});
+	const openBehaviorEditor = (member: SimulationDesignMember) => {
+		const behavior = member.behavior ?? (member.type === "Mob" ? member.mob?.actions : null);
+		if (!behavior) return;
+		overlay.openSheet({
+			render: (api) => (
+				<BtEditor
+					title={`${memberTitle(member)} 行为树`}
+					value={behavior}
+					onChange={(next: MemberBTTree) =>
+						session.send({ type: "design.memberBehavior.updated", memberId: member.id, behavior: next })
+					}
+					onClose={api.close}
+				/>
+			),
+		});
+	};
+
 	const openMemberEditor = (member: SimulationDesignMember) => {
 		if (member.type !== "Player" || !member.character) return;
 		overlay.openSheet({
@@ -148,6 +184,7 @@ function CampPanel(props: { camp: Camp; copy: Accessor<DesignCopy> }) {
 										primaryMemberId={props.copy().design.primaryMemberId}
 										expanded={team().members.length === 1}
 										onEditRequested={openMemberEditor}
+										onBehaviorEditRequested={openBehaviorEditor}
 									/>
 								)}
 							</For>

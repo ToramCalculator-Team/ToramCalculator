@@ -470,6 +470,16 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 					member.character = structuredClone(event.character);
 				});
 			}),
+			editMemberBehavior: assign(({ context, event }) => {
+				if (event.type !== "design.memberBehavior.updated") return {};
+				return editCurrentCopy(context, (design) => {
+					const member = design.teams
+						.flatMap((team) => team.members)
+						.find((candidate) => candidate.id === event.memberId);
+					if (!member) throw new Error(`Simulator 成员 ${event.memberId} 不存在`);
+					member.behavior = event.behavior ? structuredClone(event.behavior) : null;
+				});
+			}),
 			editDesignNumber: assign(({ context, event }) => {
 				if (event.type === "design.characterNumber.changed") {
 					return editCurrentCopy(context, (design) => {
@@ -598,6 +608,7 @@ export function createSimulatorSessionRuntime(engineService: SimulatorSessionEng
 					"design.copy.selected": { actions: "selectDesignCopy" },
 					"design.copy.create.requested": { actions: "createDesignCopyFromCurrent" },
 					"design.character.updated": { actions: "editDesignCharacter" },
+					"design.memberBehavior.updated": { actions: "editMemberBehavior" },
 					"run.selected": { actions: "selectRun" },
 					"design.characterNumber.changed": { actions: "editDesignNumber" },
 					"design.simulatorNumber.changed": { actions: "editDesignNumber" },

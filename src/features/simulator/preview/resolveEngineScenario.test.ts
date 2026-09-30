@@ -79,11 +79,14 @@ describe("Simulator 设计解析", () => {
 		expect(result).not.toHaveProperty("analysisTargetMemberIds");
 	});
 
-	it("拒绝 Mob Member 保存成员流程", () => {
+	it("优先使用 Mob Member 的自定义行为，否则回退到 Mob 默认行为", () => {
 		const design = createDesign();
-		design.teams[1].members[0].behavior = defaultData.mob.actions;
+		const customBehavior = { ...defaultData.mob.actions, name: "custom-mob-behavior" };
+		design.teams[1].members[0].behavior = customBehavior;
 
-		expect(() => deriveEngineScenarioInput(design)).toThrow("类型关系不合法");
+		expect(deriveEngineScenarioInput(design).campB[0].members[0].resolvedBehavior).toEqual(customBehavior);
+		design.teams[1].members[0].behavior = null;
+		expect(deriveEngineScenarioInput(design).campB[0].members[0].resolvedBehavior).toEqual(defaultData.mob.actions);
 	});
 
 	it("拒绝分析范围引用当前设计之外的 Member", () => {
