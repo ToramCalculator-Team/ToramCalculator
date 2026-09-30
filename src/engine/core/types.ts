@@ -491,12 +491,12 @@ export interface StatusInstanceStoreCheckpoint {
 export type MemberFSMCheckpoint = unknown;
 
 /**
- * BtManager 检查点。
+ * EffectBtManager 检查点。
  *
  * 设计说明：BT agent 普通字段不承载可 checkpoint 状态；跨帧数值状态通过行为树
  * `attributeSlots` 进入成员 AttributeContainer，并随 `MemberCheckpoint.attributeContainer` 保存。
  */
-export interface BtManagerCheckpoint {
+export interface EffectBtManagerCheckpoint {
 	hasActiveEffect: boolean;
 	activeEffectBtId?: string;
 	parallelEntries: Array<{
@@ -535,7 +535,7 @@ export interface MemberCheckpoint {
 	fsm: MemberFSMCheckpoint;
 	attributeContainer: AttributeContainerCheckpoint;
 	statusStore: StatusInstanceStoreCheckpoint;
-	btManager: BtManagerCheckpoint;
+	effectBtManager: EffectBtManagerCheckpoint;
 	pipelineOverlays: unknown;
 	position: { x: number; y: number; z: number };
 	/** 共享 runtime（plain data，可 postMessage） */

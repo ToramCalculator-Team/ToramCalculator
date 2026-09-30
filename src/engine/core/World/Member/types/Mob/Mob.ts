@@ -6,9 +6,10 @@ import { MemberRuntimeServicesDefaults } from "../../RuntimeServices";
 import { AttributeContainer } from "../../runtime/AttributeContainer/AttributeContainer";
 import { mergeSchema, type SlotDeclaration } from "../../runtime/AttributeContainer/SchemaMerge";
 import type { ExtractAttrPaths } from "../../runtime/AttributeContainer/SchemaTypes";
+import type { MobRuntime } from "../../runtime/SharedRuntime";
 import type { MemberStateName } from "../../runtime/State/MemberState";
-import type { MobRuntime } from "../../runtime/types";
-import { createMobBtBindings } from "./Agents/BtBindings";
+import { createMobBehaviorBindings } from "./Behavior/Bindings";
+import { createMobEffectBindings } from "./EffectBehavior/Bindings";
 import { MobAttrSchema } from "./MobAttrSchema";
 import { createMobStateMachine, type MobFSMContext, type MobSpecificEvent } from "./MobStateMachine";
 
@@ -70,7 +71,8 @@ export class Mob extends Member<MobAttrKey, MobSpecificEvent, MobFSMContext, Mob
 			runtime,
 			MemberRuntimeServicesDefaults,
 			position,
-			createMobBtBindings,
+			createMobBehaviorBindings,
+			createMobEffectBindings,
 		);
 	}
 

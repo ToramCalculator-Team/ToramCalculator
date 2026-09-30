@@ -2,7 +2,7 @@ import { createPhysicalTerrainGenerator, type TerrainDefinition } from "~/lib/te
 import type { SimulationTickContext, WorldCheckpoint } from "../types";
 import { AreaManager } from "./Area/AreaManager";
 import { DamageSystem, type InstantDamageScheduler } from "./Damage/DamageSystem";
-import type { MemberMovementInput } from "./Member/runtime/types";
+import type { MemberMovementInput } from "./Member/runtime/SharedRuntime";
 import { MemberManager } from "./MemberManager";
 import { SpaceManager } from "./SpaceManager";
 

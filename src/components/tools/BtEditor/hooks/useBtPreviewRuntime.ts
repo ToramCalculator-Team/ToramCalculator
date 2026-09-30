@@ -6,6 +6,7 @@ import type { BtAuthoringDiagnostic } from "../model/authoringValidator";
 import type { EditableBtDocument } from "../model/editableTree";
 import { editableDocumentToRootDefinitions } from "../model/editableTree";
 import { createPreviewBehaviourTree } from "../model/previewRuntime";
+import type { BehaviorTreeKind } from "../modes/mdslMemberTypeProfiles";
 import type { MdslIntellisenseRegistry } from "../modes/mdslIntellisense";
 import { getErrorMessage } from "../utils/errors";
 
@@ -20,6 +21,7 @@ export type UseBtPreviewRuntimeOptions = {
 	getDocument: () => EditableBtDocument;
 	getAgent: () => string;
 	getMemberType: () => MemberType;
+	getTreeKind: () => BehaviorTreeKind;
 	getRegistry: () => MdslIntellisenseRegistry;
 	onError: (message: string) => void;
 };
@@ -50,6 +52,7 @@ export function useBtPreviewRuntime(options: UseBtPreviewRuntimeOptions) {
 			definition: editableDocumentToRootDefinitions(options.getDocument()),
 			agent: options.getAgent(),
 			memberType: options.getMemberType(),
+			treeKind: options.getTreeKind(),
 			registry: options.getRegistry(),
 			onDiagnostic: (diagnostic) => {
 				appendPreviewDiagnostic(diagnostic);

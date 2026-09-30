@@ -49,8 +49,8 @@ import type { MemberSnapshot } from "./World/Member/Member";
 import { computeMemberFormation } from "./World/Member/memberFormation";
 import { ModifierType } from "./World/Member/runtime/AttributeContainer/AttributeContainer";
 import type { ModifierSource } from "./World/Member/runtime/AttributeContainer/AttributeContainerTypes";
-import type { MemberControlEvent } from "./World/Member/runtime/StateMachine/types";
-import type { MemberMovementInput } from "./World/Member/runtime/types";
+import type { MemberMovementInput } from "./World/Member/runtime/SharedRuntime";
+import type { MemberControlEvent } from "./World/Member/StateMachine/types";
 import { Player } from "./World/Member/types/Player/Player";
 import { World } from "./World/World";
 
@@ -1466,7 +1466,7 @@ export class GameEngine {
 					if (m.isAiBehaviorRunning()) {
 						return false;
 					}
-					if (m.btManager.hasRunningParallelBt()) {
+					if (m.effectBtManager.hasRunningParallelBt()) {
 						return false;
 					}
 				}
@@ -1477,7 +1477,7 @@ export class GameEngine {
 				if (!m) return true;
 				const runtime = m.runtime as { actionQueue?: { length: number } };
 				const hasQueuedAction = !!runtime.actionQueue && runtime.actionQueue.length > 0;
-				const hasActiveEffectBt = m.btManager.hasActiveEffectBt();
+				const hasActiveEffectBt = m.effectBtManager.hasActiveEffectBt();
 				return !hasQueuedAction && !hasActiveEffectBt;
 			}
 			case "untilMemberAiBehaviorEnds": {

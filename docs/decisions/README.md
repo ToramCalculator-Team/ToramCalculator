@@ -59,7 +59,7 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 | [0050](./0050-realtime-state-transport-semantics.md)、[0055](./0055-worker-owned-shared-realtime-timeline.md) | 连续状态走 latest-state 单槽通道，离散动作走事件队列；Worker 拥有 Real / Virtual / Fixed 实时会话时间轴，渲染器按同一时间映射消费连续状态 |
 | [0052](./0052-realtime-world-state-uses-unified-sab.md) | 成员和区域的连续世界状态统一写入实时状态 SAB；UI 与渲染器只读一致的最新提交，渲染器不接收离散视觉事件 |
 | [0053](./0053-logical-state-output-and-render-mapping.md)、[0056](./0056-skill-behavior-state-and-wait-separation.md) | 逻辑引擎逐 Tick 输出成员逻辑状态描述；FSM 与行为流程 BT 汇合为单一动作状态，状态声明与生命周期等待分离，渲染器按状态名映射并推进动画，SAB 不携带动画时长、片段、进度或倍率 |
-| [0054](./0054-member-control-mode-and-behavior-sequence.md) | 成员控制收敛为 controlled/ai 互斥模式；控制器与 AI 行为树通过唯一输入入口提交，FSM 即时裁决，行为序列只记录；AI 行为树由 Member 持有，BtManager 只承载技能效果与 buff/passive |
+| [0054](./0054-member-control-mode-and-behavior-sequence.md)、[0057](./0057-member-orchestration-and-behavior-tree-node-boundaries.md)、[0058](./0058-member-behavior-tree-checkpoint-recovery.md) | 成员控制收敛为 controlled/ai 互斥模式；控制器与 AI 行为树通过唯一输入入口提交，FSM 即时裁决，行为序列只记录；AI 行为树由 Member 持有，EffectBtManager 只承载技能效果与 buff/passive；控制树与效果树分别维护节点方法和能力绑定；Member checkpoint 必须恢复两类行为树的执行状态 |
 
 ### 数据、同步与领域打包
 
@@ -158,6 +158,8 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 | [0054](./0054-member-control-mode-and-behavior-sequence.md) | 成员控制模式与行为序列 | Accepted | 引擎控制与运行记录 |
 | [0055](./0055-worker-owned-shared-realtime-timeline.md) | Worker 拥有共享实时会话时间轴 | Accepted | 引擎时钟与渲染时间映射 |
 | [0056](./0056-skill-behavior-state-and-wait-separation.md) | 技能行为树分离状态声明与生命周期等待 | Accepted | 技能行为树 |
+| [0057](./0057-member-orchestration-and-behavior-tree-node-boundaries.md) | Member 编排模块与行为树节点方法边界 | Accepted | 引擎编排与行为树 |
+| [0058](./0058-member-behavior-tree-checkpoint-recovery.md) | Member 行为树检查点恢复边界 | Accepted | 引擎编排与检查点恢复 |
 
 ## 决策候选与实施计划
 

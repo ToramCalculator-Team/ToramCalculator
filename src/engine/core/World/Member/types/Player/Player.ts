@@ -5,15 +5,16 @@ import type { EngineCharacter, EngineMember } from "../../../../engineScenarioSc
 import type { RuntimeAttachment } from "../../attachments/RuntimeAttachment";
 import { collectAttachmentSlots } from "../../attachments/RuntimeAttachment";
 import { installRuntimeAttachment } from "../../attachments/RuntimeAttachmentInstaller";
-import { collectPlayerRuntimeAttachments } from "../../construction/collectPlayerRuntimeAttachments";
 import { Member } from "../../Member";
 import { MemberRuntimeServicesDefaults } from "../../RuntimeServices";
 import { AttributeContainer } from "../../runtime/AttributeContainer/AttributeContainer";
 import { mergeSchema, type SlotDeclaration } from "../../runtime/AttributeContainer/SchemaMerge";
+import type { PlayerRuntime } from "../../runtime/SharedRuntime";
 import type { MemberStateName } from "../../runtime/State/MemberState";
-import type { PlayerRuntime } from "../../runtime/types";
-import { createPlayerBtBindings } from "./Agents/BtBindings";
+import { createPlayerBehaviorBindings } from "./Behavior/Bindings";
+import { createPlayerEffectBindings } from "./EffectBehavior/Bindings";
 import { type PlayerAttrKey, PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
+import { collectPlayerRuntimeAttachments } from "./PlayerRuntimeAttachmentCollector";
 import { type PlayerFSMContext, type PlayerSpecificEvent, playerFSM } from "./PlayerStateMachine";
 import { selectPlayerSkillVariant } from "./skillLifecycle";
 
@@ -86,7 +87,8 @@ export class Player extends Member<PlayerAttrKey, PlayerSpecificEvent, PlayerFSM
 			runtime,
 			MemberRuntimeServicesDefaults,
 			position,
-			createPlayerBtBindings,
+			createPlayerBehaviorBindings,
+			createPlayerEffectBindings,
 		);
 		this.activeCharacter = activeCharacter;
 		this.runtimeAttachments = runtimeAttachments;
@@ -115,7 +117,7 @@ export class Player extends Member<PlayerAttrKey, PlayerSpecificEvent, PlayerFSM
 			const tree = variant?.passiveBehaviorTree;
 			if (!tree) continue;
 
-			this.btManager.registerParallelBt(`passive:${variant.id}:${tree.name}`, tree.definition, tree.agent, {
+			this.effectBtManager.registerParallelBt(`passive:${variant.id}:${tree.name}`, tree.definition, tree.agent, {
 				skill: {
 					id: variant.id,
 					lv: skill.lv,

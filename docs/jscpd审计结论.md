@@ -63,7 +63,7 @@
 
 ### 一、优先处理
 
-#### 1. `components/tools/BtEditor/modes/mdslIntellisense.ts:56-90` ↔ `src/engine/core/World/Member/runtime/Agent/uitls.ts:5-32`：Zod schema 解包
+#### 1. `components/tools/BtEditor/modes/mdslIntellisense.ts:56-90` ↔ `src/engine/core/World/Member/runtime/Agents/uitls.ts:5-32`：Zod schema 解包
 
 两处都实现 `unwrapSchema`，对 `optional`、`nullable`、`default` 和 `pipe` 逐层解包。两份实现目前行为基本一致，但分别维护会使 Zod v4 API 变化或新增 wrapper 时产生漂移。
 
@@ -159,7 +159,7 @@ action/condition 与属性回调的 completion provider 都重复名称补全、
 
 建议：抽取 `createSessionToken(userId)` 与 `setSessionCookie(token)`；helper 应验证 `AUTH_SECRET` 存在且非空。登录和注册继续保留各自的输入校验、查询/创建用户、HTTP status 和返回消息。优先级：高。
 
-#### 12. `src/engine/core/World/Member/runtime/Agent/CommonActions.ts:479-493` ↔ `540-554`；`483-493` ↔ `645-655`；`640-654` ↔ `698-711`：技能等级和表达式上下文
+#### 12. `src/engine/core/World/Member/runtime/Agents/CommonActions.ts:479-493` ↔ `540-554`；`483-493` ↔ `645-655`；`640-654` ↔ `698-711`：技能等级和表达式上下文
 
 `healHp`、`healMp`、`modifyAttribute`、`setAttributeModifier` 都从 `context.skill` 读取技能，fallback 到 `currentSkill`，解析 `skillLv`，构造时间/tick/caster/target/skillLv 上下文并调用 expression evaluator。`heal`、`modify`、`set` 的业务语义仍不同。
 
@@ -231,7 +231,7 @@ action/condition 与属性回调的 completion provider 都重复名称补全、
 
 建议：若后续继续增加修正展示类型，再提取统一 `ModifierSourceItem`；当前低风险、低收益。优先级：中低。
 
-#### 21. `src/engine/core/World/Member/runtime/Agent/CommonActions.ts:279-293` ↔ `307-321`：移动圆形攻击范围
+#### 21. `src/engine/core/World/Member/runtime/Agents/CommonActions.ts:279-293` ↔ `307-321`：移动圆形攻击范围
 
 `moveAttack` 和 `groundLineAttack` 都构造 caster-to-target 的圆形范围和 segment trajectory；action schema、`rangeKind` 和其他业务语义不同。
 
@@ -447,7 +447,7 @@ Action 和 Condition 都在状态变化时记录节点详情、参数和生命�
 | 4 | `components/tools/BtEditor/components/ExamplesMenu/ExamplesMenu.tsx:97-111 ↔ SkillLogicExamplesMenu.tsx:59-73` | 合理重复：示例菜单外壳 |
 | 5 | `components/tools/BtEditor/components/MainPanel/MainPanel.tsx:40-52 ↔ WorkflowCanvas.tsx:50-62` | 可以重构但不急：画布交互 props |
 | 6 | `components/tools/BtEditor/components/workflow/DefaultNodeCallbackTag.tsx:10-28 ↔ DefaultNodeGuardTag.tsx:11-29` | 优先处理：默认参数 renderer |
-| 7 | `components/tools/BtEditor/modes/mdslIntellisense.ts:56-90 ↔ engine/core/World/Member/runtime/Agent/uitls.ts:5-32` | 优先处理：Zod schema 解包 |
+| 7 | `components/tools/BtEditor/modes/mdslIntellisense.ts:56-90 ↔ engine/core/World/Member/runtime/Agents/uitls.ts:5-32` | 优先处理：Zod schema 解包 |
 | 8 | `components/ui/dataDisplay/ObjRenderer.tsx:142-154 ↔ 221-233` | 可以重构但不急：布局 frame |
 | 9 | `components/ui/dataDisplay/virtualTable.tsx:371-381 ↔ 418-429` | 可以重构但不急：列名解析 |
 | 10 | `components/ui/effects/babylonBg.tsx:239-252 ↔ routes/(app)/(toolPages)/babylonScene.tsx:30-46；277-289 ↔ 218-232；354-411 ↔ 318-376` | 可以重构但不急：Babylon 场景/粒子初始化 |
@@ -475,7 +475,7 @@ Action 和 Condition 都在状态变化时记录节点详情、参数和生命�
 | 32 | `engine/core/JSProcessor/ExpressionTransformer.ts:80-98 ↔ 182-199；113-131 ↔ 215-233` | 优先处理：AST 转换 pipeline |
 | 33 | `engine/core/World/Member/MemberBaseSchema.ts:259-295、347-379、433-519 ↔ types/Player/PlayerAttrSchema.ts:547-583、796-828、1171-1257` | 可以重构但不急：基础 schema 结构 |
 | 34 | `engine/core/World/Member/MemberStatusPanel.tsx:254-264 ↔ 285-295` | 可以重构但不急：modifier 展示 |
-| 35 | `engine/core/World/Member/runtime/Agent/CommonActions.ts:279-293 ↔ 307-321；479-493 ↔ 540-554；483-493 ↔ 645-655；640-654 ↔ 698-711` | 优先处理表达式上下文；移动范围可延后 |
+| 35 | `engine/core/World/Member/runtime/Agents/CommonActions.ts:279-293 ↔ 307-321；479-493 ↔ 540-554；483-493 ↔ 645-655；640-654 ↔ 698-711` | 优先处理表达式上下文；移动范围可延后 |
 | 36 | `engine/core/World/Member/runtime/AttributeContainer/AttributeContainer.ts:841-853 ↔ 931-943；916-930 ↔ 943-957` | 优先处理：modifier source/detail |
 | 37 | `engine/core/World/Member/runtime/Behavior/AiBehaviorRuntime.ts:50-75 ↔ BehaviourTree/BtManager.ts:84-112；93-105 ↔ 132-145` | 优先处理：agent 编译与成员注入 |
 | 38 | `engine/core/World/Member/runtime/Behavior/AiBehaviorRuntime.ts:93-105 ↔ BehaviourTree/BtContextFactory.ts:144-157` | 优先处理：agent 编译与成员注入 |

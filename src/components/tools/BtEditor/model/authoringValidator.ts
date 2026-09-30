@@ -1,7 +1,8 @@
 import type { MemberType } from "@db/schema/enums";
+import type { BehaviorTreeKind } from "../modes/mdslMemberTypeProfiles";
 import type { AttributeSlotDeclarationData } from "@db/schema/jsons";
 import { validateSlotDeclarationPath } from "~/engine/core/World/Member/runtime/AttributeContainer/SchemaMerge";
-import { createBtContext } from "~/engine/core/World/Member/runtime/BehaviourTree/BtContextFactory";
+import { createBtContext } from "~/engine/core/World/Member/EffectBehavior/EffectBtContextFactory";
 import { validateDefinition } from "~/lib/mistreevous";
 import type { NodeArgument } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import type { MdslIntellisenseRegistry } from "../modes/mdslIntellisense";
@@ -30,6 +31,7 @@ export type BtAuthoringDiagnostic = {
 export type BtAuthoringValidationInput = {
 	document: EditableBtDocument;
 	memberType: MemberType;
+	treeKind: BehaviorTreeKind;
 	agent: string;
 	attributeSlots: AttributeSlotDeclarationData[];
 	registry: MdslIntellisenseRegistry;
@@ -40,7 +42,7 @@ export function validateBtAuthoring(input: BtAuthoringValidationInput): BtAuthor
 	diagnostics.push(...validateDocumentStructure(input.document));
 	diagnostics.push(...validateCalls(input.document, input.registry));
 	diagnostics.push(...validateMdslSerializableArguments(input.document));
-	diagnostics.push(...validateAgentContext(input.memberType, input.agent));
+	diagnostics.push(...validateAgentContext(input.memberType, input.treeKind, input.agent));
 	diagnostics.push(
 		...validateAttributeSlots(input.attributeSlots).map((message) => ({
 			severity: "error" as const,
@@ -288,9 +290,9 @@ function isMdslPlainIdentifier(value: string): boolean {
 	return !/[\s[\](){},"]/.test(trimmed);
 }
 
-function validateAgentContext(memberType: MemberType, agent: string): BtAuthoringDiagnostic[] {
+function validateAgentContext(memberType: MemberType, treeKind: BehaviorTreeKind, agent: string): BtAuthoringDiagnostic[] {
 	const diagnostics: BtAuthoringDiagnostic[] = [];
-	const { env, btBindings } = createPreviewBtRuntime(memberType);
+	const { env, btBindings } = createPreviewBtRuntime(memberType, treeKind);
 	const { warnings } = createBtContext({
 		env,
 		btBindings,

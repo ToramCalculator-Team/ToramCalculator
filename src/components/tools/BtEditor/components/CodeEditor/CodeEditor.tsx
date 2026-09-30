@@ -5,8 +5,8 @@ import HtmlWorker from "monaco-editor/esm/vs/language/html/html.worker?worker&ur
 import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker&url";
 import TsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker&url";
 import { type Component, createEffect, onCleanup, onMount } from "solid-js";
-import { CommonActionPool } from "~/engine/core/World/Member/runtime/Agent/CommonActions";
-import { CommonConditionPool } from "~/engine/core/World/Member/runtime/Agent/CommonCondition";
+import { CommonEffectActionPool } from "~/engine/core/World/Member/EffectBehavior/NodeMethods/ActionMethods";
+import { CommonEffectConditionPool } from "~/engine/core/World/Member/EffectBehavior/NodeMethods/ConditionMethods";
 import { store } from "~/store";
 import { resolveColorSystem } from "~/styles/colorSystem/colorSystemController";
 import { mdslLanguageDefinition } from "../../modes/mdsl";
@@ -48,7 +48,7 @@ export type CodeEditorProps = {
 	onChange?: (value: string) => void;
 	class?: string;
 	style?: string | Record<string, string>;
-	/** MDSL 的补全/诊断配置；不传则使用 simulator 默认注册表（CommonActions/CommonCondition + DefaultAgent） */
+	/** MDSL 的补全/诊断配置；不传则使用 simulator 默认注册表（ActionMethods/CommonCondition + DefaultAgent） */
 	mdslIntellisense?: MdslIntellisenseRegistry;
 };
 
@@ -60,8 +60,8 @@ let currentMdslRegistry: MdslIntellisenseRegistry | null = null;
 const getMdslRegistry = () => {
 	if (!currentMdslRegistry) {
 		currentMdslRegistry = buildMdslIntellisenseRegistry({
-			actionPool: CommonActionPool,
-			conditionPool: CommonConditionPool,
+			actionPool: CommonEffectActionPool,
+			conditionPool: CommonEffectConditionPool,
 			propertyObject: {},
 		});
 	}

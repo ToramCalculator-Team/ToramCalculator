@@ -9,7 +9,7 @@ import type { MemberCheckpoint, MemberDomainEvent } from "../types";
 import type { DamageAreaSpec } from "./Area/types";
 import type { ResolvedDamageEffect } from "./Damage/types";
 import type { Member, MemberControlInputRecorder } from "./Member/Member";
-import type { MemberSharedRuntime } from "./Member/runtime/types";
+import type { MemberSharedRuntime } from "./Member/runtime/SharedRuntime";
 import { Mob } from "./Member/types/Mob/Mob";
 import { Player } from "./Member/types/Player/Player";
 
@@ -249,7 +249,7 @@ export class MemberManager {
 				player.setGetTickIndex(this.getTickIndex);
 				if (this.randomFn) {
 					player.services.random = this.randomFn;
-					player.btManager.setRandom(this.randomFn);
+					player.effectBtManager.setRandom(this.randomFn);
 				}
 				if (this.pipelineResolverService) {
 					player.setPipelineResolverService(this.pipelineResolverService);
@@ -282,7 +282,7 @@ export class MemberManager {
 				mob.setGetTickIndex(this.getTickIndex);
 				if (this.randomFn) {
 					mob.services.random = this.randomFn;
-					mob.btManager.setRandom(this.randomFn);
+					mob.effectBtManager.setRandom(this.randomFn);
 				}
 				if (this.pipelineResolverService) {
 					mob.setPipelineResolverService(this.pipelineResolverService);

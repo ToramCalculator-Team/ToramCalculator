@@ -1,4 +1,4 @@
-import type { MemberSharedRuntime } from "../World/Member/runtime/types";
+import type { MemberSharedRuntime } from "../World/Member/runtime/SharedRuntime";
 
 /**
  * 说明：

@@ -7,10 +7,23 @@ import type {
 } from "@db/schema/jsons";
 import type { Member } from "../Member";
 import type { ModifierSource, ModifierType } from "../runtime/AttributeContainer/AttributeContainer";
-import type { SlotDeclaration } from "../runtime/AttributeContainer/SchemaMerge";
-import type { MemberSharedRuntime } from "../runtime/types";
 
-/** 泛化的 Member 类型别名，供战前附加效果安装器跨 Player / Mob 使用。FSM 类型参数用 any 放宽，因为 attachment 系统不操作 actor。 */
+export {
+	type RuntimeAttachmentSource,
+	type RuntimeAttachmentSourceType,
+	runtimeAttachmentLevel,
+	runtimeAttachmentModifierSource,
+	runtimeAttachmentSourceId,
+} from "./RuntimeAttachmentSource";
+
+import type { SlotDeclaration } from "../runtime/AttributeContainer/SchemaMerge";
+import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
+import type { RuntimeAttachmentSource } from "./RuntimeAttachmentSource";
+
+/**
+ * Attachment 安装器所需的最小 Member 运行时视图。
+ * attachment 不参与 FSM，因此放宽 FSM 类型参数，只依赖成员运行时服务和运行时组件。
+ */
 export type RuntimeAttachmentMember<TExtraAttrKey extends string = string> = Member<
 	TExtraAttrKey,
 	any,
@@ -18,24 +31,7 @@ export type RuntimeAttachmentMember<TExtraAttrKey extends string = string> = Mem
 	MemberSharedRuntime<TExtraAttrKey>
 >;
 
-export type RuntimeAttachmentSourceType = ModifierSource["type"];
-
-/**
- * 战前附加效果来源。
- *
- * 设计说明：
- * - `id` 保留来源表或业务对象的稳定 id。
- * - `sourceId` 是运行时卸载前缀；历史数据已有完整前缀时可显式传入，避免迁移期改变清理边界。
- */
-export interface RuntimeAttachmentSource {
-	id: string;
-	name: string;
-	type: RuntimeAttachmentSourceType;
-	level?: number;
-	maxLevel?: number;
-	sourceId?: string;
-}
-
+/** 一个来源直接贡献的静态或战前属性修正。 */
 export interface RuntimeModifierEffect<TAttrKey extends string = string> {
 	attribute: TAttrKey;
 	modifierType: ModifierType;
@@ -58,41 +54,14 @@ export interface RuntimeAttachment<TAttrKey extends string = string> {
 	thresholdWatchers?: readonly ThresholdWatcherEffect[];
 }
 
+/** 事件订阅和阈值监听触发时执行的声明式动作。 */
 export type RuntimeAttachmentHandler = RegistletHandler;
 export type RuntimeAttachmentValue = RegistletValue;
 
-export function runtimeAttachmentSourceId(source: RuntimeAttachmentSource): string {
-	return source.sourceId ?? `${source.type}.${source.id}`;
-}
-
 /**
- * 将战前来源与所属成员组合为可独立解释的 modifier 来源链。
- * effectId 只描述本次安装产生的直接效果，不参与 attachment 自身的卸载身份。
+ * 在 AttributeContainer 创建前收集所有来源声明的槽位。
+ * Float64Array 创建后不能扩容，因此该函数必须在安装 attachment 之前调用。
  */
-export function runtimeAttachmentModifierSource(
-	memberId: string,
-	source: RuntimeAttachmentSource,
-	key = runtimeAttachmentSourceId(source),
-	effectId?: string,
-): ModifierSource {
-	return {
-		key,
-		name: source.name,
-		type: source.type,
-		chain: [
-			{ kind: "member", id: memberId },
-			{ kind: source.type, id: source.id },
-			...(effectId ? [{ kind: "effect" as const, id: effectId }] : []),
-		],
-	};
-}
-
-export function runtimeAttachmentLevel(source: RuntimeAttachmentSource): number {
-	const rawLevel = source.level ?? 0;
-	if (source.maxLevel === undefined) return Math.max(0, rawLevel);
-	return Math.max(0, Math.min(rawLevel, source.maxLevel));
-}
-
 export function collectAttachmentSlots(attachments: readonly RuntimeAttachment[]): SlotDeclaration[] {
 	const slots: SlotDeclaration[] = [];
 	for (const attachment of attachments) {

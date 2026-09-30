@@ -8,7 +8,7 @@ log.setLevel(0);
 
 type ExpressionMember = {
 	id: string;
-	btManager: {
+	effectBtManager: {
 		hasBuff(id: string): boolean;
 	};
 	dataSchema: NestedSchema;
@@ -68,7 +68,7 @@ export class ExpressionEvaluator {
 					hasBuff?: (id: string) => boolean;
 					hasDebuff?: (id: string) => boolean;
 				};
-				wrapped.hasBuff = (id: string) => self.btManager.hasBuff(id);
+				wrapped.hasBuff = (id: string) => self.effectBtManager.hasBuff(id);
 				wrapped.hasDebuff = (_id: string) => false;
 				selfExpr = wrapped;
 			}
@@ -80,7 +80,7 @@ export class ExpressionEvaluator {
 					})
 				: undefined;
 			if (targetExpr && target) {
-				targetExpr.hasBuff = (id: string) => target.btManager.hasBuff(id);
+				targetExpr.hasBuff = (id: string) => target.effectBtManager.hasBuff(id);
 				targetExpr.hasDebuff = (_id: string) => false;
 			}
 

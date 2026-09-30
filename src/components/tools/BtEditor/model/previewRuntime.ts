@@ -1,20 +1,20 @@
 import type { MemberType } from "@db/schema/enums";
+import type { MemberBehaviorCapabilities } from "~/engine/core/World/Member/Behavior/Bindings";
+import { createEffectBindings } from "~/engine/core/World/Member/EffectBehavior/Bindings";
+import { createBtContext } from "~/engine/core/World/Member/EffectBehavior/EffectBtContextFactory";
+import type {
+	EffectBtManagerEnv,
+	MemberBtCapabilities,
+} from "~/engine/core/World/Member/EffectBehavior/EffectBtManagerEnv";
 import { MemberBaseNestedSchema } from "~/engine/core/World/Member/MemberBaseSchema";
 import type { MemberRuntimeServices } from "~/engine/core/World/Member/RuntimeServices";
 import { AttributeContainer } from "~/engine/core/World/Member/runtime/AttributeContainer/AttributeContainer";
-import { createBtContext } from "~/engine/core/World/Member/runtime/BehaviourTree/BtContextFactory";
-import type {
-	MemberBtCapabilities,
-	MemberBtManagerEnv,
-} from "~/engine/core/World/Member/runtime/BehaviourTree/BtManagerEnv";
-import type { MemberFSMEvent } from "~/engine/core/World/Member/runtime/StateMachine/types";
-import type { MemberSharedRuntime, MobRuntime, PlayerRuntime } from "~/engine/core/World/Member/runtime/types";
-import { createMobBtBindings } from "~/engine/core/World/Member/types/Mob/Agents/BtBindings";
-import type { MobAttrKey } from "~/engine/core/World/Member/types/Mob/MobAttrSchema";
-import type { MobFSMEvent } from "~/engine/core/World/Member/types/Mob/MobStateMachine";
-import { createPlayerBtBindings } from "~/engine/core/World/Member/types/Player/Agents/BtBindings";
-import type { PlayerAttrKey } from "~/engine/core/World/Member/types/Player/PlayerAttrSchema";
-import type { PlayerFSMEvent } from "~/engine/core/World/Member/types/Player/PlayerStateMachine";
+import type { MemberSharedRuntime, MobRuntime, PlayerRuntime } from "~/engine/core/World/Member/runtime/SharedRuntime";
+import type { MemberFSMEvent } from "~/engine/core/World/Member/StateMachine/types";
+import { createMobBehaviorBindings } from "~/engine/core/World/Member/types/Mob/Behavior/Bindings";
+import { createMobEffectBindings } from "~/engine/core/World/Member/types/Mob/EffectBehavior/Bindings";
+import { createPlayerBehaviorBindings } from "~/engine/core/World/Member/types/Player/Behavior/Bindings";
+import { createPlayerEffectBindings } from "~/engine/core/World/Member/types/Player/EffectBehavior/Bindings";
 import { DefaultMobLocomotionProfile, PlayerLocomotionProfile } from "~/game/locomotion";
 import { BehaviourTree, type BehaviourTreeOptions, State } from "~/lib/mistreevous";
 import type { Agent } from "~/lib/mistreevous/Agent";
@@ -24,6 +24,7 @@ import type {
 	NodeGuardDefinition,
 	RootNodeDefinition,
 } from "~/lib/mistreevous/BehaviourTreeDefinition";
+import type { BehaviorTreeKind } from "../modes/mdslMemberTypeProfiles";
 import type { MdslIntellisenseRegistry } from "../modes/mdslIntellisense";
 import type { BtAuthoringDiagnostic } from "./authoringValidator";
 
@@ -36,7 +37,7 @@ type PreviewRuntime = (PlayerRuntime | MobRuntime | (MemberSharedRuntime<string>
 	MemberSharedRuntime<string>;
 
 type PreviewBtRuntime = {
-	env: MemberBtManagerEnv<MemberFSMEvent, string, PreviewRuntime>;
+	env: EffectBtManagerEnv<MemberFSMEvent, string, PreviewRuntime>;
 	btBindings: Record<string, unknown>;
 };
 
@@ -96,16 +97,34 @@ const createPreviewRuntime = (memberType: MemberType): PreviewRuntime => {
 
 const createPreviewBtBindings = (
 	memberType: MemberType,
-	capabilities: MemberBtCapabilities<string, MemberFSMEvent>,
+	treeKind: BehaviorTreeKind,
+	capabilities: MemberBtCapabilities<string>,
+	behaviorCapabilities: MemberBehaviorCapabilities,
 ): Record<string, unknown> => {
-	// 预览环境使用 string 宽属性槽来承接 MDSL 动态输入；这里收窄到具体成员类型只用于复用真实 binding 工厂。
-	if (memberType === "Mob") {
-		return createMobBtBindings(capabilities as unknown as MemberBtCapabilities<MobAttrKey, MobFSMEvent>);
+	if (treeKind === "control") {
+		return memberType === "Mob"
+			? createMobBehaviorBindings(behaviorCapabilities)
+			: memberType === "Player"
+				? createPlayerBehaviorBindings(behaviorCapabilities)
+				: {};
 	}
-	return createPlayerBtBindings(capabilities as unknown as MemberBtCapabilities<PlayerAttrKey, PlayerFSMEvent>);
+
+	return memberType === "Mob"
+		? createMobEffectBindings(capabilities)
+		: memberType === "Player"
+			? createPlayerEffectBindings(capabilities)
+			: createEffectBindings(
+				{} as PreviewRuntime & Record<string, unknown>,
+				{},
+				{},
+				capabilities,
+			);
 };
 
-export const createPreviewBtRuntime = (memberType: MemberType): PreviewBtRuntime => {
+export const createPreviewBtRuntime = (
+	memberType: MemberType,
+	treeKind: BehaviorTreeKind = "effect",
+): PreviewBtRuntime => {
 	const runtime = createPreviewRuntime(memberType);
 	const services: MemberRuntimeServices = {
 		getCurrentTimeMs: () => runtime.currentTimeMs,
@@ -123,7 +142,7 @@ export const createPreviewBtRuntime = (memberType: MemberType): PreviewBtRuntime
 	const parallelBts = new Set<string>();
 	let nextThresholdRegistrationId = 1;
 
-	const capabilities: MemberBtCapabilities<string, MemberFSMEvent> = {
+	const capabilities: MemberBtCapabilities<string> = {
 		attributeContainer,
 		services,
 		declareState: () => undefined,
@@ -142,21 +161,22 @@ export const createPreviewBtRuntime = (memberType: MemberType): PreviewBtRuntime
 		registerThreshold: () => nextThresholdRegistrationId++,
 		unregisterThresholdBySource: () => undefined,
 		notifyDomainEvent: () => undefined,
+	};
+	const behaviorCapabilities: MemberBehaviorCapabilities = {
 		submitControlInput: () => undefined,
-		send: () => undefined,
 	};
 
-	const env: MemberBtManagerEnv<MemberFSMEvent, string, PreviewRuntime> = {
+	const env: EffectBtManagerEnv<MemberFSMEvent, string, PreviewRuntime> = {
 		name: "BtEditorPreview",
 		getContext: () => runtime,
 		getCapabilities: () => capabilities,
 		getDeltaTimeMs: () => runtime.deltaTimeMs,
-		send: capabilities.send,
+		send: () => undefined,
 	};
 
 	return {
 		env,
-		btBindings: createPreviewBtBindings(memberType, capabilities),
+		btBindings: createPreviewBtBindings(memberType, treeKind, capabilities, behaviorCapabilities),
 	};
 };
 
@@ -164,6 +184,7 @@ export function createPreviewBehaviourTree(options: {
 	definition: RootNodeDefinition[];
 	agent: string;
 	memberType: MemberType;
+	treeKind: BehaviorTreeKind;
 	registry: MdslIntellisenseRegistry;
 	onDiagnostic?: (diagnostic: BtAuthoringDiagnostic) => void;
 	behaviourTreeOptions?: BehaviourTreeOptions;
@@ -173,7 +194,7 @@ export function createPreviewBehaviourTree(options: {
 		diagnostics.push(diagnostic);
 		options.onDiagnostic?.(diagnostic);
 	};
-	const { env, btBindings } = createPreviewBtRuntime(options.memberType);
+	const { env, btBindings } = createPreviewBtRuntime(options.memberType, options.treeKind);
 	const { context, warnings } = createBtContext({
 		env,
 		btBindings,

@@ -13,19 +13,27 @@ import type { MemberCheckpoint, MemberDomainEvent, SimulationTickContext } from 
 import type { DamageAreaSpec } from "../Area/types";
 import type { ResolvedDamageEffect } from "../Damage/types";
 import type { WorldObservable } from "../observable";
+import { AiBehaviorRuntime } from "./Behavior/AiBehaviorRuntime";
+import type { MemberBehaviorCapabilities } from "./Behavior/Bindings";
+import type { MemberControlMode } from "./Behavior/MemberControlMode";
+import { createEffectBindings } from "./EffectBehavior/Bindings";
+import { EffectBtManager } from "./EffectBehavior/EffectBtManager";
+import type { EffectBtManagerEnv, MemberBtCapabilities } from "./EffectBehavior/EffectBtManagerEnv";
 import type { MemberBaseAttrKey } from "./MemberBaseSchema";
+import { AttributeThresholdSource } from "./ProcBus/AttributeThresholdSource";
+import { ProcBus } from "./ProcBus/ProcBus";
 import type { MemberRuntimeServices, MemberTargetDirectionResolver, MemberTargetResolver } from "./RuntimeServices";
 import { MemberRuntimeServicesDefaults } from "./RuntimeServices";
 import type { AttributeContainer } from "./runtime/AttributeContainer/AttributeContainer";
 import { AttributeSnapshotSchema } from "./runtime/AttributeContainer/AttributeContainerTypes";
 import type { NestedSchema } from "./runtime/AttributeContainer/SchemaTypes";
-import { AttributeThresholdSource } from "./runtime/AttributeWatcher/AttributeThresholdSource";
-import { AiBehaviorRuntime } from "./runtime/Behavior/AiBehaviorRuntime";
-import type { MemberControlMode } from "./runtime/Behavior/MemberControlMode";
-import { BtManager } from "./runtime/BehaviourTree/BtManager";
-import type { MemberBtCapabilities, MemberBtManagerEnv } from "./runtime/BehaviourTree/BtManagerEnv";
-import { ProcBus } from "./runtime/ProcBus/ProcBus";
+import type { MemberMovementInput, MemberSharedRuntime } from "./runtime/SharedRuntime";
 import type { MemberStateDeclaration, MemberStateFrameEntry, MemberStateName } from "./runtime/State/MemberState";
+import {
+	InMemoryStatusInstanceStore,
+	type MutableStatusInstanceStore,
+	type StatusInstance,
+} from "./runtime/Status/StatusInstanceStore";
 import type {
 	MemberActor,
 	MemberControlEvent,
@@ -33,13 +41,7 @@ import type {
 	MemberFSMEvent,
 	MemberStateMachine,
 	MemberStateMachineEnv,
-} from "./runtime/StateMachine/types";
-import {
-	InMemoryStatusInstanceStore,
-	type MutableStatusInstanceStore,
-	type StatusInstance,
-} from "./runtime/Status/StatusInstanceStore";
-import type { MemberMovementInput, MemberSharedRuntime } from "./runtime/types";
+} from "./StateMachine/types";
 
 const log = createLogger("Member");
 const MOVEMENT_EPSILON = 0.0001;
@@ -82,7 +84,7 @@ export abstract class Member<
 	name: string;
 	/** 成员控制模式（ADR 0054）。 */
 	controlMode: MemberControlMode;
-	/** AI 控制行为树；由 Member 持有，不在 BtManager 管理。 */
+	/** AI 控制行为树；由 Member 持有，不在 EffectBtManager 管理。 */
 	aiBehavior: AiBehaviorRuntime | null = null;
 	/** ai 模式下的连续移动行为；回放时逐逻辑 Tick 读取。 */
 	aiMovementBehaviors: MovementBehaviorRecordData[] = [];
@@ -96,7 +98,7 @@ export abstract class Member<
 	runtime: TRuntime;
 	/** 引擎注入 services（不可序列化） */
 	services: MemberRuntimeServices;
-	btManager: BtManager<TExtraAttrKey, TRuntime, MemberFSMEvent<TSpecificEvent>>;
+	effectBtManager: EffectBtManager<TExtraAttrKey, TRuntime, MemberFSMEvent<TSpecificEvent>>;
 	/** 成员级持久 overlays（纯数据，可 checkpoint） */
 	pipelineOverlays: PipelineOverlay[] = [];
 	private pipelineResolverService: PipelineResolverService | null = null;
@@ -193,9 +195,16 @@ export abstract class Member<
 		runtime: TRuntime,
 		services: MemberRuntimeServices = MemberRuntimeServicesDefaults,
 		position?: { x: number; y: number; z: number },
-		btContextBindings: (
-			capabilities: MemberBtCapabilities<TExtraAttrKey, MemberFSMEvent<TSpecificEvent>>,
-		) => Record<string, unknown> = () => ({}),
+		behaviorBindings: (capabilities: MemberBehaviorCapabilities) => Record<string, unknown> = () => ({}),
+		effectBindings: (
+			capabilities: MemberBtCapabilities<TExtraAttrKey>,
+		) => Record<string, unknown> = (capabilities) =>
+			createEffectBindings(
+				{} as MemberSharedRuntime<TExtraAttrKey> & Record<string, unknown>,
+				{},
+				{},
+				capabilities,
+			),
 	) {
 		this.id = memberData.id;
 		this.type = memberData.type;
@@ -216,8 +225,11 @@ export abstract class Member<
 			null,
 		);
 		const btCapabilities = this.createBtCapabilities();
-		// BT gets the checkpointable runtime blackboard plus callable bindings closed over capabilities.
-		this.btManager = new BtManager(this.createBtEnv(btCapabilities), btContextBindings(btCapabilities));
+		const behaviorCapabilities: MemberBehaviorCapabilities = {
+			submitControlInput: (event) => this.submitControlInput(event, "ai"),
+		};
+		// 效果树与控制树使用独立能力面和绑定集合。
+		this.effectBtManager = new EffectBtManager(this.createBtEnv(btCapabilities), effectBindings(btCapabilities));
 		this.runtime.statusTags = this.runtime.statusTags ?? [];
 		if (position) {
 			this.runtime.position = position;
@@ -229,7 +241,7 @@ export abstract class Member<
 			this.aiBehavior = new AiBehaviorRuntime(
 				memberData.resolvedBehavior.definition,
 				memberData.resolvedBehavior.agent,
-				btContextBindings(btCapabilities),
+				behaviorBindings(behaviorCapabilities),
 				runtime,
 				{
 					getDeltaTimeMs: () => this.runtime.deltaTimeMs,
@@ -273,8 +285,8 @@ export abstract class Member<
 			get services() {
 				return self.services;
 			},
-			get btManager() {
-				return self.btManager;
+			get effectBtManager() {
+				return self.effectBtManager;
 			},
 			notifyDomainEvent: (event) => self.notifyDomainEvent(event),
 			emitProc: (eventName, payload) => self.emitProc(eventName, payload),
@@ -289,9 +301,9 @@ export abstract class Member<
 	 *
 	 * 设计说明：
 	 * - getter 让 checkpoint restore 替换 runtime / procBus 后，BT 继续读取 Member 当前字段。
-	 * - send 封装 actor 访问，使 BtManager 不依赖完整 Member 类。
+	 * - send 封装 actor 访问，使 EffectBtManager 不依赖完整 Member 类。
 	 */
-	private createBtCapabilities(): MemberBtCapabilities<TExtraAttrKey, MemberFSMEvent<TSpecificEvent>> {
+	private createBtCapabilities(): MemberBtCapabilities<TExtraAttrKey> {
 		const self = this;
 		return {
 			get services() {
@@ -305,9 +317,9 @@ export abstract class Member<
 				self.activeEffectStateDeclaration = null;
 			},
 			registerParallelBt: (name, definition, agent, localContext) =>
-				self.btManager.registerParallelBt(name, definition, agent, localContext),
-			unregisterParallelBt: (name) => self.btManager.unregisterParallelBt(name),
-			hasParallelBt: (name) => self.btManager.hasBuff(name),
+				self.effectBtManager.registerParallelBt(name, definition, agent, localContext),
+			unregisterParallelBt: (name) => self.effectBtManager.unregisterParallelBt(name),
+			hasParallelBt: (name) => self.effectBtManager.hasBuff(name),
 			subscribeByName: (sourceId, eventNames, predicate, handler) => {
 				if (!self.procBus) {
 					log.warn(`member ${self.name} ProcBus 未就绪，忽略订阅 ${sourceId}`);
@@ -322,9 +334,8 @@ export abstract class Member<
 				self.attributeThresholdSource.register(sourceId, path, threshold, direction, options),
 			unregisterThresholdBySource: (sourceId) => self.attributeThresholdSource.unregisterBySource(sourceId),
 			notifyDomainEvent: (event) => self.notifyDomainEvent(event),
-			submitControlInput: (event) => self.submitControlInput(event, "ai"),
+
 			// 不暴露 runPipeline：管线属计算层，由 FSM / DamageResolution 调用；BT 叶子不直接跑管线。
-			send: (event) => self.actor.send(event),
 		};
 	}
 
@@ -332,12 +343,12 @@ export abstract class Member<
 	 * 构造 BT Manager 专用 env。
 	 *
 	 * 设计说明：
-	 * - BtManager 只拿黑板和能力提供者，不直接依赖完整 Member 类。
+	 * - EffectBtManager 只拿黑板和能力提供者，不直接依赖完整 Member 类。
 	 * - action/condition 的副作用能力由 bindings 闭包持有，不进入可 checkpoint runtime。
 	 */
 	private createBtEnv(
-		capabilities: MemberBtCapabilities<TExtraAttrKey, MemberFSMEvent<TSpecificEvent>>,
-	): MemberBtManagerEnv<MemberFSMEvent<TSpecificEvent>, TExtraAttrKey, TRuntime> {
+		capabilities: MemberBtCapabilities<TExtraAttrKey>,
+	): EffectBtManagerEnv<MemberFSMEvent<TSpecificEvent>, TExtraAttrKey, TRuntime> {
 		const self = this;
 		return {
 			get name() {
@@ -357,7 +368,7 @@ export abstract class Member<
 	private declareState(name: MemberStateName): void {
 		const timeMs = this.getLogicalTimeMs();
 		const sequence = ++this.nextBtStateSequence;
-		if (this.btManager.isSteppingActiveEffect()) {
+		if (this.effectBtManager.isSteppingActiveEffect()) {
 			this.activeEffectStateDeclaration = {
 				name,
 				timeMs,
@@ -377,7 +388,7 @@ export abstract class Member<
 
 	 */
 	private refreshPresentationState(): void {
-		if (!this.btManager.hasActiveEffectBt()) {
+		if (!this.effectBtManager.hasActiveEffectBt()) {
 			this.activeEffectStateDeclaration = null;
 		}
 		const fsmName = this.resolveFsmState();
@@ -757,7 +768,7 @@ export abstract class Member<
 		this.actor.send({ type: "update", timestamp: tick.currentTimeMs });
 		this.resolveMovementInput(movementInput);
 		this.integrateMovement(tick);
-		this.btManager.tickAll();
+		this.effectBtManager.tickAll();
 		if (this.controlMode === "ai") this.aiBehavior?.step();
 		this.refreshPresentationState();
 		// 让阈值 watcher 及时响应 modifier 导致的数值变化：把本帧累计的脏值刷出。
@@ -869,7 +880,7 @@ export abstract class Member<
 			fsm: this.actor.getPersistedSnapshot(),
 			attributeContainer: this.attributeContainer.captureCheckpoint(),
 			statusStore: this.statusStore.captureCheckpoint(),
-			btManager: this.btManager.captureCheckpoint(),
+			effectBtManager: this.effectBtManager.captureCheckpoint(),
 			pipelineOverlays: structuredClone(this.pipelineOverlays),
 			position: { ...this.position },
 			runtime: runtimeClone as typeof this.runtime,
@@ -879,7 +890,7 @@ export abstract class Member<
 	restoreCheckpoint(checkpoint: MemberCheckpoint): void {
 		this.attributeContainer.restoreCheckpoint(checkpoint.attributeContainer);
 		this.statusStore.restoreCheckpoint(checkpoint.statusStore);
-		this.btManager.restoreCheckpoint(checkpoint.btManager);
+		this.effectBtManager.restoreCheckpoint(checkpoint.effectBtManager);
 		const overlayCp = checkpoint as unknown as { pipelineOverlays?: PipelineOverlay[] };
 		const runtimeCp = checkpoint as unknown as { runtime?: TRuntime };
 		this.pipelineOverlays = structuredClone(overlayCp.pipelineOverlays ?? []);

@@ -2,21 +2,22 @@ import { type EventObject, setup } from "xstate";
 import { createLogger } from "~/lib/logger";
 import { type DamageDispatchPayload, damageSourceKey } from "../../../Damage/types";
 import { ModifierType } from "../../runtime/AttributeContainer/AttributeContainer";
+import type { MobRuntime } from "../../runtime/SharedRuntime";
+import { createCommonVerticalState } from "../../StateMachine/commonStateMachine";
 import {
 	createHitSession,
 	type HitSession,
 	resolveDamageAndApply,
 	resolveHitCheck,
-} from "../../runtime/StateMachine/DamageResolution";
-import { applyMemberTargetSelection } from "../../runtime/StateMachine/targetSelection";
+} from "../../StateMachine/DamageResolution";
+import { applyMemberTargetSelection } from "../../StateMachine/targetSelection";
 import type {
 	MemberFSMContext,
 	MemberFSMEvent,
 	MemberSelectTargetEvent,
 	MemberStateMachine,
 	MemberStateMachineEnv,
-} from "../../runtime/StateMachine/types";
-import type { MobRuntime } from "../../runtime/types";
+} from "../../StateMachine/types";
 import type { Mob, MobAttrKey } from "./Mob";
 
 const log = createLogger("MobSM");
@@ -185,7 +186,7 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 					// Add your action code here
 					// ...
 					log.debug(`👹 [${env.name}] 中断当前行为`, event);
-					env.btManager.clearStateDeclarations();
+					env.effectBtManager.clearStateDeclarations();
 				},
 				重置到复活状态: ({ context, event }) => {
 					// Add your action code here
@@ -379,7 +380,7 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 					description: "怪物存活状态，此时可操作且可影响上下文",
 					states: {
 						可操作状态: {
-							initial: "空闲状态",
+							type: "parallel",
 							on: {
 								应用控制: {
 									target: "控制状态",
@@ -387,15 +388,21 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachi
 							},
 							description: "可响应输入操作",
 							states: {
-								空闲状态: {
-									tags: "movement-input-enabled",
+								动作状态: {
+									initial: "空闲状态",
+									states: {
+										空闲状态: {
+											tags: "movement-input-enabled",
+										},
+									},
 								},
+								垂直状态: createCommonVerticalState(env),
 							},
 						},
 						控制状态: {
 							on: {
 								控制时间结束: {
-									target: `#${machineId}.存活.可操作状态.空闲状态`,
+									target: `#${machineId}.存活.可操作状态.动作状态.空闲状态`,
 								},
 							},
 							entry: [

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createActor } from "xstate";
 import type { EngineCharacter, EngineCharacterSkill } from "../../../../engineScenarioSchema";
 import { MemberRuntimeServicesDefaults } from "../../RuntimeServices";
-import { type PlayerRuntime, PlayerRuntimeDefaults } from "../../runtime/types";
+import { type PlayerRuntime, PlayerRuntimeDefaults } from "../../runtime/SharedRuntime";
 import { type PlayerFSMEnv, playerFSM } from "./PlayerStateMachine";
 
 function createSkillFixture(): { character: EngineCharacter; skill: EngineCharacterSkill } {
@@ -52,7 +52,7 @@ function createHarness(withSkill: boolean) {
 	const faceCurrentTarget = vi.fn(() => true);
 	const notifyDomainEvent = vi.fn();
 	const runPipeline = vi.fn((name: string) => (name === "skill.cost" ? { hpCost: 0, mpCost: 0 } : { durationMs: 0 }));
-	// 测试替身只实现这些状态转换实际读取的 AttributeContainer、BtManager 与服务能力。
+	// 测试替身只实现这些状态转换实际读取的 AttributeContainer、EffectBtManager 与服务能力。
 	const env = {
 		id: runtime.memberId,
 		name: runtime.name,
@@ -67,7 +67,7 @@ function createHarness(withSkill: boolean) {
 			...MemberRuntimeServicesDefaults,
 			expressionEvaluator: vi.fn(() => 0),
 		},
-		btManager: {
+		effectBtManager: {
 			registerActiveEffectBt: vi.fn(),
 			unregisterActiveEffectBt: vi.fn(),
 			hasActiveEffectBt: vi.fn(() => withSkill),

@@ -4,7 +4,9 @@ import { createLogger } from "~/lib/logger";
 import type { EngineCharacterSkill } from "../../../../engineScenarioSchema";
 import type { SkillRejectionReason } from "../../../../types";
 import { ModifierType } from "../../runtime/AttributeContainer/AttributeContainer";
-import { applyMemberTargetSelection } from "../../runtime/StateMachine/targetSelection";
+import type { PlayerRuntime } from "../../runtime/SharedRuntime";
+import { createCommonVerticalState } from "../../StateMachine/commonStateMachine";
+import { applyMemberTargetSelection } from "../../StateMachine/targetSelection";
 import type {
 	MemberControlEvent,
 	MemberFSMContext,
@@ -13,8 +15,7 @@ import type {
 	MemberStateMachine,
 	MemberStateMachineEnv,
 	MemberUseSkillEvent,
-} from "../../runtime/StateMachine/types";
-import type { PlayerRuntime } from "../../runtime/types";
+} from "../../StateMachine/types";
 import type { PlayerAttrKey } from "./PlayerAttrSchema";
 import { computePlayerSkillLifecycle, selectPlayerSkillVariant } from "./skillLifecycle";
 
@@ -191,11 +192,6 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 				根据角色配置生成初始状态: () => {
 					log.debug(`[${env.name}] 根据角色配置生成初始状态`);
 				},
-				开始跳跃: () => {
-					if (!env.runtime.grounded) return;
-					env.runtime.grounded = false;
-					env.runtime.verticalVelocity = env.runtime.locomotion.jumpSpeed;
-				},
 				朝向当前目标: () => {
 					env.faceCurrentTarget();
 				},
@@ -239,7 +235,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 					log.debug(`[${env.name}] 清空待处理技能`);
 					env.runtime.previousSkill = env.runtime.currentSkill?.data || null;
 					env.runtime.currentSkill = null;
-					env.btManager.unregisterActiveEffectBt();
+					env.effectBtManager.unregisterActiveEffectBt();
 				},
 				发布技能拒绝事实: ({ event }) => {
 					const skillEvent = requireSkillUseEvent(event);
@@ -305,7 +301,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 					if (!activeTree) {
 						const activeBehavior = skillVariant.activeBehavior;
 						if (activeBehavior) {
-							env.btManager.registerActiveEffectBt();
+							env.effectBtManager.registerActiveEffectBt();
 							return;
 						}
 						log.warn(`[${env.name}] 技能变体既没有 activeBehaviorTree 也没有 activeBehavior`);
@@ -313,7 +309,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 					}
 					const treeDefinition = activeTree.definition;
 					const agentCode = activeTree.agent;
-					const treeData = env.btManager.registerActiveEffectBt(treeDefinition, agentCode);
+					const treeData = env.effectBtManager.registerActiveEffectBt(treeDefinition, agentCode);
 					if (!treeData) {
 						log.error(`[${env.name}] 技能逻辑不是有效的行为树`, treeDefinition);
 					}
@@ -358,7 +354,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 				},
 				中断当前行为: () => {
 					log.debug(`[${env.name}] 中断当前行为`);
-					env.btManager.clearStateDeclarations();
+					env.effectBtManager.clearStateDeclarations();
 				},
 			},
 			guards: {
@@ -368,7 +364,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 				存在后续连击: () => {
 					return false;
 				},
-				没有活动技能行为: () => !env.btManager.hasActiveEffectBt(),
+				没有活动技能行为: () => !env.effectBtManager.hasActiveEffectBt(),
 			},
 		})
 		.createMachine({
@@ -466,24 +462,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 										},
 									},
 								},
-								垂直状态: {
-									initial: "着地",
-									states: {
-										着地: {
-											on: {
-												跳跃: {
-													target: "腾空",
-													guard: () => env.runtime.grounded,
-													actions: { type: "开始跳跃" },
-												},
-											},
-										},
-										腾空: {
-											tags: "airborne",
-											on: { 落地: { target: "着地" } },
-										},
-									},
-								},
+								垂直状态: createCommonVerticalState(env),
 							},
 						},
 						受控状态: {
