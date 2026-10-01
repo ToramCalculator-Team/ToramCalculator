@@ -136,10 +136,10 @@ submitControlInput(event: MemberControlEvent, source: MemberControlMode): void
 
 ## 阶段 3：AI 行为树移到 Member
 
-- [x] 新增 `AiBehaviorRuntime`，由 Member 持有：
+- [x] 新增 `ControlBehaviorRuntime`，由 Member 持有：
 
 ```ts
-class AiBehaviorRuntime {
+class ControlBehaviorRuntime {
   mode: "running" | "paused";
   step(): void;
   pause(): void;

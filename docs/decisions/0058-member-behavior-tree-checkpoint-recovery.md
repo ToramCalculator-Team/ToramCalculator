@@ -55,5 +55,5 @@ AI 行为树仍由 Member 行为模块持有，效果行为树仍由 EffectBtMan
 
 - [0057：Member 编排模块与行为树节点方法边界](./0057-member-orchestration-and-behavior-tree-node-boundaries.md)
 - `src/lib/mistreevous/BehaviourTree.ts`
-- `src/engine/core/World/Member/Behavior/AiBehaviorRuntime.ts`
+- `src/engine/core/World/Member/ControlBehavior/ControlBehaviorRuntime.ts`
 - `src/engine/core/World/Member/EffectBehavior/EffectBtManager.ts`

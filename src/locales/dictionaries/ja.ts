@@ -1730,6 +1730,15 @@ const dictionary: Dictionary = {
 							tableFieldDescription: "ビヘイビアツリーの呼び出し可能関数群",
 							formFieldDescription: "ビヘイビアツリーの呼び出し可能関数群",
 						},
+						treeKind: {
+							key: "ビヘイビアツリー種別",
+							tableFieldDescription: "この行動が属するビヘイビアツリー種別",
+							formFieldDescription: "この行動が属するビヘイビアツリー種別",
+							enumMap: {
+								control: "制御",
+								effect: "効果",
+							},
+						},
 						memberType: {
 							key: "メンバータイプ",
 							tableFieldDescription: "この行動が属するメンバータイプ",
@@ -1938,6 +1947,15 @@ const dictionary: Dictionary = {
 							key: "Agent関数",
 							tableFieldDescription: "ビヘイビアツリーの呼び出し可能関数群",
 							formFieldDescription: "ビヘイビアツリーの呼び出し可能関数群",
+						},
+						treeKind: {
+							key: "ビヘイビアツリー種別",
+							tableFieldDescription: "この行動が属するビヘイビアツリー種別",
+							formFieldDescription: "この行動が属するビヘイビアツリー種別",
+							enumMap: {
+								control: "制御",
+								effect: "効果",
+							},
 						},
 						memberType: {
 							key: "メンバータイプ",

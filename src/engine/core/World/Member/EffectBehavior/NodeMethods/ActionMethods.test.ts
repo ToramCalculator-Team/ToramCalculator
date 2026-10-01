@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+import { actionPoolToInvokers } from "../../BehaviorTree/NodeMethods/utils";
 import type { MemberBtCapabilities } from "../../EffectBehavior/EffectBtManagerEnv";
-import { actionPoolToInvokers } from "../../runtime/NodeMethods/utils";
 import type { MemberSharedRuntime } from "../../runtime/SharedRuntime";
-import { CommonActionPool } from "./ActionMethods";
+import { CommonEffectActionPool } from "./ActionMethods";
 
 describe("ActionMethods.state", () => {
 	it("把状态名称传给成员能力", () => {
@@ -11,7 +11,7 @@ describe("ActionMethods.state", () => {
 		const capabilities = { declareState } as unknown as MemberBtCapabilities<string>;
 		// invoker 只读取 name 生成日志，其余 BT 黑板字段不参与该动作。
 		const context = { name: "测试成员" } as unknown as MemberSharedRuntime;
-		const invokers = actionPoolToInvokers(context, CommonActionPool, capabilities);
+		const invokers = actionPoolToInvokers(context, CommonEffectActionPool, capabilities);
 
 		invokers.state.call(context, "skill.chanting");
 
@@ -51,7 +51,7 @@ describe("ActionMethods.singleAttack", () => {
 			targetId: "target-1",
 			skill: { id: "skill-1", lv: 5 },
 		} as unknown as MemberSharedRuntime;
-		const invokers = actionPoolToInvokers(context, CommonActionPool, capabilities);
+		const invokers = actionPoolToInvokers(context, CommonEffectActionPool, capabilities);
 
 		invokers.singleAttack.call(context, "target-1", "magic", "magic", "self.atk.m", "skillLv + 1", [], [], true, "500");
 

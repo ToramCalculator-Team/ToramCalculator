@@ -1776,6 +1776,15 @@ const dictionary: Dictionary = {
 							tableFieldDescription: "行為樹可呼叫函式集",
 							formFieldDescription: "行為樹可呼叫函式集",
 						},
+						treeKind: {
+							key: "行為樹類型",
+							tableFieldDescription: "行為樹的類型",
+							formFieldDescription: "行為樹的類型",
+							enumMap: {
+								control: "控制",
+								effect: "效果",
+							},
+						},
 						memberType: {
 							key: "成員類型",
 							tableFieldDescription: "此行為所屬的成員類型",
@@ -1983,6 +1992,15 @@ const dictionary: Dictionary = {
 							key: "Agent 函式集",
 							tableFieldDescription: "行為樹可呼叫函式集",
 							formFieldDescription: "行為樹可呼叫函式集",
+						},
+						treeKind: {
+							key: "行為樹類型",
+							tableFieldDescription: "行為樹的類型",
+							formFieldDescription: "行為樹的類型",
+							enumMap: {
+								control: "控制",
+								effect: "效果",
+							},
 						},
 						memberType: {
 							key: "成員類型",

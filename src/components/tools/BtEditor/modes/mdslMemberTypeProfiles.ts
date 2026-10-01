@@ -1,24 +1,23 @@
-import type { MemberType } from "@db/schema/enums";
+import type { BtKind, MemberType } from "@db/schema/enums";
+import { mergePools } from "~/engine/core/World/Member/BehaviorTree/NodeMethods/mergePools";
+import { CommonControlBehaviorActionPool } from "~/engine/core/World/Member/ControlBehavior/NodeMethods/ActionMethods";
+import { CommonControlBehaviorConditionPool } from "~/engine/core/World/Member/ControlBehavior/NodeMethods/ConditionMethods";
 import { CommonEffectActionPool } from "~/engine/core/World/Member/EffectBehavior/NodeMethods/ActionMethods";
 import { CommonEffectConditionPool } from "~/engine/core/World/Member/EffectBehavior/NodeMethods/ConditionMethods";
-import { CommonBehaviorActionPool } from "~/engine/core/World/Member/Behavior/NodeMethods/ActionMethods";
-import { CommonBehaviorConditionPool } from "~/engine/core/World/Member/Behavior/NodeMethods/ConditionMethods";
-import type { MdslCallablePool } from "./mdslIntellisense";
 import { DefaultMemberSharedRuntime } from "~/engine/core/World/Member/runtime/SharedRuntime";
+import { MobControlBehaviorActionPool } from "~/engine/core/World/Member/types/Mob/ControlBehavior/NodeMethods/ActionMethods";
+import { MobControlBehaviorConditionPool } from "~/engine/core/World/Member/types/Mob/ControlBehavior/NodeMethods/ConditionMethods";
 import { MobEffectActionPool } from "~/engine/core/World/Member/types/Mob/EffectBehavior/NodeMethods/ActionMethods";
 import { MobEffectConditionPool } from "~/engine/core/World/Member/types/Mob/EffectBehavior/NodeMethods/ConditionMethods";
-import { MobBehaviorActionPool } from "~/engine/core/World/Member/types/Mob/Behavior/NodeMethods/ActionMethods";
-import { MobBehaviorConditionPool } from "~/engine/core/World/Member/types/Mob/Behavior/NodeMethods/ConditionMethods";
+import { PlayerControlBehaviorActionPool } from "~/engine/core/World/Member/types/Player/ControlBehavior/NodeMethods/ActionMethods";
+import { PlayerControlBehaviorConditionPool } from "~/engine/core/World/Member/types/Player/ControlBehavior/NodeMethods/ConditionMethods";
 import { PlayerEffectActionPool } from "~/engine/core/World/Member/types/Player/EffectBehavior/NodeMethods/ActionMethods";
 import { PlayerEffectConditionPool } from "~/engine/core/World/Member/types/Player/EffectBehavior/NodeMethods/ConditionMethods";
-import { PlayerBehaviorActionPool } from "~/engine/core/World/Member/types/Player/Behavior/NodeMethods/ActionMethods";
-import { PlayerBehaviorConditionPool } from "~/engine/core/World/Member/types/Player/Behavior/NodeMethods/ConditionMethods";
-
-export type BehaviorTreeKind = "control" | "effect";
+import type { MdslCallablePool } from "./mdslIntellisense";
 
 export type MdslProfileConfig = {
 	memberType: MemberType;
-	treeKind: BehaviorTreeKind;
+	treeKind: BtKind;
 	actionPool: MdslCallablePool;
 	conditionPool: MdslCallablePool;
 	propertyObject: Record<string, unknown>;
@@ -26,35 +25,38 @@ export type MdslProfileConfig = {
 
 const profileByMemberType = (
 	memberType: MemberType,
-	treeKind: BehaviorTreeKind,
+	treeKind: BtKind,
 ): Pick<MdslProfileConfig, "actionPool" | "conditionPool"> => {
 	if (treeKind === "control") {
 		switch (memberType) {
 			case "Player":
 				return {
-					actionPool: { ...CommonBehaviorActionPool, ...PlayerBehaviorActionPool },
-					conditionPool: { ...CommonBehaviorConditionPool, ...PlayerBehaviorConditionPool },
+					actionPool: mergePools(CommonControlBehaviorActionPool, PlayerControlBehaviorActionPool),
+					conditionPool: mergePools(CommonControlBehaviorConditionPool, PlayerControlBehaviorConditionPool),
 				};
 			case "Mob":
 				return {
-					actionPool: { ...CommonBehaviorActionPool, ...MobBehaviorActionPool },
-					conditionPool: { ...CommonBehaviorConditionPool, ...MobBehaviorConditionPool },
+					actionPool: mergePools(CommonControlBehaviorActionPool, MobControlBehaviorActionPool),
+					conditionPool: mergePools(CommonControlBehaviorConditionPool, MobControlBehaviorConditionPool),
 				};
 			default:
-				return { actionPool: {}, conditionPool: {} };
+				return {
+					actionPool: CommonControlBehaviorActionPool,
+					conditionPool: CommonControlBehaviorConditionPool,
+				};
 		}
 	}
 
 	switch (memberType) {
 		case "Player":
 			return {
-				actionPool: { ...CommonEffectActionPool, ...PlayerEffectActionPool },
-				conditionPool: { ...CommonEffectConditionPool, ...PlayerEffectConditionPool },
+				actionPool: mergePools(CommonEffectActionPool, PlayerEffectActionPool),
+				conditionPool: mergePools(CommonEffectConditionPool, PlayerEffectConditionPool),
 			};
 		case "Mob":
 			return {
-				actionPool: { ...CommonEffectActionPool, ...MobEffectActionPool },
-				conditionPool: { ...CommonEffectConditionPool, ...MobEffectConditionPool },
+				actionPool: mergePools(CommonEffectActionPool, MobEffectActionPool),
+				conditionPool: mergePools(CommonEffectConditionPool, MobEffectConditionPool),
 			};
 		default:
 			return { actionPool: CommonEffectActionPool, conditionPool: CommonEffectConditionPool };
@@ -62,10 +64,7 @@ const profileByMemberType = (
 };
 
 /** 根据行为树用途和 MemberType 获取对应的 MDSL IntelliSense 配置。 */
-export const getMdslProfileConfig = (
-	memberType: MemberType,
-	treeKind: BehaviorTreeKind = "effect",
-): MdslProfileConfig => ({
+export const getMdslProfileConfig = (memberType: MemberType, treeKind: BtKind): MdslProfileConfig => ({
 	memberType,
 	treeKind,
 	...profileByMemberType(memberType, treeKind),

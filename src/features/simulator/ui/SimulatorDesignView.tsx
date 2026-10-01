@@ -1,4 +1,3 @@
-import type { MemberBTTree } from "@db/schema/jsons";
 import { type Accessor, createMemo, createSignal, For, onMount, Show } from "solid-js";
 import { BtEditor } from "~/components/tools/BtEditor/BtEditor";
 import { Button } from "~/components/ui/controls/button";
@@ -127,7 +126,7 @@ function CampPanel(props: { camp: Camp; copy: Accessor<DesignCopy> }) {
 				<BtEditor
 					title={`${memberTitle(member)} 行为树`}
 					value={behavior}
-					onChange={(next: MemberBTTree) =>
+					onChange={(next) =>
 						session.send({ type: "design.memberBehavior.updated", memberId: member.id, behavior: next })
 					}
 					onClose={api.close}

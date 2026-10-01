@@ -1,4 +1,4 @@
-import type { MemberType } from "@db/schema/enums";
+import type { BtKind, MemberType } from "@db/schema/enums";
 import { MEMBER_TYPE } from "@db/schema/enums";
 import type { AttributeSlotDeclarationData, MemberBTTree } from "@db/schema/jsons";
 import { type Component, createEffect, createMemo, createSignal, on, onCleanup, onMount, Show } from "solid-js";
@@ -43,7 +43,6 @@ import {
 	addNodeAtSelection,
 	cloneEditableDocument,
 	collectEditableBranchReferences,
-	createDefaultEditableDocument,
 	deleteEditableNode,
 	duplicateChildNode,
 	type EditableBtDocument,
@@ -69,8 +68,7 @@ import { getErrorMessage } from "./utils/errors";
 
 export { DefinitionType, SidebarTab };
 
-export type BtEditorValue = Pick<MemberBTTree, "definition" | "agent"> &
-	Partial<Pick<MemberBTTree, "name" | "memberType" | "attributeSlots">>;
+export type BtEditorValue = MemberBTTree;
 
 export type BtEditorProps = {
 	title: string;
@@ -82,28 +80,13 @@ export type BtEditorProps = {
 
 type EditorSnapshot = {
 	treeName: string;
+	treeKind: BtKind;
 	agent: string;
 	memberType: MemberType;
 	attributeSlots: AttributeSlotDeclarationData[];
 	document: EditableBtDocument;
 	selectedNodeId?: string;
 };
-
-const emptyTree = (): MemberBTTree => ({
-	name: "default",
-	definition: editableDocumentToDefinitionText(createDefaultEditableDocument()),
-	agent: "class Agent {}",
-	memberType: "Player",
-	attributeSlots: [],
-});
-
-const defaultTree = emptyTree();
-
-const normalizeValue = (value: BtEditorValue): MemberBTTree => ({
-	...defaultTree,
-	...value,
-	attributeSlots: value.attributeSlots ?? [],
-});
 
 const cloneAttributeSlots = (slots: AttributeSlotDeclarationData[]): AttributeSlotDeclarationData[] =>
 	slots.map((slot) => ({
@@ -115,9 +98,15 @@ const getAttributeSlotsSignature = (slots: AttributeSlotDeclarationData[]) => JS
 
 // 设计说明：受控同步只比较可持久化 BT 数据，避免节点焦点、拖拽预览、面板开关等编辑态穿过组件边界。
 const getBtEditorValueSignature = (value: MemberBTTree): string =>
-	[value.name, value.definition, value.agent, value.memberType, getAttributeSlotsSignature(value.attributeSlots)].join(
-		"\u001f",
-	);
+	[
+		value.name,
+		value.definition,
+		value.agent,
+		value.memberType,
+		value.treeKind,
+		JSON.stringify(value.movementBehaviors),
+		getAttributeSlotsSignature(value.attributeSlots),
+	].join("\u001f");
 
 /**
  * 行为树结构化编辑器。
@@ -125,14 +114,13 @@ const getBtEditorValueSignature = (value: MemberBTTree): string =>
  * 设计说明：外部 value 只承载持久化语义数据；节点焦点、面板、拖拽、预览和历史栈保留为编辑器内部状态。
  */
 export const BtEditor: Component<BtEditorProps> = (props) => {
-	const initial = normalizeValue(props.value);
+	const initial = props.value;
 	const initialEditableDocument = parseInitialEditableDocument(initial.definition);
 	const [treeName, setTreeName] = createSignal(initial.name);
-	const [agent, setAgent] = createSignal(initial.agent || "class Agent {}");
-	const [memberType, setMemberType] = createSignal<MemberType>(initial.memberType ?? "Player");
-	const [attributeSlots, setAttributeSlots] = createSignal<AttributeSlotDeclarationData[]>(
-		initial.attributeSlots ?? [],
-	);
+	const [treeKind, setTreeKind] = createSignal(initial.treeKind);
+	const [agent, setAgent] = createSignal(initial.agent);
+	const [memberType, setMemberType] = createSignal(initial.memberType);
+	const [attributeSlots, setAttributeSlots] = createSignal<AttributeSlotDeclarationData[]>(initial.attributeSlots);
 	const {
 		editableDocument,
 		activeRoot,
@@ -174,7 +162,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		});
 	};
 	const mdslIntellisense = createMemo(() => {
-		const config = getMdslProfileConfig(memberType());
+		const config = getMdslProfileConfig(memberType(), treeKind());
 		return buildMdslIntellisenseRegistry(config, agent());
 	});
 	const {
@@ -192,6 +180,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		getDocument: editableDocument,
 		getAgent: agent,
 		getMemberType: memberType,
+		getTreeKind: treeKind,
 		getRegistry: mdslIntellisense,
 		onError: (message) => toast.error(message),
 	});
@@ -199,6 +188,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		validateBtAuthoring({
 			document: editableDocument(),
 			memberType: memberType(),
+			treeKind: treeKind(),
 			agent: agent(),
 			attributeSlots: attributeSlots(),
 			registry: mdslIntellisense(),
@@ -264,13 +254,15 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		);
 	});
 	const isReadOnly = createMemo(() => !!props.readOnly);
-	const externalValue = createMemo(() => normalizeValue(props.value));
+	const externalValue = createMemo(() => props.value);
 	const externalValueSignature = createMemo(() => getBtEditorValueSignature(externalValue()));
 	const currentValue = createMemo<MemberBTTree>(() => ({
+		...externalValue(),
 		name: treeName() || "default",
 		definition: definition(),
 		agent: agent(),
 		memberType: memberType(),
+		treeKind: treeKind(),
 		attributeSlots: cloneAttributeSlots(attributeSlots()),
 	}));
 	const currentTreeStateLabel = createMemo(() => formatBtState(behaviourTree()?.getState()));
@@ -290,6 +282,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 
 	const createSnapshot = (): EditorSnapshot => ({
 		treeName: treeName(),
+		treeKind: treeKind(),
 		agent: agent(),
 		memberType: memberType(),
 		attributeSlots: cloneAttributeSlots(attributeSlots()),
@@ -300,6 +293,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 	const restoreSnapshot = (snapshot: EditorSnapshot) => {
 		resetPreviewForEdit();
 		setTreeName(snapshot.treeName);
+		setTreeKind(snapshot.treeKind);
 		setAgent(snapshot.agent);
 		setMemberType(snapshot.memberType);
 		setAttributeSlots(cloneAttributeSlots(snapshot.attributeSlots));
@@ -310,6 +304,7 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 			definition: editableDocumentToDefinitionText(snapshot.document),
 			agent: snapshot.agent,
 			memberType: snapshot.memberType,
+			treeKind: snapshot.treeKind,
 			attributeSlots: cloneAttributeSlots(snapshot.attributeSlots),
 		});
 		queueMicrotask(() => setDefinitionError(refreshTreeInstance()));
@@ -360,12 +355,14 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 					definitionChanged ||
 					current.agent !== nextValue.agent ||
 					current.memberType !== nextValue.memberType ||
+					current.treeKind !== nextValue.treeKind ||
 					getAttributeSlotsSignature(current.attributeSlots) !== getAttributeSlotsSignature(nextValue.attributeSlots);
 
 				if (runtimeContextChanged) resetPreviewBecauseDocumentChanged();
 				if (current.name !== nextValue.name) setTreeName(nextValue.name);
 				if (current.agent !== nextValue.agent) setAgent(nextValue.agent);
 				if (current.memberType !== nextValue.memberType) setMemberType(nextValue.memberType);
+				if (current.treeKind !== nextValue.treeKind) setTreeKind(nextValue.treeKind);
 				if (
 					getAttributeSlotsSignature(current.attributeSlots) !== getAttributeSlotsSignature(nextValue.attributeSlots)
 				) {
@@ -451,6 +448,15 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 		resetPreviewBecauseDocumentChanged();
 		setMemberType(nextMemberType);
 		emitChange({ memberType: nextMemberType });
+		schedulePreviewRefresh();
+	};
+
+	const handleTreeKindChange = (nextTreeKind: BtKind) => {
+		if (isReadOnly() || nextTreeKind === treeKind()) return;
+		recordHistory();
+		resetPreviewBecauseDocumentChanged();
+		setTreeKind(nextTreeKind);
+		emitChange({ treeKind: nextTreeKind });
 		schedulePreviewRefresh();
 	};
 
@@ -744,11 +750,13 @@ export const BtEditor: Component<BtEditorProps> = (props) => {
 						open={topMenuOpen()}
 						title={props.title}
 						treeName={treeName()}
+						treeKind={treeKind()}
 						memberType={memberType()}
 						activeRoot={activeRoot()}
 						readOnly={isReadOnly()}
 						onClose={closeTopMenu}
 						onTreeNameChange={handleTreeNameChange}
+						onTreeKindChange={handleTreeKindChange}
 						onMemberTypeChange={handleMemberTypeChange}
 						onRootNameChange={handleRootNameChange}
 						onOpenAdvanced={openAdvancedPanel}
@@ -930,11 +938,13 @@ const BtEditorTopMenu: Component<{
 	open: boolean;
 	title: string;
 	treeName: string;
+	treeKind: BtKind;
 	memberType: MemberType;
 	activeRoot: EditableBtRoot;
 	readOnly: boolean;
 	onClose: () => void;
 	onTreeNameChange: (name: string) => void;
+	onTreeKindChange: (treeKind: BtKind) => void;
 	onMemberTypeChange: (memberType: MemberType) => void;
 	onRootNameChange: (root: EditableBtRoot, name: string) => void;
 	onOpenAdvanced: (panel: AdvancedPanelKey) => void;
@@ -953,6 +963,10 @@ const BtEditorTopMenu: Component<{
 				onInput={(event) => props.onTreeNameChange(event.currentTarget.value)}
 				disabled={props.readOnly}
 			/>
+			<div class="flex flex-col gap-2">
+				<div class="text-main-text-color text-xs">用途</div>
+				<BehaviorTreeKindPicker value={props.treeKind} disabled={props.readOnly} onChange={props.onTreeKindChange} />
+			</div>
 			<div class="flex flex-col gap-2">
 				<div class="text-main-text-color text-xs">类型</div>
 				<MemberTypePicker
@@ -1018,6 +1032,25 @@ const findNodeByRuntimeState = (
 	}
 	return undefined;
 };
+
+const behaviorTreeKindOptions = [
+	{ label: "控制树", value: "control" },
+	{ label: "效果树", value: "effect" },
+] as const;
+
+const BehaviorTreeKindPicker: Component<{
+	value: BtKind;
+	disabled: boolean;
+	onChange: (value: BtKind) => void;
+}> = (props) => (
+	<Select
+		value={props.value}
+		setValue={(value) => props.onChange(value as BtKind)}
+		options={[...behaviorTreeKindOptions]}
+		disabled={props.disabled}
+		textCenter
+	/>
+);
 
 const memberTypeLabels: Record<MemberType, string> = {
 	Player: "玩家",

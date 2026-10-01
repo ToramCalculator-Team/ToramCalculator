@@ -10,6 +10,7 @@ export default function BtEditorPage() {
 		agent: `class Agent {
 }`,
 		memberType: "Player",
+		treeKind: "effect",
 		attributeSlots: [],
 	});
 

@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 import { BUILT_IN_REGISTLETS_BY_ID } from "../../attachments/BuiltInRegistlets";
-import { type ConditionPool, defineCondition } from "../../runtime/NodeMethods/MethodTypes";
+import { type ConditionPool, defineCondition } from "../../BehaviorTree/NodeMethods/MethodTypes";
 import type { MemberSharedRuntime } from "../../runtime/SharedRuntime";
 import type { MemberBtCapabilities } from "../EffectBtManagerEnv";
 

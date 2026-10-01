@@ -47,6 +47,7 @@ export function compileRecordedActionsToMemberBehavior(
 		definition: lines.join("\n"),
 		agent: "",
 		memberType: "Player",
+		treeKind: "control",
 		attributeSlots: [],
 		movementBehaviors,
 	});

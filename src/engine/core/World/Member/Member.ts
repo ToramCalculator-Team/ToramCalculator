@@ -13,9 +13,12 @@ import type { MemberCheckpoint, MemberDomainEvent, SimulationTickContext } from 
 import type { DamageAreaSpec } from "../Area/types";
 import type { ResolvedDamageEffect } from "../Damage/types";
 import type { WorldObservable } from "../observable";
-import { AiBehaviorRuntime } from "./Behavior/AiBehaviorRuntime";
-import type { MemberBehaviorCapabilities } from "./Behavior/Bindings";
-import type { MemberControlMode } from "./Behavior/MemberControlMode";
+import {
+	createCommonControlBehaviorBindings,
+	type MemberControlBehaviorCapabilities,
+} from "./ControlBehavior/Bindings";
+import { ControlBehaviorRuntime } from "./ControlBehavior/ControlBehaviorRuntime";
+import type { MemberControlMode } from "./ControlBehavior/MemberControlMode";
 import { createEffectBindings } from "./EffectBehavior/Bindings";
 import { EffectBtManager } from "./EffectBehavior/EffectBtManager";
 import type { EffectBtManagerEnv, MemberBtCapabilities } from "./EffectBehavior/EffectBtManagerEnv";
@@ -85,7 +88,7 @@ export abstract class Member<
 	/** 成员控制模式（ADR 0054）。 */
 	controlMode: MemberControlMode;
 	/** AI 控制行为树；由 Member 持有，不在 EffectBtManager 管理。 */
-	aiBehavior: AiBehaviorRuntime | null = null;
+	controlBehavior: ControlBehaviorRuntime | null = null;
 	/** ai 模式下的连续移动行为；回放时逐逻辑 Tick 读取。 */
 	aiMovementBehaviors: MovementBehaviorRecordData[] = [];
 	/** 子类用 XState snapshot.matches 把当前 FSM 动作状态投影为稳定状态名。 */
@@ -195,16 +198,11 @@ export abstract class Member<
 		runtime: TRuntime,
 		services: MemberRuntimeServices = MemberRuntimeServicesDefaults,
 		position?: { x: number; y: number; z: number },
-		behaviorBindings: (capabilities: MemberBehaviorCapabilities) => Record<string, unknown> = () => ({}),
-		effectBindings: (
-			capabilities: MemberBtCapabilities<TExtraAttrKey>,
-		) => Record<string, unknown> = (capabilities) =>
-			createEffectBindings(
-				{} as MemberSharedRuntime<TExtraAttrKey> & Record<string, unknown>,
-				{},
-				{},
-				capabilities,
-			),
+		controlBehaviorBindings: (capabilities: MemberControlBehaviorCapabilities) => Record<string, unknown> = (
+			capabilities,
+		) => createCommonControlBehaviorBindings(capabilities),
+		effectBindings: (capabilities: MemberBtCapabilities<TExtraAttrKey>) => Record<string, unknown> = (capabilities) =>
+			createEffectBindings({} as MemberSharedRuntime<TExtraAttrKey> & Record<string, unknown>, {}, {}, capabilities),
 	) {
 		this.id = memberData.id;
 		this.type = memberData.type;
@@ -225,7 +223,7 @@ export abstract class Member<
 			null,
 		);
 		const btCapabilities = this.createBtCapabilities();
-		const behaviorCapabilities: MemberBehaviorCapabilities = {
+		const controlBehaviorCapabilities: MemberControlBehaviorCapabilities = {
 			submitControlInput: (event) => this.submitControlInput(event, "ai"),
 		};
 		// 效果树与控制树使用独立能力面和绑定集合。
@@ -238,10 +236,10 @@ export abstract class Member<
 		this.actor = createActor(stateMachine(this.createStateMachineEnv()));
 		this.aiMovementBehaviors = memberData.resolvedBehavior?.movementBehaviors ?? [];
 		if (this.controlMode === "ai" && memberData.resolvedBehavior) {
-			this.aiBehavior = new AiBehaviorRuntime(
+			this.controlBehavior = new ControlBehaviorRuntime(
 				memberData.resolvedBehavior.definition,
 				memberData.resolvedBehavior.agent,
-				behaviorBindings(behaviorCapabilities),
+				controlBehaviorBindings(controlBehaviorCapabilities),
 				runtime,
 				{
 					getDeltaTimeMs: () => this.runtime.deltaTimeMs,
@@ -692,17 +690,21 @@ export abstract class Member<
 		this.submitControlInput(event, "controlled");
 	}
 
-	/** 切换控制模式；ai -> controlled 暂停 AI 行为树，controlled -> ai 恢复。 */
-	setControlMode(mode: MemberControlMode): void {
-		if (this.controlMode === mode) return;
+	/** 切换控制模式；没有 AI 行为树时拒绝进入 ai 模式。 */
+	setControlMode(mode: MemberControlMode): boolean {
+		if (mode === "ai" && !this.controlBehavior) {
+			log.warn(`member ${this.name} 没有 AI 行为树，无法进入 ai 模式`);
+			return false;
+		}
+		if (this.controlMode === mode) return true;
+
 		this.controlMode = mode;
 		if (mode === "controlled") {
-			this.aiBehavior?.pause();
-		} else if (!this.aiBehavior) {
-			log.warn(`member ${this.name} 没有 AI 行为树，无法进入 ai 模式`);
+			this.controlBehavior?.pause();
 		} else {
-			this.aiBehavior.resume();
+			this.controlBehavior?.resume();
 		}
+		return true;
 	}
 
 	/** 设置 ai 模式下的连续移动行为记录；替换旧记录。 */
@@ -725,7 +727,7 @@ export abstract class Member<
 
 	/** AI 行为树是否仍在运行；停止策略用它判断成员行为序列是否结束。 */
 	isAiBehaviorRunning(): boolean {
-		return this.aiBehavior?.isRunning() ?? false;
+		return this.controlBehavior?.isRunning() ?? false;
 	}
 
 	/**
@@ -769,7 +771,7 @@ export abstract class Member<
 		this.resolveMovementInput(movementInput);
 		this.integrateMovement(tick);
 		this.effectBtManager.tickAll();
-		if (this.controlMode === "ai") this.aiBehavior?.step();
+		if (this.controlMode === "ai") this.controlBehavior?.step();
 		this.refreshPresentationState();
 		// 让阈值 watcher 及时响应 modifier 导致的数值变化：把本帧累计的脏值刷出。
 		this.attributeContainer.flushDirtyValues();

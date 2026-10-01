@@ -5,7 +5,7 @@ import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefiniti
 import type { BehaviourTreeOptions } from "~/lib/mistreevous/BehaviourTreeOptions";
 import { State } from "~/lib/mistreevous/State";
 import type { Checkpointable, EffectBtManagerCheckpoint } from "../../../types";
-import { ModifierType } from "../runtime/AttributeContainer/AttributeContainer";
+import { createExecutionContext } from "../BehaviorTree/ExecutionContext";
 import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
 import type { MemberFSMEvent } from "../StateMachine/types";
 import type { EffectBtManagerEnv } from "./EffectBtManagerEnv";
@@ -61,87 +61,15 @@ export class EffectBtManager<
 		agent?: string,
 		localContext?: Record<string, unknown>,
 	): TContext & Record<string, unknown> {
-		const executionContext = Object.create(this.env.getContext()) as TContext & Record<string, unknown>;
-		// 注入 per-tree 本地上下文（如 skill 信息），优先级高于共享 runtime
-		if (localContext) {
-			for (const [key, value] of Object.entries(localContext)) {
-				Object.defineProperty(executionContext, key, {
-					value,
-					writable: true,
-					enumerable: true,
-					configurable: true,
-				});
-			}
-		}
-		for (const [name, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(this.btBindings))) {
-			if (Object.hasOwn(executionContext, name) || name in executionContext) {
-				log.warn(`[${this.env.name}] skipped BT binding "${name}" because the slot already exists`);
-				continue;
-			}
-			Object.defineProperty(executionContext, name, {
-				...descriptor,
-				configurable: true,
-			});
-		}
-		this.mergeAgentMembers(executionContext, agent?.trim());
-		return executionContext;
-	}
-
-	/**
-	 * 将行为树自定义 agent class 的成员合并到本次执行上下文。
-	 *
-	 * 设计说明：
-	 * - 每棵 BT 使用独立 executionContext，避免把 agent 成员写回 checkpoint runtime。
-	 * - 冲突时保留 runtime / bindings 的既有槽位，agent 只补充缺失成员。
-	 * - agent 通过 `new Function` 编译，只适用于受信任的引擎配置；Worker 受限全局对象不是强安全沙箱。
-	 */
-	private mergeAgentMembers(context: Record<string, unknown>, agent: string | undefined): void {
-		if (!agent) return;
-
-		type AgentInstance = Record<string, unknown>;
-		type AgentCtor = new () => AgentInstance;
-
-		let AgentClass: AgentCtor;
-		try {
-			const factory = new Function("BehaviourTree", "State", "ModifierType", "owner", `return ${agent};`) as (
-				bt: typeof BehaviourTree,
-				state: typeof State,
-				modType: typeof ModifierType,
-				env: EffectBtManagerEnv<TFSMEvent, TExtraAttrKey, TContext>,
-			) => AgentCtor;
-			AgentClass = factory(BehaviourTree, State, ModifierType, this.env);
-		} catch (error) {
-			log.warn(`[${this.env.name}] failed to compile agent: ${error instanceof Error ? error.message : String(error)}`);
-			return;
-		}
-
-		let instance: AgentInstance;
-		try {
-			instance = new AgentClass();
-		} catch (error) {
-			log.warn(`[${this.env.name}] failed to init agent: ${error instanceof Error ? error.message : String(error)}`);
-			return;
-		}
-
-		const register = (name: string, desc: PropertyDescriptor): void => {
-			if (!name || name === "constructor") return;
-			if (name in context) {
-				log.warn(`[${this.env.name}] skipped agent member "${name}" because the slot already exists`);
-				return;
-			}
-			Object.defineProperty(context, name, { ...desc, configurable: true });
-		};
-
-		for (const key of Object.getOwnPropertyNames(instance)) {
-			const desc = Object.getOwnPropertyDescriptor(instance, key);
-			if (desc) register(key, desc);
-		}
-		const proto = AgentClass.prototype as object;
-		for (const key of Object.getOwnPropertyNames(proto)) {
-			if (key === "constructor") continue;
-			const desc = Object.getOwnPropertyDescriptor(proto, key);
-			if (desc) register(key, desc);
-		}
+		return createExecutionContext({
+			baseContext: this.env.getContext(),
+			memberName: this.env.name,
+			bindings: this.btBindings,
+			localContext,
+			agent,
+			agentOwner: this.env,
+			onWarning: (warning) => log.warn(warning.message),
+		}).context;
 	}
 
 	tickAll(): void {

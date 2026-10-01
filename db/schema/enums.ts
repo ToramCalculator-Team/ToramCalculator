@@ -104,6 +104,10 @@ export type MercenaryType = (typeof MERCENARY_TYPE)[number];
 export const MEMBER_TYPE = ["Player", "Partner", "Mercenary", "Mob"] as const;
 export type MemberType = (typeof MEMBER_TYPE)[number];
 
+// 行为树用途
+export const BT_KIND = ["control", "effect"] as const;
+export type BtKind = (typeof BT_KIND)[number];
+
 // 模拟器阵营
 export const SIMULATOR_CAMP = ["A", "B"] as const;
 export type SimulatorCamp = (typeof SIMULATOR_CAMP)[number];

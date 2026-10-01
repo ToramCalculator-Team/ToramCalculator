@@ -76,6 +76,7 @@ export function compileCharacterPreviewBehavior(
 		definition: convertJSONToMDSL(definition),
 		agent: "",
 		memberType: "Player",
+		treeKind: "control",
 		attributeSlots: [],
 	});
 }

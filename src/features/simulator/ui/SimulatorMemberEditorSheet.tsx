@@ -190,10 +190,7 @@ export function SimulatorMemberEditorSheet(props: Props) {
 			{(character) => (
 				<div class="flex h-full min-h-0 w-full flex-col overflow-hidden">
 					<header class="border-dividing-color flex flex-none items-center justify-between gap-3 border-b px-6 py-4">
-						<div class="min-w-0">
-							<strong class="block truncate text-lg">编辑 {props.member.name || character().name}</strong>
-							<span class="text-accent-color-70 text-sm">仅修改当前 Simulator 设计副本</span>
-						</div>
+						<h1 class="block truncate text-lg">{props.member.name || character().name}</h1>
 						<div class="flex flex-none items-center gap-2">
 							<Button level="quaternary" onClick={close}>
 								取消

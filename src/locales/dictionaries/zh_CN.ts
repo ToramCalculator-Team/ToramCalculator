@@ -1726,6 +1726,15 @@ const dictionary: Dictionary = {
 							tableFieldDescription: "行为树可调用函数集",
 							formFieldDescription: "行为树可调用函数集",
 						},
+						treeKind: {
+							key: "行为树类型",
+							tableFieldDescription: "行为树的类型",
+							formFieldDescription: "行为树的类型",
+							enumMap: {
+								control: "角色行为控制",
+								effect: "效果行为",
+							},
+						},
 						memberType: {
 							key: "成员类型",
 							tableFieldDescription: "成员类型",
@@ -1939,6 +1948,15 @@ const dictionary: Dictionary = {
 							key: "可调用函数集",
 							tableFieldDescription: "行为树可调用函数集",
 							formFieldDescription: "行为树可调用函数集",
+						},
+						treeKind: {
+							key: "行为树类型",
+							tableFieldDescription: "行为树的类型",
+							formFieldDescription: "行为树的类型",
+							enumMap: {
+								control: "角色行为控制",
+								effect: "效果行为",
+							},
 						},
 						memberType: {
 							key: "成员类型",

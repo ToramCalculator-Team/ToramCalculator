@@ -274,6 +274,7 @@ export const defaultData: DB = {
 		magicDefExp: 0,
 		actions: {
 			memberType: "Mob",
+			treeKind: "control",
 			name: "default",
 			definition: "",
 			agent: "",

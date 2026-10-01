@@ -1,4 +1,4 @@
-import type { MemberType } from "@db/schema/enums";
+import type { BtKind, MemberType } from "@db/schema/enums";
 import { createSignal, onCleanup } from "solid-js";
 import type { BehaviourTree, State } from "~/lib/mistreevous";
 import type { NodeDetails } from "~/lib/mistreevous/nodes/Node";
@@ -6,7 +6,6 @@ import type { BtAuthoringDiagnostic } from "../model/authoringValidator";
 import type { EditableBtDocument } from "../model/editableTree";
 import { editableDocumentToRootDefinitions } from "../model/editableTree";
 import { createPreviewBehaviourTree } from "../model/previewRuntime";
-import type { BehaviorTreeKind } from "../modes/mdslMemberTypeProfiles";
 import type { MdslIntellisenseRegistry } from "../modes/mdslIntellisense";
 import { getErrorMessage } from "../utils/errors";
 
@@ -21,7 +20,7 @@ export type UseBtPreviewRuntimeOptions = {
 	getDocument: () => EditableBtDocument;
 	getAgent: () => string;
 	getMemberType: () => MemberType;
-	getTreeKind: () => BehaviorTreeKind;
+	getTreeKind: () => BtKind;
 	getRegistry: () => MdslIntellisenseRegistry;
 	onError: (message: string) => void;
 };

@@ -1,8 +1,7 @@
-import type { MemberType } from "@db/schema/enums";
-import type { BehaviorTreeKind } from "../modes/mdslMemberTypeProfiles";
+import type { BtKind, MemberType } from "@db/schema/enums";
 import type { AttributeSlotDeclarationData } from "@db/schema/jsons";
-import { validateSlotDeclarationPath } from "~/engine/core/World/Member/runtime/AttributeContainer/SchemaMerge";
 import { createBtContext } from "~/engine/core/World/Member/EffectBehavior/EffectBtContextFactory";
+import { validateSlotDeclarationPath } from "~/engine/core/World/Member/runtime/AttributeContainer/SchemaMerge";
 import { validateDefinition } from "~/lib/mistreevous";
 import type { NodeArgument } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import type { MdslIntellisenseRegistry } from "../modes/mdslIntellisense";
@@ -31,7 +30,7 @@ export type BtAuthoringDiagnostic = {
 export type BtAuthoringValidationInput = {
 	document: EditableBtDocument;
 	memberType: MemberType;
-	treeKind: BehaviorTreeKind;
+	treeKind: BtKind;
 	agent: string;
 	attributeSlots: AttributeSlotDeclarationData[];
 	registry: MdslIntellisenseRegistry;
@@ -290,7 +289,7 @@ function isMdslPlainIdentifier(value: string): boolean {
 	return !/[\s[\](){},"]/.test(trimmed);
 }
 
-function validateAgentContext(memberType: MemberType, treeKind: BehaviorTreeKind, agent: string): BtAuthoringDiagnostic[] {
+function validateAgentContext(memberType: MemberType, treeKind: BtKind, agent: string): BtAuthoringDiagnostic[] {
 	const diagnostics: BtAuthoringDiagnostic[] = [];
 	const { env, btBindings } = createPreviewBtRuntime(memberType, treeKind);
 	const { warnings } = createBtContext({

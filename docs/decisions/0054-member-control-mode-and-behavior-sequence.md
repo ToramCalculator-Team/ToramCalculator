@@ -48,7 +48,7 @@
 1. 任一 Member 任一 Tick 只有一个有效输入源：`controlled` 模式只接受控制器，`ai` 模式只接受 AI 行为树。
 2. 控制器输入不进入行为序列队列等待消费；它直接到达 FSM，FSM 裁决后写入行为序列。
 3. 行为序列复用 `RunOutputRecorder.inputs`，不新增第二份并行记录；序列不反向驱动 FSM。
-4. AI 行为树存储在 Member 上，通过 `AiBehaviorRuntime` 执行；其内容与控制器输出等价，不使用 `state` action。
+4. AI 控制行为树存储在 Member 上，通过 `ControlBehaviorRuntime` 执行；其内容与控制器输出等价，不使用 `state` action。
 5. `BtManager.activeEffectEntry` 只承载技能效果 BT；`BtManager.parallelEntries` 只承载 buff/passive BT；`member-flow` 槽位删除。
 6. 视觉状态只来自 FSM 状态和 active effect BT 的状态声明。
 7. `ai -> controlled` 时 AI 行为树暂停并保留当前节点状态；`controlled -> ai` 时恢复。

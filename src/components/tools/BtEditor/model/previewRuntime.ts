@@ -1,5 +1,8 @@
-import type { MemberType } from "@db/schema/enums";
-import type { MemberBehaviorCapabilities } from "~/engine/core/World/Member/Behavior/Bindings";
+import type { BtKind, MemberType } from "@db/schema/enums";
+import {
+	createCommonControlBehaviorBindings,
+	type MemberControlBehaviorCapabilities,
+} from "~/engine/core/World/Member/ControlBehavior/Bindings";
 import { createEffectBindings } from "~/engine/core/World/Member/EffectBehavior/Bindings";
 import { createBtContext } from "~/engine/core/World/Member/EffectBehavior/EffectBtContextFactory";
 import type {
@@ -11,10 +14,12 @@ import type { MemberRuntimeServices } from "~/engine/core/World/Member/RuntimeSe
 import { AttributeContainer } from "~/engine/core/World/Member/runtime/AttributeContainer/AttributeContainer";
 import type { MemberSharedRuntime, MobRuntime, PlayerRuntime } from "~/engine/core/World/Member/runtime/SharedRuntime";
 import type { MemberFSMEvent } from "~/engine/core/World/Member/StateMachine/types";
-import { createMobBehaviorBindings } from "~/engine/core/World/Member/types/Mob/Behavior/Bindings";
+import { createMobControlBehaviorBindings } from "~/engine/core/World/Member/types/Mob/ControlBehavior/Bindings";
 import { createMobEffectBindings } from "~/engine/core/World/Member/types/Mob/EffectBehavior/Bindings";
-import { createPlayerBehaviorBindings } from "~/engine/core/World/Member/types/Player/Behavior/Bindings";
+import type { MobAttrKey } from "~/engine/core/World/Member/types/Mob/MobAttrSchema";
+import { createPlayerControlBehaviorBindings } from "~/engine/core/World/Member/types/Player/ControlBehavior/Bindings";
 import { createPlayerEffectBindings } from "~/engine/core/World/Member/types/Player/EffectBehavior/Bindings";
+import type { PlayerAttrKey } from "~/engine/core/World/Member/types/Player/PlayerAttrSchema";
 import { DefaultMobLocomotionProfile, PlayerLocomotionProfile } from "~/game/locomotion";
 import { BehaviourTree, type BehaviourTreeOptions, State } from "~/lib/mistreevous";
 import type { Agent } from "~/lib/mistreevous/Agent";
@@ -24,7 +29,6 @@ import type {
 	NodeGuardDefinition,
 	RootNodeDefinition,
 } from "~/lib/mistreevous/BehaviourTreeDefinition";
-import type { BehaviorTreeKind } from "../modes/mdslMemberTypeProfiles";
 import type { MdslIntellisenseRegistry } from "../modes/mdslIntellisense";
 import type { BtAuthoringDiagnostic } from "./authoringValidator";
 
@@ -97,34 +101,26 @@ const createPreviewRuntime = (memberType: MemberType): PreviewRuntime => {
 
 const createPreviewBtBindings = (
 	memberType: MemberType,
-	treeKind: BehaviorTreeKind,
+	treeKind: BtKind,
 	capabilities: MemberBtCapabilities<string>,
-	behaviorCapabilities: MemberBehaviorCapabilities,
+	controlBehaviorCapabilities: MemberControlBehaviorCapabilities,
 ): Record<string, unknown> => {
 	if (treeKind === "control") {
 		return memberType === "Mob"
-			? createMobBehaviorBindings(behaviorCapabilities)
+			? createMobControlBehaviorBindings(controlBehaviorCapabilities)
 			: memberType === "Player"
-				? createPlayerBehaviorBindings(behaviorCapabilities)
-				: {};
+				? createPlayerControlBehaviorBindings(controlBehaviorCapabilities)
+				: createCommonControlBehaviorBindings(controlBehaviorCapabilities);
 	}
 
 	return memberType === "Mob"
-		? createMobEffectBindings(capabilities)
+		? createMobEffectBindings(adaptPreviewCapabilities<MobAttrKey>(capabilities))
 		: memberType === "Player"
-			? createPlayerEffectBindings(capabilities)
-			: createEffectBindings(
-				{} as PreviewRuntime & Record<string, unknown>,
-				{},
-				{},
-				capabilities,
-			);
+			? createPlayerEffectBindings(adaptPreviewCapabilities<PlayerAttrKey>(capabilities))
+			: createEffectBindings({} as PreviewRuntime & Record<string, unknown>, {}, {}, capabilities);
 };
 
-export const createPreviewBtRuntime = (
-	memberType: MemberType,
-	treeKind: BehaviorTreeKind = "effect",
-): PreviewBtRuntime => {
+export const createPreviewBtRuntime = (memberType: MemberType, treeKind: BtKind): PreviewBtRuntime => {
 	const runtime = createPreviewRuntime(memberType);
 	const services: MemberRuntimeServices = {
 		getCurrentTimeMs: () => runtime.currentTimeMs,
@@ -162,7 +158,7 @@ export const createPreviewBtRuntime = (
 		unregisterThresholdBySource: () => undefined,
 		notifyDomainEvent: () => undefined,
 	};
-	const behaviorCapabilities: MemberBehaviorCapabilities = {
+	const controlBehaviorCapabilities: MemberControlBehaviorCapabilities = {
 		submitControlInput: () => undefined,
 	};
 
@@ -176,7 +172,7 @@ export const createPreviewBtRuntime = (
 
 	return {
 		env,
-		btBindings: createPreviewBtBindings(memberType, treeKind, capabilities, behaviorCapabilities),
+		btBindings: createPreviewBtBindings(memberType, treeKind, capabilities, controlBehaviorCapabilities),
 	};
 };
 
@@ -184,7 +180,7 @@ export function createPreviewBehaviourTree(options: {
 	definition: RootNodeDefinition[];
 	agent: string;
 	memberType: MemberType;
-	treeKind: BehaviorTreeKind;
+	treeKind: BtKind;
 	registry: MdslIntellisenseRegistry;
 	onDiagnostic?: (diagnostic: BtAuthoringDiagnostic) => void;
 	behaviourTreeOptions?: BehaviourTreeOptions;
@@ -244,6 +240,13 @@ function wrapPreviewAgentWithFallback(
 		},
 		// 设计说明：Proxy 动态补齐未知 action/condition，类型边界由 fallback 诊断暴露给编辑器。
 	}) as unknown as Agent;
+}
+
+function adaptPreviewCapabilities<TAttrKey extends string>(
+	capabilities: MemberBtCapabilities<string>,
+): MemberBtCapabilities<TAttrKey> {
+	// 预览使用统一的动态属性容器；这里只在编辑边界适配到角色专属绑定的键类型。
+	return capabilities as unknown as MemberBtCapabilities<TAttrKey>;
 }
 
 function collectPreviewFallbackCalls(

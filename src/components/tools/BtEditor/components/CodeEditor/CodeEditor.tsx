@@ -5,8 +5,6 @@ import HtmlWorker from "monaco-editor/esm/vs/language/html/html.worker?worker&ur
 import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker&url";
 import TsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker&url";
 import { type Component, createEffect, onCleanup, onMount } from "solid-js";
-import { CommonEffectActionPool } from "~/engine/core/World/Member/EffectBehavior/NodeMethods/ActionMethods";
-import { CommonEffectConditionPool } from "~/engine/core/World/Member/EffectBehavior/NodeMethods/ConditionMethods";
 import { store } from "~/store";
 import { resolveColorSystem } from "~/styles/colorSystem/colorSystemController";
 import { mdslLanguageDefinition } from "../../modes/mdsl";
@@ -48,25 +46,21 @@ export type CodeEditorProps = {
 	onChange?: (value: string) => void;
 	class?: string;
 	style?: string | Record<string, string>;
-	/** MDSL 的补全/诊断配置；不传则使用 simulator 默认注册表（ActionMethods/CommonCondition + DefaultAgent） */
+	/** MDSL 的补全/诊断配置；行为树编辑器应按当前用途显式传入。 */
 	mdslIntellisense?: MdslIntellisenseRegistry;
 };
 
 // 注册 MDSL 语言（只需要注册一次）
 let languageInitialized = false;
 let mdslProvidersInitialized = false;
-let currentMdslRegistry: MdslIntellisenseRegistry | null = null;
+const mdslRegistries = new WeakMap<monaco.editor.ITextModel, MdslIntellisenseRegistry>();
+const emptyMdslRegistry = buildMdslIntellisenseRegistry({
+	actionPool: {},
+	conditionPool: {},
+	propertyObject: {},
+});
 
-const getMdslRegistry = () => {
-	if (!currentMdslRegistry) {
-		currentMdslRegistry = buildMdslIntellisenseRegistry({
-			actionPool: CommonEffectActionPool,
-			conditionPool: CommonEffectConditionPool,
-			propertyObject: {},
-		});
-	}
-	return currentMdslRegistry;
-};
+const getMdslRegistry = (model: monaco.editor.ITextModel) => mdslRegistries.get(model) ?? emptyMdslRegistry;
 
 const getDefaultCompletionRange = (model: monaco.editor.ITextModel, position: monaco.Position) => {
 	const word = model.getWordUntilPosition(position);
@@ -289,7 +283,7 @@ const getEnclosingAttributeCall = (
 };
 
 const validateMdslModel = (model: monaco.editor.ITextModel) => {
-	const registry = getMdslRegistry();
+	const registry = getMdslRegistry(model);
 	const text = model.getValue();
 	const markers: monaco.editor.IMarkerData[] = [];
 
@@ -468,7 +462,7 @@ const initializeMDSLProviders = () => {
 	monaco.languages.registerCompletionItemProvider("mdsl", {
 		triggerCharacters: ["[", "(", ",", "$", '"'],
 		provideCompletionItems(model, position) {
-			const registry = getMdslRegistry();
+			const registry = getMdslRegistry(model);
 			const offset = model.getOffsetAt(position);
 			const defaultRange = getDefaultCompletionRange(model, position);
 
@@ -625,7 +619,7 @@ const initializeMDSLProviders = () => {
 	monaco.languages.registerSignatureHelpProvider("mdsl", {
 		signatureHelpTriggerCharacters: ["[", "(", ","],
 		provideSignatureHelp(model, position) {
-			const registry = getMdslRegistry();
+			const registry = getMdslRegistry(model);
 			const offset = model.getOffsetAt(position);
 
 			const call = getEnclosingByKeyword(model, offset);
@@ -800,6 +794,8 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
 				horizontal: "auto",
 			},
 		});
+		const model = editor.getModel();
+		if (model && props.mdslIntellisense) mdslRegistries.set(model, props.mdslIntellisense);
 
 		// 设置初始值
 		if (props.value) {
@@ -874,13 +870,10 @@ const CodeEditor: Component<CodeEditorProps> = (props) => {
 
 	// 响应 mdslIntellisense 配置变化
 	createEffect(() => {
-		if (props.mdslIntellisense) {
-			currentMdslRegistry = props.mdslIntellisense;
-			if (editor && isInitialized && (props.mode ?? "javascript") === "mdsl") {
-				const model = editor.getModel();
-				if (model) validateMdslModel(model);
-			}
-		}
+		const model = editor?.getModel();
+		if (!model || !props.mdslIntellisense) return;
+		mdslRegistries.set(model, props.mdslIntellisense);
+		if (isInitialized && (props.mode ?? "javascript") === "mdsl") validateMdslModel(model);
 	});
 
 	// 响应 readOnly 变化

@@ -1,5 +1,5 @@
 import type { mob } from "@db/generated/zod";
-import type { ElementType, MemberType, MobType } from "@db/schema/enums";
+import type { ElementType, MobType } from "@db/schema/enums";
 import { createSignal } from "solid-js";
 import { BtEditor } from "~/components/tools/BtEditor/BtEditor";
 import { Input } from "~/components/ui/controls/input";
@@ -248,20 +248,8 @@ export const MOB_DATA_CONFIG: TableDataConfigurator<"mob", mob> = (dictionary) =
 								>
 									<BtEditor
 										title={actionDictionary.key}
-										value={{
-											...currentValue(),
-											memberType: (currentValue().memberType as MemberType) ?? "Mob",
-											attributeSlots: currentValue().attributeSlots ?? [],
-										}}
-										onChange={(nextTree) => {
-											const newValue = {
-												...currentValue(),
-												...nextTree,
-											};
-											console.log(newValue);
-											setValue(newValue);
-											// setEditorDisplay(false);
-										}}
+										value={currentValue()}
+										onChange={setValue}
 										onClose={() => setEditorDisplay(false)}
 									/>
 								</BtEditorWrapper>

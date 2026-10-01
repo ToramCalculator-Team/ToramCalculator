@@ -1,5 +1,6 @@
-import type { ActionPool, ConditionPool } from "../runtime/NodeMethods/MethodTypes";
-import { actionPoolToInvokers, conditionPoolToInvokers } from "../runtime/NodeMethods/utils";
+import type { ActionPool, ConditionPool } from "../BehaviorTree/NodeMethods/MethodTypes";
+import { assertDisjointPools } from "../BehaviorTree/NodeMethods/mergePools";
+import { actionPoolToInvokers, conditionPoolToInvokers } from "../BehaviorTree/NodeMethods/utils";
 import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
 import type { MemberBtCapabilities } from "./EffectBtManagerEnv";
 import { CommonEffectActionPool } from "./NodeMethods/ActionMethods";
@@ -42,10 +43,16 @@ export const createEffectBindings = <
 	actionPool: TActions,
 	conditionPool: TConditions,
 	capabilities: MemberBtCapabilities<TExtraAttrKey>,
-) => ({
-	...createCommonEffectBindings<TExtraAttrKey>(capabilities),
-	...actionPoolToInvokers(context, actionPool, capabilities),
-	...conditionPoolToInvokers(context, conditionPool, capabilities),
-});
+) => {
+	assertDisjointPools(CommonEffectActionPool, actionPool);
+	assertDisjointPools(CommonEffectConditionPool, conditionPool);
+
+	return {
+		...actionPoolToInvokers(context, CommonEffectActionPool, capabilities),
+		...actionPoolToInvokers(context, actionPool, capabilities),
+		...conditionPoolToInvokers(context, CommonEffectConditionPool, capabilities),
+		...conditionPoolToInvokers(context, conditionPool, capabilities),
+	};
+};
 
 export type MemberEffectBindings = ReturnType<typeof createEffectBindings>;

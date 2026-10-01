@@ -1635,6 +1635,15 @@ const dictionary: Dictionary = {
 							tableFieldDescription: "Callable behavior tree functions",
 							formFieldDescription: "Callable behavior tree functions",
 						},
+						treeKind: {
+							key: "Tree Kind",
+							tableFieldDescription: "The kind of the behavior tree",
+							formFieldDescription: "The kind of the behavior tree",
+							enumMap: {
+								control: "Control",
+								effect: "Effect",
+							},
+						},
 						memberType: {
 							key: "Member Type",
 							tableFieldDescription: "The member type this action belongs to",
@@ -1846,6 +1855,15 @@ const dictionary: Dictionary = {
 							key: "Agent Functions",
 							tableFieldDescription: "Callable behavior tree functions",
 							formFieldDescription: "Callable behavior tree functions",
+						},
+						treeKind: {
+							key: "Tree Kind",
+							tableFieldDescription: "The kind of the behavior tree",
+							formFieldDescription: "The kind of the behavior tree",
+							enumMap: {
+								control: "Control",
+								effect: "Effect",
+							},
 						},
 						memberType: {
 							key: "Member Type",

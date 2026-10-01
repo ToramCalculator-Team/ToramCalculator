@@ -25,6 +25,7 @@ const defaultSkillAgent = "";
 export const skillLogicExample: Record<string, MemberBTTree> = {
 	default: {
 		memberType: "Player",
+		treeKind: "effect",
 		name: "default",
 		definition: defaultSkillDefinition,
 		agent: defaultSkillAgent,

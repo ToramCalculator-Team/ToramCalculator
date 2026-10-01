@@ -11,7 +11,7 @@ import { AttributeContainer } from "../../runtime/AttributeContainer/AttributeCo
 import { mergeSchema, type SlotDeclaration } from "../../runtime/AttributeContainer/SchemaMerge";
 import type { PlayerRuntime } from "../../runtime/SharedRuntime";
 import type { MemberStateName } from "../../runtime/State/MemberState";
-import { createPlayerBehaviorBindings } from "./Behavior/Bindings";
+import { createPlayerControlBehaviorBindings } from "./ControlBehavior/Bindings";
 import { createPlayerEffectBindings } from "./EffectBehavior/Bindings";
 import { type PlayerAttrKey, PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
 import { collectPlayerRuntimeAttachments } from "./PlayerRuntimeAttachmentCollector";
@@ -87,7 +87,7 @@ export class Player extends Member<PlayerAttrKey, PlayerSpecificEvent, PlayerFSM
 			runtime,
 			MemberRuntimeServicesDefaults,
 			position,
-			createPlayerBehaviorBindings,
+			createPlayerControlBehaviorBindings,
 			createPlayerEffectBindings,
 		);
 		this.activeCharacter = activeCharacter;

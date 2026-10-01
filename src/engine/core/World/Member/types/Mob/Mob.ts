@@ -8,7 +8,7 @@ import { mergeSchema, type SlotDeclaration } from "../../runtime/AttributeContai
 import type { ExtractAttrPaths } from "../../runtime/AttributeContainer/SchemaTypes";
 import type { MobRuntime } from "../../runtime/SharedRuntime";
 import type { MemberStateName } from "../../runtime/State/MemberState";
-import { createMobBehaviorBindings } from "./Behavior/Bindings";
+import { createMobControlBehaviorBindings } from "./ControlBehavior/Bindings";
 import { createMobEffectBindings } from "./EffectBehavior/Bindings";
 import { MobAttrSchema } from "./MobAttrSchema";
 import { createMobStateMachine, type MobFSMContext, type MobSpecificEvent } from "./MobStateMachine";
@@ -71,7 +71,7 @@ export class Mob extends Member<MobAttrKey, MobSpecificEvent, MobFSMContext, Mob
 			runtime,
 			MemberRuntimeServicesDefaults,
 			position,
-			createMobBehaviorBindings,
+			createMobControlBehaviorBindings,
 			createMobEffectBindings,
 		);
 	}

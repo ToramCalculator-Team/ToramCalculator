@@ -6,13 +6,13 @@ import { ExpressionTransformer } from "../../../../JSProcessor/ExpressionTransfo
 import type { DamageAreaSpec } from "../../../Area/types";
 import type { DamageDefinition, ResolvedDamageEffect } from "../../../Damage/types";
 import type { EffectRange } from "../../../EffectRange/types";
+import { type ActionPool, defineAction } from "../../BehaviorTree/NodeMethods/MethodTypes";
 import {
 	type ModifierSource,
 	ModifierSourceTypeSchema,
 	ModifierType,
 	StatModifierKindSchema,
 } from "../../runtime/AttributeContainer/AttributeContainer";
-import { type ActionPool, defineAction } from "../../runtime/NodeMethods/MethodTypes";
 import type { MemberSharedRuntime } from "../../runtime/SharedRuntime";
 import { MemberStateNameSchema } from "../../runtime/State/MemberState";
 import type { MemberBtCapabilities } from "../EffectBtManagerEnv";

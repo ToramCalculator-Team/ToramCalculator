@@ -1,9 +1,9 @@
 import { z } from "zod/v4";
 import { State } from "~/lib/mistreevous/State";
+import type { ActionPool } from "../../BehaviorTree/NodeMethods/MethodTypes";
+import { defineAction } from "../../BehaviorTree/NodeMethods/MethodTypes";
 import { memberControlInputId } from "../../memberControlInput";
-import type { ActionPool } from "../../runtime/NodeMethods/MethodTypes";
-import { defineAction } from "../../runtime/NodeMethods/MethodTypes";
-import type { BehaviorBtContext, MemberBehaviorCapabilities } from "../Bindings";
+import type { ControlBehaviorContext, MemberControlBehaviorCapabilities } from "../Bindings";
 
 const castSkillInputSchema = z.object({
 	skillId: z.string(),
@@ -22,8 +22,8 @@ const jumpInputSchema = z.object({
 const waitUntilActionSettledInputSchema = z.object({});
 
 /** Member 控制树的通用动作；动作只提交控制事件，最终由成员 FSM 裁决。 */
-export const CommonBehaviorActionPool = {
-	selectTarget: defineAction<typeof selectTargetInputSchema, BehaviorBtContext, MemberBehaviorCapabilities>(
+export const CommonControlBehaviorActionPool = {
+	selectTarget: defineAction<typeof selectTargetInputSchema, ControlBehaviorContext, MemberControlBehaviorCapabilities>(
 		selectTargetInputSchema,
 		(context, input, capabilities) => {
 			capabilities.submitControlInput({
@@ -34,7 +34,7 @@ export const CommonBehaviorActionPool = {
 			return State.SUCCEEDED;
 		},
 	),
-	castSkill: defineAction<typeof castSkillInputSchema, BehaviorBtContext, MemberBehaviorCapabilities>(
+	castSkill: defineAction<typeof castSkillInputSchema, ControlBehaviorContext, MemberControlBehaviorCapabilities>(
 		castSkillInputSchema,
 		(context, input, capabilities) => {
 			const inputKey = input.inputKey ?? `${context.tickIndex}:${input.skillId}`;
@@ -46,7 +46,7 @@ export const CommonBehaviorActionPool = {
 			return State.SUCCEEDED;
 		},
 	),
-	jump: defineAction<typeof jumpInputSchema, BehaviorBtContext, MemberBehaviorCapabilities>(
+	jump: defineAction<typeof jumpInputSchema, ControlBehaviorContext, MemberControlBehaviorCapabilities>(
 		jumpInputSchema,
 		(context, input, capabilities) => {
 			capabilities.submitControlInput({
@@ -59,11 +59,9 @@ export const CommonBehaviorActionPool = {
 	),
 	waitUntilActionSettled: defineAction<
 		typeof waitUntilActionSettledInputSchema,
-		BehaviorBtContext,
-		MemberBehaviorCapabilities
-	>(waitUntilActionSettledInputSchema, (context) =>
-		context.currentSkill === null ? State.SUCCEEDED : State.RUNNING,
-	),
-} as const satisfies ActionPool<BehaviorBtContext, MemberBehaviorCapabilities>;
+		ControlBehaviorContext,
+		MemberControlBehaviorCapabilities
+	>(waitUntilActionSettledInputSchema, (context) => (context.currentSkill === null ? State.SUCCEEDED : State.RUNNING)),
+} as const satisfies ActionPool<ControlBehaviorContext, MemberControlBehaviorCapabilities>;
 
-export type CommonBehaviorActionPool = typeof CommonBehaviorActionPool;
+export type CommonControlBehaviorActionPool = typeof CommonControlBehaviorActionPool;
