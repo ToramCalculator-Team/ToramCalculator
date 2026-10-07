@@ -1,46 +1,19 @@
 import { type ZodType, z } from "zod/v4";
 import type { State } from "~/lib/mistreevous/State";
+import { objectShape, unwrapSchema } from "~/lib/utils/zod";
+import type { MemberBtCapabilities } from "../../EffectBehavior/EffectBtManagerEnv";
 import type { ActionPool, ConditionPool } from "./MethodTypes";
 
-const unwrapSchema = (schema: ZodType): ZodType => {
-	let current: ZodType = schema;
-	const asZodType = (t: z.core.$ZodType): ZodType => t as unknown as ZodType;
-	while (true) {
-		if (current instanceof z.ZodOptional) {
-			current = asZodType(current.unwrap());
-			continue;
-		}
-		if (current instanceof z.ZodNullable) {
-			current = asZodType(current.unwrap());
-			continue;
-		}
-		if (current instanceof z.ZodDefault) {
-			current = asZodType(current.unwrap());
-			continue;
-		}
-		if (current instanceof z.ZodPipe) {
-			current = asZodType(current.in);
-			continue;
-		}
-		break;
-	}
-	return current;
-};
-
-const getZodObjectShape = (schema: z.ZodObject): Record<string, ZodType> => {
-	return schema.shape as unknown as Record<string, ZodType>;
-};
-
 const flattenSchemaLabels = (schema: ZodType, prefix = ""): string[] => {
-	const unwrapped = unwrapSchema(schema);
+	const unwrapped = unwrapSchema(schema).schema;
 	if (!(unwrapped instanceof z.ZodObject)) {
 		return [prefix || "input"];
 	}
-	const shape = getZodObjectShape(unwrapped);
+	const shape = objectShape(unwrapped);
 	const result: string[] = [];
 	for (const [key, child] of Object.entries(shape)) {
 		const label = prefix ? `${prefix}.${key}` : key;
-		const childUnwrapped = unwrapSchema(child);
+		const childUnwrapped = unwrapSchema(child).schema;
 		if (childUnwrapped instanceof z.ZodObject) {
 			result.push(...flattenSchemaLabels(childUnwrapped, label));
 		} else {
@@ -92,7 +65,8 @@ const buildInputObject = (schema: ZodType, args: unknown[]): unknown => {
  */
 export const actionPoolToInvokers = <
 	TContext extends Record<string, unknown>,
-	TCapabilities,
+	TExtraAttrKey extends string,
+	TCapabilities extends MemberBtCapabilities<TExtraAttrKey>,
 	TPool extends ActionPool<TContext, TCapabilities>,
 >(
 	_context: TContext, // 仅用于类型推导
@@ -121,7 +95,8 @@ export const actionPoolToInvokers = <
  */
 export const conditionPoolToInvokers = <
 	TContext extends Record<string, unknown>,
-	TCapabilities,
+	TExtraAttrKey extends string,
+	TCapabilities extends MemberBtCapabilities<TExtraAttrKey>,
 	TPool extends ConditionPool<TContext, TCapabilities>,
 >(
 	_context: TContext, // 仅用于类型推导

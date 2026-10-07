@@ -1,4 +1,5 @@
 import { type ZodType, z } from "zod/v4";
+import { objectShape, unwrapSchema } from "~/lib/utils/zod";
 
 export type MdslPrimitiveType = "string" | "number" | "boolean" | "null" | "unknown";
 
@@ -55,40 +56,8 @@ const getSchemaDescription = (schema: ZodType): string | undefined => {
 
 const isZodObject = (schema: ZodType): schema is z.ZodObject => schema instanceof z.ZodObject;
 
-/**
- * 去掉 optional/nullable/default/pipe 外壳，获得“最贴近输入侧”的基础 schema。
- * 约定：
- * - optional/nullable/default: 使用 v4 公共 API `.unwrap()`
- * - pipe: 取 `.in`（用户输入侧），避免把 transform 后的输出类型当作参数类型
- */
-const unwrapSchema = (schema: ZodType): ZodType => {
-	// KISS：只处理常见 wrapper，避免深入 Zod 内部实现。
-	let current: ZodType = schema;
-	const asZodType = (t: z.core.$ZodType): ZodType => t as unknown as ZodType;
-	while (true) {
-		if (current instanceof z.ZodOptional) {
-			current = asZodType(current.unwrap());
-			continue;
-		}
-		if (current instanceof z.ZodNullable) {
-			current = asZodType(current.unwrap());
-			continue;
-		}
-		if (current instanceof z.ZodDefault) {
-			current = asZodType(current.unwrap());
-			continue;
-		}
-		if (current instanceof z.ZodPipe) {
-			current = asZodType(current.in);
-			continue;
-		}
-		break;
-	}
-	return current;
-};
-
 const getEnumValues = (schema: ZodType): readonly string[] | null => {
-	const unwrapped = unwrapSchema(schema);
+	const unwrapped = unwrapSchema(schema).schema;
 	if (unwrapped instanceof z.ZodEnum) {
 		// v4: options 可能包含 string | number（取 string 即可用于补全）
 		return unwrapped.options.filter((v): v is string => typeof v === "string");
@@ -113,7 +82,7 @@ const getEnumValues = (schema: ZodType): readonly string[] | null => {
 };
 
 const getTypeSpec = (schema: ZodType): MdslTypeSpec => {
-	const unwrapped = unwrapSchema(schema);
+	const unwrapped = unwrapSchema(schema).schema;
 	const enumValues = getEnumValues(unwrapped);
 	if (enumValues) return { kind: "enum", values: enumValues };
 	if (unwrapped instanceof z.ZodString) return PRIMITIVE("string");
@@ -123,27 +92,19 @@ const getTypeSpec = (schema: ZodType): MdslTypeSpec => {
 	return PRIMITIVE("unknown");
 };
 
-const getZodObjectShape = (schema: z.ZodObject): Record<string, ZodType> => {
-	// v4: ZodObject.shape 是公开字段
-	return schema.shape as unknown as Record<string, ZodType>;
-};
-
-const isOptionalSchema = (schema: ZodType): boolean => {
-	return schema instanceof z.ZodOptional;
-};
-
 const flattenObjectSchemaToParams = (schema: ZodType, prefix = ""): MdslParamSpec[] => {
-	const unwrapped = unwrapSchema(schema);
+	const unwrapped = unwrapSchema(schema).schema;
 	if (!isZodObject(unwrapped)) {
 		return [{ label: prefix || "input", type: getTypeSpec(unwrapped) }];
 	}
 
-	const shape = getZodObjectShape(unwrapped);
+	const shape = objectShape(unwrapped);
 	const result: MdslParamSpec[] = [];
 	for (const [key, child] of Object.entries(shape)) {
 		const label = prefix ? `${prefix}.${key}` : key;
-		const optional = isOptionalSchema(child);
-		const childUnwrapped = unwrapSchema(child);
+		const childInfo = unwrapSchema(child);
+		const optional = childInfo.optional;
+		const childUnwrapped = childInfo.schema;
 		if (isZodObject(childUnwrapped)) {
 			const nested = flattenObjectSchemaToParams(childUnwrapped, label);
 			if (optional) {
