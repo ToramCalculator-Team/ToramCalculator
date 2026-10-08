@@ -51,9 +51,9 @@ export type MovementBehaviorRecordData = z.output<typeof MovementBehaviorRecordS
 export const MemberBTSchema = z.object({
 	...BTSchema.shape,
 	// 执行者类型
-	memberType: z.enum(MEMBER_TYPE),
+	memberType: z.enum(MEMBER_TYPE).default("Player"),
 	// 行为树用途决定绑定的动作、条件和运行时能力。
-	treeKind: z.enum(BT_KIND),
+	treeKind: z.enum(BT_KIND).default("control"),
 	// AI 模式下的连续移动行为；controlled 成员没有 AI 行为树，数组为空。
 	movementBehaviors: z.array(MovementBehaviorRecordSchema).optional(),
 });

@@ -91,6 +91,11 @@ export const ITEM_DATA_CONFIG: TableDataConfigurator<"item", item> = (_dictionar
 					relation: "task_collect_require.item",
 					tableName: "task_collect_require",
 				},
+				{
+					icon: <Icons.Spirits iconName="drop_item" />,
+					relation: "drop_item.item",
+					tableName: "drop_item",
+				},
 			],
 		},
 	}) satisfies TableDataConfig<"item", item>;
