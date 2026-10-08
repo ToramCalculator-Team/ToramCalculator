@@ -1,8 +1,8 @@
-# Member 重构和拆分计划
+# Member 重构计划
 
 **状态**：进行中  
 **创建时间**：2024  
-**预期完成**：2-3 周  
+**预期完成**：1-2 周  
 **负责人**：开发团队
 
 ---
@@ -11,7 +11,7 @@
 
 - [整体目标](#整体目标)
 - [当前状态分析](#当前状态分析)
-- [拆分目标结构](#拆分目标结构)
+- [重构目标](#重构目标)
 - [实施阶段](#实施阶段)
 - [风险和缓解措施](#风险和缓解措施)
 - [验证清单](#验证清单)
@@ -22,13 +22,16 @@
 
 ## 整体目标
 
-将当前 906 行的 Member 类拆分为清晰的三层聚合结构，提高模块内聚性和可维护性。
+重构当前 906 行的 Member 类，通过注释分割明确三层职责（数据层、计算层、编排层），精简冗余方法和依赖注入，提高代码的可读性和可维护性。
+
+**核心原则**：不拆分为独立类，保持单类但通过注释和方法分组组织代码。
 
 ### 关键指标
 
-- **Member.ts 行数**：从 906 行 → 60-80 行
-- **职责明确**：Member 作为薄壳聚合根
-- **测试覆盖**：三层各自有单元测试
+- **Member.ts 行数**：从 906 行 → 300-400 行
+- **职责明确**：通过注释清晰分割三层
+- **方法分组**：按职责组织方法
+- **依赖注入简化**：去掉 12+ 个 `set*` 方法
 - **性能**：Tick 性能无明显下降（±5%）
 - **兼容性**：所有现有测试通过
 
@@ -65,334 +68,331 @@
 
 ### 主要问题
 
-1. **职责过重**：包含数据、计算、编排三层的所有逻辑
+1. **职责不清晰**：数据、计算、编排三层逻辑混在一起
 2. **服务注入混乱**：12+ 个 `set*` 方法
 3. **方法散落**：相关逻辑分散在多个方法中
-4. **依赖隐含**：各层之间的依赖关系不明确
-5. **可测试性差**：难以单独测试各层的逻辑
+4. **冗余职责**：包含不应该由 Member 负责的逻辑
+5. **可读性差**：906 行单文件，难以快速定位逻辑
 
 ---
 
-## 拆分目标结构
+## 重构目标
 
-### 新的文件结构
+### 目标结构
 
-```
-src/engine/core/World/Member/
-├── Member.ts（聚合根，60-80 行）
-│   └─ 持有三层 + 生命周期 + 公开接口
-├── MemberDataLayer.ts（数据层，200-250 行）
-│   ├─ AttributeContainer 管理
-│   ├─ StatusStore 管理
-│   ├─ SharedRuntime 管理
-│   └─ 水平移动积分
-├── MemberComputeLayer.ts（计算层，100-150 行）
-│   └─ Pipeline 执行和 overlays 管理
-├── MemberOrchestrationLayer.ts（编排层，400-500 行）
-│   ├─ FSM 管理
-│   ├─ ControlBehavior 管理
-│   ├─ EffectBtManager 管理
-│   ├─ ProcBus 管理
-│   ├─ 行为模式管理
-│   ├─ 控制输入处理
-│   └─ 移动输入解析
-├── types.ts（优化，新增三层 checkpoint 类型）
-├── RuntimeServices.ts（优化）
-└── MemberBaseSchema.ts（不变）
-```
-
-### 三层职责边界
-
-| 层 | 持有内容 | 职责 | Tick 处理 |
-|-----|---------|------|---------|
-| **数据层** | AttributeContainer、StatusStore、SharedRuntime | 属性、状态、位置管理；水平移动积分 | 清理过期状态、同步标签、刷新脏值 |
-| **计算层** | Pipeline overlays、PipelineResolverService | 管线执行、提供封闭计算环境 | 无（按需调用） |
-| **编排层** | FSM、ControlBehavior、EffectBtManager、ProcBus | FSM 生命周期、控制输入、行为模式、移动输入解析 | FSM 和 BT 推进 |
-
----
-
-## 实施阶段
-
-### 阶段 1：准备和规划（2 天）
-
-**目标**：建立基础、制定详细计划
-
-#### 1.1 代码审计
-- [ ] 列出 Member.ts 所有 public/private 方法
-- [ ] 统计每个方法的行数和复杂度
-- [ ] 识别方法之间的依赖关系
-- [ ] 识别外部调用点
-
-**产出**：方法清单表和依赖关系图
-
-#### 1.2 创建开发分支
-```bash
-git checkout -b refactor/member-architecture
-```
-
-#### 1.3 创建 tracking issue
-- [ ] 列出所有要修改的文件
-- [ ] 列出所有外部调用点
-- [ ] 列出风险和缓解措施
-
-#### 1.4 补充现有测试
-- [ ] 检查现有 Member 相关的测试覆盖率
-- [ ] 补充缺失的关键路径测试
-
----
-
-### 阶段 2：创建新的三层类（3-4 天）
-
-#### 2.1 创建 MemberDataLayer
-
-**文件**：`src/engine/core/World/Member/MemberDataLayer.ts`
-
-**任务**：
-- [ ] 创建类框架和构造函数
-- [ ] 从 Member 抽取所有数据相关字段
-- [ ] 抽取 `syncStatusTags` 逻辑
-- [ ] 抽取 `applyStatusInstance` 和 `removeStatusByType`
-- [ ] 抽取水平移动积分逻辑（`integrateHorizontalMovement`）
-- [ ] 创建 `tick` 方法（清理、同步、刷新）
-- [ ] 实现查询接口（`getPosition`、`getAttribute`、`getStatusTags`）
-- [ ] 实现 checkpoint 方法
-- [ ] 创建 `DataLayerCheckpoint` 类型
-- [ ] 编写单元测试
-
-**预期行数**：200-250 行
-
-**关键代码片段**：
 ```typescript
-export class MemberDataLayer<TExtraAttrKey extends string> {
-  constructor(
-    private readonly attributeContainer: AttributeContainer<MemberBaseAttrKey | TExtraAttrKey>,
-    private readonly statusStore: MutableStatusInstanceStore,
-    private readonly runtime: MemberSharedRuntime<TExtraAttrKey>,
-    private readonly services: MemberRuntimeServices,
-  ) {}
-
-  tick(context: TickContext): void {
-    this.statusStore.purgeExpired(context.currentTimeMs);
-    this.syncStatusTags(context.currentTimeMs);
-    this.attributeContainer.flushDirtyValues();
-  }
-
-  // ... 其他方法
-}
-```
-
-#### 2.2 创建 MemberComputeLayer
-
-**文件**：`src/engine/core/World/Member/MemberComputeLayer.ts`
-
-**任务**：
-- [ ] 创建类框架和构造函数
-- [ ] 抽取 `runPipeline` 逻辑
-- [ ] 抽取 pipeline overlays 管理
-- [ ] 实现 checkpoint 方法
-- [ ] 创建 `ComputeLayerCheckpoint` 类型
-- [ ] 编写单元测试
-
-**预期行数**：100-150 行
-
-#### 2.3 创建 MemberOrchestrationLayer
-
-**文件**：`src/engine/core/World/Member/MemberOrchestrationLayer.ts`
-
-**任务**：
-- [ ] 创建类框架和构造函数
-- [ ] 抽取 FSM env 创建逻辑
-- [ ] 抽取 BT capabilities 创建逻辑
-- [ ] 抽取控制输入处理逻辑（`submitInput`）
-- [ ] 抽取行为模式管理（`setBehaviorMode`）
-- [ ] 抽取移动输入解析（`resolveMovementInput`）
-- [ ] 实现 tick 方法（FSM update、BT 推进）
-- [ ] 实现查询接口（`isAlive`、`getFsmState`、`getActiveEffectState`）
-- [ ] 实现 checkpoint 方法
-- [ ] 创建 `OrchestrationLayerCheckpoint` 类型
-- [ ] 编写单元测试
-
-**预期行数**：400-500 行
-
-**关键方法**：
-```typescript
-tick(context: TickContext): void {
-  this.actor.send({ type: "update", timestamp: context.currentTimeMs });
-  
-  const movementInput = this.resolveMovementInput(context);
-  if (movementInput) {
-    // 注意：这里只是解析，实际积分由数据层完成
-    this.dataLayer.integrateHorizontalMovement(movementInput, context.deltaTimeMs);
-  }
-  
-  this.effectBtManager.tickAll();
-  
-  if (this.behaviorMode === 'autonomous') {
-    this.controlBehavior?.step();
-  }
-}
-```
-
----
-
-### 阶段 3：重构 Member 聚合根（2 天）
-
-#### 3.1 精简 Member.ts
-
-**文件**：`src/engine/core/World/Member/Member.ts`
-
-**任务**：
-- [ ] 删除所有三层字段（移到三层类）
-- [ ] 更新构造函数创建三层实例
-- [ ] 删除所有 12+ 个 `set*` 注入方法
-- [ ] 删除 `runPipeline`（委托给 compute layer）
-- [ ] 删除 `createStateMachineEnv`、`createBtCapabilities` 等初始化方法
-- [ ] 删除 `applyStatusInstance`、`syncStatusTags`、`removeStatusByType`
-- [ ] 删除 `submitExternalControlInput`、`setControlMode`
-- [ ] 删除 `resolveMovementInput`、`integrateMovement`、`faceDirection`
-- [ ] 删除 `declareState`、`refreshPresentationState` 等 presentation 相关
-- [ ] 删除 `dispatchStatusEnteredFact`、`dispatchStatusExitedFact`
-- [ ] 保留：身份、查询接口、`submitControlInput`、tick、checkpoint
-- [ ] 更新 Member 类文档
-- [ ] 编写集成测试
-
-**新的 Member 结构**：
-```typescript
-export abstract class Member<...> implements WorldObservable {
-  // 身份字段（保留）
+class Member<TExtraAttrKey, TSpecificEvent, TFSMContext, TRuntime> 
+  implements WorldObservable 
+{
+  // ==================== 身份与元数据 ====================
   readonly id: string;
   readonly type: MemberType;
   readonly name: string;
   readonly campId: string;
   readonly teamId: string;
+  readonly data: EngineMember;
 
-  // 三层聚合（新增）
-  private readonly dataLayer: MemberDataLayer<TExtraAttrKey>;
-  private readonly computeLayer: MemberComputeLayer;
-  private readonly orchestrationLayer: MemberOrchestrationLayer<...>;
+  // ==================== 数据层：状态容器 ====================
+  private readonly dataSchema: NestedSchema;
+  private readonly attributeContainer: AttributeContainer<...>;
+  private readonly statusStore: MutableStatusInstanceStore;
+  private readonly runtime: TRuntime;
 
-  // 生命周期（简化）
-  start(): void;
-  tick(context: SimulationTickContext): void;
+  // ==================== 计算层：管线 ====================
+  private readonly pipelineOverlays: PipelineOverlay[] = [];
+  private pipelineResolverService: PipelineResolverService | null = null;
 
-  // 被动查询接口（保留）
-  get position(): Vector3;
-  get alive(): boolean;
-  getAttribute(key: string): number;
-  getFsmState(): string;
-  getActiveEffectState(): EffectState | null;
+  // ==================== 编排层：状态机与行为树 ====================
+  private readonly actor: MemberActor<...>;
+  private actorStarted = false;
+  private behaviorMode: 'autonomous' | 'manual';
+  private readonly controlBehavior: ControlBehaviorRuntime | null = null;
+  private readonly effectBtManager: EffectBtManager<...>;
+  private readonly procBus: ProcBus | null = null;
 
-  // 命令入口（保留）
-  submitControlInput(event: MemberControlEvent, source: 'external' | 'autonomous'): void;
+  // ==================== 依赖服务（注入） ====================
+  private readonly services: MemberRuntimeServices;
+  private readonly domainEventBus: DomainEventBus | null = null;
 
-  // Checkpoint（保留）
-  captureCheckpoint(): MemberCheckpoint;
-  restoreCheckpoint(checkpoint: MemberCheckpoint): void;
+  // ==================== 构造与初始化 ====================
+  constructor(...) { ... }
+
+  // ==================== 生命周期 ====================
+  start(): void { ... }
+  tick(context: SimulationTickContext): void { ... }
+
+  private tickDataLayer(context: SimulationTickContext): void { ... }
+  private tickOrchestrationLayer(context: SimulationTickContext): void { ... }
+
+  // ==================== 查询接口：数据层 ====================
+  get position(): Vector3 { ... }
+  getAttribute(key: string): number { ... }
+
+  // ==================== 查询接口：编排层 ====================
+  get alive(): boolean { ... }
+  getFsmState(): string { ... }
+  getActiveEffectState(): EffectState | null { ... }
+
+  // ==================== 命令接口 ====================
+  submitControlInput(event, source): void { ... }
+
+  // ==================== 数据层私有方法 ====================
+  private syncStatusTags(): void { ... }
+  private integrateHorizontalMovement(movement, delta): void { ... }
+
+  // ==================== 编排层私有方法 ====================
+  private resolveMovementInput(context): MovementState | null { ... }
+  private isAlive(): boolean { ... }
+
+  // ==================== 计算层私有方法 ====================
+  private runPipeline(name, params): PipelineResult { ... }
+
+  // ==================== Checkpoint ====================
+  captureCheckpoint(): MemberCheckpoint { ... }
+  restoreCheckpoint(checkpoint): void { ... }
+
+  // ==================== 域事件发布（内部） ====================
+  private notifyDomainEvent(event: MemberDomainEvent): void { ... }
 }
 ```
 
-**预期行数**：70-100 行
+**预期行数**：300-400 行
 
-#### 3.2 更新类型定义
+### 关键修正点
 
-**文件**：`src/engine/core/World/Member/types.ts`
+#### 1. 移除 PresentationState 合成
+- ❌ 删除 `refreshPresentationState()` 方法
+- ❌ 删除 `presentationState` 字段
+- ✅ 分别暴露 `getFsmState()` 和 `getActiveEffectState()`
+- 渲染层自行决定如何使用这两个状态
 
-**任务**：
-- [ ] 创建 `DataLayerCheckpoint` 类型
-- [ ] 创建 `ComputeLayerCheckpoint` 类型
-- [ ] 创建 `OrchestrationLayerCheckpoint` 类型
-- [ ] 更新 `MemberCheckpoint` 包含三层 checkpoint
+#### 2. 移除 applyDamage 方法
+- ❌ 删除 `applyDamage()` 方法
+- ✅ 外部直接发送事件给 FSM：`member.actor.send({ type: "受到攻击", data })`
+- 伤害处理完全在 FSM 内部
+
+#### 3. 移除垂直运动相关方法
+- ❌ 删除 `integrateTerrainHeight()` 方法
+- ❌ 删除 `applyGroundConstraint()` 方法
+- ❌ 删除 `notifyLanded()` 方法
+- ✅ 垂直运动积分和落地检测在 FSM 内部处理
+
+#### 4. 行为历史归属外部
+- ❌ 删除 `controlInputRecorder` 相关逻辑
+- ✅ Member 在执行动作时发布 `action_executed` 事件
+- ✅ 外部 RunOutputRecorder 订阅并记录
+
+#### 5. 控制模式改名
+- `controlMode` → `behaviorMode`
+- `controlled` → `manual`
+- `ai` → `autonomous`
+
+#### 6. 依赖注入简化
+- ❌ 删除 12+ 个 `set*` 方法
+- ✅ 构造期一次性注入所有依赖
+
+#### 7. DomainEventBus 清理
+- ❌ 移除 `state_changed` 事件（状态快照）
+- ✅ 只推送瞬时事件（hit、death、cast_start、action_executed 等）
 
 ---
 
-### 阶段 4：更新外部调用点（3-5 天）
+## 实施阶段
 
-#### 4.1 识别调用点
+### 阶段 1：准备和规划（1 天）
 
+**目标**：建立基础、制定详细清单
+
+#### 1.1 代码审计
+- [ ] 列出 Member.ts 所有 public/private 方法
+- [ ] 标记哪些方法应该保留、修改、删除
+- [ ] 识别外部调用点（特别是 `set*` 方法和内部字段访问）
+- [ ] 列出需要删除的冗余职责
+
+**产出**：方法分类清单
+
+#### 1.2 创建开发分支
 ```bash
-# 查找直接访问 runtime 的地方
-grep -rn "member\.runtime\|member\.attributeContainer" src/engine --include="*.ts" | grep -v test | grep -v "Member\.ts"
-
-# 查找调用 set* 方法的地方
-grep -rn "member\.setControlMode\|member\.setDomainEventSender\|member\.set" src/engine --include="*.ts" | grep -v test
-
-# 查找调用数据方法的地方
-grep -rn "member\.applyStatusInstance\|member\.syncStatusTags\|member\.runPipeline" src/engine --include="*.ts" | grep -v test
+git checkout -b refactor/member-simplification
 ```
 
-#### 4.2 按模块更新
+#### 1.3 补充现有测试
+- [ ] 检查现有 Member 相关的测试覆盖率
+- [ ] 补充缺失的关键路径测试（确保重构后能验证正确性）
+
+---
+
+### 阶段 2：重组 Member.ts（3-4 天）
+
+#### 2.1 第一步：添加注释分割，整理现有代码
+
+**任务**：
+- [ ] 在 Member.ts 顶部添加清晰的注释分割
+- [ ] 将现有方法按职责移动到对应区域
+- [ ] 不删除任何方法，只重新组织
+
+**验证**：
+- [ ] 代码编译通过
+- [ ] 所有测试通过
+
+#### 2.2 第二步：删除冗余方法
+
+**删除清单**：
+- [ ] `refreshPresentationState()` - 改为分别暴露 FSM 和 effect BT 状态
+- [ ] `presentationState` 字段
+- [ ] `resolveFsmState()` 抽象方法（如果不再需要）
+- [ ] `applyDamage()` - 外部直接发送 FSM 事件
+- [ ] `integrateTerrainHeight()` - FSM 内部处理
+- [ ] `applyGroundConstraint()` - FSM 内部处理
+- [ ] `notifyLanded()` - FSM 内部处理
+- [ ] `controlInputRecorder` 相关逻辑 - 改为发布 action_executed 事件
+- [ ] `dispatchStatusEnteredFact()` - 整合到状态变更逻辑
+- [ ] `dispatchStatusExitedFact()` - 整合到状态变更逻辑
+- [ ] 其他不再需要的私有辅助方法
+
+**验证**：
+- [ ] 更新外部调用点（下一阶段）
+- [ ] 编译检查未使用的方法
+
+#### 2.3 第三步：简化依赖注入
+
+**任务**：
+- [ ] 删除所有 `set*` 方法（除非有充分理由保留）
+- [ ] 调整构造函数，接收所有必需的依赖
+- [ ] 或者创建 Builder 模式初始化（如果构造函数参数过多）
+
+**删除的 set 方法**：
+- [ ] `setDomainEventSender()`
+- [ ] `setControlInputRecorder()`
+- [ ] `setTargetResolver()`
+- [ ] `setTargetDirectionResolver()`
+- [ ] `setEvaluateExpression()`
+- [ ] `setDamageExecutionHandlers()`
+- [ ] `setGetCurrentTimeMs()`
+- [ ] `setGetTickIndex()`
+- [ ] `setPipelineResolverService()`
+- [ ] `setEventCatalog()`
+- [ ] `setControlMode()` - 改为构造期指定或通过其他方式
+- [ ] `setAiMovementBehaviors()`
+
+**验证**：
+- [ ] 更新 MemberManager 和其他初始化代码
+- [ ] 编译通过
+
+#### 2.4 第四步：优化方法命名和接口
+
+**任务**：
+- [ ] 统一命名风格（getter vs 方法）
+- [ ] 确保查询接口清晰（position、alive、getAttribute 等）
+- [ ] 确保命令接口单一（submitControlInput）
+- [ ] 添加必要的 JSDoc 注释
+
+**新增/修改的接口**：
+- [ ] `getFsmState(): string` - 返回当前 FSM 状态名称
+- [ ] `getActiveEffectState(): EffectState | null` - 返回 active effect BT 状态
+- [ ] 移除 `getPresentationState()` 或改为直接调用上面两个方法
+
+**验证**：
+- [ ] 编译通过
+- [ ] 类型检查通过
+
+#### 2.5 第五步：清理和格式化
+
+**任务**：
+- [ ] 删除未使用的 import
+- [ ] 删除未使用的类型定义
+- [ ] 运行 biome 格式化
+- [ ] 检查注释完整性
+- [ ] 验证最终行数（目标 300-400 行）
+
+**验证**：
+- [ ] `pnpm biome check src/engine/core/World/Member/Member.ts`
+- [ ] 行数统计：`wc -l src/engine/core/World/Member/Member.ts`
+
+---
+
+### 阶段 3：更新外部调用点（2-3 天）
+
+#### 3.1 识别调用点
+
+```bash
+# 查找调用 set* 方法的地方
+grep -rn "member\.set" src/engine --include="*.ts" | grep -v test | grep -v "Member\.ts"
+
+# 查找直接访问内部字段的地方
+grep -rn "member\.runtime\.\|member\.attributeContainer\.\|member\.presentationState" src/engine --include="*.ts" | grep -v test | grep -v "Member\.ts"
+
+# 查找调用已删除方法的地方
+grep -rn "member\.applyDamage\|member\.integrateTerrainHeight\|member\.notifyLanded\|member\.refreshPresentationState" src/engine --include="*.ts" | grep -v test
+```
+
+#### 3.2 按模块更新
 
 **MemberManager.ts**：
-- [ ] 更新成员初始化逻辑
+- [ ] 更新成员初始化逻辑（构造期注入依赖）
 - [ ] 移除所有 `member.set*` 方法调用
-- [ ] 确保使用新的查询接口
 
 **World.ts**：
-- [ ] 更新 member.tick 调用
-- [ ] 更新 presentation state 相关代码（应该已不存在）
+- [ ] 移除 `member.integrateTerrainHeight()` 调用
+- [ ] 垂直运动现在由 FSM 内部处理
 
-**GameEngine.ts**：
-- [ ] 更新属性读取方式
-- [ ] 更新状态读取方式
+**GameEngine.ts / Simulation.worker.ts**：
+- [ ] 更新 presentation state 读取方式
+- [ ] 改为分别读取 `member.getFsmState()` 和 `member.getActiveEffectState()`
 
-**其他子系统**（DamageSystem、AreaManager、SpaceManager）：
-- [ ] 验证只通过公开接口访问
-- [ ] 确保直接发送事件给 FSM，不调用 Member 方法
+**DamageSystem / DamageResolution**：
+- [ ] 移除 `member.applyDamage()` 调用
+- [ ] 改为直接发送 FSM 事件：`member.actor.send({ type: "受到攻击", data })`
 
-#### 4.3 主要改动参考表
+**其他子系统**：
+- [ ] 验证只通过公开接口访问成员
+- [ ] 移除对私有字段的直接访问
+
+#### 3.3 主要改动参考表
 
 | 原代码 | 新代码 | 说明 |
 |--------|--------|------|
 | `member.setDomainEventSender(...)` | 构造期注入 | 依赖注入改为构造期 |
-| `member.setPipelineResolverService(...)` | 构造期注入 | 同上 |
-| `member.setControlMode('ai')` | `member.orchestrationLayer?.setBehaviorMode('autonomous')` | 或直接不调用，通过初始化指定 |
-| `member.runPipeline(...)` | `member.computeLayer?.runPipeline(...)` | 委托给 compute layer |
-| `member.applyStatusInstance(instance)` | 通过 FSM 或直接在适当位置处理 | 数据层职责 |
-| `member.runtime.xxx` | `member.dataLayer?.runtime.xxx` | 或通过公开查询接口 |
-| 直接修改 Member 属性 | 通过相应层的接口或发送事件给 FSM | 统一规范 |
+| `member.setControlMode('ai')` | 构造期指定 `behaviorMode: 'autonomous'` | 或通过配置 |
+| `member.applyDamage(effect)` | `member.actor.send({ type: "受到攻击", data: effect })` | 直接发 FSM 事件 |
+| `member.integrateTerrainHeight(groundY, tick)` | FSM 内部处理 | 删除外部调用 |
+| `member.notifyLanded()` | FSM 内部处理 | 删除外部调用 |
+| `member.presentationState.current` | `member.getFsmState()` + `member.getActiveEffectState()` | 分别读取 |
+| `member.runtime.position` | `member.position` | 使用公开 getter |
+| `member.attributeContainer.getValue(key)` | `member.getAttribute(key)` | 使用公开接口 |
 
-#### 4.4 特别处理的调用点
-
-**设置 EventCatalog**（当前 `member.setEventCatalog`）：
-- [ ] 改为构造期注入或初始化时调用
-
-**设置 DomainEventBus**：
-- [ ] 改为构造期注入
-
-**属性查询**（如 `member.attributeContainer.getValue`）：
-- [ ] 统一改为 `member.getAttribute(key)` 或保留但通过 dataLayer 访问
-
-#### 4.5 提交 commit
+#### 3.4 提交 commit
 
 逐个文件或按模块提交：
 ```bash
-git commit "refactor: update MemberManager to use new Member interfaces"
-git commit "refactor: update World to use new Member interfaces"
-git commit "refactor: update GameEngine to use new Member interfaces"
-git commit "refactor: update DamageSystem to use new Member interfaces"
-# ... 其他模块
+git commit "refactor: reorganize Member with clear layer separation comments"
+git commit "refactor: remove redundant Member methods (applyDamage, integrateTerrainHeight, etc)"
+git commit "refactor: simplify Member dependency injection"
+git commit "refactor: update MemberManager to use new Member initialization"
+git commit "refactor: update World to remove Member.integrateTerrainHeight calls"
+git commit "refactor: update damage system to send FSM events directly"
+git commit "refactor: update presentation state readers to use new interfaces"
 ```
 
 ---
 
-### 阶段 5：清理和优化（1-2 天）
+### 阶段 4：清理和验证（1 天）
 
-#### 5.1 代码审查
+#### 4.1 代码审查
 
 - [ ] 代码风格一致性检查（运行 biome）
 - [ ] 注释完整性检查
 - [ ] 类型定义完整性检查
-- [ ] 导出声明检查
+- [ ] 确认所有三层区域的方法都正确分组
 
-#### 5.2 测试补充
+#### 4.2 测试补充
 
-- [ ] 为 MemberDataLayer 编写单元测试
-- [ ] 为 MemberComputeLayer 编写单元测试
-- [ ] 为 MemberOrchestrationLayer 编写单元测试
-- [ ] 为 Member 聚合根编写集成测试
+- [ ] 补充 Member 查询接口的测试
+- [ ] 补充 Member 生命周期的测试
+- [ ] 验证 FSM 事件发送逻辑
 - [ ] 运行全套引擎测试：`pnpm vitest run src/engine/core`
 
-#### 5.3 性能验证
+#### 4.3 性能验证
 
 - [ ] 运行性能基准测试（tick 性能）
 - [ ] 对比重构前后的性能数据
@@ -404,20 +404,20 @@ git commit "refactor: update DamageSystem to use new Member interfaces"
 pnpm vitest run src/engine/core --reporter=verbose
 ```
 
-#### 5.4 文档更新
+#### 4.4 文档更新
 
-- [ ] 更新 Member 类文档和注释
-- [ ] 创建三层类的文档
+- [ ] 更新 Member 类顶部的 JSDoc
 - [ ] 更新 `src/engine/AGENTS.md` 相关部分
-- [ ] 更新引擎架构设计文档
-- [ ] 更新 README 或相关开发指南
+- [ ] 更新引擎架构设计文档（如果有）
+- [ ] 记录关键架构决策（考虑是否需要创建 ADR）
 
-#### 5.5 最终检查
+#### 4.5 最终检查
 
 - [ ] 运行 `pnpm typecheck` 全项目类型检查
 - [ ] 运行 `pnpm biome check src/engine` 代码风格检查
 - [ ] 运行 `pnpm vitest run src/engine/core` 全套测试
 - [ ] 手动测试关键流程（模拟、伤害计算、状态转换等）
+- [ ] 验证最终行数在 300-400 行范围内
 
 ---
 
@@ -427,21 +427,18 @@ pnpm vitest run src/engine/core --reporter=verbose
 
 | 风险 | 影响程度 | 可能性 | 缓解措施 |
 |------|---------|--------|---------|
-| 外部调用点过多，改动范围大 | 高 | 高 | 使用搜索工具系统地找出所有调用点，建立清单，分批更新验证 |
-| 三层类型系统复杂，编译错误多 | 高 | 中 | 逐个文件创建和更新，边创建边编译验证，不一次性改完 |
-| 现有测试覆盖不足，隐藏的 bug | 中 | 中 | 阶段 1 补充关键路径测试，拆分后补充三层单元测试 |
-| Tick 性能回退，模拟变慢 | 高 | 低 | 运行性能测试对比，如有退步则分析原因并优化 |
-| 兼容性问题导致其他模块崩溃 | 中 | 中 | 保持公开接口兼容性，必要时添加过渡层，渐进式迁移 |
-| Member 子类（Player/Mob）改动不完整 | 中 | 中 | 编译检查会捕获，添加集成测试验证子类功能 |
-| 分支冲突或意外改动 | 低 | 中 | 频繁 push，定期 rebase，清晰的 commit 消息 |
+| 删除方法导致外部调用崩溃 | 高 | 中 | 使用搜索工具系统地找出所有调用点，逐个验证 |
+| 构造期注入导致初始化复杂 | 中 | 中 | 如果参数过多，考虑 Builder 模式或配置对象 |
+| 现有测试覆盖不足，隐藏 bug | 中 | 中 | 阶段 1 补充关键路径测试 |
+| Tick 性能回退 | 高 | 低 | 运行性能测试对比，重构应该只是代码组织不影响性能 |
+| FSM 内部处理垂直运动的改动遗漏 | 高 | 中 | 仔细检查 FSM 定义，确保垂直运动逻辑完整 |
 
 ### 缓解策略
 
 1. **小步快跑**：每个小改动都编译验证一次
 2. **充分测试**：每完成一个阶段就运行相关测试
 3. **频繁提交**：每个逻辑单元作为一个 commit
-4. **及时 review**：可以在局部完成后请同事 review
-5. **文档同步**：改动时同步更新注释和文档
+4. **代码审查**：可以在局部完成后请同事 review
 
 ---
 
@@ -454,10 +451,6 @@ pnpm vitest run src/engine/core --reporter=verbose
 
 ### 功能验证
 - [ ] `pnpm vitest run src/engine/core` 现有测试全部通过
-- [ ] MemberDataLayer 单元测试通过
-- [ ] MemberComputeLayer 单元测试通过
-- [ ] MemberOrchestrationLayer 单元测试通过
-- [ ] Member 集成测试通过
 - [ ] 手动测试：正常模拟流程
 - [ ] 手动测试：伤害计算和受击
 - [ ] 手动测试：技能施放
@@ -465,9 +458,9 @@ pnpm vitest run src/engine/core --reporter=verbose
 - [ ] 手动测试：行为模式切换
 
 ### 结构验证
-- [ ] Member.ts 行数：60-80 行
-- [ ] 三层各自职责明确
-- [ ] 无循环依赖
+- [ ] Member.ts 行数：300-400 行
+- [ ] 三层注释分割清晰
+- [ ] 方法按职责分组
 - [ ] 代码风格一致
 - [ ] 注释完整
 
@@ -483,17 +476,11 @@ pnpm vitest run src/engine/core --reporter=verbose
 
 | 阶段 | 任务 | 人天 | 备注 |
 |------|------|------|------|
-| 1 | 准备和规划 | 2 | 代码审计、分支创建、补充测试 |
-| 2 | 创建三层类 | 3-4 | DataLayer、ComputeLayer、OrchestrationLayer |
-| 3 | 重构 Member | 2 | 删除旧逻辑、创建三层实例、简化接口 |
-| 4 | 更新外部调用 | 3-5 | 系统地找出并更新所有调用点 |
-| 5 | 清理优化 | 1-2 | 代码审查、测试补充、文档更新 |
-| **总计** | | **11-15** | **约 2-3 周** |
-
-### 并行可能性
-
-- 阶段 2 的三个子任务可以部分并行（不同开发者同时创建三个类）
-- 阶段 4 的不同模块可以并行更新
+| 1 | 准备和规划 | 1 | 代码审计、分支创建、补充测试 |
+| 2 | 重组 Member.ts | 3-4 | 注释分割、删除冗余、简化注入、优化接口 |
+| 3 | 更新外部调用 | 2-3 | 系统地找出并更新所有调用点 |
+| 4 | 清理验证 | 1 | 代码审查、测试补充、文档更新 |
+| **总计** | | **7-9** | **约 1-2 周** |
 
 ---
 
@@ -503,75 +490,89 @@ pnpm vitest run src/engine/core --reporter=verbose
 
 ```bash
 # 创建分支
-git checkout -b refactor/member-architecture
+git checkout -b refactor/member-simplification
 
-# 阶段 2：创建三层类（每个类一个 commit）
-git add src/engine/core/World/Member/MemberDataLayer.ts
-git commit "feat: create MemberDataLayer with data management responsibilities"
+# 阶段 2.1：添加注释分割
+git add src/engine/core/World/Member/Member.ts
+git commit "refactor: reorganize Member code with clear layer separation comments"
 
-git add src/engine/core/World/Member/MemberComputeLayer.ts
-git commit "feat: create MemberComputeLayer with pipeline execution"
+# 阶段 2.2：删除冗余方法
+git add src/engine/core/World/Member/Member.ts
+git commit "refactor: remove redundant Member methods (presentationState, applyDamage, terrain integration)"
 
-git add src/engine/core/World/Member/MemberOrchestrationLayer.ts
-git commit "feat: create MemberOrchestrationLayer with FSM and orchestration"
+# 阶段 2.3：简化依赖注入
+git add src/engine/core/World/Member/Member.ts
+git commit "refactor: simplify Member dependency injection, remove set* methods"
 
-# 阶段 3：重构 Member
-git add src/engine/core/World/Member/Member.ts src/engine/core/World/Member/types.ts
-git commit "refactor: simplify Member as aggregation root, delegate to three layers"
+# 阶段 2.4：优化接口
+git add src/engine/core/World/Member/Member.ts
+git commit "refactor: optimize Member public interfaces (getFsmState, getActiveEffectState)"
 
-# 阶段 4：更新外部调用（按模块）
+# 阶段 3：更新外部调用（按模块）
 git add src/engine/core/World/MemberManager.ts
-git commit "refactor: update MemberManager to use new Member interfaces"
+git commit "refactor: update MemberManager to use constructor-based Member initialization"
 
 git add src/engine/core/World/World.ts
-git commit "refactor: update World to use new Member interfaces"
+git commit "refactor: remove Member.integrateTerrainHeight calls from World"
 
-# ... 其他模块
+git add src/engine/core/World/Member/DamageResolution.ts
+git commit "refactor: send FSM events directly instead of calling Member.applyDamage"
 
-# 阶段 5：测试和文档
+git add src/engine/core/thread/Simulation.worker.ts
+git commit "refactor: update presentation state readers to use getFsmState/getActiveEffectState"
+
+# 阶段 4：测试和文档
 git add src/engine/core/World/Member/*.test.ts
-git commit "test: add unit tests for three layers"
+git commit "test: add tests for refactored Member interfaces"
 
-git add docs/
-git commit "docs: update architecture documentation"
+git add docs/ src/engine/AGENTS.md
+git commit "docs: update architecture documentation for Member refactoring"
 ```
 
 ### PR 提交
 
 **PR 标题**：
 ```
-refactor(engine): decompose Member into three layers (data, compute, orchestration)
+refactor(engine): simplify Member class with clear layer separation
 ```
 
 **PR 描述**：
 ```markdown
 ## Changes
 
-Decomposes the 906-line Member class into a clear three-layer structure:
-- **MemberDataLayer** (200-250 lines): Manages attributes, status, runtime state
-- **MemberComputeLayer** (100-150 lines): Executes pipelines
-- **MemberOrchestrationLayer** (400-500 lines): Orchestrates FSM, BT, control
-- **Member** (60-80 lines): Lightweight aggregation root
+Refactors the 906-line Member class by:
+- Adding clear comment-based separation for three layers (data, compute, orchestration)
+- Removing redundant methods (applyDamage, integrateTerrainHeight, notifyLanded, refreshPresentationState, etc)
+- Simplifying dependency injection (removing 12+ set* methods)
+- Reorganizing methods by responsibility
+- Final size: ~300-400 lines
 
 ## Rationale
 
-- Improves code organization and single responsibility
-- Reduces Member complexity from 906 to ~80 lines
-- Clarifies dependencies between layers
-- Enables independent testing of each layer
+- Improves code readability through clear layer separation
+- Reduces complexity by removing redundant responsibilities
+- Maintains single-class structure (avoids over-abstraction)
+- Clarifies that business logic (damage, vertical motion) belongs in FSM
+
+## Key Changes
+
+- ❌ Removed PresentationState merging → render layer reads FSM + effect BT separately
+- ❌ Removed applyDamage → external systems send FSM events directly
+- ❌ Removed vertical motion methods → FSM handles internally
+- ❌ Removed 12+ set* methods → constructor-based dependency injection
+- ✅ Added getFsmState() and getActiveEffectState() query interfaces
+- ✅ Clear comment-based layer separation
 
 ## Testing
 
 - [x] All existing tests pass
-- [x] New unit tests for three layers
-- [x] Integration tests for Member
 - [x] Manual testing of key flows
+- [x] No performance regression
 
 ## Performance
 
 - Tick performance: ±0% (no regression)
 - Checkpoint serialization: ±0% (no regression)
-- Memory usage: ±0% (no regression)
 
 ## Related
 
@@ -585,59 +586,55 @@ Closes #XXX (if applicable)
 根据 AGENTS.md，当计划完成时：
 
 - [ ] 删除此计划文档：`docs/plans/member-refactoring-plan.md`
-- [ ] 如果有架构决策需要长期保留，提取为 ADR（在 `docs/decisions/`）
-- [ ] 更新相关的概念文档和代码注释
-- [ ] 更新 Code Map（`project_code_map_write`）
+- [ ] 如果有重要的架构决策，提取为 ADR（在 `docs/decisions/`）
+- [ ] 更新相关的 Code Map（`project_code_map_write`）
 
 ### 建议的 ADR（如果需要）
 
-如果重构中产生了重要的架构决策（超出此计划范围），创建 ADR 记录：
-- Member 作为薄壳聚合根的设计决策
-- 三层边界划分的原则
-- 外部与 Member 交互的规范
+如果重构中产生了重要的架构决策，创建 ADR 记录：
+- Member 作为单类但通过注释分层的设计决策
+- 成员是被动实体的原则
+- 业务逻辑归属 FSM 的原则
 
 ---
 
-## 附录：快速参考
+## 附录：核心架构原则
 
-### 核心职责对照表
+### 架构不变量
 
-| 原 Member | 新位置 | 调整 |
-|-----------|--------|------|
-| `id`, `type`, `name` | Member | 保留 |
-| `runtime` | MemberDataLayer | 变为私有，通过接口访问 |
-| `attributeContainer` | MemberDataLayer | 变为私有，通过接口访问 |
-| `statusStore` | MemberDataLayer | 变为私有，通过接口访问 |
-| `actor` | MemberOrchestrationLayer | 移动 |
-| `controlBehavior` | MemberOrchestrationLayer | 移动 |
-| `effectBtManager` | MemberOrchestrationLayer | 移动 |
-| `procBus` | MemberOrchestrationLayer | 移动 |
-| `pipelineOverlays` | MemberComputeLayer | 移动 |
-| `runPipeline()` | MemberComputeLayer | 委托 |
-| `tick()` | Member | 简化为协调三层 |
-| `submitControlInput()` | Member | 保留，委托给编排层 |
-| `get position()` | Member | 保留，委托给数据层 |
-| `getAttribute()` | Member | 保留，委托给数据层 |
+1. **成员是被动实体**：所有状态信息被动暴露
+2. **唯一主动推送**：瞬时事件通过 DomainEventBus
+3. **三层职责清晰**：数据、计算、编排各司其职（通过注释分割）
+4. **Member 是薄壳**：持有、协调、暴露接口（300-400 行）
+5. **查询接口形式是工程细节**：readonly 字段 / getter / 方法等价
+6. **行为历史归属外部**：成员发布事件，外部记录
+7. **业务逻辑在 FSM 内**：伤害处理、垂直运动、落地检测都在 FSM
+8. **Member 不转发事件**：外部直接调用 `member.actor.send(event)`
 
-### 关键 API 变化
+### 外部交互模式
 
 ```typescript
-// 旧 API
-member.runPipeline(name, params);
-member.setControlMode('ai');
-member.applyStatusInstance(instance);
-member.runtime.position;
+// ✅ 控制输入（唯一命令入口）
+member.submitControlInput({ type: "跳跃", ... }, 'external');
 
-// 新 API
-member.submitControlInput(event, source);
-member.position;  // getter
-member.getAttribute(key);
-member.getFsmState();
-member.getActiveEffectState();
-member.actor.send(event);  // 直接发送事件给 FSM
+// ✅ 攻击事件（直接发给 FSM）
+member.actor.send({ type: "受到攻击", data: { damageRequest } });
+
+// ✅ 查询状态（被动）
+const pos = member.position;
+const hp = member.getAttribute('hp.current');
+const alive = member.alive;
+const fsmState = member.getFsmState();
+const effectState = member.getActiveEffectState();
+
+// ❌ 不再支持
+member.applyDamage(effect);
+member.integrateTerrainHeight(groundY, tick);
+member.notifyLanded();
+member.setControlMode('ai');
 ```
 
 ---
 
-**文档完成日期**：待更新  
-**最后修改**：制定阶段
+**文档完成日期**：2024-10-08  
+**最后修改**：重构计划修订
