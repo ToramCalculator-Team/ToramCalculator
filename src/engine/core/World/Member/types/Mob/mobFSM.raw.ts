@@ -9,7 +9,9 @@ export const machine = setup({
 			| { type: "Hp小于0" }
 			| { type: "使用技能" }
 			| { type: "应用控制" }
-			| { type: "控制结束" },
+			| { type: "控制结束" }
+			| { type: "执行结束" }
+			| { type: "收到警告结束通知" },
 	},
 	actions: {
 		根据怪物配置生成初始状态: ({ context, event }, params) => {
@@ -28,11 +30,23 @@ export const machine = setup({
 			// Add your action code here
 			// ...
 		},
+		清空待处理技能: ({ context, event }, params) => {
+			// Add your action code here
+			// ...
+		},
+		渲染警告信息: ({ context, event }, params) => {
+			// Add your action code here
+			// ...
+		},
+		创建警告结束通知: ({ context, event }, params) => {
+			// Add your action code here
+			// ...
+		},
 		添加待处理技能效果: ({ context, event }, params) => {
 			// Add your action code here
 			// ...
 		},
-		清空待处理技能: ({ context, event }, params) => {
+		技能消耗扣除: ({ context, event }, params) => {
 			// Add your action code here
 			// ...
 		},
@@ -56,6 +70,18 @@ export const machine = setup({
 	},
 	guards: {
 		可移动: ({ context, event }) => {
+			// Add your guard condition here
+			return true;
+		},
+		存在后续连击: ({ context, event }) => {
+			// Add your guard condition here
+			return true;
+		},
+		不存在后续连击: ({ context, event }) => {
+			// Add your guard condition here
+			return true;
+		},
+		不满足施法条件: ({ context, event }) => {
 			// Add your guard condition here
 			return true;
 		},
@@ -125,6 +151,7 @@ export const machine = setup({
 									},
 								},
 								使用技能中: {
+									initial: "初始化技能",
 									entry: [
 										{
 											type: "添加待处理技能",
@@ -132,16 +159,69 @@ export const machine = setup({
 										{
 											type: "更新可移动性",
 										},
-										{
-											type: "添加待处理技能效果",
-										},
 									],
 									exit: {
 										type: "清空待处理技能",
 									},
-									invoke: {
-										input: {},
-										src: "启动行为树",
+									states: {
+										初始化技能: {
+											always: [
+												{
+													target: "警告状态",
+													guard: {
+														type: "不满足施法条件",
+													},
+												},
+												{
+													target: "技能执行过程",
+												},
+											],
+										},
+										警告状态: {
+											on: {
+												收到警告结束通知: {
+													target: "#Mob.存活.可操作状态.动作状态.空闲状态",
+												},
+											},
+											entry: [
+												{
+													type: "渲染警告信息",
+												},
+												{
+													type: "创建警告结束通知",
+												},
+											],
+										},
+										技能执行过程: {
+											on: {
+												执行结束: [
+													{
+														target: "#Mob.存活.可操作状态.动作状态.使用技能中",
+														guard: {
+															type: "存在后续连击",
+														},
+													},
+													{
+														target: "#Mob.存活.可操作状态.动作状态.空闲状态",
+														guard: {
+															type: "不存在后续连击",
+														},
+													},
+												],
+											},
+											entry: [
+												{
+													type: "添加待处理技能效果",
+												},
+												{
+													type: "技能消耗扣除",
+												},
+											],
+											invoke: {
+												input: {},
+												src: "启动行为树",
+											},
+										},
 									},
 								},
 							},

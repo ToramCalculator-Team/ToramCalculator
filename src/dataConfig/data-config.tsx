@@ -1,14 +1,5 @@
 /**
  * 数据表的表格、卡片、表单UI配置
- *
- * @design-note 字段级配置分散
- * 当前：hiddenFields（数组）、renderers.fields（Record）、fieldGroupMap（Record）三处分散。
- * 未来可能演进为 fields: Partial<Record<keyof T, { hidden?, render?, ... }>>（逐字段树）以降低认知负荷。
- * 当前保留扁平结构，因为：
- *  1. renderers 支持嵌套路径（如 "skills[0].name"），树形 Record<keyof T> 无法表达
- *  2. 迁移所有调用方和组件的成本较高
- *  3. fieldGroupMap（组→字段列表）天然是组中心结构，与字段树正交
- * 权衡：以扁平为主，FK 级联自动检测尊重 hiddenFields 过滤。
  */
 
 import type { ReferenceDecl, ReferencedByDecl } from "@db/generated/dmmf-utils";
