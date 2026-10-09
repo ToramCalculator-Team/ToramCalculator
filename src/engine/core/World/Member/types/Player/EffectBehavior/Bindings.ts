@@ -1,12 +1,10 @@
-import { createEffectBindings, type EffectBtContext } from "../../../EffectBehavior/Bindings";
-import type { MemberBtCapabilities } from "../../../EffectBehavior/EffectBtManagerEnv";
-import type { PlayerAttrKey } from "../PlayerAttrSchema";
+import { createEffectBindings } from "../../../EffectBehavior/Bindings";
+import type { EffectBtCapabilities, EffectBtContext } from "../../../EffectBehavior/EffectBtTypes";
+import type { PlayerAttrNestedSchema } from "../PlayerAttrSchema";
 import { PlayerEffectActionPool } from "./NodeMethods/ActionMethods";
 import { PlayerEffectConditionPool } from "./NodeMethods/ConditionMethods";
 
-const context = {} as EffectBtContext<PlayerAttrKey>;
+const context = {} as EffectBtContext<PlayerAttrNestedSchema>;
 
-export const createPlayerEffectBindings = (
-	capabilities: MemberBtCapabilities<PlayerAttrKey>,
-): Record<string, unknown> =>
+export const createPlayerEffectBindings = (capabilities: EffectBtCapabilities<PlayerAttrNestedSchema>) =>
 	createEffectBindings(context, PlayerEffectActionPool, PlayerEffectConditionPool, capabilities);

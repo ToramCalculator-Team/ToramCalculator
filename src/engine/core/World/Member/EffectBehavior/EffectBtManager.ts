@@ -5,10 +5,11 @@ import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefiniti
 import type { BehaviourTreeOptions } from "~/lib/mistreevous/BehaviourTreeOptions";
 import { State } from "~/lib/mistreevous/State";
 import type { Checkpointable, EffectBtManagerCheckpoint } from "../../../types";
-import { createExecutionContext } from "../BehaviorTree/ExecutionContext";
+import { ModifierType } from "../runtime/AttributeContainer/AttributeContainerTypes";
+import type { NestedSchema } from "../runtime/AttributeContainer/SchemaTypes";
 import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
 import type { MemberFSMEvent } from "../StateMachine/types";
-import type { EffectBtManagerEnv } from "./EffectBtManagerEnv";
+import type { EffectBtManagerEnv } from "./EffectBtTypes";
 
 const log = createLogger("EffectBtManager");
 
@@ -17,8 +18,8 @@ type BtEntry = {
 };
 
 export class EffectBtManager<
-	TExtraAttrKey extends string = never,
-	TContext extends MemberSharedRuntime<TExtraAttrKey> = MemberSharedRuntime<TExtraAttrKey>,
+	TSchema extends NestedSchema,
+	TContext extends MemberSharedRuntime<TSchema>,
 	TFSMEvent extends EventObject = MemberFSMEvent,
 > implements Checkpointable<EffectBtManagerCheckpoint>
 {
@@ -29,7 +30,7 @@ export class EffectBtManager<
 	private steppingContext: "none" | "active-effect" = "none";
 
 	constructor(
-		private env: EffectBtManagerEnv<TFSMEvent, TExtraAttrKey, TContext>,
+		private env: EffectBtManagerEnv<TFSMEvent, TSchema, TContext>,
 		/**
 		 * BT-only callable bindings.
 		 * Purpose: keep BT actions / conditions out of the checkpointable runtime blackboard.
@@ -61,15 +62,68 @@ export class EffectBtManager<
 		agent?: string,
 		localContext?: Record<string, unknown>,
 	): TContext & Record<string, unknown> {
-		return createExecutionContext({
-			baseContext: this.env.getContext(),
-			memberName: this.env.name,
-			bindings: this.btBindings,
-			localContext,
-			agent,
-			agentOwner: this.env,
-			onWarning: (warning) => log.warn(warning.message),
-		}).context;
+		const baseContext = this.env.getContext();
+		const context = Object.create(baseContext) as TContext & Record<string, unknown>;
+
+		// 1. 添加 localContext
+		if (localContext) {
+			for (const [name, value] of Object.entries(localContext)) {
+				Object.defineProperty(context, name, {
+					value,
+					writable: true,
+					enumerable: true,
+					configurable: true,
+				});
+			}
+		}
+
+		// 2. 添加 bindings
+		for (const [name, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(this.btBindings))) {
+			if (!(name in context)) {
+				Object.defineProperty(context, name, { ...descriptor, configurable: true });
+			}
+		}
+
+		// 3. 编译并混入 agent
+		if (agent?.trim()) {
+			try {
+				const factory = new Function("BehaviourTree", "State", "ModifierType", "owner", `return ${agent};`) as (
+					bt: typeof BehaviourTree,
+					state: typeof State,
+					modType: typeof ModifierType,
+					owner: unknown,
+				) => new () => Record<string, unknown>;
+
+				const AgentClass = factory(BehaviourTree, State, ModifierType, this.env);
+				const instance = new AgentClass();
+
+				// 混入 agent 实例成员和原型方法
+				for (const key of Object.getOwnPropertyNames(instance)) {
+					if (key !== "constructor" && !(key in context)) {
+						const descriptor = Object.getOwnPropertyDescriptor(instance, key);
+						if (descriptor) {
+							Object.defineProperty(context, key, { ...descriptor, configurable: true });
+						}
+					}
+				}
+
+				const prototype = AgentClass.prototype as object;
+				for (const key of Object.getOwnPropertyNames(prototype)) {
+					if (key !== "constructor" && !(key in context)) {
+						const descriptor = Object.getOwnPropertyDescriptor(prototype, key);
+						if (descriptor) {
+							Object.defineProperty(context, key, { ...descriptor, configurable: true });
+						}
+					}
+				}
+			} catch (error) {
+				log.warn(
+					`[${this.env.name}] Failed to compile agent: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
+		}
+
+		return context;
 	}
 
 	tickAll(): void {
@@ -101,6 +155,7 @@ export class EffectBtManager<
 		});
 	}
 
+	// FSM直接调用
 	registerActiveEffectBt(
 		definition?: string | RootNodeDefinition | RootNodeDefinition[],
 		agent?: string,
@@ -113,6 +168,7 @@ export class EffectBtManager<
 		return bt;
 	}
 
+	// FSM直接调用
 	registerParallelBt(
 		name: string,
 		definition: string | RootNodeDefinition | RootNodeDefinition[],

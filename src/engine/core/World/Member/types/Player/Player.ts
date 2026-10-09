@@ -13,14 +13,14 @@ import type { PlayerRuntime } from "../../runtime/SharedRuntime";
 import type { MemberStateName } from "../../runtime/State/MemberState";
 import { createPlayerControlBehaviorBindings } from "./ControlBehavior/Bindings";
 import { createPlayerEffectBindings } from "./EffectBehavior/Bindings";
-import { type PlayerAttrKey, PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
+import { type PlayerAttrKey, type PlayerAttrNestedSchema, PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
 import { collectPlayerRuntimeAttachments } from "./PlayerRuntimeAttachmentCollector";
 import { type PlayerFSMContext, type PlayerSpecificEvent, playerFSM } from "./PlayerStateMachine";
 import { selectPlayerSkillVariant } from "./skillLifecycle";
 
 const log = createLogger("Player");
 
-export class Player extends Member<PlayerAttrKey, PlayerSpecificEvent, PlayerFSMContext, PlayerRuntime> {
+export class Player extends Member<PlayerAttrNestedSchema, PlayerSpecificEvent, PlayerFSMContext, PlayerRuntime> {
 	activeCharacter: EngineCharacter;
 	private readonly runtimeAttachments: RuntimeAttachment<PlayerAttrKey>[];
 
@@ -40,7 +40,7 @@ export class Player extends Member<PlayerAttrKey, PlayerSpecificEvent, PlayerFSM
 		// 必须在 AttributeContainer 构造前并入 schema，战斗中不能再扩容（Float64Array 固定长度）。
 		const slotDeclarations = Player.collectAttributeSlots(activeCharacter, memberData, runtimeAttachments);
 		const attrSchema = mergeSchema(baseSchema, slotDeclarations);
-		const attributeContainer = new AttributeContainer<PlayerAttrKey>(attrSchema);
+		const attributeContainer = new AttributeContainer(attrSchema);
 		const initialSkillList = activeCharacter.skills;
 
 		if (!initialSkillList) {

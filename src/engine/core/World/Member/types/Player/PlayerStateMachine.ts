@@ -16,7 +16,7 @@ import type {
 	MemberStateMachineEnv,
 	MemberUseSkillEvent,
 } from "../../StateMachine/types";
-import type { PlayerAttrKey } from "./PlayerAttrSchema";
+import type { PlayerAttrNestedSchema } from "./PlayerAttrSchema";
 import { computePlayerSkillLifecycle, selectPlayerSkillVariant } from "./skillLifecycle";
 
 const log = createLogger("PlayerFSM");
@@ -73,7 +73,7 @@ export type PlayerFSMEvent = MemberFSMEvent<PlayerSpecificEvent>;
 
 export interface PlayerFSMContext extends MemberFSMContext {}
 
-export interface PlayerFSMEnv extends MemberStateMachineEnv<PlayerAttrKey, PlayerFSMEvent, PlayerRuntime> {
+export interface PlayerFSMEnv extends MemberStateMachineEnv<PlayerAttrNestedSchema, PlayerFSMEvent, PlayerRuntime> {
 	runtime: PlayerRuntime;
 }
 

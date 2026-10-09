@@ -13,17 +13,15 @@ import {
 	ModifierType,
 	StatModifierKindSchema,
 } from "../../runtime/AttributeContainer/AttributeContainer";
-import type { MemberSharedRuntime } from "../../runtime/SharedRuntime";
 import { MemberStateNameSchema } from "../../runtime/State/MemberState";
-import type { MemberBtCapabilities } from "../EffectBtManagerEnv";
+import type { CommonEffectBtCapabilities, CommonEffectBtContext } from "../EffectBtTypes";
+
+export const logLv = 0; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
 
 const log = createLogger("Actions");
 
-type BtContext = MemberSharedRuntime;
-type BtCapabilities = MemberBtCapabilities<string>;
-
 function createActionModifierSource(
-	context: BtContext,
+	context: CommonEffectBtContext,
 	key: string,
 	name: string,
 	type: ModifierSource["type"],
@@ -41,19 +39,17 @@ function createActionModifierSource(
 	};
 }
 
-export const logLv = 0; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
-
 /** 二维向量 */
 const vec2Schema = z.object({
 	x: z.number().meta({ description: "X坐标" }),
-	y: z.number().meta({ description: "Y坐标" }),
+	z: z.number().meta({ description: "Z坐标" }),
 });
 
 // 多段伤害技能的实现方式建议
 // 1.多段伤害结果完全不一样时，应该多次调用伤害节点以保证判定采用不同随机数实现完全不一样的结果。
 // 2.多段伤害结果一样但浮动不同时，使用多区域来产生多段伤害
 // 3.单次伤害，但拆分开显示时，用 damageCount + damageInterval 来拆分伤害
-const commonAttackBaseSchema = z.object({
+const commonAttackSchema = z.object({
 	targetId: z.string().meta({ description: "目标ID" }),
 	expApplicationType: z.enum(["physical", "magic", "normal", "none"]).meta({ description: "惯性施加类型" }),
 	expResolutionType: z.enum(["physical", "magic", "normal"]).meta({ description: "惯性依赖类型" }),
@@ -71,59 +67,44 @@ const commonAttackBaseSchema = z.object({
 		description:
 			"是否脱手锁定施法者属性。true（默认）：弹道/延迟/分段伤害结算时 self.* 读施放瞬间快照，不随施法者后续变化；false：结算时 self.* 实时读施法者当前属性（持续光束、引导类技能需要）",
 	}),
-});
-
-const damageIntervalSchemaShape = {
 	damageInterval: z
 		.union([z.string(), z.number()])
 		.optional()
 		.meta({ description: "可选：拆分伤害每段生效间隔毫秒表达式" }),
-};
-
-// 通用攻击参数；范围类 action 需要把自身几何参数放在 damageInterval 前，所以使用 base schema 单独组装。
-const commonAttackSchema = z.object({
-	...commonAttackBaseSchema.shape,
-	...damageIntervalSchemaShape,
 });
 
 const rangeAttackSchema = z.object({
-	...commonAttackBaseSchema.shape,
+	...commonAttackSchema.shape,
 	radius: z.number().meta({ description: "伤害范围" }),
-	...damageIntervalSchemaShape,
 });
 
 const moveAttackSchema = z.object({
-	...commonAttackBaseSchema.shape,
+	...commonAttackSchema.shape,
 	width: z.number().meta({ description: "攻击宽度" }),
 	speed: z.number().meta({ description: "冲撞速度" }),
-	...damageIntervalSchemaShape,
 });
 
 const lineAttackSchema = z.object({
-	...commonAttackBaseSchema.shape,
+	...commonAttackSchema.shape,
 	width: z.number().meta({ description: "攻击宽度" }),
-	...damageIntervalSchemaShape,
 });
 
 const movingGroundAttackSchema = z.object({
-	...commonAttackBaseSchema.shape,
+	...commonAttackSchema.shape,
 	width: z.number().meta({ description: "贴地范围宽度" }),
 	speed: z.number().meta({ description: "贴地移动速度" }),
-	...damageIntervalSchemaShape,
 });
 
 const bulletAttackSchema = z.object({
-	...commonAttackBaseSchema.shape,
+	...commonAttackSchema.shape,
 	radius: z.number().meta({ description: "子弹判定半径" }),
 	speed: z.number().meta({ description: "子弹移动速度" }),
-	...damageIntervalSchemaShape,
 });
 
 const persistentRangeAttackSchema = z.object({
-	...commonAttackBaseSchema.shape,
+	...commonAttackSchema.shape,
 	radius: z.number().meta({ description: "伤害范围" }),
 	durationMs: z.union([z.string(), z.number()]).meta({ description: "区域持续时间（毫秒），必须为正数" }),
-	...damageIntervalSchemaShape,
 });
 
 /**
@@ -137,8 +118,8 @@ function deriveBaseDamageTags(expResolutionType: "physical" | "magic" | "normal"
 }
 
 function evaluateActionNumberExpression(
-	context: BtContext,
-	capabilities: BtCapabilities,
+	context: CommonEffectBtContext,
+	capabilities: CommonEffectBtCapabilities,
 	raw: string | number | undefined,
 	fallback: number,
 	label: string,
@@ -165,9 +146,9 @@ function evaluateActionNumberExpression(
 }
 
 function buildDamageDefinition(
-	context: BtContext,
+	context: CommonEffectBtContext,
 	input: z.output<typeof commonAttackSchema>,
-	capabilities: BtCapabilities,
+	capabilities: CommonEffectBtCapabilities,
 	targetId?: string,
 ): DamageDefinition {
 	// 施法者属性在生成伤害区域时快照（施放瞬间值）。结算侧是否采用该快照由 lockCasterAttributes 决定：
@@ -182,10 +163,18 @@ function buildDamageDefinition(
 
 	const casterSnapshot: CasterSnapshot.CasterSnapshot = {};
 	for (const key of dependencies.selfDependencies) {
-		CasterSnapshot.setStat(casterSnapshot, key, capabilities.attributeContainer.getValue(key));
+		if (capabilities.attributeContainer.hasKey(key)) {
+			CasterSnapshot.setStat(casterSnapshot, key, capabilities.attributeContainer.getValue(key));
+		} else {
+			log.warn(`⚠️ [${context.name}] 施法者快照依赖属性 ${key} 不存在于 AttributeContainer`);
+		}
 	}
 	for (const key of dependencies.selfBaseValueDependencies) {
-		CasterSnapshot.setBaseValue(casterSnapshot, key, capabilities.attributeContainer.getBaseValue(key));
+		if (capabilities.attributeContainer.hasKey(key)) {
+			CasterSnapshot.setBaseValue(casterSnapshot, key, capabilities.attributeContainer.getBaseValue(key));
+		} else {
+			log.warn(`⚠️ [${context.name}] 施法者快照依赖基础属性 ${key} 不存在于 AttributeContainer`);
+		}
 	}
 	// capabilities.hasParallelBt 即 self.effectBtManager.hasBuff（见 Member.ts capabilities 装配），
 	// 与求值器实时路径同源，保证锁存值与实时语义一致。
@@ -364,41 +353,44 @@ function createAttackAction<TSchema extends z.ZodType>(
 	actionName: AttackActionName,
 	definition: AttackActionDefinition<TSchema>,
 ) {
-	return defineAction<TSchema, BtContext, BtCapabilities>(definition.schema, (context, input, capabilities) => {
-		const requestedTargetId = (input as { targetId?: string }).targetId;
-		const targetId = capabilities.services.targetResolver?.(context.memberId, requestedTargetId) ?? requestedTargetId;
-		if (definition.requiresTarget && (!targetId || targetId === context.memberId)) {
-			log.warn(`⚠️ [${context.name}] ${actionName} 缺少有效敌对目标`);
-			return State.FAILED;
-		}
-		const commonInput = input as z.output<typeof commonAttackSchema>;
-		const damage = buildDamageDefinition(context, commonInput, capabilities, targetId);
-		const range = definition.resolveRange(input);
-		if (definition.executionMode === "instant") {
-			const effect: ResolvedDamageEffect = {
+	return defineAction<TSchema, CommonEffectBtContext, CommonEffectBtCapabilities>(
+		definition.schema,
+		(context, input, capabilities) => {
+			const requestedTargetId = (input as { targetId?: string }).targetId;
+			const targetId = capabilities.services.targetResolver?.(context.memberId, requestedTargetId) ?? requestedTargetId;
+			if (definition.requiresTarget && (!targetId || targetId === context.memberId)) {
+				log.warn(`⚠️ [${context.name}] ${actionName} 缺少有效敌对目标`);
+				return State.FAILED;
+			}
+			const commonInput = input as z.output<typeof commonAttackSchema>;
+			const damage = buildDamageDefinition(context, commonInput, capabilities, targetId);
+			const range = definition.resolveRange(input);
+			if (definition.executionMode === "instant") {
+				const effect: ResolvedDamageEffect = {
+					...damage,
+					rangeKind: definition.rangeKind,
+					range,
+				};
+				capabilities.services.executeInstantDamage?.(effect);
+				return State.SUCCEEDED;
+			}
+			const durationRaw = (input as { durationMs?: string | number }).durationMs;
+			const durationMs = range.trajectory
+				? 0
+				: Math.floor(evaluateActionNumberExpression(context, capabilities, durationRaw, 0, "durationMs", targetId));
+			if (!range.trajectory && durationMs <= 0) {
+				throw new Error(`${actionName}: 静止持续攻击必须提供正数 durationMs`);
+			}
+			capabilities.services.createDamageArea?.({
 				...damage,
 				rangeKind: definition.rangeKind,
 				range,
-			};
-			capabilities.services.executeInstantDamage?.(effect);
+				lifetime: { startTimeMs: capabilities.services.getCurrentTimeMs(), durationMs },
+				hitPolicy: { hitIntervalMs: damage.attackSemantics.damageIntervalMs },
+			});
 			return State.SUCCEEDED;
-		}
-		const durationRaw = (input as { durationMs?: string | number }).durationMs;
-		const durationMs = range.trajectory
-			? 0
-			: Math.floor(evaluateActionNumberExpression(context, capabilities, durationRaw, 0, "durationMs", targetId));
-		if (!range.trajectory && durationMs <= 0) {
-			throw new Error(`${actionName}: 静止持续攻击必须提供正数 durationMs`);
-		}
-		capabilities.services.createDamageArea?.({
-			...damage,
-			rangeKind: definition.rangeKind,
-			range,
-			lifetime: { startTimeMs: capabilities.services.getCurrentTimeMs(), durationMs },
-			hitPolicy: { hitIntervalMs: damage.attackSemantics.damageIntervalMs },
-		});
-		return State.SUCCEEDED;
-	});
+		},
+	);
 }
 
 const attackActionPool = {
@@ -651,6 +643,10 @@ export const CommonEffectActionPool = {
 				log.warn(`⚠️ [${context.name}] 属性修改表达式未返回数值`, input.expression, evaluated);
 				return State.FAILED;
 			}
+			if (!capabilities.attributeContainer.hasKey(input.attribute)) {
+				log.error(`⚠️ [${context.name}] 属性修改失败，属性不存在: ${input.attribute}`);
+				return State.FAILED;
+			}
 			capabilities.attributeContainer.addModifier(
 				input.attribute,
 				{
@@ -706,6 +702,10 @@ export const CommonEffectActionPool = {
 			});
 			if (typeof evaluated !== "number" || !Number.isFinite(evaluated)) {
 				log.warn(`⚠️ [${context.name}] 覆盖属性修改表达式未返回有限数值`, input.expression, evaluated);
+				return State.FAILED;
+			}
+			if (!capabilities.attributeContainer.hasKey(input.attribute)) {
+				log.error(`⚠️ [${context.name}] 属性修改失败，属性不存在: ${input.attribute}`);
 				return State.FAILED;
 			}
 			capabilities.attributeContainer.updateModifiersBySource(
@@ -775,9 +775,12 @@ export const CommonEffectActionPool = {
 							const payload = event.payload as { type?: string };
 							return !!payload?.type && typesFilter.has(payload.type);
 						};
-
 			capabilities.subscribeByName(input.sourceId, eventNames, predicate, (event) => {
-				if (!input.counterSlot) return;
+				if (!input.counterSlot) return State.FAILED;
+				if (!capabilities.attributeContainer.hasKey(input.counterSlot)) {
+					log.error(`⚠️ [${context.name}] 属性修改失败，属性不存在: ${input.counterSlot}`);
+					return State.FAILED;
+				}
 				const sourceKey = `${input.sourceId}.counter.${event.timeMs}`;
 				capabilities.attributeContainer.addModifier(
 					input.counterSlot,
@@ -823,7 +826,11 @@ export const CommonEffectActionPool = {
 						};
 
 			capabilities.subscribeByName(input.sourceId, input.eventNames, predicate, (event) => {
-				if (!input.counterSlot) return;
+				if (!input.counterSlot) return State.FAILED;
+				if (!capabilities.attributeContainer.hasKey(input.counterSlot)) {
+					log.error(`⚠️ [${context.name}] 属性修改失败，属性不存在: ${input.counterSlot}`);
+					return State.FAILED;
+				}
 				const sourceKey = `${input.sourceId}.counter.${event.timeMs}`;
 				capabilities.attributeContainer.addModifier(
 					input.counterSlot,
@@ -854,6 +861,10 @@ export const CommonEffectActionPool = {
 			})
 			.meta({ description: "注册属性阈值 watcher" }),
 		(context, input, capabilities) => {
+			if (!capabilities.attributeContainer.hasKey(input.path)) {
+				log.error(`⚠️ [${context.name}] 路径监听失败，属性不存在: ${input.path}`);
+				return State.FAILED;
+			}
 			// 阈值穿越降格为 ProcBus 事件源（ADR 0010）：注册被监控点 + 订阅 attr.crossed。
 			// predicate 按 register 返回的 registrationId 精确匹配自己那一条注册，避免同
 			// (path, threshold) 多源订阅时被彼此的跨越事件重复 / 错向唤醒（ADR 0010 问题 A）。
@@ -869,7 +880,11 @@ export const CommonEffectActionPool = {
 				["attr.crossed"],
 				(event) => (event.payload as { registrationId?: number }).registrationId === registrationId,
 				(event) => {
-					if (!input.counterSlot) return;
+					if (!input.counterSlot) return State.FAILED;
+					if (!capabilities.attributeContainer.hasKey(input.counterSlot)) {
+						log.error(`⚠️ [${context.name}] 属性修改失败，属性不存在: ${input.counterSlot}`);
+						return State.FAILED;
+					}
 					const newValue = (event.payload as { newValue?: number }).newValue ?? 0;
 					const sourceKey = `${input.sourceId}.counter.${newValue}`;
 					capabilities.attributeContainer.addModifier(
@@ -897,6 +912,6 @@ export const CommonEffectActionPool = {
 			return State.SUCCEEDED;
 		},
 	),
-} as const satisfies ActionPool<BtContext, BtCapabilities>;
+} as const satisfies ActionPool<CommonEffectBtContext, CommonEffectBtCapabilities>;
 
 export type CommonEffectActionPool = typeof CommonEffectActionPool;

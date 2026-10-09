@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
 import { createExecutionContext } from "./ExecutionContext";
 
-const createRuntime = (): MemberSharedRuntime =>
-	({
-		name: "member",
-		memberId: "member-id",
-		statusTags: [],
-	}) as unknown as MemberSharedRuntime;
+const createRuntime = () => ({
+	name: "member",
+	memberId: "member-id",
+	statusTags: [],
+});
 
 describe("createExecutionContext", () => {
 	it("为每棵树创建隔离上下文，并按 localContext、binding、runtime 的顺序合并", () => {

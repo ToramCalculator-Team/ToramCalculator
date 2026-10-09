@@ -22,7 +22,7 @@ import type {
 import { ModifierType } from "./AttributeContainerTypes";
 import { AttributeFlags, BitFlags } from "./BitFlags";
 import { DependencyGraph } from "./DependencyGraph";
-import type { AttributeExpression, NestedSchema } from "./SchemaTypes";
+import type { AttributeExpression, NestedSchema, SchemaToAttrType } from "./SchemaTypes";
 import { SchemaFlattener } from "./SchemaTypes";
 
 export type {
@@ -125,7 +125,8 @@ const ENUM_MAPPINGS = createEnumMappings();
 /**
  * 基于TypedArray的高性能响应式数据管理器
  */
-export class AttributeContainer<T extends string> implements Checkpointable<AttributeContainerCheckpoint> {
+
+export class AttributeContainer<S extends NestedSchema> implements Checkpointable<AttributeContainerCheckpoint> {
 	// ==================== 核心数据结构 ====================
 
 	/** 主要属性值存储 - 连续内存布局 */
@@ -177,14 +178,14 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 	private readonly computationFunctions: Map<number, () => number>;
 
 	/** 属性键映射 */
-	private readonly keyToIndex: Map<T, number>;
-	private readonly indexToKey: T[];
+	private readonly keyToIndex: Map<SchemaToAttrType<S>, number>;
+	private readonly indexToKey: SchemaToAttrType<S>[];
 
 	/** 显示名称映射（用于调试） */
-	private readonly displayNames: Map<T, string>;
+	private readonly displayNames: Map<SchemaToAttrType<S>, string>;
 
 	/** 表达式原文映射（用于导出展示） */
-	private readonly expressionStrings: Map<T, string> = new Map();
+	private readonly expressionStrings: Map<SchemaToAttrType<S>, string> = new Map();
 
 	/** 标记属性是否为 noBaseValue（百分比修正不参与乘法，仅做加法累加） */
 	private readonly isNoBaseValue: boolean[] = [];
@@ -209,9 +210,9 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 	 *
 	 * @param schema 嵌套的Schema结构
 	 */
-	constructor(schema: NestedSchema) {
+	constructor(schema: S) {
 		// console.log("🚀 AttributeContainer 构造函数", schema);
-		const flattened = SchemaFlattener.flatten<T>(schema);
+		const flattened = SchemaFlattener.flatten(schema);
 		const attrKeys = flattened.attrKeys;
 		const expressions = flattened.expressions;
 		const displayNames = flattened.displayNames;
@@ -283,7 +284,7 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 	/**
 	 * 获取属性值
 	 */
-	getValue(attr: T): number {
+	getValue(attr: SchemaToAttrType<S>): number {
 		const index = this.keyToIndex.get(attr);
 		if (index === undefined) {
 			log.warn(`⚠️ 尝试获取不存在的属性值: ${attr}`);
@@ -315,18 +316,18 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 		return value;
 	}
 
-	hasKey(key: string): boolean {
-		return this.keyToIndex.has(key as T);
+	hasKey(key: string): key is SchemaToAttrType<S> {
+		return this.keyToIndex.has(key as SchemaToAttrType<S>);
 	}
 
-	getAllKeys(): T[] {
+	getAllKeys(): SchemaToAttrType<S>[] {
 		return this.indexToKey.slice();
 	}
 
 	/**
 	 * 获取属性基础值（表达式求值结果，叠加 modifier 之前）
 	 */
-	getBaseValue(attr: T): number {
+	getBaseValue(attr: SchemaToAttrType<S>): number {
 		const index = this.keyToIndex.get(attr);
 		if (index === undefined) {
 			log.warn(`⚠️ 尝试获取不存在的属性基础值: ${attr}`);
@@ -352,9 +353,9 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 	/**
 	 * 批量获取属性值
 	 */
-	getValues(attrs?: T[]): Record<T, number> {
+	getValues(attrs?: SchemaToAttrType<S>[]): Record<SchemaToAttrType<S>, number> {
 		const targetAttrs = attrs || this.indexToKey;
-		const result: Record<T, number> = {} as Record<T, number>;
+		const result: Record<SchemaToAttrType<S>, number> = {} as Record<SchemaToAttrType<S>, number>;
 
 		// 只在有脏值时才批量更新
 		if (this.hasDirtyValues() || this.pendingNotifications.length > 0) {
@@ -375,7 +376,7 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 	/**
 	 * 获取属性的显示名称
 	 */
-	getDisplayName(attr: T): string {
+	getDisplayName(attr: SchemaToAttrType<S>): string {
 		return this.displayNames.get(attr) || attr;
 	}
 
@@ -393,7 +394,7 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 	 *
 	 * @returns 取消订阅的函数
 	 */
-	onChange(attr: T, listener: AttributeChangeListener): () => void {
+	onChange(attr: SchemaToAttrType<S>, listener: AttributeChangeListener): () => void {
 		const index = this.keyToIndex.get(attr);
 		if (index === undefined) {
 			log.warn(`onChange: 未知属性 ${attr}`);
@@ -501,7 +502,7 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 	/**
 	 * 添加修饰符
 	 */
-	addModifier(attr: T, targetType: ModifierType, value: number, source: ModifierSource): void {
+	addModifier(attr: SchemaToAttrType<S>, targetType: ModifierType, value: number, source: ModifierSource): void {
 		// 获取属性索引
 		const index = this.keyToIndex.get(attr);
 		if (index === undefined) {
@@ -562,7 +563,7 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 	 */
 	addModifiers(
 		items: Array<{
-			attr: T;
+			attr: SchemaToAttrType<S>;
 			targetType: ModifierType;
 			value: number;
 			source: ModifierSource;
@@ -577,7 +578,7 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 	/**
 	 * 移除修饰符
 	 */
-	removeModifier(attr: T, targetType: ModifierType, sourceKey: string): void {
+	removeModifier(attr: SchemaToAttrType<S>, targetType: ModifierType, sourceKey: string): void {
 		const index = this.keyToIndex.get(attr);
 		if (index === undefined) {
 			log.warn(`⚠️ 尝试为不存在的属性移除修饰器: ${attr}`);
@@ -609,11 +610,16 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 	 */
 	getModifiersBySourceKey(
 		sourceKey: string,
-	): Array<{ attr: T; targetType: ModifierType; source: ModifierSource; value: number }> {
+	): Array<{ attr: SchemaToAttrType<S>; targetType: ModifierType; source: ModifierSource; value: number }> {
 		const indexEntry = this.sourceIndex.get(sourceKey);
 		if (!indexEntry || indexEntry.entryKeys.size === 0) return [];
 
-		const result: Array<{ attr: T; targetType: ModifierType; source: ModifierSource; value: number }> = [];
+		const result: Array<{
+			attr: SchemaToAttrType<S>;
+			targetType: ModifierType;
+			source: ModifierSource;
+			value: number;
+		}> = [];
 		const keyCount = this.values.length;
 
 		for (const entryKey of indexEntry.entryKeys) {
@@ -639,7 +645,7 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 	 */
 	updateModifiersBySource(
 		source: ModifierSource,
-		items: Array<{ attr: T; targetType: ModifierType; value: number }>,
+		items: Array<{ attr: SchemaToAttrType<S>; targetType: ModifierType; value: number }>,
 	): void {
 		const sourceKey = source.key;
 		const sourceIndexEntry = this.sourceIndex.get(sourceKey);
@@ -753,7 +759,7 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 	 * 导出扁平数值映射（attrKey -> value）
 	 * 会在导出前自动同步所有脏值
 	 */
-	public exportFlatValues(): Record<T, number> {
+	public exportFlatValues(): Record<SchemaToAttrType<S>, number> {
 		return this.getValues();
 	}
 
@@ -862,10 +868,10 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 
 			// 组装 DataStorage 单元
 			const attrPath = [...path, leafKey].join(".");
-			const index = this.keyToIndex.get(attrPath as T);
+			const index = this.keyToIndex.get(attrPath as SchemaToAttrType<S>);
 			const storage: DataStorage = {
-				displayName: this.displayNames.get(attrPath as T) || attrPath,
-				expression: this.expressionStrings.get(attrPath as T) || "",
+				displayName: this.displayNames.get(attrPath as SchemaToAttrType<S>) || attrPath,
+				expression: this.expressionStrings.get(attrPath as SchemaToAttrType<S>) || "",
 				baseValue: 0,
 				baseSources: [],
 				actValue: Number.isFinite(value) ? value : 0,
@@ -914,7 +920,7 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 	 * 结构以属性键为单位，细分五类修饰符，并列出每个来源的累积值
 	 */
 	public exportModifierDetails(): Record<
-		T,
+		SchemaToAttrType<S>,
 		{
 			baseValue: number;
 			baseSources: Array<{ source: ModifierSource; value: number }>;
@@ -941,7 +947,7 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 		};
 
 		const result = {} as Record<
-			T,
+			SchemaToAttrType<S>,
 			{
 				baseValue: number;
 				baseSources: Array<{ source: ModifierSource; value: number }>;
@@ -980,7 +986,7 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 	/**
 	 * 设置表达式和依赖关系
 	 */
-	private setupExpressions(expressions: Map<T, AttributeExpression>): void {
+	private setupExpressions(expressions: Map<SchemaToAttrType<S>, AttributeExpression>): void {
 		// console.log("🔧 设置表达式和依赖关系...");
 		for (const [attrName, expressionData] of expressions) {
 			const index = this.keyToIndex.get(attrName);
@@ -989,7 +995,7 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 			}
 
 			// 不注入GameEngine上下文，只处理self属性访问
-			const compiled = this.compileExpressionOnce(attrName as T, expressionData.expression);
+			const compiled = this.compileExpressionOnce(attrName as SchemaToAttrType<S>, expressionData.expression);
 			// console.log(attrName, compiled);
 			if (compiled.constant !== null) {
 				// 常量：直接作为基础值
@@ -1002,7 +1008,7 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 			if (compiled.code) {
 				// 注册依赖
 				for (const dep of compiled.deps) {
-					const depIndex = this.keyToIndex.get(dep as T);
+					const depIndex = this.keyToIndex.get(dep as SchemaToAttrType<S>);
 					if (depIndex !== undefined && depIndex !== index) {
 						this.dependencyGraph.addDependency(index, depIndex);
 					}
@@ -1015,7 +1021,7 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 					_get: (k: string) => number;
 				}) => unknown;
 				// 仅注入取值函数，避免对 Member 的强耦合
-				const executionContext = { _get: (k: string) => this.getValue(k as T) };
+				const executionContext = { _get: (k: string) => this.getValue(k as SchemaToAttrType<S>) };
 				this.computationFunctions.set(index, () => {
 					if (this.isComputing.has(index)) {
 						log.warn(`⚠️ 检测到递归计算 ${attrName}，返回默认值`);
@@ -1050,7 +1056,7 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 	 * 基于AST的表达式编译 - 精确处理属性访问转换
 	 */
 	private compileExpressionOnce(
-		currentAttr: T,
+		currentAttr: SchemaToAttrType<S>,
 		expression: string,
 	): { code: string | null; deps: string[]; constant: number | null } {
 		// 1) 纯数字常量
@@ -1518,19 +1524,19 @@ export class AttributeContainer<T extends string> implements Checkpointable<Attr
 		}
 
 		// 获取当前所有属性值
-		const currentValues = this.getValues(this.indexToKey as T[]);
+		const currentValues = this.getValues(this.indexToKey);
 
 		// 输出基础属性
 		log.debug(`\n🔹 基础属性 (${baseAttrs.length}):`);
 		baseAttrs.sort().forEach((attr) => {
-			const value = currentValues[attr as T];
+			const value = currentValues[attr as SchemaToAttrType<S>];
 			log.debug(`  📌 ${attr}: ${value}`);
 		});
 
 		// 输出计算属性及其依赖
 		log.debug(`\n🔸 计算属性 (${computedAttrs.length}):`);
 		computedAttrs.sort().forEach((attr) => {
-			const value = currentValues[attr as T];
+			const value = currentValues[attr as SchemaToAttrType<S>];
 			const deps = dependencyMap.get(attr) || [];
 
 			log.debug(`  🧮 ${attr}: ${value}`);

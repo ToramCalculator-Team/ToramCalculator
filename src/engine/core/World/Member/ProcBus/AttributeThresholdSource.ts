@@ -13,6 +13,7 @@
 
 import { createLogger } from "~/lib/logger";
 import type { AttributeContainer } from "../runtime/AttributeContainer/AttributeContainer";
+import type { NestedSchema, SchemaToAttrType } from "../runtime/AttributeContainer/SchemaTypes";
 
 const log = createLogger("AttrThresholdSource");
 
@@ -48,12 +49,12 @@ export interface RegisterOptions {
 /**
  * 每成员一个实例。`container` 用于读当前值 + 订阅变更；`emit` 把跨越事件送入 ProcBus。
  */
-export class AttributeThresholdSource<TAttrKey extends string = string> {
+export class AttributeThresholdSource<TSchema extends NestedSchema> {
 	private readonly entries = new Map<number, ThresholdEntry>();
 	private nextId = 1;
 
 	constructor(
-		private readonly container: AttributeContainer<TAttrKey>,
+		private readonly container: AttributeContainer<TSchema>,
 		private emit: AttrCrossedEmitter | null,
 	) {}
 
@@ -68,7 +69,7 @@ export class AttributeThresholdSource<TAttrKey extends string = string> {
 	 */
 	register(
 		sourceId: string,
-		path: TAttrKey,
+		path: SchemaToAttrType<TSchema>,
 		threshold: number,
 		direction: ThresholdDirection,
 		options?: RegisterOptions,

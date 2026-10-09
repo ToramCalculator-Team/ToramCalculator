@@ -222,10 +222,10 @@ export const SchemaFlattener = {
 	 * // result.displayNames.get("player.hp") = "生命值"
 	 * ```
 	 */
-	flatten<T extends string>(schema: NestedSchema): FlattenedSchema<T> {
-		const attrKeys: T[] = [];
-		const expressions = new Map<T, AttributeExpression>();
-		const displayNames = new Map<T, string>();
+	flatten<S extends NestedSchema>(schema: S): FlattenedSchema<SchemaToAttrType<S>> {
+		const attrKeys: SchemaToAttrType<S>[] = [];
+		const expressions = new Map<SchemaToAttrType<S>, AttributeExpression>();
+		const displayNames = new Map<SchemaToAttrType<S>, string>();
 
 		function traverse(obj: NestedSchema, path: string[] = []): void {
 			for (const [key, value] of Object.entries(obj)) {
@@ -234,7 +234,7 @@ export const SchemaFlattener = {
 
 				if (SchemaFlattener.isSchemaAttribute(value)) {
 					// 直接使用DSL路径作为属性键名
-					const attrKey = dslPath as T;
+					const attrKey = dslPath as SchemaToAttrType<S>;
 
 					attrKeys.push(attrKey);
 

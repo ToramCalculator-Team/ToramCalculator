@@ -4,26 +4,24 @@ import {
 	createExecutionContext,
 	type ExecutionContextWarning,
 } from "../BehaviorTree/ExecutionContext";
+import type { NestedSchema } from "../runtime/AttributeContainer/SchemaTypes";
 import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
-import type { EffectBtManagerEnv } from "./EffectBtManagerEnv";
+import type { EffectBtManagerEnv } from "./EffectBtTypes";
 
 export type BtContextFactoryWarning = ExecutionContextWarning;
 
 export type CreateBtContextOptions<
 	TFSMEvent extends EventObject,
-	TExtraAttrKey extends string = string,
-	TContext extends MemberSharedRuntime<TExtraAttrKey> = MemberSharedRuntime<TExtraAttrKey>,
+	TSchema extends NestedSchema,
+	TContext extends MemberSharedRuntime<TSchema>,
 > = {
-	env: EffectBtManagerEnv<TFSMEvent, TExtraAttrKey, TContext>;
+	env: EffectBtManagerEnv<TFSMEvent, TSchema, TContext>;
 	btBindings?: Record<string, unknown>;
 	agent?: string;
 	onWarning?: (warning: BtContextFactoryWarning) => void;
 };
 
-export type CreateBtContextResult<
-	TExtraAttrKey extends string = string,
-	TContext extends MemberSharedRuntime<TExtraAttrKey> = MemberSharedRuntime<TExtraAttrKey>,
-> = {
+export type CreateBtContextResult<TSchema extends NestedSchema, TContext extends MemberSharedRuntime<TSchema>> = {
 	context: TContext & Record<string, unknown>;
 	warnings: BtContextFactoryWarning[];
 };
@@ -31,9 +29,9 @@ export type CreateBtContextResult<
 /** 编辑器预览使用的兼容入口；上下文合并规则由 BehaviorTree ExecutionContext 统一提供。 */
 export function createBtContext<
 	TFSMEvent extends EventObject,
-	TExtraAttrKey extends string,
-	TContext extends MemberSharedRuntime<TExtraAttrKey>,
->(options: CreateBtContextOptions<TFSMEvent, TExtraAttrKey, TContext>): CreateBtContextResult<TExtraAttrKey, TContext> {
+	TSchema extends NestedSchema,
+	TContext extends MemberSharedRuntime<TSchema>,
+>(options: CreateBtContextOptions<TFSMEvent, TSchema, TContext>): CreateBtContextResult<TSchema, TContext> {
 	const { env, btBindings, agent, onWarning } = options;
 	const executionOptions: CreateExecutionContextOptions<TContext> = {
 		baseContext: env.getContext(),

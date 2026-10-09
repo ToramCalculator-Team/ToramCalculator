@@ -2,9 +2,9 @@ import type { Actor, EventObject, NonReducibleUnknown, StateMachine } from "xsta
 import type { StageData } from "~/engine/core/Pipeline/stageEnv";
 import type { MemberDomainEvent } from "~/engine/core/types";
 import type { EffectBtManager } from "../EffectBehavior/EffectBtManager";
-import type { MemberBaseAttrKey } from "../MemberBaseSchema";
 import type { MemberRuntimeServices } from "../RuntimeServices";
 import type { AttributeContainer } from "../runtime/AttributeContainer/AttributeContainer";
+import type { NestedSchema } from "../runtime/AttributeContainer/SchemaTypes";
 import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
 
 /**
@@ -51,11 +51,7 @@ export interface MemberLandedEvent extends EventObject {
 }
 
 /** 成员状态机公开接纳的公共控制事件；Player/Mob 专属事件通过 MemberFSMEvent 泛型显式组合。连续移动不在此列：它由移动段承载，不作为离散控制事件。 */
-export type MemberControlEvent =
-	| MemberReviveEvent
-	| MemberUseSkillEvent
-	| MemberSelectTargetEvent
-	| MemberJumpEvent;
+export type MemberControlEvent = MemberReviveEvent | MemberUseSkillEvent | MemberSelectTargetEvent | MemberJumpEvent;
 
 export type MemberFSMEvent<TSpecificEvent extends EventObject = never> =
 	| MemberCreateEvent // 创建事件
@@ -95,17 +91,17 @@ export type MemberStateMachine<
 
 // 状态机执行动作时需要的外部能力
 export interface MemberStateMachineEnv<
-	TExtraAttrKey extends string,
+	TSchema extends NestedSchema,
 	TFSMEvent extends EventObject,
-	TRuntime extends MemberSharedRuntime<TExtraAttrKey>,
+	TRuntime extends MemberSharedRuntime<TSchema>,
 > {
 	id: string;
 	name: string;
 	position: { x: number; y: number; z: number };
 	runtime: TRuntime;
-	attributeContainer: AttributeContainer<MemberBaseAttrKey | TExtraAttrKey>;
+	attributeContainer: AttributeContainer<TSchema>;
 	services: MemberRuntimeServices;
-	effectBtManager: EffectBtManager<TExtraAttrKey, TRuntime, TFSMEvent>;
+	effectBtManager: EffectBtManager<TSchema, TRuntime, TFSMEvent>;
 	notifyDomainEvent(event: MemberDomainEvent): void;
 	/** 派发成员内事件到本成员 ProcBus（供 passive/registlet 响应，ADR-0011）。 */
 	emitProc(eventName: string, payload: unknown): void;

@@ -1,11 +1,10 @@
 import type { ActionPool } from "../../../../BehaviorTree/NodeMethods/MethodTypes";
-import type { EffectBtContext } from "../../../../EffectBehavior/Bindings";
-import type { MemberBtCapabilities } from "../../../../EffectBehavior/EffectBtManagerEnv";
-import type { MobAttrKey } from "../../MobAttrSchema";
+import type { EffectBtCapabilities, EffectBtContext } from "../../../../EffectBehavior/EffectBtTypes";
+import type { MobAttrNestedSchema } from "../../MobAttrSchema";
 
 export const MobEffectActionPool = {} as const satisfies ActionPool<
-	EffectBtContext<MobAttrKey>,
-	MemberBtCapabilities<MobAttrKey>
+	EffectBtContext<MobAttrNestedSchema>,
+	EffectBtCapabilities<MobAttrNestedSchema>
 >;
 
 export type MobEffectActionPool = typeof MobEffectActionPool;

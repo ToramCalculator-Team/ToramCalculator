@@ -1,10 +1,10 @@
-import { createEffectBindings, type EffectBtContext } from "../../../EffectBehavior/Bindings";
-import type { MemberBtCapabilities } from "../../../EffectBehavior/EffectBtManagerEnv";
-import type { MobAttrKey } from "../MobAttrSchema";
+import { createEffectBindings } from "../../../EffectBehavior/Bindings";
+import type { EffectBtCapabilities, EffectBtContext } from "../../../EffectBehavior/EffectBtTypes";
+import type { MobAttrNestedSchema } from "../MobAttrSchema";
 import { MobEffectActionPool } from "./NodeMethods/ActionMethods";
 import { MobEffectConditionPool } from "./NodeMethods/ConditionMethods";
 
-const context = {} as EffectBtContext<MobAttrKey>;
+const context = {} as EffectBtContext<MobAttrNestedSchema>;
 
-export const createMobEffectBindings = (capabilities: MemberBtCapabilities<MobAttrKey>): Record<string, unknown> =>
+export const createMobEffectBindings = (capabilities: EffectBtCapabilities<MobAttrNestedSchema>) =>
 	createEffectBindings(context, MobEffectActionPool, MobEffectConditionPool, capabilities);

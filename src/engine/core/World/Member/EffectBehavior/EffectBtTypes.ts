@@ -2,16 +2,21 @@ import type { EventObject } from "xstate";
 import type { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import type { MemberDomainEvent } from "../../../types";
-import type { MemberBaseAttrKey } from "../MemberBaseSchema";
+import type { MemberBaseNestedSchema } from "../MemberBaseSchema";
 import type { RegisterOptions, ThresholdDirection } from "../ProcBus/AttributeThresholdSource";
 import type { ProcHandler, ProcPredicate, ProcSubscriptionId } from "../ProcBus/ProcBus";
 import type { MemberRuntimeServices } from "../RuntimeServices";
 import type { AttributeContainer } from "../runtime/AttributeContainer/AttributeContainer";
+import type { NestedSchema, SchemaToAttrType } from "../runtime/AttributeContainer/SchemaTypes";
 import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
 import type { MemberStateName } from "../runtime/State/MemberState";
-import type { MemberFSMEvent } from "../StateMachine/types";
 
-export interface BtTreeController {
+export type EffectBtContext<TSchema extends NestedSchema> = MemberSharedRuntime<TSchema>;
+
+export type CommonEffectBtContext = MemberSharedRuntime<MemberBaseNestedSchema>;
+export type CommonEffectBtCapabilities = EffectBtCapabilities<MemberBaseNestedSchema>;
+
+export interface EffectBtTreeController {
 	registerParallelBt(
 		name: string,
 		definition: string | RootNodeDefinition | RootNodeDefinition[],
@@ -21,15 +26,6 @@ export interface BtTreeController {
 	unregisterParallelBt(name: string): void;
 	hasBuff(name: string): boolean;
 }
-
-/**
- * BT 黑板上下文。
- *
- * 设计说明：
- * - 只包含可序列化的成员共享运行时数据。
- * - action/condition 所需组件通过 MemberBtCapabilities 闭包传入，不挂进黑板。
- */
-export type BtContext<TExtraAttrKey extends string = string> = MemberSharedRuntime<TExtraAttrKey>;
 
 /**
  * BT action/condition 可调用能力。
@@ -48,8 +44,8 @@ export type BtContext<TExtraAttrKey extends string = string> = MemberSharedRunti
  *   双总线在叶子层的残留，待 ADR（成员内总线统一 emit + DomainEventBus 降为下游投影）消除后收回。
  * - 不提供 `runPipeline`：管线是计算层、由 FSM / DamageResolution 调用；BT 叶子不直接跑管线。
  */
-export interface MemberBtCapabilities<TExtraAttrKey extends string = never> {
-	readonly attributeContainer: AttributeContainer<TExtraAttrKey | MemberBaseAttrKey>;
+export interface EffectBtCapabilities<TSchema extends NestedSchema> {
+	readonly attributeContainer: AttributeContainer<TSchema>;
 	readonly services: MemberRuntimeServices;
 	/** 仅供 active effect BT 的 state 叶子调用；AI 行为树和 parallel BT 不得声明成员动作状态。 */
 	declareState(name: MemberStateName): void;
@@ -79,7 +75,7 @@ export interface MemberBtCapabilities<TExtraAttrKey extends string = never> {
 	 */
 	registerThreshold(
 		sourceId: string,
-		path: TExtraAttrKey | MemberBaseAttrKey,
+		path: SchemaToAttrType<TSchema>,
 		threshold: number,
 		direction: ThresholdDirection,
 		options?: RegisterOptions,
@@ -96,13 +92,13 @@ export interface MemberBtCapabilities<TExtraAttrKey extends string = never> {
  * 设计说明：EffectBtManager 只需要黑板提供者、action 能力提供者和完成事件发送入口。
  */
 export interface EffectBtManagerEnv<
-	TFSMEvent extends EventObject = MemberFSMEvent,
-	TExtraAttrKey extends string = never,
-	TContext extends MemberSharedRuntime<TExtraAttrKey> = MemberSharedRuntime<TExtraAttrKey>,
+	TFSMEvent extends EventObject,
+	TSchema extends NestedSchema,
+	TContext extends MemberSharedRuntime<TSchema>,
 > {
 	readonly name: string;
 	getContext(): TContext;
-	getCapabilities(): MemberBtCapabilities<TExtraAttrKey>;
+	getCapabilities(): EffectBtCapabilities<TSchema>;
 	getDeltaTimeMs(): number;
 	send(event: TFSMEvent): void;
 }

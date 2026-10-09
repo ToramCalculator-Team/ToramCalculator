@@ -1,7 +1,6 @@
 import { type ZodType, z } from "zod/v4";
 import type { State } from "~/lib/mistreevous/State";
 import { objectShape, unwrapSchema } from "~/lib/utils/zod";
-import type { MemberBtCapabilities } from "../../EffectBehavior/EffectBtManagerEnv";
 import type { ActionPool, ConditionPool } from "./MethodTypes";
 
 const flattenSchemaLabels = (schema: ZodType, prefix = ""): string[] => {
@@ -65,8 +64,7 @@ const buildInputObject = (schema: ZodType, args: unknown[]): unknown => {
  */
 export const actionPoolToInvokers = <
 	TContext extends Record<string, unknown>,
-	TExtraAttrKey extends string,
-	TCapabilities extends MemberBtCapabilities<TExtraAttrKey>,
+	TCapabilities,
 	TPool extends ActionPool<TContext, TCapabilities>,
 >(
 	_context: TContext, // 仅用于类型推导
@@ -95,8 +93,7 @@ export const actionPoolToInvokers = <
  */
 export const conditionPoolToInvokers = <
 	TContext extends Record<string, unknown>,
-	TExtraAttrKey extends string,
-	TCapabilities extends MemberBtCapabilities<TExtraAttrKey>,
+	TCapabilities,
 	TPool extends ConditionPool<TContext, TCapabilities>,
 >(
 	_context: TContext, // 仅用于类型推导

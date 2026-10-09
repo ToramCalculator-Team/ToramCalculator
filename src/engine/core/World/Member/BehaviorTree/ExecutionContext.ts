@@ -1,7 +1,6 @@
 import { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import { State } from "~/lib/mistreevous/State";
 import { ModifierType } from "../runtime/AttributeContainer/AttributeContainer";
-import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
 
 export type ExecutionContextWarning = {
 	code: "agent.compile.failed" | "agent.initialize.failed" | "agent.member.conflict" | "binding.member.conflict";
@@ -10,8 +9,8 @@ export type ExecutionContextWarning = {
 	slotName?: string;
 };
 
-export type CreateExecutionContextOptions<TContext extends MemberSharedRuntime = MemberSharedRuntime> = {
-	baseContext: TContext;
+export type CreateExecutionContextOptions = {
+	baseContext: Record<string, unknown>;
 	memberName: string;
 	bindings?: Record<string, unknown>;
 	localContext?: Record<string, unknown>;
@@ -20,8 +19,8 @@ export type CreateExecutionContextOptions<TContext extends MemberSharedRuntime =
 	onWarning?: (warning: ExecutionContextWarning) => void;
 };
 
-export type CreateExecutionContextResult<TContext extends MemberSharedRuntime = MemberSharedRuntime> = {
-	context: TContext & Record<string, unknown>;
+export type CreateExecutionContextResult = {
+	context: Record<string, unknown>;
 	warnings: ExecutionContextWarning[];
 };
 
@@ -31,12 +30,12 @@ export type CreateExecutionContextResult<TContext extends MemberSharedRuntime = 
  * 上下文以共享 runtime 为原型，随后按 localContext、bindings、agent 的顺序补充成员。
  * runtime 和每棵行为树的临时成员保持隔离，避免 agent 或 BT binding 写回可 checkpoint 数据。
  */
-export function createExecutionContext<TContext extends MemberSharedRuntime>(
-	options: CreateExecutionContextOptions<TContext>,
-): CreateExecutionContextResult<TContext> {
+export function createExecutionContext(
+	options: CreateExecutionContextOptions,
+): CreateExecutionContextResult {
 	const { baseContext, memberName, bindings = {}, localContext, agent, agentOwner, onWarning } = options;
 	const warnings: ExecutionContextWarning[] = [];
-	const context = Object.create(baseContext) as TContext & Record<string, unknown>;
+	const context = Object.create(baseContext) as Record<string, unknown>;
 	const warn = (warning: Omit<ExecutionContextWarning, "memberName">): void => {
 		const next = { ...warning, memberName };
 		warnings.push(next);

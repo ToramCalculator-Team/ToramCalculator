@@ -49,73 +49,84 @@ export function validateSlotDeclarationPath(path: string): string | null {
 }
 
 /**
- * 将槽声明列表并入基础 schema，返回新的 NestedSchema。
+ * 将槽声明列表并入基础 schema，返回扩展后的 NestedSchema。
  *
- * - 不修改 base 本身；使用浅克隆逐层下钻。
- * - 同路径重复声明：若 attribute 完全相同（displayName + expression）则允许，否则抛错。
- * - 路径上任一段与已有 SchemaAttribute 冲突（即想把叶子节点再下钻）会抛错。
  */
-export function mergeSchema(base: NestedSchema, slots: readonly SlotDeclaration[]): NestedSchema {
+export function mergeSchema<TAttrSchema extends NestedSchema>(
+	base: TAttrSchema,
+	slots: readonly SlotDeclaration[],
+): TAttrSchema {
 	if (slots.length === 0) return base;
 
-	const result: NestedSchema = { ...base };
+	let result: NestedSchema = base;
 
 	for (const slot of slots) {
 		const segments = slot.path.split(".").filter((s) => s.length > 0);
 		const pathError = validateSlotDeclarationPath(slot.path);
 		if (pathError) throw new Error(pathError);
 
-		insertSlot(result, segments, slot.attribute, slot.path);
+		result = insertSlot(result, segments, slot.attribute, slot.path);
 	}
 
-	return result;
+	// 运行时 result 包含 base 的所有字段 + 动态槽位，结构上兼容 TAttrSchema
+	return result as TAttrSchema;
 }
 
-function insertSlot(root: NestedSchema, segments: string[], attr: SchemaAttribute, fullPath: string): void {
-	let cursor: NestedSchema = root;
+/**
+ * 函数式地将单个属性槽插入 schema，返回新的 NestedSchema。
+ *
+ * @param root 当前层级的 schema
+ * @param segments 路径片段数组
+ * @param attr 要插入的属性
+ * @param fullPath 完整路径（用于错误消息）
+ * @returns 插入后的新 NestedSchema
+ */
+function insertSlot(root: NestedSchema, segments: string[], attr: SchemaAttribute, fullPath: string): NestedSchema {
+	if (segments.length === 0) {
+		throw new Error(`[insertSlot] 路径为空: ${fullPath}`);
+	}
 
-	// 走到倒数第二段，确保中间节点都是 NestedSchema
-	for (let i = 0; i < segments.length - 1; i++) {
-		const key = segments[i];
-		const existing = cursor[key];
+	const [head, ...tail] = segments;
 
+	// 叶子节点：插入属性
+	if (tail.length === 0) {
+		const existing = root[head];
+
+		// 路径不存在，直接插入
 		if (existing === undefined) {
-			const next: NestedSchema = {};
-			cursor[key] = next;
-			cursor = next;
-			continue;
+			return { ...root, [head]: { ...attr } };
 		}
 
-		if (isSchemaAttribute(existing)) {
+		// 已有子树，无法覆盖为叶子
+		if (!isSchemaAttribute(existing)) {
+			throw new Error(`路径 ${fullPath} 已被作为分组节点存在，不能再声明为叶子属性`);
+		}
+
+		// 已有叶子：检查是否完全相同
+		if (existing.displayName !== attr.displayName || existing.expression !== attr.expression) {
 			throw new Error(
-				`路径 ${fullPath} 与已有叶子属性冲突：${segments.slice(0, i + 1).join(".")} 已是 SchemaAttribute`,
+				`属性槽 ${fullPath} 重复声明且定义不一致（旧 expression="${existing.expression}" 新 expression="${attr.expression}"）`,
 			);
 		}
 
-		// 为避免污染原始 schema，浅克隆一份
-		const cloned: NestedSchema = { ...(existing as NestedSchema) };
-		cursor[key] = cloned;
-		cursor = cloned;
+		// 完全相同，不需要修改
+		return root;
 	}
 
-	const leafKey = segments[segments.length - 1];
-	const leafExisting = cursor[leafKey];
+	// 中间节点：递归处理
+	const existing = root[head];
 
-	if (leafExisting === undefined) {
-		cursor[leafKey] = { ...attr };
-		return;
+	// 路径与已有叶子冲突
+	if (isSchemaAttribute(existing)) {
+		throw new Error(`路径 ${fullPath} 与已有叶子属性冲突：${head} 已是 SchemaAttribute，无法继续下钻`);
 	}
 
-	if (!isSchemaAttribute(leafExisting)) {
-		throw new Error(`路径 ${fullPath} 已被作为分组节点存在，不能再声明为叶子属性`);
-	}
+	// 递归插入子路径
+	const childSchema = typeof existing === "object" && existing !== null ? (existing as NestedSchema) : {};
+	const newChild = insertSlot(childSchema, tail, attr, fullPath);
 
-	// 已有叶子：只有完全等价才允许，否则报冲突
-	if (leafExisting.displayName !== attr.displayName || leafExisting.expression !== attr.expression) {
-		throw new Error(
-			`属性槽 ${fullPath} 重复声明且定义不一致（旧 expression="${leafExisting.expression}" 新 expression="${attr.expression}"）`,
-		);
-	}
+	// 返回新的根对象
+	return { ...root, [head]: newChild };
 }
 
 /**

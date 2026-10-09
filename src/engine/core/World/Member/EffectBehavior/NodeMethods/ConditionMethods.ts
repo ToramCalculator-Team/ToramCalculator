@@ -1,18 +1,14 @@
 import { z } from "zod/v4";
 import { BUILT_IN_REGISTLETS_BY_ID } from "../../attachments/BuiltInRegistlets";
 import { type ConditionPool, defineCondition } from "../../BehaviorTree/NodeMethods/MethodTypes";
-import type { MemberSharedRuntime } from "../../runtime/SharedRuntime";
-import type { MemberBtCapabilities } from "../EffectBtManagerEnv";
+import type { CommonEffectBtCapabilities, CommonEffectBtContext } from "../EffectBtTypes";
 
-type BtContext = MemberSharedRuntime<string>;
-type BtCapabilities = MemberBtCapabilities<string>;
-
-function currentCharacterOf(context: BtContext): unknown {
+function currentCharacterOf(context: CommonEffectBtContext): unknown {
 	if (!("character" in context)) return null;
 	return (context as { character?: unknown }).character ?? null;
 }
 
-function currentSkillIdOf(context: BtContext): string | null {
+function currentSkillIdOf(context: CommonEffectBtContext): string | null {
 	return (
 		context.currentSkill?.data?.templateId ??
 		context.currentSkill?.data?.template?.id ??
@@ -100,6 +96,6 @@ export const CommonEffectConditionPool = {
 			return false;
 		},
 	),
-} as const satisfies ConditionPool<BtContext, BtCapabilities>;
+} as const satisfies ConditionPool<CommonEffectBtContext, CommonEffectBtCapabilities>;
 
 export type CommonEffectConditionPool = typeof CommonEffectConditionPool;
