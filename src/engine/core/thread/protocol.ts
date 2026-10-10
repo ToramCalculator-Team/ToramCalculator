@@ -22,7 +22,7 @@ import type { IntentMessage } from "../MessageRouter/MessageRouter";
 import { EngineRunOutputSchema, ExecutionRecordingPolicySchema } from "../runOutput";
 import { SimulationTaskResultSchema, SimulationTaskSchema } from "../simulationTask";
 import { RuntimeConfigSchema } from "../types";
-import { MemberSnapshotSchema } from "../World/Member/Member";
+import { MemberSnapshotSchema } from "../World/Member/MemberSnapshot";
 import { ModifierSourceSchema } from "../World/Member/runtime/AttributeContainer/AttributeContainerTypes";
 import { WORLD_STATE_LAYOUT_VERSION } from "./worldStateBuffer";
 

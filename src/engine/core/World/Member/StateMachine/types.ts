@@ -8,58 +8,37 @@ import type { NestedSchema } from "../runtime/AttributeContainer/SchemaTypes";
 import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
 
 /**
- * 成员事件类型枚举
+ * 成员状态机事件类型枚举
  * 基础事件类型，所有成员类型都支持的事件
  */
-export interface MemberCreateEvent extends EventObject {
-	type: "create";
-}
-export interface MemberDestroyEvent extends EventObject {
-	type: "destroy";
-}
-export interface MemberUpdateEvent extends EventObject {
-	type: "update";
-	timestamp: number;
-}
-export interface MemberDeathEvent extends EventObject {
-	type: "死亡通知";
-	data?: unknown;
-}
 
-export interface MemberReviveEvent extends EventObject {
+export interface Death extends EventObject {
 	id: string;
-	type: "复活";
-	data: Record<string, never>;
+	type: "死亡";
+	data: unknown;
 }
-export interface MemberUseSkillEvent extends EventObject {
-	id: string;
-	type: "使用技能";
-	data: { skillId: string };
-}
-export interface MemberSelectTargetEvent extends EventObject {
+export interface SwitchTarget extends EventObject {
 	id: string;
 	type: "切换目标";
 	data: { targetId: string };
 }
-export interface MemberJumpEvent extends EventObject {
+export interface StartMove extends EventObject {
 	id: string;
-	type: "跳跃";
-	data: Record<string, never>;
+	type: "开始移动";
 }
-export interface MemberLandedEvent extends EventObject {
-	type: "落地";
+export interface StopMove extends EventObject {
+	id: string;
+	type: "停止移动";
 }
 
 /** 成员状态机公开接纳的公共控制事件；Player/Mob 专属事件通过 MemberFSMEvent 泛型显式组合。连续移动不在此列：它由移动段承载，不作为离散控制事件。 */
-export type MemberControlEvent = MemberReviveEvent | MemberUseSkillEvent | MemberSelectTargetEvent | MemberJumpEvent;
+export type MemberControlEvent = Death | SwitchTarget | StartMove | StopMove;
 
-export type MemberFSMEvent<TSpecificEvent extends EventObject = never> =
-	| MemberCreateEvent // 创建事件
-	| MemberDestroyEvent // 销毁事件
-	| MemberUpdateEvent // 更新事件
-	| MemberDeathEvent // 统一致死转换
-	| MemberLandedEvent
-	| MemberControlEvent
+export type MemberFSMEvent<TSpecificEvent extends EventObject> =
+	| Death // 死亡事件
+	| SwitchTarget // 切换目标事件
+	| StartMove // 开始移动事件
+	| StopMove // 停止移动事件
 	| TSpecificEvent;
 
 /**
@@ -70,7 +49,7 @@ export type MemberFSMEvent<TSpecificEvent extends EventObject = never> =
  * @template TExtraAttrKey 属性键的字符串联合类型
  */
 export type MemberStateMachine<
-	TFSMEvent extends EventObject = MemberFSMEvent, // 状态机事件类型
+	TFSMEvent extends MemberFSMEvent<never>, // 状态机事件类型
 	TFSMContext extends MemberFSMContext = MemberFSMContext, // 状态机上下文类型
 > = StateMachine<
 	TFSMContext, // TContext - 状态机上下文
@@ -119,10 +98,9 @@ export interface MemberStateMachineEnv<
  * @template TFSMEvent 状态机事件类型
  * @template TFSMContext 状态机上下文类型
  */
-export type MemberActor<
-	TFSMEvent extends EventObject = MemberFSMEvent,
-	TFSMContext extends MemberFSMContext = MemberFSMContext,
-> = Actor<MemberStateMachine<TFSMEvent, TFSMContext>>;
+export type MemberActor<TFSMEvent extends MemberFSMEvent<never>, TFSMContext extends MemberFSMContext> = Actor<
+	MemberStateMachine<TFSMEvent, TFSMContext>
+>;
 
 /**
  * 成员状态上下文通用接口

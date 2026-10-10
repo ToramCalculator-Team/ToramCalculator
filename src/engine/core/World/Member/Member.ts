@@ -1,7 +1,6 @@
-import { MEMBER_TYPE, type MemberType } from "@db/schema/enums";
+import type { MemberType } from "@db/schema/enums";
 import type { MovementBehaviorRecordData } from "@db/schema/jsons";
-import { createActor, type EventObject } from "xstate";
-import { z } from "zod/v4";
+import { createActor } from "xstate";
 import { createLogger } from "~/lib/logger";
 import type { EventCatalog } from "../../Event/EventCatalog";
 import type { EngineMember } from "../../engineScenarioSchema";
@@ -16,15 +15,14 @@ import {
 	type MemberControlBehaviorCapabilities,
 } from "./ControlBehavior/Bindings";
 import { ControlBehaviorRuntime } from "./ControlBehavior/ControlBehaviorRuntime";
-import { createEffectBindings } from "./EffectBehavior/Bindings";
 import { EffectBtManager } from "./EffectBehavior/EffectBtManager";
 import type { EffectBtCapabilities, EffectBtManagerEnv } from "./EffectBehavior/EffectBtTypes";
+import type { MemberBaseNestedSchema } from "./MemberBaseSchema";
+import type { MemberSnapshot } from "./MemberSnapshot";
 import { AttributeThresholdSource } from "./ProcBus/AttributeThresholdSource";
 import { ProcBus } from "./ProcBus/ProcBus";
 import type { MemberRuntimeServices } from "./RuntimeServices";
-import type { AttributeContainer } from "./runtime/AttributeContainer/AttributeContainer";
-import { AttributeSnapshotSchema } from "./runtime/AttributeContainer/AttributeContainerTypes";
-import type { NestedSchema } from "./runtime/AttributeContainer/SchemaTypes";
+import { AttributeContainer } from "./runtime/AttributeContainer/AttributeContainer";
 import type { MemberMovementInput, MemberSharedRuntime } from "./runtime/SharedRuntime";
 import {
 	InMemoryStatusInstanceStore,
@@ -43,22 +41,6 @@ import type {
 const log = createLogger("Member");
 const MOVEMENT_EPSILON = 0.0001;
 
-export const MemberSnapshotSchema = z.object({
-	attrs: AttributeSnapshotSchema,
-	id: z.string(),
-	type: z.enum(MEMBER_TYPE),
-	name: z.string(),
-	campId: z.string(),
-	teamId: z.string(),
-	position: z.object({
-		x: z.number(),
-		y: z.number(),
-		z: z.number(),
-	}),
-});
-
-export type MemberSnapshot = z.output<typeof MemberSnapshotSchema>;
-
 /**
  * Member 聚合根：薄壳设计，持有三层（数据层、计算层、编排层）并协调其交互。
  *
@@ -67,10 +49,12 @@ export type MemberSnapshot = z.output<typeof MemberSnapshotSchema>;
  * 2. 唯一主动行为：通过 DomainEventBus 发布瞬时事件
  * 3. 业务逻辑在 FSM 内：伤害处理、垂直运动、落地检测都在 FSM
  * 4. 三层职责清晰：通过注释分割，不创建独立类
+ *
+ * 已知的成员类型：玩家、伙伴、佣兵、宠物、怪物、使魔、死灵召唤物、狩猎汪、魔像
  */
 export abstract class Member<
-	TSchema extends NestedSchema,
-	TSpecificEvent extends EventObject,
+	TSchema extends MemberBaseNestedSchema,
+	TSpecificEvent extends MemberFSMEvent<never>,
 	TFSMContext extends MemberFSMContext,
 	TRuntime extends MemberSharedRuntime<TSchema>,
 > implements WorldObservable
@@ -84,7 +68,7 @@ export abstract class Member<
 	readonly data: EngineMember;
 
 	// ==================== 数据层：状态容器 ====================
-	private readonly dataSchema: NestedSchema;
+	private readonly dataSchema: TSchema;
 	private readonly attributeContainer: AttributeContainer<TSchema>;
 	private readonly statusStore: MutableStatusInstanceStore;
 	private readonly runtime: TRuntime;
@@ -118,19 +102,17 @@ export abstract class Member<
 		campId: string,
 		teamId: string,
 		memberData: EngineMember,
-		dataSchema: NestedSchema,
-		attributeContainer: AttributeContainer<TSchema>,
+		dataSchema: TSchema,
 		runtime: TRuntime,
 		services: MemberRuntimeServices,
 		domainEventBus: ((event: MemberDomainEvent) => void) | null,
 		pipelineResolverService: PipelineResolverService | null,
 		eventCatalog: EventCatalog | null,
-		position?: { x: number; y: number; z: number },
+		position: { x: number; y: number; z: number },
 		controlBehaviorBindings: (capabilities: MemberControlBehaviorCapabilities) => Record<string, unknown> = (
 			capabilities,
 		) => createCommonControlBehaviorBindings(capabilities),
-		effectBindings: (capabilities: EffectBtCapabilities<TSchema>) => Record<string, unknown> = (capabilities) =>
-			createEffectBindings({} as MemberSharedRuntime<TSchema> & Record<string, unknown>, {}, {}, capabilities),
+		effectBindings: (capabilities: EffectBtCapabilities<TSchema>) => Record<string, unknown>,
 	) {
 		// 身份
 		this.id = memberData.id;
@@ -142,7 +124,7 @@ export abstract class Member<
 
 		// 数据层
 		this.dataSchema = dataSchema;
-		this.attributeContainer = attributeContainer;
+		this.attributeContainer = new AttributeContainer(dataSchema);
 		this.runtime = runtime;
 		this.runtime.statusTags = this.runtime.statusTags ?? [];
 		if (position) {
@@ -159,7 +141,7 @@ export abstract class Member<
 		this.domainEventBus = domainEventBus;
 
 		// 初始化 AttributeThresholdSource
-		this.attributeThresholdSource = new AttributeThresholdSource<TSchema>(this.attributeContainer, null);
+		this.attributeThresholdSource = new AttributeThresholdSource(this.attributeContainer, null);
 
 		// 初始化 ProcBus 和事件路由
 		if (eventCatalog) {
@@ -256,7 +238,7 @@ export abstract class Member<
 
 		// 致死事件订阅
 		bus.subscribeByName(`member:${this.id}:death`, ["damage.fatal"], null, (event) => {
-			this.actor.send({ type: "死亡通知", data: event.payload });
+			this.actor.send({ id: this.id, type: "死亡", data: event.payload });
 		});
 	}
 
@@ -389,9 +371,6 @@ export abstract class Member<
 	}
 
 	private tickOrchestrationLayer(tick: SimulationTickContext, movementInput: MemberMovementInput | null): void {
-		// FSM update
-		this.actor.send({ type: "update", timestamp: tick.currentTimeMs });
-
 		// 解析并积分水平移动
 		this.resolveAndIntegrateMovement(tick, movementInput);
 
@@ -650,6 +629,9 @@ export abstract class Member<
 			tickIndex,
 			stats: (memberIdOrSelector: string, path: string) => {
 				if (memberIdOrSelector === "self" || memberIdOrSelector === this.id) {
+					if (!this.attributeContainer.hasKey(path)) {
+						throw new Error(`runPipeline(${pipelineName})：属性路径不存在 (${memberIdOrSelector}.${path})`);
+					}
 					return this.attributeContainer.getValue(path);
 				}
 				log.warn(
