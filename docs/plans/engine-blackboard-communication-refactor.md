@@ -1,578 +1,258 @@
 # 引擎黑板通信架构重构计划
 
-**创建时间**: 2024-10-10  
 **状态**: 待执行  
-**预计工作量**: 3-5 天
+**预计工作量**: 3-5 天  
+**核心决策**: 快照模式；SAB 结构由写入者架构决定；模拟时间留在引擎；跨帧调度归 World
 
 ## 问题诊断
 
-当前引擎与外部模块的通信架构存在以下问题：
+1. **引擎持有外部回调**：`systemMessageSender`、`controllerMovementInputSource`、`realtimeStateCommitCallback`，违反"引擎是黑盒模拟器"的定位。
+2. **运行时绑定管理复杂**：`ControlBindingManager` 维护 controllerId → memberId，需要 `bind/unbind` RPC，控制器必须等引擎就绪才能绑定。
+3. **通信机制不一致**：连续状态走 SAB，离散事件走推送回调，遥测走定时推送。
+4. **输入黑板布局依赖成员列表**：需要运行时计算布局，控制器无法在场景加载前创建，切换控制对象需要改槽位。
+5. **拦截点分散**：来源授权在 `GameEngine.processIntent`（查 `controlMode`）和 `Member.submitControlInput`（查 `behaviorMode`）各判一次，后者静默丢弃、判决不可观测。
+6. **断链**：`GameEngine.ts:887` 调用 `member.submitExternalControlInput`，但 `Member` 上只有 `submitControlInput(event, source)`；`"manual"` 分支无任何调用方。
 
-1. **引擎持有外部回调**
-   - `systemMessageSender` 回调用于推送域事件、遥测
-   - `ControllerEventProjector` 持有 `domainEventBatchSender`
-   - 违反"引擎是黑盒模拟器"的定位
+## 核心原则
 
-2. **运行时绑定管理复杂**
-   - `ControlBindingManager` 维护 controllerId → memberId 映射
-   - 需要 `bind/unbind` RPC 建立绑定
-   - 控制器必须等待引擎启动后才能绑定
+### 1. 写入者决定 SAB 结构，读取者固定解析
 
-3. **通信机制不一致**
-   - 连续状态（世界状态）：SAB
-   - 离散事件（域事件）：推送回调
-   - 遥测：定时推送
-   - 生命周期：推送快照
+两个 SAB 遵循同一模式：**架构静态、数据动态、双方独立按预定义规则解析，不做运行时协商。**
 
-4. **路由机制不对称**
-   - 输入路由：控制器写入 SAB → 引擎查询绑定表 → 路由到成员
-   - 输出路由：引擎调用回调 → 主线程分发
+| SAB | 结构决定者 | 读取者 | 解析规则 |
+|-----|-----------|--------|---------|
+| 输入 | 控制器架构 | 引擎 | 固定槽位偏移 |
+| 输出 | 引擎架构 | 渲染器 / UI | 固定头部 + 动态数组 |
 
-5. **协议文件混乱**
-   - `protocol.ts` (384行) 混合了：
-     - 生命周期状态机协议
-     - 引擎 RPC (16种)
-     - 推送消息定义
-     - 世界状态布局
-     - 错误类型
+### 2. 快照模式
 
-## 重构目标
+每 tick 从输入 SAB 生成不可变 `InputSnapshot`，向输出 SAB 写入完整 `OutputSnapshot`。引擎不持有外部回调。
 
-### 核心原则
+参考：Bevy `Input<T>` 资源、Unity DOTS `InputData` singleton、GGPO 帧输入快照。
 
-**引擎是无状态的黑板读写器**：
-- 从输入黑板读取
-- 向输出黑板写入
-- 不持有外部回调
-- 不维护绑定状态
+### 3. 模拟时间归引擎，World 只接收
 
-**输入输出完全对称**：
-- 输入 SAB：槽位对应成员（消费方是引擎）
-- 输出 SAB：槽位对应控制器/渲染器（消费方是外部）
-- 布局规则固定可预测，双方独立计算
+`tickIndex` / `currentTimeMs` 留在引擎，理由：
 
-### 目标架构
+- 时间推进是**条件性**的（`GameEngine.ts:955-963`）：仅当 `hasPendingEvents === false` 且 `pendingTickTasks === 0` 时才前进。这两个条件都是引擎级计数，搬到 World 会在两处各存一半决策状态。
+- World 现在本来就没有时间字段，只在参数里收 `SimulationTickContext`。
+- `EngineCheckpoint` 已经同时装 `tickIndex` / `currentTimeMs` / `world` 并一起恢复，无需改结构。
+
+World 需要的能力只有一项：**能基于本 tick 的 `currentTimeMs` 把相对延迟换算成绝对模拟刻度**，因为队列按该刻度分桶。它从 `World.tick(tick, ...)` 的第一个参数取，不需要自己推进或存储时间。
+
+### 4. 目标架构
 
 ```
-┌─────────────────────────────────────────┐
-│ 主线程                                   │
-│                                         │
-│  ┌───────────┐         ┌──────────────┐│
-│  │ 控制器 A  │         │ 渲染器       ││
-│  │           │         │              ││
-│  │ setTarget │         │              ││
-│  │ (member1) │         │              ││
-│  └─────┬─────┘         └──────┬───────┘│
-│        │ 写入槽位 0            │ 读取槽位││
-│        ↓                       ↓        │
-│  ┌──────────────────────────────────┐  │
-│  │ 输入 SAB          输出 SAB       │  │
-│  │ [槽位0→成员1]    [槽位0→控制器A]│  │
-│  │ [槽位1→成员2]    [槽位1→渲染器] │  │
-│  └──────────────────────────────────┘  │
-└─────────────────────────────────────────┘
-           ↑                       ↑
-           │ 读取                  │ 写入
-           │                       │
-┌─────────────────────────────────────────┐
-│ Worker                                  │
-│                                         │
-│  ┌──────────────────────────────────┐  │
-│  │ GameEngine                       │  │
-│  │                                  │  │
-│  │  tick() {                        │  │
-│  │    // 读取输入黑板               │  │
-│  │    for slot in inputSlots:      │  │
-│  │      input = readSlot(slot)     │  │
-│  │      member = slotToMember[slot]│  │
-│  │      member.process(input)      │  │
-│  │                                  │  │
-│  │    // 执行模拟逻辑               │  │
-│  │    world.tick()                 │  │
-│  │                                  │  │
-│  │    // 写入输出黑板               │  │
-│  │    for consumer in consumers:   │  │
-│  │      slot = consumer.slotIndex  │  │
-│  │      writeSlot(slot, output)    │  │
-│  │  }                               │  │
-│  └──────────────────────────────────┘  │
-└─────────────────────────────────────────┘
+┌──────────────────── 主线程 ────────────────────┐
+│  控制器 A（槽位 0）              渲染器 / UI     │
+│   写 targetId + 意图              读完整世界状态 │
+└────────┬──────────────────────────────┬────────┘
+         ↓ 写                          ↓ 读
+    [输入 SAB: 控制器槽位]      [输出 SAB: 世界状态]
+         ↑                              ↑
+         │ 生成快照                      │ 写入快照
+┌────────┴──────────────────────────────┴────────┐
+│ Worker                                          │
+│  GameEngine.stepTick() {                        │
+│    input = InputSnapshot.fromBuffer(inputSAB)   │
+│    for (cmd of input.commands)                  │
+│      dispatchMemberEvent(cmd)      // 命令转交   │
+│    world.tick(context, input)      // 传快照     │
+│    OutputSnapshot.fromEngine(this)              │
+│      .writeToBuffer(outputSAB)                  │
+│  }                                              │
+│                                                 │
+│  World.tick(context, inputSnapshot) {           │
+│    按 targetId 取成员意图，回退 AI 采样          │
+│    member.tick(context, movementInput)          │
+│  }                                              │
+└─────────────────────────────────────────────────┘
 ```
+
+同一份快照交给两个消费者，各取所需：
+
+```
+InputSnapshot
+      ├── commands ──→ GameEngine.dispatchMemberEvent() → EventQueue
+      └── 整体    ──→ World.tick(context, snapshot) → member.tick()
+```
+
+与输出侧对称：引擎写一份完整世界状态，渲染器和 UI 各读所需。
+
+## 关键设计
+
+### 输入 SAB：静态控制器槽位
+
+```typescript
+// src/engine/core/input/InputLayout.ts
+export const INPUT_LAYOUT = {
+  version: 1,
+  maxControllers: 8,
+  slotSize: 256,
+  headerSize: 64,
+  totalSize: 8 * 256 + 64,
+} as const;
+
+export interface ControllerInputSlot {
+  enabled: boolean;
+  targetId: string;                        // 控制对象身份，运行时可改
+  movement: { direction: { x: number; z: number }; intensity: number };
+  commandQueue: MemberControlCommand[];
+}
+```
+
+布局不含成员信息，所以**不需要计算**：控制器可在场景加载前创建，切换控制对象只需重写 `targetId`。运行时新增控制器只要不超过 `maxControllers`。
+
+### 输出 SAB：完整世界状态
+
+```typescript
+// src/engine/core/OutputSnapshot.ts
+export class OutputSnapshot {
+  constructor(
+    readonly members: readonly MemberState[],
+    readonly areas: readonly AreaState[],
+    readonly events: readonly DomainEvent[],
+    readonly telemetry: EngineTelemetry,
+    readonly tickIndex: number,
+    readonly simulationTimeMs: number,
+  ) {}
+}
+```
+
+头部固定（`tickIndex` / `simulationTimeMs` / 各数组长度与偏移），后接三个动态数组加定长遥测。引擎不知道谁在读；渲染器读 `members` / `areas`，UI 读 `events`，调试读 `telemetry`。**不引入 `outputConsumers` 配置。**
+
+### 拦截点分三层，每层只问一个问题
+
+| 层 | 位置 | 唯一职责 | 判定依据 |
+|----|------|---------|---------|
+| 运行级 | 引擎 | 这次运行是否接受外部输入 | `acceptExternalIntents`、输入窗口（`runOutput.isRecording()`） |
+| 授权级 | Member | 该成员现在听哪个来源 | `behaviorMode` vs `source`，**唯一一处** |
+| 合法性 | FSM | 该成员此刻能否执行该动作 | guard + `movement-input-enabled` 等标签 |
+
+要点：
+
+- 删除 `GameEngine.processIntent` 里的 `controlMode` 检查（`GameEngine.ts:650`）。控制模式的权威在成员自身：`setBehaviorMode` 会同步 `pause()` / `resume()` 它的 AI 行为树，引擎持有的是副本。
+- `Member.submitControlInput` 的判定必须**产生可观测判决**，不能保持 `log.warn` + `return` 的静默丢弃——那会让 `RunOutput` 留下永不判决的 pending input，正是 `GameEngine.ts:825` 的 `hasPendingInput` 兜底在补救的情况。
+- FSM 状态合法性留在 FSM，继续走 `skill_input_accepted` / `skill_input_rejected` 一类域事件。
+- 全部输入判决走输出侧异步通路，因为黑板设计下没有同步返回值可用。
+
+### 跨帧调度与成员路由归 World
+
+`EventQueue` 的键是模拟时间、内容是成员 FSM 消息，且文件已在 `src/engine/core/World/EventQueue/`，而 `World.ts:19` 早已声明 `private eventQueue: EventQueue;`（未赋值）——这是被中断的边界迁移。
+
+下放后：
+
+- **成员路由消失**：`World.tick` 拿到的快照已带 `targetId`，`memberManager.getMember(slot.targetId)` 一步到位。tick 内事件（伤害段、区域）同理，成员知道自己是谁，直接入队。
+- **`MessageRouter` 整个删除**。它承载三件事，分别处理：
+
+| 原职责 | 处理 |
+|--------|------|
+| 绑定 / 解绑控制对象 | 删除，槽位 `targetId` 取代 `ControlBindingManager` |
+| 找成员 + 入队 | 删除，World 读快照时一步完成 |
+| 准入策略（`acceptExternalIntents` / 输入窗口 / `controlMode`） | 按上表分层搬迁，不可随类丢弃 |
+| 输入录制（`appendInput` / `acceptInput` / `rejectInput`） | 跟随准入判决搬迁 |
+| `MessageRouterStats` 与 `send_intent` RPC | 删除 |
+
+生命周期 RPC（`load_scenario` / `start` / `pause` / `resume`）不是成员输入，保留。
+
+- **闭包时间源必须删除**：`EventQueue` 现在持有 `() => this.currentTimeMs`（`EventQueue.ts:27, 65`）。搬进 World 后若保留，等于 World 通过函数指针读引擎私有可变状态——比参数传递更耦合且不可见。`getDue` / `removeProcessedDue` 已收参数，只剩 `createSnapshot()` 走闭包，改为 `createSnapshot(currentTimeMs: number)`。
+
+- **两条入队入口**需要区分（都归 World，区别只在时间锚点来源）：
+  - tick 内派发：基于 `World.tick` 收到的 `currentTimeMs`。下放后 `instantDamageScheduler` 回调（`World.ts:53` 第三参数）不再需要。
+  - tick 外注入（外部 RPC）：由引擎带上自己的 `currentTimeMs` 转给 World。
 
 ## 实施步骤
 
-### 阶段 1: 拆分 protocol.ts (0.5天)
-
-将 `src/engine/core/thread/protocol.ts` 拆分为：
+### 阶段 1：拆分 protocol.ts
 
 ```
-src/engine/core/thread/protocol/
-├── lifecycle.ts          # 生命周期双端协议
-├── rpc.ts                # 引擎 RPC 契约
-├── push.ts               # 推送消息定义（待删除）
-├── inputBuffer.ts        # 输入 SAB 布局与编解码
-├── outputBuffer.ts       # 输出 SAB 布局与编解码
-├── errors.ts             # 协议错误分类
-└── index.ts              # 统一导出
+src/engine/core/
+├── InputSnapshot.ts          # 输入快照（顶层领域模型）
+├── OutputSnapshot.ts         # 输出快照（顶层领域模型）
+├── input/
+│   ├── InputLayout.ts        # 静态槽位定义
+│   └── inputBufferCodec.ts   # 写入器与解码
+├── output/
+│   └── outputBufferCodec.ts
+└── thread/protocol/
+    ├── lifecycle.ts
+    ├── rpc.ts                # 移除 send_intent
+    └── errors.ts
 ```
 
-**验证**：所有现有导入路径正常，测试通过。
+Snapshot 是引擎核心领域模型，放顶层；布局与编解码是配套逻辑，放对应子目录；线程通信协议留在 `thread/protocol/`。
 
-### 阶段 2: 实现输入 SAB 布局 (1天)
+### 阶段 2：输入快照与静态槽位
 
-#### 2.1 定义布局计算规则
+1. `InputLayout.ts` 定义 `INPUT_LAYOUT` 与 `ControllerInputSlot`。
+2. `InputSnapshot.fromBuffer(buffer)` 遍历槽位，跳过未启用项；提供 `groupByTarget()` 供 World 使用。
+3. `InputBufferWriter` 提供 `writeTargetId` / `writeMovement` / `writeCommand` / `enable`。
+4. `GameEngine.setInputBuffer(buffer)` 只校验 `byteLength >= INPUT_LAYOUT.totalSize`，不做布局计算。
+5. `GameEngine.stepTick()` 生成快照 → 转交 `commands` → `world.tick(context, inputSnapshot)`。
+6. `MemberController` 改为 `(controllerId, inputBuffer)` 构造，`setTarget` 只重写 `targetId`。
 
-```typescript
-// src/engine/core/thread/protocol/inputBuffer.ts
+### 阶段 3：输出快照
 
-export interface InputSlotLayout {
-  slotIndex: number;
-  memberId: string;
-  movementOffset: number;      // 连续移动状态区域
-  eventQueueOffset: number;    // 离散事件队列区域
-  eventQueueCapacity: number;
-}
+1. `OutputSnapshot.fromEngine(engine)` 收集成员、区域、本帧事件与遥测。
+2. `writeToBuffer` / `fromBuffer` 实现固定头部 + 动态数组编解码。
+3. `GameEngine.setOutputBuffer(buffer)` 不依赖任何消费者配置。
+4. 渲染器 / UI 各自 `OutputSnapshot.fromBuffer` 后按需取用。
 
-export function calculateInputLayout(
-  members: EngineMember[]
-): Map<string, InputSlotLayout> {
-  const sorted = [...members].sort((a, b) => a.id.localeCompare(b.id));
-  const layout = new Map<string, InputSlotLayout>();
-  
-  let currentOffset = HEADER_SIZE;
-  sorted.forEach((member, index) => {
-    const movementOffset = currentOffset;
-    const eventQueueOffset = movementOffset + MOVEMENT_STATE_SIZE;
-    
-    layout.set(member.id, {
-      slotIndex: index,
-      memberId: member.id,
-      movementOffset,
-      eventQueueOffset,
-      eventQueueCapacity: INPUT_EVENT_QUEUE_CAPACITY
-    });
-    
-    currentOffset = eventQueueOffset + 
-                    (INPUT_EVENT_QUEUE_CAPACITY * EVENT_SLOT_SIZE);
-  });
-  
-  return layout;
-}
-```
+### 阶段 4：World 接手调度与输入应用
 
-#### 2.2 实现 Writer 和 Reader
+1. `World` 构造 `EventQueue`，删除 `timeGetter` 闭包。
+2. `World.tick` 接收 `InputSnapshot`，按 `targetId` 应用控制器意图；无意图的成员回退 `sampleAiMovementInput`。
+3. 成员控制输入统一走 `member.submitControlInput(event, "manual")`——修复当前断链，`"manual"` 分支由此获得唯一调用方。
+4. `WorldCheckpoint` 吸收 `eventQueue`；`EngineCheckpoint` 移除该字段。
+5. 删除 `instantDamageScheduler` 回调，伤害段直接入队。
 
-```typescript
-export class InputBufferWriter {
-  constructor(
-    private buffer: SharedArrayBuffer,
-    private layout: Map<string, InputSlotLayout>
-  ) {}
-  
-  writeMovement(slotIndex: number, movement: MovementState): void {
-    const slot = this.getSlotByIndex(slotIndex);
-    // 写入连续移动状态
-  }
-  
-  writeEvent(slotIndex: number, event: ControlEvent): boolean {
-    const slot = this.getSlotByIndex(slotIndex);
-    // 写入离散事件队列
-  }
-}
+### 阶段 5：删除旧机制
 
-export class InputBufferReader {
-  constructor(
-    private buffer: SharedArrayBuffer,
-    private layout: Map<string, InputSlotLayout>
-  ) {}
-  
-  readSlot(slotIndex: number): MemberInput {
-    const slot = this.getSlotByIndex(slotIndex);
-    return {
-      movement: this.readMovement(slot),
-      events: this.readEvents(slot)
-    };
-  }
-}
-```
-
-#### 2.3 修改控制器
-
-```typescript
-// src/engine/controller/MemberController.ts
-
-export class MemberController {
-  private currentSlotIndex: number | null = null;
-  private inputWriter: InputBufferWriter;
-  private inputLayout: Map<string, InputSlotLayout>;
-  
-  constructor(
-    inputBuffer: SharedArrayBuffer,
-    scenarioData: EngineScenarioData
-  ) {
-    // 计算布局（不需要等待引擎）
-    this.inputLayout = calculateInputLayout(scenarioData.members);
-    this.inputWriter = new InputBufferWriter(inputBuffer, this.inputLayout);
-  }
-  
-  setTarget(memberId: string): void {
-    const slot = this.inputLayout.get(memberId);
-    if (!slot) throw new Error(`Member ${memberId} not in layout`);
-    this.currentSlotIndex = slot.slotIndex;
-  }
-  
-  updateMovement(direction: Vector2, intensity: number): void {
-    if (this.currentSlotIndex === null) {
-      throw new Error("No target selected");
-    }
-    this.inputWriter.writeMovement(this.currentSlotIndex, {
-      enabled: true,
-      moving: true,
-      direction,
-      intensity
-    });
-  }
-  
-  castSkill(skillId: string): boolean {
-    if (this.currentSlotIndex === null) {
-      throw new Error("No target selected");
-    }
-    return this.inputWriter.writeEvent(this.currentSlotIndex, {
-      type: "使用技能",
-      data: { skillId }
-    });
-  }
-}
-```
-
-**验证**：控制器可以在引擎启动前创建，可以本地切换控制对象。
-
-### 阶段 3: 实现输出 SAB 布局 (1.5天)
-
-#### 3.1 扩展场景配置
-
-```typescript
-// src/engine/core/engineScenarioSchema.ts
-
-export interface EngineScenarioData {
-  members: EngineMember[];
-  
-  // 新增：输出消费者配置
-  outputConsumers?: {
-    controllers?: Array<{
-      id: string;
-      subscribedMembers: string[];
-      outputTypes: OutputType[];
-    }>;
-    renderers?: Array<{
-      id: string;
-      type: "scene" | "ui";
-      subscribedMembers: string[];
-      outputTypes: OutputType[];
-    }>;
-  };
-}
-
-export type OutputType = 
-  | "domain_events"
-  | "telemetry"
-  | "world_state"
-  | "animation"
-  | "ui_data";
-```
-
-#### 3.2 定义输出布局计算规则
-
-```typescript
-// src/engine/core/thread/protocol/outputBuffer.ts
-
-export interface OutputSlotLayout {
-  slotIndex: number;
-  consumerId: string;
-  consumerType: "controller" | "renderer";
-  subscribedMembers: string[];
-  outputTypes: OutputType[];
-  eventQueueOffset: number;
-  eventQueueCapacity: number;
-  telemetryOffset: number;
-  worldStateOffset: number;
-}
-
-export function calculateOutputLayout(
-  outputConsumers: OutputConsumers
-): Map<string, OutputSlotLayout> {
-  const allConsumers = [
-    ...(outputConsumers.controllers || []).map(c => 
-      ({ ...c, consumerType: "controller" as const })),
-    ...(outputConsumers.renderers || []).map(r => 
-      ({ ...r, consumerType: "renderer" as const }))
-  ].sort((a, b) => a.id.localeCompare(b.id));
-  
-  const layout = new Map<string, OutputSlotLayout>();
-  let currentOffset = HEADER_SIZE;
-  
-  allConsumers.forEach((consumer, index) => {
-    const eventQueueOffset = currentOffset;
-    const telemetryOffset = eventQueueOffset + 
-      (OUTPUT_EVENT_QUEUE_CAPACITY * EVENT_SLOT_SIZE);
-    const worldStateOffset = telemetryOffset + TELEMETRY_SIZE;
-    
-    layout.set(consumer.id, {
-      slotIndex: index,
-      consumerId: consumer.id,
-      consumerType: consumer.consumerType,
-      subscribedMembers: consumer.subscribedMembers,
-      outputTypes: consumer.outputTypes,
-      eventQueueOffset,
-      eventQueueCapacity: OUTPUT_EVENT_QUEUE_CAPACITY,
-      telemetryOffset,
-      worldStateOffset
-    });
-    
-    currentOffset = worldStateOffset + WORLD_STATE_SIZE;
-  });
-  
-  return layout;
-}
-```
-
-#### 3.3 实现输出 Writer 和 Reader
-
-```typescript
-export class OutputBufferWriter {
-  constructor(
-    private buffer: SharedArrayBuffer,
-    private layout: Map<string, OutputSlotLayout>
-  ) {}
-  
-  writeDomainEvents(slotIndex: number, events: DomainEvent[]): void {
-    // 写入事件队列
-  }
-  
-  writeTelemetry(slotIndex: number, telemetry: EngineTelemetry): void {
-    // 写入遥测数据
-  }
-  
-  writeWorldState(slotIndex: number, state: WorldState): void {
-    // 写入世界状态
-  }
-}
-
-export class OutputBufferReader {
-  constructor(
-    private buffer: SharedArrayBuffer,
-    private layout: Map<string, OutputSlotLayout>
-  ) {}
-  
-  pollEvents(slotIndex: number): DomainEvent[] {
-    // 读取并标记已消费
-  }
-  
-  readTelemetry(slotIndex: number): EngineTelemetry | null {
-    // 读取最新遥测
-  }
-  
-  readWorldState(slotIndex: number): WorldState | null {
-    // 读取最新世界状态
-  }
-}
-```
-
-#### 3.4 修改引擎输出路由
-
-```typescript
-// src/engine/core/GameEngine.ts
-
-export class GameEngine {
-  private outputLayout: Map<string, OutputSlotLayout>;
-  private outputWriter: OutputBufferWriter;
-  
-  loadScenario(data: EngineScenarioData) {
-    // 计算输出布局
-    this.outputLayout = calculateOutputLayout(
-      data.outputConsumers || { controllers: [], renderers: [] }
-    );
-    
-    // ... 创建成员
-  }
-  
-  setOutputBuffer(buffer: SharedArrayBuffer): void {
-    this.outputWriter = new OutputBufferWriter(buffer, this.outputLayout);
-  }
-  
-  tick() {
-    // 读取输入
-    for (const [slotIndex, memberId] of this.inputSlotMap) {
-      const input = this.inputReader.readSlot(slotIndex);
-      const member = this.world.getMember(memberId);
-      member.processInput(input);
-    }
-    
-    // 执行模拟
-    this.world.tick(...);
-    
-    // 路由输出
-    this.routeOutputs();
-  }
-  
-  private routeOutputs(): void {
-    for (const [consumerId, slot] of this.outputLayout) {
-      
-      // 收集订阅的成员的输出
-      for (const memberId of slot.subscribedMembers) {
-        const member = this.world.getMember(memberId);
-        
-        if (slot.outputTypes.includes("domain_events")) {
-          const events = this.domainEventBus.getEventsFor(memberId);
-          this.outputWriter.writeDomainEvents(slot.slotIndex, events);
-        }
-        
-        if (slot.outputTypes.includes("telemetry")) {
-          const telemetry = this.getTelemetry();
-          this.outputWriter.writeTelemetry(slot.slotIndex, telemetry);
-        }
-        
-        if (slot.outputTypes.includes("world_state")) {
-          const state = member.getWorldState();
-          this.outputWriter.writeWorldState(slot.slotIndex, state);
-        }
-      }
-    }
-  }
-}
-```
-
-**验证**：引擎不再持有 `systemMessageSender` 回调，所有输出写入黑板。
-
-### 阶段 4: 删除旧通信机制 (0.5天)
-
-#### 4.1 删除组件
-
-- `src/engine/core/Controller/ControlBindingManager.ts`
-- `src/engine/core/Controller/ControllerEndpoint.ts` (ControllerRegistry)
-- `src/engine/core/DomainEvents/ControllerEventProjector.ts`
-- `src/engine/core/MessageRouter/MessageRouter.ts` 的绑定管理逻辑
-
-#### 4.2 删除 RPC
-
-- `bind/unbind` RPC 定义
-- 相关的 RPC 处理逻辑
-
-#### 4.3 删除推送逻辑
-
-- `GameEngine.systemMessageSender`
-- `GameEngine.postSystemMessage()`
-- `engine_telemetry` 定时推送
-- `domain_event_batch` 推送
-
-#### 4.4 简化 MessageRouter
-
-```typescript
-// MessageRouter 简化为纯粹的槽位分发器
-class MessageRouter {
-  constructor(
-    private world: World,
-    private slotToMemberMap: Map<number, string>
-  ) {}
-  
-  processSlotInput(slotIndex: number, input: MemberInput): void {
-    const memberId = this.slotToMemberMap.get(slotIndex);
-    if (!memberId) return;
-    
-    const member = this.world.getMember(memberId);
-    
-    // 连续输入
-    if (input.movement.enabled) {
-      member.updateMovementInput(input.movement);
-    }
-    
-    // 离散事件
-    for (const event of input.events) {
-      member.submitControlInput(event);
-    }
-  }
-}
-```
-
-**验证**：所有旧推送路径删除，测试通过。
-
-### 阶段 5: 更新测试 (0.5天)
-
-#### 5.1 引擎测试
-
-- 删除 `systemMessageSender` mock
-- 改用输出 SAB 读取验证输出
-- 测试布局计算规则一致性
-
-#### 5.2 控制器测试
-
-- 测试本地切换控制对象
-- 测试在引擎启动前创建控制器
-- 测试槽位写入正确性
-
-#### 5.3 集成测试
-
-- 端到端测试：控制器输入 → 引擎处理 → 输出读取
-- 测试多控制器场景
-- 测试事件队列容量溢出
+- 删除：`MessageRouter/`、`ControlBindingManager`、`ControllerRegistry`、`ControllerEventProjector`。
+- 删除回调：`systemMessageSender`、`controllerMovementInputSource`、`realtimeStateCommitCallback`。
+- 删除 RPC：`bind` / `unbind` / `attach_controller_input` / `send_intent` / `engine_telemetry` / `domain_event_batch`。
+- `Simulation.worker.ts` 的 `controllerInputReaders` 映射与 `lastStableState` 保留逻辑随之下线。
+- 按分层表搬迁准入策略，删除 `GameEngine.ts:650` 的 `controlMode` 检查。
+- `Member.submitControlInput` 的来源判定改为产出可观测判决。
 
 ## 验收标准
 
-- [ ] `protocol.ts` 拆分为独立职责的文件
-- [ ] 控制器可以在引擎启动前创建
-- [ ] 控制器可以本地切换控制对象，无需通知引擎
+- [ ] 输入 SAB 使用静态控制器槽位，控制器可在场景加载前创建、运行时可切换 `targetId`
+- [ ] 输出 SAB 是完整世界状态，引擎不需要 `outputConsumers` 配置即可运行
+- [ ] `GameEngine` 不解析 `targetId`、不访问成员运行时状态，只做命令转交
+- [ ] `World.tick` 接收 `InputSnapshot`，承担控制器 / AI 输入选择
+- [ ] 拦截点收敛为三层，来源授权只在 `Member` 判定一处
+- [ ] 任何输入拒绝都产生可观测判决，无静默丢弃
+- [ ] `EventQueue` 归 `World`，不再持有引擎时间闭包
+- [ ] `MessageRouter`、`ControlBindingManager` 及其相关 RPC 删除
 - [ ] 引擎不持有任何外部回调
-- [ ] 删除 `ControlBindingManager`、`ControllerRegistry`
-- [ ] 删除 `bind/unbind` RPC
-- [ ] 删除所有推送逻辑（`engine_telemetry`、`domain_event_batch`）
-- [ ] 输入输出布局规则在主线程和引擎计算结果一致
-- [ ] 所有现有测试通过
-- [ ] 引擎可以在没有消费者的情况下独立运行
 
 ## 风险与缓解
 
-### 风险 1: 布局计算规则不一致
+| 风险 | 缓解 |
+|------|------|
+| 主线程与 Worker 的槽位偏移不一致 | 布局常量共享同一模块；场景加载时校验 SAB 长度与 `version` |
+| 命令队列容量不足 | 初始 1024；溢出记录诊断日志并纳入输出遥测 |
+| 输入同步反馈消失影响控制器体验 | 输入判决走输出侧异步通路，`inputId` 全链路保留 |
+| 迁移期间功能损坏 | 分阶段验证，每阶段跑通现有测试 |
 
-**风险**：主线程和引擎的布局计算实现不一致，导致槽位映射错误。
+## 相关文档与 ADR
 
-**缓解**：
-- 共享布局计算代码（移到独立模块）
-- 添加布局一致性测试
-- 在场景加载时校验 SAB 大小和布局版本
+需要更新：
 
-### 风险 2: 离散事件容量不足
+- `src/engine/core/GameEngine.md`（快照模式、时间归属）
+- `src/engine/core/World/World.md`（接收快照、持有 EventQueue）
+- `src/engine/document/README.md`
 
-**风险**：事件队列容量固定，消费者不及时可能溢出。
+需要删除：
 
-**缓解**：
-- 初始容量设为 1024 events
-- 溢出时记录诊断信息
-- 监控事件队列使用率
+- `src/engine/document/通信协议表.md`（已被黑板通信模型取代）
 
-### 风险 3: 迁移期间功能损坏
+需要新建 ADR（至少覆盖以下决策）：
 
-**风险**：重构期间可能破坏现有功能。
+- 输入 / 输出 SAB 的写入者决定结构原则
+- 模拟时间留引擎、跨帧调度归 World
+- 成员输入准入的三层拦截分层
+- 删除 `MessageRouter` 与同步意图返回值
 
-**缓解**：
-- 分阶段实施，每个阶段独立验证
-- 保持现有测试通过
-- 必要时可以回滚单个阶段
-
-## 后续工作
-
-重构完成后，可以进一步优化：
-
-1. **合并世界状态 SAB**：当前 `WorldStateBuffer` 是独立的，可以考虑合并到输出 SAB 的渲染器槽位中
-2. **细化输出类型**：根据实际需求细化 `OutputType`，如分离不同类型的域事件
-3. **多消费者支持**：如果需要多个控制器订阅同一个成员，实现消费标记 bitmap
-4. **性能优化**：测量黑板读写性能，必要时优化布局或使用更高效的编码
-
-## 相关文档
-
-需要更新的文档：
-- `src/engine/document/通信协议表.md` - 更新为黑板通信模型
-- `src/engine/document/README.md` - 更新架构总览
-- 相关 ADR：
-  - ADR 0045 的推送部分被本重构取代
-  - ADR 0050 扩展到所有输出
-  - ADR 0052 的世界状态 SAB 成为输出 SAB 的一部分
+与既有 ADR 的关系：0045（双端协议）的推送部分被取代；0050 扩展到全部输出；0052 的世界状态成为输出快照的一部分；0055（共享实时时间轴）需要复核时间归属表述。

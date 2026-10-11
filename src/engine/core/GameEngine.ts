@@ -2,6 +2,7 @@ import { createId } from "@paralleldrive/cuid2";
 import type { EventObject } from "xstate";
 import { createLogger } from "~/lib/logger";
 import { Random } from "~/lib/random";
+import { computeMemberFormation } from "~/memberFormation";
 import { ControlBindingManager } from "./Controller/ControlBindingManager";
 import { ControllerRegistry } from "./Controller/ControllerEndpoint";
 import { ControllerEventProjector } from "./DomainEvents/ControllerEventProjector";
@@ -9,7 +10,7 @@ import { DomainEventBus } from "./DomainEvents/DomainEventBus";
 import type { EventCatalog } from "./Event/EventCatalog";
 import { EventQueue } from "./EventQueue/EventQueue";
 import type { QueueEvent } from "./EventQueue/types";
-import { ExpressionEvaluator } from "./Expression/ExpressionEvaluator";
+import type { ExpressionEvaluator } from "./Expression/ExpressionEvaluator";
 import type { EngineMember, EngineTeam } from "./engineScenarioSchema";
 import { FrameLoop } from "./FrameLoop/FrameLoop";
 import type { FrameLoopSnapshot, FrameLoopStats, FrameLoopTick } from "./FrameLoop/types";
@@ -30,42 +31,23 @@ import {
 	createWorldStateLayoutDescriptor,
 	WorldStateEntityType,
 	type WorldStateLayoutDescriptor,
+	WorldStateSnapshot,
 	worldStateStringId,
 } from "./thread/worldStateBuffer";
 import type {
-	ControllerDomainEvent,
 	EngineCheckpoint,
 	EngineConfig,
 	EngineInfrastructure,
 	EngineScenarioData,
-	EngineStats,
 	GameEngineSnapshot,
 	MemberDomainEvent,
 	RuntimeConfig,
 	TickStepResult,
 } from "./types";
 import { createRealtimeConfig } from "./types";
-import type { MemberSnapshot } from "./World/Member/Member";
-import { computeMemberFormation } from "./World/Member/memberFormation";
-import { ModifierType } from "./World/Member/runtime/AttributeContainer/AttributeContainer";
-import type { ModifierSource } from "./World/Member/runtime/AttributeContainer/AttributeContainerTypes";
-import type { MemberMovementInput } from "./World/Member/runtime/SharedRuntime";
-import type { MemberControlEvent } from "./World/Member/StateMachine/types";
-import { Player } from "./World/Member/types/Player/Player";
 import { World } from "./World/World";
 
 const log = createLogger("GameEngine");
-
-export type FastForwardSyncOptions = {
-	maxTicks?: number;
-	maxDurationMs?: number;
-};
-
-export type FastForwardSyncResult = {
-	ticksRun: number;
-	elapsedMs: number;
-	reachedLimit: boolean;
-};
 
 /**
  * 扩展 globalThis 类型，添加测试环境标记
@@ -78,111 +60,39 @@ declare global {
  * 游戏引擎类
  */
 export class GameEngine {
-	// ==================== 核心模块 ====================
+	readonly world: World; // 模拟状态容器（公开只读，供测试访问）
 
-	/** 世界 - 资产管理 */
-	private world: World;
+	// 引擎运行时间（wall-clock）
 
-	/** 事件队列 - 管理时间片段事件 */
-	private eventQueue: EventQueue;
+	// 开始时间戳
+	private startTime: number = 0;
+	// 当前逻辑 tick 序号
+	private tickIndex: number = 0;
+	// 当前模拟时间（毫秒），world读取的唯一时间源
+	private simulateTimeMs: number = 0;
 
-	/** 消息路由器 - 分发外部指令 */
-	private messageRouter: MessageRouter;
+	// 黑板通信
+	private inputReader: InputBufferReader | null;
+	private outputWriter: OutputBufferWriter | null;
 
-	/** 控制绑定管理器 */
-	private bindingManager: ControlBindingManager;
-
-	/** 控制器注册表 */
-	private controllerRegistry: ControllerRegistry;
-
-	/** 域事件总线 */
-	private domainEventBus: DomainEventBus;
-
-	/** 控制器事件投影器 */
-	private controllerEventProjector: ControllerEventProjector;
-
-	/** tick 循环 - 推进时间和调度事件 */
-	private frameLoop: FrameLoop;
-
-	/** JS表达式处理器 - 负责编译JS代码 */
+	// 基础设施（跨场景复用）
 	private jsProcessor: JSProcessor;
-	/** 表达式求值器 - 负责 self/target/world 绑定 */
-	private expressionEvaluator: ExpressionEvaluator;
-	/** 新的冻结 Catalog */
 	private pipelineCatalog: PipelineCatalog;
-	/** 新的 Resolver（含 overlay + 编译缓存） */
 	private pipelineResolverService: PipelineResolverService;
-	/** 事件目录：订阅系统位索引 + payload schema */
 	private eventCatalog: EventCatalog;
 
-	/** 引擎配置 */
+	// 生命周期控制
+	private frameLoop: FrameLoop;
+
+	// 配置
 	private config: EngineConfig;
-
-	/** 确定性随机数生成器（seeded xorshift128），可 checkpoint */
-	random: Random;
-
 	/** 存储场景配置参数，用于重置时复用 */
 	private scenarioData: EngineScenarioData | null = null;
-
-	/**
-	 * 引擎运行配置。
-	 * 它决定“连续运行由谁驱动”，而不是简单透传给底层时钟。
-	 */
+	/**引擎运行配置。默认值为实时模拟 */
 	private runtimeConfig: RuntimeConfig = createRealtimeConfig();
-
-	/** 开始时间戳 */
-	private startTime: number = 0;
-
-	/** 当前逻辑 tick 序号 */
-	private tickIndex: number = 0;
-
-	/** 当前模拟时间（毫秒），规则系统读取的唯一时间源 */
-	private currentTimeMs: number = 0;
-
-	/** 当前 tick 的模拟时间跨度（毫秒） */
-	private deltaTimeMs: number = 0;
-
-	/** 最近一次 stepTick 的 wall-clock 耗时（毫秒），用于实时性诊断。 */
-	private lastStepTickDurationMs: number = 0;
-
-	/**
-	 * 引擎级循环统计。
-	 * 说明：
-	 * - 对外暴露“实际完成了多少逻辑 tick”
-	 * - 与 FrameLoop 的底层时钟统计分离，但复用同一个结构以保持接口兼容
-	 */
-	private frameLoopStats: FrameLoopStats = {
-		averageTicksPerSecond: 0,
-		totalTicks: 0,
-		totalRunTime: 0,
-		clockKind: "manual",
-		discardedVirtualTimeMs: 0,
-		overstepMs: 0,
-	};
-
-	/** 快照历史 */
-	private snapshots: GameEngineSnapshot[] = [];
 
 	/** Worker 内当前运行产出；结束后只保留到 Session 明确认领。 */
 	private readonly runOutput = new RunOutputRecorder();
-
-	/** 统计信息 */
-	private stats = {
-		totalSnapshots: 0,
-		totalEventsProcessed: 0,
-		totalMessagesProcessed: 0,
-	};
-
-	// ==================== 通信 ====================
-
-	/** 系统消息发送器 - 用于发送系统指令到主线程 */
-	private systemMessageSender: ((payload: unknown) => void) | null = null;
-	/** 实时状态提交回调；Tick 和时钟生命周期转换共用同一原子投影入口。 */
-	private realtimeStateCommitCallback: (() => void) | null = null;
-	/** Worker 注入的连续控制状态读取边界；引擎本身不依赖具体线程传输实现。 */
-	private controllerMovementInputSource: ((controllerId: string) => MemberMovementInput | null) | null = null;
-	/** 当前挂起的 tick 内任务数量（用于防止跨 tick 未完成任务） */
-	private pendingTickTasksCount: number = 0;
 
 	// ==================== 静态方法 ====================
 
@@ -251,38 +161,39 @@ export class GameEngine {
 		this.world = new World();
 
 		// 初始化表达式求值器（把 world/self/target 绑定收敛到一个服务）
-		this.expressionEvaluator = new ExpressionEvaluator({
-			jsProcessor: this.jsProcessor,
-			getMemberById: (id) => this.world.memberManager.getMember(id),
-		});
+		// PS：我认为表达式求职器应该放进世界层，因为其逻辑是基于世界的游戏规则。engine层应该只负责将这些设施传递给world，由world后续处理
+		// this.expressionEvaluator = new ExpressionEvaluator({
+		// 	jsProcessor: this.jsProcessor,
+		// 	getMemberById: (id) => this.world.memberManager.getMember(id),
+		// });
 		// 设置表达式求值器到 MemberManager（成员创建时会注入到成员 context.expressionEvaluator）
-		this.world.memberManager.setEvaluateExpression((expression, context) =>
-			this.expressionEvaluator.evaluateNumberOrBoolean(expression, context),
-		);
+		// this.world.memberManager.setEvaluateExpression((expression, context) =>
+		// 	this.expressionEvaluator.evaluateNumberOrBoolean(expression, context),
+		// );
 
-		// 设置域事件发射器到 MemberManager
-		this.world.memberManager.setDomainEventSender((event) => {
-			this.emitDomainEvent(event);
-		});
-		this.world.memberManager.setControlInputRecorder((memberId, event, disposition, reason) => {
-			this.recordMemberControlInput(memberId, event, disposition, reason);
-		});
-		// 设置引擎时间读取函数到 MemberManager（引擎时间为唯一真相）
-		this.world.memberManager.setGetCurrentTimeMs(() => this.getCurrentTimeMs());
-		this.world.memberManager.setGetTickIndex(() => this.getTickIndex());
-		this.world.memberManager.setDamageExecutionHandlers({
-			executeInstantDamage: (effect) => {
-				this.world.damageSystem.queueInstantDamage(effect);
-			},
-			createDamageArea: (spec) => this.world.areaManager.createDamageArea(spec),
-		});
-		// 设置引擎级 pipeline resolver 到 MemberManager（成员创建时注入到成员）
-		this.world.memberManager.setPipelineResolverService(this.pipelineResolverService);
-		// 设置引擎级 EventCatalog 到 MemberManager（每成员据此构造独立 ProcBus）
-		this.world.memberManager.setEventCatalog(this.eventCatalog);
+		// // 设置域事件发射器到 MemberManager
+		// this.world.memberManager.setDomainEventSender((event) => {
+		// 	this.emitDomainEvent(event);
+		// });
+		// this.world.memberManager.setControlInputRecorder((memberId, event, disposition, reason) => {
+		// 	this.recordMemberControlInput(memberId, event, disposition, reason);
+		// });
+		// // 设置引擎时间读取函数到 MemberManager（引擎时间为唯一真相）
+		// this.world.memberManager.setGetCurrentTimeMs(() => this.getCurrentTimeMs());
+		// this.world.memberManager.setGetTickIndex(() => this.getTickIndex());
+		// this.world.memberManager.setDamageExecutionHandlers({
+		// 	executeInstantDamage: (effect) => {
+		// 		this.world.damageSystem.queueInstantDamage(effect);
+		// 	},
+		// 	createDamageArea: (spec) => this.world.areaManager.createDamageArea(spec),
+		// });
+		// // 设置引擎级 pipeline resolver 到 MemberManager（成员创建时注入到成员）
+		// this.world.memberManager.setPipelineResolverService(this.pipelineResolverService);
+		// // 设置引擎级 EventCatalog 到 MemberManager（每成员据此构造独立 ProcBus）
+		// this.world.memberManager.setEventCatalog(this.eventCatalog);
 
-		// 注入引擎级确定性随机数生成器
-		this.world.memberManager.setRandom(() => this.random.value());
+		// // 注入引擎级确定性随机数生成器
+		// this.world.memberManager.setRandom(() => this.random.value());
 	}
 
 	// ==================== 生命周期管理 ====================
@@ -320,6 +231,7 @@ export class GameEngine {
 		this.controllerEventProjector.clear();
 
 		// 计算成员初始队形（唯一真相源，与渲染层共用同一纯函数）。
+		// PS：按道理computeMemberFormation应该声明在engine和render的公共层，但是render的架构设计有问题，computeMemberFormation只能暂存在src，后续再处理
 		const formation = computeMemberFormation(data.scenario.campA, data.scenario.campB);
 
 		// 添加阵营A
@@ -454,87 +366,6 @@ export class GameEngine {
 	}
 
 	// ===============================  外部方法 ===============================
-
-	/**
-	 * 设置系统消息发送器
-	 *
-	 * @param sender 系统消息发送函数，用于发送系统级事件到控制器
-	 */
-	setSystemMessageSender(sender: ((payload: unknown) => void) | null): void {
-		this.systemMessageSender = sender;
-	}
-
-	/**
-	 * 设置领域事件批发送器
-	 *
-	 * 用于直接发送 domain_event_batch 顶层消息（不再嵌套在 system_event 中）
-	 * @param sender 领域事件批发送函数
-	 */
-	setDomainEventBatchSender(
-		sender:
-			| ((payload: {
-					type: "controller_domain_event_batch";
-					tickIndex: number;
-					events: ControllerDomainEvent[];
-			  }) => void)
-			| null,
-	): void {
-		this.controllerEventProjector.setDomainEventBatchSender(sender);
-	}
-
-	/**
-	 * 注册实时状态提交回调（SAB 世界状态写入等低延迟通道用）。
-	 * Worker 层在 attach_world_state_buffer RPC 后注入；引擎不依赖 SAB 实现，保持跨环境可测试。
-	 */
-	setRealtimeStateCommitCallback(callback: (() => void) | null): void {
-		this.realtimeStateCommitCallback = callback;
-	}
-
-	/**
-	 * 注入按 controllerId 读取最新移动状态的边界。
-	 *
-	 * 每个逻辑 Tick 都会重新读取并结合当前绑定解析为 memberId 输入；读取方不应在这里排队或派发意图。
-	 */
-	setControllerMovementInputSource(source: ((controllerId: string) => MemberMovementInput | null) | null): void {
-		this.controllerMovementInputSource = source;
-	}
-
-	/**
-	 * 发送系统消息到主线程
-	 *
-	 * @param payload 系统消息负载
-	 */
-	postSystemMessage(payload: unknown): void {
-		if (!this.systemMessageSender) {
-			log.warn("GameEngine: 系统消息发送器未设置，无法发送系统消息");
-			return;
-		}
-
-		try {
-			this.systemMessageSender(payload);
-		} catch (error) {
-			log.error("GameEngine: 发送系统消息失败:", error);
-		}
-	}
-
-	/**
-	 * 获取引擎统计信息
-	 *
-	 * @returns 统计信息
-	 */
-	getStats(): EngineStats {
-		const runTime = performance.now() - this.startTime;
-
-		return {
-			tickIndex: this.getTickIndex(),
-			currentTimeMs: this.getCurrentTimeMs(),
-			runTime,
-			members: this.getAllMemberData(),
-			eventQueueStats: this.eventQueue.getStats(),
-			frameLoopStats: this.getFrameLoopStats(),
-			messageRouterStats: this.messageRouter.getStats(),
-		};
-	}
 
 	/**
 	 * 获取引擎级循环统计（轻量）。
@@ -1565,7 +1396,11 @@ export class GameEngine {
 	 * @param options.maxDurationMs 最大模拟时间预算（毫秒）
 	 * @returns 实际执行的逻辑 tick 数与推进的模拟时间
 	 */
-	fastForwardSync(options: FastForwardSyncOptions = {}): FastForwardSyncResult {
+	fastForwardSync(options: { maxTicks?: number; maxDurationMs?: number }): {
+		ticksRun: number;
+		elapsedMs: number;
+		reachedLimit: boolean;
+	} {
 		if (!this.scenarioData) throw new Error("fastForwardSync: 场景尚未加载");
 		if (this.frameLoop.isRunning() || this.frameLoop.isPaused()) {
 			throw new Error("fastForwardSync: clocked 驱动活动时不能同步推进");

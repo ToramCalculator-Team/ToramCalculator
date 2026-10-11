@@ -9,7 +9,9 @@ import type { MemberCheckpoint, MemberDomainEvent } from "../types";
 import type { DamageAreaSpec } from "./Area/types";
 import type { ResolvedDamageEffect } from "./Damage/types";
 import type { Member, MemberControlInputRecorder } from "./Member/Member";
+import type { MemberBaseNestedSchema } from "./Member/MemberBaseSchema";
 import type { MemberSharedRuntime } from "./Member/runtime/SharedRuntime";
+import type { MemberFSMContext, MemberFSMEvent } from "./Member/StateMachine/types";
 import { Mob } from "./Member/types/Mob/Mob";
 import { Player } from "./Member/types/Player/Player";
 
@@ -18,7 +20,12 @@ const log = createLogger("MemberMgr");
 // ============================== 类型定义 ==============================
 
 // Player/Mob 的 XState 事件与上下文泛型彼此不兼容；管理器只使用 Member 公共能力，因此在异构容器边界擦除这两个参数。
-export type AnyMemberEntry = Member<string, any, any, MemberSharedRuntime<string>>;
+export type AnyMemberEntry = Member<
+	MemberBaseNestedSchema,
+	MemberFSMEvent<never>,
+	MemberFSMContext,
+	MemberSharedRuntime<MemberBaseNestedSchema>
+>;
 
 // ============================== 成员管理器类 ==============================
 

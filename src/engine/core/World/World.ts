@@ -1,7 +1,9 @@
+import type { Random } from "~/lib/random";
 import { createPhysicalTerrainGenerator, type TerrainDefinition } from "~/lib/terrain";
 import type { SimulationTickContext, WorldCheckpoint } from "../types";
 import { AreaManager } from "./Area/AreaManager";
 import { DamageSystem, type InstantDamageScheduler } from "./Damage/DamageSystem";
+import type { EventQueue } from "./EventQueue/EventQueue";
 import type { MemberMovementInput } from "./Member/runtime/SharedRuntime";
 import { MemberManager } from "./MemberManager";
 import { SpaceManager } from "./SpaceManager";
@@ -10,11 +12,22 @@ import { SpaceManager } from "./SpaceManager";
  * World/Scene 容器：聚合成员/区域/空间系统 + Intent/Resolver
  */
 export class World {
+	/** 确定性随机数生成器（seeded xorshift128），可 checkpoint */
+	random: Random;
+
+	/** 事件队列 - 管理时间片段事件 */
+	private eventQueue: EventQueue;
+
 	memberManager: MemberManager;
+
 	spaceManager: SpaceManager;
+
 	areaManager: AreaManager;
+
 	damageSystem: DamageSystem;
+
 	private sampleTerrainHeight: (x: number, z: number) => number = () => 0;
+
 	constructor() {
 		this.memberManager = new MemberManager();
 		this.spaceManager = new SpaceManager(this.memberManager);

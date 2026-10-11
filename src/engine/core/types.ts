@@ -10,7 +10,7 @@ import type { JSProcessor } from "./JSProcessor/JSProcessor";
 import type { MessageRouterStats } from "./MessageRouter/MessageRouter";
 import type { PipelineCatalog } from "./Pipeline/PipelineCatalog";
 import type { PipelineResolverService } from "./Pipeline/PipelineResolverService";
-import type { MemberSnapshot } from "./World/Member/Member";
+import type { MemberSnapshot } from "./World/Member/MemberSnapshot";
 import type { ModifierSource } from "./World/Member/runtime/AttributeContainer/AttributeContainerTypes";
 
 /**
