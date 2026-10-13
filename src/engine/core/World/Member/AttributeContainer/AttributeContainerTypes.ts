@@ -250,3 +250,18 @@ export const StatModifierParamSchema = z.object({
 		.default("skill"),
 });
 export type StatModifierParam = z.output<typeof StatModifierParamSchema>;
+
+/** AttributeContainer 检查点：修饰符层 + 值 + 脏位 */
+export interface AttributeContainerCheckpoint {
+	values: Float64Array;
+	flags: Uint32Array;
+	dirtyBitmap: Uint32Array;
+	modifierArrays: Float64Array[];
+	modifierSources: Array<{
+		modifierType: number;
+		entries: Array<{
+			attrIndex: number;
+			sources: Array<{ source: ModifierSource; value: number }>;
+		}>;
+	}>;
+}

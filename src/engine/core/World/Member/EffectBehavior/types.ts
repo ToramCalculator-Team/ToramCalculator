@@ -1,20 +1,35 @@
 import type { EventObject } from "xstate";
 import type { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
-import type { MemberDomainEvent } from "../../../types";
+import type { MemberStateName } from "~/MemberStateName/MemberState";
+import type { AttributeContainer } from "../AttributeContainer/AttributeContainer";
+import type { NestedSchema, SchemaToAttrType } from "../AttributeContainer/SchemaTypes";
 import type { MemberBaseNestedSchema } from "../MemberBaseSchema";
 import type { RegisterOptions, ThresholdDirection } from "../ProcBus/AttributeThresholdSource";
 import type { ProcHandler, ProcPredicate, ProcSubscriptionId } from "../ProcBus/ProcBus";
 import type { MemberRuntimeServices } from "../RuntimeServices";
-import type { AttributeContainer } from "../runtime/AttributeContainer/AttributeContainer";
-import type { NestedSchema, SchemaToAttrType } from "../runtime/AttributeContainer/SchemaTypes";
 import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
-import type { MemberStateName } from "../runtime/State/MemberState";
+import type { MemberDomainEvent } from "../types";
 
 export type EffectBtContext<TSchema extends NestedSchema> = MemberSharedRuntime<TSchema>;
 
 export type CommonEffectBtContext = MemberSharedRuntime<MemberBaseNestedSchema>;
 export type CommonEffectBtCapabilities = EffectBtCapabilities<MemberBaseNestedSchema>;
+
+/**
+ * EffectBtManager 检查点。
+ *
+ * 设计说明：BT agent 普通字段不承载可 checkpoint 状态；跨帧数值状态通过行为树
+ * `attributeSlots` 进入成员 AttributeContainer，并随 `MemberCheckpoint.attributeContainer` 保存。
+ */
+export interface EffectBtManagerCheckpoint {
+	hasActiveEffect: boolean;
+	activeEffectBtId?: string;
+	parallelEntries: Array<{
+		name: string;
+		btId: string;
+	}>;
+}
 
 export interface EffectBtTreeController {
 	registerParallelBt(
@@ -82,7 +97,6 @@ export interface EffectBtCapabilities<TSchema extends NestedSchema> {
 	): number;
 	/** @internal 仅供 ActionMethods.unsubscribeBySource 封装调用：清理该来源的阈值监控点。 */
 	unregisterThresholdBySource(sourceId: string): void;
-	/** 出 UI 投影；双总线残留，待 ADR 消除（见类注释）。 */
 	notifyDomainEvent(event: MemberDomainEvent): void;
 }
 

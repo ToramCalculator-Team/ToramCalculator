@@ -2,9 +2,9 @@ import type { ActionPool, ConditionPool } from "../BehaviorTree/NodeMethods/Meth
 import { assertDisjointPools } from "../BehaviorTree/NodeMethods/mergePools";
 import { actionPoolToInvokers, conditionPoolToInvokers } from "../BehaviorTree/NodeMethods/utils";
 import type { MemberBaseNestedSchema } from "../MemberBaseSchema";
-import type { CommonEffectBtCapabilities, EffectBtCapabilities, EffectBtContext } from "./EffectBtTypes";
 import { CommonEffectActionPool } from "./NodeMethods/ActionMethods";
 import { CommonEffectConditionPool } from "./NodeMethods/ConditionMethods";
+import type { CommonEffectBtCapabilities, EffectBtCapabilities, EffectBtContext } from "./types";
 
 /**
  * 组合 Member 公共效果池与角色专属效果池。

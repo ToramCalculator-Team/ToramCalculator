@@ -31,7 +31,6 @@ class FrameLoop {
   stop(): void
 
   private scheduleNext(): void
-  private runScheduledTick(): void
 }
 ```
 

@@ -23,20 +23,3 @@ export const MEMBER_STATE_NAMES = [
 
 export type MemberStateName = (typeof MEMBER_STATE_NAMES)[number];
 export const MemberStateNameSchema = z.enum(MEMBER_STATE_NAMES);
-
-/**
- * 状态源向投影器提交的状态声明。
- * sequence 只用于投影器区分同状态名的连续声明，不进入 SAB 或渲染器。
- */
-export interface MemberStateDeclaration {
-	name: MemberStateName;
-	timeMs: number;
-	sequence: number;
-}
-
-/** 每 Tick 投影后的最终成员状态帧；这是实时状态 SAB 的唯一动作状态来源。 */
-export interface MemberStateFrameEntry {
-	name: MemberStateName;
-	instance: number;
-	startedAtLogicalTimeMs: number;
-}

@@ -1,15 +1,14 @@
-import type { EventObject } from "xstate";
+import type { Checkpointable } from "~/engine/core/Checkpoint";
 import { createLogger } from "~/lib/logger";
 import { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import type { BehaviourTreeOptions } from "~/lib/mistreevous/BehaviourTreeOptions";
 import { State } from "~/lib/mistreevous/State";
-import type { Checkpointable, EffectBtManagerCheckpoint } from "../../../types";
-import { ModifierType } from "../runtime/AttributeContainer/AttributeContainerTypes";
-import type { NestedSchema } from "../runtime/AttributeContainer/SchemaTypes";
+import { ModifierType } from "../AttributeContainer/AttributeContainerTypes";
+import type { NestedSchema } from "../AttributeContainer/SchemaTypes";
 import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
 import type { MemberFSMEvent } from "../StateMachine/types";
-import type { EffectBtManagerEnv } from "./EffectBtTypes";
+import type { EffectBtManagerCheckpoint, EffectBtManagerEnv } from "./types";
 
 const log = createLogger("EffectBtManager");
 
@@ -20,7 +19,7 @@ type BtEntry = {
 export class EffectBtManager<
 	TSchema extends NestedSchema,
 	TContext extends MemberSharedRuntime<TSchema>,
-	TFSMEvent extends EventObject = MemberFSMEvent,
+	TFSMEvent extends MemberFSMEvent<never>,
 > implements Checkpointable<EffectBtManagerCheckpoint>
 {
 	private activeEffectEntry: BtEntry | undefined;
@@ -134,7 +133,7 @@ export class EffectBtManager<
 				this.clearActiveEffectStateDeclaration();
 				// 技能生命周期必须在同一个引擎 Tick 内同步收敛，连续快进不得依赖 Promise 微任务。
 				// EffectBtManager 的通用 FSM 泛型无法枚举 Player 专属完成事件；active effect 只由 Player 技能路径注册。
-				this.env.send({ type: "技能执行完成" } as TFSMEvent);
+				this.env.send({ type: "技能执行完成" });
 			} else {
 				this.steppingContext = "active-effect";
 				try {

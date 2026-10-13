@@ -1,12 +1,12 @@
 import type { EventObject } from "xstate";
+import type { NestedSchema } from "../AttributeContainer/SchemaTypes";
 import {
 	type CreateExecutionContextOptions,
 	createExecutionContext,
 	type ExecutionContextWarning,
 } from "../BehaviorTree/ExecutionContext";
-import type { NestedSchema } from "../runtime/AttributeContainer/SchemaTypes";
 import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
-import type { EffectBtManagerEnv } from "./EffectBtTypes";
+import type { EffectBtManagerEnv } from "./types";
 
 export type BtContextFactoryWarning = ExecutionContextWarning;
 
@@ -33,7 +33,7 @@ export function createBtContext<
 	TContext extends MemberSharedRuntime<TSchema>,
 >(options: CreateBtContextOptions<TFSMEvent, TSchema, TContext>): CreateBtContextResult<TSchema, TContext> {
 	const { env, btBindings, agent, onWarning } = options;
-	const executionOptions: CreateExecutionContextOptions<TContext> = {
+	const executionOptions: CreateExecutionContextOptions = {
 		baseContext: env.getContext(),
 		memberName: env.name,
 		bindings: btBindings,

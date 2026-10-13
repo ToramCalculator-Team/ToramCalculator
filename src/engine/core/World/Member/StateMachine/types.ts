@@ -1,11 +1,11 @@
 import type { Actor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
 import type { StageData } from "~/engine/core/Pipeline/stageEnv";
-import type { MemberDomainEvent } from "~/engine/core/types";
+import type { AttributeContainer } from "../AttributeContainer/AttributeContainer";
+import type { NestedSchema } from "../AttributeContainer/SchemaTypes";
 import type { EffectBtManager } from "../EffectBehavior/EffectBtManager";
 import type { MemberRuntimeServices } from "../RuntimeServices";
-import type { AttributeContainer } from "../runtime/AttributeContainer/AttributeContainer";
-import type { NestedSchema } from "../runtime/AttributeContainer/SchemaTypes";
 import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
+import type { MemberDomainEvent } from "../types";
 
 /**
  * 成员状态机事件类型枚举
@@ -71,7 +71,7 @@ export type MemberStateMachine<
 // 状态机执行动作时需要的外部能力
 export interface MemberStateMachineEnv<
 	TSchema extends NestedSchema,
-	TFSMEvent extends EventObject,
+	TFSMEvent extends MemberFSMEvent<never>,
 	TRuntime extends MemberSharedRuntime<TSchema>,
 > {
 	id: string;
@@ -122,3 +122,6 @@ export interface MemberFSMContext {
 	/** 创建模拟时间（毫秒，用于行为树/FSM 计算相对时间） */
 	createdAtTimeMs: number;
 }
+
+/** Member FSM 检查点（XState persisted snapshot） */
+export type MemberFSMCheckpoint = unknown;

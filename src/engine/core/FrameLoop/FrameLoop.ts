@@ -1,8 +1,8 @@
 export class FrameLoop {
 	private state: "stopped" | "running" | "paused" = "stopped";
 	private timer: ReturnType<typeof setTimeout> | null = null;
-	private readonly fixedStepMs: number;
-	private nextDeadlineMs: number | null = null;
+	private readonly fixedStepMs: number; // 固定步长时间间隔
+	private nextDeadlineMs: number = 0; // 预期的下一步执行时刻
 	private onTick: (() => void) | null = null;
 
 	constructor(logicHz: number) {
@@ -17,8 +17,9 @@ export class FrameLoop {
 		if (this.state !== "stopped") {
 			throw new Error("FrameLoop 已经在运行中");
 		}
+		this.onTick = onTick;
 		this.state = "running";
-		this.loop();
+		this.scheduleNext();
 	}
 
 	// 暂停循环
@@ -35,7 +36,7 @@ export class FrameLoop {
 			throw new Error("FrameLoop 未在暂停中");
 		}
 		this.state = "running";
-		this.loop();
+		this.scheduleNext();
 	}
 
 	// 终止循环
@@ -50,7 +51,7 @@ export class FrameLoop {
 		}
 	}
 
-	private loop(): void {
+	private scheduleNext(): void {
 		if (this.state !== "running") return;
 
 		const now = performance.now();
@@ -59,21 +60,19 @@ export class FrameLoop {
 		this.onTick?.();
 
 		// 2. 计算漂移误差（实际时间 - 预期时间）
-		const drift = performance.now() - expectedTime;
+		const drift = now - this.nextDeadlineMs;
 
 		// 如果误差过大（例如 Worker 被浏览器挂起后恢复），进行重置，防止追赶循环导致卡死
-		if (drift > TIMESTEP * 10) {
-			expectedTime = now + TIMESTEP;
-			setTimeout(tick, TIMESTEP);
-			return;
+		if (drift > this.fixedStepMs) {
+			throw new Error("FrameLoop单步漂移大于间隔时间，需要降低tick耗时或者增加FrameLoop单步时长");
 		}
 
 		// 3. 计算下一次循环的预期时间
-		expectedTime += TIMESTEP;
+		this.nextDeadlineMs += this.fixedStepMs;
 
 		// 4. 动态调整下一次的延迟时间，扣除当前的误差
-		const nextDelay = Math.max(0, TIMESTEP - drift);
+		const nextDelay = Math.max(0, this.fixedStepMs - drift);
 
-		setTimeout(tick, nextDelay);
+		setTimeout(this.scheduleNext, nextDelay);
 	}
 }

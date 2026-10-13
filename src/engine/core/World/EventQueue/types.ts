@@ -59,3 +59,22 @@ export interface QueueSnapshot {
 	/** 统计信息 */
 	stats: QueueStats;
 }
+
+/** EventQueue 检查点：当前队列事件 + 统计 */
+export interface EventQueueCheckpoint {
+	events: Array<{
+		id: string;
+		insertedAtMs: number;
+		executeAtMs: number;
+		type: string;
+		processed: boolean;
+		targetMemberId: string;
+		fsmEvent: EventObject;
+	}>;
+	totalSize: number;
+	stats: {
+		currentSize: number;
+		totalProcessed: number;
+		totalInserted: number;
+	};
+}

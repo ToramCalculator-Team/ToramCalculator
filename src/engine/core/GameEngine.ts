@@ -34,16 +34,7 @@ import {
 	WorldStateSnapshot,
 	worldStateStringId,
 } from "./thread/worldStateBuffer";
-import type {
-	EngineCheckpoint,
-	EngineConfig,
-	EngineInfrastructure,
-	EngineScenarioData,
-	GameEngineSnapshot,
-	MemberDomainEvent,
-	RuntimeConfig,
-	TickStepResult,
-} from "./types";
+import type { EngineCheckpoint, EngineScenarioData, GameEngineSnapshot, RuntimeConfig } from "./types";
 import { createRealtimeConfig } from "./types";
 import { World } from "./World/World";
 
@@ -80,11 +71,10 @@ export class GameEngine {
 	private frameLoop: FrameLoop;
 
 	// 配置
-	private config: EngineConfig; // 引擎运行配置
 	/** 存储场景配置参数，用于重置时复用 */
 	private scenarioData: EngineScenarioData | null = null;
 	/**引擎运行配置。默认值为实时模拟 */
-	private runtimeConfig: RuntimeConfig = createRealtimeConfig();
+	private runtimeConfig: RuntimeConfig;
 
 	/** Worker 内当前运行产出；结束后只保留到 Session 明确认领。 */
 	private readonly runOutput = new RunOutputRecorder();
@@ -113,18 +103,15 @@ export class GameEngine {
 	/**
 	 * 构造函数
 	 *
-	 * @param config 引擎配置
-	 * @param infra 长期驻留的基础设施（JSProcessor、PipelineCatalog、PipelineResolverService），由 Worker 级持有
+	 * @param runtimeConfig 引擎配置
 	 */
-	constructor(config: EngineConfig, infra: EngineInfrastructure) {
-		log.debug("GameEngine constructor");
-
+	constructor(runtimeConfig?: RuntimeConfig) {
 		// 🛡️ 安全检查：只允许在Worker线程中创建GameEngine
 		this.validateWorkerContext();
 
-		this.config = config;
+		log.debug("GameEngine constructor");
 
-		this.random = new Random();
+		this.runtimeConfig = runtimeConfig ?? createRealtimeConfig();
 
 		// 接收外部注入的基础设施（跨 reset/cleanup 存活）
 		this.jsProcessor = infra.jsProcessor;

@@ -1,5 +1,5 @@
 import { createEffectBindings } from "../../../EffectBehavior/Bindings";
-import type { EffectBtCapabilities, EffectBtContext } from "../../../EffectBehavior/EffectBtTypes";
+import type { EffectBtCapabilities, EffectBtContext } from "../../../EffectBehavior/types";
 import type { PlayerAttrNestedSchema } from "../PlayerAttrSchema";
 import { PlayerEffectActionPool } from "./NodeMethods/ActionMethods";
 import { PlayerEffectConditionPool } from "./NodeMethods/ConditionMethods";

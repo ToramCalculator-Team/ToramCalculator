@@ -8,27 +8,24 @@ import type { ExpressionContext } from "../../JSProcessor/types";
 import type { PipelineOverlay } from "../../Pipeline/overlay";
 import type { PipelineResolverService } from "../../Pipeline/PipelineResolverService";
 import type { StageData, StageEnv } from "../../Pipeline/stageEnv";
-import type { MemberCheckpoint, MemberDomainEvent, SimulationTickContext } from "../../types";
+import type { MemberCheckpoint, SimulationTickContext } from "../../types";
 import type { WorldObservable } from "../observable";
+import { AttributeContainer } from "./AttributeContainer/AttributeContainer";
 import {
 	createCommonControlBehaviorBindings,
 	type MemberControlBehaviorCapabilities,
 } from "./ControlBehavior/Bindings";
 import { ControlBehaviorRuntime } from "./ControlBehavior/ControlBehaviorRuntime";
 import { EffectBtManager } from "./EffectBehavior/EffectBtManager";
-import type { EffectBtCapabilities, EffectBtManagerEnv } from "./EffectBehavior/EffectBtTypes";
+import type { EffectBtCapabilities, EffectBtManagerEnv } from "./EffectBehavior/types";
 import type { MemberBaseNestedSchema } from "./MemberBaseSchema";
 import type { MemberSnapshot } from "./MemberSnapshot";
 import { AttributeThresholdSource } from "./ProcBus/AttributeThresholdSource";
 import { ProcBus } from "./ProcBus/ProcBus";
 import type { MemberRuntimeServices } from "./RuntimeServices";
-import { AttributeContainer } from "./runtime/AttributeContainer/AttributeContainer";
 import type { MemberMovementInput, MemberSharedRuntime } from "./runtime/SharedRuntime";
-import {
-	InMemoryStatusInstanceStore,
-	type MutableStatusInstanceStore,
-	type StatusInstance,
-} from "./runtime/Status/StatusInstanceStore";
+import { InMemoryStatusInstanceStore } from "./runtime/Status/StatusInstanceStore";
+import type { MutableStatusInstanceStore, StatusInstance } from "./runtime/Status/types";
 import type {
 	MemberActor,
 	MemberControlEvent,
@@ -37,6 +34,7 @@ import type {
 	MemberStateMachine,
 	MemberStateMachineEnv,
 } from "./StateMachine/types";
+import type { MemberDomainEvent } from "./types";
 
 const log = createLogger("Member");
 const MOVEMENT_EPSILON = 0.0001;

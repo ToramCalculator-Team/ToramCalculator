@@ -1,7 +1,7 @@
 import { z } from "zod/v4";
 import { BUILT_IN_REGISTLETS_BY_ID } from "../../attachments/BuiltInRegistlets";
 import { type ConditionPool, defineCondition } from "../../BehaviorTree/NodeMethods/MethodTypes";
-import type { CommonEffectBtCapabilities, CommonEffectBtContext } from "../EffectBtTypes";
+import type { CommonEffectBtCapabilities, CommonEffectBtContext } from "../types";
 
 function currentCharacterOf(context: CommonEffectBtContext): unknown {
 	if (!("character" in context)) return null;

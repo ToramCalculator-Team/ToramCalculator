@@ -1,5 +1,5 @@
 import { createEffectBindings } from "../../../EffectBehavior/Bindings";
-import type { EffectBtCapabilities, EffectBtContext } from "../../../EffectBehavior/EffectBtTypes";
+import type { EffectBtCapabilities, EffectBtContext } from "../../../EffectBehavior/types";
 import type { MobAttrNestedSchema } from "../MobAttrSchema";
 import { MobEffectActionPool } from "./NodeMethods/ActionMethods";
 import { MobEffectConditionPool } from "./NodeMethods/ConditionMethods";

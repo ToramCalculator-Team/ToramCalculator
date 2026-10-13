@@ -8,11 +8,12 @@
  * - 内存优化：连续内存布局，减少GC压力
  */
 import * as Enums from "@db/schema/enums";
+import type { Checkpointable } from "~/engine/core/Checkpoint";
 import { createLogger } from "~/lib/logger";
-import type { AttributeContainerCheckpoint, Checkpointable } from "../../../../types";
 import { AttributeContainerASTCompiler } from "./AttributeContainerAST";
 import type {
 	AttributeChangeListener,
+	AttributeContainerCheckpoint,
 	AttributeSnapshot,
 	DataStorage,
 	ModifierSource,
@@ -24,38 +25,6 @@ import { AttributeFlags, BitFlags } from "./BitFlags";
 import { DependencyGraph } from "./DependencyGraph";
 import type { AttributeExpression, NestedSchema, SchemaToAttrType } from "./SchemaTypes";
 import { SchemaFlattener } from "./SchemaTypes";
-
-export type {
-	AttributeChangeListener,
-	AttributeSnapshot,
-	AttributeSnapshotLeaf,
-	DataStorage,
-	DataStorages,
-	Modifier,
-	ModifierSource,
-	ModifierSourceRef,
-	StatIndexedReadSource,
-	StatModifierKind,
-	StatModifierParam,
-	StatModifierVisitor,
-	StatSchemaVisitor,
-} from "./AttributeContainerTypes";
-export {
-	AttributeSnapshotLeafSchema,
-	AttributeSnapshotSchema,
-	dynamicTotalValue,
-	isDataStorageType,
-	ModifierSnapshotEntrySchema,
-	ModifierSourceRefKindSchema,
-	ModifierSourceRefSchema,
-	ModifierSourceSchema,
-	ModifierSourceTypeSchema,
-	ModifierType,
-	StatModifierKindSchema,
-	StatModifierParamSchema,
-} from "./AttributeContainerTypes";
-export { AttributeFlags, BitFlags } from "./BitFlags";
-export { DependencyGraph } from "./DependencyGraph";
 
 const log = createLogger("AttributeContainer");
 

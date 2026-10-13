@@ -1,4 +1,4 @@
-import type { Random } from "~/lib/random";
+import { Random } from "~/lib/random";
 import { createPhysicalTerrainGenerator, type TerrainDefinition } from "~/lib/terrain";
 import type { SimulationTickContext, WorldCheckpoint } from "../types";
 import { AreaManager } from "./Area/AreaManager";
@@ -29,6 +29,7 @@ export class World {
 	private sampleTerrainHeight: (x: number, z: number) => number = () => 0;
 
 	constructor() {
+		this.random = new Random();
 		this.memberManager = new MemberManager();
 		this.spaceManager = new SpaceManager(this.memberManager);
 		this.damageSystem = new DamageSystem(this.spaceManager, this.memberManager);
