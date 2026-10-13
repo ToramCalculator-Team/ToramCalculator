@@ -62,30 +62,25 @@ declare global {
 export class GameEngine {
 	readonly world: World; // 模拟状态容器（公开只读，供测试访问）
 
-	// 引擎运行时间（wall-clock）
+	// 引擎时间管理
+	private tickIndex: number = 0; // 当前逻辑 tick 序号
+	private simulationTimeMs: number = 0; // 当前模拟时间（毫秒），world读取的唯一时间源
 
-	// 开始时间戳
-	private startTime: number = 0;
-	// 当前逻辑 tick 序号
-	private tickIndex: number = 0;
-	// 当前模拟时间（毫秒），world读取的唯一时间源
-	private simulateTimeMs: number = 0;
-
-	// 黑板通信
-	private inputReader: InputBufferReader | null;
-	private outputWriter: OutputBufferWriter | null;
+	// 输入输入接口（SAB），两个端口各一个缓冲区，端口内分状态区与事件区
+	private inputBuffer: SharedArrayBuffer | null = null; // 引擎的输入端口
+	private outputBuffer: SharedArrayBuffer | null = null; // 引擎的输出端口
 
 	// 基础设施（跨场景复用）
-	private jsProcessor: JSProcessor;
-	private pipelineCatalog: PipelineCatalog;
+	private jsProcessor: JSProcessor; // JS编译和执行器
+	private pipelineCatalog: PipelineCatalog; // 管线
 	private pipelineResolverService: PipelineResolverService;
 	private eventCatalog: EventCatalog;
 
-	// 生命周期控制
+	// 世界生命周期控制
 	private frameLoop: FrameLoop;
 
 	// 配置
-	private config: EngineConfig;
+	private config: EngineConfig; // 引擎运行配置
 	/** 存储场景配置参数，用于重置时复用 */
 	private scenarioData: EngineScenarioData | null = null;
 	/**引擎运行配置。默认值为实时模拟 */

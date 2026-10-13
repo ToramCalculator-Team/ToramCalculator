@@ -7,7 +7,7 @@
 3. **Tick 分相执行**：把一次逻辑 Tick 分成自写推进与统一结算两相，消除访问顺序对结果的影响。
 4. **跨帧调度**：持有成员消息队列，按模拟时刻把消息投递给成员状态机。
 5. **空间与地形**：成员空间查询、范围查询，以及地形高度投影。
-6. **域事件对外投影的收集**：接收成员产生的域事件，供引擎在输出边界读取。
+6. **对外事实收集**：接收成员在唯一采集出口写入的对外事实，供引擎在输出边界取走。
 7. **确定性随机与表达式求值**：为规则层提供可检查点的随机数与表达式计算能力。
 
 World 不管理引擎运行时间、不读写黑板、不控制生命周期、不做性能统计。
@@ -35,8 +35,8 @@ class World {
   // 确定性随机
   private random: Random;
 
-  // 域事件收集
-  private domainEventBus: DomainEventBus;
+  // 本 Tick 事实收集（成员在 actor.send 前的唯一出口写入，引擎在输出边界取走）
+  private factSink: FactSink;
 
   // 规则层依赖
   private expressionEvaluator: ExpressionEvaluator;
@@ -74,13 +74,13 @@ loadScenario(data: EngineScenarioData): void
 // - 设置地形定义并建立高度采样
 // - 按场景数据创建成员
 // - 重建空间索引
-// - 清空消息队列、阶段缓冲与域事件收集
+// - 清空消息队列、阶段缓冲与事实收集
 
 /**
  * 清空世界状态
  */
 clear(): void
-// TODO: 依次清空成员、伤害、区域、消息队列、阶段缓冲与域事件收集
+// TODO: 依次清空成员、伤害、区域、消息队列、阶段缓冲与事实收集
 ```
 
 ---
@@ -96,17 +96,21 @@ clear(): void
 tick(tick: SimulationTickContext, inputSnapshot: InputSnapshot): void
 // TODO:
 // 采样相
-// 1. 按目标身份标记取出各成员的移动意图
+// 1. 按槽位与目标身份标记取出各成员的移动意图
 // 2. 遍历成员：有控制器意图的成员提交手动来源输入；无意图的成员按 AI 采样
 // 3. 调用 member.tick(tick, movementInput)，成员在本相内只写自身状态
 // 4. 按地形高度积分成员位置
 // 结算相（此时全部成员位置已确定）
 // 5. 依次交付阶段缓冲中的意图：范围解析、伤害结算、区域创建
 // 6. 用本 Tick 的模拟时刻推进持续区域
-// 7. 断言阶段缓冲已空
+// 7. 断言阶段缓冲已空，并断言队列中不存在本时刻及更早的未交付事实
 ```
 
 两相之间的边界就是"全部成员位置已确定"这一刻。伤害范围解析与目标锁定必须在结算相进行，否则成员注册顺序会改变同一段伤害的可见目标集合。
+
+输入快照只被这一个入口解读：命令按目标身份标记转交给成员 FSM，移动意图按目标身份标记取用。引擎不解析其中的身份标记，也不理解槽位。
+
+第 7 步的两条断言合在一处，是因为它们共享同一个前提：本 Tick 应当交付的事实必须在本 Tick 内交付完毕，残留即实现缺陷。队列由 World 持有，所以断言在 World 末尾，而不是让引擎跨过 World 去检查它持有的队列。
 
 ---
 
@@ -120,28 +124,22 @@ tick(tick: SimulationTickContext, inputSnapshot: InputSnapshot): void
  * @param executeAtMs 执行时刻（模拟时间，毫秒）
  */
 enqueueMemberMessage<TEvent extends EventObject>(targetId: string, event: TEvent, executeAtMs: number): void
-// TODO: 校验执行时刻严格晚于本 Tick 的模拟时刻，再委托 eventQueue.insert()
+// TODO: 校验执行时刻严格晚于本次 Tick 的模拟时刻，再委托 eventQueue.insert()
 
 /**
- * 取出当前模拟时刻应处理的消息
+ * 交付本 Tick 到期的成员消息，并清理已交付项
  * @param currentTimeMs 当前模拟时间
- * @returns 到期的成员消息
+ * @returns 本 Tick 交付的成员消息
  */
-takeDueMessages(currentTimeMs: number): QueueEvent[]
-// TODO: 委托 eventQueue.getDue()
-
-/**
- * 取出并清理已交付消息，同时给出本时刻是否有残留
- * @param currentTimeMs 当前模拟时间
- * @returns 已交付消息与当前时刻是否仍有未交付消息
- */
-drainDueMessages(currentTimeMs: number): { delivered: QueueEvent[]; hasResidual: boolean }
+consumeDueMessages(currentTimeMs: number): QueueEvent[]
 // TODO:
-// - 单次遍历已到达的时间区间，完成取用与清理，不重复排序
-// - remaining 非空则置 hasResidual
+// - 单次遍历已到达的时间区间，完成取用、交付与清理，不重复排序
+// - 队列归 World 持有，交付与清理是同一个动作的两个半程，拆成两个公开方法只会让调用方漏掉其中一半
 ```
 
-成员消息的两种入队来源只在时间锚点上不同：Tick 内派发以本次 Tick 的模拟时间为锚点；Tick 外的外部注入由引擎带上自己的模拟时间。两者都必须指向严格晚于当前时刻的执行时刻。
+成员消息的两种入队来源只在时间锚点上不同：Tick 内派发以本次 Tick 的模拟时间为锚点；Tick 外的外部注入由引擎带上自己的模拟时间。两者都必须指向严格晚于当前时刻的执行时刻；本 Tick 内生效的因果链不经过队列，由阶段缓冲承载（见下）。
+
+队列不持有时间闭包：入队、交付与清理都显式接收当前模拟时间，`createSnapshot(currentTimeMs)` 同样收参数。World 若让队列闭包读外部时间源，等于通过函数指针读引擎私有可变状态，比参数传递更耦合且不可见。
 
 ---
 
@@ -226,25 +224,36 @@ projectToGround(position: { x: number; y: number; z: number }): { x: number; y: 
 
 ---
 
-### 域事件与表达式
+### 事实收集与连续状态采集
+
+对外事实在成员内 `actor.send` 之前的唯一采集出口写入，由 World 收集，供引擎在输出边界取走。收集器不解释事实内容，也不做扇出：它既是事实的唯一采集点，也是唯一分发点，因此不存在「谁订阅了」这一层。
+
+连续状态同样由 World 汇总后交出：引擎只把结果写进输出端口，不直接访问成员运行时状态。两者都是「取一份快照」，区别只在语义——事实必须逐次消费，连续状态允许跳过。
 
 ```typescript
 /**
- * 发出域事件
- * @param event 成员域事件
+ * 采集本 Tick 的连续世界状态，供引擎提交到输出端口状态区
  */
-emitDomainEvent(event: MemberDomainEvent): void
+collectContinuousState(): ContinuousWorldState
+// TODO:
+// - 汇总成员连续状态（位置、朝向、动作状态、属性与 modifier 来源）与区域状态
+// - 返回可序列化结果，不暴露成员实例
+// - 采集在这里而不是引擎，是因为引擎不访问成员运行时状态
 
 /**
- * 读取某成员在本 Tick 产生的域事件
- * @param memberId 成员标识
+ * 记录一条成员对外事实
+ * @param record 成员、来源、事件名、负载与模拟时刻
  */
-getDomainEventsFor(memberId: string): DomainEvent[]
+recordFact(record: MemberFactRecord): void
+// TODO: 追加到本 Tick 事实收集，不解释内容、不投影
 
 /**
- * 清空已读取的域事件
+ * 取走本 Tick 收集的全部事实
  */
-clearDomainEvents(): void
+takeFacts(): readonly MemberFactRecord[]
+// TODO:
+// - 返回本 Tick 收集的事实，交出所有权并清空收集
+// - 事实只被取走一次，引擎是唯一取用者
 
 /**
  * 求值表达式

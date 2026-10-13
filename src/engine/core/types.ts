@@ -3,13 +3,13 @@ import { z } from "zod/v4";
 import { TerrainDefinitionSchema } from "~/lib/terrain";
 import type { EventCatalog } from "./Event/EventCatalog";
 import type { TagRegistry } from "./Event/TagRegistry";
-import { EventQueueConfigSchema, type QueueSnapshot, type QueueStats } from "./EventQueue/types";
 import { EngineScenarioSchema } from "./engineScenarioSchema";
 import { FrameLoopConfigSchema, type FrameLoopSnapshot, type FrameLoopStats } from "./FrameLoop/types";
 import type { JSProcessor } from "./JSProcessor/JSProcessor";
 import type { MessageRouterStats } from "./MessageRouter/MessageRouter";
 import type { PipelineCatalog } from "./Pipeline/PipelineCatalog";
 import type { PipelineResolverService } from "./Pipeline/PipelineResolverService";
+import { EventQueueConfigSchema, type QueueSnapshot, type QueueStats } from "./World/EventQueue/types";
 import type { MemberSnapshot } from "./World/Member/MemberSnapshot";
 import type { ModifierSource } from "./World/Member/runtime/AttributeContainer/AttributeContainerTypes";
 

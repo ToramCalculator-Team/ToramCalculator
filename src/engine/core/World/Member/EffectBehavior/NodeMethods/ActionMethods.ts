@@ -54,7 +54,11 @@ const commonAttackSchema = z.object({
 	expApplicationType: z.enum(["physical", "magic", "normal", "none"]).meta({ description: "惯性施加类型" }),
 	expResolutionType: z.enum(["physical", "magic", "normal"]).meta({ description: "惯性依赖类型" }),
 	damageFormula: z.string().meta({ description: "伤害公式，伤害公式中可以包含self变量，self变量表示当前角色" }),
-	damageCount: z.union([z.string(), z.number()]).meta({ description: "伤害拆分段数表达式；结算后按段数拆分伤害" }),
+	damageCount: z.union([z.string(), z.number()]).meta({ description: "伤害拆分段数表达式；结算后单个伤害按段数拆分" }),
+	damageInterval: z
+		.union([z.string(), z.number()])
+		.optional()
+		.meta({ description: "可选：拆分伤害每段生效间隔毫秒表达式" }),
 	damageTags: z
 		.array(z.string())
 		.default([])
@@ -67,10 +71,6 @@ const commonAttackSchema = z.object({
 		description:
 			"是否脱手锁定施法者属性。true（默认）：弹道/延迟/分段伤害结算时 self.* 读施放瞬间快照，不随施法者后续变化；false：结算时 self.* 实时读施法者当前属性（持续光束、引导类技能需要）",
 	}),
-	damageInterval: z
-		.union([z.string(), z.number()])
-		.optional()
-		.meta({ description: "可选：拆分伤害每段生效间隔毫秒表达式" }),
 });
 
 const rangeAttackSchema = z.object({

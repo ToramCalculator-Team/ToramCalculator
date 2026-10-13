@@ -26,7 +26,7 @@ document/
 └── 成员动作编排链设计.md        子系统设计
 ```
 
-模块架构文档写在模块旁（`core/GameEngine.md`、`core/World/World.md` 等），内容结构见[模块架构文档规范](./模块架构文档规范.md)。
+模块架构文档写在模块旁（`core/GameEngine.md`、`core/World/World.md` 等），内容结构见[模块架构文档规范](./模块架构文档规范.md)。引擎与主线程之间的数据面只有输入 / 输出两个端口，每端口一个共享缓冲区，端口内分状态区与事件区，详见 [`src/engine/AGENTS.md`](../AGENTS.md)「线程间通道」。
 
 项目级 ADR 位于 `docs/decisions/`；引擎相关决策也进入该目录并通过主题列区分范围。
 `hook与触发层设计讨论结论.md` 的内容会被增量拆进 `docs/decisions/`，原文档保留作为历史快照不再演进。

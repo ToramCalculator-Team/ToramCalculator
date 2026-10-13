@@ -1,7 +1,7 @@
 import { z } from "zod/v4";
 
 /**
- * 可由逻辑引擎与渲染 Worker 独立重建的确定性地形定义。
+ * 可由逻辑引擎与渲染器独立重建的确定性地形定义。
  * algorithmVersion 是生成结果兼容边界；算法变化时必须递增，不能让相同定义静默产生不同世界。
  */
 export const TerrainDefinitionSchema = z
