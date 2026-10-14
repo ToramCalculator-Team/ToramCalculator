@@ -5,7 +5,7 @@
  * - 本结构是引擎里**唯一的跨帧调度器**：按模拟时间把消息投递给成员 FSM（`member.actor.send`）。
  * - 它不做发布/订阅，不做扇出，不参与成员内逻辑响应——那是 ProcBus（成员内响应总线）的职责。
  * - 它也不投影任何东西给 UI——那是 DomainEventBus 的职责。
- * - 队列里的 `QueueEvent` 本质是「带执行时间的 FSM 消息」，名字里的 “event” 仅为历史叫法，
+ * - 队列里的 `QueueMessage` 本质是「带执行时间的 FSM 消息」，名字里的 “event” 仅为历史叫法，
  *   不要据此把它当事件总线扩展。新增跨帧调度只应继续走 `member_fsm_event` 这一类。
  *
  * 与另外两套机制的边界：
@@ -14,15 +14,22 @@
  */
 
 import { createLogger } from "~/lib/logger";
-import type { Checkpointable, EventQueueCheckpoint } from "../types";
-import type { EventQueueConfig, QueueEvent, QueueEventType, QueueSnapshot, QueueStats } from "./types";
+import type { Checkpointable } from "../../Checkpoint";
+import type {
+	FsmMessageQueueCheckpoint,
+	FsmMessageQueueConfig,
+	QueueMessage,
+	QueueMessageType,
+	QueueSnapshot,
+	QueueStats,
+} from "./types";
 
-const log = createLogger("EventQueue");
+const log = createLogger("FsmMessageQueue");
 log.setLevel(1);
 
-export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
-	/** 事件队列配置 */
-	private config: EventQueueConfig;
+export class FsmMessageQueue implements Checkpointable<FsmMessageQueueCheckpoint> {
+	/** 状态机消息队列配置 */
+	private config: FsmMessageQueueConfig;
 	/** 当前模拟时间获取器 */
 	private timeGetter: () => number;
 
@@ -31,10 +38,10 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 	 * - 避免每 tick 对全量 events 做 filter（长时/快进模拟的结构性瓶颈）
 	 * - bucket 内保持插入顺序
 	 */
-	private readonly buckets: Map<number, QueueEvent[]> = new Map();
+	private readonly buckets: Map<number, QueueMessage[]> = new Map();
 
 	/** 事件索引（id -> event），用于 O(1) 查询/标记 */
-	private readonly byId: Map<string, QueueEvent> = new Map();
+	private readonly byId: Map<string, QueueMessage> = new Map();
 
 	/** 当前事件总数（用于 size/限流） */
 	private totalSize: number = 0;
@@ -56,7 +63,7 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 	 *
 	 * @param config 队列配置
 	 */
-	constructor(config: Partial<EventQueueConfig> = {}, timeGetter: () => number) {
+	constructor(config: Partial<FsmMessageQueueConfig> = {}, timeGetter: () => number) {
 		this.config = {
 			maxQueueSize: 1000,
 			enablePerformanceMonitoring: true,
@@ -73,11 +80,11 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 	 * @param event 事件对象
 	 * @returns 插入是否成功
 	 */
-	insert(event: QueueEvent): boolean {
+	insert(event: QueueMessage): boolean {
 		try {
 			// 检查队列大小限制
 			if (this.totalSize >= this.config.maxQueueSize) {
-				log.warn("⚠️ 事件队列已满，丢弃事件:", event.id);
+				log.warn("⚠️ 状态机消息队列已满，丢弃事件:", event.id);
 				return false;
 			}
 
@@ -111,7 +118,7 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 	 * @param events 事件数组
 	 * @returns 成功插入的事件数量
 	 */
-	insertBatch(events: QueueEvent[]): number {
+	insertBatch(events: QueueMessage[]): number {
 		let successCount = 0;
 
 		for (const event of events) {
@@ -209,7 +216,7 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 		this.byId.clear();
 		this.totalSize = 0;
 		this.stats.currentSize = 0;
-		log.info("🧹 清空事件队列");
+		log.info("🧹 清空状态机消息队列");
 	}
 
 	// ==================== 事件查询 ====================
@@ -220,7 +227,7 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 	 * @param eventId 事件ID
 	 * @returns 事件对象，如果不存在则返回null
 	 */
-	get(eventId: string): QueueEvent | null {
+	get(eventId: string): QueueMessage | null {
 		return this.byId.get(eventId) ?? null;
 	}
 
@@ -230,8 +237,8 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 	 * @param currentTimeMs 当前模拟时间（毫秒）
 	 * @returns 需要执行的事件数组
 	 */
-	getDue(currentTimeMs: number): QueueEvent[] {
-		const due: QueueEvent[] = [];
+	getDue(currentTimeMs: number): QueueMessage[] {
+		const due: QueueMessage[] = [];
 		for (const time of [...this.buckets.keys()].sort((a, b) => a - b)) {
 			if (time > currentTimeMs) break;
 			const list = this.buckets.get(time);
@@ -320,7 +327,7 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 	createSnapshot(): void {
 		const snapshot: QueueSnapshot = {
 			events: (() => {
-				const all: QueueEvent[] = [];
+				const all: QueueMessage[] = [];
 				for (const [, list] of this.buckets) {
 					for (const e of list) {
 						all.push({ ...e });
@@ -346,7 +353,7 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 	restoreSnapshot(currentTimeMs: number): boolean {
 		const snapshot = this.snapshots.find((s) => s.currentTimeMs === currentTimeMs);
 		if (!snapshot) {
-			log.warn("⚠️ 目标时间的事件队列快照不存在:", currentTimeMs);
+			log.warn("⚠️ 目标时间的状态机消息队列快照不存在:", currentTimeMs);
 			return false;
 		}
 
@@ -384,14 +391,14 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 
 	// ==================== 引擎回滚检查点（与 snapshots 独立，可 postMessage） ====================
 
-	captureCheckpoint(): EventQueueCheckpoint {
-		const events: EventQueueCheckpoint["events"] = [];
+	captureCheckpoint(): FsmMessageQueueCheckpoint {
+		const events: FsmMessageQueueCheckpoint["events"] = [];
 		const times = [...this.buckets.keys()].sort((a, b) => a - b);
 		for (const timeMs of times) {
 			const list = this.buckets.get(timeMs);
 			if (!list) continue;
 			for (const e of list) {
-				const row: EventQueueCheckpoint["events"][number] = {
+				const row: FsmMessageQueueCheckpoint["events"][number] = {
 					id: e.id,
 					insertedAtMs: e.insertedAtMs,
 					executeAtMs: e.executeAtMs,
@@ -414,15 +421,15 @@ export class EventQueue implements Checkpointable<EventQueueCheckpoint> {
 		};
 	}
 
-	restoreCheckpoint(checkpoint: EventQueueCheckpoint): void {
+	restoreCheckpoint(checkpoint: FsmMessageQueueCheckpoint): void {
 		this.buckets.clear();
 		this.byId.clear();
 		for (const row of checkpoint.events) {
-			const e: QueueEvent = {
+			const e: QueueMessage = {
 				id: row.id,
 				insertedAtMs: row.insertedAtMs,
 				executeAtMs: row.executeAtMs,
-				type: row.type as QueueEventType,
+				type: row.type as QueueMessageType,
 				processed: row.processed,
 				targetMemberId: row.targetMemberId,
 				fsmEvent: structuredClone(row.fsmEvent),

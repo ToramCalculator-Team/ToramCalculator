@@ -3,7 +3,7 @@ import { createPhysicalTerrainGenerator, type TerrainDefinition } from "~/lib/te
 import type { SimulationTickContext, WorldCheckpoint } from "../types";
 import { AreaManager } from "./Area/AreaManager";
 import { DamageSystem, type InstantDamageScheduler } from "./Damage/DamageSystem";
-import type { EventQueue } from "./EventQueue/EventQueue";
+import { FsmMessageQueue } from "./FsmMessageQueue/MessageQueue";
 import type { MemberMovementInput } from "./Member/runtime/SharedRuntime";
 import { MemberManager } from "./MemberManager";
 import { SpaceManager } from "./SpaceManager";
@@ -16,7 +16,7 @@ export class World {
 	random: Random;
 
 	/** 事件队列 - 管理时间片段事件 */
-	private eventQueue: EventQueue;
+	private fsmMessageQueue: FsmMessageQueue;
 
 	memberManager: MemberManager;
 
@@ -30,6 +30,7 @@ export class World {
 
 	constructor() {
 		this.random = new Random();
+		this.fsmMessageQueue = new FsmMessageQueue();
 		this.memberManager = new MemberManager();
 		this.spaceManager = new SpaceManager(this.memberManager);
 		this.damageSystem = new DamageSystem(this.spaceManager, this.memberManager);

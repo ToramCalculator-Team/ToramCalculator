@@ -1,20 +1,17 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { EventObject } from "xstate";
 import { createLogger } from "~/lib/logger";
-import { Random } from "~/lib/random";
 import { computeMemberFormation } from "~/memberFormation";
 import { ControlBindingManager } from "./Controller/ControlBindingManager";
 import { ControllerRegistry } from "./Controller/ControllerEndpoint";
 import { ControllerEventProjector } from "./DomainEvents/ControllerEventProjector";
 import { DomainEventBus } from "./DomainEvents/DomainEventBus";
 import type { EventCatalog } from "./Event/EventCatalog";
-import { EventQueue } from "./EventQueue/EventQueue";
-import type { QueueEvent } from "./EventQueue/types";
 import type { ExpressionEvaluator } from "./Expression/ExpressionEvaluator";
 import type { EngineMember, EngineTeam } from "./engineScenarioSchema";
 import { FrameLoop } from "./FrameLoop/FrameLoop";
 import type { FrameLoopSnapshot, FrameLoopStats, FrameLoopTick } from "./FrameLoop/types";
-import type { JSProcessor } from "./JSProcessor/JSProcessor";
+import { JSProcessor } from "./JSProcessor/JSProcessor";
 import type { ExpressionContext } from "./JSProcessor/types";
 import { type IntentMessage, type MessageProcessResult, MessageRouter } from "./MessageRouter/MessageRouter";
 import type { PipelineCatalog } from "./Pipeline/PipelineCatalog";
@@ -114,7 +111,7 @@ export class GameEngine {
 		this.runtimeConfig = runtimeConfig ?? createRealtimeConfig();
 
 		// 接收外部注入的基础设施（跨 reset/cleanup 存活）
-		this.jsProcessor = infra.jsProcessor;
+		this.jsProcessor = new JSProcessor();
 		this.pipelineCatalog = infra.pipelineCatalog;
 		this.pipelineResolverService = infra.pipelineResolverService;
 		this.eventCatalog = infra.eventCatalog;

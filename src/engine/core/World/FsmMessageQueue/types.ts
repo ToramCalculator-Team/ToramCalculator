@@ -2,13 +2,13 @@ import type { EventObject } from "xstate";
 import { z } from "zod/v4";
 
 /** 队列事件类型枚举 */
-export const QueueEventTypeEnum = z.enum(["member_fsm_event"]);
-export type QueueEventType = z.output<typeof QueueEventTypeEnum>;
+export const QueueMessageTypeEnum = z.enum(["member_fsm_event"]);
+export type QueueMessageType = z.output<typeof QueueMessageTypeEnum>;
 
 /**
  * 队列事件接口
  */
-export interface QueueEvent {
+export interface QueueMessage {
 	/** 事件ID */
 	id: string;
 	/** 入队模拟时间（毫秒） */
@@ -16,7 +16,7 @@ export interface QueueEvent {
 	/** 执行模拟时间（毫秒） */
 	executeAtMs: number;
 	/** 事件类型 */
-	type: QueueEventType;
+	type: QueueMessageType;
 	/** 是否已处理 */
 	processed: boolean;
 	/** 目标成员ID */
@@ -30,11 +30,11 @@ export interface QueueEvent {
 /**
  * 事件队列配置接口
  */
-export const EventQueueConfigSchema = z.object({
+export const FsmMessageQueueConfigSchema = z.object({
 	maxQueueSize: z.number(),
 	enablePerformanceMonitoring: z.boolean(),
 });
-export type EventQueueConfig = z.output<typeof EventQueueConfigSchema>;
+export type FsmMessageQueueConfig = z.output<typeof FsmMessageQueueConfigSchema>;
 
 /**
  * 队列统计信息接口
@@ -55,13 +55,13 @@ export interface QueueSnapshot {
 	/** 当前模拟时间（毫秒） */
 	currentTimeMs: number;
 	/** 队列状态 */
-	events: QueueEvent[];
+	events: QueueMessage[];
 	/** 统计信息 */
 	stats: QueueStats;
 }
 
-/** EventQueue 检查点：当前队列事件 + 统计 */
-export interface EventQueueCheckpoint {
+/** FsmMessageQueue 检查点：当前队列事件 + 统计 */
+export interface FsmMessageQueueCheckpoint {
 	events: Array<{
 		id: string;
 		insertedAtMs: number;
