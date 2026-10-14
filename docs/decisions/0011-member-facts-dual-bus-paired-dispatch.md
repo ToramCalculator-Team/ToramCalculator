@@ -1,10 +1,12 @@
 # 0011 - 成员事实在结算点成对派发到两条总线
 
-- **状态**: Accepted
+- **状态**: Superseded by 0059
 - **日期**: 2026-06-05
 - **决策层**: 编排层 / 通信
 - **相关代码**: `src/engine/core/World/Member/runtime/StateMachine/DamageResolution.ts`、`src/engine/core/DomainEvents/DomainEventBus.ts`、`src/engine/core/World/Member/runtime/ProcBus/ProcBus.ts`
-- **相关 ADR**: Depends on 0010；Related to 0008
+- **相关 ADR**: Superseded by 0059；Depends on 0010；Related to 0008
+
+> 已被 [0059](./0059-facts-published-on-subscription-driven-single-bus.md) 取代：两条总线合并为唯一引擎事件总线，发布与对外交付解耦，成对派发不再需要。本记录保留为历史证据。
 
 ## 背景
 

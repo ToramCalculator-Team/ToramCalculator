@@ -95,7 +95,7 @@ export class PipelineLayer {
 
 ### 6. 与状态收集共用层身份
 
-`tickStateHistory` 的成员描述符已带 `campId` / `teamId`，`worldStateBuffer` 的成员布局尚未带。管线侧需要的是稳定、可比较的层身份，状态收集侧需要的是同一个身份用于聚合。两处应共用一份 `LayerRef` 定义（`kind` + `id`），避免各自维护一套层命名。
+`MemberStateHistory` 的成员描述符已带 `campId` / `teamId`，`worldStateBuffer` 的成员布局尚未带。管线侧需要的是稳定、可比较的层身份，状态收集侧需要的是同一个身份用于聚合。两处应共用一份 `LayerRef` 定义（`kind` + `id`），避免各自维护一套层命名。
 
 本次只提取类型并把管线侧改用该类型；`worldStateBuffer` 是否补写层字段、状态收集如何按层聚合，属于 SAB 改造计划的范围，不在本计划内。
 

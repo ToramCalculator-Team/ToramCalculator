@@ -5,9 +5,9 @@
 1. **成员与区域管理**：成员生命周期、状态与行为；瞬时伤害与持续区域的计算与应用。
 2. **输入应用**：按输入快照中的目标身份标记把控制器意图施加到成员，无意图的成员回退到自身 AI 采样。
 3. **Tick 分相执行**：把一次逻辑 Tick 分成自写推进与统一结算两相，消除访问顺序对结果的影响。
-4. **跨帧调度**：持有成员消息队列，按模拟时刻把消息投递给成员状态机。
+4. **跨帧投递**：持有成员 FSM 消息队列，按模拟时刻把尚未发生的消息投递给成员状态机。
 5. **空间与地形**：成员空间查询、范围查询，以及地形高度投影。
-6. **对外事实收集**：接收成员在唯一采集出口写入的对外事实，供引擎在输出边界取走。
+6. **事件总线**：持有引擎唯一常设事件总线，各过程自发发布「已发送的事实」；成员作用域订阅由成员内响应消费，外部作用域订阅决定哪些事实对外交付。
 7. **确定性随机与表达式求值**：为规则层提供可检查点的随机数与表达式计算能力。
 
 World 不管理引擎运行时间、不读写黑板、不控制生命周期、不做性能统计。
@@ -26,8 +26,8 @@ class World {
   private damageSystem: DamageSystem;
   private areaManager: AreaManager;
 
-  // 跨帧调度
-  private eventQueue: EventQueue;
+  // 跨帧投递
+  private fsmMessageQueue: FsmMessageQueue;
 
   // Tick 内的阶段缓冲
   private pendingFacts: PendingFactBuffer;
@@ -35,8 +35,8 @@ class World {
   // 确定性随机
   private random: Random;
 
-  // 本 Tick 事实收集（成员在 actor.send 前的唯一出口写入，引擎在输出边界取走）
-  private factSink: FactSink;
+  // 事件总线（订阅带作用域并相应分桶）
+  private eventBus: EventBus;
 
   // 规则层依赖
   private expressionEvaluator: ExpressionEvaluator;
@@ -61,7 +61,7 @@ constructor(infra: WorldInfrastructure): void
 // TODO:
 // - 创建随机数生成器
 // - 按依赖顺序创建成员、空间、伤害与区域子系统
-// - 创建成员消息队列与阶段缓冲
+// - 创建成员消息队列、事件总线与阶段缓冲
 // - 保存基础设施引用
 
 /**
@@ -74,13 +74,13 @@ loadScenario(data: EngineScenarioData): void
 // - 设置地形定义并建立高度采样
 // - 按场景数据创建成员
 // - 重建空间索引
-// - 清空消息队列、阶段缓冲与事实收集
+// - 清空消息队列、阶段缓冲与订阅表
 
 /**
  * 清空世界状态
  */
 clear(): void
-// TODO: 依次清空成员、伤害、区域、消息队列、阶段缓冲与事实收集
+// TODO: 依次清空成员、伤害、区域、消息队列、阶段缓冲与订阅表
 ```
 
 ---
@@ -114,7 +114,7 @@ tick(tick: SimulationTickContext, inputSnapshot: InputSnapshot): void
 
 ---
 
-### 跨帧调度
+### 跨帧投递
 
 ```typescript
 /**
@@ -124,14 +124,14 @@ tick(tick: SimulationTickContext, inputSnapshot: InputSnapshot): void
  * @param executeAtMs 执行时刻（模拟时间，毫秒）
  */
 enqueueMemberMessage<TEvent extends EventObject>(targetId: string, event: TEvent, executeAtMs: number): void
-// TODO: 校验执行时刻严格晚于本次 Tick 的模拟时刻，再委托 eventQueue.insert()
+// TODO: 校验执行时刻严格晚于本次 Tick 的模拟时刻，再委托 fsmMessageQueue.insert()
 
 /**
  * 交付本 Tick 到期的成员消息，并清理已交付项
  * @param currentTimeMs 当前模拟时间
  * @returns 本 Tick 交付的成员消息
  */
-consumeDueMessages(currentTimeMs: number): QueueEvent[]
+consumeDueMessages(currentTimeMs: number): PendingFsmMessage[]
 // TODO:
 // - 单次遍历已到达的时间区间，完成取用、交付与清理，不重复排序
 // - 队列归 World 持有，交付与清理是同一个动作的两个半程，拆成两个公开方法只会让调用方漏掉其中一半
@@ -140,6 +140,8 @@ consumeDueMessages(currentTimeMs: number): QueueEvent[]
 成员消息的两种入队来源只在时间锚点上不同：Tick 内派发以本次 Tick 的模拟时间为锚点；Tick 外的外部注入由引擎带上自己的模拟时间。两者都必须指向严格晚于当前时刻的执行时刻；本 Tick 内生效的因果链不经过队列，由阶段缓冲承载（见下）。
 
 队列不持有时间闭包：入队、交付与清理都显式接收当前模拟时间，`createSnapshot(currentTimeMs)` 同样收参数。World 若让队列闭包读外部时间源，等于通过函数指针读引擎私有可变状态，比参数传递更耦合且不可见。
+
+队列名不叫「事件」：它投递的是尚未发生的定向动作，到点被消费掉，是待办；而事件总线广播的是已经发生的既定事实，被观察后仍在，是发布点。两者本质不同，不共用「事件」这个名称。
 
 ---
 
@@ -224,9 +226,9 @@ projectToGround(position: { x: number; y: number; z: number }): { x: number; y: 
 
 ---
 
-### 事实收集与连续状态采集
+### 事实发布与连续状态采集
 
-对外事实在成员内 `actor.send` 之前的唯一采集出口写入，由 World 收集，供引擎在输出边界取走。收集器不解释事实内容，也不做扇出：它既是事实的唯一采集点，也是唯一分发点，因此不存在「谁订阅了」这一层。
+已发送的事实由各过程在事件总线上发布：状态实例变更、阈值穿越、结算点与技能效果行为树都是发布者，成员内响应与外部观察是同一条总线上的两种作用域订阅。总线不解释事实内容：外部作用域订阅的事实由 World 汇总后交引擎写入输出端口事件区，成员作用域订阅由被动与 buff 自行消费。
 
 连续状态同样由 World 汇总后交出：引擎只把结果写进输出端口，不直接访问成员运行时状态。两者都是「取一份快照」，区别只在语义——事实必须逐次消费，连续状态允许跳过。
 
@@ -241,19 +243,12 @@ collectContinuousState(): ContinuousWorldState
 // - 采集在这里而不是引擎，是因为引擎不访问成员运行时状态
 
 /**
- * 记录一条成员对外事实
- * @param record 成员、来源、事件名、负载与模拟时刻
+ * 取走本 Tick 被订阅的全部对外事实
  */
-recordFact(record: MemberFactRecord): void
-// TODO: 追加到本 Tick 事实收集，不解释内容、不投影
-
-/**
- * 取走本 Tick 收集的全部事实
- */
-takeFacts(): readonly MemberFactRecord[]
+takePublishedFacts(): readonly PublishedFact[]
 // TODO:
-// - 返回本 Tick 收集的事实，交出所有权并清空收集
-// - 事实只被取走一次，引擎是唯一取用者
+// - 返回本 Tick 被外部订阅的事实，交出所有权并清空
+// - 未被订阅时返回空集，不产生任何对外数据
 
 /**
  * 求值表达式
@@ -300,7 +295,7 @@ World 不自持也不推进模拟时间：它从 Tick 上下文的第一个参�
 
 遍历成员时，先被访问的成员看到的是尚未更新的其他成员状态；如果在遍历中直接施加跨成员影响，伤害目标集合就会随成员注册顺序变化。分相之后，采样相只做自身推进，结算相在全部位置确定后统一解析，顺序依赖被消除而不是被推移。
 
-### 3. 跨帧调度归 World
+### 3. 跨帧投递归 World
 
 **设计理念**：调度对象与调度时机在同一模块内闭合。
 
@@ -318,7 +313,13 @@ World 从快照取移动意图，并决定成员这一 Tick 的控制来源：�
 
 队列的入队、取用与清理都显式接收当前模拟时间，不通过闭包读取外部时间源。这样队列的输入完全由调用参数决定，检查点恢复与时序测试都能在同一组参数下重现。
 
-### 6. 技能效果在施法前摇统一产生
+### 6. 事件总线归 World
+
+**设计理念**：事实的发布与订阅是模拟内部关系，不依赖引擎外存在消费者。
+
+总线常设：过程自发发布事实，与是否存在订阅者无关。订阅只决定哪些事实需要对外交付：没有外部订阅者时不创建事件区、不收集、不写出，且模拟结果不变。成员内响应与外部观察是同一条总线上的两种作用域，各自订阅、互不影响；发布一次即可，不存在成对派发。
+
+### 7. 技能效果在施法前摇统一产生
 
 **设计理念**：让全部技能效果共用同一条延迟通路，避免出现第二套时序。
 

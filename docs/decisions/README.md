@@ -45,7 +45,7 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 | [0003](./0003-skill-cost-as-pipeline-contract.md)、[0007](./0007-next-skill-cost-modifier-contract.md) | 技能消耗由纯 Pipeline 计算，成功扣费后由 FSM 消费一次性修正 |
 | [0004](./0004-skill-percentage-import-semantics.md) | 外部技能百分比修正统一映射到静态百分比通道 |
 | [0008](./0008-world-observable-as-spatial-medium.md) | 空间层只读取 WorldObservable 并保持确定性世界调度边界 |
-| [0010](./0010-unify-procbus-and-attribute-watcher.md)、[0011](./0011-member-facts-dual-bus-paired-dispatch.md) | ProcBus 负责成员内响应，DomainEventBus 负责对外投影，权威结算点成对派发 |
+| [0010](./0010-unify-procbus-and-attribute-watcher.md)、[0059](./0059-facts-published-on-subscription-driven-single-bus.md) | 引擎持有唯一常设事件总线；过程自发发布已发送的事实，订阅决定对外交付；事实只承载「发生了什么」，数值从状态载体读取 |
 
 ### 应用状态与渲染
 
@@ -79,7 +79,7 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 | [0046](./0046-compile-business-workflows-to-generic-engine-contracts.md) | Simulator 与 Character 在应用层把业务工作流编译为通用引擎执行和技术记录策略，Engine 不编码设计、验证、分析或预览模式 |
 | [0026](./0026-simulator-owned-members-with-concrete-selection.md)、[0031](./0031-typed-member-relations-over-polymorphic-reference.md) | Simulator 独占成员编排，Member 使用按类型区分的显式关系 |
 | [0027](./0027-scene-resolution-for-logic-and-visual-inputs.md)、[0032](./0032-resolve-member-flow-and-intrinsic-mob-ai-by-type.md) | 场景解析统一产出逻辑、视觉和 resolvedBehavior，运行时不回查多个持久来源 |
-| [0028](./0028-capture-tick-snapshots-before-ui-throttling.md)、[0029](./0029-flat-typed-attribute-snapshot-contract.md)、[0044](./0044-store-tick-state-history-in-sab-segments.md) | Simulator 验证请求 Worker 记录可精确还原的 Tick 状态历史，历史以 SAB-only 分段保存，实时 UI 只消费独立的节流投影 |
+| [0028](./0028-capture-tick-snapshots-before-ui-throttling.md)、[0029](./0029-flat-typed-attribute-snapshot-contract.md)、[0044](./0044-store-tick-state-history-in-sab-segments.md)、[0060](./0060-run-records-ordered-by-simulation-time.md) | Simulator 验证请求 Worker 记录可精确还原的成员状态历史，历史以 SAB-only 分段保存；运行记录以模拟时刻与同 Tick 序号为权威顺序轴，帧序号只用于定位与诊断 |
 | [0030](./0030-persist-simulator-design-not-run-output.md) | 只持久化 Simulator 设计，运行产出属于当前会话 |
 | [0043](./0043-derive-recorded-actions-from-final-inputs.md)、[0034](./0034-recorded-member-flow-preserves-simulation-time.md) | 最终输入记录是行动接纳的唯一事实，行动录制从中派生并保留相对模拟时间 |
 | [0035](./0035-apply-local-design-copy-diffs-to-original-entities.md)、[0036](./0036-design-copy-completely-defines-run-input.md) | DesignCopy 完整定义运行输入，并按实体身份差异应用回正式设计 |
@@ -90,6 +90,7 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 ## 历史链与撤回项
 
 - 交互状态：`0012` -> `0021`。
+- 引擎事件通信：`0010` / `0011` -> `0059`。
 - 运行时资源：`0015` -> `0042`。
 - Simulator 输入隔离：`0023` -> `0025` -> `0036`。
 - 行动录制：`0033` -> `0043`。
@@ -113,7 +114,7 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 | [0008](./0008-world-observable-as-spatial-medium.md) | 世界可观测属性作为空间介质 | Accepted | 世界模型 |
 | [0009](./0009-persistent-render-runtime.md) | 常驻渲染运行时作为应用级场景底座 | Accepted | 渲染 |
 | [0010](./0010-unify-procbus-and-attribute-watcher.md) | 合并 ProcBus 与 AttributeWatcher 为单一成员内事件总线 | Accepted | 引擎通信 |
-| [0011](./0011-member-facts-dual-bus-paired-dispatch.md) | 成员事实在结算点成对派发到两条总线 | Accepted | 引擎通信 |
+| [0011](./0011-member-facts-dual-bus-paired-dispatch.md) | 成员事实在结算点成对派发到两条总线 | Superseded by 0059 | 引擎通信 |
 | [0012](./0012-intent-first-visual-control.md) | 意图优先的视觉控制 | Superseded by 0021 | 应用状态 |
 | [0013](./0013-attention-machine-as-phase-independent-root-actor.md) | 注意力机作为阶段无关的根级 actor | Withdrawn | 决策过度拆分 |
 | [0014](./0014-routing-vs-state-management-baseline.md) | 路由与状态管理分类基准 | Accepted | 应用状态 |
@@ -160,10 +161,10 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 | [0056](./0056-skill-behavior-state-and-wait-separation.md) | 技能行为树分离状态声明与生命周期等待 | Accepted | 技能行为树 |
 | [0057](./0057-member-orchestration-and-behavior-tree-node-boundaries.md) | Member 编排模块与行为树节点方法边界 | Accepted | 引擎编排与行为树 |
 | [0058](./0058-member-behavior-tree-checkpoint-recovery.md) | Member 行为树检查点恢复边界 | Accepted | 引擎编排与检查点恢复 |
+| [0059](./0059-facts-published-on-subscription-driven-single-bus.md) | 对外事实由订阅驱动并从唯一引擎事件总线发布 | Accepted | 引擎通信 |
+| [0060](./0060-run-records-ordered-by-simulation-time.md) | 运行记录以模拟时间为权威顺序轴 | Accepted | 运行记录与线程通信 |
 
 ## 决策候选与实施计划
 
-- [同步与写入授权加固计划](../plans/sync-and-auth-hardening.md)
 - [Simulator 最小验证闭环](../plans/minimum-validation-loop.md)
-- [Simulator Tick 状态历史 SAB 性能重构计划](../plans/simulator-tick-state-history-sab-performance.md)
-- [Member 控制模式与行为序列迁移计划](../plans/member-control-mode-behavior-sequence-migration.md)
+- [引擎黑板通信架构重构计划](../plans/engine-blackboard-communication-refactor.md)
