@@ -2,13 +2,13 @@ import type { MemberType } from "@db/schema/enums";
 import type { Actor, AnyActorLogic } from "xstate";
 import { createLogger } from "~/lib/logger";
 import type { EventCatalog } from "../Event/EventCatalog";
-import type { EngineMember, EngineTeam } from "../engineScenarioSchema";
 import type { ExpressionContext } from "../JSProcessor/types";
 import type { PipelineResolverService } from "../Pipeline/PipelineResolverService";
+import type { EngineMember, EngineTeam } from "../ScenarioSchema";
 import type { MemberCheckpoint, MemberDomainEvent } from "../types";
 import type { DamageAreaSpec } from "./Area/types";
 import type { ResolvedDamageEffect } from "./Damage/types";
-import type { Member, MemberControlInputRecorder } from "./Member/Member";
+import type { Member } from "./Member/Member";
 import type { MemberBaseNestedSchema } from "./Member/MemberBaseSchema";
 import type { MemberSharedRuntime } from "./Member/runtime/SharedRuntime";
 import type { MemberFSMContext, MemberFSMEvent } from "./Member/StateMachine/types";
@@ -24,7 +24,7 @@ export type AnyMemberEntry = Member<
 	MemberBaseNestedSchema,
 	MemberFSMEvent<never>,
 	MemberFSMContext,
-	MemberSharedRuntime<MemberBaseNestedSchema>
+	MemberSharedRuntime
 >;
 
 // ============================== 成员管理器类 ==============================

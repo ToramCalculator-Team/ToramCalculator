@@ -2,7 +2,7 @@ import type {
 	ConvertToNestedSchema,
 	ConvertToNestedSchemaDic,
 	ExtractAttrPaths,
-} from "./runtime/AttributeContainer/SchemaTypes";
+} from "./AttributeContainer/SchemaTypes";
 
 // ============================== 逆向出来的BounsType参考数据类型 ==============================
 

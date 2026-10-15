@@ -14,22 +14,13 @@
  */
 
 import { createLogger } from "~/lib/logger";
-import type { Checkpointable } from "../../Checkpoint";
-import type {
-	FsmMessageQueueCheckpoint,
-	FsmMessageQueueConfig,
-	QueueMessage,
-	QueueMessageType,
-	QueueSnapshot,
-	QueueStats,
-} from "./types";
+import type { Checkpointable } from "../Checkpoint";
+import type { QueueCheckpoint, QueueMessage, QueueSnapshot } from "./types";
 
 const log = createLogger("FsmMessageQueue");
 log.setLevel(1);
 
-export class FsmMessageQueue implements Checkpointable<FsmMessageQueueCheckpoint> {
-	/** 状态机消息队列配置 */
-	private config: FsmMessageQueueConfig;
+export class FsmMessageQueue implements Checkpointable<QueueCheckpoint> {
 	/** 当前模拟时间获取器 */
 	private timeGetter: () => number;
 
@@ -46,13 +37,6 @@ export class FsmMessageQueue implements Checkpointable<FsmMessageQueueCheckpoint
 	/** 当前事件总数（用于 size/限流） */
 	private totalSize: number = 0;
 
-	/** 队列统计信息 */
-	private stats: QueueStats = {
-		currentSize: 0,
-		totalProcessed: 0,
-		totalInserted: 0,
-	};
-
 	/** 快照历史 */
 	private snapshots: QueueSnapshot[] = [];
 
@@ -63,12 +47,7 @@ export class FsmMessageQueue implements Checkpointable<FsmMessageQueueCheckpoint
 	 *
 	 * @param config 队列配置
 	 */
-	constructor(config: Partial<FsmMessageQueueConfig> = {}, timeGetter: () => number) {
-		this.config = {
-			maxQueueSize: 1000,
-			enablePerformanceMonitoring: true,
-			...config,
-		};
+	constructor(timeGetter: () => number) {
 		this.timeGetter = timeGetter;
 	}
 
@@ -82,12 +61,6 @@ export class FsmMessageQueue implements Checkpointable<FsmMessageQueueCheckpoint
 	 */
 	insert(event: QueueMessage): boolean {
 		try {
-			// 检查队列大小限制
-			if (this.totalSize >= this.config.maxQueueSize) {
-				log.warn("⚠️ 状态机消息队列已满，丢弃事件:", event.id);
-				return false;
-			}
-
 			// 去重：若已存在相同 id，先移除旧事件（保持幂等）
 			if (this.byId.has(event.id)) {
 				this.remove(event.id);
@@ -99,10 +72,6 @@ export class FsmMessageQueue implements Checkpointable<FsmMessageQueueCheckpoint
 			this.buckets.set(event.executeAtMs, list);
 			this.byId.set(event.id, event);
 			this.totalSize += 1;
-
-			// 更新状态
-			this.stats.currentSize = this.totalSize;
-			this.stats.totalInserted++;
 
 			// 高频路径：默认不输出日志（避免污染性能/控制台）
 			return true;
@@ -156,7 +125,6 @@ export class FsmMessageQueue implements Checkpointable<FsmMessageQueueCheckpoint
 				this.totalSize = Math.max(0, this.totalSize - removedCount);
 			}
 		}
-		this.stats.currentSize = this.totalSize;
 	}
 
 	/**
@@ -188,8 +156,6 @@ export class FsmMessageQueue implements Checkpointable<FsmMessageQueueCheckpoint
 		this.byId.delete(eventId);
 		if (this.totalSize > 0) this.totalSize -= 1;
 
-		this.stats.currentSize = this.totalSize;
-
 		return true;
 	}
 
@@ -203,7 +169,6 @@ export class FsmMessageQueue implements Checkpointable<FsmMessageQueueCheckpoint
 		if (event) {
 			if (!event.processed) {
 				event.processed = true;
-				this.stats.totalProcessed++;
 			}
 		}
 	}
@@ -215,7 +180,6 @@ export class FsmMessageQueue implements Checkpointable<FsmMessageQueueCheckpoint
 		this.buckets.clear();
 		this.byId.clear();
 		this.totalSize = 0;
-		this.stats.currentSize = 0;
 		log.info("🧹 清空状态机消息队列");
 	}
 
@@ -267,15 +231,6 @@ export class FsmMessageQueue implements Checkpointable<FsmMessageQueueCheckpoint
 	 */
 	isEmpty(): boolean {
 		return this.totalSize === 0;
-	}
-
-	/**
-	 * 获取队列统计信息
-	 *
-	 * @returns 统计信息
-	 */
-	getStats(): QueueStats {
-		return structuredClone(this.stats);
 	}
 
 	/**
@@ -338,7 +293,6 @@ export class FsmMessageQueue implements Checkpointable<FsmMessageQueueCheckpoint
 				return all;
 			})(),
 			currentTimeMs: this.timeGetter(),
-			stats: { ...this.stats },
 		};
 
 		this.snapshots.push(snapshot);
@@ -370,7 +324,6 @@ export class FsmMessageQueue implements Checkpointable<FsmMessageQueueCheckpoint
 				this.byId.set(copied.id, copied);
 				this.totalSize += 1;
 			}
-			this.stats = { ...snapshot.stats };
 
 			log.info(`🔄 恢复到指定时间快照: ${currentTimeMs}ms - 事件数: ${this.totalSize}`);
 			return true;
@@ -391,61 +344,29 @@ export class FsmMessageQueue implements Checkpointable<FsmMessageQueueCheckpoint
 
 	// ==================== 引擎回滚检查点（与 snapshots 独立，可 postMessage） ====================
 
-	captureCheckpoint(): FsmMessageQueueCheckpoint {
-		const events: FsmMessageQueueCheckpoint["events"] = [];
+	captureCheckpoint(): QueueCheckpoint {
+		const events: QueueCheckpoint["events"] = [];
 		const times = [...this.buckets.keys()].sort((a, b) => a - b);
 		for (const timeMs of times) {
 			const list = this.buckets.get(timeMs);
-			if (!list) continue;
-			for (const e of list) {
-				const row: FsmMessageQueueCheckpoint["events"][number] = {
-					id: e.id,
-					insertedAtMs: e.insertedAtMs,
-					executeAtMs: e.executeAtMs,
-					type: e.type,
-					processed: e.processed,
-					targetMemberId: e.targetMemberId,
-					fsmEvent: structuredClone(e.fsmEvent),
-				};
-				events.push(row);
-			}
+			list?.forEach((e) => {
+				events.push(e);
+			});
 		}
 		return {
 			events,
-			totalSize: this.totalSize,
-			stats: {
-				currentSize: this.stats.currentSize,
-				totalProcessed: this.stats.totalProcessed,
-				totalInserted: this.stats.totalInserted,
-			},
 		};
 	}
 
-	restoreCheckpoint(checkpoint: FsmMessageQueueCheckpoint): void {
+	restoreCheckpoint(checkpoint: QueueCheckpoint): void {
 		this.buckets.clear();
 		this.byId.clear();
 		for (const row of checkpoint.events) {
-			const e: QueueMessage = {
-				id: row.id,
-				insertedAtMs: row.insertedAtMs,
-				executeAtMs: row.executeAtMs,
-				type: row.type as QueueMessageType,
-				processed: row.processed,
-				targetMemberId: row.targetMemberId,
-				fsmEvent: structuredClone(row.fsmEvent),
-				source: "未知来源",
-			};
-			const list = this.buckets.get(e.executeAtMs) ?? [];
-			list.push(e);
-			this.buckets.set(e.executeAtMs, list);
-			this.byId.set(e.id, e);
+			const list = this.buckets.get(row.executeAtMs) ?? [];
+			list.push(row);
+			this.buckets.set(row.executeAtMs, list);
+			this.byId.set(row.id, row);
 		}
-		this.totalSize = checkpoint.totalSize;
-		this.stats = {
-			currentSize: checkpoint.stats.currentSize,
-			totalProcessed: checkpoint.stats.totalProcessed,
-			totalInserted: checkpoint.stats.totalInserted,
-		};
 	}
 
 	// 无私有排序插入：按时间分桶后不再需要

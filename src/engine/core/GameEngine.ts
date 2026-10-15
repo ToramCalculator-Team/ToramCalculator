@@ -8,7 +8,6 @@ import { ControllerEventProjector } from "./DomainEvents/ControllerEventProjecto
 import { DomainEventBus } from "./DomainEvents/DomainEventBus";
 import type { EventCatalog } from "./Event/EventCatalog";
 import type { ExpressionEvaluator } from "./Expression/ExpressionEvaluator";
-import type { EngineMember, EngineTeam } from "./engineScenarioSchema";
 import { FrameLoop } from "./FrameLoop/FrameLoop";
 import type { FrameLoopSnapshot, FrameLoopStats, FrameLoopTick } from "./FrameLoop/types";
 import { JSProcessor } from "./JSProcessor/JSProcessor";
@@ -23,6 +22,7 @@ import {
 	RunInputActionSchema,
 	RunOutputRecorder,
 } from "./runOutput";
+import type { EngineMember, EngineTeam } from "./ScenarioSchema";
 import {
 	calculateModifierCapacity,
 	createWorldStateLayoutDescriptor,

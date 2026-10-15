@@ -13,7 +13,7 @@ export type BtContextFactoryWarning = ExecutionContextWarning;
 export type CreateBtContextOptions<
 	TFSMEvent extends EventObject,
 	TSchema extends NestedSchema,
-	TContext extends MemberSharedRuntime<TSchema>,
+	TContext extends MemberSharedRuntime,
 > = {
 	env: EffectBtManagerEnv<TFSMEvent, TSchema, TContext>;
 	btBindings?: Record<string, unknown>;
@@ -21,7 +21,7 @@ export type CreateBtContextOptions<
 	onWarning?: (warning: BtContextFactoryWarning) => void;
 };
 
-export type CreateBtContextResult<TSchema extends NestedSchema, TContext extends MemberSharedRuntime<TSchema>> = {
+export type CreateBtContextResult<TContext extends MemberSharedRuntime> = {
 	context: TContext & Record<string, unknown>;
 	warnings: BtContextFactoryWarning[];
 };
@@ -30,8 +30,8 @@ export type CreateBtContextResult<TSchema extends NestedSchema, TContext extends
 export function createBtContext<
 	TFSMEvent extends EventObject,
 	TSchema extends NestedSchema,
-	TContext extends MemberSharedRuntime<TSchema>,
->(options: CreateBtContextOptions<TFSMEvent, TSchema, TContext>): CreateBtContextResult<TSchema, TContext> {
+	TContext extends MemberSharedRuntime,
+>(options: CreateBtContextOptions<TFSMEvent, TSchema, TContext>): CreateBtContextResult<TContext> {
 	const { env, btBindings, agent, onWarning } = options;
 	const executionOptions: CreateExecutionContextOptions = {
 		baseContext: env.getContext(),

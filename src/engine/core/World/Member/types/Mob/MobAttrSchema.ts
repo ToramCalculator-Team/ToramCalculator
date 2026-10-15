@@ -1,13 +1,13 @@
 /**
  * 玩家数据配置
  */
-import type { EngineMob } from "../../../../engineScenarioSchema";
-import { MemberBaseNestedSchema, MemberBaseStructure } from "../../MemberBaseSchema";
+import type { EngineMob } from "../../../../ScenarioSchema";
 import type {
 	ConvertToNestedSchema,
 	ConvertToNestedSchemaDic,
 	ExtractAttrPaths,
-} from "../../runtime/AttributeContainer/SchemaTypes";
+} from "../../AttributeContainer/SchemaTypes";
+import { MemberBaseNestedSchema, MemberBaseStructure } from "../../MemberBaseSchema";
 
 // ============================== 基础结构定义 ==============================
 

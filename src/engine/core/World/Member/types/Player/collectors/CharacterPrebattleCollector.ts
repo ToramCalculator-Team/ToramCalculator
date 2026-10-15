@@ -1,7 +1,7 @@
-import type { EngineCharacter, EngineMember } from "../../../../../engineScenarioSchema";
+import type { EngineCharacter, EngineMember } from "../../../../../ScenarioSchema";
+import type { ModifierSource, ModifierType } from "../../../AttributeContainer/AttributeContainerTypes";
 import type { RuntimeAttachment } from "../../../attachments/RuntimeAttachment";
 import { runtimeAttachmentSourceId } from "../../../attachments/RuntimeAttachmentSource";
-import type { ModifierSource, ModifierType } from "../../../runtime/AttributeContainer/AttributeContainer";
 import { compilePrebattleModifierLines, mapPrebattleEnumValueToIndex } from "./PrebattleModifierCompiler";
 
 /** 兼容 schema 中可能出现的动态数组值，避免非字符串值进入 DSL 编译器。 */

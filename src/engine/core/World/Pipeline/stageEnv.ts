@@ -1,6 +1,3 @@
-import type { NestedSchema } from "../World/Member/runtime/AttributeContainer/SchemaTypes";
-import type { MemberSharedRuntime } from "../World/Member/runtime/SharedRuntime";
-
 /**
  * 说明：
  * - env 只读，供"纯计算管线"查询模拟时间/数值/表达式求值等。
@@ -9,17 +6,19 @@ import type { MemberSharedRuntime } from "../World/Member/runtime/SharedRuntime"
  *   Member 成员级订阅）负责，管线本身不再主动派发事件。
  */
 
+import type { MemberSharedRuntime } from "../Member/runtime/SharedRuntime";
+
 /** 管线输入/输出的通用数据载体。 */
 export type StageData = Record<string, unknown>;
 
 /** 管线执行只读环境 */
-export interface StageEnv<TAttrSchema extends NestedSchema> {
+export interface StageEnv {
 	readonly timeMs: number;
 	readonly tickIndex: number;
 	readonly stats: (memberId: string, path: string) => number;
 	readonly eval: (expr: string, vars?: Record<string, unknown>) => number;
 	readonly newId: () => string;
-	readonly memberRuntime: Readonly<MemberSharedRuntime<TAttrSchema>>;
+	readonly memberRuntime: Readonly<MemberSharedRuntime>;
 
 	/**
 	 * 当前 self 的状态 tag 集合（来自 StatusInstanceStore）。

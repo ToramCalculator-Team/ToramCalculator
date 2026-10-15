@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { NestedSchema, SchemaAttribute } from "../World/Member/runtime/AttributeContainer/SchemaTypes";
+import type { NestedSchema, SchemaAttribute } from "../World/Member/AttributeContainer/SchemaTypes";
 import { ExpressionTransformer } from "./ExpressionTransformer";
 
 // 构造一个合法叶子 SchemaAttribute（isSchemaAttribute 要求 displayName + expression 均为字符串）。

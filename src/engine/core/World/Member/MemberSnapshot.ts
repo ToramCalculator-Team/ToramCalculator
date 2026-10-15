@@ -1,6 +1,6 @@
 import { MEMBER_TYPE } from "@db/schema/enums";
 import { z } from "zod/v4";
-import { AttributeSnapshotSchema } from "./runtime/AttributeContainer/AttributeContainerTypes";
+import { AttributeSnapshotSchema } from "./AttributeContainer/AttributeContainerTypes";
 
 /**
  * Member 序列化契约。

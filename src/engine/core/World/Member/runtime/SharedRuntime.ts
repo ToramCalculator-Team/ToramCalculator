@@ -1,13 +1,4 @@
-import type {
-	EngineCharacter,
-	EngineCharacterSkill,
-	EngineMob,
-	EngineSkillVariant,
-} from "../../../engineScenarioSchema";
-import type { MemberBaseNestedSchema } from "../MemberBaseSchema";
-import type { MobAttrNestedSchema } from "../types/Mob/MobAttrSchema";
-import type { PlayerAttrNestedSchema } from "../types/Player/PlayerAttrSchema";
-import type { NestedSchema } from "./AttributeContainer/SchemaTypes";
+import type { EngineCharacter, EngineCharacterSkill, EngineMob, EngineSkillVariant } from "../../../ScenarioSchema";
 
 /**
  * FSM和EffectBt的共享运行时
@@ -18,7 +9,7 @@ import type { NestedSchema } from "./AttributeContainer/SchemaTypes";
  * - BT 执行期直接消费这些字段；AttributeContainer、services、订阅器等成员组件通过 capabilities 注入。
  * - FSM 为这些字段的唯一写入方；BT action 通过 capabilities 请求外部组件执行副作用。
  */
-export interface MemberSharedRuntime<TSchema extends NestedSchema> extends Record<string, unknown> {
+export interface MemberSharedRuntime extends Record<string, unknown> {
 	memberId: string;
 	name: string;
 	campId: string;
@@ -74,7 +65,7 @@ export interface MemberMovementInput {
 	direction: { x: number; z: number };
 	intensity: number;
 }
-export const DefaultMemberSharedRuntime: MemberSharedRuntime<MemberBaseNestedSchema> = {
+export const DefaultMemberSharedRuntime: MemberSharedRuntime = {
 	memberId: "",
 	name: "",
 	campId: "",
@@ -102,7 +93,7 @@ export const DefaultMemberSharedRuntime: MemberSharedRuntime<MemberBaseNestedSch
 };
 
 /** Player 专用 runtime 扩展。 */
-export interface PlayerRuntime extends MemberSharedRuntime<PlayerAttrNestedSchema> {
+export interface PlayerRuntime extends MemberSharedRuntime {
 	type: "Player";
 	skillList: EngineCharacterSkill[];
 	data: EngineCharacter | null;
@@ -115,7 +106,7 @@ export const PlayerRuntimeDefaults: PlayerRuntime = {
 };
 
 /** Mob 专用 runtime 扩展。 */
-export interface MobRuntime extends MemberSharedRuntime<MobAttrNestedSchema> {
+export interface MobRuntime extends MemberSharedRuntime {
 	type: "Mob";
 	skillList: EngineCharacterSkill[];
 	data: EngineMob | null;

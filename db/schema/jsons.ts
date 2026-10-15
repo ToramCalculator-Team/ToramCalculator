@@ -5,7 +5,7 @@
  * 此文件主要用于定义数据库中出现的 Json 类型，生成器会将这里的内容补充到生成的zod/index.ts文件中。
  */
 import { z } from "zod/v4";
-import { SchemaAttributeSchema } from "~/engine/core/World/Member/runtime/AttributeContainer/SchemaTypes";
+import { SchemaAttributeSchema } from "~/engine/core/World/Member/AttributeContainer/SchemaTypes";
 import { BT_KIND, MEMBER_TYPE } from "./enums";
 
 // ==================================================================== 行为树 ==============================================================

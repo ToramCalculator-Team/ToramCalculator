@@ -8,7 +8,7 @@
  * - 内存优化：连续内存布局，减少GC压力
  */
 import * as Enums from "@db/schema/enums";
-import type { Checkpointable } from "~/engine/core/Checkpoint";
+import type { Checkpointable } from "~/engine/core/World/Checkpoint";
 import { createLogger } from "~/lib/logger";
 import { AttributeContainerASTCompiler } from "./AttributeContainerAST";
 import type {

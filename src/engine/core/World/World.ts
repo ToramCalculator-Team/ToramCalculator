@@ -28,9 +28,13 @@ export class World {
 
 	private sampleTerrainHeight: (x: number, z: number) => number = () => 0;
 
-	constructor() {
+	constructor(
+		private timeGetter: () => number,
+		private tickIndexGetter: () => number,
+		private fixedStepMsGetter: () => number,
+	) {
 		this.random = new Random();
-		this.fsmMessageQueue = new FsmMessageQueue();
+		this.fsmMessageQueue = new FsmMessageQueue(timeGetter);
 		this.memberManager = new MemberManager();
 		this.spaceManager = new SpaceManager(this.memberManager);
 		this.damageSystem = new DamageSystem(this.spaceManager, this.memberManager);
@@ -54,11 +58,9 @@ export class World {
 		movementInputs: ReadonlyMap<string, MemberMovementInput> | undefined,
 		instantDamageScheduler: InstantDamageScheduler,
 	): void {
-		// console.log(`🌍 [World] tick: ${tick.tickIndex}`);
 		const members = this.memberManager.getAllMembers();
 		for (const member of members) {
 			member.tick(tick, movementInputs?.get(member.id) ?? null);
-			member.integrateTerrainHeight(this.sampleTerrainHeight(member.position.x, member.position.z), tick);
 		}
 
 		this.damageSystem.flushInstantDamage(instantDamageScheduler);

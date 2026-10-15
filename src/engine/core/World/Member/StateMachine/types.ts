@@ -1,8 +1,8 @@
 import type { Actor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
-import type { StageData } from "~/engine/core/Pipeline/stageEnv";
+import type { StageData } from "../../Pipeline/stageEnv";
 import type { AttributeContainer } from "../AttributeContainer/AttributeContainer";
-import type { NestedSchema } from "../AttributeContainer/SchemaTypes";
 import type { EffectBtManager } from "../EffectBehavior/EffectBtManager";
+import type { MemberBaseNestedSchema } from "../MemberBaseSchema";
 import type { MemberRuntimeServices } from "../RuntimeServices";
 import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
 import type { MemberDomainEvent } from "../types";
@@ -31,15 +31,16 @@ export interface StopMove extends EventObject {
 	type: "停止移动";
 }
 
-/** 成员状态机公开接纳的公共控制事件；Player/Mob 专属事件通过 MemberFSMEvent 泛型显式组合。连续移动不在此列：它由移动段承载，不作为离散控制事件。 */
-export type MemberControlEvent = Death | SwitchTarget | StartMove | StopMove;
-
 export type MemberFSMEvent<TSpecificEvent extends EventObject> =
 	| Death // 死亡事件
 	| SwitchTarget // 切换目标事件
 	| StartMove // 开始移动事件
 	| StopMove // 停止移动事件
 	| TSpecificEvent;
+export type CommonMemberFSMEvent = MemberFSMEvent<never>;
+
+/** 成员状态机公开接纳的公共控制事件；Player/Mob 专属事件通过 MemberFSMEvent 泛型显式组合。连续移动不在此列：它由移动段承载，不作为离散控制事件。 */
+export type MemberControlEvent = Exclude<MemberFSMEvent<never>, Death>;
 
 /**
  * 成员状态机类型
@@ -48,9 +49,9 @@ export type MemberFSMEvent<TSpecificEvent extends EventObject> =
  *
  * @template TExtraAttrKey 属性键的字符串联合类型
  */
-export type MemberStateMachine<
+export type MemberFSM<
 	TFSMEvent extends MemberFSMEvent<never>, // 状态机事件类型
-	TFSMContext extends MemberFSMContext = MemberFSMContext, // 状态机上下文类型
+	TFSMContext extends MemberFSMContext, // 状态机上下文类型
 > = StateMachine<
 	TFSMContext, // TContext - 状态机上下文
 	TFSMEvent, // TEvent - 事件类型（可扩展）
@@ -69,10 +70,10 @@ export type MemberStateMachine<
 >;
 
 // 状态机执行动作时需要的外部能力
-export interface MemberStateMachineEnv<
-	TSchema extends NestedSchema,
+export interface MemberFSMEnv<
+	TSchema extends MemberBaseNestedSchema,
 	TFSMEvent extends MemberFSMEvent<never>,
-	TRuntime extends MemberSharedRuntime<TSchema>,
+	TRuntime extends MemberSharedRuntime,
 > {
 	id: string;
 	name: string;
@@ -99,7 +100,7 @@ export interface MemberStateMachineEnv<
  * @template TFSMContext 状态机上下文类型
  */
 export type MemberActor<TFSMEvent extends MemberFSMEvent<never>, TFSMContext extends MemberFSMContext> = Actor<
-	MemberStateMachine<TFSMEvent, TFSMContext>
+	MemberFSM<TFSMEvent, TFSMContext>
 >;
 
 /**
@@ -114,7 +115,7 @@ export type MemberActor<TFSMEvent extends MemberFSMEvent<never>, TFSMContext ext
  * - keep legacy FSM guards/actions type-safe while the refactor is in progress
  *
  * Purpose:
- * - FSM actions read runtime through MemberStateMachineEnv; BT action capabilities are provided separately.
+ * - FSM actions read runtime through MemberFSMEnv; BT action capabilities are provided separately.
  */
 export interface MemberFSMContext {
 	/** 是否存活 */

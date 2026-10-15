@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 import { TerrainDefinitionSchema } from "~/lib/terrain";
-import { EngineScenarioSchema } from "./engineScenarioSchema";
+import { EngineScenarioSchema } from "./ScenarioSchema";
 
 // ==================== TickContext ====================
 
@@ -8,12 +8,14 @@ import { EngineScenarioSchema } from "./engineScenarioSchema";
  * 单次逻辑 tick 的权威时间上下文。
  *
  * 设计说明：
- * - currentTimeMs 是规则系统读取的时间源。
- * - tickIndex 只用于排序、日志、回放定位和 checkpoint。
+ * - currentTimeMs 模拟时刻。
+ * - tickIndex 帧序号。
+ * - fixedStepMs 帧步长。
  */
 export interface SimulationTickContext {
 	tickIndex: number;
 	currentTimeMs: number;
+	fixedStepMs: number;
 }
 
 // ==================== RuntimeConfig ====================

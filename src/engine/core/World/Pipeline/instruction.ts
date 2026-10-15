@@ -47,10 +47,3 @@ export interface PipelineInstruction {
 
 /** 规范字符串形式：`target = a op b` */
 export type PipelineInstructionString = string;
-
-export {
-	parseInstruction,
-	parsePipeline,
-	serializeInstruction,
-	serializePipeline,
-} from "./InstructionParser";

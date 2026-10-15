@@ -1,4 +1,4 @@
-import type { EngineCharacter, EngineMember } from "../../../../engineScenarioSchema";
+import type { EngineCharacter, EngineMember } from "../../../../ScenarioSchema";
 import type { RuntimeAttachment } from "../../attachments/RuntimeAttachment";
 import { collectCharacterPrebattleAttachments } from "./collectors/CharacterPrebattleCollector";
 import { collectRegistletAttachments } from "./collectors/RegistletCollector";

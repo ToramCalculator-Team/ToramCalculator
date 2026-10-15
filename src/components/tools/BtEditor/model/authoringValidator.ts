@@ -1,7 +1,7 @@
 import type { BtKind, MemberType } from "@db/schema/enums";
 import type { AttributeSlotDeclarationData } from "@db/schema/jsons";
+import { validateSlotDeclarationPath } from "~/engine/core/World/Member/AttributeContainer/SchemaMerge";
 import { createBtContext } from "~/engine/core/World/Member/EffectBehavior/EffectBtContextFactory";
-import { validateSlotDeclarationPath } from "~/engine/core/World/Member/runtime/AttributeContainer/SchemaMerge";
 import { validateDefinition } from "~/lib/mistreevous";
 import type { NodeArgument } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import type { MdslIntellisenseRegistry } from "../modes/mdslIntellisense";

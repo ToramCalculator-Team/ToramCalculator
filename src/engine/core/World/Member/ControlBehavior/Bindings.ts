@@ -11,8 +11,7 @@ export interface MemberControlBehaviorCapabilities {
 }
 
 /** 控制行为树的黑板类型提示；动态 action/condition 成员不属于可 checkpoint 的 runtime。 */
-export type ControlBehaviorContext<TExtraAttrKey extends string = string> = MemberSharedRuntime<TExtraAttrKey> &
-	Record<string, unknown>;
+export type ControlBehaviorContext = MemberSharedRuntime & Record<string, unknown>;
 
 const controlBehaviorContextTypeHint = {} as ControlBehaviorContext;
 
@@ -22,10 +21,8 @@ const controlBehaviorContextTypeHint = {} as ControlBehaviorContext;
  * CommonControlBehavior 池在这里硬编码，是因为本函数就是控制行为树的组合边界；
  * 它固定提供 Member 公共控制能力，调用方只需要传入角色类型的专属池。
  */
-export const createCommonControlBehaviorBindings = <TExtraAttrKey extends string>(
-	capabilities: MemberControlBehaviorCapabilities,
-) => {
-	const context = controlBehaviorContextTypeHint as ControlBehaviorContext<TExtraAttrKey>;
+export const createCommonControlBehaviorBindings = (capabilities: MemberControlBehaviorCapabilities) => {
+	const context = controlBehaviorContextTypeHint as ControlBehaviorContext;
 	return {
 		...actionPoolToInvokers(context, CommonControlBehaviorActionPool, capabilities),
 		...conditionPoolToInvokers(context, CommonControlBehaviorConditionPool, capabilities),
@@ -39,8 +36,7 @@ export type CommonControlBehaviorBindings = ReturnType<typeof createCommonContro
  * 底层 pool 转换器保持通用，不知道控制行为树或效果行为树的领域边界。
  */
 export const createControlBehaviorBindings = <
-	TExtraAttrKey extends string,
-	TContext extends ControlBehaviorContext<TExtraAttrKey>,
+	TContext extends ControlBehaviorContext,
 	TActions extends ActionPool<TContext, MemberControlBehaviorCapabilities>,
 	TConditions extends ConditionPool<TContext, MemberControlBehaviorCapabilities>,
 >(

@@ -4,8 +4,8 @@ import type {
 	AttributeSnapshot,
 	ModifierSource,
 	StatIndexedReadSource,
-} from "./World/Member/runtime/AttributeContainer/AttributeContainerTypes";
-import { ModifierSourceSchema, ModifierType } from "./World/Member/runtime/AttributeContainer/AttributeContainerTypes";
+} from "./World/Member/AttributeContainer/AttributeContainerTypes";
+import { ModifierSourceSchema, ModifierType } from "./World/Member/AttributeContainer/AttributeContainerTypes";
 
 export const TICK_STATE_HISTORY_LAYOUT_VERSION: 1 = 1;
 

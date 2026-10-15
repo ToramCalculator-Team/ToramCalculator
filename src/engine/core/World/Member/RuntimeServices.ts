@@ -1,7 +1,7 @@
-import type { ExpressionContext } from "../../JSProcessor/types";
-import type { MemberDomainEvent } from "../../types";
 import type { DamageAreaSpec } from "../Area/types";
 import type { ResolvedDamageEffect } from "../Damage/types";
+import type { ExpressionContext } from "../JSProcessor/types";
+import type { MemberDomainEvent } from "./types";
 
 export type MemberTargetResolver = (sourceMemberId: string, requestedTargetId?: string | null) => string | null;
 export type MemberTargetDirectionResolver = (
@@ -47,27 +47,3 @@ export interface MemberRuntimeServices {
 	/** 引擎级随机数生成器（seeded PRNG），用于命中判定等确定性模拟 */
 	random: () => number;
 }
-
-export const MemberRuntimeServicesDefaults: MemberRuntimeServices = {
-	getCurrentTimeMs: () => {
-		throw new Error("getCurrentTimeMs 未注入");
-	},
-	getTickIndex: () => {
-		throw new Error("getTickIndex 未注入");
-	},
-	expressionEvaluator: (expression: string) => {
-		throw new Error(`expressionEvaluator 未注入：${expression}`);
-	},
-	executeInstantDamage: (effect: ResolvedDamageEffect) => {
-		throw new Error(`executeInstantDamage 未注入：${effect.rangeKind}`);
-	},
-	createDamageArea: (spec: DamageAreaSpec) => {
-		throw new Error(`createDamageArea 未注入：${spec.rangeKind}`);
-	},
-	domainEventSender: (event: MemberDomainEvent) => {
-		throw new Error(`domainEventSender 未注入：${event}`);
-	},
-	targetResolver: null,
-	targetDirectionResolver: null,
-	random: Math.random,
-};

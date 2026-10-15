@@ -1,20 +1,16 @@
 import { type EventObject, setup } from "xstate";
-import type { ExpressionContext } from "~/engine/core/JSProcessor/types";
 import { createLogger } from "~/lib/logger";
-import type { EngineCharacterSkill } from "../../../../engineScenarioSchema";
-import type { SkillRejectionReason } from "../../../../types";
-import { ModifierType } from "../../runtime/AttributeContainer/AttributeContainer";
+import type { EngineCharacterSkill } from "../../../../ScenarioSchema";
+import type { ExpressionContext } from "../../../JSProcessor/types";
+import { ModifierType } from "../../AttributeContainer/AttributeContainerTypes";
 import type { PlayerRuntime } from "../../runtime/SharedRuntime";
-import { createCommonVerticalState } from "../../StateMachine/commonStateMachine";
-import { applyMemberTargetSelection } from "../../StateMachine/targetSelection";
+import { applyMemberTargetSelection } from "../../StateMachine/commonFunctions/targetSelection";
 import type {
 	MemberControlEvent,
+	MemberFSM,
 	MemberFSMContext,
+	MemberFSMEnv,
 	MemberFSMEvent,
-	MemberSelectTargetEvent,
-	MemberStateMachine,
-	MemberStateMachineEnv,
-	MemberUseSkillEvent,
 } from "../../StateMachine/types";
 import type { PlayerAttrNestedSchema } from "./PlayerAttrSchema";
 import { computePlayerSkillLifecycle, selectPlayerSkillVariant } from "./skillLifecycle";
@@ -51,11 +47,15 @@ interface 收到闪躲持续时间结束通知 extends EventObject {
 interface 收到警告结束通知 extends EventObject {
 	type: "收到警告结束通知";
 }
+interface 使用技能 extends EventObject {
+	type: "使用技能";
+	data: {
+		skillId: string;
+	};
+}
 interface 技能执行完成 extends EventObject {
 	type: "技能执行完成";
 }
-
-export type PlayerControlEvent = MemberControlEvent | 使用格挡 | 结束格挡 | 使用闪躲;
 
 export type PlayerSpecificEvent =
 	| 受到控制
@@ -63,17 +63,23 @@ export type PlayerSpecificEvent =
 	| 使用格挡
 	| 结束格挡
 	| 使用闪躲
+	| 使用技能
 	| 收到闪躲持续时间结束通知
 	| 收到警告结束通知
 	| 技能执行完成;
 
 export type PlayerFSMEvent = MemberFSMEvent<PlayerSpecificEvent>;
 
+export type PlayerControlEvent = Exclude<
+	PlayerFSMEvent,
+	MemberControlEvent | 受到控制 | 控制结束 | 技能执行完成 | 收到闪躲持续时间结束通知 | 收到警告结束通知
+>;
+
 // ─── Context / Env ──────────────────────────────────────────────────────────
 
 export interface PlayerFSMContext extends MemberFSMContext {}
 
-export interface PlayerFSMEnv extends MemberStateMachineEnv<PlayerAttrNestedSchema, PlayerFSMEvent, PlayerRuntime> {
+export interface PlayerFSMEnv extends MemberFSMEnv<PlayerAttrNestedSchema, PlayerFSMEvent, PlayerRuntime> {
 	runtime: PlayerRuntime;
 }
 
@@ -91,17 +97,6 @@ function expressionContext(env: PlayerFSMEnv, extra?: Record<string, unknown>): 
 }
 
 type PlayerSkillCost = { hpCost: number; mpCost: number };
-
-/** XState action 接收完整事件联合；按 type 收窄到触发该 action 的精确事件。 */
-function requireSkillUseEvent(event: PlayerFSMEvent): MemberUseSkillEvent {
-	if (event.type !== "使用技能") throw new Error(`Player FSM 期望使用技能事件，实际收到 ${event.type}`);
-	return event;
-}
-
-function requireSelectTargetEvent(event: PlayerFSMEvent): MemberSelectTargetEvent {
-	if (event.type !== "切换目标") throw new Error(`Player FSM 期望切换目标事件，实际收到 ${event.type}`);
-	return event;
-}
 
 function resolveCurrentSkillCost(env: PlayerFSMEnv): PlayerSkillCost | null {
 	const skill = env.runtime.currentSkill?.data;
@@ -154,10 +149,10 @@ function resolveCurrentSkillCost(env: PlayerFSMEnv): PlayerSkillCost | null {
  * 这里与实际扣费共享 `resolveCurrentSkillCost`，因此 Buff、passive 和一次性消耗修正均通过
  * `skill.cost` Pipeline 生效；外部读面只能消费这里产生的拒绝事实，不能复制条件。
  */
-function getSkillRejectionReason(env: PlayerFSMEnv, event: MemberUseSkillEvent): SkillRejectionReason | null {
+function getSkillRejectionReason(env: PlayerFSMEnv, event: UseSkillEvent): SkillRejectionReason | null {
 	const skillId = event.data.skillId;
 	const skill = env.runtime.data?.skills.find((candidate) => candidate.id === skillId);
-	if (!skill) return "skill_not_found";
+	if (!skill) return "没有找到技能";
 
 	const variant = selectPlayerSkillVariant(skill, env.runtime.data);
 	if (!variant) return "variant_not_found";
@@ -176,7 +171,7 @@ function getSkillRejectionReason(env: PlayerFSMEnv, event: MemberUseSkillEvent):
 
 // ─── 工厂函数 ────────────────────────────────────────────────────────────────
 
-export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent, PlayerFSMContext> => {
+export const playerFSM = (env: PlayerFSMEnv): MemberFSM<PlayerFSMEvent, PlayerFSMContext> => {
 	const machineId = `${env.id}-FSM`;
 
 	const machineSetup = setup({
@@ -196,11 +191,11 @@ export const playerFSM = (env: PlayerFSMEnv): MemberStateMachine<PlayerFSMEvent,
 					env.faceCurrentTarget();
 				},
 				切换当前目标: ({ event }) => {
-					applyMemberTargetSelection(env, requireSelectTargetEvent(event));
+					log.debug(`[${env.name}] 切换当前目标`, event);
+					applyMemberTargetSelection(env, event);
 				},
 				添加待处理技能: ({ event }) => {
-					const e = requireSkillUseEvent(event);
-					const skillId = e.data.skillId;
+					const skillId = event.data.skillId;
 					const skill = env.runtime.data?.skills?.find((s: EngineCharacterSkill) => s.id === skillId);
 					if (!skill) {
 						log.error(`[${env.name}] 技能不存在: ${skillId}`);

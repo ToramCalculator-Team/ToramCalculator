@@ -27,7 +27,7 @@ import { PipelineCatalog } from "../Pipeline/PipelineCatalog";
 import { PipelineResolverService } from "../Pipeline/PipelineResolverService";
 import type { SimulatorSafeAPI } from "../sandboxGlobals";
 import type { EngineInfrastructure } from "../types";
-import { ModifierType } from "../World/Member/runtime/AttributeContainer/AttributeContainer";
+import { ModifierType } from "../World/Member/AttributeContainer/AttributeContainer";
 import type { MemberMovementInput } from "../World/Member/runtime/SharedRuntime";
 import { readSharedMovementState, type SharedMovementStateSnapshot } from "./controllerInputBuffer";
 import { DebugViewRegistry } from "./DebugViewRegistry";

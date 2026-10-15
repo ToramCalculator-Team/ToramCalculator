@@ -1,7 +1,7 @@
 import { type EventObject, setup } from "xstate";
 import { createLogger } from "~/lib/logger";
 import { type DamageDispatchPayload, damageSourceKey } from "../../../Damage/types";
-import { ModifierType } from "../../runtime/AttributeContainer/AttributeContainer";
+import { ModifierType } from "../../AttributeContainer/AttributeContainerTypes";
 import type { MobRuntime } from "../../runtime/SharedRuntime";
 import { createCommonVerticalState } from "../../StateMachine/commonStateMachine";
 import {
@@ -11,13 +11,7 @@ import {
 	resolveHitCheck,
 } from "../../StateMachine/DamageResolution";
 import { applyMemberTargetSelection } from "../../StateMachine/targetSelection";
-import type {
-	MemberFSMContext,
-	MemberFSMEvent,
-	MemberSelectTargetEvent,
-	MemberStateMachine,
-	MemberStateMachineEnv,
-} from "../../StateMachine/types";
+import type { MemberFSM, MemberFSMContext, MemberFSMEnv, MemberFSMEvent } from "../../StateMachine/types";
 import type { Mob, MobAttrKey } from "./Mob";
 
 const log = createLogger("MobSM");
@@ -109,11 +103,6 @@ export type MobSpecificEvent =
 
 export type MobFSMEvent = MemberFSMEvent<MobSpecificEvent>;
 
-function requireSelectTargetEvent(event: MobFSMEvent): MemberSelectTargetEvent {
-	if (event.type !== "切换目标") throw new Error(`Mob FSM 期望切换目标事件，实际收到 ${event.type}`);
-	return event;
-}
-
 /** hitCheck → damageCalc → applyDamage 三管线之间的中间结果缓存。 */
 export interface MobPendingHitResult {
 	damageRequest: DamageDispatchPayload;
@@ -133,7 +122,7 @@ export interface MobFSMContext extends MemberFSMContext {
 	hitSession?: HitSession | null;
 }
 
-export interface MobStateMachineEnv extends MemberStateMachineEnv<MobAttrKey, MobFSMEvent, MobRuntime> {
+export interface MobStateMachineEnv extends MemberFSMEnv<MobAttrKey, MobFSMEvent, MobRuntime> {
 	runtime: MobRuntime;
 }
 
@@ -163,14 +152,14 @@ const mobAssignHitSession = (name: string) => {
 };
 const mobClearHitSession = mobMachineSetup.assign({ hitSession: null });
 
-export const createMobStateMachine = (env: MobStateMachineEnv): MemberStateMachine<MobFSMEvent, MobFSMContext> => {
+export const createMobStateMachine = (env: MobStateMachineEnv): MemberFSM<MobFSMEvent, MobFSMContext> => {
 	const machineId = env.id;
 
 	return mobMachineSetup
 		.extend({
 			actions: {
 				切换当前目标: ({ event }) => {
-					applyMemberTargetSelection(env, requireSelectTargetEvent(event));
+					log.debug(`👹 [${env.name}] 切换当前目标`, event);
 				},
 				根据配置生成初始状态: ({ context, event }) => {
 					// Add your action code here

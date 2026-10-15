@@ -1,9 +1,9 @@
 import * as Enums from "@db/schema/enums";
-import type { ModifierSource } from "../../../runtime/AttributeContainer/AttributeContainer";
+import type { ModifierSource } from "../../../AttributeContainer/AttributeContainer";
 import {
 	compileModifierDslLines,
 	type ModifierDslIdentifierResolver,
-} from "../../../runtime/AttributeContainer/ModifierDslParser";
+} from "../../../AttributeContainer/ModifierDslParser";
 
 /** 战前 DSL 可读取的技能等级和角色装备环境。 */
 export type PrebattleModifierEvalContext = {

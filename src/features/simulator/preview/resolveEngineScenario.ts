@@ -1,5 +1,5 @@
 import { z } from "zod/v4";
-import { type EngineMember, EngineScenarioSchema } from "~/engine/core/engineScenarioSchema";
+import { type EngineMember, EngineScenarioSchema } from "~/engine/core/ScenarioSchema";
 import { DEFAULT_TERRAIN_DEFINITION, TerrainDefinitionSchema } from "~/lib/terrain";
 import { WorldResourceSchema } from "~/platform/render/scene/contracts/worldResource";
 import { createDefaultCharacterWorldResource } from "~/platform/render/scene/resources/defaultCharacterResource";

@@ -11,9 +11,9 @@ import type { MemberRuntimeServices } from "../RuntimeServices";
 import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
 import type { MemberDomainEvent } from "../types";
 
-export type EffectBtContext<TSchema extends NestedSchema> = MemberSharedRuntime<TSchema>;
+export type EffectBtContext = MemberSharedRuntime;
 
-export type CommonEffectBtContext = MemberSharedRuntime<MemberBaseNestedSchema>;
+export type CommonEffectBtContext = MemberSharedRuntime;
 export type CommonEffectBtCapabilities = EffectBtCapabilities<MemberBaseNestedSchema>;
 
 /**
@@ -108,7 +108,7 @@ export interface EffectBtCapabilities<TSchema extends NestedSchema> {
 export interface EffectBtManagerEnv<
 	TFSMEvent extends EventObject,
 	TSchema extends NestedSchema,
-	TContext extends MemberSharedRuntime<TSchema>,
+	TContext extends MemberSharedRuntime,
 > {
 	readonly name: string;
 	getContext(): TContext;

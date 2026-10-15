@@ -1,7 +1,7 @@
 import type { EventSubscriptionEffect, RegistletValue } from "@db/schema/jsons";
 import { createLogger } from "~/lib/logger";
 import type { ExpressionContext } from "../../../../JSProcessor/types";
-import { ModifierType } from "../../runtime/AttributeContainer/AttributeContainer";
+import { ModifierType } from "../../AttributeContainer/AttributeContainer";
 import type { RuntimeAttachment, RuntimeAttachmentHandler, RuntimeAttachmentMember } from "../RuntimeAttachment";
 import {
 	runtimeAttachmentLevel,

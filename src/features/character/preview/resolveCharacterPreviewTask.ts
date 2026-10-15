@@ -1,7 +1,7 @@
 import { defaultData } from "@db/defaultData";
 import { MemberBTSchema, type MemberBTTree } from "@db/schema/jsons";
 import { z } from "zod/v4";
-import { type EngineMember, EngineMemberSchema, type EngineTeam } from "~/engine/core/engineScenarioSchema";
+import { type EngineMember, EngineMemberSchema, type EngineTeam } from "~/engine/core/ScenarioSchema";
 import { type SimulationTask, SimulationTaskSchema } from "~/engine/core/simulationTask";
 import { type EngineScenarioData, EngineScenarioDataSchema } from "~/engine/core/types";
 import { DEFAULT_TERRAIN_DEFINITION } from "~/lib/terrain";

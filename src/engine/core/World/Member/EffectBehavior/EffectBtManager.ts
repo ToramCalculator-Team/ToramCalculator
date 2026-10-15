@@ -1,4 +1,4 @@
-import type { Checkpointable } from "~/engine/core/Checkpoint";
+import type { Checkpointable } from "~/engine/core/World/Checkpoint";
 import { createLogger } from "~/lib/logger";
 import { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
@@ -18,7 +18,7 @@ type BtEntry = {
 
 export class EffectBtManager<
 	TSchema extends NestedSchema,
-	TContext extends MemberSharedRuntime<TSchema>,
+	TContext extends MemberSharedRuntime,
 	TFSMEvent extends MemberFSMEvent<never>,
 > implements Checkpointable<EffectBtManagerCheckpoint>
 {

@@ -1,5 +1,5 @@
 import { createLogger } from "~/lib/logger";
-import type { EngineCharacter, EngineMember } from "../../../../../engineScenarioSchema";
+import type { EngineCharacter, EngineMember } from "../../../../../ScenarioSchema";
 import { BUILT_IN_REGISTLETS_BY_ID, type RegistletRow } from "../../../attachments/BuiltInRegistlets";
 import type { RuntimeAttachment } from "../../../attachments/RuntimeAttachment";
 import { compilePrebattleModifierLines } from "./PrebattleModifierCompiler";

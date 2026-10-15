@@ -1,26 +1,24 @@
 import type { MemberBTTree } from "@db/schema/jsons";
 import { PlayerLocomotionProfile } from "~/game/locomotion";
 import { createLogger } from "~/lib/logger";
-import type { EngineCharacter, EngineMember } from "../../../../engineScenarioSchema";
+import type { EngineCharacter, EngineMember } from "../../../../ScenarioSchema";
+import { AttributeContainer } from "../../AttributeContainer/AttributeContainer";
+import { mergeSchema, type SlotDeclaration } from "../../AttributeContainer/SchemaMerge";
 import type { RuntimeAttachment } from "../../attachments/RuntimeAttachment";
 import { collectAttachmentSlots } from "../../attachments/RuntimeAttachment";
 import { installRuntimeAttachment } from "../../attachments/RuntimeAttachmentInstaller";
 import { Member } from "../../Member";
-import { MemberRuntimeServicesDefaults } from "../../RuntimeServices";
-import { AttributeContainer } from "../../runtime/AttributeContainer/AttributeContainer";
-import { mergeSchema, type SlotDeclaration } from "../../runtime/AttributeContainer/SchemaMerge";
 import type { PlayerRuntime } from "../../runtime/SharedRuntime";
-import type { MemberStateName } from "../../runtime/State/MemberState";
 import { createPlayerControlBehaviorBindings } from "./ControlBehavior/Bindings";
 import { createPlayerEffectBindings } from "./EffectBehavior/Bindings";
 import { type PlayerAttrKey, type PlayerAttrNestedSchema, PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
 import { collectPlayerRuntimeAttachments } from "./PlayerRuntimeAttachmentCollector";
-import { type PlayerFSMContext, type PlayerSpecificEvent, playerFSM } from "./PlayerStateMachine";
+import { type PlayerFSMContext, type PlayerFSMEvent, playerFSM } from "./PlayerStateMachine";
 import { selectPlayerSkillVariant } from "./skillLifecycle";
 
 const log = createLogger("Player");
 
-export class Player extends Member<PlayerAttrNestedSchema, PlayerSpecificEvent, PlayerFSMContext, PlayerRuntime> {
+export class Player extends Member<PlayerAttrNestedSchema, PlayerFSMEvent, PlayerFSMContext, PlayerRuntime> {
 	activeCharacter: EngineCharacter;
 	private readonly runtimeAttachments: RuntimeAttachment<PlayerAttrKey>[];
 
@@ -83,9 +81,7 @@ export class Player extends Member<PlayerAttrNestedSchema, PlayerSpecificEvent, 
 			teamId,
 			memberData,
 			attrSchema,
-			attributeContainer,
 			runtime,
-			MemberRuntimeServicesDefaults,
 			position,
 			createPlayerControlBehaviorBindings,
 			createPlayerEffectBindings,
@@ -93,22 +89,6 @@ export class Player extends Member<PlayerAttrNestedSchema, PlayerSpecificEvent, 
 		this.activeCharacter = activeCharacter;
 		this.runtimeAttachments = runtimeAttachments;
 		this.installPassiveBehaviorTrees();
-	}
-
-	/**
-	 * 使用 XState snapshot.matches 读取 FSM 当前动作状态。
-	 * parallel 状态值不需要自定义遍历，只匹配动作维度。
-	 */
-	protected resolveFsmState(): MemberStateName {
-		const snapshot = this.actor.getSnapshot();
-		if (snapshot.matches("死亡")) return "dead";
-		if (snapshot.matches({ 存活: "受控状态" })) return "controlled";
-		if (snapshot.matches({ 存活: { 可操作状态: { 动作状态: "格挡中" } } })) return "block";
-		if (snapshot.matches({ 存活: { 可操作状态: { 动作状态: "闪躲中" } } })) return "dodge";
-		if (snapshot.matches({ 存活: { 可操作状态: { 动作状态: { 使用技能中: "技能执行过程" } } } })) {
-			return "skill.busy";
-		}
-		return "idle";
 	}
 
 	private installPassiveBehaviorTrees(): void {

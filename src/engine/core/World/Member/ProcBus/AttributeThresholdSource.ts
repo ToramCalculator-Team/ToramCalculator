@@ -12,8 +12,8 @@
  */
 
 import { createLogger } from "~/lib/logger";
-import type { AttributeContainer } from "../runtime/AttributeContainer/AttributeContainer";
-import type { NestedSchema, SchemaToAttrType } from "../runtime/AttributeContainer/SchemaTypes";
+import type { AttributeContainer } from "../AttributeContainer/AttributeContainer";
+import type { NestedSchema, SchemaToAttrType } from "../AttributeContainer/SchemaTypes";
 
 const log = createLogger("AttrThresholdSource");
 

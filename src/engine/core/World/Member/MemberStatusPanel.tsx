@@ -14,12 +14,8 @@ import { type Accessor, createMemo, createSignal, For, onMount, Show } from "sol
 import { Button } from "~/components/ui/controls/button";
 import { Icons } from "~/components/ui/icons";
 import { useOverlay } from "~/contexts/overlay/OverlayContext";
+import { type DataStorage, isDataStorageType, type ModifierSource } from "./AttributeContainer/AttributeContainer";
 import type { MemberSnapshot } from "./Member";
-import {
-	type DataStorage,
-	isDataStorageType,
-	type ModifierSource,
-} from "./runtime/AttributeContainer/AttributeContainer";
 
 // ============================== 组件实现 ==============================
 

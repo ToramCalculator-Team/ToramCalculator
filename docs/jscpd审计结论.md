@@ -111,7 +111,7 @@
 
 建议：抽取统一的 member-access transform pipeline，以 replacement callback 参数化；继续由 `transformToGetValue()` 负责 `_` 基础值语义，不要把两个入口粗暴合成一个面向所有调用者的宽泛 API。优先级：高。
 
-#### 6. `src/engine/core/World/Member/runtime/AttributeContainer/AttributeContainer.ts:841-853` ↔ `931-943`；`916-930` ↔ `943-957`：modifier source 收集和 detail 类型
+#### 6. `src/engine/core/World/Member/AttributeContainer/AttributeContainer.ts:841-853` ↔ `931-943`；`916-930` ↔ `943-957`：modifier source 收集和 detail 类型
 
 两处 `collect(type, attrIndex)` 都从 `modifierSources` 按类型和属性索引取值，遍历来源、复制 source 并返回 `{ source, value }[]`。另一组区间显示 `exportNestedValues()` 和 `exportModifierDetails()` 使用了相近的 modifier detail 结构。
 
@@ -476,7 +476,7 @@ Action 和 Condition 都在状态变化时记录节点详情、参数和生命�
 | 33 | `engine/core/World/Member/MemberBaseSchema.ts:259-295、347-379、433-519 ↔ types/Player/PlayerAttrSchema.ts:547-583、796-828、1171-1257` | 可以重构但不急：基础 schema 结构 |
 | 34 | `engine/core/World/Member/MemberStatusPanel.tsx:254-264 ↔ 285-295` | 可以重构但不急：modifier 展示 |
 | 35 | `engine/core/World/Member/runtime/Agents/CommonActions.ts:279-293 ↔ 307-321；479-493 ↔ 540-554；483-493 ↔ 645-655；640-654 ↔ 698-711` | 优先处理表达式上下文；移动范围可延后 |
-| 36 | `engine/core/World/Member/runtime/AttributeContainer/AttributeContainer.ts:841-853 ↔ 931-943；916-930 ↔ 943-957` | 优先处理：modifier source/detail |
+| 36 | `engine/core/World/Member/AttributeContainer/AttributeContainer.ts:841-853 ↔ 931-943；916-930 ↔ 943-957` | 优先处理：modifier source/detail |
 | 37 | `engine/core/World/Member/runtime/Behavior/AiBehaviorRuntime.ts:50-75 ↔ BehaviourTree/BtManager.ts:84-112；93-105 ↔ 132-145` | 优先处理：agent 编译与成员注入 |
 | 38 | `engine/core/World/Member/runtime/Behavior/AiBehaviorRuntime.ts:93-105 ↔ BehaviourTree/BtContextFactory.ts:144-157` | 优先处理：agent 编译与成员注入 |
 | 39 | `engine/core/World/Member/types/Mob/MobStateMachine.ts:50-72 ↔ 71-93` | 优先处理：重复 interface |

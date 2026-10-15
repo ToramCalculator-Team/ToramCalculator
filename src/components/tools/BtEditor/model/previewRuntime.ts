@@ -1,17 +1,14 @@
 import type { BtKind, MemberType } from "@db/schema/enums";
+import { AttributeContainer } from "~/engine/core/World/Member/AttributeContainer/AttributeContainer";
 import {
 	createCommonControlBehaviorBindings,
 	type MemberControlBehaviorCapabilities,
 } from "~/engine/core/World/Member/ControlBehavior/Bindings";
 import { createEffectBindings } from "~/engine/core/World/Member/EffectBehavior/Bindings";
 import { createBtContext } from "~/engine/core/World/Member/EffectBehavior/EffectBtContextFactory";
-import type {
-	EffectBtManagerEnv,
-	MemberBtCapabilities,
-} from "~/engine/core/World/Member/EffectBehavior/EffectBtManagerEnv";
+import type { EffectBtManagerEnv } from "~/engine/core/World/Member/EffectBehavior/types";
 import { MemberBaseNestedSchema } from "~/engine/core/World/Member/MemberBaseSchema";
 import type { MemberRuntimeServices } from "~/engine/core/World/Member/RuntimeServices";
-import { AttributeContainer } from "~/engine/core/World/Member/runtime/AttributeContainer/AttributeContainer";
 import type { MemberSharedRuntime, MobRuntime, PlayerRuntime } from "~/engine/core/World/Member/runtime/SharedRuntime";
 import type { MemberFSMEvent } from "~/engine/core/World/Member/StateMachine/types";
 import { createMobControlBehaviorBindings } from "~/engine/core/World/Member/types/Mob/ControlBehavior/Bindings";
@@ -37,8 +34,7 @@ export type BtPreviewResult = {
 	diagnostics: BtAuthoringDiagnostic[];
 };
 
-type PreviewRuntime = (PlayerRuntime | MobRuntime | (MemberSharedRuntime<string> & { type: MemberType })) &
-	MemberSharedRuntime<string>;
+type PreviewRuntime = (PlayerRuntime | MobRuntime | (MemberSharedRuntime & { type: MemberType })) & MemberSharedRuntime;
 
 type PreviewBtRuntime = {
 	env: EffectBtManagerEnv<MemberFSMEvent, string, PreviewRuntime>;
@@ -54,7 +50,7 @@ type PreviewFallbackCalls = {
 
 const createPreviewRuntime = (memberType: MemberType): PreviewRuntime => {
 	const locomotionProfile = memberType === "Mob" ? DefaultMobLocomotionProfile : PlayerLocomotionProfile;
-	const common: MemberSharedRuntime<string> = {
+	const common: MemberSharedRuntime = {
 		memberId: "preview-member-id",
 		name: "PreviewMember",
 		campId: "preview",

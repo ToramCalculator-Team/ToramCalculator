@@ -3,13 +3,13 @@
  */
 
 import type { MainHandType, SubHandType } from "@db/schema/enums";
-import type { EngineCharacter } from "../../../../engineScenarioSchema";
-import { MemberBaseNestedSchema, MemberBaseStructure } from "../../MemberBaseSchema";
+import type { EngineCharacter } from "../../../../ScenarioSchema";
 import type {
 	ConvertToNestedSchema,
 	ConvertToNestedSchemaDic,
 	ExtractAttrPaths,
-} from "../../runtime/AttributeContainer/SchemaTypes";
+} from "../../AttributeContainer/SchemaTypes";
+import { MemberBaseNestedSchema, MemberBaseStructure } from "../../MemberBaseSchema";
 
 // ============================== 其他玩家数据 ==============================
 

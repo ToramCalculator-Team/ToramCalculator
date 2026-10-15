@@ -1,21 +1,19 @@
 import type { MemberBTTree } from "@db/schema/jsons";
 import { DefaultMobLocomotionProfile } from "~/game/locomotion";
-import type { EngineMember } from "../../../../engineScenarioSchema";
+import type { EngineMember } from "../../../../ScenarioSchema";
+import { AttributeContainer } from "../../AttributeContainer/AttributeContainer";
+import { mergeSchema, type SlotDeclaration } from "../../AttributeContainer/SchemaMerge";
+import type { ExtractAttrPaths } from "../../AttributeContainer/SchemaTypes";
 import { Member } from "../../Member";
-import { MemberRuntimeServicesDefaults } from "../../RuntimeServices";
-import { AttributeContainer } from "../../runtime/AttributeContainer/AttributeContainer";
-import { mergeSchema, type SlotDeclaration } from "../../runtime/AttributeContainer/SchemaMerge";
-import type { ExtractAttrPaths } from "../../runtime/AttributeContainer/SchemaTypes";
 import type { MobRuntime } from "../../runtime/SharedRuntime";
-import type { MemberStateName } from "../../runtime/State/MemberState";
 import { createMobControlBehaviorBindings } from "./ControlBehavior/Bindings";
 import { createMobEffectBindings } from "./EffectBehavior/Bindings";
 import { MobAttrSchema } from "./MobAttrSchema";
-import { createMobStateMachine, type MobFSMContext, type MobSpecificEvent } from "./MobStateMachine";
+import { createMobStateMachine, type MobFSMContext, type MobFSMEvent } from "./MobStateMachine";
 
 export type MobAttrKey = ExtractAttrPaths<ReturnType<typeof MobAttrSchema>>;
 
-export class Mob extends Member<MobAttrKey, MobSpecificEvent, MobFSMContext, MobRuntime> {
+export class Mob extends Member<MobAttrKey, MobFSMEvent, MobFSMContext, MobRuntime> {
 	constructor(
 		memberData: EngineMember,
 		campId: string,
@@ -29,7 +27,7 @@ export class Mob extends Member<MobAttrKey, MobSpecificEvent, MobFSMContext, Mob
 		// Mob 没有托环安装阶段；解析后的固有 AI 属性槽仍需在构造 AttributeContainer 前声明。
 		const slotDeclarations = Mob.collectAttributeSlots(memberData);
 		const attrSchema = mergeSchema(baseSchema, slotDeclarations);
-		const attributeContainer = new AttributeContainer<MobAttrKey>(attrSchema);
+		const attributeContainer = new AttributeContainer(attrSchema);
 
 		const runtime: MobRuntime = {
 			type: "Mob",
@@ -69,22 +67,10 @@ export class Mob extends Member<MobAttrKey, MobSpecificEvent, MobFSMContext, Mob
 			attrSchema,
 			attributeContainer,
 			runtime,
-			MemberRuntimeServicesDefaults,
 			position,
 			createMobControlBehaviorBindings,
 			createMobEffectBindings,
 		);
-	}
-
-	/**
-	 * 使用 XState snapshot.matches 读取 FSM 当前动作状态。
-	 * Mob 不在 FSM 里定义技能阶段；视觉状态由技能效果 BT 声明，控制输入由 AI 行为树提交。
-	 */
-	protected resolveFsmState(): MemberStateName {
-		const snapshot = this.actor.getSnapshot();
-		if (snapshot.matches("死亡")) return "dead";
-		if (snapshot.matches({ 存活: { 可操作状态: "控制状态" } })) return "controlled";
-		return "idle";
 	}
 
 	/** 收集 Mob 行为树声明的持久化属性槽，保证 BT 变量随 AttributeContainer checkpoint。 */

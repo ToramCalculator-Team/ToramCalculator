@@ -1,10 +1,10 @@
-import type { PipelineName } from "./catalog";
-import { type CompiledPipeline, compilePipeline } from "./InstructionCompiler";
-import type { PipelineInstruction } from "./instruction";
-import type { OverlayOperation, PipelineOverlay } from "./overlay";
-import type { PipelineCatalog } from "./PipelineCatalog";
-import type { ResolvedPipeline } from "./resolver";
-import type { StageData, StageEnv } from "./stageEnv";
+import type { PipelineName } from "../catalog";
+import { type CompiledPipeline, compilePipeline } from "../InstructionCompiler";
+import type { PipelineInstruction } from "../instruction";
+import type { OverlayOperation, PipelineOverlay } from "../overlay";
+import type { PipelineCatalog } from "../PipelineCatalog";
+import type { StageData, StageEnv } from "../stageEnv";
+import type { ResolvedPipeline } from "./types";
 
 /**
  * 职责：

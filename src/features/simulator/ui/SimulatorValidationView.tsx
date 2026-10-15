@@ -3,13 +3,13 @@ import { createMemo, For, Show } from "solid-js";
 import { Button } from "~/components/ui/controls/button";
 import { Select } from "~/components/ui/controls/select";
 import { Icons } from "~/components/ui/icons";
-import { MemberStatusPanel } from "~/engine/core/World/Member/MemberStatusPanel";
 import {
 	type AttributeSnapshot,
 	type DataStorage,
 	type ModifierSource,
 	ModifierType,
-} from "~/engine/core/World/Member/runtime/AttributeContainer/AttributeContainer";
+} from "~/engine/core/World/Member/AttributeContainer/AttributeContainer";
+import { MemberStatusPanel } from "~/engine/core/World/Member/MemberStatusPanel";
 import { useSimulatorRuntimeProjection, useSimulatorSession } from "~/features/simulator/session/SimulatorSession";
 
 export function SimulatorValidationView() {

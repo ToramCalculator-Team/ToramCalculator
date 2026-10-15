@@ -9,7 +9,7 @@
 import type { FrameLoopClockSnapshot, FrameLoopState } from "../FrameLoop/types";
 import { WORLD_AREA_CAPACITY, WORLD_AREA_CAPACITY_EXCEEDED_CODE } from "../World/Area/types";
 import { evalTrajectory, type Trajectory } from "../World/EffectRange/trajectory";
-import type { ModifierSource } from "../World/Member/runtime/AttributeContainer/AttributeContainerTypes";
+import type { ModifierSource } from "../World/Member/AttributeContainer/AttributeContainerTypes";
 
 export const WORLD_STATE_MAGIC = 0x57535432;
 export const WORLD_STATE_LAYOUT_VERSION = 10;

@@ -5,8 +5,7 @@ import type {
 	RegistletValue,
 	ThresholdWatcherEffect,
 } from "@db/schema/jsons";
-import type { Member } from "../Member";
-import type { ModifierSource, ModifierType } from "../runtime/AttributeContainer/AttributeContainer";
+import type { ModifierSource, ModifierType } from "../AttributeContainer/AttributeContainerTypes";
 
 export {
 	type RuntimeAttachmentSource,
@@ -16,20 +15,8 @@ export {
 	runtimeAttachmentSourceId,
 } from "./RuntimeAttachmentSource";
 
-import type { SlotDeclaration } from "../runtime/AttributeContainer/SchemaMerge";
-import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
+import type { SlotDeclaration } from "../AttributeContainer/SchemaMerge";
 import type { RuntimeAttachmentSource } from "./RuntimeAttachmentSource";
-
-/**
- * Attachment 安装器所需的最小 Member 运行时视图。
- * attachment 不参与 FSM，因此放宽 FSM 类型参数，只依赖成员运行时服务和运行时组件。
- */
-export type RuntimeAttachmentMember<TExtraAttrKey extends string = string> = Member<
-	TExtraAttrKey,
-	any,
-	any,
-	MemberSharedRuntime<TExtraAttrKey>
->;
 
 /** 一个来源直接贡献的静态或战前属性修正。 */
 export interface RuntimeModifierEffect<TAttrKey extends string = string> {

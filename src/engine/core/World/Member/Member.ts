@@ -2,14 +2,14 @@ import type { MemberType } from "@db/schema/enums";
 import type { MovementBehaviorRecordData } from "@db/schema/jsons";
 import { createActor } from "xstate";
 import { createLogger } from "~/lib/logger";
-import type { EventCatalog } from "../../Event/EventCatalog";
-import type { EngineMember } from "../../engineScenarioSchema";
-import type { ExpressionContext } from "../../JSProcessor/types";
-import type { PipelineOverlay } from "../../Pipeline/overlay";
-import type { PipelineResolverService } from "../../Pipeline/PipelineResolverService";
-import type { StageData, StageEnv } from "../../Pipeline/stageEnv";
-import type { MemberCheckpoint, SimulationTickContext } from "../../types";
+import type { EngineMember } from "../../ScenarioSchema";
+import type { SimulationTickContext } from "../../types";
+import type { EventCatalog } from "../Event/EventCatalog";
+import type { ExpressionContext } from "../JSProcessor/types";
 import type { WorldObservable } from "../observable";
+import type { PipelineOverlay } from "../Pipeline/overlay";
+import type { PipelineResolverService } from "../Pipeline/Resolver/PipelineResolverService";
+import type { StageData, StageEnv } from "../Pipeline/stageEnv";
 import { AttributeContainer } from "./AttributeContainer/AttributeContainer";
 import {
 	createCommonControlBehaviorBindings,
@@ -29,12 +29,12 @@ import type { MutableStatusInstanceStore, StatusInstance } from "./runtime/Statu
 import type {
 	MemberActor,
 	MemberControlEvent,
+	MemberFSM,
 	MemberFSMContext,
+	MemberFSMEnv,
 	MemberFSMEvent,
-	MemberStateMachine,
-	MemberStateMachineEnv,
 } from "./StateMachine/types";
-import type { MemberDomainEvent } from "./types";
+import type { MemberCheckpoint, MemberDomainEvent } from "./types";
 
 const log = createLogger("Member");
 const MOVEMENT_EPSILON = 0.0001;
@@ -52,9 +52,9 @@ const MOVEMENT_EPSILON = 0.0001;
  */
 export abstract class Member<
 	TSchema extends MemberBaseNestedSchema,
-	TSpecificEvent extends MemberFSMEvent<never>,
+	TFSMEvent extends MemberFSMEvent<never>,
 	TFSMContext extends MemberFSMContext,
-	TRuntime extends MemberSharedRuntime<TSchema>,
+	TRuntime extends MemberSharedRuntime,
 > implements WorldObservable
 {
 	// ==================== 身份与元数据 ====================
@@ -76,12 +76,12 @@ export abstract class Member<
 	private pipelineResolverService: PipelineResolverService | null = null;
 
 	// ==================== 编排层：状态机与行为树 ====================
-	private readonly actor: MemberActor<MemberFSMEvent<TSpecificEvent>, TFSMContext>;
+	private readonly actor: MemberActor<TFSMEvent, TFSMContext>;
 	private actorStarted = false;
 	/** 行为模式：autonomous(AI 控制) 或 manual(外部控制) */
 	private behaviorMode: "autonomous" | "manual";
 	private readonly controlBehavior: ControlBehaviorRuntime | null = null;
-	private readonly effectBtManager: EffectBtManager<TSchema, TRuntime, MemberFSMEvent<TSpecificEvent>>;
+	private readonly effectBtManager: EffectBtManager<TSchema, TRuntime, TFSMEvent>;
 	private readonly procBus: ProcBus | null = null;
 	private readonly attributeThresholdSource: AttributeThresholdSource<TSchema>;
 	/** ai 模式下的连续移动行为记录 */
@@ -94,9 +94,7 @@ export abstract class Member<
 	// ==================== 构造与初始化 ====================
 
 	constructor(
-		stateMachine: (
-			env: MemberStateMachineEnv<TSchema, MemberFSMEvent<TSpecificEvent>, TRuntime>,
-		) => MemberStateMachine<MemberFSMEvent<TSpecificEvent>, TFSMContext>,
+		stateMachine: (env: MemberFSMEnv<TSchema, TFSMEvent, TRuntime>) => MemberFSM<TFSMEvent, TFSMContext>,
 		campId: string,
 		teamId: string,
 		memberData: EngineMember,
@@ -105,7 +103,7 @@ export abstract class Member<
 		services: MemberRuntimeServices,
 		domainEventBus: ((event: MemberDomainEvent) => void) | null,
 		pipelineResolverService: PipelineResolverService | null,
-		eventCatalog: EventCatalog | null,
+		eventCatalog: typeof EventCatalog | null,
 		position: { x: number; y: number; z: number },
 		controlBehaviorBindings: (capabilities: MemberControlBehaviorCapabilities) => Record<string, unknown> = (
 			capabilities,
@@ -244,7 +242,7 @@ export abstract class Member<
 	 * 构造 FSM 专用 env。
 	 * 使用 getter 让 checkpoint restore 后状态机闭包继续读取 Member 当前字段。
 	 */
-	private createStateMachineEnv(): MemberStateMachineEnv<TSchema, MemberFSMEvent<TSpecificEvent>, TRuntime> {
+	private createStateMachineEnv(): MemberFSMEnv<TSchema, TFSMEvent, TRuntime> {
 		const self = this;
 		return {
 			get id() {
@@ -318,9 +316,7 @@ export abstract class Member<
 	/**
 	 * 构造 BT Manager 专用 env。
 	 */
-	private createBtEnv(
-		capabilities: EffectBtCapabilities<TSchema>,
-	): EffectBtManagerEnv<MemberFSMEvent<TSpecificEvent>, TSchema, TRuntime> {
+	private createBtEnv(capabilities: EffectBtCapabilities<TSchema>): EffectBtManagerEnv<TFSMEvent, TSchema, TRuntime> {
 		const self = this;
 		return {
 			get name() {
@@ -356,7 +352,6 @@ export abstract class Member<
 	private tickDataLayer(tick: SimulationTickContext): void {
 		this.runtime.tickIndex = tick.tickIndex;
 		this.runtime.currentTimeMs = tick.currentTimeMs;
-		this.runtime.deltaTimeMs = tick.deltaTimeMs;
 
 		// 清理过期状态
 		this.statusStore.purgeExpired(tick.currentTimeMs);
@@ -450,7 +445,9 @@ export abstract class Member<
 	/**
 	 * 子类用 XState snapshot.matches 把当前 FSM 动作状态投影为稳定状态名。
 	 */
-	protected abstract resolveFsmState(): string;
+	resolveFsmState(): string {
+		return this.actor.getSnapshot().value;
+	}
 
 	isAiBehaviorRunning(): boolean {
 		return this.controlBehavior?.isRunning() ?? false;
@@ -551,8 +548,8 @@ export abstract class Member<
 		const movement = this.runtime.movement;
 		if (!movement) return;
 
-		this.runtime.position.x += (movement.dir.x * movement.speed * tick.deltaTimeMs) / 1000;
-		this.runtime.position.z += (movement.dir.z * movement.speed * tick.deltaTimeMs) / 1000;
+		this.runtime.position.x += (movement.dir.x * movement.speed * tick.fixedStepMs) / 1000;
+		this.runtime.position.z += (movement.dir.z * movement.speed * tick.fixedStepMs) / 1000;
 		this.faceDirection(movement.dir);
 	}
 
@@ -622,7 +619,7 @@ export abstract class Member<
 			? (params?.damageTags as readonly string[])
 			: ([] as readonly string[]);
 
-		const env: StageEnv<TSchema> = {
+		const env: StageEnv = {
 			timeMs,
 			tickIndex,
 			stats: (memberIdOrSelector: string, path: string) => {
