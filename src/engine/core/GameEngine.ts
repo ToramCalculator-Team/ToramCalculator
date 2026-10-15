@@ -2,19 +2,7 @@ import { createId } from "@paralleldrive/cuid2";
 import type { EventObject } from "xstate";
 import { createLogger } from "~/lib/logger";
 import { computeMemberFormation } from "~/memberFormation";
-import { ControlBindingManager } from "./Controller/ControlBindingManager";
-import { ControllerRegistry } from "./Controller/ControllerEndpoint";
-import { ControllerEventProjector } from "./DomainEvents/ControllerEventProjector";
-import { DomainEventBus } from "./DomainEvents/DomainEventBus";
-import type { EventCatalog } from "./Event/EventCatalog";
-import type { ExpressionEvaluator } from "./Expression/ExpressionEvaluator";
 import { FrameLoop } from "./FrameLoop/FrameLoop";
-import type { FrameLoopSnapshot, FrameLoopStats, FrameLoopTick } from "./FrameLoop/types";
-import { JSProcessor } from "./JSProcessor/JSProcessor";
-import type { ExpressionContext } from "./JSProcessor/types";
-import { type IntentMessage, type MessageProcessResult, MessageRouter } from "./MessageRouter/MessageRouter";
-import type { PipelineCatalog } from "./Pipeline/PipelineCatalog";
-import type { PipelineResolverService } from "./Pipeline/PipelineResolverService";
 import {
 	type EngineRunOutput,
 	type ExecutionRecordingPolicy,
@@ -23,16 +11,12 @@ import {
 	RunOutputRecorder,
 } from "./runOutput";
 import type { EngineMember, EngineTeam } from "./ScenarioSchema";
-import {
-	calculateModifierCapacity,
-	createWorldStateLayoutDescriptor,
-	WorldStateEntityType,
-	type WorldStateLayoutDescriptor,
-	WorldStateSnapshot,
-	worldStateStringId,
-} from "./thread/worldStateBuffer";
 import type { EngineCheckpoint, EngineScenarioData, GameEngineSnapshot, RuntimeConfig } from "./types";
 import { createRealtimeConfig } from "./types";
+import { JSProcessor } from "./World/JSProcessor/JSProcessor";
+import type { ExpressionContext } from "./World/JSProcessor/types";
+import { PipelineCatalog } from "./World/Pipeline/PipelineCatalog";
+import { PipelineResolverService } from "./World/Pipeline/Resolver/PipelineResolverService";
 import { World } from "./World/World";
 
 const log = createLogger("GameEngine");
@@ -102,7 +86,7 @@ export class GameEngine {
 	 *
 	 * @param runtimeConfig 引擎配置
 	 */
-	constructor(runtimeConfig?: RuntimeConfig) {
+	constructor(runtimeConfig: RuntimeConfig) {
 		// 🛡️ 安全检查：只允许在Worker线程中创建GameEngine
 		this.validateWorkerContext();
 
@@ -110,69 +94,16 @@ export class GameEngine {
 
 		this.runtimeConfig = runtimeConfig ?? createRealtimeConfig();
 
-		// 接收外部注入的基础设施（跨 reset/cleanup 存活）
+		// 规则系统运行的基础设施（跨 reset/cleanup 存活）
 		this.jsProcessor = new JSProcessor();
-		this.pipelineCatalog = infra.pipelineCatalog;
-		this.pipelineResolverService = infra.pipelineResolverService;
+		this.pipelineCatalog = new PipelineCatalog();
+		this.pipelineResolverService = new PipelineResolverService(this.pipelineCatalog);
 		this.eventCatalog = infra.eventCatalog;
 
-		// 初始化核心模块 - 按依赖顺序
-		this.eventQueue = new EventQueue(config.eventQueueConfig, () => this.currentTimeMs);
-
-		// 初始化控制器相关组件
-		this.bindingManager = new ControlBindingManager();
-		this.controllerRegistry = new ControllerRegistry();
-
-		// 初始化域事件系统
-		this.domainEventBus = new DomainEventBus();
-		this.controllerEventProjector = new ControllerEventProjector(this.bindingManager);
-
-		// 订阅域事件总线，将事件投影为控制器事件
-		this.domainEventBus.subscribe((event) => {
-			this.controllerEventProjector.project(event);
-		});
-
-		// 注入引擎和绑定管理器到消息路由器
-		this.messageRouter = new MessageRouter(this, this.bindingManager);
-		this.frameLoop = new FrameLoop(this.config.frameLoopConfig);
+		this.frameLoop = new FrameLoop(runtimeConfig?.logicHz);
 
 		// World 相关
 		this.world = new World();
-
-		// 初始化表达式求值器（把 world/self/target 绑定收敛到一个服务）
-		// PS：我认为表达式求职器应该放进世界层，因为其逻辑是基于世界的游戏规则。engine层应该只负责将这些设施传递给world，由world后续处理
-		// this.expressionEvaluator = new ExpressionEvaluator({
-		// 	jsProcessor: this.jsProcessor,
-		// 	getMemberById: (id) => this.world.memberManager.getMember(id),
-		// });
-		// 设置表达式求值器到 MemberManager（成员创建时会注入到成员 context.expressionEvaluator）
-		// this.world.memberManager.setEvaluateExpression((expression, context) =>
-		// 	this.expressionEvaluator.evaluateNumberOrBoolean(expression, context),
-		// );
-
-		// // 设置域事件发射器到 MemberManager
-		// this.world.memberManager.setDomainEventSender((event) => {
-		// 	this.emitDomainEvent(event);
-		// });
-		// this.world.memberManager.setControlInputRecorder((memberId, event, disposition, reason) => {
-		// 	this.recordMemberControlInput(memberId, event, disposition, reason);
-		// });
-		// // 设置引擎时间读取函数到 MemberManager（引擎时间为唯一真相）
-		// this.world.memberManager.setGetCurrentTimeMs(() => this.getCurrentTimeMs());
-		// this.world.memberManager.setGetTickIndex(() => this.getTickIndex());
-		// this.world.memberManager.setDamageExecutionHandlers({
-		// 	executeInstantDamage: (effect) => {
-		// 		this.world.damageSystem.queueInstantDamage(effect);
-		// 	},
-		// 	createDamageArea: (spec) => this.world.areaManager.createDamageArea(spec),
-		// });
-		// // 设置引擎级 pipeline resolver 到 MemberManager（成员创建时注入到成员）
-		// this.world.memberManager.setPipelineResolverService(this.pipelineResolverService);
-		// // 设置引擎级 EventCatalog 到 MemberManager（每成员据此构造独立 ProcBus）
-		// this.world.memberManager.setEventCatalog(this.eventCatalog);
-
-		// // 注入引擎级确定性随机数生成器
-		// this.world.memberManager.setRandom(() => this.random.value());
 	}
 
 	// ==================== 生命周期管理 ====================

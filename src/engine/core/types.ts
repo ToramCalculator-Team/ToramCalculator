@@ -42,6 +42,7 @@ export type StopPolicy = z.output<typeof StopPolicySchema>;
  * 不能通过业务用途模式改变运行语义。
  */
 export const RuntimeConfigSchema = z.object({
+	logicHz: z.number(),
 	driveMode: DriveModeSchema,
 	stopPolicy: StopPolicySchema,
 	acceptExternalIntents: z.boolean(),
@@ -62,6 +63,7 @@ export type RuntimeConfig = z.output<typeof RuntimeConfigSchema>;
  */
 export function createRealtimeConfig(overrides?: Partial<RuntimeConfig>): RuntimeConfig {
 	return {
+		logicHz: 60,
 		driveMode: "clocked",
 		stopPolicy: { kind: "manual" },
 		acceptExternalIntents: true,
