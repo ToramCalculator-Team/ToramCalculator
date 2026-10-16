@@ -15,14 +15,10 @@ export type OverlayOperation =
 
 export interface PipelineOverlay {
 	id: string;
-	/** overlay 作用域：先从 member/skill 两层开始。 */
-	scope: "member" | "skill";
 	sourceType: string;
 	sourceId: string;
 	/** 优先级：数值越大越后应用。 */
 	priority: number;
-	/** revision 变更用于触发 resolver 缓存失效。 */
-	revision: number;
 	pipelineName: string;
 	operations: readonly OverlayOperation[];
 }

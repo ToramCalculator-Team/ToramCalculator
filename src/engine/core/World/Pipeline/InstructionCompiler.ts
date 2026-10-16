@@ -1,122 +1,93 @@
 import type { Operand, PipelineInstruction } from "./instruction";
 import { binaryOperators, unaryOperators } from "./operators";
-import type { StageData, StageEnv } from "./stageEnv";
+import type { PipelineValue, PipelineValues } from "./PipelineValues";
 
-/**
- * 目标：
- * - 把 `PipelineInstruction[]` 预编译成单个 closure，提高执行性能
- * - 严格保持“纯计算”：除 `env.*` 查询外，不产生副作用
- */
+export type CompiledPipeline = (values: PipelineValues) => PipelineValues;
 
-export type CompiledPipeline = (env: StageEnv, input: StageData) => StageData;
+type Vars = Record<string, PipelineValue>;
 
-type Vars = Record<string, number>;
+function asNumber(value: PipelineValue | undefined, label: string): number {
+	if (typeof value === "number" && Number.isFinite(value)) return value;
+	throw new Error(`PipelineInstruction: ${label} 不是有效 number（实际=${String(value)}）`);
+}
 
-const asNumber = (v: unknown, label: string): number => {
-	if (typeof v === "number" && Number.isFinite(v)) return v;
-	throw new Error(`指令执行期：${label} 不是有效 number（实际=${String(v)}）`);
-};
-
-const resolveOperand = (op: Operand, vars: Vars, input: StageData, env: StageEnv): number => {
+function resolveValue(op: Operand, vars: Vars, values: PipelineValues): PipelineValue {
 	if (typeof op === "number") return op;
-
-	// 指令 DSL 的复合参数会用字符串承载数字片段（如 clamp 的 "0,100"）。
-	// 这里先识别数字字面量，避免把 "100" 当作未定义变量回退为 0。
 	const numericLiteral = Number(op);
 	if (op.trim() !== "" && Number.isFinite(numericLiteral)) return numericLiteral;
+	if (Object.hasOwn(vars, op)) return vars[op];
+	const key = op.startsWith("input.") ? op.slice("input.".length) : op;
+	if (Object.hasOwn(values, key)) return values[key];
+	throw new Error(`PipelineInstruction: 未找到值 ${op}`);
+}
 
-	// 1) 已计算变量
-	if (Object.hasOwn(vars, op)) return asNumber(vars[op], op);
+function resolveNumber(op: Operand, vars: Vars, values: PipelineValues): number {
+	return asNumber(resolveValue(op, vars, values), String(op));
+}
 
-	// 2) env.timeMs / env.tickIndex 便捷读取
-	if (op === "env.timeMs" || op === "timeMs") return env.timeMs;
-	if (op === "env.tickIndex" || op === "tickIndex") return env.tickIndex;
+function parseCommaPair(value: string): [string, string] {
+	const index = value.indexOf(",");
+	if (index < 0) return [value.trim(), ""];
+	return [value.slice(0, index).trim(), value.slice(index + 1).trim()];
+}
 
-	// 3) 显式 input.xxx
-	if (op.startsWith("input.")) {
-		const key = op.slice("input.".length);
-		return asNumber((input as Record<string, unknown>)[key], `input.${key}`);
-	}
-
-	// 4) 直接从 input 取同名 key
-	if (Object.hasOwn(input, op)) {
-		return asNumber((input as Record<string, unknown>)[op], `input.${op}`);
-	}
-
-	// 5) fallback：未定义变量默认 0（便于渐进迁移；后续可收紧）
-	return 0;
-};
-
-const parseCommaPair = (s: string): [string, string] => {
-	const idx = s.indexOf(",");
-	if (idx < 0) return [s.trim(), ""];
-	return [s.slice(0, idx).trim(), s.slice(idx + 1).trim()];
-};
+function resolveGet(who: Operand, path: Operand, values: PipelineValues): number {
+	const whoKey = `${String(who)}.${String(path)}`;
+	const value = values[whoKey] ?? values[String(path)];
+	return asNumber(value, whoKey);
+}
 
 export function compilePipeline(instructions: readonly PipelineInstruction[]): CompiledPipeline {
-	const instrs = [...instructions];
+	const frozenInstructions = instructions.map((instruction) => Object.freeze({ ...instruction }));
 
-	return (env, input) => {
+	return (values) => {
 		const vars: Vars = Object.create(null);
-
-		for (const instr of instrs) {
-			switch (instr.op) {
-				case "get": {
-					const who = String(instr.a); // 约定："self" | "target"
-					const path = String(instr.b ?? "");
-					vars[instr.target] = env.stats(who, path);
+		for (const instruction of frozenInstructions) {
+			switch (instruction.op) {
+				case "get":
+					vars[instruction.target] = resolveGet(instruction.a, instruction.b ?? "", values);
 					break;
-				}
-				case "eval": {
-					const expr = typeof instr.a === "string" ? instr.a : String(instr.a);
-					vars[instr.target] = env.eval(expr, { ...input, ...vars });
-					break;
-				}
 				case "select": {
-					const cond = resolveOperand(instr.a, vars, input, env);
-					const b = instr.b;
-					if (typeof b === "number") {
-						vars[instr.target] = cond ? b : 0;
+					const condition = resolveNumber(instruction.a, vars, values);
+					if (typeof instruction.b === "number") {
+						vars[instruction.target] = condition !== 0 ? instruction.b : 0;
 						break;
 					}
-					const [tVal, fVal] = parseCommaPair(String(b ?? ""));
-					const chosen = cond ? tVal : fVal;
-					vars[instr.target] = resolveOperand(chosen, vars, input, env);
+					const [whenTrue, whenFalse] = parseCommaPair(String(instruction.b ?? ""));
+					vars[instruction.target] = resolveValue(condition !== 0 ? whenTrue : whenFalse, vars, values);
 					break;
 				}
 				case "clamp": {
-					const a = resolveOperand(instr.a, vars, input, env);
-					if (typeof instr.b === "number") {
-						vars[instr.target] = a;
-						break;
-					}
-					const [minToken, maxToken] = parseCommaPair(String(instr.b ?? ""));
-					const minV = resolveOperand(minToken, vars, input, env);
-					const maxV = resolveOperand(maxToken, vars, input, env);
-					vars[instr.target] = Math.max(minV, Math.min(a, maxV));
+					const value = resolveNumber(instruction.a, vars, values);
+					const [minValue, maxValue] =
+						typeof instruction.b === "number"
+							? [value, value]
+							: (parseCommaPair(String(instruction.b ?? "")).map((item) => resolveNumber(item, vars, values)) as [
+									number,
+									number,
+								]);
+					vars[instruction.target] = Math.max(minValue, Math.min(value, maxValue));
 					break;
 				}
 				default: {
-					// 一元
-					if (instr.b === undefined && instr.op in unaryOperators) {
-						const a = resolveOperand(instr.a, vars, input, env);
-						const impl = unaryOperators[instr.op as keyof typeof unaryOperators];
-						vars[instr.target] = impl(a);
+					if (instruction.b === undefined && instruction.op in unaryOperators) {
+						const operator = unaryOperators[instruction.op as keyof typeof unaryOperators];
+						vars[instruction.target] = operator(resolveNumber(instruction.a, vars, values));
 						break;
 					}
-
-					// 二元（默认）
-					const impl = binaryOperators[instr.op];
-					if (!impl) {
-						throw new Error(`未实现的运算符：${instr.op}`);
+					if (instruction.op === "eval") {
+						throw new Error("PipelineInstruction: eval 需要由调用方预先转换为 PipelineValues");
 					}
-					const a = resolveOperand(instr.a, vars, input, env);
-					const b = resolveOperand(instr.b as Operand, vars, input, env);
-					vars[instr.target] = impl(a, b);
+					const operator = binaryOperators[instruction.op];
+					if (!operator) throw new Error(`PipelineInstruction: 未实现的操作符 ${instruction.op}`);
+					vars[instruction.target] = operator(
+						resolveNumber(instruction.a, vars, values),
+						resolveNumber(instruction.b as Operand, vars, values),
+					);
+					break;
 				}
 			}
 		}
-
-		return { ...input, ...vars };
+		return { ...values, ...vars };
 	};
 }

@@ -1,7 +1,7 @@
-import type { PipelineInstruction } from "./instruction";
+import type { PipelineInstruction } from "../instruction";
 
 /**
- * 内置基础管线定义（仅数据）。
+ * 游戏标准计算管线定义（仅数据）。
  *
  * 职责边界：
  * - Pipeline 只表达”输入数值/上下文 -> 输出数值/上下文”的计算修正。
@@ -9,11 +9,11 @@ import type { PipelineInstruction } from "./instruction";
  * - 被动技能可以通过 pipeline overlay 改写公开计算槽，但不得把非计算副作用塞进管线。
  *
  * 说明：
- * - 由 `PipelineCatalog` 收编并冻结
- * - 解析/编译/执行由 `PipelineResolverService` 负责
+ * - 由 `PipelineService` 载入并冻结
+ * - 解析、编译和执行由 `PipelineService` 负责
  *
  * 技能生命周期管线（skill.charging / skill.chanting / skill.action）约定：
- * - 阶段时序：chanting(咏唱) → charging(蓄力) → startup(前摇) → recovery(后摇)。
+ * - 技能时序：chanting(咏唱) → charging(蓄力) → startup(前摇) → recovery(后摇)。
  * - skill.action 输出拆分前动作总时长；FSM 将其拆为 startup + recovery，二者才写入 runtime lifecycle。
  * - 由编排层（FSM action “添加待处理技能”）预求值 variant 上的字符串公式并转为毫秒，
  *   以 `input.fixed` + `input.modified` 传入。
@@ -38,10 +38,12 @@ const csprRateInstructions: readonly PipelineInstruction[] = [
 	{ target: "chantRate", op: "max", a: 0, b: "rawChantRate" },
 ];
 
-export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstruction[]> = {
-	// 见 docs/decisions/0003-skill-cost-as-pipeline-contract.md
-	// 技能消耗：FSM 预求值 variant 上的 HP/MP 消耗表达式，管线负责给 passive / buff / overlay 留修正锚点。
-	// 输入：input.baseHpCost, input.baseMpCost, input.skillLevel。该管线服务施法前检查，仅做纯数值修正。
+export const STANDARD_PIPELINES = {
+	/**
+	 * 技能消耗计算管线
+	 * 表达式：hpCost = max(0, (baseHpCost + hpCostModifier) * hpCostRate)
+	 *        mpCost = max(0, (baseMpCost + mpCostModifier) * effectiveMpCostRate)
+	 */
 	"skill.cost": [
 		{ target: "baseHpCost", op: "+", a: "input.baseHpCost", b: 0 },
 		{ target: "baseMpCost", op: "+", a: "input.baseMpCost", b: 0 },
@@ -145,7 +147,7 @@ export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstructi
 	//  - input.casterHit：施法者侧命中值快照（来自 casterSnapshot.hit）。
 	//  - input.skillMpCost：技能实际蓝耗，服务于 skillHitRate 加成。
 	//
-	// 阶段 anchor（供 overlay 精准挂载）：
+	// 稳定锚点（供 overlay 精准挂载）：
 	//  targetAvoid        → 受击者回避值
 	//  baseHitRate        → 基础命中率 = clamp(100 - (targetAvoid - casterHit)/3, 0, 100)
 	//  skillBonus         → 技能蓝耗加成 = skillMpCost / 10
@@ -184,7 +186,7 @@ export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstructi
 	//  - input.baseDamage：施法者侧求值后的原始伤害。
 	//  - input.damageTags / direction / skillLv：归因信息（overlay 条件依据）。
 	//
-	// 阶段 anchor（供 overlay 精准挂载）：
+	// 稳定锚点（供 overlay 精准挂载）：
 	//  invincible           → 无敌判定（0/1，默认 0；"系统无敌"类 status 对应 overlay 改写为 1）
 	//  baseDamage           → 基础伤害（默认取 input.baseDamage）
 	//  crit                 → 暴击判定（默认 0）
@@ -252,7 +254,7 @@ export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstructi
 	//  - input.statusType：候选异常类型字符串
 	//  - input.baseProbability：施加基础概率（0~1）
 	//
-	// 阶段 anchor：
+	// 稳定锚点：
 	//  targetResistance → 目标抗性（从 target / self 的 status.<type>.resistance 读取，默认 0）
 	//  appliedProbability → 最终施加概率
 	//  applied → 0/1
@@ -265,4 +267,4 @@ export const BuiltInBinaryOpPipelines: Record<string, readonly PipelineInstructi
 		// 骨架直接将概率截断到 [0,1]，供 FSM 自行投掷。
 		{ target: "applied", op: "clamp", a: "appliedProbability", b: "0,1" },
 	],
-} as const;
+} as const satisfies Record<string, readonly PipelineInstruction[]>;
