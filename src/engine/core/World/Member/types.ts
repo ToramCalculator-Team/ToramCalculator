@@ -7,7 +7,7 @@ import type { MemberFSMCheckpoint } from "./StateMachine/types";
 /**
  * 成员域事件（引擎内部）
  */
-export const MemberDomainEventSchema = z.discriminatedUnion("type", [
+export const MemberEventSchema = z.discriminatedUnion("type", [
 	z.object({
 		type: z.literal("state_changed"),
 		memberId: z.string(),
@@ -103,7 +103,7 @@ export const MemberDomainEventSchema = z.discriminatedUnion("type", [
 	}),
 ]);
 
-export type MemberDomainEvent = z.output<typeof MemberDomainEventSchema>;
+export type MemberEvent = z.output<typeof MemberEventSchema>;
 
 /** 单个成员的完整检查点 */
 export interface MemberCheckpoint {

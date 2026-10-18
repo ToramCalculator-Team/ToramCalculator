@@ -1,4 +1,5 @@
-import type { Checkpointable, DamageAreaSystemCheckpoint, SimulationTickContext } from "../../types";
+import type { SimulationTickContext } from "../../types";
+import type { Checkpointable } from "../Checkpoint";
 import type { DamageDispatchPayload } from "../Damage/types";
 import {
 	damageDirection,

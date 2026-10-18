@@ -1,22 +1,27 @@
 import { Random } from "~/lib/random";
 import { createPhysicalTerrainGenerator, type TerrainDefinition } from "~/lib/terrain";
-import type { SimulationTickContext, WorldCheckpoint } from "../types";
+import type { SimulationTickContext } from "../types";
 import { AreaManager } from "./Area/AreaManager";
-import { DamageSystem, type InstantDamageScheduler } from "./Damage/DamageSystem";
+import { DamageSystem } from "./Damage/DamageSystem";
 import { FsmMessageQueue } from "./FsmMessageQueue/MessageQueue";
-import type { MemberMovementInput } from "./Member/runtime/SharedRuntime";
+import { JSProcessor } from "./JSProcessor/JSProcessor";
 import { MemberManager } from "./MemberManager";
+import { PipelineService } from "./Pipeline/PipelineService";
+import { STANDARD_PIPELINES } from "./Pipeline/standard";
 import { SpaceManager } from "./SpaceManager";
 
 /**
  * World/Scene 容器：聚合成员/区域/空间系统 + Intent/Resolver
  */
 export class World {
-	/** 确定性随机数生成器（seeded xorshift128），可 checkpoint */
-	random: Random;
+	random: Random; // 确定性随机数生成器（seeded xorshift128），可 checkpoint
 
-	/** 事件队列 - 管理时间片段事件 */
-	private fsmMessageQueue: FsmMessageQueue;
+	private fsmMessageQueue: FsmMessageQueue; // FSM消息队列
+	private eventRecorder: EventRecorder;
+
+	// 基础设施（跨场景复用）
+	private jsProcessor: JSProcessor; // JS编译和执行器
+	private pipelineService: PipelineService; // 计算管线服务
 
 	memberManager: MemberManager;
 
@@ -28,18 +33,20 @@ export class World {
 
 	private sampleTerrainHeight: (x: number, z: number) => number = () => 0;
 
-	constructor(
-		private timeGetter: () => number,
-		private tickIndexGetter: () => number,
-		private fixedStepMsGetter: () => number,
-	) {
+	constructor(stepMs: number) {
 		this.random = new Random();
+		this.jsProcessor = new JSProcessor();
+		this.pipelineService = new PipelineService(STANDARD_PIPELINES);
 		this.fsmMessageQueue = new FsmMessageQueue(timeGetter);
 		this.memberManager = new MemberManager();
 		this.spaceManager = new SpaceManager(this.memberManager);
 		this.damageSystem = new DamageSystem(this.spaceManager, this.memberManager);
 		this.areaManager = new AreaManager(this.spaceManager, this.memberManager);
 	}
+
+	loadScenario(data: WorldScenarioData): void {}
+
+	getBattleResult(): BattleResult {}
 
 	/** 场景加载时设置唯一地形定义；点采样保持同步，不能依赖渲染区块是否就绪。 */
 	setTerrainDefinition(definition: TerrainDefinition): void {
@@ -53,21 +60,7 @@ export class World {
 	/**
 	 * 每 Tick 更新：成员 → 瞬时伤害同步结算点 → 持续区域。
 	 */
-	tick(
-		tick: SimulationTickContext,
-		movementInputs: ReadonlyMap<string, MemberMovementInput> | undefined,
-		instantDamageScheduler: InstantDamageScheduler,
-	): void {
-		const members = this.memberManager.getAllMembers();
-		for (const member of members) {
-			member.tick(tick, movementInputs?.get(member.id) ?? null);
-		}
-
-		this.damageSystem.flushInstantDamage(instantDamageScheduler);
-
-		// 区域更新（AreaManager 调度三个子系统）
-		this.areaManager.tick(tick);
-	}
+	tick(tick: SimulationTickContext, commons: unknown[]): void {}
 
 	clear(): void {
 		this.memberManager.clear();

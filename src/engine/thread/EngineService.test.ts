@@ -5,11 +5,11 @@ import { createSimulatorSessionRuntime } from "~/features/simulator/session/simu
 import { DEFAULT_TERRAIN_DEFINITION } from "~/lib/terrain";
 import type { PoolHealthMetrics } from "~/lib/workerPool/WorkerPool";
 import { createInterfaceStateMachine } from "~/machines/interfaceStateMachine";
-import type { EngineMember } from "../engineScenarioSchema";
+import type { WorldMember } from "../engineScenarioSchema";
 import type { EngineLifecycleSnapshot } from "../GameEngineSM";
 import type { IntentMessage } from "../MessageRouter/MessageRouter";
 import { type SimulationTaskResult, SimulationTaskSchema } from "../simulationTask";
-import type { EngineScenarioData, RuntimeConfig } from "../types";
+import type { RuntimeConfig, WorldScenarioData } from "../types";
 import { EngineService } from "./EngineService";
 import type { EngineWorkerClientEventMap } from "./EngineWorkerClient";
 import { EngineExecutionFailure, type EngineRPC, type EngineRPCResult, type EngineTaskPriority } from "./protocol";
@@ -39,7 +39,7 @@ class FakeRealtimeEngine {
 		listener(this.lifecycleSnapshot);
 		return () => {};
 	}
-	async loadScenario(_data: EngineScenarioData): Promise<void> {}
+	async loadScenario(_data: WorldScenarioData): Promise<void> {}
 	async setRuntimeConfig(_config: RuntimeConfig): Promise<void> {}
 	async start(): Promise<void> {}
 	async pause(): Promise<void> {}
@@ -71,7 +71,7 @@ class FakeRealtimeEngine {
 	getWorldStateReader() {
 		return null;
 	}
-	async patchMemberConfig(_memberId: string, _data: EngineMember): Promise<void> {}
+	async patchMemberConfig(_memberId: string, _data: WorldMember): Promise<void> {}
 	async fastForward() {
 		return { ticksRun: 0, elapsedMs: 0, reachedLimit: false };
 	}

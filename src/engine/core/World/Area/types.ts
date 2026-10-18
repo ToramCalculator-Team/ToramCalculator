@@ -1,6 +1,6 @@
 import type { DamageRangeType } from "@db/schema/enums";
 import type { DamageDefinition } from "../Damage/types";
-import type { EffectRange, DamageRangeParams, Vec3 } from "../EffectRange/types";
+import type { DamageRangeParams, EffectRange, Vec3 } from "../EffectRange/types";
 
 /** Area 是跨 Tick 持续实体，容量与 SAB 区域表共同遵守此边界。 */
 export const WORLD_AREA_CAPACITY = 256;

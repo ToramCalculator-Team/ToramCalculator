@@ -68,7 +68,7 @@ constructor(infra: WorldInfrastructure): void
  * 加载场景数据
  * @param data 场景初始化数据
  */
-loadScenario(data: EngineScenarioData): void
+loadScenario(data: WorldScenarioData): void
 // TODO:
 // - 设置随机种子
 // - 设置地形定义并建立高度采样

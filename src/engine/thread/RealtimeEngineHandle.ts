@@ -1,8 +1,8 @@
-import type { EngineMember } from "../engineScenarioSchema";
+import type { WorldMember } from "../engineScenarioSchema";
 import type { EngineLifecycleSnapshot } from "../GameEngineSM";
 import type { IntentMessage } from "../MessageRouter/MessageRouter";
 import type { EngineRunOutput, ExecutionRecordingPolicy } from "../runOutput";
-import type { EngineScenarioData, RuntimeConfig } from "../types";
+import type { RuntimeConfig, WorldScenarioData } from "../types";
 import type { MemberSnapshot } from "../World/Member/Member";
 import type { EngineWorkerClient, EngineWorkerClientEventMap } from "./EngineWorkerClient";
 import type { FastForwardResult, MemberSkillSummary } from "./protocol";
@@ -95,7 +95,7 @@ export class RealtimeEngineHandle {
 		return this.client.subscribeLifecycle(listener);
 	}
 
-	async loadScenario(data: EngineScenarioData): Promise<void> {
+	async loadScenario(data: WorldScenarioData): Promise<void> {
 		this.assertActive();
 		await this.client.loadScenario(data);
 	}
@@ -210,7 +210,7 @@ export class RealtimeEngineHandle {
 		return this.client.getWorldStateLayout?.() ?? null;
 	}
 
-	async patchMemberConfig(memberId: string, data: EngineMember): Promise<void> {
+	async patchMemberConfig(memberId: string, data: WorldMember): Promise<void> {
 		this.assertActive();
 		await this.client.patchMemberConfig(memberId, data);
 	}

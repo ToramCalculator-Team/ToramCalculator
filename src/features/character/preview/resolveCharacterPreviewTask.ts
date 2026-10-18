@@ -1,9 +1,9 @@
 import { defaultData } from "@db/defaultData";
 import { MemberBTSchema, type MemberBTTree } from "@db/schema/jsons";
 import { z } from "zod/v4";
-import { type EngineMember, EngineMemberSchema, type EngineTeam } from "~/engine/core/ScenarioSchema";
 import { type SimulationTask, SimulationTaskSchema } from "~/engine/core/simulationTask";
-import { type EngineScenarioData, EngineScenarioDataSchema } from "~/engine/core/types";
+import { type WorldScenarioData, WorldScenarioDataSchema } from "~/engine/core/types";
+import { type WorldMember, WorldMemberSchema, type WorldTeam } from "~/engine/core/World/ScenarioSchema";
 import { DEFAULT_TERRAIN_DEFINITION } from "~/lib/terrain";
 import type { CharacterLiveAggregate } from "../data/characterAggregateQuery";
 import {
@@ -42,13 +42,13 @@ const resolveScene = (
 	character: CharacterValidationInput,
 	policy: CharacterPreviewPolicy,
 	memberBehavior: MemberBTTree | null,
-): { scenarioData: EngineScenarioData; member: EngineMember } => {
+): { scenarioData: WorldScenarioData; member: WorldMember } => {
 	const parsedPolicy = CharacterPreviewPolicySchema.parse(policy);
 	const simulatorId = `character-preview:${character.id}:simulator`;
 	const playerTeamId = `${parsedPolicy.memberId}:team`;
 	const targetTeamId = `${parsedPolicy.trainingTargetMemberId}:team`;
 	const targetMobId = `${parsedPolicy.trainingTargetMemberId}:mob`;
-	const member = EngineMemberSchema.parse({
+	const member = WorldMemberSchema.parse({
 		...defaultData.member,
 		id: parsedPolicy.memberId,
 		name: character.name ?? "未命名角色",
@@ -60,7 +60,7 @@ const resolveScene = (
 		mob: null,
 		resolvedBehavior: memberBehavior,
 	});
-	const targetMember = EngineMemberSchema.parse({
+	const targetMember = WorldMemberSchema.parse({
 		...defaultData.member,
 		id: parsedPolicy.trainingTargetMemberId,
 		name: "Character Preview Target",
@@ -83,7 +83,7 @@ const resolveScene = (
 		},
 		resolvedBehavior: trainingTargetBehavior(),
 	});
-	const playerTeam: EngineTeam = {
+	const playerTeam: WorldTeam = {
 		...defaultData.team,
 		id: playerTeamId,
 		name: "Character Preview Player",
@@ -91,7 +91,7 @@ const resolveScene = (
 		belongToSimulatorId: simulatorId,
 		members: [member],
 	};
-	const targetTeam: EngineTeam = {
+	const targetTeam: WorldTeam = {
 		...defaultData.team,
 		id: targetTeamId,
 		name: "Character Preview Target",
@@ -101,7 +101,7 @@ const resolveScene = (
 	};
 	return {
 		member,
-		scenarioData: EngineScenarioDataSchema.parse({
+		scenarioData: WorldScenarioDataSchema.parse({
 			terrain: DEFAULT_TERRAIN_DEFINITION,
 			scenario: {
 				randomSeed: 1,
@@ -118,7 +118,7 @@ const resolveScene = (
 export function resolveCharacterRealtimeScenario(
 	character: CharacterValidationInput,
 	policy: CharacterPreviewPolicy,
-): { scenarioData: EngineScenarioData; member: EngineMember } {
+): { scenarioData: WorldScenarioData; member: WorldMember } {
 	return resolveScene(character, policy, null);
 }
 

@@ -9,7 +9,7 @@ import type { RegisterOptions, ThresholdDirection } from "../ProcBus/AttributeTh
 import type { ProcHandler, ProcPredicate, ProcSubscriptionId } from "../ProcBus/ProcBus";
 import type { MemberRuntimeServices } from "../RuntimeServices";
 import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
-import type { MemberDomainEvent } from "../types";
+import type { MemberEvent } from "../types";
 
 export type EffectBtContext = MemberSharedRuntime;
 
@@ -55,8 +55,6 @@ export interface EffectBtTreeController {
  *   要订阅就新增/复用声明式动作，以免绕过 sourceId 清理约定，泄漏订阅。
  * - 阈值穿越统一走 ProcBus 的 `attr.crossed` 事件（ADR 0010）：registerThreshold 只登记被监控点，
  *   业务响应通过 subscribeByName(["attr.crossed"]) 订阅，不再有独立的 watch handler 通路。
- * - `notifyDomainEvent` 是「出 UI」通路，当前被 healHp / healMp 等叶子直接调用；这属于
- *   双总线在叶子层的残留，待 ADR（成员内总线统一 emit + DomainEventBus 降为下游投影）消除后收回。
  * - 不提供 `runPipeline`：管线是计算层、由 FSM / DamageResolution 调用；BT 叶子不直接跑管线。
  */
 export interface EffectBtCapabilities<TSchema extends NestedSchema> {
@@ -97,7 +95,7 @@ export interface EffectBtCapabilities<TSchema extends NestedSchema> {
 	): number;
 	/** @internal 仅供 ActionMethods.unsubscribeBySource 封装调用：清理该来源的阈值监控点。 */
 	unregisterThresholdBySource(sourceId: string): void;
-	notifyDomainEvent(event: MemberDomainEvent): void;
+	recordEvent(event: MemberEvent): void;
 }
 
 /**

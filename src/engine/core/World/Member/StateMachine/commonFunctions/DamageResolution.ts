@@ -15,13 +15,13 @@
 import * as CasterSnapshot from "~/engine/core/Expression/CasterSnapshot";
 import type { ExpressionContext } from "~/engine/core/JSProcessor/types";
 import type { StageData } from "~/engine/core/Pipeline/stageEnv";
-import type { MemberDomainEvent } from "~/engine/core/types";
+import type { MemberEvent } from "~/engine/core/types";
 import type { DamageDispatchPayload } from "~/engine/core/World/Damage/types";
 import { createLogger } from "~/lib/logger";
 
 const log = createLogger("DamageResolution");
 
-type HitDomainEvent = Extract<MemberDomainEvent, { type: "hit" }>;
+type HitEvent = Extract<MemberEvent, { type: "hit" }>;
 
 interface DamageReceivedProcPayload {
 	finalDamage: number;
@@ -40,12 +40,12 @@ interface DamageReceivedProcPayload {
  * 使用 helper 把两条路径绑定在同一次调用里，避免后续新增分支时漏发其中一条。
  */
 function dispatchDamageReceivedFact(
-	notifyDomainEvent: (event: MemberDomainEvent) => void,
+	recordEvent: (event: MemberEvent) => void,
 	emitProc: (eventName: string, payload: unknown) => void,
-	domainEvent: HitDomainEvent,
+	domainEvent: HitEvent,
 	procPayload: DamageReceivedProcPayload,
 ): void {
-	notifyDomainEvent(domainEvent);
+	recordEvent(domainEvent);
 	emitProc("damage.received", procPayload);
 }
 
@@ -154,7 +154,7 @@ export function resolveDamageAndApply(
 	mpGetter: () => number,
 	hpApplyer: (vaule: number) => void,
 	mpApplyer: (vaule: number) => void,
-	notifyDomainEvent: (event: MemberDomainEvent) => void,
+	recordEvent: (event: MemberEvent) => void,
 	emitProc: (eventName: string, payload: unknown) => void,
 	runPipeline: (pipelineName: string, params?: Record<string, unknown>) => StageData,
 	evaluator: ((expression: string, context: ExpressionContext) => number | boolean) | null,
@@ -171,7 +171,7 @@ export function resolveDamageAndApply(
 		session.hpAfter = hpGetter();
 		session.mpAfter = mpGetter();
 		dispatchDamageReceivedFact(
-			notifyDomainEvent,
+			recordEvent,
 			emitProc,
 			{
 				type: "hit",
@@ -266,7 +266,7 @@ export function resolveDamageAndApply(
 	}
 
 	dispatchDamageReceivedFact(
-		notifyDomainEvent,
+		recordEvent,
 		emitProc,
 		{
 			type: "hit",

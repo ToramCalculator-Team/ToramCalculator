@@ -116,7 +116,7 @@
 ### 工作项
 
 - [x] 用明确的方案选择与创建入口替代 `defaultSimulatorId`；无既有方案时可以从账号 Character 创建持久木桩验证设计，路由参数只表达当前投影的方案身份，不拥有会话。
-- [x] 建立 ADR 0027、0036 的唯一场景解析边界，从 DesignCopy 一次派生 `EngineScenarioInput` 和 `worldResources`，不创建长期 RunSnapshot。
+- [x] 建立 ADR 0027、0036 的唯一场景解析边界，从 DesignCopy 一次派生 `WorldScenarioInput` 和 `worldResources`，不创建长期 RunSnapshot。
 - [x] 场景解析保持通用的 Camp/Team/Member 输入，不增加一对一人数校验或练习模式分支。
 - [x] 提供一份普通的持久验收 fixture：一名手动 Player 与一个使用静止固有 AI 的 Mob；它只服务测试和首次体验。
 - [x] Player Member 不保存空行为树；`behavior = null` 经场景解析得到手动 idle 运行行为，只有用户控制器命令可以发起技能。

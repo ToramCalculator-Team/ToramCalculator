@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_TERRAIN_DEFINITION } from "~/lib/terrain";
 import type { EngineLifecycleCommand, EngineLifecycleSnapshot } from "../GameEngineSM";
-import { EngineScenarioDataSchema } from "../types";
+import { WorldScenarioDataSchema } from "../types";
 import { EngineWorkerClient } from "./EngineWorkerClient";
 import { type EngineRPC, engineLifecycleFailure, engineLifecycleSuccess } from "./protocol";
 import { createWorldStateLayoutDescriptor, WorldStateWriter } from "./worldStateBuffer";
 
 const worldStateLayout = createWorldStateLayoutDescriptor([], { memberCapacity: 1, areaCapacity: 1 });
 
-const scenario = EngineScenarioDataSchema.parse({
+const scenario = WorldScenarioDataSchema.parse({
 	terrain: DEFAULT_TERRAIN_DEFINITION,
 	scenario: {
 		randomSeed: 1,

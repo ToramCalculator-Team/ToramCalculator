@@ -2,14 +2,14 @@ import type { MemberType } from "@db/schema/enums";
 import type { MovementBehaviorRecordData } from "@db/schema/jsons";
 import { createActor } from "xstate";
 import { createLogger } from "~/lib/logger";
-import type { EngineMember } from "../../ScenarioSchema";
 import type { SimulationTickContext } from "../../types";
-import type { EventCatalog } from "../Event/EventCatalog";
+import type { EventRecorder } from "../Event/EventRecorder";
 import type { ExpressionContext } from "../JSProcessor/types";
 import type { WorldObservable } from "../observable";
 import type { PipelineOverlay } from "../Pipeline/overlay";
-import type { PipelineResolverService } from "../Pipeline/Resolver/PipelineResolverService";
-import type { StageData, StageEnv } from "../Pipeline/stageEnv";
+import type { PipelineDefinitions, PipelineNameOf, PipelineService } from "../Pipeline/PipelineService";
+import type { PipelineValues } from "../Pipeline/PipelineValues";
+import type { WorldMember } from "../ScenarioSchema";
 import { AttributeContainer } from "./AttributeContainer/AttributeContainer";
 import {
 	createCommonControlBehaviorBindings,
@@ -21,7 +21,7 @@ import type { EffectBtCapabilities, EffectBtManagerEnv } from "./EffectBehavior/
 import type { MemberBaseNestedSchema } from "./MemberBaseSchema";
 import type { MemberSnapshot } from "./MemberSnapshot";
 import { AttributeThresholdSource } from "./ProcBus/AttributeThresholdSource";
-import { ProcBus } from "./ProcBus/ProcBus";
+import type { ProcBus } from "./ProcBus/ProcBus";
 import type { MemberRuntimeServices } from "./RuntimeServices";
 import type { MemberMovementInput, MemberSharedRuntime } from "./runtime/SharedRuntime";
 import { InMemoryStatusInstanceStore } from "./runtime/Status/StatusInstanceStore";
@@ -34,7 +34,7 @@ import type {
 	MemberFSMEnv,
 	MemberFSMEvent,
 } from "./StateMachine/types";
-import type { MemberCheckpoint, MemberDomainEvent } from "./types";
+import type { MemberCheckpoint, MemberEvent } from "./types";
 
 const log = createLogger("Member");
 const MOVEMENT_EPSILON = 0.0001;
@@ -44,7 +44,7 @@ const MOVEMENT_EPSILON = 0.0001;
  *
  * 核心设计原则：
  * 1. 成员是被动实体：所有状态信息通过查询接口暴露
- * 2. 唯一主动行为：通过 DomainEventBus 发布瞬时事件
+ * 2. 唯一主动行为：通过 EventBus 发布瞬时事件
  * 3. 业务逻辑在 FSM 内：伤害处理、垂直运动、落地检测都在 FSM
  * 4. 三层职责清晰：通过注释分割，不创建独立类
  *
@@ -63,7 +63,7 @@ export abstract class Member<
 	readonly name: string;
 	readonly campId: string;
 	readonly teamId: string;
-	readonly data: EngineMember;
+	readonly data: WorldMember;
 
 	// ==================== 数据层：状态容器 ====================
 	private readonly dataSchema: TSchema;
@@ -73,7 +73,7 @@ export abstract class Member<
 
 	// ==================== 计算层：管线 ====================
 	private readonly pipelineOverlays: PipelineOverlay[] = [];
-	private pipelineResolverService: PipelineResolverService | null = null;
+	private pipelineService: PipelineService;
 
 	// ==================== 编排层：状态机与行为树 ====================
 	private readonly actor: MemberActor<TFSMEvent, TFSMContext>;
@@ -86,10 +86,10 @@ export abstract class Member<
 	private readonly attributeThresholdSource: AttributeThresholdSource<TSchema>;
 	/** ai 模式下的连续移动行为记录 */
 	private aiMovementBehaviors: MovementBehaviorRecordData[] = [];
+	private readonly eventRecord: EventRecorder;
 
 	// ==================== 依赖服务（注入） ====================
 	private readonly services: MemberRuntimeServices;
-	private readonly domainEventBus: ((event: MemberDomainEvent) => void) | null = null;
 
 	// ==================== 构造与初始化 ====================
 
@@ -97,13 +97,12 @@ export abstract class Member<
 		stateMachine: (env: MemberFSMEnv<TSchema, TFSMEvent, TRuntime>) => MemberFSM<TFSMEvent, TFSMContext>,
 		campId: string,
 		teamId: string,
-		memberData: EngineMember,
+		memberData: WorldMember,
 		dataSchema: TSchema,
 		runtime: TRuntime,
 		services: MemberRuntimeServices,
-		domainEventBus: ((event: MemberDomainEvent) => void) | null,
-		pipelineResolverService: PipelineResolverService | null,
-		eventCatalog: typeof EventCatalog | null,
+		eventRecord: EventRecorder,
+		pipelineService: PipelineService,
 		position: { x: number; y: number; z: number },
 		controlBehaviorBindings: (capabilities: MemberControlBehaviorCapabilities) => Record<string, unknown> = (
 			capabilities,
@@ -129,21 +128,15 @@ export abstract class Member<
 		this.statusStore = new InMemoryStatusInstanceStore(() => runtime.currentTimeMs);
 
 		// 计算层
-		this.pipelineResolverService = pipelineResolverService;
+		this.pipelineService = pipelineService;
 
 		// 编排层
 		this.behaviorMode = memberData.resolvedBehavior ? "autonomous" : "manual";
 		this.services = services;
-		this.domainEventBus = domainEventBus;
+		this.eventRecord = eventRecord;
 
 		// 初始化 AttributeThresholdSource
 		this.attributeThresholdSource = new AttributeThresholdSource(this.attributeContainer, null);
-
-		// 初始化 ProcBus 和事件路由
-		if (eventCatalog) {
-			this.procBus = new ProcBus(eventCatalog);
-			this.setupEventRouting();
-		}
 
 		// 初始化 BT 能力和环境
 		const btCapabilities = this.createBtCapabilities();
@@ -178,67 +171,6 @@ export abstract class Member<
 	}
 
 	/**
-	 * 设置事件路由：StatusStore 变更 → ProcBus 事件 + DomainEvent
-	 */
-	private setupEventRouting(): void {
-		if (!this.procBus) return;
-
-		const bus = this.procBus;
-
-		// StatusStore 变更监听
-		this.statusStore.setChangeListener((change) => {
-			const timeMs = this.getLogicalTimeMs();
-			if (change.kind === "entered") {
-				bus.emit(
-					"status.entered",
-					{
-						type: change.instance.type,
-						sourceId: change.instance.sourceId,
-						timeMs,
-					},
-					timeMs,
-				);
-				this.notifyDomainEvent({
-					type: "status_entered",
-					memberId: this.id,
-					statusType: change.instance.type,
-					sourceId: change.instance.sourceId,
-					timeMs,
-				});
-			} else {
-				const reason = change.reason ?? "removed";
-				bus.emit(
-					"status.exited",
-					{
-						type: change.instance.type,
-						reason,
-						timeMs,
-					},
-					timeMs,
-				);
-				this.notifyDomainEvent({
-					type: "status_exited",
-					memberId: this.id,
-					statusType: change.instance.type,
-					reason,
-					timeMs,
-				});
-			}
-		});
-
-		// 属性阈值事件源
-		this.attributeThresholdSource.setEmitter((payload) => {
-			const timeMs = this.getLogicalTimeMs();
-			bus.emit("attr.crossed", payload, timeMs);
-		});
-
-		// 致死事件订阅
-		bus.subscribeByName(`member:${this.id}:death`, ["damage.fatal"], null, (event) => {
-			this.actor.send({ id: this.id, type: "死亡", data: event.payload });
-		});
-	}
-
-	/**
 	 * 构造 FSM 专用 env。
 	 * 使用 getter 让 checkpoint restore 后状态机闭包继续读取 Member 当前字段。
 	 */
@@ -266,7 +198,7 @@ export abstract class Member<
 			get effectBtManager() {
 				return self.effectBtManager;
 			},
-			notifyDomainEvent: (event) => self.notifyDomainEvent(event),
+			recordEvent: (event) => self.recordEvent(event),
 			emitProc: (eventName, payload) => self.emitProc(eventName, payload),
 			faceCurrentTarget: () => self.faceCurrentTarget(),
 			runPipeline: (pipelineName, params) => self.runPipeline(pipelineName, params),
@@ -309,7 +241,7 @@ export abstract class Member<
 			registerThreshold: (sourceId, path, threshold, direction, options) =>
 				self.attributeThresholdSource.register(sourceId, path, threshold, direction, options),
 			unregisterThresholdBySource: (sourceId) => self.attributeThresholdSource.unregisterBySource(sourceId),
-			notifyDomainEvent: (event) => self.notifyDomainEvent(event),
+			recordEvent: (event) => self.recordEvent(event),
 		};
 	}
 
@@ -607,19 +539,14 @@ export abstract class Member<
 	 * Actor 隔离原则：member 只访问自身属性。跨 actor 数据必须通过事件 payload 快照传递。
 	 * （例如受击 payload 里的 `casterSnapshot`），严禁在管线执行期同步读取其他成员。
 	 */
-	runPipeline(pipelineName: string, params?: Record<string, unknown>) {
-		const resolver = this.pipelineResolverService;
-		if (!resolver) {
-			throw new Error(`pipelineResolverService 未注入：${pipelineName}`);
-		}
-
+	runPipeline<TName extends PipelineNameOf<PipelineDefinitions>>(
+		pipelineName: TName,
+		params: PipelineValues,
+	): PipelineValues {
 		const timeMs = this.runtime.currentTimeMs;
 		const tickIndex = this.services.getTickIndex();
-		const damageTagsParam = Array.isArray(params?.damageTags)
-			? (params?.damageTags as readonly string[])
-			: ([] as readonly string[]);
 
-		const env: StageEnv = {
+		const pipelineParams = {
 			timeMs,
 			tickIndex,
 			stats: (memberIdOrSelector: string, path: string) => {
@@ -650,12 +577,9 @@ export abstract class Member<
 			newId: () => `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
 			memberRuntime: this.runtime,
 			statusTags: () => this.runtime.statusTags,
-			damageTags: () => damageTagsParam,
 		};
 
-		const overlays = this.pipelineOverlays;
-		const input: StageData = params ?? {};
-		return resolver.resolveAndRun(pipelineName, overlays, env, input);
+		return this.pipelineService.run(pipelineName, params);
 	}
 
 	// ==================== Checkpoint ====================
@@ -703,13 +627,10 @@ export abstract class Member<
 	// ==================== 域事件发布（内部） ====================
 
 	/**
-	 * 发布域事件到外部（DomainEventBus）。
-	 * 只推送瞬时事件（hit、death、cast_start 等），不推送状态快照。
+	 * 将事件记录的事件记录器
 	 */
-	private notifyDomainEvent(event: MemberDomainEvent): void {
-		if (this.domainEventBus) {
-			this.domainEventBus(event);
-		}
+	private recordEvent(event: MemberEvent): void {
+		this.eventRecord.record(event);
 	}
 
 	/**

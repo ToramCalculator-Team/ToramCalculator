@@ -249,7 +249,7 @@ export const createMobStateMachine = (env: MobStateMachineEnv): MemberFSM<MobFSM
 										: []),
 								],
 							}),
-						env.notifyDomainEvent,
+						env.recordEvent,
 						env.emitProc,
 						env.runPipeline,
 						env.services.expressionEvaluator,

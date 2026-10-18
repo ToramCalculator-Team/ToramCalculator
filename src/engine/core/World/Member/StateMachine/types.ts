@@ -1,11 +1,12 @@
 import type { Actor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
-import type { StageData } from "../../Pipeline/stageEnv";
+import type { PipelineDefinitions, PipelineNameOf } from "../../Pipeline/PipelineService";
+import type { PipelineValues } from "../../Pipeline/PipelineValues";
 import type { AttributeContainer } from "../AttributeContainer/AttributeContainer";
 import type { EffectBtManager } from "../EffectBehavior/EffectBtManager";
 import type { MemberBaseNestedSchema } from "../MemberBaseSchema";
 import type { MemberRuntimeServices } from "../RuntimeServices";
 import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
-import type { MemberDomainEvent } from "../types";
+import type { MemberEvent } from "../types";
 
 /**
  * 成员状态机事件类型枚举
@@ -82,12 +83,15 @@ export interface MemberFSMEnv<
 	attributeContainer: AttributeContainer<TSchema>;
 	services: MemberRuntimeServices;
 	effectBtManager: EffectBtManager<TSchema, TRuntime, TFSMEvent>;
-	notifyDomainEvent(event: MemberDomainEvent): void;
+	recordEvent(event: MemberEvent): void;
 	/** 派发成员内事件到本成员 ProcBus（供 passive/registlet 响应，ADR-0011）。 */
 	emitProc(eventName: string, payload: unknown): void;
 	/** 按当前动作目标即时更新成员权威朝向；目标无效或重合时保持原朝向。 */
 	faceCurrentTarget(): boolean;
-	runPipeline(pipelineName: string, params?: Record<string, unknown>): StageData;
+	runPipeline<TName extends PipelineNameOf<PipelineDefinitions>>(
+		pipelineName: TName,
+		values: PipelineValues,
+	): PipelineValues;
 	send(event: TFSMEvent): void;
 }
 

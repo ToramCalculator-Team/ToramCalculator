@@ -1,7 +1,7 @@
 /**
  * 玩家数据配置
  */
-import type { EngineMob } from "../../../../ScenarioSchema";
+import type { WorldMob } from "../../../ScenarioSchema";
 import type {
 	ConvertToNestedSchema,
 	ConvertToNestedSchemaDic,
@@ -58,7 +58,7 @@ export const MobAttrNestedSchema: MobAttrNestedSchema = {
 
 // ============================== 属性Schema ==============================
 
-export const MobAttrSchema = (mob: EngineMob): MobAttrNestedSchema => ({
+export const MobAttrSchema = (mob: WorldMob): MobAttrNestedSchema => ({
 	// ============================== 基础信息 ==============================
 	lv: {
 		displayName: "等级",

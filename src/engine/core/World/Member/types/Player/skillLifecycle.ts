@@ -1,6 +1,6 @@
 import type { ExpressionContext } from "~/engine/core/World/JSProcessor/types";
 import type { StageData } from "~/engine/core/World/Pipeline/stageEnv";
-import type { EngineCharacter, EngineCharacterSkill, EngineSkillVariant } from "../../../../ScenarioSchema";
+import type { WorldCharacter, WorldCharacterSkill, WorldSkillVariant } from "../../../ScenarioSchema";
 
 export interface PlayerSkillLifecycle {
 	chanting: number;
@@ -48,9 +48,9 @@ export const EMPTY_PLAYER_SKILL_LIFECYCLE_MS: PlayerSkillLifecycle = {
 };
 
 export function selectPlayerSkillVariant(
-	skill: EngineCharacterSkill,
-	character: EngineCharacter | null,
-): EngineSkillVariant | undefined {
+	skill: WorldCharacterSkill,
+	character: WorldCharacter | null,
+): WorldSkillVariant | undefined {
 	if (character === null) return undefined;
 	return skill.template?.variants.find((variant) => {
 		const weaponCondition =

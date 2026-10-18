@@ -12,7 +12,7 @@ import { EventEmitter } from "~/lib/workerPool/EventEmitter";
 import type { WorkerMessage, WorkerTaskResponseEnvelope } from "~/lib/workerPool/type";
 import { WorkerTaskResponseEnvelopeSchema } from "~/lib/workerPool/type";
 import { MemberController } from "../../controller/MemberController";
-import type { EngineMember } from "../engineScenarioSchema";
+import type { WorldMember } from "../engineScenarioSchema";
 import {
 	type EngineLifecycleCommand,
 	type EngineLifecycleResult,
@@ -23,7 +23,7 @@ import {
 } from "../GameEngineSM";
 import type { IntentMessage } from "../MessageRouter/MessageRouter";
 import type { EngineRunOutput, ExecutionRecordingPolicy } from "../runOutput";
-import type { EngineScenarioData, RuntimeConfig } from "../types";
+import type { RuntimeConfig, WorldScenarioData } from "../types";
 import type { MemberSnapshot } from "../World/Member/Member";
 import {
 	EngineExecutionFailure,
@@ -300,7 +300,7 @@ export class EngineWorkerClient {
 		return result.data;
 	}
 
-	async loadScenario(data: EngineScenarioData): Promise<void> {
+	async loadScenario(data: WorldScenarioData): Promise<void> {
 		await this.stopWorldStateProjection();
 		await this.dispatchLifecycleControl({
 			type: "CMD_INIT",
@@ -455,7 +455,7 @@ export class EngineWorkerClient {
 		return await this.requireRPC({ type: "get_member_skill_list", memberId }, "low");
 	}
 
-	async patchMemberConfig(memberId: string, data: EngineMember): Promise<void> {
+	async patchMemberConfig(memberId: string, data: WorldMember): Promise<void> {
 		await this.requireRPC({ type: "patch_member", memberId, memberData: data });
 	}
 

@@ -1,7 +1,7 @@
 import type { DamageAreaSpec } from "../Area/types";
 import type { ResolvedDamageEffect } from "../Damage/types";
 import type { ExpressionContext } from "../JSProcessor/types";
-import type { MemberDomainEvent } from "./types";
+import type { MemberEvent } from "./types";
 
 export type MemberTargetResolver = (sourceMemberId: string, requestedTargetId?: string | null) => string | null;
 export type MemberTargetDirectionResolver = (
@@ -27,8 +27,8 @@ export interface MemberRuntimeServices {
 	executeInstantDamage: ((effect: ResolvedDamageEffect) => void) | null;
 	/** 持续 Area 创建入口。 */
 	createDamageArea: ((spec: DamageAreaSpec) => string) | null;
-	/** 域事件发射器 */
-	domainEventSender: ((event: MemberDomainEvent) => void) | null;
+	/** 事件记录器 */
+	eventRecord: ((event: MemberEvent) => void) | null;
 	/**
 	 * 目标解析器。
 	 *

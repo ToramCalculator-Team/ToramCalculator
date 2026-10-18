@@ -1,6 +1,6 @@
 import type { MemberBTTree } from "@db/schema/jsons";
 import { DefaultMobLocomotionProfile } from "~/game/locomotion";
-import type { EngineMember } from "../../../../ScenarioSchema";
+import type { WorldMember } from "../../../ScenarioSchema";
 import { AttributeContainer } from "../../AttributeContainer/AttributeContainer";
 import { mergeSchema, type SlotDeclaration } from "../../AttributeContainer/SchemaMerge";
 import type { ExtractAttrPaths } from "../../AttributeContainer/SchemaTypes";
@@ -8,18 +8,13 @@ import { Member } from "../../Member";
 import type { MobRuntime } from "../../runtime/SharedRuntime";
 import { createMobControlBehaviorBindings } from "./ControlBehavior/Bindings";
 import { createMobEffectBindings } from "./EffectBehavior/Bindings";
-import { MobAttrSchema } from "./MobAttrSchema";
+import { type MobAttrNestedSchema, MobAttrSchema } from "./MobAttrSchema";
 import { createMobStateMachine, type MobFSMContext, type MobFSMEvent } from "./MobStateMachine";
 
 export type MobAttrKey = ExtractAttrPaths<ReturnType<typeof MobAttrSchema>>;
 
-export class Mob extends Member<MobAttrKey, MobFSMEvent, MobFSMContext, MobRuntime> {
-	constructor(
-		memberData: EngineMember,
-		campId: string,
-		teamId: string,
-		position?: { x: number; y: number; z: number },
-	) {
+export class Mob extends Member<MobAttrNestedSchema, MobFSMEvent, MobFSMContext, MobRuntime> {
+	constructor(memberData: WorldMember, campId: string, teamId: string, position?: { x: number; y: number; z: number }) {
 		if (!memberData.mob) {
 			throw new Error("Mob数据缺失");
 		}
@@ -74,7 +69,7 @@ export class Mob extends Member<MobAttrKey, MobFSMEvent, MobFSMContext, MobRunti
 	}
 
 	/** 收集 Mob 行为树声明的持久化属性槽，保证 BT 变量随 AttributeContainer checkpoint。 */
-	private static collectAttributeSlots(memberData: EngineMember): SlotDeclaration[] {
+	private static collectAttributeSlots(memberData: WorldMember): SlotDeclaration[] {
 		const slots: SlotDeclaration[] = [];
 		if (memberData.resolvedBehavior) Mob.collectBtAttributeSlots(slots, memberData.resolvedBehavior);
 		return slots;

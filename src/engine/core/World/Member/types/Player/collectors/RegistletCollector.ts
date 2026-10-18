@@ -1,5 +1,5 @@
 import { createLogger } from "~/lib/logger";
-import type { EngineCharacter, EngineMember } from "../../../../../ScenarioSchema";
+import type { WorldCharacter, WorldMember } from "../../../../ScenarioSchema";
 import { BUILT_IN_REGISTLETS_BY_ID, type RegistletRow } from "../../../attachments/BuiltInRegistlets";
 import type { RuntimeAttachment } from "../../../attachments/RuntimeAttachment";
 import { compilePrebattleModifierLines } from "./PrebattleModifierCompiler";
@@ -7,7 +7,7 @@ import { compilePrebattleModifierLines } from "./PrebattleModifierCompiler";
 const log = createLogger("RegistletCollector");
 
 /** 运行输入中的托环只携带实例数据，模板可能来自内置表或内联数据。 */
-type CharacterRegistletWithMaybeTemplate = EngineCharacter["registlets"][number] & {
+type CharacterRegistletWithMaybeTemplate = WorldCharacter["registlets"][number] & {
 	template?: Partial<RegistletRow> | null;
 };
 
@@ -36,8 +36,8 @@ function substituteLevel(line: string, level: number): string {
 
 /** 收集托环的 modifier、pipeline、订阅和阈值声明。 */
 export function collectRegistletAttachments(
-	activeCharacter: EngineCharacter,
-	memberData: EngineMember,
+	activeCharacter: WorldCharacter,
+	memberData: WorldMember,
 ): RuntimeAttachment[] {
 	const attachments: RuntimeAttachment[] = [];
 	const seenTemplateIds = new Set<string>();

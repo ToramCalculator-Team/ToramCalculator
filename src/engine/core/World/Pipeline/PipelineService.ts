@@ -78,10 +78,10 @@ export class PipelineService {
 		this.layerChain = this.normalizeLayerChain(layers);
 	}
 
-	run<TName extends PipelineNameOf<PipelineDefinitions>>(pipelineName: TName, values: PipelineValues): PipelineValues {
+	run<TName extends PipelineNameOf<PipelineDefinitions>>(pipelineName: TName, params: PipelineValues): PipelineValues {
 		this.assertPipelineExists(pipelineName);
 		const entry = this.resolveForChain(pipelineName, this.layerChain);
-		return entry.compiled(values);
+		return entry.compiled(params);
 	}
 
 	private resolveForChain(pipelineName: string, chain: readonly LayerRef[]): ResolvedPipelineEntry {

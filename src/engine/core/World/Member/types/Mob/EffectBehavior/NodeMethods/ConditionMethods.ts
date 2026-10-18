@@ -3,7 +3,7 @@ import type { EffectBtCapabilities, EffectBtContext } from "../../../../EffectBe
 import type { MobAttrNestedSchema } from "../../MobAttrSchema";
 
 export const MobEffectConditionPool = {} as const satisfies ConditionPool<
-	EffectBtContext<MobAttrNestedSchema>,
+	EffectBtContext,
 	EffectBtCapabilities<MobAttrNestedSchema>
 >;
 

@@ -218,14 +218,14 @@ DamageAreaSystem (World/Area/)                        [引擎级]
   │    ├─ runPipeline("applyDamage", { finalDamage, mpCost, damageTags })
   │    │    └─ 输出 hpAfter / mpAfter / died            [最后的抵抗 overlay 挂这里拦截]
   │    ├─ AttributeContainer.addModifier('hp.current', DYNAMIC_FIXED, hpDelta, …)  [数据层写入]
-  │    └─ member.notifyDomainEvent({ type:"hit", damage, hp })
+  │    └─ member.recordEvent({ type:"hit", damage, hp })
   │
   │  action "发送属性修改事件给自己" → actor.send({ type:"修改属性", data:{ attr, value:hitSession.hpAfter } })
   ▼
 "修改属性" 处理 — 触发 "发出属性变化域事件"
   │
-  │  member.notifyDomainEvent({ type:"state_changed", hp, mp, position })
-  │  若 hpAfter <= 0 且生前 hp > 0 → 额外 notifyDomainEvent({ type:"death" })
+  │  member.recordEvent({ type:"state_changed", hp, mp, position })
+  │  若 hpAfter <= 0 且生前 hp > 0 → 额外 recordEvent({ type:"death" })
   ▼
 DomainEventBus (DomainEvents/)                         [引擎级]
   │

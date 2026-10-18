@@ -3,7 +3,7 @@
  */
 
 import type { MainHandType, SubHandType } from "@db/schema/enums";
-import type { EngineCharacter } from "../../../../ScenarioSchema";
+import type { WorldCharacter } from "../../../ScenarioSchema";
 import type {
 	ConvertToNestedSchema,
 	ConvertToNestedSchemaDic,
@@ -1554,7 +1554,7 @@ export const PlayerAttrNestedSchema: PlayerAttrNestedSchema = {
  * 转换率相关：conversionRate → conv
  * 基础值相关：baseValue → base
  */
-export const PlayerAttrSchemaGenerator = (character: EngineCharacter): PlayerAttrNestedSchema => {
+export const PlayerAttrSchemaGenerator = (character: WorldCharacter): PlayerAttrNestedSchema => {
 	if (!character) throw new Error("PlayerAttrSchemaGenerator参数不能为空");
 	const mainWeaponType = (character.weapon?.type ?? "None") as MainHandType;
 	const subWeaponType = (character.subWeapon?.type ?? "None") as SubHandType;

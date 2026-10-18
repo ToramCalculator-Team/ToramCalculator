@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-08-14
 - **决策层**: 跨层（场景解析 / 引擎 / 地形生成 / 渲染）
-- **相关代码**: `src/lib/terrain/`、`src/engine/core/World/`、`src/features/simulator/preview/resolveEngineScenario.ts`、`src/platform/terrain/`
+- **相关代码**: `src/lib/terrain/`、`src/engine/core/World/`、`src/features/simulator/preview/resolveWorldScenario.ts`、`src/platform/terrain/`
 - **相关 ADR**: Refines 0027；Related to 0016
 
 ## 决策问题

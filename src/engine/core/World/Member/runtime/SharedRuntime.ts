@@ -1,4 +1,4 @@
-import type { EngineCharacter, EngineCharacterSkill, EngineMob, EngineSkillVariant } from "../../../ScenarioSchema";
+import type { WorldCharacter, WorldCharacterSkill, WorldMob, WorldSkillVariant } from "../../ScenarioSchema";
 
 /**
  * FSM和EffectBt的共享运行时
@@ -43,8 +43,8 @@ export interface MemberSharedRuntime extends Record<string, unknown> {
 	/** 当前正在处理的技能（FSM 在"添加待处理技能"时写入，"清空待处理技能"时清空）。 */
 	currentSkill: {
 		executionInstance: number;
-		data: EngineCharacterSkill;
-		activeVariant: EngineSkillVariant;
+		data: WorldCharacterSkill;
+		activeVariant: WorldSkillVariant;
 		lifecycle: {
 			/** 当前技能生命周期的四段毫秒；动作总时长由 startup + recovery 派生。 */
 			charging: number;
@@ -55,7 +55,7 @@ export interface MemberSharedRuntime extends Record<string, unknown> {
 	} | null;
 	nextSkillExecutionInstance: number;
 	/** 上一次释放的技能，用于连击判定等。 */
-	previousSkill: EngineCharacterSkill | null;
+	previousSkill: WorldCharacterSkill | null;
 	/** per-tree 注入的所属技能上下文（注册行为树时由 localContext 提供）。 */
 	skill?: { id: string; lv: number; name: string };
 }
@@ -95,8 +95,8 @@ export const DefaultMemberSharedRuntime: MemberSharedRuntime = {
 /** Player 专用 runtime 扩展。 */
 export interface PlayerRuntime extends MemberSharedRuntime {
 	type: "Player";
-	skillList: EngineCharacterSkill[];
-	data: EngineCharacter | null;
+	skillList: WorldCharacterSkill[];
+	data: WorldCharacter | null;
 }
 export const PlayerRuntimeDefaults: PlayerRuntime = {
 	...DefaultMemberSharedRuntime,
@@ -108,8 +108,8 @@ export const PlayerRuntimeDefaults: PlayerRuntime = {
 /** Mob 专用 runtime 扩展。 */
 export interface MobRuntime extends MemberSharedRuntime {
 	type: "Mob";
-	skillList: EngineCharacterSkill[];
-	data: EngineMob | null;
+	skillList: WorldCharacterSkill[];
+	data: WorldMob | null;
 }
 export const MobRuntimeDefaults: MobRuntime = {
 	...DefaultMemberSharedRuntime,

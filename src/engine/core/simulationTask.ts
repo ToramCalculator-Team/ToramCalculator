@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 import { EngineRunOutputSchema, ExecutionRecordingPolicySchema } from "./runOutput";
-import { EngineScenarioDataSchema, RuntimeConfigSchema, StopPolicySchema } from "./types";
+import { RuntimeConfigSchema, StopPolicySchema, WorldScenarioDataSchema } from "./types";
 
 /** 一次性模拟任务必须至少提供一种确定的模拟预算，WorkerPool 的墙钟超时继续作为外层保护。 */
 export const SimulationTaskBudgetSchema = z
@@ -27,7 +27,7 @@ export type SimulationTaskRuntimeConfig = z.output<typeof SimulationTaskRuntimeC
 
 export const SimulationTaskSchema = z.object({
 	runId: z.string().min(1),
-	scenarioData: EngineScenarioDataSchema,
+	scenarioData: WorldScenarioDataSchema,
 	runtimeConfig: SimulationTaskRuntimeConfigSchema,
 	recordingPolicy: ExecutionRecordingPolicySchema,
 	stopPolicy: StopPolicySchema,

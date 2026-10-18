@@ -91,7 +91,7 @@ export class PipelineLayer {
 - `MemberManager` 持有 camp / team 层节点（与既有 `camps` / `teams` 注册表同生命周期）
 - `Member` 持有 member 层节点；skill 层节点按 `skillId` 惰性创建于所属成员
 
-`world` / `camp` / `team` 层的 overlay 数据来源（场景 schema 字段、DB 表）本次不定义。`EngineScenarioSchema` 是否需要 `worldOverlays` / `campOverlays` / `teamOverlays` 字段，等出现真实数据来源时再定。
+`world` / `camp` / `team` 层的 overlay 数据来源（场景 schema 字段、DB 表）本次不定义。`WorldScenarioSchema` 是否需要 `worldOverlays` / `campOverlays` / `teamOverlays` 字段，等出现真实数据来源时再定。
 
 ### 6. 与状态收集共用层身份
 

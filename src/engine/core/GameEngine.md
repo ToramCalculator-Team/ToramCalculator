@@ -39,7 +39,7 @@ class GameEngine {
   // 配置
   private config: EngineConfig;
   private runtimeConfig: RuntimeConfig;
-  private scenarioData: EngineScenarioData | null;
+  private scenarioData: WorldScenarioData | null;
 
   // 引擎运行时间（wall-clock，用于性能统计）
   private startTime: number;
@@ -67,7 +67,7 @@ constructor(config: EngineConfig, infra: EngineInfrastructure): void
  * 加载场景数据，从 idle 转为 ready
  * @param data 场景初始化数据
  */
-loadScenario(data: EngineScenarioData): void
+loadScenario(data: WorldScenarioData): void
 // TODO:
 // - 保存场景数据
 // - 委托 world.loadScenario(data) 建立成员、地形与随机种子
@@ -245,7 +245,7 @@ getRuntimeConfig(): RuntimeConfig
  * 获取场景初始化数据
  * @returns 场景数据副本，未加载时返回 null
  */
-getInitializationData(): EngineScenarioData | null
+getInitializationData(): WorldScenarioData | null
 
 /**
  * 获取引擎运行时长（wall-clock，毫秒）

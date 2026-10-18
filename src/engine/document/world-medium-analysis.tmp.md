@@ -84,7 +84,7 @@ Actor 负责：
 - `hitCheck` 使用 `casterSnapshot.hit` 和 `casterSnapshot["skill.mpCost"]`。
 - `damageFormula` 求值调用 `ExpressionEvaluator`，传入 `casterId: req.sourceId`、`targetId: id`、`casterSnapshot`。
 - **关键因果**：evaluator 拿到 `casterId` 后用 `getMemberById(casterId)` 取**实时施法者 Member** 作为 `self`，并不消费传入的 `casterSnapshot`。于是延迟/弹道命中时 `self.xxx` 读到的是施法者当下值，与“脱手锁定”语义冲突（偏差#3 的实锤）。
-- 结算后通过 `notifyDomainEvent` 发 UI/控制器用的 `hit` event。
+- 结算后通过 `recordEvent` 发 UI/控制器用的 `hit` event。
 - 内置 `damage.received` 事件存在，但当前伤害流程没有 emit 到成员内 `ProcBus`。
 
 ### ExpressionEvaluator

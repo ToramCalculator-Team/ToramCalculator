@@ -4,7 +4,7 @@ import type { MobAttrNestedSchema } from "../MobAttrSchema";
 import { MobEffectActionPool } from "./NodeMethods/ActionMethods";
 import { MobEffectConditionPool } from "./NodeMethods/ConditionMethods";
 
-const context = {} as EffectBtContext<MobAttrNestedSchema>;
+const context = {} as EffectBtContext;
 
 export const createMobEffectBindings = (capabilities: EffectBtCapabilities<MobAttrNestedSchema>) =>
 	createEffectBindings(context, MobEffectActionPool, MobEffectConditionPool, capabilities);

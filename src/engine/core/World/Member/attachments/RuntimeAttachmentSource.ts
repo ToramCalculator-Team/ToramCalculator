@@ -1,4 +1,4 @@
-import type { ModifierSource } from "../AttributeContainer/AttributeContainer";
+import type { ModifierSource } from "../AttributeContainer/AttributeContainerTypes";
 
 /** 来源类型同时用于 modifier provenance 和 attachment 的默认命名空间。 */
 export type RuntimeAttachmentSourceType = ModifierSource["type"];

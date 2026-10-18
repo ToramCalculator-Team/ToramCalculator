@@ -11,7 +11,7 @@ export interface MemberControlBehaviorCapabilities {
 }
 
 /** 控制行为树的黑板类型提示；动态 action/condition 成员不属于可 checkpoint 的 runtime。 */
-export type ControlBehaviorContext = MemberSharedRuntime & Record<string, unknown>;
+export interface ControlBehaviorContext extends MemberSharedRuntime {}
 
 const controlBehaviorContextTypeHint = {} as ControlBehaviorContext;
 

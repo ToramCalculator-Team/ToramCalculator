@@ -37,7 +37,7 @@ export type ScreenPoint = {
 
 export type RealtimeSceneConfig = {
 	renderSource: SimulationRenderSource;
-	/** 与 EngineScenarioData 同一份确定性地形定义。 */
+	/** 与 WorldScenarioData 同一份确定性地形定义。 */
 	terrain: TerrainDefinition;
 	/** 与当前 DesignCopy 同版本的静态视觉资源；逻辑引擎不再选择模型或外观。 */
 	worldResources: WorldResource[];

@@ -1,6 +1,6 @@
 import { assign, type SnapshotFrom, setup } from "xstate";
 import { z } from "zod/v4";
-import { EngineScenarioDataSchema } from "./types";
+import { WorldScenarioDataSchema } from "./types";
 
 export const EngineExecutionErrorSchema = z.object({
 	code: z.string(),
@@ -32,7 +32,7 @@ const CommandIdentityShape = {
 };
 
 export const EngineLifecycleCommandSchema = z.discriminatedUnion("type", [
-	z.object({ ...CommandIdentityShape, type: z.literal("CMD_INIT"), data: EngineScenarioDataSchema }).strict(),
+	z.object({ ...CommandIdentityShape, type: z.literal("CMD_INIT"), data: WorldScenarioDataSchema }).strict(),
 	z.object({ ...CommandIdentityShape, type: z.literal("CMD_START") }).strict(),
 	z.object({ ...CommandIdentityShape, type: z.literal("CMD_PAUSE") }).strict(),
 	z.object({ ...CommandIdentityShape, type: z.literal("CMD_RESUME") }).strict(),

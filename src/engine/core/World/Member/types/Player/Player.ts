@@ -1,7 +1,7 @@
 import type { MemberBTTree } from "@db/schema/jsons";
 import { PlayerLocomotionProfile } from "~/game/locomotion";
 import { createLogger } from "~/lib/logger";
-import type { EngineCharacter, EngineMember } from "../../../../ScenarioSchema";
+import type { WorldCharacter, WorldMember } from "../../../ScenarioSchema";
 import { AttributeContainer } from "../../AttributeContainer/AttributeContainer";
 import { mergeSchema, type SlotDeclaration } from "../../AttributeContainer/SchemaMerge";
 import type { RuntimeAttachment } from "../../attachments/RuntimeAttachment";
@@ -19,15 +19,10 @@ import { selectPlayerSkillVariant } from "./skillLifecycle";
 const log = createLogger("Player");
 
 export class Player extends Member<PlayerAttrNestedSchema, PlayerFSMEvent, PlayerFSMContext, PlayerRuntime> {
-	activeCharacter: EngineCharacter;
+	activeCharacter: WorldCharacter;
 	private readonly runtimeAttachments: RuntimeAttachment<PlayerAttrKey>[];
 
-	constructor(
-		memberData: EngineMember,
-		campId: string,
-		teamId: string,
-		position?: { x: number; y: number; z: number },
-	) {
+	constructor(memberData: WorldMember, campId: string, teamId: string, position?: { x: number; y: number; z: number }) {
 		log.info("Player constructor", memberData);
 		const activeCharacter = memberData.character;
 		if (!activeCharacter) throw new Error("Player Member 缺少 Character");
@@ -136,8 +131,8 @@ export class Player extends Member<PlayerAttrNestedSchema, PlayerFSMEvent, Playe
 	 * 技能自定义槽使用 `skill.<id>.<field>` / `passive.<id>.<field>` / `buff.<id>.<field>`。
 	 */
 	private static collectAttributeSlots(
-		activeCharacter: EngineCharacter,
-		memberData: EngineMember,
+		activeCharacter: WorldCharacter,
+		memberData: WorldMember,
 		runtimeAttachments: readonly RuntimeAttachment[],
 	): SlotDeclaration[] {
 		const slots: SlotDeclaration[] = collectAttachmentSlots(runtimeAttachments);

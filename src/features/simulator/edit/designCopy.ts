@@ -1,6 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { SimulationDesign, SimulatorCharacter } from "../data/simulationDesignSchema";
-import { type ResolvedSimulatorScene, resolveSimulatorScene } from "../preview/resolveEngineScenario";
+import { type ResolvedSimulatorScene, resolveSimulatorScene } from "../preview/resolveWorldScenario";
 
 export type DesignCopy = {
 	id: string;

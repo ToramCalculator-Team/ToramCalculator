@@ -1,22 +1,8 @@
-import { createId } from "@paralleldrive/cuid2";
-import type { EventObject } from "xstate";
 import { createLogger } from "~/lib/logger";
-import { computeMemberFormation } from "~/memberFormation";
-import { FrameLoop } from "./FrameLoop/FrameLoop";
-import {
-	type EngineRunOutput,
-	type ExecutionRecordingPolicy,
-	type MovementBehaviorSource,
-	RunInputActionSchema,
-	RunOutputRecorder,
-} from "./runOutput";
-import type { EngineMember, EngineTeam } from "./ScenarioSchema";
-import type { EngineCheckpoint, EngineScenarioData, GameEngineSnapshot, RuntimeConfig } from "./types";
+import { type EngineRunOutput, type ExecutionRecordingPolicy, RunOutputRecorder } from "./runOutput";
+import type { EngineCheckpoint, GameEngineSnapshot, RuntimeConfig } from "./types";
 import { createRealtimeConfig } from "./types";
-import { JSProcessor } from "./World/JSProcessor/JSProcessor";
-import type { ExpressionContext } from "./World/JSProcessor/types";
-import { PipelineCatalog } from "./World/Pipeline/PipelineCatalog";
-import { PipelineResolverService } from "./World/Pipeline/Resolver/PipelineResolverService";
+import type { WorldScenarioData } from "./World/types";
 import { World } from "./World/World";
 
 const log = createLogger("GameEngine");
@@ -32,28 +18,25 @@ declare global {
  * 游戏引擎类
  */
 export class GameEngine {
-	readonly world: World; // 模拟状态容器（公开只读，供测试访问）
+	private world: World; // 模拟状态容器（公开只读，供测试访问）
 
 	// 引擎时间管理
 	private tickIndex: number = 0; // 当前逻辑 tick 序号
-	private simulationTimeMs: number = 0; // 当前模拟时间（毫秒），world读取的唯一时间源
+
+	// 状态管理
+	private shouldAdvance: boolean = false; // 是否应该推进tick循环
+	private timer: ReturnType<typeof setTimeout> | null = null;
+	private currentLoopStartAt: number = 0; // 当前轮次启动时间（用于在循环调度时校准延迟）
+	private currentLoopStartIndex: number = 0; // 当前轮次启动时的TickIndex
+	private stepMs: number; // tick步长
 
 	// 输入输入接口（SAB），两个端口各一个缓冲区，端口内分状态区与事件区
 	private inputBuffer: SharedArrayBuffer | null = null; // 引擎的输入端口
 	private outputBuffer: SharedArrayBuffer | null = null; // 引擎的输出端口
 
-	// 基础设施（跨场景复用）
-	private jsProcessor: JSProcessor; // JS编译和执行器
-	private pipelineCatalog: PipelineCatalog; // 管线
-	private pipelineResolverService: PipelineResolverService;
-	private eventCatalog: EventCatalog;
-
-	// 世界生命周期控制
-	private frameLoop: FrameLoop;
-
 	// 配置
 	/** 存储场景配置参数，用于重置时复用 */
-	private scenarioData: EngineScenarioData | null = null;
+	private scenarioData: WorldScenarioData | null = null;
 	/**引擎运行配置。默认值为实时模拟 */
 	private runtimeConfig: RuntimeConfig;
 
@@ -93,285 +76,59 @@ export class GameEngine {
 		log.debug("GameEngine constructor");
 
 		this.runtimeConfig = runtimeConfig ?? createRealtimeConfig();
-
-		// 规则系统运行的基础设施（跨 reset/cleanup 存活）
-		this.jsProcessor = new JSProcessor();
-		this.pipelineCatalog = new PipelineCatalog();
-		this.pipelineResolverService = new PipelineResolverService(this.pipelineCatalog);
-		this.eventCatalog = infra.eventCatalog;
-
-		this.frameLoop = new FrameLoop(runtimeConfig?.logicHz);
+		this.stepMs = 1000 / this.runtimeConfig.logicHz;
 
 		// World 相关
-		this.world = new World();
+		this.world = new World(this.getStepMs());
+	}
+
+	// ==================== 场景资源管理 ====================
+
+	/**
+	 *
+	 */
+	loadScenario(data: WorldScenarioData): void {
+		this.world.loadScenario(data);
+		log.info("GameEngine: 场景数据已加载");
+	}
+
+	/**
+	 * 重置引擎
+	 */
+	reset(): void {
+		// 停止循环
+		this.stopLoop();
+
+		// 重置模拟周期数据
+		this.tickIndex = 0;
+
+		// 重置世界数据
+		this.world = new World(this.getStepMs());
+
+		log.info("GameEngine: 引擎已重置");
 	}
 
 	// ==================== 生命周期管理 ====================
 
 	/**
-	 * 加载仿真场景数据，将引擎从 idle 转为 ready。
-	 * 重建仿真层（World、EventQueue 等），但复用 Infrastructure 的编译缓存。
-	 */
-	loadScenario(data: EngineScenarioData): void {
-		this.runOutput.assertScenarioChangeAllowed();
-		this.stop();
-
-		this.scenarioData = data;
-		this.random.setSeed(data.scenario.randomSeed);
-		this.setRuntimeConfig({ ...this.runtimeConfig, logicHz: data.scenario.logicHz });
-
-		this.startTime = performance.now();
-		this.tickIndex = 0;
-		this.currentTimeMs = 0;
-		this.deltaTimeMs = 0;
-		this.pendingTickTasksCount = 0;
-		this.resetEngineFrameLoopStats("manual");
-		this.snapshots = [];
-		this.stats = {
-			totalSnapshots: 0,
-			totalEventsProcessed: 0,
-			totalMessagesProcessed: 0,
-		};
-
-		// 清理上一个场景的世界数据
-		this.world.clear();
-		this.world.setTerrainDefinition(data.terrain);
-		this.eventQueue.clear();
-		this.domainEventBus.reset();
-		this.controllerEventProjector.clear();
-
-		// 计算成员初始队形（唯一真相源，与渲染层共用同一纯函数）。
-		// PS：按道理computeMemberFormation应该声明在engine和render的公共层，但是render的架构设计有问题，computeMemberFormation只能暂存在src，后续再处理
-		const formation = computeMemberFormation(data.scenario.campA, data.scenario.campB);
-
-		// 添加阵营A
-		this.addCamp("campA");
-		data.scenario.campA.forEach((team) => {
-			this.addTeam("campA", team);
-			team.members.forEach((member) => {
-				const formationPosition = formation.get(member.id)?.position;
-				this.addMember(
-					"campA",
-					team.id,
-					member,
-					formationPosition ? this.world.projectToGround(formationPosition) : undefined,
-				);
-			});
-		});
-
-		// 添加阵营B
-		this.addCamp("campB");
-		data.scenario.campB.forEach((team) => {
-			this.addTeam("campB", team);
-			team.members.forEach((member) => {
-				const formationPosition = formation.get(member.id)?.position;
-				this.addMember(
-					"campB",
-					team.id,
-					member,
-					formationPosition ? this.world.projectToGround(formationPosition) : undefined,
-				);
-			});
-		});
-		this.world.memberManager.setPrimaryMember(data.scenario.primaryMemberId);
-		this.world.memberManager.initializeMemberTargets(data.scenario.initialTargetIds);
-
-		log.info("GameEngine: 场景数据已加载，引擎就绪");
-	}
-
-	/**
-	 * 重置引擎：清理仿真层，保留 Infrastructure 编译缓存。
-	 * 如果有存储的场景数据则重新加载（→ ready），否则回到 idle。
-	 */
-	reset(): void {
-		this.runOutput.assertScenarioChangeAllowed();
-		this.stop();
-
-		if (this.scenarioData) {
-			this.loadScenario(this.scenarioData);
-		} else {
-			this.world.clear();
-			this.eventQueue.clear();
-			this.tickIndex = 0;
-			this.currentTimeMs = 0;
-			this.deltaTimeMs = 0;
-			this.snapshots = [];
-		}
-
-		log.info("GameEngine: 引擎已重置");
-	}
-
-	/**
-	 * 显式卸载交互会话场景。与 reset 不同，此操作不重新加载旧输入；与 cleanup 不同，
-	 * 它保留 Worker 通信 sender 和长期 Infrastructure，供下一会话继续复用。
-	 */
-	unloadScenario(): void {
-		this.runOutput.assertScenarioChangeAllowed();
-		this.stop();
-		this.world.clear();
-		this.eventQueue.clear();
-		this.scenarioData = null;
-		this.snapshots = [];
-		this.tickIndex = 0;
-		this.currentTimeMs = 0;
-		this.deltaTimeMs = 0;
-		this.pendingTickTasksCount = 0;
-	}
-
-	/**
-	 * 切换仿真配置描述符（mode/stop/output/probe 等）。
-	 * 仅在 idle / ready 状态下允许切换，运行中切换需先 stop。
-	 */
-	setRuntimeConfig(config: RuntimeConfig): void {
-		this.runtimeConfig = config;
-		this.config.frameLoopConfig.logicHz = config.logicHz;
-		this.config.frameLoopConfig.timeScale = config.timeScale;
-		this.config.frameLoopConfig.maxCatchUpTicks = config.maxCatchUpTicks;
-		this.frameLoop.setLogicHz(config.logicHz);
-		this.frameLoop.setTimeScale(config.timeScale);
-		this.frameLoop.setMaxCatchUpTicks(config.maxCatchUpTicks);
-		log.info(`GameEngine: runtimeConfig 已切换 (driveMode=${config.driveMode})`);
-	}
-
-	/** 一次性模拟任务只切换执行宿主策略；逻辑频率保留场景加载时确立的唯一值。 */
-	setRuntimePolicy(policy: Omit<RuntimeConfig, "logicHz">): void {
-		this.setRuntimeConfig({ ...policy, logicHz: this.runtimeConfig.logicHz });
-	}
-
-	getRuntimeConfig(): RuntimeConfig {
-		return { ...this.runtimeConfig };
-	}
-
-	/**
-	 * 清理仿真层资源，保留 Infrastructure（JSProcessor、PipelineCatalog、PipelineResolverService）。
-	 * 清理后引擎回到 idle 状态。
-	 */
-	cleanup(): void {
-		this.stop();
-
-		this.world.clear();
-		this.eventQueue.clear();
-
-		this.systemMessageSender = null;
-
-		this.scenarioData = null;
-		this.snapshots = [];
-		this.tickIndex = 0;
-		this.currentTimeMs = 0;
-		this.deltaTimeMs = 0;
-		this.stats = {
-			totalSnapshots: 0,
-			totalEventsProcessed: 0,
-			totalMessagesProcessed: 0,
-		};
-
-		log.info("GameEngine: 仿真层资源已清理，Infrastructure 保留");
-	}
-
-	/**
-	 * 获取初始化数据
-	 */
-	public getInitializationData(): EngineScenarioData | null {
-		return this.scenarioData;
-	}
-
-	// ===============================  外部方法 ===============================
-
-	/**
-	 * 获取引擎级循环统计（轻量）。
-	 * 目的：
-	 * - 给 worker 遥测、快照、调试接口提供统一入口
-	 * - 避免外部再深拿到底层 FrameLoop 的内部统计
-	 */
-	/** 最近一次 stepTick 耗时（毫秒）。 */
-	getLastStepTickDurationMs(): number {
-		return this.lastStepTickDurationMs;
-	}
-
-	getFrameLoopStats(): FrameLoopStats {
-		return { ...this.frameLoopStats };
-	}
-
-	/** 为实时状态提交生成与当前已完成逻辑时间一致的共享时间轴映射。 */
-	getRealtimeClockSnapshot() {
-		return this.frameLoop.getClockSnapshot(this.currentTimeMs);
-	}
-
-	/**
-	 * 获取引擎运行时间（毫秒）
-	 * 轻量：不触发成员序列化
-	 */
-	getRunTimeMs(): number {
-		return performance.now() - this.startTime;
-	}
-
-	/**
-	 * 获取成员数量（轻量）
-	 */
-	getMemberCount(): number {
-		return this.world.memberManager.getAllMembers().length;
-	}
-
-	/**
-	 * 获取成员技能静态列表（轻量，用于技能栏按钮渲染）
-	 * 只用于 UI 的“列表展示”，不做可用性/条件计算
-	 */
-	getMemberSkillList(memberId: string): Array<{ id: string; name: string; level: number }> {
-		const member = this.getMember(memberId);
-		if (!(member instanceof Player)) return [];
-
-		const skillList = member.runtime.skillList;
-		if (!skillList.length) {
-			log.debug(`getMemberSkillList: empty skillList member=${memberId} character=${member.data.id ?? "null"}`);
-		}
-
-		return skillList.map((skill) => ({
-			id: skill.id,
-			name: skill.template.name,
-			level: skill.lv,
-		}));
-	}
-
-	/**
-	 * 插入事件到队列
-	 *
-	 * @param event 事件对象
-	 * @param priority 事件优先级
-	 * @returns 插入是否成功
-	 */
-	insertEvent(event: QueueEvent): boolean {
-		return this.eventQueue.insert(event);
-	}
-
-	// ==================== 子组件功能封装：帧推进功能 ====================
-
-	/**
 	 * 启动帧循环。仅在 ready / paused 状态下可调用。
 	 */
-	start(): void {
-		if (!this.scenarioData) throw new Error("GameEngine: 场景尚未加载");
-		if (this.runtimeConfig.driveMode !== "clocked") {
-			throw new Error("GameEngine: unclocked 执行必须使用 fastForwardSync");
-		}
-
-		this.startTime = performance.now();
-		this.resetEngineFrameLoopStats("deadline");
-		this.frameLoop.start((tick) => {
-			this.handleFrameLoopTick(tick);
-		});
-		this.syncFrameLoopDriverStats();
-		this.realtimeStateCommitCallback?.();
+	startLoop(): void {
+		this.shouldAdvance = true;
+		this.currentLoopStartAt = performance.now();
+		this.currentLoopStartIndex = this.tickIndex;
+		this.scheduleNext();
 	}
 
 	/**
 	 * 停止帧循环。运行态/暂停态 → ready（若已有场景）或 idle。
 	 */
-	stop(): void {
-		if (this.frameLoop.isRunning() || this.frameLoop.isPaused()) {
-			this.frameLoop.stop();
-			this.realtimeStateCommitCallback?.();
+	stopLoop(): void {
+		this.shouldAdvance = false;
+		if (this.timer) {
+			clearTimeout(this.timer);
+			this.timer = null;
 		}
-		this.syncFrameLoopDriverStats();
 	}
 
 	/**
@@ -379,24 +136,29 @@ export class GameEngine {
 	 */
 	pause(): void {
 		if (this.runtimeConfig.driveMode !== "clocked") throw new Error("GameEngine: unclocked 执行不可暂停");
-		this.frameLoop.pause();
-		this.syncFrameLoopDriverStats();
-		this.realtimeStateCommitCallback?.();
+		this.stopLoop();
 	}
 
 	resume(): void {
 		if (this.runtimeConfig.driveMode !== "clocked") throw new Error("GameEngine: unclocked 执行不可恢复");
-		this.frameLoop.resume();
-		this.syncFrameLoopDriverStats();
-		this.realtimeStateCommitCallback?.();
+		this.startLoop();
 	}
 
 	/**
-	 * 单步推进帧。仅在 ready / paused 状态下可调用。
+	 * 单步推进帧。仅在 ready / paused 状态下可调用，被调用时不应该有timer
 	 */
 	step(): void {
-		if (!this.scenarioData) throw new Error("GameEngine: 场景尚未加载");
-		this.runSingleTick("manual", this.getLogicStepMs());
+		this.shouldAdvance = false;
+		this.currentLoopStartAt = performance.now();
+		this.currentLoopStartIndex = this.tickIndex;
+		this.scheduleNext();
+	}
+
+	/**
+	 * 获取当前配置中的fps
+	 */
+	getLogicHz() {
+		return this.runtimeConfig.logicHz;
 	}
 
 	/**
@@ -407,480 +169,69 @@ export class GameEngine {
 	}
 
 	/**
+	 * 获取帧步长
+	 */
+	getStepMs() {
+		return 1000 / this.getLogicHz();
+	}
+
+	/**
 	 * 获取当前模拟时间（毫秒）
 	 */
 	getCurrentTimeMs(): number {
-		return this.currentTimeMs;
-	}
-
-	// ==================== 子组件功能封装：成员管理 ====================
-
-	/**
-	 * 添加阵营
-	 *
-	 * @param campId 阵营ID
-	 */
-	addCamp(campId: string): void {
-		this.world.memberManager.addCamp(campId);
-	}
-
-	/**
-	 * 添加队伍
-	 *
-	 * @param campId 阵营ID
-	 * @param teamData 队伍数据
-	 */
-	addTeam(campId: string, teamData: EngineTeam): void {
-		this.world.memberManager.addTeam(campId, teamData);
-	}
-
-	/**
-	 * 添加成员（委托给 memberManager）
-	 *
-	 * @param campId 阵营ID
-	 * @param teamId 队伍ID
-	 * @param memberData 成员数据
-	 */
-	addMember(
-		campId: string,
-		teamId: string,
-		memberData: EngineMember,
-		position?: { x: number; y: number; z: number },
-	): void {
-		// 容器只负责委托，不处理具体创建逻辑
-		this.world.memberManager.createAndRegister(memberData, campId, teamId, position);
-	}
-
-	/**
-	 * 增量更新成员配置（热替换）。
-	 * 销毁旧成员实例并以新数据重建，供调用方在成员配置变化后刷新运行时结构。
-	 * 替换过程保留 memberId 和主控目标，避免相机跟随在同一成员热替换时短暂切到 null。
-	 * 仅在 idle / ready 状态下允许操作。
-	 */
-	patchMemberConfig(memberId: string, newData: EngineMember): boolean {
-		const existing = this.getMember(memberId);
-		if (!existing) {
-			log.warn(`GameEngine: patchMemberConfig 未找到成员 ${memberId}`);
-			return false;
-		}
-
-		if (!this.world.memberManager.replaceMember(memberId, newData)) {
-			return false;
-		}
-
-		if (this.scenarioData) {
-			this.patchInitializationData(memberId, newData);
-		}
-
-		log.info(`GameEngine: 成员 ${memberId} 配置已热替换`);
-		return true;
-	}
-
-	/**
-	 * 同步更新存储的场景数据中对应成员，确保 reset 后使用最新配置。
-	 */
-	private patchInitializationData(memberId: string, newData: EngineMember): void {
-		if (!this.scenarioData) return;
-
-		for (const camp of [this.scenarioData.scenario.campA, this.scenarioData.scenario.campB]) {
-			for (const team of camp) {
-				const idx = team.members.findIndex((m) => m.id === memberId);
-				if (idx !== -1) {
-					team.members[idx] = newData;
-					return;
-				}
-			}
-		}
-	}
-
-	/**
-	 * 获取所有成员
-	 *
-	 * @returns 成员数组
-	 */
-	getAllMembers() {
-		return this.world.memberManager.getAllMembers();
-	}
-
-	/**
-	 * 查找成员
-	 *
-	 * @param memberId 成员ID
-	 * @returns 成员实例
-	 */
-	getMember(memberId: string) {
-		return this.world.memberManager.getMember(memberId);
-	}
-
-	/**
-	 * 已创建伤害区域总数。
-	 * 预览分支用它区分“技能没有生成伤害流程”和“生成伤害流程但最终伤害为 0”。
-	 */
-	getDamageAreaCreatedCount(): number {
-		return this.world.areaManager.damageAreaSystem.getCreatedAreaCount();
-	}
-
-	// ==================== 子组件功能封装：消息路由 ====================
-
-	/**
-	 * 处理意图消息
-	 *
-	 * @param message 意图消息
-	 * @returns 处理结果
-	 */
-	async processIntent(message: IntentMessage): Promise<MessageProcessResult> {
-		if (!this.runtimeConfig.acceptExternalIntents) {
-			return {
-				success: false,
-				message: "意图输入已禁用",
-				error: "Intent input disabled by runtimeConfig.acceptExternalIntents",
-			};
-		}
-		const isMemberControlInput = message.type !== "绑定控制对象" && message.type !== "解绑控制对象";
-		const inputWindowOpen = this.runOutput.isRecording();
-		if (isMemberControlInput && !inputWindowOpen) {
-			return {
-				success: false,
-				message: "运行输入窗口尚未打开",
-				error: "Member control input is not accepted before the run starts",
-			};
-		}
-
-		const memberId = this.bindingManager.getBoundMemberId(message.controllerId) ?? null;
-		const member = memberId ? this.world.memberManager.getMember(memberId) : undefined;
-		const shouldRecord = this.runOutput.isRecording() && !["绑定控制对象", "解绑控制对象"].includes(message.type);
-		if (!member && shouldRecord) {
-			this.runOutput.appendInput({
-				inputId: message.id,
-				memberId,
-				timeMs: this.getCurrentTimeMs(),
-				action: RunInputActionSchema.parse({ type: message.type, payload: structuredClone(message.data) }),
-			});
-		}
-		if (member && shouldRecord && member.controlMode !== "controlled") {
-			const timeMs = this.getCurrentTimeMs();
-			this.runOutput.appendInput({
-				inputId: message.id,
-				memberId,
-				timeMs,
-				action: RunInputActionSchema.parse({ type: message.type, payload: structuredClone(message.data) }),
-			});
-			this.runOutput.rejectInput(message.id, timeMs, "control_source_not_active");
-			return { success: false, message: "成员不在受控模式", error: "control_source_not_active" };
-		}
-		if (member && shouldRecord) {
-			this.runOutput.appendInput({
-				inputId: message.id,
-				memberId,
-				timeMs: this.getCurrentTimeMs(),
-				action: RunInputActionSchema.parse({ type: message.type, payload: structuredClone(message.data) }),
-			});
-		}
-
-		const result = await this.messageRouter.processMessage(message);
-		if (shouldRecord && !result.success) {
-			this.runOutput.rejectInput(message.id, this.getCurrentTimeMs(), result.error ?? result.message);
-		} else if (shouldRecord && message.type !== "使用技能" && message.type !== "切换目标") {
-			this.runOutput.acceptInput(message.id, this.getCurrentTimeMs());
-		}
-		this.stats.totalMessagesProcessed++;
-
-		return result;
-	}
-
-	/**
-	 * 批量处理意图消息
-	 *
-	 * @param messages 消息数组
-	 * @returns 处理结果数组
-	 */
-	async processIntents(messages: IntentMessage[]): Promise<MessageProcessResult[]> {
-		const results: MessageProcessResult[] = [];
-		for (const message of messages) results.push(await this.processIntent(message));
-		return results;
-	}
-
-	// ==================== 子组件功能封装：JS编译和执行 ====================
-
-	/**
-	 * 登记 AI 行为树提交的控制输入。
-	 * 成员统一输入入口会先登记 pending，再把事件同步交给 FSM；源不匹配时直接登记拒绝。
-	 */
-	private recordMemberControlInput(
-		memberId: string,
-		event: MemberControlEvent,
-		disposition: "pending" | "rejected",
-		reason?: string,
-	): void {
-		if (!this.runOutput.isRecording()) return;
-		const timeMs = this.getCurrentTimeMs();
-		const action = RunInputActionSchema.parse({ type: event.type, payload: structuredClone(event.data) });
-		if (disposition === "pending" && this.runOutput.hasInput(event.id)) return;
-		if (disposition === "rejected") {
-			this.runOutput.appendInput({ inputId: event.id, memberId, timeMs, action });
-			this.runOutput.rejectInput(event.id, timeMs, reason ?? "control_source_not_active");
-			return;
-		}
-		this.runOutput.appendInput({ inputId: event.id, memberId, timeMs, action });
-	}
-
-	/**
-	 * 计算表达式
-	 *
-	 * @param expression 表达式字符串（可以是 transform 后的，也可以包含 self/target 访问）
-	 * @param context 计算上下文
-	 * @returns 计算结果
-	 */
-	evaluateExpression(expression: string, context: ExpressionContext): number | boolean {
-		return this.expressionEvaluator.evaluateNumberOrBoolean(expression, context);
-	}
-
-	/**
-	 * 获取编译缓存统计
-	 * 用于调试和监控
-	 */
-	getCompilationStats(): { cacheSize: number; cacheKeys: string[] } {
-		const stats = this.jsProcessor.getCacheStats();
-		// 目前只暴露 cacheSize，cacheKeys 保持为空列表以兼容旧接口
-		return {
-			cacheSize: stats.cacheSize,
-			cacheKeys: [],
-		};
-	}
-
-	/**
-	 * 清理编译缓存
-	 * 用于内存管理
-	 */
-	clearCompilationCache(): void {
-		this.jsProcessor.clearCache();
-		log.info("🧹 JS编译缓存已清理");
-	}
-
-	/**
-	 * 开始一个 tick 内任务，返回任务ID
-	 *
-	 * 目前作为简单计数器实现，用于防止跨 tick 未完成任务；后续可按需扩展来源追踪等调试信息。
-	 */
-	beginTickTask(taskId?: string, _meta: { source?: string } = {}): string {
-		const id = taskId ?? createId();
-		this.pendingTickTasksCount += 1;
-		return id;
-	}
-
-	/**
-	 * 标记 tick 内任务完成
-	 */
-	endTickTask(_taskId: string): void {
-		if (this.pendingTickTasksCount > 0) {
-			this.pendingTickTasksCount -= 1;
-		}
-	}
-
-	/**
-	 * 分发成员跨模拟时间调度事件
-	 *
-	 * 说明：
-	 * - 这是从主线程 / 行为树等地方向成员 FSM 发送跨帧调度事件的统一入口
-	 * - 实际上是往 EventQueue 写入一条 `member_fsm_event`，由 `stepTick` 在对应时间片消费
-	 *
-	 * @param memberId      目标成员ID
-	 * @param event         已由生产者构造完成的 FSM 事件
-	 * @param delayMs       延迟毫秒（默认 0，表示当前时间片）
-	 * @param meta          调试元信息（例如 source）
-	 */
-	dispatchMemberEvent<TEvent extends EventObject>(
-		memberId: string,
-		event: TEvent,
-		delayMs: number = 0,
-		meta?: { source?: string },
-	): void {
-		const currentTimeMs = this.getCurrentTimeMs();
-		const executeAtMs = currentTimeMs + Math.max(0, delayMs);
-
-		this.eventQueue.insert({
-			id: createId(),
-			type: "member_fsm_event",
-			executeAtMs,
-			insertedAtMs: currentTimeMs,
-			processed: false,
-			targetMemberId: memberId,
-			fsmEvent: event,
-			source: meta?.source ?? "未知来源",
-		});
-	}
-
-	/**
-	 * 发出域事件
-	 *
-	 * 供成员/系统在状态变化时调用，事件会被投影到对应的控制器
-	 *
-	 * @param event 域事件
-	 */
-	emitDomainEvent(event: MemberDomainEvent): void {
-		if (event.type === "hit" && this.runOutput.isRecording()) {
-			this.runOutput.appendDamage({
-				sourceMemberId: event.sourceMemberId,
-				targetMemberId: event.memberId,
-				sourceSkillId: event.sourceSkillId,
-				damage: event.damage,
-				timeMs: this.getCurrentTimeMs(),
-			});
-		} else if (event.type === "skill_cast_accepted" && this.runOutput.isRecording()) {
-			this.runOutput.appendSkillRelease({
-				memberId: event.memberId,
-				skillId: event.skillId,
-				timeMs: this.getCurrentTimeMs(),
-			});
-			if (event.inputId && this.runOutput.hasPendingInput(event.inputId)) {
-				this.runOutput.acceptInput(event.inputId, this.getCurrentTimeMs());
-			}
-		} else if (event.type === "skill_input_rejected" && this.runOutput.isRecording()) {
-			if (event.inputId && this.runOutput.hasPendingInput(event.inputId)) {
-				this.runOutput.rejectInput(event.inputId, this.getCurrentTimeMs(), event.reason);
-			}
-		} else if (event.type === "target_selection_accepted" && this.runOutput.hasPendingInput(event.inputId)) {
-			this.runOutput.acceptInput(event.inputId, this.getCurrentTimeMs());
-		} else if (event.type === "target_selection_rejected" && this.runOutput.hasPendingInput(event.inputId)) {
-			this.runOutput.rejectInput(event.inputId, this.getCurrentTimeMs(), event.reason);
-		}
-		this.domainEventBus.emit(event);
-	}
-
-	/**
-	 * 发出相机跟随事件
-	 *
-	 * 供绑定管理器在绑定/解绑时调用
-	 *
-	 * @param controllerId 控制器ID
-	 * @param memberId 成员ID
-	 */
-	emitCameraFollowEvent(controllerId: string, memberId: string): void {
-		this.controllerEventProjector.emitCameraFollow(controllerId, memberId);
+		return this.getTickIndex() * this.getStepMs();
 	}
 
 	// ==================== 单帧执行核心逻辑 ====================
 
-	/**
-	 * 执行一个逻辑 tick：事件处理 + 成员更新
-	 *
-	 * 由 FrameLoop 调度调用，是引擎级的单 tick 入口。
-	 */
-	stepTick(options?: { maxEvents?: number; deltaTimeMs?: number }): TickStepResult {
-		const tickIndex = this.getTickIndex();
-		const currentTimeMs = this.getCurrentTimeMs();
-		const tickStartTime = performance.now();
-		const maxEvents = options?.maxEvents ?? 100;
-		const deltaTimeMs = options?.deltaTimeMs ?? this.getLogicStepMs();
-		this.deltaTimeMs = deltaTimeMs;
-
-		// 1. 处理当前时间片需要执行的事件（目前统一为 member_fsm_event）
-		const eventsForTick = this.eventQueue.getDue(currentTimeMs);
-		let eventsProcessed = 0;
-
-		for (const event of eventsForTick) {
-			if (event.processed) {
-				continue;
-			}
-			if (eventsProcessed >= maxEvents) {
-				break;
-			}
-
-			switch (event.type) {
-				case "member_fsm_event":
-					{
-						const targetMemberId = event.targetMemberId;
-
-						const member = this.world.memberManager.getMember(targetMemberId);
-						if (member) {
-							if (event.source === "controller-input") {
-								member.submitExternalControlInput(event.fsmEvent as MemberControlEvent);
-							} else {
-								member.actor.send(event.fsmEvent);
-							}
-						} else {
-							log.warn(`⚠️ stepTick: 目标成员不存在: ${targetMemberId}`);
-						}
-					}
-					break;
-				default:
-					log.warn(`⚠️ stepTick: 未知事件类型: ${event.type}`);
-					break;
-			}
-
-			this.eventQueue.markAsProcessed(event.id);
-			eventsProcessed++;
+	//
+	private scheduleNext(): void {
+		// 满足结束条件时，主动结束推进（手动操作时永远不结束）
+		if (this.checkStopCondition()) {
+			this.stopLoop();
+			return;
 		}
 
-		// 2. 按成员控制模式采样连续控制状态，再驱动成员/区域更新。
-		// controlled 成员读 SAB 最新状态；ai 成员从行为移动段按逻辑 Tick 取样本。
-		const movementInputs = new Map<string, MemberMovementInput>();
-		const movementSources = new Map<string, MovementBehaviorSource>();
-		const logicStepMs = this.getLogicStepMs();
-		for (const member of this.world.memberManager.getAllMembers()) {
-			let input: MemberMovementInput | null = null;
-			if (member.controlMode === "ai") {
-				input = member.sampleAiMovementInput(currentTimeMs, logicStepMs);
-				if (input) {
-					movementInputs.set(member.id, input);
-					movementSources.set(member.id, "ai");
-				}
-			} else if (this.controllerMovementInputSource) {
-				const controllerId = this.bindingManager.getControllerIdByMemberId(member.id);
-				if (controllerId) input = this.controllerMovementInputSource(controllerId);
-				if (input) {
-					movementInputs.set(member.id, input);
-					movementSources.set(member.id, "controller");
-				}
-			}
-			if (this.runOutput.isRecording()) {
-				const source = movementSources.get(member.id) ?? (member.controlMode === "ai" ? "ai" : "controller");
-				this.runOutput.appendMovementSample(
-					member.id,
-					source,
-					currentTimeMs,
-					input ? { direction: { ...input.direction }, intensity: input.intensity } : null,
-				);
-			}
-		}
-		this.world.tick({ tickIndex, currentTimeMs, deltaTimeMs }, movementInputs, (targetId, payload, delayMs) => {
-			if (delayMs <= 0) {
-				this.world.memberManager.sendTo(targetId, { type: "受到攻击", data: { damageRequest: payload } });
-				return;
-			}
-			this.dispatchMemberEvent(targetId, { type: "受到攻击", data: { damageRequest: payload } }, delayMs, {
-				source: "instant-damage-segment",
-			});
-		});
-		const membersUpdated = this.world.memberManager.getAllMembers().length;
+		// 当前帧实际开始时间
+		const now = performance.now();
 
-		const duration = performance.now() - tickStartTime;
+		// 本轮已推进的tick数
+		const round = this.tickIndex - this.currentLoopStartIndex;
 
-		// 3. 刷新域事件总线（分发事件并投影到控制器）
-		this.domainEventBus.flush(tickIndex);
-		this.controllerEventProjector.flush(tickIndex);
+		// 当前帧预期开始时间
+		const expectedTimeMs = this.currentLoopStartAt + round * this.stepMs;
 
-		// 4. 检查是否还有当前时间片待处理事件，目前主要由 maxEvents 限流造成。
-		const hasPendingEvents = eventsForTick.some((event) => !event.processed);
+		// 计算漂移误差（当前帧开始实际时间 - 预期开始时间）
+		const drift = now - expectedTimeMs;
 
-		const pendingTickTasks = this.pendingTickTasksCount;
-
-		// 5. 如果当前时间片事件和 tick 内任务都处理完毕，推进逻辑时间并清理已完成事件。
-		if (!hasPendingEvents && pendingTickTasks === 0) {
-			this.tickIndex = tickIndex + 1;
-			this.currentTimeMs = currentTimeMs + deltaTimeMs;
-			this.eventQueue.removeProcessedDue(currentTimeMs);
+		// 如果误差过大（例如 Worker 被浏览器挂起后恢复），进行重置，防止追赶循环导致卡死
+		if (drift > this.stepMs) {
+			throw new Error("FrameLoop单步漂移大于间隔时间，需要降低tick耗时或者增加FrameLoop单步时长");
 		}
 
-		return {
-			tickIndex,
-			currentTimeMs,
-			duration,
-			eventsProcessed,
-			membersUpdated,
-			hasPendingEvents,
-			pendingTickTasks,
-		};
+		// 设置下一次tick时间
+		if (this.shouldAdvance) {
+			this.timer = setTimeout(() => this.scheduleNext(), this.stepMs - drift);
+		}
+
+		// 解析当前输入端口指令
+
+		// 调用world.tick
+		this.world.tick(
+			{
+				tickIndex: this.tickIndex,
+				currentTimeMs: this.getCurrentTimeMs(),
+				fixedStepMs: this.stepMs,
+			},
+			[
+				// 解析InputSAB后得到的指令
+			],
+		);
+
+		// 更新输出端口
+
+		// tick + 1
+		this.tickIndex++;
 	}
 
 	// ==================== 快照管理 ====================
@@ -891,288 +242,14 @@ export class GameEngine {
 	 * @returns 当前战斗快照
 	 */
 	getCurrentSnapshot(): GameEngineSnapshot {
-		const members = this.world.memberManager.getAllMembers();
 		const tickIndex = this.getTickIndex();
 		const currentTimeMs = this.getCurrentTimeMs();
 
 		return {
-			timestamp: performance.now(),
 			tickIndex,
 			currentTimeMs,
-			members: members.map((member) => member.serialize()),
-			engine: {
-				tickIndex,
-				currentTimeMs,
-				runTime: performance.now() - this.startTime,
-				frameLoop: this.createFrameLoopSnapshot(),
-				eventQueue: this.eventQueue.getSnapshot(),
-				memberCount: members.length,
-			},
+			world: "还没写好",
 		};
-	}
-
-	/**
-	 * 生成快照
-	 */
-	generateSnapshot(): void {
-		const snapshot = this.getCurrentSnapshot();
-		this.snapshots.push(snapshot);
-		this.stats.totalSnapshots++;
-
-		// 限制快照数量
-		if (this.snapshots.length > 1000) {
-			this.snapshots = this.snapshots.slice(-500);
-		}
-
-		log.info(`📸 生成快照 #${this.stats.totalSnapshots} - tick: ${snapshot.tickIndex}`);
-	}
-
-	/**
-	 * 获取快照历史
-	 *
-	 * @returns 快照数组
-	 */
-	getSnapshots(): GameEngineSnapshot[] {
-		return structuredClone(this.snapshots);
-	}
-
-	// ==================== 序列化数据 ====================
-
-	/**
-	 * 获取成员数据（外部使用 - 序列化）
-	 *
-	 * @param memberId 成员ID
-	 * @returns 成员数据，如果不存在则返回null
-	 */
-	getMemberData(memberId: string) {
-		return this.world.memberManager.getMember(memberId)?.serialize();
-	}
-
-	/**
-	 * 获取所有成员数据（外部使用 - 序列化）
-	 *
-	 * @returns 所有成员数据数组
-	 */
-	getAllMemberData(): MemberSnapshot[] {
-		return this.world.memberManager.getAllMembers().map((member) => member.serialize());
-	}
-
-	/**
-	 * 按阵营获取成员数据（外部使用 - 序列化）
-	 *
-	 * @param campId 阵营ID
-	 * @returns 指定阵营的成员数据数组
-	 */
-	getMembersByCamp(campId: string): MemberSnapshot[] {
-		return this.world.memberManager.getMembersByCamp(campId).map((member) => member.serialize());
-	}
-
-	/**
-	 * 按队伍获取成员数据（外部使用 - 序列化）
-	 *
-	 * @param teamId 队伍ID
-	 * @returns 指定队伍的成员数据数组
-	 */
-	getMembersByTeam(teamId: string): MemberSnapshot[] {
-		return this.world.memberManager.getMembersByTeam(teamId).map((member) => member.serialize());
-	}
-
-	// ==================== 依赖注入支持 ====================
-
-	/**
-	 * 获取事件队列实例
-	 */
-	getEventQueue(): EventQueue {
-		return this.eventQueue;
-	}
-
-	/**
-	 * 获取世界实例
-	 */
-	getWorld(): World {
-		return this.world;
-	}
-
-	/**
-	 * 获取控制绑定管理器
-	 */
-	getBindingManager(): ControlBindingManager {
-		return this.bindingManager;
-	}
-
-	/**
-	 * 获取控制器注册表
-	 */
-	getControllerRegistry(): ControllerRegistry {
-		return this.controllerRegistry;
-	}
-
-	/**
-	 * 获取消息路由器实例
-	 */
-	getMessageRouter(): MessageRouter {
-		return this.messageRouter;
-	}
-
-	/**
-	 * 获取帧循环实例
-	 */
-	getFrameLoop(): FrameLoop {
-		return this.frameLoop;
-	}
-
-	/**
-	 * 在成员装配完成后生成实时状态 SAB 的唯一布局协商结果。
-	 * 属性索引和 modifier 容量只能在此边界确定，运行中不通过消息扩容。
-	 */
-	getRealtimeWorldStateLayout(): WorldStateLayoutDescriptor {
-		const inputs = this.world.memberManager.getAllMembers().map((member) => {
-			member.attributeContainer.prepareIndexedRead();
-			const attributePaths: Array<{ index: number; path: string; displayName: string; expression: string }> = [];
-			member.attributeContainer.visitAttributeSchema((index, path, displayName, expression) => {
-				attributePaths.push({ index, path, displayName, expression });
-			});
-			let modifierCount = 0;
-			const modifierSourceMetadata = new Map<number, { idHash: number; source: ModifierSource }>();
-			for (let index = 0; index < member.attributeContainer.getAttributeCount(); index++) {
-				for (const type of [
-					ModifierType.BASE_VALUE,
-					ModifierType.STATIC_FIXED,
-					ModifierType.STATIC_PERCENTAGE,
-					ModifierType.DYNAMIC_FIXED,
-					ModifierType.DYNAMIC_PERCENTAGE,
-				]) {
-					modifierCount += member.attributeContainer.getModifierCountAt(index, type);
-					member.attributeContainer.visitModifiersAt(index, type, (source) => {
-						const idHash = worldStateStringId(source.key);
-						modifierSourceMetadata.set(idHash, {
-							idHash,
-							source,
-						});
-					});
-				}
-			}
-			const entityType =
-				member.type === "Mob"
-					? WorldStateEntityType.MOB
-					: member.type === "Player"
-						? WorldStateEntityType.PLAYER
-						: WorldStateEntityType.SUMMON;
-			return {
-				id: member.id,
-				entityType,
-				visualProfileId: worldStateStringId(member.id),
-				attributePaths,
-				modifierSourceMetadata: Array.from(modifierSourceMetadata.values()),
-				modifierCapacity: calculateModifierCapacity(modifierCount),
-			};
-		});
-		return createWorldStateLayoutDescriptor(inputs);
-	}
-
-	// ==================== 私有方法 ====================
-
-	/**
-	 * 重置引擎级循环统计。
-	 * 目的：
-	 * - 把“逻辑 tick 推进统计”收回到 GameEngine
-	 * - 让对外 ticksPerSecond / totalTicks 反映真实 stepTick 执行结果
-	 */
-	private resetEngineFrameLoopStats(clockKind: FrameLoopStats["clockKind"]): void {
-		this.frameLoopStats = {
-			averageTicksPerSecond: 0,
-			totalTicks: 0,
-			totalRunTime: 0,
-			clockKind,
-			discardedVirtualTimeMs: 0,
-			overstepMs: 0,
-		};
-	}
-
-	/**
-	 * 把底层时钟驱动统计同步到引擎级统计里。
-	 * 说明：
-	 * - clockKind / discardedVirtualTimeMs / overstepMs 仍来自底层 FrameLoop
-	 * - totalTicks / averageTicksPerSecond / totalRunTime 由引擎自己根据 stepTick 结果维护
-	 */
-	private syncFrameLoopDriverStats(): void {
-		const driverStats = this.frameLoop.getFrameLoopStats();
-		this.frameLoopStats.clockKind = driverStats.clockKind;
-		this.frameLoopStats.discardedVirtualTimeMs = driverStats.discardedVirtualTimeMs;
-		this.frameLoopStats.overstepMs = driverStats.overstepMs;
-	}
-
-	/**
-	 * 基于引擎当前状态更新循环统计。
-	 */
-	private updateEngineFrameLoopStats(clockKind?: FrameLoopStats["clockKind"]): void {
-		if (clockKind) {
-			this.frameLoopStats.clockKind = clockKind;
-		}
-
-		const runTime = performance.now() - this.startTime;
-		this.frameLoopStats.totalRunTime = runTime;
-		this.frameLoopStats.totalTicks = this.tickIndex;
-
-		const seconds = runTime / 1000;
-		this.frameLoopStats.averageTicksPerSecond = seconds > 0 ? this.tickIndex / seconds : 0;
-	}
-
-	/**
-	 * 统一组装兼容旧接口的循环快照。
-	 */
-	private createFrameLoopSnapshot(): FrameLoopSnapshot {
-		return {
-			tickIndex: this.getTickIndex(),
-			ticksPerSecond: this.frameLoopStats.averageTicksPerSecond,
-		};
-	}
-
-	private getLogicStepMs(): number {
-		return 1000 / this.config.frameLoopConfig.logicHz;
-	}
-
-	/**
-	 * realtime 驱动入口。
-	 * FrameLoop 只负责告诉我们“建议推进多少 tick”，真正的循环控制在这里。
-	 */
-	private handleFrameLoopTick(tick: FrameLoopTick): void {
-		this.syncFrameLoopDriverStats();
-
-		for (let index = 0; index < tick.dueTicks; index++) {
-			this.runSingleTick(tick.clockKind, tick.fixedStepMs);
-		}
-
-		this.syncFrameLoopDriverStats();
-	}
-
-	/**
-	 * 执行一次引擎级单 tick 事务，并统一更新统计/快照。
-	 * 这样 manual step、realtime、fast-forward 就能复用一套收尾逻辑。
-	 */
-	private runSingleTick(clockKind: FrameLoopStats["clockKind"], deltaTimeMs: number): TickStepResult {
-		const stepResult = this.stepTick({
-			maxEvents: this.config.frameLoopConfig.maxEventsPerTick,
-			deltaTimeMs,
-		});
-
-		this.lastStepTickDurationMs = stepResult.duration;
-		this.stats.totalEventsProcessed += stepResult.eventsProcessed;
-		this.updateEngineFrameLoopStats(clockKind);
-		const completedTick = {
-			tickIndex: stepResult.tickIndex,
-			currentTimeMs: this.getCurrentTimeMs(),
-		};
-		if (this.runOutput.isRecording()) {
-			this.runOutput.appendTick(
-				completedTick.tickIndex,
-				completedTick.currentTimeMs,
-				this.world.memberManager.getAllMembers(),
-			);
-		}
-		this.realtimeStateCommitCallback?.();
-
-		return stepResult;
 	}
 
 	/**
@@ -1182,49 +259,15 @@ export class GameEngine {
 		const policy = this.runtimeConfig.stopPolicy;
 		switch (policy.kind) {
 			case "manual":
-				return false;
+				return false; // 手动模式不自动停止
 			case "untilTimeMs":
-				return this.currentTimeMs >= policy.targetTimeMs;
+				return this.tickIndex * this.stepMs >= policy.targetTimeMs; // 超出最大模拟时间时停止
 			case "untilBattleEnd": {
-				const allMembers = this.world.memberManager.getAllMembers();
-				if (allMembers.length === 0) return true;
-				const camps = new Set<string>();
-				for (const m of allMembers) {
-					if (m.attributeContainer.getValue("hp.current") > 0) {
-						camps.add(m.campId);
-					}
-				}
-				return camps.size <= 1;
-			}
-			case "untilSequencesDone": {
-				const allMembers = this.world.memberManager.getAllMembers();
-				if (allMembers.length === 0) return true;
-				for (const m of allMembers) {
-					const runtime = m.runtime as { actionQueue?: { length: number } };
-					if (runtime.actionQueue && runtime.actionQueue.length > 0) {
-						return false;
-					}
-					if (m.isAiBehaviorRunning()) {
-						return false;
-					}
-					if (m.effectBtManager.hasRunningParallelBt()) {
-						return false;
-					}
-				}
-				return true;
+				const winner = this.world.getBattleResult().winner;
+				return !winner; // 某一方获胜时停止
 			}
 			case "untilMemberActionEnds": {
-				const m = this.world.memberManager.getMember(policy.memberId);
-				if (!m) return true;
-				const runtime = m.runtime as { actionQueue?: { length: number } };
-				const hasQueuedAction = !!runtime.actionQueue && runtime.actionQueue.length > 0;
-				const hasActiveEffectBt = m.effectBtManager.hasActiveEffectBt();
-				return !hasQueuedAction && !hasActiveEffectBt;
-			}
-			case "untilMemberAiBehaviorEnds": {
-				const member = this.world.memberManager.getMember(policy.memberId);
-				if (!member) return true;
-				return !member.isAiBehaviorRunning();
+				return false; // 成员行为结束后停止
 			}
 			default:
 				return false;
@@ -1299,38 +342,42 @@ export class GameEngine {
 	}
 
 	/**
-	 * 同步快进：在当前线程上连续执行逻辑 tick，直到 stopPolicy 触发或达到 tick 上限。
+	 * 快进循环：在当前线程上连续执行逻辑 tick，直到 stopPolicy 触发或达到 tick 上限。
 	 * 仅供预览/探针等短流程使用；不适用长时间实时模拟。
 	 *
 	 * @param options.maxTicks 最大总 tick 数保护上限（防止无限循环）
 	 * @param options.maxDurationMs 最大模拟时间预算（毫秒）
 	 * @returns 实际执行的逻辑 tick 数与推进的模拟时间
 	 */
-	fastForwardSync(options: { maxTicks?: number; maxDurationMs?: number }): {
+	fastForwardSync(options: { maxTicks: number; maxDurationMs: number }): {
 		ticksRun: number;
 		elapsedMs: number;
 		reachedLimit: boolean;
 	} {
 		if (!this.scenarioData) throw new Error("fastForwardSync: 场景尚未加载");
-		if (this.frameLoop.isRunning() || this.frameLoop.isPaused()) {
-			throw new Error("fastForwardSync: clocked 驱动活动时不能同步推进");
-		}
-		const maxTicks = options.maxTicks ?? Number.POSITIVE_INFINITY;
-		const maxDurationMs = options.maxDurationMs ?? Number.POSITIVE_INFINITY;
-		const startTimeMs = this.currentTimeMs;
-		let totalTicks = 0;
+		const maxTicks = options.maxTicks;
+		const maxDurationMs = options.maxDurationMs;
+		const startTimeMs = performance.now();
+		let currentTick = 0;
 		let completed = false;
-		while (totalTicks < maxTicks && this.currentTimeMs - startTimeMs < maxDurationMs) {
-			this.runSingleTick("manual", this.getLogicStepMs());
-			totalTicks++;
-			if (this.checkStopCondition()) {
+		while (currentTick < maxTicks) {
+			this.world.tick(
+				{
+					tickIndex: currentTick,
+					currentTimeMs: currentTick * this.stepMs,
+					fixedStepMs: this.stepMs,
+				},
+				[],
+			);
+			currentTick++;
+			if (this.checkStopCondition() || performance.now() - startTimeMs < maxDurationMs) {
 				completed = true;
 				break;
 			}
 		}
-		const elapsedMs = this.currentTimeMs - startTimeMs;
-		const reachedLimit = !completed && (totalTicks >= maxTicks || elapsedMs >= maxDurationMs);
-		return { ticksRun: totalTicks, elapsedMs, reachedLimit };
+		const elapsedMs = performance.now() - startTimeMs;
+		const reachedLimit = !completed;
+		return { ticksRun: currentTick, elapsedMs, reachedLimit };
 	}
 
 	// ==================== Checkpoint / Restore ====================
@@ -1338,32 +385,14 @@ export class GameEngine {
 	captureCheckpoint(): EngineCheckpoint {
 		return {
 			tickIndex: this.tickIndex,
-			currentTimeMs: this.currentTimeMs,
+			currentTimeMs: this.tickIndex * this.stepMs,
 			timestamp: performance.now(),
-			eventQueue: this.eventQueue.captureCheckpoint(),
 			world: this.world.captureCheckpoint(),
-			domainEventBus: this.domainEventBus.captureCheckpoint(),
-			controllerEventProjector: this.controllerEventProjector.captureCheckpoint(),
-			randomState: this.random.getState(),
 		};
 	}
 
 	restoreCheckpoint(checkpoint: EngineCheckpoint): void {
-		if (this.frameLoop.isRunning() || this.frameLoop.isPaused()) {
-			throw new Error("restoreCheckpoint: 必须先停止 clocked 驱动");
-		}
-
 		this.tickIndex = checkpoint.tickIndex;
-		this.currentTimeMs = checkpoint.currentTimeMs;
-		this.deltaTimeMs = 0;
-		this.eventQueue.restoreCheckpoint(checkpoint.eventQueue);
 		this.world.restoreCheckpoint(checkpoint.world);
-		this.domainEventBus.restoreCheckpoint(checkpoint.domainEventBus);
-		this.controllerEventProjector.restoreCheckpoint(checkpoint.controllerEventProjector);
-		if (checkpoint.randomState) {
-			this.random.setState(checkpoint.randomState);
-		}
 	}
 }
-
-// 透出类型给主线程 UI 使用

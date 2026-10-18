@@ -1,6 +1,6 @@
 import { defaultData } from "@db/defaultData";
 import { describe, expect, it } from "vitest";
-import { deriveEngineScenarioInput, resolveSimulatorScene } from "./resolveEngineScenario";
+import { deriveWorldScenarioInput, resolveSimulatorScene } from "./resolveWorldScenario";
 
 const playerMemberId = "player-member";
 const mobMemberId = "mob-member";
@@ -70,7 +70,7 @@ function createDesign() {
 
 describe("Simulator 设计解析", () => {
 	it("按 MemberType 解析唯一行为来源并保留分析范围", () => {
-		const result = deriveEngineScenarioInput(createDesign());
+		const result = deriveWorldScenarioInput(createDesign());
 
 		expect(result.campA[0].members[0].resolvedBehavior).toBeNull();
 		expect(result.campB[0].members[0].resolvedBehavior).toEqual(defaultData.mob.actions);
@@ -84,16 +84,16 @@ describe("Simulator 设计解析", () => {
 		const customBehavior = { ...defaultData.mob.actions, name: "custom-mob-behavior" };
 		design.teams[1].members[0].behavior = customBehavior;
 
-		expect(deriveEngineScenarioInput(design).campB[0].members[0].resolvedBehavior).toEqual(customBehavior);
+		expect(deriveWorldScenarioInput(design).campB[0].members[0].resolvedBehavior).toEqual(customBehavior);
 		design.teams[1].members[0].behavior = null;
-		expect(deriveEngineScenarioInput(design).campB[0].members[0].resolvedBehavior).toEqual(defaultData.mob.actions);
+		expect(deriveWorldScenarioInput(design).campB[0].members[0].resolvedBehavior).toEqual(defaultData.mob.actions);
 	});
 
 	it("拒绝分析范围引用当前设计之外的 Member", () => {
 		const design = createDesign();
 		design.analysisTargetMembers = [{ id: "external-member" }];
 
-		expect(() => deriveEngineScenarioInput(design)).toThrow("当前 Simulator 之外");
+		expect(() => deriveWorldScenarioInput(design)).toThrow("当前 Simulator 之外");
 	});
 
 	it("在设计解析阶段拒绝空分析来源或目标", () => {

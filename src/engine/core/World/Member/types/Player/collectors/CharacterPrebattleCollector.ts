@@ -1,4 +1,4 @@
-import type { EngineCharacter, EngineMember } from "../../../../../ScenarioSchema";
+import type { WorldCharacter, WorldMember } from "../../../../ScenarioSchema";
 import type { ModifierSource, ModifierType } from "../../../AttributeContainer/AttributeContainerTypes";
 import type { RuntimeAttachment } from "../../../attachments/RuntimeAttachment";
 import { runtimeAttachmentSourceId } from "../../../attachments/RuntimeAttachmentSource";
@@ -32,7 +32,7 @@ function formatRootedPathFromCharacter(segments: string[]): string {
 }
 
 /** 收集装备、料理和被动技能的战前 modifier，尚未写入运行时。 */
-function collectModifiers<TAttrKey extends string>(memberData: EngineMember, character: EngineCharacter) {
+function collectModifiers<TAttrKey extends string>(memberData: WorldMember, character: WorldCharacter) {
 	const all: {
 		attribute: TAttrKey;
 		modifierType: ModifierType;
@@ -114,8 +114,8 @@ function collectModifiers<TAttrKey extends string>(memberData: EngineMember, cha
 
 /** 将角色来源的 modifier 按 source key 合并为 RuntimeAttachment。 */
 export function collectCharacterPrebattleAttachments<TAttrKey extends string = string>(
-	memberData: EngineMember,
-	activeCharacter?: EngineCharacter | null,
+	memberData: WorldMember,
+	activeCharacter?: WorldCharacter | null,
 ): RuntimeAttachment<TAttrKey>[] {
 	const character = activeCharacter ?? memberData.character;
 	if (!character) return [];

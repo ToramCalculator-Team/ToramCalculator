@@ -1,4 +1,4 @@
-import type { NestedSchema } from "../World/Member/AttributeContainer/SchemaTypes";
+import type { NestedSchema } from "../Member/AttributeContainer/SchemaTypes";
 
 /**
  * 表达式中的 `self.xxx` / `target.xxx` 经 AST 编译后统一读取此接口。

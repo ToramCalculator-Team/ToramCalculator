@@ -2,11 +2,11 @@ import { z } from "zod/v4";
 import { createLogger } from "~/lib/logger";
 import { State } from "~/lib/mistreevous/State";
 import { MemberStateNameSchema } from "~/MemberStateName/MemberState";
-import * as CasterSnapshot from "../../../../Expression/CasterSnapshot";
-import { ExpressionTransformer } from "../../../../JSProcessor/ExpressionTransformer";
 import type { DamageAreaSpec } from "../../../Area/types";
 import type { DamageDefinition, ResolvedDamageEffect } from "../../../Damage/types";
 import type { EffectRange } from "../../../EffectRange/types";
+import { type CasterSnapshot, setBaseValue, setHasBuff, setStat } from "../../../Expression/CasterSnapshot";
+import { ExpressionTransformer } from "../../../JSProcessor/ExpressionTransformer";
 import {
 	type ModifierSource,
 	ModifierSourceTypeSchema,
@@ -161,17 +161,17 @@ function buildDamageDefinition(
 	// 故不会出现在 selfDependencies 中，需单独静态提取并在施放瞬间锁存命中标志。
 	const hasBuffArgs = ExpressionTransformer.analyzeBareHasBuffArgs(input.damageFormula);
 
-	const casterSnapshot: CasterSnapshot.CasterSnapshot = {};
+	const casterSnapshot: CasterSnapshot = {};
 	for (const key of dependencies.selfDependencies) {
 		if (capabilities.attributeContainer.hasKey(key)) {
-			CasterSnapshot.setStat(casterSnapshot, key, capabilities.attributeContainer.getValue(key));
+			setStat(casterSnapshot, key, capabilities.attributeContainer.getValue(key));
 		} else {
 			log.warn(`⚠️ [${context.name}] 施法者快照依赖属性 ${key} 不存在于 AttributeContainer`);
 		}
 	}
 	for (const key of dependencies.selfBaseValueDependencies) {
 		if (capabilities.attributeContainer.hasKey(key)) {
-			CasterSnapshot.setBaseValue(casterSnapshot, key, capabilities.attributeContainer.getBaseValue(key));
+			setBaseValue(casterSnapshot, key, capabilities.attributeContainer.getBaseValue(key));
 		} else {
 			log.warn(`⚠️ [${context.name}] 施法者快照依赖基础属性 ${key} 不存在于 AttributeContainer`);
 		}
@@ -179,7 +179,7 @@ function buildDamageDefinition(
 	// capabilities.hasParallelBt 即 self.effectBtManager.hasBuff（见 Member.ts capabilities 装配），
 	// 与求值器实时路径同源，保证锁存值与实时语义一致。
 	for (const buffId of hasBuffArgs) {
-		CasterSnapshot.setHasBuff(casterSnapshot, buffId, capabilities.hasParallelBt(buffId));
+		setHasBuff(casterSnapshot, buffId, capabilities.hasParallelBt(buffId));
 	}
 
 	const skillLv = context.skill?.lv ?? context.currentSkill?.data.lv ?? 0;
@@ -503,7 +503,7 @@ export const CommonEffectActionPool = {
 			const hp = current + capped;
 			const mp = capabilities.attributeContainer.getValue("mp.current");
 
-			capabilities.notifyDomainEvent({
+			capabilities.recordEvent({
 				type: "state_changed",
 				memberId: context.memberId,
 				hp,
@@ -564,7 +564,7 @@ export const CommonEffectActionPool = {
 			const hp = capabilities.attributeContainer.getValue("hp.current");
 			const mp = current + capped;
 
-			capabilities.notifyDomainEvent({
+			capabilities.recordEvent({
 				type: "state_changed",
 				memberId: context.memberId,
 				hp,

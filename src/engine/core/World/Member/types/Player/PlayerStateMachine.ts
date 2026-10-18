@@ -1,7 +1,7 @@
 import { type EventObject, setup } from "xstate";
 import { createLogger } from "~/lib/logger";
-import type { EngineCharacterSkill } from "../../../../ScenarioSchema";
 import type { ExpressionContext } from "../../../JSProcessor/types";
+import type { WorldCharacterSkill } from "../../../ScenarioSchema";
 import { ModifierType } from "../../AttributeContainer/AttributeContainerTypes";
 import type { PlayerRuntime } from "../../runtime/SharedRuntime";
 import { applyMemberTargetSelection } from "../../StateMachine/commonFunctions/targetSelection";
@@ -196,7 +196,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberFSM<PlayerFSMEvent, PlayerFS
 				},
 				添加待处理技能: ({ event }) => {
 					const skillId = event.data.skillId;
-					const skill = env.runtime.data?.skills?.find((s: EngineCharacterSkill) => s.id === skillId);
+					const skill = env.runtime.data?.skills?.find((s: WorldCharacterSkill) => s.id === skillId);
 					if (!skill) {
 						log.error(`[${env.name}] 技能不存在: ${skillId}`);
 						return;
@@ -236,7 +236,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberFSM<PlayerFSMEvent, PlayerFS
 					const skillEvent = requireSkillUseEvent(event);
 					const { skillId } = skillEvent.data;
 					const reason = getSkillRejectionReason(env, skillEvent) ?? "cost_resolution_failed";
-					env.notifyDomainEvent({
+					env.recordEvent({
 						type: "skill_input_rejected",
 						memberId: env.id,
 						skillId,
@@ -247,7 +247,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberFSM<PlayerFSMEvent, PlayerFS
 				渲染警告信息: ({ event }) => {
 					const skillEvent = requireSkillUseEvent(event);
 					const skillId = skillEvent.data.skillId;
-					env.notifyDomainEvent({
+					env.recordEvent({
 						type: "skill_cast_denied",
 						memberId: env.id,
 						skillId,
@@ -259,7 +259,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberFSM<PlayerFSMEvent, PlayerFS
 					const skillEvent = requireSkillUseEvent(event);
 					const targetId = env.runtime.targetId;
 					if (!targetId) throw new Error(`[${env.name}] 技能已接纳但缺少解析后的目标`);
-					env.notifyDomainEvent({
+					env.recordEvent({
 						type: "skill_cast_accepted",
 						memberId: env.id,
 						skillId: skillEvent.data.skillId,
@@ -269,14 +269,14 @@ export const playerFSM = (env: PlayerFSMEnv): MemberFSM<PlayerFSMEvent, PlayerFS
 				},
 				发布忙碌技能拒绝事实: ({ event }) => {
 					const skillEvent = requireSkillUseEvent(event);
-					env.notifyDomainEvent({
+					env.recordEvent({
 						type: "skill_input_rejected",
 						memberId: env.id,
 						skillId: skillEvent.data.skillId,
 						inputId: skillEvent.id,
 						reason: "member_busy",
 					});
-					env.notifyDomainEvent({
+					env.recordEvent({
 						type: "skill_cast_denied",
 						memberId: env.id,
 						skillId: skillEvent.data.skillId,

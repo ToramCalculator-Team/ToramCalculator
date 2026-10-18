@@ -1,5 +1,5 @@
 import { z } from "zod/v4";
-import { type EngineMember, EngineScenarioSchema } from "~/engine/core/ScenarioSchema";
+import { type WorldMember, WorldScenarioSchema } from "~/engine/core/World/ScenarioSchema";
 import { DEFAULT_TERRAIN_DEFINITION, TerrainDefinitionSchema } from "~/lib/terrain";
 import { WorldResourceSchema } from "~/platform/render/scene/contracts/worldResource";
 import { createDefaultCharacterWorldResource } from "~/platform/render/scene/resources/defaultCharacterResource";
@@ -11,14 +11,14 @@ import {
 
 export const ResolvedSimulatorSceneSchema = z.object({
 	resolutionVersion: z.string(),
-	engineInput: z.object({ scenario: EngineScenarioSchema, terrain: TerrainDefinitionSchema }),
+	engineInput: z.object({ scenario: WorldScenarioSchema, terrain: TerrainDefinitionSchema }),
 	worldResources: z.array(WorldResourceSchema),
 });
 
 export type ResolvedSimulatorScene = z.output<typeof ResolvedSimulatorSceneSchema>;
 
 /** 把一个已校验 DesignCopy 纯派生为 Engine 的完整逻辑输入。 */
-export function deriveEngineScenarioInput(design: SimulationDesign) {
+export function deriveWorldScenarioInput(design: SimulationDesign) {
 	const members = design.teams.flatMap((team) => team.members);
 	const membersById = new Map(members.map((member) => [member.id, member]));
 	if (membersById.size !== members.length) throw new Error("Simulator 中存在重复 Member id");
@@ -36,7 +36,7 @@ export function deriveEngineScenarioInput(design: SimulationDesign) {
 	}
 
 	const playerIds = new Set<string>();
-	const resolveMember = (member: SimulationDesignMember): EngineMember => {
+	const resolveMember = (member: SimulationDesignMember): WorldMember => {
 		if (member.type === "Player") {
 			if (!member.character || member.mobId || member.partnerId || member.mercenaryId || member.mobDifficultyFlag) {
 				throw new Error(`Player Member ${member.id} 的类型关系不合法`);
@@ -57,7 +57,7 @@ export function deriveEngineScenarioInput(design: SimulationDesign) {
 	};
 
 	const teams = design.teams.map((team) => ({ ...team, members: team.members.map(resolveMember) }));
-	return EngineScenarioSchema.parse({
+	return WorldScenarioSchema.parse({
 		randomSeed: design.randomSeed,
 		logicHz: design.logicHz,
 		primaryMemberId: design.primaryMemberId,
@@ -72,7 +72,7 @@ export function deriveEngineScenarioInput(design: SimulationDesign) {
  */
 export function resolveSimulatorScene(input: unknown, resolutionVersion: string): ResolvedSimulatorScene {
 	const design = SimulationDesignSchema.parse(input);
-	const scenario = deriveEngineScenarioInput(design);
+	const scenario = deriveWorldScenarioInput(design);
 	const worldResources = design.teams.flatMap((team) =>
 		team.members.map((member) => {
 			if (member.type === "Player" && member.character) {

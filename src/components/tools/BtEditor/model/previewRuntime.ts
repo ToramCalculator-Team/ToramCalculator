@@ -124,7 +124,7 @@ export const createPreviewBtRuntime = (memberType: MemberType, treeKind: BtKind)
 		expressionEvaluator: () => 0,
 		executeInstantDamage: null,
 		createDamageArea: null,
-		domainEventSender: () => undefined,
+		eventRecord: () => undefined,
 		targetResolver: (_sourceMemberId, requestedTargetId) => requestedTargetId ?? "preview-target",
 		targetDirectionResolver: null,
 		random: () => 0.5,
@@ -152,7 +152,7 @@ export const createPreviewBtRuntime = (memberType: MemberType, treeKind: BtKind)
 		// 预览不运行真实 ProcBus，但必须返回稳定的注册 ID，保持 watchThreshold 的能力契约。
 		registerThreshold: () => nextThresholdRegistrationId++,
 		unregisterThresholdBySource: () => undefined,
-		notifyDomainEvent: () => undefined,
+		recordEvent: () => undefined,
 	};
 	const controlBehaviorCapabilities: MemberControlBehaviorCapabilities = {
 		submitControlInput: () => undefined,

@@ -3,13 +3,15 @@ import {
 	createControlBehaviorBindings,
 	type MemberControlBehaviorCapabilities,
 } from "../../../ControlBehavior/Bindings";
-import type { MobAttrKey } from "../MobAttrSchema";
+import { DefaultMemberSharedRuntime } from "../../../runtime/SharedRuntime";
 import { MobControlBehaviorActionPool } from "./NodeMethods/ActionMethods";
 import { MobControlBehaviorConditionPool } from "./NodeMethods/ConditionMethods";
 
-export type MobControlBehaviorContext = ControlBehaviorContext<MobAttrKey>;
+export type MobControlBehaviorContext = ControlBehaviorContext;
 
-const controlBehaviorContextTypeHint = {} as MobControlBehaviorContext;
+const controlBehaviorContextTypeHint = {
+	...DefaultMemberSharedRuntime,
+};
 
 export const createMobControlBehaviorBindings = (
 	capabilities: MemberControlBehaviorCapabilities,

@@ -1,6 +1,4 @@
 import { z } from "zod/v4";
-import { TerrainDefinitionSchema } from "~/lib/terrain";
-import { EngineScenarioSchema } from "./ScenarioSchema";
 
 // ==================== TickContext ====================
 
@@ -29,9 +27,7 @@ export const StopPolicySchema = z.discriminatedUnion("kind", [
 	z.object({ kind: z.literal("manual") }),
 	z.object({ kind: z.literal("untilTimeMs"), targetTimeMs: z.number().nonnegative() }),
 	z.object({ kind: z.literal("untilBattleEnd") }),
-	z.object({ kind: z.literal("untilSequencesDone") }),
 	z.object({ kind: z.literal("untilMemberActionEnds"), memberId: z.string() }),
-	z.object({ kind: z.literal("untilMemberAiBehaviorEnds"), memberId: z.string() }),
 ]);
 export type StopPolicy = z.output<typeof StopPolicySchema>;
 
@@ -72,15 +68,6 @@ export function createRealtimeConfig(overrides?: Partial<RuntimeConfig>): Runtim
 		...overrides,
 	};
 }
-
-// ==================== EngineScenarioData ====================
-
-export const EngineScenarioDataSchema = z.object({
-	scenario: EngineScenarioSchema,
-	terrain: TerrainDefinitionSchema,
-});
-
-export type EngineScenarioData = z.output<typeof EngineScenarioDataSchema>;
 
 // ==================== EngineSnapshot ====================
 

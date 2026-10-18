@@ -1,16 +1,5 @@
 /**
- * 延迟 FSM 消息调度器（不是事件总线）。
- *
- * 职责定位（三机制正名之一，见 src/engine/AGENTS.md「通信机制角色」）：
- * - 本结构是引擎里**唯一的跨帧调度器**：按模拟时间把消息投递给成员 FSM（`member.actor.send`）。
- * - 它不做发布/订阅，不做扇出，不参与成员内逻辑响应——那是 ProcBus（成员内响应总线）的职责。
- * - 它也不投影任何东西给 UI——那是 DomainEventBus 的职责。
- * - 队列里的 `QueueMessage` 本质是「带执行时间的 FSM 消息」，名字里的 “event” 仅为历史叫法，
- *   不要据此把它当事件总线扩展。新增跨帧调度只应继续走 `member_fsm_event` 这一类。
- *
- * 与另外两套机制的边界：
- * - ProcBus：成员内、同步、发布订阅（passive/buff 响应）。本调度器不替代它。
- * - DomainEventBus：成员 → UI 的单向投影。本调度器不替代它。
+ * 延迟 FSM 消息调度器。
  */
 
 import { createLogger } from "~/lib/logger";

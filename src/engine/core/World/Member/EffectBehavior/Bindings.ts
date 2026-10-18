@@ -12,7 +12,7 @@ import type { CommonEffectBtCapabilities, EffectBtCapabilities, EffectBtContext 
  */
 export const createEffectBindings = <
 	TSchema extends MemberBaseNestedSchema,
-	TContext extends EffectBtContext<TSchema>,
+	TContext extends EffectBtContext,
 	TActions extends ActionPool<TContext, EffectBtCapabilities<TSchema>>,
 	TConditions extends ConditionPool<TContext, EffectBtCapabilities<TSchema>>,
 >(

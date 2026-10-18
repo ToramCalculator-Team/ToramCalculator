@@ -4,7 +4,6 @@ import { createLogger } from "~/lib/logger";
 import type { EventCatalog } from "../Event/EventCatalog";
 import type { ExpressionContext } from "../JSProcessor/types";
 import type { PipelineResolverService } from "../Pipeline/PipelineResolverService";
-import type { EngineMember, EngineTeam } from "../ScenarioSchema";
 import type { MemberCheckpoint, MemberDomainEvent } from "../types";
 import type { DamageAreaSpec } from "./Area/types";
 import type { ResolvedDamageEffect } from "./Damage/types";
@@ -14,6 +13,7 @@ import type { MemberSharedRuntime } from "./Member/runtime/SharedRuntime";
 import type { MemberFSMContext, MemberFSMEvent } from "./Member/StateMachine/types";
 import { Mob } from "./Member/types/Mob/Mob";
 import { Player } from "./Member/types/Player/Player";
+import type { WorldMember, WorldTeam } from "./ScenarioSchema";
 
 const log = createLogger("MemberMgr");
 
@@ -37,9 +37,9 @@ export class MemberManager {
 	/** 所有成员的管理表 - 主存储（存储Actor与元数据） */
 	private members: Map<string, AnyMemberEntry> = new Map();
 	/** 阵营注册表（仅存基础信息） */
-	private camps: Map<string, EngineTeam[]> = new Map();
+	private camps: Map<string, WorldTeam[]> = new Map();
 	/** 队伍注册表（仅存基础信息） */
-	private teams: Map<string, EngineTeam> = new Map();
+	private teams: Map<string, WorldTeam> = new Map();
 	/** 阵营 -> 成员ID集合 索引 */
 	private membersByCamp: Map<string, Set<string>> = new Map();
 	/** 队伍 -> 成员ID集合 索引 */
@@ -237,7 +237,7 @@ export class MemberManager {
 	 * @returns 创建的成员实例，失败则返回null
 	 */
 	createAndRegister(
-		memberData: EngineMember,
+		memberData: WorldMember,
 		campId: string,
 		teamId: string,
 		position?: { x: number; y: number; z: number },
@@ -327,7 +327,7 @@ export class MemberManager {
 	 * @param teamId 队伍ID
 	 * @returns 注册是否成功
 	 */
-	registerMember(member: AnyMemberEntry, campId: string, teamId: string, memberData: EngineMember): boolean {
+	registerMember(member: AnyMemberEntry, campId: string, teamId: string, memberData: WorldMember): boolean {
 		this.members.set(memberData.id, member);
 
 		// 维护阵营/队伍索引
@@ -351,7 +351,7 @@ export class MemberManager {
 	 * - 成员配置变化需要重建 Player/AttributeContainer 等底层结构。
 	 * - 替换期间保留成员身份、阵营队伍索引和主控目标，避免渲染层收到无意义的 null 主控切换。
 	 */
-	replaceMember(memberId: string, memberData: EngineMember): boolean {
+	replaceMember(memberId: string, memberData: WorldMember): boolean {
 		const existing = this.members.get(memberId);
 		if (!existing) {
 			log.warn(`⚠️ 成员不存在: ${memberId}`);
@@ -539,14 +539,14 @@ export class MemberManager {
 	/**
 	 * 创建阵营（幂等）
 	 */
-	addCamp(campId: string): EngineTeam[] {
+	addCamp(campId: string): WorldTeam[] {
 		if (!this.camps.has(campId)) {
 			this.camps.set(campId, []);
 			this.membersByCamp.set(campId, this.membersByCamp.get(campId) || new Set());
 		}
 		const camp = this.camps.get(campId);
 		if (!camp) {
-			const empty: EngineTeam[] = [];
+			const empty: WorldTeam[] = [];
 			this.camps.set(campId, empty);
 			return empty;
 		}
@@ -554,7 +554,7 @@ export class MemberManager {
 	}
 
 	/** 添加队伍（幂等） */
-	addTeam(campId: string, team: EngineTeam): EngineTeam {
+	addTeam(campId: string, team: WorldTeam): WorldTeam {
 		if (!this.camps.has(campId)) {
 			// 若未注册阵营，先注册
 			this.addCamp(campId);

@@ -1,4 +1,4 @@
-import type { WorldEvent } from "../../../Event/EventCatalog";
+import type { WorldEvent } from "../../../Event/types.ts";
 import type { MemberRuntimeServices } from "../../RuntimeServices";
 import type { SwitchTarget } from "../types";
 
@@ -6,7 +6,7 @@ type TargetSelectionEnv = {
 	id: string;
 	runtime: { targetId: string | null };
 	services: Pick<MemberRuntimeServices, "targetResolver">;
-	notifyDomainEvent(event: WorldEvent): void;
+	recordEvent(event: WorldEvent): void;
 };
 
 /**
@@ -19,7 +19,7 @@ export function applyMemberTargetSelection(env: TargetSelectionEnv, event: Switc
 		? env.services.targetResolver(env.id, requestedTargetId)
 		: requestedTargetId;
 	if (!resolvedTargetId) {
-		env.notifyDomainEvent({
+		env.recordEvent({
 			type: "target_selection_rejected",
 			memberId: env.id,
 			requestedTargetId,
@@ -29,7 +29,7 @@ export function applyMemberTargetSelection(env: TargetSelectionEnv, event: Switc
 		return;
 	}
 	if (env.runtime.targetId === resolvedTargetId) {
-		env.notifyDomainEvent({
+		env.recordEvent({
 			type: "target_selection_rejected",
 			memberId: env.id,
 			requestedTargetId,
@@ -40,7 +40,7 @@ export function applyMemberTargetSelection(env: TargetSelectionEnv, event: Switc
 	}
 
 	env.runtime.targetId = resolvedTargetId;
-	env.notifyDomainEvent({
+	env.recordEvent({
 		type: "target_selection_accepted",
 		memberId: env.id,
 		targetId: resolvedTargetId,

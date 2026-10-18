@@ -6,7 +6,7 @@
  */
 
 import { z } from "zod/v4";
-import { EngineMemberSchema } from "../engineScenarioSchema";
+import { WorldMemberSchema } from "../engineScenarioSchema";
 import {
 	type EngineExecutionError,
 	EngineExecutionErrorSchema,
@@ -200,7 +200,7 @@ export const EngineRPCSchema = z.discriminatedUnion("type", [
 	z.object({ type: z.literal("unsubscribe_debug_view"), viewId: z.string() }),
 	z.object({ type: z.literal("get_world_state_layout") }),
 	z.object({ type: z.literal("set_runtime_config"), config: RuntimeConfigSchema }),
-	z.object({ type: z.literal("patch_member"), memberId: z.string(), memberData: EngineMemberSchema }),
+	z.object({ type: z.literal("patch_member"), memberId: z.string(), memberData: WorldMemberSchema }),
 	z.object({ type: z.literal("execute_simulation_task"), task: SimulationTaskSchema }),
 	z.object({
 		type: z.literal("start_run_output"),
