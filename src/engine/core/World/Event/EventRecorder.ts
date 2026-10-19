@@ -12,10 +12,10 @@
 //     ↓
 // 只有匹配订阅的事件写入输出事件区
 
-import type { WorldEvent } from "./types.ts";
+import type { WorldEvent } from "./types.js";
 
 export class EventRecorder {
-	private events: Map<string, WorldEvent> = new Map();
+	private events: Array<WorldEvent> = [];
 
 	record(event: WorldEvent) {}
 }

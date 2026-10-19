@@ -1,4 +1,4 @@
-import type { WorldEvent } from "../../../Event/types.ts";
+import type { WorldEvent } from "../../../Event/types";
 import type { MemberRuntimeServices } from "../../RuntimeServices";
 import type { SwitchTarget } from "../types";
 
