@@ -5,18 +5,23 @@ import {
 	type MemberControlBehaviorCapabilities,
 } from "~/engine/core/World/Member/ControlBehavior/Bindings";
 import { createEffectBindings } from "~/engine/core/World/Member/EffectBehavior/Bindings";
-import { createBtRuntime } from "~/engine/core/World/Member/EffectBehavior/EffectBtRuntimeFactory";
-import type { EffectBtManagerEnv } from "~/engine/core/World/Member/EffectBehavior/types";
+import { createBtRuntime } from "~/engine/core/World/Member/EffectBehavior/EffectBtContextFactory";
+import type {
+	CommonEffectBtRuntimeServices,
+	EffectBtManagerEnv,
+	EffectBtRuntimeServices,
+} from "~/engine/core/World/Member/EffectBehavior/types";
 import { MemberBaseNestedSchema } from "~/engine/core/World/Member/MemberBaseSchema";
-import type { MemberRuntimeServices } from "~/engine/core/World/Member/runtime/RuntimeServices";
-import type { MemberRuntime, MobRuntime, PlayerRuntime } from "~/engine/core/World/Member/runtime/SharedRuntime";
 import type { MemberFSMEvent } from "~/engine/core/World/Member/StateMachine/types";
+import type { MemberRuntime, MemberRuntimeServices } from "~/engine/core/World/Member/types";
 import { createMobControlBehaviorBindings } from "~/engine/core/World/Member/types/Mob/ControlBehavior/Bindings";
 import { createMobEffectBindings } from "~/engine/core/World/Member/types/Mob/EffectBehavior/Bindings";
 import type { MobAttrKey } from "~/engine/core/World/Member/types/Mob/MobAttrSchema";
+import type { MobRuntime } from "~/engine/core/World/Member/types/Mob/types";
 import { createPlayerControlBehaviorBindings } from "~/engine/core/World/Member/types/Player/ControlBehavior/Bindings";
 import { createPlayerEffectBindings } from "~/engine/core/World/Member/types/Player/EffectBehavior/Bindings";
 import type { PlayerAttrKey } from "~/engine/core/World/Member/types/Player/PlayerAttrSchema";
+import type { PlayerRuntime } from "~/engine/core/World/Member/types/Player/types";
 import { DefaultMobLocomotionProfile, PlayerLocomotionProfile } from "~/game/locomotion";
 import { BehaviourTree, type BehaviourTreeOptions, State } from "~/lib/mistreevous";
 import type { Agent } from "~/lib/mistreevous/Agent";
@@ -37,7 +42,7 @@ export type BtPreviewResult = {
 type PreviewRuntime = (PlayerRuntime | MobRuntime | (MemberRuntime & { type: MemberType })) & MemberRuntime;
 
 type PreviewBtRuntime = {
-	env: EffectBtManagerEnv<MemberFSMEvent, string, PreviewRuntime>;
+	env: EffectBtManagerEnv;
 	btBindings: Record<string, unknown>;
 };
 
@@ -98,7 +103,7 @@ const createPreviewRuntime = (memberType: MemberType): PreviewRuntime => {
 const createPreviewBtBindings = (
 	memberType: MemberType,
 	treeKind: BtKind,
-	capabilities: MemberBtRuntimeServices<string>,
+	capabilities: CommonEffectBtRuntimeServices,
 	controlBehaviorCapabilities: MemberControlBehaviorCapabilities,
 ): Record<string, unknown> => {
 	if (treeKind === "control") {
@@ -119,8 +124,6 @@ const createPreviewBtBindings = (
 export const createPreviewBtRuntime = (memberType: MemberType, treeKind: BtKind): PreviewBtRuntime => {
 	const runtime = createPreviewRuntime(memberType);
 	const services: MemberRuntimeServices = {
-		getCurrentTimeMs: () => runtime.currentTimeMs,
-		getTickIndex: () => runtime.tickIndex,
 		expressionEvaluator: () => 0,
 		executeInstantDamage: null,
 		createDamageArea: null,
@@ -130,15 +133,13 @@ export const createPreviewBtRuntime = (memberType: MemberType, treeKind: BtKind)
 		random: () => 0.5,
 	};
 
-	const attributeContainer = new AttributeContainer(MemberBaseNestedSchema);
 	const parallelBts = new Set<string>();
 	let nextThresholdRegistrationId = 1;
 
-	const capabilities: MemberBtRuntimeServices = {
-		attributeContainer,
-		services,
-		declareState: () => undefined,
-		clearActiveEffectStateDeclaration: () => undefined,
+	const capabilities: CommonEffectBtRuntimeServices = {
+		getAttr: (attr) => 0,
+		getAttrBase: (attr) => 0,
+		hasAttr: (key) => false,
 		registerParallelBt: (name) => {
 			parallelBts.add(name);
 			return undefined;
@@ -158,12 +159,10 @@ export const createPreviewBtRuntime = (memberType: MemberType, treeKind: BtKind)
 		submitControlInput: () => undefined,
 	};
 
-	const env: EffectBtManagerEnv<MemberFSMEvent, string, PreviewRuntime> = {
-		name: "BtEditorPreview",
-		getContext: () => runtime,
-		getCapabilities: () => capabilities,
-		getDeltaTimeMs: () => runtime.deltaTimeMs,
-		send: () => undefined,
+	const env: EffectBtManagerEnv = {
+		getCurrentTimeMs: () => runtime.currentTimeMs,
+		getDeltaTimeMs: () => runtime.fixedStepMs,
+		random: () => services.random(),
 	};
 
 	return {
@@ -238,11 +237,9 @@ function wrapPreviewAgentWithFallback(
 	}) as unknown as Agent;
 }
 
-function adaptPreviewCapabilities<TAttrKey extends string>(
-	capabilities: MemberBtRuntimeServices<string>,
-): MemberBtRuntimeServices<TAttrKey> {
+function adaptPreviewCapabilities(capabilities: CommonEffectBtRuntimeServices) {
 	// 预览使用统一的动态属性容器；这里只在编辑边界适配到角色专属绑定的键类型。
-	return capabilities as unknown as MemberBtRuntimeServices<TAttrKey>;
+	return capabilities;
 }
 
 function collectPreviewFallbackCalls(

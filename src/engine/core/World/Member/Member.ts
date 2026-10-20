@@ -4,7 +4,6 @@ import { createActor } from "xstate";
 import { createLogger } from "~/lib/logger";
 import type { SimulationTickContext } from "../../types";
 import type { EventRecorder } from "../Event/EventRecorder";
-import type { ExpressionContext } from "../JSProcessor/types";
 import type { WorldObservable } from "../observable";
 import type { PipelineOverlay } from "../Pipeline/overlay";
 import type { PipelineDefinitions, PipelineNameOf, PipelineService } from "../Pipeline/PipelineService";
@@ -17,7 +16,7 @@ import {
 } from "./ControlBehavior/Bindings";
 import { ControlBehaviorRuntime } from "./ControlBehavior/ControlBehaviorRuntime";
 import { EffectBtManager } from "./EffectBehavior/EffectBtManager";
-import type { EffectBtManagerEnv, EffectBtRuntimeServices } from "./EffectBehavior/types";
+import type { EffectBtRuntimeServices } from "./EffectBehavior/types";
 import type { MemberBaseNestedSchema } from "./MemberBaseSchema";
 import type { MemberSnapshot } from "./MemberSnapshot";
 import { AttributeThresholdSource } from "./ProcBus/AttributeThresholdSource";
@@ -137,7 +136,23 @@ export abstract class Member<
 
 		// 初始化 BT 能力和环境
 		const BtRuntimeServices = this.createBtRuntimeServices();
-		this.effectBtManager = new EffectBtManager(this.createBtEnv(BtRuntimeServices), effectBindings(BtRuntimeServices));
+		this.effectBtManager = new EffectBtManager(
+			{
+				prototypeData: this.runtime,
+				commonAgent: effectBindings(BtRuntimeServices),
+			},
+			{
+				getDeltaTimeMs: () => this.runtime.fixedStepMs,
+				getCurrentTimeMs: () => this.runtime.currentTimeMs,
+				random: this.services.random,
+				resolveProperty: (path) => {
+					if (this.attributeContainer.hasKey(path)) {
+						return this.attributeContainer.getValue(path);
+					}
+					return undefined;
+				},
+			},
+		);
 
 		// 初始化 AI 控制行为树
 		this.aiMovementBehaviors = memberData.resolvedBehavior?.movementBehaviors ?? [];
@@ -151,11 +166,11 @@ export abstract class Member<
 				controlBehaviorBindings(controlBehaviorCapabilities),
 				runtime,
 				{
-					getDeltaTimeMs: () => this.runtime.deltaTimeMs,
+					getDeltaTimeMs: () => this.runtime.fixedStepMs,
 					getCurrentTimeMs: () => this.runtime.currentTimeMs,
 					resolveProperty: (path) => {
 						if (this.attributeContainer.hasKey(path)) {
-							return this.attributeContainer.getValue(path as Parameters<typeof this.attributeContainer.getValue>[0]);
+							return this.attributeContainer.getValue(path);
 						}
 						return undefined;
 					},
@@ -208,6 +223,9 @@ export abstract class Member<
 	 */
 	private createBtRuntimeServices(): EffectBtRuntimeServices<TSchema> {
 		return {
+			getAttr: (attr) => this.attributeContainer.getValue(attr),
+			getAttrBase: (attr) => this.attributeContainer.getBaseValue(attr),
+			hasAttr: (key) => this.attributeContainer.hasKey(key),
 			registerParallelBt: (name, definition, agent, localContext) =>
 				this.effectBtManager.registerParallelBt(name, definition, agent, localContext),
 			unregisterParallelBt: (name) => this.effectBtManager.unregisterParallelBt(name),
@@ -226,24 +244,6 @@ export abstract class Member<
 				this.attributeThresholdSource.register(sourceId, path, threshold, direction, options),
 			unregisterThresholdBySource: (sourceId) => this.attributeThresholdSource.unregisterBySource(sourceId),
 			recordEvent: (event) => this.recordEvent(event),
-		};
-	}
-
-	/**
-	 * 构造 BT Manager 专用 env。
-	 */
-	private createBtEnv(
-		capabilities: EffectBtRuntimeServices<TSchema>,
-	): EffectBtManagerEnv<TFSMEvent, TSchema, TRuntime> {
-		const self = this;
-		return {
-			get name() {
-				return self.name;
-			},
-			getContext: () => self.runtime,
-			getCapabilities: () => capabilities,
-			getDeltaTimeMs: () => self.runtime.fixedStepMs,
-			send: (event) => self.actor.send(event),
 		};
 	}
 
@@ -273,9 +273,6 @@ export abstract class Member<
 
 		// 清理过期状态
 		this.statusStore.purgeExpired(tick.currentTimeMs);
-
-		// 同步状态标签
-		this.syncStatusTags();
 
 		// 刷新属性脏值
 		this.attributeContainer.flushDirtyValues();

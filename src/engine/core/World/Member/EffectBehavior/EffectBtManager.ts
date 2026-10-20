@@ -14,6 +14,9 @@ type BtEntry = {
 	bt: BehaviourTree;
 };
 
+// 如果未来 checkpoint restore 必须整体替换 runtime，那么就不应该让 agent 直接持有 runtime 原型，而应该让行
+// 为树的 BehaviourTreeOptions.resolveProperty 或 agent owner 提供动态读取入口。不过按当前代码结构，runtime
+// 是成员内长期持有并修改字段的对象，因此共享原型是更简单的方案。
 export class EffectBtManager<TContext extends MemberRuntime> implements Checkpointable<EffectBtManagerCheckpoint> {
 	private activeEffectEntry: BtEntry | undefined;
 	private parallelEntries: Map<string, BtEntry> = new Map();
@@ -21,16 +24,21 @@ export class EffectBtManager<TContext extends MemberRuntime> implements Checkpoi
 	private steppingContext: "none" | "active-effect" = "none";
 
 	constructor(
+		private agent: {
+			prototypeData: TContext; // 由于会将公共上下文整合进每颗行为树的agent中，
+			commonAgent: Record<string, unknown>;
+		},
 		private btOptions: BehaviourTreeOptions,
-		private commonAgent: Record<string, unknown>,
 	) {}
 
-	private buildAgent(agent?: string): TContext & Record<string, unknown> {
-		const baseContext = this.commonAgent;
-		const context = Object.create(baseContext) as TContext & Record<string, unknown>;
+	private buildAgent(
+		agent?: string, // 字符串agent对象
+		treeData?: Record<string, unknown>, // 注入到单棵行为树 agent 中、由树注册者提供的静态或实例级数据。
+	): TContext & Record<string, unknown> {
+		const context = Object.create(this.agent.prototypeData) as TContext & Record<string, unknown>;
 
 		// 1. 添加 bindings
-		for (const [name, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(this.commonAgent))) {
+		for (const [name, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(this.agent.prototypeData))) {
 			if (!(name in context)) {
 				Object.defineProperty(context, name, { ...descriptor, configurable: true });
 			}
@@ -74,6 +82,8 @@ export class EffectBtManager<TContext extends MemberRuntime> implements Checkpoi
 				);
 			}
 		}
+
+		// 3.添加treeData
 
 		return context;
 	}
@@ -122,6 +132,7 @@ export class EffectBtManager<TContext extends MemberRuntime> implements Checkpoi
 		name: string,
 		definition: string | RootNodeDefinition | RootNodeDefinition[],
 		agent?: string,
+		localContext?: Record<string, unknown>,
 	): BehaviourTree | undefined {
 		const bt = new BehaviourTree(definition, this.buildAgent(agent), this.btOptions);
 		this.parallelEntries.set(name, { bt });
