@@ -10,7 +10,7 @@
 
 | 层 | 静态注册表 | 运行时实例 | 扩展原语（passive/skill 安装时写入） |
 |---|---|---|---|
-| **数据** | `AttributeSchema`（属性槽）<br>`StatusTypeRegistry`（状态类型） | `AttributeContainer`<br>`StatusInstanceStore`<br>`MemberSharedRuntime` | 声明属性槽（咏咒层数、lastTriggeredFrame）<br>声明状态类型（着火、昏厥、出血） |
+| **数据** | `AttributeSchema`（属性槽）<br>`StatusTypeRegistry`（状态类型） | `AttributeContainer`<br>`StatusInstanceStore`<br>`MemberRuntime` | 声明属性槽（咏咒层数、lastTriggeredFrame）<br>声明状态类型（着火、昏厥、出血） |
 | **计算** | `PipelineCatalog` | `PipelineResolverService` 按成员合成 | 向管线插纯计算 overlay 指令（早期讨论中的 `emit` 派发已不作为当前方案） |
 | **编排** | `EventCatalog`<br>BT 定义库<br>FSM 定义 | `BtManager`（active + parallel）<br>订阅表（proc mask + watcher） | 注册 BT / 订阅事件 / 绑定属性 watcher |
 

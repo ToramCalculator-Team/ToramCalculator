@@ -14,14 +14,14 @@ import {
 	StatModifierKindSchema,
 } from "../../AttributeContainer/AttributeContainerTypes";
 import { type ActionPool, defineAction } from "../../BehaviorTree/NodeMethods/MethodTypes";
-import type { CommonEffectBtCapabilities, CommonEffectBtContext } from "../types";
+import type { CommonEffectBtRuntime, CommonEffectBtRuntimeServices } from "../types";
 
 export const logLv = 0; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
 
 const log = createLogger("Actions");
 
 function createActionModifierSource(
-	context: CommonEffectBtContext,
+	context: CommonEffectBtRuntime,
 	key: string,
 	name: string,
 	type: ModifierSource["type"],
@@ -118,8 +118,8 @@ function deriveBaseDamageTags(expResolutionType: "physical" | "magic" | "normal"
 }
 
 function evaluateActionNumberExpression(
-	context: CommonEffectBtContext,
-	capabilities: CommonEffectBtCapabilities,
+	context: CommonEffectBtRuntime,
+	capabilities: CommonEffectBtRuntimeServices,
 	raw: string | number | undefined,
 	fallback: number,
 	label: string,
@@ -129,10 +129,10 @@ function evaluateActionNumberExpression(
 	if (typeof raw === "number") return Number.isFinite(raw) ? raw : fallback;
 	const expression = raw.trim();
 	if (!expression) return fallback;
-	const skill = context.skill;
+	const skill = context.currentSkill;
 	const currentSkillData = context.currentSkill?.data;
 	const skillLv = skill?.lv ?? currentSkillData?.lv ?? 0;
-	const evaluated = capabilities.services.expressionEvaluator?.(expression, {
+	const evaluated = capabilities.expressionEvaluator?.(expression, {
 		currentTimeMs: context.currentTimeMs,
 		tickIndex: context.tickIndex,
 		casterId: context.memberId,
@@ -146,9 +146,9 @@ function evaluateActionNumberExpression(
 }
 
 function buildDamageDefinition(
-	context: CommonEffectBtContext,
+	context: CommonEffectBtRuntime,
 	input: z.output<typeof commonAttackSchema>,
-	capabilities: CommonEffectBtCapabilities,
+	capabilities: CommonEffectBtRuntimeServices,
 	targetId?: string,
 ): DamageDefinition {
 	// 施法者属性在生成伤害区域时快照（施放瞬间值）。结算侧是否采用该快照由 lockCasterAttributes 决定：
@@ -163,15 +163,15 @@ function buildDamageDefinition(
 
 	const casterSnapshot: CasterSnapshot = {};
 	for (const key of dependencies.selfDependencies) {
-		if (capabilities.attributeContainer.hasKey(key)) {
-			setStat(casterSnapshot, key, capabilities.attributeContainer.getValue(key));
+		if (capabilities.hasAttr(key)) {
+			casterSnapshot[key] = capabilities.getAttr(key);
 		} else {
 			log.warn(`⚠️ [${context.name}] 施法者快照依赖属性 ${key} 不存在于 AttributeContainer`);
 		}
 	}
 	for (const key of dependencies.selfBaseValueDependencies) {
-		if (capabilities.attributeContainer.hasKey(key)) {
-			setBaseValue(casterSnapshot, key, capabilities.attributeContainer.getBaseValue(key));
+		if (capabilities.hasAttr(key)) {
+			casterSnapshot[`_${key}`] = capabilities.getAttrBase(key);
 		} else {
 			log.warn(`⚠️ [${context.name}] 施法者快照依赖基础属性 ${key} 不存在于 AttributeContainer`);
 		}
@@ -182,7 +182,10 @@ function buildDamageDefinition(
 		setHasBuff(casterSnapshot, buffId, capabilities.hasParallelBt(buffId));
 	}
 
-	const skillLv = context.skill?.lv ?? context.currentSkill?.data.lv ?? 0;
+	if (!context.currentSkill) {
+		throw new Error(`当前技能获取失败`);
+	}
+	const skillLv = context.currentSkill?.data.lv;
 	const damageCount = Math.max(
 		1,
 		Math.floor(evaluateActionNumberExpression(context, capabilities, input.damageCount, 1, "damageCount", targetId)),
@@ -198,7 +201,7 @@ function buildDamageDefinition(
 	return {
 		identity: {
 			sourceId: context.memberId,
-			sourceSkillId: context.skill?.id ?? context.currentSkill?.data.id,
+			sourceSkillId: context.currentSkill?.data.id,
 			sourceCampId: context.campId,
 			sourceTeamId: context.teamId,
 		},
@@ -353,7 +356,7 @@ function createAttackAction<TSchema extends z.ZodType>(
 	actionName: AttackActionName,
 	definition: AttackActionDefinition<TSchema>,
 ) {
-	return defineAction<TSchema, CommonEffectBtContext, CommonEffectBtCapabilities>(
+	return defineAction<TSchema, CommonEffectBtRuntime, CommonEffectBtRuntimeServices>(
 		definition.schema,
 		(context, input, capabilities) => {
 			const requestedTargetId = (input as { targetId?: string }).targetId;
@@ -912,6 +915,6 @@ export const CommonEffectActionPool = {
 			return State.SUCCEEDED;
 		},
 	),
-} as const satisfies ActionPool<CommonEffectBtContext, CommonEffectBtCapabilities>;
+} as const satisfies ActionPool<CommonEffectBtRuntime, CommonEffectBtRuntimeServices>;
 
 export type CommonEffectActionPool = typeof CommonEffectActionPool;

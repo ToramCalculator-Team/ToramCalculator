@@ -17,15 +17,11 @@ import {
 } from "./ControlBehavior/Bindings";
 import { ControlBehaviorRuntime } from "./ControlBehavior/ControlBehaviorRuntime";
 import { EffectBtManager } from "./EffectBehavior/EffectBtManager";
-import type { EffectBtCapabilities, EffectBtManagerEnv } from "./EffectBehavior/types";
+import type { EffectBtManagerEnv, EffectBtRuntimeServices } from "./EffectBehavior/types";
 import type { MemberBaseNestedSchema } from "./MemberBaseSchema";
 import type { MemberSnapshot } from "./MemberSnapshot";
 import { AttributeThresholdSource } from "./ProcBus/AttributeThresholdSource";
 import type { ProcBus } from "./ProcBus/ProcBus";
-import type { MemberRuntimeServices } from "./RuntimeServices";
-import type { MemberMovementInput, MemberSharedRuntime } from "./runtime/SharedRuntime";
-import { InMemoryStatusInstanceStore } from "./runtime/Status/StatusInstanceStore";
-import type { MutableStatusInstanceStore, StatusInstance } from "./runtime/Status/types";
 import type {
 	MemberActor,
 	MemberControlEvent,
@@ -34,7 +30,9 @@ import type {
 	MemberFSMEnv,
 	MemberFSMEvent,
 } from "./StateMachine/types";
-import type { MemberCheckpoint, MemberEvent } from "./types";
+import { InMemoryStatusInstanceStore } from "./Status/StatusInstanceStore";
+import type { MutableStatusInstanceStore, StatusInstance } from "./Status/types";
+import type { MemberCheckpoint, MemberEvent, MemberMovementInput, MemberRuntime, MemberRuntimeServices } from "./types";
 
 const log = createLogger("Member");
 const MOVEMENT_EPSILON = 0.0001;
@@ -54,7 +52,7 @@ export abstract class Member<
 	TSchema extends MemberBaseNestedSchema,
 	TFSMEvent extends MemberFSMEvent<never>,
 	TFSMContext extends MemberFSMContext,
-	TRuntime extends MemberSharedRuntime,
+	TRuntime extends MemberRuntime,
 > implements WorldObservable
 {
 	// ==================== 身份与元数据 ====================
@@ -66,7 +64,7 @@ export abstract class Member<
 	readonly data: WorldMember;
 
 	// ==================== 数据层：状态容器 ====================
-	private readonly dataSchema: TSchema;
+	private readonly attrSchema: TSchema;
 	private readonly attributeContainer: AttributeContainer<TSchema>;
 	private readonly statusStore: MutableStatusInstanceStore;
 	private readonly runtime: TRuntime;
@@ -81,7 +79,7 @@ export abstract class Member<
 	/** 行为模式：autonomous(AI 控制) 或 manual(外部控制) */
 	private behaviorMode: "autonomous" | "manual";
 	private readonly controlBehavior: ControlBehaviorRuntime | null = null;
-	private readonly effectBtManager: EffectBtManager<TSchema, TRuntime, TFSMEvent>;
+	private readonly effectBtManager: EffectBtManager<TRuntime>;
 	private readonly procBus: ProcBus | null = null;
 	private readonly attributeThresholdSource: AttributeThresholdSource<TSchema>;
 	/** ai 模式下的连续移动行为记录 */
@@ -98,7 +96,7 @@ export abstract class Member<
 		campId: string,
 		teamId: string,
 		memberData: WorldMember,
-		dataSchema: TSchema,
+		attrSchema: TSchema,
 		runtime: TRuntime,
 		services: MemberRuntimeServices,
 		eventRecord: EventRecorder,
@@ -107,7 +105,7 @@ export abstract class Member<
 		controlBehaviorBindings: (capabilities: MemberControlBehaviorCapabilities) => Record<string, unknown> = (
 			capabilities,
 		) => createCommonControlBehaviorBindings(capabilities),
-		effectBindings: (capabilities: EffectBtCapabilities<TSchema>) => Record<string, unknown>,
+		effectBindings: (capabilities: EffectBtRuntimeServices<TSchema>) => Record<string, unknown>,
 	) {
 		// 身份
 		this.id = memberData.id;
@@ -118,10 +116,9 @@ export abstract class Member<
 		this.data = memberData;
 
 		// 数据层
-		this.dataSchema = dataSchema;
-		this.attributeContainer = new AttributeContainer(dataSchema);
+		this.attrSchema = attrSchema;
+		this.attributeContainer = new AttributeContainer(attrSchema);
 		this.runtime = runtime;
-		this.runtime.statusTags = this.runtime.statusTags ?? [];
 		if (position) {
 			this.runtime.position = position;
 		}
@@ -139,8 +136,8 @@ export abstract class Member<
 		this.attributeThresholdSource = new AttributeThresholdSource(this.attributeContainer, null);
 
 		// 初始化 BT 能力和环境
-		const btCapabilities = this.createBtCapabilities();
-		this.effectBtManager = new EffectBtManager(this.createBtEnv(btCapabilities), effectBindings(btCapabilities));
+		const BtRuntimeServices = this.createBtRuntimeServices();
+		this.effectBtManager = new EffectBtManager(this.createBtEnv(BtRuntimeServices), effectBindings(BtRuntimeServices));
 
 		// 初始化 AI 控制行为树
 		this.aiMovementBehaviors = memberData.resolvedBehavior?.movementBehaviors ?? [];
@@ -209,46 +206,35 @@ export abstract class Member<
 	/**
 	 * 构造 BT 能力提供者。
 	 */
-	private createBtCapabilities(): EffectBtCapabilities<TSchema> {
-		const self = this;
+	private createBtRuntimeServices(): EffectBtRuntimeServices<TSchema> {
 		return {
-			get services() {
-				return self.services;
-			},
-			get attributeContainer() {
-				return self.attributeContainer;
-			},
-			declareState: () => {
-				// 状态声明已移除，保留空实现以兼容现有 BT
-			},
-			clearActiveEffectStateDeclaration: () => {
-				// 状态声明已移除，保留空实现
-			},
 			registerParallelBt: (name, definition, agent, localContext) =>
-				self.effectBtManager.registerParallelBt(name, definition, agent, localContext),
-			unregisterParallelBt: (name) => self.effectBtManager.unregisterParallelBt(name),
-			hasParallelBt: (name) => self.effectBtManager.hasBuff(name),
+				this.effectBtManager.registerParallelBt(name, definition, agent, localContext),
+			unregisterParallelBt: (name) => this.effectBtManager.unregisterParallelBt(name),
+			hasParallelBt: (name) => this.effectBtManager.hasBuff(name),
 			subscribeByName: (sourceId, eventNames, predicate, handler) => {
-				if (!self.procBus) {
-					log.warn(`member ${self.name} ProcBus 未就绪，忽略订阅 ${sourceId}`);
+				if (!this.procBus) {
+					log.warn(`member ${this.name} ProcBus 未就绪，忽略订阅 ${sourceId}`);
 					return 0;
 				}
-				return self.procBus.subscribeByName(sourceId, eventNames, predicate, handler);
+				return this.procBus.subscribeByName(sourceId, eventNames, predicate, handler);
 			},
 			unsubscribeBySource: (sourceId) => {
-				self.procBus?.unsubscribeBySource(sourceId);
+				this.procBus?.unsubscribeBySource(sourceId);
 			},
 			registerThreshold: (sourceId, path, threshold, direction, options) =>
-				self.attributeThresholdSource.register(sourceId, path, threshold, direction, options),
-			unregisterThresholdBySource: (sourceId) => self.attributeThresholdSource.unregisterBySource(sourceId),
-			recordEvent: (event) => self.recordEvent(event),
+				this.attributeThresholdSource.register(sourceId, path, threshold, direction, options),
+			unregisterThresholdBySource: (sourceId) => this.attributeThresholdSource.unregisterBySource(sourceId),
+			recordEvent: (event) => this.recordEvent(event),
 		};
 	}
 
 	/**
 	 * 构造 BT Manager 专用 env。
 	 */
-	private createBtEnv(capabilities: EffectBtCapabilities<TSchema>): EffectBtManagerEnv<TFSMEvent, TSchema, TRuntime> {
+	private createBtEnv(
+		capabilities: EffectBtRuntimeServices<TSchema>,
+	): EffectBtManagerEnv<TFSMEvent, TSchema, TRuntime> {
 		const self = this;
 		return {
 			get name() {
@@ -256,7 +242,7 @@ export abstract class Member<
 			},
 			getContext: () => self.runtime,
 			getCapabilities: () => capabilities,
-			getDeltaTimeMs: () => self.runtime.deltaTimeMs,
+			getDeltaTimeMs: () => self.runtime.fixedStepMs,
 			send: (event) => self.actor.send(event),
 		};
 	}
@@ -419,21 +405,11 @@ export abstract class Member<
 	}
 
 	// ==================== 数据层私有方法 ====================
-
-	/**
-	 * 同步状态标签：从 StatusStore 派生更新 runtime.statusTags。
-	 */
-	private syncStatusTags(): void {
-		const currentTimeMs = this.getLogicalTimeMs();
-		this.runtime.statusTags = this.statusStore.getStatusTags(currentTimeMs);
-	}
-
 	/**
 	 * 应用状态实例（由 FSM 或外部调用）。
 	 */
 	applyStatusInstance(instance: StatusInstance): void {
 		this.statusStore.apply(instance);
-		this.syncStatusTags();
 	}
 
 	/**
@@ -441,7 +417,6 @@ export abstract class Member<
 	 */
 	removeStatusByType(type: string): void {
 		this.statusStore.removeByType(type);
-		this.syncStatusTags();
 	}
 
 	// ==================== 编排层私有方法 ====================
@@ -543,43 +518,40 @@ export abstract class Member<
 		pipelineName: TName,
 		params: PipelineValues,
 	): PipelineValues {
-		const timeMs = this.runtime.currentTimeMs;
-		const tickIndex = this.services.getTickIndex();
-
 		const pipelineParams = {
-			timeMs,
-			tickIndex,
-			stats: (memberIdOrSelector: string, path: string) => {
-				if (memberIdOrSelector === "self" || memberIdOrSelector === this.id) {
-					if (!this.attributeContainer.hasKey(path)) {
-						throw new Error(`runPipeline(${pipelineName})：属性路径不存在 (${memberIdOrSelector}.${path})`);
-					}
-					return this.attributeContainer.getValue(path);
-				}
-				log.warn(
-					`runPipeline(${pipelineName})：拒绝跨 actor 属性读取 (${memberIdOrSelector}.${path})；跨成员数据必须随事件 payload 传入`,
-				);
-				return 0;
-			},
-			eval: (expr: string, vars?: Record<string, unknown>) => {
-				const evaluator = this.services.expressionEvaluator;
-				if (!evaluator) throw new Error(`expressionEvaluator 未注入：${expr}`);
-				const ctx: ExpressionContext = {
-					currentTimeMs: timeMs,
-					tickIndex,
-					casterId: this.id,
-					targetId: this.runtime.targetId,
-					...(vars ?? {}),
-				};
-				const out = evaluator(expr, ctx);
-				return typeof out === "number" ? out : out ? 1 : 0;
-			},
-			newId: () => `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
-			memberRuntime: this.runtime,
-			statusTags: () => this.runtime.statusTags,
+			timeMs: this.runtime.currentTimeMs,
+			...params,
+			...this.runtime,
+			// stats: (memberIdOrSelector: string, path: string) => {
+			// 	if (memberIdOrSelector === "self" || memberIdOrSelector === this.id) {
+			// 		if (!this.attributeContainer.hasKey(path)) {
+			// 			throw new Error(`runPipeline(${pipelineName})：属性路径不存在 (${memberIdOrSelector}.${path})`);
+			// 		}
+			// 		return this.attributeContainer.getValue(path);
+			// 	}
+			// 	log.warn(
+			// 		`runPipeline(${pipelineName})：拒绝跨 actor 属性读取 (${memberIdOrSelector}.${path})；跨成员数据必须随事件 payload 传入`,
+			// 	);
+			// 	return 0;
+			// },
+			// eval: (expr: string, vars?: Record<string, unknown>) => {
+			// 	const evaluator = this.services.expressionEvaluator;
+			// 	if (!evaluator) throw new Error(`expressionEvaluator 未注入：${expr}`);
+			// 	const ctx: ExpressionContext = {
+			// 		currentTimeMs: timeMs,
+			// 		tickIndex,
+			// 		casterId: this.id,
+			// 		targetId: this.runtime.targetId,
+			// 		...(vars ?? {}),
+			// 	};
+			// 	const out = evaluator(expr, ctx);
+			// 	return typeof out === "number" ? out : out ? 1 : 0;
+			// },
+			// newId: () => `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+			// statusTags: () => this.runtime.statusTags,
 		};
 
-		return this.pipelineService.run(pipelineName, params);
+		return this.pipelineService.run(pipelineName, pipelineParams);
 	}
 
 	// ==================== Checkpoint ====================
@@ -621,7 +593,6 @@ export abstract class Member<
 		this.pipelineOverlays.splice(0, this.pipelineOverlays.length, ...(overlayCp.pipelineOverlays ?? []));
 		Object.assign(this.runtime, structuredClone(runtimeCp.runtime ?? this.runtime));
 		this.runtime.position = { ...checkpoint.position };
-		this.syncStatusTags();
 	}
 
 	// ==================== 域事件发布（内部） ====================

@@ -3,7 +3,6 @@ import { createLogger } from "~/lib/logger";
 import type { ExpressionContext } from "../../../JSProcessor/types";
 import type { WorldCharacterSkill } from "../../../ScenarioSchema";
 import { ModifierType } from "../../AttributeContainer/AttributeContainerTypes";
-import type { PlayerRuntime } from "../../runtime/SharedRuntime";
 import { applyMemberTargetSelection } from "../../StateMachine/commonFunctions/targetSelection";
 import type {
 	MemberControlEvent,
@@ -14,6 +13,7 @@ import type {
 } from "../../StateMachine/types";
 import type { PlayerAttrNestedSchema } from "./PlayerAttrSchema";
 import { computePlayerSkillLifecycle, selectPlayerSkillVariant } from "./skillLifecycle";
+import type { PlayerRuntime } from "./types";
 
 const log = createLogger("PlayerFSM");
 const NEXT_SKILL_COST_SOURCE_ID_PREFIX = "skill.nextCost";
@@ -195,7 +195,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberFSM<PlayerFSMEvent, PlayerFS
 					applyMemberTargetSelection(env, event);
 				},
 				添加待处理技能: ({ event }) => {
-					const skillId = event.data.skillId;
+					const skillId = (event as 使用技能).data.skillId;
 					const skill = env.runtime.data?.skills?.find((s: WorldCharacterSkill) => s.id === skillId);
 					if (!skill) {
 						log.error(`[${env.name}] 技能不存在: ${skillId}`);
@@ -209,6 +209,9 @@ export const playerFSM = (env: PlayerFSMEnv): MemberFSM<PlayerFSMEvent, PlayerFS
 					const executionInstance = env.runtime.nextSkillExecutionInstance + 1;
 					env.runtime.nextSkillExecutionInstance = executionInstance;
 					env.runtime.currentSkill = {
+						id: skill.id,
+						lv: skill.lv,
+						name: skill.template.name,
 						executionInstance,
 						data: skill,
 						activeVariant: skillVariant,
@@ -294,12 +297,7 @@ export const playerFSM = (env: PlayerFSMEnv): MemberFSM<PlayerFSMEvent, PlayerFS
 					}
 					const activeTree = skillVariant.activeBehaviorTree;
 					if (!activeTree) {
-						const activeBehavior = skillVariant.activeBehavior;
-						if (activeBehavior) {
-							env.effectBtManager.registerActiveEffectBt();
-							return;
-						}
-						log.warn(`[${env.name}] 技能变体既没有 activeBehaviorTree 也没有 activeBehavior`);
+						log.warn(`[${env.name}] 技能变体没有 activeBehaviorTree`);
 						return;
 					}
 					const treeDefinition = activeTree.definition;

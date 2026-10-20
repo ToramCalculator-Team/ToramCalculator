@@ -79,7 +79,7 @@ export const actionPoolToInvokers = <
 		const schema = entry[0] as unknown as ZodType;
 		const impl = entry[1] as unknown as (context: TContext, actionInput: unknown, capabilities: TCapabilities) => State;
 
-		// 必须使用 function 声明，以便拿到 `this === btContext`
+		// 必须使用 function 声明，以便拿到 `this === BtRuntime`
 		invokers[name as keyof TPool] = function (this: TContext, ...args: unknown[]) {
 			const inputObj = buildInputObject(schema, args);
 			return impl(this, inputObj, capabilities);
@@ -112,7 +112,7 @@ export const conditionPoolToInvokers = <
 			capabilities: TCapabilities,
 		) => boolean;
 
-		// 必须使用 function 声明，以便拿到 `this === btContext`
+		// 必须使用 function 声明，以便拿到 `this === BtRuntime`
 		invokers[name as keyof TPool] = function (this: TContext, ...args: unknown[]) {
 			const inputObj = buildInputObject(schema, args);
 			return impl(this, inputObj, capabilities);

@@ -71,13 +71,13 @@
 
 建议：抽取一个与应用语义无关的 schema 工具，或将解包逻辑放到已有的公共 schema 工具模块；`mdslIntellisense` 和 agent 参数解析保留各自的类型映射和业务入口。优先级：高。
 
-#### 2. `src/engine/core/World/Member/runtime/Behavior/AiBehaviorRuntime.ts:50-75` ↔ `BtManager.ts:84-112`；`AiBehaviorRuntime.ts:93-105` ↔ `BtContextFactory.ts:144-157`；`AiBehaviorRuntime.ts:93-105` ↔ `BtManager.ts:132-145`：agent 编译与成员注入
+#### 2. `src/engine/core/World/Member/runtime/Behavior/AiBehaviorRuntime.ts:50-75` ↔ `BtManager.ts:84-112`；`AiBehaviorRuntime.ts:93-105` ↔ `BtRuntimeFactory.ts:144-157`；`AiBehaviorRuntime.ts:93-105` ↔ `BtManager.ts:132-145`：agent 编译与成员注入
 
 三处都执行 `new Function` 编译 agent class，注入 `BehaviourTree`、`State`、`ModifierType`，创建实例，遍历实例和 prototype 成员，并用 `Object.defineProperty` 注入执行上下文。差异在于错误处理、warning/logger、上下文隔离和生命周期归属。
 
 结论：这是本轮最重要的架构重复。重复的不只是代码，还包括受信任 agent 编译、成员冲突优先级和注入协议。
 
-建议：抽取底层的 agent compiler/member injector，通过回调参数化编译失败、初始化失败和成员冲突的观测方式；保留 `AiBehaviorRuntime`、`BtManager`、`BtContextFactory` 各自的生命周期和上下文隔离，不能把三个运行时类直接合并。必须继续保留 BtManager 的 checkpoint/runtime 隔离语义。优先级：最高。
+建议：抽取底层的 agent compiler/member injector，通过回调参数化编译失败、初始化失败和成员冲突的观测方式；保留 `AiBehaviorRuntime`、`BtManager`、`BtRuntimeFactory` 各自的生命周期和上下文隔离，不能把三个运行时类直接合并。必须继续保留 BtManager 的 checkpoint/runtime 隔离语义。优先级：最高。
 
 #### 补充审计项：`src/components/tools/BtEditor/BtEditor.tsx:680-699` ↔ `873-892`：NodeInspector props
 
@@ -239,7 +239,7 @@ action/condition 与属性回调的 completion provider 都重复名称补全、
 
 建议：提取 `resolveMovingCircleRange(input)`，由两个 action 继续提供各自的定义和生命周期。优先级：中低。
 
-#### 22. `src/engine/core/World/Member/runtime/Behavior/AiBehaviorRuntime.ts:93-105` ↔ `BtManager.ts:132-145` / `BtContextFactory.ts:144-157`：成员登记细节
+#### 22. `src/engine/core/World/Member/runtime/Behavior/AiBehaviorRuntime.ts:93-105` ↔ `BtManager.ts:132-145` / `BtRuntimeFactory.ts:144-157`：成员登记细节
 
 这组与第 2 项属于同一 agent 注入问题，具体重复的是实例自有属性与 prototype 属性遍历、跳过 constructor、定义 descriptor。第 2 项应作为统一重构任务，不要拆成多个独立 helper 造成第二套注入协议。
 
@@ -478,7 +478,7 @@ Action 和 Condition 都在状态变化时记录节点详情、参数和生命�
 | 35 | `engine/core/World/Member/runtime/Agents/CommonActions.ts:279-293 ↔ 307-321；479-493 ↔ 540-554；483-493 ↔ 645-655；640-654 ↔ 698-711` | 优先处理表达式上下文；移动范围可延后 |
 | 36 | `engine/core/World/Member/AttributeContainer/AttributeContainer.ts:841-853 ↔ 931-943；916-930 ↔ 943-957` | 优先处理：modifier source/detail |
 | 37 | `engine/core/World/Member/runtime/Behavior/AiBehaviorRuntime.ts:50-75 ↔ BehaviourTree/BtManager.ts:84-112；93-105 ↔ 132-145` | 优先处理：agent 编译与成员注入 |
-| 38 | `engine/core/World/Member/runtime/Behavior/AiBehaviorRuntime.ts:93-105 ↔ BehaviourTree/BtContextFactory.ts:144-157` | 优先处理：agent 编译与成员注入 |
+| 38 | `engine/core/World/Member/runtime/Behavior/AiBehaviorRuntime.ts:93-105 ↔ BehaviourTree/BtRuntimeFactory.ts:144-157` | 优先处理：agent 编译与成员注入 |
 | 39 | `engine/core/World/Member/types/Mob/MobStateMachine.ts:50-72 ↔ 71-93` | 优先处理：重复 interface |
 | 40 | `engine/core/World/Member/types/Player/PlayerAttrSchema.ts:1407-1431 ↔ 2108-2136；1495-1530 ↔ 2212-2247` | 可以重构但不急：静态/运行时 schema |
 | 41 | `engine/core/thread/worldStateBuffer.ts:751-773 ↔ 1215-1237` | 优先处理：Reader/Writer 布局校验 |

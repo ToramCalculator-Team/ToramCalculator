@@ -4,7 +4,7 @@ import type { Vec3 } from "./EffectRange/types";
 /**
  * WorldObservable —— 世界实体的统一只读观测接口
  *
- * 设计动机（见 document/world-medium-analysis.tmp.md 偏差#1）：
+ * 设计动机：
  * - 介质（SpaceManager 等空间查询）是“无属性状态的关系整合服务”，在 settle 相位
  *   现场读取实体关系，不缓存影子、不持有实体属性。
  * - 此前 `queryCircle` 直接返回富类 `Member`，使调用方耦合到 Member 内部实现，

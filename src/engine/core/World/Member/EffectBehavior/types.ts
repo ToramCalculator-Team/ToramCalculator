@@ -1,20 +1,17 @@
 import type { EventObject } from "xstate";
+import type { BehaviourTreeOptions } from "~/lib/mistreevous";
 import type { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
-import type { MemberStateName } from "~/MemberStateName/MemberState";
-import type { AttributeContainer } from "../AttributeContainer/AttributeContainer";
 import type { NestedSchema, SchemaToAttrType } from "../AttributeContainer/SchemaTypes";
 import type { MemberBaseNestedSchema } from "../MemberBaseSchema";
 import type { RegisterOptions, ThresholdDirection } from "../ProcBus/AttributeThresholdSource";
 import type { ProcHandler, ProcPredicate, ProcSubscriptionId } from "../ProcBus/ProcBus";
-import type { MemberRuntimeServices } from "../RuntimeServices";
-import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
-import type { MemberEvent } from "../types";
+import type { MemberEvent, MemberRuntime, MemberRuntimeServices } from "../types";
 
-export type EffectBtContext = MemberSharedRuntime;
+export type EffectBtRuntime = MemberRuntime;
 
-export type CommonEffectBtContext = MemberSharedRuntime;
-export type CommonEffectBtCapabilities = EffectBtCapabilities<MemberBaseNestedSchema>;
+export type CommonEffectBtRuntime = MemberRuntime;
+export type CommonEffectBtRuntimeServices = EffectBtRuntimeServices<MemberBaseNestedSchema>;
 
 /**
  * EffectBtManager 检查点。
@@ -31,22 +28,11 @@ export interface EffectBtManagerCheckpoint {
 	}>;
 }
 
-export interface EffectBtTreeController {
-	registerParallelBt(
-		name: string,
-		definition: string | RootNodeDefinition | RootNodeDefinition[],
-		agent?: string,
-		localContext?: Record<string, unknown>,
-	): unknown;
-	unregisterParallelBt(name: string): void;
-	hasBuff(name: string): boolean;
-}
-
 /**
- * BT action/condition 可调用能力。
+ * BT action/condition 可调用服务。
  *
  * 设计说明：这些字段是成员组件或外部服务引用，生命周期由 Member 管理；它们不进入
- * MemberSharedRuntime，避免污染 checkpoint 黑板。
+ * MemberRuntime，避免污染 checkpoint 黑板。
  *
  * 能力面收窄约定（见 src/engine/AGENTS.md「通信机制角色」）：
  * - 订阅类能力（subscribeByName / unsubscribeBySource / registerThreshold /
@@ -57,13 +43,10 @@ export interface EffectBtTreeController {
  *   业务响应通过 subscribeByName(["attr.crossed"]) 订阅，不再有独立的 watch handler 通路。
  * - 不提供 `runPipeline`：管线是计算层、由 FSM / DamageResolution 调用；BT 叶子不直接跑管线。
  */
-export interface EffectBtCapabilities<TSchema extends NestedSchema> {
-	readonly attributeContainer: AttributeContainer<TSchema>;
-	readonly services: MemberRuntimeServices;
-	/** 仅供 active effect BT 的 state 叶子调用；AI 行为树和 parallel BT 不得声明成员动作状态。 */
-	declareState(name: MemberStateName): void;
-	/** 供 EffectBtManager 在 active effect 结束、中断或替换时清空状态声明。 */
-	clearActiveEffectStateDeclaration(): void;
+export interface EffectBtRuntimeServices<TSchema extends NestedSchema> extends MemberRuntimeServices {
+	getAttr: (attr: SchemaToAttrType<TSchema>) => number;
+	getAttrBase: (attr: SchemaToAttrType<TSchema>) => number;
+	hasAttr: (key: string) => key is SchemaToAttrType<TSchema>;
 	registerParallelBt(
 		name: string,
 		definition: string | RootNodeDefinition | RootNodeDefinition[],
@@ -103,14 +86,8 @@ export interface EffectBtCapabilities<TSchema extends NestedSchema> {
  *
  * 设计说明：EffectBtManager 只需要黑板提供者、action 能力提供者和完成事件发送入口。
  */
-export interface EffectBtManagerEnv<
-	TFSMEvent extends EventObject,
-	TSchema extends NestedSchema,
-	TContext extends MemberSharedRuntime,
-> {
-	readonly name: string;
-	getContext(): TContext;
-	getCapabilities(): EffectBtCapabilities<TSchema>;
+export interface EffectBtManagerEnv extends BehaviourTreeOptions {
 	getDeltaTimeMs(): number;
-	send(event: TFSMEvent): void;
+	getCurrentTimeMs(): number;
+	random(): number;
 }

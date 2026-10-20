@@ -1,7 +1,7 @@
 import type { ActionPool, ConditionPool } from "../BehaviorTree/NodeMethods/MethodTypes";
 import { assertDisjointPools } from "../BehaviorTree/NodeMethods/mergePools";
 import { actionPoolToInvokers, conditionPoolToInvokers } from "../BehaviorTree/NodeMethods/utils";
-import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
+import type { MemberRuntime } from "../runtime/SharedRuntime";
 import type { MemberControlEvent } from "../StateMachine/types";
 import { CommonControlBehaviorActionPool } from "./NodeMethods/ActionMethods";
 import { CommonControlBehaviorConditionPool } from "./NodeMethods/ConditionMethods";
@@ -11,7 +11,7 @@ export interface MemberControlBehaviorCapabilities {
 }
 
 /** 控制行为树的黑板类型提示；动态 action/condition 成员不属于可 checkpoint 的 runtime。 */
-export interface ControlBehaviorContext extends MemberSharedRuntime {}
+export interface ControlBehaviorContext extends MemberRuntime {}
 
 const controlBehaviorContextTypeHint = {} as ControlBehaviorContext;
 

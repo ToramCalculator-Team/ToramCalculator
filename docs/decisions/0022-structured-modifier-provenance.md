@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-07-10
 - **决策层**: 数据层 / 计算层 / 跨层契约
-- **相关代码**: `src/engine/core/World/Member/AttributeContainer/`、`src/engine/core/World/Area/types.ts`、`src/engine/core/World/Member/runtime/Status/StatusInstanceStore.ts`
+- **相关代码**: `src/engine/core/World/Member/AttributeContainer/`、`src/engine/core/World/Area/types.ts`、`src/engine/core/World/Member/Status/StatusInstanceStore.ts`
 - **相关 ADR**: Refines 0001；Depends on 0002
 
 ## 背景

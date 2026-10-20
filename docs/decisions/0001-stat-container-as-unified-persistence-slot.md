@@ -3,7 +3,7 @@
 - **状态**: Accepted
 - **日期**: 2026-05（从 `hook与触发层设计讨论结论.md` §2.1.1 拆出）
 - **决策层**: 数据层
-- **相关代码**: `src/engine/core/World/Member/AttributeContainer/AttributeContainer.ts`、`src/engine/core/World/Member/AttributeContainer/SchemaTypes.ts`、`src/engine/core/World/Member/runtime/Status/StatusInstanceStore.ts`
+- **相关代码**: `src/engine/core/World/Member/AttributeContainer/AttributeContainer.ts`、`src/engine/core/World/Member/AttributeContainer/SchemaTypes.ts`、`src/engine/core/World/Member/Status/StatusInstanceStore.ts`
 
 ## 背景
 

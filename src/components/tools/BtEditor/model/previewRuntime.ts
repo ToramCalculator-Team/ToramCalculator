@@ -5,11 +5,11 @@ import {
 	type MemberControlBehaviorCapabilities,
 } from "~/engine/core/World/Member/ControlBehavior/Bindings";
 import { createEffectBindings } from "~/engine/core/World/Member/EffectBehavior/Bindings";
-import { createBtContext } from "~/engine/core/World/Member/EffectBehavior/EffectBtContextFactory";
+import { createBtRuntime } from "~/engine/core/World/Member/EffectBehavior/EffectBtRuntimeFactory";
 import type { EffectBtManagerEnv } from "~/engine/core/World/Member/EffectBehavior/types";
 import { MemberBaseNestedSchema } from "~/engine/core/World/Member/MemberBaseSchema";
-import type { MemberRuntimeServices } from "~/engine/core/World/Member/RuntimeServices";
-import type { MemberSharedRuntime, MobRuntime, PlayerRuntime } from "~/engine/core/World/Member/runtime/SharedRuntime";
+import type { MemberRuntimeServices } from "~/engine/core/World/Member/runtime/RuntimeServices";
+import type { MemberRuntime, MobRuntime, PlayerRuntime } from "~/engine/core/World/Member/runtime/SharedRuntime";
 import type { MemberFSMEvent } from "~/engine/core/World/Member/StateMachine/types";
 import { createMobControlBehaviorBindings } from "~/engine/core/World/Member/types/Mob/ControlBehavior/Bindings";
 import { createMobEffectBindings } from "~/engine/core/World/Member/types/Mob/EffectBehavior/Bindings";
@@ -34,7 +34,7 @@ export type BtPreviewResult = {
 	diagnostics: BtAuthoringDiagnostic[];
 };
 
-type PreviewRuntime = (PlayerRuntime | MobRuntime | (MemberSharedRuntime & { type: MemberType })) & MemberSharedRuntime;
+type PreviewRuntime = (PlayerRuntime | MobRuntime | (MemberRuntime & { type: MemberType })) & MemberRuntime;
 
 type PreviewBtRuntime = {
 	env: EffectBtManagerEnv<MemberFSMEvent, string, PreviewRuntime>;
@@ -50,7 +50,7 @@ type PreviewFallbackCalls = {
 
 const createPreviewRuntime = (memberType: MemberType): PreviewRuntime => {
 	const locomotionProfile = memberType === "Mob" ? DefaultMobLocomotionProfile : PlayerLocomotionProfile;
-	const common: MemberSharedRuntime = {
+	const common: MemberRuntime = {
 		memberId: "preview-member-id",
 		name: "PreviewMember",
 		campId: "preview",
@@ -98,7 +98,7 @@ const createPreviewRuntime = (memberType: MemberType): PreviewRuntime => {
 const createPreviewBtBindings = (
 	memberType: MemberType,
 	treeKind: BtKind,
-	capabilities: MemberBtCapabilities<string>,
+	capabilities: MemberBtRuntimeServices<string>,
 	controlBehaviorCapabilities: MemberControlBehaviorCapabilities,
 ): Record<string, unknown> => {
 	if (treeKind === "control") {
@@ -130,11 +130,11 @@ export const createPreviewBtRuntime = (memberType: MemberType, treeKind: BtKind)
 		random: () => 0.5,
 	};
 
-	const attributeContainer = new AttributeContainer<string>(MemberBaseNestedSchema);
+	const attributeContainer = new AttributeContainer(MemberBaseNestedSchema);
 	const parallelBts = new Set<string>();
 	let nextThresholdRegistrationId = 1;
 
-	const capabilities: MemberBtCapabilities<string> = {
+	const capabilities: MemberBtRuntimeServices = {
 		attributeContainer,
 		services,
 		declareState: () => undefined,
@@ -187,7 +187,7 @@ export function createPreviewBehaviourTree(options: {
 		options.onDiagnostic?.(diagnostic);
 	};
 	const { env, btBindings } = createPreviewBtRuntime(options.memberType, options.treeKind);
-	const { context, warnings } = createBtContext({
+	const { context, warnings } = createBtRuntime({
 		env,
 		btBindings,
 		agent: options.agent,
@@ -239,10 +239,10 @@ function wrapPreviewAgentWithFallback(
 }
 
 function adaptPreviewCapabilities<TAttrKey extends string>(
-	capabilities: MemberBtCapabilities<string>,
-): MemberBtCapabilities<TAttrKey> {
+	capabilities: MemberBtRuntimeServices<string>,
+): MemberBtRuntimeServices<TAttrKey> {
 	// 预览使用统一的动态属性容器；这里只在编辑边界适配到角色专属绑定的键类型。
-	return capabilities as unknown as MemberBtCapabilities<TAttrKey>;
+	return capabilities as unknown as MemberBtRuntimeServices<TAttrKey>;
 }
 
 function collectPreviewFallbackCalls(

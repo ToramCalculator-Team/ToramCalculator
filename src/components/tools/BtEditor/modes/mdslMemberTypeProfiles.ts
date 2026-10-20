@@ -4,7 +4,7 @@ import { CommonControlBehaviorActionPool } from "~/engine/core/World/Member/Cont
 import { CommonControlBehaviorConditionPool } from "~/engine/core/World/Member/ControlBehavior/NodeMethods/ConditionMethods";
 import { CommonEffectActionPool } from "~/engine/core/World/Member/EffectBehavior/NodeMethods/ActionMethods";
 import { CommonEffectConditionPool } from "~/engine/core/World/Member/EffectBehavior/NodeMethods/ConditionMethods";
-import { DefaultMemberSharedRuntime } from "~/engine/core/World/Member/runtime/SharedRuntime";
+import { DefaultMemberRuntime } from "~/engine/core/World/Member/types";
 import { MobControlBehaviorActionPool } from "~/engine/core/World/Member/types/Mob/ControlBehavior/NodeMethods/ActionMethods";
 import { MobControlBehaviorConditionPool } from "~/engine/core/World/Member/types/Mob/ControlBehavior/NodeMethods/ConditionMethods";
 import { MobEffectActionPool } from "~/engine/core/World/Member/types/Mob/EffectBehavior/NodeMethods/ActionMethods";
@@ -68,5 +68,5 @@ export const getMdslProfileConfig = (memberType: MemberType, treeKind: BtKind): 
 	memberType,
 	treeKind,
 	...profileByMemberType(memberType, treeKind),
-	propertyObject: DefaultMemberSharedRuntime,
+	propertyObject: DefaultMemberRuntime,
 });

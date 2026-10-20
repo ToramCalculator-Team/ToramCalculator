@@ -1,10 +1,10 @@
 import type { ConditionPool } from "../../../../BehaviorTree/NodeMethods/MethodTypes";
-import type { EffectBtCapabilities, EffectBtContext } from "../../../../EffectBehavior/types";
+import type { EffectBtRuntime, EffectBtRuntimeServices } from "../../../../EffectBehavior/types";
 import type { MobAttrNestedSchema } from "../../MobAttrSchema";
 
 export const MobEffectConditionPool = {} as const satisfies ConditionPool<
-	EffectBtContext,
-	EffectBtCapabilities<MobAttrNestedSchema>
+	EffectBtRuntime,
+	EffectBtRuntimeServices<MobAttrNestedSchema>
 >;
 
 export type MobEffectConditionPool = typeof MobEffectConditionPool;

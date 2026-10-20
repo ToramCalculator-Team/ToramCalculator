@@ -8,13 +8,13 @@ import type { RuntimeAttachment } from "../../attachments/RuntimeAttachment";
 import { collectAttachmentSlots } from "../../attachments/RuntimeAttachment";
 import { installRuntimeAttachment } from "../../attachments/RuntimeAttachmentInstaller";
 import { Member } from "../../Member";
-import type { PlayerRuntime } from "../../runtime/SharedRuntime";
 import { createPlayerControlBehaviorBindings } from "./ControlBehavior/Bindings";
 import { createPlayerEffectBindings } from "./EffectBehavior/Bindings";
 import { type PlayerAttrKey, type PlayerAttrNestedSchema, PlayerAttrSchemaGenerator } from "./PlayerAttrSchema";
 import { collectPlayerRuntimeAttachments } from "./PlayerRuntimeAttachmentCollector";
 import { type PlayerFSMContext, type PlayerFSMEvent, playerFSM } from "./PlayerStateMachine";
 import { selectPlayerSkillVariant } from "./skillLifecycle";
+import type { PlayerRuntime } from "./types";
 
 const log = createLogger("Player");
 
@@ -33,7 +33,6 @@ export class Player extends Member<PlayerAttrNestedSchema, PlayerFSMEvent, Playe
 		// 必须在 AttributeContainer 构造前并入 schema，战斗中不能再扩容（Float64Array 固定长度）。
 		const slotDeclarations = Player.collectAttributeSlots(activeCharacter, memberData, runtimeAttachments);
 		const attrSchema = mergeSchema(baseSchema, slotDeclarations);
-		const attributeContainer = new AttributeContainer(attrSchema);
 		const initialSkillList = activeCharacter.skills;
 
 		if (!initialSkillList) {

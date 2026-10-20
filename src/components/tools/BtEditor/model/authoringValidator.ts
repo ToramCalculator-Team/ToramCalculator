@@ -1,7 +1,7 @@
 import type { BtKind, MemberType } from "@db/schema/enums";
 import type { AttributeSlotDeclarationData } from "@db/schema/jsons";
 import { validateSlotDeclarationPath } from "~/engine/core/World/Member/AttributeContainer/SchemaMerge";
-import { createBtContext } from "~/engine/core/World/Member/EffectBehavior/EffectBtContextFactory";
+import { createBtRuntime } from "~/engine/core/World/Member/EffectBehavior/EffectBtRuntimeFactory";
 import { validateDefinition } from "~/lib/mistreevous";
 import type { NodeArgument } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import type { MdslIntellisenseRegistry } from "../modes/mdslIntellisense";
@@ -292,7 +292,7 @@ function isMdslPlainIdentifier(value: string): boolean {
 function validateAgentContext(memberType: MemberType, treeKind: BtKind, agent: string): BtAuthoringDiagnostic[] {
 	const diagnostics: BtAuthoringDiagnostic[] = [];
 	const { env, btBindings } = createPreviewBtRuntime(memberType, treeKind);
-	const { warnings } = createBtContext({
+	const { warnings } = createBtRuntime({
 		env,
 		btBindings,
 		agent,

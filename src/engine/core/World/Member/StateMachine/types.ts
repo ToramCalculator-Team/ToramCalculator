@@ -4,9 +4,7 @@ import type { PipelineValues } from "../../Pipeline/PipelineValues";
 import type { AttributeContainer } from "../AttributeContainer/AttributeContainer";
 import type { EffectBtManager } from "../EffectBehavior/EffectBtManager";
 import type { MemberBaseNestedSchema } from "../MemberBaseSchema";
-import type { MemberRuntimeServices } from "../RuntimeServices";
-import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
-import type { MemberEvent } from "../types";
+import type { MemberEvent, MemberRuntime, MemberRuntimeServices } from "../types";
 
 /**
  * 成员状态机事件类型枚举
@@ -74,7 +72,7 @@ export type MemberFSM<
 export interface MemberFSMEnv<
 	TSchema extends MemberBaseNestedSchema,
 	TFSMEvent extends MemberFSMEvent<never>,
-	TRuntime extends MemberSharedRuntime,
+	TRuntime extends MemberRuntime,
 > {
 	id: string;
 	name: string;
@@ -82,7 +80,7 @@ export interface MemberFSMEnv<
 	runtime: TRuntime;
 	attributeContainer: AttributeContainer<TSchema>;
 	services: MemberRuntimeServices;
-	effectBtManager: EffectBtManager<TSchema, TRuntime, TFSMEvent>;
+	effectBtManager: EffectBtManager<TRuntime>;
 	recordEvent(event: MemberEvent): void;
 	/** 派发成员内事件到本成员 ProcBus（供 passive/registlet 响应，ADR-0011）。 */
 	emitProc(eventName: string, payload: unknown): void;

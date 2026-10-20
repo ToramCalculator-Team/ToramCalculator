@@ -1,10 +1,10 @@
 import type { ActionPool } from "../../../../BehaviorTree/NodeMethods/MethodTypes";
-import type { EffectBtCapabilities, EffectBtContext } from "../../../../EffectBehavior/types";
+import type { EffectBtRuntime, EffectBtRuntimeServices } from "../../../../EffectBehavior/types";
 import type { PlayerAttrNestedSchema } from "../../PlayerAttrSchema";
 
 export const PlayerEffectActionPool = {} as const satisfies ActionPool<
-	EffectBtContext<PlayerAttrNestedSchema>,
-	EffectBtCapabilities<PlayerAttrNestedSchema>
+	EffectBtRuntime<PlayerAttrNestedSchema>,
+	EffectBtRuntimeServices<PlayerAttrNestedSchema>
 >;
 
 export type PlayerEffectActionPool = typeof PlayerEffectActionPool;

@@ -2,7 +2,6 @@ import { z } from "zod/v4";
 import { State } from "~/lib/mistreevous/State";
 import type { ActionPool } from "../../BehaviorTree/NodeMethods/MethodTypes";
 import { defineAction } from "../../BehaviorTree/NodeMethods/MethodTypes";
-import { memberControlInputId } from "../../memberControlInput";
 import type { ControlBehaviorContext, MemberControlBehaviorCapabilities } from "../Bindings";
 
 const selectTargetInputSchema = z.object({
@@ -18,7 +17,7 @@ export const CommonControlBehaviorActionPool = {
 		selectTargetInputSchema,
 		(context, input, capabilities) => {
 			capabilities.submitControlInput({
-				id: memberControlInputId(context.memberId, input.inputKey ?? `${context.tickIndex}:target:${input.targetId}`),
+				id: input.inputKey ?? "未知输入id",
 				type: "切换目标",
 				data: { targetId: input.targetId },
 			});

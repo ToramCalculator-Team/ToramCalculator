@@ -5,10 +5,8 @@ import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefiniti
 import type { BehaviourTreeOptions } from "~/lib/mistreevous/BehaviourTreeOptions";
 import { State } from "~/lib/mistreevous/State";
 import { ModifierType } from "../AttributeContainer/AttributeContainerTypes";
-import type { NestedSchema } from "../AttributeContainer/SchemaTypes";
-import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
-import type { MemberFSMEvent } from "../StateMachine/types";
-import type { EffectBtManagerCheckpoint, EffectBtManagerEnv } from "./types";
+import type { MemberRuntime } from "../types";
+import type { EffectBtManagerCheckpoint } from "./types";
 
 const log = createLogger("EffectBtManager");
 
@@ -16,74 +14,29 @@ type BtEntry = {
 	bt: BehaviourTree;
 };
 
-export class EffectBtManager<
-	TSchema extends NestedSchema,
-	TContext extends MemberSharedRuntime,
-	TFSMEvent extends MemberFSMEvent<never>,
-> implements Checkpointable<EffectBtManagerCheckpoint>
-{
+export class EffectBtManager<TContext extends MemberRuntime> implements Checkpointable<EffectBtManagerCheckpoint> {
 	private activeEffectEntry: BtEntry | undefined;
 	private parallelEntries: Map<string, BtEntry> = new Map();
-	private btOptions: BehaviourTreeOptions = {};
 	/** 当前 step 是否来自 active effect BT；只有它能声明技能视觉状态。 */
 	private steppingContext: "none" | "active-effect" = "none";
 
 	constructor(
-		private env: EffectBtManagerEnv<TFSMEvent, TSchema, TContext>,
-		/**
-		 * BT-only callable bindings.
-		 * Purpose: keep BT actions / conditions out of the checkpointable runtime blackboard.
-		 */
-		private readonly btBindings: Record<string, unknown> = {},
+		private btOptions: BehaviourTreeOptions,
+		private commonAgent: Record<string, unknown>,
 	) {}
 
-	setRandom(randomFn: () => number): void {
-		this.btOptions = { ...this.btOptions, random: randomFn };
-	}
-
-	private createBtOptions(): BehaviourTreeOptions {
-		return {
-			...this.btOptions,
-			getDeltaTimeMs: () => this.env.getDeltaTimeMs(),
-			getCurrentTimeMs: () => this.env.getCapabilities().services.getCurrentTimeMs(),
-			resolveProperty: (path: string) => {
-				const stat = this.env.getCapabilities().attributeContainer;
-				if (stat.hasKey(path)) {
-					// hasKey 已在运行时确认动态 MDSL 路径属于当前 AttributeContainer；类型系统无法从 boolean 推导泛型键。
-					return stat.getValue(path as Parameters<typeof stat.getValue>[0]);
-				}
-				return undefined;
-			},
-		};
-	}
-
-	private buildExecutionContext(
-		agent?: string,
-		localContext?: Record<string, unknown>,
-	): TContext & Record<string, unknown> {
-		const baseContext = this.env.getContext();
+	private buildAgent(agent?: string): TContext & Record<string, unknown> {
+		const baseContext = this.commonAgent;
 		const context = Object.create(baseContext) as TContext & Record<string, unknown>;
 
-		// 1. 添加 localContext
-		if (localContext) {
-			for (const [name, value] of Object.entries(localContext)) {
-				Object.defineProperty(context, name, {
-					value,
-					writable: true,
-					enumerable: true,
-					configurable: true,
-				});
-			}
-		}
-
-		// 2. 添加 bindings
-		for (const [name, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(this.btBindings))) {
+		// 1. 添加 bindings
+		for (const [name, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(this.commonAgent))) {
 			if (!(name in context)) {
 				Object.defineProperty(context, name, { ...descriptor, configurable: true });
 			}
 		}
 
-		// 3. 编译并混入 agent
+		// 2. 编译并混入 agent
 		if (agent?.trim()) {
 			try {
 				const factory = new Function("BehaviourTree", "State", "ModifierType", "owner", `return ${agent};`) as (
@@ -130,7 +83,6 @@ export class EffectBtManager<
 			const state = this.activeEffectEntry.bt.getState();
 			if (state === State.SUCCEEDED || state === State.FAILED) {
 				this.activeEffectEntry = undefined;
-				this.clearActiveEffectStateDeclaration();
 				// 技能生命周期必须在同一个引擎 Tick 内同步收敛，连续快进不得依赖 Promise 微任务。
 				// EffectBtManager 的通用 FSM 泛型无法枚举 Player 专属完成事件；active effect 只由 Player 技能路径注册。
 				this.env.send({ type: "技能执行完成" });
@@ -158,11 +110,9 @@ export class EffectBtManager<
 	registerActiveEffectBt(
 		definition?: string | RootNodeDefinition | RootNodeDefinition[],
 		agent?: string,
-		localContext?: Record<string, unknown>,
 	): BehaviourTree | undefined {
 		if (!definition) return undefined;
-		this.clearActiveEffectStateDeclaration();
-		const bt = new BehaviourTree(definition, this.buildExecutionContext(agent, localContext), this.createBtOptions());
+		const bt = new BehaviourTree(definition, this.buildAgent(agent), this.btOptions);
 		this.activeEffectEntry = { bt };
 		return bt;
 	}
@@ -172,16 +122,14 @@ export class EffectBtManager<
 		name: string,
 		definition: string | RootNodeDefinition | RootNodeDefinition[],
 		agent?: string,
-		localContext?: Record<string, unknown>,
 	): BehaviourTree | undefined {
-		const bt = new BehaviourTree(definition, this.buildExecutionContext(agent, localContext), this.createBtOptions());
+		const bt = new BehaviourTree(definition, this.buildAgent(agent), this.btOptions);
 		this.parallelEntries.set(name, { bt });
 		return bt;
 	}
 
 	unregisterActiveEffectBt(): void {
 		this.activeEffectEntry = undefined;
-		this.clearActiveEffectStateDeclaration();
 	}
 
 	unregisterParallelBt(name: string): void {
@@ -223,21 +171,11 @@ export class EffectBtManager<
 	clear(): void {
 		this.activeEffectEntry = undefined;
 		this.parallelEntries.clear();
-		this.clearActiveEffectStateDeclaration();
 	}
 
 	/** state 叶子只允许 active effect BT 写入。 */
 	isSteppingActiveEffect(): boolean {
 		return this.steppingContext === "active-effect";
-	}
-
-	/** 供 FSM 中断动作清空当前技能视觉状态声明，不销毁行为树实例。 */
-	clearStateDeclarations(): void {
-		this.clearActiveEffectStateDeclaration();
-	}
-
-	private clearActiveEffectStateDeclaration(): void {
-		this.env.getCapabilities().clearActiveEffectStateDeclaration();
 	}
 
 	private deriveBtId(bt: BehaviourTree): string {
@@ -274,6 +212,5 @@ export class EffectBtManager<
 	restoreCheckpoint(_checkpoint: EffectBtManagerCheckpoint): void {
 		this.activeEffectEntry = undefined;
 		this.parallelEntries.clear();
-		this.clearActiveEffectStateDeclaration();
 	}
 }

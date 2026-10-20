@@ -5,33 +5,33 @@ import {
 	createExecutionContext,
 	type ExecutionContextWarning,
 } from "../BehaviorTree/ExecutionContext";
-import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
+import type { MemberRuntime } from "../runtime/SharedRuntime";
 import type { EffectBtManagerEnv } from "./types";
 
-export type BtContextFactoryWarning = ExecutionContextWarning;
+export type BtRuntimeFactoryWarning = ExecutionContextWarning;
 
-export type CreateBtContextOptions<
+export type CreateBtRuntimeOptions<
 	TFSMEvent extends EventObject,
 	TSchema extends NestedSchema,
-	TContext extends MemberSharedRuntime,
+	TContext extends MemberRuntime,
 > = {
 	env: EffectBtManagerEnv<TFSMEvent, TSchema, TContext>;
 	btBindings?: Record<string, unknown>;
 	agent?: string;
-	onWarning?: (warning: BtContextFactoryWarning) => void;
+	onWarning?: (warning: BtRuntimeFactoryWarning) => void;
 };
 
-export type CreateBtContextResult<TContext extends MemberSharedRuntime> = {
+export type CreateBtRuntimeResult<TContext extends MemberRuntime> = {
 	context: TContext & Record<string, unknown>;
-	warnings: BtContextFactoryWarning[];
+	warnings: BtRuntimeFactoryWarning[];
 };
 
 /** 编辑器预览使用的兼容入口；上下文合并规则由 BehaviorTree ExecutionContext 统一提供。 */
-export function createBtContext<
+export function createBtRuntime<
 	TFSMEvent extends EventObject,
 	TSchema extends NestedSchema,
-	TContext extends MemberSharedRuntime,
->(options: CreateBtContextOptions<TFSMEvent, TSchema, TContext>): CreateBtContextResult<TContext> {
+	TContext extends MemberRuntime,
+>(options: CreateBtRuntimeOptions<TFSMEvent, TSchema, TContext>): CreateBtRuntimeResult<TContext> {
 	const { env, btBindings, agent, onWarning } = options;
 	const executionOptions: CreateExecutionContextOptions = {
 		baseContext: env.getContext(),

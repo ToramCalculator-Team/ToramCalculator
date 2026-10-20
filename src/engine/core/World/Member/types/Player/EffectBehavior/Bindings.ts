@@ -1,10 +1,10 @@
 import { createEffectBindings } from "../../../EffectBehavior/Bindings";
-import type { EffectBtCapabilities, EffectBtContext } from "../../../EffectBehavior/types";
+import type { EffectBtRuntime, EffectBtRuntimeServices } from "../../../EffectBehavior/types";
 import type { PlayerAttrNestedSchema } from "../PlayerAttrSchema";
 import { PlayerEffectActionPool } from "./NodeMethods/ActionMethods";
 import { PlayerEffectConditionPool } from "./NodeMethods/ConditionMethods";
 
-const context = {} as EffectBtContext<PlayerAttrNestedSchema>;
+const context = {} as EffectBtRuntime<PlayerAttrNestedSchema>;
 
-export const createPlayerEffectBindings = (capabilities: EffectBtCapabilities<PlayerAttrNestedSchema>) =>
+export const createPlayerEffectBindings = (capabilities: EffectBtRuntimeServices<PlayerAttrNestedSchema>) =>
 	createEffectBindings(context, PlayerEffectActionPool, PlayerEffectConditionPool, capabilities);

@@ -3,7 +3,7 @@ import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefiniti
 import type { BehaviourTreeOptions } from "~/lib/mistreevous/BehaviourTreeOptions";
 import { State } from "~/lib/mistreevous/State";
 import { createExecutionContext } from "../BehaviorTree/ExecutionContext";
-import type { MemberSharedRuntime } from "../runtime/SharedRuntime";
+import type { MemberRuntime } from "../types";
 
 export type ControlBehaviorDefinition = string | RootNodeDefinition | RootNodeDefinition[];
 
@@ -27,7 +27,7 @@ export class ControlBehaviorRuntime {
 		definition: ControlBehaviorDefinition,
 		agent: string,
 		private readonly bindings: Record<string, unknown>,
-		private readonly context: MemberSharedRuntime,
+		private readonly context: MemberRuntime,
 		private readonly options: ControlBehaviorRuntimeOptions,
 	) {
 		if (!definition) return;
@@ -43,7 +43,7 @@ export class ControlBehaviorRuntime {
 		};
 	}
 
-	private buildExecutionContext(agent: string): MemberSharedRuntime & Record<string, unknown> {
+	private buildExecutionContext(agent: string): MemberRuntime & Record<string, unknown> {
 		return createExecutionContext({
 			baseContext: this.context,
 			memberName: this.context.name,
