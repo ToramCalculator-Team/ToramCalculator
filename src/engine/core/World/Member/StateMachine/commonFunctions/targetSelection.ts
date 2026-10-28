@@ -1,4 +1,4 @@
-import type { WorldEvent } from "../../../Event/types";
+import type { BusEvent } from "../../../Event/types";
 import type { MemberRuntimeServices } from "../../types";
 import type { SwitchTarget } from "../types";
 
@@ -6,7 +6,7 @@ type TargetSelectionEnv = {
 	id: string;
 	runtime: { targetId: string | null };
 	services: Pick<MemberRuntimeServices, "targetResolver">;
-	recordEvent(event: WorldEvent): void;
+	recordEvent(event: BusEvent): void;
 };
 
 /**

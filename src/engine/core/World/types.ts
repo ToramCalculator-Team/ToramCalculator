@@ -10,3 +10,5 @@ export const WorldScenarioDataSchema = z.object({
 });
 
 export type WorldScenarioData = z.output<typeof WorldScenarioDataSchema>;
+
+export type WorldCheckpoint = {};

@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+import type { WorldCheckpoint } from "./World/types";
 
 // ==================== TickContext ====================
 
@@ -87,5 +88,5 @@ export interface EngineCheckpoint {
 	tickIndex: number;
 	currentTimeMs: number;
 	timestamp: number;
-	world: unknown; // TODO:world结构稳定时从World处引入
+	world: WorldCheckpoint;
 }

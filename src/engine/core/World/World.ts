@@ -2,22 +2,25 @@ import { Random } from "~/lib/random";
 import { createPhysicalTerrainGenerator, type TerrainDefinition } from "~/lib/terrain";
 import type { SimulationTickContext } from "../types";
 import { AreaManager } from "./Area/AreaManager";
+import type { Checkpointable } from "./Checkpoint";
 import { DamageSystem } from "./Damage/DamageSystem";
+import { EventBus } from "./Event/EventBus";
 import { FsmMessageQueue } from "./FsmMessageQueue/MessageQueue";
 import { JSProcessor } from "./JSProcessor/JSProcessor";
 import { MemberManager } from "./MemberManager";
 import { PipelineService } from "./Pipeline/PipelineService";
 import { STANDARD_PIPELINES } from "./Pipeline/standard";
 import { SpaceManager } from "./SpaceManager";
+import type { WorldCheckpoint, WorldScenarioData } from "./types";
 
 /**
  * World/Scene 容器：聚合成员/区域/空间系统 + Intent/Resolver
  */
-export class World {
+export class World implements Checkpointable<WorldCheckpoint> {
 	random: Random; // 确定性随机数生成器（seeded xorshift128），可 checkpoint
 
 	private fsmMessageQueue: FsmMessageQueue; // FSM消息队列
-	private eventRecorder: EventRecorder;
+	private eventBus: EventBus;
 
 	// 基础设施（跨场景复用）
 	private jsProcessor: JSProcessor; // JS编译和执行器
@@ -33,11 +36,12 @@ export class World {
 
 	private sampleTerrainHeight: (x: number, z: number) => number = () => 0;
 
-	constructor(stepMs: number) {
+	constructor(stepMs: number, outboundPrefixes: string[]) {
 		this.random = new Random();
 		this.jsProcessor = new JSProcessor();
 		this.pipelineService = new PipelineService(STANDARD_PIPELINES);
-		this.fsmMessageQueue = new FsmMessageQueue(timeGetter);
+		this.fsmMessageQueue = new FsmMessageQueue();
+		this.eventBus = new EventBus(outboundPrefixes);
 		this.memberManager = new MemberManager();
 		this.spaceManager = new SpaceManager(this.memberManager);
 		this.damageSystem = new DamageSystem(this.spaceManager, this.memberManager);
@@ -45,8 +49,6 @@ export class World {
 	}
 
 	loadScenario(data: WorldScenarioData): void {}
-
-	getBattleResult(): BattleResult {}
 
 	/** 场景加载时设置唯一地形定义；点采样保持同步，不能依赖渲染区块是否就绪。 */
 	setTerrainDefinition(definition: TerrainDefinition): void {
@@ -71,14 +73,8 @@ export class World {
 	// ==================== Checkpoint ====================
 
 	captureCheckpoint(): WorldCheckpoint {
-		return {
-			members: this.memberManager.captureMemberCheckpoints(),
-			damageAreaSystem: this.areaManager.damageAreaSystem.captureCheckpoint(),
-		};
+		return {};
 	}
 
-	restoreCheckpoint(checkpoint: WorldCheckpoint): void {
-		this.memberManager.restoreMemberCheckpoints(checkpoint.members);
-		this.areaManager.damageAreaSystem.restoreCheckpoint(checkpoint.damageAreaSystem);
-	}
+	restoreCheckpoint(checkpoint: WorldCheckpoint): void {}
 }

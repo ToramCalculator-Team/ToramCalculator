@@ -1,39 +1,16 @@
 /**
- * 事件目录（扁平注册表）。
+ * 总线上流通的单条事实。
+ *
+ * topic 形如 `受击流程.命中判定.基础命中值计算:succeeded`，由 BT 树路径在发布时决定。
+ * payload 形状由 topic 定义约束，在开发/测试环境校验；静态类型安全由规则包的 defineFlow 推断提供。
  */
-
-export interface EventDefinition {
-	/** 事件名（唯一 key，建议 dot-namespace：`status.entered` / `damage.received`）。 */
-	name: string;
-	/** 负载类型 */
+export interface BusEvent {
+	/** 完整 topic 路径。 */
+	topic: string;
+	/** 发布时刻的不可变值拷贝。 */
 	payload: unknown;
-	/** 调试描述。 */
-	description: string;
+	/** 派发模拟时间（毫秒）。 */
+	timeMs: number;
 }
 
-/**
- * 扁平事件目录。构造后只读。
- */
-export type WorldEvent =
-	| {
-			name: "death";
-			payload: {
-				targetMemberId: string;
-			};
-			description: "角色死亡事件";
-	  }
-	| {
-			name: "move_start";
-			payload: {
-				targetMemberId: string;
-				direction: { x: number; y: number; z: number };
-			};
-			description: "角色开始移动事件";
-	  }
-	| {
-			name: "move_stop";
-			payload: {
-				targetMemberId: string;
-			};
-			description: "角色停止移动事件";
-	  };
+export type EventBusCheckpoint = {};

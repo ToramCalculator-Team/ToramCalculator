@@ -10,9 +10,6 @@ const log = createLogger("FsmMessageQueue");
 log.setLevel(1);
 
 export class FsmMessageQueue implements Checkpointable<QueueCheckpoint> {
-	/** 当前模拟时间获取器 */
-	private timeGetter: () => number;
-
 	/**
 	 * 按执行时间分桶存储事件：
 	 * - 避免每 tick 对全量 events 做 filter（长时/快进模拟的结构性瓶颈）
@@ -28,17 +25,6 @@ export class FsmMessageQueue implements Checkpointable<QueueCheckpoint> {
 
 	/** 快照历史 */
 	private snapshots: QueueSnapshot[] = [];
-
-	// ==================== 构造函数 ====================
-
-	/**
-	 * 构造函数
-	 *
-	 * @param config 队列配置
-	 */
-	constructor(timeGetter: () => number) {
-		this.timeGetter = timeGetter;
-	}
 
 	// ==================== 事件操作 ====================
 
@@ -268,20 +254,18 @@ export class FsmMessageQueue implements Checkpointable<QueueCheckpoint> {
 	/**
 	 * 创建快照
 	 */
-	createSnapshot(): void {
+	createSnapshot(currentTimeMs: number): void {
+		const all: QueueMessage[] = [];
+		for (const [, list] of this.buckets) {
+			for (const e of list) {
+				all.push({ ...e });
+			}
+		}
+		// 快照按 executeAtMs 升序，便于重放时维持确定性。
+		all.sort((a, b) => a.executeAtMs - b.executeAtMs);
 		const snapshot: QueueSnapshot = {
-			events: (() => {
-				const all: QueueMessage[] = [];
-				for (const [, list] of this.buckets) {
-					for (const e of list) {
-						all.push({ ...e });
-					}
-				}
-				// 快照按 executeAtMs 升序，便于重放时维持确定性。
-				all.sort((a, b) => a.executeAtMs - b.executeAtMs);
-				return all;
-			})(),
-			currentTimeMs: this.timeGetter(),
+			events: all,
+			currentTimeMs: currentTimeMs,
 		};
 
 		this.snapshots.push(snapshot);
