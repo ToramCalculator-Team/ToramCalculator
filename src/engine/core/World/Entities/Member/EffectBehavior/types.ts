@@ -1,11 +1,9 @@
-import type { EventObject } from "xstate";
+import type { NestedSchema, SchemaToAttrType } from "~/engine/core/AttributeContainer/SchemaTypes";
 import type { BehaviourTreeOptions } from "~/lib/mistreevous";
 import type { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
-import type { NestedSchema, SchemaToAttrType } from "../AttributeContainer/SchemaTypes";
+import type { RegisterOptions, ThresholdDirection } from "../../../../AttributeContainer/AttributeThresholdSource";
 import type { MemberBaseNestedSchema } from "../MemberBaseSchema";
-import type { RegisterOptions, ThresholdDirection } from "../ProcBus/AttributeThresholdSource";
-import type { ProcHandler, ProcPredicate, ProcSubscriptionId } from "../ProcBus/ProcBus";
 import type { MemberEvent, MemberRuntime, MemberRuntimeServices } from "../types";
 
 export type EffectBtRuntime = MemberRuntime;
@@ -78,7 +76,7 @@ export interface EffectBtRuntimeServices<TSchema extends NestedSchema> extends M
 	): number;
 	/** @internal 仅供 ActionMethods.unsubscribeBySource 封装调用：清理该来源的阈值监控点。 */
 	unregisterThresholdBySource(sourceId: string): void;
-	recordEvent(event: MemberEvent): void;
+	publishEvent(event: MemberEvent): void;
 }
 
 /**

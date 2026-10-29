@@ -1,15 +1,16 @@
 import type { MemberType } from "@db/schema/enums";
 import type { MovementBehaviorRecordData } from "@db/schema/jsons";
 import { createActor } from "xstate";
+import { AttributeContainer } from "~/engine/core/AttributeContainer/AttributeContainer";
+import type { EventBus } from "~/engine/core/EventBus/EventBus";
+import type { PipelineOverlay } from "~/engine/core/Pipeline/overlay";
+import type { PipelineDefinitions, PipelineNameOf, PipelineService } from "~/engine/core/Pipeline/PipelineService";
+import type { PipelineValues } from "~/engine/core/Pipeline/PipelineValues";
+import type { SimulationTickContext } from "~/engine/core/types";
 import { createLogger } from "~/lib/logger";
-import type { SimulationTickContext } from "../../types";
-import type { EventRecorder } from "../Event/EventRecorder";
-import type { WorldObservable } from "../observable";
-import type { PipelineOverlay } from "../Pipeline/overlay";
-import type { PipelineDefinitions, PipelineNameOf, PipelineService } from "../Pipeline/PipelineService";
-import type { PipelineValues } from "../Pipeline/PipelineValues";
-import type { WorldMember } from "../ScenarioSchema";
-import { AttributeContainer } from "./AttributeContainer/AttributeContainer";
+import { AttributeThresholdSource } from "../../../AttributeContainer/AttributeThresholdSource";
+import type { WorldObservable } from "../../observable";
+import type { WorldMember } from "../../ScenarioSchema";
 import {
 	createCommonControlBehaviorBindings,
 	type MemberControlBehaviorCapabilities,
@@ -19,8 +20,6 @@ import { EffectBtManager } from "./EffectBehavior/EffectBtManager";
 import type { EffectBtRuntimeServices } from "./EffectBehavior/types";
 import type { MemberBaseNestedSchema } from "./MemberBaseSchema";
 import type { MemberSnapshot } from "./MemberSnapshot";
-import { AttributeThresholdSource } from "./ProcBus/AttributeThresholdSource";
-import type { ProcBus } from "./ProcBus/ProcBus";
 import type {
 	MemberActor,
 	MemberControlEvent,
@@ -79,11 +78,10 @@ export abstract class Member<
 	private behaviorMode: "autonomous" | "manual";
 	private readonly controlBehavior: ControlBehaviorRuntime | null = null;
 	private readonly effectBtManager: EffectBtManager<TRuntime>;
-	private readonly procBus: ProcBus | null = null;
 	private readonly attributeThresholdSource: AttributeThresholdSource<TSchema>;
 	/** ai 模式下的连续移动行为记录 */
 	private aiMovementBehaviors: MovementBehaviorRecordData[] = [];
-	private readonly eventRecord: EventRecorder;
+	private readonly eventBus: EventBus;
 
 	// ==================== 依赖服务（注入） ====================
 	private readonly services: MemberRuntimeServices;
@@ -98,7 +96,7 @@ export abstract class Member<
 		attrSchema: TSchema,
 		runtime: TRuntime,
 		services: MemberRuntimeServices,
-		eventRecord: EventRecorder,
+		eventBus: EventBus,
 		pipelineService: PipelineService,
 		position: { x: number; y: number; z: number },
 		controlBehaviorBindings: (capabilities: MemberControlBehaviorCapabilities) => Record<string, unknown> = (
@@ -129,7 +127,7 @@ export abstract class Member<
 		// 编排层
 		this.behaviorMode = memberData.resolvedBehavior ? "autonomous" : "manual";
 		this.services = services;
-		this.eventRecord = eventRecord;
+		this.eventBus = eventBus;
 
 		// 初始化 AttributeThresholdSource
 		this.attributeThresholdSource = new AttributeThresholdSource(this.attributeContainer, null);
@@ -231,19 +229,19 @@ export abstract class Member<
 			unregisterParallelBt: (name) => this.effectBtManager.unregisterParallelBt(name),
 			hasParallelBt: (name) => this.effectBtManager.hasBuff(name),
 			subscribeByName: (sourceId, eventNames, predicate, handler) => {
-				if (!this.procBus) {
-					log.warn(`member ${this.name} ProcBus 未就绪，忽略订阅 ${sourceId}`);
+				if (!this.eventBus) {
+					log.warn(`member ${this.name} EventBus 未就绪，忽略订阅 ${sourceId}`);
 					return 0;
 				}
-				return this.procBus.subscribeByName(sourceId, eventNames, predicate, handler);
+				return this.eventBus.subscribeInEngine(sourceId, eventNames, predicate, handler);
 			},
 			unsubscribeBySource: (sourceId) => {
-				this.procBus?.unsubscribeBySource(sourceId);
+				// this.eventBus?.u(sourceId); 真的需要取消订阅能力吗？
 			},
 			registerThreshold: (sourceId, path, threshold, direction, options) =>
 				this.attributeThresholdSource.register(sourceId, path, threshold, direction, options),
 			unregisterThresholdBySource: (sourceId) => this.attributeThresholdSource.unregisterBySource(sourceId),
-			recordEvent: (event) => this.recordEvent(event),
+			publishEvent: (event) => this.publishEvent(event),
 		};
 	}
 
@@ -491,18 +489,6 @@ export abstract class Member<
 		return null;
 	}
 
-	/**
-	 * 派发成员内事件到 ProcBus。
-	 */
-	emitProc(eventName: string, payload: unknown): void {
-		if (!this.procBus) {
-			log.warn(`member ${this.name} ProcBus 未就绪，丢弃事件 ${eventName}`);
-			return;
-		}
-		const timeMs = this.getLogicalTimeMs();
-		this.procBus.emit(eventName, payload, timeMs);
-	}
-
 	// ==================== 计算层私有方法 ====================
 
 	/**
@@ -597,8 +583,8 @@ export abstract class Member<
 	/**
 	 * 将事件记录的事件记录器
 	 */
-	private recordEvent(event: MemberEvent): void {
-		this.eventRecord.record(event);
+	private publishEvent(event: MemberEvent): void {
+		this.eventBus.publish(event);
 	}
 
 	/**

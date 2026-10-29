@@ -30,7 +30,7 @@ export interface QueueSnapshot {
 	events: QueueMessage[];
 }
 
-/** FsmMessageQueue 检查点：当前队列消息 */
+/** MessageQueue 检查点：当前队列消息 */
 export interface QueueCheckpoint {
 	events: Array<QueueMessage>;
 }

@@ -1,7 +1,7 @@
 import type { Actor, EventObject, NonReducibleUnknown, StateMachine } from "xstate";
-import type { PipelineDefinitions, PipelineNameOf } from "../../Pipeline/PipelineService";
-import type { PipelineValues } from "../../Pipeline/PipelineValues";
-import type { AttributeContainer } from "../AttributeContainer/AttributeContainer";
+import type { AttributeContainer } from "~/engine/core/AttributeContainer/AttributeContainer";
+import type { PipelineDefinitions, PipelineNameOf } from "~/engine/core/Pipeline/PipelineService";
+import type { PipelineValues } from "~/engine/core/Pipeline/PipelineValues";
 import type { EffectBtManager } from "../EffectBehavior/EffectBtManager";
 import type { MemberBaseNestedSchema } from "../MemberBaseSchema";
 import type { MemberEvent, MemberRuntime, MemberRuntimeServices } from "../types";

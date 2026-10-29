@@ -1,4 +1,4 @@
-import type { ActionPool } from "../../../../BehaviorTree/NodeMethods/MethodTypes";
+import type { ActionPool } from "~/engine/core/BehaviorTree/NodeMethods/MethodTypes";
 import type { EffectBtRuntime, EffectBtRuntimeServices } from "../../../../EffectBehavior/types";
 import type { PlayerAttrNestedSchema } from "../../PlayerAttrSchema";
 

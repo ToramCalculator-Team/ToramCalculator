@@ -123,7 +123,7 @@ class EditableBTHost {
 
 **事件**
 - EventBus 机制（`World/Event/`，不含词汇表）
-- FsmMessageQueue 机制（`World/FsmMessageQueue/`，不含内容）
+- MessageQueue 机制（`World/MessageQueue/`，不含内容）
 
 **产出**
 - runOutput（`core/runOutput`）
@@ -319,7 +319,7 @@ interface NodeContext {
 
 1. Player 与 Mob 的 EffectBehavior NodeMethods 迁出。
 2. `DamageFormulas` 作为游戏规则移出。
-3. 技能效果统一在施法前摇产生，全部伤害段与区域创建经 FsmMessageQueue 排队。
+3. 技能效果统一在施法前摇产生，全部伤害段与区域创建经 MessageQueue 排队。
 4. 验证技能 BT 的 FixedBTHost 路径与 checkpoint。
 
 **验收**：技能效果跨帧流程可恢复；checkpoint 回滚后效果状态正确。

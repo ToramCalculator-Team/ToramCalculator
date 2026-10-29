@@ -1,10 +1,10 @@
-import type { Checkpointable } from "~/engine/core/World/Checkpoint";
+import { ModifierType } from "~/engine/core/AttributeContainer/AttributeContainerTypes";
+import type { Checkpointable } from "~/engine/core/Checkpoint";
 import { createLogger } from "~/lib/logger";
 import { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
 import type { BehaviourTreeOptions } from "~/lib/mistreevous/BehaviourTreeOptions";
 import { State } from "~/lib/mistreevous/State";
-import { ModifierType } from "../AttributeContainer/AttributeContainerTypes";
 import type { MemberRuntime } from "../types";
 import type { EffectBtManagerCheckpoint } from "./types";
 

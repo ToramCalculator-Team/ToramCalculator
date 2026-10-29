@@ -1,28 +1,24 @@
 import type { BtKind, MemberType } from "@db/schema/enums";
-import { AttributeContainer } from "~/engine/core/World/Member/AttributeContainer/AttributeContainer";
 import {
 	createCommonControlBehaviorBindings,
 	type MemberControlBehaviorCapabilities,
-} from "~/engine/core/World/Member/ControlBehavior/Bindings";
-import { createEffectBindings } from "~/engine/core/World/Member/EffectBehavior/Bindings";
-import { createBtRuntime } from "~/engine/core/World/Member/EffectBehavior/EffectBtContextFactory";
+} from "~/engine/core/World/Entity/Member/ControlBehavior/Bindings";
+import { createEffectBindings } from "~/engine/core/World/Entity/Member/EffectBehavior/Bindings";
+import { createBtRuntime } from "~/engine/core/World/Entity/Member/EffectBehavior/EffectBtContextFactory";
 import type {
 	CommonEffectBtRuntimeServices,
 	EffectBtManagerEnv,
-	EffectBtRuntimeServices,
-} from "~/engine/core/World/Member/EffectBehavior/types";
-import { MemberBaseNestedSchema } from "~/engine/core/World/Member/MemberBaseSchema";
-import type { MemberFSMEvent } from "~/engine/core/World/Member/StateMachine/types";
-import type { MemberRuntime, MemberRuntimeServices } from "~/engine/core/World/Member/types";
-import { createMobControlBehaviorBindings } from "~/engine/core/World/Member/types/Mob/ControlBehavior/Bindings";
-import { createMobEffectBindings } from "~/engine/core/World/Member/types/Mob/EffectBehavior/Bindings";
-import type { MobAttrKey } from "~/engine/core/World/Member/types/Mob/MobAttrSchema";
-import type { MobRuntime } from "~/engine/core/World/Member/types/Mob/types";
-import { createPlayerControlBehaviorBindings } from "~/engine/core/World/Member/types/Player/ControlBehavior/Bindings";
-import { createPlayerEffectBindings } from "~/engine/core/World/Member/types/Player/EffectBehavior/Bindings";
-import type { PlayerAttrKey } from "~/engine/core/World/Member/types/Player/PlayerAttrSchema";
-import type { PlayerRuntime } from "~/engine/core/World/Member/types/Player/types";
+} from "~/engine/core/World/Entity/Member/EffectBehavior/types";
+import type { MemberRuntime, MemberRuntimeServices } from "~/engine/core/World/Entity/Member/types";
 import { DefaultMobLocomotionProfile, PlayerLocomotionProfile } from "~/game/locomotion";
+import { createMobControlBehaviorBindings } from "~/game/toramOnline/entity/Mob/ControlBehavior/Bindings";
+import { createMobEffectBindings } from "~/game/toramOnline/entity/Mob/EffectBehavior/Bindings";
+import type { MobAttrKey } from "~/game/toramOnline/entity/Mob/Mob";
+import type { MobRuntime } from "~/game/toramOnline/entity/Mob/types";
+import { createPlayerControlBehaviorBindings } from "~/game/toramOnline/entity/Player/ControlBehavior/Bindings";
+import { createPlayerEffectBindings } from "~/game/toramOnline/entity/Player/EffectBehavior/Bindings";
+import type { PlayerAttrKey } from "~/game/toramOnline/entity/Player/PlayerAttrSchema";
+import type { PlayerRuntime } from "~/game/toramOnline/entity/Player/types";
 import { BehaviourTree, type BehaviourTreeOptions, State } from "~/lib/mistreevous";
 import type { Agent } from "~/lib/mistreevous/Agent";
 import type {
@@ -127,7 +123,7 @@ export const createPreviewBtRuntime = (memberType: MemberType, treeKind: BtKind)
 		expressionEvaluator: () => 0,
 		executeInstantDamage: null,
 		createDamageArea: null,
-		eventRecord: () => undefined,
+		eventPublish: () => undefined,
 		targetResolver: (_sourceMemberId, requestedTargetId) => requestedTargetId ?? "preview-target",
 		targetDirectionResolver: null,
 		random: () => 0.5,

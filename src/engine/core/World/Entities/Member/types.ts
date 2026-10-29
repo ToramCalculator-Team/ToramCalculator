@@ -1,10 +1,10 @@
 import { z } from "zod/v4";
-import type { SimulationTickContext } from "../../types";
+import type { AttributeContainerCheckpoint } from "~/engine/core/AttributeContainer/AttributeContainerTypes";
+import type { ExpressionContext } from "~/engine/core/JSProcessor/types";
+import type { SimulationTickContext } from "~/engine/core/types";
+import type { ResolvedDamageEffect } from "~/game/toramOnline/service/Damage/types";
+import type { WorldCharacterSkill, WorldSkillVariant } from "../../ScenarioSchema";
 import type { DamageAreaSpec } from "../Area/types";
-import type { ResolvedDamageEffect } from "../Damage/types";
-import type { ExpressionContext } from "../JSProcessor/types";
-import type { WorldCharacterSkill, WorldSkillVariant } from "../ScenarioSchema";
-import type { AttributeContainerCheckpoint } from "./AttributeContainer/AttributeContainerTypes";
 import type { EffectBtManagerCheckpoint } from "./EffectBehavior/types";
 import type { MemberFSMCheckpoint } from "./StateMachine/types";
 import type { StatusInstanceStoreCheckpoint } from "./Status/types";
@@ -86,8 +86,8 @@ export interface MemberRuntimeServices {
 	executeInstantDamage: ((effect: ResolvedDamageEffect) => void) | null;
 	/** 持续 Area 创建入口。 */
 	createDamageArea: ((spec: DamageAreaSpec) => string) | null;
-	/** 事件记录器 */
-	eventRecord: ((event: MemberEvent) => void) | null;
+	/** 事件发布器 */
+	eventPublish: ((event: MemberEvent) => void) | null;
 	/**
 	 * 目标解析器。
 	 *

@@ -1,4 +1,4 @@
-import type { Checkpointable } from "~/engine/core/World/Checkpoint";
+import type { Checkpointable } from "~/engine/core/Checkpoint";
 
 export type StatusType = string;
 

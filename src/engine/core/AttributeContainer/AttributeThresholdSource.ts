@@ -1,26 +1,13 @@
-/**
- * 属性阈值事件源（ADR 0010：AttributeWatcher 降格为 ProcBus 事件源）。
- *
- * 职责（与旧 `AttributeWatcherRegistry` 的区别）：
- * - 旧 watcher 是**独立订阅系统**：业务 handler 直接挂在它上面，跨越即调 handler。
- * - 本组件是**喂 ProcBus 的适配器**：它只订阅 `AttributeContainer.onChange`、检测跨越，
- *   跨越的那一刻 `emit("attr.crossed", payload)` 到成员内总线。业务响应统一改为
- *   订阅 ProcBus 的 `attr.crossed` 事件（在 predicate 里按 path + 阈值过滤）。
- *
- * 它不持有业务 handler、不返回供业务用的订阅 id；持有的「上次值」是纯派生状态，
- * checkpoint restore 后由安装逻辑重新 register 重建（与 ProcBus 订阅同样靠重放）。
- */
-
 import { createLogger } from "~/lib/logger";
-import type { AttributeContainer } from "../AttributeContainer/AttributeContainer";
-import type { NestedSchema, SchemaToAttrType } from "../AttributeContainer/SchemaTypes";
+import type { AttributeContainer } from "./AttributeContainer";
+import type { NestedSchema, SchemaToAttrType } from "./SchemaTypes";
 
 const log = createLogger("AttrThresholdSource");
 
 /** 阈值穿越方向。 */
 export type ThresholdDirection = "rising" | "falling" | "both";
 
-/** 派发 `attr.crossed` 的回调（由 Member 接到本成员 ProcBus.emit）。 */
+/** 派发 `attr.crossed` 的回调（由 Member 接到本成员 EventBus.emit）。 */
 export type AttrCrossedEmitter = (payload: {
 	sourceId: string;
 	registrationId: number;
@@ -47,7 +34,7 @@ export interface RegisterOptions {
 }
 
 /**
- * 每成员一个实例。`container` 用于读当前值 + 订阅变更；`emit` 把跨越事件送入 ProcBus。
+ * 每成员一个实例。`container` 用于读当前值 + 订阅变更；`emit` 把跨越事件送入 EventBus。
  */
 export class AttributeThresholdSource<TSchema extends NestedSchema> {
 	private readonly entries = new Map<number, ThresholdEntry>();
@@ -58,14 +45,14 @@ export class AttributeThresholdSource<TSchema extends NestedSchema> {
 		private emit: AttrCrossedEmitter | null,
 	) {}
 
-	/** 注入/替换 emit 回调（Member 在 setEventCatalog 接通 ProcBus 时调用）。 */
+	/** 注入/替换 emit 回调（Member 在 setEventCatalog 接通 EventBus 时调用）。 */
 	setEmitter(emit: AttrCrossedEmitter | null): void {
 		this.emit = emit;
 	}
 
 	/**
 	 * 注册一个被监控的阈值点。跨越时派发 `attr.crossed`。
-	 * 返回内部 id 仅供 `unregister` 使用；业务响应不依赖它（业务订阅 ProcBus）。
+	 * 返回内部 id 仅供 `unregister` 使用；业务响应不依赖它（业务订阅 EventBus）。
 	 */
 	register(
 		sourceId: string,
@@ -121,7 +108,7 @@ export class AttributeThresholdSource<TSchema extends NestedSchema> {
 		this.entries.clear();
 	}
 
-	/** 检测是否跨过阈值；跨过则 emit `attr.crossed` 到 ProcBus。 */
+	/** 检测是否跨过阈值；跨过则 emit `attr.crossed` 到 EventBus。 */
 	private handleChange(entry: ThresholdEntry, oldValue: number, newValue: number): void {
 		if (oldValue === newValue) return;
 		const crossed = this.detectCrossing(oldValue, newValue, entry.threshold, entry.direction);

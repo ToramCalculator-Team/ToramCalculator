@@ -6,10 +6,10 @@ import { createLogger } from "~/lib/logger";
 import type { Checkpointable } from "../Checkpoint";
 import type { QueueCheckpoint, QueueMessage, QueueSnapshot } from "./types";
 
-const log = createLogger("FsmMessageQueue");
+const log = createLogger("MessageQueue");
 log.setLevel(1);
 
-export class FsmMessageQueue implements Checkpointable<QueueCheckpoint> {
+export class MessageQueue implements Checkpointable<QueueCheckpoint> {
 	/**
 	 * 按执行时间分桶存储事件：
 	 * - 避免每 tick 对全量 events 做 filter（长时/快进模拟的结构性瓶颈）

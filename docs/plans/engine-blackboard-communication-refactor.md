@@ -259,8 +259,8 @@ export class OutputSnapshot {
 
 | 设施 | 进 checkpoint | 跨场景存活 | 可由定义重建 | 归属 |
 |------|:---:|:---:|:---:|------|
-| `FsmMessageQueue` 内容 | 是 | 否 | 否 | World |
-| `FsmMessageQueue` 机制（分桶、插入、去重、容量） | 否 | 否 | 是 | 可注入的过程 |
+| `MessageQueue` 内容 | 是 | 否 | 否 | World |
+| `MessageQueue` 机制（分桶、插入、去重、容量） | 否 | 否 | 是 | 可注入的过程 |
 | `EventBus` 订阅表 | 是 | 否 | 否 | World（按作用域分桶） |
 | `EventBus` 机制（分桶、mask 过滤、派发） | 否 | 否 | 是 | 可注入的过程 |
 | `jsProcessor` 编译缓存 | 否 | 是 | 是 | 引擎注入 |
@@ -437,7 +437,7 @@ Snapshot 是引擎核心领域模型，放顶层；布局与编解码是配套�
 
 - 删除：`MessageRouter/`、`ControlBindingManager`、`ControllerRegistry`、`ControllerEventProjector`、`DomainEventBus`。
 - 合并：`ProcBus` 并入 `EventBus`，成员私有总线不再单独存在。
-- 改名：`EventQueue` → `FsmMessageQueue`（它是定向投递未来动作的队列，不是事件总线）；`QueueEvent` → `PendingFsmMessage`；`QueueEventType` 的 `member_fsm_event` → `fsm_message`。
+- 改名：`EventQueue` → `MessageQueue`（它是定向投递未来动作的队列，不是事件总线）；`QueueEvent` → `PendingFsmMessage`；`QueueEventType` 的 `member_fsm_event` → `fsm_message`。
 - 删除回调：`systemMessageSender`、`controllerMovementInputSource`、`realtimeStateCommitCallback`。
 - 删除 RPC：`bind` / `unbind` / `attach_controller_input` / `send_intent`。
 - `Simulation.worker.ts` 的 `controllerInputReaders` 映射与 `lastStableState` 保留逻辑随之下线。
