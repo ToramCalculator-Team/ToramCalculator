@@ -56,6 +56,7 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 | [0021](./0021-aui-interface-state-machine.md) | AUI 状态机是跨模态交互状态的唯一来源 |
 | [0037](./0037-aui-supervises-local-session-actors.md) | AUI 作为顶层 actor 统辖局部 Session child，具体输入先进入 child，控制向下、提案与事实向上 |
 | [0049](./0049-engine-owns-terrain-physical-state.md) | 场景解析提供同源地形定义，引擎拥有地形上的完整物理位置权威，渲染层只生成网格并投影状态 |
+| [0061](./0061-reactor-model-as-engine-coordination-foundation.md) | Reactor 模型是引擎游戏系统的协调基础；APG 从端口连接派生，调度器对游戏内容零感知 |
 | [0050](./0050-realtime-state-transport-semantics.md)、[0055](./0055-worker-owned-shared-realtime-timeline.md) | 连续状态走 latest-state 单槽通道，离散动作走事件队列；Worker 拥有 Real / Virtual / Fixed 实时会话时间轴，渲染器按同一时间映射消费连续状态 |
 | [0052](./0052-realtime-world-state-uses-unified-sab.md) | 成员和区域的连续世界状态统一写入实时状态 SAB；UI 与渲染器只读一致的最新提交，渲染器不接收离散视觉事件 |
 | [0053](./0053-logical-state-output-and-render-mapping.md)、[0056](./0056-skill-behavior-state-and-wait-separation.md) | 逻辑引擎逐 Tick 输出成员逻辑状态描述；FSM 与行为流程 BT 汇合为单一动作状态，状态声明与生命周期等待分离，渲染器按状态名映射并推进动画，SAB 不携带动画时长、片段、进度或倍率 |
@@ -163,6 +164,7 @@ ADR 的文档分类、显著性准入、颗粒度、生命周期、关系和存�
 | [0058](./0058-member-behavior-tree-checkpoint-recovery.md) | Member 行为树检查点恢复边界 | Accepted | 引擎编排与检查点恢复 |
 | [0059](./0059-facts-published-on-subscription-driven-single-bus.md) | 对外事实由订阅驱动并从唯一引擎事件总线发布 | Accepted | 引擎通信 |
 | [0060](./0060-run-records-ordered-by-simulation-time.md) | 运行记录以模拟时间为权威顺序轴 | Accepted | 运行记录与线程通信 |
+| [0061](./0061-reactor-model-as-engine-coordination-foundation.md) | 以 Reactor 模型作为引擎游戏系统的协调基础 | Accepted | 引擎计算层 |
 
 ## 决策候选与实施计划
 
