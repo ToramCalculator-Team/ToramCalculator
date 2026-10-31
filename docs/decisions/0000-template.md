@@ -2,18 +2,12 @@
 
 - **状态**: Proposed | Accepted | Rejected | Deprecated | Withdrawn | Superseded by NNNN
 - **日期**: YYYY-MM-DD
-- **决策层**: 数据层 / 计算层 / 编排层 / 通信 / 应用层 / 跨层
 - **相关代码**: `path/to/file.ts`（可选，多条）
 - **相关 ADR**: Supersedes / Depends on / Refines / Conflicts with NNNN（可选）
 
 ## 决策问题
 
 说明现在必须决定什么，以及这个问题为什么有多个真实可行的答案。只保留理解决策所需的事实。
-
-## 决策驱动
-
-- 真正改变选择结果的约束或质量属性，通常不超过五项。
-- 不列一般愿望、实施任务或候选方案本身。
 
 ## 候选方案
 
