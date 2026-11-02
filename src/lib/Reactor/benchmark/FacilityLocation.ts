@@ -1,6 +1,7 @@
 /**
  * Typescript runtime implementation of Online Facility Location benchmark program
  * of Savina benchmark suite.
+ * Savina 基准测试套件中 Online Facility Location 程序的 TypeScript 运行时实现。
  *
  * @author Hokeun Kim (hokeunkim@berkeley.edu)
  */
@@ -96,6 +97,7 @@ enum Position {
 
 // TODO (axmmisaka): delete this, or at least investigate what this is for?
 // This looks very java-like and doesn't do anything in ts I guess......
+// TODO：删除此类，或至少调查其用途。它看起来很像 Java 写法，在 TypeScript 中似乎没有实际作用。
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 abstract class Msg {}
 
@@ -123,6 +125,7 @@ class CustomerMsg extends Msg {
 	// The producer variable is not needed since hasQuadrantProducer
 	// is used to determin whether a quadrant producer (parent) exists and
 	// toProducer is used for a port to the producer.
+	// 无需保存 producer 变量：`hasQuadrantProducer` 用于判断是否存在象限生产者（父级），`toProducer` 则是连接到生产者的端口。
 	point: Point;
 
 	constructor(point: Point) {
@@ -140,6 +143,7 @@ class ConfirmExitMsg extends Msg {
 
 	// This 'quadrantReactors' is additional information for reactor-ts.
 	// And it is not in the Akka-version implementation.
+	// `quadrantReactors` 是 reactor-ts 增加的信息，Akka 版本的实现中没有此字段。
 	quadrantReactors: number;
 
 	constructor(facilities: number, supportCustomers: number, quadrantReactors: number) {
@@ -151,12 +155,15 @@ class ConfirmExitMsg extends Msg {
 }
 
 // Top level producer reactor that is not a quadrant.
+// 顶层生产者反应器，本身不是一个象限。
 export class Producer extends Reactor {
 	// TODO(hokeun): Consider using NextCustomerMsg from the rootQuadrant as a trigger
 	// instead of using this nextCustomer action with some delay.
 	// Without some delay, it will become a zero-dely loop.
 	// Note that either way we can implement the benchmark correctly.
 	// It will be just a matter of style (using actions vs. messages).
+	// TODO：考虑使用 rootQuadrant 发出的 NextCustomerMsg 作为触发器，替代带延迟的 nextCustomer 动作。
+	// 若不添加延迟，就会形成零延迟循环。两种方式都能正确实现基准测试，区别仅在于采用动作还是消息。
 	nextCustomer: Action<NextCustomerMsg>;
 
 	numPoints: Parameter<number>;
@@ -186,13 +193,17 @@ export class Producer extends Reactor {
 				if (itemsProduced.get() < numPoints.get()) {
 					// Send CustomerMsg to the consumer.
 					// `this` is reaction, and parent is reactor containing this reaction.
+					// 向消费者发送 CustomerMsg。此处的 `this` 是反应，其 parent 是包含该反应的反应器。
 					toConsumer.set(new CustomerMsg(Point.random(gridSize.get())));
 					// Increase itemsProduced by 1.
+					// 将已生成项目数加一。
 					itemsProduced.set(itemsProduced.get() + 1);
 					// Schedule next customer (NextCustomerMsg).
+					// 调度下一个客户（NextCustomerMsg）。
 					nextCustomer.schedule(0, new NextCustomerMsg());
 				} else {
 					// TODO(hokeun): Replace this with sending RequestExitMsg.
+					// TODO：改为发送 RequestExitMsg。
 					toConsumer.set(new RequestExitMsg());
 				}
 			},
@@ -201,6 +212,7 @@ export class Producer extends Reactor {
 }
 
 // Global helper functions used by both the Quadrant reactor's constructor and reaction.
+// Quadrant 反应器的构造函数和反应共同使用的全局辅助函数。
 function findCost(point: Point, localFacilities: State<Point[]>): number {
 	let result = Number.MAX_VALUE;
 	localFacilities.get().forEach((loopPoint) => {
@@ -248,6 +260,7 @@ export class Summary extends Reactor {
 
 export class Accumulator extends Reactor {
 	// TODO(hokeun): After implementing multiports, change these into a multiport, fromQuadrants.
+	// TODO：实现多端口后，将这些端口替换为名为 fromQuadrants 的多端口。
 	fromFirstQuadrant = new InPort<ConfirmExitMsg>(this);
 
 	fromSecondQuadrant = new InPort<ConfirmExitMsg>(this);
@@ -350,6 +363,7 @@ export class Quadrant extends Reactor {
 	toProducer = new OutPort<Msg>(this);
 
 	// TODO(hokeun): After implementing multiports, change these into a multiport, toChildren.
+	// TODO：实现多端口后，将这些端口替换为名为 toChildren 的多端口。
 	toFirstChild = new OutPort<Msg>(this);
 
 	toSecondChild = new OutPort<Msg>(this);
@@ -359,6 +373,7 @@ export class Quadrant extends Reactor {
 	toFourthChild = new OutPort<Msg>(this);
 
 	// Only the ConfirmExitMsg goes through toAccumulator port.
+	// 只有 ConfirmExitMsg 会通过 toAccumulator 端口。
 	toAccumulator = new OutPort<ConfirmExitMsg>(this);
 
 	// States.
@@ -374,6 +389,7 @@ export class Quadrant extends Reactor {
 
 	// hasChildren, firstChild, secondChild, thirdChild, fourthChild are used for
 	// children in Akka actor implementation.
+	// Akka actor 实现使用 hasChildren、firstChild、secondChild、thirdChild 和 fourthChild 表示子节点。
 	hasChildren = new State<boolean>(false);
 
 	childrenBoundaries = new State<Box[]>([] as Box[]);
@@ -407,6 +423,7 @@ export class Quadrant extends Reactor {
 		// console.log(`New Quadrant actor created. boundary: ${this.boundary.get()}`)
 
 		// Startup reaction for initialization of state variables using given parameters.
+		// 启动反应：根据给定参数初始化状态变量。
 		this.addReaction(
 			[this.startup],
 			[
@@ -423,6 +440,7 @@ export class Quadrant extends Reactor {
 				this.maxDepthOfKnownOpenFacility,
 				this.supportCustomers,
 				// Statie variable totalCost is initialized inside addCustomer().
+				// 状态变量 totalCost 在 addCustomer() 中初始化。
 				this.totalCost,
 			],
 			function (
@@ -460,6 +478,7 @@ export class Quadrant extends Reactor {
 		);
 
 		// Main mutation reaction for QuadrantActor.process() of Akka implementation.
+		// 对应 Akka 实现中 QuadrantActor.process() 的主要变更反应。
 		this.addMutation(
 			[this.fromProducer],
 			[
@@ -521,6 +540,7 @@ export class Quadrant extends Reactor {
 				const toAccumulatorUpstreams: Array<IOPort<ConfirmExitMsg>> = [];
 
 				// Helper functions for mutation reaction.
+				// 变更反应使用的辅助函数。
 				const notifyParentOfFacility = (p: Point): void => {
 					if (hasQuadrantProducer.get()) {
 						toProducer.set(new FacilityMsg(positionRelativeToParent.get(), depth.get(), p, true));
@@ -547,6 +567,7 @@ export class Quadrant extends Reactor {
 					// console.log(`Children boundaries: ${childrenBoundaries.get()[0]}, ${childrenBoundaries.get()[1]}, ${childrenBoundaries.get()[2]}, ${childrenBoundaries.get()[3]}`)
 					const accumulator = new Accumulator(thisReactor);
 					// Connect Accumulator's output to Quadrant's output.
+					// 将 Accumulator 的输出连接到 Quadrant 的输出。
 					toAccumulatorUpstreams.push(accumulator.toNextAccumulator);
 					this.connect(accumulator.toNextAccumulator.asConnectable(), toAccumulatorC);
 
@@ -613,6 +634,7 @@ export class Quadrant extends Reactor {
 					supportCustomers.set([] as Point[]);
 					// Indicate that children quadrant actors have been created.
 					// After this partition() will never be called.
+					// 标记子象限 actor 已创建。此后不会再调用 partition()。
 					hasChildren.set(true);
 				};
 
@@ -622,16 +644,19 @@ export class Quadrant extends Reactor {
 					case CustomerMsg: {
 						// Handling CustomerMsg for a new customoer.
 						// This message is propagated from root to the leaf facility.
+						// 处理新客户的 CustomerMsg。此消息从根节点逐级传递到叶子设施。
 						// console.log(`Quadrant at ${facility.get()} - Received CustomerMsg: ${(<CustomerMsg>msg).point}`)
 						const point = (msg as CustomerMsg).point;
 						if (!hasChildren.get()) {
 							// No open facility, thus, addCustomer(), then partition().
+							// 当前没有已开放的设施，因此先调用 addCustomer()，再执行 partition()。
 							addCustomer(point, localFacilities, supportCustomers, totalCost);
 							if (totalCost.get() > threshold.get()) {
 								partition();
 							}
 						} else {
 							// A facility is already open, propagate customer to correct child.
+							// 设施已开放，将客户转发到对应的子象限。
 							// console.log(`Quadrant at ${facility.get()} - A child facility is already open.`)
 							for (let i = 0; i < childrenBoundaries.get().length; i++) {
 								if (childrenBoundaries.get()[i].contains(point)) {
@@ -658,6 +683,7 @@ export class Quadrant extends Reactor {
 					case RequestExitMsg:
 						if (!hasChildren.get()) {
 							// No children, number of facilities will be counted on parent's side.
+							// 没有子节点时，设施数量由父级统计。
 							toAccumulatorUpstreams.forEach((val) => {
 								this.disconnect(val, toAccumulatorC.getPort());
 							});

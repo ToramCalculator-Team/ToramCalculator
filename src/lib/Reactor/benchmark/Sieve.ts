@@ -51,6 +51,7 @@ class Filter extends Reactor {
 	constructor(parent: Reactor, startPrime: number, numberOfPrimes: number) {
 		super(parent);
 		// console.log("Created filter with prime: " + prime)
+		// 输出新建筛选器及其质数的调试信息。
 		this.startPrime = new Parameter(startPrime);
 		this.localPrimes = new State([] as number[]);
 		this.hasChild = new State(false);
@@ -76,6 +77,7 @@ class Filter extends Reactor {
 							console.log(`Found new prime number ${p}`);
 						} else {
 							// Potential prime found.
+							// 找到可能的质数。
 							if (!hasChild.get()) {
 								const n = new Filter(this.getReactor(), p, numberOfPrimes);
 								// this.start(n)
@@ -83,10 +85,12 @@ class Filter extends Reactor {
 								// let x = this.create(Filter, [this.getReactor(), p])
 								// console.log("CREATED: " + x._getFullyQualifiedName())
 								// FIXME: weird hack. Maybe just accept writable ports as well?
+								// FIXME：此处使用了不寻常的变通方式；或许也可以直接接受可写端口？
 								this.connect(outC, n.inp.asConnectable());
 								// FIXME: this updates the dependency graph, but it doesn't redo the topological sort
 								// For a pipeline like this one, it is not necessary, but in general it is.
 								// Can we avoid redoing the entire sort?
+								// FIXME：此操作会更新依赖图，但不会重新执行拓扑排序。对此流水线无需重排，但一般情况下需要。能否避免每次都完整重排？
 								hasChild.set(true);
 							} else {
 								outW.set(p);

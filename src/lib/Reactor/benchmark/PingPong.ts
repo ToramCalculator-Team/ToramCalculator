@@ -21,12 +21,14 @@ export class Ping extends Reactor {
 				let pingsLeft = count.get();
 				while (pingsLeft > 0) {
 					// console.log("Ping!")
+					// 输出 Ping 调试信息。
 					const ret = __client.invoke(pingsLeft);
 					if (ret !== 0) pingsLeft -= 1;
 				}
 				const elapsedTime = this.util.getCurrentPhysicalTime().subtract(startTime);
 				console.log(`Elapsed time: ${elapsedTime}`);
 				// this.util.requestShutdown();
+				// 请求关闭运行时。
 			},
 		);
 		this.addReaction(
@@ -34,6 +36,7 @@ export class Ping extends Reactor {
 			[this.client, this.count],
 			function (this, __client: CallerPort<number, number>, count: Parameter<number>) {
 				// Dummy
+				// 空操作。
 			},
 		);
 	}
@@ -52,8 +55,10 @@ export class Pong extends Reactor {
 		});
 		this.addReaction([this.server], [this.server], function (this, __server: CalleePort<number, number>) {
 			// console.log("Pong!")
+			// 输出 Pong 调试信息。
 			const msg = __server.get();
 			// TODO (axmmisaka): the old behaviour is if msg is falsy; i.e. undefined or 0.
+			// TODO：旧行为会在 `msg` 为假值时执行，即其值为 undefined 或 0。
 			if (msg !== undefined) __server.return(msg);
 		});
 		this.addReaction(
@@ -86,8 +91,11 @@ export class PingPong extends App {
 	}
 }
 // =============== END reactor class PingPong
+// =============== PingPong 反应器类结束
 
 // ************* Instance PingPong of class PingPong
+// ************* 创建 PingPong 类的实例
 const _app = new PingPong("PingPong", undefined, false, true);
 // ************* Starting Runtime for PingPong of class PingPong
+// ************* 启动 PingPong 类实例的运行时
 _app._start();

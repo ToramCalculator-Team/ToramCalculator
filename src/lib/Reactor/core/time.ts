@@ -1,5 +1,6 @@
 /**
  * Units (and conversion factors from nanoseconds) for time values.
+ * 时间值使用的单位，以及从纳秒换算到各单位的换算因子。
  **/
 export enum TimeUnit {
 	nsec = 1,
@@ -21,6 +22,8 @@ export enum TimeUnit {
  * nanoseconds in the interval. This class serves as a base class for
  * `UnitBasedTimeValue`, which provides the convenience of defining time values
  * as a single number accompanied by a unit.
+ * 纳秒精度的时间值。为避免单个 JavaScript 数字在长时间间隔上溢出，使用两个数字分别保存整秒数和剩余纳秒数。
+ * 本类是 `UnitBasedTimeValue` 的基类，后者允许用一个数值和单位定义时间值。
  * @see TimeUnit
  * @see UnitBasedTimeValue
  */
@@ -28,6 +31,7 @@ export class TimeValue {
 	/**
 	 * Create a new time value. Both parameters must be non-negative integers;
 	 * an error will be thrown otherwise. The second parameter is optional.
+	 * 创建新的时间值。两个参数都必须是非负整数，否则会抛出错误。第二个参数可选。
 	 * @param seconds Number of seconds in the interval.
 	 * @param nanoseconds Remaining number of nanoseconds (defaults to zero).
 	 */
@@ -91,22 +95,27 @@ export class TimeValue {
 	}
 
 	// FIXME: Add more convenience methods
+	// FIXME：增加更多便捷方法。
 
 	/**
 	 * Return a new time value that denotes the duration of the time interval
 	 * encoded by this time value plus the time interval encoded by the time
 	 * value given as a parameter.
+	 * 返回一个新时间值，其时长为当前时间值与参数时间值之和。
 	 * @param other The time value to add to this one.
 	 */
 	add(other: TimeValue): TimeValue {
 		if ((this.isNever() && other.isForever()) || (this.isForever() && other.isNever())) {
 			// The sum of minus infinity and infinity is zero.
+			// 负无穷与正无穷之和为零。
 			return TimeValue.zero();
 		} else if (this.isNever() || other.isNever()) {
 			// The sum of minus infinity and a normal tag is minus infinity.
+			// 负无穷与有限时间值之和为负无穷。
 			return TimeValue.never();
 		} else if (this.isForever() || other.isForever()) {
 			// The sum of infinity and a normal tag is infinity.
+			// 正无穷与有限时间值之和为正无穷。
 			return TimeValue.forever();
 		}
 		let seconds = this.seconds + other.seconds;
@@ -114,13 +123,16 @@ export class TimeValue {
 
 		if (nanoseconds >= TimeUnit.sec.valueOf()) {
 			// Carry the second.
+			// 向秒位进位。
 			seconds += 1;
 			nanoseconds -= TimeUnit.sec;
 		}
 
 		// Check an overflow.
+		// 检查是否溢出。
 		if (!Number.isSafeInteger(seconds)) {
 			// The overflow happens.
+			// 已发生溢出。
 			return TimeValue.forever();
 		} else {
 			return TimeValue.secsAndNs(seconds, nanoseconds);
@@ -131,6 +143,7 @@ export class TimeValue {
 	 * Return a new time value that denotes the duration of the time interval
 	 * encoded by this time value minus the time interval encoded by the time
 	 * value given as a parameter.
+	 * 返回一个新时间值，其时长为当前时间值减去参数时间值。
 	 * @param other The time value to subtract from this one.
 	 */
 	subtract(other: TimeValue): TimeValue {
@@ -139,6 +152,7 @@ export class TimeValue {
 
 		if (ns < 0) {
 			// Borrow a second
+			// 借一秒。
 			s -= 1;
 			ns += TimeUnit.sec;
 		}
@@ -155,6 +169,7 @@ export class TimeValue {
 
 		if (nanoseconds >= TimeUnit.sec.valueOf()) {
 			// Carry seconds.
+			// 向秒位进位。
 			const carry = Math.floor(nanoseconds / TimeUnit.sec);
 			seconds += carry;
 			nanoseconds -= carry * TimeUnit.sec;
@@ -173,6 +188,7 @@ export class TimeValue {
 	/**
 	 * Return true if this time value denotes a time interval of equal length as
 	 * the interval encoded by the time value given as a parameter.
+	 * 判断当前时间值表示的时长是否与参数时间值相等。
 	 * @param other The time value to compare to this one.
 	 */
 	isEqualTo(other: TimeValue): boolean {
@@ -181,6 +197,7 @@ export class TimeValue {
 
 	/**
 	 * Return true if this denotes a time interval of length zero.
+	 * 判断此时间值表示的时间间隔是否为零。
 	 */
 	isZero(): boolean {
 		if (this.seconds === 0 && this.nanoseconds === 0) {
@@ -210,9 +227,11 @@ export class TimeValue {
 	 * Return true if this time value denotes a time interval of smaller length
 	 * than the time interval encoded by the time value given as a parameter;
 	 * return false otherwise.
+	 * 判断当前时间值表示的时长是否小于参数时间值；否则返回 false。
 	 *
 	 * NOTE: Performing this comparison involves a conversion to a big integer
 	 * and is therefore relatively costly.
+	 * 注意：此比较需要转换为大整数，因此开销相对较高。
 	 *
 	 * @param other The time value to compare to this one.
 	 * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt|BigInt} for further information.
@@ -229,6 +248,7 @@ export class TimeValue {
 
 	/**
 	 * Return true if this time value is later than the time given as a parameter.
+	 * 判断此时间值是否晚于给定时间。
 	 *
 	 * @param other The time value to compare to this one.
 	 */
@@ -244,6 +264,7 @@ export class TimeValue {
 
 	/**
 	 * Return a millisecond representation of this time value.
+	 * 返回此时间值对应的毫秒数。
 	 */
 	public toMilliseconds(): number {
 		return this.seconds * 1000 + Math.ceil(this.nanoseconds / 1000000);
@@ -252,6 +273,7 @@ export class TimeValue {
 	/**
 	 * Print the number of seconds and nanoseconds in the time interval encoded
 	 * by this time value.
+	 * 返回此时间值表示的秒数和纳秒数。
 	 */
 	public toString(): string {
 		return `(${this.seconds} secs; ${this.nanoseconds} nsecs)`;
@@ -260,6 +282,7 @@ export class TimeValue {
 	/**
 	 * Return a tuple that holds the seconds and remaining nanoseconds that
 	 * jointly represent this time value.
+	 * 返回一个元组，其中的秒数和剩余纳秒数共同表示此时间值。
 	 */
 	public toTimeTuple(): [number, number] {
 		return [this.seconds, this.nanoseconds];
@@ -270,6 +293,7 @@ export class TimeValue {
 	 *
 	 * The value is a `number` that is required to be
 	 * a positive integer. The time unit must be a member of the `TimeUnit` enum.
+	 * 根据数值和时间单位创建新的时间值。数值必须为正整数，时间单位必须属于 `TimeUnit` 枚举。
 	 * @param value A number (which must be a positive integer) that denotes
 	 * the length of the specified time interval, expressed as a multiple of
 	 * the given time unit.
@@ -287,6 +311,7 @@ export class TimeValue {
 		const billion = BigInt(TimeUnit.sec);
 
 		// To avoid overflow and floating point errors, work with BigInts.
+		// 为避免溢出和浮点误差，使用 BigInt 进行运算。
 		const bigT = BigInt(value) * BigInt(unit);
 		const bigSeconds = bigT / billion;
 
@@ -302,15 +327,19 @@ export class TimeValue {
  * time elapsed since Epoch) paired with a microstep index to keep track of
  * iterations in superdense time. For each such iteration, `time` remains
  * the same, but `microstep` is incremented.
+ * 超密集时间中的一个时刻，由时间值 `time`（即自纪元以来经过的时间）和微步索引组成，用于跟踪超密集时间中的迭代。
+ * 每次迭代中，`time` 保持不变，`microstep` 递增。
  */
 export class Tag {
 	/**
-	 * Time elapsed since Epoch.
+		 * Time elapsed since Epoch.
+	 * 自纪元以来经过的时间。
 	 */
 	readonly time: TimeValue;
 
 	/**
 	 * Create a new tag using a time value and a microstep.
+	 * 使用时间值和微步创建新标签。
 	 * @param timeSinceEpoch Time elapsed since Epoch.
 	 * @param microstep Superdense time index.
 	 */
@@ -378,6 +407,8 @@ export class Tag {
 	 * the returned time instant has a `microstep` of zero if the delay
 	 * is greater than zero. If the delay equals zero or is undefined,
 	 * the tag is returned unchanged with its current `microstep`.
+	 * 获取表示当前时刻加上给定延迟的新时刻。当前时刻的 `microstep` 会被忽略；延迟大于零时，返回时刻的 `microstep` 为零。
+	 * 延迟为零或未定义时，原样返回当前标签及其 `microstep`。
 	 * @param delay The time interval to add to this time instant.
 	 */
 	getLaterTag(delay: TimeValue | undefined): Tag {
@@ -392,6 +423,7 @@ export class Tag {
 
 	/**
 	 * Get a new time instant that has the same `time` but n `microsteps` later.
+	 * 获取时间值相同、但微步向后移动 n 步的新时刻。
 	 */
 	getMicroStepsLater(n: number): Tag {
 		return new Tag(this.time, this.microstep + n);
@@ -413,6 +445,7 @@ export class Tag {
 
 	/**
 	 * Return a human-readable string presentation of this time instant.
+	 * 返回此时刻的可读字符串表示。
 	 */
 	public toString(): string {
 		return `(${this.time.toString()}, ${this.microstep})`;
@@ -425,6 +458,7 @@ export class Tag {
  * A descriptor to be used when scheduling events to denote as to whether
  * an event should occur with a delay relative to _physical time_ or _logical
  * time_.
+ * 调度事件时使用的描述符，用于指明事件延迟相对于物理时间还是逻辑时间。
  */
 export enum Origin {
 	physical = "physical",

@@ -7,6 +7,7 @@ import { Log } from "./util";
 
 /**
  * Function to convert a string into a LogLevel for command line argument parsing.
+ * 将字符串转换为供命令行参数解析使用的 LogLevel。若输入格式不正确，则返回 null。
  * Returns null if the input is malformed.
  * @param logging the raw command line argument
  */
@@ -21,6 +22,7 @@ export function loggingCLAType(logging: string): Log.LogLevel | null {
 
 /**
  * Function to convert a string into a UnitBasedTimeValue for command line argument parsing
+ * 将字符串转换为供命令行参数解析使用的 UnitBasedTimeValue。若输入格式不正确，则返回 null。
  * Returns null if the input is malformed.
  * @param logging the raw command line argument
  */
@@ -63,6 +65,7 @@ export function unitBasedTimeValueCLAType(timeout: string): TimeValue | null {
  * actually a flag that is either absent or true. https://github.com/75lb/command-line-args/wiki/Notation-rules
  * We need this custom boolean parsing because our command line arguments
  * are true, false, or absent.
+ * 命令行参数的布尔值可能为 true、false 或未提供，因此需要此自定义布尔解析器。
  * @param logging the raw command line argument
  */
 export function booleanCLAType(bool: string): boolean | null {
@@ -77,6 +80,7 @@ export function booleanCLAType(bool: string): boolean | null {
 
 /**
  * Function to return an argument string as is.
+ * 原样返回参数字符串。
  */
 export function stringCLAType(arg: string): string {
 	return arg;
@@ -89,6 +93,7 @@ export function stringCLAType(arg: string): string {
 /**
  * The type returned by the commandLineArguments function. This type must change
  * if the CommandLineOptionDefs changes.
+ * `commandLineArguments` 函数的返回类型。`CommandLineOptionDefs` 变更时，也必须相应修改此类型定义。
  */
 export interface ProcessedCommandLineArgs {
 	fast: boolean | undefined;
@@ -112,6 +117,7 @@ export type CommandLineOptionSpec = Array<{
  * Configuration for command line arguments.
  * If this configuration changes, the ProcessedCommandLineArgs type must
  * change too.
+ * 命令行参数的配置。若此配置发生变化，`ProcessedCommandLineArgs` 类型也必须相应修改。
  */
 export const CommandLineOptionDefs: CommandLineOptionSpec = [
 	{
@@ -177,6 +183,7 @@ export const CommandLineOptionDefs: CommandLineOptionSpec = [
 /**
  * Configuration for command line argument usage information.
  * Note: The order of the elements in the list is important.
+ * 命令行参数用法信息的配置。列表中各元素的顺序很重要。
  */
 export const CommandLineUsageDefs: Array<{
 	header: string;

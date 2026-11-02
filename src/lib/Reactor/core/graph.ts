@@ -1,6 +1,7 @@
 /**
  * @file A collection of classes for handling graphs.
  * @author Marten Lohstroh <marten@berkeley.edu>
+ * 用于处理图结构的类集合。
  */
 
 import { Reaction } from "./reaction";
@@ -9,20 +10,24 @@ import { Log } from "./util";
 
 /**
  * A generic precedence graph.
+ * 通用优先关系图。
  */
 export class PrecedenceGraph<T> {
 	/**
 	 * A map from nodes to the set of their upstream neighbors.
+	 * 将节点映射到其所有上游邻居集合的映射表。
 	 */
 	protected adjacencyMap = new Map<T, Set<T>>();
 
 	/**
 	 * The total number of edges in the graph.
+	 * 图中的边总数。
 	 */
 	protected numberOfEdges = 0;
 
 	/**
 	 * Add all the nodes and edges from the given precedence graph to this one.
+	 * 将给定优先关系图中的所有节点和边合并到当前图中。
 	 * @param pg A precedence graph
 	 */
 	addAll(pg: this): void {
@@ -54,6 +59,7 @@ export class PrecedenceGraph<T> {
 
 	/**
 	 * Return the set of all downstream neighbors of the given node.
+	 * 返回指定节点的所有下游邻居。
 	 * @param node The node to retrieve the outgoing nodes of.
 	 */
 	getDownstreamNeighbors(node: T): Set<T> {
@@ -70,6 +76,7 @@ export class PrecedenceGraph<T> {
 
 	/**
 	 * Return the set of all upstream neighbors of the given node.
+	 * 返回指定节点的所有上游邻居。
 	 * @param node The node to retrieve the incoming nodes of.
 	 */
 	getUpstreamNeighbors(node: T): Set<T> {
@@ -78,6 +85,7 @@ export class PrecedenceGraph<T> {
 
 	/**
 	 * Return true if the graph has a cycle in it.
+	 * 若图中存在环则返回 true。
 	 */
 	hasCycle(): boolean {
 		const stack: T[] = [];
@@ -115,6 +123,8 @@ export class PrecedenceGraph<T> {
 
 	/**
 	 * Remove the given node from the graph.
+	 * 从图中移除指定节点及与其关联的边。
+	 * 从图中删除指定节点及其关联的边。
 	 * @param node The node to remove.
 	 */
 	removeNode(node: T): void {
@@ -133,6 +143,7 @@ export class PrecedenceGraph<T> {
 
 	/**
 	 * Add an edge from an upstream node to a downstream one.
+	 * 添加一条从上游节点指向下游节点的有向边。
 	 * @param upstream The node at which the directed edge starts.
 	 * @param downstream The node at which the directed edge ends.
 	 */
@@ -157,6 +168,7 @@ export class PrecedenceGraph<T> {
 
 	/**
 	 * Remove a directed edge from an upstream node to a downstream one.
+	 * 删除一条从上游节点指向下游节点的有向边。
 	 * @param upstream The node at which the directed edge starts.
 	 * @param downstream The node at which the directed edge ends.
 	 */
@@ -170,6 +182,7 @@ export class PrecedenceGraph<T> {
 
 	/**
 	 * Return the size of the graph in terms of number of nodes and edges.
+	 * 返回图的大小，包含节点数和边数。
 	 */
 	size(): [number, number] {
 		return [this.adjacencyMap.size, this.numberOfEdges];
@@ -177,6 +190,7 @@ export class PrecedenceGraph<T> {
 
 	/**
 	 * Return an iterator over the nodes in the graph.
+	 * 返回遍历图中节点的迭代器。
 	 */
 	getNodes(): IterableIterator<T> {
 		return this.adjacencyMap.keys();
@@ -186,8 +200,9 @@ export class PrecedenceGraph<T> {
 
 	/**
 	 * Return a representation that conforms with the syntax of mermaid.js
+	 * 返回符合 Mermaid.js 语法的图表示。
 	 * @param edgesWithIssue An array containing arrays with [origin, effect].
-	 * Denotes edges in the graph that causes issues to the execution, will be visualized as `--x` in mermaid.
+	 * 表示 `[origin, effect]` 边对的数组。导致执行问题的边会在 Mermaid 图中显示为 `--x`。
 	 */
 	toMermaidString(edgesWithIssue?: Array<[T, T]>): string {
 		if (edgesWithIssue == null) edgesWithIssue = [];
@@ -227,6 +242,7 @@ export class PrecedenceGraph<T> {
 
 	/**
 	 * Return a DOT representation of the graph.
+	 * 返回此图的 DOT 格式表示。
 	 */
 	toDotString(): string {
 		let dot = "";
@@ -315,6 +331,7 @@ export class PrecedenceGraph<T> {
 
 	/**
 	 * Return the nodes in the graph that have no upstream neighbors.
+	 * 返回图中没有上游邻居的节点。
 	 */
 	public getSourceNodes(): Set<T> {
 		const roots = new Set<T>();
@@ -329,6 +346,7 @@ export class PrecedenceGraph<T> {
 
 	/**
 	 * Return the nodes in the graph that have no downstream neighbors.
+	 * 返回图中没有下游邻居的节点。
 	 */
 	public getSinkNodes(): Set<T> {
 		const leafs = new Set<T>(this.getNodes());
@@ -343,6 +361,7 @@ export class PrecedenceGraph<T> {
 
 /**
  * A precedence graph with nodes that are sortable by assigning a numeric priority.
+ * 由可通过分配数值优先级进行排序的节点构成的优先关系图。
  */
 export class SortablePrecedenceGraph<T extends Sortable<number>> extends PrecedenceGraph<T> {
 	/**
@@ -394,6 +413,7 @@ export class SortablePrecedenceGraph<T extends Sortable<number>> extends Precede
 	 * Assign priorities to the nodes of the graph such that any two nodes of
 	 * which one has precedence over the other, the priority of the one node is
 	 * lower than the other.
+	 * 为图中节点分配优先级，使任意一对存在先后关系的节点中，先发生的节点具有较低的优先级值。
 	 *
 	 * @param destructive Destroy the graph structure if true, leave it in tact by
 	 * working on a copy if false (the default).
@@ -474,6 +494,7 @@ export class SortablePrecedenceGraph<T extends Sortable<number>> extends Precede
 
 /**
  * A sortable precedence graph for reactions.
+ * 用于反应的可排序优先关系图。
  */
 export class ReactionGraph extends SortablePrecedenceGraph<Reaction<Variable[]>> {
 	constructor(pg?: PrecedenceGraph<unknown>) {

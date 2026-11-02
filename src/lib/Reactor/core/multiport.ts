@@ -9,6 +9,7 @@ import type { Absent, MultiRead, Variable } from "./types";
 /**
  * A trigger that represents a multiport. All of channels of a multiport can be read.
  * To obtain a writable version, see @link{Reactor.allWritable()}.
+ * 表示多端口的触发器。多端口的所有通道都可读取；若要获取可写版本，请参阅 `Reactor.allWritable()`。
  *
  * @author Marten Lohstroh <marten@berkeley.edu>
  * @author Hokeun Kim <hokeun@berkeley.edu>
@@ -18,17 +19,20 @@ export abstract class MultiPort<T> extends Trigger implements MultiRead<T> {
 
 	/**
 	 * Return all channels of this multiport.
+	 * 返回此多端口的所有通道。
 	 */
 	abstract channels(): Array<IOPort<T>>;
 
 	/**
 	 * Return the channel identified by the given index.
+	 * 返回指定索引对应的通道。
 	 * @param index the index of the requested channel
 	 */
 	abstract channel(index: number): IOPort<T>;
 
 	/**
 	 * The channels of this multiport.
+	 * 此多端口包含的通道。
 	 */
 	protected _channels: Array<IOPort<T>>;
 
@@ -38,6 +42,7 @@ export abstract class MultiPort<T> extends Trigger implements MultiRead<T> {
 	/**
 	 * Given an array of ports (channels), return an array holding the ports'
 	 * current values.
+	 * 根据端口（通道）数组，返回包含各端口当前值的数组。
 	 * @param ports the ports to return the values of
 	 * @returns the current values of the given ports
 	 */
@@ -51,6 +56,7 @@ export abstract class MultiPort<T> extends Trigger implements MultiRead<T> {
 
 	/**
 	 * Construct a new multiport.
+	 * 创建一个新的多端口。
 	 * @param container the reactor that will contain the new instance
 	 * @param width the number of channels of newly created instance
 	 */
@@ -65,6 +71,7 @@ export abstract class MultiPort<T> extends Trigger implements MultiRead<T> {
 
 	/**
 	 * Obtain a writable version of this port, provided that the caller holds the required key.
+	 * 调用方持有所需密钥时，获取此端口的可写版本。
 	 * @param key
 	 */
 	public asWritable(key: symbol | undefined): WritableMultiPort<T> {
@@ -89,6 +96,7 @@ export abstract class MultiPort<T> extends Trigger implements MultiRead<T> {
 
 	/**
 	 * Return whether this multiport has any channels that are present.
+	 * 返回此多端口是否有通道在当前逻辑时间存在。
 	 * @returns true if there are any present channels
 	 */
 	isPresent(): boolean {
@@ -97,6 +105,7 @@ export abstract class MultiPort<T> extends Trigger implements MultiRead<T> {
 
 	/**
 	 * Return the number of channels of this multiport.
+	 * 返回此多端口的通道数。
 	 * @returns the number of channels
 	 */
 	public width(): number {
@@ -106,6 +115,7 @@ export abstract class MultiPort<T> extends Trigger implements MultiRead<T> {
 	/**
 	 * Return an array of which the elements represent the current value of
 	 * each channel, which may either be present or absent (i.e., undefined).
+	 * 返回一个数组，其元素分别表示各通道的当前值；值可以存在，也可以缺失（即 `undefined`）。
 	 * @returns an array of values
 	 */
 	public values(): Array<T | Absent> {
@@ -141,6 +151,7 @@ export abstract class MultiPort<T> extends Trigger implements MultiRead<T> {
 
 	/**
 	 * Unimplemented method (multiports require not access to the runtime object).
+	 * 未实现的方法（多端口不需要访问运行时对象）。
 	 */
 	public _receiveRuntimeObject(runtime: Runtime): void {
 		throw new Error(
@@ -157,7 +168,8 @@ export abstract class MultiPort<T> extends Trigger implements MultiRead<T> {
 		}
 
 		/**
-		 * Storage for obtained writers.
+			 * Storage for obtained writers.
+		 * 已获取写入器的存储区。
 		 */
 		private readonly cache: Array<WritablePort<T>>;
 
@@ -200,6 +212,7 @@ export abstract class MultiPort<T> extends Trigger implements MultiRead<T> {
 
 /**
  * A trigger that represents an input port that is also multiport.
+ * 表示多输入端口的触发器。
  *
  * @author Marten Lohstroh <marten@berkeley.edu>
  * @author Hokeun Kim <hokeun@berkeley.edu>
@@ -226,6 +239,7 @@ export class InMultiPort<T> extends MultiPort<T> {
 
 /**
  * A trigger that represents an output port that is also multiport.
+ * 表示多输出端口的触发器。
  *
  * @author Marten Lohstroh <marten@berkeley.edu>
  * @author Hokeun Kim <hokeun@berkeley.edu>

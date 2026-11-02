@@ -10,6 +10,8 @@ function produceOutput<S>(this: ReactionSandbox, o: Write<S>, payload: Parameter
 	// Duplicate sets for the same port is bad form,
 	// but its worth checking that the correct value (from the last set)
 	// is delivered.
+	// FIXME：补充实际测试重复赋值的用例。SingleEvent 表现为 DoubleEvent 会令人困惑。
+	// 对同一端口重复赋值是不规范的，但仍应验证最终传递的是最后一次赋值的值。
 	console.log("Writing payload to SingleEvent's output.");
 }
 

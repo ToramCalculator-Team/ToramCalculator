@@ -20,6 +20,8 @@ export abstract class SchedulableAction<T> implements Sched<T> {
  * event or as a delayed response to some input event. The action can be
  * scheduled by a reactor by invoking the schedule function in a reaction
  * or in an asynchronous callback that has been set up in a reaction.
+ * 动作表示由反应器自行调度的事件。与输入一样，动作也可以触发反应；不同之处在于，输入由其他反应器提供，而动作由本反应器调度。
+ * 反应器可以在反应中调用 `schedule` 来调度动作，也可以在反应中创建的异步回调中调用该方法。调度动作通常用于响应观察到的外部事件，或延迟响应某个输入事件。
  */
 export class Action<T> extends ScheduledTrigger<T> implements Read<T> {
 	readonly origin: Origin;

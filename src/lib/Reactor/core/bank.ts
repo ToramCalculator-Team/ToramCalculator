@@ -6,17 +6,20 @@ import type { ParmList } from "./types";
 /**
  * Type that describes a class with a constructor of which the arguments
  * are of type `ReactorArgs`.
+ * 描述构造函数参数类型为 `ReactorArgs` 的反应器类。
  */
 export type ReactorClass<T extends Reactor, S> = new (...parameters: ParmList<S>) => T;
 
 /**
  * A bank of reactor instances.
+ * 由多个反应器实例组成的集合。
  */
 export class Bank<T extends Reactor, S> {
 	readonly _isBank = true;
 
 	/**
 	 * Array of reactor instances that constitute the bank.
+	 * 构成此集合的反应器实例数组。
 	 */
 	private readonly members = [] as T[];
 
@@ -43,6 +46,7 @@ export class Bank<T extends Reactor, S> {
 
 	/**
 	 * Return all reactor instances in this bank.
+	 * 返回此集合中的全部反应器实例。
 	 * @returns all reactor instances in this bank
 	 */
 	public all(): T[] {
@@ -51,6 +55,7 @@ export class Bank<T extends Reactor, S> {
 
 	/**
 	 * Return the reactor instance that corresponds to the given index.
+	 * 返回指定索引对应的反应器实例。
 	 * @param index index of the reactor instance inside this bank
 	 * @returns the reactor instances that corresponds to the given index
 	 */
@@ -60,6 +65,7 @@ export class Bank<T extends Reactor, S> {
 
 	/**
 	 * Return a list of ports selected across all bank members by the given lambda.
+	 * 使用给定函数从集合中每个反应器实例选取端口，并返回端口列表。
 	 * @param selector lambda function that takes a reactor of type T and return a port of type P
 	 * @returns a list of ports selected across all bank members by the given lambda
 	 */
