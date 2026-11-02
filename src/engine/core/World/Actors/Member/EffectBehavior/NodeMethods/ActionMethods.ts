@@ -1,19 +1,18 @@
 import { z } from "zod/v4";
-import { createLogger } from "~/lib/logger";
-import { State } from "~/lib/mistreevous/State";
-import { MemberStateNameSchema } from "~/MemberStateName/MemberState";
-import type { DamageAreaSpec } from "../../../Area/types";
-import type { DamageDefinition, ResolvedDamageEffect } from "../../../Damage/types";
-import type { EffectRange } from "../../../EffectRange/types";
-import { type CasterSnapshot, setBaseValue, setHasBuff, setStat } from "../../../Expression/CasterSnapshot";
-import { ExpressionTransformer } from "../../../JSProcessor/ExpressionTransformer";
 import {
 	type ModifierSource,
 	ModifierSourceTypeSchema,
 	ModifierType,
 	StatModifierKindSchema,
-} from "../../AttributeContainer/AttributeContainerTypes";
-import { type ActionPool, defineAction } from "../../BehaviorTree/NodeMethods/MethodTypes";
+} from "~/engine/core/AttributeContainer/AttributeContainerTypes";
+import { type ActionPool, defineAction } from "~/engine/core/BehaviorTree/NodeMethods/MethodTypes";
+import { ExpressionTransformer } from "~/engine/core/JSProcessor/ExpressionTransformer";
+import type { DamageDefinition, ResolvedDamageEffect } from "~/game/toramOnline/service/Damage/types";
+import { type CasterSnapshot, setHasBuff } from "~/game/toramOnline/service/Expression/CasterSnapshot";
+import { createLogger } from "~/lib/logger";
+import { State } from "~/lib/mistreevous/State";
+import { MemberStateNameSchema } from "~/MemberStateName/MemberState";
+import type { DamageAreaSpec, EffectRange } from "../../../Area/types";
 import type { CommonEffectBtRuntime, CommonEffectBtRuntimeServices } from "../types";
 
 export const logLv = 0; // 0: 不输出日志, 1: 输出关键日志, 2: 输出所有日志
@@ -26,7 +25,7 @@ function createActionModifierSource(
 	name: string,
 	type: ModifierSource["type"],
 ): ModifierSource {
-	const skillId = context.skill?.id ?? context.currentSkill?.data.id;
+	const skillId = context.currentSkill?.data.id;
 	return {
 		key,
 		name,
@@ -359,8 +358,7 @@ function createAttackAction<TSchema extends z.ZodType>(
 	return defineAction<TSchema, CommonEffectBtRuntime, CommonEffectBtRuntimeServices>(
 		definition.schema,
 		(context, input, capabilities) => {
-			const requestedTargetId = (input as { targetId?: string }).targetId;
-			const targetId = capabilities.services.targetResolver?.(context.memberId, requestedTargetId) ?? requestedTargetId;
+			const targetId = (input as { targetId?: string }).targetId;
 			if (definition.requiresTarget && (!targetId || targetId === context.memberId)) {
 				log.warn(`⚠️ [${context.name}] ${actionName} 缺少有效敌对目标`);
 				return State.FAILED;
@@ -471,9 +469,9 @@ export const CommonEffectActionPool = {
 
 			const skill = context.skill;
 			const currentSkillData = context.currentSkill?.data;
-			const skillLv = skill?.lv ?? currentSkillData?.lv ?? 0;
+			const skillLv = currentSkillData?.lv ?? 0;
 
-			const evaluated = capabilities.services.expressionEvaluator?.(input.expression, {
+			const evaluated = capabilities.expressionEvaluator?.(input.expression, {
 				currentTimeMs: context.currentTimeMs,
 				tickIndex: context.tickIndex,
 				casterId: context.memberId,
@@ -490,12 +488,12 @@ export const CommonEffectActionPool = {
 
 			const currentAttr = `hp.current`;
 			const maxAttr = `hp.max`;
-			const current = capabilities.attributeContainer.getValue(currentAttr);
-			const max = capabilities.attributeContainer.getValue(maxAttr);
+			const current = capabilities.getAttr(currentAttr);
+			const max = capabilities.getAttr(maxAttr);
 			const capped = max > 0 ? Math.min(requested, Math.max(0, max - current)) : requested;
 			if (capped <= 0) return State.SUCCEEDED;
-			const sourceName = input.sourceName ?? skill?.name ?? currentSkillData?.template?.name ?? `hp-heal`;
-			const sourceKey = input.sourceId ?? `skill.heal.hp.${skill?.id ?? currentSkillData?.id ?? "unknown"}`;
+			const sourceName = input.sourceName ?? currentSkillData?.template?.name ?? `hp-heal`;
+			const sourceKey = input.sourceId ?? `skill.heal.hp.${currentSkillData?.id ?? "unknown"}`;
 			capabilities.attributeContainer.addModifier(
 				currentAttr,
 				ModifierType.DYNAMIC_FIXED,
@@ -504,9 +502,9 @@ export const CommonEffectActionPool = {
 			);
 
 			const hp = current + capped;
-			const mp = capabilities.attributeContainer.getValue("mp.current");
+			const mp = capabilities.getAttr("mp.current");
 
-			capabilities.recordEvent({
+			capabilities.publishEvent({
 				type: "state_changed",
 				memberId: context.memberId,
 				hp,
