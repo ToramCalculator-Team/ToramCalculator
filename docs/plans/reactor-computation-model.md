@@ -72,10 +72,9 @@
 
 | 概念 | 职责 | 约束 |
 |---|---|---|
-| **FsmReactor** | 一张 FSM 图在 Reactor 世界的表示。状态在 `Cell`，事件从 `InPort` 进，动作经缓冲写 `OutPort` | 加载后定义不可变；`after` 编译为 `Action`；`invoke` 禁用 |
-| **BtHost** | 一棵树的实例，持有 blackboard 与树状态 | 树定义来自 JSON/DSL，节点实现来自注册表 |
-| **transition action 树** | 状态转移时执行的一次性树 | 必须同步完成，禁 `RUNNING` |
-| **state activity 树** | 某状态存续期间持有的持续树 | 允许 `RUNNING`，退出状态即丢弃 |
+| **MemberReactor** | 每个成员唯一的 reactor。持有 context 的 `Cell`、事件 `InPort`、效果 `OutPort` | 反应器数量等于成员数量，不随逻辑数量增长；加载后定义不可变 |
+| **FSM 解释器** | 库层纯函数：`step(context, events)` 返回新的 context、效果列表与运行中的树状态 | 不感知调度，可脱离 reactor 单测；`after` 时长由调用方编译为 `Action`；`invoke` 禁用 |
+| **行为树实例** | FSM 持有的 `running` 状态之一，跨 tag 存于 `Cell` | 树定义来自 JSON/DSL，节点实现来自注册表；转移期间执行的树必须同步完成，状态存续期间持有的树允许 `RUNNING` |
 | **规则包（GamePlugin）** | 声明 FSM 图、树定义、节点实现、属性 Schema，向引擎注册 | 注册完成后运行期不再访问规则层 |
 
 ### 3.4 边界组件
@@ -92,8 +91,8 @@
 
 | 概念 | 职责 |
 |---|---|
-| **AttributeContainer** | 属性求值。modifier 带时间区间，求值需要 tag 参数 |
-| **DependencyGraph** | 属性依赖的缓存与失效，失效键按 tag 区间 |
+| **AttributeContainer** | 属性求值。纯数据驱动：脏位图加拓扑序 drain，不感知时间 |
+| **DependencyGraph** | 属性依赖的缓存与失效，失效由数据变化触发 |
 | **Random** | 确定性随机，种子流按 tag 派生 |
 | **SpaceManager** | 空间索引与范围查询，由反应按需调用 |
 | **Checkpoint** | 快照与恢复，存 Cell 状态、当前 tag、各 host 的树状态 |
@@ -107,49 +106,80 @@
 
 | 类别 | 处理 | 依据 |
 |---|---|---|
-| 时长与区间（buff 持续、冷却） | 两个离散事件：施加与过期。线性 ramp 的 modifier 是时间的分段线性函数，读取时按 tag 求值 | 不需要逐帧推进 |
-| 物理与运动 | 真连续。积分在一个反应内部完成，外部看是"某个 tag 上的一段计算"。阈值穿越解析求出精确时刻，作为该 tag 上的离散事件发出 | 固定 tick 只能量化到网格边界 |
+| 时长与区间（buff 持续、冷却） | 两个离散事件：施加与过期。线性 ramp 的 modifier 保存「函数 + 生效区间」，求值时代入 reaction 的 tag | 不需要逐帧推进 |
+| 物理与运动 | 真连续。积分在一个反应内部完成，外部看是"某个 tag 上的一段计算"。阈值穿越解析求出精确时刻，作为该 tag 上的离散事件发出 | 时刻由事件决定，不需要等距刻度 |
 | 控制器输入 | 外部信号。区间内零阶保持，与通信重构的输入快照是同一件事 | 异步到达，需绑到 tag |
 
 分离的轴是**积分器与事件网络**，不是连续系统与离散系统：事件网络拥有时间基准，积分器是无时间的纯函数，由事件在特定 tag 上调用。
+
+属性求值是惰性的，不是累积的：`f(t)` 只取决于 tag，无累积误差。缓存作用域限制在单次 reaction 执行内，跨 tag 不复用。
 
 ### 4.2 调度器归属
 
 调度器归 `App`，不归 `GameEngine`。`GameEngine` 保留生命周期与物理时钟。`App._canProceed` / `_advanceTime` / `_startTimeStep` 保持默认实现，暂不抽象为接口，等实际做联邦执行时再改。
 
-### 4.3 周期源与采样密度
+### 4.3 周期源
 
-系统循环消失，周期由 `Timer` 表达。周期源分布：
+系统循环消失，周期由 `Timer` 表达。时间轴上不存在等距刻度：`App._next()` 直接跳到下一个已排队事件的 tag。
 
 | 周期源 | 位置 | 机制 |
 |---|---|---|
 | 控制器采样 | 主线程 | 输入事件驱动，写控制器 SAB |
-| 输入收账 | worker 内 `InputSampler` | Timer，period 必须等于或整除模拟网格 period |
-| 模拟网格 | worker 内 `World` | Timer |
-| 输出高频帧 | 渲染侧 | 读 SAB 后插值，不进 worker |
+| 输入收账 | worker 内 `InputSampler` | Timer，period 决定输入分辨率 |
+| 稳态推进 | worker 内各子系统 | Timer，period 由该子系统的业务语义决定 |
+| 采集与呈现 | worker 内采集器 | 自己的 Timer，与模拟周期无关 |
 
-模拟网格必须显式存在：没有 Timer 就没有推进，物理位置只在有事件的 tag 上更新。各区域的推进密度由各区域的 Timer period 决定，同一网络内 60Hz 与低频共存，不需要额外引入"分片"概念来区分密度。
+周期 Timer 的正当理由是**语义上的周期**（每 100ms 重新决策一次），不是"为了让时间前进而切网格"。不同周期源的 period 可以互不整除。
 
 ### 4.4 输入采样器的位置
 
 输入采样器是网络内的反应器，不是网络外的驱动器。这样"tag 边界"也纳入 tag 体系，整个系统只有一个时间基准。
 
-输入影响状态，因此必须落在确定性边界内侧：采样可高频，入账绑定 tag 边界。控制器 SAB 的单槽设计不保留区间中间方向，因此模拟网格 period 决定输入分辨率，两者不能独立设定。
+输入影响状态，因此必须落在确定性边界内侧：采样可高频，入账绑定 tag 边界。控制器 SAB 的单槽快照不保留区间中间方向，因此 `InputSampler` 的 period 决定输入分辨率。
 
-### 4.5 输出采样器主动读
+### 4.5 FSM 不构造成 Reactor
 
-`OutputSampler` 在每个 tag 结算后主动读端口，对照订阅表裁剪，写 SAB。不是由反应器推送。
+一张 FSM 图不映射为一个 reactor。每个成员只有一个 `MemberReactor`，其 reaction 的函数体调用库层纯函数。
 
-理由：推送发生在 tag 内部，同一 tag 内多个反应依次写端口，推送会让写入方看到半成品帧。主动读把写入点收敛到 tag 之后。且"本帧有多少事件、是否装得下"需要全局视野。
+- reactor 数量等于成员数量，而不是成员数乘以逻辑数量。
+- 时间基由 reaction 的 tag 提供，FSM 与行为树层完全不感知调度，因而可脱离 reactor 单测。
+- FSM 描述拆成四份：事件类型、状态图、action/guard 实现、context 类型。拆分的代价是「图里引用了不存在的 action 名」从编译期掉到加载期；内置逻辑用 `as const` 字面量构建器保住编译期检查，编辑器保存的 JSON 在加载期校验。
+- 「一次性效果必须同步完成」的约束保留，表达位置从宿主类改为节点类型与转移动作的断言。
 
-### 4.6 端口定长与类型推导
+### 4.6 端口值只在自身 tag 可见
+
+`port.ts:41` 的 `isPresent()` 要求端口写入的 tag 与当前 tag 完全相同（含微步），否则读到 absent。端口是一次性投递点，不是保持型发布点。
+
+验证：源每 7ms 写一次，另一反应每 5ms 读一次，只在 35ms 公倍数上读到值，其余全部 absent。
+
+因此"采集器按自己的周期直接读端口"不成立。端口值需要跨 tag 可见时，必须由同一 tag 上的级联反应落到 `State`（`state.ts:22` 的 `get()` 无 tag 条件）或其他 worker 内存载体。
+
+### 4.7 分支点必须是 tag
+
+参数在某个 tag 上发布，采集端只能知道到那个 tag 为止的事实。若一次分段切换的时刻不是 tag，参数会拖到下一个 tag 才发布，采集端在那个区间内只能沿用旧方程外推。
+
+验证：切换点 250ms、发布点 300ms，采集器在 250–300ms 之间外推出 2.75，真值 2.625。把切换点本身变成 `Action.schedule(250)` 后误差归零。
+
+凡是能解析求出的断点（buff 到期、阈值穿越、段时长累加），都应当 `Action.schedule` 到该时刻；只有无法预知的（碰撞、输入引发的切换）才允许滞后一个输入周期。
+
+### 4.8 采集器持有求值逻辑
+
+采集器不进入 Reactor 网络：不产生事件、不推进模拟。它读取网络内发布的参数，按自己的频率求值，把**求值后的结果**写入 SAB。
+
+状态方程因此只有一份实现，位于引擎内。消费端不再持有 `evalTrajectory` 一类求值代码——当前 `worldStateBuffer.ts:1281` 与 `CommandHandler.ts:135` 各持一份同一公式，属于逻辑外泄。
+
+**SAB 是逻辑引擎快照，供外部消费端展示。** 权威状态与回溯依据走 `runOutput` / `tickStateHistory`（ADR 0060）。
+
+写入代价：`WorldStateWriter.applyMemberPlan()`（`worldStateBuffer.ts:913`）每帧定长重写全部槽位，与采集频率无关；频率提高只增加帧数，SAB 内不累积。
+
+### 4.9 端口定长与类型推导
 
 端口数量不从规则推导，保持定长：
 
 ```typescript
-class FsmReactor extends Reactor {
-  input: InPort<FsmEvent>
-  effect: OutPort<FsmEffect>
+class MemberReactor extends Reactor {
+  input: InPort<DomainEvent>
+  effect: OutPort<Effect>
 }
 ```
 
@@ -157,36 +187,36 @@ class FsmReactor extends Reactor {
 
 可推导的是联合类型的成员：由"FSM 全部转移的树 × 树内出现的节点 × 各节点声明"在加载期静态算出。类型根源在节点实现的能力面声明，不在 FSM。
 
-### 4.7 类型与校验的单一来源
+### 4.10 类型与校验的单一来源
 
 JSON 本身不提供运行时保证。用 zod 定义树 DSL 的 schema，`z.infer` 得到 TS 类型，编译期与运行期共用一份定义。编辑器从 schema 生成校验规则，不手写第二套。
 
 内置规则用 `as const` 加静态推导，编译期报错；编辑器编辑的规则是运行期数据，靠 schema 校验后收窄类型。
 
-### 4.8 规则不可变
+### 4.11 规则不可变
 
 编辑并运行后 FSM 定义不可变，运行期没有接线变更，`Mutation` 不参与模拟推进。规则变更走"重新加载并重建网络"，不走运行期热替换。
 
 计划决策 3 与决策 4 里的"tick 开头重建树"因此可以简化为加载期一次构建。
 
-### 4.9 端口拓扑表达不了时序依赖
+### 4.12 端口拓扑表达不了时序依赖
 
 端口能表达数据依赖，表达不了对共享数据结构的时序依赖。`SpaceManager` 这类 pull 式服务的写入与读取必须分处不同微步：写索引的反应在微步 N，读索引的反应在 N+1。不立这条规则，同一微步内的执行顺序会影响结果。
 
 微步的使用应当稀缺：同一 tag 内的先后优先用端口依赖表达，微步只用于真正需要区分因果的场合。
 
-### 4.10 管理器的去向
+### 4.13 管理器的去向
 
 | 现结构 | 去向 |
 |---|---|
 | `MemberManager` 容器职责 | `Bank<MemberReactor>` |
 | `MemberManager` 的能力注入 setter | 产出数据的改为端口接线；提供环境的（`random`、`getCurrentTimeMs`、`getTickIndex`、`evaluateExpression`）改为 `NodeContext` / `FsmImpls` 能力面注入 |
 | `AreaManager` | `Bank<AreaReactor>` |
-| `SpaceManager` | 不变成 Reactor。作为被动数据结构由 `World` 持有，遵守 4.9 的微步规则 |
+| `SpaceManager` | 不变成 Reactor。作为被动数据结构由 `World` 持有，遵守 4.12 的微步规则 |
 
 区分标准：**产出数据的走端口，提供环境的走上下文。**
 
-### 4.11 事件总线与消息队列的归宿
+### 4.14 事件总线与消息队列的归宿
 
 | 原机制 | 替代 |
 |---|---|
@@ -201,9 +231,9 @@ ADR 0059 的"订阅驱动单一总线"在 Reactor 下落实为"端口全量写�
 
 | 事项 | 备选 | 影响 |
 |---|---|---|
-| 输出采样器触发的呈现节奏 | 渲染侧 rAF 插值（当前倾向） / worker 侧独立 Timer | 前者不增加 worker 负担，需要插值逻辑 |
-| `AttributeContainer` 求值的 tag 参数化 | 全量改造 / 只对 ramp 类 modifier 引入区间 | 影响 `DependencyGraph` 缓存命中率，需实测 |
-| 物理子步与 tag 的关系 | 区间内部循环（当前倾向，简单且确定） / 每子步一个微步（可观测性好，事件量随帧率放大） | 影响事件区容量 |
+| 采集器的呈现节奏 | 采集器按自己的 Timer 求值（当前倾向） / 消费端自行插值 | 后者要求把求值代码外泄给消费端 |
+| 物理子步与 tag 的关系 | 区间内部循环（当前倾向，简单且确定） / 每子步一个微步（可观测性好，事件量随采集频率放大） | 影响事件区容量 |
+| 无法解析求解的断点 | 滞后一个输入周期（当前倾向） / 二分搜索精确穿越时刻 | 前者简单，后者需要额外求值预算 |
 | 落后于物理时间时的策略 | 压缩时间追赶（Reactor 内置） / 减慢模拟 | 影响长时间运行的漂移 |
 | `OutputSampler` 事件的容量超限 | 截断并在帧头标记（当前倾向） / 扩容 | ADR 0059 要求超限显形失败 |
 | xstate 的 `invoke` | 禁用（当前倾向） / 保留并约束 | 引入外部异步源会破坏确定性 |
@@ -214,9 +244,9 @@ ADR 0059 的"订阅驱动单一总线"在 Reactor 下落实为"端口全量写�
 |---|---|
 | `GameEngine` | tag 化，删除 `tickIndex` 与 `scheduleNext` 的帧循环，收窄为生命周期与物理时钟 |
 | `World` | 改为 reactor 容器，两相调度删除，管理器转 `Bank`/`Mutation` |
-| 新增 | `runtime/reactor/` 的 `InputSampler`、`OutputSampler`、`FsmReactor` 工厂 |
+| 新增 | `runtime/reactor/` 的 `InputSampler`、`OutputSampler`；`runtime/fsm/` 的纯函数解释器 |
 | `runtime/bt/` | 落地 BT wrapper，事件走 OutPort |
-| `AttributeContainer` | modifier 时间区间化，求值带 tag |
+| `AttributeContainer` / `StatusInstanceStore` | 内部结构不改。过期判定由调用方从「每 tick 扫描」改为 `Action.schedule` 到点触发 |
 | `EventBus` / `MessageQueue` | 删除，职责归端口与订阅表 |
 | `controllerInputBuffer` | 职责收窄为真实时间到边界的搬运，聚合上移到 `InputSampler` |
 | `worldStateBuffer` / `protocol` / `SimulationWorkerPool` | 形状不变 |
@@ -227,17 +257,18 @@ ADR 0059 的"订阅驱动单一总线"在 Reactor 下落实为"端口全量写�
 1. `GameEngine` tag 化，`World.tick()` 调用方式不变，行为等价。
 2. 接入 `InputSampler` 与 `OutputSampler`，验证边界内外划分。
 3. `World` 转 reactor 容器，先接一个子系统（建议 `SpaceManager` 的查询侧），确认 `Bank` 性能。
-4. FSM 适配器与 BT wrapper，可与第 2、3 步并行。
-5. `AttributeContainer` 时间区间化，最后做。
+4. FSM 纯函数解释器与 BT wrapper，可与第 2、3 步并行。
+5. status 过期改为 `Action.schedule`，最后做。
 
 第 3 步不能一次性把 Member 全量转 reactor：网络模型与成员逻辑迁移两个变量叠加，出问题时无法定位。过渡期允许管理器与 reactor 并存，但必须写明下线条件。
 
 ## 8 验证基线
 
-按第 7 节第 1、2 步完成后即可验证三条：
+按第 7 节第 1、2 步完成后即可验证：
 
-1. 60Hz 网格下，一个匀速直线运动成员在 1000ms 内的位移正确。
-2. 30Hz 网格下，同样时长的位移与 60Hz 一致。
+1. 一个匀速直线运动成员在 1000ms 内的位移正确。
+2. 不同推进周期的 Timer 下，同样时长的位移一致。
 3. `OutputSampler` 不写 SAB 时，模拟结果与写入时逐 tag 一致。
+4. 分支点由 `Action.schedule` 到点、与落在 Timer 网格上两种情形，采集端外推结果一致。
 
-这三条通过后再接 FSM 与 BT。
+第 4 条是 4.7 的回归检查：它保证分支点的定位不依赖周期源的 period。

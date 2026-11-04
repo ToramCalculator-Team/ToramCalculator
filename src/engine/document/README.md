@@ -10,10 +10,12 @@
 
 | 你想做什么 | 该读什么 |
 |---|---|
-| **入门**：理解引擎整体怎么运转 | `架构设计说明概要.md` |
-| **实现**：要修改/扩展某模块，需要知道边界和约束 | 模块旁的模块架构文档（`core/GameEngine.md`、`core/World/World.md` 等）；`docs/decisions/` 下相关 ADR；模块自身的 catalog 代码（`PipelineCatalog`、`EventCatalog`、`AttributeSchema`） |
+| **入门**：理解引擎整体怎么运转 | `引擎架构设计.md` |
+| **实现**：要修改/扩展某模块，需要知道边界和约束 | 引擎模块旁的模块架构文档（`core/GameEngine.md`、`core/GameSystem.md`、`core/ReactorGameSystem.md`、`core/Reactor/InputSampler.md`、`core/StateMachine/FsmHost.md` 等）；`docs/decisions/` 下相关 ADR；模块自身的 catalog 代码 |
 | **追因**：跨模块串一次端到端流程 | `hook与触发层设计讨论结论.md` §2.99；需要时按需新建端到端流程叙事 |
 | **决策**：想知道"为什么这样设计"或"是否还能改" | `docs/decisions/`（ADR），按编号或主题查 |
+
+引擎文档只描述通用机制。成员、区域、世界等游戏概念属于游戏层，其模块文档不放在本目录。
 
 ## 文档分层
 
@@ -21,12 +23,15 @@
 document/
 ├── README.md                    本文件
 ├── 模块架构文档规范.md          模块架构文档的结构与精度规范
-├── 架构设计说明概要.md          L1 架构总览
-├── WorldAreaSystem.md           L1 子系统设计
-└── 成员动作编排链设计.md        子系统设计
+├── 引擎架构设计.md              当前 L1 架构总览
+├── 架构设计说明概要.md          历史快照：旧帧模型
+├── WorldAreaSystem.md           游戏层子系统（待迁移）
+└── 成员动作编排链设计.md        游戏层子系统（待迁移）
 ```
 
-模块架构文档写在模块旁（`core/GameEngine.md`、`core/World/World.md` 等），内容结构见[模块架构文档规范](./模块架构文档规范.md)。引擎与主线程之间的数据面只有输入 / 输出两个端口，每端口一个共享缓冲区，端口内分状态区与事件区，详见 [`src/engine/AGENTS.md`](../AGENTS.md)「线程间通道」。
+游戏层模块文档放在游戏层目录（例如 `src/game/toramOnline/World.md`）。
+
+模块架构文档写在模块旁（`core/GameEngine.md`、`core/GameSystem.md`、`core/ReactorGameSystem.md`、`core/Reactor/`、`core/BehaviorTree/` 等），内容结构见[模块架构文档规范](./模块架构文档规范.md)。引擎与主线程之间的数据面是输入缓冲加每个采集器一个输出缓冲，详见 [`src/engine/AGENTS.md`](../AGENTS.md)「线程间通道」。
 
 项目级 ADR 位于 `docs/decisions/`；引擎相关决策也进入该目录并通过主题列区分范围。
 `hook与触发层设计讨论结论.md` 的内容会被增量拆进 `docs/decisions/`，原文档保留作为历史快照不再演进。
@@ -41,7 +46,7 @@ document/
 
 ## Catalog 即 IR
 
-引擎里有一批"事实上的中间表示"，它们是代码形式但承担规约职责，文档应当把它们当作权威：
+引擎里有一批"事实上的中间表示"，它们是代码形式但承担规约职责，文档应当把它们当作权威。其中属性 Schema、状态类型与事件词表由游戏层提供，引擎只定义容器、求值机制与加载契约：
 
 | Catalog | 位置 | 职责 |
 |---|---|---|
