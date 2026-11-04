@@ -37,7 +37,7 @@ interface GameSystem {
 /**
  * 一次逻辑推进的时刻
  *
- * cursor 由实现解释：Reactor 放 tag 与微步，ECS 放步序号。引擎只按 timeMs 排序。
+ * cursor 是实现自己的次序标记，引擎不解释，只按 timeMs 排序，需要时原样保存。
  */
 interface SimulationTime {
   timeMs: number;
@@ -51,8 +51,7 @@ interface SimulationTime {
 /**
  * GameSystem 的权威状态
  *
- * time 是恢复点，payload 由实现解释：Reactor 放原始起点、tag、微步、节点状态与待处理事件；
- * ECS 放步序号与组件状态。引擎只在外层加模型类型与版本。
+ * time 是恢复点，用于定位；payload 是实现自己的状态，引擎只在外层加模型类型与版本。
  */
 interface GameSystemCheckpoint {
   time: SimulationTime;
@@ -85,7 +84,7 @@ stop(): void
  * 暂停推进
  *
  * 暂停保留状态，恢复后从暂停时的逻辑时刻继续，不补算暂停期间的时间。
- * 物理时钟在暂停期间冻结：反应里读到的经过时间连续，不因暂停跳跃。
+ * 物理时钟在暂停期间冻结：系统内读到的经过时间连续，不因暂停跳跃。
  *
  * 调用前引擎已确认暂停，此后输入不再写入共享缓冲。
  */
@@ -130,8 +129,8 @@ captureCheckpoint(): GameSystemCheckpoint
 /**
  * 恢复权威状态
  *
- * 只接受已初始化且未启动的实例。违反时抛错，不做修补：已启动实例的定时器、
- * startup 反应与在飞事件都已消费，再恢复会双重排定。
+ * 只接受已初始化且未启动的实例。违反时抛错，不做修补：已启动实例的定时器与
+ * 启动工作都已消费，再恢复会重复排定。
  *
  * @param checkpoint 检查点
  */
@@ -157,15 +156,15 @@ GameEngine 只持有 GameSystem 接口。当前实现是 ReactorGameSystem；以
 
 ### 2. 逻辑时间是最小公共轴
 
-**设计理念**：Reactor 和 ECS 都能提供“当前逻辑时间”，但次序的表达不同。
+**设计理念**：任何实现都能提供“当前逻辑时间”，但时刻之内的次序表达各不相同。
 
-接口只要求 `timeMs`；`cursor` 由实现解释。Reactor 把 tag 与微步放进 cursor，ECS 把步序号放进 cursor。引擎排序只看 `timeMs`，需要时把 cursor 原样保存。
+接口只要求 `timeMs`；`cursor` 是实现自己的次序标记，引擎排序只看 `timeMs`，需要时把 cursor 原样保存。
 
 ### 3. 检查点信封归引擎，payload 归实现
 
 **设计理念**：引擎负责版本、模型类型与搬运；实现负责自己的状态格式。
 
-`time` 是恢复点，用于排序与定位。原始起点不进接口，因为它只对实现自己的推导有意义：Reactor 的 payload 带 `startTime`，供恢复后继续算经过时间；ECS 的 payload 带步序号与组件状态。引擎不解释 payload。
+`time` 是恢复点，用于排序与定位。原始起点不进接口，因为它只对实现自己的推导有意义。引擎不解释 payload。
 
 ### 4. 采集器是观察层
 

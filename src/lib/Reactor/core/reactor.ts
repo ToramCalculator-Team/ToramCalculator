@@ -912,6 +912,16 @@ export abstract class Reactor extends Component {
 	}
 
 	/**
+	 * Return the triggers that this reactor owns.
+	 * 返回此反应器所拥有的触发源。
+	 */
+	private _getOwnTriggers(): ScheduledTrigger<unknown>[] {
+		return Array.from(this._keyChain.keys()).filter(
+			(it) => it instanceof ScheduledTrigger,
+		) as ScheduledTrigger<unknown>[];
+	}
+
+	/**
 	 * Return a list of reactions owned by this reactor.
 	 * 返回此反应器拥有的反应列表。
 	 */
@@ -1376,6 +1386,25 @@ export abstract class Reactor extends Component {
 		return ports;
 	}
 
+	/**
+	 * 遍历本反应器及其下游反应器，按全限定名索引全部调度触发器。
+	 *
+	 * 组件的路径在装配期固定，同一网络重建后不变，因此可以作为跨实例标识。
+	 */
+	protected _indexScheduledTriggers(): Map<string, ScheduledTrigger<unknown>> {
+		const index = new Map<string, ScheduledTrigger<unknown>>();
+		const visit = (reactor: Reactor): void => {
+			for (const trigger of reactor._getOwnTriggers()) {
+				index.set(trigger._getFullyQualifiedName(), trigger);
+			}
+			for (const child of reactor._getOwnReactors()) {
+				visit(child);
+			}
+		};
+		visit(this);
+		return index;
+	}
+
 	private _findOwnPorts(): Set<Port<unknown>> {
 		const ports = new Set<Port<unknown>>();
 		for (const component of this._keyChain.keys()) {
@@ -1744,6 +1773,29 @@ export interface ReactionSandbox {
 	getBankIndex: () => number;
 }
 
+/**
+ * 事件队列中的一项。
+ *
+ * `triggerName` 是 `trigger._getFullyQualifiedName()`，同一网络重建后不变，
+ * 因此可以在实例之间搬运。
+ */
+export interface AppCheckpointEvent {
+	triggerName: string;
+	tag: Tag;
+	value: unknown;
+}
+
+/**
+ * 一次运行的状态快照。
+ *
+ * `startTime` 是原始起点，用于推算经过时间，不随恢复点后移。
+ */
+export interface AppCheckpoint {
+	startTime: TimeValue;
+	tag: Tag;
+	pendingEvents: AppCheckpointEvent[];
+}
+
 export class App extends Reactor {
 	readonly _alarm = new Alarm();
 
@@ -2072,6 +2124,14 @@ export class App extends Reactor {
 	protected _keepAlive = false;
 
 	/**
+	 * 为 true 时，不安排闹钟与即时调用。
+	 *
+	 * 单步与从检查点启动时置位：推进由调用方同步驱动，不能让调度器在事务中途重新进入 `_next()`。
+	 * 与 `_fast` 的区别：`_fast` 只影响是否等待物理时间，仍会排即时调用清栈。
+	 */
+	protected _sleepSuspended = false;
+
+	/**
 	 * Priority set that keeps track of reactions at the current Logical time.
 	 * 跟踪当前逻辑时间下反应的优先级集合。
 	 */
@@ -2193,6 +2253,20 @@ export class App extends Reactor {
 
 	protected _iterationComplete(): void {
 		Log.debug(this, () => `Completed iteration at tag: ${this._currentTag}`);
+		const next = this._eventQ.peek();
+		if (next == null || next.tag.time.isLaterThan(this._currentTag.time)) {
+			this._tagComplete(this._currentTag);
+		}
+	}
+
+	/**
+	 * 一个逻辑时间的全部工作已结束。
+	 *
+	 * 只在当前逻辑时间没有后续微步时到达。子类在此发布状态或通知观察者，
+	 * 不得推进模拟或修改网络。
+	 */
+	protected _tagComplete(tag: Tag): void {
+		Log.debug(this, () => `Tag complete: ${tag}`);
 	}
 
 	/**
@@ -2205,6 +2279,160 @@ export class App extends Reactor {
 	 */
 	protected _addDummyEvent(tag: Tag): void {
 		this._eventQ.push(new TaggedEvent(this.__dummy, tag, 0));
+	}
+
+	/**
+	 * 当前标签。
+	 *
+	 * `_currentTag` 是私有字段，子类通过此方法读取。
+	 */
+	protected _getCurrentTag(): Tag {
+		return this._currentTag;
+	}
+
+	/**
+	 * 待处理事件中最早一个的标签。
+	 *
+	 * 队列为空时返回 `undefined`。标签相同时微步较小的在前，因此返回的是下一个将被消费的标签。
+	 */
+	protected _peekNextTag(): Tag | undefined {
+		return this._eventQ.peek()?.tag;
+	}
+
+	/**
+	 * 捕获当前运行的状态。
+	 *
+	 * 待处理事件里的 trigger 换成全限定名，因此结果不持有本实例的对象引用，可以跨实例搬运。
+	 * 捕获不改变运行状态：事件读出后原样放回。
+	 */
+	protected _captureCheckpoint(): AppCheckpoint {
+		const events: TaggedEvent<unknown>[] = [];
+		const pending: AppCheckpointEvent[] = [];
+		let event = this._eventQ.pop();
+		while (event != null) {
+			events.push(event);
+			pending.push({ triggerName: event.trigger._getFullyQualifiedName(), tag: event.tag, value: event.value });
+			event = this._eventQ.pop();
+		}
+		for (const pendingEvent of events) {
+			this._eventQ.push(pendingEvent);
+		}
+		return { startTime: this._startOfExecution, tag: this._currentTag, pendingEvents: pending };
+	}
+
+	/**
+	 * 从检查点恢复运行。
+	 *
+	 * 只接受尚未启动的实例。已启动实例的定时器、startup 反应与待处理事件都已消费，
+	 * 再走一遍会重复安排。
+	 *
+	 * 恢复后按正常方式推进：唤醒按队首事件安排，不进入手动模式。
+	 */
+	protected _restoreCheckpoint(checkpoint: AppCheckpoint): void {
+		if (this._active) {
+			throw new Error("App 已启动，不能从检查点恢复。请新建实例。");
+		}
+
+		this._analyzeDependencies();
+		this._determineStartAndEndOfExecution(checkpoint.startTime);
+
+		// 上一步把定时器排进了事件队列；恢复的基准是检查点里的事件，不是重新起算的定时器。
+		this._eventQ.empty();
+
+		// 这两个集合只在首次启动时消费。恢复不重跑 startup 反应，也不再重排同一批定时器。
+		this._timersToSchedule.clear();
+		this._reactionsAtStartup.clear();
+
+		// 执行超时时，结束事件在清空时被一并丢掉，按同一结束时刻补回。
+		if (this._endOfExecution != null) {
+			this.__runtime.schedule(new TaggedEvent(this.shutdown, this._endOfExecution, null));
+		}
+
+		this._advanceTime(checkpoint.tag);
+
+		const index = this._indexScheduledTriggers();
+		for (const pending of checkpoint.pendingEvents) {
+			const trigger = index.get(pending.triggerName);
+			if (trigger === undefined) {
+				throw new Error(`检查点引用了不存在的 trigger: ${pending.triggerName}`);
+			}
+			this._eventQ.push(new TaggedEvent(trigger, pending.tag, pending.value));
+		}
+
+		// 检查点时刻的事件已全部消费完。不置位时 `_next()` 会认为当前 tag 还有反应要执行，
+		// 而队首事件已在之后的 tag 上，导致标签不匹配。
+		this._isDone = true;
+
+		this._startExecuting();
+	}
+
+	/**
+	 * 暂停推进：不再安排唤醒。待处理事件留在队列里。
+	 *
+	 * 与 `_resumeScheduling()` 对等。暂停后逻辑时间不前进，因为没有人再调用 `_next()`。
+	 */
+	protected _pauseScheduling(): void {
+		this._sleepSuspended = true;
+		this._cancelWakeups();
+	}
+
+	/**
+	 * 恢复推进：按队首事件重新安排唤醒。
+	 *
+	 * 与 `_pauseScheduling()` 对等。不重置 `_active`：暂停不结束运行。
+	 */
+	protected _resumeScheduling(): void {
+		this._sleepSuspended = false;
+		this._armWakeup();
+	}
+
+	/**
+	 * 清除闹钟与即时调用，保留事件队列。
+	 *
+	 * 暂停用它停止全部唤醒：没有待执行的定时器，就不会有人再调用 `_next()`。
+	 * 待处理事件原样留在队列里，恢复后按原顺序继续处理。
+	 */
+	protected _cancelWakeups(): void {
+		this._alarm.unset();
+		if (this._immediateRef != null) {
+			clearTimeout(this._immediateRef);
+			this._immediateRef = undefined;
+		}
+	}
+
+	/** 按队首事件安排唤醒；队列已空或运行已结束时什么也不做。 */
+	private _armWakeup(): void {
+		const next = this._eventQ.peek();
+		if (next != null && !this._done) {
+			this._setAlarmOrYield(next.tag);
+		}
+	}
+
+	/**
+	 * 同步推进到下一个逻辑时间。
+	 *
+	 * 排空当前时刻的全部微步后返回。队列已空或执行已结束时返回当前标签。
+	 * 推进期间不安排唤醒；结束后恢复进入前的推进模式。
+	 */
+	protected _stepToNextTag(): Tag {
+		const startTime = this._currentTag.time;
+		const wasSuspended = this._sleepSuspended;
+		this._sleepSuspended = true;
+		this._cancelWakeups();
+		try {
+			while (this._eventQ.peek() != null && !this._done) {
+				this._next();
+				if (!this._currentTag.time.isEqualTo(startTime)) {
+					break;
+				}
+			}
+			return this._currentTag;
+		} finally {
+			this._sleepSuspended = wasSuspended;
+			if (!wasSuspended) {
+				this._armWakeup();
+			}
+		}
 	}
 
 	/**
@@ -2344,7 +2572,8 @@ export class App extends Reactor {
 				// (unless the "fast" option is enabled), and give back control to
 				// the JS event loop.
 				// 若尚未到处理下一个事件的时间，则为其设置定时器（除非启用了 `fast`），并将控制权交还给 JS 事件循环。
-				if (getCurrentPhysicalTime().isEarlierThan(nextEvent.tag.time) && !this._fast) {
+				// 手动推进时同样不等物理时间：推进由调用方驱动，逻辑时间先于物理时间是常态。
+				if (!this._fast && !this._sleepSuspended && getCurrentPhysicalTime().isEarlierThan(nextEvent.tag.time)) {
 					this._setAlarmOrYield(nextEvent.tag);
 					return;
 				}
@@ -2394,6 +2623,10 @@ export class App extends Reactor {
 			} else {
 				// The queue is empty, and no end of execution has been specified.
 				// 队列为空，且未指定执行结束时间。
+				if (this._sleepSuspended) {
+					// 手动推进模式下不自行安排唤醒，也不自行收尾。
+					return;
+				}
 				if (this._keepAlive) {
 					// Keep alive: snooze and wake up later.
 					// 保持运行：暂停一段时间后再唤醒。
@@ -2431,6 +2664,10 @@ export class App extends Reactor {
 			return `In setAlarmOrYield for tag: ${tag}`;
 		});
 
+		if (this._sleepSuspended) {
+			return;
+		}
+
 		if (this._endOfExecution?.isSmallerThan(tag) ?? false) {
 			// Ignore this request if the tag is later than the end of execution.
 			// 若标签晚于执行结束时间，则忽略此请求。
@@ -2461,6 +2698,10 @@ export class App extends Reactor {
 	 * 请求立即调用 `this._next()`。
 	 */
 	protected _requestImmediateInvocationOfNext(): void {
+		if (this._sleepSuspended) {
+			return;
+		}
+
 		// Only schedule an immediate if none is already pending.
 		// 仅在当前没有待执行的即时调用时才进行调度。
 		if (this._immediateRef == null) {
