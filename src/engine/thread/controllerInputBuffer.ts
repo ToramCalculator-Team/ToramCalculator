@@ -82,12 +82,7 @@ export function readSharedMovementState(buffer: SharedArrayBuffer): SharedMoveme
 	return null;
 }
 
-/** 单写者 SAB 写入器；每次发布只覆盖一份最新移动状态，不维护历史或队列。
- *
- * 单写者前提：只有创建它的线程写 buffer。读侧的有限次重试依赖这一点；
- * 其他线程往头部写任何字段都会破坏 revision 的奇偶约定。
- * 暂停时由写入方自己的调用方跳过 `write`，引擎不向 buffer 写入。
- */
+/** 单写者 SAB 写入器；每次发布只覆盖一份最新移动状态，不维护历史或队列。 */
 export class SharedMovementStateWriter {
 	readonly buffer: SharedArrayBuffer;
 	private readonly header: Int32Array;
