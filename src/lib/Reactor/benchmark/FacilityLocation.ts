@@ -1,0 +1,763 @@
+/**
+ * Typescript runtime implementation of Online Facility Location benchmark program
+ * of Savina benchmark suite.
+ * Savina 基准测试套件中 Online Facility Location 程序的 TypeScript 运行时实现。
+ *
+ * @author Hokeun Kim (hokeunkim@berkeley.edu)
+ */
+import { Action } from "../core/action";
+import type { IOPort } from "../core/port";
+import { InPort, OutPort } from "../core/port";
+import { App, Parameter, Reactor } from "../core/reactor";
+import { State } from "../core/state";
+import { Origin, TimeValue } from "../core/time";
+import { Log } from "../core/util";
+
+Log.setLevel(Log.LogLevel.INFO);
+
+class Point {
+	x: number;
+
+	y: number;
+
+	constructor(x: number, y: number) {
+		this.x = x;
+		this.y = y;
+	}
+
+	public clone(): Point {
+		return new Point(this.x, this.y);
+	}
+
+	public static arrayClone(points: Point[]): Point[] {
+		const newPoints: Point[] = [];
+		points.forEach((val) => {
+			newPoints.push(val.clone());
+		});
+		return newPoints;
+	}
+
+	public toString(): string {
+		return `Point (x: ${this.x}, y: ${this.y})`;
+	}
+
+	public getDistance(p: Point): number {
+		const xDiff = p.x - this.x;
+		const yDiff = p.y - this.y;
+		const distance = Math.sqrt(xDiff * xDiff + yDiff * yDiff);
+		return distance;
+	}
+
+	public static random(gridSize: number): Point {
+		return new Point(Math.random() * gridSize, Math.random() * gridSize);
+	}
+}
+
+class Box {
+	x1: number;
+
+	y1: number;
+
+	x2: number;
+
+	y2: number;
+
+	constructor(x1: number, y1: number, x2: number, y2: number) {
+		this.x1 = x1;
+		this.y1 = y1;
+		this.x2 = x2;
+		this.y2 = y2;
+	}
+
+	public clone(): Box {
+		return new Box(this.x1, this.y1, this.x2, this.y2);
+	}
+
+	public toString(): string {
+		return `Box (x1: ${this.x1}, y1: ${this.y1}, x2: ${this.x2}, y2: ${this.y2})`;
+	}
+
+	public contains(p: Point): boolean {
+		return this.x1 <= p.x && this.y1 <= p.y && p.x <= this.x2 && p.y <= this.y2;
+	}
+
+	public midPoint(): Point {
+		return new Point((this.x1 + this.x2) / 2, (this.y1 + this.y2) / 2);
+	}
+}
+
+enum Position {
+	UNKNOWN = -2,
+	ROOT = -1,
+	TOP_LEFT = 0,
+	TOP_RIGHT = 1,
+	BOT_LEFT = 2,
+	BOT_RIGHT = 3,
+}
+
+// TODO (axmmisaka): delete this, or at least investigate what this is for?
+// This looks very java-like and doesn't do anything in ts I guess......
+// TODO：删除此类，或至少调查其用途。它看起来很像 Java 写法，在 TypeScript 中似乎没有实际作用。
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+abstract class Msg {}
+
+class FacilityMsg extends Msg {
+	positionRelativeToParent: Position;
+
+	depth: number;
+
+	point: Point;
+
+	fromChild: boolean;
+
+	constructor(positionRelativeToParent: Position, depth: number, point: Point, fromChild: boolean) {
+		super();
+		this.positionRelativeToParent = positionRelativeToParent;
+		this.depth = depth;
+		this.point = point;
+		this.fromChild = fromChild;
+	}
+}
+
+class NextCustomerMsg extends Msg {}
+
+class CustomerMsg extends Msg {
+	// The producer variable is not needed since hasQuadrantProducer
+	// is used to determin whether a quadrant producer (parent) exists and
+	// toProducer is used for a port to the producer.
+	// 无需保存 producer 变量：`hasQuadrantProducer` 用于判断是否存在象限生产者（父级），`toProducer` 则是连接到生产者的端口。
+	point: Point;
+
+	constructor(point: Point) {
+		super();
+		this.point = point;
+	}
+}
+
+class RequestExitMsg extends Msg {}
+
+class ConfirmExitMsg extends Msg {
+	facilities: number;
+
+	supportCustomers: number;
+
+	// This 'quadrantReactors' is additional information for reactor-ts.
+	// And it is not in the Akka-version implementation.
+	// `quadrantReactors` 是 reactor-ts 增加的信息，Akka 版本的实现中没有此字段。
+	quadrantReactors: number;
+
+	constructor(facilities: number, supportCustomers: number, quadrantReactors: number) {
+		super();
+		this.facilities = facilities;
+		this.supportCustomers = supportCustomers;
+		this.quadrantReactors = quadrantReactors;
+	}
+}
+
+// Top level producer reactor that is not a quadrant.
+// 顶层生产者反应器，本身不是一个象限。
+export class Producer extends Reactor {
+	// TODO(hokeun): Consider using NextCustomerMsg from the rootQuadrant as a trigger
+	// instead of using this nextCustomer action with some delay.
+	// Without some delay, it will become a zero-dely loop.
+	// Note that either way we can implement the benchmark correctly.
+	// It will be just a matter of style (using actions vs. messages).
+	// TODO：考虑使用 rootQuadrant 发出的 NextCustomerMsg 作为触发器，替代带延迟的 nextCustomer 动作。
+	// 若不添加延迟，就会形成零延迟循环。两种方式都能正确实现基准测试，区别仅在于采用动作还是消息。
+	nextCustomer: Action<NextCustomerMsg>;
+
+	numPoints: Parameter<number>;
+
+	gridSize: Parameter<number>;
+
+	toConsumer = new OutPort<Msg>(this);
+
+	itemsProduced = new State<number>(0);
+
+	// TODO(hokeun): Change default for numPoints to 100000.
+	constructor(parent: Reactor, numPoints = 10, gridSize = 500, period: TimeValue) {
+		super(parent);
+		this.numPoints = new Parameter(numPoints);
+		this.gridSize = new Parameter(gridSize);
+		this.nextCustomer = new Action<NextCustomerMsg>(this, Origin.logical, period);
+		this.addReaction(
+			[this.startup, this.nextCustomer],
+			[
+				this.schedulable(this.nextCustomer),
+				this.numPoints,
+				this.gridSize,
+				this.writable(this.toConsumer),
+				this.itemsProduced,
+			],
+			function (this, nextCustomer, numPoints, gridSize, toConsumer, itemsProduced) {
+				if (itemsProduced.get() < numPoints.get()) {
+					// Send CustomerMsg to the consumer.
+					// `this` is reaction, and parent is reactor containing this reaction.
+					// 向消费者发送 CustomerMsg。此处的 `this` 是反应，其 parent 是包含该反应的反应器。
+					toConsumer.set(new CustomerMsg(Point.random(gridSize.get())));
+					// Increase itemsProduced by 1.
+					// 将已生成项目数加一。
+					itemsProduced.set(itemsProduced.get() + 1);
+					// Schedule next customer (NextCustomerMsg).
+					// 调度下一个客户（NextCustomerMsg）。
+					nextCustomer.schedule(0, new NextCustomerMsg());
+				} else {
+					// TODO(hokeun): Replace this with sending RequestExitMsg.
+					// TODO：改为发送 RequestExitMsg。
+					toConsumer.set(new RequestExitMsg());
+				}
+			},
+		);
+	}
+}
+
+// Global helper functions used by both the Quadrant reactor's constructor and reaction.
+// Quadrant 反应器的构造函数和反应共同使用的全局辅助函数。
+function findCost(point: Point, localFacilities: State<Point[]>): number {
+	let result = Number.MAX_VALUE;
+	localFacilities.get().forEach((loopPoint) => {
+		const distance = loopPoint.getDistance(point);
+		if (distance < result) {
+			result = distance;
+		}
+	});
+	return result;
+}
+function addCustomer(
+	point: Point,
+	localFacilities: State<Point[]>,
+	supportCustomers: State<Point[]>,
+	totalCost: State<number>,
+): void {
+	supportCustomers.get().push(point.clone());
+	const minCost = findCost(point, localFacilities);
+	totalCost.set(totalCost.get() + minCost);
+	// console.log(`minCost: ${minCost}, totalCost: ${totalCost.get()}`)
+}
+
+export class Summary extends Reactor {
+	fromRootQuadrant = new InPort<ConfirmExitMsg>(this);
+
+	constructor(parent: Reactor) {
+		super(parent);
+
+		this.addReaction([this.fromRootQuadrant], [this.fromRootQuadrant], function (this, fromRootQuadrant) {
+			const msgFromRootQuadrant = fromRootQuadrant.get();
+			if (msgFromRootQuadrant != null) {
+				console.log(
+					`Num Facilities: ${msgFromRootQuadrant.facilities}, ` +
+						`Num customers: ${msgFromRootQuadrant.supportCustomers}, ` +
+						`Num quadrant reactors: ${msgFromRootQuadrant.quadrantReactors}`,
+				);
+			} else {
+				console.log("Summary Error: ConfirmExitMsg from root quadrant is undefined.");
+				this.util.requestStop();
+			}
+			this.util.requestStop();
+		});
+	}
+}
+
+export class Accumulator extends Reactor {
+	// TODO(hokeun): After implementing multiports, change these into a multiport, fromQuadrants.
+	// TODO：实现多端口后，将这些端口替换为名为 fromQuadrants 的多端口。
+	fromFirstQuadrant = new InPort<ConfirmExitMsg>(this);
+
+	fromSecondQuadrant = new InPort<ConfirmExitMsg>(this);
+
+	fromThirdQuadrant = new InPort<ConfirmExitMsg>(this);
+
+	fromFourthQuadrant = new InPort<ConfirmExitMsg>(this);
+
+	toNextAccumulator = new OutPort<ConfirmExitMsg>(this);
+
+	constructor(parent: Reactor) {
+		super(parent);
+
+		this.addReaction(
+			[this.fromFirstQuadrant, this.fromSecondQuadrant, this.fromThirdQuadrant, this.fromFourthQuadrant],
+			[
+				this.fromFirstQuadrant,
+				this.fromSecondQuadrant,
+				this.fromThirdQuadrant,
+				this.fromFourthQuadrant,
+				this.writable(this.toNextAccumulator),
+			],
+			function (this, fromFirstQuadrant, fromSecondQuadrant, fromThirdQuadrant, fromFourthQuadrant, toNextAccumulator) {
+				// Reaction.
+				if (
+					!fromFirstQuadrant.isPresent() ||
+					!fromSecondQuadrant.isPresent() ||
+					!fromThirdQuadrant.isPresent() ||
+					!fromFourthQuadrant.isPresent()
+				) {
+					console.log("Accumulator Error: some inputs are missing.");
+					this.util.requestStop();
+				}
+				const msgFromFirstQuadrant = fromFirstQuadrant.get();
+				const msgFromSecondQuadrant = fromSecondQuadrant.get();
+				const msgFromThirdQuadrant = fromThirdQuadrant.get();
+				const msgFromFourthQuadrant = fromFourthQuadrant.get();
+
+				if (
+					msgFromFirstQuadrant != null &&
+					msgFromSecondQuadrant != null &&
+					msgFromThirdQuadrant != null &&
+					msgFromFourthQuadrant != null
+				) {
+					const numFacilities =
+						msgFromFirstQuadrant.facilities +
+						msgFromSecondQuadrant.facilities +
+						msgFromThirdQuadrant.facilities +
+						msgFromFourthQuadrant.facilities;
+					const numCustomers =
+						msgFromFirstQuadrant.supportCustomers +
+						msgFromSecondQuadrant.supportCustomers +
+						msgFromThirdQuadrant.supportCustomers +
+						msgFromFourthQuadrant.supportCustomers;
+					const numQuadrantReactors =
+						msgFromFirstQuadrant.quadrantReactors +
+						msgFromSecondQuadrant.quadrantReactors +
+						msgFromThirdQuadrant.quadrantReactors +
+						msgFromFourthQuadrant.quadrantReactors;
+					toNextAccumulator.set(
+						new ConfirmExitMsg(
+							numFacilities + 1, // Add one for the facility itself.
+							// (A quadrant with four children is considered as one facility in Akka-version implementation.)
+							numCustomers,
+							numQuadrantReactors + 1, // Add one for the quadrant reactor itself.
+						),
+					);
+				} else {
+					console.log("Accumulator Error: some input ConfirmExitMsg's are undefined.");
+					this.util.requestStop();
+				}
+			},
+		);
+	}
+}
+export class Quadrant extends Reactor {
+	// Parameters.
+	hasQuadrantProducer: Parameter<boolean>; // Only the rootQuadrant doesn't have quadrant producer.
+
+	positionRelativeToParent: Parameter<Position>;
+
+	boundary: Parameter<Box>;
+
+	threshold: Parameter<number>;
+
+	depth: Parameter<number>;
+
+	initLocalFacilities: Parameter<Point[]>;
+
+	initKnownFacilities: Parameter<number>;
+
+	initMaxDepthOfKnownOpenFacility: Parameter<number>;
+
+	initCustomers: Parameter<Point[]>;
+
+	// Input ports.
+	fromProducer = new InPort<Msg>(this);
+
+	// Output ports.
+	toProducer = new OutPort<Msg>(this);
+
+	// TODO(hokeun): After implementing multiports, change these into a multiport, toChildren.
+	// TODO：实现多端口后，将这些端口替换为名为 toChildren 的多端口。
+	toFirstChild = new OutPort<Msg>(this);
+
+	toSecondChild = new OutPort<Msg>(this);
+
+	toThirdChild = new OutPort<Msg>(this);
+
+	toFourthChild = new OutPort<Msg>(this);
+
+	// Only the ConfirmExitMsg goes through toAccumulator port.
+	// 只有 ConfirmExitMsg 会通过 toAccumulator 端口。
+	toAccumulator = new OutPort<ConfirmExitMsg>(this);
+
+	// States.
+	facility = new State<Point>(new Point(0, 0));
+
+	localFacilities = new State<Point[]>([] as Point[]);
+
+	knownFacilities = new State<number>(0);
+
+	maxDepthOfKnownOpenFacility = new State<number>(0);
+
+	supportCustomers = new State<Point[]>([] as Point[]);
+
+	// hasChildren, firstChild, secondChild, thirdChild, fourthChild are used for
+	// children in Akka actor implementation.
+	// Akka actor 实现使用 hasChildren、firstChild、secondChild、thirdChild 和 fourthChild 表示子节点。
+	hasChildren = new State<boolean>(false);
+
+	childrenBoundaries = new State<Box[]>([] as Box[]);
+
+	totalCost = new State<number>(0);
+	trollPort = new OutPort<ConfirmExitMsg>(this);
+
+	constructor(
+		parent: Reactor,
+		hasQuadrantProducer: boolean,
+		positionRelativeToParent: Position,
+		boundary: Box,
+		threshold: number,
+		depth: number,
+		initLocalFacilities: Point[],
+		initKnownFacilities: number,
+		initMaxDepthOfKnownOpenFacility: number,
+		initCustomers: Point[],
+	) {
+		super(parent);
+		this.hasQuadrantProducer = new Parameter(hasQuadrantProducer);
+		this.positionRelativeToParent = new Parameter(positionRelativeToParent);
+		this.boundary = new Parameter(boundary);
+		this.threshold = new Parameter(threshold);
+		this.depth = new Parameter(depth);
+		this.initLocalFacilities = new Parameter(initLocalFacilities);
+		this.initKnownFacilities = new Parameter(initKnownFacilities);
+		this.initMaxDepthOfKnownOpenFacility = new Parameter(initMaxDepthOfKnownOpenFacility);
+		this.initCustomers = new Parameter(initCustomers);
+
+		// console.log(`New Quadrant actor created. boundary: ${this.boundary.get()}`)
+
+		// Startup reaction for initialization of state variables using given parameters.
+		// 启动反应：根据给定参数初始化状态变量。
+		this.addReaction(
+			[this.startup],
+			[
+				// Parameters.
+				this.boundary,
+				this.initLocalFacilities,
+				this.initKnownFacilities,
+				this.initMaxDepthOfKnownOpenFacility,
+				this.initCustomers,
+				// States to be initialized.
+				this.facility,
+				this.localFacilities,
+				this.knownFacilities,
+				this.maxDepthOfKnownOpenFacility,
+				this.supportCustomers,
+				// Statie variable totalCost is initialized inside addCustomer().
+				// 状态变量 totalCost 在 addCustomer() 中初始化。
+				this.totalCost,
+			],
+			function (
+				this,
+				// Parameters.
+				boundary,
+				initLocalFacilities,
+				initKnownFacilities,
+				initMaxDepthOfKnownOpenFacility,
+				initCustomers,
+				// States to be initialized.
+				facility,
+				localFacilities,
+				knownFacilities,
+				maxDepthOfKnownOpenFacility,
+				supportCustomers,
+				totalCost,
+			) {
+				facility.set(boundary.get().midPoint());
+				initLocalFacilities.get().forEach((val) => {
+					localFacilities.get().push(val);
+				});
+				localFacilities.get().push(facility.get());
+				// localFacilities.get().forEach(val => console.log(`Element: ${val}`))
+				knownFacilities.set(initKnownFacilities.get());
+				maxDepthOfKnownOpenFacility.set(initMaxDepthOfKnownOpenFacility.get());
+				initCustomers.get().forEach((val) => {
+					if (boundary.get().contains(val)) {
+						addCustomer(val, localFacilities, supportCustomers, totalCost);
+					}
+				});
+
+				// console.log(`New Quadrant actor initialized. facility: ${facility.get()}`)
+			},
+		);
+
+		// Main mutation reaction for QuadrantActor.process() of Akka implementation.
+		// 对应 Akka 实现中 QuadrantActor.process() 的主要变更反应。
+		this.addMutation(
+			[this.fromProducer],
+			[
+				this.hasQuadrantProducer,
+				this.positionRelativeToParent,
+				this.boundary,
+				this.threshold,
+				this.facility,
+				this.depth,
+				this.fromProducer,
+				this.writable(this.toProducer),
+				this.writable(this.toFirstChild),
+				this.writable(this.toSecondChild),
+				this.writable(this.toThirdChild),
+				this.writable(this.toFourthChild),
+				this.toFirstChild.asConnectable(),
+				this.toSecondChild.asConnectable(),
+				this.toThirdChild.asConnectable(),
+				this.toFourthChild.asConnectable(),
+				this.toAccumulator.asConnectable(),
+				this.localFacilities,
+				this.knownFacilities,
+				this.maxDepthOfKnownOpenFacility,
+				this.supportCustomers,
+				this.hasChildren,
+				this.childrenBoundaries,
+				this.totalCost,
+				this.writable(this.trollPort),
+			],
+			function (
+				this,
+				hasQuadrantProducer,
+				positionRelativeToParent,
+				boundary,
+				threshold,
+				facility,
+				depth,
+				fromProducer,
+				toProducer,
+				toFirstChildW,
+				toSecondChildW,
+				toThirdChildW,
+				toFourthChildW,
+				toFirstChildC,
+				toSecondChildC,
+				toThirdChildC,
+				toFourthChildC,
+				toAccumulatorC,
+				localFacilities,
+				knownFacilities,
+				maxDepthOfKnownOpenFacility,
+				supportCustomers,
+				hasChildren,
+				childrenBoundaries,
+				totalCost,
+				trollPort,
+			) {
+				const thisReactor = this.getReactor();
+				const toAccumulatorUpstreams: Array<IOPort<ConfirmExitMsg>> = [];
+
+				// Helper functions for mutation reaction.
+				// 变更反应使用的辅助函数。
+				const notifyParentOfFacility = (p: Point): void => {
+					if (hasQuadrantProducer.get()) {
+						toProducer.set(new FacilityMsg(positionRelativeToParent.get(), depth.get(), p, true));
+					}
+				};
+				const partition = (): void => {
+					// console.log(`Quadrant at ${facility.get()} - Partition is called.`)
+					notifyParentOfFacility(facility.get().clone());
+					maxDepthOfKnownOpenFacility.set(Math.max(maxDepthOfKnownOpenFacility.get(), depth.get()));
+
+					childrenBoundaries
+						.get()
+						.push(new Box(boundary.get().x1, facility.get().y, facility.get().x, boundary.get().y2));
+					childrenBoundaries
+						.get()
+						.push(new Box(facility.get().x, facility.get().y, boundary.get().x2, boundary.get().y2));
+					childrenBoundaries
+						.get()
+						.push(new Box(boundary.get().x1, boundary.get().y1, facility.get().x, facility.get().y));
+					childrenBoundaries
+						.get()
+						.push(new Box(facility.get().x, boundary.get().y1, boundary.get().x2, facility.get().y));
+
+					// console.log(`Children boundaries: ${childrenBoundaries.get()[0]}, ${childrenBoundaries.get()[1]}, ${childrenBoundaries.get()[2]}, ${childrenBoundaries.get()[3]}`)
+					const accumulator = new Accumulator(thisReactor);
+					// Connect Accumulator's output to Quadrant's output.
+					// 将 Accumulator 的输出连接到 Quadrant 的输出。
+					toAccumulatorUpstreams.push(accumulator.toNextAccumulator);
+					this.connect(accumulator.toNextAccumulator.asConnectable(), toAccumulatorC);
+
+					const firstChild = new Quadrant(
+						thisReactor,
+						true,
+						Position.BOT_LEFT,
+						childrenBoundaries.get()[0],
+						threshold.get(),
+						depth.get() + 1,
+						Point.arrayClone(localFacilities.get()),
+						knownFacilities.get(),
+						maxDepthOfKnownOpenFacility.get(),
+						Point.arrayClone(supportCustomers.get()),
+					);
+					this.connect(toFirstChildC, firstChild.fromProducer.asConnectable());
+					this.connect(firstChild.toAccumulator.asConnectable(), accumulator.fromFirstQuadrant.asConnectable());
+
+					const secondChild = new Quadrant(
+						thisReactor,
+						true,
+						Position.TOP_RIGHT,
+						childrenBoundaries.get()[1],
+						threshold.get(),
+						depth.get() + 1,
+						Point.arrayClone(localFacilities.get()),
+						knownFacilities.get(),
+						maxDepthOfKnownOpenFacility.get(),
+						Point.arrayClone(supportCustomers.get()),
+					);
+					this.connect(toSecondChildC, secondChild.fromProducer.asConnectable());
+					this.connect(secondChild.toAccumulator.asConnectable(), accumulator.fromSecondQuadrant.asConnectable());
+
+					const thirdChild = new Quadrant(
+						thisReactor,
+						true,
+						Position.BOT_LEFT,
+						childrenBoundaries.get()[2],
+						threshold.get(),
+						depth.get() + 1,
+						Point.arrayClone(localFacilities.get()),
+						knownFacilities.get(),
+						maxDepthOfKnownOpenFacility.get(),
+						Point.arrayClone(supportCustomers.get()),
+					);
+					this.connect(toThirdChildC, thirdChild.fromProducer.asConnectable());
+					this.connect(thirdChild.toAccumulator.asConnectable(), accumulator.fromThirdQuadrant.asConnectable());
+
+					const fourthChild = new Quadrant(
+						thisReactor,
+						true,
+						Position.BOT_RIGHT,
+						childrenBoundaries.get()[3],
+						threshold.get(),
+						depth.get() + 1,
+						Point.arrayClone(localFacilities.get()),
+						knownFacilities.get(),
+						maxDepthOfKnownOpenFacility.get(),
+						Point.arrayClone(supportCustomers.get()),
+					);
+					this.connect(toFourthChildC, fourthChild.fromProducer.asConnectable());
+					this.connect(fourthChild.toAccumulator.asConnectable(), accumulator.fromFourthQuadrant.asConnectable());
+
+					supportCustomers.set([] as Point[]);
+					// Indicate that children quadrant actors have been created.
+					// After this partition() will never be called.
+					// 标记子象限 actor 已创建。此后不会再调用 partition()。
+					hasChildren.set(true);
+				};
+
+				// Reaction.
+				const msg = fromProducer.get();
+				switch (msg?.constructor) {
+					case CustomerMsg: {
+						// Handling CustomerMsg for a new customoer.
+						// This message is propagated from root to the leaf facility.
+						// 处理新客户的 CustomerMsg。此消息从根节点逐级传递到叶子设施。
+						// console.log(`Quadrant at ${facility.get()} - Received CustomerMsg: ${(<CustomerMsg>msg).point}`)
+						const point = (msg as CustomerMsg).point;
+						if (!hasChildren.get()) {
+							// No open facility, thus, addCustomer(), then partition().
+							// 当前没有已开放的设施，因此先调用 addCustomer()，再执行 partition()。
+							addCustomer(point, localFacilities, supportCustomers, totalCost);
+							if (totalCost.get() > threshold.get()) {
+								partition();
+							}
+						} else {
+							// A facility is already open, propagate customer to correct child.
+							// 设施已开放，将客户转发到对应的子象限。
+							// console.log(`Quadrant at ${facility.get()} - A child facility is already open.`)
+							for (let i = 0; i < childrenBoundaries.get().length; i++) {
+								if (childrenBoundaries.get()[i].contains(point)) {
+									switch (i) {
+										case 0:
+											toFirstChildW.set(msg);
+											break;
+										case 1:
+											toSecondChildW.set(msg);
+											break;
+										case 2:
+											toThirdChildW.set(msg);
+											break;
+										case 3:
+											toFourthChildW.set(msg);
+											break;
+									}
+									break;
+								}
+							}
+						}
+						break;
+					}
+					case RequestExitMsg:
+						if (!hasChildren.get()) {
+							// No children, number of facilities will be counted on parent's side.
+							// 没有子节点时，设施数量由父级统计。
+							toAccumulatorUpstreams.forEach((val) => {
+								this.disconnect(val, toAccumulatorC.getPort());
+							});
+							this.connect(trollPort.getPort().asConnectable(), toAccumulatorC);
+
+							trollPort.set(
+								new ConfirmExitMsg(
+									0, // facilities
+									supportCustomers.get().length, // supportCustomers
+									1, // quadrantReactors
+								),
+							);
+						} else {
+							toFirstChildW.set(msg);
+							toSecondChildW.set(msg);
+							toThirdChildW.set(msg);
+							toFourthChildW.set(msg);
+						}
+						break;
+					default:
+						console.log(`Error: Recieved unknown message: ${msg?.constructor}`);
+						this.util.requestErrorStop();
+						break;
+				}
+			},
+		);
+	}
+}
+
+export class FacilityLocation extends App {
+	producer: Producer;
+
+	rootQuadrant: Quadrant;
+
+	summary: Summary;
+
+	constructor(
+		name: string,
+		timeout: TimeValue | undefined = undefined,
+		keepAlive = false,
+		fast = false,
+		success?: () => void,
+		fail?: () => void,
+	) {
+		super(timeout, keepAlive, fast, success, fail);
+		// TODO(hokeun): Change default for numPoints to 100000.
+		const NUM_POINTS = 100000;
+		const GRID_SIZE = 500;
+		const F = Math.sqrt(2) * GRID_SIZE;
+		const ALPHA = 2.0;
+
+		this.producer = new Producer(this, NUM_POINTS, GRID_SIZE, TimeValue.nsec(1));
+
+		this.rootQuadrant = new Quadrant(
+			this,
+			false, // hasQuadrantProducer
+			Position.ROOT, // positionRelativeToParent
+			new Box(0, 0, GRID_SIZE, GRID_SIZE), // boundry
+			ALPHA * F, // threshold
+			0, // depth
+			[] as Point[], // initLocalFacilities
+			1, // initKnownFacilities
+			-1, // initMaxDepthOfKnownOpenFacility
+			[] as Point[], // initCustomers
+		);
+
+		this.summary = new Summary(this);
+
+		this._connect(this.producer.toConsumer, this.rootQuadrant.fromProducer);
+		this._connect(this.rootQuadrant.toAccumulator, this.summary.fromRootQuadrant);
+	}
+}
+
+// ************* Instance FacilityLocation of class FacilityLocation
+const _app = new FacilityLocation("FacilityLocation", undefined, false, true);
+// ************* Starting Runtime for FacilityLocation of class FacilityLocation
+_app._start();
