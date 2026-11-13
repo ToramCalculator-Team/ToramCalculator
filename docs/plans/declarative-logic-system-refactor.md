@@ -2,13 +2,13 @@
 
 **状态**: 待执行  
 **预计工作量**: 待估  
-**核心决策**: 游戏逻辑从硬编码节点方法迁移到 mistreevous 声明式定义；可外部编辑的 BT 同步运行，不可编辑的 BT 允许异步；事件由树路径自动发射，payload 是 blackboard 快照
+**核心决策**: 游戏逻辑从硬编码节点方法迁移到 mistreevous 声明式定义；BT 由 BTRuntime 根据领域事件和 Reactor Action 推进；节点生命周期观测与领域事实使用独立事件模型
 
 ## 目标与边界
 
 引擎只保留基础设施：跨线程通信、IO、tick 调度、生命周期管理、事件订阅系统、BT/FSM/Pipeline 运行时。所有游戏规则（Member 类型、阵营、技能效果、伤害公式、FSM 定义、节点方法实现、属性 Schema）声明在引擎外部并向下注入。
 
-本计划是 `engine-blackboard-communication-refactor.md` Phase 5（事实发布对齐）的前置依赖：通信重构的输出端口事件区内容由"节点自己发事件"决定，而"节点自己发事件"只有声明式系统建立后才能定义清楚。
+本计划与事件驱动 BT 的实现相关。节点生命周期观测事件使用树路径和 blackboard 快照；领域事实由 GameReactor 内部 EventBus 发布，二者职责独立。
 
 两份计划的关系：
 
@@ -26,11 +26,13 @@
 ## 依赖链
 
 ```
-BT 节点能发事件（wrapper 自动发射，节点实现无感）
+BT 节点生命周期观测（wrapper 自动发射）
   → BT 定义声明化（规则用 mdsl，节点实现可注入）
-    → 事件订阅/收集系统（订阅者决定收哪些事件）
-      → 输出端口事件区内容定稿
-        → 通信重构 Phase 5
+    → 观测事件按显式配置写入网络输出
+
+GameReactor 领域事实
+  → 内部 EventBus
+    → BTRuntime 推进匹配的 BT 实例
 ```
 
 ## 核心设计决策
@@ -41,13 +43,11 @@ BT 节点能发事件（wrapper 自动发射，节点实现无感）
 
 理由：树结构本身就是规则结构，命名空间与规则不会漂移；维护独立事件表必然与树结构产生第二处真相源。
 
-### 决策 2：事件 payload 是 blackboard 快照
+### 决策 2：节点观测 payload 是 blackboard 快照
 
-触发时刻对 BT 实例的 blackboard 做整体快照，连同成员身份与树路径一起作为 payload。不做引用传递，因为 payload 要写跨线程的输出端口事件区，必须自包含。
+节点生命周期观测触发时，对该 BT 实例的 blackboard 做快照，连同树路径形成观测数据。需要进入外部观察时，由显式配置的网络输出负责传递；内部领域事件的负载由游戏事件定义提供，不从 blackboard 自动生成。
 
-理由：blackboard 是可变共享状态，"命中"事件在 Tick 中途触发时 damage 已写入，后续节点可能覆盖；Tick 末取到的是最终值，不是事件发生时的值。快照必须在节点生命周期时刻生成。
-
-容量控制：只有匹配外部订阅的路径才做快照并写入事件区，无外部订阅的路径只在 worker 内 EventBus 派发，不进入 SAB。本领域每个成员的 blackboard 不大（目标、位置、伤害值、几个技能状态），按 tick 内对外事件量估算应在容量内。超容量时收窄到节点声明输出字段 + 选择性快照。
+理由：blackboard 可变，节点观测应保留发生时的数据视图；领域事实则由有权确认事实的执行过程提供其事件负载。两种事件服务不同的消费者，不共用隐式发布路径。
 
 ### 决策 3：BT 运行时结构分定义与实例两层
 
@@ -280,16 +280,17 @@ interface NodeContext {
 
 **验收**：跑一个最小流程，改 mdsl 后下一 tick 用新树，事件顺序轴不乱。
 
-### 阶段 2：事件订阅系统与 wrapper 打通
+### 阶段 2：领域事件订阅与 BT 观测
 
-目标：建立 worker 内 EventBus 与对外事件区的连接。
+目标：建立 GameReactor 内部事实订阅与 BT 节点生命周期观测的独立路径。
 
-1. EventBus 机制留在引擎，订阅带作用域并分桶。
-2. wrapper 发射的事件先入 worker 内 EventBus。
-3. 对外订阅匹配的路径做 blackboard 快照、写入输出端口事件区。
-4. 无对外订阅时不创建事件区、不收集、不写出（ADR 0059）。
+1. GameReactor 持有 Reactor-local EventBus，管理本实体领域事实的订阅。
+2. BTRuntime 为长期激活的 BT 实例建立和清理领域事件订阅。
+3. 领域事件到达时，BTRuntime 将负载交给订阅实例并在当前逻辑调用中推进该树。
+4. 节点 wrapper 产生的生命周期观测与领域事实分离；需要对外观察的节点数据经显式网络输出提供，不由内部 EventBus 自动投影。
+5. Wait 节点进入等待时由 BTRuntime 注册目标时刻 Action，到期后继续推进树。
 
-**验收**：有订阅时事件区可见且 payload 是快照；无订阅时不产生任何对外数据，模拟结果逐 Tick 一致。
+**验收**：领域事件只触发匹配的本地 BT；内部订阅不会自动产生网络输出；Wait 到期时在目标逻辑 tag 恢复推进。
 
 ### 阶段 3：硬编码流程改写验证
 
@@ -297,10 +298,10 @@ interface NodeContext {
 
 1. 选一条现有硬编码流程（建议 `DamageResolution` 或一个简单技能效果）改写成 mdsl。
 2. 节点实现从 `NodeMethods/ActionMethods.ts` 原样迁出到游戏规则包，通过注入接口注册。
-3. 跑通"节点 wrapper 自动发事件 → 订阅匹配 → 快照写入事件区"全链路。
-4. 验证 SAB 容量在预期内。
+3. 跑通“领域事实发布 → EventBus 本地订阅 → BTRuntime 推进 BT → handler 修改状态”全链路。
+4. 独立验证节点生命周期观测快照及显式网络输出。
 
-**验收**：改写后流程行为与改写前逐 Tick 一致；事件 payload 内容正确。
+**验收**：改写后流程行为与改写前逐 tag 一致；领域事件负载与响应结果正确。
 
 ### 阶段 4：控制行为树迁移
 
@@ -347,14 +348,14 @@ interface NodeContext {
 
 **验收**：`src/engine/` 只含基础设施；游戏规则全部在引擎外部声明。
 
-### 阶段 8：通信重构 Phase 5 落地
+### 阶段 8：通信边界对齐
 
-目标：本计划完成后，回到通信重构完成事实发布对齐。
+本阶段中关于全局 EventBus 与对外事件区的旧方向已由 ADR 0059 当前修订取代。后续工作遵循以下边界：
 
-1. 事件区内容定稿（已由本计划阶段 2 验证）。
-2. 合并 ProcBus 与 DomainEventBus 为唯一 EventBus。
-3. 事实发布点统一在各过程本身。
-4. 其余按 `engine-blackboard-communication-refactor.md` Phase 5 执行。
+1. 每个 GameReactor 持有本地 EventBus，发布领域事实并同步通知本地订阅者。
+2. BT 节点生命周期观测与领域事实分开处理。
+3. 对外观察只读取显式声明的 Reactor 网络输出。
+4. 跨 tag 的延迟效果由 Reactor `Action.schedule` 调度。
 
 ## 验收标准
 
@@ -364,7 +365,7 @@ interface NodeContext {
 - [ ] 可外部编辑的 BT 同步运行，禁 RUNNING；不可编辑的 BT 允许异步
 - [ ] 事件命名空间由树路径承担，无固定事件表
 - [ ] 事件 payload 是 blackboard 快照，在节点生命周期时刻生成
-- [ ] 只有匹配外部订阅的路径做快照并写入事件区；无订阅时不产生任何对外数据
+- [ ] 节点生命周期观测只有显式配置时进入网络输出；GameReactor 内部领域事件只交付本地订阅者
 - [ ] 版本热替换在 tick 开头完成，保留 blackboard，本 tick 内无重建
 - [ ] 可编辑 BT 的 checkpoint 只存 blackboard；不可编辑 BT 用 mistreevous 现有机制
 - [ ] FSM 运行时沿用 xstate，引擎不额外封装
@@ -396,7 +397,7 @@ interface NodeContext {
 
 关联：
 - `docs/plans/engine-blackboard-communication-refactor.md`（本计划的下游消费者）
-- ADR 0059（对外事实由订阅驱动，本计划的阶段 2 落地）
+- ADR 0059（事实发布、GameReactor 本地订阅与外部事件观察）
 - ADR 0060（运行记录以模拟时间为权威顺序轴）
 - ADR 0043（行动录制，待重估）
 - ADR 0044（成员状态历史）

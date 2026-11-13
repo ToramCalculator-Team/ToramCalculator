@@ -3,7 +3,7 @@ import type { EffectBtRuntime, EffectBtRuntimeServices } from "../../../../Effec
 import type { PlayerAttrNestedSchema } from "../../PlayerAttrSchema";
 
 export const PlayerEffectActionPool = {} as const satisfies ActionPool<
-	EffectBtRuntime<PlayerAttrNestedSchema>,
+	EffectBtRuntime,
 	EffectBtRuntimeServices<PlayerAttrNestedSchema>
 >;
 

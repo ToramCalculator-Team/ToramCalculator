@@ -85,7 +85,7 @@
 | **InputSnapshot** | 一个区间内交付给模拟的恒值输入 | 输入日志记录它，重放喂同一份 |
 | **OutputSampler** | 网络外层。tag 结算后主动读端口，对照订阅表裁剪，写 SAB 并发布帧序号 | 单写者；写入值不回流成反应器输入 |
 | **WorldStateWriter** | 输出 SAB 帧数据唯一写入方 | `engine/thread/worldStateBuffer.ts:739` |
-| **订阅表** | 决定哪些路径做快照并写入 SAB 事件区 | 归 `OutputSampler`；为空时模拟结果不变 |
+| **旧输出订阅表方案** | 按节点路径筛选快照并写入 SAB 事件区 | 已由 ADR 0059 当前修订取代；内部领域事件由 GameReactor-local EventBus 通知订阅者 |
 
 ### 3.5 状态、求值与产出
 
@@ -218,14 +218,14 @@ JSON 本身不提供运行时保证。用 zod 定义树 DSL 的 schema，`z.infe
 
 ### 4.14 事件总线与消息队列的归宿
 
-| 原机制 | 替代 |
+| 通信场景 | 当前讨论结论 |
 |---|---|
-| `EventBus` 内部派发 | 端口拓扑（构造期静态接线） |
-| `EventBus` 对外发布 | `OutputSampler` 的订阅表 |
-| `MessageQueue` 跨帧排队 | 同 tag 内动作发端口，跨 tag 用 `Action.schedule` |
-| `outboundPrefixes` 字符串前缀匹配 | 删除，订阅表按端口路径 |
+| GameReactor 内部领域事实 | Reactor-local EventBus，同步发布与订阅，不进入网络调度 |
+| Reactor 网络数据依赖 | Reaction 与端口拓扑，装配期静态接线 |
+| 跨 tag 未来操作 | Reactor `Action.schedule` |
+| 网络外观察 | OutputCollector 读取显式网络输出 |
 
-ADR 0059 的"订阅驱动单一总线"在 Reactor 下落实为"端口全量写出，订阅表在外层裁剪"。订阅表为空时模拟结果逐 tag 一致，只是不产生 SAB 数据——开放世界无人观看的演化靠这条成立。
+ADR 0059 当前修订移除全局事件总线方案。GameReactor 本地 EventBus 同步分发内部与外部观察订阅；只有内部逻辑订阅能够改变模拟状态。
 
 ## 5 待定项
 
@@ -248,7 +248,8 @@ ADR 0059 的"订阅驱动单一总线"在 Reactor 下落实为"端口全量写�
 | 新增 | `runtime/reactor/` 的 `InputSampler`、`OutputSampler`；`runtime/fsm/` 的纯函数解释器 |
 | `runtime/bt/` | 落地 BT wrapper，事件走 OutPort |
 | `AttributeContainer` / `StatusInstanceStore` | 内部结构不改。过期判定由调用方从「每 tick 扫描」改为 `Action.schedule` 到点触发 |
-| `EventBus` / `MessageQueue` | 删除，职责归端口与订阅表 |
+| `EventBus` | 全局总线移除；GameReactor 内部事实使用 reactor-local EventBus |
+| `MessageQueue` | 跨 tag 未来操作由 `Action.schedule` 处理；网络数据依赖由端口表达 |
 | `controllerInputBuffer` | 职责收窄为真实时间到边界的搬运，聚合上移到 `InputSampler` |
 | `worldStateBuffer` / `protocol` / `SimulationWorkerPool` | 形状不变 |
 | 不动 | `SpaceManager` 索引机制、`PipelineService`、`JSProcessor`、`Checkpoint` 接口形状、`ModifierDslParser` |

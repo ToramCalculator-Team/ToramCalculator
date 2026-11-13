@@ -11,7 +11,7 @@
 | 你想做什么 | 该读什么 |
 |---|---|
 | **入门**：理解引擎整体怎么运转 | `引擎架构设计.md` |
-| **实现**：要修改/扩展某模块，需要知道边界和约束 | 引擎模块旁的模块架构文档（`core/GameEngine.md`、`core/GameSystem.md`、`core/ReactorGameSystem.md`、`core/Reactor/InputSampler.md`、`core/StateMachine/FsmHost.md` 等）；`docs/decisions/` 下相关 ADR；模块自身的 catalog 代码 |
+| **实现**：要修改/扩展某模块，需要知道边界和约束 | 引擎模块旁的模块架构文档（`core/GameEngine.md`、`core/GameSystem.md`、`core/ReactorGameSystem.md`、`core/Event/EventBus.md`、`core/Event/EventOutputFilter.md`、`core/BehaviorTree/` 等）；`docs/decisions/` 下相关 ADR；模块自身的 catalog 代码 |
 | **追因**：跨模块串一次端到端流程 | `hook与触发层设计讨论结论.md` §2.99；需要时按需新建端到端流程叙事 |
 | **决策**：想知道"为什么这样设计"或"是否还能改" | `docs/decisions/`（ADR），按编号或主题查 |
 
@@ -29,11 +29,11 @@ document/
 └── 成员动作编排链设计.md        游戏层子系统（待迁移）
 ```
 
-游戏层模块文档放在游戏层目录（例如 `src/game/toramOnline/World.md`）。
+游戏层模块文档放在游戏层目录（例如 `src/game/toramOnline/World.md`）。GameReactor 的组合设计见 [GameReactor.md](../../game/toramOnline/World/actors/Member/GameReactor.md)。
 
-模块架构文档写在模块旁（`core/GameEngine.md`、`core/GameSystem.md`、`core/ReactorGameSystem.md`、`core/Reactor/`、`core/BehaviorTree/` 等），内容结构见[模块架构文档规范](./模块架构文档规范.md)。引擎与主线程之间的数据面是输入缓冲加每个采集器一个输出缓冲，详见 [`src/engine/AGENTS.md`](../AGENTS.md)「线程间通道」。
+模块架构文档写在模块旁（`core/GameEngine.md`、`core/GameSystem.md`、`core/ReactorGameSystem.md`、`core/Reactor/`、`core/Event/`、`core/BehaviorTree/` 等），内容结构见[模块架构文档规范](./模块架构文档规范.md)。引擎与主线程之间的数据面是输入缓冲加每个采集器一个输出缓冲，详见 [`src/engine/AGENTS.md`](../AGENTS.md)「线程间通道」。
 
-项目级 ADR 位于 `docs/decisions/`；引擎相关决策也进入该目录并通过主题列区分范围。
+项目级 ADR 位于 `docs/decisions/`；引擎相关决策也进入该目录并通过主题列区分范围。事件发布与外部观察边界见 [ADR 0059](../../../docs/decisions/0059-facts-published-on-subscription-driven-single-bus.md)。
 `hook与触发层设计讨论结论.md` 的内容会被增量拆进 `docs/decisions/`，原文档保留作为历史快照不再演进。
 
 ## 三条纪律
