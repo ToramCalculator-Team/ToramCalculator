@@ -4,9 +4,10 @@
 
 1. **网络根**：作为 `App` 的子类，持有游戏层构建的反应器网络。
 2. **运行控制**：推进 tag、暂停与恢复、单步。
-3. **tag 完成通知**：逻辑时间的全部微步结束后，通知采集器与记录器。
-4. **输入接入**：持有输入采样器，把输入缓冲接到网络。
-5. **状态捕获**：输出 tag、节点状态与待处理事件。
+3. **输出生命周期**：装配消费者声明的参数采集器和事件输出过滤器，并协调提交与销毁。
+4. **tag 完成通知**：逻辑时间的全部微步结束后，通知周期采集器、事件批次写入器与记录器。
+5. **输入接入**：持有输入采样器，把输入缓冲接到网络。
+6. **状态捕获**：输出 tag、节点状态与待处理事件。
 
 ReactorGameSystem 是 [GameSystem](GameSystem.md) 的 Reactor 实现；线程、共享缓冲、协议与检查点序列化归 GameEngine。
 
@@ -21,8 +22,9 @@ class ReactorGameSystem extends App implements GameSystem {
   // 输入采样器：网络内的源反应器
   private inputSampler: InputSampler;
 
-  // 采集器：网络外，按各自周期读取参数
-  private collectors: OutputCollector[];
+  // 消费者配置启用的网络外输出设施
+  private parameterCollectors: OutputCollector[];
+  private eventFilters: EventOutputFilter[];
 
   // 逻辑时间完成观察者
   private advanceListeners: AdvanceListener[];
@@ -35,13 +37,14 @@ class ReactorGameSystem extends App implements GameSystem {
 /**
  * 初始化
  *
- * 由 GameEngine 在加载时调用一次。子类在这里建立网络、输入采样器与采集器。
+ * 由 GameEngine 在加载时调用一次。子类在这里建立网络、输入采样器，以及消费者配置要求的输出设施。
  */
 initialize(): void
 // TODO:
 // - 调用 createNetwork 建立网络根与输入采样器
-// - 调用 createCollectors 建立采集器
-// - 注册完成观察者
+// - 按消费者配置创建 OutputCollector 与 EventOutputFilter
+// - 将事件过滤器订阅到目标 GameReactor 的 EventBus
+// - 注册完成观察者，用于周期参数采样和事件批次提交
 
 /**
  * 建立网络根与输入采样器
@@ -58,7 +61,10 @@ protected abstract createNetwork(): {
  *
  * @returns 采集器集合
  */
-protected abstract createCollectors(): OutputCollector[];
+protected abstract createOutputFacilities(): {
+  parameterCollectors: OutputCollector[];
+  eventFilters: EventOutputFilter[];
+};
 ```
 
 ### 运行控制

@@ -7,8 +7,8 @@ import {
 } from "~/engine/core/AttributeContainer/AttributeContainerTypes";
 import { type ActionPool, defineAction } from "~/engine/core/BehaviorTree/NodeMethods/MethodTypes";
 import { ExpressionTransformer } from "~/engine/core/JSProcessor/ExpressionTransformer";
-import type { DamageDefinition, ResolvedDamageEffect } from "~/game/toramOnline/service/Damage/types";
-import { type CasterSnapshot, setHasBuff } from "~/game/toramOnline/service/Expression/CasterSnapshot";
+import type { DamageDefinition, ResolvedDamageEffect } from "~/game/toramOnline/World/service/Damage/types";
+import { type CasterSnapshot, setHasBuff } from "~/game/toramOnline/World/service/Expression/CasterSnapshot";
 import { createLogger } from "~/lib/logger";
 import { State } from "~/lib/mistreevous/State";
 import { MemberStateNameSchema } from "~/MemberStateName/MemberState";
@@ -372,7 +372,7 @@ function createAttackAction<TSchema extends z.ZodType>(
 					rangeKind: definition.rangeKind,
 					range,
 				};
-				capabilities.services.executeInstantDamage?.(effect);
+				capabilities.executeInstantDamage?.(effect);
 				return State.SUCCEEDED;
 			}
 			const durationRaw = (input as { durationMs?: string | number }).durationMs;
@@ -382,11 +382,11 @@ function createAttackAction<TSchema extends z.ZodType>(
 			if (!range.trajectory && durationMs <= 0) {
 				throw new Error(`${actionName}: 静止持续攻击必须提供正数 durationMs`);
 			}
-			capabilities.services.createDamageArea?.({
+			capabilities.createDamageArea?.({
 				...damage,
 				rangeKind: definition.rangeKind,
 				range,
-				lifetime: { startTimeMs: capabilities.services.getCurrentTimeMs(), durationMs },
+				lifetime: { startTimeMs: context.currentTimeMs, durationMs },
 				hitPolicy: { hitIntervalMs: damage.attackSemantics.damageIntervalMs },
 			});
 			return State.SUCCEEDED;
@@ -467,7 +467,6 @@ export const CommonEffectActionPool = {
 		(context, input, capabilities) => {
 			log.debug(`👤 [${context.name}] healHp`, input);
 
-			const skill = context.skill;
 			const currentSkillData = context.currentSkill?.data;
 			const skillLv = currentSkillData?.lv ?? 0;
 
@@ -494,7 +493,7 @@ export const CommonEffectActionPool = {
 			if (capped <= 0) return State.SUCCEEDED;
 			const sourceName = input.sourceName ?? currentSkillData?.template?.name ?? `hp-heal`;
 			const sourceKey = input.sourceId ?? `skill.heal.hp.${currentSkillData?.id ?? "unknown"}`;
-			capabilities.attributeContainer.addModifier(
+			capabilities.addModifier(
 				currentAttr,
 				ModifierType.DYNAMIC_FIXED,
 				capped,
@@ -528,11 +527,10 @@ export const CommonEffectActionPool = {
 		(context, input, capabilities) => {
 			log.debug(`👤 [${context.name}] healMp`, input);
 
-			const skill = context.skill;
 			const currentSkillData = context.currentSkill?.data;
-			const skillLv = skill?.lv ?? currentSkillData?.lv ?? 0;
+			const skillLv = currentSkillData?.lv ?? 0;
 
-			const evaluated = capabilities.services.expressionEvaluator?.(input.expression, {
+			const evaluated = capabilities.expressionEvaluator?.(input.expression, {
 				currentTimeMs: context.currentTimeMs,
 				tickIndex: context.tickIndex,
 				casterId: context.memberId,
@@ -549,23 +547,23 @@ export const CommonEffectActionPool = {
 
 			const currentAttr = `mp.current`;
 			const maxAttr = `mp.max`;
-			const current = capabilities.attributeContainer.getValue(currentAttr);
-			const max = capabilities.attributeContainer.getValue(maxAttr);
+			const current = capabilities.getAttr(currentAttr);
+			const max = capabilities.getAttr(maxAttr);
 			const capped = max > 0 ? Math.min(requested, Math.max(0, max - current)) : requested;
 			if (capped <= 0) return State.SUCCEEDED;
-			const sourceName = input.sourceName ?? skill?.name ?? currentSkillData?.template?.name ?? `mp-heal`;
-			const sourceKey = input.sourceId ?? `skill.heal.mp.${skill?.id ?? currentSkillData?.id ?? "unknown"}`;
-			capabilities.attributeContainer.addModifier(
+			const sourceName = input.sourceName ?? currentSkillData?.template?.name ?? `mp-heal`;
+			const sourceKey = input.sourceId ?? `skill.heal.mp.${currentSkillData?.id ?? "unknown"}`;
+			capabilities.addModifier(
 				currentAttr,
 				ModifierType.DYNAMIC_FIXED,
 				capped,
 				createActionModifierSource(context, sourceKey, sourceName, input.sourceType ?? "skill"),
 			);
 
-			const hp = capabilities.attributeContainer.getValue("hp.current");
+			const hp = capabilities.getAttr("hp.current");
 			const mp = current + capped;
 
-			capabilities.recordEvent({
+			capabilities.publishEvent({
 				type: "state_changed",
 				memberId: context.memberId,
 				hp,
@@ -627,13 +625,11 @@ export const CommonEffectActionPool = {
 			.meta({ description: "属性修改" }),
 		(context, input, capabilities) => {
 			log.debug(`👤 [${context.name}] modifyAttribute`, input);
-			// 优先从 per-tree 注入的 skill 上下文读取，fallback 到 currentSkill
-			const skill = context.skill;
 			const currentSkillData = context.currentSkill?.data;
 
-			const skillLv = input.skillLv ?? skill?.lv ?? currentSkillData?.lv ?? 0;
+			const skillLv = input.skillLv ?? currentSkillData?.lv ?? 0;
 
-			const evaluated = capabilities.services.expressionEvaluator?.(input.expression, {
+			const evaluated = capabilities.expressionEvaluator?.(input.expression, {
 				currentTimeMs: context.currentTimeMs,
 				tickIndex: context.tickIndex,
 				casterId: context.memberId,
@@ -644,11 +640,11 @@ export const CommonEffectActionPool = {
 				log.warn(`⚠️ [${context.name}] 属性修改表达式未返回数值`, input.expression, evaluated);
 				return State.FAILED;
 			}
-			if (!capabilities.attributeContainer.hasKey(input.attribute)) {
+			if (!capabilities.hasAttr(input.attribute)) {
 				log.error(`⚠️ [${context.name}] 属性修改失败，属性不存在: ${input.attribute}`);
 				return State.FAILED;
 			}
-			capabilities.attributeContainer.addModifier(
+			capabilities.addModifier(
 				input.attribute,
 				{
 					baseValue: ModifierType.BASE_VALUE,
@@ -660,8 +656,8 @@ export const CommonEffectActionPool = {
 				evaluated,
 				createActionModifierSource(
 					context,
-					input.sourceId ?? skill?.id ?? currentSkillData?.id ?? input.attribute,
-					input.sourceName ?? skill?.name ?? currentSkillData?.template.name ?? "",
+					input.sourceId ?? currentSkillData?.id ?? input.attribute,
+					input.sourceName ?? currentSkillData?.template.name ?? "",
 					input.sourceType ?? "skill",
 				),
 			);
@@ -689,12 +685,12 @@ export const CommonEffectActionPool = {
 			.meta({ description: "按来源覆盖设置属性修改" }),
 		(context, input, capabilities) => {
 			log.debug(`👤 [${context.name}] setAttributeModifier`, input);
-			const skill = context.skill;
+
 			const currentSkillData = context.currentSkill?.data;
 
-			const skillLv = input.skillLv ?? skill?.lv ?? currentSkillData?.lv ?? 0;
+			const skillLv = input.skillLv ?? currentSkillData?.lv ?? 0;
 
-			const evaluated = capabilities.services.expressionEvaluator?.(input.expression, {
+			const evaluated = capabilities.expressionEvaluator?.(input.expression, {
 				currentTimeMs: context.currentTimeMs,
 				tickIndex: context.tickIndex,
 				casterId: context.memberId,
@@ -705,15 +701,15 @@ export const CommonEffectActionPool = {
 				log.warn(`⚠️ [${context.name}] 覆盖属性修改表达式未返回有限数值`, input.expression, evaluated);
 				return State.FAILED;
 			}
-			if (!capabilities.attributeContainer.hasKey(input.attribute)) {
+			if (!capabilities.hasAttr(input.attribute)) {
 				log.error(`⚠️ [${context.name}] 属性修改失败，属性不存在: ${input.attribute}`);
 				return State.FAILED;
 			}
-			capabilities.attributeContainer.updateModifiersBySource(
+			capabilities.updateModifiersBySource(
 				createActionModifierSource(
 					context,
 					input.sourceId,
-					skill?.name ?? currentSkillData?.template.name ?? input.attribute,
+					currentSkillData?.template.name ?? input.attribute,
 					"skill",
 				),
 				[
@@ -768,26 +764,17 @@ export const CommonEffectActionPool = {
 			if (input.direction === "entered" || input.direction === "both") eventNames.push("status.entered");
 			if (input.direction === "exited" || input.direction === "both") eventNames.push("status.exited");
 
-			const typesFilter = new Set(input.types);
-			const predicate =
-				typesFilter.size === 0
-					? null
-					: (event: { payload: unknown }) => {
-							const payload = event.payload as { type?: string };
-							return !!payload?.type && typesFilter.has(payload.type);
-						};
-			capabilities.subscribeByName(input.sourceId, eventNames, predicate, (event) => {
+			capabilities.subscribeByName(eventNames, () => {
 				if (!input.counterSlot) return State.FAILED;
-				if (!capabilities.attributeContainer.hasKey(input.counterSlot)) {
+				if (!capabilities.hasAttr(input.counterSlot)) {
 					log.error(`⚠️ [${context.name}] 属性修改失败，属性不存在: ${input.counterSlot}`);
 					return State.FAILED;
 				}
-				const sourceKey = `${input.sourceId}.counter.${event.timeMs}`;
-				capabilities.attributeContainer.addModifier(
+				capabilities.addModifier(
 					input.counterSlot,
 					ModifierType.DYNAMIC_FIXED,
 					1,
-					createActionModifierSource(context, sourceKey, "subscribeStatus.counter", "system"),
+					createActionModifierSource(context, input.sourceId, "subscribeStatus.counter", "system"),
 				);
 			});
 			return State.SUCCEEDED;
@@ -813,31 +800,17 @@ export const CommonEffectActionPool = {
 			})
 			.meta({ description: "按事件名 + tag 过滤订阅通用 proc 事件" }),
 		(context, input, capabilities) => {
-			const tagFilter = new Set(input.requiredTags);
-			const predicate =
-				tagFilter.size === 0
-					? null
-					: (event: { payload: unknown }) => {
-							const payload = event.payload as { damageTags?: string[] };
-							if (!Array.isArray(payload?.damageTags)) return false;
-							for (const tag of payload.damageTags) {
-								if (tagFilter.has(tag)) return true;
-							}
-							return false;
-						};
-
-			capabilities.subscribeByName(input.sourceId, input.eventNames, predicate, (event) => {
+			capabilities.subscribeByName(input.eventNames, () => {
 				if (!input.counterSlot) return State.FAILED;
-				if (!capabilities.attributeContainer.hasKey(input.counterSlot)) {
+				if (!capabilities.hasAttr(input.counterSlot)) {
 					log.error(`⚠️ [${context.name}] 属性修改失败，属性不存在: ${input.counterSlot}`);
 					return State.FAILED;
 				}
-				const sourceKey = `${input.sourceId}.counter.${event.timeMs}`;
-				capabilities.attributeContainer.addModifier(
+				capabilities.addModifier(
 					input.counterSlot,
 					ModifierType.DYNAMIC_FIXED,
 					1,
-					createActionModifierSource(context, sourceKey, "subscribeProc.counter", "system"),
+					createActionModifierSource(context, input.sourceId, "subscribeProc.counter", "system"),
 				);
 			});
 			return State.SUCCEEDED;
@@ -862,40 +835,25 @@ export const CommonEffectActionPool = {
 			})
 			.meta({ description: "注册属性阈值 watcher" }),
 		(context, input, capabilities) => {
-			if (!capabilities.attributeContainer.hasKey(input.path)) {
+			if (!capabilities.hasAttr(input.path)) {
 				log.error(`⚠️ [${context.name}] 路径监听失败，属性不存在: ${input.path}`);
 				return State.FAILED;
 			}
-			// 阈值穿越降格为 ProcBus 事件源（ADR 0010）：注册被监控点 + 订阅 attr.crossed。
-			// predicate 按 register 返回的 registrationId 精确匹配自己那一条注册，避免同
-			// (path, threshold) 多源订阅时被彼此的跨越事件重复 / 错向唤醒（ADR 0010 问题 A）。
-			const registrationId = capabilities.registerThreshold(
-				input.sourceId,
-				input.path,
-				input.threshold,
-				input.direction,
-				{ fireOnRegister: input.fireOnRegister },
-			);
-			capabilities.subscribeByName(
-				input.sourceId,
-				["attr.crossed"],
-				(event) => (event.payload as { registrationId?: number }).registrationId === registrationId,
-				(event) => {
-					if (!input.counterSlot) return State.FAILED;
-					if (!capabilities.attributeContainer.hasKey(input.counterSlot)) {
-						log.error(`⚠️ [${context.name}] 属性修改失败，属性不存在: ${input.counterSlot}`);
-						return State.FAILED;
-					}
-					const newValue = (event.payload as { newValue?: number }).newValue ?? 0;
-					const sourceKey = `${input.sourceId}.counter.${newValue}`;
-					capabilities.attributeContainer.addModifier(
-						input.counterSlot,
-						ModifierType.DYNAMIC_FIXED,
-						1,
-						createActionModifierSource(context, sourceKey, "watchThreshold.counter", "system"),
-					);
-				},
-			);
+			capabilities.subscribeByName(["attr.crossed"], (event: { payload: { newValue?: number } }) => {
+				if (!input.counterSlot) return State.FAILED;
+				if (!capabilities.hasAttr(input.counterSlot)) {
+					log.error(`⚠️ [${context.name}] 属性修改失败，属性不存在: ${input.counterSlot}`);
+					return State.FAILED;
+				}
+				const newValue = event.payload.newValue ?? 0;
+				const sourceKey = `${input.sourceId}.counter.${newValue}`;
+				capabilities.addModifier(
+					input.counterSlot,
+					ModifierType.DYNAMIC_FIXED,
+					1,
+					createActionModifierSource(context, sourceKey, "watchThreshold.counter", "system"),
+				);
+			});
 			return State.SUCCEEDED;
 		},
 	),
@@ -909,7 +867,7 @@ export const CommonEffectActionPool = {
 		(_context, input, capabilities) => {
 			capabilities.unsubscribeBySource(input.sourceId);
 			capabilities.unregisterThresholdBySource(input.sourceId);
-			capabilities.attributeContainer.removeModifiersBySourceKeyPrefix(input.sourceId);
+			capabilities.removeModifiersBySourceKeyPrefix(input.sourceId);
 			return State.SUCCEEDED;
 		},
 	),

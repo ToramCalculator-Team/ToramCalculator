@@ -1,8 +1,9 @@
+import type { ModifierSource, ModifierType } from "~/engine/core/AttributeContainer/AttributeContainerTypes";
+import type { RegisterOptions, ThresholdDirection } from "~/engine/core/AttributeContainer/AttributeThresholdSource";
 import type { NestedSchema, SchemaToAttrType } from "~/engine/core/AttributeContainer/SchemaTypes";
 import type { BehaviourTreeOptions } from "~/lib/mistreevous";
 import type { BehaviourTree } from "~/lib/mistreevous/BehaviourTree";
 import type { RootNodeDefinition } from "~/lib/mistreevous/BehaviourTreeDefinition";
-import type { RegisterOptions, ThresholdDirection } from "../../../../AttributeContainer/AttributeThresholdSource";
 import type { MemberBaseNestedSchema } from "../MemberBaseSchema";
 import type { MemberEvent, MemberRuntime, MemberRuntimeServices } from "../types";
 
@@ -42,30 +43,59 @@ export interface EffectBtManagerCheckpoint {
  * - 不提供 `runPipeline`：管线是计算层、由 FSM / DamageResolution 调用；BT 叶子不直接跑管线。
  */
 export interface EffectBtRuntimeServices<TSchema extends NestedSchema> extends MemberRuntimeServices {
+	/**
+	 * 获取成员属性的当前值
+	 */
 	getAttr: (attr: SchemaToAttrType<TSchema>) => number;
+	/**
+	 * 获取成员属性的基础值（不受增益/减益影响）
+	 */
 	getAttrBase: (attr: SchemaToAttrType<TSchema>) => number;
+	/**
+	 * 检查成员是否有指定属性；返回 true 时 getAttr/getAttrBase 可安全调用。
+	 */
 	hasAttr: (key: string) => key is SchemaToAttrType<TSchema>;
+	/**
+	 * 添加修饰器
+	 */
+	addModifier: (
+		attr: SchemaToAttrType<TSchema>,
+		targetType: ModifierType,
+		value: number,
+		source: ModifierSource,
+	) => void;
+	/**
+	 * 移除指定来源的修饰器
+	 */
+	removeModifiersBySourceKeyPrefix: (sourceKeyPrefix: string) => void;
+
+	/**
+	 * 注册一个并行行为树；返回注册的行为树实例。
+	 */
 	registerParallelBt(
 		name: string,
 		definition: string | RootNodeDefinition | RootNodeDefinition[],
 		agent?: string,
 		localContext?: Record<string, unknown>,
 	): BehaviourTree | undefined;
+	/**
+	 * 移除并行行为树
+	 */
 	unregisterParallelBt(name: string): void;
+	/**
+	 * 检查是否有制定并行行为树正在运行
+	 */
 	hasParallelBt(name: string): boolean;
-	/** @internal 仅供 ActionMethods.subscribeStatus / subscribeProc 封装调用，叶子勿直接用。 */
-	subscribeByName(
-		sourceId: string,
-		eventNames: readonly string[],
-		predicate: ProcPredicate | null,
-		handler: ProcHandler,
-	): ProcSubscriptionId;
-	/** @internal 仅供 ActionMethods.unsubscribeBySource 封装调用。 */
+	/**
+	 * 注册一个订阅事件
+	 */
+	subscribeByName(eventNames: readonly string[], handler: (event: unknown) => void): void;
+	/**
+	 * 取消订阅
+	 */
 	unsubscribeBySource(sourceId: string): void;
 	/**
-	 * @internal 仅供 ActionMethods.watchThreshold 封装调用，叶子勿直接用。
-	 * 注册一个被监控的属性阈值点；穿越时由 AttributeThresholdSource 派发 `attr.crossed` 到 ProcBus。
-	 * 返回本次注册的 registrationId；watchThreshold 用它过滤自己那一条 `attr.crossed` 事件。
+	 * 注册一个被监控的属性阈值点
 	 */
 	registerThreshold(
 		sourceId: string,
@@ -74,8 +104,11 @@ export interface EffectBtRuntimeServices<TSchema extends NestedSchema> extends M
 		direction: ThresholdDirection,
 		options?: RegisterOptions,
 	): number;
-	/** @internal 仅供 ActionMethods.unsubscribeBySource 封装调用：清理该来源的阈值监控点。 */
+	/**
+	 * 清理该来源的阈值监控点。
+	 */
 	unregisterThresholdBySource(sourceId: string): void;
+
 	publishEvent(event: MemberEvent): void;
 }
 
