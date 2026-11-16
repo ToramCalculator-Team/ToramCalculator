@@ -2,7 +2,7 @@
 
 ## 模块职责
 
-1. **选择**：消费者声明数据集、实体选择器和字段路径，未声明的字段不产生样本。
+1. **选择**：消费者从运行时公布的可观察项中选择数据来源与字段，未选择的值不产生样本。
 2. **节奏**：按自己的周期判断采样期限，不要求网络按相同频率推进。
 3. **读取**：期限到达后，在第一个 tag 完成边界读取数据视图，得到一致快照。
 4. **写出**：把选定的连续值写入自己的输出缓冲，单写者、单提交号。
@@ -18,7 +18,7 @@
 
 ```typescript
 class OutputCollector {
-  // 数据集、实体选择器、字段路径、周期、容量与溢出策略
+  // 运行时公布的数据来源与字段、周期、容量与溢出策略
   private config: CollectorConfig;
 
   // 游戏系统运行时提供的只读状态视图
@@ -80,25 +80,32 @@ private shouldSample(tag: Tag): boolean
 /**
  * 只读状态视图
  *
- * 运行时按稳定的数据集、实体 ID 和字段路径读取已声明的连续状态。
+ * 运行时公布可观察项；选择引用现有输出端口或实体属性 schema 中的字段。
+ * 可观察项由网络装配与游戏内容派生，不维护独立的数据集或字段 schema。
  * 读取只在 tag 完成边界发生，返回该逻辑时间的一致快照。
  */
 interface ObservationView {
-  read(selection: ObservationSelection, tag: Tag): ObservationSample;
+  describe(): readonly ObservableField[];
+  read(selection: readonly ObservableFieldId[], tag: Tag): ObservationSample;
 }
 
-interface ObservationSelection {
-  dataset: string;
-  entities: { kind: "ids"; ids: readonly string[] } | { kind: "all"; entityType: string };
-  fields: readonly string[];
+type ObservableFieldId = string & { readonly __brand: "ObservableFieldId" };
+
+interface ObservableField {
+  readonly id: ObservableFieldId;
+  readonly source: "port" | "attribute";
+  readonly ownerId: string;
+  readonly path: string;
+  readonly valueType: "number" | "boolean";
 }
 
-/** 消费者声明的采集投影示例。字段路径须来自运行时公布的数据集 schema。 */
-const memberPanel: ObservationSelection = {
-  dataset: "member",
-  entities: { kind: "ids", ids: ["member-42"] },
-  fields: ["position.x", "position.y", "attributes.hp.current", "attributes.mp.current"],
-};
+/** 消费者从运行时目录选择可观察项，不声明新的数据集或属性路径体系。 */
+const memberPanelSelection: readonly ObservableFieldId[] = [
+  resolveObservableField("member-42", "position.x"),
+  resolveObservableField("member-42", "position.y"),
+  resolveObservableField("member-42", "attributes.hp.current"),
+  resolveObservableField("member-42", "attributes.mp.current"),
+];
 ```
 
 ### 缓冲
@@ -166,11 +173,11 @@ getStats(): CollectorStats
 
 OutputCollector 的样本是周期性连续量快照，可按配置覆盖或跳过中间提交。若推进跨过采样期限，采集器在第一个后续 tag 完成边界读取一次当前快照，不伪造错过期限时的历史值。离散事件由 EventOutputFilter 逐条接收和追加，不能套用连续样本的覆盖语义。
 
-### 5. 采集内容是声明式投影
+### 5. 采集内容来自现有运行时结构
 
-消费者以 `dataset + entities + fields` 声明采集内容。`dataset` 和字段路径来自运行时公布的 schema；实体选择使用稳定 ID 或实体类型。运行时校验选择器并建立对应布局，采集器只读取所选字段。
+消费者从 GameSystem 装配后公布的可观察项中选择字段。网络输出端口提供连续参数，实体属性项从各实体的 `AttributeContainer` schema 派生；字段标识、值类型与所有者身份由这些运行时结构生成。
 
-消费者不传任意函数、对象引用或表达式。需要组合字段时，由数据集 schema 提供具名的派生字段，确保采集语义可校验、可版本化，并能映射到共享缓冲布局。
+不维护独立的数据集、实体类别或字段 schema。消费者传递稳定的可观察项标识，不传任意函数、对象引用或表达式。布局由所选字段的运行时描述生成并固定在该采集器生命周期内。
 
 ### 6. 采集器不定义业务求值
 

@@ -1,6 +1,6 @@
 # EventOutputFilter
 
-> 本模块遵循 [ADR 0059](../../../../docs/decisions/0059-facts-published-on-subscription-driven-single-bus.md) 的当前修订。
+> 本模块描述 GameReactor 事件总线的网络外观察订阅者；相关术语见 [引擎上下文](../../CONTEXT.md#通信)。
 
 ## 模块职责
 

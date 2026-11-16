@@ -2,91 +2,35 @@
 
 **状态**: 待执行  
 **预计工作量**: 待估  
-**核心决策**: 游戏逻辑从硬编码节点方法迁移到 mistreevous 声明式定义；BT 由 BTRuntime 根据领域事件和 Reactor Action 推进；节点生命周期观测与领域事实使用独立事件模型
+**核心决策**: 行为运行时提供行为调用、运行状态管理与动态修改；当前以 mistreevous BT 作为执行后端；FSM 管理状态转换并决定行为何时启动或停止；节点生命周期观测与游戏事件使用独立事件模型
 
 ## 目标与边界
 
-引擎只保留基础设施：跨线程通信、IO、tick 调度、生命周期管理、事件订阅系统、BT/FSM/Pipeline 运行时。所有游戏规则（Member 类型、阵营、技能效果、伤害公式、FSM 定义、节点方法实现、属性 Schema）声明在引擎外部并向下注入。
-
-本计划与事件驱动 BT 的实现相关。节点生命周期观测事件使用树路径和 blackboard 快照；领域事实由 GameReactor 内部 EventBus 发布，二者职责独立。
-
-两份计划的关系：
-
-| 通信重构阶段 | 依赖 |
-|---|---|
-| Phase 1（拆分 protocol） | 无 |
-| Phase 2（输入快照） | 无 |
-| Phase 3（输出快照数据结构） | 无 |
-| Phase 3 事件区具体内容 | 本计划完成后 |
-| Phase 4（World 接手调度） | 无 |
-| Phase 5（事实发布对齐） | 本计划完成 |
-
-通信重构 Phase 1–4 可与本计划并行推进。Phase 5 必须等本计划落地。
-
-## 依赖链
-
-```
-BT 节点生命周期观测（wrapper 自动发射）
-  → BT 定义声明化（规则用 mdsl，节点实现可注入）
-    → 观测事件按显式配置写入网络输出
-
-GameReactor 领域事实
-  → 内部 EventBus
-    → BTRuntime 推进匹配的 BT 实例
-```
+目标：分离耦合的托拉姆游戏逻辑和引擎基础设施；
+边界：引擎只保留基础设施，跨线程通信、IO、生命周期管理、事件订阅系统、游戏系统基础设施（Reactor、AttributeContainer、Pipeline、Behavior、FSM、EventBus）。所有游戏规则（Member 类型、阵营、技能效果、伤害公式、FSM 定义、节点方法实现、属性 Schema）声明在引擎外部并向下注入。
 
 ## 核心设计决策
 
 ### 决策 1：事件命名空间由树路径承担
 
-事件不约定固定表。事件身份由节点在树中的层级路径决定，形如 `受击流程.命中判定.基础命中值计算:succeeded`。订阅端按前缀匹配选择粒度。
+事件身份由节点在树中的层级路径决定，形如 `受击流程.命中判定.基础命中值计算:succeeded`。
 
 理由：树结构本身就是规则结构，命名空间与规则不会漂移；维护独立事件表必然与树结构产生第二处真相源。
 
-### 决策 2：节点观测 payload 是 blackboard 快照
+### 决策 2：BT 运行时结构分定义与实例两层
 
-节点生命周期观测触发时，对该 BT 实例的 blackboard 做快照，连同树路径形成观测数据。需要进入外部观察时，由显式配置的网络输出负责传递；内部领域事件的负载由游戏事件定义提供，不从 blackboard 自动生成。
+定义层存储 mdsl ，动态修饰行为时，修改定义层，然后重新编译对应的行为树。调用时直接使用编译好的行为树。
 
-理由：blackboard 可变，节点观测应保留发生时的数据视图；领域事实则由有权确认事实的执行过程提供其事件负载。两种事件服务不同的消费者，不共用隐式发布路径。
+### 决策 4："可动态编辑"的行为不允许是异步行为
 
-### 决策 3：BT 运行时结构分定义与实例两层
-
-```
-BTFlowRegistry（引擎层，跨 reset 存活）
-  flowId → { version, compiledTree, impls }
-     ↑ 版本变更时重编译，编译产物缓存
-
-BTFlowHost（每实体每流程一个，归 World）
-  { flowId, version, blackboard }
-     ↑ 每 tick 检查 version，变化则重建树（保留 blackboard）
-```
-
-`compiledTree` 是 mdsl 解析产物，只在版本变更时生成一次，运行时复用。版本号由规则包提供，引擎只比较，不每 tick 算 hash 或读 mtime。
-
-重建时机在 tick 开头、模拟推进之前，保证本 tick 内无重建，事件顺序轴不受重建耗时影响。
-
-### 决策 4：同步判据是"可外部编辑"
-
-| | 可外部编辑（EditableBTHost） | 不可编辑（FixedBTHost） |
+| | 可动态编辑（EditableBTHost） | 不可编辑（FixedBTHost） |
 |---|---|---|
 | 版本变更时 | 必须丢弃旧树状态 | 无版本变更 |
 | 允许的状态 | 仅 SUCCESS / FAILED | RUNNING 允许 |
 | Checkpoint | 只存 blackboard | 用 mistreevous checkpoint 机制 |
 | 典型场景 | 控制行为树、效果行为树 | 技能 BT |
 
-判据是物理约束：热替换时旧树的 RUNNING 状态无处映射。这条规则写进 EditableBTHost 的接口契约，作为运行时断言：
-
-```typescript
-class EditableBTHost {
-  tick(now: number) {
-    if (this.version !== registry.version) {
-      this.rebuild()  // 保留 blackboard，丢弃一切 RUNNING 状态
-    }
-    const result = this.tree.step()
-    assert(result !== State.RUNNING, `EditableBT must not return RUNNING: ${this.flowId}`)
-  }
-}
-```
+因为热替换时旧树的 RUNNING 状态无处映射。
 
 ### 决策 5：checkpoint 双路径
 
@@ -98,41 +42,6 @@ class EditableBTHost {
 ### 决策 6：FSM 运行时沿用 xstate
 
 现有 FSM 基于 xstate，引擎不额外封装。FSM 定义（machine config）作为游戏规则声明在引擎外部并注入。引擎只提供 xstate runner 与 guard/动作的注入接口。
-
-## 引擎基础设施清单
-
-留在 `src/engine/` 的模块：
-
-**通信**
-- 跨线程协议（`thread/protocol/`）
-- SAB 编解码（`core/input/`、`core/output/`）
-- Worker 池（`thread/SimulationWorkerPool`、`thread/EngineWorkerClient`）
-
-**调度**
-- tick 调度（`core/GameEngine`）
-- 生命周期管理（`core/GameEngineSM`）
-- Tick 内阶段缓冲机制
-
-**运行时**
-- BT runner（新建，基于 `src/lib/mistreevous`，含 BTFlowRegistry / EditableBTHost / FixedBTHost / 节点 wrapper）
-- FSM runner（xstate，引擎只提供 runner，不封装）
-- Pipeline 运行时（`core/World/Pipeline/PipelineService` 等）
-- AttributeContainer 求值引擎（`Member/AttributeContainer/AttributeContainer.ts`、`DependencyGraph.ts`、`ModifierDslParser.ts`，不含具体 Schema 定义）
-- ExpressionEvaluator / JSProcessor（`World/Expression/`、`World/JSProcessor/`）
-- SpaceManager（空间索引机制）
-
-**事件**
-- EventBus 机制（`World/Event/`，不含词汇表）
-- MessageQueue 机制（`World/MessageQueue/`，不含内容）
-
-**产出**
-- runOutput（`core/runOutput`）
-- tickStateHistory（`core/tickStateHistory`）
-- 快照编解码
-
-**World 容器**
-- World（存储结构 + tick 两相调度，不感知 Player/Mob 概念）
-- MemberManager（管理实体实例，不感知具体类型）
 
 ## 游戏规则提取清单
 
@@ -189,38 +98,6 @@ src/game/
   index.ts                     ← 注册入口，向引擎注册全部规则
 ```
 
-### 来源映射
-
-| 现有路径 | 迁移目标 |
-|---|---|
-| `Member/ControlBehavior/NodeMethods/ActionMethods.ts` | `shared/actions.ts` 或各领域模块 |
-| `Member/ControlBehavior/NodeMethods/ConditionMethods.ts` | `shared/conditions.ts` |
-| `Member/EffectBehavior/NodeMethods/ActionMethods.ts` | `combat/` + `shared/actions.ts` |
-| `Member/EffectBehavior/NodeMethods/ConditionMethods.ts` | `combat/` + `shared/conditions.ts` |
-| `Member/EffectBehavior/NodeMethods/DamageFormulas.ts` | `combat/damageFormulas.ts` |
-| `Member/types/Mob/ControlBehavior/NodeMethods/` | `characters/mobs/[id]/` |
-| `Member/types/Player/ControlBehavior/NodeMethods/` | `characters/player/` |
-| `Member/types/Mob/EffectBehavior/NodeMethods/` | `characters/mobs/[id]/` |
-| `Member/types/Player/EffectBehavior/NodeMethods/` | `characters/player/` |
-| `Member/types/Mob/mobFSM.raw.ts` + `MobStateMachine.ts` | `characters/mobs/[id]/fsm.ts` |
-| `Member/types/Player/playerFSM.raw.ts` + `PlayerStateMachine.ts` | `characters/player/fsm.ts` |
-| `Member/StateMachine/commonFunctions/DamageResolution.ts` | `combat/damageResolution.ts` |
-| `Member/StateMachine/commonFunctions/targetSelection.ts` | `combat/targetSelection.ts` |
-| `Member/MemberBaseSchema.ts` + `PlayerAttrSchema.ts` | `characters/player/attrSchema.ts` |
-| `Member/types/Mob/MobAttrSchema.ts` | `characters/mobs/[id]/attrSchema.ts` |
-| `Member/types/Player/collectors/` | `characters/player/collectors.ts` |
-| `World/Area/BuffAreaSystem.ts` 效果逻辑 | `areas/buff/effect.mdsl` |
-| `World/Area/DamageAreaSystem.ts` 效果逻辑 | `areas/damage/effect.mdsl` |
-| `World/Area/TrapAreaSystem.ts` 效果逻辑 | `areas/trap/effect.mdsl` |
-| `World/Damage/DamageSystem.ts` | `combat/` |
-| `World/EffectRange/trajectorySchema.ts` | `combat/` 或 `shared/` |
-| `Member/attachments/BuiltInRegistlets.ts` | `registlets/builtIn.ts` |
-| `World/Expression/CasterSnapshot.ts` | `combat/` |
-| `World/ScenarioSchema.ts` | `index.ts` 或独立 schema 文件 |
-| `World/Pipeline/standard/index.ts` | `pipelines/standard/index.ts` |
-
-`shared/` 是唯一按技术类型组织的目录，存放被多个领域共用的 BT 节点实现原语，类似 ECS 里跨 System 复用的通用 Component。
-
 ## 注入接口形状
 
 组织单元是领域模块（Plugin），每个模块向引擎注册自己的全部声明：
@@ -268,29 +145,27 @@ interface NodeContext {
 
 ## 分阶段实施步骤
 
-### 阶段 1：BT 运行时提取与 wrapper 设计
+### 阶段 1：行为运行时与 BT 后端适配
 
-目标：建立引擎层 BT 运行时骨架，验证版本热替换与事件 wrapper。
+目标：建立行为调用和动态定义管理骨架，并验证。
 
-1. 在 `src/engine/runtime/bt/` 新建 BTFlowRegistry、EditableBTHost、FixedBTHost。
-2. 节点注册器统一包装所有 action/condition，在函数执行前后以节点路径为键发射生命周期事件，事件 payload 是 blackboard 快照。
-3. 实现版本检查：tick 开头比较 host.version 与 registry.version，变化则重建树（可编辑 BT 保留 blackboard）。
-4. 实现 EditableBTHost 的 RUNNING 断言。
-5. 验证 FixedBTHost 的 `captureCheckpoint` / `restoreCheckpoint` 路径可用。
+1. 建立行为定义、编译版本与运行状态管理；mistreevous 作为当前 BT 后端接入。
+3. 实现定义更新、校验、编译缓存与明确的版本提交边界。
+4. 定义更新时已有执行状态的处理契约，并验证 checkpoint 的版本校验。
+5. 验证 mistreevous BT 的 checkpoint 恢复路径。
 
-**验收**：跑一个最小流程，改 mdsl 后下一 tick 用新树，事件顺序轴不乱。
+**验收**：提交新行为定义后，新调用使用新版本；更新边界、已有运行状态处理和检查点兼容行为有测试覆盖。
 
 ### 阶段 2：领域事件订阅与 BT 观测
 
 目标：建立 GameReactor 内部事实订阅与 BT 节点生命周期观测的独立路径。
 
-1. GameReactor 持有 Reactor-local EventBus，管理本实体领域事实的订阅。
-2. BTRuntime 为长期激活的 BT 实例建立和清理领域事件订阅。
-3. 领域事件到达时，BTRuntime 将负载交给订阅实例并在当前逻辑调用中推进该树。
-4. 节点 wrapper 产生的生命周期观测与领域事实分离；需要对外观察的节点数据经显式网络输出提供，不由内部 EventBus 自动投影。
-5. Wait 节点进入等待时由 BTRuntime 注册目标时刻 Action，到期后继续推进树。
+1. GameReactor 持有 EventBus，管理自身事件的订阅。
+2. 行为运行时为长期运行的 mistreevous BT 建立和清理领域事件订阅。
+3. GameReactor内部事件发生时，EventBus将事件交给行为运行时，行为运行时将负载交给匹配的 BT，并在当前逻辑调用中推进。
+5. Wait 节点进入等待时，由行为运行时通过 Reactor Action 注册目标时刻，到期后继续推进对应的 BT。
 
-**验收**：领域事件只触发匹配的本地 BT；内部订阅不会自动产生网络输出；Wait 到期时在目标逻辑 tag 恢复推进。
+**验收**：Wait 到期时在目标逻辑 tag 恢复推进。
 
 ### 阶段 3：硬编码流程改写验证
 
@@ -298,10 +173,10 @@ interface NodeContext {
 
 1. 选一条现有硬编码流程（建议 `DamageResolution` 或一个简单技能效果）改写成 mdsl。
 2. 节点实现从 `NodeMethods/ActionMethods.ts` 原样迁出到游戏规则包，通过注入接口注册。
-3. 跑通“领域事实发布 → EventBus 本地订阅 → BTRuntime 推进 BT → handler 修改状态”全链路。
+3. 跑通“游戏事件发布 → EventBus 本地订阅 → 行为运行时推进 BT → 行为能力修改状态”全链路。
 4. 独立验证节点生命周期观测快照及显式网络输出。
 
-**验收**：改写后流程行为与改写前逐 tag 一致；领域事件负载与响应结果正确。
+**验收**：相同输入与逻辑时刻下，改写后流程行为与原流程等价；事件负载与响应结果正确。
 
 ### 阶段 4：控制行为树迁移
 
@@ -309,10 +184,10 @@ interface NodeContext {
 
 1. Player 与 Mob 的 ControlBehavior NodeMethods 全部迁出到游戏规则包。
 2. 控制行为树 mdsl 定义随规则包声明。
-3. 验证 EditableBTHost 的 RUNNING 断言在控制 BT 上生效。
-4. 验证"决策相在移动结算之前"的时序正确。
+3. 验证控制行为的同步完成与跨逻辑时刻运行符合行为调用契约。
+4. 验证控制行为树在输入事件到达时同步处理，并由 Reactor 网络因果顺序保证其输出生效次序。
 
-**验收**：控制器输入与 AI 决策在同一决策相生效，录制顺序轴对齐。
+**验收**：控制器输入和 AI 决策均经相同的成员输入契约处理；实际生效顺序由逻辑时刻与微步确定，运行记录保留该顺序。
 
 ### 阶段 5：效果行为树迁移
 
@@ -320,10 +195,10 @@ interface NodeContext {
 
 1. Player 与 Mob 的 EffectBehavior NodeMethods 迁出。
 2. `DamageFormulas` 作为游戏规则移出。
-3. 技能效果统一在施法前摇产生，全部伤害段与区域创建经 MessageQueue 排队。
-4. 验证技能 BT 的 FixedBTHost 路径与 checkpoint。
+3. 技能施法时产生效果；后续阶段、伤害段与区域创建按 Reactor Action 和网络因果关系调度。
+4. 验证技能行为的 BT 后端路径、异步等待与 checkpoint。
 
-**验收**：技能效果跨帧流程可恢复；checkpoint 回滚后效果状态正确。
+**验收**：效果在技能施法时产生；跨 tag 的阶段由调度 Action 恢复，checkpoint 回滚后效果状态正确。
 
 ### 阶段 6：FSM 与属性 Schema 迁移
 
@@ -350,54 +225,51 @@ interface NodeContext {
 
 ### 阶段 8：通信边界对齐
 
-本阶段中关于全局 EventBus 与对外事件区的旧方向已由 ADR 0059 当前修订取代。后续工作遵循以下边界：
+本阶段落实事件总线与网络外观察的当前边界：
 
-1. 每个 GameReactor 持有本地 EventBus，发布领域事实并同步通知本地订阅者。
-2. BT 节点生命周期观测与领域事实分开处理。
-3. 对外观察只读取显式声明的 Reactor 网络输出。
+1. 每个 GameReactor 持有本地 EventBus，发布事件并同步通知本地订阅者。
+2. BT 节点生命周期观测与游戏事件分开处理。
+3. 节点观测对外输出由消费者显式声明，经专用观察输出写入自己的缓冲。
 4. 跨 tag 的延迟效果由 Reactor `Action.schedule` 调度。
 
 ## 验收标准
 
 - [ ] 引擎只保留基础设施：通信、调度、运行时、事件机制、产出
 - [ ] 游戏规则（BT 节点方法、FSM 定义、属性 Schema、游戏概念）全部声明在引擎外部
-- [ ] BT 运行时分定义层（Registry，跨 reset）与实例层（Host，归 World）
-- [ ] 可外部编辑的 BT 同步运行，禁 RUNNING；不可编辑的 BT 允许异步
+- [ ] 行为运行时统一管理行为定义版本、编译产物与运行状态；BT 作为当前执行后端
+- [ ] 行为运行时统一支持同步完成与跨逻辑时刻运行的行为
 - [ ] 事件命名空间由树路径承担，无固定事件表
 - [ ] 事件 payload 是 blackboard 快照，在节点生命周期时刻生成
 - [ ] 节点生命周期观测只有显式配置时进入网络输出；GameReactor 内部领域事件只交付本地订阅者
-- [ ] 版本热替换在 tick 开头完成，保留 blackboard，本 tick 内无重建
-- [ ] 可编辑 BT 的 checkpoint 只存 blackboard；不可编辑 BT 用 mistreevous 现有机制
+- [ ] 行为定义支持动态修改；新版本按明确边界生效，不要求重建 GameReactor
+- [ ] checkpoint 按后端和行为恢复契约保存，并校验定义版本
 - [ ] FSM 运行时沿用 xstate，引擎不额外封装
 - [ ] 节点 wrapper 自动发射事件，节点实现层无感
-- [ ] 改写后的流程行为与改写前逐 Tick 一致
+- [ ] 改写后的流程行为与改写前在相同输入与逻辑时刻下等价
 
 ## 风险与缓解
 
 | 风险 | 缓解 |
 |---|---|
-| blackboard 快照过大撑爆 SAB 事件区 | 阶段 3 验证容量；超容量时收窄到节点声明输出字段 |
+| blackboard 快照过大撑满节点观测缓冲 | 阶段 3 验证容量；超容量时收窄到节点声明输出字段 |
 | 节点路径作为事件身份难以稳定（树结构调整导致路径漂移） | 订阅端按前缀匹配；树结构是规则结构，版本变更时订阅端同步更新 |
-| 热替换瞬间事件顺序轴受影响 | 重建在 tick 开头完成，本 tick 内无重建，事件顺序轴不受影响 |
-| mistreevous 本地化 fork 维护成本 | 已接受，checkpoint 机制是关键依赖 |
+| 定义更新与网络推进交叠 | 在明确的模拟边界提交更新，并按执行契约处理旧版本的 BT 状态 |
+| mistreevous 本地化 fork 维护成本 | 作为当前 BT 后端维护，评估其 checkpoint 与升级成本 |
 | 迁移期间功能损坏 | 分阶段验证，每阶段跑通现有测试；阶段 3 是关键验证点 |
 | 游戏规则包与引擎的注入接口设计不成熟 | 阶段 1 细化接口形状，阶段 3 验证后定型 |
 | 大规模迁移工作量 | 阶段 3 跑通后剩余流程改写是机械工作，接口不再变动 |
 
 ## 相关文档与 ADR
 
-待新增（本计划落地后）：
-- 声明式逻辑系统架构 ADR（覆盖决策 1–6）
-- BT 事件发射约定 ADR（wrapper 自动发射、路径命名空间、blackboard 快照）
-
-待修订：
-- `src/engine/AGENTS.md`（通信角色表与基础设施边界）
+相关架构文档：
+- `src/engine/CONTEXT.md`（行为运行时术语）
+- `src/engine/core/BehaviorTree/BehaviorRuntime.md`（行为运行时职责与执行契约）
 - `src/engine/core/GameEngine.md`
 - `src/engine/core/World/World.md`
 
 关联：
 - `docs/plans/engine-blackboard-communication-refactor.md`（本计划的下游消费者）
-- ADR 0059（事实发布、GameReactor 本地订阅与外部事件观察）
-- ADR 0060（运行记录以模拟时间为权威顺序轴）
+- Reactor 内部事件总线与外部事件输出订阅边界
+- ADR 0060（运行记录以模拟时刻为权威顺序轴）
 - ADR 0043（行动录制，待重估）
 - ADR 0044（成员状态历史）
