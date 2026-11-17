@@ -1,7 +1,5 @@
 # GameReactor
 
-> 本模块遵循 [ADR 0059](../../../../../../docs/decisions/0059-facts-published-on-subscription-driven-single-bus.md) 中的 Reactor 内部事件边界。当前成员实现逐步迁移到此组合模型。
-
 ## 模块职责
 
 `GameReactor` 是游戏层实体能力的组合容器，基于 LF 风格的 Reactor 调度模型运行。
@@ -10,6 +8,8 @@
 2. 为 FSM、BTRuntime、AttributeContainer、EventBus 与 PipelineRuntime 提供共享的成员上下文。
 3. 将输入事件、BT 执行、属性写入和未来操作接入统一的逻辑时间与 Reactor Action 调度。
 4. 由游戏包声明事件目录、属性 Schema、FSM、执行链、计算管线和实体能力配置。
+5. 典型reaction流程：FSM 产生意图时直接调用BTRuntime；行为链进入终态后向 EventBus 发布完成事实，由 FSM 等内部订阅者接收。
+
 
 ## 理想结构
 

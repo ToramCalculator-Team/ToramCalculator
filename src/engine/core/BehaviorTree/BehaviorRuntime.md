@@ -2,215 +2,244 @@
 
 ## 模块职责
 
-行为运行时管理 GameReactor 可调用的行为定义及其执行状态，负责定义编译、动态修改、调用、推进、取消和完成通知。
+行为运行时管理演员的行为链定义与活动执行，依赖演员提供的执行上下文、内部事件订阅、事件发布和逻辑唤醒调度。
+
+演员处理逻辑事件，FSM 是演员内部的状态组件。FSM 产生启动或停止意图时直接调用行为运行时；行为链进入终态后向 EventBus 发布完成事实，由 FSM 等内部订阅者接收。
+
+1. 定义管理：编译、新增和替换行为链定义。
+2. 执行管理：按名称启动、推进、取消和查询活动行为链。
+3. 事件路由：按活动执行声明的事件订阅分发演员内部事实。
+4. 生命周期：进入终态时通过 EventBus 发布完成事实，并保存和恢复活动执行状态。
 
 ## 理想结构
 
 ```typescript
 class BehaviorRuntime {
-  constructor(deps: BehaviorRuntimeDeps);
-
   /**
-   * 注册并编译行为定义。
+   * 创建行为运行时并编译全部行为链定义。
+   * 实现步骤：
+   * 1. 保存演员提供的依赖。
+   * 2. 逐条校验并编译定义。
+   * 3. 订阅定义声明的事件。
    *
-   * 同一 behaviorId 重复注册失败；编译失败时已有定义和活动执行保持不变。
-   *
-   * @param behaviorId 行为标识
-   * @param source MDSL 或结构化根节点定义
-   * @param options 定义元数据
-   * @returns 已提交的定义版本
+   * @param definitions 行为链定义清单
+   * @param deps 演员提供的时间、事件和唤醒调度依赖
+   * @returns 行为运行时
    */
-  registerDefinition(
-    behaviorId: BehaviorId,
-    source: BehaviorDefinitionSource,
-    options?: BehaviorDefinitionOptions,
-  ): BehaviorDefinitionRef;
+  constructor(
+    definitions: ReadonlyMap<BehaviorName, BehaviorDefinitionInput>,
+    deps: BehaviorRuntimeDeps,
+  );
 
   /**
-   * 提交行为定义的新版本。
+   * 动态新增一条行为链。
+   * 实现步骤：
+   * 1. 校验名称未被占用。
+   * 2. 编译定义并写入定义表。
+   * 3. 补充事件订阅。
    *
-   * 先编译校验，成功后新调用使用新版本。可编辑定义的活动执行按更新契约取消；
-   * 不可编辑定义拒绝更新。
-   *
-   * @param behaviorId 行为标识
-   * @param source 新行为定义
-   * @returns 已提交的定义版本
+   * @param name 行为链名称
+   * @param definition 行为链定义与事件订阅
+   * @returns 无
    */
-  updateDefinition(behaviorId: BehaviorId, source: BehaviorDefinitionSource): BehaviorDefinitionRef;
+  add(name: BehaviorName, definition: BehaviorDefinitionInput): void;
 
   /**
-   * 启动一次行为执行，并推进一次。
+   * 替换已有行为链的定义。
+   * 实现步骤：
+   * 1. 查找当前定义版本。
+   * 2. 编译新版本。
+   * 3. 替换定义并更新事件订阅。
    *
-   * 执行可能停在运行中等待事件或 Wait，也可能直接进入终态。
+   * 活动实例继续使用启动时编译的树，后续启动使用新定义。运行中更新后，
+   * 旧活动实例的检查点需要旧版本定义才能恢复。
    *
-   * @param behaviorId 行为标识
-   * @param input 本次调用输入，作为 blackboard 的初始值
-   * @returns 行为句柄；同步完成时句柄已处于终态
+   * @param name 行为链名称
+   * @param definition 新的行为链定义与事件订阅
+   * @returns 无
    */
-  exec(behaviorId: BehaviorId, input?: BehaviorInput): BehaviorHandle;
+  update(name: BehaviorName, definition: BehaviorDefinitionInput): void;
 
   /**
-   * 推进指定执行一次。
+   * 启动一次行为链执行，并在当前逻辑调用内推进一次。
+   * 实现步骤：
+   * 1. 查找定义，确认该名称没有活动实例。
+   * 2. 用演员提供的上下文创建编译后的行为树。
+   * 3. 写入活动表并补充事件订阅。
+   * 4. 推进一次；同步完成时先移除活动实例，再发布完成事件。
    *
-   * 事件推进、Wait 到期和显式单步都走同一入口；终态执行重复调用保持幂等。
-   *
-   * @param handle 行为句柄
-   * @returns 推进后的状态
+   * @param name 行为链名称
+   * @param context 演员为本次执行创建的上下文
+   * @returns 无
    */
-  step(handle: BehaviorHandle): BehaviorStatus;
+  exec(name: BehaviorName, context: BehaviorContext): void;
 
   /**
-   * 把领域事件交给匹配的执行，并在当前逻辑调用内推进。
+   * 取消指定行为链的活动实例。
+   * 实现步骤：
+   * 1. 查找活动实例，不存在时结束。
+   * 2. 从活动表移除并更新事件订阅。
+   * 3. 发布完成状态 cancelled。
    *
-   * 按活动执行声明的事件订阅选择目标；多个执行按创建顺序推进。
+   * @param name 行为链名称
+   * @returns 无
+   */
+  cancel(name: BehaviorName): void;
+
+  /**
+   * 把演员内部事件交给订阅它的活动实例。
+   * 实现步骤：
+   * 1. 取活动表当前顺序的快照。
+   * 2. 筛选声明了该事件的行为链。
+   * 3. 逐个推进；终态实例先移除再发布完成事件。
    *
-   * @param event 领域事件
+   * @param event 演员内部事实
+   * @returns 无
    */
   dispatchEvent(event: BehaviorEvent): void;
 
   /**
-   * 取消执行。取消属于完成通知的一种，状态为 cancelled。
+   * 逻辑时刻到达时推进到期行为链。
+   * 实现步骤：
+   * 1. 从各活动执行的上下文读取当前逻辑时刻。
+   * 2. 对最早等待目标不晚于该时刻的执行推进一次。
+   * 3. 向演员请求下一个最早等待目标。
    *
-   * @param handle 行为句柄
+   * 演员在该 tag 处理事件前已经更新上下文中的当前逻辑时刻。
+   *
+   * @returns 无
    */
-  cancel(handle: BehaviorHandle): void;
+  wake(): void;
 
   /**
-   * 捕获全部活动执行的标识、定义版本和后端状态。
+   * 捕获全部活动执行的名称、定义版本和行为树状态。
+   * 实现步骤：
+   * 1. 遍历活动表。
+   * 2. 保存名称、定义版本和行为树检查点。
+   *
+   * 一次 tag 的全部微步结束后调用。
    *
    * @returns 行为运行时检查点
    */
   captureCheckpoint(): BehaviorRuntimeCheckpoint;
 
   /**
-   * 恢复检查点。
+   * 从检查点恢复活动执行。
+   * 实现步骤：
+   * 1. 确认当前没有活动实例。
+   * 2. 校验检查点中的定义版本。
+   * 3. 用演员提供的上下文重建行为树并恢复后端状态。
+   * 4. 提交活动表并重建事件订阅。
+   * 5. 返回恢复后的行为链名称。
    *
-   * 调用前必须已注册对应版本的定义；版本或执行契约不匹配时抛错，不修改当前状态。
+   * 演员启动前调用。唤醒由演员恢复的事件队列负责，运行时不再保存唤醒时刻。
    *
    * @param checkpoint 行为运行时检查点
-   * @returns 恢复后的活动执行句柄
+   * @param contexts 演员为各活动行为链提供的上下文
+   * @returns 恢复后的活动行为链名称
    */
-  restoreCheckpoint(checkpoint: BehaviorRuntimeCheckpoint): readonly BehaviorHandle[];
+  restoreCheckpoint(
+    checkpoint: BehaviorRuntimeCheckpoint,
+    contexts: ReadonlyMap<BehaviorName, BehaviorContext>,
+  ): readonly BehaviorName[];
 
   /**
-   * 终止全部执行并释放编译产物。
+   * 终止全部活动执行并释放定义与事件订阅。
+   * 实现步骤：
+   * 1. 清空活动表。
+   * 2. 退订事件并清空定义表。
+   *
+   * 演员卸载时调用。
+   *
+   * @returns 无
    */
   dispose(): void;
 }
-```
 
-### 句柄与值类型
-
-```typescript
-type BehaviorId = string;
-type BehaviorExecutionId = string;
-type BehaviorVersion = number;
+type BehaviorName = string;
 
 type BehaviorDefinitionSource = string | RootNodeDefinition | RootNodeDefinition[];
 
-/** 本次调用的初始 blackboard。 */
-type BehaviorInput = Record<string, unknown>;
+/** 演员为一次执行创建的上下文；当前逻辑时刻由演员在每个 tag 更新。 */
+type BehaviorContext = Agent & { currentTimeMs: number };
 
-interface BehaviorDefinitionOptions {
-  /**
-   * 是否允许运行期提交新版本。
-   *
-   * 可编辑定义在更新时取消该行为的活动执行；不可编辑定义拒绝更新。
-   * 默认 false。
-   */
-  editable?: boolean;
-}
-
-interface BehaviorDefinitionRef {
-  behaviorId: BehaviorId;
-  version: BehaviorVersion;
-  editable: boolean;
-}
-
-type BehaviorStatus = "running" | "succeeded" | "failed" | "cancelled";
-
-interface BehaviorHandle {
-  readonly executionId: BehaviorExecutionId;
-  readonly behaviorId: BehaviorId;
-  readonly definitionVersion: BehaviorVersion;
-
-  /** 当前状态；终态后保持不变。 */
-  getStatus(): BehaviorStatus;
-
-  /** 注册完成通知；已结束时同步补发。返回取消订阅的函数。 */
-  onComplete(listener: (result: BehaviorResult) => void): () => void;
-
-  /** 等价于 BehaviorRuntime.cancel(handle)。 */
-  cancel(): void;
-}
-
-interface BehaviorResult {
-  executionId: BehaviorExecutionId;
-  behaviorId: BehaviorId;
-  status: "succeeded" | "failed" | "cancelled";
-  output?: unknown;
-}
-
+/** 演员内部事实。 */
 interface BehaviorEvent {
   name: string;
   payload?: unknown;
 }
 
+/** 一条行为链的定义及其事件订阅。 */
+interface BehaviorDefinitionInput {
+  source: BehaviorDefinitionSource;
+  events?: readonly string[];
+}
+
+/** 完成事件负载。 */
+interface BehaviorCompleteResult {
+  name: BehaviorName;
+  status: "succeeded" | "failed" | "cancelled";
+}
+
 interface BehaviorRuntimeCheckpoint {
+  formatVersion: 1;
   executions: Array<{
-    executionId: BehaviorExecutionId;
-    behaviorId: BehaviorId;
-    definitionVersion: BehaviorVersion;
-    state: unknown;
+    name: BehaviorName;
+    definitionVersion: number;
+    tree: BehaviourTreeCheckpoint;
   }>;
 }
 
 interface BehaviorRuntimeDeps {
-  /** 当前逻辑时刻，供 Wait 与节点观测使用。 */
-  getCurrentTimeMs: () => number;
-  /** 当前逻辑调用内的推进步长。 */
-  getDeltaTimeMs: () => number;
-  /** 节点读取成员属性的入口。 */
-  resolveProperty: (path: string) => unknown;
-  /** 注册 Wait 到期；到期后由 Reactor Action 调用 step。 */
-  scheduleWake: (executionId: BehaviorExecutionId, atMs: number) => void;
+  /** 行为树其余运行选项；时间由执行上下文提供，不放在选项里。 */
+  treeOptions?: Omit<BehaviourTreeOptions, "getCurrentTimeMs" | "getDeltaTimeMs">;
+  /** 请求演员在当前逻辑时刻之后 delayMs 安排一次唤醒。 */
+  scheduleWake(delayMs: number): void;
+  /** 订阅演员内部事件；返回取消订阅函数。 */
+  subscribeEvent(name: string, listener: (event: BehaviorEvent) => void): () => void;
+  /** 向演员 EventBus 发布内部事实。 */
+  publishEvent(event: BehaviorEvent): void;
 }
 ```
 
-`BehaviorRuntime`、`BehaviorHandle` 和定义类型是职责示意，最终 API 由执行模型定稿。当前 BT 后端把 MDSL 或类型化定义转换为 mistreevous 结构化定义；校验和编译针对结构化定义进行。运行时可替换 BT 后端，不改变行为调用方的职责边界。
-
-`exec` 在返回前推进一次：行为可能已经成功、失败，也可能停在运行中等待事件或 Wait。同步完成时，调用方首次通过 `onComplete` 订阅会立即收到结果。
-
-事件到达时，事件总线把事件交给 `dispatchEvent`，运行时按活动执行的事件订阅选择目标，并在当前逻辑调用内调用 `step()` 推进。多个执行按创建顺序推进，保证同一事件下的行为顺序可复现。mistreevous 的 Wait 不安排未来唤醒；等待到期由 Reactor Action 调用 `step()` 恢复对应执行。执行期间的节点观测由 BT 后端生成，不与游戏事件混为一类。
-
-`updateDefinition` 先编译校验，成功后才递增版本并提交。可编辑定义的活动执行在提交点取消，并通过 `onComplete` 收到 `cancelled`；不可编辑定义拒绝更新。新调用使用新版本，已有调用保留其 `definitionVersion`。
-
-完成状态在触发终态的同一逻辑调用内确定，已订阅的监听器会在该调用内同步收到通知，不进入异步任务；`exec` 同步完成时，调用方首次订阅 `onComplete` 会立即收到补发结果。取消同样走完成通知，状态为 `cancelled`。
-
-检查点保存活动执行的标识、定义版本和后端状态。当前 mistreevous 后端通过 `BehaviourTree.captureCheckpoint` 与 `BehaviourTree.restoreCheckpoint` 保存等待时长、Repeat 迭代计数和 Retry 尝试计数。恢复前必须已注册对应版本的定义；恢复时校验定义版本与后端状态签名，不匹配则抛错且不修改当前状态。`restoreCheckpoint` 返回恢复后的句柄，调用方重新注册完成通知后继续接收结果。
+完成事实使用标准事件名 `behavior.completed`，负载为 `BehaviorCompleteResult`。行为链自己的领域完成事件由行为树节点发布，不作为运行时定义字段。
 
 ## 关键设计决策
 
-### 行为调用与状态转换分离
+### FSM 直接调用行为运行时
 
-**设计理念**：状态许可和行为流程由各自职责管理。
+**设计理念**：演员是事件处理者，FSM 是演员内部的状态组件。
 
-FSM 决定当前允许启动哪些行为及其启动、停止时机；行为运行时负责执行行为定义。
+演员处理逻辑事件；FSM 产生启动或停止意图时直接调用 `self.BehaviorRuntime.exec` / `cancel`，不经过演员二次分派。行为链进入终态后向 EventBus 发布标准完成事实，FSM 作为内部订阅者接收。
 
-### 动态定义由行为运行时管理
+### 行为链名称是公开身份
 
-**设计理念**：逻辑作者可以在运行期间修改行为流程。
+**设计理念**：演员只描述行为链语义，不管理执行实例。
 
-注册为可编辑的行为定义可以提交新版本；不可编辑定义拒绝更新。更新先编译校验，再在明确的提交点替换版本并取消旧执行，不通过重建 GameReactor 生效。
+同一名称同时最多一个活动实例；活动表、事件订阅和检查点都按名称组织。同名重复启动显形失败，刷新场景先取消再启动。
 
-### 完成通知是逻辑推进的一部分
+### 定义与执行实例分离
 
-**设计理念**：完成状态必须和产生它的逻辑调用处于同一因果位置。
+**设计理念**：已编译的树不在运行中被改写。
 
-完成状态在 `step`、`dispatchEvent` 或 `updateDefinition` 的调用内确定，已订阅的监听器在同一调用内收到通知，不进入 Promise 微任务；`exec` 同步完成时由首次订阅补发。这样同一 tag 内的行为完成顺序与推进顺序一致，检查点恢复后也不会出现迟到的异步回调。
+执行实例持有启动时编译的树；更新只替换定义表，活动实例继续使用原树，后续启动使用新定义。运行中更新后，旧活动实例的检查点需要旧版本定义；确定性运行应在边界固定定义。
 
-### BT 是当前执行后端
+### 执行上下文归演员
 
-**设计理念**：行为概念不绑定单一流程表示。
+**设计理念**：上下文结构属于演员，行为运行时不解释其中的成员。
 
-mistreevous `BehaviourTree` 承担当前的流程执行、等待和 checkpoint；调用方使用行为运行时提供的行为调用能力。
+演员在启动前创建上下文并交给行为运行时；运行时只把上下文作为行为树 agent 使用。检查点恢复时，演员按行为链名称重新提供上下文。
+
+### 时间只在演员上下文
+
+**设计理念**：逻辑时间只有一个来源，组件不持有自己的时钟。
+
+演员在每个 tag 处理事件前先更新上下文中的当前逻辑时刻。行为运行时把 `treeOptions.getCurrentTimeMs` 绑定到该上下文字段，用 `nextWakeTimeMs - currentTimeMs` 计算相对延迟交给演员调度；到期后 `wake()` 直接读取上下文中的当前时刻，不接收时间参数。
+
+行为链的等待状态保存在行为树检查点中；运行时检查点不保存当前时刻、已等待时长或剩余时长。恢复时演员恢复事件队列，时间仍从上下文进入。
+
+### 内部事件与外部输入分离
+
+**设计理念**：通信角色不混用。
+
+行为运行时只接收演员 EventBus 的内部事实；端口输入由演员处理后再启动行为链或发布内部事件。延迟唤醒是已存在行为的继续，不包装成事件。
