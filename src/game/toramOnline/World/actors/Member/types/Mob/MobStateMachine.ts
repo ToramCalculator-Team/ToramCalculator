@@ -3,13 +3,8 @@ import { createLogger } from "~/lib/logger";
 import { type DamageDispatchPayload, damageSourceKey } from "../../../Damage/types";
 import { ModifierType } from "../../AttributeContainer/AttributeContainerTypes";
 import type { MobRuntime } from "../../runtime/SharedRuntime";
+import { resolveHitCheck } from "../../StateMachine/commonFunctions/DamageResolution";
 import { createCommonVerticalState } from "../../StateMachine/commonStateMachine";
-import {
-	createHitSession,
-	type HitSession,
-	resolveDamageAndApply,
-	resolveHitCheck,
-} from "../../StateMachine/DamageResolution";
 import { applyMemberTargetSelection } from "../../StateMachine/targetSelection";
 import type { MemberFSM, MemberFSMContext, MemberFSMEnv, MemberFSMEvent } from "../../StateMachine/types";
 import type { Mob, MobAttrKey } from "./Mob";

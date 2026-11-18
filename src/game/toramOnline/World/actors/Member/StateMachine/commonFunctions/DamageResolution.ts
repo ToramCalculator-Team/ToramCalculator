@@ -12,12 +12,12 @@
  *   避免之前 `pendingDamage / pendingHitResult / pendingDamageResult` 三级 optional 字段。
  */
 
-import * as CasterSnapshot from "~/engine/core/Expression/CasterSnapshot";
 import type { ExpressionContext } from "~/engine/core/JSProcessor/types";
-import type { StageData } from "~/engine/core/Pipeline/stageEnv";
-import type { MemberEvent } from "~/engine/core/types";
-import type { DamageDispatchPayload } from "~/engine/core/World/Damage/types";
+import type { PipelineValues } from "~/engine/core/Pipeline/PipelineValues";
+import type { DamageDispatchPayload } from "~/game/toramOnline/World/service/Damage/types";
+import { createExpressionSelf } from "~/game/toramOnline/World/service/Expression/CasterSnapshot";
 import { createLogger } from "~/lib/logger";
+import type { MemberEvent } from "../../types";
 
 const log = createLogger("DamageResolution");
 
@@ -111,7 +111,7 @@ function buildDirectionalInputs(damageRequest: DamageDispatchPayload): Record<st
  * @param random 引擎级确定性 PRNG 函数（xorshift128），缺省退回 Math.random
  */
 export function resolveHitCheck(
-	runPipeline: (pipelineName: string, params?: Record<string, unknown>) => StageData,
+	runPipeline: (pipelineName: string, params?: Record<string, unknown>) => PipelineValues,
 	session: HitSession,
 	random?: () => number,
 ): HitSession {
@@ -156,7 +156,7 @@ export function resolveDamageAndApply(
 	mpApplyer: (vaule: number) => void,
 	recordEvent: (event: MemberEvent) => void,
 	emitProc: (eventName: string, payload: unknown) => void,
-	runPipeline: (pipelineName: string, params?: Record<string, unknown>) => StageData,
+	runPipeline: (pipelineName: string, params?: Record<string, unknown>) => PipelineValues,
 	evaluator: ((expression: string, context: ExpressionContext) => number | boolean) | null,
 	session: HitSession,
 ): HitSession {
@@ -202,7 +202,7 @@ export function resolveDamageAndApply(
 	let baseDamage = 0;
 	if (evaluator && req.damageFormula) {
 		const selfOverride = req.lockCasterAttributes
-			? CasterSnapshot.createExpressionSelf(req.casterSnapshot, (key) =>
+			? createExpressionSelf(req.casterSnapshot, (key) =>
 					log.warn(`casterSnapshot 缺少键: ${key}（公式依赖与快照不一致，按 0 处理）：${req.damageFormula}`),
 				)
 			: undefined;

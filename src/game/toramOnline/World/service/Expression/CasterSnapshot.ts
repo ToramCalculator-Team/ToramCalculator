@@ -16,7 +16,7 @@
  *   - buff 命中  `hasBuff:id`     （0/1，对应 hasBuff('id')）
  */
 
-import type { ExpressionSelf } from "../JSProcessor/types";
+import type { ExpressionSelf } from "~/engine/core/JSProcessor/types";
 
 /** 施法者快照数据（纯数据，可序列化、可进 checkpoint）。 */
 export type CasterSnapshot = Record<string, number>;

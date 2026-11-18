@@ -1,4 +1,4 @@
-import { setup } from "xstate";
+import { and, setup } from "xstate";
 
 export const machine = setup({
 	types: {
@@ -8,15 +8,15 @@ export const machine = setup({
 			| { type: "复活" }
 			| { type: "移动" }
 			| { type: "Hp小于0" }
-			| { type: "使用技能" }
 			| { type: "使用格挡" }
 			| { type: "使用闪躲" }
 			| { type: "应用控制" }
-			| { type: "执行结束" }
 			| { type: "控制结束" }
 			| { type: "结束格挡" }
-			| { type: "收到警告结束通知" }
-			| { type: "收到闪躲持续时间结束通知" },
+			| { type: "技能执行完毕" }
+			| { type: "闪躲动作结束" }
+			| { type: "使用技能" }
+			| { type: "警告结束" },
 	},
 	actions: {
 		根据角色配置生成初始状态: ({ context, event }, params) => {
@@ -31,15 +31,12 @@ export const machine = setup({
 			// Add your action code here
 			// ...
 		},
-		添加待处理技能: ({ context, event }, params) => {
+		扣除技能消耗: ({ context, event }, params) => {
 			// Add your action code here
-			// ...
+			计算技能消耗;
+			扣除技能消耗;
 		},
-		更新可移动性: ({ context, event }, params) => {
-			// Add your action code here
-			// ...
-		},
-		清空待处理技能: ({ context, event }, params) => {
+		执行技能行为: ({ context, event }, params) => {
 			// Add your action code here
 			// ...
 		},
@@ -48,14 +45,6 @@ export const machine = setup({
 			// ...
 		},
 		创建警告结束通知: ({ context, event }, params) => {
-			// Add your action code here
-			// ...
-		},
-		添加待处理技能效果: ({ context, event }, params) => {
-			// Add your action code here
-			// ...
-		},
-		技能消耗扣除: ({ context, event }, params) => {
 			// Add your action code here
 			// ...
 		},
@@ -76,28 +65,36 @@ export const machine = setup({
 			// ...
 		},
 	},
-	actors: {
-		启动行为树: createMachine({
-			/* ... */
-		}),
-	},
 	guards: {
 		可移动: ({ context, event }) => {
 			// Add your guard condition here
 			return true;
 		},
-		存在后续连击: ({ context, event }) => {
+		"存在后续技能，且满足技能可用条件": ({ context, event }) => {
 			// Add your guard condition here
 			return true;
 		},
-		不存在后续连击: ({ context, event }) => {
+		"存在后续技能，但不满足技能可用条件": ({ context, event }) => {
 			// Add your guard condition here
 			return true;
 		},
-		不满足施法条件: ({ context, event }) => {
-			// Add your guard condition here
-			return true;
-		},
+		满足技能可用条件: and([
+			({ context, event }) => {
+				// Add a guard condition here
+				当前MP大于技能MP需求;
+				return true;
+			},
+			({ context, event }) => {
+				// Add another guard condition here
+				当前与目标的距离小于技能射程;
+				return true;
+			},
+			({ context, event }) => {
+				// Add another guard condition here
+				不附带心眼效果或者目标不处在技能附带的异常状态抵抗期间;
+				return true;
+			},
+		]),
 	},
 }).createMachine({
 	context: {},
@@ -121,9 +118,6 @@ export const machine = setup({
 					on: {
 						应用控制: {
 							target: "受控状态",
-							actions: {
-								type: "中断当前行为",
-							},
 						},
 					},
 					description: "可响应输入操作",
@@ -161,9 +155,17 @@ export const machine = setup({
 										使用格挡: {
 											target: "格挡中",
 										},
-										使用技能: {
-											target: "使用技能中",
-										},
+										使用技能: [
+											{
+												target: "使用技能中",
+												guard: {
+													type: "满足技能可用条件",
+												},
+											},
+											{
+												target: "警告状态",
+											},
+										],
 									},
 									entry: {
 										type: "设置允许移动",
@@ -171,7 +173,7 @@ export const machine = setup({
 								},
 								闪躲中: {
 									on: {
-										收到闪躲持续时间结束通知: {
+										闪躲动作结束: {
 											target: "空闲状态",
 										},
 									},
@@ -190,78 +192,51 @@ export const machine = setup({
 									},
 								},
 								使用技能中: {
-									initial: "初始化技能",
+									on: {
+										技能执行完毕: [
+											{
+												target: "使用技能中",
+												guard: {
+													type: "存在后续技能，且满足技能可用条件",
+												},
+											},
+											{
+												target: "警告状态",
+												guard: {
+													type: "存在后续技能，但不满足技能可用条件",
+												},
+											},
+											{
+												target: "空闲状态",
+											},
+										],
+									},
 									entry: [
 										{
-											type: "添加待处理技能",
+											type: "扣除技能消耗",
 										},
 										{
-											type: "更新可移动性",
+											type: "执行技能行为",
+										},
+										{
+											type: "设置禁止移动",
 										},
 									],
-									exit: {
-										type: "清空待处理技能",
-									},
-									states: {
-										初始化技能: {
-											always: [
-												{
-													target: "警告状态",
-													guard: {
-														type: "不满足施法条件",
-													},
-												},
-												{
-													target: "技能执行过程",
-												},
-											],
-										},
-										警告状态: {
-											on: {
-												收到警告结束通知: {
-													target: "#Player.存活.可操作状态.动作状态.空闲状态",
-												},
-											},
-											entry: [
-												{
-													type: "渲染警告信息",
-												},
-												{
-													type: "创建警告结束通知",
-												},
-											],
-										},
-										技能执行过程: {
-											on: {
-												执行结束: [
-													{
-														target: "#Player.存活.可操作状态.动作状态.使用技能中",
-														guard: {
-															type: "存在后续连击",
-														},
-													},
-													{
-														target: "#Player.存活.可操作状态.动作状态.空闲状态",
-														guard: {
-															type: "不存在后续连击",
-														},
-													},
-												],
-											},
-											entry: [
-												{
-													type: "添加待处理技能效果",
-												},
-												{
-													type: "技能消耗扣除",
-												},
-											],
-											invoke: {
-												input: {},
-												src: "启动行为树",
-											},
+								},
+								警告状态: {
+									on: {
+										警告结束: {
+											target: "空闲状态",
 										},
 									},
+									entry: [
+										{
+											type: "渲染警告信息",
+										},
+										{
+											type: "创建警告结束通知",
+										},
+									],
 								},
 							},
 						},
