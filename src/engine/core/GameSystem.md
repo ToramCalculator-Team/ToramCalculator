@@ -2,178 +2,99 @@
 
 ## 模块职责
 
-1. **模拟入口**：初始化、启动、停止、暂停、恢复、单步。
-2. **时间**：提供当前逻辑时刻，通知一次逻辑时间完成。
-3. **状态**：捕获与恢复本系统的权威状态。
-4. **观察**：提供采集器诊断。
+GameSystem 是复刻自实际游戏的受控系统，按既定规则响应输入与时间。
 
-GameSystem 与具体模拟模型无关。当前实现是 [ReactorGameSystem](ReactorGameSystem.md)；ECS 实现以后接同一个壳。
-
----
+1. **受控状态**：保存系统状态，以场景或一份既有状态作为初始状态。
+2. **每步完成后发布状态**：维护统一状态对象，每一步执行完毕后更新，供同一线程内的读取方读取。
+3. **报告下一步时刻**：给出已完成到的逻辑时刻与下一项工作的逻辑时刻。
 
 ## 理想结构
 
-### 核心依赖
-
 ```typescript
 interface GameSystem {
-  initialize(): void;
-  start(): void;
-  stop(): void;
-  pause(): void;
-  resume(): void;
-  stepToNext(): SimulationTime | null;
-  getTime(): SimulationTime;
-  onAdvance(listener: (time: SimulationTime) => void): () => void;
-  captureCheckpoint(): GameSystemCheckpoint;
-  restoreCheckpoint(checkpoint: GameSystemCheckpoint): void;
-  getCollectorStats(): CollectorStats[];
+  /**
+   * 已完成到的逻辑时刻。
+   *
+   * @returns 当前逻辑时刻
+   */
+  getCurrentTime(): SimulationTime;
+
+  /**
+   * 下一项工作的逻辑时刻。
+   *
+   * @returns 下一项工作的时刻；没有已排定的工作时返回 null
+   */
+  getNextTime(): SimulationTime | null;
+
+  /** 统一状态对象，每步执行完毕后更新。 */
+  readonly state: SystemState;
 }
 ```
 
-### 时间
-
 ```typescript
 /**
- * 一次逻辑推进的时刻
+ * 构造游戏系统
  *
- * cursor 是实现自己的次序标记，引擎不解释，只按 timeMs 排序，需要时原样保存。
+ * @param clock 宿主时钟，提供当前时刻、唤醒与取消唤醒
+ * @param input 输入通道，系统按自己的时机读取快照
+ * @param state 场景或一份既有状态与它的逻辑时刻
  */
+// new GameSystem({ clock, input, state })
+```
+
+```typescript
+/** 逻辑时刻；cursor 是实现自己的次序标记，外部只按 timeMs 排序。 */
 interface SimulationTime {
   timeMs: number;
   cursor?: unknown;
 }
 ```
 
-### 检查点
+### 状态对象
+
+系统只维护一份状态，每一步执行完毕后整体更新为最新完成时刻的状态。以便外部读取状态信息。
+
+### 时间
+
+游戏系统的一切时间都经由宿主时钟：
 
 ```typescript
-/**
- * GameSystem 的权威状态
- *
- * time 是恢复点，用于定位；payload 是实现自己的状态，引擎只在外层加模型类型与版本。
- */
-interface GameSystemCheckpoint {
-  time: SimulationTime;
-  payload: unknown;
+interface SystemClock {
+  /**
+   * 当前时刻。
+   *
+   * @returns 毫秒表示的逻辑时刻
+   */
+  nowMs(): number;
+
+  /**
+   * 安排一次唤醒。
+   *
+   * @param delayMs 相对当前的延迟
+   * @param callback 到期时调用
+   * @returns 可取消的句柄
+   */
+  setTimeout(delayMs: number, callback: () => void): TimerHandle;
+
+  /**
+   * 取消已安排的唤醒。
+   *
+   * @param handle 唤醒句柄
+   */
+  clearTimeout(handle: TimerHandle): void;
 }
 ```
 
-### 方法
-
-```typescript
-/**
- * 初始化
- *
- * 由 GameEngine 在加载时调用一次。实现在这里建立自己的网络或系统，初始化后
- * 形状不再变化。
- */
-initialize(): void
-
-/**
- * 启动推进
- */
-start(): void
-
-/**
- * 停止推进
- */
-stop(): void
-
-/**
- * 暂停推进
- *
- * 暂停保留状态，恢复后从暂停时的逻辑时刻继续，不补算暂停期间的时间。
- * 物理时钟在暂停期间冻结：系统内读到的经过时间连续，不因暂停跳跃。
- *
- * 调用前引擎已确认暂停，此后输入不再写入共享缓冲。
- */
-pause(): void
-
-/**
- * 恢复推进
- */
-resume(): void
-
-/**
- * 推进一次逻辑时间
- *
- * @returns 推进后的时刻；没有待处理事件时返回 null
- */
-stepToNext(): SimulationTime | null
-
-/**
- * 当前逻辑时刻
- *
- * @returns 当前时刻
- */
-getTime(): SimulationTime
-
-/**
- * 注册逻辑时间完成观察者
- *
- * 观察者在一次逻辑时间的全部工作结束后调用。观察者不得推进模拟或修改状态。
- *
- * @param listener 完成回调
- * @returns 取消注册的函数
- */
-onAdvance(listener: (time: SimulationTime) => void): () => void
-
-/**
- * 捕获权威状态
- *
- * @returns 当前时刻与实现自己的状态
- */
-captureCheckpoint(): GameSystemCheckpoint
-
-/**
- * 恢复权威状态
- *
- * 只接受已初始化且未启动的实例。违反时抛错，不做修补：已启动实例的定时器与
- * 启动工作都已消费，再恢复会重复排定。
- *
- * @param checkpoint 检查点
- */
-restoreCheckpoint(checkpoint: GameSystemCheckpoint): void
-
-/**
- * 采集器诊断
- *
- * @returns 各采集器的采样次数、写入耗时与容量使用
- */
-getCollectorStats(): CollectorStats[]
-```
-
----
-
 ## 关键设计决策
 
-### 1. 壳与模拟模型无关
+### 1. 状态对象是唯一读取面
 
-**设计理念**：外层只依赖“推进、时间、状态、观察”这四件事，不依赖 Reactor 的 tag，也不依赖 ECS 的组件。
+**设计理念**：单一事实源优于为每个消费者维护一份产出。
 
-GameEngine 只持有 GameSystem 接口。当前实现是 ReactorGameSystem；以后加 ECS 实现时，引擎、输入输出、记录与检查点外壳不变。
+所有读取方从同一份状态读取，差异由读取方投影得出。
 
-### 2. 逻辑时间是最小公共轴
+### 2. 时间能力全部由宿主提供
 
-**设计理念**：任何实现都能提供“当前逻辑时间”，但时刻之内的次序表达各不相同。
+**设计理念**：时间源是运行环境的一部分，模拟只描述时间的作用。
 
-接口只要求 `timeMs`；`cursor` 是实现自己的次序标记，引擎排序只看 `timeMs`，需要时把 cursor 原样保存。
-
-### 3. 检查点信封归引擎，payload 归实现
-
-**设计理念**：引擎负责版本、模型类型与搬运；实现负责自己的状态格式。
-
-`time` 是恢复点，用于排序与定位。原始起点不进接口，因为它只对实现自己的推导有意义。引擎不解释 payload。
-
-### 4. 采集器是观察层
-
-**设计理念**：观察不参与因果链。
-
-采集器由实现建立，在一次逻辑时间完成时读取状态。它们不推进模拟，不修改状态；没有采集器时模拟照常运行。
-
-### 5. 当前实现是 ReactorGameSystem
-
-**设计理念**：先落地 Reactor，不为 ECS 写空实现。
-
-ReactorGameSystem 继承 App，负责网络根、输入采样器、采集器与 tag 推进。ECS 实现等真实需求出现时再补，不提前占位。
+系统读取时刻、安排唤醒与取消唤醒都经过同一个对象。

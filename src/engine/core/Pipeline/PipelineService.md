@@ -404,7 +404,7 @@ CompiledPipeline
 ### 初始化
 
 ```text
-Worker / GameEngine
+Worker / GameSystemHost
   -> 创建 PipelineService
   -> 载入基础管线
   -> 冻结基础定义

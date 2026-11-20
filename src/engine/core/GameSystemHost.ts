@@ -1,9 +1,8 @@
 import { createLogger } from "~/lib/logger";
+import { GameSystem } from "./GameSystem";
 import { type EngineRunOutput, type ExecutionRecordingPolicy, RunOutputRecorder } from "./runOutput";
-import type { EngineCheckpoint, GameEngineSnapshot, RuntimeConfig } from "./types";
+import type { EngineCheckpoint, GameEngineSnapshot, HostConfig } from "./types";
 import { createRealtimeConfig } from "./types";
-import type { WorldScenarioData } from "./World/types";
-import { World } from "./World/World";
 
 const log = createLogger("GameEngine");
 
@@ -18,7 +17,7 @@ declare global {
  * 游戏引擎类
  */
 export class GameEngine {
-	private world: World; // 模拟状态容器（公开只读，供测试访问）
+	private gamesystem: GameSystem;
 
 	// 引擎时间管理
 	private tickIndex: number = 0; // 当前逻辑 tick 序号
@@ -35,10 +34,8 @@ export class GameEngine {
 	private outputBuffer: SharedArrayBuffer | null = null; // 引擎的输出端口
 
 	// 配置
-	/** 存储场景配置参数，用于重置时复用 */
-	private scenarioData: WorldScenarioData | null = null;
 	/**引擎运行配置。默认值为实时模拟 */
-	private runtimeConfig: RuntimeConfig;
+	private hostConfig: HostConfig;
 
 	/** Worker 内当前运行产出；结束后只保留到 Session 明确认领。 */
 	private readonly runOutput = new RunOutputRecorder();
@@ -67,45 +64,19 @@ export class GameEngine {
 	/**
 	 * 构造函数
 	 *
-	 * @param runtimeConfig 引擎配置
+	 * @param hostConfig 引擎配置
 	 */
-	constructor(runtimeConfig: RuntimeConfig) {
+	constructor(hostConfig: HostConfig) {
 		// 🛡️ 安全检查：只允许在Worker线程中创建GameEngine
 		this.validateWorkerContext();
 
 		log.debug("GameEngine constructor");
 
-		this.runtimeConfig = runtimeConfig ?? createRealtimeConfig();
-		this.stepMs = 1000 / this.runtimeConfig.logicHz;
+		this.hostConfig = hostConfig ?? createRealtimeConfig();
+		this.stepMs = 1000 / this.hostConfig.logicHz;
 
 		// World 相关
-		this.world = new World(this.getStepMs());
-	}
-
-	// ==================== 场景资源管理 ====================
-
-	/**
-	 *
-	 */
-	loadScenario(data: WorldScenarioData): void {
-		this.world.loadScenario(data);
-		log.info("GameEngine: 场景数据已加载");
-	}
-
-	/**
-	 * 重置引擎
-	 */
-	reset(): void {
-		// 停止循环
-		this.stopLoop();
-
-		// 重置模拟周期数据
-		this.tickIndex = 0;
-
-		// 重置世界数据
-		this.world = new World(this.getStepMs());
-
-		log.info("GameEngine: 引擎已重置");
+		this.gamesystem = new GameSystem(this.getStepMs());
 	}
 
 	// ==================== 生命周期管理 ====================
@@ -113,7 +84,7 @@ export class GameEngine {
 	/**
 	 * 启动帧循环。仅在 ready / paused 状态下可调用。
 	 */
-	startLoop(): void {
+	start(): void {
 		this.shouldAdvance = true;
 		this.currentLoopStartAt = performance.now();
 		this.currentLoopStartIndex = this.tickIndex;
@@ -123,7 +94,7 @@ export class GameEngine {
 	/**
 	 * 停止帧循环。运行态/暂停态 → ready（若已有场景）或 idle。
 	 */
-	stopLoop(): void {
+	stop(): void {
 		this.shouldAdvance = false;
 		if (this.timer) {
 			clearTimeout(this.timer);
@@ -135,13 +106,11 @@ export class GameEngine {
 	 * 暂停帧循环
 	 */
 	pause(): void {
-		if (this.runtimeConfig.driveMode !== "clocked") throw new Error("GameEngine: unclocked 执行不可暂停");
-		this.stopLoop();
+		this.stop();
 	}
 
 	resume(): void {
-		if (this.runtimeConfig.driveMode !== "clocked") throw new Error("GameEngine: unclocked 执行不可恢复");
-		this.startLoop();
+		this.start();
 	}
 
 	/**
@@ -158,7 +127,7 @@ export class GameEngine {
 	 * 获取当前配置中的fps
 	 */
 	getLogicHz() {
-		return this.runtimeConfig.logicHz;
+		return this.hostConfig.logicHz;
 	}
 
 	/**
@@ -253,10 +222,10 @@ export class GameEngine {
 	}
 
 	/**
-	 * 根据 RuntimeConfig.stopPolicy 检查是否应停止快进。
+	 * 根据 HostConfig.stopPolicy 检查是否应停止快进。
 	 */
 	private checkStopCondition(): boolean {
-		const policy = this.runtimeConfig.stopPolicy;
+		const policy = this.hostConfig.stopPolicy;
 		switch (policy.kind) {
 			case "manual":
 				return false; // 手动模式不自动停止

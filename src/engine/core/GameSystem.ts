@@ -55,6 +55,9 @@ export interface GameSystem {
 	/** 停止推进，释放唤醒源。 */
 	stop(): void;
 
+	/** 重置系统状态。 */
+	reset(): void;
+
 	/**
 	 * 暂停推进。
 	 *
