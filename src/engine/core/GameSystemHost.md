@@ -4,7 +4,7 @@
 
 游戏系统宿主承载游戏系统，为它提供运行所需的外部条件，并管理它与外部的交互。
 
-1. **提供环境**：提供唯一时钟与输入通道，游戏系统从中读取时间与输入。
+1. **提供环境**：提供唯一时钟，并把控制器交来的输入读取端传给游戏系统。
 2. **执行命令消息**：接收生命周期命令与 RPC，执行后回报结果并推送事件。
 3. **接入观察者**：按消费者声明创建观察者组件，读取游戏系统的状态对象与事件源，写各自的输出。
 4. **构造与销毁**：用场景或一份既有状态构造游戏系统，停止时销毁实例与环境资源。
@@ -12,18 +12,15 @@
 ## 理想结构
 
 ```typescript
-class GameSystemHost {
-  /** 唯一时钟。 */
-  private readonly clock: HostClock;
-
-  /** 输入通道的读取端。 */
-  private readonly input: InputChannel;
+class GameSystemHost<TTag, TSnapshot> {
+  /** 唯一逻辑时钟。 */
+  private readonly clock: PausableHostClock;
 
   /** 当前游戏系统。 */
   private gameSystem: GameSystem | null;
 
-  /** 已接入的数据消费端。 */
-  private readonly observers: ObserverHandle[];
+  /** 当前推进状态。 */
+  private running: boolean;
 }
 ```
 
@@ -31,13 +28,12 @@ class GameSystemHost {
 /**
  * 构造游戏系统
  *
- * 校验场景或既有状态，建立输入通道的读取端，把时钟、输入与初始状态交给游戏系统实现。
+ * 把宿主时钟、控制器提供的输入读取端与场景交给游戏系统工厂；初始化后按需恢复检查点。
  *
- * @param create 游戏层提供的构造函数
- * @param scenario 场景；首次运行时提供
- * @param state 既有状态与它的逻辑时刻；恢复时提供
+ * @param create 游戏层提供的构造函数，接收宿主时钟、输入读取端与场景
+ * @param options 输入读取端、场景与可选检查点
  */
-loadGame(create: GameSystemFactory, scenario: unknown, state?: SavedState): void
+loadGame(create: GameSystemFactory<TTag, TSnapshot>, options: LoadGameOptions<TTag, TSnapshot>): void
 
 /**
  * 启动时钟。时钟前进，游戏系统在到期时刻完成工作。
@@ -45,7 +41,7 @@ loadGame(create: GameSystemFactory, scenario: unknown, state?: SavedState): void
 start(): void
 
 /**
- * 停住时钟，输入停止提供。游戏系统停在当前已完成的时刻。
+ * 暂停游戏系统并停住逻辑时钟，系统停在当前已完成的时刻，输入采样随之停止。
  */
 pause(): void
 
@@ -83,7 +79,7 @@ stop(): void
 
 ### 输入通道
 
-宿主持有输入通道的读取端口，装载时作为构造参数交给游戏系统。暂停时关闭通道输入。
+控制器创建并持有输入邮箱，将读取端交给宿主；宿主装载游戏系统时把读取端传入，游戏系统内采集器的定时工作使用宿主时钟，因此暂停时停钟即可停止采样，恢复时随时钟恢复。
 
 ### 观察者
 
@@ -100,7 +96,7 @@ stop(): void
 
 **设计理念**：运行环境与模拟逻辑分离，各自只维护自己的状态。
 
-宿主改变游戏系统的唯一手段是时钟位置与输入快照；宿主的动作全部作用在时钟、输入通道、系统实例或观察者句柄上。
+宿主通过时钟控制游戏系统的推进。宿主的运行期控制作用于时钟、系统实例或观察者句柄。
 
 ### 2. 运行与暂停只差时钟是否前进
 
