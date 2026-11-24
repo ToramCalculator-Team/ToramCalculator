@@ -70,7 +70,7 @@ interface CollectorDeclaration {
   /** 从状态对象检出的字段路径。 */
   readonly selection: readonly StateFieldPath[];
 
-  /** 采样周期，毫秒，由真实时间计量。 */
+  /** 采样周期，毫秒，由宿主时钟计量。 */
   readonly periodMs: number;
 
   /** 通道容量。 */
