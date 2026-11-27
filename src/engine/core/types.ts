@@ -1,5 +1,4 @@
 import { z } from "zod/v4";
-import type { WorldCheckpoint } from "./World/types";
 
 // ==================== TickContext ====================
 
@@ -68,25 +67,4 @@ export function createRealtimeConfig(overrides?: Partial<RuntimeConfig>): Runtim
 		maxCatchUpTicks: 5,
 		...overrides,
 	};
-}
-
-// ==================== EngineSnapshot ====================
-
-/**
- * 帧快照接口 - 包含引擎和所有成员的完整状态
- */
-export interface GameEngineSnapshot {
-	tickIndex: number;
-	currentTimeMs: number;
-	world: unknown; // TODO：之后world结构确定时补充
-}
-
-// ==================== Checkpoint / Restore ====================
-
-/** 引擎完整检查点 */
-export interface EngineCheckpoint {
-	tickIndex: number;
-	currentTimeMs: number;
-	timestamp: number;
-	world: WorldCheckpoint;
 }

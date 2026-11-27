@@ -2,13 +2,12 @@ import type { MemberType } from "@db/schema/enums";
 import type { MovementBehaviorRecordData } from "@db/schema/jsons";
 import { createActor } from "xstate";
 import { AttributeContainer } from "~/engine/core/AttributeContainer/AttributeContainer";
-import type { EventBus } from "~/engine/core/EventBus/EventBus";
+import { AttributeThresholdSource } from "~/engine/core/AttributeContainer/AttributeThresholdSource";
 import type { PipelineOverlay } from "~/engine/core/Pipeline/overlay";
 import type { PipelineDefinitions, PipelineNameOf, PipelineService } from "~/engine/core/Pipeline/PipelineService";
 import type { PipelineValues } from "~/engine/core/Pipeline/PipelineValues";
 import type { SimulationTickContext } from "~/engine/core/types";
 import { createLogger } from "~/lib/logger";
-import { AttributeThresholdSource } from "../../../AttributeContainer/AttributeThresholdSource";
 import type { WorldObservable } from "../../observable";
 import type { WorldMember } from "../../ScenarioSchema";
 import {
